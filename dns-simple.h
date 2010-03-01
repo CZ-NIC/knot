@@ -2,17 +2,16 @@
 #define DNS_SIMPLE
 
 #include <stdint.h>
+#include "common.h"
 
-const uint16_t RRTYPE_DEFAULT =     1;		// A
-const uint16_t RRCLASS_DEFAULT =    1;		// IN
-const uint32_t TTL_DEFAULT =        3600;
-const unsigned int RDLENGTH_DEFAULT = 10;
-const unsigned char RDATA_DEFAULT[] = "127.0.0.1";
+static const uint16_t RRTYPE_DEFAULT       = 1;		// A
+static const uint16_t RRCLASS_DEFAULT      = 1;		// IN
+static const uint32_t TTL_DEFAULT          = 3600;
+static const unsigned int RDLENGTH_DEFAULT = 10;
+static const unsigned char RDATA_DEFAULT[] = "127.0.0.1";
 
-const unsigned int HEADER_SIZE =    12;
-const unsigned int MAX_DNAME_SIZE = 255;    // does this contain the trailing 0?
-
-typedef unsigned int uint;
+static const unsigned int HEADER_SIZE =    12;
+static const unsigned int MAX_DNAME_SIZE = 255;    // does this contain the trailing 0?
 
 /*----------------------------------------------------------------------------*/
 

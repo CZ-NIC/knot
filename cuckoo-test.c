@@ -3,10 +3,14 @@
  */
 
 #include "cuckoo-hash-table.h"
+#include "dns-simple.h"
 #include <stdio.h>
 #include <string.h>
 
 #include "bitset.h"
+
+//#define TEST_DEBUG
+#define TEST_OUTPUT
 
 #define ERR_ARG 1
 #define ERR_FILE_OPEN 2
@@ -93,20 +97,23 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 {
 	uint /*arr_i,*/ buf_i, buf_size/*, arr_size*/, res;
 	char ch = '\0';
-	char *buffer, *key, *value;
+    char *buffer, *key;
+    dnss_rr **value;
 	int line = 0;
 	unsigned long total_size = 0;
 
-	//printf("Place pointer received: %p\n", place);
+#ifdef TEST_DEBUG
+    printf("Place pointer received: %p\n", place);
+#endif
 
 	key = place;
-	value = place;
+    value = (dnss_rr **)place;
 
 	while (ch != EOF) {
 		buf_i = 0;
-
-		//printf("Allocating buffer\n");
-
+#ifdef TEST_DEBUG
+        printf("Allocating buffer\n");
+#endif
 		// allocate some buffer
 		buf_size = BUF_SIZE;
 		buffer = (char *)malloc(buf_size * sizeof(char));
@@ -115,13 +122,15 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 			fprintf(stderr, "Allocation failed.\n");
 			return -1;
 		}
-
-		//printf("Done\n");
-
+#ifdef TEST_DEBUG
+        printf("Done\n");
+#endif
 		ch = fgetc(file);
 
 		while (ch != '\n' && ch != EOF) {
-			//printf("Read character: %c\n", ch);
+#ifdef TEST_DEBUG
+            printf("Read character: %c\n", ch);
+#endif
 
 			buffer[buf_i] = ch;
 			buf_i++;
@@ -138,12 +147,12 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 			ch = fgetc(file);
 		}
 
-		//printf("End of first item\n");
-
 		buffer[buf_i] = '\0';
 		line++;
-		//printf("Read domain name: %s\n", buffer);
 
+#ifdef TEST_DEBUG
+        printf("Read domain name: %s\n", buffer);
+#endif
 		// if buffer too large
 		if ((buf_size > buf_i + 1)
 			&& (resize_buffer(&buffer, &buf_size,
@@ -152,9 +161,9 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 			free(buffer);
 			return -1;
 		}
-
-		//printf("Read domain name %s, inserting...\n", buffer);
-
+#ifdef TEST_DEBUG
+        printf("Read domain name %s, inserting...\n", buffer);
+#endif
 		if (buf_i > 0) {
 			// hash domain name
 
@@ -166,29 +175,37 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 				free(buffer);
 				return ERR_INSERT;
 			}
-
-			//printf("Copying buffer to place %p\n", key);
+#ifdef TEST_DEBUG
+            printf("Copying buffer to place %p\n", key);
+#endif
 			memcpy(key, buffer, strlen(buffer) + 1);
-			value += strlen(buffer) + 1;
-			memcpy(value, buffer, strlen(buffer) + 1);
-
-//			if (line % 100000 == 0) {
-//				fprintf(stderr, "Inserting item number %u, key: %s..\n", line, key);
-//			}
+            value += strlen(buffer) + 1;
+#ifdef TEST_DEBUG
+            printf("Creating RR with the given owner name.\n");
+#endif
+            *value = dnss_create_rr(key);
+            //memcpy(value, buffer, strlen(buffer) + 1);
+#ifdef TEST_DEBUG
+            if (line % 100000 == 1) {
+                fprintf(stderr, "Inserting item number %u, key: %s..\n", line, key);
+            }
+#endif
 
             if ((res = ck_insert_item(
-                    table, key, strlen(buffer), value, &collisions)) != 0) {
+                    table, key, strlen(buffer), *value, &collisions)) != 0) {
 				fprintf(stderr, "\nInsert item returned %d.\n", res);
 				free(buffer);
 				return ERR_INSERT;
 			}
 
-			key = value + strlen(buffer) + 1;
-			value = key;
+            key = (char *)value + strlen(buffer) + 1;
+            value = (dnss_rr **)key;
 
-//			if (line % 100000 == 0) {
-//				fprintf(stderr, "Done, %lu collisions so far.\n", collisions);
-//			}
+#ifdef TEST_DEBUG
+            if (line % 100000 == 0) {
+                fprintf(stderr, "Done, %lu collisions so far.\n", collisions);
+            }
+#endif
 		}
 		free(buffer);
 	}
@@ -228,13 +245,15 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 	uint buf_i, buf_size, not_found = 0;
 	char ch = '\0';
 	char *buffer;
-	ck_hash_table_item *res;
+    const ck_hash_table_item *res;
 	//unsigned long total_size = 0;
 
 	while (ch != EOF) {
 		buf_i = 0;
 
-		//printf("Allocating buffer\n");
+#ifdef TEST_DEBUG
+        printf("Allocating buffer\n");
+#endif
 
 		// allocate some buffer
 		buf_size = BUF_SIZE;
@@ -244,13 +263,15 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 			fprintf(stderr, "Allocation failed.\n");
 			return -1;
 		}
-
-		//printf("Done\n");
-
+#ifdef TEST_DEBUG
+        printf("Done\n");
+#endif
 		ch = fgetc(file);
 
 		while (ch != '\n' && ch != EOF) {
-			//printf("Read character: %c\n", ch);
+#ifdef TEST_DEBUG
+            printf("Read character: %c\n", ch);
+#endif
 
 			buffer[buf_i] = ch;
 			buf_i++;
@@ -267,10 +288,11 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 			ch = fgetc(file);
 		}
 
-		//printf("End of first item\n");
-
 		buffer[buf_i] = '\0';
-		//printf("Read domain name: %s\n", buffer);
+
+#ifdef TEST_DEBUG
+        printf("Read domain name: %s\n", buffer);
+#endif
 
 		// if buffer too large
 		if ((buf_size > buf_i + 1)
@@ -288,14 +310,18 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 
 			if ((res = ck_find_item(table, buffer, strlen(buffer))) == NULL
 				|| strncmp(res->key, buffer, strlen(buffer)) != 0 ) {
-				//fprintf(stderr, "\nItem with key %s not found.\n", buffer);
+                fprintf(stderr, "\nItem with key %s not found.\n", buffer);
 				not_found++;
 //				free(buffer);
 //				return ERR_FIND;
-			}/* else {
-				printf("Table 1, key: %s, value: %s, key length: %u\n",
-					res->key, (char *)res->value, res->key_length);
-			}*/
+            }
+#if defined TEST_DEBUG || defined TEST_OUTPUT
+            else {
+                printf("Table 1, key: %s, rdata: %*s, key length: %lu\n",
+                    res->key, ((dnss_rr *)(res->value))->rdlength,
+                    ((dnss_rr *)(res->value))->rdata, res->key_length);
+            }
+#endif
 		}
 		free(buffer);
 	}
@@ -428,7 +454,9 @@ int main( int argc, char **argv )
 		return ERR_FILE_READ;
 	}
 
-	//fprintf(stderr, "Domains read: %d.\n", names);
+#ifdef TEST_DEBUG
+    fprintf(stderr, "Domains read: %d.\n", names);
+#endif
 
 	ck_hash_table *table = ck_create_table(names);
 
@@ -450,7 +478,7 @@ int main( int argc, char **argv )
 		   chars * 2 * sizeof(char));
 
 	// allocate space for all items
-	all_items = malloc(chars * 2 * sizeof(char));
+    all_items = malloc(chars * (sizeof(char) + sizeof(dnss_rr *)));
 
 	if (all_items == NULL) {
 		fprintf(stderr, "Error allocating place for all items.\n");

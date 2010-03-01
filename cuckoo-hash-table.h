@@ -3,9 +3,7 @@
 
 #include <stdint.h>	/* uint32_t */
 #include <stdlib.h>	/* size_t */
-
-typedef unsigned int uint;
-//typedef unsigned long ulong;
+#include "common.h"
 
 #define hashsize(n) ((uint32_t)1<<(n))
 #define hashmask(n) (hashsize(n)-1)

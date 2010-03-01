@@ -19,7 +19,7 @@
 #include "bitset.h"
 #include "universal-system.h"
 
-//#define DEBUG
+//#define CUCKOO_DEBUG
 
 /*----------------------------------------------------------------------------*/
 
@@ -208,7 +208,7 @@ int ck_insert_to_buffer( ck_hash_table *table, ck_hash_table_item *item )
 ck_hash_table_item *ck_find_in_buffer( ck_hash_table *table, const char *key,
 									   uint length )
 {
-#ifdef DEBUG
+#ifdef CUCKOO_DEBUG
 	printf("Max buffer offset: %u\n", table->buf_i);
 #endif
 	uint i = 0;
@@ -238,7 +238,7 @@ ck_hash_table *ck_create_table( uint items )
 
 	table->table_size_exp = get_table_exp(items, CK_SIZE);
 
-//#ifdef DEBUG
+//#ifdef CUCKOO_DEBUG
 	printf("Creating hash table for %u items.\n", items);
 	printf("Exponent: %u ", table->table_size_exp);
     printf("Table size: %u items, each %lu bytes, total %lu bytes\n",
@@ -325,7 +325,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 	int next_table;
 	uint used1[USED_SIZE], used2[USED_SIZE], used_i = 0;	// use dynamic array instead
 
-#ifdef DEBUG
+#ifdef CUCKOO_DEBUG
 	printf("Inserting item with key: %s.\n", key);
 #endif
 	hash = HASH1(key, length, table->table_size_exp) /*& hashmask(table->table_size_exp)*/;
@@ -333,7 +333,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 	// try insert to first table
 	if (table->table1[hash].value == 0) { // item free
 		ck_fill_item(key, length, value, &table->table1[hash]);
-#ifdef DEBUG
+#ifdef CUCKOO_DEBUG
 		printf("Inserted successfuly to table1, hash %u, key: %s.\n", hash,
 			   table->table1[hash].key);
 #endif
@@ -345,7 +345,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 		rehashing is done by setting the initval to the initval of the table
 		TODO: correct as appropriate
 	*/
-#ifdef DEBUG
+#ifdef CUCKOO_DEBUG
 	printf("Collision! Hash: %u\n", hash);
 #endif
 
@@ -368,7 +368,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 	//BITSET_SET(used1b, hash);
 	used1[used_i] = hash;
 
-#ifdef DEBUG
+#ifdef CUCKOO_DEBUG
 	printf("Moving item from table1, key: %s, hash %u", moving->key, hash);
 #endif
 //	hash = HASH2(moving->key, moving->key_length) & hashmask(table->table_size_exp);
@@ -379,7 +379,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 
 	next = &table->table2[hash];
 	next_table = TABLE_2;
-#ifdef DEBUG
+#ifdef CUCKOO_DEBUG
 	printf(" to table2, key: %s, hash %u\n", next->key, hash);
 #endif
 	while (next->value != 0) {
@@ -388,7 +388,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 		ck_swap_items(&old, moving);
 
 		moving = next;
-#ifdef DEBUG
+#ifdef CUCKOO_DEBUG
 		printf("Moving item from table %u, key: %s, hash %u",
 			   next_table + 1, moving->key, hash);
 #endif
@@ -400,7 +400,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 				hash = HASH1(next->key, next->key_length, table->table_size_exp);
 
 				next = &table->table1[hash];
-#ifdef DEBUG
+#ifdef CUCKOO_DEBUG
 				printf(" to table 1, key: %s, hash %u\n", next->key, hash);
 #endif
 				if (/*ck_check_used(used1b, hash)*/ck_check_used2(used1, &used_i, hash) != 0) {
@@ -422,7 +422,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 				hash = HASH2(next->key, next->key_length, table->table_size_exp);
 
 				next = &table->table2[hash];
-#ifdef DEBUG
+#ifdef CUCKOO_DEBUG
 				printf(" to table 2, key: %s, hash %u\n", next->key, hash);
 #endif
 				if (/*ck_check_used(used1b, hash)*/ck_check_used2(used2, &used_i, hash) != 0) {
@@ -452,14 +452,14 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 		case TABLE_1:
 			ck_copy_item_contents(moving, &table->table1[hash]);
 			ck_copy_item_contents(&old, moving);
-#ifdef DEBUG
+#ifdef CUCKOO_DEBUG
 			printf("Inserted successfuly, hash: %u.\n", hash);
 #endif
 			break;
 		case TABLE_2:
 			ck_copy_item_contents(moving, &table->table2[hash]);
 			ck_copy_item_contents(&old, moving);
-#ifdef DEBUG
+#ifdef CUCKOO_DEBUG
 			printf("Inserted successfuly, hash: %u.\n", hash);
 #endif
 			break;
@@ -513,7 +513,7 @@ const ck_hash_table_item *ck_find_item( ck_hash_table *table, const char *key, s
 
 	//printf("Searching table 1, hash %u.\n", hash);
 
-#ifdef DEBUG
+#ifdef CUCKOO_DEBUG
 	printf("Hash: %u, key: %s\n", hash, key);
 	printf("Table 1, hash: %u, key: %s, value: %s, key length: %u\n",
 		   hash, table->table1[hash].key, (char *)table->table1[hash].value, table->table1[hash].key_length);
@@ -530,7 +530,7 @@ const ck_hash_table_item *ck_find_item( ck_hash_table *table, const char *key, s
 //	hash = HASH2(key, length) & hashmask(table->table_size_exp);
 	hash = HASH2(key, length, table->table_size_exp);
 
-#ifdef DEBUG
+#ifdef CUCKOO_DEBUG
 	printf("Table 2, hash: %u, key: %s, value: %s, key length: %u\n",
 		   hash, table->table2[hash].key, (char *)table->table2[hash].value, table->table2[hash].key_length);
 #endif
@@ -544,14 +544,14 @@ const ck_hash_table_item *ck_find_item( ck_hash_table *table, const char *key, s
 		return &table->table2[hash];
 	}
 
-#ifdef DEBUG
+#ifdef CUCKOO_DEBUG
 	printf("Searching in buffer...\n");
 #endif
 
 	// try to find in buffer
 	ck_hash_table_item *found = ck_find_in_buffer(table, key, length);
 
-#ifdef DEBUG
+#ifdef CUCKOO_DEBUG
 	printf("Found pointer: %p\n", found);
 	if (found != NULL) {
 		printf("Buffer, key: %s, value: %s, key length: %u\n",
