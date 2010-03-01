@@ -132,7 +132,7 @@ void ck_fill_item( const char *key, size_t key_length, void *value,
 /**
  * @brief Insert contents of the first item to the second item.
  */
-inline void ck_copy_item_contents(
+void ck_copy_item_contents(
 	ck_hash_table_item *from, ck_hash_table_item *to)
 {
 	memcpy(to, from, sizeof(ck_hash_table_item));
@@ -241,7 +241,7 @@ ck_hash_table *ck_create_table( uint items )
 //#ifdef DEBUG
 	printf("Creating hash table for %u items.\n", items);
 	printf("Exponent: %u ", table->table_size_exp);
-	printf("Table size: %u items, each %u bytes, total %u bytes\n",
+    printf("Table size: %u items, each %lu bytes, total %lu bytes\n",
 		   hashsize(table->table_size_exp), sizeof(ck_hash_table_item),
 		   hashsize(table->table_size_exp) * sizeof(ck_hash_table_item));
 //#endif

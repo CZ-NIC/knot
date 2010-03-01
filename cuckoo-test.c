@@ -88,106 +88,6 @@ uint get_line_count( FILE *file, unsigned long *chars )
 
 /*----------------------------------------------------------------------------*/
 
-int read_domain_names( char ***domain_array, FILE* file )
-{
-	uint arr_i, buf_i, buf_size, arr_size;
-	char ch = '\0';
-	char *buffer;
-	char **domains;
-
-	// allocate some place for the array
-	arr_size = ARRAY_SIZE;
-	domains = (char **)malloc(arr_size * sizeof(char *));
-
-	if (domains == NULL) {
-		fprintf(stderr, "Allocation failed.\n");
-		return -1;
-	}
-
-	arr_i = 0;
-
-	while (ch != EOF) {
-		buf_i = 0;
-
-		// allocate some buffer
-		buf_size = BUF_SIZE;
-		buffer = (char *)malloc(buf_size * sizeof(char));
-
-		if (buffer == NULL) {
-			fprintf(stderr, "Allocation failed.\n");
-			// deallocate all buffers in the array
-			deallocate_array_items(domains, arr_i);
-			// deallocate the array
-			free(domains);
-			return -1;
-		}
-
-		ch = fgetc(file);
-
-		while (ch != '\n' && ch != EOF) {
-			//printf("Read character: %c\n", ch);
-
-			buffer[buf_i] = ch;
-			buf_i++;
-
-			// if the buffer is not big enough, reallocate
-			if ((buf_i >= buf_size)
-				&& (resize_buffer(&buffer, &buf_size,
-								 buf_size * 2, sizeof(char)) != 0)) {
-				// deallocate the last buffer used
-				free(buffer);
-				// deallocate all buffers in the array
-				deallocate_array_items(domains, arr_i);
-				// deallocate the array
-				free(domains);
-				return -1;
-			}
-
-			ch = fgetc(file);
-		}
-
-		buffer[buf_i] = '\0';
-		//printf("Read domain name: %s\n", buffer);
-
-		// if buffer too large
-		if ((buf_size > buf_i + 1)
-			&& (resize_buffer(&buffer, &buf_size,
-							 buf_i + 1, sizeof(char)) != 0)) {
-			// deallocate the last buffer used
-			free(buffer);
-			// deallocate all buffers in the array
-			deallocate_array_items(domains, arr_i);
-			// deallocate the array
-			free(domains);
-			return -1;
-		}
-
-		if (buf_i > 0) {
-			domains[arr_i] = buffer;
-			//printf("Saved domain name on position %d: %s\n", arr_i, domains[arr_i]);
-			arr_i++;
-
-			// if the array is not big enough, reallocate
-			if ((arr_i >= arr_size)
-				&& (resize_buffer((char **)&domains, &arr_size,
-								 arr_size * 2, sizeof(char *)) != 0)) {
-				// deallocate all buffers in the array
-				deallocate_array_items(domains, arr_i);
-				// deallocate the array
-				free(domains);
-				return -1;
-			}
-		} else {
-			free(buffer);
-		}
-	}
-
-	*domain_array = domains;
-	return arr_i;
-}
-
-/*----------------------------------------------------------------------------*/
-
 int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 					unsigned long chars, char *place )
 {
@@ -268,9 +168,6 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 			}
 
 			//printf("Copying buffer to place %p\n", key);
-
-			//key = (char *)malloc((strlen(buffer) + 1) * sizeof(char));
-			//value = (char *)malloc((strlen(buffer) + 1) * sizeof(char));
 			memcpy(key, buffer, strlen(buffer) + 1);
 			value += strlen(buffer) + 1;
 			memcpy(value, buffer, strlen(buffer) + 1);
@@ -279,8 +176,8 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 //				fprintf(stderr, "Inserting item number %u, key: %s..\n", line, key);
 //			}
 
-			if ((res = ck_insert_item(table, key, strlen(buffer), value, &collisions))
-				 != 0) {
+            if ((res = ck_insert_item(
+                    table, key, strlen(buffer), value, &collisions)) != 0) {
 				fprintf(stderr, "\nInsert item returned %d.\n", res);
 				free(buffer);
 				return ERR_INSERT;
@@ -296,7 +193,6 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 		free(buffer);
 	}
 
-	//*domain_array = domains;
 	return 0;
 }
 
@@ -324,30 +220,6 @@ int hash_names( ck_hash_table *table, char **domains, uint count )
 
 	return 0;
 }
-
-/*----------------------------------------------------------------------------*/
-
-//int test_lookup( ck_hash_table *table, char **domains, uint count )
-//{
-//	uint i = 0;
-//	char *item;
-//	int found = 0;
-//
-//	for (; i < count; i++) {
-//		if ((item = ck_find_item(table, domains[i], strlen(domains[i])))
-//			== NULL) {
-//			fprintf(stderr, "Item with key %s not found!.\n", domains[i]);
-//			return ERR_LOOKUP;
-//		} else {
-//			//printf("Found: %s\n", item);
-//			found++;
-//		}
-//	}
-//
-//	printf("Successfully found %u items.\n", found);
-//
-//	return 0;
-//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -569,7 +441,7 @@ int main( int argc, char **argv )
 
 	if (chars * 2 * sizeof(char) > SIZE_MAX) {
 		fprintf(stderr, "Size of input larger than max size for malloc."
-				"Input size: %lu, malloc max size: %u.\n",
+                "Input size: %lu, malloc max size: %lu.\n",
 				chars * 2 * sizeof(char), SIZE_MAX);
 		return ERR_ALLOC_ITEMS;
 	}

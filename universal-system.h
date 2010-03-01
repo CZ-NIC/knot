@@ -19,7 +19,7 @@ static unsigned int coefs[2][2];	// two generations, two functions
 
 /*----------------------------------------------------------------------------*/
 
-inline void us_generate_coefs( unsigned int *generation ) {
+void us_generate_coefs( unsigned int *generation ) {
 	generation[0] = rand() % MAX_UINT_MY;
 
 	if (generation[0] % 2 == 0) {
@@ -37,7 +37,7 @@ inline void us_generate_coefs( unsigned int *generation ) {
 
 /*----------------------------------------------------------------------------*/
 
-inline void us_initialize()
+void us_initialize()
 {
 	int i;
 
@@ -56,7 +56,7 @@ inline void us_initialize()
 
 /*----------------------------------------------------------------------------*/
 
-inline int us_next( uint generation )
+int us_next( uint generation )
 {
 	// generate new coeficients for the new generation
 	us_generate_coefs(coefs[generation >> 1]);
@@ -65,7 +65,7 @@ inline int us_next( uint generation )
 
 /*----------------------------------------------------------------------------*/
 
-inline uint32_t us_hash( uint32_t value, unsigned int table_exp, uint c,
+uint32_t us_hash( uint32_t value, unsigned int table_exp, uint c,
 						 uint generation )
 {
 	/* multiplication should overflow if larger than MAX_UINT
