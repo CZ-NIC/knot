@@ -22,6 +22,7 @@ OBJS = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_FILES)
 
 CC = gcc
 CFLAGS += -Wall -std=c99
+LDFLAGS += -lpthread
 
 all:cuckoo-hash
 
