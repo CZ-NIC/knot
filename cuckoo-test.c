@@ -101,20 +101,18 @@ uint get_line_count( FILE *file, unsigned long *chars )
 /*----------------------------------------------------------------------------*/
 
 int hash_from_file( FILE *file, ck_hash_table *table, uint items,
-					unsigned long chars, char *place )
+                    unsigned long chars )
 {
-	uint /*arr_i,*/ buf_i, buf_size/*, arr_size*/, res;
+    uint buf_i, buf_size, res;
 	char ch = '\0';
-    char *buffer, *key, *value;
+    char *buffer, *key;
+    dnss_rr *value;
 	int line = 0;
 	unsigned long total_size = 0;
 
 #ifdef TEST_DEBUG
     printf("Place pointer received: %p\n", place);
 #endif
-
-	key = place;
-    value = place;
 
 	while (ch != EOF) {
 		buf_i = 0;
@@ -182,37 +180,38 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 				free(buffer);
 				return ERR_INSERT;
 			}
-#ifdef TEST_DEBUG
-            printf("Copying buffer to place %p\n", key);
-#endif
-			memcpy(key, buffer, strlen(buffer) + 1);
-            value += strlen(buffer) + 1;
+
 #ifdef TEST_DEBUG
             printf("Creating RR with the given owner name.\n");
 #endif
-            // create the RR to be saved to the hash table
-            //*value = dnss_create_rr(key);
+            value = dnss_create_rr(buffer);
+            if (value == NULL) {
+                fprintf(stderr, "Allocation failed in hash_from_file().");
+                free(buffer);
+                return ERR_INSERT;
+            }
             // convert the domain name to wire format to be used for hashing
-            //char *key_wire = dnss_dname_to_wire(key);
-            memcpy(value, buffer, strlen(buffer) + 1);
+            key = dnss_dname_to_wire(buffer);
+            if (key == NULL) {
+                fprintf(stderr, "Allocation failed in hash_from_file().");
+                free(buffer);
+                return ERR_INSERT;
+            }
+
 #ifdef TEST_DEBUG
             if (line % 100000 == 1) {
                 fprintf(stderr, "Inserting item number %u, key: %s..\n", line, key);
-                //hex_print(key_wire, dnss_wire_dname_size(key));
+                //hex_print(key, dnss_wire_dname_size(buffer));
             }
 #endif
 
-            if ((res = ck_insert_item(
-                    table, key, strlen(buffer) + 1, value, &collisions)) != 0) {
+            if ((res = ck_insert_item(table, key,
+                                      dnss_wire_dname_size(buffer) - 1,
+                                      value, &collisions)) != 0) {
 				fprintf(stderr, "\nInsert item returned %d.\n", res);
 				free(buffer);
 				return ERR_INSERT;
 			}
-
-            //free(key_wire);
-
-            key = (char *)value + strlen(buffer) + 1;
-            value = /*(dnss_rr **)*/key;
 
 #ifdef TEST_DEBUG
             if (line % 100000 == 0) {
@@ -220,7 +219,7 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
             }
 #endif
 		}
-		free(buffer);
+        free(buffer);	//unsigned long total_size = 0;
 	}
 
 	return 0;
@@ -259,7 +258,6 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 	char ch = '\0';
 	char *buffer;
     const ck_hash_table_item *res;
-	//unsigned long total_size = 0;
 
 	while (ch != EOF) {
 		buf_i = 0;
@@ -321,32 +319,24 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 		if (buf_i > 0) {
 			// find domain name
 
-//            char *key_wire = dnss_dname_to_wire(buffer);
+            char *key = dnss_dname_to_wire(buffer);
 
-//            fprintf(stderr, "Searching item with key: %s..\n", buffer);
-//            hex_print(key_wire, dnss_wire_dname_size(buffer));
 
-            if ((res = ck_find_item(table, buffer, strlen(buffer) + 1)) == NULL
-                || strncmp(res->key, buffer, strlen(buffer)) != 0 ) {
+            if ((res = ck_find_item(table, key,
+                                    dnss_wire_dname_size(buffer) - 1)) == NULL
+                || strncmp(res->key, key, dnss_wire_dname_size(buffer) - 1) != 0 ) {
                 fprintf(stderr, "\nItem with key %s not found.\n", buffer);
-                printf("Result: %p\n", res);
-//                if (res != NULL) {
-//                    printf("Result key: \n");
-//                    hex_print(res->key, res->key_length);
-//                }
-
-				not_found++;
-                exit(-1);
-//				free(buffer);
-//				return ERR_FIND;
+                free(buffer);
+                return ERR_FIND;
             }
+
+            free(key);
 #if defined TEST_DEBUG || defined TEST_LOOKUP
             else {
                 printf("Table 1, key: %s, rdata: %*s, key length: %lu\n",
                     res->key, ((dnss_rr *)(res->value))->rdlength,
                     ((dnss_rr *)(res->value))->rdata, res->key_length);
             }
-//            free(key_wire);
 #endif
 		}
 		free(buffer);
@@ -509,7 +499,6 @@ int main( int argc, char **argv )
 	uint names;
 	int res;
 	unsigned long chars;
-	char *all_items;
 
 	if (argc < 2) {
 		fprintf(stderr, "Usage: %s <filename>.\n", argv[0]);
@@ -526,7 +515,6 @@ int main( int argc, char **argv )
 	printf("Counting lines..");
 	names = get_line_count(file, &chars);
 	printf("%u\n", names);
-	//fclose(file);
 
 	if (names == -1) {
 		fprintf(stderr, "Error reading domain names from file.\n");
@@ -537,7 +525,7 @@ int main( int argc, char **argv )
     fprintf(stderr, "Domains read: %d.\n", names);
 #endif
 
-    /*ck_hash_table **/table = ck_create_table(names);
+    table = ck_create_table(names);
 
 	if (table == NULL) {
 		fprintf(stderr, "Error creating hash table.\n");
@@ -546,57 +534,23 @@ int main( int argc, char **argv )
 
 	fseek(file, 0, SEEK_SET);
 
-	if (chars * 2 * sizeof(char) > SIZE_MAX) {
-		fprintf(stderr, "Size of input larger than max size for malloc."
-                "Input size: %lu, malloc max size: %lu.\n",
-				chars * 2 * sizeof(char), SIZE_MAX);
-		return ERR_ALLOC_ITEMS;
-	}
-
-	printf("Creating place for all items, size: %lu.\n",
-		   chars * 2 * sizeof(char));
-
-	// allocate space for all items
-    all_items = malloc(chars * (sizeof(char) + sizeof(dnss_rr *)));
-
-	if (all_items == NULL) {
-		fprintf(stderr, "Error allocating place for all items.\n");
-		return ERR_ALLOC_ITEMS;
-	}
-
-	printf("Done: %p\n", all_items);
-
 	// hash the domain names
-	res = hash_from_file(file, table, names, chars, all_items);
-
-	//fclose(file);
+    res = hash_from_file(file, table, names, chars);
 
 	if (res == 0) {
-		//ck_dump_table(table);
-
-		//test_lookup(table, domains, names);
-		printf("Probably successful.\n");
+        printf("Successful.\n");
 		printf("Number of items in the buffer: %u\n", table->buf_i + 1);
 	} else {
-		//ck_dump_table(table);
-
 		fprintf(stderr, "Error inserting names to the hash table.\n");
-//		ck_destroy_table(table);
-//		clean_table(all_items);
-//		return res;
 	}
 
 	fseek(file, 0, SEEK_SET);
-
-//	ck_dump_table(table);
-//	exit(1);
 
     // testing lookup
 	res = test_lookup_from_file(table, file);
 
     if (res != 0) {
         ck_destroy_table(table);
-        clean_table(all_items);
         return res;
     }
 
@@ -604,7 +558,6 @@ int main( int argc, char **argv )
     sm_manager *manager = sm_create(PORT, THREAD_COUNT, answer_request);
     if (manager == NULL) {
         ck_destroy_table(table);
-        clean_table(all_items);
         return -1;
     }
     sm_start(manager);
@@ -613,7 +566,6 @@ int main( int argc, char **argv )
     sm_destroy(manager);
 
 	ck_destroy_table(table);
-	clean_table(all_items);
 
     return 0;
 }

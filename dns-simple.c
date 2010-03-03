@@ -41,11 +41,19 @@ dnss_rr *dnss_create_rr( char *owner )
 
     // convert domain name to wire format
     char *owner_wire = dnss_dname_to_wire(owner);
+    if (owner_wire == NULL) {
+        return NULL;
+    }
 
 #ifdef DNSS_DEBUG
     printf("Creating RR structure.\n");
 #endif
-    rr = malloc(sizeof(dnss_rr) + RDLENGTH_DEFAULT/* + strlen(owner_wire) + 1*/);
+    rr = malloc(sizeof(dnss_rr) + RDLENGTH_DEFAULT);
+
+    if (rr == NULL) {
+        free(owner_wire);
+        return NULL;
+    }
 
     // rdata will be saved at the end of the RR
     rr->rdata = (unsigned char *)rr + sizeof(dnss_rr);
@@ -274,52 +282,34 @@ char *dnss_dname_to_wire( char *dname )   // NEEDS TESTING!!
     char *wire_name = malloc((dname[strlen(dname) - 1] == '.')
                                       ? (strlen(dname) + 1)
                                       : (strlen(dname) + 2) );
-    //char *w = wire_name;
+
+    if (wire_name == NULL) {
+        return NULL;
+    }
+
     int w = 0;
 
     char *c = dname;
 
     char *buffer = malloc(strlen(dname) + 1);
-    //char *b = buffer;
+    if (buffer == NULL) {
+        free(wire_name);
+        return NULL;
+    }
+
     uint8_t chars = 0;
 
     while (*c != '\0') {
         memset(buffer, 0, strlen(dname) + 1);   // maybe not needed
-        //b = buffer + 1;
         chars = 0;
         while (*c != '.' && *c != '\0') {   // read next label
-            //*b++ = *c++;
             buffer[++chars] = *c++;
-            //chars++;
         }
         buffer[0] = chars;    // number of characters in this label
 
 #ifdef DNSS_DEBUG
         printf("Chars: %d, Buffer: %*s\n", chars, chars + 1, buffer);
 #endif
-
-//        if(!(*c == '\0' &&
-//                (w + chars + 1 == ((dname[strlen(dname) - 1] == '.')
-//                                    ? (strlen(dname) + 1)
-//                                    : (strlen(dname) + 2))))) {
-//            if (*c == '\0') {
-//                fprintf(stderr, "Wire name will be %d long and it should be"
-//                        "max %d chars long.\n", w + chars + 1,
-//                        ((dname[strlen(dname) - 1] == '.')
-//                        ? (strlen(dname) + 1)
-//                        : (strlen(dname) + 2)));
-//                assert(0);
-//            } else if ((w + chars + 1 >= ((dname[strlen(dname) - 1] == '.')
-//                                            ? (strlen(dname) + 1)
-//                                            : (strlen(dname) + 2)))) {
-//                fprintf(stderr, "Wire name will be more than %d long and it "
-//                        "should be max %d chars long.\n", w + chars + 1,
-//                        ((dname[strlen(dname) - 1] == '.')
-//                        ? (strlen(dname) + 1)
-//                        : (strlen(dname) + 2)));
-//                assert(0);
-//            }
-//        }
 
         memcpy(&wire_name[w], buffer, chars + 1);   // copy the label
         w += chars + 1;
