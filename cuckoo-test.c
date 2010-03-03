@@ -26,7 +26,7 @@ static const uint ERR_FIND = 8;
 static const uint BUF_SIZE = 20;
 static const uint ARRAY_SIZE = 500;
 
-static const uint PORT = 53535;
+static const unsigned short PORT = 53535;
 static const uint THREAD_COUNT = 2;
 
 /*----------------------------------------------------------------------------*/
@@ -454,11 +454,12 @@ void answer_request( const char *query_wire, uint size,
 #if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
     printf("Query parsed, ID: %u, QNAME: %s\n", query->header.id,
            query->questions[0].qname);
+    hex_print(query->questions[0].qname, strlen(query->questions[0].qname));
 #endif
 
     const ck_hash_table_item *item = ck_find_item(
             table, query->questions[0].qname,
-            strlen(query->questions[0].qname) + 1);
+            strlen(query->questions[0].qname));
 
     dnss_packet *response = dnss_create_empty_packet();
 
@@ -471,7 +472,6 @@ void answer_request( const char *query_wire, uint size,
 #if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
         printf("Requested name found.\n");
 #endif
-        //responses[0] = (dnss_rr *)item->value;
         dnss_create_response(query, (dnss_rr *)item->value, 1, &response);
     }
 
@@ -481,6 +481,11 @@ void answer_request( const char *query_wire, uint size,
 
     dnss_wire_format(response, response_wire, response_size);
 
+    if (*response_size == 0) {
+        fprintf(stderr, "Response too long, ignoring query.");
+        return;
+    }
+
     if (*response_size > SOCKET_BUFF_SIZE) {
 #if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
         printf("Response too long (%d bytes), returning SERVFAIL response.\n",
@@ -489,6 +494,10 @@ void answer_request( const char *query_wire, uint size,
         dnss_create_error_response(query, &response);
         dnss_wire_format(response, response_wire, response_size);
     }
+
+#if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
+    printf("Returning response of size: %u.\n", *response_size);
+#endif
 }
 
 /*----------------------------------------------------------------------------*/
@@ -522,7 +531,7 @@ int main( int argc, char **argv )
 	}
 
 #ifdef TEST_DEBUG
-    fprintf(stderr, "Domains read: %d.\n", names);
+    printf("Domains read: %d.\n", names);
 #endif
 
     table = ck_create_table(names);
@@ -560,6 +569,8 @@ int main( int argc, char **argv )
         ck_destroy_table(table);
         return -1;
     }
+
+    printf("Starting socket manager...\n");
     sm_start(manager);
 
     // can I do this?? pointer to the manager is still in the threads

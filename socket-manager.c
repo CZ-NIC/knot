@@ -13,13 +13,13 @@
 #include <string.h>
 #include <unistd.h>
 
-#define SM_DEBUG
+//#define SM_DEBUG
 
 const uint SOCKET_BUFF_SIZE = 4096;
 
 /*----------------------------------------------------------------------------*/
 
-sm_manager *sm_create( short port, uint thr_count,
+sm_manager *sm_create( unsigned short port, uint thr_count,
                        void (*answer_fnc)(const char *, uint, char *, uint *) )
 {
     sm_manager *manager = malloc(sizeof(sm_manager));
@@ -32,6 +32,8 @@ sm_manager *sm_create( short port, uint thr_count,
     }
 
     struct sockaddr_in addr;
+
+    printf("Creating socket for listen on port %hu.\n", port);
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons( port );
@@ -125,16 +127,24 @@ void *sm_listen( void *obj )
                 manager->answer_fnc(buf, n, answer, &answer_size);
 
 #ifdef SM_DEBUG
-                printf("Got answer of size %d, sending..\n", answer_size);
+                printf("Got answer of size %d.\n", answer_size);
 #endif
 
-                int sent = sendto(fd, answer, answer_size, MSG_DONTWAIT,
-                                  (struct sockaddr *)&faddr,
-                                  (socklen_t)addrsize);
+                if (answer_size > 0) {
 
-                if (sent < 0) {
-                    const int error = errno;
-                    printf( "Error sending: %d, %s.\n", error, strerror(error) );
+#ifdef SM_DEBUG
+                    printf("Answer wire format (size %u):\n", answer_size);
+                    hex_print(answer, answer_size);
+#endif
+
+                    int sent = sendto(fd, answer, answer_size, MSG_DONTWAIT,
+                                      (struct sockaddr *)&faddr,
+                                      (socklen_t)addrsize);
+
+                    if (sent < 0) {
+                        const int error = errno;
+                        printf( "Error sending: %d, %s.\n", error, strerror(error) );
+                    }
                 }
             } else {
                 pthread_mutex_unlock(&manager->mutex);

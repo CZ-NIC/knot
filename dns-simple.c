@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include <stdint.h>
 
 //#define DNSS_DEBUG
 
@@ -24,6 +25,13 @@ static const uint16_t RCODE_NOTAUTH = 9;	// 0..000001001
 static const uint16_t RCODE_NOTZONE = 10;	// 0..000001010
 static const uint16_t RCODE_CLEAR = 65520;  // 1..111110000
 
+// default test values
+static const uint16_t RRTYPE_DEFAULT       = 1;		// A
+static const uint16_t RRCLASS_DEFAULT      = 1;		// IN
+static const uint32_t TTL_DEFAULT          = 3600;
+static const unsigned int RDLENGTH_DEFAULT = 4;
+static const uint8_t RDATA_DEFAULT[4] = { 127, 0, 0, 1 };
+
 // assuming flags is 16bit integer
 #define RCODE_SET(flags, rcode) flags = (flags & RCODE_CLEAR) | rcode
 
@@ -31,10 +39,9 @@ static const uint16_t RCODE_CLEAR = 65520;  // 1..111110000
 
 dnss_rr *dnss_create_rr( char *owner )
 {
-    // assuming owner is in natural format => conversion to wire format needed
-
 	dnss_rr *rr;
 
+    // assuming owner is in natural format => conversion to wire format needed
 #ifdef DNSS_DEBUG
     printf("Converting domain name to wire format.\n");
 #endif
@@ -65,11 +72,6 @@ dnss_rr *dnss_create_rr( char *owner )
     rr->rdlength = RDLENGTH_DEFAULT;
 
     rr->owner = owner_wire;
-
-    // owner will be saved at the end of the RR behind rdata
-    //rr->owner = (char *)rr->rdata + RDLENGTH_DEFAULT;
-    //memcpy(rr->owner, owner_wire, strlen(owner_wire) + 1);
-    //free(owner_wire);
 
 #ifdef DNSS_DEBUG
     printf("Done.\n");
@@ -194,14 +196,6 @@ void dnss_wire_format( dnss_packet *packet, char *packet_wire,
 
     *packet_size = real_size;
 
-    //packet_wire = malloc(*packet_size);
-
-//    if (packet_wire == NULL) {
-//        fprintf(stderr, "Allocation failed in dnss_wire_format().\n");
-//        *packet_size = 0;
-//        return;
-//    }
-
     char *p = packet_wire;
 
     ((dnss_header *)p)->id = htons(packet->header.id);
@@ -254,7 +248,7 @@ void dnss_wire_format( dnss_packet *packet, char *packet_wire,
                packet->authority[i].rdlength);        // copy rdata
         p += packet->authority[i].rdlength;
     }
-    for (int i = 0; i < packet->header.ancount; ++i) {
+    for (int i = 0; i < packet->header.arcount; ++i) {
         memcpy(p, packet->additional[i].owner,
                strlen(packet->additional[i].owner) + 1);   // copy owner name
         p += strlen(packet->additional[i].owner) + 1;
@@ -353,8 +347,8 @@ dnss_packet *dnss_parse_query( const char *query_wire, uint size )
     //const char *p = query_wire;
     int p = 0;
 
-    printf("Query packet pointer: %p, header pointer: %p.\n",
-           query, &query->header);
+//    printf("Query packet pointer: %p, header pointer: %p.\n",
+//           query, &query->header);
 
     // parse header - convert from network byte order
     memcpy(&(query->header), query_wire, sizeof(dnss_header));
@@ -410,9 +404,6 @@ dnss_packet *dnss_parse_query( const char *query_wire, uint size )
         buffer[b++] = '\0';
         p++;
 
-        //dnss_question *quest = malloc(sizeof(dnss_question) + b * sizeof(char));
-
-        //quest->qname = (char *)(quest) + sizeof(dnss_question);
         query->questions[i].qname = malloc(b * sizeof(char));
         memcpy(query->questions[i].qname, buffer, b);
 

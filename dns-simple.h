@@ -5,12 +5,6 @@
 #include <string.h>
 #include "common.h"
 
-static const uint16_t RRTYPE_DEFAULT       = 1;		// A
-static const uint16_t RRCLASS_DEFAULT      = 1;		// IN
-static const uint32_t TTL_DEFAULT          = 3600;
-static const unsigned int RDLENGTH_DEFAULT = 10;
-static const unsigned char RDATA_DEFAULT[] = "127.0.0.1";
-
 static const unsigned int HEADER_SIZE =    12;
 static const unsigned int MAX_DNAME_SIZE = 255; // contains the ending 0?
 
