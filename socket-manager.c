@@ -13,12 +13,14 @@
 #include <string.h>
 #include <unistd.h>
 
-static const uint BUFF_SIZE = 4096;
+#define SM_DEBUG
+
+const uint SOCKET_BUFF_SIZE = 4096;
 
 /*----------------------------------------------------------------------------*/
 
 sm_manager *sm_create( short port, uint thr_count,
-                       void (*answer_fnc)( const char *, uint, char *, uint ) )
+                       void (*answer_fnc)(const char *, uint, char *, uint *) )
 {
     sm_manager *manager = malloc(sizeof(sm_manager));
 
@@ -90,12 +92,12 @@ void sm_destroy( sm_manager *manager )
 void *sm_listen( void *obj )
 {
     sm_manager *manager = (sm_manager *)obj;
-    char buf[BUFF_SIZE];
+    char buf[SOCKET_BUFF_SIZE];
     struct sockaddr_in faddr;
     int addrsize = sizeof(faddr);
     int n, i ,fd;
-    char answer[BUFF_SIZE];
-    uint answer_size = 0;
+    char answer[SOCKET_BUFF_SIZE];
+    uint answer_size;
 
     while (1) {
         int nfds = epoll_wait(manager->epfd, &manager->event, 1, -1);
@@ -108,13 +110,23 @@ void *sm_listen( void *obj )
             pthread_mutex_lock(&manager->mutex);
             fd = manager->event.data.fd;
 
-            if ((n = recvfrom(fd, buf, BUFF_SIZE, 0, (struct sockaddr *)&faddr,
+            if ((n = recvfrom(fd, buf, SOCKET_BUFF_SIZE, 0,
+                              (struct sockaddr *)&faddr,
                              (socklen_t *)&addrsize)) > 0) {
+
+#ifdef SM_DEBUG
+                printf("Received %d bytes.\n", n);
+#endif
 
                 //printf("unlocking mutex from thread %ld\n", pthread_self());
                 pthread_mutex_unlock(&manager->mutex);
 
-                manager->answer_fnc(buf, n, answer, answer_size);
+                answer_size = SOCKET_BUFF_SIZE;
+                manager->answer_fnc(buf, n, answer, &answer_size);
+
+#ifdef SM_DEBUG
+                printf("Got answer of size %d, sending..\n", answer_size);
+#endif
 
                 int sent = sendto(fd, answer, answer_size, MSG_DONTWAIT,
                                   (struct sockaddr *)&faddr,

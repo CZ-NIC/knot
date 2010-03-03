@@ -19,7 +19,7 @@
 #include "bitset.h"
 #include "universal-system.h"
 
-//#define CUCKOO_DEBUG
+#define CUCKOO_DEBUG
 
 /*----------------------------------------------------------------------------*/
 
@@ -327,6 +327,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 
 #ifdef CUCKOO_DEBUG
 	printf("Inserting item with key: %s.\n", key);
+    hex_print(key, length);
 #endif
 	hash = HASH1(key, length, table->table_size_exp) /*& hashmask(table->table_size_exp)*/;
 
@@ -515,7 +516,7 @@ const ck_hash_table_item *ck_find_item( ck_hash_table *table, const char *key, s
 
 #ifdef CUCKOO_DEBUG
 	printf("Hash: %u, key: %s\n", hash, key);
-	printf("Table 1, hash: %u, key: %s, value: %s, key length: %u\n",
+    printf("Table 1, hash: %u, key: %s, value: %s, key length: %lu\n",
 		   hash, table->table1[hash].key, (char *)table->table1[hash].value, table->table1[hash].key_length);
 #endif
 
@@ -531,7 +532,7 @@ const ck_hash_table_item *ck_find_item( ck_hash_table *table, const char *key, s
 	hash = HASH2(key, length, table->table_size_exp);
 
 #ifdef CUCKOO_DEBUG
-	printf("Table 2, hash: %u, key: %s, value: %s, key length: %u\n",
+    printf("Table 2, hash: %u, key: %s, value: %s, key length: %lu\n",
 		   hash, table->table2[hash].key, (char *)table->table2[hash].value, table->table2[hash].key_length);
 #endif
 
@@ -554,7 +555,7 @@ const ck_hash_table_item *ck_find_item( ck_hash_table *table, const char *key, s
 #ifdef CUCKOO_DEBUG
 	printf("Found pointer: %p\n", found);
 	if (found != NULL) {
-		printf("Buffer, key: %s, value: %s, key length: %u\n",
+        printf("Buffer, key: %s, value: %s, key length: %lu\n",
 		   found->key, (char *)found->value, found->key_length);
 	}
 #endif

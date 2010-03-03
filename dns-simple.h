@@ -2,6 +2,7 @@
 #define DNS_SIMPLE
 
 #include <stdint.h>
+#include <string.h>
 #include "common.h"
 
 static const uint16_t RRTYPE_DEFAULT       = 1;		// A
@@ -11,7 +12,7 @@ static const unsigned int RDLENGTH_DEFAULT = 10;
 static const unsigned char RDATA_DEFAULT[] = "127.0.0.1";
 
 static const unsigned int HEADER_SIZE =    12;
-static const unsigned int MAX_DNAME_SIZE = 255;    // does this contain the trailing 0?
+static const unsigned int MAX_DNAME_SIZE = 255; // contains the ending 0?
 
 /*----------------------------------------------------------------------------*/
 
@@ -67,14 +68,20 @@ dnss_rr *dnss_create_rr( char *owner );
 
 dnss_question *dnss_create_question( char *qname, uint length );
 
-dnss_packet *dnss_create_response( dnss_packet *query, dnss_rr *answers,
-                                   uint count );
+dnss_packet *dnss_create_empty_packet();
 
-dnss_packet *dnss_parse_query( const char *query_wire, int size );
+void dnss_create_response( dnss_packet *query, dnss_rr *answers,
+                           uint count, dnss_packet **response );
+
+void dnss_create_error_response( dnss_packet *query, dnss_packet **response );
+
+dnss_packet *dnss_parse_query( const char *query_wire, uint size );
 
 void dnss_wire_format( dnss_packet *packet, char *packet_wire,
-                       unsigned int packet_size );
+                       unsigned int *packet_size );
 
 char *dnss_dname_to_wire( char *dname );
+
+inline uint dnss_wire_dname_size( char *dname );
 
 #endif /* DNS_SIMPLE */
