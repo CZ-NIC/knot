@@ -19,7 +19,7 @@
 #include "bitset.h"
 #include "universal-system.h"
 
-#define CUCKOO_DEBUG
+//#define CUCKOO_DEBUG
 
 /*----------------------------------------------------------------------------*/
 

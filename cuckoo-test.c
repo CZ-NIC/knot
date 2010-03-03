@@ -2,27 +2,32 @@
  * @todo Do not hash the string with the ending '\0'.
  */
 
-#include "cuckoo-hash-table.h"
-#include "dns-simple.h"
 #include <stdio.h>
 #include <string.h>
 
+#include "cuckoo-hash-table.h"
+#include "dns-simple.h"
 #include "bitset.h"
+#include "socket-manager.h"
 
 //#define TEST_DEBUG
-#define TEST_OUTPUT
+//#define TEST_LOOKUP
+//#define TEST_OUTPUT
 
-#define ERR_ARG 1
-#define ERR_FILE_OPEN 2
-#define ERR_FILE_READ 3
-#define ERR_TABLE_CREATE 4
-#define ERR_INSERT 5
-#define ERR_LOOKUP 6
-#define ERR_ALLOC_ITEMS 7
-#define ERR_FIND 8
+static const uint ERR_ARG = 1;
+static const uint ERR_FILE_OPEN = 2;
+static const uint ERR_FILE_READ = 3;
+static const uint ERR_TABLE_CREATE = 4;
+static const uint ERR_INSERT = 5;
+static const uint ERR_LOOKUP = 6;
+static const uint ERR_ALLOC_ITEMS = 7;
+static const uint ERR_FIND = 8;
 
-#define BUF_SIZE 20
-#define ARRAY_SIZE 500
+static const uint BUF_SIZE = 20;
+static const uint ARRAY_SIZE = 500;
+
+static const uint PORT = 53535;
+static const uint THREAD_COUNT = 2;
 
 /*----------------------------------------------------------------------------*/
 // macro for hash table types
@@ -34,6 +39,9 @@
 
 // global var for counting collisions
 unsigned long collisions = 0;
+
+// static global var for the hash table (change later!)
+static ck_hash_table *table;
 
 /*----------------------------------------------------------------------------*/
 
@@ -97,8 +105,7 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 {
 	uint /*arr_i,*/ buf_i, buf_size/*, arr_size*/, res;
 	char ch = '\0';
-    char *buffer, *key;
-    dnss_rr **value;
+    char *buffer, *key, *value;
 	int line = 0;
 	unsigned long total_size = 0;
 
@@ -107,7 +114,7 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 #endif
 
 	key = place;
-    value = (dnss_rr **)place;
+    value = place;
 
 	while (ch != EOF) {
 		buf_i = 0;
@@ -125,7 +132,7 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 #ifdef TEST_DEBUG
         printf("Done\n");
 #endif
-		ch = fgetc(file);
+        ch = fgetc(file);
 
 		while (ch != '\n' && ch != EOF) {
 #ifdef TEST_DEBUG
@@ -183,23 +190,29 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 #ifdef TEST_DEBUG
             printf("Creating RR with the given owner name.\n");
 #endif
-            *value = dnss_create_rr(key);
-            //memcpy(value, buffer, strlen(buffer) + 1);
+            // create the RR to be saved to the hash table
+            //*value = dnss_create_rr(key);
+            // convert the domain name to wire format to be used for hashing
+            //char *key_wire = dnss_dname_to_wire(key);
+            memcpy(value, buffer, strlen(buffer) + 1);
 #ifdef TEST_DEBUG
             if (line % 100000 == 1) {
                 fprintf(stderr, "Inserting item number %u, key: %s..\n", line, key);
+                //hex_print(key_wire, dnss_wire_dname_size(key));
             }
 #endif
 
             if ((res = ck_insert_item(
-                    table, key, strlen(buffer), *value, &collisions)) != 0) {
+                    table, key, strlen(buffer) + 1, value, &collisions)) != 0) {
 				fprintf(stderr, "\nInsert item returned %d.\n", res);
 				free(buffer);
 				return ERR_INSERT;
 			}
 
+            //free(key_wire);
+
             key = (char *)value + strlen(buffer) + 1;
-            value = (dnss_rr **)key;
+            value = /*(dnss_rr **)*/key;
 
 #ifdef TEST_DEBUG
             if (line % 100000 == 0) {
@@ -308,19 +321,32 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 		if (buf_i > 0) {
 			// find domain name
 
-			if ((res = ck_find_item(table, buffer, strlen(buffer))) == NULL
-				|| strncmp(res->key, buffer, strlen(buffer)) != 0 ) {
+//            char *key_wire = dnss_dname_to_wire(buffer);
+
+//            fprintf(stderr, "Searching item with key: %s..\n", buffer);
+//            hex_print(key_wire, dnss_wire_dname_size(buffer));
+
+            if ((res = ck_find_item(table, buffer, strlen(buffer) + 1)) == NULL
+                || strncmp(res->key, buffer, strlen(buffer)) != 0 ) {
                 fprintf(stderr, "\nItem with key %s not found.\n", buffer);
+                printf("Result: %p\n", res);
+//                if (res != NULL) {
+//                    printf("Result key: \n");
+//                    hex_print(res->key, res->key_length);
+//                }
+
 				not_found++;
+                exit(-1);
 //				free(buffer);
 //				return ERR_FIND;
             }
-#if defined TEST_DEBUG || defined TEST_OUTPUT
+#if defined TEST_DEBUG || defined TEST_LOOKUP
             else {
                 printf("Table 1, key: %s, rdata: %*s, key length: %lu\n",
                     res->key, ((dnss_rr *)(res->value))->rdlength,
                     ((dnss_rr *)(res->value))->rdata, res->key_length);
             }
+//            free(key_wire);
 #endif
 		}
 		free(buffer);
@@ -333,7 +359,8 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 
 /*----------------------------------------------------------------------------*/
 
-int test_bitset() {
+int test_bitset()
+{
 	bitset_t bitset;
 	uint n = 1048576, i, c, err = 0;
 	uint *numbers = malloc(n/2 * sizeof(uint));
@@ -424,6 +451,58 @@ int test_bitset() {
 
 /*----------------------------------------------------------------------------*/
 
+void answer_request( const char *query_wire, uint size,
+                     char *response_wire, uint *response_size )
+{
+#if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
+    printf("answer_request() called with query size %d.\n", size);
+    hex_print(query_wire, size);
+#endif
+
+    dnss_packet *query = dnss_parse_query(query_wire, size);
+
+#if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
+    printf("Query parsed, ID: %u, QNAME: %s\n", query->header.id,
+           query->questions[0].qname);
+#endif
+
+    const ck_hash_table_item *item = ck_find_item(
+            table, query->questions[0].qname,
+            strlen(query->questions[0].qname) + 1);
+
+    dnss_packet *response = dnss_create_empty_packet();
+
+    if (item == NULL) {
+#if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
+        printf("Requested name not found, returning empty response.\n");
+#endif
+        dnss_create_response(query, NULL, 0, &response);
+    } else {
+#if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
+        printf("Requested name found.\n");
+#endif
+        //responses[0] = (dnss_rr *)item->value;
+        dnss_create_response(query, (dnss_rr *)item->value, 1, &response);
+    }
+
+#if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
+    printf("Response ID: %u\n", response->header.id);
+#endif
+
+    dnss_wire_format(response, response_wire, response_size);
+
+    if (*response_size > SOCKET_BUFF_SIZE) {
+#if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
+        printf("Response too long (%d bytes), returning SERVFAIL response.\n",
+               *response_size);
+#endif
+        dnss_create_error_response(query, &response);
+        dnss_wire_format(response, response_wire, response_size);
+    }
+}
+
+/*----------------------------------------------------------------------------*/
+
 int main( int argc, char **argv )
 {
 	FILE *file;
@@ -458,7 +537,7 @@ int main( int argc, char **argv )
     fprintf(stderr, "Domains read: %d.\n", names);
 #endif
 
-	ck_hash_table *table = ck_create_table(names);
+    /*ck_hash_table **/table = ck_create_table(names);
 
 	if (table == NULL) {
 		fprintf(stderr, "Error creating hash table.\n");
@@ -512,12 +591,29 @@ int main( int argc, char **argv )
 //	ck_dump_table(table);
 //	exit(1);
 
+    // testing lookup
 	res = test_lookup_from_file(table, file);
 
+    if (res != 0) {
+        ck_destroy_table(table);
+        clean_table(all_items);
+        return res;
+    }
+
+    // launch socket manager for listening
+    sm_manager *manager = sm_create(PORT, THREAD_COUNT, answer_request);
+    if (manager == NULL) {
+        ck_destroy_table(table);
+        clean_table(all_items);
+        return -1;
+    }
+    sm_start(manager);
+
+    // can I do this?? pointer to the manager is still in the threads
+    sm_destroy(manager);
+
 	ck_destroy_table(table);
-
 	clean_table(all_items);
-	//deallocate_array_items(domains, names);
 
-	return res;
+    return 0;
 }
