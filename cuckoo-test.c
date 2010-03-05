@@ -117,7 +117,7 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 #endif
         ch = fgetc(file);
 
-		while (ch != '\n' && ch != EOF) {
+        while (ch != ' ' && ch != EOF) {
 #ifdef TEST_DEBUG
             printf("Read character: %c\n", ch);
 #endif
@@ -139,6 +139,11 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 
 		buffer[buf_i] = '\0';
 		line++;
+
+        // read rest of the characters (not interesting)
+        while (ch != '\n' && ch != EOF) {
+            ch = fgetc(file);
+        }
 
 #ifdef TEST_DEBUG
         printf("Read domain name: %s\n", buffer);
@@ -270,7 +275,7 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 #endif
 		ch = fgetc(file);
 
-		while (ch != '\n' && ch != EOF) {
+        while (ch != ' ' && ch != EOF) {
 #ifdef TEST_DEBUG
             printf("Read character: %c\n", ch);
 #endif
@@ -291,6 +296,11 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 		}
 
 		buffer[buf_i] = '\0';
+
+        // read rest of the characters (not interesting)
+        while (ch != '\n' && ch != EOF) {
+            ch = fgetc(file);
+        }
 
 #ifdef TEST_DEBUG
         printf("Read domain name: %s\n", buffer);
