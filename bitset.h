@@ -9,7 +9,7 @@ typedef uint32_t* bitset_t;
 
 void BITSET_CREATE( bitset_t *bitset, unsigned int n );
 
-void BITSET_DESTROY( bitset_t bitset );
+void BITSET_DESTROY( bitset_t *bitset );
 
 void BITSET_SET( bitset_t bitset, unsigned int i );
 

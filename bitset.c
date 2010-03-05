@@ -17,10 +17,11 @@ void BITSET_CREATE( bitset_t *bitset, unsigned int n )
 	//memset(clear, 0, size);
 }
 
-void BITSET_DESTROY( bitset_t bitset )
+void BITSET_DESTROY( bitset_t *bitset )
 {
 	assert(size > 0);
-	free(bitset);
+    free(*bitset);
+    *bitset = NULL;
 }
 
 void BITSET_SET( bitset_t bitset, unsigned int i )

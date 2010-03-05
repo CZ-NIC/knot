@@ -3,7 +3,7 @@
 /*----------------------------------------------------------------------------*/
 /* Downloaded from http://www.digitalpeer.com/id/print                        */
 /*----------------------------------------------------------------------------*/
-void hex_print( char *data, int length )
+void hex_print( const char *data, int length )
 {
     int ptr = 0;
     for(;ptr < length;ptr++)
@@ -17,7 +17,7 @@ void hex_print( char *data, int length )
 /* Downloaded from http://www.digitalpeer.com/id/print                        */
 /*----------------------------------------------------------------------------*/
 
-void bit_print( char *data, int length )
+void bit_print( const char *data, int length )
 {
     unsigned char mask = 0x01;
     int ptr = 0;

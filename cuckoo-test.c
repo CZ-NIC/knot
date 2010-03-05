@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 #include "cuckoo-hash-table.h"
 #include "dns-simple.h"
@@ -63,22 +64,6 @@ int resize_buffer( char **buffer, uint *buf_size, int new_size, int item_size )
 
 /*----------------------------------------------------------------------------*/
 
-void deallocate_array_items( char **arr, int size )
-{
-	while (--size >= 0) {
-		free((void *)(arr[size]));
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-void clean_table( char *place )
-{
-	free(place);
-}
-
-/*----------------------------------------------------------------------------*/
-
 uint get_line_count( FILE *file, unsigned long *chars )
 {
 	char ch = '\0';
@@ -103,7 +88,7 @@ uint get_line_count( FILE *file, unsigned long *chars )
 int hash_from_file( FILE *file, ck_hash_table *table, uint items,
                     unsigned long chars )
 {
-    uint buf_i, buf_size, res;
+    uint buf_i, buf_size, res, key_size;
 	char ch = '\0';
     char *buffer, *key;
     dnss_rr *value;
@@ -191,16 +176,19 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
                 return ERR_INSERT;
             }
             // convert the domain name to wire format to be used for hashing
-            key = dnss_dname_to_wire(buffer);
-            if (key == NULL) {
-                fprintf(stderr, "Allocation failed in hash_from_file().");
+            key_size = dnss_wire_dname_size(buffer);
+            key = malloc(dnss_wire_dname_size(buffer));
+            if (dnss_dname_to_wire(buffer, key, key_size) != 0) {
+                dnss_destroy_rr(&value);
                 free(buffer);
+                free(key);
                 return ERR_INSERT;
             }
 
 #ifdef TEST_DEBUG
             if (line % 100000 == 1) {
-                fprintf(stderr, "Inserting item number %u, key: %s..\n", line, key);
+                fprintf(stderr, "Inserting item number %u, key: %s..\n",
+                        line, key);
                 //hex_print(key, dnss_wire_dname_size(buffer));
             }
 #endif
@@ -209,6 +197,8 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
                                       dnss_wire_dname_size(buffer) - 1,
                                       value, &collisions)) != 0) {
 				fprintf(stderr, "\nInsert item returned %d.\n", res);
+                dnss_destroy_rr(&value);
+                free(key);
 				free(buffer);
 				return ERR_INSERT;
 			}
@@ -220,6 +210,7 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 #endif
 		}
         free(buffer);	//unsigned long total_size = 0;
+        buffer = NULL;
 	}
 
 	return 0;
@@ -311,7 +302,7 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 							 buf_i + 1, sizeof(char)) != 0)) {
 			// deallocate the last buffer used
 			free(buffer);
-			return -1;
+            return -1;
 		}
 
 		//printf("Read domain name %s, inserting...\n", buffer);
@@ -319,13 +310,20 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 		if (buf_i > 0) {
 			// find domain name
 
-            char *key = dnss_dname_to_wire(buffer);
+            uint key_size = dnss_wire_dname_size(buffer);
+            char *key = malloc(key_size);
+            if (dnss_dname_to_wire(buffer, key, key_size) != 0) {
+                free(buffer);
+                free(key);
+                return -1;
+            }
 
 
             if ((res = ck_find_item(table, key,
                                     dnss_wire_dname_size(buffer) - 1)) == NULL
                 || strncmp(res->key, key, dnss_wire_dname_size(buffer) - 1) != 0 ) {
                 fprintf(stderr, "\nItem with key %s not found.\n", buffer);
+                free(key);
                 free(buffer);
                 return ERR_FIND;
             }
@@ -433,7 +431,7 @@ int test_bitset()
 	}
 
 	free(numbers);
-	BITSET_DESTROY(bitset);
+    BITSET_DESTROY(&bitset);
 
 	printf("There were %u errors.\n", err);
 	return 0;
@@ -441,8 +439,17 @@ int test_bitset()
 
 /*----------------------------------------------------------------------------*/
 
+void destroy_items( void *item )
+{
+    dnss_rr *rr = (dnss_rr *)item;
+    dnss_destroy_rr(&rr);
+}
+
+/*----------------------------------------------------------------------------*/
+
 void answer_request( const char *query_wire, uint size,
                      char *response_wire, uint *response_size )
+    // in *response_size we have the maximum acceptable size of the response
 {
 #if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
     printf("answer_request() called with query size %d.\n", size);
@@ -450,6 +457,9 @@ void answer_request( const char *query_wire, uint size,
 #endif
 
     dnss_packet *query = dnss_parse_query(query_wire, size);
+    if (query == NULL) {
+        return;
+    }
 
 #if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
     printf("Query parsed, ID: %u, QNAME: %s\n", query->header.id,
@@ -462,42 +472,55 @@ void answer_request( const char *query_wire, uint size,
             strlen(query->questions[0].qname));
 
     dnss_packet *response = dnss_create_empty_packet();
+    if (response == NULL) {
+        dnss_destroy_packet(&query);
+        return;
+    }
 
     if (item == NULL) {
 #if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
         printf("Requested name not found, returning empty response.\n");
 #endif
-        dnss_create_response(query, NULL, 0, &response);
+        if (dnss_create_response(query, NULL, 0, &response) != 0) {
+            dnss_destroy_packet(&query);
+            dnss_destroy_packet(&response);
+            return;
+        }
     } else {
 #if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
         printf("Requested name found.\n");
 #endif
-        dnss_create_response(query, (dnss_rr *)item->value, 1, &response);
+        if (dnss_create_response(query, (dnss_rr *)item->value,
+                                 1, &response) != 0) {
+            dnss_destroy_packet(&query);
+            dnss_destroy_packet(&response);
+            return;
+        }
     }
 
 #if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
     printf("Response ID: %u\n", response->header.id);
 #endif
 
-    dnss_wire_format(response, response_wire, response_size);
-
-    if (*response_size == 0) {
-        fprintf(stderr, "Response too long, ignoring query.");
-        return;
-    }
-
-    if (*response_size > SOCKET_BUFF_SIZE) {
+    if (dnss_wire_format(response, response_wire, response_size) != 0) {
 #if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
-        printf("Response too long (%d bytes), returning SERVFAIL response.\n",
-               *response_size);
+        fprintf(stderr, "Response too long, returning SERVFAIL response.\n");
 #endif
-        dnss_create_error_response(query, &response);
-        dnss_wire_format(response, response_wire, response_size);
+        if (dnss_create_error_response(query, &response) != 0) {
+            dnss_destroy_packet(&query);
+            dnss_destroy_packet(&response);
+            return;
+        }
+        int res = dnss_wire_format(response, response_wire, response_size);
+        assert(res != 0);
     }
 
 #if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
     printf("Returning response of size: %u.\n", *response_size);
 #endif
+
+    dnss_destroy_packet(&query);
+    dnss_destroy_packet(&response);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -534,7 +557,7 @@ int main( int argc, char **argv )
     printf("Domains read: %d.\n", names);
 #endif
 
-    table = ck_create_table(names);
+    table = ck_create_table(names, destroy_items);
 
 	if (table == NULL) {
 		fprintf(stderr, "Error creating hash table.\n");
@@ -559,14 +582,14 @@ int main( int argc, char **argv )
 	res = test_lookup_from_file(table, file);
 
     if (res != 0) {
-        ck_destroy_table(table);
+        ck_destroy_table(&table);
         return res;
     }
 
     // launch socket manager for listening
     sm_manager *manager = sm_create(PORT, THREAD_COUNT, answer_request);
     if (manager == NULL) {
-        ck_destroy_table(table);
+        ck_destroy_table(&table);
         return -1;
     }
 
@@ -574,9 +597,9 @@ int main( int argc, char **argv )
     sm_start(manager);
 
     // can I do this?? pointer to the manager is still in the threads
-    sm_destroy(manager);
+    sm_destroy(&manager);
 
-	ck_destroy_table(table);
+    ck_destroy_table(&table);
 
     return 0;
 }

@@ -121,8 +121,6 @@ void ck_fill_item( const char *key, size_t key_length, void *value,
 				   ck_hash_table_item *item )
 {
 	// must allocate new space for key and value, otherwise it will be lost!
-	//item->key = malloc(key_length);
-	//memcpy(item->key, key, key_length);
 	item->key = key;
 	item->key_length = key_length;
 	item->value = value;
@@ -227,7 +225,7 @@ ck_hash_table_item *ck_find_in_buffer( ck_hash_table *table, const char *key,
 
 /*----------------------------------------------------------------------------*/
 
-ck_hash_table *ck_create_table( uint items )
+ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 {
 	ck_hash_table *table = (ck_hash_table *)malloc(sizeof(ck_hash_table));
 
@@ -237,6 +235,7 @@ ck_hash_table *ck_create_table( uint items )
 	}
 
 	table->table_size_exp = get_table_exp(items, CK_SIZE);
+    table->dtor_item = dtor_item;
 
 //#ifdef CUCKOO_DEBUG
 	printf("Creating hash table for %u items.\n", items);
@@ -289,7 +288,7 @@ ck_hash_table *ck_create_table( uint items )
 
 	if (table->buffer == NULL) {
 		ERR_ALLOC_FAILED;
-		free(table->table1);
+        free(table->table1);
 		free(table->table2);
 		free(table);
 		return NULL;
@@ -306,13 +305,30 @@ ck_hash_table *ck_create_table( uint items )
 
 /*----------------------------------------------------------------------------*/
 
-void ck_destroy_table( ck_hash_table *table )
+void ck_destroy_table( ck_hash_table **table )
 {
-	//BITSET_DESTROY(used1b);
-	//BITSET_DESTROY(used2b);
-	free(table->table1);
-	free(table->table2);
-	free(table);
+    // somehow lock the whole table!!!
+
+    // destroy items
+    for (uint i = 0; i < hashsize((*table)->table_size_exp); ++i) {
+        (*table)->dtor_item((*table)->table1[i].value);
+        (*table)->table1[i].value = NULL;
+        (*table)->dtor_item((*table)->table2[i].value);
+        (*table)->table2[i].value = NULL;
+    }
+
+    for (uint i = 0; i < (*table)->buf_i; ++i) {
+        (*table)->dtor_item((*table)->buffer[i].value);
+        (*table)->buffer[i].value = NULL;
+    }
+
+    free((*table)->table1);
+    (*table)->table1 = NULL;
+    free((*table)->table2);
+    (*table)->table2 = NULL;
+    free(*table);
+    (*table) = NULL;
+    // unlock
 }
 
 /*----------------------------------------------------------------------------*/
@@ -320,8 +336,8 @@ void ck_destroy_table( ck_hash_table *table )
 int ck_insert_item( ck_hash_table *table, const char *key,
 					size_t length, void *value, unsigned long *collisions )
 {
-	uint32_t hash/*, hash2*/;
-	ck_hash_table_item/* *item,*/ *moving, *next, old;
+    uint32_t hash;
+    ck_hash_table_item *moving, *next, old;
 	int next_table;
 	uint used1[USED_SIZE], used2[USED_SIZE], used_i = 0;	// use dynamic array instead
 
@@ -341,41 +357,26 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 		return 0;
 	}
 
-	/*
-		If failed, try to rehash the existing items until free place is found
-		rehashing is done by setting the initval to the initval of the table
-		TODO: correct as appropriate
-	*/
+    // If failed, try to rehash the existing items until free place is found
 #ifdef CUCKOO_DEBUG
 	printf("Collision! Hash: %u\n", hash);
 #endif
 
 	(*collisions)++;
 
-	//printf("Biset 1: %p, Bitset 2: %p\n", used1b, used2b);
-
-	//BITSET_CREATE(used1b, hashsize(table->table_size_exp));
-	//BITSET_CLEAR(used1b, hashsize(table->table_size_exp));
-	//BITSET_CREATE(used2b, hashsize(table->table_size_exp));
-	//BITSET_CLEAR(used2b, hashsize(table->table_size_exp));
 	memset(used1, 0, USED_SIZE);
 	memset(used2, 0, USED_SIZE);
-
-	//printf("Bitset clear successful.\n");
 
 	ck_fill_item(key, length, value, &old);
 	moving = &table->table1[hash];
 	// remember that we used this cell
-	//BITSET_SET(used1b, hash);
 	used1[used_i] = hash;
 
 #ifdef CUCKOO_DEBUG
 	printf("Moving item from table1, key: %s, hash %u", moving->key, hash);
 #endif
-//	hash = HASH2(moving->key, moving->key_length) & hashmask(table->table_size_exp);
 	hash = HASH2(moving->key, moving->key_length, table->table_size_exp);
 
-	//BITSET_SET(used2b, hash);
 	used2[used_i] = hash;
 
 	next = &table->table2[hash];
@@ -396,44 +397,36 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 		// rehash the next item to the proper table
 		switch (next_table) {
 			case TABLE_2:
-//				hash = HASH1(next->key, next->key_length)
-//					   & hashmask(table->table_size_exp);
 				hash = HASH1(next->key, next->key_length, table->table_size_exp);
 
 				next = &table->table1[hash];
 #ifdef CUCKOO_DEBUG
 				printf(" to table 1, key: %s, hash %u\n", next->key, hash);
 #endif
-				if (/*ck_check_used(used1b, hash)*/ck_check_used2(used1, &used_i, hash) != 0) {
+                if (ck_check_used2(used1, &used_i, hash) != 0) {
 					if (ck_insert_to_buffer(table, moving)) {
 						// put the old item to the new position
 						ck_copy_item_contents(&old, moving);
 						return 0;
 					} else {
-						//BITSET_DESTROY(used1b);
-						//BITSET_DESTROY(used2b);
 						return -1;
 					}
 				}
 				NEXT_TABLE(next_table);
 				break;
 			case TABLE_1:
-//				hash = HASH2(next->key, next->key_length)
-//						& hashmask(table->table_size_exp);
 				hash = HASH2(next->key, next->key_length, table->table_size_exp);
 
 				next = &table->table2[hash];
 #ifdef CUCKOO_DEBUG
 				printf(" to table 2, key: %s, hash %u\n", next->key, hash);
 #endif
-				if (/*ck_check_used(used1b, hash)*/ck_check_used2(used2, &used_i, hash) != 0) {
+                if (ck_check_used2(used2, &used_i, hash) != 0) {
 					if (ck_insert_to_buffer(table, moving)) {
 						// put the old item to the new position
 						ck_copy_item_contents(&old, moving);
 						return 0;
 					} else {
-						//BITSET_DESTROY(used1b);
-						//BITSET_DESTROY(used2b);
 						return -2;
 					}
 				}
@@ -441,8 +434,6 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 				break;
 			default:
 				ERR_WRONG_TABLE;
-				//BITSET_DESTROY(used1b);
-				//BITSET_DESTROY(used2b);
 				return -3;
 		}
 	}
@@ -466,8 +457,6 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 			break;
 		default:
 			ERR_WRONG_TABLE;
-			//BITSET_DESTROY(used1b);
-			//BITSET_DESTROY(used2b);
 			return -3;
 	}
 
@@ -491,8 +480,6 @@ int ck_rehash( ck_hash_table *table )
 
 	// we already have new functions for the next generation, so begin rehashing
 
-
-
 	// TODO: synchronization!
 	// get new function for the next generation
 	if (us_next(NEXT_GENERATION(table->generation)) != 0) {
@@ -504,12 +491,12 @@ int ck_rehash( ck_hash_table *table )
 
 /*----------------------------------------------------------------------------*/
 
-const ck_hash_table_item *ck_find_item( ck_hash_table *table, const char *key, size_t length )
+const ck_hash_table_item *ck_find_item( ck_hash_table *table,
+                                        const char *key, size_t length )
 {
-	uint32_t hash/*, hash2*/;
+    uint32_t hash;
 
 	// check first table
-//	hash = HASH1(key, length) & hashmask(table->table_size_exp);
 	hash = HASH1(key, length, table->table_size_exp);
 
 	//printf("Searching table 1, hash %u.\n", hash);
@@ -517,29 +504,26 @@ const ck_hash_table_item *ck_find_item( ck_hash_table *table, const char *key, s
 #ifdef CUCKOO_DEBUG
 	printf("Hash: %u, key: %s\n", hash, key);
     printf("Table 1, hash: %u, key: %s, value: %s, key length: %lu\n",
-		   hash, table->table1[hash].key, (char *)table->table1[hash].value, table->table1[hash].key_length);
+           hash, table->table1[hash].key, (char *)table->table1[hash].value,
+           table->table1[hash].key_length);
 #endif
 
-	if (/*table->table1[hash].value != 0
-		&& */length == table->table1[hash].key_length
+    if (length == table->table1[hash].key_length
 		&& strncmp(table->table1[hash].key, key, length) == 0) {
 		// found
 		return &table->table1[hash];
 	}
 
 	// check second table
-//	hash = HASH2(key, length) & hashmask(table->table_size_exp);
 	hash = HASH2(key, length, table->table_size_exp);
 
 #ifdef CUCKOO_DEBUG
     printf("Table 2, hash: %u, key: %s, value: %s, key length: %lu\n",
-		   hash, table->table2[hash].key, (char *)table->table2[hash].value, table->table2[hash].key_length);
+           hash, table->table2[hash].key, (char *)table->table2[hash].value,
+           table->table2[hash].key_length);
 #endif
 
-	//printf("Searching table 2, hash %u.\n", hash);
-
-	if (/*table->table2[hash].value != 0
-		&& */length == table->table2[hash].key_length
+    if (length == table->table2[hash].key_length
 		&& strncmp(table->table2[hash].key, key, length) == 0) {
 		// found
 		return &table->table2[hash];

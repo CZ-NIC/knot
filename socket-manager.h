@@ -25,7 +25,7 @@ typedef struct sm_manager sm_manager;
 sm_manager *sm_create( unsigned short port, uint thr_count,
                        void (*answer_fnc)(const char *, uint, char *, uint *) );
 
-void sm_destroy( sm_manager *manager );
+void sm_destroy( sm_manager **manager );
 
 int sm_start( sm_manager *manager );
 

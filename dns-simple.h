@@ -64,18 +64,24 @@ dnss_question *dnss_create_question( char *qname, uint length );
 
 dnss_packet *dnss_create_empty_packet();
 
-void dnss_create_response( dnss_packet *query, dnss_rr *answers,
+int dnss_create_response( dnss_packet *query, dnss_rr *answers,
                            uint count, dnss_packet **response );
 
-void dnss_create_error_response( dnss_packet *query, dnss_packet **response );
+int dnss_create_error_response( dnss_packet *query, dnss_packet **response );
 
 dnss_packet *dnss_parse_query( const char *query_wire, uint size );
 
-void dnss_wire_format( dnss_packet *packet, char *packet_wire,
-                       unsigned int *packet_size );
+int dnss_wire_format( dnss_packet *packet, char *packet_wire,
+                      uint *packet_size );
 
-char *dnss_dname_to_wire( char *dname );
+int dnss_dname_to_wire( char *dname, char *dname_wire, uint size  );
 
 inline uint dnss_wire_dname_size( char *dname );
+
+void dnss_destroy_rr( dnss_rr **rr );
+
+void dnss_destroy_question( dnss_question **question );
+
+void dnss_destroy_packet( dnss_packet **packet );
 
 #endif /* DNS_SIMPLE */

@@ -36,21 +36,27 @@ struct ck_hash_table {
 	uint buf_i;
 	uint8_t generation;		/* 00000xyz x==1 .. rehashing in progress
 										yz   .. generation; may be 01 or 10 */
+
+    void (*dtor_item)( void *value );
 };
 
 typedef struct ck_hash_table ck_hash_table;
 
 /*----------------------------------------------------------------------------*/
 
-ck_hash_table *ck_create_table( uint items );
+ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) );
 
 /*----------------------------------------------------------------------------*/
 
-void ck_destroy_table( ck_hash_table *table );
+void ck_destroy_table( ck_hash_table **table );
 
 /*----------------------------------------------------------------------------*/
 /**
  * @brief Inserts item into the hash table.
+ *
+ * @note This function does not copy the key. Make sure the key will not be
+ *       deallocated elsewhere as this will be done only in the
+ *       ck_destroy_table() function.
  *
  * @retval 0 No error.
  * @retval -1 Insertion failed.

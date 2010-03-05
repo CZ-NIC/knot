@@ -28,6 +28,7 @@ sm_manager *sm_create( unsigned short port, uint thr_count,
     if (manager->socket == -1) {
         fprintf(stderr, "ERROR: %d: %s.\n", errno, strerror(errno));
         free(manager);
+        manager = NULL;
         return NULL;
     }
 
@@ -43,6 +44,7 @@ sm_manager *sm_create( unsigned short port, uint thr_count,
     int old_flag = fcntl(manager->socket, F_GETFL, 0);
     if (fcntl(manager->socket, F_SETFL, old_flag | O_NONBLOCK) == -1) {
         free(manager);
+        manager = NULL;
         err(1, "fcntl");
     }
 
@@ -50,6 +52,7 @@ sm_manager *sm_create( unsigned short port, uint thr_count,
     if (res == -1) {
         printf( "ERROR: %d: %s.\n", errno, strerror(errno) );
         free(manager);
+        manager = NULL;
         return NULL;
     }
 
@@ -62,6 +65,7 @@ sm_manager *sm_create( unsigned short port, uint thr_count,
         != 0) {
         printf( "ERROR: %d: %s.\n", errno, strerror(errno) );
         free(manager);
+        manager = NULL;
         return NULL;
     }
 
@@ -70,6 +74,7 @@ sm_manager *sm_create( unsigned short port, uint thr_count,
     if ((errval = pthread_mutex_init(&manager->mutex, NULL)) != 0) {
         printf( "ERROR: %d: %s.\n", errval, strerror(errval) );
         free(manager);
+        manager = NULL;
         return NULL;
     } /*else {
         printf("Successful\n");
@@ -83,10 +88,11 @@ sm_manager *sm_create( unsigned short port, uint thr_count,
 
 /*----------------------------------------------------------------------------*/
 
-void sm_destroy( sm_manager *manager )
+void sm_destroy( sm_manager **manager )
 {
-    close(manager->socket);
-    free(manager);
+    close((*manager)->socket);
+    free(*manager);
+    *manager = NULL;
 }
 
 /*----------------------------------------------------------------------------*/

@@ -37,6 +37,34 @@ static const uint8_t RDATA_DEFAULT[4] = { 127, 0, 0, 1 };
 
 /*----------------------------------------------------------------------------*/
 
+void dnss_copy_questions( dnss_question *from, dnss_question *to, uint count )
+{
+    for (uint i = 0; i < count; ++i) {
+        to[i].qclass = from[i].qclass;
+        to[i].qtype = from[i].qtype;
+        to[i].qname = malloc(strlen(from[i].qname) + 1);
+        memcpy(to[i].qname, from[i].qname, strlen(from[i].qname) + 1);
+    }
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnss_copy_rrs( dnss_rr *from, dnss_rr *to, uint count )
+{
+    for (uint i = 0; i < count; ++i) {
+        to[i].rdlength = from[i].rdlength;
+        to[i].rrclass = from[i].rrclass;
+        to[i].rrtype = from[i].rrtype;
+        to[i].ttl = from[i].ttl;
+        to[i].owner = malloc(strlen(from[i].owner) + 1);
+        memcpy(to[i].owner, from[i].owner, strlen(from[i].owner) + 1);
+        to[i].rdata = malloc(from[i].rdlength);
+        memcpy(to[i].rdata, from[i].rdata, from[i].rdlength);
+    }
+}
+
+/*----------------------------------------------------------------------------*/
+
 dnss_rr *dnss_create_rr( char *owner )
 {
 	dnss_rr *rr;
@@ -47,8 +75,10 @@ dnss_rr *dnss_create_rr( char *owner )
 #endif
 
     // convert domain name to wire format
-    char *owner_wire = dnss_dname_to_wire(owner);
-    if (owner_wire == NULL) {
+    uint wire_size = dnss_wire_dname_size(owner);
+    char *owner_wire = malloc(wire_size);
+    if (dnss_dname_to_wire(owner, owner_wire, wire_size) != 0) {
+        free(owner_wire);
         return NULL;
     }
 
@@ -84,6 +114,7 @@ dnss_rr *dnss_create_rr( char *owner )
 dnss_question *dnss_create_question( char *qname, uint length )
 {
 	dnss_question *question = malloc(sizeof(dnss_question) + length);
+
     question->qname = (char *)question + sizeof(dnss_question);
 	memcpy(question->qname, qname, length);
 	question->qclass = RRCLASS_DEFAULT;
@@ -97,14 +128,17 @@ dnss_question *dnss_create_question( char *qname, uint length )
 dnss_packet *dnss_create_empty_packet()
 {
     dnss_packet *packet = malloc(sizeof(dnss_packet));
+
     memset(packet, 0, sizeof(dnss_packet));
+        // this should produce consistent packet structure
     return packet;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnss_create_response( dnss_packet *query, dnss_rr *answers,
+int dnss_create_response( dnss_packet *query, dnss_rr *answers,
                            uint count, dnss_packet **response )
+    /** @todo change last argument to dnss_packet * ?? */
 {
 	// header
     memcpy(&(*response)->header, &query->header, sizeof(dnss_header));
@@ -112,27 +146,34 @@ void dnss_create_response( dnss_packet *query, dnss_rr *answers,
     HEADER_SET_QR((*response)->header.flags);
     // copying other flags (maybe set TC, RA, AD, CD)
 
-	// questions; assuming that the domain names will not be deleted
-    // (maybe some copying function would be useful?)
     (*response)->questions = malloc(
             (*response)->header.qdcount * sizeof(dnss_question));
-    memcpy((*response)->questions, query->questions,
-           (*response)->header.qdcount * sizeof(dnss_question));
-
-	// answers;
+    if ((*response)->questions == NULL) {
+        fprintf(stderr, "dnss_create_response(): Allocation failed.\n");
+        return -1;
+    }
+    dnss_copy_questions(query->questions, (*response)->questions,
+                        (*response)->header.qdcount);
+    // answers
     (*response)->header.ancount = count;
-    (*response)->answers = (count == 0) ? NULL : answers;
+
+    (*response)->answers = malloc(
+            (*response)->header.ancount * sizeof(dnss_rr));
+    dnss_copy_rrs(answers, (*response)->answers, count);
         // distinguish between NODATA (good as it is) and NXDOMAIN (set RCODE)
 
     (*response)->header.nscount = 0;
     (*response)->authority = NULL;
     (*response)->header.arcount = 0;
     (*response)->additional = NULL;
+
+    return 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnss_create_error_response( dnss_packet *query, dnss_packet **response )
+int dnss_create_error_response( dnss_packet *query, dnss_packet **response )
+        /** @todo change last argument to dnss_packet * ?? */
 {
     // header
     memcpy(&(*response)->header, &query->header, sizeof(dnss_header));
@@ -143,11 +184,14 @@ void dnss_create_error_response( dnss_packet *query, dnss_packet **response )
     // set SERVFAIL RCODE
     RCODE_SET((*response)->header.flags, RCODE_SERVFAIL);
 
-    // questions; assuming that the domain names will not be deleted
-    // (maybe some copying function would be useful?)
-    (*response)->questions = malloc((*response)->header.qdcount * sizeof(dnss_question));
-    memcpy((*response)->questions, query->questions,
-           (*response)->header.qdcount * sizeof(dnss_question));
+    (*response)->questions = malloc(
+            (*response)->header.qdcount * sizeof(dnss_question));
+    if ((*response)->questions == NULL) {
+        fprintf(stderr, "dnss_create_error_response(): Allocation failed.\n");
+        return -1;
+    }
+    dnss_copy_questions(query->questions, (*response)->questions,
+                        (*response)->header.qdcount);
 
     // no answers
     (*response)->header.ancount = 0;
@@ -156,11 +200,13 @@ void dnss_create_error_response( dnss_packet *query, dnss_packet **response )
     (*response)->authority = NULL;
     (*response)->header.arcount = 0;
     (*response)->additional = NULL;
+
+    return 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnss_wire_format( dnss_packet *packet, char *packet_wire,
+int dnss_wire_format( dnss_packet *packet, char *packet_wire,
                        unsigned int *packet_size  )
 {
     /* We can assume that the domain names are kept in the wire format during
@@ -190,8 +236,8 @@ void dnss_wire_format( dnss_packet *packet, char *packet_wire,
     }
 
     if (real_size > *packet_size) {
-        *packet_size = 0;
-        return;
+        fprintf(stderr, "dnss_wire_format(): Space provided is not enough.");
+        return -1;
     }
 
     *packet_size = real_size;
@@ -264,21 +310,23 @@ void dnss_wire_format( dnss_packet *packet, char *packet_wire,
                packet->additional[i].rdlength);        // copy rdata
         p += packet->additional[i].rdlength;
     }
+
+    return 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
-char *dnss_dname_to_wire( char *dname )   // NEEDS TESTING!!
+int dnss_dname_to_wire( char *dname, char *dname_wire, uint size ) // TESTING!!
 {
-    // if there is a trailing dot, size of the wire name will be the same as the
-    // size of the normal domain name (for each dot there is a number of chars)
-    // otherwise it is +1
-    char *wire_name = malloc((dname[strlen(dname) - 1] == '.')
-                                      ? (strlen(dname) + 1)
-                                      : (strlen(dname) + 2) );
+    if (dname_wire == NULL) {
+        fprintf(stderr, "dnss_dname_to_wire(): Bad buffer pointer provided.");
+        return -1;
+    }
 
-    if (wire_name == NULL) {
-        return NULL;
+    // check if there is enough space
+    if (dnss_wire_dname_size(dname) > size) {
+        fprintf(stderr, "dnss_dname_to_wire(): Given buffer is not big enough.");
+        return -1;
     }
 
     int w = 0;
@@ -287,8 +335,8 @@ char *dnss_dname_to_wire( char *dname )   // NEEDS TESTING!!
 
     char *buffer = malloc(strlen(dname) + 1);
     if (buffer == NULL) {
-        free(wire_name);
-        return NULL;
+        fprintf(stderr, "dnss_dname_to_wire(): Allocation failed.");
+        return -1;
     }
 
     uint8_t chars = 0;
@@ -305,7 +353,7 @@ char *dnss_dname_to_wire( char *dname )   // NEEDS TESTING!!
         printf("Chars: %d, Buffer: %*s\n", chars, chars + 1, buffer);
 #endif
 
-        memcpy(&wire_name[w], buffer, chars + 1);   // copy the label
+        memcpy(&dname_wire[w], buffer, chars + 1);   // copy the label
         w += chars + 1;
 
         if (*c == '.') {
@@ -313,20 +361,23 @@ char *dnss_dname_to_wire( char *dname )   // NEEDS TESTING!!
         }
     }
 
-    wire_name[w] = '\0';
+    dname_wire[w] = '\0';
 
 #ifdef DNSS_DEBUG
-    printf("Wire format of the domain name: %*s\n", w + 1, wire_name);
+    printf("Wire format of the domain name: %*s\n", w + 1, dname_wire);
 #endif
 
     free(buffer);
-    return wire_name;
+    return 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
 uint dnss_wire_dname_size( char *dname )
 {
+    // if there is a trailing dot, size of the wire name will be the same as the
+    // size of the normal domain name (for each dot there is a number of chars)
+    // otherwise it is +1
     return (dname[strlen(dname) - 1] == '.')
             ? (strlen(dname) + 1)
             : (strlen(dname) + 2);
@@ -343,19 +394,21 @@ dnss_packet *dnss_parse_query( const char *query_wire, uint size )
     hex_print(query_wire, size);
 #endif
 
-    dnss_packet *query = malloc(sizeof(dnss_packet));
-    //const char *p = query_wire;
+    dnss_packet *query = dnss_create_empty_packet();
+    if (query == NULL) {
+        fprintf(stderr, "dnss_parse_query(): Allocation failed.\n");
+        return NULL;
+    }
+
     int p = 0;
 
-//    printf("Query packet pointer: %p, header pointer: %p.\n",
-//           query, &query->header);
-
-    // parse header - convert from network byte order
     memcpy(&(query->header), query_wire, sizeof(dnss_header));
 
 #ifdef DNSS_DEBUG
     printf("Header copied.\n");
 #endif
+
+    // parse header - convert from network byte order
     query->header.id = ntohs(query->header.id);
     query->header.flags = ntohs(query->header.flags);
     query->header.qdcount = ntohs(query->header.qdcount);
@@ -380,7 +433,7 @@ dnss_packet *dnss_parse_query( const char *query_wire, uint size )
      */
     query->questions = malloc(query->header.qdcount * sizeof(dnss_question));
 
-    char *buffer = malloc(MAX_DNAME_SIZE * sizeof(char));
+    char buffer[MAX_DNAME_SIZE];
     uint b;
 
     for (int i = 0; i < query->header.qdcount; ++i) {
@@ -425,7 +478,7 @@ dnss_packet *dnss_parse_query( const char *query_wire, uint size )
         p += 2;
     }
 
-    // TODO: add more checks for the length of the packet
+    /** @todo: add more checks for the length of the packet */
 
     // ignore rest of the packet    (TODO: should parse additional for OPT)
     query->answers = NULL;
@@ -433,4 +486,90 @@ dnss_packet *dnss_parse_query( const char *query_wire, uint size )
     query->additional = NULL;
 
     return query;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnss_destroy_rr( dnss_rr **rr )
+{
+    assert(*rr != NULL);
+
+    if ((*rr)->owner != NULL) {
+        free((*rr)->owner);
+        (*rr)->owner = NULL;
+    }
+    if ((*rr)->rdata != NULL) {
+        free((*rr)->rdata);
+        (*rr)->rdata = NULL;
+    }
+
+    free(*rr);
+    *rr = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnss_destroy_question( dnss_question **question )
+{
+    assert(*question != NULL);
+
+    if ((*question) != NULL) {
+        free((*question)->qname);
+        (*question)->qname = NULL;
+    }
+
+    free(*question);
+    *question = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnss_destroy_packet( dnss_packet **packet )
+{
+    assert(*packet != NULL);
+
+    if ((*packet)->questions != NULL) {
+        for (int i = 0; i < (*packet)->header.qdcount; ++i) {
+            assert(((*packet)->questions[i].qname != NULL));
+            free((*packet)->questions[i].qname);
+        }
+        free((*packet)->questions);
+        (*packet)->questions = NULL;
+    }
+
+    if ((*packet)->answers != NULL) {
+        for (int i = 0; i < (*packet)->header.ancount; ++i) {
+            assert((*packet)->answers[i].owner != NULL);
+            assert((*packet)->answers[i].rdata != NULL);
+            free((*packet)->answers[i].owner);
+            free((*packet)->answers[i].rdata);
+        }
+        free((*packet)->answers);
+        (*packet)->answers = NULL;
+    }
+
+    if ((*packet)->answers != NULL) {
+        for (int i = 0; i < (*packet)->header.nscount; ++i) {
+            assert((*packet)->authority[i].owner != NULL);
+            assert((*packet)->authority[i].rdata != NULL);
+            free((*packet)->authority[i].owner);
+            free((*packet)->authority[i].rdata);
+        }
+        free((*packet)->authority);
+        (*packet)->authority = NULL;
+    }
+
+    if ((*packet)->additional != NULL) {
+        for (int i = 0; i < (*packet)->header.arcount; ++i) {
+            assert((*packet)->additional[i].owner != NULL);
+            assert((*packet)->additional[i].rdata != NULL);
+            free((*packet)->additional[i].owner);
+            free((*packet)->additional[i].rdata);
+        }
+        free((*packet)->additional);
+        (*packet)->additional = NULL;
+    }
+
+    free(*packet);
+    *packet = NULL;
 }
