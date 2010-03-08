@@ -41,16 +41,22 @@
 
 #define NEXT_TABLE(table) table = (table == TABLE_LAST) ? TABLE_FIRST : table + 1
 
-#define HASH1(key, length, exp) \
-			us_hash(jhash((unsigned char *)key, length, 0x0), exp, 0, 1)
-#define HASH2(key, length, exp) \
-			us_hash(fnv_hash(key, length, -1), exp, 1, 2)
+#define HASH1(key, length, exp, gen) \
+            us_hash(jhash((unsigned char *)key, length, 0x0), exp, 0, gen)
+#define HASH2(key, length, exp, gen) \
+            us_hash(fnv_hash(key, length, -1), exp, 1, gen)
 
 /*----------------------------------------------------------------------------*/
 
+#define GENERATION_FLAG_1           0x1 // 00000001
+#define GENERATION_FLAG_2           0x2 // 00000010
 #define GENERATION_FLAG_BOTH		0x3	// 00000011
+#define REHASH_FLAG                 0x4 // 00000100
+
+#define CLEAR_FLAGS(flags)          (flags &= 0x0)
 
 #define GET_GENERATION(flags)		(flags & GENERATION_FLAG_BOTH)
+
 #define IS_GENERATION_1(flags)		((flags & GENERATION_FLAG_1) != 0)
 #define SET_GENERATION_1(flags)		(flags = (flags & ~GENERATION_FLAG_2) \
 										| GENERATION_FLAG_1)
@@ -118,12 +124,14 @@ uint get_table_exp( uint items, int size_type )
  * @brief Insert given contents to the item.
  */
 void ck_fill_item( const char *key, size_t key_length, void *value,
-				   ck_hash_table_item *item )
+                   uint generation, ck_hash_table_item *item )
 {
 	// must allocate new space for key and value, otherwise it will be lost!
 	item->key = key;
 	item->key_length = key_length;
 	item->value = value;
+    CLEAR_FLAGS(item->timestamp);
+    item->timestamp = generation;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -204,14 +212,15 @@ int ck_insert_to_buffer( ck_hash_table *table, ck_hash_table_item *item )
 /*----------------------------------------------------------------------------*/
 
 ck_hash_table_item *ck_find_in_buffer( ck_hash_table *table, const char *key,
-									   uint length )
+                                       uint length, uint generation )
 {
 #ifdef CUCKOO_DEBUG
 	printf("Max buffer offset: %u\n", table->buf_i);
 #endif
 	uint i = 0;
 	while (i < table->buf_i
-		   && (strncmp(table->buffer[i].key, key, length) != 0))
+           && ((strncmp(table->buffer[i].key, key, length) != 0)
+                || GET_GENERATION(table->buffer[i].timestamp) != generation))
 	{
 		++i;
 	}
@@ -219,6 +228,9 @@ ck_hash_table_item *ck_find_in_buffer( ck_hash_table *table, const char *key,
 	if (i >= table->buf_i) {
 		return NULL;
 	}
+
+    assert(strncmp(table->buffer[i].key, key, length) == 0);
+    assert(GET_GENERATION(table->buffer[i].timestamp) == generation);
 
 	return &table->buffer[i];
 }
@@ -298,6 +310,9 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 	memset(table->buffer, 0, BUFFER_SIZE * sizeof(ck_hash_table_item));
 	table->buf_i = 0;
 
+    // set the generation to 1 and initialize the universal system
+    CLEAR_FLAGS(table->generation);
+    SET_GENERATION_1(table->generation);
 	us_initialize();
 
 	return table;
@@ -308,16 +323,46 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 void ck_destroy_table( ck_hash_table **table )
 {
     // somehow lock the whole table!!!
+#ifdef CUCKOO_DEBUG
+    void  **used_pointers = malloc(hashsize((*table)->table_size_exp)
+                                         * 2 * sizeof(void *));
+    uint u = 0;
+#endif
 
     // destroy items
     for (uint i = 0; i < hashsize((*table)->table_size_exp); ++i) {
-        (*table)->dtor_item((*table)->table1[i].value);
-        (*table)->table1[i].value = NULL;
-        (*table)->dtor_item((*table)->table2[i].value);
-        (*table)->table2[i].value = NULL;
+        if ((*table)->table1[i].value != NULL) {
+#ifdef CUCKOO_DEBUG
+            printf("Deleting item on pointer: %p.\n", (*table)->table1[i].value);
+            for (uint j = 0; j < u; ++j) {
+                assert(used_pointers[j] != (*table)->table1[i].value);
+            }
+            used_pointers[u++] = (*table)->table1[i].value;
+#endif
+
+            (*table)->dtor_item((*table)->table1[i].value);
+            (*table)->table1[i].value = NULL;
+
+            free((void *)(*table)->table1[i].key);
+        }
+        if ((*table)->table2[i].value != NULL) {
+#ifdef CUCKOO_DEBUG
+            printf("Deleting item on pointer: %p.\n", (*table)->table2[i].value);
+            for (uint j = 0; j < u; ++j) {
+                assert(used_pointers[j] != (*table)->table2[i].value);
+            }
+            used_pointers[u++] = (*table)->table2[i].value;
+#endif
+
+            (*table)->dtor_item((*table)->table2[i].value);
+            (*table)->table2[i].value = NULL;
+
+            free((void *)(*table)->table2[i].key);
+        }
     }
 
     for (uint i = 0; i < (*table)->buf_i; ++i) {
+        assert((*table)->buffer[i].value != NULL);
         (*table)->dtor_item((*table)->buffer[i].value);
         (*table)->buffer[i].value = NULL;
     }
@@ -345,11 +390,13 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 	printf("Inserting item with key: %s.\n", key);
     hex_print(key, length);
 #endif
-	hash = HASH1(key, length, table->table_size_exp) /*& hashmask(table->table_size_exp)*/;
+    hash = HASH1(key, length, table->table_size_exp,
+                 GET_GENERATION(table->generation));
 
 	// try insert to first table
 	if (table->table1[hash].value == 0) { // item free
-		ck_fill_item(key, length, value, &table->table1[hash]);
+        ck_fill_item(key, length, value, GET_GENERATION(table->generation),
+                     &table->table1[hash]);
 #ifdef CUCKOO_DEBUG
 		printf("Inserted successfuly to table1, hash %u, key: %s.\n", hash,
 			   table->table1[hash].key);
@@ -367,7 +414,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 	memset(used1, 0, USED_SIZE);
 	memset(used2, 0, USED_SIZE);
 
-	ck_fill_item(key, length, value, &old);
+    ck_fill_item(key, length, value, GET_GENERATION(table->generation), &old);
 	moving = &table->table1[hash];
 	// remember that we used this cell
 	used1[used_i] = hash;
@@ -375,7 +422,8 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 #ifdef CUCKOO_DEBUG
 	printf("Moving item from table1, key: %s, hash %u", moving->key, hash);
 #endif
-	hash = HASH2(moving->key, moving->key_length, table->table_size_exp);
+    hash = HASH2(moving->key, moving->key_length, table->table_size_exp,
+                 GET_GENERATION(table->generation));
 
 	used2[used_i] = hash;
 
@@ -397,7 +445,8 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 		// rehash the next item to the proper table
 		switch (next_table) {
 			case TABLE_2:
-				hash = HASH1(next->key, next->key_length, table->table_size_exp);
+                hash = HASH1(next->key, next->key_length, table->table_size_exp,
+                             GET_GENERATION(table->generation));
 
 				next = &table->table1[hash];
 #ifdef CUCKOO_DEBUG
@@ -415,7 +464,8 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 				NEXT_TABLE(next_table);
 				break;
 			case TABLE_1:
-				hash = HASH2(next->key, next->key_length, table->table_size_exp);
+                hash = HASH2(next->key, next->key_length, table->table_size_exp,
+                             GET_GENERATION(table->generation));
 
 				next = &table->table2[hash];
 #ifdef CUCKOO_DEBUG
@@ -491,15 +541,25 @@ int ck_rehash( ck_hash_table *table )
 
 /*----------------------------------------------------------------------------*/
 
+static inline uint ck_items_match( const ck_hash_table_item* item,
+                                   const char *key, size_t length,
+                                   uint generation )
+{
+    return (length == item->key_length
+            && (strncmp(item->key, key, length) == 0)
+            && (GET_GENERATION(item->timestamp) == generation)) ? 0 : -1;
+}
+
+/*----------------------------------------------------------------------------*/
+
 const ck_hash_table_item *ck_find_item( ck_hash_table *table,
                                         const char *key, size_t length )
 {
     uint32_t hash;
 
 	// check first table
-	hash = HASH1(key, length, table->table_size_exp);
-
-	//printf("Searching table 1, hash %u.\n", hash);
+    hash = HASH1(key, length, table->table_size_exp,
+                 GET_GENERATION(table->generation));
 
 #ifdef CUCKOO_DEBUG
 	printf("Hash: %u, key: %s\n", hash, key);
@@ -508,23 +568,24 @@ const ck_hash_table_item *ck_find_item( ck_hash_table *table,
            table->table1[hash].key_length);
 #endif
 
-    if (length == table->table1[hash].key_length
-		&& strncmp(table->table1[hash].key, key, length) == 0) {
+    if (ck_items_match(&table->table1[hash], key, length, table->generation)
+        == 0) {
 		// found
 		return &table->table1[hash];
 	}
 
 	// check second table
-	hash = HASH2(key, length, table->table_size_exp);
+    hash = HASH2(key, length, table->table_size_exp,
+                 GET_GENERATION(table->generation));
 
 #ifdef CUCKOO_DEBUG
-    printf("Table 2, hash: %u, key: %s, value: %s, key length: %lu\n",
+    printf("Table 2, hash: %u, key: %s, value: %p, key length: %lu\n",
            hash, table->table2[hash].key, (char *)table->table2[hash].value,
            table->table2[hash].key_length);
 #endif
 
-    if (length == table->table2[hash].key_length
-		&& strncmp(table->table2[hash].key, key, length) == 0) {
+    if (ck_items_match(&table->table2[hash], key, length, table->generation)
+        == 0) {
 		// found
 		return &table->table2[hash];
 	}
@@ -534,7 +595,9 @@ const ck_hash_table_item *ck_find_item( ck_hash_table *table,
 #endif
 
 	// try to find in buffer
-	ck_hash_table_item *found = ck_find_in_buffer(table, key, length);
+    ck_hash_table_item *found =
+            ck_find_in_buffer(table, key, length,
+                              GET_GENERATION(table->generation));
 
 #ifdef CUCKOO_DEBUG
 	printf("Found pointer: %p\n", found);

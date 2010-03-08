@@ -95,10 +95,6 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 	int line = 0;
 	unsigned long total_size = 0;
 
-#ifdef TEST_DEBUG
-    printf("Place pointer received: %p\n", place);
-#endif
-
 	while (ch != EOF) {
 		buf_i = 0;
 #ifdef TEST_DEBUG
@@ -117,10 +113,10 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 #endif
         ch = fgetc(file);
 
-        while (ch != ' ' && ch != EOF) {
-#ifdef TEST_DEBUG
-            printf("Read character: %c\n", ch);
-#endif
+        while (ch != ' ' && ch != '\n' && ch != EOF) {
+//#ifdef TEST_DEBUG
+//            printf("Read character: %c\n", ch);
+//#endif
 
 			buffer[buf_i] = ch;
 			buf_i++;
@@ -275,7 +271,7 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 #endif
 		ch = fgetc(file);
 
-        while (ch != ' ' && ch != EOF) {
+        while ((ch != ' ' && ch != '\n') && ch != EOF) {
 #ifdef TEST_DEBUG
             printf("Read character: %c\n", ch);
 #endif
@@ -338,7 +334,6 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
                 return ERR_FIND;
             }
 
-            free(key);
 #if defined TEST_DEBUG || defined TEST_LOOKUP
             else {
                 printf("Table 1, key: %s, rdata: %*s, key length: %lu\n",
@@ -346,6 +341,7 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
                     ((dnss_rr *)(res->value))->rdata, res->key_length);
             }
 #endif
+            free(key);
 		}
 		free(buffer);
 	}

@@ -329,6 +329,10 @@ int dnss_dname_to_wire( char *dname, char *dname_wire, uint size ) // TESTING!!
         return -1;
     }
 
+#ifdef DNSS_DEBUG
+    printf("Domain name to convert: %s.\n", dname);
+#endif
+
     int w = 0;
 
     char *c = dname;
@@ -349,9 +353,9 @@ int dnss_dname_to_wire( char *dname, char *dname_wire, uint size ) // TESTING!!
         }
         buffer[0] = chars;    // number of characters in this label
 
-#ifdef DNSS_DEBUG
-        printf("Chars: %d, Buffer: %*s\n", chars, chars + 1, buffer);
-#endif
+//#ifdef DNSS_DEBUG
+//        printf("Chars: %d, Buffer: %*s\n", chars, chars + 1, buffer);
+//#endif
 
         memcpy(&dname_wire[w], buffer, chars + 1);   // copy the label
         w += chars + 1;
@@ -365,6 +369,7 @@ int dnss_dname_to_wire( char *dname, char *dname_wire, uint size ) // TESTING!!
 
 #ifdef DNSS_DEBUG
     printf("Wire format of the domain name: %*s\n", w + 1, dname_wire);
+    hex_print(dname_wire, w + 1);
 #endif
 
     free(buffer);
@@ -498,10 +503,12 @@ void dnss_destroy_rr( dnss_rr **rr )
         free((*rr)->owner);
         (*rr)->owner = NULL;
     }
-    if ((*rr)->rdata != NULL) {
-        free((*rr)->rdata);
-        (*rr)->rdata = NULL;
-    }
+
+    // RDATA will be destroyed with the RR
+//    if ((*rr)->rdata != NULL) {
+//        free((*rr)->rdata);
+//        (*rr)->rdata = NULL;
+//    }
 
     free(*rr);
     *rr = NULL;
