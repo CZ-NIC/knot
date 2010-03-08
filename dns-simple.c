@@ -56,9 +56,15 @@ void dnss_copy_rrs( dnss_rr *from, dnss_rr *to, uint count )
         to[i].rrclass = from[i].rrclass;
         to[i].rrtype = from[i].rrtype;
         to[i].ttl = from[i].ttl;
+
         to[i].owner = malloc(strlen(from[i].owner) + 1);
+        // replace by check and error
+        assert(to[i].owner != NULL);
         memcpy(to[i].owner, from[i].owner, strlen(from[i].owner) + 1);
+
         to[i].rdata = malloc(from[i].rdlength);
+        // replace by check and error
+        assert(to[i].rdata != NULL);
         memcpy(to[i].rdata, from[i].rdata, from[i].rdlength);
     }
 }
@@ -76,6 +82,7 @@ dnss_rr *dnss_create_rr( char *owner )
 
     // convert domain name to wire format
     uint wire_size = dnss_wire_dname_size(owner);
+    assert(wire_size > 0);
     char *owner_wire = malloc(wire_size);
     if (dnss_dname_to_wire(owner, owner_wire, wire_size) != 0) {
         free(owner_wire);
@@ -85,7 +92,7 @@ dnss_rr *dnss_create_rr( char *owner )
 #ifdef DNSS_DEBUG
     printf("Creating RR structure.\n");
 #endif
-    rr = malloc(sizeof(dnss_rr) + RDLENGTH_DEFAULT);
+    rr = malloc(sizeof(dnss_rr));
 
     if (rr == NULL) {
         free(owner_wire);
@@ -93,7 +100,8 @@ dnss_rr *dnss_create_rr( char *owner )
     }
 
     // rdata will be saved at the end of the RR
-    rr->rdata = (unsigned char *)rr + sizeof(dnss_rr);
+    //rr->rdata = (unsigned char *)rr + sizeof(dnss_rr);
+    rr->rdata = malloc(RDLENGTH_DEFAULT);
     memcpy(rr->rdata, RDATA_DEFAULT, RDLENGTH_DEFAULT);
 
     rr->rrtype = RRTYPE_DEFAULT;
@@ -102,6 +110,10 @@ dnss_rr *dnss_create_rr( char *owner )
     rr->rdlength = RDLENGTH_DEFAULT;
 
     rr->owner = owner_wire;
+
+    printf("Created RR: owner: %s, type: %u, rdlength: %u.\n", rr->owner,
+           rr->rrtype, rr->rdlength);
+    hex_print(rr->owner, strlen(rr->owner));
 
 #ifdef DNSS_DEBUG
     printf("Done.\n");
@@ -499,16 +511,23 @@ void dnss_destroy_rr( dnss_rr **rr )
 {
     assert(*rr != NULL);
 
+    printf("Deleting RR: owner: %s, type: %u, rdlength: %u.\n", (*rr)->owner,
+           (*rr)->rrtype, (*rr)->rdlength);
+    hex_print((*rr)->owner, strlen((*rr)->owner));
+
     if ((*rr)->owner != NULL) {
+        printf("Deleting RR's owner on pointer %p\n", (*rr)->owner);
         free((*rr)->owner);
         (*rr)->owner = NULL;
     }
 
-    // RDATA will be destroyed with the RR
-//    if ((*rr)->rdata != NULL) {
-//        free((*rr)->rdata);
-//        (*rr)->rdata = NULL;
-//    }
+    if ((*rr)->rdata != NULL) {
+        printf("Deleting RR's rdata on pointer %p\n", (*rr)->rdata);
+        free((*rr)->rdata);
+        (*rr)->rdata = NULL;
+    }
+
+    printf("Deleting RR on pointer %p\n", (*rr));
 
     free(*rr);
     *rr = NULL;

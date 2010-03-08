@@ -19,7 +19,7 @@
 #include "bitset.h"
 #include "universal-system.h"
 
-//#define CUCKOO_DEBUG
+#define CUCKOO_DEBUG
 
 /*----------------------------------------------------------------------------*/
 
@@ -41,33 +41,63 @@
 
 #define NEXT_TABLE(table) table = (table == TABLE_LAST) ? TABLE_FIRST : table + 1
 
+//#define HASH1(key, length, exp, gen) \
+//            us_hash(jhash((unsigned char *)key, length, 0x0), exp, 0, gen)
 #define HASH1(key, length, exp, gen) \
-            us_hash(jhash((unsigned char *)key, length, 0x0), exp, 0, gen)
+            us_hash(fnv_hash(key, length, -1), exp, 0, gen)
 #define HASH2(key, length, exp, gen) \
             us_hash(fnv_hash(key, length, -1), exp, 1, gen)
+//#define HASH2(key, length, exp, gen) \
+//            us_hash(jhash((unsigned char *)key, length, 0x0), exp, 1, gen)
+
+static const uint BUFFER_SIZE = 1000;
 
 /*----------------------------------------------------------------------------*/
 
-#define GENERATION_FLAG_1           0x1 // 00000001
-#define GENERATION_FLAG_2           0x2 // 00000010
-#define GENERATION_FLAG_BOTH		0x3	// 00000011
-#define REHASH_FLAG                 0x4 // 00000100
+static const uint8_t FLAG_GENERATION1 = 0x1; // 00000001
+static const uint8_t FLAG_GENERATION2 = 0x2; // 00000010
+static const uint8_t FLAG_GENERATION_BOTH = 0x3; // 00000011
+static const uint8_t FLAG_REHASH = 0x4; // 00000100
 
-#define CLEAR_FLAGS(flags)          (flags &= 0x0)
+static inline void CLEAR_FLAGS( uint8_t *flags ) {
+    (*flags) &= (uint8_t)0x0;
+}
 
-#define GET_GENERATION(flags)		(flags & GENERATION_FLAG_BOTH)
+static inline uint8_t GET_GENERATION( uint8_t flags ) {
+    return (flags & FLAG_GENERATION_BOTH);
+}
 
-#define IS_GENERATION_1(flags)		((flags & GENERATION_FLAG_1) != 0)
-#define SET_GENERATION_1(flags)		(flags = (flags & ~GENERATION_FLAG_2) \
-										| GENERATION_FLAG_1)
-#define IS_GENERATION_2(flags)		((flags & GENERATION_FLAG_2) != 0)
-#define SET_GENERATION_2(flags)		(flags = (flags & ~GENERATION_FLAG_1) \
-										| GENERATION_FLAG_2)
-#define NEXT_GENERATION(flags)		(flags ^= GENERATION_FLAG_BOTH)
+static int IS_GENERATION1( uint8_t flags ) {
+    return ((flags & FLAG_GENERATION1) != 0);
+}
 
-#define REHASH_IN_PROGRESS(flags)	((flags & REHASH_FLAG) != 0)
-#define SET_REHASH(flags)			(flags |= REHASH_FLAG)
-#define UNSET_REHASH(flags)			(flags &= ~REHASH_FLAG)
+static void SET_GENERATION1( uint8_t *flags ) {
+    *flags = ((*flags) & ~FLAG_GENERATION2) | FLAG_GENERATION1;
+}
+
+static int IS_GENERATION2( uint8_t flags ) {
+    return ((flags & FLAG_GENERATION2) != 0);
+}
+
+static void SET_GENERATION2( uint8_t *flags ) {
+    *flags = ((*flags) & ~FLAG_GENERATION1) | FLAG_GENERATION2;
+}
+
+static uint8_t NEXT_GENERATION( uint8_t *flags ) {
+    return ((*flags) ^= FLAG_GENERATION_BOTH);
+}
+
+static int REHASH_IN_PROGRESS( uint8_t flags ) {
+    return ((flags & FLAG_REHASH) != 0);
+}
+
+static void SET_REHASH( uint8_t *flags ) {
+    (*flags) |= FLAG_REHASH;
+}
+
+static void UNSET_REHASH( uint8_t *flags ) {
+    (*flags) &= ~FLAG_REHASH;
+}
 
 /*----------------------------------------------------------------------------*/
 
@@ -130,7 +160,7 @@ void ck_fill_item( const char *key, size_t key_length, void *value,
 	item->key = key;
 	item->key_length = key_length;
 	item->value = value;
-    CLEAR_FLAGS(item->timestamp);
+    CLEAR_FLAGS(&item->timestamp);
     item->timestamp = generation;
 }
 
@@ -311,8 +341,8 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 	table->buf_i = 0;
 
     // set the generation to 1 and initialize the universal system
-    CLEAR_FLAGS(table->generation);
-    SET_GENERATION_1(table->generation);
+    CLEAR_FLAGS(&table->generation);
+    SET_GENERATION1(&table->generation);
 	us_initialize();
 
 	return table;
@@ -363,14 +393,28 @@ void ck_destroy_table( ck_hash_table **table )
 
     for (uint i = 0; i < (*table)->buf_i; ++i) {
         assert((*table)->buffer[i].value != NULL);
+#ifdef CUCKOO_DEBUG
+        printf("Deleting item on pointer: %p.\n", (*table)->buffer[i].value);
+        for (uint j = 0; j < u; ++j) {
+            assert(used_pointers[j] != (*table)->buffer[i].value);
+        }
+        used_pointers[u++] = (*table)->buffer[i].value;
+#endif
         (*table)->dtor_item((*table)->buffer[i].value);
         (*table)->buffer[i].value = NULL;
     }
+
+#ifdef CUCKOO_DEBUG
+    printf("Deleting: table1: %p, table2: %p, buffer: %p, table: %p.\n",
+           (*table)->table1, (*table)->table2, (*table)->buffer, *table);
+#endif
 
     free((*table)->table1);
     (*table)->table1 = NULL;
     free((*table)->table2);
     (*table)->table2 = NULL;
+    free((*table)->buffer);
+    (*table)->buffer = NULL;
     free(*table);
     (*table) = NULL;
     // unlock
@@ -522,21 +566,21 @@ int ck_rehash( ck_hash_table *table )
 
 	// no rehash if one is already in progress
 	// TODO: synchronization or atomic swap needed
-	if (REHASH_IN_PROGRESS(table->generation)) {
-		return -1;
-	} else {
-		SET_REHASH(table->generation);
-	}
-
-	// we already have new functions for the next generation, so begin rehashing
-
-	// TODO: synchronization!
-	// get new function for the next generation
-	if (us_next(NEXT_GENERATION(table->generation)) != 0) {
-		return -2;		// rehashed, but no new functions
-	}
-
-	return 0;
+//	if (REHASH_IN_PROGRESS(table->generation)) {
+//		return -1;
+//	} else {
+//        SET_REHASH(&table->generation);
+//	}
+//
+//	// we already have new functions for the next generation, so begin rehashing
+//
+//	// TODO: synchronization!
+//	// get new function for the next generation
+//    if (us_next(NEXT_GENERATION(&table->generation)) != 0) {
+//		return -2;		// rehashed, but no new functions
+//	}
+//
+//	return 0;
 }
 
 /*----------------------------------------------------------------------------*/

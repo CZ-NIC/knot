@@ -176,6 +176,11 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
                 free(buffer);
                 return ERR_INSERT;
             }
+
+            // try to delete the RR right away
+//            dnss_destroy_rr(&value);
+//            continue;
+
             // convert the domain name to wire format to be used for hashing
             key_size = dnss_wire_dname_size(buffer);
             key = malloc(dnss_wire_dname_size(buffer));

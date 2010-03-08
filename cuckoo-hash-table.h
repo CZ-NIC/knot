@@ -8,12 +8,6 @@
 #define hashsize(n) ((uint32_t)1<<(n))
 #define hashmask(n) (hashsize(n)-1)
 
-#define BUFFER_SIZE 1000
-
-#define GENERATION_FLAG_1			0x1	// 00000001
-#define GENERATION_FLAG_2			0x2	// 00000010
-#define REHASH_FLAG					0x4 // 00000100
-
 /*----------------------------------------------------------------------------*/
 
 struct ck_hash_table_item {
