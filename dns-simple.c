@@ -110,12 +110,10 @@ dnss_rr *dnss_create_rr( char *owner )
     rr->rdlength = RDLENGTH_DEFAULT;
 
     rr->owner = owner_wire;
-
+#ifdef DNSS_DEBUG
     printf("Created RR: owner: %s, type: %u, rdlength: %u.\n", rr->owner,
            rr->rrtype, rr->rdlength);
     hex_print(rr->owner, strlen(rr->owner));
-
-#ifdef DNSS_DEBUG
     printf("Done.\n");
 #endif
 	return rr;
@@ -510,25 +508,29 @@ dnss_packet *dnss_parse_query( const char *query_wire, uint size )
 void dnss_destroy_rr( dnss_rr **rr )
 {
     assert(*rr != NULL);
-
+#ifdef DNSS_DEBUG
     printf("Deleting RR: owner: %s, type: %u, rdlength: %u.\n", (*rr)->owner,
            (*rr)->rrtype, (*rr)->rdlength);
     hex_print((*rr)->owner, strlen((*rr)->owner));
-
+#endif
     if ((*rr)->owner != NULL) {
+#ifdef DNSS_DEBUG
         printf("Deleting RR's owner on pointer %p\n", (*rr)->owner);
+#endif
         free((*rr)->owner);
         (*rr)->owner = NULL;
     }
 
     if ((*rr)->rdata != NULL) {
+#ifdef DNSS_DEBUG
         printf("Deleting RR's rdata on pointer %p\n", (*rr)->rdata);
+#endif
         free((*rr)->rdata);
         (*rr)->rdata = NULL;
     }
-
+#ifdef DNSS_DEBUG
     printf("Deleting RR on pointer %p\n", (*rr));
-
+#endif
     free(*rr);
     *rr = NULL;
 }

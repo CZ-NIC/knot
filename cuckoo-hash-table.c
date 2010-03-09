@@ -19,7 +19,7 @@
 #include "bitset.h"
 #include "universal-system.h"
 
-#define CUCKOO_DEBUG
+//#define CUCKOO_DEBUG
 
 /*----------------------------------------------------------------------------*/
 
@@ -50,7 +50,7 @@
 //#define HASH2(key, length, exp, gen) \
 //            us_hash(jhash((unsigned char *)key, length, 0x0), exp, 1, gen)
 
-static const uint BUFFER_SIZE = 1000;
+static const uint BUFFER_SIZE = 100;
 
 /*----------------------------------------------------------------------------*/
 
@@ -363,7 +363,8 @@ void ck_destroy_table( ck_hash_table **table )
     for (uint i = 0; i < hashsize((*table)->table_size_exp); ++i) {
         if ((*table)->table1[i].value != NULL) {
 #ifdef CUCKOO_DEBUG
-            printf("Deleting item on pointer: %p.\n", (*table)->table1[i].value);
+            printf("Deleting item from table 1 on pointer: %p.\n",
+                   (*table)->table1[i].value);
             for (uint j = 0; j < u; ++j) {
                 assert(used_pointers[j] != (*table)->table1[i].value);
             }
@@ -377,7 +378,8 @@ void ck_destroy_table( ck_hash_table **table )
         }
         if ((*table)->table2[i].value != NULL) {
 #ifdef CUCKOO_DEBUG
-            printf("Deleting item on pointer: %p.\n", (*table)->table2[i].value);
+            printf("Deleting item from table 2 on pointer: %p.\n",
+                   (*table)->table2[i].value);
             for (uint j = 0; j < u; ++j) {
                 assert(used_pointers[j] != (*table)->table2[i].value);
             }
@@ -394,7 +396,8 @@ void ck_destroy_table( ck_hash_table **table )
     for (uint i = 0; i < (*table)->buf_i; ++i) {
         assert((*table)->buffer[i].value != NULL);
 #ifdef CUCKOO_DEBUG
-        printf("Deleting item on pointer: %p.\n", (*table)->buffer[i].value);
+        printf("Deleting item from buffer on pointer: %p.\n",
+               (*table)->buffer[i].value);
         for (uint j = 0; j < u; ++j) {
             assert(used_pointers[j] != (*table)->buffer[i].value);
         }
@@ -428,7 +431,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
     uint32_t hash;
     ck_hash_table_item *moving, *next, old;
 	int next_table;
-	uint used1[USED_SIZE], used2[USED_SIZE], used_i = 0;	// use dynamic array instead
+    uint used1[USED_SIZE], used2[USED_SIZE], used_i = 0;
 
 #ifdef CUCKOO_DEBUG
 	printf("Inserting item with key: %s.\n", key);
@@ -497,7 +500,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 				printf(" to table 1, key: %s, hash %u\n", next->key, hash);
 #endif
                 if (ck_check_used2(used1, &used_i, hash) != 0) {
-					if (ck_insert_to_buffer(table, moving)) {
+                    if (ck_insert_to_buffer(table, moving) == 0) {
 						// put the old item to the new position
 						ck_copy_item_contents(&old, moving);
 						return 0;
@@ -516,7 +519,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 				printf(" to table 2, key: %s, hash %u\n", next->key, hash);
 #endif
                 if (ck_check_used2(used2, &used_i, hash) != 0) {
-					if (ck_insert_to_buffer(table, moving)) {
+                    if (ck_insert_to_buffer(table, moving) == 0) {
 						// put the old item to the new position
 						ck_copy_item_contents(&old, moving);
 						return 0;
@@ -534,25 +537,11 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 
 	assert(next->value == 0);
 
-	switch (next_table) {
-		case TABLE_1:
-			ck_copy_item_contents(moving, &table->table1[hash]);
-			ck_copy_item_contents(&old, moving);
+    ck_copy_item_contents(moving, next);
+    ck_copy_item_contents(&old, moving);
 #ifdef CUCKOO_DEBUG
-			printf("Inserted successfuly, hash: %u.\n", hash);
+    printf("Inserted successfuly, hash: %u.\n", hash);
 #endif
-			break;
-		case TABLE_2:
-			ck_copy_item_contents(moving, &table->table2[hash]);
-			ck_copy_item_contents(&old, moving);
-#ifdef CUCKOO_DEBUG
-			printf("Inserted successfuly, hash: %u.\n", hash);
-#endif
-			break;
-		default:
-			ERR_WRONG_TABLE;
-			return -3;
-	}
 
 	return 0;
 }

@@ -203,8 +203,8 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
                                       dnss_wire_dname_size(buffer) - 1,
                                       value, &collisions)) != 0) {
 				fprintf(stderr, "\nInsert item returned %d.\n", res);
-                dnss_destroy_rr(&value);
-                free(key);
+//                dnss_destroy_rr(&value);
+//                free(key);
 				free(buffer);
 				return ERR_INSERT;
 			}
@@ -582,7 +582,7 @@ int main( int argc, char **argv )
 
 	if (res == 0) {
         printf("Successful.\n");
-		printf("Number of items in the buffer: %u\n", table->buf_i + 1);
+        printf("Number of items in the buffer: %u\n", table->buf_i);
 	} else {
 		fprintf(stderr, "Error inserting names to the hash table.\n");
 	}
