@@ -68,24 +68,32 @@ static inline uint8_t GET_GENERATION( uint8_t flags ) {
     return (flags & FLAG_GENERATION_BOTH);
 }
 
-static int IS_GENERATION1( uint8_t flags ) {
+static inline int IS_GENERATION1( uint8_t flags ) {
     return ((flags & FLAG_GENERATION1) != 0);
 }
 
-static void SET_GENERATION1( uint8_t *flags ) {
+static inline void SET_GENERATION1( uint8_t *flags ) {
     *flags = ((*flags) & ~FLAG_GENERATION2) | FLAG_GENERATION1;
 }
 
-static int IS_GENERATION2( uint8_t flags ) {
+static inline int IS_GENERATION2( uint8_t flags ) {
     return ((flags & FLAG_GENERATION2) != 0);
 }
 
-static void SET_GENERATION2( uint8_t *flags ) {
+static inline void SET_GENERATION2( uint8_t *flags ) {
     *flags = ((*flags) & ~FLAG_GENERATION1) | FLAG_GENERATION2;
 }
 
-static uint8_t NEXT_GENERATION( uint8_t *flags ) {
+static inline void SET_GENERATION( uint8_t *flags, uint8_t generation ) {
+    *flags = ((*flags) & ~FLAG_GENERATION_BOTH) | generation;
+}
+
+static inline uint8_t SET_NEXT_GENERATION( uint8_t *flags ) {
     return ((*flags) ^= FLAG_GENERATION_BOTH);
+}
+
+static inline uint8_t NEXT_GENERATION( uint8_t flags ) {
+    return (flags ^ FLAG_GENERATION_BOTH);
 }
 
 //static int REHASH_IN_PROGRESS( uint8_t flags ) {
@@ -148,6 +156,13 @@ uint get_table_exp( uint items, int size_type )
 		default:
 			return get_nearest_exp(2 * items) - 1;		// optimize
 	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+static inline void ck_clear_item( ck_hash_table_item *item )
+{
+    memset(item, 0, sizeof(ck_hash_table_item));
 }
 
 /*----------------------------------------------------------------------------*/
@@ -447,7 +462,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
     uint32_t hash;
     ck_hash_table_item *moving, *next, old;
 	int next_table;
-    uint used1[USED_SIZE], used2[USED_SIZE], used_i = 0;
+    uint32_t used1[USED_SIZE], used2[USED_SIZE], used_i = 0;
 
 #ifdef CUCKOO_DEBUG
 	printf("Inserting item with key: %s.\n", key);
@@ -466,7 +481,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 #endif
         pthread_mutex_unlock(&table->mtx_table);
 		return 0;
-	}
+    }
 
     // If failed, try to rehash the existing items until free place is found
 #ifdef CUCKOO_DEBUG
@@ -523,6 +538,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
                         pthread_mutex_unlock(&table->mtx_table);
 						return 0;
 					} else {
+                        assert(0);
                         pthread_mutex_unlock(&table->mtx_table);
 						return -1;
 					}
@@ -544,6 +560,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
                         pthread_mutex_unlock(&table->mtx_table);
 						return 0;
 					} else {
+                        assert(0);
                         pthread_mutex_unlock(&table->mtx_table);
 						return -2;
 					}
@@ -571,28 +588,146 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 
 /*----------------------------------------------------------------------------*/
 
+/**
+ * @retval 0 if successful and no loop occured.
+ * @retval 1 if a loop occured and the item was inserted to the @a free place.
+ */
+int ck_hash_item( ck_hash_table *table, ck_hash_table_item *old,
+                  ck_hash_table_item *free, uint32_t *used1, uint32_t *used2,
+                  uint *used_i1, uint *used_i2 )
+{
+    uint32_t hash;
+    int next_table;
+
+    *used_i1 = 0; *used_i2 = 0;
+
+    // hash until empty cell is encountered or until loop appears
+
+    hash = HASH1(old->key, old->key_length, table->table_size_exp,
+                 GET_GENERATION(table->generation));
+
+    used1[*used_i1] = hash;
+    ck_hash_table_item *next = &table->table1[hash];
+    ck_hash_table_item *moving = old;
+    next_table = TABLE_2;
+
+    while (next->value != 0) {
+        ck_swap_items(old, moving); // first time it's unnecessary
+        // set the generation of the inserted item to the next generation
+        SET_NEXT_GENERATION(&moving->timestamp);
+
+        moving = next;
+
+        // if the 'next' item is from the old generation, start from table 1
+        if (GET_GENERATION(next->timestamp)
+            == GET_GENERATION(table->generation)) {
+            next_table = TABLE_1;
+        }
+
+        switch (next_table) {
+            case TABLE_1:
+                hash = HASH1(next->key, next->key_length, table->table_size_exp,
+                             NEXT_GENERATION(table->generation));
+                next = &table->table1[hash];
+
+                // check if this cell wasn't already used in this item's hashing
+                if (ck_check_used2(used1, used_i1, hash) != 0) {
+                    next = free;
+                    goto moving;
+                }
+                break;
+            case TABLE_2:
+                hash = HASH2(next->key, next->key_length, table->table_size_exp,
+                             NEXT_GENERATION(table->generation));
+                next = &table->table2[hash];
+                // check if this cell wasn't already used in this item's hashing
+                if (ck_check_used2(used2, used_i2, hash) != 0) {
+                    next = free;
+                    goto moving;
+                }
+                break;
+            default:
+                assert(0);
+        }
+
+        NEXT_TABLE(next_table);
+    }
+
+    assert(next->value == 0);
+
+moving:
+
+    ck_copy_item_contents(moving, next);
+    // set the new generation for the inserted item
+    SET_NEXT_GENERATION(&next->timestamp);
+    ck_copy_item_contents(old, moving);
+    // set the new generation for the inserted item
+    SET_NEXT_GENERATION(&moving->timestamp);
+
+    return (next == free) ? -1 : 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static inline void ck_set_generation_to_items( ck_hash_table_item *items,
+                        uint32_t *indexes, uint index_count, uint8_t generation )
+{
+    for (uint i = 0; i < index_count; ++i) {
+        SET_GENERATION(&items[indexes[i]].timestamp, generation);
+    }
+}
+
+/*----------------------------------------------------------------------------*/
+
 int ck_rehash( ck_hash_table *table )
 {
     pthread_mutex_lock(&table->mtx_table);
 
-    fprintf(stderr, "Rehashing not implemented yet!");
+    //fprintf(stderr, "Rehashing not implemented yet!");
+
+    // we already have functions for the next generation, begin rehashing
+    // we wil use the last item in the buffer as the old cell
+    assert(table->buf_i + 1 == BUFFER_SIZE);
+    ck_hash_table_item *old = &table->buffer[table->buf_i];
+
+    // rehash items from the first table
+    uint rehashed = 0;
+    while (rehashed < hashsize(table->table_size_exp)) {
+        // if item's generation is the new generation, skip
+        if (GET_GENERATION(table->table1[rehashed].timestamp)
+            != GET_GENERATION(table->generation)) {
+            ++rehashed;
+            continue;
+        }
+        // otherwise copy the item for rehashing
+        ck_copy_item_contents(&table->table1[rehashed], old);
+        // clear the place so that this item will not get rehashed again
+        ck_clear_item(&table->table1[rehashed]);
+
+        // and start rehashing
+        uint32_t used1[USED_SIZE], used2[USED_SIZE];
+        uint used_size1, used_size2;
+
+        if (ck_hash_item(table, old, &table->table1[rehashed], used1, used2,
+                         &used_size1, &used_size2)
+            == -1) {
+            // loop occured => mark all cells used for this rehash with the
+            // old generation
+            ck_set_generation_to_items(table->table1, used1, used_size1,
+                                       GET_GENERATION(table->generation));
+            ck_set_generation_to_items(table->table2, used2, used_size2,
+                                       GET_GENERATION(table->generation));
+            return -1;
+        }
+    }
 
     pthread_mutex_unlock(&table->mtx_table);
-	return -1;
+    return 0;
 
-	// no rehash if one is already in progress
-	// TODO: synchronization or atomic swap needed
-//	if (REHASH_IN_PROGRESS(table->generation)) {
-//		return -1;
-//	} else {
-//        SET_REHASH(&table->generation);
-//	}
-//
-//	// we already have new functions for the next generation, so begin rehashing
-//
+
 //	// TODO: synchronization!
 //	// get new function for the next generation
-//    if (us_next(NEXT_GENERATION(&table->generation)) != 0) {
+//    if (us_next(SWAP_GENERATIONS(&table->generation)) != 0) {
 //		return -2;		// rehashed, but no new functions
 //	}
 //
@@ -607,7 +742,7 @@ static inline uint ck_items_match( const ck_hash_table_item* item,
 {
     return (length == item->key_length
             && (strncmp(item->key, key, length) == 0)
-            && (GET_GENERATION(item->timestamp) == generation)) ? 0 : -1;
+            /*&& (GET_GENERATION(item->timestamp) == generation)*/) ? 0 : -1;
 }
 
 /*----------------------------------------------------------------------------*/
