@@ -13,6 +13,7 @@
 #include <string.h>
 #include <stdint.h>     /* defines uint32_t etc */
 #include <assert.h>
+#include <pthread.h>
 
 #include "cuckoo-hash-table.h"
 #include "hash-functions.h"
@@ -87,17 +88,17 @@ static uint8_t NEXT_GENERATION( uint8_t *flags ) {
     return ((*flags) ^= FLAG_GENERATION_BOTH);
 }
 
-static int REHASH_IN_PROGRESS( uint8_t flags ) {
-    return ((flags & FLAG_REHASH) != 0);
-}
-
-static void SET_REHASH( uint8_t *flags ) {
-    (*flags) |= FLAG_REHASH;
-}
-
-static void UNSET_REHASH( uint8_t *flags ) {
-    (*flags) &= ~FLAG_REHASH;
-}
+//static int REHASH_IN_PROGRESS( uint8_t flags ) {
+//    return ((flags & FLAG_REHASH) != 0);
+//}
+//
+//static void SET_REHASH( uint8_t *flags ) {
+//    (*flags) |= FLAG_REHASH;
+//}
+//
+//static void UNSET_REHASH( uint8_t *flags ) {
+//    (*flags) &= ~FLAG_REHASH;
+//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -227,14 +228,16 @@ uint ck_check_used2( uint *used, uint *last, uint32_t hash )
 
 int ck_insert_to_buffer( ck_hash_table *table, ck_hash_table_item *item )
 {
-	if (table->buf_i == BUFFER_SIZE) {
-		ERR_REHASHING_NOT_IMPL;
-		return -1;
-	}
+    assert(table->buf_i + 1 < BUFFER_SIZE);
 
 	ck_copy_item_contents(item, &table->buffer[table->buf_i]);
 
 	++table->buf_i;
+
+    // if only one place left, rehash (this place is used in rehashing)
+    if (table->buf_i + 1 == BUFFER_SIZE) {
+        return ck_rehash(table);
+    }
 
 	return 0;
 }
@@ -287,12 +290,9 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 		   hashsize(table->table_size_exp) * sizeof(ck_hash_table_item));
 //#endif
 
-	/*
-	 * Table 1
-	 */
-	table->table1 = (ck_hash_table_item *)malloc(
-						hashsize(table->table_size_exp)
-							* sizeof(ck_hash_table_item));
+    // Table 1
+    table->table1 = (ck_hash_table_item *)malloc(hashsize(table->table_size_exp)
+                                                 * sizeof(ck_hash_table_item));
 
 	if (table->table1 == NULL) {
 		ERR_ALLOC_FAILED;
@@ -304,12 +304,9 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 	memset(table->table1, 0,
 		   hashsize(table->table_size_exp) * sizeof(ck_hash_table_item));
 
-	/*
-	 * Table 2
-	 */
-	table->table2 = (ck_hash_table_item *)malloc(
-						hashsize(table->table_size_exp)
-							* sizeof(ck_hash_table_item));
+    // Table 2
+    table->table2 = (ck_hash_table_item *)malloc(hashsize(table->table_size_exp)
+                                                 * sizeof(ck_hash_table_item));
 
 	if (table->table2 == NULL) {
 		ERR_ALLOC_FAILED;
@@ -322,9 +319,7 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 	memset(table->table2, 0,
 		   hashsize(table->table_size_exp) * sizeof(ck_hash_table_item));
 
-	/*
-	 * Buffer
-	 */
+    // Buffer
 	table->buffer = (ck_hash_table_item *)malloc(
 						BUFFER_SIZE	* sizeof(ck_hash_table_item));
 
@@ -340,6 +335,13 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 	memset(table->buffer, 0, BUFFER_SIZE * sizeof(ck_hash_table_item));
 	table->buf_i = 0;
 
+    // initialize rehash mutex
+    pthread_mutex_init(&table->mtx_table, NULL);
+
+    // initialize rwlocks for items
+    pthread_rwlock_init(&table->rwlock_item1, NULL);
+    pthread_rwlock_init(&table->rwlock_item2, NULL);
+
     // set the generation to 1 and initialize the universal system
     CLEAR_FLAGS(&table->generation);
     SET_GENERATION1(&table->generation);
@@ -352,7 +354,8 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 
 void ck_destroy_table( ck_hash_table **table )
 {
-    // somehow lock the whole table!!!
+    pthread_mutex_lock(&(*table)->mtx_table);
+
 #ifdef CUCKOO_DEBUG
     void  **used_pointers = malloc(hashsize((*table)->table_size_exp)
                                          * 2 * sizeof(void *));
@@ -412,6 +415,17 @@ void ck_destroy_table( ck_hash_table **table )
            (*table)->table1, (*table)->table2, (*table)->buffer, *table);
 #endif
 
+    pthread_mutex_unlock(&(*table)->mtx_table);
+    // destroy mutex, assuming that here noone will lock the mutex again
+    pthread_mutex_destroy(&(*table)->mtx_table);
+
+    // wait for other threads to unlock the rwlocks
+    while (pthread_rwlock_trywrlock(&(*table)->rwlock_item1) != 0
+           || pthread_rwlock_trywrlock(&(*table)->rwlock_item2) != 0 ) {}
+    // destroy rwlocks, assuming that here noone will lock them again
+    pthread_rwlock_destroy(&(*table)->rwlock_item1);
+    pthread_rwlock_destroy(&(*table)->rwlock_item2);
+
     free((*table)->table1);
     (*table)->table1 = NULL;
     free((*table)->table2);
@@ -428,6 +442,8 @@ void ck_destroy_table( ck_hash_table **table )
 int ck_insert_item( ck_hash_table *table, const char *key,
 					size_t length, void *value, unsigned long *collisions )
 {
+    pthread_mutex_lock(&table->mtx_table);
+    
     uint32_t hash;
     ck_hash_table_item *moving, *next, old;
 	int next_table;
@@ -448,6 +464,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 		printf("Inserted successfuly to table1, hash %u, key: %s.\n", hash,
 			   table->table1[hash].key);
 #endif
+        pthread_mutex_unlock(&table->mtx_table);
 		return 0;
 	}
 
@@ -503,8 +520,10 @@ int ck_insert_item( ck_hash_table *table, const char *key,
                     if (ck_insert_to_buffer(table, moving) == 0) {
 						// put the old item to the new position
 						ck_copy_item_contents(&old, moving);
+                        pthread_mutex_unlock(&table->mtx_table);
 						return 0;
 					} else {
+                        pthread_mutex_unlock(&table->mtx_table);
 						return -1;
 					}
 				}
@@ -522,8 +541,10 @@ int ck_insert_item( ck_hash_table *table, const char *key,
                     if (ck_insert_to_buffer(table, moving) == 0) {
 						// put the old item to the new position
 						ck_copy_item_contents(&old, moving);
+                        pthread_mutex_unlock(&table->mtx_table);
 						return 0;
 					} else {
+                        pthread_mutex_unlock(&table->mtx_table);
 						return -2;
 					}
 				}
@@ -531,6 +552,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 				break;
 			default:
 				ERR_WRONG_TABLE;
+                pthread_mutex_unlock(&table->mtx_table);
 				return -3;
 		}
 	}
@@ -543,6 +565,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
     printf("Inserted successfuly, hash: %u.\n", hash);
 #endif
 
+    pthread_mutex_unlock(&table->mtx_table);
 	return 0;
 }
 
@@ -550,7 +573,11 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 
 int ck_rehash( ck_hash_table *table )
 {
-	fprintf(stderr, "Rehashing not implemented yet!");
+    pthread_mutex_lock(&table->mtx_table);
+
+    fprintf(stderr, "Rehashing not implemented yet!");
+
+    pthread_mutex_unlock(&table->mtx_table);
 	return -1;
 
 	// no rehash if one is already in progress

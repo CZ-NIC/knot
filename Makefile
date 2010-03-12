@@ -21,7 +21,7 @@ SRC_FILES = $(shell find $(SRC_DIRS) -name "*.c" )
 OBJS = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_FILES)))))
 
 CC = gcc
-CFLAGS += -Wall -std=c99
+CFLAGS += -Wall -std=c99 -D _XOPEN_SOURCE=600
 LDFLAGS += -lpthread
 
 all:cuckoo-hash

@@ -3,6 +3,7 @@
 
 #include <stdint.h>	/* uint32_t */
 #include <stdlib.h>	/* size_t */
+#include <pthread.h>
 #include "common.h"
 
 #define hashsize(n) ((uint32_t)1<<(n))
@@ -10,18 +11,16 @@
 
 /*----------------------------------------------------------------------------*/
 
-struct ck_hash_table_item {
+typedef struct {
 	const char *key;
 	size_t key_length;
 	void *value;
 	uint8_t timestamp;	// 000000xy; xy .. generation; may be 01 or 10
-};	// size 13 B
-
-typedef struct ck_hash_table_item ck_hash_table_item;
+} ck_hash_table_item;	// size 13 B
 
 /*----------------------------------------------------------------------------*/
 
-struct ck_hash_table {
+typedef struct {
 	int table_size_exp;		// exponent (2^table_size_exp is table size)
 							// -1 if not initialized
 	ck_hash_table_item *table1;
@@ -30,11 +29,15 @@ struct ck_hash_table {
 	uint buf_i;
 	uint8_t generation;		/* 00000xyz x==1 .. rehashing in progress
 										yz   .. generation; may be 01 or 10 */
-
     void (*dtor_item)( void *value );
-};
 
-typedef struct ck_hash_table ck_hash_table;
+    pthread_mutex_t mtx_table;
+
+    unsigned long item1;
+    unsigned long item2;
+    pthread_rwlock_t rwlock_item1;
+    pthread_rwlock_t rwlock_item2;
+} ck_hash_table;
 
 /*----------------------------------------------------------------------------*/
 
