@@ -1,28 +1,31 @@
-/**
- * @todo Do not hash the string with the ending '\0'.
- */
-
+#include "cuckoo-test.h"
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
 
+#include "common.h"
 #include "cuckoo-hash-table.h"
 #include "dns-simple.h"
-#include "bitset.h"
 #include "socket-manager.h"
 
-//#define TEST_DEBUG
-//#define TEST_LOOKUP
-//#define TEST_OUTPUT
+//#define CK_TEST_DEBUG
+//#define CK_TEST_LOOKUP
+//#define CK_TEST_OUTPUT
 
-static const uint ERR_ARG = 1;
-static const uint ERR_FILE_OPEN = 2;
-static const uint ERR_FILE_READ = 3;
-static const uint ERR_TABLE_CREATE = 4;
-static const uint ERR_INSERT = 5;
-static const uint ERR_LOOKUP = 6;
-static const uint ERR_ALLOC_ITEMS = 7;
-static const uint ERR_FIND = 8;
+#ifdef CK_TEST_DEBUG
+    #define CK_TEST_LOOKUP
+    #define CK_TEST_OUTPUT
+#endif
+
+#define ERR_COUNT 1
+#define ERR_FILE_OPEN 2
+#define ERR_FILE_READ 3
+#define ERR_TABLE_CREATE 4
+#define ERR_INSERT 5
+#define ERR_LOOKUP 6
+#define ERR_ALLOC_ITEMS 7
+#define ERR_FIND 8
+#define ERR_FILL 9
 
 static const uint BUF_SIZE = 20;
 static const uint ARRAY_SIZE = 500;
@@ -33,13 +36,13 @@ static const uint THREAD_COUNT = 2;
 /*----------------------------------------------------------------------------*/
 // macro for hash table types
 
-#define CK_KEY_TYPE (char *)
-#define CK_VALUE_TYPE (char *)
+//#define CK_KEY_TYPE (char *)
+//#define CK_VALUE_TYPE (char *)
 
 /*----------------------------------------------------------------------------*/
 
 // global var for counting collisions
-unsigned long collisions = 0;
+static unsigned long collisions = 0;
 
 // static global var for the hash table (change later!)
 static ck_hash_table *table;
@@ -97,7 +100,7 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 
 	while (ch != EOF) {
 		buf_i = 0;
-#ifdef TEST_DEBUG
+#ifdef CK_TEST_DEBUG
         printf("Allocating buffer\n");
 #endif
 		// allocate some buffer
@@ -108,13 +111,13 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 			fprintf(stderr, "Allocation failed.\n");
 			return -1;
 		}
-#ifdef TEST_DEBUG
+#ifdef CK_TEST_DEBUG
         printf("Done\n");
 #endif
         ch = fgetc(file);
 
         while (ch != ' ' && ch != '\n' && ch != EOF) {
-//#ifdef TEST_DEBUG
+//#ifdef CK_TEST_DEBUG
 //            printf("Read character: %c\n", ch);
 //#endif
 
@@ -141,7 +144,7 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
             ch = fgetc(file);
         }
 
-#ifdef TEST_DEBUG
+#ifdef CK_TEST_DEBUG
         printf("Read domain name: %s\n", buffer);
 #endif
 		// if buffer too large
@@ -152,7 +155,7 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 			free(buffer);
 			return -1;
 		}
-#ifdef TEST_DEBUG
+#ifdef CK_TEST_DEBUG
         printf("Read domain name %s, inserting...\n", buffer);
 #endif
 		if (buf_i > 0) {
@@ -167,7 +170,7 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 				return ERR_INSERT;
 			}
 
-#ifdef TEST_DEBUG
+#ifdef CK_TEST_DEBUG
             printf("Creating RR with the given owner name.\n");
 #endif
             value = dnss_create_rr(buffer);
@@ -191,7 +194,7 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
                 return ERR_INSERT;
             }
 
-#ifdef TEST_DEBUG
+#ifdef CK_TEST_DEBUG
             if (line % 100000 == 1) {
                 fprintf(stderr, "Inserting item number %u, key: %s..\n",
                         line, key);
@@ -209,7 +212,7 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 				return ERR_INSERT;
 			}
 
-#ifdef TEST_DEBUG
+#ifdef CK_TEST_DEBUG
             if (line % 100000 == 0) {
                 fprintf(stderr, "Done, %lu collisions so far.\n", collisions);
             }
@@ -259,7 +262,7 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 	while (ch != EOF) {
 		buf_i = 0;
 
-#ifdef TEST_DEBUG
+#ifdef CK_TEST_DEBUG
         printf("Allocating buffer\n");
 #endif
 
@@ -271,13 +274,13 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 			fprintf(stderr, "Allocation failed.\n");
 			return -1;
 		}
-#ifdef TEST_DEBUG
+#ifdef CK_TEST_DEBUG
         printf("Done\n");
 #endif
 		ch = fgetc(file);
 
         while ((ch != ' ' && ch != '\n') && ch != EOF) {
-#ifdef TEST_DEBUG
+#ifdef CK_TEST_DEBUG
             printf("Read character: %c\n", ch);
 #endif
 
@@ -303,7 +306,7 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
             ch = fgetc(file);
         }
 
-#ifdef TEST_DEBUG
+#ifdef CK_TEST_DEBUG
         printf("Read domain name: %s\n", buffer);
 #endif
 
@@ -316,7 +319,9 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
             return -1;
 		}
 
-		//printf("Read domain name %s, inserting...\n", buffer);
+#ifdef CK_TEST_DEBUG
+        printf("Read domain name %s, searching...\n", buffer);
+#endif
 
 		if (buf_i > 0) {
 			// find domain name
@@ -329,9 +334,13 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
                 return -1;
             }
 
+#ifdef CK_TEST_DEBUG
+            printf("Wire format of the domain name:\n");
+            hex_print(key, key_size);
+#endif
 
             if ((res = ck_find_item(table, key,
-                                    dnss_wire_dname_size(buffer) - 1)) == NULL
+                                    key_size - 1)) == NULL
                 || strncmp(res->key, key, dnss_wire_dname_size(buffer) - 1) != 0 ) {
                 fprintf(stderr, "\nItem with key %s not found.\n", buffer);
                 free(key);
@@ -339,7 +348,7 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
                 return ERR_FIND;
             }
 
-#if defined TEST_DEBUG || defined TEST_LOOKUP
+#ifdef CK_TEST_LOOKUP
             else {
                 printf("Table 1, key: %s, rdata: %*s, key length: %lu\n",
                     res->key, ((dnss_rr *)(res->value))->rdlength,
@@ -358,98 +367,6 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 
 /*----------------------------------------------------------------------------*/
 
-int test_bitset()
-{
-	bitset_t bitset;
-	uint n = 1048576, i, c, err = 0;
-	uint *numbers = malloc(n/2 * sizeof(uint));
-
-	BITSET_CREATE(&bitset, n);
-	BITSET_CLEAR(bitset, n);
-
-	printf("New bitset created.\n");
-
-	// check if empty
-	for (i = 0; i < n; i++) {
-		if (BITSET_GET(bitset, i) != 0) {
-			printf("Bit %u not clear!\n", i);
-			err++;
-		}
-	}
-
-	srand(1);
-
-	printf("Setting random bits...\n");
-
-	// set random bits, but keep track of them
-	for (i = 0; i < n/2; i++) {
-		c = rand() % n;
-		//printf("Setting bit on position %u..\n", c);
-		numbers[i] = c;
-		BITSET_SET(bitset, c);
-
-		if (!BITSET_ISSET(bitset, c)) {
-			printf("Bit %u not set successfully!\n", c);
-			err++;
-		}
-
-		BITSET_UNSET(bitset, c);
-	}
-
-	printf("Testing borders...\n");
-	// setting bits on the borders
-	BITSET_SET(bitset, 0);
-	if (!BITSET_ISSET(bitset, 0)) {
-		printf("Error setting bit on position 0.\n");
-		err++;
-	}
-	BITSET_UNSET(bitset, 0);
-
-	BITSET_SET(bitset, 31);
-	if (!BITSET_ISSET(bitset, 31)) {
-		printf("Error setting bit on position 31.\n");
-		err++;
-	}
-	BITSET_UNSET(bitset, 31);
-
-	BITSET_SET(bitset, 32);
-	if (!BITSET_ISSET(bitset, 32)) {
-		printf("Error setting bit on position 32.\n");
-		err++;
-	}
-	BITSET_UNSET(bitset, 32);
-
-	BITSET_SET(bitset, 33);
-	if (!BITSET_ISSET(bitset, 33)) {
-		printf("Error setting bit on position 33.\n");
-		err++;
-	}
-	BITSET_UNSET(bitset, 33);
-
-	BITSET_SET(bitset, 1048575);
-	if (!BITSET_ISSET(bitset, 1048575)) {
-		printf("Error setting bit on position 1048575.\n");
-		err++;
-	}
-	BITSET_UNSET(bitset, 1048575);
-
-	// check if empty
-	for (i = 0; i < n; i++) {
-		if (BITSET_GET(bitset, i) != 0) {
-			printf("Bit %u not clear!\n", i);
-			err++;
-		}
-	}
-
-	free(numbers);
-    BITSET_DESTROY(&bitset);
-
-	printf("There were %u errors.\n", err);
-	return 0;
-}
-
-/*----------------------------------------------------------------------------*/
-
 void destroy_items( void *item )
 {
     dnss_rr *rr = (dnss_rr *)item;
@@ -462,7 +379,7 @@ void answer_request( const char *query_wire, uint size,
                      char *response_wire, uint *response_size )
     // in *response_size we have the maximum acceptable size of the response
 {
-#if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
+#ifdef CK_TEST_OUTPUT
     printf("answer_request() called with query size %d.\n", size);
     hex_print(query_wire, size);
 #endif
@@ -472,7 +389,7 @@ void answer_request( const char *query_wire, uint size,
         return;
     }
 
-#if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
+#ifdef CK_TEST_OUTPUT
     printf("Query parsed, ID: %u, QNAME: %s\n", query->header.id,
            query->questions[0].qname);
     hex_print(query->questions[0].qname, strlen(query->questions[0].qname));
@@ -489,7 +406,7 @@ void answer_request( const char *query_wire, uint size,
     }
 
     if (item == NULL) {
-#if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
+#ifdef CK_TEST_OUTPUT
         printf("Requested name not found, returning empty response.\n");
 #endif
         if (dnss_create_response(query, NULL, 0, &response) != 0) {
@@ -498,7 +415,7 @@ void answer_request( const char *query_wire, uint size,
             return;
         }
     } else {
-#if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
+#ifdef CK_TEST_OUTPUT
         printf("Requested name found.\n");
 #endif
         if (dnss_create_response(query, (dnss_rr *)item->value,
@@ -509,12 +426,12 @@ void answer_request( const char *query_wire, uint size,
         }
     }
 
-#if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
+#ifdef CK_TEST_OUTPUT
     printf("Response ID: %u\n", response->header.id);
 #endif
 
     if (dnss_wire_format(response, response_wire, response_size) != 0) {
-#if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
+#ifdef CK_TEST_OUTPUT
         fprintf(stderr, "Response too long, returning SERVFAIL response.\n");
 #endif
         if (dnss_create_error_response(query, &response) != 0) {
@@ -526,7 +443,7 @@ void answer_request( const char *query_wire, uint size,
         assert(res != 0);
     }
 
-#if defined(TEST_DEBUG) || defined(TEST_OUTPUT)
+#ifdef CK_TEST_OUTPUT
     printf("Returning response of size: %u.\n", *response_size);
 #endif
 
@@ -536,73 +453,155 @@ void answer_request( const char *query_wire, uint size,
 
 /*----------------------------------------------------------------------------*/
 
-int main( int argc, char **argv )
+int count_domain_names( FILE *file, uint *names, unsigned long *chars )
 {
-	FILE *file;
-	uint names;
-	int res;
-	unsigned long chars;
+    printf("Counting lines..");
+    *names = get_line_count(file, chars);
+    printf("%u\n", *names);
 
-	if (argc < 2) {
-		fprintf(stderr, "Usage: %s <filename>.\n", argv[0]);
-		return ERR_ARG;
-	}
+    if (*names == -1) {
+        fprintf(stderr, "Error reading domain names from file.\n");
+        return ERR_FILE_READ;
+    }
 
-	file = fopen(argv[1], "r");
-
-	if (file == NULL) {
-		fprintf(stderr, "Can't open file: %s.\n", argv[1]);
-		return ERR_FILE_OPEN;
-	}
-
-	printf("Counting lines..");
-	names = get_line_count(file, &chars);
-	printf("%u\n", names);
-
-	if (names == -1) {
-		fprintf(stderr, "Error reading domain names from file.\n");
-		return ERR_FILE_READ;
-	}
-
-#ifdef TEST_DEBUG
-    printf("Domains read: %d.\n", names);
+#ifdef CK_TEST_DEBUG
+    printf("Domains read: %d.\n", *names);
 #endif
 
-    table = ck_create_table(names, destroy_items);
+    return 0;
+}
 
-	if (table == NULL) {
-		fprintf(stderr, "Error creating hash table.\n");
-		return ERR_TABLE_CREATE;
-	}
+/*----------------------------------------------------------------------------*/
 
-	fseek(file, 0, SEEK_SET);
+int fill_hash_table( ck_hash_table *table, FILE *file, uint names,
+                     unsigned long chars )
+{
+    // hash the domain names
+    int res = hash_from_file(file, table, names, chars);
 
-	// hash the domain names
-    res = hash_from_file(file, table, names, chars);
-
-	if (res == 0) {
+    if (res == 0) {
         printf("Successful.\n");
         printf("Number of items in the buffer: %u\n", table->buf_i);
-	} else {
-		fprintf(stderr, "Error inserting names to the hash table.\n");
-	}
-
-	fseek(file, 0, SEEK_SET);
-
-    // testing lookup
-	res = test_lookup_from_file(table, file);
-
-    if (res != 0) {
-        ck_destroy_table(&table);
+    } else {
+        fprintf(stderr, "Error inserting names to the hash table.\n");
         return res;
     }
 
-    // launch socket manager for listening
+    return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int create_and_fill_table( ck_hash_table **table, FILE *file )
+{
+    uint names;
+    unsigned long chars;
+    int res;
+
+    if ((res = count_domain_names(file, &names, &chars)) != 0) {
+        fclose(file);
+        return ERR_COUNT;
+    }
+
+    fseek(file, 0, SEEK_SET);
+
+    *table = ck_create_table(names, destroy_items);
+
+    if (*table == NULL) {
+        fprintf(stderr, "Error creating hash table.\n");
+        return ERR_TABLE_CREATE;
+    }
+
+    if ((res = fill_hash_table(*table, file, names, chars)) != 0) {
+        ck_destroy_table(table);
+        return ERR_FILL;
+    }
+
+    return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int test_hash_table( char *filename )
+{
+    printf("Testing hash table...\n\n");
+
+    printf("Opening file...");
+
+    FILE *file = fopen(filename, "r");
+
+    if (file == NULL) {
+        fprintf(stderr, "Can't open file: %s.\n", filename);
+        return ERR_FILE_OPEN;
+    }
+
+    printf("Done.\n");
+
+    printf("Creating and filling the table...\n\n");
+    uint res = create_and_fill_table(&table, file);
+
+    switch (res) {
+        case ERR_FILL:
+            ck_destroy_table(&table);
+        case ERR_COUNT:
+        case ERR_TABLE_CREATE:
+            return res;
+    }
+
+    printf("\nDone.\n\n");
+
+    fseek(file, 0, SEEK_SET);
+
+    printf("Testing lookup...\n\n");
+    res = test_lookup_from_file(table, file);
+    printf("\nDone. Result: %u\n\n", res);
+
+    ck_destroy_table(&table);
+    fclose(file);
+
+    return res;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int start_server( char *filename )
+{
+    printf("Starting server...\n\n");
+
+    printf("Opening file...");
+
+    FILE *file = fopen(filename, "r");
+
+    if (file == NULL) {
+        fprintf(stderr, "Can't open file: %s.\n", filename);
+        return ERR_FILE_OPEN;
+    }
+
+    printf("Done.\n\n");
+
+    printf("Creating and filling the table...\n\n");
+    uint res = create_and_fill_table(&table, file);
+
+    switch (res) {
+        case ERR_FILL:
+            ck_destroy_table(&table);
+        case ERR_COUNT:
+        case ERR_TABLE_CREATE:
+            printf("Error %u.\n", res);
+            return res;
+    }
+
+    printf("\nDone.\n\n");
+
+    fclose(file);
+
+    printf("Creating socket manager...\n\n");
     sm_manager *manager = sm_create(PORT, THREAD_COUNT, answer_request);
     if (manager == NULL) {
         ck_destroy_table(&table);
         return -1;
     }
+    printf("\nDone.\n\n");
 
     printf("Starting socket manager...\n");
     sm_start(manager);

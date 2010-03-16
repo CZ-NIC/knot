@@ -96,18 +96,6 @@ static inline uint8_t NEXT_GENERATION( uint8_t flags ) {
     return (flags ^ FLAG_GENERATION_BOTH);
 }
 
-//static int REHASH_IN_PROGRESS( uint8_t flags ) {
-//    return ((flags & FLAG_REHASH) != 0);
-//}
-//
-//static void SET_REHASH( uint8_t *flags ) {
-//    (*flags) |= FLAG_REHASH;
-//}
-//
-//static void UNSET_REHASH( uint8_t *flags ) {
-//    (*flags) &= ~FLAG_REHASH;
-//}
-
 /*----------------------------------------------------------------------------*/
 
 #define CK_SIZE_NEAREST 1
@@ -259,6 +247,17 @@ int ck_insert_to_buffer( ck_hash_table *table, ck_hash_table_item *item )
 
 /*----------------------------------------------------------------------------*/
 
+static inline uint ck_items_match( const ck_hash_table_item* item,
+                                   const char *key, size_t length,
+                                   uint generation )
+{
+    return (length == item->key_length
+            && (strncmp(item->key, key, length) == 0)
+            /*&& (GET_GENERATION(item->timestamp) == generation)*/) ? 0 : -1;
+}
+
+/*----------------------------------------------------------------------------*/
+
 ck_hash_table_item *ck_find_in_buffer( ck_hash_table *table, const char *key,
                                        uint length, uint generation )
 {
@@ -267,8 +266,7 @@ ck_hash_table_item *ck_find_in_buffer( ck_hash_table *table, const char *key,
 #endif
 	uint i = 0;
 	while (i < table->buf_i
-           && ((strncmp(table->buffer[i].key, key, length) != 0)
-                || GET_GENERATION(table->buffer[i].timestamp) != generation))
+           && ck_items_match(&table->buffer[i], key, length, generation))
 	{
 		++i;
 	}
@@ -278,7 +276,7 @@ ck_hash_table_item *ck_find_in_buffer( ck_hash_table *table, const char *key,
 	}
 
     assert(strncmp(table->buffer[i].key, key, length) == 0);
-    assert(GET_GENERATION(table->buffer[i].timestamp) == generation);
+    //assert(GET_GENERATION(table->buffer[i].timestamp) == generation);
 
 	return &table->buffer[i];
 }
@@ -352,10 +350,6 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 
     // initialize rehash mutex
     pthread_mutex_init(&table->mtx_table, NULL);
-
-    // initialize rwlocks for items
-    pthread_rwlock_init(&table->rwlock_item1, NULL);
-    pthread_rwlock_init(&table->rwlock_item2, NULL);
 
     // set the generation to 1 and initialize the universal system
     CLEAR_FLAGS(&table->generation);
@@ -433,13 +427,6 @@ void ck_destroy_table( ck_hash_table **table )
     pthread_mutex_unlock(&(*table)->mtx_table);
     // destroy mutex, assuming that here noone will lock the mutex again
     pthread_mutex_destroy(&(*table)->mtx_table);
-
-    // wait for other threads to unlock the rwlocks
-    while (pthread_rwlock_trywrlock(&(*table)->rwlock_item1) != 0
-           || pthread_rwlock_trywrlock(&(*table)->rwlock_item2) != 0 ) {}
-    // destroy rwlocks, assuming that here noone will lock them again
-    pthread_rwlock_destroy(&(*table)->rwlock_item1);
-    pthread_rwlock_destroy(&(*table)->rwlock_item2);
 
     free((*table)->table1);
     (*table)->table1 = NULL;
@@ -624,38 +611,34 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item *old,
             next_table = TABLE_1;
         }
 
-        switch (next_table) {
-            case TABLE_1:
-                hash = HASH1(next->key, next->key_length, table->table_size_exp,
-                             NEXT_GENERATION(table->generation));
-                next = &table->table1[hash];
+        if (next_table == TABLE_1) {
+            hash = HASH1(next->key, next->key_length, table->table_size_exp,
+                         NEXT_GENERATION(table->generation));
+            next = &table->table1[hash];
 
-                // check if this cell wasn't already used in this item's hashing
-                if (ck_check_used2(used1, used_i1, hash) != 0) {
-                    next = free;
-                    goto moving;
-                }
+            // check if this cell wasn't already used in this item's hashing
+            if (ck_check_used2(used1, used_i1, hash) != 0) {
+                next = free;
                 break;
-            case TABLE_2:
-                hash = HASH2(next->key, next->key_length, table->table_size_exp,
-                             NEXT_GENERATION(table->generation));
-                next = &table->table2[hash];
-                // check if this cell wasn't already used in this item's hashing
-                if (ck_check_used2(used2, used_i2, hash) != 0) {
-                    next = free;
-                    goto moving;
-                }
+            }
+        } else if (next_table == TABLE_2) {
+            hash = HASH2(next->key, next->key_length, table->table_size_exp,
+                         NEXT_GENERATION(table->generation));
+            next = &table->table2[hash];
+            // check if this cell wasn't already used in this item's hashing
+            if (ck_check_used2(used2, used_i2, hash) != 0) {
+                next = free;
                 break;
-            default:
-                assert(0);
+            }
+
+        } else {
+            assert(0);
         }
 
         NEXT_TABLE(next_table);
     }
 
     assert(next->value == 0);
-
-moving:
 
     ck_copy_item_contents(moving, next);
     // set the new generation for the inserted item
@@ -676,14 +659,14 @@ static inline void ck_set_generation_to_items( ck_hash_table_item *items,
         SET_GENERATION(&items[indexes[i]].timestamp, generation);
     }
 }
-
 /*----------------------------------------------------------------------------*/
 
 int ck_rehash( ck_hash_table *table )
 {
-    pthread_mutex_lock(&table->mtx_table);
+    fprintf(stderr, "Rehashing not implemented yet!");
+    return -1;
 
-    //fprintf(stderr, "Rehashing not implemented yet!");
+    pthread_mutex_lock(&table->mtx_table);
 
     // we already have functions for the next generation, begin rehashing
     // we wil use the last item in the buffer as the old cell
@@ -700,6 +683,7 @@ int ck_rehash( ck_hash_table *table )
             continue;
         }
         // otherwise copy the item for rehashing
+
         ck_copy_item_contents(&table->table1[rehashed], old);
         // clear the place so that this item will not get rehashed again
         ck_clear_item(&table->table1[rehashed]);
@@ -723,26 +707,6 @@ int ck_rehash( ck_hash_table *table )
 
     pthread_mutex_unlock(&table->mtx_table);
     return 0;
-
-
-//	// TODO: synchronization!
-//	// get new function for the next generation
-//    if (us_next(SWAP_GENERATIONS(&table->generation)) != 0) {
-//		return -2;		// rehashed, but no new functions
-//	}
-//
-//	return 0;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static inline uint ck_items_match( const ck_hash_table_item* item,
-                                   const char *key, size_t length,
-                                   uint generation )
-{
-    return (length == item->key_length
-            && (strncmp(item->key, key, length) == 0)
-            /*&& (GET_GENERATION(item->timestamp) == generation)*/) ? 0 : -1;
 }
 
 /*----------------------------------------------------------------------------*/

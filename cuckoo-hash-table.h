@@ -32,11 +32,6 @@ typedef struct {
     void (*dtor_item)( void *value );
 
     pthread_mutex_t mtx_table;
-
-    unsigned long item1;
-    unsigned long item2;
-    pthread_rwlock_t rwlock_item1;
-    pthread_rwlock_t rwlock_item2;
 } ck_hash_table;
 
 /*----------------------------------------------------------------------------*/
