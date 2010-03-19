@@ -66,7 +66,7 @@ int us_next( uint generation )
 /*----------------------------------------------------------------------------*/
 
 uint32_t us_hash( uint32_t value, unsigned int table_exp, uint c,
-                         uint generation )
+                  uint generation )
 {
     /* multiplication should overflow if larger than MAX_UINT
        this is the same as (coef * value) mod MAX_UINT */

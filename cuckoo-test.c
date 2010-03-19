@@ -259,6 +259,8 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 	char *buffer;
     const ck_hash_table_item *res;
 
+    fseek(file, 0, SEEK_SET);
+
 	while (ch != EOF) {
 		buf_i = 0;
 
@@ -538,7 +540,7 @@ int test_hash_table( char *filename )
     printf("Done.\n");
 
     printf("Creating and filling the table...\n\n");
-    uint res = create_and_fill_table(&table, file);
+    int res = create_and_fill_table(&table, file);
 
     switch (res) {
         case ERR_FILL:
@@ -550,11 +552,17 @@ int test_hash_table( char *filename )
 
     printf("\nDone.\n\n");
 
-    fseek(file, 0, SEEK_SET);
+    printf("Testing lookup...\n\n");
+    res = test_lookup_from_file(table, file);
+    printf("\nDone. Result: %d\n\n", res);
+
+    printf("Testing rehash...\n");
+    res = ck_rehash(table);
+    printf("\nDone. Result: %d\n\n", res);
 
     printf("Testing lookup...\n\n");
     res = test_lookup_from_file(table, file);
-    printf("\nDone. Result: %u\n\n", res);
+    printf("\nDone. Result: %d\n\n", res);
 
     ck_destroy_table(&table);
     fclose(file);

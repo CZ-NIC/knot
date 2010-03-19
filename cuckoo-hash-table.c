@@ -1,3 +1,4 @@
+
 /**
  * @todo Dynamic array for keeping used indices when inserting.
  * @todo Implement d-ary cuckoo hashing / cuckoo hashing with buckets, or both.
@@ -6,6 +7,12 @@
  * @todo Use only one type of function (fnv or jenkins or some other) and
  *       different coeficients.
  * @todo Optimize the table for space (d-ary hashing will help).
+ *
+ * @todo One problem with rehashing (and possibly hashing) is because if the
+ *       item rehashing process tries to insert to the position where the
+ *       iserted item was put, it ends as it detects 'infinite loop'.
+ *       However it would be probably better to check the second place for the
+ *       item before concluding so.
  */
 
 #include <stdio.h>
@@ -21,12 +28,17 @@
 #include "universal-system.h"
 
 //#define CUCKOO_DEBUG
+#define CUCKOO_DEBUG_REHASH
+
+#if defined(CUCKOO_DEBUG) && !defined(CUCKOO_DEBUG_REHASH)
+    #define CUCKOO_DEBUG_REHASH
+#endif
 
 /*----------------------------------------------------------------------------*/
 
 #define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed.\n")
 #define ERR_WRONG_TABLE fprintf(stderr, "Wrong hash table used.\n")
-#define ERR_INF_LOOP fprintf(stderr, "Hashing entered infinite loop,\n")
+#define ERR_INF_LOOP fprintf(stderr, "Hashing entered infinite loop.\n")
 #define ERR_BITSET fprintf(stderr, "Bitset not correct.\n");
 #define ERR_REHASHING_NOT_IMPL \
 			fprintf(stderr, "Rehashing needed, but not supported.\n");
@@ -40,7 +52,8 @@
 #define TABLE_FIRST TABLE_1
 #define TABLE_LAST TABLE_2
 
-#define NEXT_TABLE(table) table = (table == TABLE_LAST) ? TABLE_FIRST : table + 1
+#define NEXT_TABLE(table) ((table == TABLE_LAST) ? TABLE_FIRST : table + 1)
+#define PREVIOUS_TABLE(table) ((table == TABLE_FIRST) ? TABLE_LAST : table - 1)
 
 //#define HASH1(key, length, exp, gen) \
 //            us_hash(jhash((unsigned char *)key, length, 0x0), exp, 0, gen)
@@ -530,7 +543,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 						return -1;
 					}
 				}
-				NEXT_TABLE(next_table);
+                next_table = NEXT_TABLE(next_table);
 				break;
 			case TABLE_1:
                 hash = HASH2(next->key, next->key_length, table->table_size_exp,
@@ -552,7 +565,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 						return -2;
 					}
 				}
-				NEXT_TABLE(next_table);
+                next_table = NEXT_TABLE(next_table);
 				break;
 			default:
 				ERR_WRONG_TABLE;
@@ -580,30 +593,40 @@ int ck_insert_item( ck_hash_table *table, const char *key,
  * @retval 1 if a loop occured and the item was inserted to the @a free place.
  */
 int ck_hash_item( ck_hash_table *table, ck_hash_table_item *old,
-                  ck_hash_table_item *free, uint32_t *used1, uint32_t *used2,
-                  uint *used_i1, uint *used_i2 )
+                  ck_hash_table_item *free )
 {
     uint32_t hash;
     int next_table;
+    uint8_t next_generation = NEXT_GENERATION(table->generation);
 
-    *used_i1 = 0; *used_i2 = 0;
+    uint32_t used1[USED_SIZE], used2[USED_SIZE];
+    uint used_i1 = 0, used_i2 = 0;
 
     // hash until empty cell is encountered or until loop appears
 
     hash = HASH1(old->key, old->key_length, table->table_size_exp,
-                 GET_GENERATION(table->generation));
+                 next_generation);
 
-    used1[*used_i1] = hash;
+#ifdef CUCKOO_DEBUG_REHASH
+    printf("New hash: %u.\n", hash);
+#endif
+
+    used1[used_i1] = hash;
     ck_hash_table_item *next = &table->table1[hash];
     ck_hash_table_item *moving = old;
     next_table = TABLE_2;
 
-    while (next->value != 0) {
+    while (next->value != NULL) {
         ck_swap_items(old, moving); // first time it's unnecessary
         // set the generation of the inserted item to the next generation
-        SET_NEXT_GENERATION(&moving->timestamp);
+        SET_GENERATION(&moving->timestamp, next_generation);
 
         moving = next;
+
+#ifdef CUCKOO_DEBUG_REHASH
+        printf("Moving item from table %u, key: %s, hash %u",
+               PREVIOUS_TABLE(next_table) + 1, moving->key, hash);
+#endif
 
         // if the 'next' item is from the old generation, start from table 1
         if (GET_GENERATION(next->timestamp)
@@ -613,20 +636,30 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item *old,
 
         if (next_table == TABLE_1) {
             hash = HASH1(next->key, next->key_length, table->table_size_exp,
-                         NEXT_GENERATION(table->generation));
+                         next_generation);
             next = &table->table1[hash];
-
+#ifdef CUCKOO_DEBUG_REHASH
+            printf(" to table 1, key: %s, hash %u\n", next->key, hash);
+            printf("Generation of item: %hu, generation of table: %hu, "
+                   "next generation: %u.\n",
+                   GET_GENERATION(next->timestamp),
+                   GET_GENERATION(table->generation),
+                   next_generation);
+#endif
             // check if this cell wasn't already used in this item's hashing
-            if (ck_check_used2(used1, used_i1, hash) != 0) {
+            if (ck_check_used2(used1, &used_i1, hash) != 0) {
                 next = free;
                 break;
             }
         } else if (next_table == TABLE_2) {
             hash = HASH2(next->key, next->key_length, table->table_size_exp,
-                         NEXT_GENERATION(table->generation));
+                         next_generation);
             next = &table->table2[hash];
+#ifdef CUCKOO_DEBUG_REHASH
+            printf(" to table 2, key: %s, hash %u\n", next->key, hash);
+#endif
             // check if this cell wasn't already used in this item's hashing
-            if (ck_check_used2(used2, used_i2, hash) != 0) {
+            if (ck_check_used2(used2, &used_i2, hash) != 0) {
                 next = free;
                 break;
             }
@@ -635,17 +668,17 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item *old,
             assert(0);
         }
 
-        NEXT_TABLE(next_table);
+        next_table = NEXT_TABLE(next_table);
     }
 
     assert(next->value == 0);
 
     ck_copy_item_contents(moving, next);
     // set the new generation for the inserted item
-    SET_NEXT_GENERATION(&next->timestamp);
+    SET_GENERATION(&next->timestamp, next_generation);
     ck_copy_item_contents(old, moving);
     // set the new generation for the inserted item
-    SET_NEXT_GENERATION(&moving->timestamp);
+    SET_GENERATION(&moving->timestamp, next_generation);
 
     return (next == free) ? -1 : 0;
 }
@@ -656,29 +689,60 @@ static inline void ck_set_generation_to_items( ck_hash_table_item *items,
                         uint32_t *indexes, uint index_count, uint8_t generation )
 {
     for (uint i = 0; i < index_count; ++i) {
+        // TODO: lcok the item!!
         SET_GENERATION(&items[indexes[i]].timestamp, generation);
     }
 }
+
+/*----------------------------------------------------------------------------*/
+
+void ck_rollback_rehash( ck_hash_table *table )
+{
+    for (int i = 0; i < hashsize(table->table_size_exp); ++i) {
+        // TODO: lock the item!!
+        SET_GENERATION(&table->table1[i].timestamp, table->generation);
+        // TODO: lock the item!!
+        SET_GENERATION(&table->table2[i].timestamp, table->generation);
+    }
+}
+
 /*----------------------------------------------------------------------------*/
 
 int ck_rehash( ck_hash_table *table )
 {
-    fprintf(stderr, "Rehashing not implemented yet!");
-    return -1;
+//    fprintf(stderr, "Rehashing not implemented yet!");
+//    return -1;
 
     pthread_mutex_lock(&table->mtx_table);
 
     // we already have functions for the next generation, begin rehashing
     // we wil use the last item in the buffer as the old cell
-    assert(table->buf_i + 1 == BUFFER_SIZE);
+    assert(table->buf_i + 1 <= BUFFER_SIZE);
     ck_hash_table_item *old = &table->buffer[table->buf_i];
 
     // rehash items from the first table
+#ifdef CUCKOO_DEBUG_REHASH
+    printf("Rehashing items from table 1.\n");
+#endif
     uint rehashed = 0;
     while (rehashed < hashsize(table->table_size_exp)) {
+#ifdef CUCKOO_DEBUG_REHASH
+        printf("Rehashing item with hash %u, key (length %u): %*s, "
+               "generation: %hu, table generation: %hu.\n", rehashed,
+               table->table1[rehashed].key_length,
+               table->table1[rehashed].key_length, table->table1[rehashed].key,
+               GET_GENERATION(table->table1[rehashed].timestamp),
+               GET_GENERATION(table->generation));
+#endif
+
         // if item's generation is the new generation, skip
-        if (GET_GENERATION(table->table1[rehashed].timestamp)
-            != GET_GENERATION(table->generation)) {
+        if (table->table1[rehashed].value == NULL
+            || (GET_GENERATION(table->table1[rehashed].timestamp)
+                != GET_GENERATION(table->generation))) {
+
+#ifdef CUCKOO_DEBUG_REHASH
+            printf("Skipping item.\n");
+#endif
             ++rehashed;
             continue;
         }
@@ -689,21 +753,64 @@ int ck_rehash( ck_hash_table *table )
         ck_clear_item(&table->table1[rehashed]);
 
         // and start rehashing
-        uint32_t used1[USED_SIZE], used2[USED_SIZE];
-        uint used_size1, used_size2;
-
-        if (ck_hash_item(table, old, &table->table1[rehashed], used1, used2,
-                         &used_size1, &used_size2)
+        if (ck_hash_item(table, old, &table->table1[rehashed])
             == -1) {
-            // loop occured => mark all cells used for this rehash with the
-            // old generation
-            ck_set_generation_to_items(table->table1, used1, used_size1,
-                                       GET_GENERATION(table->generation));
-            ck_set_generation_to_items(table->table2, used2, used_size2,
-                                       GET_GENERATION(table->generation));
+            ERR_INF_LOOP;
+            // loop occured
+            // TODO: must set old generation to all cells used for this rehash
+            ck_rollback_rehash(table);
+
+            pthread_mutex_unlock(&table->mtx_table);
             return -1;
         }
+
+        ++rehashed;
     }
+
+    // rehash items from the second table
+#ifdef CUCKOO_DEBUG_REHASH
+    printf("Rehashing items from table 2.\n");
+#endif
+    rehashed = 0;
+    while (rehashed < hashsize(table->table_size_exp)) {
+#ifdef CUCKOO_DEBUG_REHASH
+        printf("Rehashing item with hash %u, key (length %u): %*s.\n", rehashed,
+               table->table2[rehashed].key_length,
+               table->table2[rehashed].key_length, table->table2[rehashed].key);
+#endif
+        // if item's generation is the new generation, skip
+        if (GET_GENERATION(table->table2[rehashed].timestamp)
+            != GET_GENERATION(table->generation)) {
+
+#ifdef CUCKOO_DEBUG_REHASH
+            printf("Skipping item.\n");
+#endif
+            ++rehashed;
+            continue;
+        }
+        // otherwise copy the item for rehashing
+
+        ck_copy_item_contents(&table->table2[rehashed], old);
+        // clear the place so that this item will not get rehashed again
+        ck_clear_item(&table->table2[rehashed]);
+
+        // and start rehashing
+        if (ck_hash_item(table, old, &table->table2[rehashed])
+            == -1) {
+            ERR_INF_LOOP;
+            // loop occured
+            // TODO: must set old generation to all cells used for this rehash
+            ck_rollback_rehash(table);
+
+            pthread_mutex_unlock(&table->mtx_table);
+            return -1;
+        }
+
+        ++rehashed;
+    }
+
+    // rehashing completed, switch generation of the table
+    SET_NEXT_GENERATION(&table->generation);
 
     pthread_mutex_unlock(&table->mtx_table);
     return 0;
