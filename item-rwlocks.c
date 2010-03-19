@@ -5,9 +5,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#define IRWL_DEBUG
+
 /*----------------------------------------------------------------------------*/
 
-irwl_table *irwl_create_table( int count )
+irwl_table *irwl_create( int count )
 {
     assert(count > 0);
     irwl_table *table = malloc(sizeof(irwl_table));
@@ -37,6 +39,7 @@ irwl_table *irwl_create_table( int count )
 
     for (int i = 0; i < count; ++i) {
         table->locks[i].item = NULL;
+        table->locks[i].waiting = 0;
         if ((res = pthread_rwlock_init(&table->locks[i].lock, NULL)) != 0) {
             fprintf(stderr, "ERROR: %d: %s.\n", res, strerror(res) );   // OK??
             free(table->locks);
@@ -50,7 +53,7 @@ irwl_table *irwl_create_table( int count )
 
 /*----------------------------------------------------------------------------*/
 
-int irwl_destroy_table( irwl_table **table )
+int irwl_destroy( irwl_table **table )
 {
     pthread_mutex_lock(&(*table)->mtx);
 
@@ -65,6 +68,7 @@ int irwl_destroy_table( irwl_table **table )
 
     // if here, all locks are unlocked, so destroy the table
     for (int i = 0; i < (*table)->count; ++i) {
+        assert((*table)->locks[i].waiting == 0);
         res = pthread_rwlock_destroy(&(*table)->locks[i].lock);
         assert(res == 0);
     }
@@ -89,42 +93,49 @@ int irwl_rdlock( irwl_table *table, void *item )
 
     // try to find lock for this item
     int i = 0;
-    while (i < table->count
-           && table->locks[i].item != NULL
-           && table->locks[i].item != item) {
+    int clear = -1;
+    while (i < table->count && table->locks[i].item != item) {
         ++i;
+        if (table->locks[i].item == NULL && clear == -1) {
+            clear = i;
+        }
     }
+    // the loop ends either by finding the item, then 'i' is its index
+    // or by searching through the whole array; then we may have an index of
+    // free position in 'clear'
 
     // no more space for locks
-    if (i == table->count) {
+    if (i == table->count && clear == -1) {
         return -1;
     }
 
-    int res;
     // item already locked
     if (table->locks[i].item == item) {
-        if ((res = pthread_rwlock_tryrdlock(&table->locks[i].lock)) != 0) {
-            // item write-locked, wait for unlocking
-            // must unlock mutex to allow the rwlock to be unlocked
-            pthread_mutex_unlock(&table->mtx);
-            pthread_rwlock_rdlock(&table->locks[i].lock);
-            return 0;
-        } else {
-            // item read-locked, can lock again
-            pthread_rwlock_rdlock(&table->locks[i].lock);
-            pthread_mutex_unlock(&table->mtx);
-            return 0;
+        // if write-locked, add us to the 'queue' of waiting
+        if (pthread_rwlock_tryrdlock(&table->locks[i].lock) != 0) {
+            ++table->locks[i].waiting;
         }
+        // and unlock mutex to allow the rwlock to be unlocked if write-locked
+        pthread_mutex_unlock(&table->mtx);
+        // can anything bad happen between these two commands? (such as someone
+        // else acquires the lock)
+        int res = pthread_rwlock_rdlock(&table->locks[i].lock);
+        // can anything bad happen between these two commands? (such as this
+        // thread unlocks the lock?)
+        pthread_mutex_lock(&table->mtx);
+        assert(res == 0);
+        --table->locks[i].waiting;
+        pthread_mutex_unlock(&table->mtx);
+        return 0;
     }
 
-    // we assume that the locks are saved in the first items of the array
-    // thus here we found a free place for lock
-    assert(table->locks[i].item == NULL);
+    // item not locked and in 'clear' we have index of the first clear item
+    assert(table->locks[clear].item == NULL);
 
     // lock & save item pointer
-    res = pthread_rwlock_rdlock(&table->locks[i].lock);
+    int res = pthread_rwlock_rdlock(&table->locks[clear].lock);
     assert(res == 0);
-    table->locks[i].item = item;
+    table->locks[clear].item = item;
 
     pthread_mutex_unlock(&table->mtx);
     return 0;
@@ -138,36 +149,47 @@ int irwl_wrlock( irwl_table *table, void *item )
 
     // try to find lock for this item
     int i = 0;
-    while (i < table->count
-           && table->locks[i].item != NULL
-           && table->locks[i].item != item) {
+    int clear = -1;
+    while (i < table->count && table->locks[i].item != item) {
         ++i;
+        if (table->locks[i].item == NULL && clear == -1) {
+            clear = i;
+        }
     }
 
     // no more space for locks
-    if (i == table->count) {
+    if (i == table->count && clear == -1) {
         return -1;
     }
 
     // item already locked - cannot be write-locked until unlocked!!
     if (table->locks[i].item == item) {
         assert(pthread_rwlock_trywrlock(&table->locks[i].lock) != 0);
-
+        // add us to the 'queue' of waiting
+        ++table->locks[i].waiting;
         // wait for the item to be unlocked
         // must unlock mutex to allow the rwlock to be unlocked
         pthread_mutex_unlock(&table->mtx);
-        pthread_rwlock_wrlock(&table->locks[i].lock);
+        // can anything bad happen between these two commands? (such as someone
+        // else acquires the lock)
+        int res = pthread_rwlock_wrlock(&table->locks[i].lock);
+        // can anything bad happen between these two commands? (such as this
+        // thread unlocks the lock?)
+        pthread_mutex_lock(&table->mtx);
+        assert(res == 0);
+        --table->locks[i].waiting;
+        pthread_mutex_unlock(&table->mtx);
         return 0;
     }
 
     // we assume that the locks are saved in the first items of the array
     // thus here we found a free place for lock
-    assert(table->locks[i].item == NULL);
+    assert(table->locks[clear].item == NULL);
 
     // lock & save item pointer
-    int res = pthread_rwlock_wrlock(&table->locks[i].lock);
+    int res = pthread_rwlock_wrlock(&table->locks[clear].lock);
     assert(res == 0);
-    table->locks[i].item = item;
+    table->locks[clear].item = item;
 
     pthread_mutex_unlock(&table->mtx);
     return 0;
@@ -196,7 +218,11 @@ int irwl_unlock( irwl_table *table, void *item )
 
     // found, unlock the lock
     pthread_rwlock_unlock(&table->locks[i].lock);
-    table->locks[i].item = NULL;
+
+    // clear the item pointer if noone is waiting for the lock
+    if (table->locks[i].waiting == 0) {
+        table->locks[i].item = NULL;
+    }
 
     pthread_mutex_unlock(&table->mtx);
     return 0;
