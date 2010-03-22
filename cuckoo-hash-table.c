@@ -28,7 +28,7 @@
 #include "universal-system.h"
 
 //#define CUCKOO_DEBUG
-#define CUCKOO_DEBUG_REHASH
+//#define CUCKOO_DEBUG_REHASH
 
 #if defined(CUCKOO_DEBUG) && !defined(CUCKOO_DEBUG_REHASH)
     #define CUCKOO_DEBUG_REHASH
@@ -205,23 +205,8 @@ void ck_swap_items( ck_hash_table_item *item1, ck_hash_table_item *item2 )
 }
 
 /*----------------------------------------------------------------------------*/
-/**
- * @brief Checks if the item in hash table was already used when rehashing item.
- */
-int ck_check_used(bitset_t usedb, uint32_t hash )
-{
-	if (BITSET_ISSET(usedb, hash)) {
-		ERR_INF_LOOP;
-		return -1;
-	} else {
-		BITSET_SET(usedb, hash);
-		return 0;
-	}
-}
 
-/*----------------------------------------------------------------------------*/
-
-uint ck_check_used2( uint *used, uint *last, uint32_t hash )
+uint ck_check_used( uint *used, uint *last, uint32_t hash )
 {
 	uint i = 0;
 	while (i <= *last && used[i] != hash) {
@@ -238,6 +223,31 @@ uint ck_check_used2( uint *used, uint *last, uint32_t hash )
 		used[i] = hash;
 		return 0;
 	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+uint ck_check_used_twice( uint *used, uint *last, uint32_t hash )
+{
+    uint i = 0, found = 0;
+    while (i <= *last && found < 2) {
+        ++i;
+        if (used[i] == hash) {
+            ++found;
+        }
+    }
+
+    if (i <= *last && found == 2) {
+        ERR_INF_LOOP;
+        return -1;
+    }
+    else {
+        *last = i;
+        // replace by some check, or resizing a dynamic array
+        assert(*last < USED_SIZE);
+        used[i] = hash;
+        return 0;
+    }
 }
 
 /*----------------------------------------------------------------------------*/
@@ -531,7 +541,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 #ifdef CUCKOO_DEBUG
 				printf(" to table 1, key: %s, hash %u\n", next->key, hash);
 #endif
-                if (ck_check_used2(used1, &used_i, hash) != 0) {
+                if (ck_check_used_twice(used1, &used_i, hash) != 0) {
                     if (ck_insert_to_buffer(table, moving) == 0) {
 						// put the old item to the new position
 						ck_copy_item_contents(&old, moving);
@@ -553,7 +563,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 #ifdef CUCKOO_DEBUG
 				printf(" to table 2, key: %s, hash %u\n", next->key, hash);
 #endif
-                if (ck_check_used2(used2, &used_i, hash) != 0) {
+                if (ck_check_used_twice(used2, &used_i, hash) != 0) {
                     if (ck_insert_to_buffer(table, moving) == 0) {
 						// put the old item to the new position
 						ck_copy_item_contents(&old, moving);
@@ -616,6 +626,8 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item *old,
     ck_hash_table_item *moving = old;
     next_table = TABLE_2;
 
+    int loop = 0;
+
     while (next->value != NULL) {
         ck_swap_items(old, moving); // first time it's unnecessary
         // set the generation of the inserted item to the next generation
@@ -647,8 +659,9 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item *old,
                    next_generation);
 #endif
             // check if this cell wasn't already used in this item's hashing
-            if (ck_check_used2(used1, &used_i1, hash) != 0) {
+            if (ck_check_used_twice(used1, &used_i1, hash) != 0) {
                 next = free;
+                loop = -1;
                 break;
             }
         } else if (next_table == TABLE_2) {
@@ -659,8 +672,9 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item *old,
             printf(" to table 2, key: %s, hash %u\n", next->key, hash);
 #endif
             // check if this cell wasn't already used in this item's hashing
-            if (ck_check_used2(used2, &used_i2, hash) != 0) {
+            if (ck_check_used_twice(used2, &used_i2, hash) != 0) {
                 next = free;
+                loop = -1;
                 break;
             }
 
@@ -680,7 +694,7 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item *old,
     // set the new generation for the inserted item
     SET_GENERATION(&moving->timestamp, next_generation);
 
-    return (next == free) ? -1 : 0;
+    return loop;
 }
 
 /*----------------------------------------------------------------------------*/
