@@ -1,6 +1,7 @@
 /*!
  * @todo Create a type for domain name in wire format based on char* but
  *       maybe with some checks? Or try to create implicitly shared struct.
+ * @todo Use dnss_dname_wire * as parameters!!
  */
 
 #ifndef DNS_SIMPLE
@@ -84,7 +85,8 @@ dnss_packet *dnss_parse_query( const char *query_wire, uint size );
 int dnss_wire_format( dnss_packet *packet, char *packet_wire,
                       uint *packet_size );
 
-int dnss_dname_to_wire( dnss_dname dname, dnss_dname_wire dname_wire, uint size  );
+int dnss_dname_to_wire( dnss_dname dname, dnss_dname_wire dname_wire,
+                        uint size );
 
 inline uint dnss_wire_dname_size( dnss_dname dname );
 
@@ -94,8 +96,18 @@ void dnss_destroy_question( dnss_question **question );
 
 void dnss_destroy_packet( dnss_packet **packet );
 
+/*----------------------------------------------------------------------------*/
+
 char *dnss_dname_wire_to_string( dnss_dname_wire dname_wire );
 
 size_t dnss_dname_wire_length( dnss_dname_wire dname_wire );
+
+//void dnss_dname_wire_copy( dnss_dname_wire from, dnss_dname_wire to );
+
+dnss_dname_wire dnss_dname_wire_copy( dnss_dname_wire from );
+
+int dnss_dname_wire_cmp( dnss_dname_wire dname1, dnss_dname_wire dname2 );
+
+void dnss_dname_wire_destroy( dnss_dname_wire *dname );
 
 #endif /* DNS_SIMPLE */
