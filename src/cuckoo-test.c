@@ -7,6 +7,7 @@
 #include "cuckoo-hash-table.h"
 #include "dns-simple.h"
 #include "socket-manager.h"
+#include "dispatcher.h"
 
 //#define CK_TEST_DEBUG
 //#define CK_TEST_LOOKUP
@@ -604,15 +605,24 @@ int start_server( char *filename )
     fclose(file);
 
     printf("Creating socket manager...\n\n");
-    sm_manager *manager = sm_create(PORT, THREAD_COUNT, answer_request);
+    sm_manager *manager = sm_create(PORT, answer_request);
     if (manager == NULL) {
         ck_destroy_table(&table);
         return -1;
     }
     printf("\nDone.\n\n");
 
-    printf("Starting socket manager...\n");
-    sm_start(manager);
+    printf("Creating dispatcher...\n\n");
+    dpt_dispatcher *dispatcher = dpt_create(THREAD_COUNT, sm_listen, manager);
+    if (dispatcher == NULL) {
+        ck_destroy_table(&table);
+        sm_destroy(manager);
+        return -1;
+    }
+    printf("\nDone.\n\n");
+
+    printf("Starting dispatcher...\n");
+    dpt_start(dispatcher);
 
     // can I do this?? pointer to the manager is still in the threads
     sm_destroy(&manager);

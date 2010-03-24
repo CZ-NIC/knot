@@ -19,7 +19,7 @@ const uint SOCKET_BUFF_SIZE = 4096;
 
 /*----------------------------------------------------------------------------*/
 
-sm_manager *sm_create( unsigned short port, uint thr_count,
+sm_manager *sm_create( unsigned short port,
                        void (*answer_fnc)(const char *, uint, char *, uint *) )
 {
     sm_manager *manager = malloc(sizeof(sm_manager));
@@ -80,7 +80,6 @@ sm_manager *sm_create( unsigned short port, uint thr_count,
         printf("Successful\n");
     }*/
 
-    manager->thread_count = thr_count;
     manager->answer_fnc = answer_fnc;
 
     return manager;
@@ -158,32 +157,4 @@ void *sm_listen( void *obj )
         }
     }
 
-}
-
-/*----------------------------------------------------------------------------*/
-
-int sm_start( sm_manager *manager )
-{
-    pthread_t threads[manager->thread_count];
-
-    int i;
-
-    for (i = 0; i < manager->thread_count; ++i)
-    {
-        if (pthread_create(&threads[i], NULL, sm_listen, (void *)manager))
-        {
-            printf( "ERROR CREATING THREAD %d", i );
-            return -1;
-        }
-    }
-    for (i = 0; i < manager->thread_count; ++i)
-    {
-        if ( pthread_join( threads[i], NULL ) )
-        {
-            printf( "ERROR JOINING THREAD %d", i );
-            return -1;
-        }
-    }
-
-    return 0;
 }
