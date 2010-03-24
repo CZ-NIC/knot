@@ -71,7 +71,7 @@ void dnss_copy_rrs( dnss_rr *from, dnss_rr *to, uint count )
 
 /*----------------------------------------------------------------------------*/
 
-dnss_rr *dnss_create_rr( char *owner )
+dnss_rr *dnss_create_rr( dnss_dname owner )
 {
 	dnss_rr *rr;
 
@@ -83,7 +83,7 @@ dnss_rr *dnss_create_rr( char *owner )
     // convert domain name to wire format
     uint wire_size = dnss_wire_dname_size(owner);
     assert(wire_size > 0);
-    char *owner_wire = malloc(wire_size);
+    dnss_dname_wire owner_wire = malloc(wire_size);
     if (dnss_dname_to_wire(owner, owner_wire, wire_size) != 0) {
         free(owner_wire);
         return NULL;
@@ -121,7 +121,7 @@ dnss_rr *dnss_create_rr( char *owner )
 
 /*----------------------------------------------------------------------------*/
 
-dnss_question *dnss_create_question( char *qname, uint length )
+dnss_question *dnss_create_question( dnss_dname_wire qname, uint length )
 {
 	dnss_question *question = malloc(sizeof(dnss_question) + length);
 
@@ -148,7 +148,7 @@ dnss_packet *dnss_create_empty_packet()
 
 int dnss_create_response( dnss_packet *query, dnss_rr *answers,
                            uint count, dnss_packet **response )
-    /** @todo change last argument to dnss_packet * ?? */
+    /*! @todo change last argument to dnss_packet * ?? */
 {
 	// header
     memcpy(&(*response)->header, &query->header, sizeof(dnss_header));
@@ -183,7 +183,7 @@ int dnss_create_response( dnss_packet *query, dnss_rr *answers,
 /*----------------------------------------------------------------------------*/
 
 int dnss_create_error_response( dnss_packet *query, dnss_packet **response )
-        /** @todo change last argument to dnss_packet * ?? */
+        /*! @todo change last argument to dnss_packet * ?? */
 {
     // header
     memcpy(&(*response)->header, &query->header, sizeof(dnss_header));
@@ -326,7 +326,8 @@ int dnss_wire_format( dnss_packet *packet, char *packet_wire,
 
 /*----------------------------------------------------------------------------*/
 
-int dnss_dname_to_wire( char *dname, char *dname_wire, uint size ) // TESTING!!
+int dnss_dname_to_wire( dnss_dname dname, dnss_dname_wire dname_wire,
+                        uint size ) // TESTING!!
 {
     if (dname_wire == NULL) {
         fprintf(stderr, "dnss_dname_to_wire(): Bad buffer pointer provided.");
@@ -388,7 +389,7 @@ int dnss_dname_to_wire( char *dname, char *dname_wire, uint size ) // TESTING!!
 
 /*----------------------------------------------------------------------------*/
 
-uint dnss_wire_dname_size( char *dname )
+uint dnss_wire_dname_size( dnss_dname dname )
 {
     // if there is a trailing dot, size of the wire name will be the same as the
     // size of the normal domain name (for each dot there is a number of chars)
@@ -493,7 +494,7 @@ dnss_packet *dnss_parse_query( const char *query_wire, uint size )
         p += 2;
     }
 
-    /** @todo: add more checks for the length of the packet */
+    /*! @todo: add more checks for the length of the packet */
 
     // ignore rest of the packet    (TODO: should parse additional for OPT)
     query->answers = NULL;
@@ -600,4 +601,18 @@ void dnss_destroy_packet( dnss_packet **packet )
 
     free(*packet);
     *packet = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
+char *dnss_dname_wire_to_string( dnss_dname_wire dname_wire )
+{
+    return dname_wire;
+}
+
+/*----------------------------------------------------------------------------*/
+
+size_t dnss_dname_wire_length( dnss_dname_wire dname_wire )
+{
+    return strlen(dname_wire) + 1;
 }

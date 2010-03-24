@@ -43,7 +43,7 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) );
 void ck_destroy_table( ck_hash_table **table );
 
 /*----------------------------------------------------------------------------*/
-/**
+/*!
  * @brief Inserts item into the hash table.
  *
  * @note This function does not copy the key. Make sure the key will not be
@@ -53,29 +53,29 @@ void ck_destroy_table( ck_hash_table **table );
  * @retval 0 No error.
  * @retval -1 Insertion failed.
  */
-int ck_insert_item( ck_hash_table *table, const char *key,
-					size_t length, void *value, unsigned long *collisions );
+int ck_insert_item( ck_hash_table *table, const char *key, size_t length,
+                    void *value );
 
 /*----------------------------------------------------------------------------*/
 
 int ck_rehash( ck_hash_table *table );
 
 /*----------------------------------------------------------------------------*/
-/**
+/*!
  * @brief Finds item in table.
  */
 const ck_hash_table_item *ck_find_item(
 		ck_hash_table *table, const char *key, size_t length );
 
 /*----------------------------------------------------------------------------*/
-/**
+/*!
  * @brief Dumps the whole hash table.
  */
 void ck_dump_table( ck_hash_table *table );
 
 /*----------------------------------------------------------------------------*/
 
-/**
+/*!
  * @todo Check size of integers, the table size may be larger than unsigned int.
  * @todo Generalize to be k-ary cuckoo hashing (not dependent on number of
  *       tables.

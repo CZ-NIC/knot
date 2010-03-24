@@ -1,4 +1,4 @@
-/**
+/*!
  * @todo What if all numbers are tried and still need rehash?
  *       (that means 2mld rehashes - we can live with that ;)
  */
