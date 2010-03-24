@@ -10,7 +10,7 @@ typedef struct dpt_dispatcher {
     void *(*routine)(void *);
     void *routine_obj;
     pthread_t *threads;
-} dispatcher;
+} dpt_dispatcher;
 
 /*----------------------------------------------------------------------------*/
 

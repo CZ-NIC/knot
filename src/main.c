@@ -14,7 +14,7 @@ int main( int argc, char **argv )
 
     test_hash_table(argv[1]);
 
-    //start_server(argv[1]);
+    start_server(argv[1]);
 
     return 0;
 }
