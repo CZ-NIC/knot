@@ -2,6 +2,9 @@
  * @todo Create a type for domain name in wire format based on char* but
  *       maybe with some checks? Or try to create implicitly shared struct.
  * @todo Use dnss_dname_wire * as parameters!!
+ * @todo Owner name in RR type is redundant - the domain name will be copied
+ *       multiple times unnecessarily! At least move it to RRSet structure when
+ *       designed. Even then it will be in multiple places - investigate!!
  */
 
 #ifndef DNS_SIMPLE
