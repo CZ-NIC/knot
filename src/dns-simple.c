@@ -616,3 +616,47 @@ size_t dnss_dname_wire_length( dnss_dname_wire dname_wire )
 {
     return strlen(dname_wire) + 1;
 }
+
+/*----------------------------------------------------------------------------*/
+
+void dnss_dname_wire_cp( dnss_dname_wire from, dnss_dname_wire to )
+{
+    assert(dnss_dname_wire_length(from) == dnss_dname_wire_length(to));
+    memcpy(to, from, dnss_dname_wire_length(from));
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnss_dname_wire dnss_dname_wire_copy( dnss_dname_wire from )
+{
+    dnss_dname_wire dw = malloc(dnss_dname_wire_length(from) * sizeof(char));
+
+    if (dw == NULL) {
+        return NULL;
+    }
+
+    dnss_dname_wire_cp(from, dw);
+    return dw;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnss_dname_wire_cmp( dnss_dname_wire dname1, dnss_dname_wire dname2 )
+{
+    int l1 = dnss_dname_wire_length(dname1);
+    int l2 = dnss_dname_wire_length(dname1);
+
+    int res = memcmp(dname1, dname2, (l1 < l2) ? l1 : l2);
+
+    return (res == 0)
+            ? ((l1 > l2) ? 1 : ((l1 < l2) ? -1 : 0))
+            : res;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnss_dname_wire_destroy( dnss_dname_wire *dname )
+{
+    free(*dname);
+    *dname = NULL;
+}

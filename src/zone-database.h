@@ -17,21 +17,31 @@
 
 /*----------------------------------------------------------------------------*/
 
-typedef struct zdb_database {
+typedef struct zdb_zone {
+    dnss_dname_wire zone_name;
+    zds_zone *zone;
+    struct zdb_zone *next;
+} zdb_zone;
 
+/*----------------------------------------------------------------------------*/
+
+typedef struct zdb_database {
+    zdb_zone *head;
 } zdb_database;
 
 /*----------------------------------------------------------------------------*/
 
 zdb_database *zdb_create();
 
-int zdb_insert_name( zdb_database *database, dnss_dname_wire dname,
-                     zn_node *node );
-
 int zdb_create_zone( zdb_database *database, dnss_dname_wire zone_name,
                      uint items );
 
-const zds_node *zdb_find_name( zdb_database *database, dnss_dname_wire dname );
+int zdb_remove_zone( zdb_database *database, dnss_dname_wire zone_name );
+
+int zdb_insert_name( zdb_database *database, dnss_dname_wire zone_name,
+                     dnss_dname_wire dname, zn_node *node );
+
+const zn_node *zdb_find_name( zdb_database *database, dnss_dname_wire dname );
 
 void zdb_destroy( zdb_database **database );
 
