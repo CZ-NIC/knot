@@ -43,7 +43,7 @@ static const uint THREAD_COUNT = 2;
 /*----------------------------------------------------------------------------*/
 
 // global var for counting collisions
-static unsigned long collisions = 0;
+//static unsigned long collisions = 0;
 
 // static global var for the hash table (change later!)
 static ck_hash_table *table;
@@ -205,7 +205,7 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 
             if ((res = ck_insert_item(table, key,
                                       dnss_wire_dname_size(buffer) - 1,
-                                      value, &collisions)) != 0) {
+                                      value)) != 0) {
 				fprintf(stderr, "\nInsert item returned %d.\n", res);
 //                dnss_destroy_rr(&value);
 //                free(key);
@@ -215,7 +215,7 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 
 #ifdef CK_TEST_DEBUG
             if (line % 100000 == 0) {
-                fprintf(stderr, "Done, %lu collisions so far.\n", collisions);
+                fprintf(stderr, "Done.\n");
             }
 #endif
 		}
@@ -239,7 +239,7 @@ int hash_names( ck_hash_table *table, char **domains, uint count )
 		//if ((i & (((uint32_t)1<<(10)) - 1)) == 0) printf("%u\n", i);
 		if ((res =
 				ck_insert_item(table, domains[i], strlen(domains[i]),
-							   domains[i], &collisions))
+                               domains[i]))
 			 != 0) {
 			fprintf(stderr, "\nInsert item returned %d.\n", res);
 			return ERR_INSERT;
@@ -616,7 +616,7 @@ int start_server( char *filename )
     dpt_dispatcher *dispatcher = dpt_create(THREAD_COUNT, sm_listen, manager);
     if (dispatcher == NULL) {
         ck_destroy_table(&table);
-        sm_destroy(manager);
+        sm_destroy(&manager);
         return -1;
     }
     printf("\nDone.\n\n");

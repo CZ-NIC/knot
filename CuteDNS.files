@@ -20,3 +20,9 @@ src/dispatcher.c
 src/dispatcher.h
 src/print.c
 src/print.h
+src/zone-database.c
+src/zone-database.h
+src/zone-data-structure.h
+src/zone-data-structure.c
+src/zone-node.c
+src/zone-node.h

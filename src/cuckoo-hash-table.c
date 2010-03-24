@@ -1,9 +1,8 @@
 
-/**
+/*!
  * @todo Dynamic array for keeping used indices when inserting.
  * @todo Implement d-ary cuckoo hashing / cuckoo hashing with buckets, or both.
  * @todo Implement rehashing.
- * @todo Remove the 'collisions' parameter from ck_insert_item().
  * @todo Use only one type of function (fnv or jenkins or some other) and
  *       different coeficients.
  * @todo Optimize the table for space (d-ary hashing will help).
@@ -55,14 +54,14 @@
 #define NEXT_TABLE(table) ((table == TABLE_LAST) ? TABLE_FIRST : table + 1)
 #define PREVIOUS_TABLE(table) ((table == TABLE_FIRST) ? TABLE_LAST : table - 1)
 
-//#define HASH1(key, length, exp, gen) \
-//            us_hash(jhash((unsigned char *)key, length, 0x0), exp, 0, gen)
+/*#define HASH1(key, length, exp, gen) \
+            us_hash(jhash((unsigned char *)key, length, 0x0), exp, 0, gen)*/
 #define HASH1(key, length, exp, gen) \
             us_hash(fnv_hash(key, length, -1), exp, 0, gen)
 #define HASH2(key, length, exp, gen) \
             us_hash(fnv_hash(key, length, -1), exp, 1, gen)
-//#define HASH2(key, length, exp, gen) \
-//            us_hash(jhash((unsigned char *)key, length, 0x0), exp, 1, gen)
+/*#define HASH2(key, length, exp, gen) \
+            us_hash(jhash((unsigned char *)key, length, 0x0), exp, 1, gen)*/
 
 static const uint BUFFER_SIZE = 100;
 
@@ -144,7 +143,7 @@ uint get_larger_exp( uint n )
 }
 
 /*----------------------------------------------------------------------------*/
-/**
+/*!
  * @brief Returns ideal size of one table.
  */
 uint get_table_exp( uint items, int size_type )
@@ -167,7 +166,7 @@ static inline void ck_clear_item( ck_hash_table_item *item )
 }
 
 /*----------------------------------------------------------------------------*/
-/**
+/*!
  * @brief Insert given contents to the item.
  */
 void ck_fill_item( const char *key, size_t key_length, void *value,
@@ -182,7 +181,7 @@ void ck_fill_item( const char *key, size_t key_length, void *value,
 }
 
 /*----------------------------------------------------------------------------*/
-/**
+/*!
  * @brief Insert contents of the first item to the second item.
  */
 void ck_copy_item_contents(
@@ -192,7 +191,7 @@ void ck_copy_item_contents(
 }
 
 /*----------------------------------------------------------------------------*/
-/**
+/*!
  * @brief Swaps two hash table items' contents.
  */
 void ck_swap_items( ck_hash_table_item *item1, ck_hash_table_item *item2 )
@@ -465,7 +464,7 @@ void ck_destroy_table( ck_hash_table **table )
 /*----------------------------------------------------------------------------*/
 
 int ck_insert_item( ck_hash_table *table, const char *key,
-					size_t length, void *value, unsigned long *collisions )
+                    size_t length, void *value )
 {
     pthread_mutex_lock(&table->mtx_table);
     
@@ -497,8 +496,6 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 #ifdef CUCKOO_DEBUG
 	printf("Collision! Hash: %u\n", hash);
 #endif
-
-	(*collisions)++;
 
 	memset(used1, 0, USED_SIZE);
 	memset(used2, 0, USED_SIZE);
@@ -598,7 +595,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 
 /*----------------------------------------------------------------------------*/
 
-/**
+/*!
  * @retval 0 if successful and no loop occured.
  * @retval 1 if a loop occured and the item was inserted to the @a free place.
  */
@@ -883,7 +880,7 @@ const ck_hash_table_item *ck_find_item( ck_hash_table *table,
 	printf("Found pointer: %p\n", found);
 	if (found != NULL) {
         printf("Buffer, key: %s, value: %s, key length: %lu\n",
-		   found->key, (char *)found->value, found->key_length);
+           found->key, (char *)found->value, found->key_length);
 	}
 #endif
 
@@ -908,7 +905,7 @@ void ck_dump_table( ck_hash_table *table )
 	for (i = 0; i < hashsize(table->table_size_exp); i++) {
 		printf("Key: %u: %s ", i, table->table1[i].key);
 		if (table->table1[i].value != 0) {
-			printf("Value: %s.\n", (char *)table->table1[i].value);
+            printf("Value: %s.\n", (char *)table->table1[i].value);
 		} else {
 			printf("Empty\n");
 		}
@@ -919,7 +916,7 @@ void ck_dump_table( ck_hash_table *table )
 	for (i = 0; i < hashsize(table->table_size_exp); i++) {
 		printf("Key: %u: %s ", i, table->table2[i].key);
 		if (table->table2[i].value != 0) {
-			printf("Value: %s.\n", (char *)table->table2[i].value);
+            printf("Value: %s.\n", (char *)table->table2[i].value);
 		} else {
 			printf("Empty\n");
 		}

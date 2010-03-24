@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <pthread.h>
+#include <stdio.h>
 
 /*----------------------------------------------------------------------------*/
 
@@ -26,7 +27,7 @@ int dpt_start( dpt_dispatcher *dispatcher )
     {
         if (pthread_create(&dispatcher->threads[i], NULL,
                            dispatcher->routine, dispatcher->routine_obj)) {
-            printf( "ERROR CREATING THREAD %d", i );
+            printf("ERROR CREATING THREAD %d", i );
             return -1;
         }
     }
