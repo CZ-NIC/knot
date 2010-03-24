@@ -9,10 +9,10 @@ COL_CYAN = \033[01;36m
 COL_WHITE = \033[01;37m
 COL_END = \033[0m
 
-INC_DIRS = ./
-SRC_DIRS = ./
-OBJ_DIR = ./
-BIN_DIR = ./
+INC_DIRS = src/
+SRC_DIRS = src/
+OBJ_DIR = tmp/
+BIN_DIR = bin/
 
 VPATH += ${SRC_DIRS} ${OBJ_DIR}
 
@@ -30,7 +30,7 @@ all:cuckoo-hash
 DEPEND = $(CC) $(addprefix -I ,$(INC_DIRS)) -MM $(SRC_FILES)   2>/dev/null | sed "s%^\([^\ \t\n]*\.o\)%$(OBJ_DIR)/\1%"
 
 Makefile.depend:
-#	@echo ${DEPEND}
+#    @echo ${DEPEND}
 	@$(DEPEND) > Makefile.depend
 
 # cuckoo hash
@@ -38,7 +38,7 @@ cuckoo-hash: Makefile.depend $(OBJS)
 	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(OBJS)$(COL_END)"
 	@$(CC) $(LDFLAGS) $(OBJS) -o ${BIN_DIR}$@
 
-#.PHONY: Makefile.depend
+.PHONY: Makefile.depend
 .INTERMEDIATE: Makefile.depend
 
 -include Makefile.depend
