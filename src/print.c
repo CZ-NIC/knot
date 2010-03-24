@@ -1,3 +1,4 @@
+#include "print.h"
 #include <stdio.h>
 
 /*----------------------------------------------------------------------------*/
@@ -16,7 +17,6 @@ void hex_print( const char *data, int length )
 /*----------------------------------------------------------------------------*/
 /* Downloaded from http://www.digitalpeer.com/id/print                        */
 /*----------------------------------------------------------------------------*/
-
 void bit_print( const char *data, int length )
 {
     unsigned char mask = 0x01;
