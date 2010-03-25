@@ -1,10 +1,13 @@
 /*!
  * @todo Create a type for domain name in wire format based on char* but
  *       maybe with some checks? Or try to create implicitly shared struct.
+ *       Add also create() and destroy() functions, so we don't need to use
+ *       malloc and free.
  * @todo Use dnss_dname_wire * as parameters!!
  * @todo Owner name in RR type is redundant - the domain name will be copied
  *       multiple times unnecessarily! At least move it to RRSet structure when
  *       designed. Even then it will be in multiple places - investigate!!
+ * @todo This whole library needs to be done again.
  */
 
 #ifndef DNS_SIMPLE
@@ -91,7 +94,7 @@ int dnss_wire_format( dnss_packet *packet, char *packet_wire,
 int dnss_dname_to_wire( dnss_dname dname, dnss_dname_wire dname_wire,
                         uint size );
 
-inline uint dnss_wire_dname_size( dnss_dname dname );
+inline uint dnss_wire_dname_size( const dnss_dname *dname );
 
 void dnss_destroy_rr( dnss_rr **rr );
 

@@ -25,6 +25,9 @@ src/zone-node.h
 src/name-server.c
 src/name-server.h
 
+src/zone-parser.c
+src/zone-parser.h
+
 src/tests/tests.c
 src/tests/tests.h
 src/tests/cuckoo-test.c
