@@ -9,32 +9,34 @@ COL_CYAN = \033[01;36m
 COL_WHITE = \033[01;37m
 COL_END = \033[0m
 
-INC_DIRS = src/
+INC_DIRS = src/ src/tests/
 SRC_DIRS = src/
 OBJ_DIR = tmp/
 BIN_DIR = bin/
 
-VPATH += ${SRC_DIRS} ${OBJ_DIR}
+VPATH += ${SRC_DIRS} ${INC_DIRS} ${OBJ_DIR}
 
 SRC_FILES = $(shell find $(SRC_DIRS) -name "*.c" )
 
-OBJS = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRC_FILES)))))
+OBJS = $(addprefix $(OBJ_DIR), $(addsuffix .o, $(basename $(notdir $(SRC_FILES)))))
 
 CC = gcc
 CFLAGS += -Wall -std=c99 -D _XOPEN_SOURCE=600
 LDFLAGS += -lpthread
 
-all:cuckoo-hash
+all:cutedns
 
 ### Dependencies ###
 DEPEND = $(CC) $(addprefix -I ,$(INC_DIRS)) -MM $(SRC_FILES)   2>/dev/null | sed "s%^\([^\ \t\n]*\.o\)%$(OBJ_DIR)/\1%"
 
 Makefile.depend:
-#    @echo ${DEPEND}
+#	@echo ${DEPEND}
 	@$(DEPEND) > Makefile.depend
 
-# cuckoo hash
-cuckoo-hash: Makefile.depend $(OBJS)
+# cutedns
+cutedns: Makefile.depend $(OBJS)
+#	@echo "SRC FILES: $(SRC_FILES)"
+#	@echo "OBJS: $(OBJS)"
 	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(OBJS)$(COL_END)"
 	@$(CC) $(LDFLAGS) $(OBJS) -o ${BIN_DIR}$@
 
@@ -47,9 +49,11 @@ cuckoo-hash: Makefile.depend $(OBJS)
 
 ### Generic Rules ###
 
-$(OBJ_DIR)/%.o : %.c
+$(OBJ_DIR)%.o : %.c
+#	@echo "SRC FILES: $(SRC_FILES)"
+#	@echo "OBJS: $(OBJS)"
 	@echo "$(COL_WHITE)Compiling $(COL_CYAN)$@: $(COL_BLUE)$< $(COL_END)"
-	@$(CC) $(CFLAGS) -c -o $@ $<
+	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) -c -o $@ $<
 
 ### Cleaning ###
 .PHONY: clean
