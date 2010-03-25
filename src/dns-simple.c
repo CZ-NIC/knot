@@ -49,7 +49,7 @@ void dnss_copy_questions( dnss_question *from, dnss_question *to, uint count )
 
 /*----------------------------------------------------------------------------*/
 
-void dnss_copy_rrs( dnss_rr *from, dnss_rr *to, uint count )
+void dnss_copy_rrs( const dnss_rr *from, dnss_rr *to, uint count )
 {
     for (uint i = 0; i < count; ++i) {
         to[i].rdlength = from[i].rdlength;
@@ -146,7 +146,7 @@ dnss_packet *dnss_create_empty_packet()
 
 /*----------------------------------------------------------------------------*/
 
-int dnss_create_response( dnss_packet *query, dnss_rr *answers,
+int dnss_create_response( const dnss_packet *query, const dnss_rr *answers,
                            uint count, dnss_packet **response )
     /*! @todo change last argument to dnss_packet * ?? */
 {
