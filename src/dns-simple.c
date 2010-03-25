@@ -659,3 +659,22 @@ void dnss_dname_wire_destroy( dnss_dname_wire *dname )
     free(*dname);
     *dname = NULL;
 }
+
+/*----------------------------------------------------------------------------*/
+
+uint dnss_dname_wire_match( const dnss_dname_wire *dname1,
+                            const dnss_dname_wire *dname2 )
+{
+
+    int i1 = strlen(*dname1) - 1;  // not counting the last 0
+    int i2 = strlen(*dname2) - 1;  // dtto
+    uint matched = 0;
+
+    while (i1 >= 0 && i2 >= 0 && ((*dname1)[i1] == (*dname2)[i2])) {
+        --i1;
+        --i2;
+        ++matched;
+    }
+
+    return matched;
+}
