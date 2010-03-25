@@ -56,14 +56,13 @@ int ns_answer_request( ns_nameserver *nameserver, const char *query_wire,
 
     if (node == NULL) {
 #ifdef NS_DEBUG
-        printf("Requested name not found, returning empty response.\n");
+        printf("Requested name not found, creating empty response.\n");
 #endif
         if (dnss_create_response(query, NULL, 0, &response) != 0) {
             dnss_destroy_packet(&query);
             dnss_destroy_packet(&response);
             return -1;
         }
-        return 0;
     } else {
 #ifdef NS_DEBUG
         printf("Requested name found.\n");

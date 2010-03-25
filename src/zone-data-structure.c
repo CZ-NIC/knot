@@ -21,7 +21,8 @@ zds_zone *zds_create( uint item_count )
 int zds_insert( zds_zone *zone, dnss_dname_wire owner,
                        zn_node *contents )
 {
-    return ck_insert_item(zone, owner, dnss_dname_wire_length(owner), contents);
+    return ck_insert_item(zone, owner, dnss_dname_wire_length(owner) - 1,
+                          contents);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -29,10 +30,12 @@ int zds_insert( zds_zone *zone, dnss_dname_wire owner,
 zn_node *zds_find( zds_zone *zone, dnss_dname_wire owner )
 {
     const ck_hash_table_item *item = ck_find_item(zone, owner,
-                                            dnss_dname_wire_length(owner));
+                                        dnss_dname_wire_length(owner) - 1);
     if (item == NULL) {
         return NULL;
     }
+
+    printf("Item found\n");
 
     return item->value;
 }

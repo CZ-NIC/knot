@@ -1,7 +1,10 @@
 #include "zone-database.h"
+#include "common.h"
 
 #include <stdio.h>
 #include <assert.h>
+
+#define ZDB_DEBUG
 
 /*----------------------------------------------------------------------------*/
 
@@ -77,7 +80,9 @@ int zdb_remove_zone( zdb_database *database, dnss_dname_wire zone_name )
     zdb_find_zone(database, zone_name, &z, &zp);
 
     if (z == NULL) {
+#ifdef ZDB_DEBUG
         printf("Zone not found!\n");
+#endif
         return -1;
     }
 
@@ -107,24 +112,55 @@ int zdb_insert_name( zdb_database *database, dnss_dname_wire zone_name,
     zdb_find_zone(database, zone_name, &z, &zp);
 
     if (z == NULL) {
+#ifdef ZDB_DEBUG
         printf("Zone not found!\n");
+#endif
         return -1;
     }
+#ifdef ZDB_DEBUG
+    printf("Found zone: ");
+    hex_print(z->zone_name, strlen(z->zone_name) + 1);
+#endif
 
     return zds_insert(z->zone, dname, node);
 }
 
 /*----------------------------------------------------------------------------*/
 
+zdb_zone *zdb_find_zone_for_name( zdb_database *database,
+                                  dnss_dname_wire dname )
+{
+    zdb_zone *z = database->head, *best = NULL;
+    uint most_matched = 0;
+
+    while (z != NULL) {
+        uint matched = dnss_dname_wire_match(&dname, &z->zone_name);
+        if (matched > most_matched) {
+            most_matched = matched;
+            best = z;
+        }
+        z = z->next;
+    }
+
+    return best;
+}
+
+/*----------------------------------------------------------------------------*/
+
 const zn_node *zdb_find_name( zdb_database *database, dnss_dname_wire dname )
 {
-    zdb_zone *z = NULL, *zp = NULL;
-    zdb_find_zone(database, dname, &z, &zp);
+    zdb_zone *z = find_zone_for_name(database, dname);
 
     if (z == NULL) {
+#ifdef ZDB_DEBUG
         printf("Zone not found!\n");
+#endif
         return NULL;
     }
+#ifdef ZDB_DEBUG
+    printf("Found zone: ");
+    hex_print(z->zone_name, strlen(z->zone_name) + 1);
+#endif
 
     return zds_find(z->zone, dname);
 }

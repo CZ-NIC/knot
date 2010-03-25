@@ -27,7 +27,7 @@
 #include "universal-system.h"
 #include "common.h"
 
-//#define CUCKOO_DEBUG
+#define CUCKOO_DEBUG
 //#define CUCKOO_DEBUG_REHASH
 
 #if defined(CUCKOO_DEBUG) && !defined(CUCKOO_DEBUG_REHASH)
@@ -738,10 +738,11 @@ int ck_rehash( ck_hash_table *table )
     uint rehashed = 0;
     while (rehashed < hashsize(table->table_size_exp)) {
 #ifdef CUCKOO_DEBUG_REHASH
-        printf("Rehashing item with hash %u, key (length %u): %*s, "
+        printf("Rehashing item with hash %u, key (length %lu): %*s, "
                "generation: %hu, table generation: %hu.\n", rehashed,
                table->table1[rehashed].key_length,
-               table->table1[rehashed].key_length, table->table1[rehashed].key,
+               (int)(table->table1[rehashed].key_length),
+               table->table1[rehashed].key,
                GET_GENERATION(table->table1[rehashed].timestamp),
                GET_GENERATION(table->generation));
 #endif
@@ -785,9 +786,10 @@ int ck_rehash( ck_hash_table *table )
     rehashed = 0;
     while (rehashed < hashsize(table->table_size_exp)) {
 #ifdef CUCKOO_DEBUG_REHASH
-        printf("Rehashing item with hash %u, key (length %u): %*s.\n", rehashed,
+        printf("Rehashing item with hash %u, key (length %lu): %*s.\n", rehashed,
                table->table2[rehashed].key_length,
-               table->table2[rehashed].key_length, table->table2[rehashed].key);
+               (int)table->table2[rehashed].key_length,
+               table->table2[rehashed].key);
 #endif
         // if item's generation is the new generation, skip
         if (GET_GENERATION(table->table2[rehashed].timestamp)

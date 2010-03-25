@@ -116,4 +116,7 @@ int dnss_dname_wire_cmp( dnss_dname_wire dname1, dnss_dname_wire dname2 );
 
 void dnss_dname_wire_destroy( dnss_dname_wire *dname );
 
+uint dnss_dname_wire_match( const dnss_dname_wire *dname1,
+                            const dnss_dname_wire *dname2 );
+
 #endif /* DNS_SIMPLE */

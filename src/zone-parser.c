@@ -9,6 +9,10 @@
 #define ZP_DEBUG
 #define ZP_PARSE_DEBUG
 
+#if defined(ZP_DEBUG) || defined(ZP_PARSE_DEBUG)
+#include "cuckoo-test.h"
+#endif
+
 static const uint BUF_SIZE = 25;
 static const int ERR_FILE_OPEN = -1;
 static const int ERR_PARSE = -2;
@@ -298,6 +302,12 @@ int zp_test_parse_zone( const char *filename, zdb_database *database )
 #endif
 
     free(zone_name);
+
+#ifdef ZP_DEBUG
+    printf("\nTesting lookup..\n");
+    test_lookup_from_file(database->head->zone, file);
+#endif
+
     fclose(file);
 
     return 0;

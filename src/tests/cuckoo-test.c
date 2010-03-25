@@ -604,30 +604,33 @@ int start_server( char *filename )
 
     fclose(file);
 
-    printf("Creating socket manager...\n\n");
-    sm_manager *manager = sm_create(PORT, answer_request);
-    if (manager == NULL) {
-        ck_destroy_table(&table);
-        return -1;
-    }
-    printf("\nDone.\n\n");
+    printf("Rest of the test not implemented.\n");
+    return -1;
 
-    printf("Creating dispatcher...\n\n");
-    dpt_dispatcher *dispatcher = dpt_create(THREAD_COUNT, sm_listen, manager);
-    if (dispatcher == NULL) {
-        ck_destroy_table(&table);
-        sm_destroy(&manager);
-        return -1;
-    }
-    printf("\nDone.\n\n");
-
-    printf("Starting dispatcher...\n");
-    dpt_start(dispatcher);
-
-    // can I do this?? pointer to the manager is still in the threads
-    sm_destroy(&manager);
-
-    ck_destroy_table(&table);
-
-    return 0;
+//    printf("Creating socket manager...\n\n");
+//    sm_manager *manager = sm_create(PORT, answer_request);
+//    if (manager == NULL) {
+//        ck_destroy_table(&table);
+//        return -1;
+//    }
+//    printf("\nDone.\n\n");
+//
+//    printf("Creating dispatcher...\n\n");
+//    dpt_dispatcher *dispatcher = dpt_create(THREAD_COUNT, sm_listen, manager);
+//    if (dispatcher == NULL) {
+//        ck_destroy_table(&table);
+//        sm_destroy(&manager);
+//        return -1;
+//    }
+//    printf("\nDone.\n\n");
+//
+//    printf("Starting dispatcher...\n");
+//    dpt_start(dispatcher);
+//
+//    // can I do this?? pointer to the manager is still in the threads
+//    sm_destroy(&manager);
+//
+//    ck_destroy_table(&table);
+//
+//    return 0;
 }
