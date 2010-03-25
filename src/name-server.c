@@ -1,10 +1,24 @@
 #include "name-server.h"
 #include "zone-node.h"
 #include "dns-simple.h"
+#include "zone-database.h"
 #include <stdio.h>
 #include <assert.h>
 
 #define NS_DEBUG
+
+/*----------------------------------------------------------------------------*/
+
+ns_nameserver *ns_create( zdb_database *database )
+{
+    ns_nameserver *ns = malloc(sizeof(ns_nameserver));
+    if (ns == NULL) {
+        ERR_ALLOC_FAILED;
+        return NULL;
+    }
+    ns->zone_db = database;
+    return ns;
+}
 
 /*----------------------------------------------------------------------------*/
 
@@ -91,3 +105,10 @@ int ns_answer_request( ns_nameserver *nameserver, const char *query_wire,
 }
 
 /*----------------------------------------------------------------------------*/
+
+void ns_destroy( ns_nameserver **nameserver )
+{
+    // do nothing with the zone database!
+    free(*nameserver);
+    *nameserver = NULL;
+}
