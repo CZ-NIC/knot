@@ -1,5 +1,6 @@
 #include "common.h"
 #include "socket-manager.h"
+#include "name-server.h"
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -12,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <assert.h>
 
 //#define SM_DEBUG
 
@@ -19,8 +21,7 @@ const uint SOCKET_BUFF_SIZE = 4096;
 
 /*----------------------------------------------------------------------------*/
 
-sm_manager *sm_create( unsigned short port,
-                       void (*answer_fnc)(const char *, uint, char *, uint *) )
+sm_manager *sm_create( unsigned short port, ns_nameserver *nameserver )
 {
     sm_manager *manager = malloc(sizeof(sm_manager));
 
@@ -80,7 +81,7 @@ sm_manager *sm_create( unsigned short port,
         printf("Successful\n");
     }*/
 
-    manager->answer_fnc = answer_fnc;
+    manager->nameserver = nameserver;
 
     return manager;
 }
@@ -129,14 +130,15 @@ void *sm_listen( void *obj )
                 pthread_mutex_unlock(&manager->mutex);
 
                 answer_size = SOCKET_BUFF_SIZE;
-                manager->answer_fnc(buf, n, answer, &answer_size);
+                int res = ns_answer_request(manager->nameserver, buf, n, answer,
+                                  &answer_size);
 
 #ifdef SM_DEBUG
                 printf("Got answer of size %d.\n", answer_size);
 #endif
 
-                if (answer_size > 0) {
-
+                if (res == 0) {
+                    assert(answer_size > 0);
 #ifdef SM_DEBUG
                     printf("Answer wire format (size %u):\n", answer_size);
                     hex_print(answer, answer_size);

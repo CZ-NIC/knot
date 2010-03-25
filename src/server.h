@@ -19,7 +19,7 @@ typedef struct cute_server {
 
 cute_server *cute_create();
 
-int cute_start( cute_server *server );
+int cute_start( cute_server *server, const char *filename );
 
 void cute_destroy( cute_server **server );
 
