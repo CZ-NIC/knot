@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 #include "common.h"
-#include "cuckoo-test.h"
+#include "server.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -12,9 +12,6 @@ int main( int argc, char **argv )
         return -1;
     }
 
-    test_hash_table(argv[1]);
-
-    start_server(argv[1]);
-
-    return 0;
+    cute_server *server = cute_create();
+    return cute_start(server, argv[1]);
 }

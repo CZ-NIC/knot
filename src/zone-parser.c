@@ -6,6 +6,9 @@
 
 /*----------------------------------------------------------------------------*/
 
+#define ZP_DEBUG
+#define ZP_PARSE_DEBUG
+
 static const uint BUF_SIZE = 25;
 static const int ERR_FILE_OPEN = -1;
 static const int ERR_PARSE = -2;
@@ -80,11 +83,11 @@ int zp_test_count_domain_names( FILE *file, uint *names )
 /*----------------------------------------------------------------------------*/
 
 int zp_test_read_dname( char **buffer, uint *buf_i, FILE* file,
-                                  char *ch )
+                        char *ch )
 {
     // allocate some buffer
 #ifdef ZP_PARSE_DEBUG
-        printf("Allocating buffer\n");
+    printf("Allocating buffer\n");
 #endif
     uint buf_size = BUF_SIZE;
     *buffer = (char *)malloc(buf_size * sizeof(char));
@@ -101,7 +104,7 @@ int zp_test_read_dname( char **buffer, uint *buf_i, FILE* file,
     *buf_i = 0;
 
     while (*ch != ' ' && *ch != '\n' && *ch != EOF) {
-        *buffer[*buf_i] = *ch;
+        (*buffer)[*buf_i] = *ch;
         (*buf_i)++;
 
         // if the buffer is not big enough, resize
@@ -116,7 +119,8 @@ int zp_test_read_dname( char **buffer, uint *buf_i, FILE* file,
         *ch = fgetc(file);
     }
 
-    *buffer[*buf_i] = '\0';
+    (*buffer)[*buf_i] = '\0';
+
 
     return 0;
 }
@@ -184,12 +188,11 @@ int zp_test_parse_file( zdb_database *database,
             memcpy(key, rr->owner, key_size);
 
 #ifdef ZP_PARSE_DEBUG
-            if (line % 100000 == 1) {
+            if (1) {
                 fprintf(stderr, "Inserting item number %u, key:\n", line);
                 hex_print(key, key_size);
             }
 #endif
-
             if ((res = zdb_insert_name(database, *zone_name, key, node)) != 0) {
                 fprintf(stderr, "\nInsert item returned %d.\n", res);
                 if (res < 0) {
@@ -201,7 +204,7 @@ int zp_test_parse_file( zdb_database *database,
             }
 
 #ifdef ZP_PARSE_DEBUG
-            if (line % 100000 == 0) {
+            if (1) {
                 fprintf(stderr, "Done.\n");
             }
 #endif
@@ -221,18 +224,18 @@ int zp_test_parse_zone( const char *filename, zdb_database *database )
     char *DEFAULT_ZONE_NAME = "cz";
 
     // open the zone file
-    #ifdef ZP_DEBUG
-    printf("Opening file...");
-    #endif
+#ifdef ZP_DEBUG
+    printf("Opening file...\n");
+#endif
     FILE *file = fopen(filename, "r");
 
     if (file == NULL) {
         fprintf(stderr, "Can't open file: %s.\n", filename);
         return ERR_FILE_OPEN;
     }
-    #ifdef ZP_DEBUG
-    printf("Done.\n\n");
-    #endif
+#ifdef ZP_DEBUG
+    printf("Done.\n");
+#endif
 
     // determine name of the zone (and later other things)
     // for now lets assume there is only one zone and use the default name (cz)
@@ -248,6 +251,9 @@ int zp_test_parse_zone( const char *filename, zdb_database *database )
     int res = dnss_dname_to_wire(DEFAULT_ZONE_NAME, zone_name, name_size);
     assert(res == 0);
 
+#ifdef ZP_DEBUG
+    printf("Counting domain names in the file...\n");
+#endif
     uint names;
     // count distinct domain names in the zone file
     if ((res = zp_test_count_domain_names(file, &names)) != 0) {
@@ -255,7 +261,13 @@ int zp_test_parse_zone( const char *filename, zdb_database *database )
         free(zone_name);
         return ERR_COUNT;
     }
+#ifdef ZP_DEBUG
+    printf("Done.\n");
+#endif
 
+#ifdef ZP_DEBUG
+    printf("Creating new zone with name '%s'...\n", zone_name);
+#endif
     // create a new zone in the zone database
     if ((res = zdb_create_zone(database, zone_name, names)) != 0) {
         fclose(file);
@@ -263,11 +275,17 @@ int zp_test_parse_zone( const char *filename, zdb_database *database )
         ERR_ZONE_CREATE_FAILED;
         return ERR_ZONE_CREATE;
     }
+#ifdef ZP_DEBUG
+    printf("Done.\n");
+#endif
 
     fseek(file, 0, SEEK_SET);
 
+#ifdef ZP_DEBUG
+    printf("Parsing the zone file...\n");
+#endif
     // parse the zone file and fill in the zone
-    if ((res == zp_test_parse_file(database, &zone_name, file)) != 0) {
+    if ((res = zp_test_parse_file(database, &zone_name, file)) != 0) {
         // is this necessary?
         zdb_remove_zone(database, zone_name);
         free(zone_name);
@@ -275,6 +293,9 @@ int zp_test_parse_zone( const char *filename, zdb_database *database )
         ERR_PARSING_FAILED;
         return ERR_PARSE;
     }
+#ifdef ZP_DEBUG
+    printf("Done.\n");
+#endif
 
     free(zone_name);
     fclose(file);

@@ -621,15 +621,14 @@ size_t dnss_dname_wire_length( dnss_dname_wire dname_wire )
 
 void dnss_dname_wire_cp( dnss_dname_wire from, dnss_dname_wire to )
 {
-    assert(dnss_dname_wire_length(from) == dnss_dname_wire_length(to));
-    memcpy(to, from, dnss_dname_wire_length(from));
+    memcpy(to, from, (strlen(from) + 1));
 }
 
 /*----------------------------------------------------------------------------*/
 
 dnss_dname_wire dnss_dname_wire_copy( dnss_dname_wire from )
 {
-    dnss_dname_wire dw = malloc(dnss_dname_wire_length(from) * sizeof(char));
+    dnss_dname_wire dw = malloc((strlen(from) + 1) * sizeof(char));
 
     if (dw == NULL) {
         return NULL;
