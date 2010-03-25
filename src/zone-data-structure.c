@@ -5,6 +5,8 @@
 #include <assert.h>
 #include <stdio.h>
 
+//#define ZDS_DEBUG
+
 /*----------------------------------------------------------------------------*/
 
 zds_zone *zds_create( uint item_count )
@@ -35,7 +37,9 @@ zn_node *zds_find( zds_zone *zone, dnss_dname_wire owner )
         return NULL;
     }
 
+#ifdef ZDS_DEBUG
     printf("Item found\n");
+#endif
 
     return item->value;
 }

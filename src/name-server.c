@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define NS_DEBUG
+//#define NS_DEBUG
 
 /*----------------------------------------------------------------------------*/
 

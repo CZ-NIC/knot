@@ -27,7 +27,7 @@
 #include "universal-system.h"
 #include "common.h"
 
-#define CUCKOO_DEBUG
+//#define CUCKOO_DEBUG
 //#define CUCKOO_DEBUG_REHASH
 
 #if defined(CUCKOO_DEBUG) && !defined(CUCKOO_DEBUG_REHASH)
