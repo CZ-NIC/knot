@@ -81,7 +81,7 @@ dnss_rr *dnss_create_rr( dnss_dname owner )
 #endif
 
     // convert domain name to wire format
-    uint wire_size = dnss_wire_dname_size(owner);
+    uint wire_size = dnss_wire_dname_size(&owner);
     assert(wire_size > 0);
     dnss_dname_wire owner_wire = malloc(wire_size);
     if (dnss_dname_to_wire(owner, owner_wire, wire_size) != 0) {
@@ -335,7 +335,7 @@ int dnss_dname_to_wire( dnss_dname dname, dnss_dname_wire dname_wire,
     }
 
     // check if there is enough space
-    if (dnss_wire_dname_size(dname) > size) {
+    if (dnss_wire_dname_size(&dname) > size) {
         fprintf(stderr, "dnss_dname_to_wire(): Given buffer is not big enough.");
         return -1;
     }
@@ -389,14 +389,14 @@ int dnss_dname_to_wire( dnss_dname dname, dnss_dname_wire dname_wire,
 
 /*----------------------------------------------------------------------------*/
 
-uint dnss_wire_dname_size( dnss_dname dname )
+uint dnss_wire_dname_size( const dnss_dname *dname )
 {
     // if there is a trailing dot, size of the wire name will be the same as the
     // size of the normal domain name (for each dot there is a number of chars)
     // otherwise it is +1
-    return (dname[strlen(dname) - 1] == '.')
-            ? (strlen(dname) + 1)
-            : (strlen(dname) + 2);
+    return ((*dname)[strlen(*dname) - 1] == '.')
+            ? (strlen(*dname) + 1)
+            : (strlen(*dname) + 2);
 }
 
 /*----------------------------------------------------------------------------*/

@@ -186,8 +186,8 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 //            continue;
 
             // convert the domain name to wire format to be used for hashing
-            key_size = dnss_wire_dname_size(buffer);
-            key = malloc(dnss_wire_dname_size(buffer));
+            key_size = dnss_wire_dname_size(&buffer);
+            key = malloc(key_size);
             if (dnss_dname_to_wire(buffer, key, key_size) != 0) {
                 dnss_destroy_rr(&value);
                 free(buffer);
@@ -199,12 +199,12 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
             if (line % 100000 == 1) {
                 fprintf(stderr, "Inserting item number %u, key: %s..\n",
                         line, key);
-                //hex_print(key, dnss_wire_dname_size(buffer));
+                //hex_print(key, key_size);
             }
 #endif
 
             if ((res = ck_insert_item(table, key,
-                                      dnss_wire_dname_size(buffer) - 1,
+                                      key_size - 1,
                                       value)) != 0) {
 				fprintf(stderr, "\nInsert item returned %d.\n", res);
 //                dnss_destroy_rr(&value);
@@ -329,7 +329,7 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 		if (buf_i > 0) {
 			// find domain name
 
-            uint key_size = dnss_wire_dname_size(buffer);
+            uint key_size = dnss_wire_dname_size(&buffer);
             char *key = malloc(key_size);
             if (dnss_dname_to_wire(buffer, key, key_size) != 0) {
                 free(buffer);
@@ -344,7 +344,7 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 
             if ((res = ck_find_item(table, key,
                                     key_size - 1)) == NULL
-                || strncmp(res->key, key, dnss_wire_dname_size(buffer) - 1) != 0 ) {
+                || strncmp(res->key, key, key_size - 1) != 0 ) {
                 fprintf(stderr, "\nItem with key %s not found.\n", buffer);
                 free(key);
                 free(buffer);

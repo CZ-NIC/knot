@@ -25,6 +25,7 @@
 #include "hash-functions.h"
 #include "bitset.h"
 #include "universal-system.h"
+#include "common.h"
 
 //#define CUCKOO_DEBUG
 //#define CUCKOO_DEBUG_REHASH
@@ -35,7 +36,6 @@
 
 /*----------------------------------------------------------------------------*/
 
-#define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed.\n")
 #define ERR_WRONG_TABLE fprintf(stderr, "Wrong hash table used.\n")
 #define ERR_INF_LOOP fprintf(stderr, "Hashing entered infinite loop.\n")
 #define ERR_BITSET fprintf(stderr, "Bitset not correct.\n");

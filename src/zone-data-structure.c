@@ -15,6 +15,9 @@ zds_zone *zds_create( uint item_count )
 
 /*----------------------------------------------------------------------------*/
 
+/*! @todo Should return positive integer when the item was inserted, but
+ *        something went wrong. Otherwise negative.
+ */
 int zds_insert( zds_zone *zone, dnss_dname_wire owner,
                        zn_node *contents )
 {
