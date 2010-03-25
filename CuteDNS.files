@@ -26,3 +26,5 @@ src/zone-data-structure.h
 src/zone-data-structure.c
 src/zone-node.c
 src/zone-node.h
+src/name-server.c
+src/name-server.h

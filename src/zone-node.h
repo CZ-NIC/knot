@@ -18,7 +18,7 @@ zn_node *zn_create( uint count );
 
 int zn_add_rr( zn_node *node, dnss_rr *rr );
 
-const dnss_rr *zn_find_rr( zn_node *node, uint16_t type );
+const dnss_rr *zn_find_rr( const zn_node *node, uint16_t type );
 
 void zn_destroy( zn_node **node );
 

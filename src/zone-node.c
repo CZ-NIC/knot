@@ -47,7 +47,7 @@ int zn_add_rr( zn_node *node, dnss_rr *rr )
 
 /*----------------------------------------------------------------------------*/
 
-const dnss_rr *zn_find_rr( zn_node *node, uint16_t type )
+const dnss_rr *zn_find_rr( const zn_node *node, uint16_t type )
 {
     uint i = 0;
     while (i < node->count && node->records[i]->rrtype != type) {
