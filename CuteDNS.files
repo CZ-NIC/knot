@@ -1,8 +1,8 @@
+Makefile
+
 src/common.h
 src/cuckoo-hash-table.c
 src/cuckoo-hash-table.h
-src/cuckoo-test.c
-src/cuckoo-test.h
 src/dns-simple.c
 src/dns-simple.h
 src/hash-functions.c
@@ -10,12 +10,8 @@ src/hash-functions.h
 src/main.c
 src/socket-manager.c
 src/socket-manager.h
-src/tests.c
-src/tests.h
 src/universal-system.c
 src/universal-system.h
-Makefile
-
 src/dispatcher.c
 src/dispatcher.h
 src/print.c
@@ -28,3 +24,8 @@ src/zone-node.c
 src/zone-node.h
 src/name-server.c
 src/name-server.h
+
+src/tests/tests.c
+src/tests/tests.h
+src/tests/cuckoo-test.c
+src/tests/cuckoo-test.h
