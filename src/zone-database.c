@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define ZDB_DEBUG
+//#define ZDB_DEBUG
 
 /*----------------------------------------------------------------------------*/
 
@@ -149,7 +149,7 @@ zdb_zone *zdb_find_zone_for_name( zdb_database *database,
 
 const zn_node *zdb_find_name( zdb_database *database, dnss_dname_wire dname )
 {
-    zdb_zone *z = find_zone_for_name(database, dname);
+    zdb_zone *z = zdb_find_zone_for_name(database, dname);
 
     if (z == NULL) {
 #ifdef ZDB_DEBUG

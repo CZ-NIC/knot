@@ -6,8 +6,8 @@
 
 /*----------------------------------------------------------------------------*/
 
-#define ZP_DEBUG
-#define ZP_PARSE_DEBUG
+//#define ZP_DEBUG
+//#define ZP_PARSE_DEBUG
 
 #if defined(ZP_DEBUG) || defined(ZP_PARSE_DEBUG)
 #include "cuckoo-test.h"
