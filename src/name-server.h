@@ -18,11 +18,15 @@ typedef struct ns_nameserver {
 
 /*----------------------------------------------------------------------------*/
 
+ns_nameserver *ns_create( zdb_database *database );
+
 /*!
  * @param rsize Input: maximum acceptable size of the response. Output: real
  *              size of the response.
  */
 int ns_answer_request( ns_nameserver *nameserver, const char *query_wire,
                        uint qsize, char *response_wire, uint *rsize );
+
+void ns_destroy( ns_nameserver **nameserver );
 
 #endif
