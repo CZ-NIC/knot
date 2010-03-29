@@ -19,19 +19,24 @@
 
 /*----------------------------------------------------------------------------*/
 
-struct sm_manager {
-    unsigned short *ports;
-    int *sockets;
-    int socket_count;
-    int max_sockets;
+typedef struct sm_socket {
+    unsigned short port;
+    int socket;
+    struct sm_socket *next;
+} sm_socket;
+
+/*----------------------------------------------------------------------------*/
+
+typedef struct sm_manager {
+    sm_socket *sockets;
+//    int socket_count;
     struct epoll_event *events;
+    int events_count;
+    int events_max;
     int epfd;
     pthread_mutex_t mutex;
-    pthread_mutex_t manager_mutex;
     ns_nameserver *nameserver;
-};
-
-typedef struct sm_manager sm_manager;
+} sm_manager;
 
 /*----------------------------------------------------------------------------*/
 
