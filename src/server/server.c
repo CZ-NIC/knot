@@ -56,7 +56,7 @@ cute_server *cute_create()
 #ifdef CUTE_DEBUG
     printf("Creating Socket Manager structure..\n");
 #endif
-    server->socket_mgr = sm_create(DEFAULT_PORT, server->nameserver);
+    server->socket_mgr = sm_create(server->nameserver);
     if (server->socket_mgr == NULL) {
         ns_destroy(&server->nameserver);
         zdb_destroy(&server->zone_db);
