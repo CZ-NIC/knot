@@ -9,9 +9,9 @@ COL_CYAN = \033[01;36m
 COL_WHITE = \033[01;37m
 COL_END = \033[0m
 
-INC_DIRS = src/ src/tests/
+INC_DIRS = src/ src/tests/ src/hash/ src/dns/ src/other/ src/server/
 SRC_DIRS = src/
-OBJ_DIR = tmp/
+OBJ_DIR = obj/
 BIN_DIR = bin/
 
 VPATH += ${SRC_DIRS} ${INC_DIRS} ${OBJ_DIR}
