@@ -13,5 +13,13 @@ int main( int argc, char **argv )
     }
 
     cute_server *server = cute_create();
-    return cute_start(server, argv[1]);
+
+    int res;
+    if ((res = cute_start(server, argv[1])) != 0) {
+        fprintf (stderr, "Problem starting the server, exiting..\n");
+    }
+
+    cute_destroy(&server);
+
+    return res;
 }
