@@ -18,42 +18,14 @@
 //#define SM_DEBUG
 
 const uint SOCKET_BUFF_SIZE = 4096;
-const uint DEFAULT_SOCKET_COUNT = 1;
+const uint DEFAULT_EVENTS_COUNT = 1;
 
 /*----------------------------------------------------------------------------*/
+/* Non-API functions                                                          */
+/*----------------------------------------------------------------------------*/
 
-sm_manager *sm_create( ns_nameserver *nameserver )
+sm_socket *sm_create_socket( unsigned short port )
 {
-    sm_manager *manager = malloc(sizeof(sm_manager));
-
-    // create epoll
-    manager->epfd = epoll_create(DEFAULT_SOCKET_COUNT);
-
-    //manager->socket_count = 0;
-//    manager->max_sockets = DEFAULT_SOCKET_COUNT;
-//    manager->sockets = malloc(DEFAULT_SOCKET_COUNT * sizeof(int));
-//    manager->ports = malloc(DEFAULT_SOCKET_COUNT * sizeof(unsigned short));
-    manager->sockets = NULL;
-
-    //printf("Creating mutex\n");
-    int errval;
-    if ((errval = pthread_mutex_init(&manager->mutex, NULL)) != 0) {
-        printf( "ERROR: %d: %s.\n", errval, strerror(errval) );
-        free(manager);
-        manager = NULL;
-        return NULL;
-    } /*else {
-        printf("Successful\n");
-    }*/
-
-    manager->nameserver = nameserver;
-
-    return manager;
-}
-
-/*----------------------------------------------------------------------------*/
-
-sm_socket *sm_create_socket( sm_manager *manager, unsigned short port ) {
     // create new socket structure
     sm_socket *socket_new = malloc(sizeof(sm_socket));
     if (socket_new == NULL) {
@@ -74,54 +46,6 @@ sm_socket *sm_create_socket( sm_manager *manager, unsigned short port ) {
     return socket_new;
 }
 
-///*----------------------------------------------------------------------------*/
-//
-//inline int sm_add_socket( sm_manager *manager )
-//{
-//    if (manager->socket_count == manager->max_sockets) {
-//        pthread_mutex_lock(manager->mutex);
-//
-//        // reallocate to have more place for sockets (twice)
-//        int *sockets_new = realloc(manager->sockets,
-//                                   (manager->max_sockets * 2) * sizeof(int));
-//        if (sockets_new == NULL) {
-//            fprintf("add_socket(): Allocation failed.\n");
-//            return -1;
-//        }
-//
-//        // TODO initialize the allocated space (to -1?)
-//
-//        // reallocate place for ports as well
-//        int *ports_new = realloc(manager->ports,
-//                                 (manager->max_sockets * 2)
-//                                 * sizeof(unsigned short));
-//        if (ports_new == NULL) {
-//            fprintf(stderr, "add_socket(): Allocation failed.\n");
-//            free(sockets_new);
-//            return -1;
-//        }
-//
-//        // reallocate place for events as well
-//        struct epoll_event *events_new = realloc(manager->events,
-//                                                 (manager->max_sockets * 2)
-//                                                 * sizeof(struct epoll_event));
-//
-//        assert((manager->max_sockets * 2) - manager->socket_count
-//               == manager->socket_count);
-//
-//        // initialize new array items to 0
-//        memset(&ports_new[manager->socket_count], 0, manager->socket_count);
-//
-//        manager->sockets = sockets_new;
-//        manager->ports = ports_new;0
-//        manager->max_sockets *= 2;
-//
-//        pthread_mutex_unlock(manager->mutex);
-//    }
-//
-//    create_socket(manager);
-//}
-
 /*----------------------------------------------------------------------------*/
 
 void sm_destroy_socket( sm_socket **socket )
@@ -134,57 +58,114 @@ void sm_destroy_socket( sm_socket **socket )
 
 /*----------------------------------------------------------------------------*/
 
-int sm_realloc_events()
+int sm_realloc_events( sm_manager *manager )
 {
-    // TODO
-    return -1;
+    assert(manager->events_count == manager->events_max);
+    // the mutex should be already locked
+    assert(pthread_mutex_trylock(&manager->mutex) != 0);
+
+    struct epoll_event *new_events = realloc(manager->events,
+                                             manager->events_max * 2);
+    if (new_events == NULL) {
+        printf( "ERROR: %d: %s.\n", errno, strerror(errno) );
+        return -1;
+    }
+
+    manager->events = new_events;
+    manager->events_max *= 2;
+
+    return 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
 int sm_add_event( sm_manager *manager, int socket, uint32_t events )
 {
+    pthread_mutex_lock(&manager->mutex);
     // enough space?
-    if (manager->events_count == manager->events_max) { // TODO: initialize
+    if (manager->events_count == manager->events_max) {
         if (sm_realloc_events(manager) != 0) {
             return -1;
         }
     }
 
-    // TODO: lock?
     manager->events[manager->events_count].events = events;
     manager->events[manager->events_count].data.fd = socket;
 
     if (epoll_ctl(manager->epfd, EPOLL_CTL_ADD, socket,
-                         &manager->events[manager->events_count])!= 0) {
+                         &manager->events[manager->events_count]) != 0) {
         printf( "ERROR: %d: %s.\n", errno, strerror(errno) );
         // TODO: some cleanup??
         return -1;
     }
 
     ++manager->events_count;
+
+    pthread_mutex_unlock(&manager->mutex);
+
     return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+/* API functions                                                              */
+/*----------------------------------------------------------------------------*/
+
+sm_manager *sm_create( ns_nameserver *nameserver )
+{
+    sm_manager *manager = malloc(sizeof(sm_manager));
+
+    // create epoll
+    manager->epfd = epoll_create(DEFAULT_EVENTS_COUNT);
+    if (manager->epfd == -1) {
+        printf( "ERROR: %d: %s.\n", errno, strerror(errno) );
+        free(manager);
+        return NULL;
+    }
+
+    manager->sockets = NULL;
+
+    // create space for events
+    manager->events_count = 0;
+    manager->events_max = DEFAULT_EVENTS_COUNT;
+    manager->events = malloc(DEFAULT_EVENTS_COUNT * sizeof(struct epoll_event));
+
+    if (manager->events == NULL) {
+        ERR_ALLOC_FAILED;
+        close(manager->epfd);
+        free(manager);
+        return NULL;
+    }
+
+    int errval;
+    if ((errval = pthread_mutex_init(&manager->mutex, NULL)) != 0) {
+        printf( "ERROR: %d: %s.\n", errval, strerror(errval) );
+        close(manager->epfd);
+        free(manager);
+        manager = NULL;
+        return NULL;
+    }
+
+    manager->nameserver = nameserver;
+
+    return manager;
 }
 
 /*----------------------------------------------------------------------------*/
 
 int sm_open_socket( sm_manager *manager, unsigned short port )
 {
-    sm_socket *socket_new = sm_create_socket(manager, port);
+    sm_socket *socket_new = sm_create_socket(port);
 
     if (socket_new == NULL) {
         return -1;
     }
 
     // Set non-blocking mode on the socket
-    // TODO: lock the socket
     int old_flag = fcntl(socket_new->socket, F_GETFL, 0);
     if (fcntl(socket_new->socket, F_SETFL, old_flag | O_NONBLOCK) == -1) {
-        //err(1, "fcntl");
         fprintf(stderr, "sm_open_socket(): Error setting non-blocking mode on "
                 "the socket.\n");
-        // cleanup
-        sm_destroy_socket(&socket_new);  // TODO
+        sm_destroy_socket(&socket_new);
         return -1;
     }
 
@@ -199,8 +180,7 @@ int sm_open_socket( sm_manager *manager, unsigned short port )
     int res = bind(socket_new->socket, (struct sockaddr *)&addr, sizeof(addr));
     if (res == -1) {
         printf( "ERROR: %d: %s.\n", errno, strerror(errno) );
-        // cleanup
-        sm_destroy_socket(&socket_new);  // TODO
+        sm_destroy_socket(&socket_new);
         return -1;
     }
 
@@ -209,16 +189,17 @@ int sm_open_socket( sm_manager *manager, unsigned short port )
     if (sm_add_event(manager, socket_new->socket, EPOLLIN
                      /*| EPOLLPRI | EPOLLERR | EPOLLHUP*/) != 0)
     {
-        sm_destroy_socket(&socket_new);  // TODO
+        sm_destroy_socket(&socket_new);
         return -1;
     }
 
     // if everything went well, connect the socket to the list
     socket_new->next = manager->sockets;
 
-    // TODO: this should be atomic:
+    // TODO: this should be atomic by other means than locking the mutex:
+    pthread_mutex_lock(&manager->mutex);
     manager->sockets = socket_new;
-    //++manager->socket_count;
+    pthread_mutex_unlock(&manager->mutex);
 
     return 0;
 }
@@ -227,9 +208,43 @@ int sm_open_socket( sm_manager *manager, unsigned short port )
 
 int sm_close_socket( sm_manager *manager, unsigned short port )
 {
-    // TODO find the socket entry, close the socket, remove the event
+    // find the socket entry, close the socket, remove the event
     // and destroy the entry
-    return -1;
+    // do we have to lock the mutex while searching for the socket??
+    pthread_mutex_lock(&manager->mutex);
+
+    sm_socket *s = manager->sockets, *p = NULL;
+    while (s != NULL && s->port != port) {
+        p = s;
+        s = s->next;
+    }
+    
+    if (s == NULL) {
+        pthread_mutex_unlock(&manager->mutex);
+        return -1;
+    }
+    
+    assert(s->port == port);
+
+    // remove the event (last argument is ignored, so we may use the first event
+    if (epoll_ctl(manager->epfd, EPOLL_CTL_DEL, s->socket, manager->events)
+        != 0) {
+        printf( "ERROR: %d: %s.\n", errno, strerror(errno) );
+        pthread_mutex_unlock(&manager->mutex);
+        return -1;
+    }
+    // TODO: maybe remove the event from the event array?
+    // it would need to move all items after it or use some pointer to
+    // first free place in the array and reuse the place
+
+    // disconnect the found socket entry
+    p->next = s->next;
+
+    pthread_mutex_unlock(&manager->mutex);
+
+    sm_destroy_socket(&s);
+    
+    return 0;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -237,6 +252,13 @@ int sm_close_socket( sm_manager *manager, unsigned short port )
 void sm_destroy( sm_manager **manager )
 {
     pthread_mutex_lock(&(*manager)->mutex);
+    // TODO: even the listen function should acquire the mutex maybe,
+    // because otherwise it can use uninitialized values
+
+    // close the epoll file descriptor to not receive any new events
+    // is it ok to just close the epoll file descriptor and not delete each
+    // event with epoll_ctl() ?
+    close((*manager)->epfd);
 
     // destroy all sockets
     sm_socket *s = (*manager)->sockets;
@@ -251,8 +273,8 @@ void sm_destroy( sm_manager **manager )
         sm_destroy_socket(&s);
     }
 
-    // TODO: destroy events
-
+    // destroy events
+    free((*manager)->events);
 
     pthread_mutex_unlock(&(*manager)->mutex);
     // TODO: what if something happens here?
@@ -277,8 +299,10 @@ void *sm_listen( void *obj )
     while (1) {
         int nfds = epoll_wait(manager->epfd, manager->events,
                               manager->events_count, -1);
-        if (nfds < 0)
-            err(1, "epoll_wait");
+        if (nfds < 0) {
+            printf("ERROR: %d: %s.\n", errno, strerror(errno));
+            return NULL;
+        }
 
         // for each ready socket
         for(i = 0; i < nfds; i++) {

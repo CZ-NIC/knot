@@ -98,6 +98,13 @@ int cute_start( cute_server *server, const char *filename )
     }
 
 #ifdef CUTE_DEBUG
+    printf("Opening sockets..\n");
+#endif
+    if (sm_open_socket(server->socket_mgr, DEFAULT_PORT) != 0) {
+        return -1;
+    }
+
+#ifdef CUTE_DEBUG
     printf("Starting the Dispatcher..\n");
 #endif
     return dpt_start(server->dispatcher);
