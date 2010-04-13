@@ -30,13 +30,10 @@ all:cutedns
 DEPEND = $(CC) $(addprefix -I ,$(INC_DIRS)) -MM $(SRC_FILES)   2>/dev/null | sed "s%^\([^\ \t\n]*\.o\)%$(OBJ_DIR)/\1%"
 
 Makefile.depend:
-#	@echo ${DEPEND}
 	@$(DEPEND) > Makefile.depend
 
 # cutedns
 cutedns: Makefile.depend $(OBJS)
-#	@echo "SRC FILES: $(SRC_FILES)"
-#	@echo "OBJS: $(OBJS)"
 	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(OBJS)$(COL_END)"
 	@$(CC) $(LDFLAGS) $(OBJS) -o ${BIN_DIR}$@
 
@@ -50,8 +47,6 @@ cutedns: Makefile.depend $(OBJS)
 ### Generic Rules ###
 
 $(OBJ_DIR)%.o : %.c
-#	@echo "SRC FILES: $(SRC_FILES)"
-#	@echo "OBJS: $(OBJS)"
 	@echo "$(COL_WHITE)Compiling $(COL_CYAN)$@: $(COL_BLUE)$< $(COL_END)"
 	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) -c -o $@ $<
 
