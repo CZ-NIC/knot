@@ -9,7 +9,7 @@
 dpt_dispatcher *dpt_create( int thread_count, void *(*thr_routine)(void *),
                             void *routine_obj )
 {
-    dpt_dispatcher *dispatcher = malloc(sizeof(dispatcher));
+    dpt_dispatcher *dispatcher = malloc(sizeof(dpt_dispatcher));
     dispatcher->thread_count = thread_count;
     dispatcher->routine = thr_routine;
     dispatcher->routine_obj = routine_obj;
