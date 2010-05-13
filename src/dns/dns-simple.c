@@ -164,11 +164,16 @@ int dnss_create_response( const dnss_packet *query, const dnss_rr *answers,
     }
     dnss_copy_questions(query->questions, (*response)->questions,
                         (*response)->header.qdcount);
+
+    // check answer
+    if(answers == NULL) {
+        count = 0;
+    }
+
     // answers
     (*response)->header.ancount = count;
 
-    (*response)->answers = malloc(
-            (*response)->header.ancount * sizeof(dnss_rr));
+    (*response)->answers = malloc(count * sizeof(dnss_rr));
     dnss_copy_rrs(answers, (*response)->answers, count);
         // distinguish between NODATA (good as it is) and NXDOMAIN (set RCODE)
 
