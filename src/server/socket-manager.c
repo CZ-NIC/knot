@@ -89,6 +89,7 @@ int sm_add_event( sm_manager *manager, int socket, uint32_t events )
         }
     }
 
+    manager->events[manager->events_count].data.u64 = 0; // NULL union (all 64 bits)
     manager->events[manager->events_count].events = events;
     manager->events[manager->events_count].data.fd = socket;
 
