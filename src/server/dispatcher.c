@@ -22,9 +22,7 @@ dpt_dispatcher *dpt_create( int thread_count, void *(*thr_routine)(void *),
 
 int dpt_start( dpt_dispatcher *dispatcher )
 {
-    int i;
-
-    for (i = 0; i < dispatcher->thread_count; ++i)
+    for (int i = 0; i < dispatcher->thread_count; ++i)
     {
         if (pthread_create(&dispatcher->threads[i], NULL,
                            dispatcher->routine, dispatcher->routine_obj)) {
@@ -32,7 +30,15 @@ int dpt_start( dpt_dispatcher *dispatcher )
             return -1;
         }
     }
-    for (i = 0; i < dispatcher->thread_count; ++i)
+
+    return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dpt_wait( dpt_dispatcher *dispatcher )
+{
+    for (int i = 0; i < dispatcher->thread_count; ++i)
     {
         if ( pthread_join( dispatcher->threads[i], NULL ) ) {
             log_error("%s: failed to join thread %d", __func__, i);

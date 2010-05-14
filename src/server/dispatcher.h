@@ -18,6 +18,7 @@ dpt_dispatcher *dpt_create( int thread_count, void *(*thr_routine)(void *),
                             void *routine_obj );
 
 int dpt_start( dpt_dispatcher *dispatcher );
+int dpt_wait( dpt_dispatcher *dispatcher );
 
 void dpt_destroy( dpt_dispatcher **dispatcher );
 
