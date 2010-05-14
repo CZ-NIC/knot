@@ -22,7 +22,7 @@ const uint DEFAULT_EVENTS_COUNT = 1;
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-sm_socket *sm_create_socket( unsigned short port )
+sm_socket *sm_create_socket( unsigned short port, socket_t type )
 {
     // create new socket structure
     sm_socket *socket_new = malloc(sizeof(sm_socket));
@@ -32,8 +32,15 @@ sm_socket *sm_create_socket( unsigned short port )
     }
 
     socket_new->port = port;
+
     // create new socket
-    socket_new->socket = socket( AF_INET, SOCK_DGRAM, 0 );
+    int stype = SOCK_DGRAM;
+    if(type == TCP) {
+        stype = SOCK_STREAM;
+    }
+
+    /// \todo IPv6
+    socket_new->socket = socket( AF_INET, stype, 0 );
 
     if (socket_new->socket == -1) {
         log_error("failed to create socket (errno %d): %s\n", errno, strerror(errno));
@@ -151,12 +158,19 @@ sm_manager *sm_create( ns_nameserver *nameserver )
 
 /*----------------------------------------------------------------------------*/
 
-int sm_open_socket( sm_manager *manager, unsigned short port )
+int sm_open_socket( sm_manager *manager, unsigned short port, socket_t type )
 {
-    sm_socket *socket_new = sm_create_socket(port);
+    sm_socket *socket_new = sm_create_socket(port, type);
 
     if (socket_new == NULL) {
         return -1;
+    }
+
+    // Reuse old address if taken
+    int flag = 1;
+    if(setsockopt(socket_new->socket, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag)) < 0) {
+        fprintf(stderr, "sm_open_socket(): Error setting SO_REUSEADDR attribute on "
+                        "the socket.\n");
     }
 
     // Set non-blocking mode on the socket
@@ -173,7 +187,7 @@ int sm_open_socket( sm_manager *manager, unsigned short port )
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons( port );
-    addr.sin_addr.s_addr = htonl( INADDR_ANY );
+    addr.sin_addr.s_addr = htonl( INADDR_ANY ); /// \todo Bind to localhost only.
 
     int res = bind(socket_new->socket, (struct sockaddr *)&addr, sizeof(addr));
     if (res == -1) {
@@ -204,7 +218,7 @@ int sm_open_socket( sm_manager *manager, unsigned short port )
 
 /*----------------------------------------------------------------------------*/
 
-int sm_close_socket( sm_manager *manager, unsigned short port )
+int sm_close_socket( sm_manager *manager, unsigned short port, socket_t type )
 {
     // find the socket entry, close the socket, remove the event
     // and destroy the entry
@@ -212,7 +226,7 @@ int sm_close_socket( sm_manager *manager, unsigned short port )
     pthread_mutex_lock(&manager->mutex);
 
     sm_socket *s = manager->sockets, *p = NULL;
-    while (s != NULL && s->port != port) {
+    while (s != NULL && s->port != port && s->type != type) {
         p = s;
         s = s->next;
     }
@@ -308,6 +322,10 @@ void *sm_listen( void *obj )
             pthread_mutex_lock(&manager->mutex);
             fd = manager->events[i].data.fd;
 
+            /// \todo If fd is a TCP server socket, accept incoming TCP connection, else recvfrom()
+            /// \notice recvfrom() works with TCP as well
+            /// \todo Implement fast lookup of sm_socket* based on fd
+
             if ((n = recvfrom(fd, buf, SOCKET_BUFF_SIZE, 0,
                               (struct sockaddr *)&faddr,
                              (socklen_t *)&addrsize)) > 0) {
@@ -330,6 +348,7 @@ void *sm_listen( void *obj )
                     debug_sm("Answer wire format (size %u):\n", answer_size);
                     debug_sm_hex(answer, answer_size);
 
+                    /// \todo Destination addr and addrsize must be NULL on TCP, may return EISCONN otherwise.
                     int sent = sendto(fd, answer, answer_size, MSG_DONTWAIT,
                                       (struct sockaddr *)&faddr,
                                       (socklen_t)addrsize);

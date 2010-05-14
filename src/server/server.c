@@ -79,7 +79,7 @@ int cute_start( cute_server *server, const char *filename )
     }
 
     debug_server("Opening sockets..\n");
-    if (sm_open_socket(server->socket_mgr, DEFAULT_PORT) != 0) {
+    if (sm_open_socket(server->socket_mgr, DEFAULT_PORT, UDP) != 0) {
         return -1;
     }
 
