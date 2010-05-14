@@ -43,8 +43,9 @@ cute_server *cute_create()
     debug_server("Done\n\n");
     debug_server("Creating Socket Manager structure..\n");
 
-    server->socket_mgr = sm_create(server->nameserver);
-    if (server->socket_mgr == NULL) {
+    server->tcp_mgr = NULL;
+    server->udp_mgr = sm_create(server->nameserver);
+    if (server->udp_mgr == NULL ) {
         ns_destroy(&server->nameserver);
         zdb_destroy(&server->zone_db);
         free(server);
@@ -54,10 +55,10 @@ cute_server *cute_create()
     debug_server("Done\n\n");
     debug_server("Creating Dispatcher structure..\n");
 
-    server->dispatcher = dpt_create(DEFAULT_THR_COUNT, sm_listen,
-                                    server->socket_mgr);
+    server->dispatcher = dpt_create(DEFAULT_THR_COUNT, sm_listen_udp,
+                                    server->udp_mgr);
     if (server->dispatcher == NULL) {
-        sm_destroy(&server->socket_mgr);
+        sm_destroy(&server->udp_mgr);
         ns_destroy(&server->nameserver);
         zdb_destroy(&server->zone_db);
         free(server);
@@ -79,7 +80,7 @@ int cute_start( cute_server *server, const char *filename )
     }
 
     debug_server("Opening sockets..\n");
-    if (sm_open_socket(server->socket_mgr, DEFAULT_PORT, UDP) != 0) {
+    if (sm_open_socket(server->udp_mgr, DEFAULT_PORT, UDP) != 0) {
         return -1;
     }
 
@@ -92,7 +93,7 @@ int cute_start( cute_server *server, const char *filename )
 void cute_destroy( cute_server **server )
 {
     dpt_destroy(&(*server)->dispatcher);
-    sm_destroy(&(*server)->socket_mgr);
+    sm_destroy(&(*server)->udp_mgr);
     ns_destroy(&(*server)->nameserver);
     zdb_destroy(&(*server)->zone_db);
     free(*server);
