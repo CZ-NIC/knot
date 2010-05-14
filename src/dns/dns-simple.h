@@ -94,7 +94,7 @@ int dnss_wire_format( dnss_packet *packet, char *packet_wire,
 int dnss_dname_to_wire( dnss_dname dname, dnss_dname_wire dname_wire,
                         uint size );
 
-/** \bug C99 inline won't be usable without .c and has compatibility issues.
+/** \bug C99 inline won't be linkable (so not exportable) without .c and has compatibility issues.
          Consider static inline definition in header or removing inline.
  */
 uint dnss_wire_dname_size( const dnss_dname *dname );
