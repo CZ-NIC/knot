@@ -128,6 +128,7 @@ sm_manager *sm_create( ns_nameserver *nameserver )
         return NULL;
     }
 
+    manager->handler = NULL;
     manager->sockets = NULL;
 
     // create space for events
@@ -194,6 +195,16 @@ int sm_open_socket( sm_manager *manager, unsigned short port, socket_t type )
         log_error("cannot bind socket (errno %d): %s.\n", errno, strerror(errno));
         sm_destroy_socket(&socket_new);
         return -1;
+    }
+
+    // TCP needs listen
+    if(type == TCP) {
+        res = listen(socket_new->socket, 10); /// \todo Tweak backlog size.
+        if (res == -1) {
+            printf( "ERROR: %d: %s.\n", errno, strerror(errno) );
+            sm_destroy_socket(&socket_new);
+            return -1;
+        }
     }
 
     // add new event
@@ -298,12 +309,16 @@ void sm_destroy( sm_manager **manager )
 
 /*----------------------------------------------------------------------------*/
 
-void tcp_handler(sm_manager *manager, int fd, void *buf, size_t bufsize, void* answer, size_t answer_size)
+void sm_tcp_handler(sm_manager *manager, int fd, void *buf, size_t bufsize, void* answer, size_t answer_size)
 {
-    printf("Unhandled TCP event\n");
+    struct sockaddr_in faddr;
+    int addrsize = sizeof(faddr);
+
+    printf("fixme: TCP incoming connection (stub handler).\n");
+    accept(fd, (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
 }
 
-void udp_handler(sm_manager *manager, int fd, void *buf, size_t bufsize, void* answer, size_t answer_size)
+void sm_udp_handler(sm_manager *manager, int fd, void *buf, size_t bufsize, void* answer, size_t answer_size)
 {
     struct sockaddr_in faddr;
     int addrsize = sizeof(faddr);
@@ -347,10 +362,17 @@ void udp_handler(sm_manager *manager, int fd, void *buf, size_t bufsize, void* a
 
 /*----------------------------------------------------------------------------*/
 
-static void *sm_listen( sm_manager *manager,  iohandler_t handle)
+void *sm_listen( void *obj )
 {
+    sm_manager* manager = (sm_manager *)obj;
     char buf[SOCKET_BUFF_SIZE];
     char answer[SOCKET_BUFF_SIZE];
+
+    // Check handler
+    if(manager->handler == NULL) {
+        printf("ERROR: Socket manager has no registered handler.\n");
+        return NULL;
+    }
 
     while (1) {
         int nfds = epoll_wait(manager->epfd, manager->events,
@@ -363,18 +385,8 @@ static void *sm_listen( sm_manager *manager,  iohandler_t handle)
         // for each ready socket
         for(int i = 0; i < nfds; i++) {
             //printf("locking mutex from thread %ld\n", pthread_self());
-            handle(manager, manager->events[i].data.fd, buf, SOCKET_BUFF_SIZE, answer, SOCKET_BUFF_SIZE);
+            manager->handler(manager, manager->events[i].data.fd, buf, SOCKET_BUFF_SIZE, answer, SOCKET_BUFF_SIZE);
         }
     }
 
-}
-
-void *sm_listen_udp( void *obj )
-{
-    return sm_listen((sm_manager *)obj, &udp_handler);
-}
-
-void *sm_listen_tcp( void *obj )
-{
-    return sm_listen((sm_manager *)obj, &tcp_handler);
 }
