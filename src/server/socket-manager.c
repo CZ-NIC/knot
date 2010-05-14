@@ -218,7 +218,7 @@ int sm_open_socket( sm_manager *manager, unsigned short port, socket_t type )
 
 /*----------------------------------------------------------------------------*/
 
-int sm_close_socket( sm_manager *manager, unsigned short port, socket_t type )
+int sm_close_socket( sm_manager *manager, unsigned short port )
 {
     // find the socket entry, close the socket, remove the event
     // and destroy the entry
@@ -226,7 +226,7 @@ int sm_close_socket( sm_manager *manager, unsigned short port, socket_t type )
     pthread_mutex_lock(&manager->mutex);
 
     sm_socket *s = manager->sockets, *p = NULL;
-    while (s != NULL && s->port != port && s->type != type) {
+    while (s != NULL && s->port != port) {
         p = s;
         s = s->next;
     }
@@ -298,70 +298,83 @@ void sm_destroy( sm_manager **manager )
 
 /*----------------------------------------------------------------------------*/
 
-void *sm_listen( void *obj )
+void tcp_handler(sm_manager *manager, int fd, void *buf, size_t bufsize, void* answer, size_t answer_size)
 {
-    sm_manager *manager = (sm_manager *)obj;
-    char buf[SOCKET_BUFF_SIZE];
+    printf("Unhandled TCP event\n");
+}
+
+void udp_handler(sm_manager *manager, int fd, void *buf, size_t bufsize, void* answer, size_t answer_size)
+{
     struct sockaddr_in faddr;
     int addrsize = sizeof(faddr);
-    int n, i ,fd;
+
+    pthread_mutex_lock(&manager->mutex);
+
+    // If fd is a TCP server socket, accept incoming TCP connection, else recvfrom()
+    int n = recvfrom(fd, buf, bufsize, 0, (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
+    if(n >= 0) {
+
+        debug_sm("Received %d bytes.\n", n);
+
+        //log_info("unlocking mutex from thread %ld\n", pthread_self());
+        pthread_mutex_unlock(&manager->mutex);
+
+        int res = ns_answer_request(manager->nameserver, buf, n, answer,
+                          &answer_size);
+
+        debug_sm("Got answer of size %d.\n", answer_size);
+
+        if (res == 0) {
+            assert(answer_size > 0);
+                    
+            debug_sm("Answer wire format (size %u):\n", answer_size);
+            debug_sm_hex(answer, answer_size);
+
+            /// \todo Destination addr and addrsize must be NULL on TCP, may return EISCONN otherwise.
+            int sent = sendto(fd, answer, answer_size, MSG_DONTWAIT,
+                              (struct sockaddr *)&faddr,
+                              (socklen_t)addrsize);
+
+            if (sent < 0) {
+                const int error = errno;
+                log_error("failed to send datagram (errno %d): %s.\n", error, strerror(error));
+            }
+        }
+    } else {
+        pthread_mutex_unlock(&manager->mutex);
+    }
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void *sm_listen( sm_manager *manager,  iohandler_t handle)
+{
+    char buf[SOCKET_BUFF_SIZE];
     char answer[SOCKET_BUFF_SIZE];
-    uint answer_size;
 
     while (1) {
         int nfds = epoll_wait(manager->epfd, manager->events,
                               manager->events_count, -1);
         if (nfds < 0) {
-            log_error("epoll_wait() failed (errno %d): %s.\n", errno, strerror(errno));
+            printf("ERROR: %d: %s.\n", errno, strerror(errno));
             return NULL;
         }
 
         // for each ready socket
-        for(i = 0; i < nfds; i++) {
-            //log_info("locking mutex from thread %ld\n", pthread_self());
-            pthread_mutex_lock(&manager->mutex);
-            fd = manager->events[i].data.fd;
-
-            /// \todo If fd is a TCP server socket, accept incoming TCP connection, else recvfrom()
-            /// \notice recvfrom() works with TCP as well
-            /// \todo Implement fast lookup of sm_socket* based on fd
-
-            if ((n = recvfrom(fd, buf, SOCKET_BUFF_SIZE, 0,
-                              (struct sockaddr *)&faddr,
-                             (socklen_t *)&addrsize)) > 0) {
-
-                debug_sm("Received %d bytes.\n", n);
-
-                //log_info("unlocking mutex from thread %ld\n", pthread_self());
-                pthread_mutex_unlock(&manager->mutex);
-
-                answer_size = SOCKET_BUFF_SIZE;
-				int res = ns_answer_request(manager->nameserver,
-							(unsigned char *)buf, n, (unsigned char *)answer,
-                                  &answer_size);
-
-                debug_sm("Got answer of size %d.\n", answer_size);
-
-                if (res == 0) {
-                    assert(answer_size > 0);
-
-                    debug_sm("Answer wire format (size %u):\n", answer_size);
-                    debug_sm_hex(answer, answer_size);
-
-                    /// \todo Destination addr and addrsize must be NULL on TCP, may return EISCONN otherwise.
-                    int sent = sendto(fd, answer, answer_size, MSG_DONTWAIT,
-                                      (struct sockaddr *)&faddr,
-                                      (socklen_t)addrsize);
-
-                    if (sent < 0) {
-                        const int error = errno;
-                        log_error("failed to send datagram (errno %d): %s.\n", error, strerror(error));
-                    }
-                }
-            } else {
-                pthread_mutex_unlock(&manager->mutex);
-            }
+        for(int i = 0; i < nfds; i++) {
+            //printf("locking mutex from thread %ld\n", pthread_self());
+            handle(manager, manager->events[i].data.fd, buf, SOCKET_BUFF_SIZE, answer, SOCKET_BUFF_SIZE);
         }
     }
 
+}
+
+void *sm_listen_udp( void *obj )
+{
+    return sm_listen((sm_manager *)obj, &udp_handler);
+}
+
+void *sm_listen_tcp( void *obj )
+{
+    return sm_listen((sm_manager *)obj, &tcp_handler);
 }

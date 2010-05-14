@@ -24,8 +24,10 @@
  *        needed for operation.
  */
 typedef struct cute_server {
-	/*! @brief Reference to the socket manager structure. */
-    sm_manager *socket_mgr;
+
+	/*! @brief Reference to the socket manager structures. */
+    sm_manager *udp_mgr;
+    sm_manager *tcp_mgr;
 
 	/*! @brief Reference to the dispatcher structure. */
     dpt_dispatcher *dispatcher;
