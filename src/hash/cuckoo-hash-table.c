@@ -320,7 +320,7 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 //#ifdef CUCKOO_DEBUG
 	printf("Creating hash table for %u items.\n", items);
 	printf("Exponent: %u ", table->table_size_exp);
-    printf("Table size: %u items, each %lu bytes, total %lu bytes\n",
+    printf("Table size: %u items, each %u bytes, total %u bytes\n",
 		   hashsize(table->table_size_exp), sizeof(ck_hash_table_item),
 		   hashsize(table->table_size_exp) * sizeof(ck_hash_table_item));
 //#endif
