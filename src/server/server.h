@@ -26,11 +26,10 @@
 typedef struct cute_server {
 
 	/*! @brief Reference to the socket manager structures. */
-    sm_manager *udp_mgr;
-    sm_manager *tcp_mgr;
+    sm_manager* manager[2];         // TCP + UDP
 
 	/*! @brief Reference to the dispatcher structure. */
-    dpt_dispatcher *dispatcher;
+    dpt_dispatcher *dispatcher[2];  // TCP + UDP
 
 	/*! @brief Reference to the name server structure. */
     ns_nameserver *nameserver;
