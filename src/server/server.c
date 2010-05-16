@@ -89,14 +89,16 @@ int cute_start( cute_server *server, const char *filename )
     debug_server("Opening sockets..\n");
     if (sm_open_socket(server->manager[UDP], DEFAULT_PORT, UDP) != 0) {
 	printf("[failed]\n");
+        perror("sm_open_socket");
         return -1;
     }
     printf("TCP(%d) ", DEFAULT_PORT); fflush(stdout);
     if (sm_open_socket(server->manager[TCP], DEFAULT_PORT, TCP) != 0) {
         printf("[failed]\n");
+        perror("sm_open_socket");
         return -1;
     }
-    printf("\n");
+    printf("\nDone\n\n");
 
     debug_server("Starting the Dispatcher..\n");
 
