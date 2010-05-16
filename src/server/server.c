@@ -9,6 +9,7 @@
 /*----------------------------------------------------------------------------*/
 
 static const unsigned short DEFAULT_PORT = 53535;
+static const int DEFAULT_THR_COUNT = 2;
 
 /*----------------------------------------------------------------------------*/
 
@@ -43,8 +44,13 @@ cute_server *cute_create()
     debug_server("Creating Socket Manager structure..\n");
 
     for(int i = 0; i < 2; i++) {
-        server->manager[i] = sm_create(server->nameserver);
+        server->manager[i] = sm_create(server->nameserver, DEFAULT_THR_COUNT);
         if (server->manager[i] == NULL ) {
+
+            if(i == 1) {
+                sm_destroy(&server->manager[0]);
+            }
+
             ns_destroy(&server->nameserver);
             zdb_destroy(&server->zone_db);
             free(server);
@@ -55,22 +61,6 @@ cute_server *cute_create()
     // Register socket handlers
     sm_register_handler(server->manager[UDP], &sm_udp_handler);
     sm_register_handler(server->manager[TCP], &sm_tcp_handler);
-
-    debug_server("Done\n\n");
-    debug_server("Creating Dispatcher structure..\n");
-
-    // Create master dispatchers
-    for(int i = 0; i < 2; i++) {
-        server->dispatcher[i] = dpt_create(1, &sm_listen, server->manager[i]);
-        if (server->dispatcher[i] == NULL) {
-            sm_destroy(&server->manager[UDP]);
-            sm_destroy(&server->manager[TCP]);
-            ns_destroy(&server->nameserver);
-            zdb_destroy(&server->zone_db);
-            free(server);
-            return NULL;
-        }
-    }
 
     debug_server("Done\n\n");
 
@@ -87,7 +77,6 @@ int cute_start( cute_server *server, const char *filename )
     }
 
     debug_server("Opening sockets..\n");
-    server->manager[UDP]->is_running = 1;
     if (sm_open_socket(server->manager[UDP], DEFAULT_PORT, UDP) != 0) {
         perror("sm_open_socket");
         return -1;
@@ -95,7 +84,6 @@ int cute_start( cute_server *server, const char *filename )
 #ifdef CUTE_DEBUG
     printf("TCP(%d) ", DEFAULT_PORT); fflush(stdout);
 #endif
-    server->manager[TCP]->is_running = 1;
     if (sm_open_socket(server->manager[TCP], DEFAULT_PORT, TCP) != 0) {
 #ifdef CUTE_DEBUG
         printf("[failed]\n");
@@ -107,27 +95,28 @@ int cute_start( cute_server *server, const char *filename )
     printf("\nDone\n\n");
 #endif
 
-    debug_server("Starting the Dispatcher..\n");
+    debug_server("Starting servers..\n");
 
     // Start dispatchers
     int ret = 0;
-    ret = dpt_start(server->dispatcher[TCP]);
+    ret = sm_start(server->manager[TCP]);
 #ifdef CUTE_DEBUG
-    printf("   TCP handler: %u threads started.\n", server->dispatcher[TCP]->thread_count);
+    printf("   TCP server: %u workers.\n", server->manager[TCP]->workers->thread_count);
 #endif
-    ret += dpt_start(server->dispatcher[UDP]);
+    ret += sm_start(server->manager[UDP]);
 #ifdef CUTE_DEBUG
-    printf("   UDP handler: %u threads started.\n", server->dispatcher[UDP]->thread_count);
+    printf("   UDP server: %u workers.\n", server->manager[UDP]->workers->thread_count);
+    printf("Done\n\n");
 #endif
     if(ret < 0)
         return ret;
 
     // Wait for dispatchers to finish
-    ret = dpt_wait(server->dispatcher[TCP]);
+    ret = sm_wait(server->manager[TCP]);
 #ifdef CUTE_DEBUG
     printf("TCP handler finished.\n");
 #endif
-    ret += dpt_wait(server->dispatcher[UDP]);
+    ret += sm_wait(server->manager[UDP]);
 #ifdef CUTE_DEBUG
     printf("UDP handler finished.\n");
 #endif
@@ -148,8 +137,6 @@ void cute_stop( cute_server *server )
 
 void cute_destroy( cute_server **server )
 {
-    dpt_destroy(&(*server)->dispatcher[UDP]);
-    dpt_destroy(&(*server)->dispatcher[TCP]);
     sm_destroy(&(*server)->manager[UDP]);
     sm_destroy(&(*server)->manager[TCP]);
     ns_destroy(&(*server)->nameserver);
