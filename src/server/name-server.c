@@ -31,7 +31,7 @@ int ns_answer_request( ns_nameserver *nameserver, const char *query_wire,
 #endif
 
     dnss_packet *query = dnss_parse_query(query_wire, qsize);
-    if (query == NULL) {
+    if (query == NULL || query->header.qdcount <= 0) {
         return -1;
     }
 
