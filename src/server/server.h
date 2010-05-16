@@ -60,6 +60,11 @@ cute_server *cute_create();
 int cute_start( cute_server *server, const char *filename );
 
 /*!
+ * @brief Requests server to stop.
+ */
+void cute_stop( cute_server *server );
+
+/*!
  * @brief Properly destroys the server structure.
  */
 void cute_destroy( cute_server **server );

@@ -8,7 +8,6 @@
 
 /*----------------------------------------------------------------------------*/
 
-static const int DEFAULT_THR_COUNT = 2;
 static const unsigned short DEFAULT_PORT = 53535;
 
 /*----------------------------------------------------------------------------*/
@@ -60,8 +59,9 @@ cute_server *cute_create()
     debug_server("Done\n\n");
     debug_server("Creating Dispatcher structure..\n");
 
+    // Create master dispatchers
     for(int i = 0; i < 2; i++) {
-        server->dispatcher[i] = dpt_create(DEFAULT_THR_COUNT, &sm_listen, server->manager[i]);
+        server->dispatcher[i] = dpt_create(1, &sm_listen, server->manager[i]);
         if (server->dispatcher[i] == NULL) {
             sm_destroy(&server->manager[UDP]);
             sm_destroy(&server->manager[TCP]);
@@ -87,37 +87,61 @@ int cute_start( cute_server *server, const char *filename )
     }
 
     debug_server("Opening sockets..\n");
+    server->manager[UDP]->is_running = 1;
     if (sm_open_socket(server->manager[UDP], DEFAULT_PORT, UDP) != 0) {
-	printf("[failed]\n");
         perror("sm_open_socket");
         return -1;
     }
+#ifdef CUTE_DEBUG
     printf("TCP(%d) ", DEFAULT_PORT); fflush(stdout);
+#endif
+    server->manager[TCP]->is_running = 1;
     if (sm_open_socket(server->manager[TCP], DEFAULT_PORT, TCP) != 0) {
+#ifdef CUTE_DEBUG
         printf("[failed]\n");
+#endif
         perror("sm_open_socket");
         return -1;
     }
+#ifdef CUTE_DEBUG
     printf("\nDone\n\n");
+#endif
 
     debug_server("Starting the Dispatcher..\n");
 
     // Start dispatchers
     int ret = 0;
     ret = dpt_start(server->dispatcher[TCP]);
+#ifdef CUTE_DEBUG
     printf("   TCP handler: %u threads started.\n", server->dispatcher[TCP]->thread_count);
+#endif
     ret += dpt_start(server->dispatcher[UDP]);
+#ifdef CUTE_DEBUG
     printf("   UDP handler: %u threads started.\n", server->dispatcher[UDP]->thread_count);
+#endif
     if(ret < 0)
         return ret;
 
     // Wait for dispatchers to finish
-    /// \todo Intercept SIGINT for clean exit.
     ret = dpt_wait(server->dispatcher[TCP]);
+#ifdef CUTE_DEBUG
     printf("TCP handler finished.\n");
+#endif
     ret += dpt_wait(server->dispatcher[UDP]);
+#ifdef CUTE_DEBUG
     printf("UDP handler finished.\n");
+#endif
     return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void cute_stop( cute_server *server )
+{
+    // Notify servers to stop
+    for(int i = 0; i < 2; i++) {
+        sm_stop(server->manager[i]);
+    }
 }
 
 /*----------------------------------------------------------------------------*/

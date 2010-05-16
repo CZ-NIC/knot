@@ -47,7 +47,6 @@ typedef void (*iohandler_t) (sm_event*);
 
 typedef struct sm_manager {
     sm_socket *sockets;
-//    int socket_count;
     struct epoll_event *events;
     int events_count;
     int events_max;
@@ -55,6 +54,7 @@ typedef struct sm_manager {
     pthread_mutex_t mutex;
     ns_nameserver *nameserver;
     iohandler_t handler;
+    volatile int is_running;
 } sm_manager;
 
 /*----------------------------------------------------------------------------*/
@@ -65,6 +65,7 @@ sm_manager *sm_create( ns_nameserver *nameserver );
 int sm_open_socket( sm_manager *manager, unsigned short port, socket_t type);
 int sm_close_socket( sm_manager *manager, unsigned short port);
 void *sm_listen( void *obj );
+void sm_stop( sm_manager *manager );
 void sm_destroy( sm_manager **manager );
 
 // Handlers
