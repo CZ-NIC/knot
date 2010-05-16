@@ -15,8 +15,11 @@
 #include <unistd.h>
 #include <assert.h>
 
-const uint SOCKET_BUFF_SIZE = 4096;
+//#define SM_DEBUG
+
+const uint SOCKET_BUFF_SIZE = 4096;  /// \todo <= MTU size
 const uint DEFAULT_EVENTS_COUNT = 1;
+static const int DEFAULT_THR_COUNT = 2;
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -472,17 +475,22 @@ void *sm_listen( void *obj )
         return NULL;
     }
 
-    while (1) {
+    while (manager->is_running) {
         /// \bug What if events count changes in another thread and backing
         ///      store gets reallocated? Memory error in loop reading probably.
         // Reserve 2x backing-store size
         sm_reserve_events(manager, manager->events_count * 2);
         int nfds = epoll_wait(manager->epfd, manager->events,
-                              manager->events_count, -1);
+                              manager->events_count, 1000);
 
         if (nfds < 0) {
             printf("ERROR: %d: %s.\n", errno, strerror(errno));
             return NULL;
+        }
+
+        // Signalized finish
+        if(!manager->is_running) {
+            break;
         }
 
         // for each ready socket
@@ -494,4 +502,11 @@ void *sm_listen( void *obj )
         }
     }
 
+    return NULL;
+}
+
+void sm_stop( sm_manager *manager )
+{
+    manager->is_running = 0;
+    close(manager->epfd);
 }
