@@ -19,7 +19,6 @@
 
 const uint SOCKET_BUFF_SIZE = 4096;  /// \todo <= MTU size
 const uint DEFAULT_EVENTS_COUNT = 1;
-static const int DEFAULT_THR_COUNT = 2;
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -163,11 +162,11 @@ int sm_add_event( sm_manager *manager, int socket, uint32_t events )
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-sm_manager *sm_create( ns_nameserver *nameserver )
+sm_manager *sm_create( ns_nameserver *nameserver, int thread_count )
 {
     sm_manager *manager = malloc(sizeof(sm_manager));
 
-    // create epoll
+    // Create epoll
     manager->epfd = epoll_create(DEFAULT_EVENTS_COUNT);
     if (manager->epfd == -1) {
         log_error("failed to create epoll set (errno %d): %s.\n", errno, strerror(errno));
@@ -175,33 +174,60 @@ sm_manager *sm_create( ns_nameserver *nameserver )
         return NULL;
     }
 
+    // Create mutex
+    int errval;
+    if ((errval = pthread_mutex_init(&manager->mutex, NULL)) != 0) {
+        perror("sm_create");
+        free(manager);
+        return NULL;
+    }
+
+    // Initialize epoll backing store
     manager->handler = NULL;
     manager->sockets = NULL;
-
-    // create space for events
     manager->events_count = 0;
     manager->events_max = DEFAULT_EVENTS_COUNT;
     manager->events = malloc(DEFAULT_EVENTS_COUNT * sizeof(struct epoll_event));
-
     if (manager->events == NULL) {
-        ERR_ALLOC_FAILED;
-        close(manager->epfd);
-        free(manager);
+        perror("sm_create");
+        sm_destroy(&manager);
         return NULL;
     }
 
-    int errval;
-    if ((errval = pthread_mutex_init(&manager->mutex, NULL)) != 0) {
+    // Create listener
+    manager->listener = dpt_create(1, &sm_listen, manager);
+    if(manager->listener == NULL) {
         log_error("failed to initialize mutex (errno %d): %s.\n", errval, strerror(errval));
-        close(manager->epfd);
-        free(manager);
-        manager = NULL;
+        sm_destroy(&manager);
         return NULL;
     }
 
+    // Create workers
+    manager->workers = dpt_create(thread_count, &sm_worker, manager);
+    if(manager->workers == NULL) {
+        perror("sm_create");
+        sm_destroy(&manager);
+        return NULL;
+    }
+
+    // Initialize nameserver
     manager->nameserver = nameserver;
 
     return manager;
+}
+
+int sm_start( sm_manager* manager )
+{
+    // Set as running
+    manager->is_running = 1;
+
+    // Start dispatchers
+    return dpt_start(manager->workers) + dpt_start(manager->listener);
+}
+
+int sm_wait( sm_manager* manager )
+{
+    return dpt_wait(manager->workers) + dpt_wait(manager->listener);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -302,17 +328,12 @@ int sm_close_socket( sm_manager *manager, unsigned short port )
 void sm_destroy( sm_manager **manager )
 {
     pthread_mutex_lock(&(*manager)->mutex);
-    // TODO: even the listen function should acquire the mutex maybe,
-    // because otherwise it can use uninitialized values
 
-    // close the epoll file descriptor to not receive any new events
-    // is it ok to just close the epoll file descriptor and not delete each
-    // event with epoll_ctl() ?
-    close((*manager)->epfd);
+    // Notify close
+    (*manager)->is_running = 0;
 
-    // destroy all sockets
+    // Destroy all sockets
     sm_socket *s = (*manager)->sockets;
-
     if (s != NULL) {
         sm_socket *next = s->next;
         while (next != NULL) {
@@ -323,11 +344,19 @@ void sm_destroy( sm_manager **manager )
         sm_destroy_socket(&s);
     }
 
-    // destroy events
-    free((*manager)->events);
+    // Close epoll
+    close((*manager)->epfd);
 
+    // Destroy events backing store
+    if((*manager)->events != NULL)
+        free((*manager)->events);
+
+    // Free dispatchers
+    dpt_destroy(&(*manager)->listener);
+    dpt_destroy(&(*manager)->workers);
+
+    // Destroy mutex
     pthread_mutex_unlock(&(*manager)->mutex);
-    // TODO: what if something happens here?
     pthread_mutex_destroy(&(*manager)->mutex);
 
     free(*manager);
@@ -505,8 +534,18 @@ void *sm_listen( void *obj )
     return NULL;
 }
 
+void *sm_worker( void *obj )
+{
+    sm_manager* manager = (sm_manager *)obj;
+    while (manager->is_running) {
+        sleep(1);
+    }
+
+    printf("Worker finished.\n");
+    return NULL;
+}
+
 void sm_stop( sm_manager *manager )
 {
     manager->is_running = 0;
-    close(manager->epfd);
 }

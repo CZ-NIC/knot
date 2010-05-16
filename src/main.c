@@ -8,14 +8,14 @@
 
 /*----------------------------------------------------------------------------*/
 
-static cute_server* server_singleton = NULL;
+static cute_server* s_server = NULL;
 
 // SIGINT signal handler
 void interrupt_handle(int s)
 {
    // Stop server
-   if(s == SIGINT && server_singleton != NULL) {
-      cute_stop(server_singleton);
+   if(s == SIGINT && s_server != NULL) {
+      cute_stop(s_server);
    }
 }
 
@@ -39,10 +39,9 @@ int main( int argc, char **argv )
     // Start server
 
     // Create server instance
-    cute_server* server = cute_create();
+    s_server = cute_create();
 
     // Register service and signal handler
-    server_singleton = server;
     struct sigaction sa;
     sa.sa_handler = interrupt_handle;
     sigemptyset(&sa.sa_mask);
@@ -50,13 +49,13 @@ int main( int argc, char **argv )
     sigaction(SIGINT, &sa, NULL);
 
     // Run server
-    if ((res = cute_start(server, argv[1])) != 0) {
-        log_error("Problem starting the server, exiting..\n");
+    if ((res = cute_start(s_server, argv[1])) != 0) {
+        fprintf (stderr, "Problem starting the server, exiting..\n");
     }
 
     // Stop server and close log
-    cute_destroy(&server);
-
+    cute_destroy(&s_server);
     log_close();
+
     return res;
 }

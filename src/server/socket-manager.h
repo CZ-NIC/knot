@@ -13,6 +13,7 @@
 #include <pthread.h>
 #include "common.h"
 #include "name-server.h"
+#include "dispatcher.h"
 
 //const uint SOCKET_BUFF_SIZE;
 
@@ -53,20 +54,24 @@ typedef struct sm_manager {
     int epfd;
     pthread_mutex_t mutex;
     ns_nameserver *nameserver;
+    dpt_dispatcher *listener;
+    dpt_dispatcher *workers;
     iohandler_t handler;
     volatile int is_running;
 } sm_manager;
 
 /*----------------------------------------------------------------------------*/
 
-sm_manager *sm_create( ns_nameserver *nameserver );
+sm_manager *sm_create( ns_nameserver *nameserver, int thread_count );
+int sm_start( sm_manager* manager );
+int sm_wait( sm_manager* manager );
+void sm_stop( sm_manager *manager );
+void sm_destroy( sm_manager **manager );
+
 
 // TODO: another parameter: type - in / out / something else
 int sm_open_socket( sm_manager *manager, unsigned short port, socket_t type);
 int sm_close_socket( sm_manager *manager, unsigned short port);
-void *sm_listen( void *obj );
-void sm_stop( sm_manager *manager );
-void sm_destroy( sm_manager **manager );
 
 // Handlers
 
@@ -78,6 +83,8 @@ static inline iohandler_t sm_handler(sm_manager* manager) {
     return manager->handler;
 }
 
+void *sm_listen( void *obj );
+void *sm_worker( void *obj );
 void sm_tcp_handler(sm_event *ev);
 void sm_udp_handler(sm_event *ev);
 
