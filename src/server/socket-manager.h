@@ -33,7 +33,17 @@ typedef struct sm_socket {
 
 /*----------------------------------------------------------------------------*/
 struct sm_manager;
-typedef void (*iohandler_t) (struct sm_manager*, int, void*, size_t, void*, size_t);
+typedef struct sm_event {
+    struct sm_manager* manager;
+    int fd;
+    uint32_t events;
+    void* inbuf;
+    void* outbuf;
+    size_t size_in;
+    size_t size_out;
+} sm_event;
+
+typedef void (*iohandler_t) (sm_event*);
 
 typedef struct sm_manager {
     sm_socket *sockets;
@@ -67,7 +77,7 @@ static inline iohandler_t sm_handler(sm_manager* manager) {
     return manager->handler;
 }
 
-void sm_tcp_handler(sm_manager *manager, int fd, void *buf, size_t bufsize, void* answer, size_t answer_size);
-void sm_udp_handler(sm_manager *manager, int fd, void *buf, size_t bufsize, void* answer, size_t answer_size);
+void sm_tcp_handler(sm_event *ev);
+void sm_udp_handler(sm_event *ev);
 
 #endif
