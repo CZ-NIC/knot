@@ -58,6 +58,7 @@ void dpt_destroy( dpt_dispatcher **dispatcher )
     if(dispatcher == NULL || *dispatcher == NULL)
         return;
 
+    free((*dispatcher)->threads);
     free(*dispatcher);
     *dispatcher = NULL;
 }

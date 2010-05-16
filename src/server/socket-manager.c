@@ -125,6 +125,7 @@ int sm_remove_event( sm_manager *manager, int socket )
 int sm_add_event( sm_manager *manager, int socket, uint32_t events )
 {
     struct epoll_event ev;
+    memset(&ev, 0, sizeof(struct epoll_event));
     //pthread_mutex_lock(&manager->mutex);
 
     // enough space?
