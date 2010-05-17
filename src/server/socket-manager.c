@@ -24,6 +24,9 @@ const uint DEFAULT_EVENTS_COUNT = 1;
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
+void *sm_listen_routine( void *obj );
+void *sm_worker_routine( void *obj );
+
 sm_socket *sm_create_socket( unsigned short port, socket_t type )
 {
     // create new socket structure
@@ -54,56 +57,32 @@ sm_socket *sm_create_socket( unsigned short port, socket_t type )
 
 /*----------------------------------------------------------------------------*/
 
-void sm_destroy_socket( sm_socket **socket )
-{
-    close((*socket)->socket);   // TODO: can we close the socket like this?
-                                // what about non-opened socket?
-    free(*socket);
-    *socket = NULL;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int sm_reserve_events( sm_manager *manager, uint size )
+int sm_reserve_events( sm_worker *worker, uint size )
 {
     assert(size > 0);
 
-    if( size < manager->events_max )
+    if( size < worker->events_size )
         return 0;
 
-    struct epoll_event *new_events = realloc(manager->events, size * sizeof(struct epoll_event));
+    struct epoll_event *new_events = realloc(worker->events, size * sizeof(struct epoll_event));
     if (new_events == NULL) {
         return -1;
     }
 
-    manager->events = new_events;
-    manager->events_max = size;
+    worker->events = new_events;
+    worker->events_size = size;
     return 0;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int sm_realloc_events( sm_manager *manager )
-{
-    assert(manager->events_count == manager->events_max);
-
-    // the mutex should be already locked
-    assert(pthread_mutex_trylock(&manager->mutex) != 0);
-    int ret = sm_reserve_events(manager, manager->events_max * 2);
-    if (ret < 0) {
-        perror("sm_reserve_events");
-        return ret;
-    }
-
-    return ret;
 }
 
 /*----------------------------------------------------------------------------*/
 
 int sm_remove_event( sm_manager *manager, int socket )
 {
-    /// \todo Not socket mutex, but global mutex may need locking. Maybe not.
+    // Compatibility with kernels < 2.6.9, require non-NULL ptr.
     struct epoll_event ev;
+
+    // Needs to be synchronised
+    assert(pthread_mutex_trylock(&manager->sockets_mutex) != 0);
 
     // find socket ptr
     if(epoll_ctl(manager->epfd, EPOLL_CTL_DEL, socket, &ev) != 0) {
@@ -111,36 +90,25 @@ int sm_remove_event( sm_manager *manager, int socket )
         return -1;
     }
 
-    --manager->events_count;
-
+    --manager->fd_count;
     return 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
-/** \bug In epoll, events should not be initialized, it is handled by epoll_wait.
-  * \todo Do we need locking? epoll_wait() won't be affected anyway and add_event
-  *       is called from synchronised environment.
-  */
 int sm_add_event( sm_manager *manager, int socket, uint32_t events )
 {
     struct epoll_event ev;
     memset(&ev, 0, sizeof(struct epoll_event));
-    //pthread_mutex_lock(&manager->mutex);
 
-    // enough space?
-    if (manager->events_count == manager->events_max) {
-        if (sm_realloc_events(manager) != 0) {
-            return -1;
-        }
-    }
+    // Needs to be synchronised
+    assert(pthread_mutex_trylock(&manager->sockets_mutex) != 0);
 
     // All polled events should use non-blocking mode.
     int old_flag = fcntl(socket, F_GETFL, 0);
     if (fcntl(socket, F_SETFL, old_flag | O_NONBLOCK) == -1) {
         fprintf(stderr, "sm_add_event(): Error setting non-blocking mode on "
                 "the socket.\n");
-        //pthread_mutex_unlock(&manager->mutex);
         return -1;
     }
 
@@ -149,14 +117,87 @@ int sm_add_event( sm_manager *manager, int socket, uint32_t events )
     ev.events = events;
     if (epoll_ctl(manager->epfd, EPOLL_CTL_ADD, socket, &ev) != 0) {
         log_error("failed to add socket to event set (errno %d): %s.\n", errno, strerror(errno));
-        //pthread_mutex_unlock(&manager->mutex);
         return -1;
     }
 
     // Increase registered event count
-    ++manager->events_count;
-    //pthread_mutex_unlock(&manager->mutex);
+    ++manager->fd_count;
     return 0;
+}
+
+void *sm_listen_routine( void *obj )
+{
+    int worker_id = 0, nfds = 0;
+    sm_manager* manager = (sm_manager *)obj;
+
+    // Check handler
+    if(manager->handler == NULL) {
+        fprintf(stderr, "ERROR: Socket manager has no registered handler.\n");
+        return NULL;
+    }
+
+    while (manager->is_running) {
+
+        // Select next worker
+        sm_worker* worker = &manager->workers[worker_id];
+        pthread_mutex_lock(&worker->mutex);
+
+        // Reserve backing-store and wait
+        sm_reserve_events(worker, manager->fd_count * 2);
+        nfds = epoll_wait(manager->epfd, worker->events, manager->fd_count, 1000);
+        if (nfds < 0) {
+            perror("sm_listen epoll_wait");
+            return NULL;
+        }
+
+        // Signalized finish
+        if(!manager->is_running) {
+            pthread_mutex_unlock(&worker->mutex);
+            break;
+        }
+
+        // Signalize
+        worker->events_count = nfds;
+        pthread_cond_signal(&worker->wakeup);
+        pthread_mutex_unlock(&worker->mutex);
+
+        // Next worker
+        worker_id = (worker_id + 1) % manager->workers_dpt->thread_count;
+    }
+
+    // Wake up all workers
+    for(int i = 0; i < manager->workers_dpt->thread_count; ++i) {
+        sm_worker* worker = &manager->workers[i];
+        pthread_mutex_lock(&worker->mutex);
+        worker->events_count = -1;
+        pthread_cond_signal(&worker->wakeup);
+        pthread_mutex_unlock(&worker->mutex);
+    }
+
+    return NULL;
+}
+
+void *sm_worker_routine( void *obj )
+{
+    sm_worker* worker = (sm_worker *)obj;
+    char buf[SOCKET_BUFF_SIZE];
+    char answer[SOCKET_BUFF_SIZE];
+
+    sm_event event;
+    event.manager = worker->mgr;
+    event.fd = 0;
+    event.events = 0;
+    event.inbuf = buf;
+    event.outbuf = answer;
+    event.size_in = event.size_out = SOCKET_BUFF_SIZE;
+    while (worker->mgr->is_running) {
+        pthread_mutex_lock(&worker->mutex);
+        pthread_cond_wait(&worker->wakeup, &worker->mutex);
+        pthread_mutex_unlock(&worker->mutex);
+    }
+
+    printf("Worker finished.\n");
+    return NULL;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -166,6 +207,9 @@ int sm_add_event( sm_manager *manager, int socket, uint32_t events )
 sm_manager *sm_create( ns_nameserver *nameserver, int thread_count )
 {
     sm_manager *manager = malloc(sizeof(sm_manager));
+    manager->handler = NULL;
+    manager->sockets = NULL;
+    manager->fd_count = 0;
 
     // Create epoll
     manager->epfd = epoll_create(DEFAULT_EVENTS_COUNT);
@@ -175,45 +219,71 @@ sm_manager *sm_create( ns_nameserver *nameserver, int thread_count )
         return NULL;
     }
 
-    // Create mutex
-    int errval;
-    if ((errval = pthread_mutex_init(&manager->mutex, NULL)) != 0) {
-        perror("sm_create");
-        free(manager);
-        return NULL;
-    }
-
-    // Initialize epoll backing store
-    manager->handler = NULL;
-    manager->sockets = NULL;
-    manager->events_count = 0;
-    manager->events_max = DEFAULT_EVENTS_COUNT;
-    manager->events = malloc(DEFAULT_EVENTS_COUNT * sizeof(struct epoll_event));
-    if (manager->events == NULL) {
-        perror("sm_create");
-        sm_destroy(&manager);
-        return NULL;
-    }
-
     // Create listener
-    manager->listener = dpt_create(1, &sm_listen, manager);
+    manager->listener = dpt_create(1, &sm_listen_routine, manager);
     if(manager->listener == NULL) {
-        log_error("failed to initialize mutex (errno %d): %s.\n", errval, strerror(errval));
+        perror("sm_create listener");
         sm_destroy(&manager);
         return NULL;
     }
 
     // Create workers
-    manager->workers = dpt_create(thread_count, &sm_worker, manager);
-    if(manager->workers == NULL) {
-        perror("sm_create");
+    manager->workers = malloc(thread_count * sizeof(sm_worker));
+    if (manager->workers == NULL) {
+        perror("sm_create workers");
+        sm_destroy(&manager);
+        return NULL;
+    }
+
+    // Create worker dispatcher
+    manager->workers_dpt = dpt_create(thread_count, &sm_worker_routine, NULL);
+    if(manager->workers_dpt == NULL) {
+        sm_destroy(&manager);
+        return NULL;
+    }
+
+    // Initialize workers
+    memset(manager->workers, 0, thread_count * sizeof(sm_worker));
+    for(int i = 0; i < thread_count; ++i) {
+        sm_worker *worker = &manager->workers[i];
+        worker->events = malloc(DEFAULT_EVENTS_COUNT * sizeof(struct epoll_event));
+        if (worker->events == NULL) {
+            perror("sm_create worker_init");
+            sm_destroy(&manager);
+            return NULL;
+        }
+
+        worker->id = i;
+        worker->events_count = 0;
+        worker->events_size = DEFAULT_EVENTS_COUNT;
+        worker->mgr = manager;
+
+        if (pthread_mutex_init(&worker->mutex, NULL) != 0) {
+            perror("sm_create worker_mutex");
+            sm_destroy(&manager);
+            return NULL;
+        }
+
+        if (pthread_cond_init(&worker->wakeup, NULL) != 0) {
+            perror("sm_create worker_wakeup");
+            sm_destroy(&manager);
+            return NULL;
+        }
+
+        // Assign to worker dispatcher
+        manager->workers_dpt->routine_obj[i] = (void*) worker;
+    }
+
+    // Initialize lock
+    int ret = 0;
+    if ((ret = pthread_mutex_init(&manager->sockets_mutex, NULL)) != 0) {
+        perror("sm_create mutex");
         sm_destroy(&manager);
         return NULL;
     }
 
     // Initialize nameserver
     manager->nameserver = nameserver;
-
     return manager;
 }
 
@@ -223,12 +293,17 @@ int sm_start( sm_manager* manager )
     manager->is_running = 1;
 
     // Start dispatchers
-    return dpt_start(manager->workers) + dpt_start(manager->listener);
+    return dpt_start(manager->workers_dpt) + dpt_start(manager->listener);
+}
+
+void sm_stop( sm_manager *manager )
+{
+    manager->is_running = 0;
 }
 
 int sm_wait( sm_manager* manager )
 {
-    return dpt_wait(manager->workers) + dpt_wait(manager->listener);
+    return dpt_wait(manager->workers_dpt) + dpt_wait(manager->listener);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -236,15 +311,11 @@ int sm_wait( sm_manager* manager )
 int sm_open_socket( sm_manager *manager, unsigned short port, socket_t type )
 {
     sm_socket *socket_new = sm_create_socket(port, type);
-
     if (socket_new == NULL) {
         return -1;
     }
 
     struct sockaddr_in addr;
-
-    //log_info("Creating socket for listen on port %hu.\n", port);
-
     addr.sin_family = AF_INET;
     addr.sin_port = htons( port );
     addr.sin_addr.s_addr = htonl( INADDR_ANY ); /// \todo Bind to localhost only.
@@ -252,14 +323,16 @@ int sm_open_socket( sm_manager *manager, unsigned short port, socket_t type )
     // Reuse old address if taken
     int flag = 1;
     if(setsockopt(socket_new->socket, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag)) < 0) {
-        sm_destroy_socket(&socket_new);
+        close(socket_new->socket);
+        free(socket_new);
         return -1;
     }
 
     int res = bind(socket_new->socket, (struct sockaddr *)&addr, sizeof(addr));
     if (res == -1) {
         log_error("cannot bind socket (errno %d): %s.\n", errno, strerror(errno));
-        sm_destroy_socket(&socket_new);
+        close(socket_new->socket);
+        free(socket_new);
         return -1;
     }
 
@@ -267,27 +340,26 @@ int sm_open_socket( sm_manager *manager, unsigned short port, socket_t type )
     if(type == TCP) {
         res = listen(socket_new->socket, 10); /// \todo Tweak backlog size.
         if (res == -1) {
-            sm_destroy_socket(&socket_new);
+            close(socket_new->socket);
+            free(socket_new);
             return -1;
         }
     }
 
     // if everything went well, connect the socket to the list
+    pthread_mutex_lock(&manager->sockets_mutex);
     socket_new->next = manager->sockets;
-
-    // TODO: this should be atomic by other means than locking the mutex:
-    pthread_mutex_lock(&manager->mutex);
     manager->sockets = socket_new;
 
     // add new event
-    // TODO: what are the other events for??
+    /// \todo Edge-Triggered mode.
     if (sm_add_event(manager, socket_new->socket, EPOLLIN) != 0) {
-        sm_destroy_socket(&socket_new);
+        sm_close_socket(manager, port);
+        pthread_mutex_unlock(&manager->sockets_mutex);
         return -1;
     }
 
-    pthread_mutex_unlock(&manager->mutex);
-
+    pthread_mutex_unlock(&manager->sockets_mutex);
     return 0;
 }
 
@@ -295,11 +367,8 @@ int sm_open_socket( sm_manager *manager, unsigned short port, socket_t type )
 
 int sm_close_socket( sm_manager *manager, unsigned short port )
 {   
-    // find the socket entry, close the socket, remove the event
-    // and destroy the entry
-    // do we have to lock the mutex while searching for the socket??
-    pthread_mutex_lock(&manager->mutex);
-
+    // Synchronise to prevent list corruption
+    pthread_mutex_lock(&manager->sockets_mutex);
     sm_socket *s = manager->sockets, *p = NULL;
     while (s != NULL && s->port != port) {
         p = s;
@@ -307,7 +376,7 @@ int sm_close_socket( sm_manager *manager, unsigned short port )
     }
     
     if (s == NULL) {
-        pthread_mutex_unlock(&manager->mutex);
+        pthread_mutex_unlock(&manager->sockets_mutex);
         return -1;
     }
     
@@ -316,10 +385,18 @@ int sm_close_socket( sm_manager *manager, unsigned short port )
     // Unregister from epoll
     sm_remove_event(manager, s->socket);
 
-    // disconnect the found socket entry
-    p->next = s->next;
-    pthread_mutex_unlock(&manager->mutex);
-    sm_destroy_socket(&s);
+    // Disconnect the found socket entry
+    if(p != NULL) {
+        p->next = s->next;
+    }
+
+    free(s);
+
+    // Cleanup on last entry
+    if(p == NULL) {
+        manager->sockets = NULL;
+    }
+    pthread_mutex_unlock(&manager->sockets_mutex);
     
     return 0;
 }
@@ -328,37 +405,36 @@ int sm_close_socket( sm_manager *manager, unsigned short port )
 
 void sm_destroy( sm_manager **manager )
 {
-    pthread_mutex_lock(&(*manager)->mutex);
-
     // Notify close
     (*manager)->is_running = 0;
 
     // Destroy all sockets
-    sm_socket *s = (*manager)->sockets;
-    if (s != NULL) {
-        sm_socket *next = s->next;
-        while (next != NULL) {
-            s->next = next->next;
-            sm_destroy_socket(&next);
-            next = s->next;
-        }
-        sm_destroy_socket(&s);
+    /// \todo Synchronise this, may result in list corruption.
+    while((*manager)->sockets != NULL) {
+        sm_close_socket(*manager, (*manager)->sockets->port);
     }
 
     // Close epoll
+    pthread_mutex_lock(&(*manager)->sockets_mutex);
     close((*manager)->epfd);
 
-    // Destroy events backing store
-    if((*manager)->events != NULL)
-        free((*manager)->events);
+    // Destroy workers
+    for(int i = 0; i < (*manager)->workers_dpt->thread_count; ++i) {
+        sm_worker* worker = &(*manager)->workers[i];
+        if(worker->events != NULL)
+            free(worker->events);
+        pthread_mutex_destroy(&worker->mutex);
+        pthread_cond_destroy(&worker->wakeup);
+    }
+    free((*manager)->workers);
 
     // Free dispatchers
     dpt_destroy(&(*manager)->listener);
-    dpt_destroy(&(*manager)->workers);
+    dpt_destroy(&(*manager)->workers_dpt);
 
-    // Destroy mutex
-    pthread_mutex_unlock(&(*manager)->mutex);
-    pthread_mutex_destroy(&(*manager)->mutex);
+    // Destroy socket list mutex
+    pthread_mutex_unlock(&(*manager)->sockets_mutex);
+    pthread_mutex_destroy(&(*manager)->sockets_mutex);
 
     free(*manager);
     *manager = NULL;
@@ -372,10 +448,8 @@ void sm_tcp_handler(sm_event *ev)
     int addrsize = sizeof(faddr);
     int incoming = -1;
 
-    // Lock the socket
-    pthread_mutex_lock(&ev->manager->mutex);
-
     // Master socket
+    /// \todo Lock per-socket.
     if(ev->fd == ev->manager->sockets->socket) {
 
         // Accept on master socket
@@ -386,12 +460,12 @@ void sm_tcp_handler(sm_event *ev)
             perror("tcp accept");
         }
         else {
+            pthread_mutex_lock(&ev->manager->sockets_mutex);
             sm_add_event(ev->manager, incoming, EPOLLIN);
+            pthread_mutex_unlock(&ev->manager->sockets_mutex);
             printf("tcp accept: accepted %d\n", incoming);
         }
 
-        // Unlock master socket
-        pthread_mutex_unlock(&ev->manager->mutex);
         return;
     }
 
@@ -402,13 +476,15 @@ void sm_tcp_handler(sm_event *ev)
         printf("Received fragment from %d of %dB.\n", ev->fd, readb);
         n += readb;
     }
-    pthread_mutex_unlock(&ev->manager->mutex);
+
     if(n <= 0) {
 
         // Zero read or error other than would-block
         //if(n == 0 || (n == -1 && errno != EWOULDBLOCK)) {
             printf("tcp disconnected: %d\n", ev->fd);
+            pthread_mutex_lock(&ev->manager->sockets_mutex);
             sm_remove_event(ev->manager, ev->fd);
+            pthread_mutex_unlock(&ev->manager->sockets_mutex);
             close(ev->fd);
         //}
 
@@ -447,8 +523,6 @@ void sm_udp_handler(sm_event *ev)
     struct sockaddr_in faddr;
     int addrsize = sizeof(faddr);
 
-    pthread_mutex_lock(&ev->manager->mutex);
-
     // If fd is a TCP server socket, accept incoming TCP connection, else recvfrom()
     int n = recvfrom(ev->fd, ev->inbuf, ev->size_in, 0, (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
     if(n >= 0) {
@@ -456,7 +530,6 @@ void sm_udp_handler(sm_event *ev)
         debug_sm("Received %d bytes.\n", n);
 
         //printf("unlocking mutex from thread %ld\n", pthread_self());
-        pthread_mutex_unlock(&ev->manager->mutex);
         uint answer_size = ev->size_out;
         int res = ns_answer_request(ev->manager->nameserver, ev->inbuf, n, ev->outbuf,
                           &answer_size);
@@ -479,74 +552,5 @@ void sm_udp_handler(sm_event *ev)
                 log_error("failed to send datagram (errno %d): %s.\n", error, strerror(error));
             }
         }
-    } else {
-        pthread_mutex_unlock(&ev->manager->mutex);
     }
-}
-
-/*----------------------------------------------------------------------------*/
-
-void *sm_listen( void *obj )
-{
-    sm_manager* manager = (sm_manager *)obj;
-    char buf[SOCKET_BUFF_SIZE];
-    char answer[SOCKET_BUFF_SIZE];
-    sm_event event;
-    event.manager = manager;
-    event.fd = 0;
-    event.events = 0;
-    event.inbuf = buf;
-    event.outbuf = answer;
-    event.size_in = event.size_out = SOCKET_BUFF_SIZE;
-
-    // Check handler
-    if(manager->handler == NULL) {
-        printf("ERROR: Socket manager has no registered handler.\n");
-        return NULL;
-    }
-
-    while (manager->is_running) {
-        /// \bug What if events count changes in another thread and backing
-        ///      store gets reallocated? Memory error in loop reading probably.
-        // Reserve 2x backing-store size
-        sm_reserve_events(manager, manager->events_count * 2);
-        int nfds = epoll_wait(manager->epfd, manager->events,
-                              manager->events_count, 1000);
-
-        if (nfds < 0) {
-            printf("ERROR: %d: %s.\n", errno, strerror(errno));
-            return NULL;
-        }
-
-        // Signalized finish
-        if(!manager->is_running) {
-            break;
-        }
-
-        // for each ready socket
-        for(int i = 0; i < nfds; i++) {
-            //printf("locking mutex from thread %ld\n", pthread_self());
-            event.fd = manager->events[i].data.fd;
-            event.events = manager->events[i].events;
-            manager->handler(&event);
-        }
-    }
-
-    return NULL;
-}
-
-void *sm_worker( void *obj )
-{
-    sm_manager* manager = (sm_manager *)obj;
-    while (manager->is_running) {
-        sleep(1);
-    }
-
-    printf("Worker finished.\n");
-    return NULL;
-}
-
-void sm_stop( sm_manager *manager )
-{
-    manager->is_running = 0;
 }
