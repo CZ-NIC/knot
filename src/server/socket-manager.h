@@ -34,6 +34,9 @@ typedef struct sm_socket {
 
 /*----------------------------------------------------------------------------*/
 struct sm_manager;
+
+/** Event descriptor.
+  */
 typedef struct sm_event {
     struct sm_manager* manager;
     int fd;
@@ -44,20 +47,33 @@ typedef struct sm_event {
     size_t size_out;
 } sm_event;
 
+/** Handler functio proto. */
 typedef void (*iohandler_t) (sm_event*);
 
-typedef struct sm_manager {
-    sm_socket *sockets;
+/** Workers descriptor. */
+typedef struct sm_worker {
+    int id;
     struct epoll_event *events;
     int events_count;
-    int events_max;
-    int epfd;
+    int events_size;
+    struct sm_manager *mgr;
     pthread_mutex_t mutex;
+    pthread_cond_t  wakeup;
+} sm_worker;
+
+/** \todo Implement notification via Linux eventfd() instead of is_running.
+  */
+typedef struct sm_manager {
+    int epfd;
+    int fd_count;
+    volatile int is_running;
+    iohandler_t handler;
+    sm_socket *sockets;
+    sm_worker *workers;
     ns_nameserver *nameserver;
     dpt_dispatcher *listener;
-    dpt_dispatcher *workers;
-    iohandler_t handler;
-    volatile int is_running;
+    dpt_dispatcher *workers_dpt;
+    pthread_mutex_t sockets_mutex;
 } sm_manager;
 
 /*----------------------------------------------------------------------------*/
@@ -83,9 +99,8 @@ static inline iohandler_t sm_handler(sm_manager* manager) {
     return manager->handler;
 }
 
-void *sm_listen( void *obj );
-void *sm_worker( void *obj );
 void sm_tcp_handler(sm_event *ev);
 void sm_udp_handler(sm_event *ev);
+
 
 #endif

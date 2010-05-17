@@ -101,11 +101,11 @@ int cute_start( cute_server *server, const char *filename )
     int ret = 0;
     ret = sm_start(server->manager[TCP]);
 #ifdef CUTE_DEBUG
-    printf("   TCP server: %u workers.\n", server->manager[TCP]->workers->thread_count);
+    printf("   TCP server: %u workers.\n", server->manager[TCP]->workers_dpt->thread_count);
 #endif
     ret += sm_start(server->manager[UDP]);
 #ifdef CUTE_DEBUG
-    printf("   UDP server: %u workers.\n", server->manager[UDP]->workers->thread_count);
+    printf("   UDP server: %u workers.\n", server->manager[UDP]->workers_dpt->thread_count);
     printf("Done\n\n");
 #endif
     if(ret < 0)
