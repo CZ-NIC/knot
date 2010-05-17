@@ -13,8 +13,11 @@ dpt_dispatcher *dpt_create( int thread_count, thr_routine routine,
     dpt_dispatcher *dispatcher = malloc(sizeof(dpt_dispatcher));
     dispatcher->thread_count = thread_count;
     dispatcher->routine = routine;
-    dispatcher->routine_obj = routine_obj;
+    dispatcher->routine_obj = malloc(dispatcher->thread_count * sizeof(void*));
     dispatcher->threads = malloc(dispatcher->thread_count * sizeof(pthread_t));
+    for(int i = 0; i < thread_count; ++i) {
+        dispatcher->routine_obj[i] = routine_obj;
+    }
     return dispatcher;
 }
 
@@ -25,7 +28,7 @@ int dpt_start( dpt_dispatcher *dispatcher )
     for (int i = 0; i < dispatcher->thread_count; ++i)
     {
         if (pthread_create(&dispatcher->threads[i], NULL,
-                           dispatcher->routine, dispatcher->routine_obj)) {
+                           dispatcher->routine, dispatcher->routine_obj[i])) {
             log_error("%s: failed to create thread %d", __func__, i);
             return -1;
         }

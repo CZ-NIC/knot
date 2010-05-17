@@ -9,7 +9,7 @@ typedef void *(*thr_routine)(void *);
 typedef struct dpt_dispatcher {
     int thread_count;
     thr_routine routine;
-    void *routine_obj;
+    void **routine_obj;
     pthread_t *threads;
 } dpt_dispatcher;
 
