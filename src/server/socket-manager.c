@@ -14,6 +14,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
+#include <arpa/inet.h>
 
 //#define SM_DEBUG
 
@@ -61,9 +62,12 @@ int sm_reserve_events( sm_worker *worker, uint size )
 {
     assert(size > 0);
 
+    // If backing-store is large enough, return
     if( size <= worker->events_size )
         return 0;
 
+    // Realloc events backing-store
+    /// \todo Maybe free + malloc will be faster.
     struct epoll_event *new_events = realloc(worker->events, size * sizeof(struct epoll_event));
     if (new_events == NULL) {
         return -1;
@@ -190,11 +194,13 @@ void *sm_worker_routine( void *obj )
     event.inbuf = buf;
     event.outbuf = answer;
     event.size_in = event.size_out = SOCKET_BUFF_SIZE;
+
     while (worker->mgr->is_running) {
         pthread_mutex_lock(&worker->mutex);
         pthread_cond_wait(&worker->wakeup, &worker->mutex);
 
         // Evaluate
+        //fprintf(stderr, "Worker [%d] wakeup %d events.\n", worker->id, worker->events_count);
         for(int i = 0; i < worker->events_count; ++i) {
             event.fd = worker->events[i].data.fd;
             event.events = worker->events[i].events;
@@ -417,7 +423,6 @@ void sm_destroy( sm_manager **manager )
     (*manager)->is_running = 0;
 
     // Destroy all sockets
-    /// \todo Synchronise this, may result in list corruption.
     while((*manager)->sockets != NULL) {
         sm_close_socket(*manager, (*manager)->sockets->port);
     }
@@ -531,13 +536,30 @@ void sm_udp_handler(sm_event *ev)
     struct sockaddr_in faddr;
     int addrsize = sizeof(faddr);
 
-    // If fd is a TCP server socket, accept incoming TCP connection, else recvfrom()
     int n = 0;
-    while((n = recvfrom(ev->fd, ev->inbuf, ev->size_in, 0, (struct sockaddr *)&faddr, (socklen_t *)&addrsize)) > 0) {
+
+    // Loop until all data is read
+    while(n >= 0) {
+
+        // Receive data
+        // Global I/O lock means ~ 8% overhead; recvfrom() should be thread-safe
+        n = recvfrom(ev->fd, ev->inbuf, ev->size_in, MSG_DONTWAIT, (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
+        //char _str[INET_ADDRSTRLEN];
+        //inet_ntop(AF_INET, &(faddr.sin_addr), _str, INET_ADDRSTRLEN);
+        //fprintf(stderr, "recvfrom() in %p: received %d bytes from %s:%d.\n", (void*)pthread_self(), n, _str, faddr.sin_port);
+
+        // Socket not ready
+        if(n == -1 && errno == EWOULDBLOCK) {
+            return;
+        }
+
+        // Error
+        if(n <= 0) {
+            perror("sm_udp_handler recvfrom");
+            return;
+        }
 
         debug_sm("Received %d bytes.\n", n);
-
-        //printf("unlocking mutex from thread %ld\n", pthread_self());
         uint answer_size = ev->size_out;
         int res = ns_answer_request(ev->manager->nameserver, ev->inbuf, n, ev->outbuf,
                           &answer_size);
@@ -546,18 +568,22 @@ void sm_udp_handler(sm_event *ev)
 
         if (res == 0) {
             assert(answer_size > 0);
+
             debug_sm("Answer wire format (size %u):\n", answer_size);
             debug_sm_hex(answer, answer_size);
 
-            /// \todo Risky, socket may be used for reading at this time and send() may return EAGAIN.
-            /// \todo MSG_DONTWAIT not needed anyway, as O_NONBLOCK is set by fcntl().
-            int sent = sendto(ev->fd, ev->outbuf, answer_size, MSG_DONTWAIT,
-                              (struct sockaddr *)&faddr,
-                              (socklen_t)addrsize);
+            for(;;) {
+                res = sendto(ev->fd, ev->outbuf, answer_size, MSG_DONTWAIT,
+                             (struct sockaddr *) &faddr,
+                             (socklen_t) addrsize);
 
-            if (sent < 0) {
-                const int error = errno;
-                log_error("failed to send datagram (errno %d): %s.\n", error, strerror(error));
+                //fprintf(stderr, "sendto() in %p: written %d bytes to %d.\n", (void*)pthread_self(), res, ev->fd);
+                if(res != answer_size) {
+                    log_error("failed to send datagram (errno %d): %s.\n", res, strerror(res));
+                    continue;
+                }
+
+                break;
             }
         }
     }
