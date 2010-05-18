@@ -61,7 +61,7 @@ int sm_reserve_events( sm_worker *worker, uint size )
 {
     assert(size > 0);
 
-    if( size < worker->events_size )
+    if( size <= worker->events_size )
         return 0;
 
     struct epoll_event *new_events = realloc(worker->events, size * sizeof(struct epoll_event));
@@ -169,7 +169,7 @@ void *sm_listen_routine( void *obj )
     for(int i = 0; i < manager->workers_dpt->thread_count; ++i) {
         sm_worker* worker = &manager->workers[i];
         pthread_mutex_lock(&worker->mutex);
-        worker->events_count = -1;
+        worker->events_count = 0;
         pthread_cond_signal(&worker->wakeup);
         pthread_mutex_unlock(&worker->mutex);
     }
@@ -193,6 +193,14 @@ void *sm_worker_routine( void *obj )
     while (worker->mgr->is_running) {
         pthread_mutex_lock(&worker->mutex);
         pthread_cond_wait(&worker->wakeup, &worker->mutex);
+
+        // Evaluate
+        for(int i = 0; i < worker->events_count; ++i) {
+            event.fd = worker->events[i].data.fd;
+            event.events = worker->events[i].events;
+            worker->mgr->handler(&event);
+        }
+
         pthread_mutex_unlock(&worker->mutex);
     }
 
@@ -524,8 +532,8 @@ void sm_udp_handler(sm_event *ev)
     int addrsize = sizeof(faddr);
 
     // If fd is a TCP server socket, accept incoming TCP connection, else recvfrom()
-    int n = recvfrom(ev->fd, ev->inbuf, ev->size_in, 0, (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
-    if(n >= 0) {
+    int n = 0;
+    while((n = recvfrom(ev->fd, ev->inbuf, ev->size_in, 0, (struct sockaddr *)&faddr, (socklen_t *)&addrsize)) > 0) {
 
         debug_sm("Received %d bytes.\n", n);
 
@@ -543,7 +551,7 @@ void sm_udp_handler(sm_event *ev)
 
             /// \todo Risky, socket may be used for reading at this time and send() may return EAGAIN.
             /// \todo MSG_DONTWAIT not needed anyway, as O_NONBLOCK is set by fcntl().
-            int sent = sendto(ev->fd, ev->outbuf, answer_size, 0,
+            int sent = sendto(ev->fd, ev->outbuf, answer_size, MSG_DONTWAIT,
                               (struct sockaddr *)&faddr,
                               (socklen_t)addrsize);
 
