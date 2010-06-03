@@ -15,8 +15,6 @@
 #include <unistd.h>
 #include <assert.h>
 
-//#define SM_DEBUG
-
 const uint SOCKET_BUFF_SIZE = 4096;
 const uint DEFAULT_EVENTS_COUNT = 1;
 
@@ -38,7 +36,7 @@ sm_socket *sm_create_socket( unsigned short port )
     socket_new->socket = socket( AF_INET, SOCK_DGRAM, 0 );
 
     if (socket_new->socket == -1) {
-        fprintf(stderr, "ERROR: %d: %s.\n", errno, strerror(errno));
+        log_error("failed to create socket (errno %d): %s\n", errno, strerror(errno));
         free(socket_new);
         return NULL;
     }
@@ -67,7 +65,7 @@ int sm_realloc_events( sm_manager *manager )
     struct epoll_event *new_events = realloc(manager->events,
                                              manager->events_max * 2);
     if (new_events == NULL) {
-        printf( "ERROR: %d: %s.\n", errno, strerror(errno) );
+        ERR_ALLOC_FAILED;
         return -1;
     }
 
@@ -95,7 +93,7 @@ int sm_add_event( sm_manager *manager, int socket, uint32_t events )
 
     if (epoll_ctl(manager->epfd, EPOLL_CTL_ADD, socket,
                          &manager->events[manager->events_count]) != 0) {
-        printf( "ERROR: %d: %s.\n", errno, strerror(errno) );
+        log_error("failed to add socket to event set (errno %d): %s.\n", errno, strerror(errno));
         // TODO: some cleanup??
         return -1;
     }
@@ -118,7 +116,7 @@ sm_manager *sm_create( ns_nameserver *nameserver )
     // create epoll
     manager->epfd = epoll_create(DEFAULT_EVENTS_COUNT);
     if (manager->epfd == -1) {
-        printf( "ERROR: %d: %s.\n", errno, strerror(errno) );
+        log_error("failed to create epoll set (errno %d): %s.\n", errno, strerror(errno));
         free(manager);
         return NULL;
     }
@@ -139,7 +137,7 @@ sm_manager *sm_create( ns_nameserver *nameserver )
 
     int errval;
     if ((errval = pthread_mutex_init(&manager->mutex, NULL)) != 0) {
-        printf( "ERROR: %d: %s.\n", errval, strerror(errval) );
+        log_error("failed to initialize mutex (errno %d): %s.\n", errval, strerror(errval));
         close(manager->epfd);
         free(manager);
         manager = NULL;
@@ -164,15 +162,14 @@ int sm_open_socket( sm_manager *manager, unsigned short port )
     // Set non-blocking mode on the socket
     int old_flag = fcntl(socket_new->socket, F_GETFL, 0);
     if (fcntl(socket_new->socket, F_SETFL, old_flag | O_NONBLOCK) == -1) {
-        fprintf(stderr, "sm_open_socket(): Error setting non-blocking mode on "
-                "the socket.\n");
+        log_error("%s: error setting non-blocking mode on the socket.\n", __func__);
         sm_destroy_socket(&socket_new);
         return -1;
     }
 
     struct sockaddr_in addr;
 
-    //printf("Creating socket for listen on port %hu.\n", port);
+    //log_info("Creating socket for listen on port %hu.\n", port);
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons( port );
@@ -180,7 +177,7 @@ int sm_open_socket( sm_manager *manager, unsigned short port )
 
     int res = bind(socket_new->socket, (struct sockaddr *)&addr, sizeof(addr));
     if (res == -1) {
-        printf( "ERROR: %d: %s.\n", errno, strerror(errno) );
+        log_error("cannot bind socket (errno %d): %s.\n", errno, strerror(errno));
         sm_destroy_socket(&socket_new);
         return -1;
     }
@@ -230,7 +227,7 @@ int sm_close_socket( sm_manager *manager, unsigned short port )
     // remove the event (last argument is ignored, so we may use the first event
     if (epoll_ctl(manager->epfd, EPOLL_CTL_DEL, s->socket, manager->events)
         != 0) {
-        printf( "ERROR: %d: %s.\n", errno, strerror(errno) );
+        log_error("failed to remote socket from event set (errno %d): %s.\n", errno, strerror(errno));
         pthread_mutex_unlock(&manager->mutex);
         return -1;
     }
@@ -301,13 +298,13 @@ void *sm_listen( void *obj )
         int nfds = epoll_wait(manager->epfd, manager->events,
                               manager->events_count, -1);
         if (nfds < 0) {
-            printf("ERROR: %d: %s.\n", errno, strerror(errno));
+            log_error("epoll_wait() failed (errno %d): %s.\n", errno, strerror(errno));
             return NULL;
         }
 
         // for each ready socket
         for(i = 0; i < nfds; i++) {
-            //printf("locking mutex from thread %ld\n", pthread_self());
+            //log_info("locking mutex from thread %ld\n", pthread_self());
             pthread_mutex_lock(&manager->mutex);
             fd = manager->events[i].data.fd;
 
@@ -315,27 +312,22 @@ void *sm_listen( void *obj )
                               (struct sockaddr *)&faddr,
                              (socklen_t *)&addrsize)) > 0) {
 
-#ifdef SM_DEBUG
-                printf("Received %d bytes.\n", n);
-#endif
+                debug_sm("Received %d bytes.\n", n);
 
-                //printf("unlocking mutex from thread %ld\n", pthread_self());
+                //log_info("unlocking mutex from thread %ld\n", pthread_self());
                 pthread_mutex_unlock(&manager->mutex);
 
                 answer_size = SOCKET_BUFF_SIZE;
                 int res = ns_answer_request(manager->nameserver, buf, n, answer,
                                   &answer_size);
 
-#ifdef SM_DEBUG
-                printf("Got answer of size %d.\n", answer_size);
-#endif
+                debug_sm("Got answer of size %d.\n", answer_size);
 
                 if (res == 0) {
                     assert(answer_size > 0);
-#ifdef SM_DEBUG
-                    printf("Answer wire format (size %u):\n", answer_size);
-                    hex_print(answer, answer_size);
-#endif
+
+                    debug_sm("Answer wire format (size %u):\n", answer_size);
+                    debug_sm_hex(answer, answer_size);
 
                     int sent = sendto(fd, answer, answer_size, MSG_DONTWAIT,
                                       (struct sockaddr *)&faddr,
@@ -343,7 +335,7 @@ void *sm_listen( void *obj )
 
                     if (sent < 0) {
                         const int error = errno;
-                        printf( "Error sending: %d, %s.\n", error, strerror(error) );
+                        log_error("failed to send datagram (errno %d): %s.\n", error, strerror(error));
                     }
                 }
             } else {
