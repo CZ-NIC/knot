@@ -27,20 +27,17 @@
 #include "universal-system.h"
 #include "common.h"
 
-//#define CUCKOO_DEBUG
-//#define CUCKOO_DEBUG_REHASH
-
 #if defined(CUCKOO_DEBUG) && !defined(CUCKOO_DEBUG_REHASH)
     #define CUCKOO_DEBUG_REHASH
 #endif
 
 /*----------------------------------------------------------------------------*/
 
-#define ERR_WRONG_TABLE fprintf(stderr, "Wrong hash table used.\n")
-#define ERR_INF_LOOP fprintf(stderr, "Hashing entered infinite loop.\n")
-#define ERR_BITSET fprintf(stderr, "Bitset not correct.\n");
+#define ERR_WRONG_TABLE log_error("Wrong hash table used.\n")
+#define ERR_INF_LOOP log_error("Hashing entered infinite loop.\n")
+#define ERR_BITSET log_error("Bitset not correct.\n");
 #define ERR_REHASHING_NOT_IMPL \
-			fprintf(stderr, "Rehashing needed, but not supported.\n");
+            log_error("Rehashing needed, but not supported.\n");
 
 #define CK_SIZE CK_SIZE_LARGER
 
@@ -283,9 +280,7 @@ static inline uint ck_items_match( const ck_hash_table_item* item,
 ck_hash_table_item *ck_find_in_buffer( ck_hash_table *table, const char *key,
                                        uint length, uint generation )
 {
-#ifdef CUCKOO_DEBUG
-	printf("Max buffer offset: %u\n", table->buf_i);
-#endif
+    debug_cuckoo("Max buffer offset: %u\n", table->buf_i);
 	uint i = 0;
 	while (i < table->buf_i
            && ck_items_match(&table->buffer[i], key, length, generation))
@@ -317,13 +312,11 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 	table->table_size_exp = get_table_exp(items, CK_SIZE);
     table->dtor_item = dtor_item;
 
-//#ifdef CUCKOO_DEBUG
-	printf("Creating hash table for %u items.\n", items);
-	printf("Exponent: %u ", table->table_size_exp);
-    printf("Table size: %u items, each %u bytes, total %u bytes\n",
+    log_info("Creating hash table for %u items.\n", items);
+    log_info("Exponent: %u ", table->table_size_exp);
+    log_info("Table size: %u items, each %u bytes, total %u bytes\n",
 		   hashsize(table->table_size_exp), sizeof(ck_hash_table_item),
 		   hashsize(table->table_size_exp) * sizeof(ck_hash_table_item));
-//#endif
 
     // Table 1
     table->table1 = (ck_hash_table_item *)malloc(hashsize(table->table_size_exp)
@@ -397,7 +390,7 @@ void ck_destroy_table( ck_hash_table **table )
     for (uint i = 0; i < hashsize((*table)->table_size_exp); ++i) {
         if ((*table)->table1[i].value != NULL) {
 #ifdef CUCKOO_DEBUG
-            printf("Deleting item from table 1 on pointer: %p.\n",
+            debug_cuckoo("Deleting item from table 1 on pointer: %p.\n",
                    (*table)->table1[i].value);
             for (uint j = 0; j < u; ++j) {
                 assert(used_pointers[j] != (*table)->table1[i].value);
@@ -412,7 +405,7 @@ void ck_destroy_table( ck_hash_table **table )
         }
         if ((*table)->table2[i].value != NULL) {
 #ifdef CUCKOO_DEBUG
-            printf("Deleting item from table 2 on pointer: %p.\n",
+            debug_cuckoo("Deleting item from table 2 on pointer: %p.\n",
                    (*table)->table2[i].value);
             for (uint j = 0; j < u; ++j) {
                 assert(used_pointers[j] != (*table)->table2[i].value);
@@ -430,7 +423,7 @@ void ck_destroy_table( ck_hash_table **table )
     for (uint i = 0; i < (*table)->buf_i; ++i) {
         assert((*table)->buffer[i].value != NULL);
 #ifdef CUCKOO_DEBUG
-        printf("Deleting item from buffer on pointer: %p.\n",
+        debug_cuckoo("Deleting item from buffer on pointer: %p.\n",
                (*table)->buffer[i].value);
         for (uint j = 0; j < u; ++j) {
             assert(used_pointers[j] != (*table)->buffer[i].value);
@@ -441,10 +434,8 @@ void ck_destroy_table( ck_hash_table **table )
         (*table)->buffer[i].value = NULL;
     }
 
-#ifdef CUCKOO_DEBUG
-    printf("Deleting: table1: %p, table2: %p, buffer: %p, table: %p.\n",
+    debug_cuckoo("Deleting: table1: %p, table2: %p, buffer: %p, table: %p.\n",
            (*table)->table1, (*table)->table2, (*table)->buffer, *table);
-#endif
 
     pthread_mutex_unlock(&(*table)->mtx_table);
     // destroy mutex, assuming that here noone will lock the mutex again
@@ -473,10 +464,9 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 	int next_table;
     uint32_t used1[USED_SIZE], used2[USED_SIZE], used_i = 0;
 
-#ifdef CUCKOO_DEBUG
-	printf("Inserting item with key: %s.\n", key);
-    hex_print(key, length);
-#endif
+    debug_cuckoo("Inserting item with key: %s.\n", key);
+    debug_cuckoo_hex(key, length);
+
     hash = HASH1(key, length, table->table_size_exp,
                  GET_GENERATION(table->generation));
 
@@ -484,18 +474,16 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 	if (table->table1[hash].value == 0) { // item free
         ck_fill_item(key, length, value, GET_GENERATION(table->generation),
                      &table->table1[hash]);
-#ifdef CUCKOO_DEBUG
-		printf("Inserted successfuly to table1, hash %u, key: %s.\n", hash,
+
+        debug_cuckoo("Inserted successfuly to table1, hash %u, key: %s.\n", hash,
 			   table->table1[hash].key);
-#endif
+
         pthread_mutex_unlock(&table->mtx_table);
 		return 0;
     }
 
     // If failed, try to rehash the existing items until free place is found
-#ifdef CUCKOO_DEBUG
-	printf("Collision! Hash: %u\n", hash);
-#endif
+    debug_cuckoo("Collision! Hash: %u\n", hash);
 
 	memset(used1, 0, USED_SIZE);
 	memset(used2, 0, USED_SIZE);
@@ -505,9 +493,8 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 	// remember that we used this cell
 	used1[used_i] = hash;
 
-#ifdef CUCKOO_DEBUG
-	printf("Moving item from table1, key: %s, hash %u", moving->key, hash);
-#endif
+    debug_cuckoo("Moving item from table1, key: %s, hash %u", moving->key, hash);
+
     hash = HASH2(moving->key, moving->key_length, table->table_size_exp,
                  GET_GENERATION(table->generation));
 
@@ -515,19 +502,19 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 
 	next = &table->table2[hash];
 	next_table = TABLE_2;
-#ifdef CUCKOO_DEBUG
-	printf(" to table2, key: %s, hash %u\n", next->key, hash);
-#endif
+
+    debug_cuckoo(" to table2, key: %s, hash %u\n", next->key, hash);
+
 	while (next->value != 0) {
 		// swap contents of the old item and the moving
 		// thus remembering the moving item's contents
 		ck_swap_items(&old, moving);
 
 		moving = next;
-#ifdef CUCKOO_DEBUG
-		printf("Moving item from table %u, key: %s, hash %u",
+
+        debug_cuckoo("Moving item from table %u, key: %s, hash %u",
 			   next_table + 1, moving->key, hash);
-#endif
+
 		// rehash the next item to the proper table
 		switch (next_table) {
 			case TABLE_2:
@@ -535,9 +522,9 @@ int ck_insert_item( ck_hash_table *table, const char *key,
                              GET_GENERATION(table->generation));
 
 				next = &table->table1[hash];
-#ifdef CUCKOO_DEBUG
-				printf(" to table 1, key: %s, hash %u\n", next->key, hash);
-#endif
+
+                debug_cuckoo(" to table 1, key: %s, hash %u\n", next->key, hash);
+
                 if (ck_check_used_twice(used1, &used_i, hash) != 0) {
                     if (ck_insert_to_buffer(table, moving) == 0) {
 						// put the old item to the new position
@@ -557,9 +544,9 @@ int ck_insert_item( ck_hash_table *table, const char *key,
                              GET_GENERATION(table->generation));
 
 				next = &table->table2[hash];
-#ifdef CUCKOO_DEBUG
-				printf(" to table 2, key: %s, hash %u\n", next->key, hash);
-#endif
+
+                debug_cuckoo(" to table 2, key: %s, hash %u\n", next->key, hash);
+
                 if (ck_check_used_twice(used2, &used_i, hash) != 0) {
                     if (ck_insert_to_buffer(table, moving) == 0) {
 						// put the old item to the new position
@@ -585,9 +572,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 
     ck_copy_item_contents(moving, next);
     ck_copy_item_contents(&old, moving);
-#ifdef CUCKOO_DEBUG
-    printf("Inserted successfuly, hash: %u.\n", hash);
-#endif
+    debug_cuckoo("Inserted successfuly, hash: %u.\n", hash);
 
     pthread_mutex_unlock(&table->mtx_table);
 	return 0;
@@ -840,12 +825,11 @@ const ck_hash_table_item *ck_find_item( ck_hash_table *table,
     hash = HASH1(key, length, table->table_size_exp,
                  GET_GENERATION(table->generation));
 
-#ifdef CUCKOO_DEBUG
-	printf("Hash: %u, key: %s\n", hash, key);
-    printf("Table 1, hash: %u, key: %s, value: %s, key length: %lu\n",
+
+    debug_cuckoo("Hash: %u, key: %s\n", hash, key);
+    debug_cuckoo("Table 1, hash: %u, key: %s, value: %s, key length: %lu\n",
            hash, table->table1[hash].key, (char *)table->table1[hash].value,
            table->table1[hash].key_length);
-#endif
 
     if (ck_items_match(&table->table1[hash], key, length, table->generation)
         == 0) {
@@ -857,11 +841,9 @@ const ck_hash_table_item *ck_find_item( ck_hash_table *table,
     hash = HASH2(key, length, table->table_size_exp,
                  GET_GENERATION(table->generation));
 
-#ifdef CUCKOO_DEBUG
-    printf("Table 2, hash: %u, key: %s, value: %p, key length: %lu\n",
+    debug_cuckoo("Table 2, hash: %u, key: %s, value: %p, key length: %lu\n",
            hash, table->table2[hash].key, (char *)table->table2[hash].value,
            table->table2[hash].key_length);
-#endif
 
     if (ck_items_match(&table->table2[hash], key, length, table->generation)
         == 0) {
@@ -869,22 +851,18 @@ const ck_hash_table_item *ck_find_item( ck_hash_table *table,
 		return &table->table2[hash];
 	}
 
-#ifdef CUCKOO_DEBUG
-	printf("Searching in buffer...\n");
-#endif
+    debug_cuckoo("Searching in buffer...\n");
 
 	// try to find in buffer
     ck_hash_table_item *found =
             ck_find_in_buffer(table, key, length,
                               GET_GENERATION(table->generation));
 
-#ifdef CUCKOO_DEBUG
-	printf("Found pointer: %p\n", found);
+    debug_cuckoo("Found pointer: %p\n", found);
 	if (found != NULL) {
-        printf("Buffer, key: %s, value: %s, key length: %lu\n",
+        debug_cuckoo("Buffer, key: %s, value: %s, key length: %lu\n",
            found->key, (char *)found->value, found->key_length);
 	}
-#endif
 
 	// ck_find_in_buffer returns NULL if not found, otherwise pointer to item
 	return found;

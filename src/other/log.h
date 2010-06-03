@@ -35,4 +35,12 @@ int print_msg(int level, const char* msg, ...) __attribute__((format (printf, 2,
 #define debug_dnss_hex(data, len)
 #endif
 
+#ifdef CUCKOO_DEBUG
+#define debug_cuckoo(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_cuckoo_hex(data, len) hex_print((data), (len))
+#else
+#define debug_cuckoo(msg...)
+#define debug_cuckoo_hex(data, len)
+#endif
+
 #endif // __print_h__
