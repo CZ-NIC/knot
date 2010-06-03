@@ -6,8 +6,6 @@
 #include <assert.h>
 #include <stdint.h>
 
-//#define DNSS_DEBUG
-
 #define HEADER_SET_QR(flags) (flags |= (1 << 15))
 #define HEADER_SET_AA(flags) (flags |= (1 << 10))
 
@@ -76,9 +74,7 @@ dnss_rr *dnss_create_rr( dnss_dname owner )
 	dnss_rr *rr;
 
     // assuming owner is in natural format => conversion to wire format needed
-#ifdef DNSS_DEBUG
-    printf("Converting domain name to wire format.\n");
-#endif
+    debug_dnss("Converting domain name to wire format.\n");
 
     // convert domain name to wire format
     uint wire_size = dnss_wire_dname_size(&owner);
@@ -89,9 +85,8 @@ dnss_rr *dnss_create_rr( dnss_dname owner )
         return NULL;
     }
 
-#ifdef DNSS_DEBUG
-    printf("Creating RR structure.\n");
-#endif
+    debug_dnss("Creating RR structure.\n");
+
     rr = malloc(sizeof(dnss_rr));
 
     if (rr == NULL) {
@@ -110,12 +105,12 @@ dnss_rr *dnss_create_rr( dnss_dname owner )
     rr->rdlength = RDLENGTH_DEFAULT;
 
     rr->owner = owner_wire;
-#ifdef DNSS_DEBUG
-    printf("Created RR: owner: %s, type: %u, rdlength: %u.\n", rr->owner,
-           rr->rrtype, rr->rdlength);
-    hex_print(rr->owner, strlen(rr->owner));
-    printf("Done.\n");
-#endif
+
+    debug_dnss("Created RR: owner: %s, type: %u, rdlength: %u.\n", rr->owner,
+               rr->rrtype, rr->rdlength);
+    debug_dnss_hex(rr->owner, strlen(rr->owner));
+    debug_dnss("Done.\n");
+
 	return rr;
 }
 
@@ -159,7 +154,7 @@ int dnss_create_response( const dnss_packet *query, const dnss_rr *answers,
     (*response)->questions = malloc(
             (*response)->header.qdcount * sizeof(dnss_question));
     if ((*response)->questions == NULL) {
-        fprintf(stderr, "dnss_create_response(): Allocation failed.\n");
+        ERR_ALLOC_FAILED;
         return -1;
     }
     dnss_copy_questions(query->questions, (*response)->questions,
@@ -202,7 +197,7 @@ int dnss_create_error_response( dnss_packet *query, dnss_packet **response )
     (*response)->questions = malloc(
             (*response)->header.qdcount * sizeof(dnss_question));
     if ((*response)->questions == NULL) {
-        fprintf(stderr, "dnss_create_error_response(): Allocation failed.\n");
+        ERR_ALLOC_FAILED;
         return -1;
     }
     dnss_copy_questions(query->questions, (*response)->questions,
@@ -251,7 +246,7 @@ int dnss_wire_format( dnss_packet *packet, char *packet_wire,
     }
 
     if (real_size > *packet_size) {
-        fprintf(stderr, "dnss_wire_format(): Space provided is not enough.");
+        log_error("%s: Space provided is not enough.\n", __func__);
         return -1;
     }
 
@@ -335,43 +330,37 @@ int dnss_dname_to_wire( dnss_dname dname, dnss_dname_wire dname_wire,
                         uint size ) // TESTING!!
 {
     if (dname_wire == NULL) {
-        fprintf(stderr, "dnss_dname_to_wire(): Bad buffer pointer provided.");
+        log_error("%s: Bad buffer pointer provided.\n", __func__);
         return -1;
     }
 
     // check if there is enough space
     if (dnss_wire_dname_size(&dname) > size) {
-        fprintf(stderr, "dnss_dname_to_wire(): Given buffer is not big enough.");
+        log_error("%s: Given buffer is not big enough.\n", __func__);
         return -1;
     }
 
-#ifdef DNSS_DEBUG
-    printf("Domain name to convert: %s.\n", dname);
-#endif
+    debug_dnss("Domain name to convert: %s.\n", dname);
 
     int w = 0;
-
     char *c = dname;
-
     char *buffer = malloc(strlen(dname) + 1);
+
     if (buffer == NULL) {
-        fprintf(stderr, "dnss_dname_to_wire(): Allocation failed.");
+        ERR_ALLOC_FAILED;
         return -1;
     }
 
-    uint8_t chars = 0;
-
     while (*c != '\0') {
-        memset(buffer, 0, strlen(dname) + 1);   // maybe not needed
-        chars = 0;
-        while (*c != '.' && *c != '\0') {   // read next label
+
+        // Read label
+        uint8_t chars = 0;
+        while (*c != '.' && *c != '\0') {
             buffer[++chars] = *c++;
         }
         buffer[0] = chars;    // number of characters in this label
 
-//#ifdef DNSS_DEBUG
-//        printf("Chars: %d, Buffer: %*s\n", chars, chars + 1, buffer);
-//#endif
+//      dnss_debug("Chars: %d, Buffer: %*s\n", chars, chars + 1, buffer);
 
         memcpy(&dname_wire[w], buffer, chars + 1);   // copy the label
         w += chars + 1;
@@ -383,10 +372,8 @@ int dnss_dname_to_wire( dnss_dname dname, dnss_dname_wire dname_wire,
 
     dname_wire[w] = '\0';
 
-#ifdef DNSS_DEBUG
-    printf("Wire format of the domain name: %*s\n", w + 1, dname_wire);
-    hex_print(dname_wire, w + 1);
-#endif
+    debug_dnss("Wire format of the domain name: %*s\n", w + 1, dname_wire);
+    debug_dnss_hex(dname_wire, w + 1);
 
     free(buffer);
     return 0;
@@ -410,14 +397,12 @@ dnss_packet *dnss_parse_query( const char *query_wire, uint size )
 {
     assert(size > 12);
 
-#ifdef DNSS_DEBUG
-    printf("dnss_parse_query() called with query size %d.\n", size);
-    hex_print(query_wire, size);
-#endif
+    debug_dnss("%s called with query size %d.\n", __func__, size);
+    debug_dnss_hex(query_wire, size);
 
     dnss_packet *query = dnss_create_empty_packet();
     if (query == NULL) {
-        fprintf(stderr, "dnss_parse_query(): Allocation failed.\n");
+        ERR_ALLOC_FAILED;
         return NULL;
     }
 
@@ -425,9 +410,7 @@ dnss_packet *dnss_parse_query( const char *query_wire, uint size )
 
     memcpy(&(query->header), query_wire, sizeof(dnss_header));
 
-#ifdef DNSS_DEBUG
-    printf("Header copied.\n");
-#endif
+    debug_dnss("Header copied.\n");
 
     // parse header - convert from network byte order
     query->header.id = ntohs(query->header.id);
@@ -437,15 +420,13 @@ dnss_packet *dnss_parse_query( const char *query_wire, uint size )
     query->header.nscount = ntohs(query->header.nscount);
     query->header.arcount = ntohs(query->header.arcount);
 
-#ifdef DNSS_DEBUG
-    printf("Header parsed: \n");
-    printf("ID: %u\n", query->header.id);
-    printf("Flags: %u\n", query->header.flags);
-    printf("QDCOUNT: %u\n", query->header.qdcount);
-    printf("ANCOUNT: %u\n", query->header.ancount);
-    printf("NSCOUNT: %u\n", query->header.nscount);
-    printf("ARCOUNT: %u\n", query->header.arcount);
-#endif
+    debug_dnss("Header parsed: \n");
+    debug_dnss("ID: %u\n", query->header.id);
+    debug_dnss("Flags: %u\n", query->header.flags);
+    debug_dnss("QDCOUNT: %u\n", query->header.qdcount);
+    debug_dnss("ANCOUNT: %u\n", query->header.ancount);
+    debug_dnss("NSCOUNT: %u\n", query->header.nscount);
+    debug_dnss("ARCOUNT: %u\n", query->header.arcount);
 
     p += sizeof(dnss_header);
 
@@ -466,10 +447,8 @@ dnss_packet *dnss_parse_query( const char *query_wire, uint size )
             buffer[b++] = query_wire[p++];
         }
 
-#ifdef DNSS_DEBUG
-        printf("Domain name parsed: \n");
-        hex_print(buffer, b);
-#endif
+        debug_dnss("Domain name parsed: \n");
+        debug_dnss_hex(buffer, b);
 
         assert(b < MAX_DNAME_SIZE); // instead return FORMERR
         assert(p + 4 < size);      // instead return FORMERR
@@ -481,21 +460,16 @@ dnss_packet *dnss_parse_query( const char *query_wire, uint size )
         query->questions[i].qname = malloc(b * sizeof(char));
         memcpy(query->questions[i].qname, buffer, b);
 
-#ifdef DNSS_DEBUG
-        printf("QNAME: \n");
-        hex_print(query->questions[i].qname, b);
-       // printf("QTYPE: %u\n", *((uint16_t *)(&(query_wire[p]))));
-#endif
+        debug_dnss("QNAME: \n");
+        debug_dnss_hex(query->questions[i].qname, b);
 
         query->questions[i].qtype = ntohs(*((uint16_t *)(&(query_wire[p]))));
-#ifdef DNSS_DEBUG
-        printf("QTYPE: %u\n", query->questions[i].qtype);
-#endif
+        debug_dnss("QTYPE: %u\n", query->questions[i].qtype);
+
         p += 2;
         query->questions[i].qclass = ntohs(*((uint16_t *)(&(query_wire[p]))));
-#ifdef DNSS_DEBUG
-        printf("QCLASS: %u\n",  query->questions[i].qclass);
-#endif
+        debug_dnss("QCLASS: %u\n",  query->questions[i].qclass);
+
         p += 2;
     }
 
@@ -514,29 +488,23 @@ dnss_packet *dnss_parse_query( const char *query_wire, uint size )
 void dnss_destroy_rr( dnss_rr **rr )
 {
     assert(*rr != NULL);
-#ifdef DNSS_DEBUG
-    printf("Deleting RR: owner: %s, type: %u, rdlength: %u.\n", (*rr)->owner,
+    debug_dnss("Deleting RR: owner: %s, type: %u, rdlength: %u.\n", (*rr)->owner,
            (*rr)->rrtype, (*rr)->rdlength);
-    hex_print((*rr)->owner, strlen((*rr)->owner));
-#endif
+    debug_dnss_hex((*rr)->owner, strlen((*rr)->owner));
+
     if ((*rr)->owner != NULL) {
-#ifdef DNSS_DEBUG
-        printf("Deleting RR's owner on pointer %p\n", (*rr)->owner);
-#endif
+        debug_dnss("Deleting RR's owner on pointer %p\n", (*rr)->owner);
         free((*rr)->owner);
         (*rr)->owner = NULL;
     }
 
     if ((*rr)->rdata != NULL) {
-#ifdef DNSS_DEBUG
-        printf("Deleting RR's rdata on pointer %p\n", (*rr)->rdata);
-#endif
+        debug_dnss("Deleting RR's rdata on pointer %p\n", (*rr)->rdata);
         free((*rr)->rdata);
         (*rr)->rdata = NULL;
     }
-#ifdef DNSS_DEBUG
-    printf("Deleting RR on pointer %p\n", (*rr));
-#endif
+
+    debug_dnss("Deleting RR on pointer %p\n", (*rr));
     free(*rr);
     *rr = NULL;
 }

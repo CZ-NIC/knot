@@ -26,4 +26,13 @@ int print_msg(int level, const char* msg, ...) __attribute__((format (printf, 2,
 #define log_info(msg...) log_msg(LOG_INFO, msg)
 #define log_debug(msg...) log_msg(LOG_DEBUG, msg)
 
+/* Conditional logging. */
+#ifdef DNSS_DEBUG
+#define debug_dnss(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_dnss_hex(data, len) hex_print((data), (len))
+#else
+#define debug_dnss(msg...)
+#define debug_dnss_hex(data, len)
 #endif
+
+#endif // __print_h__
