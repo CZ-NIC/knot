@@ -25,22 +25,17 @@ ns_nameserver *ns_create( zdb_database *database )
 int ns_answer_request( ns_nameserver *nameserver, const char *query_wire,
                        uint qsize, char *response_wire, uint *rsize )
 {
-#ifdef NS_DEBUG
-    printf("ns_answer_request() called with query size %d.\n", qsize);
-    hex_print(query_wire, qsize);
-#endif
+    debug_ns("ns_answer_request() called with query size %d.\n", qsize);
+    debug_ns_hex(query_wire, qsize);
 
     dnss_packet *query = dnss_parse_query(query_wire, qsize);
     if (query == NULL || query->header.qdcount <= 0) {
         return -1;
     }
 
-#ifdef NS_DEBUG
-    printf("Query parsed, ID: %u, QNAME: %s\n", query->header.id,
+    debug_ns("Query parsed, ID: %u, QNAME: %s\n", query->header.id,
            query->questions[0].qname);
-    hex_print(query->questions[0].qname, strlen(query->questions[0].qname));
-#endif
-
+    debug_ns_hex(query->questions[0].qname, strlen(query->questions[0].qname));
 
 //    const ck_hash_table_item *item = ck_find_item(
 //            table, query->questions[0].qname,
@@ -55,18 +50,14 @@ int ns_answer_request( ns_nameserver *nameserver, const char *query_wire,
     }
 
     if (node == NULL) {
-#ifdef NS_DEBUG
-        printf("Requested name not found, creating empty response.\n");
-#endif
+        debug_ns("Requested name not found, creating empty response.\n");
         if (dnss_create_response(query, NULL, 0, &response) != 0) {
             dnss_destroy_packet(&query);
             dnss_destroy_packet(&response);
             return -1;
         }
     } else {
-#ifdef NS_DEBUG
-        printf("Requested name found.\n");
-#endif
+        debug_ns("Requested name found.\n");
         if (dnss_create_response(query,
                                  zn_find_rr(node, query->questions[0].qtype),
                                  1, &response) != 0) {
@@ -76,14 +67,10 @@ int ns_answer_request( ns_nameserver *nameserver, const char *query_wire,
         }
     }
 
-#ifdef NS_DEBUG
-    printf("Response ID: %u\n", response->header.id);
-#endif
+    debug_ns("Response ID: %u\n", response->header.id);
 
     if (dnss_wire_format(response, response_wire, rsize) != 0) {
-#ifdef NS_DEBUG
-        fprintf(stderr, "Response too long, returning SERVFAIL response.\n");
-#endif
+        debug_ns(stderr, "Response too long, returning SERVFAIL response.\n");
         if (dnss_create_error_response(query, &response) != 0) {
             dnss_destroy_packet(&query);
             dnss_destroy_packet(&response);
@@ -93,9 +80,7 @@ int ns_answer_request( ns_nameserver *nameserver, const char *query_wire,
         assert(res != 0);
     }
 
-#ifdef NS_DEBUG
-    printf("Returning response of size: %u.\n", *rsize);
-#endif
+    debug_ns("Returning response of size: %u.\n", *rsize);
 
     dnss_destroy_packet(&query);
     dnss_destroy_packet(&response);
