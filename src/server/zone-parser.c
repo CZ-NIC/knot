@@ -6,9 +6,6 @@
 
 /*----------------------------------------------------------------------------*/
 
-//#define ZP_DEBUG
-//#define ZP_PARSE_DEBUG
-
 #if defined(ZP_DEBUG) || defined(ZP_PARSE_DEBUG)
 #include "cuckoo-test.h"
 #endif
@@ -21,8 +18,8 @@ static const int ERR_ALLOC = -4;
 static const int ERR_COUNT = -5;
 static const int ERR_ZONE_CREATE = -6;
 
-#define ERR_ZONE_CREATE_FAILED fprintf(stderr, "Zone could not be created.\n")
-#define ERR_PARSING_FAILED fprintf(stderr, "Zone parsing failed.\n")
+#define ERR_ZONE_CREATE_FAILED log_error("Zone could not be created.\n")
+#define ERR_PARSING_FAILED log_error("Zone parsing failed.\n")
 
 /*----------------------------------------------------------------------------*/
 
@@ -51,7 +48,7 @@ int zp_resize_buffer( char **buffer, uint *buf_size, int new_size,
     new_buf = realloc((void *)(*buffer), (new_size * item_size));
     // if error
     if (new_buf == NULL) {
-        fprintf(stderr, "Allocation failed.\n");
+        ERR_ALLOC_FAILED;
         return -1;
     }
     *buffer = new_buf;
@@ -64,22 +61,16 @@ int zp_resize_buffer( char **buffer, uint *buf_size, int new_size,
 
 int zp_test_count_domain_names( FILE *file, uint *names )
 {
-#ifdef ZP_DEBUG
-    printf("Counting lines..");
-#endif
+    debug_zp("Counting lines..");
     *names = zp_get_line_count(file);
-#ifdef ZP_DEBUG
-    printf("%u\n", *names);
-#endif
+    debug_zp("%u\n", *names);
 
     if (*names == -1) {
-        fprintf(stderr, "Error reading domain names from file.\n");
+        log_error("Error reading domain names from file.\n");
         return -1;
     }
 
-#ifdef ZP_DEBUG
-    printf("Domains read: %d.\n", *names);
-#endif
+    debug_zp("Domains read: %d.\n", *names);
 
     return 0;
 }
@@ -228,18 +219,15 @@ int zp_test_parse_zone( const char *filename, zdb_database *database )
     char *DEFAULT_ZONE_NAME = "cz";
 
     // open the zone file
-#ifdef ZP_DEBUG
-    printf("Opening file...\n");
-#endif
+    debug_zp("Opening file...\n");
     FILE *file = fopen(filename, "r");
 
     if (file == NULL) {
         fprintf(stderr, "Can't open file: %s.\n", filename);
         return ERR_FILE_OPEN;
     }
-#ifdef ZP_DEBUG
-    printf("Done.\n");
-#endif
+
+    debug_zp("Done.\n");
 
     // determine name of the zone (and later other things)
     // for now lets assume there is only one zone and use the default name (cz)
@@ -255,9 +243,7 @@ int zp_test_parse_zone( const char *filename, zdb_database *database )
     int res = dnss_dname_to_wire(DEFAULT_ZONE_NAME, zone_name, name_size);
     assert(res == 0);
 
-#ifdef ZP_DEBUG
-    printf("Counting domain names in the file...\n");
-#endif
+    debug_zp("Counting domain names in the file...\n");
     uint names;
     // count distinct domain names in the zone file
     if ((res = zp_test_count_domain_names(file, &names)) != 0) {
@@ -265,13 +251,10 @@ int zp_test_parse_zone( const char *filename, zdb_database *database )
         free(zone_name);
         return ERR_COUNT;
     }
-#ifdef ZP_DEBUG
-    printf("Done.\n");
-#endif
 
-#ifdef ZP_DEBUG
-    printf("Creating new zone with name '%s'...\n", zone_name);
-#endif
+    debug_zp("Done.\n");
+    debug_zp("Creating new zone with name '%s'...\n", zone_name);
+
     // create a new zone in the zone database
     if ((res = zdb_create_zone(database, zone_name, names)) != 0) {
         fclose(file);
@@ -279,15 +262,11 @@ int zp_test_parse_zone( const char *filename, zdb_database *database )
         ERR_ZONE_CREATE_FAILED;
         return ERR_ZONE_CREATE;
     }
-#ifdef ZP_DEBUG
-    printf("Done.\n");
-#endif
 
+    debug_zp("Done.\n");
     fseek(file, 0, SEEK_SET);
+    debug_zp("Parsing the zone file...\n");
 
-#ifdef ZP_DEBUG
-    printf("Parsing the zone file...\n");
-#endif
     // parse the zone file and fill in the zone
     if ((res = zp_test_parse_file(database, &zone_name, file)) != 0) {
         // is this necessary?
@@ -297,14 +276,12 @@ int zp_test_parse_zone( const char *filename, zdb_database *database )
         ERR_PARSING_FAILED;
         return ERR_PARSE;
     }
-#ifdef ZP_DEBUG
-    printf("Done.\n");
-#endif
 
+    debug_zp("Done.\n");
     free(zone_name);
 
 #ifdef ZP_DEBUG
-    printf("\nTesting lookup..\n");
+    debug_zp("\nTesting lookup..\n");
     test_lookup_from_file(database->head->zone, file);
 #endif
 

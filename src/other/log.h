@@ -51,4 +51,20 @@ int print_msg(int level, const char* msg, ...) __attribute__((format (printf, 2,
 #define debug_sm_hex(data, len)
 #endif
 
+#ifdef ZDB_DEBUG
+#define debug_zdb(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_zdb_hex(data, len) hex_print((data), (len))
+#else
+#define debug_zdb(msg...)
+#define debug_zdb_hex(data, len)
+#endif
+
+#ifdef ZP_DEBUG
+#define debug_zp(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_zp_hex(data, len) hex_print((data), (len))
+#else
+#define debug_zp(msg...)
+#define debug_zp_hex(data, len)
+#endif
+
 #endif // __print_h__
