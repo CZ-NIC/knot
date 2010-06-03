@@ -14,6 +14,7 @@ typedef unsigned int uint;
 
 #include "print.h"
 #include "log.h"
+#include "debug.h"
 
 /* Common macros.
  */

@@ -33,3 +33,4 @@ src/tests/cuckoo-test.c
 src/tests/cuckoo-test.h
 src/other/log.h
 src/other/log.c
+src/other/debug.h
