@@ -1,8 +1,9 @@
-#include "dispatcher.h"
-
 #include <stdlib.h>
 #include <pthread.h>
 #include <stdio.h>
+
+#include "dispatcher.h"
+#include "common.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -27,14 +28,14 @@ int dpt_start( dpt_dispatcher *dispatcher )
     {
         if (pthread_create(&dispatcher->threads[i], NULL,
                            dispatcher->routine, dispatcher->routine_obj)) {
-            printf("ERROR CREATING THREAD %d", i );
+            log_error("%s: failed to create thread %d", __func__, i);
             return -1;
         }
     }
     for (i = 0; i < dispatcher->thread_count; ++i)
     {
         if ( pthread_join( dispatcher->threads[i], NULL ) ) {
-            printf( "ERROR JOINING THREAD %d", i );
+            log_error("%s: failed to join thread %d", __func__, i);
             return -1;
         }
     }
