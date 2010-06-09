@@ -459,75 +459,82 @@ void sm_tcp_handler(sm_event *ev)
 {
     struct sockaddr_in faddr;
     int addrsize = sizeof(faddr);
-    int incoming = -1;
+    int incoming = 0;
 
     // Master socket
     /// \todo Lock per-socket.
     if(ev->fd == ev->manager->sockets->socket) {
 
         // Accept on master socket
-        incoming = accept(ev->fd, (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
+        while(incoming >= 0) {
 
-        // Register to epoll
-        if(incoming < 0) {
-            perror("tcp accept");
-        }
-        else {
             pthread_mutex_lock(&ev->manager->sockets_mutex);
-            sm_add_event(ev->manager, incoming, EPOLLIN);
+            incoming = accept(ev->fd, (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
+
+            // Register to epoll
+            if(incoming < 0) {
+                //log_error("cannot accept incoming TCP connection (errno %d): %s.\n", errno, strerror(errno));
+            }
+            else {
+                sm_add_event(ev->manager, incoming, EPOLLIN);
+                debug_sm("tcp accept: accepted %d\n", incoming);
+            }
+
             pthread_mutex_unlock(&ev->manager->sockets_mutex);
-            printf("tcp accept: accepted %d\n", incoming);
         }
 
         return;
     }
 
-    // Receive data
-    /// \todo What if data comes fragmented?
-    int readb = 0, n = 0;
-    while((readb = recv(ev->fd, ev->inbuf + n, ev->size_in - n, 0)) > 0) {
-        printf("Received fragment from %d of %dB.\n", ev->fd, readb);
-        n += readb;
+    // Receive size
+    unsigned short pktsize = 0;
+    pthread_mutex_lock(&ev->manager->sockets_mutex);
+    int n = recv(ev->fd, &pktsize, sizeof(unsigned short), 0);
+    pktsize = ntohs(pktsize);
+    debug_sm("Incoming packet size on %d: %d buffer size: %d\n", ev->fd, pktsize, ev->size_in);
+
+    // Receive payload
+    if(n > 0 && pktsize > 0) {
+        if(pktsize <= ev->size_in)
+            n = recv(ev->fd, ev->inbuf, pktsize, 0); /// \todo Check buffer overflow.
+        else
+            n = 0;
     }
 
+    // Check read result
+    pthread_mutex_unlock(&ev->manager->sockets_mutex);
+    if(n > 0) {
+
+        // Send answer
+        uint answer_size = ev->size_out;
+        int res = ns_answer_request(ev->manager->nameserver, ev->inbuf, n, ev->outbuf + sizeof(short),
+                                    &answer_size);
+
+        debug_sm("Answer wire format (size %u, result %d).\n", answer_size, res);
+        if(res >= 0) {
+
+            // Copy header
+            pktsize = htons(answer_size);
+            memcpy(ev->outbuf, &pktsize, sizeof(unsigned short));
+            int sent = send(ev->fd, ev->outbuf, answer_size + sizeof(unsigned short), 0);
+            if (sent < 0) {
+                log_error("tcp send failed (errno %d): %s\n", errno, strerror(errno));
+            }
+
+            debug_sm("Sent answer to %d\n", ev->fd);
+        }
+    }
+
+    // Evaluate
+    /// \todo Do not close if there is a pending write in another thread.
     if(n <= 0) {
 
         // Zero read or error other than would-block
-        //if(n == 0 || (n == -1 && errno != EWOULDBLOCK)) {
-            printf("tcp disconnected: %d\n", ev->fd);
-            pthread_mutex_lock(&ev->manager->sockets_mutex);
-            sm_remove_event(ev->manager, ev->fd);
-            pthread_mutex_unlock(&ev->manager->sockets_mutex);
-            close(ev->fd);
-        //}
-
-        // No more data to read
-        return;
-    }
-
-    // Send answer
-    printf("Received %d bytes from %d\n", n, ev->fd);
-    uint answer_size = ev->size_out;
-    int res = ns_answer_request(ev->manager->nameserver, ev->inbuf, n, ev->outbuf,
-                                &answer_size);
-#ifdef SM_DEBUG
-    printf("Got answer of size %d result %d.\n", answer_size, res);
-#endif
-
-    /// \todo Risky, socket may be used for reading at this time and send() may return EAGAIN.
-    if (res == 0) {
-
-        assert(answer_size > 0);
-#ifdef SM_DEBUG
-        printf("Answer wire format (size %u):\n", answer_size);
-        hex_print(ev->outbuf, answer_size);
-#endif
-
-        int sent = send(ev->fd, ev->outbuf, answer_size, 0);
-        printf("Sent answer to %d\n", ev->fd);
-        if (sent < 0) {
-            perror("tcp send");
-        }
+        debug_sm("tcp disconnected: %d\n", ev->fd);
+        pthread_mutex_lock(&ev->manager->sockets_mutex);
+        sm_remove_event(ev->manager, ev->fd);
+        pthread_mutex_unlock(&ev->manager->sockets_mutex);
+        close(ev->fd);
     }
 }
 
