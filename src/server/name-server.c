@@ -70,7 +70,7 @@ int ns_answer_request( ns_nameserver *nameserver, const char *query_wire,
     debug_ns("Response ID: %u\n", response->header.id);
 
     if (dnss_wire_format(response, response_wire, rsize) != 0) {
-        debug_ns(stderr, "Response too long, returning SERVFAIL response.\n");
+        debug_ns("Response too long, returning SERVFAIL response.\n");
         if (dnss_create_error_response(query, &response) != 0) {
             dnss_destroy_packet(&query);
             dnss_destroy_packet(&response);
