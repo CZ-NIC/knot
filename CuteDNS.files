@@ -34,3 +34,4 @@ src/tests/cuckoo-test.h
 src/other/log.h
 src/other/log.c
 src/other/debug.h
+tests/querytcp.c
