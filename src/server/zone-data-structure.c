@@ -5,8 +5,6 @@
 #include <assert.h>
 #include <stdio.h>
 
-//#define ZDS_DEBUG
-
 /*----------------------------------------------------------------------------*/
 
 zds_zone *zds_create( uint item_count )
@@ -37,9 +35,7 @@ zn_node *zds_find( zds_zone *zone, dnss_dname_wire owner )
         return NULL;
     }
 
-#ifdef ZDS_DEBUG
-    printf("Item found\n");
-#endif
+    debug_zdb("Item found\n");
 
     return item->value;
 }
@@ -48,7 +44,7 @@ zn_node *zds_find( zds_zone *zone, dnss_dname_wire owner )
 
 int zds_remove( zds_zone *zone, dnss_dname_wire owner )
 {
-    printf("zds_remove(): Not implemented.\n");
+    log_error("%s fixme: Not implemented.\n", __func__);
     return -1;
 }
 

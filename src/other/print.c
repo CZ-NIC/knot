@@ -1,23 +1,22 @@
 #include "print.h"
 #include <stdio.h>
 
-/*----------------------------------------------------------------------------*/
-/* Downloaded from http://www.digitalpeer.com/id/print                        */
-/*----------------------------------------------------------------------------*/
-void hex_print( const char *data, int length )
+void hex_printf( const char *data, int length, printf_t print_handler )
 {
     int ptr = 0;
     for(;ptr < length;ptr++)
     {
-        printf("0x%02x ",(unsigned char)*(data+ptr));
+        print_handler("0x%02x ",(unsigned char)*(data+ptr));
     }
-    printf("\n");
+    print_handler("\n");
 }
 
-/*----------------------------------------------------------------------------*/
-/* Downloaded from http://www.digitalpeer.com/id/print                        */
-/*----------------------------------------------------------------------------*/
-void bit_print( const char *data, int length )
+void hex_print( const char *data, int length)
+{
+    hex_printf(data, length, &printf);
+}
+
+void bit_printf( const char *data, int length, printf_t print_handler )
 {
     unsigned char mask = 0x01;
     int ptr = 0;
@@ -28,14 +27,19 @@ void bit_print( const char *data, int length )
         {
             if ((mask << bit) & (unsigned char)*(data+ptr))
             {
-                printf("1");
+                print_handler("1");
             }
             else
             {
-                printf("0");
+                print_handler("0");
             }
         }
-        printf(" ");
+        print_handler(" ");
     }
-    printf("\n");
+    print_handler("\n");
+}
+
+void bit_print( const char *data, int length )
+{
+    bit_printf(data, length, &printf);
 }
