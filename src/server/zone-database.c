@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-//#define ZDB_DEBUG
-
 /*----------------------------------------------------------------------------*/
 
 zdb_database *zdb_create()
@@ -13,7 +11,7 @@ zdb_database *zdb_create()
     zdb_database *db = malloc(sizeof(zdb_database));
 
     if (db == NULL) {
-        fprintf(stderr, "zdb_create(): Allocation failed.\n");
+        ERR_ALLOC_FAILED;
         return NULL;
     }
 
@@ -29,14 +27,14 @@ int zdb_create_zone( zdb_database *database, dnss_dname_wire zone_name,
     zdb_zone *zone = malloc(sizeof(zdb_zone));
 
     if (zone == NULL) {
-        fprintf(stderr, "zdb_create_zone(): Allocation failed.\n");
+        ERR_ALLOC_FAILED;
         return -1;
     }
 
     zone->zone_name = dnss_dname_wire_copy(zone_name);
 
     if (zone->zone_name == NULL) {
-        fprintf(stderr, "zdb_create_zone(): Allocation failed.\n");
+        ERR_ALLOC_FAILED;
         free(zone);
         return -1;
     }
@@ -44,7 +42,7 @@ int zdb_create_zone( zdb_database *database, dnss_dname_wire zone_name,
     zone->zone = zds_create(items);
 
     if (zone->zone == NULL) {
-        fprintf(stderr, "zdb_create_zone(): Allocation failed.\n");
+        ERR_ALLOC_FAILED;
         free(zone->zone_name);
         free(zone);
         return -1;
@@ -80,9 +78,7 @@ int zdb_remove_zone( zdb_database *database, dnss_dname_wire zone_name )
     zdb_find_zone(database, zone_name, &z, &zp);
 
     if (z == NULL) {
-#ifdef ZDB_DEBUG
-        printf("Zone not found!\n");
-#endif
+        debug_zdb("Zone not found!\n");
         return -1;
     }
 
@@ -112,15 +108,12 @@ int zdb_insert_name( zdb_database *database, dnss_dname_wire zone_name,
     zdb_find_zone(database, zone_name, &z, &zp);
 
     if (z == NULL) {
-#ifdef ZDB_DEBUG
-        printf("Zone not found!\n");
-#endif
+        debug_zdb("Zone not found!\n");
         return -1;
     }
-#ifdef ZDB_DEBUG
-    printf("Found zone: ");
-    hex_print(z->zone_name, strlen(z->zone_name) + 1);
-#endif
+
+    debug_zdb("Found zone: ");
+    debug_zdb_hex(z->zone_name, strlen(z->zone_name) + 1);
 
     return zds_insert(z->zone, dname, node);
 }
@@ -152,15 +145,12 @@ const zn_node *zdb_find_name( zdb_database *database, dnss_dname_wire dname )
     zdb_zone *z = zdb_find_zone_for_name(database, dname);
 
     if (z == NULL) {
-#ifdef ZDB_DEBUG
-        printf("Zone not found!\n");
-#endif
+        debug_zdb("Zone not found!\n");
         return NULL;
     }
-#ifdef ZDB_DEBUG
-    printf("Found zone: ");
-    hex_print(z->zone_name, strlen(z->zone_name) + 1);
-#endif
+
+    debug_zdb("Found zone: ");
+    debug_zdb_hex(z->zone_name, strlen(z->zone_name) + 1);
 
     return zds_find(z->zone, dname);
 }

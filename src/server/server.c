@@ -6,8 +6,6 @@
 #include "zone-parser.h"
 #include <stdio.h>
 
-#define CUTE_DEBUG
-
 /*----------------------------------------------------------------------------*/
 
 static const int DEFAULT_THR_COUNT = 2;
@@ -17,45 +15,34 @@ static const unsigned short DEFAULT_PORT = 53535;
 
 cute_server *cute_create()
 {
-#ifdef CUTE_DEBUG
-    printf("Creating Server structure..\n");
-#endif
+    debug_server("Creating Server structure..\n");
     cute_server *server = malloc(sizeof(cute_server));
     if (server == NULL) {
         ERR_ALLOC_FAILED;
         return NULL;
     }
-#ifdef CUTE_DEBUG
-    printf("Done\n\n");
-#endif
 
-#ifdef CUTE_DEBUG
-    printf("Creating Zone Database structure..\n");
-#endif
+    debug_server("Done\n\n");
+    debug_server("Creating Zone Database structure..\n");
+
     server->zone_db = zdb_create();
     if (server->zone_db == NULL) {
         return NULL;
     }
-#ifdef CUTE_DEBUG
-    printf("Done\n\n");
-#endif
 
-#ifdef CUTE_DEBUG
-    printf("Creating Name Server structure..\n");
-#endif
+    debug_server("Done\n\n");
+    debug_server("Creating Name Server structure..\n");
+
     server->nameserver = ns_create(server->zone_db);
     if (server->nameserver == NULL) {
         zdb_destroy(&server->zone_db);
         free(server);
         return NULL;
     }
-#ifdef CUTE_DEBUG
-    printf("Done\n\n");
-#endif
 
-#ifdef CUTE_DEBUG
-    printf("Creating Socket Manager structure..\n");
-#endif
+    debug_server("Done\n\n");
+    debug_server("Creating Socket Manager structure..\n");
+
     server->socket_mgr = sm_create(server->nameserver);
     if (server->socket_mgr == NULL) {
         ns_destroy(&server->nameserver);
@@ -63,13 +50,10 @@ cute_server *cute_create()
         free(server);
         return NULL;
     }
-#ifdef CUTE_DEBUG
-    printf("Done\n\n");
-#endif
 
-#ifdef CUTE_DEBUG
-    printf("Creating Dispatcher structure..\n");
-#endif
+    debug_server("Done\n\n");
+    debug_server("Creating Dispatcher structure..\n");
+
     server->dispatcher = dpt_create(DEFAULT_THR_COUNT, sm_listen,
                                     server->socket_mgr);
     if (server->dispatcher == NULL) {
@@ -79,9 +63,8 @@ cute_server *cute_create()
         free(server);
         return NULL;
     }
-#ifdef CUTE_DEBUG
-    printf("Done\n\n");
-#endif
+
+    debug_server("Done\n\n");
 
     return server;
 }
@@ -90,23 +73,17 @@ cute_server *cute_create()
 
 int cute_start( cute_server *server, const char *filename )
 {
-#ifdef CUTE_DEBUG
-    printf("Parsing zone file %s..\n", filename);
-#endif
+    debug_server("Parsing zone file %s..\n", filename);
     if (zp_parse_zone(filename, server->zone_db) != 0) {
         return -1;
     }
 
-#ifdef CUTE_DEBUG
-    printf("Opening sockets..\n");
-#endif
+    debug_server("Opening sockets..\n");
     if (sm_open_socket(server->socket_mgr, DEFAULT_PORT) != 0) {
         return -1;
     }
 
-#ifdef CUTE_DEBUG
-    printf("Starting the Dispatcher..\n");
-#endif
+    debug_server("Starting the Dispatcher..\n");
     return dpt_start(server->dispatcher);
 }
 
