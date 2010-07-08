@@ -2,8 +2,14 @@
 #include "bitset.h"
 #include "common.h"
 
+#include <urcu.h>
+#include <pthread.h>
+
 #include <stdlib.h>
 #include <stdio.h>
+
+static const int THREADS_RCU = 2;
+
 /*----------------------------------------------------------------------------*/
 
 int test_bitset()
@@ -94,4 +100,74 @@ int test_bitset()
 
     printf("There were %u errors.\n", err);
     return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+#define LOOPS 1000000000
+
+void do_some_stuff()
+{
+		int i;
+		int res = 1;
+
+		for (i = 1; i <= LOOPS; ++i) {
+				res *= i;
+		}
+}
+
+/*----------------------------------------------------------------------------*/
+
+void *test_rcu_thread( void *obj )
+{
+	rcu_register_thread();
+	rcu_read_lock();
+
+	log_debug("Thread %ld entered critical section..\n", pthread_self());
+
+	do_some_stuff();
+
+	log_debug("Thread %ld leaving critical section..\n", pthread_self());
+
+	rcu_read_unlock();
+	rcu_unregister_thread();
+
+	return NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int test_rcu()
+{
+	int i;
+
+	pthread_t *threads = malloc(THREADS_RCU * sizeof(pthread_t));
+	void *(*routine)(void *) = test_rcu_thread;
+	char msg[7] = "blabla\0";
+	void *routine_obj = msg;
+
+	log_debug("Testing RCU mechanism.\nCreating %i threads with reader critical"
+			  " sections.\nMessage: %s\n\n", THREADS_RCU, msg);
+
+	for (i = 0; i < THREADS_RCU; ++i)
+	{
+		if (pthread_create(&threads[i], NULL, routine, routine_obj)) {
+			log_error("%s: failed to create thread %d", __func__, i);
+			return -1;
+		}
+	}
+	for (i = 0; i < THREADS_RCU; ++i)
+	{
+		if (pthread_detach(threads[i])) {
+			log_error("%s: failed to join thread %d", __func__, i);
+			return -1;
+		}
+	}
+
+	log_debug("Main thread after launching threads. Message: %s\n", msg);
+	synchronize_rcu();
+	log_debug("Main thread after synchronizing RCU. Message: %s\n", msg);
+
+	getchar();
+	return 0;
 }
