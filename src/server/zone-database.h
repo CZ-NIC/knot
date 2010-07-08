@@ -6,6 +6,8 @@
  * @todo Consider using one large hash table for all zones for searching and
  *       the zone structure only for some additional issues. If we can avoid
  *       using the zone structure during each query, it may be worth it.
+ *		 Moreover it may save some space - less empty items in one large hash
+ *		 table than in several smaller.
  */
 
 #ifndef ZONE_DATABASE
