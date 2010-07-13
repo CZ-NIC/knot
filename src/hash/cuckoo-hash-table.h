@@ -10,6 +10,8 @@
 #define hashmask(n) (hashsize(n)-1)
 
 /*----------------------------------------------------------------------------*/
+/* Public structures							                              */
+/*----------------------------------------------------------------------------*/
 
 typedef struct {
 	const char *key;
@@ -23,23 +25,34 @@ typedef struct {
 typedef struct {
 	int table_size_exp;		// exponent (2^table_size_exp is table size)
 							// -1 if not initialized
-	ck_hash_table_item *table1;
-	ck_hash_table_item *table2;
-	ck_hash_table_item *buffer;
-	uint buf_i;
-	uint8_t generation;		/* 00000xyz x==1 .. rehashing in progress
-										yz   .. generation; may be 01 or 10 */
-    void (*dtor_item)( void *value );
+	ck_hash_table_item **table1;
+	ck_hash_table_item **table2;
+	ck_hash_table_item **buffer;
+	uint buf_i;						// index of the next free place in the buffer
+	void (*dtor_item)( void *value );	// destructor for the item's value
 
-    pthread_mutex_t mtx_table;
+	pthread_mutex_t mtx_table;	// mutex for avoiding multiple insertions /
+								// rehashes at once
+	uint8_t generation;		/* 00000xyz x==1 .. rehashing in progress
+											yz   .. generation; may be 01 or 10 */
 } ck_hash_table;
 
+/*----------------------------------------------------------------------------*/
+/* API functions						                                      */
 /*----------------------------------------------------------------------------*/
 
 ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) );
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ *	@brief Destroys the whole hash table together with the saved values.
+ *
+ *	Make sure the table and its items are not used anymore when calling this
+ *  function.
+ *
+ *	@todo The destructor may not be passed on the table creation but on this
+ *	      function call.
+ */
 void ck_destroy_table( ck_hash_table **table );
 
 /*----------------------------------------------------------------------------*/
@@ -57,7 +70,16 @@ int ck_insert_item( ck_hash_table *table, const char *key, size_t length,
                     void *value );
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * @brief Rehashes the whole table.
+ *
+ * @note While rehashing no item can be inserted.
+ *
+ * @retval 0 No error.
+ * @retval -1 Rehashing failed. (Some items may have been already moved.)
+ *
+ * @todo This need not to be part of the API!
+ */
 int ck_rehash( ck_hash_table *table );
 
 /*----------------------------------------------------------------------------*/
