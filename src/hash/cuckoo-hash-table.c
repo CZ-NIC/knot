@@ -106,6 +106,18 @@ static inline uint8_t NEXT_GENERATION( uint8_t flags ) {
     return (flags ^ FLAG_GENERATION_BOTH);
 }
 
+static inline void SET_REHASHING_ON( uint8_t *flags ) {
+	 *flags = (*flags | FLAG_REHASH);
+}
+
+static inline void SET_REHASHING_OFF( uint8_t *flags ) {
+	 *flags = (*flags & ~FLAG_REHASH);
+}
+
+static inline int IS_REHASHING( uint8_t flags ) {
+	 return ((flags & FLAG_REHASH) != 0);
+}
+
 /*----------------------------------------------------------------------------*/
 /* Helper functions															  */
 /*----------------------------------------------------------------------------*/
@@ -366,7 +378,7 @@ void ck_destroy_table( ck_hash_table **table )
     for (uint i = 0; i < (*table)->buf_i; ++i) {
 		assert((*table)->buffer[i] != NULL);
 		(*table)->dtor_item((*table)->buffer[i]->value);
-		free((void *)table->buffer[i]);
+		free((void *)(*table)->buffer[i]);
     }
 
 	debug_cuckoo("Deleting: table1: %p, table2: %p, buffer: %p, table: %p.\n",
@@ -555,6 +567,8 @@ void ck_rollback_rehash( ck_hash_table *table )
  */
 int ck_rehash( ck_hash_table *table )
 {
+	SET_REHASHING_ON(&table->generation);
+
     // we already have functions for the next generation, begin rehashing
     // we wil use the last item in the buffer as the old cell
     assert(table->buf_i + 1 <= BUFFER_SIZE);
@@ -654,21 +668,19 @@ int ck_rehash( ck_hash_table *table )
 
     // rehashing completed, switch generation of the table
     SET_NEXT_GENERATION(&table->generation);
+	SET_REHASHING_OFF(&table->generation);
     return 0;
 }
 
 /*----------------------------------------------------------------------------*/
-/*!
- * @todo Change for pointer table.
- */
-const ck_hash_table_item *ck_find_item( ck_hash_table *table,
-                                        const char *key, size_t length )
+
+const ck_hash_table_item *ck_find_gen( ck_hash_table *table, const char *key,
+										size_t length, uint8_t generation )
 {
     uint32_t hash;
 
 	// check first table
-    hash = HASH1(key, length, table->table_size_exp,
-                 GET_GENERATION(table->generation));
+	hash = HASH1(key, length, table->table_size_exp, generation);
 
     debug_cuckoo("Hash: %u, key: %s\n", hash, key);
 	debug_cuckoo("Table 1, hash: %u, item: %p\n", hash, table->table1[hash]);
@@ -685,8 +697,7 @@ const ck_hash_table_item *ck_find_item( ck_hash_table *table,
 	}
 
 	// check second table
-    hash = HASH2(key, length, table->table_size_exp,
-                 GET_GENERATION(table->generation));
+	hash = HASH2(key, length, table->table_size_exp, generation);
 
 	debug_cuckoo("Table 2, hash: %u, item: %p\n", hash, table->table2[hash]);
 	if (table->table2[hash] != NULL) {
@@ -705,8 +716,7 @@ const ck_hash_table_item *ck_find_item( ck_hash_table *table,
 
 	// try to find in buffer
 	ck_hash_table_item *found =
-		ck_find_in_buffer(table, key, length,
-						  GET_GENERATION(table->generation));
+		ck_find_in_buffer(table, key, length, generation);
 
     debug_cuckoo("Found pointer: %p\n", found);
 	if (found != NULL) {
@@ -715,6 +725,21 @@ const ck_hash_table_item *ck_find_item( ck_hash_table *table,
 	}
 
 	// ck_find_in_buffer returns NULL if not found, otherwise pointer to item
+	return found;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const ck_hash_table_item *ck_find_item( ck_hash_table *table, const char *key,
+										size_t length )
+{
+	const ck_hash_table_item *found = ck_find_gen(table, key, length,
+											GET_GENERATION(table->generation));
+	if (!found && IS_REHASHING(table->generation)) {
+		found = ck_find_gen(table, key, length,
+							NEXT_GENERATION(table->generation));
+	}
+
 	return found;
 }
 
