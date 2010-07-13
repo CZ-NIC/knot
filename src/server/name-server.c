@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include <urcu.h>
+
 //#define NS_DEBUG
 
 /*----------------------------------------------------------------------------*/
@@ -37,15 +39,16 @@ int ns_answer_request( ns_nameserver *nameserver, const char *query_wire,
            query->questions[0].qname);
     debug_ns_hex(query->questions[0].qname, strlen(query->questions[0].qname));
 
-//    const ck_hash_table_item *item = ck_find_item(
-//            table, query->questions[0].qname,
-//            strlen(query->questions[0].qname));
+	// start of RCU read critical section (getting the node from the database)
+	rcu_read_lock();
+
     const zn_node *node =
             zdb_find_name(nameserver->zone_db, query->questions[0].qname);
 
     dnss_packet *response = dnss_create_empty_packet();
     if (response == NULL) {
         dnss_destroy_packet(&query);
+		rcu_read_unlock();
         return -1;
     }
 
@@ -54,6 +57,7 @@ int ns_answer_request( ns_nameserver *nameserver, const char *query_wire,
         if (dnss_create_response(query, NULL, 0, &response) != 0) {
             dnss_destroy_packet(&query);
             dnss_destroy_packet(&response);
+			rcu_read_unlock();
             return -1;
         }
     } else {
@@ -63,9 +67,14 @@ int ns_answer_request( ns_nameserver *nameserver, const char *query_wire,
                                  1, &response) != 0) {
             dnss_destroy_packet(&query);
             dnss_destroy_packet(&response);
+			rcu_read_unlock();
             return -1;
         }
     }
+
+	// end of RCU read critical section (all data copied)
+	node = NULL;
+	rcu_read_unlock();
 
     debug_ns("Response ID: %u\n", response->header.id);
 
