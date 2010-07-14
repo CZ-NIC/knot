@@ -3,15 +3,6 @@
  *
  * @todo Dynamic array for keeping used indices when inserting.
  * @todo Implement d-ary cuckoo hashing / cuckoo hashing with buckets, or both.
- * @todo Implement rehashing.
- * @todo Use only one type of function (fnv or jenkins or some other) and
- *       different coeficients.
- * @todo Optimize the table for space (d-ary hashing will help).
- * @todo One problem with rehashing (and possibly hashing) is because if the
- *       item rehashing process tries to insert to the position where the
- *       iserted item was put, it ends as it detects 'infinite loop'.
- *       However it would be probably better to check the second place for the
- *       item before concluding so.
  */
 /*----------------------------------------------------------------------------*/
 #include <stdio.h>
@@ -167,7 +158,7 @@ uint get_table_exp( uint items, int size_type )
 
 static inline void ck_clear_item( ck_hash_table_item **item )
 {
-	rcu_assign_pointer(item, NULL);
+	rcu_set_pointer(item, NULL);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -187,13 +178,14 @@ void ck_fill_item( const char *key, size_t key_length, void *value,
 
 /*----------------------------------------------------------------------------*/
 /*!
- * @brief Swaps two hash table items' contents.
+ * @brief Swaps two hash table items.
  */
 static inline void ck_swap_items( ck_hash_table_item **item1,
 								  ck_hash_table_item **item2 )
 {
 	// Is this OK? Shouldn't I use some tmp var for saving the value?
-	(*item2) = rcu_xchg_pointer(item1, *item2);
+	ck_hash_table_item *tmp = rcu_xchg_pointer(item1, *item2);
+	rcu_set_pointer(item2, tmp);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -201,7 +193,7 @@ static inline void ck_swap_items( ck_hash_table_item **item1,
 static inline void ck_put_item( ck_hash_table_item **to,
 								ck_hash_table_item *item )
 {
-	rcu_assign_pointer(*to, item);
+	rcu_set_pointer(to, item);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -400,7 +392,6 @@ void ck_destroy_table( ck_hash_table **table )
 /*!
  * @retval 0 if successful and no loop occured.
  * @retval 1 if a loop occured and the item was inserted to the @a free place.
- * @todo Change name of parameter 'old'.
  */
 int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 				  ck_hash_table_item **free, uint8_t generation )
@@ -539,32 +530,30 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 
 /*----------------------------------------------------------------------------*/
 
-//static inline void ck_set_generation_to_items( ck_hash_table_item *items,
-//                        uint32_t *indexes, uint index_count, uint8_t generation )
-//{
-//    for (uint i = 0; i < index_count; ++i) {
-//		// TODO: lock the item!!
-//        SET_GENERATION(&items[indexes[i]].timestamp, generation);
-//    }
-//}
-
-/*----------------------------------------------------------------------------*/
-
 void ck_rollback_rehash( ck_hash_table *table )
 {
+	// set old generation in tables
 	for (int i = 0; i < hashsize(table->table_size_exp); ++i) {
-		// TODO: lock the item!!
-		SET_GENERATION(&table->table1[i]->timestamp, table->generation);
-		// TODO: lock the item!!
-		SET_GENERATION(&table->table2[i]->timestamp, table->generation);
+		// no need for locking - timestamp is not used in lookup
+		// and two paralel insertions (and thus rehashings) are impossible
+		if (table->table1[i] != NULL) {
+			SET_GENERATION(&table->table1[i]->timestamp, table->generation);
+		}
+		if (table->table2[i] != NULL) {
+			SET_GENERATION(&table->table2[i]->timestamp, table->generation);
+		}
+	}
+
+	// set old generation in buffer
+	for (int i = 0; i < BUFFER_SIZE; ++i) {
+		if (table->buffer[i] != NULL) {
+			SET_GENERATION(&table->buffer[i]->timestamp, table->generation);
+		}
 	}
 }
 
 /*----------------------------------------------------------------------------*/
-/*!
- * @todo Change for pointer table.
- * Should be ok.
- */
+
 int ck_rehash( ck_hash_table *table )
 {
 	SET_REHASHING_ON(&table->generation);
@@ -576,11 +565,55 @@ int ck_rehash( ck_hash_table *table )
 
 	// TODO: what about rehashing items from buffer?
 
-    // rehash items from the first table
+	// rehash items from buffer, starting from the last old item
+	uint rehashed = table->buf_i - 1;
+	while (rehashed >= 0) {
 
+		debug_cuckoo_rehash("Rehashing item from buffer position %u, key "
+			"(length %u): %*s, generation: %hu, table generation: %hu.\n",
+			rehashed, table->buffer[rehashed]->key_length,
+			(int)table->buffer[rehashed]->key_length,
+			table->buffer[rehashed]->key,
+			GET_GENERATION(table->buffer[rehashed]->timestamp),
+			GET_GENERATION(table->generation));
+
+		// if item's generation is the new generation, skip
+		if (table->buffer[rehashed] == NULL
+			|| !(EQUAL_GENERATIONS(table->buffer[rehashed]->timestamp,
+								   table->generation))) {
+
+			debug_cuckoo_rehash("Skipping item.\n");
+
+			--rehashed;
+			continue;
+		}
+
+		// otherwise copy the item for rehashing
+		ck_put_item(old, table->buffer[rehashed]);
+		// clear the place so that this item will not get rehashed again
+		ck_clear_item(&table->buffer[rehashed]);
+		--table->buf_i;
+
+		// and start rehashing
+		if (ck_hash_item(table, old, &table->buffer[rehashed],
+						 NEXT_GENERATION(table->generation))
+			== -1) {
+			ERR_INF_LOOP;
+			// loop occured
+			// TODO: must set old generation to all cells used for this rehash
+			ck_rollback_rehash(table);
+
+			pthread_mutex_unlock(&table->mtx_table);
+			return -1;
+		}
+
+		--rehashed;
+	}
+
+    // rehash items from the first table
 	debug_cuckoo_rehash("Rehashing items from table 1.\n");
 
-    uint rehashed = 0;
+	rehashed = 0;
     while (rehashed < hashsize(table->table_size_exp)) {
 
 		debug_cuckoo_rehash("Rehashing item with hash %u, key (length %u): "
@@ -733,11 +766,16 @@ const ck_hash_table_item *ck_find_gen( ck_hash_table *table, const char *key,
 const ck_hash_table_item *ck_find_item( ck_hash_table *table, const char *key,
 										size_t length )
 {
+	// get the generation of the table so that we use the same value
+	uint8_t generation = table->generation;
+
+	// find item using the table generation's hash functions
 	const ck_hash_table_item *found = ck_find_gen(table, key, length,
-											GET_GENERATION(table->generation));
+											GET_GENERATION(generation));
+	// if rehashing is in progress, try the next generation's functions
 	if (!found && IS_REHASHING(table->generation)) {
 		found = ck_find_gen(table, key, length,
-							NEXT_GENERATION(table->generation));
+							NEXT_GENERATION(generation));
 	}
 
 	return found;
