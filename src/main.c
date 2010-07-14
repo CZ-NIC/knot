@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "server.h"
+#include "cuckoo-test.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -15,6 +16,9 @@ int main( int argc, char **argv )
     // Open log
     log_open(LOG_UPTO(LOG_ERR), LOG_MASK(LOG_ERR)|LOG_MASK(LOG_WARNING));
 
+	int res = test_hash_table(argv[1]);
+
+	/*
     // Start server
     cute_server *server = cute_create();
 
@@ -25,6 +29,7 @@ int main( int argc, char **argv )
 
     // Stop server and close log
     cute_destroy(&server);
+	*/
     log_close();
-    return res;
+	return res;
 }

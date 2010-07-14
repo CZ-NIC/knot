@@ -94,7 +94,7 @@ static inline uint8_t SET_NEXT_GENERATION( uint8_t *flags ) {
 }
 
 static inline uint8_t NEXT_GENERATION( uint8_t flags ) {
-    return (flags ^ FLAG_GENERATION_BOTH);
+	return ((flags & FLAG_GENERATION_BOTH) ^ FLAG_GENERATION_BOTH);
 }
 
 static inline void SET_REHASHING_ON( uint8_t *flags ) {
@@ -410,18 +410,19 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 
     used1[used_i1] = hash;
 	ck_hash_table_item **next = &table->table1[hash];
-	debug_cuckoo_hash("next: %p, next item: %p\n", next, *next);
+	debug_cuckoo_hash("Item to be moved: %p, place in table: %p\n", *next, next);
 	ck_hash_table_item **moving = to_hash;
 
 	int next_table = TABLE_2;
     int loop = 0;
 
 	while (*next != NULL) {
-		debug_cuckoo_hash("Swapping items. Old: %p and Moving: %p\n",
+		debug_cuckoo_hash("Swapping items. To hash: %p and Moving: %p\n",
 						  to_hash, moving);
 
 		ck_swap_items(to_hash, moving); // first time it's unnecessary
-		debug_cuckoo_hash("After swap. Old: %p, Moving: %p\n", to_hash, moving);
+		debug_cuckoo_hash("After swap. To hash: %p, Moving: %p\n",
+						  to_hash, moving);
 
         // set the generation of the inserted item to the next generation
 		SET_GENERATION(&(*moving)->timestamp, generation);
@@ -442,15 +443,12 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 						 table->table_size_exp, generation);
             next = &table->table1[hash];
 
-			debug_cuckoo_hash(" to table 1, hash %u, item: %p\n", hash, next);
+			debug_cuckoo_hash(" to table 1, hash %u, item: %p, place: %p\n",
+							  hash, *next, next);
 			if ((*next) != NULL) {
 				debug_cuckoo_hash("Table 1, hash: %u, key: %s\n", hash,
 								  (*next)->key);
 			}
-			debug_cuckoo_hash("Generation of item: %hu, generation of table: "
-								"%hu, next generation: %u.\n",
-				   GET_GENERATION((*next)->timestamp),
-				   GET_GENERATION(table->generation), generation);
 
             // check if this cell wasn't already used in this item's hashing
             if (ck_check_used_twice(used1, &used_i1, hash) != 0) {
@@ -463,7 +461,8 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 						 table->table_size_exp, generation);
 			next = &table->table2[hash];
 
-			debug_cuckoo_hash(" to table 2, hash %u, item: %p\n", hash, next);
+			debug_cuckoo_hash(" to table 2, hash %u, item: %p, place: %p\n",
+							  hash, *next, next);
 			if ((*next) != NULL) {
 				debug_cuckoo_hash("Table 2, hash: %u, key: %s\n", hash,
 								  (*next)->key);
@@ -556,6 +555,7 @@ void ck_rollback_rehash( ck_hash_table *table )
 
 int ck_rehash( ck_hash_table *table )
 {
+	debug_cuckoo_rehash("Rehashing items in table.\n");
 	SET_REHASHING_ON(&table->generation);
 
     // we already have functions for the next generation, begin rehashing
@@ -563,39 +563,40 @@ int ck_rehash( ck_hash_table *table )
     assert(table->buf_i + 1 <= BUFFER_SIZE);
 	ck_hash_table_item **old = &table->buffer[table->buf_i];
 
-	// TODO: what about rehashing items from buffer?
+	debug_cuckoo_rehash("Place in buffer used for rehashing: %u, %p\n",
+						table->buf_i, *old);
 
 	// rehash items from buffer, starting from the last old item
-	uint rehashed = table->buf_i - 1;
-	while (rehashed >= 0) {
-
-		debug_cuckoo_rehash("Rehashing item from buffer position %u, key "
-			"(length %u): %*s, generation: %hu, table generation: %hu.\n",
-			rehashed, table->buffer[rehashed]->key_length,
-			(int)table->buffer[rehashed]->key_length,
-			table->buffer[rehashed]->key,
-			GET_GENERATION(table->buffer[rehashed]->timestamp),
-			GET_GENERATION(table->generation));
+	int buf_i = table->buf_i - 1;
+	while (buf_i >= 0) {
 
 		// if item's generation is the new generation, skip
-		if (table->buffer[rehashed] == NULL
-			|| !(EQUAL_GENERATIONS(table->buffer[rehashed]->timestamp,
+		if (table->buffer[buf_i] == NULL
+			|| !(EQUAL_GENERATIONS(table->buffer[buf_i]->timestamp,
 								   table->generation))) {
 
 			debug_cuckoo_rehash("Skipping item.\n");
 
-			--rehashed;
+			--buf_i;
 			continue;
 		}
 
+		debug_cuckoo_rehash("Rehashing item from buffer position %u, key "
+			"(length %u): %*s, generation: %hu, table generation: %hu.\n",
+			buf_i, table->buffer[buf_i]->key_length,
+			(int)table->buffer[buf_i]->key_length,
+			table->buffer[buf_i]->key,
+			GET_GENERATION(table->buffer[buf_i]->timestamp),
+			GET_GENERATION(table->generation));
+
 		// otherwise copy the item for rehashing
-		ck_put_item(old, table->buffer[rehashed]);
+		ck_put_item(old, table->buffer[buf_i]);
 		// clear the place so that this item will not get rehashed again
-		ck_clear_item(&table->buffer[rehashed]);
+		ck_clear_item(&table->buffer[buf_i]);
 		--table->buf_i;
 
 		// and start rehashing
-		if (ck_hash_item(table, old, &table->buffer[rehashed],
+		if (ck_hash_item(table, old, &table->buffer[buf_i],
 						 NEXT_GENERATION(table->generation))
 			== -1) {
 			ERR_INF_LOOP;
@@ -607,22 +608,14 @@ int ck_rehash( ck_hash_table *table )
 			return -1;
 		}
 
-		--rehashed;
+		--buf_i;
 	}
 
     // rehash items from the first table
 	debug_cuckoo_rehash("Rehashing items from table 1.\n");
 
-	rehashed = 0;
+	uint rehashed = 0;
     while (rehashed < hashsize(table->table_size_exp)) {
-
-		debug_cuckoo_rehash("Rehashing item with hash %u, key (length %u): "
-				"%*s, generation: %hu, table generation: %hu.\n", rehashed,
-			   table->table1[rehashed]->key_length,
-			   (int)(table->table1[rehashed]->key_length),
-			   table->table1[rehashed]->key,
-			   GET_GENERATION(table->table1[rehashed]->timestamp),
-               GET_GENERATION(table->generation));
 
         // if item's generation is the new generation, skip
 		if (table->table1[rehashed] == NULL
@@ -635,10 +628,22 @@ int ck_rehash( ck_hash_table *table )
             continue;
         }
 
+		debug_cuckoo_rehash("Rehashing item with hash %u, key (length %u): "
+				"%*s, generation: %hu, table generation: %hu.\n", rehashed,
+			   table->table1[rehashed]->key_length,
+			   (int)(table->table1[rehashed]->key_length),
+			   table->table1[rehashed]->key,
+			   GET_GENERATION(table->table1[rehashed]->timestamp),
+			   GET_GENERATION(table->generation));
+
 		// otherwise copy the item for rehashing
 		ck_put_item(old, table->table1[rehashed]);
         // clear the place so that this item will not get rehashed again
         ck_clear_item(&table->table1[rehashed]);
+
+		debug_cuckoo_rehash("Table generation: %hu, next generation: %hu.\n",
+							GET_GENERATION(table->generation),
+							NEXT_GENERATION(table->generation));
 
         // and start rehashing
 		if (ck_hash_item(table, old, &table->table1[rehashed],
@@ -662,24 +667,29 @@ int ck_rehash( ck_hash_table *table )
     rehashed = 0;
     while (rehashed < hashsize(table->table_size_exp)) {
 
-		debug_cuckoo_rehash("Rehashing item with hash %u, key (length %u): %*s.\n", rehashed,
-			   table->table2[rehashed]->key_length,
-			   (int)table->table2[rehashed]->key_length,
-			   table->table2[rehashed]->key);
-
         // if item's generation is the new generation, skip
 		if (table->table2[rehashed] == NULL
 			|| !(EQUAL_GENERATIONS(table->table2[rehashed]->timestamp,
 								   table->generation))) {
 
-			debug_cuckoo_rehash("Skipping item.\n");
+			debug_cuckoo_rehash("Skipping item %p (place %p).\n",
+								table->table2[rehashed],
+								&table->table2[rehashed]);
 
             ++rehashed;
             continue;
         }
 
+		debug_cuckoo_rehash("Rehashing item with hash %u, key (length %u): %*s,"
+							" generation: %hu, table generation: %hu.\n",
+				rehashed, table->table2[rehashed]->key_length,
+				(int)table->table2[rehashed]->key_length,
+				table->table2[rehashed]->key,
+				GET_GENERATION(table->table2[rehashed]->timestamp),
+				GET_GENERATION(table->generation));
+
 		// otherwise copy the item for rehashing
-		ck_put_item(old, table->table1[rehashed]);
+		ck_put_item(old, table->table2[rehashed]);
         // clear the place so that this item will not get rehashed again
         ck_clear_item(&table->table2[rehashed]);
 
