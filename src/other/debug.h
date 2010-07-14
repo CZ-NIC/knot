@@ -5,8 +5,8 @@
 #define __debug_h__
 #include "log.h"
 
-//#define CUCKOO_DEBUG
-//#define CUCKOO_DEBUG_HASH
+#define CUCKOO_DEBUG
+#define CUCKOO_DEBUG_HASH
 //#define ZP_DEBUG
 
 #ifdef CUTE_DEBUG
