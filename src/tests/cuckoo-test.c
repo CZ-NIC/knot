@@ -516,8 +516,7 @@ int create_and_fill_table( ck_hash_table **table, FILE *file )
     }
 
     if ((res = fill_hash_table(*table, file, names, chars)) != 0) {
-        ck_destroy_table(table);
-        return ERR_FILL;
+		return ERR_FILL;
     }
 
     return 0;
@@ -529,44 +528,56 @@ int test_hash_table( char *filename )
 {
     printf("Testing hash table...\n\n");
 
-    printf("Opening file...");
+	int res = 0;
 
-    FILE *file = fopen(filename, "r");
+	for (int i = 0; i < 100; ++i) {
 
-    if (file == NULL) {
-        fprintf(stderr, "Can't open file: %s.\n", filename);
-        return ERR_FILE_OPEN;
-    }
+		printf("----------------------------\n");
+		printf("-----Iteration %d------------\n", i);
+		printf("----------------------------\n");
 
-    printf("Done.\n");
+		printf("Opening file...");
 
-    printf("Creating and filling the table...\n\n");
-    int res = create_and_fill_table(&table, file);
+		FILE *file = fopen(filename, "r");
 
-    switch (res) {
-        case ERR_FILL:
-            ck_destroy_table(&table);
-        case ERR_COUNT:
-        case ERR_TABLE_CREATE:
-            return res;
-    }
+		if (file == NULL) {
+			fprintf(stderr, "Can't open file: %s.\n", filename);
+			return ERR_FILE_OPEN;
+		}
 
-    printf("\nDone.\n\n");
+		printf("Done.\n");
 
-    printf("Testing lookup...\n\n");
-    res = test_lookup_from_file(table, file);
-    printf("\nDone. Result: %d\n\n", res);
+		printf("Creating and filling the table...\n\n");
+		res = create_and_fill_table(&table, file);
 
-    printf("Testing rehash...\n");
-    res = ck_rehash(table);
-    printf("\nDone. Result: %d\n\n", res);
+		switch (res) {
+			case ERR_FILL:
+				ck_destroy_table(&table);
+			case ERR_COUNT:
+			case ERR_TABLE_CREATE:
+				return res;
+		}
 
-    printf("Testing lookup...\n\n");
-    res = test_lookup_from_file(table, file);
-    printf("\nDone. Result: %d\n\n", res);
+		printf("\nDone. Result: %d\n\n", res);
 
-    ck_destroy_table(&table);
-    fclose(file);
+		printf("Testing lookup...\n\n");
+		res = test_lookup_from_file(table, file);
+		printf("\nDone. Result: %d\n\n", res);
+
+		printf("Testing rehash...\n");
+		int res_rehash = ck_rehash(table);
+		printf("\nDone. Result: %d\n\n", res_rehash);
+
+		printf("Testing lookup...\n\n");
+		res = test_lookup_from_file(table, file);
+		printf("\nDone. Result: %d\n\n", res);
+
+		ck_destroy_table(&table);
+		fclose(file);
+
+		if (res != 0 || res_rehash != 0) break;
+
+	}
 
     return res;
 }
