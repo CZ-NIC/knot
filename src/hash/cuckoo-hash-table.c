@@ -251,7 +251,7 @@ static inline uint ck_items_match( const ck_hash_table_item* item,
 /*----------------------------------------------------------------------------*/
 
 ck_hash_table_item *ck_find_in_buffer( ck_hash_table *table, const char *key,
-                                       uint length, uint generation )
+									   uint length )
 {
     debug_cuckoo("Max buffer offset: %u\n", table->buf_i);
 	uint i = 0;
@@ -493,7 +493,7 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 	// set the new generation for the inserted item
 	SET_GENERATION(&(*moving)->timestamp, generation);
 
-    return loop;
+	return loop;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -520,6 +520,9 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 		// space in the table, thus probably not the former new item
 		if (ck_insert_to_buffer(table, new_item) != 0) {
 			assert(0);
+		} else {
+			printf("Item with key %*s inserted into the buffer.\n",
+				   new_item->key_length, new_item->key);
 		}
 	}
 
@@ -593,7 +596,6 @@ int ck_rehash( ck_hash_table *table )
 		ck_put_item(old, table->buffer[buf_i]);
 		// clear the place so that this item will not get rehashed again
 		ck_clear_item(&table->buffer[buf_i]);
-		--table->buf_i;
 
 		// and start rehashing
 		if (ck_hash_item(table, old, &table->buffer[buf_i],
@@ -601,14 +603,24 @@ int ck_rehash( ck_hash_table *table )
 			== -1) {
 			ERR_INF_LOOP;
 			// loop occured
-			// TODO: must set old generation to all cells used for this rehash
 			ck_rollback_rehash(table);
+
+			printf("Item which caused the infinite loop: %*s (pointer: %p).\n",
+				  (*old)->key_length, (*old)->key, old);
+			printf("Item inserted in the free place: %*s (pointer: %p).\n",
+				  table->buffer[buf_i]->key_length,
+				  table->buffer[buf_i]->key, &table->buffer[buf_i]);
+
+			// clear the 'old' item
+			ck_clear_item(old);
 
 			pthread_mutex_unlock(&table->mtx_table);
 			return -1;
 		}
 
 		--buf_i;
+		// rehash successful, so there is one item less in the buffer
+		--table->buf_i;
 	}
 
     // rehash items from the first table
@@ -651,8 +663,16 @@ int ck_rehash( ck_hash_table *table )
             == -1) {
             ERR_INF_LOOP;
             // loop occured
-            // TODO: must set old generation to all cells used for this rehash
             ck_rollback_rehash(table);
+
+			printf("Item which caused the infinite loop: %*s.\n",
+				  (*old)->key_length, (*old)->key);
+			printf("Item inserted in the free place: %*s.\n",
+				  table->table1[rehashed]->key_length,
+				  table->table1[rehashed]->key);
+
+			// clear the 'old' item
+			ck_clear_item(old);
 
             pthread_mutex_unlock(&table->mtx_table);
             return -1;
@@ -699,8 +719,16 @@ int ck_rehash( ck_hash_table *table )
             == -1) {
             ERR_INF_LOOP;
             // loop occured
-            // TODO: must set old generation to all cells used for this rehash
             ck_rollback_rehash(table);
+
+			printf("Item which caused the infinite loop: %*s.\n",
+				  (*old)->key_length, (*old)->key);
+			printf("Item inserted in the free place: %*s.\n",
+				  table->table2[rehashed]->key_length,
+				  table->table2[rehashed]->key);
+
+			// clear the 'old' item
+			ck_clear_item(old);
 
             pthread_mutex_unlock(&table->mtx_table);
             return -1;
@@ -759,7 +787,7 @@ const ck_hash_table_item *ck_find_gen( ck_hash_table *table, const char *key,
 
 	// try to find in buffer
 	ck_hash_table_item *found =
-		ck_find_in_buffer(table, key, length, generation);
+		ck_find_in_buffer(table, key, length);
 
     debug_cuckoo("Found pointer: %p\n", found);
 	if (found != NULL) {
