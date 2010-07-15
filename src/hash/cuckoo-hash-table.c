@@ -223,24 +223,6 @@ uint ck_check_used_twice( uint *used, uint *last, uint32_t hash )
 
 /*----------------------------------------------------------------------------*/
 
-int ck_insert_to_buffer( ck_hash_table *table, ck_hash_table_item *item )
-{
-    assert(table->buf_i + 1 < BUFFER_SIZE);
-
-	ck_put_item(&table->buffer[table->buf_i], item);
-
-	++table->buf_i;
-
-    // if only one place left, rehash (this place is used in rehashing)
-    if (table->buf_i + 1 == BUFFER_SIZE) {
-        return ck_rehash(table);
-    }
-
-	return 0;
-}
-
-/*----------------------------------------------------------------------------*/
-
 static inline uint ck_items_match( const ck_hash_table_item* item,
 								   const char *key, size_t length )
 {
@@ -253,15 +235,16 @@ static inline uint ck_items_match( const ck_hash_table_item* item,
 ck_hash_table_item *ck_find_in_buffer( ck_hash_table *table, const char *key,
 									   uint length )
 {
-    debug_cuckoo("Max buffer offset: %u\n", table->buf_i);
+	uint buf_i = table->buf_i;
+	debug_cuckoo("Max buffer offset: %u\n", buf_i);
 	uint i = 0;
-	while (i < table->buf_i && table->buffer[i]
+	while (i < buf_i && table->buffer[i]
 		   && ck_items_match(table->buffer[i], key, length))
 	{
 		++i;
 	}
 
-	if (i >= table->buf_i) {
+	if (i >= buf_i) {
 		return NULL;
 	}
 
@@ -507,22 +490,33 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 	debug_cuckoo_hash("Inserting item with key: %s.\n", key);
 	debug_cuckoo_hash_hex(key, length);
 
-	// create item structure and fill in the given data (key will not be copied!)
+	// create item structure and fill in the given data, key will not be copied!
 	ck_hash_table_item *new_item =
 			(ck_hash_table_item *)malloc((sizeof(ck_hash_table_item)));
 	ck_fill_item(key, length, value, GET_GENERATION(table->generation),
 				 new_item);
 
 	// check if this works (using the same pointer for 'old' and 'free')
-	if (ck_hash_item(table, &new_item, &new_item, table->generation) != 0) {
-		// loop occured, insert the item into the buffer
-		// in 'new_item' there should be the one for which there was not enough
-		// space in the table, thus probably not the former new item
-		if (ck_insert_to_buffer(table, new_item) != 0) {
-			assert(0);
-		} else {
-			printf("Item with key %*s inserted into the buffer.\n",
-				   new_item->key_length, new_item->key);
+	assert(table->buf_i + 1 < BUFFER_SIZE);
+	if (ck_hash_item(table, &new_item, &table->buffer[table->buf_i],
+					 table->generation) != 0) {
+		printf("Item with key %*s inserted into the buffer.\n",
+			   table->buffer[table->buf_i]->key_length,
+			   table->buffer[table->buf_i]->key);
+
+		// loop occured, the item is already at its new place in the buffer,
+		// so just increment the index and check if rehash is not needed
+		++table->buf_i;
+
+		// if only one place left, rehash (this place is used in rehashing)
+		if (table->buf_i + 1 == BUFFER_SIZE) {
+			int res = ck_rehash(table);
+			if (res != 0) {
+				printf("Rehashing not successful, rehash flag: %hu\n",
+					   IS_REHASHING(table->generation));
+			}
+			pthread_mutex_unlock(&table->mtx_table);
+			return res;
 		}
 	}
 
@@ -555,19 +549,23 @@ void ck_rollback_rehash( ck_hash_table *table )
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * If not successful, the rehashing flag should still be set after returning.
+ */
 int ck_rehash( ck_hash_table *table )
 {
 	debug_cuckoo_rehash("Rehashing items in table.\n");
 	SET_REHASHING_ON(&table->generation);
 
     // we already have functions for the next generation, begin rehashing
-    // we wil use the last item in the buffer as the old cell
+	// we wil use the last item in the buffer as free cell for hashing
     assert(table->buf_i + 1 <= BUFFER_SIZE);
-	ck_hash_table_item **old = &table->buffer[table->buf_i];
+	//ck_hash_table_item **old = &table->buffer[table->buf_i];
+	ck_hash_table_item *old = (ck_hash_table_item *)
+							  (malloc(sizeof(ck_hash_table_item)));
 
 	debug_cuckoo_rehash("Place in buffer used for rehashing: %u, %p\n",
-						table->buf_i, *old);
+						table->buf_i, old);
 
 	// rehash items from buffer, starting from the last old item
 	int buf_i = table->buf_i - 1;
@@ -593,12 +591,14 @@ int ck_rehash( ck_hash_table *table )
 			GET_GENERATION(table->generation));
 
 		// otherwise copy the item for rehashing
-		ck_put_item(old, table->buffer[buf_i]);
+		ck_put_item(&old, table->buffer[buf_i]);
 		// clear the place so that this item will not get rehashed again
 		ck_clear_item(&table->buffer[buf_i]);
 
+		assert(table->buffer[buf_i] == NULL);
+
 		// and start rehashing
-		if (ck_hash_item(table, old, &table->buffer[buf_i],
+		if (ck_hash_item(table, &old, &table->buffer[buf_i],
 						 NEXT_GENERATION(table->generation))
 			== -1) {
 			ERR_INF_LOOP;
@@ -606,22 +606,37 @@ int ck_rehash( ck_hash_table *table )
 			ck_rollback_rehash(table);
 
 			printf("Item which caused the infinite loop: %*s (pointer: %p).\n",
-				  (*old)->key_length, (*old)->key, old);
+				  old->key_length, old->key, &old);
 			printf("Item inserted in the free place: %*s (pointer: %p).\n",
 				  table->buffer[buf_i]->key_length,
 				  table->buffer[buf_i]->key, &table->buffer[buf_i]);
+			printf("Last index in buffer: %u, inserted item's index: %u\n",
+				   table->buf_i, buf_i);
 
 			// clear the 'old' item
-			ck_clear_item(old);
+			ck_clear_item(&old);
 
-			pthread_mutex_unlock(&table->mtx_table);
+			assert(table->buf_i + 1 < BUFFER_SIZE);
+			assert(table->buffer[table->buf_i - 1] != NULL);
+			assert(table->buffer[table->buf_i] == NULL);
+
 			return -1;
 		}
 
+		// clear the 'old' item
+		ck_clear_item(&old);
+		// decrement the index
 		--buf_i;
 		// rehash successful, so there is one item less in the buffer
 		--table->buf_i;
 	}
+
+	uint i = 0;
+	while (i < table->buf_i) {
+		assert(table->buffer[i] != NULL);
+		++i;
+	}
+	assert(table->buffer[table->buf_i] == NULL);
 
     // rehash items from the first table
 	debug_cuckoo_rehash("Rehashing items from table 1.\n");
@@ -649,7 +664,7 @@ int ck_rehash( ck_hash_table *table )
 			   GET_GENERATION(table->generation));
 
 		// otherwise copy the item for rehashing
-		ck_put_item(old, table->table1[rehashed]);
+		ck_put_item(&old, table->table1[rehashed]);
         // clear the place so that this item will not get rehashed again
         ck_clear_item(&table->table1[rehashed]);
 
@@ -658,7 +673,8 @@ int ck_rehash( ck_hash_table *table )
 							NEXT_GENERATION(table->generation));
 
         // and start rehashing
-		if (ck_hash_item(table, old, &table->table1[rehashed],
+		assert(&old != &table->buffer[table->buf_i]);
+		if (ck_hash_item(table, &old, &table->buffer[table->buf_i],
 						 NEXT_GENERATION(table->generation))
             == -1) {
             ERR_INF_LOOP;
@@ -666,15 +682,24 @@ int ck_rehash( ck_hash_table *table )
             ck_rollback_rehash(table);
 
 			printf("Item which caused the infinite loop: %*s.\n",
-				  (*old)->key_length, (*old)->key);
+				  old->key_length, old->key);
 			printf("Item inserted in the free place: %*s.\n",
-				  table->table1[rehashed]->key_length,
-				  table->table1[rehashed]->key);
+				  table->buffer[table->buf_i]->key_length,
+				  table->buffer[table->buf_i]->key);
+			printf("Last index in buffer: %u, inserted item's index: %u\n",
+				   table->buf_i + 1, table->buf_i);
+			printf("Rehashing flag: %hu\n", IS_REHASHING(table->generation));
+
+			// the item was put into the buffer, so increment the buffer index
+			++table->buf_i;
+
+			assert(table->buf_i + 1 < BUFFER_SIZE);
+			assert(table->buffer[table->buf_i - 1] != NULL);
+			assert(table->buffer[table->buf_i] == NULL);
 
 			// clear the 'old' item
-			ck_clear_item(old);
+			ck_clear_item(&old);
 
-            pthread_mutex_unlock(&table->mtx_table);
             return -1;
         }
 
@@ -709,12 +734,13 @@ int ck_rehash( ck_hash_table *table )
 				GET_GENERATION(table->generation));
 
 		// otherwise copy the item for rehashing
-		ck_put_item(old, table->table2[rehashed]);
+		ck_put_item(&old, table->table2[rehashed]);
         // clear the place so that this item will not get rehashed again
         ck_clear_item(&table->table2[rehashed]);
 
         // and start rehashing
-		if (ck_hash_item(table, old, &table->table2[rehashed],
+		assert(&old != &table->buffer[table->buf_i]);
+		if (ck_hash_item(table, &old, &table->buffer[table->buf_i],
 						 NEXT_GENERATION(table->generation))
             == -1) {
             ERR_INF_LOOP;
@@ -722,15 +748,22 @@ int ck_rehash( ck_hash_table *table )
             ck_rollback_rehash(table);
 
 			printf("Item which caused the infinite loop: %*s.\n",
-				  (*old)->key_length, (*old)->key);
+				  old->key_length, old->key);
 			printf("Item inserted in the free place: %*s.\n",
-				  table->table2[rehashed]->key_length,
-				  table->table2[rehashed]->key);
+				  table->buffer[table->buf_i]->key_length,
+				  table->buffer[table->buf_i]->key);
+			printf("Last index in buffer: %u, inserted item's index: %u\n",
+				   table->buf_i + 1, table->buf_i);
+			printf("Rehashing flag: %hu\n", IS_REHASHING(table->generation));
+
+			++table->buf_i;
+			assert(table->buf_i + 1 < BUFFER_SIZE);
+			assert(table->buffer[table->buf_i - 1] != NULL);
+			assert(table->buffer[table->buf_i] == NULL);
 
 			// clear the 'old' item
-			ck_clear_item(old);
+			ck_clear_item(&old);
 
-            pthread_mutex_unlock(&table->mtx_table);
             return -1;
         }
 
@@ -783,7 +816,7 @@ const ck_hash_table_item *ck_find_gen( ck_hash_table *table, const char *key,
 		return table->table2[hash];
 	}
 
-    debug_cuckoo("Searching in buffer...\n");
+	debug_cuckoo("Searching in buffer...\n");
 
 	// try to find in buffer
 	ck_hash_table_item *found =
@@ -811,9 +844,8 @@ const ck_hash_table_item *ck_find_item( ck_hash_table *table, const char *key,
 	const ck_hash_table_item *found = ck_find_gen(table, key, length,
 											GET_GENERATION(generation));
 	// if rehashing is in progress, try the next generation's functions
-	if (!found && IS_REHASHING(table->generation)) {
-		found = ck_find_gen(table, key, length,
-							NEXT_GENERATION(generation));
+	if (!found && IS_REHASHING(generation)) {
+		found = ck_find_gen(table, key, length, NEXT_GENERATION(generation));
 	}
 
 	return found;
