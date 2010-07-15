@@ -575,7 +575,7 @@ int test_hash_table( char *filename )
 		ck_destroy_table(&table);
 		fclose(file);
 
-		if (res != 0 || res_rehash != 0) break;
+		if (res != 0) break;
 
 	}
 
