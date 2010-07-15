@@ -43,10 +43,10 @@
 #define NEXT_TABLE(table) ((table == TABLE_LAST) ? TABLE_FIRST : table + 1)
 #define PREVIOUS_TABLE(table) ((table == TABLE_FIRST) ? TABLE_LAST : table - 1)
 
-#define HASH1(key, length, exp, gen) \
-            us_hash(fnv_hash(key, length, -1), exp, 0, gen)
-#define HASH2(key, length, exp, gen) \
-            us_hash(fnv_hash(key, length, -1), exp, 1, gen)
+#define HASH(key, length, exp, gen, table) \
+			us_hash(fnv_hash(key, length, -1), exp, table, gen)
+//#define HASH2(key, length, exp, gen, table) \
+//            us_hash(fnv_hash(key, length, -1), exp, 1, gen)
 
 static const uint BUFFER_SIZE = 100;
 
@@ -274,43 +274,34 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 		   hashsize(table->table_size_exp), sizeof(ck_hash_table_item *),
 		   hashsize(table->table_size_exp) * sizeof(ck_hash_table_item *));
 
-    // Table 1
-	table->table1 = (ck_hash_table_item **)malloc(hashsize(table->table_size_exp)
-												 * sizeof(ck_hash_table_item *));
+	// create tables
+	for (uint t = TABLE_FIRST; t <= TABLE_LAST; ++t) {
+		table->tables[t] =
+			(ck_hash_table_item **)malloc(hashsize(table->table_size_exp)
+											* sizeof(ck_hash_table_item *));
+		if (table->tables[t] == NULL) {
+			ERR_ALLOC_FAILED;
+			for (uint i = TABLE_FIRST; i < t; ++i) {
+				free(table->tables[i]);
+			}
+			free(table);
+			return NULL;
+		}
 
-	if (table->table1 == NULL) {
-		ERR_ALLOC_FAILED;
-		free(table);
-		return NULL;
+		// set to 0
+		memset(table->tables[t], 0,
+			   hashsize(table->table_size_exp) * sizeof(ck_hash_table_item *));
 	}
 
-	// set to 0
-	memset(table->table1, 0,
-		   hashsize(table->table_size_exp) * sizeof(ck_hash_table_item *));
-
-    // Table 2
-	table->table2 = (ck_hash_table_item **)malloc(hashsize(table->table_size_exp)
-												 * sizeof(ck_hash_table_item *));
-
-	if (table->table2 == NULL) {
-		ERR_ALLOC_FAILED;
-		free(table->table1);
-		free(table);
-		return NULL;
-	}
-
-	// set to 0
-	memset(table->table2, 0,
-		   hashsize(table->table_size_exp) * sizeof(ck_hash_table_item *));
-
-	// Buffer (replace by (generic) variable-length array)
+	// create buffer (replace by (generic) variable-length array)
 	table->buffer = (ck_hash_table_item **)malloc(
 						BUFFER_SIZE	* sizeof(ck_hash_table_item *));
 
 	if (table->buffer == NULL) {
 		ERR_ALLOC_FAILED;
-        free(table->table1);
-		free(table->table2);
+		for (uint t = TABLE_FIRST; t <= TABLE_LAST; ++t) {
+			free(table->tables[t]);
+		}
 		free(table);
 		return NULL;
 	}
@@ -336,20 +327,18 @@ void ck_destroy_table( ck_hash_table **table )
 {
     pthread_mutex_lock(&(*table)->mtx_table);
 
-    // destroy items
+	// destroy items in tables
     for (uint i = 0; i < hashsize((*table)->table_size_exp); ++i) {
-		if ((*table)->table1[i] != NULL) {
-			(*table)->dtor_item((*table)->table1[i]->value);
-			free((void *)(*table)->table1[i]->key);
-			free((void *)(*table)->table1[i]);
-        }
-		if ((*table)->table2[i] != NULL) {
-			(*table)->dtor_item((*table)->table2[i]->value);
-			free((void *)(*table)->table2[i]->key);
-			free((void *)(*table)->table2[i]);
-        }
+		for (uint t = TABLE_FIRST; t <= TABLE_LAST; ++t) {
+			if ((*table)->tables[t][i] != NULL) {
+				(*table)->dtor_item((*table)->tables[t][i]->value);
+				free((void *)(*table)->tables[t][i]->key);
+				free((void *)(*table)->tables[t][i]);
+			}
+		}
     }
 
+	// destroy items in buffer
     for (uint i = 0; i < (*table)->buf_i; ++i) {
 		assert((*table)->buffer[i] != NULL);
 		(*table)->dtor_item((*table)->buffer[i]->value);
@@ -357,14 +346,17 @@ void ck_destroy_table( ck_hash_table **table )
     }
 
 	debug_cuckoo("Deleting: table1: %p, table2: %p, buffer: %p, table: %p.\n",
-           (*table)->table1, (*table)->table2, (*table)->buffer, *table);
+		   (*table)->tables[TABLE_1], (*table)->tables[TABLE_2],
+		   (*table)->buffer, *table);
 
     pthread_mutex_unlock(&(*table)->mtx_table);
     // destroy mutex, assuming that here noone will lock the mutex again
     pthread_mutex_destroy(&(*table)->mtx_table);
 
-    free((*table)->table1);
-    free((*table)->table2);
+
+	for (uint t = TABLE_FIRST; t <= TABLE_LAST; ++t) {
+		free((*table)->tables[t]);
+	}
     free((*table)->buffer);
     free(*table);
 
@@ -379,24 +371,28 @@ void ck_destroy_table( ck_hash_table **table )
 int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 				  ck_hash_table_item **free, uint8_t generation )
 {
-	uint32_t used1[USED_SIZE], used2[USED_SIZE];
-    uint used_i1 = 0, used_i2 = 0;
+	uint32_t used[TABLE_LAST + 1][USED_SIZE];
+	uint used_i[TABLE_LAST + 1];
+	memset(used_i, 0, (TABLE_LAST + 1) * sizeof(uint));
 
     // hash until empty cell is encountered or until loop appears
 
 	debug_cuckoo_hash("Hashing key: %s of size %u.\n",
 					  (*to_hash)->key, (*to_hash)->key_length);
-	uint32_t hash = HASH1((*to_hash)->key, (*to_hash)->key_length,
-						  table->table_size_exp, generation);
+
+	int next_table = TABLE_1;
+
+	uint32_t hash = HASH((*to_hash)->key, (*to_hash)->key_length,
+						  table->table_size_exp, generation, next_table);
 
 	debug_cuckoo_hash("New hash: %u.\n", hash);
 
-    used1[used_i1] = hash;
-	ck_hash_table_item **next = &table->table1[hash];
+	used[next_table][used_i[next_table]] = hash;
+	ck_hash_table_item **next = &table->tables[next_table][hash];
 	debug_cuckoo_hash("Item to be moved: %p, place in table: %p\n", *next, next);
 	ck_hash_table_item **moving = to_hash;
 
-	int next_table = TABLE_2;
+	next_table = NEXT_TABLE(next_table);
     int loop = 0;
 
 	while (*next != NULL) {
@@ -421,46 +417,24 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 			next_table = TABLE_1;
 		}
 
-        if (next_table == TABLE_1) {
-			hash = HASH1((*next)->key, (*next)->key_length,
-						 table->table_size_exp, generation);
-            next = &table->table1[hash];
+		hash = HASH((*next)->key, (*next)->key_length,
+					 table->table_size_exp, generation, next_table);
+		next = &table->tables[next_table][hash];
 
-			debug_cuckoo_hash(" to table 1, hash %u, item: %p, place: %p\n",
-							  hash, *next, next);
-			if ((*next) != NULL) {
-				debug_cuckoo_hash("Table 1, hash: %u, key: %s\n", hash,
-								  (*next)->key);
-			}
+		debug_cuckoo_hash(" to table 1, hash %u, item: %p, place: %p\n",
+						  hash, *next, next);
+		if ((*next) != NULL) {
+			debug_cuckoo_hash("Table 1, hash: %u, key: %s\n", hash,
+							  (*next)->key);
+		}
 
-            // check if this cell wasn't already used in this item's hashing
-            if (ck_check_used_twice(used1, &used_i1, hash) != 0) {
-                next = free;
-                loop = -1;
-                break;
-            }
-        } else if (next_table == TABLE_2) {
-			hash = HASH2((*next)->key, (*next)->key_length,
-						 table->table_size_exp, generation);
-			next = &table->table2[hash];
-
-			debug_cuckoo_hash(" to table 2, hash %u, item: %p, place: %p\n",
-							  hash, *next, next);
-			if ((*next) != NULL) {
-				debug_cuckoo_hash("Table 2, hash: %u, key: %s\n", hash,
-								  (*next)->key);
-			}
-
-            // check if this cell wasn't already used in this item's hashing
-            if (ck_check_used_twice(used2, &used_i2, hash) != 0) {
-                next = free;
-                loop = -1;
-                break;
-            }
-
-        } else {
-            assert(0);
-        }
+		// check if this cell wasn't already used in this item's hashing
+		if (ck_check_used_twice(used[next_table], &used_i[next_table], hash)
+				!= 0) {
+			next = free;
+			loop = -1;
+			break;
+		}
 
         next_table = NEXT_TABLE(next_table);
     }
@@ -532,11 +506,11 @@ void ck_rollback_rehash( ck_hash_table *table )
 	for (int i = 0; i < hashsize(table->table_size_exp); ++i) {
 		// no need for locking - timestamp is not used in lookup
 		// and two paralel insertions (and thus rehashings) are impossible
-		if (table->table1[i] != NULL) {
-			SET_GENERATION(&table->table1[i]->timestamp, table->generation);
-		}
-		if (table->table2[i] != NULL) {
-			SET_GENERATION(&table->table2[i]->timestamp, table->generation);
+		for (uint t = TABLE_FIRST; t <= TABLE_LAST; ++t) {
+			if (table->tables[t][i] != NULL) {
+				SET_GENERATION(&table->tables[t][i]->timestamp,
+							   table->generation);
+			}
 		}
 	}
 
@@ -638,137 +612,75 @@ int ck_rehash( ck_hash_table *table )
 	}
 	assert(table->buffer[table->buf_i] == NULL);
 
-    // rehash items from the first table
-	debug_cuckoo_rehash("Rehashing items from table 1.\n");
+	// rehash items from hash tables
+	for (uint t = TABLE_FIRST; t <= TABLE_LAST; ++t) {
+		debug_cuckoo_rehash("Rehashing items from table %d.\n", t + 1);
+		uint rehashed = 0;
 
-	uint rehashed = 0;
-    while (rehashed < hashsize(table->table_size_exp)) {
+		while (rehashed < hashsize(table->table_size_exp)) {
 
-        // if item's generation is the new generation, skip
-		if (table->table1[rehashed] == NULL
-			|| !(EQUAL_GENERATIONS(table->table1[rehashed]->timestamp,
-								   table->generation))) {
+			// if item's generation is the new generation, skip
+			if (table->tables[t][rehashed] == NULL
+				|| !(EQUAL_GENERATIONS(table->tables[t][rehashed]->timestamp,
+									   table->generation))) {
 
-			debug_cuckoo_rehash("Skipping item.\n");
+				debug_cuckoo_rehash("Skipping item.\n");
 
-            ++rehashed;
-            continue;
-        }
+				++rehashed;
+				continue;
+			}
 
-		debug_cuckoo_rehash("Rehashing item with hash %u, key (length %u): "
-				"%*s, generation: %hu, table generation: %hu.\n", rehashed,
-			   table->table1[rehashed]->key_length,
-			   (int)(table->table1[rehashed]->key_length),
-			   table->table1[rehashed]->key,
-			   GET_GENERATION(table->table1[rehashed]->timestamp),
-			   GET_GENERATION(table->generation));
+			debug_cuckoo_rehash("Rehashing item with hash %u, key (length %u): "
+					"%*s, generation: %hu, table generation: %hu.\n", rehashed,
+				   table->tables[t][rehashed]->key_length,
+				   (int)(table->tables[t][rehashed]->key_length),
+				   table->tables[t][rehashed]->key,
+				   GET_GENERATION(table->tables[t][rehashed]->timestamp),
+				   GET_GENERATION(table->generation));
 
-		// otherwise copy the item for rehashing
-		ck_put_item(&old, table->table1[rehashed]);
-        // clear the place so that this item will not get rehashed again
-        ck_clear_item(&table->table1[rehashed]);
+			// otherwise copy the item for rehashing
+			ck_put_item(&old, table->tables[t][rehashed]);
+			// clear the place so that this item will not get rehashed again
+			ck_clear_item(&table->tables[t][rehashed]);
 
-		debug_cuckoo_rehash("Table generation: %hu, next generation: %hu.\n",
-							GET_GENERATION(table->generation),
-							NEXT_GENERATION(table->generation));
+			debug_cuckoo_rehash("Table generation: %hu, next generation: %hu.\n",
+								GET_GENERATION(table->generation),
+								NEXT_GENERATION(table->generation));
 
-        // and start rehashing
-		assert(&old != &table->buffer[table->buf_i]);
-		if (ck_hash_item(table, &old, &table->buffer[table->buf_i],
-						 NEXT_GENERATION(table->generation))
-            == -1) {
-            ERR_INF_LOOP;
-            // loop occured
-            ck_rollback_rehash(table);
+			// and start rehashing
+			assert(&old != &table->buffer[table->buf_i]);
+			if (ck_hash_item(table, &old, &table->buffer[table->buf_i],
+							 NEXT_GENERATION(table->generation))
+				== -1) {
+				ERR_INF_LOOP;
+				// loop occured
+				ck_rollback_rehash(table);
 
-			printf("Item which caused the infinite loop: %*s.\n",
-				  old->key_length, old->key);
-			printf("Item inserted in the free place: %*s.\n",
-				  table->buffer[table->buf_i]->key_length,
-				  table->buffer[table->buf_i]->key);
-			printf("Last index in buffer: %u, inserted item's index: %u\n",
-				   table->buf_i + 1, table->buf_i);
-			printf("Rehashing flag: %hu\n", IS_REHASHING(table->generation));
+				printf("Item which caused the infinite loop: %*s.\n",
+					  old->key_length, old->key);
+				printf("Item inserted in the free place: %*s.\n",
+					  table->buffer[table->buf_i]->key_length,
+					  table->buffer[table->buf_i]->key);
+				printf("Last index in buffer: %u, inserted item's index: %u\n",
+					   table->buf_i + 1, table->buf_i);
+				printf("Rehashing flag: %hu\n", IS_REHASHING(table->generation));
 
-			// the item was put into the buffer, so increment the buffer index
-			++table->buf_i;
+				// the item was put into the buffer, so increment the buffer index
+				++table->buf_i;
 
-			assert(table->buf_i + 1 < BUFFER_SIZE);
-			assert(table->buffer[table->buf_i - 1] != NULL);
-			assert(table->buffer[table->buf_i] == NULL);
+				assert(table->buf_i + 1 < BUFFER_SIZE);
+				assert(table->buffer[table->buf_i - 1] != NULL);
+				assert(table->buffer[table->buf_i] == NULL);
 
-			// clear the 'old' item
-			ck_clear_item(&old);
+				// clear the 'old' item
+				ck_clear_item(&old);
 
-            return -1;
-        }
+				return -1;
+			}
 
-        ++rehashed;
-    }
-
-    // rehash items from the second table
-	debug_cuckoo_rehash("Rehashing items from table 2.\n");
-
-    rehashed = 0;
-    while (rehashed < hashsize(table->table_size_exp)) {
-
-        // if item's generation is the new generation, skip
-		if (table->table2[rehashed] == NULL
-			|| !(EQUAL_GENERATIONS(table->table2[rehashed]->timestamp,
-								   table->generation))) {
-
-			debug_cuckoo_rehash("Skipping item %p (place %p).\n",
-								table->table2[rehashed],
-								&table->table2[rehashed]);
-
-            ++rehashed;
-            continue;
-        }
-
-		debug_cuckoo_rehash("Rehashing item with hash %u, key (length %u): %*s,"
-							" generation: %hu, table generation: %hu.\n",
-				rehashed, table->table2[rehashed]->key_length,
-				(int)table->table2[rehashed]->key_length,
-				table->table2[rehashed]->key,
-				GET_GENERATION(table->table2[rehashed]->timestamp),
-				GET_GENERATION(table->generation));
-
-		// otherwise copy the item for rehashing
-		ck_put_item(&old, table->table2[rehashed]);
-        // clear the place so that this item will not get rehashed again
-        ck_clear_item(&table->table2[rehashed]);
-
-        // and start rehashing
-		assert(&old != &table->buffer[table->buf_i]);
-		if (ck_hash_item(table, &old, &table->buffer[table->buf_i],
-						 NEXT_GENERATION(table->generation))
-            == -1) {
-            ERR_INF_LOOP;
-            // loop occured
-            ck_rollback_rehash(table);
-
-			printf("Item which caused the infinite loop: %*s.\n",
-				  old->key_length, old->key);
-			printf("Item inserted in the free place: %*s.\n",
-				  table->buffer[table->buf_i]->key_length,
-				  table->buffer[table->buf_i]->key);
-			printf("Last index in buffer: %u, inserted item's index: %u\n",
-				   table->buf_i + 1, table->buf_i);
-			printf("Rehashing flag: %hu\n", IS_REHASHING(table->generation));
-
-			++table->buf_i;
-			assert(table->buf_i + 1 < BUFFER_SIZE);
-			assert(table->buffer[table->buf_i - 1] != NULL);
-			assert(table->buffer[table->buf_i] == NULL);
-
-			// clear the 'old' item
-			ck_clear_item(&old);
-
-            return -1;
-        }
-
-        ++rehashed;
-    }
+			++rehashed;
+		}
+	}
 
     // rehashing completed, switch generation of the table
     SET_NEXT_GENERATION(&table->generation);
@@ -783,42 +695,29 @@ const ck_hash_table_item *ck_find_gen( ck_hash_table *table, const char *key,
 {
     uint32_t hash;
 
-	// check first table
-	hash = HASH1(key, length, table->table_size_exp, generation);
+	// check hash tables
+	for (uint t = TABLE_FIRST; t <= TABLE_LAST; ++t) {
+		hash = HASH(key, length, table->table_size_exp, generation, t);
 
-    debug_cuckoo("Hash: %u, key: %s\n", hash, key);
-	debug_cuckoo("Table 1, hash: %u, item: %p\n", hash, table->table1[hash]);
-	if (table->table1[hash] != NULL) {
-		debug_cuckoo("Table 1, key: %s, value: %p, key length: %u\n",
-		   table->table1[hash]->key, table->table1[hash]->value,
-		   table->table1[hash]->key_length);
+		debug_cuckoo("Hash: %u, key: %s\n", hash, key);
+		debug_cuckoo("Table %d, hash: %u, item: %p\n", t + 1, hash,
+					 table->tables[t][hash]);
+		if (table->tables[t][hash] != NULL) {
+			debug_cuckoo("Table %d, key: %s, value: %p, key length: %u\n",
+				t + 1, table->tables[t][hash]->key, table->tables[t][hash]->value,
+				table->tables[t][hash]->key_length);
+		}
+
+		if (table->tables[t][hash]
+			&& (ck_items_match(table->tables[t][hash], key, length) == 0)) {
+			// found
+			return table->tables[t][hash];
+		}
 	}
-
-	if (table->table1[hash]
-		&& (ck_items_match(table->table1[hash], key, length) == 0)) {
-		// found
-		return table->table1[hash];
-	}
-
-	// check second table
-	hash = HASH2(key, length, table->table_size_exp, generation);
-
-	debug_cuckoo("Table 2, hash: %u, item: %p\n", hash, table->table2[hash]);
-	if (table->table2[hash] != NULL) {
-		debug_cuckoo("Table 2, key: %s, value: %p, key length: %u\n",
-		   table->table2[hash]->key, table->table2[hash]->value,
-		   table->table2[hash]->key_length);
-	}
-
-	if (table->table2[hash]
-		&& (ck_items_match(table->table2[hash], key, length) == 0)) {
-		// found
-		return table->table2[hash];
-	}
-
-	debug_cuckoo("Searching in buffer...\n");
 
 	// try to find in buffer
+	debug_cuckoo("Searching in buffer...\n");
+
 	ck_hash_table_item *found =
 		ck_find_in_buffer(table, key, length);
 
@@ -857,32 +756,25 @@ void ck_dump_table( ck_hash_table *table )
 {
 	uint i;
 
-	// Assuming the keys and data are null-terminated strings
-
 	debug_cuckoo("----------------------------------------------\n");
 	debug_cuckoo("Hash table dump:\n\n");
 	debug_cuckoo("Size of each table: %u\n\n", hashsize(table->table_size_exp));
 
-	debug_cuckoo("Table 1:\n");
+	for (uint t = TABLE_FIRST; t <= TABLE_LAST; ++t) {
+		debug_cuckoo("Table %d:\n", t + 1);
 
-	for (i = 0; i < hashsize(table->table_size_exp); i++) {
-		debug_cuckoo("Key: %u: %s ", i, table->table1[i]->key);
-		if (table->table1[i] != NULL) {
-			debug_cuckoo("Value: %s.\n", (char *)table->table1[i]->value);
-		} else {
-			debug_cuckoo("Empty\n");
+		for (i = 0; i < hashsize(table->table_size_exp); i++) {
+			debug_cuckoo("Hash: %u, Key: %*s, Value: %p.\n", i,
+						 table->tables[t][i]->key_length,
+						 table->tables[t][i]->key, table->tables[t][i]->value);
 		}
 	}
 
-	debug_cuckoo("\n\nTable 2:\n");
-
-	for (i = 0; i < hashsize(table->table_size_exp); i++) {
-		debug_cuckoo("Key: %u: %s ", i, table->table2[i]->key);
-		if (table->table2[i] != NULL) {
-			debug_cuckoo("Value: %s.\n", (char *)table->table2[i]->value);
-		} else {
-			debug_cuckoo("Empty\n");
-		}
+	debug_cuckoo("Buffer:\n");
+	for (i = 0; i < table->buf_i; ++i) {
+		debug_cuckoo("Index: %u, Key: %*s Value: %p.\n", i,
+					 table->buffer[i]->key_length, table->buffer[i]->key,
+					 table->buffer[i]->value);
 	}
 
 	debug_cuckoo("\n");
