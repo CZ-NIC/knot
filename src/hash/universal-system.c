@@ -30,7 +30,7 @@ void us_generate_coefs( unsigned int *generation ) {
 
     generation[1] = generation[0];
     while (generation[1] == generation[0]) {
-        log_info("Generating random coeficient...\n");
+		log_info("Generating random coeficient for universal system...\n");
         generation[1] = rand() % MAX_UINT_MY;
         if (generation[1] % 2 == 0) {
             generation[1] = (generation[1] == 0) ? 1 : generation[1] - 1;

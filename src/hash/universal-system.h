@@ -18,11 +18,12 @@ int us_next( uint generation );
 
 /*----------------------------------------------------------------------------*/
 
-/** \bug C99 inline won't be linkable (so not exportable) without .c and has compatibility issues.
-         Consider static inline definition in header or removing inline.
+/** \bug C99 inline won't be linkable (so not exportable) without .c and has
+ *       compatibility issues.
+ *       Consider static inline definition in header or removing inline.
  */
 uint32_t us_hash( uint32_t value, unsigned int table_exp, uint c,
-                         uint generation );
+				  uint generation );
 
 /*----------------------------------------------------------------------------*/
 
