@@ -3,6 +3,11 @@
  *
  * @todo Dynamic array for keeping used indices when inserting.
  * @todo Implement d-ary cuckoo hashing / cuckoo hashing with buckets, or both.
+ * @todo When hashing an item, only the first table is tried for this item.
+ *       We may try both tables. (But it is not neccessary.)
+ * @todo Correct rehashing - it should not end when first loop occurs!
+ * @todo Revise loop checking.
+ * @todo When rehashing is not successful (buffer gets full), do another rehash!
  */
 /*----------------------------------------------------------------------------*/
 #include <stdio.h>
@@ -235,22 +240,22 @@ static inline uint ck_items_match( const ck_hash_table_item* item,
 ck_hash_table_item *ck_find_in_buffer( ck_hash_table *table, const char *key,
 									   uint length )
 {
-	uint buf_i = table->buf_i;
-	debug_cuckoo("Max buffer offset: %u\n", buf_i);
+	uint stash_i = table->stash_i;
+	debug_cuckoo("Max buffer offset: %u\n", stash_i);
 	uint i = 0;
-	while (i < buf_i && table->buffer[i]
-		   && ck_items_match(table->buffer[i], key, length))
+	while (i < stash_i && table->stash[i]
+		   && ck_items_match(table->stash[i], key, length))
 	{
 		++i;
 	}
 
-	if (i >= buf_i) {
+	if (i >= stash_i) {
 		return NULL;
 	}
 
-	assert(strncmp(table->buffer[i]->key, key, length) == 0);
+	assert(strncmp(table->stash[i]->key, key, length) == 0);
 
-	return table->buffer[i];
+	return table->stash[i];
 }
 
 /*----------------------------------------------------------------------------*/
@@ -294,10 +299,10 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 	}
 
 	// create buffer (replace by (generic) variable-length array)
-	table->buffer = (ck_hash_table_item **)malloc(
+	table->stash = (ck_hash_table_item **)malloc(
 						BUFFER_SIZE	* sizeof(ck_hash_table_item *));
 
-	if (table->buffer == NULL) {
+	if (table->stash == NULL) {
 		ERR_ALLOC_FAILED;
 		for (uint t = TABLE_FIRST; t <= TABLE_LAST; ++t) {
 			free(table->tables[t]);
@@ -307,8 +312,8 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 	}
 
 	// set to 0
-	memset(table->buffer, 0, BUFFER_SIZE * sizeof(ck_hash_table_item *));
-	table->buf_i = 0;
+	memset(table->stash, 0, BUFFER_SIZE * sizeof(ck_hash_table_item *));
+	table->stash_i = 0;
 
 	// initialize rehash/insert mutex
     pthread_mutex_init(&table->mtx_table, NULL);
@@ -339,15 +344,15 @@ void ck_destroy_table( ck_hash_table **table )
     }
 
 	// destroy items in buffer
-    for (uint i = 0; i < (*table)->buf_i; ++i) {
-		assert((*table)->buffer[i] != NULL);
-		(*table)->dtor_item((*table)->buffer[i]->value);
-		free((void *)(*table)->buffer[i]);
+	for (uint i = 0; i < (*table)->stash_i; ++i) {
+		assert((*table)->stash[i] != NULL);
+		(*table)->dtor_item((*table)->stash[i]->value);
+		free((void *)(*table)->stash[i]);
     }
 
 	debug_cuckoo("Deleting: table1: %p, table2: %p, buffer: %p, table: %p.\n",
 		   (*table)->tables[TABLE_1], (*table)->tables[TABLE_2],
-		   (*table)->buffer, *table);
+		   (*table)->stash, *table);
 
     pthread_mutex_unlock(&(*table)->mtx_table);
     // destroy mutex, assuming that here noone will lock the mutex again
@@ -357,7 +362,7 @@ void ck_destroy_table( ck_hash_table **table )
 	for (uint t = TABLE_FIRST; t <= TABLE_LAST; ++t) {
 		free((*table)->tables[t]);
 	}
-    free((*table)->buffer);
+	free((*table)->stash);
     free(*table);
 
 	(*table) = NULL;
@@ -471,19 +476,19 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 				 new_item);
 
 	// check if this works (using the same pointer for 'old' and 'free')
-	assert(table->buf_i + 1 < BUFFER_SIZE);
-	if (ck_hash_item(table, &new_item, &table->buffer[table->buf_i],
+	assert(table->stash_i + 1 < BUFFER_SIZE);
+	if (ck_hash_item(table, &new_item, &table->stash[table->stash_i],
 					 table->generation) != 0) {
 		printf("Item with key %*s inserted into the buffer.\n",
-			   table->buffer[table->buf_i]->key_length,
-			   table->buffer[table->buf_i]->key);
+			   table->stash[table->stash_i]->key_length,
+			   table->stash[table->stash_i]->key);
 
 		// loop occured, the item is already at its new place in the buffer,
 		// so just increment the index and check if rehash is not needed
-		++table->buf_i;
+		++table->stash_i;
 
 		// if only one place left, rehash (this place is used in rehashing)
-		if (table->buf_i + 1 == BUFFER_SIZE) {
+		if (table->stash_i + 1 == BUFFER_SIZE) {
 			int res = ck_rehash(table);
 			if (res != 0) {
 				printf("Rehashing not successful, rehash flag: %hu\n",
@@ -516,8 +521,8 @@ void ck_rollback_rehash( ck_hash_table *table )
 
 	// set old generation in buffer
 	for (int i = 0; i < BUFFER_SIZE; ++i) {
-		if (table->buffer[i] != NULL) {
-			SET_GENERATION(&table->buffer[i]->timestamp, table->generation);
+		if (table->stash[i] != NULL) {
+			SET_GENERATION(&table->stash[i]->timestamp, table->generation);
 		}
 	}
 }
@@ -533,46 +538,45 @@ int ck_rehash( ck_hash_table *table )
 
     // we already have functions for the next generation, begin rehashing
 	// we wil use the last item in the buffer as free cell for hashing
-    assert(table->buf_i + 1 <= BUFFER_SIZE);
-	//ck_hash_table_item **old = &table->buffer[table->buf_i];
+	assert(table->stash_i + 1 <= BUFFER_SIZE);
 	ck_hash_table_item *old = (ck_hash_table_item *)
 							  (malloc(sizeof(ck_hash_table_item)));
 
 	debug_cuckoo_rehash("Place in buffer used for rehashing: %u, %p\n",
-						table->buf_i, old);
+						table->stash_i, old);
 
 	// rehash items from buffer, starting from the last old item
-	int buf_i = table->buf_i - 1;
-	while (buf_i >= 0) {
+	int stash_i = table->stash_i - 1;
+	while (stash_i >= 0) {
 
 		// if item's generation is the new generation, skip
-		if (table->buffer[buf_i] == NULL
-			|| !(EQUAL_GENERATIONS(table->buffer[buf_i]->timestamp,
+		if (table->stash[stash_i] == NULL
+			|| !(EQUAL_GENERATIONS(table->stash[stash_i]->timestamp,
 								   table->generation))) {
 
 			debug_cuckoo_rehash("Skipping item.\n");
 
-			--buf_i;
+			--stash_i;
 			continue;
 		}
 
 		debug_cuckoo_rehash("Rehashing item from buffer position %u, key "
 			"(length %u): %*s, generation: %hu, table generation: %hu.\n",
-			buf_i, table->buffer[buf_i]->key_length,
-			(int)table->buffer[buf_i]->key_length,
-			table->buffer[buf_i]->key,
-			GET_GENERATION(table->buffer[buf_i]->timestamp),
+			stash_i, table->stash[stash_i]->key_length,
+			(int)table->stash[stash_i]->key_length,
+			table->stash[stash_i]->key,
+			GET_GENERATION(table->stash[stash_i]->timestamp),
 			GET_GENERATION(table->generation));
 
 		// otherwise copy the item for rehashing
-		ck_put_item(&old, table->buffer[buf_i]);
+		ck_put_item(&old, table->stash[stash_i]);
 		// clear the place so that this item will not get rehashed again
-		ck_clear_item(&table->buffer[buf_i]);
+		ck_clear_item(&table->stash[stash_i]);
 
-		assert(table->buffer[buf_i] == NULL);
+		assert(table->stash[stash_i] == NULL);
 
 		// and start rehashing
-		if (ck_hash_item(table, &old, &table->buffer[buf_i],
+		if (ck_hash_item(table, &old, &table->stash[stash_i],
 						 NEXT_GENERATION(table->generation))
 			== -1) {
 			ERR_INF_LOOP;
@@ -582,17 +586,17 @@ int ck_rehash( ck_hash_table *table )
 			printf("Item which caused the infinite loop: %*s (pointer: %p).\n",
 				  old->key_length, old->key, &old);
 			printf("Item inserted in the free place: %*s (pointer: %p).\n",
-				  table->buffer[buf_i]->key_length,
-				  table->buffer[buf_i]->key, &table->buffer[buf_i]);
+				  table->stash[stash_i]->key_length,
+				  table->stash[stash_i]->key, &table->stash[stash_i]);
 			printf("Last index in buffer: %u, inserted item's index: %u\n",
-				   table->buf_i, buf_i);
+				   table->stash_i, stash_i);
 
 			// clear the 'old' item
 			ck_clear_item(&old);
 
-			assert(table->buf_i + 1 < BUFFER_SIZE);
-			assert(table->buffer[table->buf_i - 1] != NULL);
-			assert(table->buffer[table->buf_i] == NULL);
+			assert(table->stash_i + 1 < BUFFER_SIZE);
+			assert(table->stash[table->stash_i - 1] != NULL);
+			assert(table->stash[table->stash_i] == NULL);
 
 			return -1;
 		}
@@ -600,17 +604,17 @@ int ck_rehash( ck_hash_table *table )
 		// clear the 'old' item
 		ck_clear_item(&old);
 		// decrement the index
-		--buf_i;
+		--stash_i;
 		// rehash successful, so there is one item less in the buffer
-		--table->buf_i;
+		--table->stash_i;
 	}
 
 	uint i = 0;
-	while (i < table->buf_i) {
-		assert(table->buffer[i] != NULL);
+	while (i < table->stash_i) {
+		assert(table->stash[i] != NULL);
 		++i;
 	}
-	assert(table->buffer[table->buf_i] == NULL);
+	assert(table->stash[table->stash_i] == NULL);
 
 	// rehash items from hash tables
 	for (uint t = TABLE_FIRST; t <= TABLE_LAST; ++t) {
@@ -648,8 +652,8 @@ int ck_rehash( ck_hash_table *table )
 								NEXT_GENERATION(table->generation));
 
 			// and start rehashing
-			assert(&old != &table->buffer[table->buf_i]);
-			if (ck_hash_item(table, &old, &table->buffer[table->buf_i],
+			assert(&old != &table->stash[table->stash_i]);
+			if (ck_hash_item(table, &old, &table->stash[table->stash_i],
 							 NEXT_GENERATION(table->generation))
 				== -1) {
 				ERR_INF_LOOP;
@@ -659,18 +663,18 @@ int ck_rehash( ck_hash_table *table )
 				printf("Item which caused the infinite loop: %*s.\n",
 					  old->key_length, old->key);
 				printf("Item inserted in the free place: %*s.\n",
-					  table->buffer[table->buf_i]->key_length,
-					  table->buffer[table->buf_i]->key);
+					  table->stash[table->stash_i]->key_length,
+					  table->stash[table->stash_i]->key);
 				printf("Last index in buffer: %u, inserted item's index: %u\n",
-					   table->buf_i + 1, table->buf_i);
+					   table->stash_i + 1, table->stash_i);
 				printf("Rehashing flag: %hu\n", IS_REHASHING(table->generation));
 
 				// the item was put into the buffer, so increment the buffer index
-				++table->buf_i;
+				++table->stash_i;
 
-				assert(table->buf_i + 1 < BUFFER_SIZE);
-				assert(table->buffer[table->buf_i - 1] != NULL);
-				assert(table->buffer[table->buf_i] == NULL);
+				assert(table->stash_i + 1 < BUFFER_SIZE);
+				assert(table->stash[table->stash_i - 1] != NULL);
+				assert(table->stash[table->stash_i] == NULL);
 
 				// clear the 'old' item
 				ck_clear_item(&old);
@@ -771,10 +775,10 @@ void ck_dump_table( ck_hash_table *table )
 	}
 
 	debug_cuckoo("Buffer:\n");
-	for (i = 0; i < table->buf_i; ++i) {
+	for (i = 0; i < table->stash_i; ++i) {
 		debug_cuckoo("Index: %u, Key: %*s Value: %p.\n", i,
-					 table->buffer[i]->key_length, table->buffer[i]->key,
-					 table->buffer[i]->value);
+					 table->stash[i]->key_length, table->stash[i]->key,
+					 table->stash[i]->value);
 	}
 
 	debug_cuckoo("\n");

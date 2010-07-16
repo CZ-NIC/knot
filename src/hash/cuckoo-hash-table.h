@@ -26,8 +26,8 @@ typedef struct {
 	int table_size_exp;		// exponent (2^table_size_exp is table size)
 							// -1 if not initialized
 	ck_hash_table_item **tables[2];	// hash tables
-	ck_hash_table_item **buffer;
-	uint buf_i;						// index of the next free place in the buffer
+	ck_hash_table_item **stash;
+	uint stash_i;				// index of the next free place in the stash
 	void (*dtor_item)( void *value );	// destructor for the item's value
 
 	pthread_mutex_t mtx_table;	// mutex for avoiding multiple insertions /
