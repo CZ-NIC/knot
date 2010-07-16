@@ -6,7 +6,6 @@
  * @todo When hashing an item, only the first table is tried for this item.
  *       We may try both tables. (But it is not neccessary.)
  * @todo Correct rehashing - it should not end when first loop occurs!
- * @todo Revise loop checking.
  * @todo When rehashing is not successful (buffer gets full), do another rehash!
  */
 /*----------------------------------------------------------------------------*/
@@ -50,8 +49,6 @@
 
 #define HASH(key, length, exp, gen, table) \
 			us_hash(fnv_hash(key, length, -1), exp, table, gen)
-//#define HASH2(key, length, exp, gen, table) \
-//            us_hash(fnv_hash(key, length, -1), exp, 1, gen)
 
 static const uint BUFFER_SIZE = 100;
 
@@ -202,7 +199,14 @@ static inline void ck_put_item( ck_hash_table_item **to,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * Checks if the current hash was already use twice. If yes, it means we entered
+ * a loop in the hashing process, so we must stop.
+ * Otherwise it remembers that we used the hash.
+ *
+ * @note According to Kirsch, et al. a check that at most one hash was used
+ *       twice should be sufficient. We will retain our version for now.
+ */
 uint ck_check_used_twice( uint *used, uint *last, uint32_t hash )
 {
     uint i = 0, found = 0;
@@ -479,7 +483,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 	assert(table->stash_i + 1 < BUFFER_SIZE);
 	if (ck_hash_item(table, &new_item, &table->stash[table->stash_i],
 					 table->generation) != 0) {
-		printf("Item with key %*s inserted into the buffer.\n",
+		debug_cuckoo_hash("Item with key %*s inserted into the buffer.\n",
 			   table->stash[table->stash_i]->key_length,
 			   table->stash[table->stash_i]->key);
 
@@ -491,7 +495,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 		if (table->stash_i + 1 == BUFFER_SIZE) {
 			int res = ck_rehash(table);
 			if (res != 0) {
-				printf("Rehashing not successful, rehash flag: %hu\n",
+				debug_cuckoo_hash("Rehashing not successful, rehash flag: %hu\n",
 					   IS_REHASHING(table->generation));
 			}
 			pthread_mutex_unlock(&table->mtx_table);
@@ -555,7 +559,6 @@ int ck_rehash( ck_hash_table *table )
 								   table->generation))) {
 
 			debug_cuckoo_rehash("Skipping item.\n");
-
 			--stash_i;
 			continue;
 		}
@@ -577,19 +580,18 @@ int ck_rehash( ck_hash_table *table )
 
 		// and start rehashing
 		if (ck_hash_item(table, &old, &table->stash[stash_i],
-						 NEXT_GENERATION(table->generation))
-			== -1) {
+						 NEXT_GENERATION(table->generation)) != 0) {
 			ERR_INF_LOOP;
 			// loop occured
 			ck_rollback_rehash(table);
 
-			printf("Item which caused the infinite loop: %*s (pointer: %p).\n",
-				  old->key_length, old->key, &old);
-			printf("Item inserted in the free place: %*s (pointer: %p).\n",
-				  table->stash[stash_i]->key_length,
-				  table->stash[stash_i]->key, &table->stash[stash_i]);
-			printf("Last index in buffer: %u, inserted item's index: %u\n",
-				   table->stash_i, stash_i);
+			debug_cuckoo_rehash("Item which caused the infinite loop: %*s "
+						"(pointer: %p).\n", old->key_length, old->key, &old);
+			debug_cuckoo_rehash("Item inserted in the free place: %*s (pointer:"
+						"%p).\n", table->stash[stash_i]->key_length,
+						table->stash[stash_i]->key, &table->stash[stash_i]);
+			debug_cuckoo_rehash("Last index in buffer: %u, inserted item's "
+						"index: %u\n", table->stash_i, stash_i);
 
 			// clear the 'old' item
 			ck_clear_item(&old);
@@ -629,7 +631,6 @@ int ck_rehash( ck_hash_table *table )
 									   table->generation))) {
 
 				debug_cuckoo_rehash("Skipping item.\n");
-
 				++rehashed;
 				continue;
 			}
@@ -654,20 +655,20 @@ int ck_rehash( ck_hash_table *table )
 			// and start rehashing
 			assert(&old != &table->stash[table->stash_i]);
 			if (ck_hash_item(table, &old, &table->stash[table->stash_i],
-							 NEXT_GENERATION(table->generation))
-				== -1) {
+							 NEXT_GENERATION(table->generation)) != 0) {
 				ERR_INF_LOOP;
 				// loop occured
 				ck_rollback_rehash(table);
 
-				printf("Item which caused the infinite loop: %*s.\n",
-					  old->key_length, old->key);
-				printf("Item inserted in the free place: %*s.\n",
-					  table->stash[table->stash_i]->key_length,
-					  table->stash[table->stash_i]->key);
-				printf("Last index in buffer: %u, inserted item's index: %u\n",
-					   table->stash_i + 1, table->stash_i);
-				printf("Rehashing flag: %hu\n", IS_REHASHING(table->generation));
+				debug_cuckoo_rehash("Item which caused the infinite loop: "
+					"%*s.\n", old->key_length, old->key);
+				debug_cuckoo_rehash("Item inserted in the free place: %*s.\n",
+					table->stash[table->stash_i]->key_length,
+					table->stash[table->stash_i]->key);
+				debug_cuckoo_rehash("Last index in buffer: %u, inserted item's"
+					"index: %u\n", table->stash_i + 1, table->stash_i);
+				debug_cuckoo_rehash("Rehashing flag: %hu\n",
+					IS_REHASHING(table->generation));
 
 				// the item was put into the buffer, so increment the buffer index
 				++table->stash_i;
