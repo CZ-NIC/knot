@@ -21,7 +21,7 @@
 #include "common.h"
 
 /*----------------------------------------------------------------------------*/
-/* Macros										                              */
+/* Macros and inline functions					                              */
 /*----------------------------------------------------------------------------*/
 
 #define ERR_WRONG_TABLE log_error("Wrong hash table used.\n")
