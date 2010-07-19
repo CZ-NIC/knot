@@ -2,10 +2,8 @@
  * @file cuckoo-hash-table.c
  *
  * @todo Dynamic array for keeping used indices when inserting.
- * @todo Implement d-ary cuckoo hashing / cuckoo hashing with buckets, or both.
  * @todo When hashing an item, only the first table is tried for this item.
  *       We may try both tables. (But it is not neccessary.)
- * @todo Correct rehashing - it should not end when first loop occurs!
  * @todo When rehashing is not successful (buffer gets full), do another rehash!
  */
 /*----------------------------------------------------------------------------*/
@@ -524,6 +522,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 			if (res != 0) {
 				debug_cuckoo_hash("Rehashing not successful, rehash flag: %hu\n",
 					   IS_REHASHING(table->generation));
+				assert(0);
 			}
 			pthread_mutex_unlock(&table->mtx_table);
 			return res;
@@ -573,9 +572,6 @@ int ck_rehash( ck_hash_table *table )
 	ck_hash_table_item *old = (ck_hash_table_item *)
 							  (malloc(sizeof(ck_hash_table_item)));
 
-	debug_cuckoo_rehash("Place in buffer used for rehashing: %u, %p\n",
-						table->stash_i, old);
-
 	// rehash items from buffer, starting from the last old item
 	int stash_i = table->stash_i - 1;
 	while (stash_i >= 0) {
@@ -608,34 +604,30 @@ int ck_rehash( ck_hash_table *table )
 		// and start rehashing
 		if (ck_hash_item(table, &old, &table->stash[stash_i],
 						 NEXT_GENERATION(table->generation)) != 0) {
-			ERR_INF_LOOP;
 			// loop occured
-			ck_rollback_rehash(table);
+			ERR_INF_LOOP;
 
-			debug_cuckoo_rehash("Item which caused the infinite loop: %*s "
-						"(pointer: %p).\n", old->key_length, old->key, &old);
-			debug_cuckoo_rehash("Item inserted in the free place: %*s (pointer:"
-						"%p).\n", table->stash[stash_i]->key_length,
-						table->stash[stash_i]->key, &table->stash[stash_i]);
-			debug_cuckoo_rehash("Last index in buffer: %u, inserted item's "
-						"index: %u\n", table->stash_i, stash_i);
+			debug_cuckoo_rehash("Item with key %*s inserted into the buffer"
+				".\n", table->stash[stash_i]->key_length,
+				   table->stash[stash_i]->key);
 
-			// clear the 'old' item
-			ck_clear_item(&old);
-
-			assert(table->stash_i + 1 < BUFFER_SIZE);
-			assert(table->stash[table->stash_i - 1] != NULL);
-			assert(table->stash[table->stash_i] == NULL);
-
-			return -1;
+			// if only one place left, we would need rehash, but cannot
+			if (table->stash_i + 1 == BUFFER_SIZE) {
+				// so rollback
+				ck_rollback_rehash(table);
+				// clear the 'old' item
+				ck_clear_item(&old);
+				return -1;
+			}
+		} else {
+			// rehash successful, so there is one item less in the buffer
+			--table->stash_i;
 		}
 
 		// clear the 'old' item
 		ck_clear_item(&old);
 		// decrement the index
-		--stash_i;
-		// rehash successful, so there is one item less in the buffer
-		--table->stash_i;
+		--stash_i;		
 	}
 
 	uint i = 0;
@@ -681,35 +673,30 @@ int ck_rehash( ck_hash_table *table )
 
 			// and start rehashing
 			assert(&old != &table->stash[table->stash_i]);
+			assert(table->stash_i + 1 < BUFFER_SIZE);
+
 			if (ck_hash_item(table, &old, &table->stash[table->stash_i],
 							 NEXT_GENERATION(table->generation)) != 0) {
-				ERR_INF_LOOP;
 				// loop occured
-				ck_rollback_rehash(table);
+				ERR_INF_LOOP;
 
-				debug_cuckoo_rehash("Item which caused the infinite loop: "
-					"%*s.\n", old->key_length, old->key);
-				debug_cuckoo_rehash("Item inserted in the free place: %*s.\n",
-					table->stash[table->stash_i]->key_length,
-					table->stash[table->stash_i]->key);
-				debug_cuckoo_rehash("Last index in buffer: %u, inserted item's"
-					"index: %u\n", table->stash_i + 1, table->stash_i);
-				debug_cuckoo_rehash("Rehashing flag: %hu\n",
-					IS_REHASHING(table->generation));
+				debug_cuckoo_rehash("Item with key %*s inserted into the buffer"
+					".\n", table->stash[table->stash_i]->key_length,
+					   table->stash[table->stash_i]->key);
 
-				// the item was put into the buffer, so increment the buffer index
+				// loop occured, the item is already at its new place in the
+				// buffer, so just increment the index
 				++table->stash_i;
 
-				assert(table->stash_i + 1 < BUFFER_SIZE);
-				assert(table->stash[table->stash_i - 1] != NULL);
-				assert(table->stash[table->stash_i] == NULL);
-
-				// clear the 'old' item
-				ck_clear_item(&old);
-
-				return -1;
+				// if only one place left, we would need rehash, but cannot
+				if (table->stash_i + 1 == BUFFER_SIZE) {
+					// so rollback
+					ck_rollback_rehash(table);
+					// clear the 'old' item
+					ck_clear_item(&old);
+					return -1;
+				}
 			}
-
 			++rehashed;
 		}
 	}
