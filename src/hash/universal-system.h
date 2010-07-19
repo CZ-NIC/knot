@@ -11,7 +11,9 @@
 void us_initialize();
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * @brief Generates new hash functions for the given generation.
+ */
 int us_next( uint generation );
 
 /*----------------------------------------------------------------------------*/
