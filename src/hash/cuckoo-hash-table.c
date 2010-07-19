@@ -20,7 +20,6 @@
 
 #include "cuckoo-hash-table.h"
 #include "hash-functions.h"
-#include "universal-system.h"
 #include "common.h"
 
 /*----------------------------------------------------------------------------*/
@@ -39,18 +38,21 @@
 
 #define USED_SIZE 200
 
-#define TABLE_1 0
-#define TABLE_2 1
-#define TABLE_FIRST TABLE_1
-#define TABLE_LAST TABLE_2
-
-#define NEXT_TABLE(table) ((table == TABLE_LAST) ? TABLE_FIRST : table + 1)
-#define PREVIOUS_TABLE(table) ((table == TABLE_FIRST) ? TABLE_LAST : table - 1)
+#define TABLE_FIRST 0
+#define TABLE_LAST(count) (count - 1)
+#define NEXT_TABLE(table, count) \
+			((table == count - 1) ? TABLE_FIRST : table + 1)
+#define PREVIOUS_TABLE(table, count) \
+			((table == TABLE_FIRST) ? (count - 1) : table - 1)
 
 #define HASH(key, length, exp, gen, table) \
 			us_hash(fnv_hash(key, length, -1), exp, table, gen)
 
 static const uint BUFFER_SIZE = 100;
+
+static const float SIZE_RATIO_2 = 2;
+static const float SIZE_RATIO_3 = 1.15;
+static const float SIZE_RATIO_4 = 1.08;
 
 /*----------------------------------------------------------------------------*/
 
@@ -144,16 +146,30 @@ uint get_larger_exp( uint n )
 /*!
  * @brief Returns ideal size of one table.
  */
-uint get_table_exp( uint items, int size_type )
+uint get_table_exp_and_count( uint items, uint *table_count )
 {
-	switch (size_type) {
-		case CK_SIZE_LARGER:
-			return get_larger_exp(2 * items) - 1;		// optimize
-			break;
-		case CK_SIZE_NEAREST:
-		default:
-			return get_nearest_exp(2 * items) - 1;		// optimize
-	}
+	// considering only 3 or 4 tables
+//	uint exp3 = get_larger_exp((items * SIZE_RATIO_3) / 3);
+//	uint exp4 = get_larger_exp(items * SIZE_RATIO_4) - 2;
+
+//	debug_cuckoo("Determining ideal table size...\n");
+//	debug_cuckoo("\tNumber of items: %u\n", items);
+//	debug_cuckoo("\tThree tables: size of one table: %u, total size: %u\n",
+//				 hashsize(exp3), 3 * hashsize(exp3));
+//	debug_cuckoo("\tFour tables: size of one table: %u, total size: %u\n",
+//				 hashsize(exp4), 4 * hashsize(exp4));
+
+//	if (((hashsize(exp3) * 3) - (items)) < ((hashsize(exp4) * 4) - size)) {
+//		*table_count = 3;
+//		return exp3;
+//	} else {
+//		*table_count = 4;
+//		return exp4;
+//	}
+
+	// still using only 2 tables:
+	*table_count = 2;
+	return get_larger_exp(items);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -273,8 +289,8 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 		return NULL;
 	}
 
-	// determine ideal size of the table in powers of 2 and save the exponent
-	table->table_size_exp = get_table_exp(items, CK_SIZE);
+	// determine ideal size of one table in powers of 2 and save the exponent
+	table->table_size_exp = get_table_exp_and_count(items, &table->table_count);
     table->dtor_item = dtor_item;
 
     log_info("Creating hash table for %u items.\n", items);
@@ -284,7 +300,7 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 		   hashsize(table->table_size_exp) * sizeof(ck_hash_table_item *));
 
 	// create tables
-	for (uint t = TABLE_FIRST; t <= TABLE_LAST; ++t) {
+	for (uint t = TABLE_FIRST; t <= TABLE_LAST(table->table_count); ++t) {
 		table->tables[t] =
 			(ck_hash_table_item **)malloc(hashsize(table->table_size_exp)
 											* sizeof(ck_hash_table_item *));
@@ -308,7 +324,7 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 
 	if (table->stash == NULL) {
 		ERR_ALLOC_FAILED;
-		for (uint t = TABLE_FIRST; t <= TABLE_LAST; ++t) {
+		for (uint t = TABLE_FIRST; t <= TABLE_LAST(table->table_count); ++t) {
 			free(table->tables[t]);
 		}
 		free(table);
@@ -338,7 +354,7 @@ void ck_destroy_table( ck_hash_table **table )
 
 	// destroy items in tables
     for (uint i = 0; i < hashsize((*table)->table_size_exp); ++i) {
-		for (uint t = TABLE_FIRST; t <= TABLE_LAST; ++t) {
+		for (uint t = TABLE_FIRST; t <= TABLE_LAST((*table)->table_count); ++t) {
 			if ((*table)->tables[t][i] != NULL) {
 				(*table)->dtor_item((*table)->tables[t][i]->value);
 				free((void *)(*table)->tables[t][i]->key);
@@ -354,16 +370,12 @@ void ck_destroy_table( ck_hash_table **table )
 		free((void *)(*table)->stash[i]);
     }
 
-	debug_cuckoo("Deleting: table1: %p, table2: %p, buffer: %p, table: %p.\n",
-		   (*table)->tables[TABLE_1], (*table)->tables[TABLE_2],
-		   (*table)->stash, *table);
-
     pthread_mutex_unlock(&(*table)->mtx_table);
     // destroy mutex, assuming that here noone will lock the mutex again
     pthread_mutex_destroy(&(*table)->mtx_table);
 
 
-	for (uint t = TABLE_FIRST; t <= TABLE_LAST; ++t) {
+	for (uint t = TABLE_FIRST; t <= TABLE_LAST((*table)->table_count); ++t) {
 		free((*table)->tables[t]);
 	}
 	free((*table)->stash);
@@ -380,16 +392,16 @@ void ck_destroy_table( ck_hash_table **table )
 int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 				  ck_hash_table_item **free, uint8_t generation )
 {
-	uint32_t used[TABLE_LAST + 1][USED_SIZE];
-	uint used_i[TABLE_LAST + 1];
-	memset(used_i, 0, (TABLE_LAST + 1) * sizeof(uint));
+	uint32_t used[table->table_count][USED_SIZE];
+	uint used_i[table->table_count];
+	memset(used_i, 0, (table->table_count) * sizeof(uint));
 
     // hash until empty cell is encountered or until loop appears
 
 	debug_cuckoo_hash("Hashing key: %s of size %u.\n",
 					  (*to_hash)->key, (*to_hash)->key_length);
 
-	int next_table = TABLE_1;
+	int next_table = TABLE_FIRST;
 
 	uint32_t hash = HASH((*to_hash)->key, (*to_hash)->key_length,
 						  table->table_size_exp, generation, next_table);
@@ -401,7 +413,7 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 	debug_cuckoo_hash("Item to be moved: %p, place in table: %p\n", *next, next);
 	ck_hash_table_item **moving = to_hash;
 
-	next_table = NEXT_TABLE(next_table);
+	next_table = NEXT_TABLE(next_table, table->table_count);
     int loop = 0;
 
 	while (*next != NULL) {
@@ -418,12 +430,13 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
         moving = next;
 
 		debug_cuckoo_hash("Moving item from table %u, key: %s, hash %u",
-			   PREVIOUS_TABLE(next_table) + 1, (*moving)->key, hash);
+			   PREVIOUS_TABLE(next_table, table->table_count) + 1,
+			   (*moving)->key, hash);
 
         // if the 'next' item is from the old generation, start from table 1
 		if (generation != table->generation
 			&& EQUAL_GENERATIONS((*next)->timestamp, table->generation)) {
-			next_table = TABLE_1;
+			next_table = TABLE_FIRST;
 		}
 
 		hash = HASH((*next)->key, (*next)->key_length,
@@ -445,7 +458,7 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 			break;
 		}
 
-        next_table = NEXT_TABLE(next_table);
+		next_table = NEXT_TABLE(next_table, table->table_count);
     }
 
 	debug_cuckoo_hash("Putting pointer %p (*moving) to item %p (next).\n",
@@ -515,7 +528,7 @@ void ck_rollback_rehash( ck_hash_table *table )
 	for (int i = 0; i < hashsize(table->table_size_exp); ++i) {
 		// no need for locking - timestamp is not used in lookup
 		// and two paralel insertions (and thus rehashings) are impossible
-		for (uint t = TABLE_FIRST; t <= TABLE_LAST; ++t) {
+		for (uint t = TABLE_FIRST; t <= TABLE_LAST(table->table_count); ++t) {
 			if (table->tables[t][i] != NULL) {
 				SET_GENERATION(&table->tables[t][i]->timestamp,
 							   table->generation);
@@ -619,7 +632,7 @@ int ck_rehash( ck_hash_table *table )
 	assert(table->stash[table->stash_i] == NULL);
 
 	// rehash items from hash tables
-	for (uint t = TABLE_FIRST; t <= TABLE_LAST; ++t) {
+	for (uint t = TABLE_FIRST; t <= TABLE_LAST(table->table_count); ++t) {
 		debug_cuckoo_rehash("Rehashing items from table %d.\n", t + 1);
 		uint rehashed = 0;
 
@@ -701,7 +714,7 @@ const ck_hash_table_item *ck_find_gen( ck_hash_table *table, const char *key,
     uint32_t hash;
 
 	// check hash tables
-	for (uint t = TABLE_FIRST; t <= TABLE_LAST; ++t) {
+	for (uint t = TABLE_FIRST; t <= TABLE_LAST(table->table_count); ++t) {
 		hash = HASH(key, length, table->table_size_exp, generation, t);
 
 		debug_cuckoo("Hash: %u, key: %s\n", hash, key);
@@ -765,7 +778,7 @@ void ck_dump_table( ck_hash_table *table )
 	debug_cuckoo("Hash table dump:\n\n");
 	debug_cuckoo("Size of each table: %u\n\n", hashsize(table->table_size_exp));
 
-	for (uint t = TABLE_FIRST; t <= TABLE_LAST; ++t) {
+	for (uint t = TABLE_FIRST; t <= TABLE_LAST(table->table_count); ++t) {
 		debug_cuckoo("Table %d:\n", t + 1);
 
 		for (i = 0; i < hashsize(table->table_size_exp); i++) {
