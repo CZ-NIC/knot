@@ -4,7 +4,7 @@
 #include "common.h"
 #include <stdint.h>
 
-#define US_FNC_COUNT 2
+#define US_FNC_COUNT 4
 
 /*----------------------------------------------------------------------------*/
 

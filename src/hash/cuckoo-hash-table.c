@@ -40,10 +40,12 @@
 
 #define TABLE_FIRST 0
 #define TABLE_LAST(count) (count - 1)
-#define NEXT_TABLE(table, count) \
-			((table == count - 1) ? TABLE_FIRST : table + 1)
-#define PREVIOUS_TABLE(table, count) \
-			((table == TABLE_FIRST) ? (count - 1) : table - 1)
+/*#define NEXT_TABLE(table, count) \
+			((table == count - 1) ? TABLE_FIRST : table + 1)*/
+#define NEXT_TABLE(table, count) (rand() % count)
+
+/*#define PREVIOUS_TABLE(table, count) \
+			((table == TABLE_FIRST) ? (count - 1) : table - 1) */
 
 #define HASH(key, length, exp, gen, table) \
 			us_hash(fnv_hash(key, length, -1), exp, table, gen)
@@ -149,27 +151,27 @@ uint get_larger_exp( uint n )
 uint get_table_exp_and_count( uint items, uint *table_count )
 {
 	// considering only 3 or 4 tables
-//	uint exp3 = get_larger_exp((items * SIZE_RATIO_3) / 3);
-//	uint exp4 = get_larger_exp(items * SIZE_RATIO_4) - 2;
+	uint exp3 = get_larger_exp((items * SIZE_RATIO_3) / 3);
+	uint exp4 = get_larger_exp(items * SIZE_RATIO_4) - 2;
 
-//	debug_cuckoo("Determining ideal table size...\n");
-//	debug_cuckoo("\tNumber of items: %u\n", items);
-//	debug_cuckoo("\tThree tables: size of one table: %u, total size: %u\n",
-//				 hashsize(exp3), 3 * hashsize(exp3));
-//	debug_cuckoo("\tFour tables: size of one table: %u, total size: %u\n",
-//				 hashsize(exp4), 4 * hashsize(exp4));
+	debug_cuckoo("Determining ideal table size...\n");
+	debug_cuckoo("\tNumber of items: %u\n", items);
+	debug_cuckoo("\tThree tables: size of one table: %u, total size: %u\n",
+				 hashsize(exp3), 3 * hashsize(exp3));
+	debug_cuckoo("\tFour tables: size of one table: %u, total size: %u\n",
+				 hashsize(exp4), 4 * hashsize(exp4));
 
-//	if (((hashsize(exp3) * 3) - (items)) < ((hashsize(exp4) * 4) - size)) {
-//		*table_count = 3;
-//		return exp3;
-//	} else {
-//		*table_count = 4;
-//		return exp4;
-//	}
+	if (((hashsize(exp3) * 3) - (items)) < ((hashsize(exp4) * 4) - items)) {
+		*table_count = 3;
+		return exp3;
+	} else {
+		*table_count = 4;
+		return exp4;
+	}
 
 	// still using only 2 tables:
-	*table_count = 2;
-	return get_larger_exp(items);
+//	*table_count = 2;
+//	return get_larger_exp(items);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -257,7 +259,16 @@ static inline uint ck_items_match( const ck_hash_table_item* item,
 
 /*----------------------------------------------------------------------------*/
 
-ck_hash_table_item *ck_find_in_buffer( ck_hash_table *table, const char *key,
+static inline void ck_next_table( uint *table, uint table_count )
+{
+	uint next;
+	while ((*table) == (next = rand() % table_count)) {}
+	*table = next;
+}
+
+/*----------------------------------------------------------------------------*/
+
+ck_hash_table_item *ck_find_in_stash( ck_hash_table *table, const char *key,
 									   uint length )
 {
 	uint stash_i = table->stash_i;
@@ -294,13 +305,15 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
     table->dtor_item = dtor_item;
 
     log_info("Creating hash table for %u items.\n", items);
-    log_info("Exponent: %u ", table->table_size_exp);
+	log_info("Exponent: %u, number of tables: %u\n ", table->table_size_exp,
+			 table->table_count);
     log_info("Table size: %u items, each %u bytes, total %u bytes\n",
 		   hashsize(table->table_size_exp), sizeof(ck_hash_table_item *),
 		   hashsize(table->table_size_exp) * sizeof(ck_hash_table_item *));
 
 	// create tables
 	for (uint t = TABLE_FIRST; t <= TABLE_LAST(table->table_count); ++t) {
+		debug_cuckoo("Creating table %u...\n", t);
 		table->tables[t] =
 			(ck_hash_table_item **)malloc(hashsize(table->table_size_exp)
 											* sizeof(ck_hash_table_item *));
@@ -401,7 +414,7 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 	debug_cuckoo_hash("Hashing key: %s of size %u.\n",
 					  (*to_hash)->key, (*to_hash)->key_length);
 
-	int next_table = TABLE_FIRST;
+	uint next_table = TABLE_FIRST;
 
 	uint32_t hash = HASH((*to_hash)->key, (*to_hash)->key_length,
 						  table->table_size_exp, generation, next_table);
@@ -413,8 +426,7 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 	debug_cuckoo_hash("Item to be moved: %p, place in table: %p\n", *next, next);
 	ck_hash_table_item **moving = to_hash;
 
-	next_table = NEXT_TABLE(next_table, table->table_count);
-    int loop = 0;
+	int loop = 0;
 
 	while (*next != NULL) {
 		debug_cuckoo_hash("Swapping items. To hash: %p and Moving: %p\n",
@@ -430,24 +442,28 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
         moving = next;
 
 		debug_cuckoo_hash("Moving item from table %u, key: %s, hash %u",
-			   PREVIOUS_TABLE(next_table, table->table_count) + 1,
-			   (*moving)->key, hash);
+			   next_table + 1, (*moving)->key, hash);
 
-        // if the 'next' item is from the old generation, start from table 1
+		// if rehashing and the 'next' item is from the old generation,
+		// start from table 1
 		if (generation != table->generation
 			&& EQUAL_GENERATIONS((*next)->timestamp, table->generation)) {
 			next_table = TABLE_FIRST;
+		} else {
+			ck_next_table(&next_table, table->table_count);
 		}
+
+		//debug_cuckoo_hash("\nNext table index: %u\n", next_table);
 
 		hash = HASH((*next)->key, (*next)->key_length,
 					 table->table_size_exp, generation, next_table);
 		next = &table->tables[next_table][hash];
 
-		debug_cuckoo_hash(" to table 1, hash %u, item: %p, place: %p\n",
-						  hash, *next, next);
+		debug_cuckoo_hash(" to table %u, hash %u, item: %p, place: %p\n",
+						  next_table + 1, hash, *next, next);
 		if ((*next) != NULL) {
-			debug_cuckoo_hash("Table 1, hash: %u, key: %s\n", hash,
-							  (*next)->key);
+			debug_cuckoo_hash("Table %u, hash: %u, key: %s\n", next_table + 1,
+							  hash, (*next)->key);
 		}
 
 		// check if this cell wasn't already used in this item's hashing
@@ -457,8 +473,6 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 			loop = -1;
 			break;
 		}
-
-		next_table = NEXT_TABLE(next_table, table->table_count);
     }
 
 	debug_cuckoo_hash("Putting pointer %p (*moving) to item %p (next).\n",
@@ -737,7 +751,7 @@ const ck_hash_table_item *ck_find_gen( ck_hash_table *table, const char *key,
 	debug_cuckoo("Searching in buffer...\n");
 
 	ck_hash_table_item *found =
-		ck_find_in_buffer(table, key, length);
+		ck_find_in_stash(table, key, length);
 
     debug_cuckoo("Found pointer: %p\n", found);
 	if (found != NULL) {
