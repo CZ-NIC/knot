@@ -4,9 +4,7 @@
 #include "common.h"
 #include <stdint.h>
 
-/*----------------------------------------------------------------------------*/
-
-void us_generate_coefs( unsigned int *generation );
+#define US_FNC_COUNT 2
 
 /*----------------------------------------------------------------------------*/
 
@@ -22,7 +20,7 @@ int us_next( uint generation );
  *       compatibility issues.
  *       Consider static inline definition in header or removing inline.
  */
-uint32_t us_hash( uint32_t value, unsigned int table_exp, uint c,
+uint32_t us_hash( uint32_t value, uint table_exp, uint c,
 				  uint generation );
 
 /*----------------------------------------------------------------------------*/

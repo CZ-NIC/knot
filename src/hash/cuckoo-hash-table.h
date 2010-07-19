@@ -6,8 +6,12 @@
 #include <pthread.h>
 #include "common.h"
 
+#include "universal-system.h"
+
 #define hashsize(n) ((uint32_t)1<<(n))
 #define hashmask(n) (hashsize(n)-1)
+
+#define MAX_TABLES US_FNC_COUNT
 
 /*----------------------------------------------------------------------------*/
 /* Public structures							                              */
@@ -23,9 +27,10 @@ typedef struct {
 /*----------------------------------------------------------------------------*/
 
 typedef struct {
+	uint table_count;		// number of hash tables (2, 3 or 4)
 	int table_size_exp;		// exponent (2^table_size_exp is table size)
 							// -1 if not initialized
-	ck_hash_table_item **tables[2];	// hash tables
+	ck_hash_table_item **tables[MAX_TABLES];	// hash tables
 	ck_hash_table_item **stash;
 	uint stash_i;				// index of the next free place in the stash
 	void (*dtor_item)( void *value );	// destructor for the item's value
