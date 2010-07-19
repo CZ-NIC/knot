@@ -4,6 +4,7 @@
  * @todo What if all numbers are tried and still need rehash?
  *       (that means 2mld rehashes - we can live with that ;)
  * @todo Consider counting generations from 0, will be easier!
+ * @todo Check out some better random number generator.
  */
 
 #include "universal-system.h"
