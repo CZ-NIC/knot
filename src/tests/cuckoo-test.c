@@ -568,6 +568,10 @@ int test_hash_table( char *filename )
 		int res_rehash = ck_rehash(table);
 		printf("\nDone. Result: %d\n\n", res_rehash);
 
+		printf("Testing another rehash...\n");
+		res_rehash = ck_rehash(table);
+		printf("\nDone. Result: %d\n\n", res_rehash);
+
 		printf("Testing lookup...\n\n");
 		res = test_lookup_from_file(table, file);
 		printf("\nDone. Result: %d\n\n", res);

@@ -70,7 +70,7 @@ int da_initialize( da_array *array, uint count, size_t item_size )
 
 /*----------------------------------------------------------------------------*/
 
-uint da_reserve( da_array *array, uint count )
+int da_reserve( da_array *array, uint count )
 {
 	pthread_mutex_lock(&array->mtx);
 	uint res = 0;
@@ -131,14 +131,14 @@ void da_destroy( da_array *array )
 
 /*----------------------------------------------------------------------------*/
 
-inline void *da_get_items( const da_array *array )
+void *da_get_items( const da_array *array )
 {
 	return array->items;
 }
 
 /*----------------------------------------------------------------------------*/
 
-inline uint da_get_count( const da_array *array )
+uint da_get_count( const da_array *array )
 {
 	return array->count;
 }

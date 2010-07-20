@@ -83,6 +83,6 @@ uint32_t us_hash( uint32_t value, uint table_exp, uint c, uint generation )
     assert(table_exp <= 32);
 	assert(c < US_FNC_COUNT);
 	assert(generation <= GEN_COUNT);
-	return ((coefs[(generation * (c + 1)) - 1] * value)
+	return ((coefs[((generation - 1) * US_FNC_COUNT) + c] * value)
 			>> (MAX_UINT_EXP - table_exp));
 }
