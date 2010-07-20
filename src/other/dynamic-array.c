@@ -91,7 +91,7 @@ uint da_reserve( da_array *array, uint count )
 
 /*----------------------------------------------------------------------------*/
 
-uint da_try_reserve( da_array *array, uint count )
+uint da_try_reserve( const da_array *array, uint count )
 {
 	assert(array->allocated >= array->count);
 	if ((array->allocated - array->count) >= count) {
@@ -127,4 +127,18 @@ void da_destroy( da_array *array )
 	synchronize_rcu();
 	free(old_items);
 	pthread_mutex_destroy(&array->mtx);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void *da_get_items( const da_array *array )
+{
+	return array->items;
+}
+
+/*----------------------------------------------------------------------------*/
+
+uint da_get_count( const da_array *array )
+{
+	return array->count;
 }
