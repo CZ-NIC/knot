@@ -7,6 +7,7 @@
 #include "common.h"
 
 #include "universal-system.h"
+#include "dynamic-array.h"
 
 #define hashsize(n) ((uint32_t)1<<(n))
 #define hashmask(n) (hashsize(n)-1)
@@ -31,7 +32,7 @@ typedef struct {
 	int table_size_exp;		// exponent (2^table_size_exp is table size)
 							// -1 if not initialized
 	ck_hash_table_item **tables[MAX_TABLES];	// hash tables
-	ck_hash_table_item **stash;
+	da_array stash;
 	uint stash_i;				// index of the next free place in the stash
 	void (*dtor_item)( void *value );	// destructor for the item's value
 
