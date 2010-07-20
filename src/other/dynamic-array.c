@@ -131,14 +131,14 @@ void da_destroy( da_array *array )
 
 /*----------------------------------------------------------------------------*/
 
-void *da_get_items( const da_array *array )
+inline void *da_get_items( const da_array *array )
 {
 	return array->items;
 }
 
 /*----------------------------------------------------------------------------*/
 
-uint da_get_count( const da_array *array )
+inline uint da_get_count( const da_array *array )
 {
 	return array->count;
 }

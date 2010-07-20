@@ -530,7 +530,7 @@ int test_hash_table( char *filename )
 
 	int res = 0;
 
-	for (int i = 0; i < 100; ++i) {
+	for (int i = 0; i < 10; ++i) {
 
 		printf("----------------------------\n");
 		printf("-----Iteration %d------------\n", i);

@@ -35,7 +35,8 @@
 #define CK_SIZE_LARGER 2
 #define CK_SIZE CK_SIZE_LARGER
 
-#define USED_SIZE 200
+#define RELOCATIONS_DEFAULT 200
+#define RELOCATIONS_MAX 1000
 
 #define TABLE_FIRST 0
 #define TABLE_LAST(count) (count - 1)
@@ -217,25 +218,24 @@ static inline void ck_put_item( ck_hash_table_item **to,
  * @note According to Kirsch, et al. a check that at most one hash was used
  *       twice should be sufficient. We will retain our version for now.
  */
-uint ck_check_used_twice( uint *used, uint *last, uint32_t hash )
+uint ck_check_used_twice( da_array *used, uint32_t hash )
 {
     uint i = 0, found = 0;
-    while (i <= *last && found < 2) {
+	while (i <= da_get_count(used) && found < 2) {
         ++i;
-        if (used[i] == hash) {
+		if (((uint *)(da_get_items(used)))[i] == hash) {
             ++found;
         }
     }
 
-    if (i <= *last && found == 2) {
+	if (i <= da_get_count(used) && found == 2) {
         ERR_INF_LOOP;
         return -1;
     }
     else {
-        *last = i;
-        // replace by some check, or resizing a dynamic array
-        assert(*last < USED_SIZE);
-        used[i] = hash;
+		da_reserve(used, 1);
+		((uint *)da_get_items(used))[da_get_count(used) - 1] = hash;
+		assert(da_get_count(used) < RELOCATIONS_MAX);
         return 0;
     }
 }
@@ -399,9 +399,15 @@ void ck_destroy_table( ck_hash_table **table )
 int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 				  ck_hash_table_item **free, uint8_t generation )
 {
-	uint32_t used[table->table_count][USED_SIZE];
-	uint used_i[table->table_count];
-	memset(used_i, 0, (table->table_count) * sizeof(uint));
+	//uint32_t used[table->table_count][USED_SIZE];
+	//uint used_i[table->table_count];
+
+	da_array used[table->table_count];
+	for (uint i = 0; i < table->table_count; ++i) {
+		da_initialize(&used[i], RELOCATIONS_DEFAULT, sizeof(uint));
+	}
+
+	//memset(used_i, 0, (table->table_count) * sizeof(uint));
 
     // hash until empty cell is encountered or until loop appears
 
@@ -415,7 +421,8 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 
 	debug_cuckoo_hash("New hash: %u.\n", hash);
 
-	used[next_table][used_i[next_table]] = hash;
+	((uint *)da_get_items(&used[next_table]))
+			[da_get_count(&used[next_table])] = hash;
 	ck_hash_table_item **next = &table->tables[next_table][hash];
 	debug_cuckoo_hash("Item to be moved: %p, place in table: %p\n",
 					  *next, next);
@@ -457,7 +464,7 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 		}
 
 		// check if this cell wasn't already used in this item's hashing
-		if (ck_check_used_twice(used[next_table], &used_i[next_table], hash)
+		if (ck_check_used_twice(&used[next_table], hash)
 				!= 0) {
 			next = free;
 			loop = -1;
@@ -475,6 +482,10 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 	ck_put_item(moving, *to_hash);
 	// set the new generation for the inserted item
 	SET_GENERATION(&(*moving)->timestamp, generation);
+
+	for (uint i = 0; i < table->table_count; ++i) {
+		da_destroy(&used[i]);
+	}
 
 	return loop;
 }
