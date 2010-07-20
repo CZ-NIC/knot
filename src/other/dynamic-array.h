@@ -58,12 +58,12 @@ void da_destroy( da_array *array );
 /*!
  * @brief Returns the array of items as a void *.
  */
-void *da_get_items( const da_array *array );
+extern inline void *da_get_items( const da_array *array );
 
 /*!
  * @brief Returns count of items in the array.
  */
-uint da_get_count( const da_array *array );
+extern inline uint da_get_count( const da_array *array );
 
 /*----------------------------------------------------------------------------*/
 
