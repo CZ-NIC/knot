@@ -2,6 +2,7 @@
 
 #include <pthread.h>
 #include <assert.h>
+#include <stdio.h>
 #include <urcu.h>
 
 /*----------------------------------------------------------------------------*/
@@ -22,14 +23,20 @@ int da_resize( da_array *array, da_resize_type type ) {
 					 ? (array->allocated *= 2)
 					 : (array->allocated /= 2));
 
-	void *new_items = realloc(array->items, new_size * array->item_size);
+	void *new_items = malloc(new_size * array->item_size);
 	if (new_items == NULL) {
 		ERR_ALLOC_FAILED;
 		return -1;
 	}
 
-	array->items = new_items;
+	// do RCU update
+	void *old_items = rcu_xchg_pointer(&array->items, new_items);
 	array->allocated = new_size;
+
+	// wait for readers to finish
+	synchronize_rcu();
+	// deallocate the old array
+	free(old_items);
 
 	return 1;
 }
@@ -41,6 +48,8 @@ int da_resize( da_array *array, da_resize_type type ) {
 int da_initialize( da_array *array, uint count, size_t item_size )
 {
 	assert(array != NULL);
+	pthread_mutex_init(&array->mtx, NULL);
+	pthread_mutex_lock(&array->mtx);
 
 	array->items = malloc(count * item_size);
 	if (array->items == NULL) {
@@ -52,6 +61,10 @@ int da_initialize( da_array *array, uint count, size_t item_size )
 
 	array->allocated = count;
 	array->count = 0;
+	array->item_size = item_size;
+	memset(array->items, 0, count * item_size);
+
+	pthread_mutex_unlock(&array->mtx);
 	return 0;
 }
 
@@ -59,18 +72,59 @@ int da_initialize( da_array *array, uint count, size_t item_size )
 
 uint da_reserve( da_array *array, uint count )
 {
+	pthread_mutex_lock(&array->mtx);
+	uint res = 0;
+
 	assert(array->allocated >= array->count);
 	if ((array->allocated - array->count) >= count) {
+		debug_da("Increasing count of items in array.\n");
 		array->count += count;
-		return 0;
+		res = 0;
 	} else {
-		return da_resize(array, DA_LARGER);
+		debug_da("Resizing array.\n");
+		res = da_resize(array, DA_LARGER);
 	}
+	pthread_mutex_unlock(&array->mtx);
+
+	return res;
+}
+
+/*----------------------------------------------------------------------------*/
+
+uint da_try_reserve( da_array *array, uint count )
+{
+	assert(array->allocated >= array->count);
+	if ((array->allocated - array->count) >= count) {
+		return 0;
+	}
+
+	return 1;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void da_release( da_array *array, uint count )
+{
+	pthread_mutex_lock(&array->mtx);
+
+	assert(array->allocated >= array->count);
+	assert(array->count >= count);
+	debug_da("Decreasing count of items in array.\n");
+	array->count -= count;
+
+	pthread_mutex_unlock(&array->mtx);
 }
 
 /*----------------------------------------------------------------------------*/
 
 void da_destroy( da_array *array )
 {
-	free(array->items);
+	pthread_mutex_lock(&array->mtx);
+	void *old_items = rcu_dereference(array->items);
+	rcu_set_pointer(&array->items, NULL);
+	pthread_mutex_unlock(&array->mtx);
+
+	synchronize_rcu();
+	free(old_items);
+	pthread_mutex_destroy(&array->mtx);
 }
