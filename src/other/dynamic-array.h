@@ -36,7 +36,7 @@ int da_initialize( da_array *array, uint count, size_t item_size );
  * @retval 1 if successful and the array was enlarged.
  * @retval -1 if not successful - resizing was needed but could not be done.
  */
-uint da_reserve( da_array *array, uint count );
+int da_reserve( da_array *array, uint count );
 
 /*!
  * @brief Tries to reserve space for @a count more items.
@@ -58,12 +58,12 @@ void da_destroy( da_array *array );
 /*!
  * @brief Returns the array of items as a void *.
  */
-extern inline void *da_get_items( const da_array *array );
+void *da_get_items( const da_array *array );
 
 /*!
  * @brief Returns count of items in the array.
  */
-extern inline uint da_get_count( const da_array *array );
+uint da_get_count( const da_array *array );
 
 /*----------------------------------------------------------------------------*/
 
