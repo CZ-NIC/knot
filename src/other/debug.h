@@ -5,6 +5,7 @@
 #define __debug_h__
 #include "log.h"
 
+//#define DA_DEBUG
 //#define CUCKOO_DEBUG
 //#define CUCKOO_DEBUG_HASH
 //#define ZP_DEBUG
@@ -39,6 +40,12 @@
 #define debug_cuckoo_hash(msg...)
 #define debug_cuckoo_hash_hex(data, len)
 #define debug_cuckoo_rehash(msg...)
+#endif
+
+#ifdef DA_DEBUG
+#define debug_da(msg...) log_msg(LOG_DEBUG, msg)
+#else
+#define debug_da(msg...)
 #endif
 
 #ifdef SM_DEBUG

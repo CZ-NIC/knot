@@ -3,13 +3,6 @@
  *
  * @todo Somehow check if the array is initialized and do not use otherwise.
  *       Maybe some magic, or so.
- * @todo Somehow synchronize!! Lock is probably useless as we do not lock the
- *       buffer when accessing and using its items anyway. However, we must
- *       somehow ensure, that nobody uses the old array when reallocating.
- *       Maybe change to dynamic array of pointers to pointers. Then the size of
- *       the item is known (size of a pointer) and we may provide functions
- *       for getting and setting items and thus synchronize easily using RCU.
- *       Maybe the RCU could be used anyway if using malloc instead of realloc.
  */
 #ifndef DYNAMIC_ARRAY
 #define DYNAMIC_ARRAY
@@ -25,6 +18,7 @@ typedef struct {
 	size_t item_size;
 	uint allocated;
 	uint count;
+	pthread_mutex_t mtx;
 } da_array;
 
 /*----------------------------------------------------------------------------*/
@@ -43,6 +37,18 @@ int da_initialize( da_array *array, uint count, size_t item_size );
  * @retval -1 if not successful - resizing was needed but could not be done.
  */
 uint da_reserve( da_array *array, uint count );
+
+/*!
+ * @brief Tries to reserve space for @a count more items.
+ * @retval 0 if successful and resizing is not necessary.
+ * @retval 1 if successful but the array will need to be resized.
+ */
+uint da_try_reserve( da_array *array, uint count );
+
+/*!
+ * @brief Releases space taken by @a count items.
+ */
+void da_release( da_array *array, uint count );
 
 /*!
  * @brief Poperly deallocates the array.
