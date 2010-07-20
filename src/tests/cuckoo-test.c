@@ -484,7 +484,7 @@ int fill_hash_table( ck_hash_table *table, FILE *file, uint names,
 
     if (res == 0) {
         printf("Successful.\n");
-        printf("Number of items in the buffer: %u\n", table->stash_i);
+		printf("Number of items in the stash: %u\n", table->stash.count);
     } else {
         fprintf(stderr, "Error inserting names to the hash table.\n");
         return res;

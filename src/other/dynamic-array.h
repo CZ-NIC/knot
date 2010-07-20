@@ -43,7 +43,7 @@ uint da_reserve( da_array *array, uint count );
  * @retval 0 if successful and resizing is not necessary.
  * @retval 1 if successful but the array will need to be resized.
  */
-uint da_try_reserve( da_array *array, uint count );
+uint da_try_reserve( const da_array *array, uint count );
 
 /*!
  * @brief Releases space taken by @a count items.
@@ -54,6 +54,16 @@ void da_release( da_array *array, uint count );
  * @brief Poperly deallocates the array.
  */
 void da_destroy( da_array *array );
+
+/*!
+ * @brief Returns the array of items as a void *.
+ */
+void *da_get_items( const da_array *array );
+
+/*!
+ * @brief Returns count of items in the array.
+ */
+uint da_get_count( const da_array *array );
 
 /*----------------------------------------------------------------------------*/
 
