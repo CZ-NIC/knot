@@ -76,13 +76,13 @@ int us_next( uint generation )
  * @param c Number of the hash function (0 .. US_FNC_COUNT - 1).
  * @param generation Number of the generation of functions (0 .. GEN_COUNT).
  */
-uint32_t us_hash( uint32_t value, uint table_exp, uint c, uint generation )
+uint32_t us_hash( uint32_t value, uint table_exp, uint fnc, uint generation )
 {
     /* multiplication should overflow if larger than MAX_UINT
        this is the same as (coef * value) mod MAX_UINT */
     assert(table_exp <= 32);
-	assert(c < US_FNC_COUNT);
+	assert(fnc < US_FNC_COUNT);
 	assert(generation <= GEN_COUNT);
-	return ((coefs[((generation - 1) * US_FNC_COUNT) + c] * value)
+	return ((coefs[((generation - 1) * US_FNC_COUNT) + fnc] * value)
 			>> (MAX_UINT_EXP - table_exp));
 }
