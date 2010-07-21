@@ -57,7 +57,7 @@ int resize_buffer( char **buffer, uint *buf_size, int new_size, int item_size )
 	new_buf = realloc((void *)(*buffer), (new_size * item_size));
 	// if error
 	if (new_buf == NULL) {
-		fprintf(stderr, "Allocation failed.\n");
+		ERR_ALLOC_FAILED;
 		return -1;
 	}
 	*buffer = new_buf;
@@ -109,7 +109,7 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 		buffer = (char *)malloc(buf_size * sizeof(char));
 
 		if (buffer == NULL) {
-			fprintf(stderr, "Allocation failed.\n");
+			ERR_ALLOC_FAILED;
 			return -1;
 		}
 #ifdef CK_TEST_DEBUG
@@ -176,7 +176,7 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 #endif
             value = dnss_create_rr(buffer);
             if (value == NULL) {
-                fprintf(stderr, "Allocation failed in hash_from_file().");
+				ERR_ALLOC_FAILED;
                 free(buffer);
                 return ERR_INSERT;
             }
@@ -274,7 +274,7 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
 		buffer = (char *)malloc(buf_size * sizeof(char));
 
 		if (buffer == NULL) {
-			fprintf(stderr, "Allocation failed.\n");
+			ERR_ALLOC_FAILED;
 			return -1;
 		}
 #ifdef CK_TEST_DEBUG

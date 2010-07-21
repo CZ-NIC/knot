@@ -16,7 +16,7 @@ zn_node *zn_create( uint count )
         if (count > 0) {
             node->records = malloc(count * sizeof(dnss_rr *));
             if (node->records == NULL) {
-                fprintf(stderr, "zn_create(): Allocation failed!\n");
+				ERR_ALLOC_FAILED;
                 free(node);
                 return NULL;
             }

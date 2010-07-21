@@ -80,4 +80,12 @@
 #define debug_zp_hex(data, len)
 #endif
 
+#ifdef ZP_DEBUG_PARSE
+#define debug_zp_parse(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_zp_parse_hex(data, len) hex_print((data), (len))
+#else
+#define debug_zp_parse(msg...)
+#define debug_zp_parse_hex(data, len)
+#endif
+
 #endif // __debug_h__

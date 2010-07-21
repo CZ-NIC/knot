@@ -6,7 +6,7 @@
 
 /*----------------------------------------------------------------------------*/
 
-#if defined(ZP_DEBUG) || defined(ZP_PARSE_DEBUG)
+#if defined(ZP_DEBUG) || defined(ZP_DEBUG_PARSE)
 #include "cuckoo-test.h"
 #endif
 
@@ -66,7 +66,7 @@ int zp_test_count_domain_names( FILE *file, uint *names )
     debug_zp("%u\n", *names);
 
     if (*names == -1) {
-        log_error("Error reading domain names from file.\n");
+		log_error("Error reading domain names from file.\n");
         return -1;
     }
 
@@ -81,9 +81,8 @@ int zp_test_read_dname( char **buffer, uint *buf_i, FILE* file,
                         char *ch )
 {
     // allocate some buffer
-#ifdef ZP_PARSE_DEBUG
-    printf("Allocating buffer\n");
-#endif
+	debug_zp_parse("Allocating buffer\n");
+
     uint buf_size = BUF_SIZE;
     *buffer = (char *)malloc(buf_size * sizeof(char));
 
@@ -91,9 +90,8 @@ int zp_test_read_dname( char **buffer, uint *buf_i, FILE* file,
         ERR_ALLOC_FAILED;
         return -1;
     }
-#ifdef ZP_PARSE_DEBUG
-    printf("Done\n");
-#endif
+
+	debug_zp_parse("Done\n");
     *ch = fgetc(file);
 
     *buf_i = 0;
@@ -145,14 +143,11 @@ int zp_test_parse_file( zdb_database *database,
             ch = fgetc(file);
         }
 
-#ifdef ZP_PARSE_DEBUG
-        printf("Read domain name %s, inserting...\n", buffer);
-#endif
-        if (buf_i > 0) {
+		debug_zp_parse("Read domain name %s, inserting...\n", buffer);
 
-#ifdef ZP_PARSE_DEBUG
-            printf("Creating RR with the given owner name.\n");
-#endif
+        if (buf_i > 0) {
+			debug_zp_parse("Creating RR with the given owner name.\n");
+
             rr = dnss_create_rr(buffer);
             if (rr == NULL) {
                 ERR_ALLOC_FAILED;
@@ -160,9 +155,8 @@ int zp_test_parse_file( zdb_database *database,
                 return ERR_INSERT;
             }
 
-#ifdef ZP_PARSE_DEBUG
-            printf("Creating Zone Node with the given RR.\n");
-#endif
+			debug_zp_parse("Creating Zone Node with the given RR.\n");
+
             zn_node *node = zn_create(1);
             if (node == NULL) {
                 ERR_ALLOC_FAILED;
@@ -182,14 +176,11 @@ int zp_test_parse_file( zdb_database *database,
             }
             memcpy(key, rr->owner, key_size);
 
-#ifdef ZP_PARSE_DEBUG
-            if (1) {
-                fprintf(stderr, "Inserting item number %u, key:\n", line);
-                hex_print(key, key_size);
-            }
-#endif
+			debug_zp_parse("Inserting item number %u, key:\n", line);
+			debug_zp_parse_hex(key, key_size);
+
             if ((res = zdb_insert_name(database, *zone_name, key, node)) != 0) {
-                fprintf(stderr, "\nInsert item returned %d.\n", res);
+				debug_zp_parse("\nInsert item returned %d.\n", res);
                 if (res < 0) {
                     dnss_destroy_rr(&rr);
                     free(key);
@@ -198,11 +189,7 @@ int zp_test_parse_file( zdb_database *database,
                 return ERR_INSERT;
             }
 
-#ifdef ZP_PARSE_DEBUG
-            if (1) {
-                fprintf(stderr, "Done.\n");
-            }
-#endif
+			debug_zp_parse(stderr, "Done.\n");
         }
         free(buffer);
         buffer = NULL;
@@ -223,7 +210,7 @@ int zp_test_parse_zone( const char *filename, zdb_database *database )
     FILE *file = fopen(filename, "r");
 
     if (file == NULL) {
-        fprintf(stderr, "Can't open file: %s.\n", filename);
+		log_error("Can't open file: %s.\n", filename);
         return ERR_FILE_OPEN;
     }
 
