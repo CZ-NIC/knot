@@ -47,7 +47,8 @@ int zdb_create_zone( zdb_database *database, dnss_dname_wire zone_name,
     zone->zone = zds_create(items);
 
     if (zone->zone == NULL) {
-        ERR_ALLOC_FAILED;
+		log_error("Could not create zone data structure for zone %s\n",
+				  zone_name);
         free(zone->zone_name);
         free(zone);
         return -1;
@@ -135,7 +136,7 @@ int zdb_insert_name( zdb_database *database, dnss_dname_wire zone_name,
 
     if (z == NULL) {
         debug_zdb("Zone not found!\n");
-        return -1;
+		return 1;
     }
 
     debug_zdb("Found zone: ");
