@@ -3,6 +3,8 @@
  *
  * @todo When hashing an item, only the first table is tried for this item.
  *       We may try both tables. (But it is not neccessary.)
+ * @todo Shouldn't the loop detection be changed when there are more than 2
+ *       tables?
  */
 /*----------------------------------------------------------------------------*/
 #include <stdio.h>
@@ -43,8 +45,6 @@
 
 #define HASH(key, length, exp, gen, table) \
 			us_hash(fnv_hash(key, length, -1), exp, table, gen)
-// default stash size
-static const uint STASH_SIZE = 10;
 
 static const float SIZE_RATIO_2 = 2;
 static const float SIZE_RATIO_3 = 1.15;
