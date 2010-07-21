@@ -16,9 +16,15 @@
 #include "universal-system.h"
 #include "dynamic-array.h"
 
-#define hashsize(n) ((uint32_t)1<<(n))
-#define hashmask(n) (hashsize(n)-1)
+/*----------------------------------------------------------------------------*/
 
+/*! @brief Macro for getting one hash table size. */
+#define hashsize(n) ((uint32_t)1<<(n))
+
+/*!
+ * @brief Max number of hash tables - must be the same as number of the
+ *         hash functions in each generation of the universal system.
+ */
 #define MAX_TABLES US_FNC_COUNT
 /*!
  * @brief Default stash size.
@@ -28,12 +34,27 @@ static const uint STASH_SIZE = 10;
 /*----------------------------------------------------------------------------*/
 /* Public structures							                              */
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * @brief Structure for storing the hashed data.
+ */
 typedef struct {
+	/*! @brief Key of the item, used for hashing. */
 	const char *key;
+
+	/*! @brief Length of the key in octets. */
 	size_t key_length;
+
+	/*! @brief The actual item stored in the table. */
 	void *value;
-	uint8_t timestamp;	// 000000xy; xy .. generation; may be 01 or 10
+
+	/*!
+	 * @brief Flags. Currently used for keeping the generation of the item, i.e.
+	 *        the generation of the functions used for hashing this item.
+	 *
+	 * Form: 000000xy;
+	 * xy - generation; may be 01 (1) or 10 (2).
+	 */
+	uint8_t timestamp;
 } ck_hash_table_item;	// size 13 B
 
 /*----------------------------------------------------------------------------*/
@@ -41,9 +62,14 @@ typedef struct {
  * @brief Hash table structure which uses cuckoo hashing.
  *
  * Keys are expected to be strings of characters (char *), not necesarily
- * null-terminated. It uses the Fowler/Noll/Vo (FNV) hash function is used to
- * obtain a 32bit unsigned integer from the character data. The funtion was
- * taken from http://home.comcast.net/~bretm/hash/6.html.
+ * null-terminated. It uses the Fowler/Noll/Vo (FNV) hash function to
+ * obtain a 32bit unsigned integer from the character data and a function
+ * randomly chosen from an universal system (see universal-system.h) to obtain
+ * the final hash. The FNV hash was taken from
+ * http://home.comcast.net/~bretm/hash/6.html and the universal system is
+ * constructed according to Katajainen J., Lykke M., Experiments with universal
+ * hashing (obtained from
+ * http://www.diku.dk/OLD/publikationer/tekniske.rapporter/rapporter/96-08.pdf).
  *
  * The table uses either 3-ary or 4-ary cuckoo hashing (and thus 3 or 4 tables)
  * with stash, according to the number of items provided to ck_create_table()
@@ -58,24 +84,16 @@ typedef struct {
  * free and is used in the rehashing process as a temporary variable).
  */
 typedef struct {
-	/*!
-	 * @brief Actual number of hash tables used.
-	 */
+	/*! @brief Actual number of hash tables used. */
 	uint table_count;		// number of hash tables (2, 3 or 4)
 
-	/*!
-	 * @brief Exponent of one table size (2^table_size_exp is table size).
-	 */
+	/*! @brief Exponent of one table size (2^table_size_exp is table size). */
 	int table_size_exp;
 
-	/*!
-	 * @brief Array of hash tables.
-	 */
+	/*! @brief Array of hash tables. */
 	ck_hash_table_item **tables[MAX_TABLES];	// hash tables
 
-	/*!
-	 * @brief Stash implemented as a dynamic array.
-	 */
+	/*! @brief Stash implemented as a dynamic array. */
 	da_array stash;
 
 	/*!
@@ -84,9 +102,7 @@ typedef struct {
 	 */
 	void (*dtor_item)( void *value );
 
-	/*!
-	 * @brief Mutex for avoiding multiple insertions / rehashes at once.
-	 */
+	/*! @brief Mutex for avoiding multiple insertions / rehashes at once. */
 	pthread_mutex_t mtx_table;
 
 	/*!
