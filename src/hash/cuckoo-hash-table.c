@@ -112,7 +112,9 @@ static inline int IS_REHASHING( uint8_t flags ) {
 /*----------------------------------------------------------------------------*/
 /* Helper functions															  */
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * @brief Returns the exponent of the nearest power of two.
+ */
 uint get_nearest_exp( uint n )
 {
 	// TODO: optimize
@@ -129,7 +131,9 @@ uint get_nearest_exp( uint n )
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * @brief Returns the exponent of the nearest larger power of two.
+ */
 uint get_larger_exp( uint n )
 {
 	uint res = 0;
@@ -165,7 +169,9 @@ uint get_table_exp_and_count( uint items, uint *table_count )
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * @brief Clears the given item by assigning a NULL pointer to it.
+ */
 static inline void ck_clear_item( ck_hash_table_item **item )
 {
 	rcu_set_pointer(item, NULL);
@@ -199,7 +205,9 @@ static inline void ck_swap_items( ck_hash_table_item **item1,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * @brief Sets the @a item pointer to the @a to pointer.
+ */
 static inline void ck_put_item( ck_hash_table_item **to,
 								ck_hash_table_item *item )
 {
@@ -239,7 +247,9 @@ uint ck_check_used_twice( da_array *used, uint32_t hash )
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * @brief Compares the key of item with the given key.
+ */
 static inline uint ck_items_match( const ck_hash_table_item* item,
 								   const char *key, size_t length )
 {
@@ -248,7 +258,10 @@ static inline uint ck_items_match( const ck_hash_table_item* item,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * @brief Switches the given table number to a randomly chosen other table
+ *        number.
+ */
 static inline void ck_next_table( uint *table, uint table_count )
 {
 	uint next;
@@ -258,8 +271,8 @@ static inline void ck_next_table( uint *table, uint table_count )
 
 /*----------------------------------------------------------------------------*/
 
-ck_hash_table_item *ck_find_in_stash( ck_hash_table *table, const char *key,
-									   uint length )
+ck_hash_table_item **ck_find_in_stash( const ck_hash_table *table,
+									  const char *key, uint length )
 {
 	//assert(table->stash_i == da_get_count(&table->stash));
 	uint stash_i = da_get_count(&table->stash);
@@ -280,7 +293,7 @@ ck_hash_table_item *ck_find_in_stash( ck_hash_table *table, const char *key,
 	assert(strncmp(((ck_hash_table_item **)
 					(da_get_items(&table->stash)))[i]->key, key, length) == 0);
 
-	return ((ck_hash_table_item **)(da_get_items(&table->stash)))[i];
+	return &((ck_hash_table_item **)(da_get_items(&table->stash)))[i];
 }
 
 /*----------------------------------------------------------------------------*/
@@ -482,7 +495,10 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * @todo The same problem as in rehashing - saving pointer to stash and then
+ *       using it in call to ck_hash_item may cause problems.
+ */
 int ck_insert_item( ck_hash_table *table, const char *key,
 					size_t length, void *value )
 {
@@ -560,6 +576,16 @@ void ck_rollback_rehash( ck_hash_table *table )
 /*----------------------------------------------------------------------------*/
 /*!
  * If not successful, the rehashing flag should still be set after returning.
+ *
+ * @todo What if the stash is reallocated during rehashing? We'd be using
+ *       the old stash for saving items! The old stash would not get deallocated
+ *       (due to RCU - maybe put some rcu_read_lock() here), but the items
+ *       would not be saved into the new stash!
+ *       Maybe add a function for getting a pointer to particular item from
+ *       the dynamic array and protect it using rcu_read_lock().
+ *       Other option: Do not use pointer to an item in stash in the call to
+ *       ck_hash_item(). Use some new place & put the item to the stash
+ *       afterwards, protecting it using rcu_read_lock() and rcu_assign_pointer.
  */
 int ck_rehash( ck_hash_table *table )
 {
@@ -735,9 +761,12 @@ int ck_rehash( ck_hash_table *table )
 }
 
 /*----------------------------------------------------------------------------*/
-
-const ck_hash_table_item *ck_find_gen( ck_hash_table *table, const char *key,
-										size_t length, uint8_t generation )
+/*!
+ * @brief Tries to find item with given key using hash functions from the given
+ *        generation.
+ */
+ck_hash_table_item **ck_find_gen( const ck_hash_table *table, const char *key,
+								  size_t length, uint8_t generation )
 {
     uint32_t hash;
 	debug_cuckoo("Finding item in generation: %u\n", generation);
@@ -759,20 +788,20 @@ const ck_hash_table_item *ck_find_gen( ck_hash_table *table, const char *key,
 		if (table->tables[t][hash]
 			&& (ck_items_match(table->tables[t][hash], key, length) == 0)) {
 			// found
-			return table->tables[t][hash];
+			return &table->tables[t][hash];
 		}
 	}
 
 	// try to find in buffer
 	debug_cuckoo("Searching in stash...\n");
 
-	ck_hash_table_item *found =
+	ck_hash_table_item **found =
 		ck_find_in_stash(table, key, length);
 
     debug_cuckoo("Found pointer: %p\n", found);
 	if (found != NULL) {
 		debug_cuckoo("Stash, key: %s, value: %p, key length: %u\n",
-		   found->key, found->value, found->key_length);
+		   (*found)->key, (*found)->value, (*found)->key_length);
 	}
 
 	// ck_find_in_buffer returns NULL if not found, otherwise pointer to item
@@ -780,15 +809,18 @@ const ck_hash_table_item *ck_find_gen( ck_hash_table *table, const char *key,
 }
 
 /*----------------------------------------------------------------------------*/
-
-const ck_hash_table_item *ck_find_item( ck_hash_table *table, const char *key,
-										size_t length )
+/*!
+ * @brief Finds item with given key and returns non-constant pointer to pointer
+ *        to the appropriate hash table item.
+ */
+ck_hash_table_item **ck_find_item_nc( const ck_hash_table *table,
+									  const char *key, size_t length )
 {
 	// get the generation of the table so that we use the same value
 	uint8_t generation = table->generation;
 
 	// find item using the table generation's hash functions
-	const ck_hash_table_item *found = ck_find_gen(table, key, length,
+	ck_hash_table_item **found = ck_find_gen(table, key, length,
 											GET_GENERATION(generation));
 	// if rehashing is in progress, try the next generation's functions
 	if (!found && IS_REHASHING(generation)) {
@@ -800,7 +832,60 @@ const ck_hash_table_item *ck_find_item( ck_hash_table *table, const char *key,
 
 /*----------------------------------------------------------------------------*/
 
-void ck_dump_table( ck_hash_table *table )
+const ck_hash_table_item *ck_find_item( const ck_hash_table *table,
+										const char *key, size_t length )
+{
+	ck_hash_table_item **found = ck_find_item_nc(table, key, length);
+	return (found == NULL) ? NULL : *found;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int ck_update_item( const ck_hash_table *table, const char *key, size_t length,
+					void *new_value )
+{
+	rcu_read_lock();	// is needed?
+	ck_hash_table_item **item = ck_find_item_nc(table, key, length);
+
+	if ((*item) == NULL) {
+		return -1;
+	}
+
+	void *old = rcu_xchg_pointer(&(*item)->value, new_value);
+	rcu_read_unlock();
+
+	synchronize_rcu();
+	free(old);
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int ck_remove_item( const ck_hash_table *table, const char *key,
+					size_t length )
+{
+	rcu_read_lock();	// is needed?
+	ck_hash_table_item **place = ck_find_item_nc(table, key, length);
+
+	ck_hash_table_item *item = *place;
+
+	if (item == NULL) {
+		return -1;
+	}
+
+	ck_put_item(place, NULL);
+	rcu_read_unlock();
+
+	synchronize_rcu();
+	free(item);
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void ck_dump_table( const ck_hash_table *table )
 {
 	uint i;
 
