@@ -8,14 +8,19 @@
 #include "dns-simple.h"
 #include "socket-manager.h"
 #include "dispatcher.h"
+#include "dynamic-array.h"
 
 //#define CK_TEST_DEBUG
 //#define CK_TEST_LOOKUP
 //#define CK_TEST_OUTPUT
+//#define CK_TEST_REMOVE
+//#define CK_TEST_COMPARE
 
 #ifdef CK_TEST_DEBUG
     #define CK_TEST_LOOKUP
     #define CK_TEST_OUTPUT
+	#define CK_TEST_REMOVE
+	#define CK_TEST_COMPARE
 #endif
 
 #define ERR_COUNT 1
@@ -27,6 +32,7 @@
 #define ERR_ALLOC_ITEMS 7
 #define ERR_FIND 8
 #define ERR_FILL 9
+#define ERR_REMOVE 10
 
 static const uint BUF_SIZE = 20;
 static const uint ARRAY_SIZE = 500;
@@ -47,6 +53,8 @@ static const uint THREAD_COUNT = 2;
 
 // static global var for the hash table (change later!)
 static ck_hash_table *table;
+static da_array items_not_found;
+static da_array items_removed;
 
 /*----------------------------------------------------------------------------*/
 
@@ -253,12 +261,68 @@ int hash_names( ck_hash_table *table, char **domains, uint count )
 
 /*----------------------------------------------------------------------------*/
 
-int test_lookup_from_file( ck_hash_table *table, FILE *file )
+int test_lookup( const ck_hash_table *table, const char *key, uint key_size )
 {
-	uint buf_i, buf_size, not_found = 0;
+	const ck_hash_table_item *item = NULL;
+
+	if ((item = ck_find_item(table, key, key_size - 1)) == NULL
+		|| strncmp(item->key, key, key_size - 1) != 0 ) {
+#ifdef CK_TEST_LOOKUP
+		fprintf(stderr, "\nItem with key %*s not found.\n", key_size, key);
+#endif
+
+		char *new_item = malloc(key_size * sizeof(char));
+		strncpy(new_item, key, key_size);
+		da_reserve(&items_not_found, 1);
+		((char **)(da_get_items(&items_not_found)))[
+				da_get_count(&items_not_found) - 1] = new_item;
+
+		return 1;
+	}
+
+#ifdef CK_TEST_LOOKUP
+	else {
+		printf("Table 1, key: %s, rdata: %*s, key length: %lu\n",
+			item->key, ((dnss_rr *)(item->value))->rdlength,
+			((dnss_rr *)(item->value))->rdata, item->key_length);
+	}
+#endif
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int test_remove( const ck_hash_table *table, const char *key, uint key_size )
+{
+	if (rand() % 1000 == 1) {
+		if (ck_remove_item(table, key, key_size - 1) != 0) {
+			fprintf(stderr, "\nItem with key %*s not removed.\n",
+					key_size, key);
+			return ERR_REMOVE;
+		} else {
+#ifdef CK_TEST_REMOVE
+			printf("Removed item with key: %*s\n", key_size, key);
+#endif
+
+			char *new_item = malloc(key_size * sizeof(char));
+			strncpy(new_item, key, key_size);
+			da_reserve(&items_removed, 1);
+			((char **)(da_get_items(&items_removed)))[
+					da_get_count(&items_removed) - 1] = new_item;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int test_fnc_from_file( ck_hash_table *table, FILE *file, int (*test_fnc)(
+							const ck_hash_table *, const char *, uint) )
+{
+	uint buf_i, buf_size;
 	char ch = '\0';
 	char *buffer;
-    const ck_hash_table_item *res;
 
     fseek(file, 0, SEEK_SET);
 
@@ -341,31 +405,16 @@ int test_lookup_from_file( ck_hash_table *table, FILE *file )
             printf("Wire format of the domain name:\n");
             hex_print(key, key_size);
 #endif
+			test_fnc(table, key, key_size);
 
-            if ((res = ck_find_item(table, key,
-                                    key_size - 1)) == NULL
-                || strncmp(res->key, key, key_size - 1) != 0 ) {
-                fprintf(stderr, "\nItem with key %s not found.\n", buffer);
-                free(key);
-                free(buffer);
-                return ERR_FIND;
-            }
-
-#ifdef CK_TEST_LOOKUP
-            else {
-                printf("Table 1, key: %s, rdata: %*s, key length: %lu\n",
-                    res->key, ((dnss_rr *)(res->value))->rdlength,
-                    ((dnss_rr *)(res->value))->rdata, res->key_length);
-            }
-#endif
             free(key);
 		}
 		free(buffer);
 	}
 
-	fprintf(stderr, "Items not found: %u.\n", not_found);
+	fprintf(stderr, "Items not found: %u.\n", da_get_count(&items_not_found));
 
-	return not_found;
+	return (da_get_count(&items_not_found) == 0) ? 0 : -1;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -524,11 +573,92 @@ int create_and_fill_table( ck_hash_table **table, FILE *file )
 
 /*----------------------------------------------------------------------------*/
 
+void clear_items_array( da_array *items )
+{
+	uint count = da_get_count(items);
+
+	for (uint i = 0; i < count; ++i) {
+		free(((char **)(da_get_items(items)))[i]);
+		da_release(items, 1);
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+int compare_items_array( da_array *items1, da_array *items2 )
+{
+	uint count1 = da_get_count(items1);
+	uint count2 = da_get_count(items2);
+	int errors = 0;
+
+	for (uint i = 0; i < count1; ++i) {
+		int found = 0;
+		for (uint j = 0; j < count2; ++j) {
+			if (strcmp(((char **)(da_get_items(items1)))[i],
+					   ((char **)(da_get_items(items2)))[j]) == 0) {
+				++found;
+			}
+		}
+		if (found == 0) {
+#ifdef CK_TEST_COMPARE
+			fprintf(stderr, "Item with key %s found in first array, but not"
+					" found in second one!\n",
+					((char **)(da_get_items(items1)))[i]);
+#endif
+			++errors;
+		}
+		if (found > 1) {
+#ifdef CK_TEST_COMPARE
+			fprintf(stderr, "Item with key %s from first array, found in second"
+					" array more than once!\n",
+					((char **)(da_get_items(items1)))[i]);
+#endif
+			++errors;
+		}
+	}
+
+	for (uint i = 0; i < count2; ++i) {
+		int found = 0;
+		for (uint j = 0; j < count1; ++j) {
+			if (strcmp(((char **)(da_get_items(items1)))[j],
+					   ((char **)(da_get_items(items2)))[i]) == 0) {
+				++found;
+			}
+		}
+		if (found == 0) {
+#ifdef CK_TEST_COMPARE
+			fprintf(stderr, "Item with key %s found in second array, but not"
+					" found in first one!\n",
+					((char **)(da_get_items(items2)))[i]);
+#endif
+			++errors;
+		}
+		if (found > 1) {
+#ifdef CK_TEST_COMPARE
+			fprintf(stderr, "Item with key %s from second array, found in first"
+					" array more than once!\n",
+					((char **)(da_get_items(items2)))[i]);
+#endif
+			++errors;
+		}
+	}
+
+	fprintf(stderr, "Problems: %d\n", errors);
+
+	return (errors == 0) ? 0 : -1;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int test_hash_table( char *filename )
 {
     printf("Testing hash table...\n\n");
 
+	srand(time(NULL));
+
 	int res = 0;
+	da_initialize(&items_not_found, 1000, sizeof(char *));
+	da_initialize(&items_removed, 1000, sizeof(char *));
 
 	for (int i = 0; i < 10; ++i) {
 
@@ -561,8 +691,10 @@ int test_hash_table( char *filename )
 		printf("\nDone. Result: %d\n\n", res);
 
 		printf("Testing lookup...\n\n");
-		res = test_lookup_from_file(table, file);
-		printf("\nDone. Result: %d\n\n", res);
+		res = test_fnc_from_file(table, file, test_lookup);
+		printf("\nDone. Items not found: %d\n\n",
+			   da_get_count(&items_not_found));
+		clear_items_array(&items_not_found);
 
 		printf("Testing rehash...\n");
 		int res_rehash = ck_rehash(table);
@@ -573,15 +705,36 @@ int test_hash_table( char *filename )
 		printf("\nDone. Result: %d\n\n", res_rehash);
 
 		printf("Testing lookup...\n\n");
-		res = test_lookup_from_file(table, file);
+		res = test_fnc_from_file(table, file, test_lookup);
+		printf("\nDone. Items not found: %d\n\n",
+			   da_get_count(&items_not_found));
+		clear_items_array(&items_not_found);
+
+		printf("Testing removal...\n\n");
+		res = test_fnc_from_file(table, file, test_remove);
+		printf("\nDone. Items removed: %d\n\n", da_get_count(&items_removed));
+
+		printf("Testing lookup...\n\n");
+		res = test_fnc_from_file(table, file, test_lookup);
 		printf("\nDone. Result: %d\n\n", res);
+
+		printf("Comparing array of not found items with array of removed "
+			   "items...\n\n");
+		res = compare_items_array(&items_not_found, &items_removed);
+		printf("\nDone. Result: %d\n\n", res);
+
+		clear_items_array(&items_removed);
+		clear_items_array(&items_not_found);
 
 		ck_destroy_table(&table);
 		fclose(file);
 
-		if (res != 0) break;
+		//if (res != 0) break;
 
 	}
+
+	da_destroy(&items_not_found);
+	da_destroy(&items_removed);
 
     return res;
 }

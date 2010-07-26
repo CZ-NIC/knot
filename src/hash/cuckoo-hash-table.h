@@ -4,6 +4,8 @@
  * @todo Maybe provide some way to resize the whole table if the number of items
  *       grows too much.
  * @todo Check size of integers, the table size may be larger than unsigned int.
+ * @todo Maybe do not return ck_hash_table_item from ck_find_item(), but only
+ *       its value.
  */
 #ifndef CUCKOO_HASH_TABLE
 #define CUCKOO_HASH_TABLE
@@ -213,13 +215,50 @@ int ck_rehash( ck_hash_table *table );
  * @return Pointer to the item if found. NULL otherwise.
  */
 const ck_hash_table_item *ck_find_item(
-		ck_hash_table *table, const char *key, size_t length );
+		const ck_hash_table *table, const char *key, size_t length );
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * @brief Updates item with the given key by replacing its value.
+ *
+ * @param table Hash table where to search for the item.
+ * @param key Key of the item to be updated. It can be an arbitrary string of
+ *            octets.
+ * @param length Length of the key in bytes (octets).
+ * @param new_value New value for the item with key @a key.
+ *
+ * The update process is synchronized using RCU mechanism, so the old item's
+ * value will not be deleted while some thread is using it.
+ *
+ * @retval 0 If successful.
+ * @retval -1 If the item was not found in the table. No changes are made.
+ */
+int ck_update_item( const ck_hash_table *table, const char *key, size_t length,
+					void *new_value );
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * @brief Removes item with the given key from table.
+ *
+ * @param table Hash table where to search for the item.
+ * @param key Key of the item to be removed. It can be an arbitrary string of
+ *            octets.
+ * @param length Length of the key in bytes (octets).
+ *
+ * The deletion process is synchronized using RCU mechanism, so the old item
+ * will not be deleted while some thread is using it.
+ *
+ * @retval 0 If successful.
+ * @retval -1 If the item was not found in the table.
+ */
+int ck_remove_item( const ck_hash_table *table, const char *key,
+					size_t length );
 
 /*----------------------------------------------------------------------------*/
 /*!
  * @brief Dumps the whole hash table to the console.
  */
-void ck_dump_table( ck_hash_table *table );
+void ck_dump_table( const ck_hash_table *table );
 
 /*----------------------------------------------------------------------------*/
 
