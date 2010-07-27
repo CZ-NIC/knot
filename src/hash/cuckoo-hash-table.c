@@ -836,7 +836,7 @@ const ck_hash_table_item *ck_find_item( const ck_hash_table *table,
 										const char *key, size_t length )
 {
 	ck_hash_table_item **found = ck_find_item_nc(table, key, length);
-	return (found == NULL) ? NULL : *found;
+	return (found == NULL) ? NULL : rcu_dereference(*found);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -880,6 +880,8 @@ int ck_remove_item( const ck_hash_table *table, const char *key,
 	rcu_read_unlock();
 
 	synchronize_rcu();
+	table->dtor_item(item->value);
+	item->value = NULL;
 	free(item);
 
 	return 0;

@@ -678,6 +678,10 @@ void ct_waste_time( uint loops )
 
 void *ct_read_item( void *obj )
 {
+	// register thread to RCU
+	rcu_register_thread();
+	void *res = NULL;
+
 	ck_hash_table *table = (ck_hash_table *)obj;
 
 	uint dname_size = dnss_wire_dname_size(&TEST_NAME);
@@ -693,6 +697,8 @@ void *ct_read_item( void *obj )
 												  dname_size - 1);
 	if (item == NULL) {
 		printf("[Read] Item not found in the table!\n");
+		// unregister thread from RCU
+		rcu_unregister_thread();
 		return NULL;
 	}
 	printf("[Read] Found item with key: %*s, value: %p\n", item->key_length,
@@ -700,7 +706,7 @@ void *ct_read_item( void *obj )
 
 	// wait some time, so that the item is deleted
 	printf("[Read] Waiting...\n");
-	ct_waste_time(500000);
+	ct_waste_time(5000000);
 	printf("[Read] Done.\n");
 
 	printf("[Read] Still holding item with key: %*s, value: %p\n",
@@ -716,17 +722,24 @@ void *ct_read_item( void *obj )
 	printf("[Read] Trying to find the item again...\n");
 	if (ck_find_item(table, test_dname, dname_size - 1) == NULL) {
 		printf("[Read] Item not found in the table.\n");
-		return 0;
 	} else {
 		printf("[Read] Item still found in the table!\n");
-		return (void *)(-1);
+		res = (void *)(-1);
 	}
+
+	// unregister thread from RCU
+	rcu_unregister_thread();
+
+	return res;
 }
 
 /*----------------------------------------------------------------------------*/
 
 int ct_delete_item_during_read( ck_hash_table *table )
 {
+	// register thread to RCU
+	rcu_register_thread();
+
 	pthread_t thread;
 
 	uint dname_size = dnss_wire_dname_size(&TEST_NAME);
@@ -763,6 +776,9 @@ int ct_delete_item_during_read( ck_hash_table *table )
 	}
 	printf("[Delete] Done.\n");
 
+	// unregister thread from RCU
+	rcu_unregister_thread();
+
 	return (int)ret;
 }
 
@@ -770,6 +786,9 @@ int ct_delete_item_during_read( ck_hash_table *table )
 
 int ct_test_hash_table( char *filename )
 {
+	// initialize RCU
+	rcu_init();
+
 	printf("Testing hash table...\n\n");
 
 	srand(time(NULL));
