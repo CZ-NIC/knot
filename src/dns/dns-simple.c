@@ -473,7 +473,7 @@ dnss_packet *dnss_parse_query( const char *query_wire, uint size )
         p += 2;
     }
 
-    /*! @todo: add more checks for the length of the packet */
+	/*! @todo add more checks for the length of the packet */
 
     // ignore rest of the packet    (TODO: should parse additional for OPT)
     query->answers = NULL;

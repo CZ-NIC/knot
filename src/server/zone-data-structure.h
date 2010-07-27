@@ -69,8 +69,6 @@ zn_node *zds_find( zds_zone *zone, dnss_dname_wire owner );
  *
  * @retval 0 On success.
  * @retval -1 If the name was not found in the zone.
- *
- * @todo IMPLEMENT!
  */
 int zds_remove( zds_zone *zone, dnss_dname_wire owner );
 
