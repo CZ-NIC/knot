@@ -868,11 +868,13 @@ int ck_remove_item( const ck_hash_table *table, const char *key,
 	rcu_read_lock();	// is needed?
 	ck_hash_table_item **place = ck_find_item_nc(table, key, length);
 
-	ck_hash_table_item *item = *place;
-
-	if (item == NULL) {
+	if (place == NULL) {
 		return -1;
 	}
+
+	ck_hash_table_item *item = *place;
+
+	assert(item != NULL);
 
 	ck_put_item(place, NULL);
 	rcu_read_unlock();
