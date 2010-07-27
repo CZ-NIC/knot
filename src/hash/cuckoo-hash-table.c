@@ -46,6 +46,8 @@
 #define HASH(key, length, exp, gen, table) \
 			us_hash(fnv_hash(key, length, -1), exp, table, gen)
 
+#define STASH_ITEMS(stash) ((ck_hash_table_item **)(da_get_items(stash)))
+
 static const float SIZE_RATIO_2 = 2;
 static const float SIZE_RATIO_3 = 1.15;
 static const float SIZE_RATIO_4 = 1.08;
@@ -239,8 +241,12 @@ uint ck_check_used_twice( da_array *used, uint32_t hash )
         return -1;
     }
     else {
-		da_reserve(used, 1);
-		((uint *)da_get_items(used))[da_get_count(used) - 1] = hash;
+		if (da_reserve(used, 1) < 0) {
+			ERR_ALLOC_FAILED;
+			return -2;
+		}
+		((uint *)da_get_items(used))[da_get_count(used)] = hash;
+		da_occupy(used, 1);
 		assert(da_get_count(used) < RELOCATIONS_MAX);
         return 0;
     }
@@ -468,8 +474,7 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 		}
 
 		// check if this cell wasn't already used in this item's hashing
-		if (ck_check_used_twice(&used[next_table], hash)
-				!= 0) {
+		if (ck_check_used_twice(&used[next_table], hash) != 0) {
 			next = free;
 			loop = -1;
 			break;
@@ -515,20 +520,18 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 	ck_fill_item(key, length, value, GET_GENERATION(table->generation),
 				 new_item);
 
-	ck_hash_table_item **stash = ((ck_hash_table_item **)
-								  (da_get_items(&table->stash)));
-
-	// check if this works (using the same pointer for 'old' and 'free')
+	// there should be at least 2 free places
 	assert(da_try_reserve(&table->stash, 2) == 0);
-	if (ck_hash_item(table, &new_item, &stash[da_get_count(&table->stash)],
-			table->generation) != 0) {
+	da_reserve(&table->stash, 1);
+	if (ck_hash_item(table, &new_item, &STASH_ITEMS(&table->stash)[
+			da_get_count(&table->stash)], table->generation) != 0) {
 		debug_cuckoo_hash("Item with key %*s inserted into the buffer.\n",
-		   stash[da_get_count(&table->stash)]->key_length,
-		   stash[da_get_count(&table->stash)]->key);
+		   STASH_ITEMS(&table->stash)[da_get_count(&table->stash)]->key_length,
+		   STASH_ITEMS(&table->stash)[da_get_count(&table->stash)]->key);
 
 		// loop occured, the item is already at its new place in the buffer,
 		// so just increment the index and check if rehash is not needed
-		da_reserve(&table->stash, 1);
+		da_occupy(&table->stash, 1);
 
 		// if only one place left, rehash (this place is used in rehashing)
 		if (da_try_reserve(&table->stash, 2) != 0) {
@@ -594,25 +597,24 @@ int ck_rehash( ck_hash_table *table )
 
     // we already have functions for the next generation, begin rehashing
 	// we wil use the last item in the buffer as free cell for hashing
-	assert(da_try_reserve(&table->stash, 2) == 0);
+	assert(da_try_reserve(&table->stash, 1) == 0);
 	ck_hash_table_item *old = (ck_hash_table_item *)
 							  (malloc(sizeof(ck_hash_table_item)));
 
-	ck_hash_table_item **stash =
-			((ck_hash_table_item **)(da_get_items(&table->stash)));
-
 	do {
+
+	if (da_get_count(&table->stash) > STASH_SIZE) {
+		log_info("STASH RESIZED!!!\n");
+	}
 
 	// rehash items from buffer, starting from the last old item
 	int stash_i = da_get_count(&table->stash) - 1;
 	while (stash_i >= 0) {
 
 		// if item's generation is the new generation, skip
-		if (((ck_hash_table_item **)(da_get_items(&table->stash)))[stash_i]
-			== NULL	|| !(EQUAL_GENERATIONS(((ck_hash_table_item **)
-						(da_get_items(&table->stash)))[stash_i]->timestamp,
-								   table->generation))) {
-
+		if (STASH_ITEMS(&table->stash)[stash_i] == NULL
+			|| !(EQUAL_GENERATIONS(STASH_ITEMS(&table->stash)
+								   [stash_i]->timestamp, table->generation))) {
 			debug_cuckoo_rehash("Skipping item.\n");
 			--stash_i;
 			continue;
@@ -620,29 +622,39 @@ int ck_rehash( ck_hash_table *table )
 
 		debug_cuckoo_rehash("Rehashing item from buffer position %u, key "
 			"(length %u): %*s, generation: %hu, table generation: %hu.\n",
-			stash_i, stash[stash_i]->key_length,
-			(int)stash[stash_i]->key_length, stash[stash_i]->key,
-			GET_GENERATION(stash[stash_i]->timestamp),
+			stash_i, STASH_ITEMS(&table->stash)[stash_i]->key_length,
+			(int)STASH_ITEMS(&table->stash)[stash_i]->key_length,
+			STASH_ITEMS(&table->stash)[stash_i]->key,
+			GET_GENERATION(STASH_ITEMS(&table->stash)[stash_i]->timestamp),
 			GET_GENERATION(table->generation));
 
 		// otherwise copy the item for rehashing
-		ck_put_item(&old, stash[stash_i]);
+		ck_put_item(&old, STASH_ITEMS(&table->stash)[stash_i]);
 		// clear the place so that this item will not get rehashed again
-		ck_clear_item(&stash[stash_i]);
+		ck_clear_item(&STASH_ITEMS(&table->stash)[stash_i]);
+		da_release(&table->stash, 1);
 
-		assert(stash[stash_i] == NULL);
+		// there should be at least one place in the stash
+		assert(da_try_reserve(&table->stash, 1) == 0);
+		da_reserve(&table->stash, 1);
+
+		assert(STASH_ITEMS(&table->stash)[stash_i] == NULL);
 
 		// and start rehashing
-		if (ck_hash_item(table, &old, &stash[stash_i],
+		if (ck_hash_item(table, &old, &STASH_ITEMS(&table->stash)[stash_i],
 			   NEXT_GENERATION(table->generation)) != 0) {
 			// loop occured
 			ERR_INF_LOOP;
 
 			debug_cuckoo_rehash("Item with key %*s inserted into the buffer"
-				".\n", stash[stash_i]->key_length, stash[stash_i]->key);
+				".\n", STASH_ITEMS(&table->stash)[stash_i]->key_length,
+				STASH_ITEMS(&table->stash)[stash_i]->key);
 
-			// if only one place left, resize the stash
-			if (da_try_reserve(&table->stash, 2) < 0) {
+			// hashing unsuccessful, the item was inserted into the stash
+			da_occupy(&table->stash, 1);
+
+			// if only one place left, resize the stash		TODO: Why???
+			if (da_reserve(&table->stash, 2) < 0) {
 				// stash could not be resized => PROBLEM!!!
 				log_error("Failed to rehash items from table, no other rehash"
 						  "possible!\n");
@@ -652,9 +664,6 @@ int ck_rehash( ck_hash_table *table )
 				ck_clear_item(&old);
 				return -1;
 			}
-		} else {
-			// rehash successful, so there is one item less in the buffer
-			da_release(&table->stash, 1);
 		}
 
 		// clear the 'old' item
@@ -665,10 +674,11 @@ int ck_rehash( ck_hash_table *table )
 
 	uint i = 0;
 	while (i < da_get_count(&table->stash)) {
-		assert(stash[i] != NULL);
+		assert(STASH_ITEMS(&table->stash)[i] != NULL);
 		++i;
 	}
-	assert(stash[da_get_count(&table->stash)] == NULL);
+	assert(da_try_reserve(&table->stash, 1) == 0);
+	assert(STASH_ITEMS(&table->stash)[da_get_count(&table->stash)] == NULL);
 
 	// rehash items from hash tables
 	for (uint t = TABLE_FIRST; t <= TABLE_LAST(table->table_count); ++t) {
@@ -705,24 +715,28 @@ int ck_rehash( ck_hash_table *table )
 								NEXT_GENERATION(table->generation));
 
 			// and start rehashing
-			assert(&old != &stash[da_get_count(&table->stash)]);
-			assert(da_try_reserve(&table->stash, 2) == 0);
+			assert(&old != &STASH_ITEMS(&table->stash)[
+							da_get_count(&table->stash)]);
+			assert(da_try_reserve(&table->stash, 1) == 0);
+			da_reserve(&table->stash, 1);
 
-			if (ck_hash_item(table, &old, &stash[da_get_count(&table->stash)],
+			if (ck_hash_item(table, &old, &STASH_ITEMS(&table->stash)[
+											da_get_count(&table->stash)],
 				NEXT_GENERATION(table->generation)) != 0) {
 				// loop occured
 				ERR_INF_LOOP;
 
 				debug_cuckoo_rehash("Item with key %*s inserted into the buffer"
-					".\n", stash[da_get_count(&table->stash)]->key_length,
-					stash[da_get_count(&table->stash)]->key);
+					".\n", STASH_ITEMS(&table->stash)[
+							da_get_count(&table->stash)]->key_length,
+					STASH_ITEMS(&table->stash)[da_get_count(&table->stash)]->key);
 
 				// loop occured, the item is already at its new place in the
 				// buffer, so just increment the index
-				da_reserve(&table->stash, 1);
+				da_occupy(&table->stash, 1);
 
-				// if only one place left, resize the stash
-				if (da_try_reserve(&table->stash, 2) < 0) {
+				// if only one place left, resize the stash		TODO: Why?
+				if (da_reserve(&table->stash, 2) < 0) {
 					// stash could not be resized => PROBLEM!!!
 					log_error("Failed to rehash items from table, no other "
 							  "rehash possible!\n");
@@ -902,17 +916,17 @@ void ck_dump_table( const ck_hash_table *table )
 
 		for (i = 0; i < hashsize(table->table_size_exp); i++) {
 			debug_cuckoo("Hash: %u, Key: %*s, Value: %p.\n", i,
-				table->tables[i]->key_length, table->tables[i]->key,
-				table->tables[i]->value);
+				(table->tables[t])[i]->key_length, (table->tables[t])[i]->key,
+				(table->tables[t])[i]->value);
 		}
 	}
 
 	debug_cuckoo("Stash:\n");
 	for (i = 0; i < da_get_count(&table->stash); ++i) {
 		debug_cuckoo("Index: %u, Key: %*s Value: %p.\n", i,
-		  stash[i]->key_length,
-		  stash[i]->key,
-		  stash[i]->value);
+		  ((ck_hash_table_item **)da_get_items(&table->stash))[i]->key_length,
+		  ((ck_hash_table_item **)da_get_items(&table->stash))[i]->key,
+		  ((ck_hash_table_item **)da_get_items(&table->stash))[i]->value);
 	}
 
 	debug_cuckoo("\n");
