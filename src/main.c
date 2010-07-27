@@ -3,6 +3,7 @@
 #include "common.h"
 #include "server.h"
 #include "cuckoo-test.h"
+#include "tests.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -16,7 +17,8 @@ int main( int argc, char **argv )
     // Open log
     log_open(LOG_UPTO(LOG_ERR), LOG_MASK(LOG_ERR)|LOG_MASK(LOG_WARNING));
 
-	int res = ct_test_hash_table(argv[1]);
+	//int res = ct_test_hash_table(argv[1]);
+	int res = test_dynamic_array();
 
 	/*
     // Start server

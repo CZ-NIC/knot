@@ -1,14 +1,17 @@
 #include "tests.h"
 //#include "bitset.h"
 #include "common.h"
+#include "dynamic-array.h"
 
 #include <urcu.h>
 #include <pthread.h>
-
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 static const int THREADS_RCU = 2;
+static const int DA_DEF_SIZE = 1000;
+static const int DA_OPERATIONS = 100;
 
 /*----------------------------------------------------------------------------*/
 
@@ -104,15 +107,17 @@ static const int THREADS_RCU = 2;
 
 /*----------------------------------------------------------------------------*/
 
-#define LOOPS 1000000000
+#define LOOPS 10000
 
-void do_some_stuff()
+void do_some_stuff( int loops )
 {
 		int i;
 		int res = 1;
 
-		for (i = 1; i <= LOOPS; ++i) {
+		for (int j = 1; j <= LOOPS; ++j) {
+			for (i = 1; i <= loops; ++i) {
 				res *= i;
+			}
 		}
 }
 
@@ -125,7 +130,7 @@ void *test_rcu_thread( void *obj )
 
 	log_debug("Thread %ld entered critical section..\n", pthread_self());
 
-	do_some_stuff();
+	do_some_stuff(100000);
 
 	log_debug("Thread %ld leaving critical section..\n", pthread_self());
 
@@ -170,4 +175,163 @@ int test_rcu()
 
 	getchar();
 	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void *test_dynamic_array_read( void *obj )
+{
+	rcu_register_thread();
+
+	rcu_read_lock();
+
+	da_array *array = (da_array *)obj;
+	int index = rand() % da_get_count(array);
+
+	log_debug("[Read] Saving pointer to %d. item...\n", index);
+	uint *item = &((uint *)da_get_items(array))[index];
+	log_debug("[Read] Pointer: %p Item: %u\n", item, *item);
+
+	log_debug("[Read] Waiting...\n");
+	do_some_stuff(100000);
+	log_debug("[Read] Done.\n");
+
+	log_debug("[Read] Pointer: %p Item: %u\n", item, *item);
+	log_debug("[Read] Unlocking RCU lock.\n");
+	rcu_read_unlock();
+
+	log_debug("[Read] Pointer: %p Item: %u\n", item, *item);
+
+	log_debug("[Read] Waiting...\n");
+	do_some_stuff(10000);
+	log_debug("[Read] Done.\n");
+
+	log_debug("[Read] Now the item should be deallocated...\n");
+	log_debug("[Read] Pointer: %p Item: %u\n", item, *item);
+
+	rcu_unregister_thread();
+
+	return NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int test_dynamic_array()
+{
+	rcu_init();
+
+	srand(time(NULL));
+	da_array array;
+
+	log_debug("Testing dynamic array structure.\n\nInitializing array of size"
+			  " %d for type uint.\n", DA_DEF_SIZE);
+	da_initialize(&array, DA_DEF_SIZE, sizeof(uint));
+
+	uint allocated = DA_DEF_SIZE;
+	uint size = 0;
+	int error = 0;
+
+	log_debug("Running %d random operations...\n", DA_OPERATIONS);
+	for (int i = 1; i <= DA_OPERATIONS; ++i) {
+		int r = rand() % 3;
+		int count = rand() % 10;
+		switch (r) {
+			case 0:
+				log_debug("Reserving place for %d items...", count);
+				if (da_reserve(&array, count) >= 0) {
+					log_debug("Successful.\n");
+					assert(size <= allocated);
+					if ((allocated - size) < count) {
+						allocated *= 2;
+					}
+				} else {
+					log_debug("Not successful!\n");
+					error = -1;
+				}
+				break;
+			case 1:
+				log_debug("Occupying place for %d items...", count);
+				if (da_occupy(&array, count) == 0) {
+					((uint *)da_get_items(&array))[da_get_count(&array) - 1]
+							= rand();
+					log_debug("Successful, inserted %u.\n",
+							  ((uint *)da_get_items(&array))[
+									  da_get_count(&array) - 1]);
+					assert(size <= allocated);
+					assert((allocated - size) >= count);
+					size += count;
+				} else {
+					log_debug("Not successful!\n");
+					error = -1;
+				}
+				break;
+			case 2:
+				while (count > array.count) {
+					count = rand() % 10;
+				}
+
+				log_debug("Releasing place for %d items...", count);
+				da_release(&array, count);
+				log_debug("Done.\n");
+
+				assert(size <= allocated);
+				assert(size >= count);
+				size -= count;
+				break;
+		}
+
+		assert(allocated == array.allocated);
+		assert(size == array.count);
+
+		if (error != 0) {
+			break;
+		}
+	}
+
+	log_debug("\nDone. Allocated: %d, Items: %d, Result: %d\n\n",
+			  array.allocated, array.count, error);
+
+	if (error != 0) {
+		da_destroy(&array);
+		return error;
+	}
+
+	log_debug("Resizing array while holding an item...\n");
+	rcu_register_thread();
+
+	pthread_t reader;
+
+	// create thread for reading
+	log_debug("[Main] Creating thread for reading...\n");
+	if (pthread_create(&reader, NULL, test_dynamic_array_read, (void *)&array)) {
+		log_error("%s: failed to create reading thread.", __func__);
+		rcu_unregister_thread();
+		return -1;
+	}
+	log_debug("[Main] Done.\n");
+
+	// wait some time, so the other thread gets the item for reading
+	log_debug("[Main] Waiting...\n");
+	do_some_stuff(5000);
+	log_debug("[Main] Done.\n");
+
+	// force resize
+	log_debug("[Main] Forcing array resize...\n");
+	da_reserve(&array, array.allocated - array.count + 1);
+	log_debug("[Main] Done.\n");
+
+	// wait for the thread
+	printf("[Main] Waiting for the reader thread to finish...\n");
+	void *ret = NULL;
+	if (pthread_join(reader, &ret)) {
+		log_error("%s: failed to join reading thread.", __func__);
+		da_destroy(&array);
+		rcu_unregister_thread();
+		return -1;
+	}
+	printf("[Main] Done.\n");
+
+	da_destroy(&array);
+	rcu_unregister_thread();
+	return (int)ret;
 }
