@@ -278,7 +278,8 @@ int ct_test_lookup( const ck_hash_table *table, const char *key, uint key_size )
 		strncpy(new_item, key, key_size);
 		da_reserve(&items_not_found, 1);
 		((char **)(da_get_items(&items_not_found)))[
-				da_get_count(&items_not_found) - 1] = new_item;
+				da_get_count(&items_not_found)] = new_item;
+		da_occupy(&items_not_found, 1);
 
 		return 1;
 	}
@@ -311,7 +312,8 @@ int ct_test_remove( const ck_hash_table *table, const char *key, uint key_size )
 			strncpy(new_item, key, key_size);
 			da_reserve(&items_removed, 1);
 			((char **)(da_get_items(&items_removed)))[
-					da_get_count(&items_removed) - 1] = new_item;
+					da_get_count(&items_removed)] = new_item;
+			da_occupy(&items_removed, 1);
 			return 1;
 		}
 	}
@@ -791,6 +793,7 @@ int ct_delete_item_during_read( ck_hash_table *table )
 
 /*----------------------------------------------------------------------------*/
 
+#ifdef CT_TEST_REHASH
 int ct_rehash_during_read( ck_hash_table *table )
 {
 	pthread_t thread;
@@ -831,6 +834,7 @@ int ct_rehash_during_read( ck_hash_table *table )
 
 	return (int)ret;
 }
+#endif
 
 /*----------------------------------------------------------------------------*/
 
@@ -850,7 +854,7 @@ int ct_test_hash_table( char *filename )
 	da_initialize(&items_not_found, 1000, sizeof(char *));
 	da_initialize(&items_removed, 1000, sizeof(char *));
 
-	for (int i = 0; i < 1; ++i) {
+	for (int i = 0; i < 10; ++i) {
 
 		printf("----------------------------\n");
 		printf("-----Iteration %d------------\n", i);
@@ -924,9 +928,11 @@ int ct_test_hash_table( char *filename )
 			printf("\nDone. Result: %d\n\n", res);
 		}
 
+#ifdef CT_TEST_REHASH
 		printf("Testing rehash during read...\n\n");
 		res = ct_rehash_during_read(table);
 		printf("\nDone. Result: %d\n\n", res);
+#endif
 
 		ck_destroy_table(&table);
 		fclose(file);

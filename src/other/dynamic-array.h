@@ -24,8 +24,9 @@
  * da_get_items()) to a proper type before dereferencing.
  *
  * When adding items, first reserve enough space for them by callling
- * da_reserve(). When removing, the array must be told about the fact by calling
- * da_release().
+ * da_reserve() and subsequently tell the array about the inserted items by
+ * calling da_occupy(). When removing, the array must be told about the fact
+ * by calling da_release().
  *
  * For getting the actual number of items in array use da_get_count().
  *
@@ -70,6 +71,15 @@ int da_initialize( da_array *array, uint count, size_t item_size );
  * @retval -1 if not successful - resizing was needed but could not be done.
  */
 int da_reserve( da_array *array, uint count );
+
+/*!
+ * @brief Increases the number of items in array by @a count.
+ *
+ * @retval 0 If successful.
+ * @retval -1 If not successful (not enough allocated space, i.e. must run
+ *            da_reserve()).
+ */
+int da_occupy( da_array *array, uint count );
 
 /*!
  * @brief Tries to reserve space for @a count more items.

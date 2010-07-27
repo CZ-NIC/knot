@@ -29,6 +29,9 @@ int da_resize( da_array *array, da_resize_type type ) {
 		return -1;
 	}
 
+	// copy the contents from the old array to the new
+	memcpy(new_items, array->items, array->count * array->item_size);
+
 	// do RCU update
 	void *old_items = rcu_xchg_pointer(&array->items, new_items);
 	array->allocated = new_size;
@@ -77,8 +80,7 @@ int da_reserve( da_array *array, uint count )
 
 	assert(array->allocated >= array->count);
 	if ((array->allocated - array->count) >= count) {
-		debug_da("Increasing count of items in array.\n");
-		array->count += count;
+		debug_da("Enough place in the array, no resize needed.\n");
 		res = 0;
 	} else {
 		debug_da("Resizing array.\n");
@@ -86,6 +88,25 @@ int da_reserve( da_array *array, uint count )
 	}
 	pthread_mutex_unlock(&array->mtx);
 
+	return res;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int da_occupy( da_array *array, uint count )
+{
+	pthread_mutex_lock(&array->mtx);
+	uint res = 0;
+	assert(array->allocated >= array->count);
+
+	if ((array->allocated - array->count) < count) {
+		debug_da("Not enough place to occupy.\n");
+		res = -1;
+	} else {
+		array->count += count;
+	}
+
+	pthread_mutex_unlock(&array->mtx);
 	return res;
 }
 

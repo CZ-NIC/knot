@@ -31,7 +31,7 @@
 /*!
  * @brief Default stash size.
  */
-static const uint STASH_SIZE = 10;
+static const uint STASH_SIZE = 2;
 
 /*----------------------------------------------------------------------------*/
 /* Public structures							                              */
