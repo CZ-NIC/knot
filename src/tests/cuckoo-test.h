@@ -1,17 +1,12 @@
 #ifndef CUCKOO_TEST
 #define CUCKOO_TEST
 
-#include "cuckoo-hash-table.h"
-#include <stdio.h>
+/*----------------------------------------------------------------------------*/
+
+int ct_test_hash_table( char *filename );
+
+int ct_start_server( char *filename );
 
 /*----------------------------------------------------------------------------*/
 
-int test_hash_table( char *filename );
-
-int start_server( char *filename );
-
-int test_lookup_from_file( ck_hash_table *table, FILE *file );
-
-/*----------------------------------------------------------------------------*/
-
-#endif
+#endif	// CUCKOO_TEST

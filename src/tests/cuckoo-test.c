@@ -58,7 +58,7 @@ static da_array items_removed;
 
 /*----------------------------------------------------------------------------*/
 
-int resize_buffer( char **buffer, uint *buf_size, int new_size, int item_size )
+int ct_resize_buffer( char **buffer, uint *buf_size, int new_size, int item_size )
 {
 	char *new_buf;
 
@@ -76,7 +76,7 @@ int resize_buffer( char **buffer, uint *buf_size, int new_size, int item_size )
 
 /*----------------------------------------------------------------------------*/
 
-uint get_line_count( FILE *file, unsigned long *chars )
+uint ct_get_line_count( FILE *file, unsigned long *chars )
 {
 	char ch = '\0';
 	uint c = 0;
@@ -97,7 +97,7 @@ uint get_line_count( FILE *file, unsigned long *chars )
 
 /*----------------------------------------------------------------------------*/
 
-int hash_from_file( FILE *file, ck_hash_table *table, uint items,
+int ct_hash_from_file( FILE *file, ck_hash_table *table, uint items,
                     unsigned long chars )
 {
     uint buf_i, buf_size, res, key_size;
@@ -135,7 +135,7 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 
 			// if the buffer is not big enough, re
 			if ((buf_i >= buf_size)
-				&& (resize_buffer(&buffer, &buf_size,
+				&& (ct_resize_buffer(&buffer, &buf_size,
 								 buf_size * 2, sizeof(char)) != 0)) {
 				// deallocate the last buffer used
 				free(buffer);
@@ -158,7 +158,7 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 #endif
 		// if buffer too large
 		if ((buf_size > buf_i + 1)
-			&& (resize_buffer(&buffer, &buf_size,
+			&& (ct_resize_buffer(&buffer, &buf_size,
 							 buf_i + 1, sizeof(char)) != 0)) {
 			// deallocate the last buffer used
 			free(buffer);
@@ -236,7 +236,7 @@ int hash_from_file( FILE *file, ck_hash_table *table, uint items,
 
 /*----------------------------------------------------------------------------*/
 
-int hash_names( ck_hash_table *table, char **domains, uint count )
+int ct_hash_names( ck_hash_table *table, char **domains, uint count )
 {
 	uint i = 0;
 	int res;
@@ -261,7 +261,7 @@ int hash_names( ck_hash_table *table, char **domains, uint count )
 
 /*----------------------------------------------------------------------------*/
 
-int test_lookup( const ck_hash_table *table, const char *key, uint key_size )
+int ct_test_lookup( const ck_hash_table *table, const char *key, uint key_size )
 {
 	const ck_hash_table_item *item = NULL;
 
@@ -292,7 +292,7 @@ int test_lookup( const ck_hash_table *table, const char *key, uint key_size )
 
 /*----------------------------------------------------------------------------*/
 
-int test_remove( const ck_hash_table *table, const char *key, uint key_size )
+int ct_test_remove( const ck_hash_table *table, const char *key, uint key_size )
 {
 	if (rand() % 1000 == 1) {
 		if (ck_remove_item(table, key, key_size - 1) != 0) {
@@ -317,7 +317,7 @@ int test_remove( const ck_hash_table *table, const char *key, uint key_size )
 
 /*----------------------------------------------------------------------------*/
 
-int test_fnc_from_file( ck_hash_table *table, FILE *file, int (*test_fnc)(
+int ct_test_fnc_from_file( ck_hash_table *table, FILE *file, int (*test_fnc)(
 							const ck_hash_table *, const char *, uint) )
 {
 	uint buf_i, buf_size;
@@ -356,7 +356,7 @@ int test_fnc_from_file( ck_hash_table *table, FILE *file, int (*test_fnc)(
 
 			// if the buffer is not big enough, re
 			if ((buf_i >= buf_size)
-				&& (resize_buffer(&buffer, &buf_size,
+				&& (ct_resize_buffer(&buffer, &buf_size,
 								 buf_size * 2, sizeof(char)) != 0)) {
 				// deallocate the last buffer used
 				free(buffer);
@@ -379,7 +379,7 @@ int test_fnc_from_file( ck_hash_table *table, FILE *file, int (*test_fnc)(
 
 		// if buffer too large
 		if ((buf_size > buf_i + 1)
-			&& (resize_buffer(&buffer, &buf_size,
+			&& (ct_resize_buffer(&buffer, &buf_size,
 							 buf_i + 1, sizeof(char)) != 0)) {
 			// deallocate the last buffer used
 			free(buffer);
@@ -419,7 +419,7 @@ int test_fnc_from_file( ck_hash_table *table, FILE *file, int (*test_fnc)(
 
 /*----------------------------------------------------------------------------*/
 
-void destroy_items( void *item )
+void ct_destroy_items( void *item )
 {
     dnss_rr *rr = (dnss_rr *)item;
     dnss_destroy_rr(&rr);
@@ -427,7 +427,7 @@ void destroy_items( void *item )
 
 /*----------------------------------------------------------------------------*/
 
-void answer_request( const char *query_wire, uint size,
+void ct_answer_request( const char *query_wire, uint size,
                      char *response_wire, uint *response_size )
     // in *response_size we have the maximum acceptable size of the response
 {
@@ -505,10 +505,10 @@ void answer_request( const char *query_wire, uint size,
 
 /*----------------------------------------------------------------------------*/
 
-int count_domain_names( FILE *file, uint *names, unsigned long *chars )
+int ct_count_domain_names( FILE *file, uint *names, unsigned long *chars )
 {
     printf("Counting lines..");
-    *names = get_line_count(file, chars);
+	*names = ct_get_line_count(file, chars);
     printf("%u\n", *names);
 
     if (*names == -1) {
@@ -525,11 +525,11 @@ int count_domain_names( FILE *file, uint *names, unsigned long *chars )
 
 /*----------------------------------------------------------------------------*/
 
-int fill_hash_table( ck_hash_table *table, FILE *file, uint names,
+int ct_fill_hash_table( ck_hash_table *table, FILE *file, uint names,
                      unsigned long chars )
 {
     // hash the domain names
-    int res = hash_from_file(file, table, names, chars);
+	int res = ct_hash_from_file(file, table, names, chars);
 
     if (res == 0) {
         printf("Successful.\n");
@@ -544,27 +544,27 @@ int fill_hash_table( ck_hash_table *table, FILE *file, uint names,
 
 /*----------------------------------------------------------------------------*/
 
-int create_and_fill_table( ck_hash_table **table, FILE *file )
+int ct_create_and_fill_table( ck_hash_table **table, FILE *file )
 {
     uint names;
     unsigned long chars;
     int res;
 
-    if ((res = count_domain_names(file, &names, &chars)) != 0) {
+	if ((res = ct_count_domain_names(file, &names, &chars)) != 0) {
         fclose(file);
         return ERR_COUNT;
     }
 
     fseek(file, 0, SEEK_SET);
 
-    *table = ck_create_table(names, destroy_items);
+	*table = ck_create_table(names, ct_destroy_items);
 
     if (*table == NULL) {
         fprintf(stderr, "Error creating hash table.\n");
         return ERR_TABLE_CREATE;
     }
 
-    if ((res = fill_hash_table(*table, file, names, chars)) != 0) {
+	if ((res = ct_fill_hash_table(*table, file, names, chars)) != 0) {
 		return ERR_FILL;
     }
 
@@ -573,7 +573,7 @@ int create_and_fill_table( ck_hash_table **table, FILE *file )
 
 /*----------------------------------------------------------------------------*/
 
-void clear_items_array( da_array *items )
+void ct_clear_items_array( da_array *items )
 {
 	uint count = da_get_count(items);
 
@@ -585,7 +585,7 @@ void clear_items_array( da_array *items )
 
 /*----------------------------------------------------------------------------*/
 
-int compare_items_array( da_array *items1, da_array *items2 )
+int ct_compare_items_array( da_array *items1, da_array *items2 )
 {
 	uint count1 = da_get_count(items1);
 	uint count2 = da_get_count(items2);
@@ -650,7 +650,7 @@ int compare_items_array( da_array *items1, da_array *items2 )
 
 /*----------------------------------------------------------------------------*/
 
-int test_hash_table( char *filename )
+int ct_test_hash_table( char *filename )
 {
     printf("Testing hash table...\n\n");
 
@@ -660,7 +660,7 @@ int test_hash_table( char *filename )
 	da_initialize(&items_not_found, 1000, sizeof(char *));
 	da_initialize(&items_removed, 1000, sizeof(char *));
 
-	for (int i = 0; i < 10; ++i) {
+	for (int i = 0; i < 1; ++i) {
 
 		printf("----------------------------\n");
 		printf("-----Iteration %d------------\n", i);
@@ -678,7 +678,7 @@ int test_hash_table( char *filename )
 		printf("Done.\n");
 
 		printf("Creating and filling the table...\n\n");
-		res = create_and_fill_table(&table, file);
+		res = ct_create_and_fill_table(&table, file);
 
 		switch (res) {
 			case ERR_FILL:
@@ -691,10 +691,10 @@ int test_hash_table( char *filename )
 		printf("\nDone. Result: %d\n\n", res);
 
 		printf("Testing lookup...\n\n");
-		res = test_fnc_from_file(table, file, test_lookup);
+		res = ct_test_fnc_from_file(table, file, ct_test_lookup);
 		printf("\nDone. Items not found: %d\n\n",
 			   da_get_count(&items_not_found));
-		clear_items_array(&items_not_found);
+		ct_clear_items_array(&items_not_found);
 
 		printf("Testing rehash...\n");
 		int res_rehash = ck_rehash(table);
@@ -705,26 +705,26 @@ int test_hash_table( char *filename )
 		printf("\nDone. Result: %d\n\n", res_rehash);
 
 		printf("Testing lookup...\n\n");
-		res = test_fnc_from_file(table, file, test_lookup);
+		res = ct_test_fnc_from_file(table, file, ct_test_lookup);
 		printf("\nDone. Items not found: %d\n\n",
 			   da_get_count(&items_not_found));
-		clear_items_array(&items_not_found);
+		ct_clear_items_array(&items_not_found);
 
 		printf("Testing removal...\n\n");
-		res = test_fnc_from_file(table, file, test_remove);
+		res = ct_test_fnc_from_file(table, file, ct_test_remove);
 		printf("\nDone. Items removed: %d\n\n", da_get_count(&items_removed));
 
 		printf("Testing lookup...\n\n");
-		res = test_fnc_from_file(table, file, test_lookup);
+		res = ct_test_fnc_from_file(table, file, ct_test_lookup);
 		printf("\nDone. Result: %d\n\n", res);
 
 		printf("Comparing array of not found items with array of removed "
 			   "items...\n\n");
-		res = compare_items_array(&items_not_found, &items_removed);
+		res = ct_compare_items_array(&items_not_found, &items_removed);
 		printf("\nDone. Result: %d\n\n", res);
 
-		clear_items_array(&items_removed);
-		clear_items_array(&items_not_found);
+		ct_clear_items_array(&items_removed);
+		ct_clear_items_array(&items_not_found);
 
 		ck_destroy_table(&table);
 		fclose(file);
@@ -741,7 +741,7 @@ int test_hash_table( char *filename )
 
 /*----------------------------------------------------------------------------*/
 
-int start_server( char *filename )
+int ct_start_server( char *filename )
 {
     printf("Starting server...\n\n");
 
@@ -757,7 +757,7 @@ int start_server( char *filename )
     printf("Done.\n\n");
 
     printf("Creating and filling the table...\n\n");
-    uint res = create_and_fill_table(&table, file);
+	uint res = ct_create_and_fill_table(&table, file);
 
     switch (res) {
         case ERR_FILL:
