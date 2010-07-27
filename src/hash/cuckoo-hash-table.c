@@ -2,9 +2,7 @@
  * @file cuckoo-hash-table.c
  *
  * @todo When hashing an item, only the first table is tried for this item.
- *       We may try both tables. (But it is not neccessary.)
- * @todo Shouldn't the loop detection be changed when there are more than 2
- *       tables?
+ *       We may try all tables. (But it is not neccessary.)
  */
 /*----------------------------------------------------------------------------*/
 #include <stdio.h>
@@ -500,57 +498,6 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 }
 
 /*----------------------------------------------------------------------------*/
-/*!
- * @todo The same problem as in rehashing - saving pointer to stash and then
- *       using it in call to ck_hash_item may cause problems.
- */
-int ck_insert_item( ck_hash_table *table, const char *key,
-					size_t length, void *value )
-{
-	// lock mutex to avoid write conflicts
-	pthread_mutex_lock(&table->mtx_table);
-
-	debug_cuckoo_hash("Inserting item with key: %s.\n", key);
-	debug_cuckoo_hash_hex(key, length);
-	debug_cuckoo_hash("\n");
-
-	// create item structure and fill in the given data, key will not be copied!
-	ck_hash_table_item *new_item =
-			(ck_hash_table_item *)malloc((sizeof(ck_hash_table_item)));
-	ck_fill_item(key, length, value, GET_GENERATION(table->generation),
-				 new_item);
-
-	// there should be at least 2 free places
-	assert(da_try_reserve(&table->stash, 2) == 0);
-	da_reserve(&table->stash, 1);
-	if (ck_hash_item(table, &new_item, &STASH_ITEMS(&table->stash)[
-			da_get_count(&table->stash)], table->generation) != 0) {
-		debug_cuckoo_hash("Item with key %*s inserted into the buffer.\n",
-		   STASH_ITEMS(&table->stash)[da_get_count(&table->stash)]->key_length,
-		   STASH_ITEMS(&table->stash)[da_get_count(&table->stash)]->key);
-
-		// loop occured, the item is already at its new place in the buffer,
-		// so just increment the index and check if rehash is not needed
-		da_occupy(&table->stash, 1);
-
-		// if only one place left, rehash (this place is used in rehashing)
-		if (da_try_reserve(&table->stash, 2) != 0) {
-			int res = ck_rehash(table);
-			if (res != 0) {
-				debug_cuckoo_hash("Rehashing not successful, rehash flag: %hu\n",
-					   IS_REHASHING(table->generation));
-				assert(0);
-			}
-			pthread_mutex_unlock(&table->mtx_table);
-			return res;
-		}
-	}
-
-	pthread_mutex_unlock(&table->mtx_table);
-	return 0;
-}
-
-/*----------------------------------------------------------------------------*/
 
 void ck_rollback_rehash( ck_hash_table *table )
 {
@@ -578,11 +525,20 @@ void ck_rollback_rehash( ck_hash_table *table )
 
 /*----------------------------------------------------------------------------*/
 /*!
- * If not successful, the rehashing flag should still be set after returning.
+ * @brief Rehashes the whole table.
  *
- * @todo What if the stash is reallocated during rehashing? We'd be using
+ * @param table Hash table to be rehashed.
+ *
+ * @note While rehashing no item should be inserted as it will result in a
+ *       deadlock.
+ *
+ * @retval 0 No error.
+ * @retval -1 Rehashing failed. Some items may have been already moved and the
+ *            rehashing flag remains set.
+ *
+ * @todo What if the stash is reallocated during ck_hash_item()? We'd be using
  *       the old stash for saving items! The old stash would not get deallocated
- *       (due to RCU - maybe put some rcu_read_lock() here), but the items
+ *       (due to RCU - maybe put some rcu_read_lock() here), but the item
  *       would not be saved into the new stash!
  *       Maybe add a function for getting a pointer to particular item from
  *       the dynamic array and protect it using rcu_read_lock().
@@ -772,6 +728,54 @@ int ck_rehash( ck_hash_table *table )
 	SET_REHASHING_OFF(&table->generation);
 
     return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int ck_insert_item( ck_hash_table *table, const char *key,
+					size_t length, void *value )
+{
+	// lock mutex to avoid write conflicts
+	pthread_mutex_lock(&table->mtx_table);
+
+	debug_cuckoo_hash("Inserting item with key: %s.\n", key);
+	debug_cuckoo_hash_hex(key, length);
+	debug_cuckoo_hash("\n");
+
+	// create item structure and fill in the given data, key will not be copied!
+	ck_hash_table_item *new_item =
+			(ck_hash_table_item *)malloc((sizeof(ck_hash_table_item)));
+	ck_fill_item(key, length, value, GET_GENERATION(table->generation),
+				 new_item);
+
+	// there should be at least 2 free places
+	assert(da_try_reserve(&table->stash, 2) == 0);
+	da_reserve(&table->stash, 1);
+	if (ck_hash_item(table, &new_item, &STASH_ITEMS(&table->stash)[
+			da_get_count(&table->stash)], table->generation) != 0) {
+		debug_cuckoo_hash("Item with key %*s inserted into the buffer.\n",
+		   STASH_ITEMS(&table->stash)[da_get_count(&table->stash)]->key_length,
+		   STASH_ITEMS(&table->stash)[da_get_count(&table->stash)]->key);
+
+		// loop occured, the item is already at its new place in the buffer,
+		// so just increment the index and check if rehash is not needed
+		da_occupy(&table->stash, 1);
+
+		// if only one place left, rehash (this place is used in rehashing)
+		if (da_try_reserve(&table->stash, 2) != 0) {
+			int res = ck_rehash(table);
+			if (res != 0) {
+				debug_cuckoo_hash("Rehashing not successful, rehash flag: %hu\n",
+					   IS_REHASHING(table->generation));
+				assert(0);
+			}
+			pthread_mutex_unlock(&table->mtx_table);
+			return res;
+		}
+	}
+
+	pthread_mutex_unlock(&table->mtx_table);
+	return 0;
 }
 
 /*----------------------------------------------------------------------------*/

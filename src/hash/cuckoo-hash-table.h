@@ -186,24 +186,11 @@ void ck_destroy_table( ck_hash_table **table );
  */
 int ck_insert_item( ck_hash_table *table, const char *key, size_t length,
                     void *value );
-
+#ifdef CT_TEST_REHASH
 /*----------------------------------------------------------------------------*/
-/*!
- * @brief Rehashes the whole table.
- *
- * @param table Hash table to be rehashed.
- *
- * @note While rehashing no item should be inserted as it will result in a
- *       deadlock.
- *
- * @retval 0 No error.
- * @retval -1 Rehashing failed. Some items may have been already moved and the
- *            rehashing flag remains set.
- *
- * @todo This need not to be part of the API!
- */
-int ck_rehash( ck_hash_table *table );
 
+int ck_rehash( ck_hash_table *table );
+#endif
 /*----------------------------------------------------------------------------*/
 /*!
  * @brief Finds item in table.

@@ -1,4 +1,6 @@
 /*!
+ * @file dns-simple.h
+ *
  * @todo Create a type for domain name in wire format based on char* but
  *       maybe with some checks? Or try to create implicitly shared struct.
  *       Add also create() and destroy() functions, so we don't need to use

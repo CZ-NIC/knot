@@ -44,8 +44,11 @@ zn_node *zds_find( zds_zone *zone, dnss_dname_wire owner )
 
 int zds_remove( zds_zone *zone, dnss_dname_wire owner )
 {
-    log_error("%s fixme: Not implemented.\n", __func__);
-    return -1;
+	if (ck_remove_item(zone, owner, dnss_dname_wire_length(owner) - 1) != 0) {
+		log_info("Trying to remove non-existing item: %s\n", owner);
+		return -1;
+	}
+	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
