@@ -41,7 +41,8 @@ static const uint ARRAY_SIZE = 500;
 static const unsigned short PORT = 53535;
 static const uint THREAD_COUNT = 2;
 
-static const dnss_dname TEST_NAME = "seznam.cz.";
+static const dnss_dname TEST_NAME1 = "seznam.cz.";
+static const dnss_dname TEST_NAME2 = "google.cz.";
 static uint DELETED_TEST_NAME;
 
 /*----------------------------------------------------------------------------*/
@@ -594,9 +595,9 @@ int ct_compare_items_array( da_array *items1, da_array *items2 )
 	int errors = 0;
 	DELETED_TEST_NAME = 0;
 
-	uint dname_size = dnss_wire_dname_size(&TEST_NAME);
+	uint dname_size = dnss_wire_dname_size(&TEST_NAME1);
 	dnss_dname_wire test_dname = (dnss_dname_wire)malloc(dname_size);
-	dnss_dname_to_wire(TEST_NAME, test_dname, dname_size);
+	dnss_dname_to_wire(TEST_NAME1, test_dname, dname_size);
 
 	for (uint i = 0; i < count1; ++i) {
 		if (strncmp(((char **)(da_get_items(items1)))[i], test_dname,
@@ -667,7 +668,7 @@ void ct_waste_time( uint loops )
 
 		for (int j = 0; j <= loops; ++j) {
 			res = 1;
-			for (int i = 1; i <= 1000; ++i) {
+			for (int i = 1; i <= 100; ++i) {
 				res *= i;
 			}
 		}
@@ -676,17 +677,15 @@ void ct_waste_time( uint loops )
 
 /*----------------------------------------------------------------------------*/
 
-void *ct_read_item( void *obj )
+void *ct_read_item( ck_hash_table *table, const dnss_dname test_name )
 {
 	// register thread to RCU
 	rcu_register_thread();
 	void *res = NULL;
 
-	ck_hash_table *table = (ck_hash_table *)obj;
-
-	uint dname_size = dnss_wire_dname_size(&TEST_NAME);
+	uint dname_size = dnss_wire_dname_size(&test_name);
 	dnss_dname_wire test_dname = (dnss_dname_wire)malloc(dname_size);
-	dnss_dname_to_wire(TEST_NAME, test_dname, dname_size);
+	dnss_dname_to_wire(test_name, test_dname, dname_size);
 
 	// get a reference to the item, protect by RCU
 	printf("[Read] Acquiring reference to the item...\n");
@@ -723,8 +722,8 @@ void *ct_read_item( void *obj )
 	if (ck_find_item(table, test_dname, dname_size - 1) == NULL) {
 		printf("[Read] Item not found in the table.\n");
 	} else {
-		printf("[Read] Item still found in the table!\n");
-		res = (void *)(-1);
+		printf("[Read] Item still found in the table.\n");
+		res = (void *)(1);
 	}
 
 	// unregister thread from RCU
@@ -735,20 +734,31 @@ void *ct_read_item( void *obj )
 
 /*----------------------------------------------------------------------------*/
 
+static inline void *ct_read_item1( void *obj )
+{
+	return ct_read_item((ck_hash_table *)obj, TEST_NAME1);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static inline void *ct_read_item2( void *obj )
+{
+	return ct_read_item((ck_hash_table *)obj, TEST_NAME2);
+}
+
+/*----------------------------------------------------------------------------*/
+
 int ct_delete_item_during_read( ck_hash_table *table )
 {
-	// register thread to RCU
-	rcu_register_thread();
-
 	pthread_t thread;
 
-	uint dname_size = dnss_wire_dname_size(&TEST_NAME);
+	uint dname_size = dnss_wire_dname_size(&TEST_NAME1);
 	dnss_dname_wire test_dname = (dnss_dname_wire)malloc(dname_size);
-	dnss_dname_to_wire(TEST_NAME, test_dname, dname_size);
+	dnss_dname_to_wire(TEST_NAME1, test_dname, dname_size);
 
 	// create thread for reading
 	printf("[Delete] Creating thread for reading...\n");
-	if (pthread_create(&thread, NULL, ct_read_item, (void *)table)) {
+	if (pthread_create(&thread, NULL, ct_read_item1, (void *)table)) {
 		log_error("%s: failed to create reading thread.", __func__);
 		return -1;
 	}
@@ -776,8 +786,48 @@ int ct_delete_item_during_read( ck_hash_table *table )
 	}
 	printf("[Delete] Done.\n");
 
-	// unregister thread from RCU
-	rcu_unregister_thread();
+	return (int)ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int ct_rehash_during_read( ck_hash_table *table )
+{
+	pthread_t thread;
+
+	uint dname_size = dnss_wire_dname_size(&TEST_NAME2);
+	dnss_dname_wire test_dname = (dnss_dname_wire)malloc(dname_size);
+	dnss_dname_to_wire(TEST_NAME2, test_dname, dname_size);
+
+	// create thread for reading
+	printf("[Delete] Creating thread for reading...\n");
+	if (pthread_create(&thread, NULL, ct_read_item2, (void *)table)) {
+		log_error("%s: failed to create reading thread.", __func__);
+		return -1;
+	}
+	printf("[Delete] Done.\n");
+
+	// wait some time, so the other thread gets the item for reading
+	printf("[Delete] Waiting...\n");
+	ct_waste_time(1000);
+	printf("[Delete] Done.\n");
+
+	// delete the item from the table
+	printf("[Delete] Rehashing items in table...\n");
+	if (ck_rehash(table) != 0) {
+		fprintf(stderr, "Rehashing not successful!\n");
+		return -2;
+	}
+	printf("[Delete] Done.\n");
+
+	// wait for the thread
+	printf("[Delete] Waiting for the reader thread to finish...\n");
+	void *ret = NULL;
+	if (pthread_join(thread, &ret)) {
+		log_error("%s: failed to join reading thread.", __func__);
+		return -1;
+	}
+	printf("[Delete] Done.\n");
 
 	return (int)ret;
 }
@@ -788,6 +838,9 @@ int ct_test_hash_table( char *filename )
 {
 	// initialize RCU
 	rcu_init();
+
+	// register thread to RCU
+	rcu_register_thread();
 
 	printf("Testing hash table...\n\n");
 
@@ -871,6 +924,10 @@ int ct_test_hash_table( char *filename )
 			printf("\nDone. Result: %d\n\n", res);
 		}
 
+		printf("Testing rehash during read...\n\n");
+		res = ct_rehash_during_read(table);
+		printf("\nDone. Result: %d\n\n", res);
+
 		ck_destroy_table(&table);
 		fclose(file);
 
@@ -880,6 +937,9 @@ int ct_test_hash_table( char *filename )
 
 	da_destroy(&items_not_found);
 	da_destroy(&items_removed);
+
+	// unregister thread from RCU
+	rcu_unregister_thread();
 
 	return res;
 }
