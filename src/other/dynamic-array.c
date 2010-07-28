@@ -19,6 +19,9 @@ typedef enum {
  * @retval -1 On failure.
  */
 int da_resize( da_array *array, da_resize_type type ) {
+	debug_da("da_resize(): array pointer: %p, items pointer: %p\n", array,
+			 array->items);
+
 	uint new_size = ((type == DA_LARGER)
 					 ? (array->allocated *= 2)
 					 : (array->allocated /= 2));
@@ -29,6 +32,8 @@ int da_resize( da_array *array, da_resize_type type ) {
 		return -1;
 	}
 
+	debug_da("Place for new items: %p\n", new_items);
+
 	// copy the contents from the old array to the new
 	memcpy(new_items, array->items, array->count * array->item_size);
 
@@ -36,9 +41,13 @@ int da_resize( da_array *array, da_resize_type type ) {
 	void *old_items = rcu_xchg_pointer(&array->items, new_items);
 	array->allocated = new_size;
 
+	debug_da("Old items pointer: %p\n", old_items);
+
 	// wait for readers to finish
 	synchronize_rcu();
 	// deallocate the old array
+	debug_da("RCU synchronized, deallocating old items array at address %p.\n",
+			 old_items);
 	free(old_items);
 
 	return 1;
