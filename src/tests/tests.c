@@ -234,7 +234,7 @@ int test_dynamic_array()
 	log_debug("Running %d random operations...\n", DA_OPERATIONS);
 	for (int i = 1; i <= DA_OPERATIONS; ++i) {
 		int r = rand() % 3;
-		int count = rand() % 10;
+		int count = rand() % 10 + 1;
 		switch (r) {
 			case 0:
 				log_debug("Reserving place for %d items...", count);
@@ -254,7 +254,7 @@ int test_dynamic_array()
 				if (da_occupy(&array, count) == 0) {
 					((uint *)da_get_items(&array))[da_get_count(&array) - 1]
 							= rand();
-					log_debug("Successful, inserted %u.\n",
+					log_debug("Successful, last inserted %u.\n",
 							  ((uint *)da_get_items(&array))[
 									  da_get_count(&array) - 1]);
 					assert(size <= allocated);
