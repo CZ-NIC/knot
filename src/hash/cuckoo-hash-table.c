@@ -24,7 +24,6 @@
 /*----------------------------------------------------------------------------*/
 
 #define ERR_WRONG_TABLE log_error("Wrong hash table used.\n")
-#define ERR_INF_LOOP log_error("Hashing entered infinite loop.\n")
 #define ERR_BITSET log_error("Bitset not correct.\n");
 #define ERR_REHASHING_NOT_IMPL \
             log_error("Rehashing needed, but not supported.\n");
@@ -235,7 +234,7 @@ uint ck_check_used_twice( da_array *used, uint32_t hash )
     }
 
 	if (i <= da_get_count(used) && found == 2) {
-        ERR_INF_LOOP;
+		debug_cuckoo_hash("Hashing entered infinite loop.\n");
         return -1;
     }
     else {
@@ -600,7 +599,7 @@ int ck_rehash( ck_hash_table *table )
 		if (ck_hash_item(table, &old, &STASH_ITEMS(&table->stash)[stash_i],
 			   NEXT_GENERATION(table->generation)) != 0) {
 			// loop occured
-			ERR_INF_LOOP;
+			debug_cuckoo_hash("Hashing entered infinite loop.\n");
 
 			debug_cuckoo_rehash("Item with key %*s inserted into the buffer"
 				".\n", STASH_ITEMS(&table->stash)[stash_i]->key_length,
@@ -680,7 +679,7 @@ int ck_rehash( ck_hash_table *table )
 											da_get_count(&table->stash)],
 				NEXT_GENERATION(table->generation)) != 0) {
 				// loop occured
-				ERR_INF_LOOP;
+				debug_cuckoo_hash("Hashing entered infinite loop.\n");
 
 				debug_cuckoo_rehash("Item with key %*s inserted into the buffer"
 					".\n", STASH_ITEMS(&table->stash)[
