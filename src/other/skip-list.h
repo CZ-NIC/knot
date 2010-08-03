@@ -29,27 +29,98 @@ Retrieved from: http://en.literateprograms.org/Skip_list_(C)?oldid=12811
  */
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * @brief Skip list node.
+ */
 struct skip_node {
+	/*! @brief Key of the node. Used for ordering. */
 	void *key;
+
+	/*! @brief Value stored in the node. */
 	void *value;
-	struct skip_node **forward; /* pointer to array of pointers */
+
+	/*! @brief Pointers to next item on various levels. */
+	struct skip_node **forward;
 };
 
 typedef struct skip_node skip_node;
 
+/*!
+ * @brief Skip list.
+ *
+ * @todo Implement quasi-randomization.
+ */
 typedef struct {
-	skip_node *header;
+	/*! @brief Head of the list (with no actual key and value stored). */
+	skip_node *head;
+
+	/*! @brief Actual maximum level of the list. */
 	int level;
+
+	/*! @brief Function for comparing two skip list item's keys. */
 	int (*compare_keys)(void *, void *);
+
+	/*! @brief Function for merging two skip list item's values. */
+	int (*merge_values)(void *, void *);
 } skip_list;
 
 /*----------------------------------------------------------------------------*/
+/*!
+ * @brief Creates a new generic skip list.
+ *
+ * @param compare_keys Pointer to a function for comparing the keys.
+ * @param merge_values Pointer to a function for merging the saved values.
+ *
+ * Parameter @a merge_values is optional. If set to NULL, the skip list will not
+ * merge values when attempting to insert item with key already present in the
+ * list.
+ *
+ * The @a merge_values function should merge the second value to the first
+ * value. It must not delete the first value. The second value also should not
+ * be deleted (as this is concern of the caller).
+ *
+ * @return Pointer to the newly created skip list if successful. NULL otherwise.
+ */
+skip_list *skip_create_list( int (*compare_keys)(void *, void *),
+							 int (*merge_values)(void *, void *) );
 
-skip_list *skip_create_list( int (*compare_keys)(void *, void *) );
+/*!
+ * @brief Inserts a new key-value pair into the skip list.
+ *
+ * @param list The skip list to insert to.
+ * @param key Key of the item to be inserted. Used for ordering.
+ * @param value Value of the item to be inserted.
+ *
+ * If a merge function was specified upon creation of the list and @a key is
+ * already present in the list, the new value will be merged to the value saved
+ * in the list node. Otherwise the function does nothing.
+ *
+ * @retval 0 If successful and the key was not yet present in the list.
+ * @retval 1 If successful, the key was already present and the values were
+ *           merged.
+ * @retval 2 If the key was already present and the new value was ignored (because
+ *           no merging function was provided).
+ * @retval -1 If an error occured and the key was not present in the list.
+ * @retval -2 If the key is already present in the list and merging was
+ *            unsuccessful.
+ */
+int skip_insert( skip_list *list, void *key, void *value );
 
-void skip_insert( skip_list* list, void *key, void *value );
+/*!
+ * @brief Deletes an item with the given key from the list.
+ *
+ * @param list Skip list to delete from.
+ * @param key Key of the item to be deleted.
+ */
+void skip_delete( skip_list *list, void *key );
 
-void skip_delete( skip_list* list, void *key );
-
-void *skip_find( skip_list* list, void *key );
+/*!
+ * @brief Tries to find item with the given key in the list.
+ *
+ * @param list Skip list to search in.
+ * @param key Key of the item to be found.
+ *
+ * @return Value stored in the item with key @a key, or NULL if the key was not
+ *         found.
+ */
+void *skip_find( skip_list *list, void *key );
