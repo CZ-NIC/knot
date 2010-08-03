@@ -9,7 +9,7 @@ COL_CYAN = \033[01;36m
 COL_WHITE = \033[01;37m
 COL_END = \033[0m
 
-INC_DIRS = src/ src/tests/ src/hash/ src/dns/ src/other/ src/server/
+INC_DIRS = src/ src/tests/ src/hash/ src/dns/ src/other/ src/server/ src/zone/
 SRC_DIRS = src/
 OBJ_DIR = obj/
 BIN_DIR = bin/
@@ -22,7 +22,7 @@ OBJS = $(addprefix $(OBJ_DIR), $(addsuffix .o, $(basename $(notdir $(SRC_FILES))
 
 CC = gcc
 CFLAGS += -Wall -std=c99 -D _XOPEN_SOURCE=600
-LDFLAGS += -lpthread -lurcu
+LDFLAGS += -lpthread -lurcu -lldns
 
 all:cutedns
 
