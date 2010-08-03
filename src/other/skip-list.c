@@ -83,7 +83,7 @@ skip_list *skip_create_list( int (*compare_keys)(void *, void *) )
 {
 	skip_list *ss = (skip_list *)malloc(sizeof(skip_list));
 
-    ss->header = make_node(MAX_LEVEL, 0);
+	ss->header = skip_make_node(MAX_LEVEL, 0);
     ss->level = 0;
     return ss;
 }
@@ -117,7 +117,7 @@ void *skip_find( skip_list *list, void *key )
     }
     x = x->forward[0];
 
-	if (x != NULL && x->value == search_value) {
+	if (x != NULL && list->compare_keys(x->key, key) == 0) {
 		return x->value;
 	}
 	return NULL;
