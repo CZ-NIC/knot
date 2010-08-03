@@ -33,7 +33,7 @@ Retrieved from: http://en.literateprograms.org/Skip_list_(C)?oldid=12811
 struct skip_node {
 	void *key;
 	void *value;
-	struct sn **forward; /* pointer to array of pointers */
+	struct skip_node **forward; /* pointer to array of pointers */
 };
 
 typedef struct skip_node skip_node;
