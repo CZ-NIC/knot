@@ -49,8 +49,6 @@ typedef struct skip_node skip_node;
  * @brief Skip list.
  *
  * @todo Implement quasi-randomization.
- * @todo Consider passing the function pointers to the appropriate functions
- *       to save some space.
  */
 typedef struct {
 	/*! @brief Head of the list (with no actual key and value stored). */
@@ -61,12 +59,6 @@ typedef struct {
 
 	/*! @brief Function for comparing two skip list item's keys. */
 	int (*compare_keys)(void *, void *);
-
-	/*! @brief Function for merging two skip list item's values. */
-	int (*merge_values)(void **, void **);
-
-	/*! @brief Function for printing the key-value pair. */
-	void (*print_item)(void *, void *);
 } skip_list;
 
 /*----------------------------------------------------------------------------*/
@@ -74,12 +66,6 @@ typedef struct {
  * @brief Creates a new generic skip list.
  *
  * @param compare_keys Function for comparing the keys.
- * @param merge_values Function for merging the saved values. Optional. If set
- *                     to NULL, the skip list will not merge values when
- *                     attempting to insert item with key already present in the
- *                     list.
- * @param print_item Function for printing the key-value pair. Optional. If set
- *                   to NULL, the skip_print_list() will output nothing.
  *
  * The @a merge_values function should  merge the second value to the first
  * value. It must not delete the first value. The second value also should not
@@ -87,9 +73,7 @@ typedef struct {
  *
  * @return Pointer to the newly created skip list if successful. NULL otherwise.
  */
-skip_list *skip_create_list( int (*compare_keys)(void *, void *),
-							 int (*merge_values)(void **, void **),
-							 void (*print_item)(void *, void *) );
+skip_list *skip_create_list( int (*compare_keys)(void *, void *) );
 
 /*!
  * @brief Properly destroys the list, possibly also with the keys and values.
@@ -110,6 +94,10 @@ void skip_destroy_list( skip_list *list, void (*destroy_key)(void *),
  * @param list The skip list to insert to.
  * @param key Key of the item to be inserted. Used for ordering.
  * @param value Value of the item to be inserted.
+ * @param merge_values Function for merging the saved values. Optional. If set
+ *                     to NULL, the skip list will not merge values when
+ *                     attempting to insert item with key already present in the
+ *                     list.
  *
  * If a merge function was specified upon creation of the list and @a key is
  * already present in the list, the new value will be merged to the value saved
@@ -124,7 +112,8 @@ void skip_destroy_list( skip_list *list, void (*destroy_key)(void *),
  * @retval -2 If the key is already present in the list and merging was
  *            unsuccessful.
  */
-int skip_insert( skip_list *list, void *key, void *value );
+int skip_insert( skip_list *list, void *key, void *value,
+				 int (*merge_values)(void **, void **) );
 
 /*!
  * @brief Removes an item with the given key from the list and optionally
@@ -156,11 +145,10 @@ int skip_remove( skip_list *list, void *key, void (*destroy_key)(void *),
 void *skip_find( const skip_list *list, void *key );
 
 /*!
- * @brief Prints the whole list to standard output.
+ * @brief Prints the whole list using the given print function.
  *
  * @param list Skip list to be printed.
- *
- * The list must have had the print_item set when it was created. Otherwise this
- * function will output nothing.
+ * @param print_item Function for printing the key-value pair.
  */
-void skip_print_list( const skip_list *list );
+void skip_print_list( const skip_list *list,
+					  void (*print_item)(void *, void *) );

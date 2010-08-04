@@ -356,7 +356,7 @@ int test_skip_merge_values( void **lvalue, void **rvalue )
 
 void test_skip_print_item( void *key, void *value )
 {
-	printf("Key: %d, value: %d\n", (int)key, (int)value);
+	log_debug("Key: %d, value: %d\n", (int)key, (int)value);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -368,90 +368,89 @@ int test_skip_list()
 
 	int errors = 0;
 
-	printf("Testing skip list...\n\n");
+	log_debug("Testing skip list...\n\n");
 
-	printf("Creating new skip list...\n");
-	skip_list *list = skip_create_list(test_skip_compare_keys,
-									   test_skip_merge_values,
-									   test_skip_print_item);
+	log_debug("Creating new skip list...\n");
+	skip_list *list = skip_create_list(test_skip_compare_keys);
 
 	// insert items
 	srand((unsigned)time(NULL));
 	int res = 0;
 	int item_i = -1;
 
-	printf("Inserting random items...\n");
+	log_debug("Inserting random items...\n");
 	for (int i = 0; i < LOOPS; ++i) {
-		int key = rand() % 100;
-		int value = rand() % 100;
+		int key = rand() % 100 + 1;
+		int value = rand() % 100 + 1;
 
-		printf("Inserting item with key: %d and value: %d\n", key, value);
-		res = skip_insert(list, (void *)key, (void *)value);
+		log_debug("Inserting item with key: %d and value: %d\n", key, value);
+		res = skip_insert(list, (void *)key, (void *)value,
+						  test_skip_merge_values);
 		switch (res) {
 			case -2:
-				printf("Error: Item already in the list, merging "
+				log_error("Error: Item already in the list, merging "
 					   "unsuccessful!\n");
 				++errors;
 				break;
 			case -1:
-				printf("Error: Item was not in the list, insert "
+				log_error("Error: Item was not in the list, insert "
 					   "unsuccessful.\n");
 				++errors;
 				break;
 			case 0:
-				printf("Successfully inserted.\n");
+				log_debug("Successfully inserted.\n");
 				items[++item_i] = key;
 				break;
 			case 1:
-				printf("Item was already in the list, new value ignored.\n");
+				log_debug("Item was already in the list, new value ignored.\n");
 				break;
 			case 2:
-				printf("Item was already in the list, merging successful.\n");
+				log_debug("Item was already in the list, merging successful.\n");
 				break;
 		}
 	}
 
-	printf("\n");
-	skip_print_list(list);
+	log_debug("\n");
+	skip_print_list(list, test_skip_print_item);
 
 	int not_found = 0;
 
 	// find items
-	printf("\nFinding items...\n");
+	log_debug("\nFinding items...\n");
 	while (item_i >= 0) {
-		printf("Searching for item with key %d.\n", items[item_i]);
+		log_debug("Searching for item with key %d.\n", items[item_i]);
 		void *found = skip_find(list, (void *)items[item_i]);
 		if (found == NULL) {
-			printf("Item not found!\n");
+			log_debug("Item not found!\n");
 			++errors;
 			++not_found;
 		} else {
-			printf("Found, value: %d\n", (int)found);
+			log_debug("Found, value: %d\n", (int)found);
 		}
 		--item_i;
 	}
 
-	printf("Items not found: %d\n", not_found);
+	log_debug("Items not found: %d\n", not_found);
 
 	// delete items
-	printf("\nDeleting random items...\n");
+	log_debug("\nDeleting random items...\n");
 	for (int i = 0; i < LOOPS; ++i) {
 		int key = rand() % 100;
 
-		printf("Deleting item with key %d.\n", key);
+		log_debug("Deleting item with key %d.\n", key);
 		res = skip_remove(list, (void *)key, NULL, NULL);
 		switch (res) {
 			case 0:
-				printf("Successfuly removed.\n");
+				log_debug("Successfuly removed.\n");
 				break;
 			case -1:
-				printf("Item not found in the list.\n");
+				log_debug("Item not found in the list.\n");
 				break;
 		}
 	}
 
-	printf("\n");
-	skip_print_list(list);
+	log_debug("\n");
+	skip_print_list(list, test_skip_print_item);
 
 	skip_destroy_list(list, NULL, NULL);
 
