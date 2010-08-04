@@ -80,9 +80,9 @@ int skip_random_level() {
 /*!
  * @brief Creates a new skip list node with the given key and value.
  *
- * @param level
- * @param key
- * @param value
+ * @param level Level of the skip list node.
+ * @param key Key of the new node.
+ * @param value Value to be stored in the node.
  *
  * @return Pointer to the newly created node or NULL if not successful.
  */
@@ -107,11 +107,40 @@ skip_node *skip_make_node( int level, void *key, void *value )
 }
 
 /*----------------------------------------------------------------------------*/
+/*!
+ * @brief Properly deallocates the given skip list node, and optionally destroys
+ *        its key and value.
+ *
+ * @param node Skip list node to be deleted.
+ * @param destroy_key Function for properly destroying the key. If set tu NULL,
+ *                    the object at which the key points will not be destroyed.
+ * @param destroy_value Function for properly destroying the key. If set tu
+ *                      NULL, the object at which the value points will not be
+ *                      destroyed.
+ */
+void skip_delete_node( skip_node **node, void (*destroy_key)(void *),
+				  void (*destroy_value)(void *) )
+{
+	if (destroy_key != NULL) {
+		destroy_key((*node)->key);
+	}
+	if (destroy_value != NULL) {
+		destroy_value((*node)->value);
+	}
+
+	free((*node)->forward);
+	free(*node);
+
+	node = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
 /* Public functions          					                              */
 /*----------------------------------------------------------------------------*/
 
 skip_list *skip_create_list( int (*compare_keys)(void *, void *),
-							 int (*merge_values)(void *, void *)  )
+							 int (*merge_values)(void **, void **),
+							 void (*print_item)(void *, void *)  )
 {
 	assert(compare_keys != NULL);
 
@@ -131,13 +160,42 @@ skip_list *skip_create_list( int (*compare_keys)(void *, void *),
     ss->level = 0;
 	ss->compare_keys = compare_keys;
 	ss->merge_values = merge_values;
+	ss->print_item = print_item;
 
     return ss;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void *skip_find( skip_list *list, void *key )
+void skip_destroy_list( skip_list *list, void (*destroy_key)(void *),
+						void (*destroy_value)(void *))
+{
+	assert(list != NULL);
+	assert(list->head != NULL);
+
+	skip_node *x;
+
+	while (list->head->forward[0] != NULL) {
+		x = list->head->forward[0];
+		for (int i = 0; i <= list->level; i++) {
+			if (list->head->forward[i] != x) {
+				break;
+			}
+			list->head->forward[i] = x->forward[i];
+		}
+
+		// delete the item
+		skip_delete_node(&x, destroy_key, destroy_value);
+
+		while (list->level > 0 && list->head->forward[list->level] == NULL) {
+			list->level--;
+		}
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+void *skip_find( const skip_list *list, void *key )
 {
 	assert(list != NULL);
 	assert(list->head != NULL);
@@ -205,16 +263,17 @@ int skip_insert( skip_list *list, void *key, void *value )
 		return 0;
 	} else {	// already in the list
 		if (list->merge_values != NULL) {	// if merge function provided, merge
-			return (list->merge_values(x->value, value) == 0) ? 1 : -2;
+			return (list->merge_values(&x->value, &value) == 0) ? 2 : -2;
 		} else {
-			return 2;
+			return 1;
 		}
 	}
 }
 
 /*----------------------------------------------------------------------------*/
 
-void skip_delete( skip_list *list, void *key )
+int skip_remove( skip_list *list, void *key, void (*destroy_key)(void *),
+				  void (*destroy_value)(void *) )
 {
 	assert(list != NULL);
 	assert(list->head != NULL);
@@ -235,17 +294,43 @@ void skip_delete( skip_list *list, void *key )
     x = x->forward[0];
 
 
-	if (list->compare_keys(x->forward[i]->key, key) == 0) {
-		for(i = 0; i <= list->level; i++) {
-			if(update[i]->forward[i] != x) {
+	if (list->compare_keys(x->key, key) == 0) {
+		for (i = 0; i <= list->level; i++) {
+			if (update[i]->forward[i] != x) {
 				break;
 			}
 			update[i]->forward[i] = x->forward[i];
 		}
 
-        free(x);
+		// delete the item
+		skip_delete_node(&x, destroy_key, destroy_value);
+
 		while (list->level > 0 && list->head->forward[list->level] == NULL) {
 			list->level--;
 		}
-    }
+		return 0;
+	} else {
+		return -1;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+void skip_print_list( const skip_list *list )
+{
+	assert(list != NULL);
+	assert(list->head != NULL);
+	assert(list->compare_keys != NULL);
+
+	if (list->print_item == NULL) {
+		return;
+	}
+
+	printf("Skip list items:\n");
+	skip_node *x = list->head->forward[0];
+	while (x != NULL) {
+		list->print_item(x->key, x->value);
+		x = x->forward[0];
+	}
+
 }
