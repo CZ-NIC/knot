@@ -2,6 +2,7 @@
 //#include "bitset.h"
 #include "common.h"
 #include "dynamic-array.h"
+#include "skip-list.h"
 
 #include <urcu.h>
 #include <pthread.h>
@@ -107,12 +108,12 @@ static const int DA_OPERATIONS = 100;
 
 /*----------------------------------------------------------------------------*/
 
-#define LOOPS 10000
-
 void do_some_stuff( int loops )
 {
 		int i;
 		int res = 1;
+
+		static const int LOOPS = 10000;
 
 		for (int j = 1; j <= LOOPS; ++j) {
 			for (i = 1; i <= loops; ++i) {
@@ -334,4 +335,125 @@ int test_dynamic_array()
 	da_destroy(&array);
 	rcu_unregister_thread();
 	return (int)ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int test_skip_compare_keys( void *key1, void *key2 )
+{
+	return ((int)key1 < (int)key2) ? -1 : (((int)key1 > (int)key2) ? 1 : 0);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int test_skip_merge_values( void **lvalue, void **rvalue )
+{
+	(*lvalue) = (void *)((int)(*lvalue) + (int)(*rvalue));
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void test_skip_print_item( void *key, void *value )
+{
+	printf("Key: %d, value: %d\n", (int)key, (int)value);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int test_skip_list()
+{
+	static const int LOOPS = 30;
+	int *items = (int *)malloc(LOOPS * sizeof(int));
+
+	int errors = 0;
+
+	printf("Testing skip list...\n\n");
+
+	printf("Creating new skip list...\n");
+	skip_list *list = skip_create_list(test_skip_compare_keys,
+									   test_skip_merge_values,
+									   test_skip_print_item);
+
+	// insert items
+	srand((unsigned)time(NULL));
+	int res = 0;
+	int item_i = -1;
+
+	printf("Inserting random items...\n");
+	for (int i = 0; i < LOOPS; ++i) {
+		int key = rand() % 100;
+		int value = rand() % 100;
+
+		printf("Inserting item with key: %d and value: %d\n", key, value);
+		res = skip_insert(list, (void *)key, (void *)value);
+		switch (res) {
+			case -2:
+				printf("Error: Item already in the list, merging "
+					   "unsuccessful!\n");
+				++errors;
+				break;
+			case -1:
+				printf("Error: Item was not in the list, insert "
+					   "unsuccessful.\n");
+				++errors;
+				break;
+			case 0:
+				printf("Successfully inserted.\n");
+				items[++item_i] = key;
+				break;
+			case 1:
+				printf("Item was already in the list, new value ignored.\n");
+				break;
+			case 2:
+				printf("Item was already in the list, merging successful.\n");
+				break;
+		}
+	}
+
+	printf("\n");
+	skip_print_list(list);
+
+	int not_found = 0;
+
+	// find items
+	printf("\nFinding items...\n");
+	while (item_i >= 0) {
+		printf("Searching for item with key %d.\n", items[item_i]);
+		void *found = skip_find(list, (void *)items[item_i]);
+		if (found == NULL) {
+			printf("Item not found!\n");
+			++errors;
+			++not_found;
+		} else {
+			printf("Found, value: %d\n", (int)found);
+		}
+		--item_i;
+	}
+
+	printf("Items not found: %d\n", not_found);
+
+	// delete items
+	printf("\nDeleting random items...\n");
+	for (int i = 0; i < LOOPS; ++i) {
+		int key = rand() % 100;
+
+		printf("Deleting item with key %d.\n", key);
+		res = skip_remove(list, (void *)key, NULL, NULL);
+		switch (res) {
+			case 0:
+				printf("Successfuly removed.\n");
+				break;
+			case -1:
+				printf("Item not found in the list.\n");
+				break;
+		}
+	}
+
+	printf("\n");
+	skip_print_list(list);
+
+	skip_destroy_list(list, NULL, NULL);
+
+	return errors;;
 }

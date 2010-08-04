@@ -9,6 +9,8 @@ int test_rcu();
 
 int test_dynamic_array();
 
+int test_skip_list();
+
 /*----------------------------------------------------------------------------*/
 
 #endif /* TESTS */

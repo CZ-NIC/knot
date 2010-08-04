@@ -49,6 +49,8 @@ typedef struct skip_node skip_node;
  * @brief Skip list.
  *
  * @todo Implement quasi-randomization.
+ * @todo Consider passing the function pointers to the appropriate functions
+ *       to save some space.
  */
 typedef struct {
 	/*! @brief Head of the list (with no actual key and value stored). */
@@ -61,28 +63,46 @@ typedef struct {
 	int (*compare_keys)(void *, void *);
 
 	/*! @brief Function for merging two skip list item's values. */
-	int (*merge_values)(void *, void *);
+	int (*merge_values)(void **, void **);
+
+	/*! @brief Function for printing the key-value pair. */
+	void (*print_item)(void *, void *);
 } skip_list;
 
 /*----------------------------------------------------------------------------*/
 /*!
  * @brief Creates a new generic skip list.
  *
- * @param compare_keys Pointer to a function for comparing the keys.
- * @param merge_values Pointer to a function for merging the saved values.
+ * @param compare_keys Function for comparing the keys.
+ * @param merge_values Function for merging the saved values. Optional. If set
+ *                     to NULL, the skip list will not merge values when
+ *                     attempting to insert item with key already present in the
+ *                     list.
+ * @param print_item Function for printing the key-value pair. Optional. If set
+ *                   to NULL, the skip_print_list() will output nothing.
  *
- * Parameter @a merge_values is optional. If set to NULL, the skip list will not
- * merge values when attempting to insert item with key already present in the
- * list.
- *
- * The @a merge_values function should merge the second value to the first
+ * The @a merge_values function should  merge the second value to the first
  * value. It must not delete the first value. The second value also should not
  * be deleted (as this is concern of the caller).
  *
  * @return Pointer to the newly created skip list if successful. NULL otherwise.
  */
 skip_list *skip_create_list( int (*compare_keys)(void *, void *),
-							 int (*merge_values)(void *, void *) );
+							 int (*merge_values)(void **, void **),
+							 void (*print_item)(void *, void *) );
+
+/*!
+ * @brief Properly destroys the list, possibly also with the keys and values.
+ *
+ * @param list Skip list to be destroyed.
+ * @param destroy_key Function for properly destroying the key. If set tu NULL,
+ *                    the object at which the key points will not be destroyed.
+ * @param destroy_value Function for properly destroying the key. If set tu
+ *                      NULL, the object at which the value points will not be
+ *                      destroyed.
+ */
+void skip_destroy_list( skip_list *list, void (*destroy_key)(void *),
+						void (*destroy_value)(void *));
 
 /*!
  * @brief Inserts a new key-value pair into the skip list.
@@ -96,10 +116,10 @@ skip_list *skip_create_list( int (*compare_keys)(void *, void *),
  * in the list node. Otherwise the function does nothing.
  *
  * @retval 0 If successful and the key was not yet present in the list.
- * @retval 1 If successful, the key was already present and the values were
+ * @retval 1 If the key was already present and the new value was ignored
+ *           (because no merging function was provided).
+ * @retval 2 If successful, the key was already present and the values were
  *           merged.
- * @retval 2 If the key was already present and the new value was ignored (because
- *           no merging function was provided).
  * @retval -1 If an error occured and the key was not present in the list.
  * @retval -2 If the key is already present in the list and merging was
  *            unsuccessful.
@@ -107,12 +127,22 @@ skip_list *skip_create_list( int (*compare_keys)(void *, void *),
 int skip_insert( skip_list *list, void *key, void *value );
 
 /*!
- * @brief Deletes an item with the given key from the list.
+ * @brief Removes an item with the given key from the list and optionally
+ *        deletes the item's key and value.
  *
  * @param list Skip list to delete from.
  * @param key Key of the item to be deleted.
+ * @param destroy_key Function for properly destroying the key. If set tu NULL,
+ *                    the object at which the key points will not be destroyed.
+ * @param destroy_value Function for properly destroying the key. If set tu
+ *                      NULL, the object at which the value points will not be
+ *                      destroyed.
+ *
+ * @retval 0 If successful.
+ * @retval -1 If the item was not present in the list.
  */
-void skip_delete( skip_list *list, void *key );
+int skip_remove( skip_list *list, void *key, void (*destroy_key)(void *),
+				  void (*destroy_value)(void *) );
 
 /*!
  * @brief Tries to find item with the given key in the list.
@@ -123,4 +153,14 @@ void skip_delete( skip_list *list, void *key );
  * @return Value stored in the item with key @a key, or NULL if the key was not
  *         found.
  */
-void *skip_find( skip_list *list, void *key );
+void *skip_find( const skip_list *list, void *key );
+
+/*!
+ * @brief Prints the whole list to standard output.
+ *
+ * @param list Skip list to be printed.
+ *
+ * The list must have had the print_item set when it was created. Otherwise this
+ * function will output nothing.
+ */
+void skip_print_list( const skip_list *list );
