@@ -14,33 +14,27 @@
 
 #include "common.h"
 #include "dns-simple.h"
+#include "skip-list.h"
+#include <sys/types.h>
+#include <ldns/rr.h>
 
 /*----------------------------------------------------------------------------*/
 /*!
  * @brief Data structure for holding DNS data related to one zone node.
  */
 typedef struct zn_node {
-	/*! @brief Array of pointers to DNS RRs. */
-    dnss_rr **records;
-
-	/*! @brief Count of the actual RRs in the structure. */
-    uint count;
-
-	/*! @brief Max allowed count of RRs in the structure */
-    uint max_count;
+	/*! @brief Skip list of RRSets. */
+	skip_list *rrsets;
 } zn_node;
 
 /*----------------------------------------------------------------------------*/
 /*!
  * @brief Create a new zone node for the given @a count of RRs.
  *
- * @param count Count of RRs to be stored in the node. Cannot be
- *              modified later.
- *
  * @return Pointer to the created and initialized (empty) zone node. NULL if an
  *         error occured.
  */
-zn_node *zn_create( uint count );
+zn_node *zn_create();
 
 /*!
  * @brief Adds one RR to the given node.
@@ -48,10 +42,32 @@ zn_node *zn_create( uint count );
  * @param node Zone node to add the record to.
  * @param rr RR to be added into the zone node.
  *
+ * If the node is empty, any RR can be inserted into it. If there are some
+ * records present, their owner is always the same and the inserted RR must have
+ * this owner as well.
+ *
+ * The RR is always inserted into proper RRSet. If there is no RRSet it should
+ * be part of, a new RRSet is created.
+ *
  * @retval 0 On success.
- * @retval -1 if there is no space left in the zone node.
+ * @retval TODO
  */
-int zn_add_rr( zn_node *node, dnss_rr *rr );
+int zn_add_rr( zn_node *node, ldns_rr *rr );
+
+/*!
+ * @brief Adds a RRSet to the given node.
+ *
+ * @param node Zone node to add the record to.
+ * @param rrset RRSet to be added into the zone node.
+ *
+ * If the node is empty, any RRSet can be inserted into it. If there are some
+ * records present, their owner is always the same and the inserted RRSet must
+ * have this owner as well.
+ *
+ * @retval 0 On success.
+ * @retval TODO
+ */
+int zn_add_rrset( zn_node *node, ldns_rr_list *rrset );
 
 /*!
  * @brief Finds a RR of the desired type in the node.
@@ -61,10 +77,10 @@ int zn_add_rr( zn_node *node, dnss_rr *rr );
  *
  * @return Pointer to the RR if found. NULL otherwise.
  */
-const dnss_rr *zn_find_rr( const zn_node *node, uint16_t type );
+const ldns_rr_list *zn_find_rrset( const zn_node *node, ldns_rr_type type );
 
 /*!
- * @brief Destroys the zone node, destroying all its RRs.
+ * @brief Destroys the zone node, destroying all its RRSets and their RRs.
  *
  * @param node Pointer to pointer to the zone node.
  */

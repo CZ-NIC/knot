@@ -5,6 +5,9 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdint.h>
+#include <ldns/rr.h>
+#include <ldns/rdata.h>
+#include <ldns/host2wire.h>
 
 #define HEADER_SET_QR(flags) (flags |= (1 << 15))
 #define HEADER_SET_AA(flags) (flags |= (1 << 10))
@@ -141,7 +144,62 @@ dnss_packet *dnss_create_empty_packet()
 
 /*----------------------------------------------------------------------------*/
 
-int dnss_create_response( const dnss_packet *query, const dnss_rr *answers,
+void dnss_rrs_from_rrset( const ldns_rr_list *from, dnss_rr *to, uint count )
+{
+	/*
+	 * Totally dumb and useless function, only to make it compile with the
+	 * new zone node and without changing a lot of other things.
+	 */
+	assert(ldns_rr_list_rr_count(from) == count);
+
+	uint8_t *owner = NULL;
+	uint8_t *rdata = NULL;
+	size_t size;
+
+	dnss_rr *r = to;
+
+	int j = 0;
+	while (j < ldns_rr_list_rr_count(from)) {
+		ldns_rr *rr = ldns_rr_list_rr(from, j);
+		ldns_rdf2wire(&owner, ldns_rr_owner(rr), &size);
+		if (owner != NULL) {
+			memcpy(r->owner, owner, size);
+			free(owner);
+			r->rrclass = ldns_rr_get_class(rr);
+			r->rrtype = ldns_rr_get_type(rr);
+			r->ttl = ldns_rr_ttl(rr);
+
+			r->rdata = malloc(ldns_rdf_size(ldns_rr_rdf(rr, 1)));
+			if (r->rdata == NULL) {
+				ERR_ALLOC_FAILED;
+				return;
+			}
+			uint8_t *pos = r->rdata;
+			for (int i = 0; i < ldns_rr_rd_count(rr); ++i) {
+				ldns_rdf2wire(&rdata, ldns_rr_rdf(rr, i), &size);
+				if (rdata != NULL) {
+					memcpy(pos, rdata, size);
+					pos += size;
+				}
+				if ((pos - r->rdata) >= ldns_rdf_size(ldns_rr_rdf(rr, 1))) {
+					unsigned char *tmp = realloc(r->rdata, (i + 2) *
+									   ldns_rdf_size(ldns_rr_rdf(rr, 1)));
+					if (tmp == NULL) {
+						ERR_ALLOC_FAILED;
+						return;
+					}
+					r->rdata = tmp;
+				}
+			}
+			++r;	// move to next RR's place
+		}
+		++j;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnss_create_response( const dnss_packet *query, const ldns_rr_list *answers,
                            uint count, dnss_packet **response )
     /*! @todo change last argument to dnss_packet * ?? */
 {
@@ -169,7 +227,8 @@ int dnss_create_response( const dnss_packet *query, const dnss_rr *answers,
     (*response)->header.ancount = count;
 
     (*response)->answers = malloc(count * sizeof(dnss_rr));
-    dnss_copy_rrs(answers, (*response)->answers, count);
+	//dnss_copy_rrs(answers, (*response)->answers, count);
+	dnss_rrs_from_rrset(answers, (*response)->answers, count);
         // distinguish between NODATA (good as it is) and NXDOMAIN (set RCODE)
 
     (*response)->header.nscount = 0;

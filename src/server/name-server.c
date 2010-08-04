@@ -62,9 +62,10 @@ int ns_answer_request( ns_nameserver *nameserver, const char *query_wire,
         }
     } else {
         debug_ns("Requested name found.\n");
-        if (dnss_create_response(query,
-                                 zn_find_rr(node, query->questions[0].qtype),
-                                 1, &response) != 0) {
+		const ldns_rr_list *answers = zn_find_rrset(
+				node, query->questions[0].qtype);
+		if (dnss_create_response(query, answers, ldns_rr_list_rr_count(answers),
+								 &response) != 0) {
             dnss_destroy_packet(&query);
             dnss_destroy_packet(&response);
 			rcu_read_unlock();
