@@ -18,21 +18,21 @@ int main( int argc, char **argv )
     log_open(LOG_UPTO(LOG_ERR), LOG_MASK(LOG_ERR)|LOG_MASK(LOG_WARNING));
 
 	int res;
-	res = test_skip_list();
+//	res = test_skip_list();
 
-	if (res != 0) {
-		printf("\n!!!! Skip list test unsuccessful !!!!\n");
-	}
+//	if (res != 0) {
+//		printf("\n!!!! Skip list test unsuccessful !!!!\n");
+//	}
 
     // Start server
-	/*cute_server *server = cute_create();
+	cute_server *server = cute_create();
 
     if ((res = cute_start(server, argv[1])) != 0) {
         log_error("Problem starting the server, exiting..\n");
     }
 
     // Stop server and close log
-	cute_destroy(&server);*/
+	cute_destroy(&server);
 
     log_close();
 	return res;

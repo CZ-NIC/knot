@@ -475,8 +475,23 @@ void ct_answer_request( const char *query_wire, uint size,
 #ifdef CK_TEST_OUTPUT
 		printf("Requested name found.\n");
 #endif
-		if (dnss_create_response(query, (dnss_rr *)item->value,
-								 1, &response) != 0) {
+		ldns_rr_list *rrset = ldns_rr_list_new();
+		ldns_rr *rr = ldns_rr_new();
+		ldns_rr_set_class(rr, ((dnss_rr *)item->value)->rrclass);
+		ldns_rr_set_type(rr, ((dnss_rr *)item->value)->rrtype);
+		ldns_rr_set_ttl(rr, ((dnss_rr *)item->value)->ttl);
+		ldns_rdf *owner = ldns_rdf_new_frm_data(LDNS_RDF_TYPE_DNAME,
+							strlen(((dnss_rr *)item->value)->owner) + 1,
+							((dnss_rr *)item->value)->owner);
+		ldns_rr_set_owner(rr, owner);
+		ldns_rdf *rdata = ldns_rdf_new_frm_data(LDNS_RDF_TYPE_A,
+							((dnss_rr *)item->value)->rdlength,
+							((dnss_rr *)item->value)->rdata);
+		ldns_rr_set_rdf(rr, rdata, 0);
+
+		ldns_rr_list_push_rr(rrset, rr);
+
+		if (dnss_create_response(query, rrset, 1, &response) != 0) {
 			dnss_destroy_packet(&query);
 			dnss_destroy_packet(&response);
 			return;

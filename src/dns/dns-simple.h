@@ -18,6 +18,8 @@
 #include <stdint.h>
 #include <string.h>
 #include "common.h"
+#include <sys/types.h>
+#include <ldns/rr.h>
 
 static const unsigned int HEADER_SIZE =    12;
 static const unsigned int MAX_DNAME_SIZE = 255; // contains the ending 0?
@@ -83,7 +85,7 @@ dnss_question *dnss_create_question( dnss_dname_wire qname, uint length );
 
 dnss_packet *dnss_create_empty_packet();
 
-int dnss_create_response( const dnss_packet *query, const dnss_rr *answers,
+int dnss_create_response( const dnss_packet *query, const ldns_rr_list *answers,
                            uint count, dnss_packet **response );
 
 int dnss_create_error_response( dnss_packet *query, dnss_packet **response );

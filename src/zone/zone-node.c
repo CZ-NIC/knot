@@ -4,73 +4,130 @@
 #include <assert.h>
 #include <stdio.h>
 #include "common.h"
-#include "dns-simple.h"
+#include "skip-list.h"
+#include <ldns/rr.h>
 
 /*----------------------------------------------------------------------------*/
 
-zn_node *zn_create( uint count )
+static const uint RRSETS_COUNT = 10;
+
+/*----------------------------------------------------------------------------*/
+
+int zn_compare_keys( void *key1, void *key2 )
+{
+	// in our case, key is of type ldns_rr_type, but as casting to enum may
+	// result in undefined behaviour, we use regular unsigned int.
+	return ((uint)key1 < (uint)key2) ? -1 : (((uint)key1 > (uint)key2) ? 1 : 0);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zn_merge_values( void **value1, void **value2 )
+{
+	if (ldns_rr_list_cat((ldns_rr_list *)(*value1),
+						 (ldns_rr_list *)(*value2))) {
+		return 0;
+	} else {
+		return -1;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+void zn_destroy_value( void *value )
+{
+	ldns_rr_list_deep_free((ldns_rr_list *)value);
+}
+
+/*----------------------------------------------------------------------------*/
+
+zn_node *zn_create()
 {
     zn_node *node = malloc(sizeof(zn_node));
+	if (node == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
 
-    if (node != NULL) {
-        if (count > 0) {
-            node->records = malloc(count * sizeof(dnss_rr *));
-            if (node->records == NULL) {
-				ERR_ALLOC_FAILED;
-                free(node);
-                return NULL;
-            }
-            node->max_count = count;
-            memset(node->records, 0, count * sizeof(dnss_rr *));
-        } else {
-            node->records = NULL;
-        }
-        node->count = 0;
-    }
+	node->rrsets = skip_create_list(zn_compare_keys);
+	if (node->rrsets == NULL) {
+		free(node);
+		return NULL;
+	}
 
     return node;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int zn_add_rr( zn_node *node, dnss_rr *rr )
+int zn_add_rr( zn_node *node, ldns_rr *rr )
 {
-    assert(node->count <= node->max_count);
-    if (node->count == node->max_count) {
-        // no place
-        return -1;
-    }
+	/*
+	 * This whole function can be written with less code if we first create new
+	 * rr_list, insert the RR into it and then call skip_insert and provide
+	 * the merging function.
+	 *
+	 * However, in that case the allocation will occur always, what may be
+	 * time-consuming, so we retain this version for now.
+	 */
+	// find an appropriate RRSet for the RR
+	ldns_rr_list *rrset = (ldns_rr_list *)skip_find(
+							node->rrsets, (void *)ldns_rr_get_type(rr));
 
-    node->records[node->count++] = rr;
-    return 0;
+	// found proper RRSet, insert into it
+	if (rrset != NULL) {
+		assert(ldns_rr_list_type(rrset) == ldns_rr_get_type(rr));
+		if (ldns_rr_list_push_rr(rrset, rr) != true) {
+			return -3;
+		}
+	} else {
+		rrset = ldns_rr_list_new();
+		if (rrset == NULL) {
+			ERR_ALLOC_FAILED;
+			return -4;
+		}
+		// add the RR to the RRSet
+		if (ldns_rr_list_push_rr(rrset, rr) != true) {
+			return -5;
+		}
+		// insert the rrset into the node
+		int res = skip_insert(node->rrsets, (void *)ldns_rr_get_type(rr),
+							  (void *)rrset, NULL);
+		assert(res != 2 && res != -2);
+		return res;
+	}
+
+	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
-const dnss_rr *zn_find_rr( const zn_node *node, uint16_t type )
+int zn_add_rrset( zn_node *node, ldns_rr_list *rrset )
 {
-    uint i = 0;
-    while (i < node->count && node->records[i]->rrtype != type) {
-        assert(node->records[i] != NULL);
-        ++i;
-    }
+	assert(ldns_is_rrset(rrset));
+	// here we do not have to allocate anything even if the RRSet is not in
+	// the list, so can use the shortcut (see comment in zn_add_rr()).
+	return skip_insert(node->rrsets, (void *)ldns_rr_list_type(rrset),
+					   (void *)rrset, zn_merge_values);
+}
 
-    if (i == node->count) {
-        return NULL;
-    }
+/*----------------------------------------------------------------------------*/
 
-    assert(node->records[i]->rrtype == type);
-    return node->records[i];
+const ldns_rr_list *zn_find_rrset( const zn_node *node, ldns_rr_type type )
+{
+	ldns_rr_list *rrset = skip_find(node->rrsets, (void *)type);
+
+	assert(rrset == NULL || ldns_is_rrset(rrset));
+	assert(rrset == NULL || ldns_rr_list_type(rrset) == type);
+
+	return rrset;
 }
 
 /*----------------------------------------------------------------------------*/
 
 void zn_destroy( zn_node **node )
 {
-    for (uint i = 0; i < (*node)->count; ++i) {
-        dnss_destroy_rr(&(*node)->records[i]);
-    }
-    free((*node)->records);
+	skip_destroy_list((*node)->rrsets, NULL, zn_destroy_value);
     free(*node);
     *node = NULL;
 }

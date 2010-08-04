@@ -3,6 +3,7 @@
 #include "common.h"
 #include <stdio.h>
 #include <assert.h>
+#include <ldns/rr.h>
 
 /*----------------------------------------------------------------------------*/
 
@@ -164,7 +165,21 @@ int zp_test_parse_file( zdb_database *database,
                 dnss_destroy_rr(&rr);
                 return ERR_INSERT;
             }
-            zn_add_rr(node, rr);
+
+			ldns_rr *r = ldns_rr_new();
+			ldns_rr_set_class(r, rr->rrclass);
+			ldns_rr_set_type(r, rr->rrtype);
+			ldns_rr_set_ttl(r, rr->ttl);
+			ldns_rdf *owner = ldns_rdf_new_frm_data(LDNS_RDF_TYPE_DNAME,
+								strlen(rr->owner) + 1,
+								rr->owner);
+			ldns_rr_set_owner(r, owner);
+			ldns_rdf *rdata = ldns_rdf_new_frm_data(LDNS_RDF_TYPE_A,
+								rr->rdlength,
+								rr->rdata);
+			ldns_rr_set_rdf(r, rdata, 0);
+
+			zn_add_rr(node, r);
 
             // use the domain name from the RR for inserting (already converted)
             key_size = dnss_wire_dname_size(&buffer);

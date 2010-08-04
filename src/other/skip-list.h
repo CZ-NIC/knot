@@ -28,6 +28,9 @@ Retrieved from: http://en.literateprograms.org/Skip_list_(C)?oldid=12811
  * Modifications by Lubos Slovak, 2010
  */
 
+#ifndef SKIP_LIST
+#define SKIP_LIST
+
 /*----------------------------------------------------------------------------*/
 /*!
  * @brief Skip list node.
@@ -152,3 +155,5 @@ void *skip_find( const skip_list *list, void *key );
  */
 void skip_print_list( const skip_list *list,
 					  void (*print_item)(void *, void *) );
+
+#endif /* SKIP_LIST */
