@@ -138,9 +138,7 @@ void skip_delete_node( skip_node **node, void (*destroy_key)(void *),
 /* Public functions          					                              */
 /*----------------------------------------------------------------------------*/
 
-skip_list *skip_create_list( int (*compare_keys)(void *, void *),
-							 int (*merge_values)(void **, void **),
-							 void (*print_item)(void *, void *)  )
+skip_list *skip_create_list( int (*compare_keys)(void *, void *) )
 {
 	assert(compare_keys != NULL);
 
@@ -159,8 +157,6 @@ skip_list *skip_create_list( int (*compare_keys)(void *, void *),
 
     ss->level = 0;
 	ss->compare_keys = compare_keys;
-	ss->merge_values = merge_values;
-	ss->print_item = print_item;
 
     return ss;
 }
@@ -219,7 +215,8 @@ void *skip_find( const skip_list *list, void *key )
 
 /*----------------------------------------------------------------------------*/
 
-int skip_insert( skip_list *list, void *key, void *value )
+int skip_insert( skip_list *list, void *key, void *value,
+				 int (*merge_values)(void **, void **) )
 {
 	assert(list != NULL);
 	assert(list->head != NULL);
@@ -262,8 +259,8 @@ int skip_insert( skip_list *list, void *key, void *value )
 
 		return 0;
 	} else {	// already in the list
-		if (list->merge_values != NULL) {	// if merge function provided, merge
-			return (list->merge_values(&x->value, &value) == 0) ? 2 : -2;
+		if (merge_values != NULL) {	// if merge function provided, merge
+			return (merge_values(&x->value, &value) == 0) ? 2 : -2;
 		} else {
 			return 1;
 		}
@@ -293,8 +290,7 @@ int skip_remove( skip_list *list, void *key, void (*destroy_key)(void *),
     }
     x = x->forward[0];
 
-
-	if (list->compare_keys(x->key, key) == 0) {
+	if (x != NULL && list->compare_keys(x->key, key) == 0) {
 		for (i = 0; i <= list->level; i++) {
 			if (update[i]->forward[i] != x) {
 				break;
@@ -316,20 +312,17 @@ int skip_remove( skip_list *list, void *key, void (*destroy_key)(void *),
 
 /*----------------------------------------------------------------------------*/
 
-void skip_print_list( const skip_list *list )
+void skip_print_list( const skip_list *list,
+					  void (*print_item)(void *, void *) )
 {
 	assert(list != NULL);
 	assert(list->head != NULL);
 	assert(list->compare_keys != NULL);
+	assert(print_item != NULL);
 
-	if (list->print_item == NULL) {
-		return;
-	}
-
-	printf("Skip list items:\n");
 	skip_node *x = list->head->forward[0];
 	while (x != NULL) {
-		list->print_item(x->key, x->value);
+		print_item(x->key, x->value);
 		x = x->forward[0];
 	}
 

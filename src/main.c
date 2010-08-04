@@ -20,6 +20,10 @@ int main( int argc, char **argv )
 	int res;
 	res = test_skip_list();
 
+	if (res != 0) {
+		printf("\n!!!! Skip list test unsuccessful !!!!\n");
+	}
+
     // Start server
 	/*cute_server *server = cute_create();
 
