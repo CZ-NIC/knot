@@ -4,6 +4,7 @@
 #include "zone-node.h"
 #include <assert.h>
 #include <stdio.h>
+#include <ldns/rdata.h>
 
 /*----------------------------------------------------------------------------*/
 
@@ -18,19 +19,21 @@ zds_zone *zds_create( uint item_count )
 /*! @todo Should return positive integer when the item was inserted, but
  *        something went wrong. Otherwise negative.
  */
-int zds_insert( zds_zone *zone, dnss_dname_wire owner,
-                       zn_node *contents )
+int zds_insert( zds_zone *zone, ldns_rdf *owner, zn_node *node )
 {
-    return ck_insert_item(zone, owner, dnss_dname_wire_length(owner) - 1,
-                          contents);
+	assert(ldns_rdf_get_type(owner) == LDNS_RDF_TYPE_DNAME);
+	return ck_insert_item(zone, (char *)ldns_rdf_data(owner),
+						  ldns_rdf_size(owner), node);
 }
 
 /*----------------------------------------------------------------------------*/
 
-zn_node *zds_find( zds_zone *zone, dnss_dname_wire owner )
+zn_node *zds_find( zds_zone *zone, ldns_rdf *owner )
 {
-    const ck_hash_table_item *item = ck_find_item(zone, owner,
-                                        dnss_dname_wire_length(owner) - 1);
+	assert(ldns_rdf_get_type(owner) == LDNS_RDF_TYPE_DNAME);
+	const ck_hash_table_item *item = ck_find_item(zone,
+										(char *)ldns_rdf_data(owner),
+										ldns_rdf_size(owner));
     if (item == NULL) {
         return NULL;
     }
@@ -42,10 +45,13 @@ zn_node *zds_find( zds_zone *zone, dnss_dname_wire owner )
 
 /*----------------------------------------------------------------------------*/
 
-int zds_remove( zds_zone *zone, dnss_dname_wire owner )
+int zds_remove( zds_zone *zone, ldns_rdf *owner )
 {
-	if (ck_remove_item(zone, owner, dnss_dname_wire_length(owner) - 1) != 0) {
-		log_info("Trying to remove non-existing item: %s\n", owner);
+	assert(ldns_rdf_get_type(owner) == LDNS_RDF_TYPE_DNAME);
+	if (ck_remove_item(zone, (char *)ldns_rdf_data(owner),
+					   ldns_rdf_size(owner)) != 0) {
+		log_info("Trying to remove non-existing item: %s\n",
+				 ldns_rdf_data(owner));
 		return -1;
 	}
 	return 0;

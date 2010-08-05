@@ -6,6 +6,8 @@
 #include <assert.h>
 
 #include <urcu.h>
+#include <ldns/dname.h>
+#include <ldns/rdata.h>
 
 //#define NS_DEBUG
 
@@ -42,8 +44,11 @@ int ns_answer_request( ns_nameserver *nameserver, const char *query_wire,
 	// start of RCU read critical section (getting the node from the database)
 	rcu_read_lock();
 
+	ldns_rdf *qname_ldns = ldns_dname_new_frm_data(
+			strlen(query->questions[0].qname) + 1, query->questions[0].qname);
+
     const zn_node *node =
-            zdb_find_name(nameserver->zone_db, query->questions[0].qname);
+			zdb_find_name(nameserver->zone_db, qname_ldns);
 
     dnss_packet *response = dnss_create_empty_packet();
     if (response == NULL) {

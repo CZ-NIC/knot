@@ -163,13 +163,12 @@ void dnss_rrs_from_rrset( const ldns_rr_list *from, dnss_rr *to, uint count )
 		ldns_rr *rr = ldns_rr_list_rr(from, j);
 		ldns_rdf2wire(&owner, ldns_rr_owner(rr), &size);
 		if (owner != NULL) {
-			memcpy(r->owner, owner, size);
-			free(owner);
+			r->owner = (char *)owner;
 			r->rrclass = ldns_rr_get_class(rr);
 			r->rrtype = ldns_rr_get_type(rr);
 			r->ttl = ldns_rr_ttl(rr);
 
-			r->rdata = malloc(ldns_rdf_size(ldns_rr_rdf(rr, 1)));
+			r->rdata = malloc(ldns_rdf_size(ldns_rr_rdf(rr, 0)));
 			if (r->rdata == NULL) {
 				ERR_ALLOC_FAILED;
 				return;
@@ -181,9 +180,9 @@ void dnss_rrs_from_rrset( const ldns_rr_list *from, dnss_rr *to, uint count )
 					memcpy(pos, rdata, size);
 					pos += size;
 				}
-				if ((pos - r->rdata) >= ldns_rdf_size(ldns_rr_rdf(rr, 1))) {
+				if ((pos - r->rdata) >= ldns_rdf_size(ldns_rr_rdf(rr, 0))) {
 					unsigned char *tmp = realloc(r->rdata, (i + 2) *
-									   ldns_rdf_size(ldns_rr_rdf(rr, 1)));
+									   ldns_rdf_size(ldns_rr_rdf(rr, 0)));
 					if (tmp == NULL) {
 						ERR_ALLOC_FAILED;
 						return;

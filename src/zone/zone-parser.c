@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <assert.h>
 #include <ldns/rr.h>
+#include <ldns/rdata.h>
+#include <ldns/dname.h>
 
 /*----------------------------------------------------------------------------*/
 
@@ -121,8 +123,8 @@ int zp_test_read_dname( char **buffer, uint *buf_i, FILE* file,
 
 /*----------------------------------------------------------------------------*/
 
-int zp_test_parse_file( zdb_database *database,
-                        const dnss_dname_wire *zone_name, FILE *file )
+int zp_test_parse_file( zdb_database *database, ldns_rdf *zone_name,
+						FILE *file )
 {
     int res;
     uint key_size;
@@ -194,7 +196,7 @@ int zp_test_parse_file( zdb_database *database,
 			debug_zp_parse("Inserting item number %u, key:\n", line);
 			debug_zp_parse_hex(key, key_size);
 
-            if ((res = zdb_insert_name(database, *zone_name, key, node)) != 0) {
+			if ((res = zdb_insert_name(database, zone_name, owner, node)) != 0) {
 				debug_zp_parse("\nInsert item returned %d.\n", res);
                 if (res < 0) {
                     dnss_destroy_rr(&rr);
@@ -204,7 +206,7 @@ int zp_test_parse_file( zdb_database *database,
                 return ERR_INSERT;
             }
 
-			debug_zp_parse(stderr, "Done.\n");
+			debug_zp_parse("Done.\n");
         }
         free(buffer);
         buffer = NULL;
@@ -245,6 +247,10 @@ int zp_test_parse_zone( const char *filename, zdb_database *database )
     int res = dnss_dname_to_wire(DEFAULT_ZONE_NAME, zone_name, name_size);
     assert(res == 0);
 
+	// create lsdn zone name
+	ldns_rdf *zone_name_ldns = ldns_dname_new_frm_data(strlen(zone_name) + 1,
+													   zone_name);
+
     debug_zp("Counting domain names in the file...\n");
     uint names;
     // count distinct domain names in the zone file
@@ -258,7 +264,7 @@ int zp_test_parse_zone( const char *filename, zdb_database *database )
     debug_zp("Creating new zone with name '%s'...\n", zone_name);
 
     // create a new zone in the zone database
-    if ((res = zdb_create_zone(database, zone_name, names)) != 0) {
+	if ((res = zdb_create_zone(database, zone_name_ldns, names)) != 0) {
         fclose(file);
         free(zone_name);
         ERR_ZONE_CREATE_FAILED;
@@ -270,9 +276,9 @@ int zp_test_parse_zone( const char *filename, zdb_database *database )
     debug_zp("Parsing the zone file...\n");
 
     // parse the zone file and fill in the zone
-    if ((res = zp_test_parse_file(database, &zone_name, file)) != 0) {
+	if ((res = zp_test_parse_file(database, zone_name_ldns, file)) != 0) {
         // is this necessary?
-        zdb_remove_zone(database, zone_name);
+		zdb_remove_zone(database, zone_name_ldns);
         free(zone_name);
         fclose(file);
         ERR_PARSING_FAILED;
@@ -283,8 +289,8 @@ int zp_test_parse_zone( const char *filename, zdb_database *database )
     free(zone_name);
 
 #ifdef ZP_DEBUG
-    debug_zp("\nTesting lookup..\n");
-    test_lookup_from_file(database->head->zone, file);
+	//debug_zp("\nTesting lookup..\n");
+	//test_lookup_from_file(database->head->zone, file);
 #endif
 
     fclose(file);
@@ -301,11 +307,11 @@ int zp_count_domain_names( FILE *file, uint *names )
 
 /*----------------------------------------------------------------------------*/
 
-int zp_parse_zonefile( zdb_database *database, dnss_dname_wire *zone_name,
-                       FILE *file )
-{
-    return zp_test_parse_file(database, zone_name, file);
-}
+//int zp_parse_zonefile( zdb_database *database, dnss_dname_wire *zone_name,
+//                       FILE *file )
+//{
+//    return zp_test_parse_file(database, zone_name, file);
+//}
 
 /*----------------------------------------------------------------------------*/
 
