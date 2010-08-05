@@ -3,6 +3,8 @@ src/common.h
 src/main.c
 src/dns/dns-simple.c
 src/dns/dns-simple.h
+src/dns/dns-utils.h
+src/dns/dns-utils.c
 src/hash/cuckoo-hash-table.c
 src/hash/cuckoo-hash-table.h
 src/hash/hash-functions.c
