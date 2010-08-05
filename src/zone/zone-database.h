@@ -22,7 +22,7 @@
 #define ZONE_DATABASE
 
 #include "common.h"
-#include "dns-simple.h"
+#include <ldns/rdata.h>
 #include "zone-data-structure.h"
 
 /*----------------------------------------------------------------------------*/
@@ -31,7 +31,7 @@
  */
 typedef struct zdb_zone {
 	/*! @brief Zone name in wire format (i.e. a null-terminated string). */
-    dnss_dname_wire zone_name;
+	ldns_rdf *zone_name;
 
 	/*! @brief Pointer to the zone data structure. */
     zds_zone *zone;
@@ -56,7 +56,7 @@ typedef struct zdb_database {
 zdb_database *zdb_create();
 
 /*!
- * @brief Adds new zone to the given database.
+ * @brief Adds new empty zone to the given database.
  *
  * @param database Zone database to store the zone.
  * @param zone_name Zone name in wire format  (i.e. a null-terminated string).
@@ -66,8 +66,7 @@ zdb_database *zdb_create();
  * @retval 0 On success.
  * @retval -1 On failure.
  */
-int zdb_create_zone( zdb_database *database, dnss_dname_wire zone_name,
-                     uint items );
+int zdb_create_zone( zdb_database *database, ldns_rdf *zone_name, uint items );
 
 /*!
  * @brief Removes the given zone from the database if it exists.
@@ -81,7 +80,7 @@ int zdb_create_zone( zdb_database *database, dnss_dname_wire zone_name,
  * @retval 0 On success.
  * @retval -1 If the zone was not found.
  */
-int zdb_remove_zone( zdb_database *database, dnss_dname_wire zone_name );
+int zdb_remove_zone( zdb_database *database, ldns_rdf *zone_name );
 
 /*!
  * @brief Inserts one zone node to the given zone in the database.
@@ -95,8 +94,8 @@ int zdb_remove_zone( zdb_database *database, dnss_dname_wire zone_name );
  * @retval 1 If the zone was not found.
  * @retval -1 If an error occured during insertion to the zone.
  */
-int zdb_insert_name( zdb_database *database, dnss_dname_wire zone_name,
-                     dnss_dname_wire dname, zn_node *node );
+int zdb_insert_name( zdb_database *database, ldns_rdf *zone_name,
+					 ldns_rdf *dname, zn_node *node );
 
 /*!
  * @brief Finds the given name in the zone database and returns corresponding
@@ -108,7 +107,7 @@ int zdb_insert_name( zdb_database *database, dnss_dname_wire zone_name,
  *
  * @return Proper zone node for the given name or NULL if not found.
  */
-const zn_node *zdb_find_name( zdb_database *database, dnss_dname_wire dname );
+const zn_node *zdb_find_name( zdb_database *database, ldns_rdf *dname );
 
 /*!
  * @brief Destroys and deallocates the whole zone database.
