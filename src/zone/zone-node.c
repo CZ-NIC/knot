@@ -6,6 +6,8 @@
 #include "common.h"
 #include "skip-list.h"
 #include <ldns/rr.h>
+#include <ldns/dname.h>
+#include <ldns/rdata.h>
 
 /*----------------------------------------------------------------------------*/
 
@@ -55,7 +57,18 @@ zn_node *zn_create()
 		return NULL;
 	}
 
+	node->next = NULL;
+	node->prev = NULL;
+	node->owner = NULL;
+
     return node;
+}
+
+/*----------------------------------------------------------------------------*/
+
+ldns_rdf *zn_owner( zn_node *node )
+{
+	return node->owner;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -70,6 +83,16 @@ int zn_add_rr( zn_node *node, ldns_rr *rr )
 	 * However, in that case the allocation will occur always, what may be
 	 * time-consuming, so we retain this version for now.
 	 */
+	if (rr == NULL) {
+		return -7;
+	}
+
+	// accept only RR with the same owner
+	if (node->owner
+		&& ldns_dname_compare(node->owner, ldns_rr_owner(rr)) != 0) {
+		return -6;
+	}
+
 	// find an appropriate RRSet for the RR
 	ldns_rr_list *rrset = (ldns_rr_list *)skip_find(
 							node->rrsets, (void *)ldns_rr_get_type(rr));
@@ -94,6 +117,11 @@ int zn_add_rr( zn_node *node, ldns_rr *rr )
 		int res = skip_insert(node->rrsets, (void *)ldns_rr_get_type(rr),
 							  (void *)rrset, NULL);
 		assert(res != 2 && res != -2);
+		// if no owner yet and successfuly inserted
+		if (node->owner == NULL && res == 0) {
+			// set the owner
+			node->owner = ldns_rdf_clone(ldns_rr_owner(rr));
+		}
 		return res;
 	}
 
@@ -107,8 +135,15 @@ int zn_add_rrset( zn_node *node, ldns_rr_list *rrset )
 	assert(ldns_is_rrset(rrset));
 	// here we do not have to allocate anything even if the RRSet is not in
 	// the list, so can use the shortcut (see comment in zn_add_rr()).
-	return skip_insert(node->rrsets, (void *)ldns_rr_list_type(rrset),
+	int res = skip_insert(node->rrsets, (void *)ldns_rr_list_type(rrset),
 					   (void *)rrset, zn_merge_values);
+
+	// if the node did not have any owner and insert successful, set the owner
+	if (node->owner == NULL && res == 0) {
+		node->owner = ldns_rdf_clone(ldns_rr_list_owner(rrset));
+	}
+
+	return res;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -128,6 +163,7 @@ const ldns_rr_list *zn_find_rrset( const zn_node *node, ldns_rr_type type )
 void zn_destroy( zn_node **node )
 {
 	skip_destroy_list((*node)->rrsets, NULL, zn_destroy_value);
+	ldns_rdf_deep_free((*node)->owner);
     free(*node);
     *node = NULL;
 }

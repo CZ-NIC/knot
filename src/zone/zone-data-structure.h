@@ -40,17 +40,12 @@ zds_zone *zds_create( uint item_count );
  * @brief Inserts one zone node to the given zone.
  *
  * @param zone Zone data structure to insert into.
- * @param owner Domain name of the node.
  * @param contents The zone node to be inserted.
- *
- * @note The _data field of the @a owner will saved into the structure without
- *       copying. It must not be deallocated elsewhere (use ldns_rdf_free()
- *       instead of ldns_rdf_deep_free()).
  *
  * @retval 0 On success.
  * @retval -1 If an error occured during insertion to the zone.
  */
-int zds_insert( zds_zone *zone, ldns_rdf *owner, zn_node *node );
+int zds_insert( zds_zone *zone, zn_node *node );
 
 /*!
  * @brief Tries to find the given name in the zone and returns corresponding

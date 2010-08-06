@@ -22,7 +22,9 @@
 #define ZONE_DATABASE
 
 #include "common.h"
+#include <sys/types.h>
 #include <ldns/rdata.h>
+#include <ldns/zone.h>
 #include "zone-data-structure.h"
 
 /*----------------------------------------------------------------------------*/
@@ -33,8 +35,11 @@ typedef struct zdb_zone {
 	/*! @brief Zone name in wire format (i.e. a null-terminated string). */
 	ldns_rdf *zone_name;
 
-	/*! @brief Pointer to the zone data structure. */
+	/*! @brief Zone data structure. */
     zds_zone *zone;
+
+	/*! @brief Zone apex. First item in a linked list of zone nodes. */
+	zn_node *apex;
 
 	/*! @brief Next item pointer. */
     struct zdb_zone *next;
@@ -67,6 +72,17 @@ zdb_database *zdb_create();
  * @retval -1 On failure.
  */
 int zdb_create_zone( zdb_database *database, ldns_rdf *zone_name, uint items );
+
+/*!
+ * @brief Adds new zone stored in a ldns_zone structure to the database.
+ *
+ * @param database Zone database to store the zone.
+ * @param zone Parsed zone in ldns_zone format.
+ *
+ * @retval 0 On success.
+ * @retval -1 On failure.
+ */
+int zdb_add_zone( zdb_database *database, ldns_zone *zone );
 
 /*!
  * @brief Removes the given zone from the database if it exists.

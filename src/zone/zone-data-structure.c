@@ -19,11 +19,12 @@ zds_zone *zds_create( uint item_count )
 /*! @todo Should return positive integer when the item was inserted, but
  *        something went wrong. Otherwise negative.
  */
-int zds_insert( zds_zone *zone, ldns_rdf *owner, zn_node *node )
+int zds_insert( zds_zone *zone, zn_node *node )
 {
-	assert(ldns_rdf_get_type(owner) == LDNS_RDF_TYPE_DNAME);
-	return ck_insert_item(zone, (char *)ldns_rdf_data(owner),
-						  ldns_rdf_size(owner), node);
+	assert(zn_owner(node) != NULL);
+	assert(ldns_rdf_get_type(zn_owner(node)) == LDNS_RDF_TYPE_DNAME);
+	return ck_insert_item(zone, (char *)ldns_rdf_data(zn_owner(node)),
+						  ldns_rdf_size(zn_owner(node)), node);
 }
 
 /*----------------------------------------------------------------------------*/
