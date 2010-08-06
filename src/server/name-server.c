@@ -63,8 +63,11 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
     debug_ns("ns_answer_request() called with query size %d.\n", qsize);
 	debug_ns_hex((char *)query_wire, qsize);
 
+	ldns_status s = LDNS_STATUS_OK;
 	ldns_pkt *query;
-	if (ldns_wire2pkt(&query, query_wire, qsize) != LDNS_STATUS_OK) {
+	if ((s = ldns_wire2pkt(&query, query_wire, qsize)) != LDNS_STATUS_OK) {
+		log_error("Error while parsing query.\nldns returned: %s\n",
+				ldns_get_errorstr_by_id(s));
 		// TODO: create error response
 		return -1;
 	}
@@ -121,8 +124,10 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 
 	uint8_t *resp_wire = NULL;
 	size_t resp_size = 0;
-	if (ldns_pkt2wire(&resp_wire, response, &resp_size) != LDNS_STATUS_OK) {
-		log_error("Error converting response packet to wire format.\n");
+	if ((s = ldns_pkt2wire(&resp_wire, response, &resp_size))
+			!= LDNS_STATUS_OK) {
+		log_error("Error converting response packet to wire format.\n"
+				  "ldns returned: %s\n", ldns_get_errorstr_by_id(s));
 		// TODO: create error response
 		ldns_pkt_free(query);
 		ldns_pkt_free(response);	// watch out, this deletes also the RRs!!

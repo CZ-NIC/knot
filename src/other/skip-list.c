@@ -312,6 +312,13 @@ int skip_remove( skip_list *list, void *key, void (*destroy_key)(void *),
 
 /*----------------------------------------------------------------------------*/
 
+int skip_empty( const skip_list *list )
+{
+	return (list->head->forward[0] == NULL) ? 0 : 1;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void skip_print_list( const skip_list *list,
 					  void (*print_item)(void *, void *) )
 {
