@@ -1,5 +1,5 @@
 $TTL	86400
-@  IN	SOA	 ns1.bogus25.com.	support.bogus25.com. (
+bogus25.com. 		IN	SOA	 ns1.bogus25.com.	support.bogus25.com. (
 				20010923; Serial
 				10800	; Refresh after 3hrs
 				3600	; Retry after 1 hr

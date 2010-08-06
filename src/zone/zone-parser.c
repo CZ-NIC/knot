@@ -6,6 +6,7 @@
 #include <ldns/rr.h>
 #include <ldns/rdata.h>
 #include <ldns/dname.h>
+#include <ldns/zone.h>
 
 /*----------------------------------------------------------------------------*/
 
@@ -300,22 +301,38 @@ int zp_test_parse_zone( const char *filename, zdb_database *database )
 
 /*----------------------------------------------------------------------------*/
 
-int zp_count_domain_names( FILE *file, uint *names )
+int zp_parse_zonefile_bind( const char *filename, zdb_database *database )
 {
-    return zp_test_count_domain_names(file, names);
+	debug_zp("Opening file...\n");
+	FILE *file = fopen(filename, "r");
+
+	if (file == NULL) {
+		log_error("Can't open file: %s.\n", filename);
+		return ERR_FILE_OPEN;
+	}
+
+	debug_zp("Done.\n");
+
+	ldns_zone *zone;
+	int line = 0;
+	ldns_status s;
+	s = ldns_zone_new_frm_fp_l(&zone, file, NULL, 0, LDNS_RR_CLASS_IN, &line);
+
+	fclose(file);
+
+	if (s != LDNS_STATUS_OK) {
+		log_error("Error parsing zone file %s.\nldns returned: %s on line %d\n",
+				filename, ldns_get_errorstr_by_id(s), line);
+		return -1;
+	}
+
+	return zdb_add_zone(database, zone);
 }
-
-/*----------------------------------------------------------------------------*/
-
-//int zp_parse_zonefile( zdb_database *database, dnss_dname_wire *zone_name,
-//                       FILE *file )
-//{
-//    return zp_test_parse_file(database, zone_name, file);
-//}
 
 /*----------------------------------------------------------------------------*/
 
 int zp_parse_zone( const char *filename, zdb_database *database )
 {
-    return zp_test_parse_zone(filename, database);
+	//return zp_test_parse_zone(filename, database);
+	return zp_parse_zonefile_bind(filename, database);
 }
