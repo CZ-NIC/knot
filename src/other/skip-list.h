@@ -148,6 +148,16 @@ int skip_remove( skip_list *list, void *key, void (*destroy_key)(void *),
 void *skip_find( const skip_list *list, void *key );
 
 /*!
+ * @brief Checks if the skip list is empty.
+ *
+ * @param list Skip list to check.
+ *
+ * @retval 0 if empty.
+ * @retval 1 if non-empty.
+ */
+int skip_empty( const skip_list *list );
+
+/*!
  * @brief Prints the whole list using the given print function.
  *
  * @param list Skip list to be printed.

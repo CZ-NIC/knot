@@ -318,7 +318,8 @@ void *sm_listen( void *obj )
                 pthread_mutex_unlock(&manager->mutex);
 
                 answer_size = SOCKET_BUFF_SIZE;
-                int res = ns_answer_request(manager->nameserver, buf, n, answer,
+				int res = ns_answer_request(manager->nameserver,
+							(unsigned char *)buf, n, (unsigned char *)answer,
                                   &answer_size);
 
                 debug_sm("Got answer of size %d.\n", answer_size);
