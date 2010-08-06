@@ -4,10 +4,6 @@
  * Contains data structure for holding DNS data related to one domain
  * name (node of the notional zone tree) and routines to manipulate
  * the data.
- *
- * @note This is only a very simple structure. To be modified and expanded in
- *       the future.
- * @todo Add support for adding arbitrary number of items.
  */
 #ifndef ZONE_NODE
 #define ZONE_NODE
@@ -25,16 +21,30 @@
 typedef struct zn_node {
 	/*! @brief Skip list of RRSets. */
 	skip_list *rrsets;
+
+	/*! @brief Owner domain name of the node. */
+	ldns_rdf *owner;
+
+	/*! @brief Next zone node (should be in canonical order). */
+	struct zn_node *next;
+
+	/*! @brief Previous zone node (should be in canonical order). */
+	struct zn_node *prev;
 } zn_node;
 
 /*----------------------------------------------------------------------------*/
 /*!
- * @brief Create a new zone node for the given @a count of RRs.
+ * @brief Create a new zone node.
  *
  * @return Pointer to the created and initialized (empty) zone node. NULL if an
  *         error occured.
  */
 zn_node *zn_create();
+
+/*!
+ * @brief Returns the owner domain name of the zone node.
+ */
+ldns_rdf *zn_owner( zn_node *node );
 
 /*!
  * @brief Adds one RR to the given node.

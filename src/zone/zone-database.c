@@ -3,8 +3,7 @@
 
 #include <stdio.h>
 #include <assert.h>
-#include <ldns/rdata.h>
-#include <ldns/dname.h>
+#include <ldns/ldns.h>
 #include <urcu.h>
 
 #include "dns-utils.h"
@@ -89,6 +88,168 @@ zdb_database *zdb_create()
 
 /*----------------------------------------------------------------------------*/
 
+int zdb_create_list( zdb_zone *zone, ldns_zone *zone_ldns )
+{
+	int nodes = 0;
+
+	// sort the zone so we obtain RRSets
+	ldns_zone_sort(zone_ldns);
+
+	// create zone apex node
+	zone->apex = zn_create();
+	if (zone->apex == NULL) {
+		log_error("Error while processing zone %s: Cannot create zone apex node"
+				".\n", ldns_rdf2str(zone->zone_name));
+		return nodes;
+	}
+
+	if (zn_add_rr(zone->apex, ldns_rr_clone(ldns_zone_soa(zone_ldns))) != 0
+		|| skip_empty(zone->apex->rrsets) == 0) {
+		log_error("Error while processing zone %s: Cannot insert SOA RR into "
+				"the zone apex node.\n", ldns_rdf2str(zone->zone_name));
+		free(zone->apex);
+		return nodes;
+	}
+	++nodes;
+
+	/*
+	 * Walk through all RRs, separate them into zone nodes and RRSets
+	 * and create a linked list of nodes in canonical order.
+	 */
+	zn_node *act_node = zone->apex;
+	while (ldns_zone_rr_count(zone_ldns) != 0) {
+		ldns_rr_list *rrset = ldns_rr_list_pop_rrset(ldns_zone_rrs(zone_ldns));
+		if (rrset == NULL) {
+			log_error("Unknown error while processing zone %s.\n",
+					 ldns_rdf2str(zone->zone_name));
+			// ignore rest of the zone
+			break;
+		}
+
+		if (ldns_dname_compare(ldns_rr_list_owner(rrset), act_node->owner)
+			== 0) {
+			// same owner, insert into the same node
+			if (zn_add_rrset(act_node, rrset) != 0) {
+				log_error("Error while processing zone %s: Cannot add RRSet to"
+						"a zone node.\n", ldns_rdf2str(zone->zone_name));
+				// ignore rest of the zone
+				break;
+			}
+		} else {
+			// create a new node, add the RRSet and connect to the list
+			zn_node *new_node = zn_create();
+			if (new_node == NULL) {
+				log_error("Error while processing zone %s: Cannot create new"
+						"zone node.\n", ldns_rdf2str(zone->zone_name));
+				// ignore rest of the zone
+				break;
+			}
+			if (zn_add_rrset(new_node, rrset) != 0) {
+				log_error("Error while processing zone %s: Cannot add RRSet to"
+						"a zone node.\n", ldns_rdf2str(zone->zone_name));
+				// ignore rest of the zone
+				free(new_node);
+				break;
+			}
+			new_node->prev = act_node;
+			act_node->next = new_node;
+			act_node = new_node;	// continue with the next node
+			++nodes;
+		}
+	}
+
+	// all RRs processed, connect last node to the apex, creating cyclic list
+	zone->apex->prev = act_node;
+	act_node->next = zone->apex;
+
+	ldns_zone_deep_free(zone_ldns);
+
+	return nodes;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void zdb_delete_list_items( zdb_zone *zone )
+{
+	zn_node *node = zone->apex;
+	zn_node *old_node;
+	while (node->next != node) {
+		old_node = node;
+		node = node->next;
+
+		assert(old_node->prev != NULL);
+
+		old_node->prev->next = old_node->next;
+		old_node->next->prev = old_node->prev;
+		zn_destroy(&old_node);
+	}
+
+	zn_destroy(&node);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zdb_insert_nodes_into_zds( zdb_zone *zone )
+{
+	assert(zone->apex != NULL);
+	assert(zone->apex->prev != NULL);
+	zn_node *node = zone->apex->prev;
+	do {
+		node = node->next;
+		if (zds_insert(zone->zone, node) != 0) {
+			log_error("Error filling the zone data structure.\n");
+			return -1;
+		}
+		assert(node->next != NULL);
+	} while (node->next != zone->apex);
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zdb_add_zone( zdb_database *database, ldns_zone *zone )
+{
+	zdb_zone *new_zone = malloc(sizeof(zdb_zone));
+
+	if (new_zone == NULL) {
+		ERR_ALLOC_FAILED;
+		return -1;
+	}
+
+	// get the zone name
+	assert(ldns_zone_soa(zone) != NULL);
+	new_zone->zone_name = ldns_rdf_clone(ldns_rr_owner(ldns_zone_soa(zone)));
+
+	// create a linked list of zone nodes and get their count
+	int nodes = zdb_create_list(new_zone, zone);
+
+	// create the zone data structure
+	new_zone->zone = zds_create(nodes);
+	if (new_zone->zone == NULL) {
+		// destroy the list and all its contents
+		zdb_delete_list_items(new_zone);
+		ldns_rdf_deep_free(new_zone->zone_name);
+		return -2;
+	}
+
+	// add all created nodes to the zone data structure for lookup
+	if (zdb_insert_nodes_into_zds(new_zone) != 0) {
+		// TODO: we need to destroy the partially filled zone data structure
+		// and the list of nodes, but with one we change the other...
+		assert(0);
+		return -3;
+	}
+
+	// zone created, insert into the database
+	new_zone->next = database->head;
+	database->head = new_zone;
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int zdb_create_zone( zdb_database *database, ldns_rdf *zone_name, uint items )
 {
 	// add some lock to avoid multiple zone creations?
@@ -101,6 +262,7 @@ int zdb_create_zone( zdb_database *database, ldns_rdf *zone_name, uint items )
         return -1;
     }
 
+	zone->apex = NULL;
 	zone->zone_name = ldns_rdf_clone(zone_name);
 
     if (zone->zone_name == NULL) {
@@ -172,7 +334,7 @@ int zdb_insert_name( zdb_database *database, ldns_rdf *zone_name,
 	debug_zdb("Found zone: %*s\n", ldns_rdf_size(z->zone_name),
 			  ldns_rdf_data(z->zone_name));
 
-	int res = zds_insert(z->zone, dname, node);
+	int res = zds_insert(z->zone, node);
 
 	// end of RCU reader critical section
 	rcu_read_unlock();
