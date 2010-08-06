@@ -17,6 +17,7 @@
 
 #include "common.h"
 #include "zone-database.h"
+#include <stdint.h>
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -58,8 +59,8 @@ ns_nameserver *ns_create( zdb_database *database );
  * @retval 0 if a valid response was created.
  * @retval -1 if an error occured and the response is not valid.
  */
-int ns_answer_request( ns_nameserver *nameserver, const char *query_wire,
-                       uint qsize, char *response_wire, uint *rsize );
+int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
+					   size_t qsize, uint8_t *response_wire, size_t *rsize );
 
 /*!
  * @brief Properly destroys the name server structure.
