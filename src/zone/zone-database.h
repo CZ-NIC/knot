@@ -103,7 +103,6 @@ int zdb_remove_zone( zdb_database *database, ldns_rdf *zone_name );
  *
  * @param database Zone database to insert the node into.
  * @param zone_name Name of the zone to insert the node into.
- * @param dname Domain name of the node.
  * @param node The zone node to be inserted.
  *
  * @retval 0 On success.
@@ -111,7 +110,7 @@ int zdb_remove_zone( zdb_database *database, ldns_rdf *zone_name );
  * @retval -1 If an error occured during insertion to the zone.
  */
 int zdb_insert_name( zdb_database *database, ldns_rdf *zone_name,
-					 ldns_rdf *dname, zn_node *node );
+					 zn_node *node );
 
 /*!
  * @brief Finds the given name in the zone database and returns corresponding
