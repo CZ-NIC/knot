@@ -188,20 +188,30 @@ void zdb_delete_list_items( zdb_zone *zone )
 }
 
 /*----------------------------------------------------------------------------*/
-
-int zdb_insert_nodes_into_zds( zdb_zone *zone )
+/*!
+ * @brief Inserts all nodes from list starting with @a head to the zone data
+ *        structure.
+ *
+ * @param zone Zone data structure to insert to.
+ * @param head In: first item in the list of nodes to be inserted. Out: the same
+ *             if successful, the first non-inserted node if a failure occured.
+ *
+ * @retval 0 On success.
+ * @retval -1 On failure. @a head will point to the first item not inserted.
+ */
+int zdb_insert_nodes_into_zds( zds_zone *zone, zn_node **head )
 {
-	assert(zone->apex != NULL);
-	assert(zone->apex->prev != NULL);
-	zn_node *node = zone->apex->prev;
+	assert((*head) != NULL);
+	assert((*head)->prev != NULL);
+	zn_node *node = (*head)->prev;
 	do {
 		node = node->next;
-		if (zds_insert(zone->zone, node) != 0) {
+		if (zds_insert(zone, node) != 0) {
 			log_error("Error filling the zone data structure.\n");
 			return -1;
 		}
 		assert(node->next != NULL);
-	} while (node->next != zone->apex);
+	} while (node->next != (*head));
 
 	return 0;
 }
@@ -234,10 +244,17 @@ int zdb_add_zone( zdb_database *database, ldns_zone *zone )
 	}
 
 	// add all created nodes to the zone data structure for lookup
-	if (zdb_insert_nodes_into_zds(new_zone) != 0) {
-		// TODO: we need to destroy the partially filled zone data structure
-		// and the list of nodes, but with one we change the other...
-		assert(0);
+	zn_node *node = new_zone->apex;
+	if (zdb_insert_nodes_into_zds(new_zone->zone, &node) != 0) {
+		// destroy the rest of the nodes in the list (from node to zone apex)
+		while (node != new_zone->apex) {
+			zn_node *prev = node;
+			node = node->next;
+			assert(node != NULL);
+			zn_destroy(&prev);
+		}
+		// and destroy the partially filled zone data structure
+		zds_destroy(&new_zone->zone);
 		return -3;
 	}
 
@@ -328,7 +345,7 @@ int zdb_insert_name( zdb_database *database, ldns_rdf *zone_name,
 
     if (z == NULL) {
         debug_zdb("Zone not found!\n");
-		return 1;
+		return -2;
     }
 
 	debug_zdb("Found zone: %*s\n", ldns_rdf_size(z->zone_name),

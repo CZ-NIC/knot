@@ -107,7 +107,7 @@ int zdb_remove_zone( zdb_database *database, ldns_rdf *zone_name );
  * @param node The zone node to be inserted.
  *
  * @retval 0 On success.
- * @retval 1 If the zone was not found.
+ * @retval -2 If the zone was not found.
  * @retval -1 If an error occured during insertion to the zone.
  */
 int zdb_insert_name( zdb_database *database, ldns_rdf *zone_name,
