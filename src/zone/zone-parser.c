@@ -26,6 +26,8 @@ static const int ERR_ZONE_CREATE = -6;
 #define ERR_PARSING_FAILED log_error("Zone parsing failed.\n")
 
 /*----------------------------------------------------------------------------*/
+/* Private functions          					                              */
+/*----------------------------------------------------------------------------*/
 
 uint zp_get_line_count( FILE *file )
 {
@@ -329,6 +331,8 @@ int zp_parse_zonefile_bind( const char *filename, zdb_database *database )
 	return zdb_add_zone(database, zone);
 }
 
+/*----------------------------------------------------------------------------*/
+/* Public functions          					                              */
 /*----------------------------------------------------------------------------*/
 
 int zp_parse_zone( const char *filename, zdb_database *database )
