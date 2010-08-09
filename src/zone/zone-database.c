@@ -70,23 +70,6 @@ zdb_zone *zdb_find_zone_for_name( zdb_database *database, ldns_rdf *dname )
 }
 
 /*----------------------------------------------------------------------------*/
-/* Public functions          					                              */
-/*----------------------------------------------------------------------------*/
-
-zdb_database *zdb_create()
-{
-    zdb_database *db = malloc(sizeof(zdb_database));
-
-    if (db == NULL) {
-        ERR_ALLOC_FAILED;
-        return NULL;
-    }
-
-    db->head = NULL;
-    return db;
-}
-
-/*----------------------------------------------------------------------------*/
 
 int zdb_create_list( zdb_zone *zone, ldns_zone *zone_ldns )
 {
@@ -214,6 +197,23 @@ int zdb_insert_nodes_into_zds( zds_zone *zone, zn_node **head )
 	} while (node->next != (*head));
 
 	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+/* Public functions          					                              */
+/*----------------------------------------------------------------------------*/
+
+zdb_database *zdb_create()
+{
+    zdb_database *db = malloc(sizeof(zdb_database));
+
+    if (db == NULL) {
+        ERR_ALLOC_FAILED;
+        return NULL;
+    }
+
+    db->head = NULL;
+    return db;
 }
 
 /*----------------------------------------------------------------------------*/
