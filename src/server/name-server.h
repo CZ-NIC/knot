@@ -56,6 +56,8 @@ ns_nameserver *ns_create( zdb_database *database );
  * @param rsize Input: maximum acceptable size of the response. Output: real
  *              size of the response.
  *
+ * @todo Truncation of the packet.
+ *
  * @retval 0 if a valid response was created.
  * @retval -1 if an error occured and the response is not valid.
  */

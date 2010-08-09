@@ -25,8 +25,7 @@ ns_nameserver *ns_create( zdb_database *database )
 
 /*----------------------------------------------------------------------------*/
 
-ldns_pkt *ns_create_response( ldns_pkt *query, ldns_rr_list *answer,
-						ldns_rr_list *authority, ldns_rr_list *additional )
+ldns_pkt *ns_create_empty_response( ldns_pkt *query )
 {
 	ldns_pkt *response = ldns_pkt_clone(query);
 	if (response == NULL) {
@@ -35,6 +34,23 @@ ldns_pkt *ns_create_response( ldns_pkt *query, ldns_rr_list *answer,
 
 	ldns_pkt_set_aa(response, 1);
 	ldns_pkt_set_qr(response, 1);
+	ldns_pkt_set_answer(response, NULL);
+	ldns_pkt_set_ancount(response, 0);
+
+	ldns_pkt_set_authority(response, NULL);
+	ldns_pkt_set_nscount(response, 0);
+
+	ldns_pkt_set_additional(response, NULL);
+	ldns_pkt_set_arcount(response, 0);
+
+	return response;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void ns_fill_response( ldns_pkt *response, ldns_rr_list *answer,
+						ldns_rr_list *authority, ldns_rr_list *additional )
+{
 	ldns_pkt_set_answer(response, ldns_rr_list_clone(answer));
 	ldns_pkt_set_ancount(response, ldns_rr_list_rr_count(answer));
 
@@ -51,8 +67,6 @@ ldns_pkt *ns_create_response( ldns_pkt *query, ldns_rr_list *answer,
 	ldns_pkt_set_arcount(response, (additional == NULL)
 									 ? 0
 									 : ldns_rr_list_rr_count(additional));
-
-	return response;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -66,14 +80,24 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 	ldns_status s = LDNS_STATUS_OK;
 	ldns_pkt *query;
 	if ((s = ldns_wire2pkt(&query, query_wire, qsize)) != LDNS_STATUS_OK) {
-		log_error("Error while parsing query.\nldns returned: %s\n",
+		log_info("Error while parsing query.\nldns returned: %s\n",
 				ldns_get_errorstr_by_id(s));
-		// TODO: create error response
+		// malformed question => ignore
+		// TODO: should somehow return FORMERR ??? we would need to copy the
+		// wire format of the query and just set the proper RCODE, AA and QR bit
 		return -1;
 	}
 
 	debug_ns("Query parsed:\n");
 	debug_ns("%s", ldns_pkt2str(query));
+
+	// prepare empty response (used as an error response as well)
+	ldns_pkt *response = ns_create_empty_response(query);
+	if (response == NULL) {
+		log_error("Error while creating response packet!\n");
+		ldns_pkt_free(query);
+		return -1;
+	}
 
 	rcu_read_lock();
 
@@ -87,59 +111,50 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 										ldns_rr_owner(question));
 	if (node == NULL) {
 		debug_ns("Name not found in the zone database.\n");
-		// TODO: create error response
-		ldns_pkt_free(query);
-		rcu_read_unlock();
-		return -1;
-	}
+		// return NXDOMAIN
+		ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
+	} else {
+		// get the appropriate RRSet
+		ldns_rr_list *answer = skip_find(node->rrsets,
+										 (void *)ldns_rr_get_type(question));
 
-	// get the appropriate RRSet
-	ldns_rr_list *answer = skip_find(node->rrsets,
-									 (void *)ldns_rr_get_type(question));
+		if (answer != NULL) {
+			// fill the response packet (RRs are copied)
+			ns_fill_response(response, answer, NULL, NULL);
+			// end of RCU read critical section (all data copied)
+			node = NULL;
+		}
 
-	if (answer == NULL) {
-		debug_ns("Requested RR TYPE not found in the node.\n");
-		// TODO: create error response
-		ldns_pkt_free(query);
-		rcu_read_unlock();
-		return -1;
-	}
+		// make sure proper RCODE is set
+		ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
 
-	// create response packet (RRs are copied)
-	ldns_pkt *response = ns_create_response(query, answer, NULL, NULL);
-	if (response == NULL) {
-		log_error("Error creating response packet.\n");
-		// TODO: create error response
-		ldns_pkt_free(query);
-		rcu_read_unlock();
-		return -1;
+		// if not found, it means there is no RRSet for given type
+		// return "NODATA" response - i.e. empty with NOERROR RCODE
 	}
+	rcu_read_unlock();
+	ldns_pkt_free(query);
 
 	debug_ns("Created response packet:\n");
 	debug_ns("%s", ldns_pkt2str(response));
 
-	// end of RCU read critical section (all data copied)
-	node = NULL;
-	rcu_read_unlock();
-
+	// transform the packet into wire format
 	uint8_t *resp_wire = NULL;
 	size_t resp_size = 0;
 	if ((s = ldns_pkt2wire(&resp_wire, response, &resp_size))
 			!= LDNS_STATUS_OK) {
 		log_error("Error converting response packet to wire format.\n"
 				  "ldns returned: %s\n", ldns_get_errorstr_by_id(s));
-		// TODO: create error response
-		ldns_pkt_free(query);
-		ldns_pkt_free(response);	// watch out, this deletes also the RRs!!
+		// send nothing back
+		ldns_pkt_free(response);
 		return -1;
 	}
 
+	ldns_pkt_free(response);
+
 	if (resp_size > *rsize) {
 		debug_ns("Response in wire format longer than acceptable.\n");
-		// TODO: what about truncation???
-		// TODO: create error response
-		ldns_pkt_free(query);
-		ldns_pkt_free(response);	// watch out, this deletes also the RRs!!
+		// TODO: truncation
+		assert(0);
 		return -1;
 	}
 
