@@ -334,7 +334,7 @@ int zdb_remove_zone( zdb_database *database, ldns_rdf *zone_name )
 /*----------------------------------------------------------------------------*/
 
 int zdb_insert_name( zdb_database *database, ldns_rdf *zone_name,
-					 ldns_rdf *dname, zn_node *node )
+					 zn_node *node )
 {
     zdb_zone *z = NULL, *zp = NULL;
 

@@ -1,6 +1,5 @@
 #include "name-server.h"
 #include "zone-node.h"
-#include "dns-simple.h"
 #include "zone-database.h"
 #include <stdio.h>
 #include <assert.h>

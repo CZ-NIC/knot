@@ -9,7 +9,6 @@
 #define ZONE_NODE
 
 #include "common.h"
-#include "dns-simple.h"
 #include "skip-list.h"
 #include <sys/types.h>
 #include <ldns/rr.h>
