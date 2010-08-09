@@ -9,38 +9,24 @@
 
 //#define NS_DEBUG
 
-/*----------------------------------------------------------------------------*/
-
-ns_nameserver *ns_create( zdb_database *database )
-{
-    ns_nameserver *ns = malloc(sizeof(ns_nameserver));
-    if (ns == NULL) {
-        ERR_ALLOC_FAILED;
-        return NULL;
-    }
-    ns->zone_db = database;
-    return ns;
-}
+static const uint8_t RCODE_MASK = 0xf0;
+static const int OFFSET_FLAGS2 = 3;
 
 /*----------------------------------------------------------------------------*/
+/* Private functions          					                              */
+/*----------------------------------------------------------------------------*/
 
-ldns_pkt *ns_create_empty_response( ldns_pkt *query )
+ldns_pkt *ns_create_empty_response()
 {
-	ldns_pkt *response = ldns_pkt_clone(query);
+	ldns_pkt *response = ldns_pkt_new();
 	if (response == NULL) {
+		ERR_ALLOC_FAILED;
 		return NULL;
 	}
 
 	ldns_pkt_set_aa(response, 1);
 	ldns_pkt_set_qr(response, 1);
-	ldns_pkt_set_answer(response, NULL);
-	ldns_pkt_set_ancount(response, 0);
-
-	ldns_pkt_set_authority(response, NULL);
-	ldns_pkt_set_nscount(response, 0);
-
-	ldns_pkt_set_additional(response, NULL);
-	ldns_pkt_set_arcount(response, 0);
+	// everything else is by default set to 0
 
 	return response;
 }
@@ -70,6 +56,61 @@ void ns_fill_response( ldns_pkt *response, ldns_rr_list *answer,
 
 /*----------------------------------------------------------------------------*/
 
+static inline void ns_set_rcode( uint8_t *flags, uint8_t rcode )
+{
+	assert(rcode < 11);
+	(*flags) = ((*flags) & RCODE_MASK) | rcode;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static inline void ns_error_response( ns_nameserver *nameserver, uint16_t id,
+									  uint8_t rcode, uint8_t *response_wire,
+									  size_t *rsize )
+{
+	memcpy(response_wire, nameserver->err_response,
+		   nameserver->err_resp_size);
+	// copy ID of the query
+	memcpy(response_wire, &id, 2);
+	// set the RCODE
+	ns_set_rcode(response_wire + OFFSET_FLAGS2, rcode);
+	*rsize = nameserver->err_resp_size;
+}
+
+/*----------------------------------------------------------------------------*/
+/* Public functions          					                              */
+/*----------------------------------------------------------------------------*/
+
+ns_nameserver *ns_create( zdb_database *database )
+{
+    ns_nameserver *ns = malloc(sizeof(ns_nameserver));
+    if (ns == NULL) {
+        ERR_ALLOC_FAILED;
+        return NULL;
+    }
+    ns->zone_db = database;
+
+	// prepare empty response with SERVFAIL error
+	ldns_pkt *err = ns_create_empty_response();
+	if (err == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+	ldns_pkt_set_rcode(err, LDNS_RCODE_SERVFAIL);
+
+	ldns_status s = ldns_pkt2wire(&ns->err_response, err, &ns->err_resp_size);
+	if (s != LDNS_STATUS_OK) {
+		log_error("Error while converting default error resposne to wire format"
+				"\n");
+		ldns_pkt_free(err);
+		return NULL;
+	}
+
+    return ns;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 					   size_t qsize, uint8_t *response_wire, size_t *rsize )
 {
@@ -81,22 +122,28 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 	if ((s = ldns_wire2pkt(&query, query_wire, qsize)) != LDNS_STATUS_OK) {
 		log_info("Error while parsing query.\nldns returned: %s\n",
 				ldns_get_errorstr_by_id(s));
-		// malformed question => ignore
-		// TODO: should somehow return FORMERR ??? we would need to copy the
-		// wire format of the query and just set the proper RCODE, AA and QR bit
-		return -1;
+		// malformed question, returning FORMERR in empty packet, but copy ID
+		// if there aren't at least those 2 bytes, ignore
+		if (qsize < 2) {
+			return -1;
+		}
+		ns_error_response(nameserver, *((const uint16_t *)query_wire),
+						  LDNS_RCODE_FORMERR, response_wire, rsize);
+		return 0;
+	}
+
+	// prepare empty response (used as an error response as well)
+	ldns_pkt *response = ns_create_empty_response();
+	if (response == NULL) {
+		log_error("Error while creating response packet!\n");
+		ns_error_response(nameserver, *((const uint16_t *)query_wire),
+						  LDNS_RCODE_SERVFAIL, response_wire, rsize);
+		ldns_pkt_free(query);
+		return 0;
 	}
 
 	debug_ns("Query parsed:\n");
 	debug_ns("%s", ldns_pkt2str(query));
-
-	// prepare empty response (used as an error response as well)
-	ldns_pkt *response = ns_create_empty_response(query);
-	if (response == NULL) {
-		log_error("Error while creating response packet!\n");
-		ldns_pkt_free(query);
-		return -1;
-	}
 
 	rcu_read_lock();
 
@@ -124,11 +171,9 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 			node = NULL;
 		}
 
-		// make sure proper RCODE is set
-		ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
-
 		// if not found, it means there is no RRSet for given type
 		// return "NODATA" response - i.e. empty with NOERROR RCODE
+		ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
 	}
 	rcu_read_unlock();
 	ldns_pkt_free(query);
@@ -143,22 +188,25 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 			!= LDNS_STATUS_OK) {
 		log_error("Error converting response packet to wire format.\n"
 				  "ldns returned: %s\n", ldns_get_errorstr_by_id(s));
-		// send nothing back
-		ldns_pkt_free(response);
-		return -1;
+		// send back SERVFAIL (as this is our problem)
+		ns_error_response(nameserver, *((const uint16_t *)query_wire),
+						  LDNS_RCODE_SERVFAIL, response_wire, rsize);
+	} else {
+		if (resp_size > *rsize) {
+			debug_ns("Response in wire format longer than acceptable.\n");
+			// TODO: truncation
+			// while not implemented, send back SERVFAIL
+			log_error("Truncation needed, but not implemented!\n");
+			ns_error_response(nameserver, *((const uint16_t *)query_wire),
+							  LDNS_RCODE_SERVFAIL, response_wire, rsize);
+		} else {
+			// everything went well, copy the wire format of the response
+			memcpy(response_wire, resp_wire, resp_size);
+			*rsize = resp_size;
+		}
 	}
 
 	ldns_pkt_free(response);
-
-	if (resp_size > *rsize) {
-		debug_ns("Response in wire format longer than acceptable.\n");
-		// TODO: truncation
-		assert(0);
-		return -1;
-	}
-
-	memcpy(response_wire, resp_wire, resp_size);
-	*rsize = resp_size;
 
 	debug_ns("Answering complete, returning response with wire size %d\n",
 			 resp_size);
