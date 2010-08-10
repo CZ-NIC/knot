@@ -48,7 +48,7 @@ ldns_pkt *ns_create_empty_response( ldns_pkt *query )
 
 /*----------------------------------------------------------------------------*/
 
-void ns_fill_response( ldns_pkt *response, ldns_rr_list *answer,
+void ns_fill_packet( ldns_pkt *response, ldns_rr_list *answer,
 						ldns_rr_list *authority, ldns_rr_list *additional )
 {
 	ldns_pkt_set_answer(response, ldns_rr_list_clone(answer));
@@ -93,6 +93,64 @@ static inline void ns_error_response( ns_nameserver *nameserver, uint16_t id,
 }
 
 /*----------------------------------------------------------------------------*/
+
+void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response )
+{
+	// find the appropriate zone node
+	rcu_read_lock();
+	const zn_node *node = zdb_find_name(zdb, ldns_rr_owner(question));
+	if (node == NULL) {
+		debug_ns("Name not found in the zone database.\n");
+		// return NXDOMAIN
+		ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
+	} else {
+		// get the appropriate RRSet
+		ldns_rr_list *answer = skip_find(node->rrsets,
+										 (void *)ldns_rr_get_type(question));
+
+		if (answer != NULL) {
+			// fill the response packet (RRs are copied)
+			ns_fill_packet(response, answer, NULL, NULL);
+			// end of RCU read critical section (all data copied)
+			node = NULL;
+		}
+
+		// if not found, it means there is no RRSet for given type
+		// return "NODATA" response - i.e. empty with NOERROR RCODE
+		ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
+	}
+	rcu_read_unlock();
+}
+
+/*----------------------------------------------------------------------------*/
+
+int ns_response_to_wire( const ldns_pkt *response, uint8_t *wire,
+						 size_t *wire_size )
+{
+	uint8_t *rwire = NULL;
+	size_t rsize = 0;
+	ldns_status s;
+	if ((s = ldns_pkt2wire(&rwire, response, &rsize)) != LDNS_STATUS_OK) {
+		log_error("Error converting response packet to wire format.\n"
+				  "ldns returned: %s\n", ldns_get_errorstr_by_id(s));
+		return -1;
+	} else {
+		if (rsize > *wire_size) {
+			debug_ns("Response in wire format longer than acceptable.\n");
+			// TODO: truncation
+			// while not implemented, send back SERVFAIL
+			log_error("Truncation needed, but not implemented!\n");
+			return -1;
+		} else {
+			// everything went well, copy the wire format of the response
+			memcpy(wire, rwire, rsize);
+			*wire_size = rsize;
+		}
+	}
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
 /* Public functions          					                              */
 /*----------------------------------------------------------------------------*/
 
@@ -134,6 +192,8 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 
 	ldns_status s = LDNS_STATUS_OK;
 	ldns_pkt *query;
+
+	// 1) Parse the query.
 	if ((s = ldns_wire2pkt(&query, query_wire, qsize)) != LDNS_STATUS_OK) {
 		log_info("Error while parsing query.\nldns returned: %s\n",
 				ldns_get_errorstr_by_id(s));
@@ -147,7 +207,7 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 		return 0;
 	}
 
-	// prepare empty response (used as an error response as well)
+	// 2) Prepare empty response (used as an error response as well).
 	ldns_pkt *response = ns_create_empty_response(query);
 	if (response == NULL) {
 		log_error("Error while creating response packet!\n");
@@ -157,74 +217,28 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 		return 0;
 	}
 
-	debug_ns("Query parsed:\n");
-	debug_ns("%s", ldns_pkt2str(query));
+	debug_ns("Query parsed: %s\n", ldns_pkt2str(query));
 
-	rcu_read_lock();
-
-	// get the first question entry
+	// 3) Fill the response according to the lookup algorithm.
+	// get the first question entry (other ignored)
 	ldns_rr *question = ldns_rr_list_rr(ldns_pkt_question(query), 0);
-	debug_ns("Question extracted:\n");
-	debug_ns("%s", ldns_rr2str(question));
+	debug_ns("Question extracted: %s\n", ldns_rr2str(question));
 
-	// find the appropriate zone node
-	const zn_node *node = zdb_find_name(nameserver->zone_db,
-										ldns_rr_owner(question));
-	if (node == NULL) {
-		debug_ns("Name not found in the zone database.\n");
-		// return NXDOMAIN
-		ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
-	} else {
-		// get the appropriate RRSet
-		ldns_rr_list *answer = skip_find(node->rrsets,
-										 (void *)ldns_rr_get_type(question));
-
-		if (answer != NULL) {
-			// fill the response packet (RRs are copied)
-			ns_fill_response(response, answer, NULL, NULL);
-			// end of RCU read critical section (all data copied)
-			node = NULL;
-		}
-
-		// if not found, it means there is no RRSet for given type
-		// return "NODATA" response - i.e. empty with NOERROR RCODE
-		ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
-	}
-	rcu_read_unlock();
+	ns_answer(nameserver->zone_db, question, response);
 	ldns_pkt_free(query);
 
-	debug_ns("Created response packet:\n");
-	debug_ns("%s", ldns_pkt2str(response));
+	debug_ns("Created response packet: %s\n", ldns_pkt2str(response));
 
-	// transform the packet into wire format
-	uint8_t *resp_wire = NULL;
-	size_t resp_size = 0;
-	if ((s = ldns_pkt2wire(&resp_wire, response, &resp_size))
-			!= LDNS_STATUS_OK) {
-		log_error("Error converting response packet to wire format.\n"
-				  "ldns returned: %s\n", ldns_get_errorstr_by_id(s));
+	// 4) Transform the packet into wire format
+	if (ns_response_to_wire(response, response_wire, rsize) != 0) {
 		// send back SERVFAIL (as this is our problem)
 		ns_error_response(nameserver, *((const uint16_t *)query_wire),
 						  LDNS_RCODE_SERVFAIL, response_wire, rsize);
-	} else {
-		if (resp_size > *rsize) {
-			debug_ns("Response in wire format longer than acceptable.\n");
-			// TODO: truncation
-			// while not implemented, send back SERVFAIL
-			log_error("Truncation needed, but not implemented!\n");
-			ns_error_response(nameserver, *((const uint16_t *)query_wire),
-							  LDNS_RCODE_SERVFAIL, response_wire, rsize);
-		} else {
-			// everything went well, copy the wire format of the response
-			memcpy(response_wire, resp_wire, resp_size);
-			*rsize = resp_size;
-		}
 	}
 
 	ldns_pkt_free(response);
 
-	debug_ns("Answering complete, returning response with wire size %d\n",
-			 resp_size);
+	debug_ns("Returning response with wire size %d\n", *rsize);
 	debug_ns_hex((char *)response_wire, resp_size);
 
 	return 0;
