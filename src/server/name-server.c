@@ -16,7 +16,7 @@ static const int OFFSET_FLAGS2 = 3;
 /* Private functions          					                              */
 /*----------------------------------------------------------------------------*/
 
-ldns_pkt *ns_create_empty_response()
+ldns_pkt *ns_create_empty_response( ldns_pkt *query )
 {
 	ldns_pkt *response = ldns_pkt_new();
 	if (response == NULL) {
@@ -24,9 +24,24 @@ ldns_pkt *ns_create_empty_response()
 		return NULL;
 	}
 
-	ldns_pkt_set_aa(response, 1);
-	ldns_pkt_set_qr(response, 1);
-	// everything else is by default set to 0
+	if (query != NULL) {
+		// copy ID
+		ldns_pkt_set_id(response, ldns_pkt_id(query));
+		// authoritative response
+		ldns_pkt_set_aa(response, 1);
+		// response
+		ldns_pkt_set_qr(response, 1);
+		// copy "recursion desired" bit
+		ldns_pkt_set_rd(response, ldns_pkt_rd(query));
+		// all other flags are by default set to 0
+
+		// copy question section (no matter how many items there are)
+		// TODO: we could use the question section from query, not copy the items
+		//       to save time and space, but then we would need to be careful with
+		//       deallocation of query
+		ldns_pkt_push_rr_list(response, LDNS_SECTION_QUESTION,
+							  ldns_rr_list_clone(ldns_pkt_question(query)));
+	}
 
 	return response;
 }
@@ -91,7 +106,7 @@ ns_nameserver *ns_create( zdb_database *database )
     ns->zone_db = database;
 
 	// prepare empty response with SERVFAIL error
-	ldns_pkt *err = ns_create_empty_response();
+	ldns_pkt *err = ns_create_empty_response(NULL);
 	if (err == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -133,7 +148,7 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 	}
 
 	// prepare empty response (used as an error response as well)
-	ldns_pkt *response = ns_create_empty_response();
+	ldns_pkt *response = ns_create_empty_response(query);
 	if (response == NULL) {
 		log_error("Error while creating response packet!\n");
 		ns_error_response(nameserver, *((const uint16_t *)query_wire),

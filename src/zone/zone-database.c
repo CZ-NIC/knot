@@ -75,31 +75,21 @@ int zdb_create_list( zdb_zone *zone, ldns_zone *zone_ldns )
 {
 	int nodes = 0;
 
+	debug_zdb("Creating linked list of zone nodes...\n");
+
 	// sort the zone so we obtain RRSets
 	ldns_zone_sort(zone_ldns);
 
-	// create zone apex node
-	zone->apex = zn_create();
-	if (zone->apex == NULL) {
-		log_error("Error while processing zone %s: Cannot create zone apex node"
-				".\n", ldns_rdf2str(zone->zone_name));
-		return nodes;
-	}
-
-	if (zn_add_rr(zone->apex, ldns_rr_clone(ldns_zone_soa(zone_ldns))) != 0
-		|| skip_empty(zone->apex->rrsets) == 0) {
-		log_error("Error while processing zone %s: Cannot insert SOA RR into "
-				"the zone apex node.\n", ldns_rdf2str(zone->zone_name));
-		free(zone->apex);
-		return nodes;
-	}
-	++nodes;
-
+	debug_zdb("Done.\nProcessing RRSets...\n");
 	/*
 	 * Walk through all RRs, separate them into zone nodes and RRSets
 	 * and create a linked list of nodes in canonical order.
+	 *
+	 * Some idiot implemented ldns_rr_list_pop_rrset() to return the LAST RRSet
+	 * so we will fill the zone from the last node to the first.
 	 */
-	zn_node *act_node = zone->apex;
+	zn_node *act_node = NULL;
+	zn_node *last_node = NULL;
 	while (ldns_zone_rr_count(zone_ldns) != 0) {
 		ldns_rr_list *rrset = ldns_rr_list_pop_rrset(ldns_zone_rrs(zone_ldns));
 		if (rrset == NULL) {
@@ -108,10 +98,16 @@ int zdb_create_list( zdb_zone *zone, ldns_zone *zone_ldns )
 			// ignore rest of the zone
 			break;
 		}
+		debug_zdb("Processing RRSet with owner %s and type %s.\n",
+				  ldns_rdf2str(ldns_rr_list_owner(rrset)),
+				  ldns_rr_type2str(ldns_rr_list_type(rrset)));
 
-		if (ldns_dname_compare(ldns_rr_list_owner(rrset), act_node->owner)
-			== 0) {
+		if (act_node != NULL &&
+				ldns_dname_compare(ldns_rr_list_owner(rrset), act_node->owner)
+				== 0) {
 			// same owner, insert into the same node
+			debug_zdb("Inserting into node with owner %s.\n",
+					  ldns_rdf2str(act_node->owner));
 			if (zn_add_rrset(act_node, rrset) != 0) {
 				log_error("Error while processing zone %s: Cannot add RRSet to"
 						"a zone node.\n", ldns_rdf2str(zone->zone_name));
@@ -120,6 +116,7 @@ int zdb_create_list( zdb_zone *zone, ldns_zone *zone_ldns )
 			}
 		} else {
 			// create a new node, add the RRSet and connect to the list
+			debug_zdb("Creating new node.\n");
 			zn_node *new_node = zn_create();
 			if (new_node == NULL) {
 				log_error("Error while processing zone %s: Cannot create new"
@@ -134,16 +131,37 @@ int zdb_create_list( zdb_zone *zone, ldns_zone *zone_ldns )
 				free(new_node);
 				break;
 			}
-			new_node->prev = act_node;
-			act_node->next = new_node;
+			new_node->next = act_node;
+			if (act_node != NULL) {
+				act_node->prev = new_node;
+			} else {
+				last_node = new_node;
+			}
 			act_node = new_node;	// continue with the next node
 			++nodes;
 		}
 	}
 
-	// all RRs processed, connect last node to the apex, creating cyclic list
-	zone->apex->prev = act_node;
-	act_node->next = zone->apex;
+	debug_zdb("Processing of RRSets done.\nLast node created (should be zone "
+			  "apex): %s, last node of the list: %s.\n",
+			  ldns_rdf2str(act_node->owner), ldns_rdf2str(last_node->owner));
+
+	// connect last node to the apex, creating cyclic list
+	last_node->next = act_node;
+	act_node->prev = last_node;
+	// save the zone apex
+	zone->apex = act_node;
+
+	debug_zdb("Done.\nAdding SOA RR to the apex node...\n");
+
+	if (zn_add_rr(zone->apex, ldns_rr_clone(ldns_zone_soa(zone_ldns))) != 0
+		|| skip_empty(zone->apex->rrsets) == 0) {
+		log_error("Error while processing zone %s: Cannot insert SOA RR into "
+				"the zone apex node.\n", ldns_rdf2str(zone->zone_name));
+		free(zone->apex);
+		return nodes;
+	}
+	++nodes;
 
 	ldns_zone_deep_free(zone_ldns);
 
@@ -189,10 +207,12 @@ int zdb_insert_nodes_into_zds( zds_zone *zone, zn_node **head )
 	zn_node *node = (*head)->prev;
 	do {
 		node = node->next;
+		debug_zdb("Inserting node with key %s...\n", ldns_rdf2str(node->owner));
 		if (zds_insert(zone, node) != 0) {
 			log_error("Error filling the zone data structure.\n");
 			return -1;
 		}
+		debug_zdb("Done.\n");
 		assert(node->next != NULL);
 	} while (node->next != (*head));
 

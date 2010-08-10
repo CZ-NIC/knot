@@ -1,4 +1,4 @@
-$ORIGIN example.com.     ; designates the start of this zone file in the name space
+$ORIGIN example.com.
 $TTL 1h                  ; The default expiration time of a resource record without its own TTL value
 example.com.  IN  SOA  ns.example.com. username.example.com. (
               2007120710 ; serial number of this zone file
@@ -15,6 +15,7 @@ example.com.  MX    10 mail.example.com.  ; mail.example.com is the mailserver f
 example.com.  A     10.0.0.1              ; ip address for "example.com"
 ns            A     10.0.0.2              ; ip address for "ns.example.com". Since there is no "." after ns, $ORIGIN is attached
 www           CNAME ns                    ; "www.example.com" is an alias for "ns.example.com"
-wwwtest       CNAME www                   ; "wwwtest.example.com" is another alias for "www.example.com"
+wwwtest	CNAME www                   ; "wwwtest.example.com" is another alias for "www.example.com"
 mail          A     10.0.0.3              ; ip address for "mail.example.com", any MX record host must be
-
+sub	NS	ns.sub.example.com.	; delegation
+ns.sub	A	10.1.0.1	; glue
