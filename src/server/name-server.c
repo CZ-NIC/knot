@@ -149,6 +149,7 @@ const zn_node *ns_find_node_in_zone( const zdb_zone *zone, ldns_rdf *qname,
 /*----------------------------------------------------------------------------*/
 
 void ns_follow_cname( const zn_node **node, ldns_pkt *response ) {
+	debug_ns("Resolving CNAME chain...\n");
 	while (zn_get_cname(*node) != NULL) {
 		assert(zn_find_rrset((*node), LDNS_RR_TYPE_CNAME) != NULL);
 		ldns_pkt_push_rr_list(response, LDNS_SECTION_ANSWER,
@@ -186,12 +187,11 @@ static inline void ns_put_authority_ns( const zdb_zone *zone, ldns_pkt *resp )
 
 /*----------------------------------------------------------------------------*/
 
-static inline void ns_put_glue( const zn_node *node, ldns_rr_type type,
-								ldns_pkt *response )
+static inline void ns_put_glues( const zn_node *node, ldns_pkt *response )
 {
-	ldns_rr_list *glue = zn_get_glue(node, type);
-	if (glue != NULL) {
-		ldns_pkt_push_rr_list(response, LDNS_SECTION_ADDITIONAL, glue);
+	ldns_rr_list *glues = zn_get_glues(node);
+	if (glues != NULL) {
+		ldns_pkt_push_rr_list(response, LDNS_SECTION_ADDITIONAL, glues);
 	}
 }
 
@@ -201,8 +201,7 @@ static inline void ns_referral( const zn_node *node, ldns_pkt *response )
 {
 	debug_ns("Referral response.\n");
 	ns_put_rrset(node, LDNS_RR_TYPE_NS, LDNS_SECTION_AUTHORITY, response);
-	ns_put_glue(node, LDNS_RR_TYPE_A, response);
-	ns_put_glue(node, LDNS_RR_TYPE_AAAA, response);
+	ns_put_glues(node, response);
 	ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
 }
 
@@ -261,6 +260,7 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response )
 	} else {	// only part of QNAME found
 		// if we ended in the zone apex, the name is not in the zone
 		if (zone->apex == node) {
+			debug_ns("Name not found in the zone.\n");
 			ns_put_rrset(node, LDNS_RR_TYPE_SOA, LDNS_SECTION_AUTHORITY,
 						 response);
 			ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
@@ -390,7 +390,7 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 	rcu_read_unlock();
 
 	debug_ns("Returning response with wire size %d\n", *rsize);
-	debug_ns_hex((char *)response_wire, resp_size);
+	debug_ns_hex((char *)response_wire, *rsize);
 
 	return 0;
 }

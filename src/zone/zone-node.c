@@ -13,6 +13,7 @@
 
 static const uint RRSETS_COUNT = 10;
 static const uint8_t FLAGS_DELEG = 0x1;
+static const uint8_t FLAGS_NONAUTH = 0x2;
 
 /*----------------------------------------------------------------------------*/
 /* Private functions          					                              */
@@ -56,6 +57,20 @@ static inline void zn_flags_set_delegation_point( uint8_t *flags )
 static inline int zn_flags_is_delegation_point( uint8_t flags )
 {
 	return (flags & FLAGS_DELEG);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static inline void zn_flags_set_nonauth( uint8_t *flags )
+{
+	(*flags) |= FLAGS_NONAUTH;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static inline int zn_flags_is_nonauth( uint8_t flags )
+{
+	return (flags & FLAGS_NONAUTH);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -183,8 +198,24 @@ ldns_rr_list *zn_find_rrset( const zn_node *node, ldns_rr_type type )
 
 /*----------------------------------------------------------------------------*/
 
+void zn_set_non_authoritative( zn_node *node )
+{
+	zn_flags_set_nonauth(&node->flags);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zn_is_non_authoritative( const zn_node *node )
+{
+	return zn_flags_is_nonauth(node->flags);
+}
+
+/*----------------------------------------------------------------------------*/
+
 void zn_set_delegation_point( zn_node *node )
 {
+	assert(node->ref.glues == NULL);
+	node->ref.glues = ldns_rr_list_new();
 	zn_flags_set_delegation_point(&node->flags);
 }
 
@@ -192,6 +223,10 @@ void zn_set_delegation_point( zn_node *node )
 
 int zn_is_delegation_point( const zn_node *node )
 {
+	assert((zn_flags_is_delegation_point(node->flags) == 0
+			&& node->ref.glues == NULL)
+		   || (zn_flags_is_delegation_point(node->flags) == 1
+			   && node->ref.glues != NULL));
 	return zn_flags_is_delegation_point(node->flags);
 }
 
@@ -199,24 +234,84 @@ int zn_is_delegation_point( const zn_node *node )
 
 int zn_is_cname( const zn_node *node )
 {
-	return (node->ref.cname != NULL);
+	return (zn_flags_is_delegation_point(node->flags) == 0
+			 && node->ref.cname != NULL);
 }
 
 /*----------------------------------------------------------------------------*/
 
 zn_node *zn_get_cname( const zn_node *node )
 {
+	assert(zn_flags_is_delegation_point(node->flags) == 0);
 	return node->ref.cname;
 }
 
 /*----------------------------------------------------------------------------*/
 
-ldns_rr_list *zn_get_glue( const zn_node *node, ldns_rr_type type )
+int zn_push_glue( zn_node *node, ldns_rr_list *glue )
+{
+	assert((zn_flags_is_delegation_point(node->flags) == 1
+			&& node->ref.glues != NULL));
+
+	if (glue == NULL) {
+		return 0;
+	}
+
+	int res = ldns_rr_list_push_rr_list(node->ref.glues, glue) - 1;
+	if (res == 0) {
+		// sort the glue RRs
+		ldns_rr_list_sort(node->ref.glues);
+	}
+	return res;
+}
+
+/*----------------------------------------------------------------------------*/
+
+ldns_rr_list *zn_get_glues( const zn_node *node )
 {
 	if (!zn_is_delegation_point(node)) {
 		return NULL;
 	}
-	return ((ldns_rr_list *)skip_find(node->ref.glues, (void *)type));
+	return node->ref.glues;
+}
+
+/*----------------------------------------------------------------------------*/
+
+ldns_rr_list *zn_get_glue( const zn_node *node, ldns_rdf *owner,
+						   ldns_rr_type type )
+{
+	assert(type == LDNS_RR_TYPE_A || type == LDNS_RR_TYPE_AAAA);
+
+	if (!zn_is_delegation_point(node)) {
+		return NULL;
+	}
+
+	ldns_rr_list *glue = ldns_rr_list_new();
+
+	ldns_rr *rr;
+	int i = -1;
+	int cmp;
+	do {
+		++i;
+		rr = ldns_rr_list_rr(node->ref.glues, i);
+	} while ((cmp = ldns_dname_compare(ldns_rr_owner(rr), owner)) < 0);
+
+	// found owner
+	while (cmp == 0 && ldns_rr_get_type(rr) != type) {
+		++i;
+		rr = ldns_rr_list_rr(node->ref.glues, i);
+		cmp = ldns_dname_compare(ldns_rr_owner(rr), owner);
+	}
+
+	// found owner & type
+	while (cmp == 0 && ldns_rr_get_type(rr) == type) {
+		ldns_rr_list_push_rr(glue, rr);
+		++i;
+		rr = ldns_rr_list_rr(node->ref.glues, i);
+		cmp = ldns_dname_compare(ldns_rr_owner(rr), owner);
+	}
+
+	return glue;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -225,6 +320,9 @@ void zn_destroy( zn_node **node )
 {
 	skip_destroy_list((*node)->rrsets, NULL, zn_destroy_value);
 	ldns_rdf_deep_free((*node)->owner);
+	if (zn_is_delegation_point(*node)) {
+		ldns_rr_list_free((*node)->ref.glues);
+	}
     free(*node);
     *node = NULL;
 }
