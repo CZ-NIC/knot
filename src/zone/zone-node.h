@@ -35,8 +35,8 @@ typedef struct zn_node {
 		/*! @brief Node with canonical name for this node's name. */
 		struct zn_node *cname;
 
-		/*! @brief Glue RRSets (may be both A and AAAA) */
-		skip_list *glues;
+		/*! @brief Glue RRSets. */
+		ldns_rr_list *glues;
 	} ref;
 
 	/*! @brief Next zone node (should be in canonical order). */
@@ -104,6 +104,16 @@ int zn_add_rrset( zn_node *node, ldns_rr_list *rrset );
 ldns_rr_list *zn_find_rrset( const zn_node *node, ldns_rr_type type );
 
 /*!
+ * @brief Marks the node as non-authoritative (e.g. carying only glue records).
+ */
+void zn_set_non_authoritative( zn_node *node );
+
+/*!
+ * @brief Returns 1 if @a node is non-authoritative. Otherwise 0.
+ */
+int zn_is_non_authoritative( const zn_node *node );
+
+/*!
  * @brief Marks the node as delegation point.
  */
 void zn_set_delegation_point( zn_node *node );
@@ -130,16 +140,33 @@ int zn_is_cname( const zn_node *node );
 zn_node *zn_get_cname( const zn_node *node );
 
 /*!
- * @brief Returns the desired glue RRSet from the node.
+ * @brief Adds the given glue RRSet to the list of glue RRSets in @a node.
+ */
+int zn_push_glue( zn_node *node, ldns_rr_list *glue );
+
+/*!
+ * @brief Returns all glue RRSets from the node.
  *
- * @param node Node to get the glue RRSet from.
- * @param type Type of the glue RRSet (may be only A or AAAA).
+ * @param node Node to get the glue RRSets from.
+
  *
  * @retval Glue RRSet of type @a type if @a node is a delegation point and has
  *         such glue stored.
  * @retval NULL otherwise.
  */
-ldns_rr_list *zn_get_glue( const zn_node *node, ldns_rr_type type );
+ldns_rr_list *zn_get_glues( const zn_node *node );
+
+/*!
+ * @brief Returns the desired glue RRSet from the node.
+ *
+ * @param node Node to get the glue RRSet from.
+ * @param owner Owner of the glue RRSets.
+ * @param type Type of the glue RRSets (may be only A or AAAA).
+ *
+ * @note This function is quite ineffective.
+ */
+ldns_rr_list *zn_get_glue( const zn_node *node, ldns_rdf *owner,
+						   ldns_rr_type type );
 
 /*!
  * @brief Destroys the zone node, destroying all its RRSets and their RRs.
