@@ -179,6 +179,13 @@ static inline void ns_put_answer( const zn_node *node, ldns_rr_type type,
 
 /*----------------------------------------------------------------------------*/
 
+static inline void ns_put_authority_ns( const zdb_zone *zone, ldns_pkt *resp )
+{
+	ns_put_rrset(zone->apex, LDNS_RR_TYPE_NS, LDNS_SECTION_AUTHORITY, resp);
+}
+
+/*----------------------------------------------------------------------------*/
+
 static inline void ns_put_glue( const zn_node *node, ldns_rr_type type,
 								ldns_pkt *response )
 {
@@ -250,6 +257,7 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response )
 		}
 		assert(ldns_dname_compare(node->owner, qname) == 0);
 		ns_put_answer(node, ldns_rr_get_type(question), response);
+		ns_put_authority_ns(zone, response);
 	} else {	// only part of QNAME found
 		// if we ended in the zone apex, the name is not in the zone
 		if (zone->apex == node) {
