@@ -12,6 +12,7 @@
 /*----------------------------------------------------------------------------*/
 
 static const uint RRSETS_COUNT = 10;
+static const uint8_t FLAGS_DELEG = 0x1;
 
 /*----------------------------------------------------------------------------*/
 /* Private functions          					                              */
@@ -44,6 +45,20 @@ void zn_destroy_value( void *value )
 }
 
 /*----------------------------------------------------------------------------*/
+
+static inline void zn_flags_set_delegation_point( uint8_t *flags )
+{
+	(*flags) |= FLAGS_DELEG;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static inline int zn_flags_is_delegation_point( uint8_t flags )
+{
+	return (flags & FLAGS_DELEG);
+}
+
+/*----------------------------------------------------------------------------*/
 /* Public functions          					                              */
 /*----------------------------------------------------------------------------*/
 
@@ -64,6 +79,8 @@ zn_node *zn_create()
 	node->next = NULL;
 	node->prev = NULL;
 	node->owner = NULL;
+	node->cname = NULL;
+	node->flags = 0;
 
     return node;
 }
@@ -152,7 +169,7 @@ int zn_add_rrset( zn_node *node, ldns_rr_list *rrset )
 
 /*----------------------------------------------------------------------------*/
 
-const ldns_rr_list *zn_find_rrset( const zn_node *node, ldns_rr_type type )
+ldns_rr_list *zn_find_rrset( const zn_node *node, ldns_rr_type type )
 {
 	ldns_rr_list *rrset = skip_find(node->rrsets, (void *)type);
 
@@ -160,6 +177,27 @@ const ldns_rr_list *zn_find_rrset( const zn_node *node, ldns_rr_type type )
 	assert(rrset == NULL || ldns_rr_list_type(rrset) == type);
 
 	return rrset;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void zn_set_delegation_point( zn_node *node )
+{
+	zn_flags_set_delegation_point(&node->flags);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zn_is_delegation_point( const zn_node *node )
+{
+	return zn_flags_is_delegation_point(node->flags);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zn_is_cname( const zn_node *node )
+{
+	return (node->cname != NULL);
 }
 
 /*----------------------------------------------------------------------------*/

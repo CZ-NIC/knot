@@ -45,32 +45,6 @@ void zdb_disconnect_zone( zdb_database *database, zdb_zone *z, zdb_zone *prev )
 
 /*----------------------------------------------------------------------------*/
 
-zdb_zone *zdb_find_zone_for_name( zdb_database *database, ldns_rdf *dname )
-{
-	zdb_zone *z = database->head, *best = NULL;
-	uint most_matched = 0;
-
-	// start of RCU reader critical section
-	// maybe not needed, called only from zdb_find_name()
-	rcu_read_lock();
-
-	while (z != NULL) {
-		uint matched = dnsu_subdomain_labels(dname, z->zone_name);
-		if (matched > most_matched) {
-			most_matched = matched;
-			best = z;
-		}
-		z = z->next;
-	}
-
-	// end of RCU reader critical section
-	rcu_read_unlock();
-
-	return best;
-}
-
-/*----------------------------------------------------------------------------*/
-
 int zdb_create_list( zdb_zone *zone, ldns_zone *zone_ldns )
 {
 	int nodes = 0;
@@ -220,6 +194,33 @@ int zdb_insert_nodes_into_zds( zds_zone *zone, zn_node **head )
 }
 
 /*----------------------------------------------------------------------------*/
+/*!
+ * @brief Inserts the zone into the list of zones in @a database in right order.
+ *
+ * @param database Zone database to insert the zone into.
+ * @param zone Zone to be inserted.
+ *
+ * The zones are kept in reverse canonical order of their zone names.
+ */
+void zdb_insert_zone( zdb_database *database, zdb_zone *zone )
+{
+	zdb_zone *z = database->head;
+	zdb_zone *prev = NULL;
+
+	while (z != NULL && ldns_dname_compare(z->zone_name, zone->zone_name) > 0) {
+		prev = z;
+		z = z->next;
+	}
+
+	zone->next = z;
+	if (prev == NULL) {
+		database->head = zone;
+	} else {
+		prev->next = zone;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
 /* Public functions          					                              */
 /*----------------------------------------------------------------------------*/
 
@@ -278,9 +279,11 @@ int zdb_add_zone( zdb_database *database, ldns_zone *zone )
 		return -3;
 	}
 
-	// zone created, insert into the database
-	new_zone->next = database->head;
-	database->head = new_zone;
+	/*
+	 * zone created, insert into the database on the proper place,
+	 * i.e. in reverse canonical order of zone names
+	 */
+	zdb_insert_zone(database, new_zone);
 
 	return 0;
 }
@@ -318,9 +321,8 @@ int zdb_create_zone( zdb_database *database, ldns_rdf *zone_name, uint items )
         return -1;
     }
 
-    // insert it to the beginning of the list
-    zone->next = database->head;
-    database->head = zone;
+	// insert it into the right place in the database
+	zdb_insert_zone(database, zone);
 
     return 0;
 }
@@ -380,22 +382,38 @@ int zdb_insert_name( zdb_database *database, ldns_rdf *zone_name,
 
 /*----------------------------------------------------------------------------*/
 
-const zn_node *zdb_find_name( zdb_database *database, ldns_rdf *dname )
+const zdb_zone *zdb_find_zone_for_name( zdb_database *database,
+										const ldns_rdf *dname )
 {
+	zdb_zone *z = database->head;
+
 	// start of RCU reader critical section
 	rcu_read_lock();
 
-    zdb_zone *z = zdb_find_zone_for_name(database, dname);
+	while (z != NULL && ldns_dname_compare(z->zone_name, dname) > 0) {
+		z = z->next;
+	}
+	// now z's zone name is either equal to dname
+	if (ldns_dname_compare(z->zone_name, dname) != 0
+		&& !ldns_dname_is_subdomain(dname, z->zone_name)) {
+		z = NULL;
+	}
+	// end of RCU reader critical section
+	rcu_read_unlock();
 
-    if (z == NULL) {
-        debug_zdb("Zone not found!\n");
-        return NULL;
-    }
+	return z;
+}
 
-	debug_zdb("Found zone: %*s\n", ldns_rdf_size(z->zone_name),
-			  ldns_rdf_data(z->zone_name));
+/*----------------------------------------------------------------------------*/
 
-	const zn_node *found = zds_find(z->zone, dname);
+const zn_node *zdb_find_name_in_zone( const zdb_zone *zone,
+									  const ldns_rdf *dname )
+{
+	assert(zone != NULL);
+	// start of RCU reader critical section
+	rcu_read_lock();
+
+	const zn_node *found = zds_find(zone->zone, dname);
 
 	// end of RCU reader critical section
 	rcu_read_unlock();
