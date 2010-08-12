@@ -4,6 +4,10 @@
  * Contains data structure for holding DNS data related to one domain
  * name (node of the notional zone tree) and routines to manipulate
  * the data.
+ *
+ * @todo CNAME chain should be resolved in advance not only by saving pointer
+ *       to the next node in chain, but rather by having all the CNAME RRs
+ *       somewhere in one place and saving only a pointer or index to this place
  */
 #ifndef ZONE_NODE
 #define ZONE_NODE
@@ -23,6 +27,12 @@ typedef struct zn_node {
 
 	/*! @brief Owner domain name of the node. */
 	ldns_rdf *owner;
+
+	/*! @brief Provide some extra information about the node. */
+	uint8_t flags;
+
+	/*! @brief Pointer to a node with canonical name for this node's name. */
+	struct zn_node *cname;
 
 	/*! @brief Next zone node (should be in canonical order). */
 	struct zn_node *next;
@@ -86,7 +96,22 @@ int zn_add_rrset( zn_node *node, ldns_rr_list *rrset );
  *
  * @return Pointer to the RR if found. NULL otherwise.
  */
-const ldns_rr_list *zn_find_rrset( const zn_node *node, ldns_rr_type type );
+ldns_rr_list *zn_find_rrset( const zn_node *node, ldns_rr_type type );
+
+/*!
+ * @brief Marks the node as delegation point.
+ */
+void zn_set_delegation_point( zn_node *node );
+
+/*!
+ * @brief Returns 1 if @a node is delegation point. Otherwise 0.
+ */
+int zn_is_delegation_point( const zn_node *node );
+
+/*!
+ * @brief Returns 1 if @a node holds a CNAME record. Otherwise 0.
+ */
+int zn_is_cname( const zn_node *node );
 
 /*!
  * @brief Destroys the zone node, destroying all its RRSets and their RRs.

@@ -57,7 +57,7 @@ int zds_insert( zds_zone *zone, zn_node *node );
  *
  * @return Proper zone node for the given name or NULL if not found.
  */
-zn_node *zds_find( zds_zone *zone, ldns_rdf *owner );
+zn_node *zds_find( zds_zone *zone, const ldns_rdf *owner );
 
 /*!
  * @brief Removes zone node corresponding to the given domain name from the

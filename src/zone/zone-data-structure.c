@@ -29,7 +29,7 @@ int zds_insert( zds_zone *zone, zn_node *node )
 
 /*----------------------------------------------------------------------------*/
 
-zn_node *zds_find( zds_zone *zone, ldns_rdf *owner )
+zn_node *zds_find( zds_zone *zone, const ldns_rdf *owner )
 {
 	assert(ldns_rdf_get_type(owner) == LDNS_RDF_TYPE_DNAME);
 	const ck_hash_table_item *item = ck_find_item(zone,
