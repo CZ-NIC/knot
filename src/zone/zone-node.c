@@ -79,7 +79,9 @@ zn_node *zn_create()
 	node->next = NULL;
 	node->prev = NULL;
 	node->owner = NULL;
-	node->cname = NULL;
+	// not a CNAME
+	node->ref.cname = NULL;
+	// not a delegation point
 	node->flags = 0;
 
     return node;
@@ -197,7 +199,24 @@ int zn_is_delegation_point( const zn_node *node )
 
 int zn_is_cname( const zn_node *node )
 {
-	return (node->cname != NULL);
+	return (node->ref.cname != NULL);
+}
+
+/*----------------------------------------------------------------------------*/
+
+zn_node *zn_get_cname( const zn_node *node )
+{
+	return node->ref.cname;
+}
+
+/*----------------------------------------------------------------------------*/
+
+ldns_rr_list *zn_get_glue( const zn_node *node, ldns_rr_type type )
+{
+	if (!zn_is_delegation_point(node)) {
+		return NULL;
+	}
+	return ((ldns_rr_list *)skip_find(node->ref.glues, (void *)type));
 }
 
 /*----------------------------------------------------------------------------*/

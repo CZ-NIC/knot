@@ -31,8 +31,13 @@ typedef struct zn_node {
 	/*! @brief Provide some extra information about the node. */
 	uint8_t flags;
 
-	/*! @brief Pointer to a node with canonical name for this node's name. */
-	struct zn_node *cname;
+	union {
+		/*! @brief Node with canonical name for this node's name. */
+		struct zn_node *cname;
+
+		/*! @brief Glue RRSets (may be both A and AAAA) */
+		skip_list *glues;
+	} ref;
 
 	/*! @brief Next zone node (should be in canonical order). */
 	struct zn_node *next;
@@ -112,6 +117,29 @@ int zn_is_delegation_point( const zn_node *node );
  * @brief Returns 1 if @a node holds a CNAME record. Otherwise 0.
  */
 int zn_is_cname( const zn_node *node );
+
+/*!
+ * @brief Returns the node which holds the canonical name for @a node's owner.
+ *
+ * @param node Node which holds a CNAME RR.
+ *
+ * @retval Node with owner being the canonical name of @a node's owner if there
+ *         is such in the zone.
+ * @retval NULL otherwise or if @a node does not contain CNAME RR.
+ */
+zn_node *zn_get_cname( const zn_node *node );
+
+/*!
+ * @brief Returns the desired glue RRSet from the node.
+ *
+ * @param node Node to get the glue RRSet from.
+ * @param type Type of the glue RRSet (may be only A or AAAA).
+ *
+ * @retval Glue RRSet of type @a type if @a node is a delegation point and has
+ *         such glue stored.
+ * @retval NULL otherwise.
+ */
+ldns_rr_list *zn_get_glue( const zn_node *node, ldns_rr_type type );
 
 /*!
  * @brief Destroys the zone node, destroying all its RRSets and their RRs.
