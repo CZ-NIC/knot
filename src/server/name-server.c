@@ -149,23 +149,53 @@ const zn_node *ns_find_node_in_zone( const zdb_zone *zone, ldns_rdf *qname,
 /*----------------------------------------------------------------------------*/
 
 void ns_follow_cname( const zn_node **node, ldns_pkt *response ) {
-	while ((*node)->cname != NULL) {
+	while (zn_get_cname(*node) != NULL) {
 		assert(zn_find_rrset((*node), LDNS_RR_TYPE_CNAME) != NULL);
 		ldns_pkt_push_rr_list(response, LDNS_SECTION_ANSWER,
 							  zn_find_rrset((*node), LDNS_RR_TYPE_CNAME));
-		(*node) = (*node)->cname;
+		(*node) = zn_get_cname(*node);
 	}
 }
 
 /*----------------------------------------------------------------------------*/
 
-void ns_copy_answers( const zn_node *node, ldns_rr_type qtype,
-					  ldns_pkt *response )
+static inline void ns_put_rrset( const zn_node *node, ldns_rr_type type,
+								 ldns_pkt_section section, ldns_pkt *response )
 {
-	ldns_rr_list *answers = zn_find_rrset(node, qtype);
-	if (answers != NULL) {
-		ldns_pkt_push_rr_list(response, LDNS_SECTION_ANSWER, answers);
+	ldns_rr_list *rrset = zn_find_rrset(node, type);
+	if (rrset != NULL) {
+		ldns_pkt_push_rr_list(response, section, rrset);
 	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+static inline void ns_put_answer( const zn_node *node, ldns_rr_type type,
+								  ldns_pkt *response )
+{
+	ns_put_rrset(node, type, LDNS_SECTION_ANSWER, response);
+	ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static inline void ns_put_glue( const zn_node *node, ldns_rr_type type,
+								ldns_pkt *response )
+{
+	ldns_rr_list *glue = zn_get_glue(node, type);
+	if (glue != NULL) {
+		ldns_pkt_push_rr_list(response, LDNS_SECTION_ADDITIONAL, glue);
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+static inline void ns_referral( const zn_node *node, ldns_pkt *response )
+{
+	debug_ns("Referral response.\n");
+	ns_put_rrset(node, LDNS_RR_TYPE_NS, LDNS_SECTION_AUTHORITY, response);
+	ns_put_glue(node, LDNS_RR_TYPE_A, response);
+	ns_put_glue(node, LDNS_RR_TYPE_AAAA, response);
 	ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
 }
 
@@ -194,8 +224,8 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response )
 
 	// if the name was not found in the zone something is wrong (SERVFAIL)
 	if (labels_found == 0) {
-		log_error("Name %s not found in zone %s!\n", ldns_rdf2str(qname),
-				  ldns_rdf2str(zone->zone_name));
+		log_error("Name %s not found in zone %s! Returning SERVFAIL\n",
+				  ldns_rdf2str(qname), ldns_rdf2str(zone->zone_name));
 		ldns_pkt_set_rcode(response, LDNS_RCODE_SERVFAIL);
 		return;
 	}
@@ -203,9 +233,7 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response )
 
 	// if the node is delegation point (no matter if whole QNAME was found)
 	if (zn_is_delegation_point(node)) {
-		// TODO: return REFERRAL response
-		debug_ns("Referral response.\n");
-		ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
+		ns_referral(node, response);
 		return;
 	}
 
@@ -221,12 +249,12 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response )
 			}
 		}
 		assert(ldns_dname_compare(node->owner, qname) == 0);
-		ns_copy_answers(node, ldns_rr_get_type(question), response);
+		ns_put_answer(node, ldns_rr_get_type(question), response);
 	} else {	// only part of QNAME found
 		// if we ended in the zone apex, the name is not in the zone
 		if (zone->apex == node) {
-			// TODO: add SOA
-			debug_ns("Should add SOA.\n");
+			ns_put_rrset(node, LDNS_RR_TYPE_SOA, LDNS_SECTION_AUTHORITY,
+						 response);
 			ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
 		} else {
 			debug_ns("DNAME and Wildcard not implemented yet.\n");
