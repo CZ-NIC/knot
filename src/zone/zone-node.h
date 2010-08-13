@@ -183,6 +183,8 @@ void zn_destroy( zn_node **node );
  */
 void zn_destructor( void *item );
 
+void zn_print_rrset( void *key, void *value );
+
 /*----------------------------------------------------------------------------*/
 
 #endif

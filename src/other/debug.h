@@ -11,6 +11,7 @@
 //#define ZP_DEBUG
 #define NS_DEBUG
 #define ZDB_DEBUG
+#define ZN_DEBUG
 //#define ZP_DEBUG_PARSE
 
 #ifdef CUTE_DEBUG
@@ -73,6 +74,12 @@
 #else
 #define debug_zdb(msg...)
 #define debug_zdb_hex(data, len)
+#endif
+
+#ifdef ZN_DEBUG
+#define debug_zn(msg...) log_msg(LOG_DEBUG, msg)
+#else
+#define debug_n(msg...)
 #endif
 
 #ifdef ZP_DEBUG

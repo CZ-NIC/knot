@@ -5,9 +5,7 @@
 #include <stdio.h>
 #include "common.h"
 #include "skip-list.h"
-#include <ldns/rr.h>
-#include <ldns/dname.h>
-#include <ldns/rdata.h>
+#include <ldns/ldns.h>
 
 /*----------------------------------------------------------------------------*/
 
@@ -190,7 +188,16 @@ ldns_rr_list *zn_find_rrset( const zn_node *node, ldns_rr_type type )
 {
 	ldns_rr_list *rrset = skip_find(node->rrsets, (void *)type);
 
+	debug_zn("Searching for type %d,%s in RRSets:\n", type,
+		   ldns_rr_type2str(type));
+	skip_print_list(node->rrsets, zn_print_rrset);
+
 	assert(rrset == NULL || ldns_is_rrset(rrset));
+	if (rrset != NULL) {
+		debug_zn("Type demanded: %d,%s, type found: %d,%s\n", type,
+			   ldns_rr_type2str(type), ldns_rr_list_type(rrset),
+			   ldns_rr_type2str(ldns_rr_list_type(rrset)));
+	}
 	assert(rrset == NULL || ldns_rr_list_type(rrset) == type);
 
 	return rrset;
@@ -333,4 +340,13 @@ void zn_destructor( void *item )
 {
     zn_node *node = (zn_node *)item;
     zn_destroy(&node);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void zn_print_rrset( void *key, void *value )
+{
+	printf("Type: %d,%s, RRSet: %s\n", (ldns_rr_type)key,
+		   ldns_rr_type2str((ldns_rr_type)key), ldns_rr_list2str(
+				   (ldns_rr_list*)value));
 }

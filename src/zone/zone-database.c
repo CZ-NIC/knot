@@ -207,8 +207,66 @@ int zdb_dname_list_contains( ldns_rdf **list, size_t count, ldns_rdf *name )
 
 /*----------------------------------------------------------------------------*/
 
+ldns_rdf **zdb_extract_ns( ldns_rr_list *ns_rrset )
+{
+	assert(ldns_is_rrset(ns_rrset));
+	ldns_rdf **ns_rrs = malloc(ldns_rr_list_rr_count(ns_rrset)
+							   * sizeof(ldns_rr_list *));
+	if (ns_rrs == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+	for (int i = 0; i < ldns_rr_list_rr_count(ns_rrset); ++i) {
+		ns_rrs[i] = ldns_rr_rdf(ldns_rr_list_rr(ns_rrset, i), 0);
+		debug_zdb("NS RR #%d: %s\n", i, ldns_rdf2str(ns_rrs[i]));
+	}
+	return ns_rrs;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zdb_process_nonauth( zn_node *node, ldns_rdf **ns_rrs, size_t ns_count,
+						 zn_node *deleg )
+{
+	zn_set_non_authoritative(node);
+
+	int found = zdb_dname_list_contains(ns_rrs, ns_count, deleg->owner);
+	if (found == 0) {
+		log_error("Zone contains non-authoritative domain name %s,"
+				  " which is not referenced in %s NS records!\n",
+				  ldns_rdf2str(node->owner),
+				  ldns_rdf2str(deleg->owner));
+		free(ns_rrs);
+		return -3;
+	}
+
+	debug_zdb("Saving glues from node %s\n",
+			  ldns_rdf2str(node->owner));
+	// push the glues to the delegation point node
+	int res = zn_push_glue(
+			deleg, zn_find_rrset(node, LDNS_RR_TYPE_A));
+	res += zn_push_glue(
+			deleg, zn_find_rrset(node, LDNS_RR_TYPE_AAAA));
+
+	if (res != 0) {
+		log_error("Error while saving glue records for delegation point"
+				  " %s\n", ldns_rdf2str(deleg->owner));
+		free(ns_rrs);
+		return -4;
+	}
+
+	debug_zdb("Saved %d glue records.\n",
+			  ldns_rr_list_rr_count(zn_get_glues(deleg)));
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int zdb_adjust_delegation_point( zn_node **node )
 {
+	int res = 0;
+
 	ldns_rr_list *ns_rrset = zn_find_rrset(*node, LDNS_RR_TYPE_NS);
 	if (ns_rrset != NULL) {
 		zn_set_delegation_point(*node);
@@ -217,16 +275,7 @@ int zdb_adjust_delegation_point( zn_node **node )
 				  ldns_rdf2str((*node)->owner));
 
 		// extract all NS domain names from the node
-		ldns_rdf **ns_rrs = malloc(ldns_rr_list_rr_count(ns_rrset)
-								   * sizeof(ldns_rr_list *));
-		if (ns_rrs == NULL) {
-			ERR_ALLOC_FAILED;
-			return -1;
-		}
-		for (int i = 0; i < ldns_rr_list_rr_count(ns_rrset); ++i) {
-			ns_rrs[i] = ldns_rr_rdf(ldns_rr_list_rr(ns_rrset, i), 0);
-			debug_zdb("NS RR #%d: %s\n", i, ldns_rdf2str(ns_rrs[i]));
-		}
+		ldns_rdf **ns_rrs = zdb_extract_ns(ns_rrset);
 
 		// mark all subsequent nodes which are subdomains of this node's owner
 		// as non authoritative and extract glue records from them
@@ -234,73 +283,122 @@ int zdb_adjust_delegation_point( zn_node **node )
 		(*node) = (*node)->next;
 
 		while (ldns_dname_is_subdomain((*node)->owner, deleg->owner)) {
-			zn_set_non_authoritative(*node);
-			int found = zdb_dname_list_contains(ns_rrs,
-							ldns_rr_list_rr_count(ns_rrset), deleg->owner);
-			if (found == 0) {
-				log_error("Zone contains non-authoritative domain name %s,"
-						  " which is not referenced in %s NS records!\n",
-						  ldns_rdf2str((*node)->owner),
-						  ldns_rdf2str(deleg->owner));
-				free(ns_rrs);
-				return -2;
+			if ((res = zdb_process_nonauth(*node, ns_rrs,
+							ldns_rr_list_rr_count(ns_rrset), deleg)) != 0) {
+				break;
 			}
-
-			debug_zdb("Saving glues from node %s\n",
-					  ldns_rdf2str((*node)->owner));
-			// push the glues to the delegation point node
-			int res = zn_push_glue(
-					deleg, zn_find_rrset((*node), LDNS_RR_TYPE_A));
-			res += zn_push_glue(
-					deleg, zn_find_rrset((*node), LDNS_RR_TYPE_AAAA));
-
-			if (res != 0) {
-				log_error("Error while saving glue records for delegation point"
-						  " %s\n", ldns_rdf2str(deleg->owner));
-				free(ns_rrs);
-				return -3;
-			}
-
-			debug_zdb("Saved %d glue records.\n",
-					  ldns_rr_list_rr_count(zn_get_glues(deleg)));
-
 			(*node) = (*node)->next;
 		}
+
 		free(ns_rrs);
 	}
-	return 0;
+	return res;
 }
 
 /*----------------------------------------------------------------------------*/
-/*!
- * @todo What if the node has glue records or is delegation point??
- */
+
+void zdb_connect_node( zn_node *next, zn_node *node )
+{
+	node->prev = next->prev;
+	node->next = next;
+	next->prev->next = node;
+	next->prev = node;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int zdb_insert_node_to_zone( zdb_zone *zone, zn_node *node )
 {
-	// connect the node to the list of nodes in the right place
 	zn_node *n = zone->apex;
-	while (ldns_dname_compare(n->owner, node->owner) < 0) {
+	int cmp;
+	zn_node *deleg = NULL;
+
+	// if there is no zone apex, only node with SOA record may be inserted
+	if (zone->apex == NULL) {
+		ldns_rr_list *soa_rrset = zn_find_rrset(node, LDNS_RR_TYPE_SOA);
+		if (soa_rrset == NULL) {
+			log_error("Trying to insert node %s with not SOA record to an empty"
+					  "zone!\n", ldns_rdf2str(node->owner));
+			return -1;
+		}
+		if (ldns_rr_list_rr_count(soa_rrset) > 1) {
+			log_info("More than one SOA record in node %s, ignoring other.\n",
+					 ldns_rdf2str(node->owner));
+		}
+		if (ldns_dname_compare(zone->zone_name, node->owner) != 0) {
+			log_error("Trying to insert node %s with SOA record to zone with"
+					  "different name %s.\n", ldns_rdf2str(node->owner),
+					  ldns_rdf2str(zone->zone_name));
+			return -2;
+		}
+		zone->apex = node;
+
+		// insert the node into the zone data structure
+		if (zds_insert(zone->zone, node) != 0) {
+			return -6;
+		}
+
+		return 0;
+	}
+
+	// find right place for the node to be connected
+	while ((cmp = ldns_dname_compare(n->owner, node->owner)) < 0) {
+		if (deleg == NULL && zn_is_delegation_point(n)) {
+			// start of delegated nodes
+			deleg = n;
+		} else if (deleg != NULL && !zn_is_delegation_point(n)) {
+			// end of delegated nodes
+			deleg = NULL;
+		}
 		n = n->next;
+		if (n == zone->apex) {
+			// all nodes come before the inserted node, we would get into cycle
+			break;
+		}
 	}
 
-	if (ldns_dname_compare(n->owner, node->owner) == 0) {
-		return -1;	// node exists in the zone
+	if (cmp == 0) {
+		log_error("Trying to insert node with owner %s already present in the"
+				  "zone\n", ldns_rdf2str(node->owner));
+		return -5;	// node exists in the zone
 	}
 
-	// insert the node into the zone data structure
-	if (zds_insert(zone->zone, node) != 0) {
-		return -2;
+	int res = 0;
+	ldns_rr_list *ns_rrset = NULL;
+
+	// check if the node's owner is not child of delegation point
+	if (deleg && ldns_dname_is_subdomain(node->owner, deleg->owner)) {
+		// mark the node as non-authoritative and save glue records
+		ns_rrset = zn_find_rrset(deleg, LDNS_RR_TYPE_NS);
+		assert(ns_rrset != NULL);
+		ldns_rdf **ns_rrs = zdb_extract_ns(ns_rrset);
+		res = zdb_process_nonauth(node, ns_rrs, ldns_rr_list_rr_count(ns_rrset),
+								  deleg);
+		free(ns_rrs);
+		if (res == 0) {	// if everything went well, connect the node before n
+			zdb_connect_node(n, node);
+		}
+		// do not insert the node into the zone data structure
+	} else {
+		if ((ns_rrset = zn_find_rrset(node, LDNS_RR_TYPE_NS)) != NULL) {
+			// delegation point; must connect to the list and then adjust
+			// the following nodes if needed
+			zdb_connect_node(n, node);
+			zn_node *d = node;
+			res = zdb_adjust_delegation_point(&d);
+		} else {	// not a non-authoritative node or delegation point
+			// check if it has CNAME RR
+			zdb_adjust_cname(zone, node);
+			zdb_connect_node(n, node);
+		}
+
+		// insert the node into the zone data structure
+		if (res == 0 && zds_insert(zone->zone, node) != 0) {
+			res = -6;
+		}
 	}
 
-	// connect the node
-	node->prev = n->prev;
-	node->next = n;
-	n->prev->next = node;
-	n->prev = node;
-
-	// check if it has CNAME RR
-	zdb_adjust_cname(zone, node);
-	return 0;
+	return res;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -322,11 +420,6 @@ int zdb_insert_nodes_into_zds( zds_zone *zone, zn_node **head )
 	zn_node *node = (*head)->prev;
 	do {
 		node = node->next;
-//		if (zn_is_delegation_point(node)) {
-//			debug_zdb("Skipping delegation point: %s...\n",
-//					  ldns_rdf2str(node->owner));
-//			continue;
-//		}
 		if (zn_is_non_authoritative(node)) {
 			debug_zdb("Skipping non-authoritative name: %s...\n",
 					  ldns_rdf2str(node->owner));
