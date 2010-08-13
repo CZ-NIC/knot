@@ -187,7 +187,6 @@ int zn_add_rrset( zn_node *node, ldns_rr_list *rrset )
 ldns_rr_list *zn_find_rrset( const zn_node *node, ldns_rr_type type )
 {
 	ldns_rr_list *rrset = skip_find(node->rrsets, (void *)type);
-
 	debug_zn("Searching for type %d,%s in RRSets:\n", type,
 		   ldns_rr_type2str(type));
 	skip_print_list(node->rrsets, zn_print_rrset);
@@ -344,7 +343,7 @@ void zn_destructor( void *item )
 
 void zn_print_rrset( void *key, void *value )
 {
-	printf("Type: %d,%s, RRSet: %s\n", (ldns_rr_type)key,
+	debug_zn("Type: %d,%s, RRSet: %s\n", (ldns_rr_type)key,
 		   ldns_rr_type2str((ldns_rr_type)key), ldns_rr_list2str(
 				   (ldns_rr_list*)value));
 }
