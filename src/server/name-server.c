@@ -300,6 +300,24 @@ int ns_response_to_wire( const ldns_pkt *response, uint8_t *wire,
 }
 
 /*----------------------------------------------------------------------------*/
+
+void ns_response_free( ldns_pkt *response )
+{
+	// no RRs should be deallocated, we must free the packet ourselves
+	LDNS_FREE(response->_header);
+	ldns_rr_list_free(response->_question);
+	ldns_rr_list_free(response->_answer);
+	ldns_rr_list_free(response->_authority);
+	ldns_rr_list_free(response->_additional);
+
+	// TODO: when used, check if we can free it this way:
+	ldns_rr_free(response->_tsig_rr);
+	ldns_rdf_deep_free(response->_edns_data);
+
+	LDNS_FREE(response);
+}
+
+/*----------------------------------------------------------------------------*/
 /* Public functions          					                              */
 /*----------------------------------------------------------------------------*/
 
@@ -386,7 +404,7 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 						  LDNS_RCODE_SERVFAIL, response_wire, rsize);
 	}
 
-	ldns_pkt_free(response);	
+	ns_response_free(response);
 	rcu_read_unlock();
 
 	debug_ns("Returning response with wire size %d\n", *rsize);

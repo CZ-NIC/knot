@@ -298,7 +298,6 @@ int zdb_adjust_delegation_point( zn_node **node )
 		// mark all subsequent nodes which are subdomains of this node's owner
 		// as non authoritative and extract glue records from them
 		zn_node *deleg = *node;
-		(*node) = (*node)->next;
 
 		while (ldns_dname_is_subdomain((*node)->next->owner, deleg->owner)) {
 			(*node) = (*node)->next;
