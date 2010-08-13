@@ -231,9 +231,7 @@ void zn_set_delegation_point( zn_node *node )
 int zn_is_delegation_point( const zn_node *node )
 {
 	assert((zn_flags_is_delegation_point(node->flags) == 0
-			&& node->ref.glues == NULL)
-		   || (zn_flags_is_delegation_point(node->flags) == 1
-			   && node->ref.glues != NULL));
+		   || node->ref.glues != NULL));
 	return zn_flags_is_delegation_point(node->flags);
 }
 
