@@ -180,14 +180,32 @@ zn_node *zdb_find_name_in_zone_nc( const zdb_zone *zone, const ldns_rdf *dname )
 
 /*----------------------------------------------------------------------------*/
 
+zn_node *zdb_find_name_in_list( zdb_zone *zone, ldns_rdf *name )
+{
+	zn_node *node = zone->apex;
+	int cmp;
+	while ((cmp = ldns_dname_compare(node->owner, name)) != 0
+		   && node->next != zone->apex) {
+		node = node->next;
+	}
+
+	return (cmp == 0) ? node : NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void zdb_adjust_cname( zdb_zone *zone, zn_node *node )
 {
 	ldns_rr_list *cname_rrset = zn_find_rrset(node, LDNS_RR_TYPE_CNAME);
 	if (cname_rrset != NULL) {
 		// retreive the canonic name
+		debug_zdb("Found CNAME, resolving...\n");
 		ldns_rdf *cname = ldns_rr_rdf(ldns_rr_list_rr(cname_rrset, 0), 0);
 		assert(ldns_rdf_get_type(cname) == LDNS_RDF_TYPE_DNAME);
-		node->ref.cname = zdb_find_name_in_zone_nc(zone, cname);
+		debug_zdb("Canonical name for alias %s is %s\n",
+				  ldns_rdf2str(node->owner), ldns_rdf2str(cname));
+		node->ref.cname = zdb_find_name_in_list(zone, cname);
+		debug_zdb("Found node: %p\n\n", node->ref.cname);
 	}
 }
 
@@ -282,15 +300,17 @@ int zdb_adjust_delegation_point( zn_node **node )
 		zn_node *deleg = *node;
 		(*node) = (*node)->next;
 
-		while (ldns_dname_is_subdomain((*node)->owner, deleg->owner)) {
+		while (ldns_dname_is_subdomain((*node)->next->owner, deleg->owner)) {
+			(*node) = (*node)->next;
 			if ((res = zdb_process_nonauth(*node, ns_rrs,
 							ldns_rr_list_rr_count(ns_rrset), deleg)) != 0) {
 				break;
 			}
-			(*node) = (*node)->next;
 		}
 
 		free(ns_rrs);
+		// set to last processed node
+		debug_zdb("Done.\n\n");
 	}
 	return res;
 }

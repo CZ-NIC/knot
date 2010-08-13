@@ -254,7 +254,7 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response )
 				return;
 			}
 		}
-		assert(ldns_dname_compare(node->owner, qname) == 0);
+		//assert(ldns_dname_compare(node->owner, qname) == 0);
 		ns_put_answer(node, ldns_rr_get_type(question), response);
 		ns_put_authority_ns(zone, response);
 	} else {	// only part of QNAME found
