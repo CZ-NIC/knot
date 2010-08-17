@@ -9,12 +9,102 @@
 
 /*----------------------------------------------------------------------------*/
 
+#define RFRS(arr) ((const zn_node **)da_get_items(arr))
+#define RFRS_COUNT(arr) (da_get_count(arr))
+
+/*----------------------------------------------------------------------------*/
+
 static const uint RRSETS_COUNT = 10;
-static const uint8_t FLAGS_DELEG = 0x1;
-static const uint8_t FLAGS_NONAUTH = 0x2;
+
+/*! Zone node flags. */
+typedef enum zn_flags {
+	/*! - xxxxxxx1 - node is delegation point (ref.glues is set) */
+	FLAGS_DELEG = 0x1,
+	/*! - xxxxxx1x - node is non-authoritative (carrying only glue records) */
+	FLAGS_NONAUTH = 0x2,
+	/*! - xxxxx1xx - node carries a CNAME record (ref.cname is set) */
+	FLAGS_HAS_CNAME = 0x4,
+	/*! - xxxx1xxx - node carries an MX record (ref.mx is set) */
+	FLAGS_HAS_MX = 0x8,
+	/*! - xxx1xxxx - node carries an NS record (ref.ns is set) */
+	FLAGS_HAS_NS = 0x10,
+	/*! - xx1xxxxx - node is referenced by some CNAME record (referrer is set) */
+	FLAGS_REF_CNAME = 0x20,
+	/*! - x1xxxxxx - node is referenced by some MX record (referrer is set) */
+	FLAGS_REF_MX = 0x40,
+	/*! - 1xxxxxxx - node is referenced by some NS record (referrer is set) */
+	FLAGS_REF_NS = 0x80
+} zn_flags;
 
 /*----------------------------------------------------------------------------*/
 /* Private functions          					                              */
+/*----------------------------------------------------------------------------*/
+
+zn_ar_rrsets *zn_create_ar_rrsets()
+{
+	zn_ar_rrsets *ar = malloc(sizeof(zn_ar_rrsets));
+	if (ar == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+	ar->a = NULL;
+	ar->aaaa = NULL;
+
+	return ar;
+}
+
+/*----------------------------------------------------------------------------*/
+
+zn_ar_rrsets *zn_create_ar_rrsets_for_ref( ldns_rr_list *ref_rrset )
+{
+	zn_ar_rrsets *ar = zn_create_ar_rrsets();
+
+	switch (ldns_rr_list_type(ref_rrset)) {
+	case LDNS_RR_TYPE_A:
+		ar->a = ref_rrset;
+		ar->aaaa = NULL;
+		break;
+	case LDNS_RR_TYPE_AAAA:
+		ar->aaaa = ref_rrset;
+		ar->a = NULL;
+		break;
+	default:
+		free(ar);
+		log_error("Error: trying to add MX record reference to a type other"
+				  " than A or AAAA.\n");
+		return NULL;
+	}
+	return ar;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zn_compare_ar_keys( void *key1, void *key2 )
+{
+	return ldns_dname_compare((ldns_rdf *)key1, (ldns_rdf *)key2);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zn_merge_ar_values( void **value1, void **value2 )
+{
+	zn_ar_rrsets *ar1 = (zn_ar_rrsets *)(*value1);
+	zn_ar_rrsets *ar2 = (zn_ar_rrsets *)(*value2);
+
+	if ( (ar2->a != NULL && ar1->a != NULL)
+		|| (ar2->aaaa != NULL && ar1->aaaa != NULL)) {
+		return -1;
+	}
+
+	if (ar2->a != NULL) {
+		ar1->a = ar2->a;
+	} else if (ar2->aaaa != NULL) {
+		ar1->aaaa = ar2->aaaa;
+	}
+
+	return 0;
+}
+
 /*----------------------------------------------------------------------------*/
 
 int zn_compare_keys( void *key1, void *key2 )
@@ -45,30 +135,48 @@ void zn_destroy_value( void *value )
 
 /*----------------------------------------------------------------------------*/
 
-static inline void zn_flags_set_delegation_point( uint8_t *flags )
+static inline void zn_flags_set( uint8_t *flags, zn_flags flag )
 {
-	(*flags) |= FLAGS_DELEG;
+	(*flags) |= flag;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static inline int zn_flags_is_delegation_point( uint8_t flags )
+static inline int zn_flags_get( uint8_t flags, zn_flags flag )
 {
-	return (flags & FLAGS_DELEG);
+	return (flags & flag);
 }
 
 /*----------------------------------------------------------------------------*/
 
-static inline void zn_flags_set_nonauth( uint8_t *flags )
+static inline int zn_flags_empty( uint8_t flags )
 {
-	(*flags) |= FLAGS_NONAUTH;
+	return (flags == 0);
 }
 
 /*----------------------------------------------------------------------------*/
 
-static inline int zn_flags_is_nonauth( uint8_t flags )
+int zn_add_referrer( zn_node *node, const zn_node *referrer )
 {
-	return (flags & FLAGS_NONAUTH);
+	if (node->referrers == NULL) {
+		node->referrers = da_create(1, sizeof(zn_node *));
+		if (node->referrers == NULL) {
+			return -1;
+		}
+	}
+
+	int res = da_reserve(node->referrers, 1);
+	if (res != 0) {
+		return -2;
+	}
+
+	RFRS(node->referrers)[RFRS_COUNT(node->referrers)] = referrer;
+	res = da_occupy(node->referrers, 1);
+	if (res != 0) {
+		return -3;
+	}
+
+	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -96,6 +204,8 @@ zn_node *zn_create()
 	node->ref.cname = NULL;
 	// not a delegation point
 	node->flags = 0;
+	// referenced by no node (do not initialize the array to save space)
+	node->referrers = NULL;
 
     return node;
 }
@@ -206,14 +316,14 @@ ldns_rr_list *zn_find_rrset( const zn_node *node, ldns_rr_type type )
 
 void zn_set_non_authoritative( zn_node *node )
 {
-	zn_flags_set_nonauth(&node->flags);
+	zn_flags_set(&node->flags, FLAGS_NONAUTH);
 }
 
 /*----------------------------------------------------------------------------*/
 
 int zn_is_non_authoritative( const zn_node *node )
 {
-	return zn_flags_is_nonauth(node->flags);
+	return zn_flags_get(node->flags, FLAGS_NONAUTH);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -222,39 +332,178 @@ void zn_set_delegation_point( zn_node *node )
 {
 	assert(node->ref.glues == NULL);
 	node->ref.glues = ldns_rr_list_new();
-	zn_flags_set_delegation_point(&node->flags);
+	zn_flags_set(&node->flags, FLAGS_DELEG);
 }
 
 /*----------------------------------------------------------------------------*/
 
 int zn_is_delegation_point( const zn_node *node )
 {
-	assert((zn_flags_is_delegation_point(node->flags) == 0
+	assert((zn_flags_get(node->flags, FLAGS_DELEG) == 0
 		   || node->ref.glues != NULL));
-	return zn_flags_is_delegation_point(node->flags);
+	return zn_flags_get(node->flags, FLAGS_DELEG);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int zn_is_cname( const zn_node *node )
+void zn_set_ref_cname( zn_node *node, zn_node *cname_ref )
 {
-	return (zn_flags_is_delegation_point(node->flags) == 0
-			 && node->ref.cname != NULL);
+	assert(node->ref.cname == NULL);
+	if (cname_ref != NULL) {
+		node->ref.cname = cname_ref;
+		zn_flags_set(&node->flags, FLAGS_HAS_CNAME);
+	}
 }
 
 /*----------------------------------------------------------------------------*/
 
-zn_node *zn_get_cname( const zn_node *node )
+int zn_has_cname( const zn_node *node )
 {
-	assert(zn_flags_is_delegation_point(node->flags) == 0);
+	return zn_flags_get(node->flags, FLAGS_HAS_CNAME);
+}
+
+/*----------------------------------------------------------------------------*/
+
+zn_node *zn_get_ref_cname( const zn_node *node )
+{
+	assert(zn_flags_get(node->flags, FLAGS_HAS_CNAME));
 	return node->ref.cname;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zn_add_ref_mx( zn_node *node, ldns_rr_list *ref_rrset )
+{
+	if (! (zn_flags_empty(node->flags)
+		  || zn_flags_get(node->flags, FLAGS_HAS_MX)) ) {
+		return -1;
+	}
+
+	if (node->ref.mx == NULL) {
+		node->ref.mx = skip_create_list(zn_compare_ar_keys);
+		zn_flags_set(&node->flags, FLAGS_HAS_MX);
+	}
+
+	zn_ar_rrsets *ar = zn_create_ar_rrsets_for_ref(ref_rrset);
+	if (ar == NULL) {
+		return -2;
+	}
+
+	int res = 0;
+	res = skip_insert(node->ref.mx, ldns_rr_list_owner(ref_rrset), ar,
+					  zn_merge_ar_values);
+	if (res < 0) {
+		free(ar);
+		return -3;
+	}
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zn_has_mx( const zn_node *node )
+{
+	return zn_flags_get(node->flags, FLAGS_HAS_MX);
+}
+
+/*----------------------------------------------------------------------------*/
+
+skip_list *zn_get_ref_mx( const zn_node *node )
+{
+	return node->ref.mx;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zn_add_ref_ns( zn_node *node, ldns_rr_list *ref_rrset )
+{
+	if (! (zn_flags_empty(node->flags)
+		  || zn_flags_get(node->flags, FLAGS_HAS_NS)) ) {
+		return -1;
+	}
+
+	if (node->ref.mx == NULL) {
+		node->ref.mx = skip_create_list(zn_compare_ar_keys);
+		zn_flags_set(&node->flags, FLAGS_HAS_MX);
+	}
+
+	zn_ar_rrsets *ar = zn_create_ar_rrsets_for_ref(ref_rrset);
+	if (ar == NULL) {
+		return -2;
+	}
+
+	int res = 0;
+	res = skip_insert(node->ref.ns, ldns_rr_list_owner(ref_rrset), ar,
+					  zn_merge_ar_rrsets);
+	free(ar);
+
+	return (res == 0) ? 0 : -3;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zn_has_ns( const zn_node *node )
+{
+	return zn_flags_get(node->flags, FLAGS_HAS_NS);
+}
+
+/*----------------------------------------------------------------------------*/
+
+skip_list *zn_get_ref_ns( const zn_node *node )
+{
+	return node->ref.ns;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zn_add_referrer_cname( zn_node *node, const zn_node *referrer )
+{
+	int res = zn_add_referrer(node, referrer);
+	if (res == 0) {
+		zn_flags_set(&node->flags, FLAGS_REF_CNAME);
+	}
+	return res;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zn_add_referrer_mx( zn_node *node, const zn_node *referrer )
+{
+	int res = zn_add_referrer(node, referrer);
+	if (res == 0) {
+		zn_flags_set(&node->flags, FLAGS_REF_MX);
+	}
+	return res;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zn_add_referrer_ns( zn_node *node, const zn_node *referrer )
+{
+	int res = zn_add_referrer(node, referrer);
+	if (res == 0) {
+		zn_flags_set(&node->flags, FLAGS_REF_NS);
+	}
+	return res;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zn_referrers_count( const zn_node *node )
+{
+	int count = RFRS_COUNT(node->referrers);
+	assert(count == 0 || (zn_flags_get(node->flags, FLAGS_REF_CNAME)
+						  | zn_flags_get(node->flags, FLAGS_REF_MX)
+						  | zn_flags_get(node->flags, FLAGS_REF_NS)) > 0);
+	return count;
 }
 
 /*----------------------------------------------------------------------------*/
 
 int zn_push_glue( zn_node *node, ldns_rr_list *glue )
 {
-	assert((zn_flags_is_delegation_point(node->flags) == 1
+	assert((zn_flags_get(node->flags, FLAGS_DELEG) == 1
 			&& node->ref.glues != NULL));
 
 	if (glue == NULL) {
