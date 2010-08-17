@@ -180,6 +180,39 @@ static inline void ns_put_answer( const zn_node *node, ldns_rr_type type,
 
 /*----------------------------------------------------------------------------*/
 
+void ns_put_additional( const zn_node *node, ldns_rr_type type,
+						ldns_pkt *response )
+{
+	debug_ns("ADDITIONAL SECTION PROCESSING\n");
+	switch (type) {
+	case LDNS_RR_TYPE_MX: {
+		skip_list *mx_refs = zn_get_ref_mx(node);
+		if (mx_refs != NULL) {
+			debug_ns("Adding RRSets for MX\n");
+			// simply add all RRSets to the additional section
+			const skip_node *mx = skip_first(mx_refs);
+			while (mx != NULL) {
+				zn_ar_rrsets *rrsets = (zn_ar_rrsets *)mx->value;
+				if (rrsets != NULL) {
+					ldns_pkt_push_rr_list(response, LDNS_SECTION_ADDITIONAL,
+										  rrsets->a);
+					ldns_pkt_push_rr_list(response, LDNS_SECTION_ADDITIONAL,
+										  rrsets->aaaa);
+				}
+				mx = skip_next(mx);
+			}
+		}
+		break; }
+	case LDNS_RR_TYPE_NS:
+		log_error("Putting additional records for NS not implemented yet!\n");
+		break;
+	default:
+		return;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 static inline void ns_put_authority_ns( const zdb_zone *zone, ldns_pkt *resp )
 {
 	ns_put_rrset(zone->apex, LDNS_RR_TYPE_NS, LDNS_SECTION_AUTHORITY, resp);
@@ -257,6 +290,7 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response )
 		//assert(ldns_dname_compare(node->owner, qname) == 0);
 		ns_put_answer(node, ldns_rr_get_type(question), response);
 		ns_put_authority_ns(zone, response);
+		ns_put_additional(node, ldns_rr_get_type(question), response);
 	} else {	// only part of QNAME found
 		// if we ended in the zone apex, the name is not in the zone
 		if (zone->apex == node) {

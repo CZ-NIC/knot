@@ -321,7 +321,7 @@ int skip_empty( const skip_list *list )
 
 const skip_node *skip_first( const skip_list *list )
 {
-	return list->head;
+	return list->head->forward[0];
 }
 
 /*----------------------------------------------------------------------------*/
