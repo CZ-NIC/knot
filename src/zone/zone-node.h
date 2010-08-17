@@ -26,12 +26,6 @@ typedef struct zn_ar_rrsets {
 } zn_ar_rrsets;
 
 /*----------------------------------------------------------------------------*/
-
-zn_ar_rrsets *zn_create_ar_rrsets();
-
-int zn_merge_ar_rrsets( void **value1, void **value2 );
-
-/*----------------------------------------------------------------------------*/
 /*!
  * @brief Data structure for holding DNS data related to one zone node.
  */
@@ -185,7 +179,7 @@ int zn_is_delegation_point( const zn_node *node );
 void zn_set_ref_cname( zn_node *node, zn_node *cname_ref );
 
 /*!
- * @brief Returns 1 if @a node holds a CNAME record. Otherwise 0.
+ * @brief Returns positive integer if @a node holds a CNAME record. Otherwise 0.
  */
 int zn_has_cname( const zn_node *node );
 

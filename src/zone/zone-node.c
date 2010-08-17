@@ -366,8 +366,11 @@ int zn_has_cname( const zn_node *node )
 
 zn_node *zn_get_ref_cname( const zn_node *node )
 {
-	assert(zn_flags_get(node->flags, FLAGS_HAS_CNAME));
-	return node->ref.cname;
+	if (zn_flags_get(node->flags, FLAGS_HAS_CNAME) > 0) {
+		return node->ref.cname;
+	} else {
+		return NULL;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -411,7 +414,11 @@ int zn_has_mx( const zn_node *node )
 
 skip_list *zn_get_ref_mx( const zn_node *node )
 {
-	return node->ref.mx;
+	if (zn_flags_get(node->flags, FLAGS_HAS_MX) > 0) {
+		return node->ref.mx;
+	} else {
+		return NULL;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -435,7 +442,7 @@ int zn_add_ref_ns( zn_node *node, ldns_rr_list *ref_rrset )
 
 	int res = 0;
 	res = skip_insert(node->ref.ns, ldns_rr_list_owner(ref_rrset), ar,
-					  zn_merge_ar_rrsets);
+					  zn_merge_ar_values);
 	free(ar);
 
 	return (res == 0) ? 0 : -3;
@@ -452,7 +459,11 @@ int zn_has_ns( const zn_node *node )
 
 skip_list *zn_get_ref_ns( const zn_node *node )
 {
-	return node->ref.ns;
+	if (zn_flags_get(node->flags, FLAGS_HAS_NS) > 0) {
+		return node->ref.ns;
+	} else {
+		return NULL;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
