@@ -204,7 +204,7 @@ void zdb_adjust_cname( zdb_zone *zone, zn_node *node )
 		assert(ldns_rdf_get_type(cname) == LDNS_RDF_TYPE_DNAME);
 		debug_zdb("Canonical name for alias %s is %s\n",
 				  ldns_rdf2str(node->owner), ldns_rdf2str(cname));
-		node->ref.cname = zdb_find_name_in_list(zone, cname);
+		zn_set_ref_cname(node, zdb_find_name_in_list(zone, cname));
 		debug_zdb("Found node: %p\n\n", node->ref.cname);
 	}
 }

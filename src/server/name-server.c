@@ -150,11 +150,11 @@ const zn_node *ns_find_node_in_zone( const zdb_zone *zone, ldns_rdf *qname,
 
 void ns_follow_cname( const zn_node **node, ldns_pkt *response ) {
 	debug_ns("Resolving CNAME chain...\n");
-	while (zn_get_cname(*node) != NULL) {
+	while (zn_get_ref_cname(*node) != NULL) {
 		assert(zn_find_rrset((*node), LDNS_RR_TYPE_CNAME) != NULL);
 		ldns_pkt_push_rr_list(response, LDNS_SECTION_ANSWER,
 							  zn_find_rrset((*node), LDNS_RR_TYPE_CNAME));
-		(*node) = zn_get_cname(*node);
+		(*node) = zn_get_ref_cname(*node);
 	}
 }
 
@@ -244,7 +244,7 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response )
 	}
 
 	if (labels_found == labels) {	// whole QNAME found
-		if (zn_is_cname(node)) {
+		if (zn_has_cname(node)) {
 			// resolve the cname chain and copy all CNAME records to the answer
 			ns_follow_cname(&node, response);
 			// node is now set to the canonical name node (if found)

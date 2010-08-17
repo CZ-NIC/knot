@@ -14,8 +14,22 @@
 
 #include "common.h"
 #include "skip-list.h"
+#include "dynamic-array.h"
 #include <sys/types.h>
 #include <ldns/rr.h>
+
+/*----------------------------------------------------------------------------*/
+
+typedef struct zn_ar_rrsets {
+	ldns_rr_list *a;
+	ldns_rr_list *aaaa;
+} zn_ar_rrsets;
+
+/*----------------------------------------------------------------------------*/
+
+zn_ar_rrsets *zn_create_ar_rrsets();
+
+int zn_merge_ar_rrsets( void **value1, void **value2 );
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -28,16 +42,58 @@ typedef struct zn_node {
 	/*! @brief Owner domain name of the node. */
 	ldns_rdf *owner;
 
-	/*! @brief Provide some extra information about the node. */
+	/*!
+	 * @brief Provide some extra information about the node.
+	 *
+	 * Currently used flags:
+	 * - xxxxxxx1 - node is delegation point (ref.glues is set)
+	 * - xxxxxx1x - node is non-authoritative (e.g. carrying only glue records)
+	 * - xxxxx1xx - node carries a CNAME record (ref.cname is set)
+	 * - xxxx1xxx - node carries an MX record (ref.mx is set)
+	 * - xxx1xxxx - node carries an NS record (ref.ns is set)
+	 * - xx1xxxxx - node is referenced by some CNAME record (referrer is set)
+	 * - x1xxxxxx - node is referenced by some MX record (referrer is set)
+	 * - 1xxxxxxx - node is referenced by some NS record (referrer is set)
+	 *
+	 * These flags are however set and used only after a zone to which the node
+	 * belongs has been adjusted (see zdb_adjust_zone()).
+	 */
 	uint8_t flags;
 
 	union {
 		/*! @brief Node with canonical name for this node's name. */
 		struct zn_node *cname;
 
-		/*! @brief Glue RRSets. */
+		/*! @brief Glue RRSets in canonical order. */
 		ldns_rr_list *glues;
+
+		/*!
+		 * @brief List of RRSets with A and/or AAAA records for an MX RRSet
+		 *        in canonical order.
+		 *
+		 * Records are saved to the skip list with the owner name (ldns_rdf *)
+		 * as key and the zn_ar_rrsets structure as value.
+		 *
+		 * @todo Consider using simple linked list instead of this - may save
+		 *       a lot of space, but will need linear time to find exact RRSet.
+		 */
+		skip_list *mx;
+
+		/*!
+		 * @brief List of RRSets with A and/or AAAA records for an NS RRSet
+		 *        in canonical order.
+		 *
+		 * Records are saved to the skip list with the owner name (ldns_rdf *)
+		 * as key and the zn_ar_rrsets structure as value.
+		 *
+		 * @todo Consider using simple linked list instead of this - may save
+		 *       a lot of space, but will need linear time to find exact RRSet.
+		 */
+		skip_list *ns;
 	} ref;
+
+	/*! @brief Nodes which carry references to this node. */
+	da_array *referrers;
 
 	/*! @brief Next zone node (should be in canonical order). */
 	struct zn_node *next;
@@ -124,9 +180,14 @@ void zn_set_delegation_point( zn_node *node );
 int zn_is_delegation_point( const zn_node *node );
 
 /*!
+ * @brief Marks the node as a node carrying a CNAME record.
+ */
+void zn_set_ref_cname( zn_node *node, zn_node *cname_ref );
+
+/*!
  * @brief Returns 1 if @a node holds a CNAME record. Otherwise 0.
  */
-int zn_is_cname( const zn_node *node );
+int zn_has_cname( const zn_node *node );
 
 /*!
  * @brief Returns the node which holds the canonical name for @a node's owner.
@@ -137,7 +198,27 @@ int zn_is_cname( const zn_node *node );
  *         is such in the zone.
  * @retval NULL otherwise or if @a node does not contain CNAME RR.
  */
-zn_node *zn_get_cname( const zn_node *node );
+zn_node *zn_get_ref_cname( const zn_node *node );
+
+int zn_add_ref_mx( zn_node *node, ldns_rr_list *ref_rrset );
+
+int zn_has_mx( const zn_node *node );
+
+skip_list *zn_get_ref_mx( const zn_node *node );
+
+int zn_add_ref_ns( zn_node *node, ldns_rr_list *ref_rrset );
+
+int zn_has_ns( const zn_node *node );
+
+skip_list *zn_get_ref_ns( const zn_node *node );
+
+int zn_add_referrer_cname( zn_node *node, const zn_node *referrer );
+
+int zn_add_referrer_mx( zn_node *node, const zn_node *referrer );
+
+int zn_add_referrer_ns( zn_node *node, const zn_node *referrer );
+
+int zn_referrers_count( const zn_node *node );
 
 /*!
  * @brief Adds the given glue RRSet to the list of glue RRSets in @a node.
