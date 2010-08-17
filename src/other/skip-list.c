@@ -319,6 +319,20 @@ int skip_empty( const skip_list *list )
 
 /*----------------------------------------------------------------------------*/
 
+const skip_node *skip_first( const skip_list *list )
+{
+	return list->head;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const skip_node *skip_next( const skip_node *node )
+{
+	return node->forward[0];
+}
+
+/*----------------------------------------------------------------------------*/
+
 void skip_print_list( const skip_list *list,
 					  void (*print_item)(void *, void *) )
 {
