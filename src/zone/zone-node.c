@@ -384,20 +384,29 @@ int zn_add_ref_mx( zn_node *node, ldns_rr_list *ref_rrset )
 
 	if (node->ref.mx == NULL) {
 		node->ref.mx = skip_create_list(zn_compare_ar_keys);
+		if (node->ref.mx == NULL) {
+			return -2;
+		}
 		zn_flags_set(&node->flags, FLAGS_HAS_MX);
 	}
 
 	zn_ar_rrsets *ar = zn_create_ar_rrsets_for_ref(ref_rrset);
 	if (ar == NULL) {
-		return -2;
+		return -3;
 	}
 
 	int res = 0;
 	res = skip_insert(node->ref.mx, ldns_rr_list_owner(ref_rrset), ar,
 					  zn_merge_ar_values);
+
+	debug_zn("zn_add_ref_mx(%p, %p)\n", node, ref_rrset);
+	debug_zn("First item in the skip list: key: %s, value: %p\n",
+		   ldns_rdf2str((ldns_rdf *)skip_first(node->ref.mx)->key),
+		   skip_first(node->ref.mx)->value);
+
 	if (res < 0) {
 		free(ar);
-		return -3;
+		return -4;
 	}
 
 	return 0;
