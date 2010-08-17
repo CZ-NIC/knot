@@ -244,7 +244,7 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response )
 	}
 
 	if (labels_found == labels) {	// whole QNAME found
-		if (zn_has_cname(node)) {
+		if (zn_has_cname(node) > 0) {
 			// resolve the cname chain and copy all CNAME records to the answer
 			ns_follow_cname(&node, response);
 			// node is now set to the canonical name node (if found)
