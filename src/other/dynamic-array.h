@@ -55,8 +55,21 @@ typedef struct {
 
 /*----------------------------------------------------------------------------*/
 /*!
- * @brief Initializes the dynamic array by allocating place for @a count items
- *        of size @a item_size and setting the items to zeros.
+ * @brief Creates and initializes the dynamic array.
+ *
+ * Initialization comprises of allocating place for @a count items of size
+ * @a item_size and setting the items to zeros.
+ *
+ * @retval 0 if successful.
+ * @retval -1 if not successful.
+ */
+da_array *da_create( uint count, size_t item_size );
+
+/*!
+ * @brief Initializes the dynamic array.
+ *
+ * Initialization comprises of allocating place for @a count items of size
+ * @a item_size and setting the items to zeros.
  *
  * @retval 0 if successful.
  * @retval -1 if not successful.

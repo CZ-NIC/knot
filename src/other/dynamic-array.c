@@ -57,6 +57,19 @@ int da_resize( da_array *array, da_resize_type type ) {
 /* Public functions          					                              */
 /*----------------------------------------------------------------------------*/
 
+da_array *da_create( uint count, size_t item_size )
+{
+	da_array *a = (da_array *)malloc(sizeof(da_array));
+	if (a == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+	da_initialize(a, count, item_size);
+	return a;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int da_initialize( da_array *array, uint count, size_t item_size )
 {
 	assert(array != NULL);
