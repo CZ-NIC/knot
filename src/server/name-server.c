@@ -123,58 +123,95 @@ const zdb_zone *ns_get_zone_for_qname( zdb_database *zdb, const ldns_rdf *qname,
 
 /*----------------------------------------------------------------------------*/
 
-const zn_node *ns_find_node_in_zone( const zdb_zone *zone, ldns_rdf *qname,
+const zn_node *ns_find_node_in_zone( const zdb_zone *zone, ldns_rdf **qname,
 									 uint *labels )
 {
 	const zn_node *node = NULL;
 	// search for the name and strip labels until nothing left
 	while ((*labels) > 0 &&
-		   (node = zdb_find_name_in_zone(zone, qname)) == NULL) {
+		   (node = zdb_find_name_in_zone(zone, *qname)) == NULL) {
+		debug_ns("Name %s not found, stripping leftmost label.\n",
+				 ldns_rdf2str(*qname));
 		/* TODO: optimize!!!
 		 *       1) do not copy the name!
 		 *       2) implementation of ldns_dname_left_chop() is inefficient
 		 */
-		ldns_rdf *new_qname = ldns_dname_left_chop(qname);
-		ldns_rdf_deep_free(qname);
-		qname = new_qname;
+		ldns_rdf *new_qname = ldns_dname_left_chop(*qname);
+		ldns_rdf_deep_free(*qname);
+		*qname = new_qname;
 		--(*labels);
-		assert(qname != NULL || (*labels) == 0);
+		assert(*qname != NULL || (*labels) == 0);
 	}
-	assert((ldns_dname_label_count(qname) == 0 && (*labels) == 0)
-		   || (ldns_dname_label_count(qname) > 0 && (*labels) > 0));
+	assert((ldns_dname_label_count(*qname) == 0 && (*labels) == 0)
+		   || (ldns_dname_label_count(*qname) > 0 && (*labels) > 0));
 
 	return node;
 }
 
 /*----------------------------------------------------------------------------*/
-
-void ns_follow_cname( const zn_node **node, ldns_pkt *response ) {
+/*!
+ * @todo Check return values from push functions!
+ */
+void ns_follow_cname( const zn_node **node, const ldns_rdf **qname,
+					  ldns_pkt *response, ldns_rr_list *copied_rrs )
+{
 	debug_ns("Resolving CNAME chain...\n");
 	while (zn_get_ref_cname(*node) != NULL) {
-		assert(zn_find_rrset((*node), LDNS_RR_TYPE_CNAME) != NULL);
-		ldns_pkt_push_rr_list(response, LDNS_SECTION_ANSWER,
-							  zn_find_rrset((*node), LDNS_RR_TYPE_CNAME));
+		// put the CNAME record to answer, but replace the possible wildcard
+		// name with qname
+		ldns_rr_list *cname_rrset = zn_find_rrset((*node), LDNS_RR_TYPE_CNAME);
+		assert(cname_rrset != NULL);
+		// ignoring other than the first record
+		ldns_rr *cname_rr;
+		if (ldns_dname_is_wildcard((*node)->owner)) {
+			// if wildcard node, we must copy the RR and replace its owner
+			cname_rr = ldns_rr_clone(ldns_rr_list_rr(cname_rrset, 0));
+			ldns_rdf_deep_free(ldns_rr_owner(cname_rr));
+			ldns_rr_set_owner(cname_rr, ldns_rdf_clone(*qname));
+		} else {
+			cname_rr = ldns_rr_list_rr(cname_rrset, 0);
+		}
+		ldns_pkt_push_rr(response, LDNS_SECTION_ANSWER, cname_rr);
+		ldns_rr_list_push_rr(copied_rrs, cname_rr);
+
 		(*node) = zn_get_ref_cname(*node);
+		// save the new name which should be used for replacing wildcard
+		*qname = ldns_rr_rdf(cname_rr, 0);
+		assert(ldns_rdf_get_type(*qname) == LDNS_RDF_TYPE_DNAME);
 	}
 }
 
 /*----------------------------------------------------------------------------*/
 
-static inline void ns_put_rrset( const zn_node *node, ldns_rr_type type,
-								 ldns_pkt_section section, ldns_pkt *response )
+//static inline void ns_put_rrset( const zn_node *node, ldns_rr_type type,
+//								 ldns_pkt_section section, ldns_pkt *response )
+//{
+//	ldns_rr_list *rrset = zn_find_rrset(node, type);
+//	if (rrset != NULL) {
+//		ldns_pkt_push_rr_list(response, section, rrset);
+//	}
+//}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * @todo Check return values from push functions!
+ */
+static inline void ns_put_answer( const zn_node *node, const ldns_rdf *name,
+								  ldns_rr_type type, ldns_pkt *response,
+								  ldns_rr_list *copied_rrs )
 {
 	ldns_rr_list *rrset = zn_find_rrset(node, type);
-	if (rrset != NULL) {
-		ldns_pkt_push_rr_list(response, section, rrset);
+	if (ldns_dname_is_wildcard(ldns_rr_list_owner(rrset))) {
+		// we must copy the whole list and replace owners with name
+		int count = ldns_rr_list_rr_count(rrset);
+		for (int i = 0; i < count; ++i) {
+			ldns_rr *rr = ldns_rr_clone(ldns_rr_list_rr(rrset, i));
+			ldns_rdf_deep_free(ldns_rr_owner(rr));
+			ldns_rr_set_owner(rr, ldns_rdf_clone(name));
+			ldns_pkt_push_rr(response, LDNS_SECTION_ANSWER, rr);
+			ldns_rr_list_push_rr(copied_rrs, rr);
+		}
 	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-static inline void ns_put_answer( const zn_node *node, ldns_rr_type type,
-								  ldns_pkt *response )
-{
-	ns_put_rrset(node, type, LDNS_SECTION_ANSWER, response);
 	ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
 }
 
@@ -229,7 +266,10 @@ void ns_put_additional( const zn_node *node, ldns_rr_type type,
 
 static inline void ns_put_authority_ns( const zdb_zone *zone, ldns_pkt *resp )
 {
-	ns_put_rrset(zone->apex, LDNS_RR_TYPE_NS, LDNS_SECTION_AUTHORITY, resp);
+	ldns_rr_list *rrset = zn_find_rrset(zone->apex, LDNS_RR_TYPE_NS);
+	if (rrset != NULL) {
+		ldns_pkt_push_rr_list(resp, LDNS_SECTION_AUTHORITY, rrset);
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -247,14 +287,40 @@ static inline void ns_put_glues( const zn_node *node, ldns_pkt *response )
 static inline void ns_referral( const zn_node *node, ldns_pkt *response )
 {
 	debug_ns("Referral response.\n");
-	ns_put_rrset(node, LDNS_RR_TYPE_NS, LDNS_SECTION_AUTHORITY, response);
+	ldns_rr_list *rrset = zn_find_rrset(node, LDNS_RR_TYPE_NS);
+	if (rrset != NULL) {
+		ldns_pkt_push_rr_list(response, LDNS_SECTION_AUTHORITY, rrset);
+	}
 	ns_put_glues(node, response);
 	ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response )
+void ns_answer_from_node( const zn_node *node, const zdb_zone *zone,
+						  const ldns_rdf *qname, ldns_rr_type qtype,
+						  ldns_pkt *response, ldns_rr_list *copied_rrs )
+{
+	if (zn_has_cname(node) > 0) {
+		// resolve the cname chain and copy all CNAME records to the answer
+		ns_follow_cname(&node, &qname, response, copied_rrs);
+		// node is now set to the canonical name node (if found)
+		if (node == NULL) {
+			// TODO: add SOA??
+			ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
+			return;
+		}
+	}
+	//assert(ldns_dname_compare(node->owner, qname) == 0);
+	ns_put_answer(node, qname, qtype, response, copied_rrs);
+	ns_put_authority_ns(zone, response);
+	ns_put_additional(node, qtype, response);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
+				ldns_rr_list *copied_rrs )
 {
 	// copy the QNAME, as we may be stripping labels
 	// TODO: maybe not needed, the original form of the question is useless now
@@ -267,19 +333,25 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response )
 	// if no zone found, return NXDOMAIN
 	if (zone == NULL) {
 		ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
+		ldns_rdf_deep_free(qname);
 		return;
 	}
 
 	// find proper zone node
 	uint labels = ldns_dname_label_count(qname);
 	uint labels_found = labels;
-	const zn_node *node = ns_find_node_in_zone(zone, qname, &labels_found);
+	const zn_node *node;
+
+	search:
+	node = ns_find_node_in_zone(zone, &qname, &labels_found);
 
 	// if the name was not found in the zone something is wrong (SERVFAIL)
 	if (labels_found == 0) {
 		log_error("Name %s not found in zone %s! Returning SERVFAIL\n",
-				  ldns_rdf2str(qname), ldns_rdf2str(zone->zone_name));
+				  ldns_rdf2str(ldns_rr_owner(question)),
+				  ldns_rdf2str(zone->zone_name));
 		ldns_pkt_set_rcode(response, LDNS_RCODE_SERVFAIL);
+		ldns_rdf_deep_free(qname);
 		return;
 	}
 	assert(node != NULL);
@@ -287,36 +359,43 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response )
 	// if the node is delegation point (no matter if whole QNAME was found)
 	if (zn_is_delegation_point(node)) {
 		ns_referral(node, response);
+		ldns_rdf_deep_free(qname);
 		return;
 	}
 
 	if (labels_found == labels) {	// whole QNAME found
-		if (zn_has_cname(node) > 0) {
-			// resolve the cname chain and copy all CNAME records to the answer
-			ns_follow_cname(&node, response);
-			// node is now set to the canonical name node (if found)
-			if (node == NULL) {
-				// TODO: add SOA??
-				ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
-				return;
-			}
-		}
-		//assert(ldns_dname_compare(node->owner, qname) == 0);
-		ns_put_answer(node, ldns_rr_get_type(question), response);
-		ns_put_authority_ns(zone, response);
-		ns_put_additional(node, ldns_rr_get_type(question), response);
+		ns_answer_from_node(node, zone, qname, ldns_rr_get_type(question),
+							response, copied_rrs);
 	} else {	// only part of QNAME found
-		// if we ended in the zone apex, the name is not in the zone
-		if (zone->apex == node) {
+		debug_ns("Found node with name: %s (rest of QNAME: %s).\n",
+				 ldns_rdf2str(node->owner), ldns_rdf2str(qname));
+		// try to find a wildcard child
+		ldns_rdf *wildcard = ldns_dname_cat_clone(
+				ldns_dname_new_frm_str("*"), qname);
+		const zn_node *wildcard_node = zdb_find_name_in_zone(zone, wildcard);
+		if (wildcard_node != NULL) {
+			debug_ns("Found wildcard node %s, answering.\n", ldns_rdf2str(
+					wildcard_node->owner));
+			ns_answer_from_node(wildcard_node, zone, ldns_rr_owner(question),
+								ldns_rr_get_type(question), response,
+								copied_rrs);
+		} else if (zone->apex == node) {
+			// if we ended in the zone apex, the name is not in the zone
 			debug_ns("Name not found in the zone.\n");
-			ns_put_rrset(node, LDNS_RR_TYPE_SOA, LDNS_SECTION_AUTHORITY,
-						 response);
+			ldns_rr_list *rrset = zn_find_rrset(node, LDNS_RR_TYPE_SOA);
+			if (rrset != NULL) {
+				ldns_pkt_push_rr_list(response, LDNS_SECTION_AUTHORITY, rrset);
+			}
 			ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
 		} else {
-			debug_ns("DNAME and Wildcard not implemented yet.\n");
-			ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
+			debug_ns("DNAME not implemented yet.\n");
+			// continue searching for the new qname
+			goto search;
+			//ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
 		}
 	}
+
+	ldns_rdf_deep_free(qname);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -440,7 +519,8 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 	debug_ns("Question extracted: %s\n", ldns_rr2str(question));
 
 	rcu_read_lock();
-	ns_answer(nameserver->zone_db, question, response);
+	ldns_rr_list *copied_rrs = ldns_rr_list_new();
+	ns_answer(nameserver->zone_db, question, response, copied_rrs);
 	ldns_pkt_free(query);
 
 	debug_ns("Created response packet: %s\n", ldns_pkt2str(response));
@@ -453,6 +533,8 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 	}
 
 	ns_response_free(response);
+	// free the copied RRs
+	ldns_rr_list_deep_free(copied_rrs);
 	rcu_read_unlock();
 
 	debug_ns("Returning response with wire size %d\n", *rsize);
