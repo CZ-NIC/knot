@@ -184,30 +184,44 @@ void ns_put_additional( const zn_node *node, ldns_rr_type type,
 						ldns_pkt *response )
 {
 	debug_ns("ADDITIONAL SECTION PROCESSING\n");
-	switch (type) {
-	case LDNS_RR_TYPE_MX: {
-		skip_list *mx_refs = zn_get_ref_mx(node);
-		if (mx_refs != NULL) {
-			debug_ns("Adding RRSets for MX\n");
-			// simply add all RRSets to the additional section
-			const skip_node *mx = skip_first(mx_refs);
-			while (mx != NULL) {
-				zn_ar_rrsets *rrsets = (zn_ar_rrsets *)mx->value;
+
+	if (type != LDNS_RR_TYPE_NS && type != LDNS_RR_TYPE_MX) {
+		return;
+	}
+
+	skip_list *refs = zn_get_refs(node);
+
+	if (refs != NULL) {
+		// for all answers of type type add additional RRSets
+		debug_ns("Adding RRSets for type %s\n", ldns_rr_type2str(type));
+		int count = ldns_pkt_ancount(response);
+		for (int i = 0; i < count; ++i) {
+			ldns_rr *rr = ldns_rr_list_rr(ldns_pkt_answer(response), i);
+			if (ldns_rr_get_type(rr) == type) {
+				ldns_rdf *name;
+				switch (type) {
+				case LDNS_RR_TYPE_MX:
+					name = ldns_rr_mx_exchange(rr);
+					break;
+				case LDNS_RR_TYPE_NS:
+					name = ldns_rr_ns_nsdname(rr);
+					break;
+				default:
+					assert(0);
+					return;
+				}
+
+				debug_ns("Adding RRSets for name %s\n", ldns_rdf2str(name));
+				zn_ar_rrsets *rrsets =
+						(zn_ar_rrsets *)skip_find(refs, name);
 				if (rrsets != NULL) {
 					ldns_pkt_push_rr_list(response, LDNS_SECTION_ADDITIONAL,
 										  rrsets->a);
 					ldns_pkt_push_rr_list(response, LDNS_SECTION_ADDITIONAL,
 										  rrsets->aaaa);
 				}
-				mx = skip_next(mx);
 			}
 		}
-		break; }
-	case LDNS_RR_TYPE_NS:
-		log_error("Putting additional records for NS not implemented yet!\n");
-		break;
-	default:
-		return;
 	}
 }
 
