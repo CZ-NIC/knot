@@ -211,38 +211,52 @@ void zdb_adjust_cname( zdb_zone *zone, zn_node *node )
 
 /*----------------------------------------------------------------------------*/
 
-void zdb_adjust_mx( zdb_zone *zone, zn_node *node )
+void zdb_adjust_additional( zdb_zone *zone, zn_node *node, ldns_rr_type type )
 {
-	ldns_rr_list *mx_rrset = zn_find_rrset(node, LDNS_RR_TYPE_MX);
-	if (mx_rrset != NULL) {
+	ldns_rr_list *rrset = zn_find_rrset(node, type);
+	if (rrset != NULL) {
 		// for each MX RR find the appropriate node in the zone (if any)
 		// and save a reference to it in the zone node
-		debug_zdb("Found MX, searching for corresponding A/AAAA records...\n");
-		int count = ldns_rr_list_rr_count(mx_rrset);
+		debug_zdb("Found %s, searching for corresponding A/AAAA records...\n",
+				  ldns_rr_type2str(type));
+		int count = ldns_rr_list_rr_count(rrset);
 		for (int i = 0; i < count; ++i) {
-			ldns_rdf *mx = ldns_rr_mx_exchange(ldns_rr_list_rr(mx_rrset, i));
-			assert(mx != NULL);
-			debug_zdb("Searching for A/AAAA record for MX name %s.\n",
-					  ldns_rdf2str(mx));
-			zn_node *mx_node = zdb_find_name_in_list(zone, mx);
-			if (mx_node != NULL) {
-				debug_zdb("Found node: %p\n", mx_node);
-				ldns_rr_list *rrset = zn_find_rrset(mx_node, LDNS_RR_TYPE_A);
+			ldns_rdf *name;
+
+			switch (type) {
+			case LDNS_RR_TYPE_MX:
+				name = ldns_rr_mx_exchange(ldns_rr_list_rr(rrset, i));
+				break;
+			case LDNS_RR_TYPE_NS:
+				name = ldns_rr_ns_nsdname(ldns_rr_list_rr(rrset, i));
+				break;
+			default:
+				log_error("Type %s not supported!\n", ldns_rr_type2str(type));
+				return;
+			}
+
+			assert(name != NULL);
+			debug_zdb("Searching for A/AAAA record for %s name %s.\n",
+					  ldns_rr_type2str(type), ldns_rdf2str(name));
+			zn_node *found = zdb_find_name_in_list(zone, name);
+			if (found != NULL) {
+				debug_zdb("Found node: %p\n", found);
+				ldns_rr_list *rrset = zn_find_rrset(found, LDNS_RR_TYPE_A);
 				if (rrset != NULL) {
 					debug_zdb("Found A RRSet within the node, saving.\n");
 					if (zn_add_ref_mx(node, rrset) != 0) {
-						log_error("Error occured while saving A RRSet for MX"
-								  "record in node %s\n",
+						log_error("Error occured while saving A RRSet for %s"
+							"record in node %s\n\n", ldns_rr_type2str(type),
 								  ldns_rdf2str(node->owner));
 						return;
 					}
 				}
-				rrset = zn_find_rrset(mx_node, LDNS_RR_TYPE_AAAA);
+				rrset = zn_find_rrset(found, LDNS_RR_TYPE_AAAA);
 				if (rrset != NULL) {
 					debug_zdb("Found AAAA RRSet within the node, saving.\n");
 					if (zn_add_ref_mx(node, rrset) != 0) {
-						log_error("Error occured while saving AAAA RRSet for MX"
-								  "record in node %s\n",
+						log_error("Error occured while saving AAAA RRSet for %s"
+							"record in node %s\n\n", ldns_rr_type2str(type),
 								  ldns_rdf2str(node->owner));
 						return;
 					}
@@ -547,13 +561,13 @@ int zdb_adjust_zone( zdb_zone *zone )
 			  ldns_rdf2str(zone->zone_name));
 	// walk through the nodes in the list and check for delegations and CNAMEs
 	zn_node *node = zone->apex;
-	zdb_adjust_mx(zone, node);
+	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_MX);
 
 	while (node->next != zone->apex) {
 		node = node->next;
 		zdb_adjust_cname(zone, node);
 		zdb_adjust_delegation_point(&node);
-		zdb_adjust_mx(zone, node);
+		zdb_adjust_additional(zone, node, LDNS_RR_TYPE_MX);
 	}
 
 	debug_zdb("\nDone.\n");

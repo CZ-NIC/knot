@@ -441,7 +441,7 @@ int zn_add_ref_ns( zn_node *node, ldns_rr_list *ref_rrset )
 
 	if (node->ref.mx == NULL) {
 		node->ref.mx = skip_create_list(zn_compare_ar_keys);
-		zn_flags_set(&node->flags, FLAGS_HAS_MX);
+		zn_flags_set(&node->flags, FLAGS_HAS_NS);
 	}
 
 	zn_ar_rrsets *ar = zn_create_ar_rrsets_for_ref(ref_rrset);
