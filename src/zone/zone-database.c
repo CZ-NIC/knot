@@ -217,7 +217,7 @@ void zdb_adjust_additional( zdb_zone *zone, zn_node *node, ldns_rr_type type )
 	if (rrset != NULL) {
 		// for each MX RR find the appropriate node in the zone (if any)
 		// and save a reference to it in the zone node
-		debug_zdb("Found %s, searching for corresponding A/AAAA records...\n",
+		debug_zdb("\nFound %s, searching for corresponding A/AAAA records...\n",
 				  ldns_rr_type2str(type));
 		int count = ldns_rr_list_rr_count(rrset);
 		for (int i = 0; i < count; ++i) {
@@ -244,9 +244,9 @@ void zdb_adjust_additional( zdb_zone *zone, zn_node *node, ldns_rr_type type )
 				ldns_rr_list *rrset = zn_find_rrset(found, LDNS_RR_TYPE_A);
 				if (rrset != NULL) {
 					debug_zdb("Found A RRSet within the node, saving.\n");
-					if (zn_add_ref_mx(node, rrset) != 0) {
+					if (zn_add_ref(node, rrset, type) != 0) {
 						log_error("Error occured while saving A RRSet for %s"
-							"record in node %s\n\n", ldns_rr_type2str(type),
+							" record in node %s\n\n", ldns_rr_type2str(type),
 								  ldns_rdf2str(node->owner));
 						return;
 					}
@@ -254,7 +254,7 @@ void zdb_adjust_additional( zdb_zone *zone, zn_node *node, ldns_rr_type type )
 				rrset = zn_find_rrset(found, LDNS_RR_TYPE_AAAA);
 				if (rrset != NULL) {
 					debug_zdb("Found AAAA RRSet within the node, saving.\n");
-					if (zn_add_ref_mx(node, rrset) != 0) {
+					if (zn_add_ref(node, rrset, type) != 0) {
 						log_error("Error occured while saving AAAA RRSet for %s"
 							"record in node %s\n\n", ldns_rr_type2str(type),
 								  ldns_rdf2str(node->owner));
@@ -347,7 +347,7 @@ int zdb_adjust_delegation_point( zn_node **node )
 	if (ns_rrset != NULL) {
 		zn_set_delegation_point(*node);
 
-		debug_zdb("Adjusting delegation point %s\n",
+		debug_zdb("\nAdjusting delegation point %s\n",
 				  ldns_rdf2str((*node)->owner));
 
 		// extract all NS domain names from the node
@@ -562,12 +562,14 @@ int zdb_adjust_zone( zdb_zone *zone )
 	// walk through the nodes in the list and check for delegations and CNAMEs
 	zn_node *node = zone->apex;
 	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_MX);
+	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_NS);
 
 	while (node->next != zone->apex) {
 		node = node->next;
 		zdb_adjust_cname(zone, node);
 		zdb_adjust_delegation_point(&node);
 		zdb_adjust_additional(zone, node, LDNS_RR_TYPE_MX);
+		zdb_adjust_additional(zone, node, LDNS_RR_TYPE_NS);
 	}
 
 	debug_zdb("\nDone.\n");

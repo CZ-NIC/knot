@@ -62,8 +62,8 @@ typedef struct zn_node {
 		ldns_rr_list *glues;
 
 		/*!
-		 * @brief List of RRSets with A and/or AAAA records for an MX RRSet
-		 *        in canonical order.
+		 * @brief List of RRSets with A and/or AAAA records for an MX or NS
+		 *        RRSet in canonical order.
 		 *
 		 * Records are saved to the skip list with the owner name (ldns_rdf *)
 		 * as key and the zn_ar_rrsets structure as value.
@@ -71,19 +71,7 @@ typedef struct zn_node {
 		 * @todo Consider using simple linked list instead of this - may save
 		 *       a lot of space, but will need linear time to find exact RRSet.
 		 */
-		skip_list *mx;
-
-		/*!
-		 * @brief List of RRSets with A and/or AAAA records for an NS RRSet
-		 *        in canonical order.
-		 *
-		 * Records are saved to the skip list with the owner name (ldns_rdf *)
-		 * as key and the zn_ar_rrsets structure as value.
-		 *
-		 * @todo Consider using simple linked list instead of this - may save
-		 *       a lot of space, but will need linear time to find exact RRSet.
-		 */
-		skip_list *ns;
+		skip_list *additional;
 	} ref;
 
 	/*! @brief Nodes which carry references to this node. */
@@ -194,17 +182,13 @@ int zn_has_cname( const zn_node *node );
  */
 zn_node *zn_get_ref_cname( const zn_node *node );
 
-int zn_add_ref_mx( zn_node *node, ldns_rr_list *ref_rrset );
+int zn_add_ref( zn_node *node, ldns_rr_list *ref_rrset, ldns_rr_type type );
+
+skip_list *zn_get_refs( const zn_node *node );
 
 int zn_has_mx( const zn_node *node );
 
-skip_list *zn_get_ref_mx( const zn_node *node );
-
-int zn_add_ref_ns( zn_node *node, ldns_rr_list *ref_rrset );
-
 int zn_has_ns( const zn_node *node );
-
-skip_list *zn_get_ref_ns( const zn_node *node );
 
 int zn_add_referrer_cname( zn_node *node, const zn_node *referrer );
 
