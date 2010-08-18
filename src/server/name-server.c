@@ -34,43 +34,13 @@ ldns_pkt *ns_create_empty_response( ldns_pkt *query )
 		// copy "recursion desired" bit
 		ldns_pkt_set_rd(response, ldns_pkt_rd(query));
 		// all other flags are by default set to 0
-
-		// copy question section (no matter how many items there are)
-		// TODO: we could use the question section from query, not copy the items
-		//       to save time and space, but then we would need to be careful with
-		//       deallocation of query
-		int count = ldns_rr_list_rr_count(ldns_pkt_question(query));
-		for (int i = 0; i < count; ++i) {
-			ldns_pkt_push_rr(response, LDNS_SECTION_QUESTION, ldns_rr_clone(
-					ldns_rr_list_rr(ldns_pkt_question(query), i)));
-		}
+		// save the question section from query (do not copy)
+		ldns_pkt_push_rr_list(response, LDNS_SECTION_QUESTION,
+							  ldns_pkt_question(query));
 	}
 
 	return response;
 }
-
-/*----------------------------------------------------------------------------*/
-
-//void ns_fill_packet( ldns_pkt *response, ldns_rr_list *answer,
-//					 ldns_rr_list *authority, ldns_rr_list *additional )
-//{
-//	ldns_pkt_set_answer(response, ldns_rr_list_clone(answer));
-//	ldns_pkt_set_ancount(response, ldns_rr_list_rr_count(answer));
-
-//	ldns_pkt_set_authority(response, (authority == NULL)
-//											? ldns_rr_list_new()
-//											: ldns_rr_list_clone(authority));
-//	ldns_pkt_set_nscount(response, (authority == NULL)
-//									 ? 0
-//									 : ldns_rr_list_rr_count(authority));
-
-//	ldns_pkt_set_additional(response, (additional == NULL)
-//											? ldns_rr_list_new()
-//											: ldns_rr_list_clone(additional));
-//	ldns_pkt_set_arcount(response, (additional == NULL)
-//									 ? 0
-//									 : ldns_rr_list_rr_count(additional));
-//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -525,7 +495,6 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 	rcu_read_lock();
 	ldns_rr_list *copied_rrs = ldns_rr_list_new();
 	ns_answer(nameserver->zone_db, question, response, copied_rrs);
-	ldns_pkt_free(query);
 
 	debug_ns("Created response packet: %s\n", ldns_pkt2str(response));
 
@@ -536,6 +505,7 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 						  LDNS_RCODE_SERVFAIL, response_wire, rsize);
 	}
 
+	ldns_pkt_free(query);
 	ns_response_free(response);
 	// free the copied RRs
 	ldns_rr_list_deep_free(copied_rrs);
