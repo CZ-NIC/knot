@@ -343,8 +343,13 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 		debug_ns("Found node with name: %s (rest of QNAME: %s).\n",
 				 ldns_rdf2str(node->owner), ldns_rdf2str(qname));
 		// try to find a wildcard child
-		ldns_rdf *wildcard = ldns_dname_cat_clone(
-				ldns_dname_new_frm_str("*"), qname);
+		ldns_rdf *wildcard = ldns_dname_new_frm_str("*");
+		if (ldns_dname_cat(wildcard, qname) != LDNS_STATUS_OK) {
+			log_error("Unknown error occured.\n");
+			ldns_rdf_deep_free(wildcard);
+			ldns_rdf_deep_free(qname);
+			return;	// need some return value??
+		}
 		const zn_node *wildcard_node = zdb_find_name_in_zone(zone, wildcard);
 		if (wildcard_node != NULL) {
 			debug_ns("Found wildcard node %s, answering.\n", ldns_rdf2str(
@@ -390,11 +395,13 @@ int ns_response_to_wire( const ldns_pkt *response, uint8_t *wire,
 			// TODO: truncation
 			// while not implemented, send back SERVFAIL
 			log_error("Truncation needed, but not implemented!\n");
+			free(rwire);
 			return -1;
 		} else {
 			// everything went well, copy the wire format of the response
 			memcpy(wire, rwire, rsize);
 			*wire_size = rsize;
+			free(rwire);
 		}
 	}
 	return 0;
@@ -446,6 +453,8 @@ ns_nameserver *ns_create( zdb_database *database )
 		ldns_pkt_free(err);
 		return NULL;
 	}
+
+	ldns_pkt_free(err);
 
     return ns;
 }
