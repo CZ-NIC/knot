@@ -39,8 +39,11 @@ ldns_pkt *ns_create_empty_response( ldns_pkt *query )
 		// TODO: we could use the question section from query, not copy the items
 		//       to save time and space, but then we would need to be careful with
 		//       deallocation of query
-		ldns_pkt_push_rr_list(response, LDNS_SECTION_QUESTION,
-							  ldns_rr_list_clone(ldns_pkt_question(query)));
+		int count = ldns_rr_list_rr_count(ldns_pkt_question(query));
+		for (int i = 0; i < count; ++i) {
+			ldns_pkt_push_rr(response, LDNS_SECTION_QUESTION, ldns_rr_clone(
+					ldns_rr_list_rr(ldns_pkt_question(query), i)));
+		}
 	}
 
 	return response;
@@ -48,26 +51,26 @@ ldns_pkt *ns_create_empty_response( ldns_pkt *query )
 
 /*----------------------------------------------------------------------------*/
 
-void ns_fill_packet( ldns_pkt *response, ldns_rr_list *answer,
-						ldns_rr_list *authority, ldns_rr_list *additional )
-{
-	ldns_pkt_set_answer(response, ldns_rr_list_clone(answer));
-	ldns_pkt_set_ancount(response, ldns_rr_list_rr_count(answer));
+//void ns_fill_packet( ldns_pkt *response, ldns_rr_list *answer,
+//					 ldns_rr_list *authority, ldns_rr_list *additional )
+//{
+//	ldns_pkt_set_answer(response, ldns_rr_list_clone(answer));
+//	ldns_pkt_set_ancount(response, ldns_rr_list_rr_count(answer));
 
-	ldns_pkt_set_authority(response, (authority == NULL)
-											? ldns_rr_list_new()
-											: ldns_rr_list_clone(authority));
-	ldns_pkt_set_nscount(response, (authority == NULL)
-									 ? 0
-									 : ldns_rr_list_rr_count(authority));
+//	ldns_pkt_set_authority(response, (authority == NULL)
+//											? ldns_rr_list_new()
+//											: ldns_rr_list_clone(authority));
+//	ldns_pkt_set_nscount(response, (authority == NULL)
+//									 ? 0
+//									 : ldns_rr_list_rr_count(authority));
 
-	ldns_pkt_set_additional(response, (additional == NULL)
-											? ldns_rr_list_new()
-											: ldns_rr_list_clone(additional));
-	ldns_pkt_set_arcount(response, (additional == NULL)
-									 ? 0
-									 : ldns_rr_list_rr_count(additional));
-}
+//	ldns_pkt_set_additional(response, (additional == NULL)
+//											? ldns_rr_list_new()
+//											: ldns_rr_list_clone(additional));
+//	ldns_pkt_set_arcount(response, (additional == NULL)
+//									 ? 0
+//									 : ldns_rr_list_rr_count(additional));
+//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -168,11 +171,11 @@ void ns_follow_cname( const zn_node **node, const ldns_rdf **qname,
 			cname_rr = ldns_rr_clone(ldns_rr_list_rr(cname_rrset, 0));
 			ldns_rdf_deep_free(ldns_rr_owner(cname_rr));
 			ldns_rr_set_owner(cname_rr, ldns_rdf_clone(*qname));
+			ldns_rr_list_push_rr(copied_rrs, cname_rr);
 		} else {
 			cname_rr = ldns_rr_list_rr(cname_rrset, 0);
 		}
 		ldns_pkt_push_rr(response, LDNS_SECTION_ANSWER, cname_rr);
-		ldns_rr_list_push_rr(copied_rrs, cname_rr);
 
 		(*node) = zn_get_ref_cname(*node);
 		// save the new name which should be used for replacing wildcard
@@ -393,6 +396,7 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 			goto search;
 			//ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
 		}
+		ldns_rdf_deep_free(wildcard);
 	}
 
 	ldns_rdf_deep_free(qname);
