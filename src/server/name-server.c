@@ -256,24 +256,66 @@ static inline void ns_put_authority_ns( const zdb_zone *zone, ldns_pkt *resp )
 
 /*----------------------------------------------------------------------------*/
 
-static inline void ns_put_glues( const zn_node *node, ldns_pkt *response )
+static inline void ns_put_glues( const zn_node *node, ldns_pkt *response,
+								 ldns_rr_list *copied_rrs )
 {
 	ldns_rr_list *glues = zn_get_glues(node);
-	if (glues != NULL) {
-		ldns_pkt_push_rr_list(response, LDNS_SECTION_ADDITIONAL, glues);
+
+	if (glues == NULL) {
+		return;
+	}
+
+	for (int i = 0; i < ldns_rr_list_rr_count(glues); ++i) {
+		ldns_rr *glue_rr = ldns_rr_list_rr(glues, i);
+
+		// if owner is wildcard, find appropriate name in the RDATA fields of
+		// Authority NS, copy the glue RR and change the owner
+		if (ldns_dname_is_wildcard(ldns_rr_owner(glue_rr))) {
+			ldns_rr_list *auth = ldns_pkt_authority(response);
+			debug_ns("Searching for NS record for wildcard glue %s.\n",
+					 ldns_rdf2str(ldns_rr_owner(glue_rr)));
+			int cmp = -1;
+			int j = 0;
+			int count = ldns_rr_list_rr_count(auth);
+			for (; j < count; ++j) {
+				if (ldns_rr_get_type(ldns_rr_list_rr(auth, j))
+						== LDNS_RR_TYPE_NS
+					&& ((cmp = ldns_dname_match_wildcard(
+							ldns_rr_ns_nsdname(ldns_rr_list_rr(auth, j)),
+							ldns_rr_owner(glue_rr))) == 1)) {
+					break;	// found
+				}
+			}
+			assert(cmp == 1); // must have found something if the glue is there
+
+			debug_ns("Found NS record for wildcard glue %s:\n%s\n",
+					 ldns_rdf2str(ldns_rr_owner(glue_rr)),
+					 ldns_rr2str(ldns_rr_list_rr(auth, j)));
+
+			ldns_rr *glue_rr_new = ldns_rr_clone(glue_rr);
+			ldns_rdf_deep_free(ldns_rr_owner(glue_rr_new));
+			ldns_rr_set_owner(ldns_rr_list_rr(glues, i), ldns_rdf_clone(
+					ldns_rr_ns_nsdname(ldns_rr_list_rr(auth, j))));
+			ldns_pkt_push_rr(response, LDNS_SECTION_ADDITIONAL,
+							 glue_rr_new);
+			ldns_rr_list_push_rr(copied_rrs, glue_rr_new);
+		} else {
+			ldns_pkt_push_rr(response, LDNS_SECTION_ADDITIONAL, glue_rr);
+		}
 	}
 }
 
 /*----------------------------------------------------------------------------*/
 
-static inline void ns_referral( const zn_node *node, ldns_pkt *response )
+static inline void ns_referral( const zn_node *node, ldns_pkt *response,
+								ldns_rr_list *copied_rrs )
 {
 	debug_ns("Referral response.\n");
 	ldns_rr_list *rrset = zn_find_rrset(node, LDNS_RR_TYPE_NS);
 	if (rrset != NULL) {
 		ldns_pkt_push_rr_list(response, LDNS_SECTION_AUTHORITY, rrset);
 	}
-	ns_put_glues(node, response);
+	ns_put_glues(node, response, copied_rrs);
 	ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
 }
 
@@ -341,7 +383,7 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 
 	// if the node is delegation point (no matter if whole QNAME was found)
 	if (zn_is_delegation_point(node)) {
-		ns_referral(node, response);
+		ns_referral(node, response, copied_rrs);
 		ldns_rdf_deep_free(qname);
 		return;
 	}
