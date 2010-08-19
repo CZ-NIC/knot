@@ -349,10 +349,8 @@ int zn_is_delegation_point( const zn_node *node )
 void zn_set_ref_cname( zn_node *node, zn_node *cname_ref )
 {
 	assert(node->ref.cname == NULL);
-	if (cname_ref != NULL) {
-		node->ref.cname = cname_ref;
-		zn_flags_set(&node->flags, FLAGS_HAS_CNAME);
-	}
+	node->ref.cname = cname_ref;
+	zn_flags_set(&node->flags, FLAGS_HAS_CNAME);
 }
 
 /*----------------------------------------------------------------------------*/

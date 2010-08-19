@@ -10,7 +10,7 @@
 //#define CUCKOO_DEBUG_HASH
 //#define ZP_DEBUG
 //#define NS_DEBUG
-//#define ZDB_DEBUG
+#define ZDB_DEBUG
 //#define ZN_DEBUG
 //#define ZP_DEBUG_PARSE
 

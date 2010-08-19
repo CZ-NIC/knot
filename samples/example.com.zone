@@ -22,3 +22,5 @@ ns.sub	A	10.1.0.1	; glue
 
 a	A	10.0.0.4
 *.a	A	10.0.0.5
+
+c	CNAME	c.a.example.com.
