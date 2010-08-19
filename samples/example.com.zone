@@ -27,3 +27,6 @@ c	CNAME	c.a.example.com.
 example.com.	NS	ns2
 ns2	CNAME	mail
 example.com.	NS	c.a.example.com.
+
+sub2	NS	ns.sub2.example.com.
+*.sub2	A	10.2.0.1

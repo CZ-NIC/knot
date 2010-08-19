@@ -232,7 +232,7 @@ ldns_rr_list *zn_get_glues( const zn_node *node );
  * @note This function is quite ineffective.
  */
 ldns_rr_list *zn_get_glue( const zn_node *node, ldns_rdf *owner,
-						   ldns_rr_type type );
+						   ldns_rr_type type, ldns_rr_list *copied_rrs );
 
 /*!
  * @brief Destroys the zone node, destroying all its RRSets and their RRs.

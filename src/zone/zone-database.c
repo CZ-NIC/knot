@@ -284,16 +284,22 @@ void zdb_adjust_additional( zdb_zone *zone, zn_node *node, ldns_rr_type type )
 
 /*----------------------------------------------------------------------------*/
 /*!
- * @retval 0 if found, -1 or 1 if not found.
+ * @return Found matching domain name even if @a name is a wildcard, or NULL
+ *         if not found.
  */
-int zdb_dname_list_contains( ldns_rdf **list, size_t count, ldns_rdf *name )
+ldns_rdf *zdb_dname_list_find( ldns_rdf **list, size_t count, ldns_rdf *name )
 {
 	int i = 0;
 	int found;
-	while (i < count && (found = ldns_dname_compare(list[i], name)) != 0) {
+	while (i < count && (found = ldns_dname_match_wildcard(list[i], name))
+						!= 1) {
 		++i;
 	}
-	return found;
+	if (found == 1) {
+		return list[i];
+	} else {
+		return NULL;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -316,33 +322,27 @@ ldns_rdf **zdb_extract_ns( ldns_rr_list *ns_rrset )
 
 /*----------------------------------------------------------------------------*/
 
-int zdb_process_nonauth( zn_node *node, ldns_rdf **ns_rrs, size_t ns_count,
+int zdb_process_nonauth( zn_node *node, ldns_rdf **ns_names, size_t ns_count,
 						 zn_node *deleg )
 {
 	zn_set_non_authoritative(node);
 
-	int found = zdb_dname_list_contains(ns_rrs, ns_count, deleg->owner);
-	if (found == 0) {
+	ldns_rdf *name = zdb_dname_list_find(ns_names, ns_count, node->owner);
+	if (name == NULL) {
 		log_error("Zone contains non-authoritative domain name %s,"
 				  " which is not referenced in %s NS records!\n",
-				  ldns_rdf2str(node->owner),
-				  ldns_rdf2str(deleg->owner));
-		free(ns_rrs);
+				  ldns_rdf2str(node->owner), ldns_rdf2str(deleg->owner));
 		return -3;
 	}
 
-	debug_zdb("Saving glues from node %s\n",
-			  ldns_rdf2str(node->owner));
+	debug_zdb("Saving glues from node %s\n", ldns_rdf2str(node->owner));
 	// push the glues to the delegation point node
-	int res = zn_push_glue(
-			deleg, zn_find_rrset(node, LDNS_RR_TYPE_A));
-	res += zn_push_glue(
-			deleg, zn_find_rrset(node, LDNS_RR_TYPE_AAAA));
+	int res = zn_push_glue(deleg, zn_find_rrset(node, LDNS_RR_TYPE_A));
+	res += zn_push_glue(deleg, zn_find_rrset(node, LDNS_RR_TYPE_AAAA));
 
 	if (res != 0) {
 		log_error("Error while saving glue records for delegation point"
 				  " %s\n", ldns_rdf2str(deleg->owner));
-		free(ns_rrs);
 		return -4;
 	}
 
@@ -366,7 +366,7 @@ int zdb_adjust_delegation_point( zn_node **node )
 				  ldns_rdf2str((*node)->owner));
 
 		// extract all NS domain names from the node
-		ldns_rdf **ns_rrs = zdb_extract_ns(ns_rrset);
+		ldns_rdf **ns_names = zdb_extract_ns(ns_rrset);
 
 		// mark all subsequent nodes which are subdomains of this node's owner
 		// as non authoritative and extract glue records from them
@@ -374,13 +374,13 @@ int zdb_adjust_delegation_point( zn_node **node )
 
 		while (ldns_dname_is_subdomain((*node)->next->owner, deleg->owner)) {
 			(*node) = (*node)->next;
-			if ((res = zdb_process_nonauth(*node, ns_rrs,
+			if ((res = zdb_process_nonauth(*node, ns_names,
 							ldns_rr_list_rr_count(ns_rrset), deleg)) != 0) {
 				break;
 			}
 		}
 
-		free(ns_rrs);
+		free(ns_names);
 		// set to last processed node
 		debug_zdb("Done.\n\n");
 	}

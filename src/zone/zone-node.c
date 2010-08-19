@@ -602,7 +602,7 @@ ldns_rr_list *zn_get_glues( const zn_node *node )
 /*----------------------------------------------------------------------------*/
 
 ldns_rr_list *zn_get_glue( const zn_node *node, ldns_rdf *owner,
-						   ldns_rr_type type )
+						   ldns_rr_type type, ldns_rr_list *copied_rrs )
 {
 	assert(type == LDNS_RR_TYPE_A || type == LDNS_RR_TYPE_AAAA);
 
@@ -610,6 +610,7 @@ ldns_rr_list *zn_get_glue( const zn_node *node, ldns_rdf *owner,
 		return NULL;
 	}
 
+	assert(copied_rrs != NULL);
 	ldns_rr_list *glue = ldns_rr_list_new();
 
 	ldns_rr *rr;
@@ -618,18 +619,28 @@ ldns_rr_list *zn_get_glue( const zn_node *node, ldns_rdf *owner,
 	do {
 		++i;
 		rr = ldns_rr_list_rr(node->ref.glues, i);
-	} while ((cmp = ldns_dname_compare(ldns_rr_owner(rr), owner)) < 0);
+	} while ((cmp = ldns_dname_match_wildcard(owner, ldns_rr_owner(rr))) < 0);
 
 	// found owner
 	while (cmp == 0 && ldns_rr_get_type(rr) != type) {
 		++i;
 		rr = ldns_rr_list_rr(node->ref.glues, i);
-		cmp = ldns_dname_compare(ldns_rr_owner(rr), owner);
+		cmp = ldns_dname_match_wildcard(owner, ldns_rr_owner(rr));
 	}
 
 	// found owner & type
 	while (cmp == 0 && ldns_rr_get_type(rr) == type) {
-		ldns_rr_list_push_rr(glue, rr);
+		// if the RR has a wildcard owner, copy the RR and replace the owner
+		// with the desired name
+		if (ldns_dname_is_wildcard(ldns_rr_owner(rr))) {
+			ldns_rr *rr_new = ldns_rr_clone(rr);
+			ldns_rdf_deep_free(ldns_rr_owner(rr_new));
+			ldns_rr_set_owner(rr_new, ldns_rdf_clone(owner));
+			ldns_rr_list_push_rr(glue, rr_new);
+			ldns_rr_list_push_rr(copied_rrs, rr_new);
+		} else {
+			ldns_rr_list_push_rr(glue, rr);
+		}
 		++i;
 		rr = ldns_rr_list_rr(node->ref.glues, i);
 		cmp = ldns_dname_compare(ldns_rr_owner(rr), owner);
