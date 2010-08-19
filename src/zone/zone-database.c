@@ -184,12 +184,12 @@ zn_node *zdb_find_name_in_list( zdb_zone *zone, ldns_rdf *name )
 {
 	zn_node *node = zone->apex;
 	int cmp;
-	while ((cmp = ldns_dname_compare(node->owner, name)) != 0
+	while ((cmp = ldns_dname_match_wildcard(name, node->owner)) != 1
 		   && node->next != zone->apex) {
 		node = node->next;
 	}
 
-	return (cmp == 0) ? node : NULL;
+	return (cmp == 1) ? node : NULL;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -205,7 +205,9 @@ void zdb_adjust_cname( zdb_zone *zone, zn_node *node )
 		debug_zdb("Canonical name for alias %s is %s\n",
 				  ldns_rdf2str(node->owner), ldns_rdf2str(cname));
 		zn_set_ref_cname(node, zdb_find_name_in_list(zone, cname));
-		debug_zdb("Found node: %p\n\n", node->ref.cname);
+		debug_zdb("Found node: %s\n\n", (node->ref.cname)
+				  ? ldns_rdf2str(node->ref.cname->owner)
+				  : "(nil)");
 	}
 }
 

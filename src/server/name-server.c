@@ -147,12 +147,14 @@ void ns_follow_cname( const zn_node **node, const ldns_rdf **qname,
 			cname_rr = ldns_rr_list_rr(cname_rrset, 0);
 		}
 		ldns_pkt_push_rr(response, LDNS_SECTION_ANSWER, cname_rr);
+		debug_ns("CNAME record for owner %s put to answer section.\n",
+				 ldns_rdf2str(ldns_rr_owner(cname_rr)));
 
 		(*node) = zn_get_ref_cname(*node);
 		// save the new name which should be used for replacing wildcard
 		*qname = ldns_rr_rdf(cname_rr, 0);
 		assert(ldns_rdf_get_type(*qname) == LDNS_RDF_TYPE_DNAME);
-	} while (*node != NULL);
+	} while (*node != NULL && zn_has_cname(*node));
 }
 
 /*----------------------------------------------------------------------------*/
@@ -163,16 +165,21 @@ static inline void ns_put_answer( const zn_node *node, const ldns_rdf *name,
 								  ldns_rr_type type, ldns_pkt *response,
 								  ldns_rr_list *copied_rrs )
 {
+	debug_ns("Putting answers from node %s.\n", ldns_rdf2str(node->owner));
 	ldns_rr_list *rrset = zn_find_rrset(node, type);
-	if (ldns_dname_is_wildcard(ldns_rr_list_owner(rrset))) {
-		// we must copy the whole list and replace owners with name
-		int count = ldns_rr_list_rr_count(rrset);
-		for (int i = 0; i < count; ++i) {
-			ldns_rr *rr = ldns_rr_clone(ldns_rr_list_rr(rrset, i));
-			ldns_rdf_deep_free(ldns_rr_owner(rr));
-			ldns_rr_set_owner(rr, ldns_rdf_clone(name));
-			ldns_pkt_push_rr(response, LDNS_SECTION_ANSWER, rr);
-			ldns_rr_list_push_rr(copied_rrs, rr);
+	if (rrset) {
+		if (ldns_dname_is_wildcard(ldns_rr_list_owner(rrset))) {
+			// we must copy the whole list and replace owners with name
+			int count = ldns_rr_list_rr_count(rrset);
+			for (int i = 0; i < count; ++i) {
+				ldns_rr *rr = ldns_rr_clone(ldns_rr_list_rr(rrset, i));
+				ldns_rdf_deep_free(ldns_rr_owner(rr));
+				ldns_rr_set_owner(rr, ldns_rdf_clone(name));
+				ldns_pkt_push_rr(response, LDNS_SECTION_ANSWER, rr);
+				ldns_rr_list_push_rr(copied_rrs, rr);
+			}
+		} else {
+			ldns_pkt_push_rr_list(response, LDNS_SECTION_ANSWER, rrset);
 		}
 	}
 	ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
