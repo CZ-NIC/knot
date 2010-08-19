@@ -49,6 +49,7 @@ zn_ar_rrsets *zn_create_ar_rrsets()
 	}
 	ar->a = NULL;
 	ar->aaaa = NULL;
+	ar->cname = NULL;
 
 	return ar;
 }
@@ -79,6 +80,19 @@ zn_ar_rrsets *zn_create_ar_rrsets_for_ref( ldns_rr_list *ref_rrset )
 
 /*----------------------------------------------------------------------------*/
 
+zn_ar_rrsets *zn_create_ar_rrsets_for_cname( const zn_node *node )
+{
+	zn_ar_rrsets *ar = zn_create_ar_rrsets();
+
+	assert(ar->a == NULL);
+	assert(ar->aaaa == NULL);
+	ar->cname = node;
+
+	return ar;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int zn_compare_ar_keys( void *key1, void *key2 )
 {
 	return ldns_dname_compare((ldns_rdf *)key1, (ldns_rdf *)key2);
@@ -92,7 +106,8 @@ int zn_merge_ar_values( void **value1, void **value2 )
 	zn_ar_rrsets *ar2 = (zn_ar_rrsets *)(*value2);
 
 	if ( (ar2->a != NULL && ar1->a != NULL)
-		|| (ar2->aaaa != NULL && ar1->aaaa != NULL)) {
+		|| (ar2->aaaa != NULL && ar1->aaaa != NULL)
+		|| (ar2->cname != NULL && ar1->cname != NULL)) {
 		return -1;
 	}
 
@@ -100,6 +115,8 @@ int zn_merge_ar_values( void **value1, void **value2 )
 		ar1->a = ar2->a;
 	} else if (ar2->aaaa != NULL) {
 		ar1->aaaa = ar2->aaaa;
+	} else if (ar2->cname != NULL) {
+		ar1->cname = ar2->cname;
 	}
 
 	return 0;
@@ -373,7 +390,8 @@ zn_node *zn_get_ref_cname( const zn_node *node )
 
 /*----------------------------------------------------------------------------*/
 
-int zn_add_ref( zn_node *node, ldns_rr_list *ref_rrset, ldns_rr_type type )
+int zn_add_ref( zn_node *node, ldns_rr_list *ref_rrset, ldns_rr_type type,
+				ldns_rdf *name )
 {
 	zn_flags flag = 0;
 
@@ -403,8 +421,57 @@ int zn_add_ref( zn_node *node, ldns_rr_list *ref_rrset, ldns_rr_type type )
 	}
 
 	int res = 0;
-	res = skip_insert(node->ref.additional, ldns_rr_list_owner(ref_rrset), ar,
-					  zn_merge_ar_values);
+	res = skip_insert(node->ref.additional, name, ar, zn_merge_ar_values);
+	zn_flags_set(&node->flags, flag);
+
+	debug_zn("zn_add_ref(%p, %p, %s)\n", node, ref_rrset,
+			 ldns_rr_type2str(type));
+	debug_zn("First item in the skip list: key: %s, value: %p\n",
+		   ldns_rdf2str((ldns_rdf *)skip_first(node->ref.additional)->key),
+		   skip_first(node->ref.additional)->value);
+
+	if (res < 0) {
+		free(ar);
+		return -5;
+	}
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zn_add_ref_cname( zn_node *node, const zn_node *cname_node,
+					  ldns_rr_type type, ldns_rdf *name )
+{
+	zn_flags flag = 0;
+
+	switch (type) {
+	case LDNS_RR_TYPE_MX:
+		flag = FLAGS_HAS_MX;
+		break;
+	case LDNS_RR_TYPE_NS:
+		flag = FLAGS_HAS_NS;
+		break;
+	default:
+		log_error("zn_add_ref_cname(): type %s not supported.\n",
+				  ldns_rr_type2str(type));
+		return -1;
+	}
+
+	if (node->ref.additional == NULL) {
+		node->ref.additional = skip_create_list(zn_compare_ar_keys);
+		if (node->ref.additional == NULL) {
+			return -3;
+		}
+	}
+
+	zn_ar_rrsets *ar = zn_create_ar_rrsets_for_cname(cname_node);
+	if (ar == NULL) {
+		return -4;
+	}
+
+	int res = 0;
+	res = skip_insert(node->ref.additional, name, ar, zn_merge_ar_values);
 	zn_flags_set(&node->flags, flag);
 
 	debug_zn("zn_add_ref(%p, %p, %s)\n", node, ref_rrset,
@@ -428,6 +495,18 @@ skip_list *zn_get_refs( const zn_node *node )
 	if ((zn_flags_get(node->flags, FLAGS_HAS_MX)
 		| zn_flags_get(node->flags, FLAGS_HAS_NS)) > 0) {
 		return node->ref.additional;
+	} else {
+		return NULL;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+const zn_ar_rrsets *zn_get_ref( const zn_node *node, const ldns_rdf *name )
+{
+	if ((zn_flags_get(node->flags, FLAGS_HAS_MX)
+		| zn_flags_get(node->flags, FLAGS_HAS_NS)) > 0) {
+		return (zn_ar_rrsets *)skip_find(node->ref.additional, (void *)name);
 	} else {
 		return NULL;
 	}

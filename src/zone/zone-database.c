@@ -242,11 +242,24 @@ void zdb_adjust_additional( zdb_zone *zone, zn_node *node, ldns_rr_type type )
 					  ldns_rr_type2str(type), ldns_rdf2str(name));
 			zn_node *found = zdb_find_name_in_list(zone, name);
 			if (found != NULL) {
-				debug_zdb("Found node: %p\n", found);
+				debug_zdb("Found node: %s\n\n", (found)
+						  ? ldns_rdf2str(found->owner)
+						  : "(nil)");
+				if (zn_find_rrset(found, LDNS_RR_TYPE_CNAME) != NULL) {
+					debug_zdb("Found CNAME RRSet within the node, saving.\n");
+					if (zn_add_ref_cname(node, found, type, name)
+						!= 0) {
+						log_error("Error occured while saving A RRSet for %s"
+							" record in node %s\n\n", ldns_rr_type2str(type),
+								  ldns_rdf2str(node->owner));
+					}
+					debug_zdb("Done.\n\n");
+					continue;
+				}
 				ldns_rr_list *rrset = zn_find_rrset(found, LDNS_RR_TYPE_A);
 				if (rrset != NULL) {
 					debug_zdb("Found A RRSet within the node, saving.\n");
-					if (zn_add_ref(node, rrset, type) != 0) {
+					if (zn_add_ref(node, rrset, type, name) != 0) {
 						log_error("Error occured while saving A RRSet for %s"
 							" record in node %s\n\n", ldns_rr_type2str(type),
 								  ldns_rdf2str(node->owner));
@@ -256,7 +269,7 @@ void zdb_adjust_additional( zdb_zone *zone, zn_node *node, ldns_rr_type type )
 				rrset = zn_find_rrset(found, LDNS_RR_TYPE_AAAA);
 				if (rrset != NULL) {
 					debug_zdb("Found AAAA RRSet within the node, saving.\n");
-					if (zn_add_ref(node, rrset, type) != 0) {
+					if (zn_add_ref(node, rrset, type, name) != 0) {
 						log_error("Error occured while saving AAAA RRSet for %s"
 							"record in node %s\n\n", ldns_rr_type2str(type),
 								  ldns_rdf2str(node->owner));

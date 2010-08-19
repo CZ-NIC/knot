@@ -19,13 +19,6 @@
 #include <ldns/rr.h>
 
 /*----------------------------------------------------------------------------*/
-
-typedef struct zn_ar_rrsets {
-	ldns_rr_list *a;
-	ldns_rr_list *aaaa;
-} zn_ar_rrsets;
-
-/*----------------------------------------------------------------------------*/
 /*!
  * @brief Data structure for holding DNS data related to one zone node.
  */
@@ -83,6 +76,14 @@ typedef struct zn_node {
 	/*! @brief Previous zone node (should be in canonical order). */
 	struct zn_node *prev;
 } zn_node;
+
+/*----------------------------------------------------------------------------*/
+
+typedef struct zn_ar_rrsets {
+	ldns_rr_list *a;
+	ldns_rr_list *aaaa;
+	const zn_node *cname;
+} zn_ar_rrsets;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -182,9 +183,15 @@ int zn_has_cname( const zn_node *node );
  */
 zn_node *zn_get_ref_cname( const zn_node *node );
 
-int zn_add_ref( zn_node *node, ldns_rr_list *ref_rrset, ldns_rr_type type );
+int zn_add_ref( zn_node *node, ldns_rr_list *ref_rrset, ldns_rr_type type,
+				ldns_rdf *name );
+
+int zn_add_ref_cname( zn_node *node, const zn_node *cname_node,
+					  ldns_rr_type type, ldns_rdf *name );
 
 skip_list *zn_get_refs( const zn_node *node );
+
+const zn_ar_rrsets *zn_get_ref( const zn_node *node, const ldns_rdf *name );
 
 int zn_has_mx( const zn_node *node );
 
