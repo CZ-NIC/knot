@@ -126,7 +126,8 @@ const zn_node *ns_find_node_in_zone( const zdb_zone *zone, ldns_rdf **qname,
  * @todo Check return values from push functions!
  */
 void ns_follow_cname( const zn_node **node, const ldns_rdf **qname,
-					  ldns_pkt *response, ldns_rr_list *copied_rrs )
+					  ldns_pkt *pkt, ldns_pkt_section section,
+					  ldns_rr_list *copied_rrs )
 {
 	debug_ns("Resolving CNAME chain...\n");
 	assert(zn_has_cname(*node) > 0);
@@ -146,7 +147,7 @@ void ns_follow_cname( const zn_node **node, const ldns_rdf **qname,
 		} else {
 			cname_rr = ldns_rr_list_rr(cname_rrset, 0);
 		}
-		ldns_pkt_push_rr(response, LDNS_SECTION_ANSWER, cname_rr);
+		ldns_pkt_push_rr(pkt, section, cname_rr);
 		debug_ns("CNAME record for owner %s put to answer section.\n",
 				 ldns_rdf2str(ldns_rr_owner(cname_rr)));
 
@@ -158,15 +159,11 @@ void ns_follow_cname( const zn_node **node, const ldns_rdf **qname,
 }
 
 /*----------------------------------------------------------------------------*/
-/*!
- * @todo Check return values from push functions!
- */
-static inline void ns_put_answer( const zn_node *node, const ldns_rdf *name,
-								  ldns_rr_type type, ldns_pkt *response,
-								  ldns_rr_list *copied_rrs )
+
+void ns_put_rrset( ldns_rr_list *rrset, const ldns_rdf *name,
+				   ldns_pkt_section section, ldns_pkt *pkt,
+				   ldns_rr_list *copied_rrs )
 {
-	debug_ns("Putting answers from node %s.\n", ldns_rdf2str(node->owner));
-	ldns_rr_list *rrset = zn_find_rrset(node, type);
 	if (rrset) {
 		if (ldns_dname_is_wildcard(ldns_rr_list_owner(rrset))) {
 			// we must copy the whole list and replace owners with name
@@ -175,59 +172,74 @@ static inline void ns_put_answer( const zn_node *node, const ldns_rdf *name,
 				ldns_rr *rr = ldns_rr_clone(ldns_rr_list_rr(rrset, i));
 				ldns_rdf_deep_free(ldns_rr_owner(rr));
 				ldns_rr_set_owner(rr, ldns_rdf_clone(name));
-				ldns_pkt_push_rr(response, LDNS_SECTION_ANSWER, rr);
+				ldns_pkt_push_rr(pkt, section, rr);
 				ldns_rr_list_push_rr(copied_rrs, rr);
 			}
 		} else {
-			ldns_pkt_push_rr_list(response, LDNS_SECTION_ANSWER, rrset);
+			ldns_pkt_push_rr_list(pkt, section, rrset);
 		}
 	}
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * @todo Check return values from push functions!
+ */
+void ns_put_answer( const zn_node *node, const ldns_rdf *name,
+					ldns_rr_type type, ldns_pkt *response,
+					ldns_rr_list *copied_rrs )
+{
+	debug_ns("Putting answers from node %s.\n", ldns_rdf2str(node->owner));
+	ns_put_rrset(zn_find_rrset(node, type), name, LDNS_SECTION_ANSWER, response,
+				 copied_rrs);
 	ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void ns_put_additional( const zn_node *node, ldns_rr_type type,
-						ldns_pkt *response )
+void ns_put_additional( const zn_node *node, ldns_pkt *response,
+						ldns_rr_list *copied_rrs )
 {
 	debug_ns("ADDITIONAL SECTION PROCESSING\n");
 
-	if (type != LDNS_RR_TYPE_NS && type != LDNS_RR_TYPE_MX) {
+	if (zn_has_mx(node) == 0 && zn_has_ns(node) == 0) {
+		// nothing to put
 		return;
 	}
 
-	skip_list *refs = zn_get_refs(node);
+	// for each answer RR add appropriate additional records
+	int count = ldns_pkt_ancount(response);
+	for (int i = 0; i < count; ++i) {
+		ldns_rr *rr = ldns_rr_list_rr(ldns_pkt_answer(response), i);
+		const ldns_rdf *name;
 
-	if (refs != NULL) {
-		// for all answers of type type add additional RRSets
-		debug_ns("Adding RRSets for type %s\n", ldns_rr_type2str(type));
-		int count = ldns_pkt_ancount(response);
-		for (int i = 0; i < count; ++i) {
-			ldns_rr *rr = ldns_rr_list_rr(ldns_pkt_answer(response), i);
-			if (ldns_rr_get_type(rr) == type) {
-				ldns_rdf *name;
-				switch (type) {
-				case LDNS_RR_TYPE_MX:
-					name = ldns_rr_mx_exchange(rr);
-					break;
-				case LDNS_RR_TYPE_NS:
-					name = ldns_rr_ns_nsdname(rr);
-					break;
-				default:
-					assert(0);
-					return;
-				}
+		switch (ldns_rr_get_type(rr)) {
+		case LDNS_RR_TYPE_MX:
+			name = ldns_rr_mx_exchange(rr);
+			break;
+		case LDNS_RR_TYPE_NS:
+			name = ldns_rr_ns_nsdname(rr);
+			break;
+		default:
+			continue;
+		}
 
-				debug_ns("Adding RRSets for name %s\n", ldns_rdf2str(name));
-				zn_ar_rrsets *rrsets =
-						(zn_ar_rrsets *)skip_find(refs, name);
-				if (rrsets != NULL) {
-					ldns_pkt_push_rr_list(response, LDNS_SECTION_ADDITIONAL,
-										  rrsets->a);
-					ldns_pkt_push_rr_list(response, LDNS_SECTION_ADDITIONAL,
-										  rrsets->aaaa);
+		debug_ns("Adding RRSets for name %s\n", ldns_rdf2str(name));
+		const zn_ar_rrsets *rrsets = zn_get_ref(node, name);
+		if (rrsets != NULL) {
+			if (rrsets->cname != NULL) {
+				const zn_node *cname_node = rrsets->cname;
+				ns_follow_cname(&cname_node, &name, response,
+								LDNS_SECTION_ADDITIONAL, copied_rrs);
+				rrsets = zn_get_ref(cname_node, name);
+				if (rrsets == NULL) {
+					continue;
 				}
 			}
+			ns_put_rrset(rrsets->a, name, LDNS_SECTION_ADDITIONAL, response,
+						 copied_rrs);
+			ns_put_rrset(rrsets->aaaa, name, LDNS_SECTION_ADDITIONAL,response,
+						 copied_rrs);
 		}
 	}
 }
@@ -273,7 +285,8 @@ void ns_answer_from_node( const zn_node *node, const zdb_zone *zone,
 {
 	if (zn_has_cname(node) > 0) {
 		// resolve the cname chain and copy all CNAME records to the answer
-		ns_follow_cname(&node, &qname, response, copied_rrs);
+		ns_follow_cname(&node, &qname, response, LDNS_SECTION_ANSWER,
+						copied_rrs);
 		// node is now set to the canonical name node (if found)
 		if (node == NULL) {
 			// TODO: add SOA??
@@ -284,7 +297,7 @@ void ns_answer_from_node( const zn_node *node, const zdb_zone *zone,
 	//assert(ldns_dname_compare(node->owner, qname) == 0);
 	ns_put_answer(node, qname, qtype, response, copied_rrs);
 	ns_put_authority_ns(zone, response);
-	ns_put_additional(node, qtype, response);
+	ns_put_additional(node, response, copied_rrs);
 }
 
 /*----------------------------------------------------------------------------*/
