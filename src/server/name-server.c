@@ -129,7 +129,8 @@ void ns_follow_cname( const zn_node **node, const ldns_rdf **qname,
 					  ldns_pkt *response, ldns_rr_list *copied_rrs )
 {
 	debug_ns("Resolving CNAME chain...\n");
-	while (zn_get_ref_cname(*node) != NULL) {
+	assert(zn_has_cname(*node) > 0);
+	do {
 		// put the CNAME record to answer, but replace the possible wildcard
 		// name with qname
 		ldns_rr_list *cname_rrset = zn_find_rrset((*node), LDNS_RR_TYPE_CNAME);
@@ -151,19 +152,8 @@ void ns_follow_cname( const zn_node **node, const ldns_rdf **qname,
 		// save the new name which should be used for replacing wildcard
 		*qname = ldns_rr_rdf(cname_rr, 0);
 		assert(ldns_rdf_get_type(*qname) == LDNS_RDF_TYPE_DNAME);
-	}
+	} while (*node != NULL);
 }
-
-/*----------------------------------------------------------------------------*/
-
-//static inline void ns_put_rrset( const zn_node *node, ldns_rr_type type,
-//								 ldns_pkt_section section, ldns_pkt *response )
-//{
-//	ldns_rr_list *rrset = zn_find_rrset(node, type);
-//	if (rrset != NULL) {
-//		ldns_pkt_push_rr_list(response, section, rrset);
-//	}
-//}
 
 /*----------------------------------------------------------------------------*/
 /*!
