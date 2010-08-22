@@ -128,7 +128,7 @@ int zn_compare_keys( void *key1, void *key2 )
 {
 	// in our case, key is of type ldns_rr_type, but as casting to enum may
 	// result in undefined behaviour, we use regular unsigned int.
-	return ((uint)key1 < (uint)key2) ? -1 : (((uint)key1 > (uint)key2) ? 1 : 0);
+    return (key1 < key2) ? -1 : ((key1 > key2) ? 1 : 0);
 }
 
 /*----------------------------------------------------------------------------*/
