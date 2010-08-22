@@ -8,14 +8,24 @@
 
 /*----------------------------------------------------------------------------*/
 
+static volatile short s_stopping = 0;
 static cute_server* s_server = NULL;
 
 // SIGINT signal handler
 void interrupt_handle(int s)
 {
+   // Invalid input
+   if(s != SIGINT || s_server == NULL)
+      return;
+
    // Stop server
-   if(s == SIGINT && s_server != NULL) {
+   if(s_stopping == 0) {
+      s_stopping = 1;
       cute_stop(s_server);
+   }
+   else {
+      log_error("\nOK! OK! Exiting immediately.\n");
+      exit(1);
    }
 }
 
