@@ -81,45 +81,40 @@ int cute_start( cute_server *server, const char *filename )
         perror("sm_open_socket");
         return -1;
     }
-#ifdef CUTE_DEBUG
-    printf("TCP(%d) ", DEFAULT_PORT); fflush(stdout);
-#endif
+
+    debug_server("TCP(%d) ", DEFAULT_PORT); fflush(stdout);
+
     if (sm_open_socket(server->manager[TCP], DEFAULT_PORT, TCP) != 0) {
-#ifdef CUTE_DEBUG
-        printf("[failed]\n");
-#endif
+        debug_server("[failed]\n");
         perror("sm_open_socket");
         return -1;
     }
-#ifdef CUTE_DEBUG
-    printf("\nDone\n\n");
-#endif
-
+    debug_server("\nDone\n\n");
     debug_server("Starting servers..\n");
 
     // Start dispatchers
     int ret = 0;
     ret = sm_start(server->manager[TCP]);
-#ifdef CUTE_DEBUG
-    printf("   TCP server: %u workers.\n", server->manager[TCP]->workers_dpt->thread_count);
-#endif
+
+    debug_server("   TCP server: %u workers.\n", server->manager[TCP]->workers_dpt->thread_count);
+
     ret += sm_start(server->manager[UDP]);
-#ifdef CUTE_DEBUG
-    printf("   UDP server: %u workers.\n", server->manager[UDP]->workers_dpt->thread_count);
-    printf("Done\n\n");
-#endif
+
+    debug_server("   UDP server: %u workers.\n", server->manager[UDP]->workers_dpt->thread_count);
+    debug_server("Done\n\n");
+
     if(ret < 0)
         return ret;
 
     // Wait for dispatchers to finish
     ret = sm_wait(server->manager[TCP]);
-#ifdef CUTE_DEBUG
-    printf("TCP handler finished.\n");
-#endif
+
+    debug_server("TCP handler finished.\n");
+
     ret += sm_wait(server->manager[UDP]);
-#ifdef CUTE_DEBUG
-    printf("UDP handler finished.\n");
-#endif
+
+    debug_server("UDP handler finished.\n");
+
     return ret;
 }
 
