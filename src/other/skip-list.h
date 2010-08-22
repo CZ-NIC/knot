@@ -70,10 +70,6 @@ typedef struct {
  *
  * @param compare_keys Function for comparing the keys.
  *
- * The @a merge_values function should  merge the second value to the first
- * value. It must not delete the first value. The second value also should not
- * be deleted (as this is concern of the caller).
- *
  * @return Pointer to the newly created skip list if successful. NULL otherwise.
  */
 skip_list *skip_create_list( int (*compare_keys)(void *, void *) );
@@ -102,9 +98,9 @@ void skip_destroy_list( skip_list *list, void (*destroy_key)(void *),
  *                     attempting to insert item with key already present in the
  *                     list.
  *
- * If a merge function was specified upon creation of the list and @a key is
- * already present in the list, the new value will be merged to the value saved
- * in the list node. Otherwise the function does nothing.
+ * The @a merge_values function should  merge the second value to the first
+ * value. It must not delete the first value. The second value also should not
+ * be deleted (as this is concern of the caller).
  *
  * @retval 0 If successful and the key was not yet present in the list.
  * @retval 1 If the key was already present and the new value was ignored
@@ -156,6 +152,16 @@ void *skip_find( const skip_list *list, void *key );
  * @retval 1 if non-empty.
  */
 int skip_empty( const skip_list *list );
+
+/*!
+ * @brief Returns the first item in the skip list.
+ */
+const skip_node *skip_first( const skip_list *list );
+
+/*!
+ * @brief Returns the next item in the skip list.
+ */
+const skip_node *skip_next( const skip_node *node );
 
 /*!
  * @brief Prints the whole list using the given print function.
