@@ -506,7 +506,7 @@ void sm_tcp_handler(sm_event *ev)
     if(n > 0) {
 
         // Send answer
-        uint answer_size = ev->size_out;
+        size_t answer_size = ev->size_out;
         int res = ns_answer_request(ev->manager->nameserver, ev->inbuf, n, ev->outbuf + sizeof(short),
                                     &answer_size);
 
@@ -567,7 +567,7 @@ void sm_udp_handler(sm_event *ev)
         }
 
         debug_sm("Received %d bytes.\n", n);
-        uint answer_size = ev->size_out;
+        size_t answer_size = ev->size_out;
         int res = ns_answer_request(ev->manager->nameserver, ev->inbuf, n, ev->outbuf,
                           &answer_size);
 
