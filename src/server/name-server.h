@@ -32,6 +32,8 @@ typedef struct ns_nameserver {
 	 *        queries.
 	 */
     zdb_database *zone_db;
+	uint8_t *err_response;
+	size_t err_resp_size;
 } ns_nameserver;
 
 /*----------------------------------------------------------------------------*/
