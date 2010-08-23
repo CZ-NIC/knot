@@ -98,12 +98,6 @@ typedef struct {
 	/*! @brief Stash implemented as a dynamic array. */
 	da_array stash;
 
-	/*!
-	 * @brief Destructor function for the items. Used when destroying the table
-	 *        or when deleting individual items.
-	 */
-	void (*dtor_item)( void *value );
-
 	/*! @brief Mutex for avoiding multiple insertions / rehashes at once. */
 	pthread_mutex_t mtx_table;
 
@@ -133,8 +127,6 @@ typedef struct {
  *
  * @param items Number of items to be hashed to the table. This number
  *              determines the size of the hash table that will be created.
- * @param dtor_item Destructor function for the items that will be stored in the
- *                  hash table. Used in the ck_destroy_table() function.
  *
  * All hash tables are allocated and their items initialized to 0 (NULL).
  * A stash of default size is also created. The @a generation flags are set to
@@ -142,21 +134,25 @@ typedef struct {
  *
  * @return Pointer to the initialized hash table.
  */
-ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) );
+ck_hash_table *ck_create_table( uint item );
 
 /*----------------------------------------------------------------------------*/
 /*!
  * @brief Destroys the whole hash table together with the saved values.
  *
  * @param table Pinter to pointer to the hash table.
+ * @param dtor_value Destructor function for the values that are be stored in
+ *                  the hash table. Set to NULL if you do not want the values
+ *                  to be deleted.
+ * @param delete_key Set to 0 if you do not want the function to delete the
+ *                   key of the item (e.g. when used elsewhere). Set to any
+ *                   other value otherwise.
  *
- *	Make sure the table and its items are not used anymore when calling this
- *  function.
- *
- *	@todo The item destructor may not be passed on the table creation but on
- *        this function call.
+ * Make sure the table and its items are not used anymore when calling this
+ * function.
  */
-void ck_destroy_table( ck_hash_table **table );
+void ck_destroy_table( ck_hash_table **tables,
+					   void (*dtor_value)( void *value ), int delete_key );
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -173,9 +169,7 @@ void ck_destroy_table( ck_hash_table **table );
  * etc., until a free place is found or a loop occured. A loop occurs when one
  * position in one table is tried more than twice.
  *
- * @note This function does not copy the key. Make sure the key will not be
- *       deallocated elsewhere as this will be done only in the
- *       ck_destroy_table() function.
+ * @note This function does not copy the key.
  * @note This function may trigger rehash of the whole table in case the stash
  *       gets full.
  *
@@ -231,6 +225,12 @@ int ck_update_item( const ck_hash_table *table, const char *key, size_t length,
  * @param key Key of the item to be removed. It can be an arbitrary string of
  *            octets.
  * @param length Length of the key in bytes (octets).
+ * @param dtor_item Destructor function for the values that are be stored in
+ *                  the hash table. Set to NULL if you do not want the values
+ *                  to be deleted.
+ * @param delete_key Set to 0 if you do not want the function to delete the
+ *                   key of the item (e.g. when used elsewhere). Set to any
+ *                   other value otherwise.
  *
  * The deletion process is synchronized using RCU mechanism, so the old item
  * will not be deleted while some thread is using it.
@@ -238,8 +238,8 @@ int ck_update_item( const ck_hash_table *table, const char *key, size_t length,
  * @retval 0 If successful.
  * @retval -1 If the item was not found in the table.
  */
-int ck_remove_item( const ck_hash_table *table, const char *key,
-					size_t length );
+int ck_remove_item( const ck_hash_table *table, const char *key, size_t length,
+					void (*dtor_value)( void *value ), int delete_key );
 
 /*----------------------------------------------------------------------------*/
 /*!

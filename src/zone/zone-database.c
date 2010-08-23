@@ -782,7 +782,11 @@ const zn_node *zdb_find_name_in_zone( const zdb_zone *zone,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * @todo Destroy nodes which are not hashed into the table. Best will be to
+ *       destroy zone nodes from the list and tell zds_destroy() not to destroy
+ *       the stored items.
+ */
 void zdb_destroy( zdb_database **database )
 {
 	// add some lock to avoid multiple destroys

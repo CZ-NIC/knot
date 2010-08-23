@@ -301,7 +301,7 @@ ck_hash_table_item **ck_find_in_stash( const ck_hash_table *table,
 
 /*----------------------------------------------------------------------------*/
 
-ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
+ck_hash_table *ck_create_table( uint items )
 {
 	ck_hash_table *table = (ck_hash_table *)malloc(sizeof(ck_hash_table));
 
@@ -312,7 +312,6 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 
 	// determine ideal size of one table in powers of 2 and save the exponent
 	table->table_size_exp = get_table_exp_and_count(items, &table->table_count);
-    table->dtor_item = dtor_item;
 
     log_info("Creating hash table for %u items.\n", items);
 	log_info("Exponent: %u, number of tables: %u\n ", table->table_size_exp,
@@ -364,7 +363,8 @@ ck_hash_table *ck_create_table( uint items, void (*dtor_item)( void *value ) )
 
 /*----------------------------------------------------------------------------*/
 
-void ck_destroy_table( ck_hash_table **table )
+void ck_destroy_table( ck_hash_table **table, void (*dtor_value)( void *value ),
+					   int delete_key )
 {
     pthread_mutex_lock(&(*table)->mtx_table);
 
@@ -372,8 +372,12 @@ void ck_destroy_table( ck_hash_table **table )
     for (uint i = 0; i < hashsize((*table)->table_size_exp); ++i) {
 		for (uint t = TABLE_FIRST; t <= TABLE_LAST((*table)->table_count); ++t) {
 			if ((*table)->tables[t][i] != NULL) {
-				(*table)->dtor_item((*table)->tables[t][i]->value);
-				free((void *)(*table)->tables[t][i]->key);
+				if (dtor_value) {
+					dtor_value((*table)->tables[t][i]->value);
+				}
+				if (delete_key != 0) {
+					free((void *)(*table)->tables[t][i]->key);
+				}
 				free((void *)(*table)->tables[t][i]);
 			}
 		}
@@ -384,7 +388,12 @@ void ck_destroy_table( ck_hash_table **table )
 		((ck_hash_table_item **)(da_get_items(&(*table)->stash)));
 	for (uint i = 0; i < da_get_count(&(*table)->stash); ++i) {
 		assert(stash[i] != NULL);
-		(*table)->dtor_item(stash[i]->value);
+		if (dtor_value) {
+			dtor_value(stash[i]->value);
+		}
+		if (delete_key != 0) {
+			free((void *)stash[i]->key);
+		}
 		free((void *)stash[i]);
     }
 
@@ -879,8 +888,8 @@ int ck_update_item( const ck_hash_table *table, const char *key, size_t length,
 
 /*----------------------------------------------------------------------------*/
 
-int ck_remove_item( const ck_hash_table *table, const char *key,
-					size_t length )
+int ck_remove_item( const ck_hash_table *table, const char *key, size_t length,
+					void (*dtor_value)( void *value ), int delete_key )
 {
 	rcu_read_lock();	// is needed?
 	ck_hash_table_item **place = ck_find_item_nc(table, key, length);
@@ -897,8 +906,13 @@ int ck_remove_item( const ck_hash_table *table, const char *key,
 	rcu_read_unlock();
 
 	synchronize_rcu();
-	table->dtor_item(item->value);
+	if (dtor_value) {
+		dtor_value(item->value);
+	}
 	item->value = NULL;
+	if (delete_key != 0) {
+		free((void *)item->key);
+	}
 	free(item);
 
 	return 0;

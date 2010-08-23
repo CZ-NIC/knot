@@ -296,10 +296,18 @@ int ct_test_lookup( const ck_hash_table *table, const char *key, uint key_size )
 
 /*----------------------------------------------------------------------------*/
 
+void ct_destroy_items( void *item )
+{
+	dnss_rr *rr = (dnss_rr *)item;
+	dnss_destroy_rr(&rr);
+}
+
+/*----------------------------------------------------------------------------*/
+
 int ct_test_remove( const ck_hash_table *table, const char *key, uint key_size )
 {
 	if (rand() % 1000 == 1) {
-		if (ck_remove_item(table, key, key_size - 1) != 0) {
+		if (ck_remove_item(table, key, key_size - 1, ct_destroy_items, 1) != 0) {
 			fprintf(stderr, "\nItem with key %*s not removed.\n",
 					key_size, key);
 			return ERR_REMOVE;
@@ -420,14 +428,6 @@ int ct_test_fnc_from_file( ck_hash_table *table, FILE *file, int (*test_fnc)(
 	fprintf(stderr, "Items not found: %u.\n", da_get_count(&items_not_found));
 
 	return (da_get_count(&items_not_found) == 0) ? 0 : -1;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void ct_destroy_items( void *item )
-{
-	dnss_rr *rr = (dnss_rr *)item;
-	dnss_destroy_rr(&rr);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -577,7 +577,7 @@ int ct_create_and_fill_table( ck_hash_table **table, FILE *file )
 
 	fseek(file, 0, SEEK_SET);
 
-	*table = ck_create_table(names, ct_destroy_items);
+	*table = ck_create_table(names);
 
 	if (*table == NULL) {
 		fprintf(stderr, "Error creating hash table.\n");
@@ -788,7 +788,7 @@ int ct_delete_item_during_read( ck_hash_table *table )
 
 	// delete the item from the table
 	printf("[Delete] Removing the item from the table...\n");
-	if (ck_remove_item(table, test_dname, dname_size - 1) != 0) {
+	if (ck_remove_item(table, test_dname, dname_size - 1, ct_destroy_items, 1) != 0) {
 		fprintf(stderr, "Item not removed from the table!\n");
 		return -2;
 	}
@@ -891,7 +891,7 @@ int ct_test_hash_table( char *filename )
 
 		switch (res) {
 			case ERR_FILL:
-				ck_destroy_table(&table);
+				ck_destroy_table(&table, ct_destroy_items, 1);
 			case ERR_COUNT:
 			case ERR_TABLE_CREATE:
 				return res;
@@ -949,7 +949,7 @@ int ct_test_hash_table( char *filename )
 		printf("\nDone. Result: %d\n\n", res);
 #endif
 
-		ck_destroy_table(&table);
+		ck_destroy_table(&table, ct_destroy_items, 1);
 		fclose(file);
 
 		//if (res != 0) break;
@@ -987,7 +987,7 @@ int ct_start_server( char *filename )
 
 	switch (res) {
 		case ERR_FILL:
-			ck_destroy_table(&table);
+			ck_destroy_table(&table, ct_destroy_items, 1);
 		case ERR_COUNT:
 		case ERR_TABLE_CREATE:
 			printf("Error %u.\n", res);
