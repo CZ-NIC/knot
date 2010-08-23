@@ -10,7 +10,7 @@
 
 zds_zone *zds_create( uint item_count )
 {
-    ck_hash_table *table = ck_create_table(item_count, zn_destructor);
+	ck_hash_table *table = ck_create_table(item_count);
     return table;
 }
 
@@ -49,8 +49,8 @@ zn_node *zds_find( zds_zone *zone, const ldns_rdf *owner )
 int zds_remove( zds_zone *zone, ldns_rdf *owner )
 {
 	assert(ldns_rdf_get_type(owner) == LDNS_RDF_TYPE_DNAME);
-	if (ck_remove_item(zone, (char *)ldns_rdf_data(owner),
-					   ldns_rdf_size(owner)) != 0) {
+	if (ck_remove_item(zone, (char *)ldns_rdf_data(owner), ldns_rdf_size(owner),
+					   zn_destructor, 0) != 0) {
 		log_info("Trying to remove non-existing item: %s\n",
 				 ldns_rdf_data(owner));
 		return -1;
@@ -62,5 +62,5 @@ int zds_remove( zds_zone *zone, ldns_rdf *owner )
 
 void zds_destroy( zds_zone **zone )
 {
-    ck_destroy_table(zone);
+	ck_destroy_table(zone, zn_destructor, 0);
 }

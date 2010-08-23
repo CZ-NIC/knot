@@ -51,7 +51,11 @@ typedef struct zn_node {
 		/*! @brief Node with canonical name for this node's name. */
 		struct zn_node *cname;
 
-		/*! @brief Glue RRSets in canonical order. */
+		/*!
+		 * @brief Glue RRSets in canonical order.
+		 *
+		 * These are only references to actual ldns_rr objects stored elsewhere.
+		 */
 		ldns_rr_list *glues;
 
 		/*!
@@ -63,6 +67,8 @@ typedef struct zn_node {
 		 *
 		 * @todo Consider using simple linked list instead of this - may save
 		 *       a lot of space, but will need linear time to find exact RRSet.
+		 *
+		 * These are only references to actual objects stored elsewhere.
 		 */
 		skip_list *additional;
 	} ref;

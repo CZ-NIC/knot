@@ -68,6 +68,8 @@ zn_node *zds_find( zds_zone *zone, const ldns_rdf *owner );
  *
  * @retval 0 On success.
  * @retval -1 If the name was not found in the zone.
+ *
+ * @todo Maybe return the removed node?
  */
 int zds_remove( zds_zone *zone, ldns_rdf *owner );
 
