@@ -452,7 +452,7 @@ int test_skip_list()
 	log_debug("\n");
 	skip_print_list(list, test_skip_print_item);
 
-	skip_destroy_list(list, NULL, NULL);
+	skip_destroy_list(&list, NULL, NULL);
 
 	return errors;;
 }

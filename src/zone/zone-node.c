@@ -56,6 +56,21 @@ zn_ar_rrsets *zn_create_ar_rrsets()
 
 /*----------------------------------------------------------------------------*/
 
+void zn_destroy_ar_rrsets( zn_ar_rrsets **ar )
+{
+	free(*ar);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void zn_dtor_ar_rrsets( void *value )
+{
+	zn_ar_rrsets *ar = (zn_ar_rrsets *)value;
+	zn_destroy_ar_rrsets(&ar);
+}
+
+/*----------------------------------------------------------------------------*/
+
 zn_ar_rrsets *zn_create_ar_rrsets_for_ref( ldns_rr_list *ref_rrset )
 {
 	zn_ar_rrsets *ar = zn_create_ar_rrsets();
@@ -194,6 +209,13 @@ int zn_add_referrer( zn_node *node, const zn_node *referrer )
 	}
 
 	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zn_has_additional( const zn_node *node )
+{
+	return (zn_has_mx(node) + zn_has_ns(node));
 }
 
 /*----------------------------------------------------------------------------*/
@@ -422,6 +444,10 @@ int zn_add_ref( zn_node *node, ldns_rr_list *ref_rrset, ldns_rr_type type,
 
 	int res = 0;
 	res = skip_insert(node->ref.additional, name, ar, zn_merge_ar_values);
+	if (res != 0) {
+		debug_zn("Result other than 0, deleting ar rrset on %p\n", ar);
+		zn_destroy_ar_rrsets(&ar);
+	}
 	zn_flags_set(&node->flags, flag);
 
 	debug_zn("zn_add_ref(%p, %p, %s)\n", node, ref_rrset,
@@ -429,9 +455,9 @@ int zn_add_ref( zn_node *node, ldns_rr_list *ref_rrset, ldns_rr_type type,
 	debug_zn("First item in the skip list: key: %s, value: %p\n",
 		   ldns_rdf2str((ldns_rdf *)skip_first(node->ref.additional)->key),
 		   skip_first(node->ref.additional)->value);
+	debug_zn("Inserted item: value: %p\n", ar);
 
 	if (res < 0) {
-		free(ar);
 		return -5;
 	}
 
@@ -653,7 +679,11 @@ ldns_rr_list *zn_get_glue( const zn_node *node, ldns_rdf *owner,
 
 void zn_destroy( zn_node **node )
 {
-	skip_destroy_list((*node)->rrsets, NULL, zn_destroy_value);
+	skip_destroy_list(&(*node)->rrsets, NULL, zn_destroy_value);
+	if (zn_has_additional(*node)) {
+		skip_destroy_list(&(*node)->ref.additional, NULL, zn_dtor_ar_rrsets);
+	}
+
 	ldns_rdf_deep_free((*node)->owner);
 	if (zn_is_delegation_point(*node)) {
 		ldns_rr_list_free((*node)->ref.glues);

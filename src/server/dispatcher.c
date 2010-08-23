@@ -62,6 +62,7 @@ void dpt_destroy( dpt_dispatcher **dispatcher )
         return;
 
     free((*dispatcher)->threads);
+	free((*dispatcher)->routine_obj);
     free(*dispatcher);
     *dispatcher = NULL;
 }

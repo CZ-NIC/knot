@@ -583,6 +583,7 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 void ns_destroy( ns_nameserver **nameserver )
 {
     // do nothing with the zone database!
+	free((*nameserver)->err_response);
     free(*nameserver);
     *nameserver = NULL;
 }

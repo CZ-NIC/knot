@@ -592,6 +592,30 @@ int zdb_adjust_zone( zdb_zone *zone )
 }
 
 /*----------------------------------------------------------------------------*/
+
+void zdb_destroy_zone( zdb_zone **zone )
+{
+	// free the zone data structure but do not delete the zone nodes in it
+	zds_destroy(&(*zone)->zone, NULL);
+	// free the zone name
+	ldns_rdf_deep_free((*zone)->zone_name);
+
+	// free all zone nodes from the list
+	zn_node *node = (*zone)->apex;
+	// disconnect the last item
+	node->prev->next = NULL;
+	while (node != NULL) {
+		zn_node *n = node;
+		node = node->next;
+		// do not bother with adjusting the pointers
+		zn_destroy(&n);
+	}
+
+	free((*zone));
+	*zone = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
 /* Public functions          					                              */
 /*----------------------------------------------------------------------------*/
 
@@ -648,7 +672,7 @@ int zdb_add_zone( zdb_database *database, ldns_zone *zone )
 			zn_destroy(&prev);
 		}
 		// and destroy the partially filled zone data structure
-		zds_destroy(&new_zone->zone);
+		zds_destroy(&new_zone->zone, NULL);
 		return -3;
 	}
 
@@ -716,7 +740,7 @@ int zdb_remove_zone( zdb_database *database, ldns_rdf *zone_name )
 	// wait for all readers to finish
 	synchronize_rcu();
 
-    zds_destroy(&z->zone);
+	zds_destroy(&z->zone, NULL);
     assert(z->zone == NULL);
 	ldns_rdf_deep_free(z->zone_name);
     free(z);
@@ -800,8 +824,9 @@ void zdb_destroy( zdb_database **database )
 		// wait for all readers to finish
 		synchronize_rcu();
 		// destroy zone
-		zds_destroy(&z->zone);
-		ldns_rdf_deep_free(z->zone_name);
-		free(z);
+		zdb_destroy_zone(&z);
     }
+
+	free(*database);
+	*database = NULL;
 }

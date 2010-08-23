@@ -163,30 +163,37 @@ skip_list *skip_create_list( int (*compare_keys)(void *, void *) )
 
 /*----------------------------------------------------------------------------*/
 
-void skip_destroy_list( skip_list *list, void (*destroy_key)(void *),
+void skip_destroy_list( skip_list **list, void (*destroy_key)(void *),
 						void (*destroy_value)(void *))
 {
-	assert(list != NULL);
-	assert(list->head != NULL);
+	assert((*list) != NULL);
+	assert((*list)->head != NULL);
 
 	skip_node *x;
 
-	while (list->head->forward[0] != NULL) {
-		x = list->head->forward[0];
-		for (int i = 0; i <= list->level; i++) {
-			if (list->head->forward[i] != x) {
+	while ((*list)->head->forward[0] != NULL) {
+		x = (*list)->head->forward[0];
+		for (int i = 0; i <= (*list)->level; i++) {
+			if ((*list)->head->forward[i] != x) {
 				break;
 			}
-			list->head->forward[i] = x->forward[i];
+			(*list)->head->forward[i] = x->forward[i];
 		}
 
 		// delete the item
 		skip_delete_node(&x, destroy_key, destroy_value);
 
-		while (list->level > 0 && list->head->forward[list->level] == NULL) {
-			list->level--;
+		while ((*list)->level > 0
+			   && (*list)->head->forward[(*list)->level] == NULL) {
+			(*list)->level--;
 		}
 	}
+
+	// free the head
+	skip_delete_node(&(*list)->head, NULL, NULL);
+
+	free(*list);
+	*list = NULL;
 }
 
 /*----------------------------------------------------------------------------*/
