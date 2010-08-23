@@ -84,7 +84,7 @@ skip_list *skip_create_list( int (*compare_keys)(void *, void *) );
  *                      NULL, the object at which the value points will not be
  *                      destroyed.
  */
-void skip_destroy_list( skip_list *list, void (*destroy_key)(void *),
+void skip_destroy_list( skip_list **list, void (*destroy_key)(void *),
 						void (*destroy_value)(void *));
 
 /*!

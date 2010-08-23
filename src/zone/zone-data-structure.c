@@ -60,7 +60,7 @@ int zds_remove( zds_zone *zone, ldns_rdf *owner )
 
 /*----------------------------------------------------------------------------*/
 
-void zds_destroy( zds_zone **zone )
+void zds_destroy( zds_zone **zone, void (*dtor_zone_node)( void *value ) )
 {
-	ck_destroy_table(zone, zn_destructor, 0);
+	ck_destroy_table(zone, dtor_zone_node, 0);
 }

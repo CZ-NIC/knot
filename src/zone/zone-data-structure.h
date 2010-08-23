@@ -76,6 +76,6 @@ int zds_remove( zds_zone *zone, ldns_rdf *owner );
 /*!
  * @brief Properly destroys the given zone data structure.
  */
-void zds_destroy( zds_zone **zone );
+void zds_destroy( zds_zone **zone, void (*dtor_zone_node)( void *value ) );
 
 #endif
