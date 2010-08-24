@@ -9,10 +9,11 @@
 //#define CUCKOO_DEBUG
 //#define CUCKOO_DEBUG_HASH
 //#define ZP_DEBUG
-#define NS_DEBUG
+//#define NS_DEBUG
 //#define ZDB_DEBUG
 //#define ZN_DEBUG
 //#define ZP_DEBUG_PARSE
+//#define CUTE_DEBUG
 
 #ifdef CUTE_DEBUG
 #define debug_server(msg...) log_msg(LOG_DEBUG, msg)

@@ -20,7 +20,7 @@ static const uint16_t MAX_UDP_PAYLOAD = 512;
 static const uint8_t EDNS_VERSION = 0;
 static const uint8_t OPT_SIZE = 11;
 
-static const int EDNS_ENABLED = 0;
+static const int EDNS_ENABLED = 1;
 
 /*----------------------------------------------------------------------------*/
 /* Private functions          					                              */
@@ -43,10 +43,14 @@ void ns_set_edns( const ldns_pkt *query, ldns_pkt *response )
 
 /*----------------------------------------------------------------------------*/
 
-void ns_set_max_packet_size( ldns_pkt *response )
+void ns_set_max_packet_size( const ldns_pkt *query, ldns_pkt *response )
 {
-	if (EDNS_ENABLED) {
-		ldns_pkt_set_edns_udp_size(response, MAX_UDP_PAYLOAD_EDNS);
+	if (EDNS_ENABLED && ldns_pkt_edns_udp_size(query) > 0) {
+		// set maximum size to the lesser of our and query's max udp payload
+		ldns_pkt_set_edns_udp_size(response,
+			(ldns_pkt_edns_udp_size(query) < MAX_UDP_PAYLOAD_EDNS)
+			? ldns_pkt_edns_udp_size(query)
+			: MAX_UDP_PAYLOAD_EDNS);
 		// also set the size of the packet to consider the OPT record
 		ldns_pkt_set_size(response, ldns_pkt_size(response) + OPT_SIZE);
 	} else {
@@ -92,7 +96,9 @@ ldns_pkt *ns_create_empty_response( ldns_pkt *query )
 		}
 	}
 
-	ns_set_max_packet_size(response);
+	if (query != NULL) {
+		ns_set_max_packet_size(query, response);
+	}
 
 	return response;
 }
