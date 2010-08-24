@@ -8,7 +8,7 @@
 
 /*----------------------------------------------------------------------------*/
 
-static const unsigned short DEFAULT_PORT = 53535;
+static const unsigned short DEFAULT_PORT = 53531;
 static const int DEFAULT_THR_COUNT = 2;
 
 /*----------------------------------------------------------------------------*/
