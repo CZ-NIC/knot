@@ -500,7 +500,7 @@ int zn_add_ref_cname( zn_node *node, const zn_node *cname_node,
 	res = skip_insert(node->ref.additional, name, ar, zn_merge_ar_values);
 	zn_flags_set(&node->flags, flag);
 
-	debug_zn("zn_add_ref(%p, %p, %s)\n", node, ref_rrset,
+	debug_zn("zn_add_ref(%p, %p, %s)\n", node, ar,
 			 ldns_rr_type2str(type));
 	debug_zn("First item in the skip list: key: %s, value: %p\n",
 		   ldns_rdf2str((ldns_rdf *)skip_first(node->ref.additional)->key),
