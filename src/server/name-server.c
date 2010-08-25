@@ -301,6 +301,9 @@ void ns_try_put_rrset( ldns_rr_list *rrset, ldns_pkt_section section, int tc,
 			ldns_pkt_push_rr_list(resp, section, rrset);
 			ns_update_response_size(resp, size);
 		} else {
+			debug_ns("RRSet %s %s omitted due to lack of space in packet.\n",
+					 ldns_rdf2str(ldns_rr_list_owner(rrset)),
+					 ldns_rr_type2str(ldns_rr_list_type(rrset)));
 			ldns_pkt_set_tc(resp, tc);
 		}
 	}
@@ -370,9 +373,9 @@ void ns_put_answer( const zn_node *node, const ldns_rdf *name,
 void ns_put_additional( const zn_node *node, ldns_pkt *response,
 						ldns_rr_list *copied_rrs )
 {
-	debug_ns("ADDITIONAL SECTION PROCESSING\n");
+	debug_ns("ADDITIONAL SECTION PROCESSING (node %p)\n", node);
 
-	if (zn_has_mx(node) == 0 && zn_has_ns(node) == 0) {
+	if (zn_has_mx(node) == 0 && zn_has_ns(node) == 0 && zn_has_srv(node) == 0) {
 		// nothing to put
 		return;
 	}
@@ -389,6 +392,13 @@ void ns_put_additional( const zn_node *node, ldns_pkt *response,
 			break;
 		case LDNS_RR_TYPE_NS:
 			name = ldns_rr_ns_nsdname(rr);
+			break;
+		case LDNS_RR_TYPE_SRV:
+			name = ldns_rr_rdf(rr, 3);	// get rid of the number
+			if (ldns_dname_label_count(name) == 0) {
+				continue;
+			}
+			assert(ldns_rdf_get_type(name) == LDNS_RDF_TYPE_DNAME);
 			break;
 		default:
 			continue;
@@ -410,6 +420,8 @@ void ns_put_additional( const zn_node *node, ldns_pkt *response,
 						 copied_rrs);
 			ns_put_rrset(rrsets->aaaa, name, LDNS_SECTION_ADDITIONAL, 0,
 						 response, copied_rrs);
+		} else {
+			debug_ns("No referenced RRSets!\n");
 		}
 	}
 }
@@ -525,6 +537,14 @@ static inline void ns_referral( const zn_node *node, ldns_pkt *response,
 
 /*----------------------------------------------------------------------------*/
 
+int ns_additional_needed( ldns_rr_type qtype ) {
+	return (qtype == LDNS_RR_TYPE_MX
+			|| qtype == LDNS_RR_TYPE_NS
+			|| qtype == LDNS_RR_TYPE_SRV);
+}
+
+/*----------------------------------------------------------------------------*/
+
 void ns_answer_from_node( const zn_node *node, const zdb_zone *zone,
 						  const ldns_rdf *qname, ldns_rr_type qtype,
 						  ldns_pkt *response, ldns_rr_list *copied_rrs )
@@ -536,15 +556,23 @@ void ns_answer_from_node( const zn_node *node, const zdb_zone *zone,
 						copied_rrs);
 		// node is now set to the canonical name node (if found)
 		if (node == NULL) {
-			// TODO: add SOA??
+			// TODO: add SOA
+			ns_put_authority_soa(zone, response);
 			ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
 			return;
 		}
 	}
 	//assert(ldns_dname_compare(node->owner, qname) == 0);
 	ns_put_answer(node, qname, qtype, response, copied_rrs);
-	ns_put_authority_ns(zone, response);
-	ns_put_additional(node, response, copied_rrs);
+	if (ldns_pkt_ancount(response) == 0) {	// if NODATA response, put SOA
+		ns_put_authority_soa(zone, response);
+	} else {	// else put authority NS
+		ns_put_authority_ns(zone, response);
+	}
+
+	if (ns_additional_needed(qtype)) {
+		ns_put_additional(node, response, copied_rrs);
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -607,6 +635,7 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 		ldns_rdf *wildcard = ldns_dname_new_frm_str("*");
 		if (ldns_dname_cat(wildcard, qname) != LDNS_STATUS_OK) {
 			log_error("Unknown error occured.\n");
+			ldns_pkt_set_rcode(response, LDNS_RCODE_SERVFAIL);
 			ldns_rdf_deep_free(wildcard);
 			ldns_rdf_deep_free(qname);
 			return;	// need some return value??
