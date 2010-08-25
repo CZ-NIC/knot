@@ -45,3 +45,5 @@ new-fast-box     A   172.30.79.13
 *._tcp          SRV  0 0 0 .
 *._udp          SRV  0 0 0 .
 
+sub3	NS	ns.sub2.example.com.
+sub4	NS	ns.example.com.

@@ -180,7 +180,7 @@ zn_node *zdb_find_name_in_zone_nc( const zdb_zone *zone, const ldns_rdf *dname )
 
 /*----------------------------------------------------------------------------*/
 
-zn_node *zdb_find_name_in_list( zdb_zone *zone, ldns_rdf *name )
+zn_node *zdb_find_name_in_list( const zdb_zone *zone, ldns_rdf *name )
 {
 	zn_node *node = zone->apex;
 	int cmp;
@@ -194,10 +194,12 @@ zn_node *zdb_find_name_in_list( zdb_zone *zone, ldns_rdf *name )
 
 /*----------------------------------------------------------------------------*/
 
-void zdb_adjust_cname( zdb_zone *zone, zn_node *node )
+int zdb_adjust_cname( zdb_zone *zone, zn_node *node )
 {
+	int res = 0;
 	ldns_rr_list *cname_rrset = zn_find_rrset(node, LDNS_RR_TYPE_CNAME);
 	if (cname_rrset != NULL) {
+		res = 1;
 		// retreive the canonic name
 		debug_zdb("Found CNAME, resolving...\n");
 		ldns_rdf *cname = ldns_rr_rdf(ldns_rr_list_rr(cname_rrset, 0), 0);
@@ -209,6 +211,7 @@ void zdb_adjust_cname( zdb_zone *zone, zn_node *node )
 				  ? ldns_rdf2str(node->ref.cname->owner)
 				  : "(nil)");
 	}
+	return res;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -312,16 +315,15 @@ ldns_rdf *zdb_dname_list_find( ldns_rdf **list, size_t count, ldns_rdf *name )
 
 /*----------------------------------------------------------------------------*/
 
-ldns_rdf **zdb_extract_ns( ldns_rr_list *ns_rrset )
+ldns_rdf **zdb_extract_ns( ldns_rr_list *ns_rrset, size_t count )
 {
 	assert(ldns_is_rrset(ns_rrset));
-	ldns_rdf **ns_rrs = malloc(ldns_rr_list_rr_count(ns_rrset)
-							   * sizeof(ldns_rr_list *));
+	ldns_rdf **ns_rrs = malloc(count * sizeof(ldns_rr_list *));
 	if (ns_rrs == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
-	for (int i = 0; i < ldns_rr_list_rr_count(ns_rrset); ++i) {
+	for (int i = 0; i < count; ++i) {
 		ns_rrs[i] = ldns_rr_rdf(ldns_rr_list_rr(ns_rrset, i), 0);
 		debug_zdb("NS RR #%d: %s\n", i, ldns_rdf2str(ns_rrs[i]));
 	}
@@ -330,17 +332,36 @@ ldns_rdf **zdb_extract_ns( ldns_rr_list *ns_rrset )
 
 /*----------------------------------------------------------------------------*/
 
-int zdb_process_nonauth( zn_node *node, ldns_rdf **ns_names, size_t ns_count,
-						 zn_node *deleg )
+int zdb_rr_list_contains_dname( const ldns_rr_list *rrset,
+								const ldns_rdf *dname, size_t pos )
+{
+	assert(ldns_rdf_get_type(dname) == LDNS_RDF_TYPE_DNAME);
+	for (int i = 0; i < ldns_rr_list_rr_count(rrset); ++i) {
+		if (ldns_dname_match_wildcard(
+				ldns_rr_rdf(ldns_rr_list_rr(rrset, i), pos), dname)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zdb_process_nonauth( zn_node *node, ldns_rr_list *ns_rrset,
+						 ldns_rdf **processed, size_t *count, zn_node *deleg )
 {
 	zn_set_non_authoritative(node);
 
-	ldns_rdf *name = zdb_dname_list_find(ns_names, ns_count, node->owner);
-	if (name == NULL) {
+	if (!zdb_rr_list_contains_dname(ns_rrset, node->owner, 0)) {
 		log_error("Zone contains non-authoritative domain name %s,"
 				  " which is not referenced in %s NS records!\n",
 				  ldns_rdf2str(node->owner), ldns_rdf2str(deleg->owner));
 		return -3;
+	}
+	if (processed != NULL) {
+		assert(count != NULL);
+		// save the dname as processed
+		processed[(*count)++] = node->owner;
 	}
 
 	debug_zdb("Saving glues from node %s\n", ldns_rdf2str(node->owner));
@@ -362,33 +383,81 @@ int zdb_process_nonauth( zn_node *node, ldns_rdf **ns_names, size_t ns_count,
 
 /*----------------------------------------------------------------------------*/
 
-int zdb_adjust_delegation_point( zn_node **node )
+int zdb_find_other_glues( const zdb_zone *zone, zn_node *deleg_point,
+						  ldns_rr_list *ns_rrset, ldns_rdf **processed,
+						  size_t proc_count )
+{
+	debug_zdb("Some NS names are probably elsewhere in the zone, or "
+			  "outside the zone\n");
+	size_t ns_count = ldns_rr_list_rr_count(ns_rrset);
+	int i = 0;
+	while (proc_count < ns_count && i < ns_count) {
+		ldns_rdf *ns = /*ldns_rr_owner(ldns_rr_list_rr(ns_rrset, i));*/
+				ldns_rr_rdf(ldns_rr_list_rr(ns_rrset, i), 0);
+		assert(ldns_rdf_get_type(ns) == LDNS_RDF_TYPE_DNAME);
+		if (zdb_dname_list_find(processed, proc_count, ns) == NULL) {
+			debug_zdb("NS name %s not found under delegation point %s\n",
+					  ldns_rdf2str(ns), ldns_rdf2str(deleg_point->owner));
+			zn_node *ns_node = zdb_find_name_in_list(zone, ns);
+			if (ns_node != NULL && !zn_is_non_authoritative(ns_node)) {
+				debug_zdb("Found in authoritative data, extracting glues.\n");
+				int res = zn_push_glue(deleg_point,
+							zn_find_rrset(ns_node, LDNS_RR_TYPE_A));
+				res += zn_push_glue(deleg_point,
+							zn_find_rrset(ns_node, LDNS_RR_TYPE_AAAA));
+				if (res != 0) {
+					log_error("Error while saving glue records for "
+							  "delegation point %s\n",
+							  ldns_rdf2str(deleg_point->owner));
+					return -4;
+				}
+			}
+			processed[proc_count++] = ns;
+		}
+		++i;
+	}
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zdb_adjust_delegation_point( const zdb_zone *zone, zn_node **node )
 {
 	int res = 0;
 
 	ldns_rr_list *ns_rrset = zn_find_rrset(*node, LDNS_RR_TYPE_NS);
 	if (ns_rrset != NULL) {
 		zn_set_delegation_point(*node);
+		res = 1;
 
 		debug_zdb("\nAdjusting delegation point %s\n",
 				  ldns_rdf2str((*node)->owner));
 
-		// extract all NS domain names from the node
-		ldns_rdf **ns_names = zdb_extract_ns(ns_rrset);
+		size_t ns_count = ldns_rr_list_rr_count(ns_rrset);
 
 		// mark all subsequent nodes which are subdomains of this node's owner
 		// as non authoritative and extract glue records from them
 		zn_node *deleg = *node;
+		ldns_rdf **processed = malloc(ns_count * sizeof(ldns_rdf *));
+		memset(processed, 0, ns_count * sizeof(ldns_rdf *));
+		size_t proc_count = 0;
 
 		while (ldns_dname_is_subdomain((*node)->next->owner, deleg->owner)) {
 			(*node) = (*node)->next;
-			if ((res = zdb_process_nonauth(*node, ns_names,
-							ldns_rr_list_rr_count(ns_rrset), deleg)) != 0) {
+			if ((res = zdb_process_nonauth(
+					*node, ns_rrset, processed, &proc_count, deleg))
+				<= 0) {
 				break;
 			}
 		}
 
-		free(ns_names);
+		if (proc_count < ns_count
+			&& zdb_find_other_glues(
+					zone, deleg, ns_rrset, processed, proc_count) != 0) {
+			res = -1;
+		}
+
+		free(processed);
 		// set to last processed node
 		debug_zdb("Done.\n\n");
 	}
@@ -471,10 +540,7 @@ int zdb_insert_node_to_zone( zdb_zone *zone, zn_node *node )
 		// mark the node as non-authoritative and save glue records
 		ns_rrset = zn_find_rrset(deleg, LDNS_RR_TYPE_NS);
 		assert(ns_rrset != NULL);
-		ldns_rdf **ns_rrs = zdb_extract_ns(ns_rrset);
-		res = zdb_process_nonauth(node, ns_rrs, ldns_rr_list_rr_count(ns_rrset),
-								  deleg);
-		free(ns_rrs);
+		res = zdb_process_nonauth(node, ns_rrset, NULL, NULL, deleg);
 		if (res == 0) {	// if everything went well, connect the node before n
 			zdb_connect_node(n, node);
 		}
@@ -485,7 +551,7 @@ int zdb_insert_node_to_zone( zdb_zone *zone, zn_node *node )
 			// the following nodes if needed
 			zdb_connect_node(n, node);
 			zn_node *d = node;
-			res = zdb_adjust_delegation_point(&d);
+			res = zdb_adjust_delegation_point(zone, &d);
 		} else {	// not a non-authoritative node or delegation point
 			// check if it has CNAME RR
 			zdb_adjust_cname(zone, node);
@@ -590,8 +656,14 @@ int zdb_adjust_zone( zdb_zone *zone )
 
 	while (node->next != zone->apex) {
 		node = node->next;
-		zdb_adjust_cname(zone, node);
-		zdb_adjust_delegation_point(&node);
+		if (zdb_adjust_cname(zone, node) != 0) {
+			// no other records when CNAME
+			continue;
+		}
+		if (zdb_adjust_delegation_point(zone, &node) != 0) {
+			// no other records when delegation point
+			continue;
+		}
 		zdb_adjust_additional(zone, node, LDNS_RR_TYPE_MX);
 		zdb_adjust_additional(zone, node, LDNS_RR_TYPE_NS);
 		zdb_adjust_additional(zone, node, LDNS_RR_TYPE_SRV);
