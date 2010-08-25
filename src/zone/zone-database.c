@@ -554,7 +554,12 @@ int zdb_insert_node_to_zone( zdb_zone *zone, zn_node *node )
 			res = zdb_adjust_delegation_point(zone, &d);
 		} else {	// not a non-authoritative node or delegation point
 			// check if it has CNAME RR
-			zdb_adjust_cname(zone, node);
+			if (zdb_adjust_cname(zone, node) == 0) {
+				// if not, adjust additional data if any needed
+				zdb_adjust_additional(zone, node, LDNS_RR_TYPE_MX);
+				zdb_adjust_additional(zone, node, LDNS_RR_TYPE_NS);
+				zdb_adjust_additional(zone, node, LDNS_RR_TYPE_SRV);
+			}
 			zdb_connect_node(n, node);
 		}
 
