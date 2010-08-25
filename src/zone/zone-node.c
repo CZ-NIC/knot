@@ -18,22 +18,26 @@ static const uint RRSETS_COUNT = 10;
 
 /*! Zone node flags. */
 typedef enum zn_flags {
-	/*! - xxxxxxx1 - node is delegation point (ref.glues is set) */
+	/*! - Xxxxxxxx1 - node is delegation point (ref.glues is set) */
 	FLAGS_DELEG = 0x1,
-	/*! - xxxxxx1x - node is non-authoritative (carrying only glue records) */
+	/*! - Xxxxxxx1x - node is non-authoritative (carrying only glue records) */
 	FLAGS_NONAUTH = 0x2,
-	/*! - xxxxx1xx - node carries a CNAME record (ref.cname is set) */
+	/*! - Xxxxxx1xx - node carries a CNAME record (ref.cname is set) */
 	FLAGS_HAS_CNAME = 0x4,
-	/*! - xxxx1xxx - node carries an MX record (ref.mx is set) */
+	/*! - Xxxxx1xxx - node carries an MX record (ref.additional is set) */
 	FLAGS_HAS_MX = 0x8,
-	/*! - xxx1xxxx - node carries an NS record (ref.ns is set) */
+	/*! - Xxxx1xxxx - node carries an NS record (ref.additional is set) */
 	FLAGS_HAS_NS = 0x10,
-	/*! - xx1xxxxx - node is referenced by some CNAME record (referrer is set) */
-	FLAGS_REF_CNAME = 0x20,
-	/*! - x1xxxxxx - node is referenced by some MX record (referrer is set) */
-	FLAGS_REF_MX = 0x40,
-	/*! - 1xxxxxxx - node is referenced by some NS record (referrer is set) */
-	FLAGS_REF_NS = 0x80
+	/*! - Xxx1xxxxx - node carries a SRV record (ref.additional is set) */
+	FLAGS_HAS_SRV = 0x20,
+	/*! - Xx1xxxxxx - node is referenced by some CNAME record (referrer is set) */
+	FLAGS_REF_CNAME = 0x40,
+	/*! - X1xxxxxxx - node is referenced by some MX record (referrer is set) */
+	FLAGS_REF_MX = 0x80,
+	/*! - xxxxxxx1X - node is referenced by some NS record (referrer is set) */
+	FLAGS_REF_NS = 0x100,
+	/*! - xxxxxx1xX - node is referenced by some SRV record (referrer is set) */
+	FLAGS_REF_SRV = 0x200
 } zn_flags;
 
 /*----------------------------------------------------------------------------*/
@@ -167,21 +171,21 @@ void zn_destroy_value( void *value )
 
 /*----------------------------------------------------------------------------*/
 
-static inline void zn_flags_set( uint8_t *flags, zn_flags flag )
+static inline void zn_flags_set( uint16_t *flags, zn_flags flag )
 {
 	(*flags) |= flag;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static inline int zn_flags_get( uint8_t flags, zn_flags flag )
+static inline int zn_flags_get( uint16_t flags, zn_flags flag )
 {
 	return (flags & flag);
 }
 
 /*----------------------------------------------------------------------------*/
 
-static inline int zn_flags_empty( uint8_t flags )
+static inline int zn_flags_empty( uint16_t flags )
 {
 	return (flags == 0);
 }
@@ -424,6 +428,9 @@ int zn_add_ref( zn_node *node, ldns_rr_list *ref_rrset, ldns_rr_type type,
 	case LDNS_RR_TYPE_NS:
 		flag = FLAGS_HAS_NS;
 		break;
+	case LDNS_RR_TYPE_SRV:
+		flag = FLAGS_HAS_SRV;
+		break;
 	default:
 		log_error("zn_add_ref(): type %s not supported.\n",
 				  ldns_rr_type2str(type));
@@ -449,6 +456,7 @@ int zn_add_ref( zn_node *node, ldns_rr_list *ref_rrset, ldns_rr_type type,
 		zn_destroy_ar_rrsets(&ar);
 	}
 	zn_flags_set(&node->flags, flag);
+	debug_zn("Node %p has SRV flag: %d\n", node, zn_has_srv(node));
 
 	debug_zn("zn_add_ref(%p, %p, %s)\n", node, ref_rrset,
 			 ldns_rr_type2str(type));
@@ -531,7 +539,8 @@ skip_list *zn_get_refs( const zn_node *node )
 const zn_ar_rrsets *zn_get_ref( const zn_node *node, const ldns_rdf *name )
 {
 	if ((zn_flags_get(node->flags, FLAGS_HAS_MX)
-		| zn_flags_get(node->flags, FLAGS_HAS_NS)) > 0) {
+		| zn_flags_get(node->flags, FLAGS_HAS_NS)
+		| zn_flags_get(node->flags, FLAGS_HAS_SRV)) > 0) {
 		return (zn_ar_rrsets *)skip_find(node->ref.additional, (void *)name);
 	} else {
 		return NULL;
@@ -550,6 +559,13 @@ int zn_has_mx( const zn_node *node )
 int zn_has_ns( const zn_node *node )
 {
 	return zn_flags_get(node->flags, FLAGS_HAS_NS);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zn_has_srv( const zn_node *node )
+{
+	return zn_flags_get(node->flags, FLAGS_HAS_SRV);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -581,6 +597,17 @@ int zn_add_referrer_ns( zn_node *node, const zn_node *referrer )
 	int res = zn_add_referrer(node, referrer);
 	if (res == 0) {
 		zn_flags_set(&node->flags, FLAGS_REF_NS);
+	}
+	return res;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zn_add_referrer_srv( zn_node *node, const zn_node *referrer )
+{
+	int res = zn_add_referrer(node, referrer);
+	if (res == 0) {
+		zn_flags_set(&node->flags, FLAGS_REF_SRV);
 	}
 	return res;
 }

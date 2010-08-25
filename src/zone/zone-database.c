@@ -232,9 +232,17 @@ void zdb_adjust_additional( zdb_zone *zone, zn_node *node, ldns_rr_type type )
 			case LDNS_RR_TYPE_NS:
 				name = ldns_rr_ns_nsdname(ldns_rr_list_rr(rrset, i));
 				break;
+			case LDNS_RR_TYPE_SRV:
+				name = ldns_rr_rdf(ldns_rr_list_rr(rrset, i), 3);	// constant
+				if (ldns_dname_label_count(name) == 0) {	// ignore
+					debug_zdb("SRV with empty name as a target: %s\n",
+							  ldns_rr2str(ldns_rr_list_rr(rrset, i)));
+					return;
+				}
+				assert(ldns_rdf_get_type(name) == LDNS_RDF_TYPE_DNAME);
+				break;
 			default:
-				log_error("Type %s not supported!\n", ldns_rr_type2str(type));
-				return;
+				assert(0);
 			}
 
 			assert(name != NULL);
@@ -578,6 +586,7 @@ int zdb_adjust_zone( zdb_zone *zone )
 	zn_node *node = zone->apex;
 	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_MX);
 	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_NS);
+	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_SRV);
 
 	while (node->next != zone->apex) {
 		node = node->next;
@@ -585,6 +594,7 @@ int zdb_adjust_zone( zdb_zone *zone )
 		zdb_adjust_delegation_point(&node);
 		zdb_adjust_additional(zone, node, LDNS_RR_TYPE_MX);
 		zdb_adjust_additional(zone, node, LDNS_RR_TYPE_NS);
+		zdb_adjust_additional(zone, node, LDNS_RR_TYPE_SRV);
 	}
 
 	debug_zdb("\nDone.\n");

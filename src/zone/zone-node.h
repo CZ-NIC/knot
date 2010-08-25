@@ -33,19 +33,21 @@ typedef struct zn_node {
 	 * @brief Provide some extra information about the node.
 	 *
 	 * Currently used flags:
-	 * - xxxxxxx1 - node is delegation point (ref.glues is set)
-	 * - xxxxxx1x - node is non-authoritative (e.g. carrying only glue records)
-	 * - xxxxx1xx - node carries a CNAME record (ref.cname is set)
-	 * - xxxx1xxx - node carries an MX record (ref.additional is set)
-	 * - xxx1xxxx - node carries an NS record (ref.additional is set)
-	 * - xx1xxxxx - node is referenced by some CNAME record (referrer is set)
-	 * - x1xxxxxx - node is referenced by some MX record (referrer is set)
-	 * - 1xxxxxxx - node is referenced by some NS record (referrer is set)
+	 * - Xxxxxxxx1 - node is delegation point (ref.glues is set)
+	 * - Xxxxxxx1x - node is non-authoritative (e.g. carrying only glue records)
+	 * - Xxxxxx1xx - node carries a CNAME record (ref.cname is set)
+	 * - Xxxxx1xxx - node carries an MX record (ref.additional is set)
+	 * - Xxxx1xxxx - node carries an NS record (ref.additional is set)
+	 * - Xxx1xxxxx - node carries a SRV record (ref.additional is set)
+	 * - Xx1xxxxxx - node is referenced by some CNAME record (referrer is set)
+	 * - X1xxxxxxx - node is referenced by some MX record (referrer is set)
+	 * - xxxxxxx1X - node is referenced by some NS record (referrer is set)
+	 * - xxxxxx1xX - node is referenced by some SRV record (referrer is set)
 	 *
 	 * These flags are however set and used only after a zone to which the node
 	 * belongs has been adjusted (see zdb_adjust_zone()).
 	 */
-	uint8_t flags;
+	uint16_t flags;
 
 	union {
 		/*! @brief Node with canonical name for this node's name. */
@@ -203,11 +205,15 @@ int zn_has_mx( const zn_node *node );
 
 int zn_has_ns( const zn_node *node );
 
+int zn_has_srv( const zn_node *node );
+
 int zn_add_referrer_cname( zn_node *node, const zn_node *referrer );
 
 int zn_add_referrer_mx( zn_node *node, const zn_node *referrer );
 
 int zn_add_referrer_ns( zn_node *node, const zn_node *referrer );
+
+int zn_add_referrer_srv( zn_node *node, const zn_node *referrer );
 
 int zn_referrers_count( const zn_node *node );
 
