@@ -197,18 +197,21 @@ int zn_add_referrer_node( zn_node *node, const zn_node *referrer )
 	if (node->referrers == NULL) {
 		node->referrers = da_create(1, sizeof(zn_node *));
 		if (node->referrers == NULL) {
+			log_error("zn_add_referrer_node(): Error while creating array.\n");
 			return -1;
 		}
 	}
 
 	int res = da_reserve(node->referrers, 1);
-	if (res != 0) {
+	if (res < 0) {
+		log_error("zn_add_referrer_node(): Error while reserving space.\n");
 		return -2;
 	}
 
 	RFRS(node->referrers)[RFRS_COUNT(node->referrers)] = referrer;
 	res = da_occupy(node->referrers, 1);
 	if (res != 0) {
+		log_error("zn_add_referrer_node(): Error while occupying space.\n");
 		return -3;
 	}
 
@@ -486,7 +489,8 @@ int zn_add_ref( zn_node *node, ldns_rdf *name, ldns_rr_type type,
 skip_list *zn_get_refs( const zn_node *node )
 {
 	if ((zn_flags_get(node->flags, FLAGS_HAS_MX)
-		| zn_flags_get(node->flags, FLAGS_HAS_NS)) > 0) {
+		| zn_flags_get(node->flags, FLAGS_HAS_NS)
+		| zn_flags_get(node->flags, FLAGS_HAS_SRV)) > 0) {
 		return node->ref.additional;
 	} else {
 		return NULL;
