@@ -98,14 +98,11 @@ ldns_pkt *ns_create_empty_response( ldns_pkt *query )
 			ns_update_pkt_size(response, ldns_rdf_size(ldns_rr_owner(rr))
 							   + QUESTION_FIXED_SIZE);
 
-			if (EDNS_ENABLED) {
-				// set the size of the packet to consider the OPT record
-				ns_update_pkt_size(response, OPT_SIZE);
-			}
 		}
-	}
-
-	if (query != NULL) {
+		if (EDNS_ENABLED) {
+			// set the size of the packet to consider the OPT record
+			ns_update_pkt_size(response, OPT_SIZE);
+		}
 		ns_set_max_packet_size(query, response);
 	}
 
@@ -298,7 +295,7 @@ void ns_put_rrset( ldns_rr_list *rrset, const ldns_rdf *name,
 				   ldns_rr_list *copied_rrs )
 {
 	if (rrset) {
-		size_t size = 0;
+		//size_t size = 0;
 		if (ldns_dname_is_wildcard(ldns_rr_list_owner(rrset))) {
 			// we must copy the whole list and replace owners with name
 			ldns_rr_list *rrset_new = ldns_rr_list_new();
@@ -309,7 +306,7 @@ void ns_put_rrset( ldns_rr_list *rrset, const ldns_rdf *name,
 				ldns_rr_set_owner(rr, ldns_rdf_clone(name));
 				//ldns_pkt_push_rr(pkt, section, rr);
 				ldns_rr_list_push_rr(rrset_new, rr);
-				size += ns_rr_size(rr);
+				//size += ns_rr_size(rr);
 				//ns_update_response_size(pkt, rr);
 				ldns_rr_list_push_rr(copied_rrs, rr);
 			}
@@ -486,17 +483,6 @@ static inline void ns_referral( const zn_node *node, ldns_pkt *response,
 		ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
 
 		ns_try_put_rrset(rrset, LDNS_SECTION_AUTHORITY, 1, response);
-
-//		size_t size = ns_rrset_size(rrset);
-//		if (ns_fits_into_response(response, size)) {
-//			ldns_pkt_push_rr_list(response, LDNS_SECTION_AUTHORITY, rrset);
-//			// update size of the packet
-//			ns_update_response_size(response, size);
-//		} else {
-//			ldns_pkt_set_tc(response, 1);
-//			return;
-//		}
-
 		ns_put_glues(node, response, copied_rrs);
 	}	
 }
@@ -739,6 +725,16 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 		return 0;
 	}
 
+	debug_ns("Query parsed: %s\n", ldns_pkt2str(query));
+
+	if (ldns_pkt_qdcount(query) == 0) {
+		log_notice("Received query with empty question section!\n");
+		ns_error_response(nameserver, *((const uint16_t *)query_wire),
+						  LDNS_RCODE_FORMERR, response_wire, rsize);
+		ldns_pkt_free(query);
+		return 0;
+	}
+
 	// 2) Prepare empty response (used as an error response as well).
 	ldns_pkt *response = ns_create_empty_response(query);
 	if (response == NULL) {
@@ -748,8 +744,6 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
 		ldns_pkt_free(query);
 		return 0;
 	}
-
-	debug_ns("Query parsed: %s\n", ldns_pkt2str(query));
 
 	// 3) Fill the response according to the lookup algorithm.
 	// get the first question entry (other ignored)
