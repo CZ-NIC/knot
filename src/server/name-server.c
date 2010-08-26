@@ -51,11 +51,16 @@ void ns_set_max_packet_size( const ldns_pkt *query, ldns_pkt *response )
 			(ldns_pkt_edns_udp_size(query) < MAX_UDP_PAYLOAD_EDNS)
 			? ldns_pkt_edns_udp_size(query)
 			: MAX_UDP_PAYLOAD_EDNS);
-		// also set the size of the packet to consider the OPT record
-		ldns_pkt_set_size(response, ldns_pkt_size(response) + OPT_SIZE);
 	} else {
 		ldns_pkt_set_edns_udp_size(response, MAX_UDP_PAYLOAD);
 	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+void ns_update_pkt_size( ldns_pkt *pkt, size_t size )
+{
+	ldns_pkt_set_size(pkt, ldns_pkt_size(pkt) + size);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -90,9 +95,13 @@ ldns_pkt *ns_create_empty_response( ldns_pkt *query )
 			// there should be no RDATA in the RR
 			assert(ldns_rr_rd_count(rr) == 0);
 
-			ldns_pkt_set_size(response, ldns_pkt_size(response) +
-							  ldns_rdf_size(ldns_rr_owner(rr))
-							  + QUESTION_FIXED_SIZE);
+			ns_update_pkt_size(response, ldns_rdf_size(ldns_rr_owner(rr))
+							   + QUESTION_FIXED_SIZE);
+
+			if (EDNS_ENABLED) {
+				// set the size of the packet to consider the OPT record
+				ns_update_pkt_size(response, OPT_SIZE);
+			}
 		}
 	}
 
@@ -219,33 +228,6 @@ const zn_node *ns_find_node_in_zone( const zdb_zone *zone, ldns_rdf **qname,
 }
 
 /*----------------------------------------------------------------------------*/
-
-void ns_update_response_size( ldns_pkt *response, size_t size )
-{
-	ldns_pkt_set_size(response, ldns_pkt_size(response) + size);
-}
-
-/*----------------------------------------------------------------------------*/
-
-//int ns_push_rr_list( ldns_pkt *response, ldns_pkt_section section,
-//					 ldns_rr_list *rrset )
-//{
-//	//size_t size = ns_rrset_size(rrset);
-//	if (ns_fits_into_response(response, size)) {
-//		int count = ldns_rr_list_rr_count(rrset);
-//		for (int i = 0; i < count; ++i) {
-//			if (!ldns_pkt_push_rr(response, section, ldns_rr_list_rr(rrset, i))) {
-//				return -1;
-//			}
-//			ns_update_response_size(response, ldns_rr_list_rr(rrset, i));
-//		}
-//		return 0;
-//	} else {
-//		return 1;
-//	}
-//}
-
-/*----------------------------------------------------------------------------*/
 /*!
  * @todo Check return values from push functions!
  */
@@ -274,7 +256,7 @@ void ns_follow_cname( const zn_node **node, const ldns_rdf **qname,
 		size_t cname_rr_size = ns_rr_size(cname_rr);
 		if (ns_fits_into_response(pkt, cname_rr_size)) {
 			ldns_pkt_push_rr(pkt, section, cname_rr);
-			ns_update_response_size(pkt, cname_rr_size);
+			ns_update_pkt_size(pkt, cname_rr_size);
 		} else {
 			// set TC bit (answer records omitted)
 			ldns_pkt_set_tc(pkt, 1);
@@ -299,7 +281,7 @@ void ns_try_put_rrset( ldns_rr_list *rrset, ldns_pkt_section section, int tc,
 		size_t size = ns_rrset_size(rrset);
 		if (ns_fits_into_response(resp, size)) {
 			ldns_pkt_push_rr_list(resp, section, rrset);
-			ns_update_response_size(resp, size);
+			ns_update_pkt_size(resp, size);
 		} else {
 			debug_ns("RRSet %s %s omitted due to lack of space in packet.\n",
 					 ldns_rdf2str(ldns_rr_list_owner(rrset)),
@@ -332,24 +314,8 @@ void ns_put_rrset( ldns_rr_list *rrset, const ldns_rdf *name,
 				ldns_rr_list_push_rr(copied_rrs, rr);
 			}
 			ns_try_put_rrset(rrset_new, section, tc, pkt);
-//			size = ns_rrset_size(rrset_new);
-//			if (ns_fits_into_response(response, size)) {
-//				ldns_pkt_push_rr_list(pkt, section, rrset_new);
-//				ns_update_response_size(pkt, size);
-//			} else {
-//				ldns_pkt_set_tc(pkt, 1);
-//				return;
-//			}
 		} else {
 			ns_try_put_rrset(rrset, section, tc, pkt);
-//			size = ns_rrset_size(rrset);
-//			if (ns_fits_into_response(response, size)) {
-//				ldns_pkt_push_rr_list(pkt, section, rrset);
-//				ns_update_response_size(pkt, size);
-//			} else {
-//				ldns_pkt_set_tc(pkt, 1);
-//				return;
-//			}
 		}
 	}
 }
@@ -491,7 +457,7 @@ void ns_put_glues( const zn_node *node, ldns_pkt *response,
 				ldns_pkt_push_rr(response, LDNS_SECTION_ADDITIONAL,
 							 glue_rr_new);
 				// update size of the packet
-				ns_update_response_size(response, size);
+				ns_update_pkt_size(response, size);
 			} else {
 				ldns_pkt_set_tc(response, 1);
 				return;
@@ -500,7 +466,7 @@ void ns_put_glues( const zn_node *node, ldns_pkt *response,
 			size_t size = ns_rr_size(glue_rr);
 			if (ns_fits_into_response(response, size)) {
 				ldns_pkt_push_rr(response, LDNS_SECTION_ADDITIONAL, glue_rr);
-				ns_update_response_size(response, size);
+				ns_update_pkt_size(response, size);
 			} else {
 				ldns_pkt_set_tc(response, 1);
 				return;
