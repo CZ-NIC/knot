@@ -191,11 +191,8 @@ int zn_has_cname( const zn_node *node );
  */
 zn_node *zn_get_ref_cname( const zn_node *node );
 
-int zn_add_ref( zn_node *node, ldns_rr_list *ref_rrset, ldns_rr_type type,
-				ldns_rdf *name );
-
-int zn_add_ref_cname( zn_node *node, const zn_node *cname_node,
-					  ldns_rr_type type, ldns_rdf *name );
+int zn_add_ref( zn_node *node, ldns_rdf *name, ldns_rr_type type,
+				ldns_rr_list *ref_rrset, const zn_node *ref_node );
 
 skip_list *zn_get_refs( const zn_node *node );
 
@@ -214,6 +211,9 @@ int zn_add_referrer_mx( zn_node *node, const zn_node *referrer );
 int zn_add_referrer_ns( zn_node *node, const zn_node *referrer );
 
 int zn_add_referrer_srv( zn_node *node, const zn_node *referrer );
+
+int zn_add_referrer( zn_node *node, const zn_node *referrer,
+					 ldns_rr_type type );
 
 int zn_referrers_count( const zn_node *node );
 

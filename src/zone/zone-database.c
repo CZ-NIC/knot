@@ -206,7 +206,15 @@ int zdb_adjust_cname( zdb_zone *zone, zn_node *node )
 		assert(ldns_rdf_get_type(cname) == LDNS_RDF_TYPE_DNAME);
 		debug_zdb("Canonical name for alias %s is %s\n",
 				  ldns_rdf2str(node->owner), ldns_rdf2str(cname));
-		zn_set_ref_cname(node, zdb_find_name_in_list(zone, cname));
+		zn_node *cname_node = zdb_find_name_in_list(zone, cname);
+
+		if (zn_add_referrer_cname(cname_node, node) != 0) {
+			log_error("Error while saving referrer node to node %s\n",
+					  ldns_rdf2str(cname_node->owner));
+			return -1;
+		}
+		zn_set_ref_cname(node, cname_node);
+
 		debug_zdb("Found node: %s\n\n", (node->ref.cname)
 				  ? ldns_rdf2str(node->ref.cname->owner)
 				  : "(nil)");
@@ -215,7 +223,10 @@ int zdb_adjust_cname( zdb_zone *zone, zn_node *node )
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * @todo We should remove the reference from the node, as we will be never able
+ *       to clear it once the referred node gets deleted.
+ */
 void zdb_adjust_additional( zdb_zone *zone, zn_node *node, ldns_rr_type type )
 {
 	ldns_rr_list *rrset = zn_find_rrset(node, type);
@@ -258,11 +269,14 @@ void zdb_adjust_additional( zdb_zone *zone, zn_node *node, ldns_rr_type type )
 						  : "(nil)");
 				if (zn_find_rrset(found, LDNS_RR_TYPE_CNAME) != NULL) {
 					debug_zdb("Found CNAME RRSet within the node, saving.\n");
-					if (zn_add_ref_cname(node, found, type, name)
-						!= 0) {
+					if (zn_add_ref(node, name, type, NULL, found) != 0) {
 						log_error("Error occured while saving A RRSet for %s"
 							" record in node %s\n\n", ldns_rr_type2str(type),
 								  ldns_rdf2str(node->owner));
+					}
+					if (zn_add_referrer(found, node, type) != 0) {
+						log_error("Error occured while saving referrer node to"
+								  " node %s\n", ldns_rdf2str(found->owner));
 					}
 					debug_zdb("Done.\n\n");
 					continue;
@@ -270,21 +284,29 @@ void zdb_adjust_additional( zdb_zone *zone, zn_node *node, ldns_rr_type type )
 				ldns_rr_list *rrset = zn_find_rrset(found, LDNS_RR_TYPE_A);
 				if (rrset != NULL) {
 					debug_zdb("Found A RRSet within the node, saving.\n");
-					if (zn_add_ref(node, rrset, type, name) != 0) {
+					if (zn_add_ref(node, name, type, rrset, NULL) != 0) {
 						log_error("Error occured while saving A RRSet for %s"
 							" record in node %s\n\n", ldns_rr_type2str(type),
 								  ldns_rdf2str(node->owner));
 						return;
 					}
+					if (zn_add_referrer(found, node, type) != 0) {
+						log_error("Error occured while saving referrer node to"
+								  " node %s\n", ldns_rdf2str(found->owner));
+					}
 				}
 				rrset = zn_find_rrset(found, LDNS_RR_TYPE_AAAA);
 				if (rrset != NULL) {
 					debug_zdb("Found AAAA RRSet within the node, saving.\n");
-					if (zn_add_ref(node, rrset, type, name) != 0) {
+					if (zn_add_ref(node, name, type, rrset, NULL) != 0) {
 						log_error("Error occured while saving AAAA RRSet for %s"
 							"record in node %s\n\n", ldns_rr_type2str(type),
 								  ldns_rdf2str(node->owner));
 						return;
+					}
+					if (zn_add_referrer(found, node, type) != 0) {
+						log_error("Error occured while saving referrer node to"
+								  " node %s\n", ldns_rdf2str(found->owner));
 					}
 				}
 				debug_zdb("Done.\n\n");
