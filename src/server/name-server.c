@@ -326,8 +326,15 @@ void ns_put_answer( const zn_node *node, const ldns_rdf *name,
 					ldns_rr_list *copied_rrs )
 {
 	debug_ns("Putting answers from node %s.\n", ldns_rdf2str(node->owner));
-	ns_put_rrset(zn_find_rrset(node, type), name, LDNS_SECTION_ANSWER, 1,
-				 response, copied_rrs);
+	if (type == LDNS_RR_TYPE_ANY) {
+		ldns_rr_list *all = zn_all_rrsets(node);
+		ns_put_rrset(all, name, LDNS_SECTION_ANSWER, 1,
+					 response, copied_rrs);
+		ldns_rr_list_free(all);	// delete the list got from zn_all_rrsets()
+	} else {
+		ns_put_rrset(zn_find_rrset(node, type), name, LDNS_SECTION_ANSWER, 1,
+					 response, copied_rrs);
+	}
 	ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
 }
 
