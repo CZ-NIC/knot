@@ -895,8 +895,10 @@ const zdb_zone *zdb_find_zone_for_name( zdb_database *database,
 	while (z != NULL && ldns_dname_compare(z->zone_name, dname) > 0) {
 		z = z->next;
 	}
-	// now z's zone name is either equal to dname
-	if (ldns_dname_compare(z->zone_name, dname) != 0
+	// now z's zone name is either equal to dname or there is no other zone to
+	// search
+	if (z != NULL
+		&& ldns_dname_compare(z->zone_name, dname) != 0
 		&& !ldns_dname_is_subdomain(dname, z->zone_name)) {
 		z = NULL;
 	}
