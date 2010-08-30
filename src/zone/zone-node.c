@@ -342,7 +342,7 @@ int zn_add_rrset( zn_node *node, ldns_rr_list *rrset )
 
 ldns_rr_list *zn_find_rrset( const zn_node *node, ldns_rr_type type )
 {
-	ldns_rr_list *rrset = skip_find(node->rrsets, (void *)type);
+	ldns_rr_list *rrset = (ldns_rr_list *)skip_find(node->rrsets, (void *)type);
 	debug_zn("Searching for type %d,%s in RRSets:\n", type,
 		   ldns_rr_type2str(type));
 	skip_print_list(node->rrsets, zn_print_rrset);
@@ -356,6 +356,25 @@ ldns_rr_list *zn_find_rrset( const zn_node *node, ldns_rr_type type )
 	assert(rrset == NULL || ldns_rr_list_type(rrset) == type);
 
 	return rrset;
+}
+
+/*----------------------------------------------------------------------------*/
+
+ldns_rr_list *zn_all_rrsets( const zn_node *node )
+{
+	ldns_rr_list *all = ldns_rr_list_new();
+
+	debug_zn("Extracting all RRSets from:\n");
+	skip_print_list(node->rrsets, zn_print_rrset);
+
+	const skip_node *sn = skip_first(node->rrsets);
+	while (sn != NULL) {
+		ldns_rr_list_push_rr_list(all, (ldns_rr_list *)sn->value);
+		sn = skip_next(sn);
+	}
+
+	debug_zn("\nExtracted RRSets:\n%s\n", ldns_rr_list2str(all));
+	return all;
 }
 
 /*----------------------------------------------------------------------------*/
