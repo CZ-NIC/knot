@@ -543,6 +543,7 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 	// response packet
 	ldns_rdf *qname = ldns_rdf_clone(ldns_rr_owner(question));
 
+	debug_ns("Trying to find zone for QNAME %s\n", ldns_rdf2str(qname));
 	// find zone in which to search for the name
 	const zdb_zone *zone =
 			ns_get_zone_for_qname(zdb, qname, ldns_rr_get_type(question));
@@ -554,6 +555,7 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 		return;
 	}
 
+	debug_ns("Found zone for QNAME %s\n", ldns_rdf2str(zone->zone_name));
 	debug_ns("Size of response packet: %u\n", ldns_pkt_size(response));
 
 	// find proper zone node
