@@ -201,30 +201,30 @@ size_t ns_rrset_size( ldns_rr_list *rrset )
 
 /*----------------------------------------------------------------------------*/
 
-const zn_node *ns_find_node_in_zone( const zdb_zone *zone, ldns_rdf **qname,
-									 uint *labels )
-{
-	const zn_node *node = NULL;
-	// search for the name and strip labels until nothing left
-	while ((*labels) > 0 &&
-		   (node = zdb_find_name_in_zone(zone, *qname)) == NULL) {
-		debug_ns("Name %s not found, stripping leftmost label.\n",
-				 ldns_rdf2str(*qname));
-		/* TODO: optimize!!!
-		 *       1) do not copy the name!
-		 *       2) implementation of ldns_dname_left_chop() is inefficient
-		 */
-		ldns_rdf *new_qname = ldns_dname_left_chop(*qname);
-		ldns_rdf_deep_free(*qname);
-		*qname = new_qname;
-		--(*labels);
-		assert(*qname != NULL || (*labels) == 0);
-	}
-	assert((ldns_dname_label_count(*qname) == 0 && (*labels) == 0)
-		   || (ldns_dname_label_count(*qname) > 0 && (*labels) > 0));
+//const zn_node *ns_find_node_in_zone( const zdb_zone *zone, ldns_rdf **qname,
+//									 uint *labels )
+//{
+//	const zn_node *node = NULL;
+//	// search for the name and strip labels until nothing left
+//	while ((*labels) > 0 &&
+//		   (node = zdb_find_name_in_zone(zone, *qname)) == NULL) {
+//		debug_ns("Name %s not found, stripping leftmost label.\n",
+//				 ldns_rdf2str(*qname));
+//		/* TODO: optimize!!!
+//		 *       1) do not copy the name!
+//		 *       2) implementation of ldns_dname_left_chop() is inefficient
+//		 */
+//		ldns_rdf *new_qname = ldns_dname_left_chop(*qname);
+//		ldns_rdf_deep_free(*qname);
+//		*qname = new_qname;
+//		--(*labels);
+//		assert(*qname != NULL || (*labels) == 0);
+//	}
+//	assert((ldns_dname_label_count(*qname) == 0 && (*labels) == 0)
+//		   || (ldns_dname_label_count(*qname) > 0 && (*labels) > 0));
 
-	return node;
-}
+//	return node;
+//}
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -565,8 +565,23 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 	uint labels_found = labels;
 	const zn_node *node;
 
-	search:
-	node = ns_find_node_in_zone(zone, &qname, &labels_found);
+	while (labels_found > 0 &&
+		   (node = zdb_find_name_in_zone(zone, qname)) == NULL) {
+search:
+		debug_ns("Name %s not found, stripping leftmost label.\n",
+				 ldns_rdf2str(qname));
+		/* TODO: optimize!!!
+		 *       1) do not copy the name!
+		 *       2) implementation of ldns_dname_left_chop() is inefficient
+		 */
+		ldns_rdf *new_qname = ldns_dname_left_chop(qname);
+		ldns_rdf_deep_free(qname);
+		qname = new_qname;
+		--labels_found;
+		assert(qname != NULL || labels_found == 0);
+	}
+	assert((ldns_dname_label_count(qname) == 0 && labels_found == 0)
+		   || (ldns_dname_label_count(qname) > 0 && labels_found > 0));
 
 	// if the name was not found in the zone something is wrong (SERVFAIL)
 	if (labels_found == 0) {
@@ -617,6 +632,7 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 			ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
 		} else {
 			debug_ns("DNAME not implemented yet.\n");
+
 			// continue searching for the new qname
 			goto search;
 			//ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
