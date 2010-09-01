@@ -28,12 +28,14 @@ static const int EDNS_ENABLED = 1;
 
 void ns_set_edns( const ldns_pkt *query, ldns_pkt *response )
 {
-	if (EDNS_ENABLED) {
+	if (EDNS_ENABLED && ldns_pkt_edns(query)) {
 		ldns_pkt_set_edns_data(response, NULL);
 		ldns_pkt_set_edns_do(response, ldns_pkt_edns_do(query));
 		ldns_pkt_set_edns_extended_rcode(response, 0);
 		ldns_pkt_set_edns_udp_size(response, MAX_UDP_PAYLOAD_EDNS);
-		ldns_pkt_set_edns_version(response, EDNS_VERSION);
+		ldns_pkt_set_edns_version(response,
+			(ldns_pkt_edns_version(query) >= EDNS_VERSION) ? EDNS_VERSION
+				: ldns_pkt_edns_version(query));
 		ldns_pkt_set_edns_z(response, 0);
 	} else {
 		ldns_pkt_set_edns_udp_size(response, 0);
@@ -548,9 +550,9 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 	const zdb_zone *zone =
 			ns_get_zone_for_qname(zdb, qname, ldns_rr_get_type(question));
 
-	// if no zone found, return NXDOMAIN
+	// if no zone found, return REFUSED
 	if (zone == NULL) {
-		ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
+		ldns_pkt_set_rcode(response, LDNS_RCODE_REFUSED);
 		ldns_rdf_deep_free(qname);
 		return;
 	}
