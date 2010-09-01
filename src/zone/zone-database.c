@@ -37,8 +37,10 @@ void zdb_disconnect_zone( zdb_database *database, zdb_zone *z, zdb_zone *prev )
 {
 	// disconect the zone from the list
 	if (prev != NULL) {
+		assert(prev->next == z);
 		prev->next = z->next;
 	} else {
+		assert(database->head == z);
 		database->head = z->next;
 	}
 }
@@ -135,9 +137,7 @@ int zdb_create_list( zdb_zone *zone, ldns_zone *zone_ldns )
 		free(zone->apex);
 		return nodes;
 	}
-	++nodes;
-
-	ldns_zone_deep_free(zone_ldns);
+	++nodes;	
 
 	return nodes;
 }
@@ -313,6 +313,15 @@ void zdb_adjust_additional( zdb_zone *zone, zn_node *node, ldns_rr_type type )
 			}
 		}
 	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+void zdb_adjust_additional_all( zdb_zone *zone, zn_node *node )
+{
+	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_MX);
+	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_NS);
+	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_SRV);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -578,9 +587,7 @@ int zdb_insert_node_to_zone( zdb_zone *zone, zn_node *node )
 			// check if it has CNAME RR
 			if (zdb_adjust_cname(zone, node) == 0) {
 				// if not, adjust additional data if any needed
-				zdb_adjust_additional(zone, node, LDNS_RR_TYPE_MX);
-				zdb_adjust_additional(zone, node, LDNS_RR_TYPE_NS);
-				zdb_adjust_additional(zone, node, LDNS_RR_TYPE_SRV);
+				zdb_adjust_additional_all(zone, node);
 			}
 			zdb_connect_node(n, node);
 		}
@@ -677,9 +684,7 @@ int zdb_adjust_zone( zdb_zone *zone )
 			  ldns_rdf2str(zone->zone_name));
 	// walk through the nodes in the list and check for delegations and CNAMEs
 	zn_node *node = zone->apex;
-	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_MX);
-	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_NS);
-	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_SRV);
+	zdb_adjust_additional_all(zone, node);
 
 	while (node->next != zone->apex) {
 		node = node->next;
@@ -691,9 +696,7 @@ int zdb_adjust_zone( zdb_zone *zone )
 			// no other records when delegation point
 			continue;
 		}
-		zdb_adjust_additional(zone, node, LDNS_RR_TYPE_MX);
-		zdb_adjust_additional(zone, node, LDNS_RR_TYPE_NS);
-		zdb_adjust_additional(zone, node, LDNS_RR_TYPE_SRV);
+		zdb_adjust_additional_all(zone, node);
 	}
 
 	debug_zdb("\nDone.\n");
@@ -755,10 +758,14 @@ int zdb_add_zone( zdb_database *database, ldns_zone *zone )
 	// get the zone name
 	assert(ldns_zone_soa(zone) != NULL);
 	new_zone->zone_name = ldns_rdf_clone(ldns_rr_owner(ldns_zone_soa(zone)));
-
+	log_info("Adding zone %s to Zone database...\n",
+			 ldns_rdf2str(new_zone->zone_name));
 	// create a linked list of zone nodes and get their count
 	int nodes = zdb_create_list(new_zone, zone);
+	// get rid of the zone structure (no longer needed)
+	ldns_zone_deep_free(zone_ldns);
 
+	log_info("Creating Zone data structure...\n");
 	// create the zone data structure
 	new_zone->zone = zds_create(nodes);
 	if (new_zone->zone == NULL) {
@@ -768,9 +775,11 @@ int zdb_add_zone( zdb_database *database, ldns_zone *zone )
 		return -2;
 	}
 
+	log_info("Adjusting zone...\n");
 	zdb_adjust_zone(new_zone);
 
-	// add all created nodes to the zone data structure for lookup
+	// add created nodes to the zone data structure for lookup
+	log_info("Inserting zone nodes to the Zone data structure...\n");
 	zn_node *node = new_zone->apex;
 	if (zdb_insert_nodes_into_zds(new_zone->zone, &node) != 0) {
 		// destroy the rest of the nodes in the list (from node to zone apex)
@@ -785,9 +794,12 @@ int zdb_add_zone( zdb_database *database, ldns_zone *zone )
 		return -3;
 	}
 
+	log_info("Inserting the zone to the Zone database...\n");
 	// Insert into the database on the proper place, i.e. in reverse canonical
 	// order of zone names.
 	zdb_insert_zone(database, new_zone);
+
+	log_info("Done.\n");
 
 	return 0;
 }

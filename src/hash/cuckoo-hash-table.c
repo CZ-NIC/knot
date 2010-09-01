@@ -313,10 +313,10 @@ ck_hash_table *ck_create_table( uint items )
 	// determine ideal size of one table in powers of 2 and save the exponent
 	table->table_size_exp = get_table_exp_and_count(items, &table->table_count);
 
-    log_info("Creating hash table for %u items.\n", items);
-	log_info("Exponent: %u, number of tables: %u\n ", table->table_size_exp,
+	debug_cuckoo("Creating hash table for %u items.\n", items);
+	debug_cuckoo("Exponent: %u, number of tables: %u\n ", table->table_size_exp,
 			 table->table_count);
-    log_info("Table size: %u items, each %u bytes, total %u bytes\n",
+	debug_cuckoo("Table size: %u items, each %u bytes, total %u bytes\n",
 		   hashsize(table->table_size_exp), sizeof(ck_hash_table_item *),
 		   hashsize(table->table_size_exp) * sizeof(ck_hash_table_item *));
 
