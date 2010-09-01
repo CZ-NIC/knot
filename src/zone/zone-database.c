@@ -763,7 +763,7 @@ int zdb_add_zone( zdb_database *database, ldns_zone *zone )
 	// create a linked list of zone nodes and get their count
 	int nodes = zdb_create_list(new_zone, zone);
 	// get rid of the zone structure (no longer needed)
-	ldns_zone_deep_free(zone_ldns);
+    ldns_zone_deep_free(zone);
 
 	log_info("Creating Zone data structure...\n");
 	// create the zone data structure
