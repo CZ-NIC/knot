@@ -771,6 +771,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 
 		// if only one place left, rehash (this place is used in rehashing)
 		if (da_try_reserve(&table->stash, 2) != 0) {
+			log_info("Rehash...\n");
 			int res = ck_rehash(table);
 			if (res != 0) {
 				debug_cuckoo_hash("Rehashing not successful, rehash flag: %hu\n",
