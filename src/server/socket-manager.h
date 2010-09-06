@@ -66,7 +66,7 @@ typedef struct sm_worker {
 typedef struct sm_manager {
     int epfd;
     int fd_count;
-    volatile int is_running;
+    volatile short is_running;
     iohandler_t handler;
     sm_socket *sockets;
     sm_worker *workers;

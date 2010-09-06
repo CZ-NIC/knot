@@ -25,6 +25,9 @@ const uint DEFAULT_EVENTS_COUNT = 1;
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
+#define next_worker(current, mgr) \
+   (((current) + 1) % (mgr)->workers_dpt->thread_count)
+
 void *sm_listen_routine( void *obj );
 void *sm_worker_routine( void *obj );
 
@@ -111,8 +114,7 @@ int sm_add_event( sm_manager *manager, int socket, uint32_t events )
     // All polled events should use non-blocking mode.
     int old_flag = fcntl(socket, F_GETFL, 0);
     if (fcntl(socket, F_SETFL, old_flag | O_NONBLOCK) == -1) {
-        fprintf(stderr, "sm_add_event(): Error setting non-blocking mode on "
-                "the socket.\n");
+        log_error("error setting non-blocking mode on the socket.\n");
         return -1;
     }
 
@@ -147,17 +149,17 @@ void *sm_listen_routine( void *obj )
         pthread_mutex_lock(&worker->mutex);
 
         // Reserve backing-store and wait
-        sm_reserve_events(worker, manager->fd_count * 2);
-        nfds = epoll_wait(manager->epfd, worker->events, manager->fd_count, 1000);
+        pthread_mutex_lock(&manager->sockets_mutex);
+        int current_fds = manager->fd_count;
+        sm_reserve_events(worker, current_fds * 2);
+        pthread_mutex_unlock(&manager->sockets_mutex);
+        nfds = epoll_wait(manager->epfd, worker->events, current_fds, 1000);
         if (nfds < 0) {
-            perror("sm_listen epoll_wait");
-            return NULL;
-        }
-
-        // Signalized finish
-        if(!manager->is_running) {
+            debug_server("epoll_wait: %s\n", strerror(errno));
+            worker->events_count = 0;
+            pthread_cond_signal(&worker->wakeup);
             pthread_mutex_unlock(&worker->mutex);
-            break;
+            continue; // Keep the same worker
         }
 
         // Signalize
@@ -166,16 +168,23 @@ void *sm_listen_routine( void *obj )
         pthread_mutex_unlock(&worker->mutex);
 
         // Next worker
-        worker_id = (worker_id + 1) % manager->workers_dpt->thread_count;
+        worker_id = next_worker(worker_id, manager);
     }
 
     // Wake up all workers
-    for(int i = 0; i < manager->workers_dpt->thread_count; ++i) {
-        sm_worker* worker = &manager->workers[i];
+    int last_wrkr = worker_id;
+    for(;;) {
+
+        sm_worker* worker = &manager->workers[worker_id];
         pthread_mutex_lock(&worker->mutex);
-        worker->events_count = 0;
+        worker->events_count = -1; // Shut down worker
         pthread_cond_signal(&worker->wakeup);
         pthread_mutex_unlock(&worker->mutex);
+        worker_id = next_worker(worker_id, manager);
+
+        // Finish with the starting worker
+        if(worker_id == last_wrkr)
+            break;
     }
 
     return NULL;
@@ -195,9 +204,15 @@ void *sm_worker_routine( void *obj )
     event.outbuf = answer;
     event.size_in = event.size_out = SOCKET_BUFF_SIZE;
 
-    while (worker->mgr->is_running) {
+    for(;;) {
         pthread_mutex_lock(&worker->mutex);
         pthread_cond_wait(&worker->wakeup, &worker->mutex);
+
+        // Check
+        if(worker->events_count < 0) {
+            pthread_mutex_unlock(&worker->mutex);
+            break;
+        }
 
         // Evaluate
         //fprintf(stderr, "Worker [%d] wakeup %d events.\n", worker->id, worker->events_count);
@@ -210,7 +225,7 @@ void *sm_worker_routine( void *obj )
         pthread_mutex_unlock(&worker->mutex);
     }
 
-    printf("Worker finished.\n");
+    debug_server("Worker %d finished.\n", worker->id);
     return NULL;
 }
 
@@ -273,13 +288,13 @@ sm_manager *sm_create( ns_nameserver *nameserver, int thread_count )
         worker->mgr = manager;
 
         if (pthread_mutex_init(&worker->mutex, NULL) != 0) {
-            perror("sm_create worker_mutex");
+            log_error("unable to initialize workers\n");
             sm_destroy(&manager);
             return NULL;
         }
 
         if (pthread_cond_init(&worker->wakeup, NULL) != 0) {
-            perror("sm_create worker_wakeup");
+            log_error("unable to initialize workers\n");
             sm_destroy(&manager);
             return NULL;
         }
@@ -419,9 +434,6 @@ int sm_close_socket( sm_manager *manager, unsigned short port )
 
 void sm_destroy( sm_manager **manager )
 {
-    // Notify close
-    (*manager)->is_running = 0;
-
     // Destroy all sockets
     while((*manager)->sockets != NULL) {
         sm_close_socket(*manager, (*manager)->sockets->port);
@@ -491,7 +503,7 @@ void sm_tcp_handler(sm_event *ev)
     pthread_mutex_lock(&ev->manager->sockets_mutex);
     int n = recv(ev->fd, &pktsize, sizeof(unsigned short), 0);
     pktsize = ntohs(pktsize);
-    debug_sm("Incoming packet size on %d: %d buffer size: %d\n", ev->fd, pktsize, ev->size_in);
+    debug_sm("Incoming packet size on %d: %u buffer size: %u\n", ev->fd, (unsigned) pktsize, (unsigned) ev->size_in);
 
     // Receive payload
     if(n > 0 && pktsize > 0) {
@@ -510,7 +522,7 @@ void sm_tcp_handler(sm_event *ev)
         int res = ns_answer_request(ev->manager->nameserver, ev->inbuf, n, ev->outbuf + sizeof(short),
                                     &answer_size);
 
-        debug_sm("Answer wire format (size %u, result %d).\n", answer_size, res);
+        debug_sm("Answer wire format (size %u, result %d).\n", (unsigned) answer_size, res);
         if(res >= 0) {
 
             // Copy header
@@ -549,7 +561,7 @@ void sm_udp_handler(sm_event *ev)
     while(n >= 0) {
 
         // Receive data
-        // Global I/O lock means ~ 8% overhead; recvfrom() should be thread-safe
+        // \todo Global I/O lock means ~ 8% overhead; recvfrom() should be thread-safe
         n = recvfrom(ev->fd, ev->inbuf, ev->size_in, MSG_DONTWAIT, (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
         //char _str[INET_ADDRSTRLEN];
         //inet_ntop(AF_INET, &(faddr.sin_addr), _str, INET_ADDRSTRLEN);
@@ -562,7 +574,7 @@ void sm_udp_handler(sm_event *ev)
 
         // Error
         if(n <= 0) {
-            perror("sm_udp_handler recvfrom");
+            log_error("reading data from UDP socket failed: %d - %s\n", errno, strerror(errno));
             return;
         }
 
@@ -571,7 +583,7 @@ void sm_udp_handler(sm_event *ev)
         int res = ns_answer_request(ev->manager->nameserver, ev->inbuf, n, ev->outbuf,
                           &answer_size);
 
-        debug_sm("Got answer of size %d.\n", answer_size);
+        debug_sm("Got answer of size %u.\n", (unsigned) answer_size);
 
         if (res == 0) {
             assert(answer_size > 0);
