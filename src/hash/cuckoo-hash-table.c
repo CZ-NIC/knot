@@ -771,6 +771,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 
 		// if only one place left, rehash (this place is used in rehashing)
 		if (da_try_reserve(&table->stash, 2) != 0) {
+			log_info("Rehash...\n");
 			int res = ck_rehash(table);
 			if (res != 0) {
 				debug_cuckoo_hash("Rehashing not successful, rehash flag: %hu\n",
@@ -861,6 +862,7 @@ ck_hash_table_item **ck_find_item_nc( const ck_hash_table *table,
 const ck_hash_table_item *ck_find_item( const ck_hash_table *table,
 										const char *key, size_t length )
 {
+	debug_cuckoo("ck_find_item(), key: %*s, size: %u\n", length, key, length);
 	ck_hash_table_item **found = ck_find_item_nc(table, key, length);
 	return (found == NULL) ? NULL : rcu_dereference(*found);
 }
