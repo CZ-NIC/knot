@@ -47,9 +47,9 @@ void zdb_disconnect_zone( zdb_database *database, zdb_zone *z, zdb_zone *prev )
 
 /*----------------------------------------------------------------------------*/
 
-int zdb_create_list( zdb_zone *zone, ldns_zone *zone_ldns )
+uint zdb_create_list( zdb_zone *zone, ldns_zone *zone_ldns )
 {
-	int nodes = 0;
+	uint nodes = 0;
 
 	debug_zdb("Creating linked list of zone nodes...\n");
 
@@ -66,8 +66,22 @@ int zdb_create_list( zdb_zone *zone, ldns_zone *zone_ldns )
 	 */
 	zn_node *act_node = NULL;
 	zn_node *last_node = NULL;
-	while (ldns_zone_rr_count(zone_ldns) != 0) {
+
+	uint rr_count = ldns_zone_rr_count(zone_ldns);
+	uint i = 0;
+	uint step = rr_count / 10;
+	uint next = step;
+	log_info("Processed: ");
+
+	while (i < rr_count) {
 		ldns_rr_list *rrset = ldns_rr_list_pop_rrset(ldns_zone_rrs(zone_ldns));
+		i += ldns_rr_list_rr_count(rrset);
+
+		if (i >= next) {
+			log_info("%.0f%% ", 100 * ((float)next / rr_count));
+			next += step;
+		}
+
 		if (rrset == NULL) {
 			log_error("Unknown error while processing zone %s.\n",
 					 ldns_rdf2str(zone->zone_name));
@@ -117,6 +131,8 @@ int zdb_create_list( zdb_zone *zone, ldns_zone *zone_ldns )
 			++nodes;
 		}
 	}
+
+	log_info("(%d RRs)\n", i);
 
 	debug_zdb("Processing of RRSets done.\nLast node created (should be zone "
 			  "apex): %s, last node of the list: %s.\n",
@@ -271,6 +287,8 @@ int zdb_adjust_cname( zdb_zone *zone, zn_node *node )
 /*!
  * @todo We should remove the reference from the node, as we will be never able
  *       to clear it once the referred node gets deleted.
+ *
+ * @note Must be called after inserting all nodes into the zone data structure.
  */
 void zdb_adjust_additional( zdb_zone *zone, zn_node *node, ldns_rr_type type )
 {
@@ -364,7 +382,9 @@ void zdb_adjust_additional( zdb_zone *zone, zn_node *node, ldns_rr_type type )
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * @note Must be called after inserting all nodes into the zone data structure.
+ */
 void zdb_adjust_additional_apex( zdb_zone *zone, zn_node *node )
 {
 	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_MX);
@@ -373,7 +393,9 @@ void zdb_adjust_additional_apex( zdb_zone *zone, zn_node *node )
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * @note Must be called after inserting all nodes into the zone data structure.
+ */
 void zdb_adjust_additional_all( zdb_zone *zone, zn_node *node )
 {
 	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_MX);
@@ -471,7 +493,9 @@ int zdb_process_nonauth( zn_node *node, ldns_rr_list *ns_rrset,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * @note Must be called after inserting all nodes into the zone data structure.
+ */
 int zdb_find_other_glues( const zdb_zone *zone, zn_node *deleg_point,
 						  ldns_rr_list *ns_rrset, ldns_rdf **processed,
 						  size_t proc_count )
@@ -490,7 +514,8 @@ int zdb_find_other_glues( const zdb_zone *zone, zn_node *deleg_point,
 
 			// we must search in the list as the other nodes may not be
 			// inserted into the table yet
-			zn_node *ns_node = zdb_find_name_in_list(zone, ns);
+			//zn_node *ns_node = zdb_find_name_in_list(zone, ns);
+			zn_node *ns_node = zdb_find_name_or_wildcard(zone, ns);
 
 			if (ns_node != NULL && !zn_is_non_authoritative(ns_node)) {
 				debug_zdb("Found in authoritative data, extracting glues.\n");
@@ -514,13 +539,24 @@ int zdb_find_other_glues( const zdb_zone *zone, zn_node *deleg_point,
 
 /*----------------------------------------------------------------------------*/
 
+void zdb_set_delegation_point( zn_node **node )
+{
+	zn_set_delegation_point(*node);
+	zn_node *deleg = *node;
+	while (ldns_dname_is_subdomain((*node)->next->owner, deleg->owner)) {
+		(*node) = (*node)->next;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 int zdb_adjust_delegation_point( const zdb_zone *zone, zn_node **node )
 {
 	int res = 0;
 
 	ldns_rr_list *ns_rrset = zn_find_rrset(*node, LDNS_RR_TYPE_NS);
 	if (ns_rrset != NULL) {
-		zn_set_delegation_point(*node);
+		//zn_set_delegation_point(*node);
 		res = 1;
 
 		debug_zdb("\nAdjusting delegation point %s\n",
@@ -538,7 +574,7 @@ int zdb_adjust_delegation_point( const zdb_zone *zone, zn_node **node )
 		while (ldns_dname_is_subdomain((*node)->next->owner, deleg->owner)) {
 			(*node) = (*node)->next;
 			if ((res = zdb_process_nonauth(
-					*node, ns_rrset, processed, &proc_count, deleg)) <= 0) {
+					*node, ns_rrset, processed, &proc_count, deleg)) < 0) {
 				break;
 			}
 		}
@@ -662,6 +698,8 @@ int zdb_insert_node_to_zone( zdb_zone *zone, zn_node *node )
 	return res;
 }
 
+static ldns_rdf **inserted_nodes;
+
 /*----------------------------------------------------------------------------*/
 /*!
  * @brief Inserts all nodes from list starting with @a head to the zone data
@@ -674,7 +712,7 @@ int zdb_insert_node_to_zone( zdb_zone *zone, zn_node *node )
  * @retval 0 On success.
  * @retval -1 On failure. @a head will point to the first item not inserted.
  */
-int zdb_insert_nodes_into_zds( zdb_zone *z, zn_node **node )
+int zdb_insert_nodes_into_zds( zdb_zone *z, uint *nodes, zn_node **node )
 {
 	assert((*node) != NULL);
 	assert((*node)->prev != NULL);
@@ -686,9 +724,18 @@ int zdb_insert_nodes_into_zds( zdb_zone *z, zn_node **node )
 		log_error("Error inserting zone apex to the zone data structure.\n");
 		return -1;
 	}
+	uint i = 1;
+	uint step = *nodes / 10;
+	uint next = step;
+	log_info("Inserted: ");
+
+	inserted_nodes = (ldns_rdf **)malloc(*nodes * sizeof(ldns_rdf *));
 
 	do {
 		*node = (*node)->next;
+
+		inserted_nodes[i - 1] = (*node)->owner;
+
 		debug_zdb("Inserting node with key %s...\n",
 				  ldns_rdf2str((*node)->owner));
 
@@ -696,14 +743,18 @@ int zdb_insert_nodes_into_zds( zdb_zone *z, zn_node **node )
 			log_error("Error filling the zone data structure.\n");
 			return -1;
 		}
+		if (++i == next) {
+			log_info("%.0f%% ", 100 * ((float)next / *nodes));
+			next += step;
+		}
 
 		// this function will also skip the non-authoritative nodes
-		if (zdb_adjust_delegation_point(z, node) != 0) {
-			continue;
-		}
+		zdb_set_delegation_point(node);
+
 		assert((*node)->next != NULL);
 	} while ((*node)->next != head);
 
+	log_info("100%% (%d nodes)\n", i);
 	return 0;
 }
 
@@ -748,7 +799,7 @@ void zdb_insert_zone( zdb_database *database, zdb_zone *zone )
  *        - more CNAMEs in one node
  *        - other RRSets in delegation point
  */
-int zdb_adjust_zone( zdb_zone *zone )
+int zdb_adjust_zone( zdb_zone *zone, uint nodes )
 {
 	debug_zdb("\nAdjusting zone %s for faster lookup...\n",
 			  ldns_rdf2str(zone->zone_name));
@@ -756,24 +807,41 @@ int zdb_adjust_zone( zdb_zone *zone )
 	zn_node *node = zone->apex;
 	debug_zdb("Adjusting zone apex: %s\n", ldns_rdf2str(node->owner));
 	zdb_adjust_additional_apex(zone, node);
-	int i = 1;
-	log_info("Nodes adjusted: %d  ", i);
+
+	uint i = 1;
+	uint step = nodes / 10;
+	uint next = step;
+	log_info("Adjusted nodes: ");
+	uint dif = 0;
 
 	while (node->next != zone->apex) {
+
 		node = node->next;
+
+		if (inserted_nodes[i - dif - 1] != node->owner) {
+			printf("Adjusting node which is not inserted to ZDS: %s\n",
+				   ldns_rdf2str(node->owner));
+			++dif;
+		}
+
+		if (++i == next) {
+			log_info("%.0f%% ", 100 * ((float)next / nodes));
+			next += step;
+		}
+
 		debug_zdb("Adjusting node %s\n", ldns_rdf2str(node->owner));
 		if (zdb_adjust_cname(zone, node) != 0) {
 			// no other records when CNAME
 			continue;
 		}
-		zdb_adjust_additional_all(zone, node);
-		++i;
-		if (i % 1000 == 0) {
-			log_info("%d  ", i);
+		if (zdb_adjust_delegation_point(zone, &node) != 0) {
+			// no other records when delegation point
+			continue;
 		}
+		zdb_adjust_additional_all(zone, node);
 	}
 
-	log_info("\nDone.\n");
+	log_debug("100%% (%d nodes)\n", i);
 	return 0;
 }
 
@@ -836,7 +904,7 @@ int zdb_add_zone( zdb_database *database, ldns_zone *zone )
 			 ldns_rdf2str(new_zone->zone_name));
 	log_info("Creating zone list...\n");
 	// create a linked list of zone nodes and get their count
-	int nodes = zdb_create_list(new_zone, zone);
+	uint nodes = zdb_create_list(new_zone, zone);
 	// get rid of the zone structure (no longer needed)
 	ldns_zone_deep_free(zone);
 
@@ -853,7 +921,7 @@ int zdb_add_zone( zdb_database *database, ldns_zone *zone )
 	// add created nodes to the zone data structure for lookup
 	log_info("Inserting zone nodes to the Zone data structure...\n");
 	zn_node *node = new_zone->apex;
-	if (zdb_insert_nodes_into_zds(new_zone, &node) != 0) {
+	if (zdb_insert_nodes_into_zds(new_zone, &nodes, &node) != 0) {
 		// destroy the rest of the nodes in the list (from node to zone apex)
 		while (node != new_zone->apex) {
 			zn_node *prev = node;
@@ -867,7 +935,7 @@ int zdb_add_zone( zdb_database *database, ldns_zone *zone )
 	}
 
 	log_info("Adjusting zone (%d nodes)...\n", nodes);
-	zdb_adjust_zone(new_zone);
+	zdb_adjust_zone(new_zone, nodes);
 
 	log_info("Inserting the zone to the Zone database...\n");
 	// Insert into the database on the proper place, i.e. in reverse canonical
