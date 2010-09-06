@@ -76,13 +76,11 @@ int cute_start( cute_server *server, const char *filename )
         return -1;
     }
 
-    debug_server("Opening sockets..\n");
+    debug_server("Opening sockets (port %d)..\n", DEFAULT_PORT);
     if (sm_open_socket(server->manager[UDP], DEFAULT_PORT, UDP) != 0) {
         perror("sm_open_socket");
         return -1;
     }
-
-    debug_server("TCP(%d) ", DEFAULT_PORT); fflush(stdout);
 
     if (sm_open_socket(server->manager[TCP], DEFAULT_PORT, TCP) != 0) {
         debug_server("[failed]\n");
