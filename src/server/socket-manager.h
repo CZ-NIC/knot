@@ -15,9 +15,12 @@
 #include "name-server.h"
 #include "dispatcher.h"
 
-//const uint SOCKET_BUFF_SIZE;
-
 /*----------------------------------------------------------------------------*/
+
+typedef enum {
+    SOCKET_BUFF_SIZE = 4096,  /// \todo <= MTU size
+    DEFAULT_EVENTS_COUNT = 1,
+} smconst_t;
 
 typedef enum {
     UDP = 0x00,
@@ -48,7 +51,7 @@ typedef struct sm_event {
 } sm_event;
 
 /** Handler functio proto. */
-typedef void (*iohandler_t) (sm_event*);
+typedef void* (*sockhandler_t) (void*);
 
 /** Workers descriptor. */
 typedef struct sm_worker {
@@ -61,46 +64,39 @@ typedef struct sm_worker {
     pthread_cond_t  wakeup;
 } sm_worker;
 
+#define next_worker(current, mgr) \
+   (((current) + 1) % (mgr)->workers_dpt->thread_count)
+
 /** \todo Implement notification via Linux eventfd() instead of is_running.
   */
 typedef struct sm_manager {
     int epfd;
     int fd_count;
     volatile short is_running;
-    iohandler_t handler;
     sm_socket *sockets;
     sm_worker *workers;
     ns_nameserver *nameserver;
-    dpt_dispatcher *listener;
+    dpt_dispatcher *master;
     dpt_dispatcher *workers_dpt;
     pthread_mutex_t sockets_mutex;
 } sm_manager;
 
 /*----------------------------------------------------------------------------*/
 
-sm_manager *sm_create( ns_nameserver *nameserver, int thread_count );
+sm_manager *sm_create( ns_nameserver *nameserver, sockhandler_t pmaster, sockhandler_t pworker, int thread_count);
 int sm_start( sm_manager* manager );
 int sm_wait( sm_manager* manager );
 void sm_stop( sm_manager *manager );
 void sm_destroy( sm_manager **manager );
-
-
-// TODO: another parameter: type - in / out / something else
 int sm_open_socket( sm_manager *manager, unsigned short port, socket_t type);
 int sm_close_socket( sm_manager *manager, unsigned short port);
 
-// Handlers
-
-static inline void sm_register_handler(sm_manager* manager, iohandler_t handler) {
-    manager->handler = handler;
-}
-
-static inline iohandler_t sm_handler(sm_manager* manager) {
-    return manager->handler;
-}
-
-void sm_tcp_handler(sm_event *ev);
-void sm_udp_handler(sm_event *ev);
+/** \todo Temporary APIs.
+  *       Socket manager should only accept Master prototype + non-compulsory Worker prototype.
+  */
+int sm_reserve_events( sm_worker *worker, uint size );
+int sm_remove_event( sm_manager *manager, int socket );
+int sm_add_event( sm_manager *manager, int socket, uint32_t events );
 
 
 #endif
