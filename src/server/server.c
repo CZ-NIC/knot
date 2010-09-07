@@ -77,12 +77,12 @@ int cute_start( cute_server *server, const char *filename )
     }
 
     debug_server("Opening sockets (port %d)..\n", DEFAULT_PORT);
-    if (sm_open_socket(server->manager[UDP], DEFAULT_PORT, UDP) != 0) {
+    if (sm_open(server->manager[UDP], DEFAULT_PORT, UDP) != 0) {
         perror("sm_open_socket");
         return -1;
     }
 
-    if (sm_open_socket(server->manager[TCP], DEFAULT_PORT, TCP) != 0) {
+    if (sm_open(server->manager[TCP], DEFAULT_PORT, TCP) != 0) {
         debug_server("[failed]\n");
         perror("sm_open_socket");
         return -1;

@@ -4,40 +4,11 @@
 #include <errno.h>
 #include "tcp-handler.h"
 
-void tcp_handler(sm_event *ev)
+static inline void tcp_handler(sm_event *ev)
 {
-    struct sockaddr_in faddr;
-    int addrsize = sizeof(faddr);
-    int incoming = 0;
-
-    // Master socket
-    /// \todo Lock per-socket.
-    if(ev->fd == ev->manager->sockets->socket) {
-
-        // Accept on master socket
-        while(incoming >= 0) {
-
-            pthread_mutex_lock(&ev->manager->sockets_mutex);
-            incoming = accept(ev->fd, (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
-
-            // Register to epoll
-            if(incoming < 0) {
-                //log_error("cannot accept incoming TCP connection (errno %d): %s.\n", errno, strerror(errno));
-            }
-            else {
-                sm_add_event(ev->manager, incoming, EPOLLIN);
-                debug_sm("tcp accept: accepted %d\n", incoming);
-            }
-
-            pthread_mutex_unlock(&ev->manager->sockets_mutex);
-        }
-
-        return;
-    }
-
     // Receive size
     unsigned short pktsize = 0;
-    pthread_mutex_lock(&ev->manager->sockets_mutex);
+    pthread_mutex_lock(&ev->manager->lock);
     int n = recv(ev->fd, &pktsize, sizeof(unsigned short), 0);
     pktsize = ntohs(pktsize);
     debug_sm("Incoming packet size on %d: %u buffer size: %u\n", ev->fd, (unsigned) pktsize, (unsigned) ev->size_in);
@@ -51,7 +22,7 @@ void tcp_handler(sm_event *ev)
     }
 
     // Check read result
-    pthread_mutex_unlock(&ev->manager->sockets_mutex);
+    pthread_mutex_unlock(&ev->manager->lock);
     if(n > 0) {
 
         // Send answer
@@ -80,9 +51,10 @@ void tcp_handler(sm_event *ev)
 
         // Zero read or error other than would-block
         debug_sm("tcp disconnected: %d\n", ev->fd);
-        pthread_mutex_lock(&ev->manager->sockets_mutex);
-        sm_remove_event(ev->manager, ev->fd);
-        pthread_mutex_unlock(&ev->manager->sockets_mutex);
+        pthread_mutex_lock(&ev->manager->lock);
+        /// \todo IMPLEMENT point to workers own EPFD!!!
+        sm_remove_event(ev->manager->epfd, ev->fd);
+        pthread_mutex_unlock(&ev->manager->lock);
         close(ev->fd);
     }
 }
@@ -95,15 +67,45 @@ void *tcp_master( void *obj )
 
     while (manager->is_running) {
 
+        /// \todo IMPLEMENT!!!!!! >>>
+        int WORKER_EPFD = -1; /// \bug
+        int NEW_FD = -1; /// \bug
+        struct sockaddr_in faddr;
+        int addrsize = sizeof(faddr);
+        int incoming = 0;
+
+        // Master socket
+        /// \todo Lock per-socket.
+
+            // Accept on master socket
+            while(incoming >= 0) {
+
+                pthread_mutex_lock(&manager->lock);
+                incoming = accept(NEW_FD, (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
+
+                // Register to epoll
+                if(incoming < 0) {
+                    //log_error("cannot accept incoming TCP connection (errno %d): %s.\n", errno, strerror(errno));
+                }
+                else {
+                    sm_add_event(WORKER_EPFD, incoming, EPOLLIN);
+                    debug_sm("tcp accept: accepted %d\n", incoming);
+                }
+
+                pthread_mutex_unlock(&manager->lock);
+            }
+
+        /// <<< \todo IMPLEMENT!!!!!!
+
         // Select next worker
         sm_worker* worker = &manager->workers[worker_id];
         pthread_mutex_lock(&worker->mutex);
 
         // Reserve backing-store and wait
-        pthread_mutex_lock(&manager->sockets_mutex);
+        pthread_mutex_lock(&manager->lock);
         int current_fds = manager->fd_count;
         sm_reserve_events(worker, current_fds * 2);
-        pthread_mutex_unlock(&manager->sockets_mutex);
+        pthread_mutex_unlock(&manager->lock);
         nfds = epoll_wait(manager->epfd, worker->events, current_fds, 1000);
         if (nfds < 0) {
             debug_server("epoll_wait: %s\n", strerror(errno));

@@ -4,7 +4,7 @@
 #include <errno.h>
 #include "udp-handler.h"
 
-void udp_handler(sm_event *ev)
+static inline void udp_handler(sm_event *ev)
 {
     struct sockaddr_in faddr;
     int addrsize = sizeof(faddr);
@@ -74,10 +74,10 @@ void *udp_master( void *obj )
         pthread_mutex_lock(&worker->mutex);
 
         // Reserve backing-store and wait
-        pthread_mutex_lock(&manager->sockets_mutex);
+        pthread_mutex_lock(&manager->lock);
         int current_fds = manager->fd_count;
         sm_reserve_events(worker, current_fds * 2);
-        pthread_mutex_unlock(&manager->sockets_mutex);
+        pthread_mutex_unlock(&manager->lock);
         nfds = epoll_wait(manager->epfd, worker->events, current_fds, 1000);
         if (nfds < 0) {
             debug_server("epoll_wait: %s\n", strerror(errno));
