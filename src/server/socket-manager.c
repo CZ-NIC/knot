@@ -245,7 +245,7 @@ int sm_open( sm_manager *manager, unsigned short port, socket_t type )
 
     // TCP needs listen
     if(type == TCP) {
-        res = listen(socket_new->socket, 10); /// \todo Tweak backlog size.
+        res = listen(socket_new->socket, 5); /// \todo Tweak backlog size.
         if (res == -1) {
             close(socket_new->socket);
             free(socket_new);

@@ -16,7 +16,7 @@
 /*----------------------------------------------------------------------------*/
 
 typedef enum {
-    SOCKET_BUFF_SIZE = 4096,  /// \todo <= MTU size
+    SOCKET_BUFF_SIZE = 8192,  /// \todo <= MTU size
     DEFAULT_EVENTS_COUNT = 1,
 } smconst_t;
 
@@ -49,8 +49,8 @@ typedef struct sm_worker {
     int id;
     int epfd;
     struct epoll_event *events;
-    int events_count;
-    int events_size;
+    volatile int events_count;
+    volatile int events_size;
     struct sm_manager *mgr;
     pthread_mutex_t mutex;
     pthread_cond_t  wakeup;

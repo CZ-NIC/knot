@@ -45,7 +45,7 @@ cute_server *cute_create()
 
     // Create socket handlers
     server->manager[UDP] = sm_create(server->nameserver, &udp_master, &udp_worker, DEFAULT_THR_COUNT);
-    server->manager[TCP] = sm_create(server->nameserver, &tcp_master, &tcp_worker, DEFAULT_THR_COUNT);
+    server->manager[TCP] = sm_create(server->nameserver, &tcp_master, &tcp_worker, 2*DEFAULT_THR_COUNT);
 
     // Check socket handlers
     for(int i = 0; i < 2; i++) {
