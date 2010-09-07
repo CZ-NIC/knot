@@ -18,18 +18,9 @@
 
 //#define SM_DEBUG
 
-const uint SOCKET_BUFF_SIZE = 4096;  /// \todo <= MTU size
-const uint DEFAULT_EVENTS_COUNT = 1;
-
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
-
-#define next_worker(current, mgr) \
-   (((current) + 1) % (mgr)->workers_dpt->thread_count)
-
-void *sm_listen_routine( void *obj );
-void *sm_worker_routine( void *obj );
 
 sm_socket *sm_create_socket( unsigned short port, socket_t type )
 {
@@ -131,112 +122,15 @@ int sm_add_event( sm_manager *manager, int socket, uint32_t events )
     return 0;
 }
 
-void *sm_listen_routine( void *obj )
-{
-    int worker_id = 0, nfds = 0;
-    sm_manager* manager = (sm_manager *)obj;
 
-    // Check handler
-    if(manager->handler == NULL) {
-        fprintf(stderr, "ERROR: Socket manager has no registered handler.\n");
-        return NULL;
-    }
-
-    while (manager->is_running) {
-
-        // Select next worker
-        sm_worker* worker = &manager->workers[worker_id];
-        pthread_mutex_lock(&worker->mutex);
-
-        // Reserve backing-store and wait
-        pthread_mutex_lock(&manager->sockets_mutex);
-        int current_fds = manager->fd_count;
-        sm_reserve_events(worker, current_fds * 2);
-        pthread_mutex_unlock(&manager->sockets_mutex);
-        nfds = epoll_wait(manager->epfd, worker->events, current_fds, 1000);
-        if (nfds < 0) {
-            debug_server("epoll_wait: %s\n", strerror(errno));
-            worker->events_count = 0;
-            pthread_cond_signal(&worker->wakeup);
-            pthread_mutex_unlock(&worker->mutex);
-            continue; // Keep the same worker
-        }
-
-        // Signalize
-        worker->events_count = nfds;
-        pthread_cond_signal(&worker->wakeup);
-        pthread_mutex_unlock(&worker->mutex);
-
-        // Next worker
-        worker_id = next_worker(worker_id, manager);
-    }
-
-    // Wake up all workers
-    int last_wrkr = worker_id;
-    for(;;) {
-
-        sm_worker* worker = &manager->workers[worker_id];
-        pthread_mutex_lock(&worker->mutex);
-        worker->events_count = -1; // Shut down worker
-        pthread_cond_signal(&worker->wakeup);
-        pthread_mutex_unlock(&worker->mutex);
-        worker_id = next_worker(worker_id, manager);
-
-        // Finish with the starting worker
-        if(worker_id == last_wrkr)
-            break;
-    }
-
-    return NULL;
-}
-
-void *sm_worker_routine( void *obj )
-{
-    sm_worker* worker = (sm_worker *)obj;
-    char buf[SOCKET_BUFF_SIZE];
-    char answer[SOCKET_BUFF_SIZE];
-
-    sm_event event;
-    event.manager = worker->mgr;
-    event.fd = 0;
-    event.events = 0;
-    event.inbuf = buf;
-    event.outbuf = answer;
-    event.size_in = event.size_out = SOCKET_BUFF_SIZE;
-
-    for(;;) {
-        pthread_mutex_lock(&worker->mutex);
-        pthread_cond_wait(&worker->wakeup, &worker->mutex);
-
-        // Check
-        if(worker->events_count < 0) {
-            pthread_mutex_unlock(&worker->mutex);
-            break;
-        }
-
-        // Evaluate
-        //fprintf(stderr, "Worker [%d] wakeup %d events.\n", worker->id, worker->events_count);
-        for(int i = 0; i < worker->events_count; ++i) {
-            event.fd = worker->events[i].data.fd;
-            event.events = worker->events[i].events;
-            worker->mgr->handler(&event);
-        }
-
-        pthread_mutex_unlock(&worker->mutex);
-    }
-
-    debug_server("Worker %d finished.\n", worker->id);
-    return NULL;
-}
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-sm_manager *sm_create( ns_nameserver *nameserver, int thread_count )
+sm_manager *sm_create(ns_nameserver *nameserver, sockhandler_t pmaster, sockhandler_t pworker, int thread_count)
 {
     sm_manager *manager = malloc(sizeof(sm_manager));
-    manager->handler = NULL;
     manager->sockets = NULL;
     manager->fd_count = 0;
 
@@ -248,59 +142,64 @@ sm_manager *sm_create( ns_nameserver *nameserver, int thread_count )
         return NULL;
     }
 
-    // Create listener
-    manager->listener = dpt_create(1, &sm_listen_routine, manager);
-    if(manager->listener == NULL) {
-        perror("sm_create listener");
+    // Create master thread
+    manager->master = dpt_create(1, pmaster, manager);
+    if(manager->master == NULL) {
+        perror("sm_create master");
         sm_destroy(&manager);
         return NULL;
     }
 
     // Create workers
-    manager->workers = malloc(thread_count * sizeof(sm_worker));
-    if (manager->workers == NULL) {
-        perror("sm_create workers");
-        sm_destroy(&manager);
-        return NULL;
-    }
+    manager->workers = NULL;
+    manager->workers_dpt = NULL;
+    if(pworker != NULL) {
 
-    // Create worker dispatcher
-    manager->workers_dpt = dpt_create(thread_count, &sm_worker_routine, NULL);
-    if(manager->workers_dpt == NULL) {
-        sm_destroy(&manager);
-        return NULL;
-    }
-
-    // Initialize workers
-    memset(manager->workers, 0, thread_count * sizeof(sm_worker));
-    for(int i = 0; i < thread_count; ++i) {
-        sm_worker *worker = &manager->workers[i];
-        worker->events = malloc(DEFAULT_EVENTS_COUNT * sizeof(struct epoll_event));
-        if (worker->events == NULL) {
-            perror("sm_create worker_init");
+        manager->workers = malloc(thread_count * sizeof(sm_worker));
+        if (manager->workers == NULL) {
+            perror("sm_create workers");
             sm_destroy(&manager);
             return NULL;
         }
 
-        worker->id = i;
-        worker->events_count = 0;
-        worker->events_size = DEFAULT_EVENTS_COUNT;
-        worker->mgr = manager;
-
-        if (pthread_mutex_init(&worker->mutex, NULL) != 0) {
-            log_error("unable to initialize workers\n");
+        // Create worker dispatcher
+        manager->workers_dpt = dpt_create(thread_count, pworker, NULL);
+        if(manager->workers_dpt == NULL) {
             sm_destroy(&manager);
             return NULL;
         }
 
-        if (pthread_cond_init(&worker->wakeup, NULL) != 0) {
-            log_error("unable to initialize workers\n");
-            sm_destroy(&manager);
-            return NULL;
-        }
+        // Initialize workers
+        memset(manager->workers, 0, thread_count * sizeof(sm_worker));
+        for(int i = 0; i < thread_count; ++i) {
+            sm_worker *worker = &manager->workers[i];
+            worker->events = malloc(DEFAULT_EVENTS_COUNT * sizeof(struct epoll_event));
+            if (worker->events == NULL) {
+                perror("sm_create worker_init");
+                sm_destroy(&manager);
+                return NULL;
+            }
 
-        // Assign to worker dispatcher
-        manager->workers_dpt->routine_obj[i] = (void*) worker;
+            worker->id = i;
+            worker->events_count = 0;
+            worker->events_size = DEFAULT_EVENTS_COUNT;
+            worker->mgr = manager;
+
+            if (pthread_mutex_init(&worker->mutex, NULL) != 0) {
+                log_error("unable to initialize workers\n");
+                sm_destroy(&manager);
+                return NULL;
+            }
+
+            if (pthread_cond_init(&worker->wakeup, NULL) != 0) {
+                log_error("unable to initialize workers\n");
+                sm_destroy(&manager);
+                return NULL;
+            }
+
+            // Assign to worker dispatcher
+            manager->workers_dpt->routine_obj[i] = (void*) worker;
+        }
     }
 
     // Initialize lock
@@ -321,8 +220,13 @@ int sm_start( sm_manager* manager )
     // Set as running
     manager->is_running = 1;
 
-    // Start dispatchers
-    return dpt_start(manager->workers_dpt) + dpt_start(manager->listener);
+    // Start workers
+    int ret = 0;
+    if(manager->workers != NULL)
+        ret = dpt_start(manager->workers_dpt);
+
+    // Start master
+    return ret + dpt_start(manager->master);
 }
 
 void sm_stop( sm_manager *manager )
@@ -332,7 +236,13 @@ void sm_stop( sm_manager *manager )
 
 int sm_wait( sm_manager* manager )
 {
-    return dpt_wait(manager->workers_dpt) + dpt_wait(manager->listener);
+    // Wait for workers
+    int ret = 0;
+    if(manager->workers != NULL)
+        ret = dpt_wait(manager->workers_dpt);
+
+    // Wait for master
+    return ret + dpt_wait(manager->master);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -454,7 +364,7 @@ void sm_destroy( sm_manager **manager )
     free((*manager)->workers);
 
     // Free dispatchers
-    dpt_destroy(&(*manager)->listener);
+    dpt_destroy(&(*manager)->master);
     dpt_destroy(&(*manager)->workers_dpt);
 
     // Destroy socket list mutex
@@ -467,143 +377,3 @@ void sm_destroy( sm_manager **manager )
 
 /*----------------------------------------------------------------------------*/
 
-void sm_tcp_handler(sm_event *ev)
-{
-    struct sockaddr_in faddr;
-    int addrsize = sizeof(faddr);
-    int incoming = 0;
-
-    // Master socket
-    /// \todo Lock per-socket.
-    if(ev->fd == ev->manager->sockets->socket) {
-
-        // Accept on master socket
-        while(incoming >= 0) {
-
-            pthread_mutex_lock(&ev->manager->sockets_mutex);
-            incoming = accept(ev->fd, (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
-
-            // Register to epoll
-            if(incoming < 0) {
-                //log_error("cannot accept incoming TCP connection (errno %d): %s.\n", errno, strerror(errno));
-            }
-            else {
-                sm_add_event(ev->manager, incoming, EPOLLIN);
-                debug_sm("tcp accept: accepted %d\n", incoming);
-            }
-
-            pthread_mutex_unlock(&ev->manager->sockets_mutex);
-        }
-
-        return;
-    }
-
-    // Receive size
-    unsigned short pktsize = 0;
-    pthread_mutex_lock(&ev->manager->sockets_mutex);
-    int n = recv(ev->fd, &pktsize, sizeof(unsigned short), 0);
-    pktsize = ntohs(pktsize);
-    debug_sm("Incoming packet size on %d: %u buffer size: %u\n", ev->fd, (unsigned) pktsize, (unsigned) ev->size_in);
-
-    // Receive payload
-    if(n > 0 && pktsize > 0) {
-        if(pktsize <= ev->size_in)
-            n = recv(ev->fd, ev->inbuf, pktsize, 0); /// \todo Check buffer overflow.
-        else
-            n = 0;
-    }
-
-    // Check read result
-    pthread_mutex_unlock(&ev->manager->sockets_mutex);
-    if(n > 0) {
-
-        // Send answer
-        size_t answer_size = ev->size_out;
-        int res = ns_answer_request(ev->manager->nameserver, ev->inbuf, n, ev->outbuf + sizeof(short),
-                                    &answer_size);
-
-        debug_sm("Answer wire format (size %u, result %d).\n", (unsigned) answer_size, res);
-        if(res >= 0) {
-
-            // Copy header
-            pktsize = htons(answer_size);
-            memcpy(ev->outbuf, &pktsize, sizeof(unsigned short));
-            int sent = send(ev->fd, ev->outbuf, answer_size + sizeof(unsigned short), 0);
-            if (sent < 0) {
-                log_error("tcp send failed (errno %d): %s\n", errno, strerror(errno));
-            }
-
-            debug_sm("Sent answer to %d\n", ev->fd);
-        }
-    }
-
-    // Evaluate
-    /// \todo Do not close if there is a pending write in another thread.
-    if(n <= 0) {
-
-        // Zero read or error other than would-block
-        debug_sm("tcp disconnected: %d\n", ev->fd);
-        pthread_mutex_lock(&ev->manager->sockets_mutex);
-        sm_remove_event(ev->manager, ev->fd);
-        pthread_mutex_unlock(&ev->manager->sockets_mutex);
-        close(ev->fd);
-    }
-}
-
-void sm_udp_handler(sm_event *ev)
-{
-    struct sockaddr_in faddr;
-    int addrsize = sizeof(faddr);
-
-    int n = 0;
-
-    // Loop until all data is read
-    while(n >= 0) {
-
-        // Receive data
-        // \todo Global I/O lock means ~ 8% overhead; recvfrom() should be thread-safe
-        n = recvfrom(ev->fd, ev->inbuf, ev->size_in, MSG_DONTWAIT, (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
-        //char _str[INET_ADDRSTRLEN];
-        //inet_ntop(AF_INET, &(faddr.sin_addr), _str, INET_ADDRSTRLEN);
-        //fprintf(stderr, "recvfrom() in %p: received %d bytes from %s:%d.\n", (void*)pthread_self(), n, _str, faddr.sin_port);
-
-        // Socket not ready
-        if(n == -1 && errno == EWOULDBLOCK) {
-            return;
-        }
-
-        // Error
-        if(n <= 0) {
-            log_error("reading data from UDP socket failed: %d - %s\n", errno, strerror(errno));
-            return;
-        }
-
-        debug_sm("Received %d bytes.\n", n);
-        size_t answer_size = ev->size_out;
-        int res = ns_answer_request(ev->manager->nameserver, ev->inbuf, n, ev->outbuf,
-                          &answer_size);
-
-        debug_sm("Got answer of size %u.\n", (unsigned) answer_size);
-
-        if (res == 0) {
-            assert(answer_size > 0);
-
-            debug_sm("Answer wire format (size %u):\n", answer_size);
-            debug_sm_hex(answer, answer_size);
-
-            for(;;) {
-                res = sendto(ev->fd, ev->outbuf, answer_size, MSG_DONTWAIT,
-                             (struct sockaddr *) &faddr,
-                             (socklen_t) addrsize);
-
-                //fprintf(stderr, "sendto() in %p: written %d bytes to %d.\n", (void*)pthread_self(), res, ev->fd);
-                if(res != answer_size) {
-                    log_error("failed to send datagram (errno %d): %s.\n", res, strerror(res));
-                    continue;
-                }
-
-                break;
-            }
-        }
-    }
-}

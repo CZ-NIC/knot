@@ -1,6 +1,6 @@
 #include "server.h"
-#include "dispatcher.h"
-#include "socket-manager.h"
+#include "udp-handler.h"
+#include "tcp-handler.h"
 #include "zone-database.h"
 #include "name-server.h"
 #include "zone-parser.h"
@@ -43,8 +43,12 @@ cute_server *cute_create()
     debug_server("Done\n\n");
     debug_server("Creating Socket Manager structure..\n");
 
+    // Create socket handlers
+    server->manager[UDP] = sm_create(server->nameserver, &udp_master, &udp_worker, DEFAULT_THR_COUNT);
+    server->manager[TCP] = sm_create(server->nameserver, &tcp_master, &tcp_worker, DEFAULT_THR_COUNT);
+
+    // Check socket handlers
     for(int i = 0; i < 2; i++) {
-        server->manager[i] = sm_create(server->nameserver, DEFAULT_THR_COUNT);
         if (server->manager[i] == NULL ) {
 
             if(i == 1) {
@@ -57,10 +61,6 @@ cute_server *cute_create()
             return NULL;
         }
     }
-
-    // Register socket handlers
-    sm_register_handler(server->manager[UDP], &sm_udp_handler);
-    sm_register_handler(server->manager[TCP], &sm_tcp_handler);
 
     debug_server("Done\n\n");
 

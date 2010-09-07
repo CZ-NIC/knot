@@ -41,3 +41,7 @@ src/other/dynamic-array.c
 src/other/skip-list.h
 src/other/skip-list.c
 tests/querytcp.c
+src/server/udp-handler.h
+src/server/tcp-handler.h
+src/server/udp-handler.c
+src/server/tcp-handler.c
