@@ -46,25 +46,22 @@ static inline void tcp_handler(sm_event *ev)
             // Copy header
             pktsize = htons(answer_size);
             memcpy(ev->outbuf, &pktsize, sizeof(unsigned short));
-            int sent = send(ev->fd, ev->outbuf, answer_size + sizeof(unsigned short), 0);
-            if (sent < 0) {
-                log_error("tcp: send failed (errno %d): %s\n", errno, strerror(errno));
+            int sent = -1;
+            while(sent < 0) {
+                sent = send(ev->fd, ev->outbuf, answer_size + sizeof(unsigned short), 0);
             }
 
             debug_sm("tcp: sent answer to %d\n", ev->fd);
         }
     }
 
-    // Evaluate
-    if(n <= 0) {
-        // Zero read or error other than would-block
-        debug_sm("tcp: disconnected: %d\n", ev->fd);
-        pthread_mutex_lock(&ev->worker->mutex);
-        sm_remove_event(ev->worker->epfd, ev->fd);
-        --ev->worker->events_count;
-        pthread_mutex_unlock(&ev->worker->mutex);
-        close(ev->fd);
-    }
+    // Disconnect
+   debug_sm("tcp: disconnected: %d\n", ev->fd);
+   pthread_mutex_lock(&ev->worker->mutex);
+   sm_remove_event(ev->worker->epfd, ev->fd);
+   --ev->worker->events_count;
+   close(ev->fd);
+   pthread_mutex_unlock(&ev->worker->mutex);
 }
 
 
@@ -97,17 +94,18 @@ void *tcp_master( void *obj )
             }
             else {
                 sm_worker* worker = &manager->workers[worker_id];
-                if(sm_add_event(worker->epfd, incoming, EPOLLIN) == 0) {
 
-                    // Increase socket count
-                    pthread_mutex_lock(&worker->mutex);
+                // Register incoming socket
+                pthread_mutex_lock(&worker->mutex);
+                debug_sm("tcp accept: assigned socket %d to worker #%d\n", incoming, worker->epfd);
+                if(sm_add_event(worker->epfd, incoming, EPOLLIN) == 0)
                     ++worker->events_count;
-                    pthread_cond_signal(&worker->wakeup);
-                    pthread_mutex_unlock(&worker->mutex);
 
-                    debug_sm("tcp accept: assigned socket %d to worker #%d\n", incoming, worker->epfd);
-                    worker_id = next_worker(worker_id, manager);
-                }
+                pthread_cond_signal(&worker->wakeup);
+                pthread_mutex_unlock(&worker->mutex);
+
+                worker_id = next_worker(worker_id, manager);
+
             }
         }
     }
@@ -159,25 +157,24 @@ void *tcp_worker( void *obj )
             // Poll sockets
             sm_reserve_events(worker, worker->events_count * 2);
             nfds = epoll_wait(worker->epfd, worker->events, worker->events_size, 1000);
-            if (nfds < 0) {
-                continue;
-            }
 
             // Evaluate
-            debug_sm("tcp: worker #%d wakeup %d events (%d sockets).\n", worker->epfd, nfds, worker->events_count);
+            //fprintf(stderr, "tcp: worker #%d polled %d events (%d sockets).\n", worker->epfd, nfds, worker->events_count);
             for(int i = 0; i < nfds; ++i) {
                 event.fd = worker->events[i].data.fd;
                 event.events = worker->events[i].events;
+                debug_sm("tcp: worker #%d processing fd=%d.\n", worker->epfd, event.fd);
                 tcp_handler(&event);
+                debug_sm("tcp: worker #%d finished fd=%d (remaining %d).\n", worker->epfd, event.fd, worker->events_count);
             }
         }
 
 
         // Sleep until new events
-        debug_sm("tcp: worker #%d waiting for connections.\n", worker->epfd);
+        debug_sm("tcp: worker #%d suspended.\n", worker->epfd);
         pthread_mutex_lock(&worker->mutex);
         pthread_cond_wait(&worker->wakeup, &worker->mutex);
-        debug_sm("tcp: worker #%d accepted new connections ... (%d sockets in set).\n", worker->epfd, worker->events_count);
+        debug_sm("tcp: worker #%d resumed ... (%d sockets in set).\n", worker->epfd, worker->events_count);
         pthread_mutex_unlock(&worker->mutex);
     }
 

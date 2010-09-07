@@ -153,7 +153,7 @@ void *udp_worker( void *obj )
         }
 
         // Evaluate
-        debug_sm("udp: worker #%d wakeup %d events.\n", worker->epfd, worker->events_count);
+        debug_sm("udp: worker #%d polled %d events.\n", worker->epfd, worker->events_count);
         for(int i = 0; i < worker->events_count; ++i) {
             event.fd = worker->events[i].data.fd;
             event.events = worker->events[i].events;
