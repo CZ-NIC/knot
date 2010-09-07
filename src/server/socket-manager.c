@@ -72,57 +72,44 @@ int sm_reserve_events( sm_worker *worker, uint size )
     return 0;
 }
 
-/*----------------------------------------------------------------------------*/
-
-int sm_remove_event( sm_manager *manager, int socket )
+int sm_worker_init(sm_worker* worker, int id, sm_manager* manager)
 {
-    // Compatibility with kernels < 2.6.9, require non-NULL ptr.
-    struct epoll_event ev;
-
-    // Needs to be synchronised
-    assert(pthread_mutex_trylock(&manager->sockets_mutex) != 0);
-
-    // find socket ptr
-    if(epoll_ctl(manager->epfd, EPOLL_CTL_DEL, socket, &ev) != 0) {
-        perror ("epoll_ctl");
+    // Alloc backing store
+    worker->events = malloc(DEFAULT_EVENTS_COUNT * sizeof(struct epoll_event));
+    if (worker->events == NULL) {
         return -1;
     }
 
-    --manager->fd_count;
+    // Initialize worker data
+    worker->id = id;
+    worker->events_count = 0;
+    worker->events_size = DEFAULT_EVENTS_COUNT;
+    worker->mgr = manager;
+
+    // Initialize synchronisation
+    if (pthread_mutex_init(&worker->mutex, NULL) != 0) {
+        return -1;
+    }
+    if (pthread_cond_init(&worker->wakeup, NULL) != 0) {
+        return -1;
+    }
+
     return 0;
 }
 
-/*----------------------------------------------------------------------------*/
-
-int sm_add_event( sm_manager *manager, int socket, uint32_t events )
+int sm_worker_deinit(sm_worker* worker)
 {
-    struct epoll_event ev;
-    memset(&ev, 0, sizeof(struct epoll_event));
-
-    // Needs to be synchronised
-    assert(pthread_mutex_trylock(&manager->sockets_mutex) != 0);
-
-    // All polled events should use non-blocking mode.
-    int old_flag = fcntl(socket, F_GETFL, 0);
-    if (fcntl(socket, F_SETFL, old_flag | O_NONBLOCK) == -1) {
-        log_error("error setting non-blocking mode on the socket.\n");
+    if(worker == NULL)
         return -1;
-    }
 
-    // Register to epoll
-    ev.data.fd = socket;
-    ev.events = events;
-    if (epoll_ctl(manager->epfd, EPOLL_CTL_ADD, socket, &ev) != 0) {
-        log_error("failed to add socket to event set (errno %d): %s.\n", errno, strerror(errno));
-        return -1;
-    }
+    if(worker->events != NULL)
+        free(worker->events);
 
-    // Increase registered event count
-    ++manager->fd_count;
+    pthread_mutex_destroy(&worker->mutex);
+    pthread_cond_destroy(&worker->wakeup);
+
     return 0;
 }
-
-
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
@@ -145,7 +132,7 @@ sm_manager *sm_create(ns_nameserver *nameserver, sockhandler_t pmaster, sockhand
     // Create master thread
     manager->master = dpt_create(1, pmaster, manager);
     if(manager->master == NULL) {
-        perror("sm_create master");
+        log_error("failed to create master thread (errno %d): %s.\n", errno, strerror(errno));
         sm_destroy(&manager);
         return NULL;
     }
@@ -157,7 +144,7 @@ sm_manager *sm_create(ns_nameserver *nameserver, sockhandler_t pmaster, sockhand
 
         manager->workers = malloc(thread_count * sizeof(sm_worker));
         if (manager->workers == NULL) {
-            perror("sm_create workers");
+            log_error("failed to alloc workers (errno %d): %s.\n", errno, strerror(errno));
             sm_destroy(&manager);
             return NULL;
         }
@@ -165,6 +152,7 @@ sm_manager *sm_create(ns_nameserver *nameserver, sockhandler_t pmaster, sockhand
         // Create worker dispatcher
         manager->workers_dpt = dpt_create(thread_count, pworker, NULL);
         if(manager->workers_dpt == NULL) {
+            log_error("failed to create workers dispatcher (errno %d): %s.\n", errno, strerror(errno));
             sm_destroy(&manager);
             return NULL;
         }
@@ -173,26 +161,8 @@ sm_manager *sm_create(ns_nameserver *nameserver, sockhandler_t pmaster, sockhand
         memset(manager->workers, 0, thread_count * sizeof(sm_worker));
         for(int i = 0; i < thread_count; ++i) {
             sm_worker *worker = &manager->workers[i];
-            worker->events = malloc(DEFAULT_EVENTS_COUNT * sizeof(struct epoll_event));
-            if (worker->events == NULL) {
-                perror("sm_create worker_init");
-                sm_destroy(&manager);
-                return NULL;
-            }
-
-            worker->id = i;
-            worker->events_count = 0;
-            worker->events_size = DEFAULT_EVENTS_COUNT;
-            worker->mgr = manager;
-
-            if (pthread_mutex_init(&worker->mutex, NULL) != 0) {
-                log_error("unable to initialize workers\n");
-                sm_destroy(&manager);
-                return NULL;
-            }
-
-            if (pthread_cond_init(&worker->wakeup, NULL) != 0) {
-                log_error("unable to initialize workers\n");
+            if(sm_worker_init(worker, i, manager) < 0) {
+                log_error("failed to initialize workers (errno %d): %s.\n", errno, strerror(errno));
                 sm_destroy(&manager);
                 return NULL;
             }
@@ -204,8 +174,8 @@ sm_manager *sm_create(ns_nameserver *nameserver, sockhandler_t pmaster, sockhand
 
     // Initialize lock
     int ret = 0;
-    if ((ret = pthread_mutex_init(&manager->sockets_mutex, NULL)) != 0) {
-        perror("sm_create mutex");
+    if ((ret = pthread_mutex_init(&manager->lock, NULL)) != 0) {
+        log_error("failed to initialize manager lock (errno %d): %s.\n", errno, strerror(errno));
         sm_destroy(&manager);
         return NULL;
     }
@@ -247,13 +217,15 @@ int sm_wait( sm_manager* manager )
 
 /*----------------------------------------------------------------------------*/
 
-int sm_open_socket( sm_manager *manager, unsigned short port, socket_t type )
+int sm_open( sm_manager *manager, unsigned short port, socket_t type )
 {
+    // Create socket
     sm_socket *socket_new = sm_create_socket(port, type);
     if (socket_new == NULL) {
         return -1;
     }
 
+    // Initialize socket address
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_port = htons( port );
@@ -267,6 +239,7 @@ int sm_open_socket( sm_manager *manager, unsigned short port, socket_t type )
         return -1;
     }
 
+    // Bind to specified address
     int res = bind(socket_new->socket, (struct sockaddr *)&addr, sizeof(addr));
     if (res == -1) {
         log_error("cannot bind socket (errno %d): %s.\n", errno, strerror(errno));
@@ -285,29 +258,31 @@ int sm_open_socket( sm_manager *manager, unsigned short port, socket_t type )
         }
     }
 
-    // if everything went well, connect the socket to the list
-    pthread_mutex_lock(&manager->sockets_mutex);
+    // If everything went well, connect the socket to the list
+    pthread_mutex_lock(&manager->lock);
     socket_new->next = manager->sockets;
     manager->sockets = socket_new;
 
-    // add new event
+    // Register socket to epoll
     /// \todo Edge-Triggered mode.
-    if (sm_add_event(manager, socket_new->socket, EPOLLIN) != 0) {
-        sm_close_socket(manager, port);
-        pthread_mutex_unlock(&manager->sockets_mutex);
+    if (sm_add_event(manager->epfd, socket_new->socket, EPOLLIN) != 0) {
+        sm_close(manager, port);
+        pthread_mutex_unlock(&manager->lock);
         return -1;
+    } else {
+        ++manager->fd_count;
     }
 
-    pthread_mutex_unlock(&manager->sockets_mutex);
+    pthread_mutex_unlock(&manager->lock);
     return 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int sm_close_socket( sm_manager *manager, unsigned short port )
+int sm_close( sm_manager *manager, unsigned short port )
 {   
     // Synchronise to prevent list corruption
-    pthread_mutex_lock(&manager->sockets_mutex);
+    pthread_mutex_lock(&manager->lock);
     sm_socket *s = manager->sockets, *p = NULL;
     while (s != NULL && s->port != port) {
         p = s;
@@ -315,14 +290,16 @@ int sm_close_socket( sm_manager *manager, unsigned short port )
     }
     
     if (s == NULL) {
-        pthread_mutex_unlock(&manager->sockets_mutex);
+        pthread_mutex_unlock(&manager->lock);
         return -1;
     }
     
     assert(s->port == port);
 
     // Unregister from epoll
-    sm_remove_event(manager, s->socket);
+    if(sm_remove_event(manager->epfd, s->socket) == 0) {
+        --manager->fd_count;
+    }
 
     // Disconnect the found socket entry
     if(p != NULL) {
@@ -335,7 +312,7 @@ int sm_close_socket( sm_manager *manager, unsigned short port )
     if(p == NULL) {
         manager->sockets = NULL;
     }
-    pthread_mutex_unlock(&manager->sockets_mutex);
+    pthread_mutex_unlock(&manager->lock);
     
     return 0;
 }
@@ -346,20 +323,17 @@ void sm_destroy( sm_manager **manager )
 {
     // Destroy all sockets
     while((*manager)->sockets != NULL) {
-        sm_close_socket(*manager, (*manager)->sockets->port);
+        sm_close(*manager, (*manager)->sockets->port);
     }
 
     // Close epoll
-    pthread_mutex_lock(&(*manager)->sockets_mutex);
+    pthread_mutex_lock(&(*manager)->lock);
     close((*manager)->epfd);
 
     // Destroy workers
     for(int i = 0; i < (*manager)->workers_dpt->thread_count; ++i) {
         sm_worker* worker = &(*manager)->workers[i];
-        if(worker->events != NULL)
-            free(worker->events);
-        pthread_mutex_destroy(&worker->mutex);
-        pthread_cond_destroy(&worker->wakeup);
+        sm_worker_deinit(worker);
     }
     free((*manager)->workers);
 
@@ -368,8 +342,8 @@ void sm_destroy( sm_manager **manager )
     dpt_destroy(&(*manager)->workers_dpt);
 
     // Destroy socket list mutex
-    pthread_mutex_unlock(&(*manager)->sockets_mutex);
-    pthread_mutex_destroy(&(*manager)->sockets_mutex);
+    pthread_mutex_unlock(&(*manager)->lock);
+    pthread_mutex_destroy(&(*manager)->lock);
 
     free(*manager);
     *manager = NULL;
@@ -377,3 +351,41 @@ void sm_destroy( sm_manager **manager )
 
 /*----------------------------------------------------------------------------*/
 
+int sm_remove_event( int epfd, int socket )
+{
+    // Compatibility with kernels < 2.6.9, require non-NULL ptr.
+    struct epoll_event ev;
+
+    // find socket ptr
+    if(epoll_ctl(epfd, EPOLL_CTL_DEL, socket, &ev) != 0) {
+        perror ("epoll_ctl");
+        return -1;
+    }
+
+    return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int sm_add_event( int epfd, int socket, uint32_t events )
+{
+    struct epoll_event ev;
+    memset(&ev, 0, sizeof(struct epoll_event));
+
+    // All polled events should use non-blocking mode.
+    int old_flag = fcntl(socket, F_GETFL, 0);
+    if (fcntl(socket, F_SETFL, old_flag | O_NONBLOCK) == -1) {
+        log_error("error setting non-blocking mode on the socket.\n");
+        return -1;
+    }
+
+    // Register to epoll
+    ev.data.fd = socket;
+    ev.events = events;
+    if (epoll_ctl(epfd, EPOLL_CTL_ADD, socket, &ev) != 0) {
+        log_error("failed to add socket to event set (errno %d): %s.\n", errno, strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
