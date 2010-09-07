@@ -74,6 +74,12 @@ int sm_reserve_events( sm_worker *worker, uint size )
 
 int sm_worker_init(sm_worker* worker, int id, sm_manager* manager)
 {
+    // Create epoll
+    worker->epfd = epoll_create(DEFAULT_EVENTS_COUNT);
+    if (worker->epfd == -1) {
+        return -1;
+    }
+
     // Alloc backing store
     worker->events = malloc(DEFAULT_EVENTS_COUNT * sizeof(struct epoll_event));
     if (worker->events == NULL) {
@@ -102,6 +108,8 @@ int sm_worker_deinit(sm_worker* worker)
     if(worker == NULL)
         return -1;
 
+    close(worker->epfd);
+
     if(worker->events != NULL)
         free(worker->events);
 
@@ -119,19 +127,10 @@ sm_manager *sm_create(ns_nameserver *nameserver, sockhandler_t pmaster, sockhand
 {
     sm_manager *manager = malloc(sizeof(sm_manager));
     manager->sockets = NULL;
-    manager->fd_count = 0;
-
-    // Create epoll
-    manager->epfd = epoll_create(DEFAULT_EVENTS_COUNT);
-    if (manager->epfd == -1) {
-        log_error("failed to create epoll set (errno %d): %s.\n", errno, strerror(errno));
-        free(manager);
-        return NULL;
-    }
 
     // Create master thread
-    manager->master = dpt_create(1, pmaster, manager);
-    if(manager->master == NULL) {
+    manager->master_dpt = dpt_create(1, pmaster, manager);
+    if(manager->master_dpt == NULL) {
         log_error("failed to create master thread (errno %d): %s.\n", errno, strerror(errno));
         sm_destroy(&manager);
         return NULL;
@@ -172,13 +171,8 @@ sm_manager *sm_create(ns_nameserver *nameserver, sockhandler_t pmaster, sockhand
         }
     }
 
-    // Initialize lock
-    int ret = 0;
-    if ((ret = pthread_mutex_init(&manager->lock, NULL)) != 0) {
-        log_error("failed to initialize manager lock (errno %d): %s.\n", errno, strerror(errno));
-        sm_destroy(&manager);
-        return NULL;
-    }
+    // Initialize master
+    sm_worker_init(&manager->master, 0, manager);
 
     // Initialize nameserver
     manager->nameserver = nameserver;
@@ -196,7 +190,7 @@ int sm_start( sm_manager* manager )
         ret = dpt_start(manager->workers_dpt);
 
     // Start master
-    return ret + dpt_start(manager->master);
+    return ret + dpt_start(manager->master_dpt);
 }
 
 void sm_stop( sm_manager *manager )
@@ -212,7 +206,7 @@ int sm_wait( sm_manager* manager )
         ret = dpt_wait(manager->workers_dpt);
 
     // Wait for master
-    return ret + dpt_wait(manager->master);
+    return ret + dpt_wait(manager->master_dpt);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -220,6 +214,7 @@ int sm_wait( sm_manager* manager )
 int sm_open( sm_manager *manager, unsigned short port, socket_t type )
 {
     // Create socket
+    sm_worker* master = &manager->master;
     sm_socket *socket_new = sm_create_socket(port, type);
     if (socket_new == NULL) {
         return -1;
@@ -259,21 +254,21 @@ int sm_open( sm_manager *manager, unsigned short port, socket_t type )
     }
 
     // If everything went well, connect the socket to the list
-    pthread_mutex_lock(&manager->lock);
+    pthread_mutex_lock(&master->mutex);
     socket_new->next = manager->sockets;
     manager->sockets = socket_new;
 
     // Register socket to epoll
     /// \todo Edge-Triggered mode.
-    if (sm_add_event(manager->epfd, socket_new->socket, EPOLLIN) != 0) {
+    if (sm_add_event(master->epfd, socket_new->socket, EPOLLIN) != 0) {
         sm_close(manager, port);
-        pthread_mutex_unlock(&manager->lock);
+        pthread_mutex_unlock(&master->mutex);
         return -1;
     } else {
-        ++manager->fd_count;
+        ++master->events_count;
     }
 
-    pthread_mutex_unlock(&manager->lock);
+    pthread_mutex_unlock(&master->mutex);
     return 0;
 }
 
@@ -282,7 +277,8 @@ int sm_open( sm_manager *manager, unsigned short port, socket_t type )
 int sm_close( sm_manager *manager, unsigned short port )
 {   
     // Synchronise to prevent list corruption
-    pthread_mutex_lock(&manager->lock);
+    sm_worker* master = &manager->master;
+    pthread_mutex_lock(&master->mutex);
     sm_socket *s = manager->sockets, *p = NULL;
     while (s != NULL && s->port != port) {
         p = s;
@@ -290,15 +286,15 @@ int sm_close( sm_manager *manager, unsigned short port )
     }
     
     if (s == NULL) {
-        pthread_mutex_unlock(&manager->lock);
+        pthread_mutex_unlock(&master->mutex);
         return -1;
     }
     
     assert(s->port == port);
 
     // Unregister from epoll
-    if(sm_remove_event(manager->epfd, s->socket) == 0) {
-        --manager->fd_count;
+    if(sm_remove_event(master->epfd, s->socket) == 0) {
+        --master->events_count;
     }
 
     // Disconnect the found socket entry
@@ -312,7 +308,7 @@ int sm_close( sm_manager *manager, unsigned short port )
     if(p == NULL) {
         manager->sockets = NULL;
     }
-    pthread_mutex_unlock(&manager->lock);
+    pthread_mutex_unlock(&master->mutex);
     
     return 0;
 }
@@ -322,13 +318,14 @@ int sm_close( sm_manager *manager, unsigned short port )
 void sm_destroy( sm_manager **manager )
 {
     // Destroy all sockets
+    sm_worker* master = &(*manager)->master;
     while((*manager)->sockets != NULL) {
         sm_close(*manager, (*manager)->sockets->port);
     }
 
     // Close epoll
-    pthread_mutex_lock(&(*manager)->lock);
-    close((*manager)->epfd);
+    pthread_mutex_lock(&master->mutex);
+    close(master->epfd);
 
     // Destroy workers
     for(int i = 0; i < (*manager)->workers_dpt->thread_count; ++i) {
@@ -338,12 +335,12 @@ void sm_destroy( sm_manager **manager )
     free((*manager)->workers);
 
     // Free dispatchers
-    dpt_destroy(&(*manager)->master);
+    dpt_destroy(&(*manager)->master_dpt);
     dpt_destroy(&(*manager)->workers_dpt);
 
-    // Destroy socket list mutex
-    pthread_mutex_unlock(&(*manager)->lock);
-    pthread_mutex_destroy(&(*manager)->lock);
+    // Destroy master mutex
+    pthread_mutex_unlock(&master->mutex);
+    pthread_mutex_destroy(&master->mutex);
 
     free(*manager);
     *manager = NULL;

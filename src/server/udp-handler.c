@@ -4,6 +4,18 @@
 #include <errno.h>
 #include "udp-handler.h"
 
+/** Event descriptor.
+  */
+typedef struct sm_event {
+    struct sm_manager* manager;
+    int fd;
+    uint32_t events;
+    void* inbuf;
+    void* outbuf;
+    size_t size_in;
+    size_t size_out;
+} sm_event;
+
 static inline void udp_handler(sm_event *ev)
 {
     struct sockaddr_in faddr;
@@ -28,21 +40,21 @@ static inline void udp_handler(sm_event *ev)
 
         // Error
         if(n <= 0) {
-            log_error("reading data from UDP socket failed: %d - %s\n", errno, strerror(errno));
+            log_error("udp: reading data from the socket failed: %d - %s\n", errno, strerror(errno));
             return;
         }
 
-        debug_sm("Received %d bytes.\n", n);
+        debug_sm("udp: received %d bytes.\n", n);
         size_t answer_size = ev->size_out;
         int res = ns_answer_request(ev->manager->nameserver, ev->inbuf, n, ev->outbuf,
                           &answer_size);
 
-        debug_sm("Got answer of size %u.\n", (unsigned) answer_size);
+        debug_sm("udp: got answer of size %u.\n", (unsigned) answer_size);
 
         if (res == 0) {
             assert(answer_size > 0);
 
-            debug_sm("Answer wire format (size %u):\n", answer_size);
+            debug_sm("udp: answer wire format (size %u):\n", answer_size);
             debug_sm_hex(answer, answer_size);
 
             for(;;) {
@@ -52,7 +64,7 @@ static inline void udp_handler(sm_event *ev)
 
                 //fprintf(stderr, "sendto() in %p: written %d bytes to %d.\n", (void*)pthread_self(), res, ev->fd);
                 if(res != answer_size) {
-                    log_error("failed to send datagram (errno %d): %s.\n", res, strerror(res));
+                    log_error("udp: failed to send datagram (errno %d): %s.\n", res, strerror(res));
                     continue;
                 }
 
@@ -66,6 +78,7 @@ void *udp_master( void *obj )
 {
     int worker_id = 0, nfds = 0;
     sm_manager* manager = (sm_manager *)obj;
+    sm_worker* master = &manager->master;
 
     while (manager->is_running) {
 
@@ -74,13 +87,13 @@ void *udp_master( void *obj )
         pthread_mutex_lock(&worker->mutex);
 
         // Reserve backing-store and wait
-        pthread_mutex_lock(&manager->lock);
-        int current_fds = manager->fd_count;
+        pthread_mutex_lock(&master->mutex);
+        int current_fds = master->events_count;
         sm_reserve_events(worker, current_fds * 2);
-        pthread_mutex_unlock(&manager->lock);
-        nfds = epoll_wait(manager->epfd, worker->events, current_fds, 1000);
+        pthread_mutex_unlock(&master->mutex);
+        nfds = epoll_wait(master->epfd, worker->events, current_fds, 1000);
         if (nfds < 0) {
-            debug_server("epoll_wait: %s\n", strerror(errno));
+            debug_sm("udp: epoll_wait: %s\n", strerror(errno));
             worker->events_count = 0;
             pthread_cond_signal(&worker->wakeup);
             pthread_mutex_unlock(&worker->mutex);
@@ -140,7 +153,7 @@ void *udp_worker( void *obj )
         }
 
         // Evaluate
-        //fprintf(stderr, "Worker [%d] wakeup %d events.\n", worker->id, worker->events_count);
+        debug_sm("udp: worker #%d wakeup %d events.\n", worker->epfd, worker->events_count);
         for(int i = 0; i < worker->events_count; ++i) {
             event.fd = worker->events[i].data.fd;
             event.events = worker->events[i].events;
@@ -150,6 +163,6 @@ void *udp_worker( void *obj )
         pthread_mutex_unlock(&worker->mutex);
     }
 
-    debug_server("Worker %d finished.\n", worker->id);
+    debug_sm("udp: worker #%d finished.\n", worker->epfd);
     return NULL;
 }

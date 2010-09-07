@@ -37,20 +37,6 @@ typedef struct sm_socket {
     struct sm_socket *next;
 } sm_socket;
 
-struct sm_manager;
-
-/** Event descriptor.
-  */
-typedef struct sm_event {
-    struct sm_manager* manager;
-    int fd;
-    uint32_t events;
-    void* inbuf;
-    void* outbuf;
-    size_t size_in;
-    size_t size_out;
-} sm_event;
-
 /** Handler functio proto.
   \todo Replace with proto from dispatcher.
   */
@@ -77,15 +63,13 @@ typedef struct sm_worker {
   * Contains ptrs to master and worker thread prototypes and built-in epoll.
   */
 typedef struct sm_manager {
-    int epfd;
-    int fd_count;
+    sm_socket* sockets;
     volatile short is_running; /// \todo Implement notification via Linux eventfd() instead of is_running.
-    dpt_dispatcher *master;
+    dpt_dispatcher *master_dpt;
     dpt_dispatcher *workers_dpt;
+    sm_worker master;
     sm_worker *workers;
     ns_nameserver *nameserver;
-    sm_socket* sockets;
-    pthread_mutex_t lock;
 } sm_manager;
 
 /*----------------------------------------------------------------------------*/
