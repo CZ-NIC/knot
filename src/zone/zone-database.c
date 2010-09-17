@@ -541,6 +541,8 @@ int zdb_find_other_glues( const zdb_zone *zone, zn_node *deleg_point,
 
 void zdb_set_delegation_point( zn_node **node )
 {
+	debug_zdb("Setting %s to be a delegation point and skipping its subdomains"
+			  "\n", ldns_rdf2str((*node)->owner));
 	zn_set_delegation_point(*node);
 	zn_node *deleg = *node;
 	while (ldns_dname_is_subdomain((*node)->next->owner, deleg->owner)) {
@@ -748,8 +750,10 @@ int zdb_insert_nodes_into_zds( zdb_zone *z, uint *nodes, zn_node **node )
 			next += step;
 		}
 
-		// this function will also skip the non-authoritative nodes
-		zdb_set_delegation_point(node);
+		if (zn_find_rrset(*node, LDNS_RR_TYPE_NS) != NULL) {
+			// this function will also skip the non-authoritative nodes
+			zdb_set_delegation_point(node);
+		}
 
 		assert((*node)->next != NULL);
 	} while ((*node)->next != head);
