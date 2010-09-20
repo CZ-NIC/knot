@@ -313,7 +313,7 @@ int zp_parse_zonefile_bind( const char *filename, zdb_database *database )
 	ldns_zone *zone;
 	int line = 0;
 	ldns_status s;
-	log_info("Parsing zone file %s...\n", filename);
+	log_info("\nParsing zone file %s...\n", filename);
 	s = ldns_zone_new_frm_fp_l(&zone, file, NULL, 0, LDNS_RR_CLASS_IN, &line);
 	log_info("Done.\n");
 

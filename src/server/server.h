@@ -17,6 +17,7 @@
 #include "socket-manager.h"
 #include "zone-database.h"
 #include "name-server.h"
+#include "common.h"
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -54,7 +55,7 @@ cute_server *cute_create();
  * @todo When a module for configuration is added, the filename parameter will
  *       be removed.
  */
-int cute_start( cute_server *server, const char *filename );
+int cute_start( cute_server *server, char **filenames, uint zones );
 
 /*!
  * @brief Requests server to stop.

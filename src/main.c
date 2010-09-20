@@ -32,7 +32,8 @@ void interrupt_handle(int s)
 int main( int argc, char **argv )
 {
     if (argc < 2) {
-        print_msg(LOG_ERR, "Usage: %s <filename>.\n", argv[0]);
+		print_msg(LOG_ERR, "Usage: %s <filename1> [<filename2> ...] .\n",
+				  argv[0]);
         return -1;
     }
 
@@ -40,11 +41,6 @@ int main( int argc, char **argv )
     log_open(LOG_UPTO(LOG_ERR), LOG_MASK(LOG_ERR)|LOG_MASK(LOG_WARNING));
 
     int res = 0;
-//	res = test_skip_list();
-
-//	if (res != 0) {
-//		printf("\n!!!! Skip list test unsuccessful !!!!\n");
-//	}
 
     // Start server
 
@@ -59,7 +55,7 @@ int main( int argc, char **argv )
     sigaction(SIGINT, &sa, NULL);
 
     // Run server
-    if ((res = cute_start(s_server, argv[1])) != 0) {
+	if ((res = cute_start(s_server, argv + 1, argc - 1)) != 0) {
         fprintf (stderr, "Problem starting the server, exiting..\n");
     }
 
