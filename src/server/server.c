@@ -69,12 +69,16 @@ cute_server *cute_create()
 
 /*----------------------------------------------------------------------------*/
 
-int cute_start( cute_server *server, const char *filename )
+int cute_start( cute_server *server, char **filenames, uint zones )
 {
-    debug_server("Parsing zone file %s..\n", filename);
-    if (zp_parse_zone(filename, server->zone_db) != 0) {
-        return -1;
-    }
+	debug_server("Starting server with %u zone files.\n", zones);
+
+	for (uint i = 0; i < zones; ++i) {
+		debug_server("Parsing zone file %s..\n", filenames[i]);
+		if (zp_parse_zone(filenames[i], server->zone_db) != 0) {
+			return -1;
+		}
+	}
 
     debug_server("Opening sockets (port %d)..\n", DEFAULT_PORT);
     if (sm_open(server->manager[UDP], DEFAULT_PORT, UDP) != 0) {
