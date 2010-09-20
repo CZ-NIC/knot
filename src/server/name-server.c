@@ -22,6 +22,8 @@ static const uint8_t OPT_SIZE = 11;
 
 static const int EDNS_ENABLED = 1;
 
+static const uint32_t SYNTH_CNAME_TTL = 0;
+
 /*----------------------------------------------------------------------------*/
 /* Private functions          					                              */
 /*----------------------------------------------------------------------------*/
@@ -330,8 +332,7 @@ void ns_put_answer( const zn_node *node, const ldns_rdf *name,
 	debug_ns("Putting answers from node %s.\n", ldns_rdf2str(node->owner));
 	if (type == LDNS_RR_TYPE_ANY) {
 		ldns_rr_list *all = zn_all_rrsets(node);
-		ns_put_rrset(all, name, LDNS_SECTION_ANSWER, 1,
-					 response, copied_rrs);
+		ns_put_rrset(all, name, LDNS_SECTION_ANSWER, 1, response, copied_rrs);
 		ldns_rr_list_free(all);	// delete the list got from zn_all_rrsets()
 	} else {
 		ns_put_rrset(zn_find_rrset(node, type), name, LDNS_SECTION_ANSWER, 1,
@@ -538,6 +539,71 @@ void ns_answer_from_node( const zn_node *node, const zdb_zone *zone,
 
 /*----------------------------------------------------------------------------*/
 
+ldns_rr_list *ns_cname_from_dname( const ldns_rr_list *dname_rrset,
+							const ldns_rdf *qname, ldns_rr_list *copied_rrs )
+{
+	debug_ns("Synthetizing CNAME from DNAME...\n");
+	// take only first dname RR
+	ldns_rr *dname_rr = ldns_rr_list_rr(dname_rrset, 0);
+
+	ldns_rr *cname_rr = ldns_rr_new_frm_type(LDNS_RR_TYPE_CNAME);
+	debug_ns("Creating CNAME with owner %s.\n", ldns_rdf2str(qname));
+	ldns_rr_set_owner(cname_rr, ldns_rdf_clone(qname));
+	ldns_rr_set_ttl(cname_rr, SYNTH_CNAME_TTL);
+
+	// copy the owner, replace last labels with DNAME
+	// copying several times - no better way to do it in ldns
+	ldns_rdf *tmp = ldns_dname_reverse(qname);
+	assert(ldns_dname_label_count(tmp) >=
+		   ldns_dname_label_count(ldns_rr_owner(dname_rr)));
+	ldns_rdf *tmp2 = ldns_dname_clone_from(tmp,
+							ldns_dname_label_count(ldns_rr_owner(dname_rr)));
+	ldns_rdf *cname = ldns_dname_reverse(tmp2);
+	ldns_status s = ldns_dname_cat(cname, ldns_rr_rdf(dname_rr, 0));
+	if (s != LDNS_STATUS_OK) {
+		ldns_rdf_deep_free(cname);
+		ldns_rr_free(cname_rr);
+		return NULL;
+	}
+
+	debug_ns("CNAME canonical name: %s.\n", ldns_rdf2str(cname));
+
+	ldns_rr_set_rdf(cname_rr, cname, 0);
+	ldns_rr_set_rd_count(cname_rr, 1);
+
+	ldns_rdf_deep_free(tmp);
+	ldns_rdf_deep_free(tmp2);
+
+	ldns_rr_list *cname_rrset = ldns_rr_list_new();
+	ldns_rr_list_push_rr(cname_rrset, cname_rr);
+
+	ldns_rr_list_push_rr_list(copied_rrs, cname_rrset);
+
+	return cname_rrset;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void ns_process_dname( ldns_rr_list *dname_rrset, const ldns_rdf *qname,
+					   ldns_pkt *response, ldns_rr_list *copied_rrs )
+{
+	debug_ns("Processing DNAME for owner %s...\n",
+			 ldns_rdf2str(ldns_rr_list_owner(dname_rrset)));
+	// there should be only one DNAME
+	assert(ldns_rr_list_rr_count(dname_rrset) == 1);
+	// put the DNAME RRSet into the answer
+	ns_try_put_rrset(dname_rrset, LDNS_SECTION_ANSWER, 1, response);
+	// synthetize CNAME (no way to tell that client supports DNAME)
+	ldns_rr_list *synth_cname = ns_cname_from_dname(dname_rrset, qname,
+													copied_rrs);
+	ns_try_put_rrset(synth_cname, LDNS_SECTION_ANSWER, 1, response);
+	ldns_rr_list_free(synth_cname);
+	ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
+	// do not search for the name in new zone (out-of-bailiwick)
+}
+
+/*----------------------------------------------------------------------------*/
+
 void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 				ldns_rr_list *copied_rrs )
 {
@@ -609,35 +675,40 @@ search:
 		debug_ns("Found node with name: %s (rest of QNAME: %s).\n",
 				 ldns_rdf2str(node->owner), ldns_rdf2str(qname));
 
-		// try to find a wildcard child
-		ldns_rdf *wildcard = ldns_dname_new_frm_str("*");
-		if (ldns_dname_cat(wildcard, qname) != LDNS_STATUS_OK) {
-			log_error("Unknown error occured.\n");
-			ldns_pkt_set_rcode(response, LDNS_RCODE_SERVFAIL);
-			ldns_rdf_deep_free(wildcard);
-			ldns_rdf_deep_free(qname);
-			return;	// need some return value??
-		}
-
-		const zn_node *wildcard_node = zdb_find_name_in_zone(zone, wildcard);
-		if (wildcard_node != NULL) {
-			debug_ns("Found wildcard node %s, answering.\n", ldns_rdf2str(
-					wildcard_node->owner));
-			ns_answer_from_node(wildcard_node, zone, ldns_rr_owner(question),
-								ldns_rr_get_type(question), response,
-								copied_rrs);
-		} else if (zone->apex == node) {
-			// if we ended in the zone apex, the name is not in the zone
-			ns_put_authority_soa(zone, response);
-			ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
+		// check if DNAME is present
+		ldns_rr_list *dname_rrset = NULL;
+		if ((dname_rrset = zn_find_rrset(node, LDNS_RR_TYPE_DNAME)) != NULL) {
+			ns_process_dname(dname_rrset, ldns_rr_owner(question), response,
+							 copied_rrs);
 		} else {
-			debug_ns("DNAME not implemented yet.\n");
+			// try to find a wildcard child
+			ldns_rdf *wildcard = ldns_dname_new_frm_str("*");
+			if (ldns_dname_cat(wildcard, qname) != LDNS_STATUS_OK) {
+				log_error("Unknown error occured.\n");
+				ldns_pkt_set_rcode(response, LDNS_RCODE_SERVFAIL);
+				ldns_rdf_deep_free(wildcard);
+				ldns_rdf_deep_free(qname);
+				return;	// need some return value??
+			}
 
-			// continue searching for the new qname
-			goto search;
-			//ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
+			const zn_node *wildcard_node =
+					zdb_find_name_in_zone(zone, wildcard);
+			if (wildcard_node != NULL) {
+				debug_ns("Found wildcard node %s, answering.\n", ldns_rdf2str(
+						wildcard_node->owner));
+				ns_answer_from_node(
+					wildcard_node, zone, ldns_rr_owner(question),
+					ldns_rr_get_type(question), response, copied_rrs);
+			} else if (zone->apex == node) {
+				// if we ended in the zone apex, the name is not in the zone
+				ns_put_authority_soa(zone, response);
+				ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
+			} else {
+				// continue searching for the new qname
+				goto search;
+			}
+			ldns_rdf_deep_free(wildcard);
 		}
-		ldns_rdf_deep_free(wildcard);
 	}
 
 	ldns_rdf_deep_free(qname);
