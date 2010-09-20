@@ -47,3 +47,6 @@ new-fast-box     A   172.30.79.13
 
 sub3	NS	ns.sub2.example.com.
 sub4	NS	ns.example.com.
+
+d.example.com.	CNAME	non-existing.example.com.
+e.example.com.	DNAME	bogus25.com.
