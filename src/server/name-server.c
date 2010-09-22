@@ -519,8 +519,8 @@ void ns_answer_from_node( const zn_node *node, const zdb_zone *zone,
 		// node is now set to the canonical name node (if found)
 		if (node == NULL) {
 			// TODO: add SOA
-			ns_put_authority_soa(zone, response);
-			ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
+			//ns_put_authority_soa(zone, response);
+			//ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
 			return;
 		}
 	}
@@ -669,6 +669,11 @@ search:
 	}
 
 	if (labels_found == labels) {	// whole QNAME found
+		debug_ns("All labels matched.\n");
+		// if an empty non-terminal, continue the search
+		if (zn_is_empty(node) == 0) {
+			goto search;
+		}
 		ns_answer_from_node(node, zone, qname, ldns_rr_get_type(question),
 							response, copied_rrs);
 	} else {	// only part of QNAME found
@@ -699,13 +704,12 @@ search:
 				ns_answer_from_node(
 					wildcard_node, zone, ldns_rr_owner(question),
 					ldns_rr_get_type(question), response, copied_rrs);
-			} else if (zone->apex == node) {
-				// if we ended in the zone apex, the name is not in the zone
-				ns_put_authority_soa(zone, response);
-				ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
 			} else {
-				// continue searching for the new qname
-				goto search;
+				// return NXDOMAIN
+				ldns_pkt_set_rcode(response, LDNS_RCODE_NXDOMAIN);
+				ldns_rdf_deep_free(wildcard);
+				ldns_rdf_deep_free(qname);
+				return;
 			}
 			ldns_rdf_deep_free(wildcard);
 		}
