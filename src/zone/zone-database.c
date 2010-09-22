@@ -817,8 +817,9 @@ int zdb_insert_node_to_zone( zdb_zone *zone, zn_node *node )
 	return res;
 }
 
+#ifdef ZDB_DEBUG_INSERT_CHECK
 static ldns_rdf **inserted_nodes;
-
+#endif
 /*----------------------------------------------------------------------------*/
 /*!
  * @brief Inserts all nodes from list starting with @a head to the zone data
@@ -848,12 +849,16 @@ int zdb_insert_nodes_into_zds( zdb_zone *z, uint *nodes, zn_node **node )
 	uint next = step;
 	log_info("Inserted: ");
 
+#ifdef ZDB_DEBUG_INSERT_CHECK
 	inserted_nodes = (ldns_rdf **)malloc(*nodes * sizeof(ldns_rdf *));
+#endif
 
 	do {
 		*node = (*node)->next;
 
+#ifdef ZDB_DEBUG_INSERT_CHECK
 		inserted_nodes[i - 1] = (*node)->owner;
+#endif
 
 		debug_zdb("Inserting node with key %s...\n",
 				  ldns_rdf2str((*node)->owner));
@@ -933,17 +938,22 @@ int zdb_adjust_zone( zdb_zone *zone, uint nodes )
 	uint step = nodes / 10;
 	uint next = step;
 	log_info("Adjusted nodes: ");
+
+#ifdef ZDB_DEBUG_INSERT_CHECK
 	uint dif = 0;
+#endif
 
 	while (node->next != zone->apex) {
 
 		node = node->next;
 
+#ifdef ZDB_DEBUG_INSERT_CHECK
 		if (inserted_nodes[i - dif - 1] != node->owner) {
 			printf("Adjusting node which is not inserted to ZDS: %s\n",
 				   ldns_rdf2str(node->owner));
 			++dif;
 		}
+#endif
 
 		if (++i == next) {
 			log_info("%.0f%% ", 100 * ((float)next / nodes));
