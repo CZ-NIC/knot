@@ -153,9 +153,132 @@ uint zdb_create_list( zdb_zone *zone, ldns_zone *zone_ldns )
 		free(zone->apex);
 		return nodes;
 	}
-	++nodes;	
 
 	return nodes;
+}
+
+/*----------------------------------------------------------------------------*/
+
+uint zdb_common_labels( const ldns_rdf *dname1, const ldns_rdf *dname2 )
+{
+	uint common = 0;
+	ldns_rdf *dname1r = ldns_dname_reverse(dname1);
+	ldns_rdf *dname2r = ldns_dname_reverse(dname2);
+
+	uint8_t *c1 = ldns_rdf_data(dname1r);
+	uint8_t *c2 = ldns_rdf_data(dname2r);
+
+	while (*c1 != '\0' && *c1 == *c2
+		   && strncmp((char *)c1 + 1, (char *)c2 + 1, *c1) == 0) {
+		debug_zdb("Comparing labels of length %u: %.*s and %.*s\n",
+				  *c1, *c1, (char *)c1 + 1, *c1, (char *)c2 + 1);
+		c1 += *c1 + 1;
+		c2 += *c2 + 1;
+		++common;
+	}
+
+	ldns_rdf_deep_free(dname1r);
+	ldns_rdf_deep_free(dname2r);
+
+	return common;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void zdb_connect_node( zn_node *next, zn_node *node )
+{
+	node->prev = next->prev;
+	node->next = next;
+	next->prev->next = node;
+	next->prev = node;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zdb_add_empty_nonterminals( zdb_zone *zone )
+{
+	debug_zdb("\nCreating empty non-terminals in the zone...\n");
+	int created = 0;
+
+	zn_node *current = zone->apex->next;
+	zn_node *parent = zone->apex;
+	uint8_t apex_labels = ldns_dname_label_count(parent->owner);
+
+	while (current != zone->apex) {
+		zn_node *prev = current->prev;
+		ldns_rdf *curr_name = current->owner;
+
+		debug_zdb("Current node: %s\n", ldns_rdf2str(curr_name));
+
+		if (ldns_dname_is_subdomain(curr_name, prev->owner)) {
+			// descendant of the previous node
+			parent = prev;
+		} else if (parent != prev
+				   && !ldns_dname_is_subdomain(curr_name, parent->owner)) {
+			// we must find appropriate parent
+			// find number of labels matching between current and parent
+			uint common = zdb_common_labels(curr_name, parent->owner);
+			debug_zdb("Common labels with parent node (%s): %u\n",
+					  ldns_rdf2str(parent->owner), common);
+			assert(common < ldns_dname_label_count(parent->owner));
+			assert(common >= ldns_dname_label_count(zone->apex->owner));
+
+			if (common == apex_labels) {
+				parent = zone->apex;
+			} else {
+				while (ldns_dname_label_count(parent->owner) > common) {
+					parent = parent->prev;
+				}
+			}
+		}
+
+		uint d = ldns_dname_label_count(curr_name)
+				 - ldns_dname_label_count(parent->owner);
+
+		debug_zdb("Parent node: %s, difference in label counts: %u\n",
+				  ldns_rdf2str(parent->owner), d);
+
+		prev = current;
+
+		// if the difference in label length is more than one, create the
+		// empty non-terminal nodes
+		if (d > 1) {
+
+			do {
+				ldns_rdf *new_name = ldns_dname_left_chop(curr_name);
+				if (new_name == NULL) {
+					log_error("Unknown error in ldns_dname_left_chop().\n");
+					return -1;
+				}
+				zn_node *new_node = zn_create();
+				if (new_node == NULL) {
+					ldns_rdf_deep_free(new_name);
+					return -2;
+				}
+				new_node->owner = new_name;
+
+				debug_zdb("Inserting new node with owner %s to the list.\n",
+						  ldns_rdf2str(new_name));
+				zdb_connect_node(current, new_node);
+				++created;
+
+				current = new_node;
+				curr_name = new_name;
+				--d;
+			} while (d > 1);
+
+			// save the created node with most labels as the new parent
+			parent = prev->prev;
+		}
+
+		// if no new nodes were created, the parent remains the same
+
+		current = prev->next;
+	}
+
+	debug_zdb("Done, created nodes: %d\n\n", created);
+
+	return created;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -463,6 +586,10 @@ int zdb_process_nonauth( zn_node *node, ldns_rr_list *ns_rrset,
 {
 	zn_set_non_authoritative(node);
 
+	if (zn_is_empty(node) == 0) {
+		return 0;
+	}
+
 	if (!zdb_rr_list_contains_dname(ns_rrset, node->owner, 0)) {
 		log_error("Zone contains non-authoritative domain name %s,"
 				  " which is not referenced in %s NS records!\n",
@@ -592,16 +719,6 @@ int zdb_adjust_delegation_point( const zdb_zone *zone, zn_node **node )
 		debug_zdb("Done.\n\n");
 	}
 	return res;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void zdb_connect_node( zn_node *next, zn_node *node )
-{
-	node->prev = next->prev;
-	node->next = next;
-	next->prev->next = node;
-	next->prev = node;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -873,6 +990,24 @@ void zdb_destroy_zone( zdb_zone **zone )
 	*zone = NULL;
 }
 
+#ifdef ZDB_DEBUG
+/*----------------------------------------------------------------------------*/
+
+void zdb_print_list( const zdb_zone *zone )
+{
+	int count = 0;
+	debug_zdb("Zone listing in canonical order. Zone '%s'\n\n",
+			  ldns_rdf2str(zone->zone_name));
+	zn_node *node = zone->apex;
+	do {
+		debug_zdb("%s\n", ldns_rdf2str(node->owner));
+		node = node->next;
+		++count;
+	} while (node != zone->apex);
+	debug_zdb("Nodes: %d\n\n", count);
+}
+#endif
+
 /*----------------------------------------------------------------------------*/
 /* Public functions          					                              */
 /*----------------------------------------------------------------------------*/
@@ -912,6 +1047,21 @@ int zdb_add_zone( zdb_database *database, ldns_zone *zone )
 	// get rid of the zone structure (no longer needed)
 	ldns_zone_deep_free(zone);
 
+	log_info("Creating empty non-terminal zone nodes...\n");
+	// create empty non-terminals
+	int nonterm = zdb_add_empty_nonterminals(new_zone);
+	if (nonterm < -1) {
+		zdb_delete_list_items(new_zone);
+		ldns_rdf_deep_free(new_zone->zone_name);
+		return -2;
+	}
+
+	nodes += nonterm;
+
+#ifdef ZDB_DEBUG
+	zdb_print_list(new_zone);
+#endif
+
 	log_info("Creating Zone data structure (%d nodes)...\n", nodes);
 	// create the zone data structure
 	new_zone->zone = zds_create(nodes);
@@ -919,7 +1069,7 @@ int zdb_add_zone( zdb_database *database, ldns_zone *zone )
 		// destroy the list and all its contents
 		zdb_delete_list_items(new_zone);
 		ldns_rdf_deep_free(new_zone->zone_name);
-		return -2;
+		return -3;
 	}
 
 	// add created nodes to the zone data structure for lookup
@@ -935,7 +1085,7 @@ int zdb_add_zone( zdb_database *database, ldns_zone *zone )
 		}
 		// and destroy the partially filled zone data structure
 		zds_destroy(&new_zone->zone, NULL);
-		return -3;
+		return -4;
 	}
 
 	log_info("Adjusting zone (%d nodes)...\n", nodes);

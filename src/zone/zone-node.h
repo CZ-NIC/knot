@@ -152,6 +152,8 @@ ldns_rr_list *zn_find_rrset( const zn_node *node, ldns_rr_type type );
 
 ldns_rr_list *zn_all_rrsets( const zn_node *node );
 
+int zn_is_empty( const zn_node *node );
+
 /*!
  * @brief Marks the node as non-authoritative (e.g. carying only glue records).
  */
