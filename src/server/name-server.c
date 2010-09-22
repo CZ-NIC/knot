@@ -539,12 +539,10 @@ void ns_answer_from_node( const zn_node *node, const zdb_zone *zone,
 
 /*----------------------------------------------------------------------------*/
 
-ldns_rr_list *ns_cname_from_dname( const ldns_rr_list *dname_rrset,
+ldns_rr_list *ns_cname_from_dname( const ldns_rr *dname_rr,
 							const ldns_rdf *qname, ldns_rr_list *copied_rrs )
 {
 	debug_ns("Synthetizing CNAME from DNAME...\n");
-	// take only first dname RR
-	ldns_rr *dname_rr = ldns_rr_list_rr(dname_rrset, 0);
 
 	ldns_rr *cname_rr = ldns_rr_new_frm_type(LDNS_RR_TYPE_CNAME);
 	debug_ns("Creating CNAME with owner %s.\n", ldns_rdf2str(qname));
@@ -559,6 +557,7 @@ ldns_rr_list *ns_cname_from_dname( const ldns_rr_list *dname_rrset,
 	ldns_rdf *tmp2 = ldns_dname_clone_from(tmp,
 							ldns_dname_label_count(ldns_rr_owner(dname_rr)));
 	ldns_rdf *cname = ldns_dname_reverse(tmp2);
+
 	ldns_status s = ldns_dname_cat(cname, ldns_rr_rdf(dname_rr, 0));
 	if (s != LDNS_STATUS_OK) {
 		ldns_rdf_deep_free(cname);
@@ -584,6 +583,20 @@ ldns_rr_list *ns_cname_from_dname( const ldns_rr_list *dname_rrset,
 
 /*----------------------------------------------------------------------------*/
 
+int ns_dname_too_long( const ldns_rr *dname_rr, const ldns_rdf *qname )
+{
+	if (ldns_dname_label_count(qname)
+		- ldns_dname_label_count(ldns_rr_owner(dname_rr))
+		+ ldns_dname_label_count(ldns_rr_rdf(dname_rr, 0))
+		> LDNS_MAX_DOMAINLEN) {
+		return 0;
+	} else {
+		return 1;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 void ns_process_dname( ldns_rr_list *dname_rrset, const ldns_rdf *qname,
 					   ldns_pkt *response, ldns_rr_list *copied_rrs )
 {
@@ -593,8 +606,17 @@ void ns_process_dname( ldns_rr_list *dname_rrset, const ldns_rdf *qname,
 	assert(ldns_rr_list_rr_count(dname_rrset) == 1);
 	// put the DNAME RRSet into the answer
 	ns_try_put_rrset(dname_rrset, LDNS_SECTION_ANSWER, 1, response);
+
+	// take only first dname RR
+	ldns_rr *dname_rr = ldns_rr_list_rr(dname_rrset, 0);
+
+	if (ns_dname_too_long(dname_rr, qname) == 0) {
+		ldns_pkt_set_rcode(response, LDNS_RCODE_YXDOMAIN);
+		return;
+	}
+
 	// synthetize CNAME (no way to tell that client supports DNAME)
-	ldns_rr_list *synth_cname = ns_cname_from_dname(dname_rrset, qname,
+	ldns_rr_list *synth_cname = ns_cname_from_dname(dname_rr, qname,
 													copied_rrs);
 	ns_try_put_rrset(synth_cname, LDNS_SECTION_ANSWER, 1, response);
 	ldns_rr_list_free(synth_cname);
