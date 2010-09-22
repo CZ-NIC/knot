@@ -379,6 +379,13 @@ ldns_rr_list *zn_all_rrsets( const zn_node *node )
 
 /*----------------------------------------------------------------------------*/
 
+int zn_is_empty( const zn_node *node )
+{
+	return (skip_empty(node->rrsets));
+}
+
+/*----------------------------------------------------------------------------*/
+
 void zn_set_non_authoritative( zn_node *node )
 {
 	zn_flags_set(&node->flags, FLAGS_NONAUTH);

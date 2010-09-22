@@ -50,3 +50,6 @@ sub4	NS	ns.example.com.
 
 d.example.com.	CNAME	non-existing.example.com.
 e.example.com.	DNAME	bogus25.com.
+
+f.g	A	10.0.0.20
+h.i.j.k	A	10.0.0.21
