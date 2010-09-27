@@ -222,7 +222,7 @@ int zn_add_referrer_node( zn_node *node, const zn_node *referrer )
 
 int zn_has_additional( const zn_node *node )
 {
-	return (zn_has_mx(node) + zn_has_ns(node));
+	return (zn_has_mx(node) + zn_has_ns(node) + zn_has_srv(node));
 }
 
 /*----------------------------------------------------------------------------*/
@@ -484,6 +484,7 @@ int zn_add_ref( zn_node *node, ldns_rdf *name, ldns_rr_type type,
 		ar = zn_create_ar_rrsets_for_cname(ref_node);
 	}
 	if (ar == NULL) {
+		skip_destroy_list(&(node->ref.additional), NULL, zn_dtor_ar_rrsets);
 		return -4;
 	}
 
@@ -494,7 +495,6 @@ int zn_add_ref( zn_node *node, ldns_rdf *name, ldns_rr_type type,
 		zn_destroy_ar_rrsets(&ar);
 	}
 	zn_flags_set(&node->flags, flag);
-	debug_zn("Node %p has SRV flag: %d\n", node, zn_has_srv(node));
 
 	debug_zn("zn_add_ref(%p, %p, %s)\n", node, ref_rrset,
 			 ldns_rr_type2str(type));
@@ -737,6 +737,10 @@ void zn_destroy( zn_node **node )
 	ldns_rdf_deep_free((*node)->owner);
 	if (zn_is_delegation_point(*node)) {
 		ldns_rr_list_free((*node)->ref.glues);
+	}
+	if ((*node)->referrers != NULL) {
+		da_destroy((*node)->referrers);
+		free((*node)->referrers);
 	}
     free(*node);
     *node = NULL;
