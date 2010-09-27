@@ -640,6 +640,7 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 	int cname = 0;
 
 	while (1) {
+		ldns_rdf *qname_old = ldns_rdf_clone(qname);
 		uint labels = ldns_dname_label_count(qname);
 		uint labels_found = labels;
 
@@ -674,8 +675,7 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 			ldns_rr_list *dname_rrset = NULL;
 			if ((dname_rrset = zn_find_rrset(node, LDNS_RR_TYPE_DNAME))
 				!= NULL) {
-				ns_process_dname(dname_rrset, ldns_rr_owner(question), response,
-								 copied_rrs);
+				ns_process_dname(dname_rrset, qname_old, response, copied_rrs);
 				break;
 			} else {
 				// wildcard child?
@@ -705,9 +705,9 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 					break;
 				} else {
 					node = wildcard_node;
-					// renew the qname to be the one from the query
+					// renew the qname to be the old one (not stripped)
 					ldns_rdf_deep_free(qname);
-					qname = ldns_rdf_clone(ldns_rr_owner(question));
+					qname = ldns_rdf_clone(qname_old);
 					debug_ns("Node's owner: %s\n", ldns_rdf2str(node->owner));
 				}
 			}
