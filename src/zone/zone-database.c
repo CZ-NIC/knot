@@ -535,7 +535,7 @@ void zdb_adjust_additional_all( zdb_zone *zone, zn_node *node )
 ldns_rdf *zdb_dname_list_find( ldns_rdf **list, size_t count, ldns_rdf *name )
 {
 	int i = 0;
-	int found;
+	int found = 0;
 	while (i < count && (found = ldns_dname_match_wildcard(list[i], name))
 						!= 1) {
 		++i;

@@ -288,6 +288,7 @@ void ns_put_rrset( ldns_rr_list *rrset, const ldns_rdf *name,
 				ldns_rr_list_push_rr(copied_rrs, rr);
 			}
 			ns_try_put_rrset(rrset_new, section, tc, pkt);
+			ldns_rr_list_free(rrset_new);
 		} else {
 			ns_try_put_rrset(rrset, section, tc, pkt);
 		}
@@ -638,9 +639,10 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 	//const zn_node *node = ns_find_node_in_zone(zone, &qname, &labels_found);
 	const zn_node *node = zdb_find_name_in_zone(zone, qname);
 	int cname = 0;
+	ldns_rdf *qname_old = NULL;
 
 	while (1) {
-		ldns_rdf *qname_old = ldns_rdf_clone(qname);
+		qname_old = ldns_rdf_clone(qname);
 		uint labels = ldns_dname_label_count(qname);
 		uint labels_found = labels;
 
@@ -727,6 +729,7 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 			}
 			cname = 1;
 			if (node == NULL) {
+				ldns_rdf_deep_free(qname_old);
 				continue;	// hm, infinite loop better than goto? :)
 			}
 		}
@@ -738,6 +741,7 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 	}
 
 	ldns_rdf_deep_free(qname);
+	ldns_rdf_deep_free(qname_old);
 	debug_ns("Size of response packet: %u\n", ldns_pkt_size(response));
 }
 

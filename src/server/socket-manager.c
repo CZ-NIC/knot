@@ -334,6 +334,9 @@ void sm_destroy( sm_manager **manager )
     }
     free((*manager)->workers);
 
+	// Destroy master worker
+	sm_worker_deinit(&(*manager)->master);
+
     // Free dispatchers
     dpt_destroy(&(*manager)->master_dpt);
     dpt_destroy(&(*manager)->workers_dpt);
