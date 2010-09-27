@@ -676,6 +676,7 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 				!= NULL) {
 				ns_process_dname(dname_rrset, ldns_rr_owner(question), response,
 								 copied_rrs);
+				break;
 			} else {
 				// wildcard child?
 				debug_ns("Trying to find wildcard child of node %s.\n",
