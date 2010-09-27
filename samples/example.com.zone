@@ -61,3 +61,5 @@ sub5	CNAME	sub3
 *.l.example.com.	CNAME	c.example.com.
 *.m.example.com.	NS	ns.sub2.example.com.
 *.n.example.com.	DNAME	bogus25.com.
+o.example.com.	CNAME	a.e.example.com.
+p.example.com.	CNAME	a.sub.example.com.
