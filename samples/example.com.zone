@@ -58,3 +58,4 @@ h.i.j.k	A	10.0.0.21
 *.j.k	A	10.0.0.22
 
 sub5	CNAME	sub3
+*.l.example.com.	CNAME	c.example.com.

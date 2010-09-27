@@ -670,22 +670,22 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 		}
 
 		if (labels_found < labels) {
-			// check if DNAME is present
+			// DNAME?
 			ldns_rr_list *dname_rrset = NULL;
 			if ((dname_rrset = zn_find_rrset(node, LDNS_RR_TYPE_DNAME))
 				!= NULL) {
 				ns_process_dname(dname_rrset, ldns_rr_owner(question), response,
 								 copied_rrs);
 			} else {
+				// wildcard child?
 				debug_ns("Trying to find wildcard child of node %s.\n",
 						 ldns_rdf2str(qname));
-				// try to find a wildcard child
 				ldns_rdf *wildcard = ldns_dname_new_frm_str("*");
 				if (ldns_dname_cat(wildcard, qname) != LDNS_STATUS_OK) {
 					log_error("Unknown error occured.\n");
 					ldns_pkt_set_rcode(response, LDNS_RCODE_SERVFAIL);
 					ldns_rdf_deep_free(wildcard);
-					break;	// need some return value??
+					break;
 				}
 
 				const zn_node *wildcard_node =
@@ -704,15 +704,22 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 					break;
 				} else {
 					node = wildcard_node;
+					// renew the qname to be the one from the query
+					ldns_rdf_deep_free(qname);
+					qname = ldns_rdf_clone(ldns_rr_owner(question));
 					debug_ns("Node's owner: %s\n", ldns_rdf2str(node->owner));
 				}
 			}
 		}
 
 		if (zn_has_cname(node)) {
+			debug_ns("Node %s has CNAME record, resolving...\n",
+					 ldns_rdf2str(node->owner));
 			ldns_rdf *act_name = qname;
 			ns_follow_cname(&node, &act_name, response, LDNS_SECTION_ANSWER,
 							copied_rrs);
+			debug_ns("Canonical name: %s, node found: %p\n",
+					 ldns_rdf2str(act_name), node);
 			if (act_name != qname) {
 				ldns_rdf_deep_free(qname);
 				qname = act_name;
@@ -721,16 +728,12 @@ void ns_answer( zdb_database *zdb, const ldns_rr *question, ldns_pkt *response,
 			if (node == NULL) {
 				continue;	// hm, infinite loop better than goto? :)
 			}
-		} else {
-			if (ldns_dname_is_wildcard(node->owner)) {
-				ldns_rdf_deep_free(qname);
-				qname = ldns_rdf_clone(ldns_rr_owner(question));
-			}
-			ns_answer_from_node(node, zone, qname,
-						ldns_rr_get_type(question), response, copied_rrs);
-			ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
-			break;
 		}
+
+		ns_answer_from_node(node, zone, qname,
+					ldns_rr_get_type(question), response, copied_rrs);
+		ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
+		break;
 	}
 
 	ldns_rdf_deep_free(qname);
