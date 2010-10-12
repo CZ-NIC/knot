@@ -64,7 +64,7 @@ typedef struct sm_worker {
   */
 typedef struct sm_manager {
     sm_socket* sockets;
-    volatile short is_running; /// \todo Implement notification via Linux eventfd() instead of is_running.
+    volatile short is_running;
     dpt_dispatcher *master_dpt;
     dpt_dispatcher *workers_dpt;
     sm_worker master;

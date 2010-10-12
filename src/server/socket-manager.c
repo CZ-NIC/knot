@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <arpa/inet.h>
+#include <signal.h>
 
 //#define SM_DEBUG
 
@@ -196,6 +197,10 @@ int sm_start( sm_manager* manager )
 void sm_stop( sm_manager *manager )
 {
     manager->is_running = 0;
+    pthread_kill(manager->master_dpt->threads[0], SIGALRM);
+    for(int i = 0; i < manager->workers_dpt->thread_count; ++i) {
+       pthread_kill(manager->workers_dpt->threads[i], SIGALRM);
+    }
 }
 
 int sm_wait( sm_manager* manager )
@@ -245,7 +250,7 @@ int sm_open( sm_manager *manager, unsigned short port, socket_t type )
 
     // TCP needs listen
     if(type == TCP) {
-        res = listen(socket_new->socket, 5); /// \todo Tweak backlog size.
+        res = listen(socket_new->socket, 10); /// \todo Tweak backlog size.
         if (res == -1) {
             close(socket_new->socket);
             free(socket_new);
@@ -373,11 +378,11 @@ int sm_add_event( int epfd, int socket, uint32_t events )
     memset(&ev, 0, sizeof(struct epoll_event));
 
     // All polled events should use non-blocking mode.
-    int old_flag = fcntl(socket, F_GETFL, 0);
-    if (fcntl(socket, F_SETFL, old_flag | O_NONBLOCK) == -1) {
-        log_error("error setting non-blocking mode on the socket.\n");
-        return -1;
-    }
+    //int old_flag = fcntl(socket, F_GETFL, 0);
+    //if (fcntl(socket, F_SETFL, old_flag | O_NONBLOCK) == -1) {
+    //    log_error("error setting non-blocking mode on the socket.\n");
+    //    return -1;
+    //}
 
     // Register to epoll
     ev.data.fd = socket;
