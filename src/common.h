@@ -20,4 +20,7 @@ typedef unsigned int uint;
  */
 #define ERR_ALLOC_FAILED log_error("Allocation failed at %s:%d (%s ver.%x)\n", __FILE__, __LINE__, PROJECT_NAME, PROJECT_VER)
 
+/* Eliminate compiler warning with unused parameters. */
+#define UNUSED(param) (param) = (param)
+
 #endif // COMMON
