@@ -15,8 +15,9 @@ static cute_server* s_server = NULL;
 void interrupt_handle(int s)
 {
    // Invalid input
-   if(s != SIGINT || s_server == NULL)
+   if(s != SIGINT || s_server == NULL) {
       return;
+   }
 
    // Stop server
    if(s_stopping == 0) {
@@ -53,6 +54,7 @@ int main( int argc, char **argv )
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
     sigaction(SIGINT, &sa, NULL);
+    sigaction(SIGALRM, &sa, NULL); // Notification/Interrupt
 
     // Run server
 	if ((res = cute_start(s_server, argv + 1, argc - 1)) != 0) {
