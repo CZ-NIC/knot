@@ -108,19 +108,21 @@ int cute_start( cute_server *server, char **filenames, uint zones )
     if(ret < 0)
         return ret;
 
-    // Server is ready
-    raise(SIGREADY);
-
-    // Wait for dispatchers to finish
-    ret = sm_wait(server->manager[TCP]);
-
-    debug_server("TCP handler finished.\n");
-
-    ret += sm_wait(server->manager[UDP]);
-
-    debug_server("UDP handler finished.\n");
-
     return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int cute_wait(cute_server *server)
+{
+   // Wait for dispatchers to finish
+   int ret = sm_wait(server->manager[TCP]);
+   debug_server("TCP handler finished.\n");
+
+   ret += sm_wait(server->manager[UDP]);
+   debug_server("UDP handler finished.\n");
+
+   return ret;
 }
 
 /*----------------------------------------------------------------------------*/

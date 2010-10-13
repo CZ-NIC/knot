@@ -54,11 +54,15 @@ int main( int argc, char **argv )
     sa.sa_flags = 0;
     sigaction(SIGINT, &sa, NULL);
     sigaction(SIGCLOSE, &sa, NULL); // Interrupt
-    sigaction(SIGREADY, &sa, NULL); // Notification - server is ready
 
     // Run server
-    if ((res = cute_start(s_server, argv + 1, argc - 1)) != 0) {
-        fprintf (stderr, "Problem starting the server, exiting..\n");
+    if ((res = cute_start(s_server, argv + 1, argc - 1)) == 0) {
+       if((res = cute_wait(s_server)) != 0) {
+          log_error("There was an error while waiting for server to finish.");
+       }
+    }
+    else {
+       log_error("There was an error while starting the server, exiting...\n");
     }
 
     // Stop server and close log

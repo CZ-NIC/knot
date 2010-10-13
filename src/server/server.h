@@ -58,6 +58,17 @@ cute_server *cute_create();
 int cute_start( cute_server *server, char **filenames, uint zones );
 
 /*!
+ * @brief Waits for the server to finish.
+ *
+ * @param server Server structure to be used for operation.
+ *
+ * @retval 0 On success.
+ * @retval -1 If an error occured.
+ *
+ */
+int cute_wait(cute_server *server);
+
+/*!
  * @brief Requests server to stop.
  */
 void cute_stop( cute_server *server );
