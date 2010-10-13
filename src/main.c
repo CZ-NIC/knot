@@ -57,7 +57,7 @@ int main( int argc, char **argv )
     sigaction(SIGREADY, &sa, NULL); // Notification - server is ready
 
     // Run server
-	if ((res = cute_start(s_server, argv + 1, argc - 1)) != 0) {
+    if ((res = cute_start(s_server, argv + 1, argc - 1)) != 0) {
         fprintf (stderr, "Problem starting the server, exiting..\n");
     }
 

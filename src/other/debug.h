@@ -11,7 +11,7 @@
 //#define ZP_DEBUG
 //#define NS_DEBUG
 //#define ZDB_DEBUG
-//#define ZDB_DEBU	G_INSERT_CHECK
+//#define ZDB_DEBUG_INSERT_CHECK
 //#define ZN_DEBUG
 //#define ZP_DEBUG_PARSE
 //#define CUTE_DEBUG
