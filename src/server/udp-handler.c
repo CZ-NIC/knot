@@ -30,12 +30,15 @@ static inline void udp_handler(sm_event *ev)
 
         // Error and interrupt handling
         //fprintf(stderr, "recvfrom(): thread %p ret %d errno %s.\n", (void*)pthread_self(), n, strerror(errno));
-        if(n <= 0 || !ev->manager->is_running) {
+        if(n <= 0) {
            if(errno != EINTR && errno != 0) {
               log_error("udp: reading data from the socket failed: %d - %s\n", errno, strerror(errno));
            }
 
-           return;
+           if(!ev->manager->is_running)
+              return;
+           else
+              continue;
         }
 
         debug_sm("udp: received %d bytes.\n", n);
