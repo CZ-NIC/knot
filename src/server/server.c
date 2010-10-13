@@ -108,6 +108,9 @@ int cute_start( cute_server *server, char **filenames, uint zones )
     if(ret < 0)
         return ret;
 
+    // Server is ready
+    raise(SIGREADY);
+
     // Wait for dispatchers to finish
     ret = sm_wait(server->manager[TCP]);
 

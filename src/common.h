@@ -1,5 +1,6 @@
 #ifndef COMMON
 #define COMMON
+#include <signal.h>
 
 /* Common types and constants.
  */
@@ -22,5 +23,9 @@ typedef unsigned int uint;
 
 /* Eliminate compiler warning with unused parameters. */
 #define UNUSED(param) (param) = (param)
+
+/* Signal definitions. */
+#define SIGCLOSE SIGALRM
+#define SIGREADY SIGUSR1
 
 #endif // COMMON

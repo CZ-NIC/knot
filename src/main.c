@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <signal.h>
 
 #include "common.h"
 #include "server.h"
@@ -14,7 +13,7 @@ static cute_server* s_server = NULL;
 // SIGINT signal handler
 void interrupt_handle(int s)
 {
-   // Invalid input
+   // Omit other signals
    if(s != SIGINT || s_server == NULL) {
       return;
    }
@@ -54,7 +53,8 @@ int main( int argc, char **argv )
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
     sigaction(SIGINT, &sa, NULL);
-    sigaction(SIGALRM, &sa, NULL); // Notification/Interrupt
+    sigaction(SIGCLOSE, &sa, NULL); // Interrupt
+    sigaction(SIGREADY, &sa, NULL); // Notification - server is ready
 
     // Run server
 	if ((res = cute_start(s_server, argv + 1, argc - 1)) != 0) {
