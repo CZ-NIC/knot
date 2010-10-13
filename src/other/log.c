@@ -5,7 +5,7 @@
 
 /// Global log-level.
 static int _LOG_OPEN = 0;
-static int _LOG_MASK = ~0;
+static int _LOG_MASK = 0;
 
 int log_open(int print_mask, int log_mask)
 {
@@ -19,9 +19,14 @@ int log_open(int print_mask, int log_mask)
 int log_close()
 {
     _LOG_OPEN = 0;
-    _LOG_MASK = ~0;
+    _LOG_MASK = 0;
     closelog();
     return 0;
+}
+
+int log_isopen()
+{
+   return _LOG_OPEN;
 }
 
 int print_msg(int level, const char* msg, ...)

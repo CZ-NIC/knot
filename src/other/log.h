@@ -10,13 +10,30 @@
 #include <syslog.h>
 
 /* Logging facility setup. */
+
+/*! Open log and stdio output for given masks.
+ *  For bitmasks, refer to syslog.h
+ *  @see syslog.h
+ * \return always 0
+ */
 int log_open(int print_mask, int log_mask);
+
+/*! Close log and stdio output.
+ * \return always 0
+ */
 int log_close();
+
+/*! Return positive number if open.
+ * \return 1 if open (boolean true)
+ * \return 0 if closed (boolean false)
+ */
+int log_isopen();
 
 /* Logging functions. */
 int print_msg(int level, const char* msg, ...) __attribute__((format (printf, 2, 3)));
 #define log_msg(level, msg...) \
-    syslog((level), msg); \
+    if(log_isopen()) \
+       syslog((level), msg); \
     print_msg((level), msg)
 
 /* Convenient logging. */
