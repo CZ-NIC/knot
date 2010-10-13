@@ -2,8 +2,6 @@
 
 #include "common.h"
 #include "server.h"
-#include "cuckoo-test.h"
-#include "tests.h"
 
 /*----------------------------------------------------------------------------*/
 
