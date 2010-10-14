@@ -168,6 +168,10 @@ diag (const char *fmt, ...) {
 
       write(fileno(stderr), begin, end - begin + 1);
       begin = end + 1;
+      if(*begin == '\0') {
+         break;
+      }
+
       end = strchr(begin + 1, '\n');
    }
 
@@ -206,6 +210,10 @@ note (const char *fmt, ...) {
 
       write(fileno(stdout), begin, end - begin + 1);
       begin = end + 1;
+      if(*begin == '\0') {
+         break;
+      }
+
       end = strchr(begin + 1, '\n');
    }
 
