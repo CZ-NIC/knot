@@ -26,7 +26,7 @@ int main(int argc, char * argv[])
    // Run tests
    id = 0;
    while(tests[id] != NULL) {
-      note("Testing unit: %s ...", tests[id]->name);
+      note("Testing unit: %s ...\n", tests[id]->name);
       tests[id]->run(argc, argv);
       ++id;
    }
