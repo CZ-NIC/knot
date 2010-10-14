@@ -7,14 +7,29 @@
 // Run all loaded units
 int main(int argc, char * argv[])
 {
+   // Build test set
+   unit_api* tests[] = {
+      &server_tests_api, //! Server unit
+      NULL
+   };
+
    // Plan number of tests
+   int id = 0;
    int test_count = 0;
-   test_count += server_tests_api.count(argc, argv);
+   while(tests[id] != NULL) {
+      test_count += tests[id]->count(argc, argv);
+      ++id;
+   }
+
    plan(test_count);
 
    // Run tests
-   note("Testing unit: %s ...", server_tests_api.name);
-   server_tests_api.run(argc, argv);
+   id = 0;
+   while(tests[id] != NULL) {
+      note("Testing unit: %s ...", tests[id]->name);
+      tests[id]->run(argc, argv);
+      ++id;
+   }
 
    // Evaluate
    return exit_status();

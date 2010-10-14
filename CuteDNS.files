@@ -29,10 +29,16 @@ src/zone/zone-node.c
 src/zone/zone-node.h
 src/zone/zone-parser.c
 src/zone/zone-parser.h
+src/tests/libtap/tap.c
+src/tests/libtap/tap.h
+src/tests/main.c
 src/tests/tests.c
 src/tests/tests.h
 src/tests/cuckoo-test.c
 src/tests/cuckoo-test.h
+src/tests/server_tests.c
+src/tests/tap_unit.h
+src/tests/template_tests.c
 src/other/log.h
 src/other/log.c
 src/other/debug.h
