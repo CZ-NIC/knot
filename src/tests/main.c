@@ -11,9 +11,9 @@ int main(int argc, char * argv[])
 {
    // Build test set
    unit_api* tests[] = {
-      &server_tests_api,   //! Server unit
       &skiplist_tests_api, //! Skip list unit
       &da_tests_api,       //! Dynamic array unit
+      &server_tests_api,   //! Server unit
       NULL
    };
 
