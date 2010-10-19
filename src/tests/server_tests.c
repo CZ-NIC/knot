@@ -1,8 +1,8 @@
 #include "server/server.h"
 #include "tap_unit.h"
 
-int server_tests_count(int argc, char * argv[]);
-int server_tests_run(int argc, char * argv[]);
+static int server_tests_count(int argc, char * argv[]);
+static int server_tests_run(int argc, char * argv[]);
 
 /*
  * Unit API.
@@ -45,7 +45,7 @@ int test_server_destroy(cute_server* s)
 }
 
 /*! API: return number of tests. */
-int server_tests_count(int argc, char * argv[])
+static int server_tests_count(int argc, char * argv[])
 {
    return SERVER_TEST_COUNT + 1;
 }
@@ -56,7 +56,7 @@ static void interrupt_handle(int s)
 }
 
 /*! API: run tests. */
-int server_tests_run(int argc, char * argv[])
+static int server_tests_run(int argc, char * argv[])
 {
    cute_server* server = 0;
    int ret = 0;
