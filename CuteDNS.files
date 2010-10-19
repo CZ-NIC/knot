@@ -42,6 +42,8 @@ src/other/skip-list.h
 src/other/skip-list.c
 tests/querytcp.c
 src/server/udp-handler.h
+src/server/udp-handler-epoll.h
 src/server/tcp-handler.h
 src/server/udp-handler.c
+src/server/udp-handler-epoll.c
 src/server/tcp-handler.c
