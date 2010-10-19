@@ -183,6 +183,7 @@ diag (const char *fmt, ...) {
 
 int
 note (const char *fmt, ...) {
+
    va_list args;
    va_start(args, fmt);
    int len = vsnprintf(NULL, 0, fmt, args);
@@ -201,7 +202,7 @@ note (const char *fmt, ...) {
    char* begin = buf;
    char* end = strchr(begin, '\n');
    for(;;) {
-      fprintf(stdout, "# ");
+      fprintf(stderr, "# ");
       if(end == NULL) {
          end = buf + len;
          write(fileno(stdout), begin, end - begin + 1);

@@ -4,6 +4,7 @@
 // Units to test
 #include "server_tests.c"
 #include "skiplist_tests.c"
+#include "da_tests.c"
 
 // Run all loaded units
 int main(int argc, char * argv[])
@@ -12,14 +13,16 @@ int main(int argc, char * argv[])
    unit_api* tests[] = {
       &server_tests_api,   //! Server unit
       &skiplist_tests_api, //! Skip list unit
+      &da_tests_api,       //! Dynamic array unit
       NULL
    };
 
    // Plan number of tests
    int id = 0;
    int test_count = 0;
+   note("Units:");
    while(tests[id] != NULL) {
-      fprintf(stderr, "#test %s : %d tests\n", tests[id]->name, tests[id]->count(argc, argv));
+      note("- %s : %d tests", tests[id]->name, tests[id]->count(argc, argv));
       test_count += tests[id]->count(argc, argv);
       ++id;
    }
