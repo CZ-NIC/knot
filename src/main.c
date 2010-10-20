@@ -40,21 +40,20 @@ int main( int argc, char **argv )
 
     int res = 0;
 
-    // Start server
-
     // Create server instance
     s_server = cute_create();
 
-    // Register service and signal handler
-    struct sigaction sa;
-    sa.sa_handler = interrupt_handle;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    sigaction(SIGINT, &sa, NULL);
-    sigaction(SIGCLOSE, &sa, NULL); // Interrupt
-
     // Run server
     if ((res = cute_start(s_server, argv + 1, argc - 1)) == 0) {
+
+       // Register service and signal handler
+       struct sigaction sa;
+       sa.sa_handler = interrupt_handle;
+       sigemptyset(&sa.sa_mask);
+       sa.sa_flags = 0;
+       sigaction(SIGINT, &sa, NULL);
+       sigaction(SIGCLOSE, &sa, NULL); // Interrupt
+
        if((res = cute_wait(s_server)) != 0) {
           log_error("There was an error while waiting for server to finish.");
        }
