@@ -32,12 +32,13 @@ src/zone/zone-parser.h
 src/tests/libtap/tap.c
 src/tests/libtap/tap.h
 src/tests/main.c
-src/tests/cuckoo-test.c
-src/tests/cuckoo-test.h
 src/tests/server_tests.c
 src/tests/skiplist_tests.c
 src/tests/da_tests.c
 src/tests/tap_unit.h
+src/tests/zonedb_tests.c
+src/tests/dnslib_tests.c
+src/tests/cuckoo_tests.c
 src/tests/template_tests.c
 src/other/log.h
 src/other/log.c
