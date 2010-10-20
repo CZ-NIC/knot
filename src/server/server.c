@@ -8,11 +8,6 @@
 
 /*----------------------------------------------------------------------------*/
 
-static const unsigned short DEFAULT_PORT = 53531;
-static const int DEFAULT_THR_COUNT = 3;
-
-/*----------------------------------------------------------------------------*/
-
 cute_server *cute_create()
 {
     debug_server("Creating Server structure..\n");
@@ -43,12 +38,16 @@ cute_server *cute_create()
     debug_server("Done\n\n");
     debug_server("Creating Socket Manager structure..\n");
 
+    // Estimate number of threads/manager
+    long thr_count = sm_estimate_threads();
+    debug_server("Estimated number of threads per manager: %ld\n", thr_count);
+
     // Create socket handlers
-    server->manager[UDP] = sm_create(server->nameserver, &udp_master, &udp_worker, DEFAULT_THR_COUNT);
-    server->manager[TCP] = sm_create(server->nameserver, &tcp_master, &tcp_worker, 2*DEFAULT_THR_COUNT);
+    server->manager[UDP] = sm_create(server->nameserver, &udp_master, &udp_worker, thr_count);
+    server->manager[TCP] = sm_create(server->nameserver, &tcp_master, &tcp_worker, thr_count);
 
     // Check socket handlers
-    for(int i = 0; i < 2; i++) {
+    for(int i = 0; i < SERVER_MGR_COUNT; i++) {
         if (server->manager[i] == NULL ) {
 
             if(i == 1) {
@@ -130,7 +129,7 @@ int cute_wait(cute_server *server)
 void cute_stop( cute_server *server )
 {
     // Notify servers to stop
-    for(int i = 0; i < 2; i++) {
+    for(int i = 0; i < SERVER_MGR_COUNT; i++) {
         sm_stop(server->manager[i]);
     }
 }

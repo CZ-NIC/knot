@@ -354,6 +354,17 @@ void sm_destroy( sm_manager **manager )
     *manager = NULL;
 }
 
+long sm_estimate_threads()
+{
+#ifdef _SC_NPROCESSORS_ONLN
+   long ret = sysconf(_SC_NPROCESSORS_ONLN);
+   if(ret >= 1)
+      return ret + 1;
+#endif
+
+   return DEFAULT_THR_COUNT;
+}
+
 /*----------------------------------------------------------------------------*/
 
 int sm_remove_event( int epfd, int socket )
