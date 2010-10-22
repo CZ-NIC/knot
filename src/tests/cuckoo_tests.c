@@ -1,5 +1,7 @@
 #include "tap_unit.h"
 
+#define CT_TEST_REHASH
+
 #include "cuckoo-hash-table.h"
 #include "common.h"
 #include <time.h>
@@ -40,9 +42,9 @@ unit_api cuckoo_tests_api = {
 /*
  * Unit implementation
  */
-static const int CUCKOO_TESTS_COUNT = 7;
-static const int CUCKOO_MAX_ITEMS = 10;
-static const int CUCKOO_TEST_MAX_KEY_SIZE = 10;
+static const int CUCKOO_TESTS_COUNT = 9;
+static const int CUCKOO_MAX_ITEMS = 100000;
+static const int CUCKOO_TEST_MAX_KEY_SIZE = 100;
 
 typedef struct test_cuckoo_items {
 	char **keys;
@@ -176,6 +178,13 @@ int test_cuckoo_modify( ck_hash_table *table, test_cuckoo_items *items )
 
 /*----------------------------------------------------------------------------*/
 
+int test_cuckoo_rehash( ck_hash_table *table )
+{
+	return (ck_rehash(table) == 0);
+}
+
+/*----------------------------------------------------------------------------*/
+
 void create_random_items( test_cuckoo_items *items, int item_count )
 {
 	assert(items != NULL);
@@ -242,11 +251,17 @@ static int cuckoo_tests_run(int argc, char *argv[])
 	// Test 5: lookup 2
 	ok(test_cuckoo_lookup(table, items), "cuckoo hashing: lookup after delete");
 
-	// Test 6: modify	TODO
+	// Test 6: modify
 	ok(test_cuckoo_modify(table, items), "cuckoo hashing: modify");
 
-	// Test 7: lookup 3	TODO
+	// Test 7: lookup 3
 	ok(test_cuckoo_lookup(table, items), "cuckoo hashing: lookup after modify");
+
+	// Test 8: rehash
+	ok(test_cuckoo_rehash(table), "cuckoo hashing: rehash");
+
+	// Test 9: lookup 4
+	ok(test_cuckoo_lookup(table, items), "cuckoo hashing: lookup after rehash");
 
 	// Cleanup
 	ck_destroy_table(&table, NULL, 0);
