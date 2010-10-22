@@ -577,8 +577,11 @@ int ck_rehash( ck_hash_table *table )
 
 	do {
 
+	log_info("Rehash!\n");
+
 	if (da_get_count(&table->stash) > STASH_SIZE) {
-		log_info("STASH RESIZED!!!\n");
+		log_info("STASH RESIZED!!! (new stash size: %d)\n", da_get_count(
+				&table->stash));
 	}
 
 	// rehash items from buffer, starting from the last old item
@@ -620,12 +623,15 @@ int ck_rehash( ck_hash_table *table )
 			// loop occured
 			debug_cuckoo_hash("Hashing entered infinite loop.\n");
 
-			debug_cuckoo_rehash("Item with key %.*s inserted into the buffer"
-				".\n", STASH_ITEMS(&table->stash)[stash_i]->key_length,
-				STASH_ITEMS(&table->stash)[stash_i]->key);
+			debug_cuckoo_rehash("Item with key %.*s inserted into the stash"
+				" on position %d.\n",
+				STASH_ITEMS(&table->stash)[stash_i]->key_length,
+				STASH_ITEMS(&table->stash)[stash_i]->key,
+				da_get_count(&table->stash));
 
 			// hashing unsuccessful, the item was inserted into the stash
 			da_occupy(&table->stash, 1);
+			assert(STASH_ITEMS(&table->stash)[stash_i] != NULL);
 
 			// if only one place left, resize the stash		TODO: Why???
 			if (da_reserve(&table->stash, 2) < 0) {
@@ -651,6 +657,7 @@ int ck_rehash( ck_hash_table *table )
 		assert(STASH_ITEMS(&table->stash)[i] != NULL);
 		++i;
 	}
+	log_info("OK\n");
 	assert(da_try_reserve(&table->stash, 1) == 0);
 	assert(STASH_ITEMS(&table->stash)[da_get_count(&table->stash)] == NULL);
 
@@ -700,11 +707,14 @@ int ck_rehash( ck_hash_table *table )
 				// loop occured
 				debug_cuckoo_hash("Hashing entered infinite loop.\n");
 
-				debug_cuckoo_rehash("Item with key %.*s inserted into the buffer"
-					".\n", STASH_ITEMS(&table->stash)[
+				debug_cuckoo_rehash("Item with key %.*s inserted into the stash"
+					" on position %d.\n", STASH_ITEMS(&table->stash)[
 							da_get_count(&table->stash)]->key_length,
-					STASH_ITEMS(&table->stash)[da_get_count(&table->stash)]->key);
+					STASH_ITEMS(&table->stash)[da_get_count(&table->stash)]->key,
+					da_get_count(&table->stash));
 
+				assert(STASH_ITEMS(&table->stash)[
+						da_get_count(&table->stash)] != NULL);
 				// loop occured, the item is already at its new place in the
 				// buffer, so just increment the index
 				da_occupy(&table->stash, 1);
@@ -755,6 +765,8 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 {
 	// lock mutex to avoid write conflicts
 	pthread_mutex_lock(&table->mtx_table);
+
+	assert(value != NULL);
 
 	debug_cuckoo_hash("Inserting item with key: %.*s.\n", length, key);
 	debug_cuckoo_hash_hex(key, length);
@@ -885,6 +897,9 @@ int ck_update_item( const ck_hash_table *table, const char *key, size_t length,
 					void *new_value, void (*dtor_value)( void *value ) )
 {
 	rcu_read_lock();	// is needed?
+
+	assert(new_value != NULL);
+
 	ck_hash_table_item **item = ck_find_item_nc(table, key, length);
 
 	if (item == NULL || (*item) == NULL) {

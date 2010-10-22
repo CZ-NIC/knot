@@ -43,8 +43,8 @@ unit_api cuckoo_tests_api = {
  * Unit implementation
  */
 static const int CUCKOO_TESTS_COUNT = 9;
-static const int CUCKOO_MAX_ITEMS = 100000;
-static const int CUCKOO_TEST_MAX_KEY_SIZE = 100;
+static const int CUCKOO_MAX_ITEMS = 1000;
+static const int CUCKOO_TEST_MAX_KEY_SIZE = 10;
 
 typedef struct test_cuckoo_items {
 	char **keys;
@@ -56,14 +56,14 @@ typedef struct test_cuckoo_items {
 
 /*----------------------------------------------------------------------------*/
 
-char rand_char()
+static inline char rand_char()
 {
 	return (char)((rand() % 26) + 97);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void rand_str( char *str, int size )
+static inline void rand_str( char *str, int size )
 {
 	for (int i = 0; i < size; ++i) {
 		str[i] = rand_char();
@@ -79,7 +79,7 @@ static int cuckoo_tests_count(int argc, char *argv[])
 
 /*----------------------------------------------------------------------------*/
 
-int test_cuckoo_create( ck_hash_table **table, uint items )
+static int test_cuckoo_create( ck_hash_table **table, uint items )
 {
 	*table = ck_create_table(items);
 	return (*table != NULL);
@@ -87,7 +87,7 @@ int test_cuckoo_create( ck_hash_table **table, uint items )
 
 /*----------------------------------------------------------------------------*/
 
-int test_cuckoo_insert( ck_hash_table *table, test_cuckoo_items *items )
+static int test_cuckoo_insert( ck_hash_table *table, test_cuckoo_items *items )
 {
 	assert(table != NULL);
 	int errors = 0;
@@ -105,7 +105,7 @@ int test_cuckoo_insert( ck_hash_table *table, test_cuckoo_items *items )
 
 /*----------------------------------------------------------------------------*/
 
-int test_cuckoo_lookup( ck_hash_table *table, test_cuckoo_items *items )
+static int test_cuckoo_lookup( ck_hash_table *table, test_cuckoo_items *items )
 {
 	int errors = 0;
 	for (int i = 0; i < items->count; ++i) {
@@ -128,7 +128,7 @@ int test_cuckoo_lookup( ck_hash_table *table, test_cuckoo_items *items )
 
 /*----------------------------------------------------------------------------*/
 
-int test_cuckoo_delete( ck_hash_table *table, test_cuckoo_items *items )
+static int test_cuckoo_delete( ck_hash_table *table, test_cuckoo_items *items )
 {
 	int errors = 0;
 	// delete approx. 1/10 items from the table
@@ -150,7 +150,7 @@ int test_cuckoo_delete( ck_hash_table *table, test_cuckoo_items *items )
 
 /*----------------------------------------------------------------------------*/
 
-int test_cuckoo_modify( ck_hash_table *table, test_cuckoo_items *items )
+static int test_cuckoo_modify( ck_hash_table *table, test_cuckoo_items *items )
 {
 	int errors = 0;
 	// modify approx. 1/10 items from the table
@@ -161,7 +161,7 @@ int test_cuckoo_modify( ck_hash_table *table, test_cuckoo_items *items )
 	for (int i = 0; i < count; ++i) {
 		int item = rand() % items->count;
 		int old_value = items->values[item];
-		items->values[item] = rand();
+		items->values[item] = rand() + 1;
 //		printf("modifying item with index %d, key: %.*s, old value: %d, new"
 //			   " value: %d\n", item, items->key_sizes[i], items->keys[i],
 //			   old_value, items->values[item]);
@@ -178,14 +178,14 @@ int test_cuckoo_modify( ck_hash_table *table, test_cuckoo_items *items )
 
 /*----------------------------------------------------------------------------*/
 
-int test_cuckoo_rehash( ck_hash_table *table )
+static int test_cuckoo_rehash( ck_hash_table *table )
 {
 	return (ck_rehash(table) == 0);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void create_random_items( test_cuckoo_items *items, int item_count )
+static void create_random_items( test_cuckoo_items *items, int item_count )
 {
 	assert(items != NULL);
 
@@ -196,7 +196,7 @@ void create_random_items( test_cuckoo_items *items, int item_count )
 	items->keys = (char **)malloc(item_count * sizeof(char *));
 
 	for (int i = 0; i < item_count; ++i) {
-		items->values[i] = rand();
+		items->values[i] = rand() + 1;
 		items->key_sizes[i] = rand() % CUCKOO_TEST_MAX_KEY_SIZE + 1;
 		items->keys[i] = malloc(items->key_sizes[i] * sizeof(char));
 		rand_str(items->keys[i], items->key_sizes[i]);
@@ -209,7 +209,7 @@ void create_random_items( test_cuckoo_items *items, int item_count )
 
 /*----------------------------------------------------------------------------*/
 
-void delete_items( test_cuckoo_items *items )
+static void delete_items( test_cuckoo_items *items )
 {
 	free(items->deleted);
 	free(items->key_sizes);
