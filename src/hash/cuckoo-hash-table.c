@@ -870,7 +870,7 @@ const ck_hash_table_item *ck_find_item( const ck_hash_table *table,
 /*----------------------------------------------------------------------------*/
 
 int ck_update_item( const ck_hash_table *table, const char *key, size_t length,
-					void *new_value )
+					void *new_value, void (*dtor_value)( void *value ) )
 {
 	rcu_read_lock();	// is needed?
 	ck_hash_table_item **item = ck_find_item_nc(table, key, length);
@@ -883,7 +883,9 @@ int ck_update_item( const ck_hash_table *table, const char *key, size_t length,
 	rcu_read_unlock();
 
 	synchronize_rcu();
-	free(old);
+	if (dtor_value) {
+		dtor_value(old);
+	}
 
 	return 0;
 }

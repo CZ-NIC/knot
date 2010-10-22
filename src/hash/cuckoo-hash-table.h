@@ -207,6 +207,9 @@ const ck_hash_table_item *ck_find_item(
  *            octets.
  * @param length Length of the key in bytes (octets).
  * @param new_value New value for the item with key @a key.
+ * @param dtor_value Destructor function for the values that are be stored in
+ *                   the hash table. Set to NULL if you do not want the values
+ *                   to be deleted.
  *
  * The update process is synchronized using RCU mechanism, so the old item's
  * value will not be deleted while some thread is using it.
@@ -215,7 +218,7 @@ const ck_hash_table_item *ck_find_item(
  * @retval -1 If the item was not found in the table. No changes are made.
  */
 int ck_update_item( const ck_hash_table *table, const char *key, size_t length,
-					void *new_value );
+					void *new_value, void (*dtor_value)( void *value ) );
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -225,9 +228,9 @@ int ck_update_item( const ck_hash_table *table, const char *key, size_t length,
  * @param key Key of the item to be removed. It can be an arbitrary string of
  *            octets.
  * @param length Length of the key in bytes (octets).
- * @param dtor_item Destructor function for the values that are be stored in
- *                  the hash table. Set to NULL if you do not want the values
- *                  to be deleted.
+ * @param dtor_value Destructor function for the values that are be stored in
+ *                   the hash table. Set to NULL if you do not want the values
+ *                   to be deleted.
  * @param delete_key Set to 0 if you do not want the function to delete the
  *                   key of the item (e.g. when used elsewhere). Set to any
  *                   other value otherwise.
