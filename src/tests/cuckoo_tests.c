@@ -40,15 +40,33 @@ unit_api cuckoo_tests_api = {
 /*
  * Unit implementation
  */
-static const int CUCKOO_TESTS_COUNT = 3;
+static const int CUCKOO_TESTS_COUNT = 7;
 static const int CUCKOO_MAX_ITEMS = 10;
+static const int CUCKOO_TEST_MAX_KEY_SIZE = 10;
 
 typedef struct test_cuckoo_items {
 	char **keys;
+	int *key_sizes;
 	int *values;
 	int *deleted;
 	int count;
 } test_cuckoo_items;
+
+/*----------------------------------------------------------------------------*/
+
+char rand_char()
+{
+	return (char)((rand() % 26) + 97);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void rand_str( char *str, int size )
+{
+	for (int i = 0; i < size; ++i) {
+		str[i] = rand_char();
+	}
+}
 
 /*----------------------------------------------------------------------------*/
 
@@ -72,7 +90,10 @@ int test_cuckoo_insert( ck_hash_table *table, test_cuckoo_items *items )
 	assert(table != NULL);
 	int errors = 0;
 	for (int i = 0; i < items->count; ++i) {
-		if (ck_insert_item(table, items->keys[i], strlen(items->keys[i]),
+//		printf("inserting item with key: %.*s (size %d), value: %d\n",
+//			   items->key_sizes[i], items->keys[i], items->key_sizes[i],
+//			   items->values[i]);
+		if (ck_insert_item(table, items->keys[i], items->key_sizes[i],
 						   (void *)items->values[i]) != 0) {
 			++errors;
 		}
@@ -86,18 +107,17 @@ int test_cuckoo_lookup( ck_hash_table *table, test_cuckoo_items *items )
 {
 	int errors = 0;
 	for (int i = 0; i < items->count; ++i) {
-		if (items->deleted[i] == 0) {
-			const ck_hash_table_item *found = ck_find_item(table, items->keys[i],
-													 strlen(items->keys[i]));
-			if (!found) {
+		const ck_hash_table_item *found = ck_find_item(table, items->keys[i],
+												 items->key_sizes[i]);
+		if (!found) {
+			if (items->deleted[i] == 0) {
 				++errors;
-			} else {
-				if (found->key != items->keys[i]) {
-					++errors;
-				}
-				if ((int)(found->value) != items->values[i]) {
-					++errors;
-				}
+			}
+		} else {
+			if (items->deleted[i] != 0
+				|| found->key != items->keys[i]
+				|| (int)(found->value) != items->values[i]) {
+				++errors;
 			}
 		}
 	}
@@ -108,33 +128,50 @@ int test_cuckoo_lookup( ck_hash_table *table, test_cuckoo_items *items )
 
 int test_cuckoo_delete( ck_hash_table *table, test_cuckoo_items *items )
 {
-	return 1;
-}
+	int errors = 0;
+	// delete approx. 1/10 items from the table
+	int count = rand() % (CUCKOO_MAX_ITEMS / 10) + 1;
 
-/*----------------------------------------------------------------------------*/
-
-int test_cuckoo_modify( ck_hash_table *table,
-						test_cuckoo_items *modified_items )
-{
-	return 1;
-}
-
-/*----------------------------------------------------------------------------*/
-
-char rand_char()
-{
-	return (char)((rand() % 78) + 30);
-}
-
-/*----------------------------------------------------------------------------*/
-
-void rand_str( char **str, int size )
-{
-	*str = malloc(size * sizeof(char));
-	for (int i = 0; i < size - 1; ++i) {
-		(*str)[i] = rand_char();
+	for (int i = 0; i < count; ++i) {
+		int item = rand() % items->count;
+		if (items->deleted[item] == 0
+			&& ck_remove_item(table, items->keys[item], items->key_sizes[item],
+							  NULL, 0) != 0) {
+			++errors;
+		} else {
+			items->deleted[item] = 1;
+		}
 	}
-	(*str)[size - 1] = '\0';
+
+	return errors == 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int test_cuckoo_modify( ck_hash_table *table, test_cuckoo_items *items )
+{
+	int errors = 0;
+	// modify approx. 1/10 items from the table
+	int count = rand() % (CUCKOO_MAX_ITEMS / 10) + 1;
+
+	//printf("Modyfing %d items...\n", count);
+
+	for (int i = 0; i < count; ++i) {
+		int item = rand() % items->count;
+		int old_value = items->values[item];
+		items->values[item] = rand();
+//		printf("modifying item with index %d, key: %.*s, old value: %d, new"
+//			   " value: %d\n", item, items->key_sizes[i], items->keys[i],
+//			   old_value, items->values[item]);
+		if (ck_update_item(table, items->keys[item], items->key_sizes[item],
+						   (void *)items->values[item], NULL) != 0
+			&& items->deleted[item] == 1) {
+			++errors;
+			items->values[item] = old_value;
+		}
+	}
+
+	return 1;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -145,14 +182,33 @@ void create_random_items( test_cuckoo_items *items, int item_count )
 
 	items->count = item_count;
 	items->values = (int *)malloc(item_count * sizeof(int));
+	items->key_sizes = (int *)malloc(item_count * sizeof(int));
 	items->deleted = (int *)malloc(item_count * sizeof(int));
 	items->keys = (char **)malloc(item_count * sizeof(char *));
 
 	for (int i = 0; i < item_count; ++i) {
 		items->values[i] = rand();
-		rand_str(&items->keys[i], rand() % 10 + 1);
+		items->key_sizes[i] = rand() % CUCKOO_TEST_MAX_KEY_SIZE + 1;
+		items->keys[i] = malloc(items->key_sizes[i] * sizeof(char));
+		rand_str(items->keys[i], items->key_sizes[i]);
 		items->deleted[i] = 0;
+//		printf("created item with key: %.*s (size %d), value: %d\n",
+//			   items->key_sizes[i], items->keys[i], items->key_sizes[i],
+//			   items->values[i]);
 	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+void delete_items( test_cuckoo_items *items )
+{
+	free(items->deleted);
+	free(items->key_sizes);
+	free(items->values);
+	for (int i = 0; i < items->count; ++i) {
+		free(items->keys[i]);
+	}
+	free(items->keys);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -180,16 +236,21 @@ static int cuckoo_tests_run(int argc, char *argv[])
 	// Test 3: lookup
 	ok(test_cuckoo_lookup(table, items), "cuckoo hashing: lookup");
 
-	// Test 4: delete	TODO
+	// Test 4: delete
+	ok(test_cuckoo_delete(table, items), "cuckoo hashing: delete");
 
-	// Test 5: lookup 2	TODO
+	// Test 5: lookup 2
+	ok(test_cuckoo_lookup(table, items), "cuckoo hashing: lookup after delete");
 
 	// Test 6: modify	TODO
+	ok(test_cuckoo_modify(table, items), "cuckoo hashing: modify");
 
 	// Test 7: lookup 3	TODO
+	ok(test_cuckoo_lookup(table, items), "cuckoo hashing: lookup after modify");
 
 	// Cleanup
-	ck_destroy_table(&table, NULL, 1);
+	ck_destroy_table(&table, NULL, 0);
+	delete_items(items);
 	free(items);
 
 	return 0;
@@ -310,7 +371,7 @@ static int cuckoo_tests_run(int argc, char *argv[])
 
 //	// get a reference to the item, protect by RCU
 //	printf("[Read] Acquiring reference to the item...\n");
-//	printf("[Read] Key: %*s, key size: %u\n", dname_size, test_dname,
+//	printf("[Read] Key: %.*s, key size: %u\n", dname_size, test_dname,
 //			dname_size);
 //	rcu_read_lock();
 //	const ck_hash_table_item *item = ck_find_item(table, test_dname,
@@ -321,7 +382,7 @@ static int cuckoo_tests_run(int argc, char *argv[])
 //		rcu_unregister_thread();
 //		return NULL;
 //	}
-//	//printf("[Read] Found item with key: %*s, value: %p\n", item->key_length,
+//	//printf("[Read] Found item with key: %.*s, value: %p\n", item->key_length,
 //	//		item->key, item->value);
 
 //	// wait some time, so that the item is deleted
@@ -329,7 +390,7 @@ static int cuckoo_tests_run(int argc, char *argv[])
 //	ct_waste_time(5000000);
 //	printf("[Read] Done.\n");
 
-//	//printf("[Read] Still holding item with key: %*s, value: %p\n",
+//	//printf("[Read] Still holding item with key: %.*s, value: %p\n",
 //	//		item->key_length, item->key, item->value);
 
 //	// release the pointer
