@@ -12,6 +12,8 @@ cute_server *cute_create()
 {
     debug_server("Creating Server structure..\n");
     cute_server *server = malloc(sizeof(cute_server));
+    server->workers = NULL;
+    server->state = Idle;
     if (server == NULL) {
         ERR_ALLOC_FAILED;
         return NULL;
@@ -167,6 +169,7 @@ int cute_wait(cute_server *server)
 void cute_stop( cute_server *server )
 {
     // Notify servers to stop
+   server->state &= ~Running;
    for(worker_t* w = server->workers; w != NULL; w = w->next) {
       w->state = Idle;
       dpt_notify(w->dispatcher, SIGALRM);
