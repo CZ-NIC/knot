@@ -4,6 +4,8 @@
 #include <errno.h>
 #include "udp-handler-epoll.h"
 
+#if 0
+
 /** Event descriptor.
   */
 typedef struct sm_event {
@@ -166,3 +168,5 @@ void *udp_epoll_worker( void *obj )
     debug_sm("udp: worker #%d finished.\n", worker->epfd);
     return NULL;
 }
+
+#endif
