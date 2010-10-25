@@ -7,7 +7,6 @@
 #include "common.h"
 #include "cuckoo-hash-table.h"
 #include "dns-simple.h"
-#include "socket-manager.h"
 #include "dispatcher.h"
 #include "dynamic-array.h"
 
