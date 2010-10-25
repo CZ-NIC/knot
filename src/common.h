@@ -1,6 +1,7 @@
 #ifndef COMMON
 #define COMMON
 #include <signal.h>
+#include <stdint.h>
 
 /* Common types and constants.
  */
@@ -11,9 +12,11 @@ typedef unsigned int uint;
 #define PROJECT_VER  0x000001  // 0xMMIIRR (MAJOR,MINOR,REVISION)
 
 /* Server. */
-#define SERVER_MGR_COUNT  2    // TCP + UDP
 #define DEFAULT_THR_COUNT 2    // Default thread count for socket manager
 #define DEFAULT_PORT 53531     // Default port
+
+/* Sockets. */
+#define TCP_BACKLOG_SIZE 10    // TCP listen backlog size
 
 /* Common includes.
  */
