@@ -134,7 +134,7 @@ void *tcp_master( void *obj )
          // Register incoming socket
          tcp_worker_t* tcp_worker = tcp_workers[worker_id];
          pthread_mutex_lock(&tcp_worker->mutex);
-         debug_sm("tcp_master: accept: assigned socket %d to worker #%d\n", incoming, worker->epfd);
+         debug_net("tcp_master: accept: assigned socket %d to worker #%d\n", incoming, worker->epfd);
          if(socket_register_poll(tcp_worker->epfd, incoming, EPOLLIN) == 0)
             ++tcp_worker->events_count;
 
@@ -188,7 +188,7 @@ static inline void tcp_handler(int fd, uint8_t* inbuf, int inbuf_sz, uint8_t* ou
     unsigned short pktsize = 0;
     int n = recv(fd, &pktsize, sizeof(unsigned short), 0);
     pktsize = ntohs(pktsize);
-    debug_sm("tcp: incoming packet size on %d: %u buffer size: %u\n", fd, (unsigned) pktsize, (unsigned) inbuf_sz);
+    debug_net("tcp: incoming packet size on %d: %u buffer size: %u\n", fd, (unsigned) pktsize, (unsigned) inbuf_sz);
 
     // Receive payload
     if(n > 0 && pktsize > 0) {
@@ -205,7 +205,7 @@ static inline void tcp_handler(int fd, uint8_t* inbuf, int inbuf_sz, uint8_t* ou
         size_t answer_size = outbuf_sz;
         int res = ns_answer_request(ns, inbuf, n, outbuf + sizeof(short), &answer_size);
 
-        debug_sm("tcp: answer wire format (size %u, result %d).\n", (unsigned) answer_size, res);
+        debug_net("tcp: answer wire format (size %u, result %d).\n", (unsigned) answer_size, res);
         if(res >= 0) {
 
             // Copy header
@@ -216,7 +216,7 @@ static inline void tcp_handler(int fd, uint8_t* inbuf, int inbuf_sz, uint8_t* ou
                 sent = send(fd, outbuf, answer_size + sizeof(unsigned short), 0);
             }
 
-            debug_sm("tcp: sent answer to %d\n", fd);
+            debug_net("tcp: sent answer to %d\n", fd);
         }
     }
 }
@@ -247,12 +247,12 @@ void *tcp_worker( void *obj )
             int fd = 0;
             for(int i = 0; i < nfds; ++i) {
                 fd = worker->events[i].data.fd;
-                debug_sm("tcp: worker #%d processing fd=%d.\n", worker->epfd, fd);
+                debug_net("tcp: worker #%d processing fd=%d.\n", worker->epfd, fd);
                 tcp_handler(fd, buf, SOCKET_BUFF_SIZE, answer, SOCKET_BUFF_SIZE, worker->server->nameserver);
-                debug_sm("tcp: worker #%d finished fd=%d (remaining %d).\n", worker->epfd, fd, worker->events_count);
+                debug_net("tcp: worker #%d finished fd=%d (remaining %d).\n", worker->epfd, fd, worker->events_count);
 
                 // Disconnect
-               debug_sm("tcp: disconnected: %d\n", fd);
+               debug_net("tcp: disconnected: %d\n", fd);
                pthread_mutex_lock(&worker->mutex);
                socket_unregister_poll(worker->epfd, fd);
                --worker->events_count;
@@ -262,13 +262,13 @@ void *tcp_worker( void *obj )
         }
 
         // Sleep until new events
-        debug_sm("tcp: worker #%d suspended.\n", worker->epfd);
+        debug_net("tcp: worker #%d suspended.\n", worker->epfd);
         pthread_mutex_lock(&worker->mutex);
         pthread_cond_wait(&worker->wakeup, &worker->mutex);
-        debug_sm("tcp: worker #%d resumed ... (%d sockets in set).\n", worker->epfd, worker->events_count);
+        debug_net("tcp: worker #%d resumed ... (%d sockets in set).\n", worker->epfd, worker->events_count);
         pthread_mutex_unlock(&worker->mutex);
     }
 
-    debug_sm("tcp: worker #%d finished.\n", worker->epfd);
+    debug_net("tcp: worker #%d finished.\n", worker->epfd);
     return NULL;
 }

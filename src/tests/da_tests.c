@@ -1,0 +1,257 @@
+#include "tap_unit.h"
+#include "dynamic-array.h"
+#include <unistd.h>
+#include <urcu.h>
+
+static int da_tests_count(int argc, char * argv[]);
+static int da_tests_run(int argc, char * argv[]);
+
+/*
+ * Unit API.
+ */
+unit_api da_tests_api = {
+   "Dynamic array",
+   &da_tests_count,
+   &da_tests_run
+};
+
+/*
+ * Unit implementation.
+ */
+
+static const int DA_TEST_COUNT = 4;
+static const int RCU_THREADS   = 3;
+static const int DA_FRAGMENT = 10;
+static const int DA_DEF_SIZE = 1000;
+static const int DA_OPERATIONS = 1000;
+enum Operations {
+	DA_RESERVE = 0,
+	DA_OCCUPY  = 1,
+	DA_RELEASE = 2,
+	DA_OPCOUNT = 3
+};
+
+static int da_tests_count(int argc, char *argv[])
+{
+	return DA_TEST_COUNT;
+}
+
+static void do_something(int loops)
+{
+		int i;
+		int res = 1;
+
+		static const int LOOPS = 10000;
+
+		for (int j = 1; j <= LOOPS; ++j) {
+			for (i = 1; i <= loops; ++i) {
+				res *= i;
+			}
+		}
+}
+
+static void *test_rcu_routine(void *obj)
+{
+	rcu_register_thread();
+	rcu_read_lock();
+
+	do_something(1000);
+
+	rcu_read_unlock();
+	rcu_unregister_thread();
+
+	return NULL;
+}
+
+static int test_rcu_threads()
+{
+	// Create threads
+	pthread_t *threads = malloc(RCU_THREADS * sizeof(pthread_t));
+	for(int i = 0; i < RCU_THREADS; ++i) {
+		if (pthread_create(&threads[i], NULL, test_rcu_routine, NULL)) {
+			diag("rcu: failed to create thread %d", i);
+			free(threads);
+			return 0;
+		}
+	}
+
+	// Join threads
+	void *pret = NULL;
+	for(int i = 0; i < RCU_THREADS; ++i) {
+		if (pthread_join(threads[i], &pret)) {
+			diag("rcu: failed to join thread %d", i);
+			free(threads);
+			return 0;
+		}
+	}
+
+	synchronize_rcu();
+
+	return 1;
+}
+
+static int test_da_init(da_array* arr)
+{
+	return da_initialize(arr, DA_DEF_SIZE, sizeof(uint)) == 0;
+}
+
+static int test_da_random_op(da_array* arr)
+{
+	srand(time(NULL));
+	uint allocated = DA_DEF_SIZE;
+	uint size = 0;
+
+	for (int i = 0; i < DA_OPERATIONS; ++i) {
+		int r = rand() % DA_OPCOUNT;
+		int count = rand() % DA_FRAGMENT + 1;
+
+		switch (r) {
+
+			// Perform reserve operation
+			case DA_RESERVE:
+				if (da_reserve(arr, count) >= 0 &&
+					 size <= allocated)
+				{
+					if ((allocated - size) < count) {
+						allocated *= 2;
+					}
+				}
+				else {
+					diag("dynamic-array: da_reserve(%p, %d) failed (size %d, alloc'd %d)", arr, count, size, allocated);
+					return 0;
+				}
+				break;
+
+			// Perform occupy operation
+			case DA_OCCUPY:
+				if (da_occupy(arr, count) == 0) {
+					uint* items = (uint *) da_get_items(arr);
+					for(int j = 0; j < da_get_count(arr); ++j)
+						items[j] = rand();
+					if(size <= allocated && (allocated - size) >= count)
+						size += count;
+					else
+						return 0;
+				}
+				else {
+					diag("dynamic-array: da_occupy(%p, %d) failed (size %d, alloc'd %d)", arr, count, size, allocated);
+					return 0;
+				}
+				break;
+
+			// Perform release operation
+			case DA_RELEASE:
+				if(arr->count > 0) {
+					count = (rand() % DA_FRAGMENT) % arr->count;
+					da_release(arr, count);
+
+					if(size <= allocated && size >= count) {
+						size -= count;
+					}
+					else {
+						return 0;
+					}
+				}
+				break;
+
+			default:
+				break;
+		}
+
+		// Check allocated / size
+		if(allocated != arr->allocated || size != arr->count) {
+			diag("dynamic-array: allocated memory %d (expected %d) size %d (expected %d) mismatch",
+				  arr->allocated, allocated, arr->count, size);
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
+void *test_da_read(void *obj)
+{
+	rcu_register_thread();
+	rcu_read_lock();
+
+	da_array* arr = (da_array*) obj;
+	int index = rand() % da_get_count(arr);
+
+	note("  dynamic-array: read thread");
+	note("    read thread: saving pointer to %d. item", index);
+	uint *item = &((uint*) da_get_items(arr))[index];
+	note("    read thread: before: pointer: %p item: %u", item, *item);
+
+	do_something(100000);
+
+	note("    read thread after: pointer: %p item: %u", item, *item);
+	rcu_read_unlock();
+	note("    read thread unlocked: pointer: %p item: %u", item, *item);
+
+	do_something(10000);
+
+	note("    read thread: now the item should be deallocated");
+	//note("    read thread: pointer: %p item: %u", item, *item);
+
+	rcu_unregister_thread();
+
+	return NULL;
+}
+
+static int test_da_resize_holding(da_array* arr)
+{
+	int ret = 1;
+	rcu_register_thread();
+	pthread_t reader;
+
+	// Create thread for reading
+	note("dynamic-array: creating read threads");
+	if (pthread_create(&reader, NULL, test_da_read, (void *)arr)) {
+		diag("dynamic-array: failed to create reading thread", __func__);
+		rcu_unregister_thread();
+		return 0;
+	}
+
+	// Wait some time, so the other thread gets the item for reading
+	do_something(5000);
+
+	// Force resize
+	note("  dynamic-array: array resized");
+	if(da_reserve(arr, arr->allocated - arr->count + 1) == -1) {
+		diag("dynamic-array: da_reserve(%p, %d) failed", arr, arr->allocated - arr->count + 1);
+		ret = 0;
+	}
+
+	//Wait for the thread to finish
+	void *pret = NULL;
+	if (pthread_join(reader, &pret)) {
+		diag("dynamic-array: failed to join reading thread", __func__);
+		ret = 0;
+	}
+
+	rcu_unregister_thread();
+	return ret;
+}
+
+static int da_tests_run(int argc, char *argv[])
+{
+	// Init
+	rcu_init();
+	da_array array;
+
+	// Test 1: test rcu
+	ok(test_rcu_threads(), "dynamic-array: rcu tests");
+
+   // Test 2: init
+   ok(test_da_init(&array), "dynamic-array: init");
+
+   // Test 3: reserve/occupy random operations
+   ok(test_da_random_op(&array), "dynamic-array: randomized reserve/occupy/release");
+
+   // Test 4: resizing array while holding an item
+   ok(test_da_resize_holding(&array), "dynamic-array: resize array while holding an item");
+
+   // Cleanup
+   da_destroy(&array);
+   return 0;
+}

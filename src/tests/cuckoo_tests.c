@@ -1,20 +1,45 @@
-#include "cuckoo-test.h"
+#include "tap_unit.h"
+
+static int cuckoo_tests_count(int argc, char *argv[]);
+static int cuckoo_tests_run(int argc, char *argv[]);
+
+/*! Exported unit API.
+ */
+unit_api cuckoo_tests_api = {
+   "Cuckoo hashing",     //! Unit name
+   &cuckoo_tests_count,  //! Count scheduled tests
+   &cuckoo_tests_run     //! Run scheduled tests
+};
+
+/*! \todo Implement theese tests into API.
+  */
+
+/*! This helper routine should report number of
+ *  scheduled tests for given parameters.
+ */
+static int cuckoo_tests_count(int argc, char *argv[])
+{
+   return 0;
+}
+
+/*! Run all scheduled tests for given parameters.
+ */
+static int cuckoo_tests_run(int argc, char *argv[])
+{
+   return 0;
+}
+
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
 #include <urcu.h>
-
-#include "common.h"
-#include "cuckoo-hash-table.h"
-#include "dns-simple.h"
-#include "dispatcher.h"
-#include "dynamic-array.h"
 
 //#define CK_TEST_DEBUG
 //#define CK_TEST_LOOKUP
 //#define CK_TEST_OUTPUT
 //#define CK_TEST_REMOVE
 //#define CK_TEST_COMPARE
+#define CT_TEST_REHASH
 
 #ifdef CK_TEST_DEBUG
 	#define CK_TEST_LOOKUP
@@ -33,6 +58,13 @@
 #define ERR_FIND 8
 #define ERR_FILL 9
 #define ERR_REMOVE 10
+
+#include "common.h"
+#include "cuckoo-hash-table.h"
+#include "dns-simple.h"
+#include "socket.h"
+#include "dispatcher.h"
+#include "dynamic-array.h"
 
 static const uint BUF_SIZE = 20;
 static const uint ARRAY_SIZE = 500;
@@ -249,7 +281,7 @@ int ct_hash_names( ck_hash_table *table, char **domains, uint count )
 		//if ((i & (((uint32_t)1<<(10)) - 1)) == 0) printf("%u\n", i);
 		if ((res =
 				ck_insert_item(table, domains[i], strlen(domains[i]),
-							   domains[i]))
+								domains[i]))
 			 != 0) {
 			fprintf(stderr, "\nInsert item returned %d.\n", res);
 			return ERR_INSERT;
@@ -447,7 +479,7 @@ void ct_answer_request( const char *query_wire, uint size,
 
 #ifdef CK_TEST_OUTPUT
 	printf("Query parsed, ID: %u, QNAME: %s\n", query->header.id,
-		   query->questions[0].qname);
+			query->questions[0].qname);
 	hex_print(query->questions[0].qname, strlen(query->questions[0].qname));
 #endif
 
@@ -623,7 +655,7 @@ int ct_compare_items_array( da_array *items1, da_array *items2 )
 		int found = 0;
 		for (uint j = 0; j < count2; ++j) {
 			if (strcmp(((char **)(da_get_items(items1)))[i],
-					   ((char **)(da_get_items(items2)))[j]) == 0) {
+						((char **)(da_get_items(items2)))[j]) == 0) {
 				++found;
 			}
 		}
@@ -649,7 +681,7 @@ int ct_compare_items_array( da_array *items1, da_array *items2 )
 		int found = 0;
 		for (uint j = 0; j < count1; ++j) {
 			if (strcmp(((char **)(da_get_items(items1)))[j],
-					   ((char **)(da_get_items(items2)))[i]) == 0) {
+						((char **)(da_get_items(items2)))[i]) == 0) {
 				++found;
 			}
 		}
@@ -706,7 +738,7 @@ void *ct_read_item( ck_hash_table *table, const dnss_dname test_name )
 	// get a reference to the item, protect by RCU
 	printf("[Read] Acquiring reference to the item...\n");
 	printf("[Read] Key: %*s, key size: %u\n", dname_size, test_dname,
-		   dname_size);
+			dname_size);
 	rcu_read_lock();
 	const ck_hash_table_item *item = ck_find_item(table, test_dname,
 												  dname_size - 1);
@@ -716,16 +748,16 @@ void *ct_read_item( ck_hash_table *table, const dnss_dname test_name )
 		rcu_unregister_thread();
 		return NULL;
 	}
-	printf("[Read] Found item with key: %*s, value: %p\n", item->key_length,
-		   item->key, item->value);
+	//printf("[Read] Found item with key: %*s, value: %p\n", item->key_length,
+	//		item->key, item->value);
 
 	// wait some time, so that the item is deleted
 	printf("[Read] Waiting...\n");
 	ct_waste_time(5000000);
 	printf("[Read] Done.\n");
 
-	printf("[Read] Still holding item with key: %*s, value: %p\n",
-		   item->key_length, item->key, item->value);
+	//printf("[Read] Still holding item with key: %*s, value: %p\n",
+	//		item->key_length, item->key, item->value);
 
 	// release the pointer
 	printf("[Read] Releasing the item...\n");
@@ -901,7 +933,7 @@ int ct_test_hash_table( char *filename )
 		printf("Testing lookup...\n\n");
 		res = ct_test_fnc_from_file(table, file, ct_test_lookup);
 		printf("\nDone. Items not found: %d\n\n",
-			   da_get_count(&items_not_found));
+				da_get_count(&items_not_found));
 		ct_clear_items_array(&items_not_found);
 
 		printf("Testing rehash...\n");
@@ -915,7 +947,7 @@ int ct_test_hash_table( char *filename )
 		printf("Testing lookup...\n\n");
 		res = ct_test_fnc_from_file(table, file, ct_test_lookup);
 		printf("\nDone. Items not found: %d\n\n",
-			   da_get_count(&items_not_found));
+				da_get_count(&items_not_found));
 		ct_clear_items_array(&items_not_found);
 
 		printf("Testing removal...\n\n");
@@ -927,7 +959,7 @@ int ct_test_hash_table( char *filename )
 		printf("\nDone. Result: %d\n\n", res);
 
 		printf("Comparing array of not found items with array of removed "
-			   "items...\n\n");
+				"items...\n\n");
 		res = ct_compare_items_array(&items_not_found, &items_removed);
 		printf("\nDone. Result: %d\n\n", res);
 
