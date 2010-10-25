@@ -29,14 +29,14 @@ void interrupt_handle(int s)
 
 int main( int argc, char **argv )
 {
-    if (argc < 2) {
-		print_msg(LOG_ERR, "Usage: %s <filename1> [<filename2> ...] .\n",
-				  argv[0]);
-        return -1;
-    }
-
     // Open log
     log_open(LOG_UPTO(LOG_ERR), LOG_MASK(LOG_ERR)|LOG_MASK(LOG_WARNING));
+
+	 if (argc < 2) {
+		print_msg(LOG_ERR, "Usage: %s <filename1> [<filename2> ...] .\n",
+				  argv[0]);
+		  return -1;
+	 }
 
     int res = 0;
 
