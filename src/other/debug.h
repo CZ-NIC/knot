@@ -14,12 +14,15 @@
 //#define ZDB_DEBUG_INSERT_CHECK
 //#define ZN_DEBUG
 //#define ZP_DEBUG_PARSE
-//#define CUTE_DEBUG
+//#define SERVER_DEBUG
+//#define NET_DEBUG
 
-#ifdef CUTE_DEBUG
+#ifdef SERVER_DEBUG
 #define debug_server(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_server_hex(data, len) hex_print((data), (len))
 #else
 #define debug_server(msg...)
+#define debug_server_hex(data, len)
 #endif
 
 #ifdef DNSS_DEBUG
@@ -54,12 +57,12 @@
 #define debug_da(msg...)
 #endif
 
-#ifdef SM_DEBUG
-#define debug_sm(msg...) log_msg(LOG_DEBUG, msg)
-#define debug_sm_hex(data, len) hex_print((data), (len))
+#ifdef NET_DEBUG
+#define debug_net(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_net_hex(data, len) hex_print((data), (len))
 #else
-#define debug_sm(msg...)
-#define debug_sm_hex(data, len)
+#define debug_net(msg...)
+#define debug_net_hex(data, len)
 #endif
 
 #ifdef NS_DEBUG
