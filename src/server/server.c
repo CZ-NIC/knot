@@ -4,7 +4,7 @@
 #include "zone-database.h"
 #include "name-server.h"
 #include "zone-parser.h"
-#include <stdio.h>
+#include <unistd.h>
 
 /*----------------------------------------------------------------------------*/
 
@@ -36,37 +36,96 @@ cute_server *cute_create()
     }
 
     debug_server("Done\n\n");
-    debug_server("Creating Socket Manager structure..\n");
+    debug_server("Creating workers..\n");
 
     // Estimate number of threads/manager
-    long thr_count = sm_estimate_threads();
-    debug_server("Estimated number of threads per manager: %ld\n", thr_count);
+    int thr_count = cute_estimate_threads();
+    debug_server("Estimated number of threads per handler: %d\n", thr_count);
 
     // Create socket handlers
-    server->manager[UDP] = sm_create(server->nameserver, &udp_master, &udp_worker, thr_count);
-    server->manager[TCP] = sm_create(server->nameserver, &tcp_master, &tcp_worker, thr_count);
+    socket_t* sock = socket_create(DEFAULT_PORT, TCP);
+    socket_listen(sock, "0.0.0.0");
+    cute_add_handler(server, sock, &tcp_master);
 
-    // Check socket handlers
-    for(int i = 0; i < SERVER_MGR_COUNT; i++) {
-        if (server->manager[i] == NULL ) {
-
-            if(i == 1) {
-                sm_destroy(&server->manager[0]);
-            }
-
-            ns_destroy(&server->nameserver);
-            zdb_destroy(&server->zone_db);
-            free(server);
-            return NULL;
-        }
-    }
-
+    sock = socket_create(DEFAULT_PORT, UDP);
+    socket_listen(sock, "0.0.0.0");
+    cute_add_handlers(server, sock, &udp_worker, thr_count);
     debug_server("Done\n\n");
 
     return server;
 }
 
-/*----------------------------------------------------------------------------*/
+int cute_add_handlers( cute_server *server, socket_t* socket, thr_routine routine, int threads)
+{
+   //! Not thread-safe.
+   static volatile int _ctr = 0;
+
+   // Create new worker
+   worker_t* worker = malloc(sizeof(worker_t));
+   if(worker == NULL)
+      return -1;
+
+   // Initialize
+   worker->id = ++_ctr;
+   worker->state = Idle;
+   worker->next = server->workers;
+   worker->server = server;
+   worker->socket = socket;
+   worker->dispatcher = dpt_create(threads, routine, worker);
+   if(worker->dispatcher == NULL) {
+      free(worker);
+      return -2;
+   }
+
+   // Update list
+   server->workers = worker;
+
+   // Run if server is online
+   if(server->state & Running) {
+      dpt_start(worker->dispatcher);
+   }
+
+   return worker->id;
+}
+
+int cute_remove_handler( cute_server *server, int id)
+{
+   // Find worker
+   worker_t *w = NULL, *p = NULL;
+   for(w = server->workers; w != NULL; p = w,w = w->next) {
+      if(w->id == id) {
+
+         // Disconnect
+         if(p == NULL) {
+            server->workers = w->next;
+         }
+         else {
+            p->next = w->next;
+         }
+         break;
+      }
+   }
+
+   // Check
+   if(w == NULL) {
+      return -1;
+   }
+
+   // Wait for dispatcher to finish
+   if(w->state & Running) {
+      w->state = Idle;
+      dpt_notify(w->dispatcher, SIGALRM);
+      dpt_wait(w->dispatcher);
+   }
+
+   // Close socket
+   socket_remove(w->socket);
+
+   // Destroy dispatcher and worker
+   dpt_destroy(&w->dispatcher);
+   free(w);
+   return 0;
+}
 
 int cute_start( cute_server *server, char **filenames, uint zones )
 {
@@ -79,69 +138,65 @@ int cute_start( cute_server *server, char **filenames, uint zones )
 		}
 	}
 
-    debug_server("Opening sockets (port %d)..\n", DEFAULT_PORT);
-    if (sm_open(server->manager[UDP], DEFAULT_PORT, UDP) != 0) {
-        perror("sm_open_socket");
-        return -1;
-    }
+   debug_server("\nDone\n\n");
+   debug_server("Starting servers..\n");
 
-    if (sm_open(server->manager[TCP], DEFAULT_PORT, TCP) != 0) {
-        debug_server("[failed]\n");
-        perror("sm_open_socket");
-        return -1;
-    }
-    debug_server("\nDone\n\n");
-    debug_server("Starting servers..\n");
-
-    // Start dispatchers
-    int ret = 0;
-    ret = sm_start(server->manager[TCP]);
-
-    debug_server("   TCP server: %u workers.\n", server->manager[TCP]->workers_dpt->thread_count);
-
-    ret += sm_start(server->manager[UDP]);
-
-    debug_server("   UDP server: %u workers.\n", server->manager[UDP]->workers_dpt->thread_count);
-    debug_server("Done\n\n");
-
-    if(ret < 0)
-        return ret;
-
-    return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int cute_wait(cute_server *server)
-{
-   // Wait for dispatchers to finish
-   int ret = sm_wait(server->manager[TCP]);
-   debug_server("TCP handler finished.\n");
-
-   ret += sm_wait(server->manager[UDP]);
-   debug_server("UDP handler finished.\n");
+   // Start dispatchers
+   int ret = 0;
+   server->state |= Running;
+   for(worker_t* w = server->workers; w != NULL; w = w->next) {
+      w->state = Running;
+      ret += dpt_start(w->dispatcher);
+   }
 
    return ret;
 }
 
-/*----------------------------------------------------------------------------*/
+int cute_wait(cute_server *server)
+{
+   // Wait for dispatchers to finish
+   int ret = 0;
+   while(server->workers != NULL) {
+      ret += dpt_wait(server->workers->dispatcher);
+      cute_remove_handler(server, server->workers->id);
+   }
+
+   return ret;
+}
 
 void cute_stop( cute_server *server )
 {
     // Notify servers to stop
-    for(int i = 0; i < SERVER_MGR_COUNT; i++) {
-        sm_stop(server->manager[i]);
-    }
+   for(worker_t* w = server->workers; w != NULL; w = w->next) {
+      w->state = Idle;
+      dpt_notify(w->dispatcher, SIGALRM);
+   }
 }
-
-/*----------------------------------------------------------------------------*/
 
 void cute_destroy( cute_server **server )
 {
-    sm_destroy(&(*server)->manager[UDP]);
-    sm_destroy(&(*server)->manager[TCP]);
-    ns_destroy(&(*server)->nameserver);
-    zdb_destroy(&(*server)->zone_db);
-    free(*server);
-    *server = NULL;
+   // Free workers
+   worker_t* w = (*server)->workers;
+   while(w != NULL) {
+      worker_t* n = w->next;
+      cute_remove_handler(*server, w->id);
+      w = n;
+   }
+
+   ns_destroy(&(*server)->nameserver);
+   zdb_destroy(&(*server)->zone_db);
+   free(*server);
+   *server = NULL;
 }
+
+int cute_estimate_threads()
+{
+#ifdef _SC_NPROCESSORS_ONLN
+   int ret = (int) sysconf(_SC_NPROCESSORS_ONLN);
+   if(ret >= 1)
+      return ret + 1;
+#endif
+   log_info("server: failed to estimate the number of online CPUs");
+   return DEFAULT_THR_COUNT;
+}
+
