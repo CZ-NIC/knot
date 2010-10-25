@@ -68,7 +68,6 @@ static int server_tests_run(int argc, char * argv[])
    sa.sa_flags = 0;
    sigaction(SIGCLOSE, &sa, NULL); // Interrupt
 
-
    //! Test server for correct initialization
    server = test_server_create();
    ok(server != 0, "server: initialized");
@@ -84,15 +83,27 @@ static int server_tests_run(int argc, char * argv[])
    if(ret) {
       cute_stop(server);
    }
+   else {
+   diag("server crashed, skipping deinit and destroy tests");
+   }
 
    //! Test server waiting for finish
-   //skip(!ret, 1);
+   skip(!ret, 2);
    ok(test_server_finish(server), "server: waiting for finish");
-   //endskip;
 
    //! Test server for correct deinitialization
    ok(test_server_destroy(server), "server: deinit");
+   endskip;
 
+   //! Evaluate
+   if(!ret) {
+      diag("--------------------------------");
+      diag("Server probably crashed because:");
+      if(argc < 2) {
+         diag(" - no zone file given (argc < 2)");
+      }
+      diag("--------------------------------");
+   }
 
    return 0;
 }
