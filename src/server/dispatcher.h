@@ -41,6 +41,10 @@ dpt_dispatcher *dpt_create( int thread_count, thr_routine routine,
   */
 int dpt_start( dpt_dispatcher *dispatcher );
 
+/** Notify the created threads and interrupt blocking operations.
+  */
+int dpt_notify( dpt_dispatcher *dispatcher, int sig );
+
 /** Waits for the created threads to finish (blocking).
   */
 int dpt_wait( dpt_dispatcher *dispatcher );

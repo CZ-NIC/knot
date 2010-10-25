@@ -37,6 +37,15 @@ int dpt_start( dpt_dispatcher *dispatcher )
     return 0;
 }
 
+int dpt_notify( dpt_dispatcher* dispatcher,  int sig )
+{
+   for(int i = 0; i < dispatcher->thread_count; ++i) {
+      pthread_kill(dispatcher->threads[i], sig);
+   }
+
+   return 0;
+}
+
 /*----------------------------------------------------------------------------*/
 
 int dpt_wait( dpt_dispatcher *dispatcher )
