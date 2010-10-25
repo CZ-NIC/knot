@@ -27,13 +27,17 @@
 typedef struct cute_server {
 
 	/*! @brief Reference to the socket manager structures. */
-    sm_manager* manager[2];         // TCP + UDP
+	 sm_manager* manager[SERVER_MGR_COUNT];
 
 	/*! @brief Reference to the name server structure. */
     ns_nameserver *nameserver;
 
 	/*! @brief Reference to the zone database structure. */
     zdb_database *zone_db;
+
+    /*! @brief @todo Server should have some state tracking.
+    uint state;
+    */
 } cute_server;
 
 /*----------------------------------------------------------------------------*/

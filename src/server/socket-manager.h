@@ -117,6 +117,13 @@ void sm_stop( sm_manager *manager );
   */
 void sm_destroy( sm_manager **manager );
 
+/** Return optimal number of threads for instance.
+  * It is estimated as NUM_CPUs + 1.
+  * Fallback is DEFAULT_THR_COUNT  (\see common.h).
+  * \return number of threads
+  */
+long sm_estimate_threads();
+
 /* APIs for extending Socket Manager.
  * \todo Temporary APIs.
  */
