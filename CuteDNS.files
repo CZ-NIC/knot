@@ -13,8 +13,8 @@ src/hash/universal-system.c
 src/hash/universal-system.h
 src/other/print.c
 src/other/print.h
-src/server/socket-manager.c
-src/server/socket-manager.h
+src/server/socket.c
+src/server/socket.h
 src/server/dispatcher.c
 src/server/dispatcher.h
 src/server/name-server.c
