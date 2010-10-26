@@ -16,7 +16,7 @@ typedef unsigned int uint;
 #define DEFAULT_PORT 53531     // Default port
 
 /* Sockets. */
-#define TCP_BACKLOG_SIZE 10    // TCP listen backlog size
+#define TCP_BACKLOG_SIZE 5     // TCP listen backlog size
 
 /* Common includes.
  */
@@ -31,6 +31,10 @@ typedef unsigned int uint;
 
 /* Eliminate compiler warning with unused parameters. */
 #define UNUSED(param) (param) = (param)
+
+/* Minimum and maximum macros. */
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
+#define MAX(x,y) ((x) > (y) ? (x) : (y))
 
 /* Signal definitions. */
 #define SIGCLOSE SIGALRM

@@ -5,8 +5,8 @@
  * blocking and state-keeping.
  *
  */
-#ifndef DISPATCHER
-#define DISPATCHER
+#ifndef DISPATCHER_H
+#define DISPATCHER_H
 
 #include <pthread.h>
 
@@ -24,6 +24,7 @@ typedef struct dpt_dispatcher {
     thr_routine routine;
     void **routine_obj;
     pthread_t *threads;
+    pthread_attr_t* attrs;
 } dpt_dispatcher;
 
 /*----------------------------------------------------------------------------*/
@@ -38,14 +39,17 @@ dpt_dispatcher *dpt_create( int thread_count, thr_routine routine,
                             void *routine_obj );
 
 /** Runs the created threads (non-blocking).
+  * \return Negative integer on failure.
   */
 int dpt_start( dpt_dispatcher *dispatcher );
 
 /** Notify the created threads and interrupt blocking operations.
+  * \return Negative integer on failure.
   */
 int dpt_notify( dpt_dispatcher *dispatcher, int sig );
 
 /** Waits for the created threads to finish (blocking).
+  * \return Negative integer on failure.
   */
 int dpt_wait( dpt_dispatcher *dispatcher );
 
@@ -54,6 +58,21 @@ int dpt_wait( dpt_dispatcher *dispatcher );
   */
 void dpt_destroy( dpt_dispatcher **dispatcher );
 
+/** Set dispatcher thread priority.
+  * \param thread_id Thread id relative to dispatcher set, -1 == all threads.
+  * \param prio Requested priority (positive integer, default is 0).
+  * \return Negative integer on failure.
+  */
+int dpt_setprio_id( dpt_dispatcher* dispatcher, int thread_id, int prio );
+
+/** Set dispatcher threads priority.
+  * \param prio Requested priority (positive integer, default is 0).
+  * \return Negative integer on failure.
+  */
+static inline int dpt_setprio( dpt_dispatcher* dispatcher, int prio ) {
+   return dpt_setprio_id(dispatcher, -1, prio);
+}
+
 /*----------------------------------------------------------------------------*/
 
-#endif  // DISPATCHER
+#endif  // DISPATCHER_H
