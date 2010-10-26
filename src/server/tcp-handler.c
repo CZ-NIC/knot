@@ -1,5 +1,6 @@
 #include <sys/socket.h>
 #include <sys/epoll.h>
+#include <netinet/tcp.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <errno.h>
@@ -105,7 +106,11 @@ void *tcp_master( void *obj )
    // Create pool of TCP workers
    // Each worker is responsible for its own set of clients ("bucket")
    int worker_id = 0;
-   int worker_count = cute_estimate_threads();
+   int worker_count = cute_estimate_threads() - 1; // estimate_threads() - master thread
+   if(worker_count < 1) {
+      worker_count = 1;
+   }
+
    dpt_dispatcher* tcp_threads = dpt_create(worker_count, &tcp_worker, NULL);
    tcp_worker_t** tcp_workers = malloc(worker_count * sizeof(tcp_worker_t*));
    for(int i = 0; i < worker_count; ++i) {
@@ -127,14 +132,16 @@ void *tcp_master( void *obj )
 
       // Register to worker
       if(incoming < 0) {
-         log_error("tcp_master: cannot accept incoming connection (errno %d): %s.\n", errno, strerror(errno));
+         if(errno != EINTR) {
+            log_error("tcp_master: cannot accept incoming connection (errno %d): %s.\n", errno, strerror(errno));
+         }
       }
       else {
 
          // Register incoming socket
          tcp_worker_t* tcp_worker = tcp_workers[worker_id];
          pthread_mutex_lock(&tcp_worker->mutex);
-         debug_net("tcp_master: accept: assigned socket %d to worker #%d\n", incoming, worker->epfd);
+         debug_net("tcp_master: accept: assigned socket %d to worker #%d\n", incoming, worker_id);
          if(socket_register_poll(tcp_worker->epfd, incoming, EPOLLIN) == 0)
             ++tcp_worker->events_count;
 
@@ -208,13 +215,20 @@ static inline void tcp_handler(int fd, uint8_t* inbuf, int inbuf_sz, uint8_t* ou
         debug_net("tcp: answer wire format (size %u, result %d).\n", (unsigned) answer_size, res);
         if(res >= 0) {
 
+            /*! Cork, @see http://vger.kernel.org/~acme/unbehaved.txt */
+            int cork = 1;
+            setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
+
             // Copy header
-            pktsize = htons(answer_size);
-            memcpy(outbuf, &pktsize, sizeof(unsigned short));
+            ((unsigned short*) outbuf)[0] = htons(answer_size);
             int sent = -1;
             while(sent < 0) {
                 sent = send(fd, outbuf, answer_size + sizeof(unsigned short), 0);
             }
+
+            // Uncork
+            cork = 0;
+            setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
 
             debug_net("tcp: sent answer to %d\n", fd);
         }
@@ -227,6 +241,7 @@ void *tcp_worker( void *obj )
     uint8_t buf[SOCKET_BUFF_SIZE];
     uint8_t answer[SOCKET_BUFF_SIZE];
     int nfds = 0;
+    debug_net("tcp: worker #%d started\n", worker->epfd);
 
     for(;;) {
 
@@ -246,7 +261,10 @@ void *tcp_worker( void *obj )
             //fprintf(stderr, "tcp: worker #%d polled %d events (%d sockets).\n", worker->epfd, nfds, worker->events_count);
             int fd = 0;
             for(int i = 0; i < nfds; ++i) {
+
+                // Get client fd
                 fd = worker->events[i].data.fd;
+
                 debug_net("tcp: worker #%d processing fd=%d.\n", worker->epfd, fd);
                 tcp_handler(fd, buf, SOCKET_BUFF_SIZE, answer, SOCKET_BUFF_SIZE, worker->server->nameserver);
                 debug_net("tcp: worker #%d finished fd=%d (remaining %d).\n", worker->epfd, fd, worker->events_count);
