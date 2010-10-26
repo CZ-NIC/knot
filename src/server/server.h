@@ -76,16 +76,16 @@ cute_server *cute_create();
   * \param routine Worker routine.
   * \param socket Socket instance.
   * \param threads Number of threads to spawn.
-  * \return Id of the set, negative integer on failure.
+  * \return ptr to worker or NULL
   */
-int cute_add_handlers( cute_server *server, socket_t* socket, thr_routine routine, int threads);
+worker_t*  cute_add_handlers( cute_server *server, socket_t* socket, thr_routine routine, int threads);
 
 /** Add a worker to the server.
   * \param routine Worker routine.
   * \param socket Socket instance.
-  * \return Id of the set, negative integer on failure.
+  * \return ptr to worker or NULL
   */
-static inline int cute_add_handler( cute_server *server, socket_t* socket, thr_routine routine) {
+static inline worker_t* cute_add_handler( cute_server *server, socket_t* socket, thr_routine routine) {
    return cute_add_handlers(server, socket, routine, 1);
 }
 

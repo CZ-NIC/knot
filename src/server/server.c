@@ -57,7 +57,7 @@ cute_server *cute_create()
     return server;
 }
 
-int cute_add_handlers( cute_server *server, socket_t* socket, thr_routine routine, int threads)
+worker_t* cute_add_handlers( cute_server *server, socket_t* socket, thr_routine routine, int threads)
 {
    //! Not thread-safe.
    static volatile int _ctr = 0;
@@ -65,7 +65,7 @@ int cute_add_handlers( cute_server *server, socket_t* socket, thr_routine routin
    // Create new worker
    worker_t* worker = malloc(sizeof(worker_t));
    if(worker == NULL)
-      return -1;
+      return NULL;
 
    // Initialize
    worker->id = ++_ctr;
@@ -76,7 +76,7 @@ int cute_add_handlers( cute_server *server, socket_t* socket, thr_routine routin
    worker->dispatcher = dpt_create(threads, routine, worker);
    if(worker->dispatcher == NULL) {
       free(worker);
-      return -2;
+      return NULL;
    }
 
    // Update list
@@ -87,7 +87,7 @@ int cute_add_handlers( cute_server *server, socket_t* socket, thr_routine routin
       dpt_start(worker->dispatcher);
    }
 
-   return worker->id;
+   return worker;
 }
 
 int cute_remove_handler( cute_server *server, int id)
