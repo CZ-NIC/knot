@@ -263,6 +263,12 @@ static int cuckoo_tests_run(int argc, char *argv[])
 	// Test 9: lookup 4
 	ok(test_cuckoo_lookup(table, items), "cuckoo hashing: lookup after rehash");
 
+	/**
+	 * @note These last 2 tests found some major bug in the cuckoo hash table,
+	 *       so testing currently results in abort upon assertion. Disable if
+	 *       you want the tests to succeed.
+	 */
+
 	// Cleanup
 	ck_destroy_table(&table, NULL, 0);
 	delete_items(items);
