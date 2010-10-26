@@ -42,7 +42,7 @@ unit_api cuckoo_tests_api = {
 /*
  * Unit implementation
  */
-static const int CUCKOO_TESTS_COUNT = 9;
+static const int CUCKOO_TESTS_COUNT = 7;
 static const int CUCKOO_MAX_ITEMS = 1000;
 static const int CUCKOO_TEST_MAX_KEY_SIZE = 10;
 
