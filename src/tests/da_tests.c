@@ -19,7 +19,7 @@ unit_api da_tests_api = {
  * Unit implementation.
  */
 
-static const int DA_TEST_COUNT = 4;
+static const int DA_TEST_COUNT = 5;
 static const int RCU_THREADS   = 3;
 static const int DA_FRAGMENT = 10;
 static const int DA_DEF_SIZE = 1000;
@@ -233,6 +233,47 @@ static int test_da_resize_holding(da_array* arr)
 	return ret;
 }
 
+static int test_da_resize( da_array *arr )
+{
+	int orig_count = da_get_count(arr);
+	note("dynamic-array: allocated: %d, items: %d", arr->allocated,
+		 orig_count);
+	// store the items currently in the array
+	int *items = (int *)malloc(orig_count * sizeof(int));
+	for (int i = 0; i < orig_count; ++i) {
+		items[i] = ((int *)da_get_items(arr))[i];
+	}
+
+	// force resize
+	int res = 0;
+	while ((res = da_reserve(arr, 10)) == 0) {
+		int i = da_get_count(arr);
+		da_occupy(arr, 10);
+		for (; i < da_get_count(arr); ++i) {
+			((int *)da_get_items(arr))[i] = rand();
+		}
+	}
+
+	if (res < 0) {
+		diag("dynamic-array: failed to reserve space");
+		return 0;
+	}
+
+	int errors = 0;
+	for (int i = 0; i < orig_count; ++i) {
+		if (items[i] != ((int *)da_get_items(arr))[i]) {
+			diag("dynamic-array: Wrong item on position %d. Should be: %d, "
+				 "present value: %d", i, items[i],
+				 ((int *)da_get_items(arr))[i]);
+			++errors;
+		}
+	}
+
+	free(items);
+
+	return errors == 0;
+}
+
 static int da_tests_run(int argc, char *argv[])
 {
 	// Init
@@ -250,6 +291,9 @@ static int da_tests_run(int argc, char *argv[])
 
    // Test 4: resizing array while holding an item
    ok(test_da_resize_holding(&array), "dynamic-array: resize array while holding an item");
+
+   // Test 5: resize
+   ok(test_da_resize(&array), "dynamic-array: resize array");
 
    // Cleanup
    da_destroy(&array);

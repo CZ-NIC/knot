@@ -12,6 +12,9 @@
 // Run all loaded units
 int main(int argc, char * argv[])
 {
+	// Open log
+	log_open(LOG_UPTO(LOG_ERR), LOG_MASK(LOG_ERR)|LOG_MASK(LOG_WARNING));
+
    // Build test set
    unit_api* tests[] = {
       &skiplist_tests_api, //! Skip list unit
@@ -42,6 +45,8 @@ int main(int argc, char * argv[])
       tests[id]->run(argc, argv);
       ++id;
    }
+
+   log_close();
 
    // Evaluate
    return exit_status();

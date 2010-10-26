@@ -1191,7 +1191,7 @@ int zdb_insert_name( zdb_database *database, ldns_rdf *zone_name,
         debug_zdb("Zone not found!\n");
 		return -2;
     }
-	debug_zdb("Found zone: %*s\n", ldns_rdf_size(z->zone_name),
+	debug_zdb("Found zone: %.*s\n", ldns_rdf_size(z->zone_name),
 			  ldns_rdf_data(z->zone_name));
 
 	int res = zdb_insert_node_to_zone(z, node);
