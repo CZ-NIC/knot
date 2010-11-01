@@ -1,13 +1,14 @@
 /*!
   * \file socket.h
-  * \date 1.11.2010
   * \author Marek Vavrusa <marek.vavrusa@nic.cz>
-  * \group Server
   *
   * \brief Generic sockets APIs.
   *
   * This file provides platform-independent sockets.
   * Functions work on sockets created via system socket(2) functions.
+  *
+  * \addtogroup network
+  * @{
   */
 
 #ifndef CUTE_SOCKET_H
@@ -23,6 +24,25 @@ enum {
 } socket_const_t;
 
 /*!
+ *  \brief Create socket.
+ *
+ *  \param family Socket family (PF_INET, PF_IPX, PF_PACKET, PF_UNIX).
+ *  \param type Socket type (SOCK_STREAM, SOCK_DGRAM, SOCK_RAW).
+ *  \return On success: >=0, on failure: <0.
+ */
+int socket_create( int family, int type );
+
+/*!
+ *  \brief Connect to remote host.
+ *
+ *  \param socket Socket filedescriptor.
+ *  \param addr Requested address.
+ *  \param port Requested port.
+ *  \return On success: 0, on failure: <0.
+ */
+int socket_connect( int socket, const char *addr, unsigned short port );
+
+/*!
  *  \brief Listen on given socket.
  *
  *  \param socket Socket filedescriptor.
@@ -30,7 +50,7 @@ enum {
  *  \param port Requested port.
  *  \return On success: 0, on failure: <0.
  */
-int socket_bind( int socket, const char* addr, unsigned short port );
+int socket_bind( int socket, const char *addr, unsigned short port );
 
 /*!
  *  \brief Listen on given TCP socket.
@@ -42,6 +62,56 @@ int socket_bind( int socket, const char* addr, unsigned short port );
 int socket_listen( int socket, int backlog_size );
 
 /*!
+ *  \brief Receive data from connection-mode socket.
+ *
+ *  \param socket Socket filedescriptor.
+ *  \param buf    Destination buffer.
+ *  \param len    Maximum data length.
+ *  \param flags  Additional flags.
+ *  \return On success: 0, on failure: <0.
+ */
+ssize_t socket_recv( int socket, void *buf, size_t len, int flags );
+
+/*!
+ *  \brief Receive data from datagram-mode socket.
+ *
+ *  \param socket  Socket filedescriptor.
+ *  \param buf     Destination buffer.
+ *  \param len     Maximum data length.
+ *  \param flags   Additional flags.
+ *  \param from    Datagram source address.
+ *  \param fromlen Address length.
+ *  \return On success: 0, on failure: <0.
+ */
+ssize_t socket_recvfrom( int socket, void *buf, size_t len, int flags,
+                         struct sockaddr *from, socklen_t *fromlen );
+
+/*!
+ *  \brief Send data to connection-mode socket.
+ *
+ *  \param socket Socket filedescriptor.
+ *  \param buf    Source buffer.
+ *  \param len    Data length.
+ *  \param flags  Additional flags.
+ *  \return On success: 0, on failure: <0.
+ */
+ssize_t socket_send( int socket, const void *buf, size_t len, int flags );
+
+/*!
+ *  \brief Send data to datagram-mode socket.
+ *
+ *  \param socket Socket filedescriptor.
+ *  \param buf    Source buffer.
+ *  \param len    Data length.
+ *  \param flags  Additional flags.
+ *  \param to     Datagram source address.
+ *  \param tolen  Address length.
+ *  \return On success: 0, on failure: <0.
+ */
+ssize_t socket_sendto( int socket, const void *buf, size_t len, int flags,
+                       const struct sockaddr *to, socklen_t tolen );
+
+/*!
  *  \brief Close and deinitialize socket.
  *
  *  \param socket Socket filedescriptor.
@@ -49,37 +119,6 @@ int socket_listen( int socket, int backlog_size );
  */
 int socket_close( int socket );
 
-/*!
- *  \brief Create fd for polling.
- *
- *  \deprecated Use libevent http://monkey.org/~provos/libevent/
- *
- *  \param events_count Initial events backing store size.
- *  \return On success: 0, on failure: <0.
- */
-int socket_poll_create( int events_count );
+/** @} */
 
-/*!
- *  \brief Add socket to poll set.
- *
- *  \deprecated Use libevent http://monkey.org/~provos/libevent/
- *
- *  \param epfd Poll set filedescriptor.
- *  \param socket Socket waiting to be added to set.
- *  \param events Requested poll flags.
- *  \return On success: 0, on failure: <0.
- */
-int socket_poll_add( int epfd, int socket, uint32_t events );
-
-/*!
- *  \brief Remove socket from poll set.
- *
- *  \deprecated Use libevent http://monkey.org/~provos/libevent/
- *
- *  \param epfd Poll set filedescriptor.
- *  \param socket Socket waiting to be removed from set.
- *  \return On success: 0, on failure: <0.
- */
-int socket_poll_remove( int epfd, int socket );
-
-#endif
+#endif // CUTE_SOCKET_H

@@ -27,7 +27,7 @@ void* udp_worker( void* obj )
     while(n >= 0) {
 
         // Receive data
-        n = recvfrom(sock, inbuf, SOCKET_MTU_SZ, 0, (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
+        n = socket_recvfrom(sock, inbuf, SOCKET_MTU_SZ, 0, (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
 
         // Error and interrupt handling
         //fprintf(stderr, "recvfrom(): thread %p ret %d errno %s.\n", (void*)pthread_self(), n, strerror(errno));
@@ -56,7 +56,7 @@ void* udp_worker( void* obj )
             debug_net_hex((const char*) outbuf, answer_size);
 
             for(;;) {
-                res = sendto(sock, outbuf, answer_size, 0,
+                res = socket_sendto(sock, outbuf, answer_size, 0,
                              (struct sockaddr *) &faddr,
                              (socklen_t) addrsize);
 

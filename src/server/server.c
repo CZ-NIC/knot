@@ -43,12 +43,12 @@ cute_server *cute_create()
     debug_server("Estimated number of threads per handler: %d\n", thr_count);
 
     // Create socket handlers
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    int sock = socket_create(PF_INET, SOCK_STREAM);
     socket_bind(sock, "0.0.0.0", DEFAULT_PORT);
     socket_listen(sock, TCP_BACKLOG_SIZE);
     cute_create_handler(server, sock, &tcp_master, 1);
 
-    sock = socket(AF_INET, SOCK_DGRAM, 0);
+    sock = socket_create(PF_INET, SOCK_DGRAM);
     socket_bind(sock, "0.0.0.0", DEFAULT_PORT);
     cute_create_handler(server, sock, &udp_worker, thr_count);
     debug_server("Done\n\n");
