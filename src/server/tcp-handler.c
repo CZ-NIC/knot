@@ -43,14 +43,14 @@ tcp_worker_t* tcp_worker_create(cute_server* server)
       return NULL;
 
    // Create epoll
-   worker->epfd = socket_create_pollfd(DEFAULT_EVENTS_COUNT);
+   worker->epfd = socket_poll_create(1);
    if (worker->epfd == -1) {
       free(worker);
       return NULL;
    }
 
    // Alloc backing store
-   worker->events = malloc(DEFAULT_EVENTS_COUNT * sizeof(struct epoll_event));
+   worker->events = malloc(1 * sizeof(struct epoll_event));
    if (worker->events == NULL) {
       close(worker->epfd);
       free(worker);
@@ -76,7 +76,7 @@ tcp_worker_t* tcp_worker_create(cute_server* server)
    // Initialize worker data
    worker->server = server;
    worker->events_count = 0;
-   worker->events_size = DEFAULT_EVENTS_COUNT;
+   worker->events_size = 1;
    return worker;
 }
 
@@ -100,8 +100,8 @@ void tcp_worker_delete(tcp_worker_t** worker)
 
 void *tcp_master( void *obj )
 {
-   worker_t* worker = (worker_t*) obj;
-   int sock = worker->socket->socket;
+   iohandler_t* worker = (iohandler_t*) obj;
+   int sock = worker->fd;
 
    // Create pool of TCP workers
    // Each worker is responsible for its own set of clients ("bucket")
@@ -142,7 +142,7 @@ void *tcp_master( void *obj )
          tcp_worker_t* tcp_worker = tcp_workers[worker_id];
          pthread_mutex_lock(&tcp_worker->mutex);
          debug_net("tcp_master: accept: assigned socket %d to worker #%d\n", incoming, worker_id);
-         if(socket_register_poll(tcp_worker->epfd, incoming, EPOLLIN) == 0)
+         if(socket_poll_add(tcp_worker->epfd, incoming, EPOLLIN) == 0)
             ++tcp_worker->events_count;
 
          // Run worker
@@ -238,8 +238,8 @@ static inline void tcp_handler(int fd, uint8_t* inbuf, int inbuf_sz, uint8_t* ou
 void *tcp_worker( void *obj )
 {
     tcp_worker_t* worker = (tcp_worker_t *)obj;
-    uint8_t buf[SOCKET_BUFF_SIZE];
-    uint8_t answer[SOCKET_BUFF_SIZE];
+    uint8_t buf[SOCKET_MTU_SZ];
+    uint8_t answer[SOCKET_MTU_SZ];
     int nfds = 0;
     debug_net("tcp: worker #%d started\n", worker->epfd);
 
@@ -266,13 +266,13 @@ void *tcp_worker( void *obj )
                 fd = worker->events[i].data.fd;
 
                 debug_net("tcp: worker #%d processing fd=%d.\n", worker->epfd, fd);
-                tcp_handler(fd, buf, SOCKET_BUFF_SIZE, answer, SOCKET_BUFF_SIZE, worker->server->nameserver);
+                tcp_handler(fd, buf, SOCKET_MTU_SZ, answer, SOCKET_MTU_SZ, worker->server->nameserver);
                 debug_net("tcp: worker #%d finished fd=%d (remaining %d).\n", worker->epfd, fd, worker->events_count);
 
                 // Disconnect
                debug_net("tcp: disconnected: %d\n", fd);
                pthread_mutex_lock(&worker->mutex);
-               socket_unregister_poll(worker->epfd, fd);
+               socket_poll_remove(worker->epfd, fd);
                --worker->events_count;
                close(fd);
                pthread_mutex_unlock(&worker->mutex);

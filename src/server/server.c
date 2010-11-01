@@ -6,13 +6,11 @@
 #include "zone-parser.h"
 #include <unistd.h>
 
-/*----------------------------------------------------------------------------*/
-
 cute_server *cute_create()
 {
     debug_server("Creating Server structure..\n");
     cute_server *server = malloc(sizeof(cute_server));
-    server->workers = NULL;
+    server->handlers = NULL;
     server->state = Idle;
     if (server == NULL) {
         ERR_ALLOC_FAILED;
@@ -45,61 +43,60 @@ cute_server *cute_create()
     debug_server("Estimated number of threads per handler: %d\n", thr_count);
 
     // Create socket handlers
-    socket_t* sock = socket_create(DEFAULT_PORT, TCP);
-    socket_listen(sock, "0.0.0.0");
-    cute_add_handler(server, sock, &tcp_master);
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    socket_bind(sock, "0.0.0.0", DEFAULT_PORT);
+    socket_listen(sock, TCP_BACKLOG_SIZE);
+    cute_create_handler(server, sock, &tcp_master, 1);
 
-    sock = socket_create(DEFAULT_PORT, UDP);
-    socket_listen(sock, "0.0.0.0");
-    cute_add_handlers(server, sock, &udp_worker, thr_count);
+    sock = socket(AF_INET, SOCK_DGRAM, 0);
+    socket_bind(sock, "0.0.0.0", DEFAULT_PORT);
+    cute_create_handler(server, sock, &udp_worker, thr_count);
     debug_server("Done\n\n");
 
     return server;
 }
 
-worker_t* cute_add_handlers( cute_server *server, socket_t* socket, thr_routine routine, int threads)
+int cute_create_handler(cute_server *server, int fd, thr_routine routine, int threads)
 {
-   //! Not thread-safe.
-   static volatile int _ctr = 0;
-
    // Create new worker
-   worker_t* worker = malloc(sizeof(worker_t));
-   if(worker == NULL)
-      return NULL;
+   iohandler_t* handler = malloc(sizeof(iohandler_t));
+   if(handler == NULL)
+      return -1;
 
    // Initialize
-   worker->id = ++_ctr;
-   worker->state = Idle;
-   worker->next = server->workers;
-   worker->server = server;
-   worker->socket = socket;
-   worker->dispatcher = dpt_create(threads, routine, worker);
-   if(worker->dispatcher == NULL) {
-      free(worker);
-      return NULL;
+   handler->fd = fd;
+   handler->state = Idle;
+   handler->next = server->handlers;
+   handler->server = server;
+   handler->threads = dpt_create(threads, routine, handler);
+   if(handler->threads == NULL) {
+      free(handler);
+      return -2;
    }
 
    // Update list
-   server->workers = worker;
+   server->handlers = handler;
 
    // Run if server is online
    if(server->state & Running) {
-      dpt_start(worker->dispatcher);
+      dpt_start(handler->threads);
    }
 
-   return worker;
+   return handler->fd;
 }
 
-int cute_remove_handler( cute_server *server, int id)
+int cute_remove_handler(cute_server *server, int fd)
 {
    // Find worker
-   worker_t *w = NULL, *p = NULL;
-   for(w = server->workers; w != NULL; p = w,w = w->next) {
-      if(w->id == id) {
+   iohandler_t *w = NULL, *p = NULL;
+   for(w = server->handlers; w != NULL; p = w,w = w->next) {
+
+      // Compare fd
+      if(w->fd == fd) {
 
          // Disconnect
          if(p == NULL) {
-            server->workers = w->next;
+            server->handlers = w->next;
          }
          else {
             p->next = w->next;
@@ -116,15 +113,15 @@ int cute_remove_handler( cute_server *server, int id)
    // Wait for dispatcher to finish
    if(w->state & Running) {
       w->state = Idle;
-      dpt_notify(w->dispatcher, SIGALRM);
-      dpt_wait(w->dispatcher);
+      dpt_notify(w->threads, SIGALRM);
+      dpt_wait(w->threads);
    }
 
    // Close socket
-   socket_remove(w->socket);
+   socket_close(w->fd);
 
    // Destroy dispatcher and worker
-   dpt_destroy(&w->dispatcher);
+   dpt_destroy(&w->threads);
    free(w);
    return 0;
 }
@@ -146,9 +143,9 @@ int cute_start( cute_server *server, char **filenames, uint zones )
    // Start dispatchers
    int ret = 0;
    server->state |= Running;
-   for(worker_t* w = server->workers; w != NULL; w = w->next) {
+   for(iohandler_t* w = server->handlers; w != NULL; w = w->next) {
       w->state = Running;
-      ret += dpt_start(w->dispatcher);
+      ret += dpt_start(w->threads);
    }
 
    return ret;
@@ -158,9 +155,9 @@ int cute_wait(cute_server *server)
 {
    // Wait for dispatchers to finish
    int ret = 0;
-   while(server->workers != NULL) {
-      ret += dpt_wait(server->workers->dispatcher);
-      cute_remove_handler(server, server->workers->id);
+   while(server->handlers != NULL) {
+      ret += dpt_wait(server->handlers->threads);
+      cute_remove_handler(server, server->handlers->fd);
    }
 
    return ret;
@@ -170,19 +167,19 @@ void cute_stop( cute_server *server )
 {
     // Notify servers to stop
    server->state &= ~Running;
-   for(worker_t* w = server->workers; w != NULL; w = w->next) {
+   for(iohandler_t* w = server->handlers; w != NULL; w = w->next) {
       w->state = Idle;
-      dpt_notify(w->dispatcher, SIGALRM);
+      dpt_notify(w->threads, SIGALRM);
    }
 }
 
 void cute_destroy( cute_server **server )
 {
    // Free workers
-   worker_t* w = (*server)->workers;
+   iohandler_t* w = (*server)->handlers;
    while(w != NULL) {
-      worker_t* n = w->next;
-      cute_remove_handler(*server, w->id);
+      iohandler_t* n = w->next;
+      cute_remove_handler(*server, w->fd);
       w = n;
    }
 
