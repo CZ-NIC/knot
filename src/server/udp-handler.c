@@ -6,18 +6,18 @@
 
 void* udp_worker( void* obj )
 {
-    worker_t* worker = (worker_t*) obj;
+    iohandler_t* worker = (iohandler_t*) obj;
 
     // Check socket
-    if(worker->socket == NULL) {
+    if(worker->fd < 0) {
        debug_net("udp_worker: null socket recevied, finishing.\n");
        return NULL;
     }
 
-    int sock = worker->socket->socket;
+    int sock = worker->fd;
     ns_nameserver* ns = worker->server->nameserver;
-    uint8_t inbuf[SOCKET_BUFF_SIZE];
-    uint8_t outbuf[SOCKET_BUFF_SIZE];
+    uint8_t inbuf[SOCKET_MTU_SZ];
+    uint8_t outbuf[SOCKET_MTU_SZ];
     struct sockaddr_in faddr;
     int addrsize = sizeof(faddr);
 
@@ -27,7 +27,7 @@ void* udp_worker( void* obj )
     while(n >= 0) {
 
         // Receive data
-        n = recvfrom(sock, inbuf, SOCKET_BUFF_SIZE, 0, (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
+        n = recvfrom(sock, inbuf, SOCKET_MTU_SZ, 0, (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
 
         // Error and interrupt handling
         //fprintf(stderr, "recvfrom(): thread %p ret %d errno %s.\n", (void*)pthread_self(), n, strerror(errno));
@@ -43,7 +43,7 @@ void* udp_worker( void* obj )
         }
 
         debug_net("udp_worker: received %d bytes.\n", n);
-        size_t answer_size = SOCKET_BUFF_SIZE;
+        size_t answer_size = SOCKET_MTU_SZ;
         int res = ns_answer_request(ns, inbuf, n, outbuf,
                           &answer_size);
 

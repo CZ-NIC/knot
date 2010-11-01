@@ -19,6 +19,18 @@
 #include "common.h"
 #include "socket.h"
 
+/**  I/O handler structure.
+  */
+typedef struct iohandler_t {
+
+   int fd;                       /* I/O filedescripto r */
+   unsigned state;               /* Handler state */
+   struct iohandler_t* next;     /* Next handler */
+   dpt_dispatcher* threads;      /* Handler threads */
+   struct cute_server* server;   /* Reference to server */
+
+} iohandler_t;
+
 /*! Round-robin mechanism of switching.
   */
 #define get_next_rr(current, count) \
@@ -33,18 +45,8 @@ typedef enum {
 
 struct cute_server;
 
-/** Worker descriptor.
-  */
-typedef struct worker_t {
-
-    int id;
-    unsigned state;
-    struct worker_t* next;
-    struct cute_server* server;
-    socket_t* socket;
-    dpt_dispatcher* dispatcher;
-
-} worker_t;
+/*! Forwad declaration of opaque I/O handler. */
+struct iohandler_t;
 
 /*!
  * @brief Main server structure. Keeps references to all important structures
@@ -55,14 +57,14 @@ typedef struct cute_server {
    /*! @brief Server state tracking. */
    unsigned state;
 
-	/*! @brief Reference to the name server structure. */
-    ns_nameserver *nameserver;
+   /*! @brief Reference to the name server structure. */
+   ns_nameserver *nameserver;
 
    /*! @brief Reference to the zone database structure. */
-    zdb_database *zone_db;
+   zdb_database *zone_db;
 
-   /*! @brief Server worker list. */
-    worker_t *workers;
+   /*! @brief I/O handlers list. */
+   struct iohandler_t *handlers;
 
 } cute_server;
 
@@ -72,28 +74,19 @@ typedef struct cute_server {
  */
 cute_server *cute_create();
 
-/** Add 1..n workers to the server.
-  * \param routine Worker routine.
-  * \param socket Socket instance.
+/** Create and bind handler to given filedescriptor.
+  * \param fd I/O filedescriptor.
+  * \param routine Handler routine.
   * \param threads Number of threads to spawn.
-  * \return ptr to worker or NULL
+  * \return handler identifier or -1
   */
-worker_t*  cute_add_handlers( cute_server *server, socket_t* socket, thr_routine routine, int threads);
+int cute_create_handler(cute_server *server, int fd, thr_routine routine, int threads);
 
-/** Add a worker to the server.
-  * \param routine Worker routine.
-  * \param socket Socket instance.
-  * \return ptr to worker or NULL
-  */
-static inline worker_t* cute_add_handler( cute_server *server, socket_t* socket, thr_routine routine) {
-   return cute_add_handlers(server, socket, routine, 1);
-}
-
-/** Remove worker from server.
-  * \param id Set id.
+/** Delete handler.
+  * \param fd I/O handler filedescriptor.
   * \return >=0 If successful, negative integer on failure.
   */
-int cute_remove_handler( cute_server *server, int id);
+int cute_remove_handler(cute_server *server, int fd);
 
 /*!
  * @brief Starts the server.
