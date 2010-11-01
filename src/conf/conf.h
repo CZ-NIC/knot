@@ -3,11 +3,12 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 #include "lib/lists.h"
 
 /**
- * struct conf_interface - configuration for the interface
+ * struct conf_iface - configuration for the interface
  * @name: internal name for the interface (not system interface names)
  * @address: IP (IPv4/v6) address for this interface
  * @port: port number for this interface
@@ -17,7 +18,7 @@
  * used in the configuration.  Same interface could be used for
  * listening and outgoing function.
  **/
-struct conf_interface {
+struct conf_iface {
 	node n;
 	char *name;
 	char *address;
@@ -62,7 +63,7 @@ struct conf_key {
  * @address: hostname or IP address of the server
  * @port: remote port
  * @key: TSIG key used to authenticate messages from/to server
- * @interface: interface to use to communicate with the server (including outgoing IP address)
+ * @iface: interface to use to communicate with the server (including outgoing IP address)
  *
  * FIXME: Long description
  **/
@@ -72,7 +73,7 @@ struct conf_server {
 	char *address;
 	int   port;
 	struct conf_key *key;
-	struct conf_interface *interface;
+	struct conf_iface *iface;
 };
 
 /**
@@ -158,7 +159,7 @@ struct conf_log {
  * @identity: identity to return on CH TXT id.server.
  * @version: version to return on CH TXT version.bind. and version.server.
  * @logs: list of logging destinations
- * @interfaces: list of interfaces
+ * @ifaces: list of interfaces
  * @keys: list of TSIG keys
  * @servers: list of remote servers
  * @zones: list of zones
@@ -172,11 +173,15 @@ struct config {
 	char *version;
 
 	list logs;	
-	list interfaces;
+	list ifaces;
 	list keys;
 	list servers;
 	list zones;    
 };
+
+extern struct config *new_config;
+
+extern int (*cf_read_hook)(unsigned char *buf, unsigned int max);
 
 struct config *config_alloc();
 int config_parse(struct config *);
