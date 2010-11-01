@@ -154,6 +154,7 @@ struct conf_log {
 
 /**
  * struct config - main config structure
+ * @filename: name of the config file
  * @identity: identity to return on CH TXT id.server.
  * @version: version to return on CH TXT version.bind. and version.server.
  * @logs: list of logging destinations
@@ -165,6 +166,8 @@ struct conf_log {
  * Main configuration structure...  FIXME: more documentation
  **/
 struct config {
+	char *filename;
+
 	char *identity;
 	char *version;
 
@@ -175,5 +178,8 @@ struct config {
 	list zones;    
 };
 
+struct config *config_alloc();
+int config_parse(struct config *);
+void config_free(struct config *);
 
 #endif /* _CUTEDNS_CONF_H */
