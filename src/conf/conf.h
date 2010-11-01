@@ -4,7 +4,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#include "lists.h"
+#include "lib/lists.h"
 
 /**
  * struct conf_interface - configuration for the interface
