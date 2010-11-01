@@ -30,7 +30,7 @@ static inline void udp_epoll_handler(sm_event *ev)
 
         // Receive data
         // \todo Global I/O lock means ~ 8% overhead; recvfrom() should be thread-safe
-        n = recvfrom(ev->fd, ev->inbuf, ev->size_in, MSG_DONTWAIT, (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
+        n = socket_recvfrom(ev->fd, ev->inbuf, ev->size_in, MSG_DONTWAIT, (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
         //char _str[INET_ADDRSTRLEN];
         //inet_ntop(AF_INET, &(faddr.sin_addr), _str, INET_ADDRSTRLEN);
         //fprintf(stderr, "recvfrom() in %p: received %d bytes from %s:%d.\n", (void*)pthread_self(), n, _str, faddr.sin_port);
@@ -60,7 +60,7 @@ static inline void udp_epoll_handler(sm_event *ev)
             debug_sm_hex(answer, answer_size);
 
             for(;;) {
-                res = sendto(ev->fd, ev->outbuf, answer_size, MSG_DONTWAIT,
+                res = socket_sendto(ev->fd, ev->outbuf, answer_size, MSG_DONTWAIT,
                              (struct sockaddr *) &faddr,
                              (socklen_t) addrsize);
 

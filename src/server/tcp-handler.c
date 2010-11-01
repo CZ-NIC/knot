@@ -3,6 +3,7 @@
 #include <netinet/tcp.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <errno.h>
 #include "tcp-handler.h"
 
@@ -18,7 +19,48 @@ typedef struct tcp_worker_t {
     pthread_cond_t wakeup;
 } tcp_worker_t;
 
-/*! \todo Make generic in socket.h interface. */
+int tcp_epoll_create( int size )
+{
+    return epoll_create(size);
+}
+
+int tcp_epoll_add( int epfd, int socket, uint32_t events )
+{
+    struct epoll_event ev;
+    memset(&ev, 0, sizeof(struct epoll_event));
+
+    // All polled events should use non-blocking mode.
+    int old_flag = fcntl(socket, F_GETFL, 0);
+    if (fcntl(socket, F_SETFL, old_flag | O_NONBLOCK) == -1) {
+        log_error("error setting non-blocking mode on the socket.\n");
+        return -1;
+    }
+
+    // Register to epoll
+    ev.data.fd = socket;
+    ev.events = events;
+    if (epoll_ctl(epfd, EPOLL_CTL_ADD, socket, &ev) != 0) {
+        log_error("failed to add socket to event set (errno %d): %s.\n", errno, strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
+
+int tcp_epoll_remove( int epfd, int socket )
+{
+    // Compatibility with kernels < 2.6.9, require non-NULL ptr.
+    struct epoll_event ev;
+
+    // find socket ptr
+    if(epoll_ctl(epfd, EPOLL_CTL_DEL, socket, &ev) != 0) {
+        perror ("epoll_ctl");
+        return -1;
+    }
+
+    return 0;
+}
+
 static int tcp_reserve_bs(tcp_worker_t* worker, uint size)
 {
    if(worker->events_size >= size)
@@ -43,7 +85,7 @@ tcp_worker_t* tcp_worker_create(cute_server* server)
       return NULL;
 
    // Create epoll
-   worker->epfd = socket_poll_create(1);
+   worker->epfd = tcp_epoll_create(1);
    if (worker->epfd == -1) {
       free(worker);
       return NULL;
@@ -142,7 +184,7 @@ void *tcp_master( void *obj )
          tcp_worker_t* tcp_worker = tcp_workers[worker_id];
          pthread_mutex_lock(&tcp_worker->mutex);
          debug_net("tcp_master: accept: assigned socket %d to worker #%d\n", incoming, worker_id);
-         if(socket_poll_add(tcp_worker->epfd, incoming, EPOLLIN) == 0)
+         if(tcp_epoll_add(tcp_worker->epfd, incoming, EPOLLIN) == 0)
             ++tcp_worker->events_count;
 
          // Run worker
@@ -193,14 +235,14 @@ static inline void tcp_handler(int fd, uint8_t* inbuf, int inbuf_sz, uint8_t* ou
 {
     // Receive size
     unsigned short pktsize = 0;
-    int n = recv(fd, &pktsize, sizeof(unsigned short), 0);
+    int n = socket_recv(fd, &pktsize, sizeof(unsigned short), 0);
     pktsize = ntohs(pktsize);
     debug_net("tcp: incoming packet size on %d: %u buffer size: %u\n", fd, (unsigned) pktsize, (unsigned) inbuf_sz);
 
     // Receive payload
     if(n > 0 && pktsize > 0) {
         if(pktsize <= inbuf_sz)
-            n = recv(fd, inbuf, pktsize, 0); /// \todo Check buffer overflow.
+            n = socket_recv(fd, inbuf, pktsize, 0); /// \todo Check buffer overflow.
         else
             n = 0;
     }
@@ -223,7 +265,7 @@ static inline void tcp_handler(int fd, uint8_t* inbuf, int inbuf_sz, uint8_t* ou
             ((unsigned short*) outbuf)[0] = htons(answer_size);
             int sent = -1;
             while(sent < 0) {
-                sent = send(fd, outbuf, answer_size + sizeof(unsigned short), 0);
+                sent = socket_send(fd, outbuf, answer_size + sizeof(unsigned short), 0);
             }
 
             // Uncork
@@ -272,9 +314,9 @@ void *tcp_worker( void *obj )
                 // Disconnect
                debug_net("tcp: disconnected: %d\n", fd);
                pthread_mutex_lock(&worker->mutex);
-               socket_poll_remove(worker->epfd, fd);
+               tcp_epoll_remove(worker->epfd, fd);
                --worker->events_count;
-               close(fd);
+               socket_close(fd);
                pthread_mutex_unlock(&worker->mutex);
             }
         }
