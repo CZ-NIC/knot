@@ -13,35 +13,36 @@
 #include <stdbool.h>
 #include <pthread.h>
 
-//static uint const BUFFER_SIZE=100;
-
-static uint const MAX_QUERIES=10000000;
+//static uint const BUFFER_SIZE=100; //this does not work...
 
 static uint const SLEEP_TIME=1;
+
 #define BUFFER_SIZE 100
 
 typedef enum {
-        stat_UDP,
-        stat_TCP
+    stat_UDP,
+    stat_TCP
 } protocol_e;
 
 typedef struct stat_data_t {
-        uint query_type;
-        uint nano_secs;
-        protocol_e protocol;
+    uint query_type;
+    uint nano_secs;
+    protocol_e protocol;
 } stat_data_t;
 
+typedef struct stat_gatherer_t {
+    //these mutexes (or mutices? :) might be used wrong...I have to think about it some more
+    pthread_mutex_t mutex_read, mutex_queries, mutex_latency;
+    double qps;
+    double mean_latency;
+    uint latency;
+    uint queries; 
+} stat_gatherer_t;
+
 typedef struct stat_t {
-         pthread_mutex_t mutex;
-         bool first;
-         struct timespec t1, t2;
-         double qps;
-         double mean_latency;
-         uint queries;
-         uint queries2;
-         uint len;
-         uint latency;
-         stat_data_t data[BUFFER_SIZE]; //XXX
+    bool first;
+    struct timespec t1, t2;
+    stat_gatherer_t *gatherer;
 } stat_t;
 
 /* PRIVATES */
@@ -55,11 +56,19 @@ void stat_set_protocol( stat_t *stat ,uint protocol );
 
 /*---------------------------------------------------------------------------*/
 
-stat_t *stat_new( );
+stat_gatherer_t *stat_new_gatherer( );
 
-int stat_get_time( stat_t *stat );
+stat_t *stat_new_stat( );
 
-void stat_start( stat_t *stat );
+void stat_set_gatherer( stat_t *stat, stat_gatherer_t *gatherer);
+
+void stat_get_time( stat_t *stat );
+
+void stat_start( stat_gatherer_t *gatherer );
+
+void stat_gatherer_free( stat_gatherer_t *gatherer );
+
+void stat_stat_free( stat_t *stat );
 
 #endif
 

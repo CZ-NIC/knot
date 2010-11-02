@@ -30,6 +30,10 @@ int udp_master (dthread_t *thread)
     struct sockaddr_in faddr;
     int addrsize = sizeof(faddr);
 
+    stat_t *thread_stat=stat_new_stat();
+
+    stat_set_gatherer(thread_stat, ns->gatherer);
+
     // Loop until all data is read
     debug_net("udp: thread started (worker %p).\n", thread);
     int n = 0;
@@ -44,7 +48,7 @@ int udp_master (dthread_t *thread)
             break;
         }
 
-        stat_get_time(ns->stat);
+        stat_get_time(thread_stat);
 
         // Error and interrupt handling
         if (n <= 0) {
@@ -94,9 +98,11 @@ int udp_master (dthread_t *thread)
                 break;
             }
 
-            stat_get_time(ns->stat);
+            stat_get_time(thread_stat);
         }
     }
+
+    stat_stat_free(thread_stat);
 
     debug_net("udp: worker %p finished.\n", thread);
     return 0;
