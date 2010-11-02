@@ -10,8 +10,6 @@
 
 cute_server *cute_create()
 {
-    stat=stat_new();
-    stat_start(stat);
     debug_server("Creating Server structure..\n");
     cute_server *server = malloc(sizeof(cute_server));
     server->handlers = NULL;
@@ -142,14 +140,18 @@ int cute_remove_handler(cute_server *server, iohandler_t *ref)
 
 int cute_start( cute_server *server, char **filenames, uint zones )
 {
-        debug_server("Starting server with %u zone files.\n", zones);
+   debug_server("Starting server with %u zone files.\n", zones);
+   //stat
 
-        for (uint i = 0; i < zones; ++i) {
-                debug_server("Parsing zone file %s..\n", filenames[i]);
-                if (zp_parse_zone(filenames[i], server->zone_db) != 0) {
-                        return -1;
-                }
-        }
+   stat_start(server->nameserver->stat);
+  
+   //!stat
+   for (uint i = 0; i < zones; ++i) {
+       debug_server("Parsing zone file %s..\n", filenames[i]);
+       if (zp_parse_zone(filenames[i], server->zone_db) != 0) {
+           return -1;
+       }
+   }
 
    debug_server("\nDone\n\n");
    debug_server("Starting servers..\n");

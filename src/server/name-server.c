@@ -816,6 +816,13 @@ ns_nameserver *ns_create( zdb_database *database )
 	ldns_pkt_set_rcode(err, LDNS_RCODE_SERVFAIL);
 
 	ldns_status s = ldns_pkt2wire(&ns->err_response, err, &ns->err_resp_size);
+
+  //stat
+
+  ns->stat=stat_new();
+
+  //!stat
+
 	if (s != LDNS_STATUS_OK) {
 		log_error("Error while converting default error resposne to wire format"
 				"\n");
