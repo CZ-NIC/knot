@@ -18,6 +18,9 @@
 #include "common.h"
 #include "socket.h"
 #include "dthreads.h"
+#include "stat.h"
+
+stat_t *stat;
 
 /**  I/O handler structure.
   */
