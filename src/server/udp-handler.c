@@ -44,7 +44,7 @@ int udp_master (dthread_t *thread)
             break;
         }
 
-        stat_get_time(stat);
+        stat_get_time(ns->stat);
 
         // Error and interrupt handling
         if (n <= 0) {
@@ -94,10 +94,11 @@ int udp_master (dthread_t *thread)
                 break;
             }
 
-            stat_get_time(stat);
+            stat_get_time(ns->stat);
         }
     }
 
     debug_net("udp: worker %p finished.\n", thread);
     return 0;
 }
+
