@@ -5,9 +5,13 @@
 #include "name-server.h"
 #include "zone-parser.h"
 #include <unistd.h>
+#include <stdio.h>
+#include "stat.h"
 
 cute_server *cute_create()
 {
+    stat=stat_new();
+    stat_start(stat);
     debug_server("Creating Server structure..\n");
     cute_server *server = malloc(sizeof(cute_server));
     server->handlers = NULL;

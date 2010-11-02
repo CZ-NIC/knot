@@ -6,30 +6,34 @@
  * Description:   
  */
 
-#include <time.h>
-#include <stdbool.h>
-
-static uint const BUFFER_SIZE=1000;
-
 #ifndef __STAT_H__
 #define __STAT_H__
 
-enum {
-        udp;
-        tcp;
-} protocol_e;
+#include <time.h>
+#include <stdbool.h>
+#include <pthread.h>
+
+static uint const BUFFER_SIZE=1000;
+
+/*typedef enum {
+        UDP,
+        TCP
+} protocol_e;*/
 
 typedef struct stat_data_t {
         uint query_type;
         uint nano_secs;
         char *interface;
-        protocol_e protocol;
+//        protocol_e protocol;
 } stat_data_t;
 
 typedef struct stat_t {
+         pthread_mutex_t mutex;
          bool first;
          struct timespec t1, t2;
-         stat_data_t data[BUFFER_SIZE];
+         double qps;
+         uint queries;
+//         stat_data_t data[BUFFER_SIZE];
 } stat_t;
 
 /* PRIVATES */
@@ -43,9 +47,7 @@ stat_t *stat_new( );
 
 void stat_set_protocol( uint protocol );
 
-int 
-
-int stat_get_time( stat_t *stat, timespec *t );
+int stat_get_time( stat_t *stat );
 
 #endif
 

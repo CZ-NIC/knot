@@ -1,9 +1,12 @@
+#include <time.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <errno.h>
 #include "udp-handler.h"
 #include "name-server.h"
+#include "stat.h"
+#include "server.h"
 
 int udp_master (dthread_t *thread)
 {
@@ -40,6 +43,8 @@ int udp_master (dthread_t *thread)
         if (dt_is_cancelled(thread)) {
             break;
         }
+
+        stat_get_time(stat);
 
         // Error and interrupt handling
         if (n <= 0) {
@@ -88,6 +93,8 @@ int udp_master (dthread_t *thread)
 
                 break;
             }
+
+            stat_get_time(stat);
         }
     }
 
