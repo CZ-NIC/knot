@@ -3,6 +3,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <errno.h>
+#include <arpa/inet.h>
 #include "udp-handler.h"
 #include "name-server.h"
 #include "stat.h"
@@ -34,6 +35,8 @@ int udp_master (dthread_t *thread)
 
     stat_set_gatherer(thread_stat, ns->gatherer);
 
+    stat_set_protocol(thread_stat, stat_UDP);
+
     // Loop until all data is read
     debug_net("udp: thread started (worker %p).\n", thread);
     int n = 0;
@@ -48,7 +51,15 @@ int udp_master (dthread_t *thread)
             break;
         }
 
-        stat_get_time(thread_stat);
+        //XXX
+
+        /*char str[30];
+
+        inet_ntop(AF_INET, &faddr.sin_addr, str, 30);*/
+
+        //XXX
+
+        stat_get_first(thread_stat, &faddr); //faddr has to be read immediately.
 
         // Error and interrupt handling
         if (n <= 0) {
@@ -98,7 +109,7 @@ int udp_master (dthread_t *thread)
                 break;
             }
 
-            stat_get_time(thread_stat);
+            stat_get_second(thread_stat);
         }
     }
 
