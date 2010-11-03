@@ -12,12 +12,13 @@
 #include <time.h>
 #include <stdbool.h>
 #include <pthread.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
-//static uint const BUFFER_SIZE=100; //this does not work...
+static uint const SLEEP_TIME=4;
 
-static uint const SLEEP_TIME=1;
-
-#define BUFFER_SIZE 100
+#define FREQ_BUFFER_SIZE 10000
 
 typedef enum {
     stat_UDP,
@@ -36,12 +37,16 @@ typedef struct stat_gatherer_t {
     double qps;
     double mean_latency;
     uint latency;
-    uint queries; 
+    uint queries;
+    uint freq_array[FREQ_BUFFER_SIZE]; /* this should be much bigger, but sparse array, ideally 2**32 */
 } stat_gatherer_t;
 
 typedef struct stat_t {
     bool first;
     struct timespec t1, t2;
+    protocol_e protocol;
+    struct sockaddr_in *s_addr;
+//  pthread_t incrementor_thread;
     stat_gatherer_t *gatherer;
 } stat_t;
 
@@ -52,22 +57,60 @@ uint stat_last_query_time ( stat_t *stat );
 
 void stat_add_data( stat_t *stat, uint query_time );
 
-void stat_set_protocol( stat_t *stat ,uint protocol );
-
 /*---------------------------------------------------------------------------*/
 
+/**
+\brief 
+
+\return */
 stat_gatherer_t *stat_new_gatherer( );
 
+/**
+\brief 
+
+\return */
 stat_t *stat_new_stat( );
 
+/**
+\brief 
+
+\param stat  
+\param gatherer  
+
+\return */
 void stat_set_gatherer( stat_t *stat, stat_gatherer_t *gatherer);
 
+/**
+\brief 
+
+\param stat  
+\param protocol  
+
+\return */
+void stat_set_protocol( stat_t *stat, int protocol);
+
+/**
+\brief 
+
+\return */
 void stat_get_time( stat_t *stat );
 
+/**
+\brief 
+
+\return */
 void stat_start( stat_gatherer_t *gatherer );
 
+/**
+\brief 
+
+\return */
 void stat_gatherer_free( stat_gatherer_t *gatherer );
 
+/**
+\brief 
+
+\return */
 void stat_stat_free( stat_t *stat );
 
 #endif
