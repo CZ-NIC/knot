@@ -10,6 +10,12 @@
  * - thread prioritization
  * - on-the-fly changing of threading unit size
  *
+ * Coherent threading unit is when all threads execute
+ * the same runnable function.
+ *
+ * Incoherent function is when at least one thread executes
+ * a different runnable than the others.
+ *
  * \addtogroup threading
  * @{
  */
@@ -21,15 +27,21 @@
 
 /* Forward decls */
 struct dthread_t;
+struct dt_unit_t;
 
 /*!
  * \brief Thread state enumeration.
+ *
+ * \note State values are ordered by state level
+ *       and such should not be changed.
+ *       The reason is, you can compare like: "state > Dead" etc.
  */
 enum {
-    Dead      = 1 << 0, /*!< Thread is finished, waiting to be freed. */
-    Idle      = 1 << 1, /*!< Thread is idle, waiting for purpose. */
-    Active    = 1 << 1, /*!< Thread is active, working on a task. */
-    Cancelled = 1 << 2  /*!< Thread is cancelled, finishing task. */
+    ThreadJoined    = 1 << 0, /*!< Thread is finished and joined. */
+    ThreadDead      = 1 << 1, /*!< Thread is finished, waiting to be freed. */
+    ThreadIdle      = 1 << 2, /*!< Thread is idle, waiting for purpose. */
+    ThreadActive    = 1 << 3, /*!< Thread is active, working on a task. */
+    ThreadCancelled = 1 << 4  /*!< Thread is cancelled, finishing task. */
 
 } dt_state_t;
 
@@ -53,12 +65,14 @@ typedef int (*runnable_t)(struct dthread_t*);
  *       in an overlapped out-of-line structure,
  *       while not breaking an array of dthread_t.
  */
-struct {
-    unsigned       state; /*!< Bitfield of dt_flag flags. */
-    runnable_t       run; /*!< Runnable function or 0. */
-    void           *data; /*!< Thread-specific data. */
-    pthread_t       _thr; /* Implementation specific thread */
-    pthread_attr_t _attr; /* Implementation specific thread attributes */
+typedef struct dthread_t {
+    unsigned           state; /*!< Bitfield of dt_flag flags. */
+    runnable_t           run; /*!< Runnable function or 0. */
+    void               *data; /*!< Thread-specific data. */
+    struct dt_unit_t   *unit; /*!< Reference to assigned unit. */
+    void             *_adata; /* Currently active data */
+    pthread_t           _thr; /* Implementation specific thread */
+    pthread_attr_t     _attr; /* Implementation specific thread attributes */
 } dthread_t;
 
 /*!
@@ -68,15 +82,17 @@ struct {
  * Unit is coherent if all threads execute
  * the same runnable.
  */
-struct {
-    int                  size; /*!< Unit width (number of allocated threads) */
-    struct dthread_t *threads; /*!< Array of threads */
-    pthread_cond_t    _notify; /* Threads notification condition */
-    pthread_mutex_t    _mutex; /* Threads condition mutex */
+typedef struct dt_unit_t {
+    int                   size; /*!< Unit width (number of allocated threads) */
+    struct dthread_t  *threads; /*!< Array of threads */
+    pthread_cond_t     _isidle; /* Threads notification condition */
+    pthread_mutex_t _isidle_mx; /* Condition mutex */
+    pthread_cond_t     _isdead; /* Dead thread notification */
+    pthread_mutex_t _isdead_mx; /* Condition mutex */
 } dt_unit_t;
 
 /*! \brief Accessor to threads in unit. */
-#define dt_get_thread(p_unit, id) (p_unit->threads + (id))
+#define dt_get(p_unit, id) (p_unit->threads + (id))
 
 /*!
  * \brief Create a set of threads with no initial runnable.
@@ -94,7 +110,7 @@ dt_unit_t *dt_create (int count);
  * \param data Any data passed onto threads.
  * \return On success: new instance, else 0
  */
-dt_unit_t *dt_create_coherent (int count, runnable_t *runnable, void *data);
+dt_unit_t *dt_create_coherent (int count, runnable_t runnable, void *data);
 
 /*!
  * \brief Free unit.
@@ -130,6 +146,16 @@ int dt_signalize (dt_unit_t *unit, int signum);
 int dt_join (dt_unit_t *unit);
 
 /*!
+ *  \brief Stop all threads from running.
+ *
+ *  Active threads are interrupted at the nearest
+ *  runnable cancellation point.
+ *
+ *  \return Number of affected threads.
+ */
+int dt_stop (dt_unit_t *unit);
+
+/*!
  * \brief Modify thread priority.
  *
  * \param thread_id Identifier in unit, -1 means all threads.
@@ -139,14 +165,14 @@ int dt_join (dt_unit_t *unit);
 int dt_setprio (dthread_t* thread, int prio);
 
 /*!
- * \brief Schedule thread to another runnable.
+ * \brief Set thread to execute another runnable.
  *
  * \param thread    Thread reference.
  * \param runnable  Runnable function for target thread.
  * \param data      Data passed to target thread.
  * \return On success: 0, else <0
  */
-int dt_schedule (dthread_t* thread, runnable_t runnable, void *data);
+int dt_repurpose (dthread_t* thread, runnable_t runnable, void *data);
 
 /*!
  * \brief Put thread to idle state, cancells current runnable function.
