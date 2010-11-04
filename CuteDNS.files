@@ -54,3 +54,11 @@ src/server/tcp-handler.h
 src/server/udp-handler.c
 src/server/udp-handler-epoll.c
 src/server/tcp-handler.c
+src/dnslib/dname.h
+src/dnslib/dname.c
+src/dnslib/rrset.h
+src/dnslib/rrset.c
+src/dnslib/rdata.h
+src/dnslib/rdata.c
+src/dnslib/node.h
+src/dnslib/node.c
