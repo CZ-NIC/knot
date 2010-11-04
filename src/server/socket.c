@@ -17,7 +17,7 @@ int socket_create( int family, int type )
 
     // Reuse open socket
     int on = 1;
-    if(setsockopt(s, SOL_SOCKET, SO_REUSEADDR,
+    if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR,
                   (const char*)&on, sizeof(on)) < 0) {
         return socket_close(sock);
     }
