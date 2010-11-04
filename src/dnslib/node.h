@@ -7,7 +7,9 @@
 struct dnslib_node {
 	dnslib_dname_t *owner;
 	struct dnslib_node *parent;
-	skip_list *rrsets;
+	skip_list *rrsets;	// key - RRTYPE (uint16_t); value - dnslib_rrset_t *
+
+	struct dnslib_node *next;	// temporary
 };
 
 typedef struct dnslib_node dnslib_node_t;
