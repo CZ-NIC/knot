@@ -5,6 +5,7 @@
 #include "skiplist_tests.c"
 #include "da_tests.c"
 #include "cuckoo_tests.c"
+#include "dthreads_tests.c"
 #include "zonedb_tests.c"
 #include "dnslib_tests.c"
 #include "server_tests.c"
@@ -17,6 +18,7 @@ int main(int argc, char * argv[])
       &skiplist_tests_api, //! Skip list unit
       &da_tests_api,       //! Dynamic array unit
       &cuckoo_tests_api,   //! Cuckoo hashing unit
+      &dthreads_tests_api, //! DThreads testing unit
       &zonedb_tests_api,   //! Zone database unit
       &dnslib_tests_api,   //! DNS library unit
       &server_tests_api,   //! Server unit
