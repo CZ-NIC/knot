@@ -1,5 +1,7 @@
 #include "tap_unit.h"
 
+#include "dnslib/dnslib_dname_tests.c"
+
 static int dnslib_tests_count(int argc, char *argv[]);
 static int dnslib_tests_run(int argc, char *argv[]);
 
@@ -19,12 +21,17 @@ unit_api dnslib_tests_api = {
  */
 static int dnslib_tests_count(int argc, char *argv[])
 {
-   return 0;
+   return dnslib_dname_tests_count(argc, argv);
 }
 
 /*! Run all scheduled tests for given parameters.
  */
 static int dnslib_tests_run(int argc, char *argv[])
 {
-   return 0;
+	int res = 0;
+	// dname tests
+	note("dname tests...");
+	res = dnslib_dname_tests_run(argc, argv);
+
+	return res;
 }

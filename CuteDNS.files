@@ -63,3 +63,4 @@ src/dnslib/rdata.c
 src/dnslib/node.h
 src/dnslib/node.c
 src/dnslib/consts.h
+src/tests/dnslib/dnslib_dname_tests.c
