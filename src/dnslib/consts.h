@@ -5,6 +5,7 @@
 
 /*
  * RR types
+ * TODO: consider using enum (e.g. to be able to define MAX to the last elem)
  */
 const uint16_t DNSLIB_RRTYPE_UNKNOWN = 0;
 const uint16_t DNSLIB_RRTYPE_A = 1;		/* a host address */
@@ -63,7 +64,7 @@ const uint16_t DNSLIB_RRTYPE_NSEC3PARAM = 51;	/* NSEC3PARAM at zone apex nsec3 p
 
 const uint16_t DNSLIB_RRTYPE_SPF = 99;      /* RFC 4408 */
 
-const uint16_t DNSLIB_RRTYPE_MAX = DNSLIB_RRTYPE_SPF;	// last "real" RR
+const uint16_t DNSLIB_RRTYPE_MAX = 99;	// last "real" RR (consider setting to 51)
 
 // not designating any RRs
 const uint16_t DNSLIB_RRTYPE_TSIG = 250;
