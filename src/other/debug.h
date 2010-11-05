@@ -15,6 +15,7 @@
 //#define ZN_DEBUG
 //#define ZP_DEBUG_PARSE
 //#define CUTE_DEBUG
+#define DNSLIB_DNAME_DEBUG
 
 #ifdef CUTE_DEBUG
 #define debug_server(msg...) log_msg(LOG_DEBUG, msg)
@@ -28,6 +29,12 @@
 #else
 #define debug_dnss(msg...)
 #define debug_dnss_hex(data, len)
+#endif
+
+#ifdef DNSLIB_DNAME_DEBUG
+#define debug_dnslib_dname(msg...) log_msg(LOG_DEBUG, msg)
+#else
+#define debug_dnslib_dname(msg...)
 #endif
 
 #ifdef CUCKOO_DEBUG
