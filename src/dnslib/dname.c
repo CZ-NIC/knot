@@ -105,7 +105,7 @@ dnslib_dname_t *dnslib_dname_new_from_wire( uint8_t *name, uint size,
 		return NULL;
 	}
 
-	dname->name = name;
+	memcpy(dname->name, name, size);
 	dname->size = size;
 	dname->node = node;
 
