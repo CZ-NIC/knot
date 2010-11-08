@@ -215,11 +215,7 @@ static inline int dt_test_start(dt_unit_t *unit)
 /*! \brief Stop unit. */
 static inline int dt_test_stop(dt_unit_t *unit)
 {
-    int ret = 0;
-    for (int i = 0; i < unit->size; ++i)
-        ret += dt_stop(unit->threads[i]);
-
-    return ret;
+    return dt_stop(unit);
 }
 
 /*! \brief Join unit. */
