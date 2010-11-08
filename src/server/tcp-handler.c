@@ -7,6 +7,7 @@
 #include <errno.h>
 #include "name-server.h"
 #include "tcp-handler.h"
+#include "stat.h"
 
 /*
  * TCP connection pool.
@@ -19,6 +20,7 @@ typedef struct tcp_pool_t {
     ns_nameserver *ns;             /* reference to name server */
     pthread_mutex_t mx;            /* pool synchronisation */
     iohandler_t*  handler;         /* master I/O handler */
+    stat_t *stat;                  /* statistics gatherer */
 } tcp_pool_t;
 
 /* Forward decls. */
@@ -45,7 +47,6 @@ int tcp_master (dthread_t* thread)
     iohandler_t* handler = (iohandler_t *)thread->data;
     int master_sock = handler->fd;
     debug_dt("dthreads: [%p] is TCP master, state: %d\n", thread, thread->state);
-
 
     /*
      * Create N pools of TCP connections.
@@ -115,7 +116,7 @@ static inline void tcp_answer (int fd,
                                int inbuf_sz,
                                uint8_t* dest,
                                int outbuf_sz,
-                               ns_nameserver* ns)
+                               tcp_pool_t* pool)
 {
     // Receive size
     unsigned short pktsize = 0;
@@ -131,6 +132,13 @@ static inline void tcp_answer (int fd,
             n = 0;
         }
     }
+
+    //! \todo Real address;
+    struct sockaddr_in faddr;
+    faddr.sin_family = AF_INET;
+    faddr.sin_port = htons(port);
+    faddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    stat_get_first(stat, &faddr); //faddr has to be read immediately.
 
     // Check read result
     if (n > 0) {
@@ -158,6 +166,7 @@ static inline void tcp_answer (int fd,
             // Uncork
             cork = 0;
             setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
+            stat_get_second(ev->stat);
             debug_net("tcp: sent answer to %d\n", fd);
         }
     }
@@ -204,7 +213,7 @@ static int tcp_pool (dthread_t* thread)
                       pool->ep_fd, fd);
             tcp_answer(fd, buf, SOCKET_MTU_SZ,
                        answer,  SOCKET_MTU_SZ,
-                       pool->ns);
+                       pool);
             debug_net("tcp: pool #%d finished fd=%d (remaining %d).\n",
                       pool->ep_fd, fd, pool->ep_ecount);
 
@@ -265,6 +274,11 @@ static tcp_pool_t* tcp_pool_new (iohandler_t *handler)
       return 0;
    }
 
+   // Create stat gatherer
+   pool->stat = stat_new_stat(); //new instance each time...XXX has to be fixed
+   stat_set_gatherer(pool->stat, pool->ns->gatherer);
+   stat_set_protocol(pool->stat, stat_TCP);
+
    return pool;
 }
 
@@ -283,6 +297,9 @@ static void tcp_pool_del (tcp_pool_t **pool)
 
     // Destroy synchronisation
     pthread_mutex_destroy(&(*pool)->mx);
+
+    // Delete stat
+    stat_stat_free((*pool)->stat);
 
     // Free
     free((*pool));

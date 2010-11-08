@@ -819,7 +819,7 @@ ns_nameserver *ns_create( zdb_database *database )
 
   //stat
 
-  ns->gatherer=stat_new_gatherer();
+  ns->gatherer=new_gatherer();
 
   //!stat
 
