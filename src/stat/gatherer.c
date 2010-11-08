@@ -12,6 +12,8 @@
 #include "gatherer.h"
 #include "common.h"
 
+/*----------------------------------------------------------------------------*/
+
 gatherer_t *new_gatherer( )
 {
     gatherer_t *ret;
@@ -44,6 +46,8 @@ gatherer_t *new_gatherer( )
     return ret;
 }
 
+/*----------------------------------------------------------------------------*/
+
 void gatherer_free( gatherer_t *gath )
 {
     for (int i = 0; i < ; i++) {
@@ -52,6 +56,6 @@ void gatherer_free( gatherer_t *gath )
     free(gath);
 }
 
-
+/*----------------------------------------------------------------------------*/
 
 /* end of file gath.c */
