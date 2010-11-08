@@ -66,13 +66,14 @@ typedef int (*runnable_t)(struct dthread_t*);
  *       while not breaking an array of dthread_t.
  */
 typedef struct dthread_t {
-    unsigned           state; /*!< Bitfield of dt_flag flags. */
+    volatile unsigned  state; /*!< Bitfield of dt_flag flags. */
     runnable_t           run; /*!< Runnable function or 0. */
-    void               *data; /*!< Thread-specific data. */
+    void               *data; /*!< Currently active data */
     struct dt_unit_t   *unit; /*!< Reference to assigned unit. */
-    void             *_adata; /* Currently active data */
+    void             *_adata; /* Thread-specific data. */
     pthread_t           _thr; /* Implementation specific thread */
     pthread_attr_t     _attr; /* Implementation specific thread attributes */
+    pthread_mutex_t      _mx; /* Thread state change lock. */
 } dthread_t;
 
 /*!
@@ -85,10 +86,10 @@ typedef struct dthread_t {
 typedef struct dt_unit_t {
     int                   size; /*!< Unit width (number of allocated threads) */
     struct dthread_t  *threads; /*!< Array of threads */
-    pthread_cond_t     _isidle; /* Threads notification condition */
-    pthread_mutex_t _isidle_mx; /* Condition mutex */
-    pthread_cond_t     _isdead; /* Dead thread notification */
-    pthread_mutex_t _isdead_mx; /* Condition mutex */
+    pthread_cond_t     _notify; /* Notify thread */
+    pthread_mutex_t _notify_mx; /* Condition mutex */
+    pthread_cond_t     _report; /* Report thread state */
+    pthread_mutex_t _report_mx; /* Condition mutex */
 } dt_unit_t;
 
 /*! \brief Accessor to threads in unit. */
@@ -128,15 +129,16 @@ void dt_delete (dt_unit_t **unit);
 int dt_start (dt_unit_t *unit);
 
 /*!
- * \brief Send given signal to threads.
+ * \brief Send given signal to thread.
  *
  * \note This is useful to interrupt some blocking I/O as well,
- *       for example with SIGALRM and a properly set handler.
+ *       for example with SIGALRM, which is handled by default.
+ * \note Signal handler may be overriden in runnable.
  *
  * \param signum Signal code.
  * \return On success: 0, else <0
  */
-int dt_signalize (dt_unit_t *unit, int signum);
+int dt_signalize (dthread_t *thread, int signum);
 
 /*!
  *  \brief Wait for all thread in unit to finish.
@@ -195,6 +197,13 @@ int dt_cancel (dthread_t *thread);
  * \return On success: 0, else <0
  */
 int dt_compact (dt_unit_t *unit);
+
+/** Return optimal number of threads for instance.
+  * It is estimated as NUM_CPUs + 1.
+  * Fallback is DEFAULT_THR_COUNT  (\see common.h).
+  * \return number of threads
+  */
+int dt_optimal_size();
 
 
 #endif // DTHREADS_H
