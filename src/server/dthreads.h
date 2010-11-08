@@ -85,7 +85,7 @@ typedef struct dthread_t {
  */
 typedef struct dt_unit_t {
     int                   size; /*!< Unit width (number of allocated threads) */
-    struct dthread_t  *threads; /*!< Array of threads */
+    struct dthread_t **threads; /*!< Array of threads */
     pthread_cond_t     _notify; /* Notify thread */
     pthread_mutex_t _notify_mx; /* Condition mutex */
     pthread_cond_t     _report; /* Report thread state */
@@ -122,6 +122,26 @@ dt_unit_t *dt_create_coherent (int count, runnable_t runnable, void *data);
 void dt_delete (dt_unit_t **unit);
 
 /*!
+ * \brief Resize unit to given number.
+ *
+ * \note Newly created dthreads will have
+ *       no runnable or data, their state
+ *       will be ThreadJoined (that means
+ *       no thread will be physically created until
+ *       next dt_start()).
+ *
+ * \warning Be careful when shrinking unit,
+ *          joined and idle threads are reclaimed first,
+ *          but it may kill your active threads as a last resort.
+ *          However, threads will stop at their cancellation point,
+ *          so this is potentially an expensive operation.
+ *
+ * \param size New unit size.
+ * \return On success: 0, else <0
+ */
+int dt_resize(dt_unit_t *unit, int size);
+
+/*!
  * \brief Start all threads in selected unit.
  *
  * \return On success: 0, else <0
@@ -148,14 +168,14 @@ int dt_signalize (dthread_t *thread, int signum);
 int dt_join (dt_unit_t *unit);
 
 /*!
- *  \brief Stop all threads from running.
+ *  \brief Stop thread from running.
  *
- *  Active threads are interrupted at the nearest
+ *  Active thread is interrupted at the nearest
  *  runnable cancellation point.
  *
- *  \return Number of affected threads.
+ * \return On success: 0, else <0
  */
-int dt_stop (dt_unit_t *unit);
+int dt_stop (dthread_t* thread);
 
 /*!
  * \brief Modify thread priority.
