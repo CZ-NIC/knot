@@ -90,10 +90,8 @@ typedef struct dt_unit_t {
     pthread_mutex_t _notify_mx; /* Condition mutex */
     pthread_cond_t     _report; /* Report thread state */
     pthread_mutex_t _report_mx; /* Condition mutex */
+    pthread_mutex_t        _mx; /* Unit lock */
 } dt_unit_t;
-
-/*! \brief Accessor to threads in unit. */
-#define dt_get(p_unit, id) (p_unit->threads + (id))
 
 /*!
  * \brief Create a set of threads with no initial runnable.
