@@ -6,7 +6,7 @@
 #include "zone-parser.h"
 #include <unistd.h>
 #include <stdio.h>
-#include "stat.h"
+#include "gatherer.h"
 
 cute_server *cute_create()
 {
@@ -201,7 +201,7 @@ void cute_destroy( cute_server **server )
       w = n;
    }
 
-   stat_gatherer_free(*(&(*server)->nameserver->gatherer));
+   gatherer_free(*(&(*server)->nameserver->gatherer));
    ns_destroy(&(*server)->nameserver);
    zdb_destroy(&(*server)->zone_db);
    free(*server);

@@ -42,6 +42,7 @@ int udp_master (dthread_t *thread)
     int n = 0;
     while (n >= 0) {
 
+
         // Receive data
         n = socket_recvfrom(sock, inbuf, SOCKET_MTU_SZ, 0,
                             (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
@@ -51,15 +52,9 @@ int udp_master (dthread_t *thread)
             break;
         }
 
-        //XXX
-
-        /*char str[30];
-
-        inet_ntop(AF_INET, &faddr.sin_addr, str, 30);*/
-
-        //XXX
 
         stat_get_first(thread_stat, &faddr); //faddr has to be read immediately.
+
 
         // Error and interrupt handling
         if (n <= 0) {
@@ -90,7 +85,6 @@ int udp_master (dthread_t *thread)
             assert(answer_size > 0);
             debug_net("udp: answer wire format (size %u):\n",
                       (unsigned) answer_size);
-
             debug_net_hex((const char*) outbuf, answer_size);
 
             // Send datagram
