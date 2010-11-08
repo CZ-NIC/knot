@@ -173,7 +173,17 @@ int dt_join (dt_unit_t *unit);
  *
  * \return On success: 0, else <0
  */
-int dt_stop (dthread_t* thread);
+int dt_stop_id (dthread_t* thread);
+
+/*!
+ *  \brief Stop all threads in unit.
+ *
+ *  Active threads are interrupted at the nearest
+ *  runnable cancellation point.
+ *
+ * \return On success: 0, else <0
+ */
+int dt_stop (dt_unit_t *unit);
 
 /*!
  * \brief Modify thread priority.

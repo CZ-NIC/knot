@@ -564,7 +564,7 @@ int dt_join (dt_unit_t *unit)
     return 0;
 }
 
-int dt_stop (dthread_t *thread)
+int dt_stop_id (dthread_t *thread)
 {
     // Signalize active thread to stop
     lock_thread_rw(thread);
@@ -576,6 +576,37 @@ int dt_stop (dthread_t *thread)
 
     // Broadcast notification
     dt_unit_t *unit = thread->unit;
+    if(unit != 0) {
+        pthread_mutex_lock(&unit->_notify_mx);
+        pthread_cond_broadcast(&unit->_notify);
+        pthread_mutex_unlock(&unit->_notify_mx);
+    }
+
+    return 0;
+}
+
+int dt_stop (dt_unit_t *unit)
+{
+    // Lock unit
+    lock_unit_rw(unit);
+
+    // Signalize all threads to stop
+    for (int i = 0; i < unit->size; ++i) {
+
+        // Lock thread
+        dthread_t *thread = unit->threads[i];
+        lock_thread_rw(thread);
+        if(thread->state > ThreadDead) {
+            thread->state = ThreadDead | ThreadCancelled;
+            dt_signalize(thread, SIGALRM);
+        }
+        unlock_thread_rw(thread);
+    }
+
+    // Unlock unit
+    unlock_unit_rw(unit);
+
+    // Broadcast notification
     if(unit != 0) {
         pthread_mutex_lock(&unit->_notify_mx);
         pthread_cond_broadcast(&unit->_notify);
