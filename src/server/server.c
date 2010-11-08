@@ -4,6 +4,7 @@
 #include "zone-database.h"
 #include "name-server.h"
 #include "zone-parser.h"
+#include "dthreads.h"
 #include <unistd.h>
 
 cute_server *cute_create()
@@ -39,7 +40,7 @@ cute_server *cute_create()
     debug_server("Creating workers..\n");
 
     // Estimate number of threads/manager
-    int thr_count = cute_estimate_threads();
+    int thr_count = dt_optimal_size();
     debug_server("Estimated number of threads per handler: %d\n", thr_count);
 
     // Create socket handlers
@@ -188,15 +189,3 @@ void cute_destroy( cute_server **server )
    free(*server);
    *server = NULL;
 }
-
-int cute_estimate_threads()
-{
-#ifdef _SC_NPROCESSORS_ONLN
-   int ret = (int) sysconf(_SC_NPROCESSORS_ONLN);
-   if(ret >= 1)
-      return ret + 1;
-#endif
-   log_info("server: failed to estimate the number of online CPUs");
-   return DEFAULT_THR_COUNT;
-}
-
