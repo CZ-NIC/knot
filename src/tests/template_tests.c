@@ -11,6 +11,8 @@
    There is no header file, all modules *.c files
    are included directly into src/tests/main.c
 
+   See https://github.com/zorgnax/libtap for libtap API reference.
+
  */
 
 /* Unit implementation */
