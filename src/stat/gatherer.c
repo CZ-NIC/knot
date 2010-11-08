@@ -50,8 +50,8 @@ gatherer_t *new_gatherer( )
 
 void gatherer_free( gatherer_t *gath )
 {
-    for (int i = 0; i < ; i++) {
-        free(gath->flow_array[i].addr);
+    for (int i = 0; i < FREQ_BUFFER_SIZE; i++) {
+        free(gath->flow_array[i]->addr);
     }
     free(gath);
 }
