@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "tcp-handler.h"
+#include "dthreads.h"
 
 /** Event descriptor.
   */
@@ -148,7 +149,7 @@ void *tcp_master( void *obj )
    // Create pool of TCP workers
    // Each worker is responsible for its own set of clients ("bucket")
    int worker_id = 0;
-   int worker_count = cute_estimate_threads() - 1; // estimate_threads() - master thread
+   int worker_count = dt_optimal_size() - 1; // estimate_threads() - master thread
    if(worker_count < 1) {
       worker_count = 1;
    }

@@ -123,11 +123,4 @@ void cute_stop( cute_server *server );
  */
 void cute_destroy( cute_server **server );
 
-/** Return optimal number of threads for instance.
-  * It is estimated as NUM_CPUs + 1.
-  * Fallback is DEFAULT_THR_COUNT  (\see common.h).
-  * \return number of threads
-  */
-int cute_estimate_threads();
-
 #endif
