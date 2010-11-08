@@ -3,20 +3,22 @@
 
 #include "libtap/tap.h"
 
-/*! Pointer to function for unit_api.
+/*!
+ * Pointer to function for unit_api.
  */
 typedef int(unitapi_f)(int,char*[]);
 
 
-/*! Basic Unit APIs.
+/*!
+ * \brief Basic Unit APIs.
  *
- *  Each unit should have one global variable with
- *  initialized instance of unit_api.
+ * Each unit should have one global variable with
+ * initialized instance of unit_api.
  *
- *  Unit API should contain:
- *  - name (const char*)
- *  - count (function to calculate number of tests)
- *  - run (function to run unit tests)
+ * Unit API should contain:
+ * - name (const char*)
+ * - count (function to calculate number of tests)
+ * - run (function to run unit tests)
  */
 typedef struct {
    const char* name;
