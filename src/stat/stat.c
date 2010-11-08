@@ -21,7 +21,6 @@
 #include "gatherer.h"
 
 
-
 /*----------------------------------------------------------------------------*/
 
 void stat_reset_gatherer_array( gatherer_t *gatherer )
@@ -41,8 +40,10 @@ void stat_sleep_compute( void *gatherer )
 
         for (int i = 0; i < FREQ_BUFFER_SIZE; i++) {
             if (gath->freq_array[i]>1) {
-                printf("too much activity at index %d: %d queries adress: %s port %d protocol %d\n",
-                       i, gath->freq_array[i], gath->flow_array[i]->addr, gath->flow_array[i]->port, gath->flow_array[i]->protocol);
+                printf("too much activity at index %d: %d queries adress:
+                       %s port %d protocol %d\n", i, gath->freq_array[i], 
+                       gath->flow_array[i]->addr, gath->flow_array[i]->port,
+                       gath->flow_array[i]->protocol);
             }
         }
 
@@ -61,7 +62,8 @@ void stat_sleep_compute( void *gatherer )
 
         gath->mean_latency = (gath->udp_mean_latency+gath->tcp_mean_latency)/2;
 
-        //TODO only applies for sleep time
+        //TODO only applies for sleep time, which might not be bad, at least
+        //there's no need to hold more variables
         gath->udp_queries=0;
 
         gath->tcp_queries=0;

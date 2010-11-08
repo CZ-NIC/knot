@@ -18,14 +18,13 @@
 
 #include "gatherer.h"
 
+/* determines how long until the sleeper thread wakes up and does compuations */
 static uint const SLEEP_TIME=15;
 
-typedef struct stat_data_t {
-    uint query_type;
-    uint nano_secs;
-    protocol_e protocol;
-} stat_data_t;
-
+/**
+\brief 
+Statistics structure, unique for each UDP/TCP thread.
+*/
 typedef struct stat_t {
     bool first;
     struct timespec t1, t2;
@@ -46,54 +45,49 @@ void stat_add_data( stat_t *stat, uint query_time );
 
 /**
 \brief 
-
-\return */
+Creates a new stat_t instance.
+\return new instance, NULL otherwise*/
 stat_t *stat_new_stat( );
 
 /**
 \brief 
-
-\param stat  
-\param gatherer  
+Assignes a gatherer to stat_t structure.
+\param stat  stat_t (usually newly created)
+\param gatherer  "parental" gatherer structure
 
 \return */
 void stat_set_gatherer( stat_t *stat, gatherer_t *gatherer);
 
 /**
 \brief 
-
-\param stat  
-\param protocol  
-
+Sets a protocol for stat_t structure. Options are stat_UDP, stat_TCP.
+\param stat  stat_t (usually newly created)
+\param protocol  protocol to be assigned to stat structure
 \return */
+
 void stat_set_protocol( stat_t *stat, int protocol);
 
 /**
 \brief 
-
-\return */
-void stat_get_time( stat_t *stat );
-
-/**
-\brief 
-
-\return */
-void stat_start();
-
-/**
-\brief 
-
-\return */
-
-
-/**
-\brief 
-
+Frees a stat_t structure.
+\parem stat stat_t to be freed
 \return */
 void stat_stat_free( stat_t *stat );
 
-void stat_get_first( stat_t *stat , struct sockaddr_in *s_addr );
+/**
+\brief 
+Gets the time from processing function.
+\param stat  current instance of stat_t
+\param s_addr  sockaddr structure to be used later for statistics
 
+\return */
+void stat_get_first( stat_t *stat, struct sockaddr_in *s_addr );
+
+/**
+\brief 
+Gets the the from processing fuction and changes the corresponding variables.
+\param stat current stat_t instance
+\return */
 void stat_get_second( stat_t *stat );
 
 
