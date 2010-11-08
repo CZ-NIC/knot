@@ -40,7 +40,7 @@ void stat_sleep_compute( void *gatherer )
 
         for (int i = 0; i < FREQ_BUFFER_SIZE; i++) {
             if (gath->freq_array[i]>1) {
-                printf("too much activity at index %d: %d queries adress:
+                printf("too much activity at index %d: %d queries adress: \
                        %s port %d protocol %d\n", i, gath->freq_array[i], 
                        gath->flow_array[i]->addr, gath->flow_array[i]->port,
                        gath->flow_array[i]->protocol);
