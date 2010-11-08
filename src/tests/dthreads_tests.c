@@ -19,7 +19,7 @@ unit_api dthreads_tests_api = {
 /*
  *  Unit implementation.
  */
-static const int DT_TEST_COUNT = 16;
+static const int DT_TEST_COUNT = 17;
 
 /* Unit runnable data. */
 static pthread_mutex_t _runnable_mx;
@@ -162,6 +162,50 @@ static inline int dt_test_resize(dt_unit_t *unit, int size)
     return ret == 0;
 }
 
+/*! \brief Resize unit while threads are active. */
+static inline int dt_test_liveresize(dt_unit_t *unit)
+{
+    // Size
+    int size = unit->size;
+    int size_hi = size + 2;
+    int size_lo = size - 1;
+
+    // Expand
+    int ret = 0;
+    ret = dt_resize(unit, size_hi);
+    if (ret < 0) {
+        return 0;
+    }
+
+    // Repurpose all
+    for (int i = 0; i < unit->size; ++i) {
+        ret += dt_repurpose(unit->threads[i], &runnable, 0);
+    }
+
+    // Restart
+    _runnable_i = 0;
+    ret += dt_start(unit);
+
+    // Shrink
+    ret += dt_resize(unit, size_lo);
+
+    // Wait for finish
+    ret += dt_join(unit);
+
+    // Verify
+    int expected_hi = size_hi * _runnable_cycles;
+    int expected_lo = size_lo * _runnable_cycles;
+    note("resize test: %d->%d->%d threads, %d ticks, <%d,%d> expected",
+         size, size_hi, size_lo, _runnable_i, expected_lo, expected_hi);
+
+    if(_runnable_i > expected_hi || _runnable_i < expected_lo) {
+        return 0;
+    }
+
+    // Check return codes
+    return ret == 0;
+}
+
 /*! \brief Start unit. */
 static inline int dt_test_start(dt_unit_t *unit)
 {
@@ -266,7 +310,10 @@ static int dt_tests_run(int argc, char * argv[])
     ok(dt_test_resize(unit, size),
        "dthreads: shrinking unit to size / 2 (%d threads)", size);
 
-    /* Test 16: Deinitialize */
+    /* Test 16: Resize while threads are active. */
+    ok(dt_test_liveresize(unit), "dthreads: resizing unit while active");
+
+    /* Test 17: Deinitialize */
     dt_delete(&unit);
     ok(unit == 0, "dthreads: delete unit");
     endskip;
