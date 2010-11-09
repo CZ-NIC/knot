@@ -141,7 +141,7 @@ dnslib_dname_t *dnslib_dname_new_from_wire( uint8_t *name, uint size,
 											struct dnslib_node *node )
 {
 	if (name == NULL && size != 0) {
-		printf("No name given!\n");
+		debug_dnslib_dname("No name given!\n");
 		return NULL;
 	}
 

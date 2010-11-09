@@ -105,11 +105,13 @@ static int check_domain_name( const dnslib_dname_t *dname, int i )
 static int test_dname_create_from_str()
 {
 	int errors = 0;
+	dnslib_dname_t *dname = NULL;
 
 	for (int i = 0; i < TEST_DOMAINS && errors == 0; ++i) {
-		dnslib_dname_t *dname = dnslib_dname_new_from_str(test_domains[i].str,
+		dname = dnslib_dname_new_from_str(test_domains[i].str,
 									strlen(test_domains[i].str), NODE_ADDRESS);
 		errors += check_domain_name(dname, i);
+		dnslib_dname_free(dname);
 	}
 
 	return (errors == 0);
@@ -123,13 +125,15 @@ static int test_dname_create_from_str()
 static int test_dname_create_from_wire()
 {
 	int errors = 0;
+	dnslib_dname_t *dname = NULL;
 
 	for (int i = 0; i < TEST_DOMAINS && errors == 0; ++i) {
 		assert(strlen(test_domains[i].wire) + 1 == test_domains[i].size);
-		dnslib_dname_t *dname = dnslib_dname_new_from_wire(
+		dname = dnslib_dname_new_from_wire(
 				(uint8_t *)test_domains[i].wire, test_domains[i].size,
 				NODE_ADDRESS);
 		errors += check_domain_name(dname, i);
+		dnslib_dname_free(dname);
 	}
 
 	return (errors == 0);
@@ -143,9 +147,10 @@ static int test_dname_create_from_wire()
 static int test_dname_to_str()
 {
 	int errors = 0;
+	dnslib_dname_t *dname = NULL;
 
 	for (int i = 0; i < TEST_DOMAINS && errors == 0; ++i) {
-		dnslib_dname_t *dname = dnslib_dname_new_from_wire(
+		dname = dnslib_dname_new_from_wire(
 				(uint8_t *)test_domains[i].wire, test_domains[i].size,
 				NODE_ADDRESS);
 		char *name_str = dnslib_dname_to_str(dname);
@@ -155,6 +160,7 @@ static int test_dname_to_str()
 			++errors;
 		}
 		free(name_str);
+		dnslib_dname_free(dname);
 	}
 
 	return (errors == 0);
@@ -181,13 +187,13 @@ static int dnslib_dname_tests_run(int argc, char *argv[])
 	res_create = test_dname_create();
 	ok(res_create, "dname: create empty");
 
+	skip(!res_create, 4);
+
 	todo();
 
 	ok(test_dname_delete(), "dname: delete");
 
 	endtodo;
-
-	skip(!res_create, 3);
 
 	ok((res_str = test_dname_create_from_str()), "dname: create from str");
 	ok((res_wire = test_dname_create_from_wire()),
