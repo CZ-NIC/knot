@@ -38,10 +38,10 @@ struct dt_unit_t;
  */
 enum {
     ThreadJoined    = 1 << 0, /*!< Thread is finished and joined. */
-    ThreadDead      = 1 << 1, /*!< Thread is finished, waiting to be freed. */
-    ThreadIdle      = 1 << 2, /*!< Thread is idle, waiting for purpose. */
-    ThreadActive    = 1 << 3, /*!< Thread is active, working on a task. */
-    ThreadCancelled = 1 << 4  /*!< Thread is cancelled, finishing task. */
+    ThreadCancelled = 1 << 1, /*!< Thread is cancelled, finishing task. */
+    ThreadDead      = 1 << 2, /*!< Thread is finished, waiting to be freed. */
+    ThreadIdle      = 1 << 3, /*!< Thread is idle, waiting for purpose. */
+    ThreadActive    = 1 << 4  /*!< Thread is active, working on a task. */
 
 } dt_state_t;
 
@@ -205,6 +205,14 @@ int dt_setprio (dthread_t* thread, int prio);
 int dt_repurpose (dthread_t* thread, runnable_t runnable, void *data);
 
 /*!
+ * \brief Wake up thread from idle state.
+ *
+ * Thread is awoken from idle state and enters runnable.
+ * This function has no effect on running threads.
+ */
+int dt_activate (dthread_t *thread);
+
+/*!
  * \brief Put thread to idle state, cancells current runnable function.
  *
  * Thread is flagged with Cancel flag and returns from runnable at the nearest
@@ -226,13 +234,22 @@ int dt_cancel (dthread_t *thread);
  */
 int dt_compact (dt_unit_t *unit);
 
-/** Return optimal number of threads for instance.
-  * It is estimated as NUM_CPUs + 1.
-  * Fallback is DEFAULT_THR_COUNT  (\see common.h).
-  * \return number of threads
-  */
-int dt_optimal_size();
+/*!
+ * \brief Return optimal number of threads for instance.
+ *
+ * It is estimated as NUM_CPUs + 1.
+ * Fallback is DEFAULT_THR_COUNT  (\see common.h).
+ *
+ * \return number of threads
+ */
+int dt_optimal_size ();
 
+/*!
+ * \brief Return true if thread is cancelled.
+ *
+ * Synchronously check for ThreadCancelled flag.
+ */
+int dt_is_cancelled (dthread_t *thread);
 
 #endif // DTHREADS_H
 
