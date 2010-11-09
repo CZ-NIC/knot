@@ -19,8 +19,8 @@ dnslib_rdata_t *dnslib_rdata_new( uint count )
 
 	rdata->items = NULL;
 
-	if (count > 0 (rdata->items = (dnslib_rdata_item_t *)calloc(
-			count * sizeof(dnslib_rdata_item_t)) == NULL)) {
+	if (count > 0 && (rdata->items = (dnslib_rdata_item_t *)calloc(
+			count, sizeof(dnslib_rdata_item_t))) == NULL) {
 		ERR_ALLOC_FAILED;
 		free(rdata);
 		return NULL;
@@ -33,7 +33,7 @@ dnslib_rdata_t *dnslib_rdata_new( uint count )
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_rdata_set_item( dnslib_rdata *rdata, uint pos,
+int dnslib_rdata_set_item( dnslib_rdata_t *rdata, uint pos,
 						   dnslib_rdata_item_t item )
 {
 	if (pos >= rdata->count) {
@@ -45,7 +45,7 @@ int dnslib_rdata_set_item( dnslib_rdata *rdata, uint pos,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_rdata_set_items( dnslib_rdata *rdata,
+int dnslib_rdata_set_items( dnslib_rdata_t *rdata,
 							const dnslib_rdata_item_t *items, uint count )
 {
 	if (count == 0) {
@@ -55,7 +55,7 @@ int dnslib_rdata_set_items( dnslib_rdata *rdata,
 	if (rdata->count == 0) {	// empty so far, allocate new space
 		assert(rdata->items == NULL);
 		if ((rdata->items = (dnslib_rdata_item_t *)malloc(
-				count * sizeof(dnslib_rdata_item_t)) == NULL)) {
+				count * sizeof(dnslib_rdata_item_t))) == NULL) {
 			ERR_ALLOC_FAILED;
 			return -1;
 		}
@@ -71,7 +71,7 @@ int dnslib_rdata_set_items( dnslib_rdata *rdata,
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_rdata_item_t *dnslib_rdata_get_item( dnslib_rdata_t *rdata,
+const dnslib_rdata_item_t *dnslib_rdata_get_item( const dnslib_rdata_t *rdata,
 												  uint pos )
 {
 	if (pos >= rdata->count) {

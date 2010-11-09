@@ -71,7 +71,7 @@ dnslib_rdata_t *dnslib_rdata_new( uint count );
  * \todo Use the union or a pointer to it as parameter? IMHO there is always
  *       only one pointer that is copied, so it doesn't matter.
  */
-int dnslib_rdata_set_item( dnslib_rdata *rdata, uint pos,
+int dnslib_rdata_set_item( dnslib_rdata_t *rdata, uint pos,
 						   dnslib_rdata_item_t item );
 
 /*!
@@ -92,7 +92,7 @@ int dnslib_rdata_set_item( dnslib_rdata *rdata, uint pos,
  * \retval -1 if allocation of necessary space was not successful.
  * \retval -2 if \a rdata->count != \a count.
  */
-int dnslib_rdata_set_items( dnslib_rdata *rdata,
+int dnslib_rdata_set_items( dnslib_rdata_t *rdata,
 							const dnslib_rdata_item_t *items, uint count );
 
 /*!
@@ -107,7 +107,7 @@ int dnslib_rdata_set_items( dnslib_rdata *rdata,
  * \note Although returning union would be OK (no overhead), we need to be able
  *       to distinguish errors (in this case by returning NULL).
  */
-const dnslib_rdata_item_t *dnslib_rdata_get_item( dnslib_rdata_t *rdata,
+const dnslib_rdata_item_t *dnslib_rdata_get_item( const dnslib_rdata_t *rdata,
 												  uint pos );
 
 /*!
