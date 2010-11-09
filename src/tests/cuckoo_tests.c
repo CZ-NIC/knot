@@ -63,7 +63,6 @@ static int cuckoo_tests_run(int argc, char *argv[])
 #include "cuckoo-hash-table.h"
 #include "dns-simple.h"
 #include "socket.h"
-#include "dispatcher.h"
 #include "dynamic-array.h"
 
 static const uint BUF_SIZE = 20;
