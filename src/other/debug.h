@@ -15,6 +15,7 @@
 //#define ZN_DEBUG
 //#define ZP_DEBUG_PARSE
 //#define SERVER_DEBUG
+//#define DT_DEBUG
 //#define NET_DEBUG
 
 #ifdef SERVER_DEBUG
@@ -63,6 +64,14 @@
 #else
 #define debug_net(msg...)
 #define debug_net_hex(data, len)
+#endif
+
+#ifdef DT_DEBUG
+#define debug_dt(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_dt_hex(data, len) hex_print((data), (len))
+#else
+#define debug_dt(msg...)
+#define debug_dt_hex(data, len)
 #endif
 
 #ifdef NS_DEBUG
