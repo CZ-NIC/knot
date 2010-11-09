@@ -13,8 +13,8 @@
 
 #include "socket.h"
 #include "server.h"
+#include "dthreads.h"
 
-void *udp_master( void *obj );
-void *udp_worker( void *obj );
+int udp_master (dthread_t* thread);
 
 #endif

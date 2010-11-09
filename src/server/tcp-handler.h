@@ -13,8 +13,8 @@
 
 #include "socket.h"
 #include "server.h"
+#include "dthreads.h"
 
-void *tcp_master( void *obj );
-void *tcp_worker( void *obj );
+int tcp_master (dthread_t* thread);
 
 #endif

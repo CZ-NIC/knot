@@ -13,21 +13,21 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#include "dispatcher.h"
 #include "zone-database.h"
 #include "name-server.h"
 #include "common.h"
 #include "socket.h"
+#include "dthreads.h"
 
 /**  I/O handler structure.
   */
 typedef struct iohandler_t {
 
-   int fd;                       /* I/O filedescripto r */
-   unsigned state;               /* Handler state */
-   struct iohandler_t* next;     /* Next handler */
-   dpt_dispatcher* threads;      /* Handler threads */
-   struct cute_server* server;   /* Reference to server */
+   int fd;                      /* I/O filedescripto r */
+   unsigned state;              /* Handler state */
+   struct iohandler_t* next;    /* Next handler */
+   dt_unit_t* unit;             /* Threading unit */
+   struct cute_server* server;  /* Reference to server */
 
 } iohandler_t;
 
@@ -39,8 +39,8 @@ typedef struct iohandler_t {
 /*! Server state flags.
  */
 typedef enum {
-   Idle    = 0x00,
-   Running = 0x01
+   Idle    = 0 << 0,
+   Running = 1 << 0
 } server_state;
 
 struct cute_server;
@@ -76,11 +76,10 @@ cute_server *cute_create();
 
 /** Create and bind handler to given filedescriptor.
   * \param fd I/O filedescriptor.
-  * \param routine Handler routine.
-  * \param threads Number of threads to spawn.
+  * \param unit Threading unit to serve given filedescriptor.
   * \return handler identifier or -1
   */
-int cute_create_handler(cute_server *server, int fd, thr_routine routine, int threads);
+int cute_create_handler(cute_server *server, int fd, dt_unit_t* unit);
 
 /** Delete handler.
   * \param fd I/O handler filedescriptor.
