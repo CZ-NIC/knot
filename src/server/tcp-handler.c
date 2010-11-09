@@ -5,27 +5,303 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include "name-server.h"
 #include "tcp-handler.h"
-#include "dthreads.h"
 
-/** Event descriptor.
-  */
-typedef struct tcp_worker_t {
-    int epfd;
-    int events_count;
-    int events_size;
-    struct epoll_event* events;
-    cute_server* server;
-    pthread_mutex_t mutex;
-    pthread_cond_t wakeup;
-} tcp_worker_t;
+/*
+ * TCP connection pool.
+ */
+typedef struct tcp_pool_t {
+    int ep_fd;                     /* epoll socket */
+    int ep_ecount;                 /* epoll events counter */
+    int ep_esize;                  /* epoll events backing store size */
+    struct epoll_event *ep_events; /* epoll events backing store */
+    ns_nameserver *ns;             /* reference to name server */
+    pthread_mutex_t mx;            /* pool synchronisation */
+    iohandler_t*  handler;         /* master I/O handler */
+} tcp_pool_t;
 
-int tcp_epoll_create( int size )
+/* Forward decls. */
+static int tcp_pool (dthread_t* thread);
+static tcp_pool_t* tcp_pool_new (iohandler_t *handler);
+static void tcp_pool_del (tcp_pool_t **pool);
+static int tcp_pool_add (int epfd, int socket, uint32_t events);
+static int tcp_pool_remove (int epfd, int socket);
+static int tcp_pool_reserve (tcp_pool_t *pool, uint size);
+
+/* Locking. */
+static inline int tcp_pool_lock (tcp_pool_t *pool)
 {
-    return epoll_create(size);
+    return pthread_mutex_lock(&pool->mx);
+}
+static inline int tcp_pool_unlock (tcp_pool_t *pool)
+{
+    return pthread_mutex_unlock(&pool->mx);
 }
 
-int tcp_epoll_add( int epfd, int socket, uint32_t events )
+int tcp_master (dthread_t* thread)
+{
+    dt_unit_t *unit = thread->unit;
+    iohandler_t* handler = (iohandler_t *)thread->data;
+    int master_sock = handler->fd;
+
+    /*
+     * Create N pools of TCP connections.
+     * Each pool is responsible for its own
+     * set of clients.
+     *
+     * \note Pool instance is deallocated by their assigned thread.
+     */
+    int pool_id = 0;
+    int pool_count = thread->unit->size - 1;
+    tcp_pool_t **pool = malloc(pool_count * sizeof(tcp_pool_t*));
+
+   // Repurpose remaining threads to TCP pools
+   for (int i = 0; i < pool_count; ++i) {
+
+       // Create TCP pool
+       pool[i] = tcp_pool_new(handler);
+
+       // Repurpose thread
+       dthread_t *t = unit->threads[i + 1];
+       dt_repurpose(t, &tcp_pool, pool[i]);
+   }
+
+   // Start pools
+   if (dt_start(unit) < 0) {
+       debug_net("tcp: failed to create connection pools");
+       return -1;
+   }
+
+   // Accept clients
+   debug_net("tcp: running 1 master with %d pools\n", pool_count);
+   for (;;) {
+
+       // Cancellation point
+       if (dt_is_cancelled(thread))
+           return -1;
+
+       // Accept on master socket
+       int incoming = accept(master_sock, 0, 0);
+
+       // Register to worker
+       if (incoming < 0) {
+           if(errno != EINTR) {
+               log_error("tcp_master: cannot accept incoming "
+                         "connection (errno %d): %s.\n",
+                         errno, strerror(errno));
+           }
+       } else {
+
+           // Add incoming socket to selected pool
+           tcp_pool_t* pool_choice = pool[pool_id];
+           tcp_pool_lock(pool_choice);
+           debug_net("tcp_master: accept: assigned socket %d to pool #%d\n",
+                     incoming, pool_id);
+
+           if (tcp_pool_add(pool_choice->ep_fd, incoming, EPOLLIN) == 0)
+               ++pool_choice->ep_ecount;
+
+           // Activate pool
+           dt_activate(unit->threads[pool_id + 1]);
+           tcp_pool_unlock(pool_choice);
+
+           // Select next pool (Round-Robin)
+           pool_id = get_next_rr(pool_id, pool_count);
+       }
+   }
+
+
+   // Stop whole unit
+   debug_net("tcp: stopping (%d master, %d pools)\n", 1, pool_count);
+
+   // Delete pool array
+   free(pool);
+
+   debug_net("tcp_master: finished\n");
+   return 0;
+}
+
+static inline void tcp_answer (int fd,
+                               uint8_t* src,
+                               int inbuf_sz,
+                               uint8_t* dest,
+                               int outbuf_sz,
+                               ns_nameserver* ns)
+{
+    // Receive size
+    unsigned short pktsize = 0;
+    int n = socket_recv(fd, &pktsize, sizeof(unsigned short), 0);
+    pktsize = ntohs(pktsize);
+    debug_net("tcp: incoming packet size on %d: %u buffer size: %u\n", fd, (unsigned) pktsize, (unsigned) inbuf_sz);
+
+    // Receive payload
+    if (n > 0 && pktsize > 0) {
+        if (pktsize <= inbuf_sz) {
+            n = socket_recv(fd, src, pktsize, 0); /// \todo Check buffer overflow.
+        } else {
+            n = 0;
+        }
+    }
+
+    // Check read result
+    if (n > 0) {
+
+        // Send answer
+        size_t answer_size = outbuf_sz;
+        int res = ns_answer_request(ns, src, n, dest + sizeof(short),
+                                    &answer_size);
+        debug_net("tcp: answer wire format (size %u, result %d).\n",
+                  (unsigned) answer_size, res);
+
+        if (res >= 0) {
+
+            /*! Cork, \see http://vger.kernel.org/~acme/unbehaved.txt */
+            int cork = 1;
+            setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
+
+            // Copy header
+            ((unsigned short*) dest)[0] = htons(answer_size);
+            int sent = -1;
+            while (sent < 0) {
+                sent = socket_send(fd, dest, answer_size + sizeof(short), 0);
+            }
+
+            // Uncork
+            cork = 0;
+            setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
+            debug_net("tcp: sent answer to %d\n", fd);
+        }
+    }
+}
+
+static int tcp_pool (dthread_t* thread)
+{
+    /*
+     * \todo: Make sure stack size is big enough.
+     *        Although this is much cheaper,
+     *        16kB worth of buffers *may* pose a problem.
+     */
+    tcp_pool_t* pool = (tcp_pool_t *)thread->data;
+    uint8_t buf[SOCKET_MTU_SZ];
+    uint8_t answer[SOCKET_MTU_SZ];
+
+    int nfds = 0;
+    debug_net("tcp: entered pool #%d\n", pool->ep_fd);
+
+    // Poll new data from clients
+    while (pool->ep_ecount > 0) {
+
+        // Poll sockets
+        tcp_pool_reserve(pool, pool->ep_ecount * 2);
+        nfds = epoll_wait(pool->ep_fd, pool->ep_events, pool->ep_esize, -1);
+
+        // Cancellation point
+        if(dt_is_cancelled(thread)) {
+            debug_net("tcp: pool #%d thread is cancelled\n", pool->ep_fd);
+            break;
+        }
+
+        // Evaluate
+        debug_net("tcp: pool #%d, %d events (%d sockets).\n",
+                  pool->ep_fd, nfds, pool->ep_ecount);
+
+        int fd = 0;
+        for(int i = 0; i < nfds; ++i) {
+
+            // Get client fd
+            fd = pool->ep_events[i].data.fd;
+
+            debug_net("tcp: pool #%d processing fd=%d.\n",
+                      pool->ep_fd, fd);
+            tcp_answer(fd, buf, SOCKET_MTU_SZ,
+                       answer,  SOCKET_MTU_SZ,
+                       pool->ns);
+            debug_net("tcp: pool #%d finished fd=%d (remaining %d).\n",
+                      pool->ep_fd, fd, pool->ep_ecount);
+
+            // Disconnect
+            debug_net("tcp: disconnected: %d\n", fd);
+            tcp_pool_lock(pool);
+            tcp_pool_remove(pool->ep_fd, fd);
+            --pool->ep_ecount;
+            socket_close(fd);
+            tcp_pool_unlock(pool);
+        }
+    }
+
+    // If exiting, cleanup
+    if(pool->handler->state == Idle) {
+        debug_net("tcp: pool #%d is finishing\n", pool->ep_fd);
+        tcp_pool_del(&pool);
+        return 0;
+    }
+
+    debug_net("tcp: pool #%d going to idle.\n", pool->ep_fd);
+    return 0;
+}
+
+static tcp_pool_t* tcp_pool_new (iohandler_t *handler)
+{
+   // Alloc
+   tcp_pool_t *pool = malloc(sizeof(tcp_pool_t));
+   if (pool == 0)
+      return 0;
+
+   // Initialize
+   memset(pool, 0, sizeof(tcp_pool_t));
+   pool->handler = handler;
+   pool->ns = handler->server->nameserver;
+   pool->ep_ecount = 0;
+   pool->ep_esize = 0;
+
+   // Create epoll fd
+   pool->ep_fd = epoll_create(1);
+   if (pool->ep_fd == -1) {
+      free(pool);
+      return 0;
+   }
+
+   // Alloc backing-store
+   if (tcp_pool_reserve(pool, 1) != 0) {
+      close(pool->ep_fd);
+      free(pool);
+      return 0;
+   }
+
+   // Initialize synchronisation
+   if (pthread_mutex_init(&pool->mx, 0) != 0) {
+      close(pool->ep_fd);
+      free(pool->ep_events);
+      free(pool);
+      return 0;
+   }
+
+   return pool;
+}
+
+static void tcp_pool_del (tcp_pool_t **pool)
+{
+    // Check
+    if(pool == 0)
+        return;
+
+    // Close epoll fd
+    close((*pool)->ep_fd);
+
+    // Free backing store
+    if((*pool)->ep_events != 0)
+        free((*pool)->ep_events);
+
+    // Destroy synchronisation
+    pthread_mutex_destroy(&(*pool)->mx);
+
+    // Free
+    free((*pool));
+    *pool = 0;
+}
+
+static int tcp_pool_add (int epfd, int socket, uint32_t events)
 {
     struct epoll_event ev;
     memset(&ev, 0, sizeof(struct epoll_event));
@@ -48,13 +324,13 @@ int tcp_epoll_add( int epfd, int socket, uint32_t events )
     return 0;
 }
 
-int tcp_epoll_remove( int epfd, int socket )
+static int tcp_pool_remove (int epfd, int socket)
 {
-    // Compatibility with kernels < 2.6.9, require non-NULL ptr.
+    // Compatibility with kernels < 2.6.9, require non-0 ptr.
     struct epoll_event ev;
 
     // find socket ptr
-    if(epoll_ctl(epfd, EPOLL_CTL_DEL, socket, &ev) != 0) {
+    if (epoll_ctl(epfd, EPOLL_CTL_DEL, socket, &ev) != 0) {
         perror ("epoll_ctl");
         return -1;
     }
@@ -62,274 +338,21 @@ int tcp_epoll_remove( int epfd, int socket )
     return 0;
 }
 
-static int tcp_reserve_bs(tcp_worker_t* worker, uint size)
+static int tcp_pool_reserve (tcp_pool_t *pool, uint size)
 {
-   if(worker->events_size >= size)
+   if (pool->ep_esize >= size)
       return 0;
 
-   struct epoll_event* new_events = malloc(size * sizeof(struct epoll_event));
-   if(new_events == NULL)
+   // Alloc new events
+   struct epoll_event *new_events = malloc(size * sizeof(struct epoll_event));
+   if (new_events == 0)
       return -1;
 
-   if(worker->events != NULL)
-      free(worker->events);
+   // Free and replace old events backing-store
+   if (pool->ep_events != 0)
+      free(pool->ep_events);
 
-   worker->events = new_events;
+   pool->ep_esize = size;
+   pool->ep_events = new_events;
    return 0;
-}
-
-tcp_worker_t* tcp_worker_create(cute_server* server)
-{
-   // Alloc
-   tcp_worker_t* worker = malloc(sizeof(tcp_worker_t));
-   if(worker == NULL)
-      return NULL;
-
-   // Create epoll
-   worker->epfd = tcp_epoll_create(1);
-   if (worker->epfd == -1) {
-      free(worker);
-      return NULL;
-   }
-
-   // Alloc backing store
-   worker->events = malloc(1 * sizeof(struct epoll_event));
-   if (worker->events == NULL) {
-      close(worker->epfd);
-      free(worker);
-      return NULL;
-   }
-
-   // Initialize synchronisation
-   if (pthread_mutex_init(&worker->mutex, NULL) != 0) {
-      close(worker->epfd);
-      free(worker->events);
-      free(worker);
-      return NULL;
-   }
-
-   if (pthread_cond_init(&worker->wakeup, NULL) != 0) {
-      close(worker->epfd);
-      free(worker->events);
-      pthread_mutex_destroy(&worker->mutex);
-      free(worker);
-      return NULL;
-   }
-
-   // Initialize worker data
-   worker->server = server;
-   worker->events_count = 0;
-   worker->events_size = 1;
-   return worker;
-}
-
-void tcp_worker_delete(tcp_worker_t** worker)
-{
-    // Close poll fd
-    close((*worker)->epfd);
-
-    // Free backing store
-    if((*worker)->events != NULL)
-        free((*worker)->events);
-
-    // Destroy synchronisation
-    pthread_mutex_destroy(&(*worker)->mutex);
-    pthread_cond_destroy(&(*worker)->wakeup);
-
-    // Free worker
-    free((*worker));
-    *worker = NULL;
-}
-
-void *tcp_master( void *obj )
-{
-   iohandler_t* worker = (iohandler_t*) obj;
-   int sock = worker->fd;
-
-   // Create pool of TCP workers
-   // Each worker is responsible for its own set of clients ("bucket")
-   int worker_id = 0;
-   int worker_count = dt_optimal_size() - 1; // estimate_threads() - master thread
-   if(worker_count < 1) {
-      worker_count = 1;
-   }
-
-   dpt_dispatcher* tcp_threads = dpt_create(worker_count, &tcp_worker, NULL);
-   tcp_worker_t** tcp_workers = malloc(worker_count * sizeof(tcp_worker_t*));
-   for(int i = 0; i < worker_count; ++i) {
-      tcp_workers[i] = tcp_worker_create(worker->server);
-      tcp_threads->routine_obj[i] = tcp_workers[i];
-   }
-
-   // Run TCP workers
-   debug_net("tcp_master: running %d worker threads\n", worker_count);
-   if(dpt_start(tcp_threads) < 0) {
-      worker->state = Idle;
-   }
-
-   // Accept clients
-   while (worker->state & Running) {
-
-      // Accept on master socket
-      int incoming = accept(sock, NULL, NULL);
-
-      // Register to worker
-      if(incoming < 0) {
-         if(errno != EINTR) {
-            log_error("tcp_master: cannot accept incoming connection (errno %d): %s.\n", errno, strerror(errno));
-         }
-      }
-      else {
-
-         // Register incoming socket
-         tcp_worker_t* tcp_worker = tcp_workers[worker_id];
-         pthread_mutex_lock(&tcp_worker->mutex);
-         debug_net("tcp_master: accept: assigned socket %d to worker #%d\n", incoming, worker_id);
-         if(tcp_epoll_add(tcp_worker->epfd, incoming, EPOLLIN) == 0)
-            ++tcp_worker->events_count;
-
-         // Run worker
-         pthread_cond_signal(&tcp_worker->wakeup);
-         pthread_mutex_unlock(&tcp_worker->mutex);
-
-         // Select next worker (Round-Robin)
-         worker_id = get_next_rr(worker_id, worker_count);
-      }
-   }
-
-
-    // Wake up all workers
-    debug_net("tcp_master: stopping %d worker threads\n", worker_count);
-    int last_wrkr = worker_id;
-    for(;;) {
-
-        tcp_worker_t* tcp_worker = tcp_workers[worker_id];
-        pthread_mutex_lock(&tcp_worker->mutex);
-        tcp_worker->events_count = -1; // Shut down worker
-        pthread_cond_signal(&tcp_worker->wakeup);
-        pthread_mutex_unlock(&tcp_worker->mutex);
-        worker_id = get_next_rr(worker_id, worker_count);
-
-        // Finish with the starting worker
-        if(worker_id == last_wrkr)
-            break;
-    }
-
-    // Wait for TCP workers
-    dpt_wait(tcp_threads);
-    dpt_destroy(&tcp_threads);
-
-    // Delete TCP workers storage
-    debug_net("tcp_master: %d worker threads finished\n", worker_count);
-    for(int i = 0; i < worker_count; ++i) {
-       tcp_worker_delete(&tcp_workers[i]);
-    }
-
-    // Delete TCP threads array
-    free(tcp_workers);
-
-    debug_net("tcp_master: finished\n");
-    return NULL;
-}
-
-static inline void tcp_handler(int fd, uint8_t* inbuf, int inbuf_sz, uint8_t* outbuf, int outbuf_sz, ns_nameserver* ns)
-{
-    // Receive size
-    unsigned short pktsize = 0;
-    int n = socket_recv(fd, &pktsize, sizeof(unsigned short), 0);
-    pktsize = ntohs(pktsize);
-    debug_net("tcp: incoming packet size on %d: %u buffer size: %u\n", fd, (unsigned) pktsize, (unsigned) inbuf_sz);
-
-    // Receive payload
-    if(n > 0 && pktsize > 0) {
-        if(pktsize <= inbuf_sz)
-            n = socket_recv(fd, inbuf, pktsize, 0); /// \todo Check buffer overflow.
-        else
-            n = 0;
-    }
-
-    // Check read result
-    if(n > 0) {
-
-        // Send answer
-        size_t answer_size = outbuf_sz;
-        int res = ns_answer_request(ns, inbuf, n, outbuf + sizeof(short), &answer_size);
-
-        debug_net("tcp: answer wire format (size %u, result %d).\n", (unsigned) answer_size, res);
-        if(res >= 0) {
-
-            /*! Cork, @see http://vger.kernel.org/~acme/unbehaved.txt */
-            int cork = 1;
-            setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
-
-            // Copy header
-            ((unsigned short*) outbuf)[0] = htons(answer_size);
-            int sent = -1;
-            while(sent < 0) {
-                sent = socket_send(fd, outbuf, answer_size + sizeof(unsigned short), 0);
-            }
-
-            // Uncork
-            cork = 0;
-            setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
-
-            debug_net("tcp: sent answer to %d\n", fd);
-        }
-    }
-}
-
-void *tcp_worker( void *obj )
-{
-    tcp_worker_t* worker = (tcp_worker_t *)obj;
-    uint8_t buf[SOCKET_MTU_SZ];
-    uint8_t answer[SOCKET_MTU_SZ];
-    int nfds = 0;
-    debug_net("tcp: worker #%d started\n", worker->epfd);
-
-    for(;;) {
-
-        // Check
-        if(worker->events_count < 0) {
-            break;
-        }
-
-        // Poll new data
-        while (worker->events_count > 0) {
-
-            // Poll sockets
-            tcp_reserve_bs(worker, worker->events_count * 2);
-            nfds = epoll_wait(worker->epfd, worker->events, worker->events_size, 1000);
-
-            // Evaluate
-            //fprintf(stderr, "tcp: worker #%d polled %d events (%d sockets).\n", worker->epfd, nfds, worker->events_count);
-            int fd = 0;
-            for(int i = 0; i < nfds; ++i) {
-
-                // Get client fd
-                fd = worker->events[i].data.fd;
-
-                debug_net("tcp: worker #%d processing fd=%d.\n", worker->epfd, fd);
-                tcp_handler(fd, buf, SOCKET_MTU_SZ, answer, SOCKET_MTU_SZ, worker->server->nameserver);
-                debug_net("tcp: worker #%d finished fd=%d (remaining %d).\n", worker->epfd, fd, worker->events_count);
-
-                // Disconnect
-               debug_net("tcp: disconnected: %d\n", fd);
-               pthread_mutex_lock(&worker->mutex);
-               tcp_epoll_remove(worker->epfd, fd);
-               --worker->events_count;
-               socket_close(fd);
-               pthread_mutex_unlock(&worker->mutex);
-            }
-        }
-
-        // Sleep until new events
-        debug_net("tcp: worker #%d suspended.\n", worker->epfd);
-        pthread_mutex_lock(&worker->mutex);
-        pthread_cond_wait(&worker->wakeup, &worker->mutex);
-        debug_net("tcp: worker #%d resumed ... (%d sockets in set).\n", worker->epfd, worker->events_count);
-        pthread_mutex_unlock(&worker->mutex);
-    }
-
-    debug_net("tcp: worker #%d finished.\n", worker->epfd);
-    return NULL;
 }
