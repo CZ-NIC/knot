@@ -37,7 +37,7 @@ int runnable(struct dthread_t *thread)
         pthread_mutex_unlock(&_runnable_mx);
 
         // Cancellation point
-        if (thread->state & ThreadCancelled) {
+        if (dt_is_cancelled(thread)) {
             break;
         }
 
