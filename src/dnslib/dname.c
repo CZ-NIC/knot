@@ -214,8 +214,9 @@ const struct dnslib_node *dnslib_dname_node( const dnslib_dname_t *dname )
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_dname_free( dnslib_dname_t *dname )
+void dnslib_dname_free( dnslib_dname_t **dname )
 {
-	free(dname->name);
-	free(dname);
+	free((*dname)->name);
+	free(*dname);
+	*dname = NULL;
 }

@@ -47,9 +47,14 @@ static int test_dname_create()
 		|| dnslib_dname_name(dname) != NULL
 		|| dnslib_dname_size(dname) != 0
 		|| dnslib_dname_node(dname) != NULL) {
+		diag("New domain name not initialized properly!");
 		return 0;
 	}
-	dnslib_dname_free(dname);
+	dnslib_dname_free(&dname);
+	if (dname != NULL) {
+		diag("Pointer to the structure not set to NULL when deallocating!");
+		return 0;
+	}
 	return 1;
 }
 
@@ -111,7 +116,7 @@ static int test_dname_create_from_str()
 		dname = dnslib_dname_new_from_str(test_domains[i].str,
 									strlen(test_domains[i].str), NODE_ADDRESS);
 		errors += check_domain_name(dname, i);
-		dnslib_dname_free(dname);
+		dnslib_dname_free(&dname);
 	}
 
 	return (errors == 0);
@@ -133,7 +138,7 @@ static int test_dname_create_from_wire()
 				(uint8_t *)test_domains[i].wire, test_domains[i].size,
 				NODE_ADDRESS);
 		errors += check_domain_name(dname, i);
-		dnslib_dname_free(dname);
+		dnslib_dname_free(&dname);
 	}
 
 	return (errors == 0);
@@ -160,7 +165,7 @@ static int test_dname_to_str()
 			++errors;
 		}
 		free(name_str);
-		dnslib_dname_free(dname);
+		dnslib_dname_free(&dname);
 	}
 
 	return (errors == 0);

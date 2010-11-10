@@ -90,17 +90,17 @@ static int test_rdata_create( uint count )
 		const dnslib_rdata_item_t *item;
 		if ((item = dnslib_rdata_get_item(rdata, i)) == NULL) {
 			diag("Missing RDATA item on position %d", i);
-			dnslib_rdata_free(rdata);
+			dnslib_rdata_free(&rdata);
 			return 0;
 		} else if (item->dname != NULL) {
 			diag("RDATA item on position %d not properly initialized: %p"
 				 " (should be NULL).", i, item->dname);
-			dnslib_rdata_free(rdata);
+			dnslib_rdata_free(&rdata);
 			return 0;
 		}
 	}
 
-	dnslib_rdata_free(rdata);
+	dnslib_rdata_free(&rdata);
 	return 1;
 }
 
@@ -216,10 +216,10 @@ static int test_rdata_set_item()
 		rdata = dnslib_rdata_new(test_rdatas[i].items);
 		set_rdata(rdata, i);
 		if (check_rdata(rdata, i) != 0) {
-			dnslib_rdata_free(rdata);
+			dnslib_rdata_free(&rdata);
 			return 0;
 		}
-		dnslib_rdata_free(rdata);
+		dnslib_rdata_free(&rdata);
 	}
 
 	return 1;
@@ -243,14 +243,14 @@ static int test_rdata_set_items()
 	for (int i = 0; i < TEST_RDATAS; ++i) {
 		rdata = dnslib_rdata_new(test_rdatas[i].items);
 		if (!set_rdata_all(rdata, i)) {
-			dnslib_rdata_free(rdata);
+			dnslib_rdata_free(&rdata);
 			return 0;
 		}
 		if (check_rdata(rdata, i) != 0) {
-			dnslib_rdata_free(rdata);
+			dnslib_rdata_free(&rdata);
 			return 0;
 		}
-		dnslib_rdata_free(rdata);
+		dnslib_rdata_free(&rdata);
 	}
 
 	return 1;

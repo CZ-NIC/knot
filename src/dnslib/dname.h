@@ -1,3 +1,13 @@
+/*!
+ * \file dname.h
+ * \author Lubos Slovak <lubos.slovak@nic.cz>
+ *
+ * \brief Domain name structure and API for manipulating it.
+ *
+ * \addtogroup dnslib
+ * @{
+ */
+
 #ifndef _CUTEDNS_DNAME_H
 #define _CUTEDNS_DNAME_H
 
@@ -118,8 +128,14 @@ const struct dnslib_node *dnslib_dname_node( const dnslib_dname_t *dname );
  *
  * \param dname Domain name to be destroyed.
  *
- * \note Frees also the data within the struct.
+ * Frees also the data within the struct. This is somewhat different behaviour
+ * than that of RDATA and RRSet structures which do not deallocate their
+ * contents.
+ *
+ * Sets the given pointer to NULL.
  */
-void dnslib_dname_free( dnslib_dname_t *dname );
+void dnslib_dname_free( dnslib_dname_t **dname );
 
 #endif /* _CUTEDNS_DNAME_H */
+
+/*! @} */
