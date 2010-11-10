@@ -1,3 +1,14 @@
+/*!
+ * \file rdata.h
+ * \author Lubos Slovak <lubos.slovak@nic.cz>
+ *
+ * \brief Structures representing RDATA and its items and API for manipulating
+ *        both.
+ *
+ * \addtogroup dnslib
+ * @{
+ */
+
 #ifndef _CUTEDNS_RDATA_H
 #define _CUTEDNS_RDATA_H
 
@@ -42,6 +53,7 @@ typedef union dnslib_rdata_item dnslib_rdata_item_t;
 struct dnslib_rdata {
 	dnslib_rdata_item_t *items;	/*!< RDATA items comprising this RDATA. */
 	uint count;	/*! < Count of RDATA items in this RDATA. */
+	struct dnslib_rdata *next;	/*!< Next RDATA item in a linked list. */
 };
 
 typedef struct dnslib_rdata dnslib_rdata_t;
@@ -116,9 +128,14 @@ const dnslib_rdata_item_t *dnslib_rdata_get_item( const dnslib_rdata_t *rdata,
  * \param rdata RDATA structure to be destroyed.
  *
  * Contents of RDATA items are not deallocated, as it is not clear whether the
- * particular item is a domain name (which cannot be deallocated here) or raw
- * data (which could have been).
+ * particular item is a domain name (which should not be deallocated here) or
+ * raw data (which could be). But this is actually higher-level logic, so maybe
+ * a parameter to decide whether to free the items or not would be better.
+ *
+ * Sets the given pointer to NULL.
  */
-void dnslib_rdata_free( dnslib_rdata_t *rdata );
+void dnslib_rdata_free( dnslib_rdata_t **rdata );
 
 #endif /* _CUTEDNS_RDATA_H */
+
+/*! @} */
