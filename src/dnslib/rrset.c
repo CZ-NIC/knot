@@ -50,7 +50,6 @@ int dnslib_rrset_add_rdata( dnslib_rrset_t *rrset, dnslib_rdata_t *rdata )
             return -1;
         }
 
-        rrset->rdata->count = rdata->count;
         dnslib_rdata_set_items(rrset->rdata, rdata->items, rdata->count);
         rrset->rdata->next = rrset->rdata;
 
@@ -62,7 +61,6 @@ int dnslib_rrset_add_rdata( dnslib_rrset_t *rrset, dnslib_rdata_t *rdata )
             return -1;
         }
         
-        new_element->items = rdata->items;
         dnslib_rdata_set_items(rrset->rdata, rdata->items, rdata->count);
         new_element->next = rrset->rdata;
 
