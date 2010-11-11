@@ -56,7 +56,7 @@ int dnslib_rrset_add_rdata( dnslib_rrset_t *rrset, dnslib_rdata_t *rdata )
     } else {
         dnslib_rdata_t *new_element = dnslib_rdata_new(0);
         if (new_element == NULL) {
-            dnslib_rdata_free(rrset->rdata);
+            dnslib_rdata_free(&rrset->rdata);
             ERR_ALLOC_FAILED;
             return -1;
         }
