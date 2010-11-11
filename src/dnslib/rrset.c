@@ -21,12 +21,6 @@ dnslib_rrset_t *dnslib_rrset_new( dnslib_dname_t *owner, uint16_t type,
         return NULL;
     }
     
-    if ((ret->owner = dnslib_dname_new()) == NULL) {
-        free(ret);
-        ERR_ALLOC_FAILED;
-        return NULL;
-    }
-
     ret->rdata = NULL;
 
     ret->owner = owner;
@@ -49,19 +43,20 @@ int dnslib_rrset_add_rdata( dnslib_rrset_t *rrset, dnslib_rdata_t *rdata )
             ERR_ALLOC_FAILED;
             return -1;
         }
-
-        dnslib_rdata_set_items(rrset->rdata, rdata->items, rdata->count);
+  
+        rrset->rdata->items = rdata->items;
+        rrset->rdata->count = rdata->count;
         rrset->rdata->next = rrset->rdata;
 
     } else {
         dnslib_rdata_t *new_element = dnslib_rdata_new(0);
         if (new_element == NULL) {
-            dnslib_rdata_free(&rrset->rdata);
             ERR_ALLOC_FAILED;
             return -1;
         }
         
-        dnslib_rdata_set_items(rrset->rdata, rdata->items, rdata->count);
+        rrset->rdata->items = rdata->items;
+        rrset->rdata->count = rdata->count;
         new_element->next = rrset->rdata;
 
         dnslib_rdata_t *tmp;
@@ -130,6 +125,7 @@ uint dnslib_rrset_rrsig_count( const dnslib_rrset_t *rrset )
 
 void dnslib_rrset_free( dnslib_rrset_t **rrset )
 {
+    free(rrset);
     *rrset = NULL;
 }
 /* end of file rrset.c */
