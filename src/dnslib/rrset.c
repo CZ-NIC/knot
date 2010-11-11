@@ -22,7 +22,7 @@ dnslib_rrset_t *dnslib_rrset_new( dnslib_dname_t *owner, uint16_t type,
     }
     
     if ((ret->owner = dnslib_dname_new()) == NULL) {
-        //Free ret here?
+        free(ret);
         ERR_ALLOC_FAILED;
         return NULL;
     }
@@ -40,6 +40,10 @@ dnslib_rrset_t *dnslib_rrset_new( dnslib_dname_t *owner, uint16_t type,
 int dnslib_rrset_add_rdata( dnslib_rrset_t *rrset, dnslib_rdata_t *rdata )
 /* TODO only stores at the beginning of the list */
 {
+    if (rrset == NULL || rdata == NULL) {
+        return -2;
+    }
+
     if (rrset->rdata == NULL) {
         if ((rrset->rdata = dnslib_rdata_new(0)) == NULL) {
             ERR_ALLOC_FAILED;
@@ -53,6 +57,7 @@ int dnslib_rrset_add_rdata( dnslib_rrset_t *rrset, dnslib_rdata_t *rdata )
     } else {
         dnslib_rdata_t *new_element = dnslib_rdata_new(0);
         if (new_element == NULL) {
+            dnslib_rdata_free(rrset->rdata);
             ERR_ALLOC_FAILED;
             return -1;
         }
@@ -80,10 +85,14 @@ int dnslib_rrset_set_rrsigs( dnslib_rrset_t *rrset,
 							 const dnslib_rrset_t *rrsigs,
 							 const dnslib_rdata_t *first, uint count )
 {
+    if (rrset == NULL || rrsigs == NULL || first == NULL) {
+        return -2;
+    }
+
     rrset->rrsigs = rrsigs;
     rrset->first = first;
     rrset->rrsig_count = count;
-    /* TODO change to void in header */
+    return 0;
 }
 
 uint16_t dnslib_rrset_type( const dnslib_rrset_t *rrset )
