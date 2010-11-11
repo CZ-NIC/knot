@@ -41,24 +41,24 @@ int dnslib_rrset_add_rdata( dnslib_rrset_t *rrset, dnslib_rdata_t *rdata )
 /* TODO only stores at the beginning of the list */
 {
     if (rrset->rdata == NULL) {
-        if ((rrset->rdata = dnslib_rdata_new(1)) == NULL) {
+        if ((rrset->rdata = dnslib_rdata_new(0)) == NULL) {
             ERR_ALLOC_FAILED;
             return -1;
         }
 
-        rrset->rdata->items = rdata->items;
         rrset->rdata->count = rdata->count;
+        dnslib_rdata_set_items(rrset->rdata, rdata->items, rdata->count);
         rrset->rdata->next = rrset->rdata;
 
     } else {
-        dnslib_rdata_t *new_element = dnslib_rdata_new(1);
+        dnslib_rdata_t *new_element = dnslib_rdata_new(0);
         if (new_element == NULL) {
             ERR_ALLOC_FAILED;
             return -1;
         }
         
         new_element->items = rdata->items;
-        new_element->count = rdata->count;
+        dnslib_rdata_set_items(rrset->rdata, rdata->items, rdata->count);
         new_element->next = rrset->rdata;
 
         dnslib_rdata_t *tmp;
