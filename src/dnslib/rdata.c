@@ -84,6 +84,10 @@ const dnslib_rdata_item_t *dnslib_rdata_get_item( const dnslib_rdata_t *rdata,
 
 void dnslib_rdata_free( dnslib_rdata_t **rdata )
 {
+	if (rdata == NULL || *rdata == NULL) {
+		return;
+	}
+
 	free((*rdata)->items);
 	free(*rdata);
 	*rdata = NULL;
