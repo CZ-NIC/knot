@@ -47,7 +47,7 @@ typedef struct dnslib_node dnslib_node_t;
  *
  * \return Newly created node or NULL if an error occured.
  */
-dnslib_node_t *dnslib_node_new( dnslib_dname_t *owner, dnslib_node *parent );
+dnslib_node_t *dnslib_node_new( dnslib_dname_t *owner, dnslib_node_t *parent );
 
 /*!
  * \brief Adds an RRSet to the node.
