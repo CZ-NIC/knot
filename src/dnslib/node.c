@@ -1,7 +1,7 @@
 /*
  * File     node.c
  * Date     11.11.2010 15:38
- * Author:  Jan Kadlec jan.kadlec@nic.cz
+ * Author:  jan.kadlec@nic.cz
  * Project: CuteDNS
  * Description:   
  */
@@ -14,11 +14,10 @@
 
 int compare_rrset_types( void *rrset_1, void *rrset_2 )
 {
-    dnslib_rrset_t *rrs1 = (dnslib_rrset_t *) rrset_1;
-    dnslib_rrset_t *rrs2 = (dnslib_rrset_t *) rrset_2;
-
-    return (rrs1->type == rrs2->type ? 0 : 
-            rrs1->type < rrs2->type ? -1 : 1);
+    return (((dnslib_rrset_t *)rrset_1)->type == 
+            ((dnslib_rrset_t *)rrset_2)->type ? 0 : 
+            ((dnslib_rrset_t *)rrset_1)->type < 
+            ((dnslib_rrset_t *)rrset_2)->type ? -1 : 1);
 }
 
 dnslib_node_t *dnslib_node_new( dnslib_dname_t *owner, dnslib_node_t *parent )
@@ -53,6 +52,13 @@ const dnslib_rrset_t *dnslib_node_get_rrset( const dnslib_node_t *node,
 const dnslib_node_t *dnslib_node_get_parent( const dnslib_node_t *node )
 {
     return node->parent;
+}
+
+void dnslib_node_free( dnslib_node_t **node )
+{
+    skip_destroy_list(&(*node)->rrsets, NULL, NULL);
+    free(*node);
+    *node = NULL;
 }
 
 /* end of file node.c */
