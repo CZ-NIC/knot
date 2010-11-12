@@ -125,7 +125,7 @@ uint dnslib_rrset_rrsig_count( const dnslib_rrset_t *rrset )
 
 void dnslib_rrset_free( dnslib_rrset_t **rrset )
 {
-    free(rrset);
+    free(*rrset);
     *rrset = NULL;
 }
 /* end of file rrset.c */
