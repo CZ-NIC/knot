@@ -18,6 +18,30 @@
 #define MAXRDATALEN 64
 /* 64 is in NSD. Seems a little too much, but I'd say it's not a real issue. */
 
+/* A general purpose lookup table */
+typedef struct lookup_table lookup_table_type;
+struct lookup_table {
+    int id;
+    const char *name;
+};
+
+enum dnslib_rr_class
+{
+    DNSLIB_CLASS_IN,
+    DNSLIB_CLASS_CS, 
+    DNSLIB_CLASS_CH,
+    DNSLIB_CLASS_HS,
+    DNSLIB_CLASS_NONE = 254,
+    DNSLIB_CLASS_ANY = 255
+};
+
+/*!
+ * \brief Enum containing RR type codes.
+ *
+ * \todo Not all indices can be used for indexing.
+ */
+typedef enum dnslib_rr_class dnslib_rr_class_t;
+
 enum dnslib_rr_type 
 {
     DNSLIB_RRTYPE_UNKNOWN, /* 0 - an unknown type */
@@ -92,6 +116,11 @@ enum dnslib_rr_type
     DNSLIB_RRTYPE_DLV = 32769/* RFC 4431 */
 };
 
+/*!
+ * \brief Enum containing RR type codes.
+ *
+ * \todo Not all indices can be used for indexing.
+ */
 typedef enum dnslib_rr_type dnslib_rr_type_t;
 
 enum dnslib_rdata_wireformat
@@ -111,6 +140,9 @@ enum dnslib_rdata_wireformat
 	  DNSLIB_RDATA_WF_IPSECGATEWAY	       /* IPSECKEY gateway ip4, ip6 or dname. */
 };
 
+/*!
+ * \brief Enum containing wireformat codes. Taken from NSD's "dns.h"
+ */
 typedef enum dnslib_rdatawireformat dnslib_rdata_wireformat_t;
 
 struct dnslib_rrtype_descriptor
@@ -121,7 +153,23 @@ struct dnslib_rrtype_descriptor
   	uint8_t     wireformat[MAXRDATALEN]; /* rdata_wireformat_type */
 };
 
+/*!
+ * \brief Structure holding RR descriptor
+ */
 typedef struct dnslib_rrtype_descriptor dnslib_rrtype_descriptor_t;
+
+/*!
+ * \brief Strlcpy - safe string copy function, based on FreeBDS implementation
+ *  
+ * http://www.openbsd.org/cgi-bin/cvsweb/src/lib/libc/string/
+ *
+ * \param dst Destination string.
+ * \param src Source string.
+ * \param siz How many characters to copy - 1.
+ *
+ * \return strlen(src), if retval >= siz, truncation occurred.
+ */
+size_t strlcpy( char *dst, const char *src, size_t siz );
 
 #endif
 
