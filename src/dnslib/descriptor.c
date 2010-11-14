@@ -10,6 +10,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <assert.h>
+#include <string.h>
+#include <sys/types.h>
 
 #include "descriptor.h"
 
@@ -18,6 +21,15 @@
 #define RRTYPE_DESCRIPTORS_LENGTH 101
 
 const uint16_t DNSLIB_PSEUDO_TYPE_DLV = 32769;
+
+/* Taken from RFC 1035, section 3.2.4.  */
+static lookup_table_type dns_rrclasses[] = {
+	{ DNSLIB_CLASS_IN, "IN" },	/* the Internet */
+	{ DNSLIB_CLASS_CS, "CS" },	/* the CSNET class (Obsolete) */
+	{ DNSLIB_CLASS_CH, "CH" },	/* the CHAOS class */
+	{ DNSLIB_CLASS_HS, "HS" },	/* Hesiod */
+	{ 0, NULL }
+};
 
 static dnslib_rrtype_descriptor_t dnslib_rrtype_descriptors[101] = { //XXX magic constant
 	/* 0 */
@@ -243,6 +255,50 @@ static dnslib_rrtype_descriptor_t dnslib_rrtype_descriptors[101] = { //XXX magic
 	  { DNSLIB_RDATA_WF_SHORT, DNSLIB_RDATA_WF_BYTE, DNSLIB_RDATA_WF_BYTE, DNSLIB_RDATA_WF_BINARY } },*/
 };
 
+lookup_table_type *lookup_by_name(lookup_table_type *table, const char *name)
+{
+    while (table->name != NULL) {
+        if (strcasecmp(name, table->name) == 0)
+            return table;
+    		table++;
+	  }
+	  return NULL;
+}
+
+lookup_table_type *lookup_by_id(lookup_table_type *table, int id)
+{
+    while (table->name != NULL) {
+        if (table->id == id)
+            return table;
+        table++;
+    }
+    return NULL;
+}
+
+size_t strlcpy(char *dst, const char *src, size_t siz)
+{
+    char *d = dst;
+    const char *s = src;
+    size_t n = siz;
+
+    /* Copy as many bytes as will fit */
+    if (n != 0 && --n != 0) {
+        do {
+              if ((*d++ = *s++) == 0)
+                  break;
+        } while (--n != 0);
+    }
+
+    /* Not enough room in dst, add NUL and traverse rest of src */
+    if (n == 0) {
+        if (siz != 0)
+            *d = '\0';                /* NUL-terminate dst */
+        while (*s++)
+             ;
+    }
+    return(s - src - 1);        /* count does not include NUL */
+}
+
 dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_type(uint16_t type)
 {
 	if (type < DNSLIB_RRTYPE_DESCRIPTORS_LENGTH)
@@ -322,13 +378,13 @@ uint16_t rrtype_from_string(const char *name)
         return (uint16_t) rrtype;
 }
 
-/*const char *rrclass_to_string(uint16_t rrclass)
+const char *rrclass_to_string(uint16_t rrclass)
 {
 	static char buf[20];
 	lookup_table_type *entry = lookup_by_id(dns_rrclasses, rrclass);
 	if (entry) {
 		assert(strlen(entry->name) < sizeof(buf));
-		strlcpy(buf, entry->name, sizeof(buf));
+    strlcpy(buf, entry->name, sizeof(buf)); 
 	} else {
 		snprintf(buf, sizeof(buf), "CLASS%d", (int) rrclass);
 	}
@@ -365,5 +421,4 @@ uint16_t rrclass_from_string(const char *name)
 	return (uint16_t) rrclass;
 }
 
-*/
 /* end of file descriptor.c */
