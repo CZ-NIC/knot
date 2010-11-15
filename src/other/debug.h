@@ -5,6 +5,9 @@
 #define __debug_h__
 #include "log.h"
 
+#define ST_DEBUG
+
+#define SM_DEBUG
 //#define DA_DEBUG
 //#define CUCKOO_DEBUG
 //#define CUCKOO_DEBUG_HASH
@@ -110,6 +113,12 @@
 #else
 #define debug_zp_parse(msg...)
 #define debug_zp_parse_hex(data, len)
+#endif
+
+#ifdef ST_DEBUG
+#define debug_st(msg...) log_msg(LOG_DEBUG, msg)
+#else
+#define debug_st(msg...)
 #endif
 
 #endif // __debug_h__

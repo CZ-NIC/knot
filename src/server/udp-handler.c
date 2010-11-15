@@ -31,10 +31,12 @@ int udp_master (dthread_t *thread)
     struct sockaddr_in faddr;
     int addrsize = sizeof(faddr);
 
-    stat_t *thread_stat=stat_new_stat();
+    /* in case of STAT_COMPILE the following code will declare thread_stat
+       variable in following fashion: stat_t *thread_stat;
+    */
 
-    stat_set_gatherer(thread_stat, ns->gatherer);
-
+    stat_t *thread_stat;
+    STAT_INIT(thread_stat);
     stat_set_protocol(thread_stat, stat_UDP);
 
     // Loop until all data is read
