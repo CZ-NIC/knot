@@ -158,6 +158,14 @@ uint get_table_exp_and_count( uint items, uint *table_count )
 	debug_cuckoo("\tFour tables: size of one table: %u, total size: %u\n",
 				 hashsize(exp4), 4 * hashsize(exp4));
 
+	// we need exponent at least 1 (this is quite ugly..)
+	if (exp3 == 0) {
+		exp3 = 1;
+	}
+	if (exp4 == 0) {
+		exp4 = 1;
+	}
+
 	if (((hashsize(exp3) * 3) - (items)) < ((hashsize(exp4) * 4) - items)) {
 		*table_count = 3;
 		return exp3;
@@ -427,8 +435,9 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 
     // hash until empty cell is encountered or until loop appears
 
-	debug_cuckoo_hash("Hashing key: %s of size %u.\n",
-					  (*to_hash)->key, (*to_hash)->key_length);
+	debug_cuckoo_hash("Hashing key: %.*s of size %u.\n",
+					  (*to_hash)->key_length, (*to_hash)->key,
+						(*to_hash)->key_length);
 
 	uint next_table = TABLE_FIRST;
 
@@ -436,6 +445,7 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 						  table->table_size_exp, generation, next_table);
 
 	debug_cuckoo_hash("New hash: %u.\n", hash);
+	assert(hash < hashsize(table->table_size_exp));
 
 	((uint *)da_get_items(&used[next_table]))
 			[da_get_count(&used[next_table])] = hash;
@@ -456,8 +466,8 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 
         moving = next;
 
-		debug_cuckoo_hash("Moving item from table %u, key: %s, hash %u",
-			   next_table + 1, (*moving)->key, hash);
+		debug_cuckoo_hash("Moving item from table %u, key: %.*s, hash %u",
+			   next_table + 1, (*moving)->key_length, (*moving)->key, hash);
 
 		// if rehashing and the 'next' item is from the old generation,
 		// start from table 1
@@ -475,8 +485,8 @@ int ck_hash_item( ck_hash_table *table, ck_hash_table_item **to_hash,
 		debug_cuckoo_hash(" to table %u, hash %u, item: %p, place: %p\n",
 						  next_table + 1, hash, *next, next);
 		if ((*next) != NULL) {
-			debug_cuckoo_hash("Table %u, hash: %u, key: %s\n", next_table + 1,
-							  hash, (*next)->key);
+			debug_cuckoo_hash("Table %u, hash: %u, key: %.*s\n", next_table + 1,
+							  hash, (*next)->key_length, (*next)->key);
 		}
 
 		// check if this cell wasn't already used in this item's hashing
@@ -567,8 +577,11 @@ int ck_rehash( ck_hash_table *table )
 
 	do {
 
+	log_info("Rehash!\n");
+
 	if (da_get_count(&table->stash) > STASH_SIZE) {
-		log_info("STASH RESIZED!!!\n");
+		log_info("STASH RESIZED!!! (new stash size: %d)\n", da_get_count(
+				&table->stash));
 	}
 
 	// rehash items from buffer, starting from the last old item
@@ -585,7 +598,7 @@ int ck_rehash( ck_hash_table *table )
 		}
 
 		debug_cuckoo_rehash("Rehashing item from buffer position %u, key "
-			"(length %u): %*s, generation: %hu, table generation: %hu.\n",
+			"(length %u): %.*s, generation: %hu, table generation: %hu.\n",
 			stash_i, STASH_ITEMS(&table->stash)[stash_i]->key_length,
 			(int)STASH_ITEMS(&table->stash)[stash_i]->key_length,
 			STASH_ITEMS(&table->stash)[stash_i]->key,
@@ -610,12 +623,15 @@ int ck_rehash( ck_hash_table *table )
 			// loop occured
 			debug_cuckoo_hash("Hashing entered infinite loop.\n");
 
-			debug_cuckoo_rehash("Item with key %*s inserted into the buffer"
-				".\n", STASH_ITEMS(&table->stash)[stash_i]->key_length,
-				STASH_ITEMS(&table->stash)[stash_i]->key);
+			debug_cuckoo_rehash("Item with key %.*s inserted into the stash"
+				" on position %d.\n",
+				STASH_ITEMS(&table->stash)[stash_i]->key_length,
+				STASH_ITEMS(&table->stash)[stash_i]->key,
+				da_get_count(&table->stash));
 
 			// hashing unsuccessful, the item was inserted into the stash
 			da_occupy(&table->stash, 1);
+			assert(STASH_ITEMS(&table->stash)[stash_i] != NULL);
 
 			// if only one place left, resize the stash		TODO: Why???
 			if (da_reserve(&table->stash, 2) < 0) {
@@ -641,6 +657,7 @@ int ck_rehash( ck_hash_table *table )
 		assert(STASH_ITEMS(&table->stash)[i] != NULL);
 		++i;
 	}
+	log_info("OK\n");
 	assert(da_try_reserve(&table->stash, 1) == 0);
 	assert(STASH_ITEMS(&table->stash)[da_get_count(&table->stash)] == NULL);
 
@@ -662,7 +679,7 @@ int ck_rehash( ck_hash_table *table )
 			}
 
 			debug_cuckoo_rehash("Rehashing item with hash %u, key (length %u): "
-					"%*s, generation: %hu, table generation: %hu.\n", rehashed,
+					"%.*s, generation: %hu, table generation: %hu.\n", rehashed,
 				   table->tables[t][rehashed]->key_length,
 				   (int)(table->tables[t][rehashed]->key_length),
 				   table->tables[t][rehashed]->key,
@@ -690,11 +707,14 @@ int ck_rehash( ck_hash_table *table )
 				// loop occured
 				debug_cuckoo_hash("Hashing entered infinite loop.\n");
 
-				debug_cuckoo_rehash("Item with key %*s inserted into the buffer"
-					".\n", STASH_ITEMS(&table->stash)[
+				debug_cuckoo_rehash("Item with key %.*s inserted into the stash"
+					" on position %d.\n", STASH_ITEMS(&table->stash)[
 							da_get_count(&table->stash)]->key_length,
-					STASH_ITEMS(&table->stash)[da_get_count(&table->stash)]->key);
+					STASH_ITEMS(&table->stash)[da_get_count(&table->stash)]->key,
+					da_get_count(&table->stash));
 
+				assert(STASH_ITEMS(&table->stash)[
+						da_get_count(&table->stash)] != NULL);
 				// loop occured, the item is already at its new place in the
 				// buffer, so just increment the index
 				da_occupy(&table->stash, 1);
@@ -746,7 +766,9 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 	// lock mutex to avoid write conflicts
 	pthread_mutex_lock(&table->mtx_table);
 
-	debug_cuckoo_hash("Inserting item with key: %s.\n", key);
+	assert(value != NULL);
+
+	debug_cuckoo_hash("Inserting item with key: %.*s.\n", length, key);
 	debug_cuckoo_hash_hex(key, length);
 	debug_cuckoo_hash("\n");
 
@@ -761,7 +783,7 @@ int ck_insert_item( ck_hash_table *table, const char *key,
 	da_reserve(&table->stash, 1);
 	if (ck_hash_item(table, &new_item, &STASH_ITEMS(&table->stash)[
 			da_get_count(&table->stash)], table->generation) != 0) {
-		debug_cuckoo_hash("Item with key %*s inserted into the buffer.\n",
+		debug_cuckoo_hash("Item with key %.*s inserted into the buffer.\n",
 		   STASH_ITEMS(&table->stash)[da_get_count(&table->stash)]->key_length,
 		   STASH_ITEMS(&table->stash)[da_get_count(&table->stash)]->key);
 
@@ -802,12 +824,13 @@ ck_hash_table_item **ck_find_gen( const ck_hash_table *table, const char *key,
 	for (uint t = TABLE_FIRST; t <= TABLE_LAST(table->table_count); ++t) {
 		hash = HASH(key, length, table->table_size_exp, generation, t);
 
-		debug_cuckoo("Hash: %u, key: %s\n", hash, key);
+		debug_cuckoo("Hash: %u, key: %.*s\n", hash, length, key);
 		debug_cuckoo("Table %d, hash: %u, item: %p\n", t + 1, hash,
 					 table->tables[t][hash]);
 		if (table->tables[t][hash] != NULL) {
-			debug_cuckoo("Table %d, key: %s, value: %p, key length: %u\n",
-				t + 1, table->tables[t][hash]->key,
+			debug_cuckoo("Table %d, key: %.*s, value: %p, key length: %u\n",
+				t + 1, table->tables[t][hash]->key_length,
+				table->tables[t][hash]->key,
 				table->tables[t][hash]->value,
 				table->tables[t][hash]->key_length);
 		}
@@ -827,8 +850,9 @@ ck_hash_table_item **ck_find_gen( const ck_hash_table *table, const char *key,
 
     debug_cuckoo("Found pointer: %p\n", found);
 	if (found != NULL) {
-		debug_cuckoo("Stash, key: %s, value: %p, key length: %u\n",
-		   (*found)->key, (*found)->value, (*found)->key_length);
+		debug_cuckoo("Stash, key: %.*s, value: %p, key length: %u\n",
+		   (*found)->key_length, (*found)->key, (*found)->value,
+		   (*found)->key_length);
 	}
 
 	// ck_find_in_buffer returns NULL if not found, otherwise pointer to item
@@ -862,7 +886,7 @@ ck_hash_table_item **ck_find_item_nc( const ck_hash_table *table,
 const ck_hash_table_item *ck_find_item( const ck_hash_table *table,
 										const char *key, size_t length )
 {
-	debug_cuckoo("ck_find_item(), key: %*s, size: %u\n", length, key, length);
+	debug_cuckoo("ck_find_item(), key: %.*s, size: %u\n", length, key, length);
 	ck_hash_table_item **found = ck_find_item_nc(table, key, length);
 	return (found == NULL) ? NULL : rcu_dereference(*found);
 }
@@ -870,12 +894,15 @@ const ck_hash_table_item *ck_find_item( const ck_hash_table *table,
 /*----------------------------------------------------------------------------*/
 
 int ck_update_item( const ck_hash_table *table, const char *key, size_t length,
-					void *new_value )
+					void *new_value, void (*dtor_value)( void *value ) )
 {
 	rcu_read_lock();	// is needed?
+
+	assert(new_value != NULL);
+
 	ck_hash_table_item **item = ck_find_item_nc(table, key, length);
 
-	if ((*item) == NULL) {
+	if (item == NULL || (*item) == NULL) {
 		return -1;
 	}
 
@@ -883,7 +910,9 @@ int ck_update_item( const ck_hash_table *table, const char *key, size_t length,
 	rcu_read_unlock();
 
 	synchronize_rcu();
-	free(old);
+	if (dtor_value) {
+		dtor_value(old);
+	}
 
 	return 0;
 }
@@ -934,7 +963,7 @@ void ck_dump_table( const ck_hash_table *table )
 		debug_cuckoo("Table %d:\n", t + 1);
 
 		for (i = 0; i < hashsize(table->table_size_exp); i++) {
-			debug_cuckoo("Hash: %u, Key: %*s, Value: %p.\n", i,
+			debug_cuckoo("Hash: %u, Key: %.*s, Value: %p.\n", i,
 				(table->tables[t])[i]->key_length, (table->tables[t])[i]->key,
 				(table->tables[t])[i]->value);
 		}
@@ -942,7 +971,7 @@ void ck_dump_table( const ck_hash_table *table )
 
 	debug_cuckoo("Stash:\n");
 	for (i = 0; i < da_get_count(&table->stash); ++i) {
-		debug_cuckoo("Index: %u, Key: %*s Value: %p.\n", i,
+		debug_cuckoo("Index: %u, Key: %.*s Value: %p.\n", i,
 		  ((ck_hash_table_item **)da_get_items(&table->stash))[i]->key_length,
 		  ((ck_hash_table_item **)da_get_items(&table->stash))[i]->key,
 		  ((ck_hash_table_item **)da_get_items(&table->stash))[i]->value);
