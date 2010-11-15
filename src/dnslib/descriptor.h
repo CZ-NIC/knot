@@ -14,17 +14,23 @@
 
 #include "common.h"
 
-//static const uint MAXRDATALEN=64;
-#define MAXRDATALEN 64
+enum mxrdtln { MAXRDATALEN = 64 };
+//#define MAXRDATALEN 64
+
 /* 64 is in NSD. Seems a little too much, but I'd say it's not a real issue. */
 
-/* A general purpose lookup table */
+/*!
+ * \brief A general purpose lookup table.
+ */
 typedef struct lookup_table lookup_table_type;
 struct lookup_table {
     int id;
     const char *name;
 };
 
+/*!
+ * \brief Enum containing RR class codes.
+ */
 enum dnslib_rr_class
 {
     DNSLIB_CLASS_IN,
@@ -35,11 +41,6 @@ enum dnslib_rr_class
     DNSLIB_CLASS_ANY = 255
 };
 
-/*!
- * \brief Enum containing RR type codes.
- *
- * \todo Not all indices can be used for indexing.
- */
 typedef enum dnslib_rr_class dnslib_rr_class_t;
 
 enum dnslib_rr_type 
@@ -159,7 +160,7 @@ struct dnslib_rrtype_descriptor
 typedef struct dnslib_rrtype_descriptor dnslib_rrtype_descriptor_t;
 
 /*!
- * \brief Strlcpy - safe string copy function, based on FreeBDS implementation
+ * \brief Strlcpy - safe string copy function, based on FreeBSD implementation.
  *  
  * http://www.openbsd.org/cgi-bin/cvsweb/src/lib/libc/string/
  *
@@ -170,6 +171,63 @@ typedef struct dnslib_rrtype_descriptor dnslib_rrtype_descriptor_t;
  * \return strlen(src), if retval >= siz, truncation occurred.
  */
 size_t strlcpy( char *dst, const char *src, size_t siz );
+
+/*!
+ * \brief Gets RR descriptor for given RR type.
+ *
+ * \param type Code of RR type whose descriptor should be returned.
+ *
+ * \return RR descriptor for given type code, NULL descriptor if
+ * unknown type.
+ */
+dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_type( uint16_t type );
+
+/*!
+ * \brief Gets RR descriptor for given RR name.
+ *
+ * \param name Mnemonic of RR type whose descriptor should be returned.
+ *
+ * \return RR descriptor for given name, NULL descriptor if
+ * unknown type.
+ */
+dnslib_rrtype_descriptor_t *rrtype_descriptor_by_name( const char *name );
+
+/*!
+ * \brief Converts numeric type representation to mnemonic string.
+ *
+ * \param rrtype Type RR type code to be converted.
+ *
+ * \return Mnemonic string if found, str(TYPE[rrtype]) otherwise.
+ */
+const char *rrtype_to_string( uint16_t rrtype );
+
+/*!
+ * \brief Converts mnemonic string representation of a type to numeric one.
+ *
+ * \param name Mnemonic string to be converted.
+ *
+ * \return Correct code if found, 0 otherwise.
+ */
+uint16_t rrtype_from_string( const char *name );
+
+/*!
+ * \brief Converts numeric class representation to string one.
+ *
+ * \param rrclass Class code to be converted.
+ *
+ * \return String represenation of class if found, 
+ *  str(CLASS[rrclass]) otherwise.
+ */
+const char *rrclass_to_string( uint16_t rrclass );
+
+/*!
+ * \brief Converts string representation of a class to numeric one.
+ *
+ * \param name Class string to be converted.
+ *
+ * \return Correct code if found, 0 otherwise.
+ */
+uint16_t rrclass_from_string( const char *name );
 
 #endif
 
