@@ -26,12 +26,19 @@
  * require special treatment within some RDATA (e.g. compressing in packets).
  */
 union dnslib_rdata_item {
+	dnslib_dname_t *dname; /*!< RDATA item represented as a domain name. */
+	uint8_t int8;	/*!< 8bit unsigned integer */
+	uint16_t int16;		/*!< 16bit unsigned integer */
+	uint32_t int32;		/*!< 32bit unsigned integer */
+	uint8_t a[4];		/*!< A address - four 8bit integers */
 	/*!
 	 * \brief RDATA item represented as raw array of octets.
-	 * \note Will this be convenient enough? What about parsing? (in runtime?)
+	 *
+	 * In most cases the first octet will be the length of the array. The only
+	 * now known exception will be when storing AAAA address which has known
+	 * length (sixteen 8bit integers), so there is no need to store the lenght.
 	 */
 	uint8_t *raw_data;
-	dnslib_dname_t *dname; /*!< RDATA item represented as a domain name. */
 };
 
 typedef union dnslib_rdata_item dnslib_rdata_item_t;
@@ -43,11 +50,19 @@ typedef union dnslib_rdata_item dnslib_rdata_item_t;
  * Each RDATA may be logically divided into items, each of possible different
  * type (see dnslib_rdata_item). This structure stores an array of such items.
  * It is not dynamic, so any RDATA structure may hold either 0 or one specified
- * number of items which cannot be changed later.
+ * number of items which cannot be changed later. However, the number of items
+ * may be different for each RDATA structure. The number of items should be
+ * given by descriptors for each RR type. Some types may have variable number
+ * of items. In such cases, the last item in the array will be set tu NULL
+ * to distinguish the actual count of items.
+ *
+ * \todo Find out whether NULL is appropriate value. If it is a possible
+ *       value for some of the items, we must find some other way to deal with
+ *       this.
  *
  * This structure does not hold information about the RDATA items, such as
  * what type is which item or how long are they. This information should be
- * stored elsewhere (probably globally) as it is RR-specific and given for each
+ * stored elsewhere (in descriptors) as it is RR-specific and given for each
  * RR type.
  */
 struct dnslib_rdata {
@@ -60,15 +75,11 @@ typedef struct dnslib_rdata dnslib_rdata_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Creates an empty RDATA structure and possibly reserves space for data.
- *
- * \param count Number of RDATA items to be later stored in this structure.
- *
- * If \a count > 0, all RDATA items are initialized to 0.
+ * \brief Creates an empty RDATA structure.
  *
  * \return Pointer to the new RDATA structure or NULL if an error occured.
  */
-dnslib_rdata_t *dnslib_rdata_new( uint count );
+dnslib_rdata_t *dnslib_rdata_new();
 
 /*!
  * \brief Sets the RDATA item on position \a pos.
@@ -135,6 +146,12 @@ const dnslib_rdata_item_t *dnslib_rdata_get_item( const dnslib_rdata_t *rdata,
  * Sets the given pointer to NULL.
  */
 void dnslib_rdata_free( dnslib_rdata_t **rdata );
+
+/*!
+ *
+ */
+int dnslib_rdata_compare( const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
+						  const uint8_t *format );
 
 #endif /* _CUTEDNS_RDATA_H */
 
