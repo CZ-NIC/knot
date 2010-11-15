@@ -13,7 +13,7 @@
 
 #include "common.h"
 
-#define FREQ_BUFFER_SIZE 100000
+enum fbs { FREQ_BUFFER_SIZE = 100000 };
 
 typedef enum {
     stat_UDP,

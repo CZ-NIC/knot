@@ -20,92 +20,106 @@
 #include "stat.h"
 #include "gatherer.h"
 
+static gatherer_t *local_gath;
 
 /*----------------------------------------------------------------------------*/
 
-void stat_reset_gatherer_array( gatherer_t *gatherer )
+inline void stat_gatherer_init()
+{
+#ifdef STAT_COMPILE
+    local_gath = new_gatherer();
+#endif
+}
+
+/*----------------------------------------------------------------------------*/
+
+void stat_reset_gatherer_array()
 {
     for (int i = 0; i < FREQ_BUFFER_SIZE; i++) {
-        gatherer->freq_array[i]=0;
+        local_gath->freq_array[i]=0;
     }
 }
 
 /*----------------------------------------------------------------------------*/
 
-void stat_sleep_compute( void *gatherer )
-{ //TODO have a look at locking
-    gatherer_t *gath = (gatherer_t *) gatherer;
+void stat_sleep_compute()
+{ 
     while (1) {
         sleep(SLEEP_TIME);
 
         for (int i = 0; i < FREQ_BUFFER_SIZE; i++) {
-            if (gath->freq_array[i]>1) {
-                printf("too much activity at index %d: %d queries adress: \
-                       %s port %d protocol %d\n", i, gath->freq_array[i], 
-                       gath->flow_array[i]->addr, gath->flow_array[i]->port,
-                       gath->flow_array[i]->protocol);
+            if (local_gath->freq_array[i] > ACTIVE_FLOW_THRESHOLD) {
+                debug_st("too much activity at index %d: %d queries adress: \
+                       %s port %d protocol %d\n", i, local_gath->freq_array[i],
+                       local_gath->flow_array[i]->addr, 
+                       local_gath->flow_array[i]->port,
+                       local_gath->flow_array[i]->protocol);
             }
         }
 
-        pthread_mutex_lock(&(gath->mutex_read)); // when reading, we have
-        //to lock
+        pthread_mutex_lock(&(local_gath->mutex_read)); 
 
-        gath->udp_qps=gath->udp_queries/(double)SLEEP_TIME;
+        local_gath->udp_qps=local_gath->udp_queries/(double)SLEEP_TIME;
+        local_gath->tcp_qps=local_gath->tcp_queries/(double)SLEEP_TIME;
+        local_gath->qps = local_gath->udp_qps + local_gath->tcp_qps;
 
-        gath->tcp_qps=gath->tcp_queries/(double)SLEEP_TIME;
+/* following code needs usage of gettimeofday, which is currently disabled */
 
-        gath->qps = gath->udp_qps + gath->tcp_qps;
-
-        gath->udp_mean_latency=(gath->udp_latency/(double)gath->udp_queries); 
-
-        gath->tcp_mean_latency=(gath->tcp_latency/(double)gath->tcp_queries); 
-
-        gath->mean_latency = (gath->udp_mean_latency+gath->tcp_mean_latency)/2;
+/*      local_gath->udp_mean_latency=((double)local_gath->udp_latency/
+        (double)local_gath->udp_queries); 
+        local_gath->tcp_mean_latency=((double)local_gath->tcp_latency/
+        (double)local_gath->tcp_queries); 
+        local_gath->mean_latency = (local_gath->udp_mean_latency + 
+        local_gath->tcp_mean_latency)/2;  */
 
         //TODO only applies for sleep time, which might not be bad, at least
         //there's no need to hold more variables
-        gath->udp_queries=0;
+        local_gath->udp_queries=0;
+        local_gath->tcp_queries=0;
 
-        gath->tcp_queries=0;
+/* same thing as above applies here */
 
-        pthread_mutex_unlock(&(gath->mutex_read));
+/*      local_gath->tcp_latency = 0;
+        local_gath->udp_latency = 0;*/
 
-        stat_reset_gatherer_array(gath);
+        pthread_mutex_unlock(&(local_gath->mutex_read));
 
-        printf("qps_udp: %f\n", gath->udp_qps);
-        printf("mean_lat_udp: %f\n", gath->udp_mean_latency); //nano seconds
+        stat_reset_gatherer_array(local_gath);
 
-        printf("qps_tcp: %f\n", gath->tcp_qps);
-        printf("mean_lat_tcp: %f\n", gath->tcp_mean_latency); //nano seconds
+        debug_st("qps_udp: %f\n", local_gath->udp_qps);
+//      debug_st("mean_lat_udp: %f\n", local_gath->udp_mean_latency);
 
-        printf("UDP/TCP ratio %f\n", gath->udp_qps/gath->tcp_qps);
+        debug_st("qps_tcp: %f\n", local_gath->tcp_qps);
+        //the following line gives error in valgrind. God knows why.
+//      debug_st("mean_lat_tcp: %f\n", local_gath->tcp_mean_latency);
 
+        debug_st("UDP/TCP ratio %f\n", local_gath->udp_qps/local_gath->tcp_qps);
     }
 }
 
 /*----------------------------------------------------------------------------*/
 
-stat_t *stat_new_stat( )
+stat_t *stat_new_stat()
 {
     stat_t *ret;
 
     if ((ret=malloc(sizeof(stat_t)))==NULL) {
-               //err memry 
+        ERR_ALLOC_FAILED;
         return NULL;
     }
 
     ret->first=false;
-
-    ret->gatherer=NULL;
 
     return ret;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void stat_stat_free( stat_t *stat ) 
+inline void stat_stat_free( stat_t *stat ) 
 {
+#ifdef STAT_COMPILE
     free(stat);
+#endif
 }
 
 /*----------------------------------------------------------------------------*/
@@ -131,101 +145,110 @@ uint return_index ( struct sockaddr_in *s_addr , protocol_e protocol )
     } else {
         ret*=7;
     }
-    ret%=FREQ_BUFFER_SIZE; /* effectively uses only end of the hash, maybe
-    hash the resulting number once again to get 0 <= n < 10000 */
+    ret%=FREQ_BUFFER_SIZE; 
+    /* effectively uses only end of the hash, maybe hash the 
+    resulting number once again to get 0 <= n < 10000 */
     return ret;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void stat_gatherer_add_data( stat_t *stat )
+int stat_gatherer_add_data( stat_t *stat )
 {   
     uint index = return_index(stat->s_addr, stat->protocol);
-    if (!stat->gatherer->freq_array[index]) {
+    if (!local_gath->freq_array[index]) {
         char addr[24];
         inet_ntop(AF_INET, &stat->s_addr->sin_addr, addr, 24);
         flow_data_t *tmp;
         tmp=malloc(sizeof(flow_data_t));
+        if (tmp == NULL) {
+            ERR_ALLOC_FAILED;
+            return -1;
+        }
         tmp->addr=malloc(sizeof(char)*24);
+        if (tmp->addr == NULL) {
+            ERR_ALLOC_FAILED;
+            return -1;
+        }
         strcpy(tmp->addr, addr);
         tmp->port=stat->s_addr->sin_port;
         tmp->protocol=stat->protocol;
-        stat->gatherer->flow_array[index]=tmp;
+        local_gath->flow_array[index]=tmp;
     }
   
     //TODO add a check here, whether hashing fction performs well enough
 
-    stat->gatherer->freq_array[index]+=1;
-}
+    local_gath->freq_array[index]+=1;
 
-/*----------------------------------------------------------------------------*/
-
-void stat_set_gatherer( stat_t *stat, gatherer_t *gatherer )
-{
-    stat->gatherer=gatherer;
+    return 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
 void stat_set_protocol( stat_t *stat, int protocol)
 {
+#ifdef STAT_COMPILE
     stat->protocol=protocol;
+#endif
 }
 
 /*----------------------------------------------------------------------------*/
 
-void stat_start( gatherer_t *gatherer ) //TODO this starts gatherer, not stat
+void stat_gatherer_start()
 {
+#ifdef STAT_COMPILE    
     pthread_t sleeper;
-    pthread_create(&sleeper, NULL, (void *) &stat_sleep_compute,
-                   gatherer);
+    pthread_create(&sleeper, NULL, (void *) &stat_sleep_compute, NULL);
+#endif    
 }
 
 /*----------------------------------------------------------------------------*/
 
 void stat_inc_query( stat_t *stat )
 {
-//  pthread_mutex_lock(&(gath->mutex_queries));
     if (stat->protocol==stat_UDP) {
-        stat->gatherer->udp_queries++;
+        local_gath->udp_queries++;
     } else {
-        stat->gatherer->tcp_queries++;
+        local_gath->tcp_queries++;
     }
-//  pthread_mutex_unlock(&(gath->mutex_queries));
 }
 
 /*----------------------------------------------------------------------------*/
 
 void stat_inc_latency( stat_t *stat, uint increment )
 {
-//  pthread_mutex_lock(&(gath->mutex_latency));
     if (stat->protocol==stat_UDP) {
-        stat->gatherer->udp_latency+=increment;
+        local_gath->udp_latency+=increment;
     } else {
-        stat->gatherer->tcp_latency+=increment;
+        local_gath->tcp_latency+=increment;
     }
-//  pthread_mutex_unlock(&(gath->mutex_latency));
 }
 
 /*----------------------------------------------------------------------------*/
 
 void stat_get_first( stat_t *stat , struct sockaddr_in *s_addr )
 {
-    clock_gettime(CLOCK_REALTIME, &stat->t1);
+#ifdef STAT_COMPILE    
+//  gettimeofday(&stat->t2, NULL);
     stat->s_addr = s_addr;
-    //TODO handle s_addr, it's gonna get deleted pretty soon
+    //check if s_addr does not get overwritten
+#endif
 }
 
 /*----------------------------------------------------------------------------*/
 
 void stat_get_second( stat_t *stat )
 {
-    clock_gettime(CLOCK_REALTIME, &stat->t2);
+#ifdef STAT_COMPILE    
+//  gettimeofday(&stat->t2, NULL);
 
     stat_inc_query(stat);
     stat_inc_latency(stat, stat_last_query_time(stat));
 
+    stat_inc_latency(stat, 1);
+
     stat_gatherer_add_data(stat);
+#endif
 }
 
 /*----------------------------------------------------------------------------*/
@@ -233,6 +256,15 @@ void stat_get_second( stat_t *stat )
 uint stat_last_query_time( stat_t *stat ) 
 {
     return (stat->t2).tv_nsec-(stat->t1).tv_nsec;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void stat_gatherer_free()
+{
+#ifdef STAT_COMPILE        
+    gatherer_free(local_gath);
+#endif
 }
 
 /*----------------------------------------------------------------------------*/

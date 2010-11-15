@@ -1,6 +1,7 @@
 #include "name-server.h"
 #include "zone-node.h"
 #include "zone-database.h"
+#include "stat.h"
 #include <stdio.h>
 #include <assert.h>
 
@@ -819,7 +820,7 @@ ns_nameserver *ns_create( zdb_database *database )
 
   //stat
 
-  ns->gatherer=new_gatherer();
+  stat_gatherer_init();
 
   //!stat
 

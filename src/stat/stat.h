@@ -17,9 +17,24 @@
 #include <netinet/in.h>
 
 #include "gatherer.h"
+#include "common.h"
+
+#ifdef STAT_COMPILE
+#define stat_new_stat_variable() stat_t *thread_stat = stat_new_stat();
+#else
+#define stat_new_stat_variable void *thread_stat;
+#endif
+
+#ifdef STAT_COMPILE
+#define STAT_INIT(x) x = stat_new_stat()
+#else
+#define STAT_INIT(x) UNUSED(x)
+#endif
 
 /* determines how long until the sleeper thread wakes up and does compuations */
-static uint const SLEEP_TIME=15;
+static uint const SLEEP_TIME = 15;
+
+static uint const ACTIVE_FLOW_THRESHOLD = 10;
 
 /**
 \brief 
@@ -35,28 +50,24 @@ typedef struct stat_t {
 } stat_t;
 
 /* PRIVATES */
-/*---------------------------------------------------------------------------*/
 
 uint stat_last_query_time ( stat_t *stat );
 
 void stat_add_data( stat_t *stat, uint query_time );
 
-/*---------------------------------------------------------------------------*/
+/* PUBLICS */
 
 /**
 \brief 
 Creates a new stat_t instance.
 \return new instance, NULL otherwise*/
-stat_t *stat_new_stat( );
+void stat_inicialiaze_gatherer();
 
 /**
 \brief 
-Assignes a gatherer to stat_t structure.
-\param stat  stat_t (usually newly created)
-\param gatherer  "parental" gatherer structure
-
-\return */
-void stat_set_gatherer( stat_t *stat, gatherer_t *gatherer);
+Creates a new stat_t instance.
+\return new instance, NULL otherwise*/
+stat_t *stat_new_stat();
 
 /**
 \brief 
@@ -85,11 +96,16 @@ void stat_get_first( stat_t *stat, struct sockaddr_in *s_addr );
 
 /**
 \brief 
-Gets the the from processing fuction and changes the corresponding variables.
+Gets time from a processing fuction and changes the corresponding variables.
 \param stat current stat_t instance
 \return */
 void stat_get_second( stat_t *stat );
 
+void stat_gatherer_init();
+
+void stat_gatherer_free();
+
+void stat_gatherer_start();
 
 #endif
 

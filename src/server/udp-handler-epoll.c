@@ -57,7 +57,7 @@ static inline void udp_epoll_handler(sm_event *ev)
             assert(answer_size > 0);
 
             debug_sm("udp: answer wire format (size %u):\n", answer_size);
-            debug_sm_hex(answer, answer_size);
+//            debug_sm_hex(answer, answer_size);
 
             for(;;) {
                 res = socket_sendto(ev->fd, ev->outbuf, answer_size, MSG_DONTWAIT,

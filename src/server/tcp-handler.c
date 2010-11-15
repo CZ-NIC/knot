@@ -7,7 +7,9 @@
 #include <errno.h>
 #include "name-server.h"
 #include "tcp-handler.h"
+#ifdef STAT_COMPILE
 #include "stat.h"
+#endif
 
 /*
  * TCP connection pool.
@@ -136,16 +138,16 @@ static inline void tcp_answer (int fd,
     //! \todo Real address;
     struct sockaddr_in faddr;
     faddr.sin_family = AF_INET;
-    faddr.sin_port = htons(port);
+    faddr.sin_port = htons(0);
     faddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    stat_get_first(stat, &faddr); //faddr has to be read immediately.
+    stat_get_first(pool->stat, &faddr); //faddr has to be read immediately.
 
     // Check read result
     if (n > 0) {
 
         // Send answer
         size_t answer_size = outbuf_sz;
-        int res = ns_answer_request(ns, src, n, dest + sizeof(short),
+        int res = ns_answer_request(pool->ns, src, n, dest + sizeof(short),
                                     &answer_size);
         debug_net("tcp: answer wire format (size %u, result %d).\n",
                   (unsigned) answer_size, res);
@@ -166,7 +168,7 @@ static inline void tcp_answer (int fd,
             // Uncork
             cork = 0;
             setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
-            stat_get_second(ev->stat);
+            stat_get_second(pool->stat);
             debug_net("tcp: sent answer to %d\n", fd);
         }
     }
@@ -275,8 +277,7 @@ static tcp_pool_t* tcp_pool_new (iohandler_t *handler)
    }
 
    // Create stat gatherer
-   pool->stat = stat_new_stat(); //new instance each time...XXX has to be fixed
-   stat_set_gatherer(pool->stat, pool->ns->gatherer);
+   STAT_INIT(pool->stat);
    stat_set_protocol(pool->stat, stat_TCP);
 
    return pool;
@@ -361,3 +362,4 @@ static int tcp_pool_reserve (tcp_pool_t *pool, uint size)
    pool->ep_events = new_events;
    return 0;
 }
+

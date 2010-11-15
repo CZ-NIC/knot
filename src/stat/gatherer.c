@@ -26,7 +26,8 @@ gatherer_t *new_gatherer( )
     pthread_mutex_init(&ret->mutex_read, NULL);
 
     for (int i = 0; i < FREQ_BUFFER_SIZE; i++) {
-        ret->freq_array[i]=0;
+        ret->freq_array[i] = 0;
+        ret->flow_array[i] = NULL;
     }
 
     ret->qps = 0.0;
@@ -51,8 +52,14 @@ gatherer_t *new_gatherer( )
 void gatherer_free( gatherer_t *gath )
 {
     for (int i = 0; i < FREQ_BUFFER_SIZE; i++) {
-        free(gath->flow_array[i]->addr);
+        if (gath->flow_array[i] != NULL) {
+            free(gath->flow_array[i]->addr);
+            free(gath->flow_array[i]);
+        }
     }
+    
+    pthread_mutex_destroy(&gath->mutex_read);
+
     free(gath);
 }
 
