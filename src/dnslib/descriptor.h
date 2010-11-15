@@ -11,6 +11,7 @@
 #define __DESCRIPTOR_H__
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "common.h"
 
@@ -124,6 +125,8 @@ enum dnslib_rr_type
  */
 typedef enum dnslib_rr_type dnslib_rr_type_t;
 
+static uint const DNSLIB_RRTYPE_LAST = DNSLIB_RRTYPE_NSEC3PARAM;
+
 enum dnslib_rdata_wireformat
 {
   	DNSLIB_RDATA_WF_COMPRESSED_DNAME,   /* Possibly compressed domain name.  */
@@ -148,10 +151,11 @@ typedef enum dnslib_rdatawireformat dnslib_rdata_wireformat_t;
 
 struct dnslib_rrtype_descriptor
 {
-  	uint16_t    type;	/* RR type */
+  	uint16_t type;	/* RR type */
   	const char *name;	/* Textual name.  */
-  	uint32_t    length;	/* Maximum number of RDATAs.  */
-  	uint8_t     wireformat[MAXRDATALEN]; /* rdata_wireformat_type */
+  	uint8_t length;	/* Maximum number of RDATA items.  */
+  	uint8_t wireformat[MAXRDATALEN]; /* rdata_wireformat_type */
+    bool fixed_items; /* Has fixed number of RDATA items? */
 };
 
 /*!
