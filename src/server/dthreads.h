@@ -96,6 +96,9 @@ typedef struct dt_unit_t {
 /*!
  * \brief Create a set of threads with no initial runnable.
  *
+ * \note All threads are created with Dead state.
+ *       This means, they're not physically created unit dt_start() is called.
+ *
  * \param count Requested thread count.
  * \return On success: new instance, else 0
  */
@@ -207,8 +210,11 @@ int dt_repurpose (dthread_t* thread, runnable_t runnable, void *data);
 /*!
  * \brief Wake up thread from idle state.
  *
- * Thread is awoken from idle state and enters runnable.
- * This function has no effect on running threads.
+ * Thread is awoken from idle state and reenters runnable.
+ * This function only affects idle threads.
+ *
+ * \note Unit needs to be started with dt_start() first, as the function
+ *       doesn't affect dead threads.
  */
 int dt_activate (dthread_t *thread);
 
