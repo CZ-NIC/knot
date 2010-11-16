@@ -162,6 +162,9 @@ static void *thread_ep (void *data)
     debug_dt("dthreads: [%p] thread finished\n", thread);
     unit_signalize_change(unit);
     debug_dt("dthreads: [%p] thread exited ep\n", thread);
+    lock_thread_rw(thread);
+    thread->state |= ThreadJoinable;
+    unlock_thread_rw(thread);
 
     // Return
     return 0;
@@ -560,6 +563,7 @@ int dt_start_id (dthread_t *thread)
     thread->state &= ~ThreadIdle;
     thread->state &= ~ThreadDead;
     thread->state &= ~ThreadJoined;
+    thread->state &= ~ThreadJoinable;
 
     // Do not re-create running threads
     if (prev_state != ThreadJoined) {
@@ -605,7 +609,7 @@ int dt_join (dt_unit_t *unit)
             }
 
             // Reclaim dead threads, but only fast
-            /*if(thread->state == ThreadDead) {
+            if(thread->state & ThreadJoinable) {
                 unlock_thread_rw(thread);
                 debug_dt("dthreads: [%p] join: reclaiming thread\n", thread);
                 pthread_join(thread->_thr, 0);
@@ -613,8 +617,7 @@ int dt_join (dt_unit_t *unit)
                 thread->state = ThreadJoined;
             } else {
                 unlock_thread_rw(thread);
-            }*/
-            unlock_thread_rw(thread);
+            }
         }
 
         // Unlock unit
@@ -729,7 +732,6 @@ int dt_repurpose (dthread_t* thread, runnable_t runnable, void *data)
         unlock_thread_rw(thread);
         return 0;
     }
-
 
     // Lock thread state changes
     pthread_mutex_lock(&unit->_notify_mx);
