@@ -300,7 +300,7 @@ static void tcp_pool_del (tcp_pool_t **pool)
     pthread_mutex_destroy(&(*pool)->mx);
 
     // Delete stat
-    stat_stat_free((*pool)->stat);
+    stat_free((*pool)->stat);
 
     // Free
     free((*pool));

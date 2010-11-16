@@ -1,9 +1,8 @@
 /*
  * File:     stat.c
  * Date:     01.11.2010 17:36
- * Author:   jan
- * Project:  
- * Description:   
+ * Author:   jan.kadlec@nic.cz
+ * Project:  CuteDNS
  */
 
 #include <malloc.h>
@@ -24,7 +23,7 @@ static gatherer_t *local_gath;
 
 /*----------------------------------------------------------------------------*/
 
-inline void stat_gatherer_init()
+inline void stat_static_gath_init()
 {
 #ifdef STAT_COMPILE
     local_gath = new_gatherer();
@@ -90,7 +89,6 @@ void stat_sleep_compute()
 //      debug_st("mean_lat_udp: %f\n", local_gath->udp_mean_latency);
 
         debug_st("qps_tcp: %f\n", local_gath->tcp_qps);
-        //the following line gives error in valgrind. God knows why.
 //      debug_st("mean_lat_tcp: %f\n", local_gath->tcp_mean_latency);
 
         debug_st("UDP/TCP ratio %f\n", local_gath->udp_qps/local_gath->tcp_qps);
@@ -99,23 +97,22 @@ void stat_sleep_compute()
 
 /*----------------------------------------------------------------------------*/
 
-stat_t *stat_new_stat()
+inline stat_t *stat_new()
 {
+#ifdef STAT_COMPILE
     stat_t *ret;
 
     if ((ret=malloc(sizeof(stat_t)))==NULL) {
         ERR_ALLOC_FAILED;
         return NULL;
     }
-
-    ret->first=false;
-
     return ret;
+#endif
 }
 
 /*----------------------------------------------------------------------------*/
 
-inline void stat_stat_free( stat_t *stat ) 
+inline void stat_free( stat_t *stat ) 
 {
 #ifdef STAT_COMPILE
     free(stat);
@@ -124,7 +121,7 @@ inline void stat_stat_free( stat_t *stat )
 
 /*----------------------------------------------------------------------------*/
 
-uint return_index ( struct sockaddr_in *s_addr , protocol_e protocol )
+uint return_index ( struct sockaddr_in *s_addr , protocol_t protocol )
 {
     /* this is the first "hash" I could think of quickly */
     uint ret=0;
@@ -185,7 +182,7 @@ int stat_gatherer_add_data( stat_t *stat )
 
 /*----------------------------------------------------------------------------*/
 
-void stat_set_protocol( stat_t *stat, int protocol)
+inline void stat_set_protocol( stat_t *stat, int protocol)
 {
 #ifdef STAT_COMPILE
     stat->protocol=protocol;
@@ -194,11 +191,11 @@ void stat_set_protocol( stat_t *stat, int protocol)
 
 /*----------------------------------------------------------------------------*/
 
-void stat_gatherer_start()
+inline void stat_static_gath_start()
 {
 #ifdef STAT_COMPILE    
-    pthread_t sleeper;
-    pthread_create(&sleeper, NULL, (void *) &stat_sleep_compute, NULL);
+    pthread_create(&(local_gath->sleeper_thread), NULL, 
+                    (void *) &stat_sleep_compute, NULL);
 #endif    
 }
 
@@ -215,6 +212,7 @@ void stat_inc_query( stat_t *stat )
 
 /*----------------------------------------------------------------------------*/
 
+/*
 void stat_inc_latency( stat_t *stat, uint increment )
 {
     if (stat->protocol==stat_UDP) {
@@ -222,11 +220,11 @@ void stat_inc_latency( stat_t *stat, uint increment )
     } else {
         local_gath->tcp_latency+=increment;
     }
-}
+}*/
 
 /*----------------------------------------------------------------------------*/
 
-void stat_get_first( stat_t *stat , struct sockaddr_in *s_addr )
+inline void stat_get_first( stat_t *stat , struct sockaddr_in *s_addr )
 {
 #ifdef STAT_COMPILE    
 //  gettimeofday(&stat->t2, NULL);
@@ -237,16 +235,12 @@ void stat_get_first( stat_t *stat , struct sockaddr_in *s_addr )
 
 /*----------------------------------------------------------------------------*/
 
-void stat_get_second( stat_t *stat )
+inline void stat_get_second( stat_t *stat )
 {
 #ifdef STAT_COMPILE    
 //  gettimeofday(&stat->t2, NULL);
-
     stat_inc_query(stat);
-    stat_inc_latency(stat, stat_last_query_time(stat));
-
-    stat_inc_latency(stat, 1);
-
+//  stat_inc_latency(stat, stat_last_query_time(stat));
     stat_gatherer_add_data(stat);
 #endif
 }
@@ -260,7 +254,7 @@ uint stat_last_query_time( stat_t *stat )
 
 /*----------------------------------------------------------------------------*/
 
-void stat_gatherer_free()
+inline void stat_static_gath_free()
 {
 #ifdef STAT_COMPILE        
     gatherer_free(local_gath);

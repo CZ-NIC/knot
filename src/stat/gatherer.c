@@ -1,9 +1,8 @@
 /*
- * File:     gath.c
+ * File:     gatherer.c
  * Date:     08.11.2010 10:18
- * Author:   jan
- * Project:  
- * Description:   
+ * Author:   jan.kadlec@nic.cz
+ * Project:  CuteDNS
  */
 
 #include <malloc.h>
@@ -14,12 +13,12 @@
 
 /*----------------------------------------------------------------------------*/
 
-gatherer_t *new_gatherer( )
+gatherer_t *new_gatherer()
 {
     gatherer_t *ret;
 
     if ((ret=malloc(sizeof(gatherer_t)))==NULL) {
-               //err memry 
+        ERR_ALLOC_FAILED;
         return NULL;
     }
 
@@ -34,12 +33,13 @@ gatherer_t *new_gatherer( )
     ret->udp_qps = 0.0;
     ret->tcp_qps = 0.0;
 
-    ret->mean_latency = 0.0;
+/*  currently disabled */
+/*  ret->mean_latency = 0.0;
     ret->udp_mean_latency = 0.0;
     ret->tcp_mean_latency = 0.0;
 
     ret->udp_latency = 0;
-    ret->tcp_latency = 0;
+    ret->tcp_latency = 0; */
 
     ret->udp_queries = 0;
     ret->tcp_queries = 0;
@@ -58,11 +58,15 @@ void gatherer_free( gatherer_t *gath )
         }
     }
     
-    pthread_mutex_destroy(&gath->mutex_read);
+    pthread_mutex_destroy(&(gath->mutex_read));
+
+    pthread_cancel(gath->sleeper_thread);
+
+    pthread_join((gath->sleeper_thread), NULL);
 
     free(gath);
 }
 
 /*----------------------------------------------------------------------------*/
 
-/* end of file gath.c */
+/* end of file gatherer.c */

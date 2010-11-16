@@ -820,7 +820,7 @@ ns_nameserver *ns_create( zdb_database *database )
 
   //stat
 
-  stat_gatherer_init();
+  stat_static_gath_init();
 
   //!stat
 
