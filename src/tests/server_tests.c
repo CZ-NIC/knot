@@ -66,7 +66,7 @@ static int server_tests_run(int argc, char * argv[])
    sa.sa_handler = interrupt_handle;
    sigemptyset(&sa.sa_mask);
    sa.sa_flags = 0;
-   sigaction(SIGCLOSE, &sa, NULL); // Interrupt
+   sigaction(SIGALRM, &sa, NULL); // Interrupt
 
    //! Test server for correct initialization
    server = test_server_create();
@@ -84,7 +84,7 @@ static int server_tests_run(int argc, char * argv[])
       cute_stop(server);
    }
    else {
-   diag("server crashed, skipping deinit and destroy tests");
+       diag("server crashed, skipping deinit and destroy tests");
    }
 
    //! Test server waiting for finish

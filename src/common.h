@@ -36,8 +36,4 @@ typedef unsigned int uint;
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 
-/* Signal definitions. */
-#define SIGCLOSE SIGALRM
-#define SIGREADY SIGUSR1
-
 #endif // COMMON

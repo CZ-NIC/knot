@@ -32,11 +32,11 @@ int main( int argc, char **argv )
     // Open log
     log_open(LOG_UPTO(LOG_ERR), LOG_MASK(LOG_ERR)|LOG_MASK(LOG_WARNING));
 
-	 if (argc < 2) {
-		print_msg(LOG_ERR, "Usage: %s <filename1> [<filename2> ...] .\n",
-				  argv[0]);
-		  return -1;
-	 }
+         if (argc < 2) {
+                print_msg(LOG_ERR, "Usage: %s <filename1> [<filename2> ...] .\n",
+                                  argv[0]);
+                  return -1;
+         }
 
     int res = 0;
 
@@ -52,7 +52,7 @@ int main( int argc, char **argv )
        sigemptyset(&sa.sa_mask);
        sa.sa_flags = 0;
        sigaction(SIGINT, &sa, NULL);
-       sigaction(SIGCLOSE, &sa, NULL); // Interrupt
+       sigaction(SIGALRM, &sa, NULL); // Interrupt
 
        if((res = cute_wait(s_server)) != 0) {
           log_error("There was an error while waiting for server to finish.");
