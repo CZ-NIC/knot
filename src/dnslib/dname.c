@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <ctype.h>	// tolower()
 #include "common.h"
 #include "consts.h"
 #include "dname.h"
@@ -223,4 +224,72 @@ void dnslib_dname_free( dnslib_dname_t **dname )
 	free((*dname)->name);
 	free(*dname);
 	*dname = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_dname_compare( const dnslib_dname_t *d1, const dnslib_dname_t *d2 )
+{
+	if (d1 == d2) {
+		return 0;
+	}
+
+	const uint8_t *pos1, *pos2;
+
+	// jump to the last label and store addresses of labels on the way there
+	// TODO: consider storing label offsets in the domain name structure
+	const uint8_t *labels1[DNSLIB_MAX_DNAME_LABELS];
+	const uint8_t *labels2[DNSLIB_MAX_DNAME_LABELS];
+	int i1 = 0;
+	int i2 = 0;
+
+	while (*pos1 != '\0') {
+		labels1[i1++] = pos1;
+		pos1 += *pos1;
+	}
+
+	while (*pos2 != '\0') {
+		labels2[i2++] = pos2;
+		pos2 += *pos2;
+	}
+
+	// compare labels from last to first
+	while (i1 > 0 && i2 > 0) {
+		pos1 = labels1[--i1];
+		pos2 = labels2[--i2];
+
+		int label_length = (*pos1 < *pos2) ? *pos1 : *pos2;
+		int i = 0;
+
+		while (i < label_length && tolower(*(++pos1)) == tolower(*(++pos2))) {
+			++i;
+		}
+
+		if (i < label_length) {	// difference in some octet
+			if (tolower(*pos1) < tolower(*pos2)) {
+				return -1;
+			} else {
+				assert(tolower(*pos1) > tolower(*pos2));
+				return 1;
+			}
+		}
+
+		if (*(labels1[i1]) < *(labels2[i2])) {	// one label shorter
+			return -1;
+		} else if (*(labels1[i1]) > *(labels2[i2])) {
+			return 1;
+		}
+		// otherwise the labels are identical, continue with previous labels
+	}
+
+	// if all labels matched, the shorter name is first
+	if (i1 == 0 && i2 > 0) {
+		return 1;
+	}
+
+	if (i1 > 0 && i2 == 0) {
+		return -1;
+	}
+
+	return 0;
 }
