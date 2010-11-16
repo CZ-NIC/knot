@@ -74,18 +74,25 @@ typedef struct cute_server {
  */
 cute_server *cute_create();
 
-/** Create and bind handler to given filedescriptor.
-  * \param fd I/O filedescriptor.
-  * \param unit Threading unit to serve given filedescriptor.
-  * \return handler identifier or -1
-  */
-int cute_create_handler(cute_server *server, int fd, dt_unit_t* unit);
+/*!
+ * \brief Create and bind handler to given filedescriptor.
+ *
+ * Pointer to handler instance is used as native unique identifier.
+ * This requests instance not to be reallocated.
+ *
+ * \param fd I/O filedescriptor.
+ * \param unit Threading unit to serve given filedescriptor.
+ * \return handler identifier or 0
+ */
+iohandler_t* cute_create_handler(cute_server *server, int fd, dt_unit_t* unit);
 
-/** Delete handler.
-  * \param fd I/O handler filedescriptor.
-  * \return >=0 If successful, negative integer on failure.
-  */
-int cute_remove_handler(cute_server *server, int fd);
+/*!
+ * \brief Delete handler.
+ *
+ * \param fd I/O handler filedescriptor.
+ * \return >=0 If successful, negative integer on failure.
+ */
+int cute_remove_handler(cute_server *server, iohandler_t *ref);
 
 /*!
  * @brief Starts the server.
@@ -99,7 +106,7 @@ int cute_remove_handler(cute_server *server, int fd);
  * @todo When a module for configuration is added, the filename parameter will
  *       be removed.
  */
-int cute_start( cute_server *server, char **filenames, uint zones );
+int cute_start(cute_server *server, char **filenames, uint zones);
 
 /*!
  * @brief Waits for the server to finish.
