@@ -38,10 +38,11 @@ struct dt_unit_t;
  */
 enum {
     ThreadJoined    = 1 << 0, /*!< Thread is finished and joined. */
-    ThreadCancelled = 1 << 1, /*!< Thread is cancelled, finishing task. */
-    ThreadDead      = 1 << 2, /*!< Thread is finished, waiting to be freed. */
-    ThreadIdle      = 1 << 3, /*!< Thread is idle, waiting for purpose. */
-    ThreadActive    = 1 << 4  /*!< Thread is active, working on a task. */
+    ThreadJoinable  = 1 << 1, /*!< Thread is dead, waiting to be reclaimed. */
+    ThreadCancelled = 1 << 2, /*!< Thread is cancelled, finishing task. */
+    ThreadDead      = 1 << 3, /*!< Thread is finished, exiting. */
+    ThreadIdle      = 1 << 4, /*!< Thread is idle, waiting for purpose. */
+    ThreadActive    = 1 << 5  /*!< Thread is active, working on a task. */
 
 } dt_state_t;
 
