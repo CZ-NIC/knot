@@ -102,7 +102,7 @@ typedef struct dt_unit_t {
  * \param count Requested thread count.
  * \return On success: new instance, else 0
  */
-dt_unit_t *dt_create (int count);
+dt_unit_t *dt_create(int count);
 
 /*!
  * \brief Create a set of coherent threads.
@@ -112,15 +112,17 @@ dt_unit_t *dt_create (int count);
  * \param data Any data passed onto threads.
  * \return On success: new instance, else 0
  */
-dt_unit_t *dt_create_coherent (int count, runnable_t runnable, void *data);
+dt_unit_t *dt_create_coherent(int count, runnable_t runnable, void *data);
 
 /*!
  * \brief Free unit.
  *
  * \warning Behavior is undefined if threads are still running,
  *          make sure to dt_join() first.
+ *
+ * \param unit Unit to be deleted.
  */
-void dt_delete (dt_unit_t **unit);
+void dt_delete(dt_unit_t **unit);
 
 /*!
  * \brief Resize unit to given number.
@@ -137,6 +139,7 @@ void dt_delete (dt_unit_t **unit);
  *          However, threads will stop at their cancellation point,
  *          so this is potentially an expensive operation.
  *
+ * \param unit Unit to be resized.
  * \param size New unit size.
  * \return On success: 0, else <0
  */
@@ -145,16 +148,18 @@ int dt_resize(dt_unit_t *unit, int size);
 /*!
  * \brief Start all threads in selected unit.
  *
+ * \param unit Unit to be started.
  * \return On success: 0, else <0
  */
-int dt_start (dt_unit_t *unit);
+int dt_start(dt_unit_t *unit);
 
 /*!
  * \brief Start given thread.
  *
+ * \param thread Target thread instance.
  * \return On success: 0, else <0
  */
-int dt_start_id (dthread_t *thread);
+int dt_start_id(dthread_t *thread);
 
 /*!
  * \brief Send given signal to thread.
@@ -163,56 +168,60 @@ int dt_start_id (dthread_t *thread);
  *       for example with SIGALRM, which is handled by default.
  * \note Signal handler may be overriden in runnable.
  *
+ * \param thread Target thread instance.
  * \param signum Signal code.
  * \return On success: 0, else <0
  */
-int dt_signalize (dthread_t *thread, int signum);
+int dt_signalize(dthread_t *thread, int signum);
 
 /*!
- *  \brief Wait for all thread in unit to finish.
+ * \brief Wait for all thread in unit to finish.
  *
- *  \return Negative integer on failure.
+ * \param unit Unit to be joined.
+ * \return Negative integer on failure.
  */
-int dt_join (dt_unit_t *unit);
+int dt_join(dt_unit_t *unit);
 
 /*!
- *  \brief Stop thread from running.
+ * \brief Stop thread from running.
  *
- *  Active thread is interrupted at the nearest
- *  runnable cancellation point.
+ * Active thread is interrupted at the nearest
+ * runnable cancellation point.
  *
+ * \param thread Target thread instance.
  * \return On success: 0, else <0
  */
-int dt_stop_id (dthread_t* thread);
+int dt_stop_id(dthread_t* thread);
 
 /*!
- *  \brief Stop all threads in unit.
+ * \brief Stop all threads in unit.
  *
- *  Active threads are interrupted at the nearest
- *  runnable cancellation point.
+ * Active threads are interrupted at the nearest
+ * runnable cancellation point.
  *
+ * \param unit Unit to be stopped.
  * \return On success: 0, else <0
  */
-int dt_stop (dt_unit_t *unit);
+int dt_stop(dt_unit_t *unit);
 
 /*!
  * \brief Modify thread priority.
  *
- * \param thread_id Identifier in unit, -1 means all threads.
+ * \param thread Target thread instance.
  * \param prio Requested priority (positive integer, default is 0).
  * \return On success: 0, else <0
  */
-int dt_setprio (dthread_t* thread, int prio);
+int dt_setprio(dthread_t* thread, int prio);
 
 /*!
  * \brief Set thread to execute another runnable.
  *
- * \param thread    Thread reference.
+ * \param thread Target thread instance.
  * \param runnable  Runnable function for target thread.
  * \param data      Data passed to target thread.
  * \return On success: 0, else <0
  */
-int dt_repurpose (dthread_t* thread, runnable_t runnable, void *data);
+int dt_repurpose(dthread_t* thread, runnable_t runnable, void *data);
 
 /*!
  * \brief Wake up thread from idle state.
@@ -222,8 +231,11 @@ int dt_repurpose (dthread_t* thread, runnable_t runnable, void *data);
  *
  * \note Unit needs to be started with dt_start() first, as the function
  *       doesn't affect dead threads.
+ *
+ * \param thread Target thread instance.
+ * \return On success: 0, else <0
  */
-int dt_activate (dthread_t *thread);
+int dt_activate(dthread_t *thread);
 
 /*!
  * \brief Put thread to idle state, cancells current runnable function.
@@ -234,18 +246,18 @@ int dt_activate (dthread_t *thread);
  * \note Thread isn't disposed, but put to idle state
  *       until it's requested again or collected by dt_compact().
  *
- * \param thread Cancelled thread.
+ * \param thread Target thread instance.
  * \return On success: 0, else <0
  */
-int dt_cancel (dthread_t *thread);
+int dt_cancel(dthread_t *thread);
 
 /*!
  * \brief Collect and dispose idle threads.
  *
- * \param unit Target unit.
+ * \param unit Target unit instance.
  * \return On success: 0, else <0
  */
-int dt_compact (dt_unit_t *unit);
+int dt_compact(dt_unit_t *unit);
 
 /*!
  * \brief Return optimal number of threads for instance.
@@ -255,19 +267,23 @@ int dt_compact (dt_unit_t *unit);
  *
  * \return number of threads
  */
-int dt_optimal_size ();
+int dt_optimal_size();
 
 /*!
  * \brief Return true if thread is cancelled.
  *
  * Synchronously check for ThreadCancelled flag.
+ *
+ * \param thread Target thread instance.
+ * \return On success: logical true, else logical false
  */
-int dt_is_cancelled (dthread_t *thread);
+int dt_is_cancelled(dthread_t *thread);
 
 /*!
  * \brief Lock unit to prevent parallel operations which could alter unit
  *        at the same time.
  *
+ * \param unit Target unit instance.
  * \return On success: 0, else <0
  */
 int dt_unit_lock(dt_unit_t *unit);
@@ -277,6 +293,7 @@ int dt_unit_lock(dt_unit_t *unit);
  *
  * \see dt_unit_lock()
  *
+ * \param unit Target unit instance.
  * \return On success: 0, else <0
  */
 int dt_unit_unlock(dt_unit_t *unit);
