@@ -139,13 +139,11 @@ static inline int dt_test_resize(dt_unit_t *unit, int size)
     }
 
     // Repurpose all
+    _runnable_i = 0;
     for (int i = 0; i < size; ++i) {
         ret += dt_repurpose(unit->threads[i], &runnable, 0);
+        ret += dt_start_id(unit->threads[i]);
     }
-
-    // Restart
-    _runnable_i = 0;
-    ret += dt_start(unit);
 
     // Wait for finish
     ret += dt_join(unit);

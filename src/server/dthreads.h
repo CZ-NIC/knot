@@ -150,6 +150,13 @@ int dt_resize(dt_unit_t *unit, int size);
 int dt_start (dt_unit_t *unit);
 
 /*!
+ * \brief Start given thread.
+ *
+ * \return On success: 0, else <0
+ */
+int dt_start_id (dthread_t *thread);
+
+/*!
  * \brief Send given signal to thread.
  *
  * \note This is useful to interrupt some blocking I/O as well,
@@ -256,6 +263,23 @@ int dt_optimal_size ();
  * Synchronously check for ThreadCancelled flag.
  */
 int dt_is_cancelled (dthread_t *thread);
+
+/*!
+ * \brief Lock unit to prevent parallel operations which could alter unit
+ *        at the same time.
+ *
+ * \return On success: 0, else <0
+ */
+int dt_unit_lock(dt_unit_t *unit);
+
+/*!
+ * \brief Unlock unit.
+ *
+ * \see dt_unit_lock()
+ *
+ * \return On success: 0, else <0
+ */
+int dt_unit_unlock(dt_unit_t *unit);
 
 #endif // DTHREADS_H
 
