@@ -64,12 +64,12 @@ cute_server *cute_create()
     return server;
 }
 
-int cute_create_handler(cute_server *server, int fd, dt_unit_t* unit)
+iohandler_t* cute_create_handler(cute_server *server, int fd, dt_unit_t* unit)
 {
    // Create new worker
    iohandler_t* handler = malloc(sizeof(iohandler_t));
-   if(handler == NULL)
-      return -1;
+   if(handler == 0)
+      return 0;
 
    // Initialize
    handler->fd = fd;
@@ -92,20 +92,20 @@ int cute_create_handler(cute_server *server, int fd, dt_unit_t* unit)
       dt_start(handler->unit);
    }
 
-   return handler->fd;
+   return handler;
 }
 
-int cute_remove_handler(cute_server *server, int fd)
+int cute_remove_handler(cute_server *server, iohandler_t *ref)
 {
    // Find worker
-   iohandler_t *w = NULL, *p = NULL;
+   iohandler_t *w = 0, *p = 0;
    for(w = server->handlers; w != NULL; p = w,w = w->next) {
 
       // Compare fd
-      if(w->fd == fd) {
+      if(w == ref) {
 
          // Disconnect
-         if(p == NULL) {
+         if(p == 0) {
             server->handlers = w->next;
          }
          else {
@@ -116,7 +116,7 @@ int cute_remove_handler(cute_server *server, int fd)
    }
 
    // Check
-   if(w == NULL) {
+   if(w == 0) {
       return -1;
    }
 
@@ -138,14 +138,14 @@ int cute_remove_handler(cute_server *server, int fd)
 
 int cute_start( cute_server *server, char **filenames, uint zones )
 {
-	debug_server("Starting server with %u zone files.\n", zones);
+        debug_server("Starting server with %u zone files.\n", zones);
 
-	for (uint i = 0; i < zones; ++i) {
-		debug_server("Parsing zone file %s..\n", filenames[i]);
-		if (zp_parse_zone(filenames[i], server->zone_db) != 0) {
-			return -1;
-		}
-	}
+        for (uint i = 0; i < zones; ++i) {
+                debug_server("Parsing zone file %s..\n", filenames[i]);
+                if (zp_parse_zone(filenames[i], server->zone_db) != 0) {
+                        return -1;
+                }
+        }
 
    debug_server("\nDone\n\n");
    debug_server("Starting servers..\n");
@@ -168,7 +168,7 @@ int cute_wait(cute_server *server)
    while(server->handlers != NULL) {
       debug_server("server: [%p] joining threading unit\n", server->handlers);
       ret += dt_join(server->handlers->unit);
-      cute_remove_handler(server, server->handlers->fd);
+      cute_remove_handler(server, server->handlers);
       debug_server("server: joined threading unit\n", p);
    }
 
@@ -191,7 +191,7 @@ void cute_destroy( cute_server **server )
    iohandler_t* w = (*server)->handlers;
    while(w != NULL) {
       iohandler_t* n = w->next;
-      cute_remove_handler(*server, w->fd);
+      cute_remove_handler(*server, w);
       w = n;
    }
 
