@@ -2,6 +2,7 @@
 
 #include "dnslib/dnslib_dname_tests.c"
 #include "dnslib/dnslib_rdata_tests.c"
+#include "dnslib/dnslib_node_tests.c"
 
 static int dnslib_tests_count(int argc, char *argv[]);
 static int dnslib_tests_run(int argc, char *argv[]);
@@ -36,6 +37,8 @@ static int dnslib_tests_run(int argc, char *argv[])
 	res = dnslib_dname_tests_run(argc, argv);	
 	note("Testing module: rdata");
 	res += dnslib_rdata_tests_run(argc, argv);
+  note("Testing module: node");
+	res += dnslib_node_tests_run(argc, argv);
 
 	return res;
 }
