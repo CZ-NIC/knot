@@ -15,7 +15,12 @@
 
 #include "common.h"
 
-enum mxrdtln { MAXRDATALEN = 64 };
+enum mxrdtln
+{
+	MAX_RDATA_ITEMS = 64,
+	MAX_RDATA_ITEM_SIZE = 255,
+	MAX_RDATA_WIRE_SIZE = MAX_RDATA_ITEMS * MAX_RDATA_ITEM_SIZE
+};
 //#define MAXRDATALEN 64
 
 /* 64 is in NSD. Seems a little too much, but I'd say it's not a real issue. */
@@ -154,7 +159,7 @@ struct dnslib_rrtype_descriptor
   	uint16_t type;	/* RR type */
   	const char *name;	/* Textual name.  */
   	uint8_t length;	/* Maximum number of RDATA items.  */
-  	uint8_t wireformat[MAXRDATALEN]; /* rdata_wireformat_type */
+	uint8_t wireformat[MAX_RDATA_ITEMS]; /* rdata_wireformat_type */
     bool fixed_items; /* Has fixed number of RDATA items? */
 };
 
