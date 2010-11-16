@@ -36,7 +36,9 @@ int udp_master (dthread_t *thread)
     */
 
     stat_t *thread_stat;
-    STAT_INIT(thread_stat);
+
+    STAT_INIT(thread_stat); //XXX new stat instance every time.
+
     stat_set_protocol(thread_stat, stat_UDP);
 
     // Loop until all data is read
@@ -109,7 +111,7 @@ int udp_master (dthread_t *thread)
         }
     }
 
-    stat_stat_free(thread_stat);
+    stat_free(thread_stat);
 
     debug_net("udp: worker %p finished.\n", thread);
     return 0;

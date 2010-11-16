@@ -143,7 +143,7 @@ int cute_start( cute_server *server, char **filenames, uint zones )
    debug_server("Starting server with %u zone files.\n", zones);
    //stat
 
-   stat_gatherer_start();
+   stat_static_gath_start();
   
    //!stat
    for (uint i = 0; i < zones; ++i) {
@@ -201,7 +201,7 @@ void cute_destroy( cute_server **server )
       w = n;
    }
 
-   stat_gatherer_free();
+   stat_static_gath_free();
    ns_destroy(&(*server)->nameserver);
    zdb_destroy(&(*server)->zone_db);
    free(*server);
