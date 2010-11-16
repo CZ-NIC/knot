@@ -178,7 +178,19 @@ int dnslib_rdata_to_wire( const dnslib_rdata_t *rdata, const uint8_t *format,
 void dnslib_rdata_free( dnslib_rdata_t **rdata );
 
 /*!
+ * \brief Compares two RDATAs of the same type.
  *
+ * \param r1 First RDATA.
+ * \param r2 Second RDATA.
+ * \param format Descriptor of the RDATA format.
+ *
+ * \return 0 if RDATAs are equal.
+ * \retval -1 if \a r1 goes before \a r2 in canonical order.
+ * \retval 1 if \a r1 goes after \a r2 in canonical order.
+ *
+ * \todo Domain names in certain types should be converted to lowercase.
+ * \note This function will probably be useless, no ordering will be needed
+ *       for our purposes.
  */
 int dnslib_rdata_compare( const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
 						  const uint8_t *format );
