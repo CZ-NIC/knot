@@ -19,19 +19,6 @@ static inline void unlock_thread_rw(dthread_t *thread)
     pthread_mutex_unlock (&thread->_mx);
 }
 
-/* Lock unit state for R/W. */
-static inline void lock_unit_rw (dt_unit_t *unit)
-{
-    pthread_mutex_lock(&unit->_mx);
-}
-
-/* Unlock unit state for R/W. */
-static inline void unlock_unit_rw (dt_unit_t *unit)
-{
-    pthread_mutex_unlock(&unit->_mx);
-}
-
-
 /* Signalize thread state change. */
 static inline void unit_signalize_change (dt_unit_t *unit)
 {
@@ -53,6 +40,7 @@ static inline int dt_update_thread (dthread_t *thread, int state)
         return 0;
 
     // Cancel current runnable if running
+    pthread_mutex_lock(&unit->_notify_mx);
     lock_thread_rw(thread);
     if (thread->state & (ThreadIdle | ThreadActive)) {
 
@@ -62,11 +50,11 @@ static inline int dt_update_thread (dthread_t *thread, int state)
 
         // Notify thread
         dt_signalize(thread, SIGALRM);
-        pthread_mutex_lock(&unit->_notify_mx);
         pthread_cond_broadcast(&unit->_notify);
         pthread_mutex_unlock(&unit->_notify_mx);
     } else {
         unlock_thread_rw(thread);
+        pthread_mutex_lock(&unit->_notify_mx);
         return -1;
     }
 
@@ -107,6 +95,8 @@ static void *thread_ep (void *data)
     sa.sa_flags = 0;
     sigaction(SIGALRM, &sa, 0);
 
+    debug_dt("dthreads: [%p] entered ep\n", thread);
+
     // Run loop
     for (;;) {
 
@@ -117,17 +107,17 @@ static void *thread_ep (void *data)
             unlock_thread_rw(thread);
             break;
         }
-        unlock_thread_rw(thread);
 
         // Update data
-        lock_thread_rw(thread);
         thread->data = thread->_adata;
         runnable_t _run = thread->run;
 
         // Start runnable if thread is marked Active
         if ((thread->state == ThreadActive) && (thread->run != 0)) {
             unlock_thread_rw(thread);
+            debug_dt("dthreads: [%p] entering runnable\n", thread);
             _run(thread);
+            debug_dt("dthreads: [%p] exited runnable\n", thread);
         } else {
             unlock_thread_rw(thread);
         }
@@ -149,10 +139,8 @@ static void *thread_ep (void *data)
             thread->state &= ~ThreadActive;
             thread->state |= ThreadIdle;
         }
-        unlock_thread_rw(thread);
 
         // Go to sleep if idle
-        lock_thread_rw(thread);
         if (thread->state & ThreadIdle) {
             unlock_thread_rw(thread);
 
@@ -160,8 +148,10 @@ static void *thread_ep (void *data)
             unit_signalize_change(unit);
 
             // Wait for notification from unit
+            debug_dt("dthreads: [%p] going idle\n", thread);
             pthread_cond_wait(&unit->_notify, &unit->_notify_mx);
             pthread_mutex_unlock(&unit->_notify_mx);
+            debug_dt("dthreads: [%p] resumed from idle\n", thread);
         } else {
             unlock_thread_rw(thread);
             pthread_mutex_unlock(&unit->_notify_mx);
@@ -170,10 +160,8 @@ static void *thread_ep (void *data)
 
     // Report thread state change
     debug_dt("dthreads: [%p] thread finished\n", thread);
-    pthread_mutex_lock(&unit->_notify_mx);
     unit_signalize_change(unit);
-    pthread_mutex_unlock(&unit->_notify_mx);
-    debug_dt("dthreads: [%p] thread exited runnable\n", thread);
+    debug_dt("dthreads: [%p] thread exited ep\n", thread);
 
     // Return
     return 0;
@@ -327,6 +315,8 @@ dt_unit_t *dt_create_coherent (int count, runnable_t runnable, void *data)
         return 0;
 
     // Set threads common purpose
+    pthread_mutex_lock(&unit->_notify_mx);
+    dt_unit_lock(unit);
     for (int i = 0; i < count; ++i) {
         dthread_t *thread = unit->threads[i];
         lock_thread_rw(thread);
@@ -334,6 +324,8 @@ dt_unit_t *dt_create_coherent (int count, runnable_t runnable, void *data)
         thread->_adata = data;
         unlock_thread_rw(thread);
     }
+    dt_unit_unlock(unit);
+    pthread_mutex_unlock(&unit->_notify_mx);
 
     return unit;
 }
@@ -387,13 +379,17 @@ int dt_resize(dt_unit_t *unit, int size)
     // Unit expansion
     if (delta < 0) {
 
+        // Lock unit
+        pthread_mutex_lock(&unit->_notify_mx);
+        dt_unit_lock(unit);
+
         // Realloc threads
+        debug_dt("dt_resize: growing from %d to %d threads\n",
+                 unit->size, size);
+
         dthread_t **threads = realloc(unit->threads, size * sizeof(dthread_t*));
         if (threads == 0)
             return -1;
-
-        // Lock unit
-        lock_unit_rw(unit);
 
         // Reassign
         unit->threads = threads;
@@ -405,13 +401,15 @@ int dt_resize(dt_unit_t *unit, int size)
 
         // Update unit
         unit->size = size;
-        unlock_unit_rw(unit);
+        dt_unit_unlock(unit);
+        pthread_mutex_unlock(&unit->_notify_mx);
         return 0;
     }
 
 
     // Unit shrinking
     int remaining = size;
+    debug_dt("dt_resize: shrinking from %d to %d threads\n", unit->size, size);
 
     // New threads vector
     dthread_t **threads = malloc(size * sizeof(dthread_t*));
@@ -419,7 +417,8 @@ int dt_resize(dt_unit_t *unit, int size)
         return -1;
 
     // Lock unit
-    lock_unit_rw(unit);
+    pthread_mutex_lock(&unit->_notify_mx);
+    dt_unit_lock(unit);
 
     // Iterate while there is space in new unit
     memset(threads, 0, size * sizeof(dthread_t*));
@@ -447,6 +446,7 @@ int dt_resize(dt_unit_t *unit, int size)
                 if (!threshold || (thread->state & threshold)) {
 
                     // Append to new vector
+                    debug_dt("dthreads: [%p] dt_resize: is elected\n", thread);
                     threads[size - remaining] = thread;
                     --remaining;
 
@@ -459,25 +459,19 @@ int dt_resize(dt_unit_t *unit, int size)
 
             } else {
 
-                // Signalize thread to stop
-                thread->state = ThreadDead | ThreadCancelled;
+                // Check thread state
+                if (thread->state & ThreadDead) {
+                    // Already set
+                    --inspected;
+                } else {
+                    // Signalize thread to stop
+                    debug_dt("dthreads: [%p] dt_resize: is discarded\n", thread);
+                    thread->state = ThreadDead | ThreadCancelled;
+                    dt_signalize(thread, SIGALRM);
+                }
 
                 // Unlock current thread
                 unlock_thread_rw(thread);
-
-                // Notify idle threads
-                dt_signalize(thread, SIGALRM);
-                pthread_mutex_lock(&unit->_notify_mx);
-                pthread_cond_broadcast(&unit->_notify);
-                pthread_mutex_unlock(&unit->_notify_mx);
-
-                // Join thread
-                pthread_join(thread->_thr, 0);
-                thread->state = ThreadJoined;
-
-                // Delete thread
-                dt_delete_thread(&thread);
-                unit->threads[i] = 0;
             }
         }
 
@@ -500,13 +494,33 @@ int dt_resize(dt_unit_t *unit, int size)
         }
     }
 
+    // Notify idle threads to wake up
+    pthread_cond_broadcast(&unit->_notify);
+    pthread_mutex_unlock(&unit->_notify_mx);
+
+    // Join discarded threads
+    for (int i = 0; i < unit->size; ++i) {
+
+        // Get thread
+        dthread_t *thread = unit->threads[i];
+        if (thread == 0)
+            continue;
+
+        pthread_join(thread->_thr, 0);
+        thread->state = ThreadJoined;
+
+        // Delete thread
+        dt_delete_thread(&thread);
+        unit->threads[i] = 0;
+    }
+
     // Reassign unit threads vector
     unit->size = size;
     free(unit->threads);
     unit->threads = threads;
 
     // Unlock unit
-    unlock_unit_rw(unit);
+    dt_unit_unlock(unit);
 
     return 0;
 }
@@ -514,44 +528,56 @@ int dt_resize(dt_unit_t *unit, int size)
 int dt_start (dt_unit_t *unit)
 {
     // Lock unit
-    lock_unit_rw(unit);
-    for (int i = 0; i < unit->size; ++i)
-    {
-        dthread_t* thread = unit->threads[i];
-        lock_thread_rw(thread);
+    pthread_mutex_lock(&unit->_notify_mx);
+    dt_unit_lock(unit);
+    for (int i = 0; i < unit->size; ++i) {
 
-        // Update state
-        int prev_state = thread->state;
-        thread->state |= ThreadActive;
-        thread->state &= ~ThreadIdle;
-        thread->state &= ~ThreadDead;
-        thread->state &= ~ThreadJoined;
-
-        // Do not re-create running threads
-        if (prev_state != ThreadJoined) {
-            unlock_thread_rw(thread);
-            continue;
-        }
-
-        // Start thread
-        int res = pthread_create(&thread->_thr,  /* pthread_t */
-                                 &thread->_attr, /* pthread_attr_t */
-                                 thread_ep,      /* routine: thread_ep */
-                                 thread);        /* passed object: dthread_t */
-
-        // Unlock thread
-        unlock_thread_rw(thread);
+        dthread_t *thread = unit->threads[i];
+        int res = dt_start_id(thread);
         if (res != 0) {
             log_error("%s: failed to create thread %d", __func__, i);
-            unlock_unit_rw(unit);
+            dt_unit_unlock(unit);
             return res;
         }
+
+        debug_dt("dthreads: [%p] dt_start: thread started\n", thread);
     }
 
     // Unlock unit
-    unlock_unit_rw(unit);
-
+    dt_unit_unlock(unit);
+    pthread_cond_broadcast(&unit->_notify);
+    pthread_mutex_unlock(&unit->_notify_mx);
     return 0;
+}
+
+int dt_start_id (dthread_t *thread)
+{
+    lock_thread_rw(thread);
+
+    // Update state
+    int prev_state = thread->state;
+    thread->state |= ThreadActive;
+    thread->state &= ~ThreadIdle;
+    thread->state &= ~ThreadDead;
+    thread->state &= ~ThreadJoined;
+
+    // Do not re-create running threads
+    if (prev_state != ThreadJoined) {
+        debug_dt("dthreads: [%p] dt_start: refused to recreate thread\n",
+                 thread);
+        unlock_thread_rw(thread);
+        return 0;
+    }
+
+    // Start thread
+    int res = pthread_create(&thread->_thr,  /* pthread_t */
+                             &thread->_attr, /* pthread_attr_t */
+                             thread_ep,      /* routine: thread_ep */
+                             thread);        /* passed object: dthread_t */
+
+    // Unlock thread
+    unlock_thread_rw(thread);
+    return res;
 }
 
 int dt_signalize (dthread_t *thread, int signum)
@@ -564,8 +590,8 @@ int dt_join (dt_unit_t *unit)
     for(;;) {
 
         // Lock unit
-        pthread_mutex_lock(&unit->_notify_mx);
-        lock_unit_rw(unit);
+        pthread_mutex_lock(&unit->_report_mx);
+        dt_unit_lock(unit);
 
         // Browse threads
         int active_threads = 0;
@@ -592,17 +618,15 @@ int dt_join (dt_unit_t *unit)
         }
 
         // Unlock unit
-        unlock_unit_rw(unit);
+        dt_unit_unlock(unit);
 
         // Check result
         if (active_threads == 0) {
-            pthread_mutex_unlock(&unit->_notify_mx);
+            pthread_mutex_unlock(&unit->_report_mx);
             break;
         }
 
         // Wait for a thread to finish
-        pthread_mutex_lock(&unit->_report_mx);
-        pthread_mutex_unlock(&unit->_notify_mx);
         pthread_cond_wait(&unit->_report, &unit->_report_mx);
         pthread_mutex_unlock(&unit->_report_mx);
     }
@@ -633,8 +657,13 @@ int dt_stop_id (dthread_t *thread)
 
 int dt_stop (dt_unit_t *unit)
 {
+    // Check unit
+    if (unit == 0)
+        return -1;
+
     // Lock unit
-    lock_unit_rw(unit);
+    pthread_mutex_lock(&unit->_notify_mx);
+    dt_unit_lock(unit);
 
     // Signalize all threads to stop
     for (int i = 0; i < unit->size; ++i) {
@@ -644,21 +673,18 @@ int dt_stop (dt_unit_t *unit)
         lock_thread_rw(thread);
         if(thread->state & (ThreadIdle | ThreadActive)) {
             thread->state = ThreadDead | ThreadCancelled;
-            dt_signalize(thread, SIGALRM);
             debug_dt("dthreads: [%p] signalizing to stop\n", thread);
+            dt_signalize(thread, SIGALRM);
         }
         unlock_thread_rw(thread);
     }
 
     // Unlock unit
-    unlock_unit_rw(unit);
+    dt_unit_unlock(unit);
 
     // Broadcast notification
-    if(unit != 0) {
-        pthread_mutex_lock(&unit->_notify_mx);
-        pthread_cond_broadcast(&unit->_notify);
-        pthread_mutex_unlock(&unit->_notify_mx);
-    }
+    pthread_cond_broadcast(&unit->_notify);
+    pthread_mutex_unlock(&unit->_notify_mx);
 
     return 0;
 }
@@ -695,20 +721,23 @@ int dt_repurpose (dthread_t* thread, runnable_t runnable, void *data)
     if (thread == 0)
         return -1;
 
+    // Stop here if thread isn't a member of a unit
+    dt_unit_t *unit = thread->unit;
+    if (unit == 0) {
+        lock_thread_rw(thread);
+        thread->state = ThreadActive | ThreadCancelled;
+        unlock_thread_rw(thread);
+        return 0;
+    }
+
+
     // Lock thread state changes
+    pthread_mutex_lock(&unit->_notify_mx);
     lock_thread_rw(thread);
 
     // Repurpose it's object and runnable
     thread->run = runnable;
     thread->_adata = data;
-
-    // Stop here if thread isn't a member of a unit
-    dt_unit_t *unit = thread->unit;
-    if (unit == 0) {
-        thread->state = ThreadActive | ThreadCancelled;
-        unlock_thread_rw(thread);
-        return 0;
-    }
 
     // Cancel current runnable if running
     if (thread->state & (ThreadIdle | ThreadActive)) {
@@ -718,11 +747,11 @@ int dt_repurpose (dthread_t* thread, runnable_t runnable, void *data)
         unlock_thread_rw(thread);
 
         // Notify thread
-        pthread_mutex_lock(&unit->_notify_mx);
         pthread_cond_broadcast(&unit->_notify);
         pthread_mutex_unlock(&unit->_notify_mx);
     } else {
         unlock_thread_rw(thread);
+        pthread_mutex_unlock(&unit->_notify_mx);
     }
 
     return 0;
@@ -741,7 +770,8 @@ int dt_cancel (dthread_t *thread)
 int dt_compact (dt_unit_t *unit)
 {
     // Lock unit
-    lock_unit_rw(unit);
+    pthread_mutex_lock(&unit->_notify_mx);
+    dt_unit_lock(unit);
 
     // Reclaim all Idle threads
     for (int i = 0; i < unit->size; ++i) {
@@ -757,7 +787,6 @@ int dt_compact (dt_unit_t *unit)
     }
 
     // Notify all threads
-    pthread_mutex_lock(&unit->_notify_mx);
     pthread_cond_broadcast(&unit->_notify);
     pthread_mutex_unlock(&unit->_notify_mx);
 
@@ -781,7 +810,7 @@ int dt_compact (dt_unit_t *unit)
     debug_dt("dthreads: compact: joined all threads\n");
 
     // Unlock unit
-    unlock_unit_rw(unit);
+    dt_unit_unlock(unit);
 
     return 0;
 }
@@ -803,4 +832,14 @@ int dt_is_cancelled (dthread_t *thread)
     int ret = thread->state & ThreadCancelled;
     unlock_thread_rw(thread);
     return ret;
+}
+
+int dt_unit_lock(dt_unit_t *unit)
+{
+    return pthread_mutex_lock(&unit->_mx);
+}
+
+int dt_unit_unlock(dt_unit_t *unit)
+{
+    return pthread_mutex_unlock(&unit->_mx);
 }
