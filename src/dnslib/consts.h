@@ -118,5 +118,6 @@ const uint16_t DNSLIB_CLASS_ANY = 255;	/* Class ANY */
  * Other
  */
 const unsigned int DNSLIB_MAX_DNAME_LENGTH = 255;
+const unsigned int DNSLIB_MAX_DNAME_LABELS = 127;	// 1-char labels
 
 #endif /* _CUTEDNS_CONSTS_H */

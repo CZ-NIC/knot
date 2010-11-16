@@ -136,6 +136,18 @@ const struct dnslib_node *dnslib_dname_node( const dnslib_dname_t *dname );
  */
 void dnslib_dname_free( dnslib_dname_t **dname );
 
+/*!
+ * \brief Compares two domain names.
+ *
+ * \param d1 First domain name.
+ * \param d2 Second domain name.
+ *
+ * \retval -1 if \a d1 goes before \a d2 in canonical order.
+ * \retval 1 if \a d1 goes after \a d2 in canonical order.
+ * \retval 0 if the domain names are identical.
+ */
+int dnslib_dname_compare( const dnslib_dname_t *d1, const dnslib_dname_t *d2 );
+
 #endif /* _CUTEDNS_DNAME_H */
 
 /*! @} */
