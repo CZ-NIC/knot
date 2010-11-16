@@ -24,7 +24,7 @@ dnslib_node_t *dnslib_node_new( dnslib_dname_t *owner, dnslib_node_t *parent )
 {
     dnslib_node_t *ret = malloc(sizeof(dnslib_node_t));
     if (ret == NULL) {
-//        ERR_ALLOC_MEMORY;
+        ERR_ALLOC_FAILED;
         return NULL;
     }
 
