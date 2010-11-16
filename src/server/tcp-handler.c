@@ -44,6 +44,8 @@ int tcp_master (dthread_t* thread)
     dt_unit_t *unit = thread->unit;
     iohandler_t* handler = (iohandler_t *)thread->data;
     int master_sock = handler->fd;
+    debug_dt("dthreads: [%p] is TCP master, state: %d\n", thread, thread->state);
+
 
     /*
      * Create N pools of TCP connections.
@@ -52,73 +54,59 @@ int tcp_master (dthread_t* thread)
      *
      * \note Pool instance is deallocated by their assigned thread.
      */
-    int pool_id = 0;
-    int pool_count = thread->unit->size - 1;
-    tcp_pool_t **pool = malloc(pool_count * sizeof(tcp_pool_t*));
+    int pool_id = -1;
 
-   // Repurpose remaining threads to TCP pools
-   for (int i = 0; i < pool_count; ++i) {
+    // Accept clients
+    debug_net("tcp: running 1 master with %d pools\n", unit->size - 1);
+    for (;;) {
 
-       // Create TCP pool
-       pool[i] = tcp_pool_new(handler);
+        // Cancellation point
+        if (dt_is_cancelled(thread))
+            return -1;
 
-       // Repurpose thread
-       dthread_t *t = unit->threads[i + 1];
-       dt_repurpose(t, &tcp_pool, pool[i]);
-   }
+        // Accept on master socket
+        int incoming = accept(master_sock, 0, 0);
 
-   // Start pools
-   if (dt_start(unit) < 0) {
-       debug_net("tcp: failed to create connection pools");
-       return -1;
-   }
+        // Register to worker
+        if (incoming < 0) {
+            if(errno != EINTR) {
+                log_error("tcp_master: cannot accept incoming "
+                          "connection (errno %d): %s.\n",
+                          errno, strerror(errno));
+            }
+        } else {
 
-   // Accept clients
-   debug_net("tcp: running 1 master with %d pools\n", pool_count);
-   for (;;) {
+            // Select next pool (Round-Robin)
+            dt_unit_lock(unit);
+            int pool_count = unit->size - 1;
+            pool_id = get_next_rr(pool_id, pool_count);
+            dthread_t *t = unit->threads[pool_id + 1];
 
-       // Cancellation point
-       if (dt_is_cancelled(thread))
-           return -1;
+            // Allocate new pool if needed
+            if (t->run != &tcp_pool) {
+                dt_repurpose(t, &tcp_pool, tcp_pool_new(handler));
+                debug_dt("dthreads: [%p] repurposed as TCP pool\n", t);
+            }
 
-       // Accept on master socket
-       int incoming = accept(master_sock, 0, 0);
+            // Add incoming socket to selected pool
+            tcp_pool_t* pool = (tcp_pool_t *)t->_adata;
+            tcp_pool_lock(pool);
+            debug_net("tcp_master: accept: assigned socket %d to pool #%d\n",
+                      incoming, pool_id);
 
-       // Register to worker
-       if (incoming < 0) {
-           if(errno != EINTR) {
-               log_error("tcp_master: cannot accept incoming "
-                         "connection (errno %d): %s.\n",
-                         errno, strerror(errno));
-           }
-       } else {
+            if (tcp_pool_add(pool->ep_fd, incoming, EPOLLIN) == 0)
+                ++pool->ep_ecount;
 
-           // Add incoming socket to selected pool
-           tcp_pool_t* pool_choice = pool[pool_id];
-           tcp_pool_lock(pool_choice);
-           debug_net("tcp_master: accept: assigned socket %d to pool #%d\n",
-                     incoming, pool_id);
-
-           if (tcp_pool_add(pool_choice->ep_fd, incoming, EPOLLIN) == 0)
-               ++pool_choice->ep_ecount;
-
-           // Activate pool
-           dt_activate(unit->threads[pool_id + 1]);
-           tcp_pool_unlock(pool_choice);
-
-           // Select next pool (Round-Robin)
-           pool_id = get_next_rr(pool_id, pool_count);
-       }
-   }
+            // Activate pool
+            dt_activate(t);
+            tcp_pool_unlock(pool);
+            dt_unit_unlock(unit);
+        }
+    }
 
 
    // Stop whole unit
-   debug_net("tcp: stopping (%d master, %d pools)\n", 1, pool_count);
-
-   // Delete pool array
-   free(pool);
-
-   debug_net("tcp_master: finished\n");
+   debug_net("tcp: stopping (%d master, %d pools)\n", 1, unit->size - 1);
    return 0;
 }
 
