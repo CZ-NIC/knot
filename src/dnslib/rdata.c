@@ -285,8 +285,11 @@ int dnslib_rdata_compare( const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
 		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
 		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
 		case DNSLIB_RDATA_WF_LITERAL_DNAME:
-			// maybe also compare with dnslib_rdata_compare_binary()
-			cmp = dnslib_dname_compare(item1->dname, item2->dname);
+			cmp = dnslib_rdata_compare_binary(
+					dnslib_dname_name(item1->dname),
+					dnslib_dname_name(item2->dname),
+					dnslib_dname_size(item1->dname),
+					dnslib_dname_size(item2->dname));
 			break;
 		case DNSLIB_RDATA_WF_BYTE:
 			cmp = (item1->int8 == item2->int8) ? 0 : (
