@@ -134,6 +134,36 @@ const dnslib_rdata_item_t *dnslib_rdata_get_item( const dnslib_rdata_t *rdata,
 												  uint pos );
 
 /*!
+ * \brief Returns the size of the RDATA in wire format.
+ *
+ * \param rdata RDATA structure to get the wire format size of.
+ * \param format RDATA format descriptor.
+ *
+ * \return Size of the RDATA in wire format.
+ *
+ * \todo Consider adding the size to the structure for faster retrieval.
+ */
+uint dnslib_rdata_wire_size( const dnslib_rdata_t *rdata,
+							 const uint8_t *format );
+
+/*!
+ * \brief Converts the RDATA to wire format.
+ *
+ * \param rdata RDATA structure to convert to wire format.
+ * \param format RDATA format descriptor.
+ * \param buffer Place to put the wire format into.
+ * \param buf_size Size of the buffer.
+ *
+ * \return 0 on success.
+ * \return <> 0 otherwise.
+ *
+ * \todo Do we really need all those different kinds of RDATA items? It makes
+ *       converting more complicated.
+ */
+int dnslib_rdata_to_wire( const dnslib_rdata_t *rdata, const uint8_t *format,
+						  uint8_t *buffer, uint buf_size );
+
+/*!
  * \brief Destroys the RDATA structure.
  *
  * \param rdata RDATA structure to be destroyed.

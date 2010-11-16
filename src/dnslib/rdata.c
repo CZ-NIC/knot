@@ -8,6 +8,47 @@
 #include "dname.h"
 
 /*----------------------------------------------------------------------------*/
+/* Non-API functions                                                          */
+/*----------------------------------------------------------------------------*/
+
+static int dnslib_rdata_compare_binary( const uint8_t *d1, const uint8_t *d2,
+										int count1, int count2 )
+{
+	int i1 = 0, i2 = 0;
+
+	// length stored in the first octet
+	if (count1 < 0) {
+		// take count from the first byte
+		count1 = (int)d1[0];
+		// and start from the second byte
+		i1 = 1;
+	}
+	if (count2 < 0) {	// dtto
+		count2 = (int)d2[0];
+		i2 = 1;
+	}
+
+
+	while (i1 < count1 && i2 < count2 && d1[i1] == d2[i2]) {
+		++i1;
+		++i2;
+	}
+
+	if (i1 == count1 && i2 == count2) {
+		return 0;
+	}
+
+	if (i1 == count1 && i2 < count2) {
+		return -1;
+	} else if (i2 == count2 && i1 < count1) {
+		return 1;
+	} else {
+		assert(i1 < count1 && i2 < count2);
+		return (d1[i1] < d2[i2]) ? -1 : 1;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -89,41 +130,142 @@ void dnslib_rdata_free( dnslib_rdata_t **rdata )
 
 /*----------------------------------------------------------------------------*/
 
-static int dnslib_rdata_compare_binary( const uint8_t *d1, const uint8_t *d2,
-										int count1, int count2 )
+uint dnslib_rdata_wire_size( const dnslib_rdata_t *rdata,
+							 const uint8_t *format )
 {
-	int i1 = 0, i2 = 0;
+	uint size = 0;
 
-	// length stored in the first octet
-	if (count1 < 0) {
-		// take count from the first byte
-		count1 = (int)d1[0];
-		// and start from the second byte
-		i1 = 1;
+	for (int i = 0; i < rdata->count; ++i) {
+		switch (format[i]) {
+		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
+		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
+		case DNSLIB_RDATA_WF_LITERAL_DNAME:
+			size += dnslib_dname_size(rdata->items[i].dname);
+			break;
+		case DNSLIB_RDATA_WF_BYTE:
+			size += 1;
+			break;
+		case DNSLIB_RDATA_WF_SHORT:
+			size += 2;
+			break;
+		case DNSLIB_RDATA_WF_LONG:
+			size += 4;
+			break;
+		case DNSLIB_RDATA_WF_A:
+			size += 4;
+			break;
+		case DNSLIB_RDATA_WF_AAAA:
+			size += 16;
+			break;
+		case DNSLIB_RDATA_WF_TEXT:
+		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+			// size stored in the first byte, but the first byte also counts
+			size += rdata->items[i].raw_data[0] + 1;
+			break;
+		case DNSLIB_RDATA_WF_BINARY:
+		case DNSLIB_RDATA_WF_APL:			// saved as binary
+		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
+			// size stored in the first byte, first byte doesn't count
+			size += rdata->items[i].raw_data[0];
+			break;
+		default:
+			assert(0);
+		}
 	}
-	if (count2 < 0) {	// dtto
-		count2 = (int)d2[0];
-		i2 = 1;
+	return size;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_rdata_to_wire( const dnslib_rdata_t *rdata, const uint8_t *format,
+						  uint8_t *buffer, uint buf_size )
+{
+	uint copied = 0;
+	uint8_t tmp[MAX_RDATA_WIRE_SIZE];
+	uint8_t *to = tmp;
+
+	for (int i = 0; i < rdata->count; ++i) {
+		assert(copied < MAX_RDATA_WIRE_SIZE);
+
+		switch (format[i]) {
+		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
+		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
+		case DNSLIB_RDATA_WF_LITERAL_DNAME: {
+			uint size = dnslib_dname_size(rdata->items[i].dname);
+			memcpy(to, dnslib_dname_name(rdata->items[i].dname), size);
+			to += size;
+			copied += size;
+		} break;
+		case DNSLIB_RDATA_WF_BYTE:
+			*(to++) = rdata->items[i].int8;
+			++copied;
+			break;
+		case DNSLIB_RDATA_WF_SHORT: {
+			const uint8_t *from = (uint8_t *)(&rdata->items[i].int16);
+			// copy from last byte to first (little to big endian)
+			// TODO: check endianness of the machine
+			from += 1;
+			for (int i = 0; i < 2; ++i) {
+				*(to++) = *(from--);
+				++copied;
+			}
+		} break;
+		case DNSLIB_RDATA_WF_LONG: {
+			const uint8_t *from = (uint8_t *)(&rdata->items[i].int32);
+			// copy from last byte to first (little to big endian)
+			// TODO: check endianness of the machine
+			from += 3;
+			for (int i = 0; i < 4; ++i) {
+				*(to++) = *(from--);
+				++copied;
+			}
+		} break;
+		case DNSLIB_RDATA_WF_A: {
+			const uint8_t *from = rdata->items[i].a;
+			for (int i = 0; i < 4; ++i) {
+				*(to++) = *(from++);
+				++copied;
+			}
+		} break;
+		case DNSLIB_RDATA_WF_AAAA: {
+			const uint8_t *from = rdata->items[i].raw_data;
+			for (int i = 0; i < 16; ++i) {
+				*(to++) = *(from++);
+				++copied;
+			}
+		} break;
+		case DNSLIB_RDATA_WF_TEXT:
+		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+			// size stored in the first byte, but the first byte also needs to
+			// be copied
+			memcpy(to, rdata->items[i].raw_data,
+				   rdata->items[i].raw_data[0] + 1);
+			copied += rdata->items[i].raw_data[0] + 1;
+			to += rdata->items[i].raw_data[0] + 1;
+			break;
+		case DNSLIB_RDATA_WF_BINARY:
+		case DNSLIB_RDATA_WF_APL:			// saved as binary
+		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
+			// size stored in the first byte, first byte must not be copied
+			memcpy(to, &(rdata->items[i].raw_data[1]),
+				   rdata->items[i].raw_data[0]);
+			copied += rdata->items[i].raw_data[0];
+			to += rdata->items[i].raw_data[0];
+			break;
+		default:
+			assert(0);
+		}
 	}
 
-
-	while (i1 < count1 && i2 < count2 && d1[i1] == d2[i2]) {
-		++i1;
-		++i2;
-	}
-
-	if (i1 == count1 && i2 == count2) {
-		return 0;
-	}
-
-	if (i1 == count1 && i2 < count2) {
+	if (copied > buf_size) {
+		log_warning("Not enough place allocated for function "
+					"dnslib_rdata_to_wire(). Allocated %u, need %u\n",
+					buf_size, copied);
 		return -1;
-	} else if (i2 == count2 && i1 < count1) {
-		return 1;
-	} else {
-		assert(i1 < count1 && i2 < count2);
-		return (d1[i1] < d2[i2]) ? -1 : 1;
 	}
+
+	memcpy(buffer, tmp, copied);
+	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
