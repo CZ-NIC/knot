@@ -9,7 +9,7 @@
 #include "log.h"
 
 /* Lock thread state for R/W. */
-static inline void lock_thread_rw (dthread_t *thread)
+static inline void lock_thread_rw(dthread_t *thread)
 {
     pthread_mutex_lock(&thread->_mx);
 }
@@ -20,7 +20,7 @@ static inline void unlock_thread_rw(dthread_t *thread)
 }
 
 /* Signalize thread state change. */
-static inline void unit_signalize_change (dt_unit_t *unit)
+static inline void unit_signalize_change(dt_unit_t *unit)
 {
     pthread_mutex_lock(&unit->_report_mx);
     pthread_cond_signal(&unit->_report);
@@ -28,7 +28,7 @@ static inline void unit_signalize_change (dt_unit_t *unit)
 }
 
 /* Update thread state. */
-static inline int dt_update_thread (dthread_t *thread, int state)
+static inline int dt_update_thread(dthread_t *thread, int state)
 {
     // Check
     if (thread == 0)
@@ -64,7 +64,7 @@ static inline int dt_update_thread (dthread_t *thread, int state)
 /*
  * Thread entrypoint interrupt handler.
  */
-static void thread_ep_intr (int s)
+static void thread_ep_intr(int s)
 {
 }
 
@@ -74,7 +74,7 @@ static void thread_ep_intr (int s)
  * Depending on thread state, runnable is run or
  * thread blocks until it is requested.
  */
-static void *thread_ep (void *data)
+static void *thread_ep(void *data)
 {
     // Check data
     dthread_t *thread = (dthread_t *)data;
@@ -175,7 +175,7 @@ static void *thread_ep (void *data)
  * \return New thread instance or 0.
  * \private
  */
-dthread_t *dt_create_thread (dt_unit_t *unit)
+static dthread_t *dt_create_thread(dt_unit_t *unit)
 {
     // Alloc thread
     dthread_t *thread = malloc(sizeof(dthread_t));
@@ -204,7 +204,7 @@ dthread_t *dt_create_thread (dt_unit_t *unit)
  * \brief Delete single thread.
  * \private
  */
-void dt_delete_thread (dthread_t **thread)
+static void dt_delete_thread(dthread_t **thread)
 {
     // Check
     if (thread == 0)
@@ -223,8 +223,12 @@ void dt_delete_thread (dthread_t **thread)
     *thread = 0;
 }
 
-dt_unit_t *dt_create (int count)
+dt_unit_t *dt_create(int count)
 {
+    // Check count
+    if(count <= 0)
+        return 0;
+
     dt_unit_t *unit = malloc(sizeof(dt_unit_t));
     if (unit == 0)
         return 0;
@@ -310,8 +314,12 @@ dt_unit_t *dt_create (int count)
     return unit;
 }
 
-dt_unit_t *dt_create_coherent (int count, runnable_t runnable, void *data)
+dt_unit_t *dt_create_coherent(int count, runnable_t runnable, void *data)
 {
+    // Check count
+    if (count <= 0)
+        return 0;
+
     // Create unit
     dt_unit_t *unit = dt_create(count);
     if (unit == 0)
@@ -333,7 +341,7 @@ dt_unit_t *dt_create_coherent (int count, runnable_t runnable, void *data)
     return unit;
 }
 
-void dt_delete (dt_unit_t **unit)
+void dt_delete(dt_unit_t **unit)
 {
     /*
      *  All threads must be stopped or idle at this point,
@@ -372,6 +380,10 @@ void dt_delete (dt_unit_t **unit)
 
 int dt_resize(dt_unit_t *unit, int size)
 {
+    // Check input
+    if (unit == 0 || size <= 0)
+        return -1;
+
     // Evaluate delta
     int delta = unit->size - size;
 
@@ -528,8 +540,12 @@ int dt_resize(dt_unit_t *unit, int size)
     return 0;
 }
 
-int dt_start (dt_unit_t *unit)
+int dt_start(dt_unit_t *unit)
 {
+    // Check input
+    if (unit == 0)
+        return -1;
+
     // Lock unit
     pthread_mutex_lock(&unit->_notify_mx);
     dt_unit_lock(unit);
@@ -553,8 +569,12 @@ int dt_start (dt_unit_t *unit)
     return 0;
 }
 
-int dt_start_id (dthread_t *thread)
+int dt_start_id(dthread_t *thread)
 {
+    // Check input
+    if (thread == 0)
+        return -1;
+
     lock_thread_rw(thread);
 
     // Update state
@@ -584,13 +604,21 @@ int dt_start_id (dthread_t *thread)
     return res;
 }
 
-int dt_signalize (dthread_t *thread, int signum)
+int dt_signalize(dthread_t *thread, int signum)
 {
-   return pthread_kill(thread->_thr, signum);
+    // Check input
+    if (thread == 0)
+        return -1;
+
+    return pthread_kill(thread->_thr, signum);
 }
 
 int dt_join (dt_unit_t *unit)
 {
+    // Check input
+    if (unit == 0)
+        return -1;
+
     for(;;) {
 
         // Lock unit
@@ -637,8 +665,12 @@ int dt_join (dt_unit_t *unit)
     return 0;
 }
 
-int dt_stop_id (dthread_t *thread)
+int dt_stop_id(dthread_t *thread)
 {
+    // Check input
+    if (thread == 0)
+        return -1;
+
     // Signalize active thread to stop
     lock_thread_rw(thread);
     if(thread->state & (ThreadIdle | ThreadActive)) {
@@ -658,7 +690,7 @@ int dt_stop_id (dthread_t *thread)
     return 0;
 }
 
-int dt_stop (dt_unit_t *unit)
+int dt_stop(dt_unit_t *unit)
 {
     // Check unit
     if (unit == 0)
@@ -692,8 +724,12 @@ int dt_stop (dt_unit_t *unit)
     return 0;
 }
 
-int dt_setprio (dthread_t* thread, int prio)
+int dt_setprio(dthread_t* thread, int prio)
 {
+    // Check input
+    if (thread == 0)
+        return -1;
+
     // Clamp priority
     int policy = SCHED_FIFO;
     prio = MIN(MAX(sched_get_priority_min(policy), prio),
@@ -718,7 +754,7 @@ int dt_setprio (dthread_t* thread, int prio)
     return ret;
 }
 
-int dt_repurpose (dthread_t* thread, runnable_t runnable, void *data)
+int dt_repurpose(dthread_t* thread, runnable_t runnable, void *data)
 {
     // Check
     if (thread == 0)
@@ -759,18 +795,22 @@ int dt_repurpose (dthread_t* thread, runnable_t runnable, void *data)
     return 0;
 }
 
-int dt_activate (dthread_t *thread)
+int dt_activate(dthread_t *thread)
 {
     return dt_update_thread(thread, ThreadActive);
 }
 
-int dt_cancel (dthread_t *thread)
+int dt_cancel(dthread_t *thread)
 {
     return dt_update_thread(thread, ThreadIdle | ThreadCancelled);
 }
 
-int dt_compact (dt_unit_t *unit)
+int dt_compact(dt_unit_t *unit)
 {
+    // Check input
+    if (unit == 0)
+        return -1;
+
     // Lock unit
     pthread_mutex_lock(&unit->_notify_mx);
     dt_unit_lock(unit);
@@ -817,7 +857,7 @@ int dt_compact (dt_unit_t *unit)
     return 0;
 }
 
-int dt_optimal_size ()
+int dt_optimal_size()
 {
 #ifdef _SC_NPROCESSORS_ONLN
    int ret = (int) sysconf(_SC_NPROCESSORS_ONLN);
@@ -828,8 +868,12 @@ int dt_optimal_size ()
    return DEFAULT_THR_COUNT;
 }
 
-int dt_is_cancelled (dthread_t *thread)
+int dt_is_cancelled(dthread_t *thread)
 {
+    // Check input
+    if (thread == 0)
+        return 0;
+
     lock_thread_rw(thread);
     int ret = thread->state & ThreadCancelled;
     unlock_thread_rw(thread);
@@ -838,10 +882,18 @@ int dt_is_cancelled (dthread_t *thread)
 
 int dt_unit_lock(dt_unit_t *unit)
 {
+    // Check input
+    if (unit == 0)
+        return -1;
+
     return pthread_mutex_lock(&unit->_mx);
 }
 
 int dt_unit_unlock(dt_unit_t *unit)
 {
+    // Check input
+    if (unit == 0)
+        return -1;
+
     return pthread_mutex_unlock(&unit->_mx);
 }

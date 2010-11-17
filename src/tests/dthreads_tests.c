@@ -19,7 +19,7 @@ unit_api dthreads_tests_api = {
 /*
  *  Unit implementation.
  */
-static const int DT_TEST_COUNT = 17;
+static const int DT_TEST_COUNT = 23;
 
 /* Unit runnable data. */
 static pthread_mutex_t _runnable_mx;
@@ -311,6 +311,49 @@ static int dt_tests_run(int argc, char * argv[])
     dt_delete(&unit);
     ok(unit == 0, "dthreads: delete unit");
     endskip;
+
+    /* Test 18: Wrong values. */
+    unit = dt_create(-1);
+    ok(unit == 0, "dthreads: create with negative count");
+    unit = dt_create_coherent(dt_optimal_size(), 0, 0);
+
+    /* Test 19: NULL runnable. */
+    cmp_ok(dt_start(unit), "==", 0, "dthreads: start with NULL runnable");
+
+    /* Test 20: resize to negative value. */
+    cmp_ok(dt_resize(unit, -19), "<", 0, "dthreads: resize to negative size");
+
+    /* Test 21: resize to zero value. */
+    cmp_ok(dt_resize(unit, 0), "<", 0, "dthreads: resize to NULL size");
+    dt_delete(&unit);
+
+    /* Test 22: NULL operations crashing. */
+    int op_count = 14;
+    int expected_min = op_count * -1; // All functions must return -1 at least
+    int ret = 0;
+    lives_ok({
+        ret += dt_activate(0);              // -1
+        ret += dt_cancel(0);                // -1
+        ret += dt_compact(0);               // -1
+        dt_delete(0);                //
+        ret += dt_is_cancelled(0);          // 0
+        ret += dt_join(0);                  // -1
+        ret += dt_repurpose(0, 0, 0);       // -1
+        ret += dt_resize(0, 0);             // -1
+        ret += dt_setprio(0, 0);            // -1
+        ret += dt_signalize(0, SIGALRM);    // -1
+        ret += dt_start(0);                 // -1
+        ret += dt_start_id(0);              // -1
+        ret += dt_stop(0);                  // -1
+        ret += dt_stop_id(0);               // -1
+        ret += dt_unit_lock(0);             // -1
+        ret += dt_unit_unlock(0);           // -1
+    }, "dthreads: not crashed while executing functions on NULL context");
+
+    /* Test 23: expected results. */
+    cmp_ok(ret, "<=", expected_min,
+           "dthreads: correct values when passed NULL context "
+           "(%d, min: %d)", ret, expected_min);
 
     pthread_mutex_destroy(&_runnable_mx);
     return 0;
