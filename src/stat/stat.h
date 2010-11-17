@@ -34,7 +34,7 @@ static uint const ACTIVE_FLOW_THRESHOLD = 10;
  * \brief Statistics structure, unique for each UDP/TCP thread.
  */
 typedef struct stat_t {
-    struct timespec t1, t2; 
+    struct timespec t1, t2;
     protocol_t protocol;
     struct sockaddr_in *s_addr;
 //  gatherer_t *gatherer; not needed when using static gatherer.
@@ -45,7 +45,7 @@ uint stat_last_query_time( stat_t *stat ); /* private */
 void stat_add_data( stat_t *stat, uint query_time ); /* private */
 
 /*!
- * \brief Inicialize static gatherer structure common for all threads.
+ * \brief Initialize static gatherer structure common for all threads.
  */
 void stat_static_gath_init();
 
