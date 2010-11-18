@@ -144,6 +144,21 @@ uint dnslib_rdata_wire_size( const dnslib_rdata_t *rdata,
 		case DNSLIB_RDATA_WF_LITERAL_DNAME:
 			size += dnslib_dname_size(rdata->items[i].dname);
 			break;
+		case DNSLIB_RDATA_WF_BYTE:
+			size += 1;
+			break;
+		case DNSLIB_RDATA_WF_SHORT:
+			size += 2;
+			break;
+		case DNSLIB_RDATA_WF_LONG:
+			size += 4;
+			break;
+		case DNSLIB_RDATA_WF_A:
+			size += 4;
+			break;
+		case DNSLIB_RDATA_WF_AAAA:
+			size += 16;
+			break;
 		default:
 			size += rdata->items[i].raw_data[0];
 		}
