@@ -163,6 +163,7 @@ static int fill_rdata( uint8_t *data, int max_size, uint16_t rrtype,
 
 	uint8_t *pos = data;
 	int used = 0;
+	int wire_size = 0;
 
 	//note("Filling RRType %u", rrtype);
 
@@ -175,7 +176,6 @@ static int fill_rdata( uint8_t *data, int max_size, uint16_t rrtype,
 	for (int i = 0; i < item_count; ++i) {
 		uint8_t size = 0;
 		int domain = 0;
-		int store_length = 0;
 		dnslib_dname_t *dname = NULL;
 		int binary = 0;
 
@@ -208,7 +208,6 @@ static int fill_rdata( uint8_t *data, int max_size, uint16_t rrtype,
 			break;
 		case DNSLIB_RDATA_WF_TEXT:
 		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
-			store_length = 1;
 		case DNSLIB_RDATA_WF_BINARY:
 		case DNSLIB_RDATA_WF_APL:			// saved as binary
 		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
@@ -232,10 +231,12 @@ static int fill_rdata( uint8_t *data, int max_size, uint16_t rrtype,
 
 		if (domain) {
 			items[i].dname = dname;
+			wire_size += dnslib_dname_size(dname);
 			//note("Saved domain name ptr: %p", items[i].dname);
 		} else {
 			items[i].raw_data = pos;
 			pos += size;
+			wire_size += size;
 			if (binary) {
 				++pos;
 			}
@@ -245,9 +246,9 @@ static int fill_rdata( uint8_t *data, int max_size, uint16_t rrtype,
 	int res = dnslib_rdata_set_items(rdata, items, item_count);
 	if (res != 0) {
 		diag("dnslib_rdata_set_items() returned %d.", res);
-		return 1;
+		return -1;
 	} else {
-		return 0;
+		return wire_size;
 	}
 }
 
@@ -278,7 +279,6 @@ static int check_rdata( const uint8_t *data, int max_size, uint16_t rrtype,
 	for (int i = 0; i < item_count; ++i) {
 		uint size = 0;
 		int domain = 0;
-		int stored_length = 0;
 		int binary = 0;
 
 		//note("  item: %d", i);
@@ -314,8 +314,6 @@ static int check_rdata( const uint8_t *data, int max_size, uint16_t rrtype,
 		case DNSLIB_RDATA_WF_APL:			// saved as binary
 		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
 			//note("    binary");
-			// size should be stored in the data array
-			stored_length = 1;
 		case DNSLIB_RDATA_WF_TEXT:
 		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
 			//note("    text or binary with length (%u)", *pos);
@@ -346,12 +344,6 @@ static int check_rdata( const uint8_t *data, int max_size, uint16_t rrtype,
 				continue;
 			}
 		}
-
-//		if (stored_length) {
-//			// if the length octet is not stored in the RDATA item, skip
-//			// it in the data array, so we can compare
-//			++pos;
-//		}
 
 		if (binary
 			&& size != dnslib_rdata_get_item(rdata, i)->raw_data[0] + 1) {
@@ -398,7 +390,10 @@ static int test_rdata_set_item()
 
 	// set items through set_items() and then call set_item()
 	uint16_t rrtype = rand() % DNSLIB_RRTYPE_LAST + 1;
-	fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, rrtype, rdata);
+	if (fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, rrtype, rdata) < 0) {
+		diag("Error filling RDATA");
+		return 0;
+	}
 
 	uint8_t pos = rand() % dnslib_rrtype_descriptor_by_type(rrtype)->length;
 
@@ -444,7 +439,9 @@ static int test_rdata_set_items()
 	for (int i = 0; i <= DNSLIB_RRTYPE_LAST; ++i) {
 		rdata = dnslib_rdata_new();
 
-		errors += fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i, rdata);
+		if (fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i, rdata) < 0) {
+			++errors;
+		}
 		errors += check_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i, rdata);
 
 		dnslib_rdata_free(&rdata);
@@ -455,7 +452,41 @@ static int test_rdata_set_items()
 
 /*----------------------------------------------------------------------------*/
 
-static const int DNSLIB_RDATA_TEST_COUNT = 5;
+static int test_rdata_wire_size()
+{
+	dnslib_rdata_t *rdata;
+	int errors = 0;
+
+	// generate some random data
+	uint8_t data[DNSLIB_MAX_RDATA_WIRE_SIZE];
+	generate_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE);
+
+	for (int i = 0; i <= DNSLIB_RRTYPE_LAST; ++i) {
+		rdata = dnslib_rdata_new();
+
+		int size = fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i, rdata);
+
+		if (size < 0) {
+			++errors;
+		} else {
+			int counted_size = dnslib_rdata_wire_size(rdata,
+							dnslib_rrtype_descriptor_by_type(i)->wireformat);
+			if (size != counted_size) {
+				diag("Wrong wire size computed (type %d): %d (should be %d)",
+					 i, counted_size, size);
+				++errors;
+			}
+		}
+
+		dnslib_rdata_free(&rdata);
+	}
+
+	return (errors == 0);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static const int DNSLIB_RDATA_TEST_COUNT = 6;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -474,7 +505,7 @@ static int dnslib_rdata_tests_run(int argc, char *argv[])
 	res = test_rdata_create(0);
 	ok(res, "rdata: create empty");
 
-	skip(!res, 3);
+	skip(!res, 4);
 
 	todo();
 
@@ -484,9 +515,11 @@ static int dnslib_rdata_tests_run(int argc, char *argv[])
 
 	ok(res = test_rdata_set_items(), "rdata: set items all at once");
 
-	skip(!res, 1);
+	skip(!res, 2);
 
 	ok(test_rdata_set_item(), "rdata: set items one-by-one");
+
+	ok(test_rdata_wire_size(), "rdata: wire size");
 
 	endskip;	/* test_rdata_set_items() failed */
 
