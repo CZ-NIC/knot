@@ -6,7 +6,7 @@
 #include "zone-parser.h"
 #include <unistd.h>
 #include <stdio.h>
-#include "gatherer.h"
+#include "stat.h"
 
 cute_server *cute_create()
 {

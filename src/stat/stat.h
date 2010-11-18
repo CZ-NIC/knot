@@ -21,7 +21,7 @@
 #ifdef STAT_COMPILE
 #define STAT_INIT(x) x = stat_new()
 #else
-#define STAT_INIT(x) UNUSED(x)
+#define STAT_INIT(x) x = NULL //UNUSED(x)
 #endif
 
 /* determines how long until the sleeper thread wakes and runs computations */

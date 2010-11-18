@@ -19,6 +19,8 @@
 #include "stat.h"
 #include "gatherer.h"
 
+#ifdef STAT_COMPILE
+
 static gatherer_t *local_gath;
 
 /*
@@ -162,6 +164,8 @@ static void stat_sleep_compute()
         debug_st("UDP/TCP ratio %f\n", local_gath->udp_qps/local_gath->tcp_qps);
     }
 }
+
+#endif
 
 inline stat_t *stat_new()
 {
