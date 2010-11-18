@@ -174,10 +174,11 @@ static int fill_rdata( uint8_t *data, int max_size, uint16_t rrtype,
 			item_count * sizeof(dnslib_rdata_item_t));
 
 	for (int i = 0; i < item_count; ++i) {
-		uint8_t size = 0;
+		uint size = 0;
 		int domain = 0;
 		dnslib_dname_t *dname = NULL;
 		int binary = 0;
+		int stored_size = 0;
 
 		switch (desc->wireformat[i]) {
 		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
@@ -190,6 +191,14 @@ static int fill_rdata( uint8_t *data, int max_size, uint16_t rrtype,
 			//note("Created domain name: %s", dnslib_dname_name(dname));
 			//note("Domain name ptr: %p", dname);
 			domain = 1;
+			size = dnslib_dname_size(dname);
+			//note("Size of created domain name: %u", size);
+			assert(size < DNSLIB_MAX_RDATA_ITEM_SIZE);
+			// store size of the domain name
+			*(pos++) = size;
+			// copy the domain name
+			memcpy(pos, dnslib_dname_name(dname), size);
+			pos += size;
 			break;
 		case DNSLIB_RDATA_WF_BYTE:
 			size = 1;
@@ -208,6 +217,7 @@ static int fill_rdata( uint8_t *data, int max_size, uint16_t rrtype,
 			break;
 		case DNSLIB_RDATA_WF_TEXT:
 		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+			stored_size = 1;
 		case DNSLIB_RDATA_WF_BINARY:
 		case DNSLIB_RDATA_WF_APL:			// saved as binary
 		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
@@ -219,26 +229,30 @@ static int fill_rdata( uint8_t *data, int max_size, uint16_t rrtype,
 			assert(0);
 		}
 
-		assert(size > 0 || domain);
-		used += size;
-		assert(used < max_size);
+		assert(size > 0);
+		assert(size <= DNSLIB_MAX_RDATA_ITEM_SIZE);
 
 		if (binary) {
 			// rewrite the actual byte in the data array with length octet
 			// (this is a bit ugly, but does the work ;-)
 			*pos = size;
+			++size;
 		}
+
+		//note("Filling %u bytes", size);
+		used += size;
+		assert(used < max_size);
 
 		if (domain) {
 			items[i].dname = dname;
 			wire_size += dnslib_dname_size(dname);
-			//note("Saved domain name ptr: %p", items[i].dname);
+//			note("Saved domain name ptr: %p", items[i].dname);
 		} else {
 			items[i].raw_data = pos;
 			pos += size;
 			wire_size += size;
-			if (binary) {
-				++pos;
+			if (binary && !stored_size) {
+				--wire_size;
 			}
 		}
 	}
@@ -289,6 +303,7 @@ static int check_rdata( const uint8_t *data, int max_size, uint16_t rrtype,
 		case DNSLIB_RDATA_WF_LITERAL_DNAME:
 			//note("    domain name");
 			domain = 1;
+			size = dnslib_dname_size(dnslib_rdata_get_item(rdata, i)->dname);
 			break;
 		case DNSLIB_RDATA_WF_BYTE:
 			//note("    1byte int");
@@ -324,7 +339,8 @@ static int check_rdata( const uint8_t *data, int max_size, uint16_t rrtype,
 			assert(0);
 		}
 
-		assert(size > 0 || domain);
+		assert(size > 0);
+		//note("Size: %u", size);
 		used += size;
 		assert(used < max_size);
 
@@ -332,17 +348,24 @@ static int check_rdata( const uint8_t *data, int max_size, uint16_t rrtype,
 
 		if (domain) {
 			//note("Domain name ptr: %p", dnslib_rdata_get_item(rdata, i)->dname);
-			if (strncmp((char *)dnslib_dname_name(
-					dnslib_rdata_get_item(rdata, i)->dname),
-					(char *)test_domains_ok[0].wire,
-					test_domains_ok[0].size) != 0) {
-				diag("Domain name stored in %d-th RDATA item is wrong: %s ("
-					 "should be %s)", i,
-					 dnslib_dname_name(dnslib_rdata_get_item(rdata, i)->dname),
-					 test_domains_ok[0].wire);
+			// check dname size
+			if (*pos != size) {
+				diag("Domain name stored in %d-th RDATA has wrong size: %d"
+					 " (should be %d)", size, *pos);
 				++errors;
-				continue;
+			} else if (strncmp((char *)dnslib_dname_name(
+					dnslib_rdata_get_item(rdata, i)->dname),
+					(char *)(pos + 1), *pos) != 0) {
+				diag("Domain name stored in %d-th RDATA item is wrong: %s ("
+					 "should be %.*s)", i,
+					 dnslib_dname_name(dnslib_rdata_get_item(rdata, i)->dname),
+					 *pos, (char *)(pos + 1));
+				++errors;
 			}
+
+			pos += *pos + 1;
+
+			continue;
 		}
 
 		if (binary
@@ -362,6 +385,99 @@ static int check_rdata( const uint8_t *data, int max_size, uint16_t rrtype,
 	}
 
 	return errors;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int convert_to_wire( const uint8_t *data, int max_size, uint16_t rrtype,
+					 uint8_t *data_wire )
+{
+	//note("Converting type %u", rrtype);
+
+	int wire_size = 0;
+	const uint8_t *pos = data;
+	uint8_t *pos_wire = data_wire;
+
+	dnslib_rrtype_descriptor_t *desc = dnslib_rrtype_descriptor_by_type(rrtype);
+	uint item_count = desc->length;
+
+	for (int i = 0; i < item_count; ++i) {
+		const uint8_t *from = NULL;
+		uint to_copy = 0;
+
+		switch (desc->wireformat[i]) {
+		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
+		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
+		case DNSLIB_RDATA_WF_LITERAL_DNAME:
+			// copy the domain name without its length
+			from = pos + 1;
+			to_copy = *pos;
+			pos += *pos + 1;
+//			note("Domain name in wire format (size %u): %s", to_copy,
+//				 (char *)from);
+			break;
+		case DNSLIB_RDATA_WF_BYTE:
+			//note("    1byte int");
+			from = pos;
+			to_copy = 1;
+			pos += 1;
+			break;
+		case DNSLIB_RDATA_WF_SHORT:
+			//note("    2byte int");
+			from = pos;
+			to_copy = 2;
+			pos += 2;
+			break;
+		case DNSLIB_RDATA_WF_LONG:
+			//note("    4byte int");
+			from = pos;
+			to_copy = 4;
+			pos += 4;
+			break;
+		case DNSLIB_RDATA_WF_A:
+			//note("    A");
+			from = pos;
+			to_copy = 4;
+			pos += 4;
+			break;
+		case DNSLIB_RDATA_WF_AAAA:
+			//note("    AAAA");
+			from = pos;
+			to_copy = 16;
+			pos += 16;
+			break;
+		case DNSLIB_RDATA_WF_BINARY:
+		case DNSLIB_RDATA_WF_APL:			// saved as binary
+		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
+			//note("    binary");
+			from = pos + 1;
+			to_copy = *pos;
+			pos += *pos + 1;
+			break;
+		case DNSLIB_RDATA_WF_TEXT:
+		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+			//note("    text or binary with length (%u)", *pos);
+			to_copy = *pos + 1;
+			from = pos;
+			pos += *pos + 1;
+			break;
+		default:
+			assert(0);
+		}
+
+		//note("Copying %u bytes from %p", to_copy, from);
+
+		assert(from != NULL);
+		assert(to_copy != 0);
+
+		memcpy(pos_wire, from, to_copy);
+		pos_wire += to_copy;
+		wire_size += to_copy;
+
+		assert(wire_size < max_size);
+	}
+
+	return wire_size;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -486,7 +602,58 @@ static int test_rdata_wire_size()
 
 /*----------------------------------------------------------------------------*/
 
-static const int DNSLIB_RDATA_TEST_COUNT = 6;
+static int test_rdata_to_wire()
+{
+	dnslib_rdata_t *rdata;
+	int errors = 0;
+
+	// generate some random data
+	uint8_t data[DNSLIB_MAX_RDATA_WIRE_SIZE];
+	uint8_t data_wire[DNSLIB_MAX_RDATA_WIRE_SIZE];
+	uint8_t rdata_wire[DNSLIB_MAX_RDATA_WIRE_SIZE];
+	generate_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE);
+
+	for (int i = 0; i <= DNSLIB_RRTYPE_LAST; ++i) {
+		rdata = dnslib_rdata_new();
+
+		int size = fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i, rdata);
+
+		int size_expected =
+				convert_to_wire(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i, data_wire);
+
+		if (size < 0) {
+			++errors;
+		} else {
+			if (size != size_expected) {
+				diag("Wire format size (%u) not as expected (%u)",
+					 size, size_expected);
+				++errors;
+			} else {
+				if (dnslib_rdata_to_wire(rdata,
+					dnslib_rrtype_descriptor_by_type(i)->wireformat, rdata_wire,
+					DNSLIB_MAX_RDATA_WIRE_SIZE) != 0) {
+					diag("Error while converting RDATA to wire format.");
+					++errors;
+				} else {
+					if (strncmp((char *)data_wire, (char *)rdata_wire, size)
+						!= 0) {
+						diag("RDATA converted to wire format does not match"
+							 " the expected value");
+						++errors;
+					}
+				}
+			}
+		}
+
+		dnslib_rdata_free(&rdata);
+	}
+
+	return (errors == 0);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static const int DNSLIB_RDATA_TEST_COUNT = 7;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -505,7 +672,7 @@ static int dnslib_rdata_tests_run(int argc, char *argv[])
 	res = test_rdata_create(0);
 	ok(res, "rdata: create empty");
 
-	skip(!res, 4);
+	skip(!res, 5);
 
 	todo();
 
@@ -515,11 +682,17 @@ static int dnslib_rdata_tests_run(int argc, char *argv[])
 
 	ok(res = test_rdata_set_items(), "rdata: set items all at once");
 
-	skip(!res, 2);
+	skip(!res, 3);
 
 	ok(test_rdata_set_item(), "rdata: set items one-by-one");
 
-	ok(test_rdata_wire_size(), "rdata: wire size");
+	ok(res = test_rdata_wire_size(), "rdata: wire size");
+
+	skip(!res, 1);
+
+	ok(test_rdata_to_wire(), "rdata: to wire");
+
+	endskip;	/* test_rdata_wire_size() failed */
 
 	endskip;	/* test_rdata_set_items() failed */
 
