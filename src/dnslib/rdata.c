@@ -123,7 +123,9 @@ void dnslib_rdata_free( dnslib_rdata_t **rdata )
 		return;
 	}
 
-	free((*rdata)->items);
+	if ((*rdata)->items) {
+		free((*rdata)->items);
+	}
 	free(*rdata);
 	*rdata = NULL;
 }
@@ -155,11 +157,11 @@ int dnslib_rdata_to_wire( const dnslib_rdata_t *rdata, const uint8_t *format,
 						  uint8_t *buffer, uint buf_size )
 {
 	uint copied = 0;
-	uint8_t tmp[MAX_RDATA_WIRE_SIZE];
+	uint8_t tmp[DNSLIB_MAX_RDATA_WIRE_SIZE];
 	uint8_t *to = tmp;
 
 	for (int i = 0; i < rdata->count; ++i) {
-		assert(copied < MAX_RDATA_WIRE_SIZE);
+		assert(copied < DNSLIB_MAX_RDATA_WIRE_SIZE);
 
 		const uint8_t *from = rdata->items[i].raw_data;
 		uint size = 0;
@@ -205,7 +207,7 @@ int dnslib_rdata_to_wire( const dnslib_rdata_t *rdata, const uint8_t *format,
 		}
 
 		assert(size != 0);
-		assert(copied + size < MAX_RDATA_WIRE_SIZE);
+		assert(copied + size < DNSLIB_MAX_RDATA_WIRE_SIZE);
 
 		memcpy(to, from, size);
 		to += size;
