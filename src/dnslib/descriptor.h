@@ -28,11 +28,12 @@ enum mxrdtln
 /*!
  * \brief A general purpose lookup table.
  */
-typedef struct lookup_table lookup_table_type;
-struct lookup_table {
+struct dnslib_lookup_table {
     int id;
     const char *name;
 };
+
+typedef struct dnslib_lookup_table dnslib_lookup_table_t;
 
 /*!
  * \brief Enum containing RR class codes.
@@ -169,19 +170,6 @@ struct dnslib_rrtype_descriptor
 typedef struct dnslib_rrtype_descriptor dnslib_rrtype_descriptor_t;
 
 /*!
- * \brief Strlcpy - safe string copy function, based on FreeBSD implementation.
- *  
- * http://www.openbsd.org/cgi-bin/cvsweb/src/lib/libc/string/
- *
- * \param dst Destination string.
- * \param src Source string.
- * \param siz How many characters to copy - 1.
- *
- * \return strlen(src), if retval >= siz, truncation occurred.
- */
-size_t strlcpy( char *dst, const char *src, size_t siz );
-
-/*!
  * \brief Gets RR descriptor for given RR type.
  *
  * \param type Code of RR type whose descriptor should be returned.
@@ -199,7 +187,7 @@ dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_type( uint16_t type );
  * \return RR descriptor for given name, NULL descriptor if
  * unknown type.
  */
-dnslib_rrtype_descriptor_t *rrtype_descriptor_by_name( const char *name );
+dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_name( const char *name );
 
 /*!
  * \brief Converts numeric type representation to mnemonic string.
@@ -208,7 +196,7 @@ dnslib_rrtype_descriptor_t *rrtype_descriptor_by_name( const char *name );
  *
  * \return Mnemonic string if found, str(TYPE[rrtype]) otherwise.
  */
-const char *rrtype_to_string( uint16_t rrtype );
+const char *dnslib_rrtype_to_string( uint16_t rrtype );
 
 /*!
  * \brief Converts mnemonic string representation of a type to numeric one.
@@ -217,7 +205,7 @@ const char *rrtype_to_string( uint16_t rrtype );
  *
  * \return Correct code if found, 0 otherwise.
  */
-uint16_t rrtype_from_string( const char *name );
+uint16_t dnslib_rrtype_from_string( const char *name );
 
 /*!
  * \brief Converts numeric class representation to string one.
@@ -227,7 +215,7 @@ uint16_t rrtype_from_string( const char *name );
  * \return String represenation of class if found, 
  *  str(CLASS[rrclass]) otherwise.
  */
-const char *rrclass_to_string( uint16_t rrclass );
+const char *dnslib_rrclass_to_string( uint16_t rrclass );
 
 /*!
  * \brief Converts string representation of a class to numeric one.
@@ -236,7 +224,7 @@ const char *rrclass_to_string( uint16_t rrclass );
  *
  * \return Correct code if found, 0 otherwise.
  */
-uint16_t rrclass_from_string( const char *name );
+uint16_t dnslib_rrclass_from_string( const char *name );
 
 #endif
 

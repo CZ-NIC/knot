@@ -241,7 +241,7 @@ static int dnslib_dname_tests_run(int argc, char *argv[])
 
 	ok(test_dname_to_str(), "dname: convert to str");
 
-  ok(test_faulty_data(), "dname: faulty data test");
+  lives_ok(test_faulty_data();, "dname: faulty data test");
 
 	endskip;	/* !res_str || !res_wire */
 
