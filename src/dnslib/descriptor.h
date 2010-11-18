@@ -17,9 +17,10 @@
 
 enum mxrdtln
 {
-	MAX_RDATA_ITEMS = 64,
-	MAX_RDATA_ITEM_SIZE = 255,
-	MAX_RDATA_WIRE_SIZE = MAX_RDATA_ITEMS * MAX_RDATA_ITEM_SIZE
+	DNSLIB_MAX_RDATA_ITEMS = 64,
+	DNSLIB_MAX_RDATA_ITEM_SIZE = 255,
+	DNSLIB_MAX_RDATA_WIRE_SIZE =
+		DNSLIB_MAX_RDATA_ITEMS * DNSLIB_MAX_RDATA_ITEM_SIZE
 };
 //#define MAXRDATALEN 64
 
@@ -76,30 +77,27 @@ enum dnslib_rr_type
     DNSLIB_RRTYPE_RT, /* 21 - RFC1183 */
     DNSLIB_RRTYPE_NSAP, /* 22 - RFC1706 */
     
-    DNSLIB_RRTYPE_SIG, /* 24 - 2535typecode */
+	DNSLIB_RRTYPE_SIG = 24, /* 24 - 2535typecode */
     DNSLIB_RRTYPE_KEY, /* 25 - 2535typecode */
     DNSLIB_RRTYPE_PX, /* 26 - RFC2163 */
     
-    DNSLIB_RRTYPE_AAAA, /* 28 - ipv6 address */
+	DNSLIB_RRTYPE_AAAA = 28, /* 28 - ipv6 address */
     DNSLIB_RRTYPE_LOC, /* 29 - LOC record  RFC1876 */
     DNSLIB_RRTYPE_NXT, /* 30 - 2535typecode */
     
-    DNSLIB_RRTYPE_SRV, /* 33 - SRV record RFC2782 */
+	DNSLIB_RRTYPE_SRV = 33, /* 33 - SRV record RFC2782 */
     
-    DNSLIB_RRTYPE_NAPTR, /* 35 - RFC2915 */
+	DNSLIB_RRTYPE_NAPTR = 35, /* 35 - RFC2915 */
     DNSLIB_RRTYPE_KX, /* 36 - RFC2230 Key Exchange Delegation Record */
     DNSLIB_RRTYPE_CERT, /* 37 - RFC2538 */
+	DNSLIB_RRTYPE_A6, /* 38 - RFC2874 */
+	DNSLIB_RRTYPE_DNAME, /* 39 - RFC2672 */
     
-    DNSLIB_RRTYPE_A6, /* 38 - RFC2874 */
-    
-    DNSLIB_RRTYPE_DNAME, /* 39 - RFC2672 */
-    
-    DNSLIB_RRTYPE_OPT, /* 41 - Pseudo OPT record... */
+	DNSLIB_RRTYPE_OPT = 41, /* 41 - Pseudo OPT record... */
     DNSLIB_RRTYPE_APL, /* 42 - RFC3123 */
     DNSLIB_RRTYPE_DS, /* 43 - RFC 4033, 4034, and 4035 */
     DNSLIB_RRTYPE_SSHFP, /* 44 - SSH Key Fingerprint */
     DNSLIB_RRTYPE_IPSECKEY, /* 45 - public key for ipsec use. RFC 4025 */
-    
     DNSLIB_RRTYPE_RRSIG, /* 46 - RFC 4033, 4034, and 4035 */
     DNSLIB_RRTYPE_NSEC, /* 47 - RFC 4033, 4034, and 4035 */
     DNSLIB_RRTYPE_DNSKEY, /* 48 - RFC 4033, 4034, and 4035 */
@@ -160,7 +158,7 @@ struct dnslib_rrtype_descriptor
   	uint16_t type;	/* RR type */
   	const char *name;	/* Textual name.  */
   	uint8_t length;	/* Maximum number of RDATA items.  */
-	uint8_t wireformat[MAX_RDATA_ITEMS]; /* rdata_wireformat_type */
+	uint8_t wireformat[DNSLIB_MAX_RDATA_ITEMS]; /* rdata_wireformat_type */
     bool fixed_items; /* Has fixed number of RDATA items? */
 };
 
