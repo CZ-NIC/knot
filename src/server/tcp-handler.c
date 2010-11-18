@@ -7,9 +7,7 @@
 #include <errno.h>
 #include "name-server.h"
 #include "tcp-handler.h"
-#ifdef STAT_COMPILE
 #include "stat.h"
-#endif
 
 /*
  * TCP connection pool.
