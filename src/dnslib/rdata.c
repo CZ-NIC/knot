@@ -159,8 +159,17 @@ uint dnslib_rdata_wire_size( const dnslib_rdata_t *rdata,
 		case DNSLIB_RDATA_WF_AAAA:
 			size += 16;
 			break;
-		default:
+		case DNSLIB_RDATA_WF_BINARY:
+		case DNSLIB_RDATA_WF_APL:			// saved as binary
+		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
 			size += rdata->items[i].raw_data[0];
+			break;
+		case DNSLIB_RDATA_WF_TEXT:
+		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+			size += rdata->items[i].raw_data[0] + 1;
+			break;
+		default:
+			assert(0);
 		}
 	}
 	return size;
@@ -215,7 +224,7 @@ int dnslib_rdata_to_wire( const dnslib_rdata_t *rdata, const uint8_t *format,
 		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
 			// size stored in the first byte, first byte must not be copied
 			size = rdata->items[i].raw_data[0];
-			++to;
+			++from;
 			break;
 		default:
 			assert(0);
