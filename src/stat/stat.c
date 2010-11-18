@@ -32,11 +32,11 @@ static void stat_inc_latency( stat_t *stat, uint increment )
         local_gath->tcp_latency+=increment;
     }
 }*/
-
-static uint stat_last_query_time( stat_t *stat ) 
+/*
+static uint stat_last_query_time( stat_t *stat )
 {
-    return (stat->t2).tv_nsec-(stat->t1).tv_nsec;
-}
+	return (stat->t2).tv_nsec-(stat->t1).tv_nsec;
+}*/
 
 static void stat_inc_query( stat_t *stat )
 {
