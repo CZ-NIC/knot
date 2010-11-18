@@ -45,7 +45,11 @@ typedef struct stat_t {
  *
  * \return Newly allocated and initialized stat structure, NULL on errror.
  */
+#ifdef STAT_COMPILE
 stat_t *stat_new();
+#else 
+inline stat_t *stat_new() { return NULL; }
+#endif
 
 /*!
  * \brief Sets a protocol for stat_t structure. Options are stat_UDP, stat_TCP.
@@ -53,7 +57,11 @@ stat_t *stat_new();
  * \param stat Stat_t instance (usually newly created).
  * \param protocol Protocol to be assigned to stat structure.
  */
+#ifdef STAT_COMPILE
 void stat_set_protocol( stat_t *stat, int protocol );
+#else
+static inline void stat_set_protocol( stat_t *stat, int protocol ) {}
+#endif
 
 /*!
  * \brief Gets the time from a processing function.
@@ -61,7 +69,11 @@ void stat_set_protocol( stat_t *stat, int protocol );
  * \param stat  Current instance of stat_t.
  * \param s_addr Sockaddr structure to be used later for statistics.
  */
+#ifdef STAT_COMPILE
 void stat_get_first( stat_t *stat, struct sockaddr_in *s_addr );
+#else
+static inline void stat_get_first( stat_t *stat, struct sockaddr_in *s_addr ){}
+#endif
 
 /*!
  * \brief Gets time from a processing fuction and changes
@@ -69,29 +81,49 @@ void stat_get_first( stat_t *stat, struct sockaddr_in *s_addr );
  *
  * \param stat current stat_t instance
  */
+#ifdef STAT_COMPILE
 void stat_get_second( stat_t *stat );
+#else
+static inline void stat_get_second( stat_t *stat ) {}
+#endif
 
 /*!
  * \brief Frees stat_t structure.
  *
  * \param stat Pointer to stat structure to be deallocated.
  */
+#ifdef STAT_COMPILE
 void stat_free( stat_t *stat );
+#else
+static inline void stat_free( stat_t *stat ) {}
+#endif
 
 /*!
  * \brief Initializes static gatherer.
  */
+#ifdef STAT_COMPILE
 void stat_static_gath_init();
+#else
+static inline void stat_static_gath_init() {}
+#endif
 
 /*!
  * \brief Starts static gatherer's sleeper thread.
  */
+#ifdef STAT_COMPILE
 void stat_static_gath_start();
+#else
+static inline void stat_static_gath_start() {}
+#endif
 
 /*!
  * \brief Frees static gatherer, calls gatherer_free().
  */
+#ifdef STAT_COMPILE
 void stat_static_gath_free();
+#else
+static inline void stat_static_gath_free() {}
+#endif
 
 #endif
 

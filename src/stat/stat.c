@@ -5,6 +5,7 @@
  * Project:  CuteDNS
  */
 
+
 #include <malloc.h>
 #include <time.h>
 #include <pthread.h>
@@ -165,11 +166,8 @@ static void stat_sleep_compute()
     }
 }
 
-#endif
-
-inline stat_t *stat_new()
+stat_t *stat_new()
 {
-#ifdef STAT_COMPILE
     stat_t *ret;
 
     if ((ret=malloc(sizeof(stat_t)))==NULL) {
@@ -177,63 +175,49 @@ inline stat_t *stat_new()
         return NULL;
     }
     return ret;
-#endif
-    return NULL;
 }
 
-inline void stat_set_protocol( stat_t *stat, int protocol)
+void stat_set_protocol( stat_t *stat, int protocol)
 {
-#ifdef STAT_COMPILE
     stat->protocol=protocol;
-#endif
 }
 
-inline void stat_get_first( stat_t *stat , struct sockaddr_in *s_addr )
+void stat_get_first( stat_t *stat , struct sockaddr_in *s_addr )
 {
-#ifdef STAT_COMPILE    
 //  gettimeofday(&stat->t2, NULL);
     stat->s_addr = s_addr;
     //check if s_addr does not get overwritten
-#endif
 }
 
-inline void stat_get_second( stat_t *stat )
+void stat_get_second( stat_t *stat )
 {
-#ifdef STAT_COMPILE    
 //  gettimeofday(&stat->t2, NULL);
     stat_inc_query(stat);
 //  stat_inc_latency(stat, stat_last_query_time(stat));
     stat_gatherer_add_data(stat);
-#endif
 }
 
-inline void stat_free( stat_t *stat ) 
+void stat_free( stat_t *stat ) 
 {
-#ifdef STAT_COMPILE
     free(stat);
-#endif
 }
 
-inline void stat_static_gath_init()
+void stat_static_gath_init()
 {
-#ifdef STAT_COMPILE
     local_gath = new_gatherer();
-#endif
 }
 
-inline void stat_static_gath_start()
+void stat_static_gath_start()
 {
-#ifdef STAT_COMPILE    
     pthread_create(&(local_gath->sleeper_thread), NULL, 
                     (void *) &stat_sleep_compute, NULL);
-#endif    
 }
 
-inline void stat_static_gath_free()
+void stat_static_gath_free()
 {
-#ifdef STAT_COMPILE        
     gatherer_free(local_gath);
-#endif
 }
+
+#endif
 
 /* end of file stat.c */
