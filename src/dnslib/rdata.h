@@ -27,16 +27,16 @@
  */
 union dnslib_rdata_item {
 	dnslib_dname_t *dname; /*!< RDATA item represented as a domain name. */
-	uint8_t int8;	/*!< 8bit unsigned integer */
-	uint16_t int16;		/*!< 16bit unsigned integer */
-	uint32_t int32;		/*!< 32bit unsigned integer */
-	uint8_t a[4];		/*!< A address - four 8bit integers */
+
 	/*!
 	 * \brief RDATA item represented as raw array of octets.
 	 *
-	 * In most cases the first octet will be the length of the array. The only
-	 * now known exception will be when storing AAAA address which has known
-	 * length (sixteen 8bit integers), so there is no need to store the lenght.
+	 * In some cases the first octet will be the length of the array.
+	 * In other, the size is determined by the type (i.e. 4 bytes in case of
+	 * IPv4 address).
+	 *
+	 * In some cases this length is also used in the wire format of RDATA
+	 * (e.g. character-data as defined in RFC1035).
 	 */
 	uint8_t *raw_data;
 };

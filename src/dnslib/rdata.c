@@ -142,34 +142,8 @@ uint dnslib_rdata_wire_size( const dnslib_rdata_t *rdata,
 		case DNSLIB_RDATA_WF_LITERAL_DNAME:
 			size += dnslib_dname_size(rdata->items[i].dname);
 			break;
-		case DNSLIB_RDATA_WF_BYTE:
-			size += 1;
-			break;
-		case DNSLIB_RDATA_WF_SHORT:
-			size += 2;
-			break;
-		case DNSLIB_RDATA_WF_LONG:
-			size += 4;
-			break;
-		case DNSLIB_RDATA_WF_A:
-			size += 4;
-			break;
-		case DNSLIB_RDATA_WF_AAAA:
-			size += 16;
-			break;
-		case DNSLIB_RDATA_WF_TEXT:
-		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
-			// size stored in the first byte, but the first byte also counts
-			size += rdata->items[i].raw_data[0] + 1;
-			break;
-		case DNSLIB_RDATA_WF_BINARY:
-		case DNSLIB_RDATA_WF_APL:			// saved as binary
-		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
-			// size stored in the first byte, first byte doesn't count
-			size += rdata->items[i].raw_data[0];
-			break;
 		default:
-			assert(0);
+			size += rdata->items[i].raw_data[0];
 		}
 	}
 	return size;
@@ -187,74 +161,55 @@ int dnslib_rdata_to_wire( const dnslib_rdata_t *rdata, const uint8_t *format,
 	for (int i = 0; i < rdata->count; ++i) {
 		assert(copied < MAX_RDATA_WIRE_SIZE);
 
+		const uint8_t *from = rdata->items[i].raw_data;
+		uint size = 0;
+
 		switch (format[i]) {
 		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
 		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
-		case DNSLIB_RDATA_WF_LITERAL_DNAME: {
-			uint size = dnslib_dname_size(rdata->items[i].dname);
-			memcpy(to, dnslib_dname_name(rdata->items[i].dname), size);
-			to += size;
-			copied += size;
-		} break;
-		case DNSLIB_RDATA_WF_BYTE:
-			*(to++) = rdata->items[i].int8;
-			++copied;
+		case DNSLIB_RDATA_WF_LITERAL_DNAME:
+			size = dnslib_dname_size(rdata->items[i].dname);
+			from = dnslib_dname_name(rdata->items[i].dname);
+
 			break;
-		case DNSLIB_RDATA_WF_SHORT: {
-			const uint8_t *from = (uint8_t *)(&rdata->items[i].int16);
-			// copy from last byte to first (little to big endian)
-			// TODO: check endianness of the machine
-			from += 1;
-			for (int i = 0; i < 2; ++i) {
-				*(to++) = *(from--);
-				++copied;
-			}
-		} break;
-		case DNSLIB_RDATA_WF_LONG: {
-			const uint8_t *from = (uint8_t *)(&rdata->items[i].int32);
-			// copy from last byte to first (little to big endian)
-			// TODO: check endianness of the machine
-			from += 3;
-			for (int i = 0; i < 4; ++i) {
-				*(to++) = *(from--);
-				++copied;
-			}
-		} break;
-		case DNSLIB_RDATA_WF_A: {
-			const uint8_t *from = rdata->items[i].a;
-			for (int i = 0; i < 4; ++i) {
-				*(to++) = *(from++);
-				++copied;
-			}
-		} break;
-		case DNSLIB_RDATA_WF_AAAA: {
-			const uint8_t *from = rdata->items[i].raw_data;
-			for (int i = 0; i < 16; ++i) {
-				*(to++) = *(from++);
-				++copied;
-			}
-		} break;
+		case DNSLIB_RDATA_WF_BYTE:
+			size = 1;
+			break;
+		case DNSLIB_RDATA_WF_SHORT:
+			size = 2;
+			break;
+		case DNSLIB_RDATA_WF_LONG:
+			size = 4;
+			break;
+		case DNSLIB_RDATA_WF_A:
+			size = 4;
+			break;
+		case DNSLIB_RDATA_WF_AAAA:
+			size = 16;
+			break;
 		case DNSLIB_RDATA_WF_TEXT:
 		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
 			// size stored in the first byte, but the first byte also needs to
 			// be copied
-			memcpy(to, rdata->items[i].raw_data,
-				   rdata->items[i].raw_data[0] + 1);
-			copied += rdata->items[i].raw_data[0] + 1;
-			to += rdata->items[i].raw_data[0] + 1;
+			size = rdata->items[i].raw_data[0] + 1;
 			break;
 		case DNSLIB_RDATA_WF_BINARY:
 		case DNSLIB_RDATA_WF_APL:			// saved as binary
 		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
 			// size stored in the first byte, first byte must not be copied
-			memcpy(to, &(rdata->items[i].raw_data[1]),
-				   rdata->items[i].raw_data[0]);
-			copied += rdata->items[i].raw_data[0];
-			to += rdata->items[i].raw_data[0];
+			size = rdata->items[i].raw_data[0];
+			++to;
 			break;
 		default:
 			assert(0);
 		}
+
+		assert(size != 0);
+		assert(copied + size < MAX_RDATA_WIRE_SIZE);
+
+		memcpy(to, from, size);
+		to += size;
+		copied += size;
 	}
 
 	if (copied > buf_size) {
@@ -278,52 +233,53 @@ int dnslib_rdata_compare( const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
 	int cmp = 0;
 
 	for (int i = 0; i < count; ++i) {
-		dnslib_rdata_item_t *item1 = &r2->items[i];
+		dnslib_rdata_item_t *item1 = &r1->items[i];
 		dnslib_rdata_item_t *item2 = &r2->items[i];
+
+		const uint8_t *data1 = r1->items[i].raw_data;
+		const uint8_t *data2 = r2->items[i].raw_data;
+		int size1, size2;
 
 		switch (format[i]) {
 		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
 		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
 		case DNSLIB_RDATA_WF_LITERAL_DNAME:
-			cmp = dnslib_rdata_compare_binary(
-					dnslib_dname_name(item1->dname),
-					dnslib_dname_name(item2->dname),
-					dnslib_dname_size(item1->dname),
-					dnslib_dname_size(item2->dname));
+			data1 = dnslib_dname_name(item1->dname);
+			size1 = dnslib_dname_size(item1->dname);
+			data2 = dnslib_dname_name(item2->dname);
+			size2 = dnslib_dname_size(item2->dname);
 			break;
 		case DNSLIB_RDATA_WF_BYTE:
-			cmp = (item1->int8 == item2->int8) ? 0 : (
-					(r1->items[i].int8 < item2->int8) ? -1 : 1);
+			size1 = size2 = 1;
 			break;
 		case DNSLIB_RDATA_WF_SHORT:
-			cmp = (item1->int16 == item2->int16) ? 0 : (
-					(item1->int16 < item2->int16) ? -1 : 1);
+			size1 = size2 = 2;
 			break;
 		case DNSLIB_RDATA_WF_LONG:
-			cmp = (item1->int32 == item2->int32) ? 0 : (
-					(item1->int32 < item2->int32) ? -1 : 1);
+			size1 = size2 = 4;
 			break;
 		case DNSLIB_RDATA_WF_A:
-			cmp = dnslib_rdata_compare_binary(item1->a, item2->a, 4, 4);
+			size1 = size2 = 4;
 			break;
 		case DNSLIB_RDATA_WF_AAAA:
-			cmp = dnslib_rdata_compare_binary(item1->raw_data, item2->raw_data,
-											  16, 16);
+			size1 = size2 = 16;
 			break;
 		case DNSLIB_RDATA_WF_TEXT:
 		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
-			cmp = dnslib_rdata_compare_binary(&item1->raw_data[1],
-					&item2->raw_data[1], (int)item1->raw_data[0],
-					(int)item2->raw_data[0]);
+			size1 = (int)item1->raw_data[0] + 1;
+			size2 = (int)item1->raw_data[0] + 1;
 			break;
 		case DNSLIB_RDATA_WF_BINARY:
 		case DNSLIB_RDATA_WF_APL:			// saved as binary
 		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
-			cmp = dnslib_rdata_compare_binary(item1->a, item2->a, -1, -1);
+			size1 = -1;
+			size2 = -1;
 			break;
 		default:
 			assert(0);
 		}
+
+		cmp = dnslib_rdata_compare_binary(data1, data2, size1, size2);
 
 		if (cmp != 0) {
 			return cmp;
