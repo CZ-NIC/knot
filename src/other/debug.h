@@ -5,9 +5,8 @@
 #define __debug_h__
 #include "log.h"
 
-#define ST_DEBUG
-
-#define SM_DEBUG
+//#define ST_DEBUG
+//#define SM_DEBUG
 //#define DA_DEBUG
 //#define CUCKOO_DEBUG
 //#define CUCKOO_DEBUG_HASH
