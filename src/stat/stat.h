@@ -40,15 +40,6 @@ typedef struct stat_t {
 //  gatherer_t *gatherer; not needed when using static gatherer.
 } stat_t;
 
-uint stat_last_query_time( stat_t *stat ); /* private */
-
-void stat_add_data( stat_t *stat, uint query_time ); /* private */
-
-/*!
- * \brief Initialize static gatherer structure common for all threads.
- */
-void stat_static_gath_init();
-
 /*!
  * \brief Creates new stat_t structure.
  *
@@ -63,13 +54,6 @@ stat_t *stat_new();
  * \param protocol Protocol to be assigned to stat structure.
  */
 void stat_set_protocol( stat_t *stat, int protocol );
-
-/*!
- * \brief Frees stat_t structure.
- *
- * \param stat Pointer to stat structure to be deallocated.
- */
-void stat_free( stat_t *stat );
 
 /*!
  * \brief Gets the time from a processing function.
@@ -88,19 +72,26 @@ void stat_get_first( stat_t *stat, struct sockaddr_in *s_addr );
 void stat_get_second( stat_t *stat );
 
 /*!
+ * \brief Frees stat_t structure.
+ *
+ * \param stat Pointer to stat structure to be deallocated.
+ */
+void stat_free( stat_t *stat );
+
+/*!
  * \brief Initializes static gatherer.
  */
 void stat_static_gath_init();
 
 /*!
- * \brief Frees static gatherer, calls gatherer_free().
- */
-void stat_static_gath_free();
-
-/*!
  * \brief Starts static gatherer's sleeper thread.
  */
 void stat_static_gath_start();
+
+/*!
+ * \brief Frees static gatherer, calls gatherer_free().
+ */
+void stat_static_gath_free();
 
 #endif
 
