@@ -19,7 +19,7 @@
 enum desclen { DNSLIB_RRTYPE_DESCRIPTORS_LENGTH = 101 };
 
 /* Taken from RFC 1035, section 3.2.4.  */
-static lookup_table_type dns_rrclasses[] = {
+static dnslib_lookup_table_t dns_rrclasses[] = {
 	{ DNSLIB_CLASS_IN, "IN" },	/* the Internet */
 	{ DNSLIB_CLASS_CS, "CS" },	/* the CSNET class (Obsolete) */
 	{ DNSLIB_CLASS_CH, "CH" },	/* the CHAOS class */
@@ -251,7 +251,7 @@ static dnslib_rrtype_descriptor_t dnslib_rrtype_descriptors[DNSLIB_RRTYPE_DESCRI
   	  { DNSLIB_RDATA_WF_SHORT, DNSLIB_RDATA_WF_BYTE, DNSLIB_RDATA_WF_BYTE, DNSLIB_RDATA_WF_BINARY } },*/
 };
 
-lookup_table_type *lookup_by_name( lookup_table_type *table, const char *name )
+dnslib_lookup_table_t *dnslib_lookup_by_name( dnslib_lookup_table_t *table, const char *name )
 {
     while (table->name != NULL) {
         if (strcasecmp(name, table->name) == 0)
@@ -262,7 +262,7 @@ lookup_table_type *lookup_by_name( lookup_table_type *table, const char *name )
 	  return NULL;
 }
 
-lookup_table_type *lookup_by_id( lookup_table_type *table, int id )
+dnslib_lookup_table_t *dnslib_lookup_by_id( dnslib_lookup_table_t *table, int id )
 {
     while (table->name != NULL) {
         if (table->id == id)
@@ -273,7 +273,18 @@ lookup_table_type *lookup_by_id( lookup_table_type *table, int id )
     return NULL;
 }
 
-size_t strlcpy( char *dst, const char *src, size_t siz )
+/*!
+ * \brief Strlcpy - safe string copy function, based on FreeBSD implementation.
+ *  
+ * http://www.openbsd.org/cgi-bin/cvsweb/src/lib/libc/string/
+ *
+ * \param dst Destination string.
+ * \param src Source string.
+ * \param siz How many characters to copy - 1.
+ *
+ * \return strlen(src), if retval >= siz, truncation occurred.
+ */
+size_t dnslib_strlcpy( char *dst, const char *src, size_t siz )
 {
     char *d = dst;
     const char *s = src;
@@ -330,7 +341,7 @@ dnslib_rrtype_descriptor_t *rrtype_descriptor_by_name( const char *name )
   	return NULL;
 }
 
-const char *rrtype_to_string( uint16_t rrtype )
+const char *dnslib_rrtype_to_string( uint16_t rrtype )
 {
   	static char buf[20];
   	dnslib_rrtype_descriptor_t *descriptor = 
@@ -343,7 +354,7 @@ const char *rrtype_to_string( uint16_t rrtype )
   	}
 }
 
-uint16_t rrtype_from_string( const char *name )
+uint16_t dnslib_rrtype_from_string( const char *name )
 {
     char *end;
     long rrtype;
@@ -373,26 +384,26 @@ uint16_t rrtype_from_string( const char *name )
     return (uint16_t) rrtype;
 }
 
-const char *rrclass_to_string(uint16_t rrclass)
+const char *dnslib_rrclass_to_string(uint16_t rrclass)
 {
   	static char buf[20];
-  	lookup_table_type *entry = lookup_by_id(dns_rrclasses, rrclass);
+  	dnslib_lookup_table_t *entry = dnslib_lookup_by_id(dns_rrclasses, rrclass);
   	if (entry) {
         assert(strlen(entry->name) < sizeof(buf)); //XXX check it using other way
-        strlcpy(buf, entry->name, sizeof(buf)); 
+        dnslib_strlcpy(buf, entry->name, sizeof(buf)); 
   	} else {
   	  	snprintf(buf, sizeof(buf), "CLASS%d", (int) rrclass);
   	}
   	return buf;
 }
 
-uint16_t rrclass_from_string(const char *name)
+uint16_t dnslib_rrclass_from_string(const char *name)
 {
     char *end;
     long rrclass;
-  	lookup_table_type *entry;
+  	dnslib_lookup_table_t *entry;
   
-  	entry = lookup_by_name(dns_rrclasses, name);
+  	entry = dnslib_lookup_by_name(dns_rrclasses, name);
   	if (entry) {
   	  	return (uint16_t) entry->id;
     }
