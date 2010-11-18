@@ -81,6 +81,11 @@ dnslib_dname_t *dnslib_dname_new_from_str( char *name, uint size,
  * \note If the given name is not a FQDN, the result will be neither. This
  *       does not correspond to the behaviour of dnslib_dname_new_from_str().
  * \todo Address the FQDN issue.
+ * \todo This function does not check if the given data is in correct wir
+ *       format at all. It thus creates a invalid domain name, which if passed
+ *       e.g. to dnslib_dname_to_str() may result in crash. Decide whether it
+ *       is OK to retain this and check the data in other functions before
+ *       calling this one, or if it should verify the given data.
  */
 dnslib_dname_t *dnslib_dname_new_from_wire( uint8_t *name, uint size,
 											struct dnslib_node *node );
