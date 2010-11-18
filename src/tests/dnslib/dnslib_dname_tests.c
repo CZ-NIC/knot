@@ -1,3 +1,6 @@
+#include <string.h>
+#include <assert.h>
+
 #include "tap_unit.h"
 
 #include "common.h"
