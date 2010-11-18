@@ -157,8 +157,8 @@ uint dnslib_rdata_wire_size( const dnslib_rdata_t *rdata,
  * \return 0 on success.
  * \return <> 0 otherwise.
  *
- * \todo Do we really need all those different kinds of RDATA items? It makes
- *       converting more complicated.
+ * \todo Shouldn't we keep the size of the data always in the item? It would
+ *       make the converting quicker.
  */
 int dnslib_rdata_to_wire( const dnslib_rdata_t *rdata, const uint8_t *format,
 						  uint8_t *buffer, uint buf_size );
