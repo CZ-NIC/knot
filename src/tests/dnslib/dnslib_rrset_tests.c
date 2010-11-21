@@ -31,28 +31,105 @@ unit_api dnslib_rrset_tests_api = {
  *  Unit implementation.
  */
 
-enum { TEST_RRSETS = 1 };
+enum { TEST_RRSETS = 3 , TEST_RRSIGS = 3};
 
-static const void *RRSIG_ADDRESS = (void *)0xDEADBEEF;
-static const void *RRSIG_FIRST = RRSIG_ADDRESS + 10;
+//void *RRSIG_ADDRESS = (void *)0xDEADBEEF;
+//void *RRSIG_FIRST = RRSIG_ADDRESS + 10;
+
+static dnslib_rdata_t *rdatas[TEST_RRSETS];
 
 struct test_rrset {
 	char *owner;
 	uint16_t type;
 	uint16_t rclass;
 	uint32_t  ttl;
-	uint rdata_count;
-	uint8_t **rdata;
-	void *signatures;
-	void *rrsig_first;
+	dnslib_rdata_t *rdata;
+	const dnslib_rrset_t *rrsigs;
+	const dnslib_rdata_t *rrsig_first;
 	uint rrsig_count;
 };
 
-static const struct test_rrset test_rrsets[TEST_RRSETS] = {
-	{ "example.com.", 2, 1, 3600, 2,
-	  { "some arbitrary data", "some other data" },
-	  RRSIG_ADDRESS, RRSIG_ADDRESS, RRSIG_FIRST, 1 }
+static struct test_rrset test_rrsets[TEST_RRSETS] = {
+	{ "example.com.", 
+    2,
+    1, 
+    3600, 
+    (dnslib_rdata_t *) "signature 1",
+    NULL,
+    NULL,
+    0 },
+ 	{ "example2.com.", 
+    2,
+    1, 
+    3600,
+    (dnslib_rdata_t *) "signature 2",
+    NULL,
+    NULL,
+    0 },
+ 	{ "example3.com.", 
+    2,
+    1, 
+    3600, 
+    (dnslib_rdata_t *) "signature 3",
+    NULL,
+    NULL,
+    0 }
 };
+
+static const struct test_rrset test_rrsigs[TEST_RRSIGS] = {
+    { "example.com.", 
+    46,
+    1, 
+    3600, 
+//    {NULL, {"signature data", 1, NULL}}, how to initialize unions?
+    NULL,
+    NULL,
+    NULL,
+    1 }, 
+    { "example2.com.", 
+    46,
+    1, 
+    3600, 
+    NULL,
+    NULL,
+    NULL,
+    1 },
+    { "example3.com.", 
+    46,
+    1, 
+    3600, 
+    NULL,
+    NULL,
+    NULL,
+    1 }
+};
+
+
+/* fills test_rrsets with random rdata */
+static void create_rdata()
+{
+ 	dnslib_rdata_t *rdata = dnslib_rdata_new();
+	dnslib_rdata_item_t item;
+	item.raw_data = RDATA_ITEM_PTR;
+
+	dnslib_rdata_set_item(rdata, 0, item);
+
+    for (int i = 0; i < TEST_RRSETS; i++) {
+        rdatas[i] = dnslib_rdata_new(); 
+       	dnslib_rdata_item_t item;
+      	item.raw_data = RDATA_ITEM_PTR;
+  
+  	    dnslib_rdata_set_item(rdata, 0, item);
+  
+    	  uint8_t data[DNSLIB_MAX_RDATA_WIRE_SIZE];
+    	  generate_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE);
+
+	      // set items through set_items() and then call set_item()
+      	uint16_t rrtype = rand() % DNSLIB_RRTYPE_LAST + 1;
+    	  fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, rrtype, rdatas[i]);
+        test_rrsets[i].rdata = rdatas[i];
+    }
+}
 
 static int check_rrset( const dnslib_rrset_t *rrset, int i,
 						int check_rdata, int check_rrsigs )
@@ -90,34 +167,45 @@ static int check_rrset( const dnslib_rrset_t *rrset, int i,
 		++errors;
 	}
 
-//	if (check_rdata) {
-//		dnslib_rdata_t *rdata = rrset->rdata;
-//		int count = 0;
+	if (check_rdata) {
+		dnslib_rdata_t *rdata = rrset->rdata;
 
-//		if (rdata == NULL && test_rrsets[i].rdata_count > 0) {
-//			diag("There are no RDATAs in the RRSet (should be %u)",
-//				 test_rrsets[i].rdata_count);
-//			++errors;
-//		}
-//		if (rdata != NULL) {
-//			while (rdata->next != NULL && rdata->next != rrset->rdata) {
+		if (rdata == NULL) {
+			diag("There are no RDATAs in the RRSet");
+			++errors;
+		}
+		if (rdata != NULL) {
+			while (rdata->next != NULL && rdata->next != rrset->rdata) {
+          rdata = rdata->next;
+			}
+			if (rdata->next == NULL) {
+				diag("The list of RDATAs is not cyclical!");
+				++errors;
+			} else {
+				assert(rdata == rrset->rdata);
+			}
+  	}
+  }
+	if (check_rrsigs) {
 
-//			}
+      static const char *signature_strings[TEST_RRSIGS][3] = {"signature 1", NULL, NULL,
+                                                              "signature 2", NULL, NULL,
+                                                              "signature 3", NULL, NULL};
 
-//			if (rdata->next == NULL) {
-//				diag("The list of RDATAs is not cyclical!");
-//				++errors;
-//			} else {
-//				assert(rdata == rrset->rdata);
-//			}
-//		}
-//	}
+      dnslib_rrset_t *rrsigs;
 
-//	if (check_rrsigs) {
+      for (int i = 0; i < TEST_RRSETS; i++) {
+          rrsigs = dnslib_rrset_rrsigs(rrset);
+          for (int j = 0; j < rrset->rrsig_count; j++) {
+              if (strcmp(rrsigs->rdata->items[0].raw_data, signature_strings[i,j])) {
+                  errors++;
+              }
+          }
+      }
 
-//	}
+	}
 
-	return errors;
+	return (errors == 1);
 }
 
 /*!
@@ -130,14 +218,16 @@ static int test_rrset_create()
 	int errors = 0;
 
 	for (int i = 0; i < TEST_RRSETS; ++i) {
-		dnslib_dname_t *owner = dnslib_dname_new_from_str(test_rrsets[i].owner,
-										strlen(test_rrsets[i].owner));
+		dnslib_dname_t *owner = dnslib_dname_new_from_str(test_rrsets[i].owner, 
+                            strlen(test_rrsets[i].owner), NODE_ADDRESS);
 		if (owner == NULL) {
 			diag("Error creating owner domain name!");
 			return 0;
 		}
 		dnslib_rrset_t *rrset = dnslib_rrset_new(owner, test_rrsets[i].type,
 							test_rrsets[i].rclass, test_rrsets[i].ttl);
+
+//    dnslib_rrset_add_rdata(rrset, test_rrsets[i].rdata);
 
 		errors += check_rrset(rrset, i, 0, 0);
 		dnslib_rrset_free(&rrset);
@@ -163,12 +253,93 @@ static int test_rrset_delete()
 
 static int test_rrset_rdata()
 {
-	return 0;
+    /* rdata add */
+    int errors = 0;
+    for (int i = 0; i < TEST_RRSETS; i++) {
+    		dnslib_dname_t *owner = dnslib_dname_new_from_str(test_rrsets[i].owner, 
+                                strlen(test_rrsets[i].owner), NODE_ADDRESS);
+    		if (owner == NULL) {
+    			diag("Error creating owner domain name!");
+    			return 0;
+    		}
+    		dnslib_rrset_t *rrset = dnslib_rrset_new(owner, test_rrsets[i].type,
+    							test_rrsets[i].rclass, test_rrsets[i].ttl);
+
+        dnslib_rrset_add_rdata(rrset, test_rrsets[i].rdata);
+
+    		errors += check_rrset(rrset, i, 1, 0);
+
+    		dnslib_rrset_free(&rrset);
+    		dnslib_dname_free(&owner);
+    }
+
+    //test whether sorting works
+    //TODO test with actual RDATA and corresponing compare function
+
+    dnslib_rrset_t *rrset = dnslib_rrset_new(NULL, 0, 0, 0);
+
+    dnslib_rdata_t *tmp;
+
+    dnslib_rdata_item_t *item;
+
+    char *test_strings[10] = { "-2", "9", "2", "10", "1", "5", "8", "4", "6", "7" };
+    
+    for (int i = 0; i < 10; i++) {
+        tmp = dnslib_rdata_new();
+        item=malloc(sizeof(dnslib_rdata_item_t));
+        item->raw_data = (uint8_t*)test_strings[i];
+        dnslib_rdata_set_items(tmp, item, 1);
+        dnslib_rrset_add_rdata(rrset, tmp);
+    }
+
+    tmp = rrset->rdata;
+
+    int last = atoi((const char *)rrset->rdata->items[0].raw_data);
+
+    while (tmp->next!=rrset->rdata && !errors)
+    {
+        tmp = tmp->next;
+        if (last > atoi((const char *)tmp->items[0].raw_data)) {
+            diag("Sorting of RDATA error!");
+            errors++;
+        }
+        last = atoi((const char *)tmp->items[0].raw_data);
+    }
+
+    dnslib_rrset_free(&rrset);
+    //TODO free Rdatas
+
+    return (errors == 0);
 }
 
 static int test_rrset_rrsigs()
 {
-	return 0;
+    int errors = 0;
+
+    for (int i = 0; i < TEST_RRSETS; i++) {
+    dnslib_dname_t *owner = dnslib_dname_new_from_str(test_rrsets[i].owner, 
+                            strlen(test_rrsets[i].owner), NODE_ADDRESS);
+    if (owner == NULL) {
+     	diag("Error creating owner domain name!");
+    	return 0;
+   	}
+    dnslib_rrset_t *rrset = dnslib_rrset_new(owner, test_rrsets[i].type,
+    	test_rrsets[i].rclass, test_rrsets[i].ttl);
+
+    dnslib_rrset_add_rdata(rrset, test_rrsets[i].rdata);
+
+    //owners are the same
+    dnslib_rrset_t *rrsig = dnslib_rrset_new(owner, test_rrsigs[i].type,
+    	test_rrsigs[i].rclass, test_rrsigs[i].ttl);
+   
+    dnslib_rrset_set_rrsigs(rrset, rrsig, dnslib_rrset_rrsig_first(rrsig),
+                            dnslib_rrset_rrsig_count(rrset));
+
+    errors += check_rrset(rrset, i, 0, 1);
+
+    }
+
+    return (errors == 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -188,6 +359,8 @@ static int dnslib_rrset_tests_count(int argc, char *argv[])
 static int dnslib_rrset_tests_run(int argc, char *argv[])
 {
 	int res_create = 0;
+
+  create_rdata();
 
 	res_create = test_rrset_create();
 	ok(res_create, "rrset: create");
