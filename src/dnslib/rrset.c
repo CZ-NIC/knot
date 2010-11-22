@@ -41,53 +41,18 @@ int dnslib_rrset_add_rdata( dnslib_rrset_t *rrset, dnslib_rdata_t *rdata )
     }
 
     if (rrset->rdata == NULL) {
-        if ((rrset->rdata = dnslib_rdata_new()) == NULL) {
-            ERR_ALLOC_FAILED;
-            return -1;
-        }
-        rrset->rdata->items = rdata->items;
-        rrset->rdata->count = rdata->count;
+        rrset->rdata = rdata;
         rrset->rdata->next = rrset->rdata;
     } else {
-        dnslib_rdata_t *new_element = dnslib_rdata_new();
-        if (new_element == NULL) {
-            ERR_ALLOC_FAILED;
-            return -1;
-        }
-
         dnslib_rdata_t *tmp;
 
         tmp = rrset->rdata;
         
-        new_element->items = rdata->items;
-
-        new_element->count = rdata->count;
-
-        dnslib_rrtype_descriptor_t *desc = 
-        dnslib_rrtype_descriptor_by_type(rrset->type);
-
-        //TODO change to rdata_compare
-
-        if (atoi(rdata->items[0].raw_data) < atoi(tmp->items[0].raw_data)) {
-            //TODO remove this cycle and assert
-            tmp = rrset->rdata;
-            while (tmp->next != rrset->rdata) {
-                tmp = tmp->next;
-            }
-
-            new_element->next = rrset->rdata;
-            rrset->rdata = new_element;   
-                   
-            assert(tmp->next == new_element);   
-        } else {
-            while (tmp->next != rrset->rdata && 
-                   atoi(rdata->items[0].raw_data) > 
-                   atoi(tmp->next->items[0].raw_data)) {
-                tmp = tmp->next;
-            }
-                new_element->next = tmp->next;
-                tmp->next = new_element;
+        while (tmp->next != rrset->rdata) {
+            tmp = tmp->next;
         }
+        rdata->next = tmp->next;
+        tmp->next = rdata;
     }
     return 0;
 }

@@ -289,17 +289,17 @@ static int test_rrset_rdata()
     }
 
     tmp = rrset->rdata;
-
-    int last = atoi((const char *)rrset->rdata->items[0].raw_data);
-
+    
+    int i = 0;
     while (tmp->next!=rrset->rdata && !errors)
     {
-        tmp = tmp->next;
-        if (last > atoi((const char *)tmp->items[0].raw_data)) {
-            diag("Sorting of RDATA error!");
+        if (atoi(test_strings[i]) != atoi(tmp->items[0].raw_data)) {
+            diag("Adding RDATA error!, is %s should be %s",
+                 tmp->items[0].raw_data, test_strings[i]);
             errors++;
         }
-        last = atoi((const char *)tmp->items[0].raw_data);
+        i++;
+        tmp = tmp->next;
     }
 
     dnslib_rrset_free(&rrset);
