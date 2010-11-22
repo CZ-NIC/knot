@@ -234,14 +234,15 @@ int dnslib_dname_compare( const dnslib_dname_t *d1, const dnslib_dname_t *d2 )
 		return 0;
 	}
 
-	const uint8_t *pos1, *pos2;
-
 	// jump to the last label and store addresses of labels on the way there
 	// TODO: consider storing label offsets in the domain name structure
 	const uint8_t *labels1[DNSLIB_MAX_DNAME_LABELS];
 	const uint8_t *labels2[DNSLIB_MAX_DNAME_LABELS];
 	int i1 = 0;
 	int i2 = 0;
+
+	const uint8_t *pos1 = dnslib_dname_name(d1);
+	const uint8_t *pos2 = dnslib_dname_name(d1);
 
 	while (*pos1 != '\0') {
 		labels1[i1++] = pos1;
