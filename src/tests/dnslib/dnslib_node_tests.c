@@ -130,6 +130,7 @@ static int test_node_get_parent()
         }
         dnslib_node_free(&nodes[i]);
     }
+    return (errors == 0);
 }
 
 static int test_node_delete()
