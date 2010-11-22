@@ -240,7 +240,7 @@ static int test_dname_compare()
 
     for (int i = 0; i < TEST_DOMAINS_OK; i++)
     {
-        dnslib_dname_free(dnames[i]);
+        dnslib_dname_free(&dnames[i]);
     }
 
     return (errors == 0);
