@@ -42,7 +42,8 @@ dnslib_node_t *dnslib_node_new( dnslib_dname_t *owner, dnslib_node_t *parent )
 
 int dnslib_node_add_rrset( dnslib_node_t *node, dnslib_rrset_t *rrset )
 {
-    if ((skip_insert(node->rrsets, (void*)rrset->type, (void*)rrset, NULL)) != 0) {
+	if ((skip_insert(node->rrsets, (void *)rrset->type, (void *)rrset, NULL))
+		!= 0) {
         return -2;
     }
 
@@ -52,7 +53,7 @@ int dnslib_node_add_rrset( dnslib_node_t *node, dnslib_rrset_t *rrset )
 const dnslib_rrset_t *dnslib_node_get_rrset( const dnslib_node_t *node,
 											 uint16_t type )
 {
-    return (dnslib_rrset_t*)skip_find(node->rrsets, type);
+	return (dnslib_rrset_t*)skip_find(node->rrsets, (void *)type);
 }
 
 const dnslib_node_t *dnslib_node_get_parent( const dnslib_node_t *node )
