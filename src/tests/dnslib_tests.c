@@ -25,7 +25,9 @@ unit_api dnslib_tests_api = {
 static int dnslib_tests_count(int argc, char *argv[])
 {
    return dnslib_dname_tests_count(argc, argv)
-		   + dnslib_rdata_tests_count(argc, argv);
+		   + dnslib_rdata_tests_count(argc, argv)
+		   + dnslib_rrset_tests_count(argc, argv)
+		   + dnslib_node_tests_count(argc, argv);
 }
 
 /*! Run all scheduled tests for given parameters.

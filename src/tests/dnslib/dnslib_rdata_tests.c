@@ -677,7 +677,7 @@ static int test_rdata_to_wire()
 
 /*----------------------------------------------------------------------------*/
 
-static const int DNSLIB_RDATA_TEST_COUNT = 8;
+static const int DNSLIB_RDATA_TEST_COUNT = 7;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.

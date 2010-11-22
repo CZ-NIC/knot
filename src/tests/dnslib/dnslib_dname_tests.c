@@ -221,7 +221,6 @@ static int test_dname_compare()
   	}
 
     int errors = 0;
-    int ret = 0;
     /* abc < some */
     if (dnslib_dname_compare(dnames[0], dnames[1]) != -1) {
         diag("Dname comparison error");
