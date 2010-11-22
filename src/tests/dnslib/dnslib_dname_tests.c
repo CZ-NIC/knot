@@ -23,7 +23,7 @@ unit_api dnslib_dname_tests_api = {
  */
 
 // C will not accept const int in other const definition
-enum { TEST_DOMAINS_OK = 1 };
+enum { TEST_DOMAINS_OK = 4 };
 
 enum { TEST_DOMAINS_BAD = 2 };
 
@@ -37,7 +37,10 @@ struct test_domain {
 
 static const struct test_domain
 		test_domains_ok[TEST_DOMAINS_OK] = {
-	{ "some.test.domain.com.", "\4some\4test\6domain\3com", 22 }
+  { "abc.test.domain.com.", "\3abc\4test\6domain\3com", 21 },
+	{ "some.test.domain.com.", "\4some\4test\6domain\3com", 22 },
+	{ "xyz.test.domain.com.", "\3xyz\4test\6domain\3com", 21 },
+	{ "some.test.domain.com.", "\4some\4test\6domain\3com", 22 }  
 };
 
 static const struct test_domain
@@ -207,7 +210,43 @@ static int test_faulty_data()
     return 1;
 }
 
-static const int DNSLIB_DNAME_TEST_COUNT = 6;
+static int test_dname_compare()
+{
+    dnslib_dname_t *dnames[TEST_DOMAINS_OK];
+
+  	for (int i = 0; i < TEST_DOMAINS_OK; ++i) {
+    		dnames[i] = dnslib_dname_new_from_wire(
+				(uint8_t *)test_domains_ok[i].wire, test_domains_ok[i].size,
+		 		NODE_ADDRESS);
+  	}
+
+    int errors = 0;
+    int ret = 0;
+    /* abc < some */
+    if (dnslib_dname_compare(dnames[0], dnames[1]) != -1) {
+        diag("Dname comparison error");
+        errors++;
+    }
+    /* some == some */
+    if (dnslib_dname_compare(dnames[1], dnames[3]) != 0) {
+        diag("Dname comparison error");
+        errors++;
+    }
+    /*xyz > some */
+    if (dnslib_dname_compare(dnames[2], dnames[1]) != 1) {
+        diag("Dname comparison error");
+        errors++;
+    }
+
+    for (int i = 0; i < TEST_DOMAINS_OK; i++)
+    {
+        dnslib_dname_free(dnames[i]);
+    }
+
+    return (errors == 0);
+}
+
+static const int DNSLIB_DNAME_TEST_COUNT = 7;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -228,7 +267,7 @@ static int dnslib_dname_tests_run(int argc, char *argv[])
 	res_create = test_dname_create();
 	ok(res_create, "dname: create empty");
 
-	skip(!res_create, 4);
+	skip(!res_create, 5);
 
 	todo();
 
@@ -247,6 +286,8 @@ static int dnslib_dname_tests_run(int argc, char *argv[])
   lives_ok(test_faulty_data();, "dname: faulty data test");
 
 	endskip;	/* !res_str || !res_wire */
+
+  ok(test_dname_compare(), "dname: compare");
 
 	endskip;	/* !res_create */
 
