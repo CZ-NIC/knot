@@ -12,12 +12,17 @@
 #include "node.h"
 #include "rrset.h"
 
-int compare_rrset_types( void *rrset_1, void *rrset_2 )
+//void print_node(void *key, void *val)
+//{
+//    dnslib_rrset_t *rrset = (dnslib_node_t*) val;
+//    int *key_i = (int*)key;
+//    printf("key %d\n", key_i);
+//    printf("%d\n", rrset->type);
+//}
+
+int compare_rrset_types( void *key1, void *key2 )
 {
-    return (((dnslib_rrset_t *)rrset_1)->type == 
-            ((dnslib_rrset_t *)rrset_2)->type ? 0 : 
-            ((dnslib_rrset_t *)rrset_1)->type < 
-            ((dnslib_rrset_t *)rrset_2)->type ? -1 : 1);
+    return (key1 == key2 ? 0 : key1 < key2 ? -1 : 1);
 }
 
 dnslib_node_t *dnslib_node_new( dnslib_dname_t *owner, dnslib_node_t *parent )
@@ -37,16 +42,17 @@ dnslib_node_t *dnslib_node_new( dnslib_dname_t *owner, dnslib_node_t *parent )
 
 int dnslib_node_add_rrset( dnslib_node_t *node, dnslib_rrset_t *rrset )
 {
-    if ((skip_insert(node->rrsets, &rrset->type, &rrset, NULL)) != 0) {
+    if ((skip_insert(node->rrsets, (void*)rrset->type, (void*)rrset, NULL)) != 0) {
         return -2;
     }
+
     return 0;
 }
 
 const dnslib_rrset_t *dnslib_node_get_rrset( const dnslib_node_t *node,
 											 uint16_t type )
 {
-    return (dnslib_rrset_t*)skip_find(node->rrsets, &type);
+    return (dnslib_rrset_t*)skip_find(node->rrsets, type);
 }
 
 const dnslib_node_t *dnslib_node_get_parent( const dnslib_node_t *node )
