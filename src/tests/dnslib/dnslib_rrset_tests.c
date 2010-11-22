@@ -230,7 +230,7 @@ static int test_rrset_create()
 		dnslib_dname_free(&owner);
 	}
 
-	diag("Total errors: %d", errors);
+	//diag("Total errors: %d", errors);
 
 	return (errors == 0);
 }
@@ -293,7 +293,7 @@ static int test_rrset_rdata()
     int i = 0;
     while (tmp->next!=rrset->rdata && !errors)
     {
-        if (atoi(test_strings[i]) != atoi(tmp->items[0].raw_data)) {
+		if (strcmp(test_strings[i], (char *)tmp->items[0].raw_data)) {
             diag("Adding RDATA error!, is %s should be %s",
                  tmp->items[0].raw_data, test_strings[i]);
             errors++;
