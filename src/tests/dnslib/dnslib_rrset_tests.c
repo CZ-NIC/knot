@@ -49,6 +49,8 @@ struct test_rrset {
 	uint rrsig_count;
 };
 
+static const char *signature_strings[TEST_RRSIGS] = {"signature 1", "signature 2", "signature 3"};
+
 static struct test_rrset test_rrsets[TEST_RRSETS] = {
 	{ "example.com.", 
     2,
@@ -186,26 +188,20 @@ static int check_rrset( const dnslib_rrset_t *rrset, int i,
 			}
   	}
   }
+
 	if (check_rrsigs) {
 
-      static const char *signature_strings[TEST_RRSIGS][3] = {"signature 1", NULL, NULL,
-                                                              "signature 2", NULL, NULL,
-                                                              "signature 3", NULL, NULL};
+      const dnslib_rrset_t *rrsigs;
 
-      dnslib_rrset_t *rrsigs;
-
-      for (int i = 0; i < TEST_RRSETS; i++) {
+      for (int i = 0; i < TEST_RRSETS && !errors; i++) {
           rrsigs = dnslib_rrset_rrsigs(rrset);
-          for (int j = 0; j < rrset->rrsig_count; j++) {
-              if (strcmp(rrsigs->rdata->items[0].raw_data, signature_strings[i,j])) {
+              if (strcmp((const char *)rrsigs->rdata->items[0].raw_data, signature_strings[i])) {
+                  diag("Signatures are not equal to those set when creating.");
                   errors++;
               }
           }
-      }
-
-	}
-
-	return (errors == 1);
+  }
+	return errors;
 }
 
 /*!
@@ -230,6 +226,7 @@ static int test_rrset_create()
 //    dnslib_rrset_add_rdata(rrset, test_rrsets[i].rdata);
 
 		errors += check_rrset(rrset, i, 0, 0);
+
 		dnslib_rrset_free(&rrset);
 		dnslib_dname_free(&owner);
 	}
@@ -316,6 +313,10 @@ static int test_rrset_rrsigs()
 {
     int errors = 0;
 
+    dnslib_rdata_item_t *item;
+    
+    dnslib_rdata_t *tmp; 
+
     for (int i = 0; i < TEST_RRSETS; i++) {
     dnslib_dname_t *owner = dnslib_dname_new_from_str(test_rrsets[i].owner, 
                             strlen(test_rrsets[i].owner), NODE_ADDRESS);
@@ -331,10 +332,16 @@ static int test_rrset_rrsigs()
     //owners are the same
     dnslib_rrset_t *rrsig = dnslib_rrset_new(owner, test_rrsigs[i].type,
     	test_rrsigs[i].rclass, test_rrsigs[i].ttl);
-   
-    dnslib_rrset_set_rrsigs(rrset, rrsig, dnslib_rrset_rrsig_first(rrsig),
-                            dnslib_rrset_rrsig_count(rrset));
 
+    tmp = dnslib_rdata_new();
+    item=malloc(sizeof(dnslib_rdata_item_t));
+    item->raw_data = (uint8_t*)signature_strings[i];
+    dnslib_rdata_set_items(tmp, item, 1);
+    dnslib_rrset_add_rdata(rrsig, tmp);
+
+    if (dnslib_rrset_set_rrsigs(rrset, rrsig, rrsig->rdata, 1)!=0) {
+        ;
+    }
     errors += check_rrset(rrset, i, 0, 1);
 
     }
@@ -371,11 +378,11 @@ static int dnslib_rrset_tests_run(int argc, char *argv[])
 
 	ok(test_rrset_delete(), "rrset: delete");
 
+	endtodo;
+
 	ok(test_rrset_rdata(), "rrset: rdata manipulation");
 
 	ok(test_rrset_rrsigs(), "rrset: rrsigs manipulation");
-
-	endtodo;
 
 	endskip;	/* !res_create */
 
