@@ -89,7 +89,7 @@ dnslib_rdata_t *dnslib_rdata_new();
  * \param item RDATA item value to be set.
  *
  * \retval 0 if successful.
- * \retval < 0 on error. (-1 if the allocation was not successful).
+ * \retval -1 if \a pos is not a valid position.
  *
  * \todo Use the union or a pointer to it as parameter? IMHO there is always
  *       only one pointer that is copied, so it doesn't matter.
@@ -104,16 +104,15 @@ int dnslib_rdata_set_item( dnslib_rdata_t *rdata, uint pos,
  * \param items An array of RDATA items to be stored in this RDATA structure.
  * \param count Count of RDATA items to be stored.
  *
- * If \a rdata has been empty so far (\a rdata->count == 0), the necessary space
- * is allocated. Otherwise \a rdata->count must be equal to \a count. If it is
- * not, this function does not alter the stored items and returns an error.
+ * \a rdata must be empty so far (\a rdata->count == 0). The necessary space
+ * is allocated.
  *
  * This function copies the array of RDATA items from \a items to \a rdata.
  *
  * \retval 0 if successful.
- * \retval 1 if the \a count is 0, i.e. nothing was done.
- * \retval -1 if allocation of necessary space was not successful.
- * \retval -2 if \a rdata->count != \a count.
+ * \retval 1 if \a rdata is NULL or \a items is NULL or \a count is 0.
+ * \retval -1 if \a rdata was not empty.
+ * \retval -2 if allocation of necessary space was not successful.
  */
 int dnslib_rdata_set_items( dnslib_rdata_t *rdata,
 							const dnslib_rdata_item_t *items, uint count );
