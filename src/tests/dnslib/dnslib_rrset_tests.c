@@ -188,17 +188,22 @@ static int check_rrset( const dnslib_rrset_t *rrset, int i,
 			}
   	}
   }
+ 
+  /* will work only with nul terminated strings, consider changing to more
+   * versatile implementation */
 
 	if (check_rrsigs) {
 
       const dnslib_rrset_t *rrsigs;
 
-          rrsigs = dnslib_rrset_rrsigs(rrset);
-          if (strcmp((const char *)rrsigs->rdata->items[0].raw_data, signature_strings[i])) {
-              diag("Signatures are not equal to those set when creating. Comparing "
-                "%s with %s", rrsigs->rdata->items[0].raw_data, signature_strings[i]);
-               errors++;
-             }
+      rrsigs = dnslib_rrset_rrsigs(rrset);
+      if (strcmp((const char *)rrsigs->rdata->items[0].raw_data,
+          signature_strings[i])) {
+          diag("Signatures are not equal to those set when creating."
+               "Comparing %s with %s", 
+               rrsigs->rdata->items[0].raw_data, signature_strings[i]);
+          errors++;
+      }
   }
 	return errors;
 }
@@ -221,8 +226,6 @@ static int test_rrset_create()
 		}
 		dnslib_rrset_t *rrset = dnslib_rrset_new(owner, test_rrsets[i].type,
 							test_rrsets[i].rclass, test_rrsets[i].ttl);
-
-//    dnslib_rrset_add_rdata(rrset, test_rrsets[i].rdata);
 
 		errors += check_rrset(rrset, i, 0, 0);
 
@@ -269,8 +272,7 @@ static int test_rrset_rdata()
     		dnslib_dname_free(&owner);
     }
 
-    //test whether sorting works
-    //TODO test with actual RDATA and corresponing compare function
+    //test whether adding works properly = keeps order of added elements
 
     dnslib_rrset_t *rrset = dnslib_rrset_new(NULL, 0, 0, 0);
 
@@ -278,7 +280,8 @@ static int test_rrset_rdata()
 
     dnslib_rdata_item_t *item;
 
-    char *test_strings[10] = { "-2", "9", "2", "10", "1", "5", "8", "4", "6", "7" };
+    char *test_strings[10] = 
+    { "-2", "9", "2", "10", "1", "5", "8", "4", "6", "7" };
     
     for (int i = 0; i < 10; i++) {
         tmp = dnslib_rdata_new();
@@ -303,7 +306,6 @@ static int test_rrset_rdata()
     }
 
     dnslib_rrset_free(&rrset);
-    //TODO free Rdatas
 
     return (errors == 0);
 }
@@ -317,32 +319,34 @@ static int test_rrset_rrsigs()
     dnslib_rdata_t *tmp; 
 
     for (int i = 0; i < TEST_RRSETS; i++) {
-    dnslib_dname_t *owner = dnslib_dname_new_from_str(test_rrsets[i].owner, 
-                            strlen(test_rrsets[i].owner), NODE_ADDRESS);
-    if (owner == NULL) {
-     	diag("Error creating owner domain name!");
-    	return 0;
-   	}
-    dnslib_rrset_t *rrset = dnslib_rrset_new(owner, test_rrsets[i].type,
-    	test_rrsets[i].rclass, test_rrsets[i].ttl);
-
-    dnslib_rrset_add_rdata(rrset, test_rrsets[i].rdata);
-
-    //owners are the same
-    dnslib_rrset_t *rrsig = dnslib_rrset_new(owner, test_rrsigs[i].type,
-    	test_rrsigs[i].rclass, test_rrsigs[i].ttl);
-
-    tmp = dnslib_rdata_new();
-    item=malloc(sizeof(dnslib_rdata_item_t));
-    item->raw_data = (uint8_t*)signature_strings[i];
-    dnslib_rdata_set_items(tmp, item, 1);
-    dnslib_rrset_add_rdata(rrsig, tmp);
-
-    if (dnslib_rrset_set_rrsigs(rrset, rrsig, rrsig->rdata, 1)!=0) {
-        ;
-    }
-    errors += check_rrset(rrset, i, 0, 1);
-
+        dnslib_dname_t *owner = dnslib_dname_new_from_str(test_rrsets[i].owner,
+                                strlen(test_rrsets[i].owner), NODE_ADDRESS);
+        if (owner == NULL) {
+         	diag("Error creating owner domain name!");
+        	return 0;
+       	}
+    
+        dnslib_rrset_t *rrset = dnslib_rrset_new(owner, test_rrsets[i].type,
+        	test_rrsets[i].rclass, test_rrsets[i].ttl);
+    
+        dnslib_rrset_add_rdata(rrset, test_rrsets[i].rdata);
+    
+        //owners are the same
+        dnslib_rrset_t *rrsig = dnslib_rrset_new(owner, test_rrsigs[i].type,
+        	test_rrsigs[i].rclass, test_rrsigs[i].ttl);
+    
+        tmp = dnslib_rdata_new();
+        item=malloc(sizeof(dnslib_rdata_item_t));
+        /* signature is just a string, should be sufficient for testing */
+        item->raw_data = (uint8_t*)signature_strings[i];
+        dnslib_rdata_set_items(tmp, item, 1);
+        dnslib_rrset_add_rdata(rrsig, tmp);
+    
+        if (dnslib_rrset_set_rrsigs(rrset, rrsig, rrsig->rdata, 1)!=0) {
+            diag("Could not set rrsig");
+            errors++;
+        }
+        errors += check_rrset(rrset, i, 0, 1);
     }
 
     return (errors == 0);
