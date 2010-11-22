@@ -54,6 +54,18 @@ unit_api dnslib_rdata_tests_api = {
 
 static uint8_t *RDATA_ITEM_PTR = (uint8_t *)0xDEADBEEF;
 
+static dnslib_rdata_item_t TEST_RDATA_ITEMS[3] = {
+	{.dname = (dnslib_dname_t *)0xF00},
+	{.raw_data = (uint8_t *)"some data"},
+	{.raw_data = (uint8_t *)"other data"}
+};
+
+static const dnslib_rdata_t TEST_RDATA = {
+	TEST_RDATA_ITEMS,
+	3,
+	NULL
+};
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Tests dnslib_rdata_new().
@@ -91,57 +103,6 @@ static int test_rdata_delete() {
 	// how to test this??
 	return 0;
 }
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Sets RDATA items within the given RDATA structure one-by-one.
- *
- * Sets the items to hold value RDATA_ITEM_PTR increased by the index of the
- * item (i.e. + 0 for the first, + 1 for the second, etc.).
- */
-//static void set_rdata( dnslib_rdata_t *rdata, int i )
-//{
-//	assert(rdata != NULL);
-
-////	dnslib_rdata_item_t item;
-////	item.raw_data = RDATA_ITEM_PTR;
-
-////	for (int j = 0; j < test_rdatas[i].items; ++j) {
-////		dnslib_rdata_set_item(rdata, j, item);
-////		++item.raw_data;
-////	}
-//}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Sets RDATA items within the given RDATA structure all at once.
- *
- * Sets the items to hold value RDATA_ITEM_PTR increased by the index of the
- * item (i.e. + 0 for the first, + 1 for the second, etc.).
- *
- * \retval > 0 if successful.
- * \retval 0 if an error occured.
- */
-//static int set_rdata_all( dnslib_rdata_t *rdata, int i )
-//{
-//	assert(rdata != NULL);
-
-//	dnslib_rdata_item_t *items = (dnslib_rdata_item_t *)malloc(
-//			test_rdatas[i].items * sizeof(dnslib_rdata_item_t));
-
-//	if (items == NULL) {
-//		diag("Allocation failed in set_rdata_all().");
-//		return 0;
-//	}
-
-//	for (int j = 0; j < test_rdatas[i].items; ++j) {
-//		items[j].raw_data = RDATA_ITEM_PTR + j;
-//	}
-
-//	dnslib_rdata_set_items(rdata, items, test_rdatas[i].items);
-
-//	return 1;
-//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -545,8 +506,32 @@ static int test_rdata_set_item()
  */
 static int test_rdata_set_items()
 {
-	dnslib_rdata_t *rdata;
+	dnslib_rdata_t *rdata = NULL;
+	dnslib_rdata_item_t *item = (dnslib_rdata_item_t *)0xDEADBEEF;
 	int errors = 0;
+
+	// check error return values
+	if (dnslib_rdata_set_items(rdata, NULL, 0) != 1) {
+		diag("Return value of dnslib_rdata_set_items() when rdata == NULL is"
+			 "wrong");
+		return 0;
+	} else {
+		rdata = dnslib_rdata_new();
+		assert(rdata != NULL);
+
+		if (dnslib_rdata_set_items(rdata, NULL, 0) != 1) {
+			diag("Return value of dnslib_rdata_set_items() when items == NULL"
+				 "is wrong");
+			dnslib_rdata_free(&rdata);
+			return 0;
+		} else if (dnslib_rdata_set_items(rdata, item, 0) != 1) {
+			diag("Return value of dnslib_rdata_set_items() when count == 0"
+				 "is wrong");
+			dnslib_rdata_free(&rdata);
+			return 0;
+		}
+		dnslib_rdata_free(&rdata);
+	}
 
 	// generate some random data
 	uint8_t data[DNSLIB_MAX_RDATA_WIRE_SIZE];
@@ -561,6 +546,45 @@ static int test_rdata_set_items()
 		errors += check_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i, rdata);
 
 		dnslib_rdata_free(&rdata);
+	}
+
+	return (errors == 0);
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Tests dnslib_rdata_get_item().
+ *
+ * \retval > 0 on success.
+ * \retval 0 otherwise.
+ */
+static int test_rdata_get_item()
+{
+	const dnslib_rdata_t *rdata = &TEST_RDATA;
+
+	if (dnslib_rdata_get_item(rdata, TEST_RDATA.count) != NULL) {
+		diag("dnslib_rdata_get_item() called with invalid position did not "
+			 "return NULL");
+		return 0;
+	}
+
+	int errors = 0;
+	if ((dnslib_rdata_get_item(rdata, 0)->dname) != TEST_RDATA.items[0].dname) {
+		diag("RDATA item on position 0 is wrong: %p (should be %p)",
+			 dnslib_rdata_get_item(rdata, 0), TEST_RDATA.items[0]);
+		++errors;
+	}
+	if ((dnslib_rdata_get_item(rdata, 1)->raw_data)
+		!= TEST_RDATA.items[1].raw_data) {
+		diag("RDATA item on position 0 is wrong: %p (should be %p)",
+			 dnslib_rdata_get_item(rdata, 1), TEST_RDATA.items[1]);
+		++errors;
+	}
+	if ((dnslib_rdata_get_item(rdata, 2)->raw_data)
+		!= TEST_RDATA.items[2].raw_data) {
+		diag("RDATA item on position 0 is wrong: %p (should be %p)",
+			 dnslib_rdata_get_item(rdata, 2), TEST_RDATA.items[2]);
+		++errors;
 	}
 
 	return (errors == 0);
@@ -653,7 +677,7 @@ static int test_rdata_to_wire()
 
 /*----------------------------------------------------------------------------*/
 
-static const int DNSLIB_RDATA_TEST_COUNT = 7;
+static const int DNSLIB_RDATA_TEST_COUNT = 8;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -672,13 +696,17 @@ static int dnslib_rdata_tests_run(int argc, char *argv[])
 	res = test_rdata_create(0);
 	ok(res, "rdata: create empty");
 
-	skip(!res, 5);
+	skip(!res, 6);
 
 	todo();
 
 	ok(test_rdata_delete(), "rdata: delete");
 
 	endtodo;
+
+	ok(res = test_rdata_get_item(), "rdata: get item");
+
+	skip(!res, 4)
 
 	ok(res = test_rdata_set_items(), "rdata: set items all at once");
 
@@ -695,6 +723,8 @@ static int dnslib_rdata_tests_run(int argc, char *argv[])
 	endskip;	/* test_rdata_wire_size() failed */
 
 	endskip;	/* test_rdata_set_items() failed */
+
+	endskip;	/* test_rdata_get_item() failed */
 
 	endskip;	/* test_rdata_create() failed */
 
