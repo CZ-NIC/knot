@@ -193,13 +193,12 @@ static int check_rrset( const dnslib_rrset_t *rrset, int i,
 
       const dnslib_rrset_t *rrsigs;
 
-      for (int i = 0; i < TEST_RRSETS && !errors; i++) {
           rrsigs = dnslib_rrset_rrsigs(rrset);
-              if (strcmp((const char *)rrsigs->rdata->items[0].raw_data, signature_strings[i])) {
-                  diag("Signatures are not equal to those set when creating.");
-                  errors++;
-              }
-          }
+          if (strcmp((const char *)rrsigs->rdata->items[0].raw_data, signature_strings[i])) {
+              diag("Signatures are not equal to those set when creating. Comparing "
+                "%s with %s", rrsigs->rdata->items[0].raw_data, signature_strings[i]);
+               errors++;
+             }
   }
 	return errors;
 }
