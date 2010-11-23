@@ -160,10 +160,11 @@ static int test_node_sorting()
     int last = ((dnslib_rrset_t *)array[0])->type;
 
     for (int i = 1; i < len && !errors; i++) {
-        if (last <= ((dnslib_rrset_t *)array[i])->type) {
+        if (last > ((dnslib_rrset_t *)array[i])->type) {
             diag("RRset sorting error.");
             errors++;
         }
+        last = ((dnslib_rrset_t *)array[i])->type;
     }
     return (errors == 0);
 }
@@ -192,7 +193,7 @@ static int dnslib_node_tests_run(int argc, char *argv[])
   ret = test_node_create();
   ok(ret, "node: create");
 
-  skip(!ret, 3)
+  skip(!ret, 4)
 
   ok(test_node_add_rrset(), "node: add");
 
@@ -200,13 +201,13 @@ static int dnslib_node_tests_run(int argc, char *argv[])
 
   ok(test_node_get_parent(), "node: get parent");
 
+  ok(test_node_sorting(), "node: sort");
+
   endskip;
 
   todo();
 
   ok(test_node_delete(), "node: delete");
-
-  ok(test_node_sorting(), "node: sort");
 
   endtodo;
 
