@@ -56,9 +56,7 @@ dnslib_node_t *dnslib_node_new( dnslib_dname_t *owner, dnslib_node_t *parent );
  * \param rrset RRSet to add.
  *
  * \retval 0 on success.
- * \retval <> 0 on failure.
- *
- * \todo Specify return values according to implementation.
+ * \retval -2 if rrset can not be inserted.
  */
 int dnslib_node_add_rrset( dnslib_node_t *node, dnslib_rrset_t *rrset );
 
