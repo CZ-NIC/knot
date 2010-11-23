@@ -172,4 +172,8 @@ const skip_node *skip_next( const skip_node *node );
 void skip_print_list( const skip_list *list,
 					  void (*print_item)(void *, void *) );
 
+void skip_return_list( const skip_list *list, void **array );
+
+int skip_length( const skip_list *list );
+
 #endif /* SKIP_LIST */
