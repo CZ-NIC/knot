@@ -172,8 +172,21 @@ const skip_node *skip_next( const skip_node *node );
 void skip_print_list( const skip_list *list,
 					  void (*print_item)(void *, void *) );
 
+/*!
+ * /brief Returns given list in an array
+ *
+ * /param list Skip list to be returned.
+ * /param array Array to be filled with list's elements,
+ * array must have length of list. Possible determined by
+ * skip_length.
+ */
 void skip_return_list( const skip_list *list, void **array );
 
+/*!
+ * /brief Returns length of given list.
+ *
+ * /param list Skip list whose length is to be returned.
+ */
 int skip_length( const skip_list *list );
 
 #endif /* SKIP_LIST */
