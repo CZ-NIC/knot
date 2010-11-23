@@ -14,16 +14,14 @@ static jmp_buf conf_jmpbuf;
 
 struct config *new_config;
 
-struct config *
-config_alloc(char *name)
+struct config *config_alloc(char *name)
 {
 	struct config *c = malloc(sizeof(struct config));
 	c->filename = strdup(name);
 	return c;
 }
 
-int
-config_parse(struct config *c)
+int config_parse(struct config *c)
 {
 	if (setjmp(conf_jmpbuf))
 		return 1;
@@ -33,8 +31,7 @@ config_parse(struct config *c)
 	return 0;
 }
 
-void
-cf_error(char *msg)
+void cf_error(char *msg)
 {
 	fputs(msg, stderr);
 	fputc('\n', stderr);
