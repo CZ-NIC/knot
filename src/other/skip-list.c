@@ -355,3 +355,29 @@ void skip_print_list( const skip_list *list,
 	}
 
 }
+
+int skip_length( const skip_list *list )
+{
+    int ret = 0;
+    skip_node *x = list->head->forward[0];
+	  while (x != NULL) {
+		    x = x->forward[0];
+        ret++;
+	  }
+    return ret;
+}
+
+void skip_return_list( const skip_list *list, void **array )
+{
+	assert(list != NULL);
+	assert(list->head != NULL);
+
+  int i = 0;
+
+	skip_node *x = list->head->forward[0];
+	while (x != NULL) {
+    array[i] = x->value;
+		x = x->forward[0];
+    i++;
+	}
+}

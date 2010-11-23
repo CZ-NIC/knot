@@ -20,7 +20,7 @@ unit_api dnslib_node_tests_api = {
  */
 
 // C will not accept const int in other const definition
-enum { TEST_NODES = 2, RRSETS = 2};
+enum { TEST_NODES = 2, RRSETS = 5};
 
 struct test_node {
   dnslib_dname_t owner;
@@ -40,7 +40,10 @@ static struct test_node	test_nodes[TEST_NODES] = {
 
 static dnslib_rrset_t rrsets[RRSETS] = {
     {&test_dnames[0], 1, 1, 3600, NULL, NULL, NULL, 0},
-    {&test_dnames[1], 2, 1, 3600, NULL, NULL, NULL, 0}
+    {&test_dnames[1], 2, 1, 3600, NULL, NULL, NULL, 0},
+    {&test_dnames[1], 7, 1, 3600, NULL, NULL, NULL, 0},
+    {&test_dnames[1], 3, 1, 3600, NULL, NULL, NULL, 0},
+    {&test_dnames[1], 9, 1, 3600, NULL, NULL, NULL, 0}   
 };
 
 static int test_node_create()
@@ -133,12 +136,44 @@ static int test_node_get_parent()
     return (errors == 0);
 }
 
+static int test_node_sorting()
+{
+    dnslib_node_t *tmp;
+    dnslib_rrset_t *rrset;
+    int errors = 0;
+
+    tmp = dnslib_node_new(&test_nodes[0].owner, test_nodes[0].parent);
+
+    for (int i = 0; i < RRSETS && !errors; i++) {    
+        rrset = &rrsets[i];
+        dnslib_node_add_rrset(tmp, rrset);
+    }
+    
+    int len;
+
+    len = skip_length(tmp->rrsets);
+
+    void *array[len];
+
+    skip_return_list(tmp->rrsets, array);
+
+    int last = ((dnslib_rrset_t *)array[0])->type;
+
+    for (int i = 1; i < len && !errors; i++) {
+        if (last <= ((dnslib_rrset_t *)array[i])->type) {
+            diag("RRset sorting error.");
+            errors++;
+        }
+    }
+    return (errors == 0);
+}
+
 static int test_node_delete()
 {
     return 0;
 }
 
-static const int DNSLIB_NODE_TEST_COUNT = 5;
+static const int DNSLIB_NODE_TEST_COUNT = 6;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -170,6 +205,8 @@ static int dnslib_node_tests_run(int argc, char *argv[])
   todo();
 
   ok(test_node_delete(), "node: delete");
+
+  ok(test_node_sorting(), "node: sort");
 
   endtodo;
 
