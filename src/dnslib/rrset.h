@@ -79,10 +79,9 @@ dnslib_rrset_t *dnslib_rrset_new( dnslib_dname_t *owner, uint16_t type,
  * \param rdata RDATA to add to the RRSet.
  *
  * \retval 0 if successful.
- * \retval <> 0 if an error occured.
+ * \retval -2 if either rrset or rdata was equal to NULL.
  *
  * \todo Provide some function for comparing RDATAs.
- * \todo Add return values to the comment to reflect the implementation.
  */
 int dnslib_rrset_add_rdata( dnslib_rrset_t *rrset, dnslib_rdata_t *rdata );
 
