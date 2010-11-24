@@ -31,7 +31,7 @@ typedef struct ns_nameserver {
 	 * @brief Pointer to the zone database structure used for answering
 	 *        queries.
 	 */
-    zdb_database *zone_db;
+	zdb_database *zone_db;
 	uint8_t *err_response;
 	size_t err_resp_size;
 } ns_nameserver;
@@ -64,7 +64,7 @@ ns_nameserver *ns_create( zdb_database *database );
  * @retval -1 if an error occured and the response is not valid.
  */
 int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
-					   size_t qsize, uint8_t *response_wire, size_t *rsize );
+                       size_t qsize, uint8_t *response_wire, size_t *rsize );
 
 /*!
  * @brief Properly destroys the name server structure.
