@@ -37,12 +37,12 @@ struct dt_unit_t;
  *       The reason is, you can compare like: "state > Dead" etc.
  */
 enum {
-    ThreadJoined    = 1 << 0, /*!< Thread is finished and joined. */
-    ThreadJoinable  = 1 << 1, /*!< Thread is dead, waiting to be reclaimed. */
-    ThreadCancelled = 1 << 2, /*!< Thread is cancelled, finishing task. */
-    ThreadDead      = 1 << 3, /*!< Thread is finished, exiting. */
-    ThreadIdle      = 1 << 4, /*!< Thread is idle, waiting for purpose. */
-    ThreadActive    = 1 << 5  /*!< Thread is active, working on a task. */
+	ThreadJoined    = 1 << 0, /*!< Thread is finished and joined. */
+	ThreadJoinable  = 1 << 1, /*!< Thread is dead, waiting to be reclaimed. */
+	ThreadCancelled = 1 << 2, /*!< Thread is cancelled, finishing task. */
+	ThreadDead      = 1 << 3, /*!< Thread is finished, exiting. */
+	ThreadIdle      = 1 << 4, /*!< Thread is idle, waiting for purpose. */
+	ThreadActive    = 1 << 5  /*!< Thread is active, working on a task. */
 
 } dt_state_t;
 
@@ -67,14 +67,14 @@ typedef int (*runnable_t)(struct dthread_t*);
  *       while not breaking an array of dthread_t.
  */
 typedef struct dthread_t {
-    volatile unsigned  state; /*!< Bitfield of dt_flag flags. */
-    runnable_t           run; /*!< Runnable function or 0. */
-    void               *data; /*!< Currently active data */
-    struct dt_unit_t   *unit; /*!< Reference to assigned unit. */
-    void             *_adata; /* Thread-specific data. */
-    pthread_t           _thr; /* Implementation specific thread */
-    pthread_attr_t     _attr; /* Implementation specific thread attributes */
-    pthread_mutex_t      _mx; /* Thread state change lock. */
+	volatile unsigned  state; /*!< Bitfield of dt_flag flags. */
+	runnable_t           run; /*!< Runnable function or 0. */
+	void               *data; /*!< Currently active data */
+	struct dt_unit_t   *unit; /*!< Reference to assigned unit. */
+	void             *_adata; /* Thread-specific data. */
+	pthread_t           _thr; /* Implementation specific thread */
+	pthread_attr_t     _attr; /* Implementation specific thread attributes */
+	pthread_mutex_t      _mx; /* Thread state change lock. */
 } dthread_t;
 
 /*!
@@ -85,13 +85,13 @@ typedef struct dthread_t {
  * the same runnable.
  */
 typedef struct dt_unit_t {
-    int                   size; /*!< Unit width (number of allocated threads) */
-    struct dthread_t **threads; /*!< Array of threads */
-    pthread_cond_t     _notify; /* Notify thread */
-    pthread_mutex_t _notify_mx; /* Condition mutex */
-    pthread_cond_t     _report; /* Report thread state */
-    pthread_mutex_t _report_mx; /* Condition mutex */
-    pthread_mutex_t        _mx; /* Unit lock */
+	int                   size; /*!< Unit width (number of allocated threads) */
+	struct dthread_t **threads; /*!< Array of threads */
+	pthread_cond_t     _notify; /* Notify thread */
+	pthread_mutex_t _notify_mx; /* Condition mutex */
+	pthread_cond_t     _report; /* Report thread state */
+	pthread_mutex_t _report_mx; /* Condition mutex */
+	pthread_mutex_t        _mx; /* Unit lock */
 } dt_unit_t;
 
 /*!

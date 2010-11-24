@@ -20,7 +20,7 @@
 
 /*! \brief Socket-related constants. */
 enum {
-    SOCKET_MTU_SZ = 8192,  //!< \todo <= Determine UDP MTU size.
+	SOCKET_MTU_SZ = 8192,  //!< \todo <= Determine UDP MTU size.
 } socket_const_t;
 
 /*!

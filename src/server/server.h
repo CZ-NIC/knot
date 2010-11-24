@@ -23,11 +23,11 @@
   */
 typedef struct iohandler_t {
 
-   int fd;                      /* I/O filedescripto r */
-   unsigned state;              /* Handler state */
-   struct iohandler_t* next;    /* Next handler */
-   dt_unit_t* unit;             /* Threading unit */
-   struct cute_server* server;  /* Reference to server */
+	int fd;                      /* I/O filedescripto r */
+	unsigned state;              /* Handler state */
+	struct iohandler_t* next;    /* Next handler */
+	dt_unit_t* unit;             /* Threading unit */
+	struct cute_server* server;  /* Reference to server */
 
 } iohandler_t;
 
@@ -39,8 +39,8 @@ typedef struct iohandler_t {
 /*! Server state flags.
  */
 typedef enum {
-   Idle    = 0 << 0,
-   Running = 1 << 0
+	Idle    = 0 << 0,
+	Running = 1 << 0
 } server_state;
 
 struct cute_server;
@@ -54,17 +54,17 @@ struct iohandler_t;
  */
 typedef struct cute_server {
 
-   /*! @brief Server state tracking. */
-   unsigned state;
+	/*! @brief Server state tracking. */
+	unsigned state;
 
-   /*! @brief Reference to the name server structure. */
-   ns_nameserver *nameserver;
+	/*! @brief Reference to the name server structure. */
+	ns_nameserver *nameserver;
 
-   /*! @brief Reference to the zone database structure. */
-   zdb_database *zone_db;
+	/*! @brief Reference to the zone database structure. */
+	zdb_database *zone_db;
 
-   /*! @brief I/O handlers list. */
-   struct iohandler_t *handlers;
+	/*! @brief I/O handlers list. */
+	struct iohandler_t *handlers;
 
 } cute_server;
 
