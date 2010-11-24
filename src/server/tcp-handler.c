@@ -9,44 +9,43 @@
 #include "tcp-handler.h"
 #include "stat.h"
 
-/*
- * TCP connection pool.
- */
+/*! \brief TCP connection pool. */
 typedef struct tcp_pool_t {
-	int ep_fd;                     /* epoll socket */
-	int ep_ecount;                 /* epoll events counter */
-	int ep_esize;                  /* epoll events backing store size */
+	int                ep_fd;      /* epoll socket */
+	int                ep_ecount;  /* epoll events counter */
+	int                ep_esize;   /* epoll events backing store size */
+	pthread_mutex_t    mx;         /* pool synchronisation */
 	struct epoll_event *ep_events; /* epoll events backing store */
-	ns_nameserver *ns;             /* reference to name server */
-	pthread_mutex_t mx;            /* pool synchronisation */
-	iohandler_t*  handler;         /* master I/O handler */
-	stat_t *stat;                  /* statistics gatherer */
+	ns_nameserver      *ns;        /* reference to name server */
+	iohandler_t        *handler;   /* master I/O handler */
+	stat_t             *stat;      /* statistics gatherer */
 } tcp_pool_t;
 
 /* Forward decls. */
-static int tcp_pool (dthread_t* thread);
-static tcp_pool_t* tcp_pool_new (iohandler_t *handler);
-static void tcp_pool_del (tcp_pool_t **pool);
-static int tcp_pool_add (int epfd, int socket, uint32_t events);
-static int tcp_pool_remove (int epfd, int socket);
-static int tcp_pool_reserve (tcp_pool_t *pool, uint size);
+static int tcp_pool(dthread_t *thread);
+static tcp_pool_t *tcp_pool_new(iohandler_t *handler);
+static void tcp_pool_del(tcp_pool_t **pool);
+static int tcp_pool_add(int epfd, int socket, uint32_t events);
+static int tcp_pool_remove(int epfd, int socket);
+static int tcp_pool_reserve(tcp_pool_t *pool, uint size);
 
 /* Locking. */
-static inline int tcp_pool_lock (tcp_pool_t *pool)
+static inline int tcp_pool_lock(tcp_pool_t *pool)
 {
 	return pthread_mutex_lock(&pool->mx);
 }
-static inline int tcp_pool_unlock (tcp_pool_t *pool)
+static inline int tcp_pool_unlock(tcp_pool_t *pool)
 {
 	return pthread_mutex_unlock(&pool->mx);
 }
 
-int tcp_master (dthread_t* thread)
+int tcp_master(dthread_t *thread)
 {
 	dt_unit_t *unit = thread->unit;
-	iohandler_t* handler = (iohandler_t *)thread->data;
+	iohandler_t *handler = (iohandler_t *)thread->data;
 	int master_sock = handler->fd;
-	debug_dt("dthreads: [%p] is TCP master, state: %d\n", thread, thread->state);
+	debug_dt("dthreads: [%p] is TCP master, state: %d\n",
+	         thread, thread->state);
 
 	/*
 	 * Create N pools of TCP connections.
@@ -62,15 +61,16 @@ int tcp_master (dthread_t* thread)
 	for (;;) {
 
 		// Cancellation point
-		if (dt_is_cancelled(thread))
+		if (dt_is_cancelled(thread)) {
 			return -1;
+		}
 
 		// Accept on master socket
 		int incoming = accept(master_sock, 0, 0);
 
 		// Register to worker
 		if (incoming < 0) {
-			if(errno != EINTR) {
+			if (errno != EINTR) {
 				log_error("tcp_master: cannot accept incoming "
 				          "connection (errno %d): %s.\n",
 				          errno, strerror(errno));
@@ -90,13 +90,15 @@ int tcp_master (dthread_t* thread)
 			}
 
 			// Add incoming socket to selected pool
-			tcp_pool_t* pool = (tcp_pool_t *)t->_adata;
+			tcp_pool_t *pool = (tcp_pool_t *)t->_adata;
 			tcp_pool_lock(pool);
-			debug_net("tcp_master: accept: assigned socket %d to pool #%d\n",
+			debug_net("tcp_master: accept: assigned socket %d "
+			          "to pool #%d\n",
 			          incoming, pool_id);
 
-			if (tcp_pool_add(pool->ep_fd, incoming, EPOLLIN) == 0)
+			if (tcp_pool_add(pool->ep_fd, incoming, EPOLLIN) == 0) {
 				++pool->ep_ecount;
+			}
 
 			// Activate pool
 			dt_activate(t);
@@ -111,23 +113,21 @@ int tcp_master (dthread_t* thread)
 	return 0;
 }
 
-static inline void tcp_answer (int fd,
-                               uint8_t* src,
-                               int inbuf_sz,
-                               uint8_t* dest,
-                               int outbuf_sz,
-                               tcp_pool_t* pool)
+static inline void tcp_answer(int fd, uint8_t *src, int inbuf_sz, uint8_t *dest,
+                              int outbuf_sz, tcp_pool_t *pool)
 {
 	// Receive size
 	unsigned short pktsize = 0;
 	int n = socket_recv(fd, &pktsize, sizeof(unsigned short), 0);
 	pktsize = ntohs(pktsize);
-	debug_net("tcp: incoming packet size on %d: %u buffer size: %u\n", fd, (unsigned) pktsize, (unsigned) inbuf_sz);
+	debug_net("tcp: incoming packet size on %d: %u buffer size: %u\n",
+	          fd, (unsigned) pktsize, (unsigned) inbuf_sz);
 
 	// Receive payload
 	if (n > 0 && pktsize > 0) {
 		if (pktsize <= inbuf_sz) {
-			n = socket_recv(fd, src, pktsize, 0); /// \todo Check buffer overflow.
+			/*! \todo Check buffer overflow. */
+			n = socket_recv(fd, src, pktsize, 0);
 		} else {
 			n = 0;
 		}
@@ -145,22 +145,28 @@ static inline void tcp_answer (int fd,
 
 		// Send answer
 		size_t answer_size = outbuf_sz;
-		int res = ns_answer_request(pool->ns, src, n, dest + sizeof(short),
+		int res = ns_answer_request(pool->ns, src, n,
+		                            dest + sizeof(short),
 		                            &answer_size);
+
 		debug_net("tcp: answer wire format (size %u, result %d).\n",
 		          (unsigned) answer_size, res);
 
 		if (res >= 0) {
 
-			/*! Cork, \see http://vger.kernel.org/~acme/unbehaved.txt */
+			/*! \brief TCP corking.
+			 *  \see http://vger.kernel.org/~acme/unbehaved.txt
+			 */
 			int cork = 1;
 			setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
 
 			// Copy header
-			((unsigned short*) dest)[0] = htons(answer_size);
+			((unsigned short *) dest)[0] = htons(answer_size);
 			int sent = -1;
 			while (sent < 0) {
-				sent = socket_send(fd, dest, answer_size + sizeof(short), 0);
+				sent = socket_send(fd, dest,
+				                   answer_size + sizeof(short),
+				                   0);
 			}
 
 			// Uncork
@@ -172,14 +178,14 @@ static inline void tcp_answer (int fd,
 	}
 }
 
-static int tcp_pool (dthread_t* thread)
+static int tcp_pool(dthread_t *thread)
 {
-	/*
-	 * \todo: Make sure stack size is big enough.
-	 *        Although this is much cheaper,
-	 *        16kB worth of buffers *may* pose a problem.
+	/*!
+	 * \todo Use custom allocator.
+	 *       Although this is much cheaper,
+	 *       16kB worth of buffers *may* pose a problem.
 	 */
-	tcp_pool_t* pool = (tcp_pool_t *)thread->data;
+	tcp_pool_t *pool = (tcp_pool_t *)thread->data;
 	uint8_t buf[SOCKET_MTU_SZ];
 	uint8_t answer[SOCKET_MTU_SZ];
 
@@ -191,11 +197,13 @@ static int tcp_pool (dthread_t* thread)
 
 		// Poll sockets
 		tcp_pool_reserve(pool, pool->ep_ecount * 2);
-		nfds = epoll_wait(pool->ep_fd, pool->ep_events, pool->ep_esize, -1);
+		nfds = epoll_wait(pool->ep_fd, pool->ep_events,
+		                  pool->ep_esize, -1);
 
 		// Cancellation point
-		if(dt_is_cancelled(thread)) {
-			debug_net("tcp: pool #%d thread is cancelled\n", pool->ep_fd);
+		if (dt_is_cancelled(thread)) {
+			debug_net("tcp: pool #%d thread is cancelled\n",
+			          pool->ep_fd);
 			break;
 		}
 
@@ -204,7 +212,7 @@ static int tcp_pool (dthread_t* thread)
 		          pool->ep_fd, nfds, pool->ep_ecount);
 
 		int fd = 0;
-		for(int i = 0; i < nfds; ++i) {
+		for (int i = 0; i < nfds; ++i) {
 
 			// Get client fd
 			fd = pool->ep_events[i].data.fd;
@@ -214,7 +222,7 @@ static int tcp_pool (dthread_t* thread)
 			tcp_answer(fd, buf, SOCKET_MTU_SZ,
 			           answer,  SOCKET_MTU_SZ,
 			           pool);
-			debug_net("tcp: pool #%d finished fd=%d (remaining %d).\n",
+			debug_net("tcp: pool #%d finished fd=%d (%d remain).\n",
 			          pool->ep_fd, fd, pool->ep_ecount);
 
 			// Disconnect
@@ -228,7 +236,7 @@ static int tcp_pool (dthread_t* thread)
 	}
 
 	// If exiting, cleanup
-	if(pool->handler->state == Idle) {
+	if (pool->handler->state == ServerIdle) {
 		debug_net("tcp: pool #%d is finishing\n", pool->ep_fd);
 		tcp_pool_del(&pool);
 		return 0;
@@ -238,12 +246,13 @@ static int tcp_pool (dthread_t* thread)
 	return 0;
 }
 
-static tcp_pool_t* tcp_pool_new (iohandler_t *handler)
+static tcp_pool_t *tcp_pool_new(iohandler_t *handler)
 {
 	// Alloc
 	tcp_pool_t *pool = malloc(sizeof(tcp_pool_t));
-	if (pool == 0)
+	if (pool == 0) {
 		return 0;
+	}
 
 	// Initialize
 	memset(pool, 0, sizeof(tcp_pool_t));
@@ -281,18 +290,20 @@ static tcp_pool_t* tcp_pool_new (iohandler_t *handler)
 	return pool;
 }
 
-static void tcp_pool_del (tcp_pool_t **pool)
+static void tcp_pool_del(tcp_pool_t **pool)
 {
 	// Check
-	if(pool == 0)
+	if (pool == 0) {
 		return;
+	}
 
 	// Close epoll fd
 	close((*pool)->ep_fd);
 
 	// Free backing store
-	if((*pool)->ep_events != 0)
+	if ((*pool)->ep_events != 0) {
 		free((*pool)->ep_events);
+	}
 
 	// Destroy synchronisation
 	pthread_mutex_destroy(&(*pool)->mx);
@@ -305,7 +316,7 @@ static void tcp_pool_del (tcp_pool_t **pool)
 	*pool = 0;
 }
 
-static int tcp_pool_add (int epfd, int socket, uint32_t events)
+static int tcp_pool_add(int epfd, int socket, uint32_t events)
 {
 	struct epoll_event ev;
 	memset(&ev, 0, sizeof(struct epoll_event));
@@ -321,40 +332,46 @@ static int tcp_pool_add (int epfd, int socket, uint32_t events)
 	ev.data.fd = socket;
 	ev.events = events;
 	if (epoll_ctl(epfd, EPOLL_CTL_ADD, socket, &ev) != 0) {
-		log_error("failed to add socket to event set (errno %d): %s.\n", errno, strerror(errno));
+		log_error("failed to add socket to event set (errno %d): %s.\n",
+		          errno, strerror(errno));
 		return -1;
 	}
 
 	return 0;
 }
 
-static int tcp_pool_remove (int epfd, int socket)
+static int tcp_pool_remove(int epfd, int socket)
 {
 	// Compatibility with kernels < 2.6.9, require non-0 ptr.
 	struct epoll_event ev;
 
 	// find socket ptr
 	if (epoll_ctl(epfd, EPOLL_CTL_DEL, socket, &ev) != 0) {
-		perror ("epoll_ctl");
+		perror("epoll_ctl");
 		return -1;
 	}
 
 	return 0;
 }
 
-static int tcp_pool_reserve (tcp_pool_t *pool, uint size)
+static int tcp_pool_reserve(tcp_pool_t *pool, uint size)
 {
-	if (pool->ep_esize >= size)
+	if (pool->ep_esize >= size) {
 		return 0;
+	}
 
 	// Alloc new events
-	struct epoll_event *new_events = malloc(size * sizeof(struct epoll_event));
-	if (new_events == 0)
+	struct epoll_event *new_events =
+	                malloc(size * sizeof(struct epoll_event));
+
+	if (new_events == 0) {
 		return -1;
+	}
 
 	// Free and replace old events backing-store
-	if (pool->ep_events != 0)
+	if (pool->ep_events != 0) {
 		free(pool->ep_events);
+	}
 
 	pool->ep_esize = size;
 	pool->ep_events = new_events;

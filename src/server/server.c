@@ -10,10 +10,11 @@
 
 cute_server *cute_create()
 {
+	// Create server structure
 	debug_server("Creating Server structure..\n");
 	cute_server *server = malloc(sizeof(cute_server));
 	server->handlers = NULL;
-	server->state = Idle;
+	server->state = ServerIdle;
 	if (server == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -42,7 +43,8 @@ cute_server *cute_create()
 
 	// Estimate number of threads/manager
 	int thr_count = dt_optimal_size();
-	debug_server("Estimated number of threads per handler: %d\n", thr_count);
+	debug_server("Estimated number of threads per handler: %d\n",
+		     thr_count);
 
 	// Create socket handlers
 	int sock = socket_create(PF_INET, SOCK_STREAM);
@@ -66,22 +68,23 @@ cute_server *cute_create()
 	return server;
 }
 
-iohandler_t* cute_create_handler(cute_server *server, int fd, dt_unit_t* unit)
+iohandler_t *cute_create_handler(cute_server *server, int fd, dt_unit_t *unit)
 {
 	// Create new worker
-	iohandler_t* handler = malloc(sizeof(iohandler_t));
-	if(handler == 0)
+	iohandler_t *handler = malloc(sizeof(iohandler_t));
+	if (handler == 0) {
 		return 0;
+	}
 
 	// Initialize
 	handler->fd = fd;
-	handler->state = Idle;
+	handler->state = ServerIdle;
 	handler->next = server->handlers;
 	handler->server = server;
 	handler->unit = unit;
 
 	// Update unit data object
-	for(int i = 0; i < unit->size; ++i) {
+	for (int i = 0; i < unit->size; ++i) {
 		dthread_t *thread = unit->threads[i];
 		dt_repurpose(thread, thread->run, handler);
 	}
@@ -90,7 +93,7 @@ iohandler_t* cute_create_handler(cute_server *server, int fd, dt_unit_t* unit)
 	server->handlers = handler;
 
 	// Run if server is online
-	if(server->state & Running) {
+	if (server->state & ServerRunning) {
 		dt_start(handler->unit);
 	}
 
@@ -101,16 +104,15 @@ int cute_remove_handler(cute_server *server, iohandler_t *ref)
 {
 	// Find worker
 	iohandler_t *w = 0, *p = 0;
-	for(w = server->handlers; w != NULL; p = w,w = w->next) {
+	for (w = server->handlers; w != NULL; p = w, w = w->next) {
 
 		// Compare fd
-		if(w == ref) {
+		if (w == ref) {
 
 			// Disconnect
-			if(p == 0) {
+			if (p == 0) {
 				server->handlers = w->next;
-			}
-			else {
+			} else {
 				p->next = w->next;
 			}
 			break;
@@ -118,13 +120,13 @@ int cute_remove_handler(cute_server *server, iohandler_t *ref)
 	}
 
 	// Check
-	if(w == 0) {
+	if (w == 0) {
 		return -1;
 	}
 
 	// Wait for dispatcher to finish
-	if(w->state & Running) {
-		w->state = Idle;
+	if (w->state & ServerRunning) {
+		w->state = ServerIdle;
 		dt_stop(w->unit);
 		dt_join(w->unit);
 	}
@@ -138,7 +140,7 @@ int cute_remove_handler(cute_server *server, iohandler_t *ref)
 	return 0;
 }
 
-int cute_start( cute_server *server, char **filenames, uint zones )
+int cute_start(cute_server *server, char **filenames, uint zones)
 {
 	debug_server("Starting server with %u zone files.\n", zones);
 	//stat
@@ -158,9 +160,9 @@ int cute_start( cute_server *server, char **filenames, uint zones )
 
 	// Start dispatchers
 	int ret = 0;
-	server->state |= Running;
-	for(iohandler_t* w = server->handlers; w != NULL; w = w->next) {
-		w->state = Running;
+	server->state |= ServerRunning;
+	for (iohandler_t *w = server->handlers; w != NULL; w = w->next) {
+		w->state = ServerRunning;
 		ret += dt_start(w->unit);
 	}
 
@@ -171,8 +173,9 @@ int cute_wait(cute_server *server)
 {
 	// Wait for dispatchers to finish
 	int ret = 0;
-	while(server->handlers != NULL) {
-		debug_server("server: [%p] joining threading unit\n", server->handlers);
+	while (server->handlers != NULL) {
+		debug_server("server: [%p] joining threading unit\n",
+			     server->handlers);
 		ret += dt_join(server->handlers->unit);
 		cute_remove_handler(server, server->handlers);
 		debug_server("server: joined threading unit\n", p);
@@ -181,22 +184,22 @@ int cute_wait(cute_server *server)
 	return ret;
 }
 
-void cute_stop( cute_server *server )
+void cute_stop(cute_server *server)
 {
 	// Notify servers to stop
-	server->state &= ~Running;
-	for(iohandler_t* w = server->handlers; w != NULL; w = w->next) {
-		w->state = Idle;
+	server->state &= ~ServerRunning;
+	for (iohandler_t *w = server->handlers; w != NULL; w = w->next) {
+		w->state = ServerIdle;
 		dt_stop(w->unit);
 	}
 }
 
-void cute_destroy( cute_server **server )
+void cute_destroy(cute_server **server)
 {
 	// Free workers
-	iohandler_t* w = (*server)->handlers;
-	while(w != NULL) {
-		iohandler_t* n = w->next;
+	iohandler_t *w = (*server)->handlers;
+	while (w != NULL) {
+		iohandler_t *n = w->next;
 		cute_remove_handler(*server, w);
 		w = n;
 	}
