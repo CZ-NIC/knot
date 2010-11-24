@@ -3,9 +3,10 @@
  *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
- * Provides generic interface to data structure for representing DNS zone. This
- * allows to easily change the underlying data structure without affecting the
- * rest of the code.
+ * \brief Generic interface to data structure for representing DNS zone.
+ *
+ * This allows to easily change the underlying data structure without affecting
+ * the rest of the code.
  *
  * The API contains functions for creating and destroying zones as well as for
  * inserting, removing and searching for domain names.
@@ -40,7 +41,7 @@ typedef ck_hash_table zds_zone;
  *
  * \return Pointer to the created zone data structure.
  */
-zds_zone *zds_create( uint item_count );
+zds_zone *zds_create(uint item_count);
 
 /*!
  * \brief Inserts one zone node to the given zone.
@@ -54,7 +55,7 @@ zds_zone *zds_create( uint item_count );
  * \todo Should return positive integer when the item was inserted, but
  *       something went wrong. Otherwise negative.
  */
-int zds_insert( zds_zone *zone, zn_node *node );
+int zds_insert(zds_zone *zone, zn_node *node);
 
 /*!
  * \brief Tries to find the given name in the zone and returns corresponding
@@ -66,7 +67,7 @@ int zds_insert( zds_zone *zone, zn_node *node );
  *
  * \return Proper zone node for the given name or NULL if not found.
  */
-zn_node *zds_find( zds_zone *zone, const ldns_rdf *owner );
+zn_node *zds_find(zds_zone *zone, const ldns_rdf *owner);
 
 /*!
  * \brief Removes zone node corresponding to the given domain name from the
@@ -80,12 +81,12 @@ zn_node *zds_find( zds_zone *zone, const ldns_rdf *owner );
  *
  * \todo Maybe return the removed node?
  */
-int zds_remove( zds_zone *zone, ldns_rdf *owner );
+int zds_remove(zds_zone *zone, ldns_rdf *owner);
 
 /*!
  * \brief Properly destroys the given zone data structure.
  */
-void zds_destroy( zds_zone **zone, void (*dtor_zone_node)( void *value ) );
+void zds_destroy(zds_zone **zone, void (*dtor_zone_node)(void *value));
 
 #endif /* _CUTEDNS_ZONE_DATA_STRUCTURE_H_ */
 
