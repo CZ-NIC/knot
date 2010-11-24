@@ -24,7 +24,7 @@ OBJS = $(addprefix $(OBJ_DIR), $(addsuffix .o, $(basename $(notdir $(SRC_FILES))
 
 CC = gcc
 CFLAGS += -Wall -std=gnu99 -D _XOPEN_SOURCE=600 -D_GNU_SOURCE -g
-LDFLAGS += -lpthread -lurcu -lldns -lrt
+LDFLAGS += -lpthread -lurcu -lldns -lrt -lm
 
 all: cutedns unittests
 
