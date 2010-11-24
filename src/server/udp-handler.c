@@ -1,9 +1,10 @@
 #include <time.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <unistd.h>
 #include <errno.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
 #include "udp-handler.h"
 #include "name-server.h"
 #include "stat.h"

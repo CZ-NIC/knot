@@ -1,11 +1,12 @@
+#include <unistd.h>
+#include <stdio.h>
+
 #include "server.h"
 #include "udp-handler.h"
 #include "tcp-handler.h"
 #include "zone-database.h"
 #include "name-server.h"
 #include "zone-parser.h"
-#include <unistd.h>
-#include <stdio.h>
 #include "stat.h"
 
 cute_server *cute_create()

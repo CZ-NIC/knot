@@ -1,4 +1,3 @@
-#include "socket.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -9,6 +8,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+
+#include "socket.h"
 
 int socket_create(int family, int type)
 {
