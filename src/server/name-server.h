@@ -12,8 +12,8 @@
  *       updates, etc.
  */
 
-#ifndef NAME_SERVER
-#define NAME_SERVER
+#ifndef _CUTEDNS_NAME_SERVER_H_
+#define _CUTEDNS_NAME_SERVER_H_
 
 #include "common.h"
 #include "zone-database.h"
@@ -45,7 +45,7 @@ typedef struct ns_nameserver {
  *
  * @return Pointer to the name server structure.
  */
-ns_nameserver *ns_create( zdb_database *database );
+ns_nameserver *ns_create(zdb_database *database);
 
 /*!
  * @brief Creates a response for the given query using the data of the name
@@ -63,8 +63,11 @@ ns_nameserver *ns_create( zdb_database *database );
  * @retval 0 if a valid response was created.
  * @retval -1 if an error occured and the response is not valid.
  */
-int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
-                       size_t qsize, uint8_t *response_wire, size_t *rsize );
+int ns_answer_request(ns_nameserver *nameserver,
+                      const uint8_t *query_wire,
+                      size_t qsize,
+                      uint8_t *response_wire,
+                      size_t *rsize);
 
 /*!
  * @brief Properly destroys the name server structure.
@@ -72,6 +75,6 @@ int ns_answer_request( ns_nameserver *nameserver, const uint8_t *query_wire,
  * @note This functions does not destroy the zone database saved in the
  *       structure. This must be kept and destroyed elsewhere.
  */
-void ns_destroy( ns_nameserver **nameserver );
+void ns_destroy(ns_nameserver **nameserver);
 
 #endif
