@@ -161,6 +161,8 @@ static int test_node_sorting()
             diag("RRset sorting error");
         }
     }
+
+    dnslib_node_free(&tmp);
     return (errors == 0);
 }
 

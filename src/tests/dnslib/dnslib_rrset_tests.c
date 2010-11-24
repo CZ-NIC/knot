@@ -36,8 +36,6 @@ enum { TEST_RRSETS = 3 , TEST_RRSIGS = 3};
 //void *RRSIG_ADDRESS = (void *)0xDEADBEEF;
 //void *RRSIG_FIRST = RRSIG_ADDRESS + 10;
 
-static dnslib_rdata_t *rdatas[TEST_RRSETS];
-
 struct test_rrset {
 	char *owner;
 	uint16_t type;
@@ -109,26 +107,22 @@ static const struct test_rrset test_rrsigs[TEST_RRSIGS] = {
 /* fills test_rrsets with random rdata */
 static void create_rdata()
 {
- 	dnslib_rdata_t *rdata = dnslib_rdata_new();
-	dnslib_rdata_item_t item;
-	item.raw_data = RDATA_ITEM_PTR;
-
-	dnslib_rdata_set_item(rdata, 0, item);
-
+    dnslib_rdata_t *r;
     for (int i = 0; i < TEST_RRSETS; i++) {
-        rdatas[i] = dnslib_rdata_new(); 
+        r = dnslib_rdata_new(); 
        	dnslib_rdata_item_t item;
       	item.raw_data = RDATA_ITEM_PTR;
   
-  	    dnslib_rdata_set_item(rdata, 0, item);
+  	    dnslib_rdata_set_item(r, 0, item);
   
     	  uint8_t data[DNSLIB_MAX_RDATA_WIRE_SIZE];
     	  generate_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE);
 
 	      // set items through set_items() and then call set_item()
       	uint16_t rrtype = rand() % DNSLIB_RRTYPE_LAST + 1;
-    	  fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, rrtype, rdatas[i]);
-        test_rrsets[i].rdata = rdatas[i];
+        // from dnslib_rdata_tests.c
+    	  fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, rrtype, r);
+        test_rrsets[i].rdata = r;
     }
 }
 
@@ -275,7 +269,7 @@ static int test_rrset_rdata()
 
     dnslib_rrset_t *rrset = dnslib_rrset_new(NULL, 0, 0, 0);
 
-    dnslib_rdata_t *tmp;
+    dnslib_rdata_t *r;
 
     dnslib_rdata_item_t *item;
 
@@ -283,14 +277,16 @@ static int test_rrset_rdata()
     { "-2", "9", "2", "10", "1", "5", "8", "4", "6", "7" };
     
     for (int i = 0; i < 10; i++) {
-        tmp = dnslib_rdata_new();
-        item=malloc(sizeof(dnslib_rdata_item_t));
+        r = dnslib_rdata_new();
+        item=malloc(sizeof(dnslib_rdata_item_t));        
         item->raw_data = (uint8_t*)test_strings[i];
-        dnslib_rdata_set_items(tmp, item, 1);
-        dnslib_rrset_add_rdata(rrset, tmp);
+        //following statement creates a copy
+        dnslib_rdata_set_items(r, item, 1);
+        dnslib_rrset_add_rdata(rrset, r);
+        free(item);
     }
 
-    tmp = rrset->rdata;
+    dnslib_rdata_t *tmp = rrset->rdata;
     
     int i = 0;
     while (tmp->next!=rrset->rdata && !errors)
@@ -303,6 +299,18 @@ static int test_rrset_rdata()
         i++;
         tmp = tmp->next;
     }
+
+    tmp = rrset->rdata;
+
+    dnslib_rdata_t *next;
+
+    while (tmp->next != rrset->rdata) {
+        next = tmp->next;
+        dnslib_rdata_free(&tmp);
+        tmp = next;
+    }
+
+    dnslib_rdata_free(&tmp);
 
     dnslib_rrset_free(&rrset);
 
@@ -317,15 +325,19 @@ static int test_rrset_rrsigs()
     
     dnslib_rdata_t *tmp; 
 
+    dnslib_dname_t *owner;
+
+    dnslib_rrset_t *rrset;
+
     for (int i = 0; i < TEST_RRSETS; i++) {
-        dnslib_dname_t *owner = dnslib_dname_new_from_str(test_rrsets[i].owner,
+        owner = dnslib_dname_new_from_str(test_rrsets[i].owner,
                                 strlen(test_rrsets[i].owner), NODE_ADDRESS);
         if (owner == NULL) {
          	diag("Error creating owner domain name!");
         	return 0;
        	}
     
-        dnslib_rrset_t *rrset = dnslib_rrset_new(owner, test_rrsets[i].type,
+        rrset = dnslib_rrset_new(owner, test_rrsets[i].type,
         	test_rrsets[i].rclass, test_rrsets[i].ttl);
     
         dnslib_rrset_add_rdata(rrset, test_rrsets[i].rdata);
@@ -346,8 +358,12 @@ static int test_rrset_rrsigs()
             errors++;
         }
         errors += check_rrset(rrset, i, 0, 1);
+        dnslib_dname_free(&owner);
+        dnslib_rrset_free(&rrset);
+        free(item);
+        dnslib_rdata_free(&tmp);
+        dnslib_rrset_free(&rrsig);
     }
-
     return (errors == 0);
 }
 

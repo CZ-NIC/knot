@@ -186,6 +186,7 @@ static int test_dname_to_str()
 	return (errors == 0);
 }
 
+/* called by lives_ok */
 static int test_faulty_data()
 {
     dnslib_dname_t *dname = NULL;
@@ -195,8 +196,7 @@ static int test_faulty_data()
         if (test_domains_bad[i].str != NULL) {
   	  	    dname = dnslib_dname_new_from_str(test_domains_bad[i].str,
 	  					    	strlen(test_domains_bad[i].str), NODE_ADDRESS);
-        }
-        else {
+        } else {
   	  	    dname = dnslib_dname_new_from_str(test_domains_bad[i].str,
       				    	0, NODE_ADDRESS);
         }   
@@ -206,8 +206,9 @@ static int test_faulty_data()
   	  	dname = dnslib_dname_new_from_wire((uint8_t *)test_domains_bad[i].wire,
 	  						test_domains_bad[i].size, NODE_ADDRESS);
 
+		    dnslib_dname_free(&dname);
 	  }
-    return 1;
+    return 1; //did it get here? success
 }
 
 static int test_dname_compare()
