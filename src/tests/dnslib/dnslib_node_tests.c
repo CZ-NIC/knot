@@ -149,22 +149,17 @@ static int test_node_sorting()
         dnslib_node_add_rrset(tmp, rrset);
     }
     
-    int len;
+    const skip_node *node;
 
-    len = skip_length(tmp->rrsets);
+    node = skip_first(tmp->rrsets);
+    
+    int last = *((int *)node->key);
 
-    void *array[len];
-
-    skip_return_list(tmp->rrsets, array);
-
-    int last = ((dnslib_rrset_t *)array[0])->type;
-
-    for (int i = 1; i < len && !errors; i++) {
-        if (last > ((dnslib_rrset_t *)array[i])->type) {
-            diag("RRset sorting error.");
+    while ((node = skip_next(node))!=NULL) {
+        if (last > *((int *)node->key)) {
             errors++;
+            diag("RRset sorting error");
         }
-        last = ((dnslib_rrset_t *)array[i])->type;
     }
     return (errors == 0);
 }
