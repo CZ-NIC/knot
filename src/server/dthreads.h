@@ -94,7 +94,9 @@ typedef struct dt_unit_t {
  *       This means, they're not physically created unit dt_start() is called.
  *
  * \param count Requested thread count.
- * \return On success: new instance, else 0
+ *
+ * \retval new instance if successful
+ * \retval 0 if some error occured
  */
 dt_unit_t *dt_create(int count);
 
@@ -106,7 +108,9 @@ dt_unit_t *dt_create(int count);
  * \param count Requested thread count.
  * \param runnable Runnable function for all threads.
  * \param data Any data passed onto threads.
- * \return On success: new instance, else 0
+ *
+ * \retval new instance if successful
+ * \retval 0 if some error occured
  */
 dt_unit_t *dt_create_coherent(int count, runnable_t runnable, void *data);
 
@@ -135,7 +139,9 @@ void dt_delete(dt_unit_t **unit);
  *
  * \param unit Unit to be resized.
  * \param size New unit size.
- * \return On success: 0, else <0
+ *
+ * \retval 0  on success
+ * \retval <0 if some error occured
  */
 int dt_resize(dt_unit_t *unit, int size);
 
@@ -143,7 +149,9 @@ int dt_resize(dt_unit_t *unit, int size);
  * \brief Start all threads in selected unit.
  *
  * \param unit Unit to be started.
- * \return On success: 0, else <0
+ *
+ * \retval 0  on success
+ * \retval <0 if some error occured
  */
 int dt_start(dt_unit_t *unit);
 
@@ -151,7 +159,9 @@ int dt_start(dt_unit_t *unit);
  * \brief Start given thread.
  *
  * \param thread Target thread instance.
- * \return On success: 0, else <0
+ *
+ * \retval 0  on success
+ * \retval <0 if some error occured
  */
 int dt_start_id(dthread_t *thread);
 
@@ -164,7 +174,9 @@ int dt_start_id(dthread_t *thread);
  *
  * \param thread Target thread instance.
  * \param signum Signal code.
- * \return On success: 0, else <0
+ *
+ * \retval 0  on success
+ * \retval <0 if some error occured
  */
 int dt_signalize(dthread_t *thread, int signum);
 
@@ -172,7 +184,9 @@ int dt_signalize(dthread_t *thread, int signum);
  * \brief Wait for all thread in unit to finish.
  *
  * \param unit Unit to be joined.
- * \return Negative integer on failure.
+ *
+ * \retval 0  on success
+ * \retval <0 if some error occured
  */
 int dt_join(dt_unit_t *unit);
 
@@ -182,7 +196,9 @@ int dt_join(dt_unit_t *unit);
  * Active thread is interrupted at the nearest runnable cancellation point.
  *
  * \param thread Target thread instance.
- * \return On success: 0, else <0
+ *
+ * \retval 0  on success
+ * \retval <0 if some error occured
  */
 int dt_stop_id(dthread_t *thread);
 
@@ -192,7 +208,9 @@ int dt_stop_id(dthread_t *thread);
  * Thread is interrupted at the nearest runnable cancellation point.
  *
  * \param unit Unit to be stopped.
- * \return On success: 0, else <0
+ *
+ * \retval 0  on success
+ * \retval <0 if some error occured
  */
 int dt_stop(dt_unit_t *unit);
 
@@ -201,7 +219,9 @@ int dt_stop(dt_unit_t *unit);
  *
  * \param thread Target thread instance.
  * \param prio Requested priority (positive integer, default is 0).
- * \return On success: 0, else <0
+ *
+ * \retval 0  on success
+ * \retval <0 if some error occured
  */
 int dt_setprio(dthread_t *thread, int prio);
 
@@ -211,7 +231,9 @@ int dt_setprio(dthread_t *thread, int prio);
  * \param thread Target thread instance.
  * \param runnable  Runnable function for target thread.
  * \param data      Data passed to target thread.
- * \return On success: 0, else <0
+ *
+ * \retval 0  on success
+ * \retval <0 if some error occured
  */
 int dt_repurpose(dthread_t *thread, runnable_t runnable, void *data);
 
@@ -225,7 +247,9 @@ int dt_repurpose(dthread_t *thread, runnable_t runnable, void *data);
  *       doesn't affect dead threads.
  *
  * \param thread Target thread instance.
- * \return On success: 0, else <0
+ *
+ * \retval 0  on success
+ * \retval <0 if some error occured
  */
 int dt_activate(dthread_t *thread);
 
@@ -239,7 +263,9 @@ int dt_activate(dthread_t *thread);
  *       again or collected by dt_compact().
  *
  * \param thread Target thread instance.
- * \return On success: 0, else <0
+ *
+ * \retval 0  on success
+ * \retval <0 if some error occured
  */
 int dt_cancel(dthread_t *thread);
 
@@ -247,7 +273,9 @@ int dt_cancel(dthread_t *thread);
  * \brief Collect and dispose idle threads.
  *
  * \param unit Target unit instance.
- * \return On success: 0, else <0
+ *
+ * \retval 0  on success
+ * \retval <0 if some error occured
  */
 int dt_compact(dt_unit_t *unit);
 
@@ -267,7 +295,9 @@ int dt_optimal_size();
  * Synchronously check for ThreadCancelled flag.
  *
  * \param thread Target thread instance.
- * \return On success: logical true, else logical false
+ *
+ * \retval logical true  on success
+ * \retval logical false if not cancelled
  */
 int dt_is_cancelled(dthread_t *thread);
 
@@ -276,7 +306,9 @@ int dt_is_cancelled(dthread_t *thread);
  *        at the same time.
  *
  * \param unit Target unit instance.
- * \return On success: 0, else <0
+ *
+ * \retval 0  on success
+ * \retval <0 if some error occured
  */
 int dt_unit_lock(dt_unit_t *unit);
 
@@ -286,7 +318,9 @@ int dt_unit_lock(dt_unit_t *unit);
  * \see dt_unit_lock()
  *
  * \param unit Target unit instance.
- * \return On success: 0, else <0
+ *
+ * \retval 0  on success
+ * \retval <0 if some error occured
  */
 int dt_unit_unlock(dt_unit_t *unit);
 
