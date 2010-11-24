@@ -209,6 +209,7 @@ static int fill_rdata( uint8_t *data, int max_size, uint16_t rrtype,
 			wire_size += dnslib_dname_size(dname);
 //			note("Saved domain name ptr: %p", items[i].dname);
 		} else {
+      free(dname);
 			items[i].raw_data = pos;
 			pos += size;
 			wire_size += size;
@@ -221,8 +222,10 @@ static int fill_rdata( uint8_t *data, int max_size, uint16_t rrtype,
 	int res = dnslib_rdata_set_items(rdata, items, item_count);
 	if (res != 0) {
 		diag("dnslib_rdata_set_items() returned %d.", res);
+    free(items);
 		return -1;
 	} else {
+    free(items);
 		return wire_size;
 	}
 }
@@ -544,7 +547,8 @@ static int test_rdata_set_items()
 			++errors;
 		}
 		errors += check_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i, rdata);
-
+    
+//    free(rdata->items[0].dname);
 		dnslib_rdata_free(&rdata);
 	}
 
