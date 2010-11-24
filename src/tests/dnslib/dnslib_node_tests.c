@@ -153,10 +153,10 @@ static int test_node_sorting()
 
     node = skip_first(tmp->rrsets);
     
-    int last = *((int *)node->key);
+    int last = *((uint16_t *)node->key);
 
     while ((node = skip_next(node))!=NULL) {
-        if (last > *((int *)node->key)) {
+        if (last > *((uint16_t *)node->key)) {
             errors++;
             diag("RRset sorting error");
         }

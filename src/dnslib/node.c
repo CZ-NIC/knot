@@ -22,8 +22,8 @@
 
 int compare_rrset_types( void *key1, void *key2 )
 {
-    return (*((uint8_t *)key1) == *((uint8_t *)key2) ? 
-    0 : *((uint8_t *)key1) < *((uint8_t *)key2) ? -1 : 1);
+    return (*((uint16_t *)key1) == *((uint16_t *)key2) ? 
+    0 : *((uint16_t *)key1) < *((uint16_t *)key2) ? -1 : 1);
 }
 
 dnslib_node_t *dnslib_node_new( dnslib_dname_t *owner, dnslib_node_t *parent )
