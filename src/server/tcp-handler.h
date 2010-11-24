@@ -19,6 +19,19 @@
 #include "server.h"
 #include "dthreads.h"
 
+
+/*!
+ * \brief TCP master socket runnable.
+ *
+ * Accepts new TCP connections and distributes them among the rest
+ * of the threads in unit, which are repurposed as a TCP connection pools.
+ * New pools are initialized ad-hoc, function implements a cancellation point.
+ *
+ * \param thread Associated thread from DThreads unit.
+ *
+ * \retval  0 On success.
+ * \retval <0 If an error occured.
+ */
 int tcp_master(dthread_t *thread);
 
 #endif // _CUTEDNS_TCPHANDLER_H_
