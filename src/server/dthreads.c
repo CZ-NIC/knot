@@ -414,10 +414,10 @@ int dt_resize(dt_unit_t *unit, int size)
 
 		// Realloc threads
 		debug_dt("dt_resize: growing from %d to %d threads\n",
-			 unit->size, size);
+		         unit->size, size);
 
 		dthread_t **threads = realloc(unit->threads,
-					      size * sizeof(dthread_t *));
+		                              size * sizeof(dthread_t *));
 		if (threads == 0) {
 			return -1;
 		}
@@ -484,7 +484,7 @@ int dt_resize(dt_unit_t *unit, int size)
 				// Invalidate in old vector
 				unit->threads[i] = 0;
 				debug_dt("dthreads: [%p] dt_resize: elected\n",
-					 thread);
+				         thread);
 
 			} else if (remaining <= 0) {
 
@@ -499,7 +499,7 @@ int dt_resize(dt_unit_t *unit, int size)
 				thread->state = ThreadDead | ThreadCancelled;
 				dt_signalize(thread, SIGALRM);
 				debug_dt("dthreads: [%p] dt_resize: "
-					 "is discarded\n", thread);
+				         "is discarded\n", thread);
 			}
 
 			// Unlock thread and continue
@@ -573,13 +573,13 @@ int dt_start(dt_unit_t *unit)
 		int res = dt_start_id(thread);
 		if (res != 0) {
 			log_error("dthreads: %s: failed to create thread %d",
-				  __func__, i);
+			          __func__, i);
 			dt_unit_unlock(unit);
 			return res;
 		}
 
 		debug_dt("dthreads: [%p] %s: thread started\n",
-			 thread, __func__);
+		         thread, __func__);
 	}
 
 	// Unlock unit
@@ -609,16 +609,16 @@ int dt_start_id(dthread_t *thread)
 	// Do not re-create running threads
 	if (prev_state != ThreadJoined) {
 		debug_dt("dthreads: [%p] %s: refused to recreate thread\n",
-			 thread, __func__);
+		         thread, __func__);
 		unlock_thread_rw(thread);
 		return 0;
 	}
 
 	// Start thread
 	int res = pthread_create(&thread->_thr,  /* pthread_t */
-				 &thread->_attr, /* pthread_attr_t */
-				 thread_ep,      /* routine: thread_ep */
-				 thread);        /* passed object: dthread_t */
+	                         &thread->_attr, /* pthread_attr_t */
+	                         thread_ep,      /* routine: thread_ep */
+	                         thread);        /* passed object: dthread_t */
 
 	// Unlock thread
 	unlock_thread_rw(thread);
@@ -663,10 +663,10 @@ int dt_join(dt_unit_t *unit)
 			if (thread->state & ThreadJoinable) {
 				unlock_thread_rw(thread);
 				debug_dt("dthreads: [%p] %s: reclaiming\n",
-					 thread, __func__);
+				         thread, __func__);
 				pthread_join(thread->_thr, 0);
 				debug_dt("dthreads: [%p] %s: reclaimed\n",
-					 thread, __func__);
+				         thread, __func__);
 				thread->state = ThreadJoined;
 			} else {
 				unlock_thread_rw(thread);
@@ -736,7 +736,7 @@ int dt_stop(dt_unit_t *unit)
 		if (thread->state & (ThreadIdle | ThreadActive)) {
 			thread->state = ThreadDead | ThreadCancelled;
 			debug_dt("dthreads: [%p] %s: stopping thread\n",
-				 thread, __func__);
+			         thread, __func__);
 			dt_signalize(thread, SIGALRM);
 		}
 		unlock_thread_rw(thread);
@@ -777,7 +777,7 @@ int dt_setprio(dthread_t *thread, int prio)
 	// Report
 	if (ret < 0) {
 		debug_dt("dthreads: [%p] %s(%d): failed: %s",
-			 thread, __func__, prio, strerror(errno));
+		         thread, __func__, prio, strerror(errno));
 	}
 
 	return ret;
@@ -871,11 +871,11 @@ int dt_compact(dt_unit_t *unit)
 		lock_thread_rw(thread);
 		if (thread->state & (ThreadDead)) {
 			debug_dt("dthreads: [%p] %s: reclaiming thread\n",
-				 __func__, thread);
+			         __func__, thread);
 			unlock_thread_rw(thread);
 			pthread_join(thread->_thr, 0);
 			debug_dt("dthreads: [%p] %s: thread reclaimed\n",
-				 __func__, thread);
+			         __func__, thread);
 			thread->state = ThreadJoined;
 		} else {
 			unlock_thread_rw(thread);

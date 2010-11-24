@@ -1,6 +1,6 @@
 /*!
  * \file dthreads.h
- * \author Marek Vavrusa <marek.vavrusa@nic.cz>
+ * \author Marek Vavrusa <marek.vavusa@nic.cz>
  *
  * \brief Threading API.
  *
@@ -16,7 +16,7 @@
  * Incoherent function is when at least one thread executes
  * a different runnable than the others.
  *
- * \addtogroup threading
+ * \addtogroup server
  * @{
  */
 
@@ -95,8 +95,8 @@ typedef struct dt_unit_t {
  *
  * \param count Requested thread count.
  *
- * \retval new instance if successful
- * \retval 0 if some error occured
+ * \retval New instance if successful
+ * \retval NULL on error
  */
 dt_unit_t *dt_create(int count);
 
@@ -109,8 +109,8 @@ dt_unit_t *dt_create(int count);
  * \param runnable Runnable function for all threads.
  * \param data Any data passed onto threads.
  *
- * \retval new instance if successful
- * \retval 0 if some error occured
+ * \retval New instance if successful
+ * \retval NULL on error
  */
 dt_unit_t *dt_create_coherent(int count, runnable_t runnable, void *data);
 
@@ -140,8 +140,8 @@ void dt_delete(dt_unit_t **unit);
  * \param unit Unit to be resized.
  * \param size New unit size.
  *
- * \retval 0  on success
- * \retval <0 if some error occured
+ * \retval  0 On success.
+ * \retval <0 If an error occured.
  */
 int dt_resize(dt_unit_t *unit, int size);
 
@@ -150,8 +150,8 @@ int dt_resize(dt_unit_t *unit, int size);
  *
  * \param unit Unit to be started.
  *
- * \retval 0  on success
- * \retval <0 if some error occured
+ * \retval  0 On success.
+ * \retval <0 If an error occured.
  */
 int dt_start(dt_unit_t *unit);
 
@@ -160,8 +160,8 @@ int dt_start(dt_unit_t *unit);
  *
  * \param thread Target thread instance.
  *
- * \retval 0  on success
- * \retval <0 if some error occured
+ * \retval  0 On success.
+ * \retval <0 If an error occured.
  */
 int dt_start_id(dthread_t *thread);
 
@@ -175,8 +175,8 @@ int dt_start_id(dthread_t *thread);
  * \param thread Target thread instance.
  * \param signum Signal code.
  *
- * \retval 0  on success
- * \retval <0 if some error occured
+ * \retval  0 On success.
+ * \retval <0 If an error occured.
  */
 int dt_signalize(dthread_t *thread, int signum);
 
@@ -185,8 +185,8 @@ int dt_signalize(dthread_t *thread, int signum);
  *
  * \param unit Unit to be joined.
  *
- * \retval 0  on success
- * \retval <0 if some error occured
+ * \retval  0 On success.
+ * \retval <0 If an error occured.
  */
 int dt_join(dt_unit_t *unit);
 
@@ -197,8 +197,8 @@ int dt_join(dt_unit_t *unit);
  *
  * \param thread Target thread instance.
  *
- * \retval 0  on success
- * \retval <0 if some error occured
+ * \retval  0 On success.
+ * \retval <0 If an error occured.
  */
 int dt_stop_id(dthread_t *thread);
 
@@ -209,8 +209,8 @@ int dt_stop_id(dthread_t *thread);
  *
  * \param unit Unit to be stopped.
  *
- * \retval 0  on success
- * \retval <0 if some error occured
+ * \retval  0 On success.
+ * \retval <0 If an error occured.
  */
 int dt_stop(dt_unit_t *unit);
 
@@ -220,8 +220,8 @@ int dt_stop(dt_unit_t *unit);
  * \param thread Target thread instance.
  * \param prio Requested priority (positive integer, default is 0).
  *
- * \retval 0  on success
- * \retval <0 if some error occured
+ * \retval  0 On success.
+ * \retval <0 If an error occured.
  */
 int dt_setprio(dthread_t *thread, int prio);
 
@@ -232,8 +232,8 @@ int dt_setprio(dthread_t *thread, int prio);
  * \param runnable  Runnable function for target thread.
  * \param data      Data passed to target thread.
  *
- * \retval 0  on success
- * \retval <0 if some error occured
+ * \retval  0 On success.
+ * \retval <0 If an error occured.
  */
 int dt_repurpose(dthread_t *thread, runnable_t runnable, void *data);
 
@@ -248,8 +248,8 @@ int dt_repurpose(dthread_t *thread, runnable_t runnable, void *data);
  *
  * \param thread Target thread instance.
  *
- * \retval 0  on success
- * \retval <0 if some error occured
+ * \retval  0 On success.
+ * \retval <0 If an error occured.
  */
 int dt_activate(dthread_t *thread);
 
@@ -264,8 +264,8 @@ int dt_activate(dthread_t *thread);
  *
  * \param thread Target thread instance.
  *
- * \retval 0  on success
- * \retval <0 if some error occured
+ * \retval  0 On success.
+ * \retval <0 If an error occured.
  */
 int dt_cancel(dthread_t *thread);
 
@@ -274,8 +274,8 @@ int dt_cancel(dthread_t *thread);
  *
  * \param unit Target unit instance.
  *
- * \retval 0  on success
- * \retval <0 if some error occured
+ * \retval  0 On success.
+ * \retval <0 If an error occured.
  */
 int dt_compact(dt_unit_t *unit);
 
@@ -285,7 +285,7 @@ int dt_compact(dt_unit_t *unit);
  * It is estimated as NUM_CPUs + 1.
  * Fallback is DEFAULT_THR_COUNT  (\see common.h).
  *
- * \return number of threads
+ * \return Number of threads.
  */
 int dt_optimal_size();
 
@@ -296,8 +296,8 @@ int dt_optimal_size();
  *
  * \param thread Target thread instance.
  *
- * \retval logical true  on success
- * \retval logical false if not cancelled
+ * \retval Logical true if cancelled.
+ * \retval Logical false if not cancelled.
  */
 int dt_is_cancelled(dthread_t *thread);
 
@@ -307,8 +307,8 @@ int dt_is_cancelled(dthread_t *thread);
  *
  * \param unit Target unit instance.
  *
- * \retval 0  on success
- * \retval <0 if some error occured
+ * \retval  0 On success.
+ * \retval <0 If an error occured.
  */
 int dt_unit_lock(dt_unit_t *unit);
 
@@ -319,11 +319,12 @@ int dt_unit_lock(dt_unit_t *unit);
  *
  * \param unit Target unit instance.
  *
- * \retval 0  on success
- * \retval <0 if some error occured
+ * \retval  0 On success.
+ * \retval <0 If an error occured.
  */
 int dt_unit_unlock(dt_unit_t *unit);
 
 #endif // _CUTEDNS_DTHREADS_H_
 
-/** @} */
+/*! @} */
+
