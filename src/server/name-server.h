@@ -14,6 +14,7 @@
  *       updates, etc.
  *
  * \addtogroup query_processing
+ * @{
  */
 
 #ifndef _CUTEDNS_NAME_SERVER_H_
@@ -85,3 +86,4 @@ void ns_destroy(ns_nameserver **nameserver);
 #endif /* _CUTEDNS_NAME_SERVER_H_ */
 
 /*! @} */
+
