@@ -404,5 +404,8 @@ static int dnslib_rrset_tests_run(int argc, char *argv[])
 
 	endskip;	/* !res_create */
 
+  for (int i = 0; i < TEST_RRSETS; i++) {
+		  dnslib_rdata_free(&test_rrsets[i].rdata);
+  }
 	return 0;
 }
