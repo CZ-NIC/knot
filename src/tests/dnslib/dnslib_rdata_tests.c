@@ -207,9 +207,10 @@ static int fill_rdata( uint8_t *data, int max_size, uint16_t rrtype,
 		if (domain) {
 			items[i].dname = dname;
 			wire_size += dnslib_dname_size(dname);
-//			note("Saved domain name ptr: %p", items[i].dname);
+//			note("Saved domain name ptr on index %d: %p",i, items[i].dname);
 		} else {
       free(dname);
+	//		note("Saved raw data ptr on index %d: %p",i, pos);    
 			items[i].raw_data = pos;
 			pos += size;
 			wire_size += size;
@@ -340,7 +341,8 @@ static int check_rdata( const uint8_t *data, int max_size, uint16_t rrtype,
 		}
 
 		if (strncmp((char *)(&dnslib_rdata_get_item(rdata, i)->raw_data[0]),
-					(char *)pos, size) != 0) {
+					(char *)pos, size) != 0) {dnslib_rrtype_descriptor_t *desc = dnslib_rrtype_descriptor_by_type(rrtype);
+
 			diag("Data stored in %d-th RDATA item are wrong.", i);
 			++errors;
 		}
@@ -547,8 +549,18 @@ static int test_rdata_set_items()
 			++errors;
 		}
 		errors += check_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i, rdata);
-    
-//    free(rdata->items[0].dname);
+
+    dnslib_rrtype_descriptor_t *desc = dnslib_rrtype_descriptor_by_type(i);
+
+    for (int x = 0; x < desc->length; x++) {
+        if (desc->wireformat[x] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
+            desc->wireformat[x] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+            desc->wireformat[x] == DNSLIB_RDATA_WF_LITERAL_DNAME) {   
+//            printf("freeing %p\n", rdata->items[x].dname); 
+            dnslib_dname_free(&(rdata->items[x].dname));
+        }
+    }
+
 		dnslib_rdata_free(&rdata);
 	}
 
@@ -622,6 +634,16 @@ static int test_rdata_wire_size()
 			}
 		}
 
+    dnslib_rrtype_descriptor_t *desc = dnslib_rrtype_descriptor_by_type(i);
+
+    for (int x = 0; x < desc->length; x++) {
+        if (desc->wireformat[x] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
+            desc->wireformat[x] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+            desc->wireformat[x] == DNSLIB_RDATA_WF_LITERAL_DNAME) {   
+//            printf("freeing %p\n", rdata->items[x].dname); 
+            dnslib_dname_free(&(rdata->items[x].dname));
+        }
+    }
 		dnslib_rdata_free(&rdata);
 	}
 
@@ -673,6 +695,16 @@ static int test_rdata_to_wire()
 			}
 		}
 
+    dnslib_rrtype_descriptor_t *desc = dnslib_rrtype_descriptor_by_type(i);
+
+    for (int x = 0; x < desc->length; x++) {
+        if (desc->wireformat[x] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
+            desc->wireformat[x] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+            desc->wireformat[x] == DNSLIB_RDATA_WF_LITERAL_DNAME) {   
+//            printf("freeing %p\n", rdata->items[x].dname); 
+            dnslib_dname_free(&(rdata->items[x].dname));
+        }
+    }
 		dnslib_rdata_free(&rdata);
 	}
 
