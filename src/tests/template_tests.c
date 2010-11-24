@@ -1,6 +1,7 @@
 #include "tap_unit.h"
 
-/* This is unit test template.
+/*
+   This is unit test template.
    Implement two mandatory functions below,
    name them accordingly and export unit API
    via global variable of "unit_api".
@@ -15,29 +16,26 @@
 
  */
 
-/* Unit implementation */
-
-/*! This helper routine should report number of
- *  scheduled tests for given parameters.
- */
+/*! \brief Report the number of scheduled tests for given parameters. */
 static int TEMPLATE_tests_count(int argc, char *argv[])
 {
-   return 1;
+	return 1;
 }
 
-/*! Run all scheduled tests for given parameters.
- */
+/*! \brief  Run all scheduled tests for given parameters. */
 static int TEMPLATE_tests_run(int argc, char *argv[])
 {
-   ok(1 == 1, "dummy test");
-   return 0;
+	ok(1 == 1, "dummy test");
+	return 0;
 }
 
-/*! Exported unit API for later incorporation.
- *  Name must be unique for each module.
+/*!
+ * \brief Exported unit API for later incorporation.
+ *
+ * Name must be unique for each module.
  */
 unit_api TEMPLATE_tests_api = {
-   "TEMPLATE unit",        //! Unit name
-   &TEMPLATE_tests_count,  //! Count scheduled tests
-   &TEMPLATE_tests_run     //! Run scheduled tests
+	"TEMPLATE unit",        /*!< Unit name. */
+	&TEMPLATE_tests_count,  /*!< Count scheduled tests. */
+	&TEMPLATE_tests_run     /*!< Run scheduled tests. */
 };
