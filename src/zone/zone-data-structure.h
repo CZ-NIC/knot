@@ -1,5 +1,7 @@
 /*!
- * @file zone-data-structure.h
+ * \file zone-data-structure.h
+ *
+ * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
  * Provides generic interface to data structure for representing DNS zone. This
  * allows to easily change the underlying data structure without affecting the
@@ -7,75 +9,84 @@
  *
  * The API contains functions for creating and destroying zones as well as for
  * inserting, removing and searching for domain names.
+ *
+ * \addtogroup zonedb
+ * @{
  */
-#ifndef ZONE_DATA_STRUCTURE
-#define ZONE_DATA_STRUCTURE
+#ifndef _CUTEDNS_ZONE_DATA_STRUCTURE_H_
+#define _CUTEDNS_ZONE_DATA_STRUCTURE_H_
+
+#include <ldns/rdata.h>
 
 #include "common.h"
 #include "cuckoo-hash-table.h"
 #include "zone-node.h"
-#include <ldns/rdata.h>
 
 /*----------------------------------------------------------------------------*/
 /*!
- * @brief Zone data structure implemented as a cuckoo hash table.
+ * \brief Zone data structure implemented as a cuckoo hash table.
  *
- * @see ck-hash-table.h.
+ * \see ck-hash-table.h.
  */
 typedef ck_hash_table zds_zone;
 
 /*----------------------------------------------------------------------------*/
 /*!
- * @brief Allocates and initializes the structure.
+ * \brief Allocates and initializes the structure.
  *
- * @param item_count Number of items in the zone. It may be used to create a
+ * \param item_count Number of items in the zone. It may be used to create a
  *                   structure of appropriate size if the underlying structure
  *                   supports it.
  *
- * @return Pointer to the created zone data structure.
+ * \return Pointer to the created zone data structure.
  */
 zds_zone *zds_create( uint item_count );
 
 /*!
- * @brief Inserts one zone node to the given zone.
+ * \brief Inserts one zone node to the given zone.
  *
- * @param zone Zone data structure to insert into.
- * @param contents The zone node to be inserted.
+ * \param zone Zone data structure to insert into.
+ * \param contents The zone node to be inserted.
  *
- * @retval 0 On success.
- * @retval -1 If an error occured during insertion to the zone.
+ * \retval 0 On success.
+ * \retval -1 If an error occured during insertion to the zone.
+ *
+ * \todo Should return positive integer when the item was inserted, but
+ *       something went wrong. Otherwise negative.
  */
 int zds_insert( zds_zone *zone, zn_node *node );
 
 /*!
- * @brief Tries to find the given name in the zone and returns corresponding
+ * \brief Tries to find the given name in the zone and returns corresponding
  *        zone node.
  *
- * @param zone Zone data structure to search in.
- * @param owner Domain name to find, in wire format (i.e. a null-terminated
+ * \param zone Zone data structure to search in.
+ * \param owner Domain name to find, in wire format (i.e. a null-terminated
  *              string).
  *
- * @return Proper zone node for the given name or NULL if not found.
+ * \return Proper zone node for the given name or NULL if not found.
  */
 zn_node *zds_find( zds_zone *zone, const ldns_rdf *owner );
 
 /*!
- * @brief Removes zone node corresponding to the given domain name from the
+ * \brief Removes zone node corresponding to the given domain name from the
  *        given zone if such name exists in the zone.
  *
- * @param zone Zone data structure to remove from.
- * @param owner Domain name of the node to be removed.
+ * \param zone Zone data structure to remove from.
+ * \param owner Domain name of the node to be removed.
  *
- * @retval 0 On success.
- * @retval -1 If the name was not found in the zone.
+ * \retval 0 On success.
+ * \retval -1 If the name was not found in the zone.
  *
- * @todo Maybe return the removed node?
+ * \todo Maybe return the removed node?
  */
 int zds_remove( zds_zone *zone, ldns_rdf *owner );
 
 /*!
- * @brief Properly destroys the given zone data structure.
+ * \brief Properly destroys the given zone data structure.
  */
 void zds_destroy( zds_zone **zone, void (*dtor_zone_node)( void *value ) );
 
-#endif
+#endif /* _CUTEDNS_ZONE_DATA_STRUCTURE_H_ */
+
+/*! @} */
