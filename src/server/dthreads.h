@@ -20,8 +20,8 @@
  * @{
  */
 
-#ifndef CUTE_DTHREADS_H
-#define CUTE_DTHREADS_H
+#ifndef _CUTEDNS_DTHREADS_H_
+#define _CUTEDNS_DTHREADS_H_
 
 #include <pthread.h>
 
@@ -31,14 +31,10 @@ struct dt_unit_t;
 
 /*!
  * \brief Thread state enumeration.
- *
- * \note State values are ordered by state level
- *       and such should not be changed.
- *       The reason is, you can compare like: "state > Dead" etc.
  */
 enum {
 	ThreadJoined    = 1 << 0, /*!< Thread is finished and joined. */
-	ThreadJoinable  = 1 << 1, /*!< Thread is dead, waiting to be reclaimed. */
+	ThreadJoinable  = 1 << 1, /*!< Thread is waiting to be reclaimed. */
 	ThreadCancelled = 1 << 2, /*!< Thread is cancelled, finishing task. */
 	ThreadDead      = 1 << 3, /*!< Thread is finished, exiting. */
 	ThreadIdle      = 1 << 4, /*!< Thread is idle, waiting for purpose. */
@@ -49,22 +45,19 @@ enum {
 /*!
  * \brief Thread runnable prototype.
  *
- * Runnable is basically a pointer to function
- * which is called on active thread runtime.
+ * Runnable is basically a pointer to function which is called on active
+ * thread runtime.
  *
- * \note When implementing runnable, keep in mind
- *       to check thread state, as it changes and
- *       implement cooperative cancellation point.
- *       If state contains Cancelled flag, return
+ * \note When implementing a runnable, keep in mind to check thread state as
+ *       it may change, and implement a cooperative cancellation point.
+ *
+ *       Implement this by checking dt_is_cancelled() and return
  *       as soon as possible.
  */
-typedef int (*runnable_t)(struct dthread_t*);
+typedef int (*runnable_t)(struct dthread_t *);
 
 /*!
  * \brief Single thread descriptor public API.
- * \todo Find a good way to hide implementation data
- *       in an overlapped out-of-line structure,
- *       while not breaking an array of dthread_t.
  */
 typedef struct dthread_t {
 	volatile unsigned  state; /*!< Bitfield of dt_flag flags. */
@@ -72,8 +65,8 @@ typedef struct dthread_t {
 	void               *data; /*!< Currently active data */
 	struct dt_unit_t   *unit; /*!< Reference to assigned unit. */
 	void             *_adata; /* Thread-specific data. */
-	pthread_t           _thr; /* Implementation specific thread */
-	pthread_attr_t     _attr; /* Implementation specific thread attributes */
+	pthread_t           _thr; /* Thread */
+	pthread_attr_t     _attr; /* Thread attributes */
 	pthread_mutex_t      _mx; /* Thread state change lock. */
 } dthread_t;
 
@@ -85,7 +78,7 @@ typedef struct dthread_t {
  * the same runnable.
  */
 typedef struct dt_unit_t {
-	int                   size; /*!< Unit width (number of allocated threads) */
+	int                   size; /*!< Unit width (number of threads) */
 	struct dthread_t **threads; /*!< Array of threads */
 	pthread_cond_t     _notify; /* Notify thread */
 	pthread_mutex_t _notify_mx; /* Condition mutex */
@@ -108,6 +101,8 @@ dt_unit_t *dt_create(int count);
 /*!
  * \brief Create a set of coherent threads.
  *
+ * Coherent means, that the threads will share a common runnable and the data.
+ *
  * \param count Requested thread count.
  * \param runnable Runnable function for all threads.
  * \param data Any data passed onto threads.
@@ -118,8 +113,8 @@ dt_unit_t *dt_create_coherent(int count, runnable_t runnable, void *data);
 /*!
  * \brief Free unit.
  *
- * \warning Behavior is undefined if threads are still running,
- *          make sure to dt_join() first.
+ * \warning Behavior is undefined if threads are still active, make sure
+ *          to call dt_join() first.
  *
  * \param unit Unit to be deleted.
  */
@@ -128,17 +123,15 @@ void dt_delete(dt_unit_t **unit);
 /*!
  * \brief Resize unit to given number.
  *
- * \note Newly created dthreads will have
- *       no runnable or data, their state
- *       will be ThreadJoined (that means
- *       no thread will be physically created until
- *       next dt_start()).
+ * \note Newly created dthreads will have no runnable or data, their state
+ *       will be ThreadJoined (that means no thread will be physically created
+ *       until the next dt_start()).
  *
- * \warning Be careful when shrinking unit,
- *          joined and idle threads are reclaimed first,
- *          but it may kill your active threads as a last resort.
- *          However, threads will stop at their cancellation point,
- *          so this is potentially an expensive operation.
+ * \warning Be careful when shrinking unit, joined and idle threads are
+ *          reclaimed first, but it may kill your active threads
+ *          as a lastresort.
+ *          Threads will stop at their nearest cancellation point,
+ *          so this is potentially an expensive and blocking operation.
  *
  * \param unit Unit to be resized.
  * \param size New unit size.
@@ -165,8 +158,8 @@ int dt_start_id(dthread_t *thread);
 /*!
  * \brief Send given signal to thread.
  *
- * \note This is useful to interrupt some blocking I/O as well,
- *       for example with SIGALRM, which is handled by default.
+ * \note This is useful to interrupt some blocking I/O as well, for example
+ *       with SIGALRM, which is handled by default.
  * \note Signal handler may be overriden in runnable.
  *
  * \param thread Target thread instance.
@@ -186,19 +179,17 @@ int dt_join(dt_unit_t *unit);
 /*!
  * \brief Stop thread from running.
  *
- * Active thread is interrupted at the nearest
- * runnable cancellation point.
+ * Active thread is interrupted at the nearest runnable cancellation point.
  *
  * \param thread Target thread instance.
  * \return On success: 0, else <0
  */
-int dt_stop_id(dthread_t* thread);
+int dt_stop_id(dthread_t *thread);
 
 /*!
  * \brief Stop all threads in unit.
  *
- * Active threads are interrupted at the nearest
- * runnable cancellation point.
+ * Thread is interrupted at the nearest runnable cancellation point.
  *
  * \param unit Unit to be stopped.
  * \return On success: 0, else <0
@@ -212,7 +203,7 @@ int dt_stop(dt_unit_t *unit);
  * \param prio Requested priority (positive integer, default is 0).
  * \return On success: 0, else <0
  */
-int dt_setprio(dthread_t* thread, int prio);
+int dt_setprio(dthread_t *thread, int prio);
 
 /*!
  * \brief Set thread to execute another runnable.
@@ -222,7 +213,7 @@ int dt_setprio(dthread_t* thread, int prio);
  * \param data      Data passed to target thread.
  * \return On success: 0, else <0
  */
-int dt_repurpose(dthread_t* thread, runnable_t runnable, void *data);
+int dt_repurpose(dthread_t *thread, runnable_t runnable, void *data);
 
 /*!
  * \brief Wake up thread from idle state.
@@ -244,8 +235,8 @@ int dt_activate(dthread_t *thread);
  * Thread is flagged with Cancel flag and returns from runnable at the nearest
  * cancellation point, which requires complying runnable function.
  *
- * \note Thread isn't disposed, but put to idle state
- *       until it's requested again or collected by dt_compact().
+ * \note Thread isn't disposed, but put to idle state until it's requested
+ *       again or collected by dt_compact().
  *
  * \param thread Target thread instance.
  * \return On success: 0, else <0
@@ -299,6 +290,6 @@ int dt_unit_lock(dt_unit_t *unit);
  */
 int dt_unit_unlock(dt_unit_t *unit);
 
-#endif // DTHREADS_H
+#endif // _CUTEDNS_DTHREADS_H_
 
 /** @} */
