@@ -105,7 +105,7 @@ zn_node *zn_create();
 /*!
  * @brief Returns the owner domain name of the zone node.
  */
-ldns_rdf *zn_owner( zn_node *node );
+ldns_rdf *zn_owner(zn_node *node);
 
 /*!
  * @brief Adds one RR to the given node.
@@ -123,7 +123,7 @@ ldns_rdf *zn_owner( zn_node *node );
  * @retval 0 On success.
  * @retval TODO
  */
-int zn_add_rr( zn_node *node, ldns_rr *rr );
+int zn_add_rr(zn_node *node, ldns_rr *rr);
 
 /*!
  * @brief Adds a RRSet to the given node.
@@ -138,7 +138,7 @@ int zn_add_rr( zn_node *node, ldns_rr *rr );
  * @retval 0 On success.
  * @retval TODO
  */
-int zn_add_rrset( zn_node *node, ldns_rr_list *rrset );
+int zn_add_rrset(zn_node *node, ldns_rr_list *rrset);
 
 /*!
  * @brief Finds a RR of the desired type in the node.
@@ -148,41 +148,41 @@ int zn_add_rrset( zn_node *node, ldns_rr_list *rrset );
  *
  * @return Pointer to the RR if found. NULL otherwise.
  */
-ldns_rr_list *zn_find_rrset( const zn_node *node, ldns_rr_type type );
+ldns_rr_list *zn_find_rrset(const zn_node *node, ldns_rr_type type);
 
-ldns_rr_list *zn_all_rrsets( const zn_node *node );
+ldns_rr_list *zn_all_rrsets(const zn_node *node);
 
-int zn_is_empty( const zn_node *node );
+int zn_is_empty(const zn_node *node);
 
 /*!
  * @brief Marks the node as non-authoritative (e.g. carying only glue records).
  */
-void zn_set_non_authoritative( zn_node *node );
+void zn_set_non_authoritative(zn_node *node);
 
 /*!
  * @brief Returns 1 if @a node is non-authoritative. Otherwise 0.
  */
-int zn_is_non_authoritative( const zn_node *node );
+int zn_is_non_authoritative(const zn_node *node);
 
 /*!
  * @brief Marks the node as delegation point.
  */
-void zn_set_delegation_point( zn_node *node );
+void zn_set_delegation_point(zn_node *node);
 
 /*!
  * @brief Returns 1 if @a node is delegation point. Otherwise 0.
  */
-int zn_is_delegation_point( const zn_node *node );
+int zn_is_delegation_point(const zn_node *node);
 
 /*!
  * @brief Marks the node as a node carrying a CNAME record.
  */
-void zn_set_ref_cname( zn_node *node, zn_node *cname_ref );
+void zn_set_ref_cname(zn_node *node, zn_node *cname_ref);
 
 /*!
  * @brief Returns positive integer if @a node holds a CNAME record. Otherwise 0.
  */
-int zn_has_cname( const zn_node *node );
+int zn_has_cname(const zn_node *node);
 
 /*!
  * @brief Returns the node which holds the canonical name for @a node's owner.
@@ -193,38 +193,38 @@ int zn_has_cname( const zn_node *node );
  *         is such in the zone.
  * @retval NULL otherwise or if @a node does not contain CNAME RR.
  */
-zn_node *zn_get_ref_cname( const zn_node *node );
+zn_node *zn_get_ref_cname(const zn_node *node);
 
-int zn_add_ref( zn_node *node, ldns_rdf *name, ldns_rr_type type,
-				ldns_rr_list *ref_rrset, const zn_node *ref_node );
+int zn_add_ref(zn_node *node, ldns_rdf *name, ldns_rr_type type,
+               ldns_rr_list *ref_rrset, const zn_node *ref_node);
 
-skip_list *zn_get_refs( const zn_node *node );
+skip_list *zn_get_refs(const zn_node *node);
 
-const zn_ar_rrsets *zn_get_ref( const zn_node *node, const ldns_rdf *name );
+const zn_ar_rrsets *zn_get_ref(const zn_node *node, const ldns_rdf *name);
 
-int zn_has_mx( const zn_node *node );
+int zn_has_mx(const zn_node *node);
 
-int zn_has_ns( const zn_node *node );
+int zn_has_ns(const zn_node *node);
 
-int zn_has_srv( const zn_node *node );
+int zn_has_srv(const zn_node *node);
 
-int zn_add_referrer_cname( zn_node *node, const zn_node *referrer );
+int zn_add_referrer_cname(zn_node *node, const zn_node *referrer);
 
-int zn_add_referrer_mx( zn_node *node, const zn_node *referrer );
+int zn_add_referrer_mx(zn_node *node, const zn_node *referrer);
 
-int zn_add_referrer_ns( zn_node *node, const zn_node *referrer );
+int zn_add_referrer_ns(zn_node *node, const zn_node *referrer);
 
-int zn_add_referrer_srv( zn_node *node, const zn_node *referrer );
+int zn_add_referrer_srv(zn_node *node, const zn_node *referrer);
 
-int zn_add_referrer( zn_node *node, const zn_node *referrer,
-					 ldns_rr_type type );
+int zn_add_referrer(zn_node *node, const zn_node *referrer,
+                    ldns_rr_type type);
 
-int zn_referrers_count( const zn_node *node );
+int zn_referrers_count(const zn_node *node);
 
 /*!
  * @brief Adds the given glue RRSet to the list of glue RRSets in @a node.
  */
-int zn_push_glue( zn_node *node, ldns_rr_list *glue );
+int zn_push_glue(zn_node *node, ldns_rr_list *glue);
 
 /*!
  * @brief Returns all glue RRSets from the node.
@@ -236,7 +236,7 @@ int zn_push_glue( zn_node *node, ldns_rr_list *glue );
  *         such glue stored.
  * @retval NULL otherwise.
  */
-ldns_rr_list *zn_get_glues( const zn_node *node );
+ldns_rr_list *zn_get_glues(const zn_node *node);
 
 /*!
  * @brief Returns the desired glue RRSet from the node.
@@ -247,15 +247,15 @@ ldns_rr_list *zn_get_glues( const zn_node *node );
  *
  * @note This function is quite ineffective.
  */
-ldns_rr_list *zn_get_glue( const zn_node *node, ldns_rdf *owner,
-						   ldns_rr_type type, ldns_rr_list *copied_rrs );
+ldns_rr_list *zn_get_glue(const zn_node *node, ldns_rdf *owner,
+                          ldns_rr_type type, ldns_rr_list *copied_rrs);
 
 /*!
  * @brief Destroys the zone node, destroying all its RRSets and their RRs.
  *
  * @param node Pointer to pointer to the zone node.
  */
-void zn_destroy( zn_node **node );
+void zn_destroy(zn_node **node);
 
 /*!
  * @brief Generic interface to zn_destroy() to be used from the zone data
@@ -263,9 +263,9 @@ void zn_destroy( zn_node **node );
  *
  * @param item Pointer to the zn_node structure to be destroyed.
  */
-void zn_destructor( void *item );
+void zn_destructor(void *item);
 
-void zn_print_rrset( void *key, void *value );
+void zn_print_rrset(void *key, void *value);
 
 /*----------------------------------------------------------------------------*/
 
