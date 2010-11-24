@@ -1,10 +1,11 @@
-#include "zone-data-structure.h"
-
-#include "cuckoo-hash-table.h"
-#include "zone-node.h"
 #include <assert.h>
 #include <stdio.h>
+
 #include <ldns/rdata.h>
+
+#include "zone-data-structure.h"
+#include "cuckoo-hash-table.h"
+#include "zone-node.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -16,9 +17,6 @@ zds_zone *zds_create( uint item_count )
 
 /*----------------------------------------------------------------------------*/
 
-/*! @todo Should return positive integer when the item was inserted, but
- *        something went wrong. Otherwise negative.
- */
 int zds_insert( zds_zone *zone, zn_node *node )
 {
 	assert(zn_owner(node) != NULL);
