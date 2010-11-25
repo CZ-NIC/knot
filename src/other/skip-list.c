@@ -42,51 +42,53 @@ Retrieved from: http://en.literateprograms.org/Skip_list_(C)?oldid=12811
 static const float P = 0.5;
 
 /*!
- * @brief Maximum level of a node, i.e. maximum number of skip list levels.
+ * \brief Maximum level of a node, i.e. maximum number of skip list levels.
  */
 static const int MAX_LEVEL = 6;
 
 /*----------------------------------------------------------------------------*/
-/* Private functions          					                              */
+/* Private functions                                                          */
 /*----------------------------------------------------------------------------*/
 /*!
- * @brief Generates random real number between 0 and 1.
+ * \brief Generates random real number between 0 and 1.
  */
-float frand() {
-    return (float) rand() / RAND_MAX;
+static float frand()
+{
+	return (float) rand() / RAND_MAX;
 }
 
 /*----------------------------------------------------------------------------*/
 /*!
- * @brief Returns random level between 0 and MAX_LEVEL.
+ * \brief Returns random level between 0 and MAX_LEVEL.
  */
-int skip_random_level() {
-    static int first = 1;
-    int lvl = 0;
+static int skip_random_level()
+{
+	static int first = 1;
+	int lvl = 0;
 
-    if(first) {
-        srand( (unsigned)time( NULL ) );
-        first = 0;
-    }
+	if (first) {
+		srand((unsigned)time(NULL));
+		first = 0;
+	}
 
 	while (frand() < P && lvl < MAX_LEVEL) {
 		lvl++;
 	}
 
-    return lvl;
+	return lvl;
 }
 
 /*----------------------------------------------------------------------------*/
 /*!
- * @brief Creates a new skip list node with the given key and value.
+ * \brief Creates a new skip list node with the given key and value.
  *
- * @param level Level of the skip list node.
- * @param key Key of the new node.
- * @param value Value to be stored in the node.
+ * \param level Level of the skip list node.
+ * \param key Key of the new node.
+ * \param value Value to be stored in the node.
  *
- * @return Pointer to the newly created node or NULL if not successful.
+ * \return Pointer to the newly created node or NULL if not successful.
  */
-skip_node *skip_make_node( int level, void *key, void *value )
+static skip_node *skip_make_node(int level, void *key, void *value)
 {
 	skip_node *sn = (skip_node *)malloc(sizeof(skip_node));
 	if (sn == NULL) {
@@ -100,26 +102,26 @@ skip_node *skip_make_node( int level, void *key, void *value )
 		free(sn);
 		return NULL;
 	}
- 
+
 	sn->key = key;
-    sn->value = value;
-    return sn;
+	sn->value = value;
+	return sn;
 }
 
 /*----------------------------------------------------------------------------*/
 /*!
- * @brief Properly deallocates the given skip list node, and optionally destroys
+ * \brief Properly deallocates the given skip list node, and optionally destroys
  *        its key and value.
  *
- * @param node Skip list node to be deleted.
- * @param destroy_key Function for properly destroying the key. If set tu NULL,
+ * \param node Skip list node to be deleted.
+ * \param destroy_key Function for properly destroying the key. If set tu NULL,
  *                    the object at which the key points will not be destroyed.
- * @param destroy_value Function for properly destroying the key. If set tu
+ * \param destroy_value Function for properly destroying the key. If set tu
  *                      NULL, the object at which the value points will not be
  *                      destroyed.
  */
-void skip_delete_node( skip_node **node, void (*destroy_key)(void *),
-				  void (*destroy_value)(void *) )
+static void skip_delete_node(skip_node **node, void (*destroy_key)(void *),
+                             void (*destroy_value)(void *))
 {
 	if (destroy_key != NULL) {
 		destroy_key((*node)->key);
@@ -135,10 +137,10 @@ void skip_delete_node( skip_node **node, void (*destroy_key)(void *),
 }
 
 /*----------------------------------------------------------------------------*/
-/* Public functions          					                              */
+/* Public functions                                                           */
 /*----------------------------------------------------------------------------*/
 
-skip_list *skip_create_list( int (*compare_keys)(void *, void *) )
+skip_list *skip_create_list(int (*compare_keys)(void *, void *))
 {
 	assert(compare_keys != NULL);
 
@@ -155,16 +157,16 @@ skip_list *skip_create_list( int (*compare_keys)(void *, void *) )
 		return NULL;
 	}
 
-    ss->level = 0;
+	ss->level = 0;
 	ss->compare_keys = compare_keys;
 
-    return ss;
+	return ss;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void skip_destroy_list( skip_list **list, void (*destroy_key)(void *),
-						void (*destroy_value)(void *))
+void skip_destroy_list(skip_list **list, void (*destroy_key)(void *),
+                       void (*destroy_value)(void *))
 {
 	assert((*list) != NULL);
 	assert((*list)->head != NULL);
@@ -184,7 +186,7 @@ void skip_destroy_list( skip_list **list, void (*destroy_key)(void *),
 		skip_delete_node(&x, destroy_key, destroy_value);
 
 		while ((*list)->level > 0
-			   && (*list)->head->forward[(*list)->level] == NULL) {
+		       && (*list)->head->forward[(*list)->level] == NULL) {
 			(*list)->level--;
 		}
 	}
@@ -198,21 +200,21 @@ void skip_destroy_list( skip_list **list, void (*destroy_key)(void *),
 
 /*----------------------------------------------------------------------------*/
 
-void *skip_find( const skip_list *list, void *key )
+void *skip_find(const skip_list *list, void *key)
 {
 	assert(list != NULL);
 	assert(list->head != NULL);
 	assert(list->compare_keys != NULL);
 
-    int i;
+	int i;
 	skip_node *x = list->head;
-	for(i = list->level; i >= 0; i--) {
-		while(x->forward[i] != NULL
-			  && list->compare_keys(x->forward[i]->key, key) == -1) {
-            x = x->forward[i];
-        }
-    }
-    x = x->forward[0];
+	for (i = list->level; i >= 0; i--) {
+		while (x->forward[i] != NULL
+		       && list->compare_keys(x->forward[i]->key, key) == -1) {
+			x = x->forward[i];
+		}
+	}
+	x = x->forward[0];
 
 	if (x != NULL && list->compare_keys(x->key, key) == 0) {
 		return x->value;
@@ -222,30 +224,30 @@ void *skip_find( const skip_list *list, void *key )
 
 /*----------------------------------------------------------------------------*/
 
-int skip_insert( skip_list *list, void *key, void *value,
-				 int (*merge_values)(void **, void **) )
+int skip_insert(skip_list *list, void *key, void *value,
+                int (*merge_values)(void **, void **))
 {
 	assert(list != NULL);
 	assert(list->head != NULL);
 	assert(list->compare_keys != NULL);
 
-    int i;
+	int i;
 	skip_node *x = list->head;
 	skip_node *update[MAX_LEVEL + 1];
-    memset(update, 0, MAX_LEVEL + 1);
+	memset(update, 0, MAX_LEVEL + 1);
 
 	for (i = list->level; i >= 0; i--) {
 		while (x->forward[i] != NULL
-			  && list->compare_keys(x->forward[i]->key, key) == -1) {
-            x = x->forward[i];
-        }
-        update[i] = x; 
-    }
-    x = x->forward[0];
+		       && list->compare_keys(x->forward[i]->key, key) == -1) {
+			x = x->forward[i];
+		}
+		update[i] = x;
+	}
+	x = x->forward[0];
 
 	if (x == NULL || list->compare_keys(x->key, key) != 0) {
 		int lvl = skip_random_level();
-  
+
 		if (lvl > list->level) {
 			for (i = list->level + 1; i <= lvl; i++) {
 				update[i] = list->head;
@@ -265,8 +267,8 @@ int skip_insert( skip_list *list, void *key, void *value,
 		}
 
 		return 0;
-	} else {	// already in the list
-		if (merge_values != NULL) {	// if merge function provided, merge
+	} else { // already in the list
+		if (merge_values != NULL) { // if merge function provided, merge
 			return (merge_values(&x->value, &value) == 0) ? 2 : -2;
 		} else {
 			return 1;
@@ -276,26 +278,26 @@ int skip_insert( skip_list *list, void *key, void *value,
 
 /*----------------------------------------------------------------------------*/
 
-int skip_remove( skip_list *list, void *key, void (*destroy_key)(void *),
-				  void (*destroy_value)(void *) )
+int skip_remove(skip_list *list, void *key, void (*destroy_key)(void *),
+                void (*destroy_value)(void *))
 {
 	assert(list != NULL);
 	assert(list->head != NULL);
 	assert(list->compare_keys != NULL);
 
-    int i;
+	int i;
 	skip_node *x = list->head;
 	skip_node *update[MAX_LEVEL + 1];
-    memset(update, 0, MAX_LEVEL + 1);
+	memset(update, 0, MAX_LEVEL + 1);
 
 	for (i = list->level; i >= 0; i--) {
 		while (x->forward[i] != NULL
-			  && list->compare_keys(x->forward[i]->key, key) == -1) {
-            x = x->forward[i];
-        }
-        update[i] = x; 
-    }
-    x = x->forward[0];
+		       && list->compare_keys(x->forward[i]->key, key) == -1) {
+			x = x->forward[i];
+		}
+		update[i] = x;
+	}
+	x = x->forward[0];
 
 	if (x != NULL && list->compare_keys(x->key, key) == 0) {
 		for (i = 0; i <= list->level; i++) {
@@ -308,7 +310,8 @@ int skip_remove( skip_list *list, void *key, void (*destroy_key)(void *),
 		// delete the item
 		skip_delete_node(&x, destroy_key, destroy_value);
 
-		while (list->level > 0 && list->head->forward[list->level] == NULL) {
+		while (list->level > 0
+		       && list->head->forward[list->level] == NULL) {
 			list->level--;
 		}
 		return 0;
@@ -319,29 +322,29 @@ int skip_remove( skip_list *list, void *key, void (*destroy_key)(void *),
 
 /*----------------------------------------------------------------------------*/
 
-int skip_empty( const skip_list *list )
+int skip_empty(const skip_list *list)
 {
 	return (list->head->forward[0] == NULL) ? 0 : 1;
 }
 
 /*----------------------------------------------------------------------------*/
 
-const skip_node *skip_first( const skip_list *list )
+const skip_node *skip_first(const skip_list *list)
 {
 	return list->head->forward[0];
 }
 
 /*----------------------------------------------------------------------------*/
 
-const skip_node *skip_next( const skip_node *node )
+const skip_node *skip_next(const skip_node *node)
 {
 	return node->forward[0];
 }
 
 /*----------------------------------------------------------------------------*/
 
-void skip_print_list( const skip_list *list,
-					  void (*print_item)(void *, void *) )
+void skip_print_list(const skip_list *list,
+                     void (*print_item)(void *, void *))
 {
 	assert(list != NULL);
 	assert(list->head != NULL);
@@ -353,5 +356,4 @@ void skip_print_list( const skip_list *list,
 		print_item(x->key, x->value);
 		x = x->forward[0];
 	}
-
 }
