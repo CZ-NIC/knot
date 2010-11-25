@@ -37,21 +37,21 @@
 #endif
 
 #ifdef CUCKOO_DEBUG
-#define debug_cuckoo(msg...) log_msg(LOG_DEBUG, msg)
-#define debug_cuckoo_hex(data, len) hex_print((data), (len))
+#define debug_ck(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_ck_hex(data, len) hex_print((data), (len))
 #else
-#define debug_cuckoo(msg...)
-#define debug_cuckoo_hex(data, len)
+#define debug_ck(msg...)
+#define debug_ck_hex(data, len)
 #endif
 
 #ifdef CUCKOO_DEBUG_HASH
-#define debug_cuckoo_hash(msg...) log_msg(LOG_DEBUG, msg)
-#define debug_cuckoo_hash_hex(data, len) hex_print((data), (len))
-#define debug_cuckoo_rehash(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_ck_hash(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_ck_hash_hex(data, len) hex_print((data), (len))
+#define debug_ck_rehash(msg...) log_msg(LOG_DEBUG, msg)
 #else
-#define debug_cuckoo_hash(msg...)
-#define debug_cuckoo_hash_hex(data, len)
-#define debug_cuckoo_rehash(msg...)
+#define debug_ck_hash(msg...)
+#define debug_ck_hash_hex(data, len)
+#define debug_ck_rehash(msg...)
 #endif
 
 #ifdef DA_DEBUG
