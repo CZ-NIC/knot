@@ -10,7 +10,7 @@
 
 /*----------------------------------------------------------------------------*/
 
-#define RFRS(arr) ((const zn_node **)da_get_items(arr))
+#define RFRS(arr) ((const zn_node_t **)da_get_items(arr))
 #define RFRS_COUNT(arr) (da_get_count(arr))
 
 /*----------------------------------------------------------------------------*/
@@ -65,17 +65,17 @@ enum zn_flags {
 	 *        is set)
 	 */
 	FLAGS_REF_SRV = 0x200
-} zn_flags;
+};
 
-typedef enum zn_flags zn_flags;
+typedef enum zn_flags zn_flags_t;
 
 /*----------------------------------------------------------------------------*/
 /* Private functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-static zn_ar_rrsets *zn_create_ar_rrsets()
+static zn_ar_rrsets_t *zn_create_ar_rrsets()
 {
-	zn_ar_rrsets *ar = malloc(sizeof(zn_ar_rrsets));
+	zn_ar_rrsets_t *ar = malloc(sizeof(zn_ar_rrsets_t));
 	if (ar == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -89,7 +89,7 @@ static zn_ar_rrsets *zn_create_ar_rrsets()
 
 /*----------------------------------------------------------------------------*/
 
-static void zn_destroy_ar_rrsets(zn_ar_rrsets **ar)
+static void zn_destroy_ar_rrsets(zn_ar_rrsets_t **ar)
 {
 	free(*ar);
 }
@@ -98,15 +98,15 @@ static void zn_destroy_ar_rrsets(zn_ar_rrsets **ar)
 
 static void zn_dtor_ar_rrsets(void *value)
 {
-	zn_ar_rrsets *ar = (zn_ar_rrsets *)value;
+	zn_ar_rrsets_t *ar = (zn_ar_rrsets_t *)value;
 	zn_destroy_ar_rrsets(&ar);
 }
 
 /*----------------------------------------------------------------------------*/
 
-static zn_ar_rrsets *zn_create_ar_rrsets_for_ref(ldns_rr_list *ref_rrset)
+static zn_ar_rrsets_t *zn_create_ar_rrsets_for_ref(ldns_rr_list *ref_rrset)
 {
-	zn_ar_rrsets *ar = zn_create_ar_rrsets();
+	zn_ar_rrsets_t *ar = zn_create_ar_rrsets();
 
 	switch (ldns_rr_list_type(ref_rrset)) {
 	case LDNS_RR_TYPE_A:
@@ -128,9 +128,9 @@ static zn_ar_rrsets *zn_create_ar_rrsets_for_ref(ldns_rr_list *ref_rrset)
 
 /*----------------------------------------------------------------------------*/
 
-static zn_ar_rrsets *zn_create_ar_rrsets_for_cname(const zn_node *node)
+static zn_ar_rrsets_t *zn_create_ar_rrsets_for_cname(const zn_node_t *node)
 {
-	zn_ar_rrsets *ar = zn_create_ar_rrsets();
+	zn_ar_rrsets_t *ar = zn_create_ar_rrsets();
 
 	assert(ar->a == NULL);
 	assert(ar->aaaa == NULL);
@@ -150,8 +150,8 @@ static int zn_compare_ar_keys(void *key1, void *key2)
 
 static int zn_merge_ar_values(void **value1, void **value2)
 {
-	zn_ar_rrsets *ar1 = (zn_ar_rrsets *)(*value1);
-	zn_ar_rrsets *ar2 = (zn_ar_rrsets *)(*value2);
+	zn_ar_rrsets_t *ar1 = (zn_ar_rrsets_t *)(*value1);
+	zn_ar_rrsets_t *ar2 = (zn_ar_rrsets_t *)(*value2);
 
 	if ((ar2->a != NULL && ar1->a != NULL)
 	                || (ar2->aaaa != NULL && ar1->aaaa != NULL)
@@ -200,14 +200,14 @@ static void zn_destroy_value(void *value)
 
 /*----------------------------------------------------------------------------*/
 
-static inline void zn_flags_set(uint16_t *flags, zn_flags flag)
+static inline void zn_flags_set(uint16_t *flags, zn_flags_t flag)
 {
 	(*flags) |= flag;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static inline int zn_flags_get(uint16_t flags, zn_flags flag)
+static inline int zn_flags_get(uint16_t flags, zn_flags_t flag)
 {
 	return (flags & flag);
 }
@@ -221,10 +221,10 @@ static inline int zn_flags_empty(uint16_t flags)
 
 /*----------------------------------------------------------------------------*/
 
-static int zn_add_referrer_node(zn_node *node, const zn_node *referrer)
+static int zn_add_referrer_node(zn_node_t *node, const zn_node_t *referrer)
 {
 	if (node->referrers == NULL) {
-		node->referrers = da_create(1, sizeof(zn_node *));
+		node->referrers = da_create(1, sizeof(zn_node_t *));
 		if (node->referrers == NULL) {
 			log_error("zn_add_referrer_node(): Error while creating"
 				  "array.\n");
@@ -252,7 +252,7 @@ static int zn_add_referrer_node(zn_node *node, const zn_node *referrer)
 
 /*----------------------------------------------------------------------------*/
 
-static int zn_has_additional(const zn_node *node)
+static int zn_has_additional(const zn_node_t *node)
 {
 	return (zn_has_mx(node) + zn_has_ns(node) + zn_has_srv(node));
 }
@@ -261,9 +261,9 @@ static int zn_has_additional(const zn_node *node)
 /* Public functions                                                           */
 /*----------------------------------------------------------------------------*/
 
-zn_node *zn_create()
+zn_node_t *zn_create()
 {
-	zn_node *node = malloc(sizeof(zn_node));
+	zn_node_t *node = malloc(sizeof(zn_node_t));
 	if (node == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -290,14 +290,14 @@ zn_node *zn_create()
 
 /*----------------------------------------------------------------------------*/
 
-ldns_rdf *zn_owner(zn_node *node)
+ldns_rdf *zn_owner(zn_node_t *node)
 {
 	return node->owner;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int zn_add_rr(zn_node *node, ldns_rr *rr)
+int zn_add_rr(zn_node_t *node, ldns_rr *rr)
 {
 	/*
 	 * This whole function can be written with less code if we first create
@@ -355,7 +355,7 @@ int zn_add_rr(zn_node *node, ldns_rr *rr)
 
 /*----------------------------------------------------------------------------*/
 
-int zn_add_rrset(zn_node *node, ldns_rr_list *rrset)
+int zn_add_rrset(zn_node_t *node, ldns_rr_list *rrset)
 {
 	assert(ldns_is_rrset(rrset));
 	// here we do not have to allocate anything even if the RRSet is not in
@@ -373,7 +373,7 @@ int zn_add_rrset(zn_node *node, ldns_rr_list *rrset)
 
 /*----------------------------------------------------------------------------*/
 
-ldns_rr_list *zn_find_rrset(const zn_node *node, ldns_rr_type type)
+ldns_rr_list *zn_find_rrset(const zn_node_t *node, ldns_rr_type type)
 {
 	ldns_rr_list *rrset = (ldns_rr_list *)skip_find(node->rrsets,
 							(void *)type);
@@ -394,7 +394,7 @@ ldns_rr_list *zn_find_rrset(const zn_node *node, ldns_rr_type type)
 
 /*----------------------------------------------------------------------------*/
 
-ldns_rr_list *zn_all_rrsets(const zn_node *node)
+ldns_rr_list *zn_all_rrsets(const zn_node_t *node)
 {
 	ldns_rr_list *all = ldns_rr_list_new();
 
@@ -413,28 +413,28 @@ ldns_rr_list *zn_all_rrsets(const zn_node *node)
 
 /*----------------------------------------------------------------------------*/
 
-int zn_is_empty(const zn_node *node)
+int zn_is_empty(const zn_node_t *node)
 {
 	return (skip_empty(node->rrsets));
 }
 
 /*----------------------------------------------------------------------------*/
 
-void zn_set_non_authoritative(zn_node *node)
+void zn_set_non_authoritative(zn_node_t *node)
 {
 	zn_flags_set(&node->flags, FLAGS_NONAUTH);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int zn_is_non_authoritative(const zn_node *node)
+int zn_is_non_authoritative(const zn_node_t *node)
 {
 	return zn_flags_get(node->flags, FLAGS_NONAUTH);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void zn_set_delegation_point(zn_node *node)
+void zn_set_delegation_point(zn_node_t *node)
 {
 	assert(node->ref.glues == NULL);
 	node->ref.glues = ldns_rr_list_new();
@@ -443,7 +443,7 @@ void zn_set_delegation_point(zn_node *node)
 
 /*----------------------------------------------------------------------------*/
 
-int zn_is_delegation_point(const zn_node *node)
+int zn_is_delegation_point(const zn_node_t *node)
 {
 	assert((zn_flags_get(node->flags, FLAGS_DELEG) == 0
 	        || node->ref.glues != NULL));
@@ -452,7 +452,7 @@ int zn_is_delegation_point(const zn_node *node)
 
 /*----------------------------------------------------------------------------*/
 
-void zn_set_ref_cname(zn_node *node, zn_node *cname_ref)
+void zn_set_ref_cname(zn_node_t *node, zn_node_t *cname_ref)
 {
 	assert(node->ref.cname == NULL);
 	node->ref.cname = cname_ref;
@@ -461,14 +461,14 @@ void zn_set_ref_cname(zn_node *node, zn_node *cname_ref)
 
 /*----------------------------------------------------------------------------*/
 
-int zn_has_cname(const zn_node *node)
+int zn_has_cname(const zn_node_t *node)
 {
 	return zn_flags_get(node->flags, FLAGS_HAS_CNAME);
 }
 
 /*----------------------------------------------------------------------------*/
 
-zn_node *zn_get_ref_cname(const zn_node *node)
+zn_node_t *zn_get_ref_cname(const zn_node_t *node)
 {
 	if (zn_flags_get(node->flags, FLAGS_HAS_CNAME) > 0) {
 		return node->ref.cname;
@@ -479,10 +479,10 @@ zn_node *zn_get_ref_cname(const zn_node *node)
 
 /*----------------------------------------------------------------------------*/
 
-int zn_add_ref(zn_node *node, ldns_rdf *name, ldns_rr_type type,
-               ldns_rr_list *ref_rrset, const zn_node *ref_node)
+int zn_add_ref(zn_node_t *node, ldns_rdf *name, ldns_rr_type type,
+               ldns_rr_list *ref_rrset, const zn_node_t *ref_node)
 {
-	zn_flags flag = 0;
+	zn_flags_t flag = 0;
 
 	assert(ref_rrset != NULL || ref_node != NULL);
 	assert(ref_node != NULL || ref_rrset != NULL);
@@ -510,7 +510,7 @@ int zn_add_ref(zn_node *node, ldns_rdf *name, ldns_rr_type type,
 		}
 	}
 
-	zn_ar_rrsets *ar;
+	zn_ar_rrsets_t *ar;
 	if (ref_rrset != NULL) {
 		ar = zn_create_ar_rrsets_for_ref(ref_rrset);
 	} else {
@@ -547,7 +547,7 @@ int zn_add_ref(zn_node *node, ldns_rdf *name, ldns_rr_type type,
 
 /*----------------------------------------------------------------------------*/
 
-skip_list *zn_get_refs(const zn_node *node)
+skip_list *zn_get_refs(const zn_node_t *node)
 {
 	if ((zn_flags_get(node->flags, FLAGS_HAS_MX)
 	                | zn_flags_get(node->flags, FLAGS_HAS_NS)
@@ -560,12 +560,12 @@ skip_list *zn_get_refs(const zn_node *node)
 
 /*----------------------------------------------------------------------------*/
 
-const zn_ar_rrsets *zn_get_ref(const zn_node *node, const ldns_rdf *name)
+const zn_ar_rrsets_t *zn_get_ref(const zn_node_t *node, const ldns_rdf *name)
 {
 	if ((zn_flags_get(node->flags, FLAGS_HAS_MX)
 	                | zn_flags_get(node->flags, FLAGS_HAS_NS)
 	                | zn_flags_get(node->flags, FLAGS_HAS_SRV)) > 0) {
-		return (zn_ar_rrsets *)skip_find(node->ref.additional,
+		return (zn_ar_rrsets_t *)skip_find(node->ref.additional,
 						 (void *)name);
 	} else {
 		return NULL;
@@ -574,28 +574,28 @@ const zn_ar_rrsets *zn_get_ref(const zn_node *node, const ldns_rdf *name)
 
 /*----------------------------------------------------------------------------*/
 
-int zn_has_mx(const zn_node *node)
+int zn_has_mx(const zn_node_t *node)
 {
 	return zn_flags_get(node->flags, FLAGS_HAS_MX);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int zn_has_ns(const zn_node *node)
+int zn_has_ns(const zn_node_t *node)
 {
 	return zn_flags_get(node->flags, FLAGS_HAS_NS);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int zn_has_srv(const zn_node *node)
+int zn_has_srv(const zn_node_t *node)
 {
 	return zn_flags_get(node->flags, FLAGS_HAS_SRV);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int zn_add_referrer_cname(zn_node *node, const zn_node *referrer)
+int zn_add_referrer_cname(zn_node_t *node, const zn_node_t *referrer)
 {
 	int res = zn_add_referrer_node(node, referrer);
 	if (res == 0) {
@@ -606,7 +606,7 @@ int zn_add_referrer_cname(zn_node *node, const zn_node *referrer)
 
 /*----------------------------------------------------------------------------*/
 
-int zn_add_referrer_mx(zn_node *node, const zn_node *referrer)
+int zn_add_referrer_mx(zn_node_t *node, const zn_node_t *referrer)
 {
 	int res = zn_add_referrer_node(node, referrer);
 	if (res == 0) {
@@ -617,7 +617,7 @@ int zn_add_referrer_mx(zn_node *node, const zn_node *referrer)
 
 /*----------------------------------------------------------------------------*/
 
-int zn_add_referrer_ns(zn_node *node, const zn_node *referrer)
+int zn_add_referrer_ns(zn_node_t *node, const zn_node_t *referrer)
 {
 	int res = zn_add_referrer_node(node, referrer);
 	if (res == 0) {
@@ -628,7 +628,7 @@ int zn_add_referrer_ns(zn_node *node, const zn_node *referrer)
 
 /*----------------------------------------------------------------------------*/
 
-int zn_add_referrer_srv(zn_node *node, const zn_node *referrer)
+int zn_add_referrer_srv(zn_node_t *node, const zn_node_t *referrer)
 {
 	int res = zn_add_referrer_node(node, referrer);
 	if (res == 0) {
@@ -639,7 +639,7 @@ int zn_add_referrer_srv(zn_node *node, const zn_node *referrer)
 
 /*----------------------------------------------------------------------------*/
 
-int zn_add_referrer(zn_node *node, const zn_node *referrer,
+int zn_add_referrer(zn_node_t *node, const zn_node_t *referrer,
                     ldns_rr_type type)
 {
 	int res = zn_add_referrer_node(node, referrer);
@@ -672,7 +672,7 @@ int zn_add_referrer(zn_node *node, const zn_node *referrer,
 
 /*----------------------------------------------------------------------------*/
 
-int zn_referrers_count(const zn_node *node)
+int zn_referrers_count(const zn_node_t *node)
 {
 	int count = RFRS_COUNT(node->referrers);
 	assert(count == 0 || (zn_flags_get(node->flags, FLAGS_REF_CNAME)
@@ -684,7 +684,7 @@ int zn_referrers_count(const zn_node *node)
 
 /*----------------------------------------------------------------------------*/
 
-int zn_push_glue(zn_node *node, ldns_rr_list *glue)
+int zn_push_glue(zn_node_t *node, ldns_rr_list *glue)
 {
 	assert((zn_flags_get(node->flags, FLAGS_DELEG) == 1
 	        && node->ref.glues != NULL));
@@ -703,7 +703,7 @@ int zn_push_glue(zn_node *node, ldns_rr_list *glue)
 
 /*----------------------------------------------------------------------------*/
 
-ldns_rr_list *zn_get_glues(const zn_node *node)
+ldns_rr_list *zn_get_glues(const zn_node_t *node)
 {
 	if (!zn_is_delegation_point(node)) {
 		return NULL;
@@ -713,7 +713,7 @@ ldns_rr_list *zn_get_glues(const zn_node *node)
 
 /*----------------------------------------------------------------------------*/
 
-ldns_rr_list *zn_get_glue(const zn_node *node, ldns_rdf *owner,
+ldns_rr_list *zn_get_glue(const zn_node_t *node, ldns_rdf *owner,
                           ldns_rr_type type, ldns_rr_list *copied_rrs)
 {
 	assert(type == LDNS_RR_TYPE_A || type == LDNS_RR_TYPE_AAAA);
@@ -764,7 +764,7 @@ ldns_rr_list *zn_get_glue(const zn_node *node, ldns_rdf *owner,
 
 /*----------------------------------------------------------------------------*/
 
-void zn_destroy(zn_node **node)
+void zn_destroy(zn_node_t **node)
 {
 	skip_destroy_list(&(*node)->rrsets, NULL, zn_destroy_value);
 	if (zn_has_additional(*node)) {
@@ -788,7 +788,7 @@ void zn_destroy(zn_node **node)
 
 void zn_destructor(void *item)
 {
-	zn_node *node = (zn_node *)item;
+	zn_node_t *node = (zn_node_t *)item;
 	zn_destroy(&node);
 }
 

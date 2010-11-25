@@ -214,7 +214,7 @@ static size_t ns_rrset_size(ldns_rr_list *rrset)
 /*!
  * \todo Check return values from push functions!
  */
-static void ns_follow_cname(const zn_node **node,
+static void ns_follow_cname(const zn_node_t **node,
                             ldns_rdf **qname,
                             ldns_pkt *pkt,
                             ldns_pkt_section section,
@@ -319,7 +319,7 @@ static void ns_put_rrset(ldns_rr_list *rrset, const ldns_rdf *name,
 /*!
  * \todo Check return values from push functions!
  */
-static void ns_put_answer(const zn_node *node, const ldns_rdf *name,
+static void ns_put_answer(const zn_node_t *node, const ldns_rdf *name,
                           ldns_rr_type type, ldns_pkt *response,
                           ldns_rr_list *copied_rrs)
 {
@@ -338,7 +338,7 @@ static void ns_put_answer(const zn_node *node, const ldns_rdf *name,
 
 /*----------------------------------------------------------------------------*/
 
-static void ns_put_additional(const zn_node *node, ldns_pkt *response,
+static void ns_put_additional(const zn_node_t *node, ldns_pkt *response,
                               ldns_rr_list *copied_rrs)
 {
         debug_ns("ADDITIONAL SECTION PROCESSING (node %p)\n", node);
@@ -375,10 +375,10 @@ static void ns_put_additional(const zn_node *node, ldns_pkt *response,
 		}
 
 		debug_ns("Adding RRSets for name %s\n", ldns_rdf2str(name));
-		const zn_ar_rrsets *rrsets = zn_get_ref(node, name);
+		const zn_ar_rrsets_t *rrsets = zn_get_ref(node, name);
 		if (rrsets != NULL) {
 			if (rrsets->cname != NULL) {
-				const zn_node *cname_node = rrsets->cname;
+				const zn_node_t *cname_node = rrsets->cname;
 				ns_follow_cname(&cname_node, &name, response,
 				                LDNS_SECTION_ADDITIONAL,
 				                copied_rrs);
@@ -418,7 +418,7 @@ static void ns_put_authority_soa(const zdb_zone *zone, ldns_pkt *resp)
 
 /*----------------------------------------------------------------------------*/
 
-static void ns_put_glues(const zn_node *node, ldns_pkt *response,
+static void ns_put_glues(const zn_node_t *node, ldns_pkt *response,
                          ldns_rr_list *copied_rrs)
 {
 	ldns_rr_list *glues = zn_get_glues(node);
@@ -494,7 +494,7 @@ static void ns_put_glues(const zn_node *node, ldns_pkt *response,
 
 /*----------------------------------------------------------------------------*/
 
-static inline void ns_referral(const zn_node *node, ldns_pkt *response,
+static inline void ns_referral(const zn_node_t *node, ldns_pkt *response,
                                ldns_rr_list *copied_rrs)
 {
 	debug_ns("Referral response.\n");
@@ -517,7 +517,7 @@ static int ns_additional_needed(ldns_rr_type qtype)
 
 /*----------------------------------------------------------------------------*/
 
-static void ns_answer_from_node(const zn_node *node, const zdb_zone *zone,
+static void ns_answer_from_node(const zn_node_t *node, const zdb_zone *zone,
                                 const ldns_rdf *qname, ldns_rr_type qtype,
                                 ldns_pkt *response, ldns_rr_list *copied_rrs)
 {
@@ -622,10 +622,10 @@ static void ns_process_dname(ldns_rr_list *dname_rrset, const ldns_rdf *qname,
 
 /*----------------------------------------------------------------------------*/
 
-static const zn_node *ns_strip_and_find(const zdb_zone *zone, ldns_rdf **qname,
+static const zn_node_t *ns_strip_and_find(const zdb_zone *zone, ldns_rdf **qname,
                                         uint *labels)
 {
-	const zn_node *node = NULL;
+	const zn_node_t *node = NULL;
 	// search for the name and strip labels until nothing left
 	do {
 		debug_ns("Name %s not found, stripping leftmost label.\n",
@@ -674,7 +674,7 @@ static void ns_answer(zdb_database *zdb, const ldns_rr *question,
 
 	/*const zn_node *node = ns_find_node_in_zone(zone, &qname,
 	                                             &labels_found); */
-	const zn_node *node = zdb_find_name_in_zone(zone, qname);
+	const zn_node_t *node = zdb_find_name_in_zone(zone, qname);
 	int cname = 0;
 	ldns_rdf *qname_old = NULL;
 
@@ -735,7 +735,7 @@ static void ns_answer(zdb_database *zdb, const ldns_rr *question,
 					break;
 				}
 
-				const zn_node *wildcard_node =
+				const zn_node_t *wildcard_node =
 					zdb_find_name_in_zone(zone, wildc);
 				ldns_rdf_deep_free(wildc);
 

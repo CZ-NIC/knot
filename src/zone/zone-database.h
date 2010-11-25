@@ -45,7 +45,7 @@ typedef struct zdb_zone {
 	zds_zone *zone; /*!< Zone data structure. */
 
 	/*! \brief Zone apex. First item in a linked list of zone nodes. */
-	zn_node *apex;
+	zn_node_t *apex;
 
 	struct zdb_zone *next; /*!< Next item pointer. */
 } zdb_zone;
@@ -114,7 +114,7 @@ int zdb_remove_zone(zdb_database *database, ldns_rdf *zone_name);
  * \retval -2 If the zone was not found.
  * \retval -1 If an error occured during insertion to the zone.
  */
-int zdb_insert_name(zdb_database *database, ldns_rdf *zone_name, zn_node *node);
+int zdb_insert_name(zdb_database *database, ldns_rdf *zone_name, zn_node_t *node);
 
 /*!
  * \brief Finds zone the given domain name should belong to.
@@ -141,7 +141,7 @@ const zdb_zone *zdb_find_zone_for_name(zdb_database *database,
  *
  * \return Proper zone node for the given name or NULL if not found.
  */
-const zn_node *zdb_find_name_in_zone(const zdb_zone *zone,
+const zn_node_t *zdb_find_name_in_zone(const zdb_zone *zone,
                                      const ldns_rdf *dname);
 
 /*!
