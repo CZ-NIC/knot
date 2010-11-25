@@ -47,7 +47,7 @@ static const uint STASH_SIZE = 10;
 /*!
  * \brief Structure for storing the hashed data.
  */
-typedef struct {
+struct ck_hash_table_item {
 	const char *key; /*!< Key of the item, used for hashing. */
 
 	size_t key_length; /*!< Length of the key in octets. */
@@ -63,7 +63,9 @@ typedef struct {
 	 * xy - generation; may be 01 (1) or 10 (2).
 	 */
 	uint8_t timestamp;
-} ck_hash_table_item;	// size 13 B
+};	// size 13 B
+
+typedef struct ck_hash_table_item ck_hash_table_item_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -91,7 +93,7 @@ typedef struct {
  * Rehashing is done when the stash gets full (actually, last item is always
  * free and is used in the rehashing process as a temporary variable).
  */
-typedef struct {
+struct ck_hash_table {
 	uint table_count; /*!< Actual number of hash tables used. */
 
 	/*!
@@ -99,7 +101,7 @@ typedef struct {
 	 */
 	int table_size_exp;
 
-	ck_hash_table_item **tables[MAX_TABLES]; /*!< Array of hash tables. */
+	ck_hash_table_item_t **tables[MAX_TABLES]; /*!< Array of hash tables. */
 
 	da_array stash; /*!< Stash implemented as a dynamic array. */
 
@@ -122,7 +124,9 @@ typedef struct {
 	 * both sets of functions when searching for item.
 	 */
 	uint8_t generation;
-} ck_hash_table;
+};
+
+typedef struct ck_hash_table ck_hash_table_t;
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
@@ -140,7 +144,7 @@ typedef struct {
  *
  * \return Pointer to the initialized hash table.
  */
-ck_hash_table *ck_create_table(uint item);
+ck_hash_table_t *ck_create_table(uint item);
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -157,7 +161,7 @@ ck_hash_table *ck_create_table(uint item);
  * \note Make sure the table and its items are not used anymore when calling
  * this function.
  */
-void ck_destroy_table(ck_hash_table **tables,
+void ck_destroy_table(ck_hash_table_t **tables,
                       void (*dtor_value)(void *value), int delete_key);
 
 /*----------------------------------------------------------------------------*/
@@ -184,13 +188,13 @@ void ck_destroy_table(ck_hash_table **tables,
  *            In this case it is necessary to somehow manually force another
  *            rehash as no other rehash would be possible.
  */
-int ck_insert_item(ck_hash_table *table, const char *key, size_t length,
+int ck_insert_item(ck_hash_table_t *table, const char *key, size_t length,
                    void *value);
 
 #ifdef CT_TEST_REHASH
 /*----------------------------------------------------------------------------*/
 
-int ck_rehash(ck_hash_table *table);
+int ck_rehash(ck_hash_table_t *table);
 #endif
 /*----------------------------------------------------------------------------*/
 /*!
@@ -202,7 +206,7 @@ int ck_rehash(ck_hash_table *table);
  *
  * \return Pointer to the item if found. NULL otherwise.
  */
-const ck_hash_table_item *ck_find_item(const ck_hash_table *table,
+const ck_hash_table_item_t *ck_find_item(const ck_hash_table_t *table,
                                        const char *key, size_t length);
 
 /*----------------------------------------------------------------------------*/
@@ -224,7 +228,7 @@ const ck_hash_table_item *ck_find_item(const ck_hash_table *table,
  * \retval 0 If successful.
  * \retval -1 If the item was not found in the table. No changes are made.
  */
-int ck_update_item(const ck_hash_table *table, const char *key, size_t length,
+int ck_update_item(const ck_hash_table_t *table, const char *key, size_t length,
                    void *new_value, void (*dtor_value)(void *value));
 
 /*----------------------------------------------------------------------------*/
@@ -248,14 +252,14 @@ int ck_update_item(const ck_hash_table *table, const char *key, size_t length,
  * \retval 0 If successful.
  * \retval -1 If the item was not found in the table.
  */
-int ck_remove_item(const ck_hash_table *table, const char *key, size_t length,
+int ck_remove_item(const ck_hash_table_t *table, const char *key, size_t length,
                    void (*dtor_value)(void *value), int delete_key);
 
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Dumps the whole hash table to the console.
  */
-void ck_dump_table(const ck_hash_table *table);
+void ck_dump_table(const ck_hash_table_t *table);
 
 /*----------------------------------------------------------------------------*/
 
