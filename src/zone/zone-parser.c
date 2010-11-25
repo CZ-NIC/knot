@@ -1,8 +1,10 @@
-#include "zone-parser.h"
-#include "common.h"
 #include <stdio.h>
 #include <assert.h>
+
 #include <ldns/ldns.h>
+
+#include "zone-parser.h"
+#include "common.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -19,8 +21,8 @@ static const int ERR_COUNT = -5;
 static const int ERR_ZONE_CREATE = -6;
 
 // default test values
-static const uint16_t RRTYPE_DEFAULT       = 1;		// A
-static const uint16_t RRCLASS_DEFAULT      = 1;		// IN
+static const uint16_t RRTYPE_DEFAULT       = 1; // A
+static const uint16_t RRCLASS_DEFAULT      = 1; // IN
 static const uint32_t TTL_DEFAULT          = 3600;
 static const unsigned int RDLENGTH_DEFAULT = 4;
 static const uint8_t RDATA_DEFAULT[4] = { 127, 0, 0, 1 };
@@ -29,10 +31,10 @@ static const uint8_t RDATA_DEFAULT[4] = { 127, 0, 0, 1 };
 #define ERR_PARSING_FAILED log_error("Zone parsing failed.\n")
 
 /*----------------------------------------------------------------------------*/
-/* Private functions          					                              */
+/* Private functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-uint zp_get_line_count(FILE *file)
+static uint zp_get_line_count(FILE *file)
 {
 	char ch = '\0';
 	uint c = 0;
@@ -49,8 +51,8 @@ uint zp_get_line_count(FILE *file)
 
 /*----------------------------------------------------------------------------*/
 
-int zp_resize_buffer(char **buffer, uint *buf_size, int new_size,
-                     int item_size)
+static int zp_resize_buffer(char **buffer, uint *buf_size, int new_size,
+                            int item_size)
 {
 	char *new_buf;
 
@@ -68,7 +70,7 @@ int zp_resize_buffer(char **buffer, uint *buf_size, int new_size,
 
 /*----------------------------------------------------------------------------*/
 
-int zp_test_count_domain_names(FILE *file, uint *names)
+static int zp_test_count_domain_names(FILE *file, uint *names)
 {
 	debug_zp("Counting lines..");
 	*names = zp_get_line_count(file);
@@ -86,8 +88,7 @@ int zp_test_count_domain_names(FILE *file, uint *names)
 
 /*----------------------------------------------------------------------------*/
 
-int zp_test_read_dname(char **buffer, uint *buf_i, FILE *file,
-                       char *ch)
+static int zp_test_read_dname(char **buffer, uint *buf_i, FILE *file, char *ch)
 {
 	// allocate some buffer
 	debug_zp_parse("Allocating buffer\n");
@@ -111,8 +112,8 @@ int zp_test_read_dname(char **buffer, uint *buf_i, FILE *file,
 
 		// if the buffer is not big enough, resize
 		if ((*buf_i >= buf_size)
-		                && (zp_resize_buffer(buffer, &buf_size,
-		                                     buf_size * 2, sizeof(char)) != 0)) {
+		    && (zp_resize_buffer(buffer, &buf_size,
+		                         buf_size * 2, sizeof(char)) != 0)) {
 			free(*buffer);
 			*buffer = NULL;
 			return -1;
@@ -123,20 +124,20 @@ int zp_test_read_dname(char **buffer, uint *buf_i, FILE *file,
 
 	(*buffer)[*buf_i] = '\0';
 
-
 	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
-ldns_rr *zp_test_create_rr(char *buffer)
+static ldns_rr *zp_test_create_rr(char *buffer)
 {
 	ldns_rr *rr = ldns_rr_new();
 	if (rr == NULL) {
 		return NULL;
 	}
 
-	ldns_rdf *rdata = ldns_rdf_new_frm_data(LDNS_RDF_TYPE_A, RDLENGTH_DEFAULT,
+	ldns_rdf *rdata = ldns_rdf_new_frm_data(LDNS_RDF_TYPE_A,
+	                                        RDLENGTH_DEFAULT,
 	                                        RDATA_DEFAULT);
 	if (rdata == NULL) {
 		free(rr);
@@ -155,8 +156,8 @@ ldns_rr *zp_test_create_rr(char *buffer)
 
 /*----------------------------------------------------------------------------*/
 
-int zp_test_parse_file(zdb_database *database, ldns_rdf *zone_name,
-                       FILE *file)
+static int zp_test_parse_file(zdb_database *database, ldns_rdf *zone_name,
+                              FILE *file)
 {
 	int res;
 	char ch = '\0';
@@ -180,7 +181,7 @@ int zp_test_parse_file(zdb_database *database, ldns_rdf *zone_name,
 		debug_zp_parse("Read domain name %s, inserting...\n", buffer);
 
 		if (buf_i > 0) {
-			debug_zp_parse("Creating RR with the given owner name.\n");
+			debug_zp_parse("Creating RR with the given owner.\n");
 
 			rr = zp_test_create_rr(buffer);
 			if (rr == NULL) {
@@ -189,7 +190,8 @@ int zp_test_parse_file(zdb_database *database, ldns_rdf *zone_name,
 				return ERR_INSERT;
 			}
 
-			debug_zp_parse("Creating Zone Node with the given RR.\n");
+			debug_zp_parse("Creating Zone Node with the given RR."
+				       "\n");
 
 			zn_node *node = zn_create(1);
 			if (node == NULL) {
@@ -201,8 +203,10 @@ int zp_test_parse_file(zdb_database *database, ldns_rdf *zone_name,
 
 			zn_add_rr(node, rr);
 
-			if ((res = zdb_insert_name(database, zone_name, node)) != 0) {
-				debug_zp_parse("\nInsert item returned %d.\n", res);
+			if ((res = zdb_insert_name(database, zone_name, node))
+			     != 0) {
+				debug_zp_parse("\nInsert item returned %d.\n",
+				               res);
 				if (res < 0) {
 					zn_destroy(&node);
 				}
@@ -221,9 +225,8 @@ int zp_test_parse_file(zdb_database *database, ldns_rdf *zone_name,
 
 /*----------------------------------------------------------------------------*/
 
-int zp_test_parse_zone(const char *filename, zdb_database *database)
+static int zp_test_parse_zone(const char *filename, zdb_database *database)
 {
-
 	const char *DEFAULT_ZONE_NAME = "cz";
 
 	// open the zone file
@@ -237,8 +240,8 @@ int zp_test_parse_zone(const char *filename, zdb_database *database)
 
 	debug_zp("Done.\n");
 
-	// determine name of the zone (and later other things)
-	// for now lets assume there is only one zone and use the default name (cz)
+	// determine name of the zone (and later other things) for now let's
+	// assume there is only one zone and use the default name (cz)
 	ldns_rdf *zone_name = ldns_dname_new_frm_str(DEFAULT_ZONE_NAME);
 
 	if (zone_name == NULL) {
@@ -259,7 +262,8 @@ int zp_test_parse_zone(const char *filename, zdb_database *database)
 	}
 
 	debug_zp("Done.\n");
-	debug_zp("Creating new zone with name '%s'...\n", ldns_rdf2str(zone_name));
+	debug_zp("Creating new zone with name '%s'...\n",
+		 ldns_rdf2str(zone_name));
 
 	// create a new zone in the zone database
 	if ((res = zdb_create_zone(database, zone_name, names)) != 0) {
@@ -298,7 +302,7 @@ int zp_test_parse_zone(const char *filename, zdb_database *database)
 
 /*----------------------------------------------------------------------------*/
 
-int zp_parse_zonefile_bind(const char *filename, zdb_database *database)
+static int zp_parse_zonefile_bind(const char *filename, zdb_database *database)
 {
 	debug_zp("Opening file...\n");
 	FILE *file = fopen(filename, "r");
@@ -314,14 +318,16 @@ int zp_parse_zonefile_bind(const char *filename, zdb_database *database)
 	int line = 0;
 	ldns_status s;
 	log_info("\nParsing zone file %s...\n", filename);
-	s = ldns_zone_new_frm_fp_l(&zone, file, NULL, 0, LDNS_RR_CLASS_IN, &line);
+	s = ldns_zone_new_frm_fp_l(&zone, file, NULL, 0, LDNS_RR_CLASS_IN,
+	                           &line);
 	log_info("Done.\n");
 
 	fclose(file);
 
 	if (s != LDNS_STATUS_OK) {
-		log_error("Error parsing zone file %s.\nldns returned: %s on line %d\n",
-		          filename, ldns_get_errorstr_by_id(s), line);
+		log_error("Error parsing zone file %s.\nldns returned: %s on "
+			  "line %d\n", filename, ldns_get_errorstr_by_id(s),
+			  line);
 		return -1;
 	}
 
@@ -329,7 +335,7 @@ int zp_parse_zonefile_bind(const char *filename, zdb_database *database)
 }
 
 /*----------------------------------------------------------------------------*/
-/* Public functions          					                              */
+/* Public functions                                                           */
 /*----------------------------------------------------------------------------*/
 
 int zp_parse_zone(const char *filename, zdb_database *database)
