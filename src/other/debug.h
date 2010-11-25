@@ -1,8 +1,16 @@
-/** \file debug.h
-  * Debugging facility, uses log.h.
-  */
-#ifndef __debug_h__
-#define __debug_h__
+/*!
+ * \file debug.h
+ *
+ * \author Marek Vavrusa <marek.vavrusa@nic.cz>
+ *
+ * \brief Debugging facility, uses log.h.
+ *
+ * \addtogroup debugging
+ * @{
+ */
+#ifndef _CUTEDNS_DEBUG_H_
+#define _CUTEDNS_DEBUG_H_
+
 #include "log.h"
 
 //#define ST_DEBUG
@@ -120,4 +128,6 @@
 #define debug_st(msg...)
 #endif
 
-#endif // __debug_h__
+#endif /* _CUTEDNS_DEBUG_H_ */
+
+/*! @} */
