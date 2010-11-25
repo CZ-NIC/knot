@@ -11,7 +11,7 @@
 
 zds_zone_t *zds_create(uint item_count)
 {
-	ck_hash_table *table = ck_create_table(item_count);
+	ck_hash_table_t *table = ck_create_table(item_count);
 	return table;
 }
 
@@ -30,7 +30,7 @@ int zds_insert(zds_zone_t *zone, zn_node_t *node)
 zn_node_t *zds_find(zds_zone_t *zone, const ldns_rdf *owner)
 {
 	assert(ldns_rdf_get_type(owner) == LDNS_RDF_TYPE_DNAME);
-	const ck_hash_table_item *item = ck_find_item(zone,
+	const ck_hash_table_item_t *item = ck_find_item(zone,
 	                                 (char *)ldns_rdf_data(owner),
 	                                 ldns_rdf_size(owner));
 	if (item == NULL) {

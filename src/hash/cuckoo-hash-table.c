@@ -43,7 +43,7 @@
 #define HASH(key, length, exp, gen, table) \
 	us_hash(fnv_hash(key, length, -1), exp, table, gen)
 
-#define STASH_ITEMS(stash) ((ck_hash_table_item **)(da_get_items(stash)))
+#define STASH_ITEMS(stash) ((ck_hash_table_item_t **)(da_get_items(stash)))
 
 static const float SIZE_RATIO_2 = 2;
 static const float SIZE_RATIO_3 = 1.15;
@@ -192,7 +192,7 @@ uint get_table_exp_and_count(uint items, uint *table_count)
 /*!
  * @brief Clears the given item by assigning a NULL pointer to it.
  */
-static inline void ck_clear_item(ck_hash_table_item **item)
+static inline void ck_clear_item(ck_hash_table_item_t **item)
 {
 	rcu_set_pointer(item, NULL);
 }
@@ -202,7 +202,7 @@ static inline void ck_clear_item(ck_hash_table_item **item)
  * @brief Insert given contents to the item.
  */
 void ck_fill_item(const char *key, size_t key_length, void *value,
-                  uint generation, ck_hash_table_item *item)
+                  uint generation, ck_hash_table_item_t *item)
 {
 	// must allocate new space for key and value, otherwise it will be lost!
 	item->key = key;
@@ -216,11 +216,11 @@ void ck_fill_item(const char *key, size_t key_length, void *value,
 /*!
  * @brief Swaps two hash table items.
  */
-static inline void ck_swap_items(ck_hash_table_item **item1,
-                                 ck_hash_table_item **item2)
+static inline void ck_swap_items(ck_hash_table_item_t **item1,
+                                 ck_hash_table_item_t **item2)
 {
 	// Is this OK? Shouldn't I use some tmp var for saving the value?
-	ck_hash_table_item *tmp = rcu_xchg_pointer(item1, *item2);
+	ck_hash_table_item_t *tmp = rcu_xchg_pointer(item1, *item2);
 	rcu_set_pointer(item2, tmp);
 }
 
@@ -228,8 +228,8 @@ static inline void ck_swap_items(ck_hash_table_item **item1,
 /*!
  * @brief Sets the @a item pointer to the @a to pointer.
  */
-static inline void ck_put_item(ck_hash_table_item **to,
-                               ck_hash_table_item *item)
+static inline void ck_put_item(ck_hash_table_item_t **to,
+                               ck_hash_table_item_t *item)
 {
 	rcu_set_pointer(to, item);
 }
@@ -273,7 +273,7 @@ uint ck_check_used_twice(da_array *used, uint32_t hash)
 /*!
  * @brief Compares the key of item with the given key.
  */
-static inline uint ck_items_match(const ck_hash_table_item *item,
+static inline uint ck_items_match(const ck_hash_table_item_t *item,
                                   const char *key, size_t length)
 {
 	return (length == item->key_length
@@ -294,7 +294,7 @@ static inline void ck_next_table(uint *table, uint table_count)
 
 /*----------------------------------------------------------------------------*/
 
-ck_hash_table_item **ck_find_in_stash(const ck_hash_table *table,
+ck_hash_table_item_t **ck_find_in_stash(const ck_hash_table_t *table,
                                       const char *key, uint length)
 {
 	//assert(table->stash_i == da_get_count(&table->stash));
@@ -302,8 +302,8 @@ ck_hash_table_item **ck_find_in_stash(const ck_hash_table *table,
 	debug_cuckoo("Items in stash: %u\n", stash_i);
 	uint i = 0;
 	while (i < stash_i
-	                && (((ck_hash_table_item **)(da_get_items(&table->stash)))[i] != NULL)
-	                && ck_items_match(((ck_hash_table_item **)
+	                && (((ck_hash_table_item_t **)(da_get_items(&table->stash)))[i] != NULL)
+	                && ck_items_match(((ck_hash_table_item_t **)
 	                                   (da_get_items(&table->stash)))[i], key, length)) {
 		++i;
 	}
@@ -312,17 +312,17 @@ ck_hash_table_item **ck_find_in_stash(const ck_hash_table *table,
 		return NULL;
 	}
 
-	assert(strncmp(((ck_hash_table_item **)
+	assert(strncmp(((ck_hash_table_item_t **)
 	                (da_get_items(&table->stash)))[i]->key, key, length) == 0);
 
-	return &((ck_hash_table_item **)(da_get_items(&table->stash)))[i];
+	return &((ck_hash_table_item_t **)(da_get_items(&table->stash)))[i];
 }
 
 /*----------------------------------------------------------------------------*/
 
-ck_hash_table *ck_create_table(uint items)
+ck_hash_table_t *ck_create_table(uint items)
 {
-	ck_hash_table *table = (ck_hash_table *)malloc(sizeof(ck_hash_table));
+	ck_hash_table_t *table = (ck_hash_table_t *)malloc(sizeof(ck_hash_table_t));
 
 	if (table == NULL) {
 		ERR_ALLOC_FAILED;
@@ -336,15 +336,15 @@ ck_hash_table *ck_create_table(uint items)
 	debug_cuckoo("Exponent: %u, number of tables: %u\n ", table->table_size_exp,
 	             table->table_count);
 	debug_cuckoo("Table size: %u items, each %u bytes, total %u bytes\n",
-	             hashsize(table->table_size_exp), sizeof(ck_hash_table_item *),
-	             hashsize(table->table_size_exp) * sizeof(ck_hash_table_item *));
+	             hashsize(table->table_size_exp), sizeof(ck_hash_table_item_t *),
+	             hashsize(table->table_size_exp) * sizeof(ck_hash_table_item_t *));
 
 	// create tables
 	for (uint t = TABLE_FIRST; t <= TABLE_LAST(table->table_count); ++t) {
 		debug_cuckoo("Creating table %u...\n", t);
 		table->tables[t] =
-		        (ck_hash_table_item **)malloc(hashsize(table->table_size_exp)
-		                                      * sizeof(ck_hash_table_item *));
+		        (ck_hash_table_item_t **)malloc(hashsize(table->table_size_exp)
+		                                      * sizeof(ck_hash_table_item_t *));
 		if (table->tables[t] == NULL) {
 			ERR_ALLOC_FAILED;
 			for (uint i = TABLE_FIRST; i < t; ++i) {
@@ -356,11 +356,11 @@ ck_hash_table *ck_create_table(uint items)
 
 		// set to 0
 		memset(table->tables[t], 0,
-		       hashsize(table->table_size_exp) * sizeof(ck_hash_table_item *));
+		       hashsize(table->table_size_exp) * sizeof(ck_hash_table_item_t *));
 	}
 
 	// create buffer (replace by (generic) variable-length array)
-	if (da_initialize(&table->stash, STASH_SIZE, sizeof(ck_hash_table_item *))
+	if (da_initialize(&table->stash, STASH_SIZE, sizeof(ck_hash_table_item_t *))
 	                != 0) {
 		for (uint t = TABLE_FIRST; t <= TABLE_LAST(table->table_count); ++t) {
 			free(table->tables[t]);
@@ -382,7 +382,7 @@ ck_hash_table *ck_create_table(uint items)
 
 /*----------------------------------------------------------------------------*/
 
-void ck_destroy_table(ck_hash_table **table, void (*dtor_value)(void *value),
+void ck_destroy_table(ck_hash_table_t **table, void (*dtor_value)(void *value),
                       int delete_key)
 {
 	pthread_mutex_lock(&(*table)->mtx_table);
@@ -403,8 +403,8 @@ void ck_destroy_table(ck_hash_table **table, void (*dtor_value)(void *value),
 	}
 
 	// destroy items in stash
-	ck_hash_table_item **stash =
-	        ((ck_hash_table_item **)(da_get_items(&(*table)->stash)));
+	ck_hash_table_item_t **stash =
+	        ((ck_hash_table_item_t **)(da_get_items(&(*table)->stash)));
 	for (uint i = 0; i < da_get_count(&(*table)->stash); ++i) {
 		assert(stash[i] != NULL);
 		if (dtor_value) {
@@ -436,8 +436,8 @@ void ck_destroy_table(ck_hash_table **table, void (*dtor_value)(void *value),
  * @retval 0 if successful and no loop occured.
  * @retval 1 if a loop occured and the item was inserted to the @a free place.
  */
-int ck_hash_item(ck_hash_table *table, ck_hash_table_item **to_hash,
-                 ck_hash_table_item **free, uint8_t generation)
+int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
+                 ck_hash_table_item_t **free, uint8_t generation)
 {
 	da_array used[table->table_count];
 	for (uint i = 0; i < table->table_count; ++i) {
@@ -460,10 +460,10 @@ int ck_hash_item(ck_hash_table *table, ck_hash_table_item **to_hash,
 
 	((uint *)da_get_items(&used[next_table]))
 	[da_get_count(&used[next_table])] = hash;
-	ck_hash_table_item **next = &table->tables[next_table][hash];
+	ck_hash_table_item_t **next = &table->tables[next_table][hash];
 	debug_cuckoo_hash("Item to be moved: %p, place in table: %p\n",
 	                  *next, next);
-	ck_hash_table_item **moving = to_hash;
+	ck_hash_table_item_t **moving = to_hash;
 
 	int loop = 0;
 
@@ -528,7 +528,7 @@ int ck_hash_item(ck_hash_table *table, ck_hash_table_item **to_hash,
 
 /*----------------------------------------------------------------------------*/
 
-void ck_rollback_rehash(ck_hash_table *table)
+void ck_rollback_rehash(ck_hash_table_t *table)
 {
 	// set old generation in tables
 	for (int i = 0; i < hashsize(table->table_size_exp); ++i) {
@@ -544,8 +544,8 @@ void ck_rollback_rehash(ck_hash_table *table)
 
 	// set old generation in buffer
 	for (int i = 0; i < STASH_SIZE; ++i) {
-		if (((ck_hash_table_item **)(da_get_items(&table->stash)))[i] != NULL) {
-			SET_GENERATION(&((ck_hash_table_item **)
+		if (((ck_hash_table_item_t **)(da_get_items(&table->stash)))[i] != NULL) {
+			SET_GENERATION(&((ck_hash_table_item_t **)
 			                 (da_get_items(&table->stash)))[i]->timestamp,
 			               table->generation);
 		}
@@ -575,7 +575,7 @@ void ck_rollback_rehash(ck_hash_table *table)
  *       ck_hash_item(). Use some new place & put the item to the stash
  *       afterwards, protecting it using rcu_read_lock() and rcu_assign_pointer.
  */
-int ck_rehash(ck_hash_table *table)
+int ck_rehash(ck_hash_table_t *table)
 {
 	debug_cuckoo_rehash("Rehashing items in table.\n");
 	SET_REHASHING_ON(&table->generation);
@@ -583,8 +583,8 @@ int ck_rehash(ck_hash_table *table)
 	// we already have functions for the next generation, begin rehashing
 	// we wil use the last item in the buffer as free cell for hashing
 	assert(da_try_reserve(&table->stash, 1) == 0);
-	ck_hash_table_item *old = (ck_hash_table_item *)
-	                          (malloc(sizeof(ck_hash_table_item)));
+	ck_hash_table_item_t *old = (ck_hash_table_item_t *)
+	                          (malloc(sizeof(ck_hash_table_item_t)));
 
 	do {
 
@@ -771,7 +771,7 @@ int ck_rehash(ck_hash_table *table)
 
 /*----------------------------------------------------------------------------*/
 
-int ck_insert_item(ck_hash_table *table, const char *key,
+int ck_insert_item(ck_hash_table_t *table, const char *key,
                    size_t length, void *value)
 {
 	// lock mutex to avoid write conflicts
@@ -784,8 +784,8 @@ int ck_insert_item(ck_hash_table *table, const char *key,
 	debug_cuckoo_hash("\n");
 
 	// create item structure and fill in the given data, key will not be copied!
-	ck_hash_table_item *new_item =
-	        (ck_hash_table_item *)malloc((sizeof(ck_hash_table_item)));
+	ck_hash_table_item_t *new_item =
+	        (ck_hash_table_item_t *)malloc((sizeof(ck_hash_table_item_t)));
 	ck_fill_item(key, length, value, GET_GENERATION(table->generation),
 	             new_item);
 
@@ -825,7 +825,7 @@ int ck_insert_item(ck_hash_table *table, const char *key,
  * @brief Tries to find item with given key using hash functions from the given
  *        generation.
  */
-ck_hash_table_item **ck_find_gen(const ck_hash_table *table, const char *key,
+ck_hash_table_item_t **ck_find_gen(const ck_hash_table_t *table, const char *key,
                                  size_t length, uint8_t generation)
 {
 	uint32_t hash;
@@ -856,7 +856,7 @@ ck_hash_table_item **ck_find_gen(const ck_hash_table *table, const char *key,
 	// try to find in buffer
 	debug_cuckoo("Searching in stash...\n");
 
-	ck_hash_table_item **found =
+	ck_hash_table_item_t **found =
 	        ck_find_in_stash(table, key, length);
 
 	debug_cuckoo("Found pointer: %p\n", found);
@@ -875,14 +875,14 @@ ck_hash_table_item **ck_find_gen(const ck_hash_table *table, const char *key,
  * @brief Finds item with given key and returns non-constant pointer to pointer
  *        to the appropriate hash table item.
  */
-ck_hash_table_item **ck_find_item_nc(const ck_hash_table *table,
+ck_hash_table_item_t **ck_find_item_nc(const ck_hash_table_t *table,
                                      const char *key, size_t length)
 {
 	// get the generation of the table so that we use the same value
 	uint8_t generation = table->generation;
 
 	// find item using the table generation's hash functions
-	ck_hash_table_item **found = ck_find_gen(table, key, length,
+	ck_hash_table_item_t **found = ck_find_gen(table, key, length,
 	                             GET_GENERATION(generation));
 	// if rehashing is in progress, try the next generation's functions
 	if (!found && IS_REHASHING(generation)) {
@@ -894,24 +894,24 @@ ck_hash_table_item **ck_find_item_nc(const ck_hash_table *table,
 
 /*----------------------------------------------------------------------------*/
 
-const ck_hash_table_item *ck_find_item(const ck_hash_table *table,
+const ck_hash_table_item_t *ck_find_item(const ck_hash_table_t *table,
                                        const char *key, size_t length)
 {
 	debug_cuckoo("ck_find_item(), key: %.*s, size: %u\n", length, key, length);
-	ck_hash_table_item **found = ck_find_item_nc(table, key, length);
+	ck_hash_table_item_t **found = ck_find_item_nc(table, key, length);
 	return (found == NULL) ? NULL : rcu_dereference(*found);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int ck_update_item(const ck_hash_table *table, const char *key, size_t length,
+int ck_update_item(const ck_hash_table_t *table, const char *key, size_t length,
                    void *new_value, void (*dtor_value)(void *value))
 {
 	rcu_read_lock();	// is needed?
 
 	assert(new_value != NULL);
 
-	ck_hash_table_item **item = ck_find_item_nc(table, key, length);
+	ck_hash_table_item_t **item = ck_find_item_nc(table, key, length);
 
 	if (item == NULL || (*item) == NULL) {
 		return -1;
@@ -930,17 +930,17 @@ int ck_update_item(const ck_hash_table *table, const char *key, size_t length,
 
 /*----------------------------------------------------------------------------*/
 
-int ck_remove_item(const ck_hash_table *table, const char *key, size_t length,
+int ck_remove_item(const ck_hash_table_t *table, const char *key, size_t length,
                    void (*dtor_value)(void *value), int delete_key)
 {
 	rcu_read_lock();	// is needed?
-	ck_hash_table_item **place = ck_find_item_nc(table, key, length);
+	ck_hash_table_item_t **place = ck_find_item_nc(table, key, length);
 
 	if (place == NULL) {
 		return -1;
 	}
 
-	ck_hash_table_item *item = *place;
+	ck_hash_table_item_t *item = *place;
 
 	assert(item != NULL);
 
@@ -962,7 +962,7 @@ int ck_remove_item(const ck_hash_table *table, const char *key, size_t length,
 
 /*----------------------------------------------------------------------------*/
 
-void ck_dump_table(const ck_hash_table *table)
+void ck_dump_table(const ck_hash_table_t *table)
 {
 	uint i;
 
@@ -983,9 +983,9 @@ void ck_dump_table(const ck_hash_table *table)
 	debug_cuckoo("Stash:\n");
 	for (i = 0; i < da_get_count(&table->stash); ++i) {
 		debug_cuckoo("Index: %u, Key: %.*s Value: %p.\n", i,
-		             ((ck_hash_table_item **)da_get_items(&table->stash))[i]->key_length,
-		             ((ck_hash_table_item **)da_get_items(&table->stash))[i]->key,
-		             ((ck_hash_table_item **)da_get_items(&table->stash))[i]->value);
+		             ((ck_hash_table_item_t **)da_get_items(&table->stash))[i]->key_length,
+		             ((ck_hash_table_item_t **)da_get_items(&table->stash))[i]->key,
+		             ((ck_hash_table_item_t **)da_get_items(&table->stash))[i]->value);
 	}
 
 	debug_cuckoo("\n");

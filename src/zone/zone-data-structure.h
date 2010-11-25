@@ -29,7 +29,7 @@
  *
  * \see ck-hash-table.h.
  */
-typedef ck_hash_table zds_zone_t;
+typedef ck_hash_table_t zds_zone_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
