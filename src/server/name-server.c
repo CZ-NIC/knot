@@ -144,11 +144,11 @@ static inline void ns_error_response(ns_nameserver *nameserver,
 
 /*----------------------------------------------------------------------------*/
 
-static const zdb_zone *ns_get_zone_for_qname(zdb_database *zdb,
+static const zdb_zone_t *ns_get_zone_for_qname(zdb_database_t *zdb,
                                              const ldns_rdf *qname,
                                              const ldns_rr_type qtype)
 {
-	const zdb_zone *zone;
+	const zdb_zone_t *zone;
 	/*
 	 * Find a zone in which to search.
 	 *
@@ -402,7 +402,7 @@ static void ns_put_additional(const zn_node_t *node, ldns_pkt *response,
 
 /*----------------------------------------------------------------------------*/
 
-static void ns_put_authority_ns(const zdb_zone *zone, ldns_pkt *resp)
+static void ns_put_authority_ns(const zdb_zone_t *zone, ldns_pkt *resp)
 {
 	ldns_rr_list *rrset = zn_find_rrset(zone->apex, LDNS_RR_TYPE_NS);
 	ns_try_put_rrset(rrset, LDNS_SECTION_AUTHORITY, 0, resp);
@@ -410,7 +410,7 @@ static void ns_put_authority_ns(const zdb_zone *zone, ldns_pkt *resp)
 
 /*----------------------------------------------------------------------------*/
 
-static void ns_put_authority_soa(const zdb_zone *zone, ldns_pkt *resp)
+static void ns_put_authority_soa(const zdb_zone_t *zone, ldns_pkt *resp)
 {
 	ldns_rr_list *rrset = zn_find_rrset(zone->apex, LDNS_RR_TYPE_SOA);
 	ns_try_put_rrset(rrset, LDNS_SECTION_AUTHORITY, 0, resp);
@@ -517,7 +517,7 @@ static int ns_additional_needed(ldns_rr_type qtype)
 
 /*----------------------------------------------------------------------------*/
 
-static void ns_answer_from_node(const zn_node_t *node, const zdb_zone *zone,
+static void ns_answer_from_node(const zn_node_t *node, const zdb_zone_t *zone,
                                 const ldns_rdf *qname, ldns_rr_type qtype,
                                 ldns_pkt *response, ldns_rr_list *copied_rrs)
 {
@@ -622,7 +622,7 @@ static void ns_process_dname(ldns_rr_list *dname_rrset, const ldns_rdf *qname,
 
 /*----------------------------------------------------------------------------*/
 
-static const zn_node_t *ns_strip_and_find(const zdb_zone *zone, ldns_rdf **qname,
+static const zn_node_t *ns_strip_and_find(const zdb_zone_t *zone, ldns_rdf **qname,
                                         uint *labels)
 {
 	const zn_node_t *node = NULL;
@@ -650,7 +650,7 @@ static const zn_node_t *ns_strip_and_find(const zdb_zone *zone, ldns_rdf **qname
 
 /*----------------------------------------------------------------------------*/
 
-static void ns_answer(zdb_database *zdb, const ldns_rr *question,
+static void ns_answer(zdb_database_t *zdb, const ldns_rr *question,
                       ldns_pkt *response,ldns_rr_list *copied_rrs)
 {
 	/* copy the QNAME, as we may be stripping labels and the QNAME is
@@ -659,7 +659,7 @@ static void ns_answer(zdb_database *zdb, const ldns_rr *question,
 
 	debug_ns("Trying to find zone for QNAME %s\n", ldns_rdf2str(qname));
 	// find zone in which to search for the name
-	const zdb_zone *zone =
+	const zdb_zone_t *zone =
 		ns_get_zone_for_qname(zdb, qname, ldns_rr_get_type(question));
 
 	// if no zone found, return REFUSED
@@ -848,7 +848,7 @@ static void ns_response_free(ldns_pkt *response)
 /* Public functions                                                           */
 /*----------------------------------------------------------------------------*/
 
-ns_nameserver *ns_create(zdb_database *database)
+ns_nameserver *ns_create(zdb_database_t *database)
 {
 	ns_nameserver *ns = malloc(sizeof(ns_nameserver));
 	if (ns == NULL) {

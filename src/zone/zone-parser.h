@@ -33,7 +33,7 @@
  * The testing zone file should contain each domain name on a separate row and
  * followed by a space. Everything after the space is ignored.
  */
-int zp_parse_zone(const char *filename, zdb_database *database);
+int zp_parse_zone(const char *filename, zdb_database_t *database);
 
 #endif /* _CUTEDNS_ZONE_PARSER_H_ */
 

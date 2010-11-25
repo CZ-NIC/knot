@@ -84,7 +84,8 @@ static const uint8_t RDATA_DEFAULT[4] = { 127, 0, 0, 1 };
 
 /*----------------------------------------------------------------------------*/
 
-//static int zp_test_read_dname(char **buffer, uint *buf_i, FILE *file, char *ch)
+//static int zp_test_read_dname(char **buffer, uint *buf_i, FILE *file,
+//                              char *ch)
 //{
 //	// allocate some buffer
 //	debug_zp_parse("Allocating buffer\n");
@@ -298,7 +299,8 @@ static const uint8_t RDATA_DEFAULT[4] = { 127, 0, 0, 1 };
 
 /*----------------------------------------------------------------------------*/
 
-static int zp_parse_zonefile_bind(const char *filename, zdb_database *database)
+static int zp_parse_zonefile_bind(const char *filename,
+                                  zdb_database_t *database)
 {
 	debug_zp("Opening file...\n");
 	FILE *file = fopen(filename, "r");
@@ -334,7 +336,7 @@ static int zp_parse_zonefile_bind(const char *filename, zdb_database *database)
 /* Public functions                                                           */
 /*----------------------------------------------------------------------------*/
 
-int zp_parse_zone(const char *filename, zdb_database *database)
+int zp_parse_zone(const char *filename, zdb_database_t *database)
 {
 	//return zp_test_parse_zone(filename, database);
 	return zp_parse_zonefile_bind(filename, database);
