@@ -178,10 +178,10 @@ static int test_cuckoo_modify( ck_hash_table *table, test_cuckoo_items *items )
 
 /*----------------------------------------------------------------------------*/
 
-static int test_cuckoo_rehash( ck_hash_table *table )
-{
-        return (ck_rehash(table) == 0);
-}
+//static int test_cuckoo_rehash( ck_hash_table *table )
+//{
+//        return (ck_rehash(table) == 0);
+//}
 
 /*----------------------------------------------------------------------------*/
 
