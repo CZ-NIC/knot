@@ -19,8 +19,8 @@
 #ifndef _CUTEDNS_CUCKOO_HASH_TABLE_H_
 #define _CUTEDNS_CUCKOO_HASH_TABLE_H_
 
-#include <stdint.h>	/* uint32_t */
-#include <stdlib.h>	/* size_t */
+#include <stdint.h> /* uint32_t */
+#include <stdlib.h> /* size_t */
 #include <pthread.h>
 
 #include "common.h"
@@ -30,7 +30,7 @@
 /*----------------------------------------------------------------------------*/
 
 /*! \brief Macro for getting one hash table size. */
-#define hashsize(n) ((uint32_t)1<<(n))
+#define hashsize(n) ((uint32_t)1 << (n))
 
 /*!
  * \brief Max number of hash tables - must be the same as number of the hash
@@ -191,11 +191,6 @@ void ck_destroy_table(ck_hash_table_t **tables,
 int ck_insert_item(ck_hash_table_t *table, const char *key, size_t length,
                    void *value);
 
-#ifdef CT_TEST_REHASH
-/*----------------------------------------------------------------------------*/
-
-int ck_rehash(ck_hash_table_t *table);
-#endif
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Finds item in table.
@@ -255,6 +250,11 @@ int ck_update_item(const ck_hash_table_t *table, const char *key, size_t length,
 int ck_remove_item(const ck_hash_table_t *table, const char *key, size_t length,
                    void (*dtor_value)(void *value), int delete_key);
 
+#ifdef CT_TEST_REHASH
+/*----------------------------------------------------------------------------*/
+
+int ck_rehash(ck_hash_table_t *table);
+#endif
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Dumps the whole hash table to the console.
