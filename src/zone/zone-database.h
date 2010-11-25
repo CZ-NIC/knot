@@ -42,7 +42,7 @@ struct zdb_zone {
 	/*! \brief Zone name in wire format (i.e. a null-terminated string). */
 	ldns_rdf *zone_name;
 
-	zds_zone *zone; /*!< Zone data structure. */
+	zds_zone_t *zone; /*!< Zone data structure. */
 
 	/*! \brief Zone apex. First item in a linked list of zone nodes. */
 	zn_node_t *apex;

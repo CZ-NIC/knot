@@ -9,7 +9,7 @@
 
 /*----------------------------------------------------------------------------*/
 
-zds_zone *zds_create(uint item_count)
+zds_zone_t *zds_create(uint item_count)
 {
 	ck_hash_table *table = ck_create_table(item_count);
 	return table;
@@ -17,7 +17,7 @@ zds_zone *zds_create(uint item_count)
 
 /*----------------------------------------------------------------------------*/
 
-int zds_insert(zds_zone *zone, zn_node_t *node)
+int zds_insert(zds_zone_t *zone, zn_node_t *node)
 {
 	assert(zn_owner(node) != NULL);
 	assert(ldns_rdf_get_type(zn_owner(node)) == LDNS_RDF_TYPE_DNAME);
@@ -27,7 +27,7 @@ int zds_insert(zds_zone *zone, zn_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-zn_node_t *zds_find(zds_zone *zone, const ldns_rdf *owner)
+zn_node_t *zds_find(zds_zone_t *zone, const ldns_rdf *owner)
 {
 	assert(ldns_rdf_get_type(owner) == LDNS_RDF_TYPE_DNAME);
 	const ck_hash_table_item *item = ck_find_item(zone,
@@ -44,7 +44,7 @@ zn_node_t *zds_find(zds_zone *zone, const ldns_rdf *owner)
 
 /*----------------------------------------------------------------------------*/
 
-int zds_remove(zds_zone *zone, ldns_rdf *owner)
+int zds_remove(zds_zone_t *zone, ldns_rdf *owner)
 {
 	assert(ldns_rdf_get_type(owner) == LDNS_RDF_TYPE_DNAME);
 	if (ck_remove_item(zone, (char *)ldns_rdf_data(owner),
@@ -58,7 +58,7 @@ int zds_remove(zds_zone *zone, ldns_rdf *owner)
 
 /*----------------------------------------------------------------------------*/
 
-void zds_destroy(zds_zone **zone, void (*dtor_zone_node)(void *value))
+void zds_destroy(zds_zone_t **zone, void (*dtor_zone_node)(void *value))
 {
 	ck_destroy_table(zone, dtor_zone_node, 0);
 }
