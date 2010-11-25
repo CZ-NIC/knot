@@ -55,7 +55,7 @@ zds_zone *zds_create(uint item_count);
  * \todo Should return positive integer when the item was inserted, but
  *       something went wrong. Otherwise negative.
  */
-int zds_insert(zds_zone *zone, zn_node *node);
+int zds_insert(zds_zone *zone, zn_node_t *node);
 
 /*!
  * \brief Tries to find the given name in the zone and returns corresponding
@@ -67,7 +67,7 @@ int zds_insert(zds_zone *zone, zn_node *node);
  *
  * \return Proper zone node for the given name or NULL if not found.
  */
-zn_node *zds_find(zds_zone *zone, const ldns_rdf *owner);
+zn_node_t *zds_find(zds_zone *zone, const ldns_rdf *owner);
 
 /*!
  * \brief Removes zone node corresponding to the given domain name from the

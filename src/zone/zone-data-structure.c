@@ -17,7 +17,7 @@ zds_zone *zds_create(uint item_count)
 
 /*----------------------------------------------------------------------------*/
 
-int zds_insert(zds_zone *zone, zn_node *node)
+int zds_insert(zds_zone *zone, zn_node_t *node)
 {
 	assert(zn_owner(node) != NULL);
 	assert(ldns_rdf_get_type(zn_owner(node)) == LDNS_RDF_TYPE_DNAME);
@@ -27,7 +27,7 @@ int zds_insert(zds_zone *zone, zn_node *node)
 
 /*----------------------------------------------------------------------------*/
 
-zn_node *zds_find(zds_zone *zone, const ldns_rdf *owner)
+zn_node_t *zds_find(zds_zone *zone, const ldns_rdf *owner)
 {
 	assert(ldns_rdf_get_type(owner) == LDNS_RDF_TYPE_DNAME);
 	const ck_hash_table_item *item = ck_find_item(zone,

@@ -65,8 +65,8 @@ static uint zdb_create_list(zdb_zone *zone, ldns_zone *zone_ldns)
 	 * Some idiot implemented ldns_rr_list_pop_rrset() to return the LAST
 	 * RRSet so we will fill the zone from the last node to the first.
 	 */
-	zn_node *act_node = NULL;
-	zn_node *last_node = NULL;
+	zn_node_t *act_node = NULL;
+	zn_node_t *last_node = NULL;
 
 	uint rr_count = ldns_zone_rr_count(zone_ldns);
 	uint i = 0;
@@ -111,7 +111,7 @@ static uint zdb_create_list(zdb_zone *zone, ldns_zone *zone_ldns)
 			// create a new node, add the RRSet and connect to the
 			// list
 			debug_zdb("Creating new node.\n");
-			zn_node *new_node = zn_create();
+			zn_node_t *new_node = zn_create();
 			if (new_node == NULL) {
 				log_error("Error while processing zone %s: "
 					  "Cannot create new zone node.\n",
@@ -192,7 +192,7 @@ static uint zdb_common_labels(const ldns_rdf *dname1, const ldns_rdf *dname2)
 
 /*----------------------------------------------------------------------------*/
 
-static void zdb_connect_node(zn_node *next, zn_node *node)
+static void zdb_connect_node(zn_node_t *next, zn_node_t *node)
 {
 	node->prev = next->prev;
 	node->next = next;
@@ -207,12 +207,12 @@ static int zdb_add_empty_nonterminals(zdb_zone *zone)
 	debug_zdb("\nCreating empty non-terminals in the zone...\n");
 	int created = 0;
 
-	zn_node *current = zone->apex->next;
-	zn_node *parent = zone->apex;
+	zn_node_t *current = zone->apex->next;
+	zn_node_t *parent = zone->apex;
 	uint8_t apex_labels = ldns_dname_label_count(parent->owner);
 
 	while (current != zone->apex) {
-		zn_node *prev = current->prev;
+		zn_node_t *prev = current->prev;
 		ldns_rdf *curr_name = current->owner;
 
 		debug_zdb("Current node: %s\n", ldns_rdf2str(curr_name));
@@ -261,7 +261,7 @@ static int zdb_add_empty_nonterminals(zdb_zone *zone)
 						  "ldns_dname_left_chop().\n");
 					return -1;
 				}
-				zn_node *new_node = zn_create();
+				zn_node_t *new_node = zn_create();
 				if (new_node == NULL) {
 					ldns_rdf_deep_free(new_name);
 					return -2;
@@ -296,8 +296,8 @@ static int zdb_add_empty_nonterminals(zdb_zone *zone)
 
 static void zdb_delete_list_items(zdb_zone *zone)
 {
-	zn_node *node = zone->apex;
-	zn_node *old_node;
+	zn_node_t *node = zone->apex;
+	zn_node_t *old_node;
 	while (node->next != node) {
 		old_node = node;
 		node = node->next;
@@ -314,14 +314,14 @@ static void zdb_delete_list_items(zdb_zone *zone)
 
 /*----------------------------------------------------------------------------*/
 
-static zn_node *zdb_find_name_in_zone_nc(const zdb_zone *zone,
+static zn_node_t *zdb_find_name_in_zone_nc(const zdb_zone *zone,
                                          const ldns_rdf *dname)
 {
 	assert(zone != NULL);
 	// start of RCU reader critical section
 	rcu_read_lock();
 
-	zn_node *found = zds_find(zone->zone, dname);
+	zn_node_t *found = zds_find(zone->zone, dname);
 
 	// end of RCU reader critical section
 	rcu_read_unlock();
@@ -331,25 +331,25 @@ static zn_node *zdb_find_name_in_zone_nc(const zdb_zone *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static zn_node *zdb_find_name_in_list(const zdb_zone *zone, ldns_rdf *name)
-{
-	zn_node *node = zone->apex;
-	int cmp;
-	while ((cmp = ldns_dname_match_wildcard(name, node->owner)) != 1
-	       && node->next != zone->apex) {
-		node = node->next;
-	}
+//static zn_node_t *zdb_find_name_in_list(const zdb_zone *zone, ldns_rdf *name)
+//{
+//	zn_node_t *node = zone->apex;
+//	int cmp;
+//	while ((cmp = ldns_dname_match_wildcard(name, node->owner)) != 1
+//	       && node->next != zone->apex) {
+//		node = node->next;
+//	}
 
-	return (cmp == 1) ? node : NULL;
-}
+//	return (cmp == 1) ? node : NULL;
+//}
 
 /*----------------------------------------------------------------------------*/
 
-static zn_node *zdb_find_name_or_wildcard(const zdb_zone *zone, ldns_rdf *name)
+static zn_node_t *zdb_find_name_or_wildcard(const zdb_zone *zone, ldns_rdf *name)
 {
 	assert(ldns_rdf_get_type(name) == LDNS_RDF_TYPE_DNAME);
 	debug_zdb("zdb_find_name_or_wildcard(), name: %s.", ldns_rdf2str(name));
-	zn_node *node = zdb_find_name_in_zone_nc(zone, name);
+	zn_node_t *node = zdb_find_name_in_zone_nc(zone, name);
 
 	if (node == NULL) {
 		ldns_rdf *name_orig = ldns_dname_clone_from(name, 0);
@@ -392,7 +392,7 @@ static zn_node *zdb_find_name_or_wildcard(const zdb_zone *zone, ldns_rdf *name)
 
 /*----------------------------------------------------------------------------*/
 
-static int zdb_adjust_cname(zdb_zone *zone, zn_node *node)
+static int zdb_adjust_cname(zdb_zone *zone, zn_node_t *node)
 {
 	int res = 0;
 	ldns_rr_list *cname_rrset = zn_find_rrset(node, LDNS_RR_TYPE_CNAME);
@@ -406,7 +406,7 @@ static int zdb_adjust_cname(zdb_zone *zone, zn_node *node)
 		debug_zdb("Canonical name for alias %s is %s\n",
 		          ldns_rdf2str(node->owner), ldns_rdf2str(cname));
 
-		zn_node *cname_node = zdb_find_name_or_wildcard(zone, cname);
+		zn_node_t *cname_node = zdb_find_name_or_wildcard(zone, cname);
 
 		if (cname_node
 		    && zn_add_referrer_cname(cname_node, node) != 0) {
@@ -430,7 +430,7 @@ static int zdb_adjust_cname(zdb_zone *zone, zn_node *node)
  *
  * \note Must be called after inserting all nodes into the zone data structure.
  */
-static void zdb_adjust_additional(zdb_zone *zone, zn_node *node,
+static void zdb_adjust_additional(zdb_zone *zone, zn_node_t *node,
                                   ldns_rr_type type)
 {
 	ldns_rr_list *rrset = zn_find_rrset(node, type);
@@ -475,7 +475,7 @@ static void zdb_adjust_additional(zdb_zone *zone, zn_node *node,
 			  ldns_rr_type2str(type), ldns_rdf2str(name));
 
 		// the authoritative nodes should already be in the hash table
-		zn_node *found = zdb_find_name_or_wildcard(zone, name);
+		zn_node_t *found = zdb_find_name_or_wildcard(zone, name);
 
 		if (found == NULL) {
 			return;
@@ -542,7 +542,7 @@ static void zdb_adjust_additional(zdb_zone *zone, zn_node *node,
 /*!
  * \note Must be called after inserting all nodes into the zone data structure.
  */
-static void zdb_adjust_additional_apex(zdb_zone *zone, zn_node *node)
+static void zdb_adjust_additional_apex(zdb_zone *zone, zn_node_t *node)
 {
 	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_MX);
 	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_NS);
@@ -553,7 +553,7 @@ static void zdb_adjust_additional_apex(zdb_zone *zone, zn_node *node)
 /*!
  * \note Must be called after inserting all nodes into the zone data structure.
  */
-static void zdb_adjust_additional_all(zdb_zone *zone, zn_node *node)
+static void zdb_adjust_additional_all(zdb_zone *zone, zn_node_t *node)
 {
 	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_MX);
 	// no need to adjust NS, as they may be only in zone apex
@@ -584,20 +584,20 @@ static ldns_rdf *zdb_dname_list_find(ldns_rdf **list, size_t count,
 
 /*----------------------------------------------------------------------------*/
 
-static ldns_rdf **zdb_extract_ns(ldns_rr_list *ns_rrset, size_t count)
-{
-	assert(ldns_is_rrset(ns_rrset));
-	ldns_rdf **ns_rrs = malloc(count * sizeof(ldns_rr_list *));
-	if (ns_rrs == NULL) {
-		ERR_ALLOC_FAILED;
-		return NULL;
-	}
-	for (int i = 0; i < count; ++i) {
-		ns_rrs[i] = ldns_rr_rdf(ldns_rr_list_rr(ns_rrset, i), 0);
-		debug_zdb("NS RR #%d: %s\n", i, ldns_rdf2str(ns_rrs[i]));
-	}
-	return ns_rrs;
-}
+//static ldns_rdf **zdb_extract_ns(ldns_rr_list *ns_rrset, size_t count)
+//{
+//	assert(ldns_is_rrset(ns_rrset));
+//	ldns_rdf **ns_rrs = malloc(count * sizeof(ldns_rr_list *));
+//	if (ns_rrs == NULL) {
+//		ERR_ALLOC_FAILED;
+//		return NULL;
+//	}
+//	for (int i = 0; i < count; ++i) {
+//		ns_rrs[i] = ldns_rr_rdf(ldns_rr_list_rr(ns_rrset, i), 0);
+//		debug_zdb("NS RR #%d: %s\n", i, ldns_rdf2str(ns_rrs[i]));
+//	}
+//	return ns_rrs;
+//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -616,9 +616,9 @@ static int zdb_rr_list_contains_dname(const ldns_rr_list *rrset,
 
 /*----------------------------------------------------------------------------*/
 
-static int zdb_process_nonauth(zn_node *node, ldns_rr_list *ns_rrset,
+static int zdb_process_nonauth(zn_node_t *node, ldns_rr_list *ns_rrset,
                                ldns_rdf **processed, size_t *count,
-                               zn_node *deleg)
+                               zn_node_t *deleg)
 {
 	zn_set_non_authoritative(node);
 
@@ -659,7 +659,7 @@ static int zdb_process_nonauth(zn_node *node, ldns_rr_list *ns_rrset,
 /*!
  * \note Must be called after inserting all nodes into the zone data structure.
  */
-static int zdb_find_other_glues(const zdb_zone *zone, zn_node *deleg_point,
+static int zdb_find_other_glues(const zdb_zone *zone, zn_node_t *deleg_point,
                                 ldns_rr_list *ns_rrset, ldns_rdf **processed,
                                 size_t proc_count)
 {
@@ -679,7 +679,7 @@ static int zdb_find_other_glues(const zdb_zone *zone, zn_node *deleg_point,
 			// we must search in the list as the other nodes may not
 			// be inserted into the table yet
 			//zn_node *ns_node = zdb_find_name_in_list(zone, ns);
-			zn_node *ns_node = zdb_find_name_or_wildcard(zone, ns);
+			zn_node_t *ns_node = zdb_find_name_or_wildcard(zone, ns);
 
 			if (ns_node != NULL &&
 			    !zn_is_non_authoritative(ns_node)) {
@@ -707,12 +707,12 @@ static int zdb_find_other_glues(const zdb_zone *zone, zn_node *deleg_point,
 
 /*----------------------------------------------------------------------------*/
 
-static void zdb_set_delegation_point(zn_node **node)
+static void zdb_set_delegation_point(zn_node_t **node)
 {
 	debug_zdb("Setting %s to be a delegation point and skipping its "
 		  "subdomains\n", ldns_rdf2str((*node)->owner));
 	zn_set_delegation_point(*node);
-	zn_node *deleg = *node;
+	zn_node_t *deleg = *node;
 	while (ldns_dname_is_subdomain((*node)->next->owner, deleg->owner)) {
 		(*node) = (*node)->next;
 	}
@@ -720,7 +720,7 @@ static void zdb_set_delegation_point(zn_node **node)
 
 /*----------------------------------------------------------------------------*/
 
-static int zdb_adjust_delegation_point(const zdb_zone *zone, zn_node **node)
+static int zdb_adjust_delegation_point(const zdb_zone *zone, zn_node_t **node)
 {
 	int res = 0;
 
@@ -736,7 +736,7 @@ static int zdb_adjust_delegation_point(const zdb_zone *zone, zn_node **node)
 
 		// mark all subsequent nodes which are subdomains of this node's
 		// owner as non authoritative and extract glue records from them
-		zn_node *deleg = *node;
+		zn_node_t *deleg = *node;
 		ldns_rdf **processed = malloc(ns_count * sizeof(ldns_rdf *));
 		memset(processed, 0, ns_count * sizeof(ldns_rdf *));
 		size_t proc_count = 0;
@@ -765,11 +765,11 @@ static int zdb_adjust_delegation_point(const zdb_zone *zone, zn_node **node)
 
 /*----------------------------------------------------------------------------*/
 
-static int zdb_insert_node_to_zone(zdb_zone *zone, zn_node *node)
+static int zdb_insert_node_to_zone(zdb_zone *zone, zn_node_t *node)
 {
-	zn_node *n = zone->apex;
+	zn_node_t *n = zone->apex;
 	int cmp;
-	zn_node *deleg = NULL;
+	zn_node_t *deleg = NULL;
 
 	// if there is no zone apex, only node with SOA record may be inserted
 	if (zone->apex == NULL) {
@@ -843,7 +843,7 @@ static int zdb_insert_node_to_zone(zdb_zone *zone, zn_node *node)
 			// delegation point; must connect to the list and then
 			// adjust the following nodes if needed
 			zdb_connect_node(n, node);
-			zn_node *d = node;
+			zn_node_t *d = node;
 			res = zdb_adjust_delegation_point(zone, &d);
 		} else {
 			// not a non-authoritative node or delegation point
@@ -879,11 +879,11 @@ static ldns_rdf **inserted_nodes;
  * \retval 0 On success.
  * \retval -1 On failure. \a head will point to the first item not inserted.
  */
-static int zdb_insert_nodes_into_zds(zdb_zone *z, uint *nodes, zn_node **node)
+static int zdb_insert_nodes_into_zds(zdb_zone *z, uint *nodes, zn_node_t **node)
 {
 	assert((*node) != NULL);
 	assert((*node)->prev != NULL);
-	zn_node *head = *node;
+	zn_node_t *head = *node;
 
 	// insert zone apex (no checking)
 	assert(zn_find_rrset(*node, LDNS_RR_TYPE_SOA) != NULL);
@@ -979,7 +979,7 @@ static int zdb_adjust_zone(zdb_zone *zone, uint nodes)
 	debug_zdb("\nAdjusting zone %s for faster lookup...\n",
 	          ldns_rdf2str(zone->zone_name));
 
-	zn_node *node = zone->apex;
+	zn_node_t *node = zone->apex;
 	debug_zdb("Adjusting zone apex: %s\n", ldns_rdf2str(node->owner));
 	zdb_adjust_additional_apex(zone, node);
 
@@ -1035,11 +1035,11 @@ static void zdb_destroy_zone(zdb_zone **zone)
 	ldns_rdf_deep_free((*zone)->zone_name);
 
 	// free all zone nodes from the list
-	zn_node *node = (*zone)->apex;
+	zn_node_t *node = (*zone)->apex;
 	// disconnect the last item
 	node->prev->next = NULL;
 	while (node != NULL) {
-		zn_node *n = node;
+		zn_node_t *n = node;
 		node = node->next;
 		// do not bother with adjusting the pointers
 		zn_destroy(&n);
@@ -1134,12 +1134,12 @@ int zdb_add_zone(zdb_database *database, ldns_zone *zone)
 
 	// add created nodes to the zone data structure for lookup
 	log_info("Inserting zone nodes to the Zone data structure...\n");
-	zn_node *node = new_zone->apex;
+	zn_node_t *node = new_zone->apex;
 	if (zdb_insert_nodes_into_zds(new_zone, &nodes, &node) != 0) {
 		// destroy the rest of the nodes in the list
 		// (from node to zone apex)
 		while (node != new_zone->apex) {
-			zn_node *prev = node;
+			zn_node_t *prev = node;
 			node = node->next;
 			assert(node != NULL);
 			zn_destroy(&prev);
@@ -1229,7 +1229,7 @@ int zdb_remove_zone(zdb_database *database, ldns_rdf *zone_name)
 
 /*----------------------------------------------------------------------------*/
 
-int zdb_insert_name(zdb_database *database, ldns_rdf *zone_name, zn_node *node)
+int zdb_insert_name(zdb_database *database, ldns_rdf *zone_name, zn_node_t *node)
 {
 	zdb_zone *z = NULL, *zp = NULL;
 
@@ -1279,7 +1279,7 @@ const zdb_zone *zdb_find_zone_for_name(zdb_database *database,
 
 /*----------------------------------------------------------------------------*/
 
-const zn_node *zdb_find_name_in_zone(const zdb_zone *zone,
+const zn_node_t *zdb_find_name_in_zone(const zdb_zone *zone,
                                      const ldns_rdf *dname)
 {
 	return zdb_find_name_in_zone_nc(zone, dname);
