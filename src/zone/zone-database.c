@@ -1,11 +1,11 @@
-#include "zone-database.h"
-#include "common.h"
-
 #include <stdio.h>
 #include <assert.h>
+
 #include <ldns/ldns.h>
 #include <urcu.h>
 
+#include "zone-database.h"
+#include "common.h"
 #include "dns-utils.h"
 
 /*----------------------------------------------------------------------------*/
