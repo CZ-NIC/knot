@@ -90,12 +90,12 @@ static int test_rcu_threads()
 	return 1;
 }
 
-static int test_da_init(da_array *arr)
+static int test_da_init(da_array_t *arr)
 {
 	return da_initialize(arr, DA_DEF_SIZE, sizeof(uint)) == 0;
 }
 
-static int test_da_random_op(da_array *arr)
+static int test_da_random_op(da_array_t *arr)
 {
 	srand(time(NULL));
 	uint allocated = DA_DEF_SIZE;
@@ -178,7 +178,7 @@ void *test_da_read(void *obj)
 	rcu_register_thread();
 	rcu_read_lock();
 
-	da_array *arr = (da_array *) obj;
+	da_array_t *arr = (da_array_t *) obj;
 	int index = rand() % da_get_count(arr);
 
 	note("  dynamic-array: read thread");
@@ -202,7 +202,7 @@ void *test_da_read(void *obj)
 	return NULL;
 }
 
-static int test_da_resize_holding(da_array *arr)
+static int test_da_resize_holding(da_array_t *arr)
 {
 	int ret = 1;
 	rcu_register_thread();
@@ -240,7 +240,7 @@ static int test_da_resize_holding(da_array *arr)
 	return ret;
 }
 
-static int test_da_resize(da_array *arr)
+static int test_da_resize(da_array_t *arr)
 {
 	int orig_count = da_get_count(arr);
 	note("dynamic-array: allocated: %d, items: %d", arr->allocated,
@@ -286,7 +286,7 @@ static int da_tests_run(int argc, char *argv[])
 {
 	// Init
 	rcu_init();
-	da_array array;
+	da_array_t array;
 
 	// Test 1: test rcu
 	ok(test_rcu_threads(), "dynamic-array: rcu tests");

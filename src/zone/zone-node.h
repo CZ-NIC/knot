@@ -84,7 +84,7 @@ struct zn_node {
 	} ref;
 
 	/*! \brief Nodes which carry references to this node. */
-	da_array *referrers;
+	da_array_t *referrers;
 
 	/*! \brief Next zone node (should be in canonical order). */
 	struct zn_node *next;
