@@ -1,12 +1,16 @@
-/*
- * File:     stat.h
- * Date:     01.11.2010 16:57
- * Author:   jan.kadlec@nic.cz
- * Project:  CuteDNS
+/*!
+ * \file stat.h
+ *
+ * \author Jan Kadlec <jan.kadlec@nic.cz>
+ *
+ * \brief Contains statistics structure and its API.
+ * 
+ * \addtogroup statistics
+ * @{
  */
 
-#ifndef __STAT_H__
-#define __STAT_H__
+#ifndef _CUTEDNS_STAT_H_
+#define _CUTEDNS_STAT_H_
 
 #include <time.h>
 #include <stdbool.h>
@@ -22,22 +26,23 @@
 #define STAT_INIT(x) x = stat_new()
 #else
 #define STAT_INIT(x) x = NULL //UNUSED(x)
-#endif
+#endif /* STAT_COMPILE */
 
-/* determines how long until the sleeper thread wakes and runs computations */
+/* Determines how long until the sleeper thread wakes and runs computations. */
 static uint const SLEEP_TIME = 15;
 
-/* sets threshold for active flow detection, will probably have to be changed*/
+/* Sets threshold for active flow detection, will 
+ * probably have to be changed. */
 static uint const ACTIVE_FLOW_THRESHOLD = 10;
 
 /*!
  * \brief Statistics structure, unique for each UDP/TCP thread.
  */
 typedef struct stat_t {
-    struct timespec t1, t2;
-    protocol_t protocol;
-    struct sockaddr_in *s_addr;
-//  gatherer_t *gatherer; not needed when using static gatherer.
+//	struct timespec t1, t2; /* Currently disabled */
+	protocol_t protocol; /*!< Flags. */
+	struct sockaddr_in *s_addr;
+//  gatherer_t *gatherer; / * not needed when using static gatherer. */
 } stat_t;
 
 /*!
@@ -47,9 +52,12 @@ typedef struct stat_t {
  */
 #ifdef STAT_COMPILE
 stat_t *stat_new();
-#else 
-inline stat_t *stat_new() { return NULL; }
-#endif
+#else
+inline stat_t *stat_new()
+{
+	return NULL;
+}
+#endif /* STAT_COMPILE */
 
 /*!
  * \brief Sets a protocol for stat_t structure. Options are stat_UDP, stat_TCP.
@@ -58,10 +66,10 @@ inline stat_t *stat_new() { return NULL; }
  * \param protocol Protocol to be assigned to stat structure.
  */
 #ifdef STAT_COMPILE
-void stat_set_protocol( stat_t *stat, int protocol );
+void stat_set_protocol(stat_t *stat, int protocol);
 #else
-static inline void stat_set_protocol( stat_t *stat, int protocol ) {}
-#endif
+static inline void stat_set_protocol(stat_t *stat, int protocol) {}
+#endif /* STAT_COMPILE */
 
 /*!
  * \brief Gets the time from a processing function.
@@ -70,22 +78,22 @@ static inline void stat_set_protocol( stat_t *stat, int protocol ) {}
  * \param s_addr Sockaddr structure to be used later for statistics.
  */
 #ifdef STAT_COMPILE
-void stat_get_first( stat_t *stat, struct sockaddr_in *s_addr );
+void stat_get_first(stat_t *stat, struct sockaddr_in *s_addr);
 #else
-static inline void stat_get_first( stat_t *stat, struct sockaddr_in *s_addr ){}
-#endif
+static inline void stat_get_first(stat_t *stat, struct sockaddr_in *s_addr) {}
+#endif /* STAT_COMPILE */
 
 /*!
  * \brief Gets time from a processing fuction and changes
  *        the corresponding variables.
  *
- * \param stat current stat_t instance
+ * \param stat Current stat_t instance.
  */
 #ifdef STAT_COMPILE
-void stat_get_second( stat_t *stat );
+void stat_get_second(stat_t *stat);
 #else
-static inline void stat_get_second( stat_t *stat ) {}
-#endif
+static inline void stat_get_second(stat_t *stat) {}
+#endif /* STAT_COMPILE */
 
 /*!
  * \brief Frees stat_t structure.
@@ -93,10 +101,10 @@ static inline void stat_get_second( stat_t *stat ) {}
  * \param stat Pointer to stat structure to be deallocated.
  */
 #ifdef STAT_COMPILE
-void stat_free( stat_t *stat );
+void stat_free(stat_t *stat);
 #else
-static inline void stat_free( stat_t *stat ) {}
-#endif
+static inline void stat_free(stat_t *stat) {}
+#endif /* STAT_COMPILE */
 
 /*!
  * \brief Initializes static gatherer.
@@ -105,7 +113,7 @@ static inline void stat_free( stat_t *stat ) {}
 void stat_static_gath_init();
 #else
 static inline void stat_static_gath_init() {}
-#endif
+#endif /* STAT_COMPILE */
 
 /*!
  * \brief Starts static gatherer's sleeper thread.
@@ -114,7 +122,7 @@ static inline void stat_static_gath_init() {}
 void stat_static_gath_start();
 #else
 static inline void stat_static_gath_start() {}
-#endif
+#endif /* STAT_COMPILE */
 
 /*!
  * \brief Frees static gatherer, calls gatherer_free().
@@ -123,8 +131,8 @@ static inline void stat_static_gath_start() {}
 void stat_static_gath_free();
 #else
 static inline void stat_static_gath_free() {}
-#endif
+#endif /* STAT_COMPILE */
 
-#endif
+#endif /* _CUTEDNS_STAT_H_ */
 
-/* end of file stat.h */
+/*! @} */
