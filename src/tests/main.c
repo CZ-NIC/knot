@@ -33,7 +33,8 @@ int main(int argc, char *argv[])
 	int test_count = 0;
 	note("Units:");
 	while (tests[id] != NULL) {
-		note("- %s : %d tests", tests[id]->name, tests[id]->count(argc, argv));
+		note("- %s : %d tests", tests[id]->name,
+		     tests[id]->count(argc, argv));
 		test_count += tests[id]->count(argc, argv);
 		++id;
 	}
