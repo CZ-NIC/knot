@@ -401,7 +401,7 @@ ldns_rr_list *zn_all_rrsets(const zn_node_t *node)
 	debug_zn("Extracting all RRSets from:\n");
 	skip_print_list(node->rrsets, zn_print_rrset);
 
-	const skip_node *sn = skip_first(node->rrsets);
+	const skip_node_t *sn = skip_first(node->rrsets);
 	while (sn != NULL) {
 		ldns_rr_list_push_rr_list(all, (ldns_rr_list *)sn->value);
 		sn = skip_next(sn);
@@ -547,7 +547,7 @@ int zn_add_ref(zn_node_t *node, ldns_rdf *name, ldns_rr_type type,
 
 /*----------------------------------------------------------------------------*/
 
-skip_list *zn_get_refs(const zn_node_t *node)
+skip_list_t *zn_get_refs(const zn_node_t *node)
 {
 	if ((zn_flags_get(node->flags, FLAGS_HAS_MX)
 	                | zn_flags_get(node->flags, FLAGS_HAS_NS)

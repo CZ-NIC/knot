@@ -39,13 +39,13 @@ int test_skip_merge_values(void **lvalue, void **rvalue)
 	return 0;
 }
 
-int test_skiplist_create(skip_list **list)
+int test_skiplist_create(skip_list_t **list)
 {
 	*list = skip_create_list(test_skip_compare_keys);
 	return *list != NULL;
 }
 
-int test_skiplist_fill(skip_list *list, long *uitems, int loops)
+int test_skiplist_fill(skip_list_t *list, long *uitems, int loops)
 {
 	int uitem_count = 0;
 	for (int i = 0; i < loops; ++i) {
@@ -73,7 +73,7 @@ int test_skiplist_fill(skip_list *list, long *uitems, int loops)
 	return uitem_count;
 }
 
-int test_skiplist_lookup_seq(skip_list *list, long *uitems, int uitems_count)
+int test_skiplist_lookup_seq(skip_list_t *list, long *uitems, int uitems_count)
 {
 	int errors = 0;
 
@@ -97,7 +97,7 @@ int test_skiplist_lookup_seq(skip_list *list, long *uitems, int uitems_count)
 	return errors == 0;
 }
 
-int test_skiplist_lookup_rand(skip_list *list, long *uitems, int uitems_count)
+int test_skiplist_lookup_rand(skip_list_t *list, long *uitems, int uitems_count)
 {
 	int errors = 0;
 	srand((unsigned)time(NULL));
@@ -123,7 +123,7 @@ int test_skiplist_lookup_rand(skip_list *list, long *uitems, int uitems_count)
 }
 
 
-int test_skiplist_remove(skip_list *list, long *uitems, int uitems_count)
+int test_skiplist_remove(skip_list_t *list, long *uitems, int uitems_count)
 {
 	int errors = 0;
 
@@ -153,7 +153,7 @@ static int skiplist_tests_run(int argc, char *argv[])
 	const int loops = 100;
 	int uitems_count = 0;
 	long *uitems = malloc(loops * sizeof(long));
-	skip_list *list = 0;
+	skip_list_t *list = 0;
 
 	// Test 1: create
 	ok(test_skiplist_create(&list), "skiplist: create");
