@@ -30,7 +30,7 @@
  * \brief Data structure for holding DNS data related to one zone node.
  */
 struct zn_node {
-	skip_list *rrsets; /*!< Skip list of RRSets. */
+	skip_list_t *rrsets; /*!< Skip list of RRSets. */
 
 	ldns_rdf *owner; /*!< Owner domain name of the node. */
 
@@ -80,7 +80,7 @@ struct zn_node {
 		 *       save a lot of space, but will need linear time to find
 		 *       exact RRSet.
 		 */
-		skip_list *additional;
+		skip_list_t *additional;
 	} ref;
 
 	/*! \brief Nodes which carry references to this node. */
@@ -210,7 +210,7 @@ zn_node_t *zn_get_ref_cname(const zn_node_t *node);
 int zn_add_ref(zn_node_t *node, ldns_rdf *name, ldns_rr_type type,
                ldns_rr_list *ref_rrset, const zn_node_t *ref_node);
 
-skip_list *zn_get_refs(const zn_node_t *node);
+skip_list_t *zn_get_refs(const zn_node_t *node);
 
 const zn_ar_rrsets_t *zn_get_ref(const zn_node_t *node, const ldns_rdf *name);
 

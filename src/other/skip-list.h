@@ -57,7 +57,7 @@ struct skip_node {
 	struct skip_node **forward;
 };
 
-typedef struct skip_node skip_node;
+typedef struct skip_node skip_node_t;
 
 /*!
  * \brief Skip list.
@@ -66,7 +66,7 @@ typedef struct skip_node skip_node;
  */
 struct skip_list {
 	/*! \brief Head of the list (with no actual key and value stored). */
-	skip_node *head;
+	skip_node_t *head;
 
 	/*! \brief Actual maximum level of the list. */
 	int level;
@@ -75,7 +75,7 @@ struct skip_list {
 	int (*compare_keys)(void *, void *);
 };
 
-typedef struct skip_list skip_list;
+typedef struct skip_list skip_list_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -85,7 +85,7 @@ typedef struct skip_list skip_list;
  *
  * \return Pointer to the newly created skip list if successful. NULL otherwise.
  */
-skip_list *skip_create_list(int (*compare_keys)(void *, void *));
+skip_list_t *skip_create_list(int (*compare_keys)(void *, void *));
 
 /*!
  * \brief Properly destroys the list, possibly also with the keys and values.
@@ -97,7 +97,7 @@ skip_list *skip_create_list(int (*compare_keys)(void *, void *));
  *                      NULL, the object at which the value points will not be
  *                      destroyed.
  */
-void skip_destroy_list(skip_list **list, void (*destroy_key)(void *),
+void skip_destroy_list(skip_list_t **list, void (*destroy_key)(void *),
                        void (*destroy_value)(void *));
 
 /*!
@@ -124,7 +124,7 @@ void skip_destroy_list(skip_list **list, void (*destroy_key)(void *),
  * \retval -2 If the key is already present in the list and merging was
  *            unsuccessful.
  */
-int skip_insert(skip_list *list, void *key, void *value,
+int skip_insert(skip_list_t *list, void *key, void *value,
                 int (*merge_values)(void **, void **));
 
 /*!
@@ -142,7 +142,7 @@ int skip_insert(skip_list *list, void *key, void *value,
  * \retval 0 If successful.
  * \retval -1 If the item was not present in the list.
  */
-int skip_remove(skip_list *list, void *key, void (*destroy_key)(void *),
+int skip_remove(skip_list_t *list, void *key, void (*destroy_key)(void *),
                 void (*destroy_value)(void *));
 
 /*!
@@ -154,7 +154,7 @@ int skip_remove(skip_list *list, void *key, void (*destroy_key)(void *),
  * \return Value stored in the item with key \a key, or NULL if the key was not
  *         found.
  */
-void *skip_find(const skip_list *list, void *key);
+void *skip_find(const skip_list_t *list, void *key);
 
 /*!
  * \brief Checks if the skip list is empty.
@@ -164,17 +164,17 @@ void *skip_find(const skip_list *list, void *key);
  * \retval 0 if empty.
  * \retval 1 if non-empty.
  */
-int skip_empty(const skip_list *list);
+int skip_empty(const skip_list_t *list);
 
 /*!
  * \brief Returns the first item in the skip list.
  */
-const skip_node *skip_first(const skip_list *list);
+const skip_node_t *skip_first(const skip_list_t *list);
 
 /*!
  * \brief Returns the next item in the skip list.
  */
-const skip_node *skip_next(const skip_node *node);
+const skip_node_t *skip_next(const skip_node_t *node);
 
 /*!
  * \brief Prints the whole list using the given print function.
@@ -182,7 +182,7 @@ const skip_node *skip_next(const skip_node *node);
  * \param list Skip list to be printed.
  * \param print_item Function for printing the key-value pair.
  */
-void skip_print_list(const skip_list *list,
+void skip_print_list(const skip_list_t *list,
                      void (*print_item)(void *, void *));
 
 #endif /* _CUTEDNS_SKIP_LIST_H_ */
