@@ -12,8 +12,8 @@
 /* Private functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-static void zdb_find_zone(zdb_database *database, ldns_rdf *zone_name,
-                          zdb_zone **zone, zdb_zone **prev)
+static void zdb_find_zone(zdb_database_t *database, ldns_rdf *zone_name,
+                          zdb_zone_t **zone, zdb_zone_t **prev)
 {
 	*zone = database->head;
 	*prev = NULL;
@@ -33,8 +33,8 @@ static void zdb_find_zone(zdb_database *database, ldns_rdf *zone_name,
 
 /*----------------------------------------------------------------------------*/
 
-static void zdb_disconnect_zone(zdb_database *database, zdb_zone *z,
-                                zdb_zone *prev)
+static void zdb_disconnect_zone(zdb_database_t *database, zdb_zone_t *z,
+                                zdb_zone_t *prev)
 {
 	// disconect the zone from the list
 	if (prev != NULL) {
@@ -48,7 +48,7 @@ static void zdb_disconnect_zone(zdb_database *database, zdb_zone *z,
 
 /*----------------------------------------------------------------------------*/
 
-static uint zdb_create_list(zdb_zone *zone, ldns_zone *zone_ldns)
+static uint zdb_create_list(zdb_zone_t *zone, ldns_zone *zone_ldns)
 {
 	uint nodes = 0;
 
@@ -202,7 +202,7 @@ static void zdb_connect_node(zn_node_t *next, zn_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-static int zdb_add_empty_nonterminals(zdb_zone *zone)
+static int zdb_add_empty_nonterminals(zdb_zone_t *zone)
 {
 	debug_zdb("\nCreating empty non-terminals in the zone...\n");
 	int created = 0;
@@ -250,8 +250,8 @@ static int zdb_add_empty_nonterminals(zdb_zone *zone)
 
 		prev = current;
 
-		// if the difference in label length is more than one, create the
-		// empty non-terminal nodes
+		// if the difference in label length is more than one, create
+		// the empty non-terminal nodes
 		if (d > 1) {
 			do {
 				ldns_rdf *new_name = ldns_dname_left_chop(
@@ -294,7 +294,7 @@ static int zdb_add_empty_nonterminals(zdb_zone *zone)
 
 /*----------------------------------------------------------------------------*/
 
-static void zdb_delete_list_items(zdb_zone *zone)
+static void zdb_delete_list_items(zdb_zone_t *zone)
 {
 	zn_node_t *node = zone->apex;
 	zn_node_t *old_node;
@@ -314,7 +314,7 @@ static void zdb_delete_list_items(zdb_zone *zone)
 
 /*----------------------------------------------------------------------------*/
 
-static zn_node_t *zdb_find_name_in_zone_nc(const zdb_zone *zone,
+static zn_node_t *zdb_find_name_in_zone_nc(const zdb_zone_t *zone,
                                          const ldns_rdf *dname)
 {
 	assert(zone != NULL);
@@ -345,7 +345,8 @@ static zn_node_t *zdb_find_name_in_zone_nc(const zdb_zone *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static zn_node_t *zdb_find_name_or_wildcard(const zdb_zone *zone, ldns_rdf *name)
+static zn_node_t *zdb_find_name_or_wildcard(const zdb_zone_t *zone,
+                                            ldns_rdf *name)
 {
 	assert(ldns_rdf_get_type(name) == LDNS_RDF_TYPE_DNAME);
 	debug_zdb("zdb_find_name_or_wildcard(), name: %s.", ldns_rdf2str(name));
@@ -392,7 +393,7 @@ static zn_node_t *zdb_find_name_or_wildcard(const zdb_zone *zone, ldns_rdf *name
 
 /*----------------------------------------------------------------------------*/
 
-static int zdb_adjust_cname(zdb_zone *zone, zn_node_t *node)
+static int zdb_adjust_cname(zdb_zone_t *zone, zn_node_t *node)
 {
 	int res = 0;
 	ldns_rr_list *cname_rrset = zn_find_rrset(node, LDNS_RR_TYPE_CNAME);
@@ -430,7 +431,7 @@ static int zdb_adjust_cname(zdb_zone *zone, zn_node_t *node)
  *
  * \note Must be called after inserting all nodes into the zone data structure.
  */
-static void zdb_adjust_additional(zdb_zone *zone, zn_node_t *node,
+static void zdb_adjust_additional(zdb_zone_t *zone, zn_node_t *node,
                                   ldns_rr_type type)
 {
 	ldns_rr_list *rrset = zn_find_rrset(node, type);
@@ -485,7 +486,7 @@ static void zdb_adjust_additional(zdb_zone *zone, zn_node_t *node,
 			  ? ldns_rdf2str(found->owner) : "(nil)");
 
 		if (zn_find_rrset(found, LDNS_RR_TYPE_CNAME) != NULL) {
-			debug_zdb("Found CNAME RRSet within the node, saving.\n");
+			debug_zdb("Found CNAME within the node, saving.\n");
 			if (zn_add_ref(node, name, type, NULL, found) != 0) {
 				log_error("Error occured while saving A RRSet "
 					  "for %s record in node %s\n\n",
@@ -542,7 +543,7 @@ static void zdb_adjust_additional(zdb_zone *zone, zn_node_t *node,
 /*!
  * \note Must be called after inserting all nodes into the zone data structure.
  */
-static void zdb_adjust_additional_apex(zdb_zone *zone, zn_node_t *node)
+static void zdb_adjust_additional_apex(zdb_zone_t *zone, zn_node_t *node)
 {
 	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_MX);
 	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_NS);
@@ -553,7 +554,7 @@ static void zdb_adjust_additional_apex(zdb_zone *zone, zn_node_t *node)
 /*!
  * \note Must be called after inserting all nodes into the zone data structure.
  */
-static void zdb_adjust_additional_all(zdb_zone *zone, zn_node_t *node)
+static void zdb_adjust_additional_all(zdb_zone_t *zone, zn_node_t *node)
 {
 	zdb_adjust_additional(zone, node, LDNS_RR_TYPE_MX);
 	// no need to adjust NS, as they may be only in zone apex
@@ -659,7 +660,7 @@ static int zdb_process_nonauth(zn_node_t *node, ldns_rr_list *ns_rrset,
 /*!
  * \note Must be called after inserting all nodes into the zone data structure.
  */
-static int zdb_find_other_glues(const zdb_zone *zone, zn_node_t *deleg_point,
+static int zdb_find_other_glues(const zdb_zone_t *zone, zn_node_t *deleg_point,
                                 ldns_rr_list *ns_rrset, ldns_rdf **processed,
                                 size_t proc_count)
 {
@@ -679,7 +680,8 @@ static int zdb_find_other_glues(const zdb_zone *zone, zn_node_t *deleg_point,
 			// we must search in the list as the other nodes may not
 			// be inserted into the table yet
 			//zn_node *ns_node = zdb_find_name_in_list(zone, ns);
-			zn_node_t *ns_node = zdb_find_name_or_wildcard(zone, ns);
+			zn_node_t *ns_node =
+					zdb_find_name_or_wildcard(zone, ns);
 
 			if (ns_node != NULL &&
 			    !zn_is_non_authoritative(ns_node)) {
@@ -720,7 +722,7 @@ static void zdb_set_delegation_point(zn_node_t **node)
 
 /*----------------------------------------------------------------------------*/
 
-static int zdb_adjust_delegation_point(const zdb_zone *zone, zn_node_t **node)
+static int zdb_adjust_delegation_point(const zdb_zone_t *zone, zn_node_t **node)
 {
 	int res = 0;
 
@@ -765,7 +767,7 @@ static int zdb_adjust_delegation_point(const zdb_zone *zone, zn_node_t **node)
 
 /*----------------------------------------------------------------------------*/
 
-static int zdb_insert_node_to_zone(zdb_zone *zone, zn_node_t *node)
+static int zdb_insert_node_to_zone(zdb_zone_t *zone, zn_node_t *node)
 {
 	zn_node_t *n = zone->apex;
 	int cmp;
@@ -879,7 +881,8 @@ static ldns_rdf **inserted_nodes;
  * \retval 0 On success.
  * \retval -1 On failure. \a head will point to the first item not inserted.
  */
-static int zdb_insert_nodes_into_zds(zdb_zone *z, uint *nodes, zn_node_t **node)
+static int zdb_insert_nodes_into_zds(zdb_zone_t *z, uint *nodes,
+                                     zn_node_t **node)
 {
 	assert((*node) != NULL);
 	assert((*node)->prev != NULL);
@@ -941,10 +944,10 @@ static int zdb_insert_nodes_into_zds(zdb_zone *z, uint *nodes, zn_node_t **node)
  *
  * The zones are kept in reverse canonical order of their zone names.
  */
-static void zdb_insert_zone(zdb_database *database, zdb_zone *zone)
+static void zdb_insert_zone(zdb_database_t *database, zdb_zone_t *zone)
 {
-	zdb_zone *z = database->head;
-	zdb_zone *prev = NULL;
+	zdb_zone_t *z = database->head;
+	zdb_zone_t *prev = NULL;
 
 	while (z != NULL
 	       && ldns_dname_compare(z->zone_name, zone->zone_name) > 0) {
@@ -974,7 +977,7 @@ static void zdb_insert_zone(zdb_database *database, zdb_zone *zone)
  *        - more CNAMEs in one node
  *        - other RRSets in delegation point
  */
-static int zdb_adjust_zone(zdb_zone *zone, uint nodes)
+static int zdb_adjust_zone(zdb_zone_t *zone, uint nodes)
 {
 	debug_zdb("\nAdjusting zone %s for faster lookup...\n",
 	          ldns_rdf2str(zone->zone_name));
@@ -1027,7 +1030,7 @@ static int zdb_adjust_zone(zdb_zone *zone, uint nodes)
 
 /*----------------------------------------------------------------------------*/
 
-static void zdb_destroy_zone(zdb_zone **zone)
+static void zdb_destroy_zone(zdb_zone_t **zone)
 {
 	// free the zone data structure but do not delete the zone nodes in it
 	zds_destroy(&(*zone)->zone, NULL);
@@ -1071,9 +1074,9 @@ static void zdb_print_list(const zdb_zone *zone)
 /* Public functions                                                           */
 /*----------------------------------------------------------------------------*/
 
-zdb_database *zdb_create()
+zdb_database_t *zdb_create()
 {
-	zdb_database *db = malloc(sizeof(zdb_database));
+	zdb_database_t *db = malloc(sizeof(zdb_database_t));
 
 	if (db == NULL) {
 		ERR_ALLOC_FAILED;
@@ -1086,9 +1089,9 @@ zdb_database *zdb_create()
 
 /*----------------------------------------------------------------------------*/
 
-int zdb_add_zone(zdb_database *database, ldns_zone *zone)
+int zdb_add_zone(zdb_database_t *database, ldns_zone *zone)
 {
-	zdb_zone *new_zone = malloc(sizeof(zdb_zone));
+	zdb_zone_t *new_zone = malloc(sizeof(zdb_zone_t));
 
 	if (new_zone == NULL) {
 		ERR_ALLOC_FAILED;
@@ -1164,12 +1167,12 @@ int zdb_add_zone(zdb_database *database, ldns_zone *zone)
 
 /*----------------------------------------------------------------------------*/
 
-int zdb_create_zone(zdb_database *database, ldns_rdf *zone_name, uint items)
+int zdb_create_zone(zdb_database_t *database, ldns_rdf *zone_name, uint items)
 {
 	// add some lock to avoid multiple zone creations?
 	// add some check if the zone is not already in db?
 
-	zdb_zone *zone = malloc(sizeof(zdb_zone));
+	zdb_zone_t *zone = malloc(sizeof(zdb_zone_t));
 
 	if (zone == NULL) {
 		ERR_ALLOC_FAILED;
@@ -1202,11 +1205,11 @@ int zdb_create_zone(zdb_database *database, ldns_rdf *zone_name, uint items)
 }
 /*----------------------------------------------------------------------------*/
 
-int zdb_remove_zone(zdb_database *database, ldns_rdf *zone_name)
+int zdb_remove_zone(zdb_database_t *database, ldns_rdf *zone_name)
 {
 	// add some lock to avoid multiple removals
 
-	zdb_zone *z = NULL, *zp = NULL;
+	zdb_zone_t *z = NULL, *zp = NULL;
 	zdb_find_zone(database, zone_name, &z, &zp);
 
 	if (z == NULL) {
@@ -1229,9 +1232,10 @@ int zdb_remove_zone(zdb_database *database, ldns_rdf *zone_name)
 
 /*----------------------------------------------------------------------------*/
 
-int zdb_insert_name(zdb_database *database, ldns_rdf *zone_name, zn_node_t *node)
+int zdb_insert_name(zdb_database_t *database, ldns_rdf *zone_name,
+                    zn_node_t *node)
 {
-	zdb_zone *z = NULL, *zp = NULL;
+	zdb_zone_t *z = NULL, *zp = NULL;
 
 	// start of RCU reader critical section (the zone should not be removed)
 	rcu_read_lock();
@@ -1253,10 +1257,10 @@ int zdb_insert_name(zdb_database *database, ldns_rdf *zone_name, zn_node_t *node
 
 /*----------------------------------------------------------------------------*/
 
-const zdb_zone *zdb_find_zone_for_name(zdb_database *database,
+const zdb_zone_t *zdb_find_zone_for_name(zdb_database_t *database,
                                        const ldns_rdf *dname)
 {
-	zdb_zone *z = database->head;
+	zdb_zone_t *z = database->head;
 
 	// start of RCU reader critical section
 	rcu_read_lock();
@@ -1279,7 +1283,7 @@ const zdb_zone *zdb_find_zone_for_name(zdb_database *database,
 
 /*----------------------------------------------------------------------------*/
 
-const zn_node_t *zdb_find_name_in_zone(const zdb_zone *zone,
+const zn_node_t *zdb_find_name_in_zone(const zdb_zone_t *zone,
                                      const ldns_rdf *dname)
 {
 	return zdb_find_name_in_zone_nc(zone, dname);
@@ -1287,11 +1291,11 @@ const zn_node_t *zdb_find_name_in_zone(const zdb_zone *zone,
 
 /*----------------------------------------------------------------------------*/
 
-void zdb_destroy(zdb_database **database)
+void zdb_destroy(zdb_database_t **database)
 {
 	// add some lock to avoid multiple destroys
 
-	zdb_zone *z;
+	zdb_zone_t *z;
 
 	while ((*database)->head != NULL) {
 		z = (*database)->head;

@@ -66,7 +66,7 @@ typedef struct cute_server {
 	ns_nameserver *nameserver;
 
 	/*! \brief Reference to the zone database structure. */
-	zdb_database *zone_db;
+	zdb_database_t *zone_db;
 
 	/*! \brief I/O handlers list. */
 	struct iohandler_t *handlers;

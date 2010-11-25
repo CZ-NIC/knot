@@ -38,7 +38,7 @@
 /*!
  * \brief Structure for storing one zone. Uses zds_zone structure for data.
  */
-typedef struct zdb_zone {
+struct zdb_zone {
 	/*! \brief Zone name in wire format (i.e. a null-terminated string). */
 	ldns_rdf *zone_name;
 
@@ -48,22 +48,26 @@ typedef struct zdb_zone {
 	zn_node_t *apex;
 
 	struct zdb_zone *next; /*!< Next item pointer. */
-} zdb_zone;
+};
+
+typedef struct zdb_zone zdb_zone_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Zone database structure.
  */
-typedef struct zdb_database {
+struct zdb_database {
 	/*! \brief Pointer to the first item in the linked list of zones. */
-	zdb_zone *head;
-} zdb_database;
+	zdb_zone_t *head;
+};
+
+typedef struct zdb_database zdb_database_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Allocates and initializes the zone database structure.
  */
-zdb_database *zdb_create();
+zdb_database_t *zdb_create();
 
 /*!
  * \brief Adds new empty zone to the given database.
@@ -76,7 +80,7 @@ zdb_database *zdb_create();
  * \retval 0 On success.
  * \retval -1 On failure.
  */
-int zdb_create_zone(zdb_database *database, ldns_rdf *zone_name, uint items);
+int zdb_create_zone(zdb_database_t *database, ldns_rdf *zone_name, uint items);
 
 /*!
  * \brief Adds new zone stored in a ldns_zone structure to the database.
@@ -87,7 +91,7 @@ int zdb_create_zone(zdb_database *database, ldns_rdf *zone_name, uint items);
  * \retval 0 On success.
  * \retval -1 On failure.
  */
-int zdb_add_zone(zdb_database *database, ldns_zone *zone);
+int zdb_add_zone(zdb_database_t *database, ldns_zone *zone);
 
 /*!
  * \brief Removes the given zone from the database if it exists.
@@ -101,7 +105,7 @@ int zdb_add_zone(zdb_database *database, ldns_zone *zone);
  * \retval 0 On success.
  * \retval -1 If the zone was not found.
  */
-int zdb_remove_zone(zdb_database *database, ldns_rdf *zone_name);
+int zdb_remove_zone(zdb_database_t *database, ldns_rdf *zone_name);
 
 /*!
  * \brief Inserts one zone node to the given zone in the database.
@@ -114,7 +118,8 @@ int zdb_remove_zone(zdb_database *database, ldns_rdf *zone_name);
  * \retval -2 If the zone was not found.
  * \retval -1 If an error occured during insertion to the zone.
  */
-int zdb_insert_name(zdb_database *database, ldns_rdf *zone_name, zn_node_t *node);
+int zdb_insert_name(zdb_database_t *database, ldns_rdf *zone_name,
+		    zn_node_t *node);
 
 /*!
  * \brief Finds zone the given domain name should belong to.
@@ -128,7 +133,7 @@ int zdb_insert_name(zdb_database *database, ldns_rdf *zone_name, zn_node_t *node
  *       of the returned zone may be retrieved easily as it is the next item
  *       in the linked list (zdb_zone.next).
  */
-const zdb_zone *zdb_find_zone_for_name(zdb_database *database,
+const zdb_zone_t *zdb_find_zone_for_name(zdb_database_t *database,
                                        const ldns_rdf *dname);
 
 /*!
@@ -141,7 +146,7 @@ const zdb_zone *zdb_find_zone_for_name(zdb_database *database,
  *
  * \return Proper zone node for the given name or NULL if not found.
  */
-const zn_node_t *zdb_find_name_in_zone(const zdb_zone *zone,
+const zn_node_t *zdb_find_name_in_zone(const zdb_zone_t *zone,
                                      const ldns_rdf *dname);
 
 /*!
@@ -157,7 +162,7 @@ const zn_node_t *zdb_find_name_in_zone(const zdb_zone *zone,
  *       destroy zone nodes from the list and tell zds_destroy() not to destroy
  *       the stored items.
  */
-void zdb_destroy(zdb_database **database);
+void zdb_destroy(zdb_database_t **database);
 
 /*----------------------------------------------------------------------------*/
 
