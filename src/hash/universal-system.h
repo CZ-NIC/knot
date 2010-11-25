@@ -32,7 +32,7 @@ void us_initialize();
 /*!
  * @brief Generates new hash functions' coeficients for the given @a generation.
  */
-int us_next( uint generation );
+int us_next(uint generation);
 
 /*----------------------------------------------------------------------------*/
 
@@ -53,7 +53,7 @@ int us_next( uint generation );
  *      compatibility issues.
  *      Consider static inline definition in header or removing inline.
  */
-uint32_t us_hash( uint32_t value, uint table_exp, uint fnc, uint generation );
+uint32_t us_hash(uint32_t value, uint table_exp, uint fnc, uint generation);
 
 /*----------------------------------------------------------------------------*/
 
