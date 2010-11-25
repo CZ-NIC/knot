@@ -1,11 +1,3 @@
-/*
- * File:     stat.c
- * Date:     01.11.2010 17:36
- * Author:   jan.kadlec@nic.cz
- * Project:  CuteDNS
- */
-
-
 #include <malloc.h>
 #include <time.h>
 #include <pthread.h>
@@ -16,12 +8,13 @@
 #include <netinet/in.h>
 #include <string.h>
 
-#include "common.h"
 #include "stat.h"
 #include "gatherer.h"
+#include "common.h"
 
 #ifdef STAT_COMPILE
 
+/* Static local gatherer variable, to be used with all functions. */
 static gatherer_t *local_gath;
 
 /*
@@ -39,185 +32,188 @@ static uint stat_last_query_time( stat_t *stat )
 	return (stat->t2).tv_nsec-(stat->t1).tv_nsec;
 }*/
 
-static void stat_inc_query( stat_t *stat )
+static void stat_inc_query(stat_t *stat)
 {
-    if (stat->protocol==stat_UDP) {
-        local_gath->udp_queries++;
-    } else {
-        local_gath->tcp_queries++;
-    }
+	if (stat->protocol == stat_UDP) {
+		local_gath->udp_queries++;
+	} else {
+		local_gath->tcp_queries++;
+	}
 }
 
-static uint return_index ( struct sockaddr_in *s_addr , protocol_t protocol )
+static uint return_index(struct sockaddr_in *s_addr , protocol_t protocol)
 {
-    /* this is the first "hash" I could think of quickly */
-    uint ret=0;
+	/* This is the first "hash" I could think of quickly. */
+	uint ret = 0;
 
-    char str[24];
-    inet_ntop(AF_INET, &s_addr->sin_addr, str, 24);
+	char str[24];
+	inet_ntop(AF_INET, &s_addr->sin_addr, str, 24);
 
-    for (int i = 0; i < strlen(str); i++) {
-        if (str[i]!='.') { 
-            ret+=str[i];
-            ret*=(i+1);
-        }
-    }
+	for (int i = 0; i < strlen(str); i++) {
+		if (str[i] != '.') {
+			ret += str[i];
+			ret *= (i + 1);
+		}
+	}
 
-    ret+=s_addr->sin_port * 7;
-    if (protocol == stat_UDP) {
-        ret*=3;
-    } else {
-        ret*=7;
-    }
-    ret%=FREQ_BUFFER_SIZE; 
-    /* effectively uses only end of the hash, maybe hash the 
-    resulting number once again to get 0 <= n < 10000 */
-    return ret;
+	ret += s_addr->sin_port * 7;
+	if (protocol == stat_UDP) {
+		ret *= 3;
+	} else {
+		ret *= 7;
+	}
+	ret %= FREQ_BUFFER_SIZE;
+	/* Effectively uses only end of the hash, maybe hash the
+	 * resulting number once again to get 0 <= n < 10000. */
+	return ret;
 }
 
-static int stat_gatherer_add_data( stat_t *stat )
-{   
-    uint index = return_index(stat->s_addr, stat->protocol);
-    if (!local_gath->freq_array[index]) {
-        char addr[24];
-        inet_ntop(AF_INET, &stat->s_addr->sin_addr, addr, 24);
-        flow_data_t *tmp;
-        tmp=malloc(sizeof(flow_data_t));
-        if (tmp == NULL) {
-            ERR_ALLOC_FAILED;
-            return -1;
-        }
-        tmp->addr=malloc(sizeof(char)*24);
-        if (tmp->addr == NULL) {
-            ERR_ALLOC_FAILED;
-            return -1;
-        }
-        strcpy(tmp->addr, addr);
-        tmp->port=stat->s_addr->sin_port;
-        tmp->protocol=stat->protocol;
-        local_gath->flow_array[index]=tmp;
-    }
-  
-    //TODO add a check here, whether hashing fction performs well enough
+static int stat_gatherer_add_data(stat_t *stat)
+{
+	uint index = return_index(stat->s_addr, stat->protocol);
+	if (!local_gath->freq_array[index]) {
+		char addr[24];
+		inet_ntop(AF_INET, &stat->s_addr->sin_addr, addr, 24);
+		flow_data_t *tmp;
+		tmp = malloc(sizeof(flow_data_t));
+		if (tmp == NULL) {
+			ERR_ALLOC_FAILED;
+			return -1;
+		}
+		tmp->addr = malloc(sizeof(char) * 24);
+		if (tmp->addr == NULL) {
+			ERR_ALLOC_FAILED;
+			return -1;
+		}
+		strcpy(tmp->addr, addr);
+		tmp->port = stat->s_addr->sin_port;
+		tmp->protocol = stat->protocol;
+		local_gath->flow_array[index] = tmp;
+	}
 
-    local_gath->freq_array[index]+=1;
+	//TODO add a check here, whether hashing fction performs well enough
 
-    return 0;
+	local_gath->freq_array[index] += 1;
+
+	return 0;
 }
 
 static void stat_reset_gatherer_array()
 {
-    for (int i = 0; i < FREQ_BUFFER_SIZE; i++) {
-        local_gath->freq_array[i]=0;
-    }
+	for (int i = 0; i < FREQ_BUFFER_SIZE; i++) {
+		local_gath->freq_array[i] = 0;
+	}
 }
 
 static void stat_sleep_compute()
-{ 
-    while (1) {
-        sleep(SLEEP_TIME);
+{
+	while (1) {
+		sleep(SLEEP_TIME);
 
-        for (int i = 0; i < FREQ_BUFFER_SIZE; i++) {
-            if (local_gath->freq_array[i] > ACTIVE_FLOW_THRESHOLD) {
-                debug_st("too much activity at index %d: %d queries adress: \
-%s port %d protocol %d\n", i, local_gath->freq_array[i],
-                       local_gath->flow_array[i]->addr, 
-                       local_gath->flow_array[i]->port,
-                       local_gath->flow_array[i]->protocol);
-            }
-        }
+		for (int i = 0; i < FREQ_BUFFER_SIZE; i++) {
+			if (local_gath->freq_array[i] > 
+			    ACTIVE_FLOW_THRESHOLD) {
+				debug_st("too much activity at index %d:"
+					 " %d queries adress: %s port %d"
+					 " protocol %d\n",
+					 i, local_gath->freq_array[i],
+					 local_gath->flow_array[i]->addr,
+					 local_gath->flow_array[i]->port,
+			      		 local_gath->flow_array[i]->protocol);
+			}
+		}
 
-        pthread_mutex_lock(&(local_gath->mutex_read)); 
+		pthread_mutex_lock(&(local_gath->mutex_read));
 
-        local_gath->udp_qps=local_gath->udp_queries/(double)SLEEP_TIME;
-        local_gath->tcp_qps=local_gath->tcp_queries/(double)SLEEP_TIME;
-        local_gath->qps = local_gath->udp_qps + local_gath->tcp_qps;
+		local_gath->udp_qps = local_gath->udp_queries / 
+				      (double)SLEEP_TIME;
+		local_gath->tcp_qps = local_gath->tcp_queries / 
+				      (double)SLEEP_TIME;
+		local_gath->qps = local_gath->udp_qps + local_gath->tcp_qps;
 
-/* following code needs usage of gettimeofday, which is currently disabled */
+		/* following code needs usage of 
+		 * gettimeofday, which is currently disabled */
 
-/*      local_gath->udp_mean_latency=((double)local_gath->udp_latency/
-        (double)local_gath->udp_queries); 
-        local_gath->tcp_mean_latency=((double)local_gath->tcp_latency/
-        (double)local_gath->tcp_queries); 
-        local_gath->mean_latency = (local_gath->udp_mean_latency + 
-        local_gath->tcp_mean_latency)/2;  */
+/*	        local_gath->udp_mean_latency=((double)local_gath->udp_latency/
+	        (double)local_gath->udp_queries);
+	        local_gath->tcp_mean_latency=((double)local_gath->tcp_latency/
+	        (double)local_gath->tcp_queries);
+	        local_gath->mean_latency = (local_gath->udp_mean_latency +
+	        local_gath->tcp_mean_latency)/2; */
 
-        //TODO only applies for sleep time, which might not be bad, at least
-        //there's no need to hold more variables
-        local_gath->udp_queries=0;
-        local_gath->tcp_queries=0;
+		local_gath->udp_queries = 0;
+		local_gath->tcp_queries = 0;
 
-/* same thing as above applies here */
+		/* same thing as above applies here */
 
-/*      local_gath->tcp_latency = 0;
-        local_gath->udp_latency = 0;*/
+/*		local_gath->tcp_latency = 0;
+		local_gath->udp_latency = 0; */
 
-        pthread_mutex_unlock(&(local_gath->mutex_read));
+		pthread_mutex_unlock(&(local_gath->mutex_read));
 
-        stat_reset_gatherer_array(local_gath);
+		stat_reset_gatherer_array(local_gath);
 
-        debug_st("qps_udp: %f\n", local_gath->udp_qps);
-//      debug_st("mean_lat_udp: %f\n", local_gath->udp_mean_latency);
+		debug_st("qps_udp: %f\n", local_gath->udp_qps);
+/*		debug_st("mean_lat_udp: %f\n", local_gath->udp_mean_latency); */
 
-        debug_st("qps_tcp: %f\n", local_gath->tcp_qps);
-//      debug_st("mean_lat_tcp: %f\n", local_gath->tcp_mean_latency);
+		debug_st("qps_tcp: %f\n", local_gath->tcp_qps);
+/*		debug_st("mean_lat_tcp: %f\n", local_gath->tcp_mean_latency); */
 
-        debug_st("UDP/TCP ratio %f\n", local_gath->udp_qps/local_gath->tcp_qps);
-    }
+		debug_st("UDP/TCP ratio %f\n", 
+			 local_gath->udp_qps / local_gath->tcp_qps);
+	}
 }
 
 stat_t *stat_new()
 {
-    stat_t *ret;
+	stat_t *ret;
 
-    if ((ret=malloc(sizeof(stat_t)))==NULL) {
-        ERR_ALLOC_FAILED;
-        return NULL;
-    }
-    return ret;
+	if ((ret = malloc(sizeof(stat_t))) == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+	return ret;
 }
 
-void stat_set_protocol( stat_t *stat, int protocol)
+void stat_set_protocol(stat_t *stat, int protocol)
 {
-    stat->protocol=protocol;
+	stat->protocol = protocol;
 }
 
-void stat_get_first( stat_t *stat , struct sockaddr_in *s_addr )
-{
-//  gettimeofday(&stat->t2, NULL);
-    stat->s_addr = s_addr;
-    //check if s_addr does not get overwritten
-}
-
-void stat_get_second( stat_t *stat )
+void stat_get_first(stat_t *stat , struct sockaddr_in *s_addr)
 {
 //  gettimeofday(&stat->t2, NULL);
-    stat_inc_query(stat);
+	stat->s_addr = s_addr;
+	//check if s_addr does not get overwritten
+}
+
+void stat_get_second(stat_t *stat)
+{
+//  gettimeofday(&stat->t2, NULL);
+	stat_inc_query(stat);
 //  stat_inc_latency(stat, stat_last_query_time(stat));
-    stat_gatherer_add_data(stat);
+	stat_gatherer_add_data(stat);
 }
 
-void stat_free( stat_t *stat ) 
+void stat_free(stat_t *stat)
 {
-    free(stat);
+	free(stat);
 }
 
 void stat_static_gath_init()
 {
-    local_gath = new_gatherer();
+	local_gath = new_gatherer();
 }
 
 void stat_static_gath_start()
 {
-    pthread_create(&(local_gath->sleeper_thread), NULL, 
-                    (void *) &stat_sleep_compute, NULL);
+	pthread_create(&(local_gath->sleeper_thread), NULL,
+	               (void *) &stat_sleep_compute, NULL);
 }
 
 void stat_static_gath_free()
 {
-    gatherer_free(local_gath);
+	gatherer_free(local_gath);
 }
 
-#endif
-
-/* end of file stat.c */
+#endif /* STAT_COMPILE */
