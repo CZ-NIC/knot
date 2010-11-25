@@ -1,5 +1,17 @@
-#ifndef COMMON
-#define COMMON
+/*!
+ * \file common.h
+ *
+ * \author Lubos Slovak <lubos.slovak@nic.cz>
+ *
+ * \brief Common macros, includes and utilities.
+ *
+ * \addtogroup utils
+ * @{
+ */
+
+#ifndef _CUTEDNS_COMMON_H_
+#define _CUTEDNS_COMMON_H_
+
 #include <signal.h>
 #include <stdint.h>
 
@@ -27,7 +39,9 @@ typedef unsigned int uint;
 
 /* Common macros.
  */
-#define ERR_ALLOC_FAILED log_error("Allocation failed at %s:%d (%s ver.%x)\n", __FILE__, __LINE__, PROJECT_NAME, PROJECT_VER)
+
+#define ERR_ALLOC_FAILED log_error("Allocation failed at %s:%d (%s ver.%x)\n", \
+                                  __FILE__, __LINE__, PROJECT_NAME, PROJECT_VER)
 
 /* Eliminate compiler warning with unused parameters. */
 #define UNUSED(param) (param) = (param)
@@ -38,4 +52,6 @@ typedef unsigned int uint;
 
 //#define STAT_COMPILE
 
-#endif // COMMON
+#endif /* _CUTEDNS_COMMON_H_ */
+
+/*! @} */
