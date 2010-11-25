@@ -1,11 +1,12 @@
-#include "zone-node.h"
-
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
+
+#include <ldns/ldns.h>
+
+#include "zone-node.h"
 #include "common.h"
 #include "skip-list.h"
-#include <ldns/ldns.h>
 
 /*----------------------------------------------------------------------------*/
 
@@ -16,35 +17,63 @@
 
 static const uint RRSETS_COUNT = 10;
 
-/*! Zone node flags. */
-typedef enum zn_flags {
-	/*! - Xxxxxxxx1 - node is delegation point (ref.glues is set) */
+/*! \brief Zone node flags. */
+enum zn_flags {
+	/*! \brief Xxxxxxxx1 - node is delegation point (ref.glues is set) */
 	FLAGS_DELEG = 0x1,
-	/*! - Xxxxxxx1x - node is non-authoritative (carrying only glue records) */
+
+	/*!
+	 * \brief Xxxxxxx1x - node is non-authoritative (carrying only glue
+	 *        records)
+	 */
 	FLAGS_NONAUTH = 0x2,
-	/*! - Xxxxxx1xx - node carries a CNAME record (ref.cname is set) */
+
+	/*! \brief Xxxxxx1xx - node carries a CNAME record (ref.cname is set) */
 	FLAGS_HAS_CNAME = 0x4,
-	/*! - Xxxxx1xxx - node carries an MX record (ref.additional is set) */
+
+	/*!
+	 * \brief Xxxxx1xxx - node carries an MX record (ref.additional is set)
+	 */
 	FLAGS_HAS_MX = 0x8,
-	/*! - Xxxx1xxxx - node carries an NS record (ref.additional is set) */
+	/*!
+	 * \brief Xxxx1xxxx - node carries an NS record (ref.additional is set)
+	 */
 	FLAGS_HAS_NS = 0x10,
-	/*! - Xxx1xxxxx - node carries a SRV record (ref.additional is set) */
+	/*!
+	 * \brief Xxx1xxxxx - node carries a SRV record (ref.additional is set)
+	 */
 	FLAGS_HAS_SRV = 0x20,
-	/*! - Xx1xxxxxx - node is referenced by some CNAME record (referrer is set) */
+	/*!
+	 * \brief Xx1xxxxxx - node is referenced by some CNAME record (referrer
+	 *        is set)
+	 */
 	FLAGS_REF_CNAME = 0x40,
-	/*! - X1xxxxxxx - node is referenced by some MX record (referrer is set) */
+	/*!
+	 * \brief X1xxxxxxx - node is referenced by some MX record (referrer is
+	 *        set)
+	 */
 	FLAGS_REF_MX = 0x80,
-	/*! - xxxxxxx1X - node is referenced by some NS record (referrer is set) */
+
+	/*!
+	 * \brief xxxxxxx1X - node is referenced by some NS record (referrer is
+	 *        set)
+	 */
 	FLAGS_REF_NS = 0x100,
-	/*! - xxxxxx1xX - node is referenced by some SRV record (referrer is set) */
+
+	/*!
+	 * \brief xxxxxx1xX - node is referenced by some SRV record (referrer
+	 *        is set)
+	 */
 	FLAGS_REF_SRV = 0x200
 } zn_flags;
 
+typedef enum zn_flags zn_flags;
+
 /*----------------------------------------------------------------------------*/
-/* Private functions          					                              */
+/* Private functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-zn_ar_rrsets *zn_create_ar_rrsets()
+static zn_ar_rrsets *zn_create_ar_rrsets()
 {
 	zn_ar_rrsets *ar = malloc(sizeof(zn_ar_rrsets));
 	if (ar == NULL) {
@@ -60,14 +89,14 @@ zn_ar_rrsets *zn_create_ar_rrsets()
 
 /*----------------------------------------------------------------------------*/
 
-void zn_destroy_ar_rrsets(zn_ar_rrsets **ar)
+static void zn_destroy_ar_rrsets(zn_ar_rrsets **ar)
 {
 	free(*ar);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void zn_dtor_ar_rrsets(void *value)
+static void zn_dtor_ar_rrsets(void *value)
 {
 	zn_ar_rrsets *ar = (zn_ar_rrsets *)value;
 	zn_destroy_ar_rrsets(&ar);
@@ -75,7 +104,7 @@ void zn_dtor_ar_rrsets(void *value)
 
 /*----------------------------------------------------------------------------*/
 
-zn_ar_rrsets *zn_create_ar_rrsets_for_ref(ldns_rr_list *ref_rrset)
+static zn_ar_rrsets *zn_create_ar_rrsets_for_ref(ldns_rr_list *ref_rrset)
 {
 	zn_ar_rrsets *ar = zn_create_ar_rrsets();
 
@@ -90,8 +119,8 @@ zn_ar_rrsets *zn_create_ar_rrsets_for_ref(ldns_rr_list *ref_rrset)
 		break;
 	default:
 		free(ar);
-		log_error("Error: trying to add MX record reference to a type other"
-		          " than A or AAAA.\n");
+		log_error("Error: trying to add MX record reference to a type "
+			  "other than A or AAAA.\n");
 		return NULL;
 	}
 	return ar;
@@ -99,7 +128,7 @@ zn_ar_rrsets *zn_create_ar_rrsets_for_ref(ldns_rr_list *ref_rrset)
 
 /*----------------------------------------------------------------------------*/
 
-zn_ar_rrsets *zn_create_ar_rrsets_for_cname(const zn_node *node)
+static zn_ar_rrsets *zn_create_ar_rrsets_for_cname(const zn_node *node)
 {
 	zn_ar_rrsets *ar = zn_create_ar_rrsets();
 
@@ -112,14 +141,14 @@ zn_ar_rrsets *zn_create_ar_rrsets_for_cname(const zn_node *node)
 
 /*----------------------------------------------------------------------------*/
 
-int zn_compare_ar_keys(void *key1, void *key2)
+static int zn_compare_ar_keys(void *key1, void *key2)
 {
 	return ldns_dname_compare((ldns_rdf *)key1, (ldns_rdf *)key2);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int zn_merge_ar_values(void **value1, void **value2)
+static int zn_merge_ar_values(void **value1, void **value2)
 {
 	zn_ar_rrsets *ar1 = (zn_ar_rrsets *)(*value1);
 	zn_ar_rrsets *ar2 = (zn_ar_rrsets *)(*value2);
@@ -143,7 +172,7 @@ int zn_merge_ar_values(void **value1, void **value2)
 
 /*----------------------------------------------------------------------------*/
 
-int zn_compare_keys(void *key1, void *key2)
+static int zn_compare_keys(void *key1, void *key2)
 {
 	// in our case, key is of type ldns_rr_type, but as casting to enum may
 	// result in undefined behaviour, we use regular unsigned int.
@@ -152,7 +181,7 @@ int zn_compare_keys(void *key1, void *key2)
 
 /*----------------------------------------------------------------------------*/
 
-int zn_merge_values(void **value1, void **value2)
+static int zn_merge_values(void **value1, void **value2)
 {
 	if (ldns_rr_list_cat((ldns_rr_list *)(*value1),
 	                     (ldns_rr_list *)(*value2))) {
@@ -164,7 +193,7 @@ int zn_merge_values(void **value1, void **value2)
 
 /*----------------------------------------------------------------------------*/
 
-void zn_destroy_value(void *value)
+static void zn_destroy_value(void *value)
 {
 	ldns_rr_list_deep_free((ldns_rr_list *)value);
 }
@@ -192,26 +221,29 @@ static inline int zn_flags_empty(uint16_t flags)
 
 /*----------------------------------------------------------------------------*/
 
-int zn_add_referrer_node(zn_node *node, const zn_node *referrer)
+static int zn_add_referrer_node(zn_node *node, const zn_node *referrer)
 {
 	if (node->referrers == NULL) {
 		node->referrers = da_create(1, sizeof(zn_node *));
 		if (node->referrers == NULL) {
-			log_error("zn_add_referrer_node(): Error while creating array.\n");
+			log_error("zn_add_referrer_node(): Error while creating"
+				  "array.\n");
 			return -1;
 		}
 	}
 
 	int res = da_reserve(node->referrers, 1);
 	if (res < 0) {
-		log_error("zn_add_referrer_node(): Error while reserving space.\n");
+		log_error("zn_add_referrer_node(): Error while reserving space."
+			  "\n");
 		return -2;
 	}
 
 	RFRS(node->referrers)[RFRS_COUNT(node->referrers)] = referrer;
 	res = da_occupy(node->referrers, 1);
 	if (res != 0) {
-		log_error("zn_add_referrer_node(): Error while occupying space.\n");
+		log_error("zn_add_referrer_node(): Error while occupying space."
+			  "\n");
 		return -3;
 	}
 
@@ -220,13 +252,13 @@ int zn_add_referrer_node(zn_node *node, const zn_node *referrer)
 
 /*----------------------------------------------------------------------------*/
 
-int zn_has_additional(const zn_node *node)
+static int zn_has_additional(const zn_node *node)
 {
 	return (zn_has_mx(node) + zn_has_ns(node) + zn_has_srv(node));
 }
 
 /*----------------------------------------------------------------------------*/
-/* Public functions          					                              */
+/* Public functions                                                           */
 /*----------------------------------------------------------------------------*/
 
 zn_node *zn_create()
@@ -268,9 +300,9 @@ ldns_rdf *zn_owner(zn_node *node)
 int zn_add_rr(zn_node *node, ldns_rr *rr)
 {
 	/*
-	 * This whole function can be written with less code if we first create new
-	 * rr_list, insert the RR into it and then call skip_insert and provide
-	 * the merging function.
+	 * This whole function can be written with less code if we first create
+	 * new rr_list, insert the RR into it and then call skip_insert and
+	 * provide the merging function.
 	 *
 	 * However, in that case the allocation will occur always, what may be
 	 * time-consuming, so we retain this version for now.
@@ -281,13 +313,13 @@ int zn_add_rr(zn_node *node, ldns_rr *rr)
 
 	// accept only RR with the same owner
 	if (node->owner
-	                && ldns_dname_compare(node->owner, ldns_rr_owner(rr)) != 0) {
+	    && ldns_dname_compare(node->owner, ldns_rr_owner(rr)) != 0) {
 		return -6;
 	}
 
 	// find an appropriate RRSet for the RR
 	ldns_rr_list *rrset = (ldns_rr_list *)skip_find(
-	                              node->rrsets, (void *)ldns_rr_get_type(rr));
+			node->rrsets, (void *)ldns_rr_get_type(rr));
 
 	// found proper RRSet, insert into it
 	if (rrset != NULL) {
@@ -306,7 +338,8 @@ int zn_add_rr(zn_node *node, ldns_rr *rr)
 			return -5;
 		}
 		// insert the rrset into the node
-		int res = skip_insert(node->rrsets, (void *)ldns_rr_get_type(rr),
+		int res = skip_insert(node->rrsets,
+				      (void *)ldns_rr_get_type(rr),
 		                      (void *)rrset, NULL);
 		assert(res != 2 && res != -2);
 		// if no owner yet and successfuly inserted
@@ -330,7 +363,7 @@ int zn_add_rrset(zn_node *node, ldns_rr_list *rrset)
 	int res = skip_insert(node->rrsets, (void *)ldns_rr_list_type(rrset),
 	                      (void *)rrset, zn_merge_values);
 
-	// if the node did not have any owner and insert successful, set the owner
+	// if the node did not have any owner and insert successful, set owner
 	if (node->owner == NULL && res == 0) {
 		node->owner = ldns_rdf_clone(ldns_rr_list_owner(rrset));
 	}
@@ -342,7 +375,8 @@ int zn_add_rrset(zn_node *node, ldns_rr_list *rrset)
 
 ldns_rr_list *zn_find_rrset(const zn_node *node, ldns_rr_type type)
 {
-	ldns_rr_list *rrset = (ldns_rr_list *)skip_find(node->rrsets, (void *)type);
+	ldns_rr_list *rrset = (ldns_rr_list *)skip_find(node->rrsets,
+							(void *)type);
 	debug_zn("Searching for type %d,%s in RRSets:\n", type,
 	         ldns_rr_type2str(type));
 	skip_print_list(node->rrsets, zn_print_rrset);
@@ -484,7 +518,8 @@ int zn_add_ref(zn_node *node, ldns_rdf *name, ldns_rr_type type,
 		ar = zn_create_ar_rrsets_for_cname(ref_node);
 	}
 	if (ar == NULL) {
-		skip_destroy_list(&(node->ref.additional), NULL, zn_dtor_ar_rrsets);
+		skip_destroy_list(&(node->ref.additional), NULL,
+				  zn_dtor_ar_rrsets);
 		return -4;
 	}
 
@@ -499,7 +534,7 @@ int zn_add_ref(zn_node *node, ldns_rdf *name, ldns_rr_type type,
 	debug_zn("zn_add_ref(%p, %p, %s)\n", node, ref_rrset,
 	         ldns_rr_type2str(type));
 	debug_zn("First item in the skip list: key: %s, value: %p\n",
-	         ldns_rdf2str((ldns_rdf *)skip_first(node->ref.additional)->key),
+	        ldns_rdf2str((ldns_rdf *)skip_first(node->ref.additional)->key),
 	         skip_first(node->ref.additional)->value);
 	debug_zn("Inserted item: value: %p\n", ar);
 
@@ -530,7 +565,8 @@ const zn_ar_rrsets *zn_get_ref(const zn_node *node, const ldns_rdf *name)
 	if ((zn_flags_get(node->flags, FLAGS_HAS_MX)
 	                | zn_flags_get(node->flags, FLAGS_HAS_NS)
 	                | zn_flags_get(node->flags, FLAGS_HAS_SRV)) > 0) {
-		return (zn_ar_rrsets *)skip_find(node->ref.additional, (void *)name);
+		return (zn_ar_rrsets *)skip_find(node->ref.additional,
+						 (void *)name);
 	} else {
 		return NULL;
 	}
@@ -695,7 +731,8 @@ ldns_rr_list *zn_get_glue(const zn_node *node, ldns_rdf *owner,
 	do {
 		++i;
 		rr = ldns_rr_list_rr(node->ref.glues, i);
-	} while ((cmp = ldns_dname_match_wildcard(owner, ldns_rr_owner(rr))) < 0);
+	} while ((cmp = ldns_dname_match_wildcard(owner, ldns_rr_owner(rr)))
+	          < 0);
 
 	// found owner
 	while (cmp == 0 && ldns_rr_get_type(rr) != type) {
@@ -706,8 +743,8 @@ ldns_rr_list *zn_get_glue(const zn_node *node, ldns_rdf *owner,
 
 	// found owner & type
 	while (cmp == 0 && ldns_rr_get_type(rr) == type) {
-		// if the RR has a wildcard owner, copy the RR and replace the owner
-		// with the desired name
+		// if the RR has a wildcard owner, copy the RR and replace the
+		// owner with the desired name
 		if (ldns_dname_is_wildcard(ldns_rr_owner(rr))) {
 			ldns_rr *rr_new = ldns_rr_clone(rr);
 			ldns_rdf_deep_free(ldns_rr_owner(rr_new));
@@ -731,7 +768,8 @@ void zn_destroy(zn_node **node)
 {
 	skip_destroy_list(&(*node)->rrsets, NULL, zn_destroy_value);
 	if (zn_has_additional(*node)) {
-		skip_destroy_list(&(*node)->ref.additional, NULL, zn_dtor_ar_rrsets);
+		skip_destroy_list(&(*node)->ref.additional, NULL,
+				  zn_dtor_ar_rrsets);
 	}
 
 	ldns_rdf_deep_free((*node)->owner);
