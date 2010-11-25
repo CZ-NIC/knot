@@ -127,20 +127,20 @@ static inline int IS_REHASHING(uint8_t flags)
 /*!
  * \brief Returns the exponent of the nearest power of two.
  */
-static uint get_nearest_exp(uint n)
-{
-	// TODO: optimize
-	uint prev = 1;
-	uint next = 2;
+//static uint get_nearest_exp(uint n)
+//{
+//	// TODO: optimize
+//	uint prev = 1;
+//	uint next = 2;
 
-	while (hashsize(next) < n) {
-		prev = next++;
-	}
+//	while (hashsize(next) < n) {
+//		prev = next++;
+//	}
 
-	return ((n - hashsize(prev)) < (hashsize(next) - n))
-	       ? prev
-	       : next;
-}
+//	return ((n - hashsize(prev)) < (hashsize(next) - n))
+//	       ? prev
+//	       : next;
+//}
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -649,6 +649,15 @@ void ck_destroy_table(ck_hash_table_t **table, void (*dtor_value)(void *value),
 }
 
 /*----------------------------------------------------------------------------*/
+#ifdef CT_TEST_REHASH
+int ck_rehash(ck_hash_table_t *table);
+
+/*----------------------------------------------------------------------------*/
+#else
+static int ck_rehash(ck_hash_table_t *table);
+
+/*----------------------------------------------------------------------------*/
+#endif
 
 int ck_insert_item(ck_hash_table_t *table, const char *key,
                    size_t length, void *value)
