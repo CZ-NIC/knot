@@ -118,10 +118,8 @@ static void create_rdata()
     	  uint8_t data[DNSLIB_MAX_RDATA_WIRE_SIZE];
     	  generate_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE);
 
-	      // set items through set_items() and then call set_item()
-      	uint16_t rrtype = rand() % DNSLIB_RRTYPE_LAST + 1;
         // from dnslib_rdata_tests.c
-    	  fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, rrtype, r);
+    	  fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, test_rrsets[i].type, r);
         test_rrsets[i].rdata = r;
     }
 }
@@ -404,7 +402,17 @@ static int dnslib_rrset_tests_run(int argc, char *argv[])
 
 	endskip;	/* !res_create */
 
+  dnslib_rrtype_descriptor_t *desc;
+
   for (int i = 0; i < TEST_RRSETS; i++) {
+      desc =  dnslib_rrtype_descriptor_by_type(test_rrsets[i].type);
+      for (int x = 0; x < test_rrsets[i].rdata->count; x++) {
+        if (desc->wireformat[x] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
+            desc->wireformat[x] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+            desc->wireformat[x] == DNSLIB_RDATA_WF_LITERAL_DNAME) {
+            dnslib_dname_free(&(test_rrsets[i].rdata->items[x].dname));
+        }
+      }
 		  dnslib_rdata_free(&test_rrsets[i].rdata);
   }
 	return 0;
