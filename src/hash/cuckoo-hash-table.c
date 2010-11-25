@@ -244,7 +244,7 @@ static inline void ck_put_item(ck_hash_table_item_t **to,
  * \note According to Kirsch, et al. a check that at most one hash was used
  *       twice should be sufficient. We will retain our version for now.
  */
-static uint ck_check_used_twice(da_array *used, uint32_t hash)
+static uint ck_check_used_twice(da_array_t *used, uint32_t hash)
 {
 	uint i = 0, found = 0;
 	while (i <= da_get_count(used) && found < 2) {
@@ -404,7 +404,7 @@ static ck_hash_table_item_t **ck_find_item_nc(const ck_hash_table_t *table,
 static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
                         ck_hash_table_item_t **free, uint8_t generation)
 {
-	da_array used[table->table_count];
+	da_array_t used[table->table_count];
 	for (uint i = 0; i < table->table_count; ++i) {
 		da_initialize(&used[i], RELOCATIONS_DEFAULT, sizeof(uint));
 	}
