@@ -514,6 +514,20 @@ static int test_rdata_set_item()
 		return 0;
 	}
 
+	dnslib_rrtype_descriptor_t *desc = 
+	dnslib_rrtype_descriptor_by_type(rrtype);
+	
+	for (int x = 0; x < desc->length; x++) {
+	       if (desc->wireformat[x] == 
+	           DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
+	           desc->wireformat[x] == 
+	           DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+	           desc->wireformat[x] == 
+	           DNSLIB_RDATA_WF_LITERAL_DNAME) {
+			dnslib_dname_free(&(rdata->items[x].dname));
+	       }
+	}
+
 	dnslib_rdata_free(&rdata);
 	return 1;
 }
@@ -573,7 +587,8 @@ static int test_rdata_set_items()
 		errors += check_rdata(data, 
 				      DNSLIB_MAX_RDATA_WIRE_SIZE, i, rdata);
 
-		dnslib_rrtype_descriptor_t *desc = dnslib_rrtype_descriptor_by_type(i);
+		dnslib_rrtype_descriptor_t *desc = 
+		dnslib_rrtype_descriptor_by_type(i);
 
 		for (int x = 0; x < desc->length; x++) {
 			if (desc->wireformat[x] == 
