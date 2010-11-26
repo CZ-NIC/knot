@@ -1,5 +1,6 @@
 /*!
  * \file rrset.h
+ *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
  * \brief RRSet structure and API for manipulating it.
@@ -8,8 +9,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_RRSET_H
-#define _CUTEDNS_RRSET_H
+#ifndef _CUTEDNS_DNSLIB_RRSET_H_
+#define _CUTEDNS_DNSLIB_RRSET_H_
 
 #include <stdint.h>
 #include "dname.h"
@@ -28,21 +29,25 @@
  * RDATA sections of corresponding RRs.
  */
 struct dnslib_rrset {
-	dnslib_dname_t *owner;	/*!< Domain name being the owner of the RRSet. */
-	uint16_t type;	/*!< TYPE of the RRset. */
-	uint16_t rclass;	/*!< CLASS of the RRSet. */
-	uint32_t ttl;	/*!< TTL of the RRSet. */
+	/*! \brief Domain name being the owner of the RRSet. */
+	dnslib_dname_t *owner;
+	uint16_t type; /*!< TYPE of the RRset. */
+	uint16_t rclass; /*!< CLASS of the RRSet. */
+	uint32_t ttl; /*!< TTL of the RRSet. */
 	/*!
 	 * \brief First item in an ordered cyclic list of RDATA items.
 	 *
-	 * \note The fact that the list is cyclic will easily allow for possible
-	 *       round-robin rotation of RRSets.
+	 * \note The fact that the list is cyclic will easily allow for
+	 *       possible round-robin rotation of RRSets.
 	 */
 	dnslib_rdata_t *rdata;
 
 	/*! \brief RRSet containing signatures for this RRSet. */
 	const struct dnslib_rrset *rrsigs;
-	/*! \brief First signature for this RRSet (its RDATA portion actually). */
+	/*! 
+	 * \brief First signature for this RRSet 
+	 *        (its RDATA portion actually). 
+	 */
 	const dnslib_rdata_t *first;
 	/*!
 	 * \brief Number of signatures for this RRSet.
@@ -69,8 +74,8 @@ typedef struct dnslib_rrset dnslib_rrset_t;
  * \return New RRSet structure with the given OWNER, TYPE, CLASS and TTL or NULL
  *         if an error occured.
  */
-dnslib_rrset_t *dnslib_rrset_new( dnslib_dname_t *owner, uint16_t type,
-								  uint16_t rclass, uint32_t ttl );
+dnslib_rrset_t *dnslib_rrset_new(dnslib_dname_t *owner, uint16_t type,
+                                 uint16_t rclass, uint32_t ttl);
 
 /*!
  * \brief Adds the given RDATA to the RRSet.
@@ -83,7 +88,7 @@ dnslib_rrset_t *dnslib_rrset_new( dnslib_dname_t *owner, uint16_t type,
  *
  * \todo Provide some function for comparing RDATAs.
  */
-int dnslib_rrset_add_rdata( dnslib_rrset_t *rrset, dnslib_rdata_t *rdata );
+int dnslib_rrset_add_rdata(dnslib_rrset_t *rrset, dnslib_rdata_t *rdata);
 
 /*!
  * \brief Stores information about the RRSIG signatures for the RRSet.
@@ -100,9 +105,9 @@ int dnslib_rrset_add_rdata( dnslib_rrset_t *rrset, dnslib_rdata_t *rdata );
  * \todo Modify return values in comment to reflect the implementation.
  * \todo Return value may be unneccessary. Change to void if so.
  */
-int dnslib_rrset_set_rrsigs( dnslib_rrset_t *rrset,
-							 const dnslib_rrset_t *rrsigs,
-							 const dnslib_rdata_t *first, uint count );
+int dnslib_rrset_set_rrsigs(dnslib_rrset_t *rrset,
+                            const dnslib_rrset_t *rrsigs,
+                            const dnslib_rdata_t *first, uint count);
 
 /*!
  * \brief Returns the TYPE of the RRSet.
@@ -111,7 +116,7 @@ int dnslib_rrset_set_rrsigs( dnslib_rrset_t *rrset,
  *
  * \return TYPE of the given RRSet.
  */
-uint16_t dnslib_rrset_type( const dnslib_rrset_t *rrset );
+uint16_t dnslib_rrset_type(const dnslib_rrset_t *rrset);
 
 /*!
  * \brief Returns the CLASS of the RRSet.
@@ -120,7 +125,7 @@ uint16_t dnslib_rrset_type( const dnslib_rrset_t *rrset );
  *
  * \return CLASS of the given RRSet.
  */
-uint16_t dnslib_rrset_class( const dnslib_rrset_t *rrset );
+uint16_t dnslib_rrset_class(const dnslib_rrset_t *rrset);
 
 /*!
  * \brief Returns the TTL of the RRSet.
@@ -129,7 +134,7 @@ uint16_t dnslib_rrset_class( const dnslib_rrset_t *rrset );
  *
  * \return TTL of the given RRSet.
  */
-uint32_t dnslib_rrset_ttl( const dnslib_rrset_t *rrset );
+uint32_t dnslib_rrset_ttl(const dnslib_rrset_t *rrset);
 
 /*!
  * \brief Returns the first RDATA in the RRSet.
@@ -144,7 +149,7 @@ uint32_t dnslib_rrset_ttl( const dnslib_rrset_t *rrset );
  *       returned by this function may not be the first RDATA in canonical
  *       order.
  */
-const dnslib_rdata_t *dnslib_rrset_rdata( const dnslib_rrset_t *rrset );
+const dnslib_rdata_t *dnslib_rrset_rdata(const dnslib_rrset_t *rrset);
 
 /*!
  * \brief Returns the RRSet holding RRSIGs covering the given RRSet.
@@ -153,7 +158,7 @@ const dnslib_rdata_t *dnslib_rrset_rdata( const dnslib_rrset_t *rrset );
  *
  * \return RRSet holding RRSIGs which cover the given RRSet.
  */
-const dnslib_rrset_t *dnslib_rrset_rrsigs( const dnslib_rrset_t *rrset );
+const dnslib_rrset_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset);
 
 /*!
  * \brief Returns the RDATA of the first RRSIG covering the given RRSet.
@@ -162,7 +167,7 @@ const dnslib_rrset_t *dnslib_rrset_rrsigs( const dnslib_rrset_t *rrset );
  *
  * \return RDATA of the first RRSIG covering the given RRSet.
  */
-const dnslib_rdata_t *dnslib_rrset_rrsig_first( const dnslib_rrset_t *rrset );
+const dnslib_rdata_t *dnslib_rrset_rrsig_first(const dnslib_rrset_t *rrset);
 
 /*!
  * \brief Returns the count of the RRSIGs covering the given RRSet.
@@ -171,7 +176,7 @@ const dnslib_rdata_t *dnslib_rrset_rrsig_first( const dnslib_rrset_t *rrset );
  *
  * \return Count of the RRSIGs covering the given RRSet.
  */
-uint dnslib_rrset_rrsig_count( const dnslib_rrset_t *rrset );
+uint dnslib_rrset_rrsig_count(const dnslib_rrset_t *rrset);
 
 /*!
  * \brief Destroys the RRSet structure.
@@ -188,8 +193,8 @@ uint dnslib_rrset_rrsig_count( const dnslib_rrset_t *rrset );
  *
  * Sets the given pointer to NULL.
  */
-void dnslib_rrset_free( dnslib_rrset_t **rrset );
+void dnslib_rrset_free(dnslib_rrset_t **rrset);
 
-#endif /* _CUTEDNS_RRSET_H */
+#endif /* _CUTEDNS_DNSLIB_RRSET_H_ */
 
 /*! @} */

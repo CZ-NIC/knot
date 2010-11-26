@@ -8,8 +8,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_DNAME_H
-#define _CUTEDNS_DNAME_H
+#ifndef _CUTEDNS_DNSLIB_DNAME_H_
+#define _CUTEDNS_DNSLIB_DNAME_H_
 
 #include <stdint.h>
 #include "common.h"
@@ -31,7 +31,7 @@ struct dnslib_dname {
 	 * \todo Is this needed? Every dname should end with \0 or pointer.
 	 */
 	uint size;
-	struct dnslib_node *node;	/*!< Zone node the domain name belongs to. */
+	struct dnslib_node *node; /*!< Zone node the domain name belongs to. */
 };
 
 typedef struct dnslib_dname dnslib_dname_t;
@@ -63,8 +63,8 @@ dnslib_dname_t *dnslib_dname_new();
  *
  * \todo Check if the FQDN issue is OK.
  */
-dnslib_dname_t *dnslib_dname_new_from_str( char *name, uint size,
-										   struct dnslib_node *node );
+dnslib_dname_t *dnslib_dname_new_from_str(char *name, uint size,
+                struct dnslib_node *node);
 
 /*!
  * \brief Creates a dname structure from domain name given in wire format.
@@ -87,8 +87,8 @@ dnslib_dname_t *dnslib_dname_new_from_str( char *name, uint size,
  *       is OK to retain this and check the data in other functions before
  *       calling this one, or if it should verify the given data.
  */
-dnslib_dname_t *dnslib_dname_new_from_wire( uint8_t *name, uint size,
-											struct dnslib_node *node );
+dnslib_dname_t *dnslib_dname_new_from_wire(uint8_t *name, uint size,
+                struct dnslib_node *node);
 
 /*!
  * \brief Converts the given domain name to string representation.
@@ -99,7 +99,7 @@ dnslib_dname_t *dnslib_dname_new_from_wire( uint8_t *name, uint size,
  *         presentation format.
  * \note Allocates new memory, remember to free it.
  */
-char *dnslib_dname_to_str( const dnslib_dname_t *dname );
+char *dnslib_dname_to_str(const dnslib_dname_t *dname);
 
 /*!
  * \brief Returns the domain name in wire format.
@@ -108,7 +108,7 @@ char *dnslib_dname_to_str( const dnslib_dname_t *dname );
  *
  * \return Wire format of the domain name.
  */
-const uint8_t *dnslib_dname_name( const dnslib_dname_t *dname );
+const uint8_t *dnslib_dname_name(const dnslib_dname_t *dname);
 
 /*!
  * \brief Returns size of the given domain name.
@@ -117,7 +117,7 @@ const uint8_t *dnslib_dname_name( const dnslib_dname_t *dname );
  *
  * \return Size of the domain name in wire format in octets.
  */
-uint dnslib_dname_size( const dnslib_dname_t *dname );
+uint dnslib_dname_size(const dnslib_dname_t *dname);
 
 /*!
  * \brief Returns the zone node the domain name belongs to.
@@ -126,7 +126,7 @@ uint dnslib_dname_size( const dnslib_dname_t *dname );
  *
  * \return Zone node the domain name belongs to or NULL if none.
  */
-const struct dnslib_node *dnslib_dname_node( const dnslib_dname_t *dname );
+const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname);
 
 /*!
  * \brief Destroys the given domain name.
@@ -139,7 +139,7 @@ const struct dnslib_node *dnslib_dname_node( const dnslib_dname_t *dname );
  *
  * Sets the given pointer to NULL.
  */
-void dnslib_dname_free( dnslib_dname_t **dname );
+void dnslib_dname_free(dnslib_dname_t **dname);
 
 /*!
  * \brief Compares two domain names.
@@ -151,8 +151,8 @@ void dnslib_dname_free( dnslib_dname_t **dname );
  * \retval 1 if \a d1 goes after \a d2 in canonical order.
  * \retval 0 if the domain names are identical.
  */
-int dnslib_dname_compare( const dnslib_dname_t *d1, const dnslib_dname_t *d2 );
+int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2);
 
-#endif /* _CUTEDNS_DNAME_H */
+#endif /* _CUTEDNS_DNSLIB_DNAME_H_ */
 
 /*! @} */
