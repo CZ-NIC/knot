@@ -14,7 +14,7 @@
  *	\brief Returns the size of the wire format of domain name which has
  *         \a str_size characters in presentation format.
  */
-static inline uint dnslib_dname_wire_size( uint str_size )
+static inline uint dnslib_dname_wire_size(uint str_size)
 {
 	return str_size + 1;
 }
@@ -36,8 +36,8 @@ static inline uint dnslib_dname_wire_size( uint str_size )
  *
  * \todo handle \X and \DDD (RFC 1035 5.1) or it can be handled by the parser?
  */
-static uint dnslib_dname_str_to_wire( const char *name, uint size,
-									 uint8_t **wire )
+static uint dnslib_dname_str_to_wire(const char *name, uint size,
+                                     uint8_t **wire)
 {
 	if (size > DNSLIB_MAX_DNAME_LENGTH) {
 		return 0;
@@ -52,7 +52,7 @@ static uint dnslib_dname_str_to_wire( const char *name, uint size,
 	}
 
 	debug_dnslib_dname("Allocated space for wire format of dname: %p\n",
-					   *wire);
+	                   *wire);
 
 	const uint8_t *ch = (const uint8_t *)name;
 	uint8_t *label_start = *wire;
@@ -63,15 +63,17 @@ static uint dnslib_dname_str_to_wire( const char *name, uint size,
 		assert(w - *wire < wire_size);
 		assert(w - *wire - 1 == ch - (const uint8_t *)name);
 
-		if (*ch == '.' ) {
-			debug_dnslib_dname("Position %u (%p): label length: %u\n",
-							   label_start - *wire, label_start, label_length);
+		if (*ch == '.') {
+			debug_dnslib_dname("Position %u (%p): "
+					   "label length: %u\n",
+			                   label_start - *wire,
+					   label_start, label_length);
 			*label_start = label_length;
 			label_start = w;
 			label_length = 0;
 		} else {
 			debug_dnslib_dname("Position %u (%p): character: %c\n",
-							   w - *wire, w, *ch);
+			                   w - *wire, w, *ch);
 			*w = *ch;
 			++label_length;
 		}
@@ -83,7 +85,8 @@ static uint dnslib_dname_str_to_wire( const char *name, uint size,
 
 	// put 0 for root label regardless whether the name ended with .
 	--w;
-	debug_dnslib_dname("Position %u (%p): character: (null)\n", w - *wire, w);
+	debug_dnslib_dname("Position %u (%p): character: (null)\n",
+			   w - *wire, w);
 	*w = 0;
 
 	//memcpy(*wire, name, size);
@@ -96,7 +99,9 @@ static uint dnslib_dname_str_to_wire( const char *name, uint size,
 
 dnslib_dname_t *dnslib_dname_new()
 {
-	dnslib_dname_t *dname = (dnslib_dname_t *)malloc(sizeof(dnslib_dname_t));
+	dnslib_dname_t *dname = 
+	(dnslib_dname_t *)malloc(sizeof(dnslib_dname_t));
+
 	if (dname == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -111,14 +116,16 @@ dnslib_dname_t *dnslib_dname_new()
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_dname_t *dnslib_dname_new_from_str( char *name, uint size,
-										   struct dnslib_node *node )
+dnslib_dname_t *dnslib_dname_new_from_str(char *name, uint size,
+                struct dnslib_node *node)
 {
 	if (name == NULL || size == 0) {
 		return NULL;
 	}
 
-	dnslib_dname_t *dname = (dnslib_dname_t *)malloc(sizeof(dnslib_dname_t));
+	dnslib_dname_t *dname =
+	(dnslib_dname_t *)malloc(sizeof(dnslib_dname_t));
+
 	if (name == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -126,8 +133,9 @@ dnslib_dname_t *dnslib_dname_new_from_str( char *name, uint size,
 
 	dname->size = dnslib_dname_str_to_wire(name, size, &dname->name);
 	if (dname->size <= 0) {
-		log_warning("Could not parse domain name from string: '%.*s'\n",
-					size, name);
+		log_warning("Could not parse domain name "
+			    "from string: '%.*s'\n",
+		            size, name);
 	}
 	assert(dname->name != NULL);
 
@@ -138,15 +146,17 @@ dnslib_dname_t *dnslib_dname_new_from_str( char *name, uint size,
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_dname_t *dnslib_dname_new_from_wire( uint8_t *name, uint size,
-											struct dnslib_node *node )
+dnslib_dname_t *dnslib_dname_new_from_wire(uint8_t *name, uint size,
+                struct dnslib_node *node)
 {
 	if (name == NULL && size != 0) {
 		debug_dnslib_dname("No name given!\n");
 		return NULL;
 	}
 
-	dnslib_dname_t *dname = (dnslib_dname_t *)malloc(sizeof(dnslib_dname_t));
+	dnslib_dname_t *dname =
+	(dnslib_dname_t *)malloc(sizeof(dnslib_dname_t));
+
 	if (dname == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -168,7 +178,7 @@ dnslib_dname_t *dnslib_dname_new_from_wire( uint8_t *name, uint size,
 
 /*----------------------------------------------------------------------------*/
 
-char *dnslib_dname_to_str( const dnslib_dname_t *dname )
+char *dnslib_dname_to_str(const dnslib_dname_t *dname)
 {
 	char *name = (char *)malloc(dname->size * sizeof(char));
 
@@ -194,28 +204,27 @@ char *dnslib_dname_to_str( const dnslib_dname_t *dname )
 
 /*----------------------------------------------------------------------------*/
 
-const uint8_t *dnslib_dname_name( const dnslib_dname_t *dname )
+const uint8_t *dnslib_dname_name(const dnslib_dname_t *dname)
 {
 	return dname->name;
 }
 
 /*----------------------------------------------------------------------------*/
 
-uint dnslib_dname_size( const dnslib_dname_t *dname )
+uint dnslib_dname_size(const dnslib_dname_t *dname)
 {
 	return dname->size;
 }
 
 /*----------------------------------------------------------------------------*/
 
-const struct dnslib_node *dnslib_dname_node( const dnslib_dname_t *dname )
-{
+const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname) {
 	return dname->node;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_dname_free( dnslib_dname_t **dname )
+void dnslib_dname_free(dnslib_dname_t **dname)
 {
 	if (dname == NULL || *dname == NULL) {
 		return;
@@ -228,13 +237,14 @@ void dnslib_dname_free( dnslib_dname_t **dname )
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_dname_compare( const dnslib_dname_t *d1, const dnslib_dname_t *d2 )
+int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2)
 {
 	if (d1 == d2) {
 		return 0;
 	}
 
-	// jump to the last label and store addresses of labels on the way there
+	// jump to the last label and store addresses of labels
+	// on the way there
 	// TODO: consider storing label offsets in the domain name structure
 	const uint8_t *labels1[DNSLIB_MAX_DNAME_LABELS];
 	const uint8_t *labels2[DNSLIB_MAX_DNAME_LABELS];
@@ -262,7 +272,8 @@ int dnslib_dname_compare( const dnslib_dname_t *d1, const dnslib_dname_t *d2 )
 		int label_length = (*pos1 < *pos2) ? *pos1 : *pos2;
 		int i = 0;
 
-		while (i < label_length && tolower(*(++pos1)) == tolower(*(++pos2))) {
+		while (i < label_length && 
+		       tolower(*(++pos1)) == tolower(*(++pos2))) {
 			++i;
 		}
 
@@ -280,7 +291,8 @@ int dnslib_dname_compare( const dnslib_dname_t *d1, const dnslib_dname_t *d2 )
 		} else if (*(labels1[i1]) > *(labels2[i2])) {
 			return 1;
 		}
-		// otherwise the labels are identical, continue with previous labels
+		// otherwise the labels are 
+		// identical, continue with previous labels
 	}
 
 	// if all labels matched, the shorter name is first

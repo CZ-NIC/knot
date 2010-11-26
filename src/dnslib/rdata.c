@@ -11,8 +11,8 @@
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-static int dnslib_rdata_compare_binary( const uint8_t *d1, const uint8_t *d2,
-										int count1, int count2 )
+static int dnslib_rdata_compare_binary(const uint8_t *d1, const uint8_t *d2,
+                                       int count1, int count2)
 {
 	int i1 = 0, i2 = 0;
 
@@ -54,7 +54,8 @@ static int dnslib_rdata_compare_binary( const uint8_t *d1, const uint8_t *d2,
 
 dnslib_rdata_t *dnslib_rdata_new()
 {
-	dnslib_rdata_t *rdata = (dnslib_rdata_t *)malloc(sizeof(dnslib_rdata_t));
+	dnslib_rdata_t *rdata =
+	(dnslib_rdata_t *)malloc(sizeof(dnslib_rdata_t));
 	if (rdata == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -68,20 +69,20 @@ dnslib_rdata_t *dnslib_rdata_new()
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_rdata_set_item( dnslib_rdata_t *rdata, uint pos,
-						   dnslib_rdata_item_t item )
+int dnslib_rdata_set_item(dnslib_rdata_t *rdata, uint pos,
+                          dnslib_rdata_item_t item)
 {
 	if (pos >= rdata->count) {
 		return -1;
 	}
-	rdata->items[pos] = item;	// this should copy the union; or use memcpy?
+	rdata->items[pos] = item; // this should copy the union; or use memcpy?
 	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_rdata_set_items( dnslib_rdata_t *rdata,
-							const dnslib_rdata_item_t *items, uint count )
+int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
+                           const dnslib_rdata_item_t *items, uint count)
 {
 	if (rdata == NULL || items == NULL || count == 0) {
 		return 1;
@@ -93,7 +94,7 @@ int dnslib_rdata_set_items( dnslib_rdata_t *rdata,
 
 	assert(rdata->count == 0);
 	if ((rdata->items = (dnslib_rdata_item_t *)malloc(
-			count * sizeof(dnslib_rdata_item_t))) == NULL) {
+	                    count * sizeof(dnslib_rdata_item_t))) == NULL) {
 		ERR_ALLOC_FAILED;
 		return -2;
 	}
@@ -106,18 +107,19 @@ int dnslib_rdata_set_items( dnslib_rdata_t *rdata,
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_rdata_item_t *dnslib_rdata_get_item( const dnslib_rdata_t *rdata,
-												  uint pos )
+const dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
+                uint pos)
 {
 	if (pos >= rdata->count) {
 		return NULL;
+	} else {
+		return &rdata->items[pos];
 	}
-	else return &rdata->items[pos];
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_rdata_free( dnslib_rdata_t **rdata )
+void dnslib_rdata_free(dnslib_rdata_t **rdata)
 {
 	if (rdata == NULL || *rdata == NULL) {
 		return;
@@ -132,8 +134,8 @@ void dnslib_rdata_free( dnslib_rdata_t **rdata )
 
 /*----------------------------------------------------------------------------*/
 
-uint dnslib_rdata_wire_size( const dnslib_rdata_t *rdata,
-							 const uint8_t *format )
+uint dnslib_rdata_wire_size(const dnslib_rdata_t *rdata,
+                            const uint8_t *format)
 {
 	uint size = 0;
 
@@ -160,7 +162,7 @@ uint dnslib_rdata_wire_size( const dnslib_rdata_t *rdata,
 			size += 16;
 			break;
 		case DNSLIB_RDATA_WF_BINARY:
-		case DNSLIB_RDATA_WF_APL:			// saved as binary
+		case DNSLIB_RDATA_WF_APL:		// saved as binary
 		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
 			size += rdata->items[i].raw_data[0];
 			break;
@@ -177,8 +179,8 @@ uint dnslib_rdata_wire_size( const dnslib_rdata_t *rdata,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_rdata_to_wire( const dnslib_rdata_t *rdata, const uint8_t *format,
-						  uint8_t *buffer, uint buf_size )
+int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
+                         uint8_t *buffer, uint buf_size)
 {
 	uint copied = 0;
 	uint8_t tmp[DNSLIB_MAX_RDATA_WIRE_SIZE];
@@ -215,14 +217,15 @@ int dnslib_rdata_to_wire( const dnslib_rdata_t *rdata, const uint8_t *format,
 			break;
 		case DNSLIB_RDATA_WF_TEXT:
 		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
-			// size stored in the first byte, but the first byte also needs to
-			// be copied
+			// size stored in the first byte, but
+			// the first byte also needs to be copied
 			size = rdata->items[i].raw_data[0] + 1;
 			break;
 		case DNSLIB_RDATA_WF_BINARY:
-		case DNSLIB_RDATA_WF_APL:			// saved as binary
+		case DNSLIB_RDATA_WF_APL:		// saved as binary
 		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
-			// size stored in the first byte, first byte must not be copied
+			// size stored in the first byte, first
+			// byte must not be copied
 			size = rdata->items[i].raw_data[0];
 			++from;
 			break;
@@ -240,8 +243,8 @@ int dnslib_rdata_to_wire( const dnslib_rdata_t *rdata, const uint8_t *format,
 
 	if (copied > buf_size) {
 		log_warning("Not enough place allocated for function "
-					"dnslib_rdata_to_wire(). Allocated %u, need %u\n",
-					buf_size, copied);
+		            "dnslib_rdata_to_wire(). Allocated %u, need %u\n",
+		            buf_size, copied);
 		return -1;
 	}
 
@@ -251,8 +254,8 @@ int dnslib_rdata_to_wire( const dnslib_rdata_t *rdata, const uint8_t *format,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_rdata_compare( const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
-						  const uint8_t *format )
+int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
+                         const uint8_t *format)
 {
 	uint count = (r1->count < r2->count) ? r1->count : r2->count;
 
@@ -296,7 +299,7 @@ int dnslib_rdata_compare( const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
 			size2 = (int)item1->raw_data[0] + 1;
 			break;
 		case DNSLIB_RDATA_WF_BINARY:
-		case DNSLIB_RDATA_WF_APL:			// saved as binary
+		case DNSLIB_RDATA_WF_APL:		// saved as binary
 		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
 			size1 = -1;
 			size2 = -1;

@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_RDATA_H
-#define _CUTEDNS_RDATA_H
+#ifndef _CUTEDNS_DNSLIB_RDATA_H_
+#define _CUTEDNS_DNSLIB_RDATA_H_
 
 #include <stdint.h>
 #include "dname.h"
@@ -66,9 +66,9 @@ typedef union dnslib_rdata_item dnslib_rdata_item_t;
  * RR type.
  */
 struct dnslib_rdata {
-	dnslib_rdata_item_t *items;	/*!< RDATA items comprising this RDATA. */
-	uint count;	/*! < Count of RDATA items in this RDATA. */
-	struct dnslib_rdata *next;	/*!< Next RDATA item in a linked list. */
+	dnslib_rdata_item_t *items; /*!< RDATA items comprising this RDATA. */
+	uint count; /*! < Count of RDATA items in this RDATA. */
+	struct dnslib_rdata *next; /*!< Next RDATA item in a linked list. */
 };
 
 typedef struct dnslib_rdata dnslib_rdata_t;
@@ -94,8 +94,8 @@ dnslib_rdata_t *dnslib_rdata_new();
  * \todo Use the union or a pointer to it as parameter? IMHO there is always
  *       only one pointer that is copied, so it doesn't matter.
  */
-int dnslib_rdata_set_item( dnslib_rdata_t *rdata, uint pos,
-						   dnslib_rdata_item_t item );
+int dnslib_rdata_set_item(dnslib_rdata_t *rdata, uint pos,
+                          dnslib_rdata_item_t item);
 
 /*!
  * \brief Sets all RDATA items within the given RDATA structure.
@@ -114,8 +114,8 @@ int dnslib_rdata_set_item( dnslib_rdata_t *rdata, uint pos,
  * \retval -1 if \a rdata was not empty.
  * \retval -2 if allocation of necessary space was not successful.
  */
-int dnslib_rdata_set_items( dnslib_rdata_t *rdata,
-							const dnslib_rdata_item_t *items, uint count );
+int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
+                           const dnslib_rdata_item_t *items, uint count);
 
 /*!
  * \brief Returns the RDATA item on position \a pos.
@@ -129,8 +129,8 @@ int dnslib_rdata_set_items( dnslib_rdata_t *rdata,
  * \note Although returning union would be OK (no overhead), we need to be able
  *       to distinguish errors (in this case by returning NULL).
  */
-const dnslib_rdata_item_t *dnslib_rdata_get_item( const dnslib_rdata_t *rdata,
-												  uint pos );
+const dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
+                uint pos);
 
 /*!
  * \brief Returns the size of the RDATA in wire format.
@@ -142,8 +142,8 @@ const dnslib_rdata_item_t *dnslib_rdata_get_item( const dnslib_rdata_t *rdata,
  *
  * \todo Consider adding the size to the structure for faster retrieval.
  */
-uint dnslib_rdata_wire_size( const dnslib_rdata_t *rdata,
-							 const uint8_t *format );
+uint dnslib_rdata_wire_size(const dnslib_rdata_t *rdata,
+                            const uint8_t *format);
 
 /*!
  * \brief Converts the RDATA to wire format.
@@ -159,8 +159,8 @@ uint dnslib_rdata_wire_size( const dnslib_rdata_t *rdata,
  * \todo Shouldn't we keep the size of the data always in the item? It would
  *       make the converting quicker.
  */
-int dnslib_rdata_to_wire( const dnslib_rdata_t *rdata, const uint8_t *format,
-						  uint8_t *buffer, uint buf_size );
+int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
+                         uint8_t *buffer, uint buf_size);
 
 /*!
  * \brief Destroys the RDATA structure.
@@ -174,7 +174,7 @@ int dnslib_rdata_to_wire( const dnslib_rdata_t *rdata, const uint8_t *format,
  *
  * Sets the given pointer to NULL.
  */
-void dnslib_rdata_free( dnslib_rdata_t **rdata );
+void dnslib_rdata_free(dnslib_rdata_t **rdata);
 
 /*!
  * \brief Compares two RDATAs of the same type.
@@ -191,9 +191,9 @@ void dnslib_rdata_free( dnslib_rdata_t **rdata );
  * \note This function will probably be useless, no ordering will be needed
  *       for our purposes.
  */
-int dnslib_rdata_compare( const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
-						  const uint8_t *format );
+int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
+                         const uint8_t *format);
 
-#endif /* _CUTEDNS_RDATA_H */
+#endif /* _CUTEDNS_DNSLIB_RDATA_H */
 
 /*! @} */

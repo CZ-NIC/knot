@@ -1,23 +1,23 @@
-#ifndef _CUTEDNS_CONSTS_H
-#define _CUTEDNS_CONSTS_H
+#ifndef _CUTEDNS_DNSLIB_CONSTS_H_
+#define _CUTEDNS_DNSLIB_CONSTS_H_
 
 #include <stdint.h>
 
 /*
  * OPCODEs
  */
-const uint16_t DNSLIB_OPCODE_QUERY = 0; 	/* a standard query (QUERY) */
-const uint16_t DNSLIB_OPCODE_IQUERY = 1; 	/* an inverse query (IQUERY) */
-const uint16_t DNSLIB_OPCODE_STATUS = 2; 	/* a server status request (STATUS) */
-const uint16_t DNSLIB_OPCODE_NOTIFY = 4; 	/* NOTIFY */
-const uint16_t DNSLIB_OPCODE_UPDATE = 5; 	/* Dynamic update */
+const uint16_t DNSLIB_OPCODE_QUERY = 0;  /* a standard query (QUERY) */
+const uint16_t DNSLIB_OPCODE_IQUERY = 1; /* an inverse query (IQUERY) */
+const uint16_t DNSLIB_OPCODE_STATUS = 2; /* a server status request (STATUS) */
+const uint16_t DNSLIB_OPCODE_NOTIFY = 4; /* NOTIFY */
+const uint16_t DNSLIB_OPCODE_UPDATE = 5; /* Dynamic update */
 
 const uint16_t DNSLIB_OPCODE_OFFSET = 14;
 
 /*
  * RCODEs
  */
-const uint16_t DNSLIB_RCODE_OK = 0; 	/* No error condition */
+const uint16_t DNSLIB_RCODE_OK = 0; 		/* No error condition */
 const uint16_t DNSLIB_RCODE_FORMAT = 1; 	/* Format error */
 const uint16_t DNSLIB_RCODE_SERVFAIL = 2; 	/* Server failure */
 const uint16_t DNSLIB_RCODE_NXDOMAIN = 3; 	/* Name Error */
@@ -45,4 +45,4 @@ const uint16_t DNSLIB_CLASS_ANY = 255;	/* Class ANY */
 const unsigned int DNSLIB_MAX_DNAME_LENGTH = 255;
 const unsigned int DNSLIB_MAX_DNAME_LABELS = 127;	// 1-char labels
 
-#endif /* _CUTEDNS_CONSTS_H */
+#endif /* _CUTEDNS_DNSLIB_CONSTS_H_ */
