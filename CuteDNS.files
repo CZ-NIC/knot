@@ -27,6 +27,12 @@ src/zone/zone-node.c
 src/zone/zone-node.h
 src/zone/zone-parser.c
 src/zone/zone-parser.h
+src/zone/region-allocator.c
+src/zone/region-allocator.h
+src/zone/zlexer.lex
+src/zone/zonec.c
+src/zone/zonec.h
+src/zone/zparser.y
 src/tests/libtap/tap.c
 src/tests/libtap/tap.h
 src/tests/main.c
