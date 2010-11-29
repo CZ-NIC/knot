@@ -27,14 +27,16 @@
  *
  * \see syslog.h
  *
- * \return always 0
+ * \retval  0 On success.
+ * \retval <0 If an error occured.
  */
 int log_open(int print_mask, int log_mask);
 
 /*!
  * \brief Close log and stdio output.
  *
- * \return always 0
+ * \retval  0 On success.
+ * \retval <0 If an error occured.
  */
 int log_close();
 
@@ -49,7 +51,8 @@ int log_isopen();
 /* Logging functions. */
 int print_msg(int level, const char *msg, ...) __attribute__((format(printf, 2, 3)));
 
-#define log_msg(level, msg...) do {\
+#define log_msg(level, msg...) \
+	do { \
 	if(log_isopen()) { \
 		syslog((level), msg); \
 	} \
