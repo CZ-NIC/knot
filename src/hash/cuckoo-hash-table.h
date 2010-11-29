@@ -12,6 +12,8 @@
  * \todo Check size of integers, the table size may be larger than unsigned int.
  * \todo Maybe do not return ck_hash_table_item from ck_find_item(), but only
  *       its value.
+ * \todo When hashing an item, only the first table is tried for this item.
+ *       We may try all tables. (But it is not neccessary.)
  *
  * \addtogroup hashing
  * @{
@@ -202,7 +204,7 @@ int ck_insert_item(ck_hash_table_t *table, const char *key, size_t length,
  * \return Pointer to the item if found. NULL otherwise.
  */
 const ck_hash_table_item_t *ck_find_item(const ck_hash_table_t *table,
-                                       const char *key, size_t length);
+                                         const char *key, size_t length);
 
 /*----------------------------------------------------------------------------*/
 /*!

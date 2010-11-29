@@ -42,6 +42,8 @@ void us_initialize();
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Generates new hash functions' coeficients for the given \a generation.
+ *
+ * \return 0
  */
 int us_next(uint generation);
 
@@ -61,6 +63,8 @@ int us_next(uint generation);
  * \param generation Which set (generation) of functions should be used.
  *
  * \todo Make inline?
+ *
+ * \return Hash value (32bit unsigned).
  */
 uint32_t us_hash(uint32_t value, uint table_exp, uint fnc, uint generation);
 

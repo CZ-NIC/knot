@@ -1,10 +1,3 @@
-/*!
- * \file cuckoo-hash-table.c
- *
- * \todo When hashing an item, only the first table is tried for this item.
- *       We may try all tables. (But it is not neccessary.)
- */
-/*----------------------------------------------------------------------------*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -51,10 +44,10 @@ static const float SIZE_RATIO_4 = 1.08;
 
 /*----------------------------------------------------------------------------*/
 
-static const uint8_t FLAG_GENERATION1 = 0x1; // 00000001
-static const uint8_t FLAG_GENERATION2 = 0x2; // 00000010
+static const uint8_t FLAG_GENERATION1     = 0x1; // 00000001
+static const uint8_t FLAG_GENERATION2     = 0x2; // 00000010
 static const uint8_t FLAG_GENERATION_BOTH = 0x3; // 00000011
-static const uint8_t FLAG_REHASH = 0x4; // 00000100
+static const uint8_t FLAG_REHASH          = 0x4; // 00000100
 
 static inline void CLEAR_FLAGS(uint8_t *flags)
 {
@@ -348,8 +341,8 @@ static ck_hash_table_item_t **ck_find_gen(const ck_hash_table_t *table,
 			         table->tables[t][hash]->key_length);
 		}
 
-		if (table->tables[t][hash] && (ck_items_match(
-				table->tables[t][hash], key, length) == 0)) {
+		if (table->tables[t][hash] &&
+		    ck_items_match(table->tables[t][hash], key, length) == 0) {
 			// found
 			return &table->tables[t][hash];
 		}
@@ -386,7 +379,7 @@ static ck_hash_table_item_t **ck_find_item_nc(const ck_hash_table_t *table,
 
 	// find item using the table generation's hash functions
 	ck_hash_table_item_t **found = ck_find_gen(table, key, length,
-	                             GET_GENERATION(generation));
+	                                           GET_GENERATION(generation));
 	// if rehashing is in progress, try the next generation's functions
 	if (!found && IS_REHASHING(generation)) {
 		found = ck_find_gen(table, key, length,
@@ -448,8 +441,8 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 
 		// if rehashing and the 'next' item is from the old generation,
 		// start from table 1
-		if (generation != table->generation
-		  && EQUAL_GENERATIONS((*next)->timestamp, table->generation)) {
+		if (generation != table->generation &&
+		    EQUAL_GENERATIONS((*next)->timestamp, table->generation)) {
 			next_table = TABLE_FIRST;
 		} else {
 			ck_next_table(&next_table, table->table_count);
@@ -555,8 +548,8 @@ ck_hash_table_t *ck_create_table(uint items)
 		debug_ck("Creating table %u...\n", t);
 		table->tables[t] =
 		        (ck_hash_table_item_t **)malloc(
-					hashsize(table->table_size_exp)
-					* sizeof(ck_hash_table_item_t *));
+		                        hashsize(table->table_size_exp)
+		                        * sizeof(ck_hash_table_item_t *));
 		if (table->tables[t] == NULL) {
 			ERR_ALLOC_FAILED;
 			for (uint i = TABLE_FIRST; i < t; ++i) {
