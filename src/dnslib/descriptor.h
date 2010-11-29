@@ -1,7 +1,7 @@
 /*!
  * \file descriptor.h
  *
- * \author Jan Kadlec <jan.kadlec@nic.cz>, most of the work by NSD team
+ * \author Jan Kadlec <jan.kadlec@nic.cz>, most of the work by the NSD team
  *
  * \brief Contains resource record descriptor and its API
  * 

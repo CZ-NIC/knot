@@ -1,11 +1,3 @@
-/*
- * File     node.c
- * Date     11.11.2010 15:38
- * Author:  jan.kadlec@nic.cz
- * Project: CuteDNS
- * Description:
- */
-
 #include <malloc.h>
 
 #include "common.h"
@@ -69,4 +61,3 @@ void dnslib_node_free(dnslib_node_t **node)
 	*node = NULL;
 }
 
-/* end of file node.c */
