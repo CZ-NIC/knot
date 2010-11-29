@@ -12,6 +12,7 @@
 #define _CUTEDNS_DNSLIB_DNAME_H_
 
 #include <stdint.h>
+
 #include "common.h"
 
 struct dnslib_node;
@@ -42,6 +43,7 @@ typedef struct dnslib_dname dnslib_dname_t;
  * \brief Creates empty dname structure (no name, no owner node).
  *
  * \return Newly allocated and initialized dname structure.
+ *
  * \todo Possibly useless.
  */
 dnslib_dname_t *dnslib_dname_new();
@@ -50,13 +52,13 @@ dnslib_dname_t *dnslib_dname_new();
  * \brief Creates a dname structure from domain name given in presentation
  *        format.
  *
+ * The resulting domain name is stored in wire format and ALWAYS ENDS WITH 0,
+ * e.g. is a FQDN even if the given domain name was not.
+ *
  * \param name Domain name in presentation format (labels separated by dots).
  * \param size Size of the domain name (count of characters with all dots).
  * \param node Zone node the domain name belongs to. Set to NULL if not
  *             applicable.
- *
- * The resulting domain name is stored in wire format and ALWAYS ENDS WITH 0,
- * e.g. is a FQDN even if the given domain name was not.
  *
  * \return Newly allocated and initialized dname structure representing the
  *         given domain name.
@@ -69,6 +71,10 @@ dnslib_dname_t *dnslib_dname_new_from_str(char *name, uint size,
 /*!
  * \brief Creates a dname structure from domain name given in wire format.
  *
+ * \note The name is copied into the structure.
+ * \note If the given name is not a FQDN, the result will be neither. This
+ *       does not correspond to the behaviour of dnslib_dname_new_from_str().
+ *
  * \param name Domain name in wire format.
  * \param size Size of the domain name in octets.
  * \param node Zone node the domain name belongs to. Set to NULL if not
@@ -77,9 +83,6 @@ dnslib_dname_t *dnslib_dname_new_from_str(char *name, uint size,
  * \return Newly allocated and initialized dname structure representing the
  *         given domain name.
  *
- * \note The name is copied into the structure.
- * \note If the given name is not a FQDN, the result will be neither. This
- *       does not correspond to the behaviour of dnslib_dname_new_from_str().
  * \todo Address the FQDN issue.
  * \todo This function does not check if the given data is in correct wir
  *       format at all. It thus creates a invalid domain name, which if passed
@@ -93,11 +96,12 @@ dnslib_dname_t *dnslib_dname_new_from_wire(uint8_t *name, uint size,
 /*!
  * \brief Converts the given domain name to string representation.
  *
+ * \note Allocates new memory, remember to free it.
+ *
  * \param dname Domain name to be converted.
  *
  * \return 0-terminated string representing the given domain name in
  *         presentation format.
- * \note Allocates new memory, remember to free it.
  */
 char *dnslib_dname_to_str(const dnslib_dname_t *dname);
 
@@ -131,13 +135,13 @@ const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname);
 /*!
  * \brief Destroys the given domain name.
  *
- * \param dname Domain name to be destroyed.
- *
  * Frees also the data within the struct. This is somewhat different behaviour
  * than that of RDATA and RRSet structures which do not deallocate their
  * contents.
  *
  * Sets the given pointer to NULL.
+ *
+ * \param dname Domain name to be destroyed.
  */
 void dnslib_dname_free(dnslib_dname_t **dname);
 

@@ -30,6 +30,7 @@
 struct dnslib_node {
 	dnslib_dname_t *owner; /*!< Domain name being the owner of this node. */
 	struct dnslib_node *parent; /*!< Parent node in the name hierarchy. */
+
 	/*! \brief Type-ordered list of RRSets belonging to this node. */
 	skip_list *rrsets;
 
@@ -86,9 +87,9 @@ const dnslib_node_t *dnslib_node_get_parent(const dnslib_node_t *node);
 /*!
  * \brief Destroys the node structure.
  *
- * \param node Node to be destroyed.
+ * Also sets the given pointer to NULL.
  *
- * Sets the given pointer to NULL.
+ * \param node Node to be destroyed.
  */
 void dnslib_node_free(dnslib_node_t **node);
 

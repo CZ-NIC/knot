@@ -1,18 +1,18 @@
 #include <malloc.h>
 
-#include "common.h"
 #include "node.h"
+#include "common.h"
 #include "rrset.h"
 
 //void print_node(void *key, void *val)
 //{
-//    dnslib_rrset_t *rrset = (dnslib_node_t*) val;
-//    int *key_i = (int*)key;
-//    printf("key %d\n", key_i);
-//    printf("%d\n", rrset->type);
+//	dnslib_rrset_t *rrset = (dnslib_node_t*) val;
+//	int *key_i = (int*)key;
+//	printf("key %d\n", key_i);
+//	printf("%d\n", rrset->type);
 //}
 
-int compare_rrset_types(void *key1, void *key2)
+static int compare_rrset_types(void *key1, void *key2)
 {
 	return (*((uint16_t *)key1) == *((uint16_t *)key2) ?
 	        0 : *((uint16_t *)key1) < *((uint16_t *)key2) ? -1 : 1);
@@ -44,7 +44,7 @@ int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset)
 }
 
 const dnslib_rrset_t *dnslib_node_get_rrset(const dnslib_node_t *node,
-                uint16_t type)
+                                            uint16_t type)
 {
 	return (dnslib_rrset_t *)skip_find(node->rrsets, (void *)&type);
 }

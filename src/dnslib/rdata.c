@@ -2,8 +2,9 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-#include "common.h"
+
 #include "rdata.h"
+#include "common.h"
 #include "descriptor.h"
 #include "dname.h"
 
@@ -55,7 +56,7 @@ static int dnslib_rdata_compare_binary(const uint8_t *d1, const uint8_t *d2,
 dnslib_rdata_t *dnslib_rdata_new()
 {
 	dnslib_rdata_t *rdata =
-	(dnslib_rdata_t *)malloc(sizeof(dnslib_rdata_t));
+		(dnslib_rdata_t *)malloc(sizeof(dnslib_rdata_t));
 	if (rdata == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -94,7 +95,7 @@ int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
 
 	assert(rdata->count == 0);
 	if ((rdata->items = (dnslib_rdata_item_t *)malloc(
-	                    count * sizeof(dnslib_rdata_item_t))) == NULL) {
+	                     count * sizeof(dnslib_rdata_item_t))) == NULL) {
 		ERR_ALLOC_FAILED;
 		return -2;
 	}
@@ -108,7 +109,7 @@ int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
 /*----------------------------------------------------------------------------*/
 
 const dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
-                uint pos)
+                                                 uint pos)
 {
 	if (pos >= rdata->count) {
 		return NULL;
@@ -162,8 +163,8 @@ uint dnslib_rdata_wire_size(const dnslib_rdata_t *rdata,
 			size += 16;
 			break;
 		case DNSLIB_RDATA_WF_BINARY:
-		case DNSLIB_RDATA_WF_APL:		// saved as binary
-		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
+		case DNSLIB_RDATA_WF_APL:            // saved as binary
+		case DNSLIB_RDATA_WF_IPSECGATEWAY:   // saved as binary
 			size += rdata->items[i].raw_data[0];
 			break;
 		case DNSLIB_RDATA_WF_TEXT:
@@ -222,8 +223,8 @@ int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
 			size = rdata->items[i].raw_data[0] + 1;
 			break;
 		case DNSLIB_RDATA_WF_BINARY:
-		case DNSLIB_RDATA_WF_APL:		// saved as binary
-		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
+		case DNSLIB_RDATA_WF_APL:            // saved as binary
+		case DNSLIB_RDATA_WF_IPSECGATEWAY:   // saved as binary
 			// size stored in the first byte, first
 			// byte must not be copied
 			size = rdata->items[i].raw_data[0];
@@ -299,8 +300,8 @@ int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
 			size2 = (int)item1->raw_data[0] + 1;
 			break;
 		case DNSLIB_RDATA_WF_BINARY:
-		case DNSLIB_RDATA_WF_APL:		// saved as binary
-		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
+		case DNSLIB_RDATA_WF_APL:            // saved as binary
+		case DNSLIB_RDATA_WF_IPSECGATEWAY:   // saved as binary
 			size1 = -1;
 			size2 = -1;
 			break;

@@ -13,6 +13,7 @@
 #define _CUTEDNS_DNSLIB_RRSET_H_
 
 #include <stdint.h>
+
 #include "dname.h"
 #include "rdata.h"
 #include "common.h"
@@ -64,12 +65,12 @@ typedef struct dnslib_rrset dnslib_rrset_t;
 /*!
  * \brief Creates a new RRSet with the given properties.
  *
+ * The created RRSet contains no RDATAs (i.e. is actually empty).
+ *
  * \param owner OWNER of the RRSet.
  * \param type TYPE of the RRSet.
  * \param rclass CLASS of the RRSet.
  * \param ttl TTL of the RRset.
- *
- * The created RRSet contains no RDATAs (i.e. is actually empty).
  *
  * \return New RRSet structure with the given OWNER, TYPE, CLASS and TTL or NULL
  *         if an error occured.
@@ -139,15 +140,15 @@ uint32_t dnslib_rrset_ttl(const dnslib_rrset_t *rrset);
 /*!
  * \brief Returns the first RDATA in the RRSet.
  *
- * \param rrset RRSet to get the RDATA from.
- *
  * RDATAs in a RRSet are stored in a ordered cyclic list.
- *
- * \return First RDATA in the given RRSet.
  *
  * \note If later a round-robin rotation of RRSets is employed, the RDATA
  *       returned by this function may not be the first RDATA in canonical
  *       order.
+ *
+ * \param rrset RRSet to get the RDATA from.
+ *
+ * \return First RDATA in the given RRSet.
  */
 const dnslib_rdata_t *dnslib_rrset_rdata(const dnslib_rrset_t *rrset);
 
@@ -181,8 +182,6 @@ uint dnslib_rrset_rrsig_count(const dnslib_rrset_t *rrset);
 /*!
  * \brief Destroys the RRSet structure.
  *
- * \param rrset RRset to be destroyed.
- *
  * Does not destroy the OWNER domain name structure, nor the signatures, as
  * these may be used elsewhere. This is however a higher-level logic, so maybe
  * a parameter for deciding what to destroy would be better.
@@ -191,7 +190,9 @@ uint dnslib_rrset_rrsig_count(const dnslib_rrset_t *rrset);
  * their items are not destroyed in dnslib_rdata_free(), so this would be
  * confusing.
  *
- * Sets the given pointer to NULL.
+ * Also sets the given pointer to NULL.
+ *
+ * \param rrset RRset to be destroyed.
  */
 void dnslib_rrset_free(dnslib_rrset_t **rrset);
 

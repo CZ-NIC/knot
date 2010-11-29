@@ -3,16 +3,17 @@
 #include <assert.h>
 #include <string.h>
 #include <ctype.h>	// tolower()
+
+#include "dname.h"
 #include "common.h"
 #include "consts.h"
-#include "dname.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 /*!
- *	\brief Returns the size of the wire format of domain name which has
- *         \a str_size characters in presentation format.
+ * \brief Returns the size of the wire format of domain name which has
+ *        \a str_size characters in presentation format.
  */
 static inline uint dnslib_dname_wire_size(uint str_size)
 {
@@ -23,13 +24,13 @@ static inline uint dnslib_dname_wire_size(uint str_size)
 /*!
  * \brief Converts domain name from string representation to wire format.
  *
+ * This function also allocates the space for the wire format.
+ *
  * \param name Domain name in string representation (presentation format).
  * \param size Size of the given domain name in characters (not counting the
  *             terminating 0 character.
  * \param wire [in/out] Pointer to position where the wire format of the domain
  *             name will be stored.
- *
- * This function also allocates the space for the wire format.
  *
  * \return Size of the wire format of the domain name in octets. If 0, no
  *         space has been allocated.
@@ -117,7 +118,7 @@ dnslib_dname_t *dnslib_dname_new()
 /*----------------------------------------------------------------------------*/
 
 dnslib_dname_t *dnslib_dname_new_from_str(char *name, uint size,
-                struct dnslib_node *node)
+                                          struct dnslib_node *node)
 {
 	if (name == NULL || size == 0) {
 		return NULL;
@@ -133,8 +134,7 @@ dnslib_dname_t *dnslib_dname_new_from_str(char *name, uint size,
 
 	dname->size = dnslib_dname_str_to_wire(name, size, &dname->name);
 	if (dname->size <= 0) {
-		log_warning("Could not parse domain name "
-			    "from string: '%.*s'\n",
+		log_warning("Could not parse domain name from string: '%.*s'\n",
 		            size, name);
 	}
 	assert(dname->name != NULL);
@@ -147,7 +147,7 @@ dnslib_dname_t *dnslib_dname_new_from_str(char *name, uint size,
 /*----------------------------------------------------------------------------*/
 
 dnslib_dname_t *dnslib_dname_new_from_wire(uint8_t *name, uint size,
-                struct dnslib_node *node)
+                                           struct dnslib_node *node)
 {
 	if (name == NULL && size != 0) {
 		debug_dnslib_dname("No name given!\n");

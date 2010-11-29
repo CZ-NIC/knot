@@ -1,5 +1,6 @@
 /*!
  * \file rdata.h
+ *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
  * \brief Structures representing RDATA and its items and API for manipulating
@@ -13,6 +14,7 @@
 #define _CUTEDNS_DNSLIB_RDATA_H_
 
 #include <stdint.h>
+
 #include "dname.h"
 #include "common.h"
 
@@ -56,14 +58,14 @@ typedef union dnslib_rdata_item dnslib_rdata_item_t;
  * of items. In such cases, the last item in the array will be set tu NULL
  * to distinguish the actual count of items.
  *
- * \todo Find out whether NULL is appropriate value. If it is a possible
- *       value for some of the items, we must find some other way to deal with
- *       this.
- *
  * This structure does not hold information about the RDATA items, such as
  * what type is which item or how long are they. This information should be
  * stored elsewhere (in descriptors) as it is RR-specific and given for each
  * RR type.
+ *
+ * \todo Find out whether NULL is appropriate value. If it is a possible
+ *       value for some of the items, we must find some other way to deal with
+ *       this.
  */
 struct dnslib_rdata {
 	dnslib_rdata_item_t *items; /*!< RDATA items comprising this RDATA. */
@@ -100,14 +102,14 @@ int dnslib_rdata_set_item(dnslib_rdata_t *rdata, uint pos,
 /*!
  * \brief Sets all RDATA items within the given RDATA structure.
  *
- * \param rdata RDATA structure to store the items in.
- * \param items An array of RDATA items to be stored in this RDATA structure.
- * \param count Count of RDATA items to be stored.
- *
  * \a rdata must be empty so far (\a rdata->count == 0). The necessary space
  * is allocated.
  *
  * This function copies the array of RDATA items from \a items to \a rdata.
+ *
+ * \param rdata RDATA structure to store the items in.
+ * \param items An array of RDATA items to be stored in this RDATA structure.
+ * \param count Count of RDATA items to be stored.
  *
  * \retval 0 if successful.
  * \retval 1 if \a rdata is NULL or \a items is NULL or \a count is 0.
@@ -120,14 +122,14 @@ int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
 /*!
  * \brief Returns the RDATA item on position \a pos.
  *
+ * \note Although returning union would be OK (no overhead), we need to be able
+ *       to distinguish errors (in this case by returning NULL).
+ *
  * \param rdata RDATA structure to get the item from.
  * \param pos Position of the item to retrieve.
  *
  * \return The RDATA item on position \a pos, or NULL if such position does not
  *         exist within the given RDATA structure.
- *
- * \note Although returning union would be OK (no overhead), we need to be able
- *       to distinguish errors (in this case by returning NULL).
  */
 const dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
                 uint pos);
@@ -153,8 +155,8 @@ uint dnslib_rdata_wire_size(const dnslib_rdata_t *rdata,
  * \param buffer Place to put the wire format into.
  * \param buf_size Size of the buffer.
  *
- * \return 0 on success.
- * \return <> 0 otherwise.
+ * \retval 0 on success.
+ * \retval <> 0 otherwise.
  *
  * \todo Shouldn't we keep the size of the data always in the item? It would
  *       make the converting quicker.
@@ -165,31 +167,32 @@ int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
 /*!
  * \brief Destroys the RDATA structure.
  *
- * \param rdata RDATA structure to be destroyed.
- *
  * Contents of RDATA items are not deallocated, as it is not clear whether the
  * particular item is a domain name (which should not be deallocated here) or
  * raw data (which could be). But this is actually higher-level logic, so maybe
  * a parameter to decide whether to free the items or not would be better.
  *
  * Sets the given pointer to NULL.
+ *
+ * \param rdata RDATA structure to be destroyed.
  */
 void dnslib_rdata_free(dnslib_rdata_t **rdata);
 
 /*!
  * \brief Compares two RDATAs of the same type.
  *
+ * \note This function will probably be useless, no ordering will be needed
+ *       for our purposes.
+ *
  * \param r1 First RDATA.
  * \param r2 Second RDATA.
  * \param format Descriptor of the RDATA format.
  *
- * \return 0 if RDATAs are equal.
+ * \retval 0 if RDATAs are equal.
  * \retval -1 if \a r1 goes before \a r2 in canonical order.
  * \retval 1 if \a r1 goes after \a r2 in canonical order.
  *
  * \todo Domain names in certain types should be converted to lowercase.
- * \note This function will probably be useless, no ordering will be needed
- *       for our purposes.
  */
 int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
                          const uint8_t *format);
