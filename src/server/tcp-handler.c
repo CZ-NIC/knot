@@ -87,7 +87,8 @@ int tcp_master(dthread_t *thread)
 			// Allocate new pool if needed
 			if (t->run != &tcp_pool) {
 				dt_repurpose(t, &tcp_pool, tcp_pool_new(handler));
-				debug_dt("dthreads: [%p] repurposed as TCP pool\n", t);
+				debug_dt("dthreads: [%p] repurposed "
+				         "as TCP pool\n", t);
 			}
 
 			// Add incoming socket to selected pool
