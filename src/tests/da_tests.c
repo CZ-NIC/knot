@@ -86,6 +86,7 @@ static int test_rcu_threads()
 	}
 
 	synchronize_rcu();
+	free(threads);
 
 	return 1;
 }
