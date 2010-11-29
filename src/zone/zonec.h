@@ -49,10 +49,10 @@ struct zparser {
 	const char *filename;
 	uint32_t default_ttl;
 	uint16_t default_class;
-//	zone_type *current_zone; // TODO: zone structure
-	zone_node_t *origin;
-	zone_node_t *prev_dname;
-	zone_node_t *default_apex;
+	zdb_zone_t *current_zone; 
+	dnslib_node_t *origin;
+	dnslib_node_t *prev_dname;
+	dnslib_node_t *default_apex;
 
 	int error_occurred;
 	unsigned int errors;
@@ -60,8 +60,8 @@ struct zparser {
 
 //	curent rr will have to be represented as current rrset
 //before:	rr_type current_rr;
-	dnslib_rrset_t current_rrset; //XXX why not *?
-	dnslib_rdata_item_t *temporary_rdatas;
+	dnslib_rrset_t *current_rrset; //XXX * was not there
+	dnslib_rdata_item_t **temporary_rdatas; //XXX only one * was there
 };
 
 extern zparser_type *parser;
@@ -126,7 +126,7 @@ uint16_t *alloc_rdata_init(region_type *region, const void *data, size_t size);
 /* zparser.y */
 zparser_type *zparser_create(region_type *region, region_type *rr_region,
 			     namedb_type *db);
-void zparser_init(const char *filename, uint32_t ttl, uint16_t klass,
-		  const dname_type *origin);
+void zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
+		  const dnslib_dname_t *origin);
 
 #endif /* _ZONEC_H_ */
