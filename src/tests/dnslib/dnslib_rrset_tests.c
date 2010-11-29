@@ -1,6 +1,7 @@
 /*!
  * \file dnslib_rrset_tests.c
- * \author Lubos Slovak <lubos.slovak@nic.cz>
+ *
+ * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
  * Contains unit tests for RRSet (dnslib_rrset_t) and its API.
  *
@@ -133,7 +134,7 @@ static void create_rdata()
 
 		// from dnslib_rdata_tests.c
 		fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, 
-			   test_rrsets[i].type, r);
+		           test_rrsets[i].type, r);
 		test_rrsets[i].rdata = r;
 	}
 }
@@ -218,6 +219,7 @@ static int check_rrset(const dnslib_rrset_t *rrset, int i,
 
 /*!
  * \brief Tests dnslib_rrset_new().
+ *
  * \retval > 0 on success.
  * \retval 0 otherwise.
  */
@@ -227,18 +229,17 @@ static int test_rrset_create()
 
 	for (int i = 0; i < TEST_RRSETS; ++i) {
 		dnslib_dname_t *owner = dnslib_dname_new_from_str(
-							test_rrsets[i].owner,
-				                        strlen(
-							test_rrsets[i].owner),
-							NODE_ADDRESS);
+		                            test_rrsets[i].owner,
+		                            strlen(test_rrsets[i].owner),
+		                            NODE_ADDRESS);
 		if (owner == NULL) {
 			diag("Error creating owner domain name!");
 			return 0;
 		}
 		dnslib_rrset_t *rrset = dnslib_rrset_new(owner,
-							 test_rrsets[i].type,
-		                        		 test_rrsets[i].rclass,
-							 test_rrsets[i].ttl);
+		                                         test_rrsets[i].type,
+		                                         test_rrsets[i].rclass,
+		                                         test_rrsets[i].ttl);
 
 		errors += check_rrset(rrset, i, 0, 0);
 
@@ -253,6 +254,7 @@ static int test_rrset_create()
 
 /*!
  * \brief Tests dnslib_rrset_free().
+ *
  * \retval > 0 on success.
  * \retval 0 otherwise.
  *
@@ -269,18 +271,17 @@ static int test_rrset_rdata()
 	int errors = 0;
 	for (int i = 0; i < TEST_RRSETS; i++) {
 		dnslib_dname_t *owner = dnslib_dname_new_from_str(
-							test_rrsets[i].owner,
-				                        strlen(
-							test_rrsets[i].owner),
-							NODE_ADDRESS);
+		                            test_rrsets[i].owner,
+		                            strlen(test_rrsets[i].owner),
+		                            NODE_ADDRESS);
 		if (owner == NULL) {
 			diag("Error creating owner domain name!");
 			return 0;
 		}
 		dnslib_rrset_t *rrset = dnslib_rrset_new(owner,
-							 test_rrsets[i].type,
-		                        		 test_rrsets[i].rclass,
-							 test_rrsets[i].ttl);
+		                                         test_rrsets[i].type,
+		                                         test_rrsets[i].rclass,
+		                                         test_rrsets[i].ttl);
 
 		dnslib_rrset_add_rdata(rrset, test_rrsets[i].rdata);
 
@@ -299,7 +300,7 @@ static int test_rrset_rdata()
 	dnslib_rdata_item_t *item;
 
 	char *test_strings[10] =
-	{ "-2", "9", "2", "10", "1", "5", "8", "4", "6", "7" };
+	    { "-2", "9", "2", "10", "1", "5", "8", "4", "6", "7" };
 
 	for (int i = 0; i < 10; i++) {
 		r = dnslib_rdata_new();
@@ -368,9 +369,9 @@ static int test_rrset_rrsigs()
 
 		//owners are the same
 		dnslib_rrset_t *rrsig = dnslib_rrset_new(owner,
-						test_rrsigs[i].type,
-						test_rrsigs[i].rclass, 
-						test_rrsigs[i].ttl);
+		                                         test_rrsigs[i].type,
+		                                         test_rrsigs[i].rclass,
+		                                         test_rrsigs[i].ttl);
 
 		tmp = dnslib_rdata_new();
 		item = malloc(sizeof(dnslib_rdata_item_t));
@@ -380,8 +381,8 @@ static int test_rrset_rrsigs()
 		dnslib_rdata_set_items(tmp, item, 1);
 		dnslib_rrset_add_rdata(rrsig, tmp);
 
-		if (dnslib_rrset_set_rrsigs(rrset, rrsig, 
-					    rrsig->rdata, 1) != 0) {
+		if (dnslib_rrset_set_rrsigs(rrset, rrsig, rrsig->rdata, 1)
+		      != 0) {
 			diag("Could not set rrsig");
 			errors++;
 		}
