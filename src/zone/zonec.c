@@ -1161,7 +1161,7 @@ process_rr(void)
 		= dnslib_rrtype_descriptor_by_type(current_rrset->type);
 
 	/* We only support IN class */
-	if (current_rrset->rclass != CLASS_IN) {
+	if (current_rrset->rclass != DNSLIB_CLASS_IN) {
 		zc_error_prev_line("only class IN is supported");
 		return 0;
 	}
@@ -1178,15 +1178,16 @@ process_rr(void)
 	/* Do we have the zone already? */
 	if (!zone)
 	{
-		zone = (zone_type *) region_alloc(parser->region,
-							  sizeof(zone_type));
+		zone = (zdb_zone_t*) region_alloc(parser->region,
+							  sizeof(zdb_zone_t));
+		//our apex should also be SOA
 		zone->apex = parser->default_apex;
-		zone->soa_rrset = NULL;
-		zone->soa_nx_rrset = NULL;
-		zone->ns_rrset = NULL;
-		zone->opts = NULL;
-		zone->is_secure = 0;
-		zone->updated = 1;
+//		zone->soa_rrset = NULL;
+//		zone->soa_nx_rrset = NULL;
+//		zone->ns_rrset = NULL;
+//		zone->opts = NULL;
+//		zone->is_secure = 0;
+//		zone->updated = 1;
 
 		zone->next = parser->db->zones;
 		parser->db->zones = zone;
@@ -1198,7 +1199,10 @@ process_rr(void)
 		 * This is a SOA record, start a new zone or continue
 		 * an existing one.
 		 */
-		if (current_rrset->owner->is_apex)
+		if (current_rrset->owner->is_apex) // this will not work, have to rethink
+			//NSD's owner is of "our" node type
+			//I'd say a global variable, soa_encountered or smth will work
+			//without messing up our structures.
 			zc_error_prev_line("this SOA record was already encountered");
 		else if (rr->owner == parser->default_apex) {
 			zone->apex = rr->owner;
@@ -1217,7 +1221,9 @@ process_rr(void)
 	}
 
 	/* Do we have this type of rrset already? */
-	rrset = domain_find_rrset(rr->owner, zone, rr->type);
+	dnslib_node_t *node;
+	node = zdb_find_name_in_zone(zone, current_rrset->)
+	rrset = dnslib_node_get_rrset(rr->owner, zone, rr->type);
 	if (!rrset) {
 		rrset = (rrset_type *) region_alloc(parser->region,
 						    sizeof(rrset_type));
