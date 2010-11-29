@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_STAT_GATHERER_H_
-#define _CUTEDNS_STAT_GATHERER_H_
+#ifndef _CUTEDNS_GATHERER_H_
+#define _CUTEDNS_GATHERER_H_
 
 #include <stdint.h>
 

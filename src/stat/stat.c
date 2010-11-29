@@ -20,11 +20,11 @@ static gatherer_t *local_gath;
 /*
 static void stat_inc_latency( stat_t *stat, uint increment )
 {
-    if (stat->protocol==stat_UDP) {
-        local_gath->udp_latency+=increment;
-    } else {
-        local_gath->tcp_latency+=increment;
-    }
+	if (stat->protocol==stat_UDP) {
+		local_gath->udp_latency+=increment;
+	} else {
+		local_gath->tcp_latency+=increment;
+	}
 }*/
 /*
 static uint stat_last_query_time( stat_t *stat )
@@ -119,7 +119,7 @@ static void stat_sleep_compute()
 					 i, local_gath->freq_array[i],
 					 local_gath->flow_array[i]->addr,
 					 local_gath->flow_array[i]->port,
-			      		 local_gath->flow_array[i]->protocol);
+					 local_gath->flow_array[i]->protocol);
 			}
 		}
 
@@ -134,12 +134,12 @@ static void stat_sleep_compute()
 		/* following code needs usage of 
 		 * gettimeofday, which is currently disabled */
 
-/*	        local_gath->udp_mean_latency=((double)local_gath->udp_latency/
-	        (double)local_gath->udp_queries);
-	        local_gath->tcp_mean_latency=((double)local_gath->tcp_latency/
-	        (double)local_gath->tcp_queries);
-	        local_gath->mean_latency = (local_gath->udp_mean_latency +
-	        local_gath->tcp_mean_latency)/2; */
+/*		local_gath->udp_mean_latency=((double)local_gath->udp_latency/
+		(double)local_gath->udp_queries);
+		local_gath->tcp_mean_latency=((double)local_gath->tcp_latency/
+		(double)local_gath->tcp_queries);
+		local_gath->mean_latency = (local_gath->udp_mean_latency +
+		local_gath->tcp_mean_latency)/2; */
 
 		local_gath->udp_queries = 0;
 		local_gath->tcp_queries = 0;
