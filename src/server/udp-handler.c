@@ -1,101 +1,120 @@
-#include <sys/socket.h>
-#include <netinet/in.h>
+#include <time.h>
 #include <unistd.h>
 #include <errno.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
 #include "udp-handler.h"
+#include "name-server.h"
+#include "stat.h"
+#include "server.h"
 
-/** Event descriptor.
-  */
-typedef struct sm_event {
-    struct sm_manager* manager;
-    int fd;
-    void* inbuf;
-    void* outbuf;
-    size_t size_in;
-    size_t size_out;
-} sm_event;
-
-static inline void udp_handler(sm_event *ev)
+int udp_master(dthread_t *thread)
 {
-    struct sockaddr_in faddr;
-    int addrsize = sizeof(faddr);
+	iohandler_t *handler = (iohandler_t *)thread->data;
+	ns_nameserver *ns = handler->server->nameserver;
+	int sock = handler->fd;
 
-    int n = 0;
+	// Check socket
+	if (sock < 0) {
+		debug_net("udp_worker: null socket recevied, finishing.\n");
+		return 0;
+	}
 
-    // Loop until all data is read
-    while(n >= 0) {
+	/*!
+	 * \todo Use custom allocator.
+	 *       Although this is much cheaper,
+	 *       16kB worth of buffers *may* pose a problem.
+	 */
+	uint8_t inbuf[SOCKET_MTU_SZ];
+	uint8_t outbuf[SOCKET_MTU_SZ];
+	struct sockaddr_in faddr;
+	int addrsize = sizeof(faddr);
 
-        // Receive data
-        n = recvfrom(ev->fd, ev->inbuf, ev->size_in, 0, (struct sockaddr *)&faddr, (socklen_t *)&addrsize);
+	/* in case of STAT_COMPILE the following code will declare thread_stat
+	 * variable in following fashion: stat_t *thread_stat;
+	 */
 
-        // Error and interrupt handling
-        //fprintf(stderr, "recvfrom(): thread %p ret %d errno %s.\n", (void*)pthread_self(), n, strerror(errno));
-        if(n <= 0) {
-           if(errno != EINTR && errno != 0) {
-              log_error("udp: reading data from the socket failed: %d - %s\n", errno, strerror(errno));
-           }
+	stat_t *thread_stat;
+	STAT_INIT(thread_stat); //XXX new stat instance every time.
+	stat_set_protocol(thread_stat, stat_UDP);
 
-           if(!ev->manager->is_running)
-              return;
-           else
-              continue;
-        }
+	// Loop until all data is read
+	debug_net("udp: thread started (worker %p).\n", thread);
+	int n = 0;
+	while (n >= 0) {
 
-        debug_sm("udp: received %d bytes.\n", n);
-        size_t answer_size = ev->size_out;
-        int res = ns_answer_request(ev->manager->nameserver, ev->inbuf, n, ev->outbuf,
-                          &answer_size);
 
-        debug_sm("udp: got answer of size %u.\n", (unsigned) answer_size);
+		// Receive data
+		n = socket_recvfrom(sock, inbuf, SOCKET_MTU_SZ, 0,
+		                    (struct sockaddr *)&faddr,
+		                    (socklen_t *)&addrsize);
 
-        if (res == 0) {
-            assert(answer_size > 0);
+		// Cancellation point
+		if (dt_is_cancelled(thread)) {
+			break;
+		}
 
-            debug_sm("udp: answer wire format (size %u):\n", answer_size);
-            debug_sm_hex(answer, answer_size);
+		// faddr has to be read immediately.
+		stat_get_first(thread_stat, &faddr);
 
-            for(;;) {
-                res = sendto(ev->fd, ev->outbuf, answer_size, MSG_DONTWAIT,
-                             (struct sockaddr *) &faddr,
-                             (socklen_t) addrsize);
+		// Error and interrupt handling
+		if (n <= 0) {
+			if (errno != EINTR && errno != 0) {
+				log_error("udp: %s: failed: %d - %s\n",
+				          "socket_recvfrom()",
+				          errno, strerror(errno));
+			}
 
-                //fprintf(stderr, "sendto() in %p: written %d bytes to %d.\n", (void*)pthread_self(), res, ev->fd);
-                if(res != answer_size) {
-                    log_error("udp: failed to send datagram (errno %d): %s.\n", res, strerror(res));
-                    continue;
-                }
+			if (!(handler->state & ServerRunning)) {
+				debug_net("udp: stopping\n");
+				break;
+			} else {
+				continue;
+			}
+		}
 
-                break;
-            }
-        }
-    }
+		// Answer request
+		debug_net("udp: received %d bytes.\n", n);
+		size_t answer_size = SOCKET_MTU_SZ;
+		int res = ns_answer_request(ns, inbuf, n, outbuf,
+		                            &answer_size);
+
+		debug_net("udp: got answer of size %u.\n",
+		          (unsigned) answer_size);
+
+		// Send answer
+		if (res == 0) {
+
+			assert(answer_size > 0);
+			debug_net("udp: answer wire format (size %u):\n",
+			          (unsigned) answer_size);
+			debug_net_hex((const char *) outbuf, answer_size);
+
+			// Send datagram
+			for (;;) {
+				res = socket_sendto(sock, outbuf, answer_size,0,
+				                    (struct sockaddr *) &faddr,
+				                    (socklen_t) addrsize);
+
+				// Check result
+				if (res != answer_size) {
+					log_error("udp: %s: failed: %d - %s.\n",
+					          "socket_sendto()",
+					          res, strerror(res));
+					continue;
+				}
+
+				break;
+			}
+
+			stat_get_second(thread_stat);
+		}
+	}
+
+	stat_free(thread_stat);
+	debug_net("udp: worker %p finished.\n", thread);
+	return 0;
 }
 
-void *udp_master( void *obj )
-{
-    UNUSED(obj);
-    return NULL;
-}
-
-void *udp_worker( void *obj )
-{
-    sm_worker* worker = (sm_worker *)obj;
-    char buf[SOCKET_BUFF_SIZE];
-    char answer[SOCKET_BUFF_SIZE];
-
-    sm_event event;
-    event.manager = worker->mgr;
-    event.fd = worker->mgr->sockets[0].socket;
-    event.inbuf = buf;
-    event.outbuf = answer;
-    event.size_in = event.size_out = SOCKET_BUFF_SIZE;
-
-    while(worker->mgr->is_running) {
-
-        // Handle UDP socket
-        udp_handler(&event);
-    }
-
-    debug_sm("udp: worker #%d finished.\n", worker->epfd);
-    return NULL;
-}
