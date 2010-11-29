@@ -10,7 +10,12 @@
 #ifndef _ZONEC_H_
 #define _ZONEC_H_
 
-#include "namedb.h"
+//#include "namedb.h"
+
+#include "dname.h"
+#include "rrset.h"
+#include "node.h"
+#include "rdata.h"
 
 #define	MAXTOKENSLEN	512		/* Maximum number of tokens per entry */
 #define	B64BUFSIZE	65535		/* Buffer size for b64 conversion */
@@ -44,17 +49,19 @@ struct zparser {
 	const char *filename;
 	uint32_t default_ttl;
 	uint16_t default_class;
-	zone_type *current_zone;
-	domain_type *origin;
-	domain_type *prev_dname;
-	domain_type *default_apex;
+//	zone_type *current_zone; // TODO: zone structure
+	zone_node_t *origin;
+	zone_node_t *prev_dname;
+	zone_node_t *default_apex;
 
 	int error_occurred;
 	unsigned int errors;
 	unsigned int line;
 
-	rr_type current_rr;
-	rdata_atom_type *temporary_rdatas;
+//	curent rr will have to be represented as current rrset
+//before:	rr_type current_rr;
+	dnslib_rrset_t current_rrset; //XXX why not *?
+	dnslib_rdata_item_t *temporary_rdatas;
 };
 
 extern zparser_type *parser;
@@ -66,8 +73,8 @@ extern FILE *yyin;
  * Used to mark bad domains and domain names.  Do not dereference
  * these pointers!
  */
-extern const dname_type *error_dname;
-extern domain_type *error_domain;
+extern const dnslib_dname_t *error_dname;
+extern zone_node_t *error_domain;
 
 int yyparse(void);
 int yylex(void);

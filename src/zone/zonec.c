@@ -41,8 +41,8 @@
 #include "options.h"
 #include "nsec3.h"
 
-const dname_type *error_dname;
-domain_type *error_domain;
+const dnslib_dname_t *error_dname;
+zn_node_t *error_domain;
 
 /* The database file... */
 static const char *dbfile = 0;
@@ -1153,15 +1153,15 @@ int
 process_rr(void)
 {
 	zone_type *zone = parser->current_zone;
-	rr_type *rr = &parser->current_rr;
-	rrset_type *rrset;
+	dnslib_rrset_t *current_rrset = &parser->current_rrset;
+	dnslib_rrset_t *rrset;
 	size_t max_rdlength;
 	int i;
-	rrtype_descriptor_type *descriptor
-		= rrtype_descriptor_by_type(rr->type);
+	dnslib_rrtype_descriptor_t *descriptor
+		= dnslib_rrtype_descriptor_by_type(current_rrset->type);
 
 	/* We only support IN class */
-	if (rr->klass != CLASS_IN) {
+	if (current_rrset->rclass != CLASS_IN) {
 		zc_error_prev_line("only class IN is supported");
 		return 0;
 	}
@@ -1193,12 +1193,12 @@ process_rr(void)
 		parser->current_zone = zone;
 	}
 
-	if (rr->type == TYPE_SOA) {
+	if (current_rrset->type == TYPE_SOA) {
 		/*
 		 * This is a SOA record, start a new zone or continue
 		 * an existing one.
 		 */
-		if (rr->owner->is_apex)
+		if (current_rrset->owner->is_apex)
 			zc_error_prev_line("this SOA record was already encountered");
 		else if (rr->owner == parser->default_apex) {
 			zone->apex = rr->owner;
