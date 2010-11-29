@@ -55,11 +55,11 @@ int main(int argc, char **argv)
 
 		if ((res = cute_wait(s_server)) != 0) {
 			log_error("There was an error while waiting for server"
-				  " to finish.");
+			          " to finish.");
 		}
 	} else {
 		log_error("There was an error while starting the server, "
-			  "exiting...\n");
+		          "exiting...\n");
 	}
 
 	// Stop server and close log
