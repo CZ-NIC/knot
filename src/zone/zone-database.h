@@ -66,6 +66,7 @@ typedef struct zdb_database zdb_database_t;
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Allocates and initializes the zone database structure.
+ * \return Pointer to the created zone database structure.
  */
 zdb_database_t *zdb_create();
 
@@ -119,7 +120,7 @@ int zdb_remove_zone(zdb_database_t *database, ldns_rdf *zone_name);
  * \retval -1 If an error occured during insertion to the zone.
  */
 int zdb_insert_name(zdb_database_t *database, ldns_rdf *zone_name,
-		    zn_node_t *node);
+                    zn_node_t *node);
 
 /*!
  * \brief Finds zone the given domain name should belong to.
@@ -134,7 +135,7 @@ int zdb_insert_name(zdb_database_t *database, ldns_rdf *zone_name,
  *       in the linked list (zdb_zone.next).
  */
 const zdb_zone_t *zdb_find_zone_for_name(zdb_database_t *database,
-                                       const ldns_rdf *dname);
+                                         const ldns_rdf *dname);
 
 /*!
  * \brief Finds the given name in the zone database and returns corresponding
@@ -147,7 +148,7 @@ const zdb_zone_t *zdb_find_zone_for_name(zdb_database_t *database,
  * \return Proper zone node for the given name or NULL if not found.
  */
 const zn_node_t *zdb_find_name_in_zone(const zdb_zone_t *zone,
-                                     const ldns_rdf *dname);
+                                       const ldns_rdf *dname);
 
 /*!
  * \brief Destroys and deallocates the whole zone database.

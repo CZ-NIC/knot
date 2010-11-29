@@ -31,8 +31,8 @@ zn_node_t *zds_find(zds_zone_t *zone, const ldns_rdf *owner)
 {
 	assert(ldns_rdf_get_type(owner) == LDNS_RDF_TYPE_DNAME);
 	const ck_hash_table_item_t *item = ck_find_item(zone,
-	                                 (char *)ldns_rdf_data(owner),
-	                                 ldns_rdf_size(owner));
+	                                    (char *)ldns_rdf_data(owner),
+	                                    ldns_rdf_size(owner));
 	if (item == NULL) {
 		return NULL;
 	}

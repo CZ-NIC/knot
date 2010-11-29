@@ -120,7 +120,7 @@ static zn_ar_rrsets_t *zn_create_ar_rrsets_for_ref(ldns_rr_list *ref_rrset)
 	default:
 		free(ar);
 		log_error("Error: trying to add MX record reference to a type "
-			  "other than A or AAAA.\n");
+		          "other than A or AAAA.\n");
 		return NULL;
 	}
 	return ar;
@@ -154,8 +154,8 @@ static int zn_merge_ar_values(void **value1, void **value2)
 	zn_ar_rrsets_t *ar2 = (zn_ar_rrsets_t *)(*value2);
 
 	if ((ar2->a != NULL && ar1->a != NULL)
-	                || (ar2->aaaa != NULL && ar1->aaaa != NULL)
-	                || (ar2->cname != NULL && ar1->cname != NULL)) {
+	    || (ar2->aaaa != NULL && ar1->aaaa != NULL)
+	    || (ar2->cname != NULL && ar1->cname != NULL)) {
 		return -1;
 	}
 
@@ -226,24 +226,24 @@ static int zn_add_referrer_node(zn_node_t *node, const zn_node_t *referrer)
 	if (node->referrers == NULL) {
 		node->referrers = da_create(1, sizeof(zn_node_t *));
 		if (node->referrers == NULL) {
-			log_error("zn_add_referrer_node(): Error while creating"
-				  "array.\n");
+			log_error("%s(): Error while creating array.\n",
+			          __func__);
 			return -1;
 		}
 	}
 
 	int res = da_reserve(node->referrers, 1);
 	if (res < 0) {
-		log_error("zn_add_referrer_node(): Error while reserving space."
-			  "\n");
+		log_error("%s(): Error while reserving space.\n",
+		          __func__);
 		return -2;
 	}
 
 	RFRS(node->referrers)[RFRS_COUNT(node->referrers)] = referrer;
 	res = da_occupy(node->referrers, 1);
 	if (res != 0) {
-		log_error("zn_add_referrer_node(): Error while occupying space."
-			  "\n");
+		log_error("%s(): Error while occupying space.\n",
+		          __func__);
 		return -3;
 	}
 
@@ -339,7 +339,7 @@ int zn_add_rr(zn_node_t *node, ldns_rr *rr)
 		}
 		// insert the rrset into the node
 		int res = skip_insert(node->rrsets,
-				      (void *)ldns_rr_get_type(rr),
+		                      (void *)ldns_rr_get_type(rr),
 		                      (void *)rrset, NULL);
 		assert(res != 2 && res != -2);
 		// if no owner yet and successfuly inserted
@@ -519,7 +519,7 @@ int zn_add_ref(zn_node_t *node, ldns_rdf *name, ldns_rr_type type,
 	}
 	if (ar == NULL) {
 		skip_destroy_list(&(node->ref.additional), NULL,
-				  zn_dtor_ar_rrsets);
+		                  zn_dtor_ar_rrsets);
 		return -4;
 	}
 
@@ -534,7 +534,7 @@ int zn_add_ref(zn_node_t *node, ldns_rdf *name, ldns_rr_type type,
 	debug_zn("zn_add_ref(%p, %p, %s)\n", node, ref_rrset,
 	         ldns_rr_type2str(type));
 	debug_zn("First item in the skip list: key: %s, value: %p\n",
-	        ldns_rdf2str((ldns_rdf *)skip_first(node->ref.additional)->key),
+	         ldns_rdf2str((ldns_rdf *)skip_first(node->ref.additional)->key),
 	         skip_first(node->ref.additional)->value);
 	debug_zn("Inserted item: value: %p\n", ar);
 
@@ -550,8 +550,8 @@ int zn_add_ref(zn_node_t *node, ldns_rdf *name, ldns_rr_type type,
 skip_list_t *zn_get_refs(const zn_node_t *node)
 {
 	if ((zn_flags_get(node->flags, FLAGS_HAS_MX)
-	                | zn_flags_get(node->flags, FLAGS_HAS_NS)
-	                | zn_flags_get(node->flags, FLAGS_HAS_SRV)) > 0) {
+	    | zn_flags_get(node->flags, FLAGS_HAS_NS)
+	    | zn_flags_get(node->flags, FLAGS_HAS_SRV)) > 0) {
 		return node->ref.additional;
 	} else {
 		return NULL;
@@ -563,10 +563,10 @@ skip_list_t *zn_get_refs(const zn_node_t *node)
 const zn_ar_rrsets_t *zn_get_ref(const zn_node_t *node, const ldns_rdf *name)
 {
 	if ((zn_flags_get(node->flags, FLAGS_HAS_MX)
-	                | zn_flags_get(node->flags, FLAGS_HAS_NS)
-	                | zn_flags_get(node->flags, FLAGS_HAS_SRV)) > 0) {
+	    | zn_flags_get(node->flags, FLAGS_HAS_NS)
+	    | zn_flags_get(node->flags, FLAGS_HAS_SRV)) > 0) {
 		return (zn_ar_rrsets_t *)skip_find(node->ref.additional,
-						 (void *)name);
+		                                   (void *)name);
 	} else {
 		return NULL;
 	}
@@ -769,7 +769,7 @@ void zn_destroy(zn_node_t **node)
 	skip_destroy_list(&(*node)->rrsets, NULL, zn_destroy_value);
 	if (zn_has_additional(*node)) {
 		skip_destroy_list(&(*node)->ref.additional, NULL,
-				  zn_dtor_ar_rrsets);
+		                  zn_dtor_ar_rrsets);
 	}
 
 	ldns_rdf_deep_free((*node)->owner);
@@ -796,7 +796,8 @@ void zn_destructor(void *item)
 
 void zn_print_rrset(void *key, void *value)
 {
-	debug_zn("Type: %d,%s, RRSet: %s\n", (ldns_rr_type)key,
-	         ldns_rr_type2str((ldns_rr_type)key), ldns_rr_list2str(
-	                 (ldns_rr_list *)value));
+	debug_zn("Type: %d,%s, RRSet: %s\n",
+	         (ldns_rr_type)key,
+	         ldns_rr_type2str((ldns_rr_type)key),
+	         ldns_rr_list2str((ldns_rr_list *)value));
 }

@@ -324,8 +324,8 @@ static int zp_parse_zonefile_bind(const char *filename,
 
 	if (s != LDNS_STATUS_OK) {
 		log_error("Error parsing zone file %s.\nldns returned: %s on "
-			  "line %d\n", filename, ldns_get_errorstr_by_id(s),
-			  line);
+		          "line %d\n", filename, ldns_get_errorstr_by_id(s),
+		          line);
 		return -1;
 	}
 

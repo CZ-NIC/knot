@@ -9,7 +9,7 @@
  * file. Later a generic API for parsing any kind of zone file should be
  * provided.
  *
- * \todo Cosider creating whole zone and filling it prior to adding to zone
+ * \todo Consider creating whole zone and filling it prior to adding to zone
  *       database. Or create some API of zone database which will allow to do
  *       this and adds the zone only when told to.
  *
