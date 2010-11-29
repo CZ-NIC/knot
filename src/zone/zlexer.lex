@@ -1,14 +1,14 @@
 %{
 /*
  * zlexer.lex - lexical analyzer for (DNS) zone files
- * 
+ *
  * Copyright (c) 2001-2006, NLnet Labs. All rights reserved
  *
  * See LICENSE for the license.
  *
  */
 
-#include <config.h>
+#include "common.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -70,13 +70,13 @@ pop_parser_state(void)
 
 #ifndef yy_set_bol /* compat definition, for flex 2.4.6 */
 #define yy_set_bol(at_bol) \
-	{ \
-		if ( ! yy_current_buffer ) \
-			yy_current_buffer = yy_create_buffer( yyin, YY_BUF_SIZE ); \
-		yy_current_buffer->yy_ch_buf[0] = ((at_bol)?'\n':' '); \
-	}
+{ \
+	if (!yy_current_buffer ) \
+		yy_current_buffer = yy_create_buffer( yyin, YY_BUF_SIZE ); \
+	yy_current_buffer->yy_ch_buf[0] = ((at_bol)?'\n':' '); \
+}
 #endif
-	
+
 %}
 
 SPACE   [ \t]
@@ -86,7 +86,7 @@ ZONESTR [^ \t\n\r();.\"\$]
 DOLLAR  \$
 COMMENT ;
 DOT     \.
-BIT	[^\]\n]|\\.
+BIT     [^\]\n]|\\.
 ANY     [^\"\n\\]|\\.
 
 %x	incl bitlabel quotedstring
@@ -98,10 +98,10 @@ ANY     [^\"\n\\]|\\.
 ^{DOLLAR}TTL            { lexer_state = PARSING_RDATA; return DOLLAR_TTL; }
 ^{DOLLAR}ORIGIN         { lexer_state = PARSING_RDATA; return DOLLAR_ORIGIN; }
 
-	/*
-	 * Handle $INCLUDE directives.  See
-	 * http://dinosaur.compilertools.net/flex/flex_12.html#SEC12.
-	 */
+/*
+ * Handle $INCLUDE directives.  See
+ * http://dinosaur.compilertools.net/flex/flex_12.html#SEC12.
+ */
 ^{DOLLAR}INCLUDE        {
 	BEGIN(incl);
 }
@@ -114,11 +114,13 @@ ANY     [^\"\n\\]|\\.
 	++parser->line;
 	parser->error_occurred = error_occurred;
 }
-<incl>.+ 		{ 	
+<incl>.+ 		{
 	char *tmp;
-	domain_type *origin = parser->origin;
+	/*! \todo pointer to origin. */
+	void *origin = 0;
+	/* domain_type *origin = parser->origin; */
 	int error_occurred = parser->error_occurred;
-	
+
 	BEGIN(INITIAL);
 	if (include_stack_ptr >= MAXINCLUDES ) {
 		zc_error("includes nested too deeply, skipped (>%d)",
@@ -132,29 +134,34 @@ ANY     [^\"\n\\]|\\.
 			*tmp = '\0';
 		}
 		strip_string(yytext);
-		
+
 		/* Parse origin for include file.  */
 		tmp = strrchr(yytext, ' ');
 		if (!tmp) {
 			tmp = strrchr(yytext, '\t');
 		}
 		if (tmp) {
-			const dname_type *dname;
-			
 			/* split the original yytext */
 			*tmp = '\0';
 			strip_string(yytext);
-			
-			dname = dname_parse(parser->region, tmp + 1);
+
+			/*! \todo pointer to origin, parse string.
+			 *  \see dnslib_dname_new_from_str() (dname.h)
+			 *       which dnslib_node to pass as node?
+			 */
+			/* const dname_type *dname; */
+			const void *dname = 0;
+			/* dname = dname_parse(parser->region, tmp + 1); */
 			if (!dname) {
 				zc_error("incorrect include origin '%s'",
 					 tmp + 1);
 			} else {
-				origin = domain_table_insert(
-					parser->db->domains, dname);
+				/*! \todo insert to zonedb. */
+				/* origin = domain_table_insert(
+					parser->db->domains, dname); */
 			}
 		}
-		
+
 		if (strlen(yytext) == 0) {
 			zc_error("missing file name in $INCLUDE directive");
 		} else if (!(input = fopen(yytext, "r"))) {
@@ -197,7 +204,7 @@ ANY     [^\"\n\\]|\\.
 }
 {NEWLINE}	{
 	++parser->line;
-	if (!paren_open) { 
+	if (!paren_open) {
 		lexer_state = EXPECT_OWNER;
 		LEXOUT(("NL\n"));
 		return NL;
@@ -282,11 +289,12 @@ ANY     [^\"\n\\]|\\.
  * returned and the TYPE parameter is set to the RR type value.
  */
 static int
-rrtype_to_token(const char *word, uint16_t *type) 
+rrtype_to_token(const char *word, uint16_t *type)
 {
-	uint16_t t = rrtype_from_string(word);
+	uint16_t t = dnslib_rrtype_from_string(word);
 	if (t != 0) {
-		rrtype_descriptor_type *entry = rrtype_descriptor_by_type(t);
+		dnslib_rrtype_descriptor_t *entry = 0;
+		entry = dnslib_rrtype_descriptor_by_type(t);
 		*type = t;
 		return entry->token;
 	}
@@ -299,7 +307,7 @@ rrtype_to_token(const char *word, uint16_t *type)
  * Remove \DDD constructs from the input. See RFC 1035, section 5.1.
  */
 static size_t
-zoctet(char *text) 
+zoctet(char *text)
 {
 	/*
 	 * s follows the string, p lags behind and rebuilds the new
@@ -307,7 +315,7 @@ zoctet(char *text)
 	 */
 	char *s;
 	char *p;
-	
+
 	for (s = p = text; *s; ++s, ++p) {
 		assert(p <= s);
 		if (s[0] != '\\') {
@@ -350,7 +358,7 @@ parse_token(int token, char *yytext, enum lexer_state *lexer_state)
 		const char *t;
 		int token;
 		uint16_t rrclass;
-		
+
 		/* type */
 		token = rrtype_to_token(yytext, &yylval.type);
 		if (token != 0) {
@@ -360,7 +368,7 @@ parse_token(int token, char *yytext, enum lexer_state *lexer_state)
 		}
 
 		/* class */
-		rrclass = rrclass_from_string(yytext);
+		rrclass = dnslib_rrclass_from_string(yytext);
 		if (rrclass != 0) {
 			yylval.klass = rrclass;
 			LEXOUT(("CLASS "));
@@ -368,7 +376,9 @@ parse_token(int token, char *yytext, enum lexer_state *lexer_state)
 		}
 
 		/* ttl */
-		yylval.ttl = strtottl(yytext, &t);
+		/*! \todo strtottl(nptr, endptr) -> uint32_t /*
+		yylval.ttl = 0; */
+		/* yylval.ttl = strtottl(yytext, &t); */
 		if (*t == '\0') {
 			LEXOUT(("TTL "));
 			return T_TTL;
@@ -380,7 +390,7 @@ parse_token(int token, char *yytext, enum lexer_state *lexer_state)
 
 	yylval.data.str = str;
 	yylval.data.len = len;
-	
+
 	LEXOUT(("%d[%s] ", token, yytext));
 	return token;
 }

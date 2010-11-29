@@ -8,7 +8,7 @@
  *
  */
 
-#include <config.h>
+#include "common.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -375,7 +375,7 @@ concatenated_str_seq:	STR
 /* used to convert a nxt list of types */
 nxt_seq:	STR
     {
-	    uint16_t type = rrtype_from_string($1.str);
+	    uint16_t type = dnslib_rrtype_from_string($1.str);
 	    if (type != 0 && type < 128) {
 		    set_bit(nxtbits, type);
 	    } else {
@@ -384,7 +384,7 @@ nxt_seq:	STR
     }
     |	nxt_seq sp STR
     {
-	    uint16_t type = rrtype_from_string($3.str);
+	    uint16_t type = dnslib_rrtype_from_string($3.str);
 	    if (type != 0 && type < 128) {
 		    set_bit(nxtbits, type);
 	    } else {
@@ -401,7 +401,7 @@ nsec_more:	SP nsec_more
     }
     |	STR nsec_seq
     {
-	    uint16_t type = rrtype_from_string($1.str);
+	    uint16_t type = dnslib_rrtype_from_string($1.str);
 	    if (type != 0) {
                     if (type > nsec_highest_rcode) {
                             nsec_highest_rcode = type;
@@ -844,7 +844,7 @@ rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR sp STR sp wire_dname sp str_
 	    zadd_rdata_wireformat(zparser_conv_time(parser->region, $9.str)); /* sig exp */
 	    zadd_rdata_wireformat(zparser_conv_time(parser->region, $11.str)); /* sig inc */
 	    zadd_rdata_wireformat(zparser_conv_short(parser->region, $13.str)); /* key id */
-	    zadd_rdata_wireformat(zparser_conv_dns_name(parser->region, 
+	    zadd_rdata_wireformat(zparser_conv_dns_name(parser->region,
 				(const uint8_t*) $15.str,$15.len)); /* sig name */
 	    zadd_rdata_wireformat(zparser_conv_b64(parser->region, $17.str)); /* sig data */
     }
@@ -852,7 +852,7 @@ rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR sp STR sp wire_dname sp str_
 
 rdata_nsec:	wire_dname nsec_seq
     {
-	    zadd_rdata_wireformat(zparser_conv_dns_name(parser->region, 
+	    zadd_rdata_wireformat(zparser_conv_dns_name(parser->region,
 				(const uint8_t*) $1.str, $1.len)); /* nsec name */
 	    zadd_rdata_wireformat(zparser_conv_nsec(parser->region, nsecbits)); /* nsec bitlist */
 	    memset(nsecbits, 0, sizeof(nsecbits));
@@ -901,7 +901,7 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 	    zadd_rdata_wireformat(zparser_conv_byte(parser->region, $3.str)); /* gateway type */
 	    zadd_rdata_wireformat(zparser_conv_byte(parser->region, $5.str)); /* algorithm */
 	    switch(atoi($3.str)) {
-		case IPSECKEY_NOGATEWAY: 
+		case IPSECKEY_NOGATEWAY:
 			zadd_rdata_wireformat(alloc_rdata_init(parser->region, "", 0));
 			break;
 		case IPSECKEY_IP4:
@@ -917,7 +917,7 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			if(!(name = dname_parse(parser->region, $7.str)))
 				zc_error_prev_line("IPSECKEY bad gateway dname %s", $7.str);
 			if($7.str[strlen($7.str)-1] != '.')
-				name = dname_concatenate(parser->rr_region, name, 
+				name = dname_concatenate(parser->rr_region, name,
 					domain_dname(parser->origin));
 			zadd_rdata_wireformat(alloc_rdata_init(parser->region,
 				dname_name(name), name->name_size));
@@ -1089,10 +1089,10 @@ nsec3_add_params(const char* hashalgo_str, const char* flag_str,
 	zadd_rdata_wireformat(zparser_conv_short(parser->region, iter_str));
 
 	/* salt */
-	if(strcmp(salt_str, "-") != 0) 
-		zadd_rdata_wireformat(zparser_conv_hex_length(parser->region, 
-			salt_str, salt_len)); 
-	else 
+	if(strcmp(salt_str, "-") != 0)
+		zadd_rdata_wireformat(zparser_conv_hex_length(parser->region,
+			salt_str, salt_len));
+	else
 		zadd_rdata_wireformat(alloc_rdata_init(parser->region, "", 1));
 }
 #endif /* NSEC3 */
