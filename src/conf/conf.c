@@ -1,7 +1,3 @@
-/**
- *
- **/
-
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>

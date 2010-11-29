@@ -11,8 +11,7 @@
 static int conf_fd;
 static char *config_name = "cutedns.conf";
 
-static int
-cf_read(unsigned char *dest, unsigned int len)
+static int cf_read(unsigned char *dest, unsigned int len)
 {
 	int l = read(conf_fd, dest, len);
 	if (l < 0) {
@@ -21,8 +20,7 @@ cf_read(unsigned char *dest, unsigned int len)
 	return l;
 }
 
-int
-main(int argc, void **argv)
+int main(int argc, void **argv)
 {
 	int ret;
 	char *name = config_name;
