@@ -1,5 +1,6 @@
 /*!
  * \file udp-handler.h
+ *
  * \author Marek Vavrusa <marek.vavusa@nic.cz>
  *
  * \brief UDP sockets threading model.

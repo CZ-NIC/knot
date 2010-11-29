@@ -1,5 +1,6 @@
 /*!
  * \file socket.h
+ *
  * \author Marek Vavrusa <marek.vavusa@nic.cz>
  *
  * \brief Generic sockets APIs.
@@ -13,10 +14,11 @@
 
 #ifndef _CUTEDNS_SOCKET_H_
 #define _CUTEDNS_SOCKET_H_
-#include "common.h"
 
 /* POSIX only. */
 #include <sys/socket.h>
+
+#include "common.h"
 
 /*! \brief Socket-related constants. */
 enum {
@@ -99,12 +101,12 @@ ssize_t socket_recvfrom(int socket, void *buf, size_t len, int flags,
                         struct sockaddr *from, socklen_t *fromlen);
 
 /*!
- *  \brief Send data to connection-mode socket.
+ * \brief Send data to connection-mode socket.
  *
- *  \param socket Socket filedescriptor.
- *  \param buf    Source buffer.
- *  \param len    Data length.
- *  \param flags  Additional flags.
+ * \param socket Socket filedescriptor.
+ * \param buf    Source buffer.
+ * \param len    Data length.
+ * \param flags  Additional flags.
  *
  * \retval  0 On success.
  * \retval <0 If an error occured.
@@ -112,14 +114,14 @@ ssize_t socket_recvfrom(int socket, void *buf, size_t len, int flags,
 ssize_t socket_send(int socket, const void *buf, size_t len, int flags);
 
 /*!
- *  \brief Send data to datagram-mode socket.
+ * \brief Send data to datagram-mode socket.
  *
- *  \param socket Socket filedescriptor.
- *  \param buf    Source buffer.
- *  \param len    Data length.
- *  \param flags  Additional flags.
- *  \param to     Datagram source address.
- *  \param tolen  Address length.
+ * \param socket Socket filedescriptor.
+ * \param buf    Source buffer.
+ * \param len    Data length.
+ * \param flags  Additional flags.
+ * \param to     Datagram source address.
+ * \param tolen  Address length.
  *
  * \retval  0 On success.
  * \retval <0 If an error occured.
@@ -128,9 +130,9 @@ ssize_t socket_sendto(int socket, const void *buf, size_t len, int flags,
                       const struct sockaddr *to, socklen_t tolen);
 
 /*!
- *  \brief Close and deinitialize socket.
+ * \brief Close and deinitialize socket.
  *
- *  \param socket Socket filedescriptor.
+ * \param socket Socket filedescriptor.
  *
  * \retval  0 On success.
  * \retval <0 If an error occured.

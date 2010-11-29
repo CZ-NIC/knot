@@ -1,5 +1,6 @@
 /*!
  * \file dthreads.h
+ *
  * \author Marek Vavrusa <marek.vavusa@nic.cz>
  *
  * \brief Threading API.

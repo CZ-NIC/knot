@@ -1,5 +1,6 @@
 /*!
  * \file tcp-handler.h
+ *
  * \author Marek Vavrusa <marek.vavusa@nic.cz>
  *
  * \brief TCP sockets threading model.

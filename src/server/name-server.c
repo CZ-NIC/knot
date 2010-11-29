@@ -364,7 +364,7 @@ static void ns_put_additional(const zn_node_t *node, ldns_pkt *response,
 			name = ldns_rr_ns_nsdname(rr);
 			break;
 		case LDNS_RR_TYPE_SRV:
-			name = ldns_rr_rdf(rr, 3);	// get rid of the number
+			name = ldns_rr_rdf(rr, 3); // get rid of the number
 			if (ldns_dname_label_count(name) == 0) {
 				continue;
 			}
@@ -392,8 +392,8 @@ static void ns_put_additional(const zn_node_t *node, ldns_pkt *response,
 			             LDNS_SECTION_ADDITIONAL, 0, response,
 			             copied_rrs);
 			ns_put_rrset(rrsets->aaaa, name,
-			             LDNS_SECTION_ADDITIONAL, 0,
-			             response, copied_rrs);
+			             LDNS_SECTION_ADDITIONAL, 0, response,
+			             copied_rrs);
 		} else {
 			debug_ns("No referenced RRSets!\n");
 		}
@@ -510,9 +510,9 @@ static inline void ns_referral(const zn_node_t *node, ldns_pkt *response,
 
 static int ns_additional_needed(ldns_rr_type qtype)
 {
-	return (qtype == LDNS_RR_TYPE_MX
-	        || qtype == LDNS_RR_TYPE_NS
-	        || qtype == LDNS_RR_TYPE_SRV);
+	return (qtype == LDNS_RR_TYPE_MX ||
+	        qtype == LDNS_RR_TYPE_NS ||
+		qtype == LDNS_RR_TYPE_SRV);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -622,8 +622,8 @@ static void ns_process_dname(ldns_rr_list *dname_rrset, const ldns_rdf *qname,
 
 /*----------------------------------------------------------------------------*/
 
-static const zn_node_t *ns_strip_and_find(const zdb_zone_t *zone, ldns_rdf **qname,
-                                        uint *labels)
+static const zn_node_t *ns_strip_and_find(const zdb_zone_t *zone, 
+                                          ldns_rdf **qname, uint *labels)
 {
 	const zn_node_t *node = NULL;
 	// search for the name and strip labels until nothing left

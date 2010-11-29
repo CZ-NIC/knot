@@ -1,5 +1,6 @@
 /*!
  * \file server.h
+ *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
  * \brief Core server functions.
