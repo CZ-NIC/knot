@@ -418,7 +418,7 @@ int dnss_dname_to_wire( dnss_dname dname, dnss_dname_wire dname_wire,
         }
         buffer[0] = chars;    // number of characters in this label
 
-//      dnss_debug("Chars: %d, Buffer: %*s\n", chars, chars + 1, buffer);
+//      dnss_debug("Chars: %d, Buffer: %.*s\n", chars, chars + 1, buffer);
 
         memcpy(&dname_wire[w], buffer, chars + 1);   // copy the label
         w += chars + 1;
@@ -430,7 +430,7 @@ int dnss_dname_to_wire( dnss_dname dname, dnss_dname_wire dname_wire,
 
     dname_wire[w] = '\0';
 
-    debug_dnss("Wire format of the domain name: %*s\n", w + 1, dname_wire);
+    debug_dnss("Wire format of the domain name: %.*s\n", w + 1, dname_wire);
     debug_dnss_hex(dname_wire, w + 1);
 
     free(buffer);

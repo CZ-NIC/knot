@@ -1,67 +1,77 @@
 /*!
- * @file cuckoo-hash-table.h
+ * \file cuckoo-hash-table.h
  *
- * @todo Maybe provide some way to resize the whole table if the number of items
+ * \author Lubos Slovak <lubos.slovak@nic.cz>
+ *
+ * \brief Implementation of Cuckoo hashing scheme.
+ *
+ * Uses d-ary Cuckoo hashing with stash.
+ *
+ * \todo Maybe provide some way to resize the whole table if the number of items
  *       grows too much.
- * @todo Check size of integers, the table size may be larger than unsigned int.
- * @todo Maybe do not return ck_hash_table_item from ck_find_item(), but only
+ * \todo Check size of integers, the table size may be larger than unsigned int.
+ * \todo Maybe do not return ck_hash_table_item from ck_find_item(), but only
  *       its value.
+ * \todo When hashing an item, only the first table is tried for this item.
+ *       We may try all tables. (But it is not neccessary.)
+ *
+ * \addtogroup hashing
+ * @{
  */
-#ifndef CUCKOO_HASH_TABLE
-#define CUCKOO_HASH_TABLE
+#ifndef _CUTEDNS_CUCKOO_HASH_TABLE_H_
+#define _CUTEDNS_CUCKOO_HASH_TABLE_H_
 
-#include <stdint.h>	/* uint32_t */
-#include <stdlib.h>	/* size_t */
+#include <stdint.h> /* uint32_t */
+#include <stdlib.h> /* size_t */
 #include <pthread.h>
-#include "common.h"
 
+#include "common.h"
 #include "universal-system.h"
 #include "dynamic-array.h"
 
 /*----------------------------------------------------------------------------*/
 
-/*! @brief Macro for getting one hash table size. */
-#define hashsize(n) ((uint32_t)1<<(n))
+/*! \brief Macro for getting one hash table size. */
+#define hashsize(n) ((uint32_t)1 << (n))
 
 /*!
- * @brief Max number of hash tables - must be the same as number of the
- *         hash functions in each generation of the universal system.
+ * \brief Max number of hash tables - must be the same as number of the hash
+ *        functions in each generation of the universal system.
  */
 #define MAX_TABLES US_FNC_COUNT
-/*!
- * @brief Default stash size.
- */
+
+/*! \brief Default stash size. */
 static const uint STASH_SIZE = 10;
 
 /*----------------------------------------------------------------------------*/
-/* Public structures							                              */
+/* Public structures                                                          */
 /*----------------------------------------------------------------------------*/
 /*!
- * @brief Structure for storing the hashed data.
+ * \brief Structure for storing the hashed data.
  */
-typedef struct {
-	/*! @brief Key of the item, used for hashing. */
-	const char *key;
+struct ck_hash_table_item {
+	const char *key; /*!< Key of the item, used for hashing. */
 
-	/*! @brief Length of the key in octets. */
-	size_t key_length;
+	size_t key_length; /*!< Length of the key in octets. */
 
-	/*! @brief The actual item stored in the table. */
-	void *value;
+	void *value; /*!< The actual item stored in the table. */
 
 	/*!
-	 * @brief Flags. Currently used for keeping the generation of the item, i.e.
-	 *        the generation of the functions used for hashing this item.
+	 * \brief Flags. Currently used for keeping the generation of the item,
+	 *        i.e. the generation of the functions used for hashing this
+	 *        item.
 	 *
 	 * Form: 000000xy;
 	 * xy - generation; may be 01 (1) or 10 (2).
 	 */
 	uint8_t timestamp;
-} ck_hash_table_item;	// size 13 B
+};	// size 13 B
+
+typedef struct ck_hash_table_item ck_hash_table_item_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
- * @brief Hash table structure which uses cuckoo hashing.
+ * \brief Hash table structure which uses cuckoo hashing.
  *
  * Keys are expected to be strings of characters (char *), not necesarily
  * null-terminated. It uses the Fowler/Noll/Vo (FNV) hash function to
@@ -76,7 +86,7 @@ typedef struct {
  * The table uses either 3-ary or 4-ary cuckoo hashing (and thus 3 or 4 tables)
  * with stash, according to the number of items provided to ck_create_table()
  * function. The number of table pointers is however set to be the larger value
- * (4) always, so the @a tables array may be statically allocated. Size of one
+ * (4) always, so the \a tables array may be statically allocated. Size of one
  * table is always a power of 2 (due to the character of the hash function).
  * The stash has a default size STASH_SIZE, but can be resized if needed.
  * However, the resizing is only done in rehashing process, if the items do not
@@ -85,168 +95,176 @@ typedef struct {
  * Rehashing is done when the stash gets full (actually, last item is always
  * free and is used in the rehashing process as a temporary variable).
  */
-typedef struct {
-	/*! @brief Actual number of hash tables used. */
-	uint table_count;		// number of hash tables (2, 3 or 4)
+struct ck_hash_table {
+	uint table_count; /*!< Actual number of hash tables used. */
 
-	/*! @brief Exponent of one table size (2^table_size_exp is table size). */
+	/*!
+	 * \brief Exponent of one table's size (2^table_size_exp is table size).
+	 */
 	int table_size_exp;
 
-	/*! @brief Array of hash tables. */
-	ck_hash_table_item **tables[MAX_TABLES];	// hash tables
+	ck_hash_table_item_t **tables[MAX_TABLES]; /*!< Array of hash tables. */
 
-	/*! @brief Stash implemented as a dynamic array. */
-	da_array stash;
+	da_array_t stash; /*!< Stash implemented as a dynamic array. */
 
-	/*! @brief Mutex for avoiding multiple insertions / rehashes at once. */
+	/*! \brief Mutex for avoiding multiple insertions / rehashes at once. */
 	pthread_mutex_t mtx_table;
 
 	/*!
-	 *@brief Flags used for determining which hash functions are used currently.
+	 * \brief Flags used for determining which hash functions are currently
+	 *        used
 	 *
 	 * Form: 00000xyz.
-	 * x - rehash flag
+	 * x - rehash flag (1 if rehashing is in progress)
 	 * yz - generation (may be 10 = 2, or 01 = 1)
 	 *
-	 * There are always two sets of hash functions available via the us_hash()
-	 * function (see universal-hashing.h). Normally all items in the table are
-	 * hashed using one set of functions. However, during rehash, the other set
-	 * is used for rehashing. In this case the rehash flag (x) is set, so the
-	 * lookup function (ck_find_item()) tries to use both sets of functions when
-	 * searching for item.
+	 * There are always two sets of hash functions available via the
+	 * us_hash() function (see universal-hashing.h). Normally all items in
+	 * the table are hashed using one set of functions. However, during
+	 * rehash, the other set is used for rehashing. In this case the rehash
+	 * flag (x) is set, so the lookup function (ck_find_item()) tries to use
+	 * both sets of functions when searching for item.
 	 */
-	uint8_t generation;		/* 00000xyz x==1 .. rehashing in progress
-											yz   .. generation; may be 01 or 10 */
-} ck_hash_table;
+	uint8_t generation;
+};
+
+typedef struct ck_hash_table ck_hash_table_t;
 
 /*----------------------------------------------------------------------------*/
-/* API functions						                                      */
+/* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 /*!
- * @brief Creates and initializes the hash table structure.
- *
- * @param items Number of items to be hashed to the table. This number
- *              determines the size of the hash table that will be created.
+ * \brief Creates and initializes the hash table structure.
  *
  * All hash tables are allocated and their items initialized to 0 (NULL).
- * A stash of default size is also created. The @a generation flags are set to
+ * A stash of default size is also created. The \a generation flags are set to
  * 0.
  *
- * @return Pointer to the initialized hash table.
+ * \param items Number of items to be hashed to the table. This number
+ *              determines the size of the hash table that will be created.
+ *
+ *
+ * \return Pointer to the initialized hash table.
  */
-ck_hash_table *ck_create_table( uint item );
+ck_hash_table_t *ck_create_table(uint item);
 
 /*----------------------------------------------------------------------------*/
 /*!
- * @brief Destroys the whole hash table together with the saved values.
+ * \brief Destroys the whole hash table together with the saved values.
  *
- * @param table Pinter to pointer to the hash table.
- * @param dtor_value Destructor function for the values that are be stored in
- *                  the hash table. Set to NULL if you do not want the values
- *                  to be deleted.
- * @param delete_key Set to 0 if you do not want the function to delete the
+ * \param table Pointer to pointer to the hash table.
+ * \param dtor_value Destructor function for the values that are be stored in
+ *                   the hash table. Set to NULL if you do not want the values
+ *                   to be deleted.
+ * \param delete_key Set to 0 if you do not want the function to delete the
  *                   key of the item (e.g. when used elsewhere). Set to any
  *                   other value otherwise.
  *
- * Make sure the table and its items are not used anymore when calling this
- * function.
+ * \note Make sure the table and its items are not used anymore when calling
+ * this function.
  */
-void ck_destroy_table( ck_hash_table **tables,
-					   void (*dtor_value)( void *value ), int delete_key );
+void ck_destroy_table(ck_hash_table_t **tables,
+                      void (*dtor_value)(void *value), int delete_key);
 
 /*----------------------------------------------------------------------------*/
 /*!
- * @brief Inserts item into the hash table.
- *
- * @param table Hash table the item should be inserted into.
- * @param key Item's key. It can be any string of octets. The key is not copied
- *            by the function.
- * @param length Length of the key in bytes (octets).
- * @param value Pointer to the actual item to be inserted into the hash table.
+ * \brief Inserts item into the hash table.
  *
  * Insertion starts always by trying to hash the item into the first table. The
  * possible displaced item is then hashed into randomly chosen other table,
  * etc., until a free place is found or a loop occured. A loop occurs when one
  * position in one table is tried more than twice.
  *
- * @note This function does not copy the key.
- * @note This function may trigger rehash of the whole table in case the stash
+ * \param table Hash table the item should be inserted into.
+ * \param key Item's key. It can be any string of octets. The key is not copied
+ *            by the function.
+ * \param length Length of the key in bytes (octets).
+ * \param value Pointer to the actual item to be inserted into the hash table.
+ *
+ * \note This function does not copy the key.
+ * \note This function may trigger rehash of the whole table in case the stash
  *       gets full.
  *
- * @retval 0 No error.
- * @retval -1 Insertion failed. This may occur only when the rehashing fails.
+ * \retval 0 No error.
+ * \retval -1 Insertion failed. This may occur only when the rehashing fails.
  *            In this case it is necessary to somehow manually force another
  *            rehash as no other rehash would be possible.
  */
-int ck_insert_item( ck_hash_table *table, const char *key, size_t length,
-                    void *value );
-#ifdef CT_TEST_REHASH
-/*----------------------------------------------------------------------------*/
+int ck_insert_item(ck_hash_table_t *table, const char *key, size_t length,
+                   void *value);
 
-int ck_rehash( ck_hash_table *table );
-#endif
 /*----------------------------------------------------------------------------*/
 /*!
- * @brief Finds item in table.
+ * \brief Finds item in table.
  *
- * @param table Hash table to search in.
- * @param key Key of the item. It can be an arbitrary string of octets.
- * @param length Length of the key in bytes (octets).
+ * \param table Hash table to search in.
+ * \param key Key of the item. It can be an arbitrary string of octets.
+ * \param length Length of the key in bytes (octets).
  *
- * @return Pointer to the item if found. NULL otherwise.
+ * \return Pointer to the item if found. NULL otherwise.
  */
-const ck_hash_table_item *ck_find_item(
-		const ck_hash_table *table, const char *key, size_t length );
+const ck_hash_table_item_t *ck_find_item(const ck_hash_table_t *table,
+                                         const char *key, size_t length);
 
 /*----------------------------------------------------------------------------*/
 /*!
- * @brief Updates item with the given key by replacing its value.
- *
- * @param table Hash table where to search for the item.
- * @param key Key of the item to be updated. It can be an arbitrary string of
- *            octets.
- * @param length Length of the key in bytes (octets).
- * @param new_value New value for the item with key @a key.
+ * \brief Updates item with the given key by replacing its value.
  *
  * The update process is synchronized using RCU mechanism, so the old item's
  * value will not be deleted while some thread is using it.
  *
- * @retval 0 If successful.
- * @retval -1 If the item was not found in the table. No changes are made.
+ * \param table Hash table where to search for the item.
+ * \param key Key of the item to be updated. It can be an arbitrary string of
+ *            octets.
+ * \param length Length of the key in bytes (octets).
+ * \param new_value New value for the item with key \a key.
+ * \param dtor_value Destructor function for the values that are be stored in
+ *                   the hash table. Set to NULL if you do not want the values
+ *                   to be deleted.
+ *
+ * \retval 0 If successful.
+ * \retval -1 If the item was not found in the table. No changes are made.
  */
-int ck_update_item( const ck_hash_table *table, const char *key, size_t length,
-					void *new_value );
+int ck_update_item(const ck_hash_table_t *table, const char *key, size_t length,
+                   void *new_value, void (*dtor_value)(void *value));
 
 /*----------------------------------------------------------------------------*/
 /*!
- * @brief Removes item with the given key from table.
- *
- * @param table Hash table where to search for the item.
- * @param key Key of the item to be removed. It can be an arbitrary string of
- *            octets.
- * @param length Length of the key in bytes (octets).
- * @param dtor_item Destructor function for the values that are be stored in
- *                  the hash table. Set to NULL if you do not want the values
- *                  to be deleted.
- * @param delete_key Set to 0 if you do not want the function to delete the
- *                   key of the item (e.g. when used elsewhere). Set to any
- *                   other value otherwise.
+ * \brief Removes item with the given key from table.
  *
  * The deletion process is synchronized using RCU mechanism, so the old item
  * will not be deleted while some thread is using it.
  *
- * @retval 0 If successful.
- * @retval -1 If the item was not found in the table.
+ * \param table Hash table where to search for the item.
+ * \param key Key of the item to be removed. It can be an arbitrary string of
+ *            octets.
+ * \param length Length of the key in bytes (octets).
+ * \param dtor_value Destructor function for the values that are be stored in
+ *                   the hash table. Set to NULL if you do not want the values
+ *                   to be deleted.
+ * \param delete_key Set to 0 if you do not want the function to delete the
+ *                   key of the item (e.g. when used elsewhere). Set to any
+ *                   other value otherwise.
+ *
+ * \retval 0 If successful.
+ * \retval -1 If the item was not found in the table.
  */
-int ck_remove_item( const ck_hash_table *table, const char *key, size_t length,
-					void (*dtor_value)( void *value ), int delete_key );
+int ck_remove_item(const ck_hash_table_t *table, const char *key, size_t length,
+                   void (*dtor_value)(void *value), int delete_key);
 
+#ifdef CT_TEST_REHASH
+/*----------------------------------------------------------------------------*/
+
+int ck_rehash(ck_hash_table_t *table);
+#endif
 /*----------------------------------------------------------------------------*/
 /*!
- * @brief Dumps the whole hash table to the console.
+ * \brief Dumps the whole hash table to the console.
  */
-void ck_dump_table( const ck_hash_table *table );
+void ck_dump_table(const ck_hash_table_t *table);
 
 /*----------------------------------------------------------------------------*/
 
-#endif
+#endif /* _CUTEDNS_CUCKOO_HASH_TABLE_H_ */
+
+/*! @} */

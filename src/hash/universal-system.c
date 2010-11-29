@@ -1,14 +1,3 @@
-/*!
- * @file universal-system.c
- *
- * @todo What if all numbers are tried and still need rehash?
- *       (that means 2mld rehashes - we can live with that ;)
- * @todo Consider counting generations from 0, will be easier!
- * @todo Check out some better random number generator.
- */
-
-#include "universal-system.h"
-
 #include <limits.h>
 #include <stdint.h>
 #include <time.h>
@@ -16,16 +5,22 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#define GEN_COUNT 2
+#include "universal-system.h"
+
+/*----------------------------------------------------------------------------*/
+
+enum { GEN_COUNT = 2 };
 static uint coefs[US_FNC_COUNT * GEN_COUNT];
 
 const uint MAX_UINT_EXP = 32;
 const unsigned long MAX_UINT_MY = 4294967295;
 
 /*----------------------------------------------------------------------------*/
+/* Private functions                                                          */
+/*----------------------------------------------------------------------------*/
 
-void us_generate_coefs( uint from, uint to ) {
-
+static void us_generate_coefs(uint from, uint to)
+{
 	for (uint i = from; i < to; ++i) {
 		int used = 0;
 
@@ -48,41 +43,44 @@ void us_generate_coefs( uint from, uint to ) {
 }
 
 /*----------------------------------------------------------------------------*/
+/* Public functions                                                           */
+/*----------------------------------------------------------------------------*/
 
 void us_initialize()
 {
 	assert(UINT_MAX == MAX_UINT_MY);
-    srand(time(NULL));
+	srand(time(NULL));
 
-    /*
-     * Initialize both generations of functions by generating random odd numbers
-     */
+	// Initialize both generations of functions by generating random odd
+	// numbers
 	us_generate_coefs(0, US_FNC_COUNT * GEN_COUNT);
 }
 
 /*----------------------------------------------------------------------------*/
 /*!
- * @note @a generation starts from 1
+ * \note \a generation starts from 1
  */
-int us_next( uint generation )
+int us_next(uint generation)
 {
-    // generate new coeficients for the new generation
-	us_generate_coefs((generation - 1) * US_FNC_COUNT, generation * US_FNC_COUNT);
-    return 0;
+	// generate new coeficients for the new generation
+	us_generate_coefs((generation - 1) * US_FNC_COUNT,
+	                  generation * US_FNC_COUNT);
+	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
-/*!
- * @param c Number of the hash function (0 .. US_FNC_COUNT - 1).
- * @param generation Number of the generation of functions (0 .. GEN_COUNT).
- */
-uint32_t us_hash( uint32_t value, uint table_exp, uint fnc, uint generation )
+
+uint32_t us_hash(uint32_t value, uint table_exp, uint fnc, uint generation)
 {
-    /* multiplication should overflow if larger than MAX_UINT
-       this is the same as (coef * value) mod MAX_UINT */
-    assert(table_exp <= 32);
+	/*
+	 * multiplication should overflow if larger than MAX_UINT
+	 * this is the same as (coef * value) mod MAX_UINT
+	 *
+	 * TODO: maybe we should not rely on this
+	 */
+	assert(table_exp <= 32);
 	assert(fnc < US_FNC_COUNT);
 	assert(generation <= GEN_COUNT);
 	return ((coefs[((generation - 1) * US_FNC_COUNT) + fnc] * value)
-			>> (MAX_UINT_EXP - table_exp));
+	        >> (MAX_UINT_EXP - table_exp));
 }

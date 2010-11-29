@@ -1,30 +1,34 @@
-#include "dynamic-array.h"
-
 #include <pthread.h>
 #include <assert.h>
 #include <stdio.h>
+
 #include <urcu.h>
 
+#include "dynamic-array.h"
+
 /*----------------------------------------------------------------------------*/
-/* Private functions          					                              */
+/* Private functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-typedef enum {
+enum da_resize_type {
 	DA_LARGER, DA_SMALLER
-} da_resize_type;
+};
+
+typedef enum da_resize_type da_resize_type_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
- * @retval 1 On success.
- * @retval -1 On failure.
+ * \retval 1 On success.
+ * \retval -1 On failure.
  */
-int da_resize( da_array *array, da_resize_type type ) {
+static int da_resize(da_array_t *array, da_resize_type_t type)
+{
 	debug_da("da_resize(): array pointer: %p, items pointer: %p\n", array,
-			 array->items);
+	         array->items);
 
 	uint new_size = ((type == DA_LARGER)
-					 ? (array->allocated *= 2)
-					 : (array->allocated /= 2));
+	                 ? (array->allocated *= 2)
+	                 : (array->allocated /= 2));
 
 	void *new_items = malloc(new_size * array->item_size);
 	if (new_items == NULL) {
@@ -46,20 +50,20 @@ int da_resize( da_array *array, da_resize_type type ) {
 	// wait for readers to finish
 	synchronize_rcu();
 	// deallocate the old array
-	debug_da("RCU synchronized, deallocating old items array at address %p.\n",
-			 old_items);
+	debug_da("RCU synchronized, deallocating old items array at address %p."
+	         "\n", old_items);
 	free(old_items);
 
 	return 1;
 }
 
 /*----------------------------------------------------------------------------*/
-/* Public functions          					                              */
+/* Public functions                                                           */
 /*----------------------------------------------------------------------------*/
 
-da_array *da_create( uint count, size_t item_size )
+da_array_t *da_create(uint count, size_t item_size)
 {
-	da_array *a = (da_array *)malloc(sizeof(da_array));
+	da_array_t *a = (da_array_t *)malloc(sizeof(da_array_t));
 	if (a == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -70,7 +74,7 @@ da_array *da_create( uint count, size_t item_size )
 
 /*----------------------------------------------------------------------------*/
 
-int da_initialize( da_array *array, uint count, size_t item_size )
+int da_initialize(da_array_t *array, uint count, size_t item_size)
 {
 	assert(array != NULL);
 	pthread_mutex_init(&array->mtx, NULL);
@@ -95,7 +99,7 @@ int da_initialize( da_array *array, uint count, size_t item_size )
 
 /*----------------------------------------------------------------------------*/
 
-int da_reserve( da_array *array, uint count )
+int da_reserve(da_array_t *array, uint count)
 {
 	pthread_mutex_lock(&array->mtx);
 	uint res = 0;
@@ -115,7 +119,7 @@ int da_reserve( da_array *array, uint count )
 
 /*----------------------------------------------------------------------------*/
 
-int da_occupy( da_array *array, uint count )
+int da_occupy(da_array_t *array, uint count)
 {
 	pthread_mutex_lock(&array->mtx);
 	uint res = 0;
@@ -134,7 +138,7 @@ int da_occupy( da_array *array, uint count )
 
 /*----------------------------------------------------------------------------*/
 
-uint da_try_reserve( const da_array *array, uint count )
+uint da_try_reserve(const da_array_t *array, uint count)
 {
 	assert(array->allocated >= array->count);
 	if ((array->allocated - array->count) >= count) {
@@ -146,7 +150,7 @@ uint da_try_reserve( const da_array *array, uint count )
 
 /*----------------------------------------------------------------------------*/
 
-void da_release( da_array *array, uint count )
+void da_release(da_array_t *array, uint count)
 {
 	pthread_mutex_lock(&array->mtx);
 
@@ -160,7 +164,7 @@ void da_release( da_array *array, uint count )
 
 /*----------------------------------------------------------------------------*/
 
-void da_destroy( da_array *array )
+void da_destroy(da_array_t *array)
 {
 	pthread_mutex_lock(&array->mtx);
 	void *old_items = rcu_dereference(array->items);
@@ -174,14 +178,14 @@ void da_destroy( da_array *array )
 
 /*----------------------------------------------------------------------------*/
 
-void *da_get_items( const da_array *array )
+void *da_get_items(const da_array_t *array)
 {
 	return array->items;
 }
 
 /*----------------------------------------------------------------------------*/
 
-uint da_get_count( const da_array *array )
+uint da_get_count(const da_array_t *array)
 {
 	return array->count;
 }

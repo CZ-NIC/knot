@@ -19,9 +19,15 @@ plan (int tests) {
 static char *
 vstrdupf (const char *fmt, va_list args) {
     char *str;
-    int size = vsnprintf(NULL, 0, fmt, args) + 1;
+    int size;
+    va_list args2;
+    va_copy(args2, args);
+    if (!fmt)
+        fmt = "";
+    size = vsnprintf(NULL, 0, fmt, args2) + 2;
     str = malloc(size);
     vsprintf(str, fmt, args);
+    va_end(args2);
     return str;
 }
 
@@ -46,7 +52,6 @@ vok_at_loc (const char *file, int line, int test, const char *fmt,
         else
             diag("  Failed%s test at %s line %d.",
                 todo_mesg ? " (TODO)" : "", file, line);
-
         if (!todo_mesg)
             failed_tests++;
     }
@@ -138,90 +143,44 @@ cmp_ok_at_loc (const char *file, int line, int a, const char *op, int b,
     return test;
 }
 
+static void
+vdiag_to_fh (FILE *fh, const char *fmt, va_list args) {
+    char *mesg, *line;
+    int i;
+    if (!fmt)
+        return;
+    mesg = vstrdupf(fmt, args);
+    line = mesg;
+    for (i = 0; *line; i++) {
+        char c = mesg[i];
+        if (!c || c == '\n') {
+            mesg[i] = '\0';
+            fprintf(fh, "# %s\n", line);
+            if (!c) break;
+            mesg[i] = c;
+            line = &mesg[i+1];
+        }
+    }
+    free(mesg);
+    return;
+}
+
 int
 diag (const char *fmt, ...) {
-
-   va_list args;
-   va_start(args, fmt);
-   int len = vsnprintf(NULL, 0, fmt, args);
-   va_end(args);
-
-   if(len <= 0) {
-      return -1;
-   }
-
-   char* buf = malloc(len + 1);
-
-   va_start(args, fmt);
-   len = vsprintf(buf, fmt, args);
-   va_end(args);
-
-   char* begin = buf;
-   char* end = strchr(begin, '\n');
-   for(;;) {
-      fprintf(stderr, "# ");
-      if(end == NULL) {
-         end = buf + len;
-         write(fileno(stderr), begin, end - begin + 1);
-         break;
-      }
-
-      write(fileno(stderr), begin, end - begin + 1);
-      begin = end + 1;
-      if(*begin == '\0') {
-         break;
-      }
-
-      end = strchr(begin + 1, '\n');
-   }
-
-   free(buf);
-
-   fprintf(stderr,"\n");
-   return 0;
+    va_list args;
+    va_start(args, fmt);
+    vdiag_to_fh(stderr, fmt, args);
+    va_end(args);
+    return 0;
 }
 
 int
 note (const char *fmt, ...) {
-
-   va_list args;
-   va_start(args, fmt);
-   int len = vsnprintf(NULL, 0, fmt, args);
-   va_end(args);
-
-   if(len <= 0) {
-      return -1;
-   }
-
-   char* buf = malloc(len + 1);
-
-   va_start(args, fmt);
-   len = vsprintf(buf, fmt, args);
-   va_end(args);
-
-   char* begin = buf;
-   char* end = strchr(begin, '\n');
-   for(;;) {
-      fprintf(stderr, "# ");
-      if(end == NULL) {
-         end = buf + len;
-         write(fileno(stdout), begin, end - begin + 1);
-         break;
-      }
-
-      write(fileno(stdout), begin, end - begin + 1);
-      begin = end + 1;
-      if(*begin == '\0') {
-         break;
-      }
-
-      end = strchr(begin + 1, '\n');
-   }
-
-   free(buf);
-
-   fprintf(stdout,"\n");
-   return 0;
+    va_list args;
+    va_start(args, fmt);
+    vdiag_to_fh(stdout, fmt, args);
+    va_end(args);
+    return 0;
 }
 
 int
@@ -277,6 +236,10 @@ cendtodo () {
 #ifndef _WIN32
 #include <sys/mman.h>
 #include <regex.h>
+
+#ifdef __APPLE__
+#define MAP_ANONYMOUS MAP_ANON
+#endif
 
 /* Create a shared memory int to keep track of whether a piece of code executed
 dies. to be used in the dies_ok and lives_ok macros  */

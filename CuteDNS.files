@@ -13,10 +13,8 @@ src/hash/universal-system.c
 src/hash/universal-system.h
 src/other/print.c
 src/other/print.h
-src/server/socket-manager.c
-src/server/socket-manager.h
-src/server/dispatcher.c
-src/server/dispatcher.h
+src/server/socket.c
+src/server/socket.h
 src/server/name-server.c
 src/server/name-server.h
 src/server/server.c
@@ -49,10 +47,8 @@ src/other/skip-list.h
 src/other/skip-list.c
 tests/querytcp.c
 src/server/udp-handler.h
-src/server/udp-handler-epoll.h
 src/server/tcp-handler.h
 src/server/udp-handler.c
-src/server/udp-handler-epoll.c
 src/server/tcp-handler.c
 src/dnslib/dname.h
 src/dnslib/dname.c
@@ -69,3 +65,10 @@ src/tests/dnslib/dnslib_rrset_tests.c
 src/tests/dnslib/dnslib_node_tests.c
 src/dnslib/descriptor.h
 src/dnslib/descriptor.c
+src/server/dthreads.h
+src/server/dthreads.c
+src/tests/dthreads_tests.c
+src/stat/gatherer.h
+src/stat/gatherer.c
+src/stat/stat.h
+src/stat/stat.c
