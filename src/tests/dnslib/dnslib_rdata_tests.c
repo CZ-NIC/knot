@@ -1,5 +1,6 @@
 /*!
  * \file dnslib_rdata_tests.c
+ *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
  * Contains unit tests for RDATA (dnslib_rdata_t) and RDATA item
@@ -96,6 +97,7 @@ static int test_rdata_create()
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Tests dnslib_rdata_free().
+ *
  * \retval > 0 on success.
  * \retval 0 otherwise.
  */
@@ -184,8 +186,8 @@ static int fill_rdata(uint8_t *data, int max_size, uint16_t rrtype,
 		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
 			stored_size = 1;
 		case DNSLIB_RDATA_WF_BINARY:
-		case DNSLIB_RDATA_WF_APL:		// saved as binary
-		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
+		case DNSLIB_RDATA_WF_APL:            // saved as binary
+		case DNSLIB_RDATA_WF_IPSECGATEWAY:   // saved as binary
 			// size stored in the first byte
 			size = rand() % DNSLIB_MAX_RDATA_ITEM_SIZE + 1;
 			binary = 1;
@@ -299,8 +301,8 @@ static int check_rdata(const uint8_t *data, int max_size, uint16_t rrtype,
 			size = 16;
 			break;
 		case DNSLIB_RDATA_WF_BINARY:
-		case DNSLIB_RDATA_WF_APL:		// saved as binary
-		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
+		case DNSLIB_RDATA_WF_APL:            // saved as binary
+		case DNSLIB_RDATA_WF_IPSECGATEWAY:   // saved as binary
 			//note("    binary");
 		case DNSLIB_RDATA_WF_TEXT:
 		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
@@ -350,7 +352,7 @@ static int check_rdata(const uint8_t *data, int max_size, uint16_t rrtype,
 		    diag("Size of stored binary data is wrong:"
 		         " %u (should be %u)",
 			 dnslib_rdata_get_item(rdata, i)->raw_data[0] + 1, 
-			 		       size);
+			                       size);
 			++errors;
 		}
 
@@ -372,8 +374,8 @@ static int check_rdata(const uint8_t *data, int max_size, uint16_t rrtype,
 
 /*----------------------------------------------------------------------------*/
 
-int convert_to_wire(const uint8_t *data, int max_size, uint16_t rrtype,
-                    uint8_t *data_wire)
+static int convert_to_wire(const uint8_t *data, int max_size, uint16_t rrtype,
+                           uint8_t *data_wire)
 {
 	//note("Converting type %u", rrtype);
 
@@ -431,8 +433,8 @@ int convert_to_wire(const uint8_t *data, int max_size, uint16_t rrtype,
 			pos += 16;
 			break;
 		case DNSLIB_RDATA_WF_BINARY:
-		case DNSLIB_RDATA_WF_APL:		// saved as binary
-		case DNSLIB_RDATA_WF_IPSECGATEWAY:	// saved as binary
+		case DNSLIB_RDATA_WF_APL:            // saved as binary
+		case DNSLIB_RDATA_WF_IPSECGATEWAY:   // saved as binary
 			//note("    binary");
 			from = pos + 1;
 			to_copy = *pos;
@@ -509,7 +511,7 @@ static int test_rdata_set_item()
 	if (dnslib_rdata_get_item(rdata, pos)->raw_data != RDATA_ITEM_PTR) {
 		diag("RDATA item on position %d is wrong: %p (should be %p).",
 		     pos, dnslib_rdata_get_item(rdata, pos)->raw_data, 
-		     				RDATA_ITEM_PTR);
+		     RDATA_ITEM_PTR);
 		dnslib_rdata_free(&rdata);
 		return 0;
 	}
@@ -519,12 +521,12 @@ static int test_rdata_set_item()
 	
 	for (int x = 0; x < desc->length; x++) {
 	       if (desc->wireformat[x] == 
-	           DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
+	               DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 	           desc->wireformat[x] == 
-	           DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+	               DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 	           desc->wireformat[x] == 
-	           DNSLIB_RDATA_WF_LITERAL_DNAME) {
-			dnslib_dname_free(&(rdata->items[x].dname));
+	               DNSLIB_RDATA_WF_LITERAL_DNAME) {
+		dnslib_dname_free(&(rdata->items[x].dname));
 	       }
 	}
 
@@ -584,8 +586,8 @@ static int test_rdata_set_items()
 		    < 0) {
 			++errors;
 		}
-		errors += check_rdata(data, 
-				      DNSLIB_MAX_RDATA_WIRE_SIZE, i, rdata);
+		errors += check_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i,
+		                      rdata);
 
 		dnslib_rrtype_descriptor_t *desc = 
 		dnslib_rrtype_descriptor_by_type(i);
@@ -626,20 +628,20 @@ static int test_rdata_get_item()
 	}
 
 	int errors = 0;
-	if ((dnslib_rdata_get_item(rdata, 0)->dname) != 
-	    TEST_RDATA.items[0].dname) {
+	if ((dnslib_rdata_get_item(rdata, 0)->dname)
+	      != TEST_RDATA.items[0].dname) {
 		diag("RDATA item on position 0 is wrong: %p (should be %p)",
 		     dnslib_rdata_get_item(rdata, 0), TEST_RDATA.items[0]);
 		++errors;
 	}
 	if ((dnslib_rdata_get_item(rdata, 1)->raw_data)
-	                != TEST_RDATA.items[1].raw_data) {
+	      != TEST_RDATA.items[1].raw_data) {
 		diag("RDATA item on position 0 is wrong: %p (should be %p)",
 		     dnslib_rdata_get_item(rdata, 1), TEST_RDATA.items[1]);
 		++errors;
 	}
 	if ((dnslib_rdata_get_item(rdata, 2)->raw_data)
-	                != TEST_RDATA.items[2].raw_data) {
+	      != TEST_RDATA.items[2].raw_data) {
 		diag("RDATA item on position 0 is wrong: %p (should be %p)",
 		     dnslib_rdata_get_item(rdata, 2), TEST_RDATA.items[2]);
 		++errors;
@@ -669,7 +671,7 @@ static int test_rdata_wire_size()
 			++errors;
 		} else {
 			int counted_size = dnslib_rdata_wire_size(rdata,
-	                dnslib_rrtype_descriptor_by_type(i)->wireformat);
+			    dnslib_rrtype_descriptor_by_type(i)->wireformat);
 			if (size != counted_size) {
 				diag("Wrong wire size computed (type %d):"
 				     " %d (should be %d)",
@@ -679,7 +681,7 @@ static int test_rdata_wire_size()
 		}
 
 		dnslib_rrtype_descriptor_t *desc = 
-		dnslib_rrtype_descriptor_by_type(i);
+		    dnslib_rrtype_descriptor_by_type(i);
 
 		for (int x = 0; x < desc->length; x++) {
 			if (desc->wireformat[x] == 

@@ -52,6 +52,7 @@ static const struct test_domain
 
 /*!
  * \brief Tests dnslib_dname_new().
+ *
  * \retval > 0 on success.
  * \retval 0 otherwise.
  */
@@ -59,9 +60,9 @@ static int test_dname_create()
 {
 	dnslib_dname_t *dname = dnslib_dname_new();
 	if (dname == NULL
-	                || dnslib_dname_name(dname) != NULL
-	                || dnslib_dname_size(dname) != 0
-	                || dnslib_dname_node(dname) != NULL) {
+	    || dnslib_dname_name(dname) != NULL
+	    || dnslib_dname_size(dname) != 0
+	    || dnslib_dname_node(dname) != NULL) {
 		diag("New domain name not initialized properly!");
 		return 0;
 	}
@@ -76,6 +77,7 @@ static int test_dname_create()
 
 /*!
  * \brief Tests dnslib_dname_free().
+ *
  * \retval > 0 on success.
  * \retval 0 otherwise.
  */
@@ -123,6 +125,7 @@ static int check_domain_name(const dnslib_dname_t *dname, int i)
 
 /*!
  * \brief Tests dnslib_dname_new_from_str().
+ *
  * \retval > 0 on success.
  * \retval 0 otherwise.
  */
@@ -133,9 +136,7 @@ static int test_dname_create_from_str()
 
 	for (int i = 0; i < TEST_DOMAINS_OK && errors == 0; ++i) {
 		dname = dnslib_dname_new_from_str(test_domains_ok[i].str,
-                                                  strlen(
-						  test_domains_ok[i].str),
-						  NODE_ADDRESS);
+		          strlen(test_domains_ok[i].str), NODE_ADDRESS);
 		errors += check_domain_name(dname, i);
 		dnslib_dname_free(&dname);
 	}
@@ -145,6 +146,7 @@ static int test_dname_create_from_str()
 
 /*!
  * \brief Tests dnslib_dname_new_from_wire().
+ *
  * \retval > 0 on success.
  * \retval 0 otherwise.
  */
@@ -156,10 +158,9 @@ static int test_dname_create_from_wire()
 	for (int i = 0; i < TEST_DOMAINS_OK && errors == 0; ++i) {
 		assert(strlen(test_domains_ok[i].wire) + 1 == 
 		       test_domains_ok[i].size);
-		dname = dnslib_dname_new_from_wire((uint8_t *)
-						   test_domains_ok[i].wire,
-						   test_domains_ok[i].size,
-						   NODE_ADDRESS);
+		dname = dnslib_dname_new_from_wire(
+		            (uint8_t *)test_domains_ok[i].wire,
+		            test_domains_ok[i].size, NODE_ADDRESS);
 		errors += check_domain_name(dname, i);
 		dnslib_dname_free(&dname);
 	}
@@ -169,6 +170,7 @@ static int test_dname_create_from_wire()
 
 /*!
  * \brief Tests dnslib_dname_to_str().
+ *
  * \retval > 0 on success.
  * \retval 0 otherwise.
  */
@@ -178,10 +180,9 @@ static int test_dname_to_str()
 	dnslib_dname_t *dname = NULL;
 
 	for (int i = 0; i < TEST_DOMAINS_OK && errors == 0; ++i) {
-		dname = dnslib_dname_new_from_wire((uint8_t *)
-						   test_domains_ok[i].wire,
-				 		   test_domains_ok[i].size,
-						   NODE_ADDRESS);
+		dname = dnslib_dname_new_from_wire(
+		            (uint8_t *)test_domains_ok[i].wire,
+		            test_domains_ok[i].size, NODE_ADDRESS);
 		char *name_str = dnslib_dname_to_str(dname);
 		if (strcmp(name_str, test_domains_ok[i].str) != 0) {
 			diag("Presentation format of domain name wrong:"
@@ -205,22 +206,19 @@ static int test_faulty_data()
 
 		if (test_domains_bad[i].str != NULL) {
 			dname = dnslib_dname_new_from_str(
-						test_domains_bad[i].str,
-						strlen(
-						test_domains_bad[i].str), 
-						NODE_ADDRESS);
+			            test_domains_bad[i].str,
+			            strlen(test_domains_bad[i].str),
+			            NODE_ADDRESS);
 		} else {
 			dname = dnslib_dname_new_from_str(
-						test_domains_bad[i].str,
-			                        0, NODE_ADDRESS);
+			    test_domains_bad[i].str, 0, NODE_ADDRESS);
 		}
 
 		dnslib_dname_free(&dname);
 
-		dname = dnslib_dname_new_from_wire((uint8_t *)
-						   test_domains_bad[i].wire,
-		                                   test_domains_bad[i].size,
-						   NODE_ADDRESS);
+		dname = dnslib_dname_new_from_wire(
+		            (uint8_t *)test_domains_bad[i].wire,
+		            test_domains_bad[i].size, NODE_ADDRESS);
 
 		dnslib_dname_free(&dname);
 	}
@@ -232,10 +230,9 @@ static int test_dname_compare()
 	dnslib_dname_t *dnames[TEST_DOMAINS_OK];
 
 	for (int i = 0; i < TEST_DOMAINS_OK; ++i) {
-		dnames[i] = dnslib_dname_new_from_wire((uint8_t *)
-						test_domains_ok[i].wire,
-						test_domains_ok[i].size,
-						NODE_ADDRESS);
+		dnames[i] = dnslib_dname_new_from_wire(
+		                (uint8_t *)test_domains_ok[i].wire,
+		                test_domains_ok[i].size, NODE_ADDRESS);
 	}
 
 	int errors = 0;

@@ -10,7 +10,7 @@ static int dnslib_node_tests_run(int argc, char *argv[]);
 /*! Exported unit API.
  */
 unit_api dnslib_node_tests_api = {
-	"DNS library - node",        //! Unit name
+	"DNS library - node",       //! Unit name
 	&dnslib_node_tests_count,  //! Count scheduled tests
 	&dnslib_node_tests_run     //! Run scheduled tests
 };
@@ -52,7 +52,7 @@ static int test_node_create()
 	int errors = 0;
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
 		tmp = dnslib_node_new(&test_nodes[i].owner, 
-				      test_nodes[i].parent);
+		                      test_nodes[i].parent);
 		if (tmp == NULL || 
 		    tmp->owner != &test_nodes[i].owner ||
 		    tmp->parent != test_nodes[i].parent ||
@@ -72,7 +72,7 @@ static int test_node_add_rrset()
 	int errors = 0;
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
 		tmp = dnslib_node_new(&test_nodes[i].owner,
-				      test_nodes[i].parent);
+		                      test_nodes[i].parent);
 		rrset = &rrsets[0];
 		if (dnslib_node_add_rrset(tmp, rrset) != 0) {
 			errors++;
@@ -94,7 +94,7 @@ static int test_node_get_rrset()
 
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
 		tmp = dnslib_node_new(&test_nodes[i].owner,
-				      test_nodes[i].parent);
+		                      test_nodes[i].parent);
 		nodes[i] = tmp;
 		for (int j = 0; j < RRSETS; j++) {
 			dnslib_node_add_rrset(tmp, &rrsets[j]);
@@ -126,7 +126,7 @@ static int test_node_get_parent()
 
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
 		tmp = dnslib_node_new(&test_nodes[i].owner,
-				      test_nodes[i].parent);
+		                      test_nodes[i].parent);
 		nodes[i] = tmp;
 		rrset = &rrsets[i];
 		dnslib_node_add_rrset(tmp, rrset);
