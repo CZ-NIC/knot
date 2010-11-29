@@ -1,3 +1,14 @@
+/*!
+ * \file consts.h
+ *
+ * \author Lubos Slovak <lubos.slovak@nic.cz>
+ *
+ * \brief Contains some DNS-related constants.
+ *
+ * \addtogroup dnslib
+ * @{
+ */
+
 #ifndef _CUTEDNS_DNSLIB_CONSTS_H_
 #define _CUTEDNS_DNSLIB_CONSTS_H_
 
@@ -46,3 +57,5 @@ const unsigned int DNSLIB_MAX_DNAME_LENGTH = 255;
 const unsigned int DNSLIB_MAX_DNAME_LABELS = 127;	// 1-char labels
 
 #endif /* _CUTEDNS_DNSLIB_CONSTS_H_ */
+
+/*! @} */
