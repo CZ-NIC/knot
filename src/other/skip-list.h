@@ -4,7 +4,7 @@
  * \author Copyright (c) 2010 the authors listed at the following URL, and/or
  *         the authors of referenced articles or incorporated external code:
  *         http://en.literateprograms.org/Skip_list_(C)?action=history&offset=20080313195128
- * \author Lubos Slovak <lubos.slovak\nic.cz>
+ * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
  * \brief Generic skip-list implementation.
  *
