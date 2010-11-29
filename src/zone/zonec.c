@@ -1222,20 +1222,19 @@ process_rr(void)
 
 	/* Do we have this type of rrset already? */
 	dnslib_node_t *node;
-	node = zdb_find_name_in_zone(zone, current_rrset->)
-	rrset = dnslib_node_get_rrset(rr->owner, zone, rr->type);
+	node = zdb_find_name_in_zone(zone, current_rrset->owner); //XXX
+	// check if node != NULL, else add then add rrset
+	rrset = dnslib_node_get_rrset(node, current_rrset->type);
 	if (!rrset) {
 		rrset = (rrset_type *) region_alloc(parser->region,
 						    sizeof(rrset_type));
-		rrset->zone = zone;
-		rrset->rr_count = 1;
-		rrset->rrs = (rr_type *) xalloc(sizeof(rr_type));
-		rrset->rrs[0] = *rr;
-
-		region_add_cleanup(parser->region, cleanup_rrset, rrset);
+//		rrset->zone = zone;
+		rrset->count = 1;
+		rrset->rrdata = dnslib_rdata_new();
+		//create item, add it to the set
 
 		/* Add it */
-		domain_add_rrset(rr->owner, rrset);
+		dnslib_node_add_rrset(node, rrset);
 	} else {
 		if (rr->type != TYPE_RRSIG && rrset->rrs[0].ttl != rr->ttl) {
 			zc_warning_prev_line(
