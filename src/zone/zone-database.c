@@ -76,7 +76,7 @@ static uint zdb_create_list(zdb_zone_t *zone, ldns_zone *zone_ldns)
 
 	while (i < rr_count) {
 		ldns_rr_list *rrset = ldns_rr_list_pop_rrset(
-				ldns_zone_rrs(zone_ldns));
+		                        ldns_zone_rrs(zone_ldns));
 		i += ldns_rr_list_rr_count(rrset);
 
 		if (i >= next) {
@@ -95,15 +95,15 @@ static uint zdb_create_list(zdb_zone_t *zone, ldns_zone *zone_ldns)
 		          ldns_rr_type2str(ldns_rr_list_type(rrset)));
 
 		if (act_node != NULL
-			&& ldns_dname_compare(ldns_rr_list_owner(rrset),
-					      act_node->owner) == 0) {
+		    && ldns_dname_compare(ldns_rr_list_owner(rrset),
+		                          act_node->owner) == 0) {
 			// same owner, insert into the same node
 			debug_zdb("Inserting into node with owner %s.\n",
 			          ldns_rdf2str(act_node->owner));
 			if (zn_add_rrset(act_node, rrset) != 0) {
 				log_error("Error while processing zone %s: "
-					  "Cannot add RRSet to a zone node.\n",
-					  ldns_rdf2str(zone->zone_name));
+				          "Cannot add RRSet to a zone node.\n",
+				          ldns_rdf2str(zone->zone_name));
 				// ignore rest of the zone
 				break;
 			}
@@ -114,15 +114,15 @@ static uint zdb_create_list(zdb_zone_t *zone, ldns_zone *zone_ldns)
 			zn_node_t *new_node = zn_create();
 			if (new_node == NULL) {
 				log_error("Error while processing zone %s: "
-					  "Cannot create new zone node.\n",
-					  ldns_rdf2str(zone->zone_name));
+				          "Cannot create new zone node.\n",
+				          ldns_rdf2str(zone->zone_name));
 				// ignore rest of the zone
 				break;
 			}
 			if (zn_add_rrset(new_node, rrset) != 0) {
 				log_error("Error while processing zone %s: "
-					  "Cannot add RRSet to a zone node.\n",
-					  ldns_rdf2str(zone->zone_name));
+				          "Cannot add RRSet to a zone node.\n",
+				          ldns_rdf2str(zone->zone_name));
 				// ignore rest of the zone
 				free(new_node);
 				break;
@@ -141,8 +141,9 @@ static uint zdb_create_list(zdb_zone_t *zone, ldns_zone *zone_ldns)
 	log_info("(%d RRs)\n", i);
 
 	debug_zdb("Processing of RRSets done.\nLast node created (should be "
-		  "zone apex): %s, last node of the list: %s.\n",
-	         ldns_rdf2str(act_node->owner), ldns_rdf2str(last_node->owner));
+	          "zone apex): %s, last node of the list: %s.\n",
+	          ldns_rdf2str(act_node->owner), ldns_rdf2str(last_node->owner)
+	          );
 
 	// connect last node to the apex, creating cyclic list
 	last_node->next = act_node;
@@ -153,10 +154,10 @@ static uint zdb_create_list(zdb_zone_t *zone, ldns_zone *zone_ldns)
 	debug_zdb("Done.\nAdding SOA RR to the apex node...\n");
 
 	if (zn_add_rr(zone->apex, ldns_rr_clone(ldns_zone_soa(zone_ldns))) != 0
-	                || skip_empty(zone->apex->rrsets) == 0) {
+	    || skip_empty(zone->apex->rrsets) == 0) {
 		log_error("Error while processing zone %s: Cannot insert SOA RR"
-			  "into the zone apex node.\n",
-			  ldns_rdf2str(zone->zone_name));
+		          "into the zone apex node.\n",
+		          ldns_rdf2str(zone->zone_name));
 		free(zone->apex);
 		return nodes;
 	}
@@ -220,23 +221,23 @@ static int zdb_add_empty_nonterminals(zdb_zone_t *zone)
 		if (ldns_dname_is_subdomain(curr_name, prev->owner)) {
 			// descendant of the previous node
 			parent = prev;
-		} else if (parent != prev
-		        && !ldns_dname_is_subdomain(curr_name, parent->owner)) {
+		} else if (parent != prev &&
+		           !ldns_dname_is_subdomain(curr_name, parent->owner)) {
 			// we must find appropriate parent
 			// number of labels matching between current and parent
 			uint common = zdb_common_labels(curr_name,
-							parent->owner);
+			                                parent->owner);
 			debug_zdb("Common labels with parent node (%s): %u\n",
 			          ldns_rdf2str(parent->owner), common);
 			assert(common < ldns_dname_label_count(parent->owner));
 			assert(common >= ldns_dname_label_count(
-					zone->apex->owner));
+			                  zone->apex->owner));
 
 			if (common == apex_labels) {
 				parent = zone->apex;
 			} else {
 				while (ldns_dname_label_count(parent->owner)
-					> common) {
+				       > common) {
 					parent = parent->prev;
 				}
 			}
@@ -255,10 +256,10 @@ static int zdb_add_empty_nonterminals(zdb_zone_t *zone)
 		if (d > 1) {
 			do {
 				ldns_rdf *new_name = ldns_dname_left_chop(
-						curr_name);
+				                      curr_name);
 				if (new_name == NULL) {
 					log_error("Unknown error in "
-						  "ldns_dname_left_chop().\n");
+					          "ldns_dname_left_chop().\n");
 					return -1;
 				}
 				zn_node_t *new_node = zn_create();
@@ -269,7 +270,7 @@ static int zdb_add_empty_nonterminals(zdb_zone_t *zone)
 				new_node->owner = new_name;
 
 				debug_zdb("Inserting new node with owner %s to "
-					 "the list.\n",ldns_rdf2str(new_name));
+				          "the list.\n",ldns_rdf2str(new_name));
 				zdb_connect_node(current, new_node);
 				++created;
 
@@ -315,7 +316,7 @@ static void zdb_delete_list_items(zdb_zone_t *zone)
 /*----------------------------------------------------------------------------*/
 
 static zn_node_t *zdb_find_name_in_zone_nc(const zdb_zone_t *zone,
-                                         const ldns_rdf *dname)
+                                           const ldns_rdf *dname)
 {
 	assert(zone != NULL);
 	// start of RCU reader critical section
@@ -366,7 +367,7 @@ static zn_node_t *zdb_find_name_or_wildcard(const zdb_zone_t *zone,
 			ldns_rdf *wildcard = ldns_dname_new_frm_str("*");
 
 			if (ldns_dname_cat(wildcard, name_new)
-				!= LDNS_STATUS_OK) {
+			    != LDNS_STATUS_OK) {
 				log_error("Unknown error occured.\n");
 				ldns_rdf_deep_free(wildcard);
 				ldns_rdf_deep_free(name_new);
@@ -402,7 +403,7 @@ static int zdb_adjust_cname(zdb_zone_t *zone, zn_node_t *node)
 		// retreive the canonic name
 		debug_zdb("Found CNAME, resolving...\n");
 		ldns_rdf *cname = ldns_rr_rdf(
-				ldns_rr_list_rr(cname_rrset, 0), 0);
+		                   ldns_rr_list_rr(cname_rrset, 0), 0);
 		assert(ldns_rdf_get_type(cname) == LDNS_RDF_TYPE_DNAME);
 		debug_zdb("Canonical name for alias %s is %s\n",
 		          ldns_rdf2str(node->owner), ldns_rdf2str(cname));
@@ -455,14 +456,14 @@ static void zdb_adjust_additional(zdb_zone_t *zone, zn_node_t *node,
 			name = ldns_rr_ns_nsdname(ldns_rr_list_rr(rrset, i));
 			break;
 		case LDNS_RR_TYPE_SRV:
-			name = ldns_rr_rdf(ldns_rr_list_rr(
-					rrset, i), 3);	// constant
+			// constant
+			name = ldns_rr_rdf(ldns_rr_list_rr(rrset, i), 3);
 			if (ldns_dname_label_count(name) == 0) {
 				// ignore
 				debug_zdb("SRV with empty name as a "
 					  "target: %s\n",
-					  ldns_rr2str(ldns_rr_list_rr(
-							  rrset, i)));
+					  ldns_rr2str(ldns_rr_list_rr(rrset, i))
+					  );
 				return;
 			}
 			assert(ldns_rdf_get_type(name) == LDNS_RDF_TYPE_DNAME);
@@ -473,7 +474,7 @@ static void zdb_adjust_additional(zdb_zone_t *zone, zn_node_t *node,
 
 		assert(name != NULL);
 		debug_zdb("Searching for A/AAAA for %s name %s.\n",
-			  ldns_rr_type2str(type), ldns_rdf2str(name));
+		          ldns_rr_type2str(type), ldns_rdf2str(name));
 
 		// the authoritative nodes should already be in the hash table
 		zn_node_t *found = zdb_find_name_or_wildcard(zone, name);
@@ -483,20 +484,20 @@ static void zdb_adjust_additional(zdb_zone_t *zone, zn_node_t *node,
 		}
 
 		debug_zdb("Found node: %s\n\n", (found)
-			  ? ldns_rdf2str(found->owner) : "(nil)");
+		          ? ldns_rdf2str(found->owner) : "(nil)");
 
 		if (zn_find_rrset(found, LDNS_RR_TYPE_CNAME) != NULL) {
 			debug_zdb("Found CNAME within the node, saving.\n");
 			if (zn_add_ref(node, name, type, NULL, found) != 0) {
 				log_error("Error occured while saving A RRSet "
-					  "for %s record in node %s\n\n",
-					  ldns_rr_type2str(type),
-					  ldns_rdf2str(node->owner));
+				          "for %s record in node %s\n\n",
+				          ldns_rr_type2str(type),
+				          ldns_rdf2str(node->owner));
 			}
 			if (zn_add_referrer(found, node, type) != 0) {
 				log_error("Error occured while saving referrer "
-					  "node to node %s\n",
-					  ldns_rdf2str(found->owner));
+				          "node to node %s\n",
+				          ldns_rdf2str(found->owner));
 			}
 			debug_zdb("Done.\n\n");
 			continue;
@@ -507,15 +508,15 @@ static void zdb_adjust_additional(zdb_zone_t *zone, zn_node_t *node,
 			debug_zdb("Found A RRSet within the node, saving.\n");
 			if (zn_add_ref(node, name, type, rrset, NULL) != 0) {
 				log_error("Error occured while saving A RRSet "
-					  "for %s record in node %s\n\n",
-					  ldns_rr_type2str(type),
-					  ldns_rdf2str(node->owner));
+				          "for %s record in node %s\n\n",
+				          ldns_rr_type2str(type),
+				          ldns_rdf2str(node->owner));
 				return;
 			}
 			if (zn_add_referrer(found, node, type) != 0) {
 				log_error("Error occured while saving referrer "
-					  "node to node %s\n",
-					  ldns_rdf2str(found->owner));
+				          "node to node %s\n",
+				          ldns_rdf2str(found->owner));
 			}
 		}
 
@@ -524,15 +525,15 @@ static void zdb_adjust_additional(zdb_zone_t *zone, zn_node_t *node,
 			debug_zdb("Found AAAA RRSet within the node, saving\n");
 			if (zn_add_ref(node, name, type, rrset, NULL) != 0) {
 				log_error("Error occured while saving AAAA "
-					  "RRSet for %s record in node %s\n\n",
-					  ldns_rr_type2str(type),
-					  ldns_rdf2str(node->owner));
+				          "RRSet for %s record in node %s\n\n",
+				          ldns_rr_type2str(type),
+				          ldns_rdf2str(node->owner));
 				return;
 			}
 			if (zn_add_referrer(found, node, type) != 0) {
 				log_error("Error occured while saving referrer "
-					  "node to node %s\n",
-					  ldns_rdf2str(found->owner));
+				          "node to node %s\n",
+				          ldns_rdf2str(found->owner));
 			}
 		}
 		debug_zdb("Done.\n\n");
@@ -630,7 +631,8 @@ static int zdb_process_nonauth(zn_node_t *node, ldns_rr_list *ns_rrset,
 	if (!zdb_rr_list_contains_dname(ns_rrset, node->owner, 0)) {
 		log_error("Zone contains non-authoritative domain name %s,"
 		          " which is not referenced in %s NS records!\n",
-		         ldns_rdf2str(node->owner), ldns_rdf2str(deleg->owner));
+		          ldns_rdf2str(node->owner), ldns_rdf2str(deleg->owner)
+		          );
 		return -3;
 	}
 	if (processed != NULL) {
@@ -675,7 +677,7 @@ static int zdb_find_other_glues(const zdb_zone_t *zone, zn_node_t *deleg_point,
 		if (zdb_dname_list_find(processed, proc_count, ns) == NULL) {
 			debug_zdb("NS name %s not found under deleg point %s\n",
 			          ldns_rdf2str(ns),
-				  ldns_rdf2str(deleg_point->owner));
+			          ldns_rdf2str(deleg_point->owner));
 
 			// we must search in the list as the other nodes may not
 			// be inserted into the table yet
@@ -686,17 +688,18 @@ static int zdb_find_other_glues(const zdb_zone_t *zone, zn_node_t *deleg_point,
 			if (ns_node != NULL &&
 			    !zn_is_non_authoritative(ns_node)) {
 				debug_zdb("Found in authoritative data, "
-					  "extracting glues.\n");
+				          "extracting glues.\n");
 				int res = zn_push_glue(deleg_point,
 				                zn_find_rrset(ns_node,
-							      LDNS_RR_TYPE_A));
+				                              LDNS_RR_TYPE_A));
 				res += zn_push_glue(deleg_point,
 				              zn_find_rrset(ns_node,
-							    LDNS_RR_TYPE_AAAA));
+				                            LDNS_RR_TYPE_AAAA));
 				if (res != 0) {
 					log_error("Error while saving glues "
-						  "for delegation point %s\n",
-					      ldns_rdf2str(deleg_point->owner));
+					          "for delegation point %s\n",
+					          ldns_rdf2str(
+					                  deleg_point->owner));
 					return -4;
 				}
 			}
@@ -712,7 +715,7 @@ static int zdb_find_other_glues(const zdb_zone_t *zone, zn_node_t *deleg_point,
 static void zdb_set_delegation_point(zn_node_t **node)
 {
 	debug_zdb("Setting %s to be a delegation point and skipping its "
-		  "subdomains\n", ldns_rdf2str((*node)->owner));
+	          "subdomains\n", ldns_rdf2str((*node)->owner));
 	zn_set_delegation_point(*node);
 	zn_node_t *deleg = *node;
 	while (ldns_dname_is_subdomain((*node)->next->owner, deleg->owner)) {
@@ -744,17 +747,18 @@ static int zdb_adjust_delegation_point(const zdb_zone_t *zone, zn_node_t **node)
 		size_t proc_count = 0;
 
 		while (ldns_dname_is_subdomain((*node)->next->owner,
-					       deleg->owner)) {
+		                               deleg->owner)) {
 			(*node) = (*node)->next;
 			if ((res = zdb_process_nonauth(*node, ns_rrset,
-					processed, &proc_count, deleg)) < 0) {
+			                               processed, &proc_count,
+			                               deleg)) < 0) {
 				break;
 			}
 		}
 
 		if (proc_count < ns_count
-		                && zdb_find_other_glues(zone, deleg, ns_rrset,
-					processed, proc_count) != 0) {
+		    && zdb_find_other_glues(zone, deleg, ns_rrset,
+		                            processed, proc_count) != 0) {
 			res = -1;
 		}
 
@@ -778,18 +782,18 @@ static int zdb_insert_node_to_zone(zdb_zone_t *zone, zn_node_t *node)
 		ldns_rr_list *soa_rrset = zn_find_rrset(node, LDNS_RR_TYPE_SOA);
 		if (soa_rrset == NULL) {
 			log_error("Trying to insert node %s with not SOA record"
-				  "to an empty zone!\n",
-				  ldns_rdf2str(node->owner));
+			          "to an empty zone!\n",
+			          ldns_rdf2str(node->owner));
 			return -1;
 		}
 		if (ldns_rr_list_rr_count(soa_rrset) > 1) {
 			log_info("More than one SOA record in node %s, ignoring"
-				 "other.\n", ldns_rdf2str(node->owner));
+			         "other.\n", ldns_rdf2str(node->owner));
 		}
 		if (ldns_dname_compare(zone->zone_name, node->owner) != 0) {
 			log_error("Trying to insert node %s with SOA record to "
-				  "zone with different name %s.\n",
-				  ldns_rdf2str(node->owner),
+			          "zone with different name %s.\n",
+			          ldns_rdf2str(node->owner),
 			          ldns_rdf2str(zone->zone_name));
 			return -2;
 		}
@@ -822,8 +826,8 @@ static int zdb_insert_node_to_zone(zdb_zone_t *zone, zn_node_t *node)
 
 	if (cmp == 0) {
 		log_error("Trying to insert node with owner %s already present "
-			  "in the zone\n", ldns_rdf2str(node->owner));
-		return -5;	// node exists in the zone
+		          "in the zone\n", ldns_rdf2str(node->owner));
+		return -5; // node exists in the zone
 	}
 
 	int res = 0;
@@ -892,7 +896,7 @@ static int zdb_insert_nodes_into_zds(zdb_zone_t *z, uint *nodes,
 	assert(zn_find_rrset(*node, LDNS_RR_TYPE_SOA) != NULL);
 	if (zds_insert(z->zone, *node) != 0) {
 		log_error("Error inserting zone apex to the zone data structure"
-			  ".\n");
+		          ".\n");
 		return -1;
 	}
 	uint i = 1;
