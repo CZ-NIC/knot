@@ -63,10 +63,7 @@ unsigned long int fnv_hash2(char *data, int size, int bits)
 	}
 
 /* The whole new hash function */
-u4 jhash(k, length, initval)
-register u1 *k;        /* the key */
-u4 length;             /* the length of the key in bytes */
-u4 initval;            /* the previous hash, or an arbitrary value */
+u4 jhash(register u1 *k, u4 length, u4 initval)
 {
 	register u4 a, b, c; /* the internal state */
 	u4 len;    /* how many key bytes still need mixing */
@@ -79,11 +76,11 @@ u4 initval;            /* the previous hash, or an arbitrary value */
 	/*---------------------------------------- handle most of the key */
 	while (len >= 12) {
 		a = a + (k[0] + ((u4)k[1] << 8)
-			 + ((u4)k[2] << 16) + ((u4)k[3] << 24));
+		      + ((u4)k[2] << 16) + ((u4)k[3] << 24));
 		b = b + (k[4] + ((u4)k[5] << 8)
-			 + ((u4)k[6] << 16) + ((u4)k[7] << 24));
+		      + ((u4)k[6] << 16) + ((u4)k[7] << 24));
 		c = c + (k[8] + ((u4)k[9] << 8)
-			 + ((u4)k[10] << 16) + ((u4)k[11] << 24));
+		      + ((u4)k[10] << 16) + ((u4)k[11] << 24));
 		mix(a, b, c);
 		k = k + 12;
 		len = len - 12;
