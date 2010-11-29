@@ -29,6 +29,6 @@ void hex_printf(const char *data, int length, printf_t print_handler);
 void bit_print(const char *data, int length);
 void bit_printf(const char *data, int length, printf_t print_handler);
 
-#endif  /* _CUTEDNS_PRINT_H_ */
+#endif /* _CUTEDNS_PRINT_H_ */
 
 /*! @} */

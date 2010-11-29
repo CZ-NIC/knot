@@ -137,6 +137,6 @@ uint da_get_count(const da_array_t *array);
 
 /*----------------------------------------------------------------------------*/
 
-#endif	/* _CUTEDNS_DYNAMIC_ARRAY_H_ */
+#endif /* _CUTEDNS_DYNAMIC_ARRAY_H_ */
 
 /*! @} */
