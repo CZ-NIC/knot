@@ -48,13 +48,13 @@ nsec3_add_params(const char* hash_algo_str, const char* flag_str,
 
 %}
 %union {
-	domain_type	 *domain;
-	const dname_type *dname;
-	struct lex_data	  data;
-	uint32_t	  ttl;
-	uint16_t	  klass;
-	uint16_t	  type;
-	uint16_t	 *unknown;
+	dnslib_node_t        *domain;
+	const dnslib_dname_t *dname;
+	struct lex_data      data;
+	uint32_t             ttl;
+	uint16_t             klass;
+	uint16_t             type;
+	uint16_t             *unknown;
 }
 
 /*
@@ -988,7 +988,7 @@ zparser_create(region_type *region, region_type *rr_region, namedb_type *db)
  */
 void
 zparser_init(const char *filename, uint32_t ttl, uint16_t klass,
-	     const dname_type *origin)
+	     const dnslib_dname_t *origin)
 {
 	memset(nxtbits, 0, sizeof(nxtbits));
 	memset(nsecbits, 0, sizeof(nsecbits));
