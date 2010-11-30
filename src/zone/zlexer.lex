@@ -98,10 +98,10 @@ ANY     [^\"\n\\]|\\.
 ^{DOLLAR}TTL            { lexer_state = PARSING_RDATA; return DOLLAR_TTL; }
 ^{DOLLAR}ORIGIN         { lexer_state = PARSING_RDATA; return DOLLAR_ORIGIN; }
 
-/*
- * Handle $INCLUDE directives.  See
- * http://dinosaur.compilertools.net/flex/flex_12.html#SEC12.
- */
+ /*
+  * Handle $INCLUDE directives.  See
+  * http://dinosaur.compilertools.net/flex/flex_12.html#SEC12.
+  */
 ^{DOLLAR}INCLUDE        {
 	BEGIN(incl);
 }
