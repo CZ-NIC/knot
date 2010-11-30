@@ -156,7 +156,7 @@ static int test_node_sorting()
 		dnslib_node_add_rrset(tmp, rrset);
 	}
 
-	const skip_node *node;
+	const skip_node_t *node;
 
 	node = skip_first(tmp->rrsets);
 

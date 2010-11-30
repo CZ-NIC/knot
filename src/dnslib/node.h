@@ -32,7 +32,7 @@ struct dnslib_node {
 	struct dnslib_node *parent; /*!< Parent node in the name hierarchy. */
 
 	/*! \brief Type-ordered list of RRSets belonging to this node. */
-	skip_list *rrsets;
+	skip_list_t *rrsets;
 
 	/*! \brief Next node in a general list of nodes. Temporary. */
 	struct dnslib_node *next;
