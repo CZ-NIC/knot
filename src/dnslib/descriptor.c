@@ -25,7 +25,7 @@ static dnslib_rrtype_descriptor_t
   	/* 1 */
   	{ DNSLIB_RRTYPE_A, "A", 1, { DNSLIB_RDATA_WF_A }, true },
   	/* 2 */
-  	{ DNSLIB_RRTYPE_NS, "NS", 1, 
+  	{ DNSLIB_RRTYPE_NS, "NS", 1,
 	{ DNSLIB_RDATA_WF_COMPRESSED_DNAME }, true },
   	/* 3 */
   	{ DNSLIB_RRTYPE_MD, "MD", 1,
@@ -262,13 +262,13 @@ static dnslib_rrtype_descriptor_t
   	    DNSLIB_RDATA_WF_SHORT, /* iterations */
   	    DNSLIB_RDATA_WF_BINARYWITHLENGTH /* salt */ }, true },
   	/* 52 */
-  
-  
+
+
     /* In NSD they have indices between 52 and 99 filled with
      unknown types. TODO add here if it's really needed? */
-  
+
     /* There's a GNU extension that works like this: [first ... last] = value */
-  
+
   	/* 99 */
 	[99] = { DNSLIB_RRTYPE_SPF, "SPF", DNSLIB_MAX_RDATA_ITEMS,
   	  { DNSLIB_RDATA_WF_TEXT, DNSLIB_RDATA_WF_TEXT,
@@ -309,8 +309,8 @@ static dnslib_rrtype_descriptor_t
 	    DNSLIB_RDATA_WF_BYTE, DNSLIB_RDATA_WF_BINARY } },*/
 };
 
-dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,
-					     const char *name)
+static dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,
+                                             const char *name)
 {
 	while (table->name != NULL) {
 		if (strcasecmp(name, table->name) == 0) {
@@ -322,7 +322,7 @@ dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,
 	return NULL;
 }
 
-dnslib_lookup_table_t *dnslib_lookup_by_id(dnslib_lookup_table_t *table,
+static dnslib_lookup_table_t *dnslib_lookup_by_id(dnslib_lookup_table_t *table,
 					   int id)
 {
 	while (table->name != NULL) {
