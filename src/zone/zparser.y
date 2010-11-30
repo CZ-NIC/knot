@@ -52,7 +52,7 @@ nsec3_add_params(const char* hash_algo_str, const char* flag_str,
 	const dnslib_dname_t *dname;
 	struct lex_data      data;
 	uint32_t             ttl;
-	uint16_t             klass;
+	uint16_t             rclass;
 	uint16_t             type;
 	uint16_t             *unknown;
 }
@@ -72,7 +72,7 @@ nsec3_add_params(const char* hash_algo_str, const char* flag_str,
 %token	       DOLLAR_TTL DOLLAR_ORIGIN NL SP
 %token <data>  STR PREV BITLAB
 %token <ttl>   T_TTL
-%token <klass> T_RRCLASS
+%token <rclass> T_RRCLASS
 
 /* unknown RRs */
 %token	       URR
@@ -175,27 +175,27 @@ owner:	dname sp
 classttl:	/* empty - fill in the default, def. ttl and IN class */
     {
 	    parser->current_rrset.ttl = parser->default_ttl;
-	    parser->current_rrset.klass = parser->default_class;
+	    parser->current_rrset.rclass = parser->default_class;
     }
     |	T_RRCLASS sp		/* no ttl */
     {
 	    parser->current_rrset.ttl = parser->default_ttl;
-	    parser->current_rrset.klass = $1;
+	    parser->current_rrset.rclass = $1;
     }
     |	T_TTL sp		/* no class */
     {
 	    parser->current_rrset.ttl = $1;
-	    parser->current_rrset.klass = parser->default_class;
+	    parser->current_rrset.rclass = parser->default_class;
     }
     |	T_TTL sp T_RRCLASS sp	/* the lot */
     {
 	    parser->current_rrset.ttl = $1;
-	    parser->current_rrset.klass = $3;
+	    parser->current_rrset.rclass = $3;
     }
     |	T_RRCLASS sp T_TTL sp	/* the lot - reversed */
     {
 	    parser->current_rrset.ttl = $3;
-	    parser->current_rrset.klass = $1;
+	    parser->current_rrset.rclass = $1;
     }
     ;
 
@@ -985,7 +985,7 @@ zparser_create(namedb_type *db)
  * Initialize the parser for a new zone file.
  */
 void
-zparser_init(const char *filename, uint32_t ttl, uint16_t klass,
+zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	     const dnslib_dname_t *origin)
 {
 	memset(nxtbits, 0, sizeof(nxtbits));
@@ -993,7 +993,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t klass,
         nsec_highest_rcode = 0;
 
 	parser->default_ttl = ttl;
-	parser->default_class = klass;
+	parser->default_class = rclass;
 	parser->current_zone = NULL;
 	parser->origin = domain_table_insert(parser->db->domains, origin);
 	parser->prev_dname = parser->origin;
