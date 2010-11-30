@@ -39,6 +39,12 @@ uint16_t nsec_highest_rcode;
 
 void yyerror(const char *message);
 
+/* helper functions */
+void zc_error(const char *fmt, ...);
+void zc_warning(const char *fmt, ...);
+void zc_error_prev_line(const char *fmt, ...);
+void zc_warning_prev_line(const char *fmt, ...);
+
 #ifdef NSEC3
 /* parse nsec3 parameters and add the (first) rdata elements */
 static void
@@ -202,23 +208,25 @@ dname:	abs_dname
             /*! \todo Fix domain_dname() and size */
 	    if ($1 == error_dname) {
 		    $$ = error_domain;
-	    } else if ($1->size + dnslib_node_get_parent(parser->origin)->size - 1 > MAXDOMAINLEN) {
+	    } else if ($1->size + parser->origin->owner->size - 1 > MAXDOMAINLEN) {
 		    zc_error("domain name exceeds %d character limit", MAXDOMAINLEN);
 		    $$ = error_domain;
 	    } else {
-		    $$ = domain_table_insert(
+		   /*! \todo Fix table insert. */
+		   /* $$ = domain_table_insert(
 			    parser->db->domains,
 			    dname_concatenate(
 				    parser->rr_region,
 				    $1,
-				    dnslib_node_get_parent(parser->origin)));
+				    dnslib_node_get_parent(parser->origin))); */
 	    }
     }
     ;
 
 abs_dname:	'.'
     {
-	    $$ = parser->db->domains->root;
+	    /*! \todo Get root domain from db. */
+	    /* $$ = parser->db->domains->root; */
     }
     |	'@'
     {
@@ -227,7 +235,8 @@ abs_dname:	'.'
     |	rel_dname '.'
     {
 	    if ($1 != error_dname) {
-		    $$ = domain_table_insert(parser->db->domains, $1);
+		    /*! \todo Fix table insert. */
+		    /* $$ = domain_table_insert(parser->db->domains, $1); */
 	    } else {
 		    $$ = error_domain;
 	    }
@@ -295,7 +304,7 @@ wire_abs_dname:	'.'
 
 wire_label:	STR
     {
-	    char *result = mallo($1.len + sizeof(char));
+	    char *result = malloc($1.len + sizeof(char));
 
 	    if ($1.len > MAXLABELLEN)
 		    zc_error("label exceeds %d character limit", MAXLABELLEN);
@@ -835,16 +844,14 @@ rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR sp STR sp wire_dname sp str_
 	    zadd_rdata_wireformat(zparser_conv_time($9.str)); /* sig exp */
 	    zadd_rdata_wireformat(zparser_conv_time($11.str)); /* sig inc */
 	    zadd_rdata_wireformat(zparser_conv_short($13.str)); /* key id */
-	    zadd_rdata_wireformat(zparser_conv_dns_name(parser->region,
-				(const uint8_t*) $15.str,$15.len)); /* sig name */
+	    zadd_rdata_wireformat(zparser_conv_dns_name((const uint8_t*) $15.str,$15.len)); /* sig name */
 	    zadd_rdata_wireformat(zparser_conv_b64($17.str)); /* sig data */
     }
     ;
 
 rdata_nsec:	wire_dname nsec_seq
     {
-	    zadd_rdata_wireformat(zparser_conv_dns_name(parser->region,
-				(const uint8_t*) $1.str, $1.len)); /* nsec name */
+	    zadd_rdata_wireformat(zparser_conv_dns_name((const uint8_t*) $1.str, $1.len)); /* nsec name */
 	    zadd_rdata_wireformat(zparser_conv_nsec(nsecbits)); /* nsec bitlist */
 	    memset(nsecbits, 0, sizeof(nsecbits));
             nsec_highest_rcode = 0;
@@ -887,7 +894,7 @@ rdata_dnskey:	STR sp STR sp STR sp str_sp_seq trail
 
 rdata_ipsec_base: STR sp STR sp STR sp dotted_str
     {
-	    const dname_type* name = 0;
+	    const dnslib_dname_t* name = 0;
 	    zadd_rdata_wireformat(zparser_conv_byte($1.str)); /* precedence */
 	    zadd_rdata_wireformat(zparser_conv_byte($3.str)); /* gateway type */
 	    zadd_rdata_wireformat(zparser_conv_byte($5.str)); /* algorithm */
@@ -905,13 +912,19 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			/* convert and insert the dname */
 			if(strlen($7.str) == 0)
 				zc_error_prev_line("IPSECKEY must specify gateway name");
-			if(!(name = dname_parse($7.str)))
+			name = dnslib_dname_new_from_wire((uint8_t*)$7.str + 1,
+			                                  strlen($7.str + 1),
+			                                  NULL);
+			if(!name) {
 				zc_error_prev_line("IPSECKEY bad gateway dname %s", $7.str);
-			if($7.str[strlen($7.str)-1] != '.')
-				name = dname_concatenate(name,
-					dnslib_node_get_parent(parser->origin));
-			zadd_rdata_wireformat(alloc_rdata_init(parser->region,
-				dname_name(name), name->size));
+			}
+			/*! \todo Fix dname_concatenate(). */
+			/* if($7.str[strlen($7.str)-1] != '.')
+			         name = dname_concatenate(name,
+					dnslib_node_get_parent(parser->origin)); */
+			uint8_t* dncpy = malloc(name->size);
+			memcpy(dncpy, name->name, name->size);
+			zadd_rdata_wireformat(dncpy);
 			break;
 		default:
 			zc_error_prev_line("unknown IPSECKEY gateway type");
@@ -986,15 +999,19 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->default_ttl = ttl;
 	parser->default_class = rclass;
 	parser->current_zone = NULL;
+
+	parser->origin = 0;
+	/*! \todo Fix domain table insert.
 	parser->origin = domain_table_insert(parser->db->domains, origin);
+	*/
 	parser->prev_dname = parser->origin;
 	parser->default_apex = parser->origin;
 	parser->error_occurred = 0;
 	parser->errors = 0;
 	parser->line = 1;
 	parser->filename = filename;
-	parser->current_rrset.rdata_count = 0;
-	parser->current_rrset.rdatas = parser->temporary_rdatas;
+	parser->current_rrset.rdata->count = 0;
+	parser->current_rrset.rdata->items = parser->temporary_rdatas;
 }
 
 void

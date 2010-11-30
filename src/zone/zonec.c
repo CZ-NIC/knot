@@ -34,7 +34,7 @@
 
 #define APL_NEGATION_MASK      0x80U
 
-dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,
+static dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,
 					     const char *name)
 {
 	while (table->name != NULL) {
@@ -47,7 +47,7 @@ dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,
 	return NULL;
 }
 
-dnslib_lookup_table_t *dnslib_lookup_by_id(dnslib_lookup_table_t *table,
+static dnslib_lookup_table_t *dnslib_lookup_by_id(dnslib_lookup_table_t *table,
 					   int id)
 {
 	while (table->name != NULL) {
@@ -72,7 +72,7 @@ dnslib_lookup_table_t *dnslib_lookup_by_id(dnslib_lookup_table_t *table,
  *
  * \return strlen(src), if retval >= siz, truncation occurred.
  */
-size_t strlcpy(char *dst, const char *src, size_t siz)
+static size_t strlcpy(char *dst, const char *src, size_t siz)
 {
 	char *d = dst;
 	const char *s = src;
@@ -99,8 +99,7 @@ size_t strlcpy(char *dst, const char *src, size_t siz)
 	return(s - src - 1);        /* count does not include NUL */
 }
 
-int
-my_b32_pton(const char *src, uint8_t *target, size_t tsize)
+static int my_b32_pton(const char *src, uint8_t *target, size_t tsize)
 {
 	char ch;
 	size_t p=0;
@@ -194,9 +193,9 @@ static const char Pad64 = '=';
    end of the data is performed using the '=' character.
 
    Since all base64 input is an integral number of octets, only the
-         -------------------------------------------------                       
+         -------------------------------------------------
    following cases can arise:
-   
+
        (1) the final quantum of encoding input is an integral
            multiple of 24 bits; here, the final unit of encoded
 	   output will be an integral multiple of 4 characters
@@ -238,14 +237,14 @@ b64_ntop(uint8_t const *src, size_t srclength, char *target, size_t targsize) {
 		target[datalength++] = Base64[output[2]];
 		target[datalength++] = Base64[output[3]];
 	}
-    
+
 	/* Now we worry about padding. */
 	if (0 != srclength) {
 		/* Get what's left. */
 		input[0] = input[1] = input[2] = '\0';
 		for (i = 0; i < srclength; i++)
 			input[i] = *src++;
-	
+
 		output[0] = input[0] >> 2;
 		output[1] = ((input[0] & 0x03) << 4) + (input[1] >> 4);
 		output[2] = ((input[1] & 0x0f) << 2) + (input[2] >> 6);
@@ -470,7 +469,7 @@ inet_pton6(src, dst)
 
 
 #ifndef IN6ADDRSZ
-#define IN6ADDRSZ   16   /* IPv6 T_AAAA */                 
+#define IN6ADDRSZ   16   /* IPv6 T_AAAA */
 #endif
 
 #ifndef INT16SZ
@@ -655,7 +654,7 @@ static const uint8_t b64rmap_space = 0xfe;
 static const uint8_t b64rmap_invalid = 0xff;
 
 /**
- * Initializing the reverse map is not thread safe. 
+ * Initializing the reverse map is not thread safe.
  * Which is fine for NSD. For now...
  **/
 static void
@@ -971,28 +970,8 @@ write_uint32(void *dst, uint32_t data)
 #endif
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-struct lookup_table {
-	int id;
-	const char *name;
-};
-
-typedef struct lookup_table lookup_table_type;
-
 /* Taken from RFC 2535, section 7.  */
-lookup_table_type dns_algorithms[] = {
+dnslib_lookup_table_t dns_algorithms[] = {
 	{ 1, "RSAMD5" },	/* RFC 2537 */
 	{ 2, "DH" },		/* RFC 2539 */
 	{ 3, "DSA" },		/* RFC 2536 */
@@ -1005,7 +984,7 @@ lookup_table_type dns_algorithms[] = {
 };
 
 /* Taken from RFC 4398, section 2.1.  */
-lookup_table_type dns_certificate_types[] = {
+dnslib_lookup_table_t dns_certificate_types[] = {
 /*	0		Reserved */
 	{ 1, "PKIX" },	/* X.509 as per PKIX */
 	{ 2, "SPKI" },	/* SPKI cert */
@@ -1361,10 +1340,10 @@ zparser_conv_byte(const char *text)
 uint16_t *
 zparser_conv_algorithm(const char *text)
 {
-	const lookup_table_type *alg;
+	const dnslib_lookup_table_t *alg;
 	uint8_t id;
 
-	alg = lookup_by_name(dns_algorithms, text);
+	alg = dnslib_lookup_by_name(dns_algorithms, text);
 	if (alg) {
 		id = (uint8_t) alg->id;
 	} else {
@@ -1383,10 +1362,10 @@ uint16_t *
 zparser_conv_certificate_type(const char *text)
 {
 	/* convert a algoritm string to integer */
-	const lookup_table_type *type;
+	const dnslib_lookup_table_t *type;
 	uint16_t id;
 
-	type = lookup_by_name(dns_certificate_types, text);
+	type = dnslib_lookup_by_name(dns_certificate_types, text);
 	if (type) {
 		id = htons((uint16_t) type->id);
 	} else {
@@ -1986,7 +1965,7 @@ zadd_rdata_wireformat(uint16_t *data)
 		fprintf(stderr, "too many rdata elements");
 	} else {*/
 	dnslib_rdata_item_t *item = malloc(sizeof(dnslib_rdata_item_t));
-	item->raw_data = data;
+	item->raw_data = (uint8_t*)data;
 	dnslib_rdata_set_items(parser->current_rrset.rdata, item, 1);
 }
 
@@ -2287,7 +2266,7 @@ process_rr(void)
 		if (current_rrset->type !=
 			DNSLIB_RRTYPE_RRSIG && rrset->ttl !=
 			current_rrset->ttl) {
-			fprintf(stderr, 
+			fprintf(stderr,
 				"TTL does not match the TTL of the RRset");
 		}
 
