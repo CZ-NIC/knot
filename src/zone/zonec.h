@@ -39,17 +39,18 @@ struct lex_data {
 
 #define DEFAULT_TTL 3600
 
+/*! \todo Implement ZoneDB. */
+typedef void namedb_type;
+
 /* administration struct */
 typedef struct zparser zparser_type;
 struct zparser {
-	region_type *region;	/* Allocate for parser lifetime data.  */
-	region_type *rr_region;	/* Allocate RR lifetime data.  */
 	namedb_type *db;
 
 	const char *filename;
 	uint32_t default_ttl;
 	uint16_t default_class;
-	zdb_zone_t *current_zone; 
+	zdb_zone_t *current_zone;
 	dnslib_node_t *origin;
 	dnslib_node_t *prev_dname;
 	dnslib_node_t *default_apex;
@@ -60,7 +61,7 @@ struct zparser {
 
 //	curent rr will have to be represented as current rrset
 //before:	rr_type current_rr;
-	dnslib_rrset_t *current_rrset; //XXX * was not there
+	dnslib_rrset_t current_rrset; //XXX * was not there
 	dnslib_rdata_item_t **temporary_rdatas; //XXX only one * was there
 };
 
