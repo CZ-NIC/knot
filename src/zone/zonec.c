@@ -30,6 +30,8 @@
 
 #include "zparser.h"
 
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! MASSIVE TODO move these functions to separate files 
+
 #define IP6ADDRLEN	(128/8)
 
 #define APL_NEGATION_MASK      0x80U
@@ -2393,17 +2395,20 @@ process_rr(void)
  * nsd_options can be NULL if no config file is passed.
  *
  */
-//static void
-//zone_read(const char *name, const char *zonefile, nsd_options_t* nsd_options)
-//{
-//	const dname_type *dname;
-//
+static void
+zone_read(const char *name, const char *zonefile, nsd_options_t* nsd_options)
+{
+	const dnslib_dname_t *dname;
+
 //	dname = dname_parse(parser->region, name);
-//	if (!dname) {
-//		fprintf(stderr, "incorrect zone name '%s'", name);
-//		return;
-//	}
-//
+	
+	dname = dnslib_dname_new_from_str(name, strlen(name), NULL);
+
+	if (!dname) {
+		fprintf(stderr, "incorrect zone name '%s'", name);
+		return;
+	}
+
 //#ifndef ROOT_SERVER
 //	/* Is it a root zone? Are we a root server then? Idiot proof. */
 //	if (dname->label_count == 1) {
@@ -2412,8 +2417,8 @@ process_rr(void)
 //	}
 //#endif
 //
-//	/* Open the zone file */
-//	if (!zone_open(zonefile, 3600, CLASS_IN, dname)) {
+	/* Open the zone file */
+	if (!zone_open(zonefile, 3600, CLASS_IN, dname)) {
 //		if(nsd_options) {
 //			/* check for secondary zone, they can start with no zone info */
 //			zone_options_t* zopt = zone_options_find(nsd_options, dname);
@@ -2425,12 +2430,12 @@ process_rr(void)
 //			}
 //		}
 //		/* cannot happen with stdin - so no fix needed for zonefile */
-//		fprintf(stderr, "cannot open '%s': %s", zonefile, strerror(errno));
-//		return;
-//	}
+		fprintf(stderr, "cannot open '%s': %s", zonefile, strerror(errno));
+		return;
+	}
 //
 //	/* Parse and process all RRs.  */
-//	yyparse();
+	yyparse();
 //
 //	/* check if zone file contained a correct SOA record */
 //	if (parser->current_zone && parser->current_zone->soa_rrset
@@ -2446,19 +2451,20 @@ process_rr(void)
 //		}
 //	}
 //
-//	fclose(yyin);
+	fclose(yyin);
 //
 //	fflush(stdout);
-//	totalerrors += parser->errors;
+	totalerrors += parser->errors;
 //	parser->filename = NULL;
 //}
 
-//int
-//main (int argc, char **argv)
-//{
+int
+main (int argc, char **argv)
+{
 //	struct namedb *db;
-//	char *origin = NULL;
-//	int c;
+	zdb_database_t *db;
+	char *origin = NULL;
+	int c;
 //	region_type *global_region;
 //	region_type *rr_region;
 //	const char* configfile= CONFIGFILE;
@@ -2543,18 +2549,17 @@ process_rr(void)
 //		else dbfile = DBFILE;
 //	}
 //
-//	/* Create the database */
-//	if ((db = namedb_new(dbfile)) == NULL) {
-//		fprintf(stderr, "zonec: error creating the database (%s): %s\n",
-//			dbfile, strerror(errno));
-//		exit(1);
-//	}
-//
-//	parser = zparser_create(global_region, rr_region, db);
-//	if (!parser) {
-//		fprintf(stderr, "zonec: error creating the parser\n");
-//		exit(1);
-//	}
+	/* Create the database */
+	if ((db = zdb_create()) == NULL) {
+		fprintf(stderr, "zonec: error creating the database (%s): %s\n");
+		exit(1);
+	}
+
+	parser = zparser_create(global_region, rr_region, db);
+	if (!parser) {
+		fprintf(stderr, "zonec: error creating the parser\n");
+		exit(1);
+	}
 //
 //	/* Unique pointers used to mark errors.	 */
 //	error_dname = (dname_type *) region_alloc(global_region, 0);
@@ -2574,7 +2579,7 @@ process_rr(void)
 //		}
 //		if (vflag > 0)
 //			fprintf(stdout, "zonec: reading zone \"%s\".\n", origin);
-//		zone_read(origin, singlefile, nsd_options);
+		zone_read(origin, singlefile, nsd_options);
 //		if (vflag > 0)
 //			fprintf(stdout, "zonec: processed %ld RRs in \"%s\".\n", totalrrs, origin);
 //	} else {
