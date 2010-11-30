@@ -52,8 +52,8 @@ dnslib_dname_t *dnslib_dname_new();
  * \brief Creates a dname structure from domain name given in presentation
  *        format.
  *
- * The resulting domain name is stored in wire format and ALWAYS ENDS WITH 0,
- * e.g. is a FQDN even if the given domain name was not.
+ * The resulting domain name is stored in wire format, but it may not end with
+ * root label (\0).
  *
  * \param name Domain name in presentation format (labels separated by dots).
  * \param size Size of the domain name (count of characters with all dots).
@@ -62,18 +62,15 @@ dnslib_dname_t *dnslib_dname_new();
  *
  * \return Newly allocated and initialized dname structure representing the
  *         given domain name.
- *
- * \todo Check if the FQDN issue is OK.
  */
 dnslib_dname_t *dnslib_dname_new_from_str(char *name, uint size,
-                struct dnslib_node *node);
+                                          struct dnslib_node *node);
 
 /*!
  * \brief Creates a dname structure from domain name given in wire format.
  *
  * \note The name is copied into the structure.
- * \note If the given name is not a FQDN, the result will be neither. This
- *       does not correspond to the behaviour of dnslib_dname_new_from_str().
+ * \note If the given name is not a FQDN, the result will be neither.
  *
  * \param name Domain name in wire format.
  * \param size Size of the domain name in octets.
@@ -83,8 +80,7 @@ dnslib_dname_t *dnslib_dname_new_from_str(char *name, uint size,
  * \return Newly allocated and initialized dname structure representing the
  *         given domain name.
  *
- * \todo Address the FQDN issue.
- * \todo This function does not check if the given data is in correct wir
+ * \todo This function does not check if the given data is in correct wire
  *       format at all. It thus creates a invalid domain name, which if passed
  *       e.g. to dnslib_dname_to_str() may result in crash. Decide whether it
  *       is OK to retain this and check the data in other functions before

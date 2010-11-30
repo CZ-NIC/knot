@@ -84,11 +84,14 @@ static uint dnslib_dname_str_to_wire(const char *name, uint size,
 		assert(ch >= (const uint8_t *)name);
 	}
 
-	// put 0 for root label regardless whether the name ended with .
-	--w;
-	debug_dnslib_dname("Position %u (%p): character: (null)\n",
-			   w - *wire, w);
-	*w = 0;
+	// put 0 for root label if the name ended with .
+	--ch;
+	if (*ch == '.') {
+		--w;
+		debug_dnslib_dname("Position %u (%p): character: (null)\n",
+				   w - *wire, w);
+		*w = 0;
+	}
 
 	//memcpy(*wire, name, size);
 	return wire_size;
@@ -184,15 +187,15 @@ char *dnslib_dname_to_str(const dnslib_dname_t *dname)
 
 	uint8_t *w = dname->name;
 	char *ch = name;
+	int i = 0;
 
-	while (*w != 0) {
-		uint8_t *next = w + *w + 1;
-		// skip label length
-		++w;
-		while (w != next) {
-			*(ch++) = *(w++);
-		}
-		// insert . at the end of label
+	while (i < dname->size && *w != 0) {
+		int label_size = *(w++);
+		// copy the label
+		memcpy(ch, w, label_size);
+		i += label_size;
+		ch += label_size;
+		w += label_size;
 		*(ch++) = '.';
 	}
 
