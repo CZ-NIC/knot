@@ -7,8 +7,6 @@
  *
  */
 
-#include <config.h>
-
 #include <assert.h>
 #include <fcntl.h>
 #include <ctype.h>
@@ -16,28 +14,22 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
-#ifdef HAVE_STRINGS_H
-#include <strings.h>
-#endif
 #include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
-
 #include <netinet/in.h>
-
-#ifdef HAVE_NETDB_H
 #include <netdb.h>
-#endif
 
+#include "common.h"
 #include "zonec.h"
-
-#include "zparser.h"
-
-
 #include "dname.h"
 #include "rrset.h"
 #include "rdata.h"
 #include "node.h"
+#include "zparser.h"
+
+/* Imported from lexer. */
+extern int hexdigit_to_int(char ch);
 
 const dnslib_dname_t *error_dname;
 zn_node_t *error_domain;
@@ -167,7 +159,7 @@ zparser_conv_hex(const char *hex, size_t len)
 				if (isxdigit((int)*hex)) {
 					*t += hexdigit_to_int(*hex) * i;
 				} else {
-					fprintf(stderr, 
+					fprintf(stderr,
 						"illegal hex character '%c'",
 						(int) *hex);
 					return NULL;
@@ -208,7 +200,7 @@ zparser_conv_hex_length(const char *hex, size_t len)
 				if (isxdigit((int)*hex)) {
 					*t += hexdigit_to_int(*hex) * i;
 				} else {
-					fprintf(stderr, 
+					fprintf(stderr,
 						"illegal hex character '%c'",
 						(int) *hex);
 					return NULL;
@@ -1009,7 +1001,7 @@ void
 zadd_rdata_txt_wireformat(uint16_t *data, int first)
 {
 //	dnslib_rdata_item_t *rd;
-//	
+//
 //	/* First STR in str_seq, allocate 65K in first unused rdata
 //	 * else find last used rdata */
 //	if (first) {
@@ -1024,12 +1016,12 @@ zadd_rdata_txt_wireformat(uint16_t *data, int first)
 //	}
 //	else
 //		rd = &parser->current_rr.rdatas[parser->current_rr.rdata_count-1];
-//	
+//
 //	if ((size_t)rd->data[0] + (size_t)data[0] > 65535) {
 //		fprintf(stderr, "too large rdata element");
 //		return;
 //	}
-//	
+//
 //	memcpy((uint8_t *)rd->data + 2 + rd->data[0], data + 1, data[0]);
 //	rd->data[0] += data[0];
 }
@@ -1042,7 +1034,7 @@ zadd_rdata_txt_clean_wireformat()
 {
 //	uint16_t *tmp_data;
 //	rdata_atom_type *rd = &parser->current_rr.rdatas[parser->current_rr.rdata_count-1];
-//	if ((tmp_data = (uint16_t *) region_alloc(parser->region, 
+//	if ((tmp_data = (uint16_t *) region_alloc(parser->region,
 //		rd->data[0] + 2)) != NULL) {
 //		memcpy(tmp_data, rd->data, rd->data[0] + 2);
 //		rd->data = tmp_data;
@@ -1287,11 +1279,11 @@ process_rr(void)
 	if (!rrset) {
 		rrset = dnslib_rrset_new(current_rrset->owner, current_rrset->type,
 				current_rrset->rclass, current_rrset->ttl);
-		
+
 //		rrset->zone = zone;
 		rrset->rrdata = dnslib_rdata_new();
 		//TODO create item, add it to the set
-		
+
 
 		/* Add it */
 		dnslib_node_add_rrset(node, rrset);
@@ -1351,7 +1343,7 @@ process_rr(void)
 //	if (zone->soa_rrset == NULL) {
 //		if (rr->type == TYPE_SOA) {
 //			if (rr->owner != zone->apex) {
-//				fprintf(stderr, 
+//				fprintf(stderr,
 //					"SOA record with invalid domain name");
 //			} else {
 //				zone->soa_rrset = rrset;
