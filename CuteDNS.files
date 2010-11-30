@@ -76,3 +76,5 @@ src/stat/gatherer.h
 src/stat/gatherer.c
 src/stat/stat.h
 src/stat/stat.c
+src/dnslib/zone.h
+src/dnslib/zone.c
