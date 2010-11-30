@@ -145,13 +145,13 @@ ANY     [^\"\n\\]|\\.
 			*tmp = '\0';
 			strip_string(yytext);
 
-			/*! \todo pointer to origin, parse string.
-			 *  \see dnslib_dname_new_from_str() (dname.h)
-			 *       which dnslib_node to pass as node?
+			/*! \todo dnslib_dname_new_from_wire() (dname.h)
+			 *        which dnslib_node to pass as node?
 			 */
-			/* const dname_type *dname; */
-			const void *dname = 0;
-			/* dname = dname_parse(parser->region, tmp + 1); */
+			const dnslib_dname_t *dname;
+			dname = dnslib_dname_new_from_wire(tmp + 1,
+			                                   strlen(tmp + 1),
+			                                   NULL);
 			if (!dname) {
 				zc_error("incorrect include origin '%s'",
 					 tmp + 1);
@@ -169,7 +169,7 @@ ANY     [^\"\n\\]|\\.
 				 yytext, strerror(errno));
 		} else {
 			/* Initialize parser for include file.  */
-			char *filename = region_strdup(parser->region, yytext);
+			char *filename = strdup(yytext);
 			push_parser_state(input); /* Destroys yytext.  */
 			parser->filename = filename;
 			parser->line = 1;
@@ -385,7 +385,7 @@ parse_token(int token, char *yytext, enum lexer_state *lexer_state)
 		}
 	}
 
-	str = region_strdup(parser->rr_region, yytext);
+	str = strdup(yytext);
 	len = zoctet(str);
 
 	yylval.data.str = str;
