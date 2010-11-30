@@ -15,7 +15,7 @@
 #include <string.h>
 
 #include "dname.h"
-#include "namedb.h"
+#include "dnslib/namedb.h"
 #include "zonec.h"
 
 /* these need to be global, otherwise they cannot be used inside yacc */
