@@ -227,6 +227,13 @@ const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname) {
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_dname_is_fqdn(const dnslib_dname_t *dname)
+{
+	return (dname->name[dname->size - 1] == '\0');
+}
+
+/*----------------------------------------------------------------------------*/
+
 void dnslib_dname_free(dnslib_dname_t **dname)
 {
 	if (dname == NULL || *dname == NULL) {
@@ -308,4 +315,34 @@ int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2)
 	}
 
 	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2)
+{
+	if (d2->size == 0) {
+		return d1;
+	}
+
+	if (dnslib_dname_is_fqdn(d1)) {
+		return NULL;
+	}
+
+	// allocate new space
+	uint8_t *new_dname = (uint8_t *)malloc(d1->size + d2->size);
+	if (new_dname == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+
+	memcpy(new_dname, d1->name, d1->size);
+	new_dname += d1->size;
+	memcpy(new_dname, d2->name, d2->size);
+
+	uint8_t *old_name = d1->name;
+	d1->name = new_dname;
+	free(old_name);
+
+	return d1;
 }
