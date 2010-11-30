@@ -881,11 +881,11 @@ zparser_conv_apl_rdata(char *str)
 	long p;
 
 	if (!colon) {
-		zc_error("address family separator is missing");
+		fprintf(stderr, "address family separator is missing");
 		return NULL;
 	}
 	if (!slash) {
-		zc_error("prefix separator is missing");
+		fprintf(stderr, "prefix separator is missing");
 		return NULL;
 	}
 
@@ -908,16 +908,16 @@ zparser_conv_apl_rdata(char *str)
 		length = IP6ADDRLEN;
 		maximum_prefix = length * 8;
 	} else {
-		zc_error("invalid address family '%s'", str);
+		fprintf(stderr, "invalid address family '%s'", str);
 		return NULL;
 	}
 
 	rc = inet_pton(af, colon + 1, address);
 	if (rc == 0) {
-		zc_error("invalid address '%s'", colon + 1);
+		fprintf(stderr, "invalid address '%s'", colon + 1);
 		return NULL;
 	} else if (rc == -1) {
-		zc_error("inet_pton failed: %s", strerror(errno));
+		fprintf(stderr, "inet_pton failed: %s", strerror(errno));
 		return NULL;
 	}
 
@@ -928,10 +928,10 @@ zparser_conv_apl_rdata(char *str)
 
 	p = strtol(slash + 1, &end, 10);
 	if (p < 0 || p > maximum_prefix) {
-		zc_error("prefix not in the range 0 .. %d", maximum_prefix);
+		fprintf(stderr, "prefix not in the range 0 .. %d", maximum_prefix);
 		return NULL;
 	} else if (*end != '\0') {
-		zc_error("invalid prefix '%s'", slash + 1);
+		fprintf(stderr, "invalid prefix '%s'", slash + 1);
 		return NULL;
 	}
 	prefix = (uint8_t) p;
@@ -1291,7 +1291,7 @@ process_rr(void)
 		if (current_rrset->type !=
 			DNSLIB_RRTYPE_RRSIG && rrset->ttl !=
 			current_rrset->ttl) {
-			zc_warning_prev_line(
+			fprintf(stderr, 
 				"TTL does not match the TTL of the RRset");
 		}
 
@@ -1400,9 +1400,9 @@ process_rr(void)
 //#endif
 //			while(parent) {
 //				if(domain_find_rrset_any(parent, TYPE_DNAME)) {
-//					zc_error("While checking node %s,",
+//					fprintf(stderr, "While checking node %s,",
 //						dname_to_string(domain_dname(domain), NULL));
-//					zc_error("DNAME at %s has data below it. "
+//					fprintf(stderr, "DNAME at %s has data below it. "
 //						"This is not allowed (rfc 2672).",
 //						dname_to_string(domain_dname(parent), NULL));
 //					exit(1);
@@ -1425,14 +1425,14 @@ process_rr(void)
 //
 //	dname = dname_parse(parser->region, name);
 //	if (!dname) {
-//		zc_error("incorrect zone name '%s'", name);
+//		fprintf(stderr, "incorrect zone name '%s'", name);
 //		return;
 //	}
 //
 //#ifndef ROOT_SERVER
 //	/* Is it a root zone? Are we a root server then? Idiot proof. */
 //	if (dname->label_count == 1) {
-//		zc_error("not configured as a root server");
+//		fprintf(stderr, "not configured as a root server");
 //		return;
 //	}
 //#endif
@@ -1450,7 +1450,7 @@ process_rr(void)
 //			}
 //		}
 //		/* cannot happen with stdin - so no fix needed for zonefile */
-//		zc_error("cannot open '%s': %s", zonefile, strerror(errno));
+//		fprintf(stderr, "cannot open '%s': %s", zonefile, strerror(errno));
 //		return;
 //	}
 //
@@ -1464,7 +1464,7 @@ process_rr(void)
 //		if(dname_compare(domain_dname(
 //			parser->current_zone->soa_rrset->rrs[0].owner),
 //			dname) != 0) {
-//			zc_error("zone configured as '%s', but SOA has owner '%s'.",
+//			fprintf(stderr, "zone configured as '%s', but SOA has owner '%s'.",
 //				name, dname_to_string(
 //				domain_dname(parser->current_zone->
 //				soa_rrset->rrs[0].owner), NULL));
