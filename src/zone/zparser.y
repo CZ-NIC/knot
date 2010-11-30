@@ -105,21 +105,18 @@ line:	NL
     |	rr
     {	/* rr should be fully parsed */
 	    if (!parser->error_occurred) {
-			    parser->current_rrset.rdatas
-				    = (rdata_atom_type *) region_alloc_init(
-					    parser->region,
-					    parser->current_rrset.rdatas,
-					    (parser->current_rrset.rdata_count
-					     * sizeof(rdata_atom_type)));
+			    parser->current_rrset.rdata->items
+				    = malloc(parser->current_rrset.rdata->count
+					     * sizeof(dnslib_rdata_item_t));
 
 			    process_rr();
 	    }
 
-	    region_free_all(parser->rr_region);
+	    free(parser->current_rrset.rdata->items);
 
 	    parser->current_rrset.type = 0;
-	    parser->current_rrset.rdata_count = 0;
-	    parser->current_rrset.rdatas = parser->temporary_rdatas;
+	    parser->current_rrset.rdata->count = 0;
+	    parser->current_rrset.rdata->items = parser->temporary_rdatas;
 	    parser->error_occurred = 0;
     }
     |	error NL
@@ -202,6 +199,7 @@ classttl:	/* empty - fill in the default, def. ttl and IN class */
 dname:	abs_dname
     |	rel_dname
     {
+            /*! \todo Fix domain_dname() and name_size */
 	    if ($1 == error_dname) {
 		    $$ = error_domain;
 	    } else if ($1->name_size + domain_dname(parser->origin)->name_size - 1 > MAXDOMAINLEN) {
@@ -242,9 +240,8 @@ label:	STR
 		    zc_error("label exceeds %d character limit", MAXLABELLEN);
 		    $$ = error_dname;
 	    } else {
-		    $$ = dname_make_from_label(parser->rr_region,
-					       (uint8_t *) $1.str,
-					       $1.len);
+		    /*!\todo Should I set node to NULL here? Or origin? */
+		    $$ = dnslib_dname_new_from_str($1.str, $1.len, NULL);
 	    }
     }
     |	BITLAB
@@ -279,7 +276,7 @@ wire_dname:	wire_abs_dname
 
 wire_abs_dname:	'.'
     {
-	    char *result = (char *) region_alloc(parser->rr_region, 2);
+	    char *result = malloc(2 * sizeof(char));
 	    result[0] = 0;
 	    result[1] = '\0';
 	    $$.str = result;
@@ -287,8 +284,7 @@ wire_abs_dname:	'.'
     }
     |	wire_rel_dname '.'
     {
-	    char *result = (char *) region_alloc(parser->rr_region,
-						 $1.len + 2);
+	    char *result = malloc($1.len + 2 * sizeof(char));
 	    memcpy(result, $1.str, $1.len);
 	    result[$1.len] = 0;
 	    result[$1.len+1] = '\0';
@@ -299,8 +295,7 @@ wire_abs_dname:	'.'
 
 wire_label:	STR
     {
-	    char *result = (char *) region_alloc(parser->rr_region,
-						 $1.len + 1);
+	    char *result = mallo($1.len + sizeof(char));
 
 	    if ($1.len > MAXLABELLEN)
 		    zc_error("label exceeds %d character limit", MAXLABELLEN);
@@ -323,7 +318,7 @@ wire_rel_dname:	wire_label
 
 	    /* make dname anyway */
 	    $$.len = $1.len + $3.len;
-	    $$.str = (char *) region_alloc(parser->rr_region, $$.len + 1);
+	    $$.str = malloc($$.len + sizeof(char));
 	    memcpy($$.str, $1.str, $1.len);
 	    memcpy($$.str + $1.len, $3.str, $3.len);
 	    $$.str[$$.len] = '\0';
@@ -350,12 +345,12 @@ concatenated_str_seq:	STR
     |	'.'
     {
 	    $$.len = 1;
-	    $$.str = region_strdup(parser->rr_region, ".");
+	    $$.str = strdup(".");
     }
     |	concatenated_str_seq sp STR
     {
 	    $$.len = $1.len + $3.len + 1;
-	    $$.str = (char *) region_alloc(parser->rr_region, $$.len + 1);
+	    $$.str = malloc($$.len + 1);
 	    memcpy($$.str, $1.str, $1.len);
 	    memcpy($$.str + $1.len, " ", 1);
 	    memcpy($$.str + $1.len + 1, $3.str, $3.len);
@@ -364,7 +359,7 @@ concatenated_str_seq:	STR
     |	concatenated_str_seq '.' STR
     {
 	    $$.len = $1.len + $3.len + 1;
-	    $$.str = (char *) region_alloc(parser->rr_region, $$.len + 1);
+	    $$.str = malloc($$.len + 1);
 	    memcpy($$.str, $1.str, $1.len);
 	    memcpy($$.str + $1.len, ".", 1);
 	    memcpy($$.str + $1.len + 1, $3.str, $3.len);
@@ -424,8 +419,7 @@ nsec_seq:	NL
 str_sp_seq:	STR
     |	str_sp_seq sp STR
     {
-	    char *result = (char *) region_alloc(parser->rr_region,
-						 $1.len + $3.len + 1);
+	    char *result = malloc($1.len + $3.len + 1);
 	    memcpy(result, $1.str, $1.len);
 	    memcpy(result + $1.len, $3.str, $3.len);
 	    $$.str = result;
@@ -441,8 +435,7 @@ str_sp_seq:	STR
 str_dot_seq:	STR
     |	str_dot_seq '.' STR
     {
-	    char *result = (char *) region_alloc(parser->rr_region,
-						 $1.len + $3.len + 1);
+	    char *result = malloc($1.len + $3.len + 1);
 	    memcpy(result, $1.str, $1.len);
 	    memcpy(result + $1.len, $3.str, $3.len);
 	    $$.str = result;
@@ -462,8 +455,7 @@ dotted_str:	STR
     }
     |	dotted_str '.'
     {
-	    char *result = (char *) region_alloc(parser->rr_region,
-						 $1.len + 2);
+	    char *result = malloc($1.len + 2);
 	    memcpy(result, $1.str, $1.len);
 	    result[$1.len] = '.';
 	    $$.str = result;
@@ -472,8 +464,7 @@ dotted_str:	STR
     }
     |	dotted_str '.' STR
     {
-	    char *result = (char *) region_alloc(parser->rr_region,
-						 $1.len + $3.len + 2);
+	    char *result = malloc($1.len + $3.len + 2);
 	    memcpy(result, $1.str, $1.len);
 	    result[$1.len] = '.';
 	    memcpy(result + $1.len + 1, $3.str, $3.len);
