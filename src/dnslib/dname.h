@@ -129,6 +129,16 @@ uint dnslib_dname_size(const dnslib_dname_t *dname);
 const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname);
 
 /*!
+ * \brief Checks if the given domain name is a fully-qualified domain name.
+ *
+ * \param dname Domain name to check.
+ *
+ * \retval 0 if \a dname is not a FQDN.
+ * \retval <> if \a dname is a FQDN.
+ */
+int dnslib_dname_is_fqdn(const dnslib_dname_t *dname);
+
+/*!
  * \brief Destroys the given domain name.
  *
  * Frees also the data within the struct. This is somewhat different behaviour
@@ -152,6 +162,19 @@ void dnslib_dname_free(dnslib_dname_t **dname);
  * \retval 0 if the domain names are identical.
  */
 int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2);
+
+/*!
+ * \brief Concatenates two domain names.
+ *
+ * \note Member \a node is ignored, i.e. preserved.
+ *
+ * \param d1 First domain name (will be modified).
+ * \param d2 Second domain name (will not be modified).
+ *
+ * \return The concatenated domain name (i.e. modified \a d1) or NULL if
+ *         the operation is not valid (e.g. \a d1 is a FQDN).
+ */
+dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2);
 
 #endif /* _CUTEDNS_DNSLIB_DNAME_H_ */
 
