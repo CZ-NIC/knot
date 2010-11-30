@@ -62,7 +62,7 @@ struct zparser {
 //	curent rr will have to be represented as current rrset
 //before:	rr_type current_rr;
 	dnslib_rrset_t current_rrset; //XXX * was not there
-	dnslib_rdata_item_t **temporary_rdatas; //XXX only one * was there
+	dnslib_rdata_item_t *temporary_rdatas; //XXX only one * was there
 };
 
 extern zparser_type *parser;
@@ -125,8 +125,7 @@ void set_bitnsec(uint8_t  bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
 uint16_t *alloc_rdata_init(region_type *region, const void *data, size_t size);
 
 /* zparser.y */
-zparser_type *zparser_create(region_type *region, region_type *rr_region,
-			     namedb_type *db);
+zparser_type *zparser_create(namedb_type *db);
 void zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 		  const dnslib_dname_t *origin);
 
