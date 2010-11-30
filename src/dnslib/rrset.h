@@ -196,6 +196,26 @@ uint dnslib_rrset_rrsig_count(const dnslib_rrset_t *rrset);
  */
 void dnslib_rrset_free(dnslib_rrset_t **rrset);
 
+/*!
+ * \brief Merges two RRSets.
+ *
+ * Merges \a r1 into \a r2 by concatenating the list of RDATAs in \a r2 after
+ * the list of RDATAs in \a r1. \a r2 is unaffected by this, though you must not
+ * destroy the RDATAs in \a r2 as they are now also in \a r1. (You may use
+ * function dnslib_rrset_free() though, as it does not touch RDATAs).
+ *
+ * \note Members \a rrsigs, \a first and \a rrsig_count are not checked for
+ *       match, members from the first RRSet are preserved.
+ *
+ * \param r1 Pointer to RRSet to be merged into.
+ * \param r2 Poitner to RRSet to be merged.
+ *
+ * \retval 0 on success.
+ * \retval -1 if the RRSets could not be merged, because their Owner, Type,
+ *            Class or TTL does not match.
+ */
+int dnslib_merge_rrsets(void **r1, void **r2);
+
 #endif /* _CUTEDNS_DNSLIB_RRSET_H_ */
 
 /*! @} */
