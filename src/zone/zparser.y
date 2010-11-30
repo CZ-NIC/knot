@@ -105,11 +105,11 @@ line:	NL
     |	rr
     {	/* rr should be fully parsed */
 	    if (!parser->error_occurred) {
-			    parser->current_rr.rdatas
+			    parser->current_rrset.rdatas
 				    = (rdata_atom_type *) region_alloc_init(
 					    parser->region,
-					    parser->current_rr.rdatas,
-					    (parser->current_rr.rdata_count
+					    parser->current_rrset.rdatas,
+					    (parser->current_rrset.rdata_count
 					     * sizeof(rdata_atom_type)));
 
 			    process_rr();
@@ -117,9 +117,9 @@ line:	NL
 
 	    region_free_all(parser->rr_region);
 
-	    parser->current_rr.type = 0;
-	    parser->current_rr.rdata_count = 0;
-	    parser->current_rr.rdatas = parser->temporary_rdatas;
+	    parser->current_rrset.type = 0;
+	    parser->current_rrset.rdata_count = 0;
+	    parser->current_rrset.rdatas = parser->temporary_rdatas;
 	    parser->error_occurred = 0;
     }
     |	error NL
@@ -156,8 +156,8 @@ origin_directive:	DOLLAR_ORIGIN sp abs_dname trail
 
 rr:	owner classttl type_and_rdata
     {
-	    parser->current_rr.owner = $1;
-	    parser->current_rr.type = $3;
+	    parser->current_rrset.owner = $1;
+	    parser->current_rrset.type = $3;
     }
     ;
 
@@ -174,28 +174,28 @@ owner:	dname sp
 
 classttl:	/* empty - fill in the default, def. ttl and IN class */
     {
-	    parser->current_rr.ttl = parser->default_ttl;
-	    parser->current_rr.klass = parser->default_class;
+	    parser->current_rrset.ttl = parser->default_ttl;
+	    parser->current_rrset.klass = parser->default_class;
     }
     |	T_RRCLASS sp		/* no ttl */
     {
-	    parser->current_rr.ttl = parser->default_ttl;
-	    parser->current_rr.klass = $1;
+	    parser->current_rrset.ttl = parser->default_ttl;
+	    parser->current_rrset.klass = $1;
     }
     |	T_TTL sp		/* no class */
     {
-	    parser->current_rr.ttl = $1;
-	    parser->current_rr.klass = parser->default_class;
+	    parser->current_rrset.ttl = $1;
+	    parser->current_rrset.klass = parser->default_class;
     }
     |	T_TTL sp T_RRCLASS sp	/* the lot */
     {
-	    parser->current_rr.ttl = $1;
-	    parser->current_rr.klass = $3;
+	    parser->current_rrset.ttl = $1;
+	    parser->current_rrset.klass = $3;
     }
     |	T_RRCLASS sp T_TTL sp	/* the lot - reversed */
     {
-	    parser->current_rr.ttl = $3;
-	    parser->current_rr.klass = $1;
+	    parser->current_rrset.ttl = $3;
+	    parser->current_rrset.klass = $1;
     }
     ;
 
@@ -962,13 +962,11 @@ yywrap(void)
  * Create the parser.
  */
 zparser_type *
-zparser_create(region_type *region, region_type *rr_region, namedb_type *db)
+zparser_create(namedb_type *db)
 {
 	zparser_type *result;
 
-	result = (zparser_type *) region_alloc(region, sizeof(zparser_type));
-	result->region = region;
-	result->rr_region = rr_region;
+	result = (zparser_type *) malloc(sizeof(zparser_type));
 	result->db = db;
 
 	result->filename = NULL;
@@ -977,8 +975,8 @@ zparser_create(region_type *region, region_type *rr_region, namedb_type *db)
 	result->prev_dname = NULL;
 	result->default_apex = NULL;
 
-	result->temporary_rdatas = (rdata_atom_type *) region_alloc(
-		result->region, MAXRDATALEN * sizeof(rdata_atom_type));
+	result->temporary_rdatas = malloc(MAXRDATALEN *
+	                                  sizeof(dnslib_rdata_item_t));
 
 	return result;
 }
@@ -1004,8 +1002,8 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t klass,
 	parser->errors = 0;
 	parser->line = 1;
 	parser->filename = filename;
-	parser->current_rr.rdata_count = 0;
-	parser->current_rr.rdatas = parser->temporary_rdatas;
+	parser->current_rrset.rdata_count = 0;
+	parser->current_rrset.rdatas = parser->temporary_rdatas;
 }
 
 void
