@@ -14,6 +14,7 @@
 #include "rrset.h"
 #include "node.h"
 #include "rdata.h"
+#include "zone-database.h"
 
 #define	MAXTOKENSLEN	512		/* Maximum number of tokens per entry */
 #define	B64BUFSIZE	65535		/* Buffer size for b64 conversion */
@@ -73,7 +74,7 @@ extern FILE *yyin;
  * these pointers!
  */
 extern const dnslib_dname_t *error_dname;
-extern zone_node_t *error_domain;
+extern dnslib_node_t *error_domain;
 
 int yyparse(void);
 int yylex(void);
@@ -110,7 +111,7 @@ uint32_t zparser_ttl2int(const char *ttlstr, int* error);
 void zadd_rdata_wireformat(uint16_t *data);
 void zadd_rdata_txt_wireformat(uint16_t *data, int first);
 void zadd_rdata_txt_clean_wireformat();
-void zadd_rdata_domain(domain_type *domain);
+void zadd_rdata_domain(dnslib_dname_t *domain);
 
 void set_bitnsec(uint8_t  bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
 		 uint16_t index);
