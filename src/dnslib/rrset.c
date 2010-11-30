@@ -104,3 +104,31 @@ void dnslib_rrset_free(dnslib_rrset_t **rrset)
 	*rrset = NULL;
 }
 
+int dnslib_merge_rrsets(void **r1, void **r2)
+{
+	dnslib_rrset_t * rrset1 = (dnslib_rrset_t *)(*r1);
+	dnslib_rrset_t * rrset2 = (dnslib_rrset_t *)(*r2);
+
+	if (rrset1->owner != rrset2->owner
+	    || rrset1->rclass != rrset2->rclass
+	    || rrset1->type != rrset2->type
+	    || rrset1->ttl != rrset2->ttl) {
+		return -1;
+	}
+
+	// add all RDATAs from rrset2 to rrset1 (i.e. concatenate linked lists)
+
+	// no RDATA in RRSet 1
+	if (rrset1->rdata == NULL) {
+		rrset1->rdata = rrset2->rdata;
+		return 0;
+	}
+
+	dnslib_rdata_t *rdata1 = rrset1->rdata;
+	while (rdata1->next != NULL) {
+		rdata1 = rdata1->next;
+	}
+
+	rdata1->next = rrset2->rdata;
+	return 0;
+}
