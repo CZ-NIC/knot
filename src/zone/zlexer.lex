@@ -17,11 +17,118 @@
 
 #include "zonec.h"
 #include "dname.h"
+#include "descriptor.h"
 #include "zparser.h"
 
-#define YY_NO_UNPUT
+/* Utils */
+extern void zc_error(const char *fmt, ...);
+extern void zc_warning(const char *fmt, ...);
 
-#if 0
+void strip_string(char *str)
+{
+	char *start = str;
+	char *end = str + strlen(str) - 1;
+
+	while (isspace(*start))
+		++start;
+	if (start > end) {
+		/* Completely blank. */
+		str[0] = '\0';
+	} else {
+		while (isspace(*end))
+			--end;
+		*++end = '\0';
+
+		if (str != start)
+			memmove(str, start, end - start + 1);
+	}
+}
+
+int hexdigit_to_int(char ch)
+{
+	switch (ch) {
+	case '0': return 0;
+	case '1': return 1;
+	case '2': return 2;
+	case '3': return 3;
+	case '4': return 4;
+	case '5': return 5;
+	case '6': return 6;
+	case '7': return 7;
+	case '8': return 8;
+	case '9': return 9;
+	case 'a': case 'A': return 10;
+	case 'b': case 'B': return 11;
+	case 'c': case 'C': return 12;
+	case 'd': case 'D': return 13;
+	case 'e': case 'E': return 14;
+	case 'f': case 'F': return 15;
+	default:
+		abort();
+	}
+}
+
+uint32_t strtottl(const char *nptr, const char **endptr)
+{
+	uint32_t i = 0;
+	uint32_t seconds = 0;
+
+	for(*endptr = nptr; **endptr; (*endptr)++) {
+		switch (**endptr) {
+		case ' ':
+		case '\t':
+			break;
+		case 's':
+		case 'S':
+			seconds += i;
+			i = 0;
+			break;
+		case 'm':
+		case 'M':
+			seconds += i * 60;
+			i = 0;
+			break;
+		case 'h':
+		case 'H':
+			seconds += i * 60 * 60;
+			i = 0;
+			break;
+		case 'd':
+		case 'D':
+			seconds += i * 60 * 60 * 24;
+			i = 0;
+			break;
+		case 'w':
+		case 'W':
+			seconds += i * 60 * 60 * 24 * 7;
+			i = 0;
+			break;
+		case '0':
+		case '1':
+		case '2':
+		case '3':
+		case '4':
+		case '5':
+		case '6':
+		case '7':
+		case '8':
+		case '9':
+			i *= 10;
+			i += (**endptr - '0');
+			break;
+		default:
+			seconds += i;
+			return seconds;
+		}
+	}
+	seconds += i;
+	return seconds;
+}
+
+#define YY_NO_UNPUT
+#define MAXINCLUDES 10
+
+#if 1
 #define LEXOUT(s)  printf s /* used ONLY when debugging */
 #else
 #define LEXOUT(s)
@@ -149,7 +256,7 @@ ANY     [^\"\n\\]|\\.
 			 *        which dnslib_node to pass as node?
 			 */
 			const dnslib_dname_t *dname;
-			dname = dnslib_dname_new_from_wire(tmp + 1,
+			dname = dnslib_dname_new_from_wire((uint8_t*)tmp + 1,
 			                                   strlen(tmp + 1),
 			                                   NULL);
 			if (!dname) {
@@ -292,11 +399,14 @@ static int
 rrtype_to_token(const char *word, uint16_t *type)
 {
 	uint16_t t = dnslib_rrtype_from_string(word);
-	if (t != 0) {
+	if (t != DNSLIB_RRTYPE_UNKNOWN) {
 		dnslib_rrtype_descriptor_t *entry = 0;
 		entry = dnslib_rrtype_descriptor_by_type(t);
 		*type = t;
-		return entry->token;
+
+		/*! \todo entry should return associated token.
+		          see nsd/dns.c */
+		return 0;
 	}
 
 	return 0;
@@ -370,15 +480,13 @@ parse_token(int token, char *yytext, enum lexer_state *lexer_state)
 		/* class */
 		rrclass = dnslib_rrclass_from_string(yytext);
 		if (rrclass != 0) {
-			yylval.klass = rrclass;
+			yylval.rclass = rrclass;
 			LEXOUT(("CLASS "));
 			return T_RRCLASS;
 		}
 
 		/* ttl */
-		/*! \todo strtottl(nptr, endptr) -> uint32_t /*
-		yylval.ttl = 0; */
-		/* yylval.ttl = strtottl(yytext, &t); */
+		yylval.ttl = strtottl(yytext, &t);
 		if (*t == '\0') {
 			LEXOUT(("TTL "));
 			return T_TTL;

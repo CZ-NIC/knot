@@ -16,6 +16,7 @@
 #include "rdata.h"
 #include "zone-database.h"
 
+#define MAX_RDLENGTH	65535
 #define	MAXTOKENSLEN	512		/* Maximum number of tokens per entry */
 #define	B64BUFSIZE	65535		/* Buffer size for b64 conversion */
 #define	ROOT		(const uint8_t *)"\001"
