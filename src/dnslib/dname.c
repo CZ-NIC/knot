@@ -234,13 +234,37 @@ int dnslib_dname_is_fqdn(const dnslib_dname_t *dname)
 
 /*----------------------------------------------------------------------------*/
 
+dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname)
+{
+	dnslib_dname_t *parent = dnslib_dname_new();
+	if (parent == NULL) {
+		return NULL;
+	}
+
+	parent->size = dname->size - dname->name[0] - 1;
+	parent->name = (uint8_t *)malloc(parent->size);
+	if (parent->name == NULL) {
+		ERR_ALLOC_FAILED;
+		dnslib_dname_free(&parent);
+		return NULL;
+	}
+
+	memcpy(parent->name, &dname->name[dname->name[0] + 1], parent->size);
+
+	return parent;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void dnslib_dname_free(dnslib_dname_t **dname)
 {
 	if (dname == NULL || *dname == NULL) {
 		return;
 	}
 
-	free((*dname)->name);
+	if ((*dname)->name != NULL) {
+		free((*dname)->name);
+	}
 	free(*dname);
 	*dname = NULL;
 }
