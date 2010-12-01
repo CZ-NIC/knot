@@ -21,10 +21,10 @@
 size_t strlcpy(char *dst, const char *src, size_t siz);
 int inet_pton4(src, dst);
 int inet_pton6(src, dst);
+int my_b32_pton(const char *src, uint8_t *target, size_t tsize);
 const char * inet_ntop(int af, const void *src, char *dst, size_t size);
 const char * inet_ntop4(const u_char *src, char *dst, size_t size);
 const char * inet_ntop6(const u_char *src, char *dst, size_t size);
-static int my_b32_pton(const char *src, uint8_t *target, size_t tsize);
 int inet_pton(af, src, dst);
 void b64_initialize_rmap();
 int b64_pton_do(char const *src, uint8_t *target, size_t targsize);

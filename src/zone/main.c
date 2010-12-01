@@ -1,4 +1,9 @@
+#include <unistd.h>
+#include <stdlib.h>
 #include "zonec.h"
+
+/* Total errors counter */
+long int totalerrors = 0;
 
 int
 main (int argc, char **argv)

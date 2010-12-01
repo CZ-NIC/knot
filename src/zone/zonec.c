@@ -78,8 +78,6 @@ extern int hexdigit_to_int(char ch);
 const dnslib_dname_t *error_dname;
 dnslib_node_t *error_domain;
 
-/* The database file... */
-static const char *dbfile = 0;
 
 /* Some global flags... */
 static int vflag = 0;
@@ -1385,7 +1383,7 @@ process_rr(void)
  * nsd_options can be NULL if no config file is passed.
  *
  */
-static void
+void
 zone_read(const char *name, const char *zonefile) //, nsd_options_t* nsd_options)
 {
 	const dnslib_dname_t *dname;

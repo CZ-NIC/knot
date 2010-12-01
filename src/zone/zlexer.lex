@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <string.h>
 #include <strings.h>
+#include <assert.h>
 
 #include "zonec.h"
 #include "dname.h"
