@@ -590,6 +590,7 @@ type_and_rdata:
     |	STR error NL
     {
 	    zc_error_prev_line("unrecognized RR type '%s'", $1.str);
+	    zc_error_prev_line("unrecognized RR type '%d'", $1.tok);
     }
     ;
 
@@ -982,6 +983,9 @@ zparser_create()
 
 	result->temporary_rdatas = malloc(MAXRDATALEN *
 	                                  sizeof(dnslib_rdata_item_t));
+	result->current_rrset = *dnslib_rrset_new(NULL, 0, 0, 0);
+
+	result->current_rrset.rdata = dnslib_rdata_new();
 
 	return result;
 }
@@ -1007,7 +1011,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->errors = 0;
 	parser->line = 1;
 	parser->filename = filename;
-	parser->current_rrset.rdata->count = 0;
+//	parser->current_rrset.rdata->count = 0;
 	parser->current_rrset.rdata->items = parser->temporary_rdatas;
 }
 

@@ -8,7 +8,7 @@
 
 #include "descriptor.h"
 
-enum desclen { DNSLIB_RRTYPE_DESCRIPTORS_LENGTH = 101 };
+enum desclen { DNSLIB_RRTYPE_DESCRIPTORS_LENGTH = 32770 }; // used to be 101
 
 /* Taken from RFC 1035, section 3.2.4.  */
 static dnslib_lookup_table_t dns_rrclasses[] = {
@@ -304,9 +304,9 @@ static dnslib_rrtype_descriptor_t
   	    DNSLIB_RDATA_WF_TEXT, DNSLIB_RDATA_WF_TEXT,
 	    DNSLIB_RDATA_WF_TEXT, DNSLIB_RDATA_WF_TEXT }, false },
   	/* 32769 */
-  /*	[100] = { DNSLIB_RRTYPE_DLV, "DLV", 4,
+  	[32769] = { DNSLIB_RRTYPE_DLV, "DLV", 4,
   	  { DNSLIB_RDATA_WF_SHORT, DNSLIB_RDATA_WF_BYTE,
-	    DNSLIB_RDATA_WF_BYTE, DNSLIB_RDATA_WF_BINARY } },*/
+	    DNSLIB_RDATA_WF_BYTE, DNSLIB_RDATA_WF_BINARY } },
 };
 
 static dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,
@@ -378,13 +378,13 @@ dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_type(uint16_t type)
 	if (type < DNSLIB_RRTYPE_DESCRIPTORS_LENGTH) {
 		return &dnslib_rrtype_descriptors[type];
 	} else if (type == DNSLIB_RRTYPE_DLV) {
-		return &dnslib_rrtype_descriptors[DNSLIB_RRTYPE_DS];
+		return &dnslib_rrtype_descriptors[DNSLIB_RRTYPE_DLV];
 	}
 	return &dnslib_rrtype_descriptors[0];
 }
 
 //Will we ever need this? XXX
-dnslib_rrtype_descriptor_t *rrtype_descriptor_by_name(const char *name)
+dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_name(const char *name)
 {
 	int i;
 
@@ -398,7 +398,7 @@ dnslib_rrtype_descriptor_t *rrtype_descriptor_by_name(const char *name)
 	if (dnslib_rrtype_descriptors[DNSLIB_RRTYPE_DLV].name &&
 	    strcasecmp(dnslib_rrtype_descriptors[DNSLIB_RRTYPE_DLV].name,
 	                              name) == 0) {
-		return &dnslib_rrtype_descriptors[DNSLIB_RRTYPE_DS];
+		return &dnslib_rrtype_descriptors[DNSLIB_RRTYPE_DLV];
 	}
 
 	return NULL;
