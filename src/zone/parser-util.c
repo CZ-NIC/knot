@@ -816,27 +816,6 @@ write_uint32(void *dst, uint32_t data)
 #endif
 }
 
-/* Imported from lexer. */
-extern int hexdigit_to_int(char ch);
-
-const dnslib_dname_t *error_dname;
-dnslib_node_t *error_domain;
-
-/* The database file... */
-static const char *dbfile = 0;
-
-/* Some global flags... */
-static int vflag = 0;
-/* if -v then print progress each 'progress' RRs */
-static int progress = 10000;
-
-/* Total errors counter */
-static long int totalerrors = 0;
-static long int totalrrs = 0;
-
-extern uint8_t nsecbits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE];
-extern uint16_t nsec_highest_rcode;
-
 uint32_t
 strtottl(const char *nptr, const char **endptr)
 {

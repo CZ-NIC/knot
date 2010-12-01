@@ -31,7 +31,7 @@ uint32_t strtoserial(const char* nptr, const char** endptr);
 void write_uint32(void *dst, uint32_t data);
 uint32_t strtottl(const char *nptr, const char **endptr);
 dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table, const char *name);
-
+dnslib_lookup_table_t *dnslib_lookup_by_id(dnslib_lookup_table_t *table, int id);
 
 /* Taken from RFC 2535, section 7.  */
 dnslib_lookup_table_t dns_algorithms[] = {

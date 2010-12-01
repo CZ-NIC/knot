@@ -19,6 +19,7 @@
 #include <time.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <assert.h>
 
 #include "common.h"
 #include "zonec.h"
