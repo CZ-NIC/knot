@@ -30,6 +30,8 @@ void set_bit(uint8_t bits[], size_t index);
 uint32_t strtoserial(const char* nptr, const char** endptr);
 void write_uint32(void *dst, uint32_t data);
 uint32_t strtottl(const char *nptr, const char **endptr);
+dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table, const char *name);
+
 
 /* Taken from RFC 2535, section 7.  */
 dnslib_lookup_table_t dns_algorithms[] = {

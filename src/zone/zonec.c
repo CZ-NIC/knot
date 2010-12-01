@@ -22,11 +22,12 @@
 
 #include "common.h"
 #include "zonec.h"
-#include "dname.h"
-#include "rrset.h"
-#include "rdata.h"
-#include "node.h"
-#include "descriptor.h"
+#include "dnslib/dname.h"
+#include "dnslib/rrset.h"
+#include "dnslib/rdata.h"
+#include "dnslib/node.h"
+#include "dnslib/zone.h"
+#include "dnslib/descriptor.h"
 #include "parser-util.h"
 
 #include "zparser.h"
@@ -39,6 +40,21 @@
 
 /* Imported from lexer. */
 extern int hexdigit_to_int(char ch);
+
+const dnslib_dname_t *error_dname;
+dnslib_node_t *error_domain;
+
+/* The database file... */
+static const char *dbfile = 0;
+
+/* Some global flags... */
+static int vflag = 0;
+/* if -v then print progress each 'progress' RRs */
+static int progress = 10000;
+
+/* Total errors counter */
+static long int totalerrors = 0;
+static long int totalrrs = 0;
 
 extern uint8_t nsecbits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE];
 extern uint16_t nsec_highest_rcode;
@@ -1135,7 +1151,7 @@ set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
 int
 process_rr(void)
 {
-	zdb_zone_t *zone = parser->current_zone;
+	dnslib_zone_t *zone = parser->current_zone;
 	dnslib_rrset_t *current_rrset = &parser->current_rrset;
 	dnslib_rrset_t *rrset;
 	size_t max_rdlength;
@@ -1161,41 +1177,21 @@ process_rr(void)
 	/* Do we have the zone already? */
 	if (!zone)
 	{
-//		zone = (zdb_zone_t*) region_alloc(parser->region,
-//							  sizeof(zdb_zone_t));
-
-		//we still have zones from lnds...
-
 		//our apex should also be SOA
-		zone->apex = parser->default_apex;
-//		zone->soa_rrset = NULL;
-//		zone->soa_nx_rrset = NULL;
-//		zone->ns_rrset = NULL;
-//		zone->opts = NULL;
-//		zone->is_secure = 0;
-//		zone->updated = 1;
+		assert(current_rrset->type == DNSLIB_RRTYPE_SOA);
+		//soa comes first, therefore, there should not be any node assigned to
+		//its owner.
+		
+		dnslib_node_t *soa_node;
 
-//XXX		zone->next = parser->db->zones;
-//		parser->db->zones = zone;
-		parser->current_zone = zone;
-	}
+		assert(parser->origin != NULL);
 
-	if (current_rrset->type == DNSLIB_RRTYPE_SOA) {
-		/*
-		 * This is a SOA record, start a new zone or continue
-		 * an existing one.
-		 */
-		if (1==2)// (current_rrset->owner->is_apex) // this will not work, have to rethink
-			//NSD's owner is of "our" node type
-			//I'd say a global variable, soa_encountered or smth will work
-			//without messing up our structures.
-			fprintf(stderr, "this SOA record was already encountered");
-		else if (current_rrset->owner->node == parser->default_apex) {
-			zone->apex = current_rrset->owner->node;
-//			current_rrset->owner->is_apex = 1;
-		}
+		zone = dnslib_zone_new(parser->origin);
 
-		/* parser part */
+		soa_node = dnslib_node_new(current_rrset->owner, parser->origin);
+
+		dnslib_zone_add_node(zone, soa_node);
+
 		parser->current_zone = zone;
 	}
 
@@ -1206,19 +1202,19 @@ process_rr(void)
 		return 0;
 	}*/ //this does not have to be here for the time being
 
-	/* Do we have this type of rrset already? */
 	dnslib_node_t *node;
-	node = zdb_find_name_in_zone(zone, current_rrset->owner); //XXX
-	// check if node != NULL, else add then add rrset
+	node = dnslib_zone_find_node(zone, current_rrset->owner);
+	if (node == NULL) {
+		node = dnslib_node_new(current_rrset->owner, NULL);
+		//TODO dnslib_dname_left_chop
+	}
 	rrset = dnslib_node_get_rrset(node, current_rrset->type);
 	if (!rrset) {
 		rrset = dnslib_rrset_new(current_rrset->owner, current_rrset->type,
 				current_rrset->rclass, current_rrset->ttl);
 
-//		rrset->zone = zone;
-		rrset->rdata = dnslib_rdata_new();
-		//TODO create item, add it to the set
-
+		dnslib_rrset_add_rdata(rrset, current_rrset->rdata);
+		//TODO check return value
 
 		/* Add it */
 		dnslib_node_add_rrset(node, rrset);
@@ -1230,9 +1226,7 @@ process_rr(void)
 				"TTL does not match the TTL of the RRset");
 		}
 
-		//XXX added
-		
-		//XXX added
+		dnslib_rrset_add_rdata(rrset, current_rrset->rdata);
 
 //		/* Search for possible duplicates... */
 //		for (i = 0; i < rrset->rr_count; i++) {
@@ -1366,6 +1360,12 @@ zone_read(const char *name, const char *zonefile) //, nsd_options_t* nsd_options
 	
 	dname = dnslib_dname_new_from_str(name, strlen(name), NULL);
 
+	//XXX not sure about this workaround
+
+	dnslib_node_t *origin_node;
+
+	origin_node = dnslib_node_new(dname, NULL); //create 
+
 	if (!dname) {
 		fprintf(stderr, "incorrect zone name '%s'", name);
 		return;
@@ -1380,7 +1380,7 @@ zone_read(const char *name, const char *zonefile) //, nsd_options_t* nsd_options
 //#endif
 //
 	/* Open the zone file */
-	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, dname)) {
+	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
 //		if(nsd_options) {
 //			/* check for secondary zone, they can start with no zone info */
 //			zone_options_t* zopt = zone_options_find(nsd_options, dname);
@@ -1424,7 +1424,7 @@ int
 main (int argc, char **argv)
 {
 //	struct namedb *db;
-	zdb_database_t *db;
+//	zdb_database_t *db;
 	char *origin = NULL;
 	int c;
 //	region_type *global_region;
@@ -1512,12 +1512,12 @@ main (int argc, char **argv)
 //	}
 //
 	/* Create the database */
-	if ((db = zdb_create()) == NULL) {
-		fprintf(stderr, "zonec: error creating the database (%s): %s\n");
-		exit(1);
-	}
+//	if ((db = zdb_create()) == NULL) {
+//		fprintf(stderr, "zonec: error creating the database (%s): %s\n");
+//		exit(1);
+//	}
 
-	parser = zparser_create(db);
+	parser = zparser_create();
 	if (!parser) {
 		fprintf(stderr, "zonec: error creating the parser\n");
 		exit(1);

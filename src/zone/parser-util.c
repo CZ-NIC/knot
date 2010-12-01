@@ -21,6 +21,32 @@
 #define NS_IN6ADDRSZ 16
 #define APL_NEGATION_MASK      0x80U
 
+dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,
+					     const char *name)
+{
+	while (table->name != NULL) {
+		if (strcasecmp(name, table->name) == 0) {
+			return table;
+		}
+		table++;
+	}
+
+	return NULL;
+}
+
+dnslib_lookup_table_t *dnslib_lookup_by_id(dnslib_lookup_table_t *table,
+						  int id)
+{
+	while (table->name != NULL) {
+		if (table->id == id) {
+			return table;
+		}
+		table++;
+	}
+
+	return NULL;
+}
+
 /*!
  * \brief Strlcpy - safe string copy function, based on FreeBSD implementation.
  *
@@ -57,6 +83,35 @@ size_t strlcpy(char *dst, const char *src, size_t siz)
 	}
 
 	return(s - src - 1);        /* count does not include NUL */
+}
+
+/* int
+ * inet_pton(af, src, dst)
+ *	convert from presentation format (which usually means ASCII printable)
+ *	to network format (which is usually some kind of binary format).
+ * return:
+ *	1 if the address was valid for the specified address family
+ *	0 if the address wasn't valid (`dst' is untouched in this case)
+ *	-1 if some other error occurred (`dst' is untouched in this case, too)
+ * author:
+ *	Paul Vixie, 1996.
+ */
+int
+inet_pton(af, src, dst)
+	int af;
+	const char *src;
+	void *dst;
+{
+	switch (af) {
+	case AF_INET:
+		return (inet_pton4(src, dst));
+	case AF_INET6:
+		return (inet_pton6(src, dst));
+	default:
+		errno = EAFNOSUPPORT;
+		return (-1);
+	}
+	/* NOTREACHED */
 }
 
 static int my_b32_pton(const char *src, uint8_t *target, size_t tsize)
