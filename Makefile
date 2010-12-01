@@ -25,7 +25,7 @@ PARSER_OBJ  = $(OBJ_DIR)zparser
 LEXER_OBJ   = $(OBJ_DIR)zlexer
 PARSER_FILES = $(PARSER_OBJ).c $(LEXER_OBJ).c
 TESTS_FILES = $(TESTS_DIR)/main.c $(TESTS_DIR)/libtap/tap.c
-ZONEC_FILES = $(ZONEC_DIRS)/zonec.c
+ZONEC_FILES = $(ZONEC_DIR)/main.c
 
 SRC_FILES = $(shell find $(SRC_DIRS) ! -path "*/tests/*" -name "*.c" ! -name "main.c")
 

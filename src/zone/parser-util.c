@@ -114,7 +114,7 @@ inet_pton(af, src, dst)
 	/* NOTREACHED */
 }
 
-static int my_b32_pton(const char *src, uint8_t *target, size_t tsize)
+int my_b32_pton(const char *src, uint8_t *target, size_t tsize)
 {
 	char ch;
 	size_t p=0;
