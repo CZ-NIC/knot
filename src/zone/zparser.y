@@ -212,12 +212,14 @@ dname:	abs_dname
 		    zc_error("domain name exceeds %d character limit", MAXDOMAINLEN);
 		    $$ = error_domain;
 	    } else {
-		   /*! \todo Fix table insert. */
+		   /*! \todo Fix table insert, dnslib_dname. */
+		   dnslib_dname_t* tmpd = dnslib_dname_new_from_wire($1->name,
+		                                                     $1->size,
+		                                                     $1->node);
 		   /* $$ = domain_table_insert(
 			    parser->db->domains,
-			    dname_concatenate(
-				    parser->rr_region,
-				    $1,
+			    dnslib_dname_cat(
+				    tmpd,
 				    dnslib_node_get_parent(parser->origin))); */
 	    }
     }
@@ -270,7 +272,9 @@ rel_dname:	label
 			     MAXDOMAINLEN);
 		    $$ = error_dname;
 	    } else {
-		    $$ = dname_concatenate($1, $3);
+	            dnslib_dname_t* tmpd;
+		    tmpd = dnslib_dname_new_from_wire($1->name, $1->size, $1->node);
+		    $$ = dnslib_dname_cat(tmpd, $3);
 	    }
     }
     ;
@@ -918,10 +922,15 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			if(!name) {
 				zc_error_prev_line("IPSECKEY bad gateway dname %s", $7.str);
 			}
-			/*! \todo Fix dname_concatenate(). */
-			/* if($7.str[strlen($7.str)-1] != '.')
-			         name = dname_concatenate(name,
-					dnslib_node_get_parent(parser->origin)); */
+			if($7.str[strlen($7.str)-1] != '.') {
+			    dnslib_dname_t* tmpd;
+			    tmpd = dnslib_dname_new_from_wire(name->name,
+			                                      name->size,
+			                                      name->node);
+			    name = dnslib_dname_cat(tmpd,
+			            dnslib_node_get_parent(parser->origin));
+			}
+
 			uint8_t* dncpy = malloc(name->size);
 			memcpy(dncpy, name->name, name->size);
 			zadd_rdata_wireformat(dncpy);
