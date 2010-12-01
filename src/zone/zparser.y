@@ -15,7 +15,7 @@
 #include <string.h>
 
 #include "dname.h"
-#include "zone-database.h"
+#include "zone.h"
 #include "zonec.h"
 
 /* these need to be global, otherwise they cannot be used inside yacc */
@@ -211,16 +211,6 @@ dname:	abs_dname
 	    } else if ($1->size + parser->origin->owner->size - 1 > MAXDOMAINLEN) {
 		    zc_error("domain name exceeds %d character limit", MAXDOMAINLEN);
 		    $$ = error_domain;
-	    } else {
-		   /*! \todo Fix table insert, dnslib_dname. */
-		   dnslib_dname_t* tmpd = dnslib_dname_new_from_wire($1->name,
-		                                                     $1->size,
-		                                                     $1->node);
-		   /* $$ = domain_table_insert(
-			    parser->db->domains,
-			    dnslib_dname_cat(
-				    tmpd,
-				    dnslib_node_get_parent(parser->origin))); */
 	    }
     }
     ;
@@ -237,8 +227,8 @@ abs_dname:	'.'
     |	rel_dname '.'
     {
 	    if ($1 != error_dname) {
-		    /*! \todo Fix table insert. */
-		    /* $$ = domain_table_insert(parser->db->domains, $1); */
+	            /*! \todo What a mysterious function is this? */
+		    /* $$ = dns(parser->db->domains, $1); */
 	    } else {
 		    $$ = error_domain;
 	    }
@@ -975,13 +965,15 @@ yywrap(void)
  * Create the parser.
  */
 zparser_type *
-zparser_create(namedb_type *db)
+zparser_create()
 {
 	zparser_type *result;
 
-	result = (zparser_type *) malloc(sizeof(zparser_type));
-	result->db = db;
+	result = (zparser_type *)malloc(sizeof(zparser_type));
+	if (result == NULL)
+	    return NULL;
 
+	result->current_zone = NULL;
 	result->filename = NULL;
 	result->current_zone = NULL;
 	result->origin = NULL;
@@ -999,7 +991,7 @@ zparser_create(namedb_type *db)
  */
 void
 zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
-	     const dnslib_dname_t *origin)
+	     const dnslib_node_t *origin)
 {
 	memset(nxtbits, 0, sizeof(nxtbits));
 	memset(nsecbits, 0, sizeof(nsecbits));
@@ -1007,12 +999,8 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 
 	parser->default_ttl = ttl;
 	parser->default_class = rclass;
-	parser->current_zone = NULL;
 
-	parser->origin = 0;
-	/*! \todo Fix domain table insert.
-	parser->origin = domain_table_insert(parser->db->domains, origin);
-	*/
+	parser->origin = origin;
 	parser->prev_dname = parser->origin;
 	parser->default_apex = parser->origin;
 	parser->error_occurred = 0;
