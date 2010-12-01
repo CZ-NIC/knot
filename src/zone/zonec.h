@@ -10,6 +10,8 @@
 #ifndef _ZONEC_H_
 #define _ZONEC_H_
 
+#include <stdio.h>
+
 #include "dname.h"
 #include "rrset.h"
 #include "node.h"
