@@ -26,8 +26,8 @@ main (int argc, char **argv)
 //	totalerrors = 0;
 //
 //	/* Parse the command line... */
-	while ((c = getopt(argc, argv, "d:f:vhCF:L:o:c:z:")) != -1) {
-		switch (c) {
+//	while ((c = getopt(argc, argv, "d:f:vhCF:L:o:c:z:")) != -1) {
+//		switch (c) {
 //		case 'c':
 //			configfile = optarg;
 //			break;
@@ -51,21 +51,21 @@ main (int argc, char **argv)
 //			sscanf(optarg, "%d", &nsd_debug_level);
 //			break;
 //#endif /* NDEBUG */
-		case 'o':
-			origin = optarg;
-			break;
-		case 'z':
-			singlefile = optarg;
-			break;
+//		case 'o':
+//			origin = optarg;
+//			break;
+//		case 'z':
+//			singlefile = optarg;
+//			break;
 //		case 'h':
 //			usage();
 //			exit(0);
 //		case '?':
-		default:
+//		default:
 //			usage();
-			exit(1);
-		}
-	}
+//			exit(1);
+//		}
+//	}
 //
 //	argc -= optind;
 //	argv += optind;
@@ -126,6 +126,10 @@ main (int argc, char **argv)
 //		}
 //		if (vflag > 0)
 //			fprintf(stdout, "zonec: reading zone \"%s\".\n", origin);
+		origin = ".cz.";
+
+		singlefile = "samples/example.com.zone";
+		
 		zone_read(origin, singlefile); //, nsd_options);
 //		if (vflag > 0)
 //			fprintf(stdout, "zonec: processed %ld RRs in \"%s\".\n", totalrrs, origin);
