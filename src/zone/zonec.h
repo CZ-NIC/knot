@@ -14,7 +14,7 @@
 #include "rrset.h"
 #include "node.h"
 #include "rdata.h"
-#include "zone-database.h"
+#include "zone.h"
 
 #define MAXRDATALEN	64
 #define MAXLABELLEN	63
@@ -48,12 +48,10 @@ typedef void namedb_type;
 /* administration struct */
 typedef struct zparser zparser_type;
 struct zparser {
-	zdb_database_t *db;
-
 	const char *filename;
 	uint32_t default_ttl;
 	uint16_t default_class;
-	zdb_zone_t *current_zone;
+	dnslib_zone_t *current_zone;
 	dnslib_node_t *origin;
 	dnslib_node_t *prev_dname;
 	dnslib_node_t *default_apex;
@@ -123,7 +121,7 @@ void set_bitnsec(uint8_t  bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
 uint16_t *alloc_rdata_init(const void *data, size_t size);
 
 /* zparser.y */
-zparser_type *zparser_create(namedb_type *db);
+zparser_type *zparser_create();
 void zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 		  const dnslib_node_t *origin);
 
