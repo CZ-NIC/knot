@@ -104,7 +104,7 @@ void dnslib_rrset_free(dnslib_rrset_t **rrset)
 	*rrset = NULL;
 }
 
-int dnslib_merge_rrsets(void **r1, void **r2)
+int dnslib_rrset_merge(void **r1, void **r2)
 {
 	dnslib_rrset_t * rrset1 = (dnslib_rrset_t *)(*r1);
 	dnslib_rrset_t * rrset2 = (dnslib_rrset_t *)(*r2);
