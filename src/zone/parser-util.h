@@ -1,3 +1,6 @@
+#ifndef _CUTEDNS_PARSER_UTIL_H_
+#define _CUTEDNS_PARSER_UTIL_H_
+
 #include <assert.h>
 #include <fcntl.h>
 #include <ctype.h>
@@ -13,6 +16,7 @@
 
 #include "zonec.h"
 #include "descriptor.h"
+
 
 size_t strlcpy(char *dst, const char *src, size_t siz);
 int inet_pton4(src, dst);
@@ -33,35 +37,4 @@ uint32_t strtottl(const char *nptr, const char **endptr);
 dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table, const char *name);
 dnslib_lookup_table_t *dnslib_lookup_by_id(dnslib_lookup_table_t *table, int id);
 
-/* Taken from RFC 2535, section 7.  */
-dnslib_lookup_table_t dns_algorithms[] = {
-	{ 1, "RSAMD5" },	/* RFC 2537 */
-	{ 2, "DH" },		/* RFC 2539 */
-	{ 3, "DSA" },		/* RFC 2536 */
-	{ 4, "ECC" },
-	{ 5, "RSASHA1" },	/* RFC 3110 */
-	{ 252, "INDIRECT" },
-	{ 253, "PRIVATEDNS" },
-	{ 254, "PRIVATEOID" },
-	{ 0, NULL }
-};
-
-/* Taken from RFC 4398, section 2.1.  */
-dnslib_lookup_table_t dns_certificate_types[] = {
-/*	0		Reserved */
-	{ 1, "PKIX" },	/* X.509 as per PKIX */
-	{ 2, "SPKI" },	/* SPKI cert */
-	{ 3, "PGP" },	/* OpenPGP packet */
-	{ 4, "IPKIX" },	/* The URL of an X.509 data object */
-	{ 5, "ISPKI" },	/* The URL of an SPKI certificate */
-	{ 6, "IPGP" },	/* The fingerprint and URL of an OpenPGP packet */
-	{ 7, "ACPKIX" },	/* Attribute Certificate */
-	{ 8, "IACPKIX" },	/* The URL of an Attribute Certificate */
-	{ 253, "URI" },	/* URI private */
-	{ 254, "OID" },	/* OID private */
-/*	255 		Reserved */
-/* 	256-65279	Available for IANA assignment */
-/*	65280-65534	Experimental */
-/*	65535		Reserved */
-	{ 0, NULL }
-};
+#endif /* _CUTEDNS_PARSER_UTIL_H_ */
