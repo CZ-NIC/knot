@@ -54,7 +54,7 @@ nsec3_add_params(const char* hash_algo_str, const char* flag_str,
 
 %}
 %union {
-	dnslib_node_t        *domain;
+	dnslib_dname_t        *domain; /* \todo */
 	const dnslib_dname_t *dname;
 	struct lex_data      data;
 	uint32_t             ttl;
@@ -118,12 +118,16 @@ line:	NL
 			    process_rr();
 	    }
 
-	    free(parser->current_rrset.rdata->items);
+//XXX NAH	    free(parser->current_rrset.rdata->items);
 
 	    parser->current_rrset.type = 0;
 	    parser->current_rrset.rdata->count = 0;
 	    parser->current_rrset.rdata->items = parser->temporary_rdatas;
 	    parser->error_occurred = 0;
+
+	    parser->dname_str[0] = '\0';
+
+	    //TODO memset would be safer
     }
     |	error NL
     ;
@@ -149,7 +153,8 @@ ttl_directive:	DOLLAR_TTL sp STR trail
 
 origin_directive:	DOLLAR_ORIGIN sp abs_dname trail
     {
-	    parser->origin = $3;
+//	    parser->origin = $3;
+		//do nothing for the time being
     }
     |	DOLLAR_ORIGIN sp rel_dname trail
     {
@@ -211,6 +216,9 @@ dname:	abs_dname
 	    } else if ($1->size + parser->origin->owner->size - 1 > MAXDOMAINLEN) {
 		    zc_error("domain name exceeds %d character limit", MAXDOMAINLEN);
 		    $$ = error_domain;
+	    } else {
+//		    printf("WE HAVE sd\n", dnslib_dname_to_str($1));
+		    $$ = $1;
 	    }
     }
     ;
@@ -218,7 +226,9 @@ dname:	abs_dname
 abs_dname:	'.'
     {
 	    /*! \todo Get root domain from db. */
-	    /* $$ = parser->db->domains->root; */
+		//$$ = parser->db->domains->root;
+	    printf("TECKA...\n");
+	    $$ = parser->origin;
     }
     |	'@'
     {
@@ -229,6 +239,8 @@ abs_dname:	'.'
 	    if ($1 != error_dname) {
 	            /*! \todo What a mysterious function is this? */
 		    /* $$ = dns(parser->db->domains, $1); */
+		    $$ = $1;
+
 	    } else {
 		    $$ = error_domain;
 	    }
@@ -263,8 +275,10 @@ rel_dname:	label
 		    $$ = error_dname;
 	    } else {
 	            dnslib_dname_t* tmpd;
-		    tmpd = dnslib_dname_new_from_wire($1->name, $1->size, $1->node);
-		    $$ = dnslib_dname_cat(tmpd, $3);
+		    tmpd = dnslib_dname_new_from_wire($1->name, $1->size, $1->node); 
+//		    printf("joining: %s and %s \n", dnslib_dname_to_str($1), dnslib_dname_to_str($3));
+		    $$ = dnslib_dname_cat($1, $3);
+//		    printf("CONCAT: %s\n", dnslib_dname_to_str($$));
 	    }
     }
     ;
@@ -590,7 +604,7 @@ type_and_rdata:
     |	STR error NL
     {
 	    zc_error_prev_line("unrecognized RR type '%s'", $1.str);
-	    zc_error_prev_line("unrecognized RR type '%d'", $1.tok);
+	    zc_error_prev_line("unrecognized RR type '%d'", $1);
     }
     ;
 
@@ -1013,6 +1027,10 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->filename = filename;
 //	parser->current_rrset.rdata->count = 0;
 	parser->current_rrset.rdata->items = parser->temporary_rdatas;
+
+	parser->dname_str = malloc(sizeof(char)*256);
+
+	parser->dname_str[0] = '\0';
 }
 
 void

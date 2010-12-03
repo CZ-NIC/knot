@@ -30,6 +30,7 @@ dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent)
 	ret->parent = parent;
 
 	ret->rrsets = skip_create_list(compare_rrset_types);
+	ret->next = NULL;
 	return ret;
 }
 
