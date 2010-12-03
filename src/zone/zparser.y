@@ -52,9 +52,12 @@ nsec3_add_params(const char* hash_algo_str, const char* flag_str,
 	const char* iter_str, const char* salt_str, int salt_len);
 #endif /* NSEC3 */
 
+const dnslib_dname_t *error_dname;
+dnslib_dname_t *error_domain;
+
 %}
 %union {
-	dnslib_dname_t        *domain; /* \todo */
+	dnslib_dname_t       *domain; /* \todo */
 	const dnslib_dname_t *dname;
 	struct lex_data      data;
 	uint32_t             ttl;
@@ -125,9 +128,6 @@ line:	NL
 	    parser->current_rrset.rdata->items = parser->temporary_rdatas;
 	    parser->error_occurred = 0;
 
-	    parser->dname_str[0] = '\0';
-
-	    //TODO memset would be safer
     }
     |	error NL
     ;
@@ -227,12 +227,12 @@ abs_dname:	'.'
     {
 	    /*! \todo Get root domain from db. */
 		//$$ = parser->db->domains->root;
-	    printf("TECKA...\n");
-	    $$ = parser->origin;
+	    printf("\n\n\n\n\n\nTECKA...\n\n\n\n\n\n\n");
+	    $$ = parser->origin->owner;
     }
     |	'@'
     {
-	    $$ = parser->origin;
+	    $$ = parser->origin->owner;
     }
     |	rel_dname '.'
     {
@@ -254,7 +254,11 @@ label:	STR
 		    $$ = error_dname;
 	    } else {
 		    /*!\todo Should I set node to NULL here? Or origin? */
-		    $$ = dnslib_dname_new_from_str($1.str, $1.len, NULL);
+		    $$ = dnslib_dname_new_from_label($1.str, $1.len, NULL);
+//		    printf("GOT %p\n", $$);
+//		    printf("CREATED FROM LABLE: %s: %s\n",$1.str, dnslib_dname_to_str($$));
+//		    printf("pointer %p\n", $$);
+//		    printf("size %d\n", $$->size);
 	    }
     }
     |	BITLAB
@@ -275,10 +279,11 @@ rel_dname:	label
 		    $$ = error_dname;
 	    } else {
 	            dnslib_dname_t* tmpd;
-		    tmpd = dnslib_dname_new_from_wire($1->name, $1->size, $1->node); 
-//		    printf("joining: %s and %s \n", dnslib_dname_to_str($1), dnslib_dname_to_str($3));
+//		    tmpd = dnslib_dname_new_from_wire($1->name, $1->size, $1->node); 
+//		    printf("joining: %s and %s \n", $1->name, $3->name);
+//		    printf("pointers %p and %p\n", $1, $3);
 		    $$ = dnslib_dname_cat($1, $3);
-//		    printf("CONCAT: %s\n", dnslib_dname_to_str($$));
+//		    printf("CONCAT: %s\n", $$);
 	    }
     }
     ;
