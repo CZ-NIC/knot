@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include "zonec.h"
 
+#include "dnslib/dnslib.h"
+
 /* Total errors counter */
 long int totalerrors = 0;
 

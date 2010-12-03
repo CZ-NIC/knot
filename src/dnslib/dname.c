@@ -44,6 +44,8 @@ static uint dnslib_dname_str_to_wire(const char *name, uint size,
 		return 0;
 	}
 
+	uint8_t *beg;
+
 	uint wire_size = dnslib_dname_wire_size(size);
 
 	// signed / unsigned issues??
@@ -52,11 +54,14 @@ static uint dnslib_dname_str_to_wire(const char *name, uint size,
 		return 0;
 	}
 
+	beg = *wire;
+
 	debug_dnslib_dname("Allocated space for wire format of dname: %p\n",
 	                   *wire);
 
 	const uint8_t *ch = (const uint8_t *)name;
 	uint8_t *label_start = *wire;
+	*label_start = 0;
 	uint8_t *w = *wire + 1;
 	uint8_t label_length = 0;
 
@@ -65,7 +70,7 @@ static uint dnslib_dname_str_to_wire(const char *name, uint size,
 		assert(w - *wire - 1 == ch - (const uint8_t *)name);
 
 		if (*ch == '.') {
-			debug_dnslib_dname("Position %u (%p): "
+			printf("Position %u (%p): "
 					   "label length: %u\n",
 			                   label_start - *wire,
 					   label_start, label_length);
@@ -73,7 +78,7 @@ static uint dnslib_dname_str_to_wire(const char *name, uint size,
 			label_start = w;
 			label_length = 0;
 		} else {
-			debug_dnslib_dname("Position %u (%p): character: %c\n",
+			printf("Position %u (%p): character: %c\n",
 			                   w - *wire, w, *ch);
 			*w = *ch;
 			++label_length;
@@ -83,16 +88,23 @@ static uint dnslib_dname_str_to_wire(const char *name, uint size,
 		++ch;
 		assert(ch >= (const uint8_t *)name);
 	}
+	
+	//for labels only
+	if (label_start == beg) {
+		printf("LABEL - WITHOUT DOT\n");
+		*label_start = label_length;
+//		wire_size++;
+	}
 
 	// put 0 for root label if the name ended with .
 	--ch;
 	if (*ch == '.') {
 		--w;
-		debug_dnslib_dname("Position %u (%p): character: (null)\n",
+		printf("ROOT Position %u (%p): character: (null)\n",
 				   w - *wire, w);
 		*w = 0;
 	}
-
+	printf("from %s (sized %d) created %s\n", name, size, *wire);
 	//memcpy(*wire, name, size);
 	return wire_size;
 }
@@ -188,9 +200,10 @@ char *dnslib_dname_to_str(const dnslib_dname_t *dname)
 	uint8_t *w = dname->name;
 	char *ch = name;
 	int i = 0;
+	int label_size;
 
 	while (i < dname->size && *w != 0) {
-		int label_size = *(w++);
+		label_size = *(w++);
 		// copy the label
 		memcpy(ch, w, label_size);
 		i += label_size;
@@ -198,9 +211,22 @@ char *dnslib_dname_to_str(const dnslib_dname_t *dname)
 		w += label_size;
 		*(ch++) = '.';
 	}
+	if (!dnslib_dname_is_fqdn(dname)) {
+		printf("LABLELL LLLLL\n");
+		ch--;
+	}
 
 	*ch = 0;
-	assert(ch - name == dname->size - 1);
+	printf("%d\n", dname->size);
+	for (int i = 0; i < dname->size; i++) {
+		if (dname->name[i]<50) {
+			printf("%d: %d\n", i, dname->name[i]);
+		} else {
+			printf("%d: %c\n",i, dname->name[i]);
+		}
+	}
+	printf("%d\n", ch - name);
+//	assert(ch - name == dname->size - 1);
 
 	return name;
 }
@@ -321,6 +347,8 @@ int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2)
 
 dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2)
 {
+	printf("joining %s and %s\n", dnslib_dname_to_str(d1), dnslib_dname_to_str(d2));
+	printf("sizes %d and %d\n", d1->size, d2->size);
 	if (d2->size == 0) {
 		return d1;
 	}
@@ -336,13 +364,18 @@ dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2)
 		return NULL;
 	}
 
+
 	memcpy(new_dname, d1->name, d1->size);
-	new_dname += d1->size;
-	memcpy(new_dname, d2->name, d2->size);
+//	new_dname += d1->size;
+	memcpy(new_dname + (d1->size), d2->name, d2->size);
 
 	uint8_t *old_name = d1->name;
 	d1->name = new_dname;
+	d1->size += (d2->size);
 	free(old_name);
+	
+	printf("%s\n", d1->name);
+	printf("joined: %s\n", dnslib_dname_to_str(d1));
 
 	return d1;
 }

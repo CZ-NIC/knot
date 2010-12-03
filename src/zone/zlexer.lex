@@ -352,7 +352,7 @@ rrtype_to_token(const char *word, uint16_t *type)
 
 		/*! \todo entry should return associated token.
 		          see nsd/dns.c */
-		return 0;
+		return entry->token;
 	}
 
 	return 0;

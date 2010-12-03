@@ -31,6 +31,13 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 	if (zone == NULL || node == NULL) {
 		return -1;
 	}
+	
+
+
+	//valgrind test
+
+	dnslib_node_t *test = zone->apex->next;
+
 
 	// assert or just check??
 	assert(zone->apex != NULL);

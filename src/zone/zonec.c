@@ -30,6 +30,7 @@
 #include "dnslib/zone.h"
 #include "dnslib/descriptor.h"
 #include "parser-util.h"
+#include "dnslib/debug.h"
 
 #include "zparser.h"
 
@@ -1192,10 +1193,10 @@ process_rr(void)
 		= dnslib_rrtype_descriptor_by_type(current_rrset->type);
 
 	/* We only support IN class */
-	if (current_rrset->rclass != DNSLIB_CLASS_IN) {
+/*	if (current_rrset->rclass != DNSLIB_CLASS_IN) {
 		fprintf(stderr, "only class IN is supported");
 		return 0;
-	}
+	}*/
 
 	/* Make sure the maximum RDLENGTH does not exceed 65535 bytes.	*/
 //	max_rdlength = rdata_maximum_wireformat_size(
@@ -1206,11 +1207,13 @@ process_rr(void)
 //		return 0;
 //	}
 
+
 	/* Do we have the zone already? */
 	if (!zone)
 	{
+		printf("PROCESS RR: creating new zone have type %d\n", current_rrset->type);
 		//our apex should also be SOA
-		assert(current_rrset->type == DNSLIB_RRTYPE_SOA);
+	//	assert(current_rrset->type == DNSLIB_RRTYPE_SOA);
 		//soa comes first, therefore, there should not be any node assigned to
 		//its owner.
 		
@@ -1218,11 +1221,16 @@ process_rr(void)
 
 		assert(parser->origin != NULL);
 
+
+		printf("PROCESS RR: APEX NODE IN PARSER: %p\n", parser->origin); 
+
 		zone = dnslib_zone_new(parser->origin);
 
 		soa_node = dnslib_node_new(current_rrset->owner, parser->origin);
 
 		dnslib_zone_add_node(zone, soa_node);
+
+		printf("PROCESS RR: origin and soa added to zone\n");
 
 		parser->current_zone = zone;
 	}
@@ -1237,11 +1245,13 @@ process_rr(void)
 	dnslib_node_t *node;
 	node = dnslib_zone_find_node(zone, current_rrset->owner);
 	if (node == NULL) {
+		printf("PROCESS RR: creating new node, owner: %s\n", dnslib_dname_to_str(current_rrset->owner));
 		node = dnslib_node_new(current_rrset->owner, NULL);
 		//TODO dnslib_dname_left_chop
 	}
 	rrset = dnslib_node_get_rrset(node, current_rrset->type);
 	if (!rrset) {
+		printf("PROCESS RR: creating new rrset \n");
 		rrset = dnslib_rrset_new(current_rrset->owner, current_rrset->type,
 				current_rrset->rclass, current_rrset->ttl);
 
@@ -1283,6 +1293,7 @@ process_rr(void)
 
 		// TODO create item, add it to the rrset
 
+	dnslib_zone_dump(zone);
 	}
 
 //	if(current_rrset->type == TYPE_DNAME && rrset->rr_count > 1) {
@@ -1389,6 +1400,7 @@ zone_read(const char *name, const char *zonefile) //, nsd_options_t* nsd_options
 	const dnslib_dname_t *dname;
 
 //	dname = dname_parse(parser->region, name);
+	name = "example.com.";
 	
 	dname = dnslib_dname_new_from_str(name, strlen(name), NULL);
 
@@ -1396,7 +1408,11 @@ zone_read(const char *name, const char *zonefile) //, nsd_options_t* nsd_options
 
 	dnslib_node_t *origin_node;
 
-	origin_node = dnslib_node_new(dname, NULL); //create 
+	origin_node = dnslib_node_new(dname, NULL);
+	
+	printf("APEX NODE CREATED WITH POINTER: %p\n", origin_node); 
+
+	assert(origin_node->next == NULL);
 
 	if (!dname) {
 		fprintf(stderr, "incorrect zone name '%s'", name);
