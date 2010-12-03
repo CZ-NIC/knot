@@ -22,8 +22,12 @@ void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type)
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 		DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		DNSLIB_RDATA_WF_LITERAL_DNAME )	{
+//			printf("%d: %s\n", 
+//			       i, dnslib_dname_to_str(rdata->items[i].dname));
+
 			printf("%d: %s\n", 
-			       i, dnslib_dname_to_str(rdata->items[i].dname));
+			       i, rdata->items[i].dname->name);
+
 
 		} else {
 			printf("%d: %s\n", i, rdata->items[i].raw_data);

@@ -37,6 +37,9 @@ struct dnslib_dname {
 
 typedef struct dnslib_dname dnslib_dname_t;
 
+dnslib_dname_t *dnslib_dname_new_from_label(char *name, uint size,
+                                          struct dnslib_node *node);
+
 /*----------------------------------------------------------------------------*/
 
 /*!
@@ -137,6 +140,16 @@ const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname);
  * \retval <> if \a dname is a FQDN.
  */
 int dnslib_dname_is_fqdn(const dnslib_dname_t *dname);
+
+/*!
+ * \brief Creates new domain name by removing leftmost label from \a dname.
+ *
+ * \param dname Domain name to removing the first label from.
+ *
+ * \return New domain name with the same labels as \a dname, except for the
+ *         leftmost label, which is removed.
+ */
+dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname);
 
 /*!
  * \brief Destroys the given domain name.

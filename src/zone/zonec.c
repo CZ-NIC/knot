@@ -76,8 +76,7 @@ dnslib_lookup_table_t dns_certificate_types[] = {
 /* Imported from lexer. */
 extern int hexdigit_to_int(char ch);
 
-const dnslib_dname_t *error_dname;
-dnslib_node_t *error_domain;
+
 
 
 /* Some global flags... */
@@ -1211,7 +1210,6 @@ process_rr(void)
 	/* Do we have the zone already? */
 	if (!zone)
 	{
-		printf("PROCESS RR: creating new zone have type %d\n", current_rrset->type);
 		//our apex should also be SOA
 	//	assert(current_rrset->type == DNSLIB_RRTYPE_SOA);
 		//soa comes first, therefore, there should not be any node assigned to
@@ -1222,15 +1220,12 @@ process_rr(void)
 		assert(parser->origin != NULL);
 
 
-		printf("PROCESS RR: APEX NODE IN PARSER: %p\n", parser->origin); 
-
 		zone = dnslib_zone_new(parser->origin);
 
 		soa_node = dnslib_node_new(current_rrset->owner, parser->origin);
 
 		dnslib_zone_add_node(zone, soa_node);
 
-		printf("PROCESS RR: origin and soa added to zone\n");
 
 		parser->current_zone = zone;
 	}
@@ -1245,13 +1240,11 @@ process_rr(void)
 	dnslib_node_t *node;
 	node = dnslib_zone_find_node(zone, current_rrset->owner);
 	if (node == NULL) {
-		printf("PROCESS RR: creating new node, owner: %s\n", dnslib_dname_to_str(current_rrset->owner));
 		node = dnslib_node_new(current_rrset->owner, NULL);
 		//TODO dnslib_dname_left_chop
 	}
 	rrset = dnslib_node_get_rrset(node, current_rrset->type);
 	if (!rrset) {
-		printf("PROCESS RR: creating new rrset \n");
 		rrset = dnslib_rrset_new(current_rrset->owner, current_rrset->type,
 				current_rrset->rclass, current_rrset->ttl);
 
@@ -1292,7 +1285,6 @@ process_rr(void)
 
 
 		// TODO create item, add it to the rrset
-
 	dnslib_zone_dump(zone);
 	}
 

@@ -55,7 +55,7 @@ struct zparser {
 	uint16_t default_class;
 	dnslib_zone_t *current_zone;
 	dnslib_node_t *origin;
-	dnslib_node_t *prev_dname;
+	dnslib_dname_t *prev_dname;
 	dnslib_node_t *default_apex;
 
 	char *dname_str;
@@ -74,13 +74,6 @@ extern zparser_type *parser;
 
 /* used in zonec.lex */
 extern FILE *yyin;
-
-/*
- * Used to mark bad domains and domain names.  Do not dereference
- * these pointers!
- */
-extern const dnslib_dname_t *error_dname;
-extern dnslib_node_t *error_domain;
 
 int yyparse(void);
 int yylex(void);
