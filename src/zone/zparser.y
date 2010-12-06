@@ -117,6 +117,8 @@ line:	NL
 			    parser->current_rrset.rdata->items
 				    = malloc(parser->current_rrset.rdata->count
 					     * sizeof(dnslib_rdata_item_t));
+			    //XXX dirty workaround, I seriously doubt that it
+			    //should work like this...
 
 			    process_rr();
 	    }
@@ -218,7 +220,7 @@ dname:	abs_dname
 		    $$ = error_domain;
 	    } else {
 		    //TODO
-		    $$ = $1;
+		    $$ = dnslib_dname_cat($1, parser->origin->owner);
 	    }
     }
     ;
@@ -232,6 +234,7 @@ abs_dname:	'.'
     }
     |	'@'
     {
+	    printf("\nAT\n");
 	    $$ = parser->origin->owner;
     }
     |	rel_dname '.'
@@ -275,6 +278,7 @@ rel_dname:	label
 		    $$ = error_dname;
 	    } else {
 	            dnslib_dname_t* tmpd;
+		    printf("JOINING: %s and %s\n", dnslib_dname_to_str($1), dnslib_dname_to_str($3));
 		    $$ = dnslib_dname_cat($1, $3);
 	        }
     }
