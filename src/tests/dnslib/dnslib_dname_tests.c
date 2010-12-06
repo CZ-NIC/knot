@@ -273,36 +273,43 @@ static int dnslib_dname_tests_count(int argc, char *argv[])
  */
 static int dnslib_dname_tests_run(int argc, char *argv[])
 {
-	int res_create = 0,
+	int res = 0,
 	    res_str = 0,
-	    res_wire = 0;
+	    res_wire = 0,
+	    res_total = 0;
 
-	res_create = test_dname_create();
-	ok(res_create, "dname: create empty");
+	res = test_dname_create();
+	ok(res, "dname: create empty");
+	res_total += res;
 
-	skip(!res_create, 5);
+	skip(!res, 5);
 
 	todo();
 
-	ok(test_dname_delete(), "dname: delete");
+	ok((res = test_dname_delete()), "dname: delete");
+	res_total += res;
 
 	endtodo;
 
 	ok((res_str = test_dname_create_from_str()), "dname: create from str");
 	ok((res_wire = test_dname_create_from_wire()),
 	   "dname: create from wire");
+	res_total += res_str;
+	res_total += res_wire;
 
 	skip(!res_str || !res_wire, 1);
 
-	ok(test_dname_to_str(), "dname: convert to str");
+	ok((res = test_dname_to_str()), "dname: convert to str");
+	res_total += res;
 
 	lives_ok(test_faulty_data(); , "dname: faulty data test");
 
 	endskip;	/* !res_str || !res_wire */
 
-	ok(test_dname_compare(), "dname: compare");
+	ok((res = test_dname_compare()), "dname: compare");
+	res_total += res;
 
-	endskip;	/* !res_create */
+	endskip;	/* create failed */
 
-	return 0;
+	return res_total;
 }
