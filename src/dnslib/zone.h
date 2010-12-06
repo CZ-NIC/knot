@@ -36,11 +36,16 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex);
 /*!
  * \brief Add a node to the given zone.
  *
+ * Checks if the node belongs to the zone, i.e. if its owner is a subdomain of
+ * the zone's apex. It thus also forbids adding node with the same name as the
+ * zone apex.
+ *
  * \param zone Zone to add the node into.
  * \param node Node to add into the zone.
  *
  * \retval 0 on success.
- * \retval -1 if an error occured.
+ * \retval -1 if one of the parameters is NULL.
+ * \retval -2 if \a node does not belong to \a zone.
  */
 int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node);
 
