@@ -1,10 +1,20 @@
-/** \file debug.h
-  * Debugging facility, uses log.h.
-  */
-#ifndef __debug_h__
-#define __debug_h__
+/*!
+ * \file debug.h
+ *
+ * \author Marek Vavrusa <marek.vavrusa@nic.cz>
+ *
+ * \brief Debugging facility, uses log.h.
+ *
+ * \addtogroup debugging
+ * @{
+ */
+#ifndef _CUTEDNS_DEBUG_H_
+#define _CUTEDNS_DEBUG_H_
+
 #include "log.h"
 
+//#define ST_DEBUG
+//#define SM_DEBUG
 //#define DA_DEBUG
 //#define CUCKOO_DEBUG
 //#define CUCKOO_DEBUG_HASH
@@ -14,12 +24,16 @@
 //#define ZDB_DEBUG_INSERT_CHECK
 //#define ZN_DEBUG
 //#define ZP_DEBUG_PARSE
-//#define CUTE_DEBUG
+//#define SERVER_DEBUG
+//#define DT_DEBUG
+//#define NET_DEBUG
 
-#ifdef CUTE_DEBUG
+#ifdef SERVER_DEBUG
 #define debug_server(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_server_hex(data, len) hex_print((data), (len))
 #else
 #define debug_server(msg...)
+#define debug_server_hex(data, len)
 #endif
 
 #ifdef DNSS_DEBUG
@@ -31,21 +45,21 @@
 #endif
 
 #ifdef CUCKOO_DEBUG
-#define debug_cuckoo(msg...) log_msg(LOG_DEBUG, msg)
-#define debug_cuckoo_hex(data, len) hex_print((data), (len))
+#define debug_ck(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_ck_hex(data, len) hex_print((data), (len))
 #else
-#define debug_cuckoo(msg...)
-#define debug_cuckoo_hex(data, len)
+#define debug_ck(msg...)
+#define debug_ck_hex(data, len)
 #endif
 
 #ifdef CUCKOO_DEBUG_HASH
-#define debug_cuckoo_hash(msg...) log_msg(LOG_DEBUG, msg)
-#define debug_cuckoo_hash_hex(data, len) hex_print((data), (len))
-#define debug_cuckoo_rehash(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_ck_hash(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_ck_hash_hex(data, len) hex_print((data), (len))
+#define debug_ck_rehash(msg...) log_msg(LOG_DEBUG, msg)
 #else
-#define debug_cuckoo_hash(msg...)
-#define debug_cuckoo_hash_hex(data, len)
-#define debug_cuckoo_rehash(msg...)
+#define debug_ck_hash(msg...)
+#define debug_ck_hash_hex(data, len)
+#define debug_ck_rehash(msg...)
 #endif
 
 #ifdef DA_DEBUG
@@ -54,12 +68,20 @@
 #define debug_da(msg...)
 #endif
 
-#ifdef SM_DEBUG
-#define debug_sm(msg...) log_msg(LOG_DEBUG, msg)
-#define debug_sm_hex(data, len) hex_print((data), (len))
+#ifdef NET_DEBUG
+#define debug_net(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_net_hex(data, len) hex_print((data), (len))
 #else
-#define debug_sm(msg...)
-#define debug_sm_hex(data, len)
+#define debug_net(msg...)
+#define debug_net_hex(data, len)
+#endif
+
+#ifdef DT_DEBUG
+#define debug_dt(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_dt_hex(data, len) hex_print((data), (len))
+#else
+#define debug_dt(msg...)
+#define debug_dt_hex(data, len)
 #endif
 
 #ifdef NS_DEBUG
@@ -100,4 +122,12 @@
 #define debug_zp_parse_hex(data, len)
 #endif
 
-#endif // __debug_h__
+#ifdef ST_DEBUG
+#define debug_st(msg...) log_msg(LOG_DEBUG, msg)
+#else
+#define debug_st(msg...)
+#endif
+
+#endif /* _CUTEDNS_DEBUG_H_ */
+
+/*! @} */

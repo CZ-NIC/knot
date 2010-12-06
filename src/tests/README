@@ -1,0 +1,10 @@
+Unit testing
+------------
+
+Make assembles "unittest" binary with all of the planned tests included.
+So far it is accepting the same parameters as the "cutedns",
+but an own parameter format is being developed.
+
+Example:
+bin/unittest samples/example.com.zone
+
