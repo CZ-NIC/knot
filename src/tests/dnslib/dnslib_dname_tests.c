@@ -27,6 +27,8 @@ enum { TEST_DOMAINS_OK = 4 };
 
 enum { TEST_DOMAINS_BAD = 2 };
 
+enum { TEST_LABELS = 3 };
+
 static dnslib_node_t *NODE_ADDRESS = (dnslib_node_t *)0xDEADBEEF;
 
 struct test_domain {
@@ -42,6 +44,13 @@ static const struct test_domain
 	{ "xyz.test.domain.com.", "\3xyz\4test\6domain\3com", 21 },
 	{ "some.test.domain.com.", "\4some\4test\6domain\3com", 22 }
 };
+
+static const struct test_domain
+		test_labels[TEST_LABELS] = {
+			{"www", NULL, 3},
+			{"example", NULL, 3},
+			{"com", NULL, 3}
+		};
 
 static const struct test_domain
 		test_domains_bad[TEST_DOMAINS_BAD] = {
@@ -138,6 +147,48 @@ static int test_dname_create_from_str()
 		dname = dnslib_dname_new_from_str(test_domains_ok[i].str,
 		          strlen(test_domains_ok[i].str), NODE_ADDRESS);
 		errors += check_domain_name(dname, i);
+		dnslib_dname_free(&dname);
+	}
+
+	return (errors == 0);
+}
+
+static int check_label(dnslib_dname_t *dname, int i)
+{
+	int errors = 0;
+	if (dname->size != test_labels[i].size + 1) {
+		diag("size of created label is wrong: should be %d is %d", test_labels[i].size , dname->size);
+		errors++;
+	}
+
+	// create str repre. of label
+
+	char tmp[dname->size + 1];
+
+	int j;
+
+	for (int j = 0; j < dname->size; j++) {
+		tmp[j] = dname->name[j+1];
+	}
+
+	tmp[j+1] = '\0';
+	
+	if (strcmp(test_labels[i].str, tmp) != 0) {
+		diag("created label is wrong: should be: %s is %s", test_labels[i].str, tmp);
+		errors++;
+	}
+	return errors;
+}
+
+static int test_dname_create_from_label()
+{
+	int errors = 0;
+	dnslib_dname_t *dname = NULL;
+
+	for (int i = 0; i < TEST_LABELS; ++i) {
+		dname = dnslib_dname_new_from_label(test_labels[i].str,
+		          test_labels[i].size);
+		errors += check_label(dname, i);
 		dnslib_dname_free(&dname);
 	}
 
@@ -276,6 +327,10 @@ static int dnslib_dname_tests_run(int argc, char *argv[])
 	int res_create = 0,
 	    res_str = 0,
 	    res_wire = 0;
+
+	ok(test_dname_create_from_label(), "dname: create label");
+
+	return 0;
 
 	res_create = test_dname_create();
 	ok(res_create, "dname: create empty");
