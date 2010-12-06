@@ -149,6 +149,18 @@ int dnslib_dname_is_fqdn(const dnslib_dname_t *dname);
 dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname);
 
 /*!
+ * \brief Checks if one domain name is a subdomain of other.
+ *
+ * \param sub Domain name to be the possible subdomain.
+ * \param domain Domain name to be the possible parent domain.
+ *
+ * \retval 0 if \a sub is not a subdomain of \a domain.
+ * \retval > 0 if \a sub is a subdomain of \a domain.
+ */
+int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
+                              const dnslib_dname_t *domain);
+
+/*!
  * \brief Destroys the given domain name.
  *
  * Frees also the data within the struct. This is somewhat different behaviour

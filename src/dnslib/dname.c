@@ -98,6 +98,40 @@ static uint dnslib_dname_str_to_wire(const char *name, uint size,
 }
 
 /*----------------------------------------------------------------------------*/
+
+static int dnslib_dname_compare_labels(const uint8_t *label1,
+                                       const uint8_t *label2)
+{
+	const uint8_t *pos1 = label1;
+	const uint8_t *pos2 = label2;
+
+	int label_length = (*pos1 < *pos2) ? *pos1 : *pos2;
+	int i = 0;
+
+	while (i < label_length &&
+	       tolower(*(++pos1)) == tolower(*(++pos2))) {
+		++i;
+	}
+
+	if (i < label_length) {  // difference in some octet
+		if (tolower(*pos1) < tolower(*pos2)) {
+			return -1;
+		} else {
+			assert(tolower(*pos1) > tolower(*pos2));
+			return 1;
+		}
+	}
+
+	if (label1[0] < label2[0]) {  // one label shorter
+		return -1;
+	} else if (label1[0] > label2[0]) {
+		return 1;
+	}
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -256,6 +290,59 @@ dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname)
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
+                              const dnslib_dname_t *domain)
+{
+	if (sub == domain) {
+		return 0;
+	}
+
+	// jump to the last label and store addresses of labels
+	// on the way there
+	// TODO: consider storing label offsets in the domain name structure
+	const uint8_t *labels1[DNSLIB_MAX_DNAME_LABELS];
+	const uint8_t *labels2[DNSLIB_MAX_DNAME_LABELS];
+	int l1 = 0;
+	int l2 = 0;
+
+	const uint8_t *pos1 = dnslib_dname_name(sub);
+	const uint8_t *pos2 = dnslib_dname_name(domain);
+	int i = 0;
+
+	while (i < dnslib_dname_size(sub) && *pos1 != '\0') {
+		labels1[l1++] = pos1;
+		pos1 += *pos1 + 1;
+		++i;
+	}
+
+	i = 0;
+	while (i < dnslib_dname_size(domain) && *pos2 != '\0') {
+		labels2[l2++] = pos2;
+		pos2 += *pos2 + 1;
+		++i;
+	}
+
+	if (l1 <= l2) {  // if sub does not have more labes than domain
+		return 0;  // it is not its subdomain
+	}
+
+	// compare labels from last to first
+	while (l1 > 0 && l2 > 0) {
+		// if some labels do not match
+		if (dnslib_dname_compare_labels(labels1[--l1],
+		                                labels2[--l2]) != 0) {
+			return 0;  // sub is not a subdomain of domain
+		} // otherwise the labels are identical, continue with previous
+	}
+
+	// if all labels matched, it should be subdomain (more labels)
+	assert(l1 > l2);
+
+	return 1;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void dnslib_dname_free(dnslib_dname_t **dname)
 {
 	if (dname == NULL || *dname == NULL) {
@@ -282,59 +369,69 @@ int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2)
 	// TODO: consider storing label offsets in the domain name structure
 	const uint8_t *labels1[DNSLIB_MAX_DNAME_LABELS];
 	const uint8_t *labels2[DNSLIB_MAX_DNAME_LABELS];
-	int i1 = 0;
-	int i2 = 0;
+	int l1 = 0;
+	int l2 = 0;
 
 	const uint8_t *pos1 = dnslib_dname_name(d1);
 	const uint8_t *pos2 = dnslib_dname_name(d2);
+	int i = 0;
 
-	while (*pos1 != '\0') {
-		labels1[i1++] = pos1;
+	while (i < dnslib_dname_size(d1) && *pos1 != '\0') {
+		labels1[l1++] = pos1;
 		pos1 += *pos1 + 1;
+		++i;
 	}
 
-	while (*pos2 != '\0') {
-		labels2[i2++] = pos2;
+	i = 0;
+	while (i < dnslib_dname_size(d2) && *pos2 != '\0') {
+		labels2[l2++] = pos2;
 		pos2 += *pos2 + 1;
+		++i;
 	}
 
 	// compare labels from last to first
-	while (i1 > 0 && i2 > 0) {
-		pos1 = labels1[--i1];
-		pos2 = labels2[--i2];
+	while (l1 > 0 && l2 > 0) {
+		int res = dnslib_dname_compare_labels(labels1[--l1],
+		                                      labels2[--l2]);
+		if (res != 0) {
+			return res;
+		} // otherwise the labels are identical, continue with previous
 
-		int label_length = (*pos1 < *pos2) ? *pos1 : *pos2;
-		int i = 0;
+//		pos1 = labels1[--i1];
+//		pos2 = labels2[--i2];
 
-		while (i < label_length && 
-		       tolower(*(++pos1)) == tolower(*(++pos2))) {
-			++i;
-		}
+//		int label_length = (*pos1 < *pos2) ? *pos1 : *pos2;
+//		int i = 0;
 
-		if (i < label_length) {	// difference in some octet
-			if (tolower(*pos1) < tolower(*pos2)) {
-				return -1;
-			} else {
-				assert(tolower(*pos1) > tolower(*pos2));
-				return 1;
-			}
-		}
+//		while (i < label_length &&
+//		       tolower(*(++pos1)) == tolower(*(++pos2))) {
+//			++i;
+//		}
 
-		if (*(labels1[i1]) < *(labels2[i2])) {	// one label shorter
-			return -1;
-		} else if (*(labels1[i1]) > *(labels2[i2])) {
-			return 1;
-		}
+//		if (i < label_length) {	// difference in some octet
+//			if (tolower(*pos1) < tolower(*pos2)) {
+//				return -1;
+//			} else {
+//				assert(tolower(*pos1) > tolower(*pos2));
+//				return 1;
+//			}
+//		}
+
+//		if (*(labels1[i1]) < *(labels2[i2])) {	// one label shorter
+//			return -1;
+//		} else if (*(labels1[i1]) > *(labels2[i2])) {
+//			return 1;
+//		}
 		// otherwise the labels are 
 		// identical, continue with previous labels
 	}
 
 	// if all labels matched, the shorter name is first
-	if (i1 == 0 && i2 > 0) {
+	if (l1 == 0 && l2 > 0) {
 		return 1;
 	}
 
-	if (i1 > 0 && i2 == 0) {
+	if (l1 > 0 && l2 == 0) {
 		return -1;
 	}
 
