@@ -1,0 +1,77 @@
+Coding style
+============
+* Indentation: TAB (8 spaces width)
+* Braces: K&R, 1TBS
+* Max line width: 80 chars
+* Pointer asterisk attached to the name of the variable
+* Own structures/types: _t suffix (f.e. nameserver_t)
+* Header guard format: _CUTEDNS_HEADER_H_
+* Spaces around binary operators
+* Space between keyword and bracket (f.e. "if (predicate)")
+* No space between variable and typecast (f.e. "return (int)val;")
+
+To sum it up, Linux KNF is used, see [1].
+
+[1] Linux Coding Style:
+    http://kerneltrap.org/files/Jeremy/CodingStyle.txt
+
+AStyle command format
+=====================
+astyle --style=1tbs -t8 -w -p -H -U -j --align-pointer=name
+
+Doxygen
+=======
+* Format: Qt-style
+  * "\brief", not "@brief"
+  * "/*!", not "/**"
+* Order of sections
+  * brief description
+  * long description
+  * notes
+  * warnings
+  * parameters
+  * return values
+  * todos
+* Always use \brief (no autobrief)
+* Indent text (using spaces only) in multiple-line sections
+* In multi-line comments, opening line (/*!) should be empty
+* One empty line between two consecutive sections
+* Struct and union members documented on the same line if the comment fits
+* Use \retval (or more of them) instead of \return
+  if the function returns some distinct values
+  (such as 0 for no error, -1 for something else, etc.)
+
+Example
+=======
+/*! 
+ * \brief Some structure.
+ * 
+ * Longer description.
+ */
+ struct some_struct {
+    /*!
+     * \brief This comment does not fit on the same line as the member
+     *        as it is rather large. 
+     */
+    int fd;
+    int flags; /*!< Flags. */
+ };
+
+/*!
+ * \brief Brief description of some function.
+ *
+ * Longer description.
+ * 
+ * \note This function is deprecated.
+ *
+ * \warning Do not use this function!
+ *
+ * \param param1 Some parameter.
+ * \param param2 Other parameter. This one has rather large comment,
+ *               so its next line is indented for better readability.
+ * 
+ * \retval 0 on success.
+ * \retval -1 if some error occured.
+ *
+ * \todo Remove (deprecated).
+ */
