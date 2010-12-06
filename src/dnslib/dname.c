@@ -104,26 +104,17 @@ static uint dnslib_dname_label_to_wire(const char *name, uint size,
 		return 0;
 	}
 
-	uint wire_size = dnslib_dname_wire_size(size);
-
 	// signed / unsigned issues??
-	*wire = (uint8_t *)malloc(wire_size * sizeof(uint8_t));
+	*wire = (uint8_t *)malloc((size + 1) * sizeof(uint8_t));
 	if (*wire == NULL) {
 		return 0;
 	}
 
-//	printf("Allocated space for wire format of dname: %p\n",
-//	                   *wire);
-
-	**wire = wire_size - 1;
-
-//	printf("creating new dname from label: %s legth: %d\n", name, **wire);
+	*wire[0] = size + 1;
 
 	memcpy(*wire + 1, name, size);
 
-	printf("created dname: %.*s\n", wire_size, *wire);
-
-	return wire_size;
+	return size + 1;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -176,12 +167,13 @@ dnslib_dname_t *dnslib_dname_new_from_str(char *name, uint size,
 	return dname;
 }
 
-dnslib_dname_t *dnslib_dname_new_from_label(char *name, uint size,
-                                          struct dnslib_node *node)
+dnslib_dname_t *dnslib_dname_new_from_label(char *name, uint size)
 {
 	if (name == NULL || size == 0) {
 		return NULL;
 	}
+
+	printf("creating from %s size %d\n", name, size);
 
 	dnslib_dname_t *dname =
 	(dnslib_dname_t *)malloc(sizeof(dnslib_dname_t));
@@ -193,17 +185,11 @@ dnslib_dname_t *dnslib_dname_new_from_label(char *name, uint size,
 
 	dname->size = dnslib_dname_label_to_wire(name, size, &dname->name);
 
-	dname->size--;
-
 	if (dname->size <= 0) {
 		log_warning("Could not parse domain name from string: '%.*s'\n",
 		            size, name);
 	}
 	assert(dname->name != NULL);
-
-	dname->node = node;
-
-	printf("RETURNING %s %d\n", dnslib_dname_to_str(dname), dname->size);
 
 	return dname;
 }
@@ -257,8 +243,9 @@ char *return_chars(uint8_t *str, int l)
 {
 	uint8_t *ret= malloc(sizeof(char)*l + 10);
 	int i = 0;
-	for (i = 0; i < l + 1; i++)
+	for (i = 0; i < l; i++)
 	{
+		printf("%d\n", i);
 		if (str[i]<50) {
 			ret[i]=str[i] + '0';
 		} else {
@@ -467,7 +454,7 @@ dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2)
 
 	print_chars(new_dname, d1->size + 1);
 
-	memcpy(new_dname + (d1->size + 1), d2->name, d2->size + 1);
+	memcpy(new_dname + (d1->size), d2->name, d2->size);
 
 //	printf("after second copy \n");
 

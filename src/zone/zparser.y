@@ -254,7 +254,8 @@ label:	STR
 		    $$ = error_dname;
 	    } else {
 		    /*!\todo Should I set node to NULL here? Or origin? */
-		    $$ = dnslib_dname_new_from_label($1.str, $1.len, NULL);
+		    printf("str is : %s and its length is: %d\n", $1.str, $1.len);
+		    $$ = dnslib_dname_new_from_label($1.str, $1.len);
 //		    printf("GOT %p\n", $$);
 //		    printf("CREATED FROM LABLE: %s: %s\n",$1.str, dnslib_dname_to_str($$));
 //		    printf("pointer %p\n", $$);

@@ -37,8 +37,7 @@ struct dnslib_dname {
 
 typedef struct dnslib_dname dnslib_dname_t;
 
-dnslib_dname_t *dnslib_dname_new_from_label(char *name, uint size,
-                                          struct dnslib_node *node);
+dnslib_dname_t *dnslib_dname_new_from_label(char *name, uint size);
 
 /*----------------------------------------------------------------------------*/
 

@@ -38,11 +38,11 @@ static int dnslib_tests_run(int argc, char *argv[])
 	// dname tests
 	note("Testing module: dname");
 	res = dnslib_dname_tests_run(argc, argv);	
-	note("Testing module: rdata");
+/*	note("Testing module: rdata");
 	res += dnslib_rdata_tests_run(argc, argv);
 	note("Testing module: node");
 	res += dnslib_node_tests_run(argc, argv);
 	note("Testing module: rrset");
-	res += dnslib_rrset_tests_run(argc, argv);
+	res += dnslib_rrset_tests_run(argc, argv);*/
 	return res;
 }
