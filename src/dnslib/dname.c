@@ -269,6 +269,7 @@ dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname)
 
 	parent->size = dname->size - dname->name[0] - 1;
 	parent->name = (uint8_t *)malloc(parent->size);
+	parent->node = dname->node;
 	if (parent->name == NULL) {
 		ERR_ALLOC_FAILED;
 		dnslib_dname_free(&parent);
@@ -386,7 +387,14 @@ dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2)
 		return NULL;
 	}
 
+	debug_dnslib_dname("1: copying %d bytes from adress %p to %p\n",
+	       d1->size, d1->name, new_dname);
+
 	memcpy(new_dname, d1->name, d1->size);
+
+	debug_dnslib_dname("2: copying %d bytes from adress %p to %p\n",
+	       d2->size, d2->name, new_dname + d1->size);
+
 	memcpy(new_dname + d1->size, d2->name, d2->size);
 
 	uint8_t *old_name = d1->name;

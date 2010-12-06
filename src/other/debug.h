@@ -28,7 +28,7 @@
 //#define SERVER_DEBUG
 //#define DT_DEBUG
 //#define NET_DEBUG
-#define DNSLIB_DNAME_DEBUG
+//#define DNSLIB_DNAME_DEBUG
 
 
 #ifdef SERVER_DEBUG
