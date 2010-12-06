@@ -217,7 +217,7 @@ dname:	abs_dname
 		    zc_error("domain name exceeds %d character limit", MAXDOMAINLEN);
 		    $$ = error_domain;
 	    } else {
-//		    printf("WE HAVE sd\n", dnslib_dname_to_str($1));
+		    //TODO
 		    $$ = $1;
 	    }
     }
@@ -227,8 +227,8 @@ abs_dname:	'.'
     {
 	    /*! \todo Get root domain from db. */
 		//$$ = parser->db->domains->root;
-	    printf("\n\n\n\n\n\nTECKA...\n\n\n\n\n\n\n");
-	    $$ = parser->origin->owner;
+	    printf("\n\nDOT...\n\n");
+	    $$ = parser->origin->owner; //XXX not sure about this at all
     }
     |	'@'
     {
@@ -254,12 +254,7 @@ label:	STR
 		    $$ = error_dname;
 	    } else {
 		    /*!\todo Should I set node to NULL here? Or origin? */
-		    printf("str is : %s and its length is: %d\n", $1.str, $1.len);
 		    $$ = dnslib_dname_new_from_str($1.str, $1.len, NULL);
-//		    printf("GOT %p\n", $$);
-//		    printf("CREATED FROM LABLE: %s: %s\n",$1.str, dnslib_dname_to_str($$));
-//		    printf("pointer %p\n", $$);
-//		    printf("size %d\n", $$->size);
 	    }
     }
     |	BITLAB
@@ -280,12 +275,8 @@ rel_dname:	label
 		    $$ = error_dname;
 	    } else {
 	            dnslib_dname_t* tmpd;
-//		    tmpd = dnslib_dname_new_from_wire($1->name, $1->size, $1->node); 
-//		    printf("joining: %s and %s \n", $1->name, $3->name);
-//		    printf("pointers %p and %p\n", $1, $3);
 		    $$ = dnslib_dname_cat($1, $3);
-//		    printf("CONCAT: %s\n", $$);
-	    }
+	        }
     }
     ;
 

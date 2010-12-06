@@ -315,12 +315,13 @@ int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2)
 	const uint8_t *pos1 = dnslib_dname_name(d1);
 	const uint8_t *pos2 = dnslib_dname_name(d2);
 
-	while (*pos1 != '\0') {
+	//getters even here?
+	while ( pos1 != d1->name + d1->size) {
 		labels1[i1++] = pos1;
 		pos1 += *pos1 + 1;
 	}
 
-	while (*pos2 != '\0') {
+	while ( pos2 != d2->name + d2->size) {
 		labels2[i2++] = pos2;
 		pos2 += *pos2 + 1;
 	}
