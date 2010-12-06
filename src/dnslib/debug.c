@@ -22,12 +22,8 @@ void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type)
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 		DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		DNSLIB_RDATA_WF_LITERAL_DNAME )	{
-//			printf("%d: %s\n", 
-//			       i, dnslib_dname_to_str(rdata->items[i].dname));
-
 			printf("%d: %s\n", 
-			       i, rdata->items[i].dname->name);
-
+			       i, dnslib_dname_to_str(rdata->items[i].dname));
 
 		} else {
 			printf("%d: %s\n", i, rdata->items[i].raw_data);
@@ -56,9 +52,7 @@ void dnslib_rrset_dump(dnslib_rrset_t *rrset)
 void dnslib_node_dump(dnslib_node_t *node)
 {
 	printf("------- NODE --------\n");
-//	printf("owner: %s\n", dnslib_dname_to_str(node->owner));
-
-	printf("owner: %s\n", node->owner->name);
+	printf("owner: %s\n", dnslib_dname_to_str(node->owner));
 
 	const skip_node_t *skip_node =
 		skip_first(node->rrsets);
