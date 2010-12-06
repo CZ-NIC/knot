@@ -1183,8 +1183,10 @@ set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
 int
 process_rr(void)
 {
+	printf("PROCESS RR CALLED\n");
 	dnslib_zone_t *zone = parser->current_zone;
 	dnslib_rrset_t *current_rrset = &parser->current_rrset;
+	printf("\n%s\n", dnslib_dname_to_str(current_rrset->owner));
 	dnslib_rrset_t *rrset;
 	size_t max_rdlength;
 	int i;

@@ -66,9 +66,6 @@ dnslib_node_t *dnslib_zone_get_node(dnslib_zone_t *zone,
 
 
 	while (n != NULL && dnslib_dname_compare(n->owner, name) != 0) {
-	printf("%s WITH %s\n", dnslib_dname_to_str(n->owner), dnslib_dname_to_str(name));
-
-	printf("RESULT %d\n", dnslib_dname_compare(n->owner, name));
 		n = n->next;
 	}
 	return n;
