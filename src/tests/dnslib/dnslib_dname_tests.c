@@ -27,7 +27,7 @@ enum { TEST_DOMAINS_OK = 5 };
 
 enum { TEST_DOMAINS_BAD = 2 };
 
-enum { TEST_LABELS = 4 };
+enum { TEST_LABELS = 6 };
 
 static dnslib_node_t *NODE_ADDRESS = (dnslib_node_t *)0xDEADBEEF;
 
@@ -37,21 +37,25 @@ struct test_domain {
 	uint size;
 };
 
+/* \warning Do not change the order in those, if you want to test 
+    some other feature with new dname, add it at the end of these arrays. */
 static const struct test_domain
 		test_domains_ok[TEST_DOMAINS_OK] = {
 	{ "abc.test.domain.com.", "\3abc\4test\6domain\3com", 21 },
 	{ "some.test.domain.com.", "\4some\4test\6domain\3com", 22 },
 	{ "xyz.test.domain.com.", "\3xyz\4test\6domain\3com", 21 },
 	{ "some.test.domain.com.", "\4some\4test\6domain\3com", 22 },
-	{ "test.domain.com., \4test\6domain\3com", 17}
+	{ "test.domain.com.", "\4test\6domain\3com", 17 }
 };
 
-static const struct test_domain // non fqdn
+static const struct test_domain // non fqdn, these are not labels per se
 		test_labels[TEST_LABELS] = { // sizes are strlen()s here
 			{"www", NULL, 3},
 			{"example", NULL, 7},
 			{"com", NULL, 3},
-			{"www.example.com", NULL, 15}
+			{"www.example.com", NULL, 15},
+			{"some", NULL, 4},
+			{"example.com", NULL, 11}
 		};
 
 static const struct test_domain
@@ -164,15 +168,20 @@ static int check_label(dnslib_dname_t *dname, int i)
 		errors++;
 	}
 
-	if (strcmp(test_labels[i].str, dnslib_dname_to_str(dname)) != 0) {
+	char *tmp = dnslib_dname_to_str(dname);
+
+	if (strcmp(test_labels[i].str, tmp) != 0) {
 		diag("created label is wrong: should be: %s is %s",
-		     test_labels[i].str, dnslib_dname_to_str(dname));
+		     test_labels[i].str, tmp);
 		errors++;
 	}
+
+	free(tmp);
 
 	return errors;
 }
 
+/* \todo possibly rename */
 static int test_dname_create_from_label()
 {
 	int errors = 0;
@@ -190,7 +199,7 @@ static int test_dname_create_from_label()
 
 static int test_dname_cat()
 {
-	int errors;
+	int errors = 0;
 
 	dnslib_dname_t *d1, *d2, *d3;
 
@@ -204,11 +213,59 @@ static int test_dname_cat()
 	dnslib_dname_cat(d1, d2);
 	dnslib_dname_cat(d1, d3);
 
-	errors = check_label(d1, 3);
+	errors += check_label(d1, 3);
 
 	dnslib_dname_free(&d1);
 	dnslib_dname_free(&d2);
 	dnslib_dname_free(&d3);
+
+	d1 = dnslib_dname_new_from_str(test_labels[4].str, 
+	                               strlen(test_labels[4].str),
+				       NODE_ADDRESS);
+
+	d2 = dnslib_dname_new_from_str(test_domains_ok[4].str,
+	                               strlen(test_domains_ok[4].str),
+				       NODE_ADDRESS);
+
+	dnslib_dname_cat(d1, d2);
+
+	errors += check_domain_name(d1, 1);
+
+	dnslib_dname_free(&d1);
+	dnslib_dname_free(&d2);
+
+	return (errors == 0);
+}
+
+static int test_dname_left_chop()
+{
+	int errors = 0;
+
+	dnslib_dname_t *d1;
+
+	d1 = dnslib_dname_new_from_str(test_domains_ok[1].str,
+	                               strlen(test_domains_ok[1].str),
+				       NODE_ADDRESS);
+
+	dnslib_dname_t *chopped;
+
+	chopped = dnslib_dname_left_chop(d1);
+
+	errors += check_domain_name(chopped, 4);
+
+	dnslib_dname_free(&d1);
+	dnslib_dname_free(&chopped);
+
+	d1 = dnslib_dname_new_from_str(test_labels[3].str,
+	                               strlen(test_labels[3].str),
+				       NODE_ADDRESS);
+
+	chopped = dnslib_dname_left_chop(d1);
+
+	errors += check_label(chopped, 5);
+
+	dnslib_dname_free(&d1);
+	dnslib_dname_free(&chopped);
 
 	return (errors == 0);
 }
@@ -225,7 +282,6 @@ static int test_dname_create_from_wire()
 	dnslib_dname_t *dname = NULL;
 
 	for (int i = 0; i < TEST_DOMAINS_OK && errors == 0; ++i) {
-		printf("%d %d\n", strlen(test_domains_ok[i].wire) + 1,  test_domains_ok[i].size);
 		assert(strlen(test_domains_ok[i].wire) + 1 == 
 		       test_domains_ok[i].size);
 		dname = dnslib_dname_new_from_wire(
@@ -297,7 +353,26 @@ static int test_faulty_data()
 
 static int test_dname_is_fqdn()
 {
+	int errors = 0;
 
+	dnslib_dname_t *dname;
+
+	for (int i = 0; i < TEST_DOMAINS_OK && !errors; ++i) {
+		dname = dnslib_dname_new_from_wire(
+		                (uint8_t *)test_domains_ok[i].wire,
+		                test_domains_ok[i].size, NODE_ADDRESS);
+		errors += !dnslib_dname_is_fqdn(dname);
+		dnslib_dname_free(&dname);
+	}
+
+	for (int i = 0; i < TEST_LABELS && !errors; ++i) {
+		dname = dnslib_dname_new_from_str(test_labels[i].str,
+		          strlen(test_labels[i].str), NULL);
+		errors += dnslib_dname_is_fqdn(dname);
+		dnslib_dname_free(&dname);
+	}
+
+	return (errors == 0);
 }
 
 static int test_dname_compare()
@@ -334,7 +409,7 @@ static int test_dname_compare()
 	return (errors == 0);
 }
 
-static const int DNSLIB_DNAME_TEST_COUNT = 7;
+static const int DNSLIB_DNAME_TEST_COUNT = 11;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -352,16 +427,11 @@ static int dnslib_dname_tests_run(int argc, char *argv[])
 	    res_str = 0,
 	    res_wire = 0;
 
-	ok(test_dname_create_from_label(), "dname: create label");
-
-	ok(test_dname_cat(), "dname: cat");
-
-	return 0;
 
 	res_create = test_dname_create();
 	ok(res_create, "dname: create empty");
 
-	skip(!res_create, 5);
+	skip(!res_create, 9);
 
 	todo();
 
@@ -369,7 +439,8 @@ static int dnslib_dname_tests_run(int argc, char *argv[])
 
 	endtodo;
 
-	ok((res_str = test_dname_create_from_str()), "dname: create from str");
+	ok((res_str = test_dname_create_from_str()),
+	   "dname: create from str");
 	ok((res_wire = test_dname_create_from_wire()),
 	   "dname: create from wire");
 
@@ -382,6 +453,14 @@ static int dnslib_dname_tests_run(int argc, char *argv[])
 	endskip;	/* !res_str || !res_wire */
 
 	ok(test_dname_compare(), "dname: compare");
+
+	ok(test_dname_create_from_label(), "dname: create label");
+
+	ok(test_dname_cat(), "dname: cat");
+
+	ok(test_dname_is_fqdn(), "dname: fqdn");
+
+	ok(test_dname_left_chop(), "dname: left chop");
 
 	endskip;	/* !res_create */
 
