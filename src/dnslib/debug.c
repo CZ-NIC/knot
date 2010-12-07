@@ -54,6 +54,12 @@ void dnslib_node_dump(dnslib_node_t *node)
 	printf("------- NODE --------\n");
 	printf("owner: %s\n", dnslib_dname_to_str(node->owner));
 
+	if (node->parent != NULL) {
+		printf("parent: %s\n", dnslib_dname_to_str(node->parent->owner));
+	} else {
+		printf("no parent\n");
+	}
+
 	const skip_node_t *skip_node =
 		skip_first(node->rrsets);
 

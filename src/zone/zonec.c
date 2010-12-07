@@ -1221,11 +1221,13 @@ process_rr(void)
 
 		assert(parser->origin != NULL);
 
-		zone = dnslib_zone_new(parser->origin);
+		//this should AFAIK always be root
 
-		soa_node = dnslib_node_new(current_rrset->owner, parser->origin);
+		zone = dnslib_zone_new(parser->default_apex);
 
-		dnslib_zone_add_node(zone, soa_node);
+//		soa_node = dnslib_node_new(current_rrset->owner, parser->origin);
+
+//		dnslib_zone_add_node(zone, soa_node);
 
 		parser->current_zone = zone;
 
@@ -1242,11 +1244,27 @@ process_rr(void)
 	dnslib_node_t *node;
 	node = dnslib_zone_find_node(zone, current_rrset->owner);
 	if (node == NULL) {
-		node = dnslib_node_new(current_rrset->owner, NULL);
 
-		dnslib_zone_add_node(zone, node);
+		dnslib_node_t *tmp_node;
+		dnslib_node_t *last_node = dnslib_node_new(current_rrset->owner, NULL);
+		node = last_node;
+		dnslib_dname_t *tmp_owner = current_rrset->owner;
+		dnslib_dname_t *chopped = dnslib_dname_left_chop(current_rrset->owner);
+
+		while ((tmp_node = dnslib_zone_find_node(zone, chopped)) == NULL) {
+			tmp_node = dnslib_node_new(tmp_owner, NULL);
+			last_node->parent = tmp_node;
+			dnslib_zone_add_node(zone, tmp_node);
+			last_node = tmp_node;
+			chopped = dnslib_dname_left_chop(tmp_owner);
+			tmp_owner = chopped;
+		}
+
+		last_node->parent = tmp_node;
+
+		assert(tmp_node != NULL);
+
 		printf("NODE CREATED\n");
-		//TODO dnslib_dname_left_chop
 	}
 	rrset = dnslib_node_get_rrset(node, current_rrset->type);
 	if (!rrset) {
