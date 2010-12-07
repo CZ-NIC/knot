@@ -192,28 +192,35 @@ static int dnslib_node_tests_count(int argc, char *argv[])
  */
 static int dnslib_node_tests_run(int argc, char *argv[])
 {
+	int res = 0,
+	    res_final = 1;
 
-	int ret;
-	ret = test_node_create();
-	ok(ret, "node: create");
+	res = test_node_create();
+	ok(res, "node: create");
+	res_final *= res;
 
-	skip(!ret, 4)
+	skip(!res, 4)
 
-	ok(test_node_add_rrset(), "node: add");
+	ok((res = test_node_add_rrset()), "node: add");
+	res_final *= res;
 
-	ok(test_node_get_rrset(), "node: get");
+	ok((res = test_node_get_rrset()), "node: get");
+	res_final *= res;
 
-	ok(test_node_get_parent(), "node: get parent");
+	ok((res = test_node_get_parent()), "node: get parent");
+	res_final *= res;
 
-	ok(test_node_sorting(), "node: sort");
+	ok((res = test_node_sorting()), "node: sort");
+	res_final *= res;
 
 	endskip;
 
 	todo();
 
-	ok(test_node_delete(), "node: delete");
+	ok((res = test_node_delete()), "node: delete");
+	//res_final *= res;
 
 	endtodo;
 
-	return 0;
+	return res_final;
 }
