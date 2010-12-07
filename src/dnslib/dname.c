@@ -323,21 +323,22 @@ int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
 	int l1 = 0;
 	int l2 = 0;
 
-	const uint8_t *pos1 = dnslib_dname_name(sub);
-	const uint8_t *pos2 = dnslib_dname_name(domain);
-	int i = 0;
+	const uint8_t *name1 = dnslib_dname_name(sub);
+	const uint8_t *pos1 = name1;
+	const uint size1 = dnslib_dname_size(sub);
 
-	while (i < dnslib_dname_size(sub) && *pos1 != '\0') {
+	const uint8_t *name2 = dnslib_dname_name(domain);
+	const uint8_t *pos2 = name2;
+	const uint size2 = dnslib_dname_size(domain);
+
+	while (pos1 - name1 < size1 && *pos1 != '\0') {
 		labels1[l1++] = pos1;
 		pos1 += *pos1 + 1;
-		++i;
 	}
 
-	i = 0;
-	while (i < dnslib_dname_size(domain) && *pos2 != '\0') {
+	while (pos2 - name2 < size2 && *pos2 != '\0') {
 		labels2[l2++] = pos2;
 		pos2 += *pos2 + 1;
-		++i;
 	}
 
 	if (l1 <= l2) {  // if sub does not have more labes than domain
