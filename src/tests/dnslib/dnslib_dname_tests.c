@@ -23,7 +23,7 @@ unit_api dnslib_dname_tests_api = {
  */
 
 // C will not accept const int in other const definition
-enum { TEST_DOMAINS_OK = 5 };
+enum { TEST_DOMAINS_OK = 6 };
 
 enum { TEST_DOMAINS_BAD = 2 };
 
@@ -45,7 +45,8 @@ static const struct test_domain
 	{ "some.test.domain.com.", "\4some\4test\6domain\3com", 22 },
 	{ "xyz.test.domain.com.", "\3xyz\4test\6domain\3com", 21 },
 	{ "some.test.domain.com.", "\4some\4test\6domain\3com", 22 },
-	{ "test.domain.com.", "\4test\6domain\3com", 17 }
+	{ "test.domain.com.", "\4test\6domain\3com", 17 },
+	{ ".", "\0", 1 }
 };
 
 static const struct test_domain // non fqdn, these are not labels per se

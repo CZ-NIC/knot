@@ -40,6 +40,18 @@ static inline uint dnslib_dname_wire_size(uint str_size)
 static uint dnslib_dname_str_to_wire(const char *name, uint size,
                                      uint8_t **wire)
 {
+	if (strcmp(name, ".") == 0) { // root - special treatment
+		*wire = (uint8_t *)malloc(1 * sizeof(uint8_t));
+		if (*wire == NULL) {
+			return 0;
+		}
+		**wire = 0;
+		return 1;
+	}
+
+	debug_dnslib_dname("Allocated space for wire format of dname: %p\n",
+	                   *wire);
+
 	if (size > DNSLIB_MAX_DNAME_LENGTH) {
 		return 0;
 	}
@@ -193,7 +205,16 @@ dnslib_dname_t *dnslib_dname_new_from_wire(uint8_t *name, uint size,
 
 char *dnslib_dname_to_str(const dnslib_dname_t *dname)
 {
-	char *name = (char *)malloc(dname->size * sizeof(char));
+	char *name; 
+
+	if (dname->size == 1) {
+		name = malloc(sizeof(*name) * 2);
+		name[0] = '.';
+		name[1] = '\0';
+		return name;
+	}
+
+	name = (char *)malloc(dname->size * sizeof(char));
 
 	uint8_t *w = dname->name;
 	char *ch = name;
@@ -255,6 +276,9 @@ const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname) {
 
 int dnslib_dname_is_fqdn(const dnslib_dname_t *dname)
 {
+	if (dname->size == 1) {
+		return 1;
+	}
 	return (dname->name[dname->size - 1] == '\0');
 }
 
