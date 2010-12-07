@@ -1213,7 +1213,7 @@ process_rr(void)
 	if (!zone)
 	{
 		//our apex should also be SOA
-	//	assert(current_rrset->type == DNSLIB_RRTYPE_SOA);
+		assert(current_rrset->type == DNSLIB_RRTYPE_SOA);
 		//soa comes first, therefore, there should not be any node assigned to
 		//its owner.
 		
@@ -1221,15 +1221,15 @@ process_rr(void)
 
 		assert(parser->origin != NULL);
 
-
 		zone = dnslib_zone_new(parser->origin);
 
 		soa_node = dnslib_node_new(current_rrset->owner, parser->origin);
 
 		dnslib_zone_add_node(zone, soa_node);
 
-
 		parser->current_zone = zone;
+
+		printf("ZONE CREATED\n");
 	}
 
 /*	if (!dname_is_subdomain(domain_dname(rr->owner),
@@ -1243,18 +1243,26 @@ process_rr(void)
 	node = dnslib_zone_find_node(zone, current_rrset->owner);
 	if (node == NULL) {
 		node = dnslib_node_new(current_rrset->owner, NULL);
+
+		dnslib_zone_add_node(zone, node);
+		printf("NODE CREATED\n");
 		//TODO dnslib_dname_left_chop
 	}
 	rrset = dnslib_node_get_rrset(node, current_rrset->type);
 	if (!rrset) {
 		rrset = dnslib_rrset_new(current_rrset->owner, current_rrset->type,
 				current_rrset->rclass, current_rrset->ttl);
+		printf("RRSET CREATED\n");
 
 		dnslib_rrset_add_rdata(rrset, current_rrset->rdata);
 		//TODO check return value
 
+		printf("RDATA ADDED\n");
+
 		/* Add it */
 		dnslib_node_add_rrset(node, rrset);
+
+		printf("RRSET ADDED\n");
 	} else {
 		if (current_rrset->type !=
 			DNSLIB_RRTYPE_RRSIG && rrset->ttl !=
@@ -1287,7 +1295,6 @@ process_rr(void)
 
 
 		// TODO create item, add it to the rrset
-	dnslib_zone_dump(zone);
 	}
 
 //	if(current_rrset->type == TYPE_DNAME && rrset->rr_count > 1) {
@@ -1332,6 +1339,7 @@ process_rr(void)
 	if (vflag > 1 && totalrrs > 0 && (totalrrs % progress == 0)) {
 		fprintf(stdout, "%ld\n", totalrrs);
 	}
+	dnslib_zone_dump(zone);
 	++totalrrs;
 	return 1;
 }

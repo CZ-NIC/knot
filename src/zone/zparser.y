@@ -120,6 +120,15 @@ line:	NL
 			    //XXX dirty workaround, I seriously doubt that it
 			    //should work like this...
 
+			    if (!dnslib_dname_is_fqdn(parser->current_rrset.owner)) {
+
+			    dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
+
+			    parser->current_rrset.owner =
+			    	dnslib_dname_cat(parser->current_rrset.owner, tmp);
+
+			    }
+
 			    process_rr();
 	    }
 
