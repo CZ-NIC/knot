@@ -67,6 +67,8 @@ static int test_zone_add_node(dnslib_zone_t *zone)
 	int errors = 0;
 	int res = 0;
 
+	note("Good nodes");
+
 	for (int i = 0; i < TEST_NODES_GOOD; ++i) {
 		dnslib_node_t *node = dnslib_node_new(&test_nodes_good[i].owner,
 		                                    test_nodes_good[i].parent);
@@ -75,14 +77,17 @@ static int test_zone_add_node(dnslib_zone_t *zone)
 			return 0;
 		}
 
-		if ((res = dnslib_zone_add_node(zone, node))
-			!= 0) {
+		note("Node created");
+
+		if ((res = dnslib_zone_add_node(zone, node)) != 0) {
 			diag("zone: Failed to insert node into zone (returned"
 			     " %d).", res);
 			dnslib_node_free(&node);
 			++errors;
 		}
 	}
+
+	note("Bad nodes");
 
 	for (int i = 0; i < TEST_NODES_BAD; ++i) {
 		dnslib_node_t *node = dnslib_node_new(&test_nodes_bad[i].owner,
@@ -92,14 +97,15 @@ static int test_zone_add_node(dnslib_zone_t *zone)
 			return 0;
 		}
 
-		if ((res = dnslib_zone_add_node(zone, node))
-			!= -2) {
+		if ((res = dnslib_zone_add_node(zone, node)) != -2) {
 			diag("zone: Inserting wrong node did not result in"
 			     "proper return value (%d instead of -2).", res);
 			++errors;
 		}
 		dnslib_node_free(&node);
 	}
+
+	note("NULL zone");
 
 	dnslib_node_t *node = dnslib_node_new(&test_nodes_good[0].owner,
 	                                      test_nodes_good[0].parent);
@@ -116,6 +122,8 @@ static int test_zone_add_node(dnslib_zone_t *zone)
 
 	dnslib_node_free(&node);
 
+	note("NULL node");
+
 	if ((res = dnslib_zone_add_node(zone, NULL)) != -1) {
 		diag("zone: Inserting NULL node to zone did not result in"
 		     "proper return value (%d instead of -1)", res);
@@ -127,6 +135,8 @@ static int test_zone_add_node(dnslib_zone_t *zone)
 		diag("zone: Could not create node.");
 		return 0;
 	}
+
+	note("Apex again");
 
 	if ((res = dnslib_zone_add_node(zone, node)) != -2) {
 		diag("zone: Inserting zone apex again did not result in proper"
@@ -245,38 +255,38 @@ static int dnslib_zone_tests_count(int argc, char *argv[])
 static int dnslib_zone_tests_run(int argc, char *argv[])
 {
 	int res = 0,
-	    res_total = 0;
+	    res_final = 0;
 
 	dnslib_zone_t *zone = NULL;
 
 	ok((res = test_zone_create(&zone)), "zone: create");
-	res_total += res;
+	res_final += res;
 
 	todo();
 	ok((res = test_zone_free(&zone)), "zone: free");
-	res_total += res;
+	//res_final += res;
 	endtodo;
 
-	skip(!res, 3);
+	//skip(!res, 3);
 
 	ok((res = test_zone_add_node(zone)), "zone: add node");
-	res_total += res;
+	res_final += res;
 
 	skip(!res, 2);
 
 	ok((res = test_zone_get_node(zone)), "zone: get node");
-	res_total += res;
+	res_final += res;
 
 	skip(!res, 1);
 
 	ok((res = test_zone_find_node(zone)), "zone: find node");
-	res_total += res;
+	res_final += res;
 
 	endskip; // get node failed
 
 	endskip; // add node failed
 
-	endskip; // create failed
+	//endskip; // create failed
 
-	return res_total;
+	return res_final;
 }

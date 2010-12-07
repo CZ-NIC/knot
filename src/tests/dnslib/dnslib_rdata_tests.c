@@ -787,34 +787,42 @@ static int dnslib_rdata_tests_count(int argc, char *argv[])
  */
 static int dnslib_rdata_tests_run(int argc, char *argv[])
 {
-	int res = 0;
+	int res = 0,
+	    res_final = 1;
 
 	res = test_rdata_create(0);
 	ok(res, "rdata: create empty");
+	res_final *= res;
 
 	skip(!res, 6);
 
 	todo();
 
-	ok(test_rdata_delete(), "rdata: delete");
+	ok(res = test_rdata_delete(), "rdata: delete");
+	//res_final *= res;
 
 	endtodo;
 
 	ok(res = test_rdata_get_item(), "rdata: get item");
+	res_final *= res;
 
 	skip(!res, 4)
 
 	ok(res = test_rdata_set_items(), "rdata: set items all at once");
+	res_final *= res;
 
 	skip(!res, 3);
 
-	ok(test_rdata_set_item(), "rdata: set items one-by-one");
+	ok(res = test_rdata_set_item(), "rdata: set items one-by-one");
+	res_final *= res;
 
 	ok(res = test_rdata_wire_size(), "rdata: wire size");
+	res_final *= res;
 
 	skip(!res, 1);
 
-	ok(test_rdata_to_wire(), "rdata: to wire");
+	ok(res = test_rdata_to_wire(), "rdata: to wire");
+	res_final *= res;
 
 	endskip;	/* test_rdata_wire_size() failed */
 
@@ -824,5 +832,5 @@ static int dnslib_rdata_tests_run(int argc, char *argv[])
 
 	endskip;	/* test_rdata_create() failed */
 
-	return 0;
+	return res_final;
 }

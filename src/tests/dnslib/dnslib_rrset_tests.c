@@ -412,24 +412,29 @@ static int dnslib_rrset_tests_count(int argc, char *argv[])
  */
 static int dnslib_rrset_tests_run(int argc, char *argv[])
 {
-	int res_create = 0;
+	int res = 0,
+	    res_final = 1;
 
 	create_rdata();
 
-	res_create = test_rrset_create();
-	ok(res_create, "rrset: create");
+	res = test_rrset_create();
+	ok(res, "rrset: create");
+	res_final *= res;
 
-	skip(!res_create, 3);
+	skip(!res, 3);
 
 	todo();
 
-	ok(test_rrset_delete(), "rrset: delete");
+	ok(res = test_rrset_delete(), "rrset: delete");
+	//res_final *= res;
 
 	endtodo;
 
-	ok(test_rrset_rdata(), "rrset: rdata manipulation");
+	ok(res = test_rrset_rdata(), "rrset: rdata manipulation");
+	res_final *= res;
 
-	ok(test_rrset_rrsigs(), "rrset: rrsigs manipulation");
+	ok(res = test_rrset_rrsigs(), "rrset: rrsigs manipulation");
+	res_final *= res;
 
 	endskip;	/* !res_create */
 
@@ -450,5 +455,6 @@ static int dnslib_rrset_tests_run(int argc, char *argv[])
 		}
 		dnslib_rdata_free(&test_rrsets[i].rdata);
 	}
-	return 0;
+
+	return res_final;
 }
