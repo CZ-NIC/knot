@@ -415,34 +415,34 @@ static int test_dname_is_subdomain()
 	}
 
 	// fqdn names 0 - 3 should be subdomains of name 4
-	note("Subdomains 1");
 	dnslib_dname_t *parent = dnames_fqdn[4];
 	for (int i = 0; i < 3; ++i) {
 		if (!dnslib_dname_is_subdomain(dnames_fqdn[i], parent)) {
-			diag("Name %s was not considered subdomain of %s",
+			diag("(fqdn 1-%d) "
+			     "Name %s was not considered subdomain of %s", i,
 			     dnslib_dname_name(dnames_fqdn[i]),
 			     dnslib_dname_name(parent));
 			++errors;
 		}
 	}
 
-	note("Subdomains 2");
 	// fqdn names 0 - 4 should be subdomains of name 5 (root)
 	parent = dnames_fqdn[5];
 	for (int i = 0; i < 4; ++i) {
 		if (!dnslib_dname_is_subdomain(dnames_fqdn[i], parent)) {
-			diag("Name %s was not considered subdomain of %s",
+			diag("(fqdn 2-%d) "
+			     "Name %s was not considered subdomain of %s", i,
 			     dnslib_dname_name(dnames_fqdn[i]),
 			     dnslib_dname_name(parent));
 			++errors;
 		}
 	}
 
-	note("Subdomains 3");
 	// non-fqdn names 3 and 5 should be subdomains of non-fqdn name 2
 	parent = dnames_non_fqdn[2];
 	if (!dnslib_dname_is_subdomain(dnames_non_fqdn[3], parent)) {
-		diag("Name %.*s was not considered subdomain of %.*s",
+		diag("(non-fqdn 1) "
+		     "Name %.*s was not considered subdomain of %.*s",
 		     dnslib_dname_size(dnames_non_fqdn[3]),
 		     dnslib_dname_name(dnames_non_fqdn[3]),
 		     dnslib_dname_size(parent),
@@ -450,7 +450,8 @@ static int test_dname_is_subdomain()
 		++errors;
 	}
 	if (!dnslib_dname_is_subdomain(dnames_non_fqdn[5], parent)) {
-		diag("Name %.*s was not considered subdomain of %.*s",
+		diag("(non-fqdn 2) "
+		     "Name %.*s was not considered subdomain of %.*s",
 		     dnslib_dname_size(dnames_non_fqdn[5]),
 		     dnslib_dname_name(dnames_non_fqdn[5]),
 		     dnslib_dname_size(parent),
@@ -458,11 +459,11 @@ static int test_dname_is_subdomain()
 		++errors;
 	}
 
-	note("Subdomains 4");
 	// non-fqdn name 3 should be subdomain of non-fqdn name 5
 	parent = dnames_non_fqdn[5];
 	if (!dnslib_dname_is_subdomain(dnames_non_fqdn[3], parent)) {
-		diag("Name %.*s was not considered subdomain of %.*s",
+		diag("(non-fqdn 3) "
+		     "Name %.*s was not considered subdomain of %.*s",
 		     dnslib_dname_size(dnames_non_fqdn[3]),
 		     dnslib_dname_name(dnames_non_fqdn[3]),
 		     dnslib_dname_size(parent),
@@ -470,34 +471,45 @@ static int test_dname_is_subdomain()
 		++errors;
 	}
 
-	note("Subdomains 5");
 	// identical names should not be considered subdomains
 	if (dnslib_dname_is_subdomain(dnames_fqdn[0], dnames_fqdn[0])) {
-		diag("Name %s was considered subdomain of itself",
+		diag("(identical names) "
+		     "Name %s was considered subdomain of itself",
 		     dnslib_dname_name(dnames_fqdn[0]));
 		++errors;
 	}
 	if (dnslib_dname_is_subdomain(dnames_fqdn[1], dnames_fqdn[3])) {
-		diag("Name %s was considered subdomain of %s",
+		diag("(identical names) "
+		     "Name %s was considered subdomain of %s",
 		     dnslib_dname_name(dnames_fqdn[1]),
 		     dnslib_dname_name(dnames_fqdn[3]));
 		++errors;
 	}
 
-	note("Subdomains 6");
 	// fqdn name should not be considered subdomain of non-fqdn name
 	if (dnslib_dname_is_subdomain(dnames_fqdn[1], dnames_non_fqdn[2])) {
-		diag("Name %s was considered subdomain of %.*s",
+		diag("(fqdn subdomain of non-fqdn) "
+		     "Name %s was considered subdomain of %.*s",
 		     dnslib_dname_name(dnames_fqdn[1]),
 		     dnslib_dname_size(dnames_non_fqdn[2]),
 		     dnslib_dname_name(dnames_non_fqdn[2]));
 		++errors;
 	}
 
-	note("Subdomains 7");
+	// non-fqdn name should not be considered subdomain of fqdn name
+	if (dnslib_dname_is_subdomain(dnames_fqdn[1], dnames_non_fqdn[2])) {
+		diag("(non-fqdn subdomain of fqdn) "
+		     "Name %s was considered subdomain of %.*s",
+		     dnslib_dname_name(dnames_fqdn[1]),
+		     dnslib_dname_size(dnames_non_fqdn[2]),
+		     dnslib_dname_name(dnames_non_fqdn[2]));
+		++errors;
+	}
+
 	// parent name should not be considered subdomain of its subdomain
 	if (dnslib_dname_is_subdomain(dnames_fqdn[4], dnames_fqdn[0])) {
-		diag("Name %s was considered subdomain of %s",
+		diag("(ancestor subdomain of name) "
+		     "Name %s was considered subdomain of %s",
 		     dnslib_dname_name(dnames_fqdn[4]),
 		     dnslib_dname_name(dnames_fqdn[0]));
 		++errors;
