@@ -52,12 +52,12 @@ static const struct test_domain
 
 static const struct test_domain // sizes are strlen()s here
 	test_domains_non_fqdn[TEST_DOMAINS_NON_FQDN] = {
-		{"www", NULL, 3},
-		{"example", NULL, 7},
-		{"com", NULL, 3},
-		{"www.example.com", NULL, 15},
-		{"some", NULL, 4},
-		{"example.com", NULL, 11}
+		{"www", "\3www", 4},
+		{"example", "\7example", 8},
+		{"com", "\3com", 4},
+		{"www.example.com", "\3www\7example\3com", 16},
+		{"some", "\4some", 5},
+		{"example.com", "\7example\3com", 12}
 	};
 
 static const struct test_domain
@@ -104,7 +104,8 @@ static int test_dname_delete()
 	return 0;
 }
 
-static int check_domain_name(const dnslib_dname_t *dname, int i,
+static int check_domain_name(const dnslib_dname_t *dname,
+                             const struct test_domain *test_domains, int i,
                              int check_node)
 {
 	int errors = 0;
@@ -115,19 +116,19 @@ static int check_domain_name(const dnslib_dname_t *dname, int i,
 	}
 
 	// check size
-	if (dnslib_dname_size(dname) != test_domains_ok[i].size) {
+	if (dnslib_dname_size(dname) != test_domains[i].size) {
 		diag("Bad size of the created domain name: %u (should be %u).",
-		     dnslib_dname_size(dname), test_domains_ok[i].size);
+		     dnslib_dname_size(dname), test_domains[i].size);
 		++errors;
 	}
 	// check wire format
 	uint size = dnslib_dname_size(dname);
 	if (strncmp((char *)dnslib_dname_name(dname), 
-		    test_domains_ok[i].wire, size) != 0) {
+		    test_domains[i].wire, size) != 0) {
 		diag("The wire format of the created domain name is wrong:"
 		     " '%.*s' (should be '%.*s').", 
 		     size, dnslib_dname_name(dname),
-		     size, test_domains_ok[i].wire);
+		     size, test_domains[i].wire);
 		++errors;
 	}
 	if (check_node) {
@@ -157,33 +158,11 @@ static int test_dname_create_from_str()
 		//note("testing domain: %s", test_domains_ok[i].str);
 		dname = dnslib_dname_new_from_str(test_domains_ok[i].str,
 		          strlen(test_domains_ok[i].str), NODE_ADDRESS);
-		errors += check_domain_name(dname, i, 1);
+		errors += check_domain_name(dname, test_domains_ok, i, 1);
 		dnslib_dname_free(&dname);
 	}
 
 	return (errors == 0);
-}
-
-static int check_non_fqdn(dnslib_dname_t *dname, int i)
-{
-	int errors = 0;
-	if (dname->size != test_domains_non_fqdn[i].size + 1) {
-		diag("size of created name is wrong: should be %d is %d",
-		     test_domains_non_fqdn[i].size + 1 , dname->size);
-		errors++;
-	}
-
-	char *tmp = dnslib_dname_to_str(dname);
-
-	if (strcmp(test_domains_non_fqdn[i].str, tmp) != 0) {
-		diag("created name is wrong: should be: %s is %s",
-		     test_domains_non_fqdn[i].str, tmp);
-		errors++;
-	}
-
-	free(tmp);
-
-	return errors;
 }
 
 static int test_dname_create_from_str_non_fqdn()
@@ -195,7 +174,7 @@ static int test_dname_create_from_str_non_fqdn()
 		//note("testing domain: %s", test_domains_non_fqdn[i].str);
 		dname = dnslib_dname_new_from_str(test_domains_non_fqdn[i].str,
 		          strlen(test_domains_non_fqdn[i].str), NULL);
-		errors += check_non_fqdn(dname, i);
+		errors += check_domain_name(dname, test_domains_non_fqdn, i, 0);
 		dnslib_dname_free(&dname);
 	}
 
@@ -218,7 +197,7 @@ static int test_dname_cat()
 	dnslib_dname_cat(d1, d2);
 	dnslib_dname_cat(d1, d3);
 
-	errors += check_non_fqdn(d1, 3);
+	errors += check_domain_name(d1, test_domains_non_fqdn, 3, 0);
 
 	dnslib_dname_free(&d1);
 	dnslib_dname_free(&d2);
@@ -234,7 +213,7 @@ static int test_dname_cat()
 
 	dnslib_dname_cat(d1, d2);
 
-	errors += check_domain_name(d1, 1, 1);
+	errors += check_domain_name(d1, test_domains_ok, 1, 1);
 
 	dnslib_dname_free(&d1);
 	dnslib_dname_free(&d2);
@@ -256,7 +235,7 @@ static int test_dname_left_chop()
 
 	chopped = dnslib_dname_left_chop(d1);
 
-	errors += check_domain_name(chopped, 4, 0);
+	errors += check_domain_name(chopped, test_domains_ok, 4, 0);
 
 	dnslib_dname_free(&d1);
 	dnslib_dname_free(&chopped);
@@ -267,7 +246,7 @@ static int test_dname_left_chop()
 
 	chopped = dnslib_dname_left_chop(d1);
 
-	errors += check_non_fqdn(chopped, 5);
+	errors += check_domain_name(chopped, test_domains_non_fqdn, 5, 0);
 
 	dnslib_dname_free(&d1);
 	dnslib_dname_free(&chopped);
@@ -292,7 +271,7 @@ static int test_dname_create_from_wire()
 		dname = dnslib_dname_new_from_wire(
 		            (uint8_t *)test_domains_ok[i].wire,
 		            test_domains_ok[i].size, NODE_ADDRESS);
-		errors += check_domain_name(dname, i, 1);
+		errors += check_domain_name(dname, test_domains_ok, i, 1);
 		dnslib_dname_free(&dname);
 	}
 
@@ -429,8 +408,8 @@ static int test_dname_is_subdomain()
 	}
 
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; ++i) {
-		dnames_non_fqdn[i] = dnslib_dname_new_from_str(
-		                test_domains_non_fqdn[i].str,
+		dnames_non_fqdn[i] = dnslib_dname_new_from_wire(
+		                (uint8_t *)test_domains_non_fqdn[i].wire,
 		                test_domains_non_fqdn[i].size, NULL);
 		assert(dnames_non_fqdn[i] != NULL);
 	}
@@ -440,7 +419,7 @@ static int test_dname_is_subdomain()
 	dnslib_dname_t *parent = dnames_fqdn[4];
 	for (int i = 0; i < 3; ++i) {
 		if (!dnslib_dname_is_subdomain(dnames_fqdn[i], parent)) {
-			diag("Name %s was not considered subdomain of %s.",
+			diag("Name %s was not considered subdomain of %s",
 			     dnslib_dname_name(dnames_fqdn[i]),
 			     dnslib_dname_name(parent));
 			++errors;
@@ -452,7 +431,7 @@ static int test_dname_is_subdomain()
 	parent = dnames_fqdn[5];
 	for (int i = 0; i < 4; ++i) {
 		if (!dnslib_dname_is_subdomain(dnames_fqdn[i], parent)) {
-			diag("Name %s was not considered subdomain of %s.",
+			diag("Name %s was not considered subdomain of %s",
 			     dnslib_dname_name(dnames_fqdn[i]),
 			     dnslib_dname_name(parent));
 			++errors;
@@ -463,24 +442,30 @@ static int test_dname_is_subdomain()
 	// non-fqdn names 3 and 5 should be subdomains of non-fqdn name 2
 	parent = dnames_non_fqdn[2];
 	if (!dnslib_dname_is_subdomain(dnames_non_fqdn[3], parent)) {
-		diag("Name %s was not considered subdomain of %s.",
+		diag("Name %.*s was not considered subdomain of %.*s",
+		     dnslib_dname_size(dnames_non_fqdn[3]),
 		     dnslib_dname_name(dnames_non_fqdn[3]),
+		     dnslib_dname_size(parent),
 		     dnslib_dname_name(parent));
 		++errors;
 	}
 	if (!dnslib_dname_is_subdomain(dnames_non_fqdn[5], parent)) {
-		diag("Name %s was not considered subdomain of %s.",
+		diag("Name %.*s was not considered subdomain of %.*s",
+		     dnslib_dname_size(dnames_non_fqdn[5]),
 		     dnslib_dname_name(dnames_non_fqdn[5]),
+		     dnslib_dname_size(parent),
 		     dnslib_dname_name(parent));
 		++errors;
 	}
 
 	note("Subdomains 4");
-	// non-fqdn name 5 should be subdomain of non-fqdn name 3
-	parent = dnames_non_fqdn[3];
-	if (!dnslib_dname_is_subdomain(dnames_non_fqdn[5], parent)) {
-		diag("Name %s was not considered subdomain of %s.",
-		     dnslib_dname_name(dnames_non_fqdn[5]),
+	// non-fqdn name 3 should be subdomain of non-fqdn name 5
+	parent = dnames_non_fqdn[5];
+	if (!dnslib_dname_is_subdomain(dnames_non_fqdn[3], parent)) {
+		diag("Name %.*s was not considered subdomain of %.*s",
+		     dnslib_dname_size(dnames_non_fqdn[3]),
+		     dnslib_dname_name(dnames_non_fqdn[3]),
+		     dnslib_dname_size(parent),
 		     dnslib_dname_name(parent));
 		++errors;
 	}
@@ -488,12 +473,12 @@ static int test_dname_is_subdomain()
 	note("Subdomains 5");
 	// identical names should not be considered subdomains
 	if (dnslib_dname_is_subdomain(dnames_fqdn[0], dnames_fqdn[0])) {
-		diag("Name %s was considered subdomain of itself.",
+		diag("Name %s was considered subdomain of itself",
 		     dnslib_dname_name(dnames_fqdn[0]));
 		++errors;
 	}
 	if (dnslib_dname_is_subdomain(dnames_fqdn[1], dnames_fqdn[3])) {
-		diag("Name %s was considered subdomain of %s.",
+		diag("Name %s was considered subdomain of %s",
 		     dnslib_dname_name(dnames_fqdn[1]),
 		     dnslib_dname_name(dnames_fqdn[3]));
 		++errors;
@@ -502,8 +487,9 @@ static int test_dname_is_subdomain()
 	note("Subdomains 6");
 	// fqdn name should not be considered subdomain of non-fqdn name
 	if (dnslib_dname_is_subdomain(dnames_fqdn[1], dnames_non_fqdn[2])) {
-		diag("Name %s was considered subdomain of %s.",
+		diag("Name %s was considered subdomain of %.*s",
 		     dnslib_dname_name(dnames_fqdn[1]),
+		     dnslib_dname_size(dnames_non_fqdn[2]),
 		     dnslib_dname_name(dnames_non_fqdn[2]));
 		++errors;
 	}
@@ -511,7 +497,7 @@ static int test_dname_is_subdomain()
 	note("Subdomains 7");
 	// parent name should not be considered subdomain of its subdomain
 	if (dnslib_dname_is_subdomain(dnames_fqdn[4], dnames_fqdn[0])) {
-		diag("Name %s was considered subdomain of %s.",
+		diag("Name %s was considered subdomain of %s",
 		     dnslib_dname_name(dnames_fqdn[4]),
 		     dnslib_dname_name(dnames_fqdn[0]));
 		++errors;
