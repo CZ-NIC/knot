@@ -52,6 +52,8 @@ nsec3_add_params(const char* hash_algo_str, const char* flag_str,
 	const char* iter_str, const char* salt_str, int salt_len);
 #endif /* NSEC3 */
 
+static const dnslib_node_t *apex_node;
+
 const dnslib_dname_t *error_dname;
 dnslib_dname_t *error_domain;
 
@@ -1011,6 +1013,7 @@ zparser_create()
 
 	result->current_rrset.rdata = dnslib_rdata_new();
 
+
 	return result;
 }
 
@@ -1030,17 +1033,19 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 
 	parser->origin = origin;
 	parser->prev_dname = parser->origin;
-	parser->default_apex = parser->origin;
+
+	dnslib_dname_t *root_domain = dnslib_dname_new_from_str(".", 1, NULL);
+	
+	dnslib_node_t *apex = dnslib_node_new(root_domain, NULL);
+
+	parser->default_apex = apex;
 	parser->error_occurred = 0;
 	parser->errors = 0;
 	parser->line = 1;
 	parser->filename = filename;
 //	parser->current_rrset.rdata->count = 0;
+//XXX following line...
 	parser->current_rrset.rdata->items = parser->temporary_rdatas;
-
-	parser->dname_str = malloc(sizeof(char)*256);
-
-	parser->dname_str[0] = '\0';
 }
 
 void
