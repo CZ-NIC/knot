@@ -969,12 +969,15 @@ zparser_ttl2int(const char *ttlstr, int* error)
 void
 zadd_rdata_wireformat(uint16_t *data)
 {
+	printf("RDATA: WIRE\n");
 /*	if (parser->current_rrset.rdata_count >= MAXRDATALEN) {
 		fprintf(stderr, "too many rdata elements");
 	} else {*/
 	dnslib_rdata_item_t *item = malloc(sizeof(dnslib_rdata_item_t));
 	item->raw_data = (uint8_t*)data;
-	dnslib_rdata_set_items(parser->current_rrset.rdata, item, 1);
+	dnslib_rdata_set_item(parser->current_rrset.rdata,
+	                      parser->current_rrset.rdata->count, *item);
+	parser->current_rrset.rdata->count++;
 }
 
 /**
@@ -983,30 +986,31 @@ zadd_rdata_wireformat(uint16_t *data)
 void
 zadd_rdata_txt_wireformat(uint16_t *data, int first)
 {
+	printf("RDATA: TXT WIRE\n");
 //	dnslib_rdata_item_t *rd;
-//
-//	/* First STR in str_seq, allocate 65K in first unused rdata
-//	 * else find last used rdata */
-//	if (first) {
-//		rd = &parser->current_rr.rdatas[parser->current_rr.rdata_count];
-//		if ((rd->data = (uint16_t *) region_alloc(parser->rr_region,
-//			sizeof(uint16_t) + 65535 * sizeof(uint8_t))) == NULL) {
-//			fprintf(stderr, "Could not allocate memory for TXT RR");
-//			return;
-//		}
-//		parser->current_rr.rdata_count++;
-//		rd->data[0] = 0;
-//	}
-//	else
-//		rd = &parser->current_rr.rdatas[parser->current_rr.rdata_count-1];
-//
-//	if ((size_t)rd->data[0] + (size_t)data[0] > 65535) {
-//		fprintf(stderr, "too large rdata element");
-//		return;
-//	}
-//
-//	memcpy((uint8_t *)rd->data + 2 + rd->data[0], data + 1, data[0]);
-//	rd->data[0] += data[0];
+
+	/* First STR in str_seq, allocate 65K in first unused rdata
+	 * else find last used rdata */
+/*	if (first) {
+		rd = &parser->current_rr.rdatas[parser->current_rr.rdata_count];
+		if ((rd->data = (uint16_t *) region_alloc(parser->rr_region,
+			sizeof(uint16_t) + 65535 * sizeof(uint8_t))) == NULL) {
+			fprintf(stderr, "Could not allocate memory for TXT RR");
+			return;
+		}
+		parser->current_rr.rdata_count++;
+		rd->data[0] = 0;
+	}
+	else
+		rd = &parser->current_rr.rdatas[parser->current_rr.rdata_count-1];
+
+	if ((size_t)rd->data[0] + (size_t)data[0] > 65535) {
+		fprintf(stderr, "too large rdata element");
+		return;
+	}
+
+	memcpy((uint8_t *)rd->data + 2 + rd->data[0], data + 1, data[0]);
+	rd->data[0] += data[0]; */
 }
 
 /**
@@ -1030,16 +1034,18 @@ zadd_rdata_txt_clean_wireformat()
 }
 
 void
-zadd_rdata_domain(dnslib_dname_t *domain)
+zadd_rdata_domain(dnslib_dname_t *dname)
 {
-//	if (parser->current_rr.rdata_count >= MAXRDATALEN) {
+	printf("RDATA: DOMAIN\n");
+//	if (parser->current_rrset.rdata_count >= MAXRDATALEN) {
 //		fprintf(stderr, "too many rdata elements");
 //	} else {
 
-//	dnslib_item_t *item = malloc(sizeof(dnslib_item_t));
-//	item->dname = data;
-//	dnslib_rdata_set_items(parser->current_rrset->rdata, items);
-//
+	dnslib_rdata_item_t *item = malloc(sizeof(dnslib_rdata_item_t));
+	item->dname = dname;
+	dnslib_rdata_set_item(parser->current_rrset.rdata,
+	                      parser->current_rrset.rdata->count, *item);
+	parser->current_rrset.rdata->count++;
 //		parser->current_rr.rdatas[parser->current_rr.rdata_count].domain
 //			= domain;
 //		++parser->current_rr.rdata_count;
@@ -1049,6 +1055,7 @@ zadd_rdata_domain(dnslib_dname_t *domain)
 void
 parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 {
+	printf("RDATA: UNKNOWN DATA\n");
 //	buffer_type packet;
 //	uint16_t size;
 //	ssize_t rdata_count;
