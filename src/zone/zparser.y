@@ -116,9 +116,9 @@ line:	NL
     |	rr
     {	/* rr should be fully parsed */
 	    if (!parser->error_occurred) {
-			    parser->current_rrset.rdata->items
+/*			    parser->current_rrset.rdata->items
 				    = malloc(parser->current_rrset.rdata->count
-					     * sizeof(dnslib_rdata_item_t));
+					     * sizeof(dnslib_rdata_item_t)); */
 			    //XXX dirty workaround, I seriously doubt that it
 			    //should work like this...
 
@@ -1043,9 +1043,10 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->errors = 0;
 	parser->line = 1;
 	parser->filename = filename;
-//	parser->current_rrset.rdata->count = 0;
+	parser->current_rrset.rdata->count = 0;
 //XXX following line...
-	parser->current_rrset.rdata->items = parser->temporary_rdatas;
+	parser->current_rrset.rdata->items = NULL;// = parser->temporary_rdatas;
+	parser->rdata_index = 0;
 }
 
 void

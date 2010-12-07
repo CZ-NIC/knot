@@ -42,10 +42,10 @@ void dnslib_rrset_dump(dnslib_rrset_t *rrset)
 
 	dnslib_rdata_t *tmp = rrset->rdata;
 
-//	while (tmp->next != NULL) {
-//		dnslib_rdata_dump(tmp, rrset->type);
-//		tmp = tmp->next;
-//	}
+	while (tmp->next != NULL) {
+		dnslib_rdata_dump(tmp, rrset->type);
+		tmp = tmp->next;
+	}
 	printf("------- RRSET -------\n");
 }
 

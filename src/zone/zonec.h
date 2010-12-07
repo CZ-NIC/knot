@@ -68,6 +68,7 @@ struct zparser {
 //before:	rr_type current_rr;
 	dnslib_rrset_t current_rrset; //XXX * was not there
 	dnslib_rdata_item_t *temporary_rdatas; //XXX only one * was there
+	int rdata_index;
 };
 
 extern zparser_type *parser;
