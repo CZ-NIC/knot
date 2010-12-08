@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <assert.h>
 
 #include "debug.h"
 #include "dnslib/dnslib.h"
@@ -12,20 +13,22 @@ void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type)
 		printf("------- RDATA -------\n");
 		return;
 	}
-
 	dnslib_rrtype_descriptor_t *desc = dnslib_rrtype_descriptor_by_type(type);
+	assert(desc != NULL);
 	for (int i = 0; i < desc->length; i++) {
 		if (&(rdata->items[i]) == NULL) { //XXX isn't this itself enough to crash?
 			printf("Item n. %d is not set!\n", i);
 			continue;
 		}
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
-		DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
-		DNSLIB_RDATA_WF_LITERAL_DNAME )	{
+		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
+		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
+			assert(rdata->items[i].dname != NULL);
 			printf("%d: %s\n", 
 			       i, dnslib_dname_to_str(rdata->items[i].dname));
 
 		} else {
+			assert(rdata->items[i].raw_data != NULL);
 			printf("%d: %s\n", i, rdata->items[i].raw_data);
 		}
 	}
@@ -36,7 +39,7 @@ void dnslib_rrset_dump(dnslib_rrset_t *rrset)
 {
 	printf("------- RRSET -------\n");
 	//TODO textual repre. from descriptor
-	printf("type: %d\n", rrset->type);
+	printf("type: %s\n", dnslib_rrtype_to_string(rrset->type));
 	printf("class: %d\n", rrset->rclass);
 	printf("ttl: %d\n", rrset->ttl);
 
@@ -44,6 +47,7 @@ void dnslib_rrset_dump(dnslib_rrset_t *rrset)
 
 	while (tmp->next != NULL) {
 		dnslib_rdata_dump(tmp, rrset->type);
+		assert(tmp != tmp->next);
 		tmp = tmp->next;
 	}
 	printf("------- RRSET -------\n");

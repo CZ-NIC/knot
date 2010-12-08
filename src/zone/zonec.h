@@ -67,8 +67,8 @@ struct zparser {
 //	curent rr will have to be represented as current rrset
 //before:	rr_type current_rr;
 	dnslib_rrset_t current_rrset; //XXX * was not there
-	dnslib_rdata_item_t *temporary_rdatas; //XXX only one * was there
-	int rdata_index;
+	dnslib_rdata_item_t *temporary_items; //XXX only one * was there
+	int rdata_count;
 };
 
 extern zparser_type *parser;

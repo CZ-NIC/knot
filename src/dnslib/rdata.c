@@ -65,6 +65,8 @@ dnslib_rdata_t *dnslib_rdata_new()
 	rdata->items = NULL;
 	rdata->count = 0;
 
+	rdata->next = NULL;
+
 	return rdata;
 }
 

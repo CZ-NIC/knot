@@ -13,6 +13,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 #include "dname.h"
 #include "zone.h"
@@ -121,6 +122,18 @@ line:	NL
 					     * sizeof(dnslib_rdata_item_t)); */
 			    //XXX dirty workaround, I seriously doubt that it
 			    //should work like this...
+			    printf("Rdata count: %d\n", parser->rdata_count);
+			    int ret;
+			    assert(parser->current_rrset.rdata->count == 0);
+			    if ((ret = dnslib_rdata_set_items(parser->current_rrset.rdata,
+				    parser->temporary_items,
+				     parser->rdata_count)) != 0) {
+				    printf("%d\n", ret);
+				    assert(0);
+			    }
+
+			    printf("%s\n", 
+			    dnslib_dname_to_str(parser->temporary_items[0].dname));
 
 			    if (!dnslib_dname_is_fqdn(parser->current_rrset.owner)) {
 
@@ -137,8 +150,9 @@ line:	NL
 //XXX NAH	    free(parser->current_rrset.rdata->items);
 
 	    parser->current_rrset.type = 0;
+	    parser->rdata_count = 0;
+	    parser->current_rrset.rdata->items = NULL;
 	    parser->current_rrset.rdata->count = 0;
-	    parser->current_rrset.rdata->items = parser->temporary_rdatas;
 	    parser->error_occurred = 0;
 
     }
@@ -288,8 +302,6 @@ rel_dname:	label
 			     MAXDOMAINLEN);
 		    $$ = error_dname;
 	    } else {
-	            dnslib_dname_t* tmpd;
-		    printf("JOINING: %s and %s\n", dnslib_dname_to_str($1), dnslib_dname_to_str($3));
 		    $$ = dnslib_dname_cat($1, $3);
 	        }
     }
@@ -945,7 +957,7 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			                                      name->size,
 			                                      name->node);
 			    name = dnslib_dname_cat(tmpd,
-			            dnslib_node_get_parent(parser->origin));
+			            dnslib_node_get_parent(parser->origin)->owner);
 			}
 
 			uint8_t* dncpy = malloc(name->size);
@@ -1007,7 +1019,7 @@ zparser_create()
 	result->prev_dname = NULL;
 	result->default_apex = NULL;
 
-	result->temporary_rdatas = malloc(MAXRDATALEN *
+	result->temporary_items = malloc(MAXRDATALEN *
 	                                  sizeof(dnslib_rdata_item_t));
 	result->current_rrset = *dnslib_rrset_new(NULL, 0, 0, 0);
 
@@ -1043,10 +1055,10 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->errors = 0;
 	parser->line = 1;
 	parser->filename = filename;
-	parser->current_rrset.rdata->count = 0;
+//	parser->current_rrset.rdata->count = 0;
 //XXX following line...
-	parser->current_rrset.rdata->items = NULL;// = parser->temporary_rdatas;
-	parser->rdata_index = 0;
+	parser->current_rrset.rdata->items = NULL;
+	parser->rdata_count = 0;
 }
 
 void
