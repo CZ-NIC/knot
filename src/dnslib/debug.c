@@ -29,7 +29,8 @@ void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type)
 
 		} else {
 			assert(rdata->items[i].raw_data != NULL);
-			printf("%d: %s\n", i, rdata->items[i].raw_data);
+			printf("%d: raw_data: length: %d\n", i,
+			       *(rdata->items[i].raw_data));
 		}
 	}
 	printf("------- RDATA -------\n");
@@ -45,11 +46,14 @@ void dnslib_rrset_dump(dnslib_rrset_t *rrset)
 
 	dnslib_rdata_t *tmp = rrset->rdata;
 
-	while (tmp->next != NULL) {
+	while (tmp->next != rrset->rdata) {
 		dnslib_rdata_dump(tmp, rrset->type);
 		assert(tmp != tmp->next);
 		tmp = tmp->next;
 	}
+
+	dnslib_rdata_dump(tmp, rrset->type);
+
 	printf("------- RRSET -------\n");
 }
 
