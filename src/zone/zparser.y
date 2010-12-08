@@ -132,9 +132,6 @@ line:	NL
 				    assert(0);
 			    }
 
-			    printf("%s\n", 
-			    dnslib_dname_to_str(parser->temporary_items[0].dname));
-
 			    if (!dnslib_dname_is_fqdn(parser->current_rrset.owner)) {
 
 			    dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
@@ -151,8 +148,9 @@ line:	NL
 
 	    parser->current_rrset.type = 0;
 	    parser->rdata_count = 0;
-	    parser->current_rrset.rdata->items = NULL;
-	    parser->current_rrset.rdata->count = 0;
+	    parser->current_rrset.rdata = dnslib_rdata_new();
+//	    parser->current_rrset.rdata->items = NULL;
+//	    parser->current_rrset.rdata->count = 0;
 	    parser->error_occurred = 0;
 
     }
