@@ -280,6 +280,7 @@ zparser_conv_services(const char *protostr,
 uint16_t *
 zparser_conv_serial(const char *serialstr)
 {
+	printf("CONV SERIAL: %s\n", serialstr);
 	uint16_t *r = NULL;
 	uint32_t serial;
 	const char *t;
@@ -969,15 +970,16 @@ zparser_ttl2int(const char *ttlstr, int* error)
 void
 zadd_rdata_wireformat(uint16_t *data)
 {
-	printf("RDATA: WIRE\n");
+	printf("RDATA: WIRE %s\n", data);
 /*	if (parser->current_rrset.rdata_count >= MAXRDATALEN) {
 		fprintf(stderr, "too many rdata elements");
 	} else {*/
+
+	printf("setting index %d\n", parser->rdata_count);
 	dnslib_rdata_item_t *item = malloc(sizeof(dnslib_rdata_item_t));
 	item->raw_data = (uint8_t*)data;
-	dnslib_rdata_set_item(parser->current_rrset.rdata,
-	                      parser->current_rrset.rdata->count, *item);
-	parser->current_rrset.rdata->count++;
+	parser->temporary_items[parser->rdata_count] = *item;
+	parser->rdata_count++;
 }
 
 /**
@@ -1019,6 +1021,7 @@ zadd_rdata_txt_wireformat(uint16_t *data, int first)
 void
 zadd_rdata_txt_clean_wireformat()
 {
+	printf("RDATA: CLEAN WIRE\n");	
 //	uint16_t *tmp_data;
 //	rdata_atom_type *rd = &parser->current_rr.rdatas[parser->current_rr.rdata_count-1];
 //	if ((tmp_data = (uint16_t *) region_alloc(parser->region,
@@ -1036,16 +1039,16 @@ zadd_rdata_txt_clean_wireformat()
 void
 zadd_rdata_domain(dnslib_dname_t *dname)
 {
-	printf("RDATA: DOMAIN\n");
+	printf("RDATA: DOMAIN %s\n", dnslib_dname_to_str(dname));
 //	if (parser->current_rrset.rdata_count >= MAXRDATALEN) {
 //		fprintf(stderr, "too many rdata elements");
 //	} else {
 
 	dnslib_rdata_item_t *item = malloc(sizeof(dnslib_rdata_item_t));
 	item->dname = dname;
-	dnslib_rdata_set_item(parser->current_rrset.rdata,
-	                      parser->current_rrset.rdata->count, *item);
-	parser->current_rrset.rdata->count++;
+	printf("setting index %d\n", parser->rdata_count);
+	parser->temporary_items[parser->rdata_count] = *item;
+	parser->rdata_count++;
 //		parser->current_rr.rdatas[parser->current_rr.rdata_count].domain
 //			= domain;
 //		++parser->current_rr.rdata_count;
@@ -1232,9 +1235,9 @@ process_rr(void)
 
 		zone = dnslib_zone_new(parser->default_apex);
 
-//		soa_node = dnslib_node_new(current_rrset->owner, parser->origin);
+		soa_node = dnslib_node_new(current_rrset->owner, parser->origin);
 
-//		dnslib_zone_add_node(zone, soa_node);
+		dnslib_zone_add_node(zone, soa_node);
 
 		parser->current_zone = zone;
 
@@ -1242,7 +1245,7 @@ process_rr(void)
 	}
 
 /*	if (!dname_is_subdomain(domain_dname(rr->owner),
-				domain_dname(zone->apex)))
+	XXX			domain_dname(zone->apex)))
 	{
 		fprintf(stderr, "out of zone data");
 		return 0;
