@@ -1371,6 +1371,9 @@ process_rr(void)
 	dnslib_rrtype_descriptor_t *descriptor
 		= dnslib_rrtype_descriptor_by_type(current_rrset->type);
 
+
+	assert(parser->current_rrset.rdata->count == descriptor->length);
+
 	/* We only support IN class */
 /*	if (current_rrset->rclass != DNSLIB_CLASS_IN) {
 		fprintf(stderr, "only class IN is supported");
