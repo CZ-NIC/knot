@@ -28,9 +28,13 @@ dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent)
 
 	ret->owner = owner;
 	ret->parent = parent;
-
-	ret->rrsets = skip_create_list(compare_rrset_types);
 	ret->next = NULL;
+	ret->rrsets = skip_create_list(compare_rrset_types);
+
+	ret->avl.avl_left = NULL;
+	ret->avl.avl_right = NULL;
+	ret->avl.avl_height = 0;
+
 	return ret;
 }
 
@@ -55,10 +59,22 @@ const dnslib_node_t *dnslib_node_get_parent(const dnslib_node_t *node)
 	return node->parent;
 }
 
+void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent)
+{
+	node->parent = parent;
+}
+
 void dnslib_node_free(dnslib_node_t **node)
 {
-	skip_destroy_list(&(*node)->rrsets, NULL, NULL);
+	if ((*node)->rrsets != NULL) {
+		skip_destroy_list(&(*node)->rrsets, NULL, NULL);
+	}
 	free(*node);
 	*node = NULL;
+}
+
+int dnslib_node_compare(dnslib_node_t *node1, dnslib_node_t *node2)
+{
+	return dnslib_dname_compare(node1->owner, node2->owner);
 }
 

@@ -49,17 +49,13 @@ int dnslib_rrset_add_rdata(dnslib_rrset_t *rrset, dnslib_rdata_t *rdata)
 	return 0;
 }
 
-int dnslib_rrset_set_rrsigs(dnslib_rrset_t *rrset,
-                            const dnslib_rrset_t *rrsigs,
-                            const dnslib_rdata_t *first, uint count)
+int dnslib_rrset_set_rrsigs(dnslib_rrset_t *rrset, dnslib_rrsig_set_t *rrsigs)
 {
-	if (rrset == NULL || rrsigs == NULL || first == NULL) {
-		return -2;
+	if (rrset == NULL || rrsigs == NULL) {
+		return -1;
 	}
 
 	rrset->rrsigs = rrsigs;
-	rrset->first = first;
-	rrset->rrsig_count = count;
 	return 0;
 }
 
@@ -83,19 +79,9 @@ const dnslib_rdata_t *dnslib_rrset_rdata(const dnslib_rrset_t *rrset)
 	return rrset->rdata;
 }
 
-const dnslib_rrset_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset)
+const dnslib_rrsig_set_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset)
 {
 	return rrset->rrsigs;
-}
-
-const dnslib_rdata_t *dnslib_rrset_rrsig_first(const dnslib_rrset_t *rrset)
-{
-	return rrset->first;
-}
-
-uint dnslib_rrset_rrsig_count(const dnslib_rrset_t *rrset)
-{
-	return rrset->rrsig_count;
 }
 
 void dnslib_rrset_free(dnslib_rrset_t **rrset)
@@ -104,7 +90,7 @@ void dnslib_rrset_free(dnslib_rrset_t **rrset)
 	*rrset = NULL;
 }
 
-int dnslib_merge_rrsets(void **r1, void **r2)
+int dnslib_rrset_merge(void **r1, void **r2)
 {
 	dnslib_rrset_t * rrset1 = (dnslib_rrset_t *)(*r1);
 	dnslib_rrset_t * rrset2 = (dnslib_rrset_t *)(*r2);
