@@ -75,3 +75,5 @@ src/stat/stat.c
 src/dnslib/zone.h
 src/dnslib/zone.c
 src/tests/dnslib/dnslib_zone_tests.c
+src/dnslib/rrsig.h
+src/dnslib/rrsig.c
