@@ -75,7 +75,7 @@ int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node);
  *
  * \return Corresponding node if found, NULL otherwise.
  */
-dnslib_node_t *dnslib_zone_get_node(dnslib_zone_t *zone,
+dnslib_node_t *dnslib_zone_get_node(const dnslib_zone_t *zone,
                                     const dnslib_dname_t *name);
 
 /*!
@@ -87,7 +87,7 @@ dnslib_node_t *dnslib_zone_get_node(dnslib_zone_t *zone,
  *
  * \return Corresponding node if found, NULL otherwise.
  */
-dnslib_node_t *dnslib_zone_get_nsec3_node(dnslib_zone_t *zone,
+dnslib_node_t *dnslib_zone_get_nsec3_node(const dnslib_zone_t *zone,
                                           const dnslib_dname_t *name);
 
 /*!
@@ -101,8 +101,32 @@ dnslib_node_t *dnslib_zone_get_nsec3_node(dnslib_zone_t *zone,
  *
  * \return Corresponding node if found, NULL otherwise.
  */
-const dnslib_node_t *dnslib_zone_find_node(dnslib_zone_t *zone,
+const dnslib_node_t *dnslib_zone_find_node(const dnslib_zone_t *zone,
                                            const dnslib_dname_t *name);
+
+/*!
+ * \brief Tries to find a node with the specified name among the NSEC3 nodes
+ *        of the zone.
+ *
+ * \note This function is identical to dnslib_zone_get_nsec3_node(), only it
+ *       returns constant reference.
+ *
+ * \param zone Zone where the name should be searched for.
+ * \param name Name to find.
+ *
+ * \return Corresponding node if found, NULL otherwise.
+ */
+const dnslib_node_t *dnslib_zone_find_nsec3_node(const dnslib_zone_t *zone,
+                                                 const dnslib_dname_t *name);
+
+/*!
+ * \brief Returns the apex node of the zone.
+ *
+ * \param zone Zone to get the apex of.
+ *
+ * \return Zone apex node.
+ */
+const dnslib_node_t *dnslib_zone_apex(const dnslib_zone_t *zone);
 
 /*!
  * \brief Correctly deallocates the zone structure and possibly all its nodes.
