@@ -35,8 +35,9 @@ static uint dnslib_dname_str_to_wire(const char *name, uint size,
 	}
 
 	uint wire_size;
+	int root = (*name == '.' && size == 1);
 	// root => different size
-	if (*name == '.' && size == 1) {
+	if (root) {
 		wire_size = 1;
 	} else {
 		wire_size = size + 1;
@@ -50,6 +51,11 @@ static uint dnslib_dname_str_to_wire(const char *name, uint size,
 
 	debug_dnslib_dname("Allocated space for wire format of dname: %p\n",
 	                   *wire);
+
+	if (root) {
+		**wire = '\0';
+		return wire_size;
+	}
 
 	const uint8_t *ch = (const uint8_t *)name;
 	uint8_t *label_start = *wire;
