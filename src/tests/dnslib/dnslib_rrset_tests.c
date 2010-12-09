@@ -43,9 +43,7 @@ struct test_rrset {
 	uint16_t rclass;
 	uint32_t  ttl;
 	dnslib_rdata_t *rdata;
-	const dnslib_rrset_t *rrsigs;
-	const dnslib_rdata_t *rrsig_first;
-	uint rrsig_count;
+	const dnslib_rrsig_set_t *rrsigs;
 };
 
 static const char *signature_strings[TEST_RRSIGS] = 
@@ -59,8 +57,6 @@ static struct test_rrset test_rrsets[TEST_RRSETS] = {
 		3600,
 		NULL,
 		NULL,
-		NULL,
-		0
 	},
 	{
 		"example2.com.",
@@ -69,8 +65,6 @@ static struct test_rrset test_rrsets[TEST_RRSETS] = {
 		3600,
 		NULL,
 		NULL,
-		NULL,
-		0
 	},
 	{
 		"example3.com.",
@@ -79,8 +73,6 @@ static struct test_rrset test_rrsets[TEST_RRSETS] = {
 		3600,
 		NULL,
 		NULL,
-		NULL,
-		0
 	}
 };
 
@@ -91,9 +83,6 @@ static const struct test_rrset test_rrsigs[TEST_RRSIGS] = {
 		1,
 		3600,
 		NULL,
-		NULL,
-		NULL,
-		1
 	},
 	{
 		"example2.com.",
@@ -101,9 +90,6 @@ static const struct test_rrset test_rrsigs[TEST_RRSIGS] = {
 		1,
 		3600,
 		NULL,
-		NULL,
-		NULL,
-		1
 	},
 	{
 		"example3.com.",
@@ -111,9 +97,6 @@ static const struct test_rrset test_rrsigs[TEST_RRSIGS] = {
 		1,
 		3600,
 		NULL,
-		NULL,
-		NULL,
-		1
 	}
 };
 
@@ -201,7 +184,7 @@ static int check_rrset(const dnslib_rrset_t *rrset, int i,
 
 	if (check_rrsigs) {
 
-		const dnslib_rrset_t *rrsigs;
+		const dnslib_rrsig_set_t *rrsigs;
 
 		rrsigs = dnslib_rrset_rrsigs(rrset);
 		if (strcmp((const char *)rrsigs->rdata->items[0].raw_data,
@@ -368,7 +351,7 @@ static int test_rrset_rrsigs()
 		dnslib_rrset_add_rdata(rrset, test_rrsets[i].rdata);
 
 		//owners are the same
-		dnslib_rrset_t *rrsig = dnslib_rrset_new(owner,
+		dnslib_rrsig_set_t *rrsig = dnslib_rrsig_set_new(owner,
 		                                         test_rrsigs[i].type,
 		                                         test_rrsigs[i].rclass,
 		                                         test_rrsigs[i].ttl);
@@ -379,9 +362,9 @@ static int test_rrset_rrsigs()
 		 * should be sufficient for testing */
 		item->raw_data = (uint8_t *)signature_strings[i];
 		dnslib_rdata_set_items(tmp, item, 1);
-		dnslib_rrset_add_rdata(rrsig, tmp);
+		dnslib_rrsig_set_add_rdata(rrsig, tmp);
 
-		if (dnslib_rrset_set_rrsigs(rrset, rrsig, rrsig->rdata, 1)
+		if (dnslib_rrset_set_rrsigs(rrset, rrsig)
 		      != 0) {
 			diag("Could not set rrsig");
 			errors++;
@@ -391,7 +374,7 @@ static int test_rrset_rrsigs()
 		dnslib_rrset_free(&rrset);
 		free(item);
 		dnslib_rdata_free(&tmp);
-		dnslib_rrset_free(&rrsig);
+		dnslib_rrsig_set_free(&rrsig);
 	}
 	return (errors == 0);
 }
@@ -412,24 +395,29 @@ static int dnslib_rrset_tests_count(int argc, char *argv[])
  */
 static int dnslib_rrset_tests_run(int argc, char *argv[])
 {
-	int res_create = 0;
+	int res = 0,
+	    res_final = 1;
 
 	create_rdata();
 
-	res_create = test_rrset_create();
-	ok(res_create, "rrset: create");
+	res = test_rrset_create();
+	ok(res, "rrset: create");
+	res_final *= res;
 
-	skip(!res_create, 3);
+	skip(!res, 3);
 
 	todo();
 
-	ok(test_rrset_delete(), "rrset: delete");
+	ok(res = test_rrset_delete(), "rrset: delete");
+	//res_final *= res;
 
 	endtodo;
 
-	ok(test_rrset_rdata(), "rrset: rdata manipulation");
+	ok(res = test_rrset_rdata(), "rrset: rdata manipulation");
+	res_final *= res;
 
-	ok(test_rrset_rrsigs(), "rrset: rrsigs manipulation");
+	ok(res = test_rrset_rrsigs(), "rrset: rrsigs manipulation");
+	res_final *= res;
 
 	endskip;	/* !res_create */
 
@@ -450,5 +438,6 @@ static int dnslib_rrset_tests_run(int argc, char *argv[])
 		}
 		dnslib_rdata_free(&test_rrsets[i].rdata);
 	}
-	return 0;
+
+	return res_final;
 }

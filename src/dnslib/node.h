@@ -16,6 +16,7 @@
 #include "dname.h"
 #include "skip-list.h"
 #include "rrset.h"
+#include "tree.h"
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -36,6 +37,8 @@ struct dnslib_node {
 
 	/*! \brief Next node in a general list of nodes. Temporary. */
 	struct dnslib_node *next;
+
+	TREE_ENTRY(dnslib_node) avl;
 };
 
 typedef struct dnslib_node dnslib_node_t;
@@ -85,6 +88,14 @@ const dnslib_rrset_t *dnslib_node_get_rrset(const dnslib_node_t *node,
 const dnslib_node_t *dnslib_node_get_parent(const dnslib_node_t *node);
 
 /*!
+ * \brief Sets the parent of the node.
+ *
+ * \param node Node to set the parent of.
+ * \param parent Parent to set to the node.
+ */
+void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent);
+
+/*!
  * \brief Destroys the node structure.
  *
  * Also sets the given pointer to NULL.
@@ -92,6 +103,19 @@ const dnslib_node_t *dnslib_node_get_parent(const dnslib_node_t *node);
  * \param node Node to be destroyed.
  */
 void dnslib_node_free(dnslib_node_t **node);
+
+/*!
+ * \brief Compares two nodes according to their owner.
+ *
+ * \param node1 First node.
+ * \param node2 Second node.
+ *
+ * \retval -1 if \a node1 goes before \a node2 according to canonical order
+ *         of their owner names.
+ * \retval 0 if they are equal.
+ * \retval 1 if \a node1 goes after \a node2.
+ */
+int dnslib_node_compare(dnslib_node_t *node1, dnslib_node_t *node2);
 
 #endif /* _CUTEDNS_DNSLIB_NODE_H_ */
 

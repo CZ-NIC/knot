@@ -66,6 +66,7 @@ typedef union dnslib_rdata_item dnslib_rdata_item_t;
  * \todo Find out whether NULL is appropriate value. If it is a possible
  *       value for some of the items, we must find some other way to deal with
  *       this.
+ * \todo Add some function for freeing particular item? Or a non-const getter?
  */
 struct dnslib_rdata {
 	dnslib_rdata_item_t *items; /*!< RDATA items comprising this RDATA. */

@@ -39,11 +39,11 @@ static struct test_node	test_nodes[TEST_NODES] = {
 };
 
 static dnslib_rrset_t rrsets[RRSETS] = {
-	{&test_dnames[0], 1, 1, 3600, NULL, NULL, NULL, 0},
-	{&test_dnames[1], 2, 1, 3600, NULL, NULL, NULL, 0},
-	{&test_dnames[1], 7, 1, 3600, NULL, NULL, NULL, 0},
-	{&test_dnames[1], 3, 1, 3600, NULL, NULL, NULL, 0},
-	{&test_dnames[1], 9, 1, 3600, NULL, NULL, NULL, 0}
+	{&test_dnames[0], 1, 1, 3600, NULL, NULL},
+	{&test_dnames[1], 2, 1, 3600, NULL, NULL},
+	{&test_dnames[1], 7, 1, 3600, NULL, NULL},
+	{&test_dnames[1], 3, 1, 3600, NULL, NULL},
+	{&test_dnames[1], 9, 1, 3600, NULL, NULL}
 };
 
 static int test_node_create()
@@ -192,28 +192,35 @@ static int dnslib_node_tests_count(int argc, char *argv[])
  */
 static int dnslib_node_tests_run(int argc, char *argv[])
 {
+	int res = 0,
+	    res_final = 1;
 
-	int ret;
-	ret = test_node_create();
-	ok(ret, "node: create");
+	res = test_node_create();
+	ok(res, "node: create");
+	res_final *= res;
 
-	skip(!ret, 4)
+	skip(!res, 4)
 
-	ok(test_node_add_rrset(), "node: add");
+	ok((res = test_node_add_rrset()), "node: add");
+	res_final *= res;
 
-	ok(test_node_get_rrset(), "node: get");
+	ok((res = test_node_get_rrset()), "node: get");
+	res_final *= res;
 
-	ok(test_node_get_parent(), "node: get parent");
+	ok((res = test_node_get_parent()), "node: get parent");
+	res_final *= res;
 
-	ok(test_node_sorting(), "node: sort");
+	ok((res = test_node_sorting()), "node: sort");
+	res_final *= res;
 
 	endskip;
 
 	todo();
 
-	ok(test_node_delete(), "node: delete");
+	ok((res = test_node_delete()), "node: delete");
+	//res_final *= res;
 
 	endtodo;
 
-	return 0;
+	return res_final;
 }
