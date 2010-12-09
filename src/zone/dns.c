@@ -7,7 +7,7 @@
  *
  */
 
-#include <config.h>
+//#include <config.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -21,8 +21,9 @@
 #include <malloc.h>
 #ifdef HAVE_STRINGS_H
 #include <strings.h>
-#include <assert.h>
 #endif
+
+#include <assert.h>
 
 #include "dns.h"
 #include "zonec.h"

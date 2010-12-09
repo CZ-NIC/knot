@@ -989,30 +989,31 @@ void
 zadd_rdata_txt_wireformat(uint16_t *data, int first)
 {
 	printf("RDATA: TXT WIRE\n");
-//	dnslib_rdata_item_t *rd;
+	dnslib_rdata_item_t *rd;
 
 	/* First STR in str_seq, allocate 65K in first unused rdata
 	 * else find last used rdata */
-/*	if (first) {
-		rd = &parser->current_rr.rdatas[parser->current_rr.rdata_count];
-		if ((rd->data = (uint16_t *) region_alloc(parser->rr_region,
-			sizeof(uint16_t) + 65535 * sizeof(uint8_t))) == NULL) {
-			fprintf(stderr, "Could not allocate memory for TXT RR");
-			return;
-		}
-		parser->current_rr.rdata_count++;
-		rd->data[0] = 0;
+	if (first) {
+		rd = &parser->temporary_items[parser->rdata_count];
+//		if ((rd->data = (uint16_t *) region_alloc(parser->rr_region,
+//			sizeof(uint16_t) + 65535 * sizeof(uint8_t))) == NULL) {
+//			fprintf(stderr, "Could not allocate memory for TXT RR");
+//			return;
+//		}
+		parser->rdata_count++;
+		rd->raw_data[0] = 0;
 	}
-	else
-		rd = &parser->current_rr.rdatas[parser->current_rr.rdata_count-1];
+	else {
+		rd = &parser->temporary_items[parser->rdata_count-1];
+  }
 
-	if ((size_t)rd->data[0] + (size_t)data[0] > 65535) {
+	if ((size_t)rd->raw_data[0] + (size_t)data[0] > 65535) {
 		fprintf(stderr, "too large rdata element");
 		return;
 	}
-
-	memcpy((uint8_t *)rd->data + 2 + rd->data[0], data + 1, data[0]);
-	rd->data[0] += data[0]; */
+  //XXX why + 2? maybe there are two lengts
+	memcpy((uint8_t *)rd->raw_data + 2 + rd->raw_data[0], data + 1, data[0]);
+	rd->raw_data[0] += data[0];
 }
 
 /**
@@ -1021,7 +1022,6 @@ zadd_rdata_txt_wireformat(uint16_t *data, int first)
 void
 zadd_rdata_txt_clean_wireformat()
 {
-	printf("RDATA: CLEAN WIRE\n");	
 //	uint16_t *tmp_data;
 //	rdata_atom_type *rd = &parser->current_rr.rdatas[parser->current_rr.rdata_count-1];
 //	if ((tmp_data = (uint16_t *) region_alloc(parser->region,
