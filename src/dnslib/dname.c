@@ -315,6 +315,14 @@ int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
 		return 0;
 	}
 
+	// if one of the names is fqdn and the other is not
+	if ((sub->name[sub->size - 1] == '\0'
+	      && domain->name[domain->size - 1] != '\0')
+	    || (sub->name[sub->size - 1] != '\0'
+		&& domain->name[domain->size - 1] == '\0')) {
+		return 0;
+	}
+
 	// jump to the last label and store addresses of labels
 	// on the way there
 	// TODO: consider storing label offsets in the domain name structure
