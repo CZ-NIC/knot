@@ -156,11 +156,11 @@ void dnslib_zone_free(dnslib_zone_t **zone, int free_nodes)
 	if (free_nodes && (*zone)->apex != NULL) {
 		dnslib_node_t *n = (*zone)->apex;
 		(*zone)->apex = NULL;
-		dnslib_node_t *next = n->next;
-		while (next != NULL) {
+		dnslib_node_t *next;
+		while (n != NULL) {
+			next = n->next;
 			dnslib_node_free(&n);
 			n = next;
-			next = n->next;
 		}
 	}
 
