@@ -22,7 +22,7 @@ int dnslib_zone_check_node(const dnslib_zone_t *zone, const dnslib_node_t *node)
 	if (!dnslib_dname_is_subdomain(node->owner, zone->apex->owner)) {
 		char *node_owner = dnslib_dname_to_str(node->owner);
 		char *apex_owner = dnslib_dname_to_str(zone->apex->owner);
-		log_error("Trying to insert foreign node to a zone."
+		log_error("Trying to insert foreign node to a zone. "
 			  "Node owner: %s, zone apex: %s\n",
 			  node_owner, apex_owner);
 		free(node_owner);
