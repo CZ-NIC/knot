@@ -128,8 +128,9 @@ main (int argc, char **argv)
 //		}
 //		if (vflag > 0)
 //			fprintf(stdout, "zonec: reading zone \"%s\".\n", origin);
+		origin = argv[1];
 
-		singlefile = "samples/example.com.zone";
+		singlefile = argv[2];
 		
 		zone_read(origin, singlefile); //, nsd_options);
 //		if (vflag > 0)
