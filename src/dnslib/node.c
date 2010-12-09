@@ -54,6 +54,11 @@ const dnslib_node_t *dnslib_node_get_parent(const dnslib_node_t *node)
 	return node->parent;
 }
 
+void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent)
+{
+	node->parent = parent;
+}
+
 void dnslib_node_free(dnslib_node_t **node)
 {
 	skip_destroy_list(&(*node)->rrsets, NULL, NULL);

@@ -85,6 +85,14 @@ const dnslib_rrset_t *dnslib_node_get_rrset(const dnslib_node_t *node,
 const dnslib_node_t *dnslib_node_get_parent(const dnslib_node_t *node);
 
 /*!
+ * \brief Sets the parent of the node.
+ *
+ * \param node Node to set the parent of.
+ * \param parent Parent to set to the node.
+ */
+void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent);
+
+/*!
  * \brief Destroys the node structure.
  *
  * Also sets the given pointer to NULL.
