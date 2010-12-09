@@ -165,8 +165,7 @@ void dnslib_rrset_free(dnslib_rrset_t **rrset);
  * destroy the RDATAs in \a r2 as they are now also in \a r1. (You may use
  * function dnslib_rrset_free() though, as it does not touch RDATAs).
  *
- * \note Members \a rrsigs, \a first and \a rrsig_count are not checked for
- *       match, members from the first RRSet are preserved.
+ * \note Member \a rrsigs is preserved from the first RRSet.
  *
  * \param r1 Pointer to RRSet to be merged into.
  * \param r2 Poitner to RRSet to be merged.
