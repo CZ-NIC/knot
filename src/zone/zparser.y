@@ -122,15 +122,15 @@ line:	NL
 					     * sizeof(dnslib_rdata_item_t)); */
 			    //XXX dirty workaround, I seriously doubt that it
 			    //should work like this...
-			    printf("Rdata count: %d\n", parser->rdata_count);
-			    int ret;
+
 			    assert(parser->current_rrset.rdata->count == 0);
-			    if ((ret = dnslib_rdata_set_items(parser->current_rrset.rdata,
+			    if (dnslib_rdata_set_items(parser->current_rrset.rdata,
 				    parser->temporary_items,
-				     parser->rdata_count)) != 0) {
-				    printf("%d\n", ret);
+				     parser->rdata_count) != 0) {
 				    assert(0);
 			    }
+
+
 
 			    if (!dnslib_dname_is_fqdn(parser->current_rrset.owner)) {
 
