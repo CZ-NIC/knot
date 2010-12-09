@@ -92,7 +92,7 @@ int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_node_t *dnslib_zone_get_node(dnslib_zone_t *zone,
+dnslib_node_t *dnslib_zone_get_node(const dnslib_zone_t *zone,
                                     const dnslib_dname_t *name)
 {
 	if (zone == NULL || name == NULL) {
@@ -108,7 +108,7 @@ dnslib_node_t *dnslib_zone_get_node(dnslib_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_node_t *dnslib_zone_get_nsec3_node(dnslib_zone_t *zone,
+dnslib_node_t *dnslib_zone_get_nsec3_node(const dnslib_zone_t *zone,
                                           const dnslib_dname_t *name)
 {
 	if (zone == NULL || name == NULL) {
@@ -124,10 +124,25 @@ dnslib_node_t *dnslib_zone_get_nsec3_node(dnslib_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_zone_find_node(dnslib_zone_t *zone,
+const dnslib_node_t *dnslib_zone_find_node(const dnslib_zone_t *zone,
                                            const dnslib_dname_t *name)
 {
 	return dnslib_zone_get_node(zone, name);
+}
+
+/*----------------------------------------------------------------------------*/
+
+const dnslib_node_t *dnslib_zone_find_nsec3_node(const dnslib_zone_t *zone,
+                                                 const dnslib_dname_t *name)
+{
+	return dnslib_zone_get_nsec3_node(zone, name);
+}
+
+/*----------------------------------------------------------------------------*/
+
+const dnslib_node_t *dnslib_zone_apex(const dnslib_zone_t *zone)
+{
+	return zone->apex;
 }
 
 /*----------------------------------------------------------------------------*/
