@@ -497,8 +497,17 @@ static int test_rdata_set_item()
 		return 0;
 	}
 
-	uint8_t pos =
-	rand() % dnslib_rrtype_descriptor_by_type(rrtype)->length;
+	uint8_t pos = rand() % dnslib_rrtype_descriptor_by_type(rrtype)->length;
+
+	dnslib_rrtype_descriptor_t *desc =
+	  dnslib_rrtype_descriptor_by_type(rrtype);
+
+	// if the rdata on this position is domain name, free it to avoid leaks
+	if (desc->wireformat[pos] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
+	    || desc->wireformat[pos] == DNSLIB_RDATA_WF_COMPRESSED_DNAME
+	    || desc->wireformat[pos] == DNSLIB_RDATA_WF_LITERAL_DNAME) {
+		dnslib_dname_free(&(rdata->items[pos].dname));
+	}
 
 	ret = dnslib_rdata_set_item(rdata, pos, item);
 	if (ret != 0) {
@@ -515,17 +524,15 @@ static int test_rdata_set_item()
 		dnslib_rdata_free(&rdata);
 		return 0;
 	}
-
-	dnslib_rrtype_descriptor_t *desc = 
-	dnslib_rrtype_descriptor_by_type(rrtype);
 	
 	for (int x = 0; x < desc->length; x++) {
-	       if (desc->wireformat[x] == 
+	       if (x != pos && (
+		   desc->wireformat[x] ==
 	               DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 	           desc->wireformat[x] == 
 	               DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 	           desc->wireformat[x] == 
-	               DNSLIB_RDATA_WF_LITERAL_DNAME) {
+	               DNSLIB_RDATA_WF_LITERAL_DNAME)) {
 		dnslib_dname_free(&(rdata->items[x].dname));
 	       }
 	}
