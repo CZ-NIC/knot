@@ -155,26 +155,26 @@ static int test_zone_add_node(dnslib_zone_t *zone)
 
 	// check if all nodes are inserted
 	//int nodes = 0;
-	const dnslib_node_t *cnode = dnslib_zone_apex(zone);
-	if (!test_zone_check_node(cnode, &test_apex)) {
+	if (!test_zone_check_node(dnslib_zone_apex(zone), &test_apex)) {
 		diag("zone: Apex of zone not right.");
 		++errors;
 	}
 	//++nodes;
 	for (int i = 0; i < TEST_NODES_GOOD; ++i) {
-		cnode = cnode->next;
-		if (cnode == NULL) {
-			diag("zone: Missing node with owner %s.",
+		const dnslib_node_t *tmp =
+			dnslib_zone_find_node(zone, &test_nodes_good[i].owner);
+		if (tmp == NULL) {
+			diag("zone: Missing node with owner %s",
 			     test_nodes_good[i].owner.name);
 			++errors;
-			break;
+			continue;
 		}
 
-		if (!test_zone_check_node(cnode, &test_nodes_good[i])) {
-			diag("Zone: Wrong node: owner: %s (should be %s),"
-			     " parent: %p (should be %p).", cnode->owner->name,
-			     test_nodes_good[i].owner.name, cnode->parent,
-			     test_nodes_good[i].parent);
+		if (!test_zone_check_node(tmp, &test_nodes_good[i])) {
+			diag("zone: Node does not match: owner: %s (should be "
+			     "%s), parent: %p (should be %p)",
+			     node->owner->name, test_nodes_good[i].owner.name,
+			     node->parent, test_nodes_good[i].parent);
 			++errors;
 		}
 		//++nodes;
@@ -314,12 +314,12 @@ static int dnslib_zone_tests_run(int argc, char *argv[])
 	ok((res = test_zone_find_node(zone)), "zone: find node");
 	res_final += res;
 
-	ok((res = test_zone_free(&zone)), "zone: free");
-	res_final += res;
-
 	endskip; // get node failed
 
 	endskip; // add node failed
+
+	ok((res = test_zone_free(&zone)), "zone: free");
+	res_final += res;
 
 	//endskip; // create failed
 

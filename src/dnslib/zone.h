@@ -14,11 +14,17 @@
 
 #include "node.h"
 #include "dname.h"
+#include "tree.h"
+
+/*----------------------------------------------------------------------------*/
+
+typedef TREE_HEAD(avl_tree, dnslib_node) avl_tree_t;
 
 /*----------------------------------------------------------------------------*/
 
 struct dnslib_zone {
 	dnslib_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
+	avl_tree_t *tree;
 	dnslib_node_t *nsec3_nodes; /*!< First NSEC3 node of the zone. */
 };
 
