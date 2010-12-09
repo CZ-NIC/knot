@@ -38,6 +38,13 @@ static struct zone_test_node test_nodes_good[TEST_NODES_GOOD] = {
 	{{(uint8_t *)"\7another\6domain\3com\0", 20}, (dnslib_node_t *)NULL},
 };
 
+static int test_zone_check_node(const dnslib_node_t *node,
+                                const struct zone_test_node *test_node)
+{
+	return (node->owner == &test_node->owner
+	        && node->parent == test_node->parent);
+}
+
 static int test_zone_create(dnslib_zone_t **zone)
 {
 	dnslib_node_t *node = dnslib_node_new(&test_apex.owner,
@@ -67,17 +74,17 @@ static int test_zone_add_node(dnslib_zone_t *zone)
 	int errors = 0;
 	int res = 0;
 
-	note("Good nodes");
+	//note("Good nodes");
 
 	for (int i = 0; i < TEST_NODES_GOOD; ++i) {
 		dnslib_node_t *node = dnslib_node_new(&test_nodes_good[i].owner,
-		                                    test_nodes_good[i].parent);
+		                                     test_nodes_good[i].parent);
 		if (node == NULL) {
 			diag("zone: Could not create node.");
 			return 0;
 		}
 
-		note("Node created");
+		//note("Node created");
 
 		if ((res = dnslib_zone_add_node(zone, node)) != 0) {
 			diag("zone: Failed to insert node into zone (returned"
@@ -87,7 +94,7 @@ static int test_zone_add_node(dnslib_zone_t *zone)
 		}
 	}
 
-	note("Bad nodes");
+	//note("Bad nodes");
 
 	for (int i = 0; i < TEST_NODES_BAD; ++i) {
 		dnslib_node_t *node = dnslib_node_new(&test_nodes_bad[i].owner,
@@ -105,7 +112,7 @@ static int test_zone_add_node(dnslib_zone_t *zone)
 		dnslib_node_free(&node);
 	}
 
-	note("NULL zone");
+	//note("NULL zone");
 
 	dnslib_node_t *node = dnslib_node_new(&test_nodes_good[0].owner,
 	                                      test_nodes_good[0].parent);
@@ -122,7 +129,7 @@ static int test_zone_add_node(dnslib_zone_t *zone)
 
 	dnslib_node_free(&node);
 
-	note("NULL node");
+	//note("NULL node");
 
 	if ((res = dnslib_zone_add_node(zone, NULL)) != -1) {
 		diag("zone: Inserting NULL node to zone did not result in"
@@ -136,7 +143,7 @@ static int test_zone_add_node(dnslib_zone_t *zone)
 		return 0;
 	}
 
-	note("Apex again");
+	//note("Apex again");
 
 	if ((res = dnslib_zone_add_node(zone, node)) != -2) {
 		diag("zone: Inserting zone apex again did not result in proper"
@@ -145,6 +152,35 @@ static int test_zone_add_node(dnslib_zone_t *zone)
 	}
 
 	dnslib_node_free(&node);
+
+	// check if all nodes are inserted
+	//int nodes = 0;
+	const dnslib_node_t *cnode = dnslib_zone_apex(zone);
+	if (!test_zone_check_node(cnode, &test_apex)) {
+		diag("zone: Apex of zone not right.");
+		++errors;
+	}
+	//++nodes;
+	for (int i = 0; i < TEST_NODES_GOOD; ++i) {
+		cnode = cnode->next;
+		if (cnode == NULL) {
+			diag("zone: Missing node with owner %s.",
+			     test_nodes_good[i].owner.name);
+			++errors;
+			break;
+		}
+
+		if (!test_zone_check_node(cnode, &test_nodes_good[i])) {
+			diag("Zone: Wrong node: owner: %s (should be %s),"
+			     " parent: %p (should be %p).", cnode->owner->name,
+			     test_nodes_good[i].owner.name, cnode->parent,
+			     test_nodes_good[i].parent);
+			++errors;
+		}
+		//++nodes;
+	}
+
+	//note("zone: %d nodes in the zone (including apex)", nodes);
 
 	return (errors == 0);
 }
@@ -237,7 +273,8 @@ static int test_zone_find_node(dnslib_zone_t *zone)
 
 static int test_zone_free(dnslib_zone_t **zone)
 {
-	return 0;
+	dnslib_zone_free(zone, 1);
+	return (*zone == NULL);
 }
 
 static const int DNSLIB_ZONE_TEST_COUNT = 5;
@@ -262,11 +299,6 @@ static int dnslib_zone_tests_run(int argc, char *argv[])
 	ok((res = test_zone_create(&zone)), "zone: create");
 	res_final += res;
 
-	todo();
-	ok((res = test_zone_free(&zone)), "zone: free");
-	//res_final += res;
-	endtodo;
-
 	//skip(!res, 3);
 
 	ok((res = test_zone_add_node(zone)), "zone: add node");
@@ -280,6 +312,9 @@ static int dnslib_zone_tests_run(int argc, char *argv[])
 	skip(!res, 1);
 
 	ok((res = test_zone_find_node(zone)), "zone: find node");
+	res_final += res;
+
+	ok((res = test_zone_free(&zone)), "zone: free");
 	res_final += res;
 
 	endskip; // get node failed
