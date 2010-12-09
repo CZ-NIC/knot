@@ -108,6 +108,22 @@ dnslib_node_t *dnslib_zone_get_node(dnslib_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
+dnslib_node_t *dnslib_zone_get_nsec3_node(dnslib_zone_t *zone,
+                                          const dnslib_dname_t *name)
+{
+	if (zone == NULL || name == NULL) {
+		return NULL;
+	}
+
+	dnslib_node_t *n = zone->nsec3_nodes;
+	while (n != NULL && dnslib_dname_compare(n->owner, name) != 0) {
+		n = n->next;
+	}
+	return n;
+}
+
+/*----------------------------------------------------------------------------*/
+
 const dnslib_node_t *dnslib_zone_find_node(dnslib_zone_t *zone,
                                            const dnslib_dname_t *name)
 {

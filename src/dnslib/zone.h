@@ -79,6 +79,18 @@ dnslib_node_t *dnslib_zone_get_node(dnslib_zone_t *zone,
                                     const dnslib_dname_t *name);
 
 /*!
+ * \brief Tries to find a node with the specified name among the NSEC3 nodes
+ *        of the zone.
+ *
+ * \param zone Zone where the name should be searched for.
+ * \param name Name to find.
+ *
+ * \return Corresponding node if found, NULL otherwise.
+ */
+dnslib_node_t *dnslib_zone_get_nsec3_node(dnslib_zone_t *zone,
+                                          const dnslib_dname_t *name);
+
+/*!
  * \brief Tries to find a node with the specified name in the zone.
  *
  * \note This function is identical to dnslib_zone_get_node(), only it returns
