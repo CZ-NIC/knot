@@ -92,12 +92,7 @@ void dnslib_zone_dump(dnslib_zone_t *zone)
 	printf("------- ZONE --------\n");
 	dnslib_node_t *tmp = zone->apex;
 
-	while (tmp->next != NULL) {
-		dnslib_node_dump(tmp);
-		tmp = tmp->next;
-	}
+	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl, dnslib_node_dump, NULL);
 
-	dnslib_node_dump(tmp);
-		
 	printf("------- ZONE --------\n");
 }
