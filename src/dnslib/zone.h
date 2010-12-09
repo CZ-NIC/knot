@@ -18,7 +18,8 @@
 /*----------------------------------------------------------------------------*/
 
 struct dnslib_zone {
-	dnslib_node_t *apex;
+	dnslib_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
+	dnslib_node_t *nsec3_nodes; /*!< First NSEC3 node of the zone. */
 };
 
 typedef struct dnslib_zone dnslib_zone_t;
@@ -34,7 +35,7 @@ typedef struct dnslib_zone dnslib_zone_t;
 dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex);
 
 /*!
- * \brief Add a node to the given zone.
+ * \brief Adds a node to the given zone.
  *
  * Checks if the node belongs to the zone, i.e. if its owner is a subdomain of
  * the zone's apex. It thus also forbids adding node with the same name as the
@@ -48,6 +49,23 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex);
  * \retval -2 if \a node does not belong to \a zone.
  */
 int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node);
+
+/*!
+ * \brief Adds a node holding NSEC3 records to the given zone.
+ *
+ * Checks if the node belongs to the zone, i.e. if its owner is a subdomain of
+ * the zone's apex. It does not check if the node really contains any NSEC3
+ * records, nor if the name is a hash (as there is actually no way of
+ * determining this).
+ *
+ * \param zone Zone to add the node into.
+ * \param node Node to add into the zone.
+ *
+ * \retval 0 on success.
+ * \retval -1 if one of the parameters is NULL.
+ * \retval -2 if \a node does not belong to \a zone.
+ */
+int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node);
 
 /*!
  * \brief Tries to find a node with the specified name in the zone.

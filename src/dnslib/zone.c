@@ -7,6 +7,34 @@
 #include "dname.h"
 
 /*----------------------------------------------------------------------------*/
+/* Non-API functions                                                          */
+/*----------------------------------------------------------------------------*/
+
+int dnslib_zone_check_node(const dnslib_zone_t *zone, const dnslib_node_t *node)
+{
+	if (zone == NULL || node == NULL) {
+		return -1;
+	}
+
+	// assert or just check??
+	assert(zone->apex != NULL);
+
+	if (!dnslib_dname_is_subdomain(node->owner, zone->apex->owner)) {
+		char *node_owner = dnslib_dname_to_str(node->owner);
+		char *apex_owner = dnslib_dname_to_str(zone->apex->owner);
+		log_error("Trying to insert foreign node to a zone."
+			  "Node owner: %s, zone apex: %s\n",
+			  node_owner, apex_owner);
+		free(node_owner);
+		free(apex_owner);
+		return -2;
+	}
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+/* API functions                                                              */
+/*----------------------------------------------------------------------------*/
 
 dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex)
 {
@@ -28,25 +56,31 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex)
 
 int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 {
-	if (zone == NULL || node == NULL) {
-		return -1;
-	}
-
-	// assert or just check??
-	assert(zone->apex != NULL);
-
-	if (!dnslib_dname_is_subdomain(node->owner, zone->apex->owner)) {
-		char *node_owner = dnslib_dname_to_str(node->owner);
-		char *apex_owner = dnslib_dname_to_str(zone->apex->owner);
-		log_error("Trying to insert foreign node to a zone."
-			  "Node owner: %s, zone apex: %s\n",
-			  node_owner, apex_owner);
-		free(node_owner);
-		free(apex_owner);
-		return -2;
+	int ret = 0;
+	if ((ret = dnslib_zone_check_node(zone, node)) != 0) {
+		return ret;
 	}
 
 	dnslib_node_t *n = zone->apex;
+	while (n->next != NULL) {
+		n = n->next;
+	}
+	n->next = node;
+	node->next = NULL;
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node)
+{
+	int ret = 0;
+	if ((ret = dnslib_zone_check_node(zone, node)) != 0) {
+		return ret;
+	}
+
+	dnslib_node_t *n = zone->nsec3_nodes;
 	while (n->next != NULL) {
 		n = n->next;
 	}
