@@ -39,11 +39,11 @@ static struct test_node	test_nodes[TEST_NODES] = {
 };
 
 static dnslib_rrset_t rrsets[RRSETS] = {
-	{&test_dnames[0], 1, 1, 3600, NULL, NULL, NULL, 0},
-	{&test_dnames[1], 2, 1, 3600, NULL, NULL, NULL, 0},
-	{&test_dnames[1], 7, 1, 3600, NULL, NULL, NULL, 0},
-	{&test_dnames[1], 3, 1, 3600, NULL, NULL, NULL, 0},
-	{&test_dnames[1], 9, 1, 3600, NULL, NULL, NULL, 0}
+	{&test_dnames[0], 1, 1, 3600, NULL, NULL},
+	{&test_dnames[1], 2, 1, 3600, NULL, NULL},
+	{&test_dnames[1], 7, 1, 3600, NULL, NULL},
+	{&test_dnames[1], 3, 1, 3600, NULL, NULL},
+	{&test_dnames[1], 9, 1, 3600, NULL, NULL}
 };
 
 static int test_node_create()
