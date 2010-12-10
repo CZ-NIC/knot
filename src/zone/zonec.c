@@ -1404,11 +1404,11 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 		                     tmp_type,
 				     rrset->rclass,
 				     rrset->ttl);
-	rrsig->rdata = rrset->rdata;
 
 			//TODO if rrset exists and it has already assigned rrsig to it, merge
 	dnslib_node_t *tmp_node = dnslib_zone_find_node(zone,
 		                                                rrsig->owner);
+
 		
 	if (tmp_node == NULL) {
 		rrsig_list_add(&parser->rrsig_orphans, rrset);
@@ -1417,7 +1417,6 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 
 	printf("searching for type: %d\n", rrset->rdata->items[0].raw_data[3]);
 
-	//TODO check
 	dnslib_rrset_t *tmp_rrset =
 		dnslib_node_get_rrset(tmp_node, rrsig->type);
 
@@ -1427,8 +1426,12 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 		rrsig_list_add(&parser->rrsig_orphans, rrset);
 		return -1;
 	}
+	
+	if (tmp_rrset->rrsigs != NULL) {
+		dnslib_rrset_merge(tmp_rrset, rrset);
+	}
 
-	//TODO check
+	rrsig->rdata = rrset->rdata;
 
 	tmp_rrset->rrsigs = rrsig;
 
@@ -1457,6 +1460,14 @@ process_rr(void)
 	assert(parser->current_rrset.rdata->count == descriptor->length);
 
 	assert(dnslib_dname_is_fqdn(parser->current_rrset.owner));
+
+	int (*node_add_func)(dnslib_zone_t *zone, dnslib_node_t *node);
+
+	if (current_rrset->type != DNSLIB_RRTYPE_NSEC3) {
+		node_add_func = &dnslib_zone_add_node;
+	} else {
+		node_add_func = &dnslib_zone_add_nsec3_node;
+	}
 
 	/* We only support IN class */
 /*	if (current_rrset->rclass != DNSLIB_CLASS_IN) {
@@ -1526,7 +1537,9 @@ process_rr(void)
 		dnslib_node_t *tmp_node;
 		dnslib_node_t *last_node = dnslib_node_new(current_rrset->owner, NULL);
 		node = last_node;
-		dnslib_zone_add_node(zone, node); //XXX Have a look at this
+		if (node_add_func(zone, node) != 0) {
+			return -1; //no check yet in zparser ... it just won't be added
+		}//XXX Have a look at this
 		//but it's probably ok, in case that while will not execute
 		//its parent will be set after it
 		dnslib_dname_t *tmp_owner = current_rrset->owner;
@@ -1535,7 +1548,7 @@ process_rr(void)
 		while ((tmp_node = dnslib_zone_find_node(zone, chopped)) == NULL) {
 			tmp_node = dnslib_node_new(tmp_owner, NULL);
 			last_node->parent = tmp_node;
-			dnslib_zone_add_node(zone, tmp_node);
+			node_add_func(zone, tmp_node);
 			last_node = tmp_node;
 			chopped = dnslib_dname_left_chop(tmp_owner);
 			tmp_owner = chopped;
@@ -1569,8 +1582,8 @@ process_rr(void)
 			fprintf(stderr,
 				"TTL does not match the TTL of the RRset");
 		}
-
-		dnslib_rrset_add_rdata(rrset, current_rrset->rdata);
+		
+		dnslib_rrset_merge(rrset, current_rrset);
 
 //		/* Search for possible duplicates... */
 //		for (i = 0; i < rrset->rr_count; i++) {
