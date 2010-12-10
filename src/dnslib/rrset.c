@@ -21,6 +21,7 @@ dnslib_rrset_t *dnslib_rrset_new(dnslib_dname_t *owner, uint16_t type,
 	ret->type = type;
 	ret->rclass = rclass;
 	ret->ttl = ttl;
+	ret->rrsigs = NULL;
 
 	return ret;
 }
