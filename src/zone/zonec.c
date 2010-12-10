@@ -46,21 +46,26 @@ void rrsig_list_init(rrsig_list_t **head)
 	*head = NULL;
 }
 
-static void rrsig_list_add_first(rrsig_list_t *head, dnslib_rrset_t *rrsig)
+static void rrsig_list_add_first(rrsig_list_t **head, dnslib_rrset_t *rrsig)
 {
-	head = malloc(sizeof(*head));
-	(head)->next = NULL;
-	(head)->data = rrsig;	
+	*head = malloc(sizeof(*head));
+	(*head)->next = NULL;
+	(*head)->data = rrsig;	
 }
 
-static void rrsig_list_add(rrsig_list_t *head, dnslib_rrset_t *rrsig)
+static void rrsig_list_add(rrsig_list_t **head, dnslib_rrset_t *rrsig)
 {
 	if (head == NULL) {
+		printf("HEAD pred: %p\n", head);
 		rrsig_list_add_first(head, rrsig);
+		printf("HEAD po %p\n", head);
+		printf("HEAD data %p\n", (*head)->data);
+		getchar();
 	} else {
 		rrsig_list_t *tmp = malloc(sizeof(*tmp));
-		tmp->next = head;
-		head = tmp;
+		tmp->next = *head;
+		tmp->data = rrsig;
+		*head = tmp;
 	}
 }
 
@@ -1388,7 +1393,11 @@ set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
 
 int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 {
+	printf("A: %s\n", dnslib_dname_to_str(rrset->owner));
 	assert(rrset != NULL);
+	assert(rrset->rdata);
+	assert(rrset->rdata->items);
+	assert(rrset->rdata->items[0].raw_data);
 	uint16_t tmp_type = rrset->rdata->items[0].raw_data[3]; //XXX Will this always work?
 	dnslib_rrsig_set_t *rrsig =
 		dnslib_rrsig_set_new(rrset->owner,
@@ -1402,7 +1411,7 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 		                                                rrsig->owner);
 		
 	if (tmp_node == NULL) {
-		rrsig_list_add(parser->rrsig_orphans, rrsig);
+		rrsig_list_add(&parser->rrsig_orphans, rrset);
 		return -1;
 	}
 
@@ -1415,13 +1424,15 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 	printf("%s\n", dnslib_dname_to_str(rrsig->owner));
 
 	if (tmp_rrset == NULL) {
-		rrsig_list_add(parser->rrsig_orphans, rrsig);
+		rrsig_list_add(&parser->rrsig_orphans, rrset);
 		return -1;
 	}
 
 	//TODO check
 
 	tmp_rrset->rrsigs = rrsig;
+
+	printf("setting rrsigs for rrset %p\n", tmp_rrset);
 
         //dnslib_zone_dump(zone);
 
@@ -1489,7 +1500,16 @@ process_rr(void)
 	}
 
 	if (current_rrset->type == DNSLIB_RRTYPE_RRSIG) {
-		find_rrset_for_rrsig(zone, current_rrset);
+		//XXX ugly ugly ugly
+		dnslib_rrset_t *tmp = dnslib_rrset_new(current_rrset->owner,
+						       current_rrset->type,
+						       current_rrset->rclass,
+						       current_rrset->ttl);
+
+		dnslib_rrset_add_rdata(tmp, current_rrset->rdata);
+
+		find_rrset_for_rrsig(zone, tmp);
+		return 0;
 	}
 
 /*	if (!dname_is_subdomain(domain_dname(rr->owner),
@@ -1628,7 +1648,12 @@ int find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
 	rrsig_list_t *tmp = head;
 	int ret;
 	while (tmp != NULL) {
-		find_rrset_for_rrsig(zone, tmp);
+		ret = find_rrset_for_rrsig(zone, tmp->data);
+		if (ret == 0) {
+			printf("RRSET succesfully found: owner %s type %d\n",
+			       dnslib_dname_to_str(tmp->data->owner),
+			       tmp->data->type);
+		}
 		tmp = rrsig_list_next(tmp);
 	}
 	//TODO destroy the list... (find_rrset_for_rrsig makes copies)
@@ -1739,7 +1764,9 @@ zone_read(const char *name, const char *zonefile) //, nsd_options_t* nsd_options
 //	/* Parse and process all RRs.  */
 	yyparse();
 
-	find_rrset_for_rrsig(parser->current_zone, parser->rrsig_orphans);
+	find_rrsets_orphans(parser->current_zone, parser->rrsig_orphans);
+
+	dnslib_zone_dump(parser->current_zone);
 //
 //	/* check if zone file contained a correct SOA record */
 //	if (parser->current_zone && parser->current_zone->soa_rrset

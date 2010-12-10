@@ -67,6 +67,7 @@ void dnslib_rrsig_dump(dnslib_rrsig_set_t *rrsig)
 void dnslib_rrset_dump(dnslib_rrset_t *rrset)
 {
 	printf("------- RRSET -------\n");
+	printf("%p\n", rrset);
 	printf("type: %s\n", dnslib_rrtype_to_string(rrset->type));
 	printf("class: %d\n", rrset->rclass);
 	printf("ttl: %d\n", rrset->ttl);
