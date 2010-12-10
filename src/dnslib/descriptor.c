@@ -240,7 +240,7 @@ static dnslib_rrtype_descriptor_t
 	    DNSLIB_RDATA_WF_BINARY }, true },
   	/* 47 */
   	{ DNSLIB_RRTYPE_NSEC, "NSEC", 2,
-  	  { DNSLIB_RDATA_WF_LITERAL_DNAME, DNSLIB_RDATA_WF_BINARY }, true },
+/*XXX*/ 	  { DNSLIB_RDATA_WF_BINARY, DNSLIB_RDATA_WF_BINARY }, true }, //same as above
   	/* 48 */
   	{ DNSLIB_RRTYPE_DNSKEY, "DNSKEY", 4,
   	  { DNSLIB_RDATA_WF_SHORT, DNSLIB_RDATA_WF_BYTE,
