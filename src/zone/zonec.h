@@ -16,6 +16,7 @@
 #include "rrset.h"
 #include "node.h"
 #include "rdata.h"
+#include "rrsig.h"
 #include "zone.h"
 
 #define MAXRDATALEN	64
@@ -47,6 +48,13 @@ struct lex_data {
 /*! \todo Implement ZoneDB. */
 typedef void namedb_type;
 
+struct rrsig_list {
+	dnslib_rrset_t *data;
+	struct rrsig_list *next;
+};
+
+typedef struct rrsig_list rrsig_list_t;
+
 /* administration struct */
 typedef struct zparser zparser_type;
 struct zparser {
@@ -68,6 +76,9 @@ struct zparser {
 //before:	rr_type current_rr;
 	dnslib_rrset_t current_rrset; //XXX * was not there
 	dnslib_rdata_item_t *temporary_items; //XXX only one * was there
+
+	rrsig_list_t *rrsig_orphans;
+
 	int rdata_count;
 };
 

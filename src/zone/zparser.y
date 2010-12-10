@@ -1026,6 +1026,7 @@ zparser_create()
 
 	result->current_rrset.rdata = NULL;
 
+	result->rrsig_orphans = NULL;
 
 	return result;
 }
