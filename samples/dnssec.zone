@@ -13,15 +13,15 @@ example.com.       3600 IN SOA ns1.example. bugs.x.w.example. (
                               vkgO9ebarZ0GWDKcuwlM6eNB5SiX2K74l5LW
                               DA7S/Un/IbtDq4Ay8NMNLQI7Dw7n4p8/rjkB
                               jV7j86HyQgM5e7+miRAz8V01b0I= )
-                  3600 NS     ns1.example.
-                  3600 NS     ns2.example.
-                  3600 RRSIG  NS 5 1 3600 20040509183619 (
+		  3600 RRSIG  NS 5 1 3600 20040509183619 (
                               20040409183619 38519 example.
                               gl13F00f2U0R+SWiXXLHwsMY+qStYy5k6zfd
                               EuivWc+wd1fmbNCyql0Tk7lHTX6UOxc8AgNf
                               4ISFve8XqF4q+o9qlnqIzmppU3LiNeKT4FZ8
                               RO5urFOvoMRTbQxW3U0hXWuggE4g3ZpsHv48
                               0HjMeRaZB/FRPGfJPajngcq6Kwg= )
+                  3600 NS     ns1.example.
+                  3600 NS     ns2.example.
                   3600 MX     1 xx.example.
                   3600 RRSIG  MX 5 1 3600 20040509183619 (
                               20040409183619 38519 example.

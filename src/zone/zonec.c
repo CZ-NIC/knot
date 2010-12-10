@@ -28,6 +28,7 @@
 #include "dnslib/rdata.h"
 #include "dnslib/node.h"
 #include "dnslib/zone.h"
+#include "dnslib/rrsig.h"
 #include "dnslib/descriptor.h"
 #include "parser-util.h"
 #include "dnslib/debug.h"
@@ -39,6 +40,34 @@
 #define NS_INADDRSZ 4
 #define NS_IN6ADDRSZ 16
 #define APL_NEGATION_MASK      0x80U
+
+void rrsig_list_init(rrsig_list_t **head)
+{
+	*head = NULL;
+}
+
+static void rrsig_list_add_first(rrsig_list_t *head, dnslib_rrset_t *rrsig)
+{
+	head = malloc(sizeof(*head));
+	(head)->next = NULL;
+	(head)->data = rrsig;	
+}
+
+static void rrsig_list_add(rrsig_list_t *head, dnslib_rrset_t *rrsig)
+{
+	if (head == NULL) {
+		rrsig_list_add_first(head, rrsig);
+	} else {
+		rrsig_list_t *tmp = malloc(sizeof(*tmp));
+		tmp->next = head;
+		head = tmp;
+	}
+}
+
+static dnslib_rrset_t *rrsig_list_next(rrsig_list_t *item)
+{
+	return item->next;
+}
 
 static inline uint8_t *
 rdata_atom_data(dnslib_rdata_item_t item)
@@ -57,6 +86,7 @@ rdata_atom_is_domain(uint16_t type, size_t index)
 }
 
 static inline uint8_t
+
 rdata_atom_wireformat_type(uint16_t type, size_t index)
 {
 	const dnslib_rrtype_descriptor_t *descriptor
@@ -452,7 +482,7 @@ zparser_conv_services(const char *protostr,
 uint16_t *
 zparser_conv_serial(const char *serialstr)
 {
-	printf("CONV SERIAL: %s\n", serialstr);
+	//printf("CONV SERIAL: %s\n", serialstr);
 	uint16_t *r = NULL;
 	uint32_t serial;
 	const char *t;
@@ -1142,12 +1172,11 @@ zparser_ttl2int(const char *ttlstr, int* error)
 void
 zadd_rdata_wireformat(uint16_t *data)
 {
-	printf("RDATA: WIRE %s\n", data);
+	//printf("RDATA: WIRE %s\n", data);
 /*	if (parser->current_rrset.rdata_count >= MAXRDATALEN) {
 		fprintf(stderr, "too many rdata elements");
 	} else {*/
 
-	printf("setting index %d\n", parser->rdata_count);
 	dnslib_rdata_item_t *item = malloc(sizeof(dnslib_rdata_item_t));
 	item->raw_data = (uint8_t*)data;
 	parser->temporary_items[parser->rdata_count] = *item;
@@ -1218,7 +1247,6 @@ zadd_rdata_domain(dnslib_dname_t *dname)
 
 	dnslib_rdata_item_t *item = malloc(sizeof(dnslib_rdata_item_t));
 	item->dname = dname;
-	printf("setting index %d\n", parser->rdata_count);
 	parser->temporary_items[parser->rdata_count] = *item;
 	parser->rdata_count++;
 //		parser->current_rr.rdatas[parser->current_rr.rdata_count].domain
@@ -1358,6 +1386,49 @@ set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
 	bits[window][bit / 8] |= (1 << (7 - bit % 8));
 }
 
+int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
+{
+	assert(rrset != NULL);
+	uint16_t tmp_type = rrset->rdata->items[0].raw_data[3]; //XXX Will this always work?
+	dnslib_rrsig_set_t *rrsig =
+		dnslib_rrsig_set_new(rrset->owner,
+		                     tmp_type,
+				     rrset->rclass,
+				     rrset->ttl);
+	rrsig->rdata = rrset->rdata;
+
+			//TODO if rrset exists and it has already assigned rrsig to it, merge
+	dnslib_node_t *tmp_node = dnslib_zone_find_node(zone,
+		                                                rrsig->owner);
+		
+	if (tmp_node == NULL) {
+		rrsig_list_add(parser->rrsig_orphans, rrsig);
+		return -1;
+	}
+
+	printf("searching for type: %d\n", rrset->rdata->items[0].raw_data[3]);
+
+	//TODO check
+	dnslib_rrset_t *tmp_rrset =
+		dnslib_node_get_rrset(tmp_node, rrsig->type);
+
+	printf("%s\n", dnslib_dname_to_str(rrsig->owner));
+
+	if (tmp_rrset == NULL) {
+		rrsig_list_add(parser->rrsig_orphans, rrsig);
+		return -1;
+	}
+
+	//TODO check
+
+	tmp_rrset->rrsigs = rrsig;
+
+        //dnslib_zone_dump(zone);
+
+	return 0;
+}
+
+
 int
 process_rr(void)
 {
@@ -1418,38 +1489,7 @@ process_rr(void)
 	}
 
 	if (current_rrset->type == DNSLIB_RRTYPE_RRSIG) {
-		uint16_t tmp_type = current_rrset->rdata->items[0].raw_data[3];
-		dnslib_rrsig_set_t *rrsig =
-			dnslib_rrsig_set_new(current_rrset->owner,
-			                     tmp_type,
-					     current_rrset->rclass,
-					     current_rrset->ttl);
-
-		rrsig->rdata = current_rrset->rdata;
-
-			//TODO if rrset exists and it has already assigned rrsig to it, merge
-		dnslib_node_t *tmp_node = dnslib_zone_find_node(zone,
-		                                                rrsig->owner);
-		assert(tmp_node != NULL);
-
-		printf("searching for type: %d\n", current_rrset->rdata->items[0].raw_data[3]);
-
-		//TODO check
-		dnslib_rrset_t *tmp_rrset =
-			dnslib_node_get_rrset(tmp_node, rrsig->type);
-
-		printf("%s\n", dnslib_dname_to_str(rrsig->owner));
-
-		assert(tmp_rrset != NULL);
-
-		//TODO check
-
-		tmp_rrset->rrsigs = rrsig;
-
-		dnslib_zone_dump(zone);
-
-		return 0;
-
+		find_rrset_for_rrsig(zone, current_rrset);
 	}
 
 /*	if (!dname_is_subdomain(domain_dname(rr->owner),
@@ -1578,9 +1618,20 @@ process_rr(void)
 	if (vflag > 1 && totalrrs > 0 && (totalrrs % progress == 0)) {
 		fprintf(stdout, "%ld\n", totalrrs);
 	}
-	dnslib_zone_dump(zone);
+//	dnslib_zone_dump(zone);
 	++totalrrs;
 	return 1;
+}
+
+int find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
+{
+	rrsig_list_t *tmp = head;
+	int ret;
+	while (tmp != NULL) {
+		find_rrset_for_rrsig(zone, tmp);
+		tmp = rrsig_list_next(tmp);
+	}
+	//TODO destroy the list... (find_rrset_for_rrsig makes copies)
 }
 
 /*
@@ -1651,7 +1702,7 @@ zone_read(const char *name, const char *zonefile) //, nsd_options_t* nsd_options
 
 	origin_node = dnslib_node_new(dname, NULL);
 	
-	printf("APEX NODE CREATED WITH POINTER: %p\n", origin_node); 
+	//printf("APEX NODE CREATED WITH POINTER: %p\n", origin_node); 
 
 	assert(origin_node->next == NULL);
 
@@ -1687,6 +1738,8 @@ zone_read(const char *name, const char *zonefile) //, nsd_options_t* nsd_options
 //
 //	/* Parse and process all RRs.  */
 	yyparse();
+
+	find_rrset_for_rrsig(parser->current_zone, parser->rrsig_orphans);
 //
 //	/* check if zone file contained a correct SOA record */
 //	if (parser->current_zone && parser->current_zone->soa_rrset
