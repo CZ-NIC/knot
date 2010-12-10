@@ -36,19 +36,43 @@ void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type)
 	printf("------- RDATA -------\n");
 }
 
+void dnslib_rrsig_dump(dnslib_rrsig_set_t *rrsig)
+{
+	printf("------- RRSIG -------\n");
+	if (rrsig == NULL) {
+		printf("RRSIG is not set\n");
+		printf("------- RRSIG -------\n");
+		return;
+	}
+	printf("type: %s\n", dnslib_rrtype_to_string(rrsig->type));
+	printf("class: %d\n", rrsig->rclass);
+	printf("ttl: %d\n", rrsig->ttl);
+
+	dnslib_rdata_t *tmp = rrsig->rdata;
+
+	while (tmp->next != rrsig->rdata && tmp->next != NULL) {
+		dnslib_rdata_dump(tmp, DNSLIB_RRTYPE_RRSIG);
+		tmp = tmp->next;
+	}
+
+	dnslib_rdata_dump(tmp, DNSLIB_RRTYPE_RRSIG); 
+
+	printf("------- RRSIG -------\n");
+}
+
 void dnslib_rrset_dump(dnslib_rrset_t *rrset)
 {
 	printf("------- RRSET -------\n");
-	//TODO textual repre. from descriptor
 	printf("type: %s\n", dnslib_rrtype_to_string(rrset->type));
 	printf("class: %d\n", rrset->rclass);
 	printf("ttl: %d\n", rrset->ttl);
+
+	dnslib_rrsig_dump(rrset->rrsigs);
 
 	dnslib_rdata_t *tmp = rrset->rdata;
 
 	while (tmp->next != rrset->rdata) {
 		dnslib_rdata_dump(tmp, rrset->type);
-		assert(tmp != tmp->next);
 		tmp = tmp->next;
 	}
 

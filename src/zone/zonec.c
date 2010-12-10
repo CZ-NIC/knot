@@ -1415,6 +1415,41 @@ process_rr(void)
 		printf("ZONE CREATED\n");
 	}
 
+	if (current_rrset->type == DNSLIB_RRTYPE_RRSIG) {
+		uint16_t tmp_type = current_rrset->rdata->items[0].raw_data[3];
+		dnslib_rrsig_set_t *rrsig =
+			dnslib_rrsig_set_new(current_rrset->owner,
+			                     tmp_type,
+					     current_rrset->rclass,
+					     current_rrset->ttl);
+
+		assert(current_rrset->rdata->next == NULL);
+
+		rrsig->rdata = current_rrset->rdata;
+
+			//TODO if rrset exists and it has already assigned rrsig to it, merge
+		dnslib_node_t *tmp_node = dnslib_zone_find_node(zone,
+		                                                rrsig->owner);
+		assert(tmp_node != NULL);
+
+		printf("searching for type: %d\n", current_rrset->rdata->items[0].raw_data[3]);
+
+		//TODO check
+		dnslib_rrset_t *tmp_rrset =
+			dnslib_node_get_rrset(tmp_node, rrsig->type);
+
+		printf("%s\n", dnslib_dname_to_str(rrsig->owner));
+
+		assert(tmp_rrset != NULL);
+
+		//TODO check
+
+		tmp_rrset->rrsigs = rrsig;
+
+		return;
+
+	}
+
 /*	if (!dname_is_subdomain(domain_dname(rr->owner),
 	XXX			domain_dname(zone->apex)))
 	{
