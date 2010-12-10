@@ -50,7 +50,11 @@ void dnslib_rrsig_dump(dnslib_rrsig_set_t *rrsig)
 
 	dnslib_rdata_t *tmp = rrsig->rdata;
 
-	while (tmp->next != rrsig->rdata && tmp->next != NULL) {
+	if (tmp == NULL) {
+		return;
+	}
+
+	while (tmp->next != rrsig->rdata) {
 		dnslib_rdata_dump(tmp, DNSLIB_RRTYPE_RRSIG);
 		tmp = tmp->next;
 	}

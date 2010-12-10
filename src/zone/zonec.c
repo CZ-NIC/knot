@@ -1374,6 +1374,8 @@ process_rr(void)
 
 	assert(parser->current_rrset.rdata->count == descriptor->length);
 
+	assert(dnslib_dname_is_fqdn(parser->current_rrset.owner));
+
 	/* We only support IN class */
 /*	if (current_rrset->rclass != DNSLIB_CLASS_IN) {
 		fprintf(stderr, "only class IN is supported");
@@ -1423,8 +1425,6 @@ process_rr(void)
 					     current_rrset->rclass,
 					     current_rrset->ttl);
 
-		assert(current_rrset->rdata->next == NULL);
-
 		rrsig->rdata = current_rrset->rdata;
 
 			//TODO if rrset exists and it has already assigned rrsig to it, merge
@@ -1446,7 +1446,9 @@ process_rr(void)
 
 		tmp_rrset->rrsigs = rrsig;
 
-		return;
+		dnslib_zone_dump(zone);
+
+		return 0;
 
 	}
 
@@ -1464,6 +1466,9 @@ process_rr(void)
 		dnslib_node_t *tmp_node;
 		dnslib_node_t *last_node = dnslib_node_new(current_rrset->owner, NULL);
 		node = last_node;
+		dnslib_zone_add_node(zone, node); //XXX Have a look at this
+		//but it's probably ok, in case that while will not execute
+		//its parent will be set after it
 		dnslib_dname_t *tmp_owner = current_rrset->owner;
 		dnslib_dname_t *chopped = dnslib_dname_left_chop(current_rrset->owner);
 

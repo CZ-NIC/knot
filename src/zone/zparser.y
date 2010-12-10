@@ -123,14 +123,17 @@ line:	NL
 			    //XXX dirty workaround, I seriously doubt that it
 			    //should work like this...
 
-			    assert(parser->current_rrset.rdata->count == 0);
-			    if (dnslib_rdata_set_items(parser->current_rrset.rdata,
+			    dnslib_rdata_t *tmp_rdata = dnslib_rdata_new();
+
+			    if (dnslib_rdata_set_items(tmp_rdata,
 				    parser->temporary_items,
 				     parser->rdata_count) != 0) {
 				    assert(0);
 			    }
+				
+			    assert(parser->current_rrset.rdata == NULL);
 
-
+			    dnslib_rrset_add_rdata(&(parser->current_rrset), tmp_rdata);
 
 			    if (!dnslib_dname_is_fqdn(parser->current_rrset.owner)) {
 
@@ -148,7 +151,7 @@ line:	NL
 
 	    parser->current_rrset.type = 0;
 	    parser->rdata_count = 0;
-	    parser->current_rrset.rdata = dnslib_rdata_new();
+	    parser->current_rrset.rdata = NULL;
 //	    parser->current_rrset.rdata->items = NULL;
 //	    parser->current_rrset.rdata->count = 0;
 	    parser->error_occurred = 0;
@@ -1021,7 +1024,7 @@ zparser_create()
 	                                  sizeof(dnslib_rdata_item_t));
 	result->current_rrset = *dnslib_rrset_new(NULL, 0, 0, 0);
 
-	result->current_rrset.rdata = dnslib_rdata_new();
+	result->current_rrset.rdata = NULL;
 
 
 	return result;
@@ -1055,7 +1058,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->filename = filename;
 //	parser->current_rrset.rdata->count = 0;
 //XXX following line...
-	parser->current_rrset.rdata->items = NULL;
+//	parser->current_rrset.rdata->items = NULL;
 	parser->rdata_count = 0;
 }
 
