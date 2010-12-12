@@ -46,6 +46,7 @@ void zc_warning(const char *fmt, ...);
 void zc_error_prev_line(const char *fmt, ...);
 void zc_warning_prev_line(const char *fmt, ...);
 
+#define NSEC3
 #ifdef NSEC3
 /* parse nsec3 parameters and add the (first) rdata elements */
 static void
@@ -212,21 +213,25 @@ classttl:	/* empty - fill in the default, def. ttl and IN class */
     {
 	    parser->current_rrset.ttl = parser->default_ttl;
 	    parser->current_rrset.rclass = parser->default_class;
+      printf("class set to default ,that is %d\n", parser->default_class);
     }
     |	T_RRCLASS sp		/* no ttl */
     {
 	    parser->current_rrset.ttl = parser->default_ttl;
 	    parser->current_rrset.rclass = $1;
+      printf("class set to %d\n", $1);
     }
     |	T_TTL sp		/* no class */
     {
 	    parser->current_rrset.ttl = $1;
 	    parser->current_rrset.rclass = parser->default_class;
+      printf("class set to default ,that is %d\n", parser->default_class);
     }
     |	T_TTL sp T_RRCLASS sp	/* the lot */
     {
 	    parser->current_rrset.ttl = $1;
 	    parser->current_rrset.rclass = $3;
+      printf("class set to %d\n", $3);
     }
     |	T_RRCLASS sp T_TTL sp	/* the lot - reversed */
     {
@@ -1048,11 +1053,9 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->origin = origin;
 	parser->prev_dname = parser->origin;
 
-	dnslib_dname_t *root_domain = dnslib_dname_new_from_str(".", 1, NULL);
-	
-	dnslib_node_t *apex = dnslib_node_new(root_domain, NULL);
+//	dnslib_node_t *apex = dnslib_node_new(origin, NULL);
 
-	parser->default_apex = apex;
+	parser->default_apex = origin;
 	parser->error_occurred = 0;
 	parser->errors = 0;
 	parser->line = 1;
@@ -1061,6 +1064,10 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 //XXX following line...
 //	parser->current_rrset.rdata->items = NULL;
 	parser->rdata_count = 0;
+
+  parser->current_rrset.rclass = parser->default_class;
+
+  printf("class set to %d\n", parser->default_class);
 }
 
 void
@@ -1145,8 +1152,7 @@ nsec3_add_params(const char* hashalgo_str, const char* flag_str,
 
 	/* salt */
 	if(strcmp(salt_str, "-") != 0)
-		zadd_rdata_wireformat(zparser_conv_hex_length(parser->region,
-			salt_str, salt_len));
+		zadd_rdata_wireformat(zparser_conv_hex_length(salt_str, salt_len));
 	else
 		zadd_rdata_wireformat(alloc_rdata_init("", 1));
 }
