@@ -1371,6 +1371,8 @@ zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 //	setprotoent(1);
 //	setservent(1);
 //
+  assert(rclass == DNSLIB_CLASS_IN);
+  printf("RCLASS: %d\n", rclass);
 	zparser_init(filename, ttl, rclass, origin);
 //
 	return 1;
@@ -1428,7 +1430,7 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 	}
 	
 	if (tmp_rrset->rrsigs != NULL) {
-		dnslib_rrset_merge(tmp_rrset, rrset);
+		dnslib_rrset_merge(tmp_rrset->rrsigs, rrset);
 	}
 
 	rrsig->rdata = rrset->rdata;
@@ -1470,10 +1472,10 @@ process_rr(void)
 	}
 
 	/* We only support IN class */
-/*	if (current_rrset->rclass != DNSLIB_CLASS_IN) {
+	if (current_rrset->rclass != DNSLIB_CLASS_IN) {
 		fprintf(stderr, "only class IN is supported");
 		return 0;
-	}*/
+	}
 
 	/* Make sure the maximum RDLENGTH does not exceed 65535 bytes.	*/
 //	max_rdlength = rdata_maximum_wireformat_size(
@@ -1582,8 +1584,13 @@ process_rr(void)
 			fprintf(stderr,
 				"TTL does not match the TTL of the RRset");
 		}
+
+    assert(rrset);
+    assert(current_rrset);
 		
-		dnslib_rrset_merge(rrset, current_rrset);
+//	dnslib_rrset_merge(rrset, current_rrset);
+    dnslib_rrset_add_rdata(rrset, current_rrset->rdata);
+    //TODO using merge results in memory error, investigate
 
 //		/* Search for possible duplicates... */
 //		for (i = 0; i < rrset->rr_count; i++) {
