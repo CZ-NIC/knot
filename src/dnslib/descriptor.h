@@ -41,7 +41,7 @@ typedef struct dnslib_lookup_table dnslib_lookup_table_t;
  * \brief Enum containing RR class codes.
  */
 enum dnslib_rr_class {
-	DNSLIB_CLASS_IN,
+	DNSLIB_CLASS_IN = 1,
 	DNSLIB_CLASS_CS,
 	DNSLIB_CLASS_CH,
 	DNSLIB_CLASS_HS,
