@@ -110,11 +110,21 @@ int dnslib_rrset_merge(void **r1, void **r2)
 		return 0;
 	}
 
-	dnslib_rdata_t *rdata1 = rrset1->rdata;
-	while (rdata1->next != NULL) {
-		rdata1 = rdata1->next;
+  dnslib_rdata_t *tmp_rdata = rrset1->rdata;
+
+	while (tmp_rdata->next != rrset1->rdata) {
+		tmp_rdata = tmp_rdata->next;
 	}
 
-	rdata1->next = rrset2->rdata;
+	tmp_rdata->next = rrset2->rdata;
+
+  tmp_rdata = rrset2->rdata; //maybe unnecessary, but is clearer
+
+	while (tmp_rdata->next != rrset2->rdata) {
+		tmp_rdata = tmp_rdata->next;
+	}
+
+  tmp_rdata->next = rrset1->rdata;
+
 	return 0;
 }
