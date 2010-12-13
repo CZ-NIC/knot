@@ -32,6 +32,7 @@ src/tests/libtap/tap.h
 src/tests/main.c
 src/tests/server_tests.c
 src/tests/skiplist_tests.c
+src/tests/slab_tests.c
 src/tests/da_tests.c
 src/tests/tap_unit.h
 src/tests/zonedb_tests.c
@@ -45,6 +46,8 @@ src/other/dynamic-array.h
 src/other/dynamic-array.c
 src/other/skip-list.h
 src/other/skip-list.c
+src/other/slab.h
+src/other/slab.c
 tests/querytcp.c
 src/server/udp-handler.h
 src/server/tcp-handler.h

@@ -36,7 +36,15 @@ static inline unsigned fastlog2(unsigned v)
 	return v;
 }
 
-void __attribute__ ((constructor)) log_malloc_init()
+/* ((constructor)) attribute executes this function before main().
+ * (255) means priority, higher number comes last.
+ * (255) ensures it gets executed as last in constructor
+ *       or as first in destructor.
+ *       (Given that no other ((constructor)) requests priority > 255.)
+ *
+ * \see http://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
+ */
+void __attribute__ ((constructor (255))) log_malloc_init()
 {
 	__st_alloc_len = sysconf(_SC_PAGESIZE);
 	__st_alloc_pflen = 0;
@@ -46,7 +54,7 @@ void __attribute__ ((constructor)) log_malloc_init()
 	memset(__st_alloc_size, 0, __st_alloc_len * sizeof(int));
 }
 
-void __attribute__ ((destructor)) log_malloc_dump()
+void __attribute__ ((destructor (255))) log_malloc_dump()
 {
 	/* Get resource usage. */
 	struct rusage usage;
