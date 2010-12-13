@@ -50,7 +50,7 @@ static void rrsig_list_add_first(rrsig_list_t **head, dnslib_rrset_t *rrsig)
 {
 	*head = malloc(sizeof(*head));
 	(*head)->next = NULL;
-	(*head)->data = rrsig;	
+	(*head)->data = rrsig;
 }
 
 static void rrsig_list_add(rrsig_list_t **head, dnslib_rrset_t *rrsig)
@@ -74,28 +74,26 @@ static dnslib_rrset_t *rrsig_list_next(rrsig_list_t *item)
 	return item->next;
 }
 
-static inline uint8_t *
-rdata_atom_data(dnslib_rdata_item_t item)
+static inline uint8_t * rdata_atom_data(dnslib_rdata_item_t item)
 {
-	return (uint8_t *) (item.raw_data + 1);
+	return (uint8_t *)(item.raw_data + 1);
 }
 
-static inline int
-rdata_atom_is_domain(uint16_t type, size_t index)
+static inline int rdata_atom_is_domain(uint16_t type, size_t index)
 {
 	const dnslib_rrtype_descriptor_t *descriptor
-		= dnslib_rrtype_descriptor_by_type(type);
+	= dnslib_rrtype_descriptor_by_type(type);
 	return (index < descriptor->length
-		&& (descriptor->wireformat[index] == DNSLIB_RDATA_WF_COMPRESSED_DNAME
-		    || descriptor->wireformat[index] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME));
+	        && (descriptor->wireformat[index] ==
+		DNSLIB_RDATA_WF_COMPRESSED_DNAME  ||
+		descriptor->wireformat[index] ==
+		DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME));
 }
 
-static inline uint8_t
-
-rdata_atom_wireformat_type(uint16_t type, size_t index)
+static inline uint8_t rdata_atom_wireformat_type(uint16_t type, size_t index)
 {
 	const dnslib_rrtype_descriptor_t *descriptor
-		= dnslib_rrtype_descriptor_by_type(type);
+	= dnslib_rrtype_descriptor_by_type(type);
 	assert(index < descriptor->length);
 //	return (rdata_wireformat_type) descriptor->wireformat[index];
 	return descriptor->wireformat[index];
@@ -110,22 +108,23 @@ uint16_t rrsig_type_covered(dnslib_rrset_t *rrset)
 	return ntohs(* (uint16_t *) rdata_atom_data(rrset->rdata->items[0]));
 }
 
-ssize_t
-rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat, uint16_t rrtype,
-                                const uint16_t data_size, dnslib_rdata_item_t *items)
+ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
+                                        uint16_t rrtype,
+                                        const uint16_t data_size,
+                                        dnslib_rdata_item_t *items)
 {
 //	size_t end = buffer_position(packet) + data_size;
 	uint16_t const *end = wireformat + data_size; //XXX + 1?
 	size_t i;
 	dnslib_rdata_item_t temp_rdatas[MAXRDATALEN];
 	dnslib_rrtype_descriptor_t *descriptor =
-		dnslib_rrtype_descriptor_by_type(rrtype);
+	        dnslib_rrtype_descriptor_by_type(rrtype);
 
 	assert(descriptor->length <= MAXRDATALEN);
 
-/*	if (!buffer_available(packet, data_size)) {
-		return -1;
-	}*/
+	/*	if (!buffer_available(packet, data_size)) {
+			return -1;
+		}*/
 
 	for (i = 0; i < descriptor->length; ++i) {
 		int is_domain = 0;
@@ -157,10 +156,10 @@ rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat, uint16_t rrtype,
 		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
 			/* Length is stored in the first byte.  */
 			length = 1;
-      if (wireformat <= end) {
-      }
-/*			if (buffer_position(packet) + length <= end) {
-				length += buffer_current(packet)[length - 1];
+			if (wireformat <= end) {
+			}
+			/*if (buffer_position(packet) + length <= end) {
+			length += buffer_current(packet)[length - 1];
 			}*/
 			break;
 		case DNSLIB_RDATA_WF_A:
@@ -176,17 +175,18 @@ rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat, uint16_t rrtype,
 			break;
 		case DNSLIB_RDATA_WF_APL:
 			length = (sizeof(uint16_t)    /* address family */
-				  + sizeof(uint8_t)   /* prefix */
-				  + sizeof(uint8_t)); /* length */
+			          + sizeof(uint8_t)   /* prefix */
+			          + sizeof(uint8_t)); /* length */
 			if (wireformat + length <= end) {
 				/* Mask out negation bit.  */
 //				length += (wireformat[length - 1]
 //TODO					   & APL_LENGTH_MASK);
-			assert(0); // not yet implemented
+				assert(0); // not yet implemented
 			}
 			break;
 		case DNSLIB_RDATA_WF_IPSECGATEWAY:
-			switch(rdata_atom_data(temp_rdatas[1])[0]) /* gateway type */ {
+			switch (rdata_atom_data(temp_rdatas[1])[0]) { 
+			/* gateway type */
 			default:
 			case IPSECKEY_NOGATEWAY:
 				length = 0;
@@ -212,20 +212,24 @@ rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat, uint16_t rrtype,
 			if (!required && (wireformat == end)) {
 				break;
 			}
-    		
-		char *tmp_dname_str = malloc(sizeof(char) * length); //XXX ???
 
-		memcpy(tmp_dname_str, wireformat, length);
+			char *tmp_dname_str = malloc(sizeof(char) * length); 
+			//XXX ???
 
-		dname = dnslib_dname_new_from_str(tmp_dname_str, strlen(tmp_dname_str), NULL);
-			if(is_wirestore) { //XXX WTH...
-/*				temp_rdatas[i].raw_data = (uint16_t *) region_alloc(
-                                	region, sizeof(uint16_t) + dname->name_size);
+			memcpy(tmp_dname_str, wireformat, length);
+
+			dname = dnslib_dname_new_from_str(tmp_dname_str,
+			                                  strlen(tmp_dname_str),
+			                                  NULL);
+			if (is_wirestore) { //XXX WTH...
+				/*temp_rdatas[i].raw_data =
+					(uint16_t *) region_alloc(
+				region, sizeof(uint16_t) + dname->name_size);
 				temp_rdatas[i].data[0] = dname->name_size;
 				memcpy(temp_rdatas[i].data+1, dname_name(dname),
-					dname->name_size); */
+				dname->name_size); */
 			}
-			} else {
+		} else {
 			if (wireformat + length > end) {
 				if (required) {
 					/* Truncated RDATA.  */
@@ -235,10 +239,11 @@ rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat, uint16_t rrtype,
 				}
 			}
 
-/*			temp_rdatas[i].data = (uint16_t *) region_alloc(
+			/*temp_rdatas[i].data = (uint16_t *) region_alloc(
 				region, sizeof(uint16_t) + length);
-			temp_rdatas[i].data[0] = length;
-			buffer_read(packet, temp_rdatas[i].data + 1, length);*/
+				temp_rdatas[i].data[0] = length;
+				buffer_read(packet, 
+					    temp_rdatas[i].data + 1, length);*/
 		}
 	}
 
@@ -249,8 +254,8 @@ rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat, uint16_t rrtype,
 	}
 
 	*items = *temp_rdatas;
-/*	*rdatas = (rdata_atom_type *) region_alloc_init(
-		region, temp_rdatas, i * sizeof(rdata_atom_type)); */
+	/*	*rdatas = (rdata_atom_type *) region_alloc_init(
+			region, temp_rdatas, i * sizeof(rdata_atom_type)); */
 	return (ssize_t)i;
 }
 
@@ -271,7 +276,7 @@ dnslib_lookup_table_t dns_algorithms[] = {
 
 /* Taken from RFC 4398, section 2.1.  */
 dnslib_lookup_table_t dns_certificate_types[] = {
-/*	0		Reserved */
+	/*	0		Reserved */
 	{ 1, "PKIX" },	/* X.509 as per PKIX */
 	{ 2, "SPKI" },	/* SPKI cert */
 	{ 3, "PGP" },	/* OpenPGP packet */
@@ -282,10 +287,10 @@ dnslib_lookup_table_t dns_certificate_types[] = {
 	{ 8, "IACPKIX" },	/* The URL of an Attribute Certificate */
 	{ 253, "URI" },	/* URI private */
 	{ 254, "OID" },	/* OID private */
-/*	255 		Reserved */
-/* 	256-65279	Available for IANA assignment */
-/*	65280-65534	Experimental */
-/*	65535		Reserved */
+	/*	255 		Reserved */
+	/* 	256-65279	Available for IANA assignment */
+	/*	65280-65534	Experimental */
+	/*	65535		Reserved */
 	{ 0, NULL }
 };
 
@@ -311,16 +316,14 @@ extern uint16_t nsec_highest_rcode;
  * Allocate SIZE+sizeof(uint16_t) bytes and store SIZE in the first
  * element.  Return a pointer to the allocation.
  */
-static uint16_t *
-alloc_rdata(size_t size)
+static uint16_t * alloc_rdata(size_t size)
 {
 	uint16_t *result = malloc(sizeof(uint16_t) + size);
 	*result = size;
 	return result;
 }
 
-uint16_t *
-alloc_rdata_init(const void *data, size_t size)
+uint16_t * alloc_rdata_init(const void *data, size_t size)
 {
 	uint16_t *result = malloc(sizeof(uint16_t) + size);
 	*result = size;
@@ -331,8 +334,7 @@ alloc_rdata_init(const void *data, size_t size)
 /*
  * These are parser function for generic zone file stuff.
  */
-uint16_t *
-zparser_conv_hex(const char *hex, size_t len)
+uint16_t * zparser_conv_hex(const char *hex, size_t len)
 {
 	/* convert a hex value to wireformat */
 	uint16_t *r = NULL;
@@ -343,11 +345,11 @@ zparser_conv_hex(const char *hex, size_t len)
 		fprintf(stderr, "number of hex digits must be a multiple of 2");
 	} else if (len > MAX_RDLENGTH * 2) {
 		fprintf(stderr, "hex data exceeds maximum rdata length (%d)",
-				   MAX_RDLENGTH);
+		        MAX_RDLENGTH);
 	} else {
 		/* the length part */
 
-		r = alloc_rdata(len/2);
+		r = alloc_rdata(len / 2);
 
 		t = (uint8_t *)(r + 1);
 
@@ -359,8 +361,8 @@ zparser_conv_hex(const char *hex, size_t len)
 					*t += hexdigit_to_int(*hex) * i;
 				} else {
 					fprintf(stderr,
-						"illegal hex character '%c'",
-						(int) *hex);
+					        "illegal hex character '%c'",
+					        (int) *hex);
 					return NULL;
 				}
 				++hex;
@@ -372,8 +374,7 @@ zparser_conv_hex(const char *hex, size_t len)
 }
 
 /* convert hex, precede by a 1-byte length */
-uint16_t *
-zparser_conv_hex_length(const char *hex, size_t len)
+uint16_t * zparser_conv_hex_length(const char *hex, size_t len)
 {
 	uint16_t *r = NULL;
 	uint8_t *t;
@@ -386,7 +387,7 @@ zparser_conv_hex_length(const char *hex, size_t len)
 		uint8_t *l;
 
 		/* the length part */
-		r = alloc_rdata(len/2+1);
+		r = alloc_rdata(len / 2 + 1);
 		t = (uint8_t *)(r + 1);
 
 		l = t++;
@@ -400,8 +401,8 @@ zparser_conv_hex_length(const char *hex, size_t len)
 					*t += hexdigit_to_int(*hex) * i;
 				} else {
 					fprintf(stderr,
-						"illegal hex character '%c'",
-						(int) *hex);
+					        "illegal hex character '%c'",
+					        (int) *hex);
 					return NULL;
 				}
 				++hex;
@@ -413,8 +414,7 @@ zparser_conv_hex_length(const char *hex, size_t len)
 	return r;
 }
 
-uint16_t *
-zparser_conv_time(const char *time)
+uint16_t * zparser_conv_time(const char *time)
 {
 	/* convert a time YYHM to wireformat */
 	uint16_t *r = NULL;
@@ -430,9 +430,8 @@ zparser_conv_time(const char *time)
 	return r;
 }
 
-uint16_t *
-zparser_conv_services(const char *protostr,
-		      char *servicestr)
+uint16_t * zparser_conv_services(const char *protostr,
+                      char *servicestr)
 {
 	/*
 	 * Convert a protocol and a list of service port numbers
@@ -470,8 +469,10 @@ zparser_conv_services(const char *protostr,
 			char *end;
 			port = strtol(word, &end, 10);
 			if (*end != '\0') {
-				fprintf(stderr, "unknown service '%s' for protocol '%s'",
-						   word, protostr);
+				fprintf(stderr, 
+				        "unknown service '%s' for"
+					" protocol '%s'",
+				        word, protostr);
 				continue;
 			}
 		}
@@ -480,21 +481,21 @@ zparser_conv_services(const char *protostr,
 			fprintf(stderr, "bad port number %d", port);
 		} else {
 			set_bit(bitmap, port);
-			if (port > max_port)
+			if (port > max_port) {
 				max_port = port;
+			}
 		}
 	}
 
 	r = alloc_rdata(sizeof(uint8_t) + max_port / 8 + 1);
-	p = (uint8_t *) (r + 1);
+	p = (uint8_t *)(r + 1);
 	*p = proto->p_proto;
 	memcpy(p + 1, bitmap, *r);
 
 	return r;
 }
 
-uint16_t *
-zparser_conv_serial(const char *serialstr)
+uint16_t * zparser_conv_serial(const char *serialstr)
 {
 	//printf("CONV SERIAL: %s\n", serialstr);
 	uint16_t *r = NULL;
@@ -511,8 +512,7 @@ zparser_conv_serial(const char *serialstr)
 	return r;
 }
 
-uint16_t *
-zparser_conv_period(const char *periodstr)
+uint16_t * zparser_conv_period(const char *periodstr)
 {
 	/* convert a time period (think TTL's) to wireformat) */
 	uint16_t *r = NULL;
@@ -530,8 +530,7 @@ zparser_conv_period(const char *periodstr)
 	return r;
 }
 
-uint16_t *
-zparser_conv_short(const char *text)
+uint16_t * zparser_conv_short(const char *text)
 {
 	uint16_t *r = NULL;
 	uint16_t value;
@@ -546,8 +545,7 @@ zparser_conv_short(const char *text)
 	return r;
 }
 
-uint16_t *
-zparser_conv_byte(const char *text)
+uint16_t * zparser_conv_byte(const char *text)
 {
 	uint16_t *r = NULL;
 	uint8_t value;
@@ -562,8 +560,7 @@ zparser_conv_byte(const char *text)
 	return r;
 }
 
-uint16_t *
-zparser_conv_algorithm(const char *text)
+uint16_t * zparser_conv_algorithm(const char *text)
 {
 	const dnslib_lookup_table_t *alg;
 	uint8_t id;
@@ -583,8 +580,7 @@ zparser_conv_algorithm(const char *text)
 	return alloc_rdata_init(&id, sizeof(id));
 }
 
-uint16_t *
-zparser_conv_certificate_type(const char *text)
+uint16_t * zparser_conv_certificate_type(const char *text)
 {
 	/* convert a algoritm string to integer */
 	const dnslib_lookup_table_t *type;
@@ -605,8 +601,7 @@ zparser_conv_certificate_type(const char *text)
 	return alloc_rdata_init(&id, sizeof(id));
 }
 
-uint16_t *
-zparser_conv_a(const char *text)
+uint16_t * zparser_conv_a(const char *text)
 {
 	in_addr_t address;
 	uint16_t *r = NULL;
@@ -619,8 +614,7 @@ zparser_conv_a(const char *text)
 	return r;
 }
 
-uint16_t *
-zparser_conv_aaaa(const char *text)
+uint16_t * zparser_conv_aaaa(const char *text)
 {
 	uint8_t address[IP6ADDRLEN];
 	uint16_t *r = NULL;
@@ -633,58 +627,54 @@ zparser_conv_aaaa(const char *text)
 	return r;
 }
 
-uint16_t *
-zparser_conv_text(const char *text, size_t len)
+uint16_t * zparser_conv_text(const char *text, size_t len)
 {
 	uint16_t *r = NULL;
 
 	if (len > 255) {
 		fprintf(stderr, "text string is longer than 255 characters,"
-				   " try splitting it into multiple parts");
+		        " try splitting it into multiple parts");
 	} else {
 		uint8_t *p;
 		r = alloc_rdata(len + 1);
-		p = (uint8_t *) (r + 1);
+		p = (uint8_t *)(r + 1);
 		*p = len;
 		memcpy(p + 1, text, len);
 	}
 	return r;
 }
 
-uint16_t *
-zparser_conv_dns_name(const uint8_t* name, size_t len)
+uint16_t * zparser_conv_dns_name(const uint8_t *name, size_t len)
 {
-	uint16_t* r = NULL;
-	uint8_t* p = NULL;
+	uint16_t *r = NULL;
+	uint8_t *p = NULL;
 	r = alloc_rdata(len);
-	p = (uint8_t *) (r + 1);
+	p = (uint8_t *)(r + 1);
 	memcpy(p, name, len);
 
 	return r;
 }
 
-uint16_t *
-zparser_conv_b32(const char *b32)
+uint16_t * zparser_conv_b32(const char *b32)
 {
 	uint8_t buffer[B64BUFSIZE];
 	uint16_t *r = NULL;
 	int i;
 
-	if(strcmp(b32, "-") == 0) {
+	if (strcmp(b32, "-") == 0) {
 		return alloc_rdata_init("", 1);
 	}
-	i = my_b32_pton(b32, buffer+1, B64BUFSIZE-1);
+	i = my_b32_pton(b32, buffer + 1, B64BUFSIZE - 1);
 	if (i == -1 || i > 255) {
 		fprintf(stderr, "invalid base32 data");
 	} else {
 		buffer[0] = i; /* store length byte */
-		r = alloc_rdata_init(buffer, i+1);
+		r = alloc_rdata_init(buffer, i + 1);
 	}
 	return r;
 }
 
-uint16_t *
-zparser_conv_b64(const char *b64)
+uint16_t * zparser_conv_b64(const char *b64)
 {
 	uint8_t buffer[B64BUFSIZE];
 	uint16_t *r = NULL;
@@ -699,8 +689,7 @@ zparser_conv_b64(const char *b64)
 	return r;
 }
 
-uint16_t *
-zparser_conv_rrtype(const char *text)
+uint16_t * zparser_conv_rrtype(const char *text)
 {
 	uint16_t *r = NULL;
 	uint16_t type = dnslib_rrtype_from_string(text);
@@ -714,8 +703,7 @@ zparser_conv_rrtype(const char *text)
 	return r;
 }
 
-uint16_t *
-zparser_conv_nxt(uint8_t nxtbits[])
+uint16_t * zparser_conv_nxt(uint8_t nxtbits[])
 {
 	/* nxtbits[] consists of 16 bytes with some zero's in it
 	 * copy every byte with zero to r and write the length in
@@ -725,8 +713,9 @@ zparser_conv_nxt(uint8_t nxtbits[])
 	uint16_t last = 0;
 
 	for (i = 0; i < 16; i++) {
-		if (nxtbits[i] != 0)
+		if (nxtbits[i] != 0) {
 			last = i + 1;
+		}
 	}
 
 	return alloc_rdata_init(nxtbits, last);
@@ -736,8 +725,8 @@ zparser_conv_nxt(uint8_t nxtbits[])
 /* we potentially have 256 windows, each one is numbered. empty ones
  * should be discarded
  */
-uint16_t *
-zparser_conv_nsec(uint8_t nsecbits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE])
+uint16_t * zparser_conv_nsec(uint8_t nsecbits[NSEC_WINDOW_COUNT]
+                                             [NSEC_WINDOW_BITS_SIZE])
 {
 	/* nsecbits contains up to 64K of bits which represent the
 	 * types available for a name. Walk the bits according to
@@ -745,7 +734,7 @@ zparser_conv_nsec(uint8_t nsecbits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE])
 	 */
 	uint16_t *r;
 	uint8_t *ptr;
-	size_t i,j;
+	size_t i, j;
 	uint16_t window_count = 0;
 	uint16_t total_size = 0;
 	uint16_t window_max = 0;
@@ -782,7 +771,7 @@ zparser_conv_nsec(uint8_t nsecbits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE])
 	}
 
 	r = alloc_rdata(total_size);
-	ptr = (uint8_t *) (r + 1);
+	ptr = (uint8_t *)(r + 1);
 
 	/* now walk used and copy it */
 	for (i = 0; i < window_count; ++i) {
@@ -796,20 +785,19 @@ zparser_conv_nsec(uint8_t nsecbits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE])
 }
 
 /* Parse an int terminated in the specified range. */
-static int
-parse_int(const char *str,
-	  char **end,
-	  int *result,
-	  const char *name,
-	  int min,
-	  int max)
+static int parse_int(const char *str,
+          char **end,
+          int *result,
+          const char *name,
+          int min,
+          int max)
 {
 	*result = (int) strtol(str, end, 10);
 	if (*result < min || *result > max) {
 		fprintf(stderr, "%s must be within the range [%d .. %d]",
-				   name,
-				   min,
-				   max);
+		        name,
+		        min,
+		        max);
 		return 0;
 	} else {
 		return 1;
@@ -818,23 +806,24 @@ parse_int(const char *str,
 
 /* RFC1876 conversion routines */
 static unsigned int poweroften[10] = {1, 10, 100, 1000, 10000, 100000,
-				1000000,10000000,100000000,1000000000};
+                                      1000000, 10000000, 100000000, 1000000000
+                                     };
 
 /*
  * Converts ascii size/precision X * 10**Y(cm) to 0xXY.
  * Sets the given pointer to the last used character.
  *
  */
-static uint8_t
-precsize_aton (char *cp, char **endptr)
+static uint8_t precsize_aton(char *cp, char **endptr)
 {
 	unsigned int mval = 0, cmval = 0;
 	uint8_t retval = 0;
 	int exponent;
 	int mantissa;
 
-	while (isdigit((int)*cp))
+	while (isdigit((int)*cp)) {
 		mval = mval * 10 + hexdigit_to_int(*cp++);
+	}
 
 	if (*cp == '.') {	/* centimeters */
 		cp++;
@@ -846,26 +835,29 @@ precsize_aton (char *cp, char **endptr)
 		}
 	}
 
-	if(mval >= poweroften[7]) {
+	if (mval >= poweroften[7]) {
 		/* integer overflow possible for *100 */
 		mantissa = mval / poweroften[7];
 		exponent = 9; /* max */
-	}
-	else {
+	} else {
 		cmval = (mval * 100) + cmval;
 
 		for (exponent = 0; exponent < 9; exponent++)
-			if (cmval < poweroften[exponent+1])
+			if (cmval < poweroften[exponent+1]) {
 				break;
+			}
 
 		mantissa = cmval / poweroften[exponent];
 	}
-	if (mantissa > 9)
+	if (mantissa > 9) {
 		mantissa = 9;
+	}
 
 	retval = (mantissa << 4) | exponent;
 
-	if (*cp == 'm') cp++;
+	if (*cp == 'm') {
+		cp++;
+	}
 
 	*endptr = cp;
 
@@ -881,8 +873,7 @@ precsize_aton (char *cp, char **endptr)
  *	zero on error
  *
  */
-uint16_t *
-zparser_conv_loc(char *str)
+uint16_t * zparser_conv_loc(char *str)
 {
 	uint16_t *r;
 	uint32_t *p;
@@ -894,7 +885,7 @@ zparser_conv_loc(char *str)
 	char *start;
 	double d;
 
-	for(;;) {
+	for (;;) {
 		deg = min = secs = 0;
 
 		/* Degrees */
@@ -903,8 +894,9 @@ zparser_conv_loc(char *str)
 			return NULL;
 		}
 
-		if (!parse_int(str, &str, &deg, "degrees", 0, 180))
+		if (!parse_int(str, &str, &deg, "degrees", 0, 180)) {
 			return NULL;
+		}
 		if (!isspace((int)*str)) {
 			fprintf(stderr, "space expected after degrees");
 			return NULL;
@@ -913,8 +905,9 @@ zparser_conv_loc(char *str)
 
 		/* Minutes? */
 		if (isdigit((int)*str)) {
-			if (!parse_int(str, &str, &min, "minutes", 0, 60))
+			if (!parse_int(str, &str, &min, "minutes", 0, 60)) {
 				return NULL;
+			}
 			if (!isspace((int)*str)) {
 				fprintf(stderr, "space expected after minutes");
 				return NULL;
@@ -929,7 +922,9 @@ zparser_conv_loc(char *str)
 				return NULL;
 			}
 
-			if (*str == '.' && !parse_int(str + 1, &str, &i, "seconds fraction", 0, 999)) {
+			if (*str == '.' && !parse_int(str + 1, &str, &i,
+				                      "seconds fraction",
+						      0, 999)) {
 				return NULL;
 			}
 
@@ -943,41 +938,49 @@ zparser_conv_loc(char *str)
 			}
 
 			if (d < 0.0 || d > 60.0) {
-				fprintf(stderr, "seconds not in range 0.0 .. 60.0");
+				fprintf(stderr,
+				        "seconds not in range 0.0 .. 60.0");
 			}
 
-			secs = (int) (d * 1000.0 + 0.5);
+			secs = (int)(d * 1000.0 + 0.5);
 			++str;
 		}
 
-		switch(*str) {
+		switch (*str) {
 		case 'N':
 		case 'n':
-			lat = ((uint32_t)1<<31) + (deg * 3600000 + min * 60000 + secs);
+			lat = ((uint32_t)1 << 31) +
+				(deg * 3600000 + min * 60000 + secs);
 			break;
 		case 'E':
 		case 'e':
-			lon = ((uint32_t)1<<31) + (deg * 3600000 + min * 60000 + secs);
+			lon = ((uint32_t)1 << 31) +
+				(deg * 3600000 + min * 60000 + secs);
 			break;
 		case 'S':
 		case 's':
-			lat = ((uint32_t)1<<31) - (deg * 3600000 + min * 60000 + secs);
+			lat = ((uint32_t)1 << 31) -
+				(deg * 3600000 + min * 60000 + secs);
 			break;
 		case 'W':
 		case 'w':
-			lon = ((uint32_t)1<<31) - (deg * 3600000 + min * 60000 + secs);
+			lon = ((uint32_t)1 << 31) -
+				(deg * 3600000 + min * 60000 + secs);
 			break;
 		default:
-			fprintf(stderr, "invalid latitude/longtitude: '%c'", *str);
+			fprintf(stderr,
+			        "invalid latitude/longtitude: '%c'", *str);
 			return NULL;
 		}
 		++str;
 
-		if (lat != 0 && lon != 0)
+		if (lat != 0 && lon != 0) {
 			break;
+		}
 
 		if (!isspace((int)*str)) {
-			fprintf(stderr, "space expected after latitude/longitude");
+			fprintf(stderr, "space expected after"
+			        " latitude/longitude");
 			return NULL;
 		}
 		++str;
@@ -1004,7 +1007,7 @@ zparser_conv_loc(char *str)
 
 	/* Meters of altitude... */
 	(void) strtol(str, &str, 10);
-	switch(*str) {
+	switch (*str) {
 	case ' ':
 	case '\0':
 	case 'm':
@@ -1022,14 +1025,15 @@ zparser_conv_loc(char *str)
 		fprintf(stderr, "altitude must be expressed in meters");
 		return NULL;
 	}
-	if (!isspace((int)*str) && *str != '\0')
+	if (!isspace((int)*str) && *str != '\0') {
 		++str;
+	}
 
 	if (sscanf(start, "%lf", &d) != 1) {
 		fprintf(stderr, "error parsing altitude");
 	}
 
-	alt = (uint32_t) (10000000.0 + d * 100 + 0.5);
+	alt = (uint32_t)(10000000.0 + d * 100 + 0.5);
 
 	if (!isspace((int)*str) && *str != '\0') {
 		fprintf(stderr, "unexpected character after altitude");
@@ -1037,7 +1041,7 @@ zparser_conv_loc(char *str)
 	}
 
 	/* Now parse size, horizontal precision and vertical precision if any */
-	for(i = 1; isspace((int)*str) && i <= 3; i++) {
+	for (i = 1; isspace((int)*str) && i <= 3; i++) {
 		vszhpvp[i] = precsize_aton(str + 1, &str);
 
 		if (!isspace((int)*str) && *str != '\0') {
@@ -1048,7 +1052,7 @@ zparser_conv_loc(char *str)
 
 	/* Allocate required space... */
 	r = alloc_rdata(16);
-	p = (uint32_t *) (r + 1);
+	p = (uint32_t *)(r + 1);
 
 	memmove(p, vszhpvp, 4);
 	write_uint32(p + 1, lat);
@@ -1061,8 +1065,7 @@ zparser_conv_loc(char *str)
 /*
  * Convert an APL RR RDATA element.
  */
-uint16_t *
-zparser_conv_apl_rdata(char *str)
+uint16_t * zparser_conv_apl_rdata(char *str)
 {
 	int negated = 0;
 	uint16_t address_family;
@@ -1122,13 +1125,15 @@ zparser_conv_apl_rdata(char *str)
 	}
 
 	/* Strip trailing zero octets.	*/
-	while (length > 0 && address[length - 1] == 0)
+	while (length > 0 && address[length - 1] == 0) {
 		--length;
+	}
 
 
 	p = strtol(slash + 1, &end, 10);
 	if (p < 0 || p > maximum_prefix) {
-		fprintf(stderr, "prefix not in the range 0 .. %d", maximum_prefix);
+		fprintf(stderr, "prefix not in the range 0 .. %d",
+		        maximum_prefix);
 		return NULL;
 	} else if (*end != '\0') {
 		fprintf(stderr, "invalid prefix '%s'", slash + 1);
@@ -1137,9 +1142,9 @@ zparser_conv_apl_rdata(char *str)
 	prefix = (uint8_t) p;
 
 	rdlength = (sizeof(address_family) + sizeof(prefix) + sizeof(length)
-		    + length);
+	            + length);
 	r = alloc_rdata(rdlength);
-	t = (uint8_t *) (r + 1);
+	t = (uint8_t *)(r + 1);
 
 	memcpy(t, &address_family, sizeof(address_family));
 	t += sizeof(address_family);
@@ -1160,8 +1165,7 @@ zparser_conv_apl_rdata(char *str)
  * but to "normal" (int,long,char) types
  */
 
-uint32_t
-zparser_ttl2int(const char *ttlstr, int* error)
+uint32_t zparser_ttl2int(const char *ttlstr, int *error)
 {
 	/* convert a ttl value to a integer
 	 * return the ttl in a int
@@ -1173,18 +1177,17 @@ zparser_ttl2int(const char *ttlstr, int* error)
 
 	ttl = strtottl(ttlstr, &t);
 	if (*t != 0) {
-		fprintf(stderr, "invalid TTL value: %s",ttlstr);
+		fprintf(stderr, "invalid TTL value: %s", ttlstr);
 		*error = 1;
 	}
 
 	return ttl;
 }
 
-void
-zadd_rdata_wireformat(uint16_t *data)
+void zadd_rdata_wireformat(uint16_t *data)
 {
 	dnslib_rdata_item_t *item = malloc(sizeof(dnslib_rdata_item_t));
-	item->raw_data = (uint8_t*)data;
+	item->raw_data = (uint8_t *)data;
 	parser->temporary_items[parser->rdata_count] = *item;
 	parser->rdata_count++;
 }
@@ -1192,8 +1195,7 @@ zadd_rdata_wireformat(uint16_t *data)
 /**
  * Used for TXT RR's to grow with undefined number of strings.
  */
-void
-zadd_rdata_txt_wireformat(uint16_t *data, int first)
+void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 {
 	dnslib_rdata_item_t *rd;
 
@@ -1208,22 +1210,21 @@ zadd_rdata_txt_wireformat(uint16_t *data, int first)
 //		}
 		parser->rdata_count++;
 		rd->raw_data[0] = 0;
-	}
-	else {
+	} else {
 		rd = &parser->temporary_items[parser->rdata_count-1];
-  }
+	}
 
 	if ((size_t)rd->raw_data[0] + (size_t)data[0] > 65535) {
 		fprintf(stderr, "too large rdata element");
 		return;
 	}
-  //XXX why + 2? maybe there are two lengths
-	memcpy((uint8_t *)rd->raw_data + 2 + rd->raw_data[0], data + 1, data[0]);
+	//XXX why + 2? maybe there are two lengths
+	memcpy((uint8_t *)rd->raw_data + 2 + rd->raw_data[0],
+	       data + 1, data[0]);
 	rd->raw_data[0] += data[0];
 }
 
-void
-zadd_rdata_domain(dnslib_dname_t *dname)
+void zadd_rdata_domain(dnslib_dname_t *dname)
 {
 	dnslib_rdata_item_t *item = malloc(sizeof(dnslib_rdata_item_t));
 	item->dname = dname;
@@ -1231,8 +1232,7 @@ zadd_rdata_domain(dnslib_dname_t *dname)
 	parser->rdata_count++;
 }
 
-void
-parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
+void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 {
 //	buffer_type packet;
 	uint16_t size;
@@ -1247,7 +1247,8 @@ parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 	}
 
 //	buffer_create_from(&packet, wireformat + 1, *wireformat);
-	rdata_count = rdata_wireformat_to_rdata_atoms(wireformat, type, size, items);
+	rdata_count = rdata_wireformat_to_rdata_atoms(wireformat, type,
+	                                              size, items);
 	if (rdata_count == -1) {
 		fprintf(stderr, "bad unknown RDATA");
 		return;
@@ -1257,7 +1258,7 @@ parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 		if (rdata_atom_is_domain(type, i)) {
 			zadd_rdata_domain(items[i].dname);
 		} else {
-        //XXX won't this create size two times?
+			//XXX won't this create size two times?
 			zadd_rdata_wireformat(items[i].raw_data);
 		}
 	}
@@ -1273,9 +1274,8 @@ parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
  *	- NULL on error and errno set
  *
  */
-static int
-zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
-	  const dnslib_node_t *origin)
+static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
+          const dnslib_node_t *origin)
 {
 	/* Open the zone file... */
 	if (strcmp(filename, "-") == 0) {
@@ -1291,9 +1291,8 @@ zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 }
 
 
-void
-set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
-	    uint16_t index)
+void set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
+            uint16_t index)
 {
 	/*
 	 * The bits are counted from left to right, so bit #0 is the
@@ -1313,13 +1312,14 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 	assert(rrset->rdata);
 	assert(rrset->rdata->items);
 	assert(rrset->rdata->items[0].raw_data);
-	uint16_t tmp_type = rrset->rdata->items[0].raw_data[3]; //XXX Will this always work?
+	uint16_t tmp_type = rrset->rdata->items[0].raw_data[3]; //XXX Will this
+	//always work?
 //	uint16_t tmp_type = rrsig_type_covered(rrset); //TODO figure this out
 	dnslib_rrsig_set_t *rrsig =
-		dnslib_rrsig_set_new(rrset->owner,
-		                     tmp_type,
-				     rrset->rclass,
-				     rrset->ttl);
+	        dnslib_rrsig_set_new(rrset->owner,
+	                             tmp_type,
+	                             rrset->rclass,
+	                             rrset->ttl);
 
 	dnslib_rrsig_set_add_rdata(rrsig, rrset->rdata);
 
@@ -1331,7 +1331,7 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 	} else {
 		tmp_node = dnslib_zone_find_nsec3_node(zone, rrsig->owner);
 	}
-		
+
 	if (tmp_node == NULL) {
 		rrsig_list_add(&parser->rrsig_orphans, rrset);
 		return -1;
@@ -1340,13 +1340,13 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 	printf("searching for type: %d\n", tmp_type);
 
 	dnslib_rrset_t *tmp_rrset =
-		dnslib_node_get_rrset(tmp_node, rrsig->type);
+	        dnslib_node_get_rrset(tmp_node, rrsig->type);
 
 	if (tmp_rrset == NULL) {
 		rrsig_list_add(&parser->rrsig_orphans, rrset);
 		return -1;
 	}
-	
+
 	if (tmp_rrset->rrsigs != NULL) {
 		dnslib_rrsig_set_merge(&tmp_rrset->rrsigs, &rrsig);
 	} else {
@@ -1360,27 +1360,28 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 }
 
 
-int
-process_rr(void)
+int process_rr(void)
 {
 	dnslib_zone_t *zone = parser->current_zone;
 	dnslib_rrset_t *current_rrset = &parser->current_rrset;
-	printf("Processing rr with owner: %s\n", dnslib_dname_to_str(current_rrset->owner));
+	printf("Processing rr with owner: %s\n",
+	       dnslib_dname_to_str(current_rrset->owner));
 	dnslib_rrset_t *rrset;
 	size_t max_rdlength;
 	int i;
 	dnslib_rrtype_descriptor_t *descriptor
-		= dnslib_rrtype_descriptor_by_type(current_rrset->type);
+	= dnslib_rrtype_descriptor_by_type(current_rrset->type);
 
 	assert(current_rrset->rdata->count == descriptor->length);
 
 	assert(dnslib_dname_is_fqdn(current_rrset->owner));
 
 	if (dnslib_dname_compare(current_rrset->owner, parser->origin->owner)) {
-		assert(dnslib_dname_is_subdomain(current_rrset->owner, parser->origin->owner));
+		assert(dnslib_dname_is_subdomain(current_rrset->owner,
+		       parser->origin->owner));
 	}
 
-	int (*node_add_func)(dnslib_zone_t *zone, dnslib_node_t *node);
+	int (*node_add_func)(dnslib_zone_t * zone, dnslib_node_t * node);
 
 	if (current_rrset->type != DNSLIB_RRTYPE_NSEC3) {
 		node_add_func = &dnslib_zone_add_node;
@@ -1399,16 +1400,16 @@ process_rr(void)
 //		descriptor, rr->rdata_count, rr->rdatas);
 
 //	if (max_rdlength > MAX_RDLENGTH) {
-//		fprintf(stderr, "maximum rdata length exceeds %d octets", MAX_RDLENGTH);
+//		fprintf(stderr, "maximum rdata length exceeds %d octets",
+//		        MAX_RDLENGTH);
 //		return 0;
 //	}
 
 
 	/* Do we have the zone already? */
-	if (!zone)
-	{
+	if (!zone) {
 		//assert(current_rrset->type == DNSLIB_RRTYPE_SOA);
-		
+
 		dnslib_node_t *soa_node;
 
 		printf("Creating zone with apex: %s\n",
@@ -1418,7 +1419,8 @@ process_rr(void)
 
 		parser->origin->owner->node = parser->origin;
 
-		soa_node = dnslib_node_new(current_rrset->owner, parser->origin);
+		soa_node = dnslib_node_new(current_rrset->owner,
+		                           parser->origin);
 
 		current_rrset->owner->node = soa_node;
 
@@ -1431,9 +1433,9 @@ process_rr(void)
 		//XXX ugly ugly ugly
 		//TODO investigate rdata
 		dnslib_rrset_t *tmp = dnslib_rrset_new(current_rrset->owner,
-						       current_rrset->type,
-						       current_rrset->rclass,
-						       current_rrset->ttl);
+		                                       current_rrset->type,
+		                                       current_rrset->rclass,
+		                                       current_rrset->ttl);
 
 		dnslib_rrset_add_rdata(tmp, current_rrset->rdata);
 
@@ -1446,18 +1448,22 @@ process_rr(void)
 	if (node == NULL) {
 
 		dnslib_node_t *tmp_node;
-		dnslib_node_t *last_node = dnslib_node_new(current_rrset->owner, NULL);
+		dnslib_node_t *last_node = dnslib_node_new(current_rrset->owner,
+		                                           NULL);
 		assert(last_node != NULL);
 		node = last_node;
 		if (node_add_func(zone, node) != 0) {
-			return -1; //no check yet in zparser ... it just won't be added
+			return -1; 
+		//no check yet in zparser ... it just won't be added
 		}//XXX Have a look at this
 		//but it's probably ok, in case that while will not execute
 		//its parent will be set after it
 		dnslib_dname_t *tmp_owner = current_rrset->owner;
-		dnslib_dname_t *chopped = dnslib_dname_left_chop(current_rrset->owner);
+		dnslib_dname_t *chopped =
+			dnslib_dname_left_chop(current_rrset->owner);
 
-		while ((tmp_node = dnslib_zone_find_node(zone, chopped)) == NULL) {
+		while ((tmp_node = dnslib_zone_find_node(zone,
+			                                 chopped)) == NULL) {
 			tmp_node = dnslib_node_new(tmp_owner, NULL);
 			last_node->parent = tmp_node;
 			node_add_func(zone, tmp_node);
@@ -1469,7 +1475,7 @@ process_rr(void)
 		last_node->parent = tmp_node;
 
 		printf("Node with owner: %s created.\n",
-		        dnslib_dname_to_str(node->owner));
+		       dnslib_dname_to_str(node->owner));
 	}
 
 	current_rrset->owner->node = node;
@@ -1477,8 +1483,10 @@ process_rr(void)
 	rrset = dnslib_node_get_rrset(node, current_rrset->type);
 	if (!rrset) {
 		printf("Creating new rrset.\n");
-		rrset = dnslib_rrset_new(current_rrset->owner, current_rrset->type,
-				current_rrset->rclass, current_rrset->ttl);
+		rrset = dnslib_rrset_new(current_rrset->owner,
+		                         current_rrset->type,
+		                         current_rrset->rclass,
+					 current_rrset->ttl);
 
 		assert(rrset != NULL);
 
@@ -1492,18 +1500,18 @@ process_rr(void)
 		}
 	} else {
 		if (current_rrset->type !=
-			DNSLIB_RRTYPE_RRSIG && rrset->ttl !=
-			current_rrset->ttl) {
+		                DNSLIB_RRTYPE_RRSIG && rrset->ttl !=
+		                current_rrset->ttl) {
 			fprintf(stderr,
-				"TTL does not match the TTL of the RRset");
+			        "TTL does not match the TTL of the RRset");
 		}
-		
-  	dnslib_rrset_merge(&rrset, &current_rrset);
+
+		dnslib_rrset_merge(&rrset, &current_rrset);
 
 		/* TODO Search for possible duplicates... */
 	}
 
-		/* TODO DNAME and CNAME checks */
+	/* TODO DNAME and CNAME checks */
 
 //	if(current_rrset->type == TYPE_DNAME && rrset->rr_count > 1) {
 //		fprintf(stderr, "multiple DNAMEs at the same name");
@@ -1511,8 +1519,10 @@ process_rr(void)
 //	if(current_rrset->type == TYPE_CNAME && rrset->rr_count > 1) {
 //		fprintf(stderr, "multiple CNAMEs at the same name");
 //	}
-//	if((rr->type == TYPE_DNAME && domain_find_rrset(rr->owner, zone, TYPE_CNAME))
-//	 ||(rr->type == TYPE_CNAME && domain_find_rrset(rr->owner, zone, TYPE_DNAME))) {
+//	if((rr->type == TYPE_DNAME && domain_find_rrset(rr->owner, zone,
+//	                                                TYPE_CNAME))
+//	 ||(rr->type == TYPE_CNAME && domain_find_rrset(rr->owner, zone,
+//                                                      TYPE_DNAME))) {
 //		fprintf(stderr, "DNAME and CNAME at the same name");
 //	}
 //	if(domain_find_rrset(rr->owner, zone, TYPE_CNAME) &&
@@ -1552,8 +1562,7 @@ int find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
  * nsd_options can be NULL if no config file is passed.
  *
  */
-void
-zone_read(const char *name, const char *zonefile) //, nsd_options_t* nsd_options)
+void zone_read(const char *name, const char *zonefile)
 {
 	const dnslib_dname_t *dname;
 
@@ -1562,7 +1571,7 @@ zone_read(const char *name, const char *zonefile) //, nsd_options_t* nsd_options
 	dnslib_node_t *origin_node;
 
 	origin_node = dnslib_node_new(dname, NULL);
-	
+
 	assert(origin_node->next == NULL);
 
 	assert(origin_node->parent == NULL);
@@ -1577,7 +1586,8 @@ zone_read(const char *name, const char *zonefile) //, nsd_options_t* nsd_options
 
 	/* Open the zone file */
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
-		fprintf(stderr, "cannot open '%s': %s", zonefile, strerror(errno));
+		fprintf(stderr, "cannot open '%s': %s", zonefile,
+		        strerror(errno));
 		return;
 	}
 
