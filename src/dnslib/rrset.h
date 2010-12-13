@@ -132,6 +132,21 @@ uint32_t dnslib_rrset_ttl(const dnslib_rrset_t *rrset);
 const dnslib_rdata_t *dnslib_rrset_rdata(const dnslib_rrset_t *rrset);
 
 /*!
+ * \brief Returns the first RDATA in the RRSet (non-const version).
+ *
+ * RDATAs in a RRSet are stored in a ordered cyclic list.
+ *
+ * \note If later a round-robin rotation of RRSets is employed, the RDATA
+ *       returned by this function may not be the first RDATA in canonical
+ *       order.
+ *
+ * \param rrset RRSet to get the RDATA from.
+ *
+ * \return First RDATA in the given RRSet.
+ */
+dnslib_rdata_t *dnslib_rrset_get_rdata(dnslib_rrset_t *rrset);
+
+/*!
  * \brief Returns the set of RRSIGs covering the given RRSet.
  *
  * \param rrset RRSet to get the signatures for.

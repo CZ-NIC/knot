@@ -6,6 +6,8 @@
 #include "node.h"
 #include "dname.h"
 #include "tree.h"
+#include "consts.h"
+#include "descriptor.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -44,6 +46,77 @@ void dnslib_zone_destroy_node_from_tree(dnslib_node_t *node, void *data)
 {
 	UNUSED(data);
 	dnslib_node_free(&node);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_zone_adjust_rdata(dnslib_rdata_t *rdata, dnslib_zone_t *zone,
+                              int pos)
+{
+	const dnslib_rdata_item_t *dname_item
+		= dnslib_rdata_get_item(rdata, pos);
+
+	if (dname_item != NULL) {
+		dnslib_dname_t *dname = dname_item->dname;
+		const dnslib_node_t *n =
+			dnslib_zone_find_node(zone, dname);
+		if (n != NULL) {
+			// just doble-check if the domain name is not already
+			// adjusted
+			if (n->owner == dname_item->dname) {
+				return;
+			}
+			debug_dnslib_zone("Replacing dname %s by reference to "
+			  "dname %s in zone.\n", dname->name, n->owner->name);
+
+			dnslib_rdata_item_set_dname(rdata, pos, n->owner);
+			dnslib_dname_free(&dname);
+		}
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
+                             dnslib_zone_t *zone)
+{
+	dnslib_rrset_t *rrset = dnslib_node_get_rrset(node, type);
+	if (!rrset) {
+		return;
+	}
+
+	dnslib_rrtype_descriptor_t *desc =
+		dnslib_rrtype_descriptor_by_type(type);
+	dnslib_rdata_t *rdata = dnslib_rrset_get_rdata(rrset);
+
+	while (rdata != NULL) {
+		for (int i = 0; i < desc->length; ++i) {
+			if (desc->wireformat[i]
+			    == DNSLIB_RDATA_WF_COMPRESSED_DNAME) {
+				debug_dnslib_zone("Adjusting domain name at"
+				  "position %d of RDATA of record with owner"
+				  "%s and type %s.\n",
+				  i, rrset->owner->name,
+				  dnslib_rrtype_to_string(type));
+
+				dnslib_zone_adjust_rdata(rdata, zone, i);
+			}
+		}
+		rdata = rdata->next;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_zone_adjust_node_in_tree(dnslib_node_t *node, void *data)
+{
+	assert(data != NULL);
+	dnslib_zone_t *zone = (dnslib_zone_t *)data;
+
+	for (int i = 0; i < DNSLIB_COMPRESSIBLE_TYPES; ++i) {
+		dnslib_zone_adjust_node(node, dnslib_compressible_types[i],
+		                        zone);
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -172,6 +245,14 @@ const dnslib_node_t *dnslib_zone_find_nsec3_node(const dnslib_zone_t *zone,
 const dnslib_node_t *dnslib_zone_apex(const dnslib_zone_t *zone)
 {
 	return zone->apex;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_zone_adjust_dnames(dnslib_zone_t *zone)
+{
+	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl,
+	                   dnslib_zone_adjust_node_in_tree, zone);
 }
 
 /*----------------------------------------------------------------------------*/

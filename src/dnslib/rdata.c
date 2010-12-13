@@ -122,6 +122,34 @@ const dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, uint pos,
+                                dnslib_dname_t *dname)
+{
+	if (pos >= rdata->count) {
+		return -1;
+	}
+
+	rdata->items[pos].dname = dname;
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, uint pos,
+                                   uint8_t *raw_data)
+{
+	if (pos >= rdata->count) {
+		return -1;
+	}
+
+	rdata->items[pos].raw_data = raw_data;
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void dnslib_rdata_free(dnslib_rdata_t **rdata)
 {
 	if (rdata == NULL || *rdata == NULL) {
