@@ -28,6 +28,7 @@
 //#define SERVER_DEBUG
 //#define DT_DEBUG
 //#define NET_DEBUG
+#define DNSLIB_ZONE_DEBUG
 
 #ifdef SERVER_DEBUG
 #define debug_server(msg...) log_msg(LOG_DEBUG, msg)
@@ -49,6 +50,12 @@
 #define debug_dnslib_dname(msg...) log_msg(LOG_DEBUG, msg)
 #else
 #define debug_dnslib_dname(msg...)
+#endif
+
+#ifdef DNSLIB_ZONE_DEBUG
+#define debug_dnslib_zone(msg...) log_msg(LOG_DEBUG, msg)
+#else
+#define debug_dnslib_zone(msg...)
 #endif
 
 #ifdef CUCKOO_DEBUG
