@@ -73,6 +73,8 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex)
 	// how to know if this is successfull??
 	TREE_INSERT(zone->tree, dnslib_node, avl, apex);
 
+	zone->nsec3_nodes = NULL;
+
 	return zone;
 }
 
@@ -99,6 +101,13 @@ int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node)
 	int ret = 0;
 	if ((ret = dnslib_zone_check_node(zone, node)) != 0) {
 		return ret;
+	}
+
+	printf("Inserting nsec3 node\n");
+
+	if (zone->nsec3_nodes == NULL) {
+		zone->nsec3_nodes = node;
+		return 0;
 	}
 
 	dnslib_node_t *n = zone->nsec3_nodes;
