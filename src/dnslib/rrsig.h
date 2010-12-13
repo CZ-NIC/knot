@@ -129,6 +129,25 @@ const dnslib_rdata_t *dnslib_rrsig_set_rdata(const dnslib_rrsig_set_t *rrsigs);
  */
 void dnslib_rrsig_set_free(dnslib_rrsig_set_t **rrsigs);
 
+/*!
+ * \brief Merges two RRSIGs.
+ *
+ * Merges \a r1 into \a r2 by concatenating the list of RDATAs in \a r2 after
+ * the list of RDATAs in \a r1. \a r2 is unaffected by this, though you must not
+ * destroy the RDATAs in \a r2 as they are now also in \a r1. (You may use
+ * function dnslib_rrset_free() though, as it does not touch RDATAs).
+ *
+ * \note Member \a rrsigs is preserved from the first RRSet.
+ *
+ * \param r1 Pointer to RRSIG to be merged into.
+ * \param r2 Poitner to RRSIG to be merged.
+ *
+ * \retval 0 on success.
+ * \retval -1 if the RRSIGs could not be merged, because their Owner, Type,
+ *         Class or TTL does not match.
+ */
+int dnslib_rrsig_set_merge(void **r1, void **r2);
+
 #endif /* _CUTEDNS_DNSLIB_RRSIG_H_ */
 
 /*! @} */
