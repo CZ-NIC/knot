@@ -104,7 +104,7 @@ static int test_node_get_rrset()
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
 		for (int j = 0; j < RRSETS; j++) {
 			rrset = &rrsets[j];
-			if (dnslib_node_get_rrset(nodes[i], rrset->type)
+			if (dnslib_node_rrset(nodes[i], rrset->type)
 			    != rrset) {
 				errors++;
 				diag("Failed to get proper rrset from node");
@@ -134,7 +134,7 @@ static int test_node_get_parent()
 
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
 		rrset = &rrsets[i];
-		if (dnslib_node_get_parent(nodes[i]) != test_nodes[i].parent) {
+		if (dnslib_node_parent(nodes[i]) != test_nodes[i].parent) {
 			errors++;
 			diag("Failed to get proper parent from node");
 		}
@@ -209,6 +209,9 @@ static int dnslib_node_tests_run(int argc, char *argv[])
 
 	ok((res = test_node_get_parent()), "node: get parent");
 	res_final *= res;
+
+//	ok((res = test_node_set_parent()), "node: set parent");
+//	res_final *= res;
 
 	ok((res = test_node_sorting()), "node: sort");
 	res_final *= res;
