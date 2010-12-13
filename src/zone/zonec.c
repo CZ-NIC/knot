@@ -1420,7 +1420,7 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 	dnslib_rrset_t *tmp_rrset =
 		dnslib_node_get_rrset(tmp_node, rrsig->type);
 
-	printf("%s\n", dnslib_dname_to_str(rrsig->owner));
+//	printf("%s\n", dnslib_dname_to_str(rrsig->owner));
 
 	if (tmp_rrset == NULL) {
 		rrsig_list_add(&parser->rrsig_orphans, rrset);
@@ -1429,11 +1429,10 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 	
 	if (tmp_rrset->rrsigs != NULL) {
 		dnslib_rrset_merge(&tmp_rrset->rrsigs, &rrset);
+	} else {
+		rrsig->rdata = rrset->rdata;
+		tmp_rrset->rrsigs = rrsig;
 	}
-
-	rrsig->rdata = rrset->rdata;
-
-	tmp_rrset->rrsigs = rrsig;
 
 	printf("setting rrsigs for rrset %p\n", tmp_rrset);
 
@@ -1446,20 +1445,22 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 int
 process_rr(void)
 {
-	printf("PROCESS RR CALLED\n");
 	dnslib_zone_t *zone = parser->current_zone;
 	dnslib_rrset_t *current_rrset = &parser->current_rrset;
-	printf("\n%s\n", dnslib_dname_to_str(current_rrset->owner));
+	printf("Processing rr with owner: %s\n", dnslib_dname_to_str(current_rrset->owner));
 	dnslib_rrset_t *rrset;
 	size_t max_rdlength;
 	int i;
 	dnslib_rrtype_descriptor_t *descriptor
 		= dnslib_rrtype_descriptor_by_type(current_rrset->type);
 
+	assert(current_rrset->rdata->count == descriptor->length);
 
-	assert(parser->current_rrset.rdata->count == descriptor->length);
+	assert(dnslib_dname_is_fqdn(current_rrset->owner));
 
-	assert(dnslib_dname_is_fqdn(parser->current_rrset.owner));
+	if (dnslib_dname_compare(current_rrset->owner, parser->origin->owner)) {
+		assert(dnslib_dname_is_subdomain(current_rrset->owner, parser->origin->owner));
+	}
 
 	int (*node_add_func)(dnslib_zone_t *zone, dnslib_node_t *node);
 
@@ -1474,7 +1475,7 @@ process_rr(void)
 		fprintf(stderr, "only class IN is supported");
 		return 0;
 	}
-
+//TODO
 	/* Make sure the maximum RDLENGTH does not exceed 65535 bytes.	*/
 //	max_rdlength = rdata_maximum_wireformat_size(
 //		descriptor, rr->rdata_count, rr->rdatas);
@@ -1495,11 +1496,7 @@ process_rr(void)
 		
 		dnslib_node_t *soa_node;
 
-		assert(parser->origin != NULL);
-
-		//this should AFAIK always be root
-
-		zone = dnslib_zone_new(parser->default_apex);
+		zone = dnslib_zone_new(parser->origin); //XXX
 
 		soa_node = dnslib_node_new(current_rrset->owner, parser->origin);
 
@@ -1512,6 +1509,7 @@ process_rr(void)
 
 	if (current_rrset->type == DNSLIB_RRTYPE_RRSIG) {
 		//XXX ugly ugly ugly
+		//TODO investigate rdata
 		dnslib_rrset_t *tmp = dnslib_rrset_new(current_rrset->owner,
 						       current_rrset->type,
 						       current_rrset->rclass,
@@ -1523,19 +1521,13 @@ process_rr(void)
 		return 0;
 	}
 
-/*	if (!dname_is_subdomain(domain_dname(rr->owner),
-	XXX			domain_dname(zone->apex)))
-	{
-		fprintf(stderr, "out of zone data");
-		return 0;
-	}*/ //this does not have to be here for the time being
-
 	dnslib_node_t *node;
 	node = dnslib_zone_find_node(zone, current_rrset->owner);
 	if (node == NULL) {
 
 		dnslib_node_t *tmp_node;
 		dnslib_node_t *last_node = dnslib_node_new(current_rrset->owner, NULL);
+		assert(last_node != NULL);
 		node = last_node;
 		if (node_add_func(zone, node) != 0) {
 			return -1; //no check yet in zparser ... it just won't be added
@@ -1556,15 +1548,16 @@ process_rr(void)
 
 		last_node->parent = tmp_node;
 
-		assert(tmp_node != NULL);
-
-		printf("NODE CREATED\n");
+		printf("Node with owner: %s created.\n",
+		        dnslib_dname_to_str(node->owner));
 	}
 	rrset = dnslib_node_get_rrset(node, current_rrset->type);
 	if (!rrset) {
+		printf("Creating new rrset.\n");
 		rrset = dnslib_rrset_new(current_rrset->owner, current_rrset->type,
 				current_rrset->rclass, current_rrset->ttl);
-		printf("RRSET CREATED\n");
+
+		assert(rrset != NULL);
 
 		dnslib_rrset_add_rdata(rrset, current_rrset->rdata);
 		//TODO check return value
