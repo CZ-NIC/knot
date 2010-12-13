@@ -1474,9 +1474,9 @@ process_rr(void)
 
 	assert(dnslib_dname_is_fqdn(current_rrset->owner));
 
-//	if (dnslib_dname_compare(current_rrset->owner, parser->origin->owner)) {
-//		assert(dnslib_dname_is_subdomain(current_rrset->owner, parser->origin->owner));
-//	}
+	if (dnslib_dname_compare(current_rrset->owner, parser->origin->owner)) {
+		assert(dnslib_dname_is_subdomain(current_rrset->owner, parser->origin->owner));
+	}
 
 	int (*node_add_func)(dnslib_zone_t *zone, dnslib_node_t *node);
 
