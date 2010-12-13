@@ -144,9 +144,12 @@ line:	NL
 
 		}
 
+		parser->current_rrset.owner->node = NULL;
+
 		process_rr();
 	    }
 
+	    parser->current_rrset.owner;
 	    parser->current_rrset.type = 0;
 	    parser->rdata_count = 0;
 	    parser->current_rrset.rdata = NULL;
@@ -952,9 +955,10 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			    dnslib_dname_t* tmpd;
 			    tmpd = dnslib_dname_new_from_wire(name->name,
 			                                      name->size,
-			                                      name->node);
+//			                                      name->node);
+			    				      NULL);
 			    name = dnslib_dname_cat(tmpd,
-			            dnslib_node_get_parent(parser->origin)->owner);
+			            dnslib_node_parent(parser->origin)->owner);
 			}
 
 			uint8_t* dncpy = malloc(name->size);
