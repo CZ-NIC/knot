@@ -48,13 +48,18 @@ int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset)
 	return 0;
 }
 
-const dnslib_rrset_t *dnslib_node_get_rrset(const dnslib_node_t *node,
+const dnslib_rrset_t *dnslib_node_rrset(const dnslib_node_t *node,
                                             uint16_t type)
+{
+	return (const dnslib_rrset_t *)skip_find(node->rrsets, (void *)&type);
+}
+
+dnslib_rrset_t *dnslib_node_get_rrset(dnslib_node_t *node, uint16_t type)
 {
 	return (dnslib_rrset_t *)skip_find(node->rrsets, (void *)&type);
 }
 
-const dnslib_node_t *dnslib_node_get_parent(const dnslib_node_t *node)
+const dnslib_node_t *dnslib_node_parent(const dnslib_node_t *node)
 {
 	return node->parent;
 }
