@@ -123,5 +123,9 @@ void dnslib_zone_dump(dnslib_zone_t *zone)
 
 	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl, dnslib_node_dump, NULL);
 
+	getchar();
+
+	TREE_FORWARD_APPLY(zone->nsec3_nodes, dnslib_node, avl, dnslib_node_dump, NULL);
+
 	printf("------- ZONE --------\n");
 }
