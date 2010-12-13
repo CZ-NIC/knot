@@ -141,6 +141,14 @@ const dnslib_node_t *dnslib_zone_find_nsec3_node(const dnslib_zone_t *zone,
 const dnslib_node_t *dnslib_zone_apex(const dnslib_zone_t *zone);
 
 /*!
+ * \brief Optimizes zone by replacing domain names in RDATA with references to
+ *        domain names present in zone (as node owners).
+ *
+ * \param zone Zone to adjust domain names in.
+ */
+void dnslib_zone_adjust_dnames(dnslib_zone_t *zone);
+
+/*!
  * \brief Correctly deallocates the zone structure and possibly all its nodes.
  *
  * Also sets the given pointer to NULL.
