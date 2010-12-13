@@ -21,11 +21,17 @@
 typedef TREE_HEAD(avl_tree, dnslib_node) avl_tree_t;
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Structure for holding DNS zone.
+ *
+ * \warning Make sure not to insert the same nodes using both the normal and
+ *          NSEC3 functions. Although this will be successfull, it will produce
+ *          double-free errors when destroying the zone.
+ */
 struct dnslib_zone {
 	dnslib_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
-	avl_tree_t *tree;
-	dnslib_node_t *nsec3_nodes; /*!< First NSEC3 node of the zone. */
+	avl_tree_t *tree;          /*!< AVL tree for holding zone nodes. */
+	avl_tree_t *nsec3_nodes;   /*!< AVL tree for holding NSEC3 nodes. */
 };
 
 typedef struct dnslib_zone dnslib_zone_t;

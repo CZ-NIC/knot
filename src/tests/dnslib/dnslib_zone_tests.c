@@ -69,8 +69,14 @@ static int test_zone_create(dnslib_zone_t **zone)
 	return 1;
 }
 
-static int test_zone_add_node(dnslib_zone_t *zone)
+static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 {
+	/*
+	 * NSEC3 nodes are de facto identical to normal nodes, so there is no
+	 * need for separate tests. The only difference is where are they stored
+	 * in the zone structure.
+	 */
+
 	int errors = 0;
 	int res = 0;
 
@@ -84,9 +90,8 @@ static int test_zone_add_node(dnslib_zone_t *zone)
 			return 0;
 		}
 
-		//note("Node created");
-
-		if ((res = dnslib_zone_add_node(zone, node)) != 0) {
+		if ((res = ((nsec3) ? dnslib_zone_add_nsec3_node(zone, node)
+		                   : dnslib_zone_add_node(zone, node))) != 0) {
 			diag("zone: Failed to insert node into zone (returned"
 			     " %d).", res);
 			dnslib_node_free(&node);
@@ -104,7 +109,8 @@ static int test_zone_add_node(dnslib_zone_t *zone)
 			return 0;
 		}
 
-		if ((res = dnslib_zone_add_node(zone, node)) != -2) {
+		if ((res = ((nsec3) ? dnslib_zone_add_nsec3_node(zone, node)
+			: dnslib_zone_add_node(zone, node))) != -2) {
 			diag("zone: Inserting wrong node did not result in"
 			     "proper return value (%d instead of -2).", res);
 			++errors;
@@ -121,7 +127,8 @@ static int test_zone_add_node(dnslib_zone_t *zone)
 		return 0;
 	}
 
-	if ((res = dnslib_zone_add_node(NULL, node)) != -1) {
+	if ((res = ((nsec3) ? dnslib_zone_add_nsec3_node(NULL, node)
+		: dnslib_zone_add_node(NULL, node))) != -1) {
 		diag("zone: Inserting node to NULL zone did not result in"
 		     "proper return value (%d instead of -1)", res);
 		++errors;
@@ -131,46 +138,51 @@ static int test_zone_add_node(dnslib_zone_t *zone)
 
 	//note("NULL node");
 
-	if ((res = dnslib_zone_add_node(zone, NULL)) != -1) {
+	if ((res = ((nsec3) ? dnslib_zone_add_nsec3_node(zone, NULL)
+		: dnslib_zone_add_node(zone, NULL))) != -1) {
 		diag("zone: Inserting NULL node to zone did not result in"
 		     "proper return value (%d instead of -1)", res);
 		++errors;
 	}
 
-	node = dnslib_node_new(&test_apex.owner, test_apex.parent);
-	if (node == NULL) {
-		diag("zone: Could not create node.");
-		return 0;
+	if (!nsec3) {
+		node = dnslib_node_new(&test_apex.owner, test_apex.parent);
+		if (node == NULL) {
+			diag("zone: Could not create node.");
+			return 0;
+		}
+
+		//note("Apex again");
+
+		if ((res = dnslib_zone_add_node(zone, node)) != -2) {
+			diag("zone: Inserting zone apex again did not result in proper"
+			     "return value (%d instead of -2)", res);
+			++errors;
+		}
+
+		dnslib_node_free(&node);
 	}
-
-	//note("Apex again");
-
-	if ((res = dnslib_zone_add_node(zone, node)) != -2) {
-		diag("zone: Inserting zone apex again did not result in proper"
-		     "return value (%d instead of -2)", res);
-		++errors;
-	}
-
-	dnslib_node_free(&node);
 
 	// check if all nodes are inserted
 	//int nodes = 0;
-	if (!test_zone_check_node(dnslib_zone_apex(zone), &test_apex)) {
+	if (!nsec3
+	    && !test_zone_check_node(dnslib_zone_apex(zone), &test_apex)) {
 		diag("zone: Apex of zone not right.");
 		++errors;
 	}
 	//++nodes;
 	for (int i = 0; i < TEST_NODES_GOOD; ++i) {
-		const dnslib_node_t *tmp =
-			dnslib_zone_find_node(zone, &test_nodes_good[i].owner);
-		if (tmp == NULL) {
+		const dnslib_node_t *n = ((nsec3) ? dnslib_zone_find_nsec3_node(
+				zone, &test_nodes_good[i].owner) :
+			dnslib_zone_find_node(zone, &test_nodes_good[i].owner));
+		if (n == NULL) {
 			diag("zone: Missing node with owner %s",
 			     test_nodes_good[i].owner.name);
 			++errors;
 			continue;
 		}
 
-		if (!test_zone_check_node(tmp, &test_nodes_good[i])) {
+		if (!test_zone_check_node(n, &test_nodes_good[i])) {
 			diag("zone: Node does not match: owner: %s (should be "
 			     "%s), parent: %p (should be %p)",
 			     node->owner->name, test_nodes_good[i].owner.name,
@@ -185,12 +197,14 @@ static int test_zone_add_node(dnslib_zone_t *zone)
 	return (errors == 0);
 }
 
-static int test_zone_get_node(dnslib_zone_t *zone)
+static int test_zone_get_node(dnslib_zone_t *zone, int nsec3)
 {
 	int errors = 0;
 
 	for (int i = 0; i < TEST_NODES_GOOD; ++i) {
-		if (dnslib_zone_get_node(zone, &test_nodes_good[i].owner)
+		if (((nsec3) ? dnslib_zone_get_nsec3_node(
+		                   zone, &test_nodes_good[i].owner)
+			: dnslib_zone_get_node(zone, &test_nodes_good[i].owner))
 			== NULL) {
 			diag("zone: Node (%s) not found in zone.",
 			     (char *)test_nodes_good[i].owner.name);
@@ -199,7 +213,9 @@ static int test_zone_get_node(dnslib_zone_t *zone)
 	}
 
 	for (int i = 0; i < TEST_NODES_BAD; ++i) {
-		if (dnslib_zone_get_node(zone, &test_nodes_bad[i].owner)
+		if (((nsec3) ? dnslib_zone_get_nsec3_node(
+		                   zone, &test_nodes_bad[i].owner)
+			: dnslib_zone_get_node(zone, &test_nodes_bad[i].owner))
 			!= NULL) {
 			diag("zone: Node (%s) found in zone even if it should"
 			     "not be there.",
@@ -208,19 +224,22 @@ static int test_zone_get_node(dnslib_zone_t *zone)
 		}
 	}
 
-	if (dnslib_zone_get_node(NULL, &test_nodes_good[0].owner) != NULL) {
+	if (((nsec3)
+	     ? dnslib_zone_get_nsec3_node(NULL, &test_nodes_good[0].owner)
+	     : dnslib_zone_get_node(NULL, &test_nodes_good[0].owner)) != NULL) {
 		diag("zone: Getting node from NULL zone did not result in"
 		     "proper return value (NULL)");
 		++errors;
 	}
 
-	if (dnslib_zone_get_node(zone, NULL) != NULL) {
+	if (((nsec3) ? dnslib_zone_get_nsec3_node(zone, NULL)
+	             : dnslib_zone_get_node(zone, NULL)) != NULL) {
 		diag("zone: Getting node with NULL owner from zone did not "
 		     "result in proper return value (NULL)");
 		++errors;
 	}
 
-	if (dnslib_zone_get_node(zone, &test_apex.owner) == NULL) {
+	if (!nsec3 && dnslib_zone_get_node(zone, &test_apex.owner) == NULL) {
 		diag("zone: Getting zone apex from the zone failed");
 		++errors;
 	}
@@ -228,13 +247,15 @@ static int test_zone_get_node(dnslib_zone_t *zone)
 	return (errors == 0);
 }
 
-static int test_zone_find_node(dnslib_zone_t *zone)
+static int test_zone_find_node(dnslib_zone_t *zone, int nsec3)
 {
 	int errors = 0;
 
 	for (int i = 0; i < TEST_NODES_GOOD; ++i) {
-		if (dnslib_zone_find_node(zone, &test_nodes_good[i].owner)
-			== NULL) {
+		if (((nsec3) ? dnslib_zone_find_nsec3_node(
+		                   zone, &test_nodes_good[i].owner)
+		    : dnslib_zone_find_node(zone, &test_nodes_good[i].owner))
+		    == NULL) {
 			diag("zone: Node (%s) not found in zone.",
 			     (char *)test_nodes_good[i].owner.name);
 			++errors;
@@ -242,8 +263,10 @@ static int test_zone_find_node(dnslib_zone_t *zone)
 	}
 
 	for (int i = 0; i < TEST_NODES_BAD; ++i) {
-		if (dnslib_zone_find_node(zone, &test_nodes_bad[i].owner)
-			!= NULL) {
+		if (((nsec3) ? dnslib_zone_find_nsec3_node(
+		                   zone, &test_nodes_bad[i].owner)
+		    : dnslib_zone_find_node(zone, &test_nodes_bad[i].owner))
+		    != NULL) {
 			diag("zone: Node (%s) found in zone even if it should"
 			     "not be there.",
 			     (char *)test_nodes_bad[i].owner.name);
@@ -251,19 +274,22 @@ static int test_zone_find_node(dnslib_zone_t *zone)
 		}
 	}
 
-	if (dnslib_zone_find_node(NULL, &test_nodes_good[0].owner) != NULL) {
+	if (((nsec3)
+	    ? dnslib_zone_find_nsec3_node(NULL, &test_nodes_good[0].owner)
+	    : dnslib_zone_find_node(NULL, &test_nodes_good[0].owner)) != NULL) {
 		diag("zone: Finding node from NULL zone did not result in"
 		     "proper return value (NULL)");
 		++errors;
 	}
 
-	if (dnslib_zone_find_node(zone, NULL) != NULL) {
+	if (((nsec3) ? dnslib_zone_find_nsec3_node(zone, NULL)
+	             : dnslib_zone_find_node(zone, NULL)) != NULL) {
 		diag("zone: Finding node with NULL owner from zone did not "
 		     "result in proper return value (NULL)");
 		++errors;
 	}
 
-	if (dnslib_zone_find_node(zone, &test_apex.owner) == NULL) {
+	if (!nsec3 && dnslib_zone_find_node(zone, &test_apex.owner) == NULL) {
 		diag("zone: Finding zone apex from the zone failed");
 		++errors;
 	}
@@ -277,7 +303,7 @@ static int test_zone_free(dnslib_zone_t **zone)
 	return (*zone == NULL);
 }
 
-static const int DNSLIB_ZONE_TEST_COUNT = 5;
+static const int DNSLIB_ZONE_TEST_COUNT = 8;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -297,31 +323,48 @@ static int dnslib_zone_tests_run(int argc, char *argv[])
 	dnslib_zone_t *zone = NULL;
 
 	ok((res = test_zone_create(&zone)), "zone: create");
-	res_final += res;
+	res_final *= res;
 
-	//skip(!res, 3);
+	skip(!res, 6);
 
-	ok((res = test_zone_add_node(zone)), "zone: add node");
-	res_final += res;
+	ok((res = test_zone_add_node(zone, 0)), "zone: add node");
+	res_final *= res;
 
 	skip(!res, 2);
 
-	ok((res = test_zone_get_node(zone)), "zone: get node");
-	res_final += res;
+	ok((res = test_zone_get_node(zone, 0)), "zone: get node");
+	res_final *= res;
 
 	skip(!res, 1);
 
-	ok((res = test_zone_find_node(zone)), "zone: find node");
-	res_final += res;
+	ok((res = test_zone_find_node(zone, 0)), "zone: find node");
+	res_final *= res;
 
 	endskip; // get node failed
 
 	endskip; // add node failed
 
-	ok((res = test_zone_free(&zone)), "zone: free");
-	res_final += res;
+	ok((res = test_zone_add_node(zone, 1)), "zone: add nsec3 node");
+	res_final *= res;
 
-	//endskip; // create failed
+	skip(!res, 2);
+
+	ok((res = test_zone_get_node(zone, 1)), "zone: get nsec3 node");
+	res_final *= res;
+
+	skip(!res, 1);
+
+	ok((res = test_zone_find_node(zone, 1)), "zone: find nsec3 node");
+	res_final *= res;
+
+	endskip; // get nsec3 node failed
+
+	endskip; // add nsec3 node failed
+
+	ok((res = test_zone_free(&zone)), "zone: free");
+	res_final *= res;
+
+	endskip; // create failed
 
 	return res_final;
 }
