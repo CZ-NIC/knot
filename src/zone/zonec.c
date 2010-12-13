@@ -1416,7 +1416,11 @@ process_rr(void)
 
 		zone = dnslib_zone_new(parser->origin); //XXX
 
+		parser->origin->owner->node = parser->origin;
+
 		soa_node = dnslib_node_new(current_rrset->owner, parser->origin);
+
+		current_rrset->owner->node = soa_node;
 
 		dnslib_zone_add_node(zone, soa_node);
 
@@ -1467,6 +1471,9 @@ process_rr(void)
 		printf("Node with owner: %s created.\n",
 		        dnslib_dname_to_str(node->owner));
 	}
+
+	current_rrset->owner->node = node;
+
 	rrset = dnslib_node_get_rrset(node, current_rrset->type);
 	if (!rrset) {
 		printf("Creating new rrset.\n");
