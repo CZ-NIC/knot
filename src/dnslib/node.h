@@ -74,8 +74,19 @@ int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset);
  * \return RRSet from node \a node having type \a type, or NULL if no such
  *         RRSet exists in this node.
  */
-const dnslib_rrset_t *dnslib_node_get_rrset(const dnslib_node_t *node,
-                uint16_t type);
+const dnslib_rrset_t *dnslib_node_rrset(const dnslib_node_t *node,
+                                        uint16_t type);
+
+/*!
+ * \brief Returns the RRSet of the given type from the node (non-const version).
+ *
+ * \param node Node to get the RRSet from.
+ * \param type Type of the RRSet to retrieve.
+ *
+ * \return RRSet from node \a node having type \a type, or NULL if no such
+ *         RRSet exists in this node.
+ */
+dnslib_rrset_t *dnslib_node_get_rrset(dnslib_node_t *node, uint16_t type);
 
 /*!
  * \brief Returns the parent of the node.
@@ -85,7 +96,7 @@ const dnslib_rrset_t *dnslib_node_get_rrset(const dnslib_node_t *node,
  * \return Parent node of the given node or NULL if no parent has been set (e.g.
  *         node in a zone apex has no parent).
  */
-const dnslib_node_t *dnslib_node_get_parent(const dnslib_node_t *node);
+const dnslib_node_t *dnslib_node_parent(const dnslib_node_t *node);
 
 /*!
  * \brief Sets the parent of the node.
@@ -94,6 +105,15 @@ const dnslib_node_t *dnslib_node_get_parent(const dnslib_node_t *node);
  * \param parent Parent to set to the node.
  */
 void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent);
+
+/*!
+ * \brief Returns the owner of the node.
+ *
+ * \param node Node to get the owner of.
+ *
+ * \return Owner of the given node.
+ */
+const dnslib_dname_t *dnslib_node_owner(const dnslib_node_t *node);
 
 /*!
  * \brief Destroys the node structure.

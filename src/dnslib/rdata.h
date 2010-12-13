@@ -135,6 +135,13 @@ int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
 const dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
                 uint pos);
 
+
+int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, uint pos,
+                                dnslib_dname_t *dname);
+
+int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, uint pos,
+                                   uint8_t *raw_data);
+
 /*!
  * \brief Returns the size of the RDATA in wire format.
  *

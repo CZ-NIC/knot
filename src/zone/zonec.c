@@ -56,10 +56,7 @@ static void rrsig_list_add_first(rrsig_list_t **head, dnslib_rrset_t *rrsig)
 static void rrsig_list_add(rrsig_list_t **head, dnslib_rrset_t *rrsig)
 {
 	if (head == NULL) {
-		printf("HEAD pred: %p\n", head);
 		rrsig_list_add_first(head, rrsig);
-		printf("HEAD po %p\n", head);
-		printf("HEAD data %p\n", (*head)->data);
 		getchar();
 	} else {
 		rrsig_list_t *tmp = malloc(sizeof(*tmp));

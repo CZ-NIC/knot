@@ -279,7 +279,8 @@ uint dnslib_dname_size(const dnslib_dname_t *dname)
 
 /*----------------------------------------------------------------------------*/
 
-const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname) {
+const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname)
+{
 	return dname->node;
 }
 
@@ -429,34 +430,6 @@ int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2)
 		if (res != 0) {
 			return res;
 		} // otherwise the labels are identical, continue with previous
-
-//		pos1 = labels1[--i1];
-//		pos2 = labels2[--i2];
-
-//		int label_length = (*pos1 < *pos2) ? *pos1 : *pos2;
-//		int i = 0;
-
-//		while (i < label_length &&
-//		       tolower(*(++pos1)) == tolower(*(++pos2))) {
-//			++i;
-//		}
-
-//		if (i < label_length) {	// difference in some octet
-//			if (tolower(*pos1) < tolower(*pos2)) {
-//				return -1;
-//			} else {
-//				assert(tolower(*pos1) > tolower(*pos2));
-//				return 1;
-//			}
-//		}
-
-//		if (*(labels1[i1]) < *(labels2[i2])) {	// one label shorter
-//			return -1;
-//		} else if (*(labels1[i1]) > *(labels2[i2])) {
-//			return 1;
-//		}
-		// otherwise the labels are 
-		// identical, continue with previous labels
 	}
 
 	// if all labels matched, the shorter name is first
