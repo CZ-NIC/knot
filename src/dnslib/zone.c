@@ -69,11 +69,19 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex)
 		free(zone);
 		return NULL;
 	}
+	zone->nsec3_nodes = malloc(sizeof(avl_tree_t));
+	if (zone->nsec3_nodes == NULL) {
+		ERR_ALLOC_FAILED;
+		free(zone->tree);
+		free(zone);
+		return NULL;
+	}
+
 	TREE_INIT(zone->tree, dnslib_node_compare);
+	TREE_INIT(zone->nsec3_nodes, dnslib_node_compare);
+
 	// how to know if this is successfull??
 	TREE_INSERT(zone->tree, dnslib_node, avl, apex);
-
-	zone->nsec3_nodes = NULL;
 
 	return zone;
 }
@@ -103,19 +111,8 @@ int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node)
 		return ret;
 	}
 
-	printf("Inserting nsec3 node\n");
-
-	if (zone->nsec3_nodes == NULL) {
-		zone->nsec3_nodes = node;
-		return 0;
-	}
-
-	dnslib_node_t *n = zone->nsec3_nodes;
-	while (n->next != NULL) {
-		n = n->next;
-	}
-	n->next = node;
-	node->next = NULL;
+	// how to know if this is successfull??
+	TREE_INSERT(zone->nsec3_nodes, dnslib_node, avl, node);
 
 	return 0;
 }
@@ -146,10 +143,11 @@ dnslib_node_t *dnslib_zone_get_nsec3_node(const dnslib_zone_t *zone,
 		return NULL;
 	}
 
-	dnslib_node_t *n = zone->nsec3_nodes;
-	while (n != NULL && dnslib_dname_compare(n->owner, name) != 0) {
-		n = n->next;
-	}
+	// create dummy node to use for lookup
+	dnslib_node_t *tmp = dnslib_node_new((dnslib_dname_t *)name, NULL);
+	dnslib_node_t *n = TREE_FIND(zone->nsec3_nodes, dnslib_node, avl, tmp);
+	dnslib_node_free(&tmp);
+
 	return n;
 }
 
@@ -187,7 +185,12 @@ void dnslib_zone_free(dnslib_zone_t **zone, int free_nodes)
 	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
 	                      dnslib_zone_destroy_node_from_tree, NULL);
 
+	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
+	                      dnslib_zone_destroy_node_from_tree, NULL);
+
 	free((*zone)->tree);
+	free((*zone)->nsec3_nodes);
+
 	free(*zone);
 	*zone = NULL;
 }
