@@ -22,7 +22,7 @@
 #define APL_NEGATION_MASK      0x80U
 
 dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,
-					     const char *name)
+                const char *name)
 {
 	while (table->name != NULL) {
 		if (strcasecmp(name, table->name) == 0) {
@@ -35,7 +35,7 @@ dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,
 }
 
 dnslib_lookup_table_t *dnslib_lookup_by_id(dnslib_lookup_table_t *table,
-						  int id)
+                int id)
 {
 	while (table->name != NULL) {
 		if (table->id == id) {
@@ -98,9 +98,9 @@ size_t strlcpy(char *dst, const char *src, size_t siz)
  */
 int
 inet_pton(af, src, dst)
-	int af;
-	const char *src;
-	void *dst;
+int af;
+const char *src;
+void *dst;
 {
 	switch (af) {
 	case AF_INET:
@@ -117,52 +117,55 @@ inet_pton(af, src, dst)
 int my_b32_pton(const char *src, uint8_t *target, size_t tsize)
 {
 	char ch;
-	size_t p=0;
+	size_t p = 0;
 
-	memset(target,'\0',tsize);
-	while((ch = *src++)) {
+	memset(target, '\0', tsize);
+	while ((ch = *src++)) {
 		uint8_t d;
 		size_t b;
 		size_t n;
 
-		if(p+5 >= tsize*8)
-		       return -1;
-
-		if(isspace(ch))
-			continue;
-
-		if(ch >= '0' && ch <= '9')
-			d=ch-'0';
-		else if(ch >= 'A' && ch <= 'V')
-			d=ch-'A'+10;
-		else if(ch >= 'a' && ch <= 'v')
-			d=ch-'a'+10;
-		else
+		if (p + 5 >= tsize * 8) {
 			return -1;
-
-		b=7-p%8;
-		n=p/8;
-
-		if(b >= 4)
-			target[n]|=d << (b-4);
-		else {
-			target[n]|=d >> (4-b);
-			target[n+1]|=d << (b+4);
 		}
-		p+=5;
+
+		if (isspace(ch)) {
+			continue;
+		}
+
+		if (ch >= '0' && ch <= '9') {
+			d = ch - '0';
+		} else if (ch >= 'A' && ch <= 'V') {
+			d = ch - 'A' + 10;
+		} else if (ch >= 'a' && ch <= 'v') {
+			d = ch - 'a' + 10;
+		} else {
+			return -1;
+		}
+
+		b = 7 - p % 8;
+		n = p / 8;
+
+		if (b >= 4) {
+			target[n] |= d << (b - 4);
+		} else {
+			target[n] |= d >> (4 - b);
+			target[n+1] |= d << (b + 4);
+		}
+		p += 5;
 	}
-	return (p+7)/8;
+	return (p + 7) / 8;
 }
 
 
 #define Assert(Cond) if (!(Cond)) abort()
 
 static const char Base64[] =
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const char Pad64 = '=';
 
-int	inet_pton4 (const char *src, uint8_t *dst);
-int	inet_pton6 (const char *src, uint8_t *dst);
+int	inet_pton4(const char *src, uint8_t *dst);
+int	inet_pton6(const char *src, uint8_t *dst);
 
 
 
@@ -178,8 +181,8 @@ int	inet_pton6 (const char *src, uint8_t *dst);
  */
 int
 inet_pton4(src, dst)
-	const char *src;
-	uint8_t *dst;
+const char *src;
+uint8_t *dst;
 {
 	static const char digits[] = "0123456789";
 	int saw_digit, octets, ch;
@@ -194,24 +197,29 @@ inet_pton4(src, dst)
 		if ((pch = strchr(digits, ch)) != NULL) {
 			uint32_t new = *tp * 10 + (pch - digits);
 
-			if (new > 255)
+			if (new > 255) {
 				return (0);
+			}
 			*tp = new;
 			if (! saw_digit) {
-				if (++octets > 4)
+				if (++octets > 4) {
 					return (0);
+				}
 				saw_digit = 1;
 			}
 		} else if (ch == '.' && saw_digit) {
-			if (octets == 4)
+			if (octets == 4) {
 				return (0);
+			}
 			*++tp = 0;
 			saw_digit = 0;
-		} else
+		} else {
 			return (0);
+		}
 	}
-	if (octets < 4)
+	if (octets < 4) {
 		return (0);
+	}
 
 	memcpy(dst, tmp, NS_INADDRSZ);
 	return (1);
@@ -232,11 +240,11 @@ inet_pton4(src, dst)
  */
 int
 inet_pton6(src, dst)
-	const char *src;
-	uint8_t *dst;
+const char *src;
+uint8_t *dst;
 {
 	static const char xdigits_l[] = "0123456789abcdef",
-			  xdigits_u[] = "0123456789ABCDEF";
+	                                xdigits_u[] = "0123456789ABCDEF";
 	uint8_t tmp[NS_IN6ADDRSZ], *tp, *endp, *colonp;
 	const char *xdigits, *curtok;
 	int ch, saw_xdigit;
@@ -247,42 +255,47 @@ inet_pton6(src, dst)
 	colonp = NULL;
 	/* Leading :: requires some special handling. */
 	if (*src == ':')
-		if (*++src != ':')
+		if (*++src != ':') {
 			return (0);
+		}
 	curtok = src;
 	saw_xdigit = 0;
 	val = 0;
 	while ((ch = *src++) != '\0') {
 		const char *pch;
 
-		if ((pch = strchr((xdigits = xdigits_l), ch)) == NULL)
+		if ((pch = strchr((xdigits = xdigits_l), ch)) == NULL) {
 			pch = strchr((xdigits = xdigits_u), ch);
+		}
 		if (pch != NULL) {
 			val <<= 4;
 			val |= (pch - xdigits);
-			if (val > 0xffff)
+			if (val > 0xffff) {
 				return (0);
+			}
 			saw_xdigit = 1;
 			continue;
 		}
 		if (ch == ':') {
 			curtok = src;
 			if (!saw_xdigit) {
-				if (colonp)
+				if (colonp) {
 					return (0);
+				}
 				colonp = tp;
 				continue;
 			}
-			if (tp + NS_INT16SZ > endp)
+			if (tp + NS_INT16SZ > endp) {
 				return (0);
-			*tp++ = (uint8_t) (val >> 8) & 0xff;
+			}
+			*tp++ = (uint8_t)(val >> 8) & 0xff;
 			*tp++ = (uint8_t) val & 0xff;
 			saw_xdigit = 0;
 			val = 0;
 			continue;
 		}
 		if (ch == '.' && ((tp + NS_INADDRSZ) <= endp) &&
-		    inet_pton4(curtok, tp) > 0) {
+		                inet_pton4(curtok, tp) > 0) {
 			tp += NS_INADDRSZ;
 			saw_xdigit = 0;
 			break;	/* '\0' was seen by inet_pton4(). */
@@ -290,9 +303,10 @@ inet_pton6(src, dst)
 		return (0);
 	}
 	if (saw_xdigit) {
-		if (tp + NS_INT16SZ > endp)
+		if (tp + NS_INT16SZ > endp) {
 			return (0);
-		*tp++ = (uint8_t) (val >> 8) & 0xff;
+		}
+		*tp++ = (uint8_t)(val >> 8) & 0xff;
 		*tp++ = (uint8_t) val & 0xff;
 	}
 	if (colonp != NULL) {
@@ -309,8 +323,9 @@ inet_pton6(src, dst)
 		}
 		tp = endp;
 	}
-	if (tp != endp)
+	if (tp != endp) {
 		return (0);
+	}
 	memcpy(dst, tmp, NS_IN6ADDRSZ);
 	return (1);
 }
@@ -398,7 +413,9 @@ inet_ntop6(const u_char *src, char *dst, size_t size)
 	 */
 	char tmp[sizeof "ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255"];
 	char *tp, *ep;
-	struct { int base, len; } best, cur;
+	struct {
+		int base, len;
+	} best, cur;
 	u_int words[IN6ADDRSZ / INT16SZ];
 	int i;
 	int advance;
@@ -409,30 +426,35 @@ inet_ntop6(const u_char *src, char *dst, size_t size)
 	 *	Find the longest run of 0x00's in src[] for :: shorthanding.
 	 */
 	memset(words, '\0', sizeof words);
-	for (i = 0; i < IN6ADDRSZ; i++)
+	for (i = 0; i < IN6ADDRSZ; i++) {
 		words[i / 2] |= (src[i] << ((1 - (i % 2)) << 3));
+	}
 	best.base = -1;
 	cur.base = -1;
 	for (i = 0; i < (IN6ADDRSZ / INT16SZ); i++) {
 		if (words[i] == 0) {
-			if (cur.base == -1)
+			if (cur.base == -1) {
 				cur.base = i, cur.len = 1;
-			else
+			} else {
 				cur.len++;
+			}
 		} else {
 			if (cur.base != -1) {
-				if (best.base == -1 || cur.len > best.len)
+				if (best.base == -1 || cur.len > best.len) {
 					best = cur;
+				}
 				cur.base = -1;
 			}
 		}
 	}
 	if (cur.base != -1) {
-		if (best.base == -1 || cur.len > best.len)
+		if (best.base == -1 || cur.len > best.len) {
 			best = cur;
+		}
 	}
-	if (best.base != -1 && best.len < 2)
+	if (best.base != -1 && best.len < 2) {
 		best.base = -1;
+	}
 
 	/*
 	 * Format the result.
@@ -442,41 +464,49 @@ inet_ntop6(const u_char *src, char *dst, size_t size)
 	for (i = 0; i < (IN6ADDRSZ / INT16SZ) && tp < ep; i++) {
 		/* Are we inside the best run of 0x00's? */
 		if (best.base != -1 && i >= best.base &&
-		    i < (best.base + best.len)) {
+		                i < (best.base + best.len)) {
 			if (i == best.base) {
-				if (tp + 1 >= ep)
+				if (tp + 1 >= ep) {
 					return (NULL);
+				}
 				*tp++ = ':';
 			}
 			continue;
 		}
 		/* Are we following an initial run of 0x00s or any real hex? */
 		if (i != 0) {
-			if (tp + 1 >= ep)
+			if (tp + 1 >= ep) {
 				return (NULL);
+			}
 			*tp++ = ':';
 		}
 		/* Is this address an encapsulated IPv4? */
 		if (i == 6 && best.base == 0 &&
-		    (best.len == 6 || (best.len == 5 && words[5] == 0xffff))) {
-			if (!inet_ntop4(src+12, tp, (size_t)(ep - tp)))
+		                (best.len == 6 ||
+				(best.len == 5 && words[5] == 0xffff))) {
+			if (!inet_ntop4(src + 12, tp, (size_t)(ep - tp))) {
 				return (NULL);
+			}
 			tp += strlen(tp);
 			break;
 		}
 		advance = snprintf(tp, ep - tp, "%x", words[i]);
-		if (advance <= 0 || advance >= ep - tp)
+		if (advance <= 0 || advance >= ep - tp) {
 			return (NULL);
+		}
 		tp += advance;
 	}
 	/* Was it a trailing run of 0x00's? */
-	if (best.base != -1 && (best.base + best.len) == (IN6ADDRSZ / INT16SZ)) {
-		if (tp + 1 >= ep)
+	if (best.base != -1 && (best.base + best.len) ==
+	   (IN6ADDRSZ / INT16SZ)) {
+		if (tp + 1 >= ep) {
 			return (NULL);
+		}
 		*tp++ = ':';
 	}
-	if (tp + 1 >= ep)
+	if (tp + 1 >= ep) {
 		return (NULL);
+	}
 	*tp++ = '\0';
 
 	/*
@@ -504,7 +534,7 @@ static const uint8_t b64rmap_invalid = 0xff;
  * Which is fine for NSD. For now...
  **/
 void
-b64_initialize_rmap ()
+b64_initialize_rmap()
 {
 	int i;
 	char ch;
@@ -515,19 +545,23 @@ b64_initialize_rmap ()
 	for (i = 1; i < 256; ++i) {
 		ch = (char)i;
 		/* Whitespaces */
-		if (isspace(ch))
+		if (isspace(ch)) {
 			b64rmap[i] = b64rmap_space;
+		}
 		/* Padding: stop parsing */
-		else if (ch == Pad64)
+		else if (ch == Pad64) {
 			b64rmap[i] = b64rmap_end;
+		}
 		/* Non-base64 char */
-		else
+		else {
 			b64rmap[i] = b64rmap_invalid;
+		}
 	}
 
 	/* Fill reverse mapping for base64 chars */
-	for (i = 0; Base64[i] != '\0'; ++i)
+	for (i = 0; Base64[i] != '\0'; ++i) {
 		b64rmap[(uint8_t)Base64[i]] = i;
+	}
 
 	b64rmap_initialized = 1;
 }
@@ -541,50 +575,55 @@ b64_pton_do(char const *src, uint8_t *target, size_t targsize)
 	state = 0;
 	tarindex = 0;
 
-	while (1)
-	{
+	while (1) {
 		ch = *src++;
 		ofs = b64rmap[ch];
 
 		if (ofs >= b64rmap_special) {
 			/* Ignore whitespaces */
-			if (ofs == b64rmap_space)
+			if (ofs == b64rmap_space) {
 				continue;
+			}
 			/* End of base64 characters */
-			if (ofs == b64rmap_end)
+			if (ofs == b64rmap_end) {
 				break;
+			}
 			/* A non-base64 character. */
 			return (-1);
 		}
 
 		switch (state) {
 		case 0:
-			if ((size_t)tarindex >= targsize)
+			if ((size_t)tarindex >= targsize) {
 				return (-1);
+			}
 			target[tarindex] = ofs << 2;
 			state = 1;
 			break;
 		case 1:
-			if ((size_t)tarindex + 1 >= targsize)
+			if ((size_t)tarindex + 1 >= targsize) {
 				return (-1);
+			}
 			target[tarindex]   |=  ofs >> 4;
 			target[tarindex+1]  = (ofs & 0x0f)
-						<< 4 ;
+			                      << 4 ;
 			tarindex++;
 			state = 2;
 			break;
 		case 2:
-			if ((size_t)tarindex + 1 >= targsize)
+			if ((size_t)tarindex + 1 >= targsize) {
 				return (-1);
+			}
 			target[tarindex]   |=  ofs >> 2;
 			target[tarindex+1]  = (ofs & 0x03)
-						<< 6;
+			                      << 6;
 			tarindex++;
 			state = 3;
 			break;
 		case 3:
-			if ((size_t)tarindex >= targsize)
+			if ((size_t)tarindex >= targsize) {
 				return (-1);
+			}
 			target[tarindex] |= ofs;
 			tarindex++;
 			state = 0;
@@ -609,11 +648,13 @@ b64_pton_do(char const *src, uint8_t *target, size_t targsize)
 		case 2:		/* Valid, means one byte of info */
 			/* Skip any number of spaces. */
 			for ((void)NULL; ch != '\0'; ch = *src++)
-				if (b64rmap[ch] != b64rmap_space)
+				if (b64rmap[ch] != b64rmap_space) {
 					break;
+				}
 			/* Make sure there is another trailing = sign. */
-			if (ch != Pad64)
+			if (ch != Pad64) {
 				return (-1);
+			}
 			ch = *src++;		/* Skip the = */
 			/* Fall through to "single trailing =" case. */
 			/* FALLTHROUGH */
@@ -624,8 +665,9 @@ b64_pton_do(char const *src, uint8_t *target, size_t targsize)
 			 * whitespace after it?
 			 */
 			for ((void)NULL; ch != '\0'; ch = *src++)
-				if (b64rmap[ch] != b64rmap_space)
+				if (b64rmap[ch] != b64rmap_space) {
 					return (-1);
+				}
 
 			/*
 			 * Now make sure for cases 2 and 3 that the "extra"
@@ -633,16 +675,18 @@ b64_pton_do(char const *src, uint8_t *target, size_t targsize)
 			 * zeros.  If we don't check them, they become a
 			 * subliminal channel.
 			 */
-			if (target[tarindex] != 0)
+			if (target[tarindex] != 0) {
 				return (-1);
+			}
 		}
 	} else {
 		/*
 		 * We ended by seeing the end of the string.  Make sure we
 		 * have no partial bytes lying around.
 		 */
-		if (state != 0)
+		if (state != 0) {
 			return (-1);
+		}
 	}
 
 	return (tarindex);
@@ -658,18 +702,19 @@ b64_pton_len(char const *src)
 	state = 0;
 	tarindex = 0;
 
-	while (1)
-	{
+	while (1) {
 		ch = *src++;
 		ofs = b64rmap[ch];
 
 		if (ofs >= b64rmap_special) {
 			/* Ignore whitespaces */
-			if (ofs == b64rmap_space)
+			if (ofs == b64rmap_space) {
 				continue;
+			}
 			/* End of base64 characters */
-			if (ofs == b64rmap_end)
+			if (ofs == b64rmap_end) {
 				break;
+			}
 			/* A non-base64 character. */
 			return (-1);
 		}
@@ -710,11 +755,13 @@ b64_pton_len(char const *src)
 		case 2:		/* Valid, means one byte of info */
 			/* Skip any number of spaces. */
 			for ((void)NULL; ch != '\0'; ch = *src++)
-				if (b64rmap[ch] != b64rmap_space)
+				if (b64rmap[ch] != b64rmap_space) {
 					break;
+				}
 			/* Make sure there is another trailing = sign. */
-			if (ch != Pad64)
+			if (ch != Pad64) {
 				return (-1);
+			}
 			ch = *src++;		/* Skip the = */
 			/* Fall through to "single trailing =" case. */
 			/* FALLTHROUGH */
@@ -725,8 +772,9 @@ b64_pton_len(char const *src)
 			 * whitespace after it?
 			 */
 			for ((void)NULL; ch != '\0'; ch = *src++)
-				if (b64rmap[ch] != b64rmap_space)
+				if (b64rmap[ch] != b64rmap_space) {
 					return (-1);
+				}
 
 		}
 	} else {
@@ -734,8 +782,9 @@ b64_pton_len(char const *src)
 		 * We ended by seeing the end of the string.  Make sure we
 		 * have no partial bytes lying around.
 		 */
-		if (state != 0)
+		if (state != 0) {
 			return (-1);
+		}
 	}
 
 	return (tarindex);
@@ -745,13 +794,15 @@ b64_pton_len(char const *src)
 int
 b64_pton(char const *src, uint8_t *target, size_t targsize)
 {
-	if (!b64rmap_initialized)
-		b64_initialize_rmap ();
+	if (!b64rmap_initialized) {
+		b64_initialize_rmap();
+	}
 
-	if (target)
-		return b64_pton_do (src, target, targsize);
-	else
-		return b64_pton_len (src);
+	if (target) {
+		return b64_pton_do(src, target, targsize);
+	} else {
+		return b64_pton_len(src);
+	}
 }
 
 
@@ -771,12 +822,12 @@ set_bit(uint8_t bits[], size_t index)
 }
 
 uint32_t
-strtoserial(const char* nptr, const char** endptr)
+strtoserial(const char *nptr, const char **endptr)
 {
 	uint32_t i = 0;
 	uint32_t serial = 0;
 
-	for(*endptr = nptr; **endptr; (*endptr)++) {
+	for (*endptr = nptr; **endptr; (*endptr)++) {
 		switch (**endptr) {
 		case ' ':
 		case '\t':
@@ -806,13 +857,13 @@ inline void
 write_uint32(void *dst, uint32_t data)
 {
 #ifdef ALLOW_UNALIGNED_ACCESSES
-	* (uint32_t *) dst = htonl(data);
+	*(uint32_t *) dst = htonl(data);
 #else
 	uint8_t *p = (uint8_t *) dst;
-	p[0] = (uint8_t) ((data >> 24) & 0xff);
-	p[1] = (uint8_t) ((data >> 16) & 0xff);
-	p[2] = (uint8_t) ((data >> 8) & 0xff);
-	p[3] = (uint8_t) (data & 0xff);
+	p[0] = (uint8_t)((data >> 24) & 0xff);
+	p[1] = (uint8_t)((data >> 16) & 0xff);
+	p[2] = (uint8_t)((data >> 8) & 0xff);
+	p[3] = (uint8_t)(data & 0xff);
 #endif
 }
 
@@ -822,7 +873,7 @@ strtottl(const char *nptr, const char **endptr)
 	uint32_t i = 0;
 	uint32_t seconds = 0;
 
-	for(*endptr = nptr; **endptr; (*endptr)++) {
+	for (*endptr = nptr; **endptr; (*endptr)++) {
 		switch (**endptr) {
 		case ' ':
 		case '\t':
