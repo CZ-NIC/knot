@@ -117,46 +117,40 @@ line:	NL
     }
     |	rr
     {	/* rr should be fully parsed */
-	    if (!parser->error_occurred) {
-/*			    parser->current_rrset.rdata->items
-				    = malloc(parser->current_rrset.rdata->count
-					     * sizeof(dnslib_rdata_item_t)); */
-			    //XXX dirty workaround, I seriously doubt that it
-			    //should work like this...
+	if (!parser->error_occurred) {
+/*		parser->current_rrset.rdata->items
+		 = malloc(parser->current_rrset.rdata->count
+	                  * sizeof(dnslib_rdata_item_t)); */
+		//XXX dirty workaround, I seriously doubt that it
+		//should work like this...
 
-			    dnslib_rdata_t *tmp_rdata = dnslib_rdata_new();
+		dnslib_rdata_t *tmp_rdata = dnslib_rdata_new();
 
-			    if (dnslib_rdata_set_items(tmp_rdata,
-				    parser->temporary_items,
-				     parser->rdata_count) != 0) {
-				    assert(0);
-			    }
+		if (dnslib_rdata_set_items(tmp_rdata,
+		    parser->temporary_items,
+		    parser->rdata_count) != 0) {
+			return -1;
+		}
 				
-			    assert(parser->current_rrset.rdata == NULL);
+		assert(parser->current_rrset.rdata == NULL);
+		dnslib_rrset_add_rdata(&(parser->current_rrset), tmp_rdata);
 
-			    dnslib_rrset_add_rdata(&(parser->current_rrset), tmp_rdata);
+		if (!dnslib_dname_is_fqdn(parser->current_rrset.owner)) {
 
-			    if (!dnslib_dname_is_fqdn(parser->current_rrset.owner)) {
+			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
 
-			    dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
+			parser->current_rrset.owner =
+				dnslib_dname_cat(parser->current_rrset.owner, tmp);
 
-			    parser->current_rrset.owner =
-			    	dnslib_dname_cat(parser->current_rrset.owner, tmp);
+		}
 
-			    }
-
-			    process_rr();
+		process_rr();
 	    }
-
-//XXX NAH	    free(parser->current_rrset.rdata->items);
 
 	    parser->current_rrset.type = 0;
 	    parser->rdata_count = 0;
 	    parser->current_rrset.rdata = NULL;
-//	    parser->current_rrset.rdata->items = NULL;
-//	    parser->current_rrset.rdata->count = 0;
 	    parser->error_occurred = 0;
-
     }
     |	error NL
     ;
@@ -172,18 +166,22 @@ trail:	NL
 
 ttl_directive:	DOLLAR_TTL sp STR trail
     {
-	    parser->default_ttl = zparser_ttl2int($3.str, &(parser->error_occurred));
-	    if (parser->error_occurred == 1) {
-		    parser->default_ttl = DEFAULT_TTL;
-			parser->error_occurred = 0;
-	    }
+	parser->default_ttl = zparser_ttl2int($3.str, &(parser->error_occurred));
+	if (parser->error_occurred == 1) {
+		parser->default_ttl = DEFAULT_TTL;
+		parser->error_occurred = 0;
+	}
     }
     ;
 
 origin_directive:	DOLLAR_ORIGIN sp abs_dname trail
     {
-//	    parser->origin = $3;
-		//do nothing for the time being
+	    //TODO figure out why dnames are not ended with '.' even though
+	    //     they should be
+            dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
+	    dnslib_node_t *origin_node = dnslib_node_new(dnslib_dname_cat($3, tmp),
+	                                                 NULL);
+	    parser->origin = origin_node;
     }
     |	DOLLAR_ORIGIN sp rel_dname trail
     {
@@ -213,25 +211,21 @@ classttl:	/* empty - fill in the default, def. ttl and IN class */
     {
 	    parser->current_rrset.ttl = parser->default_ttl;
 	    parser->current_rrset.rclass = parser->default_class;
-      printf("class set to default ,that is %d\n", parser->default_class);
     }
     |	T_RRCLASS sp		/* no ttl */
     {
 	    parser->current_rrset.ttl = parser->default_ttl;
 	    parser->current_rrset.rclass = $1;
-      printf("class set to %d\n", $1);
     }
     |	T_TTL sp		/* no class */
     {
 	    parser->current_rrset.ttl = $1;
 	    parser->current_rrset.rclass = parser->default_class;
-      printf("class set to default ,that is %d\n", parser->default_class);
     }
     |	T_TTL sp T_RRCLASS sp	/* the lot */
     {
 	    parser->current_rrset.ttl = $1;
 	    parser->current_rrset.rclass = $3;
-      printf("class set to %d\n", $3);
     }
     |	T_RRCLASS sp T_TTL sp	/* the lot - reversed */
     {
@@ -260,12 +254,10 @@ abs_dname:	'.'
     {
 	    /*! \todo Get root domain from db. */
 		//$$ = parser->db->domains->root;
-	    printf("\n\nDOT...\n\n");
 	    $$ = parser->origin->owner; //XXX not sure about this at all
     }
     |	'@'
     {
-	    printf("\nAT\n");
 	    $$ = parser->origin->owner;
     }
     |	rel_dname '.'
@@ -287,7 +279,6 @@ label:	STR
 		    zc_error("label exceeds %d character limit", MAXLABELLEN);
 		    $$ = error_dname;
 	    } else {
-		    /*!\todo Should I set node to NULL here? Or origin? */
 		    $$ = dnslib_dname_new_from_str($1.str, $1.len, NULL);
 	    }
     }
@@ -701,7 +692,7 @@ rdata_mx:	STR sp dname trail
 
 rdata_txt:	str_seq trail
     {
-	zadd_rdata_txt_clean_wireformat();
+	; //zadd_rdata_txt_clean_wireformat();
     }
     ;
 
@@ -1027,8 +1018,8 @@ zparser_create()
 
 	result->temporary_items = malloc(MAXRDATALEN *
 	                                  sizeof(dnslib_rdata_item_t));
-	result->current_rrset = *dnslib_rrset_new(NULL, 0, 0, 0);
 
+	result->current_rrset = *dnslib_rrset_new(NULL, 0, 0, 0);
 	result->current_rrset.rdata = NULL;
 
 	result->rrsig_orphans = NULL;
@@ -1053,21 +1044,14 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->origin = origin;
 	parser->prev_dname = parser->origin;
 
-//	dnslib_node_t *apex = dnslib_node_new(origin, NULL);
-
 	parser->default_apex = origin;
 	parser->error_occurred = 0;
 	parser->errors = 0;
 	parser->line = 1;
 	parser->filename = filename;
-//	parser->current_rrset.rdata->count = 0;
-//XXX following line...
-//	parser->current_rrset.rdata->items = NULL;
 	parser->rdata_count = 0;
 
-  parser->current_rrset.rclass = parser->default_class;
-
-  printf("class set to %d\n", parser->default_class);
+	parser->current_rrset.rclass = parser->default_class;
 }
 
 void
