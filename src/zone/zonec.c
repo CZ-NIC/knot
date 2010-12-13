@@ -1180,17 +1180,9 @@ zparser_ttl2int(const char *ttlstr, int* error)
 	return ttl;
 }
 
-
-//RDATAADD
-
 void
 zadd_rdata_wireformat(uint16_t *data)
 {
-	//printf("RDATA: WIRE %s\n", data);
-/*	if (parser->current_rrset.rdata_count >= MAXRDATALEN) {
-		fprintf(stderr, "too many rdata elements");
-	} else {*/
-
 	dnslib_rdata_item_t *item = malloc(sizeof(dnslib_rdata_item_t));
 	item->raw_data = (uint8_t*)data;
 	parser->temporary_items[parser->rdata_count] = *item;
@@ -1203,7 +1195,6 @@ zadd_rdata_wireformat(uint16_t *data)
 void
 zadd_rdata_txt_wireformat(uint16_t *data, int first)
 {
-	printf("RDATA: TXT WIRE\n");
 	dnslib_rdata_item_t *rd;
 
 	/* First STR in str_seq, allocate 65K in first unused rdata
@@ -1226,53 +1217,23 @@ zadd_rdata_txt_wireformat(uint16_t *data, int first)
 		fprintf(stderr, "too large rdata element");
 		return;
 	}
-  //XXX why + 2? maybe there are two lengts
+  //XXX why + 2? maybe there are two lengths
 	memcpy((uint8_t *)rd->raw_data + 2 + rd->raw_data[0], data + 1, data[0]);
 	rd->raw_data[0] += data[0];
-}
-
-/**
- * Clean up after last call of zadd_rdata_txt_wireformat
- */
-void
-zadd_rdata_txt_clean_wireformat()
-{
-//	uint16_t *tmp_data;
-//	rdata_atom_type *rd = &parser->current_rr.rdatas[parser->current_rr.rdata_count-1];
-//	if ((tmp_data = (uint16_t *) region_alloc(parser->region,
-//		rd->data[0] + 2)) != NULL) {
-//		memcpy(tmp_data, rd->data, rd->data[0] + 2);
-//		rd->data = tmp_data;
-//	}
-//	else {
-//		/* We could not get memory in non-volatile region */
-//		fprintf(stderr, "could not allocate memory for rdata");
-//		return;
-//	}
 }
 
 void
 zadd_rdata_domain(dnslib_dname_t *dname)
 {
-	printf("RDATA: DOMAIN %s\n", dnslib_dname_to_str(dname));
-//	if (parser->current_rrset.rdata_count >= MAXRDATALEN) {
-//		fprintf(stderr, "too many rdata elements");
-//	} else {
-
 	dnslib_rdata_item_t *item = malloc(sizeof(dnslib_rdata_item_t));
 	item->dname = dname;
 	parser->temporary_items[parser->rdata_count] = *item;
 	parser->rdata_count++;
-//		parser->current_rr.rdatas[parser->current_rr.rdata_count].domain
-//			= domain;
-//		++parser->current_rr.rdata_count;
-//	}
 }
 
 void
 parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 {
-	printf("RDATA: UNKNOWN DATA\n");
 //	buffer_type packet;
 	uint16_t size;
 	ssize_t rdata_count;
@@ -1302,58 +1263,6 @@ parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 	}
 }
 
-
-/*
- * Compares two rdata arrays.
- *
- * Returns:
- *
- *	zero if they are equal
- *	non-zero if not
- *
- */
-
-// XXX we have dnslib_rdata_compare, but it is not working yet
-
-//static int
-//zrdatacmp(uint16_t type, rr_type *a, rr_type *b)
-//{
-//	int i = 0;
-//
-//	assert(a);
-//	assert(b);
-//
-//	/* One is shorter than another */
-//	if (a->rdata_count != b->rdata_count)
-//		return 1;
-//
-//	/* Compare element by element */
-//	for (i = 0; i < a->rdata_count; ++i) {
-//		if (rdata_atom_is_domain(type, i)) {
-//			if (rdata_atom_domain(a->rdatas[i])
-//			    != rdata_atom_domain(b->rdatas[i]))
-//			{
-//				return 1;
-//			}
-//		} else {
-//			if (rdata_atom_size(a->rdatas[i])
-//			    != rdata_atom_size(b->rdatas[i]))
-//			{
-//				return 1;
-//			}
-//			if (memcmp(rdata_atom_data(a->rdatas[i]),
-//				   rdata_atom_data(b->rdatas[i]),
-//				   rdata_atom_size(a->rdatas[i])) != 0)
-//			{
-//				return 1;
-//			}
-//		}
-//	}
-//
-//	/* Otherwise they are equal */
-//	return 0;
-//}
-
 /*
  *
  * Opens a zone file.
@@ -1376,12 +1285,8 @@ zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 		return 0;
 	}
 
-//	/* Open the network database */
-//	setprotoent(1);
-//	setservent(1);
-//
 	zparser_init(filename, ttl, rclass, origin);
-//
+
 	return 1;
 }
 
@@ -1409,7 +1314,7 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 	assert(rrset->rdata->items);
 	assert(rrset->rdata->items[0].raw_data);
 	uint16_t tmp_type = rrset->rdata->items[0].raw_data[3]; //XXX Will this always work?
-//	uint16_t tmp_type = rrsig_type_covered(rrset);
+//	uint16_t tmp_type = rrsig_type_covered(rrset); //TODO figure this out
 	dnslib_rrsig_set_t *rrsig =
 		dnslib_rrsig_set_new(rrset->owner,
 		                     tmp_type,
@@ -1437,8 +1342,6 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 	dnslib_rrset_t *tmp_rrset =
 		dnslib_node_get_rrset(tmp_node, rrsig->type);
 
-//	printf("%s\n", dnslib_dname_to_str(rrsig->owner));
-
 	if (tmp_rrset == NULL) {
 		rrsig_list_add(&parser->rrsig_orphans, rrset);
 		return -1;
@@ -1452,7 +1355,6 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 
 	printf("setting rrsigs for rrset %p\n", tmp_rrset);
 
-        //dnslib_zone_dump(zone);
 
 	return 0;
 }
@@ -1489,7 +1391,7 @@ process_rr(void)
 	/* We only support IN class */
 	if (current_rrset->rclass != DNSLIB_CLASS_IN) {
 		fprintf(stderr, "only class IN is supported");
-		return 0;
+		return -1;
 	}
 //TODO
 	/* Make sure the maximum RDLENGTH does not exceed 65535 bytes.	*/
@@ -1588,31 +1490,13 @@ process_rr(void)
 			fprintf(stderr,
 				"TTL does not match the TTL of the RRset");
 		}
-
 		
   	dnslib_rrset_merge(&rrset, &current_rrset);
 
-//		/* Search for possible duplicates... */
-//		for (i = 0; i < rrset->rr_count; i++) {
-//			if (!zrdatacmp(rr->type, rr, &rrset->rrs[i])) {
-//				break;
-//			}
-//		}
-//
-//		/* Discard the duplicates... */
-//		if (i < rrset->rr_count) {
-//			return 0;
-//		}
-
-		/* Add it... */
-//		rrset->rrs = (rr_type *) xrealloc(
-//			rrset->rrs,
-//			(rrset->rr_count + 1) * sizeof(rr_type));
-//		rrset->rrs[rrset->rr_count] = *rr;
-//		++rrset->rr_count;
-
-		// TODO create item, add it to the rrset
+		/* TODO Search for possible duplicates... */
 	}
+
+		/* TODO DNAME and CNAME checks */
 
 //	if(current_rrset->type == TYPE_DNAME && rrset->rr_count > 1) {
 //		fprintf(stderr, "multiple DNAMEs at the same name");
@@ -1633,17 +1517,11 @@ process_rr(void)
 //		rrset->zone->is_secure = 1;
 //	}
 
-//
-//	/* Is this a zone NS? */
-//	if (rr->type == TYPE_NS && rr->owner == zone->apex) {
-//		zone->ns_rrset = rrset;
-//	}
 	if (vflag > 1 && totalrrs > 0 && (totalrrs % progress == 0)) {
 		fprintf(stdout, "%ld\n", totalrrs);
 	}
-//	dnslib_zone_dump(zone);
 	++totalrrs;
-	return 1;
+	return 0;
 }
 
 int find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
@@ -1663,53 +1541,6 @@ int find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
 }
 
 /*
- * Find rrset type for any zone
- */
-//static rrset_type*
-//domain_find_rrset_any(domain_type *domain, uint16_t type)
-//{
-//	rrset_type *result = domain->rrsets;
-//	while (result) {
-//		if (rrset_rrtype(result) == type) {
-//			return result;
-//		}
-//		result = result->next;
-//	}
-//	return NULL;
-//}
-
-/*
- * Check for DNAME type. Nothing is allowed below it
- */
-//static void
-//check_dname(namedb_type* db)
-//{
-//	domain_type* domain;
-//	RBTREE_FOR(domain, domain_type*, db->domains->names_to_domains)
-//	{
-//		if(domain->is_existing) {
-//			/* there may not be DNAMEs above it */
-//			domain_type* parent = domain->parent;
-//#ifdef NSEC3
-//			if(domain_has_only_NSEC3(domain, NULL))
-//				continue;
-//#endif
-//			while(parent) {
-//				if(domain_find_rrset_any(parent, TYPE_DNAME)) {
-//					fprintf(stderr, "While checking node %s,",
-//						dname_to_string(domain_dname(domain), NULL));
-//					fprintf(stderr, "DNAME at %s has data below it. "
-//						"This is not allowed (rfc 2672).",
-//						dname_to_string(domain_dname(parent), NULL));
-//					exit(1);
-//				}
-//				parent = parent->parent;
-//			}
-//		}
-//	}
-//}
-
-/*
  * Reads the specified zone into the memory
  * nsd_options can be NULL if no config file is passed.
  *
@@ -1719,24 +1550,15 @@ zone_read(const char *name, const char *zonefile) //, nsd_options_t* nsd_options
 {
 	const dnslib_dname_t *dname;
 
-//	dname = dname_parse(parser->region, name);
-	
 	dname = dnslib_dname_new_from_str(name, strlen(name), NULL);
-
-	//XXX not sure about this workaround
 
 	dnslib_node_t *origin_node;
 
 	origin_node = dnslib_node_new(dname, NULL);
 	
-	//printf("APEX NODE CREATED WITH POINTER: %p\n", origin_node); 
-
 	assert(origin_node->next == NULL);
 
-	if (!dname) {
-		fprintf(stderr, "incorrect zone name '%s'", name);
-		return;
-	}
+	assert(origin_node->parent == NULL);
 
 //#ifndef ROOT_SERVER
 //	/* Is it a root zone? Are we a root server then? Idiot proof. */
@@ -1745,49 +1567,26 @@ zone_read(const char *name, const char *zonefile) //, nsd_options_t* nsd_options
 //		return;
 //	}
 //#endif
-//
+
 	/* Open the zone file */
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
-//		if(nsd_options) {
-//			/* check for secondary zone, they can start with no zone info */
-//			zone_options_t* zopt = zone_options_find(nsd_options, dname);
-//			if(zopt && zone_is_slave(zopt)) {
-//				zc_warning("slave zone %s with no zonefile '%s'(%s) will "
-//					"force zone transfer.",
-//					name, zonefile, strerror(errno));
-//				return;
-//			}
-//		}
-//		/* cannot happen with stdin - so no fix needed for zonefile */
 		fprintf(stderr, "cannot open '%s': %s", zonefile, strerror(errno));
 		return;
 	}
-//
-//	/* Parse and process all RRs.  */
+
+	/* Parse and process all RRs.  */
 	yyparse();
 
 	find_rrsets_orphans(parser->current_zone, parser->rrsig_orphans);
 
 	dnslib_zone_dump(parser->current_zone);
-//
-//	/* check if zone file contained a correct SOA record */
-//	if (parser->current_zone && parser->current_zone->soa_rrset
-//		&& parser->current_zone->soa_rrset->rr_count!=0)
-//	{
-//		if(dname_compare(domain_dname(
-//			parser->current_zone->soa_rrset->rrs[0].owner),
-//			dname) != 0) {
-//			fprintf(stderr, "zone configured as '%s', but SOA has owner '%s'.",
-//				name, dname_to_string(
-//				domain_dname(parser->current_zone->
-//				soa_rrset->rrs[0].owner), NULL));
-//		}
-//	}
-//
+
+	//TODO possible check for SOA
+
 	fclose(yyin);
-//
-//	fflush(stdout);
+
+	fflush(stdout);
+
 	totalerrors += parser->errors;
-//	parser->filename = NULL;
 }
 
