@@ -101,6 +101,15 @@ rdata_atom_wireformat_type(uint16_t type, size_t index)
 	return descriptor->wireformat[index];
 }
 
+uint16_t rrsig_type_covered(dnslib_rrset_t *rrset)
+{
+	assert(rrset->type == DNSLIB_RRTYPE_RRSIG);
+	assert(rrset->rdata->count > 0);
+	assert(rrset->rdata->items[0].raw_data[0] == sizeof(uint16_t));
+
+	return ntohs(* (uint16_t *) rdata_atom_data(rrset->rdata->items[0]));
+}
+
 ssize_t
 rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat, uint16_t rrtype,
                                 const uint16_t data_size, dnslib_rdata_item_t *items)
@@ -1393,29 +1402,37 @@ set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
 
 int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 {
-	printf("A: %s\n", dnslib_dname_to_str(rrset->owner));
+	printf("Finding RRSet for RRSIG: %s\n",
+	       dnslib_dname_to_str(rrset->owner));
 	assert(rrset != NULL);
 	assert(rrset->rdata);
 	assert(rrset->rdata->items);
 	assert(rrset->rdata->items[0].raw_data);
 	uint16_t tmp_type = rrset->rdata->items[0].raw_data[3]; //XXX Will this always work?
+//	uint16_t tmp_type = rrsig_type_covered(rrset);
 	dnslib_rrsig_set_t *rrsig =
 		dnslib_rrsig_set_new(rrset->owner,
 		                     tmp_type,
 				     rrset->rclass,
 				     rrset->ttl);
 
-			//TODO if rrset exists and it has already assigned rrsig to it, merge
-	dnslib_node_t *tmp_node = dnslib_zone_find_node(zone,
-		                                                rrsig->owner);
+	dnslib_rrsig_set_add_rdata(rrsig, rrset->rdata);
 
+	dnslib_node_t *tmp_node;
+
+	//TODO if rrset exists and it has already assigned rrsig to it, merge
+	if (tmp_type != DNSLIB_RRTYPE_NSEC3) {
+		tmp_node = dnslib_zone_find_node(zone, rrsig->owner);
+	} else {
+		tmp_node = dnslib_zone_find_nsec3_node(zone, rrsig->owner);
+	}
 		
 	if (tmp_node == NULL) {
 		rrsig_list_add(&parser->rrsig_orphans, rrset);
 		return -1;
 	}
 
-	printf("searching for type: %d\n", rrset->rdata->items[0].raw_data[3]);
+	printf("searching for type: %d\n", tmp_type);
 
 	dnslib_rrset_t *tmp_rrset =
 		dnslib_node_get_rrset(tmp_node, rrsig->type);
@@ -1428,9 +1445,8 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 	}
 	
 	if (tmp_rrset->rrsigs != NULL) {
-		dnslib_rrset_merge(&tmp_rrset->rrsigs, &rrset);
+		dnslib_rrsig_set_merge(&tmp_rrset->rrsigs, &rrsig);
 	} else {
-		rrsig->rdata = rrset->rdata;
 		tmp_rrset->rrsigs = rrsig;
 	}
 
@@ -1458,9 +1474,9 @@ process_rr(void)
 
 	assert(dnslib_dname_is_fqdn(current_rrset->owner));
 
-	if (dnslib_dname_compare(current_rrset->owner, parser->origin->owner)) {
-		assert(dnslib_dname_is_subdomain(current_rrset->owner, parser->origin->owner));
-	}
+//	if (dnslib_dname_compare(current_rrset->owner, parser->origin->owner)) {
+//		assert(dnslib_dname_is_subdomain(current_rrset->owner, parser->origin->owner));
+//	}
 
 	int (*node_add_func)(dnslib_zone_t *zone, dnslib_node_t *node);
 
@@ -1489,12 +1505,12 @@ process_rr(void)
 	/* Do we have the zone already? */
 	if (!zone)
 	{
-		//our apex should also be SOA
-		assert(current_rrset->type == DNSLIB_RRTYPE_SOA);
-		//soa comes first, therefore, there should not be any node assigned to
-		//its owner.
+		//assert(current_rrset->type == DNSLIB_RRTYPE_SOA);
 		
 		dnslib_node_t *soa_node;
+
+		printf("Creating zone with apex: %s\n",
+		       dnslib_dname_to_str(parser->origin->owner));
 
 		zone = dnslib_zone_new(parser->origin); //XXX
 
@@ -1503,8 +1519,6 @@ process_rr(void)
 		dnslib_zone_add_node(zone, soa_node);
 
 		parser->current_zone = zone;
-
-		printf("ZONE CREATED\n");
 	}
 
 	if (current_rrset->type == DNSLIB_RRTYPE_RRSIG) {
@@ -1559,15 +1573,14 @@ process_rr(void)
 
 		assert(rrset != NULL);
 
-		dnslib_rrset_add_rdata(rrset, current_rrset->rdata);
-		//TODO check return value
-
-		printf("RDATA ADDED\n");
+		if (dnslib_rrset_add_rdata(rrset, current_rrset->rdata) != 0) {
+			return -1;
+		}
 
 		/* Add it */
-		dnslib_node_add_rrset(node, rrset);
-
-		printf("RRSET ADDED\n");
+		if (dnslib_node_add_rrset(node, rrset) != 0) {
+			return -1;
+		}
 	} else {
 		if (current_rrset->type !=
 			DNSLIB_RRTYPE_RRSIG && rrset->ttl !=
@@ -1576,12 +1589,8 @@ process_rr(void)
 				"TTL does not match the TTL of the RRset");
 		}
 
-    assert(rrset);
-    assert(current_rrset);
 		
   	dnslib_rrset_merge(&rrset, &current_rrset);
-//    dnslib_rrset_add_rdata(rrset, current_rrset->rdata);
-    //TODO using merge results in memory error, investigate
 
 //		/* Search for possible duplicates... */
 //		for (i = 0; i < rrset->rr_count; i++) {
@@ -1601,8 +1610,6 @@ process_rr(void)
 //			(rrset->rr_count + 1) * sizeof(rr_type));
 //		rrset->rrs[rrset->rr_count] = *rr;
 //		++rrset->rr_count;
-
-
 
 		// TODO create item, add it to the rrset
 	}
@@ -1626,21 +1633,6 @@ process_rr(void)
 //		rrset->zone->is_secure = 1;
 //	}
 
-	/* Check we have SOA */
-//	if (zone->soa_rrset == NULL) {
-//		if (rr->type == TYPE_SOA) {
-//			if (rr->owner != zone->apex) {
-//				fprintf(stderr,
-//					"SOA record with invalid domain name");
-//			} else {
-//				zone->soa_rrset = rrset;
-//			}
-//		}
-//	}
-//	else if (rr->type == TYPE_SOA) {
-//		fprintf(stderr, "duplicate SOA record discarded");
-//		--rrset->rr_count;
-//	}
 //
 //	/* Is this a zone NS? */
 //	if (rr->type == TYPE_NS && rr->owner == zone->apex) {
@@ -1728,7 +1720,6 @@ zone_read(const char *name, const char *zonefile) //, nsd_options_t* nsd_options
 	const dnslib_dname_t *dname;
 
 //	dname = dname_parse(parser->region, name);
-	name = "example.com.";
 	
 	dname = dnslib_dname_new_from_str(name, strlen(name), NULL);
 
