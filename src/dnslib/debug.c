@@ -91,9 +91,6 @@ void dnslib_node_dump(dnslib_node_t *node)
 	printf("------- NODE --------\n");
 	printf("owner: %s\n", dnslib_dname_to_str(node->owner));
 
-	printf("%s\n", dnslib_dname_to_str(node->owner));
-	assert(node->owner->node == node);
-
 	if (node->parent != NULL) {
 		printf("parent: %s\n", dnslib_dname_to_str(node->parent->owner));
 	} else {
@@ -115,8 +112,13 @@ void dnslib_node_dump(dnslib_node_t *node)
 
 	while ((skip_node = skip_next(skip_node)) != NULL) {
 		tmp = (dnslib_rrset_t *)skip_node->value;
+		printf("%p %p\n", tmp->owner->node, node);
+		assert(tmp->owner->node == node);
 		dnslib_rrset_dump(tmp);
 	}
+	printf("%s\n", dnslib_dname_to_str(node->owner));
+	printf("%p %p\n", node->owner->node, node);
+	assert(node->owner->node == node);
 	printf("------- NODE --------\n");
 }
 
