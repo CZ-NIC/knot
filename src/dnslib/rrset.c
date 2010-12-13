@@ -93,8 +93,8 @@ void dnslib_rrset_free(dnslib_rrset_t **rrset)
 
 int dnslib_rrset_merge(void **r1, void **r2)
 {
-	dnslib_rrset_t * rrset1 = (dnslib_rrset_t *)(*r1);
-	dnslib_rrset_t * rrset2 = (dnslib_rrset_t *)(*r2);
+	dnslib_rrset_t *rrset1 = (dnslib_rrset_t *)(*r1);
+	dnslib_rrset_t *rrset2 = (dnslib_rrset_t *)(*r2);
 
 	if (rrset1->owner != rrset2->owner
 	    || rrset1->rclass != rrset2->rclass
@@ -111,7 +111,7 @@ int dnslib_rrset_merge(void **r1, void **r2)
 		return 0;
 	}
 
-  dnslib_rdata_t *tmp_rdata = rrset1->rdata;
+	dnslib_rdata_t *tmp_rdata = rrset1->rdata;
 
 	while (tmp_rdata->next != rrset1->rdata) {
 		tmp_rdata = tmp_rdata->next;
@@ -119,13 +119,13 @@ int dnslib_rrset_merge(void **r1, void **r2)
 
 	tmp_rdata->next = rrset2->rdata;
 
-  tmp_rdata = rrset2->rdata; //maybe unnecessary, but is clearer
+	tmp_rdata = rrset2->rdata; //maybe unnecessary, but is clearer
 
 	while (tmp_rdata->next != rrset2->rdata) {
 		tmp_rdata = tmp_rdata->next;
 	}
 
-  tmp_rdata->next = rrset1->rdata;
+	tmp_rdata->next = rrset1->rdata;
 
 	return 0;
 }
