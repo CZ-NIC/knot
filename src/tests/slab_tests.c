@@ -11,7 +11,7 @@ static int slab_tests_run(int argc, char *argv[]);
 /*! Exported unit API.
  */
 unit_api slab_tests_api = {
-	"SLAB allocator",      //! Unit name
+	"SLAB allocator",   //! Unit name
 	&slab_tests_count,  //! Count scheduled tests
 	&slab_tests_run     //! Run scheduled tests
 };
@@ -66,7 +66,7 @@ static int slab_tests_run(int argc, char *argv[])
 	free(ptrs);
 
 	// 5. Delete cache
-	slab_cache_delete(&cache);
+	slab_cache_destroy(&cache);
 	ok(cache == 0, "slab: freed cache");
 
 	return 0;
