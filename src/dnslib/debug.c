@@ -112,12 +112,9 @@ void dnslib_node_dump(dnslib_node_t *node)
 
 	while ((skip_node = skip_next(skip_node)) != NULL) {
 		tmp = (dnslib_rrset_t *)skip_node->value;
-		printf("%p %p\n", tmp->owner->node, node);
 		assert(tmp->owner->node == node);
 		dnslib_rrset_dump(tmp);
 	}
-	printf("%s\n", dnslib_dname_to_str(node->owner));
-	printf("%p %p\n", node->owner->node, node);
 	assert(node->owner->node == node);
 	printf("------- NODE --------\n");
 }
@@ -125,7 +122,6 @@ void dnslib_node_dump(dnslib_node_t *node)
 void dnslib_zone_dump(dnslib_zone_t *zone)
 {
 	printf("------- ZONE --------\n");
-	dnslib_node_t *tmp = zone->apex;
 
 	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl, dnslib_node_dump, NULL);
 

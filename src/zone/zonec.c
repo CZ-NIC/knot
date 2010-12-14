@@ -1364,8 +1364,6 @@ int process_rr(void)
 	printf("Processing rr with owner: %s\n",
 	       dnslib_dname_to_str(current_rrset->owner));
 	dnslib_rrset_t *rrset;
-	size_t max_rdlength;
-	int i;
 	dnslib_rrtype_descriptor_t *descriptor
 	= dnslib_rrtype_descriptor_by_type(current_rrset->type);
 

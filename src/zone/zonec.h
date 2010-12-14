@@ -129,6 +129,8 @@ void set_bitnsec(uint8_t  bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
 
 uint16_t *alloc_rdata_init(const void *data, size_t size);
 
+void zone_read(char *name, const char *zonefile);
+
 /* zparser.y */
 zparser_type *zparser_create();
 void zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
