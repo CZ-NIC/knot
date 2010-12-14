@@ -39,7 +39,7 @@ static inline int slab_cache_free_slabs(slab_t* slab)
 	int count = 0;
 	while (slab) {
 		slab_t* next = slab->next;
-		slab_delete(&slab);
+		slab_destroy(&slab);
 		slab = next;
 		++count;
 	}
@@ -84,6 +84,7 @@ static inline void slab_list_remove(slab_t* slab)
 static inline void slab_list_insert(slab_t** list, slab_t* item)
 {
 	// If list exists, push to the top
+	slab_cache_lock(item->cache);
 	item->prev = 0;
 	item->next = *list;
 	if (*list) {
@@ -91,6 +92,7 @@ static inline void slab_list_insert(slab_t** list, slab_t* item)
 	}
 
 	*list = item;
+	slab_cache_unlock(item->cache);
 
 	const char* ln = "slabs_empty";
 	if(*list == item->cache->slabs_partial)
@@ -100,15 +102,22 @@ static inline void slab_list_insert(slab_t** list, slab_t* item)
 	fprintf(stderr, "%s: inserted %p to %s (L:%p R:%p)\n",
 	        __func__, item, ln, item->prev, item->next);
 }
+static inline void slab_list_move(slab_t** target, slab_t* slab)
+{
+	slab_list_remove(slab);
+	slab_list_insert(target, slab);
+}
 
 /*
  * API functions.
  */
 
-slab_t* slab_create(slab_cache_t* cache, size_t size)
+slab_t* slab_create(slab_cache_t* cache)
 {
+	const size_t size = SLAB_SIZE;
+
 	slab_t* slab = 0;
-	if (posix_memalign((void**) &slab, SLAB_SIZE, size) < 0) {
+	if (posix_memalign((void**) &slab, size, size) < 0) {
 		fprintf(stderr, "%s: failed to allocate aligned memory block\n",
 		        __func__);
 		return 0;
@@ -116,15 +125,10 @@ slab_t* slab_create(slab_cache_t* cache, size_t size)
 
 	/* Initialize slab. */
 	slab->cache = cache;
-	slab_cache_lock(cache);
-	{
-		/* Critical section. */
-		slab_list_insert(&cache->slabs_empty, slab);
-	}
-	slab_cache_unlock(cache);
+	slab_list_insert(&cache->slabs_empty, slab);
 
 	/* Ensure the item size can hold at least a size of ptr. */
-	size_t item_size = cache->item_size;
+	size_t item_size = cache->bufsize;
 	if (item_size < sizeof(void*)) {
 		item_size = sizeof(void*);
 	}
@@ -136,8 +140,9 @@ slab_t* slab_create(slab_cache_t* cache, size_t size)
 		free_space = 64;
 	}
 
-	unsigned short color = __sync_fetch_and_add(&cache->next_color, 1);
+	unsigned short color = __sync_fetch_and_add(&cache->color, 1);
 	color = (1 << color) % free_space;
+	color = color - ((color + sizeof(slab_t)) % sizeof(void*));
 
 	/* Calculate useable data size */
 	data_size -= color;
@@ -174,7 +179,7 @@ slab_t* slab_create(slab_cache_t* cache, size_t size)
 	return slab;
 }
 
-void slab_delete(slab_t** slab)
+void slab_destroy(slab_t** slab)
 {
 	// Disconnect from the list
 	slab_list_remove(*slab);
@@ -199,12 +204,9 @@ void* slab_alloc(slab_t* slab)
 
 	// Move to partial?
 	if (slab->bufs_free == slab->bufs_count - 1) {
-		slab_list_remove(slab);
-		slab_list_insert(&slab->cache->slabs_partial, slab);
+		slab_list_move(&slab->cache->slabs_partial, slab);
 	} else if (slab->bufs_free == 0){
-		// Add to full list
-		slab_list_remove(slab);
-		slab_list_insert(&slab->cache->slabs_full, slab);
+		slab_list_move(&slab->cache->slabs_full, slab);
 	}
 
 	return item;
@@ -216,34 +218,31 @@ void slab_free(void* ptr)
 	slab_t* slab = (slab_t*)((char*)ptr - ((uint64_t)ptr % SLAB_SIZE));
 
 	// Return buf to slab
-	void** item = (void**)ptr;
-	*(item) = slab->head;
-	slab->head = item;
+	*((void**)ptr) = slab->head;
+	slab->head = (void**)ptr;
 	++slab->bufs_free;
 
 	// Return to partial
 	if(slab->bufs_free == 1) {
-		slab_list_remove(slab);
-		slab_list_insert(&slab->cache->slabs_partial, slab);
+		slab_list_move(&slab->cache->slabs_partial, slab);
 	} else if(slab->bufs_free == slab->bufs_count) {
-		slab_list_remove(slab);
-		slab_list_insert(&slab->cache->slabs_empty, slab);
+		slab_list_move(&slab->cache->slabs_empty, slab);
 	}
 }
 
-slab_cache_t* slab_cache_create(size_t item_size)
+slab_cache_t* slab_cache_create(size_t bufsize)
 {
 	fprintf(stderr, "%s: created cache of size %u\n",
-	        __func__, (unsigned)item_size);
+	        __func__, (unsigned)bufsize);
 	slab_cache_t* cache = malloc(sizeof(slab_cache_t));
-	cache->item_size = item_size;
+	cache->bufsize = bufsize;
 	cache->slabs_empty = cache->slabs_partial = cache->slabs_full = 0;
-	cache->next_color = 0;
+	cache->color = 0;
 	pthread_spin_init(&cache->lock, PTHREAD_PROCESS_SHARED);
 	return cache;
 }
 
-void slab_cache_delete(slab_cache_t** cache) {
+void slab_cache_destroy(slab_cache_t** cache) {
 
 	// Free slabs
 	unsigned empty = slab_cache_free_slabs((*cache)->slabs_empty);
@@ -263,15 +262,13 @@ void slab_cache_delete(slab_cache_t** cache) {
 void* slab_cache_alloc(slab_cache_t* cache)
 {
 	slab_t* slab = cache->slabs_partial;
-	if(cache->slabs_partial == 0) {
-		slab = cache->slabs_empty;
-		/*fprintf(stderr, "%s: no partial, using first free slab\n",
-		        __func__);*/
-
-		if(slab == 0) {
-			/*fprintf(stderr, "%s: no free, allocating new slab\n",
-			        __func__);*/
-			slab = slab_create(cache, SLAB_SIZE);
+	if(cache->slabs_partial) {
+		slab = cache->slabs_partial;
+	} else {
+		if(cache->slabs_empty) {
+			slab = cache->slabs_empty;
+		} else {
+			slab = slab_create(cache);
 		}
 	}
 
