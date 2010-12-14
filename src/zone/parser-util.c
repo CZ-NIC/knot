@@ -164,11 +164,6 @@ static const char Base64[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const char Pad64 = '=';
 
-int	inet_pton4(const char *src, uint8_t *dst);
-int	inet_pton6(const char *src, uint8_t *dst);
-
-
-
 /* int
  * inet_pton4(src, dst)
  *	like inet_aton() but without all the hexadecimal and shorthand.

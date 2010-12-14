@@ -54,15 +54,13 @@ nsec3_add_params(const char* hash_algo_str, const char* flag_str,
 	const char* iter_str, const char* salt_str, int salt_len);
 #endif /* NSEC3 */
 
-static const dnslib_node_t *apex_node;
-
-const dnslib_dname_t *error_dname;
+dnslib_dname_t *error_dname; //XXX used to be const
 dnslib_dname_t *error_domain;
 
 %}
 %union {
 	dnslib_dname_t       *domain; /* \todo */
-	const dnslib_dname_t *dname;
+	dnslib_dname_t *dname; //XXX used to be const!
 	struct lex_data      data;
 	uint32_t             ttl;
 	uint16_t             rclass;
@@ -245,7 +243,8 @@ dname:	abs_dname
 		    $$ = error_domain;
 	    } else {
 		    //TODO
-		    $$ = dnslib_dname_cat($1, parser->origin->owner);
+		    $$ = dnslib_dname_cat($1,
+		                          parser->origin->owner);
 	    }
     }
     ;
@@ -960,7 +959,7 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 
 			uint8_t* dncpy = malloc(name->size);
 			memcpy(dncpy, name->name, name->size);
-			zadd_rdata_wireformat(dncpy);
+			zadd_rdata_wireformat((uint16_t *)dncpy);
 			break;
 		default:
 			zc_error_prev_line("unknown IPSECKEY gateway type");
@@ -1033,7 +1032,7 @@ zparser_create()
  */
 void
 zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
-	     const dnslib_node_t *origin)
+	     dnslib_node_t *origin)
 {
 	memset(nxtbits, 0, sizeof(nxtbits));
 	memset(nsecbits, 0, sizeof(nsecbits));
@@ -1043,7 +1042,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->default_class = rclass;
 
 	parser->origin = origin;
-	parser->prev_dname = parser->origin;
+	parser->prev_dname = parser->origin->owner;
 
 	parser->default_apex = origin;
 	parser->error_occurred = 0;
