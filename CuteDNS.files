@@ -78,3 +78,6 @@ src/tests/dnslib/dnslib_zone_tests.c
 src/dnslib/rrsig.h
 src/dnslib/rrsig.c
 src/other/tree.h
+src/dnslib/response.h
+src/dnslib/packet.h
+src/dnslib/response.c
