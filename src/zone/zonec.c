@@ -66,7 +66,7 @@ static void rrsig_list_add(rrsig_list_t **head, dnslib_rrset_t *rrsig)
 	}
 }
 
-static dnslib_rrset_t *rrsig_list_next(rrsig_list_t *item)
+static rrsig_list_t *rrsig_list_next(rrsig_list_t *item)
 {
 	return item->next;
 }
@@ -1235,7 +1235,7 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 	uint16_t size;
 	ssize_t rdata_count;
 	ssize_t i;
-	dnslib_rdata_item_t *items;
+	dnslib_rdata_item_t *items = NULL;
 
 	if (wireformat) {
 		size = *wireformat;
@@ -1256,7 +1256,7 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 			zadd_rdata_domain(items[i].dname);
 		} else {
 			//XXX won't this create size two times?
-			zadd_rdata_wireformat(items[i].raw_data);
+			zadd_rdata_wireformat((uint16_t *)items[i].raw_data);
 		}
 	}
 }
@@ -1272,7 +1272,7 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
  *
  */
 static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
-          const dnslib_node_t *origin)
+          dnslib_node_t *origin)
 {
 	/* Open the zone file... */
 	if (strcmp(filename, "-") == 0) {
@@ -1324,9 +1324,9 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 
 	//TODO if rrset exists and it has already assigned rrsig to it, merge
 	if (tmp_type != DNSLIB_RRTYPE_NSEC3) {
-		tmp_node = dnslib_zone_find_node(zone, rrsig->owner);
+		tmp_node = dnslib_zone_get_node(zone, rrsig->owner);
 	} else {
-		tmp_node = dnslib_zone_find_nsec3_node(zone, rrsig->owner);
+		tmp_node = dnslib_zone_get_nsec3_node(zone, rrsig->owner);
 	}
 
 	if (tmp_node == NULL) {
@@ -1345,7 +1345,7 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 	}
 
 	if (tmp_rrset->rrsigs != NULL) {
-		dnslib_rrsig_set_merge(&tmp_rrset->rrsigs, &rrsig);
+		dnslib_rrsig_set_merge((void *)&tmp_rrset->rrsigs, (void *)&rrsig);
 	} else {
 		tmp_rrset->rrsigs = rrsig;
 	}
@@ -1443,7 +1443,7 @@ int process_rr(void)
 	}
 
 	dnslib_node_t *node;
-	node = dnslib_zone_find_node(zone, current_rrset->owner);
+	node = dnslib_zone_get_node(zone, current_rrset->owner);
 	if (node == NULL) {
 		
 		assert(dnslib_zone_find_node(zone, current_rrset->owner) == 0);
@@ -1465,7 +1465,7 @@ int process_rr(void)
 		dnslib_dname_t *chopped =
 			dnslib_dname_left_chop(current_rrset->owner);
 		//this should begin from chopped dname XXX
-		while ((tmp_node = dnslib_zone_find_node(zone,
+		while ((tmp_node = dnslib_zone_get_node(zone,
 			                                 chopped)) == NULL) {
 			tmp_node = dnslib_node_new(tmp_owner, NULL);
 			tmp_owner->node = tmp_node;
@@ -1517,7 +1517,7 @@ int process_rr(void)
 			        "TTL does not match the TTL of the RRset");
 		}
 
-		dnslib_rrset_merge(&rrset, &current_rrset);
+		dnslib_rrset_merge((void *)&rrset, (void *)&current_rrset);
 
 		/* TODO Search for possible duplicates... */
 	}
@@ -1554,7 +1554,7 @@ int process_rr(void)
 	return 0;
 }
 
-int find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
+static void find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
 {
 	rrsig_list_t *tmp = head;
 	int ret;
@@ -1575,9 +1575,9 @@ int find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
  * nsd_options can be NULL if no config file is passed.
  *
  */
-void zone_read(const char *name, const char *zonefile)
+void zone_read(char *name, const char *zonefile)
 {
-	const dnslib_dname_t *dname;
+	dnslib_dname_t *dname;
 
 	dname = dnslib_dname_new_from_str(name, strlen(name), NULL);
 

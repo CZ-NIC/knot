@@ -132,6 +132,6 @@ uint16_t *alloc_rdata_init(const void *data, size_t size);
 /* zparser.y */
 zparser_type *zparser_create();
 void zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
-		  const dnslib_node_t *origin);
+		  dnslib_node_t *origin);
 
 #endif /* _ZONEC_H_ */
