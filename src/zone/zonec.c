@@ -1361,10 +1361,6 @@ int process_rr(void)
 {
 	dnslib_zone_t *zone = parser->current_zone;
 	dnslib_rrset_t *current_rrset = &parser->current_rrset;
-	if (current_rrset->owner->node != NULL) {
-		printf("HAS NODE WHEN IT SHOULDN'T: %s\n", dnslib_dname_to_str(current_rrset->owner));
-	assert(0);
-	}
 	printf("Processing rr with owner: %s\n",
 	       dnslib_dname_to_str(current_rrset->owner));
 	dnslib_rrset_t *rrset;
@@ -1418,7 +1414,7 @@ int process_rr(void)
 
 		zone = dnslib_zone_new(parser->origin); //XXX
 
-		printf("setting node for the first time %p\n", parser->origin);
+		assert(parser->origin);
 
 		parser->origin->owner->node = parser->origin;
 
@@ -1448,21 +1444,18 @@ int process_rr(void)
 
 	dnslib_node_t *node;
 	node = dnslib_zone_find_node(zone, current_rrset->owner);
-	printf("%s\n", dnslib_dname_to_str(current_rrset->owner));
-	if (node) {
-	printf("%p - owner %s\n", node, dnslib_dname_to_str(node->owner));
-	}
 	if (node == NULL) {
 		
 		assert(dnslib_zone_find_node(zone, current_rrset->owner) == 0);
 		dnslib_node_t *tmp_node;
 		dnslib_node_t *last_node = dnslib_node_new(current_rrset->owner,
 		                                           NULL);
+
+		//XXX this whole section is wrong
+
 		assert(last_node != NULL);
 		node = last_node;
 		if (node_add_func(zone, node) != 0) {
-						printf("err\n");
-			getchar();
 			return -1; 
 		//no check yet in zparser ... it just won't be added
 		}//XXX Have a look at this
@@ -1471,17 +1464,17 @@ int process_rr(void)
 		dnslib_dname_t *tmp_owner = current_rrset->owner;
 		dnslib_dname_t *chopped =
 			dnslib_dname_left_chop(current_rrset->owner);
-
+		//this should begin from chopped dname XXX
 		while ((tmp_node = dnslib_zone_find_node(zone,
 			                                 chopped)) == NULL) {
 			tmp_node = dnslib_node_new(tmp_owner, NULL);
-			printf("setting node in a cycle: %p\n", tmp_node);
 			tmp_owner->node = tmp_node;
 			last_node->parent = tmp_node;
 			
 			if (dnslib_zone_find_node(zone, tmp_owner) == NULL) {
-				printf("Adding in cycle: %p\n", tmp_node);
-			node_add_func(zone, tmp_node);
+				if (node_add_func(zone, tmp_node) != 0) {
+					return -1;
+				}
 			}
 			last_node = tmp_node;
 			chopped = dnslib_dname_left_chop(tmp_owner);
@@ -1489,14 +1482,11 @@ int process_rr(void)
 		}
 
 		last_node->parent = tmp_node;
-		printf("setting node outside the cycle %p\n", tmp_node);
+		assert(node);
 		current_rrset->owner->node = node;
-
-		printf("Node with owner: %s created. %p\n",
-		       dnslib_dname_to_str(node->owner), node);
 	}
-		printf("setting node outside if %p\n", node);
-		current_rrset->owner->node = node;
+
+	current_rrset->owner->node = node;
 	rrset = dnslib_node_get_rrset(node, current_rrset->type);
 	if (!rrset) {
 		printf("Creating new rrset.\n");

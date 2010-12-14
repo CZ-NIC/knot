@@ -144,12 +144,9 @@ line:	NL
 
 		}
 
-		parser->current_rrset.owner->node = NULL;
-
 		process_rr();
 	    }
 
-	    parser->current_rrset.owner;
 	    parser->current_rrset.type = 0;
 	    parser->rdata_count = 0;
 	    parser->current_rrset.rdata = NULL;
