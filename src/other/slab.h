@@ -37,19 +37,20 @@
 struct slab_cache_t;
 
 typedef struct slab_t {
-	struct slab_cache_t* parent;
-	struct slab_t* next;
-	void* next_free;
-	unsigned color;
-	size_t size;
-	char pool[];
+	struct slab_cache_t *cache;
+	struct slab_t *prev, *next;
+	unsigned bufs_count;
+	unsigned bufs_free;
+	void **head;
+	char* base;
 } slab_t;
 
 typedef struct slab_cache_t {
 	unsigned short next_color;
 	size_t item_size;
-	slab_t* free;
-	slab_t* partial;
+	slab_t* slabs_empty;
+	slab_t* slabs_partial;
+	slab_t* slabs_full;
 	pthread_spinlock_t lock;
 } slab_cache_t;
 
@@ -58,6 +59,9 @@ void slab_delete(slab_t** slab);
 void* slab_alloc(slab_t* slab);
 void slab_free(void* ptr);
 
+/* predat
+    flags? alignment?
+    void ctor(void*); void dtor(void*) */
 slab_cache_t* slab_cache_create(size_t item_size);
 void slab_cache_delete(slab_cache_t** cache);
 void* slab_cache_alloc(slab_cache_t* cache);
