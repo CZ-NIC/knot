@@ -15,9 +15,12 @@
 #include <string.h>
 #include <assert.h>
 
+#include "parser-util.h"
+
 #include "dname.h"
 #include "zone.h"
 #include "zonec.h"
+#include "descriptor.h"
 
 /* these need to be global, otherwise they cannot be used inside yacc */
 zparser_type *parser;
