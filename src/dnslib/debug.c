@@ -74,6 +74,12 @@ void dnslib_rrset_dump(dnslib_rrset_t *rrset)
 
 	dnslib_rrsig_dump(rrset->rrsigs);
 
+	if (rrset->rdata == NULL) {
+		printf("NO RDATA!\n");
+		printf("------- RRSET -------\n");
+		return;
+	}
+
 	dnslib_rdata_t *tmp = rrset->rdata;
 
 	while (tmp->next != rrset->rdata) {
@@ -112,10 +118,10 @@ void dnslib_node_dump(dnslib_node_t *node)
 
 	while ((skip_node = skip_next(skip_node)) != NULL) {
 		tmp = (dnslib_rrset_t *)skip_node->value;
-		assert(tmp->owner->node == node);
+	//	assert(tmp->owner->node == node);
 		dnslib_rrset_dump(tmp);
 	}
-	assert(node->owner->node == node);
+	//assert(node->owner->node == node);
 	printf("------- NODE --------\n");
 }
 

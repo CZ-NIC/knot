@@ -31,7 +31,7 @@
 #include "dnslib/rrsig.h"
 #include "dnslib/descriptor.h"
 #include "parser-util.h"
-#include "dnslib/debug.h"
+//#include "dnslib/debug.h"
 
 #include "zparser.h"
 
@@ -1608,6 +1608,10 @@ void zone_read(char *name, const char *zonefile)
 	find_rrsets_orphans(parser->current_zone, parser->rrsig_orphans);
 
 	dnslib_zone_dump(parser->current_zone);
+
+	dnslib_zone_dump_binary(parser->current_zone, "zonedump.bin");
+
+	dnslib_load_zone("zonedump.bin");
 
 	//TODO possible check for SOA
 
