@@ -32,6 +32,7 @@
 #define _CUTEDNS_SLAB_H_
 
 #include <pthread.h>
+#include <stdint.h>
 
 /* Constants. */
 #define SLAB_MIN_BUFLEN 8 // Minimal allocation block size is 8B.
@@ -71,12 +72,17 @@ typedef struct slab_t {
  * Allocation of new slabs is on-demand,empty slabs are reused if possible.
  */
 typedef struct slab_cache_t {
+
 	unsigned short color;    /*!< Current cache color. */
 	size_t bufsize;          /*!< Cache object (buf) size. */
 	slab_t *slabs_empty;     /*!< List of empty slabs. */
 	slab_t *slabs_partial;   /*!< List of partially full slabs. */
 	slab_t *slabs_full;      /*!< List of full slabs. */
 	pthread_spinlock_t lock; /*!< Synchronisation lock. */
+
+	/* Statistics. */
+	uint64_t stat_allocs;    /*!< Allocation count. */
+	uint64_t stat_frees;     /*!< Free count. */
 } slab_cache_t;
 
 /*!
@@ -86,7 +92,9 @@ typedef struct slab_cache_t {
  *       and a number of specific records in SLAB_CACHE_LUT lookup table.
  */
 typedef struct slab_alloc_t {
-	slab_cache_t* caches[SLAB_CACHE_COUNT]; //!< Number of slab caches.
+	pthread_spinlock_t lock;  /*!< Synchronisation lock. */
+	slab_cache_t descriptors; /*!< Slab cache for cache descriptors. */
+	slab_cache_t* caches[SLAB_CACHE_COUNT]; /*!< Number of slab caches. */
 } slab_alloc_t;
 
 /*!
@@ -141,21 +149,21 @@ void slab_free(void* ptr);
  * Create a slab cache with no allocated slabs.
  * Slabs are allocated on-demand.
  *
+ * \param cache Pointer to uninitialized cache.
  * \param bufsize Single item size for later allocs.
- * \retval New slab cache instance.
- * \retval NULL on error.
+ * \retval 0 on success.
+ * \retval -1 on error;
  */
-slab_cache_t* slab_cache_create(size_t bufsize);
+int slab_cache_init(slab_cache_t* cache, size_t bufsize);
 
 /*!
  * \brief Destroy a slab cache.
  *
  * Destroy a slab cache and all associated slabs.
- * Dereferenced cache param is set to NULL.
  *
  * \param cache Pointer to slab cache.
  */
-void slab_cache_destroy(slab_cache_t** cache);
+void slab_cache_destroy(slab_cache_t* cache);
 
 /*!
  * \brief Allocate from the cache.
@@ -181,10 +189,10 @@ int slab_cache_reap(slab_cache_t* cache);
 /*!
  * \brief Create a slab allocator.
  *
- * \retval New slab allocator instance.
- * \retval NULL on error.
+ * \retval 0 on success.
+ * \retval -1 on error.
  */
-slab_alloc_t* slab_alloc_create();
+int slab_alloc_init(slab_alloc_t* alloc);
 
 /*!
  * \brief Delete slab allocator.
@@ -193,7 +201,7 @@ slab_alloc_t* slab_alloc_create();
  *
  * \param alloc Given allocator instance.
  */
-void slab_alloc_destroy(slab_alloc_t** alloc);
+void slab_alloc_destroy(slab_alloc_t* alloc);
 
 /*!
  * \brief Allocate a block of memory.
@@ -208,6 +216,28 @@ void slab_alloc_destroy(slab_alloc_t** alloc);
  * \retval NULL on error.
  */
 void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size);
+
+/*!
+ *
+ * \brief Dump allocator stats.
+ *
+ * \param alloc Allocator instance.
+ */
+void slab_alloc_stats(slab_alloc_t* alloc);
+
+/*!
+ * \brief Allocate data from shared global slab allocator.
+ *
+ * Slab is initialized with default constructor without priority.
+ * Drop-in replacement for malloc().
+ *
+ * \see slab_alloc_alloc()
+ *
+ * \param size Requested block size.
+ * \retval Pointer to allocated memory.
+ * \retval NULL on error.
+ */
+void* slab_alloc_g(size_t size);
 
 #endif /* _CUTEDNS_SLAB_H_ */
 
