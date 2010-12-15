@@ -2,9 +2,80 @@
 #include <stdio.h>
 #include <malloc.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "common.h"
 #include "slab.h"
+
+/*
+ * Custom caches LUT.
+ */
+#define SLAB_CACHE_LUT_SIZE 1024
+static const unsigned char SLAB_CACHE_LUT[SLAB_CACHE_LUT_SIZE] = {
+        [24]  = SLAB_GP_COUNT + 1,
+        [800] = SLAB_GP_COUNT + 2
+};
+
+/*
+ * Find the next highest power of 2.
+ */
+static inline unsigned get_next_pow2(unsigned v)
+{
+	// Next highest power of 2
+	v--;
+	v |= v >> 1;
+	v |= v >> 2;
+	v |= v >> 4;
+	v |= v >> 8;
+	v |= v >> 16;
+	v++;
+
+	return v;
+}
+
+/*
+ * Return binary logarithm of a number, which is a power of 2.
+ */
+static inline unsigned fastlog2(unsigned v)
+{
+	// Binary logarithm.
+	// Works well when we know size is a power of 2
+	register unsigned int r = (v & 0xAAAAAAAA) != 0;
+	r |= ((v & 0xFFFF0000) != 0) << 4;
+	r |= ((v & 0xFF00FF00) != 0) << 3;
+	r |= ((v & 0xF0F0F0F0) != 0) << 2;
+	r |= ((v & 0xCCCCCCCC) != 0) << 1;
+	return r;
+}
+
+/*
+ * Fast hashing function.
+ * Finds the next highest power of 2 and returns binary logarithm.
+ */
+static unsigned slab_cache_id(unsigned size)
+{
+	// Assert cache id is at least SLAB_MIN_BUFLEN
+	if(size < SLAB_MIN_BUFLEN)
+		size = SLAB_MIN_BUFLEN;
+
+	// Check LUT
+	unsigned id = 0;
+	if ((size < SLAB_CACHE_LUT_SIZE) && (id = SLAB_CACHE_LUT[size])) {
+		fprintf(stderr, "%s: LUT hit %u has cache_id=%u\n",
+		        __func__, size, id);
+		return id;
+	}
+
+	// Next highest power of 2
+	size = get_next_pow2(size);
+
+	// Compute binary logarithm
+	id = fastlog2(size);
+
+	// Shift cacheid of SLAB_MIN_BUFLEN to 0
+	id -= SLAB_EXP_OFFSET;
+	return id;
+}
 
 /*
  * Initializers.
@@ -129,8 +200,8 @@ slab_t* slab_create(slab_cache_t* cache)
 
 	/* Ensure the item size can hold at least a size of ptr. */
 	size_t item_size = cache->bufsize;
-	if (item_size < sizeof(void*)) {
-		item_size = sizeof(void*);
+	if (item_size < SLAB_MIN_BUFLEN) {
+		item_size = SLAB_MIN_BUFLEN;
 	}
 
 	/* Ensure at least some space for coloring */
@@ -281,3 +352,62 @@ int slab_cache_reap(slab_cache_t* cache)
 	return slab_cache_free_slabs(cache->slabs_empty);
 }
 
+slab_alloc_t* slab_alloc_create()
+{
+	slab_alloc_t* alloc = malloc(sizeof(slab_alloc_t));
+	memset(alloc, 0, sizeof(slab_alloc_t));
+	return alloc;
+}
+
+void slab_alloc_destroy(slab_alloc_t** alloc)
+{
+	// Destroy all caches
+	for (unsigned i = 0; i < SLAB_CACHE_COUNT; ++i) {
+		if ((*alloc)->caches[i] != 0) {
+			slab_cache_destroy(&(*alloc)->caches[i]);
+		}
+	}
+
+	// Free allocator
+	free(*alloc);
+	*alloc = 0;
+}
+
+void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
+{
+	// TODO: Work around this
+	if (size > SLAB_SIZE * 0.5) {
+		return 0;
+	}
+
+	// Get cache id from size
+	unsigned cache_id = slab_cache_id(size);
+
+	// Check if associated cache exists
+	if (alloc->caches[cache_id] == 0) {
+
+		// Assert minimum cache size
+		if (size < SLAB_MIN_BUFLEN) {
+			size = SLAB_MIN_BUFLEN;
+		}
+
+		// Calculate cache bufsize
+		size_t bufsize = size;
+		if (cache_id < SLAB_GP_COUNT) {
+			bufsize = get_next_pow2(size);
+		}
+
+		// Create cache
+		fprintf(stderr, "%s: creating cache of %uB for size %uB (id=%u)\n",
+		        __func__, (unsigned)bufsize, (unsigned)size, cache_id);
+		alloc->caches[cache_id] = slab_cache_create(bufsize);
+	}
+
+	// Allocate from cache
+	void *ret = slab_cache_alloc(alloc->caches[cache_id]);
+	if (ret == 0) {
+		fprintf(stderr, "%s: returned NULL for size=%u,cacheid=%u\n",
+		        __func__, (unsigned)size, (unsigned)cache_id);
+	}
+	return ret;
+}

@@ -34,6 +34,11 @@
 #include <pthread.h>
 
 /* Constants. */
+#define SLAB_MIN_BUFLEN 8 // Minimal allocation block size is 8B.
+#define SLAB_EXP_OFFSET 3 // Minimal allocation size is 8B = 2^3, exp is 3.
+#define SLAB_GP_COUNT  10 // General-purpose caches count.
+#define SLAB_US_COUNT  10 // User-specified caches count.
+#define SLAB_CACHE_COUNT (SLAB_GP_COUNT + SLAB_US_COUNT)
 struct slab_cache_t;
 
 /*!
@@ -73,6 +78,16 @@ typedef struct slab_cache_t {
 	slab_t *slabs_full;      /*!< List of full slabs. */
 	pthread_spinlock_t lock; /*!< Synchronisation lock. */
 } slab_cache_t;
+
+/*!
+ * \brief Slab allocator descriptor.
+ *
+ * \note For a number of slab caches, consult SLAB_GP_COUNT
+ *       and a number of specific records in SLAB_CACHE_LUT lookup table.
+ */
+typedef struct slab_alloc_t {
+	slab_cache_t* caches[SLAB_CACHE_COUNT]; //!< Number of slab caches.
+} slab_alloc_t;
 
 /*!
  * \brief Create a slab of predefined size.
@@ -162,6 +177,37 @@ void* slab_cache_alloc(slab_cache_t* cache);
  * \return Number of freed slabs.
  */
 int slab_cache_reap(slab_cache_t* cache);
+
+/*!
+ * \brief Create a slab allocator.
+ *
+ * \retval New slab allocator instance.
+ * \retval NULL on error.
+ */
+slab_alloc_t* slab_alloc_create();
+
+/*!
+ * \brief Delete slab allocator.
+ *
+ * This destroys all associated caches and frees memory.
+ *
+ * \param alloc Given allocator instance.
+ */
+void slab_alloc_destroy(slab_alloc_t** alloc);
+
+/*!
+ * \brief Allocate a block of memory.
+ *
+ * Returns a block of allocated memory.
+ *
+ * \note At least SLAB_MIN_BUFSIZE bytes is allocated.
+ *
+ * \param alloc Allocator instance.
+ * \param size Requested block size.
+ * \retval Pointer to allocated memory.
+ * \retval NULL on error.
+ */
+void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size);
 
 #endif /* _CUTEDNS_SLAB_H_ */
 
