@@ -38,6 +38,28 @@
 static const size_t MAX_RRS_IN_RESPONSE = 405;
 
 /*!
+ * \todo NSID
+ */
+struct dnslib_edns_data {
+	uint16_t payload;
+	uint16_t ext_rcode;
+	uint16_t version;
+};
+
+typedef struct dnslib_edns_data dnslib_edns_data_t;
+
+/*!
+ *
+ */
+struct dnslib_compressed_dnames {
+	dnslib_dname_t *dnames;
+	size_t *offsets;
+	size_t count;
+};
+
+typedef struct dnslib_compressed_dnames dnslib_compressed_dnames_t;
+
+/*!
  * \note Current size of the structure:
  *         32bit machine: 18 + 405 x 3 x 4 = 4878 B
  *         64bit machine: 34 + 405 x 3 x 8 = 9754 B
@@ -45,8 +67,6 @@ static const size_t MAX_RRS_IN_RESPONSE = 405;
  * \todo Consider dynamically resizing the arrays for RRSets. With well picked
  *       default sizes we could avoid much reallocations (or any at all) and
  *       keep the space reasonably small.
- * \todo Structures for compressing domain names.
- * \todo Structure for EDNS information parsed from the query.
  */
 struct dnslib_response {
 	/*!
@@ -68,6 +88,10 @@ struct dnslib_response {
 	dnslib_rrset_t *answer[MAX_RRS_IN_RESPONSE];
 	dnslib_rrset_t *authority[MAX_RRS_IN_RESPONSE];
 	dnslib_rrset_t *additional[MAX_RRS_IN_RESPONSE];
+
+	dnslib_edns_data_t edns;
+
+	dnslib_compressed_dnames_t compression;
 };
 
 typedef struct dnslib_response dnslib_response_t;
