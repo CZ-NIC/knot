@@ -1,11 +1,13 @@
-#include <stdlib.h>
 #include <stdio.h>
 #include <malloc.h>
 #include <unistd.h>
 #include <string.h>
 
-#include "common.h"
 #include "slab.h"
+
+#undef malloc
+#undef free
+#include <stdlib.h>
 
 /*
  * Custom caches LUT.
@@ -61,8 +63,8 @@ static unsigned slab_cache_id(unsigned size)
 	// Check LUT
 	unsigned id = 0;
 	if ((size < SLAB_CACHE_LUT_SIZE) && (id = SLAB_CACHE_LUT[size])) {
-		fprintf(stderr, "%s: LUT hit %u has cache_id=%u\n",
-		        __func__, size, id);
+		/*fprintf(stderr, "%s: LUT hit %u has cache_id=%u\n",
+		        __func__, size, id); */
 		return id;
 	}
 
@@ -80,16 +82,19 @@ static unsigned slab_cache_id(unsigned size)
 /*
  * Initializers.
  */
+static slab_alloc_t sAllocator;
 static size_t SLAB_SIZE = 0;
 
 void __attribute__ ((constructor)) slab_init()
 {
-	SLAB_SIZE = sysconf(_SC_PAGESIZE);
+	SLAB_SIZE = sysconf(_SC_PAGESIZE) << 1;
+	slab_alloc_init(&sAllocator);
 }
 
 void __attribute__ ((destructor)) slab_deinit()
 {
-
+	slab_alloc_stats(&sAllocator);
+	slab_alloc_destroy(&sAllocator);
 }
 
 /*
@@ -120,6 +125,16 @@ static inline int slab_cache_free_slabs(slab_t* slab)
 /*
  * Slab helper functions.
  */
+static inline unsigned slab_list_walk(slab_t* slab)
+{
+	unsigned count = 0;
+	while(slab) {
+		slab = slab->next;
+		++count;
+	}
+	return count;
+}
+
 static inline void slab_list_remove(slab_t* slab)
 {
 	// Disconnect from list
@@ -135,18 +150,18 @@ static inline void slab_list_remove(slab_t* slab)
 	slab_cache_lock(cache);
 	{
 		if (cache->slabs_empty == slab) {
-			fprintf(stderr, "%s: deleted %p from slabs_empty\n",
-			        __func__, slab);
+			/*fprintf(stderr, "%s: deleted %p from slabs_empty\n",
+			        __func__, slab);*/
 			cache->slabs_empty = slab->next;
 		}
 		if (cache->slabs_partial == slab) {
-			fprintf(stderr, "%s: deleted %p from slabs_partial\n",
-			        __func__, slab);
+			/*fprintf(stderr, "%s: deleted %p from slabs_partial\n",
+			        __func__, slab);*/
 			cache->slabs_partial = slab->next;
 		}
 		if (cache->slabs_full == slab) {
-			fprintf(stderr, "%s: deleted %p from slabs_full\n",
-			        __func__, slab);
+			/*fprintf(stderr, "%s: deleted %p from slabs_full\n",
+			        __func__, slab);*/
 			cache->slabs_full = slab->next;
 		}
 	}
@@ -170,8 +185,8 @@ static inline void slab_list_insert(slab_t** list, slab_t* item)
 		ln = "slabs_partial";
 	if(*list == item->cache->slabs_full)
 		ln = "slabs_full";
-	fprintf(stderr, "%s: inserted %p to %s (L:%p R:%p)\n",
-	        __func__, item, ln, item->prev, item->next);
+	/*fprintf(stderr, "%s: inserted %p to %s (L:%p R:%p)\n",
+	        __func__, item, ln, item->prev, item->next);*/
 }
 static inline void slab_list_move(slab_t** target, slab_t* slab)
 {
@@ -233,9 +248,9 @@ slab_t* slab_create(slab_cache_t* cache)
 	*((void**)item) = (void*)0;
 
 	// Ensure the last item has a NULL next
-	fprintf(stderr, "%s: created slab (%p, %p) (%u B)\n",
+	/*fprintf(stderr, "%s: created slab (%p, %p) (%u B)\n",
 	        __func__, slab, slab + size, (unsigned)size);
-	/*fprintf(stderr, "%s: parent = %p, next slab = %p\n",
+	fprintf(stderr, "%s: parent = %p, next slab = %p\n",
 	        __func__, cache, slab->next);
 	fprintf(stderr, "%s: item_size = %u\n",
 	        __func__, (unsigned)item_size);
@@ -280,6 +295,9 @@ void* slab_alloc(slab_t* slab)
 		slab_list_move(&slab->cache->slabs_full, slab);
 	}
 
+	// Increment statistics
+	__sync_add_and_fetch(&slab->cache->stat_allocs, 1);
+
 	return item;
 }
 
@@ -299,35 +317,43 @@ void slab_free(void* ptr)
 	} else if(slab->bufs_free == slab->bufs_count) {
 		slab_list_move(&slab->cache->slabs_empty, slab);
 	}
+
+	// Increment statistics
+	__sync_add_and_fetch(&slab->cache->stat_frees, 1);
 }
 
-slab_cache_t* slab_cache_create(size_t bufsize)
+int slab_cache_init(slab_cache_t* cache, size_t bufsize)
 {
 	fprintf(stderr, "%s: created cache of size %u\n",
 	        __func__, (unsigned)bufsize);
-	slab_cache_t* cache = malloc(sizeof(slab_cache_t));
 	cache->bufsize = bufsize;
 	cache->slabs_empty = cache->slabs_partial = cache->slabs_full = 0;
 	cache->color = 0;
+
+	/* Initialize synchronisation */
 	pthread_spin_init(&cache->lock, PTHREAD_PROCESS_SHARED);
-	return cache;
+
+	/* Initialize stats */
+	cache->stat_allocs = cache->stat_frees = 0;
+
+	return 0;
 }
 
-void slab_cache_destroy(slab_cache_t** cache) {
+void slab_cache_destroy(slab_cache_t* cache) {
 
 	// Free slabs
-	unsigned empty = slab_cache_free_slabs((*cache)->slabs_empty);
-	unsigned partial = slab_cache_free_slabs((*cache)->slabs_partial);
-	unsigned full = slab_cache_free_slabs((*cache)->slabs_full);
+	unsigned empty = slab_cache_free_slabs(cache->slabs_empty);
+	unsigned partial = slab_cache_free_slabs(cache->slabs_partial);
+	unsigned full = slab_cache_free_slabs(cache->slabs_full);
 	fprintf(stderr, "%s: %u empty, %u partial, %u full caches\n",
 	        __func__, empty, partial, full);
 
 	// Destroy synchronisation
-	pthread_spin_destroy(&(*cache)->lock);
+	pthread_spin_destroy(&cache->lock);
 
-	// Free cache
-	free(*cache);
-	*cache = 0;
+	// Invalidate cache
+	cache->bufsize = 0;
+	cache->slabs_empty = cache->slabs_partial = cache->slabs_full = 0;
 }
 
 void* slab_cache_alloc(slab_cache_t* cache)
@@ -352,25 +378,34 @@ int slab_cache_reap(slab_cache_t* cache)
 	return slab_cache_free_slabs(cache->slabs_empty);
 }
 
-slab_alloc_t* slab_alloc_create()
+int slab_alloc_init(slab_alloc_t* alloc)
 {
-	slab_alloc_t* alloc = malloc(sizeof(slab_alloc_t));
+	// Invalidate
 	memset(alloc, 0, sizeof(slab_alloc_t));
-	return alloc;
+
+	// Initialize descriptors cache
+	slab_cache_init(&alloc->descriptors, sizeof(slab_cache_t));
+
+	// Initialize synchronisation
+	pthread_spin_init(&alloc->lock, PTHREAD_PROCESS_SHARED);
+
+	return 0;
 }
 
-void slab_alloc_destroy(slab_alloc_t** alloc)
+void slab_alloc_destroy(slab_alloc_t* alloc)
 {
 	// Destroy all caches
 	for (unsigned i = 0; i < SLAB_CACHE_COUNT; ++i) {
-		if ((*alloc)->caches[i] != 0) {
-			slab_cache_destroy(&(*alloc)->caches[i]);
+		if (alloc->caches[i] != 0) {
+			slab_cache_destroy(alloc->caches[i]);
 		}
 	}
 
-	// Free allocator
-	free(*alloc);
-	*alloc = 0;
+	// Destroy cache for descriptors
+	slab_cache_destroy(&alloc->descriptors);
+
+	// Destroy synchronisation
+	pthread_spin_destroy(&alloc->lock);
 }
 
 void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
@@ -400,7 +435,10 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 		// Create cache
 		fprintf(stderr, "%s: creating cache of %uB for size %uB (id=%u)\n",
 		        __func__, (unsigned)bufsize, (unsigned)size, cache_id);
-		alloc->caches[cache_id] = slab_cache_create(bufsize);
+
+		slab_cache_t* cache = slab_cache_alloc(&alloc->descriptors);
+		slab_cache_init(cache, bufsize);
+		alloc->caches[cache_id] = cache;
 	}
 
 	// Allocate from cache
@@ -410,4 +448,26 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 		        __func__, (unsigned)size, (unsigned)cache_id);
 	}
 	return ret;
+}
+
+void slab_alloc_stats(slab_alloc_t* alloc)
+{
+	printf("Caches usage:\n");
+	for (int i = 0; i < SLAB_CACHE_COUNT; ++i) {
+		if (!alloc->caches[i])
+			continue;
+		slab_cache_t* cache = alloc->caches[i];
+		unsigned empty = slab_list_walk(cache->slabs_empty);
+		unsigned partial = slab_list_walk(cache->slabs_partial);
+		unsigned full = slab_list_walk(cache->slabs_full);
+		printf("%4u: allocs=%5lu frees=%5lu (%u empty, %u partial, %u full)\n",
+		       (unsigned)cache->bufsize, cache->stat_allocs, cache->stat_frees,
+		       empty, partial, full);
+	}
+}
+
+void* slab_alloc_g(size_t size)
+{
+	return slab_alloc_alloc(&sAllocator, size);
+
 }
