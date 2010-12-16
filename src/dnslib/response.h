@@ -68,7 +68,7 @@ typedef struct dnslib_compressed_dnames dnslib_compressed_dnames_t;
  *
  */
 struct dnslib_header {
-	uint8_t id[2];    /*!< ID stored in network byte order. */
+	uint16_t id;      /*!< ID stored in host byte order. */
 	uint8_t flags1;   /*!< First octet of header flags. */
 	uint8_t flags2;   /*!< Second octet of header flags. */
 	uint16_t qdcount; /*!< Number of Question RRs, in host byte order. */
