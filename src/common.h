@@ -43,6 +43,21 @@ typedef unsigned int uint;
 #define ERR_ALLOC_FAILED log_error("Allocation failed at %s:%d (%s ver.%x)\n", \
                                   __FILE__, __LINE__, PROJECT_NAME, PROJECT_VER)
 
+#define CHECK_ALLOC_LOG(var) \
+	do { \
+		if ((var) == NULL) { \
+			ERR_ALLOC_FAILED; \
+			return NULL; \
+		} \
+	} while (0)
+
+#define CHECK_ALLOC(var) \
+	do { \
+		if ((var) == NULL) { \
+			return NULL; \
+		} \
+	} while (0)
+
 /* Eliminate compiler warning with unused parameters. */
 #define UNUSED(param) (param) = (param)
 
