@@ -60,11 +60,11 @@ void dnslib_rrsig_set_dump_binary(dnslib_rrsig_set_t *rrsig, FILE *f)
 	dnslib_rdata_t *tmp_rdata = rrsig->rdata;
 
 	while (tmp_rdata->next != rrsig->rdata) {
-		dnslib_rdata_dump_binary(tmp_rdata, rrsig->type, f);
+		dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, f);
 		tmp_rdata = tmp_rdata->next;
 		rdata_count++;
 	}
-	dnslib_rdata_dump_binary(tmp_rdata, rrsig->type, f);
+	dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, f);
 	rdata_count++;
 
 	fpos_t tmp_pos;
@@ -196,10 +196,8 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 	fwrite(&node_count, sizeof(node_count), 1, f);
 	
 	/* TODO is there a way how to stop the traversal upon error? */
-/*	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl,
-	                   dnslib_node_dump_binary, f);*/
-
-	dnslib_node_dump_binary(zone->apex, f);
+	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl,
+	                   dnslib_node_dump_binary, f);
 
 	rewind(f);
 
