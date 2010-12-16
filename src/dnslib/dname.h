@@ -86,7 +86,7 @@ dnslib_dname_t *dnslib_dname_new_from_str(char *name, uint size,
  *       is OK to retain this and check the data in other functions before
  *       calling this one, or if it should verify the given data.
  */
-dnslib_dname_t *dnslib_dname_new_from_wire(uint8_t *name, uint size,
+dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
                 struct dnslib_node *node);
 
 /*!
