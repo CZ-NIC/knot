@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <assert.h>
-#include <stdio.h>
 
 #include "response.h"
 #include "rrset.h"
@@ -43,6 +42,8 @@ enum {
 	                 + PREALLOC_TMP_DOMAINS
 };
 
+static const uint16_t EDNS_NOT_SUPPORTED = 65535;
+
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
@@ -57,32 +58,65 @@ static void dnslib_response_parse_host_edns(dnslib_response_t *response,
 
 static void dnslib_response_init_pointers(dnslib_response_t *resp)
 {
+	debug_dnslib_response("Response pointer: %p\n", resp);
 	// put QNAME directly after the structure
 	resp->question.qname =
 		(dnslib_dname_t *)((char *)resp + PREALLOC_RESPONSE);
 
+	debug_dnslib_response("QNAME: %p (%d after start of response)\n",
+		resp->question.qname,
+		(void *)resp->question.qname - (void *)resp);
+
 	// then answer, authority and additional sections
-	resp->answer = (dnslib_rrset_t *)
+	resp->answer = (dnslib_rrset_t **)
 	                   ((char *)resp->question.qname + PREALLOC_QNAME);
 	resp->authority = resp->answer + DEFAULT_ANCOUNT;
 	resp->additional = resp->authority + DEFAULT_NSCOUNT;
+
+	debug_dnslib_response("Answer section: %p (%d after QNAME)\n",
+		resp->answer,
+		(void *)resp->answer - (void *)resp->question.qname);
+	debug_dnslib_response("Authority section: %p (%d after Answer)\n",
+		resp->authority,
+		(void *)resp->authority - (void *)resp->answer);
+	debug_dnslib_response("Additional section: %p (%d after Authority)\n",
+		resp->additional,
+		(void *)resp->additional - (void *)resp->authority);
 
 	resp->max_ancount = DEFAULT_ANCOUNT;
 	resp->max_nscount = DEFAULT_NSCOUNT;
 	resp->max_arcount = DEFAULT_ARCOUNT;
 
 	// then domain names for compression and offsets
-	resp->compression.dnames = (dnslib_dname_t *)
+	resp->compression.dnames = (dnslib_dname_t **)
 	                               (resp->additional + DEFAULT_ARCOUNT);
 	resp->compression.offsets = (size_t *)
 		(resp->compression.dnames + DEFAULT_DOMAINS_IN_RESPONSE);
+
+	debug_dnslib_response("Compression dnames: %p (%d after Additional)\n",
+		resp->compression.dnames,
+		(void *)resp->compression.dnames - (void *)resp->additional);
+	debug_dnslib_response("Compression offsets: %p (%d after c. dnames)\n",
+		resp->compression.offsets,
+		(void *)resp->compression.offsets
+		  - (void *)resp->compression.dnames);
 
 	resp->compression.max = DEFAULT_DOMAINS_IN_RESPONSE;
 
 	resp->tmp_dnames = (dnslib_dname_t **)
 		(resp->compression.offsets + DEFAULT_DOMAINS_IN_RESPONSE);
 
+	debug_dnslib_response("Tmp dnames: %p (%d after compression offsets)\n",
+		resp->tmp_dnames,
+		(void *)resp->tmp_dnames - (void *)resp->compression.offsets);
+
 	resp->tmp_dname_max = DEFAULT_TMP_DOMAINS;
+
+	debug_dnslib_response("End of data: %p (%d after start of response)\n",
+		resp->tmp_dnames + DEFAULT_TMP_DOMAINS,
+		(void *)(resp->tmp_dnames + DEFAULT_TMP_DOMAINS)
+		  - (void *)resp);
+	debug_dnslib_response("Allocated total: %u\n", PREALLOC_TOTAL);
 
 	assert((char *)(resp->tmp_dnames + DEFAULT_TMP_DOMAINS)
 	       == (char *)resp + PREALLOC_TOTAL);
@@ -114,10 +148,12 @@ static int dnslib_response_parse_header(const uint8_t **pos, size_t *remaining,
 {
 	if (pos == NULL || *pos == NULL || remaining == NULL
 	    || header == NULL) {
+		debug_dnslib_response("Missing inputs to header parsing.\n");
 		return -1;
 	}
 
 	if (*remaining < DNSLIB_PACKET_HEADER_SIZE) {
+		debug_dnslib_response("Not enough data to parse header.\n");
 		return -2;
 	}
 
@@ -143,10 +179,12 @@ static int dnslib_response_parse_question(const uint8_t **pos,
 {
 	if (pos == NULL || *pos == NULL || remaining == NULL
 	    || question == NULL) {
+		debug_dnslib_response("Missing inputs to question parsing\n");
 		return -1;
 	}
 
 	if (*remaining < DNSLIB_PACKET_QUESTION_MIN_SIZE) {
+		debug_dnslib_response("Not enough data to parse question.\n");
 		return -2;  // malformed
 	}
 
@@ -157,6 +195,7 @@ static int dnslib_response_parse_question(const uint8_t **pos,
 	}
 
 	if (i == *remaining || *remaining - i - 1 < 4) {
+		debug_dnslib_response("Not enough data to parse question.\n");
 		return -2;  // no 0 found or not enough data left
 	}
 
@@ -184,17 +223,22 @@ static int dnslib_response_parse_client_edns(const uint8_t **pos,
 	}
 
 	if (*remaining < DNSLIB_PACKET_RR_MIN_SIZE) {
+		debug_dnslib_response("Not enough data to parse ENDS.\n");
 		return -2;
 	}
 
 	// owner of EDNS OPT RR must be root (0)
 	if (**pos != 0) {
-		return -2;
+		debug_dnslib_response("EDNS packet malformed (expected root "
+		                      "domain as owner).\n");
+		return -3;
 	}
 	*pos += 1;
 
 	// check the type of the record (must be OPT)
 	if (dnslib_packet_read_u16(*pos) != DNSLIB_RRTYPE_OPT) {
+		debug_dnslib_response("EDNS packet malformed (expected OPT type"
+		                      ".\n");
 		return -2;
 	}
 	*pos += 2;
@@ -211,6 +255,7 @@ static int dnslib_response_parse_client_edns(const uint8_t **pos,
 	*remaining -= 11;
 
 	if (*remaining < rdlength) {
+		debug_dnslib_response("Not enough data to parse ENDS.\n");
 		return -3;
 	}
 
@@ -257,11 +302,11 @@ static void dnslib_response_free_allocated_space(dnslib_response_t *resp)
 
 static void dnslib_response_dump(const dnslib_response_t *resp)
 {
-	printf("DNS response:\n-------------------------------------\n");
+	debug_dnslib_response("DNS response:\n-----------------------------\n");
 
-	printf("\nHeader:\n");
-	printf("  ID: %u", resp->header.id);
-	printf("  FLAGS: %s %s %s %s %s %s %s\n",
+	debug_dnslib_response("\nHeader:\n");
+	debug_dnslib_response("  ID: %u", resp->header.id);
+	debug_dnslib_response("  FLAGS: %s %s %s %s %s %s %s\n",
 	       dnslib_packet_flags_get_qr(resp->header.flags1) ? "qr" : "",
 	       dnslib_packet_flags_get_aa(resp->header.flags1) ? "aa" : "",
 	       dnslib_packet_flags_get_tc(resp->header.flags1) ? "tc" : "",
@@ -269,28 +314,29 @@ static void dnslib_response_dump(const dnslib_response_t *resp)
 	       dnslib_packet_flags_get_ra(resp->header.flags2) ? "ra" : "",
 	       dnslib_packet_flags_get_ad(resp->header.flags2) ? "ad" : "",
 	       dnslib_packet_flags_get_cd(resp->header.flags2) ? "cd" : "");
-	printf("  QDCOUNT: %u\n", resp->header.qdcount);
-	printf("  ANCOUNT: %u\n", resp->header.ancount);
-	printf("  NSCOUNT: %u\n", resp->header.nscount);
-	printf("  ARCOUNT: %u\n", resp->header.arcount);
+	debug_dnslib_response("  QDCOUNT: %u\n", resp->header.qdcount);
+	debug_dnslib_response("  ANCOUNT: %u\n", resp->header.ancount);
+	debug_dnslib_response("  NSCOUNT: %u\n", resp->header.nscount);
+	debug_dnslib_response("  ARCOUNT: %u\n", resp->header.arcount);
 
-	printf("\nQuestion:\n");
+	debug_dnslib_response("\nQuestion:\n");
 	char *qname = dnslib_dname_to_str(resp->question.qname);
-	printf("  QNAME: %s\n", qname);
+	debug_dnslib_response("  QNAME: %s\n", qname);
 	free(qname);
-	printf("  QTYPE: %u (%s)\n", resp->question.qtype,
+	debug_dnslib_response("  QTYPE: %u (%s)\n", resp->question.qtype,
 	       dnslib_rrtype_to_string(resp->question.qtype));
-	printf("  QCLASS: %u (%s)\n", resp->question.qclass,
+	debug_dnslib_response("  QCLASS: %u (%s)\n", resp->question.qclass,
 	       dnslib_rrclass_to_string(resp->question.qclass));
 
 	/*! \todo Dumping of Answer, Authority and Additional sections. */
 
-	printf("\nEDNS - client:\n");
-	printf("  Version: %u\n", resp->edns_query.version);
-	printf("  Payload: %u\n", resp->edns_query.payload);
-	printf("  Extended RCODE: %u\n", resp->edns_query.ext_rcode);
+	debug_dnslib_response("\nEDNS - client:\n");
+	debug_dnslib_response("  Version: %u\n", resp->edns_query.version);
+	debug_dnslib_response("  Payload: %u\n", resp->edns_query.payload);
+	debug_dnslib_response("  Extended RCODE: %u\n",
+	                      resp->edns_query.ext_rcode);
 
-	printf("\n-------------------------------------\n");
+	debug_dnslib_response("\n-----------------------------\n");
 }
 
 /*----------------------------------------------------------------------------*/
@@ -328,9 +374,14 @@ int dnslib_response_parse_query(dnslib_response_t *resp,
 		return err;
 	}
 
-	if ((err = dnslib_response_parse_client_edns(
-	               &pos, &remaining, &resp->edns_query))) {
-		return err;
+	if (resp->header.arcount > 0) {  // expecting EDNS OPT RR
+		if ((err = dnslib_response_parse_client_edns(
+			       &pos, &remaining, &resp->edns_query))) {
+			return err;
+		}
+	} else {
+		// set client EDNS version to EDNS_NOT_SUPPORTED
+		resp->edns_query.version = EDNS_NOT_SUPPORTED;
 	}
 
 	if (remaining > 0) {
