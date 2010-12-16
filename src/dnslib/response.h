@@ -57,7 +57,8 @@ typedef struct dnslib_edns_data dnslib_edns_data_t;
 struct dnslib_compressed_dnames {
 	dnslib_dname_t *dnames;
 	size_t *offsets;
-	size_t count;
+	short count;
+	short max;
 };
 
 typedef struct dnslib_compressed_dnames dnslib_compressed_dnames_t;
@@ -78,6 +79,14 @@ struct dnslib_header {
 
 typedef struct dnslib_header dnslib_header_t;
 
+struct dnslib_question {
+	dnslib_dname_t *qname;
+	uint16_t qtype;
+	uint16_t qclass;
+};
+
+typedef struct dnslib_question dnslib_question_t;
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \note QNAME, Answer, Authority and Additonal sections are by default put to
@@ -86,13 +95,9 @@ typedef struct dnslib_header dnslib_header_t;
  */
 struct dnslib_response {
 	/*!
-	 * \brief Normalized QNAME.
-	 *
 	 * \note Only one Question is supported!
 	 */
-	dnslib_dname_t *qname;
-	uint16_t qtype;
-	uint16_t qclass;
+	dnslib_question_t question;
 
 	short max_size;  /*!< Maximum allowed size of the response. */
 
@@ -117,8 +122,9 @@ struct dnslib_response {
 
 	dnslib_compressed_dnames_t compression;
 
-	dnslib_dname_t *tmp_dnames; /*!< Synthetized domain names. */
-	short tmp_dname_count;      /*!< Count of synthetized domain names. */
+	dnslib_dname_t **tmp_dnames; /*!< Synthetized domain names. */
+	short tmp_dname_count;   /*!< Count of synthetized domain names. */
+	short tmp_dname_max;     /*!< Allocated space for synthetized dnames. */
 };
 
 typedef struct dnslib_response dnslib_response_t;
@@ -128,10 +134,8 @@ typedef struct dnslib_response dnslib_response_t;
 dnslib_response_t *dnslib_response_new_empty(const uint8_t *edns_wire,
                                              short edns_size);
 
-dnslib_response_t *dnslib_response_new_from_query(const uint8_t *query_wire,
-                                                  size_t size,
-                                                  const uint8_t *edns_wire,
-                                                  short edns_size);
+int dnslib_response_parse_query(dnslib_response_t *response,
+                                const uint8_t *query_wire, size_t query_size);
 
 /*!
  * \param tc Set to <> 0 if omitting this RRSet should result in the TC bit set.
@@ -152,6 +156,8 @@ int dnslib_response_add_rrset_aditional(dnslib_response_t *response,
 
 int dnslib_response_to_wire(dnslib_response_t *response,
                             uint8_t **resp_wire, size_t *resp_size);
+
+void dnslib_response_free(dnslib_response_t **response);
 
 #endif /* _CUTEDNS_DNSLIB_RESPONSE_H_ */
 
