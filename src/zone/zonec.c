@@ -1617,13 +1617,11 @@ void zone_read(char *name, const char *zonefile)
 
 	find_rrsets_orphans(parser->current_zone, parser->rrsig_orphans);
 
-	dnslib_zone_dump(parser->current_zone);
-
 	dnslib_zone_adjust_dnames(parser->current_zone);
 
 	dnslib_zone_dump_binary(parser->current_zone, "zonedump.bin");
 
-	dnslib_load_zone("zonedump.bin");
+	dnslib_zone_dump(dnslib_load_zone("zonedump.bin"));
 
 	//TODO possible check for SOA
 
