@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <assert.h>
+#include <stdio.h>
 
 #include "response.h"
 #include "rrset.h"
@@ -46,7 +47,7 @@ enum {
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-void dnslib_response_parse_host_edns(dnslib_response_t *response,
+static void dnslib_response_parse_host_edns(dnslib_response_t *response,
                                      const uint8_t *edns_wire, short edns_size)
 {
 
@@ -54,7 +55,7 @@ void dnslib_response_parse_host_edns(dnslib_response_t *response,
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_response_init_pointers(dnslib_response_t *resp)
+static void dnslib_response_init_pointers(dnslib_response_t *resp)
 {
 	// put QNAME directly after the structure
 	resp->question.qname =
@@ -89,8 +90,8 @@ void dnslib_response_init_pointers(dnslib_response_t *resp)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_response_init(dnslib_response_t *resp, const uint8_t *edns_wire,
-                          short edns_size)
+static void dnslib_response_init(dnslib_response_t *resp,
+                                 const uint8_t *edns_wire, short edns_size)
 {
 	memset(resp, 0, PREALLOC_TOTAL);
 
@@ -108,8 +109,8 @@ void dnslib_response_init(dnslib_response_t *resp, const uint8_t *edns_wire,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_response_parse_header(const uint8_t **pos, size_t *remaining,
-                                 dnslib_header_t *header)
+static int dnslib_response_parse_header(const uint8_t **pos, size_t *remaining,
+                                        dnslib_header_t *header)
 {
 	if (pos == NULL || *pos == NULL || remaining == NULL
 	    || header == NULL) {
@@ -136,8 +137,9 @@ int dnslib_response_parse_header(const uint8_t **pos, size_t *remaining,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_response_parse_question(const uint8_t **pos, size_t *remaining,
-                                   dnslib_question_t *question)
+static int dnslib_response_parse_question(const uint8_t **pos,
+                                          size_t *remaining,
+                                          dnslib_question_t *question)
 {
 	if (pos == NULL || *pos == NULL || remaining == NULL
 	    || question == NULL) {
@@ -172,8 +174,9 @@ int dnslib_response_parse_question(const uint8_t **pos, size_t *remaining,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_response_parse_client_edns(const uint8_t **pos, size_t *remaining,
-                                      dnslib_edns_data_t *edns)
+static int dnslib_response_parse_client_edns(const uint8_t **pos,
+                                             size_t *remaining,
+                                             dnslib_edns_data_t *edns)
 {
 	if (pos == NULL || *pos == NULL || remaining == NULL
 	    || edns == NULL) {
@@ -219,7 +222,7 @@ int dnslib_response_parse_client_edns(const uint8_t **pos, size_t *remaining,
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_response_free_tmp_domains(dnslib_response_t *resp)
+static void dnslib_response_free_tmp_domains(dnslib_response_t *resp)
 {
 	for (int i = 0; i < resp->tmp_dname_count; ++i) {
 		dnslib_dname_free(&resp->tmp_dnames[i]);
@@ -228,7 +231,7 @@ void dnslib_response_free_tmp_domains(dnslib_response_t *resp)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_response_free_allocated_space(dnslib_response_t *resp)
+static void dnslib_response_free_allocated_space(dnslib_response_t *resp)
 {
 	if (resp->max_ancount > DEFAULT_ANCOUNT) {
 		free(resp->answer);
@@ -248,6 +251,46 @@ void dnslib_response_free_allocated_space(dnslib_response_t *resp)
 	if (resp->tmp_dname_max > DEFAULT_TMP_DOMAINS) {
 		free(resp->tmp_dnames);
 	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void dnslib_response_dump(const dnslib_response_t *resp)
+{
+	printf("DNS response:\n-------------------------------------\n");
+
+	printf("\nHeader:\n");
+	printf("  ID: %u", resp->header.id);
+	printf("  FLAGS: %s %s %s %s %s %s %s\n",
+	       dnslib_packet_flags_get_qr(resp->header.flags1) ? "qr" : "",
+	       dnslib_packet_flags_get_aa(resp->header.flags1) ? "aa" : "",
+	       dnslib_packet_flags_get_tc(resp->header.flags1) ? "tc" : "",
+	       dnslib_packet_flags_get_rd(resp->header.flags1) ? "rd" : "",
+	       dnslib_packet_flags_get_ra(resp->header.flags2) ? "ra" : "",
+	       dnslib_packet_flags_get_ad(resp->header.flags2) ? "ad" : "",
+	       dnslib_packet_flags_get_cd(resp->header.flags2) ? "cd" : "");
+	printf("  QDCOUNT: %u\n", resp->header.qdcount);
+	printf("  ANCOUNT: %u\n", resp->header.ancount);
+	printf("  NSCOUNT: %u\n", resp->header.nscount);
+	printf("  ARCOUNT: %u\n", resp->header.arcount);
+
+	printf("\nQuestion:\n");
+	char *qname = dnslib_dname_to_str(resp->question.qname);
+	printf("  QNAME: %s\n", qname);
+	free(qname);
+	printf("  QTYPE: %u (%s)\n", resp->question.qtype,
+	       dnslib_rrtype_to_string(resp->question.qtype));
+	printf("  QCLASS: %u (%s)\n", resp->question.qclass,
+	       dnslib_rrclass_to_string(resp->question.qclass));
+
+	/*! \todo Dumping of Answer, Authority and Additional sections. */
+
+	printf("\nEDNS - client:\n");
+	printf("  Version: %u\n", resp->edns_query.version);
+	printf("  Payload: %u\n", resp->edns_query.payload);
+	printf("  Extended RCODE: %u\n", resp->edns_query.ext_rcode);
+
+	printf("\n-------------------------------------\n");
 }
 
 /*----------------------------------------------------------------------------*/
@@ -294,6 +337,8 @@ int dnslib_response_parse_query(dnslib_response_t *resp,
 		// some trailing garbage; ignore, but log
 		log_info("%d bytes of trailing garbage in query.\n", remaining);
 	}
+
+	dnslib_response_dump(resp);
 
 	return 0;
 }
