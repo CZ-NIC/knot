@@ -646,6 +646,14 @@ rdata_a:	dotted_str trail
 rdata_domain_name:	dname trail
     {
 	    /* convert a single dname record */
+	    		if (!dnslib_dname_is_fqdn($1)) {
+
+			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
+
+			parser->current_rrset.owner =
+				dnslib_dname_cat($1, tmp);
+
+		}
 	    zadd_rdata_domain($1);
     }
     ;
@@ -653,6 +661,22 @@ rdata_domain_name:	dname trail
 rdata_soa:	dname sp dname sp STR sp STR sp STR sp STR sp STR trail
     {
 	    /* convert the soa data */
+	    		if (!dnslib_dname_is_fqdn($1)) {
+
+			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
+
+			parser->current_rrset.owner =
+				dnslib_dname_cat($1, tmp);
+
+		}
+			    		if (!dnslib_dname_is_fqdn($3)) {
+
+			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
+
+			parser->current_rrset.owner =
+				dnslib_dname_cat($3, tmp);
+
+		}
 	    zadd_rdata_domain($1);	/* prim. ns */
 	    zadd_rdata_domain($3);	/* email */
 	    zadd_rdata_wireformat(zparser_conv_serial($5.str)); /* serial */
@@ -679,6 +703,23 @@ rdata_hinfo:	STR sp STR trail
 
 rdata_minfo:	dname sp dname trail
     {
+	    	    		if (!dnslib_dname_is_fqdn($1)) {
+
+			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
+
+			parser->current_rrset.owner =
+				dnslib_dname_cat($1, tmp);
+
+		}
+			    		if (!dnslib_dname_is_fqdn($3)) {
+
+			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
+
+			parser->current_rrset.owner =
+				dnslib_dname_cat($3, tmp);
+
+		}
+
 	    /* convert a single dname record */
 	    zadd_rdata_domain($1);
 	    zadd_rdata_domain($3);
@@ -687,6 +728,15 @@ rdata_minfo:	dname sp dname trail
 
 rdata_mx:	STR sp dname trail
     {
+			    		if (!dnslib_dname_is_fqdn($3)) {
+
+			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
+
+			parser->current_rrset.owner =
+				dnslib_dname_cat($3, tmp);
+
+		}
+
 	    zadd_rdata_wireformat(zparser_conv_short($1.str));  /* priority */
 	    zadd_rdata_domain($3);	/* MX host */
     }
@@ -701,6 +751,23 @@ rdata_txt:	str_seq trail
 /* RFC 1183 */
 rdata_rp:	dname sp dname trail
     {
+	    	    	    		if (!dnslib_dname_is_fqdn($1)) {
+
+			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
+
+			parser->current_rrset.owner =
+				dnslib_dname_cat($1, tmp);
+
+		}
+			    		if (!dnslib_dname_is_fqdn($3)) {
+
+			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
+
+			parser->current_rrset.owner =
+				dnslib_dname_cat($3, tmp);
+
+		}
+
 	    zadd_rdata_domain($1); /* mbox d-name */
 	    zadd_rdata_domain($3); /* txt d-name */
     }
@@ -709,6 +776,15 @@ rdata_rp:	dname sp dname trail
 /* RFC 1183 */
 rdata_afsdb:	STR sp dname trail
     {
+			    		if (!dnslib_dname_is_fqdn($3)) {
+
+			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
+
+			parser->current_rrset.owner =
+				dnslib_dname_cat($3, tmp);
+
+		}
+
 	    zadd_rdata_wireformat(zparser_conv_short($1.str)); /* subtype */
 	    zadd_rdata_domain($3); /* domain name */
     }
@@ -736,6 +812,15 @@ rdata_isdn:	STR trail
 /* RFC 1183 */
 rdata_rt:	STR sp dname trail
     {
+	    	    	    	    		if (!dnslib_dname_is_fqdn($3)) {
+
+			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
+
+			parser->current_rrset.owner =
+				dnslib_dname_cat($3, tmp);
+
+		}
+
 	    zadd_rdata_wireformat(zparser_conv_short($1.str)); /* preference */
 	    zadd_rdata_domain($3); /* intermediate host */
     }
@@ -756,6 +841,22 @@ rdata_nsap:	str_dot_seq trail
 /* RFC 2163 */
 rdata_px:	STR sp dname sp dname trail
     {
+	    		if (!dnslib_dname_is_fqdn($3)) {
+
+			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
+
+			parser->current_rrset.owner =
+				dnslib_dname_cat($3, tmp);
+
+		}
+			    		if (!dnslib_dname_is_fqdn($5)) {
+
+			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
+
+			parser->current_rrset.owner =
+				dnslib_dname_cat($5, tmp);
+
+		}
 	    zadd_rdata_wireformat(zparser_conv_short($1.str)); /* preference */
 	    zadd_rdata_domain($3); /* MAP822 */
 	    zadd_rdata_domain($5); /* MAPX400 */
@@ -776,6 +877,14 @@ rdata_loc:	concatenated_str_seq trail
 
 rdata_nxt:	dname sp nxt_seq trail
     {
+	    	    		if (!dnslib_dname_is_fqdn($1)) {
+
+			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
+
+			parser->current_rrset.owner =
+				dnslib_dname_cat($1, tmp);
+
+		}
 	    zadd_rdata_domain($1); /* nxt name */
 	    zadd_rdata_wireformat(zparser_conv_nxt(nxtbits)); /* nxt bitlist */
 	    memset(nxtbits, 0, sizeof(nxtbits));
@@ -784,6 +893,14 @@ rdata_nxt:	dname sp nxt_seq trail
 
 rdata_srv:	STR sp STR sp STR sp dname trail
     {
+	    	    		if (!dnslib_dname_is_fqdn($7)) {
+
+			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
+
+			parser->current_rrset.owner =
+				dnslib_dname_cat($7, tmp);
+
+		}
 	    zadd_rdata_wireformat(zparser_conv_short($1.str)); /* prio */
 	    zadd_rdata_wireformat(zparser_conv_short($3.str)); /* weight */
 	    zadd_rdata_wireformat(zparser_conv_short($5.str)); /* port */
@@ -794,6 +911,14 @@ rdata_srv:	STR sp STR sp STR sp dname trail
 /* RFC 2915 */
 rdata_naptr:	STR sp STR sp STR sp STR sp STR sp dname trail
     {
+	    	    		if (!dnslib_dname_is_fqdn($11)) {
+
+			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
+
+			parser->current_rrset.owner =
+				dnslib_dname_cat($11, tmp);
+
+		}
 	    zadd_rdata_wireformat(zparser_conv_short($1.str)); /* order */
 	    zadd_rdata_wireformat(zparser_conv_short($3.str)); /* preference */
 	    zadd_rdata_wireformat(zparser_conv_text($5.str, $5.len)); /* flags */
@@ -806,6 +931,14 @@ rdata_naptr:	STR sp STR sp STR sp STR sp STR sp dname trail
 /* RFC 2230 */
 rdata_kx:	STR sp dname trail
     {
+	    	    		if (!dnslib_dname_is_fqdn($3)) {
+
+			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
+
+			parser->current_rrset.owner =
+				dnslib_dname_cat($3, tmp);
+
+		}
 	    zadd_rdata_wireformat(zparser_conv_short($1.str)); /* preference */
 	    zadd_rdata_domain($3); /* exchanger */
     }

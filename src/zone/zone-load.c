@@ -47,10 +47,12 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 			items[i].dname = malloc(sizeof(dnslib_dname_t));
 			fread(&tmp_id, sizeof(void *), 1, f);
 			//TODO find reference to actual rdata
-			printf("%d\n", tmp_id);
-			getchar();
-//			items[i].dname = id_array[(uint)tmp_id];
-			items[i].dname = tmp_dname;
+			
+			if (tmp_id != 0) {
+				items[i].dname = id_array[(uint)tmp_id];
+			} else {
+				items[i].dname = tmp_dname;
+			}
 		} else {
 			fread(&raw_data_length, sizeof(raw_data_length), 1, f);
 			printf("read len: %d\n", raw_data_length);
@@ -213,10 +215,11 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 
 dnslib_zone_t *dnslib_load_zone(const char *filename)
 {
-	dnslib_zone_t *zone;
-
-	tmp_dname = dnslib_dname_new_from_str("dummy.dname.", 14, NULL);
+	tmp_dname = dnslib_dname_new_from_str("dummy.example.com.", strlen("dummy.example.com."), NULL);
 	FILE *f = fopen(filename, "rb");
+
+	dnslib_node_t *apex = dnslib_node_new(tmp_dname, NULL);
+	dnslib_zone_t *zone = dnslib_zone_new(apex);
 
 	dnslib_node_t *tmp_node;
 
@@ -228,8 +231,6 @@ dnslib_zone_t *dnslib_load_zone(const char *filename)
 
 	printf("loading %u nodes\n", node_count);
 
-	getchar();
-
 	for (uint i = 1; i < node_count + 51; i++) {
 		id_array[i] = malloc(sizeof(dnslib_dname_t));
 	}
@@ -237,7 +238,8 @@ dnslib_zone_t *dnslib_load_zone(const char *filename)
 	for (uint i = 0; i < node_count; i++) {
 		tmp_node = dnslib_load_node(f);
 		if (tmp_node != NULL) {
-			dnslib_node_dump(tmp_node);
+//			dnslib_node_dump(tmp_node);
+			dnslib_zone_add_node(zone, tmp_node);
 		} else {
 			printf("Node error!\n");
 		}
