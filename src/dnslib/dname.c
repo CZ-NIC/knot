@@ -192,7 +192,7 @@ dnslib_dname_t *dnslib_dname_new_from_str(char *name, uint size,
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_dname_t *dnslib_dname_new_from_wire(uint8_t *name, uint size,
+dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
                                            struct dnslib_node *node)
 {
 	if (name == NULL && size != 0) {
