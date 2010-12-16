@@ -59,8 +59,6 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 		printf("Error: could not set items\n");
 	}
 
-	getchar();
-
 	return rdata;
 }
 
@@ -90,7 +88,7 @@ dnslib_rrsig_set_t *dnslib_load_rrsig(FILE *f)
 	printf("loading %d rdata entries\n", rdata_count);
 
 	for (int i = 0; i < rdata_count; i++) {
-		tmp_rdata = dnslib_load_rdata(rrsig->type, f);
+		tmp_rdata = dnslib_load_rdata(DNSLIB_RRTYPE_RRSIG, f);
 		dnslib_rrsig_set_add_rdata(rrsig, tmp_rdata);
 	}
 
