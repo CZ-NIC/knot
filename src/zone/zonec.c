@@ -1414,14 +1414,12 @@ int process_rr(void)
 
 		assert(parser->origin);
 
-		parser->origin->owner->node = parser->origin;
+		if (dnslib_dname_compare(parser->origin->owner, current_rrset->owner) != 0 ){
+			soa_node = dnslib_node_new(current_rrset->owner,
+			                           parser->origin);
 
-		soa_node = dnslib_node_new(current_rrset->owner,
-		                           parser->origin);
-
-		current_rrset->owner->node = soa_node;
-
-		dnslib_zone_add_node(zone, soa_node);
+			dnslib_zone_add_node(zone, soa_node);
+		}
 
 		parser->current_zone = zone;
 	}
@@ -1443,11 +1441,15 @@ int process_rr(void)
 	dnslib_node_t *node;
 	node = dnslib_zone_get_node(zone, current_rrset->owner);
 	if (node == NULL) {
-		
+		printf("NEW ZONE, OWNER WAS: %s\n", dnslib_dname_to_str(current_rrset->owner));
 		assert(dnslib_zone_find_node(zone, current_rrset->owner) == 0);
 		dnslib_node_t *tmp_node;
 		dnslib_node_t *last_node = dnslib_node_new(current_rrset->owner,
 		                                           NULL);
+
+/*		current_rrset->owner->node = parser->id;
+
+		parser->id++;*/
 
 		//XXX this whole section is wrong
 
@@ -1466,25 +1468,34 @@ int process_rr(void)
 		while ((tmp_node = dnslib_zone_get_node(zone,
 			                                 chopped)) == NULL) {
 			tmp_node = dnslib_node_new(tmp_owner, NULL);
-			tmp_owner->node = tmp_node;
+//			tmp_owner->node = tmp_node;
 			last_node->parent = tmp_node;
 			
 			if (dnslib_zone_find_node(zone, tmp_owner) == NULL) {
 				if (node_add_func(zone, tmp_node) != 0) {
 					return -1;
 				}
+				tmp_owner->node = parser->id;
+					printf("INSIDE CYCLE: setting id %d for dname: %s (%p)\n", parser->id,
+						dnslib_dname_to_str(tmp_owner), tmp_owner);
+					parser->id++;
 			}
 			last_node = tmp_node;
+
 			chopped = dnslib_dname_left_chop(tmp_owner);
 			tmp_owner = chopped;
 		}
 
 		last_node->parent = tmp_node;
 		assert(node);
-		current_rrset->owner->node = node;
 	}
-
-	current_rrset->owner->node = node;
+	
+	if (node->owner->node == NULL) {
+		node->owner->node = parser->id;
+		printf("setting id %d for dname: %s (%p)\n", parser->id,
+			dnslib_dname_to_str(node->owner), node->owner);
+		parser->id++;
+	}
 	rrset = dnslib_node_get_rrset(node, current_rrset->type);
 	if (!rrset) {
 		printf("Creating new rrset.\n");
@@ -1547,7 +1558,6 @@ int process_rr(void)
 		fprintf(stdout, "%ld\n", totalrrs);
 	}
 
-	assert(current_rrset->owner->node);
 	++totalrrs;
 	return 0;
 }
@@ -1608,6 +1618,8 @@ void zone_read(char *name, const char *zonefile)
 	find_rrsets_orphans(parser->current_zone, parser->rrsig_orphans);
 
 	dnslib_zone_dump(parser->current_zone);
+
+	dnslib_zone_adjust_dnames(parser->current_zone);
 
 	dnslib_zone_dump_binary(parser->current_zone, "zonedump.bin");
 

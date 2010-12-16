@@ -72,6 +72,8 @@ struct zparser {
 	unsigned int errors;
 	unsigned int line;
 
+	unsigned int id;
+
 //	curent rr will have to be represented as current rrset
 //before:	rr_type current_rr;
 	dnslib_rrset_t current_rrset; //XXX * was not there
