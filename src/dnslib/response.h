@@ -55,7 +55,7 @@ typedef struct dnslib_edns_data dnslib_edns_data_t;
  *
  */
 struct dnslib_compressed_dnames {
-	dnslib_dname_t *dnames;
+	dnslib_dname_t **dnames;
 	size_t *offsets;
 	short count;
 	short max;
@@ -101,9 +101,9 @@ struct dnslib_response {
 
 	short max_size;  /*!< Maximum allowed size of the response. */
 
-	dnslib_rrset_t *answer;
-	dnslib_rrset_t *authority;
-	dnslib_rrset_t *additional;
+	dnslib_rrset_t **answer;
+	dnslib_rrset_t **authority;
+	dnslib_rrset_t **additional;
 
 	short max_ancount; /*!< Allocated space for Answer RRsets. */
 	short max_nscount; /*!< Allocated space for Authority RRsets. */
