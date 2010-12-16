@@ -6,6 +6,7 @@
 #include "rrset.h"
 #include "common.h"
 #include "packet.h"
+#include "descriptor.h"
 
 enum {
 	DEFAULT_ANCOUNT = 6,
@@ -110,6 +111,26 @@ void dnslib_response_init(dnslib_response_t *resp, const uint8_t *edns_wire,
 int dnslib_response_parse_header(const uint8_t **pos, size_t *remaining,
                                  dnslib_header_t *header)
 {
+	if (pos == NULL || *pos == NULL || remaining == NULL
+	    || header == NULL) {
+		return -1;
+	}
+
+	if (*remaining < DNSLIB_PACKET_HEADER_SIZE) {
+		return -2;
+	}
+
+	header->id = dnslib_packet_get_id(*pos);
+	header->flags1 = dnslib_packet_get_flags1(*pos);
+	header->flags2 = dnslib_packet_get_flags2(*pos);
+	header->qdcount = dnslib_packet_get_qdcount(*pos);
+	header->ancount = dnslib_packet_get_ancount(*pos);
+	header->nscount = dnslib_packet_get_nscount(*pos);
+	header->arcount = dnslib_packet_get_arcount(*pos);
+
+	*pos += DNSLIB_PACKET_HEADER_SIZE;
+	*remaining -= DNSLIB_PACKET_HEADER_SIZE;
+
 	return 0;
 }
 
@@ -118,6 +139,34 @@ int dnslib_response_parse_header(const uint8_t **pos, size_t *remaining,
 int dnslib_response_parse_question(const uint8_t **pos, size_t *remaining,
                                    dnslib_question_t *question)
 {
+	if (pos == NULL || *pos == NULL || remaining == NULL
+	    || question == NULL) {
+		return -1;
+	}
+
+	if (*remaining < DNSLIB_PACKET_QUESTION_MIN_SIZE) {
+		return -2;  // malformed
+	}
+
+	// domain name must end with 0, so just search for 0
+	int i = 0;
+	while (i < *remaining && (*pos)[i] != 0) {
+		++i;
+	}
+
+	if (i == *remaining || *remaining - i - 1 < 4) {
+		return -2;  // no 0 found or not enough data left
+	}
+
+	question->qname = dnslib_dname_new_from_wire(*pos, i + 1, NULL);
+	*pos += i + 1;
+	question->qtype = dnslib_packet_read_u16(*pos);
+	*pos += 2;
+	question->qclass = dnslib_packet_read_u16(*pos);
+	*pos += 2;
+
+	*remaining -= (i + 5);
+
 	return 0;
 }
 
@@ -126,6 +175,45 @@ int dnslib_response_parse_question(const uint8_t **pos, size_t *remaining,
 int dnslib_response_parse_client_edns(const uint8_t **pos, size_t *remaining,
                                       dnslib_edns_data_t *edns)
 {
+	if (pos == NULL || *pos == NULL || remaining == NULL
+	    || edns == NULL) {
+		return -1;
+	}
+
+	if (*remaining < DNSLIB_PACKET_RR_MIN_SIZE) {
+		return -2;
+	}
+
+	// owner of EDNS OPT RR must be root (0)
+	if (**pos != 0) {
+		return -2;
+	}
+	*pos += 1;
+
+	// check the type of the record (must be OPT)
+	if (dnslib_packet_read_u16(*pos) != DNSLIB_RRTYPE_OPT) {
+		return -2;
+	}
+	*pos += 2;
+
+	edns->payload = dnslib_packet_read_u16(*pos);
+	*pos += 2;
+	edns->ext_rcode = *(*pos)++;
+	edns->version = *(*pos)++;
+	// skip Z
+	*pos += 2;
+
+	// ignore RDATA, but move pos behind them
+	uint16_t rdlength = dnslib_packet_read_u16(*pos);
+	*remaining -= 11;
+
+	if (*remaining < rdlength) {
+		return -3;
+	}
+
+	*pos += 2 + rdlength;
+	*remaining -= rdlength;
+
 	return 0;
 }
 
