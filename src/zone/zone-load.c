@@ -17,6 +17,9 @@
 
 static dnslib_dname_t *tmp_dname; 
 
+//TODO move to parameters
+static dnslib_dname_t **id_array;
+
 dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 {
 	dnslib_rdata_t *rdata;
@@ -40,9 +43,13 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
+			void *tmp_id;
 			items[i].dname = malloc(sizeof(dnslib_dname_t));
-			fread(items[i].dname, sizeof(void *), 1, f);
+			fread(&tmp_id, sizeof(void *), 1, f);
 			//TODO find reference to actual rdata
+			printf("%d\n", tmp_id);
+			getchar();
+//			items[i].dname = id_array[(uint)tmp_id];
 			items[i].dname = tmp_dname;
 		} else {
 			fread(&raw_data_length, sizeof(raw_data_length), 1, f);
@@ -64,7 +71,7 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 
 dnslib_rrsig_set_t *dnslib_load_rrsig(FILE *f)
 {
-	dnslib_rrset_t *rrsig;
+	dnslib_rrsig_set_t *rrsig;
 
 	uint16_t rrset_type;
 	uint16_t rrset_class;
@@ -140,27 +147,38 @@ dnslib_rrset_t *dnslib_load_rrset(FILE *f)
 
 dnslib_node_t *dnslib_load_node(FILE *f)
 {
-	dnslib_node_t *node;
-	/* first, owner */
-	dnslib_dname_t *owner;
 
 	uint dname_size;
-	uint8_t dname_wire[256]; //XXX in respect to remark below, should be dynamic
+	dnslib_node_t *node;
+	/* first, owner */
+
+
+	uint8_t dname_wire[255]; //XXX in respect to remark below, should be dynamic
 	uint rrset_count;
 	void *dname_id; //ID, technically it's an integer
-	
-	fread(&dname_size, sizeof(dname_size), 1, f);
-	fread(&dname_wire, sizeof(uint8_t), dname_size, f);
-	fread(&dname_id, sizeof(dname_id), 1, f);
-	fread(&rrset_count, sizeof(rrset_count), 1, f);
 
-	printf("dname_id %p\n", dname_id);
-	
+	printf("read %d bytes\n", fread(&dname_size, sizeof(dname_size), 1, f));
+
+	printf("read %d bytes\n", fread(&dname_wire, sizeof(uint8_t), dname_size, f));
+
+	printf("read %d bytes\n", fread(&dname_id, sizeof(dname_id), 1, f));
+
+	printf("read %d bytes\n", fread(&rrset_count, sizeof(rrset_count), 1, f));
+
+	printf("dname_id: %d\n", dname_id);
+
+	dnslib_dname_t *owner = id_array[(uint)dname_id];
+
 	//XXX I already have all thats in the structure, no need to do this
-	if ((owner = dnslib_dname_new_from_wire(dname_wire,
+/*	if ((owner = dnslib_dname_new_from_wire(dname_wire,
 		                                dname_size, NULL)) == NULL) {
 		return NULL;
-	}
+	}*/
+
+	
+	owner->name = malloc(sizeof(uint8_t) * dname_size);
+	memcpy(owner->name, dname_wire, dname_size);
+	owner->size = dname_size;
 
 	printf("created owner: %s\n", dnslib_dname_to_str(owner));
 
@@ -195,7 +213,9 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 
 dnslib_zone_t *dnslib_load_zone(const char *filename)
 {
-tmp_dname = dnslib_dname_new_from_str("dummy.dname.", 14, NULL);
+	dnslib_zone_t *zone;
+
+	tmp_dname = dnslib_dname_new_from_str("dummy.dname.", 14, NULL);
 	FILE *f = fopen(filename, "rb");
 
 	dnslib_node_t *tmp_node;
@@ -204,9 +224,17 @@ tmp_dname = dnslib_dname_new_from_str("dummy.dname.", 14, NULL);
 
 	fread(&node_count, sizeof(node_count), 1, f);
 
+	id_array = malloc(sizeof(dnslib_dname_t *) * node_count + 50);
+
 	printf("loading %u nodes\n", node_count);
 
-	for (int i = 0; i < node_count; i++) {
+	getchar();
+
+	for (uint i = 1; i < node_count + 51; i++) {
+		id_array[i] = malloc(sizeof(dnslib_dname_t));
+	}
+
+	for (uint i = 0; i < node_count; i++) {
 		tmp_node = dnslib_load_node(f);
 		if (tmp_node != NULL) {
 			dnslib_node_dump(tmp_node);
@@ -216,6 +244,8 @@ tmp_dname = dnslib_dname_new_from_str("dummy.dname.", 14, NULL);
 	}
 
 	fclose(f);
+
+	return zone;
 }
 
 /* end of file zone-load.c */

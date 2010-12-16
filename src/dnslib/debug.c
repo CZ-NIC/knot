@@ -96,6 +96,7 @@ void dnslib_node_dump(dnslib_node_t *node)
 {
 	printf("------- NODE --------\n");
 	printf("owner: %s\n", dnslib_dname_to_str(node->owner));
+	printf("node/id: %d\n", node->owner->node);
 
 	if (node->parent != NULL) {
 		printf("parent: %s\n", dnslib_dname_to_str(node->parent->owner));

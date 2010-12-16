@@ -31,7 +31,7 @@ void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata, uint32_t type, FILE *f)
 		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
 			assert(rdata->items[i].dname != NULL);
-			fwrite(&(rdata->items[i].dname), sizeof(void *), 1, f);
+			fwrite(&(rdata->items[i].dname->node), sizeof(void *), 1, f);
 
 		} else {
 			assert(rdata->items[i].raw_data != NULL);
@@ -123,15 +123,20 @@ void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, FILE *f)
 
 void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
 {
+
+	node_count++;
 	/* first write dname */
 	assert(node->owner != NULL);
 	fwrite(&node->owner->size, sizeof(node->owner->size), 1, f);
 
+	printf("Size written: %u\n", node->owner->size);
+
 	fwrite(node->owner->name, sizeof(uint8_t),
 	       node->owner->size, f);
 
-	fwrite(&(node->owner), sizeof(void *),
-	       1, f);
+	fwrite(&(node->owner->node), sizeof(void *), 1, f);
+
+	printf("Writing id: %u\n", node->owner->node);
 
 	/* Now we need (or do we?) count of rrsets to be read 
 	 * but that number is yet unknown */
@@ -157,7 +162,6 @@ void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
 
 	do {
 		tmp = (dnslib_rrset_t *)skip_node->value;
-		assert(tmp->owner->node == node);
 		rrset_count++;
 		dnslib_rrset_dump_binary(tmp, f);
 	} while ((skip_node = skip_next(skip_node)) != NULL);
@@ -180,7 +184,6 @@ void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
 
 	printf("Function ends with: %ld\n\n", ftell(f));	
 
-	node_count++;
 }
 
 int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
@@ -196,7 +199,7 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 	fwrite(&node_count, sizeof(node_count), 1, f);
 	
 	/* TODO is there a way how to stop the traversal upon error? */
-	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl,
+	TREE_REVERSE_APPLY(zone->tree, dnslib_node, avl,
 	                   dnslib_node_dump_binary, f);
 
 	rewind(f);

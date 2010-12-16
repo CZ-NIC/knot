@@ -1054,6 +1054,8 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->filename = filename;
 	parser->rdata_count = 0;
 
+	parser->id = 1;
+
 	parser->current_rrset.rclass = parser->default_class;
 }
 
