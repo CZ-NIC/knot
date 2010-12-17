@@ -74,7 +74,7 @@ extern uint32_t strtottl(const char *nptr, const char **endptr);
 #define YY_NO_UNPUT
 #define MAXINCLUDES 10
 
-#if 1
+#if 0
 #define LEXOUT(s)  printf s /* used ONLY when debugging */
 #else
 #define LEXOUT(s)

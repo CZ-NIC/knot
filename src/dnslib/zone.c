@@ -91,8 +91,12 @@ void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
 
 	while (rdata->next != rrset->rdata) {
 		for (int i = 0; i < desc->length; ++i) {
-			if (desc->wireformat[i]
-			    == DNSLIB_RDATA_WF_COMPRESSED_DNAME) {
+			if (desc->wireformat[i] ==
+			    DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+			    desc->wireformat[i] ==
+			    DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
+			    desc->wireformat[i] == 
+			    DNSLIB_RDATA_WF_LITERAL_DNAME) {
 				debug_dnslib_zone("Adjusting domain name at"
 				  "position %d of RDATA of record with owner"
 				  "%s and type %s.\n",
@@ -192,10 +196,10 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 
 int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node)
 {
-	int ret = 0;
-	if ((ret = dnslib_zone_check_node(zone, node)) != 0) {
-		return ret;
-	}
+//	int ret = 0;
+//	if ((ret = dnslib_zone_check_node(zone, node)) != 0) {
+//		return ret;
+//	}
 
 	// how to know if this is successfull??
 	TREE_INSERT(zone->nsec3_nodes, dnslib_node, avl, node);
