@@ -189,6 +189,8 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 		return NULL;
 	}
 
+	owner->node = node;
+
 	dnslib_rrset_t *tmp_rrset;
 
 	printf("loading %u rrsets\n", rrset_count);
@@ -227,11 +229,11 @@ dnslib_zone_t *dnslib_load_zone(const char *filename)
 
 	fread(&node_count, sizeof(node_count), 1, f);
 
-	id_array = malloc(sizeof(dnslib_dname_t *) * node_count + 50);
+	id_array = malloc(sizeof(dnslib_dname_t *) * (node_count + 1));
 
 	printf("loading %u nodes\n", node_count);
 
-	for (uint i = 1; i < node_count + 51; i++) {
+	for (uint i = 1; i < node_count + 1; i++) {
 		id_array[i] = malloc(sizeof(dnslib_dname_t));
 	}
 
