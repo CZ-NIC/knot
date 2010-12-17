@@ -43,15 +43,25 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
+
 			void *tmp_id;
+			uint8_t dname_in_zone;
+
+			uint dname_size;
+			uint8_t dname_wire[256];
 			items[i].dname = malloc(sizeof(dnslib_dname_t));
-			fread(&tmp_id, sizeof(void *), 1, f);
-			//TODO find reference to actual rdata
-			
-			if (tmp_id != 0) {
+
+			fread(&dname_in_zone, sizeof(dname_in_zone), 1, f);
+			if (dname_in_zone) {
+				fread(&tmp_id, sizeof(void *), 1, f);
 				items[i].dname = id_array[(uint)tmp_id];
 			} else {
-				items[i].dname = tmp_dname;
+				fread(&dname_size, sizeof(dname_size), 1, f);
+				assert(dname_size < 256);
+				fread(&dname_wire, sizeof(uint8_t), dname_size, f);
+				items[i].dname->size = dname_size;
+				items[i].dname->name = malloc(sizeof(uint8_t) * dname_size);
+				memcpy(items[i].dname->name, dname_wire, dname_size);
 			}
 		} else {
 			fread(&raw_data_length, sizeof(raw_data_length), 1, f);
@@ -197,10 +207,11 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 
 	owner->node = node;
 
-	//XXX will have to be set already...canocical order should do it
+	//XXX will have to be set already...canonical order should do it
 
 	if ((uint)parent_id != 0) {
 		node->parent = id_array[(uint)parent_id]->node;
+		assert(node->parent != NULL);
 	} else {
 		node->parent = NULL;
 	}
