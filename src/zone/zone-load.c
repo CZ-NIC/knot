@@ -154,16 +154,22 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	dnslib_node_t *node;
 	/* first, owner */
 
-
+	
 	uint8_t dname_wire[255]; //XXX in respect to remark below, should be dynamic
+				 //but I couldn't make it work
 	uint rrset_count;
 	void *dname_id; //ID, technically it's an integer
+	void *parent_id;
 
 	printf("read %d bytes\n", fread(&dname_size, sizeof(dname_size), 1, f));
+
+	assert(dname_size < 256);
 
 	printf("read %d bytes\n", fread(&dname_wire, sizeof(uint8_t), dname_size, f));
 
 	printf("read %d bytes\n", fread(&dname_id, sizeof(dname_id), 1, f));
+
+	printf("read %d bytes\n", fread(&parent_id, sizeof(dname_id), 1, f));
 
 	printf("read %d bytes\n", fread(&rrset_count, sizeof(rrset_count), 1, f));
 
@@ -190,6 +196,14 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	}
 
 	owner->node = node;
+
+	//XXX will have to be set already...canocical order should do it
+
+	if ((uint)parent_id != 0) {
+		node->parent = id_array[(uint)parent_id]->node;
+	} else {
+		node->parent = NULL;
+	}
 
 	dnslib_rrset_t *tmp_rrset;
 

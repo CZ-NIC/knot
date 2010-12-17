@@ -89,7 +89,7 @@ void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
 		dnslib_rrtype_descriptor_by_type(type);
 	dnslib_rdata_t *rdata = dnslib_rrset_get_rdata(rrset);
 
-	while (rdata != NULL) {
+	while (rdata->next != rrset->rdata) {
 		for (int i = 0; i < desc->length; ++i) {
 			if (desc->wireformat[i]
 			    == DNSLIB_RDATA_WF_COMPRESSED_DNAME) {
@@ -104,6 +104,19 @@ void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
 		}
 		rdata = rdata->next;
 	}
+		for (int i = 0; i < desc->length; ++i) {
+			if (desc->wireformat[i]
+			    == DNSLIB_RDATA_WF_COMPRESSED_DNAME) {
+				debug_dnslib_zone("Adjusting domain name at"
+				  "position %d of RDATA of record with owner"
+				  "%s and type %s.\n",
+				  i, rrset->owner->name,
+				  dnslib_rrtype_to_string(type));
+
+				dnslib_zone_adjust_rdata(rdata, zone, i);
+			}
+		}
+
 }
 
 /*----------------------------------------------------------------------------*/
@@ -164,9 +177,9 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex)
 int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 {
 	int ret = 0;
-	if ((ret = dnslib_zone_check_node(zone, node)) != 0) {
+/*	if ((ret = dnslib_zone_check_node(zone, node)) != 0) {
 		return ret;
-	}
+	}*/
 
 	// add the node to the tree
 	// how to know if this is successfull??

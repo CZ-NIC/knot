@@ -24,7 +24,7 @@ void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type)
 		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
 			assert(rdata->items[i].dname != NULL);
-			printf("%d: %s\n", 
+			printf("DNAME: %d: %s\n", 
 			       i, dnslib_dname_to_str(rdata->items[i].dname));
 
 		} else {

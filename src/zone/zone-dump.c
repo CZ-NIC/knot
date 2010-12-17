@@ -138,6 +138,12 @@ void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
 
 	printf("Writing id: %u\n", node->owner->node);
 
+	if (node->parent != NULL) {
+		fwrite(&(node->parent->owner->node), sizeof(void *), 1, f);
+	} else {
+		fwrite(&(node->parent), sizeof(void *), 1, f);
+	}
+
 	/* Now we need (or do we?) count of rrsets to be read 
 	 * but that number is yet unknown */
 
