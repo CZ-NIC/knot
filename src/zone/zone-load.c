@@ -20,6 +20,8 @@ static dnslib_dname_t *tmp_dname;
 //TODO move to parameters
 static dnslib_dname_t **id_array;
 
+static uint normal_node_count;
+
 dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 {
 	dnslib_rdata_t *rdata;
@@ -35,9 +37,9 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 
 	uint8_t raw_data_length;
 
-	printf("Reading %d items\n", desc->length);
+//	printf("Reading %d items\n", desc->length);
 
-	printf("current type: %d\n", type);
+//	printf("current type: %d\n", type);
 
 	for (int i = 0; i < desc->length; i++) {
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
@@ -65,7 +67,7 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 			}
 		} else {
 			fread(&raw_data_length, sizeof(raw_data_length), 1, f);
-			printf("read len: %d\n", raw_data_length);
+//			printf("read len: %d\n", raw_data_length);
 			items[i].raw_data =
 				malloc(sizeof(uint8_t) * raw_data_length + 1);
 			*(items[i].raw_data) = raw_data_length;
@@ -75,7 +77,8 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 	}
 
 	if (dnslib_rdata_set_items(rdata, items, desc->length) != 0) {
-		printf("Error: could not set items\n");
+//		printf("Error: could not set items\n");
+;
 	}
 
 	return rdata;
@@ -92,11 +95,11 @@ dnslib_rrsig_set_t *dnslib_load_rrsig(FILE *f)
 	uint rdata_count;
 
 	fread(&rrset_type, sizeof(rrset_type), 1, f);
-	printf("rrset type: %d\n", rrset_type);
+//	printf("rrset type: %d\n", rrset_type);
 	fread(&rrset_class, sizeof(rrset_class), 1, f);
-	printf("rrset class %d\n", rrset_class);
+//	printf("rrset class %d\n", rrset_class);
 	fread(&rrset_ttl, sizeof(rrset_ttl), 1, f);
-	printf("rrset ttl %d\n", rrset_ttl);
+//	printf("rrset ttl %d\n", rrset_ttl);
 
 	fread(&rdata_count, sizeof(rdata_count), 1, f);
 
@@ -104,7 +107,7 @@ dnslib_rrsig_set_t *dnslib_load_rrsig(FILE *f)
 
 	dnslib_rdata_t *tmp_rdata;
 
-	printf("loading %d rdata entries\n", rdata_count);
+//	printf("loading %d rdata entries\n", rdata_count);
 
 	for (int i = 0; i < rdata_count; i++) {
 		tmp_rdata = dnslib_load_rdata(DNSLIB_RRTYPE_RRSIG, f);
@@ -126,11 +129,11 @@ dnslib_rrset_t *dnslib_load_rrset(FILE *f)
 	uint rrsig_count;
 
 	fread(&rrset_type, sizeof(rrset_type), 1, f);
-	printf("rrset type: %d\n", rrset_type);
+//	printf("rrset type: %d\n", rrset_type);
 	fread(&rrset_class, sizeof(rrset_class), 1, f);
-	printf("rrset class %d\n", rrset_class);
+//	printf("rrset class %d\n", rrset_class);
 	fread(&rrset_ttl, sizeof(rrset_ttl), 1, f);
-	printf("rrset ttl %d\n", rrset_ttl);
+//	printf("rrset ttl %d\n", rrset_ttl);
 
 	fread(&rdata_count, sizeof(rdata_count), 1, f);
 	fread(&rrsig_count, sizeof(rrsig_count), 1, f);
@@ -139,7 +142,7 @@ dnslib_rrset_t *dnslib_load_rrset(FILE *f)
 
 	dnslib_rdata_t *tmp_rdata;
 
-	printf("loading %d rdata entries\n", rdata_count);
+//	printf("loading %d rdata entries\n", rdata_count);
 
 	for (int i = 0; i < rdata_count; i++) {
 		tmp_rdata = dnslib_load_rdata(rrset->type, f);
@@ -171,19 +174,19 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	void *dname_id; //ID, technically it's an integer
 	void *parent_id;
 
-	printf("read %d bytes\n", fread(&dname_size, sizeof(dname_size), 1, f));
+	fread(&dname_size, sizeof(dname_size), 1, f);
 
 	assert(dname_size < 256);
 
-	printf("read %d bytes\n", fread(&dname_wire, sizeof(uint8_t), dname_size, f));
+	fread(&dname_wire, sizeof(uint8_t), dname_size, f);
 
-	printf("read %d bytes\n", fread(&dname_id, sizeof(dname_id), 1, f));
+	fread(&dname_id, sizeof(dname_id), 1, f);
 
-	printf("read %d bytes\n", fread(&parent_id, sizeof(dname_id), 1, f));
 
-	printf("read %d bytes\n", fread(&rrset_count, sizeof(rrset_count), 1, f));
+	fread(&parent_id, sizeof(dname_id), 1, f);
 
-	printf("dname_id: %d\n", dname_id);
+
+	fread(&rrset_count, sizeof(rrset_count), 1, f);
 
 	dnslib_dname_t *owner = id_array[(uint)dname_id];
 
@@ -198,10 +201,10 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	memcpy(owner->name, dname_wire, dname_size);
 	owner->size = dname_size;
 
-	printf("created owner: %s\n", dnslib_dname_to_str(owner));
+//	printf("created owner: %s\n", dnslib_dname_to_str(owner));
 
 	if ((node = dnslib_node_new(owner, NULL)) == NULL) {
-		printf("Error: could not create node\n");
+//		printf("Error: could not create node\n");
 		return NULL;
 	}
 
@@ -218,12 +221,12 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 
 	dnslib_rrset_t *tmp_rrset;
 
-	printf("loading %u rrsets\n", rrset_count);
+//	printf("loading %u rrsets\n", rrset_count);
 
 	for (int i = 0; i < rrset_count; i++) {
 		if ((tmp_rrset = dnslib_load_rrset(f)) == NULL) {
 			dnslib_node_free(&node);
-			printf("Error: rrset load\n");
+//			printf("Error: rrset load\n");
 			//TODO what else to free?
 			return NULL;
 		}
@@ -232,7 +235,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 			tmp_rrset->rrsigs->owner = node->owner;
 		}
 		if (dnslib_node_add_rrset(node, tmp_rrset) != 0) {
-			printf("Error: could not add rrset\n");
+//			printf("Error: could not add rrset\n");
 			return NULL;
 		}
 	}
@@ -252,13 +255,17 @@ dnslib_zone_t *dnslib_load_zone(const char *filename)
 
 	uint node_count;
 
-	fread(&node_count, sizeof(node_count), 1, f);
+	uint nsec3_node_count;
 
-	id_array = malloc(sizeof(dnslib_dname_t *) * (node_count + 1));
+	fread(&node_count, sizeof(node_count), 1, f);
+	fread(&nsec3_node_count, sizeof(nsec3_node_count), 1, f);
+
+	id_array =
+		malloc(sizeof(dnslib_dname_t *) * (node_count + nsec3_node_count + 1));
 
 	printf("loading %u nodes\n", node_count);
 
-	for (uint i = 1; i < node_count + 1; i++) {
+	for (uint i = 1; i < (node_count + nsec3_node_count + 1); i++) {
 		id_array[i] = malloc(sizeof(dnslib_dname_t));
 	}
 
@@ -267,6 +274,17 @@ dnslib_zone_t *dnslib_load_zone(const char *filename)
 		if (tmp_node != NULL) {
 //			dnslib_node_dump(tmp_node);
 			dnslib_zone_add_node(zone, tmp_node);
+		} else {
+			printf("Node error!\n");
+		}
+	}
+
+	printf("loading %u nsec3 nodes\n", nsec3_node_count);
+
+	for (uint i = 0; i < nsec3_node_count; i++) {
+		tmp_node = dnslib_load_node(f);
+		if (tmp_node != NULL) {
+			dnslib_zone_add_nsec3_node(zone, tmp_node);
 		} else {
 			printf("Node error!\n");
 		}

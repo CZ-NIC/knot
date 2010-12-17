@@ -22,13 +22,13 @@ static uint8_t one = 1;
 
 void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata, uint32_t type, FILE *f)
 {
-	printf("dumping rdata\n");
+//	printf("dumping rdata\n");
 	dnslib_rrtype_descriptor_t *desc =
 		dnslib_rrtype_descriptor_by_type(type);
 	assert(desc != NULL);
 	for (int i = 0; i < desc->length; i++) {
 		if (&(rdata->items[i]) == NULL) { //XXX isn't this itself enough to crash?
-			printf("Item n. %d is not set!\n", i);
+//			printf("Item n. %d is not set!\n", i);
 			continue;
 		}
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
@@ -39,13 +39,12 @@ void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata, uint32_t type, FILE *f)
 				fwrite(&one, sizeof(one), 1, f);
 				fwrite(&(rdata->items[i].dname->node), sizeof(void *), 1, f);
 			} else {
-				printf("not in zone: %s\n",
-				       dnslib_dname_to_str((rdata->items[i].dname)));
+//				printf("not in zone: %s\n",
+//				       dnslib_dname_to_str((rdata->items[i].dname)));
 				fwrite(&zero, sizeof(zero), 1, f);
 				fwrite(&(rdata->items[i].dname->size), sizeof(uint), 1, f);
 				fwrite(rdata->items[i].dname->name, sizeof(uint8_t),
 				       rdata->items[i].dname->size, f);
-				getchar();
 			}
 
 		} else {
@@ -53,7 +52,7 @@ void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata, uint32_t type, FILE *f)
 			fwrite(rdata->items[i].raw_data, sizeof(uint8_t),
 			       rdata->items[i].raw_data[0] + 1, f);\
 
-			printf("Written %d long raw data\n", rdata->items[i].raw_data[0]);
+//			printf("Written %d long raw data\n", rdata->items[i].raw_data[0]);
 		}
 	}
 }
@@ -143,14 +142,14 @@ void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
 	assert(node->owner != NULL);
 	fwrite(&node->owner->size, sizeof(node->owner->size), 1, f);
 
-	printf("Size written: %u\n", node->owner->size);
+//	printf("Size written: %u\n", node->owner->size);
 
 	fwrite(node->owner->name, sizeof(uint8_t),
 	       node->owner->size, f);
 
 	fwrite(&(node->owner->node), sizeof(void *), 1, f);
 
-	printf("Writing id: %u\n", node->owner->node);
+//	printf("Writing id: %u\n", node->owner->node);
 
 	if (node->parent != NULL) {
 		fwrite(&(node->parent->owner->node), sizeof(void *), 1, f);
@@ -165,7 +164,7 @@ void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
 
 	fgetpos(f, &rrset_count_pos);
 
-	printf("Position rrset_count: %ld\n", ftell(f));
+//	printf("Position rrset_count: %ld\n", ftell(f));
 
 	uint rrset_count = 0;
 
@@ -190,19 +189,19 @@ void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
 
 	fgetpos(f, &tmp_pos);
 
-	printf("Position after all rrsets: %ld\n", ftell(f));
+//	printf("Position after all rrsets: %ld\n", ftell(f));
 
 	fsetpos(f, &rrset_count_pos);
 
-	printf("Writing here: %ld\n", ftell(f));	
+//	printf("Writing here: %ld\n", ftell(f));	
 
 	fwrite(&rrset_count, sizeof(rrset_count), 1, f);
 
 	fsetpos(f, &tmp_pos);
 
-	printf("Number of rrsets: %u\n", rrset_count);
+//	printf("Number of rrsets: %u\n", rrset_count);
 
-	printf("Function ends with: %ld\n\n", ftell(f));	
+//	printf("Function ends with: %ld\n\n", ftell(f));	
 
 }
 
@@ -217,14 +216,27 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 	}
 
 	fwrite(&node_count, sizeof(node_count), 1, f);
+	fwrite(&node_count, sizeof(node_count), 1, f);
 	
 	/* TODO is there a way how to stop the traversal upon error? */
 	TREE_REVERSE_APPLY(zone->tree, dnslib_node, avl,
 	                   dnslib_node_dump_binary, f);
 
-	rewind(f);
+	uint tmp_count = node_count;
 
+	node_count = 0;
+
+	TREE_REVERSE_APPLY(zone->nsec3_nodes, dnslib_node, avl,
+	                   dnslib_node_dump_binary, f);
+
+	rewind(f);
+	
+	fwrite(&tmp_count, sizeof(tmp_count), 1, f);
 	fwrite(&node_count, sizeof(node_count), 1, f);
+
+	printf("written %d normal nodes\n", tmp_count);
+
+	printf("written %d nsec3 nodes\n", node_count);
 
 	fclose(f);
 
