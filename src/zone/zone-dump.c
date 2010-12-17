@@ -16,6 +16,10 @@
 /* TODO Think of a better way than global variable */
 static uint node_count = 0;
 
+static uint8_t zero = 0;
+static uint8_t one = 1;
+
+
 void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata, uint32_t type, FILE *f)
 {
 	printf("dumping rdata\n");
@@ -31,7 +35,18 @@ void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata, uint32_t type, FILE *f)
 		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
 			assert(rdata->items[i].dname != NULL);
-			fwrite(&(rdata->items[i].dname->node), sizeof(void *), 1, f);
+			if (rdata->items[i].dname->node) { //IN THE ZONE DNAME
+				fwrite(&one, sizeof(one), 1, f);
+				fwrite(&(rdata->items[i].dname->node), sizeof(void *), 1, f);
+			} else {
+				printf("not in zone: %s\n",
+				       dnslib_dname_to_str((rdata->items[i].dname)));
+				fwrite(&zero, sizeof(zero), 1, f);
+				fwrite(&(rdata->items[i].dname->size), sizeof(uint), 1, f);
+				fwrite(rdata->items[i].dname->name, sizeof(uint8_t),
+				       rdata->items[i].dname->size, f);
+				getchar();
+			}
 
 		} else {
 			assert(rdata->items[i].raw_data != NULL);
@@ -123,7 +138,6 @@ void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, FILE *f)
 
 void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
 {
-
 	node_count++;
 	/* first write dname */
 	assert(node->owner != NULL);
