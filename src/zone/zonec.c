@@ -1438,8 +1438,19 @@ int process_rr(void)
 		return 0;
 	}
 
+  //Won't this affect NSEC3s?
 	dnslib_node_t *node;
-	node = dnslib_zone_get_node(zone, current_rrset->owner);
+
+  assert(parser->last_node != NULL);
+
+  if (current_rrset->type != DNSLIB_RRTYPE_SOA &&
+      dnslib_dname_compare(parser->last_node->owner, current_rrset->owner) ==
+     0) {
+      node = parser->last_node;
+  } else {
+    	node = dnslib_zone_get_node(zone, current_rrset->owner);
+  }
+
 	if (node == NULL) {
 //		printf("NEW ZONE, OWNER WAS: %s\n", dnslib_dname_to_str(current_rrset->owner));
 		assert(dnslib_zone_find_node(zone, current_rrset->owner) == 0);
@@ -1485,15 +1496,15 @@ int process_rr(void)
 			chopped = dnslib_dname_left_chop(tmp_owner);
 			tmp_owner = chopped;
 		}
-
+    
 		last_node->parent = tmp_node;
 		assert(node);
 	}
 	
 	if (node->owner->node == NULL) {
 		node->owner->node = parser->id;
-//		printf("setting id %d for dname: %s (%p)\n", parser->id,
-//			dnslib_dname_to_str(node->owner), node->owner);
+		printf("setting id %d for dname: %s (%p)\n", parser->id,
+			dnslib_dname_to_str(node->owner), node->owner);
 		parser->id++;
 	}
 	rrset = dnslib_node_get_rrset(node, current_rrset->type);
@@ -1555,6 +1566,8 @@ int process_rr(void)
 	if (vflag > 1 && totalrrs > 0 && (totalrrs % progress == 0)) {
 		fprintf(stdout, "%ld\n", totalrrs);
 	}
+  
+  parser->last_node = node;
 
 	++totalrrs;
 	return 0;

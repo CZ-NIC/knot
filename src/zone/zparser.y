@@ -1152,6 +1152,8 @@ zparser_create()
 	result->prev_dname = NULL;
 	result->default_apex = NULL;
 
+  result->last_node = malloc(sizeof(result->last_node));
+
 	result->temporary_items = malloc(MAXRDATALEN *
 	                                  sizeof(dnslib_rdata_item_t));
 
@@ -1186,6 +1188,8 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->line = 1;
 	parser->filename = filename;
 	parser->rdata_count = 0;
+
+  parser->last_node = origin;
 
 	parser->id = 1;
 
