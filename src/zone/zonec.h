@@ -66,6 +66,8 @@ struct zparser {
 	dnslib_dname_t *prev_dname;
 	dnslib_node_t *default_apex;
 
+  dnslib_node_t *last_node;
+
 	char *dname_str;
 
 	int error_occurred;

@@ -195,7 +195,6 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 		                                dname_size, NULL)) == NULL) {
 		return NULL;
 	}*/
-
 	
 	owner->name = malloc(sizeof(uint8_t) * dname_size);
 	memcpy(owner->name, dname_wire, dname_size);
