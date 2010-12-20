@@ -83,6 +83,8 @@ struct zparser {
 
 	rrsig_list_t *rrsig_orphans;
 
+	dnslib_dname_t *root_domain;
+
 	int rdata_count;
 };
 

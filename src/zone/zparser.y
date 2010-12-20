@@ -138,10 +138,9 @@ line:	NL
 
 		if (!dnslib_dname_is_fqdn(parser->current_rrset.owner)) {
 
-			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
-
 			parser->current_rrset.owner =
-				dnslib_dname_cat(parser->current_rrset.owner, tmp);
+				dnslib_dname_cat(parser->current_rrset.owner,
+				                 parser->root_domain);
 
 		}
 
@@ -179,8 +178,7 @@ origin_directive:	DOLLAR_ORIGIN sp abs_dname trail
     {
 	    //TODO figure out why dnames are not ended with '.' even though
 	    //     they should be
-            dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
-	    dnslib_node_t *origin_node = dnslib_node_new(dnslib_dname_cat($3, tmp),
+	    dnslib_node_t *origin_node = dnslib_node_new(dnslib_dname_cat($3, parser->root_domain),
 	                                                 NULL);
 	    parser->origin = origin_node;
     }
@@ -648,10 +646,9 @@ rdata_domain_name:	dname trail
 	    /* convert a single dname record */
 	    		if (!dnslib_dname_is_fqdn($1)) {
 
-			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
 
 			parser->current_rrset.owner =
-				dnslib_dname_cat($1, tmp);
+				dnslib_dname_cat($1, parser->root_domain);
 
 		}
 	    zadd_rdata_domain($1);
@@ -663,18 +660,13 @@ rdata_soa:	dname sp dname sp STR sp STR sp STR sp STR sp STR trail
 	    /* convert the soa data */
 	    		if (!dnslib_dname_is_fqdn($1)) {
 
-			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
-
 			parser->current_rrset.owner =
-				dnslib_dname_cat($1, tmp);
+				dnslib_dname_cat($1, parser->root_domain);
 
 		}
 			    		if (!dnslib_dname_is_fqdn($3)) {
-
-			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
-
 			parser->current_rrset.owner =
-				dnslib_dname_cat($3, tmp);
+				dnslib_dname_cat($3, parser->root_domain);
 
 		}
 	    zadd_rdata_domain($1);	/* prim. ns */
@@ -705,18 +697,14 @@ rdata_minfo:	dname sp dname trail
     {
 	    	    		if (!dnslib_dname_is_fqdn($1)) {
 
-			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
-
 			parser->current_rrset.owner =
-				dnslib_dname_cat($1, tmp);
+				dnslib_dname_cat($1, parser->root_domain);
 
 		}
 			    		if (!dnslib_dname_is_fqdn($3)) {
 
-			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
-
 			parser->current_rrset.owner =
-				dnslib_dname_cat($3, tmp);
+				dnslib_dname_cat($3, parser->root_domain);
 
 		}
 
@@ -730,10 +718,9 @@ rdata_mx:	STR sp dname trail
     {
 			    		if (!dnslib_dname_is_fqdn($3)) {
 
-			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
 
 			parser->current_rrset.owner =
-				dnslib_dname_cat($3, tmp);
+				dnslib_dname_cat($3, parser->root_domain);
 
 		}
 
@@ -753,18 +740,14 @@ rdata_rp:	dname sp dname trail
     {
 	    	    	    		if (!dnslib_dname_is_fqdn($1)) {
 
-			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
-
 			parser->current_rrset.owner =
-				dnslib_dname_cat($1, tmp);
+				dnslib_dname_cat($1, parser->root_domain);
 
 		}
 			    		if (!dnslib_dname_is_fqdn($3)) {
 
-			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
-
 			parser->current_rrset.owner =
-				dnslib_dname_cat($3, tmp);
+				dnslib_dname_cat($3, parser->root_domain);
 
 		}
 
@@ -778,10 +761,9 @@ rdata_afsdb:	STR sp dname trail
     {
 			    		if (!dnslib_dname_is_fqdn($3)) {
 
-			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
 
 			parser->current_rrset.owner =
-				dnslib_dname_cat($3, tmp);
+				dnslib_dname_cat($3, parser->root_domain);
 
 		}
 
@@ -814,10 +796,8 @@ rdata_rt:	STR sp dname trail
     {
 	    	    	    	    		if (!dnslib_dname_is_fqdn($3)) {
 
-			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
-
 			parser->current_rrset.owner =
-				dnslib_dname_cat($3, tmp);
+				dnslib_dname_cat($3, parser->root_domain);
 
 		}
 
@@ -842,19 +822,13 @@ rdata_nsap:	str_dot_seq trail
 rdata_px:	STR sp dname sp dname trail
     {
 	    		if (!dnslib_dname_is_fqdn($3)) {
-
-			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
-
 			parser->current_rrset.owner =
-				dnslib_dname_cat($3, tmp);
+				dnslib_dname_cat($3, parser->root_domain);
 
 		}
 			    		if (!dnslib_dname_is_fqdn($5)) {
-
-			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
-
 			parser->current_rrset.owner =
-				dnslib_dname_cat($5, tmp);
+				dnslib_dname_cat($5, parser->root_domain);
 
 		}
 	    zadd_rdata_wireformat(zparser_conv_short($1.str)); /* preference */
@@ -878,11 +852,8 @@ rdata_loc:	concatenated_str_seq trail
 rdata_nxt:	dname sp nxt_seq trail
     {
 	    	    		if (!dnslib_dname_is_fqdn($1)) {
-
-			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
-
 			parser->current_rrset.owner =
-				dnslib_dname_cat($1, tmp);
+				dnslib_dname_cat($1, parser->root_domain);
 
 		}
 	    zadd_rdata_domain($1); /* nxt name */
@@ -894,11 +865,8 @@ rdata_nxt:	dname sp nxt_seq trail
 rdata_srv:	STR sp STR sp STR sp dname trail
     {
 	    	    		if (!dnslib_dname_is_fqdn($7)) {
-
-			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
-
 			parser->current_rrset.owner =
-				dnslib_dname_cat($7, tmp);
+				dnslib_dname_cat($7, parser->root_domain);
 
 		}
 	    zadd_rdata_wireformat(zparser_conv_short($1.str)); /* prio */
@@ -912,11 +880,8 @@ rdata_srv:	STR sp STR sp STR sp dname trail
 rdata_naptr:	STR sp STR sp STR sp STR sp STR sp dname trail
     {
 	    	    		if (!dnslib_dname_is_fqdn($11)) {
-
-			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
-
 			parser->current_rrset.owner =
-				dnslib_dname_cat($11, tmp);
+				dnslib_dname_cat($11, parser->root_domain);
 
 		}
 	    zadd_rdata_wireformat(zparser_conv_short($1.str)); /* order */
@@ -932,11 +897,8 @@ rdata_naptr:	STR sp STR sp STR sp STR sp STR sp dname trail
 rdata_kx:	STR sp dname trail
     {
 	    	    		if (!dnslib_dname_is_fqdn($3)) {
-
-			dnslib_dname_t *tmp = dnslib_dname_new_from_str(".", 1, NULL);
-
 			parser->current_rrset.owner =
-				dnslib_dname_cat($3, tmp);
+				dnslib_dname_cat($3, parser->root_domain);
 
 		}
 	    zadd_rdata_wireformat(zparser_conv_short($1.str)); /* preference */
@@ -1189,7 +1151,8 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->filename = filename;
 	parser->rdata_count = 0;
 
-  parser->last_node = origin;
+	parser->last_node = origin;
+	parser->root_domain = dnslib_dname_new_from_str(".", 1, NULL);
 
 	parser->id = 1;
 

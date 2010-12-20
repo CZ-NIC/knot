@@ -71,6 +71,8 @@ void dnslib_rrsig_set_dump_binary(dnslib_rrsig_set_t *rrsig, FILE *f)
 
 	fwrite(&rdata_count, sizeof(rdata_count), 1, f);
 
+	assert(rrsig->rdata);
+
 	dnslib_rdata_t *tmp_rdata = rrsig->rdata;
 
 	while (tmp_rdata->next != rrsig->rdata) {
@@ -150,6 +152,7 @@ void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
 	fwrite(&(node->owner->node), sizeof(void *), 1, f);
 
 //	printf("Writing id: %u\n", node->owner->node);
+
 
 	if (node->parent != NULL) {
 		fwrite(&(node->parent->owner->node), sizeof(void *), 1, f);
