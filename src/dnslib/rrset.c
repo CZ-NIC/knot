@@ -79,6 +79,16 @@ const dnslib_rdata_t *dnslib_rrset_rdata(const dnslib_rrset_t *rrset)
 	return rrset->rdata;
 }
 
+const dnslib_rdata_t *dnslib_rrset_rdata_next(const dnslib_rrset_t *rrset,
+                                              const dnslib_rdata_t *rdata)
+{
+	if (rdata->next == rrset->rdata) {
+		return NULL;
+	} else {
+		return rdata->next;
+	}
+}
+
 dnslib_rdata_t *dnslib_rrset_get_rdata(dnslib_rrset_t *rrset)
 {
 	return rrset->rdata;
