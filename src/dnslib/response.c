@@ -35,7 +35,7 @@ enum {
 	PREALLOC_DOMAINS =
 		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(dnslib_dname_t *),
 	PREALLOC_OFFSETS =
-		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(size_t *),
+		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(short),
 	PREALLOC_TMP_DOMAINS =
 		DEFAULT_TMP_DOMAINS * sizeof(dnslib_dname_t *),
 
@@ -57,10 +57,11 @@ static const short QUESTION_OFFSET = DNSLIB_PACKET_HEADER_SIZE;
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-static void dnslib_response_parse_host_edns(dnslib_response_t *response,
+static void dnslib_response_parse_host_edns(dnslib_response_t *resp,
                                      const uint8_t *edns_wire, short edns_size)
 {
-
+	resp->max_size = DNSLIB_MAX_RESPONSE_SIZE;
+	// TODO parse
 }
 
 /*----------------------------------------------------------------------------*/
@@ -144,6 +145,9 @@ static void dnslib_response_init(dnslib_response_t *resp,
 	if (edns_wire != NULL && edns_size > 0) {
 		// parse given EDNS record and save max size
 		dnslib_response_parse_host_edns(resp, edns_wire, edns_size);
+	} else {
+		// set default max size of the response
+		resp->max_size = DNSLIB_MAX_RESPONSE_SIZE;
 	}
 
 	// save default pointers to the space after the structure
@@ -615,6 +619,10 @@ int dnslib_response_parse_query(dnslib_response_t *resp,
 		if ((err = dnslib_response_parse_client_edns(
 			       &pos, &remaining, &resp->edns_query))) {
 			return err;
+		}
+		if (resp->edns_query.payload
+		    && resp->edns_query.payload < resp->max_size) {
+			resp->max_size = resp->edns_query.payload;
 		}
 	} else {
 		// set client EDNS version to EDNS_NOT_SUPPORTED
