@@ -36,7 +36,7 @@
  *
  * (4500 - 24 - 12 - 5) / 11 = 405
  */
-static const size_t MAX_RRS_IN_RESPONSE = 405;
+//static const size_t MAX_RRS_IN_RESPONSE = 405;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -56,7 +56,7 @@ typedef struct dnslib_edns_data dnslib_edns_data_t;
  */
 struct dnslib_compressed_dnames {
 	dnslib_dname_t **dnames;
-	size_t *offsets;
+	short *offsets;
 	short count;
 	short max;
 };
@@ -117,6 +117,10 @@ struct dnslib_response {
 	 * \todo Do we need this actually??
 	 */
 	dnslib_edns_data_t edns_query;
+
+	/*!
+	 * \brief EDNS data provided by the server.
+	 */
 	const uint8_t *edns_wire;
 	short edns_size;
 
@@ -150,9 +154,9 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
 int dnslib_response_add_rrset_aditional(dnslib_response_t *response,
                                         const dnslib_rrset_t *rrset, int tc);
 
-/*
- * TODO: some functions for setting RCODE and flags!
- */
+void dnslib_response_set_rcode(dnslib_response_t *response, short rcode);
+
+void dnslib_response_set_aa(dnslib_response_t *response);
 
 int dnslib_response_to_wire(dnslib_response_t *response,
                             uint8_t **resp_wire, size_t *resp_size);
