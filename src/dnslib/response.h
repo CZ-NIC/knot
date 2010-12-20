@@ -101,9 +101,9 @@ struct dnslib_response {
 
 	short max_size;  /*!< Maximum allowed size of the response. */
 
-	dnslib_rrset_t **answer;
-	dnslib_rrset_t **authority;
-	dnslib_rrset_t **additional;
+	const dnslib_rrset_t **answer;
+	const dnslib_rrset_t **authority;
+	const dnslib_rrset_t **additional;
 
 	short max_ancount; /*!< Allocated space for Answer RRsets. */
 	short max_nscount; /*!< Allocated space for Authority RRsets. */

@@ -13,7 +13,12 @@ enum {
 	DEFAULT_NSCOUNT = 8,
 	DEFAULT_ARCOUNT = 28,
 	DEFAULT_DOMAINS_IN_RESPONSE = 22,
-	DEFAULT_TMP_DOMAINS = 5
+	DEFAULT_TMP_DOMAINS = 5,
+	STEP_ANCOUNT = 6,
+	STEP_NSCOUNT = 8,
+	STEP_ARCOUNT = 8,
+	STEP_DOMAINS = 10,
+	STEP_TMP_DOMAINS = 5
 };
 
 enum {
@@ -68,7 +73,7 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 		(void *)resp->question.qname - (void *)resp);
 
 	// then answer, authority and additional sections
-	resp->answer = (dnslib_rrset_t **)
+	resp->answer = (const dnslib_rrset_t **)
 	                   ((char *)resp->question.qname + PREALLOC_QNAME);
 	resp->authority = resp->answer + DEFAULT_ANCOUNT;
 	resp->additional = resp->authority + DEFAULT_NSCOUNT;
@@ -340,6 +345,32 @@ static void dnslib_response_dump(const dnslib_response_t *resp)
 }
 
 /*----------------------------------------------------------------------------*/
+
+static int dnslib_response_realloc_rrsets(const dnslib_rrset_t ***rrsets,
+                                          short *max_count,
+                                          short default_max_count, short step )
+{
+	int free_old = (*max_count) != default_max_count;
+	const dnslib_rrset_t **old = *rrsets;
+
+	short new_max_count = *max_count + step;
+	const dnslib_rrset_t **new_rrsets = (const dnslib_rrset_t **)malloc(
+		new_max_count * sizeof(dnslib_rrset_t *));
+	CHECK_ALLOC_LOG(new_rrsets, -1);
+
+	memcpy(new_rrsets, *rrsets, (*max_count) * sizeof(dnslib_rrset_t *));
+
+	*rrsets = new_rrsets;
+	*max_count = new_max_count;
+
+	if (free_old) {
+		free(old);
+	}
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -347,7 +378,7 @@ dnslib_response_t *dnslib_response_new_empty(const uint8_t *edns_wire,
                                              short edns_size)
 {
 	dnslib_response_t *resp = (dnslib_response_t *)malloc(PREALLOC_TOTAL);
-	CHECK_ALLOC_LOG(resp);
+	CHECK_ALLOC_LOG(resp, NULL);
 
 	dnslib_response_init(resp, edns_wire, edns_size);
 
@@ -399,7 +430,18 @@ int dnslib_response_parse_query(dnslib_response_t *resp,
 int dnslib_response_add_rrset_answer(dnslib_response_t *response,
                                      const dnslib_rrset_t *rrset, int tc)
 {
-	return -1;
+	if (response->header.ancount == response->max_ancount
+	    && dnslib_response_realloc_rrsets(&response->answer,
+			&response->max_ancount, DEFAULT_ANCOUNT, STEP_ANCOUNT)
+		!= 0) {
+		return -1;
+	}
+
+	// TODO: check if the RRSet fits and if not, set the tc bit if required
+
+	response->answer[response->header.ancount++] = rrset;
+
+	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -407,7 +449,18 @@ int dnslib_response_add_rrset_answer(dnslib_response_t *response,
 int dnslib_response_add_rrset_authority(dnslib_response_t *response,
                                         const dnslib_rrset_t *rrset, int tc)
 {
-	return -1;
+	if (response->header.nscount == response->max_nscount
+	    && dnslib_response_realloc_rrsets(&response->authority,
+			&response->max_nscount, DEFAULT_NSCOUNT, STEP_NSCOUNT)
+		!= 0) {
+		return -1;
+	}
+
+	// TODO: check if the RRSet fits and if not, set the tc bit if required
+
+	response->authority[response->header.nscount++] = rrset;
+
+	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -415,7 +468,18 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
 int dnslib_response_add_rrset_aditional(dnslib_response_t *response,
                                         const dnslib_rrset_t *rrset, int tc)
 {
-	return -1;
+	if (response->header.arcount == response->max_arcount
+	    && dnslib_response_realloc_rrsets(&response->additional,
+			&response->max_arcount, DEFAULT_ARCOUNT, STEP_ARCOUNT)
+		!= 0) {
+		return -1;
+	}
+
+	// TODO: check if the RRSet fits and if not, set the tc bit if required
+
+	response->additional[response->header.arcount++] = rrset;
+
+	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
