@@ -131,6 +131,9 @@ uint32_t dnslib_rrset_ttl(const dnslib_rrset_t *rrset);
  */
 const dnslib_rdata_t *dnslib_rrset_rdata(const dnslib_rrset_t *rrset);
 
+const dnslib_rdata_t *dnslib_rrset_rdata_next(const dnslib_rrset_t *rrset,
+                                              const dnslib_rdata_t *rdata);
+
 /*!
  * \brief Returns the first RDATA in the RRSet (non-const version).
  *
