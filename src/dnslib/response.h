@@ -38,6 +38,8 @@
  */
 //static const size_t MAX_RRS_IN_RESPONSE = 405;
 
+static const short DNSLIB_MAX_RESPONSE_SIZE = 512;
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \todo NSID
