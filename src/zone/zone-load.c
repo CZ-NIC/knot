@@ -92,7 +92,7 @@ dnslib_rrsig_set_t *dnslib_load_rrsig(FILE *f)
 	uint16_t rrset_class;
 	uint32_t rrset_ttl;
 
-	uint rdata_count;
+	uint8_t rdata_count;
 
 	fread(&rrset_type, sizeof(rrset_type), 1, f);
 //	printf("rrset type: %d\n", rrset_type);
@@ -125,8 +125,8 @@ dnslib_rrset_t *dnslib_load_rrset(FILE *f)
 	uint16_t rrset_class;
 	uint32_t rrset_ttl;
 
-	uint rdata_count;
-	uint rrsig_count;
+	uint8_t rdata_count;
+	uint8_t rrsig_count;
 
 	fread(&rrset_type, sizeof(rrset_type), 1, f);
 //	printf("rrset type: %d\n", rrset_type);
@@ -163,14 +163,14 @@ dnslib_rrset_t *dnslib_load_rrset(FILE *f)
 dnslib_node_t *dnslib_load_node(FILE *f)
 {
 
-	uint dname_size;
+	uint8_t dname_size;
 	dnslib_node_t *node;
 	/* first, owner */
 
 	
 	uint8_t dname_wire[255]; //XXX in respect to remark below, should be dynamic
 				 //but I couldn't make it work
-	uint rrset_count;
+	uint8_t rrset_count;
 	void *dname_id; //ID, technically it's an integer
 	void *parent_id;
 
