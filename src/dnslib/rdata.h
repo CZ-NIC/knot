@@ -131,6 +131,8 @@ int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
  *
  * \return The RDATA item on position \a pos, or NULL if such position does not
  *         exist within the given RDATA structure.
+ *
+ * \todo rename to dnslib_rdata_item()
  */
 const dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
                 uint pos);
