@@ -63,7 +63,7 @@ void dnslib_rrsig_set_dump_binary(dnslib_rrsig_set_t *rrsig, FILE *f)
 	fwrite(&rrsig->rclass, sizeof(rrsig->rclass), 1, f);
 	fwrite(&rrsig->ttl, sizeof(rrsig->ttl), 1, f);
 
-	uint rdata_count = 0;
+	uint8_t rdata_count = 0;
 
 	fpos_t rrdata_count_pos;
 
@@ -100,8 +100,8 @@ void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, FILE *f)
 	fwrite(&rrset->rclass, sizeof(rrset->rclass), 1, f);
 	fwrite(&rrset->ttl, sizeof(rrset->ttl), 1, f);
 
-	uint rdata_count = 0;
-	uint rrsig_count = 0;
+	uint8_t rdata_count = 0;
+	uint8_t rrsig_count = 0;
 
 	fpos_t rrdata_count_pos;
 
@@ -142,7 +142,7 @@ void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
 	node_count++;
 	/* first write dname */
 	assert(node->owner != NULL);
-	fwrite(&node->owner->size, sizeof(node->owner->size), 1, f);
+	fwrite(&((node->owner->size)), sizeof(uint8_t), 1, f);
 
 //	printf("Size written: %u\n", node->owner->size);
 
@@ -169,7 +169,7 @@ void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
 
 //	printf("Position rrset_count: %ld\n", ftell(f));
 
-	uint rrset_count = 0;
+	uint8_t rrset_count = 0;
 
 	fwrite(&rrset_count, sizeof(rrset_count), 1, f);
 
