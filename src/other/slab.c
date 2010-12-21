@@ -2,11 +2,13 @@
 #include <malloc.h>
 #include <unistd.h>
 #include <string.h>
-
+#include <assert.h>
+#include <sys/mman.h>
 #include "slab.h"
 
 #undef malloc
 #undef free
+#undef realloc
 #include <stdlib.h>
 
 /*
@@ -80,26 +82,95 @@ static unsigned slab_cache_id(unsigned size)
 }
 
 /*
+ * Slab pages directory.
+ * Provides O(1) lookup with quite low
+ * memory overhead (~124kB for 4GiB memory).
+ */
+size_t SLAB_SIZE = 0;
+static unsigned SLAB_SIZE_EXP = 0;
+static int* _slab_dir = 0;
+
+/* Division or modulo by  2^n gets
+ * optimised to k >> n and k & (n-1) respectively
+ * even with -O0.
+ */
+#define slab_page_hash(addr)  (((uint64_t)addr ^ (uint64_t)_slab_dir) / SLAB_SIZE)
+#define slab_dir_index(id)  ((id) / (8 * sizeof(int)))
+#define slab_dir_offset(id) ((id) % (8 * sizeof(int)))
+
+static void slab_dir_mark(void* addr)
+{
+	unsigned id = slab_page_hash(addr);
+	/*fprintf(stderr, "%s: addr %p -> index 0x%x (0x%lx, 0x%lx)\n",
+	        __func__, addr, id, slab_dir_index(id), slab_dir_offset(id));*/
+	_slab_dir[slab_dir_index(id)] |= slab_dir_offset(id);
+
+}
+
+static void slab_dir_clear(void* addr)
+{
+	unsigned id = slab_page_hash(addr);
+	/*fprintf(stderr, "%s: addr %p -> index 0x%x (0x%lx, 0x%lx)\n",
+	        __func__, addr, id, slab_dir_index(id), slab_dir_offset(id));*/
+	_slab_dir[slab_dir_index(id)] &= ~slab_dir_offset(id);
+}
+
+static int slab_dir_exists(void* addr)
+{
+	unsigned id = slab_page_hash(addr);
+	/*fprintf(stderr, "%s: addr %p -> index 0x%x (0x%lx, 0x%lx)\n",
+	        __func__, addr, id, slab_dir_index(id), slab_dir_offset(id));*/
+	return _slab_dir[slab_dir_index(id)] & slab_dir_offset(id);
+}
+
+/*
  * Initializers.
  */
-static slab_alloc_t sAllocator;
-static size_t SLAB_SIZE = 0;
+static slab_alloc_t _allocator_g;
 
 void __attribute__ ((constructor)) slab_init()
 {
-	SLAB_SIZE = sysconf(_SC_PAGESIZE) << 1;
-	slab_alloc_init(&sAllocator);
+	// Fetch page size
+	SLAB_SIZE = sysconf(_SC_PAGESIZE);
+	SLAB_SIZE_EXP = fastlog2(SLAB_SIZE);
+	assert(SLAB_SIZE < ~(unsigned int)(0));
+
+	// Initialize directory of allocd pages
+	// Bitfield is approx. 20% slower, but still very good (~2ms for 1M ops)
+	// It is far more space effective (1/8 of the bytemap).
+	long pages = sysconf(_SC_PHYS_PAGES);
+	_slab_dir = mmap(0, pages / 8, PROT_READ|PROT_WRITE,
+	                 MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+	memset(_slab_dir, 0, pages / 8);
+
+	// Initialize global allocator
+	slab_alloc_init(&_allocator_g);
 }
 
 void __attribute__ ((destructor)) slab_deinit()
 {
-	slab_alloc_stats(&sAllocator);
-	slab_alloc_destroy(&sAllocator);
+	// Deinitialize global allocator
+	slab_alloc_stats(&_allocator_g);
+	slab_alloc_destroy(&_allocator_g);
+
+	// Unmap page directory
+	long pages = sysconf(_SC_PHYS_PAGES);
+	munmap(_slab_dir, pages / 8);
 }
 
 /*
  * Cache helper functions.
  */
+static inline int slab_alloc_lock(slab_alloc_t* alloc)
+{
+	return pthread_spin_lock(&alloc->lock);
+}
+
+static inline int slab_alloc_unlock(slab_alloc_t* alloc)
+{
+	return pthread_spin_unlock(&alloc->lock);
+}
+
 static inline int slab_cache_lock(slab_cache_t* cache)
 {
 	return pthread_spin_lock(&cache->lock);
@@ -202,12 +273,16 @@ slab_t* slab_create(slab_cache_t* cache)
 {
 	const size_t size = SLAB_SIZE;
 
-	slab_t* slab = 0;
-	if (posix_memalign((void**) &slab, size, size) < 0) {
+	slab_t* slab = mmap(0, size, PROT_READ|PROT_WRITE,
+	                    MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+	if (slab < 0) {
 		fprintf(stderr, "%s: failed to allocate aligned memory block\n",
 		        __func__);
 		return 0;
 	}
+
+	/* Mark in directory. */
+	slab_dir_mark(slab);
 
 	/* Initialize slab. */
 	slab->cache = cache;
@@ -251,8 +326,8 @@ slab_t* slab_create(slab_cache_t* cache)
 	/*fprintf(stderr, "%s: created slab (%p, %p) (%u B)\n",
 	        __func__, slab, slab + size, (unsigned)size);
 	fprintf(stderr, "%s: parent = %p, next slab = %p\n",
-	        __func__, cache, slab->next);
-	fprintf(stderr, "%s: item_size = %u\n",
+	        __func__, cache, slab->next);*/
+	/*fprintf(stderr, "%s: item_size = %u\n",
 	        __func__, (unsigned)item_size);
 	fprintf(stderr, "%s: color = %hu\n",
 	        __func__, color);
@@ -267,19 +342,25 @@ slab_t* slab_create(slab_cache_t* cache)
 
 void slab_destroy(slab_t** slab)
 {
-	// Disconnect from the list
+	/* Disconnect from the list */
 	slab_list_remove(*slab);
 
-	// Free slab
-	free(*slab);
-	fprintf(stderr, "%s: deleted slab %p\n",
-	        __func__, *slab);
+	/* Free slab */
+	munmap(*slab, SLAB_SIZE);
+
+	/* Clear directory. */
+	slab_dir_clear(*slab);
+
+	/* Invalidate pointer. */
+	/*fprintf(stderr, "%s: deleted slab %p\n",
+	        __func__, *slab);*/
 	*slab = 0;
 }
 
 void* slab_alloc(slab_t* slab)
 {
 	// Fetch first free item
+	// Critial section -->
 	void** item =  slab->head;
 	if (item == 0) {
 		return 0;
@@ -287,6 +368,7 @@ void* slab_alloc(slab_t* slab)
 
 	slab->head = (void**)*item;
 	--slab->bufs_free;
+	// <-- Critial section
 
 	// Move to partial?
 	if (slab->bufs_free == slab->bufs_count - 1) {
@@ -303,29 +385,52 @@ void* slab_alloc(slab_t* slab)
 
 void slab_free(void* ptr)
 {
-	// Get slab start address
-	slab_t* slab = (slab_t*)((char*)ptr - ((uint64_t)ptr % SLAB_SIZE));
-
-	// Return buf to slab
-	*((void**)ptr) = slab->head;
-	slab->head = (void**)ptr;
-	++slab->bufs_free;
-
-	// Return to partial
-	if(slab->bufs_free == 1) {
-		slab_list_move(&slab->cache->slabs_partial, slab);
-	} else if(slab->bufs_free == slab->bufs_count) {
-		slab_list_move(&slab->cache->slabs_empty, slab);
+	// Null pointer check
+	if (ptr == 0) {
+		fprintf(stderr, "%s: attempted to free null ptr\n", __func__);
+		return;
 	}
 
-	// Increment statistics
-	__sync_add_and_fetch(&slab->cache->stat_frees, 1);
+	// Get slab start address
+	slab_t* slab = slab_from_ptr(ptr);
+
+	// Check if it exists in directory
+	if (slab_dir_exists(slab)) {
+
+		// Return buf to slab
+		*((void**)ptr) = slab->head;
+		slab->head = (void**)ptr;
+		++slab->bufs_free;
+
+		// Return to partial
+		if(slab->bufs_free == 1) {
+			slab_list_move(&slab->cache->slabs_partial, slab);
+		} else if(slab->bufs_free == slab->bufs_count) {
+			slab_list_move(&slab->cache->slabs_empty, slab);
+		}
+
+		// Increment statistics
+		__sync_add_and_fetch(&slab->cache->stat_frees, 1);
+	} else {
+
+		// Pointer is not a slab
+		// Presuming it's a large block
+		size_t* bs = ((size_t*)ptr) - 1;
+
+		// Unmap
+		fprintf(stderr, "%s: unmapping large block of %zu bytes at %p\n",
+		        __func__, *bs, ptr);
+		munmap(bs, *bs);
+	}
+
+
+
 }
 
 int slab_cache_init(slab_cache_t* cache, size_t bufsize)
 {
-	fprintf(stderr, "%s: created cache of size %u\n",
-	        __func__, (unsigned)bufsize);
+	/*fprintf(stderr, "%s: created cache of size %u\n",
+	        __func__, (unsigned)bufsize);*/
 	cache->bufsize = bufsize;
 	cache->slabs_empty = cache->slabs_partial = cache->slabs_full = 0;
 	cache->color = 0;
@@ -369,6 +474,7 @@ void* slab_cache_alloc(slab_cache_t* cache)
 		}
 	}
 
+
 	return slab_alloc(slab);
 }
 
@@ -410,15 +516,26 @@ void slab_alloc_destroy(slab_alloc_t* alloc)
 
 void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 {
-	// TODO: Work around this
+	// Directly map large block
 	if (size > SLAB_SIZE * 0.5) {
-		return 0;
+
+		// Map block
+		size_t* p = mmap(0, size + sizeof(size_t), PROT_READ|PROT_WRITE,
+		                 MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+
+		// Prepend size tag
+		fprintf(stderr, "%s: mapping large block of %zu bytes at %p\n",
+		        __func__, size, p + 1);
+
+		*p = size;
+		return p + 1;
 	}
 
 	// Get cache id from size
 	unsigned cache_id = slab_cache_id(size);
 
 	// Check if associated cache exists
+	slab_alloc_lock(alloc);
 	if (alloc->caches[cache_id] == 0) {
 
 		// Assert minimum cache size
@@ -440,6 +557,7 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 		slab_cache_init(cache, bufsize);
 		alloc->caches[cache_id] = cache;
 	}
+	slab_alloc_unlock(alloc);
 
 	// Allocate from cache
 	void *ret = slab_cache_alloc(alloc->caches[cache_id]);
@@ -448,6 +566,20 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 		        __func__, (unsigned)size, (unsigned)cache_id);
 	}
 	return ret;
+}
+
+void *slab_alloc_realloc(slab_alloc_t* alloc, void *ptr, size_t size)
+{
+    // Allocate new buf
+    void *nptr = slab_alloc_alloc(alloc, size);
+
+    // Copy memory
+    slab_t* slab = slab_from_ptr(ptr);
+    memcpy(nptr, ptr, slab->cache->bufsize);
+
+    // Free old buf and return
+    slab_free(ptr);
+    return nptr;
 }
 
 void slab_alloc_stats(slab_alloc_t* alloc)
@@ -466,8 +598,12 @@ void slab_alloc_stats(slab_alloc_t* alloc)
 	}
 }
 
-void* slab_alloc_g(size_t size)
+void *slab_alloc_g(size_t size)
 {
-	return slab_alloc_alloc(&sAllocator, size);
+	return slab_alloc_alloc(&_allocator_g, size);
+}
 
+void *slab_realloc_g(void *ptr, size_t size)
+{
+	return slab_alloc_realloc(&_allocator_g, ptr, size);
 }
