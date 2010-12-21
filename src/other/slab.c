@@ -609,7 +609,11 @@ void slab_alloc_stats(slab_alloc_t* alloc)
 
 void *slab_alloc_g(size_t size)
 {
-	return slab_alloc_alloc(&_allocator_g, size);
+	void* ret = slab_alloc_alloc(&_allocator_g, size);
+	if (ret == 0) {
+		fprintf(stderr, "%s: returned NULL\n", __func__);
+	}
+	return ret;
 }
 
 void *slab_realloc_g(void *ptr, size_t size)
