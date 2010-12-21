@@ -31,6 +31,10 @@ src/zone/zlexer.lex
 src/zone/zonec.c
 src/zone/zonec.h
 src/zone/zparser.y
+src/zone/zone-dump.c
+src/zone/zone-dump.h
+src/zone/zone-load.c
+src/zone/zone-load.h
 src/tests/libtap/tap.c
 src/tests/libtap/tap.h
 src/tests/main.c
@@ -79,7 +83,6 @@ src/stat/gatherer.h
 src/stat/gatherer.c
 src/stat/stat.h
 src/stat/stat.c
-<<<<<<< HEAD
 src/dnslib/zone.h
 src/dnslib/zone.c
 src/tests/dnslib/dnslib_zone_tests.c
@@ -89,7 +92,5 @@ src/other/tree.h
 src/dnslib/response.h
 src/dnslib/packet.h
 src/dnslib/response.c
-=======
 src/other/malloc.h
 src/other/malloc.c
->>>>>>> origin/0xdeadbeef
