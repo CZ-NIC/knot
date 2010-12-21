@@ -1366,8 +1366,6 @@ int process_rr(void)
 {
 	dnslib_zone_t *zone = parser->current_zone;
 	dnslib_rrset_t *current_rrset = &parser->current_rrset;
-//	printf("Processing rr with owner: %s\n",
-//	       dnslib_dname_to_str(current_rrset->owner));
 	dnslib_rrset_t *rrset;
 	dnslib_rrtype_descriptor_t *descriptor
 	= dnslib_rrtype_descriptor_by_type(current_rrset->type);
@@ -1375,11 +1373,6 @@ int process_rr(void)
 	assert(current_rrset->rdata->count == descriptor->length);
 
 	assert(dnslib_dname_is_fqdn(current_rrset->owner));
-
-/*	if (dnslib_dname_compare(current_rrset->owner, parser->origin->owner)) {
-		assert(dnslib_dname_is_subdomain(current_rrset->owner,
-		       parser->origin->owner));
-	} */
 
 	int (*node_add_func)(dnslib_zone_t *zone, dnslib_node_t *node);
 	dnslib_node_t* (*node_get_func)(dnslib_zone_t *zone, dnslib_dname_t *owner);
@@ -1444,32 +1437,25 @@ int process_rr(void)
 		return 0;
 	}
 
-  //Won't this affect NSEC3s?
 	dnslib_node_t *node;
 
-  assert(parser->last_node != NULL);
+	assert(parser->last_node != NULL);
 
-  if (current_rrset->type != DNSLIB_RRTYPE_SOA && //get rid of the first statement
-      dnslib_dname_compare(parser->last_node->owner, current_rrset->owner) ==
-     0) {
-      node = parser->last_node;
-  } else {
-    	node = node_get_func(zone, current_rrset->owner);
-  }
+	if (current_rrset->type != DNSLIB_RRTYPE_SOA && //get rid of the first statement
+	    dnslib_dname_compare(parser->last_node->owner, current_rrset->owner) ==
+	    0) {
+	node = parser->last_node;
+	} else {
+    		node = node_get_func(zone, current_rrset->owner);
+	}
 
 	if (node == NULL) {
-//		printf("NEW NODE, OWNER WAS: %s\n", dnslib_dname_to_str(current_rrset->owner));
 		dnslib_node_t *tmp_node = NULL;
 		dnslib_node_t *last_node = dnslib_node_new(current_rrset->owner,
 		                                           NULL);
 
-/*		current_rrset->owner->node = parser->id;
-
-		parser->id++;*/
-
 		//XXX this whole section is wrong
 
-		assert(last_node != NULL);
 		node = last_node;
 		if (node_add_func(zone, node) != 0) {
 			return -1; 
@@ -1477,17 +1463,15 @@ int process_rr(void)
 		}//XXX Have a look at this
 		//but it's probably ok, in case that while will not execute
 		//its parent will be set after it
-		dnslib_dname_t *tmp_owner = current_rrset->owner;
+		dnslib_dname_t *tmp_owner = current_rrset->owner; //XXX
 		dnslib_dname_t *chopped =
 			dnslib_dname_left_chop(current_rrset->owner);
-		//this should begin from chopped dname XXX
-		//TODO compare with origin first
+
 		if (dnslib_dname_compare(parser->origin->owner, chopped) == 0 ) {
 			node->parent = parser->origin;
 		} else {
 			while ((tmp_node = node_get_func(zone, chopped) == NULL)) {
 				tmp_node = dnslib_node_new(tmp_owner, NULL);
-//				tmp_owner->node = tmp_node;
 				last_node->parent = tmp_node;
 			
 				if (node_get_func(zone, tmp_owner) == NULL) {
@@ -1495,13 +1479,14 @@ int process_rr(void)
 						return -1;
 					}
 					tmp_owner->node = parser->id;
-//					printf("INSIDE CYCLE: setting id %d for dname: %s (%p)\n", parser->id,
-//						dnslib_dname_to_str(tmp_owner), tmp_owner);
 					parser->id++;
+				} else {
+//					dnslib_node_free(&tmp_node);
 				}
 				last_node = tmp_node;
 
 				chopped = dnslib_dname_left_chop(tmp_owner);
+
 				tmp_owner = chopped;
 			}
 			last_node->parent = tmp_node;
@@ -1518,13 +1503,10 @@ int process_rr(void)
 	
 	if (node->owner->node == NULL) {
 		node->owner->node = parser->id;
-/*		printf("setting id %d for dname: %s (%p)\n", parser->id,
-			dnslib_dname_to_str(node->owner), node->owner); */
 		parser->id++;
 	}
 	rrset = dnslib_node_get_rrset(node, current_rrset->type);
 	if (!rrset) {
-//		printf("Creating new rrset.\n");
 		rrset = dnslib_rrset_new(current_rrset->owner,
 		                         current_rrset->type,
 		                         current_rrset->rclass,
@@ -1533,13 +1515,11 @@ int process_rr(void)
 		assert(rrset != NULL);
 
 		if (dnslib_rrset_add_rdata(rrset, current_rrset->rdata) != 0) {
-//						printf("err\n");
 			return -1;
 		}
 
 		/* Add it */
 		if (dnslib_node_add_rrset(node, rrset) != 0) {
-//			printf("err\n");
 			return -1;
 		}
 	} else {
