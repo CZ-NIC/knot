@@ -33,7 +33,7 @@ OBJS = $(PARSER_OBJ).c $(LEXER_OBJ).o $(addprefix $(OBJ_DIR), $(addsuffix .o, $(
 
 CC = gcc
 CFLAGS += -Wall -std=gnu99 -D _XOPEN_SOURCE=600 -D_GNU_SOURCE -g
-LDFLAGS += -lpthread -lurcu -lldns -lrt
+LDFLAGS += -lpthread -lurcu -lldns -lrt -lm
 
 all: cutedns unittests zonec
 
