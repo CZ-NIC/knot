@@ -204,3 +204,29 @@ void *log_malloc(const char *caller, int line, size_t size)
 	return malloc(size);
 }
 #endif
+
+/*
+#ifndef MEM_NOSLAB
+#include "slab.h"
+#include <stdlib.h>
+#include <stdio.h>
+
+static void *malloc(size_t size)
+{
+	void* mem = slab_alloc_g(size);
+	fprintf(stderr, "malloc(%zu) = %p\n", size, mem);
+	return mem;
+}
+
+static void free(void *ptr)
+{
+	slab_free(ptr);
+}
+
+static void *realloc(void *ptr, size_t size)
+{
+	return slab_realloc_g(ptr, size);
+}
+#endif
+*/
+
