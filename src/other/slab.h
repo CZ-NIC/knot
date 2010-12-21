@@ -40,7 +40,11 @@
 #define SLAB_GP_COUNT  10 // General-purpose caches count.
 #define SLAB_US_COUNT  10 // User-specified caches count.
 #define SLAB_CACHE_COUNT (SLAB_GP_COUNT + SLAB_US_COUNT)
+extern size_t SLAB_SIZE;
 struct slab_cache_t;
+
+/* Macros. */
+#define slab_from_ptr(p) ((slab_t*)((char*)(p) - ((uint64_t)(p) % SLAB_SIZE)))
 
 /*!
  * \brief Slab descriptor.
@@ -218,6 +222,19 @@ void slab_alloc_destroy(slab_alloc_t* alloc);
 void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size);
 
 /*!
+ * \brief Reallocate data from one slab to another.
+ *
+ * \param alloc Allocator instance.
+ * \param ptr Pointer to allocated memory.
+ * \param size Requested memory block size.
+ * \retval Pointer to newly allocated memory.
+ * \retval NULL on error.
+ *
+ * \todo Realloc could be probably implement more effectively.
+ */
+void *slab_alloc_realloc(slab_alloc_t* alloc, void *ptr, size_t size);
+
+/*!
  *
  * \brief Dump allocator stats.
  *
@@ -238,6 +255,20 @@ void slab_alloc_stats(slab_alloc_t* alloc);
  * \retval NULL on error.
  */
 void* slab_alloc_g(size_t size);
+
+/*!
+ * \brief Reallocate data from one slab to another.
+ *
+ * Drop-in replacement for realloc().
+ *
+ * \see slab_alloc_realloc()
+ *
+ * \param ptr Pointer to allocated memory.
+ * \param size Requested memory block size.
+ * \retval Pointer to newly allocated memory.
+ * \retval NULL on error.
+ */
+void *slab_realloc_g(void *ptr, size_t size);
 
 #endif /* _CUTEDNS_SLAB_H_ */
 

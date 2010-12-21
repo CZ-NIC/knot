@@ -27,7 +27,12 @@ void *log_malloc(const char *caller, int line, size_t size);
 /* If not MEM_NOSLAB is defined, use slab as GP allocator. */
 #ifndef MEM_NOSLAB
 #include "slab.h"
+//void *malloc(size_t size);
+//void free(void *ptr);
+//void *realloc(void *ptr, size_t size);
 #define malloc(x) slab_alloc_g((x))
+#define calloc(n, x) malloc((n) * (x))
+#define realloc(x, sz) slab_realloc_g((x), (sz))
 #define free(x) slab_free((x))
 #endif
 
