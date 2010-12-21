@@ -38,6 +38,15 @@ struct dnslib_node {
 	/*! \brief Next node in a general list of nodes. Temporary. */
 	struct dnslib_node *next;
 
+	/*!
+	 * \brief Various flags.
+	 *
+	 * Currently only two:
+	 *   0x01 - node is a delegation point
+	 *   0x02 - node is non-authoritative (under a delegation point)
+	 */
+	uint8_t flags;
+
 	TREE_ENTRY(dnslib_node) avl;
 };
 
@@ -114,6 +123,14 @@ void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent);
  * \return Owner of the given node.
  */
 const dnslib_dname_t *dnslib_node_owner(const dnslib_node_t *node);
+
+void dnslib_node_set_deleg_point(dnslib_node_t *node);
+
+int dnslib_node_is_deleg_point(const dnslib_node_t *node);
+
+void dnslib_node_set_non_auth(dnslib_node_t *node);
+
+int dnslib_node_is_non_auth(const dnslib_node_t *node);
 
 /*!
  * \brief Destroys the node structure.
