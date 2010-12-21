@@ -300,6 +300,7 @@ rel_dname:	label
 		    $$ = error_dname;
 	    } else {
 		    $$ = dnslib_dname_cat($1, $3);
+		    dnslib_dname_free(&$3);
 	        }
     }
     ;
