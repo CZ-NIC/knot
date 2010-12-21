@@ -31,6 +31,7 @@
 #include "dnslib/rrsig.h"
 #include "dnslib/descriptor.h"
 #include "parser-util.h"
+
 //#include "dnslib/debug.h"
 
 #include "zparser.h"
@@ -1458,7 +1459,7 @@ int process_rr(void)
 
 	if (node == NULL) {
 //		printf("NEW NODE, OWNER WAS: %s\n", dnslib_dname_to_str(current_rrset->owner));
-		dnslib_node_t *tmp_node;
+		dnslib_node_t *tmp_node = NULL;
 		dnslib_node_t *last_node = dnslib_node_new(current_rrset->owner,
 		                                           NULL);
 
@@ -1481,30 +1482,32 @@ int process_rr(void)
 			dnslib_dname_left_chop(current_rrset->owner);
 		//this should begin from chopped dname XXX
 		//TODO compare with origin first
-		while ((dnslib_dname_compare(parser->origin->owner, chopped) != 0 )&& 
-		       (tmp_node = node_get_func(zone, chopped) == NULL)) {
-			tmp_node = dnslib_node_new(tmp_owner, NULL);
-//			tmp_owner->node = tmp_node;
-			last_node->parent = tmp_node;
+		if (dnslib_dname_compare(parser->origin->owner, chopped) == 0 ) {
+			node->parent = parser->origin;
+		} else {
+			while ((tmp_node = node_get_func(zone, chopped) == NULL)) {
+				tmp_node = dnslib_node_new(tmp_owner, NULL);
+//				tmp_owner->node = tmp_node;
+				last_node->parent = tmp_node;
 			
-			if (node_get_func(zone, tmp_owner) == NULL) {
-				if (node_add_func(zone, tmp_node) != 0) {
-					return -1;
-				}
-				tmp_owner->node = parser->id;
+				if (node_get_func(zone, tmp_owner) == NULL) {
+					if (node_add_func(zone, tmp_node) != 0) {
+						return -1;
+					}
+					tmp_owner->node = parser->id;
 //					printf("INSIDE CYCLE: setting id %d for dname: %s (%p)\n", parser->id,
 //						dnslib_dname_to_str(tmp_owner), tmp_owner);
 					parser->id++;
-			}
-			last_node = tmp_node;
+				}
+				last_node = tmp_node;
 
-			chopped = dnslib_dname_left_chop(tmp_owner);
-			tmp_owner = chopped;
-		}
-		
+				chopped = dnslib_dname_left_chop(tmp_owner);
+				tmp_owner = chopped;
+			}
+			last_node->parent = tmp_node;
+		}		
 		dnslib_dname_free(&chopped);
     
-		last_node->parent = tmp_node;
 		assert(node);
 	} else {
 		if (current_rrset->owner != node->owner) {
@@ -1640,7 +1643,7 @@ void zone_read(char *name, const char *zonefile)
 
 	printf("zone parsed\n");
 
-//	find_rrsets_orphans(parser->current_zone, parser->rrsig_orphans);
+	find_rrsets_orphans(parser->current_zone, parser->rrsig_orphans);
 
 	printf("orphans found\n");
 
@@ -1652,17 +1655,16 @@ void zone_read(char *name, const char *zonefile)
 
 	dnslib_zone_free(&(parser->current_zone), 1);
 
-	printf("zone dumped\n");
+	printf("zone freed\n");
 
+	printf("zone dumped\n");
 /*
 	dnslib_zone_t *tmp_zone;
 	tmp_zone = dnslib_load_zone("zonedump.bin");
 
-	printf("zone loaded\n");
+	printf("zone loaded\n");*/
 
-	getchar(); */
-
-//	dnslib_zone_dump(tmp_zone);
+	//dnslib_zone_dump(tmp_zone);
 
 	//TODO possible check for SOA
 
