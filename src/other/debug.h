@@ -32,6 +32,8 @@
 
 #define DNSLIB_ZONE_DEBUG
 #define DNSLIB_RESPONSE_DEBUG
+//#define MEM_DEBUG
+//#define MEM_NOSLAB
 
 #ifdef SERVER_DEBUG
 #define debug_server(msg...) log_msg(LOG_DEBUG, msg)
@@ -149,6 +151,12 @@
 #define debug_st(msg...) log_msg(LOG_DEBUG, msg)
 #else
 #define debug_st(msg...)
+#endif
+
+#ifdef MEM_DEBUG
+#define debug_mem(msg...) log_msg(LOG_DEBUG, msg)
+#else
+#define debug_mem(msg...)
 #endif
 
 #endif /* _CUTEDNS_DEBUG_H_ */
