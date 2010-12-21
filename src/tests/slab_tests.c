@@ -5,6 +5,13 @@
 #include "tap_unit.h"
 #include "slab.h"
 
+/* Explicitly ask for symbols,
+ * as the constructor and desctructor
+ * aren't created for test modules.
+ */
+extern void slab_init();
+extern void slab_deinit();
+
 static int slab_tests_count(int argc, char *argv[]);
 static int slab_tests_run(int argc, char *argv[]);
 
@@ -24,6 +31,7 @@ static int slab_tests_count(int argc, char *argv[])
 static int slab_tests_run(int argc, char *argv[])
 {
 	// 1. Create slab cache
+	slab_init();
 	srand(time(0));
 	const unsigned pattern = 0xdeadbeef;
 	slab_cache_t cache;
@@ -51,20 +59,23 @@ static int slab_tests_run(int argc, char *argv[])
 
 	// Stress cache
 	int alloc_count = 73561;
-	void** ptrs = malloc(alloc_count * sizeof(void*));
+	void** ptrs = alloca(alloc_count * sizeof(void*));
 	int ptrs_i = 0;
 	for(int i = 0; i < alloc_count; ++i) {
 		double roll = rand() / (double) RAND_MAX;
 		if ((ptrs_i == 0) || (roll < 0.6)) {
 			int id = ptrs_i++;
 			ptrs[id] = slab_cache_alloc(&cache);
-			int* data = (int*)ptrs[id];
-			*data = pattern;
+			if (ptrs[id] == 0) {
+				ptrs_i--;
+			} else {
+				int* data = (int*)ptrs[id];
+				*data = pattern;
+			}
 		} else {
 			slab_free(ptrs[--ptrs_i]);
 		}
 	}
-	free(ptrs);
 
 	// 5. Delete cache
 	slab_cache_destroy(&cache);
@@ -77,8 +88,6 @@ static int slab_tests_run(int argc, char *argv[])
 
 	// 7. Stress allocator
 	unsigned ncount = 0;
-	alloc_count = 73561;
-	ptrs = malloc(alloc_count * sizeof(void*));
 	ptrs_i = 0;
 	for(int i = 0; i < alloc_count; ++i) {
 		double roll = rand() / (double) RAND_MAX;
@@ -94,7 +103,7 @@ static int slab_tests_run(int argc, char *argv[])
 			slab_free(ptrs[--ptrs_i]);
 		}
 	}
-	free(ptrs);
+
 	cmp_ok(ncount, "==", 0, "slab: GP allocator alloc/free working");
 
 	// Dump allocator stats
@@ -102,6 +111,7 @@ static int slab_tests_run(int argc, char *argv[])
 
 	// 7. Destroy allocator
 	slab_alloc_destroy(&alloc);
+	slab_deinit();
 
 	return 0;
 }
