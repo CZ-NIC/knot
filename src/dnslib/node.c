@@ -69,14 +69,45 @@ void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent)
 	node->parent = parent;
 }
 
+void dnslib_free_node_rrsets(dnslib_node_t *node)
+{
+	const skip_node_t *skip_node =
+		skip_first(node->rrsets);
+
+	if (skip_node != NULL) {
+		dnslib_rrset_free((dnslib_rrset_t **)&skip_node->value);
+		while ((skip_node = skip_next(skip_node)) != NULL) {
+			dnslib_rrset_free_tmp((dnslib_rrset_t **)
+			                      &skip_node->value,
+					      1);
+		}
+	}
+}
+
+void dnslib_node_free_tmp(dnslib_node_t **node, int free_rrsets)
+{
+	if (free_rrsets) {
+		dnslib_free_node_rrsets(*node);
+	}
+
+	if ((*node)->rrsets != NULL) {
+		skip_destroy_list(&(*node)->rrsets, NULL, NULL);
+	}
+
+	free(*node);
+	*node = NULL;
+}
+
 void dnslib_node_free(dnslib_node_t **node)
 {
 	if ((*node)->rrsets != NULL) {
 		skip_destroy_list(&(*node)->rrsets, NULL, NULL);
 	}
+
 	free(*node);
 	*node = NULL;
 }
+
 
 int dnslib_node_compare(dnslib_node_t *node1, dnslib_node_t *node2)
 {

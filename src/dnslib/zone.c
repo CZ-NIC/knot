@@ -45,7 +45,8 @@ int dnslib_zone_check_node(const dnslib_zone_t *zone, const dnslib_node_t *node)
 void dnslib_zone_destroy_node_from_tree(dnslib_node_t *node, void *data)
 {
 	UNUSED(data);
-	dnslib_node_free(&node);
+//	dnslib_node_free(&node);
+	dnslib_node_free_tmp(&node, 1);
 }
 
 /*----------------------------------------------------------------------------*/

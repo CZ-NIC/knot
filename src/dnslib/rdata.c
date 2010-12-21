@@ -165,6 +165,41 @@ void dnslib_rdata_free(dnslib_rdata_t **rdata)
 
 /*----------------------------------------------------------------------------*/
 
+void dnslib_rdata_free_tmp(dnslib_rdata_t **rdata, int free_items, uint type)
+{
+	if (rdata == NULL || *rdata == NULL) {
+		return;
+	}
+
+	dnslib_rrtype_descriptor_t *desc =
+		dnslib_rrtype_descriptor_by_type(type);
+	assert(desc != NULL);
+	for (int i = 0; i < desc->length; i++) {
+		if (&((*rdata)->items[i]) == NULL) {
+			continue;
+		}
+		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
+		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
+			if ((*rdata)->items[i].dname != NULL) {
+				if ((*rdata)->items[i].dname->node == 0) {
+					dnslib_dname_free(&(*rdata)->items[i].dname);
+				}
+			}
+		} else {
+			free((*rdata)->items[i].raw_data);
+		}
+	}
+
+	if ((*rdata)->items) {
+		free((*rdata)->items);
+	}
+	free(*rdata);
+	*rdata = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
 uint dnslib_rdata_wire_size(const dnslib_rdata_t *rdata,
                             const uint8_t *format)
 {

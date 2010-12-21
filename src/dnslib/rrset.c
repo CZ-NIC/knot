@@ -96,6 +96,30 @@ void dnslib_rrset_free(dnslib_rrset_t **rrset)
 	*rrset = NULL;
 }
 
+void dnslib_rrset_free_tmp(dnslib_rrset_t **rrset, int free_rdata)
+{
+	dnslib_rdata_t *tmp_rdata;
+	dnslib_rdata_t *next_rdata;
+	tmp_rdata = (*rrset)->rdata;
+
+
+	while ((tmp_rdata->next != (*rrset)->rdata) && (tmp_rdata->next != NULL)) {
+		next_rdata = tmp_rdata->next;
+		dnslib_rdata_free_tmp(&tmp_rdata, 1, (*rrset)->type);
+		tmp_rdata = next_rdata;
+	}
+
+	if (tmp_rdata->next == NULL) {
+		printf("something is very wrong\n");
+		getchar();
+	}
+
+	dnslib_rdata_free_tmp(&tmp_rdata, 1, (*rrset)->type);
+
+	free(*rrset);
+	*rrset = NULL;
+}
+
 int dnslib_rrset_merge(void **r1, void **r2)
 {
 	dnslib_rrset_t *rrset1 = (dnslib_rrset_t *)(*r1);

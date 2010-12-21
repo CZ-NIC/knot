@@ -124,6 +124,8 @@ const dnslib_dname_t *dnslib_node_owner(const dnslib_node_t *node);
  */
 void dnslib_node_free(dnslib_node_t **node);
 
+void dnslib_node_free_tmp(dnslib_node_t **node, int free_rrsets);
+
 /*!
  * \brief Compares two nodes according to their owner.
  *
