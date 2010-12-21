@@ -101,6 +101,7 @@ struct dnslib_response {
 	 */
 	dnslib_question_t question;
 
+	short size;      /*!< Current wire size of the response. */
 	short max_size;  /*!< Maximum allowed size of the response. */
 
 	const dnslib_rrset_t **answer;
