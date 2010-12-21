@@ -81,3 +81,5 @@ src/other/tree.h
 src/dnslib/response.h
 src/dnslib/packet.h
 src/dnslib/response.c
+src/dnslib/edns.h
+src/dnslib/utils.h
