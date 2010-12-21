@@ -20,6 +20,11 @@
 #include "dname.h"
 #include "rrset.h"
 
+/*!
+ * \brief Default maximum DNS response size
+ *
+ * This size must be supported by all servers and clients.
+ */
 static const short DNSLIB_MAX_RESPONSE_SIZE = 512;
 
 /*----------------------------------------------------------------------------*/
@@ -152,33 +157,114 @@ struct dnslib_response {
 typedef struct dnslib_response dnslib_response_t;
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Creates new empty response structure.
+ *
+ * \note Does not copy the given EDNS wire data, only stores reference to it.
+ *
+ * \param edns_wire Wire format of the EDNS OPT pseudo-RR specifying EDNS
+ *                  parameters of the host who creates the response.
+ * \param edns_size Size of \a edns_wire in bytes.
+ *
+ * \return New empty response structure or NULL if an error occured.
+ */
 dnslib_response_t *dnslib_response_new_empty(const uint8_t *edns_wire,
                                              short edns_size);
 
+/*!
+ * \brief Parses the given query and saves important information into the
+ *        response structure.
+ *
+ * Copies ID and flags from the header, parses first Question entry and EDNS
+ * OPT RR.
+ *
+ * \param response Response to store the parsed information into.
+ * \param query_wire Query in wire format.
+ * \param query_size Size of the query in bytes.
+ *
+ * \retval 0 if successful.
+ * \retval <> 0 if an error occured.
+ */
 int dnslib_response_parse_query(dnslib_response_t *response,
                                 const uint8_t *query_wire, size_t query_size);
 
 /*!
+ * \brief Adds a RRSet to the Answer section of the response.
+ *
+ * \param response Response to add the RRSet into.
+ * \param rrset RRSet to be added.
  * \param tc Set to <> 0 if omitting this RRSet should result in the TC bit set.
  *           Otherwise set to 0.
+ *
+ * \retval 0 if successful.
+ * \retval <> 0 if an error occured.
  */
 int dnslib_response_add_rrset_answer(dnslib_response_t *response,
                                      const dnslib_rrset_t *rrset, int tc);
 
+/*!
+ * \brief Adds a RRSet to the Authority section of the response.
+ *
+ * \param response Response to add the RRSet into.
+ * \param rrset RRSet to be added.
+ * \param tc Set to <> 0 if omitting this RRSet should result in the TC bit set.
+ *           Otherwise set to 0.
+ *
+ * \retval 0 if successful.
+ * \retval <> 0 if an error occured.
+ */
 int dnslib_response_add_rrset_authority(dnslib_response_t *response,
                                         const dnslib_rrset_t *rrset, int tc);
 
+/*!
+ * \brief Adds a RRSet to the Additional section of the response.
+ *
+ * \param response Response to add the RRSet into.
+ * \param rrset RRSet to be added.
+ * \param tc Set to <> 0 if omitting this RRSet should result in the TC bit set.
+ *           Otherwise set to 0.
+ *
+ * \retval 0 if successful.
+ * \retval <> 0 if an error occured.
+ */
 int dnslib_response_add_rrset_aditional(dnslib_response_t *response,
                                         const dnslib_rrset_t *rrset, int tc);
 
+/*!
+ * \brief Sets the RCODE of the response.
+ *
+ * \param response Response to set the RCODE in.
+ * \param rcode RCODE to set.
+ */
 void dnslib_response_set_rcode(dnslib_response_t *response, short rcode);
 
+/*!
+ * \brief Sets the AA bit of the response to 1.
+ *
+ * \param response Response in which the AA bit should be set.
+ */
 void dnslib_response_set_aa(dnslib_response_t *response);
 
+/*!
+ * \brief Converts the response to wire format.
+ *
+ * \param response Response to be converted to wire format.
+ * \param resp_wire Here the wire format of the response will be stored.
+ *                  Space for the response will be allocated. *resp_wire must
+ *                  be set to NULL (to avoid leaks).
+ * \param resp_size Size of the response in wire format.
+ *
+ * \retval 0 if successful.
+ * \retval -2 if \a *resp_wire was not set to NULL.
+ */
 int dnslib_response_to_wire(dnslib_response_t *response,
                             uint8_t **resp_wire, size_t *resp_size);
 
+/*!
+ * \brief Properly destroys the response structure.
+ *
+ * \param response Response to be destroyed.
+ */
 void dnslib_response_free(dnslib_response_t **response);
 
 #endif /* _CUTEDNS_DNSLIB_RESPONSE_H_ */
