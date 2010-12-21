@@ -7,6 +7,8 @@
 #include "common.h"
 #include "packet.h"
 #include "descriptor.h"
+#include "edns.h"
+#include "utils.h"
 
 enum {
 	DEFAULT_ANCOUNT = 6,
@@ -50,7 +52,6 @@ enum {
 	PREALLOC_RRSET_WIRE = 65535
 };
 
-static const uint16_t EDNS_NOT_SUPPORTED = 65535;
 static const short QUESTION_OFFSET = DNSLIB_PACKET_HEADER_SIZE;
 
 /*----------------------------------------------------------------------------*/
@@ -58,10 +59,10 @@ static const short QUESTION_OFFSET = DNSLIB_PACKET_HEADER_SIZE;
 /*----------------------------------------------------------------------------*/
 
 static void dnslib_response_parse_host_edns(dnslib_response_t *resp,
-                                     const uint8_t *edns_wire, short edns_size)
+                                            const uint8_t *edns_wire,
+                                            short edns_size)
 {
-	resp->max_size = DNSLIB_MAX_RESPONSE_SIZE;
-	// TODO parse
+	resp->max_size = dnslib_edns_get_payload(edns_wire);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -234,9 +235,9 @@ static int dnslib_response_parse_question(const uint8_t **pos,
 
 	question->qname = dnslib_dname_new_from_wire(*pos, i + 1, NULL);
 	*pos += i + 1;
-	question->qtype = dnslib_packet_read_u16(*pos);
+	question->qtype = dnslib_wire_read_u16(*pos);
 	*pos += 2;
-	question->qclass = dnslib_packet_read_u16(*pos);
+	question->qclass = dnslib_wire_read_u16(*pos);
 	*pos += 2;
 
 	*remaining -= (i + 5);
@@ -253,9 +254,9 @@ static void dnslib_response_question_to_wire(dnslib_question_t *question,
 	*size += question->qname->size;
 	*pos += question->qname->size;
 
-	dnslib_packet_write_u16(*pos, question->qtype);
+	dnslib_wire_write_u16(*pos, question->qtype);
 	*pos += 2;
-	dnslib_packet_write_u16(*pos, question->qclass);
+	dnslib_wire_write_u16(*pos, question->qclass);
 	*pos += 2;
 	*size += 4;
 }
@@ -285,14 +286,14 @@ static int dnslib_response_parse_client_edns(const uint8_t **pos,
 	*pos += 1;
 
 	// check the type of the record (must be OPT)
-	if (dnslib_packet_read_u16(*pos) != DNSLIB_RRTYPE_OPT) {
+	if (dnslib_wire_read_u16(*pos) != DNSLIB_RRTYPE_OPT) {
 		debug_dnslib_response("EDNS packet malformed (expected OPT type"
 		                      ".\n");
 		return -2;
 	}
 	*pos += 2;
 
-	edns->payload = dnslib_packet_read_u16(*pos);
+	edns->payload = dnslib_wire_read_u16(*pos);
 	*pos += 2;
 	edns->ext_rcode = *(*pos)++;
 	edns->version = *(*pos)++;
@@ -300,7 +301,7 @@ static int dnslib_response_parse_client_edns(const uint8_t **pos,
 	*pos += 2;
 
 	// ignore RDATA, but move pos behind them
-	uint16_t rdlength = dnslib_packet_read_u16(*pos);
+	uint16_t rdlength = dnslib_wire_read_u16(*pos);
 	*remaining -= 11;
 
 	if (*remaining < rdlength) {
@@ -344,13 +345,13 @@ static void dnslib_response_rr_to_wire(const uint8_t *owner_wire,
 	*rrset_size += owner_size;
 
 	// put rest of RR 'header'
-	dnslib_packet_write_u16(*rrset_wire, rrset->type);
+	dnslib_wire_write_u16(*rrset_wire, rrset->type);
 	*rrset_wire += 2;
 
-	dnslib_packet_write_u16(*rrset_wire, rrset->rclass);
+	dnslib_wire_write_u16(*rrset_wire, rrset->rclass);
 	*rrset_wire += 2;
 
-	dnslib_packet_write_u32(*rrset_wire, rrset->ttl);
+	dnslib_wire_write_u32(*rrset_wire, rrset->ttl);
 	*rrset_wire += 4;
 
 	// save space for RDLENGTH
@@ -408,7 +409,7 @@ static void dnslib_response_rr_to_wire(const uint8_t *owner_wire,
 	}
 
 	*rrset_size += rdlength;
-	dnslib_packet_write_u16(rdlength_pos, rdlength);
+	dnslib_wire_write_u16(rdlength_pos, rdlength);
 }
 
 /*---------------------------------------------------------------------------*/

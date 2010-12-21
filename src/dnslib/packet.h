@@ -14,6 +14,8 @@
 
 #include <stdint.h>
 
+#include "utils.h"
+
 enum dnslib_packet_offsets {
 	DNSLIB_PACKET_OFFSET_ID = 0,
 	DNSLIB_PACKET_OFFSET_FLAGS1 = 2,
@@ -31,45 +33,17 @@ enum dnslib_packet_sizes {
 };
 
 /*
- * Writing / reading arbitrary data to / from wireformat.
- */
-
-static inline uint16_t dnslib_packet_read_u16(const uint8_t *pos)
-{
-	return (pos[0] << 8) | pos[1];
-}
-
-static inline uint16_t dnslib_packet_read_u32(const uint8_t *pos)
-{
-	return (pos[0] << 24) | (pos[1] << 16) | (pos[2] << 8) | pos[3];
-}
-
-static inline void dnslib_packet_write_u16(uint8_t *pos, uint16_t data)
-{
-	pos[0] = (uint8_t)((data >> 8) & 0xff);
-	pos[1] = (uint8_t)(data & 0xff);
-}
-
-static inline void dnslib_packet_write_u32(uint8_t *pos, uint32_t data)
-{
-	pos[0] = (uint8_t)((data >> 24) & 0xff);
-	pos[0] = (uint8_t)((data >> 16) & 0xff);
-	pos[2] = (uint8_t)((data >> 8) & 0xff);
-	pos[3] = (uint8_t)(data & 0xff);
-}
-
-/*
  * Packet header manipulation functions.
  */
 
 static inline uint16_t dnslib_packet_get_id(const uint8_t *packet)
 {
-	return dnslib_packet_read_u16(packet + DNSLIB_PACKET_OFFSET_ID);
+	return dnslib_wire_read_u16(packet + DNSLIB_PACKET_OFFSET_ID);
 }
 
 static inline void dnslib_packet_set_id(uint8_t *packet, uint16_t id)
 {
-	dnslib_packet_write_u16(packet + DNSLIB_PACKET_OFFSET_ID, id);
+	dnslib_wire_write_u16(packet + DNSLIB_PACKET_OFFSET_ID, id);
 }
 
 static inline uint8_t dnslib_packet_get_flags1(const uint8_t *packet)
@@ -94,42 +68,42 @@ static inline uint8_t dnslib_packet_set_flags2(uint8_t *packet, uint8_t flags2)
 
 static inline uint16_t dnslib_packet_get_qdcount(const uint8_t *packet)
 {
-	return dnslib_packet_read_u16(packet + DNSLIB_PACKET_OFFSET_QDCOUNT);
+	return dnslib_wire_read_u16(packet + DNSLIB_PACKET_OFFSET_QDCOUNT);
 }
 
 static inline void dnslib_packet_set_qdcount(uint8_t *packet, uint16_t qdcount)
 {
-	dnslib_packet_write_u16(packet + DNSLIB_PACKET_OFFSET_QDCOUNT, qdcount);
+	dnslib_wire_write_u16(packet + DNSLIB_PACKET_OFFSET_QDCOUNT, qdcount);
 }
 
 static inline uint16_t dnslib_packet_get_ancount(const uint8_t *packet)
 {
-	return dnslib_packet_read_u16(packet + DNSLIB_PACKET_OFFSET_ANCOUNT);
+	return dnslib_wire_read_u16(packet + DNSLIB_PACKET_OFFSET_ANCOUNT);
 }
 
 static inline void dnslib_packet_set_ancount(uint8_t *packet, uint16_t ancount)
 {
-	dnslib_packet_write_u16(packet + DNSLIB_PACKET_OFFSET_ANCOUNT, ancount);
+	dnslib_wire_write_u16(packet + DNSLIB_PACKET_OFFSET_ANCOUNT, ancount);
 }
 
 static inline uint16_t dnslib_packet_get_nscount(const uint8_t *packet)
 {
-	return dnslib_packet_read_u16(packet + DNSLIB_PACKET_OFFSET_NSCOUNT);
+	return dnslib_wire_read_u16(packet + DNSLIB_PACKET_OFFSET_NSCOUNT);
 }
 
 static inline void dnslib_packet_set_nscount(uint8_t *packet, uint16_t nscount)
 {
-	dnslib_packet_write_u16(packet + DNSLIB_PACKET_OFFSET_NSCOUNT, nscount);
+	dnslib_wire_write_u16(packet + DNSLIB_PACKET_OFFSET_NSCOUNT, nscount);
 }
 
 static inline uint16_t dnslib_packet_get_arcount(const uint8_t *packet)
 {
-	return dnslib_packet_read_u16(packet + DNSLIB_PACKET_OFFSET_ARCOUNT);
+	return dnslib_wire_read_u16(packet + DNSLIB_PACKET_OFFSET_ARCOUNT);
 }
 
 static inline void dnslib_packet_set_arcount(uint8_t *packet, uint16_t arcount)
 {
-	dnslib_packet_write_u16(packet + DNSLIB_PACKET_OFFSET_ARCOUNT, arcount);
+	dnslib_wire_write_u16(packet + DNSLIB_PACKET_OFFSET_ARCOUNT, arcount);
 }
 
 /*
