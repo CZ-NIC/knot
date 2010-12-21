@@ -246,16 +246,9 @@ static int dnslib_response_parse_question(const uint8_t **pos,
 
 /*----------------------------------------------------------------------------*/
 
-static int dnslib_response_question_to_wire(dnslib_question_t *question,
-                                            uint8_t **pos, short *size,
-                                            short max_size)
+static void dnslib_response_question_to_wire(dnslib_question_t *question,
+                                            uint8_t **pos, short *size)
 {
-	if (*size + question->qname->size + sizeof(question->qclass)
-	    + sizeof(question->qtype) > max_size) {
-		// not enough space in the packet (there should be enough!!)
-		return 1;
-	}
-
 	memcpy(*pos, question->qname->name, question->qname->size);
 	*size += question->qname->size;
 	*pos += question->qname->size;
@@ -265,8 +258,6 @@ static int dnslib_response_question_to_wire(dnslib_question_t *question,
 	dnslib_packet_write_u16(*pos, question->qclass);
 	*pos += 2;
 	*size += 4;
-
-	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -424,7 +415,6 @@ static void dnslib_response_rr_to_wire(const uint8_t *owner_wire,
 
 static int dnslib_response_rrset_to_wire(const dnslib_rrset_t *rrset,
                                          uint8_t **pos, short *size,
-                                         short max_size,
                                          dnslib_compressed_dnames_t *compr)
 {
 	// if no RDATA in RRSet, return
@@ -436,8 +426,8 @@ static int dnslib_response_rrset_to_wire(const dnslib_rrset_t *rrset,
 	 * \todo Do not use two variables: rrset_wire and rrset_size, just one!
 	 */
 
-	uint8_t *rrset_wire = (uint8_t *)malloc(PREALLOC_RRSET_WIRE);
-	short rrset_size = 0;
+	//uint8_t *rrset_wire = (uint8_t *)malloc(PREALLOC_RRSET_WIRE);
+	//short rrset_size = 0;
 
 	uint8_t *owner_wire = (uint8_t *)malloc(rrset->owner->size);
 	short owner_size = 0;
@@ -448,39 +438,30 @@ static int dnslib_response_rrset_to_wire(const dnslib_rrset_t *rrset,
 	const dnslib_rdata_t *rdata = rrset->rdata;
 	do {
 		dnslib_response_rr_to_wire(owner_wire, owner_size, rrset,
-		                           rdata, compr, &rrset_wire,
-		                           &rrset_size);
-	} while (rrset_size < max_size
-		 && (rdata = dnslib_rrset_rdata_next(rrset, rdata)) != NULL);
+		                           rdata, compr, pos, size);
+	} while ((rdata = dnslib_rrset_rdata_next(rrset, rdata)) != NULL);
 
-	if (rrset_size >= max_size) {
-		return 1;
-	}
-
-	memcpy(*pos, rrset_wire, rrset_size);
-	*size += rrset_size;
-	*pos += rrset_size;
+	//memcpy(*pos, rrset_wire, rrset_size);
+	//*size += rrset_size;
+	//*pos += rrset_size;
 
 	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int dnslib_response_rrsets_to_wire(const dnslib_rrset_t **rrsets,
-                                          short count, uint8_t **pos,
-                                          short *size, short max_size,
-                                          dnslib_compressed_dnames_t *compr)
+static void dnslib_response_rrsets_to_wire(const dnslib_rrset_t **rrsets,
+                                           short count, uint8_t **pos,
+                                           short *size, short max_size,
+                                           dnslib_compressed_dnames_t *compr)
 {
 	// no compression for now
 	int i = 0;
-	int tc = 0;
 
-	while (i < count && !tc) {
-		tc = dnslib_response_rrset_to_wire(rrsets[i], pos, size,
-		                                   max_size, compr);
+	while (i < count) {
+		dnslib_response_rrset_to_wire(rrsets[i], pos, size, compr);
+		assert(*size <= max_size);
 	}
-
-	return tc;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -787,58 +768,42 @@ int dnslib_response_to_wire(dnslib_response_t *response,
 		return -2;
 	}
 
-	uint8_t *wire_tmp = (uint8_t *)malloc(PREALLOC_RESPONSE_WIRE);
-	CHECK_ALLOC_LOG(wire_tmp, -1);
+	assert(response->size <= response->max_size);
 
-	uint8_t *pos = wire_tmp;
+	*resp_wire = (uint8_t *)malloc(response->size);
+	CHECK_ALLOC_LOG(*resp_wire, -1);
+
+	uint8_t *pos = *resp_wire;
 
 	// reserve space for the EDNS OPT RR
 	short size = response->edns_size;
-	int tc = 0;
 
 	assert(response->max_size > DNSLIB_PACKET_HEADER_SIZE);
 
 	dnslib_response_header_to_wire(&response->header, &pos, &size);
 
-	tc = dnslib_response_question_to_wire(&response->question, &pos, &size,
-	                                      response->max_size);
+	dnslib_response_question_to_wire(&response->question, &pos, &size);
 
-	if (!tc) {
-		tc = dnslib_response_rrsets_to_wire(response->answer,
-			response->header.ancount, &pos, &size,
-			response->max_size, &response->compression);
-	}
+	dnslib_response_rrsets_to_wire(response->answer,
+	                               response->header.ancount, &pos, &size,
+	                               response->max_size,
+	                               &response->compression);
 
-	if (!tc) {
-		tc = dnslib_response_rrsets_to_wire(response->authority,
-			response->header.nscount, &pos, &size,
-			response->max_size, &response->compression);
-	}
+	dnslib_response_rrsets_to_wire(response->authority,
+	                               response->header.nscount, &pos, &size,
+	                               response->max_size,
+	                               &response->compression);
 
 	// put EDNS OPT RR
 	memcpy(pos, response->edns_wire, response->edns_size);
 	pos += response->edns_size;
 
-	if (!tc) {
-		tc = dnslib_response_rrsets_to_wire(response->additional,
-			response->header.arcount, &pos, &size,
-			response->max_size, &response->compression);
-	}
+	dnslib_response_rrsets_to_wire(response->additional,
+	                               response->header.arcount, &pos, &size,
+	                               response->max_size,
+	                               &response->compression);
 
-	if (tc) {
-		dnslib_packet_set_tc(wire_tmp);
-	}
-
-	*resp_wire = (uint8_t *)malloc(size);
-	if (*resp_wire == NULL) {
-		ERR_ALLOC_FAILED;
-		free(wire_tmp);
-		return -1;
-	}
-
-	memcpy(*resp_wire, wire_tmp, size);
-	*resp_size = size;
-	free(wire_tmp);
+	*resp_size = response->size;
 
 	return 0;
 }
