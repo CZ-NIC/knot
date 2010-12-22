@@ -41,10 +41,11 @@
 #define SLAB_US_COUNT  10 // User-specified caches count.
 #define SLAB_CACHE_COUNT (SLAB_GP_COUNT + SLAB_US_COUNT)
 extern size_t SLAB_SIZE;
+extern size_t SLAB_MASK;
 struct slab_cache_t;
 
 /* Macros. */
-#define slab_from_ptr(p) ((slab_t*)((char*)(p) - ((uint64_t)(p) % SLAB_SIZE)))
+#define slab_from_ptr(p) ((void*)((size_t)(p) & SLAB_MASK))
 
 /*!
  * \brief Slab descriptor.
@@ -100,6 +101,7 @@ typedef struct slab_alloc_t {
 	slab_cache_t descriptors; /*!< Slab cache for cache descriptors. */
 	slab_cache_t* caches[SLAB_CACHE_COUNT]; /*!< Number of slab caches. */
 } slab_alloc_t;
+extern slab_alloc_t _allocator_g;
 
 /*!
  * \brief Create a slab of predefined size.
@@ -254,7 +256,9 @@ void slab_alloc_stats(slab_alloc_t* alloc);
  * \retval Pointer to allocated memory.
  * \retval NULL on error.
  */
-void* slab_alloc_g(size_t size);
+static inline void* slab_alloc_g(size_t size) {
+	return slab_alloc_alloc(&_allocator_g, size);
+}
 
 /*!
  * \brief Reallocate data from one slab to another.
@@ -268,7 +272,9 @@ void* slab_alloc_g(size_t size);
  * \retval Pointer to newly allocated memory.
  * \retval NULL on error.
  */
-void *slab_realloc_g(void *ptr, size_t size);
+static inline void *slab_realloc_g(void *ptr, size_t size) {
+	return slab_alloc_realloc(&_allocator_g, ptr, size);
+}
 
 #endif /* _CUTEDNS_SLAB_H_ */
 
