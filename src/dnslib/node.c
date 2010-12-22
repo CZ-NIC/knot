@@ -75,7 +75,7 @@ void dnslib_free_node_rrsets(dnslib_node_t *node)
 		skip_first(node->rrsets);
 
 	if (skip_node != NULL) {
-		dnslib_rrset_free((dnslib_rrset_t **)&skip_node->value);
+		dnslib_rrset_free_tmp((dnslib_rrset_t **)&skip_node->value, 1);
 		while ((skip_node = skip_next(skip_node)) != NULL) {
 			dnslib_rrset_free_tmp((dnslib_rrset_t **)
 			                      &skip_node->value,
@@ -88,6 +88,10 @@ void dnslib_node_free_tmp(dnslib_node_t **node, int free_rrsets)
 {
 	if (free_rrsets) {
 		dnslib_free_node_rrsets(*node);
+	}
+
+	if ((*node)->rrsets == NULL) {
+		printf("empty node\n");
 	}
 
 	if ((*node)->rrsets != NULL) {

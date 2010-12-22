@@ -18,6 +18,7 @@
 #include "rdata.h"
 #include "rrsig.h"
 #include "zone.h"
+#include "other/slab.h"
 
 #define MAXRDATALEN	64
 #define MAXLABELLEN	63
@@ -66,7 +67,7 @@ struct zparser {
 	dnslib_dname_t *prev_dname;
 	dnslib_node_t *default_apex;
 
-  dnslib_node_t *last_node;
+	dnslib_node_t *last_node;
 
 	char *dname_str;
 
@@ -84,6 +85,8 @@ struct zparser {
 	rrsig_list_t *rrsig_orphans;
 
 	dnslib_dname_t *root_domain;
+
+	slab_cache_t *parser_slab;
 
 	int rdata_count;
 };

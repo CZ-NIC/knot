@@ -440,10 +440,11 @@ parse_token(int token, char *yytext, enum lexer_state *lexer_state)
 	}
 
 	str = strdup(yytext);
+	printf("%p\n", str);
 	len = zoctet(str);
 
 	yylval.data.str = str;
-	yylval.data.len = len;
+	yylval.data.len = len; 
 
 	LEXOUT(("%d[%s] ", token, yytext));
 	return token;
