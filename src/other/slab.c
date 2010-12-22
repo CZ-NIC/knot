@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <sys/mman.h>
 #include "slab.h"
+#include "common.h"
 
 #undef malloc
 #undef free
@@ -12,10 +13,13 @@
 #include <stdlib.h>
 
 /*
- * Custom caches LUT.
+ * Fast cache id lookup table.
+ * Provides O(1) lookup.
+ * Filled with interesting values from default
+ * or on-demand.
  */
-#define SLAB_CACHE_LUT_SIZE 1024
-static const unsigned char SLAB_CACHE_LUT[SLAB_CACHE_LUT_SIZE] = {
+#define SLAB_CACHE_LUT_SIZE 4096+1
+static unsigned char SLAB_CACHE_LUT[SLAB_CACHE_LUT_SIZE] = {
         [24]  = SLAB_GP_COUNT + 1,
         [800] = SLAB_GP_COUNT + 2
 };
@@ -58,26 +62,30 @@ static inline unsigned fastlog2(unsigned v)
  */
 static unsigned slab_cache_id(unsigned size)
 {
-	// Assert cache id is at least SLAB_MIN_BUFLEN
-	if(size < SLAB_MIN_BUFLEN)
-		size = SLAB_MIN_BUFLEN;
+	// Assert cache id of the smallest bufsize is 0
+	if(size <= SLAB_MIN_BUFLEN) {
+		return 0;
+	}
 
 	// Check LUT
 	unsigned id = 0;
-	if ((size < SLAB_CACHE_LUT_SIZE) && (id = SLAB_CACHE_LUT[size])) {
+	if ((id = SLAB_CACHE_LUT[size])) {
 		/*fprintf(stderr, "%s: LUT hit %u has cache_id=%u\n",
 		        __func__, size, id); */
 		return id;
+	} else {
+
+		// Compute binary logarithm
+		// Next highest power of 2
+		id = fastlog2(get_next_pow2(size));
+
+		// Shift cacheid of SLAB_MIN_BUFLEN to 0
+		id -= SLAB_EXP_OFFSET;
+
+		// Store
+		SLAB_CACHE_LUT[size] = id;
 	}
 
-	// Next highest power of 2
-	size = get_next_pow2(size);
-
-	// Compute binary logarithm
-	id = fastlog2(size);
-
-	// Shift cacheid of SLAB_MIN_BUFLEN to 0
-	id -= SLAB_EXP_OFFSET;
 	return id;
 }
 
@@ -87,14 +95,15 @@ static unsigned slab_cache_id(unsigned size)
  * memory overhead (~124kB for 4GiB memory).
  */
 size_t SLAB_SIZE = 0;
+size_t SLAB_MASK = 0;
 static unsigned SLAB_LOGSIZE = 0;
-static char* _slab_dir = 0;
+char* _slab_dir = 0;
 
 /* We cannot assume whether mmap() address space grows upwards or downwards,
  * so XORing gives us relatively cheap page identifier based on how near the
  * page is from the base.
  */
-#define slab_pageid(p) (((uint64_t)(p) ^ (uint64_t)_slab_dir) >> SLAB_LOGSIZE)
+#define slab_pageid(p) (((size_t)(p) ^ (size_t)_slab_dir) >> SLAB_LOGSIZE)
 
 /* Division or modulo by 2^n gets
  * optimised to k >> n and k & (n-1) respectively, even with -O0.
@@ -132,7 +141,7 @@ static int slab_dir_exists(void* addr)
 /*
  * Initializers.
  */
-static slab_alloc_t _allocator_g;
+slab_alloc_t _allocator_g;
 
 void __attribute__ ((constructor)) slab_init()
 {
@@ -140,6 +149,12 @@ void __attribute__ ((constructor)) slab_init()
 	SLAB_SIZE = sysconf(_SC_PAGESIZE);
 	SLAB_LOGSIZE = fastlog2(SLAB_SIZE);
 	assert(SLAB_SIZE < ~(unsigned int)(0));
+
+	// Compute slab page mask
+	for (int i = 0; i < SLAB_LOGSIZE; ++i) {
+		SLAB_MASK |= 1 << i;
+	}
+	SLAB_MASK = ~SLAB_MASK;
 
 	// Initialize directory of allocd pages
 	// Bitfield is a bitslower, but still very good (~2ms diff for 1M ops)
@@ -224,7 +239,7 @@ static inline void slab_list_remove(slab_t* slab)
 
 	// Disconnect from cache
 	slab_cache_t* cache = slab->cache;
-	slab_cache_lock(cache);
+	/// slab_cache_lock(cache);
 	{
 		if (cache->slabs_empty == slab) {
 			/*fprintf(stderr, "%s: deleted %p from slabs_empty\n",
@@ -242,12 +257,12 @@ static inline void slab_list_remove(slab_t* slab)
 			cache->slabs_full = slab->next;
 		}
 	}
-	slab_cache_unlock(cache);
+	/// slab_cache_unlock(cache);
 }
 static inline void slab_list_insert(slab_t** list, slab_t* item)
 {
 	// If list exists, push to the top
-	slab_cache_lock(item->cache);
+	/// slab_cache_lock(item->cache);
 	item->prev = 0;
 	item->next = *list;
 	if (*list) {
@@ -255,14 +270,14 @@ static inline void slab_list_insert(slab_t** list, slab_t* item)
 	}
 
 	*list = item;
-	slab_cache_unlock(item->cache);
+	/// slab_cache_unlock(item->cache);
 
-	const char* ln = "slabs_empty";
+	/*const char* ln = "slabs_empty";
 	if(*list == item->cache->slabs_partial)
 		ln = "slabs_partial";
 	if(*list == item->cache->slabs_full)
 		ln = "slabs_full";
-	/*fprintf(stderr, "%s: inserted %p to %s (L:%p R:%p)\n",
+	fprintf(stderr, "%s: inserted %p to %s (L:%p R:%p)\n",
 	        __func__, item, ln, item->prev, item->next);*/
 }
 static inline void slab_list_move(slab_t** target, slab_t* slab)
@@ -281,14 +296,10 @@ slab_t* slab_create(slab_cache_t* cache)
 
 	slab_t* slab = mmap(0, size, PROT_READ|PROT_WRITE,
 	                    MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-	if (slab < 0) {
+	if (unlikely(slab < 0)) {
 		fprintf(stderr, "%s: failed to allocate aligned memory block\n",
 		        __func__);
 		return 0;
-	}
-	if ((uint64_t)slab % SLAB_SIZE) {
-		fprintf(stderr, "%s: slab %p is not page aligned!\n",
-		        __func__, slab);
 	}
 
 	/* Mark in directory. */
@@ -307,11 +318,12 @@ slab_t* slab_create(slab_cache_t* cache)
 	/* Ensure at least some space for coloring */
 	size_t data_size = size - sizeof(slab_t);
 	size_t free_space = (data_size % item_size);
-	if(free_space < 64) {
+	if(unlikely(free_space < 64)) {
 		free_space = 64;
 	}
 
-	unsigned short color = __sync_fetch_and_add(&cache->color, 1);
+	/// unsigned short color = __sync_fetch_and_add(&cache->color, 1);
+	unsigned short color = cache->color++;
 	color = (1 << color) % free_space;
 	color = color - ((color + sizeof(slab_t)) % sizeof(void*));
 
@@ -391,7 +403,7 @@ void* slab_alloc(slab_t* slab)
 	}
 
 	// Increment statistics
-	__sync_add_and_fetch(&slab->cache->stat_allocs, 1);
+	/// __sync_add_and_fetch(&slab->cache->stat_allocs, 1);
 
 	return item;
 }
@@ -399,7 +411,7 @@ void* slab_alloc(slab_t* slab)
 void slab_free(void* ptr)
 {
 	// Null pointer check
-	if (ptr == 0) {
+	if (unlikely(ptr == 0)) {
 		fprintf(stderr, "%s: attempted to free null ptr\n", __func__);
 		return;
 	}
@@ -423,7 +435,7 @@ void slab_free(void* ptr)
 		}
 
 		// Increment statistics
-		__sync_add_and_fetch(&slab->cache->stat_frees, 1);
+		/// __sync_add_and_fetch(&slab->cache->stat_frees, 1);
 	} else {
 
 		// Pointer is not a slab
@@ -431,10 +443,9 @@ void slab_free(void* ptr)
 		size_t* bs = ((size_t*)ptr) - 1;
 
 		// Unmap
-		fprintf(stderr, "%s: unmapping large block of %zu bytes at %p\n",
-		        __func__, *bs, ptr);
+		/*fprintf(stderr, "%s: unmapping large block of %zu bytes at %p\n",
+		        __func__, *bs, ptr);*/
 		munmap(bs, *bs);
-		exit(1);
 	}
 
 
@@ -443,8 +454,8 @@ void slab_free(void* ptr)
 
 int slab_cache_init(slab_cache_t* cache, size_t bufsize)
 {
-	fprintf(stderr, "%s: created cache of size %u\n",
-	        __func__, (unsigned)bufsize);
+	/*fprintf(stderr, "%s: created cache of size %u\n",
+	        __func__, (unsigned)bufsize);*/
 	cache->bufsize = bufsize;
 	cache->slabs_empty = cache->slabs_partial = cache->slabs_full = 0;
 	cache->color = 0;
@@ -531,16 +542,16 @@ void slab_alloc_destroy(slab_alloc_t* alloc)
 void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 {
 	// Directly map large block
-	if (size > SLAB_SIZE * 0.5) {
+	if (unlikely(size > SLAB_SIZE * 0.5)) {
 
 		// Map block
 		size_t* p = mmap(0, size + sizeof(size_t), PROT_READ|PROT_WRITE,
 		                 MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
 
-		// Prepend size tag
-		fprintf(stderr, "%s: mapping large block of %zu bytes at %p\n",
-		        __func__, size, p + 1);
+		/*fprintf(stderr, "%s: mapping large block of %zu bytes at %p\n",
+		        __func__, size, p + 1); */
 
+		// Prepend size tag
 		*p = size;
 		return p + 1;
 	}
@@ -549,11 +560,11 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 	unsigned cache_id = slab_cache_id(size);
 
 	// Check if associated cache exists
-	slab_alloc_lock(alloc);
-	if (alloc->caches[cache_id] == 0) {
+	/// slab_alloc_lock(alloc);
+	if (unlikely(alloc->caches[cache_id] == 0)) {
 
 		// Assert minimum cache size
-		if (size < SLAB_MIN_BUFLEN) {
+		if (unlikely(size < SLAB_MIN_BUFLEN)) {
 			size = SLAB_MIN_BUFLEN;
 		}
 
@@ -564,14 +575,14 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 		}
 
 		// Create cache
-		fprintf(stderr, "%s: creating cache of %uB (requested %uB) (id=%u)\n",
-		        __func__, (unsigned)bufsize, (unsigned)size, cache_id);
+		/*fprintf(stderr, "%s: creating cache of %uB (requested %uB) (id=%u)\n",
+		        __func__, (unsigned)bufsize, (unsigned)size, cache_id);*/
 
 		slab_cache_t* cache = slab_cache_alloc(&alloc->descriptors);
 		slab_cache_init(cache, bufsize);
 		alloc->caches[cache_id] = cache;
 	}
-	slab_alloc_unlock(alloc);
+	/// slab_alloc_unlock(alloc);
 
 	// Allocate from cache
 	return slab_cache_alloc(alloc->caches[cache_id]);
@@ -607,16 +618,3 @@ void slab_alloc_stats(slab_alloc_t* alloc)
 	}
 }
 
-void *slab_alloc_g(size_t size)
-{
-	void* ret = slab_alloc_alloc(&_allocator_g, size);
-	if (ret == 0) {
-		fprintf(stderr, "%s: returned NULL\n", __func__);
-	}
-	return ret;
-}
-
-void *slab_realloc_g(void *ptr, size_t size)
-{
-	return slab_alloc_realloc(&_allocator_g, ptr, size);
-}

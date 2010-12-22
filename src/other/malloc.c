@@ -204,29 +204,52 @@ void *log_malloc(const char *caller, int line, size_t size)
 	return malloc(size);
 }
 #endif
-
 /*
 #ifndef MEM_NOSLAB
 #include "slab.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <dlfcn.h>
 
-static void *malloc(size_t size)
+/-*
+ * Implemented in other/slab.c
+ * Needed for checking.
+ *-/
+extern char* _slab_dir;
+
+void *malloc(size_t size)
 {
-	void* mem = slab_alloc_g(size);
+	void* mem = 0;
+	if (_slab_dir) {
+		mem = slab_alloc_g(size);
+	} else {
+		void *(*libc_malloc)(size_t) = dlsym(RTLD_NEXT, "malloc");
+		mem = libc_malloc(size);
+	}
 	fprintf(stderr, "malloc(%zu) = %p\n", size, mem);
 	return mem;
 }
 
-static void free(void *ptr)
+void free(void *ptr)
 {
-	slab_free(ptr);
+	if (_slab_dir) {
+		slab_free(ptr);
+	} else {
+		void (*libc_free)(void*) = dlsym(RTLD_NEXT, "free");
+		libc_free(ptr);
+	}
 }
 
-static void *realloc(void *ptr, size_t size)
+void *realloc(void *ptr, size_t size)
 {
-	return slab_realloc_g(ptr, size);
+	if (_slab_dir) {
+		return slab_realloc_g(ptr, size);
+	}
+
+	void *(*libc_realloc)(void*,size_t) = dlsym(RTLD_NEXT, "realloc");
+	return libc_realloc(ptr, size);
 }
+
 #endif
 */
 
