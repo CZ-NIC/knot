@@ -127,12 +127,14 @@ line:	NL
 
 		dnslib_rdata_t *tmp_rdata = dnslib_rdata_new();
 
+		printf("created rdata: %p\n", tmp_rdata);
+
 		if (dnslib_rdata_set_items(tmp_rdata,
 		    parser->temporary_items,
 		    parser->rdata_count) != 0) {
 			return -1;
 		}
-				
+
 		assert(parser->current_rrset.rdata == NULL);
 		dnslib_rrset_add_rdata(&(parser->current_rrset), tmp_rdata);
 
@@ -281,6 +283,9 @@ label:	STR
 	    } else {
 		    $$ = dnslib_dname_new_from_str($1.str, $1.len, NULL);
 	    }
+
+	    free($1.str);
+
     }
     |	BITLAB
     {
@@ -639,6 +644,7 @@ type_and_rdata:
 rdata_a:	dotted_str trail
     {
 	    zadd_rdata_wireformat(zparser_conv_a($1.str));
+	    free($1.str);
     }
     ;
 
@@ -1043,6 +1049,7 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			name = dnslib_dname_new_from_wire((uint8_t*)$7.str + 1,
 			                                  strlen($7.str + 1),
 			                                  NULL);
+			
 			if(!name) {
 				zc_error_prev_line("IPSECKEY bad gateway dname %s", $7.str);
 			}
@@ -1056,9 +1063,12 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			            dnslib_node_parent(parser->origin)->owner);
 			}
 
+			free($7.str);
+
 			uint8_t* dncpy = malloc(name->size);
 			memcpy(dncpy, name->name, name->size);
 			zadd_rdata_wireformat((uint16_t *)dncpy);
+			dnslib_dname_free(&name);
 			break;
 		default:
 			zc_error_prev_line("unknown IPSECKEY gateway type");
@@ -1158,6 +1168,16 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->id = 1;
 
 	parser->current_rrset.rclass = parser->default_class;
+}
+
+
+void zparser_free()
+{
+	dnslib_dname_free(&(parser->root_domain));
+/*	for (int i = 0; i < MAXRDATALEN; i++) {
+		free(&(parser->temporary_items[i]));
+	}*/
+	free(parser->temporary_items);
 }
 
 void

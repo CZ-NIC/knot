@@ -1184,9 +1184,7 @@ uint32_t zparser_ttl2int(const char *ttlstr, int *error)
 
 void zadd_rdata_wireformat(uint16_t *data)
 {
-	dnslib_rdata_item_t *item = malloc(sizeof(dnslib_rdata_item_t));
-	item->raw_data = (uint8_t *)data;
-	parser->temporary_items[parser->rdata_count] = *item;
+	parser->temporary_items[parser->rdata_count].raw_data = (uint8_t *)data;
 	parser->rdata_count++;
 }
 
@@ -1224,9 +1222,7 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 
 void zadd_rdata_domain(dnslib_dname_t *dname)
 {
-	dnslib_rdata_item_t *item = malloc(sizeof(dnslib_rdata_item_t));
-	item->dname = dname;
-	parser->temporary_items[parser->rdata_count] = *item;
+	parser->temporary_items[parser->rdata_count].dname = dname;
 	parser->rdata_count++;
 }
 
@@ -1354,7 +1350,7 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 	} else {
 		tmp_rrset->rrsigs = rrsig;
 	}
-
+	
 //	printf("setting rrsigs for rrset %p\n", tmp_rrset);
 
 
@@ -1480,10 +1476,11 @@ int process_rr(void)
 					}
 					tmp_owner->node = parser->id;
 					parser->id++;
+					last_node = tmp_node;
 				} else {
-//					dnslib_node_free(&tmp_node);
+					dnslib_dname_free(&chopped);
+					dnslib_node_free(&tmp_node);
 				}
-				last_node = tmp_node;
 
 				chopped = dnslib_dname_left_chop(tmp_owner);
 
@@ -1635,6 +1632,10 @@ void zone_read(char *name, const char *zonefile)
 
 	dnslib_zone_free(&(parser->current_zone), 1);
 
+	zparser_free();
+
+	printf("zparser freed\n");
+
 	printf("zone freed\n");
 
 	printf("zone dumped\n");
@@ -1649,6 +1650,8 @@ void zone_read(char *name, const char *zonefile)
 	//TODO possible check for SOA
 
 	fclose(yyin);
+
+	yylex_destroy();
 
 	fflush(stdout);
 
