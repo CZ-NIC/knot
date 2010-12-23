@@ -1632,8 +1632,6 @@ void zone_read(char *name, const char *zonefile)
 
 	dnslib_zone_free(&(parser->current_zone), 1);
 
-	zparser_free();
-
 	printf("zparser freed\n");
 
 	printf("zone freed\n");
@@ -1656,5 +1654,7 @@ void zone_read(char *name, const char *zonefile)
 	fflush(stdout);
 
 	totalerrors += parser->errors;
+
+	zparser_free();
 }
 
