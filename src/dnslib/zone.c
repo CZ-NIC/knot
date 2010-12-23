@@ -46,7 +46,14 @@ void dnslib_zone_destroy_node_from_tree(dnslib_node_t *node, void *data)
 {
 	UNUSED(data);
 //	dnslib_node_free(&node);
-	dnslib_node_free_tmp(&node, 1);
+	dnslib_node_free_rrsets(&node, 1);
+}
+
+void dnslib_zone_destroy_node_from_tree_owner(dnslib_node_t *node, void *data)
+{
+	UNUSED(data);
+//	dnslib_node_free(&node);
+	dnslib_node_free_owner(&node, 1);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -283,6 +290,9 @@ void dnslib_zone_free(dnslib_zone_t **zone, int free_nodes)
 
 	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
 	                      dnslib_zone_destroy_node_from_tree, NULL);
+
+ 	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
+	                      dnslib_zone_destroy_node_from_tree_owner, NULL);
 
 	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
 	                      dnslib_zone_destroy_node_from_tree, NULL);

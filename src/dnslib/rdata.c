@@ -194,7 +194,6 @@ void dnslib_rdata_free_tmp(dnslib_rdata_t **rdata, int free_items, uint type)
 	if ((*rdata)->items) {
 		free((*rdata)->items);
 	}
-	printf("freed rdata: %p\n", *rdata);
 	free(*rdata);
 	*rdata = NULL;
 }
