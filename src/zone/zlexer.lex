@@ -438,12 +438,22 @@ parse_token(int token, char *yytext, enum lexer_state *lexer_state)
 			return T_TTL;
 		}
 	}
-
+  
 	str = strdup(yytext);
 	len = zoctet(str);
 
 	yylval.data.str = str;
 	yylval.data.len = len; 
+
+  if (strcmp(yytext, ".") == 0) {
+      free(str);
+      yylval.data.str=".";
+  }
+
+  if (strcmp(yytext, "@") == 0) {
+      free(str);
+      yylval.data.str="@";
+  }
 
 	LEXOUT(("%d[%s] ", token, yytext));
 	return token;
