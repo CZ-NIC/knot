@@ -1459,44 +1459,54 @@ int process_rr(void)
 		}//XXX Have a look at this
 		//but it's probably ok, in case that while will not execute
 		//its parent will be set after it
-		dnslib_dname_t *tmp_owner = current_rrset->owner; //XXX
+//		dnslib_dname_t *tmp_owner = current_rrset->owner; //XXX
 		dnslib_dname_t *chopped =
 			dnslib_dname_left_chop(current_rrset->owner);
 
+		/* the following is the most common case */
 		if (dnslib_dname_compare(parser->origin->owner, chopped) == 0 ) {
 			node->parent = parser->origin;
 		} else {
 			while ((tmp_node = node_get_func(zone, chopped) == NULL)) {
-				tmp_node = dnslib_node_new(tmp_owner, NULL);
+				tmp_node = dnslib_node_new(chopped, NULL);
 				last_node->parent = tmp_node;
-			
-				if (node_get_func(zone, tmp_owner) == NULL) {
-					if (node_add_func(zone, tmp_node) != 0) {
+				
+				assert(node_get_func(zone, chopped) == NULL);	
+			  if (node_add_func(zone, tmp_node) != 0) {
 						return -1;
-					}
-					tmp_owner->node = parser->id;
-					parser->id++;
-					last_node = tmp_node;
-				} else {
-					dnslib_dname_free(&chopped);
-					dnslib_node_free(&tmp_node);
 				}
 
-				chopped = dnslib_dname_left_chop(tmp_owner);
+				chopped->node = parser->id;
+				parser->id++;
+				last_node = tmp_node;
 
-				tmp_owner = chopped;
+				chopped = dnslib_dname_left_chop(chopped);
 			}
-			last_node->parent = tmp_node;
+			last_node->parent = tmp_node; //parent is already in zone
 		}		
 		dnslib_dname_free(&chopped);
     
 		assert(node);
-	} else {
+	} 
+	//TODO figure a way how to free this
+	else {
 		if (current_rrset->owner != node->owner) {
-			dnslib_dname_free(&(current_rrset->owner));
-			current_rrset->owner = node->owner;
+						printf("freeing %s %p\n", dnslib_dname_to_str(current_rrset->owner), current_rrset->owner);
+						printf("because %s %p\n", dnslib_dname_to_str(node->owner), node->owner);
+						printf("last node %s %p\n", dnslib_dname_to_str(parser->last_node->owner), parser->last_node);
+						if (parser->last_node->owner != current_rrset->owner) {
+										dnslib_dname_free(&(current_rrset->owner));
+						}
+						current_rrset->owner = node->owner;
 		}
 	}
+
+/*	if ((dnslib_dname_compare(current_rrset->owner, node->owner) == 0) && current_rrset->owner != node->owner) {
+						printf("freeing %s %p\n", dnslib_dname_to_str(current_rrset->owner), current_rrset->owner);
+						printf("because %s %p\n", dnslib_dname_to_str(node->owner), node->owner);
+						dnslib_dname_free(&(current_rrset->owner));
+						current_rrset->owner = node->owner;
+	}*/
 	
 	if (node->owner->node == NULL) {
 		node->owner->node = parser->id;
@@ -1562,6 +1572,8 @@ int process_rr(void)
 	parser->last_node = node;
 
 	++totalrrs;
+
+						printf("freeing %s %p\n", dnslib_dname_to_str(current_rrset->owner), current_rrset->owner);
 	return 0;
 }
 
