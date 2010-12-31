@@ -1381,9 +1381,12 @@ int process_rr(void)
 		node_get_func = &dnslib_zone_get_nsec3_node;
 	}
 
+	printf("RRSET OWNER: %s %p\n", dnslib_dname_to_str(current_rrset->owner), current_rrset->owner);
+
 	/* We only support IN class */
 	if (current_rrset->rclass != DNSLIB_CLASS_IN) {
 		fprintf(stderr, "only class IN is supported");
+		getchar();
 		return -1;
 	}
 //TODO
@@ -1404,8 +1407,8 @@ int process_rr(void)
 
 		dnslib_node_t *soa_node;
 
-//		printf("Creating zone with apex: %s\n",
-//		       dnslib_dname_to_str(parser->origin->owner));
+		printf("Creating zone with apex: %s\n %p",
+		       dnslib_dname_to_str(parser->origin->owner), parser->origin->owner);
 
 		zone = dnslib_zone_new(parser->origin); //XXX
 
@@ -1450,6 +1453,8 @@ int process_rr(void)
 		dnslib_node_t *last_node = dnslib_node_new(current_rrset->owner,
 		                                           NULL);
 
+		printf("new node, owner %s %p\n", dnslib_dname_to_str(current_rrset->owner), current_rrset->owner);
+
 		//XXX this whole section is wrong
 
 		node = last_node;
@@ -1470,6 +1475,7 @@ int process_rr(void)
 			while ((tmp_node = node_get_func(zone, chopped) == NULL)) {
 				tmp_node = dnslib_node_new(chopped, NULL);
 				last_node->parent = tmp_node;
+		printf("new node, owner %s %p\n", dnslib_dname_to_str(chopped), chopped);
 				
 				assert(node_get_func(zone, chopped) == NULL);	
 			  if (node_add_func(zone, tmp_node) != 0) {
@@ -1491,14 +1497,17 @@ int process_rr(void)
 	//TODO figure a way how to free this
 	else {
 		if (current_rrset->owner != node->owner) {
+						if (parser->last_node->owner != node->owner) {
 						printf("freeing %s %p\n", dnslib_dname_to_str(current_rrset->owner), current_rrset->owner);
 						printf("because %s %p\n", dnslib_dname_to_str(node->owner), node->owner);
-						printf("last node %s %p\n", dnslib_dname_to_str(parser->last_node->owner), parser->last_node);
-						if (parser->last_node->owner != current_rrset->owner) {
-										dnslib_dname_free(&(current_rrset->owner));
+						printf("last node %s %p\n", dnslib_dname_to_str(parser->last_node->owner), parser->last_node->owner);
+						dnslib_dname_free(&(current_rrset->owner));
+						getchar();
 						}
+						printf("setting pointer\n");
 						current_rrset->owner = node->owner;
 		}
+		assert(current_rrset->owner == node->owner);
 	}
 
 /*	if ((dnslib_dname_compare(current_rrset->owner, node->owner) == 0) && current_rrset->owner != node->owner) {
@@ -1571,9 +1580,10 @@ int process_rr(void)
   
 	parser->last_node = node;
 
+	printf("setting last node's owner %p\n", node->owner);
+
 	++totalrrs;
 
-						printf("freeing %s %p\n", dnslib_dname_to_str(current_rrset->owner), current_rrset->owner);
 	return 0;
 }
 
