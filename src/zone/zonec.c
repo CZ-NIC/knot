@@ -58,7 +58,6 @@ static void rrsig_list_add(rrsig_list_t **head, dnslib_rrset_t *rrsig)
 {
 	if (head == NULL) {
 		rrsig_list_add_first(head, rrsig);
-		getchar();
 	} else {
 		rrsig_list_t *tmp = malloc(sizeof(*tmp));
 		tmp->next = *head;
@@ -1386,7 +1385,6 @@ int process_rr(void)
 	/* We only support IN class */
 	if (current_rrset->rclass != DNSLIB_CLASS_IN) {
 		fprintf(stderr, "only class IN is supported");
-		getchar();
 		return -1;
 	}
 //TODO
