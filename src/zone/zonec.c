@@ -1651,7 +1651,7 @@ void zone_read(char *name, const char *zonefile)
 
 	dnslib_zone_dump_binary(parser->current_zone, "zonedump.bin");
 
-	dnslib_zone_free(&(parser->current_zone), 1);
+	dnslib_zone_deep_free(&(parser->current_zone));
 
 	printf("zparser freed\n");
 

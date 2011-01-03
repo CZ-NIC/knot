@@ -224,7 +224,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 
 	for (int i = 0; i < rrset_count; i++) {
 		if ((tmp_rrset = dnslib_load_rrset(f)) == NULL) {
-			dnslib_node_free(&node);
+			dnslib_node_free(&node, 1);
 //			printf("Error: rrset load\n");
 			//TODO what else to free?
 			return NULL;
