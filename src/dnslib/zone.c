@@ -58,8 +58,8 @@ void dnslib_zone_destroy_node_owner_from_tree(dnslib_node_t *node, void *data)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_adjust_rdata(dnslib_rdata_t *rdata, dnslib_zone_t *zone,
-                              int pos)
+void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata, dnslib_zone_t *zone,
+                                   int pos)
 {
 	const dnslib_rdata_item_t *dname_item
 		= dnslib_rdata_get_item(rdata, pos);
@@ -95,9 +95,14 @@ void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
 
 	dnslib_rrtype_descriptor_t *desc =
 		dnslib_rrtype_descriptor_by_type(type);
-	dnslib_rdata_t *rdata = dnslib_rrset_get_rdata(rrset);
+	dnslib_rdata_t *rdata_first = dnslib_rrset_get_rdata(rrset);
+	dnslib_rdata_t *rdata = rdata_first;
 
-	while (rdata != NULL) {
+	if (rdata == NULL) {
+		return;
+	}
+
+	while (rdata->next != rdata_first) {
 		for (int i = 0; i < desc->length; ++i) {
 			if (desc->wireformat[i]
 			    == DNSLIB_RDATA_WF_COMPRESSED_DNAME) {
@@ -107,10 +112,23 @@ void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
 				  i, rrset->owner->name,
 				  dnslib_rrtype_to_string(type));
 
-				dnslib_zone_adjust_rdata(rdata, zone, i);
+				dnslib_zone_adjust_rdata_item(rdata, zone, i);
 			}
 		}
 		rdata = rdata->next;
+	}
+
+	for (int i = 0; i < desc->length; ++i) {
+		if (desc->wireformat[i]
+		    == DNSLIB_RDATA_WF_COMPRESSED_DNAME) {
+			debug_dnslib_zone("Adjusting domain name at"
+			  "position %d of RDATA of record with owner"
+			  "%s and type %s.\n",
+			  i, rrset->owner->name,
+			  dnslib_rrtype_to_string(type));
+
+			dnslib_zone_adjust_rdata_item(rdata, zone, i);
+		}
 	}
 }
 
