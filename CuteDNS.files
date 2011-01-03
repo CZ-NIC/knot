@@ -94,3 +94,5 @@ src/dnslib/packet.h
 src/dnslib/response.c
 src/other/malloc.h
 src/other/malloc.c
+src/dnslib/edns.h
+src/dnslib/utils.h

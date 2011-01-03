@@ -149,15 +149,45 @@ const dnslib_node_t *dnslib_zone_apex(const dnslib_zone_t *zone);
 void dnslib_zone_adjust_dnames(dnslib_zone_t *zone);
 
 /*!
- * \brief Correctly deallocates the zone structure and possibly all its nodes.
+ * \brief Applies the given function to each regular node in the zone.
+ *
+ * \param zone Nodes of this zone will be used as parameters for the function.
+ * \param function Function to be applied to each node of the zone.
+ * \param data Arbitrary data to be passed to the function.
+ */
+void dnslib_zone_tree_apply(dnslib_zone_t *zone,
+                            void (*function)(dnslib_node_t *node, void *data),
+                            void *data);
+
+/*!
+ * \brief Applies the given function to each NSEC3 node in the zone.
+ *
+ * \param zone NSEC3 nodes of this zone will be used as parameters for the
+ *             function.
+ * \param function Function to be applied to each node of the zone.
+ * \param data Arbitrary data to be passed to the function.
+ */
+void dnslib_zone_nsec3_apply(dnslib_zone_t *zone,
+                             void (*function)(dnslib_node_t *node, void *data),
+                             void *data);
+
+/*!
+ * \brief Correctly deallocates the zone structure, without deleting its nodes.
  *
  * Also sets the given pointer to NULL.
  *
  * \param zone Zone to be freed.
- * \param free_nodes If 0, the nodes will not be deleted, if <> 0, all nodes
- *                   in the zone are deleted using dnslib_node_free().
  */
-void dnslib_zone_free(dnslib_zone_t **zone, int free_nodes);
+void dnslib_zone_free(dnslib_zone_t **zone);
+
+/*!
+ * \brief Correctly deallocates the zone structure and all nodes within.
+ *
+ * Also sets the given pointer to NULL.
+ *
+ * \param zone Zone to be freed.
+ */
+void dnslib_zone_deep_free(dnslib_zone_t **zone);
 
 #endif
 
