@@ -12,6 +12,11 @@
 #undef realloc
 #include <stdlib.h>
 
+/* Magic constants.
+ */
+#define SLAB_MAGIC 0x51
+#define LOBJ_MAGIC 0x0B
+
 /*
  * Fast cache id lookup table.
  * Provides O(1) lookup.
@@ -97,46 +102,12 @@ static unsigned slab_cache_id(unsigned size)
 size_t SLAB_SIZE = 0;
 size_t SLAB_MASK = 0;
 static unsigned SLAB_LOGSIZE = 0;
-char* _slab_dir = 0;
 
 /* We cannot assume whether mmap() address space grows upwards or downwards,
  * so XORing gives us relatively cheap page identifier based on how near the
  * page is from the base.
  */
 #define slab_pageid(p) (((size_t)(p) ^ (size_t)_slab_dir) >> SLAB_LOGSIZE)
-
-/* Division or modulo by 2^n gets
- * optimised to k >> n and k & (n-1) respectively, even with -O0.
- */
-#define slab_dir_index(id)  ((unsigned)(id) / (8))
-#define slab_dir_offset(id) (1 << ((unsigned)(id) % (8)))
-
-static void slab_dir_mark(void* addr)
-{
-	unsigned id = slab_pageid(addr);
-	/*fprintf(stderr, "%s: addr %p -> index 0x%x (0x%x, 0x%x)\n",
-	        __func__, addr, id, slab_dir_index(id), slab_dir_offset(id));*/
-	_slab_dir[slab_dir_index(id)] |= slab_dir_offset(id);
-}
-
-static void slab_dir_clear(void* addr)
-{
-	unsigned id = slab_pageid(addr);
-	/*fprintf(stderr, "%s: addr %p -> index 0x%x (0x%x, 0x%x)\n",
-	        __func__, addr, id, slab_dir_index(id), slab_dir_offset(id));*/
-	_slab_dir[slab_dir_index(id)] &= ~slab_dir_offset(id);
-}
-
-static int slab_dir_exists(void* addr)
-{
-	unsigned id = slab_pageid(addr);
-	int ret = _slab_dir[slab_dir_index(id)] & slab_dir_offset(id);
-	/*if(!ret) {
-		fprintf(stderr, "%s: not exists! addr %p -> index 0x%x (0x%x, 0x%x)\n",
-		        __func__, addr, id, slab_dir_index(id), slab_dir_offset(id));
-	}*/
-	return ret;
-}
 
 /*
  * Initializers.
@@ -156,14 +127,6 @@ void __attribute__ ((constructor)) slab_init()
 	}
 	SLAB_MASK = ~SLAB_MASK;
 
-	// Initialize directory of allocd pages
-	// Bitfield is a bitslower, but still very good (~2ms diff for 1M ops)
-	// It is far more space effective (1/8 of the bytemap).
-	long pages = sysconf(_SC_PHYS_PAGES);
-	_slab_dir = mmap(0, pages / 8, PROT_READ|PROT_WRITE,
-	                 MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-	memset(_slab_dir, 0, pages / 8);
-
 	// Initialize global allocator
 	slab_alloc_init(&_allocator_g);
 }
@@ -173,10 +136,6 @@ void __attribute__ ((destructor)) slab_deinit()
 	// Deinitialize global allocator
 	slab_alloc_stats(&_allocator_g);
 	slab_alloc_destroy(&_allocator_g);
-
-	// Unmap page directory
-	long pages = sysconf(_SC_PHYS_PAGES);
-	munmap(_slab_dir, pages / 8);
 }
 
 /*
@@ -239,7 +198,7 @@ static inline void slab_list_remove(slab_t* slab)
 
 	// Disconnect from cache
 	slab_cache_t* cache = slab->cache;
-	/// slab_cache_lock(cache);
+	slab_cache_lock(cache);
 	{
 		if (cache->slabs_empty == slab) {
 			/*fprintf(stderr, "%s: deleted %p from slabs_empty\n",
@@ -257,12 +216,12 @@ static inline void slab_list_remove(slab_t* slab)
 			cache->slabs_full = slab->next;
 		}
 	}
-	/// slab_cache_unlock(cache);
+	slab_cache_unlock(cache);
 }
 static inline void slab_list_insert(slab_t** list, slab_t* item)
 {
 	// If list exists, push to the top
-	/// slab_cache_lock(item->cache);
+	slab_cache_lock(item->cache);
 	item->prev = 0;
 	item->next = *list;
 	if (*list) {
@@ -270,7 +229,7 @@ static inline void slab_list_insert(slab_t** list, slab_t* item)
 	}
 
 	*list = item;
-	/// slab_cache_unlock(item->cache);
+	slab_cache_unlock(item->cache);
 
 	/*const char* ln = "slabs_empty";
 	if(*list == item->cache->slabs_partial)
@@ -302,10 +261,8 @@ slab_t* slab_create(slab_cache_t* cache)
 		return 0;
 	}
 
-	/* Mark in directory. */
-	slab_dir_mark(slab);
-
 	/* Initialize slab. */
+	slab->magic = SLAB_MAGIC;
 	slab->cache = cache;
 	slab_list_insert(&cache->slabs_empty, slab);
 
@@ -368,9 +325,6 @@ void slab_destroy(slab_t** slab)
 	/* Disconnect from the list */
 	slab_list_remove(*slab);
 
-	/* Clear directory. */
-	slab_dir_clear(*slab);
-
 	/* Free slab */
 	munmap(*slab, SLAB_SIZE);
 
@@ -420,7 +374,7 @@ void slab_free(void* ptr)
 	slab_t* slab = slab_from_ptr(ptr);
 
 	// Check if it exists in directory
-	if (slab_dir_exists(slab)) {
+	if (slab->magic == SLAB_MAGIC) {
 
 		// Return buf to slab
 		*((void**)ptr) = slab->head;
@@ -440,12 +394,12 @@ void slab_free(void* ptr)
 
 		// Pointer is not a slab
 		// Presuming it's a large block
-		size_t* bs = ((size_t*)ptr) - 1;
+		slab_obj_t* bs = (slab_obj_t*) slab;
 
 		// Unmap
 		/*fprintf(stderr, "%s: unmapping large block of %zu bytes at %p\n",
-		        __func__, *bs, ptr);*/
-		munmap(bs, *bs);
+		        __func__, bs->size, ptr);*/
+		munmap(bs, bs->size);
 	}
 
 
@@ -545,15 +499,18 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 	if (unlikely(size > SLAB_SIZE * 0.5)) {
 
 		// Map block
-		size_t* p = mmap(0, size + sizeof(size_t), PROT_READ|PROT_WRITE,
+		size_t* p = mmap(0, size + sizeof(slab_obj_t),
+		                 PROT_READ|PROT_WRITE,
 		                 MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
 
 		/*fprintf(stderr, "%s: mapping large block of %zu bytes at %p\n",
 		        __func__, size, p + 1); */
 
-		// Prepend size tag
-		*p = size;
-		return p + 1;
+		/* Initialize. */
+		slab_obj_t* obj = (slab_obj_t*) p;
+		obj->magic = LOBJ_MAGIC;
+		obj->size = size;
+		return obj + 1;
 	}
 
 	// Get cache id from size

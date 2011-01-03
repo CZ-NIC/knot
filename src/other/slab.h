@@ -56,6 +56,7 @@ struct slab_cache_t;
  * determine slab address from buf pointer.
  */
 typedef struct slab_t {
+	char magic;                 /*!< Identifies memory block type. */
 	struct slab_cache_t *cache; /*!< Owner cache. */
 	struct slab_t *prev, *next; /*!< Neighbours in slab lists. */
 	unsigned bufs_count;        /*!< Number of bufs in slab. */
@@ -63,6 +64,22 @@ typedef struct slab_t {
 	void **head;                /*!< Pointer to first available buf. */
 	char* base;                 /*!< Base address for bufs. */
 } slab_t;
+
+/*!
+ * \brief Large object descriptor.
+ *
+ * Large object differs from slab with magic byte and
+ * contains object size.
+ *
+ * For space and performance reasons, the size of the object should
+ * be close to a multiple of page size.
+ *
+ * Magic needs to be first to overlap with slab_t magic byte.
+ */
+typedef struct slab_obj_t {
+	char magic;  /*!< Identifies memory block type. */
+	size_t size; /*!< Object size. */
+} slab_obj_t;
 
 /*!
  * \brief Slab cache descriptor.
@@ -77,7 +94,6 @@ typedef struct slab_t {
  * Allocation of new slabs is on-demand,empty slabs are reused if possible.
  */
 typedef struct slab_cache_t {
-
 	unsigned short color;    /*!< Current cache color. */
 	size_t bufsize;          /*!< Cache object (buf) size. */
 	slab_t *slabs_empty;     /*!< List of empty slabs. */
