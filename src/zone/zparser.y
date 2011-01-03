@@ -284,7 +284,7 @@ label:	STR
 		    $$ = error_dname;
 	    } else {
 		    $$ = dnslib_dname_new_from_str($1.str, $1.len, NULL);
-//        printf("Created dname in parser: %s %p\n", dnslib_dname_to_str($$), $$);
+        printf("new: %p\n", $$);
 	    }
 
 	    free($1.str);
@@ -308,7 +308,7 @@ rel_dname:	label
 		    $$ = error_dname;
 	    } else {
 		    $$ = dnslib_dname_cat($1, $3);
-//        printf("Freeing in parser: %s %p\n", dnslib_dname_to_str($3), $3);
+        printf("free: %p\n", $3);
 		    dnslib_dname_free(&$3);
 	        }
     }

@@ -1502,7 +1502,6 @@ int process_rr(void)
 						printf("because %s %p\n", dnslib_dname_to_str(node->owner), node->owner);
 						printf("last node %s %p\n", dnslib_dname_to_str(parser->last_node->owner), parser->last_node->owner);
 						dnslib_dname_free(&(current_rrset->owner));
-						getchar();
 						}
 						printf("setting pointer\n");
 						current_rrset->owner = node->owner;
