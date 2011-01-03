@@ -97,15 +97,11 @@ void dnslib_node_free_rrsets(dnslib_node_t **node, int free_rrsets)
 	if ((*node)->rrsets != NULL) {
 		skip_destroy_list(&(*node)->rrsets, NULL, NULL);
 	}
-
-//  printf("freeing in node free: %s %p\n", dnslib_dname_to_str((*node)->owner), (*node)->owner);
-//  dnslib_dname_free(&(*node)->owner);
-
 }
 
 void dnslib_node_free_owner(dnslib_node_t **node)
 {
-  dnslib_dname_free(&(*node)->owner);
+	dnslib_dname_free(&(*node)->owner);
  	free(*node);
 	*node = NULL;   
 }
