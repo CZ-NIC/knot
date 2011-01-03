@@ -83,3 +83,5 @@ src/dnslib/packet.h
 src/dnslib/response.c
 src/dnslib/edns.h
 src/dnslib/utils.h
+src/dnslib/zonedb.h
+src/dnslib/zonedb.c
