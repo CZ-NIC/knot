@@ -42,17 +42,15 @@ int dnslib_zone_check_node(const dnslib_zone_t *zone, const dnslib_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_destroy_node_from_tree(dnslib_node_t *node, void *data)
+void dnslib_zone_destroy_node_rrsets_from_tree(dnslib_node_t *node, void *data)
 {
 	UNUSED(data);
-//	dnslib_node_free(&node);
 	dnslib_node_free_rrsets(&node, 1);
 }
 
-void dnslib_zone_destroy_node_from_tree_owner(dnslib_node_t *node, void *data)
+void dnslib_zone_destroy_node_owner_from_tree(dnslib_node_t *node, void *data)
 {
 	UNUSED(data);
-//	dnslib_node_free(&node);
 	dnslib_node_free_owner(&node, 1);
 }
 
@@ -189,9 +187,9 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex)
 int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 {
 	int ret = 0;
-/*	if ((ret = dnslib_zone_check_node(zone, node)) != 0) {
+	if ((ret = dnslib_zone_check_node(zone, node)) != 0) {
 		return ret;
-	}*/
+	}
 
 	// add the node to the tree
 	// how to know if this is successfull??
@@ -204,10 +202,10 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 
 int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node)
 {
-//	int ret = 0;
-//	if ((ret = dnslib_zone_check_node(zone, node)) != 0) {
-//		return ret;
-//	}
+	int ret = 0;
+	if ((ret = dnslib_zone_check_node(zone, node)) != 0) {
+		return ret;
+	}
 
 	// how to know if this is successfull??
 	TREE_INSERT(zone->nsec3_nodes, dnslib_node, avl, node);
@@ -288,14 +286,20 @@ void dnslib_zone_free(dnslib_zone_t **zone, int free_nodes)
 		return;
 	}
 
+	/* has to go through zone twice, rdata may contain references to node
+	   owners later in the zone and thus has to be freed separetely */
+
 	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
-	                      dnslib_zone_destroy_node_from_tree, NULL);
+	                      dnslib_zone_destroy_node_rrsets_from_tree, NULL);
 
  	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
-	                      dnslib_zone_destroy_node_from_tree_owner, NULL);
+	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
 
 	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
-	                      dnslib_zone_destroy_node_from_tree, NULL);
+	                      dnslib_zone_destroy_node_rrsets_from_tree, NULL);
+
+	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
+	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
 
 	free((*zone)->tree);
 	free((*zone)->nsec3_nodes);
