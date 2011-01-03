@@ -40,7 +40,6 @@
 #define SLAB_GP_COUNT  10 // General-purpose caches count.
 #define SLAB_US_COUNT  10 // User-specified caches count.
 #define SLAB_CACHE_COUNT (SLAB_GP_COUNT + SLAB_US_COUNT)
-extern size_t SLAB_SIZE;
 extern size_t SLAB_MASK;
 struct slab_cache_t;
 
@@ -63,6 +62,7 @@ typedef struct slab_t {
 	unsigned bufs_free;         /*!< Number of available bufs. */
 	void **head;                /*!< Pointer to first available buf. */
 	char* base;                 /*!< Base address for bufs. */
+	pthread_spinlock_t lock;    /*!< Synchronisation lock. */
 } slab_t;
 
 /*!

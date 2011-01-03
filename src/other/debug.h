@@ -29,6 +29,7 @@
 //#define NET_DEBUG
 //#define MEM_DEBUG
 //#define MEM_NOSLAB
+#define MEM_POISON
 
 #ifdef SERVER_DEBUG
 #define debug_server(msg...) log_msg(LOG_DEBUG, msg)
