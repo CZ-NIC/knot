@@ -1,19 +1,29 @@
-/*
- * File:     zone-load.h
- * Date:     15.12.2010 09:28
- * Author:   jan
- * Project:  
- * Description:   
+/*!
+ * \file rrset.h
+ *
+ * \author Jan Kadlec <jan.kadlec@nic.cz>
+ *
+ * \brief Loader of previously parsed zone
+ *
+ * \addtogroup dnslib
+ * @{
  */
 
-
-#ifndef __ZONELOAD_H__
-#define __ZONELOAD_H__
+#ifndef _CUTEDNS_ZONELOAD_H_
+#define _CUTEDNS_ZONELOAD_H_
 
 #include "dnslib/zone.h"
 
-dnslib_zone_t *dnslib_load_zone(const char *filename);
+/*!
+ * \brief Loades a zone from dump created by zone compiler.
+ *
+ * \param filename File containing the dumped zone.
+ *
+ * \param origin Zone's origin.
+ *
+ * \return Loaded zone on success, NULL otherwise.
+ */
+dnslib_zone_t *dnslib_zone_load(const char *filename, const char *origin);
 
-#endif
+#endif /* _CUTEDNS_ZONELOAD_H_ */
 
-/* end of file zone-load.h */

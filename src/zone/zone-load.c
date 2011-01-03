@@ -77,8 +77,7 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 	}
 
 	if (dnslib_rdata_set_items(rdata, items, desc->length) != 0) {
-//		printf("Error: could not set items\n");
-;
+		fprintf(stderr, "Error: could not set items\n");
 	}
 
 	return rdata;
@@ -129,11 +128,8 @@ dnslib_rrset_t *dnslib_load_rrset(FILE *f)
 	uint8_t rrsig_count;
 
 	fread(&rrset_type, sizeof(rrset_type), 1, f);
-//	printf("rrset type: %d\n", rrset_type);
 	fread(&rrset_class, sizeof(rrset_class), 1, f);
-//	printf("rrset class %d\n", rrset_class);
 	fread(&rrset_ttl, sizeof(rrset_ttl), 1, f);
-//	printf("rrset ttl %d\n", rrset_ttl);
 
 	fread(&rdata_count, sizeof(rdata_count), 1, f);
 	fread(&rrsig_count, sizeof(rrsig_count), 1, f);
@@ -141,8 +137,6 @@ dnslib_rrset_t *dnslib_load_rrset(FILE *f)
 	rrset = dnslib_rrset_new(NULL, rrset_type, rrset_class, rrset_ttl);
 
 	dnslib_rdata_t *tmp_rdata;
-
-//	printf("loading %d rdata entries\n", rdata_count);
 
 	for (int i = 0; i < rdata_count; i++) {
 		tmp_rdata = dnslib_load_rdata(rrset->type, f);
@@ -166,10 +160,10 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	uint8_t dname_size;
 	dnslib_node_t *node;
 	/* first, owner */
-
 	
 	uint8_t dname_wire[255]; //XXX in respect to remark below, should be dynamic
-				 //but I couldn't make it work
+				 //but I couldn't make it work - really strange error
+				 //when fread was rewriting other variables
 	uint8_t rrset_count;
 	void *dname_id; //ID, technically it's an integer
 	void *parent_id;
@@ -190,20 +184,13 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 
 	dnslib_dname_t *owner = id_array[(uint)dname_id];
 
-	//XXX I already have all thats in the structure, no need to do this
-/*	if ((owner = dnslib_dname_new_from_wire(dname_wire,
-		                                dname_size, NULL)) == NULL) {
-		return NULL;
-	}*/
-	
 	owner->name = malloc(sizeof(uint8_t) * dname_size);
 	memcpy(owner->name, dname_wire, dname_size);
 	owner->size = dname_size;
 
-//	printf("created owner: %s\n", dnslib_dname_to_str(owner));
 
 	if ((node = dnslib_node_new(owner, NULL)) == NULL) {
-//		printf("Error: could not create node\n");
+		fprintf(stderr, "Error: could not create node\n");
 		return NULL;
 	}
 
@@ -220,12 +207,10 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 
 	dnslib_rrset_t *tmp_rrset;
 
-//	printf("loading %u rrsets\n", rrset_count);
 
 	for (int i = 0; i < rrset_count; i++) {
 		if ((tmp_rrset = dnslib_load_rrset(f)) == NULL) {
 			dnslib_node_free(&node, 1);
-//			printf("Error: rrset load\n");
 			//TODO what else to free?
 			return NULL;
 		}
@@ -234,7 +219,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 			tmp_rrset->rrsigs->owner = node->owner;
 		}
 		if (dnslib_node_add_rrset(node, tmp_rrset) != 0) {
-//			printf("Error: could not add rrset\n");
+			fprintf(stderr, "Error: could not add rrset\n");
 			return NULL;
 		}
 	}
@@ -242,9 +227,9 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	return node;
 }
 
-dnslib_zone_t *dnslib_load_zone(const char *filename)
+dnslib_zone_t *dnslib_zone_load(const char *filename, const char *origin)
 {
-	tmp_dname = dnslib_dname_new_from_str("dummy.example.com.", strlen("dummy.example.com."), NULL);
+	tmp_dname = dnslib_dname_new_from_str(origin, strlen(origin), NULL);
 	FILE *f = fopen(filename, "rb");
 
 	dnslib_node_t *apex = dnslib_node_new(tmp_dname, NULL);
@@ -274,7 +259,7 @@ dnslib_zone_t *dnslib_load_zone(const char *filename)
 //			dnslib_node_dump(tmp_node);
 			dnslib_zone_add_node(zone, tmp_node);
 		} else {
-			printf("Node error!\n");
+			fprintf(stderr, "Node error!\n");
 		}
 	}
 
@@ -285,7 +270,7 @@ dnslib_zone_t *dnslib_load_zone(const char *filename)
 		if (tmp_node != NULL) {
 			dnslib_zone_add_nsec3_node(zone, tmp_node);
 		} else {
-			printf("Node error!\n");
+			printf(stderr, "Node error!\n");
 		}
 	}
 
