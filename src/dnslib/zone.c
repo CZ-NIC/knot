@@ -103,7 +103,7 @@ void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
 	}
 
 	while (rdata->next != rdata_first) {
-		for (int i = 0; i < desc->length; ++i) {
+		for (int i = 0; i < rdata->count; ++i) {
 			if (desc->wireformat[i]
 			    == DNSLIB_RDATA_WF_COMPRESSED_DNAME) {
 				debug_dnslib_zone("Adjusting domain name at"
@@ -118,7 +118,7 @@ void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
 		rdata = rdata->next;
 	}
 
-	for (int i = 0; i < desc->length; ++i) {
+	for (int i = 0; i < rdata->count; ++i) {
 		if (desc->wireformat[i]
 		    == DNSLIB_RDATA_WF_COMPRESSED_DNAME) {
 			debug_dnslib_zone("Adjusting domain name at"
