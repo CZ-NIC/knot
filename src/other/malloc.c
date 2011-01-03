@@ -204,52 +204,41 @@ void *log_malloc(const char *caller, int line, size_t size)
 	return malloc(size);
 }
 #endif
-/*
+
 #ifndef MEM_NOSLAB
 #include "slab.h"
 #include <stdlib.h>
 #include <stdio.h>
-#include <dlfcn.h>
-
-/-*
- * Implemented in other/slab.c
- * Needed for checking.
- *-/
-extern char* _slab_dir;
+#include <string.h>
 
 void *malloc(size_t size)
 {
-	void* mem = 0;
-	if (_slab_dir) {
-		mem = slab_alloc_g(size);
-	} else {
-		void *(*libc_malloc)(size_t) = dlsym(RTLD_NEXT, "malloc");
-		mem = libc_malloc(size);
-	}
-	fprintf(stderr, "malloc(%zu) = %p\n", size, mem);
+	void* mem = slab_alloc_g(size);
+	fprintf(stderr, "%s(%lu) = %p\n", __func__, size, mem);
+	return mem;
+}
+
+void *calloc(size_t nmemb, size_t size)
+{
+	const size_t nsz = nmemb * size;
+	void* mem = slab_alloc_g(nsz);
+	memset(mem, 0, nsz);
+	fprintf(stderr, "%s(%lu, %lu) = %p\n", __func__, nmemb, size, mem);
+	return mem;
+}
+
+void *realloc(void *ptr, size_t size)
+{
+	void* mem = slab_realloc_g(ptr, size);
+	fprintf(stderr, "%s(%p, %lu) = %p\n", __func__, ptr, size, mem);
 	return mem;
 }
 
 void free(void *ptr)
 {
-	if (_slab_dir) {
-		slab_free(ptr);
-	} else {
-		void (*libc_free)(void*) = dlsym(RTLD_NEXT, "free");
-		libc_free(ptr);
-	}
-}
-
-void *realloc(void *ptr, size_t size)
-{
-	if (_slab_dir) {
-		return slab_realloc_g(ptr, size);
-	}
-
-	void *(*libc_realloc)(void*,size_t) = dlsym(RTLD_NEXT, "realloc");
-	return libc_realloc(ptr, size);
+	fprintf(stderr, "%s(%p)\n", __func__, ptr);
+	slab_free(ptr);
 }
 
 #endif
-*/
 

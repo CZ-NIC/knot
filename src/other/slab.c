@@ -1,21 +1,17 @@
 #include <stdio.h>
-#include <malloc.h>
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
 #include <sys/mman.h>
 #include "slab.h"
 #include "common.h"
-
-#undef malloc
-#undef free
-#undef realloc
 #include <stdlib.h>
 
 /* Magic constants.
  */
 #define SLAB_MAGIC 0x51
 #define LOBJ_MAGIC 0x0B
+#define POISON_DWORD 0xdfdfdfdf
 
 /*
  * Fast cache id lookup table.
@@ -95,19 +91,11 @@ static unsigned slab_cache_id(unsigned size)
 }
 
 /*
- * Slab pages directory.
- * Provides O(1) lookup with quite low
- * memory overhead (~124kB for 4GiB memory).
+ * Slab run-time constants.
  */
 size_t SLAB_SIZE = 0;
 size_t SLAB_MASK = 0;
 static unsigned SLAB_LOGSIZE = 0;
-
-/* We cannot assume whether mmap() address space grows upwards or downwards,
- * so XORing gives us relatively cheap page identifier based on how near the
- * page is from the base.
- */
-#define slab_pageid(p) (((size_t)(p) ^ (size_t)_slab_dir) >> SLAB_LOGSIZE)
 
 /*
  * Initializers.
@@ -117,7 +105,7 @@ slab_alloc_t _allocator_g;
 void __attribute__ ((constructor)) slab_init()
 {
 	// Fetch page size
-	SLAB_SIZE = sysconf(_SC_PAGESIZE);
+	SLAB_SIZE = 4096; /// sysconf(_SC_PAGESIZE);
 	SLAB_LOGSIZE = fastlog2(SLAB_SIZE);
 	assert(SLAB_SIZE < ~(unsigned int)(0));
 
@@ -136,11 +124,37 @@ void __attribute__ ((destructor)) slab_deinit()
 	// Deinitialize global allocator
 	slab_alloc_stats(&_allocator_g);
 	slab_alloc_destroy(&_allocator_g);
+	SLAB_SIZE = SLAB_LOGSIZE = SLAB_MASK = 0;
 }
 
 /*
  * Cache helper functions.
  */
+static void slab_dump(slab_t* slab) {
+	if (slab->cache->bufsize != 64) {
+		return;
+	}
+
+	fprintf(stderr, "Slab buffers (%uB bufsize, %u/%u free): \n", slab->cache->bufsize, slab->bufs_free, slab->bufs_count);
+	void** buf = slab->head;
+	int i = 0, n = 0;
+	while(buf != 0) {
+		if ((size_t)buf < 0x1000) {
+			fprintf(stderr, "-> 0xdeadbeef");
+			break;
+		}
+
+		fprintf(stderr, "-> %lu", (size_t)((char*)buf - (char*)slab->base) / slab->cache->bufsize);
+		buf = (void**)(*buf);
+		if (++i == 10) {
+			fprintf(stderr, "\n");
+			i = 0;
+		}
+		++n;
+	}
+	fprintf(stderr, "\nCounted %d buffers.\n", n);
+}
+
 static inline int slab_alloc_lock(slab_alloc_t* alloc)
 {
 	return pthread_spin_lock(&alloc->lock);
@@ -255,6 +269,7 @@ slab_t* slab_create(slab_cache_t* cache)
 
 	slab_t* slab = mmap(0, size, PROT_READ|PROT_WRITE,
 	                    MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+
 	if (unlikely(slab < 0)) {
 		fprintf(stderr, "%s: failed to allocate aligned memory block\n",
 		        __func__);
@@ -264,6 +279,7 @@ slab_t* slab_create(slab_cache_t* cache)
 	/* Initialize slab. */
 	slab->magic = SLAB_MAGIC;
 	slab->cache = cache;
+	pthread_spin_init(&slab->lock, PTHREAD_PROCESS_SHARED);
 	slab_list_insert(&cache->slabs_empty, slab);
 
 	/* Ensure the item size can hold at least a size of ptr. */
@@ -292,13 +308,16 @@ slab_t* slab_create(slab_cache_t* cache)
 	// Save first item as next free
 	slab->base = (char*)slab + sizeof(slab_t) + color;
 	slab->head = (void**)slab->base;
+	fprintf(stderr, "%s: new slab head: %p\n", __func__, slab->head);
 
-	// Create freelist
+	// Create freelist, skip last member, which is set to NULL
 	char* item = (char*)slab->head;
 	for(unsigned i = 0; i < slab->bufs_count - 1; ++i) {
 		*((void**)item) = item + item_size;
 		item += item_size;
 	}
+
+	// Set last buf to NULL (tail)
 	*((void**)item) = (void*)0;
 
 	// Ensure the last item has a NULL next
@@ -325,6 +344,9 @@ void slab_destroy(slab_t** slab)
 	/* Disconnect from the list */
 	slab_list_remove(*slab);
 
+	/* Deitialize synchronisation */
+	pthread_spin_destroy(&(*slab)->lock);
+
 	/* Free slab */
 	munmap(*slab, SLAB_SIZE);
 
@@ -338,13 +360,19 @@ void* slab_alloc(slab_t* slab)
 {
 	// Fetch first free item
 	// Critial section -->
+	if(slab->cache->bufsize == 64) {
+		fprintf(stderr, "===== Slab %p before alloc(): =====\n", slab);
+		slab_dump(slab);
+	}
+
+	/// pthread_spin_lock(&slab->lock);
 	void** item =  slab->head;
 	if (item == 0) {
 		return 0;
 	}
-
 	slab->head = (void**)*item;
 	--slab->bufs_free;
+	/// pthread_spin_unlock(&slab->lock);
 	// <-- Critial section
 
 	// Move to partial?
@@ -359,6 +387,11 @@ void* slab_alloc(slab_t* slab)
 	// Increment statistics
 	/// __sync_add_and_fetch(&slab->cache->stat_allocs, 1);
 
+	if(slab->cache->bufsize == 64) {
+		fprintf(stderr, "===== Slab %p after alloc(): =====\n", slab);
+		slab_dump(slab);
+	}
+
 	return item;
 }
 
@@ -366,7 +399,6 @@ void slab_free(void* ptr)
 {
 	// Null pointer check
 	if (unlikely(ptr == 0)) {
-		fprintf(stderr, "%s: attempted to free null ptr\n", __func__);
 		return;
 	}
 
@@ -376,8 +408,13 @@ void slab_free(void* ptr)
 	// Check if it exists in directory
 	if (slab->magic == SLAB_MAGIC) {
 
+		if(slab->cache->bufsize == 64) {
+			fprintf(stderr, "===== Slab %p before free(): =====\n", slab);
+			slab_dump(slab);
+		}
+
 		// Return buf to slab
-		*((void**)ptr) = slab->head;
+		*((void**)ptr) = (void*)slab->head;
 		slab->head = (void**)ptr;
 		++slab->bufs_free;
 
@@ -390,20 +427,23 @@ void slab_free(void* ptr)
 
 		// Increment statistics
 		/// __sync_add_and_fetch(&slab->cache->stat_frees, 1);
+
+		if(slab->cache->bufsize == 64) {
+			fprintf(stderr, "===== Slab %p after free(): =====\n", slab);
+			slab_dump(slab);
+		}
+
 	} else {
 
 		// Pointer is not a slab
 		// Presuming it's a large block
-		slab_obj_t* bs = (slab_obj_t*) slab;
+		slab_obj_t* bs = (slab_obj_t*)ptr - 1;
 
 		// Unmap
 		/*fprintf(stderr, "%s: unmapping large block of %zu bytes at %p\n",
 		        __func__, bs->size, ptr);*/
 		munmap(bs, bs->size);
 	}
-
-
-
 }
 
 int slab_cache_init(slab_cache_t* cache, size_t bufsize)
@@ -495,22 +535,34 @@ void slab_alloc_destroy(slab_alloc_t* alloc)
 
 void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 {
+#ifdef MEM_POISON
+	// Reserve memory for poison
+	size += sizeof(int);
+#endif
 	// Directly map large block
-	if (unlikely(size > SLAB_SIZE * 0.5)) {
+	if (unlikely(size >= SLAB_SIZE * 0.5)) {
 
 		// Map block
-		size_t* p = mmap(0, size + sizeof(slab_obj_t),
-		                 PROT_READ|PROT_WRITE,
-		                 MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+		size += sizeof(slab_obj_t);
+		slab_obj_t* p = mmap(0, size,
+		                     PROT_READ|PROT_WRITE,
+		                     MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
 
-		/*fprintf(stderr, "%s: mapping large block of %zu bytes at %p\n",
+		/* fprintf(stderr, "%s: mapping large block of %zu bytes at %p\n",
 		        __func__, size, p + 1); */
 
 		/* Initialize. */
-		slab_obj_t* obj = (slab_obj_t*) p;
-		obj->magic = LOBJ_MAGIC;
-		obj->size = size;
-		return obj + 1;
+		p->magic = LOBJ_MAGIC;
+		p->size = size;
+
+#ifdef MEM_POISON
+		// Memory barrier
+		int* pb = (int*)((char*)p + size - sizeof(int));
+		*pb = POISON_DWORD;
+		mprotect(pb, sizeof(int), PROT_NONE);
+#endif
+
+		return p + 1;
 	}
 
 	// Get cache id from size
@@ -533,7 +585,7 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 
 		// Create cache
 		/*fprintf(stderr, "%s: creating cache of %uB (requested %uB) (id=%u)\n",
-		        __func__, (unsigned)bufsize, (unsigned)size, cache_id);*/
+		        __func__, (unsigned)bufsize, (unsigned)size, cache_id); */
 
 		slab_cache_t* cache = slab_cache_alloc(&alloc->descriptors);
 		slab_cache_init(cache, bufsize);
@@ -542,21 +594,33 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 	/// slab_alloc_unlock(alloc);
 
 	// Allocate from cache
-	return slab_cache_alloc(alloc->caches[cache_id]);
+	void* mem = slab_cache_alloc(alloc->caches[cache_id]);
+
+#ifdef MEM_POISON
+	// Memory barrier
+	int* pb = (int*)((char*)mem + size - sizeof(int));
+	fprintf(stderr, "addressed %u bytes at %p barrier at %p\n ", size, mem, (void*)pb);
+	*pb = POISON_DWORD;
+	mprotect(pb, sizeof(int), PROT_NONE);
+#endif
+	return mem;
 }
 
 void *slab_alloc_realloc(slab_alloc_t* alloc, void *ptr, size_t size)
 {
-    // Allocate new buf
-    void *nptr = slab_alloc_alloc(alloc, size);
+	// Allocate new buf
+	void *nptr = slab_alloc_alloc(alloc, size);
 
-    // Copy memory
-    slab_t* slab = slab_from_ptr(ptr);
-    memcpy(nptr, ptr, slab->cache->bufsize);
+	// Copy memory if present
+	if (ptr != 0) {
+		slab_t* slab = slab_from_ptr(ptr);
+		memcpy(nptr, ptr, slab->cache->bufsize);
 
-    // Free old buf and return
-    slab_free(ptr);
-    return nptr;
+		// Free old buf
+		slab_free(ptr);
+	}
+
+	return nptr;
 }
 
 void slab_alloc_stats(slab_alloc_t* alloc)

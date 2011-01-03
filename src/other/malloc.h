@@ -28,17 +28,17 @@ void *log_malloc(const char *caller, int line, size_t size);
 #ifndef MEM_NOSLAB
 #include "slab.h"
 
-/*
 void *malloc(size_t size);
-void free(void *ptr);
+void *calloc(size_t nmemb, size_t size);
 void *realloc(void *ptr, size_t size);
-*/
+void free(void *ptr);
 
+/*
 #define malloc(x) slab_alloc_g((x))
 #define calloc(n, x) memset(slab_alloc_g((n)*(x)), 0, (n)*(x))
 #define realloc(x, sz) slab_realloc_g((x), (sz))
 #define free(x) slab_free((x))
-
+*/
 /* Memory is MEM_NOSLAB. */
 #else
 #endif
