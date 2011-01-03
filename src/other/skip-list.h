@@ -161,10 +161,10 @@ void *skip_find(const skip_list_t *list, void *key);
  *
  * \param list Skip list to check.
  *
- * \retval 0 if empty.
- * \retval 1 if non-empty.
+ * \retval 1 if empty.
+ * \retval 0 if non-empty.
  */
-int skip_empty(const skip_list_t *list);
+int skip_is_empty(const skip_list_t *list);
 
 /*!
  * \brief Returns the first item in the skip list.
