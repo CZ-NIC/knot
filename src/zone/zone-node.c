@@ -415,7 +415,7 @@ ldns_rr_list *zn_all_rrsets(const zn_node_t *node)
 
 int zn_is_empty(const zn_node_t *node)
 {
-	return (skip_empty(node->rrsets));
+	return (skip_is_empty(node->rrsets));
 }
 
 /*----------------------------------------------------------------------------*/
