@@ -94,7 +94,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 		                   : dnslib_zone_add_node(zone, node))) != 0) {
 			diag("zone: Failed to insert node into zone (returned"
 			     " %d).", res);
-			dnslib_node_free(&node);
+			dnslib_node_free(&node, 0);
 			++errors;
 		}
 	}
@@ -115,7 +115,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 			     "proper return value (%d instead of -2).", res);
 			++errors;
 		}
-		dnslib_node_free(&node);
+		dnslib_node_free(&node, 0);
 	}
 
 	//note("NULL zone");
@@ -134,7 +134,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 		++errors;
 	}
 
-	dnslib_node_free(&node);
+	dnslib_node_free(&node, 0);
 
 	//note("NULL node");
 
@@ -160,7 +160,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 			++errors;
 		}
 
-		dnslib_node_free(&node);
+		dnslib_node_free(&node, 0);
 	}
 
 	// check if all nodes are inserted
@@ -297,9 +297,18 @@ static int test_zone_find_node(dnslib_zone_t *zone, int nsec3)
 	return (errors == 0);
 }
 
+static void test_zone_destroy_node_from_tree(dnslib_node_t *node,
+                                             void *data)
+{
+	UNUSED(data);
+	dnslib_node_free(&node, 0);
+}
+
 static int test_zone_free(dnslib_zone_t **zone)
 {
-	dnslib_zone_free(zone, 1);
+	dnslib_zone_tree_apply(*zone, test_zone_destroy_node_from_tree, NULL);
+	dnslib_zone_nsec3_apply(*zone, test_zone_destroy_node_from_tree, NULL);
+	dnslib_zone_free(zone);
 	return (*zone == NULL);
 }
 

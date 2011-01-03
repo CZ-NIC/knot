@@ -119,15 +119,24 @@ const dnslib_rdata_t *dnslib_rrsig_set_rdata(const dnslib_rrsig_set_t *rrsigs);
  *
  * Does not destroy the OWNER domain name structure.
  *
- * Does not destroy RDATA structures neither, as they need special processing -
- * their items are not destroyed in dnslib_rdata_free(), so this would be
- * confusing.
+ * Does not destroy RDATA structures neither, as they need special processing.
  *
  * Also sets the given pointer to NULL.
  *
  * \param rrsigs RRSIG set to be destroyed.
  */
 void dnslib_rrsig_set_free(dnslib_rrsig_set_t **rrsigs);
+
+/*!
+ * \brief Destroys the RRSIG set structure and all its substructures.
+ *
+ * Also sets the given pointer to NULL.
+ *
+ * \param rrsigs RRSIG set to be destroyed.
+ * \param free_owner Set to 0 if you do not want the owner domain name to be
+ *                   destroyed also. Set to <> 0 otherwise.
+ */
+void dnslib_rrsig_set_deep_free(dnslib_rrsig_set_t **rrsigs, int free_owner);
 
 /*!
  * \brief Merges two RRSIGs.
