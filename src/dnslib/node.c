@@ -90,10 +90,6 @@ void dnslib_node_free_rrsets(dnslib_node_t **node, int free_rrsets)
 		dnslib_free_node_rrsets(*node);
 	}
 
-	if ((*node)->rrsets == NULL) {
-		printf("empty node\n");
-	}
-
 	if ((*node)->rrsets != NULL) {
 		skip_destroy_list(&(*node)->rrsets, NULL, NULL);
 	}

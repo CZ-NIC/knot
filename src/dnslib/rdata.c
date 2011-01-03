@@ -181,10 +181,9 @@ void dnslib_rdata_free_tmp(dnslib_rdata_t **rdata, int free_items, uint type)
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
-			if ((*rdata)->items[i].dname != NULL) {
-				if ((*rdata)->items[i].dname->node == 0) {
-					dnslib_dname_free(&(*rdata)->items[i].dname);
-				}
+			if (((*rdata)->items[i].dname != NULL) &&
+			    ((*rdata)->items[i].dname->node == 0)) {
+				dnslib_dname_free(&(*rdata)->items[i].dname);
 			}
 		} else {
 			free((*rdata)->items[i].raw_data);
