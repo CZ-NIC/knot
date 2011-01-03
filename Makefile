@@ -9,7 +9,7 @@ COL_CYAN = \033[01;36m
 COL_WHITE = \033[01;37m
 COL_END = \033[0m
 
-INC_DIRS = src/ src/hash/ src/dns/ src/other/ src/server/ src/zone/ src/tests src/tests/libtap src/stat
+INC_DIRS = src/ src/hash/ src/dns/ src/other/ src/server/ src/zone/ src/tests src/tests/libtap src/dnslib/ src/stat
 SRC_DIRS = src/
 TESTS_DIR = src/tests/
 OBJ_DIR = obj/

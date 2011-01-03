@@ -24,12 +24,15 @@
 //#define ZDB_DEBUG_INSERT_CHECK
 //#define ZN_DEBUG
 //#define ZP_DEBUG_PARSE
+//#define DNSLIB_DNAME_DEBUG
 //#define SERVER_DEBUG
 //#define DT_DEBUG
 //#define NET_DEBUG
 //#define MEM_DEBUG
 //#define MEM_NOSLAB
 #define MEM_POISON
+#define DNSLIB_ZONE_DEBUG
+#define DNSLIB_RESPONSE_DEBUG
 
 #ifdef SERVER_DEBUG
 #define debug_server(msg...) log_msg(LOG_DEBUG, msg)
@@ -45,6 +48,24 @@
 #else
 #define debug_dnss(msg...)
 #define debug_dnss_hex(data, len)
+#endif
+
+#ifdef DNSLIB_DNAME_DEBUG
+#define debug_dnslib_dname(msg...) log_msg(LOG_DEBUG, msg)
+#else
+#define debug_dnslib_dname(msg...)
+#endif
+
+#ifdef DNSLIB_ZONE_DEBUG
+#define debug_dnslib_zone(msg...) log_msg(LOG_DEBUG, msg)
+#else
+#define debug_dnslib_zone(msg...)
+#endif
+
+#ifdef DNSLIB_RESPONSE_DEBUG
+#define debug_dnslib_response(msg...) log_msg(LOG_DEBUG, msg)
+#else
+#define debug_dnslib_response(msg...)
 #endif
 
 #ifdef CUCKOO_DEBUG

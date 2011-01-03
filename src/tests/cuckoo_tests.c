@@ -239,6 +239,7 @@ static int cuckoo_tests_run(int argc, char *argv[])
 
 	create_random_items(items, item_count);
 
+	skip(1, 4);
 	// Test 2: insert
 	ok(test_cuckoo_insert(table, items), "cuckoo hashing: insert");
 
@@ -251,6 +252,8 @@ static int cuckoo_tests_run(int argc, char *argv[])
 	// Test 5: lookup 2
 	ok(test_cuckoo_lookup(table, items),
 	   "cuckoo hashing: lookup after delete");
+
+	endskip;
 
 	// Test 6: modify
 	ok(test_cuckoo_modify(table, items), "cuckoo hashing: modify");
