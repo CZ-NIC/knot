@@ -21,7 +21,6 @@ dnslib_rrset_t *dnslib_rrset_new(dnslib_dname_t *owner, uint16_t type,
 	ret->type = type;
 	ret->rclass = rclass;
 	ret->ttl = ttl;
-	ret->rrsigs = NULL;
 
 	return ret;
 }
@@ -80,6 +79,16 @@ const dnslib_rdata_t *dnslib_rrset_rdata(const dnslib_rrset_t *rrset)
 	return rrset->rdata;
 }
 
+const dnslib_rdata_t *dnslib_rrset_rdata_next(const dnslib_rrset_t *rrset,
+                                              const dnslib_rdata_t *rdata)
+{
+	if (rdata->next == rrset->rdata) {
+		return NULL;
+	} else {
+		return rdata->next;
+	}
+}
+
 dnslib_rdata_t *dnslib_rrset_get_rdata(dnslib_rrset_t *rrset)
 {
 	return rrset->rdata;
@@ -96,7 +105,7 @@ void dnslib_rrset_free(dnslib_rrset_t **rrset)
 	*rrset = NULL;
 }
 
-void dnslib_rrset_free_tmp(dnslib_rrset_t **rrset, int free_rdata)
+void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner)
 {
 	dnslib_rdata_t *tmp_rdata;
 	dnslib_rdata_t *next_rdata;
@@ -105,11 +114,18 @@ void dnslib_rrset_free_tmp(dnslib_rrset_t **rrset, int free_rdata)
 	while ((tmp_rdata->next != (*rrset)->rdata) &&
 		(tmp_rdata->next != NULL)) {
 		next_rdata = tmp_rdata->next;
-		dnslib_rdata_free_tmp(&tmp_rdata, 1, (*rrset)->type);
+		dnslib_rdata_deep_free(&tmp_rdata, (*rrset)->type);
 		tmp_rdata = next_rdata;
 	}
 
-	dnslib_rdata_free_tmp(&tmp_rdata, 1, (*rrset)->type);
+	dnslib_rdata_deep_free(&tmp_rdata, (*rrset)->type);
+
+	// RRSIGs should have the same owner as this RRSet, so do not delete it
+	dnslib_rrsig_set_deep_free(&(*rrset)->rrsigs, 0);
+
+	if (free_owner) {
+		dnslib_dname_free(&(*rrset)->owner);
+	}
 
 	free(*rrset);
 	*rrset = NULL;

@@ -131,6 +131,8 @@ int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
  *
  * \return The RDATA item on position \a pos, or NULL if such position does not
  *         exist within the given RDATA structure.
+ *
+ * \todo rename to dnslib_rdata_item()
  */
 const dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
                 uint pos);
@@ -173,18 +175,27 @@ int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
                          uint8_t *buffer, uint buf_size);
 
 /*!
- * \brief Destroys the RDATA structure.
+ * \brief Destroys the RDATA structure without deleting RDATA items.
  *
- * Contents of RDATA items are not deallocated, as it is not clear whether the
- * particular item is a domain name (which should not be deallocated here) or
- * raw data (which could be). But this is actually higher-level logic, so maybe
- * a parameter to decide whether to free the items or not would be better.
- *
- * Sets the given pointer to NULL.
+ * Also sets the given pointer to NULL.
  *
  * \param rdata RDATA structure to be destroyed.
  */
 void dnslib_rdata_free(dnslib_rdata_t **rdata);
+
+/*!
+ * \brief Destroys the RDATA structure and all its RDATA items.
+ *
+ * RDATA items are deleted according to the given RR Type. In case of domain
+ * name, it is deallocated only if it does not contain reference to a node
+ * (i.e. it is not an owner of some node).
+ *
+ * Also sets the given pointer to NULL.
+ *
+ * \param rdata RDATA structure to be destroyed.
+ * \param type RR Type of the RDATA.
+ */
+void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type);
 
 /*!
  * \brief Compares two RDATAs of the same type.

@@ -131,6 +131,9 @@ uint32_t dnslib_rrset_ttl(const dnslib_rrset_t *rrset);
  */
 const dnslib_rdata_t *dnslib_rrset_rdata(const dnslib_rrset_t *rrset);
 
+const dnslib_rdata_t *dnslib_rrset_rdata_next(const dnslib_rrset_t *rrset,
+                                              const dnslib_rdata_t *rdata);
+
 /*!
  * \brief Returns the first RDATA in the RRSet (non-const version).
  *
@@ -159,18 +162,26 @@ const dnslib_rrsig_set_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset);
  * \brief Destroys the RRSet structure.
  *
  * Does not destroy the OWNER domain name structure, nor the signatures, as
- * these may be used elsewhere. This is however a higher-level logic, so maybe
- * a parameter for deciding what to destroy would be better.
+ * these may be used elsewhere.
  *
- * Does not destroy RDATA structures neither, as they need special processing -
- * their items are not destroyed in dnslib_rdata_free(), so this would be
- * confusing.
+ * Does not destroy RDATA structures neither, as they need special processing.
  *
  * Also sets the given pointer to NULL.
  *
  * \param rrset RRset to be destroyed.
  */
 void dnslib_rrset_free(dnslib_rrset_t **rrset);
+
+/*!
+ * \brief Destroys the RRSet structure and all its substructures.
+ *
+ * Also sets the given pointer to NULL.
+ *
+ * \param rrset RRset to be destroyed.
+ * \param free_owner Set to 0 if you do not want the owner domain name to be
+ *                   destroyed also. Set to <> 0 otherwise.
+ */
+void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner);
 
 /*!
  * \brief Merges two RRSets.

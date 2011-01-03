@@ -192,6 +192,8 @@ typedef struct dnslib_rrtype_descriptor dnslib_rrtype_descriptor_t;
  *
  * \return RR descriptor for given type code, NULL descriptor if
  *         unknown type.
+ *
+ * \todo Change return value to const.
  */
 dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_type(uint16_t type);
 
@@ -202,6 +204,8 @@ dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_type(uint16_t type);
  *
  * \return RR descriptor for given name, NULL descriptor if
  *         unknown type.
+ *
+ * \todo Change return value to const.
  */
 dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_name(const char *name);
 

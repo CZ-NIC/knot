@@ -4,6 +4,37 @@
 #include "common.h"
 #include "rrset.h"
 
+/*----------------------------------------------------------------------------*/
+
+enum {
+	DNSLIB_NODE_FLAGS_DELEG = (uint8_t)0x01,
+	DNSLIB_NODE_FLAGS_NONAUTH = (uint8_t)0x02
+};
+
+/*----------------------------------------------------------------------------*/
+/* Non-API functions                                                          */
+/*----------------------------------------------------------------------------*/
+
+static inline uint8_t dnslib_node_flags_get_deleg(uint8_t flags)
+{
+	return flags & DNSLIB_NODE_FLAGS_DELEG;
+}
+
+static inline void dnslib_node_flags_set_deleg(uint8_t *flags)
+{
+	*flags |= DNSLIB_NODE_FLAGS_DELEG;
+}
+
+static inline uint8_t dnslib_node_flags_get_nonauth(uint8_t flags)
+{
+	return flags & DNSLIB_NODE_FLAGS_NONAUTH;
+}
+
+static inline void dnslib_node_flags_set_nonauth(uint8_t *flags)
+{
+	*flags |= DNSLIB_NODE_FLAGS_NONAUTH;
+}
+
 //void print_node(void *key, void *val)
 //{
 //	dnslib_rrset_t *rrset = (dnslib_node_t*) val;
@@ -17,6 +48,10 @@ static int compare_rrset_types(void *key1, void *key2)
 	return (*((uint16_t *)key1) == *((uint16_t *)key2) ?
 	        0 : *((uint16_t *)key1) < *((uint16_t *)key2) ? -1 : 1);
 }
+
+/*----------------------------------------------------------------------------*/
+/* API functions                                                              */
+/*----------------------------------------------------------------------------*/
 
 dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent)
 {
@@ -69,52 +104,58 @@ void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent)
 	node->parent = parent;
 }
 
-void dnslib_free_node_rrsets(dnslib_node_t *node)
+const dnslib_dname_t *dnslib_node_owner(const dnslib_node_t *node)
+{
+	return node->owner;
+}
+
+void dnslib_node_set_deleg_point(dnslib_node_t *node)
+{
+	dnslib_node_flags_set_deleg(&node->flags);
+}
+
+int dnslib_node_is_deleg_point(const dnslib_node_t *node)
+{
+	return dnslib_node_flags_get_deleg(node->flags);
+}
+
+void dnslib_node_set_non_auth(dnslib_node_t *node)
+{
+	dnslib_node_flags_set_nonauth(&node->flags);
+}
+
+int dnslib_node_is_non_auth(const dnslib_node_t *node)
+{
+	return dnslib_node_flags_get_nonauth(node->flags);
+}
+
+void dnslib_node_free_rrsets(dnslib_node_t *node)
 {
 	const skip_node_t *skip_node =
 		skip_first(node->rrsets);
 
 	if (skip_node != NULL) {
-		dnslib_rrset_free_tmp((dnslib_rrset_t **)&skip_node->value, 1);
+		dnslib_rrset_deep_free((dnslib_rrset_t **)&skip_node->value, 0);
 		while ((skip_node = skip_next(skip_node)) != NULL) {
-			dnslib_rrset_free_tmp((dnslib_rrset_t **)
-			                      &skip_node->value,
-					      1);
+			dnslib_rrset_deep_free((dnslib_rrset_t **)
+			                        &skip_node->value, 0);
 		}
 	}
 }
 
-void dnslib_node_free_rrsets(dnslib_node_t **node, int free_rrsets)
-{
-	if (free_rrsets) {
-		dnslib_free_node_rrsets(*node);
-	}
-
-	if ((*node)->rrsets != NULL) {
-		skip_destroy_list(&(*node)->rrsets, NULL, NULL);
-	}
-}
-
-void dnslib_node_free_owner(dnslib_node_t **node)
-{
-	dnslib_dname_free(&(*node)->owner);
- 	free(*node);
-	*node = NULL;   
-}
-
-void dnslib_node_free(dnslib_node_t **node)
+void dnslib_node_free(dnslib_node_t **node, int free_owner)
 {
 	if ((*node)->rrsets != NULL) {
 		skip_destroy_list(&(*node)->rrsets, NULL, NULL);
 	}
-
+	if (free_owner) {
+		dnslib_dname_free(&(*node)->owner);
+	}
 	free(*node);
 	*node = NULL;
 }
-
 
 int dnslib_node_compare(dnslib_node_t *node1, dnslib_node_t *node2)
 {
 	return dnslib_dname_compare(node1->owner, node2->owner);
 }
-
