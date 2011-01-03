@@ -322,9 +322,9 @@ int skip_remove(skip_list_t *list, void *key, void (*destroy_key)(void *),
 
 /*----------------------------------------------------------------------------*/
 
-int skip_empty(const skip_list_t *list)
+int skip_is_empty(const skip_list_t *list)
 {
-	return (list->head->forward[0] == NULL) ? 0 : 1;
+	return (list->head->forward[0] == NULL);
 }
 
 /*----------------------------------------------------------------------------*/
