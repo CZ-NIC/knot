@@ -121,7 +121,9 @@ void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner)
 	dnslib_rdata_deep_free(&tmp_rdata, (*rrset)->type);
 
 	// RRSIGs should have the same owner as this RRSet, so do not delete it
-	dnslib_rrsig_set_deep_free(&(*rrset)->rrsigs, 0);
+	if ((*rrset)->rrsigs != NULL) {
+		dnslib_rrsig_set_deep_free(&(*rrset)->rrsigs, 0);
+	}
 
 	if (free_owner) {
 		dnslib_dname_free(&(*rrset)->owner);
