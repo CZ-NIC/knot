@@ -105,6 +105,32 @@ void dnslib_rrset_free(dnslib_rrset_t **rrset)
 	*rrset = NULL;
 }
 
+void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner)
+{
+	dnslib_rdata_t *tmp_rdata;
+	dnslib_rdata_t *next_rdata;
+	tmp_rdata = (*rrset)->rdata;
+
+	while ((tmp_rdata->next != (*rrset)->rdata) &&
+		(tmp_rdata->next != NULL)) {
+		next_rdata = tmp_rdata->next;
+		dnslib_rdata_deep_free(&tmp_rdata, (*rrset)->type);
+		tmp_rdata = next_rdata;
+	}
+
+	dnslib_rdata_deep_free(&tmp_rdata, (*rrset)->type);
+
+	// RRSIGs should have the same owner as this RRSet, so do not delete it
+	dnslib_rrsig_set_deep_free(&(*rrset)->rrsigs, 0);
+
+	if (free_owner) {
+		dnslib_dname_free(&(*rrset)->owner);
+	}
+
+	free(*rrset);
+	*rrset = NULL;
+}
+
 int dnslib_rrset_merge(void **r1, void **r2)
 {
 	dnslib_rrset_t *rrset1 = (dnslib_rrset_t *)(*r1);

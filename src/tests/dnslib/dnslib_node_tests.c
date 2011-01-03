@@ -60,7 +60,7 @@ static int test_node_create()
 			errors++;
 			diag("Failed to create node structure");
 		}
-		dnslib_node_free(&tmp);
+		dnslib_node_free(&tmp, 0);
 	}
 	return (errors == 0);
 }
@@ -78,7 +78,7 @@ static int test_node_add_rrset()
 			errors++;
 			diag("Failed to insert rrset into node");
 		}
-		dnslib_node_free(&tmp);
+		dnslib_node_free(&tmp, 0);
 	}
 
 	return (errors == 0);
@@ -110,7 +110,7 @@ static int test_node_get_rrset()
 				diag("Failed to get proper rrset from node");
 			}
 		}
-		dnslib_node_free(&nodes[i]);
+		dnslib_node_free(&nodes[i], 0);
 	}
 
 	return (errors == 0);
@@ -138,7 +138,7 @@ static int test_node_get_parent()
 			errors++;
 			diag("Failed to get proper parent from node");
 		}
-		dnslib_node_free(&nodes[i]);
+		dnslib_node_free(&nodes[i], 0);
 	}
 	return (errors == 0);
 }
@@ -169,7 +169,7 @@ static int test_node_sorting()
 		}
 	}
 
-	dnslib_node_free(&tmp);
+	dnslib_node_free(&tmp, 0);
 	return (errors == 0);
 }
 

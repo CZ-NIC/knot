@@ -129,10 +129,27 @@ int dnslib_node_is_non_auth(const dnslib_node_t *node)
 	return dnslib_node_flags_get_nonauth(node->flags);
 }
 
-void dnslib_node_free(dnslib_node_t **node)
+void dnslib_node_free_rrsets(dnslib_node_t *node)
+{
+	const skip_node_t *skip_node =
+		skip_first(node->rrsets);
+
+	if (skip_node != NULL) {
+		dnslib_rrset_deep_free((dnslib_rrset_t **)&skip_node->value, 0);
+		while ((skip_node = skip_next(skip_node)) != NULL) {
+			dnslib_rrset_deep_free((dnslib_rrset_t **)
+			                        &skip_node->value, 0);
+		}
+	}
+}
+
+void dnslib_node_free(dnslib_node_t **node, int free_owner)
 {
 	if ((*node)->rrsets != NULL) {
 		skip_destroy_list(&(*node)->rrsets, NULL, NULL);
+	}
+	if (free_owner) {
+		dnslib_dname_free(&(*node)->owner);
 	}
 	free(*node);
 	*node = NULL;
@@ -142,4 +159,3 @@ int dnslib_node_compare(dnslib_node_t *node1, dnslib_node_t *node2)
 {
 	return dnslib_dname_compare(node1->owner, node2->owner);
 }
-

@@ -133,13 +133,23 @@ void dnslib_node_set_non_auth(dnslib_node_t *node);
 int dnslib_node_is_non_auth(const dnslib_node_t *node);
 
 /*!
- * \brief Destroys the node structure.
- *
- * Also sets the given pointer to NULL.
+ * \brief Destroys the RRSets within the node structure.
  *
  * \param node Node to be destroyed.
  */
-void dnslib_node_free(dnslib_node_t **node);
+void dnslib_node_free_rrsets(dnslib_node_t *node);
+
+/*!
+ * \brief Destroys the node structure.
+ *
+ * Does not destroy the RRSets within the node.
+ * Also sets the given pointer to NULL.
+ *
+ * \param node Node to be destroyed.
+ * \param free_owner Set to 0 if you do not want the owner domain name to be
+ *                   destroyed also. Set to <> 0 otherwise.
+ */
+void dnslib_node_free(dnslib_node_t **node, int free_owner);
 
 /*!
  * \brief Compares two nodes according to their owner.
