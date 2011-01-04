@@ -96,3 +96,5 @@ src/other/malloc.h
 src/other/malloc.c
 src/dnslib/edns.h
 src/dnslib/utils.h
+src/dnslib/zonedb.h
+src/dnslib/zonedb.c
