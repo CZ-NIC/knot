@@ -26,12 +26,12 @@ typedef struct lookup_table lookup_table_type;
  * \brief Enum containing RR class codes.
  */
 enum rr_class {
-	DNSLIB_CLASS_IN,
-	DNSLIB_CLASS_CS,
-	DNSLIB_CLASS_CH,
-	DNSLIB_CLASS_HS,
-	DNSLIB_CLASS_NONE = 254,
-	DNSLIB_CLASS_ANY = 255
+	CLASS_IN = 1,
+	CLASS_CS,
+	CLASS_CH,
+	CLASS_HS,
+	CLASS_NONE = 254,
+	CLASS_ANY = 255
 };
 
 typedef enum rr_class rr_class_type;
