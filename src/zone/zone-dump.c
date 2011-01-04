@@ -202,6 +202,11 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
 
 }
 
+static void dnslib_node_dump_binary_from_tree(dnslib_node_t *node, void *data)
+{
+	dnslib_node_dump_binary(node, (FILE *)data);
+}
+
 int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 {
 	FILE *f;
@@ -223,7 +228,7 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 	
 	/* TODO is there a way how to stop the traversal upon error? */
 	dnslib_zone_tree_apply_inorder_reverse(
-		zone, dnslib_node_dump_binary, f);
+		zone, dnslib_node_dump_binary_from_tree, (void *)f);
 //	TREE_REVERSE_APPLY(zone->tree, dnslib_node, avl,
 //	                   dnslib_node_dump_binary, f);
 
@@ -232,7 +237,7 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 	node_count = 0;
 
 	dnslib_zone_nsec3_apply_inorder_reverse(
-		zone, dnslib_node_dump_binary, f);
+		zone, dnslib_node_dump_binary_from_tree, (void *)f);
 //	TREE_REVERSE_APPLY(zone->nsec3_nodes, dnslib_node, avl,
 //	                   dnslib_node_dump_binary, f);
 
