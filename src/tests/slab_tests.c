@@ -31,7 +31,6 @@ static int slab_tests_count(int argc, char *argv[])
 static int slab_tests_run(int argc, char *argv[])
 {
 	// 1. Create slab cache
-	slab_init();
 	srand(time(0));
 	const unsigned pattern = 0xdeadbeef;
 	slab_cache_t cache;
@@ -47,7 +46,8 @@ static int slab_tests_run(int argc, char *argv[])
 		slab_free(data);
 		if (*data == pattern)
 			valid_free = false;
-	}}, "slab: couple alloc/free");
+	}
+	}, "slab: couple alloc/free");
 
 	// 5. Verify freed block
 	ok(valid_free, "slab: freed memory is correctly invalidated");
@@ -58,7 +58,7 @@ static int slab_tests_run(int argc, char *argv[])
 	ok(reaped, "slab: cache reaping works");
 
 	// Stress cache
-	int alloc_count = 73561;
+	int alloc_count = 73521;
 	void** ptrs = alloca(alloc_count * sizeof(void*));
 	int ptrs_i = 0;
 	for(int i = 0; i < alloc_count; ++i) {
@@ -92,6 +92,7 @@ static int slab_tests_run(int argc, char *argv[])
 	for(int i = 0; i < alloc_count; ++i) {
 		double roll = rand() / (double) RAND_MAX;
 		size_t bsize = roll * 2048;
+		bsize = max(bsize, 8);
 		if ((ptrs_i == 0) || (roll < 0.6)) {
 			void* m = slab_alloc_alloc(&alloc, bsize);
 			if (m == 0) {
@@ -106,12 +107,8 @@ static int slab_tests_run(int argc, char *argv[])
 
 	cmp_ok(ncount, "==", 0, "slab: GP allocator alloc/free working");
 
-	// Dump allocator stats
-	slab_alloc_stats(&alloc);
-
 	// 7. Destroy allocator
 	slab_alloc_destroy(&alloc);
-	slab_deinit();
 
 	return 0;
 }
