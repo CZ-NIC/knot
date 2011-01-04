@@ -1,11 +1,3 @@
-/*
- * File     zone-dump.c
- * Date     14.12.2010 19:52
- * Author:  Jan Kadlec jan.kadlec@nic.cz
- * Project: CuteDNS
- * Description:   
- */
-
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
@@ -19,16 +11,15 @@ static uint node_count = 0;
 static uint8_t zero = 0;
 static uint8_t one = 1;
 
-
 void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata, uint32_t type, FILE *f)
 {
-//	printf("dumping rdata\n");
 	dnslib_rrtype_descriptor_t *desc =
 		dnslib_rrtype_descriptor_by_type(type);
 	assert(desc != NULL);
 	for (int i = 0; i < desc->length; i++) {
-		if (&(rdata->items[i]) == NULL) { //XXX isn't this itself enough to crash?
-//			printf("Item n. %d is not set!\n", i);
+		if (&(rdata->items[i]) == NULL) {
+			//XXX isn't this itself enough to crash?
+			debug_zp("Item n. %d is not set!\n", i);
 			continue;
 		}
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
@@ -37,13 +28,16 @@ void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata, uint32_t type, FILE *f)
 			assert(rdata->items[i].dname != NULL);
 			if (rdata->items[i].dname->node) { //IN THE ZONE DNAME
 				fwrite(&one, sizeof(one), 1, f);
-				fwrite(&(rdata->items[i].dname->node), sizeof(void *), 1, f);
+				fwrite(&(rdata->items[i].dname->node),
+				       sizeof(void *), 1, f);
 			} else {
-//				printf("not in zone: %s\n",
-//				       dnslib_dname_to_str((rdata->items[i].dname)));
+				debug_zp("not in zone: %s\n",
+				       dnslib_dname_to_str((rdata->items[i].dname)));
 				fwrite(&zero, sizeof(zero), 1, f);
-				fwrite(&(rdata->items[i].dname->size), sizeof(uint), 1, f);
-				fwrite(rdata->items[i].dname->name, sizeof(uint8_t),
+				fwrite(&(rdata->items[i].dname->size),
+				       sizeof(uint), 1, f);
+				fwrite(rdata->items[i].dname->name,
+				       sizeof(uint8_t),
 				       rdata->items[i].dname->size, f);
 			}
 
@@ -52,7 +46,8 @@ void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata, uint32_t type, FILE *f)
 			fwrite(rdata->items[i].raw_data, sizeof(uint8_t),
 			       rdata->items[i].raw_data[0] + 1, f);\
 
-//			printf("Written %d long raw data\n", rdata->items[i].raw_data[0]);
+			debug_zp("Written %d long raw data\n",
+			         rdata->items[i].raw_data[0]);
 		}
 	}
 }
@@ -144,14 +139,14 @@ void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
 	assert(node->owner != NULL);
 	fwrite(&((node->owner->size)), sizeof(uint8_t), 1, f);
 
-//	printf("Size written: %u\n", node->owner->size);
+	debug_zp("Size written: %u\n", node->owner->size);
 
 	fwrite(node->owner->name, sizeof(uint8_t),
 	       node->owner->size, f);
 
 	fwrite(&(node->owner->node), sizeof(void *), 1, f);
 
-//	printf("Writing id: %u\n", node->owner->node);
+	debug_zp("Writing id: %u\n", node->owner->node);
 
 
 	if (node->parent != NULL) {
@@ -167,7 +162,7 @@ void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
 
 	fgetpos(f, &rrset_count_pos);
 
-//	printf("Position rrset_count: %ld\n", ftell(f));
+	debug_zp("Position rrset_count: %ld\n", ftell(f));
 
 	uint8_t rrset_count = 0;
 
@@ -192,17 +187,17 @@ void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
 
 	fgetpos(f, &tmp_pos);
 
-//	printf("Position after all rrsets: %ld\n", ftell(f));
+	debug_zp("Position after all rrsets: %ld\n", ftell(f));
 
 	fsetpos(f, &rrset_count_pos);
 
-//	printf("Writing here: %ld\n", ftell(f));	
+	debug_zp("Writing here: %ld\n", ftell(f));	
 
 	fwrite(&rrset_count, sizeof(rrset_count), 1, f);
 
 	fsetpos(f, &tmp_pos);
 
-//	printf("Function ends with: %ld\n\n", ftell(f));	
+	debug_zp("Function ends with: %ld\n\n", ftell(f));	
 
 }
 
@@ -250,4 +245,3 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 	return 0;
 }
 
-/* end of file zone-dump.c */
