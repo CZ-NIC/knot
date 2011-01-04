@@ -207,11 +207,12 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 
 	dnslib_rrset_t *tmp_rrset;
 
-
 	for (int i = 0; i < rrset_count; i++) {
 		if ((tmp_rrset = dnslib_load_rrset(f)) == NULL) {
 			dnslib_node_free(&node, 1);
 			//TODO what else to free?
+			printf("could not load rrset\n");
+			getchar();
 			return NULL;
 		}
 		tmp_rrset->owner = node->owner;
@@ -223,17 +224,16 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 			return NULL;
 		}
 	}
+	printf("loaded owner: %s\n", dnslib_dname_to_str(node->owner));
+	printf("number of rrsets: %d\n", rrset_count);
+	getchar();
 	assert(node != NULL);
 	return node;
 }
 
 dnslib_zone_t *dnslib_zone_load(const char *filename, const char *origin)
 {
-	tmp_dname = dnslib_dname_new_from_str(origin, strlen(origin), NULL);
 	FILE *f = fopen(filename, "rb");
-
-	dnslib_node_t *apex = dnslib_node_new(tmp_dname, NULL);
-	dnslib_zone_t *zone = dnslib_zone_new(apex);
 
 	dnslib_node_t *tmp_node;
 
@@ -241,8 +241,32 @@ dnslib_zone_t *dnslib_zone_load(const char *filename, const char *origin)
 
 	uint nsec3_node_count;
 
+	char apex_found = 0;
+
 	fread(&node_count, sizeof(node_count), 1, f);
 	fread(&nsec3_node_count, sizeof(nsec3_node_count), 1, f);
+
+	uint8_t dname_size;
+	uint8_t dname_wire[255];
+
+	fread(&dname_size, sizeof(dname_size), 1, f);
+	assert(dname_size < 256);
+
+	printf("dname size: %d\n", dname_size);
+	fread(&dname_wire, sizeof(uint8_t), dname_size, f);
+
+	dnslib_dname_t *apex_dname = malloc(sizeof(dnslib_dname_t));
+
+	apex_dname->size = dname_size;
+
+	apex_dname->name = malloc(sizeof(uint8_t) * dname_size);
+
+	memcpy(apex_dname->name, dname_wire, dname_size);
+
+	dnslib_node_t *apex = dnslib_node_new(apex_dname, NULL);
+	dnslib_zone_t *zone = dnslib_zone_new(apex);
+
+	printf("zone apex: %s\n", dnslib_dname_to_str(zone->apex->owner));
 
 	id_array =
 		malloc(sizeof(dnslib_dname_t *) * (node_count + nsec3_node_count + 1));
@@ -257,7 +281,19 @@ dnslib_zone_t *dnslib_zone_load(const char *filename, const char *origin)
 		tmp_node = dnslib_load_node(f);
 		if (tmp_node != NULL) {
 //			dnslib_node_dump(tmp_node);
-			dnslib_zone_add_node(zone, tmp_node);
+			if (!apex_found &&
+			     dnslib_dname_compare(tmp_node->owner,
+			                          apex_dname) == 0) {
+				printf("apex found\n");
+				apex_found = 1;
+				zone->apex->rrsets = tmp_node->rrsets;
+				//this should not leak, hopefully, as apex has
+				//rrsets
+//				dnslib_node_free(&tmp_node, 1);
+				getchar();
+			} else {
+				dnslib_zone_add_node(zone, tmp_node);
+			}
 		} else {
 			fprintf(stderr, "Node error!\n");
 		}
