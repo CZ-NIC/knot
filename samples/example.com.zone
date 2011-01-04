@@ -1,4 +1,3 @@
-$ORIGIN example.com.
 $TTL 1h                  ; The default expiration time of a resource record without its own TTL value
 example.com.  IN  SOA  ns.example.com. username.example.com. (
               2007120710 ; serial number of this zone file

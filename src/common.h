@@ -14,6 +14,7 @@
 
 #include <signal.h>
 #include <stdint.h>
+#include "other/malloc.h"
 
 /* Common types and constants.
  */
