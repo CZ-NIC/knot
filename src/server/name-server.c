@@ -9,7 +9,11 @@
 #include "zone-database.h"
 #include "stat.h"
 
-static const uint8_t  RCODE_MASK           = 0xf0;
+#include "response.h"
+#include "consts.h"
+#include "packet.h"
+
+//static const uint8_t  RCODE_MASK           = 0xf0;
 static const int      OFFSET_FLAGS2        = 3;
 static const size_t   RR_FIXED_SIZE        = 10;
 static const size_t   QUESTION_FIXED_SIZE  = 4;
@@ -71,50 +75,69 @@ static inline void ns_update_pkt_size(ldns_pkt *pkt, size_t size)
 
 /*----------------------------------------------------------------------------*/
 
-static ldns_pkt *ns_create_empty_response(ldns_pkt *query)
+static dnslib_response_t *ns_create_empty_response(const uint8_t *query_wire,
+                                                   size_t query_size)
 {
-	ldns_pkt *response = ldns_pkt_new();
-	if (response == NULL) {
-		ERR_ALLOC_FAILED;
+	dnslib_response_t *resp = dnslib_response_new_empty(NULL, 0);
+	if (resp == NULL) {
 		return NULL;
 	}
 
-	ldns_pkt_set_size(response, LDNS_HEADER_SIZE);
+	debug_ns("Created empty response...\n");
 
-	if (query != NULL) {
-		// copy ID
-		ldns_pkt_set_id(response, ldns_pkt_id(query));
-		// authoritative response
-		ldns_pkt_set_aa(response, 1);
-		// response
-		ldns_pkt_set_qr(response, 1);
-		// copy "recursion desired" bit
-		ldns_pkt_set_rd(response, ldns_pkt_rd(query));
-		// all other flags are by default set to 0
-		// save the question section from query (do not copy)
-		// save it RR by RR (to get size)
-		ldns_rr_list *question = ldns_pkt_question(query);
-		for (uint i = 0; i < ldns_rr_list_rr_count(question); ++i) {
-
-			ldns_rr *rr = ldns_rr_list_rr(question, i);
-			ldns_pkt_push_rr(response, LDNS_SECTION_QUESTION, rr);
-
-			// there should be no RDATA in the RR
-			assert(ldns_rr_rd_count(rr) == 0);
-
-			ns_update_pkt_size(response,
-			                   ldns_rdf_size(ldns_rr_owner(rr))
-			                   + QUESTION_FIXED_SIZE);
-
+	if (query_wire != NULL) {
+		if (dnslib_response_parse_query(resp, query_wire, query_size)
+		    != 0) {
+			dnslib_response_free(&resp);
+			return NULL;
 		}
-		if (EDNS_ENABLED) {
-			// set the size of the packet to consider the OPT record
-			ns_update_pkt_size(response, OPT_SIZE);
-		}
-		ns_set_max_packet_size(query, response);
 	}
 
-	return response;
+	return resp;
+
+
+//	ldns_pkt *response = ldns_pkt_new();
+//	if (response == NULL) {
+//		ERR_ALLOC_FAILED;
+//		return NULL;
+//	}
+
+//	ldns_pkt_set_size(response, LDNS_HEADER_SIZE);
+
+//	if (query != NULL) {
+//		// copy ID
+//		ldns_pkt_set_id(response, ldns_pkt_id(query));
+//		// authoritative response
+//		ldns_pkt_set_aa(response, 1);
+//		// response
+//		ldns_pkt_set_qr(response, 1);
+//		// copy "recursion desired" bit
+//		ldns_pkt_set_rd(response, ldns_pkt_rd(query));
+//		// all other flags are by default set to 0
+//		// save the question section from query (do not copy)
+//		// save it RR by RR (to get size)
+//		ldns_rr_list *question = ldns_pkt_question(query);
+//		for (uint i = 0; i < ldns_rr_list_rr_count(question); ++i) {
+
+//			ldns_rr *rr = ldns_rr_list_rr(question, i);
+//			ldns_pkt_push_rr(response, LDNS_SECTION_QUESTION, rr);
+
+//			// there should be no RDATA in the RR
+//			assert(ldns_rr_rd_count(rr) == 0);
+
+//			ns_update_pkt_size(response,
+//			                   ldns_rdf_size(ldns_rr_owner(rr))
+//			                   + QUESTION_FIXED_SIZE);
+
+//		}
+//		if (EDNS_ENABLED) {
+//			// set the size of the packet to consider the OPT record
+//			ns_update_pkt_size(response, OPT_SIZE);
+//		}
+//		ns_set_max_packet_size(query, response);
+//	}
+
+//	return response;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -128,7 +151,7 @@ static inline void ns_set_rcode(uint8_t *flags, uint8_t rcode)
 /*----------------------------------------------------------------------------*/
 
 static inline void ns_error_response(ns_nameserver *nameserver,
-                                     uint16_t id,
+                                     const uint8_t *query_wire,
                                      uint8_t rcode,
                                      uint8_t *response_wire,
                                      size_t *rsize)
@@ -136,9 +159,10 @@ static inline void ns_error_response(ns_nameserver *nameserver,
 	memcpy(response_wire, nameserver->err_response,
 	       nameserver->err_resp_size);
 	// copy ID of the query
-	memcpy(response_wire, &id, 2);
+	memcpy(response_wire, query_wire, 2);
 	// set the RCODE
-	ns_set_rcode(response_wire + OFFSET_FLAGS2, rcode);
+	dnslib_packet_set_rcode(response_wire, rcode);
+//	ns_set_rcode(response_wire + DNSLIB_PACKET_OFFSET_FLAGS2, rcode);
 	*rsize = nameserver->err_resp_size;
 }
 
@@ -848,7 +872,7 @@ static void ns_response_free(ldns_pkt *response)
 /* Public functions                                                           */
 /*----------------------------------------------------------------------------*/
 
-ns_nameserver *ns_create(zdb_database_t *database)
+ns_nameserver *ns_create(dnslib_zonedb_t *database)
 {
 	ns_nameserver *ns = malloc(sizeof(ns_nameserver));
 	if (ns == NULL) {
@@ -858,15 +882,29 @@ ns_nameserver *ns_create(zdb_database_t *database)
 	ns->zone_db = database;
 
 	// prepare empty response with SERVFAIL error
-	ldns_pkt *err = ns_create_empty_response(NULL);
+	dnslib_response_t *err = ns_create_empty_response(NULL, 0);
 	if (err == NULL) {
-		ERR_ALLOC_FAILED;
 		return NULL;
 	}
-	ldns_pkt_set_rcode(err, LDNS_RCODE_SERVFAIL);
 
-	ldns_status s = ldns_pkt2wire(&ns->err_response, err,
-	                              &ns->err_resp_size);
+	debug_ns("Created default empty response...\n");
+
+	dnslib_response_set_rcode(err, DNSLIB_RCODE_SERVFAIL);
+	ns->err_response = NULL;
+	ns->err_resp_size = 0;
+
+	debug_ns("Converting default empty response to wire format...\n");
+
+	if (dnslib_response_to_wire(err, &ns->err_response, &ns->err_resp_size)
+	    != 0) {
+		log_error("Error while converting default error resposne to "
+		          "wire format \n");
+		dnslib_response_free(&err);
+		free(ns);
+		return NULL;
+	}
+
+	debug_ns("Done..\n");
 
 	//stat
 
@@ -874,14 +912,7 @@ ns_nameserver *ns_create(zdb_database_t *database)
 
 	//!stat
 
-	if (s != LDNS_STATUS_OK) {
-		log_error("Error while converting default error resposne to "
-		          "wire format \n");
-		ldns_pkt_free(err);
-		return NULL;
-	}
-
-	ldns_pkt_free(err);
+	dnslib_response_free(&err);
 
 	return ns;
 }
@@ -894,74 +925,97 @@ int ns_answer_request(ns_nameserver *nameserver, const uint8_t *query_wire,
 	debug_ns("ns_answer_request() called with query size %d.\n", qsize);
 	debug_ns_hex((char *)query_wire, qsize);
 
-	ldns_status s = LDNS_STATUS_OK;
-	ldns_pkt *query;
+	debug_ns("Sending default error response...\n");
 
-	// 1) Parse the query.
-	if ((s = ldns_wire2pkt(&query, query_wire, qsize)) != LDNS_STATUS_OK) {
-		log_info("Error while parsing query.\nldns returned: %s\n",
-		         ldns_get_errorstr_by_id(s));
-		// malformed question, returning FORMERR in empty packet, but
-		// copy ID if there aren't at least those 2 bytes, ignore
-		if (qsize < 2) {
-			return -1;
-		}
-		ns_error_response(nameserver, *((const uint16_t *)query_wire),
-		                  LDNS_RCODE_FORMERR, response_wire, rsize);
-		return 0;
-	}
+	ns_error_response(nameserver, query_wire, DNSLIB_RCODE_FORMAT,
+	                  response_wire, rsize);
 
-	debug_ns("Query parsed: %s\n", ldns_pkt2str(query));
+//	debug_ns("Parsing query using new dnslib structure...\n");
+//	dnslib_response_t *resp = dnslib_response_new_empty(NULL, 0);
+//	dnslib_response_parse_query(resp, query_wire, qsize);
+//	dnslib_response_set_aa(resp);
+//	dnslib_response_set_rcode(resp, LDNS_RCODE_SERVFAIL);
 
-	if (ldns_pkt_qdcount(query) == 0) {
-		log_notice("Received query with empty question section!\n");
-		ns_error_response(nameserver, *((const uint16_t *)query_wire),
-		                  LDNS_RCODE_FORMERR, response_wire, rsize);
-		ldns_pkt_free(query);
-		return 0;
-	}
-
-	// 2) Prepare empty response (used as an error response as well).
-	ldns_pkt *response = ns_create_empty_response(query);
-	if (response == NULL) {
-		log_error("Error while creating response packet!\n");
-		ns_error_response(nameserver, *((const uint16_t *)query_wire),
-		                  LDNS_RCODE_SERVFAIL, response_wire, rsize);
-		ldns_pkt_free(query);
-		return 0;
-	}
-
-	// 3) Fill the response according to the lookup algorithm.
-	// get the first question entry (other ignored)
-	ldns_rr *question = ldns_rr_list_rr(ldns_pkt_question(query), 0);
-	debug_ns("Question extracted: %s\n", ldns_rr2str(question));
-
-	rcu_read_lock();
-	ldns_rr_list *copied_rrs = ldns_rr_list_new();
-	ns_answer(nameserver->zone_db, question, response, copied_rrs);
-
-	debug_ns("Created response packet: %s\n", ldns_pkt2str(response));
-
-	// set proper EDNS section (setting here to override the saved max size)
-	ns_set_edns(query, response);
-
-	// 4) Transform the packet into wire format
-	if (ns_response_to_wire(response, response_wire, rsize) != 0) {
-		// send back SERVFAIL (as this is our problem)
-		ns_error_response(nameserver, *((const uint16_t *)query_wire),
-		                  LDNS_RCODE_SERVFAIL, response_wire, rsize);
-	}
-
-	ldns_pkt_free(query);
-	ns_response_free(response);
-	// free the copied RRs
-	ldns_rr_list_deep_free(copied_rrs);
-	rcu_read_unlock();
-
-	debug_ns("Returning response with wire size %d\n", *rsize);
-	debug_ns_hex((char *)response_wire, *rsize);
+//	uint8_t *rwire = NULL;
+//	size_t rwire_size = 0;
+//	dnslib_response_to_wire(resp, &rwire, &rwire_size);
+//	if (rwire_size < *rsize) {
+//		memcpy(response_wire, rwire, rwire_size);
+//		*rsize = rwire_size;
+//	} else {
+//		*rsize = 0;
+//	}
 
 	return 0;
+
+//	ldns_status s = LDNS_STATUS_OK;
+//	ldns_pkt *query;
+
+//	// 1) Parse the query.
+//	if ((s = ldns_wire2pkt(&query, query_wire, qsize)) != LDNS_STATUS_OK) {
+//		log_info("Error while parsing query.\nldns returned: %s\n",
+//		         ldns_get_errorstr_by_id(s));
+//		// malformed question, returning FORMERR in empty packet, but
+//		// copy ID if there aren't at least those 2 bytes, ignore
+//		if (qsize < 2) {
+//			return -1;
+//		}
+//		ns_error_response(nameserver, *((const uint16_t *)query_wire),
+//		                  LDNS_RCODE_FORMERR, response_wire, rsize);
+//		return 0;
+//	}
+
+//	debug_ns("Query parsed: %s\n", ldns_pkt2str(query));
+
+//	if (ldns_pkt_qdcount(query) == 0) {
+//		log_notice("Received query with empty question section!\n");
+//		ns_error_response(nameserver, *((const uint16_t *)query_wire),
+//		                  LDNS_RCODE_FORMERR, response_wire, rsize);
+//		ldns_pkt_free(query);
+//		return 0;
+//	}
+
+//	// 2) Prepare empty response (used as an error response as well).
+//	ldns_pkt *response = ns_create_empty_response(query);
+//	if (response == NULL) {
+//		log_error("Error while creating response packet!\n");
+//		ns_error_response(nameserver, *((const uint16_t *)query_wire),
+//		                  LDNS_RCODE_SERVFAIL, response_wire, rsize);
+//		ldns_pkt_free(query);
+//		return 0;
+//	}
+
+//	// 3) Fill the response according to the lookup algorithm.
+//	// get the first question entry (other ignored)
+//	ldns_rr *question = ldns_rr_list_rr(ldns_pkt_question(query), 0);
+//	debug_ns("Question extracted: %s\n", ldns_rr2str(question));
+
+//	rcu_read_lock();
+//	ldns_rr_list *copied_rrs = ldns_rr_list_new();
+//	ns_answer(nameserver->zone_db, question, response, copied_rrs);
+
+//	debug_ns("Created response packet: %s\n", ldns_pkt2str(response));
+
+//	// set proper EDNS section (setting here to override the saved max size)
+//	ns_set_edns(query, response);
+
+//	// 4) Transform the packet into wire format
+//	if (ns_response_to_wire(response, response_wire, rsize) != 0) {
+//		// send back SERVFAIL (as this is our problem)
+//		ns_error_response(nameserver, *((const uint16_t *)query_wire),
+//		                  LDNS_RCODE_SERVFAIL, response_wire, rsize);
+//	}
+
+//	ldns_pkt_free(query);
+//	ns_response_free(response);
+//	// free the copied RRs
+//	ldns_rr_list_deep_free(copied_rrs);
+//	rcu_read_unlock();
+
+//	debug_ns("Returning response with wire size %d\n", *rsize);
+//	debug_ns_hex((char *)response_wire, *rsize);
+
+//	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
