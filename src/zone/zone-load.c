@@ -41,7 +41,6 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 
 			uint dname_size;
 			uint8_t dname_wire[256];
-			items[i].dname = malloc(sizeof(dnslib_dname_t));
 
 			fread(&dname_in_zone, sizeof(dname_in_zone), 1, f);
 			if (dname_in_zone) {
@@ -52,12 +51,14 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 				assert(dname_size < 256);
 				fread(&dname_wire, sizeof(uint8_t),
 				      dname_size, f);
-				items[i].dname->size = dname_size;
-				items[i].dname->name =
-					malloc(sizeof(uint8_t) * dname_size);
-				memcpy(items[i].dname->name, dname_wire,
-				       dname_size);
+				items[i].dname =
+					dnslib_dname_new_from_wire(dname_wire,
+					                           dname_size,
+				                                   NULL);
 			}
+
+			assert(items[i].dname);
+
 		} else {
 			fread(&raw_data_length, sizeof(raw_data_length), 1, f);
 			debug_zp("read len: %d\n", raw_data_length);
