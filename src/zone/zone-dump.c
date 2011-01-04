@@ -11,7 +11,8 @@ static uint node_count = 0;
 static uint8_t zero = 0;
 static uint8_t one = 1;
 
-void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata, uint32_t type, FILE *f)
+static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
+                                     uint32_t type, FILE *f)
 {
 	dnslib_rrtype_descriptor_t *desc =
 		dnslib_rrtype_descriptor_by_type(type);
@@ -52,7 +53,7 @@ void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata, uint32_t type, FILE *f)
 	}
 }
 
-void dnslib_rrsig_set_dump_binary(dnslib_rrsig_set_t *rrsig, FILE *f)
+static void dnslib_rrsig_set_dump_binary(dnslib_rrsig_set_t *rrsig, FILE *f)
 {
 	fwrite(&rrsig->type, sizeof(rrsig->type), 1, f);
 	fwrite(&rrsig->rclass, sizeof(rrsig->rclass), 1, f);
@@ -89,7 +90,7 @@ void dnslib_rrsig_set_dump_binary(dnslib_rrsig_set_t *rrsig, FILE *f)
 	fsetpos(f, &tmp_pos);
 }
 
-void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, FILE *f)
+static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, FILE *f)
 {
 	fwrite(&rrset->type, sizeof(rrset->type), 1, f);
 	fwrite(&rrset->rclass, sizeof(rrset->rclass), 1, f);
@@ -132,7 +133,7 @@ void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, FILE *f)
 	fsetpos(f, &tmp_pos);
 }
 
-void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
+static void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
 {
 	node_count++;
 	/* first write dname */
@@ -183,7 +184,7 @@ void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
 		dnslib_rrset_dump_binary(tmp, f);
 	} while ((skip_node = skip_next(skip_node)) != NULL);
 
-	const fpos_t tmp_pos;
+	fpos_t tmp_pos;
 
 	fgetpos(f, &tmp_pos);
 
