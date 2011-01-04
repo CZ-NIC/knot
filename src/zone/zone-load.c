@@ -287,6 +287,7 @@ dnslib_zone_t *dnslib_zone_load(const char *filename, const char *origin)
 				printf("apex found\n");
 				apex_found = 1;
 				zone->apex->rrsets = tmp_node->rrsets;
+				zone->apex->owner->node = tmp_node->owner->node;
 				//this should not leak, hopefully, as apex has
 				//rrsets
 //				dnslib_node_free(&tmp_node, 1);
