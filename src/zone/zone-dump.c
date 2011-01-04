@@ -202,12 +202,6 @@ void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
 
 	fsetpos(f, &tmp_pos);
 
-	printf("owner: %s\n", dnslib_dname_to_str(node->owner));
-
-	printf("Number of rrsets: %u\n", rrset_count);
-
-	getchar();
-
 //	printf("Function ends with: %ld\n\n", ftell(f));	
 
 }
@@ -228,9 +222,6 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 	fwrite(&(zone->apex->owner->size),
 	       sizeof(uint8_t), 1, f);
 
-	printf("writing size %d\n", zone->apex->owner->size);
-	printf("written name %s\n", dnslib_dname_to_str(zone->apex->owner));
-	getchar();
 	fwrite(zone->apex->owner->name, sizeof(uint8_t),
 	       zone->apex->owner->size, f);
 	

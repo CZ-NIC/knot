@@ -212,7 +212,6 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 			dnslib_node_free(&node, 1);
 			//TODO what else to free?
 			printf("could not load rrset\n");
-			getchar();
 			return NULL;
 		}
 		tmp_rrset->owner = node->owner;
@@ -224,7 +223,6 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 			return NULL;
 		}
 	}
-	getchar();
 	assert(node != NULL);
 	return node;
 }
