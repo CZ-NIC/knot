@@ -35,6 +35,8 @@ src/zone/zone-dump.c
 src/zone/zone-dump.h
 src/zone/zone-load.c
 src/zone/zone-load.h
+src/zone/parser-util.h
+src/zone/parser-util.c
 src/tests/libtap/tap.c
 src/tests/libtap/tap.h
 src/tests/main.c
