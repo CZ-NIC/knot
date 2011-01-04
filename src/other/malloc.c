@@ -15,7 +15,7 @@
  * ((destructor)) attribute executes this function after main().
  * \see http://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
  */
-void __attribute__ ((destructor (101))) log_malloc_dump()
+void __attribute__ ((destructor)) usage_dump()
 {
 	/* Get resource usage. */
 	struct rusage usage;
@@ -23,22 +23,22 @@ void __attribute__ ((destructor (101))) log_malloc_dump()
 		memset(&usage, 0, sizeof(struct rusage));
 	}
 
-	debug_mem("\nMemory statistics:");
-	debug_mem("\n==================\n");
+	fprintf(stderr, "\nMemory statistics:");
+	fprintf(stderr, "\n==================\n");
 
-	debug_mem("User time: %.03lf ms\nSystem time: %.03lf ms\n",
-	          usage.ru_utime.tv_sec * (double) 1000.0
-	          + usage.ru_utime.tv_usec / (double)1000.0,
-	          usage.ru_stime.tv_sec * (double) 1000.0
-	          + usage.ru_stime.tv_usec / (double)1000.0);
-	debug_mem("Major page faults: %lu (required I/O)\nMinor page faults: %lu\n",
-	          usage.ru_majflt, usage.ru_minflt);
-	debug_mem("Number of swaps: %lu\n",
-	          usage.ru_nswap);
-	debug_mem("Voluntary context switches: %lu\nInvoluntary context switches: %lu\n",
-	          usage.ru_nvcsw,
-	          usage.ru_nivcsw);
-	debug_mem("==================\n");
+	fprintf(stderr, "User time: %.03lf ms\nSystem time: %.03lf ms\n",
+	        usage.ru_utime.tv_sec * (double) 1000.0
+	        + usage.ru_utime.tv_usec / (double)1000.0,
+	        usage.ru_stime.tv_sec * (double) 1000.0
+	        + usage.ru_stime.tv_usec / (double)1000.0);
+	fprintf(stderr, "Major page faults: %lu (required I/O)\nMinor page faults: %lu\n",
+	        usage.ru_majflt, usage.ru_minflt);
+	fprintf(stderr, "Number of swaps: %lu\n",
+	        usage.ru_nswap);
+	fprintf(stderr, "Voluntary context switches: %lu\nInvoluntary context switches: %lu\n",
+	        usage.ru_nvcsw,
+	        usage.ru_nivcsw);
+	fprintf(stderr, "==================\n");
 }
 
 #endif
@@ -49,6 +49,7 @@ void __attribute__ ((destructor (101))) log_malloc_dump()
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <dlfcn.h>
 
 void *malloc(size_t size)
 {
@@ -68,6 +69,11 @@ void *calloc(size_t nmemb, size_t size)
 
 void *realloc(void *ptr, size_t size)
 {
+	if (ptr < sbrk(0)) {
+		fprintf(stderr, "!!!! %p under sbrk\n", ptr);
+		void (*libc_realloc)(void*) = dlsym(RTLD_NEXT, "realloc");
+		libc_realloc(ptr);
+	}
 	void* mem = slab_realloc_g(ptr, size);
 	fprintf(stderr, "%s(%p, %lu) = %p\n", __func__, ptr, size, mem);
 	return mem;
@@ -81,4 +87,3 @@ void free(void *ptr)
 
 #endif
 */
-
