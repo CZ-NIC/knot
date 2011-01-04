@@ -2,6 +2,7 @@
 
 #include "rrsig.h"
 #include "common.h"
+#include "descriptor.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -97,11 +98,11 @@ void dnslib_rrsig_set_deep_free(dnslib_rrsig_set_t **rrsigs, int free_owner)
 	while ((tmp_rdata->next != (*rrsigs)->rdata) &&
 		(tmp_rdata->next != NULL)) {
 		next_rdata = tmp_rdata->next;
-		dnslib_rdata_deep_free(&tmp_rdata, (*rrsigs)->type);
+		dnslib_rdata_deep_free(&tmp_rdata, DNSLIB_RRTYPE_RRSIG);
 		tmp_rdata = next_rdata;
 	}
 
-	dnslib_rdata_deep_free(&tmp_rdata, (*rrsigs)->type);
+	dnslib_rdata_deep_free(&tmp_rdata, DNSLIB_RRTYPE_RRSIG);
 
 	if (free_owner) {
 		dnslib_dname_free(&(*rrsigs)->owner);
