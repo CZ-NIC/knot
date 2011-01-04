@@ -1,26 +1,16 @@
-/*
- * File     zone-load.c
- * Date     15.12.2010 09:36
- * Author:  Jan Kadlec jan.kadlec@nic.cz
- * Project: CuteDNS
- * Description:   
- */
-
 #include <assert.h>
+#include <malloc.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "zone-load.h"
 #include "dnslib/dnslib.h"
 #include "common.h"
 #include "debug.h"
-#include "stdio.h"
-#include <malloc.h>
-
-static dnslib_dname_t *tmp_dname; 
 
 //TODO move to parameters
 static dnslib_dname_t **id_array;
-
-static uint normal_node_count;
 
 dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 {
@@ -37,9 +27,9 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 
 	uint8_t raw_data_length;
 
-//	printf("Reading %d items\n", desc->length);
+	debug_zp("Reading %d items\n", desc->length);
 
-//	printf("current type: %d\n", type);
+	debug_zp("current type: %d\n", type);
 
 	for (int i = 0; i < desc->length; i++) {
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
@@ -60,14 +50,17 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 			} else {
 				fread(&dname_size, sizeof(dname_size), 1, f);
 				assert(dname_size < 256);
-				fread(&dname_wire, sizeof(uint8_t), dname_size, f);
+				fread(&dname_wire, sizeof(uint8_t),
+				      dname_size, f);
 				items[i].dname->size = dname_size;
-				items[i].dname->name = malloc(sizeof(uint8_t) * dname_size);
-				memcpy(items[i].dname->name, dname_wire, dname_size);
+				items[i].dname->name =
+					malloc(sizeof(uint8_t) * dname_size);
+				memcpy(items[i].dname->name, dname_wire,
+				       dname_size);
 			}
 		} else {
 			fread(&raw_data_length, sizeof(raw_data_length), 1, f);
-//			printf("read len: %d\n", raw_data_length);
+			debug_zp("read len: %d\n", raw_data_length);
 			items[i].raw_data =
 				malloc(sizeof(uint8_t) * raw_data_length + 1);
 			*(items[i].raw_data) = raw_data_length;
@@ -94,11 +87,11 @@ dnslib_rrsig_set_t *dnslib_load_rrsig(FILE *f)
 	uint8_t rdata_count;
 
 	fread(&rrset_type, sizeof(rrset_type), 1, f);
-//	printf("rrset type: %d\n", rrset_type);
+	debug_zp("rrset type: %d\n", rrset_type);
 	fread(&rrset_class, sizeof(rrset_class), 1, f);
-//	printf("rrset class %d\n", rrset_class);
+	debug_zp("rrset class %d\n", rrset_class);
 	fread(&rrset_ttl, sizeof(rrset_ttl), 1, f);
-//	printf("rrset ttl %d\n", rrset_ttl);
+	debug_zp("rrset ttl %d\n", rrset_ttl);
 
 	fread(&rdata_count, sizeof(rdata_count), 1, f);
 
@@ -106,7 +99,7 @@ dnslib_rrsig_set_t *dnslib_load_rrsig(FILE *f)
 
 	dnslib_rdata_t *tmp_rdata;
 
-//	printf("loading %d rdata entries\n", rdata_count);
+	debug_zp("loading %d rdata entries\n", rdata_count);
 
 	for (int i = 0; i < rdata_count; i++) {
 		tmp_rdata = dnslib_load_rdata(DNSLIB_RRTYPE_RRSIG, f);
@@ -161,9 +154,12 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	dnslib_node_t *node;
 	/* first, owner */
 	
-	uint8_t dname_wire[255]; //XXX in respect to remark below, should be dynamic
-				 //but I couldn't make it work - really strange error
-				 //when fread was rewriting other variables
+	uint8_t dname_wire[255]; 
+	//XXX in respect to remark below, should be dynamic 
+	//(malloc happens either way)
+	//but I couldn't make it work - really strange error
+	//when fread() was rewriting other variables
+
 	uint8_t rrset_count;
 	void *dname_id; //ID, technically it's an integer
 	void *parent_id;
@@ -211,7 +207,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 		if ((tmp_rrset = dnslib_load_rrset(f)) == NULL) {
 			dnslib_node_free(&node, 1);
 			//TODO what else to free?
-			printf("could not load rrset\n");
+			debug_zp("could not load rrset\n");
 			return NULL;
 		}
 		tmp_rrset->owner = node->owner;
@@ -227,7 +223,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	return node;
 }
 
-dnslib_zone_t *dnslib_zone_load(const char *filename, const char *origin)
+dnslib_zone_t *dnslib_zone_load(const char *filename)
 {
 	FILE *f = fopen(filename, "rb");
 
@@ -262,7 +258,8 @@ dnslib_zone_t *dnslib_zone_load(const char *filename, const char *origin)
 	dnslib_zone_t *zone = dnslib_zone_new(apex);
 
 	id_array =
-		malloc(sizeof(dnslib_dname_t *) * (node_count + nsec3_node_count + 1));
+		malloc(sizeof(dnslib_dname_t *) *
+		(node_count + nsec3_node_count + 1));
 
 	printf("loading %u nodes\n", node_count);
 
@@ -273,17 +270,16 @@ dnslib_zone_t *dnslib_zone_load(const char *filename, const char *origin)
 	for (uint i = 0; i < node_count; i++) {
 		tmp_node = dnslib_load_node(f);
 		if (tmp_node != NULL) {
-//			dnslib_node_dump(tmp_node);
 			if (!apex_found &&
 			     dnslib_dname_compare(tmp_node->owner,
 			                          apex_dname) == 0) {
 				apex_found = 1;
 				zone->apex->rrsets = tmp_node->rrsets;
 				zone->apex->owner->node = tmp_node->owner->node;
-				//this should not leak, hopefully, as apex has
-				//rrsets
+
 				dnslib_dname_free(&zone->apex->owner);
 				zone->apex->owner = tmp_node->owner;
+				//TODO how about only swapping those two?
 			} else {
 				dnslib_zone_add_node(zone, tmp_node);
 			}
@@ -299,7 +295,7 @@ dnslib_zone_t *dnslib_zone_load(const char *filename, const char *origin)
 		if (tmp_node != NULL) {
 			dnslib_zone_add_nsec3_node(zone, tmp_node);
 		} else {
-			printf(stderr, "Node error!\n");
+			fprintf(stderr, "Node error!\n");
 		}
 	}
 
@@ -308,4 +304,3 @@ dnslib_zone_t *dnslib_zone_load(const char *filename, const char *origin)
 	return zone;
 }
 
-/* end of file zone-load.c */
