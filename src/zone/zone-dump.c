@@ -3,7 +3,7 @@
 #include <assert.h>
 
 #include "zone-dump.h"
-#include "dnslib/dnslib.h"
+#include "dnslib.h"
 
 /* TODO Think of a better way than global variable */
 static uint node_count = 0;
@@ -222,15 +222,19 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 	       zone->apex->owner->size, f);
 	
 	/* TODO is there a way how to stop the traversal upon error? */
-	TREE_REVERSE_APPLY(zone->tree, dnslib_node, avl,
-	                   dnslib_node_dump_binary, f);
+	dnslib_zone_tree_apply_inorder_reverse(
+		zone, dnslib_node_dump_binary, f);
+//	TREE_REVERSE_APPLY(zone->tree, dnslib_node, avl,
+//	                   dnslib_node_dump_binary, f);
 
 	uint tmp_count = node_count;
 
 	node_count = 0;
 
-	TREE_REVERSE_APPLY(zone->nsec3_nodes, dnslib_node, avl,
-	                   dnslib_node_dump_binary, f);
+	dnslib_zone_nsec3_apply_inorder_reverse(
+		zone, dnslib_node_dump_binary, f);
+//	TREE_REVERSE_APPLY(zone->nsec3_nodes, dnslib_node, avl,
+//	                   dnslib_node_dump_binary, f);
 
 	rewind(f);
 	

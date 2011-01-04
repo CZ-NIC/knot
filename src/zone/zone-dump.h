@@ -12,7 +12,7 @@
 #ifndef _DNSLIB_ZONEDUMP_H_
 #define _DNSLIB_ZONEDUMP_H_
 
-#include "dnslib/dnslib.h"
+#include "zone.h"
 
 /*!
  * \brief Dumps given zone to binary file.
