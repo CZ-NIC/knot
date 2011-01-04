@@ -28,6 +28,7 @@
 #include "dns.h"
 #include "zonec.h"
 #include "zparser.h"
+#include "parser-util.h"
 
 lookup_table_type *lookup_by_name(lookup_table_type *table,
                                              const char *name)

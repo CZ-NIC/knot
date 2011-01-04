@@ -17,7 +17,6 @@
 #include "zonec.h"
 #include "descriptor.h"
 
-
 size_t strlcpy(char *dst, const char *src, size_t siz);
 int inet_pton4(const char *src, uint8_t *dst);
 int inet_pton6(const char *src, uint8_t *dst);
@@ -34,6 +33,8 @@ void set_bit(uint8_t bits[], size_t index);
 uint32_t strtoserial(const char *nptr, const char **endptr);
 void write_uint32(void *dst, uint32_t data);
 uint32_t strtottl(const char *nptr, const char **endptr);
+time_t mktime_from_utc(const struct tm *tm);
+
 dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,
                                              const char *name);
 dnslib_lookup_table_t *dnslib_lookup_by_id(dnslib_lookup_table_t *table,
