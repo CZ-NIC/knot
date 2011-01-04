@@ -306,8 +306,8 @@ static void test_zone_destroy_node_from_tree(dnslib_node_t *node,
 
 static int test_zone_free(dnslib_zone_t **zone)
 {
-	dnslib_zone_tree_apply(*zone, test_zone_destroy_node_from_tree, NULL);
-	dnslib_zone_nsec3_apply(*zone, test_zone_destroy_node_from_tree, NULL);
+	dnslib_zone_tree_apply_postorder(*zone, test_zone_destroy_node_from_tree, NULL);
+	dnslib_zone_nsec3_apply_postorder(*zone, test_zone_destroy_node_from_tree, NULL);
 	dnslib_zone_free(zone);
 	return (*zone == NULL);
 }
