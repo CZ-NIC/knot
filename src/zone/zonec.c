@@ -32,6 +32,8 @@
 #include "dnslib/descriptor.h"
 #include "parser-util.h"
 #include "zparser.h"
+#include "zone-dump.h"
+#include "zone-load.h"
 
 //#include "dnslib/debug.h"
 
@@ -1648,8 +1650,6 @@ void zone_read(char *name, const char *zonefile)
 	dnslib_zone_deep_free(&(parser->current_zone));
 
 	fclose(yyin);
-
-	yylex_destroy();
 
 	fflush(stdout);
 
