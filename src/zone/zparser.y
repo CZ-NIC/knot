@@ -284,7 +284,7 @@ label:	STR
 		    $$ = error_dname;
 	    } else {
 		    $$ = dnslib_dname_new_from_str($1.str, $1.len, NULL);
-        printf("new: %p %s\n", $$, dnslib_dname_to_str($$));
+        //printf("new: %p %s\n", $$, dnslib_dname_to_str($$));
 	    }
 
 	    free($1.str);
@@ -308,7 +308,7 @@ rel_dname:	label
 		    $$ = error_dname;
 	    } else {
 		    $$ = dnslib_dname_cat($1, $3);
-        printf("free: %p %s (resulting in %s)\n", $3, dnslib_dname_to_str($3), dnslib_dname_to_str($$));
+        //printf("free: %p %s (resulting in %s)\n", $3, dnslib_dname_to_str($3), dnslib_dname_to_str($$));
 		    dnslib_dname_free(&$3);
 	        }
     }
@@ -725,11 +725,11 @@ rdata_soa:	dname sp dname sp STR sp STR sp STR sp STR sp STR trail
 	    zadd_rdata_wireformat(zparser_conv_period($11.str)); /* expire */
 	    zadd_rdata_wireformat(zparser_conv_period($13.str)); /* minimum */
 
-      free($5.str);
-      free($7.str);
-      free($9.str);
-      free($11.str);
-      free($13.str);
+	    free($5.str);
+	    free($7.str);
+	    free($9.str);
+	    free($11.str);
+	    free($13.str);
     }
     ;
 
@@ -738,9 +738,9 @@ rdata_wks:	dotted_str sp STR sp concatenated_str_seq trail
 	    zadd_rdata_wireformat(zparser_conv_a($1.str)); /* address */
 	    zadd_rdata_wireformat(zparser_conv_services($3.str, $5.str)); /* protocol and services */
 
-      free($1.str);
-      free($3.str);
-      free($5.str);
+	    free($1.str);
+	    free($3.str);
+	    free($5.str);
     }
     ;
 
@@ -749,8 +749,8 @@ rdata_hinfo:	STR sp STR trail
 	    zadd_rdata_wireformat(zparser_conv_text($1.str, $1.len)); /* CPU */
 	    zadd_rdata_wireformat(zparser_conv_text($3.str, $3.len)); /* OS*/
 
-      free($1.str);
-      free($3.str);
+	    free($1.str);
+	    free($3.str);
     }
     ;
 
@@ -788,7 +788,7 @@ rdata_mx:	STR sp dname trail
 	    zadd_rdata_wireformat(zparser_conv_short($1.str));  /* priority */
 	    zadd_rdata_domain($3);	/* MX host */
 
-      free($1.str);
+	    free($1.str);
     }
     ;
 
@@ -833,7 +833,7 @@ rdata_afsdb:	STR sp dname trail
 	    zadd_rdata_wireformat(zparser_conv_short($1.str)); /* subtype */
 	    zadd_rdata_domain($3); /* domain name */
 
-      free($1.str);
+	    free($1.str);
     }
     ;
 
@@ -842,7 +842,7 @@ rdata_x25:	STR trail
     {
 	    zadd_rdata_wireformat(zparser_conv_text($1.str, $1.len)); /* X.25 address. */
 
-      free($1.str);
+	    free($1.str);
     }
     ;
 
@@ -851,15 +851,15 @@ rdata_isdn:	STR trail
     {
 	    zadd_rdata_wireformat(zparser_conv_text($1.str, $1.len)); /* address */
 
-      free($1.str);
+	    free($1.str);
     }
     |	STR sp STR trail
     {
 	    zadd_rdata_wireformat(zparser_conv_text($1.str, $1.len)); /* address */
 	    zadd_rdata_wireformat(zparser_conv_text($3.str, $3.len)); /* sub-address */
 
-      free($1.str);
-      free($3.str);
+	    free($1.str);
+	    free($3.str);
     }
     ;
 
@@ -876,7 +876,7 @@ rdata_rt:	STR sp dname trail
 	    zadd_rdata_wireformat(zparser_conv_short($1.str)); /* preference */
 	    zadd_rdata_domain($3); /* intermediate host */
 
-      free($1.str);
+	    free($1.str);
     }
     ;
 
@@ -890,7 +890,7 @@ rdata_nsap:	str_dot_seq trail
 		    zadd_rdata_wireformat(zparser_conv_hex($1.str + 2, $1.len - 2)); /* NSAP */
 	    }
 
-      free($1.str);
+	    free($1.str);
     }
     ;
 
@@ -911,7 +911,7 @@ rdata_px:	STR sp dname sp dname trail
 	    zadd_rdata_domain($3); /* MAP822 */
 	    zadd_rdata_domain($5); /* MAPX400 */
 
-      free($1.str);
+	    free($1.str);
     }
     ;
 
@@ -919,7 +919,7 @@ rdata_aaaa:	dotted_str trail
     {
 	    zadd_rdata_wireformat(zparser_conv_aaaa($1.str));  /* IPv6 address */
 
-      free($1.str);
+	    free($1.str);
     }
     ;
 
@@ -927,7 +927,7 @@ rdata_loc:	concatenated_str_seq trail
     {
 	    zadd_rdata_wireformat(zparser_conv_loc($1.str)); /* Location */
 
-      free($1.str);
+	    free($1.str);
     }
     ;
 
@@ -956,9 +956,9 @@ rdata_srv:	STR sp STR sp STR sp dname trail
 	    zadd_rdata_wireformat(zparser_conv_short($5.str)); /* port */
 	    zadd_rdata_domain($7); /* target name */
 
-      free($1.str);
-      free($3.str);
-      free($5.str);
+	    free($1.str);
+	    free($3.str);
+	    free($5.str);
     }
     ;
 
@@ -977,11 +977,11 @@ rdata_naptr:	STR sp STR sp STR sp STR sp STR sp dname trail
 	    zadd_rdata_wireformat(zparser_conv_text($9.str, $9.len)); /* regexp */
 	    zadd_rdata_domain($11); /* target name */
 
-      free($1.str);
-      free($3.str);
-      free($5.str);
-      free($7.str);
-      free($9.str);
+	    free($1.str);
+	    free($3.str);
+	    free($5.str);
+	    free($7.str);
+	    free($9.str);
     }
     ;
 
@@ -996,7 +996,7 @@ rdata_kx:	STR sp dname trail
 	    zadd_rdata_wireformat(zparser_conv_short($1.str)); /* preference */
 	    zadd_rdata_domain($3); /* exchanger */
 
-      free($1.str);
+	    free($1.str);
     }
     ;
 
@@ -1008,10 +1008,10 @@ rdata_cert:	STR sp STR sp STR sp str_sp_seq trail
 	    zadd_rdata_wireformat(zparser_conv_algorithm($5.str)); /* algorithm */
 	    zadd_rdata_wireformat(zparser_conv_b64($7.str)); /* certificate or CRL */
 
-      free($1.str);
-      free($3.str);
-      free($5.str);
-      free($7.str);
+	    free($1.str);
+	    free($3.str);
+	    free($5.str);
+	    free($7.str);
     }
     ;
 
@@ -1023,13 +1023,13 @@ rdata_apl_seq:	dotted_str
     {
 	    zadd_rdata_wireformat(zparser_conv_apl_rdata($1.str));
 
-      free($1.str);
+	    free($1.str);
     }
     |	rdata_apl_seq sp dotted_str
     {
 	    zadd_rdata_wireformat(zparser_conv_apl_rdata($3.str));
       
-      free($3.str);
+	    free($3.str);
     }
     ;
 
@@ -1040,10 +1040,10 @@ rdata_ds:	STR sp STR sp STR sp str_sp_seq trail
 	    zadd_rdata_wireformat(zparser_conv_byte($5.str)); /* type */
 	    zadd_rdata_wireformat(zparser_conv_hex($7.str, $7.len)); /* hash */
 
-      free($1.str);
-      free($3.str);
-      free($5.str);
-      free($7.str);
+	    free($1.str);
+	    free($3.str);
+	    free($5.str);
+	    free($7.str);
     }
     ;
 
@@ -1054,10 +1054,10 @@ rdata_dlv:	STR sp STR sp STR sp str_sp_seq trail
 	    zadd_rdata_wireformat(zparser_conv_byte($5.str)); /* type */
 	    zadd_rdata_wireformat(zparser_conv_hex($7.str, $7.len)); /* hash */
 
-      free($1.str);
-      free($3.str);
-      free($5.str);
-      free($7.str);
+	    free($1.str);
+	    free($3.str);
+	    free($5.str);
+	    free($7.str);
     }
     ;
 
@@ -1067,9 +1067,9 @@ rdata_sshfp:	STR sp STR sp str_sp_seq trail
 	    zadd_rdata_wireformat(zparser_conv_byte($3.str)); /* fp type */
 	    zadd_rdata_wireformat(zparser_conv_hex($5.str, $5.len)); /* hash */
 
-      free($1.str);
-      free($3.str);
-      free($5.str);
+	    free($1.str);
+	    free($3.str);
+	    free($5.str);
     }
     ;
 
@@ -1077,7 +1077,7 @@ rdata_dhcid:	str_sp_seq trail
     {
 	    zadd_rdata_wireformat(zparser_conv_b64($1.str)); /* data blob */
 
-      free($1.str);
+	    free($1.str);
     }
     ;
 
@@ -1093,15 +1093,15 @@ rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR sp STR sp wire_dname sp str_
 	    zadd_rdata_wireformat(zparser_conv_dns_name((const uint8_t*) $15.str,$15.len)); /* sig name */
 	    zadd_rdata_wireformat(zparser_conv_b64($17.str)); /* sig data */
 
-      free($1.str);
-      free($3.str);
-      free($5.str);
-      free($7.str);
-      free($9.str);
-      free($11.str);
-      free($13.str);
-      free($15.str);
-      free($17.str);
+	    free($1.str);
+	    free($3.str);
+	    free($5.str);
+	    free($7.str);
+	    free($9.str);
+	    free($11.str);
+	    free($13.str);
+	    free($15.str);
+	    free($17.str);
     }
     ;
 
@@ -1127,10 +1127,10 @@ rdata_nsec3:   STR sp STR sp STR sp STR sp STR nsec_seq
 	    zc_error_prev_line("nsec3 not supported");
 #endif /* NSEC3 */
 
-      free($1.str);
-      free($3.str);
-      free($5.str);
-      free($7.str);
+	    free($1.str);
+	    free($3.str);
+	    free($5.str);
+	    free($7.str);
     }
     ;
 
@@ -1142,10 +1142,10 @@ rdata_nsec3_param:   STR sp STR sp STR sp STR trail
 	    zc_error_prev_line("nsec3 not supported");
 #endif /* NSEC3 */
 
-      free($1.str);
-      free($3.str);
-      free($5.str);
-      free($7.str);
+            free($1.str);
+            free($3.str);
+            free($5.str);
+	    free($7.str);
     }
     ;
 
@@ -1156,10 +1156,10 @@ rdata_dnskey:	STR sp STR sp STR sp str_sp_seq trail
 	    zadd_rdata_wireformat(zparser_conv_algorithm($5.str)); /* alg */
 	    zadd_rdata_wireformat(zparser_conv_b64($7.str)); /* hash */
 
-      free($1.str);
-      free($3.str);
-      free($5.str);
-      free($7.str);
+	    free($1.str);
+	    free($3.str);
+	    free($5.str);
+	    free($7.str);
     }
     ;
 
@@ -1194,21 +1194,20 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			    dnslib_dname_t* tmpd;
 			    tmpd = dnslib_dname_new_from_wire(name->name,
 			                                      name->size,
-//			                                      name->node);
 			    				      NULL);
 			    name = dnslib_dname_cat(tmpd,
 			            dnslib_node_parent(parser->origin)->owner);
 			}
 
-      free($1.str);
-      free($3.str);
-      free($5.str);
-      free($7.str);
+			free($1.str);
+			free($3.str);
+			free($5.str);
+			free($7.str);
 
 			uint8_t* dncpy = malloc(name->size);
 			memcpy(dncpy, name->name, name->size);
 			zadd_rdata_wireformat((uint16_t *)dncpy);
-			dnslib_dname_free(&name);
+			//dnslib_dname_free(&name);
 			break;
 		default:
 			zc_error_prev_line("unknown IPSECKEY gateway type");
@@ -1268,8 +1267,6 @@ zparser_create()
 	result->prev_dname = NULL;
 	result->default_apex = NULL;
 
-//  result->last_node = malloc(sizeof(result->last_node));
-
 	result->temporary_items = malloc(MAXRDATALEN *
 	                                  sizeof(dnslib_rdata_item_t));
 
@@ -1317,16 +1314,13 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 void zparser_free()
 {
 	dnslib_dname_free(&(parser->root_domain));
-/*	for (int i = 0; i < MAXRDATALEN; i++) {
-		free(&(parser->temporary_items[i]));
-	}*/
 	free(parser->temporary_items);
-/*  dnslib_rrset_t *tmp_rrset = &parser->current_rrset;
-  dnslib_rrset_free(&tmp_rrset);*/
+/*	dnslib_rrset_t *tmp_rrset = &parser->current_rrset;
+	dnslib_rrset_free(&tmp_rrset);
 
-//  free(&parser->current_rrset);
+	free(&parser->current_rrset); */
 
-  free(parser);
+	free(parser);
 }
 
 void
