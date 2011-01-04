@@ -1318,14 +1318,17 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 
 	dnslib_node_t *tmp_node;
 
-	if (dnslib_dname_compare(rrset->owner, parser->last_node->owner) == 0) {
+	if (dnslib_dname_compare(rrset->owner,
+		                 parser->last_node->owner) == 0) {
 		tmp_node = parser->last_node;
 	} else {
-		//TODO if rrset exists and it has already assigned rrsig to it, merge
+		//TODO if rrset exists and it has
+		//already assigned rrsig to it, merge
 		if (tmp_type != DNSLIB_RRTYPE_NSEC3) {
 			tmp_node = dnslib_zone_get_node(zone, rrsig->owner);
 		} else {
-			tmp_node = dnslib_zone_get_nsec3_node(zone, rrsig->owner);
+			tmp_node = dnslib_zone_get_nsec3_node(zone,
+			                                      rrsig->owner);
 		}
 	}
 
@@ -1345,7 +1348,8 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 	}
 
 	if (tmp_rrset->rrsigs != NULL) {
-		dnslib_rrsig_set_merge((void *)&tmp_rrset->rrsigs, (void *)&rrsig);
+		dnslib_rrsig_set_merge((void *)&tmp_rrset->rrsigs,
+		                       (void *)&rrsig);
 	} else {
 		tmp_rrset->rrsigs = rrsig;
 	}
@@ -1370,7 +1374,8 @@ int process_rr(void)
 	assert(dnslib_dname_is_fqdn(current_rrset->owner));
 
 	int (*node_add_func)(dnslib_zone_t *zone, dnslib_node_t *node);
-	dnslib_node_t* (*node_get_func)(dnslib_zone_t *zone, dnslib_dname_t *owner);
+	dnslib_node_t* (*node_get_func)(dnslib_zone_t *zone,
+	                                dnslib_dname_t *owner);
 
 	if (current_rrset->type != DNSLIB_RRTYPE_NSEC3) {
 		node_add_func = &dnslib_zone_add_node;
@@ -1379,8 +1384,6 @@ int process_rr(void)
 		node_add_func = &dnslib_zone_add_nsec3_node;
 		node_get_func = &dnslib_zone_get_nsec3_node;
 	}
-
-	printf("RRSET OWNER: %s %p\n", dnslib_dname_to_str(current_rrset->owner), current_rrset->owner);
 
 	/* We only support IN class */
 	if (current_rrset->rclass != DNSLIB_CLASS_IN) {
@@ -1398,28 +1401,25 @@ int process_rr(void)
 //		return 0;
 //	}
 
-
 	/* Do we have the zone already? */
 	if (!zone) {
-		//assert(current_rrset->type == DNSLIB_RRTYPE_SOA);
-
 		dnslib_node_t *soa_node;
 
-		printf("Creating zone with apex: %s\n %p",
-		       dnslib_dname_to_str(parser->origin->owner), parser->origin->owner);
+		debug_zp("Creating zone with apex: %s\n %p",
+		       dnslib_dname_to_str(parser->origin->owner),
+		                           parser->origin->owner);
 
-		zone = dnslib_zone_new(parser->origin); //XXX
+		zone = dnslib_zone_new(parser->origin);
 
 		assert(parser->origin);
 
-		if (dnslib_dname_compare(parser->origin->owner, current_rrset->owner) != 0 ){
+		if (dnslib_dname_compare(parser->origin->owner,
+			                 current_rrset->owner) != 0 ){
 			soa_node = dnslib_node_new(current_rrset->owner,
 			                           parser->origin);
 
 			dnslib_zone_add_node(zone, soa_node);
 		} else {
-			printf("freeing dname: %p %s\n", current_rrset->owner,
-			       dnslib_dname_to_str(current_rrset->owner));
 			dnslib_dname_free(&current_rrset->owner);
 			current_rrset->owner = parser->origin->owner;
 		}
@@ -1446,8 +1446,11 @@ int process_rr(void)
 
 	assert(parser->last_node != NULL);
 
-	if (current_rrset->type != DNSLIB_RRTYPE_SOA && //get rid of the first statement
-	    dnslib_dname_compare(parser->last_node->owner, current_rrset->owner) ==
+	//get rid of the first statement
+
+	if (current_rrset->type != DNSLIB_RRTYPE_SOA && 
+	    dnslib_dname_compare(parser->last_node->owner,
+	                         current_rrset->owner) ==
 	    0) {
 	node = parser->last_node;
 	} else {
@@ -1459,33 +1462,28 @@ int process_rr(void)
 		dnslib_node_t *last_node = dnslib_node_new(current_rrset->owner,
 		                                           NULL);
 
-		printf("new node, owner %s %p\n", dnslib_dname_to_str(current_rrset->owner), current_rrset->owner);
-
-		//XXX this whole section is wrong
-
 		node = last_node;
 		if (node_add_func(zone, node) != 0) {
 			return -1; 
 		//no check yet in zparser ... it just won't be added
-		}//XXX Have a look at this
-		//but it's probably ok, in case that while will not execute
-		//its parent will be set after it
-//		dnslib_dname_t *tmp_owner = current_rrset->owner; //XXX
+		}
 		dnslib_dname_t *chopped =
 			dnslib_dname_left_chop(current_rrset->owner);
 
-		/* the following is the most common case */
-		if (dnslib_dname_compare(parser->origin->owner, chopped) == 0 ) {
+		/* the following is the most common case - no need to 
+		 * search the zone */
+		if (dnslib_dname_compare(parser->origin->owner,
+			                 chopped) == 0 ) {
 			node->parent = parser->origin;
 		} else {
-			while ((tmp_node = node_get_func(zone, chopped) == NULL)) {
+			while ((tmp_node = node_get_func(zone,
+				                         chopped) == NULL)) {
 				tmp_node = dnslib_node_new(chopped, NULL);
 				last_node->parent = tmp_node;
-		printf("new node, owner %s %p\n", dnslib_dname_to_str(chopped), chopped);
 				
-				assert(node_get_func(zone, chopped) == NULL);	
-			  if (node_add_func(zone, tmp_node) != 0) {
-						return -1;
+				assert(node_get_func(zone, chopped) == NULL);
+				if (node_add_func(zone, tmp_node) != 0) {
+					return -1;
 				}
 
 				chopped->node = parser->id;
@@ -1494,36 +1492,24 @@ int process_rr(void)
 
 				chopped = dnslib_dname_left_chop(chopped);
 			}
-			last_node->parent = tmp_node; //parent is already in zone
+
+			last_node->parent = tmp_node;
+			//parent is already in the zone
 		}		
 		dnslib_dname_free(&chopped);
     
 		assert(node);
 	} 
-	//TODO figure a way how to free this
 	else {
 		if (current_rrset->owner != node->owner) {
-			printf("%p vs %p\n", current_rrset->owner, node->owner);
-			printf("%p vs 2 %p\n", parser->last_node->owner, node->owner);
 			if (parser->last_node->owner != current_rrset->owner) {
-				printf("freeing %s %p\n", dnslib_dname_to_str(current_rrset->owner), current_rrset->owner);
-				printf("because %s %p\n", dnslib_dname_to_str(node->owner), node->owner);
-				printf("last node %s %p\n", dnslib_dname_to_str(parser->last_node->owner), parser->last_node->owner);
 				dnslib_dname_free(&(current_rrset->owner));
 			}
-			printf("setting pointer\n");
 			current_rrset->owner = node->owner;
 		}
 		assert(current_rrset->owner == node->owner);
 	}
 
-/*	if ((dnslib_dname_compare(current_rrset->owner, node->owner) == 0) && current_rrset->owner != node->owner) {
-						printf("freeing %s %p\n", dnslib_dname_to_str(current_rrset->owner), current_rrset->owner);
-						printf("because %s %p\n", dnslib_dname_to_str(node->owner), node->owner);
-						dnslib_dname_free(&(current_rrset->owner));
-						current_rrset->owner = node->owner;
-	}*/
-	
 	if (node->owner->node == NULL) {
 		node->owner->node = parser->id;
 		parser->id++;
@@ -1587,8 +1573,6 @@ int process_rr(void)
   
 	parser->last_node = node;
 
-	printf("setting last node's owner %p\n", node->owner);
-
 	++totalrrs;
 
 	return 0;
@@ -1634,14 +1618,6 @@ void zone_read(char *name, const char *zonefile)
 
 	assert(origin_node->parent == NULL);
 
-//#ifndef ROOT_SERVER
-//	/* Is it a root zone? Are we a root server then? Idiot proof. */
-//	if (dname->label_count == 1) {
-//		fprintf(stderr, "not configured as a root server");
-//		return;
-//	}
-//#endif
-
 	/* Open the zone file */
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
 		fprintf(stderr, "cannot open '%s': %s", zonefile,
@@ -1654,26 +1630,23 @@ void zone_read(char *name, const char *zonefile)
 
 	printf("zone parsed\n");
 
-	find_rrsets_orphans(parser->current_zone, parser->rrsig_orphans);
+//	find_rrsets_orphans(parser->current_zone, parser->rrsig_orphans);
 
-	printf("orphans found\n");
+//	printf("orphans found\n");
 
 	dnslib_zone_adjust_dnames(parser->current_zone);
 
 	printf("rdata adjusted\n");
 
-	dnslib_zone_dump(parser->current_zone);
+/*	dnslib_zone_dump_binary(parser->current_zone, dump_file_name);
 
-	dnslib_zone_dump_binary(parser->current_zone, dump_file_name);
+	//TODO remove origin parameter
 
-	char *origin_str = dnslib_dname_to_str(parser->origin->owner);
+	dnslib_zone_t *new_zone = dnslib_zone_load(dump_file_name, NULL);
 
-	dnslib_zone_t *new_zone = dnslib_zone_load(dump_file_name,
-			origin_str);
+	dnslib_zone_dump(new_zone); */
 
 	dnslib_zone_deep_free(&(parser->current_zone));
-
-	printf("zone dumped to file %s\n", dump_file_name);
 
 	fclose(yyin);
 
