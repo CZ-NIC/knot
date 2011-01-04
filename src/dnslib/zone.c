@@ -296,6 +296,19 @@ void dnslib_zone_tree_apply_postorder(dnslib_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
+void dnslib_zone_tree_apply_inorder(dnslib_zone_t *zone,
+                              void (*function)(dnslib_node_t *node, void *data),
+                              void *data)
+{
+	if (zone == NULL) {
+		return;
+	}
+
+	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl, function, data);
+}
+
+/*----------------------------------------------------------------------------*/
+
 void dnslib_zone_tree_apply_inorder_reverse(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data)
@@ -323,6 +336,19 @@ void dnslib_zone_nsec3_apply_postorder(dnslib_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
+void dnslib_zone_nsec3_apply_inorder(dnslib_zone_t *zone,
+                              void (*function)(dnslib_node_t *node, void *data),
+                              void *data)
+{
+	if (zone == NULL) {
+		return;
+	}
+
+	TREE_FORWARD_APPLY(zone->nsec3_nodes, dnslib_node, avl, function, data);
+}
+
+/*----------------------------------------------------------------------------*/
+
 void dnslib_zone_nsec3_apply_inorder_reverse(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data)
@@ -331,8 +357,7 @@ void dnslib_zone_nsec3_apply_inorder_reverse(dnslib_zone_t *zone,
 		return;
 	}
 
-	TREE_REVERSE_APPLY(zone->nsec3_nodes, dnslib_node, avl, function,
-	                      data);
+	TREE_REVERSE_APPLY(zone->nsec3_nodes, dnslib_node, avl, function, data);
 }
 
 /*----------------------------------------------------------------------------*/
