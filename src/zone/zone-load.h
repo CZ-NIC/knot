@@ -1,5 +1,5 @@
 /*!
- * \file rrset.h
+ * \file zone-load.h
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
@@ -19,11 +19,9 @@
  *
  * \param filename File containing the dumped zone.
  *
- * \param origin Zone's origin.
- *
  * \return Loaded zone on success, NULL otherwise.
  */
-dnslib_zone_t *dnslib_zone_load(const char *filename, const char *origin);
+dnslib_zone_t *dnslib_zone_load(const char *filename);
 
 #endif /* _CUTEDNS_ZONELOAD_H_ */
 
