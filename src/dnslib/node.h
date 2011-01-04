@@ -151,6 +151,8 @@ void dnslib_node_free_rrsets(dnslib_node_t *node);
  */
 void dnslib_node_free(dnslib_node_t **node, int free_owner);
 
+void dnslib_node_free_tmp(dnslib_node_t **node, int free_rrsets);
+
 /*!
  * \brief Compares two nodes according to their owner.
  *
