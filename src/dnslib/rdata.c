@@ -173,7 +173,9 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type)
 		dnslib_rrtype_descriptor_by_type(type);
 	assert(desc != NULL);
 
-	for (int i = 0; i < desc->length; i++) {
+	assert((*rdata)->count <= desc->length);
+
+	for (int i = 0; i < (*rdata)->count; i++) {
 		if (&((*rdata)->items[i]) == NULL) {
 			continue;
 		}
