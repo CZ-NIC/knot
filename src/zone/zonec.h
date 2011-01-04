@@ -145,4 +145,6 @@ zparser_type *zparser_create();
 void zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 		  dnslib_node_t *origin);
 
+void zparser_free();
+
 #endif /* _ZONEC_H_ */
