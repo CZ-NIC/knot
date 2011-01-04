@@ -252,6 +252,8 @@ static int dnslib_response_parse_question(const uint8_t **pos,
 static void dnslib_response_question_to_wire(dnslib_question_t *question,
                                             uint8_t **pos, short *size)
 {
+	debug_dnslib_response("Copying QNAME, size %d\n",
+	                      question->qname->size);
 	memcpy(*pos, question->qname->name, question->qname->size);
 	*size += question->qname->size;
 	*pos += question->qname->size;
@@ -657,6 +659,7 @@ int dnslib_response_parse_query(dnslib_response_t *resp,
 		return err;
 	}
 	resp->size += resp->question.qname->size + 4;
+	resp->header.qdcount = 1;
 
 	if (resp->header.arcount > 0) {  // expecting EDNS OPT RR
 		if ((err = dnslib_response_parse_client_edns(
@@ -773,6 +776,8 @@ int dnslib_response_to_wire(dnslib_response_t *response,
 
 	assert(response->size <= response->max_size);
 
+	debug_dnslib_response("Converting response to wire format, size: %d\n",
+	                      response->size);
 	*resp_wire = (uint8_t *)malloc(response->size);
 	CHECK_ALLOC_LOG(*resp_wire, -1);
 
@@ -785,7 +790,10 @@ int dnslib_response_to_wire(dnslib_response_t *response,
 
 	dnslib_response_header_to_wire(&response->header, &pos, &size);
 
-	dnslib_response_question_to_wire(&response->question, &pos, &size);
+	if (response->header.qdcount > 0) {
+		dnslib_response_question_to_wire(
+			&response->question, &pos, &size);
+	}
 
 	dnslib_response_rrsets_to_wire(response->answer,
 	                               response->header.ancount, &pos, &size,
@@ -820,10 +828,12 @@ void dnslib_response_free(dnslib_response_t **response)
 	}
 
 	// free temporary domain names
+	debug_dnslib_response("Freeing tmp domains...\n");
 	dnslib_response_free_tmp_domains(*response);
 	// check if some additional space was allocated for the response
+	debug_dnslib_response("Freeing additional allocated space...\n");
 	dnslib_response_free_allocated_space(*response);
-
+	debug_dnslib_response("Freeing response structure\n");
 	free(*response);
 	*response = NULL;
 }
