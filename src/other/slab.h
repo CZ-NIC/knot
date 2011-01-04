@@ -40,7 +40,7 @@
 #define SLAB_GP_COUNT  10 // General-purpose caches count.
 #define SLAB_US_COUNT  10 // User-specified caches count.
 #define SLAB_CACHE_COUNT (SLAB_GP_COUNT + SLAB_US_COUNT)
-#define SLAB_DEPOT_COUNT 16 // 16 slabs = 64kB
+#define SLAB_DEPOT_COUNT 64 // 64 slabs cached = 64*4kB
 extern size_t SLAB_MASK;
 struct slab_cache_t;
 
@@ -71,8 +71,6 @@ typedef struct slab_t {
  *
  * To mitigate page trashing, depot keeps a fixed number of
  * free pages before returning them to the system.
- *
- * 16 * 4K pages = 64kB depot
  */
 typedef struct slab_depot_t {
 	size_t available;             /*!< Number of available pages. */
