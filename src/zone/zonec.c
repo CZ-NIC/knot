@@ -31,10 +31,9 @@
 #include "dnslib/rrsig.h"
 #include "dnslib/descriptor.h"
 #include "parser-util.h"
+#include "zparser.h"
 
 //#include "dnslib/debug.h"
-
-#include "zparser.h"
 
 #define IP6ADDRLEN	(128/8)
 #define	NS_INT16SZ	2
@@ -1374,8 +1373,8 @@ int process_rr(void)
 	assert(dnslib_dname_is_fqdn(current_rrset->owner));
 
 	int (*node_add_func)(dnslib_zone_t *zone, dnslib_node_t *node);
-	dnslib_node_t* (*node_get_func)(dnslib_zone_t *zone,
-	                                dnslib_dname_t *owner);
+	dnslib_node_t *(*node_get_func)(const dnslib_zone_t *zone,
+	                                const dnslib_dname_t *owner);
 
 	if (current_rrset->type != DNSLIB_RRTYPE_NSEC3) {
 		node_add_func = &dnslib_zone_add_node;
@@ -1475,9 +1474,9 @@ int process_rr(void)
 		if (dnslib_dname_compare(parser->origin->owner,
 			                 chopped) == 0 ) {
 			node->parent = parser->origin;
-		} else {
+		} else {                   //is this cast needed?
 			while ((tmp_node = node_get_func(zone,
-				                         chopped) == NULL)) {
+				            chopped)) == NULL) {
 				tmp_node = dnslib_node_new(chopped, NULL);
 				last_node->parent = tmp_node;
 				
@@ -1486,7 +1485,7 @@ int process_rr(void)
 					return -1;
 				}
 
-				chopped->node = parser->id;
+				chopped->node = (dnslib_node_t *)parser->id;
 				parser->id++;
 				last_node = tmp_node;
 
@@ -1511,7 +1510,7 @@ int process_rr(void)
 	}
 
 	if (node->owner->node == NULL) {
-		node->owner->node = parser->id;
+		node->owner->node = (dnslib_node_t *)parser->id;
 		parser->id++;
 	}
 	rrset = dnslib_node_get_rrset(node, current_rrset->type);
