@@ -16,7 +16,6 @@
 #include "node.h"
 #include "descriptor.h"
 #include "dname.h"
-#include "zone.h"
 
 #endif
 

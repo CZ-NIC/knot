@@ -140,6 +140,8 @@ static void dnslib_response_init(dnslib_response_t *resp,
 {
 	memset(resp, 0, PREALLOC_TOTAL);
 
+	assert(edns_wire != NULL || edns_size == 0);
+
 	resp->edns_wire = edns_wire;
 	resp->edns_size = edns_size;
 

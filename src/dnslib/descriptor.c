@@ -423,7 +423,7 @@ uint16_t dnslib_rrtype_from_string(const char *name)
 	long rrtype;
 	dnslib_rrtype_descriptor_t *entry;
 
-	entry = rrtype_descriptor_by_name(name);
+	entry = dnslib_rrtype_descriptor_by_name(name);
 	if (entry) {
 		return entry->type;
 	}
