@@ -170,6 +170,18 @@ int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
                               const dnslib_dname_t *domain);
 
 /*!
+ * \brief Returns the number of labels common for the two domain names (counted
+ *        from the rightmost label.
+ *
+ * \param dname1 First domain name.
+ * \param dname2 Second domain name.
+ *
+ * \return Number of labels common for the two domain names.
+ */
+int dnslib_dname_matched_labels(const dnslib_dname_t *dname1,
+                                const dnslib_dname_t *dname2);
+
+/*!
  * \brief Destroys the given domain name.
  *
  * Frees also the data within the struct. This is somewhat different behaviour
