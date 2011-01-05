@@ -78,6 +78,73 @@ static int load_raw_packets(uint8_t **raw_packets, uint8_t *count,
 	return 0;
 }
 
+static int load_parsed_packets(test_response_t **responses, uint *count,
+                               const char *filename)
+{
+	assert(responses == NULL);
+
+	FILE *f;
+
+	f = fopen(filename, "r");
+
+	if (f == NULL) {
+		diag("could not open file: %s", filename);
+		return 0;
+	}
+
+	*count = 0;
+
+	int c;
+	test_response_t *tmp_resp;
+
+	char *tmp_str = malloc(sizeof(char) * 1000);
+	char *tmp_dname_str = malloc(sizeof(char) * 255);
+
+	memset(tmp_str, 0, 1000);
+
+	while ((c = getc(f)) != EOF) {
+		//apend
+		responses = realloc(responses,
+		                    sizeof(test_response_t *) * (*count + 1));
+
+		tmp_resp = malloc(sizeof(test_response_t));
+		tmp_str[strlen(tmp_str)] = c;
+		tmp_str[strlen(tmp_str) + 1] = 0;
+		if (c == '\n') {
+			if ((sscanf(tmp_str, "%c;%c;%d;%c;%c;%c;%c;%c;%c;%s",
+			       &(tmp_resp->type),
+			       &(tmp_resp->rclass),
+			       &(tmp_resp->id),
+			       &(tmp_resp->flags1),
+			       &(tmp_resp->flags2),
+			       &(tmp_resp->qdcount),
+			       &(tmp_resp->ancount),
+   			       &(tmp_resp->nscount),
+			       &(tmp_resp->arcount),
+			       tmp_dname_str)) == 10) {
+				dnslib_dname_t *tmp_dname =
+					dnslib_dname_new_from_str(
+						tmp_dname_str,
+						strlen(tmp_dname_str),
+						NULL);
+				tmp_resp->owner = tmp_dname;
+				responses[*count] = tmp_resp;
+				(*count)++;
+			}
+			memset(tmp_str, 0, 1000);
+		}
+	}
+
+	free(tmp_str);
+	free(tmp_dname_str);
+	free(tmp_resp);
+
+	fclose(f);
+
+	return 0;
+
+}
+
 enum {
 	DNAMES_COUNT = 2,
 	ITEMS_COUNT = 1,
@@ -86,7 +153,7 @@ enum {
 };
 
 static dnslib_dname_t DNAMES[DNAMES_COUNT] =
-	{ {(uint8_t *)"6example3com", 12, NULL},     //0's at the end are added
+	{ {(uint8_t *)"6example3com", 12, NULL}, //0's at the end are added
           {(uint8_t *)"2ns6example3com", 15, NULL} };
 
 static dnslib_rdata_item_t ITEMS[ITEMS_COUNT] = { {.dname = &DNAMES[0]} };
@@ -207,6 +274,16 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	ok(test_response_add_rrset_additional(), "response: add rrset additional");
 
 	endskip;
+
+	test_response_t **responses = NULL;
+
+	uint response_count;
+
+	load_parsed_packets(responses, &response_count,
+	                    "src/tests/dnslib/files/parsed_packets");
+
+	diag("read %d responses\n", response_count);
+
 
 	return 0;
 }
