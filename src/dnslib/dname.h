@@ -90,6 +90,15 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
                 struct dnslib_node *node);
 
 /*!
+ * \brief Copies the given domain name.
+ *
+ * \param dname Domain name to be copied.
+ *
+ * \return New domain name which is an exact copy of \a dname.
+ */
+dnslib_dname_t *dnslib_dname_copy(const dnslib_dname_t *dname);
+
+/*!
  * \brief Converts the given domain name to string representation.
  *
  * \note Allocates new memory, remember to free it.
