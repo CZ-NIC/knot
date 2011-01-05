@@ -227,8 +227,8 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
  * \retval 0 if successful.
  * \retval <> 0 if an error occured.
  */
-int dnslib_response_add_rrset_aditional(dnslib_response_t *response,
-                                        const dnslib_rrset_t *rrset, int tc);
+int dnslib_response_add_rrset_additional(dnslib_response_t *response,
+                                         const dnslib_rrset_t *rrset, int tc);
 
 /*!
  * \brief Sets the RCODE of the response.

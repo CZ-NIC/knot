@@ -224,6 +224,14 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 
 /*----------------------------------------------------------------------------*/
 
+dnslib_dname_t *dnslib_dname_copy(const dnslib_dname_t *dname)
+{
+	return dnslib_dname_new_from_wire(dname->name, dname->size,
+	                                  dname->node);
+}
+
+/*----------------------------------------------------------------------------*/
+
 char *dnslib_dname_to_str(const dnslib_dname_t *dname)
 {
 	char *name;
