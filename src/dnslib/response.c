@@ -703,8 +703,8 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_response_add_rrset_aditional(dnslib_response_t *response,
-                                        const dnslib_rrset_t *rrset, int tc)
+int dnslib_response_add_rrset_additional(dnslib_response_t *response,
+                                         const dnslib_rrset_t *rrset, int tc)
 {
 	if (response->header.arcount == response->max_arcount
 	    && dnslib_response_realloc_rrsets(&response->additional,
