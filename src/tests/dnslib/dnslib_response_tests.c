@@ -37,7 +37,7 @@ enum {
 	DNAMES_COUNT = 2,
 	ITEMS_COUNT = 1,
 	RDATA_COUNT = 1,
-	RRSET_COUNT = 1
+	RRSETS_COUNT = 1
 };
 
 static dnslib_dname_t DNAMES[DNAMES_COUNT] =
@@ -49,12 +49,16 @@ static dnslib_rdata_item_t ITEMS[ITEMS_COUNT] = { {&DNAMES[0]} };
 
 static dnslib_rdata_t RDATA[RDATA_COUNT] = { {&ITEMS[0], 1, &RDATA[0]} };
 
-static dnslib_rrset_t RESPONSE_RRSETS[RRSET_COUNT] =
+static dnslib_rrset_t RESPONSE_RRSETS[RRSETS_COUNT] =
 	{ {&DNAMES[0],1 ,1 ,3600, &RDATA[0], NULL} };
 
 /* \note just checking the pointers probably would suffice */
 static int compare_rrsets(const dnslib_rrset_t *rrset1,
-                          const dnslib_rrset_t *rrset2) {
+                          const dnslib_rrset_t *rrset2)
+{
+	assert(rrset1);
+	assert(rrset2);
+
 	return (!(dnslib_dname_compare(rrset1->owner, rrset2->owner) == 0 &&
 	        rrset1->type == rrset2->type &&
 		rrset1->rclass == rrset2->rclass &&
@@ -62,36 +66,81 @@ static int compare_rrsets(const dnslib_rrset_t *rrset1,
 		rrset1->rdata == rrset2->rdata));
 }
 
-static int test_response_new_empty() {
+static int test_response_new_empty()
+{
 	dnslib_response_t *resp = dnslib_response_new_empty(NULL, 0);
 
 	if (resp != NULL) {
+		dnslib_response_free(&resp);		
 		return 1;
 	} else {
+		dnslib_response_free(&resp);
 		return 0;
 	}
 }
 
-static int test_response_add_rrset_answer() {
-	dnslib_response_t *resp = dnslib_response_new_empty(NULL, 0);
+static int test_response_add_rrset(int (*add_func)
+                                   (dnslib_response_t *,
+				   const dnslib_rrset_t *, int), 
+				   int array_id)
+{
+	int errors = 0;
 
+	dnslib_response_t *resp = dnslib_response_new_empty(NULL, 0);
 	assert(resp);
 
-	dnslib_response_add_rrset_answer(resp, &RESPONSE_RRSETS[0], 0);
+	const dnslib_rrset_t **array;
 
-	if (compare_rrsets(resp->answer[0], &RESPONSE_RRSETS[0]) == 0) {
-		return 1;
-	} else {
-		return 0;
+	switch (array_id) {
+		case 1:
+		{
+			array = resp->answer;
+			break;
+		}
+		case 2:
+		{
+			array = resp->authority;
+			break;
+		}
+		case 3:
+		{
+			array = resp->additional;
+			break;
+		}
+		default: {
+			dnslib_response_free(&resp);
+			return 0;
+		}
+	} /* switch */
+
+	for (int i = 0; (i < RRSETS_COUNT) && !errors; i++) {
+		add_func(resp, &RESPONSE_RRSETS[i], 0);
+		errors += compare_rrsets(array[i], &RESPONSE_RRSETS[i]);
 	}
+
+	dnslib_response_free(&resp);
+
+	return (errors == 0);
 }
 
-static int test_response_add_rrset_authority() {
-}
-static int test_response_add_rrset_additional() {
+static int test_response_add_rrset_answer()
+{
+	return test_response_add_rrset(&dnslib_response_add_rrset_answer,
+	                               1);
 }
 
-static const int DNSLIB_RESPONSE_TEST_COUNT = 2;
+static int test_response_add_rrset_authority()
+{
+	return test_response_add_rrset(&dnslib_response_add_rrset_authority,
+	                               2);
+}
+static int test_response_add_rrset_additional()
+{
+	return test_response_add_rrset(&dnslib_response_add_rrset_additional,
+	                               3);
+}
+
+static const int DNSLIB_RESPONSE_TEST_COUNT = 4;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -105,9 +154,18 @@ static int dnslib_response_tests_count(int argc, char *argv[])
  */
 static int dnslib_response_tests_run(int argc, char *argv[])
 {
-	ok(test_response_new_empty(), "response: create empty");
+	int ret;
+	
+	ret = test_response_new_empty();
+	ok(ret, "response: create empty");
+
+	skip(!ret, 3);
 
 	ok(test_response_add_rrset_answer(), "response: add rrset answer");
+	ok(test_response_add_rrset_authority(), "response: add rrset authority");
+	ok(test_response_add_rrset_additional(), "response: add rrset additional");
+
+	endskip;
 
 	return 0;
 }
