@@ -140,27 +140,16 @@ static int dnslib_dname_compare_labels(const uint8_t *label1,
 
 /*----------------------------------------------------------------------------*/
 
-static void dnslib_dname_find_labels(const dnslib_dname_t *d1,
-                                     const dnslib_dname_t *d2,
-                                     const uint8_t **labels1,
-                                     const uint8_t **labels2, int *l1, int *l2)
+static void dnslib_dname_find_labels(const dnslib_dname_t *dname,
+                                     const uint8_t **labels, int *label_count)
 {
-	const uint8_t *name1 = dnslib_dname_name(d1);
-	const uint8_t *pos1 = name1;
-	const uint size1 = dnslib_dname_size(d1);
+	const uint8_t *name = dnslib_dname_name(dname);
+	const uint8_t *pos = name;
+	const uint size = dnslib_dname_size(dname);
 
-	const uint8_t *name2 = dnslib_dname_name(d2);
-	const uint8_t *pos2 = name2;
-	const uint size2 = dnslib_dname_size(d2);
-
-	while (pos1 - name1 < size1 && *pos1 != '\0') {
-		labels1[(*l1)++] = pos1;
-		pos1 += *pos1 + 1;
-	}
-
-	while (pos2 - name2 < size2 && *pos2 != '\0') {
-		labels2[(*l2)++] = pos2;
-		pos2 += *pos2 + 1;
+	while (pos - name < size && *pos != '\0') {
+		labels[(*label_count)++] = pos;
+		pos += *pos + 1;
 	}
 }
 
@@ -372,7 +361,8 @@ int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
 	int l1 = 0;
 	int l2 = 0;
 
-	dnslib_dname_find_labels(sub, domain, labels1, labels2, &l1, &l2);
+	dnslib_dname_find_labels(sub, labels1, &l1);
+	dnslib_dname_find_labels(domain, labels2, &l2);
 
 	if (l1 <= l2) {  // if sub does not have more labes than domain
 		return 0;  // it is not its subdomain
@@ -406,7 +396,8 @@ int dnslib_dname_matched_labels(const dnslib_dname_t *dname1,
 	int l1 = 0;
 	int l2 = 0;
 
-	dnslib_dname_find_labels(dname1, dname2, labels1, labels2, &l1, &l2);
+	dnslib_dname_find_labels(dname1, labels1, &l1);
+	dnslib_dname_find_labels(dname2, labels2, &l2);
 
 	// compare labels from last to first
 	int matched = 0;
@@ -421,6 +412,16 @@ int dnslib_dname_matched_labels(const dnslib_dname_t *dname1,
 	}
 
 	return matched;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_dname_label_count(const dnslib_dname_t *dname)
+{
+	const uint8_t *labels[DNSLIB_MAX_DNAME_LABELS];
+	int l = 0;
+	dnslib_dname_find_labels(dname, labels, &l);
+	return l;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -454,7 +455,8 @@ int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2)
 	int l1 = 0;
 	int l2 = 0;
 
-	dnslib_dname_find_labels(d1, d2, labels1, labels2, &l1, &l2);
+	dnslib_dname_find_labels(d1, labels1, &l1);
+	dnslib_dname_find_labels(d2, labels2, &l2);
 
 	// compare labels from last to first
 	while (l1 > 0 && l2 > 0) {
