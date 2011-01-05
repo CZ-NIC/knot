@@ -260,6 +260,48 @@ const dnslib_node_t *dnslib_zone_find_node(const dnslib_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_zone_find_dname(const dnslib_zone_t *zone,
+                           const dnslib_dname_t *name,
+                           const dnslib_node_t **node,
+                           const dnslib_node_t **closest_encloser)
+{
+	assert(zone);
+	assert(name);
+	assert(node);
+	assert(closest_encloser);
+
+	dnslib_node_t *found = NULL;
+
+	// create dummy node to use for lookup
+	dnslib_node_t *tmp = dnslib_node_new((dnslib_dname_t *)name, NULL);
+	int exact_match = TREE_FIND_LESS_EQUAL(
+	                      zone->nsec3_nodes, dnslib_node, avl, tmp, &found);
+	dnslib_node_free(&tmp, 0);
+
+	*node = found;
+	*closest_encloser = found;
+
+	// there must be at least one node with domain name less or equal to
+	// the searched name if the name belongs to the zone (the root)
+	if (*node == NULL) {
+		return -2;
+	}
+
+	if (!exact_match) {
+		int matched_labels = dnslib_dname_matched_labels(
+				(*closest_encloser)->owner, name);
+		while (matched_labels
+		       < dnslib_dname_label_count((*closest_encloser)->owner)) {
+			(*closest_encloser) = (*closest_encloser)->parent;
+			assert(*closest_encloser);
+		}
+	}
+
+	return exact_match;
+}
+
+/*----------------------------------------------------------------------------*/
+
 const dnslib_node_t *dnslib_zone_find_nsec3_node(const dnslib_zone_t *zone,
                                                  const dnslib_dname_t *name)
 {
