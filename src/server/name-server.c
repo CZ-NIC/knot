@@ -396,6 +396,8 @@ static void ns_put_authority_soa(const zdb_zone_t *zone, ldns_pkt *resp)
 
 static void ns_put_glues(const dnslib_node_t *node, dnslib_response_t *resp)
 {
+	// TODO!!!
+
 //	ldns_rr_list *glues = zn_get_glues(node);
 
 //	if (glues == NULL) {
@@ -512,87 +514,94 @@ static void ns_answer_from_node(const zn_node_t *node, const zdb_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static ldns_rr_list *ns_cname_from_dname(const ldns_rr *dname_rr,
-                                         const ldns_rdf *qname,
-                                         ldns_rr_list *copied_rrs)
-{
-	debug_ns("Synthetizing CNAME from DNAME...\n");
+//static dnslib_rrset_t *ns_cname_from_dname(const dnslib_rdata_t *dname_rdata,
+//                                           const dnslib_dname_t *qname)
+//{
+//	debug_ns("Synthetizing CNAME from DNAME...\n");
 
-	ldns_rr *cname_rr = ldns_rr_new_frm_type(LDNS_RR_TYPE_CNAME);
-	debug_ns("Creating CNAME with owner %s.\n", ldns_rdf2str(qname));
-	ldns_rr_set_owner(cname_rr, ldns_rdf_clone(qname));
-	ldns_rr_set_ttl(cname_rr, SYNTH_CNAME_TTL);
+//	ldns_rr *cname_rr = ldns_rr_new_frm_type(LDNS_RR_TYPE_CNAME);
+//	debug_ns("Creating CNAME with owner %s.\n", ldns_rdf2str(qname));
+//	ldns_rr_set_owner(cname_rr, ldns_rdf_clone(qname));
+//	ldns_rr_set_ttl(cname_rr, SYNTH_CNAME_TTL);
 
-	// copy the owner, replace last labels with DNAME
-	// copying several times - no better way to do it in ldns
-	ldns_rdf *tmp = ldns_dname_reverse(qname);
-	uint8_t lcount = ldns_dname_label_count(ldns_rr_owner(dname_rr));
-	assert(ldns_dname_label_count(tmp) >= lcount);
-	ldns_rdf *tmp2 = ldns_dname_clone_from(tmp, lcount);
-	ldns_rdf *cname = ldns_dname_reverse(tmp2);
+//	// copy the owner, replace last labels with DNAME
+//	// copying several times - no better way to do it in ldns
+//	ldns_rdf *tmp = ldns_dname_reverse(qname);
+//	uint8_t lcount = ldns_dname_label_count(ldns_rr_owner(dname_rr));
+//	assert(ldns_dname_label_count(tmp) >= lcount);
+//	ldns_rdf *tmp2 = ldns_dname_clone_from(tmp, lcount);
+//	ldns_rdf *cname = ldns_dname_reverse(tmp2);
 
-	ldns_status s = ldns_dname_cat(cname, ldns_rr_rdf(dname_rr, 0));
-	if (s != LDNS_STATUS_OK) {
-		ldns_rdf_deep_free(cname);
-		ldns_rr_free(cname_rr);
-		return NULL;
-	}
+//	ldns_status s = ldns_dname_cat(cname, ldns_rr_rdf(dname_rr, 0));
+//	if (s != LDNS_STATUS_OK) {
+//		ldns_rdf_deep_free(cname);
+//		ldns_rr_free(cname_rr);
+//		return NULL;
+//	}
 
-	debug_ns("CNAME canonical name: %s.\n", ldns_rdf2str(cname));
+//	debug_ns("CNAME canonical name: %s.\n", ldns_rdf2str(cname));
 
-	ldns_rr_set_rdf(cname_rr, cname, 0);
-	ldns_rr_set_rd_count(cname_rr, 1);
+//	ldns_rr_set_rdf(cname_rr, cname, 0);
+//	ldns_rr_set_rd_count(cname_rr, 1);
 
-	ldns_rdf_deep_free(tmp);
-	ldns_rdf_deep_free(tmp2);
+//	ldns_rdf_deep_free(tmp);
+//	ldns_rdf_deep_free(tmp2);
 
-	ldns_rr_list *cname_rrset = ldns_rr_list_new();
-	ldns_rr_list_push_rr(cname_rrset, cname_rr);
+//	ldns_rr_list *cname_rrset = ldns_rr_list_new();
+//	ldns_rr_list_push_rr(cname_rrset, cname_rr);
 
-	ldns_rr_list_push_rr_list(copied_rrs, cname_rrset);
+//	ldns_rr_list_push_rr_list(copied_rrs, cname_rrset);
 
-	return cname_rrset;
-}
+//	return cname_rrset;
+//}
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_dname_too_long(const ldns_rr *dname_rr, const ldns_rdf *qname)
+static int ns_dname_is_too_long(const dnslib_rrset_t *dname_rrset,
+                                const dnslib_dname_t *qname)
 {
-	if (ldns_dname_label_count(qname)
-	        - ldns_dname_label_count(ldns_rr_owner(dname_rr))
-	        + ldns_dname_label_count(ldns_rr_rdf(dname_rr, 0))
-	        > LDNS_MAX_DOMAINLEN) {
-		return 0;
-	} else {
+	// TODO: add function for getting DNAME target
+	if (dnslib_dname_label_count(qname)
+	        - dnslib_dname_label_count(dnslib_rrset_owner(dname_rrset))
+	        + dnslib_dname_label_count(dnslib_rdata_get_item(
+				dnslib_rrset_rdata(dname_rrset), 0)->dname)
+	        > DNSLIB_MAX_DNAME_LENGTH) {
 		return 1;
+	} else {
+		return 0;
 	}
 }
 
 /*----------------------------------------------------------------------------*/
 
-static void ns_process_dname(ldns_rr_list *dname_rrset, const ldns_rdf *qname,
-                             ldns_pkt *response, ldns_rr_list *copied_rrs)
+static void ns_process_dname(const dnslib_rrset_t *dname_rrset,
+                             const dnslib_dname_t *qname,
+                             dnslib_response_t *resp)
 {
-	debug_ns("Processing DNAME for owner %s...\n",
-	         ldns_rdf2str(ldns_rr_list_owner(dname_rrset)));
-	// there should be only one DNAME
-	assert(ldns_rr_list_rr_count(dname_rrset) == 1);
+	char *name = dnslib_dname_to_str(dnslib_rrset_owner(dname_rrset));
+	debug_ns("Processing DNAME for owner %s...\n", name);
+	free(name);
+
+	// TODO: check the number of RRs in the RRSet??
+
 	// put the DNAME RRSet into the answer
-	ns_try_put_rrset(dname_rrset, LDNS_SECTION_ANSWER, 1, response);
+	dnslib_response_add_rrset_answer(resp, dname_rrset, 1);
 
-	// take only first dname RR
-	ldns_rr *dname_rr = ldns_rr_list_rr(dname_rrset, 0);
+	// take only first DNAME RDATA
+	const dnslib_rdata_t *dname_rdata = dnslib_rrset_rdata(dname_rrset);
 
-	if (ns_dname_too_long(dname_rr, qname) == 0) {
-		ldns_pkt_set_rcode(response, LDNS_RCODE_YXDOMAIN);
+	if (ns_dname_is_too_long(dname_rrset, qname)) {
+		dnslib_response_set_rcode(resp, DNSLIB_RCODE_YXDOMAIN);
 		return;
 	}
 
 	// synthetize CNAME (no way to tell that client supports DNAME)
-	ldns_rr_list *synth_cname = ns_cname_from_dname(dname_rr, qname,
-	                                                copied_rrs);
-	ns_try_put_rrset(synth_cname, LDNS_SECTION_ANSWER, 1, response);
-	ldns_rr_list_free(synth_cname);
+	//dnslib_rrset_t *synth_cname = ns_cname_from_dname(dname_rdata, qname);
+	//dnslib_response_add_rrset_answer(resp, synth_cname, 1);
+	//dnslib_rrset_deep_free(synth_cname);
+
+//	ns_try_put_rrset(synth_cname, LDNS_SECTION_ANSWER, 1, response);
+//	ldns_rr_list_free(synth_cname);
 	// do not search for the name in new zone (out-of-bailiwick)
 }
 
@@ -771,36 +780,10 @@ static const zn_node_t *ns_strip_and_find(const zdb_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static void ns_answer(dnslib_zonedb_t *db, dnslib_response_t *resp)
+static void ns_answer_from_zone(const dnslib_zone_t *zone,
+				const dnslib_dname_t *qname,
+				dnslib_response_t *resp)
 {
-	/* copy the QNAME, as we may be stripping labels and the QNAME is
-	   used in a response packet */
-	//ldns_rdf *qname = ldns_rdf_clone(ldns_rr_owner(question));
-
-	dnslib_dname_t *qname = dnslib_dname_copy(resp->question.qname);
-	uint16_t qtype = resp->question.qtype;
-
-	char *name_str = dnslib_dname_to_str(qname);
-	debug_ns("Trying to find zone for QNAME %s\n", name_str);
-	free(name_str);
-
-	// find zone in which to search for the name
-	const dnslib_zone_t *zone =
-		ns_get_zone_for_qname(db, qname, qtype);
-
-	// if no zone found, return REFUSED
-	if (zone == NULL) {
-		dnslib_response_set_rcode(resp, DNSLIB_RCODE_REFUSED);
-		dnslib_dname_free(&qname);
-		return;
-	}
-
-	name_str = dnslib_dname_to_str(zone->apex->owner);
-	debug_ns("Found zone for QNAME %s\n", name_str);
-	free(name_str);
-
-	//debug_ns("Size of response packet: %u\n", ldns_pkt_size(response));
-
 	const dnslib_node_t *node = NULL;
 	const dnslib_node_t *closest_encloser = NULL;
 	int cname = 0;
@@ -826,10 +809,93 @@ static void ns_answer(dnslib_zonedb_t *db, dnslib_response_t *resp)
 			ns_referral(closest_encloser, resp);
 			break;
 		}
+
+		if (!exact_match) {
+			// DNAME?
+			const dnslib_rrset_t *dname_rrset =
+				dnslib_node_rrset(closest_encloser,
+				                  DNSLIB_RRTYPE_DNAME);
+			if (dname_rrset != NULL) {
+				ns_process_dname(dname_rrset, qname, resp);
+				break;
+			} else {
+//				// wildcard child?
+//				debug_ns("Trying to find wildcard child of node"
+//					 "%s.\n", ldns_rdf2str(qname));
+//				ldns_rdf *wildc = ldns_dname_new_frm_str("*");
+//				if (ldns_dname_cat(wildc, qname)
+//					!= LDNS_STATUS_OK) {
+//					log_error("Unknown error occured.\n");
+//					ldns_pkt_set_rcode(response,
+//					                   LDNS_RCODE_SERVFAIL);
+//					ldns_rdf_deep_free(wildc);
+//					break;
+//				}
+
+//				const zn_node_t *wildcard_node =
+//					zdb_find_name_in_zone(zone, wildc);
+//				ldns_rdf_deep_free(wildc);
+
+//				debug_ns("Found node: %p\n", wildcard_node);
+
+//				if (wildcard_node == NULL) {
+//					if (cname == 0) {
+//						// return NXDOMAIN
+//						ldns_pkt_set_rcode(response,
+//							LDNS_RCODE_NXDOMAIN);
+//					} else {
+//						ldns_pkt_set_rcode(response,
+//							LDNS_RCODE_NOERROR);
+//					}
+//					break;
+//				} else {
+//					node = wildcard_node;
+//					// renew the qname to be the old one
+//					// (not stripped)
+//					ldns_rdf_deep_free(qname);
+//					qname = ldns_rdf_clone(qname_old);
+//					debug_ns("Node's owner: %s\n",
+//					         ldns_rdf2str(node->owner));
+//				}
+			}
+		}
 	}
 
-	dnslib_dname_free(&qname);
 	dnslib_dname_free(&qname_old);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void ns_answer(dnslib_zonedb_t *db, dnslib_response_t *resp)
+{
+	// TODO: the copying is not needed maybe
+	dnslib_dname_t *qname = dnslib_dname_copy(resp->question.qname);
+	uint16_t qtype = resp->question.qtype;
+
+	char *name_str = dnslib_dname_to_str(qname);
+	debug_ns("Trying to find zone for QNAME %s\n", name_str);
+	free(name_str);
+
+	// find zone in which to search for the name
+	const dnslib_zone_t *zone =
+		ns_get_zone_for_qname(db, qname, qtype);
+
+	// if no zone found, return REFUSED
+	if (zone == NULL) {
+		dnslib_response_set_rcode(resp, DNSLIB_RCODE_REFUSED);
+		dnslib_dname_free(&qname);
+		return;
+	}
+
+	name_str = dnslib_dname_to_str(zone->apex->owner);
+	debug_ns("Found zone for QNAME %s\n", name_str);
+	free(name_str);
+
+	//debug_ns("Size of response packet: %u\n", ldns_pkt_size(response));
+
+	ns_answer_from_zone(zone, qname, resp);
+
+	dnslib_dname_free(&qname);
 
 //		uint labels = ldns_dname_label_count(qname);
 //		uint labels_found = labels;
