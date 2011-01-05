@@ -60,6 +60,11 @@ int dnslib_rrset_set_rrsigs(dnslib_rrset_t *rrset, dnslib_rrsig_set_t *rrsigs)
 	return 0;
 }
 
+const dnslib_dname_t *dnslib_rrset_owner(const dnslib_rrset_t *rrset)
+{
+	return rrset->owner;
+}
+
 uint16_t dnslib_rrset_type(const dnslib_rrset_t *rrset)
 {
 	return rrset->type;

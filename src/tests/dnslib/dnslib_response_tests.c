@@ -33,6 +33,33 @@ unit_api dnslib_response_tests_api = {
  *  Unit implementation.
  */
 
+static int load_raw_packets(uint8_t **raw_packets, uint8_t *count,
+                            const char *filename)
+{
+	assert(raw_packets == NULL);
+
+	FILE *f;
+	uint8_t tmp_size = 0;
+
+	f = fopen(filename, "rb");
+
+	if (f == NULL) {
+		return 0;
+	}
+
+	fread(count, sizeof(uint8_t), 1, f);
+
+	raw_packets = malloc(sizeof(uint8_t *));
+
+	for (int i = 0; i < *count; i++) {
+		fread(&tmp_size, sizeof(uint8_t), 1, f);
+		raw_packets[i] = malloc(sizeof(uint8_t) * tmp_size);
+		fread(raw_packets[i], sizeof(uint8_t), tmp_size, f);
+	}
+
+	return 0;
+}
+
 enum {
 	DNAMES_COUNT = 2,
 	ITEMS_COUNT = 1,
@@ -44,8 +71,7 @@ static dnslib_dname_t DNAMES[DNAMES_COUNT] =
 	{ {(uint8_t *)"6example3com", 12, NULL},     //0's at the end are added
           {(uint8_t *)"2ns6example3com", 15, NULL} };
 
-//TODO I want to initialize .raw_data too...this is C89 style
-static dnslib_rdata_item_t ITEMS[ITEMS_COUNT] = { {&DNAMES[0]} };
+static dnslib_rdata_item_t ITEMS[ITEMS_COUNT] = { {.dname = &DNAMES[0]} };
 
 static dnslib_rdata_t RDATA[RDATA_COUNT] = { {&ITEMS[0], 1, &RDATA[0]} };
 
@@ -92,18 +118,15 @@ static int test_response_add_rrset(int (*add_func)
 	const dnslib_rrset_t **array;
 
 	switch (array_id) {
-		case 1:
-		{
+		case 1: {
 			array = resp->answer;
 			break;
 		}
-		case 2:
-		{
+		case 2: {
 			array = resp->authority;
 			break;
 		}
-		case 3:
-		{
+		case 3:	{
 			array = resp->additional;
 			break;
 		}
