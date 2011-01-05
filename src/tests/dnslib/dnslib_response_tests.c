@@ -33,6 +33,33 @@ unit_api dnslib_response_tests_api = {
  *  Unit implementation.
  */
 
+static int load_raw_packets(uint8_t **raw_packets, uint8_t *count,
+                            const char *filename)
+{
+	assert(raw_packets == NULL);
+
+	FILE *f;
+	uint8_t tmp_size = 0;
+
+	f = fopen(filename, "rb");
+
+	if (f == NULL) {
+		return 0;
+	}
+
+	fread(count, sizeof(uint8_t), 1, f);
+
+	raw_packets = malloc(sizeof(uint8_t *));
+
+	for (int i = 0; i < *count; i++) {
+		fread(&tmp_size, sizeof(uint8_t), 1, f);
+		raw_packets[i] = malloc(sizeof(uint8_t) * tmp_size);
+		fread(raw_packets[i], sizeof(uint8_t), tmp_size, f);
+	}
+
+	return 0;
+}
+
 enum {
 	DNAMES_COUNT = 2,
 	ITEMS_COUNT = 1,
