@@ -182,6 +182,17 @@ int dnslib_dname_matched_labels(const dnslib_dname_t *dname1,
                                 const dnslib_dname_t *dname2);
 
 /*!
+ * \brief Returns the number of labels in the domain name.
+ *
+ * \param dname Domain name to get the label count of.
+ *
+ * \return Number of labels in \a dname.
+ *
+ * \todo Find out if this counts the root label also.
+ */
+int dnslib_dname_label_count(const dnslib_dname_t *dname);
+
+/*!
  * \brief Destroys the given domain name.
  *
  * Frees also the data within the struct. This is somewhat different behaviour
