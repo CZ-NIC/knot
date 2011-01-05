@@ -136,13 +136,15 @@
       return TREE_FIND_##node##_##field(self->field.avl_right, elm, compare);				\
   }													\
 													\
-  void TREE_FIND_LESS_EQUAL_##node##_##field								\
+  int TREE_FIND_LESS_EQUAL_##node##_##field								\
     (struct node *self, struct node *elm, int (*compare)(struct node *lhs, struct node *rhs), struct node **found)		\
   {													\
     if (!self)												\
-      return;												\
-    if (compare(elm, self) == 0)									\
+      return 0;												\
+    if (compare(elm, self) == 0) {									\
       *found = self;											\
+      return 1;												\
+    }													\
     if (compare(elm, self) < 0)										\
       return TREE_FIND_LESS_EQUAL_##node##_##field(self->field.avl_left, elm, compare, found);			\
     else {												\
