@@ -44,8 +44,7 @@ static dnslib_dname_t DNAMES[DNAMES_COUNT] =
 	{ {(uint8_t *)"6example3com", 12, NULL},     //0's at the end are added
           {(uint8_t *)"2ns6example3com", 15, NULL} };
 
-//TODO I want to initialize .raw_data too...this is C89 style
-static dnslib_rdata_item_t ITEMS[ITEMS_COUNT] = { {&DNAMES[0]} };
+static dnslib_rdata_item_t ITEMS[ITEMS_COUNT] = { {.dname = &DNAMES[0]} };
 
 static dnslib_rdata_t RDATA[RDATA_COUNT] = { {&ITEMS[0], 1, &RDATA[0]} };
 
@@ -92,18 +91,15 @@ static int test_response_add_rrset(int (*add_func)
 	const dnslib_rrset_t **array;
 
 	switch (array_id) {
-		case 1:
-		{
+		case 1: {
 			array = resp->answer;
 			break;
 		}
-		case 2:
-		{
+		case 2: {
 			array = resp->authority;
 			break;
 		}
-		case 3:
-		{
+		case 3:	{
 			array = resp->additional;
 			break;
 		}
