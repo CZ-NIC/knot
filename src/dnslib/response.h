@@ -267,9 +267,7 @@ int dnslib_response_to_wire(dnslib_response_t *response,
  */
 void dnslib_response_free(dnslib_response_t **response);
 
-#ifdef DNSLIB_RESPONSE_DEBUG
 void dnslib_response_dump(const dnslib_response_t *resp);
-#endif
 
 #endif /* _CUTEDNS_DNSLIB_RESPONSE_H_ */
 

@@ -158,6 +158,9 @@ static void dnslib_response_init(dnslib_response_t *resp,
 
 	// save default pointers to the space after the structure
 	dnslib_response_init_pointers(resp);
+
+	// set the QR bit
+	dnslib_packet_flags_set_qr(&resp->header.flags1);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -177,8 +180,13 @@ static int dnslib_response_parse_header(const uint8_t **pos, size_t *remaining,
 	}
 
 	header->id = dnslib_packet_get_id(*pos);
+	// copy some of the flags: OPCODE and RD
+	// do this by copying flags1 and setting QR to 1, AA to 0 and TC to 0
 	header->flags1 = dnslib_packet_get_flags1(*pos);
-	header->flags2 = dnslib_packet_get_flags2(*pos);
+	dnslib_packet_flags_set_qr(&header->flags1);
+	dnslib_packet_flags_clear_aa(&header->flags1);
+	dnslib_packet_flags_clear_tc(&header->flags1);
+	// do not copy flags2 (all set by server)
 	header->qdcount = dnslib_packet_get_qdcount(*pos);
 	header->ancount = dnslib_packet_get_ancount(*pos);
 	header->nscount = dnslib_packet_get_nscount(*pos);
@@ -800,7 +808,7 @@ void dnslib_response_free(dnslib_response_t **response)
 }
 
 /*----------------------------------------------------------------------------*/
-#ifdef DNSLIB_RESPONSE_DEBUG
+
 void dnslib_response_dump(const dnslib_response_t *resp)
 {
 	debug_dnslib_response("DNS response:\n-----------------------------\n");
@@ -840,4 +848,3 @@ void dnslib_response_dump(const dnslib_response_t *resp)
 	debug_dnslib_response("\nResponse size: %d\n", resp->size);
 	debug_dnslib_response("\n-----------------------------\n");
 }
-#endif /* DNSLIB_RESPONSE_DEBUG */
