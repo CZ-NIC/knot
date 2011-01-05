@@ -116,6 +116,11 @@ dnslib_node_t *dnslib_zone_get_nsec3_node(const dnslib_zone_t *zone,
 const dnslib_node_t *dnslib_zone_find_node(const dnslib_zone_t *zone,
                                            const dnslib_dname_t *name);
 
+int dnslib_zone_find_dname(const dnslib_zone_t *zone,
+                           const dnslib_dname_t *name,
+                           const dnslib_node_t **node,
+                           const dnslib_node_t **closest_encloser);
+
 /*!
  * \brief Tries to find a node with the specified name among the NSEC3 nodes
  *        of the zone.
