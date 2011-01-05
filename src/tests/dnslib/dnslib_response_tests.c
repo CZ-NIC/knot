@@ -33,6 +33,22 @@ unit_api dnslib_response_tests_api = {
  *  Unit implementation.
  */
 
+/* temporary, can only hold most basic case now */
+struct test_response {
+	dnslib_dname_t *owner;
+	uint16_t rclass;
+	uint16_t type;
+	uint16_t id;
+	uint8_t flags1;
+	uint8_t flags2;
+	uint16_t qdcount;
+	uint16_t ancount;
+	uint16_t nscount;
+	uint16_t arcount;
+};
+
+typedef struct test_response test_response_t;
+
 static int load_raw_packets(uint8_t **raw_packets, uint8_t *count,
                             const char *filename)
 {
@@ -56,6 +72,8 @@ static int load_raw_packets(uint8_t **raw_packets, uint8_t *count,
 		raw_packets[i] = malloc(sizeof(uint8_t) * tmp_size);
 		fread(raw_packets[i], sizeof(uint8_t), tmp_size, f);
 	}
+
+	fclose(f);
 
 	return 0;
 }
