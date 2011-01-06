@@ -320,6 +320,21 @@ int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
 
 /*----------------------------------------------------------------------------*/
 
+dnslib_rdata_t *dnslib_rdata_copy(const dnslib_rdata_t *rdata)
+{
+	dnslib_rdata_t *copy = dnslib_rdata_new();
+	if (copy == NULL) {
+		return NULL;
+	}
+	if (dnslib_rdata_set_items(copy, rdata->items, rdata->count) != 0) {
+		dnslib_rdata_free(&copy);
+		return NULL;
+	}
+	return copy;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
                          const uint8_t *format)
 {
