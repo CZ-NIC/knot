@@ -212,7 +212,7 @@ static test_response_t RESPONSES[RESPONSE_COUNT] =
 	{ {&DNAMES[0], 1, 1, 12345, 0, 0, 0, 1, 0, 0, NULL,
 	   RESPONSE_RRSETS, NULL} };
 
-static ldns_packet_t LDNS_PACKETS[LDNS_PACKET_COUNT] =
+static ldns_pkt LDNS_PACKETS[LDNS_PACKET_COUNT] =
 	{ };
 
 /* \note just checking the pointers probably would suffice */
@@ -444,21 +444,21 @@ static int test_response_to_wire()
 		resp = dnslib_response_new_empty(NULL, 0);
 		for (int j = 0; j < RESPONSES[i].ancount; j++) {
 			dnslib_response_add_rrset_answer(resp,
-				&(RESPONSES[i].answer[j]));
+				&(RESPONSES[i].answer[j]), 0);
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			dnslib_response_add_rrset_additional(resp,
-				&(RESPONSES[i].additional[j]));
+				&(RESPONSES[i].additional[j]), 0);
 		}
-		for (int j = 0; j < RESPONSES[i].arcout; j++) {
+		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			dnslib_response_add_rrset_authority(resp,
-				&(RESPONSES[i].authority[j]));
+				&(RESPONSES[i].authority[j]), 0);
 		}
 
 		dnslib_response_free(&resp);
 	}
 	
-	return (errors == 1)
+	return (errors == 1);
 }
 
 static const int DNSLIB_RESPONSE_TEST_COUNT = 6;
