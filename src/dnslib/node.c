@@ -65,6 +65,7 @@ dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent)
 	ret->parent = parent;
 	ret->next = NULL;
 	ret->rrsets = skip_create_list(compare_rrset_types);
+	ret->wildcard_child = NULL;
 
 	ret->avl.avl_left = NULL;
 	ret->avl.avl_right = NULL;
@@ -107,6 +108,17 @@ void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent)
 const dnslib_dname_t *dnslib_node_owner(const dnslib_node_t *node)
 {
 	return node->owner;
+}
+
+const dnslib_node_t *dnslib_node_wildcard_child(const dnslib_node_t *node)
+{
+	return node->wildcard_child;
+}
+
+void dnslib_node_set_wildcard_child(dnslib_node_t *node,
+                                    dnslib_node_t *wildcard_child)
+{
+	node->wildcard_child = wildcard_child;
 }
 
 void dnslib_node_set_deleg_point(dnslib_node_t *node)
