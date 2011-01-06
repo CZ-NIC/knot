@@ -149,9 +149,9 @@ struct dnslib_response {
 	/*! \brief Information needed for compressing domain names in packet. */
 	dnslib_compressed_dnames_t compression;
 
-	dnslib_dname_t **tmp_dnames; /*!< Synthetized domain names. */
-	short tmp_dname_count;   /*!< Count of synthetized domain names. */
-	short tmp_dname_max;     /*!< Allocated space for synthetized dnames. */
+	const dnslib_rrset_t **tmp_rrsets; /*!< Synthetized RRSets. */
+	short tmp_rrsets_count;  /*!< Count of synthetized RRSets. */
+	short tmp_rrsets_max;    /*!< Allocated space for synthetized RRSets. */
 };
 
 typedef struct dnslib_response dnslib_response_t;
@@ -244,6 +244,10 @@ void dnslib_response_set_rcode(dnslib_response_t *response, short rcode);
  * \param response Response in which the AA bit should be set.
  */
 void dnslib_response_set_aa(dnslib_response_t *response);
+
+
+int dnslib_response_add_tmp_rrset(dnslib_response_t *response,
+                                  dnslib_rrset_t *tmp_rrset);
 
 /*!
  * \brief Converts the response to wire format.
