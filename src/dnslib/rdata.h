@@ -175,6 +175,15 @@ int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
                          uint8_t *buffer, uint buf_size);
 
 /*!
+ * \brief Copies the given RDATA.
+ *
+ * \param rdata RDATA to copy.
+ *
+ * \return Copy of \a rdata.
+ */
+dnslib_rdata_t *dnslib_rdata_copy(const dnslib_rdata_t *rdata);
+
+/*!
  * \brief Destroys the RDATA structure without deleting RDATA items.
  *
  * Also sets the given pointer to NULL.
