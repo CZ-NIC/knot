@@ -384,3 +384,23 @@ int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
 	assert(cmp == 0);
 	return 0;
 }
+
+/*----------------------------------------------------------------------------*/
+
+const dnslib_dname_t *dnslib_rdata_cname_name(const dnslib_rdata_t *rdata)
+{
+	if (rdata->count < 1) {
+		return NULL;
+	}
+	return rdata->items[0].dname;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const dnslib_dname_t *dnslib_rdata_dname_target(const dnslib_rdata_t *rdata)
+{
+	if (rdata->count < 1) {
+		return NULL;
+	}
+	return rdata->items[0].dname;
+}
