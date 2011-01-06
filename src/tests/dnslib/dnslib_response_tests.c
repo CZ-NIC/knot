@@ -10,6 +10,7 @@
  */
 
 #include <assert.h>
+#include <inttypes.h>
 
 #include "tap_unit.h"
 
@@ -17,6 +18,7 @@
 #include "rdata.h"
 #include "rrset.h"
 #include "dname.h"
+
 
 static int dnslib_response_tests_count(int argc, char *argv[]);
 static int dnslib_response_tests_run(int argc, char *argv[]);
@@ -110,18 +112,21 @@ static int load_parsed_packets(test_response_t **responses, uint *count,
 		tmp_resp = malloc(sizeof(test_response_t));
 		tmp_str[strlen(tmp_str)] = c;
 		tmp_str[strlen(tmp_str) + 1] = 0;
-		if (c == '\n') {
-			if ((sscanf(tmp_str, "%c;%c;%d;%c;%c;%c;%c;%c;%c;%s",
-			       &(tmp_resp->type),
-			       &(tmp_resp->rclass),
-			       &(tmp_resp->id),
-			       &(tmp_resp->flags1),
-			       &(tmp_resp->flags2),
-			       &(tmp_resp->qdcount),
-			       &(tmp_resp->ancount),
-   			       &(tmp_resp->nscount),
-			       &(tmp_resp->arcount),
-			       tmp_dname_str)) == 10) {
+		if (c == '\n') { /* TODO what do I use with stdint types */
+			if ((sscanf(tmp_str, "%" SCNu16 ";%" SCNu16 ";%"
+				    SCNu16 ";%" SCNu8 ";%" SCNu8 ";%"
+				    SCNu16 ";%" SCNu16 ";%" SCNu16 ";%"
+				    SCNu16 ";%s",
+                	            &(tmp_resp->type),
+			            &(tmp_resp->rclass),
+				    &(tmp_resp->id),
+			            &(tmp_resp->flags1),
+			            &(tmp_resp->flags2),
+			            &(tmp_resp->qdcount),
+			            &(tmp_resp->ancount),
+			            &(tmp_resp->nscount),
+			            &(tmp_resp->arcount),
+			            tmp_dname_str)) == 10) {
 				dnslib_dname_t *tmp_dname =
 					dnslib_dname_new_from_str(
 						tmp_dname_str,
@@ -267,23 +272,20 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	ret = test_response_new_empty();
 	ok(ret, "response: create empty");
 
-	skip(!ret, 3);
+	skip(!ret, 4);
 
 	ok(test_response_add_rrset_answer(), "response: add rrset answer");
 	ok(test_response_add_rrset_authority(), "response: add rrset authority");
 	ok(test_response_add_rrset_additional(), "response: add rrset additional");
 
-	endskip;
-
 	test_response_t **responses = NULL;
-
 	uint response_count;
 
 	load_parsed_packets(responses, &response_count,
 	                    "src/tests/dnslib/files/parsed_packets");
-
 	diag("read %d responses\n", response_count);
 
+	endskip;
 
 	return 0;
 }
