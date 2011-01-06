@@ -58,10 +58,10 @@ struct test_raw_packet {
 
 typedef struct test_raw_packet test_raw_packet_t;
 
-static int load_raw_packets(test_raw_packet_t **raw_packets, uint8_t *count,
+static int load_raw_packets(test_raw_packet_t ***raw_packets, uint8_t *count,
                             const char *filename)
 {
-	assert(raw_packets == NULL);
+	assert(*raw_packets == NULL);
 
 	FILE *f;
 	uint8_t tmp_size = 0;
@@ -69,19 +69,20 @@ static int load_raw_packets(test_raw_packet_t **raw_packets, uint8_t *count,
 	f = fopen(filename, "rb");
 
 	if (f == NULL) {
+		diag("could not open file: %s\n", filename);
 		return 0;
 	}
 
 	fread(count, sizeof(uint8_t), 1, f);
 
-	raw_packets = malloc(sizeof(test_raw_packet_t *) * *count);
+	*raw_packets = malloc(sizeof(test_raw_packet_t *) * *count);
 
 	for (int i = 0; i < *count; i++) {
 		fread(&tmp_size, sizeof(uint8_t), 1, f);
-		raw_packets[i] = malloc(sizeof(test_raw_packet_t));
-		raw_packets[i]->data = malloc(sizeof(uint8_t) * tmp_size);
-		fread(raw_packets[i]->data, sizeof(uint8_t), tmp_size, f);
-		raw_packets[i]->size = tmp_size;
+		(*raw_packets)[i] = malloc(sizeof(test_raw_packet_t));
+		(*raw_packets)[i]->data = malloc(sizeof(uint8_t) * (tmp_size));
+		fread((*raw_packets)[i]->data, sizeof(uint8_t), tmp_size, f);
+		(*raw_packets)[i]->size = tmp_size;
 	}
 
 	fclose(f);
@@ -89,10 +90,10 @@ static int load_raw_packets(test_raw_packet_t **raw_packets, uint8_t *count,
 	return 0;
 }
 
-static int load_parsed_packets(test_response_t **responses, uint *count,
+static int load_parsed_packets(test_response_t ***responses, uint *count,
                                const char *filename)
 {
-	assert(responses == NULL);
+	assert(*responses == NULL);
 
 	FILE *f;
 
@@ -115,13 +116,13 @@ static int load_parsed_packets(test_response_t **responses, uint *count,
 
 	while ((c = getc(f)) != EOF) {
 		//apend
-		responses = realloc(responses,
+		*responses = realloc(*responses,
 		                    sizeof(test_response_t *) * (*count + 1));
 
-		tmp_resp = malloc(sizeof(test_response_t));
 		tmp_str[strlen(tmp_str)] = c;
 		tmp_str[strlen(tmp_str) + 1] = 0;
 		if (c == '\n') { /* TODO what do I use with stdint types */
+			tmp_resp = malloc(sizeof(test_response_t));
 			if ((sscanf(tmp_str, "%" SCNu16 ";%" SCNu16 ";%"
 				    SCNu16 ";%" SCNu8 ";%" SCNu8 ";%"
 				    SCNu16 ";%" SCNu16 ";%" SCNu16 ";%"
@@ -142,8 +143,10 @@ static int load_parsed_packets(test_response_t **responses, uint *count,
 						strlen(tmp_dname_str),
 						NULL);
 				tmp_resp->owner = tmp_dname;
-				responses[*count] = tmp_resp;
+				(*responses)[*count] = tmp_resp;
 				(*count)++;
+			} else {
+				free(tmp_resp);
 			}
 			memset(tmp_str, 0, 1000);
 		}
@@ -265,35 +268,53 @@ static int test_response_add_rrset_additional()
 static int check_response(dnslib_response_t *resp, test_response_t *test_resp)
 {
 	/* again, in case of dnames, pointer would probably suffice */
+	if (dnslib_dname_compare(resp->question.qname,
+	                             test_resp->owner) != 0) {
+		char *tmp_dname1, *tmp_dname2;
+		tmp_dname1 = dnslib_dname_to_str(test_resp->owner);
+		tmp_dname2 = dnslib_dname_to_str(resp->question.qname);
+		diag("Qname in response is wrong: should be: %s is: %s\n",
+		     tmp_dname1, tmp_dname2);
+		free(tmp_dname1);
+		free(tmp_dname2);
+		return 0;
+	}
+
 	/* TODO possibly add a diag to show where it has failed */
-	return (!(dnslib_dname_compare(resp->question.qname,
-	                             test_resp->owner) == 0 &&
-	        resp->question.qtype == test_resp->type &&
-		resp->question.qclass == test_resp->rclass &&
-		resp->header.flags1 == test_resp->flags1 &&
-		resp->header.flags2 == test_resp->flags2 &&
+	if (!(resp->question.qtype == test_resp->type &&
+	    resp->question.qclass == test_resp->rclass &&
+	    resp->header.flags1 == test_resp->flags1 &&
+	    resp->header.flags2 == test_resp->flags2 &&
 		resp->header.qdcount == test_resp->qdcount &&
 		resp->header.qdcount == test_resp->ancount &&
 		resp->header.qdcount == test_resp->nscount &&
-		resp->header.qdcount == test_resp->arcount));
+		resp->header.qdcount == test_resp->arcount)) {
+		diag("One of numeric variables is wrong\n");
+	}
+	return 1;
 }
 
 static int test_response_parse_query(test_response_t **responses,
                                      test_raw_packet_t **raw_queries,
                                      uint count)
 {
+	assert(responses);
+	assert(raw_queries);
+	
 	int errors = 0;
 	dnslib_response_t *resp = NULL;
-	getchar();
 	for (int i = 0; (i < count) && !errors; i++) {
 		resp = dnslib_response_new_empty(NULL, 0);
 		assert(resp);
+		diag("%d: %p %pn", i, raw_queries, raw_queries[i]);
 		if (dnslib_response_parse_query(resp,
 			                        raw_queries[i]->data,
 						raw_queries[i]->size) != 0) {
 			errors++;
 		}
 		errors += check_response(resp, responses[i]);
+		dnslib_dname_free(&resp->question.qname);
+		dnslib_response_free(&resp);
 	}
 
 	return (errors == 0);
@@ -331,11 +352,11 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	uint response_parsed_count;
 	uint8_t response_raw_count;
 
-	load_parsed_packets(parsed_responses, &response_parsed_count,
+	load_parsed_packets(&parsed_responses, &response_parsed_count,
 	                    "src/tests/dnslib/files/parsed_packets");
 	diag("read %d responses\n", response_parsed_count);
 
-	load_raw_packets(raw_queries, &response_raw_count,
+	load_raw_packets(&raw_queries, &response_raw_count,
 	                 "src/tests/dnslib/files/raw_packets");
 	diag("read %d responses\n", response_raw_count);
 
@@ -345,6 +366,16 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	                             raw_queries,
 	                             response_parsed_count),
 	   "response: parse query");
+
+	for (int i = 0; i < response_parsed_count; i++) {
+		dnslib_dname_free(&(parsed_responses[i]->owner));
+		free(parsed_responses[i]);
+		free(raw_queries[i]->data);
+		free(raw_queries[i]);
+	}
+
+	free(parsed_responses);
+	free(raw_queries);
 
 	endskip;
 
