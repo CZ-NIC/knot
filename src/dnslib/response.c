@@ -15,12 +15,12 @@ enum {
 	DEFAULT_NSCOUNT = 8,
 	DEFAULT_ARCOUNT = 28,
 	DEFAULT_DOMAINS_IN_RESPONSE = 22,
-	DEFAULT_TMP_DOMAINS = 5,
+	DEFAULT_TMP_RRSETS = 5,
 	STEP_ANCOUNT = 6,
 	STEP_NSCOUNT = 8,
 	STEP_ARCOUNT = 8,
 	STEP_DOMAINS = 10,
-	STEP_TMP_DOMAINS = 5
+	STEP_TMP_RRSETS = 5
 };
 
 enum {
@@ -38,15 +38,15 @@ enum {
 		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(dnslib_dname_t *),
 	PREALLOC_OFFSETS =
 		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(short),
-	PREALLOC_TMP_DOMAINS =
-		DEFAULT_TMP_DOMAINS * sizeof(dnslib_dname_t *),
+	PREALLOC_TMP_RRSETS =
+		DEFAULT_TMP_RRSETS * sizeof(dnslib_dname_t *),
 
 	PREALLOC_TOTAL = PREALLOC_RESPONSE
 	                 + PREALLOC_QNAME
 	                 + PREALLOC_RRSETS
 	                 + PREALLOC_DOMAINS
 	                 + PREALLOC_OFFSETS
-	                 + PREALLOC_TMP_DOMAINS,
+	                 + PREALLOC_TMP_RRSETS,
 
 	PREALLOC_RESPONSE_WIRE = 65535,
 	PREALLOC_RRSET_WIRE = 65535
@@ -114,22 +114,22 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 
 	resp->compression.max = DEFAULT_DOMAINS_IN_RESPONSE;
 
-	resp->tmp_dnames = (dnslib_dname_t **)
+	resp->tmp_rrsets = (const dnslib_rrset_t **)
 		(resp->compression.offsets + DEFAULT_DOMAINS_IN_RESPONSE);
 
-	debug_dnslib_response("Tmp dnames: %p (%d after compression offsets)\n",
-		resp->tmp_dnames,
-		(void *)resp->tmp_dnames - (void *)resp->compression.offsets);
+	debug_dnslib_response("Tmp rrsets: %p (%d after compression offsets)\n",
+		resp->tmp_rrsets,
+		(void *)resp->tmp_rrsets - (void *)resp->compression.offsets);
 
-	resp->tmp_dname_max = DEFAULT_TMP_DOMAINS;
+	resp->tmp_rrsets_max = DEFAULT_TMP_RRSETS;
 
 	debug_dnslib_response("End of data: %p (%d after start of response)\n",
-		resp->tmp_dnames + DEFAULT_TMP_DOMAINS,
-		(void *)(resp->tmp_dnames + DEFAULT_TMP_DOMAINS)
+		resp->tmp_rrsets + DEFAULT_TMP_RRSETS,
+		(void *)(resp->tmp_rrsets + DEFAULT_TMP_RRSETS)
 		  - (void *)resp);
 	debug_dnslib_response("Allocated total: %u\n", PREALLOC_TOTAL);
 
-	assert((char *)(resp->tmp_dnames + DEFAULT_TMP_DOMAINS)
+	assert((char *)(resp->tmp_rrsets + DEFAULT_TMP_RRSETS)
 	       == (char *)resp + PREALLOC_TOTAL);
 }
 
@@ -482,10 +482,13 @@ static void dnslib_response_rrsets_to_wire(const dnslib_rrset_t **rrsets,
 
 /*----------------------------------------------------------------------------*/
 
-static void dnslib_response_free_tmp_domains(dnslib_response_t *resp)
+static void dnslib_response_free_tmp_rrsets(dnslib_response_t *resp)
 {
-	for (int i = 0; i < resp->tmp_dname_count; ++i) {
-		dnslib_dname_free(&resp->tmp_dnames[i]);
+	for (int i = 0; i < resp->tmp_rrsets_count; ++i) {
+		// TODO: this is quite ugly, but better than copying whole
+		// function (for reallocating rrset array)
+		dnslib_rrset_deep_free(
+			&(((dnslib_rrset_t **)(resp->tmp_rrsets))[i]), 1);
 	}
 }
 
@@ -508,8 +511,8 @@ static void dnslib_response_free_allocated_space(dnslib_response_t *resp)
 		free(resp->compression.offsets);
 	}
 
-	if (resp->tmp_dname_max > DEFAULT_TMP_DOMAINS) {
-		free(resp->tmp_dnames);
+	if (resp->tmp_rrsets_max > DEFAULT_TMP_RRSETS) {
+		free(resp->tmp_rrsets);
 	}
 }
 
@@ -517,7 +520,7 @@ static void dnslib_response_free_allocated_space(dnslib_response_t *resp)
 
 static int dnslib_response_realloc_rrsets(const dnslib_rrset_t ***rrsets,
                                           short *max_count,
-                                          short default_max_count, short step )
+                                          short default_max_count, short step)
 {
 	int free_old = (*max_count) != default_max_count;
 	const dnslib_rrset_t **old = *rrsets;
@@ -736,6 +739,24 @@ void dnslib_response_set_aa(dnslib_response_t *response)
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_response_add_tmp_rrset(dnslib_response_t *response,
+                                  dnslib_rrset_t *tmp_rrset)
+{
+	if (response->tmp_rrsets_count == response->tmp_rrsets_max
+	    && dnslib_response_realloc_rrsets(&response->tmp_rrsets,
+			&response->tmp_rrsets_max, DEFAULT_TMP_RRSETS,
+			STEP_TMP_RRSETS)
+		!= 0) {
+		return -1;
+	}
+
+	response->tmp_rrsets[response->tmp_rrsets_count++] = tmp_rrset;
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_response_to_wire(dnslib_response_t *response,
                             uint8_t **resp_wire, size_t *resp_size)
 {
@@ -798,7 +819,7 @@ void dnslib_response_free(dnslib_response_t **response)
 
 	// free temporary domain names
 	debug_dnslib_response("Freeing tmp domains...\n");
-	dnslib_response_free_tmp_domains(*response);
+	dnslib_response_free_tmp_rrsets(*response);
 	// check if some additional space was allocated for the response
 	debug_dnslib_response("Freeing additional allocated space...\n");
 	dnslib_response_free_allocated_space(*response);
