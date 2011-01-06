@@ -514,46 +514,45 @@ static void ns_answer_from_node(const zn_node_t *node, const zdb_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-//static dnslib_rrset_t *ns_cname_from_dname(const dnslib_rdata_t *dname_rdata,
-//                                           const dnslib_dname_t *qname)
-//{
-//	debug_ns("Synthetizing CNAME from DNAME...\n");
+static dnslib_rrset_t *ns_cname_from_dname(const dnslib_rrset_t *dname_rrset,
+                                           const dnslib_dname_t *qname)
+{
+	debug_ns("Synthetizing CNAME from DNAME...\n");
 
-//	ldns_rr *cname_rr = ldns_rr_new_frm_type(LDNS_RR_TYPE_CNAME);
-//	debug_ns("Creating CNAME with owner %s.\n", ldns_rdf2str(qname));
-//	ldns_rr_set_owner(cname_rr, ldns_rdf_clone(qname));
-//	ldns_rr_set_ttl(cname_rr, SYNTH_CNAME_TTL);
+	// create new CNAME RRSet
 
-//	// copy the owner, replace last labels with DNAME
-//	// copying several times - no better way to do it in ldns
-//	ldns_rdf *tmp = ldns_dname_reverse(qname);
-//	uint8_t lcount = ldns_dname_label_count(ldns_rr_owner(dname_rr));
-//	assert(ldns_dname_label_count(tmp) >= lcount);
-//	ldns_rdf *tmp2 = ldns_dname_clone_from(tmp, lcount);
-//	ldns_rdf *cname = ldns_dname_reverse(tmp2);
+	dnslib_dname_t *owner = dnslib_dname_copy(qname);
+	if (owner == NULL) {
+		return NULL;
+	}
 
-//	ldns_status s = ldns_dname_cat(cname, ldns_rr_rdf(dname_rr, 0));
-//	if (s != LDNS_STATUS_OK) {
-//		ldns_rdf_deep_free(cname);
-//		ldns_rr_free(cname_rr);
-//		return NULL;
-//	}
+	dnslib_rrset_t *cname_rrset = dnslib_rrset_new(
+			owner, DNSLIB_RRTYPE_CNAME,
+			DNSLIB_CLASS_IN, SYNTH_CNAME_TTL);
 
-//	debug_ns("CNAME canonical name: %s.\n", ldns_rdf2str(cname));
+	if (cname_rrset == NULL) {
+		dnslib_dname_free(&owner);
+		return NULL;
+	}
 
-//	ldns_rr_set_rdf(cname_rr, cname, 0);
-//	ldns_rr_set_rd_count(cname_rr, 1);
+	// replace last labels of qname with DNAME
+	dnslib_dname_t *cname = dnslib_dname_replace_suffix(qname,
+	      dnslib_dname_size(dnslib_rrset_owner(dname_rrset)),
+	      dnslib_rdata_get_item(dnslib_rrset_rdata(dname_rrset), 0)->dname);
 
-//	ldns_rdf_deep_free(tmp);
-//	ldns_rdf_deep_free(tmp2);
+	char *name = dnslib_dname_to_str(cname);
+	debug_ns("CNAME canonical name: %s.\n", name);
+	free(name);
 
-//	ldns_rr_list *cname_rrset = ldns_rr_list_new();
-//	ldns_rr_list_push_rr(cname_rrset, cname_rr);
+	dnslib_rdata_t *cname_rdata = dnslib_rdata_new();
+	dnslib_rdata_item_t cname_rdata_item;
+	cname_rdata_item.dname = cname;
+	dnslib_rdata_set_items(cname_rdata, &cname_rdata_item, 1);
 
-//	ldns_rr_list_push_rr_list(copied_rrs, cname_rrset);
+	dnslib_rrset_add_rdata(cname_rrset, cname_rdata);
 
-//	return cname_rrset;
-//}
+	return cname_rrset;
+}
 
 /*----------------------------------------------------------------------------*/
 
@@ -587,21 +586,18 @@ static void ns_process_dname(const dnslib_rrset_t *dname_rrset,
 	// put the DNAME RRSet into the answer
 	dnslib_response_add_rrset_answer(resp, dname_rrset, 1);
 
-	// take only first DNAME RDATA
-	const dnslib_rdata_t *dname_rdata = dnslib_rrset_rdata(dname_rrset);
-
 	if (ns_dname_is_too_long(dname_rrset, qname)) {
 		dnslib_response_set_rcode(resp, DNSLIB_RCODE_YXDOMAIN);
 		return;
 	}
 
 	// synthetize CNAME (no way to tell that client supports DNAME)
-	//dnslib_rrset_t *synth_cname = ns_cname_from_dname(dname_rdata, qname);
-	//dnslib_response_add_rrset_answer(resp, synth_cname, 1);
-	//dnslib_rrset_deep_free(synth_cname);
+	dnslib_rrset_t *synth_cname = ns_cname_from_dname(dname_rrset, qname);
+	// add the synthetized RRSet to the Answer
+	dnslib_response_add_rrset_answer(resp, synth_cname, 1);
+	// add the synthetized RRSet into list of temporary RRSets of response
+	dnslib_response_add_tmp_rrset(resp, synth_cname);
 
-//	ns_try_put_rrset(synth_cname, LDNS_SECTION_ANSWER, 1, response);
-//	ldns_rr_list_free(synth_cname);
 	// do not search for the name in new zone (out-of-bailiwick)
 }
 
