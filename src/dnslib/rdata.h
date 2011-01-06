@@ -216,6 +216,10 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type);
 int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
                          const uint8_t *format);
 
+const dnslib_dname_t *dnslib_rdata_cname_name(const dnslib_rdata_t *rdata);
+
+const dnslib_dname_t *dnslib_rdata_dname_target(const dnslib_rdata_t *rdata);
+
 #endif /* _CUTEDNS_DNSLIB_RDATA_H */
 
 /*! @} */
