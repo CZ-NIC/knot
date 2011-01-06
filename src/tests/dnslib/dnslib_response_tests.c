@@ -19,6 +19,7 @@
 #include "rrset.h"
 #include "dname.h"
 
+#include "ldns/ldns.h"
 
 static int dnslib_response_tests_count(int argc, char *argv[]);
 static int dnslib_response_tests_run(int argc, char *argv[]);
@@ -173,7 +174,8 @@ enum {
 	ITEMS_COUNT = 2,
 	RDATA_COUNT = 1,
 	RRSETS_COUNT = 1,
-	RESPONSE_COUNT = 1
+	RESPONSE_COUNT = 1,
+	LDNS_PACKET_COUNT = 1
 };
 
 static dnslib_dname_t DNAMES[DNAMES_COUNT] =
@@ -209,6 +211,9 @@ struct test_response {
 static test_response_t RESPONSES[RESPONSE_COUNT] =
 	{ {&DNAMES[0], 1, 1, 12345, 0, 0, 0, 1, 0, 0, NULL,
 	   RESPONSE_RRSETS, NULL} };
+
+static ldns_packet_t LDNS_PACKETS[LDNS_PACKET_COUNT] =
+	{ };
 
 /* \note just checking the pointers probably would suffice */
 static int compare_rrsets(const dnslib_rrset_t *rrset1,
@@ -300,7 +305,7 @@ static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
 			  int check_answer, int check_additional,
 			  int check_authority)
 {
-	int errors = 0;
+	int errors = 0; /* TODO maybe use it everywhere, or not use it all */
 
 	if (check_question) {
 		/* again, in case of dnames, pointer would probably suffice */
@@ -381,7 +386,6 @@ static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
 		}
 	}
 
-
 	if (check_answer) {
 		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
 			if (resp->authority[i]!=&(test_resp->authority[i])) {
@@ -391,8 +395,6 @@ static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
 			}
 		}
 	}
-
-
 
 	if (check_additional) {
 		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
@@ -404,7 +406,7 @@ static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
 		}
 	}
 
-	return 1;
+	return (errors == 0);
 }
 
 static int test_response_parse_query(test_response_t **responses,
@@ -435,11 +437,31 @@ static int test_response_parse_query(test_response_t **responses,
 static int test_response_to_wire()
 {
 	int errors = 0;
-	for (int i = 0; i < 1; i++) {
+
+	dnslib_response_t *resp;
+
+	for (int i = 0; (i < RESPONSE_COUNT) && !errors; i++) {
+		resp = dnslib_response_new_empty(NULL, 0);
+		for (int j = 0; j < RESPONSES[i].ancount; j++) {
+			dnslib_response_add_rrset_answer(resp,
+				&(RESPONSES[i].answer[j]));
+		}
+		for (int j = 0; j < RESPONSES[i].arcount; j++) {
+			dnslib_response_add_rrset_additional(resp,
+				&(RESPONSES[i].additional[j]));
+		}
+		for (int j = 0; j < RESPONSES[i].arcout; j++) {
+			dnslib_response_add_rrset_authority(resp,
+				&(RESPONSES[i].authority[j]));
+		}
+
+		dnslib_response_free(&resp);
 	}
+	
+	return (errors == 1)
 }
 
-static const int DNSLIB_RESPONSE_TEST_COUNT = 5;
+static const int DNSLIB_RESPONSE_TEST_COUNT = 6;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
