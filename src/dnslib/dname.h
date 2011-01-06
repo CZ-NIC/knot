@@ -170,6 +170,16 @@ int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
                               const dnslib_dname_t *domain);
 
 /*!
+ * \brief Checks if the domain name is a wildcard.
+ *
+ * \param dname Domain name to check.
+ *
+ * \retval <> 0 if \a dname is a wildcard domain name.
+ * \retval 0 otherwise.
+ */
+int dnslib_dname_is_wildcard(const dnslib_dname_t *dname);
+
+/*!
  * \brief Returns the number of labels common for the two domain names (counted
  *        from the rightmost label.
  *

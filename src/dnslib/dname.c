@@ -385,6 +385,15 @@ int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_dname_is_wildcard(const dnslib_dname_t *dname)
+{
+	return (dname->size >= 2
+		&& dname->name[0] == 1
+		&& dname->name[1] == '*');
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_dname_matched_labels(const dnslib_dname_t *dname1,
                                 const dnslib_dname_t *dname2)
 {
