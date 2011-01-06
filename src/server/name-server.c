@@ -278,19 +278,19 @@ static void ns_try_put_rrset(ldns_rr_list *rrset,
                              int tc,
                              ldns_pkt *resp)
 {
-	if (rrset != NULL) {
-		size_t size = ns_rrset_size(rrset);
-		if (ns_fits_into_response(resp, size)) {
-			ldns_pkt_push_rr_list(resp, section, rrset);
-			ns_update_pkt_size(resp, size);
-		} else {
-			debug_ns("RRSet %s %s omitted due to lack of space "
-			         "in packet.\n",
-			         ldns_rdf2str(ldns_rr_list_owner(rrset)),
-			         ldns_rr_type2str(ldns_rr_list_type(rrset)));
-			ldns_pkt_set_tc(resp, tc);
-		}
-	}
+//	if (rrset != NULL) {
+//		size_t size = ns_rrset_size(rrset);
+//		if (ns_fits_into_response(resp, size)) {
+//			ldns_pkt_push_rr_list(resp, section, rrset);
+//			ns_update_pkt_size(resp, size);
+//		} else {
+//			debug_ns("RRSet %s %s omitted due to lack of space "
+//			         "in packet.\n",
+//			         ldns_rdf2str(ldns_rr_list_owner(rrset)),
+//			         ldns_rr_type2str(ldns_rr_list_type(rrset)));
+//			ldns_pkt_set_tc(resp, tc);
+//		}
+//	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -326,24 +326,32 @@ static void ns_put_rrset(ldns_rr_list *rrset, const ldns_rdf *name,
 }
 
 /*----------------------------------------------------------------------------*/
-/*!
- * \todo Check return values from push functions!
- */
-static void ns_put_answer(const zn_node_t *node, const ldns_rdf *name,
-                          ldns_rr_type type, ldns_pkt *response,
-                          ldns_rr_list *copied_rrs)
+
+static void ns_put_answer(const dnslib_node_t *node, const dnslib_dname_t *name,
+                          uint16_t type, dnslib_response_t *resp)
 {
-	debug_ns("Putting answers from node %s.\n", ldns_rdf2str(node->owner));
-	if (type == LDNS_RR_TYPE_ANY) {
-		ldns_rr_list *all = zn_all_rrsets(node);
-		ns_put_rrset(all, name, LDNS_SECTION_ANSWER, 1, response,
-		             copied_rrs);
-		ldns_rr_list_free(all);	// delete the list from zn_all_rrsets()
+	char *name_str = dnslib_dname_to_str(node->owner);
+	debug_ns("Putting answers from node %s.\n", name_str);
+	free(name_str);
+
+	if (type == DNSLIB_RRTYPE_ANY) {
+		// TODO
 	} else {
-		ns_put_rrset(zn_find_rrset(node, type), name,
-		             LDNS_SECTION_ANSWER, 1, response, copied_rrs);
+		const dnslib_rrset_t *rrset = dnslib_node_rrset(node, type);
+		if (rrset != NULL) {
+			if (dnslib_dname_is_wildcard(dnslib_node_owner(node))) {
+				dnslib_rrset_t *synth_rrset =
+					ns_synth_from_wildcard(rrset, name);
+				dnslib_response_add_tmp_rrset(resp,
+				                              synth_rrset);
+				rrset = synth_rrset;
+			}
+
+			dnslib_response_add_rrset_answer(resp,
+				rrset, 1);
+		}
 	}
-	ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
+	dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -536,8 +544,9 @@ static void ns_answer_from_node(const dnslib_node_t *node,
 {
 	// TODO!!!
 
-//	debug_ns("Putting answers from found node to the response...\n");
-//	ns_put_answer(node, qname, qtype, response, copied_rrs);
+	debug_ns("Putting answers from found node to the response...\n");
+	ns_put_answer(node, qname, qtype, resp);
+
 //	if (ldns_pkt_ancount(response) == 0) {  // if NODATA response, put SOA
 //		ns_put_authority_soa(zone, response);
 //	} else {  // else put authority NS
@@ -640,31 +649,31 @@ static void ns_process_dname(const dnslib_rrset_t *dname_rrset,
 
 /*----------------------------------------------------------------------------*/
 
-static const zn_node_t *ns_strip_and_find(const zdb_zone_t *zone, 
-                                          ldns_rdf **qname, uint *labels)
-{
-	const zn_node_t *node = NULL;
-	// search for the name and strip labels until nothing left
-	do {
-		debug_ns("Name %s not found, stripping leftmost label.\n",
-		         ldns_rdf2str(*qname));
-		/* TODO: optimize!!!
-		 *  1) do not copy the name!
-		 *   2) implementation of ldns_dname_left_chop() is inefficient
-		 */
-		ldns_rdf *new_qname = ldns_dname_left_chop(*qname);
-		ldns_rdf_deep_free(*qname);
-		*qname = new_qname;
-		--(*labels);
-		assert(*qname != NULL || (*labels) == 0);
-		node = zdb_find_name_in_zone(zone, *qname);
-	} while ((*labels) > 0 && node == NULL);
+//static const zn_node_t *ns_strip_and_find(const zdb_zone_t *zone,
+//                                          ldns_rdf **qname, uint *labels)
+//{
+//	const zn_node_t *node = NULL;
+//	// search for the name and strip labels until nothing left
+//	do {
+//		debug_ns("Name %s not found, stripping leftmost label.\n",
+//		         ldns_rdf2str(*qname));
+//		/* TODO: optimize!!!
+//		 *  1) do not copy the name!
+//		 *   2) implementation of ldns_dname_left_chop() is inefficient
+//		 */
+//		ldns_rdf *new_qname = ldns_dname_left_chop(*qname);
+//		ldns_rdf_deep_free(*qname);
+//		*qname = new_qname;
+//		--(*labels);
+//		assert(*qname != NULL || (*labels) == 0);
+//		node = zdb_find_name_in_zone(zone, *qname);
+//	} while ((*labels) > 0 && node == NULL);
 
-	assert((ldns_dname_label_count(*qname) == 0 && (*labels) == 0)
-	       || (ldns_dname_label_count(*qname) > 0 && (*labels) > 0));
+//	assert((ldns_dname_label_count(*qname) == 0 && (*labels) == 0)
+//	       || (ldns_dname_label_count(*qname) > 0 && (*labels) > 0));
 
-	return node;
-}
+//	return node;
+//}
 
 /*----------------------------------------------------------------------------*/
 
