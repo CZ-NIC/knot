@@ -35,7 +35,6 @@ unit_api dnslib_response_tests_api = {
  *  Unit implementation.
  */
 
-/* temporary, can only hold most basic case now */
 struct test_response {
 	dnslib_dname_t *owner;
 	uint16_t rclass;
@@ -47,6 +46,14 @@ struct test_response {
 	uint16_t ancount;
 	uint16_t nscount;
 	uint16_t arcount;
+	dnslib_rrset_t *answer;
+	dnslib_rrset_t *authority;
+	dnslib_rrset_t *additional;
+
+	/* TODO what about the rest of the values?
+	 * they cannot be modified from API, but this is probably the best
+	 * place to test them as well */
+
 };
 
 typedef struct test_response test_response_t;
@@ -163,21 +170,45 @@ static int load_parsed_packets(test_response_t ***responses, uint *count,
 
 enum {
 	DNAMES_COUNT = 2,
-	ITEMS_COUNT = 1,
+	ITEMS_COUNT = 2,
 	RDATA_COUNT = 1,
-	RRSETS_COUNT = 1
+	RRSETS_COUNT = 1,
+	RESPONSE_COUNT = 1
 };
 
 static dnslib_dname_t DNAMES[DNAMES_COUNT] =
 	{ {(uint8_t *)"6example3com", 12, NULL}, //0's at the end are added
           {(uint8_t *)"2ns6example3com", 15, NULL} };
 
-static dnslib_rdata_item_t ITEMS[ITEMS_COUNT] = { {.dname = &DNAMES[0]} };
+static dnslib_rdata_item_t ITEMS[ITEMS_COUNT] =
+	{ {.dname = &DNAMES[0]},
+          {.raw_data = (uint8_t *)"192.168.1.1"} };
 
 static dnslib_rdata_t RDATA[RDATA_COUNT] = { {&ITEMS[0], 1, &RDATA[0]} };
 
 static dnslib_rrset_t RESPONSE_RRSETS[RRSETS_COUNT] =
 	{ {&DNAMES[0],1 ,1 ,3600, &RDATA[0], NULL} };
+
+/*
+
+struct test_response {
+	dnslib_dname_t *owner;
+	uint16_t rclass;
+	uint16_t type;
+	uint16_t id;
+	uint8_t flags1;
+	uint8_t flags2;
+	uint16_t qdcount;
+	uint16_t ancount;
+	uint16_t nscount;
+	uint16_t arcount;
+	dnslib_rrset_t *answer;
+	dnslib_rrset_t *authority;
+	dnslib_rrset_t *additional; */
+
+static test_response_t RESPONSES[RESPONSE_COUNT] =
+	{ {&DNAMES[0], 1, 1, 12345, 0, 0, 0, 1, 0, 0, NULL,
+	   RESPONSE_RRSETS, NULL} };
 
 /* \note just checking the pointers probably would suffice */
 static int compare_rrsets(const dnslib_rrset_t *rrset1,
@@ -269,6 +300,8 @@ static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
 			  int check_answer, int check_additional,
 			  int check_authority)
 {
+	int errors = 0;
+
 	if (check_question) {
 		/* again, in case of dnames, pointer would probably suffice */
 		if (dnslib_dname_compare(resp->question.qname,
@@ -330,6 +363,47 @@ static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
 			return 0;
 		}
 	}
+
+	if (check_question) {
+		/* Currently just one question RRSET allowed */
+		/* Will only check pointers, no copying takes place */
+		/* TODO do we even need to test this? */
+		;
+	}
+
+	if (check_authority) {
+		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
+			if (resp->authority[i]!=&(test_resp->authority[i])) {
+				diag("Authority rrset #%i is wrongly set.\n",
+				     i);
+				errors++;
+			}
+		}
+	}
+
+
+	if (check_answer) {
+		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
+			if (resp->authority[i]!=&(test_resp->authority[i])) {
+				diag("Authority rrset #%i is wrongly set.\n",
+				     i);
+				errors++;
+			}
+		}
+	}
+
+
+
+	if (check_additional) {
+		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
+			if (resp->authority[i]!=&(test_resp->authority[i])) {
+				diag("Authority rrset #%i is wrongly set.\n",
+				     i);
+				errors++;
+			}
+		}
+	}
+
 	return 1;
 }
 
@@ -345,7 +419,6 @@ static int test_response_parse_query(test_response_t **responses,
 	for (int i = 0; (i < count) && !errors; i++) {
 		resp = dnslib_response_new_empty(NULL, 0);
 		assert(resp);
-		diag("%d: %p %pn", i, raw_queries, raw_queries[i]);
 		if (dnslib_response_parse_query(resp,
 			                        raw_queries[i]->data,
 						raw_queries[i]->size) != 0) {
@@ -357,6 +430,13 @@ static int test_response_parse_query(test_response_t **responses,
 	}
 
 	return (errors == 0);
+}
+
+static int test_response_to_wire()
+{
+	int errors = 0;
+	for (int i = 0; i < 1; i++) {
+	}
 }
 
 static const int DNSLIB_RESPONSE_TEST_COUNT = 5;
