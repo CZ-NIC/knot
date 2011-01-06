@@ -814,47 +814,54 @@ static void ns_answer_from_zone(const dnslib_zone_t *zone,
 			if (dname_rrset != NULL) {
 				ns_process_dname(dname_rrset, qname, resp);
 				break;
-			} else {
-//				// wildcard child?
-//				debug_ns("Trying to find wildcard child of node"
-//					 "%s.\n", ldns_rdf2str(qname));
-//				ldns_rdf *wildc = ldns_dname_new_frm_str("*");
-//				if (ldns_dname_cat(wildc, qname)
-//					!= LDNS_STATUS_OK) {
-//					log_error("Unknown error occured.\n");
-//					ldns_pkt_set_rcode(response,
-//					                   LDNS_RCODE_SERVFAIL);
-//					ldns_rdf_deep_free(wildc);
-//					break;
-//				}
-
-//				const zn_node_t *wildcard_node =
-//					zdb_find_name_in_zone(zone, wildc);
-//				ldns_rdf_deep_free(wildc);
-
-//				debug_ns("Found node: %p\n", wildcard_node);
-
-//				if (wildcard_node == NULL) {
-//					if (cname == 0) {
-//						// return NXDOMAIN
-//						ldns_pkt_set_rcode(response,
-//							LDNS_RCODE_NXDOMAIN);
-//					} else {
-//						ldns_pkt_set_rcode(response,
-//							LDNS_RCODE_NOERROR);
-//					}
-//					break;
-//				} else {
-//					node = wildcard_node;
-//					// renew the qname to be the old one
-//					// (not stripped)
-//					ldns_rdf_deep_free(qname);
-//					qname = ldns_rdf_clone(qname_old);
-//					debug_ns("Node's owner: %s\n",
-//					         ldns_rdf2str(node->owner));
-//				}
 			}
+			// else
+			// wildcard child?
+			const dnslib_node_t *wildcard_node =
+				dnslib_node_wildcard_child(closest_encloser);
+
+			if (wildcard_node == NULL) {
+				if (cname == 0) {
+					// return NXDOMAIN
+					dnslib_response_set_rcode(resp,
+						DNSLIB_RCODE_NXDOMAIN);
+				} else {
+					dnslib_response_set_rcode(resp,
+						DNSLIB_RCODE_NOERROR);
+				}
+				break;
+			}
+			// else
+			// set the node from which to take the answers to the
+			// wildcard node
+			node = wildcard_node;
 		}
+
+		// now we have the node for answering
+
+//		if (zn_has_cname(node)) {
+//			debug_ns("Node %s has CNAME record, resolving...\n",
+//				 ldns_rdf2str(node->owner));
+//			ldns_rdf *act_name = qname;
+//			ns_follow_cname(&node, &act_name, response,
+//			                LDNS_SECTION_ANSWER, copied_rrs);
+//			debug_ns("Canonical name: %s, node found: %p\n",
+//			         ldns_rdf2str(act_name), node);
+//			if (act_name != qname) {
+//				ldns_rdf_deep_free(qname);
+//				qname = act_name;
+//			}
+//			cname = 1;
+//			if (node == NULL) {
+//				ldns_rdf_deep_free(qname_old);
+//				continue; // infinite loop better than goto? :)
+//			}
+//		}
+
+//		ns_answer_from_node(node, zone, qname,
+//			ldns_rr_get_type(question), response, copied_rrs);
+//		ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
+//		break;
 	}
 
 	dnslib_dname_free(&qname_old);
