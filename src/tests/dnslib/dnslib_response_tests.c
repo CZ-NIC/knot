@@ -51,7 +51,14 @@ struct test_response {
 
 typedef struct test_response test_response_t;
 
-static int load_raw_packets(uint8_t **raw_packets, uint8_t *count,
+struct test_raw_packet {
+	uint size;
+	uint8_t *data;
+};
+
+typedef struct test_raw_packet test_raw_packet_t;
+
+static int load_raw_packets(test_raw_packet_t **raw_packets, uint8_t *count,
                             const char *filename)
 {
 	assert(raw_packets == NULL);
@@ -67,12 +74,14 @@ static int load_raw_packets(uint8_t **raw_packets, uint8_t *count,
 
 	fread(count, sizeof(uint8_t), 1, f);
 
-	raw_packets = malloc(sizeof(uint8_t *));
+	raw_packets = malloc(sizeof(test_raw_packet_t *) * *count);
 
 	for (int i = 0; i < *count; i++) {
 		fread(&tmp_size, sizeof(uint8_t), 1, f);
-		raw_packets[i] = malloc(sizeof(uint8_t) * tmp_size);
-		fread(raw_packets[i], sizeof(uint8_t), tmp_size, f);
+		raw_packets[i] = malloc(sizeof(test_raw_packet_t));
+		raw_packets[i]->data = malloc(sizeof(uint8_t) * tmp_size);
+		fread(raw_packets[i]->data, sizeof(uint8_t), tmp_size, f);
+		raw_packets[i]->size = tmp_size;
 	}
 
 	fclose(f);
@@ -253,7 +262,44 @@ static int test_response_add_rrset_additional()
 	                               3);
 }
 
-static const int DNSLIB_RESPONSE_TEST_COUNT = 4;
+static int check_response(dnslib_response_t *resp, test_response_t *test_resp)
+{
+	/* again, in case of dnames, pointer would probably suffice */
+	/* TODO possibly add a diag to show where it has failed */
+	return (!(dnslib_dname_compare(resp->question.qname,
+	                             test_resp->owner) == 0 &&
+	        resp->question.qtype == test_resp->type &&
+		resp->question.qclass == test_resp->rclass &&
+		resp->header.flags1 == test_resp->flags1 &&
+		resp->header.flags2 == test_resp->flags2 &&
+		resp->header.qdcount == test_resp->qdcount &&
+		resp->header.qdcount == test_resp->ancount &&
+		resp->header.qdcount == test_resp->nscount &&
+		resp->header.qdcount == test_resp->arcount));
+}
+
+static int test_response_parse_query(test_response_t **responses,
+                                     test_raw_packet_t **raw_queries,
+                                     uint count)
+{
+	int errors = 0;
+	dnslib_response_t *resp = NULL;
+	getchar();
+	for (int i = 0; (i < count) && !errors; i++) {
+		resp = dnslib_response_new_empty(NULL, 0);
+		assert(resp);
+		if (dnslib_response_parse_query(resp,
+			                        raw_queries[i]->data,
+						raw_queries[i]->size) != 0) {
+			errors++;
+		}
+		errors += check_response(resp, responses[i]);
+	}
+
+	return (errors == 0);
+}
+
+static const int DNSLIB_RESPONSE_TEST_COUNT = 5;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -275,15 +321,30 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	skip(!ret, 4);
 
 	ok(test_response_add_rrset_answer(), "response: add rrset answer");
-	ok(test_response_add_rrset_authority(), "response: add rrset authority");
-	ok(test_response_add_rrset_additional(), "response: add rrset additional");
+	ok(test_response_add_rrset_authority(),
+	   "response: add rrset authority");
+	ok(test_response_add_rrset_additional(),
+	   "response: add rrset additional");
 
-	test_response_t **responses = NULL;
-	uint response_count;
+	test_response_t **parsed_responses = NULL;
+	test_raw_packet_t **raw_queries = NULL;
+	uint response_parsed_count;
+	uint8_t response_raw_count;
 
-	load_parsed_packets(responses, &response_count,
+	load_parsed_packets(parsed_responses, &response_parsed_count,
 	                    "src/tests/dnslib/files/parsed_packets");
-	diag("read %d responses\n", response_count);
+	diag("read %d responses\n", response_parsed_count);
+
+	load_raw_packets(raw_queries, &response_raw_count,
+	                 "src/tests/dnslib/files/raw_packets");
+	diag("read %d responses\n", response_raw_count);
+
+	assert(response_raw_count == response_parsed_count);
+
+	ok(test_response_parse_query(parsed_responses,
+	                             raw_queries,
+	                             response_parsed_count),
+	   "response: parse query");
 
 	endskip;
 
