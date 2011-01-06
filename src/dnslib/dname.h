@@ -193,6 +193,21 @@ int dnslib_dname_matched_labels(const dnslib_dname_t *dname1,
 int dnslib_dname_label_count(const dnslib_dname_t *dname);
 
 /*!
+ * \brief Replaces the suffix of given size in one domain name with other domain
+ *        name.
+ *
+ * \param dname Domain name where to replace the suffix.
+ * \param size Size of the suffix to be replaced.
+ * \param suffix New suffix to be used as a replacement.
+ *
+ * \return New domain name created by replacing suffix of \a dname of size
+ *         \a size with \a suffix.
+ */
+dnslib_dname_t *dnslib_dname_replace_suffix(const dnslib_dname_t *dname,
+                                            int size,
+                                            const dnslib_dname_t *suffix);
+
+/*!
  * \brief Destroys the given domain name.
  *
  * Frees also the data within the struct. This is somewhat different behaviour

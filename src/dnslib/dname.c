@@ -426,6 +426,29 @@ int dnslib_dname_label_count(const dnslib_dname_t *dname)
 
 /*----------------------------------------------------------------------------*/
 
+dnslib_dname_t *dnslib_dname_replace_suffix(const dnslib_dname_t *dname,
+                                            int size,
+                                            const dnslib_dname_t *suffix)
+{
+	dnslib_dname_t *res = dnslib_dname_new();
+	if (res == NULL) {
+		return NULL;
+	}
+
+	res->name = (uint8_t *)malloc(dname->size - size + suffix->size);
+	if (res->name == NULL) {
+		dnslib_dname_free(&res);
+		return NULL;
+	}
+
+	memcpy(res->name, dname->name, dname->size - size);
+	memcpy(res->name + dname->size - size, suffix, size);
+
+	return res;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void dnslib_dname_free(dnslib_dname_t **dname)
 {
 	if (dname == NULL || *dname == NULL) {
