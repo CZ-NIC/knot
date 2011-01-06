@@ -121,7 +121,7 @@ static int load_parsed_packets(test_response_t ***responses, uint *count,
 
 		tmp_str[strlen(tmp_str)] = c;
 		tmp_str[strlen(tmp_str) + 1] = 0;
-		if (c == '\n') { /* TODO what do I use with stdint types */
+		if (c == '\n') {
 			tmp_resp = malloc(sizeof(test_response_t));
 			if ((sscanf(tmp_str, "%" SCNu16 ";%" SCNu16 ";%"
 				    SCNu16 ";%" SCNu8 ";%" SCNu8 ";%"
@@ -154,7 +154,6 @@ static int load_parsed_packets(test_response_t ***responses, uint *count,
 
 	free(tmp_str);
 	free(tmp_dname_str);
-	free(tmp_resp);
 
 	fclose(f);
 
@@ -265,31 +264,71 @@ static int test_response_add_rrset_additional()
 	                               3);
 }
 
-static int check_response(dnslib_response_t *resp, test_response_t *test_resp)
+static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
+                          int check_header, int check_question,
+			  int check_answer, int check_additional,
+			  int check_authority)
 {
-	/* again, in case of dnames, pointer would probably suffice */
-	if (dnslib_dname_compare(resp->question.qname,
-	                             test_resp->owner) != 0) {
-		char *tmp_dname1, *tmp_dname2;
-		tmp_dname1 = dnslib_dname_to_str(test_resp->owner);
-		tmp_dname2 = dnslib_dname_to_str(resp->question.qname);
-		diag("Qname in response is wrong: should be: %s is: %s\n",
-		     tmp_dname1, tmp_dname2);
-		free(tmp_dname1);
-		free(tmp_dname2);
-		return 0;
+	if (check_question) {
+		/* again, in case of dnames, pointer would probably suffice */
+		if (dnslib_dname_compare(resp->question.qname,
+		                             test_resp->owner) != 0) {
+			char *tmp_dname1, *tmp_dname2;
+			tmp_dname1 = dnslib_dname_to_str(test_resp->owner);
+			tmp_dname2 = dnslib_dname_to_str(resp->question.qname);
+			diag("Qname in response is wrong:\
+			      should be: %s is: %s\n",
+			     tmp_dname1, tmp_dname2);
+			free(tmp_dname1);
+			free(tmp_dname2);
+			return 0;
+		}
+
+		if (resp->question.qtype != test_resp->type) {
+			diag("Qtype value is wrong: is %u should be %u\n",
+			     resp->question.qtype, test_resp->type);
+			return 0;
+		}
+		if (resp->question.qclass != test_resp->rclass) {
+			diag("Qclass value is wrong: is %u should be %u\n",
+			     resp->question.qtype, test_resp->type);
+			return 0;
+		}
+
 	}
 
-	/* TODO possibly add a diag to show where it has failed */
-	if (!(resp->question.qtype == test_resp->type &&
-	    resp->question.qclass == test_resp->rclass &&
-	    resp->header.flags1 == test_resp->flags1 &&
-	    resp->header.flags2 == test_resp->flags2 &&
-		resp->header.qdcount == test_resp->qdcount &&
-		resp->header.qdcount == test_resp->ancount &&
-		resp->header.qdcount == test_resp->nscount &&
-		resp->header.qdcount == test_resp->arcount)) {
-		diag("One of numeric variables is wrong\n");
+	if (check_header) {
+		/* Well, this should be different by design. Wat do? */
+		if (resp->header.flags1 != test_resp->flags1) {
+			diag("Flags1 value is wrong: is %u should be %u\n",
+			     resp->header.flags1, test_resp->flags1);
+			//return 0;
+		}
+		if (resp->header.flags2 != test_resp->flags2) {
+			diag("Flags2 value is wrong: is %u should be %u\n",
+			     resp->header.flags2, test_resp->flags2);
+			return 0;
+		}
+		if (resp->header.qdcount != test_resp->qdcount) {
+			diag("Qdcount value is wrong: is %u should be %u\n",
+			     resp->header.qdcount, test_resp->qdcount);
+			return 0;
+		}
+		if (resp->header.ancount != test_resp->ancount) {
+			diag("Ancount value is wrong: is %u should be %u\n",
+			     resp->header.ancount, test_resp->ancount);
+			return 0;
+		}
+		if (resp->header.nscount != test_resp->nscount) {
+			diag("Nscount value is wrong: is %u should be %u\n",
+			     resp->header.nscount, test_resp->nscount);
+			return 0;
+		}
+		if (resp->header.arcount != test_resp->arcount) {
+			diag("Arcount value is wrong: is %u should be %u\n",
+			     resp->header.arcount, test_resp->arcount);
+			return 0;
+		}
 	}
 	return 1;
 }
@@ -312,7 +351,7 @@ static int test_response_parse_query(test_response_t **responses,
 						raw_queries[i]->size) != 0) {
 			errors++;
 		}
-		errors += check_response(resp, responses[i]);
+		errors += !check_response(resp, responses[i], 1, 1, 0, 0, 0);
 		dnslib_dname_free(&resp->question.qname);
 		dnslib_response_free(&resp);
 	}
