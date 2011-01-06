@@ -20,6 +20,7 @@
 #include "dname.h"
 
 #include "ldns/ldns.h"
+#include <stdbool.h>
 
 static int dnslib_response_tests_count(int argc, char *argv[]);
 static int dnslib_response_tests_run(int argc, char *argv[]);
@@ -175,7 +176,8 @@ enum {
 	RDATA_COUNT = 1,
 	RRSETS_COUNT = 1,
 	RESPONSE_COUNT = 1,
-	LDNS_PACKET_COUNT = 1
+	LDNS_PACKET_COUNT = 1,
+	LDNS_HEADER_COUNT = 1	
 };
 
 static dnslib_dname_t DNAMES[DNAMES_COUNT] =
@@ -211,10 +213,12 @@ struct test_response {
 static test_response_t RESPONSES[RESPONSE_COUNT] =
 	{ {&DNAMES[0], 1, 1, 12345, 0, 0, 0, 1, 0, 0, NULL,
 	   RESPONSE_RRSETS, NULL} };
-
-static ldns_pkt LDNS_PACKETS[LDNS_PACKET_COUNT] =
-	{ };
-
+static ldns_hdr LDNS_HEADERS[LDNS_HEADER_COUNT] =
+	{ {12345, false, false, false, false, false, false, false, LDNS_PACKET_QUERY, 0, 0, 1, 0, 0} };
+/* XXX what is response code in our response */
+static ldns_pkt LDNS_PACKETS[LDNS_PACKET_COUNT] =       /*I have to put  65535 smwh*/    /*XXX*/
+	{ {&LDNS_HEADERS[0], NULL, { NULL }, 0, 0, 0, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL} };
+                          /*XXX*/
 /* \note just checking the pointers probably would suffice */
 static int compare_rrsets(const dnslib_rrset_t *rrset1,
                           const dnslib_rrset_t *rrset2)
@@ -440,8 +444,15 @@ static int test_response_to_wire()
 
 	dnslib_response_t *resp;
 
+	ldns_pkt *ldns_packet;
+
+	assert(RESPONSE_COUNT == LDNS_PACKET_COUNT);
+
 	for (int i = 0; (i < RESPONSE_COUNT) && !errors; i++) {
+
 		resp = dnslib_response_new_empty(NULL, 0);
+
+
 		for (int j = 0; j < RESPONSES[i].ancount; j++) {
 			dnslib_response_add_rrset_answer(resp,
 				&(RESPONSES[i].answer[j]), 0);
@@ -480,7 +491,7 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	ret = test_response_new_empty();
 	ok(ret, "response: create empty");
 
-	skip(!ret, 4);
+	skip(!ret, 5);
 
 	ok(test_response_add_rrset_answer(), "response: add rrset answer");
 	ok(test_response_add_rrset_authority(),
