@@ -67,6 +67,65 @@ struct test_raw_packet {
 
 typedef struct test_raw_packet test_raw_packet_t;
 
+enum {
+	DNAMES_COUNT = 2,
+	ITEMS_COUNT = 2,
+	RDATA_COUNT = 1,
+	RRSETS_COUNT = 1,
+	RESPONSE_COUNT = 1,
+	LDNS_PACKET_COUNT = 1,
+	LDNS_HEADER_COUNT = 1,
+	LDNS_RRLIST_COUNT = 1,
+	LDNS_RR_COUNT = 1,
+	LDNS_RDFS_COUNT = 2,
+	LDNS_RDF_TEMP_COUNT = 2,
+};
+
+static dnslib_dname_t DNAMES[DNAMES_COUNT] =
+	{ {(uint8_t *)"6example3com", 12, NULL}, //0's at the end are added
+          {(uint8_t *)"2ns6example3com", 15, NULL} };
+
+static dnslib_rdata_item_t ITEMS[ITEMS_COUNT] =
+	{ {.dname = &DNAMES[1]},
+          {.raw_data = (uint8_t *)"192.168.1.1"} };
+
+static dnslib_rdata_t RDATA[RDATA_COUNT] = { {&ITEMS[0], 1, &RDATA[0]} };
+
+static dnslib_rrset_t RESPONSE_RRSETS[RRSETS_COUNT] =
+	{ {&DNAMES[0],1 ,1 ,3600, &RDATA[0], NULL} };
+
+static test_response_t RESPONSES[RESPONSE_COUNT] =
+	{ {&DNAMES[0], 1, 1, 12345, 0, 0, 0, 1, 0, 0, NULL,
+	   RESPONSE_RRSETS, NULL} };
+
+/* ************************* LDNS DATA ************************* */
+
+/* XXX ENDIANESS ??? */
+static ldns_rdf LDNS_RDFS_TEMP[LDNS_RDF_TEMP_COUNT] =
+	{ {LDNS_RDF_TYPE_DNAME, 13, (void *)"\7example\3com"},
+	  {LDNS_RDF_TYPE_DNAME, 16, (void *)"\2ns\7example\3com"} };
+
+static ldns_rdf *LDNS_RDF_ARRAYS[LDNS_RDFS_COUNT] =
+	{ &LDNS_RDFS_TEMP[0], &LDNS_RDFS_TEMP[1] } ;
+
+static ldns_rr LDNS_RRS[LDNS_RR_COUNT] =
+	{ {&LDNS_RDFS_TEMP[0], 3600, 1, LDNS_RR_TYPE_NS,
+	  LDNS_RR_CLASS_IN, &LDNS_RDF_ARRAYS[1], false} };
+
+static ldns_rr *tmp = &LDNS_RRS[0];
+
+static ldns_rr_list LDNS_RRLISTS[LDNS_RRLIST_COUNT] =
+	{ {1, 1, &tmp} };
+
+static ldns_hdr LDNS_HEADERS[LDNS_HEADER_COUNT] =
+	{ {12345, false, false, false, false, false, false, false,
+	  LDNS_PACKET_QUERY, 0, 0, 1, 0, 0} };
+
+/* XXX what is response code in our response */
+static ldns_pkt LDNS_PACKETS[LDNS_PACKET_COUNT] =/*I have to put  65535 smwh*/
+	{ {&LDNS_HEADERS[0], NULL, { 0, 0 }, 0, 0, 0, 0, 0, 0, 0, 0,
+	  NULL, NULL, &LDNS_RRLISTS[0] , NULL} };
+
 static int load_raw_packets(test_raw_packet_t ***raw_packets, uint8_t *count,
                             const char *filename)
 {
@@ -169,73 +228,6 @@ static int load_parsed_packets(test_response_t ***responses, uint *count,
 	return 0;
 
 }
-
-enum {
-	DNAMES_COUNT = 2,
-	ITEMS_COUNT = 2,
-	RDATA_COUNT = 1,
-	RRSETS_COUNT = 1,
-	RESPONSE_COUNT = 1,
-	LDNS_PACKET_COUNT = 1,
-	LDNS_HEADER_COUNT = 1,
-	LDNS_RRLIST_COUNT = 1,
-	LDNS_RR_COUNT = 1,
-	LDNS_RDFS_COUNT = 2,
-	LDNS_RDF_TEMP_COUNT = 2,
-};
-
-static dnslib_dname_t DNAMES[DNAMES_COUNT] =
-	{ {(uint8_t *)"6example3com", 12, NULL}, //0's at the end are added
-          {(uint8_t *)"2ns6example3com", 15, NULL} };
-
-static dnslib_rdata_item_t ITEMS[ITEMS_COUNT] =
-	{ {.dname = &DNAMES[1]},
-          {.raw_data = (uint8_t *)"192.168.1.1"} };
-
-static dnslib_rdata_t RDATA[RDATA_COUNT] = { {&ITEMS[0], 1, &RDATA[0]} };
-
-static dnslib_rrset_t RESPONSE_RRSETS[RRSETS_COUNT] =
-	{ {&DNAMES[0],1 ,1 ,3600, &RDATA[0], NULL} };
-
-/*
-
-struct test_response {
-	dnslib_dname_t *owner;
-	uint16_t rclass;
-	uint16_t type;
-	uint16_t id;
-	uint8_t flags1;
-	uint8_t flags2;
-	uint16_t qdcount;
-	uint16_t ancount;
-	uint16_t nscount;
-	uint16_t arcount;
-	dnslib_rrset_t *answer;
-	dnslib_rrset_t *authority;
-	dnslib_rrset_t *additional; */
-
-static test_response_t RESPONSES[RESPONSE_COUNT] =
-	{ {&DNAMES[0], 1, 1, 12345, 0, 0, 0, 1, 0, 0, NULL,
-	   RESPONSE_RRSETS, NULL} };
-/* XXX ENDIANESS ??? */
-static ldns_rdf LDNS_RDFS_TEMP[LDNS_RDF_TEMP_COUNT] =
-	{ {LDNS_RDF_TYPE_DNAME, 13, (void *)"\7example\3com"},
-	  {LDNS_RDF_TYPE_DNAME, 16, (void *)"\2ns\7example\3com"}};
-
-static ldns_rr LDNS_RDF_ARRAYS[LDNS_RDFS_COUNT] =
-	{ {&LDNS_RDFS_TEMP[0]}, {&LDNS_RDFS_TEMP[1]} };
-static ldns_rr LDNS_RRS[LDNS_RR_COUNT] =
-	{ {&LDNS_RDFS_TEMP[0], 3600, 1, LDNS_RR_TYPE_NS,
-	  LDNS_RR_CLASS_IN, &LDNS_RDF_ARRAYS[1], false} };
-static ldns_rr_list LDNS_RRLISTS[LDNS_RRLIST_COUNT] =
-	{ {1, 1, NULL} };
-static ldns_hdr LDNS_HEADERS[LDNS_HEADER_COUNT] =
-	{ {12345, false, false, false, false, false, false, false,
-	  LDNS_PACKET_QUERY, 0, 0, 1, 0, 0} };
-/* XXX what is response code in our response */
-static ldns_pkt LDNS_PACKETS[LDNS_PACKET_COUNT] =/*I have to put  65535 smwh*/
-	{ {&LDNS_HEADERS[0], NULL, { 0, 0 }, 0, 0, 0, 0, 0, 0, 0, 0,
-	  NULL, NULL, &LDNS_RRLISTS[0] , NULL} };
 
 /* \note just checking the pointers probably would suffice */
 static int compare_rrsets(const dnslib_rrset_t *rrset1,
@@ -400,7 +392,7 @@ static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
 	if (check_authority) {
 		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
 			if (resp->authority[i]!=&(test_resp->authority[i])) {
-				diag("Authority rrset #%i is wrongly set.\n",
+				diag("Authority rrset #%d is wrongly set.\n",
 				     i);
 				errors++;
 			}
@@ -410,7 +402,7 @@ static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
 	if (check_answer) {
 		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
 			if (resp->authority[i]!=&(test_resp->authority[i])) {
-				diag("Authority rrset #%i is wrongly set.\n",
+				diag("Authority rrset #%d is wrongly set.\n",
 				     i);
 				errors++;
 			}
@@ -420,7 +412,7 @@ static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
 	if (check_additional) {
 		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
 			if (resp->authority[i]!=&(test_resp->authority[i])) {
-				diag("Authority rrset #%i is wrongly set.\n",
+				diag("Authority rrset #%d is wrongly set.\n",
 				     i);
 				errors++;
 			}
@@ -471,8 +463,6 @@ static int test_response_to_wire()
 
 	dnslib_response_t *resp;
 
-	ldns_pkt *ldns_packet;
-
 	assert(RESPONSE_COUNT == LDNS_PACKET_COUNT);
 
 	for (int i = 0; (i < RESPONSE_COUNT) && !errors; i++) {
@@ -498,11 +488,13 @@ static int test_response_to_wire()
 			}
 		}
 
-		uint8_t *dnslib_wire;
-		uint8_t *ldns_wire;
+		uint8_t *dnslib_wire = NULL;
+		uint8_t *ldns_wire = NULL;
 
 		size_t ldns_wire_size;
 		uint dnslib_wire_size;
+
+//		assert(LDNS_PACKETS[i]._authority->_rr_list);
 
 		if (ldns_pkt2wire(&ldns_wire, &LDNS_PACKETS[i],
 			          &ldns_wire_size) != LDNS_STATUS_OK) {
@@ -510,11 +502,17 @@ static int test_response_to_wire()
 			return 0;
 		}
 
+		diag("hex dump ldns wire:");
+		hex_print((char *)ldns_wire, ldns_wire_size);
+
 		if (dnslib_response_to_wire(resp, &dnslib_wire,
 			                    &dnslib_wire_size) != 0) {
 			diag("Could not convert dnslib response to wire\n");
 			return 0;
 		}
+
+		diag("hex dump dnslib wire:");
+		hex_print((char *)dnslib_wire, dnslib_wire_size);
 
 		if (compare_wires(dnslib_wire, ldns_wire, dnslib_wire_size)) {
 			diag("Resulting wires were not equal\n");
@@ -542,6 +540,9 @@ static int dnslib_response_tests_count(int argc, char *argv[])
 static int dnslib_response_tests_run(int argc, char *argv[])
 {
 	int ret;
+
+	printf("%d\n", LDNS_PACKETS[0]._authority->_rrs[0]->_rdata_fields[0]->_size);
+	getchar();
 	
 	ret = test_response_new_empty();
 	ok(ret, "response: create empty");
@@ -585,6 +586,8 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 
 	free(parsed_responses);
 	free(raw_queries);
+
+	printf("%d\n", &LDNS_RDFS_TEMP[1]);
 
 	endskip;
 
