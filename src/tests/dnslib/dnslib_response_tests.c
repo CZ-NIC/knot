@@ -177,7 +177,11 @@ enum {
 	RRSETS_COUNT = 1,
 	RESPONSE_COUNT = 1,
 	LDNS_PACKET_COUNT = 1,
-	LDNS_HEADER_COUNT = 1	
+	LDNS_HEADER_COUNT = 1,
+	LDNS_RRLIST_COUNT = 1,
+	LDNS_RR_COUNT = 1,
+	LDNS_RDFS_COUNT = 2,
+	LDNS_RDF_TEMP_COUNT = 2,
 };
 
 static dnslib_dname_t DNAMES[DNAMES_COUNT] =
@@ -185,7 +189,7 @@ static dnslib_dname_t DNAMES[DNAMES_COUNT] =
           {(uint8_t *)"2ns6example3com", 15, NULL} };
 
 static dnslib_rdata_item_t ITEMS[ITEMS_COUNT] =
-	{ {.dname = &DNAMES[0]},
+	{ {.dname = &DNAMES[1]},
           {.raw_data = (uint8_t *)"192.168.1.1"} };
 
 static dnslib_rdata_t RDATA[RDATA_COUNT] = { {&ITEMS[0], 1, &RDATA[0]} };
@@ -213,12 +217,26 @@ struct test_response {
 static test_response_t RESPONSES[RESPONSE_COUNT] =
 	{ {&DNAMES[0], 1, 1, 12345, 0, 0, 0, 1, 0, 0, NULL,
 	   RESPONSE_RRSETS, NULL} };
+/* XXX ENDIANESS ??? */
+static ldns_rdf LDNS_RDFS_TEMP[LDNS_RDF_TEMP_COUNT] =
+	{ {LDNS_RDF_TYPE_DNAME, 13, (void *)"\7example\3com"},
+	  {LDNS_RDF_TYPE_DNAME, 16, (void *)"\2ns\7example\3com"}};
+
+static ldns_rr LDNS_RDF_ARRAYS[LDNS_RDFS_COUNT] =
+	{ {&LDNS_RDFS_TEMP[0]}, {&LDNS_RDFS_TEMP[1]} };
+static ldns_rr LDNS_RRS[LDNS_RR_COUNT] =
+	{ {&LDNS_RDFS_TEMP[0], 3600, 1, LDNS_RR_TYPE_NS,
+	  LDNS_RR_CLASS_IN, &LDNS_RDF_ARRAYS[1], false} };
+static ldns_rr_list LDNS_RRLISTS[LDNS_RRLIST_COUNT] =
+	{ {1, 1, NULL} };
 static ldns_hdr LDNS_HEADERS[LDNS_HEADER_COUNT] =
-	{ {12345, false, false, false, false, false, false, false, LDNS_PACKET_QUERY, 0, 0, 1, 0, 0} };
+	{ {12345, false, false, false, false, false, false, false,
+	  LDNS_PACKET_QUERY, 0, 0, 1, 0, 0} };
 /* XXX what is response code in our response */
-static ldns_pkt LDNS_PACKETS[LDNS_PACKET_COUNT] =       /*I have to put  65535 smwh*/    /*XXX*/
-	{ {&LDNS_HEADERS[0], NULL, { NULL }, 0, 0, 0, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL} };
-                          /*XXX*/
+static ldns_pkt LDNS_PACKETS[LDNS_PACKET_COUNT] =/*I have to put  65535 smwh*/
+	{ {&LDNS_HEADERS[0], NULL, { 0, 0 }, 0, 0, 0, 0, 0, 0, 0, 0,
+	  NULL, NULL, &LDNS_RRLISTS[0] , NULL} };
+
 /* \note just checking the pointers probably would suffice */
 static int compare_rrsets(const dnslib_rrset_t *rrset1,
                           const dnslib_rrset_t *rrset2)
@@ -336,7 +354,6 @@ static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
 			     resp->question.qtype, test_resp->type);
 			return 0;
 		}
-
 	}
 
 	if (check_header) {
@@ -438,6 +455,16 @@ static int test_response_parse_query(test_response_t **responses,
 	return (errors == 0);
 }
 
+static int compare_wires(uint8_t *wire1, uint8_t *wire2, uint size)
+{
+	for (int i = 0; i < size; i++) {
+		if (wire1[i] != wire2[i]) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 static int test_response_to_wire()
 {
 	int errors = 0;
@@ -452,18 +479,46 @@ static int test_response_to_wire()
 
 		resp = dnslib_response_new_empty(NULL, 0);
 
-
 		for (int j = 0; j < RESPONSES[i].ancount; j++) {
-			dnslib_response_add_rrset_answer(resp,
-				&(RESPONSES[i].answer[j]), 0);
+			if (&(RESPONSES[i].answer[j])) {
+				dnslib_response_add_rrset_answer(resp,
+					&(RESPONSES[i].answer[j]), 0);
+			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
-			dnslib_response_add_rrset_additional(resp,
-				&(RESPONSES[i].additional[j]), 0);
+			if (&(RESPONSES[i].additional[j])) {
+				dnslib_response_add_rrset_additional(resp,
+					&(RESPONSES[i].additional[j]), 0);
+			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
-			dnslib_response_add_rrset_authority(resp,
-				&(RESPONSES[i].authority[j]), 0);
+			if (&(RESPONSES[i].authority[j])) {
+				dnslib_response_add_rrset_authority(resp,
+					&(RESPONSES[i].authority[j]), 0);
+			}
+		}
+
+		uint8_t *dnslib_wire;
+		uint8_t *ldns_wire;
+
+		size_t ldns_wire_size;
+		uint dnslib_wire_size;
+
+		if (ldns_pkt2wire(&ldns_wire, &LDNS_PACKETS[i],
+			          &ldns_wire_size) != LDNS_STATUS_OK) {
+			diag("Could not convert ldns packet to wire\n");
+			return 0;
+		}
+
+		if (dnslib_response_to_wire(resp, &dnslib_wire,
+			                    &dnslib_wire_size) != 0) {
+			diag("Could not convert dnslib response to wire\n");
+			return 0;
+		}
+
+		if (compare_wires(dnslib_wire, ldns_wire, dnslib_wire_size)) {
+			diag("Resulting wires were not equal\n");
+			return 0;
 		}
 
 		dnslib_response_free(&resp);
@@ -518,6 +573,8 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	                             raw_queries,
 	                             response_parsed_count),
 	   "response: parse query");
+
+	ok(test_response_to_wire(), "response: to wire");
 
 	for (int i = 0; i < response_parsed_count; i++) {
 		dnslib_dname_free(&(parsed_responses[i]->owner));
