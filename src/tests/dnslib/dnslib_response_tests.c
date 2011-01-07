@@ -52,6 +52,8 @@ struct test_response {
 	dnslib_rrset_t *authority;
 	dnslib_rrset_t *additional;
 
+	short size;
+
 	/* TODO what about the rest of the values?
 	 * they cannot be modified from API, but this is probably the best
 	 * place to test them as well */
@@ -82,8 +84,8 @@ enum {
 };
 
 static dnslib_dname_t DNAMES[DNAMES_COUNT] =
-	{ {(uint8_t *)"6example3com", 12, NULL}, //0's at the end are added
-          {(uint8_t *)"2ns6example3com", 15, NULL} };
+	{ {(uint8_t *)"\7example\3com", 13, NULL}, //0's at the end are added
+          {(uint8_t *)"\2ns\7example\3com", 16, NULL} };
 
 static dnslib_rdata_item_t ITEMS[ITEMS_COUNT] =
 	{ {.dname = &DNAMES[1]},
@@ -95,8 +97,8 @@ static dnslib_rrset_t RESPONSE_RRSETS[RRSETS_COUNT] =
 	{ {&DNAMES[0],1 ,1 ,3600, &RDATA[0], NULL} };
 
 static test_response_t RESPONSES[RESPONSE_COUNT] =
-	{ {&DNAMES[0], 1, 1, 12345, 0, 0, 0, 1, 0, 0, NULL,
-	   RESPONSE_RRSETS, NULL} };
+	{ {&DNAMES[0], 1, 1, 12345, 0, 0, 1, 0, 0, 0, NULL,
+	   RESPONSE_RRSETS, NULL, 29} };
 
 /* ************************* LDNS DATA ************************* */
 
@@ -463,11 +465,24 @@ static int test_response_to_wire()
 
 	dnslib_response_t *resp;
 
+	dnslib_response_t *tmp_resp;
+
 	assert(RESPONSE_COUNT == LDNS_PACKET_COUNT);
 
 	for (int i = 0; (i < RESPONSE_COUNT) && !errors; i++) {
 
 		resp = dnslib_response_new_empty(NULL, 0);
+
+		resp->header.id = RESPONSES[i].id;
+		//flags1?
+		resp->header.qdcount = RESPONSES[i].qdcount;	
+		resp->header.ancount = RESPONSES[i].ancount;
+		resp->header.nscount = RESPONSES[i].nscount;
+		resp->header.arcount = RESPONSES[i].arcount;
+
+		resp->question.qname = RESPONSES[i].owner;
+		resp->question.qtype = RESPONSES[i].type;
+		resp->question.qclass = RESPONSES[i].rclass;
 
 		for (int j = 0; j < RESPONSES[i].ancount; j++) {
 			if (&(RESPONSES[i].answer[j])) {
@@ -488,13 +503,13 @@ static int test_response_to_wire()
 			}
 		}
 
+		resp->size = RESPONSES[i].size;
+
 		uint8_t *dnslib_wire = NULL;
 		uint8_t *ldns_wire = NULL;
 
 		size_t ldns_wire_size;
 		uint dnslib_wire_size;
-
-//		assert(LDNS_PACKETS[i]._authority->_rr_list);
 
 		if (ldns_pkt2wire(&ldns_wire, &LDNS_PACKETS[i],
 			          &ldns_wire_size) != LDNS_STATUS_OK) {
@@ -514,15 +529,36 @@ static int test_response_to_wire()
 		diag("hex dump dnslib wire:");
 		hex_print((char *)dnslib_wire, dnslib_wire_size);
 
-		if (compare_wires(dnslib_wire, ldns_wire, dnslib_wire_size)) {
-			diag("Resulting wires were not equal\n");
+		tmp_resp = dnslib_response_new_empty(NULL, 0);
+
+		assert(tmp_resp);
+
+		if (dnslib_response_parse_query(tmp_resp, dnslib_wire,
+			                        dnslib_wire_size) != 0) {
+			diag("Could not parse created wire");
 			return 0;
 		}
 
+		if (!check_response(tmp_resp, &RESPONSES[i], 1, 1, 1, 1, 1)) {
+			diag("Response parsed from wire does not match");
+			return 0;
+		}
+		
+		dnslib_dname_free(&(tmp_resp->question.qname));
+		dnslib_response_free(&tmp_resp);
+
+
+		if (compare_wires(dnslib_wire, ldns_wire, dnslib_wire_size)) {
+			diag("Resulting wires were not equal - TODO\n");
+//			return 0;
+		}
+		
+		free(ldns_wire);
+		free(dnslib_wire);
 		dnslib_response_free(&resp);
 	}
 	
-	return (errors == 1);
+	return (errors == 0);
 }
 
 static const int DNSLIB_RESPONSE_TEST_COUNT = 6;
@@ -541,9 +577,6 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 {
 	int ret;
 
-	printf("%d\n", LDNS_PACKETS[0]._authority->_rrs[0]->_rdata_fields[0]->_size);
-	getchar();
-	
 	ret = test_response_new_empty();
 	ok(ret, "response: create empty");
 
