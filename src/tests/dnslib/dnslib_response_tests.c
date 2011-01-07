@@ -620,8 +620,6 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	free(parsed_responses);
 	free(raw_queries);
 
-	printf("%d\n", &LDNS_RDFS_TEMP[1]);
-
 	endskip;
 
 	return 0;
