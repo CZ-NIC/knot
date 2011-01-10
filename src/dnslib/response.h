@@ -149,9 +149,9 @@ struct dnslib_response {
 	/*! \brief Information needed for compressing domain names in packet. */
 	dnslib_compressed_dnames_t compression;
 
-	dnslib_dname_t **tmp_dnames; /*!< Synthetized domain names. */
-	short tmp_dname_count;   /*!< Count of synthetized domain names. */
-	short tmp_dname_max;     /*!< Allocated space for synthetized dnames. */
+	const dnslib_rrset_t **tmp_rrsets; /*!< Synthetized RRSets. */
+	short tmp_rrsets_count;  /*!< Count of synthetized RRSets. */
+	short tmp_rrsets_max;    /*!< Allocated space for synthetized RRSets. */
 };
 
 typedef struct dnslib_response dnslib_response_t;
@@ -187,6 +187,33 @@ dnslib_response_t *dnslib_response_new_empty(const uint8_t *edns_wire,
  */
 int dnslib_response_parse_query(dnslib_response_t *response,
                                 const uint8_t *query_wire, size_t query_size);
+
+/*!
+ * \brief Returns the QNAME from the response.
+ *
+ * \param response Response to get the QNAME from.
+ *
+ * \return QNAME stored in the response.
+ */
+const dnslib_dname_t *dnslib_response_qname(const dnslib_response_t *response);
+
+/*!
+ * \brief Returns the QTYPE from the response.
+ *
+ * \param response Response to get the QTYPE from.
+ *
+ * \return QTYPE stored in the response.
+ */
+const uint16_t dnslib_response_qtype(const dnslib_response_t *response);
+
+/*!
+ * \brief Returns the QCLASS from the response.
+ *
+ * \param response Response to get the QCLASS from.
+ *
+ * \return QCLASS stored in the response.
+ */
+const uint16_t dnslib_response_qclass(const dnslib_response_t *response);
 
 /*!
  * \brief Adds a RRSet to the Answer section of the response.
@@ -227,8 +254,8 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
  * \retval 0 if successful.
  * \retval <> 0 if an error occured.
  */
-int dnslib_response_add_rrset_aditional(dnslib_response_t *response,
-                                        const dnslib_rrset_t *rrset, int tc);
+int dnslib_response_add_rrset_additional(dnslib_response_t *response,
+                                         const dnslib_rrset_t *rrset, int tc);
 
 /*!
  * \brief Sets the RCODE of the response.
@@ -244,6 +271,10 @@ void dnslib_response_set_rcode(dnslib_response_t *response, short rcode);
  * \param response Response in which the AA bit should be set.
  */
 void dnslib_response_set_aa(dnslib_response_t *response);
+
+
+int dnslib_response_add_tmp_rrset(dnslib_response_t *response,
+                                  dnslib_rrset_t *tmp_rrset);
 
 /*!
  * \brief Converts the response to wire format.
@@ -266,6 +297,8 @@ int dnslib_response_to_wire(dnslib_response_t *response,
  * \param response Response to be destroyed.
  */
 void dnslib_response_free(dnslib_response_t **response);
+
+void dnslib_response_dump(const dnslib_response_t *resp);
 
 #endif /* _CUTEDNS_DNSLIB_RESPONSE_H_ */
 

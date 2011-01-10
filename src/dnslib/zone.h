@@ -116,6 +116,11 @@ dnslib_node_t *dnslib_zone_get_nsec3_node(const dnslib_zone_t *zone,
 const dnslib_node_t *dnslib_zone_find_node(const dnslib_zone_t *zone,
                                            const dnslib_dname_t *name);
 
+int dnslib_zone_find_dname(const dnslib_zone_t *zone,
+                           const dnslib_dname_t *name,
+                           const dnslib_node_t **node,
+                           const dnslib_node_t **closest_encloser);
+
 /*!
  * \brief Tries to find a node with the specified name among the NSEC3 nodes
  *        of the zone.
@@ -151,25 +156,105 @@ void dnslib_zone_adjust_dnames(dnslib_zone_t *zone);
 /*!
  * \brief Applies the given function to each regular node in the zone.
  *
+ * This function uses post-order depth-first forward traversal, i.e. the
+ * function is first recursively applied to subtrees and then to the root.
+ *
  * \param zone Nodes of this zone will be used as parameters for the function.
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-void dnslib_zone_tree_apply(dnslib_zone_t *zone,
-                            void (*function)(dnslib_node_t *node, void *data),
-                            void *data);
+void dnslib_zone_tree_apply_postorder(dnslib_zone_t *zone,
+                              void (*function)(dnslib_node_t *node, void *data),
+                              void *data);
+
+/*!
+ * \brief Applies the given function to each regular node in the zone.
+ *
+ * This function uses in-order depth-first forward traversal, i.e. the function
+ * is first recursively applied to left subtree, then to the root and then to
+ * the right subtree.
+ *
+ * \note This implies that the zone is stored in a binary tree. Is there a way
+ *       to make this traversal independent on the underlying structure?
+ *
+ * \param zone Nodes of this zone will be used as parameters for the function.
+ * \param function Function to be applied to each node of the zone.
+ * \param data Arbitrary data to be passed to the function.
+ */
+void dnslib_zone_tree_apply_inorder(dnslib_zone_t *zone,
+                              void (*function)(dnslib_node_t *node, void *data),
+                              void *data);
+
+/*!
+ * \brief Applies the given function to each regular node in the zone.
+ *
+ * This function uses in-order depth-first reverse traversal, i.e. the function
+ * is first recursively applied to right subtree, then to the root and then to
+ * the left subtree.
+ *
+ * \note This implies that the zone is stored in a binary tree. Is there a way
+ *       to make this traversal independent on the underlying structure?
+ *
+ * \param zone Nodes of this zone will be used as parameters for the function.
+ * \param function Function to be applied to each node of the zone.
+ * \param data Arbitrary data to be passed to the function.
+ */
+void dnslib_zone_tree_apply_inorder_reverse(dnslib_zone_t *zone,
+                              void (*function)(dnslib_node_t *node, void *data),
+                              void *data);
 
 /*!
  * \brief Applies the given function to each NSEC3 node in the zone.
+ *
+ * This function uses post-order depth-first forward traversal, i.e. the
+ * function is first recursively applied to subtrees and then to the root.
  *
  * \param zone NSEC3 nodes of this zone will be used as parameters for the
  *             function.
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-void dnslib_zone_nsec3_apply(dnslib_zone_t *zone,
-                             void (*function)(dnslib_node_t *node, void *data),
-                             void *data);
+void dnslib_zone_nsec3_apply_postorder(dnslib_zone_t *zone,
+                              void (*function)(dnslib_node_t *node, void *data),
+                              void *data);
+
+/*!
+ * \brief Applies the given function to each NSEC3 node in the zone.
+ *
+ * This function uses in-order depth-first forward traversal, i.e. the function
+ * is first recursively applied to left subtree, then to the root and then to
+ * the right subtree.
+ *
+ * \note This implies that the zone is stored in a binary tree. Is there a way
+ *       to make this traversal independent on the underlying structure?
+ *
+ * \param zone NSEC3 nodes of this zone will be used as parameters for the
+ *             function.
+ * \param function Function to be applied to each node of the zone.
+ * \param data Arbitrary data to be passed to the function.
+ */
+void dnslib_zone_nsec3_apply_inorder(dnslib_zone_t *zone,
+                              void (*function)(dnslib_node_t *node, void *data),
+                              void *data);
+
+/*!
+ * \brief Applies the given function to each NSEC3 node in the zone.
+ *
+ * This function uses in-order depth-first reverse traversal, i.e. the function
+ * is first recursively applied to right subtree, then to the root and then to
+ * the left subtree.
+ *
+ * \note This implies that the zone is stored in a binary tree. Is there a way
+ *       to make this traversal independent on the underlying structure?
+ *
+ * \param zone NSEC3 nodes of this zone will be used as parameters for the
+ *             function.
+ * \param function Function to be applied to each node of the zone.
+ * \param data Arbitrary data to be passed to the function.
+ */
+void dnslib_zone_nsec3_apply_inorder_reverse(dnslib_zone_t *zone,
+                              void (*function)(dnslib_node_t *node, void *data),
+                              void *data);
 
 /*!
  * \brief Correctly deallocates the zone structure, without deleting its nodes.

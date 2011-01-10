@@ -139,6 +139,21 @@ static int dnslib_dname_compare_labels(const uint8_t *label1,
 }
 
 /*----------------------------------------------------------------------------*/
+
+static void dnslib_dname_find_labels(const dnslib_dname_t *dname,
+                                     const uint8_t **labels, int *label_count)
+{
+	const uint8_t *name = dnslib_dname_name(dname);
+	const uint8_t *pos = name;
+	const uint size = dnslib_dname_size(dname);
+
+	while (pos - name < size && *pos != '\0') {
+		labels[(*label_count)++] = pos;
+		pos += *pos + 1;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -220,6 +235,14 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 	dname->node = node;
 
 	return dname;
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnslib_dname_t *dnslib_dname_copy(const dnslib_dname_t *dname)
+{
+	return dnslib_dname_new_from_wire(dname->name, dname->size,
+	                                  dname->node);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -338,23 +361,8 @@ int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
 	int l1 = 0;
 	int l2 = 0;
 
-	const uint8_t *name1 = dnslib_dname_name(sub);
-	const uint8_t *pos1 = name1;
-	const uint size1 = dnslib_dname_size(sub);
-
-	const uint8_t *name2 = dnslib_dname_name(domain);
-	const uint8_t *pos2 = name2;
-	const uint size2 = dnslib_dname_size(domain);
-
-	while (pos1 - name1 < size1 && *pos1 != '\0') {
-		labels1[l1++] = pos1;
-		pos1 += *pos1 + 1;
-	}
-
-	while (pos2 - name2 < size2 && *pos2 != '\0') {
-		labels2[l2++] = pos2;
-		pos2 += *pos2 + 1;
-	}
+	dnslib_dname_find_labels(sub, labels1, &l1);
+	dnslib_dname_find_labels(domain, labels2, &l2);
 
 	if (l1 <= l2) {  // if sub does not have more labes than domain
 		return 0;  // it is not its subdomain
@@ -373,6 +381,79 @@ int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
 	assert(l1 > l2);
 
 	return 1;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_dname_is_wildcard(const dnslib_dname_t *dname)
+{
+	return (dname->size >= 2
+		&& dname->name[0] == 1
+		&& dname->name[1] == '*');
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_dname_matched_labels(const dnslib_dname_t *dname1,
+                                const dnslib_dname_t *dname2)
+{
+	// jump to the last label and store addresses of labels
+	// on the way there
+	// TODO: consider storing label offsets in the domain name structure
+	const uint8_t *labels1[DNSLIB_MAX_DNAME_LABELS];
+	const uint8_t *labels2[DNSLIB_MAX_DNAME_LABELS];
+	int l1 = 0;
+	int l2 = 0;
+
+	dnslib_dname_find_labels(dname1, labels1, &l1);
+	dnslib_dname_find_labels(dname2, labels2, &l2);
+
+	// compare labels from last to first
+	int matched = 0;
+	while (l1 > 0 && l2 > 0) {
+		int res = dnslib_dname_compare_labels(labels1[--l1],
+		                                      labels2[--l2]);
+		if (res == 0) {
+			++matched;
+		} else  {
+			break;
+		}
+	}
+
+	return matched;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_dname_label_count(const dnslib_dname_t *dname)
+{
+	const uint8_t *labels[DNSLIB_MAX_DNAME_LABELS];
+	int l = 0;
+	dnslib_dname_find_labels(dname, labels, &l);
+	return l;
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnslib_dname_t *dnslib_dname_replace_suffix(const dnslib_dname_t *dname,
+                                            int size,
+                                            const dnslib_dname_t *suffix)
+{
+	dnslib_dname_t *res = dnslib_dname_new();
+	if (res == NULL) {
+		return NULL;
+	}
+
+	res->name = (uint8_t *)malloc(dname->size - size + suffix->size);
+	if (res->name == NULL) {
+		dnslib_dname_free(&res);
+		return NULL;
+	}
+
+	memcpy(res->name, dname->name, dname->size - size);
+	memcpy(res->name + dname->size - size, suffix, size);
+
+	return res;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -406,22 +487,8 @@ int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2)
 	int l1 = 0;
 	int l2 = 0;
 
-	const uint8_t *pos1 = d1->name;
-	const uint8_t *pos2 = d2->name;
-	int i = 0;
-
-	while (i < d1->size && *pos1 != '\0') {
-		labels1[l1++] = pos1;
-		pos1 += *pos1 + 1;
-		++i;
-	}
-
-	i = 0;
-	while (i < d2->size && *pos2 != '\0') {
-		labels2[l2++] = pos2;
-		pos2 += *pos2 + 1;
-		++i;
-	}
+	dnslib_dname_find_labels(d1, labels1, &l1);
+	dnslib_dname_find_labels(d2, labels2, &l2);
 
 	// compare labels from last to first
 	while (l1 > 0 && l2 > 0) {

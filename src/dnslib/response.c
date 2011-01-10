@@ -15,12 +15,12 @@ enum {
 	DEFAULT_NSCOUNT = 8,
 	DEFAULT_ARCOUNT = 28,
 	DEFAULT_DOMAINS_IN_RESPONSE = 22,
-	DEFAULT_TMP_DOMAINS = 5,
+	DEFAULT_TMP_RRSETS = 5,
 	STEP_ANCOUNT = 6,
 	STEP_NSCOUNT = 8,
 	STEP_ARCOUNT = 8,
 	STEP_DOMAINS = 10,
-	STEP_TMP_DOMAINS = 5
+	STEP_TMP_RRSETS = 5
 };
 
 enum {
@@ -38,15 +38,15 @@ enum {
 		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(dnslib_dname_t *),
 	PREALLOC_OFFSETS =
 		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(short),
-	PREALLOC_TMP_DOMAINS =
-		DEFAULT_TMP_DOMAINS * sizeof(dnslib_dname_t *),
+	PREALLOC_TMP_RRSETS =
+		DEFAULT_TMP_RRSETS * sizeof(dnslib_dname_t *),
 
 	PREALLOC_TOTAL = PREALLOC_RESPONSE
 	                 + PREALLOC_QNAME
 	                 + PREALLOC_RRSETS
 	                 + PREALLOC_DOMAINS
 	                 + PREALLOC_OFFSETS
-	                 + PREALLOC_TMP_DOMAINS,
+	                 + PREALLOC_TMP_RRSETS,
 
 	PREALLOC_RESPONSE_WIRE = 65535,
 	PREALLOC_RRSET_WIRE = 65535
@@ -114,22 +114,22 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 
 	resp->compression.max = DEFAULT_DOMAINS_IN_RESPONSE;
 
-	resp->tmp_dnames = (dnslib_dname_t **)
+	resp->tmp_rrsets = (const dnslib_rrset_t **)
 		(resp->compression.offsets + DEFAULT_DOMAINS_IN_RESPONSE);
 
-	debug_dnslib_response("Tmp dnames: %p (%d after compression offsets)\n",
-		resp->tmp_dnames,
-		(void *)resp->tmp_dnames - (void *)resp->compression.offsets);
+	debug_dnslib_response("Tmp rrsets: %p (%d after compression offsets)\n",
+		resp->tmp_rrsets,
+		(void *)resp->tmp_rrsets - (void *)resp->compression.offsets);
 
-	resp->tmp_dname_max = DEFAULT_TMP_DOMAINS;
+	resp->tmp_rrsets_max = DEFAULT_TMP_RRSETS;
 
 	debug_dnslib_response("End of data: %p (%d after start of response)\n",
-		resp->tmp_dnames + DEFAULT_TMP_DOMAINS,
-		(void *)(resp->tmp_dnames + DEFAULT_TMP_DOMAINS)
+		resp->tmp_rrsets + DEFAULT_TMP_RRSETS,
+		(void *)(resp->tmp_rrsets + DEFAULT_TMP_RRSETS)
 		  - (void *)resp);
 	debug_dnslib_response("Allocated total: %u\n", PREALLOC_TOTAL);
 
-	assert((char *)(resp->tmp_dnames + DEFAULT_TMP_DOMAINS)
+	assert((char *)(resp->tmp_rrsets + DEFAULT_TMP_RRSETS)
 	       == (char *)resp + PREALLOC_TOTAL);
 }
 
@@ -139,6 +139,8 @@ static void dnslib_response_init(dnslib_response_t *resp,
                                  const uint8_t *edns_wire, short edns_size)
 {
 	memset(resp, 0, PREALLOC_TOTAL);
+
+	assert(edns_wire != NULL || edns_size == 0);
 
 	resp->edns_wire = edns_wire;
 	resp->edns_size = edns_size;
@@ -156,6 +158,9 @@ static void dnslib_response_init(dnslib_response_t *resp,
 
 	// save default pointers to the space after the structure
 	dnslib_response_init_pointers(resp);
+
+	// set the QR bit
+	dnslib_packet_flags_set_qr(&resp->header.flags1);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -175,8 +180,13 @@ static int dnslib_response_parse_header(const uint8_t **pos, size_t *remaining,
 	}
 
 	header->id = dnslib_packet_get_id(*pos);
+	// copy some of the flags: OPCODE and RD
+	// do this by copying flags1 and setting QR to 1, AA to 0 and TC to 0
 	header->flags1 = dnslib_packet_get_flags1(*pos);
-	header->flags2 = dnslib_packet_get_flags2(*pos);
+	dnslib_packet_flags_set_qr(&header->flags1);
+	dnslib_packet_flags_clear_aa(&header->flags1);
+	dnslib_packet_flags_clear_tc(&header->flags1);
+	// do not copy flags2 (all set by server)
 	header->qdcount = dnslib_packet_get_qdcount(*pos);
 	header->ancount = dnslib_packet_get_ancount(*pos);
 	header->nscount = dnslib_packet_get_nscount(*pos);
@@ -234,6 +244,9 @@ static int dnslib_response_parse_question(const uint8_t **pos,
 	}
 
 	question->qname = dnslib_dname_new_from_wire(*pos, i + 1, NULL);
+	if (question->qname == NULL) {
+		return -3;  // allocation failed
+	}
 	*pos += i + 1;
 	question->qtype = dnslib_wire_read_u16(*pos);
 	*pos += 2;
@@ -250,6 +263,8 @@ static int dnslib_response_parse_question(const uint8_t **pos,
 static void dnslib_response_question_to_wire(dnslib_question_t *question,
                                             uint8_t **pos, short *size)
 {
+	debug_dnslib_response("Copying QNAME, size %d\n",
+	                      question->qname->size);
 	memcpy(*pos, question->qname->name, question->qname->size);
 	*size += question->qname->size;
 	*pos += question->qname->size;
@@ -462,15 +477,19 @@ static void dnslib_response_rrsets_to_wire(const dnslib_rrset_t **rrsets,
 	while (i < count) {
 		dnslib_response_rrset_to_wire(rrsets[i], pos, size, compr);
 		assert(*size <= max_size);
+/*XXX*/		i++;
 	}
 }
 
 /*----------------------------------------------------------------------------*/
 
-static void dnslib_response_free_tmp_domains(dnslib_response_t *resp)
+static void dnslib_response_free_tmp_rrsets(dnslib_response_t *resp)
 {
-	for (int i = 0; i < resp->tmp_dname_count; ++i) {
-		dnslib_dname_free(&resp->tmp_dnames[i]);
+	for (int i = 0; i < resp->tmp_rrsets_count; ++i) {
+		// TODO: this is quite ugly, but better than copying whole
+		// function (for reallocating rrset array)
+		dnslib_rrset_deep_free(
+			&(((dnslib_rrset_t **)(resp->tmp_rrsets))[i]), 1);
 	}
 }
 
@@ -493,58 +512,16 @@ static void dnslib_response_free_allocated_space(dnslib_response_t *resp)
 		free(resp->compression.offsets);
 	}
 
-	if (resp->tmp_dname_max > DEFAULT_TMP_DOMAINS) {
-		free(resp->tmp_dnames);
+	if (resp->tmp_rrsets_max > DEFAULT_TMP_RRSETS) {
+		free(resp->tmp_rrsets);
 	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-static void dnslib_response_dump(const dnslib_response_t *resp)
-{
-	debug_dnslib_response("DNS response:\n-----------------------------\n");
-
-	debug_dnslib_response("\nHeader:\n");
-	debug_dnslib_response("  ID: %u", resp->header.id);
-	debug_dnslib_response("  FLAGS: %s %s %s %s %s %s %s\n",
-	       dnslib_packet_flags_get_qr(resp->header.flags1) ? "qr" : "",
-	       dnslib_packet_flags_get_aa(resp->header.flags1) ? "aa" : "",
-	       dnslib_packet_flags_get_tc(resp->header.flags1) ? "tc" : "",
-	       dnslib_packet_flags_get_rd(resp->header.flags1) ? "rd" : "",
-	       dnslib_packet_flags_get_ra(resp->header.flags2) ? "ra" : "",
-	       dnslib_packet_flags_get_ad(resp->header.flags2) ? "ad" : "",
-	       dnslib_packet_flags_get_cd(resp->header.flags2) ? "cd" : "");
-	debug_dnslib_response("  QDCOUNT: %u\n", resp->header.qdcount);
-	debug_dnslib_response("  ANCOUNT: %u\n", resp->header.ancount);
-	debug_dnslib_response("  NSCOUNT: %u\n", resp->header.nscount);
-	debug_dnslib_response("  ARCOUNT: %u\n", resp->header.arcount);
-
-	debug_dnslib_response("\nQuestion:\n");
-	char *qname = dnslib_dname_to_str(resp->question.qname);
-	debug_dnslib_response("  QNAME: %s\n", qname);
-	free(qname);
-	debug_dnslib_response("  QTYPE: %u (%s)\n", resp->question.qtype,
-	       dnslib_rrtype_to_string(resp->question.qtype));
-	debug_dnslib_response("  QCLASS: %u (%s)\n", resp->question.qclass,
-	       dnslib_rrclass_to_string(resp->question.qclass));
-
-	/*! \todo Dumping of Answer, Authority and Additional sections. */
-
-	debug_dnslib_response("\nEDNS - client:\n");
-	debug_dnslib_response("  Version: %u\n", resp->edns_query.version);
-	debug_dnslib_response("  Payload: %u\n", resp->edns_query.payload);
-	debug_dnslib_response("  Extended RCODE: %u\n",
-	                      resp->edns_query.ext_rcode);
-
-	debug_dnslib_response("\nResponse size: %d\n", resp->size);
-	debug_dnslib_response("\n-----------------------------\n");
 }
 
 /*----------------------------------------------------------------------------*/
 
 static int dnslib_response_realloc_rrsets(const dnslib_rrset_t ***rrsets,
                                           short *max_count,
-                                          short default_max_count, short step )
+                                          short default_max_count, short step)
 {
 	int free_old = (*max_count) != default_max_count;
 	const dnslib_rrset_t **old = *rrsets;
@@ -655,6 +632,7 @@ int dnslib_response_parse_query(dnslib_response_t *resp,
 		return err;
 	}
 	resp->size += resp->question.qname->size + 4;
+	resp->header.qdcount = 1;
 
 	if (resp->header.arcount > 0) {  // expecting EDNS OPT RR
 		if ((err = dnslib_response_parse_client_edns(
@@ -682,10 +660,31 @@ int dnslib_response_parse_query(dnslib_response_t *resp,
 		// some trailing garbage; ignore, but log
 		log_info("%d bytes of trailing garbage in query.\n", remaining);
 	}
-
+#ifdef DNSLIB_RESPONSE_DEBUG
 	dnslib_response_dump(resp);
-
+#endif /* DNSLIB_RESPONSE_DEBUG */
 	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const dnslib_dname_t *dnslib_response_qname(const dnslib_response_t *response)
+{
+	return response->question.qname;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const uint16_t dnslib_response_qtype(const dnslib_response_t *response)
+{
+	return response->question.qtype;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const uint16_t dnslib_response_qclass(const dnslib_response_t *response)
+{
+	return response->question.qclass;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -729,8 +728,8 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_response_add_rrset_aditional(dnslib_response_t *response,
-                                        const dnslib_rrset_t *rrset, int tc)
+int dnslib_response_add_rrset_additional(dnslib_response_t *response,
+                                         const dnslib_rrset_t *rrset, int tc)
 {
 	if (response->header.arcount == response->max_arcount
 	    && dnslib_response_realloc_rrsets(&response->additional,
@@ -762,6 +761,24 @@ void dnslib_response_set_aa(dnslib_response_t *response)
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_response_add_tmp_rrset(dnslib_response_t *response,
+                                  dnslib_rrset_t *tmp_rrset)
+{
+	if (response->tmp_rrsets_count == response->tmp_rrsets_max
+	    && dnslib_response_realloc_rrsets(&response->tmp_rrsets,
+			&response->tmp_rrsets_max, DEFAULT_TMP_RRSETS,
+			STEP_TMP_RRSETS)
+		!= 0) {
+		return -1;
+	}
+
+	response->tmp_rrsets[response->tmp_rrsets_count++] = tmp_rrset;
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_response_to_wire(dnslib_response_t *response,
                             uint8_t **resp_wire, size_t *resp_size)
 {
@@ -771,6 +788,8 @@ int dnslib_response_to_wire(dnslib_response_t *response,
 
 	assert(response->size <= response->max_size);
 
+	debug_dnslib_response("Converting response to wire format, size: %d\n",
+	                      response->size);
 	*resp_wire = (uint8_t *)malloc(response->size);
 	CHECK_ALLOC_LOG(*resp_wire, -1);
 
@@ -783,7 +802,10 @@ int dnslib_response_to_wire(dnslib_response_t *response,
 
 	dnslib_response_header_to_wire(&response->header, &pos, &size);
 
-	dnslib_response_question_to_wire(&response->question, &pos, &size);
+	if (response->header.qdcount > 0) {
+		dnslib_response_question_to_wire(
+			&response->question, &pos, &size);
+	}
 
 	dnslib_response_rrsets_to_wire(response->answer,
 	                               response->header.ancount, &pos, &size,
@@ -818,10 +840,54 @@ void dnslib_response_free(dnslib_response_t **response)
 	}
 
 	// free temporary domain names
-	dnslib_response_free_tmp_domains(*response);
+	debug_dnslib_response("Freeing tmp domains...\n");
+	dnslib_response_free_tmp_rrsets(*response);
 	// check if some additional space was allocated for the response
+	debug_dnslib_response("Freeing additional allocated space...\n");
 	dnslib_response_free_allocated_space(*response);
-
+	debug_dnslib_response("Freeing response structure\n");
 	free(*response);
 	*response = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_response_dump(const dnslib_response_t *resp)
+{
+	debug_dnslib_response("DNS response:\n-----------------------------\n");
+
+	debug_dnslib_response("\nHeader:\n");
+	debug_dnslib_response("  ID: %u", resp->header.id);
+	debug_dnslib_response("  FLAGS: %s %s %s %s %s %s %s\n",
+	       dnslib_packet_flags_get_qr(resp->header.flags1) ? "qr" : "",
+	       dnslib_packet_flags_get_aa(resp->header.flags1) ? "aa" : "",
+	       dnslib_packet_flags_get_tc(resp->header.flags1) ? "tc" : "",
+	       dnslib_packet_flags_get_rd(resp->header.flags1) ? "rd" : "",
+	       dnslib_packet_flags_get_ra(resp->header.flags2) ? "ra" : "",
+	       dnslib_packet_flags_get_ad(resp->header.flags2) ? "ad" : "",
+	       dnslib_packet_flags_get_cd(resp->header.flags2) ? "cd" : "");
+	debug_dnslib_response("  QDCOUNT: %u\n", resp->header.qdcount);
+	debug_dnslib_response("  ANCOUNT: %u\n", resp->header.ancount);
+	debug_dnslib_response("  NSCOUNT: %u\n", resp->header.nscount);
+	debug_dnslib_response("  ARCOUNT: %u\n", resp->header.arcount);
+
+	debug_dnslib_response("\nQuestion:\n");
+	char *qname = dnslib_dname_to_str(resp->question.qname);
+	debug_dnslib_response("  QNAME: %s\n", qname);
+	free(qname);
+	debug_dnslib_response("  QTYPE: %u (%s)\n", resp->question.qtype,
+	       dnslib_rrtype_to_string(resp->question.qtype));
+	debug_dnslib_response("  QCLASS: %u (%s)\n", resp->question.qclass,
+	       dnslib_rrclass_to_string(resp->question.qclass));
+
+	/*! \todo Dumping of Answer, Authority and Additional sections. */
+
+	debug_dnslib_response("\nEDNS - client:\n");
+	debug_dnslib_response("  Version: %u\n", resp->edns_query.version);
+	debug_dnslib_response("  Payload: %u\n", resp->edns_query.payload);
+	debug_dnslib_response("  Extended RCODE: %u\n",
+	                      resp->edns_query.ext_rcode);
+
+	debug_dnslib_response("\nResponse size: %d\n", resp->size);
+	debug_dnslib_response("\n-----------------------------\n");
 }

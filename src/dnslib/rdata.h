@@ -175,6 +175,15 @@ int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
                          uint8_t *buffer, uint buf_size);
 
 /*!
+ * \brief Copies the given RDATA.
+ *
+ * \param rdata RDATA to copy.
+ *
+ * \return Copy of \a rdata.
+ */
+dnslib_rdata_t *dnslib_rdata_copy(const dnslib_rdata_t *rdata);
+
+/*!
  * \brief Destroys the RDATA structure without deleting RDATA items.
  *
  * Also sets the given pointer to NULL.
@@ -215,6 +224,10 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type);
  */
 int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
                          const uint8_t *format);
+
+const dnslib_dname_t *dnslib_rdata_cname_name(const dnslib_rdata_t *rdata);
+
+const dnslib_dname_t *dnslib_rdata_dname_target(const dnslib_rdata_t *rdata);
 
 #endif /* _CUTEDNS_DNSLIB_RDATA_H */
 

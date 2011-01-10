@@ -90,6 +90,15 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
                 struct dnslib_node *node);
 
 /*!
+ * \brief Copies the given domain name.
+ *
+ * \param dname Domain name to be copied.
+ *
+ * \return New domain name which is an exact copy of \a dname.
+ */
+dnslib_dname_t *dnslib_dname_copy(const dnslib_dname_t *dname);
+
+/*!
  * \brief Converts the given domain name to string representation.
  *
  * \note Allocates new memory, remember to free it.
@@ -159,6 +168,54 @@ dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname);
  */
 int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
                               const dnslib_dname_t *domain);
+
+/*!
+ * \brief Checks if the domain name is a wildcard.
+ *
+ * \param dname Domain name to check.
+ *
+ * \retval <> 0 if \a dname is a wildcard domain name.
+ * \retval 0 otherwise.
+ */
+int dnslib_dname_is_wildcard(const dnslib_dname_t *dname);
+
+/*!
+ * \brief Returns the number of labels common for the two domain names (counted
+ *        from the rightmost label.
+ *
+ * \param dname1 First domain name.
+ * \param dname2 Second domain name.
+ *
+ * \return Number of labels common for the two domain names.
+ */
+int dnslib_dname_matched_labels(const dnslib_dname_t *dname1,
+                                const dnslib_dname_t *dname2);
+
+/*!
+ * \brief Returns the number of labels in the domain name.
+ *
+ * \param dname Domain name to get the label count of.
+ *
+ * \return Number of labels in \a dname.
+ *
+ * \todo Find out if this counts the root label also.
+ */
+int dnslib_dname_label_count(const dnslib_dname_t *dname);
+
+/*!
+ * \brief Replaces the suffix of given size in one domain name with other domain
+ *        name.
+ *
+ * \param dname Domain name where to replace the suffix.
+ * \param size Size of the suffix to be replaced.
+ * \param suffix New suffix to be used as a replacement.
+ *
+ * \return New domain name created by replacing suffix of \a dname of size
+ *         \a size with \a suffix.
+ */
+dnslib_dname_t *dnslib_dname_replace_suffix(const dnslib_dname_t *dname,
+                                            int size,
+                                            const dnslib_dname_t *suffix);
 
 /*!
  * \brief Destroys the given domain name.
