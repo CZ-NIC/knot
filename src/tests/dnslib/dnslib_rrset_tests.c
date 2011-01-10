@@ -32,7 +32,7 @@ unit_api dnslib_rrset_tests_api = {
  *  Unit implementation.
  */
 
-enum { TEST_RRSETS = 6 , TEST_RRSIGS = 3};
+enum { TEST_RRSETS = 6 , TEST_RRSIGS = 6};
 
 //void *RRSIG_ADDRESS = (void *)0xDEADBEEF;
 //void *RRSIG_FIRST = RRSIG_ADDRESS + 10;
@@ -47,7 +47,8 @@ struct test_rrset {
 };
 
 static const char *signature_strings[TEST_RRSIGS] = 
-{"signature 1", "signature 2", "signature 3"};
+{"signature 1", "signature 2", "signature 3",
+ "signature 4", "signature 5", "signature 6"};
 
 enum {
 	RR_DNAMES_COUNT = 3,
@@ -97,9 +98,12 @@ static struct test_rrset test_rrsets[TEST_RRSETS] = {
 		NULL,
 		NULL,
 	},
-	{ "example.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN, 3600, &RR_RDATA[1], NULL },
-	{ "example.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN, 3600, &RR_RDATA[2], NULL },
-	{ "example.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN, 3600, &RR_RDATA[3], NULL },
+	{ "example.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
+	  3600, &RR_RDATA[1], NULL },
+	{ "example.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
+	  3600, &RR_RDATA[2], NULL },
+	{ "example.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
+	  3600, &RR_RDATA[3], NULL },
 };
 
 static const struct test_rrset test_rrsigs[TEST_RRSIGS] = {
@@ -119,6 +123,27 @@ static const struct test_rrset test_rrsigs[TEST_RRSIGS] = {
 	},
 	{
 		"example3.com.",
+		46,
+		1,
+		3600,
+		NULL,
+	},
+	{
+		"example4.com.",
+		46,
+		1,
+		3600,
+		NULL,
+	},
+	{
+		"example5.com.",
+		46,
+		1,
+		3600,
+		NULL,
+	},
+	{
+		"example6.com.",
 		46,
 		1,
 		3600,
@@ -149,7 +174,8 @@ static void create_rdata()
 }
 
 static int check_rrset(const dnslib_rrset_t *rrset, int i,
-                       int check_rdata, int check_rrsigs)
+                       int check_rdata, int check_items,
+		       int check_rrsigs)
 {
 	int errors = 0;
 
@@ -205,8 +231,21 @@ static int check_rrset(const dnslib_rrset_t *rrset, int i,
 		}
 	}
 
+	if (check_items) {
+		dnslib_rrtype_descriptor_t *desc =
+			dnslib_rrtype_descriptor_by_type(rrset->type);
+		if (dnslib_rdata_compare(rrset->rdata,
+			                 test_rrsets[i].rdata,
+					 desc->wireformat)) {
+			diag("Rdata items do not match.");
+			errors++;
+		}
+	}
+
 	/* will work only with nul terminated strings,
 	 * consider changing to more versatile implementation */
+
+	 /* How about, once it's tested, using rdata_compare */
 
 	if (check_rrsigs) {
 
@@ -250,7 +289,7 @@ static int test_rrset_create()
 		                                         test_rrsets[i].rclass,
 		                                         test_rrsets[i].ttl);
 
-		errors += check_rrset(rrset, i, 0, 0);
+		errors += check_rrset(rrset, i, 0, 0, 0);
 
 		dnslib_rrset_free(&rrset);
 		dnslib_dname_free(&owner);
@@ -294,7 +333,7 @@ static int test_rrset_rdata()
 
 		dnslib_rrset_add_rdata(rrset, test_rrsets[i].rdata);
 
-		errors += check_rrset(rrset, i, 1, 0);
+		errors += check_rrset(rrset, i, 1, 0, 0);
 
 		dnslib_rrset_free(&rrset);
 		dnslib_dname_free(&owner);
@@ -377,6 +416,9 @@ static int test_rrset_rrsigs()
 		dnslib_rrset_add_rdata(rrset, test_rrsets[i].rdata);
 
 		//owners are the same
+
+		assert(TEST_RRSETS == TEST_RRSIGS);
+
 		dnslib_rrsig_set_t *rrsig = dnslib_rrsig_set_new(owner,
 		                                         test_rrsigs[i].type,
 		                                         test_rrsigs[i].rclass,
@@ -395,7 +437,7 @@ static int test_rrset_rrsigs()
 			diag("Could not set rrsig");
 			errors++;
 		}
-		errors += check_rrset(rrset, i, 0, 1);
+		errors += check_rrset(rrset, i, 0, 0, 1);
 		dnslib_dname_free(&owner);
 		dnslib_rrset_free(&rrset);
 		free(item);
@@ -429,6 +471,16 @@ static int test_rrset_merge()
 	dnslib_rrset_add_rdata(merger2, test_rrsets[4].rdata);
 
 	dnslib_rrset_merge((void **)&merger1, (void **)&merger2);
+
+	if (check_rrset(merger1, 5, 0, 1, 0)) {
+		diag("Merged rdata are wrongly set.");
+		return 0;
+	}
+
+	dnslib_dname_free(&owner1);
+	dnslib_dname_free(&owner2);
+	dnslib_rrset_free(&merger1);
+	dnslib_rrset_free(&merger2);
 
 	//check_rrset + check rdata \w rdata_compare
 
@@ -473,6 +525,9 @@ static int dnslib_rrset_tests_run(int argc, char *argv[])
 	res_final *= res;
 
 	ok(res = test_rrset_rrsigs(), "rrset: rrsigs manipulation");
+	res_final *= res;
+
+	ok(res = test_rrset_merge(), "rrset: rdata merging");
 	res_final *= res;
 
 	endskip;	/* !res_create */
