@@ -150,41 +150,41 @@ static const dnslib_zone_t *ns_get_zone_for_qname(dnslib_zonedb_t *zdb,
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_fits_into_response(const ldns_pkt *response, size_t size)
-{
-	return ((!ldns_pkt_tc(response)) &&
-		((ldns_pkt_size(response) + size) <=
-		 (ldns_pkt_edns_udp_size(response))));
-}
+//static int ns_fits_into_response(const ldns_pkt *response, size_t size)
+//{
+//	return ((!ldns_pkt_tc(response)) &&
+//		((ldns_pkt_size(response) + size) <=
+//		 (ldns_pkt_edns_udp_size(response))));
+//}
 
 /*----------------------------------------------------------------------------*/
 
-static size_t ns_rr_size(ldns_rr *rr)
-{
-	size_t size = 0;
-	size += RR_FIXED_SIZE;
-	size += ldns_rdf_size(ldns_rr_owner(rr));
-	for (int j = 0; j < ldns_rr_rd_count(rr); ++j) {
-		size += ldns_rdf_size(ldns_rr_rdf(rr, j));
-	}
-	return size;
-}
+//static size_t ns_rr_size(ldns_rr *rr)
+//{
+//	size_t size = 0;
+//	size += RR_FIXED_SIZE;
+//	size += ldns_rdf_size(ldns_rr_owner(rr));
+//	for (int j = 0; j < ldns_rr_rd_count(rr); ++j) {
+//		size += ldns_rdf_size(ldns_rr_rdf(rr, j));
+//	}
+//	return size;
+//}
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-static size_t ns_rrset_size(ldns_rr_list *rrset)
-{
-	size_t size = 0;
-	for (int i = 0; i < ldns_rr_list_rr_count(rrset); ++i) {
-		ldns_rr *rr = ldns_rr_list_rr(rrset, i);
-		size += RR_FIXED_SIZE;
-		size += ldns_rdf_size(ldns_rr_owner(rr));
-		for (int j = 0; j < ldns_rr_rd_count(rr); ++j) {
-			size += ldns_rdf_size(ldns_rr_rdf(rr, j));
-		}
-	}
-	return size;
-}
+//static size_t ns_rrset_size(ldns_rr_list *rrset)
+//{
+//	size_t size = 0;
+//	for (int i = 0; i < ldns_rr_list_rr_count(rrset); ++i) {
+//		ldns_rr *rr = ldns_rr_list_rr(rrset, i);
+//		size += RR_FIXED_SIZE;
+//		size += ldns_rdf_size(ldns_rr_owner(rr));
+//		for (int j = 0; j < ldns_rr_rd_count(rr); ++j) {
+//			size += ldns_rdf_size(ldns_rr_rdf(rr, j));
+//		}
+//	}
+//	return size;
+//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -528,11 +528,11 @@ static inline void ns_referral(const dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_additional_needed(ldns_rr_type qtype)
+static int ns_additional_needed(uint16_t qtype)
 {
-	return (qtype == LDNS_RR_TYPE_MX ||
-	        qtype == LDNS_RR_TYPE_NS ||
-		qtype == LDNS_RR_TYPE_SRV);
+	return (qtype == DNSLIB_RRTYPE_MX ||
+	        qtype == DNSLIB_RRTYPE_NS ||
+		qtype == DNSLIB_RRTYPE_SRV);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -932,8 +932,9 @@ static void ns_answer(dnslib_zonedb_t *db, dnslib_response_t *resp)
 
 	// if no zone found, return REFUSED
 	if (zone == NULL) {
+		debug_ns("No zone found.\n");
 		dnslib_response_set_rcode(resp, DNSLIB_RCODE_REFUSED);
-		dnslib_dname_free(&qname);
+		//dnslib_dname_free(&qname);
 		return;
 	}
 
