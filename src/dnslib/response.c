@@ -477,6 +477,7 @@ static void dnslib_response_rrsets_to_wire(const dnslib_rrset_t **rrsets,
 	while (i < count) {
 		dnslib_response_rrset_to_wire(rrsets[i], pos, size, compr);
 		assert(*size <= max_size);
+/*XXX*/		i++;
 	}
 }
 
