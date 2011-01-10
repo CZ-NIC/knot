@@ -9,6 +9,8 @@
 #include "common.h"
 #include "debug.h"
 
+enum { DNAME_MAX_WIRE_LENGTH = 256 };
+
 //TODO move to parameters
 static dnslib_dname_t **id_array;
 
@@ -40,8 +42,7 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 			uint8_t dname_in_zone;
 
 			uint dname_size;
-			uint8_t dname_wire[256];
-			items[i].dname = malloc(sizeof(dnslib_dname_t));
+			uint8_t dname_wire[DNAME_MAX_WIRE_LENGTH];
 
 			fread(&dname_in_zone, sizeof(dname_in_zone), 1, f);
 			if (dname_in_zone) {
@@ -49,15 +50,17 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 				items[i].dname = id_array[(uint)tmp_id];
 			} else {
 				fread(&dname_size, sizeof(dname_size), 1, f);
-				assert(dname_size < 256);
+				assert(dname_size < DNAME_MAX_WIRE_LENGTH);
 				fread(&dname_wire, sizeof(uint8_t),
 				      dname_size, f);
-				items[i].dname->size = dname_size;
-				items[i].dname->name =
-					malloc(sizeof(uint8_t) * dname_size);
-				memcpy(items[i].dname->name, dname_wire,
-				       dname_size);
+				items[i].dname =
+					dnslib_dname_new_from_wire(dname_wire,
+					                           dname_size,
+				                                   NULL);
 			}
+
+			assert(items[i].dname);
+
 		} else {
 			fread(&raw_data_length, sizeof(raw_data_length), 1, f);
 			debug_zp("read len: %d\n", raw_data_length);
@@ -154,7 +157,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	dnslib_node_t *node;
 	/* first, owner */
 	
-	uint8_t dname_wire[255]; 
+	uint8_t dname_wire[DNAME_MAX_WIRE_LENGTH]; 
 	//XXX in respect to remark below, should be dynamic 
 	//(malloc happens either way)
 	//but I couldn't make it work - really strange error
@@ -166,7 +169,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 
 	fread(&dname_size, sizeof(dname_size), 1, f);
 
-	assert(dname_size < 256);
+	assert(dname_size < DNAME_MAX_WIRE_LENGTH);
 
 	fread(&dname_wire, sizeof(uint8_t), dname_size, f);
 
@@ -223,6 +226,27 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	return node;
 }
 
+void find_and_set_wildcard_child(dnslib_zone_t *zone,
+                                 dnslib_node_t *node, int nsec3)
+{
+	dnslib_dname_t *chopped = dnslib_dname_left_chop(node->owner);
+	assert(chopped);
+	dnslib_node_t *wildcard_parent;
+	if (!nsec3) {
+		wildcard_parent =
+			dnslib_zone_get_node(zone, chopped);
+	} else {
+		wildcard_parent =
+			dnslib_zone_get_nsec3_node(zone, chopped);
+	}
+
+	dnslib_dname_free(&chopped);
+
+	assert(wildcard_parent); /* it *has* to be there */
+
+	wildcard_parent->wildcard_child = node;
+}
+
 dnslib_zone_t *dnslib_zone_load(const char *filename)
 {
 	FILE *f = fopen(filename, "rb");
@@ -239,10 +263,10 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 	fread(&nsec3_node_count, sizeof(nsec3_node_count), 1, f);
 
 	uint8_t dname_size;
-	uint8_t dname_wire[255];
+	uint8_t dname_wire[DNAME_MAX_WIRE_LENGTH];
 
 	fread(&dname_size, sizeof(dname_size), 1, f);
-	assert(dname_size < 256);
+	assert(dname_size < DNAME_MAX_WIRE_LENGTH);
 
 	fread(&dname_wire, sizeof(uint8_t), dname_size, f);
 
@@ -282,6 +306,11 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 				//TODO how about only swapping those two?
 			} else {
 				dnslib_zone_add_node(zone, tmp_node);
+				if (dnslib_dname_is_wildcard(tmp_node->owner)) {
+					find_and_set_wildcard_child(zone,
+					                            tmp_node,
+								    0);
+				}
 			}
 		} else {
 			fprintf(stderr, "Node error!\n");
@@ -296,6 +325,11 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 			dnslib_zone_add_nsec3_node(zone, tmp_node);
 		} else {
 			fprintf(stderr, "Node error!\n");
+		}
+		if (dnslib_dname_is_wildcard(tmp_node->owner)) {
+			find_and_set_wildcard_child(zone,
+			                            tmp_node,
+						    1);
 		}
 	}
 
