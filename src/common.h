@@ -66,6 +66,14 @@ typedef unsigned int uint;
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 
+/* Optimisation macros. */
+#ifndef likely
+#define likely(x)       __builtin_expect((x),1)
+#endif
+#ifndef unlikely
+#define unlikely(x)     __builtin_expect((x),0)
+#endif
+
 //#define STAT_COMPILE
 
 #endif /* _CUTEDNS_COMMON_H_ */

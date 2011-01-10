@@ -86,6 +86,8 @@ src/stat/gatherer.h
 src/stat/gatherer.c
 src/stat/stat.h
 src/stat/stat.c
+src/other/malloc.h
+src/other/malloc.c
 src/dnslib/zone.h
 src/dnslib/zone.c
 src/tests/dnslib/dnslib_zone_tests.c

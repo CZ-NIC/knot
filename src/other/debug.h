@@ -30,12 +30,13 @@
 //#define NET_DEBUG
 //#define DNSLIB_DNAME_DEBUG
 
+//#define MEM_DEBUG
+//#define MEM_NOSLAB
+//#define MEM_POISON
 #define DNSLIB_ZONE_DEBUG
 #define DNSLIB_RESPONSE_DEBUG
 #define DNSLIB_ZONEDB_DEBUG
 #define DNSLIB_DNAME_DEBUG
-//#define MEM_DEBUG
-#define MEM_NOSLAB
 
 #ifdef SERVER_DEBUG
 #define debug_server(msg...) log_msg(LOG_DEBUG, msg)

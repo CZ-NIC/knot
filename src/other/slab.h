@@ -40,11 +40,12 @@
 #define SLAB_GP_COUNT  10 // General-purpose caches count.
 #define SLAB_US_COUNT  10 // User-specified caches count.
 #define SLAB_CACHE_COUNT (SLAB_GP_COUNT + SLAB_US_COUNT)
-extern size_t SLAB_SIZE;
+#define SLAB_DEPOT_COUNT 16 // 16 slabs = 64kB
+extern size_t SLAB_MASK;
 struct slab_cache_t;
 
 /* Macros. */
-#define slab_from_ptr(p) ((slab_t*)((char*)(p) - ((uint64_t)(p) % SLAB_SIZE)))
+#define slab_from_ptr(p) ((void*)((size_t)(p) & SLAB_MASK))
 
 /*!
  * \brief Slab descriptor.
@@ -55,13 +56,45 @@ struct slab_cache_t;
  * determine slab address from buf pointer.
  */
 typedef struct slab_t {
+	char magic;                 /*!< Identifies memory block type. */
 	struct slab_cache_t *cache; /*!< Owner cache. */
 	struct slab_t *prev, *next; /*!< Neighbours in slab lists. */
 	unsigned bufs_count;        /*!< Number of bufs in slab. */
 	unsigned bufs_free;         /*!< Number of available bufs. */
 	void **head;                /*!< Pointer to first available buf. */
 	char* base;                 /*!< Base address for bufs. */
+	pthread_spinlock_t lock;    /*!< Synchronisation lock. */
 } slab_t;
+
+/*!
+ * \brief Slab depot.
+ *
+ * To mitigate page trashing, depot keeps a fixed number of
+ * free pages before returning them to the system.
+ *
+ * 16 * 4K pages = 64kB depot
+ */
+typedef struct slab_depot_t {
+	size_t available;             /*!< Number of available pages. */
+	void* page[SLAB_DEPOT_COUNT]; /*!< Stack of free pages. */
+	pthread_spinlock_t lock;      /*!< Synchronisation lock. */
+} slab_depot_t;
+
+/*!
+ * \brief Large object descriptor.
+ *
+ * Large object differs from slab with magic byte and
+ * contains object size.
+ *
+ * For space and performance reasons, the size of the object should
+ * be close to a multiple of page size.
+ *
+ * Magic needs to be first to overlap with slab_t magic byte.
+ */
+typedef struct slab_obj_t {
+	char magic;  /*!< Identifies memory block type. */
+	size_t size; /*!< Object size. */
+} slab_obj_t;
 
 /*!
  * \brief Slab cache descriptor.
@@ -76,7 +109,6 @@ typedef struct slab_t {
  * Allocation of new slabs is on-demand,empty slabs are reused if possible.
  */
 typedef struct slab_cache_t {
-
 	unsigned short color;    /*!< Current cache color. */
 	size_t bufsize;          /*!< Cache object (buf) size. */
 	slab_t *slabs_empty;     /*!< List of empty slabs. */
@@ -100,6 +132,7 @@ typedef struct slab_alloc_t {
 	slab_cache_t descriptors; /*!< Slab cache for cache descriptors. */
 	slab_cache_t* caches[SLAB_CACHE_COUNT]; /*!< Number of slab caches. */
 } slab_alloc_t;
+extern slab_alloc_t _allocator_g;
 
 /*!
  * \brief Create a slab of predefined size.
@@ -254,7 +287,9 @@ void slab_alloc_stats(slab_alloc_t* alloc);
  * \retval Pointer to allocated memory.
  * \retval NULL on error.
  */
-void* slab_alloc_g(size_t size);
+static inline void* slab_alloc_g(size_t size) {
+	return slab_alloc_alloc(&_allocator_g, size);
+}
 
 /*!
  * \brief Reallocate data from one slab to another.
@@ -268,7 +303,9 @@ void* slab_alloc_g(size_t size);
  * \retval Pointer to newly allocated memory.
  * \retval NULL on error.
  */
-void *slab_realloc_g(void *ptr, size_t size);
+static inline void *slab_realloc_g(void *ptr, size_t size) {
+	return slab_alloc_realloc(&_allocator_g, ptr, size);
+}
 
 #endif /* _CUTEDNS_SLAB_H_ */
 
