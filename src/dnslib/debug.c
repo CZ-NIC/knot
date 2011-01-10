@@ -113,6 +113,14 @@ void dnslib_node_dump(dnslib_node_t *node)
 		return;
 	}
 
+	printf("Wildcard child: ");
+
+	if (node->wildcard_child != NULL) {
+		printf("%s\n", dnslib_dname_to_str(node->wildcard_child->owner));
+	} else {
+		printf("none\n");
+	}
+
 	dnslib_rrset_t *tmp = (dnslib_rrset_t *)skip_node->value;
 
 	dnslib_rrset_dump(tmp);
