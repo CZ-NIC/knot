@@ -55,16 +55,32 @@ unit_api dnslib_rdata_tests_api = {
 
 static uint8_t *RDATA_ITEM_PTR = (uint8_t *)0xDEADBEEF;
 
-static dnslib_rdata_item_t TEST_RDATA_ITEMS[3] = {
+enum { RDATA_ITEMS = 5, TEST_RDATAS = 2 };
+
+static dnslib_rdata_item_t TEST_RDATA_ITEMS[RDATA_ITEMS] = {
 	{.dname = (dnslib_dname_t *)0xF00},
 	{.raw_data = (uint8_t *)"some data"},
-	{.raw_data = (uint8_t *)"other data"}
+	{.raw_data = (uint8_t *)"other data"},
+	{.raw_data = (uint8_t *)"123456"},
+	{.raw_data = (uint8_t *)"654321"}
 };
 
-static const dnslib_rdata_t TEST_RDATA = {
-	TEST_RDATA_ITEMS,
+static dnslib_rdata_t TEST_RDATA = {
+	&TEST_RDATA_ITEMS[0],
 	3,
-	NULL
+	&TEST_RDATA
+};
+
+/* \note indices 0 and 1 should not be changed - used in (and only in)
+ * test_rdata_compare() - better than creating new struct just for this
+ */
+static dnslib_rdata_t test_rdata[TEST_RDATAS] = {
+	{&TEST_RDATA_ITEMS[3],
+	1,
+	&test_rdata[1]},
+	{&TEST_RDATA_ITEMS[4],
+	1,
+	&test_rdata[2]}
 };
 
 /*----------------------------------------------------------------------------*/
@@ -659,6 +675,41 @@ static int test_rdata_get_item()
 
 /*----------------------------------------------------------------------------*/
 
+static int test_rdata_compare()
+{
+	int errors = 0;
+
+	uint8_t format = DNSLIB_RDATA_WF_BINARY;
+
+	/* 123456 \w 654321 -> result -1 */
+	if (dnslib_rdata_compare(&test_rdata[0],
+		                 &test_rdata[1],
+				 &format) != -1) {
+		diag("RDATA raw data comparison failed");
+		errors++;
+	}
+
+	/* 123456 \w 123456 -> result 0 */
+	if (dnslib_rdata_compare(&test_rdata[0],
+		                 &test_rdata[0],
+				 &format) != 0) {
+		diag("RDATA raw data comparison failed");
+		errors++;
+	}
+
+	/* 123456 \w 654321 -> result 1 */
+	if (dnslib_rdata_compare(&test_rdata[1],
+		                 &test_rdata[0],
+				 &format) != 1) {
+		diag("RDATA raw data comparison failed");
+		errors++;
+	}
+
+	return (errors == 0);
+}
+
+/*----------------------------------------------------------------------------*/
+
 static int test_rdata_wire_size()
 {
 	dnslib_rdata_t *rdata;
@@ -697,7 +748,6 @@ static int test_rdata_wire_size()
 			    DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 			    desc->wireformat[x] == 
 			    DNSLIB_RDATA_WF_LITERAL_DNAME) {
-//            printf("freeing %p\n", rdata->items[x].dname);
 				dnslib_dname_free(&(rdata->items[x].dname));
 			}
 		}
@@ -780,7 +830,7 @@ static int test_rdata_to_wire()
 
 /*----------------------------------------------------------------------------*/
 
-static const int DNSLIB_RDATA_TEST_COUNT = 7;
+static const int DNSLIB_RDATA_TEST_COUNT = 8;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -821,6 +871,9 @@ static int dnslib_rdata_tests_run(int argc, char *argv[])
 	skip(!res, 3);
 
 	ok(res = test_rdata_set_item(), "rdata: set items one-by-one");
+	res_final *= res;
+
+	ok(res = test_rdata_compare(), "rdata: compare");
 	res_final *= res;
 
 	ok(res = test_rdata_wire_size(), "rdata: wire size");
