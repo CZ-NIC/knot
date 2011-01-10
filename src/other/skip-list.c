@@ -224,6 +224,26 @@ void *skip_find(const skip_list_t *list, void *key)
 
 /*----------------------------------------------------------------------------*/
 
+void *skip_find_less_or_equal(const skip_list_t *list, void *key)
+{
+	assert(list != NULL);
+	assert(list->head != NULL);
+	assert(list->compare_keys != NULL);
+
+	int i;
+	skip_node_t *x = list->head;
+	for (i = list->level; i >= 0; i--) {
+		while (x->forward[i] != NULL
+		       && list->compare_keys(x->forward[i]->key, key) <= 0) {
+			x = x->forward[i];
+		}
+	}
+
+	return x->value;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int skip_insert(skip_list_t *list, void *key, void *value,
                 int (*merge_values)(void **, void **))
 {
