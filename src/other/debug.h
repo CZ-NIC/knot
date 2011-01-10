@@ -31,7 +31,7 @@
 //#define DNSLIB_DNAME_DEBUG
 
 //#define MEM_DEBUG
-//#define MEM_NOSLAB
+#define MEM_NOSLAB
 //#define MEM_POISON
 #define DNSLIB_ZONE_DEBUG
 #define DNSLIB_RESPONSE_DEBUG
