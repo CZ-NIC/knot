@@ -475,6 +475,14 @@ void dnslib_dname_free(dnslib_dname_t **dname)
 
 int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2)
 {
+	char *name1 = dnslib_dname_to_str(d1);
+	char *name2 = dnslib_dname_to_str(d2);
+
+	debug_dnslib_dname("Comparing dnames %s and %s\n",
+	                   name1, name2);
+	free(name1);
+	free(name2);
+
 	if (d1 == d2) {
 		return 0;
 	}
@@ -501,11 +509,11 @@ int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2)
 
 	// if all labels matched, the shorter name is first
 	if (l1 == 0 && l2 > 0) {
-		return 1;
+		return -1;
 	}
 
 	if (l1 > 0 && l2 == 0) {
-		return -1;
+		return 1;
 	}
 
 	return 0;
