@@ -222,14 +222,14 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 	       zone->apex->owner->size, f);
 	
 	/* TODO is there a way how to stop the traversal upon error? */
-	TREE_REVERSE_APPLY(zone->tree, dnslib_node, avl,
+	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl,
 	                   dnslib_node_dump_binary, f);
 
 	uint tmp_count = node_count;
 
 	node_count = 0;
 
-	TREE_REVERSE_APPLY(zone->nsec3_nodes, dnslib_node, avl,
+	TREE_FORWARD_APPLY(zone->nsec3_nodes, dnslib_node, avl,
 	                   dnslib_node_dump_binary, f);
 
 	rewind(f);
