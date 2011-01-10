@@ -38,6 +38,8 @@ struct dnslib_node {
 	/*! \brief Next node in a general list of nodes. Temporary. */
 	struct dnslib_node *next;
 
+	struct dnslib_node *wildcard_child;
+
 	/*!
 	 * \brief Various flags.
 	 *
@@ -123,6 +125,25 @@ void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent);
  * \return Owner of the given node.
  */
 const dnslib_dname_t *dnslib_node_owner(const dnslib_node_t *node);
+
+/*!
+ * \brief Returns the wildcard child of the node.
+ *
+ * \param node Node to get the owner of.
+ *
+ * \return Wildcard child of the given node or NULL if it has none.
+ */
+const dnslib_node_t *dnslib_node_wildcard_child(const dnslib_node_t *node);
+
+/*!
+ * \brief Sets the wildcard child of the node.
+ *
+ * \param node Node to set the wildcard child of.
+ * \param parent Wildcard child of the node.
+ */
+void dnslib_node_set_wildcard_child(dnslib_node_t *node,
+                                    dnslib_node_t *wildcard_child);
+
 
 void dnslib_node_set_deleg_point(dnslib_node_t *node);
 

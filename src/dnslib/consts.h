@@ -29,8 +29,8 @@ static const uint16_t DNSLIB_OPCODE_OFFSET = 14;
 /*
  * RCODEs
  */
-static const uint16_t DNSLIB_RCODE_OK = 0; 		/* No error condition */
-static const uint16_t DNSLIB_RCODE_FORMAT = 1; 	/* Format error */
+static const uint16_t DNSLIB_RCODE_NOERROR = 0; 	/* No error condition */
+static const uint16_t DNSLIB_RCODE_FORMERR = 1; 	/* Format error */
 static const uint16_t DNSLIB_RCODE_SERVFAIL = 2; 	/* Server failure */
 static const uint16_t DNSLIB_RCODE_NXDOMAIN = 3; 	/* Name Error */
 static const uint16_t DNSLIB_RCODE_NOTIMPL = 4; 	/* Not implemented */

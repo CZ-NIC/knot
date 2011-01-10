@@ -90,6 +90,15 @@ int dnslib_rrset_add_rdata(dnslib_rrset_t *rrset, dnslib_rdata_t *rdata);
 int dnslib_rrset_set_rrsigs(dnslib_rrset_t *rrset, dnslib_rrsig_set_t *rrsigs);
 
 /*!
+ * \brief Returns the Owner of the RRSet.
+ *
+ * \param rrset RRSet to get the Owner of.
+ *
+ * \return Owner of the given RRSet.
+ */
+const dnslib_dname_t *dnslib_rrset_owner(const dnslib_rrset_t *rrset);
+
+/*!
  * \brief Returns the TYPE of the RRSet.
  *
  * \param rrset RRSet to get the TYPE of.

@@ -19,7 +19,7 @@ unit_api dnslib_zone_tests_api = {
  *  Unit implementation.
  */
 
-enum { TEST_NODES_GOOD = 2, TEST_NODES_BAD = 1 };
+enum { TEST_NODES_GOOD = 7, TEST_NODES_BAD = 1, TRAVERSAL_TYPES = 3};
 
 struct zone_test_node {
 	dnslib_dname_t owner;
@@ -34,8 +34,13 @@ static struct zone_test_node test_nodes_bad[TEST_NODES_BAD] = {
 };
 
 static struct zone_test_node test_nodes_good[TEST_NODES_GOOD] = {
+	{{(uint8_t *)"\7example\3com\0", 14}, (dnslib_node_t *)NULL},
 	{{(uint8_t *)"\3www\7example\3com\0", 17}, (dnslib_node_t *)NULL},
 	{{(uint8_t *)"\7another\6domain\3com\0", 20}, (dnslib_node_t *)NULL},
+	{{(uint8_t *)"\5mail1\7example\3com\0", 19}, (dnslib_node_t *)NULL},
+	{{(uint8_t *)"\5mail2\7example\3com\0", 19}, (dnslib_node_t *)NULL},
+	{{(uint8_t *)"\3smb\7example\3com\0", 17}, (dnslib_node_t *)NULL},
+	{{(uint8_t *)"\4smtp\7example\3com\0", 18}, (dnslib_node_t *)NULL},
 };
 
 static int test_zone_check_node(const dnslib_node_t *node,
@@ -304,15 +309,133 @@ static void test_zone_destroy_node_from_tree(dnslib_node_t *node,
 	dnslib_node_free(&node, 0);
 }
 
+/* explained below */
+static int node_index = 0;
+
+/* \brief
+ * This function will overwrite parent field in node structure -
+ * we don't (and can't, with current structures) use it in these tests anyway.
+ * Since zone structure itself has no count field, only option known to me
+ * is (sadly) to use a global variable.
+ */
+static void tmp_apply_function(dnslib_node_t *node, void *data)
+{
+	node->parent = (dnslib_node_t *)node_index;
+	node_index++;
+}
+
+/* \note Since I am unaware of a way how to get a return value from traversal
+ * functions, I will use (hopefully for the last time here) global variable
+ */
+
+static int compare_ok = 1;
+
+static void tmp_compare_function(dnslib_node_t *node, void *data)
+{
+	/* node_index will start set to zero */
+	if (node->parent != (dnslib_node_t *)node_index) {
+		compare_ok = 0;
+		return;
+	} else if (!compare_ok) {
+		diag("Traversal function has partially set values right");
+	}
+	node_index++;
+}
+
+static int test_zone_tree_apply(dnslib_zone_t *zone,
+                                int type, int nsec3)
+{
+
+	assert(node_index == 0);
+	assert(compare_ok = 1);
+
+	void (*traversal_func)(dnslib_zone_t *zone,
+        void (*function)(dnslib_node_t *node, void *data),
+        void *data);
+
+	switch (type) {
+		case 0: {
+			if (nsec3) {
+				traversal_func =
+					&dnslib_zone_nsec3_apply_postorder;
+				diag("Testing postorder traversal");
+			} else {
+				traversal_func =
+					&dnslib_zone_tree_apply_postorder;
+				diag("Testing postorder traversal - NSEC3");
+			}
+			break;
+		}
+		case 1: {
+			if (nsec3) {
+				traversal_func =
+					&dnslib_zone_nsec3_apply_inorder;
+				diag("Testing inorder traversal");
+			} else {
+				traversal_func =
+					&dnslib_zone_tree_apply_inorder;
+				diag("Testing inorder traversal - NSEC3");
+			}
+			break;
+		}
+		case 2: {
+			if (nsec3) {
+				traversal_func =
+				&dnslib_zone_nsec3_apply_inorder_reverse;
+				diag("Testing inorder reverse traversal");
+			} else {
+				traversal_func =
+				&dnslib_zone_tree_apply_inorder_reverse;
+				diag("Testing inorder reverse "
+				     "traversal - NSEC3");
+			}
+			break;
+		}
+		default: {
+			diag("Unknown traversal function type");
+			return 0;
+		}
+	}
+
+	traversal_func(zone, &tmp_apply_function, NULL);
+
+	node_index = 0;
+
+	traversal_func(zone, &tmp_compare_function, NULL);
+
+	int ret = compare_ok;
+
+	compare_ok = 1;
+	node_index = 0;
+
+	return (ret);
+}
+
+static int test_zone_traversals(dnslib_zone_t *zone)
+{
+	for (int i = 0; i < TRAVERSAL_TYPES; i++) {
+		for (int j = 0; j < 2; j++) {
+			if (!test_zone_tree_apply(zone, i, j)) {
+				return 0;
+			}
+		}
+	}
+	return 1;
+}
+
 static int test_zone_free(dnslib_zone_t **zone)
 {
-	dnslib_zone_tree_apply(*zone, test_zone_destroy_node_from_tree, NULL);
-	dnslib_zone_nsec3_apply(*zone, test_zone_destroy_node_from_tree, NULL);
+	dnslib_zone_tree_apply_postorder(*zone,
+	                                 test_zone_destroy_node_from_tree,
+					 NULL);
+	dnslib_zone_nsec3_apply_postorder(*zone,
+	                                 test_zone_destroy_node_from_tree,
+					 NULL);
 	dnslib_zone_free(zone);
 	return (*zone == NULL);
 }
 
-static const int DNSLIB_ZONE_TEST_COUNT = 8;
+static const int DNSLIB_ZONE_TEST_COUNT = 9;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -369,6 +492,9 @@ static int dnslib_zone_tests_run(int argc, char *argv[])
 	endskip; // get nsec3 node failed
 
 	endskip; // add nsec3 node failed
+
+	ok(res = test_zone_traversals(zone), "zone: traversals");
+	res_final *= res;	
 
 	ok((res = test_zone_free(&zone)), "zone: free");
 	res_final *= res;

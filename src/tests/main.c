@@ -27,7 +27,6 @@ int main(int argc, char *argv[])
 	        &dnslib_tests_api,   //! DNS library unit
 	        &server_tests_api,   //! Server unit
 	        &slab_tests_api,     //! SLAB allocator unit
-	        NULL
 	};
 
 	// Plan number of tests
