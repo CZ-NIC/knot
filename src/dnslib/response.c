@@ -383,10 +383,12 @@ static void dnslib_response_rr_to_wire(const uint8_t *owner_wire,
 	for (int i = 0; i < rdata->count; ++i) {
 		switch (desc->wireformat[i]) {
 		case DNSLIB_RDATA_WF_COMPRESSED_DNAME: {
-			short size;
+			short size = 0;
 			dnslib_response_compress_dname(
 				dnslib_rdata_get_item(rdata, i)->dname,
 				compr, *rrset_wire, &size);
+			debug_dnslib_response("Compressed dname size: %d\n",
+			                      size);
 			*rrset_wire += size;
 			rdlength += size;
 			// TODO: compress domain name
@@ -398,6 +400,8 @@ static void dnslib_response_rr_to_wire(const uint8_t *owner_wire,
 			dnslib_dname_t *dname =
 				dnslib_rdata_get_item(rdata, i)->dname;
 			memcpy(*rrset_wire, dname->name, dname->size);
+			debug_dnslib_response("Uncompressed dname size: %d\n",
+			                      dname->size);
 			*rrset_wire += dname->size;
 			rdlength += dname->size;
 			break;
@@ -407,6 +411,8 @@ static void dnslib_response_rr_to_wire(const uint8_t *owner_wire,
 			uint8_t *raw_data =
 				dnslib_rdata_get_item(rdata, i)->raw_data;
 			memcpy(*rrset_wire, raw_data, raw_data[0] + 1);
+			debug_dnslib_response("Raw data size: %d\n",
+			                      raw_data[0] + 1);
 			*rrset_wire += raw_data[0] + 1;
 			rdlength += raw_data[0] + 1;
 			break;
@@ -416,6 +422,8 @@ static void dnslib_response_rr_to_wire(const uint8_t *owner_wire,
 			uint8_t *raw_data =
 				dnslib_rdata_get_item(rdata, i)->raw_data;
 			memcpy(*rrset_wire, raw_data + 1, raw_data[0]);
+			debug_dnslib_response("Raw data size: %d\n",
+			                      raw_data[0]);
 			*rrset_wire += raw_data[0];
 			rdlength += raw_data[0];
 			break;
@@ -433,6 +441,12 @@ static int dnslib_response_rrset_to_wire(const dnslib_rrset_t *rrset,
                                          uint8_t **pos, short *size,
                                          dnslib_compressed_dnames_t *compr)
 {
+	char *name = dnslib_dname_to_str(rrset->owner);
+	debug_dnslib_response("Converting RRSet with owner %s, type %s\n",
+			      name, dnslib_rrtype_to_string(rrset->type));
+	free(name);
+	debug_dnslib_response("  Size before: %d\n", *size);
+
 	// if no RDATA in RRSet, return
 	if (rrset->rdata == NULL) {
 		return 0;
@@ -450,6 +464,7 @@ static int dnslib_response_rrset_to_wire(const dnslib_rrset_t *rrset,
 
 	dnslib_response_compress_dname(rrset->owner, compr, owner_wire,
 	                               &owner_size);
+	debug_dnslib_response("    Owner size: %d\n", owner_size);
 
 	const dnslib_rdata_t *rdata = rrset->rdata;
 	do {
@@ -460,6 +475,8 @@ static int dnslib_response_rrset_to_wire(const dnslib_rrset_t *rrset,
 	//memcpy(*pos, rrset_wire, rrset_size);
 	//*size += rrset_size;
 	//*pos += rrset_size;
+
+	debug_dnslib_response("  Size after: %d\n", *size);
 
 	return 0;
 }
@@ -474,10 +491,12 @@ static void dnslib_response_rrsets_to_wire(const dnslib_rrset_t **rrsets,
 	// no compression for now
 	int i = 0;
 
+	debug_dnslib_response("Max size: %d\n", max_size);
+
 	while (i < count) {
 		dnslib_response_rrset_to_wire(rrsets[i], pos, size, compr);
 		assert(*size <= max_size);
-/*XXX*/		i++;
+		++i;
 	}
 }
 
@@ -549,25 +568,33 @@ short dnslib_response_rrset_size(const dnslib_rrset_t *rrset,
                                  const dnslib_compressed_dnames_t *compr)
 {
 	// TODO: count in possible compression
-	short size = 10;              // 2 type, 2 class, 4 ttl, 2 rdlength
-	size += rrset->owner->size;   // owner
+	short size = 0;
 
 	dnslib_rrtype_descriptor_t *desc =
 			dnslib_rrtype_descriptor_by_type(rrset->type);
 
 	const dnslib_rdata_t *rdata = dnslib_rrset_rdata(rrset);
 	while (rdata != NULL) {
+		size += 10;  // 2 type, 2 class, 4 ttl, 2 rdlength
+		size += rrset->owner->size;   // owner
+
 		for (int i = 0; i < rdata->count; ++i) {
 			switch (desc->wireformat[i]) {
 			case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
 			case DNSLIB_RDATA_WF_LITERAL_DNAME:
 			case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
+				debug_dnslib_response("dname size: %d\n",
+					rdata->items[i].dname->size);
 				size += rdata->items[i].dname->size;
 				break;
 			case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+				debug_dnslib_response("raw data size: %d\n",
+					rdata->items[i].raw_data[0] + 1);
 				size += rdata->items[i].raw_data[0] + 1;
 				break;
 			default:
+				debug_dnslib_response("raw data size: %d\n",
+					rdata->items[i].raw_data[0]);
 				size += rdata->items[i].raw_data[0];
 				break;
 			}
@@ -587,6 +614,12 @@ void dnslib_response_try_add_rrset(const dnslib_rrset_t **rrsets,
                                    const dnslib_rrset_t *rrset, int tc)
 {
 	short size = dnslib_response_rrset_size(rrset, &resp->compression);
+
+	char *name = dnslib_dname_to_str(rrset->owner);
+	debug_dnslib_response("Adding RRSet with owner %s and type %s, size: "
+		"%d.\n", name, dnslib_rrtype_to_string(rrset->type), size);
+	free(name);
+
 	if (resp->size + size > resp->max_size) {
 		if (tc) {
 			dnslib_packet_flags_set_tc(&resp->header.flags1);
@@ -801,32 +834,40 @@ int dnslib_response_to_wire(dnslib_response_t *response,
 	assert(response->max_size > DNSLIB_PACKET_HEADER_SIZE);
 
 	dnslib_response_header_to_wire(&response->header, &pos, &size);
+	debug_dnslib_response("Converted header, size so far: %d\n", size);
 
 	if (response->header.qdcount > 0) {
 		dnslib_response_question_to_wire(
 			&response->question, &pos, &size);
 	}
+	debug_dnslib_response("Converted Question, size so far: %d\n", size);
 
 	dnslib_response_rrsets_to_wire(response->answer,
 	                               response->header.ancount, &pos, &size,
 	                               response->max_size,
 	                               &response->compression);
+	debug_dnslib_response("Converted Answer, size so far: %d\n", size);
 
 	dnslib_response_rrsets_to_wire(response->authority,
 	                               response->header.nscount, &pos, &size,
 	                               response->max_size,
 	                               &response->compression);
+	debug_dnslib_response("Converted Authority, size so far: %d\n", size);
 
 	// put EDNS OPT RR
 	memcpy(pos, response->edns_wire, response->edns_size);
 	pos += response->edns_size;
+	size += response->edns_size;
+	debug_dnslib_response("Converted OPT RR, size so far: %d\n", size);
 
 	dnslib_response_rrsets_to_wire(response->additional,
 	                               response->header.arcount, &pos, &size,
 	                               response->max_size,
 	                               &response->compression);
+	debug_dnslib_response("Converted Additional, size so far: %d\n", size);
 
-	*resp_size = response->size;
+	assert(response->size == size);
+	*resp_size = size;
 
 	return 0;
 }
@@ -848,6 +889,55 @@ void dnslib_response_free(dnslib_response_t **response)
 	debug_dnslib_response("Freeing response structure\n");
 	free(*response);
 	*response = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void dnslib_response_dump_rrsets(const dnslib_rrset_t **rrsets,
+                                        int count)
+{
+	for (int i = 0; i < count; ++i) {
+		debug_dnslib_response("  RRSet %d:\n", i + 1);
+		char *name = dnslib_dname_to_str(rrsets[i]->owner);
+		debug_dnslib_response("    Owner: %s\n", name);
+		free(name);
+		debug_dnslib_response("    Type: %s\n",
+		                      dnslib_rrtype_to_string(rrsets[i]->type));
+		debug_dnslib_response("    Class: %s\n",
+		                   dnslib_rrclass_to_string(rrsets[i]->rclass));
+		debug_dnslib_response("    TTL: %d\n", rrsets[i]->ttl);
+		debug_dnslib_response("    RDATA: ");
+
+		dnslib_rrtype_descriptor_t *desc =
+			dnslib_rrtype_descriptor_by_type(rrsets[i]->type);
+
+		dnslib_rdata_t *rdata = dnslib_rrset_rdata(rrsets[i]);
+		while (rdata != NULL) {
+			for (int j = 0; j < rdata->count; ++j) {
+				switch (desc->wireformat[j]) {
+				case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
+				case DNSLIB_RDATA_WF_LITERAL_DNAME:
+				case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
+					name = dnslib_dname_to_str(
+						rdata->items[j].dname);
+					debug_dnslib_response("%s \n",name);
+					free(name);
+					break;
+				case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+					debug_dnslib_response_hex(
+						rdata->items[j].raw_data,
+						rdata->items[j].raw_data[0]);
+					break;
+				default:
+					debug_dnslib_response_hex(
+						&rdata->items[j].raw_data[1],
+						rdata->items[j].raw_data[0]);
+					break;
+				}
+			}
+			rdata = dnslib_rrset_rdata_next(rrsets[i], rdata);
+		}
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -879,6 +969,13 @@ void dnslib_response_dump(const dnslib_response_t *resp)
 	       dnslib_rrtype_to_string(resp->question.qtype));
 	debug_dnslib_response("  QCLASS: %u (%s)\n", resp->question.qclass,
 	       dnslib_rrclass_to_string(resp->question.qclass));
+
+	debug_dnslib_response("\nAnswer RRSets:\n");
+	dnslib_response_dump_rrsets(resp->answer, resp->header.ancount);
+	debug_dnslib_response("\nAuthority RRSets:\n");
+	dnslib_response_dump_rrsets(resp->authority, resp->header.nscount);
+	debug_dnslib_response("\nAdditional RRSets:\n");
+	dnslib_response_dump_rrsets(resp->additional, resp->header.arcount);
 
 	/*! \todo Dumping of Answer, Authority and Additional sections. */
 
