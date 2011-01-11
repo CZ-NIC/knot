@@ -1307,10 +1307,8 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 	assert(rrset->rdata);
 	assert(rrset->rdata->items);
 	assert(rrset->rdata->items[0].raw_data);
-	/* \XXX \note 11.1.2011 - fix*/
-//	uint16_t tmp_type = rrset->rdata->items[0].raw_data[3]; //XXX Will this
-	//always work?
-	uint16_t tmp_type = rrsig_type_covered(rrset); //TODO figure this out
+
+	uint16_t tmp_type = rrsig_type_covered(rrset);
 	dnslib_rrsig_set_t *rrsig =
 	        dnslib_rrsig_set_new(rrset->owner,
 	                             tmp_type,
