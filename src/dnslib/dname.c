@@ -439,19 +439,37 @@ dnslib_dname_t *dnslib_dname_replace_suffix(const dnslib_dname_t *dname,
                                             int size,
                                             const dnslib_dname_t *suffix)
 {
-	dnslib_dname_t *res = dnslib_dname_new();
-	if (res == NULL) {
-		return NULL;
-	}
+	char *name = dnslib_dname_to_str(dname);
+	debug_dnslib_dname("Replacing suffix of name %s, size %d with ", name,
+	                   size);
+	free(name);
+	name = dnslib_dname_to_str(suffix);
+	debug_dnslib_dname("%s (size %d)\n", name, suffix->size);
+	free(name);
 
-	res->name = (uint8_t *)malloc(dname->size - size + suffix->size);
+	dnslib_dname_t *res = dnslib_dname_new();
+	CHECK_ALLOC(res, NULL);
+
+	res->size = dname->size - size + suffix->size;
+
+	debug_dnslib_dname("Allocating %d bytes...\n", res->size);
+	res->name = (uint8_t *)malloc(res->size);
 	if (res->name == NULL) {
 		dnslib_dname_free(&res);
 		return NULL;
 	}
 
+	debug_dnslib_dname_hex((char *)res->name, res->size);
+
+	debug_dnslib_dname("Copying %d bytes from the original name.\n",
+	                   dname->size - size);
 	memcpy(res->name, dname->name, dname->size - size);
-	memcpy(res->name + dname->size - size, suffix, size);
+	debug_dnslib_dname_hex((char *)res->name, res->size);
+
+	debug_dnslib_dname("Copying %d bytes from the suffix.\n", suffix->size);
+	memcpy(res->name + dname->size - size, suffix->name, suffix->size);
+
+	debug_dnslib_dname_hex((char *)res->name, res->size);
 
 	return res;
 }
