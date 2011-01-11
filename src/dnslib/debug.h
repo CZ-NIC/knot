@@ -11,7 +11,7 @@
 #define __DEBUG_H__
 
 #include <stdint.h>
-#include "dnslib/dnslib.h"
+#include "dnslib.h"
 
 void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type);
 void dnslib_rrset_dump(dnslib_rrset_t *rrset);
