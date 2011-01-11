@@ -25,7 +25,7 @@ unit_api dnslib_dname_tests_api = {
 // C will not accept const int in other const definition
 enum { TEST_DOMAINS_OK = 6 };
 
-enum { TEST_DOMAINS_BAD = 2 };
+enum { TEST_DOMAINS_BAD = 3 };
 
 enum { TEST_DOMAINS_NON_FQDN = 6 };
 
@@ -64,6 +64,7 @@ static const struct test_domain
 		test_domains_bad[TEST_DOMAINS_BAD] = {
 	{ NULL, "\2ex\3com", 8 },
 	{ "ex.com.", NULL, 0 },
+	{ "ex.com.\5", "\3ex\3com\0\5", 10 }
 };
 
 
@@ -526,7 +527,150 @@ static int test_dname_is_subdomain()
 	return (errors == 0);
 }
 
-static const int DNSLIB_DNAME_TEST_COUNT = 12;
+/* \note not to be run separately */
+static int test_dname_size(dnslib_dname_t **dnames_fqdn,
+                           dnslib_dname_t **dnames_non_fqdn)
+{
+	assert(dnames_fqdn);
+	assert(dnames_non_fqdn);
+
+	int errors = 0;
+
+	for (int i = 0; i < TEST_DOMAINS_OK; i++) {
+		const uint8_t *tmp_size;
+		if ((tmp_size = dnslib_dname_size(dnames_fqdn[i])) !=
+		    test_domains_ok[i].size) {
+			diag("Got bad size value from structure: "
+			     "%u, should be: %u",
+			     tmp_size, test_domains_ok[i].size);
+			errors++;
+		}
+	}
+
+	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
+		const uint8_t *tmp_size;
+		if ((tmp_size = dnslib_dname_name(dnames_non_fqdn[i])) !=
+		    test_domains_non_fqdn[i].wire) {
+			diag("Got bad size value from structure: "
+			     "%u, should be: %u",
+			     tmp_size, test_domains_non_fqdn[i].size);
+			errors++;
+		}
+	}
+
+	return errors;
+}
+
+/* \note not to be run separately */
+static int test_dname_node(dnslib_dname_t **dnames_fqdn,
+                           dnslib_dname_t **dnames_non_fqdn)
+{
+	assert(dnames_fqdn);
+	assert(dnames_non_fqdn);
+
+	int errors = 0;
+
+	for (int i = 0; i < TEST_DOMAINS_OK; i++) {
+		const uint8_t *tmp_name;
+		if ((tmp_name = dnslib_dname_name(dnames_fqdn[i])) !=
+		    (uint8_t *)test_domains_ok[i].wire) {
+			diag("Got bad name value from structure: "
+			     "%u, should be: %u",
+			     tmp_name, test_domains_ok[i].wire);
+			errors++;
+		}
+	}
+
+	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
+		const uint8_t *tmp_name;
+		if ((tmp_name = dnslib_dname_name(dnames_non_fqdn[i])) !=
+		    (uint8_t *)test_domains_non_fqdn[i].wire) {
+			diag("Got bad name value from structure: "
+			     "%s, should be: %s",
+			     tmp_name, test_domains_non_fqdn[i].wire);
+			errors++;
+		}
+	}
+
+	return errors;
+}
+
+/* \note not to be run separately */
+static int test_dname_name(dnslib_dname_t **dnames_fqdn,
+                           dnslib_dname_t **dnames_non_fqdn)
+{
+	assert(dnames_fqdn);
+	assert(dnames_non_fqdn);
+
+	int errors = 0;
+
+	for (int i = 0; i < TEST_DOMAINS_OK; i++) {
+		const uint8_t *tmp_name;
+		if ((tmp_name = dnslib_dname_name(dnames_fqdn[i])) !=
+		    (uint8_t *)test_domains_ok[i].wire) {
+			diag("Got bad value from structure: "
+			     "%s, should be: %s",
+			     tmp_name, test_domains_ok[i].wire);
+			errors++;
+		}
+	}
+
+	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
+		const uint8_t *tmp_name;
+		if ((tmp_name = dnslib_dname_name(dnames_non_fqdn[i])) !=
+		    (uint8_t *)test_domains_non_fqdn[i].wire) {
+			diag("Got bad value from structure: "
+			     "%s, should be: %s",
+			     tmp_name, test_domains_non_fqdn[i].wire);
+			errors++;
+		}
+	}
+
+	return errors;
+}
+
+static int test_dname_getters(uint type)
+{
+	int errors = 0;
+
+	dnslib_dname_t *dnames_fqdn[TEST_DOMAINS_OK];
+	dnslib_dname_t *dnames_non_fqdn[TEST_DOMAINS_NON_FQDN];
+
+	for (int i = 0; i < TEST_DOMAINS_OK; i++) {
+		dnames_fqdn[i] = dnslib_dname_new_from_wire(
+		                (uint8_t *)test_domains_ok[i].wire,
+		                test_domains_ok[i].size, NULL);
+		assert(dnames_fqdn[i] != NULL);
+	}
+
+	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
+		dnames_non_fqdn[i] = dnslib_dname_new_from_wire(
+		                (uint8_t *)test_domains_non_fqdn[i].wire,
+		                test_domains_non_fqdn[i].size, NULL);
+		assert(dnames_non_fqdn[i] != NULL);
+	}
+
+	switch (type) {
+		case 0: {
+			errors += test_dname_name(dnames_fqdn, dnames_non_fqdn);
+			break;
+		}
+
+		case 1: {
+			errors += test_dname_size(dnames_fqdn, dnames_non_fqdn);
+			break;
+		}
+
+		case 2: {
+			errors += test_dname_node(dnames_fqdn, dnames_non_fqdn);
+			break;
+		}
+	} /* switch */
+	
+	return (errors == 0);
+}
+
+static const int DNSLIB_DNAME_TEST_COUNT = 15;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.

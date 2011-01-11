@@ -712,7 +712,7 @@ static int test_rdata_compare()
 		errors++;
 	}
 
-	/* abcdef.example.com. \w abcdef.foo.com. -> result -1 */
+	/* abcdef.example.com. \w abcdef.foo.com. -> result 1 */
 	if (dnslib_rdata_compare(&test_rdata[2],
 		                 &test_rdata[3],
 				 &format_dname) != 1) {
