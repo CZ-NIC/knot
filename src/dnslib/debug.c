@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
+#include <stdlib.h>
 
 #include "debug.h"
 #include "dnslib/dnslib.h"
