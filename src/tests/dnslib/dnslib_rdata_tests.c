@@ -55,16 +55,37 @@ unit_api dnslib_rdata_tests_api = {
 
 static uint8_t *RDATA_ITEM_PTR = (uint8_t *)0xDEADBEEF;
 
-static dnslib_rdata_item_t TEST_RDATA_ITEMS[3] = {
-	{.dname = (dnslib_dname_t *)0xF00},
-	{.raw_data = (uint8_t *)"some data"},
-	{.raw_data = (uint8_t *)"other data"}
+enum { RDATA_ITEMS_COUNT = 7, TEST_RDATA_COUNT = 4 , RDATA_DNAMES_COUNT = 2 };
+
+static dnslib_dname_t RDATA_DNAMES[RDATA_DNAMES_COUNT] = {
+	{(uint8_t *)"\6abcdef\7example\3com", 20, NULL},
+	{(uint8_t *)"\6abcdef\3foo\3com", 16, NULL}
 };
 
-static const dnslib_rdata_t TEST_RDATA = {
-	TEST_RDATA_ITEMS,
+static dnslib_rdata_item_t TEST_RDATA_ITEMS[RDATA_ITEMS_COUNT] = {
+	{.dname = (dnslib_dname_t *)0xF00},
+	{.raw_data = (uint8_t *)"some data"},
+	{.raw_data = (uint8_t *)"other data"},
+	{.raw_data = (uint8_t *)"123456"},
+	{.raw_data = (uint8_t *)"654321"},
+	{.dname = &RDATA_DNAMES[0]},
+	{.dname = &RDATA_DNAMES[1]}
+};
+
+/* \note indices 0 to 3 should not be changed - used in (and only in)
+ * test_rdata_compare() - better than creating new struct just for this
+ */
+static dnslib_rdata_t test_rdata[TEST_RDATA_COUNT] = {
+	{&TEST_RDATA_ITEMS[3], 1, &test_rdata[1]},
+	{&TEST_RDATA_ITEMS[4], 1, &test_rdata[2]},
+	{&TEST_RDATA_ITEMS[5], 1, &test_rdata[3]},
+	{&TEST_RDATA_ITEMS[6], 1, &test_rdata[4]},
+};
+
+static dnslib_rdata_t TEST_RDATA = {
+	&TEST_RDATA_ITEMS[0],
 	3,
-	NULL
+	&TEST_RDATA
 };
 
 /*----------------------------------------------------------------------------*/
@@ -659,6 +680,70 @@ static int test_rdata_get_item()
 
 /*----------------------------------------------------------------------------*/
 
+static int test_rdata_compare()
+{
+	int errors = 0;
+
+	uint8_t format_rawdata = DNSLIB_RDATA_WF_BINARY;
+
+	uint8_t format_dname = DNSLIB_RDATA_WF_LITERAL_DNAME;
+
+	/* 123456 \w 654321 -> result -1 */
+	if (dnslib_rdata_compare(&test_rdata[0],
+		                 &test_rdata[1],
+				 &format_rawdata) != -1) {
+		diag("RDATA raw data comparison failed");
+		errors++;
+	}
+
+	/* 123456 \w 123456 -> result 0 */
+	if (dnslib_rdata_compare(&test_rdata[0],
+		                 &test_rdata[0],
+				 &format_rawdata) != 0) {
+		diag("RDATA raw data comparison failed");
+		errors++;
+	}
+
+	/* 123456 \w 654321 -> result 1 */
+	if (dnslib_rdata_compare(&test_rdata[1],
+		                 &test_rdata[0],
+				 &format_rawdata) != 1) {
+		diag("RDATA raw data comparison failed");
+		errors++;
+	}
+
+	/* abcdef.example.com. \w abcdef.foo.com. -> result 1 */
+	if (dnslib_rdata_compare(&test_rdata[2],
+		                 &test_rdata[3],
+				 &format_dname) != 1) {
+		diag("RDATA dname comparison failed");
+		errors++;
+	}
+
+	/* abcdef.example.com. \w abcdef.example.com. -> result 0 */
+	if (dnslib_rdata_compare(&test_rdata[2],
+		                 &test_rdata[2],
+				 &format_dname) != 0) {
+		diag("RDATA dname comparison failed");
+		errors++;
+	}
+
+	/* abcdef.example.com. \w abcdef.foo.com -> result -1 */
+	if (dnslib_rdata_compare(&test_rdata[3],
+		                 &test_rdata[2],
+				 &format_dname) != -1) {
+		diag("RDATA dname comparison failed");
+		errors++;
+	}
+
+
+
+
+	return (errors == 0);
+}
+
+/*----------------------------------------------------------------------------*/
+
 static int test_rdata_wire_size()
 {
 	dnslib_rdata_t *rdata;
@@ -697,7 +782,6 @@ static int test_rdata_wire_size()
 			    DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 			    desc->wireformat[x] == 
 			    DNSLIB_RDATA_WF_LITERAL_DNAME) {
-//            printf("freeing %p\n", rdata->items[x].dname);
 				dnslib_dname_free(&(rdata->items[x].dname));
 			}
 		}
@@ -780,7 +864,7 @@ static int test_rdata_to_wire()
 
 /*----------------------------------------------------------------------------*/
 
-static const int DNSLIB_RDATA_TEST_COUNT = 7;
+static const int DNSLIB_RDATA_TEST_COUNT = 8;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -821,6 +905,9 @@ static int dnslib_rdata_tests_run(int argc, char *argv[])
 	skip(!res, 3);
 
 	ok(res = test_rdata_set_item(), "rdata: set items one-by-one");
+	res_final *= res;
+
+	ok(res = test_rdata_compare(), "rdata: compare");
 	res_final *= res;
 
 	ok(res = test_rdata_wire_size(), "rdata: wire size");
