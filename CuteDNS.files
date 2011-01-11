@@ -86,3 +86,6 @@ src/dnslib/edns.h
 src/dnslib/utils.h
 src/dnslib/zonedb.h
 src/dnslib/zonedb.c
+src/dnslib/debug.h
+src/dnslib/debug.c
+src/dnslib/dnslib.h
