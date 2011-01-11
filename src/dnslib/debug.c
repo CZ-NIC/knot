@@ -105,6 +105,14 @@ void dnslib_node_dump(dnslib_node_t *node, void *void_param)
 	printf("owner: %s\n", dnslib_dname_to_str(node->owner));
 	printf("node/id: %p\n", node->owner->node);
 
+	if (dnslib_node_is_deleg_point(node)) {
+		printf("delegation point\n");
+	}
+
+	if (dnslib_node_is_non_auth(node)) {
+		printf("non-authoritative node\n");
+	}
+
 	char *name;
 
 	if (node->parent != NULL) {
