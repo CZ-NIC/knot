@@ -34,7 +34,7 @@ static struct zone_test_node test_nodes_bad[TEST_NODES_BAD] = {
 };
 
 static struct zone_test_node test_nodes_good[TEST_NODES_GOOD] = {
-	{{(uint8_t *)"\7example\3com\0", 14}, (dnslib_node_t *)NULL},
+	{{(uint8_t *)"\7example\3com\0", 13}, (dnslib_node_t *)NULL},
 	{{(uint8_t *)"\3www\7example\3com\0", 17}, (dnslib_node_t *)NULL},
 	{{(uint8_t *)"\7another\6domain\3com\0", 20}, (dnslib_node_t *)NULL},
 	{{(uint8_t *)"\5mail1\7example\3com\0", 19}, (dnslib_node_t *)NULL},
