@@ -320,16 +320,45 @@ int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_rdata_t *dnslib_rdata_copy(const dnslib_rdata_t *rdata)
+dnslib_rdata_t *dnslib_rdata_copy(const dnslib_rdata_t *rdata, uint16_t type)
 {
 	dnslib_rdata_t *copy = dnslib_rdata_new();
-	if (copy == NULL) {
-		return NULL;
-	}
-	if (dnslib_rdata_set_items(copy, rdata->items, rdata->count) != 0) {
+	CHECK_ALLOC_LOG(copy, NULL);
+
+
+	if ((copy->items = (dnslib_rdata_item_t *)malloc(
+			rdata->count * sizeof(dnslib_rdata_item_t))) == NULL) {
 		dnslib_rdata_free(&copy);
+		ERR_ALLOC_FAILED;
 		return NULL;
 	}
+
+	copy->count = rdata->count;
+
+	dnslib_rrtype_descriptor_t *d = dnslib_rrtype_descriptor_by_type(type);
+
+	assert(copy->count <= d->length);
+
+	// copy all items one by one
+	for (int i = 0; i < copy->count; ++i) {
+		if (d->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME
+		    || d->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
+		    || d->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME) {
+			copy->items[i].dname =
+				dnslib_dname_copy(rdata->items[i].dname);
+		} else {
+			copy->items[i].raw_data = (uint8_t *)malloc(
+					rdata->items[i].raw_data[0] + 1);
+			if (copy->items[i].raw_data == NULL) {
+				dnslib_rdata_deep_free(&copy, type);
+				return NULL;
+			}
+			memcpy(copy->items[i].raw_data,
+			       rdata->items[i].raw_data,
+			       rdata->items[i].raw_data[0] + 1);
+		}
+	}
+
 	return copy;
 }
 
