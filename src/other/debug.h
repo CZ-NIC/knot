@@ -49,8 +49,10 @@
 
 #ifdef DNSLIB_DNAME_DEBUG
 #define debug_dnslib_dname(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_dnslib_dname_hex(data, len) hex_print((data), (len))
 #else
 #define debug_dnslib_dname(msg...)
+#define debug_dnslib_dname_hex(data, len)
 #endif
 
 #ifdef DNSLIB_ZONE_DEBUG
