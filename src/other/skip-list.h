@@ -157,6 +157,17 @@ int skip_remove(skip_list_t *list, void *key, void (*destroy_key)(void *),
 void *skip_find(const skip_list_t *list, void *key);
 
 /*!
+ * \brief Returns item with largest key smaller or equal than \a key.
+ *
+ * \param list Skip list to search in.
+ * \param key Key of the item to be found.
+ *
+ * \return Value stored in the item with largest key smaller or equal than \a
+ *         key, or NULL if the key was not found.
+ */
+void *skip_find_less_or_equal(const skip_list_t *list, void *key);
+
+/*!
  * \brief Checks if the skip list is empty.
  *
  * \param list Skip list to check.

@@ -19,7 +19,16 @@ static int dnslib_zonedb_compare_zone_names(void *d1, void *d2)
 	const dnslib_dname_t *dname1 = (const dnslib_dname_t *)d1;
 	const dnslib_dname_t *dname2 = (const dnslib_dname_t *)d2;
 
-	return (dnslib_dname_compare(dname1, dname2));
+	char *name1 = dnslib_dname_to_str(dname1);
+	char *name2 = dnslib_dname_to_str(dname2);
+
+	int ret = dnslib_dname_compare(dname1, dname2);
+	debug_dnslib_zonedb("Compared names %s and %s, result: %d.\n",
+			    name1, name2, ret);
+	free(name1);
+	free(name2);
+
+	return (ret);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -45,6 +54,10 @@ dnslib_zonedb_t *dnslib_zonedb_new()
 
 int dnslib_zonedb_add_zone(dnslib_zonedb_t *db, dnslib_zone_t *zone)
 {
+	char *name = dnslib_dname_to_str(zone->apex->owner);
+	debug_dnslib_zonedb("Inserting zone %s into zone db.\n", name);
+	free(name);
+
 	int ret = skip_insert(db->zones, zone->apex->owner, zone, NULL);
 	assert(ret == 0 || ret == 1 || ret == -1);
 	return ret;
@@ -81,7 +94,10 @@ const dnslib_zone_t *dnslib_zonedb_find_zone_for_name(dnslib_zonedb_t *db,
 {
 	rcu_read_lock();
 
-	dnslib_zone_t *zone = skip_find(db->zones, (void *)dname);
+	dnslib_zone_t *zone = skip_find_less_or_equal(db->zones, (void *)dname);
+	char *name = dnslib_dname_to_str(dname);
+	debug_ns("Found zone for name %s: %p\n", name, zone);
+	free(name);
 
 	rcu_read_unlock();
 
