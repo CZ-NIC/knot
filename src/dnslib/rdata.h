@@ -181,7 +181,7 @@ int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
  *
  * \return Copy of \a rdata.
  */
-dnslib_rdata_t *dnslib_rdata_copy(const dnslib_rdata_t *rdata);
+dnslib_rdata_t *dnslib_rdata_copy(const dnslib_rdata_t *rdata, uint16_t type);
 
 /*!
  * \brief Destroys the RDATA structure without deleting RDATA items.
