@@ -911,7 +911,7 @@ static void dnslib_response_dump_rrsets(const dnslib_rrset_t **rrsets,
 		dnslib_rrtype_descriptor_t *desc =
 			dnslib_rrtype_descriptor_by_type(rrsets[i]->type);
 
-		dnslib_rdata_t *rdata = dnslib_rrset_rdata(rrsets[i]);
+		const dnslib_rdata_t *rdata = dnslib_rrset_rdata(rrsets[i]);
 		while (rdata != NULL) {
 			for (int j = 0; j < rdata->count; ++j) {
 				switch (desc->wireformat[j]) {
@@ -925,13 +925,13 @@ static void dnslib_response_dump_rrsets(const dnslib_rrset_t **rrsets,
 					break;
 				case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
 					debug_dnslib_response_hex(
-						rdata->items[j].raw_data,
-						rdata->items[j].raw_data[0]);
+					    (char *)rdata->items[j].raw_data,
+					    rdata->items[j].raw_data[0]);
 					break;
 				default:
 					debug_dnslib_response_hex(
-						&rdata->items[j].raw_data[1],
-						rdata->items[j].raw_data[0]);
+					   (char *)&rdata->items[j].raw_data[1],
+					   rdata->items[j].raw_data[0]);
 					break;
 				}
 			}
