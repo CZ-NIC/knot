@@ -23,7 +23,7 @@
 #include <stdint.h>
 
 #include "common.h"
-#include "zone-database.h"
+#include "zonedb.h"
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -37,7 +37,7 @@ typedef struct ns_nameserver {
 	 * \brief Pointer to the zone database structure used for answering
 	 *        queries.
 	 */
-	zdb_database_t *zone_db;
+	dnslib_zonedb_t *zone_db;
 	uint8_t *err_response; /*!< Prepared generic error response. */
 	size_t err_resp_size;  /*!< Size of the prepared error response. */
 } ns_nameserver;
@@ -51,7 +51,7 @@ typedef struct ns_nameserver {
  *
  * \return Pointer to the name server structure.
  */
-ns_nameserver *ns_create(zdb_database_t *database);
+ns_nameserver *ns_create(dnslib_zonedb_t *database);
 
 /*!
  * \brief Creates a response for the given query using the data of the name

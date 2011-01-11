@@ -3,7 +3,7 @@
 #include <assert.h>
 
 #include "zone-dump.h"
-#include "dnslib/dnslib.h"
+#include "dnslib.h"
 
 /* TODO Think of a better way than global variable */
 static uint node_count = 0;

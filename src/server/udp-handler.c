@@ -4,6 +4,8 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <string.h>
+#include <assert.h>
 
 #include "udp-handler.h"
 #include "name-server.h"
