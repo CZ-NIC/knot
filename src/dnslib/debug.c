@@ -92,7 +92,7 @@ void dnslib_rrset_dump(dnslib_rrset_t *rrset)
 	printf("------- RRSET -------\n");
 }
 
-void dnslib_node_dump(dnslib_node_t *node)
+void dnslib_node_dump(dnslib_node_t *node, void *void_param)
 {
 	printf("------- NODE --------\n");
 	printf("owner: %s\n", dnslib_dname_to_str(node->owner));
@@ -138,13 +138,13 @@ void dnslib_zone_dump(dnslib_zone_t *zone)
 {
 	printf("------- ZONE --------\n");
 
-	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl, dnslib_node_dump, NULL);
+	dnslib_zone_tree_apply_inorder(zone, dnslib_node_dump, NULL);
 
 	printf("------- ZONE --------\n");
 	
 	printf("------- NSEC 3 tree -\n");
 
-	TREE_FORWARD_APPLY(zone->nsec3_nodes, dnslib_node, avl, dnslib_node_dump, NULL);
+	dnslib_zone_nsec3_apply_inorder(zone, dnslib_node_dump, NULL);
 
 	printf("------- NSEC 3 tree -\n");
 }

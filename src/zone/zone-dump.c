@@ -133,8 +133,10 @@ static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, FILE *f)
 	fsetpos(f, &tmp_pos);
 }
 
-static void dnslib_node_dump_binary(dnslib_node_t *node, FILE *f)
+static void dnslib_node_dump_binary(dnslib_node_t *node, void *fp)
 {
+	FILE *f = (FILE *)fp;
+	
 	node_count++;
 	/* first write dname */
 	assert(node->owner != NULL);
@@ -222,15 +224,12 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 	       zone->apex->owner->size, f);
 	
 	/* TODO is there a way how to stop the traversal upon error? */
-	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl,
-	                   dnslib_node_dump_binary, f);
+	dnslib_zone_tree_apply_inorder(zone, &dnslib_node_dump_binary, f);
 
 	uint tmp_count = node_count;
 
 	node_count = 0;
-
-	TREE_FORWARD_APPLY(zone->nsec3_nodes, dnslib_node, avl,
-	                   dnslib_node_dump_binary, f);
+	dnslib_zone_nsec3_apply_inorder(zone, &dnslib_node_dump_binary, f);
 
 	rewind(f);
 	
