@@ -37,7 +37,7 @@ static inline void dnslib_wire_write_u16(uint8_t *pos, uint16_t data)
 static inline void dnslib_wire_write_u32(uint8_t *pos, uint32_t data)
 {
 	pos[0] = (uint8_t)((data >> 24) & 0xff);
-	pos[0] = (uint8_t)((data >> 16) & 0xff);
+	pos[1] = (uint8_t)((data >> 16) & 0xff);
 	pos[2] = (uint8_t)((data >> 8) & 0xff);
 	pos[3] = (uint8_t)(data & 0xff);
 }
