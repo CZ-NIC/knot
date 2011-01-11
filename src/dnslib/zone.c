@@ -130,6 +130,15 @@ void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
 			dnslib_zone_adjust_rdata_item(rdata, zone, i);
 		}
 	}
+
+	// delegation point / non-authoritative node
+	if (dnslib_node_is_deleg_point(node->parent)
+	    || dnslib_node_is_non_auth(node->parent)) {
+		dnslib_node_set_non_auth(node);
+	} else if (dnslib_node_rrset(node, DNSLIB_RRTYPE_NS) != NULL
+		   && node != zone->apex) {
+		dnslib_node_set_deleg_point(node);
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -272,14 +281,29 @@ int dnslib_zone_find_dname(const dnslib_zone_t *zone,
 
 	dnslib_node_t *found = NULL;
 
+	char *name_str = dnslib_dname_to_str(name);
+	char *zone_str = dnslib_dname_to_str(zone->apex->owner);
+	debug_dnslib_zone("Searching for name %s in zone %s...\n",
+			  name_str, zone_str);
+	free(name_str);
+	free(zone_str);
+
 	// create dummy node to use for lookup
 	dnslib_node_t *tmp = dnslib_node_new((dnslib_dname_t *)name, NULL);
 	int exact_match = TREE_FIND_LESS_EQUAL(
-	                      zone->nsec3_nodes, dnslib_node, avl, tmp, &found);
+	                      zone->tree, dnslib_node, avl, tmp, &found);
 	dnslib_node_free(&tmp, 0);
 
 	*node = found;
 	*closest_encloser = found;
+
+	name_str = (found) ? dnslib_dname_to_str(found->owner) : "(nil)";
+	debug_dnslib_zone("Search function returned %d and node %s\n",
+	                  exact_match, name_str);
+
+	if (found) {
+		free(name_str);
+	}
 
 	// there must be at least one node with domain name less or equal to
 	// the searched name if the name belongs to the zone (the root)
