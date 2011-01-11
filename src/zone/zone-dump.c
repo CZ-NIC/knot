@@ -19,7 +19,6 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 	assert(desc != NULL);
 	for (int i = 0; i < desc->length; i++) {
 		if (&(rdata->items[i]) == NULL) {
-			//XXX isn't this itself enough to crash?
 			debug_zp("Item n. %d is not set!\n", i);
 			continue;
 		}
@@ -151,12 +150,17 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *fp)
 
 	debug_zp("Writing id: %u\n", node->owner->node);
 
-
+	/* TODO investigate whether this is necessary */
 	if (node->parent != NULL) {
 		fwrite(&(node->parent->owner->node), sizeof(void *), 1, f);
 	} else {
 		fwrite(&(node->parent), sizeof(void *), 1, f);
 	}
+
+	fwrite(&(node->flags), sizeof(node->flags), 1, f);
+
+	debug_zp("Writing flags: %u\n", node->flags);
+
 
 	/* Now we need (or do we?) count of rrsets to be read 
 	 * but that number is yet unknown */

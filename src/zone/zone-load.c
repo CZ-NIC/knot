@@ -154,6 +154,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 {
 
 	uint8_t dname_size;
+	uint8_t flags;
 	dnslib_node_t *node;
 	/* first, owner */
 	
@@ -175,9 +176,9 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 
 	fread(&dname_id, sizeof(dname_id), 1, f);
 
-
 	fread(&parent_id, sizeof(dname_id), 1, f);
 
+	fread(&flags, sizeof(flags), 1, f);
 
 	fread(&rrset_count, sizeof(rrset_count), 1, f);
 
@@ -194,6 +195,8 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	}
 
 	owner->node = node;
+
+	node->flags = flags;
 
 	//XXX will have to be set already...canonical order should do it
 
