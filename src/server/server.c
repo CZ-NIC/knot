@@ -8,6 +8,7 @@
 #include "stat.h"
 #include "zonedb.h"
 #include "zone-load.h"
+#include "dnslib/debug.h"
 
 cute_server *cute_create()
 {
@@ -157,6 +158,8 @@ int cute_start(cute_server *server, char **filenames, uint zones)
 		    && dnslib_zonedb_add_zone(server->zone_db, zone) == 0)) {
 			return -1;
 		}
+		// dump zone
+		dnslib_zone_dump(zone);
 	}
 
 	debug_server("\nDone\n\n");
