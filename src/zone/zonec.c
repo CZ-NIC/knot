@@ -106,13 +106,13 @@ uint16_t rrsig_type_covered(dnslib_rrset_t *rrset)
 	return ntohs(* (uint16_t *) rdata_atom_data(rrset->rdata->items[0]));
 }
 
-ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
+ssize_t rdata_wireformat_to_rdata_atoms(const uint8_t *wireformat,
                                         uint16_t rrtype,
                                         const uint16_t data_size,
                                         dnslib_rdata_item_t *items)
 {
 //	size_t end = buffer_position(packet) + data_size;
-	uint16_t const *end = wireformat + data_size; //XXX + 1?
+	uint8_t const *end = wireformat + data_size; //XXX + 1?
 	size_t i;
 	dnslib_rdata_item_t temp_rdatas[MAXRDATALEN];
 	dnslib_rrtype_descriptor_t *descriptor =
@@ -314,16 +314,16 @@ extern uint16_t nsec_highest_rcode;
  * Allocate SIZE+sizeof(uint16_t) bytes and store SIZE in the first
  * element.  Return a pointer to the allocation.
  */
-static uint16_t * alloc_rdata(size_t size)
+static uint8_t * alloc_rdata(size_t size)
 {
-	uint16_t *result = malloc(sizeof(uint16_t) + size);
+	uint8_t *result = malloc(sizeof(uint8_t) + size);
 	*result = size;
 	return result;
 }
 
-uint16_t * alloc_rdata_init(const void *data, size_t size)
+uint8_t * alloc_rdata_init(const void *data, size_t size)
 {
-	uint16_t *result = malloc(sizeof(uint16_t) + size);
+	uint8_t *result = malloc(sizeof(uint8_t) + size);
 	*result = size;
 	memcpy(result + 1, data, size);
 	return result;
@@ -332,10 +332,10 @@ uint16_t * alloc_rdata_init(const void *data, size_t size)
 /*
  * These are parser function for generic zone file stuff.
  */
-uint16_t * zparser_conv_hex(const char *hex, size_t len)
+uint8_t * zparser_conv_hex(const char *hex, size_t len)
 {
 	/* convert a hex value to wireformat */
-	uint16_t *r = NULL;
+	uint8_t *r = NULL;
 	uint8_t *t;
 	int i;
 
@@ -372,9 +372,9 @@ uint16_t * zparser_conv_hex(const char *hex, size_t len)
 }
 
 /* convert hex, precede by a 1-byte length */
-uint16_t * zparser_conv_hex_length(const char *hex, size_t len)
+uint8_t * zparser_conv_hex_length(const char *hex, size_t len)
 {
-	uint16_t *r = NULL;
+	uint8_t *r = NULL;
 	uint8_t *t;
 	int i;
 	if (len % 2 != 0) {
@@ -412,10 +412,10 @@ uint16_t * zparser_conv_hex_length(const char *hex, size_t len)
 	return r;
 }
 
-uint16_t * zparser_conv_time(const char *time)
+uint8_t * zparser_conv_time(const char *time)
 {
 	/* convert a time YYHM to wireformat */
-	uint16_t *r = NULL;
+	uint8_t *r = NULL;
 	struct tm tm;
 
 	/* Try to scan the time... */
@@ -428,14 +428,14 @@ uint16_t * zparser_conv_time(const char *time)
 	return r;
 }
 
-uint16_t * zparser_conv_services(const char *protostr,
+uint8_t * zparser_conv_services(const char *protostr,
                       char *servicestr)
 {
 	/*
 	 * Convert a protocol and a list of service port numbers
 	 * (separated by spaces) in the rdata to wireformat
 	 */
-	uint16_t *r = NULL;
+	uint8_t *r = NULL;
 	uint8_t *p;
 	uint8_t bitmap[65536/8];
 	char sep[] = " ";
@@ -462,6 +462,7 @@ uint16_t * zparser_conv_services(const char *protostr,
 		service = getservbyname(word, proto->p_name);
 		if (service) {
 			/* Note: ntohs not ntohl!  Strange but true.  */
+			/* XXX uint8_t ??? */
 			port = ntohs((uint16_t) service->s_port);
 		} else {
 			char *end;
@@ -493,10 +494,10 @@ uint16_t * zparser_conv_services(const char *protostr,
 	return r;
 }
 
-uint16_t * zparser_conv_serial(const char *serialstr)
+uint8_t * zparser_conv_serial(const char *serialstr)
 {
 	//printf("CONV SERIAL: %s\n", serialstr);
-	uint16_t *r = NULL;
+	uint8_t *r = NULL;
 	uint32_t serial;
 	const char *t;
 
@@ -510,10 +511,10 @@ uint16_t * zparser_conv_serial(const char *serialstr)
 	return r;
 }
 
-uint16_t * zparser_conv_period(const char *periodstr)
+uint8_t * zparser_conv_period(const char *periodstr)
 {
 	/* convert a time period (think TTL's) to wireformat) */
-	uint16_t *r = NULL;
+	uint8_t *r = NULL;
 	uint32_t period;
 	const char *end;
 
@@ -528,9 +529,9 @@ uint16_t * zparser_conv_period(const char *periodstr)
 	return r;
 }
 
-uint16_t * zparser_conv_short(const char *text)
+uint8_t * zparser_conv_short(const char *text)
 {
-	uint16_t *r = NULL;
+	uint8_t *r = NULL;
 	uint16_t value;
 	char *end;
 
@@ -543,9 +544,9 @@ uint16_t * zparser_conv_short(const char *text)
 	return r;
 }
 
-uint16_t * zparser_conv_byte(const char *text)
+uint8_t * zparser_conv_byte(const char *text)
 {
-	uint16_t *r = NULL;
+	uint8_t *r = NULL;
 	uint8_t value;
 	char *end;
 
@@ -558,7 +559,7 @@ uint16_t * zparser_conv_byte(const char *text)
 	return r;
 }
 
-uint16_t * zparser_conv_algorithm(const char *text)
+uint8_t * zparser_conv_algorithm(const char *text)
 {
 	const dnslib_lookup_table_t *alg;
 	uint8_t id;
@@ -578,7 +579,7 @@ uint16_t * zparser_conv_algorithm(const char *text)
 	return alloc_rdata_init(&id, sizeof(id));
 }
 
-uint16_t * zparser_conv_certificate_type(const char *text)
+uint8_t * zparser_conv_certificate_type(const char *text)
 {
 	/* convert a algoritm string to integer */
 	const dnslib_lookup_table_t *type;
@@ -599,10 +600,10 @@ uint16_t * zparser_conv_certificate_type(const char *text)
 	return alloc_rdata_init(&id, sizeof(id));
 }
 
-uint16_t * zparser_conv_a(const char *text)
+uint8_t * zparser_conv_a(const char *text)
 {
 	in_addr_t address;
-	uint16_t *r = NULL;
+	uint8_t *r = NULL;
 
 	if (inet_pton(AF_INET, text, &address) != 1) {
 		fprintf(stderr, "invalid IPv4 address '%s'", text);
@@ -612,10 +613,10 @@ uint16_t * zparser_conv_a(const char *text)
 	return r;
 }
 
-uint16_t * zparser_conv_aaaa(const char *text)
+uint8_t * zparser_conv_aaaa(const char *text)
 {
 	uint8_t address[IP6ADDRLEN];
-	uint16_t *r = NULL;
+	uint8_t *r = NULL;
 
 	if (inet_pton(AF_INET6, text, address) != 1) {
 		fprintf(stderr, "invalid IPv6 address '%s'", text);
@@ -625,9 +626,9 @@ uint16_t * zparser_conv_aaaa(const char *text)
 	return r;
 }
 
-uint16_t * zparser_conv_text(const char *text, size_t len)
+uint8_t * zparser_conv_text(const char *text, size_t len)
 {
-	uint16_t *r = NULL;
+	uint8_t *r = NULL;
 
 	if (len > 255) {
 		fprintf(stderr, "text string is longer than 255 characters,"
@@ -642,9 +643,9 @@ uint16_t * zparser_conv_text(const char *text, size_t len)
 	return r;
 }
 
-uint16_t * zparser_conv_dns_name(const uint8_t *name, size_t len)
+uint8_t * zparser_conv_dns_name(const uint8_t *name, size_t len)
 {
-	uint16_t *r = NULL;
+	uint8_t *r = NULL;
 	uint8_t *p = NULL;
 	r = alloc_rdata(len);
 	p = (uint8_t *)(r + 1);
@@ -653,10 +654,10 @@ uint16_t * zparser_conv_dns_name(const uint8_t *name, size_t len)
 	return r;
 }
 
-uint16_t * zparser_conv_b32(const char *b32)
+uint8_t * zparser_conv_b32(const char *b32)
 {
 	uint8_t buffer[B64BUFSIZE];
-	uint16_t *r = NULL;
+	uint8_t *r = NULL;
 	int i;
 
 	if (strcmp(b32, "-") == 0) {
@@ -672,10 +673,10 @@ uint16_t * zparser_conv_b32(const char *b32)
 	return r;
 }
 
-uint16_t * zparser_conv_b64(const char *b64)
+uint8_t * zparser_conv_b64(const char *b64)
 {
 	uint8_t buffer[B64BUFSIZE];
-	uint16_t *r = NULL;
+	uint8_t *r = NULL;
 	int i;
 
 	i = b64_pton(b64, buffer, B64BUFSIZE);
@@ -687,9 +688,9 @@ uint16_t * zparser_conv_b64(const char *b64)
 	return r;
 }
 
-uint16_t * zparser_conv_rrtype(const char *text)
+uint8_t * zparser_conv_rrtype(const char *text)
 {
-	uint16_t *r = NULL;
+	uint8_t *r = NULL;
 	uint16_t type = dnslib_rrtype_from_string(text);
 
 	if (type == 0) {
@@ -701,7 +702,7 @@ uint16_t * zparser_conv_rrtype(const char *text)
 	return r;
 }
 
-uint16_t * zparser_conv_nxt(uint8_t nxtbits[])
+uint8_t * zparser_conv_nxt(uint8_t nxtbits[])
 {
 	/* nxtbits[] consists of 16 bytes with some zero's in it
 	 * copy every byte with zero to r and write the length in
@@ -723,14 +724,14 @@ uint16_t * zparser_conv_nxt(uint8_t nxtbits[])
 /* we potentially have 256 windows, each one is numbered. empty ones
  * should be discarded
  */
-uint16_t * zparser_conv_nsec(uint8_t nsecbits[NSEC_WINDOW_COUNT]
+uint8_t * zparser_conv_nsec(uint8_t nsecbits[NSEC_WINDOW_COUNT]
                                              [NSEC_WINDOW_BITS_SIZE])
 {
 	/* nsecbits contains up to 64K of bits which represent the
 	 * types available for a name. Walk the bits according to
 	 * nsec++ draft from jakob
 	 */
-	uint16_t *r;
+	uint8_t *r;
 	uint8_t *ptr;
 	size_t i, j;
 	uint16_t window_count = 0;
@@ -871,9 +872,9 @@ static uint8_t precsize_aton(char *cp, char **endptr)
  *	zero on error
  *
  */
-uint16_t * zparser_conv_loc(char *str)
+uint8_t * zparser_conv_loc(char *str)
 {
-	uint16_t *r;
+	uint8_t *r;
 	uint32_t *p;
 	int i;
 	int deg, min, secs;	/* Secs is stored times 1000.  */
@@ -1063,7 +1064,7 @@ uint16_t * zparser_conv_loc(char *str)
 /*
  * Convert an APL RR RDATA element.
  */
-uint16_t * zparser_conv_apl_rdata(char *str)
+uint8_t * zparser_conv_apl_rdata(char *str)
 {
 	int negated = 0;
 	uint16_t address_family;
@@ -1076,7 +1077,7 @@ uint16_t * zparser_conv_apl_rdata(char *str)
 	int af;
 	int rc;
 	uint16_t rdlength;
-	uint16_t *r;
+	uint8_t *r;
 	uint8_t *t;
 	char *end;
 	long p;
@@ -1182,7 +1183,7 @@ uint32_t zparser_ttl2int(const char *ttlstr, int *error)
 	return ttl;
 }
 
-void zadd_rdata_wireformat(uint16_t *data)
+void zadd_rdata_wireformat(uint8_t *data)
 {
 	parser->temporary_items[parser->rdata_count].raw_data = (uint8_t *)data;
 	parser->rdata_count++;
@@ -1191,7 +1192,7 @@ void zadd_rdata_wireformat(uint16_t *data)
 /**
  * Used for TXT RR's to grow with undefined number of strings.
  */
-void zadd_rdata_txt_wireformat(uint16_t *data, int first)
+void zadd_rdata_txt_wireformat(uint8_t *data, int first)
 {
 	dnslib_rdata_item_t *rd;
 
@@ -1199,8 +1200,8 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 	 * else find last used rdata */
 	if (first) {
 		rd = &parser->temporary_items[parser->rdata_count];
-//		if ((rd->data = (uint16_t *) region_alloc(parser->rr_region,
-//			sizeof(uint16_t) + 65535 * sizeof(uint8_t))) == NULL) {
+//		if ((rd->data = (uint8_t *) region_alloc(parser->rr_region,
+//			sizeof(uint8_t) + 65535 * sizeof(uint8_t))) == NULL) {
 //			fprintf(stderr, "Could not allocate memory for TXT RR");
 //			return;
 //		}
@@ -1226,7 +1227,7 @@ void zadd_rdata_domain(dnslib_dname_t *dname)
 	parser->rdata_count++;
 }
 
-void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
+void parse_unknown_rdata(uint16_t type, uint8_t *wireformat)
 {
 //	buffer_type packet;
 	uint16_t size;
@@ -1253,7 +1254,7 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 			zadd_rdata_domain(items[i].dname);
 		} else {
 			//XXX won't this create size two times?
-			zadd_rdata_wireformat((uint16_t *)items[i].raw_data);
+			zadd_rdata_wireformat((uint8_t *)items[i].raw_data);
 		}
 	}
 }
@@ -1645,9 +1646,9 @@ void zone_read(char *name, const char *zonefile)
 
 //	dnslib_zone_t *new_zone = dnslib_zone_load(dump_file_name);
 
-//	dnslib_zone_dump(new_zone);
+	dnslib_zone_dump(parser->current_zone);
 
-	dnslib_zone_deep_free(&(parser->current_zone));
+//	dnslib_zone_deep_free(&(parser->current_zone));
 
 	fclose(yyin);
 

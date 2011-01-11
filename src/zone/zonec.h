@@ -102,41 +102,41 @@ int yylex(void);
 void yyrestart(FILE *);
 
 int process_rr(void);
-uint16_t *zparser_conv_hex(const char *hex, size_t len);
-uint16_t *zparser_conv_hex_length(const char *hex, size_t len);
-uint16_t *zparser_conv_time(const char *time);
-uint16_t *zparser_conv_services(const char *protostr, char *servicestr);
-uint16_t *zparser_conv_serial(const char *periodstr);
-uint16_t *zparser_conv_period(const char *periodstr);
-uint16_t *zparser_conv_short(const char *text);
-uint16_t *zparser_conv_long(const char *text);
-uint16_t *zparser_conv_byte(const char *text);
-uint16_t *zparser_conv_a(const char *text);
-uint16_t *zparser_conv_aaaa(const char *text);
-uint16_t *zparser_conv_text(const char *text, size_t len);
-uint16_t *zparser_conv_dns_name(const uint8_t* name, size_t len);
-uint16_t *zparser_conv_b32(const char *b32);
-uint16_t *zparser_conv_b64(const char *b64);
-uint16_t *zparser_conv_rrtype(const char *rr);
-uint16_t *zparser_conv_nxt(uint8_t nxtbits[]);
-uint16_t *zparser_conv_nsec(uint8_t nsecbits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE]);
-uint16_t *zparser_conv_loc(char *str);
-uint16_t *zparser_conv_algorithm(const char *algstr);
-uint16_t *zparser_conv_certificate_type(const char *typestr);
-uint16_t *zparser_conv_apl_rdata(char *str);
+uint8_t *zparser_conv_hex(const char *hex, size_t len);
+uint8_t *zparser_conv_hex_length(const char *hex, size_t len);
+uint8_t *zparser_conv_time(const char *time);
+uint8_t *zparser_conv_services(const char *protostr, char *servicestr);
+uint8_t *zparser_conv_serial(const char *periodstr);
+uint8_t *zparser_conv_period(const char *periodstr);
+uint8_t *zparser_conv_short(const char *text);
+uint8_t *zparser_conv_long(const char *text);
+uint8_t *zparser_conv_byte(const char *text);
+uint8_t *zparser_conv_a(const char *text);
+uint8_t *zparser_conv_aaaa(const char *text);
+uint8_t *zparser_conv_text(const char *text, size_t len);
+uint8_t *zparser_conv_dns_name(const uint8_t* name, size_t len);
+uint8_t *zparser_conv_b32(const char *b32);
+uint8_t *zparser_conv_b64(const char *b64);
+uint8_t *zparser_conv_rrtype(const char *rr);
+uint8_t *zparser_conv_nxt(uint8_t nxtbits[]);
+uint8_t *zparser_conv_nsec(uint8_t nsecbits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE]);
+uint8_t *zparser_conv_loc(char *str);
+uint8_t *zparser_conv_algorithm(const char *algstr);
+uint8_t *zparser_conv_certificate_type(const char *typestr);
+uint8_t *zparser_conv_apl_rdata(char *str);
 
-void parse_unknown_rdata(uint16_t type, uint16_t *wireformat);
+void parse_unknown_rdata(uint16_t type, uint8_t *wireformat);
 
 uint32_t zparser_ttl2int(const char *ttlstr, int* error);
-void zadd_rdata_wireformat(uint16_t *data);
-void zadd_rdata_txt_wireformat(uint16_t *data, int first);
+void zadd_rdata_wireformat(uint8_t *data);
+void zadd_rdata_txt_wireformat(uint8_t *data, int first);
 void zadd_rdata_txt_clean_wireformat();
 void zadd_rdata_domain(dnslib_dname_t *domain);
 
-void set_bitnsec(uint8_t  bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
+void set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
 		 uint16_t index);
 
-uint16_t *alloc_rdata_init(const void *data, size_t size);
+uint8_t *alloc_rdata_init(const void *data, size_t size);
 
 void zone_read(char *name, const char *zonefile);
 
