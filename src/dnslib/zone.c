@@ -132,8 +132,9 @@ void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
 	}
 
 	// delegation point / non-authoritative node
-	if (dnslib_node_is_deleg_point(node->parent)
-	    || dnslib_node_is_non_auth(node->parent)) {
+	if (node->parent
+	    && (dnslib_node_is_deleg_point(node->parent)
+	        || dnslib_node_is_non_auth(node->parent))) {
 		dnslib_node_set_non_auth(node);
 	} else if (dnslib_node_rrset(node, DNSLIB_RRTYPE_NS) != NULL
 		   && node != zone->apex) {
