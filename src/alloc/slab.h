@@ -36,6 +36,10 @@
  *
  * \todo Evaluate non-aligned and bigger slabs, tweak settings for server.
  *
+ * \todo Allocate slab headers elsewhere and use just first sizeof(void*) bytes
+ *       in each slab as a pointer to slab header. This could improve the
+ *       performance.
+ *
  * \note Slab allocation is not thread safe for performance reasons.
  *
  * \addtogroup data_structures
@@ -115,8 +119,18 @@ typedef struct slab_obj_t {
  * It is responsible for slab state keeping.
  *
  * Once a slab is created, it is moved to free list.
- * Then it is moved to partial list with a first allocation.
- * Full slabs go to full list.
+ * When it is full, it is moved to full list.
+ * Once a buf from full slab is freed, the slab is moved to
+ * free list again (there may be some hysteresis for mitigating
+ * a sequential alloc/free).
+ *
+ * \note Slab implementation is different from Bonwick (Usenix 2001)
+ *       http://www.usenix.org/event/usenix01/bonwick.html
+ *       as it doesn't feature empty and partial list.
+ *       This is due to fact, that user space allocator rarely
+ *       needs to count free slabs. There is no way the OS could
+ *       notify the application, that the memory is scarce.
+ *       A slight performance increased is measured in benchmark.
  *
  * Allocation of new slabs is on-demand, empty slabs are reused if possible.
  *
@@ -126,7 +140,6 @@ typedef struct slab_cache_t {
 	unsigned short color;    /*!< Current cache color. */
 	size_t bufsize;          /*!< Cache object (buf) size. */
 	slab_t *slabs_free;      /*!< List of free slabs. */
-	slab_t *slabs_partial;   /*!< List of partially full slabs. */
 	slab_t *slabs_full;      /*!< List of full slabs. */
 
 	/* Statistics. */
