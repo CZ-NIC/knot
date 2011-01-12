@@ -8,6 +8,7 @@
 
 void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type)
 {
+#if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_RDATA_DEBUG)
 	printf("      ------- RDATA -------\n");
 	if (rdata == NULL) {
 		printf("      There are no rdata in this RRset!\n");
@@ -39,10 +40,12 @@ void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type)
 		}
 	}
 	printf("      ------- RDATA -------\n");
+#endif
 }
 
 void dnslib_rrsig_dump(dnslib_rrsig_set_t *rrsig)
 {
+#if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_RRSET_DEBUG)
 	printf("    ------- RRSIG -------\n");
 	if (rrsig == NULL) {
 		printf("    RRSIG is not set\n");
@@ -67,10 +70,12 @@ void dnslib_rrsig_dump(dnslib_rrsig_set_t *rrsig)
 	dnslib_rdata_dump(tmp, DNSLIB_RRTYPE_RRSIG); 
 
 	printf("    ------- RRSIG -------\n");
+#endif
 }
 
 void dnslib_rrset_dump(dnslib_rrset_t *rrset)
 {
+#if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_RRSET_DEBUG)
 	printf("  ------- RRSET -------\n");
 	printf("  %p\n", rrset);
 	char *name = dnslib_dname_to_str(rrset->owner);
@@ -98,10 +103,12 @@ void dnslib_rrset_dump(dnslib_rrset_t *rrset)
 	dnslib_rdata_dump(tmp, rrset->type);
 
 	printf("  ------- RRSET -------\n");
+#endif
 }
 
 void dnslib_node_dump(dnslib_node_t *node, void *void_param)
 {
+#if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_NODE_DEBUG)
 	printf("------- NODE --------\n");
 	printf("owner: %s\n", dnslib_dname_to_str(node->owner));
 	printf("node/id: %p\n", node->owner->node);
@@ -154,10 +161,12 @@ void dnslib_node_dump(dnslib_node_t *node, void *void_param)
 	}
 	//assert(node->owner->node == node);
 	printf("------- NODE --------\n");
+#endif
 }
 
 void dnslib_zone_dump(dnslib_zone_t *zone)
 {
+#if defined(DNSLIB_ZONE_DEBUG)
 	printf("------- ZONE --------\n");
 
 	dnslib_zone_tree_apply_inorder(zone, dnslib_node_dump, NULL);
@@ -169,4 +178,5 @@ void dnslib_zone_dump(dnslib_zone_t *zone)
 	dnslib_zone_nsec3_apply_inorder(zone, dnslib_node_dump, NULL);
 
 	printf("------- NSEC 3 tree -\n");
+#endif
 }

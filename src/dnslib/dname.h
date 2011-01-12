@@ -32,6 +32,8 @@ struct dnslib_dname {
 	 * \todo Is this needed? Every dname should end with \0 or pointer.
 	 */
 	uint size;
+	uint8_t *labels;
+	short label_count;
 	struct dnslib_node *node; /*!< Zone node the domain name belongs to. */
 };
 
