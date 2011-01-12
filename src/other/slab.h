@@ -3,26 +3,40 @@
  *
  * \author Marek Vavrusa <marek.vavusa@nic.cz>
  *
- * \brief Multithreaded SLAB allocator.
+ * \brief SLAB allocator.
  *
- * Multithreaded SLAB cache works with both
- * custom SLAB sizes and Next-Highest-Power-Of-2 sizes.
- *
- * Each thread has it's own thread cache to mitigate
- * the synchronisation costs.
+ * SLAB cache works with either custom SLAB sizes and
+ * Next-Highest-Power-Of-2 sizes.
  *
  * Slab size is a multiple of PAGE_SIZE and uses
  * system allocator for larger blocks.
  *
  * Allocated SLABs are PAGE_SIZE aligned for a fast O(1)
- * address-from-item lookup.
- *
- * Cache uses spinlocks as a locking scheme for a very short
- * critical sections. Spinlocks have at least order of magnited
- * lower complexity than mutexes.
+ * address-from-item lookup. This results in nearly none memory
+ * overhead for a very small blocks (<64B), but it requires the
+ * underlying allocator to be effective in allocating page size aligned memory
+ * as well. The major disadvantage is that each Slab must be aligned to it's
+ * size as opposed to boundary tags.
  *
  * Slab implements simple coloring mechanism to improve
  * cache line utilisation.
+ *
+ *
+ * Optimal usage for a specific behavior (similar allocation sizes):
+ * \code
+ * slab_cache_t cache;
+ * slab_cache_init(&cache, N); // Initialize, N means cache chunk size
+ * ...
+ * void* mem = slab_cache_alloc(&cache); // Allocate N bytes
+ * ...
+ * slab_free(mem); // Recycle memory
+ * ...
+ * slab_cache_destroy(&cache); // Deinitialize cache
+ * \endcode
+ *
+ * \todo Evaluate non-aligned and bigger slabs, tweak settings for server.
+ *
+ * \note Slab allocation is not thread safe for performance reasons.
  *
  * \addtogroup data_structures
  * @{
@@ -40,12 +54,13 @@
 #define SLAB_GP_COUNT  10 // General-purpose caches count.
 #define SLAB_US_COUNT  10 // User-specified caches count.
 #define SLAB_CACHE_COUNT (SLAB_GP_COUNT + SLAB_US_COUNT)
-#define SLAB_DEPOT_COUNT 64 // 64 slabs cached = 64*4kB
+#define SLAB_DEPOT_COUNT 16 // 16 slabs cached = 16*4kB
 extern size_t SLAB_MASK;
 struct slab_cache_t;
 
 /* Macros. */
 #define slab_from_ptr(p) ((void*)((size_t)(p) & SLAB_MASK))
+#define slab_isempty(s) ((s)->bufs_free == (s)->bufs_count)
 
 /*!
  * \brief Slab descriptor.
@@ -54,6 +69,8 @@ struct slab_cache_t;
  * smaller objects (bufs) later on.
  * Each slab is currently aligned to page size to easily
  * determine slab address from buf pointer.
+ *
+ * \warning Do not use slab_t directly as it cannot grow, see slab_cache_t.
  */
 typedef struct slab_t {
 	char magic;                 /*!< Identifies memory block type. */
@@ -63,19 +80,19 @@ typedef struct slab_t {
 	unsigned bufs_free;         /*!< Number of available bufs. */
 	void **head;                /*!< Pointer to first available buf. */
 	char* base;                 /*!< Base address for bufs. */
-	pthread_spinlock_t lock;    /*!< Synchronisation lock. */
 } slab_t;
 
 /*!
  * \brief Slab depot.
  *
- * To mitigate page trashing, depot keeps a fixed number of
- * free pages before returning them to the system.
+ * To mitigate slab initialization costs, depot keeps a finite number of
+ * stacked slabs before returning them to the system.
+ *
+ * \todo Implement hierarchy to return ready-to-use, same block size pages.
  */
 typedef struct slab_depot_t {
 	size_t available;             /*!< Number of available pages. */
-	void* page[SLAB_DEPOT_COUNT]; /*!< Stack of free pages. */
-	pthread_spinlock_t lock;      /*!< Synchronisation lock. */
+	void* page[SLAB_DEPOT_COUNT]; /*!< Stack of free slabs. */
 } slab_depot_t;
 
 /*!
@@ -83,9 +100,6 @@ typedef struct slab_depot_t {
  *
  * Large object differs from slab with magic byte and
  * contains object size.
- *
- * For space and performance reasons, the size of the object should
- * be close to a multiple of page size.
  *
  * Magic needs to be first to overlap with slab_t magic byte.
  */
@@ -100,19 +114,20 @@ typedef struct slab_obj_t {
  * Slab cache is a list of 0..n slabs with the same buf size.
  * It is responsible for slab state keeping.
  *
- * Once a slab is created, it is moved to empty list.
+ * Once a slab is created, it is moved to free list.
  * Then it is moved to partial list with a first allocation.
  * Full slabs go to full list.
  *
- * Allocation of new slabs is on-demand,empty slabs are reused if possible.
+ * Allocation of new slabs is on-demand, empty slabs are reused if possible.
+ *
+ * \note Statistics are only available if MEM_DEBUG is enabled.
  */
 typedef struct slab_cache_t {
 	unsigned short color;    /*!< Current cache color. */
 	size_t bufsize;          /*!< Cache object (buf) size. */
-	slab_t *slabs_empty;     /*!< List of empty slabs. */
+	slab_t *slabs_free;      /*!< List of free slabs. */
 	slab_t *slabs_partial;   /*!< List of partially full slabs. */
 	slab_t *slabs_full;      /*!< List of full slabs. */
-	pthread_spinlock_t lock; /*!< Synchronisation lock. */
 
 	/* Statistics. */
 	uint64_t stat_allocs;    /*!< Allocation count. */
@@ -124,13 +139,16 @@ typedef struct slab_cache_t {
  *
  * \note For a number of slab caches, consult SLAB_GP_COUNT
  *       and a number of specific records in SLAB_CACHE_LUT lookup table.
+ *
+ * \warning It is currently not advised to use this general purpose allocator,
+ *          as it usually doesn't yield an expected performance for higher
+ *          bookkeeping costs and it also depends on the allocation behavior
+ *          as well. Look for slab_cache for a specialized use in most cases.
  */
 typedef struct slab_alloc_t {
-	pthread_spinlock_t lock;  /*!< Synchronisation lock. */
 	slab_cache_t descriptors; /*!< Slab cache for cache descriptors. */
 	slab_cache_t* caches[SLAB_CACHE_COUNT]; /*!< Number of slab caches. */
 } slab_alloc_t;
-extern slab_alloc_t _allocator_g;
 
 /*!
  * \brief Create a slab of predefined size.
@@ -138,8 +156,8 @@ extern slab_alloc_t _allocator_g;
  * At the moment, slabs are equal to page size and page size aligned.
  * This enables quick and efficient buf to slab lookup by pointer arithmetic.
  *
- * Slab uses simple coloring scheme with a minimum of 64B overhead and
- * the memory block is always sizeof(void*) aligned.
+ * Slab uses simple coloring scheme with and the memory block is always
+ * sizeof(void*) aligned.
  *
  * \param cache Parent cache.
  * \retval Slab instance on success.
@@ -222,7 +240,9 @@ void* slab_cache_alloc(slab_cache_t* cache);
 int slab_cache_reap(slab_cache_t* cache);
 
 /*!
- * \brief Create a slab allocator.
+ * \brief Create a general purpose slab allocator.
+ *
+ * \note Please consult struct slab_alloc_t for performance hints.
  *
  * \retval 0 on success.
  * \retval -1 on error.
@@ -244,6 +264,8 @@ void slab_alloc_destroy(slab_alloc_t* alloc);
  * Returns a block of allocated memory.
  *
  * \note At least SLAB_MIN_BUFSIZE bytes is allocated.
+ *
+ * \note Please consult struct slab_alloc_t for performance hints.
  *
  * \param alloc Allocator instance.
  * \param size Requested block size.
@@ -272,38 +294,6 @@ void *slab_alloc_realloc(slab_alloc_t* alloc, void *ptr, size_t size);
  * \param alloc Allocator instance.
  */
 void slab_alloc_stats(slab_alloc_t* alloc);
-
-/*!
- * \brief Allocate data from shared global slab allocator.
- *
- * Slab is initialized with default constructor without priority.
- * Drop-in replacement for malloc().
- *
- * \see slab_alloc_alloc()
- *
- * \param size Requested block size.
- * \retval Pointer to allocated memory.
- * \retval NULL on error.
- */
-static inline void* slab_alloc_g(size_t size) {
-	return slab_alloc_alloc(&_allocator_g, size);
-}
-
-/*!
- * \brief Reallocate data from one slab to another.
- *
- * Drop-in replacement for realloc().
- *
- * \see slab_alloc_realloc()
- *
- * \param ptr Pointer to allocated memory.
- * \param size Requested memory block size.
- * \retval Pointer to newly allocated memory.
- * \retval NULL on error.
- */
-static inline void *slab_realloc_g(void *ptr, size_t size) {
-	return slab_alloc_realloc(&_allocator_g, ptr, size);
-}
 
 #endif /* _CUTEDNS_SLAB_H_ */
 

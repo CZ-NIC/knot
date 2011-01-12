@@ -16,8 +16,6 @@
 #define SLAB_MAXCOLOR 64
 #define SLAB_HEADER   sizeof(slab_t)
 #define SLAB_MAXBUF   (SLAB_SIZE-SLAB_MAXCOLOR+SLAB_HEADER)
-#define ALLOC_PROT    PROT_READ|PROT_WRITE
-#define ALLOC_FLAGS   MAP_PRIVATE|MAP_ANONYMOUS
 
 /*
  * Fast cache id lookup table.
@@ -25,8 +23,9 @@
  * Filled with interesting values from default
  * or on-demand.
  */
-#define SLAB_CACHE_LUT_SIZE 4096+1
-static unsigned char SLAB_CACHE_LUT[SLAB_CACHE_LUT_SIZE] = {
+#define SLAB_CACHE_LUT_SIZE 4096
+unsigned __attribute__ ((__aligned__(sizeof(void*))))
+SLAB_CACHE_LUT[SLAB_CACHE_LUT_SIZE] = {
         [24]  = SLAB_GP_COUNT + 1,
         [800] = SLAB_GP_COUNT + 2
 };
@@ -37,13 +36,11 @@ static unsigned char SLAB_CACHE_LUT[SLAB_CACHE_LUT_SIZE] = {
 static inline unsigned get_next_pow2(unsigned v)
 {
 	// Next highest power of 2
-	v--;
-	v |= v >> 1;
-	v |= v >> 2;
-	v |= v >> 4;
-	v |= v >> 8;
+	--v;
+	v |= v >> 1; v |= v >> 2;
+	v |= v >> 4; v |= v >> 8;
 	v |= v >> 16;
-	v++;
+	++v;
 
 	return v;
 }
@@ -53,8 +50,7 @@ static inline unsigned get_next_pow2(unsigned v)
  */
 static inline unsigned fastlog2(unsigned v)
 {
-	// Binary logarithm.
-	// Works well when we know size is a power of 2
+	// Works if we know the size is a power of 2
 	register unsigned int r = (v & 0xAAAAAAAA) != 0;
 	r |= ((v & 0xFFFF0000) != 0) << 4;
 	r |= ((v & 0xFF00FF00) != 0) << 3;
@@ -106,53 +102,43 @@ static unsigned SLAB_LOGSIZE = 0;
  */
 static slab_depot_t _depot_g;
 
-static inline void* slab_depot_alloc()
+static void* slab_depot_alloc()
 {
 	void *page = 0;
 	if (_depot_g.available) {
 		page = _depot_g.page[--_depot_g.available];
 	} else {
-		page = mmap(0, SLAB_SIZE, ALLOC_PROT, ALLOC_FLAGS, -1, 0);
+		posix_memalign(&page, SLAB_SIZE, SLAB_SIZE);
 	}
 
 	return page;
 }
 
-static inline void slab_depot_free(void* page)
+static void slab_depot_free(void* page)
 {
 	if (_depot_g.available < SLAB_DEPOT_COUNT) {
 		_depot_g.page[_depot_g.available++] = page;
 	} else {
-		munmap(page, SLAB_SIZE);
+		free(page);
 	}
 }
 
 static void slab_depot_init()
 {
-	_depot_g.available = SLAB_DEPOT_COUNT / 4;
-
-	const size_t sb_size = SLAB_SIZE * _depot_g.available;
-	char *sb = mmap(0, sb_size, ALLOC_PROT, ALLOC_FLAGS, -1, 0);
-	memset(sb, 0, sb_size);
-
-	for (int i = 0; i < _depot_g.available; ++i) {
-		_depot_g.page[i] = sb + (i * SLAB_SIZE);
-	}
+	_depot_g.available = 0;
 
 }
 
 static void slab_depot_destroy()
 {
 	while(_depot_g.available) {
-		munmap(_depot_g.page[--_depot_g.available], SLAB_SIZE);
+		free(_depot_g.page[--_depot_g.available]);
 	}
 }
 
 /*
  * Initializers.
  */
-slab_alloc_t _allocator_g;
-
 void __attribute__ ((constructor)) slab_init()
 {
 	// Fetch page size
@@ -169,26 +155,12 @@ void __attribute__ ((constructor)) slab_init()
 
 	// Initialize depot
 	slab_depot_init();
-
-	// Initialize global allocator
-	slab_alloc_init(&_allocator_g);
-
-	// Precompute LUT
-	madvise(SLAB_CACHE_LUT, SLAB_CACHE_LUT_SIZE, MADV_WILLNEED);
-	for (unsigned i = 4; i < SLAB_SIZE; ++i) {
-		slab_cache_id(i);
-	}
-
 }
 
 void __attribute__ ((destructor)) slab_deinit()
 {
 	// Deinitialize global allocator
 	if (SLAB_SIZE) {
-#ifdef MEM_DEBUG
-		slab_alloc_stats(&_allocator_g);
-#endif
-		slab_alloc_destroy(&_allocator_g);
 		slab_depot_destroy();
 		SLAB_SIZE = SLAB_LOGSIZE = SLAB_MASK = 0;
 	}
@@ -218,34 +190,17 @@ static void slab_dump(slab_t* slab) {
 	printf("\n");
 }
 
-static inline int slab_alloc_lock(slab_alloc_t* alloc)
-{
-	return pthread_spin_lock(&alloc->lock);
-}
-
-static inline int slab_alloc_unlock(slab_alloc_t* alloc)
-{
-	return pthread_spin_unlock(&alloc->lock);
-}
-
-static inline int slab_cache_lock(slab_cache_t* cache)
-{
-	return pthread_spin_lock(&cache->lock);
-}
-
-static inline int slab_cache_unlock(slab_cache_t* cache)
-{
-	return pthread_spin_unlock(&cache->lock);
-}
-
 static inline int slab_cache_free_slabs(slab_t* slab)
 {
 	int count = 0;
 	while (slab) {
 		slab_t* next = slab->next;
-		slab_destroy(&slab);
+		if (slab_isempty(slab)) {
+			slab_destroy(&slab);
+			++count;
+		}
 		slab = next;
-		++count;
+
 	}
 	return count;
 }
@@ -263,7 +218,7 @@ static inline unsigned slab_list_walk(slab_t* slab)
 	return count;
 }
 
-static inline void slab_list_remove(slab_t* slab)
+static void slab_list_remove(slab_t* slab)
 {
 	// Disconnect from list
 	if (slab->prev) {
@@ -275,30 +230,23 @@ static inline void slab_list_remove(slab_t* slab)
 
 	// Disconnect from cache
 	slab_cache_t* cache = slab->cache;
-	/// slab_cache_lock(cache);
 	{
-		if (cache->slabs_partial == slab) {
-			cache->slabs_partial = slab->next;
-		} /** else if (cache->slabs_empty == slab) {
-			cache->slabs_empty = slab->next;
-		} */ else if (cache->slabs_full == slab) {
+		if (cache->slabs_free == slab) {
+			cache->slabs_free = slab->next;
+		} else if (cache->slabs_full == slab) {
 			cache->slabs_full = slab->next;
 		}
 	}
-	/// slab_cache_unlock(cache);
 }
-static inline void slab_list_insert(slab_t** list, slab_t* item)
+static void slab_list_insert(slab_t** list, slab_t* item)
 {
 	// If list exists, push to the top
-	/// slab_cache_lock(item->cache);
 	item->prev = 0;
 	item->next = *list;
-	if (*list) {
+	if(*list) {
 		(*list)->prev = item;
 	}
-
 	*list = item;
-	/// slab_cache_unlock(item->cache);
 }
 static inline void slab_list_move(slab_t** target, slab_t* slab)
 {
@@ -325,8 +273,7 @@ slab_t* slab_create(slab_cache_t* cache)
 	/* Initialize slab. */
 	slab->magic = SLAB_MAGIC;
 	slab->cache = cache;
-	pthread_spin_init(&slab->lock, PTHREAD_PROCESS_SHARED);
-	slab_list_insert(&cache->slabs_partial, slab);
+	slab_list_insert(&cache->slabs_free, slab);
 
 	/* Ensure the item size can hold at least a size of ptr. */
 	size_t item_size = cache->bufsize;
@@ -377,9 +324,6 @@ void slab_destroy(slab_t** slab)
 	/* Disconnect from the list */
 	slab_list_remove(*slab);
 
-	/* Deitialize synchronisation */
-	pthread_spin_destroy(&(*slab)->lock);
-
 	/* Free slab */
 	slab_depot_free(*slab);
 
@@ -392,14 +336,12 @@ void* slab_alloc(slab_t* slab)
 {
 	// Fetch first free item
 	void **item = 0;
-	/// pthread_spin_lock(&slab->lock);
 	{
 		if((item = slab->head)) {
 			slab->head = (void**)*item;
 			--slab->bufs_free;
 		}
 	}
-	/// pthread_spin_unlock(&slab->lock);
 
 #ifdef MEM_DEBUG
 	// Increment statistics
@@ -414,11 +356,7 @@ void* slab_alloc(slab_t* slab)
 	// Move to partial?
 	if (unlikely(slab->bufs_free == 0)) {
 		slab_list_move(&slab->cache->slabs_full, slab);
-	} /** else {
-		if (slab->bufs_free == slab->bufs_count - 1) {
-			slab_list_move(&slab->cache->slabs_partial, slab);
-		}
-	}*/
+	}
 
 	return item;
 }
@@ -443,11 +381,10 @@ void slab_free(void* ptr)
 		++slab->bufs_free;
 
 		// Return to partial
-		if(unlikely(slab->bufs_free == 1)) {
-			slab_list_move(&slab->cache->slabs_partial, slab);
-		} /** else if(slab->bufs_free == slab->bufs_count) {
-			slab_list_move(&slab->cache->slabs_empty, slab);
-		}*/
+		/// Hysteresis = 3
+		if(unlikely(slab->bufs_free == 3)) {
+			slab_list_move(&slab->cache->slabs_free, slab);
+		}
 
 #ifdef MEM_DEBUG
 		// Increment statistics
@@ -463,7 +400,8 @@ void slab_free(void* ptr)
 		// Unmap
 		debug_mem("%s: unmapping large block of %zu bytes at %p\n",
 		          __func__, bs->size, ptr);
-		munmap(bs, bs->size);
+		//munmap(bs, bs->size);
+		free(bs);
 	}
 }
 
@@ -474,11 +412,8 @@ int slab_cache_init(slab_cache_t* cache, size_t bufsize)
 	}
 
 	cache->bufsize = bufsize;
-	cache->slabs_empty = cache->slabs_partial = cache->slabs_full = 0;
+	cache->slabs_free = cache->slabs_full = 0;
 	cache->color = 0;
-
-	/* Initialize synchronisation */
-	pthread_spin_init(&cache->lock, PTHREAD_PROCESS_SHARED);
 
 	/* Initialize stats */
 	cache->stat_allocs = cache->stat_frees = 0;
@@ -492,35 +427,25 @@ int slab_cache_init(slab_cache_t* cache, size_t bufsize)
 void slab_cache_destroy(slab_cache_t* cache) {
 
 	// Free slabs
-	unsigned empty = slab_cache_free_slabs(cache->slabs_empty);
-	unsigned partial = slab_cache_free_slabs(cache->slabs_partial);
-	unsigned full = slab_cache_free_slabs(cache->slabs_full);
+	unsigned free_s = slab_cache_free_slabs(cache->slabs_free);
+	unsigned full_s = slab_cache_free_slabs(cache->slabs_full);
 #ifndef MEM_DEBUG
-	UNUSED(empty);
-	UNUSED(partial);
-	UNUSED(full);
+	UNUSED(free_s);
+	UNUSED(full_s);
 #else
-	debug_mem("%s: %u empty, %u partial, %u full caches\n",
-	          __func__, empty, partial, full);
+	debug_mem("%s: %u empty/partial, %u full caches\n",
+	          __func__, free_s, full_s);
 #endif
-
-	// Destroy synchronisation
-	pthread_spin_destroy(&cache->lock);
 
 	// Invalidate cache
 	cache->bufsize = 0;
-	cache->slabs_empty = cache->slabs_partial = cache->slabs_full = 0;
+	cache->slabs_free = cache->slabs_full = 0;
 }
 
 void* slab_cache_alloc(slab_cache_t* cache)
 {
-	slab_t* slab = cache->slabs_partial;
-	if(!cache->slabs_partial) {
-		/** if(cache->slabs_empty) {
-			slab = cache->slabs_empty;
-		} else {
-			slab = slab_create(cache);
-		} */
+	slab_t* slab = cache->slabs_free;
+	if(!cache->slabs_free) {
 		slab = slab_create(cache);
 	}
 
@@ -531,7 +456,7 @@ void* slab_cache_alloc(slab_cache_t* cache)
 int slab_cache_reap(slab_cache_t* cache)
 {
 	// For now, just free empty slabs
-	return slab_cache_free_slabs(cache->slabs_empty);
+	return slab_cache_free_slabs(cache->slabs_free);
 }
 
 int slab_alloc_init(slab_alloc_t* alloc)
@@ -541,9 +466,6 @@ int slab_alloc_init(slab_alloc_t* alloc)
 
 	// Initialize descriptors cache
 	slab_cache_init(&alloc->descriptors, sizeof(slab_cache_t));
-
-	// Initialize synchronisation
-	pthread_spin_init(&alloc->lock, PTHREAD_PROCESS_SHARED);
 
 	return 0;
 }
@@ -559,9 +481,6 @@ void slab_alloc_destroy(slab_alloc_t* alloc)
 
 	// Destroy cache for descriptors
 	slab_cache_destroy(&alloc->descriptors);
-
-	// Destroy synchronisation
-	pthread_spin_destroy(&alloc->lock);
 }
 
 void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
@@ -580,7 +499,8 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 
 		// Map block
 		size += sizeof(slab_obj_t);
-		slab_obj_t* p = mmap(0, size, ALLOC_PROT, ALLOC_FLAGS, -1, 0);
+		slab_obj_t* p = 0;
+		posix_memalign((void**)&p, SLAB_SIZE, size); // mmap(0, size, ALLOC_PROT, ALLOC_FLAGS, -1, 0);
 
 		debug_mem("%s: mapping large block of %zu bytes at %p\n",
 		          __func__, size, p + 1);
@@ -603,7 +523,6 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 	unsigned cache_id = slab_cache_id(size);
 
 	// Check if associated cache exists
-	/// slab_alloc_lock(alloc);
 	if (unlikely(alloc->caches[cache_id] == 0)) {
 
 		// Assert minimum cache size
@@ -625,7 +544,6 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 		slab_cache_init(cache, bufsize);
 		alloc->caches[cache_id] = cache;
 	}
-	/// slab_alloc_unlock(alloc);
 
 	// Allocate from cache
 	void* mem = slab_cache_alloc(alloc->caches[cache_id]);
@@ -665,17 +583,23 @@ void *slab_alloc_realloc(slab_alloc_t* alloc, void *ptr, size_t size)
 
 void slab_alloc_stats(slab_alloc_t* alloc)
 {
-	printf("Caches usage:\n");
+#ifdef MEM_DEBUG
+	printf("Cache usage:\n");
 	for (int i = 0; i < SLAB_CACHE_COUNT; ++i) {
+
 		if (!alloc->caches[i])
 			continue;
+
 		slab_cache_t* cache = alloc->caches[i];
-		unsigned empty = slab_list_walk(cache->slabs_empty);
-		unsigned partial = slab_list_walk(cache->slabs_partial);
-		unsigned full = slab_list_walk(cache->slabs_full);
-		printf("%4u: allocs=%5lu frees=%5lu (%u empty, %u partial, %u full)\n",
-		       (unsigned)cache->bufsize, cache->stat_allocs, cache->stat_frees,
-		       empty, partial, full);
+		unsigned free_s = slab_list_walk(cache->slabs_free);
+		unsigned full_s = slab_list_walk(cache->slabs_full);
+		printf("%4zu: allocs=%lu frees=%lu "
+		       "(%u empty+partial, %u full)\n",
+		       cache->bufsize, cache->stat_allocs,
+		       cache->stat_frees, free_s, full_s);
 	}
+#else
+	printf("Cache usage: not available, enable MEM_DEBUG and recompile.\n");
+#endif
 }
 
