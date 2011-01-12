@@ -1417,7 +1417,7 @@ int process_rr(void)
 		if (dnslib_dname_compare(parser->origin->owner,
 			                 current_rrset->owner) != 0 ){
 			soa_node = dnslib_node_new(current_rrset->owner,
-			                           parser->origin);
+			                           NULL);
 
 			dnslib_zone_add_node(zone, soa_node);
 		} else {
@@ -1476,6 +1476,8 @@ int process_rr(void)
 		if (dnslib_dname_compare(parser->origin->owner,
 			                 chopped) == 0 ) {
 			node->parent = parser->origin;
+			printf("%s %p\n", dnslib_dname_to_str(current_rrset->owner), parser->origin);
+			getchar();
 		} else {                   //is this cast needed?
 			while ((tmp_node = node_get_func(zone,
 				            chopped)) == NULL) {
@@ -1643,11 +1645,13 @@ void zone_read(char *name, const char *zonefile)
 
 	//TODO remove origin parameter
 
-//	dnslib_zone_t *new_zone = dnslib_zone_load(dump_file_name);
+	dnslib_zone_t *new_zone = dnslib_zone_load(dump_file_name);
 
-//	dnslib_zone_dump(parser->current_zone);
+	dnslib_zone_dump(new_zone);
 
 	dnslib_zone_deep_free(&(parser->current_zone));
+
+	dnslib_zone_deep_free(&new_zone);
 
 	fclose(yyin);
 
