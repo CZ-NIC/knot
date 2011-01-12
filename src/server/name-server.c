@@ -925,8 +925,15 @@ static void ns_answer_from_zone(const dnslib_zone_t *zone,
 				qname = act_name;
 			}
 			cname = 1;
+
+			// otherwise search for the new name
 			if (node == NULL) {
 				continue; // infinite loop better than goto? :)
+			}
+			// if the node is delegation point, return referral
+			if (dnslib_node_is_deleg_point(node)) {
+				ns_referral(node, resp);
+				break;
 			}
 		}
 
