@@ -492,13 +492,97 @@ static int test_rrset_owner(dnslib_rrset_t **rrsets)
 {
 	int errors = 0;
 	for (int i = 0; i < TEST_RRSIGS; i++) {
-		/* Should i use the getter now too?
-		 * It has not been tested yet:)
-		 */
-		char *dname_str = dnslib_dname_to_str(rrsets[i]->owner);
-		if strcmp(dname_str, test_rrsets[i].owner) {
+		char *dname_str =
+			dnslib_dname_to_str(dnslib_rrset_owner(rrsets[i]));
+		if (strcmp(dname_str, test_rrsets[i].owner)) {
 			errors++;
 		}
+		free(dname_str);
+	}
+	return errors;
+}
+
+static int test_rrset_type(dnslib_rrset_t **rrsets)
+{
+	int errors = 0;
+	for (int i = 0; i < TEST_RRSIGS; i++) {
+		if (dnslib_rrset_type(rrsets[i]) != test_rrsets[i].type) {
+			errors++;
+		}
+	}
+	return errors;
+}
+
+static int test_rrset_class(dnslib_rrset_t **rrsets)
+{
+	int errors = 0;
+	for (int i = 0; i < TEST_RRSIGS; i++) {
+		if (dnslib_rrset_class(rrsets[i]) != test_rrsets[i].rclass) {
+			errors++;
+		}
+	}
+	
+	return errors;
+}
+
+static int test_rrset_ttl(dnslib_rrset_t **rrsets)
+{
+	int errors = 0;
+	for (int i = 0; i < TEST_RRSIGS; i++) {
+		if (dnslib_rrset_ttl(rrsets[i]) != test_rrsets[i].ttl) {
+			errors++;
+		}
+	}
+	return errors;
+}
+
+static int test_rrset_ret_rdata(dnslib_rrset_t **rrsets)
+{
+	int errors = 0;
+	
+	dnslib_rrtype_descriptor_t *desc;
+
+	for (int i = 0; i < TEST_RRSIGS; i++) {
+		desc = dnslib_rrtype_descriptor_by_type(rrsets[i]->type);
+		assert(desc);
+		if (dnslib_rdata_compare(dnslib_rrset_rdata(rrsets[i]),
+			                 test_rrsets[i].rdata,
+					 desc->wireformat)) {
+			errors++;
+		}
+	}
+	return errors;
+}
+
+static int test_rrset_get_rdata(dnslib_rrset_t **rrsets)
+{
+	int errors = 0;
+
+	dnslib_rrtype_descriptor_t *desc;
+
+	for (int i = 0; i < TEST_RRSIGS; i++) {
+		desc = dnslib_rrtype_descriptor_by_type(rrsets[i]->type);
+		assert(desc);
+		if (dnslib_rdata_compare(dnslib_rrset_get_rdata(rrsets[i]),
+			                 test_rrsets[i].rdata,
+					 desc->wireformat)) {
+			errors++;
+		}
+	}
+	return errors;
+}
+
+static int test_rrset_ret_rrsigs(dnslib_rrset_t **rrsets)
+{
+	int errors = 0;
+
+	for (int i = 0; i < TEST_RRSIGS; i++) {
+/*		if (dnslib_rdata_compare(dnslib_rrset_rrsig(rrsets[i]),
+			                 test_rrsets[i].rrsig,
+					 desc->wireformat)) {
+			errors++;
+		} */
+		diag("TODO");
 	}
 	return errors;
 }
@@ -507,7 +591,7 @@ static int test_rrset_getters(uint type)
 {
 	int errors = 0;
 
-	dnslib_rrset_t rrsets[TEST_RRSETS];
+	dnslib_rrset_t *rrsets[TEST_RRSETS];
 
 	for (int i = 0; i < TEST_RRSETS; i++) {
 		dnslib_dname_t *owner = dnslib_dname_new_from_str(
@@ -523,7 +607,7 @@ static int test_rrset_getters(uint type)
 		                             test_rrsets[i].rclass,
 		                             test_rrsets[i].ttl);
 
-		dnslib_rrset_add_rdata(rrset, test_rrsets[i].rdata);
+		dnslib_rrset_add_rdata(rrsets[i], test_rrsets[i].rdata);
 
 	}
 
@@ -545,23 +629,25 @@ static int test_rrset_getters(uint type)
 			break;
 		}
 		case 4: {
-			errors += test_rrset_rdata(rrsets);
+			errors += test_rrset_ret_rdata(rrsets);
 			break;
 		}
-		case 0: {
+		case 5: {
 			errors += test_rrset_get_rdata(rrsets);
 			break;
 		}
-		case 0: {
-			errors += test_rrset_rrsigs(rrsets);
+		case 6: {
+			errors += test_rrset_ret_rrsigs(rrsets);
 			break;
 		}
 	} /* switch */
+
+	return (errors == 0);
 }
 
 /*----------------------------------------------------------------------------*/
 
-static const int DNSLIB_RRSET_TEST_COUNT = 5;
+static const int DNSLIB_RRSET_TEST_COUNT = 12;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -584,7 +670,7 @@ static int dnslib_rrset_tests_run(int argc, char *argv[])
 	ok(res, "rrset: create");
 	res_final *= res;
 
-	skip(!res, 3);
+	skip(!res, 10);
 
 	todo();
 
@@ -592,6 +678,27 @@ static int dnslib_rrset_tests_run(int argc, char *argv[])
 	//res_final *= res;
 
 	endtodo;
+
+	ok(res = test_rrset_getters(0), "rrset: owner");
+	res_final *= res;
+
+	ok(res = test_rrset_getters(1), "rrset: type");
+	res_final *= res;
+
+	ok(res = test_rrset_getters(2), "rrset: class");
+	res_final *= res;
+
+	ok(res = test_rrset_getters(3), "rrset: ttl");
+	res_final *= res;
+
+	ok(res = test_rrset_getters(4), "rrset: rdata");
+	res_final *= res;
+
+	ok(res = test_rrset_getters(5), "rrset: get rdata");
+	res_final *= res;
+
+	ok(res = test_rrset_getters(6), "rrset: rrsigs");
+	res_final *= res;
 
 	ok(res = test_rrset_rdata(), "rrset: rdata manipulation");
 	res_final *= res;
