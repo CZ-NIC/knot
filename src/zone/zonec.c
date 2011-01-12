@@ -1633,7 +1633,7 @@ void zone_read(char *name, const char *zonefile)
 
 //	find_rrsets_orphans(parser->current_zone, parser->rrsig_orphans);
 
-//	printf("orphans found\n");
+	printf("orphans found\n");
 
 	dnslib_zone_adjust_dnames(parser->current_zone);
 
