@@ -7,13 +7,13 @@
 
 enum { MAGIC_LENGTH = 4 };
 
-/* TODO Think of a better way than global variable */
+/* TODO Think of a better way than a global variable */
 static uint node_count = 0;
 
 static uint8_t zero = 0;
 static uint8_t one = 1;
 
-static void dnslib_write_labels(FILE *f, dnslib_dname_t *dname)
+static void dnslib_labels_dump_binary(dnslib_dname_t *dname, FILE *f)
 {
 	fwrite(&dname->label_count, sizeof(dname->label_count), 1, f);
 	fwrite(dname->labels, sizeof(uint8_t), dname->label_count, f);
@@ -23,6 +23,7 @@ static void dnslib_dname_dump_binary(dnslib_dname_t *dname, FILE *f)
 {
 	fwrite(&dname->size, sizeof(uint), 1, f);
 	fwrite(dname->name, sizeof(uint8_t), dname->size, f);
+	dnslib_labels_dump_binary(dname, f);
 }
 
 static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
@@ -48,13 +49,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 				debug_zp("not in zone: %s\n",
 				       dnslib_dname_to_str((rdata->items[i].dname)));
 				fwrite(&zero, sizeof(zero), 1, f);
-				fwrite(&(rdata->items[i].dname->size),
-				       sizeof(uint), 1, f);
-				fwrite(rdata->items[i].dname->name,
-				       sizeof(uint8_t),
-				       rdata->items[i].dname->size, f);
-				/* XXX DON'T FORGET TO ADD HERE */
-				dnslib_write_labels(f, rdata->items[i].dname);
+				dnslib_dname_dump_binary(rdata->items[i].dname, f);
 			}
 
 		} else {
@@ -155,14 +150,8 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *fp)
 	node_count++;
 	/* first write dname */
 	assert(node->owner != NULL);
-	fwrite(&((node->owner->size)), sizeof(uint8_t), 1, f);
 
-	debug_zp("Size written: %u\n", node->owner->size);
-
-	fwrite(node->owner->name, sizeof(uint8_t),
-	       node->owner->size, f);
-
-	dnslib_write_labels(f, node->owner);
+	dnslib_dname_dump_binary(node->owner, f);
 
 	fwrite(&(node->owner->node), sizeof(void *), 1, f);
 
@@ -244,13 +233,7 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 	fwrite(&node_count, sizeof(node_count), 1, f);
 	fwrite(&node_count, sizeof(node_count), 1, f);
 
-	fwrite(&(zone->apex->owner->size),
-	       sizeof(uint8_t), 1, f);
-
-	fwrite(zone->apex->owner->name, sizeof(uint8_t),
-	       zone->apex->owner->size, f);
-
-	dnslib_write_labels(f, zone->apex->owner);
+	dnslib_dname_dump_binary(zone->apex->owner, f);
 	
 	/* TODO is there a way how to stop the traversal upon error? */
 	dnslib_zone_tree_apply_inorder(zone, dnslib_node_dump_binary, f);
