@@ -495,6 +495,7 @@ static int test_rrset_owner(dnslib_rrset_t **rrsets)
 		char *dname_str =
 			dnslib_dname_to_str(dnslib_rrset_owner(rrsets[i]));
 		if (strcmp(dname_str, test_rrsets[i].owner)) {
+			diag("Got wrong value for owner from rrset.");
 			errors++;
 		}
 		free(dname_str);
@@ -508,6 +509,7 @@ static int test_rrset_type(dnslib_rrset_t **rrsets)
 	for (int i = 0; i < TEST_RRSIGS; i++) {
 		if (dnslib_rrset_type(rrsets[i]) != test_rrsets[i].type) {
 			errors++;
+			diag("Got wrong value for type from rrset.");
 		}
 	}
 	return errors;
@@ -519,6 +521,7 @@ static int test_rrset_class(dnslib_rrset_t **rrsets)
 	for (int i = 0; i < TEST_RRSIGS; i++) {
 		if (dnslib_rrset_class(rrsets[i]) != test_rrsets[i].rclass) {
 			errors++;
+			diag("Got wrong value for class from rrset.");
 		}
 	}
 	
@@ -531,6 +534,7 @@ static int test_rrset_ttl(dnslib_rrset_t **rrsets)
 	for (int i = 0; i < TEST_RRSIGS; i++) {
 		if (dnslib_rrset_ttl(rrsets[i]) != test_rrsets[i].ttl) {
 			errors++;
+			diag("Got wrong value for ttl from rrset.");
 		}
 	}
 	return errors;
@@ -549,6 +553,7 @@ static int test_rrset_ret_rdata(dnslib_rrset_t **rrsets)
 			                 test_rrsets[i].rdata,
 					 desc->wireformat)) {
 			errors++;
+			diag("Got wrong value for rdata from rrset.");
 		}
 	}
 	return errors;
@@ -567,6 +572,7 @@ static int test_rrset_get_rdata(dnslib_rrset_t **rrsets)
 			                 test_rrsets[i].rdata,
 					 desc->wireformat)) {
 			errors++;
+			diag("Got wrong value for rdata from rrset. (Get)");
 		}
 	}
 	return errors;
@@ -577,12 +583,11 @@ static int test_rrset_ret_rrsigs(dnslib_rrset_t **rrsets)
 	int errors = 0;
 
 	for (int i = 0; i < TEST_RRSIGS; i++) {
-/*		if (dnslib_rdata_compare(dnslib_rrset_rrsig(rrsets[i]),
-			                 test_rrsets[i].rrsig,
-					 desc->wireformat)) {
+		/* TODO should I test the insides of structure as well? */
+		if (dnslib_rrset_rrsigs(rrsets[i]) != test_rrsets[i].rrsigs) {
 			errors++;
-		} */
-		diag("TODO");
+			diag("Got wrong value for rrsigs from rrset.");
+		}
 	}
 	return errors;
 }
