@@ -5,7 +5,7 @@
  *
  * \brief Memory allocation related functions.
  *
- * \addtogroup other
+ * \addtogroup alloc
  * @{
  */
 

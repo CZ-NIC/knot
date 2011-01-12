@@ -42,7 +42,7 @@
  *
  * \note Slab allocation is not thread safe for performance reasons.
  *
- * \addtogroup data_structures
+ * \addtogroup alloc
  * @{
  */
 
