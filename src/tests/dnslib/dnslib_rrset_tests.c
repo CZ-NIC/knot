@@ -485,9 +485,78 @@ static int test_rrset_merge()
 	dnslib_rrset_free(&merger1);
 	dnslib_rrset_free(&merger2);
 
-	//check_rrset + check rdata \w rdata_compare
-
 	return 1;
+}
+
+static int test_rrset_owner(dnslib_rrset_t **rrsets)
+{
+	int errors = 0;
+	for (int i = 0; i < TEST_RRSIGS; i++) {
+		/* Should i use the getter now too?
+		 * It has not been tested yet:)
+		 */
+		char *dname_str = dnslib_dname_to_str(rrsets[i]->owner);
+		if strcmp(dname_str, test_rrsets[i].owner) {
+			errors++;
+		}
+	}
+	return errors;
+}
+
+static int test_rrset_getters(uint type)
+{
+	int errors = 0;
+
+	dnslib_rrset_t rrsets[TEST_RRSETS];
+
+	for (int i = 0; i < TEST_RRSETS; i++) {
+		dnslib_dname_t *owner = dnslib_dname_new_from_str(
+		                            test_rrsets[i].owner,
+		                            strlen(test_rrsets[i].owner),
+		                            NODE_ADDRESS);
+		if (owner == NULL) {
+			diag("Error creating owner domain name!");
+			return 0;
+		}
+		rrsets[i] = dnslib_rrset_new(owner,
+		                             test_rrsets[i].type,
+		                             test_rrsets[i].rclass,
+		                             test_rrsets[i].ttl);
+
+		dnslib_rrset_add_rdata(rrset, test_rrsets[i].rdata);
+
+	}
+
+	switch (type) {
+		case 0: {
+			errors += test_rrset_owner(rrsets);
+			break;
+		}
+		case 1: {
+			errors += test_rrset_type(rrsets);
+			break;
+		}
+		case 2: {
+			errors += test_rrset_class(rrsets);
+			break;
+		}
+		case 3: {
+			errors += test_rrset_ttl(rrsets);
+			break;
+		}
+		case 4: {
+			errors += test_rrset_rdata(rrsets);
+			break;
+		}
+		case 0: {
+			errors += test_rrset_get_rdata(rrsets);
+			break;
+		}
+		case 0: {
+			errors += test_rrset_rrsigs(rrsets);
+			break;
+		}
+	} /* switch */
 }
 
 /*----------------------------------------------------------------------------*/
