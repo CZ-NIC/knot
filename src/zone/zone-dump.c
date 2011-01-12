@@ -13,6 +13,12 @@ static uint node_count = 0;
 static uint8_t zero = 0;
 static uint8_t one = 1;
 
+static void dnslib_write_labels(FILE *f, dnslib_dname_t *dname)
+{
+	fwrite(&dname->label_count, sizeof(dname->label_count), 1, f);
+	fwrite(&dname->labels, sizeof(uint8_t), dname->label_count, f);
+}
+
 static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
                                      uint32_t type, FILE *f)
 {
@@ -41,6 +47,8 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 				fwrite(rdata->items[i].dname->name,
 				       sizeof(uint8_t),
 				       rdata->items[i].dname->size, f);
+				/* XXX DON'T FORGET TO ADD HERE */
+				dnslib_write_labels(f, rdata->items[i].dname);
 			}
 
 		} else {
@@ -148,6 +156,8 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *fp)
 	fwrite(node->owner->name, sizeof(uint8_t),
 	       node->owner->size, f);
 
+	dnslib_write_labels(f, node->owner);
+
 	fwrite(&(node->owner->node), sizeof(void *), 1, f);
 
 	debug_zp("Writing id: %u\n", node->owner->node);
@@ -220,8 +230,6 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 		return -1;
 	}
 
-
-
 	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101};
 	                                           /*c   u    t    e */
 
@@ -235,6 +243,8 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 
 	fwrite(zone->apex->owner->name, sizeof(uint8_t),
 	       zone->apex->owner->size, f);
+
+	dnslib_write_labels(f, zone->apex->owner);
 	
 	/* TODO is there a way how to stop the traversal upon error? */
 	dnslib_zone_tree_apply_inorder(zone, dnslib_node_dump_binary, f);

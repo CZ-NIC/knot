@@ -62,6 +62,8 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 					dnslib_dname_new_from_wire(dname_wire,
 					                           dname_size,
 				                                   NULL);
+				/* XXX do not use dname from wire, copy the
+				 * values, including labels XXX */
 			}
 
 			assert(items[i].dname);
@@ -173,11 +175,22 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	void *dname_id; //ID, technically it's an integer
 	void *parent_id;
 
+	short label_count;
+	uint8_t *labels;
+
 	fread(&dname_size, sizeof(dname_size), 1, f);
 
 	assert(dname_size < DNAME_MAX_WIRE_LENGTH);
 
 	fread(&dname_wire, sizeof(uint8_t), dname_size, f);
+	/* refactor */
+	fread(&label_count, sizeof(label_count), 1, f);
+
+	labels = malloc(sizeof(uint8_t) * label_count);
+
+	fread(&labels, sizeof(uint8_t), label_count, f);
+
+	/* refactor */
 
 	fread(&dname_id, sizeof(dname_id), 1, f);
 
@@ -193,6 +206,8 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	memcpy(owner->name, dname_wire, dname_size);
 	owner->size = dname_size;
 
+	owner->labels = labels;
+	owner->label_count = label_count;
 
 	if ((node = dnslib_node_new(owner, NULL)) == NULL) {
 		fprintf(stderr, "Error: could not create node\n");
@@ -308,6 +323,12 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 	apex_dname->name = malloc(sizeof(uint8_t) * dname_size);
 
 	memcpy(apex_dname->name, dname_wire, dname_size);
+
+	fread(&apex_dname->label_count, sizeof(apex_dname->label_count), 1, f);
+
+	apex_dname->labels = malloc(sizeof(uint8_t) * apex_dname->label_count);
+
+	fread(&apex_dname->labels, sizeof(uint8_t), apex_dname->label_count, f);
 
 	dnslib_node_t *apex = dnslib_node_new(apex_dname, NULL);
 	dnslib_zone_t *zone = dnslib_zone_new(apex);
