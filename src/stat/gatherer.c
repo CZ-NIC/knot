@@ -1,4 +1,3 @@
-#include <malloc.h>
 #include <pthread.h>
 
 #include "gatherer.h"

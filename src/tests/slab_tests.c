@@ -53,8 +53,17 @@ static int slab_tests_run(int argc, char *argv[])
 	ok(valid_free, "slab: freed memory is correctly invalidated");
 
 	// 4. Reap memory
-	int reaped = slab_cache_reap(&cache) > 0 &&
-	             cache.slabs_empty == 0;
+	int reaped = slab_cache_reap(&cache);
+	int free_count = 0;
+	slab_t* slab = cache.slabs_free;
+	while (slab) {
+		slab_t* next = slab->next;
+		if (slab_isempty(slab)) {
+			++free_count;
+		}
+		slab = next;
+	}
+	reaped = (reaped == free_count);
 	ok(reaped, "slab: cache reaping works");
 
 	// Stress cache

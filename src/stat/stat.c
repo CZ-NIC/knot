@@ -1,4 +1,3 @@
-#include <malloc.h>
 #include <time.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -111,7 +110,7 @@ static void stat_sleep_compute()
 		sleep(SLEEP_TIME);
 
 		for (int i = 0; i < FREQ_BUFFER_SIZE; i++) {
-			if (local_gath->freq_array[i] > 
+			if (local_gath->freq_array[i] >
 			    ACTIVE_FLOW_THRESHOLD) {
 				debug_st("too much activity at index %d:"
 					 " %d queries adress: %s port %d"
@@ -125,13 +124,13 @@ static void stat_sleep_compute()
 
 		pthread_mutex_lock(&(local_gath->mutex_read));
 
-		local_gath->udp_qps = local_gath->udp_queries / 
+		local_gath->udp_qps = local_gath->udp_queries /
 				      (double)SLEEP_TIME;
-		local_gath->tcp_qps = local_gath->tcp_queries / 
+		local_gath->tcp_qps = local_gath->tcp_queries /
 				      (double)SLEEP_TIME;
 		local_gath->qps = local_gath->udp_qps + local_gath->tcp_qps;
 
-		/* following code needs usage of 
+		/* following code needs usage of
 		 * gettimeofday, which is currently disabled */
 
 /*		local_gath->udp_mean_latency=((double)local_gath->udp_latency/
@@ -159,7 +158,7 @@ static void stat_sleep_compute()
 		debug_st("qps_tcp: %f\n", local_gath->tcp_qps);
 /*		debug_st("mean_lat_tcp: %f\n", local_gath->tcp_mean_latency); */
 
-		debug_st("UDP/TCP ratio %f\n", 
+		debug_st("UDP/TCP ratio %f\n",
 			 local_gath->udp_qps / local_gath->tcp_qps);
 	}
 }

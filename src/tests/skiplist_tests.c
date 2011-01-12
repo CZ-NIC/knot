@@ -1,6 +1,5 @@
 #include "tap_unit.h"
 #include "skip-list.h"
-#include "malloc.h"
 #include <time.h>
 
 static int skiplist_tests_count(int argc, char *argv[]);
