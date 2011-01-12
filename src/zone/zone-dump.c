@@ -16,7 +16,13 @@ static uint8_t one = 1;
 static void dnslib_write_labels(FILE *f, dnslib_dname_t *dname)
 {
 	fwrite(&dname->label_count, sizeof(dname->label_count), 1, f);
-	fwrite(&dname->labels, sizeof(uint8_t), dname->label_count, f);
+	fwrite(dname->labels, sizeof(uint8_t), dname->label_count, f);
+}
+
+static void dnslib_dname_dump_binary(dnslib_dname_t *dname, FILE *f)
+{
+	fwrite(&dname->size, sizeof(uint), 1, f);
+	fwrite(dname->name, sizeof(uint8_t), dname->size, f);
 }
 
 static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
