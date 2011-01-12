@@ -6,6 +6,7 @@
 #include "debug.h"
 #include "dnslib/dnslib.h"
 
+#if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_RDATA_DEBUG)
 void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type)
 {
 	printf("      ------- RDATA -------\n");
@@ -40,7 +41,9 @@ void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type)
 	}
 	printf("      ------- RDATA -------\n");
 }
+#endif
 
+#if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_RRSET_DEBUG)
 void dnslib_rrsig_dump(dnslib_rrsig_set_t *rrsig)
 {
 	printf("    ------- RRSIG -------\n");
@@ -99,7 +102,9 @@ void dnslib_rrset_dump(dnslib_rrset_t *rrset)
 
 	printf("  ------- RRSET -------\n");
 }
+#endif
 
+#if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_NODE_DEBUG)
 void dnslib_node_dump(dnslib_node_t *node, void *void_param)
 {
 	printf("------- NODE --------\n");
@@ -155,7 +160,9 @@ void dnslib_node_dump(dnslib_node_t *node, void *void_param)
 	//assert(node->owner->node == node);
 	printf("------- NODE --------\n");
 }
+#endif
 
+#if defined(DNSLIB_ZONE_DEBUG)
 void dnslib_zone_dump(dnslib_zone_t *zone)
 {
 	printf("------- ZONE --------\n");
@@ -170,3 +177,4 @@ void dnslib_zone_dump(dnslib_zone_t *zone)
 
 	printf("------- NSEC 3 tree -\n");
 }
+#endif

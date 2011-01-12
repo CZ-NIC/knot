@@ -32,7 +32,7 @@ void dnslib_node_dump(dnslib_node_t *node, void *void_param);
 inline void dnslib_node_dump(dnslib_node_t *node, void *void_param) {};
 #endif
 
-#if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_ZONE_DEBUG)
+#if defined(DNSLIB_ZONE_DEBUG)
 void dnslib_zone_dump(dnslib_zone_t *zone);
 #else
 inline void dnslib_zone_dump(dnslib_zone_t *zone) {};
