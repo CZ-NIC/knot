@@ -1307,9 +1307,8 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 	assert(rrset->rdata);
 	assert(rrset->rdata->items);
 	assert(rrset->rdata->items[0].raw_data);
-	uint16_t tmp_type = rrset->rdata->items[0].raw_data[3]; //XXX Will this
-	//always work?
-//	uint16_t tmp_type = rrsig_type_covered(rrset); //TODO figure this out
+
+	uint16_t tmp_type = rrsig_type_covered(rrset);
 	dnslib_rrsig_set_t *rrsig =
 	        dnslib_rrsig_set_new(rrset->owner,
 	                             tmp_type,
@@ -1418,7 +1417,7 @@ int process_rr(void)
 		if (dnslib_dname_compare(parser->origin->owner,
 			                 current_rrset->owner) != 0 ){
 			soa_node = dnslib_node_new(current_rrset->owner,
-			                           parser->origin);
+			                           NULL);
 
 			dnslib_zone_add_node(zone, soa_node);
 		} else {
@@ -1644,11 +1643,13 @@ void zone_read(char *name, const char *zonefile)
 
 	//TODO remove origin parameter
 
-//	dnslib_zone_t *new_zone = dnslib_zone_load(dump_file_name);
+	dnslib_zone_t *new_zone = dnslib_zone_load(dump_file_name);
 
-	dnslib_zone_dump(parser->current_zone);
+	dnslib_zone_dump(new_zone);
 
-//	dnslib_zone_deep_free(&(parser->current_zone));
+	dnslib_zone_deep_free(&(parser->current_zone));
+
+	dnslib_zone_deep_free(&new_zone);
 
 	fclose(yyin);
 

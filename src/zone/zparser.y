@@ -258,7 +258,7 @@ abs_dname:	'.'
     {
 	    /*! \todo Get root domain from db. */
 		//$$ = parser->db->domains->root;
-	    $$ = parser->root_domain; //XXX not sure about this at all
+	    $$ = dnslib_dname_copy(parser->root_domain); 
     }
     |	'@'
     {
@@ -1313,7 +1313,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 
 void zparser_free()
 {
-	dnslib_dname_free(&(parser->root_domain));
+//	dnslib_dname_free(&(parser->root_domain));
 	free(parser->temporary_items);
 /*	dnslib_rrset_t *tmp_rrset = &parser->current_rrset;
 	dnslib_rrset_free(&tmp_rrset);
