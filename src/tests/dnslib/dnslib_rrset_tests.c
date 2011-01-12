@@ -61,10 +61,13 @@ static dnslib_dname_t RR_DNAMES[RR_DNAMES_COUNT] =
           {(uint8_t *)"\2ns1\7example\3com", 17, NULL},
           {(uint8_t *)"\2ns2\7example\3com", 17, NULL} };
 
+/*			   192.168.1.1 */
+static uint8_t adress[4] = {0xc0, 0xa8, 0x01, 0x01};
+
 static dnslib_rdata_item_t RR_ITEMS[RR_ITEMS_COUNT] =
 	{ {.dname = &RR_DNAMES[1]},
 	  {.dname = &RR_DNAMES[2]},
-          {.raw_data = (uint8_t *)"192.168.1.1"} };
+          {.raw_data = adress} };
 
 static dnslib_rdata_t RR_RDATA[RR_RDATA_COUNT] =
 	{ {&RR_ITEMS[0], 1, &RR_RDATA[0]},
@@ -77,7 +80,7 @@ static struct test_rrset test_rrsets[TEST_RRSETS] = {
 	{
 		"example.com.",
 		2,
-		1,
+		DNSLIB_CLASS_IN,
 		3600,
 		NULL,
 		NULL,
@@ -85,7 +88,7 @@ static struct test_rrset test_rrsets[TEST_RRSETS] = {
 	{
 		"example2.com.",
 		2,
-		1,
+		DNSLIB_CLASS_IN,
 		3600,
 		NULL,
 		NULL,
@@ -93,7 +96,7 @@ static struct test_rrset test_rrsets[TEST_RRSETS] = {
 	{
 		"example3.com.",
 		2,
-		1,
+		DNSLIB_CLASS_IN,
 		3600,
 		NULL,
 		NULL,
