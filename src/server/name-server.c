@@ -850,12 +850,16 @@ static void ns_answer_from_zone(const dnslib_zone_t *zone,
 		int exact_match = dnslib_zone_find_dname(zone, qname, &node,
 		                                         &closest_encloser);
 
-		char *name = dnslib_dname_to_str(node->owner);
-		debug_ns("zone_find_dname() returned node %s ", name);
-		free(name);
-		name = dnslib_dname_to_str(closest_encloser->owner);
-		debug_ns("and closest encloser %s.\n", name);
-		free(name);
+		if (node) {
+			char *name = dnslib_dname_to_str(node->owner);
+			debug_ns("zone_find_dname() returned node %s ", name);
+			free(name);
+			name = dnslib_dname_to_str(closest_encloser->owner);
+			debug_ns("and closest encloser %s.\n", name);
+			free(name);
+		} else {
+			debug_ns("zone_find_dname() returned no node.\n");
+		}
 
 		if (exact_match == -2) {  // name not in the zone
 			// possible only if we followed cname
