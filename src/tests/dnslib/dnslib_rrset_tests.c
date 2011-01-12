@@ -61,10 +61,13 @@ static dnslib_dname_t RR_DNAMES[RR_DNAMES_COUNT] =
           {(uint8_t *)"\2ns1\7example\3com", 17, NULL},
           {(uint8_t *)"\2ns2\7example\3com", 17, NULL} };
 
+/*			   192.168.1.1 */
+static uint8_t adress[4] = {0xc0, 0xa8, 0x01, 0x01};
+
 static dnslib_rdata_item_t RR_ITEMS[RR_ITEMS_COUNT] =
 	{ {.dname = &RR_DNAMES[1]},
 	  {.dname = &RR_DNAMES[2]},
-          {.raw_data = (uint8_t *)"192.168.1.1"} };
+          {.raw_data = adress} };
 
 static dnslib_rdata_t RR_RDATA[RR_RDATA_COUNT] =
 	{ {&RR_ITEMS[0], 1, &RR_RDATA[0]},
@@ -77,7 +80,7 @@ static struct test_rrset test_rrsets[TEST_RRSETS] = {
 	{
 		"example.com.",
 		2,
-		1,
+		DNSLIB_CLASS_IN,
 		3600,
 		NULL,
 		NULL,
@@ -85,7 +88,7 @@ static struct test_rrset test_rrsets[TEST_RRSETS] = {
 	{
 		"example2.com.",
 		2,
-		1,
+		DNSLIB_CLASS_IN,
 		3600,
 		NULL,
 		NULL,
@@ -93,7 +96,7 @@ static struct test_rrset test_rrsets[TEST_RRSETS] = {
 	{
 		"example3.com.",
 		2,
-		1,
+		DNSLIB_CLASS_IN,
 		3600,
 		NULL,
 		NULL,
@@ -482,14 +485,174 @@ static int test_rrset_merge()
 	dnslib_rrset_free(&merger1);
 	dnslib_rrset_free(&merger2);
 
-	//check_rrset + check rdata \w rdata_compare
-
 	return 1;
+}
+
+static int test_rrset_owner(dnslib_rrset_t **rrsets)
+{
+	int errors = 0;
+	for (int i = 0; i < TEST_RRSIGS; i++) {
+		char *dname_str =
+			dnslib_dname_to_str(dnslib_rrset_owner(rrsets[i]));
+		if (strcmp(dname_str, test_rrsets[i].owner)) {
+			diag("Got wrong value for owner from rrset.");
+			errors++;
+		}
+		free(dname_str);
+	}
+	return errors;
+}
+
+static int test_rrset_type(dnslib_rrset_t **rrsets)
+{
+	int errors = 0;
+	for (int i = 0; i < TEST_RRSIGS; i++) {
+		if (dnslib_rrset_type(rrsets[i]) != test_rrsets[i].type) {
+			errors++;
+			diag("Got wrong value for type from rrset.");
+		}
+	}
+	return errors;
+}
+
+static int test_rrset_class(dnslib_rrset_t **rrsets)
+{
+	int errors = 0;
+	for (int i = 0; i < TEST_RRSIGS; i++) {
+		if (dnslib_rrset_class(rrsets[i]) != test_rrsets[i].rclass) {
+			errors++;
+			diag("Got wrong value for class from rrset.");
+		}
+	}
+	
+	return errors;
+}
+
+static int test_rrset_ttl(dnslib_rrset_t **rrsets)
+{
+	int errors = 0;
+	for (int i = 0; i < TEST_RRSIGS; i++) {
+		if (dnslib_rrset_ttl(rrsets[i]) != test_rrsets[i].ttl) {
+			errors++;
+			diag("Got wrong value for ttl from rrset.");
+		}
+	}
+	return errors;
+}
+
+static int test_rrset_ret_rdata(dnslib_rrset_t **rrsets)
+{
+	int errors = 0;
+	
+	dnslib_rrtype_descriptor_t *desc;
+
+	for (int i = 0; i < TEST_RRSIGS; i++) {
+		desc = dnslib_rrtype_descriptor_by_type(rrsets[i]->type);
+		assert(desc);
+		if (dnslib_rdata_compare(dnslib_rrset_rdata(rrsets[i]),
+			                 test_rrsets[i].rdata,
+					 desc->wireformat)) {
+			errors++;
+			diag("Got wrong value for rdata from rrset.");
+		}
+	}
+	return errors;
+}
+
+static int test_rrset_get_rdata(dnslib_rrset_t **rrsets)
+{
+	int errors = 0;
+
+	dnslib_rrtype_descriptor_t *desc;
+
+	for (int i = 0; i < TEST_RRSIGS; i++) {
+		desc = dnslib_rrtype_descriptor_by_type(rrsets[i]->type);
+		assert(desc);
+		if (dnslib_rdata_compare(dnslib_rrset_get_rdata(rrsets[i]),
+			                 test_rrsets[i].rdata,
+					 desc->wireformat)) {
+			errors++;
+			diag("Got wrong value for rdata from rrset. (Get)");
+		}
+	}
+	return errors;
+}
+
+static int test_rrset_ret_rrsigs(dnslib_rrset_t **rrsets)
+{
+	int errors = 0;
+
+	for (int i = 0; i < TEST_RRSIGS; i++) {
+		/* TODO should I test the insides of structure as well? */
+		if (dnslib_rrset_rrsigs(rrsets[i]) != test_rrsets[i].rrsigs) {
+			errors++;
+			diag("Got wrong value for rrsigs from rrset.");
+		}
+	}
+	return errors;
+}
+
+static int test_rrset_getters(uint type)
+{
+	int errors = 0;
+
+	dnslib_rrset_t *rrsets[TEST_RRSETS];
+
+	for (int i = 0; i < TEST_RRSETS; i++) {
+		dnslib_dname_t *owner = dnslib_dname_new_from_str(
+		                            test_rrsets[i].owner,
+		                            strlen(test_rrsets[i].owner),
+		                            NODE_ADDRESS);
+		if (owner == NULL) {
+			diag("Error creating owner domain name!");
+			return 0;
+		}
+		rrsets[i] = dnslib_rrset_new(owner,
+		                             test_rrsets[i].type,
+		                             test_rrsets[i].rclass,
+		                             test_rrsets[i].ttl);
+
+		dnslib_rrset_add_rdata(rrsets[i], test_rrsets[i].rdata);
+
+	}
+
+	switch (type) {
+		case 0: {
+			errors += test_rrset_owner(rrsets);
+			break;
+		}
+		case 1: {
+			errors += test_rrset_type(rrsets);
+			break;
+		}
+		case 2: {
+			errors += test_rrset_class(rrsets);
+			break;
+		}
+		case 3: {
+			errors += test_rrset_ttl(rrsets);
+			break;
+		}
+		case 4: {
+			errors += test_rrset_ret_rdata(rrsets);
+			break;
+		}
+		case 5: {
+			errors += test_rrset_get_rdata(rrsets);
+			break;
+		}
+		case 6: {
+			errors += test_rrset_ret_rrsigs(rrsets);
+			break;
+		}
+	} /* switch */
+
+	return (errors == 0);
 }
 
 /*----------------------------------------------------------------------------*/
 
-static const int DNSLIB_RRSET_TEST_COUNT = 5;
+static const int DNSLIB_RRSET_TEST_COUNT = 12;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -512,7 +675,7 @@ static int dnslib_rrset_tests_run(int argc, char *argv[])
 	ok(res, "rrset: create");
 	res_final *= res;
 
-	skip(!res, 3);
+	skip(!res, 10);
 
 	todo();
 
@@ -520,6 +683,27 @@ static int dnslib_rrset_tests_run(int argc, char *argv[])
 	//res_final *= res;
 
 	endtodo;
+
+	ok(res = test_rrset_getters(0), "rrset: owner");
+	res_final *= res;
+
+	ok(res = test_rrset_getters(1), "rrset: type");
+	res_final *= res;
+
+	ok(res = test_rrset_getters(2), "rrset: class");
+	res_final *= res;
+
+	ok(res = test_rrset_getters(3), "rrset: ttl");
+	res_final *= res;
+
+	ok(res = test_rrset_getters(4), "rrset: rdata");
+	res_final *= res;
+
+	ok(res = test_rrset_getters(5), "rrset: get rdata");
+	res_final *= res;
+
+	ok(res = test_rrset_getters(6), "rrset: rrsigs");
+	res_final *= res;
 
 	ok(res = test_rrset_rdata(), "rrset: rdata manipulation");
 	res_final *= res;
