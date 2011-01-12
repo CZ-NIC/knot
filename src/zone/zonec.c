@@ -1476,8 +1476,6 @@ int process_rr(void)
 		if (dnslib_dname_compare(parser->origin->owner,
 			                 chopped) == 0 ) {
 			node->parent = parser->origin;
-			printf("%s %p\n", dnslib_dname_to_str(current_rrset->owner), parser->origin);
-			getchar();
 		} else {                   //is this cast needed?
 			while ((tmp_node = node_get_func(zone,
 				            chopped)) == NULL) {
