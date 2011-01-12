@@ -9,6 +9,11 @@
 #include "common.h"
 #include "debug.h"
 
+enum { MAGIC_LENGTH = 4 };
+
+static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101};
+/*			                     c   u    t    e */
+
 enum { DNAME_MAX_WIRE_LENGTH = 256 };
 
 //TODO move to parameters
@@ -250,6 +255,21 @@ void find_and_set_wildcard_child(dnslib_zone_t *zone,
 	wildcard_parent->wildcard_child = node;
 }
 
+int dnslib_check_magic(FILE *f, const uint8_t* MAGIC, uint MAGIC_LENGTH)
+{
+	uint8_t tmp_magic[MAGIC_LENGTH];
+
+	fread(&tmp_magic, sizeof(uint8_t), MAGIC_LENGTH, f);
+
+	for (int i = 0; i < MAGIC_LENGTH; i++) {
+		if (tmp_magic[i] != MAGIC[i]) {
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
 dnslib_zone_t *dnslib_zone_load(const char *filename)
 {
 	FILE *f = fopen(filename, "rb");
@@ -261,6 +281,14 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 	uint nsec3_node_count;
 
 	char apex_found = 0;
+
+	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101};
+	                                           /*c   u    t    e */
+
+	if (!dnslib_check_magic(f, MAGIC, MAGIC_LENGTH)) {
+		fprintf(stderr, "Error: unknown file format\n");
+		return NULL;
+	}
 
 	fread(&node_count, sizeof(node_count), 1, f);
 	fread(&nsec3_node_count, sizeof(nsec3_node_count), 1, f);

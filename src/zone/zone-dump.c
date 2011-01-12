@@ -5,6 +5,8 @@
 #include "zone-dump.h"
 #include "dnslib.h"
 
+enum { MAGIC_LENGTH = 4 };
+
 /* TODO Think of a better way than global variable */
 static uint node_count = 0;
 
@@ -218,6 +220,13 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 		return -1;
 	}
 
+
+
+	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101};
+	                                           /*c   u    t    e */
+
+	fwrite(&MAGIC, sizeof(uint8_t), MAGIC_LENGTH, f);
+
 	fwrite(&node_count, sizeof(node_count), 1, f);
 	fwrite(&node_count, sizeof(node_count), 1, f);
 
@@ -235,7 +244,7 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 	node_count = 0;
 	dnslib_zone_nsec3_apply_inorder(zone, dnslib_node_dump_binary, f);
 
-	rewind(f);
+	fseek(f, MAGIC_LENGTH, SEEK_SET);
 	
 	fwrite(&tmp_count, sizeof(tmp_count), 1, f);
 	fwrite(&node_count, sizeof(node_count), 1, f);
