@@ -10,6 +10,7 @@
 #include "stat.h"
 
 #include "dnslib.h"
+#include "dnslib/debug.h"
 
 //static const uint8_t  RCODE_MASK           = 0xf0;
 static const int      OFFSET_FLAGS2        = 3;
@@ -192,6 +193,7 @@ dnslib_rrset_t *ns_synth_from_wildcard(const dnslib_rrset_t *wildcard_rrset,
                                        const dnslib_dname_t *qname)
 {
 	// TODO: test!!
+	debug_ns("Synthetizing RRSet from wildcard...\n");
 
 	dnslib_dname_t *owner = dnslib_dname_copy(qname);
 
@@ -205,19 +207,27 @@ dnslib_rrset_t *ns_synth_from_wildcard(const dnslib_rrset_t *wildcard_rrset,
 		return NULL;
 	}
 
+	debug_ns("Created RRSet header:\n");
+	dnslib_rrset_dump(synth_rrset);
+
 	// copy all RDATA
 	const dnslib_rdata_t *rdata = dnslib_rrset_rdata(wildcard_rrset);
 	while (rdata != NULL) {
 		// we could use the RDATA from the wildcard rrset
 		// but there is no way to distinguish it when deleting
 		// temporary RRSets
-		dnslib_rdata_t *rdata_copy = dnslib_rdata_copy(rdata);
+		dnslib_rdata_t *rdata_copy = dnslib_rdata_copy(rdata,
+		                                dnslib_rrset_type(synth_rrset));
 		if (rdata_copy == NULL) {
 			dnslib_rrset_deep_free(&synth_rrset, 1);
 			return NULL;
 		}
+
+		debug_ns("Copied RDATA:\n");
+		dnslib_rdata_dump(rdata_copy, dnslib_rrset_type(synth_rrset));
+
 		dnslib_rrset_add_rdata(synth_rrset, rdata_copy);
-		dnslib_rrset_rdata_next(wildcard_rrset, rdata);
+		rdata = dnslib_rrset_rdata_next(wildcard_rrset, rdata);
 	}
 
 	return synth_rrset;
@@ -339,16 +349,19 @@ static void ns_put_answer(const dnslib_node_t *node, const dnslib_dname_t *name,
 	} else {
 		const dnslib_rrset_t *rrset = dnslib_node_rrset(node, type);
 		if (rrset != NULL) {
+			debug_ns("Found RRSet of type %s\n",
+				 dnslib_rrtype_to_string(type));
 			if (dnslib_dname_is_wildcard(dnslib_node_owner(node))) {
 				dnslib_rrset_t *synth_rrset =
 					ns_synth_from_wildcard(rrset, name);
+				debug_ns("Synthetized RRSet:\n");
+				dnslib_rrset_dump(synth_rrset);
 				dnslib_response_add_tmp_rrset(resp,
 				                              synth_rrset);
 				rrset = synth_rrset;
 			}
 
-			dnslib_response_add_rrset_answer(resp,
-				rrset, 1);
+			dnslib_response_add_rrset_answer(resp, rrset, 1);
 		}
 	}
 	dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
@@ -837,6 +850,13 @@ static void ns_answer_from_zone(const dnslib_zone_t *zone,
 		int exact_match = dnslib_zone_find_dname(zone, qname, &node,
 		                                         &closest_encloser);
 
+		char *name = dnslib_dname_to_str(node->owner);
+		debug_ns("zone_find_dname() returned node %s ", name);
+		free(name);
+		name = dnslib_dname_to_str(closest_encloser->owner);
+		debug_ns("and closest encloser %s.\n", name);
+		free(name);
+
 		if (exact_match == -2) {  // name not in the zone
 			// possible only if we followed cname
 			assert(cname != 0);
@@ -844,8 +864,8 @@ static void ns_answer_from_zone(const dnslib_zone_t *zone,
 			break;
 		}
 
-		assert(exact_match == 1
-		       || (exact_match == 0 && closest_encloser == node));
+//		assert(exact_match == 1
+//		       || (exact_match == 0 && closest_encloser == node));
 
 		if (dnslib_node_is_deleg_point(closest_encloser)) {
 			ns_referral(closest_encloser, resp);
