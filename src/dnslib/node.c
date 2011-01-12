@@ -66,6 +66,7 @@ dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent)
 	ret->next = NULL;
 	ret->rrsets = skip_create_list(compare_rrset_types);
 	ret->wildcard_child = NULL;
+	ret->flags = 0;
 
 	ret->avl.avl_left = NULL;
 	ret->avl.avl_right = NULL;
