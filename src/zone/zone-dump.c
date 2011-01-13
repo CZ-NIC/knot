@@ -15,18 +15,17 @@ static uint8_t one = 1;
 
 static void dnslib_labels_dump_binary(dnslib_dname_t *dname, FILE *f)
 {
-	printf("label count: %d\n", dname->label_count);
+	debug_zp("label count: %d\n", dname->label_count);
 	fwrite(&(dname->label_count), sizeof(dname->label_count), 1, f);
-	hex_print(dname->labels, dname->label_count);
+//	hex_print(dname->labels, dname->label_count);
 	fwrite(dname->labels, sizeof(uint8_t), dname->label_count, f);
-	getchar();
 }
 
 static void dnslib_dname_dump_binary(dnslib_dname_t *dname, FILE *f)
 {
-	printf("size written bytes: %d\n", fwrite(&(dname->size), sizeof(uint8_t), 1, f));
+	debug_zp("size written bytes: %d\n", fwrite(&(dname->size), sizeof(uint8_t), 1, f));
 	fwrite(dname->name, sizeof(uint8_t), dname->size, f);
-	printf("dname size: %d\n", dname->size);
+	debug_zp("dname size: %d\n", dname->size);
 	dnslib_labels_dump_binary(dname, f);
 }
 
@@ -38,7 +37,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 	assert(desc != NULL);
 	for (int i = 0; i < desc->length; i++) {
 		if (&(rdata->items[i]) == NULL) {
-			printf("Item n. %d is not set!\n", i);
+			debug_zp("Item n. %d is not set!\n", i);
 			continue;
 		}
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
@@ -46,12 +45,12 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
 			assert(rdata->items[i].dname != NULL);
 			if (rdata->items[i].dname->node) { //IN THE ZONE DNAME
-				printf("IN THE ZONE \n");
+				debug_zp("IN THE ZONE \n");
 				fwrite(&one, sizeof(one), 1, f);
 				fwrite(&(rdata->items[i].dname->node),
 				       sizeof(void *), 1, f);
 			} else {
-				printf("not in zone: %s\n",
+				debug_zp("not in zone: %s\n",
 				       dnslib_dname_to_str((rdata->items[i].dname)));
 				fwrite(&zero, sizeof(zero), 1, f);
 				dnslib_dname_dump_binary(rdata->items[i].dname, f);
@@ -62,7 +61,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 			fwrite(rdata->items[i].raw_data, sizeof(uint8_t),
 			       rdata->items[i].raw_data[0] + 1, f);\
 
-			printf("Written %d long raw data\n",
+			debug_zp("Written %d long raw data\n",
 			         rdata->items[i].raw_data[0]);
 		}
 	}
@@ -160,7 +159,7 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *fp)
 
 	fwrite(&(node->owner->node), sizeof(void *), 1, f);
 
-	printf("Writing id: %u\n", node->owner->node);
+	debug_zp("Writing id: %u\n", node->owner->node);
 
 	/* TODO investigate whether this is necessary */
 	if (node->parent != NULL) {
@@ -171,7 +170,7 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *fp)
 
 	fwrite(&(node->flags), sizeof(node->flags), 1, f);
 
-	printf("Writing flags: %u\n", node->flags);
+	debug_zp("Writing flags: %u\n", node->flags);
 
 
 	/* Now we need (or do we?) count of rrsets to be read 
@@ -181,7 +180,7 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *fp)
 
 	fgetpos(f, &rrset_count_pos);
 
-	printf("Position rrset_count: %ld\n", ftell(f));
+	debug_zp("Position rrset_count: %ld\n", ftell(f));
 
 	uint8_t rrset_count = 0;
 
@@ -206,17 +205,17 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *fp)
 
 	fgetpos(f, &tmp_pos);
 
-	printf("Position after all rrsets: %ld\n", ftell(f));
+	debug_zp("Position after all rrsets: %ld\n", ftell(f));
 
 	fsetpos(f, &rrset_count_pos);
 
-	printf("Writing here: %ld\n", ftell(f));	
+	debug_zp("Writing here: %ld\n", ftell(f));	
 
 	fwrite(&rrset_count, sizeof(rrset_count), 1, f);
 
 	fsetpos(f, &tmp_pos);
 
-	printf("Function ends with: %ld\n\n", ftell(f));	
+	debug_zp("Function ends with: %ld\n\n", ftell(f));	
 
 }
 
