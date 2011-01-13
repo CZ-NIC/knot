@@ -138,6 +138,7 @@ typedef struct slab_obj_t {
  */
 typedef struct slab_cache_t {
 	unsigned short color;    /*!< Current cache color. */
+	unsigned short empty;    /*!< Number of empty slabs. */
 	size_t bufsize;          /*!< Cache object (buf) size. */
 	slab_t *slabs_free;      /*!< List of free slabs. */
 	slab_t *slabs_full;      /*!< List of full slabs. */
