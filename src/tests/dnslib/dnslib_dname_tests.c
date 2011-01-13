@@ -113,7 +113,7 @@ static int check_domain_name(const dnslib_dname_t *dname,
 	int errors = 0;
 
 	if (dname == NULL) {
-		diag("Domain name not created!");
+		diag("Domain name #%d not created!", i);
 		return 1;
 	}
 
