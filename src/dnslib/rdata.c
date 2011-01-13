@@ -50,6 +50,36 @@ static int dnslib_rdata_compare_binary(const uint8_t *d1, const uint8_t *d2,
 }
 
 /*----------------------------------------------------------------------------*/
+
+static const dnslib_dname_t *dnslib_rdata_mx_name(const dnslib_rdata_t *rdata)
+{
+	if (rdata->count < 2) {
+		return NULL;
+	}
+	return rdata->items[1].dname;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static const dnslib_dname_t *dnslib_rdata_ns_name(const dnslib_rdata_t *rdata)
+{
+	if (rdata->count < 1) {
+		return NULL;
+	}
+	return rdata->items[0].dname;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static const dnslib_dname_t *dnslib_rdata_srv_name(const dnslib_rdata_t *rdata)
+{
+	if (rdata->count < 4) {
+		return NULL;
+	}
+	return rdata->items[3].dname;
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -447,4 +477,26 @@ const dnslib_dname_t *dnslib_rdata_dname_target(const dnslib_rdata_t *rdata)
 		return NULL;
 	}
 	return rdata->items[0].dname;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const dnslib_dname_t *dnslib_rdata_get_name(const dnslib_rdata_t *rdata,
+                                            uint16_t type)
+{
+	// iterate over the rdata items or act as if we knew where the name is?
+
+	switch (type) {
+	case DNSLIB_RRTYPE_NS:
+		return dnslib_rdata_ns_name(rdata);
+		break;
+	case DNSLIB_RRTYPE_MX:
+		return dnslib_rdata_mx_name(rdata);
+		break;
+	case DNSLIB_RRTYPE_SRV:
+		return dnslib_rdata_srv_name(rdata);
+		break;
+	}
+
+	return NULL;
 }

@@ -229,6 +229,9 @@ const dnslib_dname_t *dnslib_rdata_cname_name(const dnslib_rdata_t *rdata);
 
 const dnslib_dname_t *dnslib_rdata_dname_target(const dnslib_rdata_t *rdata);
 
+const dnslib_dname_t *dnslib_rdata_get_name(const dnslib_rdata_t *rdata,
+                                            uint16_t type);
+
 #endif /* _CUTEDNS_DNSLIB_RDATA_H */
 
 /*! @} */
