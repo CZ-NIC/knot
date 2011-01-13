@@ -459,7 +459,6 @@ DEBUG_DNSLIB_RESPONSE(
 	free(name);
 	debug_dnslib_response("  Size before: %d\n", *size);
 );
-
 	// if no RDATA in RRSet, return
 	if (rrset->rdata == NULL) {
 		return 0;
