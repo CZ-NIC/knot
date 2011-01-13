@@ -301,7 +301,7 @@ DEBUG_DNSLIB_ZONE(
 	*closest_encloser = found;
 
 DEBUG_DNSLIB_ZONE(
-	name_str = (found) ? dnslib_dname_to_str(found->owner) : "(nil)";
+	char *name_str = (found) ? dnslib_dname_to_str(found->owner) : "(nil)";
 	debug_dnslib_zone("Search function returned %d and node %s\n",
 	                  exact_match, name_str);
 
