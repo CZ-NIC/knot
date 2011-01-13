@@ -27,12 +27,16 @@ void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type)
 			name = dnslib_dname_to_str(rdata->items[i].dname);
 			printf("      DNAME: %d: %s\n",
 			       i, name);
+			printf("      labels: ");
+			hex_print((char *)rdata->items[i].dname->labels,
+			          rdata->items[i].dname->label_count);
 			free(name);
 
 		} else {
 			assert(rdata->items[i].raw_data != NULL);
 			printf("      %d: raw_data: length: %d\n", i,
 			       *(rdata->items[i].raw_data));
+			printf("      ");
 			hex_print((char *)&rdata->items[i].raw_data[
 				(desc->wireformat[i]
 				 == DNSLIB_RDATA_WF_BINARYWITHLENGTH) ? 0 : 1],
@@ -111,6 +115,8 @@ void dnslib_node_dump(dnslib_node_t *node, void *void_param)
 #if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_NODE_DEBUG)
 	printf("------- NODE --------\n");
 	printf("owner: %s\n", dnslib_dname_to_str(node->owner));
+	printf("labels: ");
+	hex_print((char *)node->owner->labels, node->owner->label_count);
 	printf("node/id: %p\n", node->owner->node);
 
 	if (dnslib_node_is_deleg_point(node)) {
