@@ -159,7 +159,7 @@ int cute_start(cute_server *server, char **filenames, uint zones)
 			return -1;
 		}
 		// dump zone
-		dnslib_zone_dump(zone);
+		//dnslib_zone_dump(zone);
 	}
 
 	debug_server("\nDone\n\n");
@@ -185,7 +185,7 @@ int cute_wait(cute_server *server)
 			     server->handlers);
 		ret += dt_join(server->handlers->unit);
 		cute_remove_handler(server, server->handlers);
-		debug_server("server: joined threading unit\n", p);
+		debug_server("server: joined threading unit\n");
 	}
 
 	return ret;
