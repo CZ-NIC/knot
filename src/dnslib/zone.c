@@ -105,7 +105,11 @@ void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
 	while (rdata->next != rdata_first) {
 		for (int i = 0; i < rdata->count; ++i) {
 			if (desc->wireformat[i]
-			    == DNSLIB_RDATA_WF_COMPRESSED_DNAME) {
+			    == DNSLIB_RDATA_WF_COMPRESSED_DNAME
+			    || desc->wireformat[i]
+			       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
+			    || desc->wireformat[i]
+			       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
 				debug_dnslib_zone("Adjusting domain name at"
 				  "position %d of RDATA of record with owner"
 				  "%s and type %s.\n",
@@ -120,7 +124,11 @@ void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
 
 	for (int i = 0; i < rdata->count; ++i) {
 		if (desc->wireformat[i]
-		    == DNSLIB_RDATA_WF_COMPRESSED_DNAME) {
+		    == DNSLIB_RDATA_WF_COMPRESSED_DNAME
+		    || desc->wireformat[i]
+		       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
+		    || desc->wireformat[i]
+		       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
 			debug_dnslib_zone("Adjusting domain name at"
 			  "position %d of RDATA of record with owner"
 			  "%s and type %s.\n",
