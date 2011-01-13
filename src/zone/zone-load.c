@@ -47,30 +47,30 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 			uint8_t dname_in_zone;
 
 			uint8_t dname_size;
-			uint8_t dname_wire[DNAME_MAX_WIRE_LENGTH];
+			uint8_t *dname_wire = NULL; //[DNAME_MAX_WIRE_LENGTH] = { 0 };
 			short label_count;
 			uint8_t *labels;
 
 			fread(&dname_in_zone, sizeof(dname_in_zone), 1, f);
-			debug_zp("%d\n", dname_in_zone);
 			if (dname_in_zone) {
 				fread(&tmp_id, sizeof(void *), 1, f);
 				items[i].dname = id_array[(uint)tmp_id];
 			} else {
-				debug_zp("%d\n", fread(&dname_size, sizeof(dname_size), 1, f));
-				debug_zp("%d\n", dname_size);
+				fread(&dname_size, sizeof(dname_size), 1, f);
 				assert(dname_size < DNAME_MAX_WIRE_LENGTH);
-				fread(&dname_wire, sizeof(uint8_t),
+				dname_wire = malloc(sizeof(uint8_t) * dname_size);
+				fread(dname_wire, sizeof(uint8_t),
 				      dname_size, f);
 				fread(&label_count, sizeof(label_count), 1, f);
 				labels = malloc(sizeof(uint8_t) * label_count);
 				fread(labels, sizeof(uint8_t), label_count, f);
-				items[i].dname =
-					dnslib_dname_new_from_wire(dname_wire,
-					                           dname_size,
-				                                   NULL);
-				/* XXX do not use dname from wire, copy the
-				 * values, including labels XXX */
+				items[i].dname = malloc(sizeof(dnslib_dname_t));
+				items[i].dname->name =
+					malloc(sizeof(uint8_t) * dname_size);
+				items[i].dname->name = dname_wire;
+				items[i].dname->size = dname_size;
+				items[i].dname->labels = labels;
+				items[i].dname->label_count = label_count;
 			}
 
 			assert(items[i].dname);
@@ -252,7 +252,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 		if ((tmp_rrset = dnslib_load_rrset(f)) == NULL) {
 			dnslib_node_free(&node, 1);
 			//TODO what else to free?
-			debug_zp("could not load rrset\n");
+			printf("could not load rrset\n");
 			return NULL;
 		}
 		tmp_rrset->owner = node->owner;

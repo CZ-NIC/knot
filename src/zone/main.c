@@ -10,6 +10,9 @@ long int totalerrors = 0;
 int
 main(int argc, char **argv)
 {
+	// Open log
+	log_open(LOG_UPTO(LOG_ERR), LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING));
+
 	if (argc != 3) {
 		fprintf(stderr, "zonec: 3 parameters requiered\n");
 		return -1;
