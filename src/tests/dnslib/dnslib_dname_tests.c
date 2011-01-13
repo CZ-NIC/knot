@@ -23,7 +23,7 @@ unit_api dnslib_dname_tests_api = {
  */
 
 // C will not accept const int in other const definition
-enum { TEST_DOMAINS_OK = 6 };
+enum { TEST_DOMAINS_OK = 7 };
 
 enum { TEST_DOMAINS_BAD = 3 };
 
@@ -54,7 +54,8 @@ static const struct test_domain
 	  "\x0\x5\xA\x11", 4 },
 	{ "test.domain.com.", "\4test\6domain\3com", 17,
 	  "\x0\x5\xC", 3 },
-	{ ".", "\0", 1, "", 0 }
+	{ ".", "\0", 1, "", 0 },
+	{ "www.example.com.", "\3www\7example\3com", 17, "\x0\x4\xC", 3}
 };
 
 static const struct test_domain // sizes are strlen()s here
@@ -70,9 +71,9 @@ static const struct test_domain // sizes are strlen()s here
 
 static const struct test_domain
 		test_domains_bad[TEST_DOMAINS_BAD] = {
-	{ NULL, "\2ex\3com", 0, "", 0 },
+	{ NULL, "\x2ex\x3com", 0, "", 0 },
 	{ "ex.com.", NULL, 0, "", 0 },
-	{ "ex.com.\5", "\3ex\3com\0\5", 10, "", 0 }
+	{ "ex.com.\x5", "\x3ex\x3com\x0\x5", 10, "", 0 }
 };
 
 
@@ -242,6 +243,22 @@ static int test_dname_cat()
 	dnslib_dname_free(&d1);
 	dnslib_dname_free(&d2);
 
+	// concatenating with root label
+	d1 = dnslib_dname_new_from_str(test_domains_non_fqdn[3].str,
+				       strlen(test_domains_non_fqdn[3].str),
+				       NODE_ADDRESS);
+
+	d2 = dnslib_dname_new_from_str(test_domains_ok[5].str,
+				       strlen(test_domains_ok[5].str),
+				       NODE_ADDRESS);
+
+	dnslib_dname_cat(d1, d2);
+
+	errors += check_domain_name(d1, test_domains_ok, 6, 6);
+
+	dnslib_dname_free(&d1);
+	dnslib_dname_free(&d2);
+
 	return (errors == 0);
 }
 
@@ -271,6 +288,21 @@ static int test_dname_left_chop()
 	chopped = dnslib_dname_left_chop(d1);
 
 	errors += check_domain_name(chopped, test_domains_non_fqdn, 5, 0);
+
+	dnslib_dname_free(&d1);
+	dnslib_dname_free(&chopped);
+
+	d1 = dnslib_dname_new_from_str(test_domains_ok[4].str,
+	                               strlen(test_domains_ok[4].str),
+	                               NODE_ADDRESS);
+
+	chopped = dnslib_dname_left_chop(d1);
+	dnslib_dname_free(&d1);
+	d1 = dnslib_dname_left_chop(chopped);
+	dnslib_dname_free(&chopped);
+	chopped = dnslib_dname_left_chop(d1);
+
+	errors += check_domain_name(chopped, test_domains_ok, 5, 0);
 
 	dnslib_dname_free(&d1);
 	dnslib_dname_free(&chopped);
