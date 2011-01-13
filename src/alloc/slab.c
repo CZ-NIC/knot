@@ -173,7 +173,7 @@ void __attribute__ ((destructor)) slab_deinit()
 /*
  * Cache helper functions.
  */
-static void slab_dump(slab_t* slab) {
+/*static void slab_dump(slab_t* slab) {
 
 	printf("%s: buffers (bufsize=%zuB, %u/%u free): \n",
 	       __func__, slab->cache->bufsize, slab->bufs_free,
@@ -193,7 +193,7 @@ static void slab_dump(slab_t* slab) {
 	}
 
 	printf("\n");
-}
+}*/
 
 static inline int slab_cache_free_slabs(slab_t* slab)
 {

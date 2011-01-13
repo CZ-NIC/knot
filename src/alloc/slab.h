@@ -21,7 +21,6 @@
  * Slab implements simple coloring mechanism to improve
  * cache line utilisation.
  *
- *
  * Optimal usage for a specific behavior (similar allocation sizes):
  * \code
  * slab_cache_t cache;
@@ -34,7 +33,6 @@
  * slab_cache_destroy(&cache); // Deinitialize cache
  * \endcode
  *
- * \todo Evaluate non-aligned and bigger slabs, tweak settings for server.
  *
  * \todo Allocate slab headers elsewhere and use just first sizeof(void*) bytes
  *       in each slab as a pointer to slab header. This could improve the
@@ -92,8 +90,6 @@ typedef struct slab_t {
  *
  * To mitigate slab initialization costs, depot keeps a finite number of
  * stacked slabs before returning them to the system.
- *
- * \todo Implement hierarchy to return ready-to-use, same block size pages.
  */
 typedef struct slab_depot_t {
 	size_t available;               /*!< Number of available pages. */
@@ -145,8 +141,8 @@ typedef struct slab_cache_t {
 	slab_t *slabs_full;      /*!< List of full slabs. */
 
 	/* Statistics. */
-	uint64_t stat_allocs;    /*!< Allocation count. */
-	uint64_t stat_frees;     /*!< Free count. */
+	unsigned long stat_allocs; /*!< Allocation count. */
+	unsigned long stat_frees;  /*!< Free count. */
 } slab_cache_t;
 
 /*!
