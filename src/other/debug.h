@@ -63,8 +63,10 @@
 
 #ifdef DNSLIB_RESPONSE_DEBUG
 #define debug_dnslib_response(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_dnslib_response_hex(data, len) hex_print((data), (len))
 #else
 #define debug_dnslib_response(msg...)
+#define debug_dnslib_response_hex(data, len)
 #endif
 
 #ifdef CUCKOO_DEBUG
