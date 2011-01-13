@@ -832,6 +832,63 @@ int dnslib_response_add_tmp_rrset(dnslib_response_t *response,
 
 /*----------------------------------------------------------------------------*/
 
+short dnslib_response_answer_rrset_count(const dnslib_response_t *response)
+{
+	return response->header.ancount;
+}
+
+/*----------------------------------------------------------------------------*/
+
+short dnslib_response_authority_rrset_count(const dnslib_response_t *response)
+{
+	return response->header.nscount;
+}
+
+/*----------------------------------------------------------------------------*/
+
+short dnslib_response_additional_rrset_count(const dnslib_response_t *response)
+{
+	return response->header.arcount;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const dnslib_rrset_t *dnslib_response_answer_rrset(
+	const dnslib_response_t *response, short pos)
+{
+	if (pos > response->header.ancount) {
+		return NULL;
+	}
+
+	return response->answer[pos];
+}
+
+/*----------------------------------------------------------------------------*/
+
+const dnslib_rrset_t *dnslib_response_authority_rrset(
+	dnslib_response_t *response, short pos)
+{
+	if (pos > response->header.nscount) {
+		return NULL;
+	}
+
+	return response->authority[pos];
+}
+
+/*----------------------------------------------------------------------------*/
+
+const dnslib_rrset_t *dnslib_response_additional_rrset(
+	dnslib_response_t *response, short pos)
+{
+	if (pos > response->header.arcount) {
+		return NULL;
+	}
+
+	return response->additional[pos];
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_response_to_wire(dnslib_response_t *response,
                             uint8_t **resp_wire, size_t *resp_size)
 {
