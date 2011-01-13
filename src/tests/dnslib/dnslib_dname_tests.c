@@ -35,7 +35,8 @@ struct test_domain {
 	char *str;
 	char *wire;
 	uint size;
-
+	char *labels;
+	short label_count;
 };
 
 /*! \warning Do not change the order in those, if you want to test some other
@@ -43,29 +44,35 @@ struct test_domain {
  */
 static const struct test_domain
 		test_domains_ok[TEST_DOMAINS_OK] = {
-	{ "abc.test.domain.com.", "\3abc\4test\6domain\3com", 21 },
-	{ "some.test.domain.com.", "\4some\4test\6domain\3com", 22 },
-	{ "xyz.test.domain.com.", "\3xyz\4test\6domain\3com", 21 },
-	{ "some.test.domain.com.", "\4some\4test\6domain\3com", 22 },
-	{ "test.domain.com.", "\4test\6domain\3com", 17 },
-	{ ".", "\0", 1 }
+	{ "abc.test.domain.com.", "\3abc\4test\6domain\3com", 21,
+	  "\x0\x4\x9\x10", 4 },
+	{ "some.test.domain.com.", "\4some\4test\6domain\3com", 22,
+	  "\x0\x5\xA\x11", 4 },
+	{ "xyz.test.domain.com.", "\3xyz\4test\6domain\3com", 21,
+	  "\x0\x4\x9\x10", 4 },
+	{ "some.test.domain.com.", "\4some\4test\6domain\3com", 22,
+	  "\x0\x5\xA\x11", 4 },
+	{ "test.domain.com.", "\4test\6domain\3com", 17,
+	  "\x0\x5\xC", 3 },
+	{ ".", "\0", 1, "", 0 }
 };
 
 static const struct test_domain // sizes are strlen()s here
 	test_domains_non_fqdn[TEST_DOMAINS_NON_FQDN] = {
-		{"www", "\3www", 4},
-		{"example", "\7example", 8},
-		{"com", "\3com", 4},
-		{"www.example.com", "\3www\7example\3com", 16},
-		{"some", "\4some", 5},
-		{"example.com", "\7example\3com", 12}
+		{ "www", "\3www", 4, "\x0", 1 },
+		{ "example", "\7example", 8, "\x0", 1 },
+		{ "com", "\3com", 4, "\x0", 1 },
+		{ "www.example.com", "\3www\7example\3com", 16, "\x0\x4\xC",
+		  3 },
+		{ "some", "\4some", 5, "\x0", 1 },
+		{ "example.com", "\7example\3com", 12, "\x0\x8", 2 }
 	};
 
 static const struct test_domain
 		test_domains_bad[TEST_DOMAINS_BAD] = {
-	{ NULL, "\2ex\3com", 8 },
-	{ "ex.com.", NULL, 0 },
-	{ "ex.com.\5", "\3ex\3com\0\5", 10 }
+	{ NULL, "\2ex\3com", 0, "", 0 },
+	{ "ex.com.", NULL, 0, "", 0 },
+	{ "ex.com.\5", "\3ex\3com\0\5", 10, "", 0 }
 };
 
 
@@ -133,6 +140,21 @@ static int check_domain_name(const dnslib_dname_t *dname,
 		     size, test_domains[i].wire);
 		++errors;
 	}
+	// check labels
+	if (test_domains[i].label_count != dname->label_count) {
+		diag("Label count of the created domain name is wrong:"
+		     " %d (should be %d)\n", dname->label_count,
+		     test_domains[i].label_count);
+		++errors;
+	}
+	if (strncmp((char *)dname->labels, test_domains[i].labels,
+		    test_domains[i].label_count) != 0) {
+		diag("Label offsets of the created domain name are wrong.\n");
+		++errors;
+	} else {
+		note("Labels OK");
+	}
+
 	if (check_node) {
 		if (dnslib_dname_node(dname) != NODE_ADDRESS) {
 			diag("Node pointer in the created domain name is wrong:"
