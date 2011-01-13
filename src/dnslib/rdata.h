@@ -134,9 +134,11 @@ int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
  *
  * \todo rename to dnslib_rdata_item()
  */
-const dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
-                uint pos);
+const dnslib_rdata_item_t *dnslib_rdata_item(const dnslib_rdata_t *rdata,
+                                             uint pos);
 
+dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
+                                           uint pos);
 
 int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, uint pos,
                                 dnslib_dname_t *dname);

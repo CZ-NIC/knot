@@ -138,8 +138,20 @@ int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
-                                                 uint pos)
+const dnslib_rdata_item_t *dnslib_rdata_item(const dnslib_rdata_t *rdata,
+                                             uint pos)
+{
+	if (pos >= rdata->count) {
+		return NULL;
+	} else {
+		return &rdata->items[pos];
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
+                                           uint pos)
 {
 	if (pos >= rdata->count) {
 		return NULL;

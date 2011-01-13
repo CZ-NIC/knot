@@ -106,7 +106,7 @@ static int test_rdata_create()
 		return 0;
 	}
 
-	if (dnslib_rdata_get_item(rdata, 0) != NULL) {
+	if (dnslib_rdata_item(rdata, 0) != NULL) {
 		diag("Get item returned something else than NULL!");
 		return 0;
 	}
@@ -298,7 +298,7 @@ static int check_rdata(const uint8_t *data, int max_size, uint16_t rrtype,
 		case DNSLIB_RDATA_WF_LITERAL_DNAME:
 			//note("    domain name");
 			domain = 1;
-			size = dnslib_dname_size(dnslib_rdata_get_item(
+			size = dnslib_dname_size(dnslib_rdata_item(
 						 rdata, i)->dname);
 			break;
 		case DNSLIB_RDATA_WF_BYTE:
@@ -352,12 +352,12 @@ static int check_rdata(const uint8_t *data, int max_size, uint16_t rrtype,
 				     " (should be %d)", size, *pos);
 				++errors;
 			} else if (strncmp((char *)dnslib_dname_name(
-			           dnslib_rdata_get_item(rdata, i)->dname),
+			           dnslib_rdata_item(rdata, i)->dname),
 			           (char *)(pos + 1), *pos) != 0) {
 				diag("Domain name stored in %d-th"
 				     "RDATA item is wrong: %s ("
 				     "should be %.*s)", i,
-				     dnslib_dname_name(dnslib_rdata_get_item(
+				     dnslib_dname_name(dnslib_rdata_item(
 				     rdata, i)->dname),
 				     *pos, (char *)(pos + 1));
 				++errors;
@@ -369,16 +369,16 @@ static int check_rdata(const uint8_t *data, int max_size, uint16_t rrtype,
 		}
 
 		if (binary && 
-		    size != dnslib_rdata_get_item(rdata, i)->raw_data[0] + 1) {
+		    size != dnslib_rdata_item(rdata, i)->raw_data[0] + 1) {
 		    diag("Size of stored binary data is wrong:"
 		         " %u (should be %u)",
-			 dnslib_rdata_get_item(rdata, i)->raw_data[0] + 1, 
+			 dnslib_rdata_item(rdata, i)->raw_data[0] + 1, 
 			                       size);
 			++errors;
 		}
 
 		if (strncmp((char *)
-		   (&dnslib_rdata_get_item(rdata, i)->raw_data[0]),
+		   (&dnslib_rdata_item(rdata, i)->raw_data[0]),
 		   (char *)pos, size) != 0) {
 /*			dnslib_rrtype_descriptor_t *desc = 
 			dnslib_rrtype_descriptor_by_type(rrtype); */
@@ -538,9 +538,9 @@ static int test_rdata_set_item()
 		return 0;
 	}
 
-	if (dnslib_rdata_get_item(rdata, pos)->raw_data != RDATA_ITEM_PTR) {
+	if (dnslib_rdata_item(rdata, pos)->raw_data != RDATA_ITEM_PTR) {
 		diag("RDATA item on position %d is wrong: %p (should be %p).",
-		     pos, dnslib_rdata_get_item(rdata, pos)->raw_data, 
+		     pos, dnslib_rdata_item(rdata, pos)->raw_data, 
 		     RDATA_ITEM_PTR);
 		dnslib_rdata_free(&rdata);
 		return 0;
@@ -649,29 +649,29 @@ static int test_rdata_get_item()
 {
 	const dnslib_rdata_t *rdata = &TEST_RDATA;
 
-	if (dnslib_rdata_get_item(rdata, TEST_RDATA.count) != NULL) {
+	if (dnslib_rdata_item(rdata, TEST_RDATA.count) != NULL) {
 		diag("dnslib_rdata_get_item() called with"
 		     "invalid position did not return NULL");
 		return 0;
 	}
 
 	int errors = 0;
-	if ((dnslib_rdata_get_item(rdata, 0)->dname)
+	if ((dnslib_rdata_item(rdata, 0)->dname)
 	      != TEST_RDATA.items[0].dname) {
 		diag("RDATA item on position 0 is wrong: %p (should be %p)",
-		     dnslib_rdata_get_item(rdata, 0), TEST_RDATA.items[0]);
+		     dnslib_rdata_item(rdata, 0), TEST_RDATA.items[0]);
 		++errors;
 	}
-	if ((dnslib_rdata_get_item(rdata, 1)->raw_data)
+	if ((dnslib_rdata_item(rdata, 1)->raw_data)
 	      != TEST_RDATA.items[1].raw_data) {
 		diag("RDATA item on position 0 is wrong: %p (should be %p)",
-		     dnslib_rdata_get_item(rdata, 1), TEST_RDATA.items[1]);
+		     dnslib_rdata_item(rdata, 1), TEST_RDATA.items[1]);
 		++errors;
 	}
-	if ((dnslib_rdata_get_item(rdata, 2)->raw_data)
+	if ((dnslib_rdata_item(rdata, 2)->raw_data)
 	      != TEST_RDATA.items[2].raw_data) {
 		diag("RDATA item on position 0 is wrong: %p (should be %p)",
-		     dnslib_rdata_get_item(rdata, 2), TEST_RDATA.items[2]);
+		     dnslib_rdata_item(rdata, 2), TEST_RDATA.items[2]);
 		++errors;
 	}
 
