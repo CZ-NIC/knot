@@ -53,13 +53,13 @@
 #include <stdint.h>
 
 /* Constants. */
+#define SLAB_SIZE (4096*4) // Slab size (16K blocks)
 #define SLAB_MIN_BUFLEN 8 // Minimal allocation block size is 8B.
 #define SLAB_EXP_OFFSET 3 // Minimal allocation size is 8B = 2^3, exp is 3.
 #define SLAB_GP_COUNT  10 // General-purpose caches count.
 #define SLAB_US_COUNT  10 // User-specified caches count.
 #define SLAB_CACHE_COUNT (SLAB_GP_COUNT + SLAB_US_COUNT)
-#define SLAB_DEPOT_COUNT 16 // 16 slabs cached = 16*4kB
-extern size_t SLAB_MASK;
+#define SLAB_DEPOT_COUNT 16 // N slabs cached = N*SLAB_SIZE kB cap
 struct slab_cache_t;
 
 /* Macros. */
@@ -78,6 +78,7 @@ struct slab_cache_t;
  */
 typedef struct slab_t {
 	char magic;                 /*!< Identifies memory block type. */
+	unsigned short bufsize;     /*!< Slab bufsize. */
 	struct slab_cache_t *cache; /*!< Owner cache. */
 	struct slab_t *prev, *next; /*!< Neighbours in slab lists. */
 	unsigned bufs_count;        /*!< Number of bufs in slab. */
@@ -95,8 +96,8 @@ typedef struct slab_t {
  * \todo Implement hierarchy to return ready-to-use, same block size pages.
  */
 typedef struct slab_depot_t {
-	size_t available;             /*!< Number of available pages. */
-	void* page[SLAB_DEPOT_COUNT]; /*!< Stack of free slabs. */
+	size_t available;               /*!< Number of available pages. */
+	slab_t* cache[SLAB_DEPOT_COUNT]; /*!< Stack of free slabs. */
 } slab_depot_t;
 
 /*!

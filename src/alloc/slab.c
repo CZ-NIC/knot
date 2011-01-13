@@ -2,20 +2,19 @@
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
+#include <stdlib.h>
 #include <sys/mman.h>
 #include "slab.h"
 #include "common.h"
-#include <stdlib.h>
+
 
 /* Magic constants.
  */
 #define SLAB_MAGIC    0x51
 #define LOBJ_MAGIC    0x0B
 #define POISON_DWORD  0xdfdfdfdf
-#define SLAB_MINCOLOR 16
-#define SLAB_MAXCOLOR 64
+#define SLAB_MINCOLOR 64
 #define SLAB_HEADER   sizeof(slab_t)
-#define SLAB_MAXBUF   (SLAB_SIZE-SLAB_MAXCOLOR+SLAB_HEADER)
 
 /*
  * Fast cache id lookup table.
@@ -23,9 +22,8 @@
  * Filled with interesting values from default
  * or on-demand.
  */
-#define SLAB_CACHE_LUT_SIZE 4096
 unsigned __attribute__ ((__aligned__(sizeof(void*))))
-SLAB_CACHE_LUT[SLAB_CACHE_LUT_SIZE] = {
+SLAB_CACHE_LUT[SLAB_SIZE] = {
         [24]  = SLAB_GP_COUNT + 1,
         [800] = SLAB_GP_COUNT + 2
 };
@@ -93,7 +91,6 @@ static unsigned slab_cache_id(unsigned size)
 /*
  * Slab run-time constants.
  */
-size_t SLAB_SIZE = 0;
 size_t SLAB_MASK = 0;
 static unsigned SLAB_LOGSIZE = 0;
 
@@ -102,22 +99,31 @@ static unsigned SLAB_LOGSIZE = 0;
  */
 static slab_depot_t _depot_g;
 
-static void* slab_depot_alloc()
+static void* slab_depot_alloc(size_t bufsize)
 {
 	void *page = 0;
 	if (_depot_g.available) {
-		page = _depot_g.page[--_depot_g.available];
+		for (int i = _depot_g.available - 1; i > -1 ; --i) {
+			if(_depot_g.cache[i]->bufsize == bufsize) {
+				page = _depot_g.cache[i];
+				_depot_g.cache[i] = _depot_g.cache[--_depot_g.available];
+				return page;
+			}
+		}
+		page = _depot_g.cache[--_depot_g.available];
 	} else {
 		posix_memalign(&page, SLAB_SIZE, SLAB_SIZE);
+		((slab_t*)page)->bufsize = 0;
+
 	}
 
 	return page;
 }
 
-static void slab_depot_free(void* page)
+static inline void slab_depot_free(void* page)
 {
 	if (_depot_g.available < SLAB_DEPOT_COUNT) {
-		_depot_g.page[_depot_g.available++] = page;
+		_depot_g.cache[_depot_g.available++] = page;
 	} else {
 		free(page);
 	}
@@ -132,7 +138,7 @@ static void slab_depot_init()
 static void slab_depot_destroy()
 {
 	while(_depot_g.available) {
-		free(_depot_g.page[--_depot_g.available]);
+		free(_depot_g.cache[--_depot_g.available]);
 	}
 }
 
@@ -142,9 +148,7 @@ static void slab_depot_destroy()
 void __attribute__ ((constructor)) slab_init()
 {
 	// Fetch page size
-	SLAB_SIZE = sysconf(_SC_PAGESIZE) * 16;
 	SLAB_LOGSIZE = fastlog2(SLAB_SIZE);
-	assert(SLAB_SIZE < ~(unsigned int)(0));
 
 	// Compute slab page mask
 	SLAB_MASK = 0;
@@ -160,9 +164,9 @@ void __attribute__ ((constructor)) slab_init()
 void __attribute__ ((destructor)) slab_deinit()
 {
 	// Deinitialize global allocator
-	if (SLAB_SIZE) {
+	if (SLAB_LOGSIZE) {
 		slab_depot_destroy();
-		SLAB_SIZE = SLAB_LOGSIZE = SLAB_MASK = 0;
+		SLAB_LOGSIZE = SLAB_MASK = 0;
 	}
 }
 
@@ -196,10 +200,8 @@ static inline int slab_cache_free_slabs(slab_t* slab)
 	int count = 0;
 	while (slab) {
 		slab_t* next = slab->next;
-		if (slab_isempty(slab)) {
-			slab_destroy(&slab);
-			++count;
-		}
+		slab_destroy(&slab);
+		++count;
 		slab = next;
 
 	}
@@ -263,7 +265,7 @@ slab_t* slab_create(slab_cache_t* cache)
 {
 	const size_t size = SLAB_SIZE;
 
-	slab_t* slab = slab_depot_alloc();
+	slab_t* slab = slab_depot_alloc(cache->bufsize);
 
 	if (unlikely(slab < 0)) {
 		debug_mem("%s: failed to allocate aligned memory block\n",
@@ -275,26 +277,38 @@ slab_t* slab_create(slab_cache_t* cache)
 	slab->magic = SLAB_MAGIC;
 	slab->cache = cache;
 	slab_list_insert(&cache->slabs_free, slab);
+#ifdef MEM_SLAB_CAP
 	++cache->empty;
+#endif
+
+	/* Already initialized? */
+	if (slab->bufsize == cache->bufsize) {
+		return slab;
+	} else {
+		slab->bufsize = cache->bufsize;
+	}
 
 	/* Ensure the item size can hold at least a size of ptr. */
-	size_t item_size = cache->bufsize;
+	size_t item_size = slab->bufsize;
 	if (unlikely(item_size < SLAB_MIN_BUFLEN)) {
 		item_size = SLAB_MIN_BUFLEN;
 	}
 
 	/* Ensure at least some space for coloring */
 	size_t data_size = size - sizeof(slab_t);
+#ifdef MEM_COLORING
 	size_t free_space = data_size % item_size;
-	if(unlikely(free_space > SLAB_MAXCOLOR)) {
-		free_space = SLAB_MAXCOLOR;
-	} else if (unlikely(free_space < SLAB_MINCOLOR)) {
+	if (unlikely(free_space < SLAB_MINCOLOR)) {
 		free_space = SLAB_MINCOLOR;
 	}
+
 
 	/// unsigned short color = __sync_fetch_and_add(&cache->color, 1);
 	unsigned short color = (cache->color += sizeof(void*));
 	color = color % free_space;
+#else
+	const unsigned short color = 0;
+#endif
 
 	/* Calculate useable data size */
 	data_size -= color;
@@ -342,6 +356,9 @@ void* slab_alloc(slab_t* slab)
 		if((item = slab->head)) {
 			slab->head = (void**)*item;
 			--slab->bufs_free;
+		} else {
+			// No more free items
+			return 0;
 		}
 	}
 
@@ -350,19 +367,16 @@ void* slab_alloc(slab_t* slab)
 	__sync_add_and_fetch(&slab->cache->stat_allocs, 1);
 #endif
 
-	// Check returned buf
-	if (unlikely(!item)) {
-		return 0;
-	}
-
-	// Mark empty?
-	if (unlikely(slab->bufs_free == slab->bufs_free - 1)) {
-		--slab->cache->empty;
-	}
-
 	// Move to full?
 	if (unlikely(slab->bufs_free == 0)) {
 		slab_list_move(&slab->cache->slabs_full, slab);
+	} else {
+#ifdef MEM_SLAB_CAP
+		// Mark not empty?
+		if (unlikely(slab->bufs_free == slab->bufs_count - 1)) {
+			--slab->cache->empty;
+		}
+#endif
 	}
 
 	return item;
@@ -387,24 +401,25 @@ void slab_free(void* ptr)
 		slab->head = (void**)ptr;
 		++slab->bufs_free;
 
-		// Return to partial
-		/// Hysteresis = 3
-		if(unlikely(slab->bufs_free == 3)) {
-			slab_list_move(&slab->cache->slabs_free, slab);
-		}
-
 #ifdef MEM_DEBUG
 		// Increment statistics
 		__sync_add_and_fetch(&slab->cache->stat_frees, 1);
 #endif
 
+		// Return to partial
+		if(unlikely(slab->bufs_free == 1)) {
+			slab_list_move(&slab->cache->slabs_free, slab);
+		} else {
+#ifdef MEM_SLAB_CAP
 		// Recycle if empty
-		if(unlikely(slab_isempty(slab))) {
-			if(slab->cache->empty == 3) {
-				slab_destroy(&slab);
-			} else {
-				++slab->cache->empty;
+			if(unlikely(slab_isempty(slab))) {
+				if(slab->cache->empty == MEM_SLAB_CAP) {
+					slab_destroy(&slab);
+				} else {
+					++slab->cache->empty;
+				}
 			}
+#endif
 		}
 
 	} else {
@@ -427,6 +442,7 @@ int slab_cache_init(slab_cache_t* cache, size_t bufsize)
 		return -1;
 	}
 
+	cache->empty = 0;
 	cache->bufsize = bufsize;
 	cache->slabs_free = cache->slabs_full = 0;
 	cache->color = 0;
@@ -472,7 +488,20 @@ void* slab_cache_alloc(slab_cache_t* cache)
 int slab_cache_reap(slab_cache_t* cache)
 {
 	// For now, just free empty slabs
-	return slab_cache_free_slabs(cache->slabs_free);
+	slab_t* slab = cache->slabs_free;
+	int count = 0;
+	while (slab) {
+		slab_t* next = slab->next;
+		if (slab_isempty(slab)) {
+			slab_destroy(&slab);
+			++count;
+		}
+		slab = next;
+
+	}
+
+	cache->empty = 0;
+	return count;
 }
 
 int slab_alloc_init(slab_alloc_t* alloc)
@@ -511,12 +540,12 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 	size += sizeof(int);
 #endif
 	// Directly map large block
-	if (unlikely(size > SLAB_MAXBUF)) {
+	if (unlikely(size > SLAB_SIZE/2)) {
 
 		// Map block
 		size += sizeof(slab_obj_t);
 		slab_obj_t* p = 0;
-		posix_memalign((void**)&p, SLAB_SIZE, size); // mmap(0, size, ALLOC_PROT, ALLOC_FLAGS, -1, 0);
+		p = malloc(size);
 
 		debug_mem("%s: mapping large block of %zu bytes at %p\n",
 		          __func__, size, p + 1);
