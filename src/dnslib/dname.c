@@ -672,6 +672,8 @@ dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2)
 	memcpy(new_dname + d1->size, d2->name, d2->size);
 
 	// update labels
+	debug_dnslib_dname("Copying label offsets. Label counts: %d and %d\n",
+			   d1->label_count, d2->label_count);
 	memcpy(new_labels, d1->labels, d1->label_count);
 	for (int i = 0; i < d2->label_count; ++i) {
 		new_labels[d1->label_count + i] = d2->labels[i] + d1->size;
