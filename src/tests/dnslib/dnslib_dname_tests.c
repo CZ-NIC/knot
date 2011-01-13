@@ -292,6 +292,21 @@ static int test_dname_left_chop()
 	dnslib_dname_free(&d1);
 	dnslib_dname_free(&chopped);
 
+	d1 = dnslib_dname_new_from_str(test_domains_ok[4].str,
+	                               strlen(test_domains_ok[4].str),
+	                               NODE_ADDRESS);
+
+	chopped = dnslib_dname_left_chop(d1);
+	dnslib_dname_free(&d1);
+	d1 = dnslib_dname_left_chop(chopped);
+	dnslib_dname_free(&chopped);
+	chopped = dnslib_dname_left_chop(d1);
+
+	errors += check_domain_name(chopped, test_domains_ok, 5, 0);
+
+	dnslib_dname_free(&d1);
+	dnslib_dname_free(&chopped);
+
 	return (errors == 0);
 }
 
