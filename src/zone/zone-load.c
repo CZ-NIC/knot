@@ -34,9 +34,9 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 
 	uint8_t raw_data_length;
 
-	printf("Reading %d items\n", desc->length);
+	debug_zp("Reading %d items\n", desc->length);
 
-	printf("current type: %s\n", dnslib_rrtype_to_string(type));
+	debug_zp("current type: %s\n", dnslib_rrtype_to_string(type));
 
 	for (int i = 0; i < desc->length; i++) {
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
@@ -52,13 +52,13 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 			uint8_t *labels;
 
 			fread(&dname_in_zone, sizeof(dname_in_zone), 1, f);
-			printf("%d\n", dname_in_zone);
+			debug_zp("%d\n", dname_in_zone);
 			if (dname_in_zone) {
 				fread(&tmp_id, sizeof(void *), 1, f);
 				items[i].dname = id_array[(uint)tmp_id];
 			} else {
-				printf("%d\n", fread(&dname_size, sizeof(dname_size), 1, f));
-				printf("%d\n", dname_size);
+				debug_zp("%d\n", fread(&dname_size, sizeof(dname_size), 1, f));
+				debug_zp("%d\n", dname_size);
 				assert(dname_size < DNAME_MAX_WIRE_LENGTH);
 				fread(&dname_wire, sizeof(uint8_t),
 				      dname_size, f);
@@ -77,7 +77,7 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 
 		} else {
 			fread(&raw_data_length, sizeof(raw_data_length), 1, f);
-			printf("read len: %d\n", raw_data_length);
+			debug_zp("read len: %d\n", raw_data_length);
 			items[i].raw_data =
 				malloc(sizeof(uint8_t) * raw_data_length + 1);
 			*(items[i].raw_data) = raw_data_length;
@@ -104,11 +104,11 @@ dnslib_rrsig_set_t *dnslib_load_rrsig(FILE *f)
 	uint8_t rdata_count;
 
 	fread(&rrset_type, sizeof(rrset_type), 1, f);
-	printf("rrset type: %d\n", rrset_type);
+	debug_zp("rrset type: %d\n", rrset_type);
 	fread(&rrset_class, sizeof(rrset_class), 1, f);
-	printf("rrset class %d\n", rrset_class);
+	debug_zp("rrset class %d\n", rrset_class);
 	fread(&rrset_ttl, sizeof(rrset_ttl), 1, f);
-	printf("rrset ttl %d\n", rrset_ttl);
+	debug_zp("rrset ttl %d\n", rrset_ttl);
 
 	fread(&rdata_count, sizeof(rdata_count), 1, f);
 
@@ -116,7 +116,7 @@ dnslib_rrsig_set_t *dnslib_load_rrsig(FILE *f)
 
 	dnslib_rdata_t *tmp_rdata;
 
-	printf("loading %d rdata entries\n", rdata_count);
+	debug_zp("loading %d rdata entries\n", rdata_count);
 
 	for (int i = 0; i < rdata_count; i++) {
 		tmp_rdata = dnslib_load_rdata(DNSLIB_RRTYPE_RRSIG, f);
@@ -146,7 +146,7 @@ dnslib_rrset_t *dnslib_load_rrset(FILE *f)
 
 	rrset = dnslib_rrset_new(NULL, rrset_type, rrset_class, rrset_ttl);
 
-	printf("RRSet type: %d\n", rrset->type);
+	debug_zp("RRSet type: %d\n", rrset->type);
 
 	dnslib_rdata_t *tmp_rdata;
 
@@ -189,7 +189,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 
 	fread(&dname_size, sizeof(dname_size), 1, f);
 
-	printf("%d\n", dname_size);
+	debug_zp("%d\n", dname_size);
 
 	assert(dname_size < DNAME_MAX_WIRE_LENGTH);
 
@@ -205,7 +205,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 
 	fread(&dname_id, sizeof(dname_id), 1, f);
 
-	printf("id: %d\n", dname_id);
+	debug_zp("id: %d\n", dname_id);
 
 	fread(&parent_id, sizeof(dname_id), 1, f);
 
@@ -222,11 +222,11 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	owner->labels = labels;
 	owner->label_count = label_count;
 
-	printf("Node owned by: %s\n", dnslib_dname_to_str(owner));
-	printf("labels: %d\n", owner->label_count);
-	hex_print(owner->labels, owner->label_count);
+	debug_zp("Node owned by: %s\n", dnslib_dname_to_str(owner));
+	debug_zp("labels: %d\n", owner->label_count);
+//	hex_print(owner->labels, owner->label_count);
 
-	printf("Number of RRSets in a node: %d\n", rrset_count);
+	debug_zp("Number of RRSets in a node: %d\n", rrset_count);
 
 	if ((node = dnslib_node_new(owner, NULL)) == NULL) {
 		fprintf(stderr, "Error: could not create node\n");
@@ -252,7 +252,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 		if ((tmp_rrset = dnslib_load_rrset(f)) == NULL) {
 			dnslib_node_free(&node, 1);
 			//TODO what else to free?
-			printf("could not load rrset\n");
+			debug_zp("could not load rrset\n");
 			return NULL;
 		}
 		tmp_rrset->owner = node->owner;
@@ -352,7 +352,7 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 	dnslib_node_t *apex = dnslib_node_new(apex_dname, NULL);
 	dnslib_zone_t *zone = dnslib_zone_new(apex);
 
-	printf("Zone apex: %s\n", dnslib_dname_to_str(apex->owner));
+	debug_zp("Zone apex: %s\n", dnslib_dname_to_str(apex->owner));
 
 	id_array =
 		malloc(sizeof(dnslib_dname_t *) *

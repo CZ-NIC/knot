@@ -147,8 +147,8 @@ line:	NL
 
 
 //        printf("going to zonec: %s %p\n", dnslib_dname_to_str(parser->current_rrset.owner), parser->current_rrset.owner);
-		int ret = process_rr();
-		if (1) {
+		int ret;
+		if ((ret = process_rr()) != 0) {
 			char *tmp_dname_str =
 				dnslib_dname_to_str(parser->current_rrset.owner);
 			fprintf(stderr, "Error: could not process RRSet\n"

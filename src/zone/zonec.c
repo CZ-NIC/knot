@@ -1641,17 +1641,17 @@ void zone_read(char *name, const char *zonefile)
 
 //	dnslib_zone_dump(parser->current_zone);
 
-//	dnslib_zone_dump_binary(parser->current_zone, dump_file_name);
+	dnslib_zone_dump_binary(parser->current_zone, dump_file_name);
 
 /*	//TODO remove origin parameter
 */
-//	dnslib_zone_t *new_zone = dnslib_zone_load(dump_file_name);
+	dnslib_zone_t *new_zone = dnslib_zone_load(dump_file_name);
 
 //	dnslib_zone_dump(new_zone);
 
-//	dnslib_zone_deep_free(&(parser->current_zone));
+	dnslib_zone_deep_free(&(parser->current_zone));
 
-//	dnslib_zone_deep_free(&new_zone);
+	dnslib_zone_deep_free(&new_zone);
 
 	fclose(yyin);
 
