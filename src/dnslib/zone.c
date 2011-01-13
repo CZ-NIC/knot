@@ -282,12 +282,14 @@ int dnslib_zone_find_dname(const dnslib_zone_t *zone,
 
 	dnslib_node_t *found = NULL;
 
+DEBUG_DNSLIB_ZONE(
 	char *name_str = dnslib_dname_to_str(name);
 	char *zone_str = dnslib_dname_to_str(zone->apex->owner);
 	debug_dnslib_zone("Searching for name %s in zone %s...\n",
 			  name_str, zone_str);
 	free(name_str);
 	free(zone_str);
+);
 
 	// create dummy node to use for lookup
 	dnslib_node_t *tmp = dnslib_node_new((dnslib_dname_t *)name, NULL);
@@ -298,6 +300,7 @@ int dnslib_zone_find_dname(const dnslib_zone_t *zone,
 	*node = found;
 	*closest_encloser = found;
 
+DEBUG_DNSLIB_ZONE(
 	name_str = (found) ? dnslib_dname_to_str(found->owner) : "(nil)";
 	debug_dnslib_zone("Search function returned %d and node %s\n",
 	                  exact_match, name_str);
@@ -305,6 +308,7 @@ int dnslib_zone_find_dname(const dnslib_zone_t *zone,
 	if (found) {
 		free(name_str);
 	}
+);
 
 	// there must be at least one node with domain name less or equal to
 	// the searched name if the name belongs to the zone (the root)
