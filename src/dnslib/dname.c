@@ -415,6 +415,7 @@ dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname)
 	}
 
 	memcpy(parent->name, &dname->name[dname->name[0] + 1], parent->size);
+
 	for (int i = 0; i < dname->label_count - 1; ++i) {
 		parent->labels[i] = dname->labels[i + 1]
 		                    - (dname->labels[i + 1] - dname->labels[i]);
