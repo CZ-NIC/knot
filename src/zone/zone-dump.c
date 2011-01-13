@@ -23,7 +23,7 @@ static void dnslib_labels_dump_binary(dnslib_dname_t *dname, FILE *f)
 
 static void dnslib_dname_dump_binary(dnslib_dname_t *dname, FILE *f)
 {
-	debug_zp("size written bytes: %d\n", fwrite(&(dname->size), sizeof(uint8_t), 1, f));
+	fwrite(&(dname->size), sizeof(uint8_t), 1, f);
 	fwrite(dname->name, sizeof(uint8_t), dname->size, f);
 	debug_zp("dname size: %d\n", dname->size);
 	dnslib_labels_dump_binary(dname, f);
