@@ -142,7 +142,7 @@ static void slab_depot_destroy()
 void __attribute__ ((constructor)) slab_init()
 {
 	// Fetch page size
-	SLAB_SIZE = sysconf(_SC_PAGESIZE);
+	SLAB_SIZE = sysconf(_SC_PAGESIZE) * 16;
 	SLAB_LOGSIZE = fastlog2(SLAB_SIZE);
 	assert(SLAB_SIZE < ~(unsigned int)(0));
 
@@ -187,6 +187,7 @@ static void slab_dump(slab_t* slab) {
 		}
 		++n;
 	}
+
 	printf("\n");
 }
 
@@ -274,6 +275,7 @@ slab_t* slab_create(slab_cache_t* cache)
 	slab->magic = SLAB_MAGIC;
 	slab->cache = cache;
 	slab_list_insert(&cache->slabs_free, slab);
+	++cache->empty;
 
 	/* Ensure the item size can hold at least a size of ptr. */
 	size_t item_size = cache->bufsize;
@@ -353,7 +355,12 @@ void* slab_alloc(slab_t* slab)
 		return 0;
 	}
 
-	// Move to partial?
+	// Mark empty?
+	if (unlikely(slab->bufs_free == slab->bufs_free - 1)) {
+		--slab->cache->empty;
+	}
+
+	// Move to full?
 	if (unlikely(slab->bufs_free == 0)) {
 		slab_list_move(&slab->cache->slabs_full, slab);
 	}
@@ -390,6 +397,15 @@ void slab_free(void* ptr)
 		// Increment statistics
 		__sync_add_and_fetch(&slab->cache->stat_frees, 1);
 #endif
+
+		// Recycle if empty
+		if(unlikely(slab_isempty(slab))) {
+			if(slab->cache->empty == 3) {
+				slab_destroy(&slab);
+			} else {
+				++slab->cache->empty;
+			}
+		}
 
 	} else {
 
