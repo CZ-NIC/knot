@@ -74,8 +74,7 @@ static int dnslib_dname_str_to_wire(const char *name, uint size,
 
 	if (root) {
 		*wire = '\0';
-		label_count = 1;
-		labels[0] = 0;
+		label_count = 0;
 		return dnslib_dname_set(dname, wire, wire_size, labels,
 		                        label_count);
 	}
@@ -407,7 +406,20 @@ dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname)
 		return NULL;
 	}
 
+	parent->labels = (uint8_t *)malloc(dname->label_count - 1);
+	if (parent->labels == NULL) {
+		ERR_ALLOC_FAILED;
+		free(parent->name);
+		dnslib_dname_free(&parent);
+		return NULL;
+	}
+
 	memcpy(parent->name, &dname->name[dname->name[0] + 1], parent->size);
+	for (int i = 0; i < dname->label_count - 1; ++i) {
+		parent->labels[i] = dname->labels[i + 1]
+		                    - (dname->labels[i + 1] - dname->labels[i]);
+	}
+	parent->label_count = dname->label_count - 1;
 
 	return parent;
 }
