@@ -193,7 +193,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 
 	assert(dname_size < DNAME_MAX_WIRE_LENGTH);
 
-	fread(&dname_wire, sizeof(uint8_t), dname_size, f);
+	fread(dname_wire, sizeof(uint8_t), dname_size, f);
 	/* refactor */
 	fread(&label_count, sizeof(label_count), 1, f);
 
@@ -333,7 +333,7 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 	fread(&dname_size, sizeof(dname_size), 1, f);
 	assert(dname_size < DNAME_MAX_WIRE_LENGTH);
 
-	fread(&dname_wire, sizeof(uint8_t), dname_size, f);
+	fread(dname_wire, sizeof(uint8_t), dname_size, f);
 
 	dnslib_dname_t *apex_dname = malloc(sizeof(dnslib_dname_t));
 
