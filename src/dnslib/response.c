@@ -452,13 +452,11 @@ static int dnslib_response_rrset_to_wire(const dnslib_rrset_t *rrset,
                                               uint8_t **pos, short *size,
                                               dnslib_compressed_dnames_t *compr)
 {
-DEBUG_DNSLIB_RESPONSE(
 	char *name = dnslib_dname_to_str(rrset->owner);
 	debug_dnslib_response("Converting RRSet with owner %s, type %s\n",
 	                      name, dnslib_rrtype_to_string(rrset->type));
 	free(name);
 	debug_dnslib_response("  Size before: %d\n", *size);
-);
 
 	// if no RDATA in RRSet, return
 	if (rrset->rdata == NULL) {
@@ -634,12 +632,12 @@ void dnslib_response_try_add_rrset(const dnslib_rrset_t **rrsets,
                                    const dnslib_rrset_t *rrset, int tc)
 {
 	short size = dnslib_response_rrset_size(rrset, &resp->compression);
-DEBUG_DNSLIB_RESPONSE(
+
 	char *name = dnslib_dname_to_str(rrset->owner);
 	debug_dnslib_response("Adding RRSet with owner %s and type %s, size: "
 		"%d.\n", name, dnslib_rrtype_to_string(rrset->type), size);
 	free(name);
-);
+
 	if (resp->size + size > resp->max_size) {
 		if (tc) {
 			dnslib_packet_flags_set_tc(&resp->header.flags1);
