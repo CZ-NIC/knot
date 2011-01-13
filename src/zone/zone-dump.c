@@ -5,11 +5,29 @@
 #include "zone-dump.h"
 #include "dnslib.h"
 
-/* TODO Think of a better way than global variable */
+enum { MAGIC_LENGTH = 4 };
+
+/* TODO Think of a better way than a global variable */
 static uint node_count = 0;
 
 static uint8_t zero = 0;
 static uint8_t one = 1;
+
+static void dnslib_labels_dump_binary(dnslib_dname_t *dname, FILE *f)
+{
+	debug_zp("label count: %d\n", dname->label_count);
+	fwrite(&(dname->label_count), sizeof(dname->label_count), 1, f);
+//	hex_print(dname->labels, dname->label_count);
+	fwrite(dname->labels, sizeof(uint8_t), dname->label_count, f);
+}
+
+static void dnslib_dname_dump_binary(dnslib_dname_t *dname, FILE *f)
+{
+	debug_zp("size written bytes: %d\n", fwrite(&(dname->size), sizeof(uint8_t), 1, f));
+	fwrite(dname->name, sizeof(uint8_t), dname->size, f);
+	debug_zp("dname size: %d\n", dname->size);
+	dnslib_labels_dump_binary(dname, f);
+}
 
 static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
                                      uint32_t type, FILE *f)
@@ -27,6 +45,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
 			assert(rdata->items[i].dname != NULL);
 			if (rdata->items[i].dname->node) { //IN THE ZONE DNAME
+				debug_zp("IN THE ZONE \n");
 				fwrite(&one, sizeof(one), 1, f);
 				fwrite(&(rdata->items[i].dname->node),
 				       sizeof(void *), 1, f);
@@ -34,11 +53,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 				debug_zp("not in zone: %s\n",
 				       dnslib_dname_to_str((rdata->items[i].dname)));
 				fwrite(&zero, sizeof(zero), 1, f);
-				fwrite(&(rdata->items[i].dname->size),
-				       sizeof(uint), 1, f);
-				fwrite(rdata->items[i].dname->name,
-				       sizeof(uint8_t),
-				       rdata->items[i].dname->size, f);
+				dnslib_dname_dump_binary(rdata->items[i].dname, f);
 			}
 
 		} else {
@@ -139,12 +154,8 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *fp)
 	node_count++;
 	/* first write dname */
 	assert(node->owner != NULL);
-	fwrite(&((node->owner->size)), sizeof(uint8_t), 1, f);
 
-	debug_zp("Size written: %u\n", node->owner->size);
-
-	fwrite(node->owner->name, sizeof(uint8_t),
-	       node->owner->size, f);
+	dnslib_dname_dump_binary(node->owner, f);
 
 	fwrite(&(node->owner->node), sizeof(void *), 1, f);
 
@@ -218,14 +229,15 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 		return -1;
 	}
 
+	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101};
+	                                           /*c   u    t    e */
+
+	fwrite(&MAGIC, sizeof(uint8_t), MAGIC_LENGTH, f);
+
 	fwrite(&node_count, sizeof(node_count), 1, f);
 	fwrite(&node_count, sizeof(node_count), 1, f);
 
-	fwrite(&(zone->apex->owner->size),
-	       sizeof(uint8_t), 1, f);
-
-	fwrite(zone->apex->owner->name, sizeof(uint8_t),
-	       zone->apex->owner->size, f);
+	dnslib_dname_dump_binary(zone->apex->owner, f);
 	
 	/* TODO is there a way how to stop the traversal upon error? */
 	dnslib_zone_tree_apply_inorder(zone, dnslib_node_dump_binary, f);
@@ -235,7 +247,7 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 	node_count = 0;
 	dnslib_zone_nsec3_apply_inorder(zone, dnslib_node_dump_binary, f);
 
-	rewind(f);
+	fseek(f, MAGIC_LENGTH, SEEK_SET);
 	
 	fwrite(&tmp_count, sizeof(tmp_count), 1, f);
 	fwrite(&node_count, sizeof(node_count), 1, f);

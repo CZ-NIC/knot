@@ -276,21 +276,6 @@ void dnslib_response_set_aa(dnslib_response_t *response);
 int dnslib_response_add_tmp_rrset(dnslib_response_t *response,
                                   dnslib_rrset_t *tmp_rrset);
 
-short dnslib_response_answer_rrset_count(const dnslib_response_t *response);
-
-short dnslib_response_authority_rrset_count(const dnslib_response_t *response);
-
-short dnslib_response_additional_rrset_count(const dnslib_response_t *response);
-
-const dnslib_rrset_t *dnslib_response_answer_rrset(
-	const dnslib_response_t *response, short pos);
-
-const dnslib_rrset_t *dnslib_response_authority_rrset(
-	dnslib_response_t *response, short pos);
-
-const dnslib_rrset_t *dnslib_response_additional_rrset(
-	dnslib_response_t *response, short pos);
-
 /*!
  * \brief Converts the response to wire format.
  *

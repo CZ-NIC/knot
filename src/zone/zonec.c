@@ -1389,7 +1389,7 @@ int process_rr(void)
 	/* We only support IN class */
 	if (current_rrset->rclass != DNSLIB_CLASS_IN) {
 		fprintf(stderr, "only class IN is supported");
-		return -1;
+		return -3;
 	}
 //TODO
 	/* Make sure the maximum RDLENGTH does not exceed 65535 bytes.	*/
@@ -1465,7 +1465,7 @@ int process_rr(void)
 
 		node = last_node;
 		if (node_add_func(zone, node) != 0) {
-			return -1; 
+			return -1;
 		//no check yet in zparser ... it just won't be added
 		}
 		dnslib_dname_t *chopped =
@@ -1525,12 +1525,12 @@ int process_rr(void)
 		assert(rrset != NULL);
 
 		if (dnslib_rrset_add_rdata(rrset, current_rrset->rdata) != 0) {
-			return -1;
+			return -2;
 		}
 
 		/* Add it */
 		if (dnslib_node_add_rrset(node, rrset) != 0) {
-			return -1;
+			return -2;
 		}
 	} else {
 		if (current_rrset->type !=
@@ -1639,13 +1639,15 @@ void zone_read(char *name, const char *zonefile)
 
 	printf("rdata adjusted\n");
 
+//	dnslib_zone_dump(parser->current_zone);
+
 	dnslib_zone_dump_binary(parser->current_zone, dump_file_name);
 
-	//TODO remove origin parameter
-
+/*	//TODO remove origin parameter
+*/
 	dnslib_zone_t *new_zone = dnslib_zone_load(dump_file_name);
 
-	dnslib_zone_dump(new_zone);
+//	dnslib_zone_dump(new_zone);
 
 	dnslib_zone_deep_free(&(parser->current_zone));
 
