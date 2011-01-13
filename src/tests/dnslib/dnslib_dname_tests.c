@@ -152,8 +152,6 @@ static int check_domain_name(const dnslib_dname_t *dname,
 		    test_domains[i].label_count) != 0) {
 		diag("Label offsets of the created domain name are wrong.\n");
 		++errors;
-	} else {
-		note("Labels OK");
 	}
 
 	if (check_node) {
