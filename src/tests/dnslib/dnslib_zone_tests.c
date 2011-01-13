@@ -27,20 +27,20 @@ struct zone_test_node {
 };
 
 static struct zone_test_node test_apex =
-	{{(uint8_t *)"\3com\0", 5}, (dnslib_node_t *)NULL};
+{{(uint8_t *)"\3com\0", 5, (uint8_t *)"\x0", 1}, (dnslib_node_t *)NULL};
 
 static struct zone_test_node test_nodes_bad[TEST_NODES_BAD] = {
-	{{(uint8_t *)"\5other\6domain\0", 14}, (dnslib_node_t *)NULL}
+	{{(uint8_t *)"\5other\6domain\0", 14, (uint8_t *)"\x0\x6", 2}, (dnslib_node_t *)NULL}
 };
 
 static struct zone_test_node test_nodes_good[TEST_NODES_GOOD] = {
-	{{(uint8_t *)"\7example\3com\0", 13}, (dnslib_node_t *)NULL},
-	{{(uint8_t *)"\3www\7example\3com\0", 17}, (dnslib_node_t *)NULL},
-	{{(uint8_t *)"\7another\6domain\3com\0", 20}, (dnslib_node_t *)NULL},
-	{{(uint8_t *)"\5mail1\7example\3com\0", 19}, (dnslib_node_t *)NULL},
-	{{(uint8_t *)"\5mail2\7example\3com\0", 19}, (dnslib_node_t *)NULL},
-	{{(uint8_t *)"\3smb\7example\3com\0", 17}, (dnslib_node_t *)NULL},
-	{{(uint8_t *)"\4smtp\7example\3com\0", 18}, (dnslib_node_t *)NULL},
+	{{(uint8_t *)"\7example\3com\0", 13, (uint8_t *)"\x0\x8", 2}, (dnslib_node_t *)NULL},
+	{{(uint8_t *)"\3www\7example\3com\0", 17, (uint8_t *)"\x0\x4\xC", 3}, (dnslib_node_t *)NULL},
+	{{(uint8_t *)"\7another\6domain\3com\0", 20, (uint8_t *)"\x0\x8\xF", 3}, (dnslib_node_t *)NULL},
+	{{(uint8_t *)"\5mail1\7example\3com\0", 19, (uint8_t *)"\x0\x6\xE", 3}, (dnslib_node_t *)NULL},
+	{{(uint8_t *)"\5mail2\7example\3com\0", 19, (uint8_t *)"\x0\x6\xE", 3}, (dnslib_node_t *)NULL},
+	{{(uint8_t *)"\3smb\7example\3com\0", 17, (uint8_t *)"\x0\x4\xC", 3}, (dnslib_node_t *)NULL},
+	{{(uint8_t *)"\4smtp\7example\3com\0", 18, (uint8_t *)"\x0\x5\xD", 3}, (dnslib_node_t *)NULL},
 };
 
 static int test_zone_check_node(const dnslib_node_t *node,
@@ -52,6 +52,10 @@ static int test_zone_check_node(const dnslib_node_t *node,
 
 static int test_zone_create(dnslib_zone_t **zone)
 {
+//	dnslib_dname_t *dname = dnslib_dname_new_from_wire(
+//		test_apex.owner.name, test_apex.owner.size, NULL);
+//	assert(dname);
+
 	dnslib_node_t *node = dnslib_node_new(&test_apex.owner,
 	                                      test_apex.parent);
 	if (node == NULL) {
@@ -63,11 +67,13 @@ static int test_zone_create(dnslib_zone_t **zone)
 
 	if ((*zone) == NULL) {
 		diag("zone: Failed to create zone.");
+		dnslib_node_free(&node, 1);
 		return 0;
 	}
 
 	if ((*zone)->apex != node) {
 		diag("zone: Zone apex not set right.");
+		dnslib_node_free(&node, 1);
 		return 0;
 	}
 
@@ -125,6 +131,8 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 
 	//note("NULL zone");
 
+	note("Inserting into NULL zone...\n");
+
 	dnslib_node_t *node = dnslib_node_new(&test_nodes_good[0].owner,
 	                                      test_nodes_good[0].parent);
 	if (node == NULL) {
@@ -142,6 +150,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 	dnslib_node_free(&node, 0);
 
 	//note("NULL node");
+	note("Inserting NULL node...\n");
 
 	if ((res = ((nsec3) ? dnslib_zone_add_nsec3_node(zone, NULL)
 		: dnslib_zone_add_node(zone, NULL))) != -1) {
@@ -151,6 +160,8 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 	}
 
 	if (!nsec3) {
+		//note("Inserting Apex again...\n");
+
 		node = dnslib_node_new(&test_apex.owner, test_apex.parent);
 		if (node == NULL) {
 			diag("zone: Could not create node.");
@@ -160,8 +171,8 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 		//note("Apex again");
 
 		if ((res = dnslib_zone_add_node(zone, node)) != -2) {
-			diag("zone: Inserting zone apex again did not result in proper"
-			     "return value (%d instead of -2)", res);
+			diag("zone: Inserting zone apex again did not result in"
+			     "proper return value (%d instead of -2)", res);
 			++errors;
 		}
 
@@ -173,6 +184,14 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 	if (!nsec3
 	    && !test_zone_check_node(dnslib_zone_apex(zone), &test_apex)) {
 		diag("zone: Apex of zone not right.");
+//		diag("Apex owner: %s (%p), apex parent: %p\n",
+//		     dnslib_dname_to_str(dnslib_zone_apex(zone)->owner),
+//		     dnslib_zone_apex(zone)->owner,
+//		     dnslib_zone_apex(zone)->parent);
+//		diag("Should be: owner: %s (%p), parent: %p\n",
+//		     dnslib_dname_to_str(&test_apex.owner),
+//		     &test_apex.owner,
+//		     test_apex.parent);
 		++errors;
 	}
 	//++nodes;
