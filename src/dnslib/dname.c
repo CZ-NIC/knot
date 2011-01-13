@@ -668,6 +668,7 @@ dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2)
 	uint8_t *old_labels = d1->labels;
 	d1->labels = new_labels;
 	free(old_labels);
+	d1->label_count += d2->label_count;
 
 	uint8_t *old_name = d1->name;
 	d1->name = new_dname;
