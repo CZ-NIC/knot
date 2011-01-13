@@ -178,7 +178,29 @@ static int test_node_delete()
 	return 0;
 }
 
-static const int DNSLIB_NODE_TEST_COUNT = 6;
+static int test_node_set_parent()
+{
+	dnslib_node_t *tmp_parent = (dnslib_node_t *)0xABCDEF;
+	int errors = 0;
+
+	dnslib_node_t *tmp_node;
+
+	for (int i = 0; i < TEST_NODES; i++) {
+		tmp_node = dnslib_node_new(&test_nodes[i].owner,
+		                      test_nodes[i].parent);
+
+		dnslib_node_set_parent(tmp_node, tmp_parent);
+
+		if (tmp_node->parent != tmp_node->parent) {
+			diag("Parent node is wrongly set.");
+			errors++;
+		}
+		dnslib_node_free(&tmp_node, 0);
+	}
+	return (errors == 0);
+}
+
+static const int DNSLIB_NODE_TEST_COUNT = 7;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -210,8 +232,8 @@ static int dnslib_node_tests_run(int argc, char *argv[])
 	ok((res = test_node_get_parent()), "node: get parent");
 	res_final *= res;
 
-//	ok((res = test_node_set_parent()), "node: set parent");
-//	res_final *= res;
+	ok((res = test_node_set_parent()), "node: set parent");
+	res_final *= res;
 
 	ok((res = test_node_sorting()), "node: sort");
 	res_final *= res;
