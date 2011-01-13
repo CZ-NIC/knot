@@ -264,11 +264,12 @@ static void ns_follow_cname(const dnslib_node_t **node,
 		}
 
 		dnslib_response_add_rrset_answer(resp, rrset, 1);
-
+DEBUG_NS(
 		char *name = dnslib_dname_to_str(dnslib_rrset_owner(rrset));
 		debug_ns("CNAME record for owner %s put to answer section.\n",
 			 name);
 		free(name);
+);
 
 		// get the name from the CNAME RDATA
 		const dnslib_dname_t *cname = dnslib_rdata_cname_name(
@@ -337,13 +338,15 @@ static void ns_put_rrset(ldns_rr_list *rrset, const ldns_rdf *name,
 
 /*----------------------------------------------------------------------------*/
 
-static void ns_put_answer(const dnslib_node_t *node, const dnslib_dname_t *name,
+static int ns_put_answer(const dnslib_node_t *node, const dnslib_dname_t *name,
                           uint16_t type, dnslib_response_t *resp)
 {
+	int added = 0;
+DEBUG_NS(
 	char *name_str = dnslib_dname_to_str(node->owner);
 	debug_ns("Putting answers from node %s.\n", name_str);
 	free(name_str);
-
+);
 	if (type == DNSLIB_RRTYPE_ANY) {
 		// TODO
 	} else {
@@ -362,9 +365,11 @@ static void ns_put_answer(const dnslib_node_t *node, const dnslib_dname_t *name,
 			}
 
 			dnslib_response_add_rrset_answer(resp, rrset, 1);
+			added = 1;
 		}
 	}
 	dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
+	return added;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -433,18 +438,26 @@ static void ns_put_additional(const zn_node_t *node, ldns_pkt *response,
 
 /*----------------------------------------------------------------------------*/
 
-static void ns_put_authority_ns(const zdb_zone_t *zone, ldns_pkt *resp)
+static void ns_put_authority_ns(const dnslib_zone_t *zone,
+                                dnslib_response_t *resp)
 {
-	ldns_rr_list *rrset = zn_find_rrset(zone->apex, LDNS_RR_TYPE_NS);
-	ns_try_put_rrset(rrset, LDNS_SECTION_AUTHORITY, 0, resp);
+	const dnslib_rrset_t *ns_rrset =
+		dnslib_node_rrset(zone->apex, DNSLIB_RRTYPE_NS);
+	assert(ns_rrset != NULL);
+
+	dnslib_response_add_rrset_authority(resp, ns_rrset, 0);
 }
 
 /*----------------------------------------------------------------------------*/
 
-static void ns_put_authority_soa(const zdb_zone_t *zone, ldns_pkt *resp)
+static void ns_put_authority_soa(const dnslib_zone_t *zone,
+                                 dnslib_response_t *resp)
 {
-	ldns_rr_list *rrset = zn_find_rrset(zone->apex, LDNS_RR_TYPE_SOA);
-	ns_try_put_rrset(rrset, LDNS_SECTION_AUTHORITY, 0, resp);
+	const dnslib_rrset_t *soa_rrset =
+		dnslib_node_rrset(zone->apex, DNSLIB_RRTYPE_SOA);
+	assert(soa_rrset != NULL);
+
+	dnslib_response_add_rrset_authority(resp, soa_rrset, 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -555,16 +568,14 @@ static void ns_answer_from_node(const dnslib_node_t *node,
                                 const dnslib_dname_t *qname, uint16_t qtype,
                                 dnslib_response_t *resp)
 {
-	// TODO!!!
-
 	debug_ns("Putting answers from found node to the response...\n");
-	ns_put_answer(node, qname, qtype, resp);
+	int answers = ns_put_answer(node, qname, qtype, resp);
 
-//	if (ldns_pkt_ancount(response) == 0) {  // if NODATA response, put SOA
-//		ns_put_authority_soa(zone, response);
-//	} else {  // else put authority NS
-//		ns_put_authority_ns(zone, response);
-//	}
+	if (answers == 0) {  // if NODATA response, put SOA
+		ns_put_authority_soa(zone, resp);
+	} else {  // else put authority NS
+		ns_put_authority_ns(zone, resp);
+	}
 
 //	if (ns_additional_needed(qtype)) {
 //		ns_put_additional(node, response, copied_rrs);
@@ -598,11 +609,11 @@ static dnslib_rrset_t *ns_cname_from_dname(const dnslib_rrset_t *dname_rrset,
 	dnslib_dname_t *cname = dnslib_dname_replace_suffix(qname,
 	      dnslib_dname_size(dnslib_rrset_owner(dname_rrset)),
 	      dnslib_rdata_get_item(dnslib_rrset_rdata(dname_rrset), 0)->dname);
-
+DEBUG_NS(
 	char *name = dnslib_dname_to_str(cname);
 	debug_ns("CNAME canonical name: %s.\n", name);
 	free(name);
-
+);
 	dnslib_rdata_t *cname_rdata = dnslib_rdata_new();
 	dnslib_rdata_item_t cname_rdata_item;
 	cname_rdata_item.dname = cname;
@@ -636,10 +647,11 @@ static void ns_process_dname(const dnslib_rrset_t *dname_rrset,
                              const dnslib_dname_t *qname,
                              dnslib_response_t *resp)
 {
+DEBUG_NS(
 	char *name = dnslib_dname_to_str(dnslib_rrset_owner(dname_rrset));
 	debug_ns("Processing DNAME for owner %s...\n", name);
 	free(name);
-
+);
 	// TODO: check the number of RRs in the RRSet??
 
 	// put the DNAME RRSet into the answer
@@ -843,24 +855,30 @@ static void ns_answer_from_zone(const dnslib_zone_t *zone,
 	const dnslib_node_t *closest_encloser = NULL;
 	int cname = 0;
 	//dnslib_dname_t *qname_old = NULL;
+	int auth_soa = 0;
 
 	while (1) {
 		//qname_old = dnslib_dname_copy(qname);
 
 		int exact_match = dnslib_zone_find_dname(zone, qname, &node,
 		                                         &closest_encloser);
-
-		char *name = dnslib_dname_to_str(node->owner);
-		debug_ns("zone_find_dname() returned node %s ", name);
-		free(name);
-		name = dnslib_dname_to_str(closest_encloser->owner);
-		debug_ns("and closest encloser %s.\n", name);
-		free(name);
-
+DEBUG_NS(
+		if (node) {
+			char *name = dnslib_dname_to_str(node->owner);
+			debug_ns("zone_find_dname() returned node %s ", name);
+			free(name);
+			name = dnslib_dname_to_str(closest_encloser->owner);
+			debug_ns("and closest encloser %s.\n", name);
+			free(name);
+		} else {
+			debug_ns("zone_find_dname() returned no node.\n");
+		}
+);
 		if (exact_match == -2) {  // name not in the zone
 			// possible only if we followed cname
 			assert(cname != 0);
 			dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
+			auth_soa = 1;
 			break;
 		}
 
@@ -879,6 +897,7 @@ static void ns_answer_from_zone(const dnslib_zone_t *zone,
 				                  DNSLIB_RRTYPE_DNAME);
 			if (dname_rrset != NULL) {
 				ns_process_dname(dname_rrset, qname, resp);
+				auth_soa = 1;
 				break;
 			}
 			// else check for a wildcard child
@@ -886,6 +905,7 @@ static void ns_answer_from_zone(const dnslib_zone_t *zone,
 				dnslib_node_wildcard_child(closest_encloser);
 
 			if (wildcard_node == NULL) {
+				auth_soa = 1;
 				if (cname == 0) {
 					// return NXDOMAIN
 					dnslib_response_set_rcode(resp,
@@ -904,31 +924,43 @@ static void ns_answer_from_zone(const dnslib_zone_t *zone,
 		// now we have the node for answering
 
 		if (dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME) != NULL) {
+DEBUG_NS(
 			char *name = dnslib_dname_to_str(node->owner);
 			debug_ns("Node %s has CNAME record, resolving...\n",
 				 name);
 			free(name);
-
+);
 			const dnslib_dname_t *act_name = qname;
 			ns_follow_cname(&node, &act_name, resp);
-
+DEBUG_NS(
 			name = dnslib_dname_to_str(act_name);
 			debug_ns("Canonical name: %s, node found: %p\n",
 			         name, node);
 			free(name);
-
+);
 			if (act_name != qname) {
 				qname = act_name;
 			}
 			cname = 1;
+
+			// otherwise search for the new name
 			if (node == NULL) {
 				continue; // infinite loop better than goto? :)
+			}
+			// if the node is delegation point, return referral
+			if (dnslib_node_is_deleg_point(node)) {
+				ns_referral(node, resp);
+				break;
 			}
 		}
 
 		ns_answer_from_node(node, zone, qname, qtype, resp);
 		dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
 		break;
+	}
+
+	if (auth_soa) {
+		ns_put_authority_soa(zone, resp);
 	}
 
 	//dnslib_dname_free(&qname_old);
@@ -941,11 +973,11 @@ static void ns_answer(dnslib_zonedb_t *db, dnslib_response_t *resp)
 	// TODO: the copying is not needed maybe
 	dnslib_dname_t *qname = /*dnslib_dname_copy(*/resp->question.qname/*)*/;
 	uint16_t qtype = resp->question.qtype;
-
+DEBUG_NS(
 	char *name_str = dnslib_dname_to_str(qname);
 	debug_ns("Trying to find zone for QNAME %s\n", name_str);
 	free(name_str);
-
+);
 	// find zone in which to search for the name
 	const dnslib_zone_t *zone =
 		ns_get_zone_for_qname(db, qname, qtype);
@@ -957,11 +989,11 @@ static void ns_answer(dnslib_zonedb_t *db, dnslib_response_t *resp)
 		//dnslib_dname_free(&qname);
 		return;
 	}
-
+DEBUG_NS(
 	name_str = dnslib_dname_to_str(zone->apex->owner);
 	debug_ns("Found zone for QNAME %s\n", name_str);
 	free(name_str);
-
+);
 	//debug_ns("Size of response packet: %u\n", ldns_pkt_size(response));
 
 	ns_answer_from_zone(zone, qname, qtype, resp);
