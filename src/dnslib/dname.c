@@ -11,6 +11,22 @@
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
+
+static int dnslib_dname_set(dnslib_dname_t *dname, uint8_t *wire,
+                            short wire_size, const uint8_t *labels,
+                            short label_count)
+{
+	dname->name = wire;
+	dname->size = wire_size;
+	dname->label_count = label_count;
+
+	dname->labels = (uint8_t *)malloc(dname->label_count * sizeof(uint8_t));
+	CHECK_ALLOC_LOG(dname->labels, -1);
+	memcpy(dname->labels, labels, dname->label_count);
+
+	return 0;
+}
+
 /*!
  * \brief Converts domain name from string representation to wire format.
  *
@@ -58,7 +74,10 @@ static int dnslib_dname_str_to_wire(const char *name, uint size,
 
 	if (root) {
 		*wire = '\0';
-		return 1;
+		label_count = 1;
+		labels[0] = 0;
+		return dnslib_dname_set(dname, wire, wire_size, labels,
+		                        label_count);
 	}
 
 	const uint8_t *ch = (const uint8_t *)name;
@@ -106,15 +125,7 @@ static int dnslib_dname_str_to_wire(const char *name, uint size,
 		labels[label_count++] = label_start - wire;
 	}
 
-	dname->name = wire;
-	dname->size = wire_size;
-	dname->label_count = label_count - 1;
-
-	dname->labels = (uint8_t *)malloc(dname->label_count * sizeof(uint8_t));
-	CHECK_ALLOC_LOG(dname->labels, -1);
-	memcpy(dname->labels, labels, dname->label_count);
-
-	return 0;
+	return dnslib_dname_set(dname, wire, wire_size, labels, label_count);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -167,10 +178,20 @@ static int dnslib_dname_find_labels(dnslib_dname_t *dname)
 		pos += *pos + 1;
 	}
 
-	if (*pos != '0' || pos - name != size) {
-		debug_dnslib_dname("Wrong wire format of domain name!\n");
-		return -1;
-	}
+	// TODO: how to check if the domain name has right format?
+//	if (pos - name < size && *pos != '0') {
+//		debug_dnslib_dname("Wrong wire format of domain name!\n");
+//		debug_dnslib_dname("Position: %d, character: %d, expected"
+//				   " size: %d\n", pos - name, *pos, size);
+//		return -1;
+//	}
+
+	dname->labels = (uint8_t *)malloc(label_count * sizeof(uint8_t));
+	CHECK_ALLOC_LOG(dname->labels, -1);
+
+	memcpy(dname->labels, labels, label_count);
+	dname->label_count = label_count;
+
 	return 0;
 }
 
@@ -192,7 +213,7 @@ dnslib_dname_t *dnslib_dname_new()
 	dname->size = 0;
 	dname->node = NULL;
 	dname->labels = NULL;
-	dname->label_count = 0;
+	dname->label_count = -1;
 
 	return dname;
 }
@@ -215,7 +236,12 @@ dnslib_dname_t *dnslib_dname_new_from_str(char *name, uint size,
 	}
 
 	dnslib_dname_str_to_wire(name, size, dname);
-	debug_dnslib_dname("Creating dname with size: %d\n", dname->size);
+	debug_dnslib_dname("Created dname with size: %d\n", dname->size);
+	debug_dnslib_dname("Label offsets: ");
+	for (int i = 0; i < dname->label_count; ++i) {
+		debug_dnslib_dname("%d, ", dname->labels[i]);
+	}
+	debug_dnslib_dname("\n");
 
 	if (dname->size <= 0) {
 		log_warning("Could not parse domain name from string: '%.*s'\n",
@@ -391,6 +417,14 @@ dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname)
 int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
                               const dnslib_dname_t *domain)
 {
+	char *name1 = dnslib_dname_to_str(sub);
+	char *name2 = dnslib_dname_to_str(domain);
+
+	debug_dnslib_dname("Checking if %s is subdomain of %s\n",
+	                   name1, name2);
+	free(name1);
+	free(name2);
+
 	if (sub == domain) {
 		return 0;
 	}
@@ -416,12 +450,18 @@ int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
 	int l1 = sub->label_count;
 	int l2 = domain->label_count;
 
+	debug_dnslib_dname("Label counts: %d and %d\n", l1, l2);
+
 	if (l1 <= l2) {  // if sub does not have more labes than domain
 		return 0;  // it is not its subdomain
 	}
 
 	// compare labels from last to first
 	while (l1 > 0 && l2 > 0) {
+		debug_dnslib_dname("Comparing labels %d and %d\n",
+				   l1 - 1, l2 - 1);
+		debug_dnslib_dname(" at offsets: %d and %d\n",
+				   sub->labels[l1 - 1], domain->labels[l2 - 1]);
 		// if some labels do not match
 		if (dnslib_dname_compare_labels(&sub->name[sub->labels[--l1]],
 		                    &domain->name[domain->labels[--l2]]) != 0) {
@@ -537,6 +577,11 @@ void dnslib_dname_free(dnslib_dname_t **dname)
 	if ((*dname)->name != NULL) {
 		free((*dname)->name);
 	}
+
+	if((*dname)->labels != NULL) {
+		free((*dname)->labels);
+	}
+
 	free(*dname);
 	*dname = NULL;
 }
@@ -570,9 +615,14 @@ int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2)
 
 	int l1 = d1->label_count;
 	int l2 = d2->label_count;
+	debug_dnslib_dname("Label counts: %d and %d\n", l1, l2);
 
 	// compare labels from last to first
 	while (l1 > 0 && l2 > 0) {
+		debug_dnslib_dname("Comparing labels %d and %d\n",
+				   l1 - 1, l2 - 1);
+		debug_dnslib_dname(" at offsets: %d and %d\n",
+				   d1->labels[l1 - 1], d2->labels[l2 - 1]);
 		int res = dnslib_dname_compare_labels(
 		                   &d1->name[d1->labels[--l1]],
 		                   &d2->name[d2->labels[--l2]]);
@@ -607,8 +657,13 @@ dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2)
 
 	// allocate new space
 	uint8_t *new_dname = (uint8_t *)malloc(d1->size + d2->size);
-	if (new_dname == NULL) {
+	CHECK_ALLOC_LOG(new_dname, NULL);
+
+	uint8_t *new_labels = (uint8_t *)malloc(d1->label_count
+	                                        + d2->label_count);
+	if (new_labels == NULL) {
 		ERR_ALLOC_FAILED;
+		free(new_dname);
 		return NULL;
 	}
 
@@ -622,10 +677,21 @@ dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2)
 
 	memcpy(new_dname + d1->size, d2->name, d2->size);
 
+	// update labels
+	memcpy(new_labels, d1->labels, d1->label_count);
+	for (int i = 0; i < d2->label_count; ++i) {
+		new_labels[d1->label_count + i] = d2->labels[i] + d1->size;
+	}
+
+	uint8_t *old_labels = d1->labels;
+	d1->labels = new_labels;
+	free(old_labels);
+
 	uint8_t *old_name = d1->name;
 	d1->name = new_dname;
-	d1->size += d2->size;
 	free(old_name);
+
+	d1->size += d2->size;
 
 	return d1;
 }
