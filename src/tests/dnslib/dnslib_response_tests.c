@@ -89,7 +89,7 @@ static dnslib_dname_t DNAMES[DNAMES_COUNT] =
 
 static dnslib_rdata_item_t ITEMS[ITEMS_COUNT] =
 	{ {.dname = &DNAMES[1]},
-          {.raw_data = (uint8_t *)"192.168.1.1"} };
+          {.raw_data = {0x12, 0x13, 0x01, 0x01}} };
 
 static dnslib_rdata_t RDATA[RDATA_COUNT] = { {&ITEMS[0], 1, &RDATA[0]} };
 
