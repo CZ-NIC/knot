@@ -396,7 +396,7 @@ static void dnslib_response_rr_to_wire(const uint8_t *owner_wire,
 		case DNSLIB_RDATA_WF_COMPRESSED_DNAME: {
 			short size = 0;
 			dnslib_response_compress_dname(
-				dnslib_rdata_get_item(rdata, i)->dname,
+				dnslib_rdata_item(rdata, i)->dname,
 				compr, *rrset_wire, &size);
 			debug_dnslib_response("Compressed dname size: %d\n",
 			                      size);
@@ -409,7 +409,7 @@ static void dnslib_response_rr_to_wire(const uint8_t *owner_wire,
 		case DNSLIB_RDATA_WF_LITERAL_DNAME: {
 			// save whole domain name
 			dnslib_dname_t *dname =
-				dnslib_rdata_get_item(rdata, i)->dname;
+				dnslib_rdata_item(rdata, i)->dname;
 			memcpy(*rrset_wire, dname->name, dname->size);
 			debug_dnslib_response("Uncompressed dname size: %d\n",
 			                      dname->size);
@@ -420,7 +420,7 @@ static void dnslib_response_rr_to_wire(const uint8_t *owner_wire,
 		case DNSLIB_RDATA_WF_BINARYWITHLENGTH: {
 			// copy also the rdata item size
 			uint8_t *raw_data =
-				dnslib_rdata_get_item(rdata, i)->raw_data;
+				dnslib_rdata_item(rdata, i)->raw_data;
 			memcpy(*rrset_wire, raw_data, raw_data[0] + 1);
 			debug_dnslib_response("Raw data size: %d\n",
 			                      raw_data[0] + 1);
@@ -431,7 +431,7 @@ static void dnslib_response_rr_to_wire(const uint8_t *owner_wire,
 		default: {
 			// copy just the rdata item data (without size)
 			uint8_t *raw_data =
-				dnslib_rdata_get_item(rdata, i)->raw_data;
+				dnslib_rdata_item(rdata, i)->raw_data;
 			memcpy(*rrset_wire, raw_data + 1, raw_data[0]);
 			debug_dnslib_response("Raw data size: %d\n",
 			                      raw_data[0]);
