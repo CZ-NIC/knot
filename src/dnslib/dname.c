@@ -416,9 +416,10 @@ dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname)
 
 	memcpy(parent->name, &dname->name[dname->name[0] + 1], parent->size);
 
+	short first_label_length = dname->labels[1];
+
 	for (int i = 0; i < dname->label_count - 1; ++i) {
-		parent->labels[i] = dname->labels[i + 1]
-		                    - (dname->labels[i + 1] - dname->labels[i]);
+		parent->labels[i] = dname->labels[i + 1] - first_label_length;
 	}
 	parent->label_count = dname->label_count - 1;
 
@@ -430,7 +431,6 @@ dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname)
 int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
                               const dnslib_dname_t *domain)
 {
-DEBUG_DNSLIB_DNAME(
 	char *name1 = dnslib_dname_to_str(sub);
 	char *name2 = dnslib_dname_to_str(domain);
 
@@ -438,7 +438,7 @@ DEBUG_DNSLIB_DNAME(
 	                   name1, name2);
 	free(name1);
 	free(name2);
-);
+
 	if (sub == domain) {
 		return 0;
 	}
@@ -545,7 +545,6 @@ dnslib_dname_t *dnslib_dname_replace_suffix(const dnslib_dname_t *dname,
                                             int size,
                                             const dnslib_dname_t *suffix)
 {
-DEBUG_DNSLIB_DNAME(
 	char *name = dnslib_dname_to_str(dname);
 	debug_dnslib_dname("Replacing suffix of name %s, size %d with ", name,
 	                   size);
@@ -553,20 +552,12 @@ DEBUG_DNSLIB_DNAME(
 	name = dnslib_dname_to_str(suffix);
 	debug_dnslib_dname("%s (size %d)\n", name, suffix->size);
 	free(name);
-);
-	dnslib_dname_t *res = dnslib_dname_new();
-	CHECK_ALLOC(res, NULL);
-
-	res->size = dname->size - size + suffix->size;
-
-=======
 
 	dnslib_dname_t *res = dnslib_dname_new();
 	CHECK_ALLOC(res, NULL);
 
 	res->size = dname->size - size + suffix->size;
 
->>>>>>> origin/dnslib-new
 	debug_dnslib_dname("Allocating %d bytes...\n", res->size);
 	res->name = (uint8_t *)malloc(res->size);
 	if (res->name == NULL) {
@@ -613,7 +604,6 @@ void dnslib_dname_free(dnslib_dname_t **dname)
 
 int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2)
 {
-DEBUG_DNSLIB_DNAME(
 	char *name1 = dnslib_dname_to_str(d1);
 	char *name2 = dnslib_dname_to_str(d2);
 
@@ -621,7 +611,7 @@ DEBUG_DNSLIB_DNAME(
 	                   name1, name2);
 	free(name1);
 	free(name2);
-);
+
 	if (d1 == d2) {
 		return 0;
 	}
@@ -702,8 +692,6 @@ dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2)
 	memcpy(new_dname + d1->size, d2->name, d2->size);
 
 	// update labels
-	debug_dnslib_dname("Copying label offsets. Label counts: %d and %d\n",
-			   d1->label_count, d2->label_count);
 	memcpy(new_labels, d1->labels, d1->label_count);
 	for (int i = 0; i < d2->label_count; ++i) {
 		new_labels[d1->label_count + i] = d2->labels[i] + d1->size;
