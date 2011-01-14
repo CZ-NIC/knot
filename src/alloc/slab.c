@@ -122,7 +122,7 @@ static void* slab_depot_alloc(size_t bufsize)
 
 static inline void slab_depot_free(void* page)
 {
-	if (_depot_g.available < SLAB_DEPOT_COUNT) {
+	if (_depot_g.available < SLAB_DEPOT_SIZE) {
 		_depot_g.cache[_depot_g.available++] = page;
 	} else {
 		free(page);
