@@ -613,7 +613,6 @@ static int test_rrset_getters(uint type)
 		                             test_rrsets[i].ttl);
 
 		dnslib_rrset_add_rdata(rrsets[i], test_rrsets[i].rdata);
-
 	}
 
 	switch (type) {
@@ -647,12 +646,49 @@ static int test_rrset_getters(uint type)
 		}
 	} /* switch */
 
+	for (int i = 0; i < TEST_RRSETS; i++) {
+		dnslib_dname_free(&rrsets[i]->owner);
+		dnslib_rrset_free(&rrsets[i]);
+	}
+
+
+	return (errors == 0);
+}
+
+static int test_rrset_deep_free()
+{
+	int errors = 0;
+
+	dnslib_rrset_t  *tmp_rrset;
+	dnslib_dname_t *owner;
+	for (int i = 0; i < TEST_RRSETS; i++) {
+		owner = dnslib_dname_new_from_str(
+		                            test_rrsets[i].owner,
+		                            strlen(test_rrsets[i].owner),
+		                            NODE_ADDRESS);
+		if (owner == NULL) {
+			diag("Error creating owner domain name!");
+			return 0;
+		}
+
+		tmp_rrset = dnslib_rrset_new(owner,
+		                             test_rrsets[i].type,
+		                             test_rrsets[i].rclass,
+		                             test_rrsets[i].ttl);
+
+		dnslib_rrset_add_rdata(tmp_rrset, test_rrsets[i].rdata);
+
+		dnslib_rrset_deep_free(&tmp_rrset, 1);
+
+		errors += (tmp_rrset != NULL);
+	}
+
 	return (errors == 0);
 }
 
 /*----------------------------------------------------------------------------*/
 
-static const int DNSLIB_RRSET_TEST_COUNT = 12;
+static const int DNSLIB_RRSET_TEST_COUNT = 13;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -675,7 +711,7 @@ static int dnslib_rrset_tests_run(int argc, char *argv[])
 	ok(res, "rrset: create");
 	res_final *= res;
 
-	skip(!res, 10);
+	skip(!res, 11);
 
 	todo();
 
@@ -714,9 +750,13 @@ static int dnslib_rrset_tests_run(int argc, char *argv[])
 	ok(res = test_rrset_merge(), "rrset: rdata merging");
 	res_final *= res;
 
+	ok(res = test_rrset_deep_free(), "rrset: deep free");
+	res_final *= res;
+
 	endskip;	/* !res_create */
 
-	dnslib_rrtype_descriptor_t *desc;
+
+/*	dnslib_rrtype_descriptor_t *desc;
 
 	for (int i = 0; i < TEST_RRSETS; i++) {
 		desc =  dnslib_rrtype_descriptor_by_type(test_rrsets[i].type);
@@ -732,7 +772,7 @@ static int dnslib_rrset_tests_run(int argc, char *argv[])
 			}
 		}
 		dnslib_rdata_free(&test_rrsets[i].rdata);
-	}
+	} */
 
 	return res_final;
 }
