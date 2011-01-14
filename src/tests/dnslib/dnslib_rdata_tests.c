@@ -862,9 +862,40 @@ static int test_rdata_to_wire()
 	return (errors == 0);
 }
 
+static int test_rdata_free()
+{
+	dnslib_rdata_t *tmp_rdata;
+
+	tmp_rdata = dnslib_rdata_new();
+
+	dnslib_rdata_free(&tmp_rdata);
+
+	return (tmp_rdata == NULL);
+}
+
+static int test_rdata_deep_free()
+{
+	int errors = 0;
+
+	dnslib_rdata_t *tmp_rdata;
+
+	uint8_t data[DNSLIB_MAX_RDATA_WIRE_SIZE];	
+
+	for (int i = 0; i <= DNSLIB_RRTYPE_LAST; i++) {
+		tmp_rdata = dnslib_rdata_new();
+
+		fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i, tmp_rdata);
+
+		dnslib_rdata_deep_free(&tmp_rdata, i);
+		errors += (tmp_rdata != NULL);
+	}
+
+	return (errors == 0);
+}
+
 /*----------------------------------------------------------------------------*/
 
-static const int DNSLIB_RDATA_TEST_COUNT = 8;
+static const int DNSLIB_RDATA_TEST_COUNT = 9;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -925,6 +956,12 @@ static int dnslib_rdata_tests_run(int argc, char *argv[])
 	endskip;	/* test_rdata_get_item() failed */
 
 	endskip;	/* test_rdata_create() failed */
+
+	ok(res = test_rdata_deep_free(), "rdata: deep free");
+	res_final *= res;
+
+	ok(res = test_rdata_free(), "rdata: free");
+	res_final *= res;
 
 	return res_final;
 }
