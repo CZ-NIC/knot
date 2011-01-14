@@ -62,13 +62,19 @@ void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata, dnslib_zone_t *zone,
                                    int pos)
 {
 	const dnslib_rdata_item_t *dname_item
-		= dnslib_rdata_get_item(rdata, pos);
+		= dnslib_rdata_item(rdata, pos);
 
 	if (dname_item != NULL) {
 		dnslib_dname_t *dname = dname_item->dname;
-		const dnslib_node_t *n =
-			dnslib_zone_find_node(zone, dname);
-		if (n != NULL) {
+		const dnslib_node_t *n = NULL;
+		const dnslib_node_t *closest_encloser = NULL;
+
+		int exact = dnslib_zone_find_dname(zone, dname, &n,
+		                                   &closest_encloser);
+
+		assert(!exact || n == closest_encloser);
+
+		if (exact) {
 			// just doble-check if the domain name is not already
 			// adjusted
 			if (n->owner == dname_item->dname) {
@@ -79,6 +85,12 @@ void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata, dnslib_zone_t *zone,
 
 			dnslib_rdata_item_set_dname(rdata, pos, n->owner);
 			dnslib_dname_free(&dname);
+		} else if (closest_encloser != NULL) {
+			// save pointer to the closest encloser
+			dnslib_rdata_item_t *item =
+				dnslib_rdata_get_item(rdata, pos);
+			assert(item->dname != NULL);
+			item->dname->node = (dnslib_node_t *)closest_encloser;
 		}
 	}
 }
@@ -105,7 +117,11 @@ void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
 	while (rdata->next != rdata_first) {
 		for (int i = 0; i < rdata->count; ++i) {
 			if (desc->wireformat[i]
-			    == DNSLIB_RDATA_WF_COMPRESSED_DNAME) {
+			    == DNSLIB_RDATA_WF_COMPRESSED_DNAME
+			    || desc->wireformat[i]
+			       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
+			    || desc->wireformat[i]
+			       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
 				debug_dnslib_zone("Adjusting domain name at"
 				  "position %d of RDATA of record with owner"
 				  "%s and type %s.\n",
@@ -120,7 +136,11 @@ void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
 
 	for (int i = 0; i < rdata->count; ++i) {
 		if (desc->wireformat[i]
-		    == DNSLIB_RDATA_WF_COMPRESSED_DNAME) {
+		    == DNSLIB_RDATA_WF_COMPRESSED_DNAME
+		    || desc->wireformat[i]
+		       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
+		    || desc->wireformat[i]
+		       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
 			debug_dnslib_zone("Adjusting domain name at"
 			  "position %d of RDATA of record with owner"
 			  "%s and type %s.\n",
