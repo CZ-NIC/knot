@@ -21,6 +21,23 @@
  * Slab implements simple coloring mechanism to improve
  * cache line utilisation.
  *
+ * \ref SLAB_SIZE is a fixed size of a slab. As a rule of thumb, the slab is
+ * effective when the maximum allocated block size is below 1/4 of a SLAB_SIZE.
+ * f.e. 16kB SLAB is most effective up to 4kB block size.
+ *
+ * \ref MEM_POISON flag enables checking read/writes after the allocated memory
+ * and segmentation fault. This poses a significant time and space overhead.
+ * Enable only when debugging.
+ *
+ * \ref MEM_SLAB_CAP defines a maximum limit of a number of empty slabs that a cache
+ * can keep at a time. This results in a slight performance regression,
+ * but actively recycles unuse memory.
+ *
+ * \ref MEM_DEPOT_COUNT defines how many recycled slabs will be cached for a later
+ * use instead of returning them immediately to the OS. This significantly
+ * reduces a number of syscalls in some cases.
+ * f.e. 16 means 16 * SLAB_SIZE cache, for 16kB slabs = 256kB cache
+ *
  * Optimal usage for a specific behavior (similar allocation sizes):
  * \code
  * slab_cache_t cache;
@@ -57,7 +74,7 @@
 #define SLAB_GP_COUNT  10 // General-purpose caches count.
 #define SLAB_US_COUNT  10 // User-specified caches count.
 #define SLAB_CACHE_COUNT (SLAB_GP_COUNT + SLAB_US_COUNT)
-#define SLAB_DEPOT_COUNT 16 // N slabs cached = N*SLAB_SIZE kB cap
+#define SLAB_DEPOT_SIZE 16 // N slabs cached = N*SLAB_SIZE kB cap
 struct slab_cache_t;
 
 /* Macros. */
@@ -93,7 +110,7 @@ typedef struct slab_t {
  */
 typedef struct slab_depot_t {
 	size_t available;               /*!< Number of available pages. */
-	slab_t* cache[SLAB_DEPOT_COUNT]; /*!< Stack of free slabs. */
+	slab_t* cache[SLAB_DEPOT_SIZE]; /*!< Stack of free slabs. */
 } slab_depot_t;
 
 /*!
