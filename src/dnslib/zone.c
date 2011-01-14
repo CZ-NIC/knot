@@ -73,6 +73,10 @@ void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata, dnslib_zone_t *zone,
 //		                                   &closest_encloser);
 		n = dnslib_zone_find_node(zone, dname);
 
+		if (n == NULL) {
+			return;
+		}
+
 		//assert(!exact || n == closest_encloser);
 
 		//if (exact) {
