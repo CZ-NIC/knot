@@ -181,7 +181,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	//when fread() was rewriting other variables
 
 	uint8_t rrset_count;
-	void *dname_id; //ID, technically it's an integer
+	void *dname_id; //ID, technically it's an integer(32 or 64 bites)
 	void *parent_id;
 
 	short label_count = 0;
@@ -205,7 +205,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 
 	fread(&dname_id, sizeof(dname_id), 1, f);
 
-	debug_zp("id: %d\n", dname_id);
+	debug_zp("id: %p\n", dname_id);
 
 	fread(&parent_id, sizeof(dname_id), 1, f);
 
