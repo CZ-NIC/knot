@@ -10,10 +10,10 @@
 
 /* Magic constants.
  */
-#define SLAB_MAGIC    0x51
-#define LOBJ_MAGIC    0x0B
-#define POISON_DWORD  0xdfdfdfdf
-#define SLAB_MINCOLOR 64
+#define SLAB_MAGIC    0x51  // "Sl" magic byte
+#define LOBJ_MAGIC    0x0B  // "Ob" magic byte
+#define POISON_DWORD  0xdeadbeef // Memory boundary guard magic
+#define SLAB_MINCOLOR 64 // Minimum space reserved for cache coloring
 #define SLAB_HEADER   sizeof(slab_t)
 
 /*

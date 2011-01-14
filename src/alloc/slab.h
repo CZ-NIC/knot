@@ -38,6 +38,12 @@
  * reduces a number of syscalls in some cases.
  * f.e. 16 means 16 * SLAB_SIZE cache, for 16kB slabs = 256kB cache
  *
+ * \ref MEM_COLORING enables simple cache coloring. This is generally a useful
+ *      feature since all slabs are page size aligned and
+ *      (depending on architecture) this slightly improves performance
+ *      and cacheline usage at the cost of a minimum of 64 bytes per slab of
+ *      overhead. Undefine MEM_COLORING in common.h to disable coloring.
+ *
  * Optimal usage for a specific behavior (similar allocation sizes):
  * \code
  * slab_cache_t cache;
@@ -69,12 +75,12 @@
 
 /* Constants. */
 #define SLAB_SIZE (4096*4) // Slab size (16K blocks)
-#define SLAB_MIN_BUFLEN 8 // Minimal allocation block size is 8B.
-#define SLAB_EXP_OFFSET 3 // Minimal allocation size is 8B = 2^3, exp is 3.
-#define SLAB_GP_COUNT  10 // General-purpose caches count.
-#define SLAB_US_COUNT  10 // User-specified caches count.
-#define SLAB_CACHE_COUNT (SLAB_GP_COUNT + SLAB_US_COUNT)
+#define SLAB_MIN_BUFLEN 8  // Minimal allocation block size is 8B.
+#define SLAB_EXP_OFFSET 3  // Minimal allocation size is 8B = 2^3, exp is 3.
+#define SLAB_GP_COUNT  10  // General-purpose caches count.
+#define SLAB_US_COUNT  10  // User-specified caches count.
 #define SLAB_DEPOT_SIZE 16 // N slabs cached = N*SLAB_SIZE kB cap
+#define SLAB_CACHE_COUNT (SLAB_GP_COUNT + SLAB_US_COUNT)
 struct slab_cache_t;
 
 /* Macros. */
@@ -138,6 +144,8 @@ typedef struct slab_obj_t {
  * free list again (there may be some hysteresis for mitigating
  * a sequential alloc/free).
  *
+ * Allocation of new slabs is on-demand, empty slabs are reused if possible.
+ *
  * \note Slab implementation is different from Bonwick (Usenix 2001)
  *       http://www.usenix.org/event/usenix01/bonwick.html
  *       as it doesn't feature empty and partial list.
@@ -145,8 +153,6 @@ typedef struct slab_obj_t {
  *       needs to count free slabs. There is no way the OS could
  *       notify the application, that the memory is scarce.
  *       A slight performance increased is measured in benchmark.
- *
- * Allocation of new slabs is on-demand, empty slabs are reused if possible.
  *
  * \note Statistics are only available if MEM_DEBUG is enabled.
  */
