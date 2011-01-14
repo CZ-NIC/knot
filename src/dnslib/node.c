@@ -155,6 +155,7 @@ void dnslib_node_free_rrsets(dnslib_node_t *node)
 		}
 	}
 
+	skip_destroy_list(&node->rrsets, NULL, NULL);
 	node->rrsets = NULL;
 }
 
