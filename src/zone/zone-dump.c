@@ -29,6 +29,12 @@ static void dnslib_dname_dump_binary(dnslib_dname_t *dname, FILE *f)
 	dnslib_labels_dump_binary(dname, f);
 }
 
+static dnslib_dname_t *dnslib_find_wildcard(dnslib_zone_t *zone,
+                                            dnslib_dname_t *dname)
+{
+	return NULL;
+}
+
 static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
                                      uint32_t type, FILE *f)
 {
@@ -43,17 +49,30 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
+			/* TODO some temp variables - this is way too long */
 			assert(rdata->items[i].dname != NULL);
-			if (rdata->items[i].dname->node) { //IN THE ZONE DNAME
-				debug_zp("IN THE ZONE \n");
-				fwrite(&one, sizeof(one), 1, f);
-				fwrite(&(rdata->items[i].dname->node),
-				       sizeof(void *), 1, f);
-			} else {
+			dnslib_dname_t *wildcard = NULL;
+
+			if (rdata->items[i].dname->node == NULL ||
+			    (wildcard =
+/*	just a skeleton */    	dnslib_find_wildcard(NULL, NULL)) ) {
 				debug_zp("not in zone: %s\n",
 				       dnslib_dname_to_str((rdata->items[i].dname)));
-				fwrite(&zero, sizeof(zero), 1, f);
+				fwrite((uint8_t *)"\0", sizeof(uint8_t), 1, f);
 				dnslib_dname_dump_binary(rdata->items[i].dname, f);
+				if (wildcard) {
+					fwrite((uint8_t *)"\1",
+					       sizeof(uint8_t), 1, f);
+					fwrite(&wildcard->node,
+					       sizeof(void *), 1, f);
+				} else {
+					fwrite((uint8_t *)"\0", sizeof(uint8_t), 1, f);	
+				}
+			} else {
+				debug_zp("In the zone\n");
+				fwrite((uint8_t *)"\1", sizeof(uint8_t), 1, f);
+				fwrite(&(rdata->items[i].dname->node),
+				       sizeof(void *), 1, f);
 			}
 
 		} else {

@@ -11,9 +11,6 @@
 
 enum { MAGIC_LENGTH = 4 };
 
-static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101};
-/*			                     c   u    t    e */
-
 enum { DNAME_MAX_WIRE_LENGTH = 256 };
 
 //TODO move to parameters
@@ -43,6 +40,8 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
 
+			/* TODO maybe this does not need to be stored this big */
+
 			void *tmp_id;
 			uint8_t dname_in_zone;
 
@@ -51,6 +50,8 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 			short label_count;
 			uint8_t *labels;
 
+			uint8_t has_wildcard;
+
 			fread(&dname_in_zone, sizeof(dname_in_zone), 1, f);
 			if (dname_in_zone) {
 				fread(&tmp_id, sizeof(void *), 1, f);
@@ -58,19 +59,32 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 			} else {
 				fread(&dname_size, sizeof(dname_size), 1, f);
 				assert(dname_size < DNAME_MAX_WIRE_LENGTH);
+
 				dname_wire = malloc(sizeof(uint8_t) * dname_size);
 				fread(dname_wire, sizeof(uint8_t),
 				      dname_size, f);
+
 				fread(&label_count, sizeof(label_count), 1, f);
+
 				labels = malloc(sizeof(uint8_t) * label_count);
 				fread(labels, sizeof(uint8_t), label_count, f);
+
+				fread(&has_wildcard, sizeof(uint8_t), 1, f);
+
+				if (has_wildcard) {
+					fread(&tmp_id, sizeof(void *), 1, f);
+				} else {
+					tmp_id = NULL;
+				}
+
 				items[i].dname = malloc(sizeof(dnslib_dname_t));
-				items[i].dname->name =
-					malloc(sizeof(uint8_t) * dname_size);
+
 				items[i].dname->name = dname_wire;
 				items[i].dname->size = dname_size;
 				items[i].dname->labels = labels;
 				items[i].dname->label_count = label_count;
+
+				items[i].dname->node = tmp_id;
 			}
 
 			assert(items[i].dname);
