@@ -159,7 +159,7 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *fp)
 
 	fwrite(&(node->owner->node), sizeof(void *), 1, f);
 
-	debug_zp("Writing id: %u\n", node->owner->node);
+	debug_zp("Writing id: %p\n", node->owner->node);
 
 	/* TODO investigate whether this is necessary */
 	if (node->parent != NULL) {
