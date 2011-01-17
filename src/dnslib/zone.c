@@ -77,9 +77,9 @@ void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata, dnslib_zone_t *zone,
 			return;
 		}
 
-		//assert(!exact || n == closest_encloser);
+//		assert(!exact || n == closest_encloser);
 
-		//if (exact) {
+//		if (exact) {
 			// just doble-check if the domain name is not already
 			// adjusted
 			if (n->owner == dname_item->dname) {
@@ -91,7 +91,8 @@ void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata, dnslib_zone_t *zone,
 			dnslib_rdata_item_set_dname(rdata, pos, n->owner);
 			dnslib_dname_free(&dname);
 //		} else if (closest_encloser != NULL) {
-//			// save pointer to the closest encloser
+//			debug_dnslib_zone("Saving closest encloser to RDATA.\n");
+			// save pointer to the closest encloser
 //			dnslib_rdata_item_t *item =
 //				dnslib_rdata_get_item(rdata, pos);
 //			assert(item->dname != NULL);
@@ -127,8 +128,8 @@ void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
 			       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
 			    || desc->wireformat[i]
 			       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
-				debug_dnslib_zone("Adjusting domain name at"
-				  "position %d of RDATA of record with owner"
+				debug_dnslib_zone("Adjusting domain name at "
+				  "position %d of RDATA of record with owner "
 				  "%s and type %s.\n",
 				  i, rrset->owner->name,
 				  dnslib_rrtype_to_string(type));
@@ -146,8 +147,8 @@ void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
 		       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
 		    || desc->wireformat[i]
 		       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
-			debug_dnslib_zone("Adjusting domain name at"
-			  "position %d of RDATA of record with owner"
+			debug_dnslib_zone("Adjusting domain name at "
+			  "position %d of RDATA of record with owner "
 			  "%s and type %s.\n",
 			  i, rrset->owner->name,
 			  dnslib_rrtype_to_string(type));
@@ -315,6 +316,12 @@ DEBUG_DNSLIB_ZONE(
 	free(name_str);
 	free(zone_str);
 );
+
+	if (!dnslib_dname_is_subdomain(name, zone->apex->owner)) {
+		*node = NULL;
+		*closest_encloser = NULL;
+		return 0;
+	}
 
 	// create dummy node to use for lookup
 	dnslib_node_t *tmp = dnslib_node_new((dnslib_dname_t *)name, NULL);
