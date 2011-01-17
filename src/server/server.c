@@ -9,6 +9,7 @@
 #include "zonedb.h"
 #include "zone-load.h"
 #include "dnslib/debug.h"
+#include "dnslib/dname.h"
 
 cute_server *cute_create()
 {
@@ -21,6 +22,9 @@ cute_server *cute_create()
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
+
+	// init dname char table
+	dnslib_dname_init_char_table();
 
 	debug_server("Done\n\n");
 	debug_server("Creating Zone Database structure..\n");
