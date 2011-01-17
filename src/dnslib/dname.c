@@ -14,6 +14,7 @@ enum {
 };
 
 static uint8_t char_table[CHAR_TABLE_SIZE];
+static int char_table_initialized = 0;
 
 
 /*----------------------------------------------------------------------------*/
@@ -22,6 +23,7 @@ static uint8_t char_table[CHAR_TABLE_SIZE];
 
 static inline uint8_t dnslib_dname_tolower(uint8_t c) {
 	assert(c < CHAR_TABLE_SIZE);
+	assert(char_table_initialized);
 	return char_table[c];
 }
 
@@ -632,6 +634,17 @@ DEBUG_DNSLIB_DNAME(
 
 	debug_dnslib_dname("Comparing dnames %s and %s\n",
 	                   name1, name2);
+
+	for (int i = 0; i < strlen(name1); ++i) {
+		name1[i] = dnslib_dname_tolower(name1[i]);
+	}
+	for (int i = 0; i < strlen(name2); ++i) {
+		name2[i] = dnslib_dname_tolower(name2[i]);
+	}
+
+	debug_dnslib_dname("After to lower: %s and %s\n",
+	                   name1, name2);
+
 	free(name1);
 	free(name2);
 );
@@ -741,4 +754,5 @@ void dnslib_dname_init_char_table() {
 	for (int i = 0; i < CHAR_TABLE_SIZE; ++i) {
 		char_table[i] = tolower(i);
 	}
+	char_table_initialized = 1;
 }
