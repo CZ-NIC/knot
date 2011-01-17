@@ -369,7 +369,7 @@ static int test_dname_compare()
 
 	int errors = 0;
 	/* abc < some */
-	if (dnslib_dname_compare(dnames[0], dnames[1]) != -1) {
+	if (dnslib_dname_compare(dnames[0], dnames[1]) >= 0) {
 		diag("Dname comparison error");
 		errors++;
 	}
@@ -379,7 +379,7 @@ static int test_dname_compare()
 		errors++;
 	}
 	/*xyz > some */
-	if (dnslib_dname_compare(dnames[2], dnames[1]) != 1) {
+	if (dnslib_dname_compare(dnames[2], dnames[1]) <= 0) {
 		diag("Dname comparison error");
 		errors++;
 	}
