@@ -23,9 +23,6 @@ cute_server *cute_create()
 		return NULL;
 	}
 
-	// init dname char table
-	dnslib_dname_init_char_table();
-
 	debug_server("Done\n\n");
 	debug_server("Creating Zone Database structure..\n");
 

@@ -7,26 +7,10 @@
 #include "dname.h"
 #include "common.h"
 #include "consts.h"
-
-// Table for replacing tolower()
-enum {
-	CHAR_TABLE_SIZE = 256
-};
-
-static uint8_t char_table[CHAR_TABLE_SIZE];
-static int char_table_initialized = 0;
-
+#include "tolower.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
-/*----------------------------------------------------------------------------*/
-
-static inline uint8_t dnslib_dname_tolower(uint8_t c) {
-	assert(c < CHAR_TABLE_SIZE);
-	assert(char_table_initialized);
-	return char_table[c];
-}
-
 /*----------------------------------------------------------------------------*/
 
 static int dnslib_dname_set(dnslib_dname_t *dname, uint8_t *wire,
@@ -156,14 +140,12 @@ static int dnslib_dname_compare_labels(const uint8_t *label1,
 	int i = 0;
 
 	while (i < label_length
-	       && dnslib_dname_tolower(*(++pos1))
-	          == dnslib_dname_tolower(*(++pos2))) {
+	       && dnslib_tolower(*(++pos1)) == dnslib_tolower(*(++pos2))) {
 		++i;
 	}
 
 	if (i < label_length) {  // difference in some octet
-		return (dnslib_dname_tolower(*pos1)
-			- dnslib_dname_tolower(*pos2));
+		return (dnslib_tolower(*pos1) - dnslib_tolower(*pos2));
 //		if (tolower(*pos1) < tolower(*pos2)) {
 //			return -1;
 //		} else {
@@ -636,10 +618,10 @@ DEBUG_DNSLIB_DNAME(
 	                   name1, name2);
 
 	for (int i = 0; i < strlen(name1); ++i) {
-		name1[i] = dnslib_dname_tolower(name1[i]);
+		name1[i] = dnslib_tolower(name1[i]);
 	}
 	for (int i = 0; i < strlen(name2); ++i) {
-		name2[i] = dnslib_dname_tolower(name2[i]);
+		name2[i] = dnslib_tolower(name2[i]);
 	}
 
 	debug_dnslib_dname("After to lower: %s and %s\n",
@@ -746,13 +728,4 @@ dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2)
 	d1->size += d2->size;
 
 	return d1;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void dnslib_dname_init_char_table() {
-	for (int i = 0; i < CHAR_TABLE_SIZE; ++i) {
-		char_table[i] = tolower(i);
-	}
-	char_table_initialized = 1;
 }
