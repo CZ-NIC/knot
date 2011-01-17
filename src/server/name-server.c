@@ -27,84 +27,6 @@ static const uint32_t SYNTH_CNAME_TTL      = 0;
 /* Private functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-//static void ns_set_edns(const ldns_pkt *query, ldns_pkt *response)
-//{
-//	if (EDNS_ENABLED && ldns_pkt_edns(query)) {
-//		ldns_pkt_set_edns_data(response, NULL);
-//		ldns_pkt_set_edns_do(response, ldns_pkt_edns_do(query));
-//		ldns_pkt_set_edns_extended_rcode(response, 0);
-//		ldns_pkt_set_edns_udp_size(response, MAX_UDP_PAYLOAD_EDNS);
-
-//		uint8_t version = EDNS_VERSION;
-//		if (ldns_pkt_edns_version(query) < EDNS_VERSION) {
-//			version = ldns_pkt_edns_version(query);
-//		}
-
-//		ldns_pkt_set_edns_version(response, version);
-//		ldns_pkt_set_edns_z(response, 0);
-//	} else {
-//		ldns_pkt_set_edns_udp_size(response, 0);
-//		assert(!ldns_pkt_edns(response));
-//	}
-//}
-
-/*----------------------------------------------------------------------------*/
-
-//static void ns_set_max_packet_size(const ldns_pkt *query, ldns_pkt *response)
-//{
-//	uint16_t esize = ldns_pkt_edns_udp_size(query);
-//	if (EDNS_ENABLED && esize > 0) {
-//		// set maximum size to the lesser of our and max udp payload
-//		if (esize >= MAX_UDP_PAYLOAD_EDNS) {
-//			esize = MAX_UDP_PAYLOAD_EDNS;
-//		}
-//	} else {
-//		esize = MAX_UDP_PAYLOAD;
-//	}
-
-//	ldns_pkt_set_edns_udp_size(response, esize);
-//}
-
-/*----------------------------------------------------------------------------*/
-
-static inline void ns_update_pkt_size(ldns_pkt *pkt, size_t size)
-{
-	ldns_pkt_set_size(pkt, ldns_pkt_size(pkt) + size);
-}
-
-/*----------------------------------------------------------------------------*/
-
-//static dnslib_response_t *ns_create_empty_response(const uint8_t *query_wire,
-//                                                   size_t query_size)
-//{
-//	dnslib_response_t *resp = dnslib_response_new_empty(NULL, 0);
-//	if (resp == NULL) {
-//		return NULL;
-//	}
-
-//	debug_ns("Created empty response...\n");
-
-//	if (query_wire != NULL) {
-//		if (dnslib_response_parse_query(resp, query_wire, query_size)
-//		    != 0) {
-//			dnslib_response_free(&resp);
-//			return NULL;
-//		}
-//	}
-
-//	return resp;
-//}
-
-/*----------------------------------------------------------------------------*/
-
-static inline void ns_set_rcode(uint8_t *flags, uint8_t rcode)
-{
-	assert(rcode < 11);
-	(*flags) = ((*flags) & RCODE_MASK) | rcode;
-}
-
-/*----------------------------------------------------------------------------*/
-
 static inline void ns_error_response(ns_nameserver *nameserver,
                                      const uint8_t *query_wire,
                                      uint8_t rcode,
@@ -148,44 +70,6 @@ static const dnslib_zone_t *ns_get_zone_for_qname(dnslib_zonedb_t *zdb,
 
 	return zone;
 }
-
-/*----------------------------------------------------------------------------*/
-
-//static int ns_fits_into_response(const ldns_pkt *response, size_t size)
-//{
-//	return ((!ldns_pkt_tc(response)) &&
-//		((ldns_pkt_size(response) + size) <=
-//		 (ldns_pkt_edns_udp_size(response))));
-//}
-
-/*----------------------------------------------------------------------------*/
-
-//static size_t ns_rr_size(ldns_rr *rr)
-//{
-//	size_t size = 0;
-//	size += RR_FIXED_SIZE;
-//	size += ldns_rdf_size(ldns_rr_owner(rr));
-//	for (int j = 0; j < ldns_rr_rd_count(rr); ++j) {
-//		size += ldns_rdf_size(ldns_rr_rdf(rr, j));
-//	}
-//	return size;
-//}
-
-///*----------------------------------------------------------------------------*/
-
-//static size_t ns_rrset_size(ldns_rr_list *rrset)
-//{
-//	size_t size = 0;
-//	for (int i = 0; i < ldns_rr_list_rr_count(rrset); ++i) {
-//		ldns_rr *rr = ldns_rr_list_rr(rrset, i);
-//		size += RR_FIXED_SIZE;
-//		size += ldns_rdf_size(ldns_rr_owner(rr));
-//		for (int j = 0; j < ldns_rr_rd_count(rr); ++j) {
-//			size += ldns_rdf_size(ldns_rr_rdf(rr, j));
-//		}
-//	}
-//	return size;
-//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -284,60 +168,6 @@ DEBUG_NS(
 		*qname = cname;
 	};
 }
-
-/*----------------------------------------------------------------------------*/
-
-//static void ns_try_put_rrset(ldns_rr_list *rrset,
-//                             ldns_pkt_section section,
-//                             int tc,
-//                             ldns_pkt *resp)
-//{
-//	if (rrset != NULL) {
-//		size_t size = ns_rrset_size(rrset);
-//		if (ns_fits_into_response(resp, size)) {
-//			ldns_pkt_push_rr_list(resp, section, rrset);
-//			ns_update_pkt_size(resp, size);
-//		} else {
-//			debug_ns("RRSet %s %s omitted due to lack of space "
-//			         "in packet.\n",
-//			         ldns_rdf2str(ldns_rr_list_owner(rrset)),
-//			         ldns_rr_type2str(ldns_rr_list_type(rrset)));
-//			ldns_pkt_set_tc(resp, tc);
-//		}
-//	}
-//}
-
-/*----------------------------------------------------------------------------*/
-
-//static void ns_put_rrset(ldns_rr_list *rrset, const ldns_rdf *name,
-//                         ldns_pkt_section section, int tc, ldns_pkt *pkt,
-//                         ldns_rr_list *copied_rrs)
-//{
-//	if (rrset) {
-//		//size_t size = 0;
-//		if (ldns_dname_is_wildcard(ldns_rr_list_owner(rrset))) {
-//			/* we must copy the whole list and replace owners
-//			   with name */
-//			ldns_rr_list *rrset_new = ldns_rr_list_new();
-//			int count = ldns_rr_list_rr_count(rrset);
-//			for (int i = 0; i < count; ++i) {
-//				ldns_rr *tmp_rr = ldns_rr_list_rr(rrset, i);
-//				ldns_rr *rr = ldns_rr_clone(tmp_rr);
-//				ldns_rdf_deep_free(ldns_rr_owner(rr));
-//				ldns_rr_set_owner(rr, ldns_rdf_clone(name));
-//				//ldns_pkt_push_rr(pkt, section, rr);
-//				ldns_rr_list_push_rr(rrset_new, rr);
-//				//size += ns_rr_size(rr);
-//				//ns_update_response_size(pkt, rr);
-//				ldns_rr_list_push_rr(copied_rrs, rr);
-//			}
-//			ns_try_put_rrset(rrset_new, section, tc, pkt);
-//			ldns_rr_list_free(rrset_new);
-//		} else {
-//			ns_try_put_rrset(rrset, section, tc, pkt);
-//		}
-//	}
-//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -477,55 +307,6 @@ static void ns_put_additional(dnslib_response_t *resp)
 			ns_put_additional_for_rrset(resp, rrset);
 		}
 	}
-
-//	// for each answer RR add appropriate additional records
-//	int count = ldns_pkt_ancount(response);
-//	for (int i = 0; i < count; ++i) {
-//		ldns_rr *rr = ldns_rr_list_rr(ldns_pkt_answer(response), i);
-//		ldns_rdf *name;
-
-//		switch (ldns_rr_get_type(rr)) {
-//		case LDNS_RR_TYPE_MX:
-//			name = ldns_rr_mx_exchange(rr);
-//			break;
-//		case LDNS_RR_TYPE_NS:
-//			name = ldns_rr_ns_nsdname(rr);
-//			break;
-//		case LDNS_RR_TYPE_SRV:
-//			name = ldns_rr_rdf(rr, 3); // get rid of the number
-//			if (ldns_dname_label_count(name) == 0) {
-//				continue;
-//			}
-//			assert(ldns_rdf_get_type(name) == LDNS_RDF_TYPE_DNAME);
-//			break;
-//		default:
-//			continue;
-//		}
-
-//		debug_ns("Adding RRSets for name %s\n", ldns_rdf2str(name));
-//		const zn_ar_rrsets_t *rrsets = zn_get_ref(node, name);
-//		if (rrsets != NULL) {
-//			if (rrsets->cname != NULL) {
-//				const zn_node_t *cname_node = rrsets->cname;
-//				ns_follow_cname(&cname_node, &name, response,
-//				                LDNS_SECTION_ADDITIONAL,
-//				                copied_rrs);
-
-//				rrsets = zn_get_ref(cname_node, name);
-//				if (rrsets == NULL) {
-//					continue;
-//				}
-//			}
-//			ns_put_rrset(rrsets->a, name,
-//			             LDNS_SECTION_ADDITIONAL, 0, response,
-//			             copied_rrs);
-//			ns_put_rrset(rrsets->aaaa, name,
-//			             LDNS_SECTION_ADDITIONAL, 0, response,
-//			             copied_rrs);
-//		} else {
-//			debug_ns("No referenced RRSets!\n");
-//		}
-//	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -551,83 +332,6 @@ static void ns_put_authority_soa(const dnslib_zone_t *zone,
 
 	dnslib_response_add_rrset_authority(resp, soa_rrset, 0);
 }
-
-/*----------------------------------------------------------------------------*/
-
-//static void ns_put_glues(const dnslib_node_t *node, dnslib_response_t *resp)
-//{
-	// TODO!!!
-
-//	ldns_rr_list *glues = zn_get_glues(node);
-
-//	if (glues == NULL) {
-//		return;
-//	}
-
-//	for (int i = 0; i < ldns_rr_list_rr_count(glues); ++i) {
-//		ldns_rr *glue_rr = ldns_rr_list_rr(glues, i);
-
-//		/* if owner is wildcard, find appropriate name in
-//		   the RDATA fields of authority NS, copy the glue RR and
-//		   change the owner */
-//		if (ldns_dname_is_wildcard(ldns_rr_owner(glue_rr))) {
-//			ldns_rr_list *auth = ldns_pkt_authority(resp);
-//			debug_ns("Searching NS record for wildcard glue %s.\n",
-//			         ldns_rdf2str(ldns_rr_owner(glue_rr)));
-//			int cmp = -1;
-//			int j = 0;
-//			int count = ldns_rr_list_rr_count(auth);
-//			for (; j < count; ++j) {
-//				ldns_rr *rr = ldns_rr_list_rr(auth, j);
-//				ldns_rdf *nsdname = ldns_rr_ns_nsdname(rr);
-//				ldns_rdf *owner = ldns_rr_owner(glue_rr);
-//				cmp = ldns_dname_match_wildcard(nsdname, owner);
-//				if (ldns_rr_get_type(rr) == LDNS_RR_TYPE_NS
-//				    && (cmp == 1)) {
-//					break;	// found
-//				}
-//			}
-
-//			// must have found something if the glue is there
-//			assert(cmp == 1);
-
-//			debug_ns("Found NS record for wildcard glue %s:\n%s\n",
-//			         ldns_rdf2str(ldns_rr_owner(glue_rr)),
-//			         ldns_rr2str(ldns_rr_list_rr(auth, j)));
-
-//			ldns_rr *glue_rr_new = ldns_rr_clone(glue_rr);
-//			ldns_rdf_deep_free(ldns_rr_owner(glue_rr_new));
-//			ldns_rr *listrr = ldns_rr_list_rr(auth, j);
-//			ldns_rdf *nsdname = ldns_rr_ns_nsdname(listrr);
-//			ldns_rr_set_owner(ldns_rr_list_rr(glues, i),
-//			                  ldns_rdf_clone(nsdname));
-//			ldns_rr_list_push_rr(copied_rrs, glue_rr_new);
-
-//			size_t size = ns_rr_size(glue_rr_new);
-//			if (ns_fits_into_response(resp, size)) {
-//				ldns_pkt_push_rr(resp,
-//				                 LDNS_SECTION_ADDITIONAL,
-//				                 glue_rr_new);
-//				// update size of the packet
-//				ns_update_pkt_size(resp, size);
-//			} else {
-//				ldns_pkt_set_tc(resp, 1);
-//				return;
-//			}
-//		} else {
-//			size_t size = ns_rr_size(glue_rr);
-//			if (ns_fits_into_response(resp, size)) {
-//				ldns_pkt_push_rr(resp,
-//				                 LDNS_SECTION_ADDITIONAL,
-//				                 glue_rr);
-//				ns_update_pkt_size(resp, size);
-//			} else {
-//				ldns_pkt_set_tc(resp, 1);
-//				return;
-//			}
-//		}
-//	}
-//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -756,179 +460,6 @@ DEBUG_NS(
 
 /*----------------------------------------------------------------------------*/
 
-//static const zn_node_t *ns_strip_and_find(const zdb_zone_t *zone,
-//                                          ldns_rdf **qname, uint *labels)
-//{
-//	const zn_node_t *node = NULL;
-//	// search for the name and strip labels until nothing left
-//	do {
-//		debug_ns("Name %s not found, stripping leftmost label.\n",
-//		         ldns_rdf2str(*qname));
-//		/* TODO: optimize!!!
-//		 *  1) do not copy the name!
-//		 *   2) implementation of ldns_dname_left_chop() is inefficient
-//		 */
-//		ldns_rdf *new_qname = ldns_dname_left_chop(*qname);
-//		ldns_rdf_deep_free(*qname);
-//		*qname = new_qname;
-//		--(*labels);
-//		assert(*qname != NULL || (*labels) == 0);
-//		node = zdb_find_name_in_zone(zone, *qname);
-//	} while ((*labels) > 0 && node == NULL);
-
-//	assert((ldns_dname_label_count(*qname) == 0 && (*labels) == 0)
-//	       || (ldns_dname_label_count(*qname) > 0 && (*labels) > 0));
-
-//	return node;
-//}
-
-/*----------------------------------------------------------------------------*/
-
-//static void ns_answer_old(zdb_database_t *zdb, const ldns_rr *question,
-//                          ldns_pkt *response,ldns_rr_list *copied_rrs)
-//{
-//	/* copy the QNAME, as we may be stripping labels and the QNAME is
-//	   used in a response packet */
-//	ldns_rdf *qname = ldns_rdf_clone(ldns_rr_owner(question));
-
-//	debug_ns("Trying to find zone for QNAME %s\n", ldns_rdf2str(qname));
-//	// find zone in which to search for the name
-//	const zdb_zone_t *zone =
-//		ns_get_zone_for_qname(zdb, qname, ldns_rr_get_type(question));
-
-//	// if no zone found, return REFUSED
-//	if (zone == NULL) {
-//		ldns_pkt_set_rcode(response, LDNS_RCODE_REFUSED);
-//		ldns_rdf_deep_free(qname);
-//		return;
-//	}
-
-//	debug_ns("Found zone for QNAME %s\n", ldns_rdf2str(zone->zone_name));
-//	debug_ns("Size of response packet: %u\n", ldns_pkt_size(response));
-
-//	/*const zn_node *node = ns_find_node_in_zone(zone, &qname,
-//	                                             &labels_found); */
-//	const zn_node_t *node = zdb_find_name_in_zone(zone, qname);
-//	int cname = 0;
-//	ldns_rdf *qname_old = NULL;
-
-//	while (1) {
-//		qname_old = ldns_rdf_clone(qname);
-//		uint labels = ldns_dname_label_count(qname);
-//		uint labels_found = labels;
-
-//		// whole QNAME not found
-//		if (node == NULL) {
-//			node = ns_strip_and_find(zone, &qname, &labels_found);
-
-//			if (labels_found == 0 && cname == 0) {
-//				log_error("Name %s not found in zone %s! "
-//				          "SERVFAIL.\n",
-//				          ldns_rdf2str(ldns_rr_owner(question)),
-//				          ldns_rdf2str(zone->zone_name));
-//				ldns_pkt_set_rcode(response,
-//				                   LDNS_RCODE_SERVFAIL);
-//				break;
-//			} else if (labels_found == 0 && cname != 0) {
-//				ldns_pkt_set_rcode(response,
-//				                   LDNS_RCODE_NOERROR);
-//				break;
-//			}
-//			assert(node != NULL);
-//		}
-
-//		/* if the node is delegation point
-//		   (no matter if whole QNAME was found) */
-//		if (zn_is_delegation_point(node)) {
-//			ns_referral(node, response, copied_rrs);
-//			debug_ns("Size of response packet: %u\n",
-//			         ldns_pkt_size(response));
-//			break;
-//		}
-
-//		if (labels_found < labels) {
-
-//			// DNAME?
-//			ldns_rr_list *dname_rrset = NULL;
-//			if ((dname_rrset = zn_find_rrset(node,
-//						LDNS_RR_TYPE_DNAME)) != NULL) {
-//				ns_process_dname(dname_rrset, qname_old,
-//				                 response, copied_rrs);
-//				break;
-//			} else {
-//				// wildcard child?
-//				debug_ns("Trying to find wildcard child of node"
-//					 "%s.\n", ldns_rdf2str(qname));
-//				ldns_rdf *wildc = ldns_dname_new_frm_str("*");
-//				if (ldns_dname_cat(wildc, qname)
-//					!= LDNS_STATUS_OK) {
-//					log_error("Unknown error occured.\n");
-//					ldns_pkt_set_rcode(response,
-//					                   LDNS_RCODE_SERVFAIL);
-//					ldns_rdf_deep_free(wildc);
-//					break;
-//				}
-
-//				const zn_node_t *wildcard_node =
-//					zdb_find_name_in_zone(zone, wildc);
-//				ldns_rdf_deep_free(wildc);
-
-//				debug_ns("Found node: %p\n", wildcard_node);
-
-//				if (wildcard_node == NULL) {
-//					if (cname == 0) {
-//						// return NXDOMAIN
-//						ldns_pkt_set_rcode(response,
-//							LDNS_RCODE_NXDOMAIN);
-//					} else {
-//						ldns_pkt_set_rcode(response,
-//							LDNS_RCODE_NOERROR);
-//					}
-//					break;
-//				} else {
-//					node = wildcard_node;
-//					// renew the qname to be the old one
-//					// (not stripped)
-//					ldns_rdf_deep_free(qname);
-//					qname = ldns_rdf_clone(qname_old);
-//					debug_ns("Node's owner: %s\n",
-//					         ldns_rdf2str(node->owner));
-//				}
-//			}
-//		}
-
-//		if (zn_has_cname(node)) {
-//			debug_ns("Node %s has CNAME record, resolving...\n",
-//				 ldns_rdf2str(node->owner));
-//			ldns_rdf *act_name = qname;
-//			ns_follow_cname(&node, &act_name, response,
-//			                LDNS_SECTION_ANSWER, copied_rrs);
-//			debug_ns("Canonical name: %s, node found: %p\n",
-//			         ldns_rdf2str(act_name), node);
-//			if (act_name != qname) {
-//				ldns_rdf_deep_free(qname);
-//				qname = act_name;
-//			}
-//			cname = 1;
-//			if (node == NULL) {
-//				ldns_rdf_deep_free(qname_old);
-//				continue; // infinite loop better than goto? :)
-//			}
-//		}
-
-//		ns_answer_from_node(node, zone, qname,
-//			ldns_rr_get_type(question), response, copied_rrs);
-//		ldns_pkt_set_rcode(response, LDNS_RCODE_NOERROR);
-//		break;
-//	}
-
-//	ldns_rdf_deep_free(qname);
-//	ldns_rdf_deep_free(qname_old);
-//	debug_ns("Size of response packet: %u\n", ldns_pkt_size(response));
-//}
-
-/*----------------------------------------------------------------------------*/
-
 static void ns_answer_from_zone(const dnslib_zone_t *zone,
                                 const dnslib_dname_t *qname, uint16_t qtype,
                                 dnslib_response_t *resp)
@@ -1045,7 +576,6 @@ DEBUG_NS(
 	if (auth_soa) {
 		ns_put_authority_soa(zone, resp);
 	}
-
 	//dnslib_dname_free(&qname_old);
 }
 
@@ -1106,24 +636,6 @@ static int ns_response_to_wire(dnslib_response_t *resp, uint8_t *wire,
 
 	return 0;
 }
-
-/*----------------------------------------------------------------------------*/
-
-//static void ns_response_free(ldns_pkt *response)
-//{
-//	// no RRs should be deallocated, we must free the packet ourselves
-//	LDNS_FREE(response->_header);
-//	ldns_rr_list_free(response->_question);
-//	ldns_rr_list_free(response->_answer);
-//	ldns_rr_list_free(response->_authority);
-//	ldns_rr_list_free(response->_additional);
-
-//	// TODO: when used, check if we can free it this way:
-//	ldns_rr_free(response->_tsig_rr);
-//	ldns_rdf_deep_free(response->_edns_data);
-
-//	LDNS_FREE(response);
-//}
 
 /*----------------------------------------------------------------------------*/
 /* Public functions                                                           */
