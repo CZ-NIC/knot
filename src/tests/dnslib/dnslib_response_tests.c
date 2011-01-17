@@ -87,9 +87,11 @@ static dnslib_dname_t DNAMES[DNAMES_COUNT] =
 	{ {(uint8_t *)"\7example\3com", 13, NULL}, //0's at the end are added
           {(uint8_t *)"\2ns\7example\3com", 16, NULL} };
 
+static uint8_t address[4] = {192, 168, 1, 1};
+
 static dnslib_rdata_item_t ITEMS[ITEMS_COUNT] =
 	{ {.dname = &DNAMES[1]},
-          {.raw_data = (uint8_t *)"192.168.1.1"} };
+          {.raw_data = address } };
 
 static dnslib_rdata_t RDATA[RDATA_COUNT] = { {&ITEMS[0], 1, &RDATA[0]} };
 
