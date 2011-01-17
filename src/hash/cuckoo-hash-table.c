@@ -290,27 +290,37 @@ static inline void ck_next_table(uint *table, uint table_count)
 static ck_hash_table_item_t **ck_find_in_stash(const ck_hash_table_t *table,
                                                const char *key, uint length)
 {
-	//assert(table->stash_i == da_get_count(&table->stash));
-	uint stash_i = da_get_count(&table->stash);
-	debug_ck("Items in stash: %u\n", stash_i);
-	uint i = 0;
-	while (i < stash_i
-	       && (((ck_hash_table_item_t **)(da_get_items(&table->stash)))[i]
-		   != NULL)
-	       && ck_items_match(((ck_hash_table_item_t **)
-	                           (da_get_items(&table->stash)))[i],
-				 key, length)) {
-		++i;
+	ck_stash_item_t *item = table->stash2;
+	while (item != NULL) {
+		if (ck_items_match(item->item, key, length)) {
+			return &item->item;
+		}
+		item = item->next;
 	}
 
-	if (i >= stash_i) {
-		return NULL;
-	}
+	return NULL;
 
-	assert(strncmp(((ck_hash_table_item_t **)
-	             (da_get_items(&table->stash)))[i]->key, key, length) == 0);
+//	//assert(table->stash_i == da_get_count(&table->stash));
+//	uint stash_i = da_get_count(&table->stash);
+//	debug_ck("Items in stash: %u\n", stash_i);
+//	uint i = 0;
+//	while (i < stash_i
+//	       && (((ck_hash_table_item_t **)(da_get_items(&table->stash)))[i]
+//		   != NULL)
+//	       && ck_items_match(((ck_hash_table_item_t **)
+//	                           (da_get_items(&table->stash)))[i],
+//				 key, length)) {
+//		++i;
+//	}
 
-	return &((ck_hash_table_item_t **)(da_get_items(&table->stash)))[i];
+//	if (i >= stash_i) {
+//		return NULL;
+//	}
+
+//	assert(strncmp(((ck_hash_table_item_t **)
+//	             (da_get_items(&table->stash)))[i]->key, key, length) == 0);
+
+//	return &((ck_hash_table_item_t **)(da_get_items(&table->stash)))[i];
 }
 
 /*----------------------------------------------------------------------------*/
@@ -504,15 +514,38 @@ static void ck_rollback_rehash(ck_hash_table_t *table)
 		}
 	}
 
-	// set old generation in buffer
-	for (int i = 0; i < STASH_SIZE; ++i) {
-		if (((ck_hash_table_item_t **)(da_get_items(&table->stash)))[i]
-		     != NULL) {
-			SET_GENERATION(&((ck_hash_table_item_t **)
-			           (da_get_items(&table->stash)))[i]->timestamp,
-			           table->generation);
-		}
+	// set old generation in stash
+//	for (int i = 0; i < STASH_SIZE; ++i) {
+//		if (((ck_hash_table_item_t **)(da_get_items(&table->stash)))[i]
+//		     != NULL) {
+//			SET_GENERATION(&((ck_hash_table_item_t **)
+//			           (da_get_items(&table->stash)))[i]->timestamp,
+//			           table->generation);
+//		}
+//	}
+	ck_stash_item_t *item = table->stash2;
+	while (item != NULL) {
+		assert(item->item != NULL);
+		SET_GENERATION(&item->item->timestamp, table->generation);
 	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+int ck_add_to_stash(ck_hash_table_t *table, ck_hash_table_item_t *item)
+{
+	ck_stash_item_t *new_item
+		= (ck_stash_item_t *)malloc(sizeof(ck_stash_item_t));
+	if (new_item == NULL) {
+		ERR_ALLOC_FAILED;
+		return -1;
+	}
+
+	new_item->item = item;
+	new_item->next = table->stash2;
+	// maybe use RCU?
+	table->stash2 = new_item;
+	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -564,7 +597,7 @@ ck_hash_table_t *ck_create_table(uint items)
 		                             * sizeof(ck_hash_table_item_t *));
 	}
 
-	// create buffer (replace by (generic) variable-length array)
+	// create stash (replace by (generic) variable-length array)
 	if (da_initialize(&table->stash, STASH_SIZE,
 	                  sizeof(ck_hash_table_item_t *)) != 0) {
 		for (uint t = TABLE_FIRST;
@@ -574,6 +607,8 @@ ck_hash_table_t *ck_create_table(uint items)
 		free(table);
 		return NULL;
 	}
+
+	table->stash2 = NULL;
 
 	// initialize rehash/insert mutex
 	pthread_mutex_init(&table->mtx_table, NULL);
@@ -612,17 +647,34 @@ void ck_destroy_table(ck_hash_table_t **table, void (*dtor_value)(void *value),
 	}
 
 	// destroy items in stash
-	ck_hash_table_item_t **stash =
-	        ((ck_hash_table_item_t **)(da_get_items(&(*table)->stash)));
-	for (uint i = 0; i < da_get_count(&(*table)->stash); ++i) {
-		assert(stash[i] != NULL);
+//	ck_hash_table_item_t **stash =
+//	        ((ck_hash_table_item_t **)(da_get_items(&(*table)->stash)));
+//	for (uint i = 0; i < da_get_count(&(*table)->stash); ++i) {
+//		assert(stash[i] != NULL);
+//		if (dtor_value) {
+//			dtor_value(stash[i]->value);
+//		}
+//		if (delete_key != 0) {
+//			free((void *)stash[i]->key);
+//		}
+//		free((void *)stash[i]);
+//	}
+	ck_stash_item_t *item = (*table)->stash2;
+	while (item != NULL) {
+		// disconnect the item
+		(*table)->stash2 = item->next;
+		assert(item->item != NULL);
+
 		if (dtor_value) {
-			dtor_value(stash[i]->value);
+			dtor_value(item->item->value);
 		}
-		if (delete_key != 0) {
-			free((void *)stash[i]->key);
+		if (delete_key) {
+			free((void *)item->item->key);
 		}
-		free((void *)stash[i]);
+
+		free((void *)item->item);
+		free(item);
+		item = (*table)->stash2;
 	}
 
 	// deallocate tables
@@ -671,36 +723,43 @@ int ck_insert_item(ck_hash_table_t *table, const char *key,
 	             new_item);
 
 	// there should be at least 2 free places
-	assert(da_try_reserve(&table->stash, 2) == 0);
-	da_reserve(&table->stash, 1);
-	if (ck_hash_item(table, &new_item,
-	               &STASH_ITEMS(&table->stash)[da_get_count(&table->stash)],
-	               table->generation) != 0) {
-		debug_ck_hash("Item with key %.*s inserted into buffer.\n",
-		              STASH_ITEMS(&table->stash)
-		                [da_get_count(&table->stash)]->key_length,
-		              STASH_ITEMS(&table->stash)
-		                [da_get_count(&table->stash)]->key);
+	//assert(da_try_reserve(&table->stash, 2) == 0);
+	//da_reserve(&table->stash, 1);
+	ck_hash_table_item_t *free_place = NULL;
+	if (ck_hash_item(table, &new_item, &free_place,
+	                 table->generation) != 0) {
+
+		// maybe some limit on the stash and rehash if full
+		if (ck_add_to_stash(table, free_place) != 0) {
+			debug_ck_hash("Could not add item to stash!!\n");
+			assert(0);
+		}
+
+//		debug_ck_hash("Item with key %.*s inserted into buffer.\n",
+//		              STASH_ITEMS(&table->stash)
+//		                [da_get_count(&table->stash)]->key_length,
+//		              STASH_ITEMS(&table->stash)
+//		                [da_get_count(&table->stash)]->key);
 
 		// loop occured, the item is already at its new place in the
 		// buffer, so just increment the index and check if rehash is
 		// not needed
-		da_occupy(&table->stash, 1);
+//		da_occupy(&table->stash, 1);
 
 		// if only one place left, rehash (this place is used in
 		// rehashing)
-		if (da_try_reserve(&table->stash, 2) != 0) {
-			log_info("Rehash...\n");
-			int res = ck_rehash(table);
-			if (res != 0) {
-				debug_ck_hash("Rehashing not successful, "
-				              "rehash flag: %hu\n",
-				              IS_REHASHING(table->generation));
-				assert(0);
-			}
-			pthread_mutex_unlock(&table->mtx_table);
-			return res;
-		}
+//		if (da_try_reserve(&table->stash, 2) != 0) {
+//			log_info("Rehash...\n");
+//			int res = ck_rehash(table);
+//			if (res != 0) {
+//				debug_ck_hash("Rehashing not successful, "
+//				              "rehash flag: %hu\n",
+//				              IS_REHASHING(table->generation));
+//				assert(0);
+//			}
+//			pthread_mutex_unlock(&table->mtx_table);
+//			return res;
+//		}
 	}
 
 	pthread_mutex_unlock(&table->mtx_table);
