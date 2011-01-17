@@ -18,7 +18,8 @@ TREE_DEFINE(dnslib_node, avl);
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_check_node(const dnslib_zone_t *zone, const dnslib_node_t *node)
+static int dnslib_zone_check_node(const dnslib_zone_t *zone,
+                                  const dnslib_node_t *node)
 {
 	if (zone == NULL || node == NULL) {
 		return -1;
@@ -42,7 +43,8 @@ int dnslib_zone_check_node(const dnslib_zone_t *zone, const dnslib_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_destroy_node_rrsets_from_tree(dnslib_node_t *node, void *data)
+static void dnslib_zone_destroy_node_rrsets_from_tree(dnslib_node_t *node,
+                                                      void *data)
 {
 	UNUSED(data);
 	dnslib_node_free_rrsets(node);
@@ -50,7 +52,8 @@ void dnslib_zone_destroy_node_rrsets_from_tree(dnslib_node_t *node, void *data)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_destroy_node_owner_from_tree(dnslib_node_t *node, void *data)
+static void dnslib_zone_destroy_node_owner_from_tree(dnslib_node_t *node,
+                                                     void *data)
 {
 	UNUSED(data);
 	dnslib_node_free(&node, 1);
@@ -58,8 +61,8 @@ void dnslib_zone_destroy_node_owner_from_tree(dnslib_node_t *node, void *data)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata, dnslib_zone_t *zone,
-                                   int pos)
+static void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata,
+                                          dnslib_zone_t *zone, int pos)
 {
 	const dnslib_rdata_item_t *dname_item
 		= dnslib_rdata_item(rdata, pos);
@@ -67,7 +70,7 @@ void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata, dnslib_zone_t *zone,
 	if (dname_item != NULL) {
 		dnslib_dname_t *dname = dname_item->dname;
 		const dnslib_node_t *n = NULL;
-		const dnslib_node_t *closest_encloser = NULL;
+//		const dnslib_node_t *closest_encloser = NULL;
 
 //		int exact = dnslib_zone_find_dname(zone, dname, &n,
 //		                                   &closest_encloser);
@@ -103,8 +106,8 @@ void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata, dnslib_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
-                             dnslib_zone_t *zone)
+static void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
+                                    dnslib_zone_t *zone)
 {
 	dnslib_rrset_t *rrset = dnslib_node_get_rrset(node, type);
 	if (!rrset) {
@@ -170,7 +173,7 @@ void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_adjust_node_in_tree(dnslib_node_t *node, void *data)
+static void dnslib_zone_adjust_node_in_tree(dnslib_node_t *node, void *data)
 {
 	assert(data != NULL);
 	dnslib_zone_t *zone = (dnslib_zone_t *)data;
@@ -363,6 +366,8 @@ DEBUG_DNSLIB_ZONE(
 			assert(*closest_encloser);
 		}
 	}
+
+	debug_dnslib_zone("find_dname() returning %d\n", exact_match);
 
 	return exact_match;
 }
