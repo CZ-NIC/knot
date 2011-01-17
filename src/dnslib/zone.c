@@ -317,10 +317,16 @@ DEBUG_DNSLIB_ZONE(
 	free(zone_str);
 );
 
+	if (dnslib_dname_compare(name, zone->apex->owner) == 0) {
+		*node = zone->apex;
+		*closest_encloser = *node;
+		return 1;
+	}
+
 	if (!dnslib_dname_is_subdomain(name, zone->apex->owner)) {
 		*node = NULL;
 		*closest_encloser = NULL;
-		return 0;
+		return -2;
 	}
 
 	// create dummy node to use for lookup
