@@ -144,21 +144,23 @@ static int dnslib_dname_compare_labels(const uint8_t *label1,
 	}
 
 	if (i < label_length) {  // difference in some octet
-		if (tolower(*pos1) < tolower(*pos2)) {
-			return -1;
-		} else {
-			assert(tolower(*pos1) > tolower(*pos2));
-			return 1;
-		}
+		return (tolower(*pos1) - tolower(*pos2));
+//		if (tolower(*pos1) < tolower(*pos2)) {
+//			return -1;
+//		} else {
+//			assert(tolower(*pos1) > tolower(*pos2));
+//			return 1;
+//		}
 	}
 
-	if (label1[0] < label2[0]) {  // one label shorter
-		return -1;
-	} else if (label1[0] > label2[0]) {
-		return 1;
-	}
+	return (label1[0] - label2[0]);
+//	if (label1[0] < label2[0]) {  // one label shorter
+//		return -1;
+//	} else if (label1[0] > label2[0]) {
+//		return 1;
+//	}
 
-	return 0;
+//	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -431,6 +433,7 @@ dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname)
 int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
                               const dnslib_dname_t *domain)
 {
+DEBUG_DNSLIB_DNAME(
 	char *name1 = dnslib_dname_to_str(sub);
 	char *name2 = dnslib_dname_to_str(domain);
 
@@ -438,6 +441,7 @@ int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
 	                   name1, name2);
 	free(name1);
 	free(name2);
+);
 
 	if (sub == domain) {
 		return 0;
@@ -545,6 +549,7 @@ dnslib_dname_t *dnslib_dname_replace_suffix(const dnslib_dname_t *dname,
                                             int size,
                                             const dnslib_dname_t *suffix)
 {
+DEBUG_DNSLIB_DNAME(
 	char *name = dnslib_dname_to_str(dname);
 	debug_dnslib_dname("Replacing suffix of name %s, size %d with ", name,
 	                   size);
@@ -552,7 +557,7 @@ dnslib_dname_t *dnslib_dname_replace_suffix(const dnslib_dname_t *dname,
 	name = dnslib_dname_to_str(suffix);
 	debug_dnslib_dname("%s (size %d)\n", name, suffix->size);
 	free(name);
-
+);
 	dnslib_dname_t *res = dnslib_dname_new();
 	CHECK_ALLOC(res, NULL);
 
@@ -604,6 +609,7 @@ void dnslib_dname_free(dnslib_dname_t **dname)
 
 int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2)
 {
+DEBUG_DNSLIB_DNAME(
 	char *name1 = dnslib_dname_to_str(d1);
 	char *name2 = dnslib_dname_to_str(d2);
 
@@ -611,6 +617,7 @@ int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2)
 	                   name1, name2);
 	free(name1);
 	free(name2);
+);
 
 	if (d1 == d2) {
 		return 0;
