@@ -239,7 +239,8 @@ static void ns_follow_cname(const dnslib_node_t **node,
                             const dnslib_dname_t **qname,
                             dnslib_response_t *resp,
                             int (*add_rrset_to_resp)(dnslib_response_t *,
-                                                     dnslib_rrset_t *, int))
+                                                     const dnslib_rrset_t *,
+                                                     int))
 {
 	// TODO: test!!
 
@@ -268,7 +269,7 @@ static void ns_follow_cname(const dnslib_node_t **node,
 		add_rrset_to_resp(resp, rrset, 1);
 DEBUG_NS(
 		char *name = dnslib_dname_to_str(dnslib_rrset_owner(rrset));
-		debug_ns("CNAME record for owner %s put to answer section.\n",
+		debug_ns("CNAME record for owner %s put to response.\n",
 			 name);
 		free(name);
 );
@@ -393,39 +394,65 @@ static void ns_put_additional_for_rrset(dnslib_response_t *resp,
 	// for all RRs in the RRset
 	rdata = dnslib_rrset_rdata(rrset);
 	while (rdata != NULL) {
+		debug_ns("Getting name from RDATA, type %s..\n",
+			 dnslib_rrtype_to_string(dnslib_rrset_type(rrset)));
 		dname = dnslib_rdata_get_name(rdata,
 					      dnslib_rrset_type(rrset));
 		assert(dname != NULL);
 		node = dnslib_dname_node(dname);
 
+		const dnslib_rrset_t *rrset_add;
+
 		if (node != NULL) {
-			// TODO: CNAMEs
+DEBUG_NS(
+			char *name = dnslib_dname_to_str(node->owner);
+			debug_ns("Putting additional from node %s\n", name);
+			free(name);
+);
+			debug_ns("Checking CNAMEs...\n");
 			if (dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME)
 			    != NULL) {
-				dnslib_dname_t *dname = dnslib_node_owner(node);
+				debug_ns("Found CNAME in node, following...\n");
+				const dnslib_dname_t *dname
+						= dnslib_node_owner(node);
 				ns_follow_cname(&node, &dname, resp,
 					dnslib_response_add_rrset_additional);
 			}
 
 			// A RRSet
-			rrset = dnslib_node_rrset(node, DNSLIB_RRTYPE_A);
-			if (rrset != NULL) {
-				ns_check_wildcard(dname, resp, &rrset);
+			debug_ns("A RRSets...\n");
+			rrset_add = dnslib_node_rrset(node, DNSLIB_RRTYPE_A);
+			if (rrset_add != NULL) {
+				debug_ns("Found A RRsets.\n");
+				ns_check_wildcard(dname, resp, &rrset_add);
 				dnslib_response_add_rrset_additional(
-					resp, rrset, 0);
+					resp, rrset_add, 0);
 			}
 
 			// AAAA RRSet
-			rrset = dnslib_node_rrset(node, DNSLIB_RRTYPE_AAAA);
-			if (rrset != NULL) {
-				ns_check_wildcard(dname, resp, &rrset);
+			debug_ns("AAAA RRSets...\n");
+			rrset_add = dnslib_node_rrset(node, DNSLIB_RRTYPE_AAAA);
+			if (rrset_add != NULL) {
+				debug_ns("Found AAAA RRsets.\n");
+				ns_check_wildcard(dname, resp, &rrset_add);
 				dnslib_response_add_rrset_additional(
-					resp, rrset, 0);
+					resp, rrset_add, 0);
 			}
 		}
 
+		assert(rrset != NULL);
+		assert(rdata != NULL);
 		rdata = dnslib_rrset_rdata_next(rrset, rdata);
 	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int ns_additional_needed(uint16_t qtype)
+{
+	return (qtype == DNSLIB_RRTYPE_MX ||
+	        qtype == DNSLIB_RRTYPE_NS ||
+		qtype == DNSLIB_RRTYPE_SRV);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -438,12 +465,17 @@ static void ns_put_additional(dnslib_response_t *resp)
 
 	for (int i = 0; i < dnslib_response_answer_rrset_count(resp); ++i) {
 		rrset = dnslib_response_answer_rrset(resp, i);
-		ns_put_additional_for_rrset(resp, rrset);
+		assert(rrset != NULL);
+		if (ns_additional_needed(dnslib_rrset_type(rrset))) {
+			ns_put_additional_for_rrset(resp, rrset);
+		}
 	}
 
 	for (int i = 0; i < dnslib_response_authority_rrset_count(resp); ++i) {
 		rrset = dnslib_response_authority_rrset(resp, i);
-		ns_put_additional_for_rrset(resp, rrset);
+		if (ns_additional_needed(dnslib_rrset_type(rrset))) {
+			ns_put_additional_for_rrset(resp, rrset);
+		}
 	}
 
 //	// for each answer RR add appropriate additional records
@@ -615,15 +647,6 @@ static inline void ns_referral(const dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_additional_needed(uint16_t qtype)
-{
-	return (qtype == DNSLIB_RRTYPE_MX ||
-	        qtype == DNSLIB_RRTYPE_NS ||
-		qtype == DNSLIB_RRTYPE_SRV);
-}
-
-/*----------------------------------------------------------------------------*/
-
 static void ns_answer_from_node(const dnslib_node_t *node,
                                 const dnslib_zone_t *zone,
                                 const dnslib_dname_t *qname, uint16_t qtype,
@@ -638,9 +661,7 @@ static void ns_answer_from_node(const dnslib_node_t *node,
 		ns_put_authority_ns(zone, resp);
 	}
 
-	if (ns_additional_needed(qtype)) {
-		ns_put_additional(resp);
-	}
+	ns_put_additional(resp);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -995,10 +1016,10 @@ DEBUG_NS(
 			ns_follow_cname(&node, &act_name, resp,
 			                dnslib_response_add_rrset_answer);
 DEBUG_NS(
-			name = dnslib_dname_to_str(act_name);
+			char *name2 = dnslib_dname_to_str(act_name);
 			debug_ns("Canonical name: %s, node found: %p\n",
-			         name, node);
-			free(name);
+			         name2, node);
+			free(name2);
 );
 			if (act_name != qname) {
 				qname = act_name;
@@ -1052,9 +1073,9 @@ DEBUG_NS(
 		return;
 	}
 DEBUG_NS(
-	name_str = dnslib_dname_to_str(zone->apex->owner);
-	debug_ns("Found zone for QNAME %s\n", name_str);
-	free(name_str);
+	char *name_str2 = dnslib_dname_to_str(zone->apex->owner);
+	debug_ns("Found zone for QNAME %s\n", name_str2);
+	free(name_str2);
 );
 	//debug_ns("Size of response packet: %u\n", ldns_pkt_size(response));
 
