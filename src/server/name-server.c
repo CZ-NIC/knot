@@ -2,13 +2,9 @@
 #include <assert.h>
 
 #include <urcu.h>
-#include <ldns/ldns.h>
 
 #include "name-server.h"
-#include "zone-node.h"
-#include "zone-database.h"
 #include "stat.h"
-
 #include "dnslib.h"
 #include "dnslib/debug.h"
 
@@ -607,8 +603,6 @@ DEBUG_NS(
 	debug_ns("Found zone for QNAME %s\n", name_str2);
 	free(name_str2);
 );
-	//debug_ns("Size of response packet: %u\n", ldns_pkt_size(response));
-
 	ns_answer_from_zone(zone, qname, qtype, resp);
 
 	//dnslib_dname_free(&qname);

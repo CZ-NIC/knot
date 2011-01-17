@@ -39,7 +39,7 @@ dnslib_zonedb_t *dnslib_zonedb_new();
  * \brief Adds new zone to the database.
  *
  * \param database Zone database to store the zone.
- * \param zone Parsed zone in ldns_zone format.
+ * \param zone Parsed zone.
  *
  * \retval 0 On success.
  * \retval -1 On failure.

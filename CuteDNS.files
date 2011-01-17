@@ -1,10 +1,6 @@
 Makefile
 src/common.h
 src/main.c
-src/dns/dns-simple.c
-src/dns/dns-simple.h
-src/dns/dns-utils.h
-src/dns/dns-utils.c
 src/hash/cuckoo-hash-table.c
 src/hash/cuckoo-hash-table.h
 src/hash/hash-functions.c
@@ -19,14 +15,6 @@ src/server/name-server.c
 src/server/name-server.h
 src/server/server.c
 src/server/server.h
-src/zone/zone-database.c
-src/zone/zone-database.h
-src/zone/zone-data-structure.h
-src/zone/zone-data-structure.c
-src/zone/zone-node.c
-src/zone/zone-node.h
-src/zone/zone-parser.c
-src/zone/zone-parser.h
 src/zone/zlexer.lex
 src/zone/zonec.c
 src/zone/zonec.h
