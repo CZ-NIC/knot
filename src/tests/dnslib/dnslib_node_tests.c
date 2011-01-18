@@ -175,7 +175,20 @@ static int test_node_sorting()
 
 static int test_node_delete()
 {
-	return 0;
+	int errors = 0;
+
+	dnslib_node_t *tmp_node;
+
+	for (int i = 0; i < TEST_NODES; i++) {
+		tmp_node = dnslib_node_new(&test_nodes[i].owner,
+		                      test_nodes[i].parent);
+
+		dnslib_node_free(&tmp_node, 0);
+
+		errors += (tmp_node != NULL);
+	}
+
+	return (errors == 0);
 }
 
 static int test_node_set_parent()
@@ -200,7 +213,26 @@ static int test_node_set_parent()
 	return (errors == 0);
 }
 
-static const int DNSLIB_NODE_TEST_COUNT = 7;
+static int test_node_free_rrsets()
+{
+	int errors = 0;
+
+	dnslib_node_t *tmp_node;
+
+	for (int i = 0; i < TEST_NODES; i++) {
+		tmp_node = dnslib_node_new(&test_nodes[i].owner,
+		                      test_nodes[i].parent);
+
+		dnslib_node_free_rrsets(tmp_node);
+
+		errors += (tmp_node->rrsets != NULL);
+
+		dnslib_node_free(&tmp_node, 0);
+	}
+	return (errors == 0);
+}
+
+static const int DNSLIB_NODE_TEST_COUNT = 8;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -221,7 +253,7 @@ static int dnslib_node_tests_run(int argc, char *argv[])
 	ok(res, "node: create");
 	res_final *= res;
 
-	skip(!res, 4)
+	skip(!res, 6)
 
 	ok((res = test_node_add_rrset()), "node: add");
 	res_final *= res;
@@ -238,14 +270,13 @@ static int dnslib_node_tests_run(int argc, char *argv[])
 	ok((res = test_node_sorting()), "node: sort");
 	res_final *= res;
 
-	endskip;
+	ok((res = test_node_free_rrsets()), "node: free rrsets");
+	res_final *= res;
 
-	todo();
+	endskip;
 
 	ok((res = test_node_delete()), "node: delete");
 	//res_final *= res;
-
-	endtodo;
 
 	return res_final;
 }
