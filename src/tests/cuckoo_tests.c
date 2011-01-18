@@ -41,7 +41,7 @@ unit_api cuckoo_tests_api = {
  * Unit implementation
  */
 static const int CUCKOO_TESTS_COUNT = 7;
-static const int CUCKOO_MAX_ITEMS = 50;
+static const int CUCKOO_MAX_ITEMS = 100000;
 static const int CUCKOO_TEST_MAX_KEY_SIZE = 10;
 
 typedef struct test_cuckoo_items {
@@ -94,6 +94,7 @@ static int test_cuckoo_insert(ck_hash_table_t *table,
 //		note("Inserting item with key %.*s and value %d\n",
 //		     items->key_sizes[i], items->keys[i],
 //		     items->values[i]);
+		assert(items->values[i] != 0);
 		if (ck_insert_item(table, items->keys[i], items->key_sizes[i],
 		                   (void *)items->values[i]) != 0) {
 			++errors;
@@ -234,6 +235,7 @@ static void create_random_items(test_cuckoo_items *items, int item_count)
 			items->deleted[i] = 0;
 		} else {
 			free(key);
+			--i;
 		}
 //		note("created item with key: %.*s (size %d), value: %d\n",
 //		     items->key_sizes[i], items->keys[i],
