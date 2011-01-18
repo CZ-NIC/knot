@@ -333,6 +333,8 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 
 	char apex_found = 0;
 
+	uint non_authorative_node_count;
+
 	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101};
 	                                           /*c   u    t    e */
 
@@ -343,6 +345,10 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 
 	fread(&node_count, sizeof(node_count), 1, f);
 	fread(&nsec3_node_count, sizeof(nsec3_node_count), 1, f);
+	fread(&non_authorative_node_count,
+	      sizeof(non_authorative_node_count), 1, f);
+
+	debug_zp("non authorative nodes: %u\n", non_authorative_node_count);
 
 	uint8_t dname_size;
 	uint8_t dname_wire[DNAME_MAX_WIRE_LENGTH];

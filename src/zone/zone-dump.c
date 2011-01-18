@@ -177,11 +177,15 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 	dnslib_rrtype_descriptor_t *desc =
 		dnslib_rrtype_descriptor_by_type(type);
 	assert(desc != NULL);
+
+	debug_zp("dumping type: %s\n", dnslib_rrtype_to_string(type));
+
 	for (int i = 0; i < desc->length; i++) {
 		if (&(rdata->items[i]) == NULL) {
 			debug_zp("Item n. %d is not set!\n", i);
 			continue;
 		}
+		debug_zp("Item n: %d\n", i);
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
@@ -192,7 +196,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 			if (rdata->items[i].dname->node == NULL ||
 			    (wildcard =
 				dnslib_find_wildcard(rdata->items[i].dname, list)) ) {
-				debug_zp("not in zone: %s\n",
+				debug_zp("Not in the zone: %s\n",
 				       dnslib_dname_to_str((rdata->items[i].dname)));
 				fwrite((uint8_t *)"\0", sizeof(uint8_t), 1, f);
 				dnslib_dname_dump_binary(rdata->items[i].dname, f);
@@ -224,7 +228,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 
 static void dnslib_rrsig_set_dump_binary(dnslib_rrsig_set_t *rrsig, arg_t *data)
 {
-	FILE *f = (FILE *)((arg_t *)data)->arg1;	
+	FILE *f = (FILE *)((arg_t *)data)->arg1;
 	fwrite(&rrsig->type, sizeof(rrsig->type), 1, f);
 	fwrite(&rrsig->rclass, sizeof(rrsig->rclass), 1, f);
 	fwrite(&rrsig->ttl, sizeof(rrsig->ttl), 1, f);
@@ -242,11 +246,11 @@ static void dnslib_rrsig_set_dump_binary(dnslib_rrsig_set_t *rrsig, arg_t *data)
 	dnslib_rdata_t *tmp_rdata = rrsig->rdata;
 
 	while (tmp_rdata->next != rrsig->rdata) {
-		dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, f);
+		dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, data);
 		tmp_rdata = tmp_rdata->next;
 		rdata_count++;
 	}
-	dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, f);
+	dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, data);
 	rdata_count++;
 
 	fpos_t tmp_pos;
@@ -263,6 +267,7 @@ static void dnslib_rrsig_set_dump_binary(dnslib_rrsig_set_t *rrsig, arg_t *data)
 static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, void *data)
 {
 	FILE *f = (FILE *)((arg_t *)data)->arg1;
+
 	fwrite(&rrset->type, sizeof(rrset->type), 1, f);
 	fwrite(&rrset->rclass, sizeof(rrset->rclass), 1, f);
 	fwrite(&rrset->ttl, sizeof(rrset->ttl), 1, f);
@@ -311,6 +316,7 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 	dnslib_zone_t *zone = (dnslib_zone_t *)args->arg3;
 
 	FILE *f = (FILE *)args->arg1;
+
 	
 	node_count++;
 	/* first write dname */
@@ -407,6 +413,9 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 
 	fwrite(&node_count, sizeof(node_count), 1, f);
 	fwrite(&node_count, sizeof(node_count), 1, f);
+	fwrite(&zone->non_authorative_node_count,
+	       sizeof(zone->non_authorative_node_count),
+	       1, f);
 
 	dnslib_dname_dump_binary(zone->apex->owner, f);
 
@@ -430,6 +439,9 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 	
 	fwrite(&tmp_count, sizeof(tmp_count), 1, f);
 	fwrite(&node_count, sizeof(node_count), 1, f);
+	fwrite(&zone->non_authorative_node_count,
+	       sizeof(zone->non_authorative_node_count),
+	       1, f);
 
 	printf("written %d normal nodes\n", tmp_count);
 
