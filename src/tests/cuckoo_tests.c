@@ -41,7 +41,7 @@ unit_api cuckoo_tests_api = {
  * Unit implementation
  */
 static const int CUCKOO_TESTS_COUNT = 7;
-static const int CUCKOO_MAX_ITEMS = 1000;
+static const int CUCKOO_MAX_ITEMS = 50;
 static const int CUCKOO_TEST_MAX_KEY_SIZE = 10;
 
 typedef struct test_cuckoo_items {
@@ -210,11 +210,31 @@ static void create_random_items(test_cuckoo_items *items, int item_count)
 	items->keys = (char **)malloc(item_count * sizeof(char *));
 
 	for (int i = 0; i < item_count; ++i) {
-		items->values[i] = rand() + 1;
-		items->key_sizes[i] = rand() % CUCKOO_TEST_MAX_KEY_SIZE + 1;
-		items->keys[i] = malloc(items->key_sizes[i] * sizeof(char));
-		rand_str(items->keys[i], items->key_sizes[i]);
-		items->deleted[i] = 0;
+		int value = rand() + 1;
+		int key_size = rand() % CUCKOO_TEST_MAX_KEY_SIZE + 1;
+		char *key = malloc(items->key_sizes[i] * sizeof(char));
+		assert(key != NULL);
+		rand_str(key, key_size);
+
+		// check if the key is not already in the table
+		int found = 0;
+		for (int j = 0; j < i; ++j) {
+			if (items->key_sizes[j] == key_size
+			    && strncmp(items->keys[j], key, key_size) == 0) {
+				found = 1;
+				break;
+			}
+		}
+
+		if (!found) {
+			assert(value != 0);
+			items->values[i] = value;
+			items->key_sizes[i] = key_size;
+			items->keys[i] = key;
+			items->deleted[i] = 0;
+		} else {
+			free(key);
+		}
 //		note("created item with key: %.*s (size %d), value: %d\n",
 //		     items->key_sizes[i], items->keys[i],
 //		     items->key_sizes[i], items->values[i]);
