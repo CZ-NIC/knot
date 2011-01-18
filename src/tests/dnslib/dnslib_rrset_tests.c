@@ -491,7 +491,7 @@ static int test_rrset_merge()
 static int test_rrset_owner(dnslib_rrset_t **rrsets)
 {
 	int errors = 0;
-	for (int i = 0; i < TEST_RRSIGS; i++) {
+	for (int i = 0; i < TEST_RRSETS; i++) {
 		char *dname_str =
 			dnslib_dname_to_str(dnslib_rrset_owner(rrsets[i]));
 		if (strcmp(dname_str, test_rrsets[i].owner)) {
@@ -506,7 +506,7 @@ static int test_rrset_owner(dnslib_rrset_t **rrsets)
 static int test_rrset_type(dnslib_rrset_t **rrsets)
 {
 	int errors = 0;
-	for (int i = 0; i < TEST_RRSIGS; i++) {
+	for (int i = 0; i < TEST_RRSETS; i++) {
 		if (dnslib_rrset_type(rrsets[i]) != test_rrsets[i].type) {
 			errors++;
 			diag("Got wrong value for type from rrset.");
@@ -518,7 +518,7 @@ static int test_rrset_type(dnslib_rrset_t **rrsets)
 static int test_rrset_class(dnslib_rrset_t **rrsets)
 {
 	int errors = 0;
-	for (int i = 0; i < TEST_RRSIGS; i++) {
+	for (int i = 0; i < TEST_RRSETS; i++) {
 		if (dnslib_rrset_class(rrsets[i]) != test_rrsets[i].rclass) {
 			errors++;
 			diag("Got wrong value for class from rrset.");
@@ -531,7 +531,7 @@ static int test_rrset_class(dnslib_rrset_t **rrsets)
 static int test_rrset_ttl(dnslib_rrset_t **rrsets)
 {
 	int errors = 0;
-	for (int i = 0; i < TEST_RRSIGS; i++) {
+	for (int i = 0; i < TEST_RRSETS; i++) {
 		if (dnslib_rrset_ttl(rrsets[i]) != test_rrsets[i].ttl) {
 			errors++;
 			diag("Got wrong value for ttl from rrset.");
@@ -546,7 +546,7 @@ static int test_rrset_ret_rdata(dnslib_rrset_t **rrsets)
 	
 	dnslib_rrtype_descriptor_t *desc;
 
-	for (int i = 0; i < TEST_RRSIGS; i++) {
+	for (int i = 0; i < TEST_RRSETS; i++) {
 		desc = dnslib_rrtype_descriptor_by_type(rrsets[i]->type);
 		assert(desc);
 		if (dnslib_rdata_compare(dnslib_rrset_rdata(rrsets[i]),
@@ -565,7 +565,7 @@ static int test_rrset_get_rdata(dnslib_rrset_t **rrsets)
 
 	dnslib_rrtype_descriptor_t *desc;
 
-	for (int i = 0; i < TEST_RRSIGS; i++) {
+	for (int i = 0; i < TEST_RRSETS; i++) {
 		desc = dnslib_rrtype_descriptor_by_type(rrsets[i]->type);
 		assert(desc);
 		if (dnslib_rdata_compare(dnslib_rrset_get_rdata(rrsets[i]),
@@ -582,7 +582,7 @@ static int test_rrset_ret_rrsigs(dnslib_rrset_t **rrsets)
 {
 	int errors = 0;
 
-	for (int i = 0; i < TEST_RRSIGS; i++) {
+	for (int i = 0; i < TEST_RRSETS; i++) {
 		/* TODO should I test the insides of structure as well? */
 		if (dnslib_rrset_rrsigs(rrsets[i]) != test_rrsets[i].rrsigs) {
 			errors++;
