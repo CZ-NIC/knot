@@ -690,48 +690,48 @@ static int test_rdata_compare()
 
 	/* 123456 \w 654321 -> result -1 */
 	if (dnslib_rdata_compare(&test_rdata[0],
-		                 &test_rdata[1],
-				 &format_rawdata) != -1) {
+	                         &test_rdata[1],
+	                         &format_rawdata) != -1) {
 		diag("RDATA raw data comparison failed");
 		errors++;
 	}
 
 	/* 123456 \w 123456 -> result 0 */
 	if (dnslib_rdata_compare(&test_rdata[0],
-		                 &test_rdata[0],
-				 &format_rawdata) != 0) {
+	                         &test_rdata[0],
+	                         &format_rawdata) != 0) {
 		diag("RDATA raw data comparison failed");
 		errors++;
 	}
 
 	/* 123456 \w 654321 -> result 1 */
 	if (dnslib_rdata_compare(&test_rdata[1],
-		                 &test_rdata[0],
-				 &format_rawdata) != 1) {
+	                         &test_rdata[0],
+	                         &format_rawdata) != 1) {
 		diag("RDATA raw data comparison failed");
 		errors++;
 	}
 
 	/* abcdef.example.com. \w abcdef.foo.com. -> result 1 */
 	if (dnslib_rdata_compare(&test_rdata[2],
-		                 &test_rdata[3],
-				 &format_dname) != 1) {
+	                         &test_rdata[3],
+	                         &format_dname) != 1) {
 		diag("RDATA dname comparison failed");
 		errors++;
 	}
 
 	/* abcdef.example.com. \w abcdef.example.com. -> result 0 */
 	if (dnslib_rdata_compare(&test_rdata[2],
-		                 &test_rdata[2],
-				 &format_dname) != 0) {
+	                         &test_rdata[2],
+	                         &format_dname) != 0) {
 		diag("RDATA dname comparison failed");
 		errors++;
 	}
 
 	/* abcdef.example.com. \w abcdef.foo.com -> result -1 */
 	if (dnslib_rdata_compare(&test_rdata[3],
-		                 &test_rdata[2],
-				 &format_dname) != -1) {
+	                         &test_rdata[2],
+	                         &format_dname) != -1) {
 		diag("RDATA dname comparison failed");
 		errors++;
 	}
@@ -898,7 +898,7 @@ static int test_rdata_deep_free()
 
 /*----------------------------------------------------------------------------*/
 
-static const int DNSLIB_RDATA_TEST_COUNT = 9;
+static const int DNSLIB_RDATA_TEST_COUNT = 10;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
