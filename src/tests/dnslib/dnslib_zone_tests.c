@@ -369,8 +369,9 @@ static int test_zone_tree_apply(dnslib_zone_t *zone,
 	assert(compare_ok = 1);
 
 	void (*traversal_func)(dnslib_zone_t *zone,
-        void (*function)(dnslib_node_t *node, void *data),
-        void *data);
+	                       void (*function)(dnslib_node_t *node,
+	                                        void *data),
+	                       void *data);
 
 	switch (type) {
 		case 0: {
@@ -446,10 +447,10 @@ static int test_zone_free(dnslib_zone_t **zone)
 {
 	dnslib_zone_tree_apply_postorder(*zone,
 	                                 test_zone_destroy_node_from_tree,
-					 NULL);
+	                                 NULL);
 	dnslib_zone_nsec3_apply_postorder(*zone,
 	                                 test_zone_destroy_node_from_tree,
-					 NULL);
+	                                 NULL);
 	dnslib_zone_free(zone);
 	return (*zone == NULL);
 }
