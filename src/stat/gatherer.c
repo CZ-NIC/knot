@@ -1,6 +1,6 @@
-#include <malloc.h>
 #include <pthread.h>
 
+#include "malloc.h"
 #include "gatherer.h"
 #include "common.h"
 

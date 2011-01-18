@@ -18,7 +18,7 @@
 #include "rdata.h"
 #include "rrsig.h"
 #include "zone.h"
-#include "other/slab.h"
+#include "slab.h"
 
 #define MAXRDATALEN	64
 #define MAXLABELLEN	63

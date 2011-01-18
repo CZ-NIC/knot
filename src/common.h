@@ -14,7 +14,6 @@
 
 #include <signal.h>
 #include <stdint.h>
-#include "other/malloc.h"
 
 /* Common types and constants.
  */
@@ -30,6 +29,10 @@ typedef unsigned int uint;
 
 /* Sockets. */
 #define TCP_BACKLOG_SIZE 5     // TCP listen backlog size
+
+/* Memory allocator. */
+//#define MEM_SLAB_CAP 3         // Cap slab_cache empty slab count (undefined = inf)
+#define MEM_COLORING           // Slab cache coloring
 
 /* Common includes.
  */

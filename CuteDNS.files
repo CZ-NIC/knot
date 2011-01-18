@@ -44,8 +44,6 @@ src/other/dynamic-array.h
 src/other/dynamic-array.c
 src/other/skip-list.h
 src/other/skip-list.c
-src/other/slab.h
-src/other/slab.c
 tests/querytcp.c
 src/server/udp-handler.h
 src/server/tcp-handler.h
@@ -74,8 +72,6 @@ src/stat/gatherer.h
 src/stat/gatherer.c
 src/stat/stat.h
 src/stat/stat.c
-src/other/malloc.h
-src/other/malloc.c
 src/dnslib/zone.h
 src/dnslib/zone.c
 src/tests/dnslib/dnslib_zone_tests.c
@@ -85,8 +81,6 @@ src/other/tree.h
 src/dnslib/response.h
 src/dnslib/packet.h
 src/dnslib/response.c
-src/other/malloc.h
-src/other/malloc.c
 src/dnslib/edns.h
 src/dnslib/utils.h
 src/dnslib/zonedb.h
@@ -102,3 +96,7 @@ src/dnslib/debug.h
 src/dnslib/debug.c
 src/dnslib/dnslib.h
 src/dnslib/tolower.h
+src/alloc/malloc.h
+src/alloc/malloc.c
+src/alloc/slab.h
+src/alloc/slab.c
