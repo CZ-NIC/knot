@@ -69,6 +69,13 @@ struct ck_hash_table_item {
 
 typedef struct ck_hash_table_item ck_hash_table_item_t;
 
+struct ck_stash_item {
+	ck_hash_table_item_t *item;
+	struct ck_stash_item *next;
+};
+
+typedef struct ck_stash_item ck_stash_item_t;
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Hash table structure which uses cuckoo hashing.
@@ -105,7 +112,8 @@ struct ck_hash_table {
 
 	ck_hash_table_item_t **tables[MAX_TABLES]; /*!< Array of hash tables. */
 
-	da_array_t stash; /*!< Stash implemented as a dynamic array. */
+	//da_array_t stash; /*!< Stash implemented as a dynamic array. */
+	ck_stash_item_t *stash2;
 
 	/*! \brief Mutex for avoiding multiple insertions / rehashes at once. */
 	pthread_mutex_t mtx_table;
@@ -255,7 +263,7 @@ int ck_remove_item(const ck_hash_table_t *table, const char *key, size_t length,
 #ifdef CT_TEST_REHASH
 /*----------------------------------------------------------------------------*/
 
-int ck_rehash(ck_hash_table_t *table);
+//int ck_rehash(ck_hash_table_t *table);
 #endif
 /*----------------------------------------------------------------------------*/
 /*!
