@@ -19,14 +19,14 @@ int main(int argc, char *argv[])
 
 	// Build test set
 	unit_api *tests[] = {
-	        &skiplist_tests_api, //! Skip list unit
-	        &dthreads_tests_api, //! DThreads testing unit
-	        &da_tests_api,       //! Dynamic array unit
+	        //&skiplist_tests_api, //! Skip list unit
+	        //&dthreads_tests_api, //! DThreads testing unit
+	        //&da_tests_api,       //! Dynamic array unit
 	        &cuckoo_tests_api,   //! Cuckoo hashing unit
-	        &zonedb_tests_api,   //! Zone database unit
-	        &dnslib_tests_api,   //! DNS library unit
-	        &server_tests_api,   //! Server unit
-	        &slab_tests_api,     //! SLAB allocator unit
+	        //&zonedb_tests_api,   //! Zone database unit
+	        //&dnslib_tests_api,   //! DNS library unit
+	        //&server_tests_api,   //! Server unit
+	        //&slab_tests_api,     //! SLAB allocator unit
 		NULL
 	};
 

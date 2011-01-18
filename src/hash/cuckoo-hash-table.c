@@ -270,7 +270,7 @@ static inline uint ck_items_match(const ck_hash_table_item_t *item,
                                   const char *key, size_t length)
 {
 	return (length == item->key_length
-	        && (strncmp(item->key, key, length) == 0)) ? 0 : -1;
+	        && (strncmp(item->key, key, length) == 0));
 }
 
 /*----------------------------------------------------------------------------*/
@@ -292,6 +292,10 @@ static ck_hash_table_item_t **ck_find_in_stash(const ck_hash_table_t *table,
 {
 	ck_stash_item_t *item = table->stash2;
 	while (item != NULL) {
+		debug_ck("Comparing item in stash (key: %.*s (size %d))"
+		         "with searched item (key %.*s (size %d)).\n",
+		         item->item->key_length, item->item->key,
+		         item->item->key_length, length, key, length);
 		if (ck_items_match(item->item, key, length)) {
 			return &item->item;
 		}
@@ -352,7 +356,7 @@ static ck_hash_table_item_t **ck_find_gen(const ck_hash_table_t *table,
 		}
 
 		if (table->tables[t][hash] &&
-		    ck_items_match(table->tables[t][hash], key, length) == 0) {
+		    ck_items_match(table->tables[t][hash], key, length)) {
 			// found
 			return &table->tables[t][hash];
 		}
@@ -543,8 +547,12 @@ int ck_add_to_stash(ck_hash_table_t *table, ck_hash_table_item_t *item)
 
 	new_item->item = item;
 	new_item->next = table->stash2;
-	// maybe use RCU?
-	table->stash2 = new_item;
+	rcu_set_pointer(&table->stash2, new_item);
+
+	debug_ck_hash("First item in stash (now inserted): key: %.*s (size %d),"
+	              " value: %p\n", table->stash2->item->key_length,
+	              table->stash2->item->key, table->stash2->item->key_length,
+	              table->stash2->item->value);
 	return 0;
 }
 
@@ -729,6 +737,9 @@ int ck_insert_item(ck_hash_table_t *table, const char *key,
 	if (ck_hash_item(table, &new_item, &free_place,
 	                 table->generation) != 0) {
 
+		debug_ck("Adding item with key %.*s to stash.\n",
+		         free_place->key_length, free_place->key);
+
 		// maybe some limit on the stash and rehash if full
 		if (ck_add_to_stash(table, free_place) != 0) {
 			debug_ck_hash("Could not add item to stash!!\n");
@@ -876,7 +887,7 @@ int ck_rehash(ck_hash_table_t *table)
 			         da_get_count(&table->stash));
 		}
 
-		// rehash items from buffer, starting from the last old item
+		// rehash items from stash, starting from the last old item
 		int stash_i = da_get_count(&table->stash) - 1;
 		while (stash_i >= 0) {
 			// if item's generation is the new generation, skip
@@ -1079,6 +1090,7 @@ int ck_rehash(ck_hash_table_t *table)
 
 void ck_dump_table(const ck_hash_table_t *table)
 {
+#ifdef CUCKOO_DEBUG
 	uint i;
 	debug_ck("----------------------------------------------\n");
 	debug_ck("Hash table dump:\n\n");
@@ -1096,15 +1108,23 @@ void ck_dump_table(const ck_hash_table_t *table)
 	}
 
 	debug_ck("Stash:\n");
-	for (i = 0; i < da_get_count(&table->stash); ++i) {
-		debug_ck("Index: %u, Key: %.*s Value: %p.\n", i,
-		         ((ck_hash_table_item_t **)
-		             da_get_items(&table->stash))[i]->key_length,
-		         ((ck_hash_table_item_t **)
-		             da_get_items(&table->stash))[i]->key,
-		         ((ck_hash_table_item_t **)
-		             da_get_items(&table->stash))[i]->value);
+//	for (i = 0; i < da_get_count(&table->stash); ++i) {
+//		debug_ck("Index: %u, Key: %.*s Value: %p.\n", i,
+//		         ((ck_hash_table_item_t **)
+//		             da_get_items(&table->stash))[i]->key_length,
+//		         ((ck_hash_table_item_t **)
+//		             da_get_items(&table->stash))[i]->key,
+//		         ((ck_hash_table_item_t **)
+//		             da_get_items(&table->stash))[i]->value);
+//	}
+	ck_stash_item_t *item = table->stash2;
+	while (item != NULL) {
+		debug_ck("Hash: %u, Key: %.*s, Value: %p.\n", i,
+			 item->item->key_length, item->item->key,
+			 item->item->value);
+		item = item->next;
 	}
 
 	debug_ck("\n");
+#endif
 }

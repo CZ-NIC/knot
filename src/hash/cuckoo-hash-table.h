@@ -113,7 +113,7 @@ struct ck_hash_table {
 	ck_hash_table_item_t **tables[MAX_TABLES]; /*!< Array of hash tables. */
 
 	da_array_t stash; /*!< Stash implemented as a dynamic array. */
-	ck_stash_item_t * stash2;
+	ck_stash_item_t *stash2;
 
 	/*! \brief Mutex for avoiding multiple insertions / rehashes at once. */
 	pthread_mutex_t mtx_table;
