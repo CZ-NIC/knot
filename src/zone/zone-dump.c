@@ -9,6 +9,7 @@
 struct arg {
 	void *arg1; /* FILE *f / zone */
 	void *arg2; /* skip_list_t */
+	void *arg3; /* zone */
 };
 
 typedef struct arg arg_t;
@@ -213,7 +214,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 		} else {
 			assert(rdata->items[i].raw_data != NULL);
 			fwrite(rdata->items[i].raw_data, sizeof(uint8_t),
-			       rdata->items[i].raw_data[0] + 1, f);\
+			       rdata->items[i].raw_data[0] + 1, f);
 
 			debug_zp("Written %d long raw data\n",
 			         rdata->items[i].raw_data[0]);
@@ -307,11 +308,17 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 {
 	arg_t *args = (arg_t *)data;
 
+	dnslib_zone_t *zone = (dnslib_zone_t *)args->arg3;
+
 	FILE *f = (FILE *)args->arg1;
 	
 	node_count++;
 	/* first write dname */
 	assert(node->owner != NULL);
+
+	if (!dnslib_node_is_non_auth(node)) {
+		zone->non_authorative_node_count++;
+	}
 
 	dnslib_dname_dump_binary(node->owner, f);
 
@@ -387,6 +394,8 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 		return -1;
 	}
 
+	zone->non_authorative_node_count = 0;
+
 	skip_list_t *encloser_list = skip_create_list(compare_pointers);
 
 	dnslib_zone_save_enclosers(zone, encloser_list);
@@ -405,6 +414,7 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 
 	arguments.arg1 = f;
 	arguments.arg2 = encloser_list;
+	arguments.arg3 = zone;
 
 	/* TODO is there a way how to stop the traversal upon error? */
 	dnslib_zone_tree_apply_inorder(zone, dnslib_node_dump_binary,
@@ -424,6 +434,8 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 	printf("written %d normal nodes\n", tmp_count);
 
 	printf("written %d nsec3 nodes\n", node_count);
+
+	printf("non authorative nodes: %u\n", zone->non_authorative_node_count);
 
 	fclose(f);
 
