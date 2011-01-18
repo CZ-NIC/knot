@@ -24,7 +24,6 @@
 //#define ZDB_DEBUG_INSERT_CHECK
 //#define ZN_DEBUG
 //#define ZP_DEBUG_PARSE
-//#define DNSLIB_DNAME_DEBUG
 #define SERVER_DEBUG
 //#define DT_DEBUG
 //#define NET_DEBUG
