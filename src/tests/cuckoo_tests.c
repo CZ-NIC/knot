@@ -245,16 +245,16 @@ static void create_random_items(test_cuckoo_items *items, int item_count)
 
 /*----------------------------------------------------------------------------*/
 
-static void print_items(const test_cuckoo_items *items)
-{
-	assert(items != NULL);
+//static void print_items(const test_cuckoo_items *items)
+//{
+//	assert(items != NULL);
 
-	for (int i = 0; i < items->count; ++i) {
-		note("Item %d: key: %.*s (size %d), value: %d\n",
-		     i, items->key_sizes[i], items->keys[i],
-		     items->key_sizes[i], items->values[i]);
-	}
-}
+//	for (int i = 0; i < items->count; ++i) {
+//		note("Item %d: key: %.*s (size %d), value: %d\n",
+//		     i, items->key_sizes[i], items->keys[i],
+//		     items->key_sizes[i], items->values[i]);
+//	}
+//}
 
 /*----------------------------------------------------------------------------*/
 
