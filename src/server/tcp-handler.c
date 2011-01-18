@@ -7,6 +7,7 @@
 #include <sys/epoll.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "tcp-handler.h"
 #include "name-server.h"
