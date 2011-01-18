@@ -709,6 +709,14 @@ static int test_dname_getters(uint type)
 			break;
 		}
 	} /* switch */
+
+	for (int i = 0; i < TEST_DOMAINS_OK; i++) {
+		dnslib_dname_free(&dnames_fqdn[i]);
+	}
+
+	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
+		dnslib_dname_free(&dnames_non_fqdn[i]);
+	}
 	
 	return (errors == 0);
 }
