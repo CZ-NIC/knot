@@ -100,3 +100,15 @@ src/alloc/malloc.h
 src/alloc/malloc.c
 src/alloc/slab.h
 src/alloc/slab.c
+deprecated/zone-database.c
+deprecated/zone-database.h
+deprecated/zone-data-structure.c
+deprecated/zone-data-structure.h
+deprecated/zone-node.c
+deprecated/zone-node.h
+deprecated/zone-parser.c
+deprecated/zone-parser.h
+deprecated/dns/dns-simple.c
+deprecated/dns/dns-simple.h
+deprecated/dns/dns-utils.c
+deprecated/dns/dns-utils.h
