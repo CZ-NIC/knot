@@ -42,10 +42,11 @@ typedef struct dnslib_zone dnslib_zone_t;
  * \brief Creates new DNS zone.
  *
  * \param apex Node representing the zone apex.
+ * \param node_count Number of authorative nodes in the zone.
  *
  * \return The initialized zone structure or NULL if an error occured.
  */
-dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex);
+dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count);
 
 /*!
  * \brief Adds a node to the given zone.
