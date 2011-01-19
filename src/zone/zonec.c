@@ -1404,8 +1404,6 @@ int process_rr(void)
 
 	/* Do we have the zone already? */
 	if (!zone) {
-		dnslib_node_t *soa_node;
-
 		assert(parser->origin);
 
 		if (dnslib_dname_compare(parser->origin->owner,
