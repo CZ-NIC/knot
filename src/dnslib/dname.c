@@ -454,6 +454,30 @@ dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname)
 
 /*----------------------------------------------------------------------------*/
 
+void dnslib_dname_left_chop_no_copy(dnslib_dname_t *dname)
+{
+	// copy the name
+	short first_label_length = dname->labels[1];
+
+	if (dname->label_count > 1) {
+		memmove(dname->name, &dname->name[dname->labels[1]],
+			dname->size - first_label_length);
+		// adjust labels
+		for (int i = 0; i < dname->label_count - 1; ++i) {
+			dname->labels[i] = dname->labels[i + 1]
+			                   - first_label_length;
+		}
+		dname->label_count = dname->label_count - 1;
+		dname->size -= first_label_length;
+	} else {
+		dname->name[0] = '\0';
+		dname->size = 1;
+		dname->label_count = 0;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
                               const dnslib_dname_t *domain)
 {
