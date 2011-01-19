@@ -135,7 +135,7 @@ void dnslib_zone_save_enclosers(dnslib_zone_t *zone, skip_list_t *list)
 	arguments.arg1 = zone;
 	arguments.arg2 = list;
 
-	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl,
+	dnslib_zone_tree_apply_inorder(zone,
 	                   dnslib_zone_save_enclosers_in_tree,
 			   (void *)&arguments);
 }
@@ -144,9 +144,6 @@ enum { MAGIC_LENGTH = 4 };
 
 /* TODO Think of a better way than a global variable */
 static uint node_count = 0;
-
-static uint8_t zero = 0;
-static uint8_t one = 1;
 
 static void dnslib_labels_dump_binary(dnslib_dname_t *dname, FILE *f)
 {
