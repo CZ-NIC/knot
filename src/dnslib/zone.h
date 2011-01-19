@@ -32,7 +32,7 @@ struct dnslib_zone {
 	dnslib_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
 	avl_tree_t *tree;          /*!< AVL tree for holding zone nodes. */
 	avl_tree_t *nsec3_nodes;   /*!< AVL tree for holding NSEC3 nodes. */
-	uint non_authorative_node_count;
+	uint node_count;
 };
 
 typedef struct dnslib_zone dnslib_zone_t;
