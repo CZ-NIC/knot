@@ -1404,26 +1404,16 @@ int process_rr(void)
 
 	/* Do we have the zone already? */
 	if (!zone) {
-		dnslib_node_t *soa_node;
-
-		debug_zp("Creating zone with apex: %s\n %p",
-		       dnslib_dname_to_str(parser->origin->owner),
-		                           parser->origin->owner);
-
-		zone = dnslib_zone_new(parser->origin);
-
 		assert(parser->origin);
 
 		if (dnslib_dname_compare(parser->origin->owner,
-			                 current_rrset->owner) != 0 ){
-			soa_node = dnslib_node_new(current_rrset->owner,
-			                           NULL);
+			                 current_rrset->owner) == 0) {
 
-			dnslib_zone_add_node(zone, soa_node);
-		} else {
-			dnslib_dname_free(&current_rrset->owner);
-			current_rrset->owner = parser->origin->owner;
+			dnslib_dname_free(&parser->origin->owner);
+			parser->origin->owner = current_rrset->owner;
 		}
+
+		zone = dnslib_zone_new(parser->origin);
 
 		parser->current_zone = zone;
 	}
@@ -1445,28 +1435,26 @@ int process_rr(void)
 
 	dnslib_node_t *node;
 
-	assert(parser->last_node != NULL);
-
 	//get rid of the first statement
 
-	if (current_rrset->type != DNSLIB_RRTYPE_SOA && 
+	if (parser->last_node && current_rrset->type != DNSLIB_RRTYPE_SOA && 
 	    dnslib_dname_compare(parser->last_node->owner,
 	                         current_rrset->owner) ==
 	    0) {
-	node = parser->last_node;
+		node = parser->last_node;
 	} else {
     		node = node_get_func(zone, current_rrset->owner);
 	}
 
 	if (node == NULL) {
 		dnslib_node_t *tmp_node = NULL;
+		/* TODO other variable name */
 		dnslib_node_t *last_node = dnslib_node_new(current_rrset->owner,
 		                                           NULL);
 
 		node = last_node;
 		if (node_add_func(zone, node) != 0) {
 			return -1;
-		//no check yet in zparser ... it just won't be added
 		}
 		dnslib_dname_t *chopped =
 			dnslib_dname_left_chop(current_rrset->owner);
@@ -1476,7 +1464,7 @@ int process_rr(void)
 		if (dnslib_dname_compare(parser->origin->owner,
 			                 chopped) == 0 ) {
 			node->parent = parser->origin;
-		} else {                   //is this cast needed?
+		} else {           
 			while ((tmp_node = node_get_func(zone,
 				            chopped)) == NULL) {
 				tmp_node = dnslib_node_new(chopped, NULL);
@@ -1503,7 +1491,8 @@ int process_rr(void)
 	} 
 	else {
 		if (current_rrset->owner != node->owner) {
-			if (parser->last_node->owner != current_rrset->owner) {
+			if (parser->last_node &&
+			    parser->last_node->owner != current_rrset->owner) {
 				dnslib_dname_free(&(current_rrset->owner));
 			}
 			current_rrset->owner = node->owner;
@@ -1635,11 +1624,11 @@ void zone_read(char *name, const char *zonefile)
 
 //	printf("orphans found\n");
 
-	dnslib_zone_adjust_dnames(parser->current_zone);
+//	dnslib_zone_adjust_dnames(parser->current_zone);
 
 	printf("rdata adjusted\n");
 
-//	dnslib_zone_dump(parser->current_zone);
+	dnslib_zone_dump(parser->current_zone);
 
 	dnslib_zone_dump_binary(parser->current_zone, dump_file_name);
 
@@ -1647,7 +1636,7 @@ void zone_read(char *name, const char *zonefile)
 */
 	dnslib_zone_t *new_zone = dnslib_zone_load(dump_file_name);
 
-//	dnslib_zone_dump(new_zone);
+	dnslib_zone_dump(new_zone);
 
 	dnslib_zone_deep_free(&(parser->current_zone));
 

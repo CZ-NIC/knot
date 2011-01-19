@@ -34,6 +34,7 @@ struct dnslib_zone {
 	avl_tree_t *tree;          /*!< AVL tree for holding zone nodes. */
 	avl_tree_t *nsec3_nodes;   /*!< AVL tree for holding NSEC3 nodes. */
 	ck_hash_table *table;      /*!< Hash table for holding zone nodes. */
+	uint non_authorative_node_count;
 };
 
 typedef struct dnslib_zone dnslib_zone_t;
