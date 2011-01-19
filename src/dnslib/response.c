@@ -32,6 +32,8 @@ enum {
 	                 + PREALLOC_QNAME_NAME
 	                 + PREALLOC_QNAME_LABELS,
 
+	PREALLOC_RR_OWNER = 256,
+
 	PREALLOC_ANSWER = DEFAULT_ANCOUNT * sizeof(dnslib_dname_t *),
 	PREALLOC_AUTHORITY = DEFAULT_NSCOUNT * sizeof(dnslib_dname_t *),
 	PREALLOC_ADDITIONAL = DEFAULT_ARCOUNT * sizeof(dnslib_dname_t *),
@@ -48,6 +50,7 @@ enum {
 
 	PREALLOC_TOTAL = PREALLOC_RESPONSE
 	                 + PREALLOC_QNAME
+	                 + PREALLOC_RR_OWNER
 	                 + PREALLOC_RRSETS
 	                 + PREALLOC_DOMAINS
 	                 + PREALLOC_OFFSETS
@@ -89,10 +92,12 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 	                                           resp->question.qname->name
 	                                           + PREALLOC_QNAME_NAME);
 
+	resp->owner_tmp = (uint8_t *)((char *)resp->question.qname->labels
+	                              + PREALLOC_QNAME_LABELS);
+
 	// then answer, authority and additional sections
 	resp->answer = (const dnslib_rrset_t **)
-	                   ((char *)resp->question.qname->labels
-	                    + PREALLOC_QNAME_LABELS);
+	                   ((char *)resp->owner_tmp + PREALLOC_RR_OWNER);
 	resp->authority = resp->answer + DEFAULT_ANCOUNT;
 	resp->additional = resp->authority + DEFAULT_NSCOUNT;
 
@@ -465,8 +470,9 @@ static void dnslib_response_rr_to_wire(const uint8_t *owner_wire,
 /*---------------------------------------------------------------------------*/
 
 static int dnslib_response_rrset_to_wire(const dnslib_rrset_t *rrset,
-                                              uint8_t **pos, short *size,
-                                              dnslib_compressed_dnames_t *compr)
+                                         uint8_t **pos, short *size,
+                                         uint8_t *owner_tmp,
+                                         dnslib_compressed_dnames_t *compr)
 {
 DEBUG_DNSLIB_RESPONSE(
 	char *name = dnslib_dname_to_str(rrset->owner);
@@ -488,10 +494,10 @@ DEBUG_DNSLIB_RESPONSE(
 	//uint8_t *rrset_wire = (uint8_t *)malloc(PREALLOC_RRSET_WIRE);
 	//short rrset_size = 0;
 
-	uint8_t *owner_wire = (uint8_t *)malloc(rrset->owner->size);
+	//uint8_t *owner_wire = (uint8_t *)malloc(rrset->owner->size);
 	short owner_size = 0;
 
-	dnslib_response_compress_dname(rrset->owner, compr, owner_wire,
+	dnslib_response_compress_dname(rrset->owner, compr, owner_tmp,
 	                               &owner_size);
 	debug_dnslib_response("    Owner size: %d\n", owner_size);
 
@@ -499,7 +505,7 @@ DEBUG_DNSLIB_RESPONSE(
 
 	const dnslib_rdata_t *rdata = rrset->rdata;
 	do {
-		dnslib_response_rr_to_wire(owner_wire, owner_size, rrset,
+		dnslib_response_rr_to_wire(owner_tmp, owner_size, rrset,
 		                           rdata, compr, pos, size);
 		++rrs;
 	} while ((rdata = dnslib_rrset_rdata_next(rrset, rdata)) != NULL);
@@ -518,6 +524,7 @@ DEBUG_DNSLIB_RESPONSE(
 static short dnslib_response_rrsets_to_wire(const dnslib_rrset_t **rrsets,
                                             short count, uint8_t **pos,
                                             short *size, short max_size,
+                                            uint8_t *owner_tmp,
                                             dnslib_compressed_dnames_t *compr)
 {
 	// no compression for now
@@ -528,7 +535,8 @@ static short dnslib_response_rrsets_to_wire(const dnslib_rrset_t **rrsets,
 
 	while (i < count) {
 		rr_count +=
-		    dnslib_response_rrset_to_wire(rrsets[i], pos, size, compr);
+		    dnslib_response_rrset_to_wire(rrsets[i], pos, size,
+		                                  owner_tmp, compr);
 		assert(*size <= max_size);
 		++i;
 	}
@@ -544,7 +552,7 @@ static void dnslib_response_free_tmp_rrsets(dnslib_response_t *resp)
 		// TODO: this is quite ugly, but better than copying whole
 		// function (for reallocating rrset array)
 		dnslib_rrset_deep_free(
-			&(((dnslib_rrset_t **)(resp->tmp_rrsets))[i]), 1);
+			&(((dnslib_rrset_t **)(resp->tmp_rrsets))[i]), 1, 1);
 	}
 }
 
@@ -937,7 +945,7 @@ int dnslib_response_to_wire(dnslib_response_t *response,
 
 	short rr_count = dnslib_response_rrsets_to_wire(response->answer,
 	                               response->header.ancount, &pos, &size,
-	                               response->max_size,
+	                               response->max_size, response->owner_tmp,
 	                               &response->compression);
 	debug_dnslib_response("Converted Answer, size so far: %d\n", size);
 	// set ANCOUNT to the packet
@@ -945,7 +953,7 @@ int dnslib_response_to_wire(dnslib_response_t *response,
 
 	rr_count = dnslib_response_rrsets_to_wire(response->authority,
 	                               response->header.nscount, &pos, &size,
-	                               response->max_size,
+	                               response->max_size, response->owner_tmp,
 	                               &response->compression);
 	debug_dnslib_response("Converted Authority, size so far: %d\n", size);
 	// set NSCOUNT to the packet
@@ -959,7 +967,7 @@ int dnslib_response_to_wire(dnslib_response_t *response,
 
 	rr_count = dnslib_response_rrsets_to_wire(response->additional,
 	                               response->header.arcount, &pos, &size,
-	                               response->max_size,
+	                               response->max_size, response->owner_tmp,
 	                               &response->compression);
 	debug_dnslib_response("Converted Additional, size so far: %d\n", size);
 	// set ARCOUNT to the packet
