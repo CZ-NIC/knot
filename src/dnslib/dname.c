@@ -210,7 +210,7 @@ static int dnslib_dname_compare_labels(const uint8_t *label1,
 
 /*----------------------------------------------------------------------------*/
 
-static int dnslib_dname_find_labels(dnslib_dname_t *dname)
+static int dnslib_dname_find_labels(dnslib_dname_t *dname, int alloc)
 {
 	const uint8_t *name = dname->name;
 	const uint8_t *pos = name;
@@ -232,8 +232,11 @@ static int dnslib_dname_find_labels(dnslib_dname_t *dname)
 //		return -1;
 //	}
 
-	dname->labels = (uint8_t *)malloc(label_count * sizeof(uint8_t));
-	CHECK_ALLOC_LOG(dname->labels, -1);
+	if (alloc) {
+		dname->labels
+			= (uint8_t *)malloc(label_count * sizeof(uint8_t));
+		CHECK_ALLOC_LOG(dname->labels, -1);
+	}
 
 	memcpy(dname->labels, labels, label_count);
 	dname->label_count = label_count;
@@ -339,7 +342,7 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 	memcpy(dname->name, name, size);
 	dname->size = size;
 
-	if (dnslib_dname_find_labels(dname) != 0) {
+	if (dnslib_dname_find_labels(dname, 1) != 0) {
 		dnslib_dname_free(&dname);
 		return NULL;
 	}
@@ -347,6 +350,26 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 	dname->node = node;
 
 	return dname;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_dname_from_wire(const uint8_t *name, uint size,
+                           struct dnslib_node *node, dnslib_dname_t *target)
+{
+	if (name == NULL && size != 0) {
+		debug_dnslib_dname("No name given!\n");
+		return -1;
+	}
+
+	memcpy(target->name, name, size);
+	target->size = size;
+	target->node = node;
+	if (dnslib_dname_find_labels(target, 0) != 0) {
+		return -1;
+	}
+
+	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
