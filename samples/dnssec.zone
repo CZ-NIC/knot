@@ -5,23 +5,23 @@ example.com.       3600 IN SOA ns1.example. bugs.x.w.example. (
                               3600000
                               3600
                               )
-example.com.                  3600 RRSIG  SOA 5 1 3600 20040509183619 (
+                3600 RRSIG  SOA 5 1 3600 20040509183619 (
                               20040409183619 38519 example.
                               ONx0k36rcjaxYtcNgq6iQnpNV5+drqYAsC9h
                               7TSJaHCqbhE67Sr6aH2xDUGcqQWu/n0UVzrF
                               vkgO9ebarZ0GWDKcuwlM6eNB5SiX2K74l5LW
                               DA7S/Un/IbtDq4Ay8NMNLQI7Dw7n4p8/rjkB
                               jV7j86HyQgM5e7+miRAz8V01b0I= )
-example.com.		  3600 RRSIG  NS 5 1 3600 20040509183619 (
+		  3600 RRSIG  NS 5 1 3600 20040509183619 (
                               20040409183619 38519 example.
                               gl13F00f2U0R+SWiXXLHwsMY+qStYy5k6zfd
                               EuivWc+wd1fmbNCyql0Tk7lHTX6UOxc8AgNf
                               4ISFve8XqF4q+o9qlnqIzmppU3LiNeKT4FZ8
                               RO5urFOvoMRTbQxW3U0hXWuggE4g3ZpsHv48
                               0HjMeRaZB/FRPGfJPajngcq6Kwg= )
-example.com.                  3600 NS     ns1.example.
-example.com.                  3600 NS     ns2.example.
-example.com.                  3600 MX     1 xx.example.
+                  3600 NS     ns1.example.
+                  3600 NS     ns2.example.
+                  3600 MX     1 xx.example.
 example.com.                  3600 RRSIG  MX 5 1 3600 20040509183619 (
                               20040409183619 38519 example.
                               HyDHYVT5KHSZ7HtO/vypumPmSZQrcOP3tzWB
@@ -29,7 +29,8 @@ example.com.                  3600 RRSIG  MX 5 1 3600 20040509183619 (
                               VyNU8dcTOckT+ChPcGeVjguQ7a3Ao9Z/ZkUO
                               6gmmUW4b89rz1PUxW4jzUxj66PTwoVtUU/iM
                               W6OISukd1EQt7a0kygkg+PEDxdI= )
-example.com.                  3600 NSEC   a.example. NS SOA MX RRSIG NSEC DNSKEY
+
+
 example.com.                  3600 RRSIG  NSEC 5 1 3600 20040509183619 (
                               20040409183619 38519 example.
                               O0k558jHhyrC97ISHnislm4kLMW48C7U7cBm
@@ -37,6 +38,9 @@ example.com.                  3600 RRSIG  NSEC 5 1 3600 20040509183619 (
                               Z9ME5xPzUEhbvGnHd5sfzgFVeGxr5Nyyq4tW
                               SDBgIBiLQUv1ivy29vhXy7WgR62dPrZ0PWvm
                               jfFJ5arXf4nPxp/kEowGgBRzY/U= )
+
+
+example.com.                  3600 NSEC   a.example. NS SOA MX RRSIG NSEC DNSKEY
 example.com.                  3600 DNSKEY 256 3 5 (
                               AQOy1bZVvpPqhg4j7EJoM9rI3ZmyEx2OzDBV
                               rZy/lvI5CQePxXHZS4i8dANH4DX3tbHol61e

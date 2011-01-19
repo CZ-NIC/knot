@@ -414,8 +414,6 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 	       sizeof(zone->node_count),
 	       1, f);
 
-	dnslib_dname_dump_binary(zone->apex->owner, f);
-
 	arg_t arguments;
 
 	arguments.arg1 = f;
