@@ -140,7 +140,7 @@ void dnslib_zone_save_enclosers(dnslib_zone_t *zone, skip_list_t *list)
 			   (void *)&arguments);
 }
 
-enum { MAGIC_LENGTH = 4 };
+enum { MAGIC_LENGTH = 6 };
 
 /* TODO Think of a better way than a global variable */
 static uint node_count = 0;
@@ -403,8 +403,8 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 
 	dnslib_zone_save_enclosers(zone, encloser_list);
 
-	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101};
-	                                           /*c   u    t    e */
+	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101, 0, 1};
+	                                           /*c   u    t    e   0.1*/
 
 	fwrite(&MAGIC, sizeof(uint8_t), MAGIC_LENGTH, f);
 
