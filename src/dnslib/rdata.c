@@ -205,7 +205,8 @@ void dnslib_rdata_free(dnslib_rdata_t **rdata)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type)
+void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
+                            int free_all_dnames)
 {
 	if (rdata == NULL || *rdata == NULL) {
 		return;
@@ -225,7 +226,8 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type)
 		    || desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
 		    || desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME ) {
 			if (((*rdata)->items[i].dname != NULL) &&
-			    ((*rdata)->items[i].dname->node == NULL)) {
+			    (free_all_dnames ||
+			     ((*rdata)->items[i].dname->node == NULL))) {
 				dnslib_dname_free(&(*rdata)->items[i].dname);
 			}
 		} else {
@@ -392,7 +394,7 @@ dnslib_rdata_t *dnslib_rdata_copy(const dnslib_rdata_t *rdata, uint16_t type)
 			copy->items[i].raw_data = (uint8_t *)malloc(
 					rdata->items[i].raw_data[0] + 1);
 			if (copy->items[i].raw_data == NULL) {
-				dnslib_rdata_deep_free(&copy, type);
+				dnslib_rdata_deep_free(&copy, type, 1);
 				return NULL;
 			}
 			memcpy(copy->items[i].raw_data,

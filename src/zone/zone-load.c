@@ -9,7 +9,7 @@
 #include "common.h"
 #include "debug.h"
 
-enum { MAGIC_LENGTH = 4 };
+enum { MAGIC_LENGTH = 6 };
 
 enum { DNAME_MAX_WIRE_LENGTH = 256 };
 
@@ -337,8 +337,8 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 
 	uint auth_node_count;
 
-	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101};
-	                                           /*c   u    t    e */
+	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101, 0, 1};
+	                                           /*c   u    t    e   0.1*/
 
 	if (!dnslib_check_magic(f, MAGIC, MAGIC_LENGTH)) {
 		fprintf(stderr, "Error: unknown file format\n");
@@ -375,7 +375,7 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 	fread(apex_dname->labels, sizeof(uint8_t), apex_dname->label_count, f);
 
 	dnslib_node_t *apex = dnslib_node_new(apex_dname, NULL);
-	dnslib_zone_t *zone = dnslib_zone_new(apex);
+	dnslib_zone_t *zone = dnslib_zone_new(apex, auth_node_count);
 
 	debug_zp("Zone apex: %s\n", dnslib_dname_to_str(apex->owner));
 

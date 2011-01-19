@@ -115,6 +115,8 @@ struct dnslib_response {
 	 */
 	dnslib_question_t question;
 
+	uint8_t *owner_tmp;  /*!< Allocated space for RRSet owner wire format.*/
+
 	const dnslib_rrset_t **answer;      /*!< Answer RRSets. */
 	const dnslib_rrset_t **authority;   /*!< Authority RRSets. */
 	const dnslib_rrset_t **additional;  /*!< Additional RRSets. */
