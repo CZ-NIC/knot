@@ -27,10 +27,18 @@ void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type)
 			name = dnslib_dname_to_str(rdata->items[i].dname);
 			printf("      DNAME: %d: %s\n",
 			       i, name);
+			free(name);
+			if (rdata->items[i].dname->node) {
+				name =
+				dnslib_dname_to_str(rdata->items[i].dname->node->owner);
+				printf("      Has node owner: %s\n", name);
+				free(name);
+			} else {
+				printf("      No node set\n");
+			}
 			printf("      labels: ");
 			hex_print((char *)rdata->items[i].dname->labels,
 			          rdata->items[i].dname->label_count);
-			free(name);
 
 		} else {
 			assert(rdata->items[i].raw_data != NULL);
