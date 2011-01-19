@@ -15,7 +15,6 @@
 #include <stdio.h>
 #include <pthread.h>
 static pthread_key_t dname_ckey;
-static pthread_once_t dname_once = PTHREAD_ONCE_INIT;
 
 static void dname_ckey_delete(void* ptr)
 {
@@ -27,15 +26,8 @@ static void dname_ckey_delete(void* ptr)
 	}
 }
 
-static void dname_ckey_create()
+static dnslib_dname_t* dnslib_dname_alloc()
 {
-	//fprintf(stderr, "Thread %p calls %s()\n", (void*)pthread_self(), __func__);
-	(void) pthread_key_create(&dname_ckey, dname_ckey_delete);
-}
-
-static inline dnslib_dname_t* dnslib_dname_alloc()
-{
-	(void) pthread_once(&dname_once, dname_ckey_create);
 	slab_cache_t* cache = pthread_getspecific(dname_ckey);
 	if (unlikely(cache == 0)) {
 		cache = malloc(sizeof(slab_cache_t));
@@ -48,8 +40,14 @@ static inline dnslib_dname_t* dnslib_dname_alloc()
 	return ret;
 }
 
+/* Main thread init. */
+static void __attribute__ ((constructor)) dnslib_dname_cache_init()
+{
+	(void) pthread_key_create(&dname_ckey, dname_ckey_delete);
+}
+
 /* Main thread cleanup. */
-static void __attribute__ ((destructor)) dnslib_dname_main_cleanup()
+static void __attribute__ ((destructor)) dnslib_dname_cache_cleanup()
 {
 	slab_cache_t* cache = pthread_getspecific(dname_ckey);
 	dname_ckey_delete(cache);
@@ -334,7 +332,7 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 	dname->name = (uint8_t *)malloc(size * sizeof(uint8_t));
 	if (dname->name == NULL) {
 		ERR_ALLOC_FAILED;
-		dnslib_dname_free(dname);
+		dnslib_dname_free(&dname);
 		return NULL;
 	}
 
@@ -342,8 +340,7 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 	dname->size = size;
 
 	if (dnslib_dname_find_labels(dname) != 0) {
-		free(dname->name);
-		dnslib_dname_free(dname);
+		dnslib_dname_free(&dname);
 		return NULL;
 	}
 
