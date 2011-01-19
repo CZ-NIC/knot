@@ -375,7 +375,7 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 	fread(apex_dname->labels, sizeof(uint8_t), apex_dname->label_count, f);
 
 	dnslib_node_t *apex = dnslib_node_new(apex_dname, NULL);
-	dnslib_zone_t *zone = dnslib_zone_new(apex);
+	dnslib_zone_t *zone = dnslib_zone_new(apex, auth_node_count);
 
 	debug_zp("Zone apex: %s\n", dnslib_dname_to_str(apex->owner));
 
