@@ -66,15 +66,12 @@ uint16_t rrsig_type_covered(dnslib_rrset_t *rrset)
 	assert(rrset->rdata->count > 0);
 	assert(rrset->rdata->items[0].raw_data[0] == sizeof(uint16_t));
 
+	/* TODO should this not be items[0].raw_data ? */
 	return ntohs(* (uint16_t *) rdata_atom_data(rrset->rdata->items[0]));
 }
 
 static void rrsig_list_add(rrsig_list_t **head, dnslib_rrset_t *rrsig)
 {
-	printf("adding\n");
-	printf("%s\n", dnslib_dname_to_str(rrsig->owner));
-	printf("%s\n", dnslib_rrtype_to_string(rrsig_type_covered((dnslib_rrset_t *)rrsig)));
-	getchar();
 	if (head == NULL) {
 		rrsig_list_add_first(head, rrsig);
 	} else {
@@ -82,6 +79,18 @@ static void rrsig_list_add(rrsig_list_t **head, dnslib_rrset_t *rrsig)
 		tmp->next = *head;
 		tmp->data = rrsig;
 		*head = tmp;
+	}
+}
+
+void rrsig_list_delete(rrsig_list_t *head)
+{
+	rrsig_list_t *tmp;
+	while (head != NULL) {
+		tmp = head;
+		head = head->next;
+		dnslib_rrset_free(&tmp->data);
+		free(tmp);
+		head = head->next;
 	}
 }
 
@@ -1430,9 +1439,10 @@ int process_rr(void)
 
 		dnslib_rrset_add_rdata(tmp, current_rrset->rdata);
 
-		find_rrset_for_rrsig(zone, tmp);
-
-		dnslib_rrset_free(&tmp);
+		if (find_rrset_for_rrsig(zone, tmp) == 0) {
+			dnslib_rrset_free(&tmp);
+			/* if it's -1 we cannot free */
+		}
 
 		return 0;
 	}
@@ -1579,18 +1589,16 @@ static void find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
 	while (tmp != NULL) {
 		ret = find_rrset_for_rrsig(zone, tmp->data);
 		if (ret == 0) {
-//			printf("RRSET succesfully found: owner %s type %d\n",
-//			       dnslib_dname_to_str(tmp->data->owner),
-//			       tmp->data->type);
+			debug_zp("RRSET succesfully found: owner %s type %d\n",
+    			         dnslib_dname_to_str(tmp->data->owner),
+			         tmp->data->type);
 		}
 		tmp = rrsig_list_next(tmp);
 	}
-	//TODO destroy the list... (find_rrset_for_rrsig makes copies)
 }
 
 /*
  * Reads the specified zone into the memory
- * nsd_options can be NULL if no config file is passed.
  *
  */
 void zone_read(char *name, const char *zonefile)
@@ -1622,9 +1630,12 @@ void zone_read(char *name, const char *zonefile)
 	/* Parse and process all RRs.  */
 	yyparse();
 
+
 	printf("zone parsed\n");
 
-	find_rrsets_orphans(parser->current_zone, parser->rrsig_orphans);
+//	find_rrsets_orphans(parser->current_zone, parser->rrsig_orphans);
+
+//	rrsig_list_delete(parser->rrsig_orphans);
 
 //	printf("orphans found\n");
 
@@ -1642,6 +1653,7 @@ void zone_read(char *name, const char *zonefile)
 
 //	dnslib_zone_dump(new_zone);
 
+	/* This is *almost* unnecessary */
 	dnslib_zone_deep_free(&(parser->current_zone));
 
 //	dnslib_zone_deep_free(&new_zone);
