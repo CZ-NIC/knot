@@ -1306,7 +1306,7 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 	}
 
 	if (tmp_node == NULL) {
-		rrsig_list_add(&parser->rrsig_orphans, rrset);
+//		rrsig_list_add(&parser->rrsig_orphans, rrset);
 		return -1;
 	}
 
@@ -1316,7 +1316,7 @@ int find_rrset_for_rrsig(dnslib_zone_t *zone, dnslib_rrset_t *rrset)
 	        dnslib_node_get_rrset(tmp_node, rrsig->type);
 
 	if (tmp_rrset == NULL) {
-		rrsig_list_add(&parser->rrsig_orphans, rrset);
+//		rrsig_list_add(&parser->rrsig_orphans, rrset);
 		return -1;
 	}
 
@@ -1401,7 +1401,7 @@ int process_rr(void)
 		if (find_rrset_for_rrsig(zone, tmp) == 0) {
 			dnslib_rrset_free(&tmp);
 			/* if it's -1 we cannot free */
-		}
+		} 
 
 		return 0;
 	}
@@ -1541,23 +1541,23 @@ int process_rr(void)
 	return 0;
 }
 
-static uint find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
-{
-	uint found_rrsets = 0;
-	while (head != NULL) {
-		if (find_rrset_for_rrsig(zone, head->data) == 0) {
-			found_rrsets += 1;
-			printf("RRSET succesfully found: owner %s type %s\n",
-    			         dnslib_dname_to_str(head->data->owner),
-			         dnslib_rrtype_to_string(rrsig_type_covered(head->data)));
-		}
-		else { /* we can throw it away now */
-			dnslib_rrset_free(&head->data);
-		}
-		head = rrsig_list_next(head);
-	}
-	return found_rrsets;
-}
+//static uint find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
+//{
+//	uint found_rrsets = 0;
+//	while (head != NULL) {
+//		if (find_rrset_for_rrsig(zone, head->data) == 0) {
+//			found_rrsets += 1;
+//			printf("RRSET succesfully found: owner %s type %s\n",
+//    			         dnslib_dname_to_str(head->data->owner),
+//			         dnslib_rrtype_to_string(rrsig_type_covered(head->data)));
+//		}
+//		else { /* we can throw it away now */
+//			dnslib_rrset_free(&head->data);
+//		}
+//		head = rrsig_list_next(head);
+//	}
+//	return found_rrsets;
+//}
 
 /*
  * Reads the specified zone into the memory
@@ -1594,13 +1594,12 @@ void zone_read(char *name, const char *zonefile)
 
 	printf("zone parsed\n");
 
-	uint found_orphans;
+/*	uint found_orphans;
 
 	found_orphans = find_rrsets_orphans(parser->current_zone,
 	                                    parser->rrsig_orphans);
 
-	printf("%u orphans found\n", found_orphans);
-
+	printf("%u orphans found\n", found_orphans); */
 
 	dnslib_zone_adjust_dnames(parser->current_zone);
 
@@ -1618,8 +1617,6 @@ void zone_read(char *name, const char *zonefile)
 	dnslib_zone_deep_free(&(parser->current_zone));
 
 	dnslib_zone_deep_free(&new_zone);
-
-	rrsig_list_delete(parser->rrsig_orphans);
 
 	fclose(yyin);
 
