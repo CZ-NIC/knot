@@ -206,7 +206,8 @@ void dnslib_rdata_free(dnslib_rdata_t **rdata);
  * \param rdata RDATA structure to be destroyed.
  * \param type RR Type of the RDATA.
  */
-void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type);
+void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
+                            int free_all_dnames);
 
 /*!
  * \brief Compares two RDATAs of the same type.
