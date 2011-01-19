@@ -1378,8 +1378,6 @@ int process_rr(void)
 	dnslib_node_t *(*node_get_func)(const dnslib_zone_t *zone,
 	                                const dnslib_dname_t *owner);
 
-	printf("%s\n", dnslib_dname_to_str(current_rrset->owner));
-
 	if (current_rrset->type != DNSLIB_RRTYPE_NSEC3) {
 		node_add_func = &dnslib_zone_add_node;
 		node_get_func = &dnslib_zone_get_node;
