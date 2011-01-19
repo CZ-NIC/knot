@@ -27,6 +27,7 @@
 //#define SERVER_DEBUG
 //#define DT_DEBUG
 //#define NET_DEBUG
+//#define DNSLIB_DNAME_DEBUG
 
 //#define MEM_DEBUG
 //#define MEM_NOSLAB
@@ -35,6 +36,8 @@
 //#define DNSLIB_RESPONSE_DEBUG
 //#define DNSLIB_ZONEDB_DEBUG
 //#define DNSLIB_DNAME_DEBUG
+//#define DNSLIB_ZONE_DEBUG
+//#define DNSLIB_RESPONSE_DEBUG
 
 #ifdef SERVER_DEBUG
 #define debug_server(msg...) log_msg(LOG_DEBUG, msg)

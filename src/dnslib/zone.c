@@ -188,7 +188,7 @@ static void dnslib_zone_adjust_node_in_tree(dnslib_node_t *node, void *data)
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex)
+dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count)
 {
 	if (apex == NULL) {
 		return NULL;
@@ -215,11 +215,15 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex)
 		return NULL;
 	}
 
+	zone->node_count = node_count;
+
 	TREE_INIT(zone->tree, dnslib_node_compare);
 	TREE_INIT(zone->nsec3_nodes, dnslib_node_compare);
 
 	// how to know if this is successfull??
 	TREE_INSERT(zone->tree, dnslib_node, avl, apex);
+
+	zone->table = NULL;
 
 	return zone;
 }
