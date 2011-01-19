@@ -903,6 +903,11 @@ int dt_optimal_size()
 	return DEFAULT_THR_COUNT;
 }
 
+/*!
+ * \todo Use memory barriers or asynchronous read-only access, locking
+ *       poses a thread performance decrease by 1.31%.
+ */
+
 int dt_is_cancelled(dthread_t *thread)
 {
 	// Check input

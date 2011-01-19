@@ -9,6 +9,52 @@
 #include "consts.h"
 #include "tolower.h"
 
+/* Memory cache.
+ */
+#include "slab.h"
+#include <stdio.h>
+#include <pthread.h>
+static pthread_key_t dname_ckey;
+static pthread_once_t dname_once = PTHREAD_ONCE_INIT;
+
+static void dname_ckey_delete(void* ptr)
+{
+	//fprintf(stderr, "Thread %p calls %s()\n", (void*)pthread_self(), __func__);
+	slab_cache_t* cache = (slab_cache_t*)ptr;
+	if (cache) {
+		slab_cache_destroy(cache);
+		free(cache);
+	}
+}
+
+static void dname_ckey_create()
+{
+	//fprintf(stderr, "Thread %p calls %s()\n", (void*)pthread_self(), __func__);
+	(void) pthread_key_create(&dname_ckey, dname_ckey_delete);
+}
+
+static inline dnslib_dname_t* dnslib_dname_alloc()
+{
+	(void) pthread_once(&dname_once, dname_ckey_create);
+	slab_cache_t* cache = pthread_getspecific(dname_ckey);
+	if (unlikely(cache == 0)) {
+		cache = malloc(sizeof(slab_cache_t));
+		slab_cache_init(cache, sizeof(dnslib_dname_t));
+		(void) pthread_setspecific(dname_ckey, cache);
+		//fprintf(stderr, "Thread %p cache initialized.\n", (void*)pthread_self());
+	}
+
+	dnslib_dname_t* ret = slab_cache_alloc(cache);
+	return ret;
+}
+
+/* Main thread cleanup. */
+static void __attribute__ ((destructor)) dnslib_dname_main_cleanup()
+{
+	slab_cache_t* cache = pthread_getspecific(dname_ckey);
+	dname_ckey_delete(cache);
+}
+
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
@@ -203,14 +249,7 @@ static int dnslib_dname_find_labels(dnslib_dname_t *dname)
 
 dnslib_dname_t *dnslib_dname_new()
 {
-	dnslib_dname_t *dname = 
-	(dnslib_dname_t *)malloc(sizeof(dnslib_dname_t));
-
-	if (dname == NULL) {
-		ERR_ALLOC_FAILED;
-		return NULL;
-	}
-
+	dnslib_dname_t *dname = dnslib_dname_alloc();
 	dname->name = NULL;
 	dname->size = 0;
 	dname->node = NULL;
@@ -229,8 +268,7 @@ dnslib_dname_t *dnslib_dname_new_from_str(char *name, uint size,
 		return NULL;
 	}
 
-	dnslib_dname_t *dname =
-			(dnslib_dname_t *)malloc(sizeof(dnslib_dname_t));
+	dnslib_dname_t *dname = dnslib_dname_alloc();
 
 	if (dname == NULL) {
 		ERR_ALLOC_FAILED;
@@ -286,8 +324,7 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 		return NULL;
 	}
 
-	dnslib_dname_t *dname =
-	    (dnslib_dname_t *)malloc(sizeof(dnslib_dname_t));
+	dnslib_dname_t *dname = dnslib_dname_alloc();
 
 	if (dname == NULL) {
 		ERR_ALLOC_FAILED;
@@ -297,7 +334,7 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 	dname->name = (uint8_t *)malloc(size * sizeof(uint8_t));
 	if (dname->name == NULL) {
 		ERR_ALLOC_FAILED;
-		free(dname);
+		dnslib_dname_free(dname);
 		return NULL;
 	}
 
@@ -306,7 +343,7 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 
 	if (dnslib_dname_find_labels(dname) != 0) {
 		free(dname->name);
-		free(dname);
+		dnslib_dname_free(dname);
 		return NULL;
 	}
 
@@ -602,7 +639,7 @@ void dnslib_dname_free(dnslib_dname_t **dname)
 		free((*dname)->labels);
 	}
 
-	free(*dname);
+	slab_free(*dname);
 	*dname = NULL;
 }
 

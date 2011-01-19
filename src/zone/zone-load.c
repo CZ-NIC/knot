@@ -77,7 +77,7 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 					tmp_id = NULL;
 				}
 
-				items[i].dname = malloc(sizeof(dnslib_dname_t));
+				items[i].dname = dnslib_dname_new();
 
 				items[i].dname->name = dname_wire;
 				items[i].dname->size = dname_size;
@@ -187,9 +187,9 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	uint8_t flags = 0;
 	dnslib_node_t *node;
 	/* first, owner */
-	
-	uint8_t dname_wire[DNAME_MAX_WIRE_LENGTH]; 
-	//XXX in respect to remark below, should be dynamic 
+
+	uint8_t dname_wire[DNAME_MAX_WIRE_LENGTH];
+	//XXX in respect to remark below, should be dynamic
 	//(malloc happens either way)
 	//but I couldn't make it work - really strange error
 	//when fread() was rewriting other variables
@@ -349,7 +349,7 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 
 	fread(dname_wire, sizeof(uint8_t), dname_size, f);
 
-	dnslib_dname_t *apex_dname = malloc(sizeof(dnslib_dname_t));
+	dnslib_dname_t *apex_dname = dnslib_dname_new();
 
 	apex_dname->size = dname_size;
 
@@ -375,7 +375,7 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 	printf("loading %u nodes\n", node_count);
 
 	for (uint i = 1; i < (node_count + nsec3_node_count + 1); i++) {
-		id_array[i] = malloc(sizeof(dnslib_dname_t));
+		id_array[i] = dnslib_dname_new();
 	}
 
 	for (uint i = 0; i < node_count; i++) {
