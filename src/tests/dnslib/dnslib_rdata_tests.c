@@ -889,7 +889,7 @@ static int test_rdata_deep_free()
 
 		fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i, tmp_rdata);
 
-		dnslib_rdata_deep_free(&tmp_rdata, i);
+		dnslib_rdata_deep_free(&tmp_rdata, i, 0);
 		errors += (tmp_rdata != NULL);
 	}
 

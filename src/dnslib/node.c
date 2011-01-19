@@ -148,10 +148,11 @@ void dnslib_node_free_rrsets(dnslib_node_t *node)
 		skip_first(node->rrsets);
 
 	if (skip_node != NULL) {
-		dnslib_rrset_deep_free((dnslib_rrset_t **)&skip_node->value, 0);
+		dnslib_rrset_deep_free((dnslib_rrset_t **)&skip_node->value, 0,
+		                       0);
 		while ((skip_node = skip_next(skip_node)) != NULL) {
 			dnslib_rrset_deep_free((dnslib_rrset_t **)
-			                        &skip_node->value, 0);
+			                        &skip_node->value, 0, 0);
 		}
 	}
 

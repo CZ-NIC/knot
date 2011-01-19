@@ -55,6 +55,21 @@ static void rrsig_list_add_first(rrsig_list_t **head, dnslib_rrset_t *rrsig)
 	(*head)->data = rrsig;
 }
 
+static inline uint8_t * rdata_atom_data(dnslib_rdata_item_t item)
+{
+	return (uint8_t *)(item.raw_data + 1);
+}
+
+uint16_t rrsig_type_covered(dnslib_rrset_t *rrset)
+{
+	assert(rrset->type == DNSLIB_RRTYPE_RRSIG);
+	assert(rrset->rdata->count > 0);
+	assert(rrset->rdata->items[0].raw_data[0] == sizeof(uint16_t));
+
+	/* TODO should this not be items[0].raw_data ? */
+	return ntohs(* (uint16_t *) rdata_atom_data(rrset->rdata->items[0]));
+}
+
 static void rrsig_list_add(rrsig_list_t **head, dnslib_rrset_t *rrsig)
 {
 	if (head == NULL) {
@@ -67,14 +82,21 @@ static void rrsig_list_add(rrsig_list_t **head, dnslib_rrset_t *rrsig)
 	}
 }
 
+void rrsig_list_delete(rrsig_list_t *head)
+{
+	rrsig_list_t *tmp;
+	while (head != NULL) {
+		tmp = head;
+		head = head->next;
+		dnslib_rrset_free(&tmp->data);
+		free(tmp);
+		head = head->next;
+	}
+}
+
 static rrsig_list_t *rrsig_list_next(rrsig_list_t *item)
 {
 	return item->next;
-}
-
-static inline uint8_t * rdata_atom_data(dnslib_rdata_item_t item)
-{
-	return (uint8_t *)(item.raw_data + 1);
 }
 
 static inline int rdata_atom_is_domain(uint16_t type, size_t index)
@@ -95,15 +117,6 @@ static inline uint8_t rdata_atom_wireformat_type(uint16_t type, size_t index)
 	assert(index < descriptor->length);
 //	return (rdata_wireformat_type) descriptor->wireformat[index];
 	return descriptor->wireformat[index];
-}
-
-uint16_t rrsig_type_covered(dnslib_rrset_t *rrset)
-{
-	assert(rrset->type == DNSLIB_RRTYPE_RRSIG);
-	assert(rrset->rdata->count > 0);
-	assert(rrset->rdata->items[0].raw_data[0] == sizeof(uint16_t));
-
-	return ntohs(* (uint16_t *) rdata_atom_data(rrset->rdata->items[0]));
 }
 
 ssize_t rdata_wireformat_to_rdata_atoms(const uint8_t *wireformat,
@@ -1413,7 +1426,7 @@ int process_rr(void)
 			parser->origin->owner = current_rrset->owner;
 		}
 
-		zone = dnslib_zone_new(parser->origin);
+		zone = dnslib_zone_new(parser->origin, 0);
 
 		parser->current_zone = zone;
 	}
@@ -1426,9 +1439,10 @@ int process_rr(void)
 
 		dnslib_rrset_add_rdata(tmp, current_rrset->rdata);
 
-		find_rrset_for_rrsig(zone, tmp);
-
-		dnslib_rrset_free(&tmp);
+		if (find_rrset_for_rrsig(zone, tmp) == 0) {
+			dnslib_rrset_free(&tmp);
+			/* if it's -1 we cannot free */
+		}
 
 		return 0;
 	}
@@ -1575,18 +1589,16 @@ static void find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
 	while (tmp != NULL) {
 		ret = find_rrset_for_rrsig(zone, tmp->data);
 		if (ret == 0) {
-//			printf("RRSET succesfully found: owner %s type %d\n",
-//			       dnslib_dname_to_str(tmp->data->owner),
-//			       tmp->data->type);
+			debug_zp("RRSET succesfully found: owner %s type %d\n",
+    			         dnslib_dname_to_str(tmp->data->owner),
+			         tmp->data->type);
 		}
 		tmp = rrsig_list_next(tmp);
 	}
-	//TODO destroy the list... (find_rrset_for_rrsig makes copies)
 }
 
 /*
  * Reads the specified zone into the memory
- * nsd_options can be NULL if no config file is passed.
  *
  */
 void zone_read(char *name, const char *zonefile)
@@ -1618,29 +1630,33 @@ void zone_read(char *name, const char *zonefile)
 	/* Parse and process all RRs.  */
 	yyparse();
 
+
 	printf("zone parsed\n");
 
 //	find_rrsets_orphans(parser->current_zone, parser->rrsig_orphans);
 
+//	rrsig_list_delete(parser->rrsig_orphans);
+
 //	printf("orphans found\n");
 
-//	dnslib_zone_adjust_dnames(parser->current_zone);
+	dnslib_zone_adjust_dnames(parser->current_zone);
 
 	printf("rdata adjusted\n");
 
-	dnslib_zone_dump(parser->current_zone);
+//	dnslib_zone_dump(parser->current_zone);
 
 	dnslib_zone_dump_binary(parser->current_zone, dump_file_name);
 
 /*	//TODO remove origin parameter
 */
-	dnslib_zone_t *new_zone = dnslib_zone_load(dump_file_name);
+//	dnslib_zone_t *new_zone = dnslib_zone_load(dump_file_name);
 
-	dnslib_zone_dump(new_zone);
+//	dnslib_zone_dump(new_zone);
 
+	/* This is *almost* unnecessary */
 	dnslib_zone_deep_free(&(parser->current_zone));
 
-	dnslib_zone_deep_free(&new_zone);
+//	dnslib_zone_deep_free(&new_zone);
 
 	fclose(yyin);
 
