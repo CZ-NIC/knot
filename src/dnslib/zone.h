@@ -83,8 +83,6 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node);
  */
 int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node);
 
-int dnslib_zone_hash(dnslib_zone_t *zone);
-
 /*!
  * \brief Tries to find a node with the specified name in the zone.
  *
@@ -126,6 +124,11 @@ int dnslib_zone_find_dname(const dnslib_zone_t *zone,
                            const dnslib_dname_t *name,
                            const dnslib_node_t **node,
                            const dnslib_node_t **closest_encloser);
+
+int dnslib_zone_find_dname_hash(const dnslib_zone_t *zone,
+                                const dnslib_dname_t *name,
+                                const dnslib_node_t **node,
+                                const dnslib_node_t **closest_encloser);
 
 /*!
  * \brief Tries to find a node with the specified name among the NSEC3 nodes
