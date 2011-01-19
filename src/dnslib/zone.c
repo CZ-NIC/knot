@@ -473,7 +473,7 @@ DEBUG_DNSLIB_ZONE(
 		                    name_copy->size);
 	}
 
-	dnslib_dname_free(name_copy);
+	dnslib_dname_free(&name_copy);
 
 	assert(item != NULL);
 
