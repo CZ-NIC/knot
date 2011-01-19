@@ -24,12 +24,12 @@
 //#define ZDB_DEBUG_INSERT_CHECK
 //#define ZN_DEBUG
 //#define ZP_DEBUG_PARSE
-#define SERVER_DEBUG
+//#define SERVER_DEBUG
 //#define DT_DEBUG
 //#define NET_DEBUG
 
 //#define MEM_DEBUG
-#define MEM_NOSLAB
+//#define MEM_NOSLAB
 //#define MEM_POISON
 //#define DNSLIB_ZONE_DEBUG
 //#define DNSLIB_RESPONSE_DEBUG
