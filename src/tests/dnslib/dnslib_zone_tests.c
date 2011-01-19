@@ -63,7 +63,7 @@ static int test_zone_create(dnslib_zone_t **zone)
 		return 0;
 	}
 
-	*zone = dnslib_zone_new(node);
+	*zone = dnslib_zone_new(node, 0);
 
 	if ((*zone) == NULL) {
 		diag("zone: Failed to create zone.");
