@@ -335,7 +335,7 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 
 	uint auth_node_count;
 
-	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101, 0, 1};
+	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101, 0, 2};
 	                                           /*c   u    t    e   0.1*/
 
 	if (!dnslib_check_magic(f, MAGIC, MAGIC_LENGTH)) {
@@ -349,28 +349,6 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 	      sizeof(auth_node_count), 1, f);
 
 	debug_zp("authorative nodes: %u\n", auth_node_count);
-
-	uint8_t dname_size;
-	uint8_t dname_wire[DNAME_MAX_WIRE_LENGTH];
-
-	fread(&dname_size, sizeof(dname_size), 1, f);
-	assert(dname_size < DNAME_MAX_WIRE_LENGTH);
-
-	fread(dname_wire, sizeof(uint8_t), dname_size, f);
-
-	dnslib_dname_t *apex_dname = malloc(sizeof(dnslib_dname_t));
-
-	apex_dname->size = dname_size;
-
-	apex_dname->name = malloc(sizeof(uint8_t) * dname_size);
-
-	memcpy(apex_dname->name, dname_wire, dname_size);
-
-	fread(&apex_dname->label_count, sizeof(apex_dname->label_count), 1, f);
-
-	apex_dname->labels = malloc(sizeof(uint8_t) * apex_dname->label_count);
-
-	fread(apex_dname->labels, sizeof(uint8_t), apex_dname->label_count, f);
 
 	id_array =
 		malloc(sizeof(dnslib_dname_t *) *
