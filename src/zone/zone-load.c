@@ -333,8 +333,6 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 
 	uint nsec3_node_count;
 
-	char apex_found = 0;
-
 	uint auth_node_count;
 
 	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101, 0, 1};
@@ -374,11 +372,6 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 
 	fread(apex_dname->labels, sizeof(uint8_t), apex_dname->label_count, f);
 
-	dnslib_node_t *apex = dnslib_node_new(apex_dname, NULL);
-	dnslib_zone_t *zone = dnslib_zone_new(apex, auth_node_count);
-
-	debug_zp("Zone apex: %s\n", dnslib_dname_to_str(apex->owner));
-
 	id_array =
 		malloc(sizeof(dnslib_dname_t *) *
 		(node_count + nsec3_node_count + 1));
@@ -390,26 +383,23 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 		id_array[i]->node = dnslib_node_new(NULL, NULL);
 	}
 
-	for (uint i = 0; i < node_count; i++) {
+	dnslib_node_t *apex = dnslib_load_node(f);
+
+	if (!apex) {
+		fprintf(stderr, "Could not load apex node.\n");
+		return NULL;
+	}
+
+	dnslib_zone_t *zone = dnslib_zone_new(apex, auth_node_count);
+
+	for (uint i = 1; i < node_count; i++) {
 		tmp_node = dnslib_load_node(f);
 		if (tmp_node != NULL) {
-			if (!apex_found &&
-			     dnslib_dname_compare(tmp_node->owner,
-			                          apex_dname) == 0) {
-				apex_found = 1;
-				zone->apex->rrsets = tmp_node->rrsets;
-				zone->apex->owner->node = tmp_node->owner->node;
-
-				dnslib_dname_free(&zone->apex->owner);
-				zone->apex->owner = tmp_node->owner;
-				//TODO how about only swapping those two?
-			} else {
-				dnslib_zone_add_node(zone, tmp_node);
-				if (dnslib_dname_is_wildcard(tmp_node->owner)) {
-					find_and_set_wildcard_child(zone,
-					                            tmp_node,
-								    0);
-				}
+			dnslib_zone_add_node(zone, tmp_node);
+			if (dnslib_dname_is_wildcard(tmp_node->owner)) {
+				find_and_set_wildcard_child(zone,
+				                            tmp_node,
+							    0);
 			}
 		} else {
 			fprintf(stderr, "Node error!\n");
