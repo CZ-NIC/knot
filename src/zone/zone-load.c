@@ -105,6 +105,8 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 		fprintf(stderr, "Error: could not set items\n");
 	}
 
+	free(items);
+
 	return rdata;
 }
 
