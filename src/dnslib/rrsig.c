@@ -89,7 +89,8 @@ void dnslib_rrsig_set_free(dnslib_rrsig_set_t **rrsigs)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_rrsig_set_deep_free(dnslib_rrsig_set_t **rrsigs, int free_owner)
+void dnslib_rrsig_set_deep_free(dnslib_rrsig_set_t **rrsigs, int free_owner,
+                                int free_all_dnames)
 {
 	dnslib_rdata_t *tmp_rdata;
 	dnslib_rdata_t *next_rdata;
@@ -98,11 +99,13 @@ void dnslib_rrsig_set_deep_free(dnslib_rrsig_set_t **rrsigs, int free_owner)
 	while ((tmp_rdata->next != (*rrsigs)->rdata) &&
 		(tmp_rdata->next != NULL)) {
 		next_rdata = tmp_rdata->next;
-		dnslib_rdata_deep_free(&tmp_rdata, DNSLIB_RRTYPE_RRSIG);
+		dnslib_rdata_deep_free(&tmp_rdata, DNSLIB_RRTYPE_RRSIG,
+		                       free_all_dnames);
 		tmp_rdata = next_rdata;
 	}
 
-	dnslib_rdata_deep_free(&tmp_rdata, DNSLIB_RRTYPE_RRSIG);
+	dnslib_rdata_deep_free(&tmp_rdata, DNSLIB_RRTYPE_RRSIG,
+	                       free_all_dnames);
 
 	if (free_owner) {
 		dnslib_dname_free(&(*rrsigs)->owner);

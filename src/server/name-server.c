@@ -99,7 +99,7 @@ dnslib_rrset_t *ns_synth_from_wildcard(const dnslib_rrset_t *wildcard_rrset,
 		dnslib_rdata_t *rdata_copy = dnslib_rdata_copy(rdata,
 		                                dnslib_rrset_type(synth_rrset));
 		if (rdata_copy == NULL) {
-			dnslib_rrset_deep_free(&synth_rrset, 1);
+			dnslib_rrset_deep_free(&synth_rrset, 1, 0);
 			return NULL;
 		}
 
