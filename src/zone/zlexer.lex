@@ -21,6 +21,8 @@
 #include "dns.h"
 #include "zparser.h"
 
+#define YY_NO_INPUT
+
 /* Utils */
 extern void zc_error(const char *fmt, ...);
 extern void zc_warning(const char *fmt, ...);
@@ -131,6 +133,8 @@ pop_parser_state(void)
 #endif
 
 %}
+
+%option nounput
 
 SPACE   [ \t]
 LETTER  [a-zA-Z]
