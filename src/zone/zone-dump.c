@@ -320,7 +320,7 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 	assert(node->owner != NULL);
 
 	if (!dnslib_node_is_non_auth(node)) {
-		zone->non_authorative_node_count++;
+		zone->node_count++;
 	}
 
 	dnslib_dname_dump_binary(node->owner, f);
@@ -397,7 +397,7 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 		return -1;
 	}
 
-	zone->non_authorative_node_count = 0;
+	zone->node_count = 0;
 
 	skip_list_t *encloser_list = skip_create_list(compare_pointers);
 
@@ -410,8 +410,8 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 
 	fwrite(&node_count, sizeof(node_count), 1, f);
 	fwrite(&node_count, sizeof(node_count), 1, f);
-	fwrite(&zone->non_authorative_node_count,
-	       sizeof(zone->non_authorative_node_count),
+	fwrite(&zone->node_count,
+	       sizeof(zone->node_count),
 	       1, f);
 
 	dnslib_dname_dump_binary(zone->apex->owner, f);
@@ -436,15 +436,15 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 	
 	fwrite(&tmp_count, sizeof(tmp_count), 1, f);
 	fwrite(&node_count, sizeof(node_count), 1, f);
-	fwrite(&zone->non_authorative_node_count,
-	       sizeof(zone->non_authorative_node_count),
+	fwrite(&zone->node_count,
+	       sizeof(zone->node_count),
 	       1, f);
 
 	printf("written %d normal nodes\n", tmp_count);
 
 	printf("written %d nsec3 nodes\n", node_count);
 
-	printf("non authorative nodes: %u\n", zone->non_authorative_node_count);
+	printf("authorative nodes: %u\n", zone->node_count);
 
 	fclose(f);
 
