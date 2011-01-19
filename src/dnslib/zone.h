@@ -15,6 +15,7 @@
 #include "node.h"
 #include "dname.h"
 #include "tree.h"
+#include "cuckoo-hash-table.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -32,6 +33,7 @@ struct dnslib_zone {
 	dnslib_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
 	avl_tree_t *tree;          /*!< AVL tree for holding zone nodes. */
 	avl_tree_t *nsec3_nodes;   /*!< AVL tree for holding NSEC3 nodes. */
+	ck_hash_table *table;      /*!< Hash table for holding zone nodes. */
 };
 
 typedef struct dnslib_zone dnslib_zone_t;
@@ -78,6 +80,8 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node);
  * \retval -2 if \a node does not belong to \a zone.
  */
 int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node);
+
+int dnslib_zone_hash(dnslib_zone_t *zone);
 
 /*!
  * \brief Tries to find a node with the specified name in the zone.
