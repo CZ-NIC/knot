@@ -4,14 +4,146 @@
 
 #include "zone-dump.h"
 #include "dnslib.h"
+#include "skip-list.h"
+
+struct arg {
+	void *arg1; /* FILE *f / zone */
+	void *arg2; /* skip_list_t */
+	void *arg3; /* zone */
+};
+
+typedef struct arg arg_t;
+
+/* we only need ordering for search purposes, therefore it is OK to compare
+ * pointers directly */
+static int compare_pointers(void *p1, void *p2)
+{
+	return ((uint)p1 == (uint)p2 ? 0 : (uint)p1 < (uint)p2 ? -1 : 1);
+}
+
+
+/* Functions for zone traversal are taken from dnslib/zone.c */
+static void dnslib_zone_save_encloser_rdata_item(dnslib_rdata_t *rdata,
+                                                 dnslib_zone_t *zone, uint pos,
+					         skip_list_t *list)
+{
+	const dnslib_rdata_item_t *dname_item
+		= dnslib_rdata_item(rdata, pos);
+
+	if (dname_item != NULL) {
+		dnslib_dname_t *dname = dname_item->dname;
+		const dnslib_node_t *n = NULL;
+		const dnslib_node_t *closest_encloser = NULL;
+
+		int exact = dnslib_zone_find_dname(zone, dname, &n,
+		                                   &closest_encloser);
+
+//		n = dnslib_zone_find_node(zone, dname);
+
+		assert(!exact || n == closest_encloser);
+
+		if (!exact && (closest_encloser != NULL)) {
+			debug_dnslib_zone("Saving closest encloser to RDATA.\n");
+			// save pointer to the closest encloser
+			dnslib_rdata_item_t *item =
+				dnslib_rdata_get_item(rdata, pos);
+			assert(item->dname != NULL);
+			skip_insert(list, (void *)item->dname,
+			            (void *)closest_encloser->owner, NULL);
+		}
+	}
+}
+
+static void dnslib_zone_save_enclosers_node(dnslib_node_t *node,
+                                            dnslib_rr_type_t type,
+                                            dnslib_zone_t *zone,
+					    skip_list_t *list)
+{
+	dnslib_rrset_t *rrset = dnslib_node_get_rrset(node, type);
+	if (!rrset) {
+		return;
+	}
+
+	dnslib_rrtype_descriptor_t *desc =
+		dnslib_rrtype_descriptor_by_type(type);
+	dnslib_rdata_t *rdata_first = dnslib_rrset_get_rdata(rrset);
+	dnslib_rdata_t *rdata = rdata_first;
+
+	if (rdata == NULL) {
+		return;
+	}
+
+	while (rdata->next != rdata_first) {
+		for (int i = 0; i < rdata->count; ++i) {
+			if (desc->wireformat[i]
+			    == DNSLIB_RDATA_WF_COMPRESSED_DNAME
+			    || desc->wireformat[i]
+			       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
+			    || desc->wireformat[i]
+			       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
+				debug_dnslib_zone("Adjusting domain name at "
+				  "position %d of RDATA of record with owner "
+				  "%s and type %s.\n",
+				  i, rrset->owner->name,
+				  dnslib_rrtype_to_string(type));
+
+				dnslib_zone_save_encloser_rdata_item(rdata,
+				                                     zone,
+								     i,
+								     list);
+			}
+		}
+		rdata = rdata->next;
+	}
+
+	for (int i = 0; i < rdata->count; ++i) {
+		if (desc->wireformat[i]
+		    == DNSLIB_RDATA_WF_COMPRESSED_DNAME
+		    || desc->wireformat[i]
+		       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
+		    || desc->wireformat[i]
+		       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
+			debug_dnslib_zone("Adjusting domain name at "
+			  "position %d of RDATA of record with owner "
+			  "%s and type %s.\n",
+			  i, rrset->owner->name,
+			  dnslib_rrtype_to_string(type));
+
+				dnslib_zone_save_encloser_rdata_item(rdata,
+				                                     zone,
+								     i,
+								     list);
+		}
+	}
+}
+
+static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
+{
+	assert(data != NULL);
+	arg_t *args = (arg_t *)data;
+
+	for (int i = 0; i < DNSLIB_COMPRESSIBLE_TYPES; ++i) {
+		dnslib_zone_save_enclosers_node(node, dnslib_compressible_types[i],
+		                                  (dnslib_zone_t *)args->arg1,
+					          (skip_list_t *)args->arg2);
+	}
+}
+
+void dnslib_zone_save_enclosers(dnslib_zone_t *zone, skip_list_t *list)
+{
+	arg_t arguments;
+	arguments.arg1 = zone;
+	arguments.arg2 = list;
+
+	dnslib_zone_tree_apply_inorder(zone,
+	                   dnslib_zone_save_enclosers_in_tree,
+			   (void *)&arguments);
+}
 
 enum { MAGIC_LENGTH = 4 };
 
 /* TODO Think of a better way than a global variable */
 static uint node_count = 0;
-
-static uint8_t zero = 0;
-static uint8_t one = 1;
 
 static void dnslib_labels_dump_binary(dnslib_dname_t *dname, FILE *f)
 {
@@ -29,23 +161,28 @@ static void dnslib_dname_dump_binary(dnslib_dname_t *dname, FILE *f)
 	dnslib_labels_dump_binary(dname, f);
 }
 
-static dnslib_dname_t *dnslib_find_wildcard(dnslib_zone_t *zone,
-                                            dnslib_dname_t *dname)
+static dnslib_dname_t *dnslib_find_wildcard(dnslib_dname_t *dname, skip_list_t *list)
 {
-	return NULL;
+	return (dnslib_dname_t *)skip_find(list, (void *)dname);
 }
 
 static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
-                                     uint32_t type, FILE *f)
+                                     uint32_t type, void *data)
 {
+	FILE *f = (FILE *)((arg_t *)data)->arg1;
+	skip_list_t *list = (skip_list_t *)((arg_t *)data)->arg2;
 	dnslib_rrtype_descriptor_t *desc =
 		dnslib_rrtype_descriptor_by_type(type);
 	assert(desc != NULL);
+
+	debug_zp("dumping type: %s\n", dnslib_rrtype_to_string(type));
+
 	for (int i = 0; i < desc->length; i++) {
 		if (&(rdata->items[i]) == NULL) {
 			debug_zp("Item n. %d is not set!\n", i);
 			continue;
 		}
+		debug_zp("Item n: %d\n", i);
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
@@ -55,8 +192,8 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 
 			if (rdata->items[i].dname->node == NULL ||
 			    (wildcard =
-/*	just a skeleton */    	dnslib_find_wildcard(NULL, NULL)) ) {
-				debug_zp("not in zone: %s\n",
+				dnslib_find_wildcard(rdata->items[i].dname, list)) ) {
+				debug_zp("Not in the zone: %s\n",
 				       dnslib_dname_to_str((rdata->items[i].dname)));
 				fwrite((uint8_t *)"\0", sizeof(uint8_t), 1, f);
 				dnslib_dname_dump_binary(rdata->items[i].dname, f);
@@ -78,7 +215,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 		} else {
 			assert(rdata->items[i].raw_data != NULL);
 			fwrite(rdata->items[i].raw_data, sizeof(uint8_t),
-			       rdata->items[i].raw_data[0] + 1, f);\
+			       rdata->items[i].raw_data[0] + 1, f);
 
 			debug_zp("Written %d long raw data\n",
 			         rdata->items[i].raw_data[0]);
@@ -86,8 +223,9 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 	}
 }
 
-static void dnslib_rrsig_set_dump_binary(dnslib_rrsig_set_t *rrsig, FILE *f)
+static void dnslib_rrsig_set_dump_binary(dnslib_rrsig_set_t *rrsig, arg_t *data)
 {
+	FILE *f = (FILE *)((arg_t *)data)->arg1;
 	fwrite(&rrsig->type, sizeof(rrsig->type), 1, f);
 	fwrite(&rrsig->rclass, sizeof(rrsig->rclass), 1, f);
 	fwrite(&rrsig->ttl, sizeof(rrsig->ttl), 1, f);
@@ -105,11 +243,11 @@ static void dnslib_rrsig_set_dump_binary(dnslib_rrsig_set_t *rrsig, FILE *f)
 	dnslib_rdata_t *tmp_rdata = rrsig->rdata;
 
 	while (tmp_rdata->next != rrsig->rdata) {
-		dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, f);
+		dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, data);
 		tmp_rdata = tmp_rdata->next;
 		rdata_count++;
 	}
-	dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, f);
+	dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, data);
 	rdata_count++;
 
 	fpos_t tmp_pos;
@@ -123,8 +261,10 @@ static void dnslib_rrsig_set_dump_binary(dnslib_rrsig_set_t *rrsig, FILE *f)
 	fsetpos(f, &tmp_pos);
 }
 
-static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, FILE *f)
+static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, void *data)
 {
+	FILE *f = (FILE *)((arg_t *)data)->arg1;
+
 	fwrite(&rrset->type, sizeof(rrset->type), 1, f);
 	fwrite(&rrset->rclass, sizeof(rrset->rclass), 1, f);
 	fwrite(&rrset->ttl, sizeof(rrset->ttl), 1, f);
@@ -142,15 +282,15 @@ static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, FILE *f)
 	dnslib_rdata_t *tmp_rdata = rrset->rdata;
 
 	while (tmp_rdata->next != rrset->rdata) {
-		dnslib_rdata_dump_binary(tmp_rdata, rrset->type, f);
+		dnslib_rdata_dump_binary(tmp_rdata, rrset->type, data);
 		tmp_rdata = tmp_rdata->next;
 		rdata_count++;
 	}
-	dnslib_rdata_dump_binary(tmp_rdata, rrset->type, f);
+	dnslib_rdata_dump_binary(tmp_rdata, rrset->type, data);
 	rdata_count++;
 
 	if (rrset->rrsigs != NULL) {
-		dnslib_rrsig_set_dump_binary(rrset->rrsigs, f);
+		dnslib_rrsig_set_dump_binary(rrset->rrsigs, data);
 		rrsig_count = 1;
 	}
 
@@ -166,13 +306,22 @@ static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, FILE *f)
 	fsetpos(f, &tmp_pos);
 }
 
-static void dnslib_node_dump_binary(dnslib_node_t *node, void *fp)
+static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 {
-	FILE *f = (FILE *)fp;
+	arg_t *args = (arg_t *)data;
+
+	dnslib_zone_t *zone = (dnslib_zone_t *)args->arg3;
+
+	FILE *f = (FILE *)args->arg1;
+
 	
 	node_count++;
 	/* first write dname */
 	assert(node->owner != NULL);
+
+	if (!dnslib_node_is_non_auth(node)) {
+		zone->node_count++;
+	}
 
 	dnslib_dname_dump_binary(node->owner, f);
 
@@ -217,7 +366,7 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *fp)
 	do {
 		tmp = (dnslib_rrset_t *)skip_node->value;
 		rrset_count++;
-		dnslib_rrset_dump_binary(tmp, f);
+		dnslib_rrset_dump_binary(tmp, data);
 	} while ((skip_node = skip_next(skip_node)) != NULL);
 
 	fpos_t tmp_pos;
@@ -248,6 +397,12 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 		return -1;
 	}
 
+	zone->node_count = 0;
+
+	skip_list_t *encloser_list = skip_create_list(compare_pointers);
+
+	dnslib_zone_save_enclosers(zone, encloser_list);
+
 	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101};
 	                                           /*c   u    t    e */
 
@@ -255,25 +410,41 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 
 	fwrite(&node_count, sizeof(node_count), 1, f);
 	fwrite(&node_count, sizeof(node_count), 1, f);
+	fwrite(&zone->node_count,
+	       sizeof(zone->node_count),
+	       1, f);
 
 	dnslib_dname_dump_binary(zone->apex->owner, f);
-	
+
+	arg_t arguments;
+
+	arguments.arg1 = f;
+	arguments.arg2 = encloser_list;
+	arguments.arg3 = zone;
+
 	/* TODO is there a way how to stop the traversal upon error? */
-	dnslib_zone_tree_apply_inorder(zone, dnslib_node_dump_binary, f);
+	dnslib_zone_tree_apply_inorder(zone, dnslib_node_dump_binary,
+	                               (void *)&arguments);
 
 	uint tmp_count = node_count;
 
 	node_count = 0;
-	dnslib_zone_nsec3_apply_inorder(zone, dnslib_node_dump_binary, f);
+	dnslib_zone_nsec3_apply_inorder(zone, dnslib_node_dump_binary,
+	                                (void *)&arguments);
 
 	fseek(f, MAGIC_LENGTH, SEEK_SET);
 	
 	fwrite(&tmp_count, sizeof(tmp_count), 1, f);
 	fwrite(&node_count, sizeof(node_count), 1, f);
+	fwrite(&zone->node_count,
+	       sizeof(zone->node_count),
+	       1, f);
 
 	printf("written %d normal nodes\n", tmp_count);
 
 	printf("written %d nsec3 nodes\n", node_count);
+
+	printf("authorative nodes: %u\n", zone->node_count);
 
 	fclose(f);
 

@@ -71,12 +71,6 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 
 				fread(&has_wildcard, sizeof(uint8_t), 1, f);
 
-				if (has_wildcard) {
-					fread(&tmp_id, sizeof(void *), 1, f);
-				} else {
-					tmp_id = NULL;
-				}
-
 				items[i].dname = malloc(sizeof(dnslib_dname_t));
 
 				items[i].dname->name = dname_wire;
@@ -84,7 +78,14 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 				items[i].dname->labels = labels;
 				items[i].dname->label_count = label_count;
 
-				items[i].dname->node = tmp_id;
+				if (has_wildcard) {
+					fread(&tmp_id, sizeof(void *), 1, f);
+					printf("read ID: %d\n", (uint)tmp_id);
+					getchar();
+					items[i].dname->node = id_array[(uint)tmp_id]->node;
+				} else {
+					items[i].dname->node = NULL;
+				}
 			}
 
 			assert(items[i].dname);
@@ -103,6 +104,8 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 	if (dnslib_rdata_set_items(rdata, items, desc->length) != 0) {
 		fprintf(stderr, "Error: could not set items\n");
 	}
+
+	free(items);
 
 	return rdata;
 }
@@ -242,12 +245,14 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 
 	debug_zp("Number of RRSets in a node: %d\n", rrset_count);
 
-	if ((node = dnslib_node_new(owner, NULL)) == NULL) {
+	node = owner->node;
+
+	node->owner = owner;
+
+	if (node == NULL) {
 		fprintf(stderr, "Error: could not create node\n");
 		return NULL;
 	}
-
-	owner->node = node;
 
 	node->flags = flags;
 
@@ -330,6 +335,8 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 
 	char apex_found = 0;
 
+	uint auth_node_count;
+
 	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101};
 	                                           /*c   u    t    e */
 
@@ -340,6 +347,10 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 
 	fread(&node_count, sizeof(node_count), 1, f);
 	fread(&nsec3_node_count, sizeof(nsec3_node_count), 1, f);
+	fread(&auth_node_count,
+	      sizeof(auth_node_count), 1, f);
+
+	debug_zp("authorative nodes: %u\n", auth_node_count);
 
 	uint8_t dname_size;
 	uint8_t dname_wire[DNAME_MAX_WIRE_LENGTH];
@@ -376,6 +387,7 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 
 	for (uint i = 1; i < (node_count + nsec3_node_count + 1); i++) {
 		id_array[i] = malloc(sizeof(dnslib_dname_t));
+		id_array[i]->node = dnslib_node_new(NULL, NULL);
 	}
 
 	for (uint i = 0; i < node_count; i++) {

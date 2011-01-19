@@ -91,6 +91,9 @@ dnslib_dname_t *dnslib_dname_new_from_str(char *name, uint size,
 dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
                 struct dnslib_node *node);
 
+int dnslib_dname_from_wire(const uint8_t *name, uint size,
+                           struct dnslib_node *node, dnslib_dname_t *target);
+
 /*!
  * \brief Copies the given domain name.
  *
