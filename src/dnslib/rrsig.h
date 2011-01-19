@@ -136,7 +136,8 @@ void dnslib_rrsig_set_free(dnslib_rrsig_set_t **rrsigs);
  * \param free_owner Set to 0 if you do not want the owner domain name to be
  *                   destroyed also. Set to <> 0 otherwise.
  */
-void dnslib_rrsig_set_deep_free(dnslib_rrsig_set_t **rrsigs, int free_owner);
+void dnslib_rrsig_set_deep_free(dnslib_rrsig_set_t **rrsigs, int free_owner,
+                                int free_all_dnames);
 
 /*!
  * \brief Merges two RRSIGs.

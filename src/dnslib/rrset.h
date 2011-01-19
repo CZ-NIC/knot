@@ -190,7 +190,8 @@ void dnslib_rrset_free(dnslib_rrset_t **rrset);
  * \param free_owner Set to 0 if you do not want the owner domain name to be
  *                   destroyed also. Set to <> 0 otherwise.
  */
-void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner);
+void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner,
+                            int free_all_dnames);
 
 /*!
  * \brief Merges two RRSets.
