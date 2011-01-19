@@ -20,6 +20,8 @@
 #include "zone.h"
 #include "slab.h"
 
+#include "skip-list.h"
+
 #define MAXRDATALEN	64
 #define MAXLABELLEN	63
 #define MAXDOMAINLEN	255
@@ -77,16 +79,16 @@ struct zparser {
 
 	unsigned int id;
 
-//	curent rr will have to be represented as current rrset
-//before:	rr_type current_rr;
-	dnslib_rrset_t current_rrset; //XXX * was not there
-	dnslib_rdata_item_t *temporary_items; //XXX only one * was there
+	dnslib_rrset_t current_rrset;
+	dnslib_rdata_item_t *temporary_items;
 
-	rrsig_list_t *rrsig_orphans;
+	skip_list_t *rrsig_orphans;
 
 	dnslib_dname_t *root_domain;
 
 	slab_cache_t *parser_slab;
+
+	dnslib_rrset_t *last_rrsig;
 
 	int rdata_count;
 };

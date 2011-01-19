@@ -119,12 +119,6 @@ line:	NL
     |	rr
     {	/* rr should be fully parsed */
 	if (!parser->error_occurred) {
-/*		parser->current_rrset.rdata->items
-		 = malloc(parser->current_rrset.rdata->count
-	                  * sizeof(dnslib_rdata_item_t)); */
-		//XXX dirty workaround, I seriously doubt that it
-		//should work like this...
-
 		dnslib_rdata_t *tmp_rdata = dnslib_rdata_new();
 
 		if (dnslib_rdata_set_items(tmp_rdata,
@@ -144,9 +138,6 @@ line:	NL
 
 		}
 
-
-
-//        printf("going to zonec: %s %p\n", dnslib_dname_to_str(parser->current_rrset.owner), parser->current_rrset.owner);
 		int ret;
 		if ((ret = process_rr()) != 0) {
 			char *tmp_dname_str =
@@ -1312,6 +1303,8 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 
 	parser->last_node = origin;
 	parser->root_domain = dnslib_dname_new_from_str(".", 1, NULL);
+
+	parser->last_rrsig = NULL;
 
 	parser->id = 1;
 
