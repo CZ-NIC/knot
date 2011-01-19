@@ -335,7 +335,7 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 
 	uint auth_node_count;
 
-	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101, 0, 1};
+	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101, 0, 2};
 	                                           /*c   u    t    e   0.1*/
 
 	if (!dnslib_check_magic(f, MAGIC, MAGIC_LENGTH)) {

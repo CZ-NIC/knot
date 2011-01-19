@@ -403,7 +403,7 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 
 	dnslib_zone_save_enclosers(zone, encloser_list);
 
-	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101, 0, 1};
+	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101, 0, 2};
 	                                           /*c   u    t    e   0.1*/
 
 	fwrite(&MAGIC, sizeof(uint8_t), MAGIC_LENGTH, f);
