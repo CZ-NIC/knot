@@ -25,7 +25,12 @@ enum {
 
 enum {
 	PREALLOC_RESPONSE = sizeof(dnslib_response_t),
-	PREALLOC_QNAME = 256,
+	PREALLOC_QNAME_DNAME = sizeof(dnslib_dname_t),
+	PREALLOC_QNAME_NAME = 256,
+	PREALLOC_QNAME_LABELS = 127,
+	PREALLOC_QNAME = PREALLOC_QNAME_DNAME
+	                 + PREALLOC_QNAME_NAME
+	                 + PREALLOC_QNAME_LABELS,
 
 	PREALLOC_ANSWER = DEFAULT_ANCOUNT * sizeof(dnslib_dname_t *),
 	PREALLOC_AUTHORITY = DEFAULT_NSCOUNT * sizeof(dnslib_dname_t *),
@@ -78,9 +83,16 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 		resp->question.qname,
 		(void *)resp->question.qname - (void *)resp);
 
+	resp->question.qname->name = (uint8_t *)((char *)resp->question.qname
+	                                         + PREALLOC_QNAME_DNAME);
+	resp->question.qname->labels = (uint8_t *)((char *)
+	                                           resp->question.qname->name
+	                                           + PREALLOC_QNAME_NAME);
+
 	// then answer, authority and additional sections
 	resp->answer = (const dnslib_rrset_t **)
-	                   ((char *)resp->question.qname + PREALLOC_QNAME);
+	                   ((char *)resp->question.qname->labels
+	                    + PREALLOC_QNAME_LABELS);
 	resp->authority = resp->answer + DEFAULT_ANCOUNT;
 	resp->additional = resp->authority + DEFAULT_NSCOUNT;
 
@@ -243,10 +255,14 @@ static int dnslib_response_parse_question(const uint8_t **pos,
 		return -2;  // no 0 found or not enough data left
 	}
 
-	question->qname = dnslib_dname_new_from_wire(*pos, i + 1, NULL);
-	if (question->qname == NULL) {
-		return -3;  // allocation failed
+	//question->qname = dnslib_dname_new_from_wire(*pos, i + 1, NULL);
+//	if (question->qname == NULL) {
+//		return -3;  // allocation failed
+//	}
+	if (dnslib_dname_from_wire(*pos, i + 1, NULL, question->qname) != 0) {
+		return -3;
 	}
+
 	*pos += i + 1;
 	question->qtype = dnslib_wire_read_u16(*pos);
 	*pos += 2;
