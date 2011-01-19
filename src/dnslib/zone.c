@@ -221,6 +221,8 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex)
 	// how to know if this is successfull??
 	TREE_INSERT(zone->tree, dnslib_node, avl, apex);
 
+	zone->table = NULL;
+
 	return zone;
 }
 

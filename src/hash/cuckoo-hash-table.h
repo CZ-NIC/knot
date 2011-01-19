@@ -154,7 +154,7 @@ typedef struct ck_hash_table ck_hash_table_t;
  *
  * \return Pointer to the initialized hash table.
  */
-ck_hash_table_t *ck_create_table(uint item);
+ck_hash_table_t *ck_create_table(uint items);
 
 /*----------------------------------------------------------------------------*/
 /*!
