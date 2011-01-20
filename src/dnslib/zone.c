@@ -609,7 +609,9 @@ void dnslib_zone_deep_free(dnslib_zone_t **zone)
 		return;
 	}
 
-	ck_destroy_table(&(*zone)->table, NULL, 0);
+	if ((*zone)->table != NULL) {
+		ck_destroy_table(&(*zone)->table, NULL, 0);
+	}
 
 	/* has to go through zone twice, rdata may contain references to node
 	   owners earlier in the zone which may be already freed */
