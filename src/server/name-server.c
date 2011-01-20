@@ -490,7 +490,7 @@ DEBUG_NS(
 );
 		if (exact_match == -2) {  // name not in the zone
 			// possible only if we followed cname
-			//assert(cname != 0);
+			assert(cname != 0);
 			dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
 			auth_soa = 1;
 			break;
