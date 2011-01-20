@@ -41,7 +41,7 @@ unit_api cuckoo_tests_api = {
  * Unit implementation
  */
 static const int CUCKOO_TESTS_COUNT = 7;
-static const int CUCKOO_MAX_ITEMS = 100000;
+static const int CUCKOO_MAX_ITEMS = 100;
 static const int CUCKOO_TEST_MAX_KEY_SIZE = 10;
 
 typedef struct test_cuckoo_items {
@@ -213,7 +213,7 @@ static void create_random_items(test_cuckoo_items *items, int item_count)
 	for (int i = 0; i < item_count; ++i) {
 		int value = rand() + 1;
 		int key_size = rand() % CUCKOO_TEST_MAX_KEY_SIZE + 1;
-		char *key = malloc(items->key_sizes[i] * sizeof(char));
+		char *key = malloc(key_size * sizeof(char));
 		assert(key != NULL);
 		rand_str(key, key_size);
 
