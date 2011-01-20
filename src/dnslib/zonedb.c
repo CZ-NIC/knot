@@ -104,6 +104,10 @@ DEBUG_DNSLIB_ZONEDB(
 	debug_ns("Found zone for name %s: %p\n", name, zone);
 	free(name);
 );
+	if (dnslib_dname_compare(zone->apex->owner, dname) != 0
+	    && !dnslib_dname_is_subdomain(dname, zone->apex->owner)) {
+		zone = NULL;
+	}
 	rcu_read_unlock();
 
 	return zone;
