@@ -444,7 +444,6 @@ static int test_response_parse_query(test_response_t **responses,
 			errors++;
 		}
 		errors += !check_response(resp, responses[i], 1, 1, 0, 0, 0);
-		dnslib_dname_free(&resp->question.qname);
 		dnslib_response_free(&resp);
 	}
 
