@@ -326,11 +326,12 @@ static int dt_tests_run(int argc, char *argv[])
 
 	/* Test 21: resize to zero value. */
 	cmp_ok(dt_resize(unit, 0), "<", 0, "dthreads: resize to NULL size");
+	dt_join(unit);
 	dt_delete(&unit);
 
 	/* Test 22: NULL operations crashing. */
 	int op_count = 14;
-	int expected_min = op_count * -1; 
+	int expected_min = op_count * -1;
 	// All functions must return -1 at least
 	int ret = 0;
 	lives_ok( {

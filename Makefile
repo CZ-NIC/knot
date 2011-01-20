@@ -85,11 +85,14 @@ $(OBJ_DIR)%.o : %.c
 	@echo "$(COL_WHITE)Compiling $(COL_CYAN)$@: $(COL_BLUE)$< $(COL_END)"
 	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) -c -o $@ $<
 
-### Cleaning ###
-.PHONY: clean
+### Cleaning and documentation ###
+.PHONY: clean doc
 clean:
 	@echo "$(COL_WHITE)Cleaning flex & bison files ...$(COL_RED)"
 	@rm -vf $(OBJ_DIR)zlexer.c $(OBJ_DIR)zparser.h $(OBJ_DIR)zparser.c
 	@echo "$(COL_WHITE)Cleaning object files...$(COL_RED)"
 	@rm -vf ${OBJ_DIR}/*.o
 	@echo "$(COL_WHITE)done$(COL_END)"
+
+doc:
+	@doxygen "Doxyfile"

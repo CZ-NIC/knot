@@ -41,14 +41,14 @@ unit_api cuckoo_tests_api = {
  * Unit implementation
  */
 static const int CUCKOO_TESTS_COUNT = 7;
-static const int CUCKOO_MAX_ITEMS = 100000;
+static const int CUCKOO_MAX_ITEMS = 100;
 static const int CUCKOO_TEST_MAX_KEY_SIZE = 10;
 
 typedef struct test_cuckoo_items {
 	char **keys;
-	int *key_sizes;
-	int *values;
-	int *deleted;
+	size_t *key_sizes;
+	size_t *values;
+	size_t *deleted;
 	int count;
 } test_cuckoo_items;
 
@@ -124,14 +124,14 @@ static int test_cuckoo_lookup(ck_hash_table_t *table,
 		} else {
 			if (items->deleted[i] != 0
 			    || found->key != items->keys[i]
-			    || (int)(found->value) != items->values[i]) {
+			    || (size_t)(found->value) != items->values[i]) {
 				diag("Found item with key %.*s (size %u) "
-				     "(should be %.*s (size %u)) and value %d "
+				     "(should be %.*s (size %u)) and value %zu "
 				     "(should be %d).\n",
 				     found->key_length, found->key,
 				     found->key_length, items->key_sizes[i],
 				     items->keys[i], items->key_sizes[i],
-				     (int)found->value, items->values[i]);
+				     (size_t)found->value, items->values[i]);
 				++errors;
 			}
 		}
@@ -205,15 +205,15 @@ static void create_random_items(test_cuckoo_items *items, int item_count)
 	assert(items != NULL);
 
 	items->count = item_count;
-	items->values = (int *)malloc(item_count * sizeof(int));
-	items->key_sizes = (int *)malloc(item_count * sizeof(int));
-	items->deleted = (int *)malloc(item_count * sizeof(int));
+	items->values = (size_t *)malloc(item_count * sizeof(size_t));
+	items->key_sizes = (size_t *)malloc(item_count * sizeof(size_t));
+	items->deleted = (size_t *)malloc(item_count * sizeof(size_t));
 	items->keys = (char **)malloc(item_count * sizeof(char *));
 
 	for (int i = 0; i < item_count; ++i) {
 		int value = rand() + 1;
 		int key_size = rand() % CUCKOO_TEST_MAX_KEY_SIZE + 1;
-		char *key = malloc(items->key_sizes[i] * sizeof(char));
+		char *key = malloc(key_size * sizeof(char));
 		assert(key != NULL);
 		rand_str(key, key_size);
 
