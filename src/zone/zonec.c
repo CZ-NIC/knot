@@ -48,13 +48,6 @@ void rrsig_list_init(rrsig_list_t **head)
 	*head = NULL;
 }
 
-static void rrsig_list_add_first(rrsig_list_t **head, dnslib_rrsig_set_t *rrsig)
-{
-	*head = malloc(sizeof(*head));
-	(*head)->next = NULL;
-	(*head)->data = rrsig;
-}
-
 static inline uint8_t * rdata_atom_data(dnslib_rdata_item_t item)
 {
 	return (uint8_t *)(item.raw_data + 1);
@@ -70,8 +63,10 @@ uint16_t rrsig_type_covered(dnslib_rrset_t *rrset)
 
 static void rrsig_list_add(rrsig_list_t **head, dnslib_rrsig_set_t *rrsig)
 {
-	if (head == NULL) {
-		rrsig_list_add_first(head, rrsig);
+	if (*head == NULL) {
+		*head = malloc(sizeof(rrsig_list_t));
+		(*head)->next = NULL;
+		(*head)->data = rrsig;
 	} else {
 		rrsig_list_t *tmp = malloc(sizeof(*tmp));
 		tmp->next = *head;
@@ -87,7 +82,6 @@ void rrsig_list_delete(rrsig_list_t *head)
 		tmp = head;
 		head = head->next;
 		free(tmp);
-		head = head->next;
 	}
 }
 
@@ -1510,7 +1504,7 @@ int process_rr(void)
 		if (parser->last_node && parser->last_rrsig &&
                     find_rrset_for_rrsig_in_node(parser->last_node,
 		                                 parser->last_rrsig) != 0) {
-			printf("RRSIG for: '%s' was not near its node.\n",
+			debug_zp("RRSIG for: '%s' was not in its node.\n",
 			       dnslib_dname_to_str(parser->last_rrsig->owner));
 
 			rrsig_list_add(&parser->rrsig_orphans,
@@ -1607,23 +1601,23 @@ int process_rr(void)
 	return 0;
 }
 
-//static uint find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
-//{
-//	uint found_rrsets = 0;
-//	while (head != NULL) {
-//		if (find_rrset_for_rrsig(zone, head->data) == 0) {
-//			found_rrsets += 1;
-//			printf("RRSET succesfully found: owner %s type %s\n",
-//    			         dnslib_dname_to_str(head->data->owner),
-//			         dnslib_rrtype_to_string(rrsig_type_covered(head->data)));
-//		}
-//		else { /* we can throw it away now */
-//			dnslib_rrset_free(&head->data);
-//		}
-//		head = rrsig_list_next(head);
-//	}
-//	return found_rrsets;
-//}
+static uint find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
+{
+	uint found_rrsets = 0;
+	while (head != NULL) {
+		if (find_rrset_for_rrsig_in_zone(zone, head->data) == 0) {
+			found_rrsets += 1;
+			debug_zp("RRSET succesfully found: owner %s type %s\n",
+    			         dnslib_dname_to_str(head->data->owner),
+			         dnslib_rrtype_to_string(head->data->type));
+		}
+		else { /* we can throw it away now */
+			dnslib_rrsig_set_free(&head->data);
+		}
+		head = head->next;
+	}
+	return found_rrsets;
+}
 
 /*
  * Reads the specified zone into the memory
@@ -1660,12 +1654,14 @@ void zone_read(char *name, const char *zonefile)
 
 	printf("zone parsed\n");
 
-/*	uint found_orphans;
+	uint found_orphans;
 
 	found_orphans = find_rrsets_orphans(parser->current_zone,
 	                                    parser->rrsig_orphans);
 
-	printf("%u orphans found\n", found_orphans); */
+	printf("%u orphans found\n", found_orphans);
+
+	rrsig_list_delete(parser->rrsig_orphans);
 
 	dnslib_zone_adjust_dnames(parser->current_zone);
 
