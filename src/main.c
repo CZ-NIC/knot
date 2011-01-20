@@ -1,7 +1,9 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "common.h"
 #include "server.h"
+#include "zonec.h"
 
 /*----------------------------------------------------------------------------*/
 

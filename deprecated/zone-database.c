@@ -154,7 +154,7 @@ static uint zdb_create_list(zdb_zone_t *zone, ldns_zone *zone_ldns)
 	debug_zdb("Done.\nAdding SOA RR to the apex node...\n");
 
 	if (zn_add_rr(zone->apex, ldns_rr_clone(ldns_zone_soa(zone_ldns))) != 0
-	    || skip_empty(zone->apex->rrsets) == 0) {
+	    || skip_is_empty(zone->apex->rrsets)) {
 		log_error("Error while processing zone %s: Cannot insert SOA RR"
 		          "into the zone apex node.\n",
 		          ldns_rdf2str(zone->zone_name));
@@ -624,7 +624,7 @@ static int zdb_process_nonauth(zn_node_t *node, ldns_rr_list *ns_rrset,
 {
 	zn_set_non_authoritative(node);
 
-	if (zn_is_empty(node) == 0) {
+	if (zn_is_empty(node)) {
 		return 0;
 	}
 

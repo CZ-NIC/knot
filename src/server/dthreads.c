@@ -217,15 +217,18 @@ static void dt_delete_thread(dthread_t **thread)
 		return;
 	}
 
+	dthread_t* thr = *thread;
+	thr->unit = 0;
+	*thread = 0;
+
 	// Delete attribute
-	pthread_attr_destroy(&(*thread)->_attr);
+	pthread_attr_destroy(&(thr)->_attr);
 
 	// Delete mutex
-	pthread_mutex_destroy(&(*thread)->_mx);
+	pthread_mutex_destroy(&(thr)->_mx);
 
 	// Free memory
-	free(*thread);
-	*thread = 0;
+	free(thr);
 }
 
 dt_unit_t *dt_create(int count)
