@@ -469,8 +469,10 @@ static void ns_answer_from_zone(const dnslib_zone_t *zone,
 	while (1) {
 		//qname_old = dnslib_dname_copy(qname);
 
-		int exact_match = dnslib_zone_find_dname(zone, qname, &node,
-		                                         &closest_encloser);
+//		int exact_match = dnslib_zone_find_dname(zone, qname, &node,
+//		                                         &closest_encloser);
+		int exact_match = dnslib_zone_find_dname_hash(zone, qname,
+		                                      &node, &closest_encloser);
 DEBUG_NS(
 		if (node) {
 			char *name = dnslib_dname_to_str(node->owner);

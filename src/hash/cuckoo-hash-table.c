@@ -634,6 +634,8 @@ ck_hash_table_t *ck_create_table(uint items)
 void ck_destroy_table(ck_hash_table_t **table, void (*dtor_value)(void *value),
                       int delete_key)
 {
+	assert(table);
+	assert(*table);
 	pthread_mutex_lock(&(*table)->mtx_table);
 
 	// destroy items in tables
