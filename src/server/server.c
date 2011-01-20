@@ -56,7 +56,11 @@ cute_server *cute_create()
 	socket_listen(sock, TCP_BACKLOG_SIZE);
 
 	// Create threading unit
-	dt_unit_t *unit = dt_create(thr_count);
+	int tcp_unit_size = (thr_count >> 1);
+	if (tcp_unit_size < 2) {
+		tcp_unit_size = 2;
+	}
+	dt_unit_t *unit = dt_create(tcp_unit_size);
 	dt_repurpose(unit->threads[0], &tcp_master, 0);
 	cute_create_handler(server, sock, unit);
 
