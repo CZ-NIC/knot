@@ -896,7 +896,7 @@ int dt_optimal_size()
 #ifdef _SC_NPROCESSORS_ONLN
 	int ret = (int) sysconf(_SC_NPROCESSORS_ONLN);
 	if (ret >= 1) {
-		return ret + 2;
+		return ret + CPU_ESTIMATE_MAGIC;
 	}
 #endif
 	log_info("server: failed to estimate the number of online CPUs");
