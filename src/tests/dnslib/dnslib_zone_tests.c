@@ -329,7 +329,7 @@ static void test_zone_destroy_node_from_tree(dnslib_node_t *node,
 }
 
 /* explained below */
-static int node_index = 0;
+static size_t node_index = 0;
 
 /* \brief
  * This function will overwrite parent field in node structure -
@@ -514,7 +514,7 @@ static int dnslib_zone_tests_run(int argc, char *argv[])
 	endskip; // add nsec3 node failed
 
 	ok(res = test_zone_traversals(zone), "zone: traversals");
-	res_final *= res;	
+	res_final *= res;
 
 	ok((res = test_zone_free(&zone)), "zone: free");
 	res_final *= res;

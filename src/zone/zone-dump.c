@@ -18,7 +18,7 @@ typedef struct arg arg_t;
  * pointers directly */
 static int compare_pointers(void *p1, void *p2)
 {
-	return ((uint)p1 == (uint)p2 ? 0 : (uint)p1 < (uint)p2 ? -1 : 1);
+	return ((size_t)p1 == (size_t)p2 ? 0 : (size_t)p1 < (size_t)p2 ? -1 : 1);
 }
 
 
@@ -203,7 +203,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 					fwrite(&wildcard->node,
 					       sizeof(void *), 1, f);
 				} else {
-					fwrite((uint8_t *)"\0", sizeof(uint8_t), 1, f);	
+					fwrite((uint8_t *)"\0", sizeof(uint8_t), 1, f);
 				}
 			} else {
 				debug_zp("In the zone\n");
@@ -301,7 +301,7 @@ static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, void *data)
 	fsetpos(f, &rrdata_count_pos);
 
 	fwrite(&rdata_count, sizeof(rdata_count), 1, f);
-	fwrite(&rrsig_count, sizeof(rrsig_count), 1, f);	
+	fwrite(&rrsig_count, sizeof(rrsig_count), 1, f);
 
 	fsetpos(f, &tmp_pos);
 }
@@ -314,7 +314,7 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 	FILE *f = (FILE *)args->arg1;
 
-	
+
 	node_count++;
 	/* first write dname */
 	assert(node->owner != NULL);
@@ -341,7 +341,7 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 	debug_zp("Writing flags: %u\n", node->flags);
 
 
-	/* Now we need (or do we?) count of rrsets to be read 
+	/* Now we need (or do we?) count of rrsets to be read
 	 * but that number is yet unknown */
 
 	fpos_t rrset_count_pos;
@@ -360,7 +360,7 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 		/* we can return, count is set to 0 */
 		return;
 	}
-	
+
 	dnslib_rrset_t *tmp;
 
 	do {
@@ -377,13 +377,13 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 	fsetpos(f, &rrset_count_pos);
 
-	debug_zp("Writing here: %ld\n", ftell(f));	
+	debug_zp("Writing here: %ld\n", ftell(f));
 
 	fwrite(&rrset_count, sizeof(rrset_count), 1, f);
 
 	fsetpos(f, &tmp_pos);
 
-	debug_zp("Function ends with: %ld\n\n", ftell(f));	
+	debug_zp("Function ends with: %ld\n\n", ftell(f));
 
 }
 
@@ -431,7 +431,7 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 	                                (void *)&arguments);
 
 	fseek(f, MAGIC_LENGTH, SEEK_SET);
-	
+
 	fwrite(&tmp_count, sizeof(tmp_count), 1, f);
 	fwrite(&node_count, sizeof(node_count), 1, f);
 	fwrite(&zone->node_count,

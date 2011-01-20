@@ -252,7 +252,7 @@ static int test_response_new_empty()
 	dnslib_response_t *resp = dnslib_response_new_empty(NULL, 0);
 
 	if (resp != NULL) {
-		dnslib_response_free(&resp);		
+		dnslib_response_free(&resp);
 		return 1;
 	} else {
 		dnslib_response_free(&resp);
@@ -262,7 +262,7 @@ static int test_response_new_empty()
 
 static int test_response_add_rrset(int (*add_func)
                                    (dnslib_response_t *,
-				   const dnslib_rrset_t *, int), 
+				   const dnslib_rrset_t *, int),
 				   int array_id)
 {
 	int errors = 0;
@@ -432,7 +432,7 @@ static int test_response_parse_query(test_response_t **responses,
 {
 	assert(responses);
 	assert(raw_queries);
-	
+
 	int errors = 0;
 	dnslib_response_t *resp = NULL;
 	for (int i = 0; (i < count) && !errors; i++) {
@@ -477,7 +477,7 @@ static int test_response_to_wire()
 
 		resp->header.id = RESPONSES[i].id;
 		//flags1?
-		resp->header.qdcount = RESPONSES[i].qdcount;	
+		resp->header.qdcount = RESPONSES[i].qdcount;
 		resp->header.ancount = RESPONSES[i].ancount;
 		resp->header.nscount = RESPONSES[i].nscount;
 		resp->header.arcount = RESPONSES[i].arcount;
@@ -511,7 +511,7 @@ static int test_response_to_wire()
 		uint8_t *ldns_wire = NULL;
 
 		size_t ldns_wire_size;
-		uint dnslib_wire_size;
+		size_t dnslib_wire_size;
 
 		if (ldns_pkt2wire(&ldns_wire, &LDNS_PACKETS[i],
 			          &ldns_wire_size) != LDNS_STATUS_OK) {
@@ -545,7 +545,7 @@ static int test_response_to_wire()
 			diag("Response parsed from wire does not match");
 			return 0;
 		}
-		
+
 		dnslib_dname_free(&(tmp_resp->question.qname));
 		dnslib_response_free(&tmp_resp);
 
@@ -554,12 +554,12 @@ static int test_response_to_wire()
 			diag("Resulting wires were not equal - TODO\n");
 //			return 0;
 		}
-		
+
 		free(ldns_wire);
 		free(dnslib_wire);
 		dnslib_response_free(&resp);
 	}
-	
+
 	return (errors == 0);
 }
 

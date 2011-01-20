@@ -77,7 +77,7 @@ struct zparser {
 	unsigned int errors;
 	unsigned int line;
 
-	unsigned int id;
+	size_t id;
 
 	dnslib_rrset_t current_rrset;
 	dnslib_rdata_item_t *temporary_items;
