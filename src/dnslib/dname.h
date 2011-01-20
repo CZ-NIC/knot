@@ -162,6 +162,8 @@ int dnslib_dname_is_fqdn(const dnslib_dname_t *dname);
  */
 dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname);
 
+void dnslib_dname_left_chop_no_copy(dnslib_dname_t *dname);
+
 /*!
  * \brief Checks if one domain name is a subdomain of other.
  *
