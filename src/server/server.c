@@ -1,13 +1,16 @@
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "server.h"
 #include "udp-handler.h"
 #include "tcp-handler.h"
-#include "zone-database.h"
 #include "name-server.h"
-#include "zone-parser.h"
 #include "stat.h"
+#include "zonedb.h"
+#include "zone-load.h"
+#include "dnslib/debug.h"
+#include "dnslib/dname.h"
 
 cute_server *cute_create()
 {
@@ -24,7 +27,7 @@ cute_server *cute_create()
 	debug_server("Done\n\n");
 	debug_server("Creating Zone Database structure..\n");
 
-	server->zone_db = zdb_create();
+	server->zone_db = dnslib_zonedb_new();
 	if (server->zone_db == NULL) {
 		return NULL;
 	}
@@ -34,7 +37,7 @@ cute_server *cute_create()
 
 	server->nameserver = ns_create(server->zone_db);
 	if (server->nameserver == NULL) {
-		zdb_destroy(&server->zone_db);
+		dnslib_zonedb_deep_free(&server->zone_db);
 		free(server);
 		return NULL;
 	}
@@ -149,11 +152,16 @@ int cute_start(cute_server *server, char **filenames, uint zones)
 	stat_static_gath_start();
 
 	//!stat
+	dnslib_zone_t *zone = NULL;
+
 	for (uint i = 0; i < zones; ++i) {
 		debug_server("Parsing zone file %s..\n", filenames[i]);
-		if (zp_parse_zone(filenames[i], server->zone_db) != 0) {
+		if (!((zone = dnslib_zone_load(filenames[i])) != NULL
+		    && dnslib_zonedb_add_zone(server->zone_db, zone) == 0)) {
 			return -1;
 		}
+		// dump zone
+		//dnslib_zone_dump(zone);
 	}
 
 	debug_server("\nDone\n\n");
@@ -179,7 +187,7 @@ int cute_wait(cute_server *server)
 			     server->handlers);
 		ret += dt_join(server->handlers->unit);
 		cute_remove_handler(server, server->handlers);
-		debug_server("server: joined threading unit\n", p);
+		debug_server("server: joined threading unit\n");
 	}
 
 	return ret;
@@ -207,7 +215,7 @@ void cute_destroy(cute_server **server)
 
 	stat_static_gath_free();
 	ns_destroy(&(*server)->nameserver);
-	zdb_destroy(&(*server)->zone_db);
+	dnslib_zonedb_deep_free(&(*server)->zone_db);
 	free(*server);
 	*server = NULL;
 }
