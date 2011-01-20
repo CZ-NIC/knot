@@ -541,6 +541,7 @@ static int test_response_to_wire()
 			diag("Could not parse created wire");
 			dnslib_response_free(&resp);
 			dnslib_response_free(&tmp_resp);
+			free(dnslib_wire);
 			return 0;
 		}
 
