@@ -224,6 +224,7 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count)
 	// how to know if this is successfull??
 	TREE_INSERT(zone->tree, dnslib_node, avl, apex);
 
+#ifdef USE_HASH_TABLE
 	if (zone->node_count > 0) {
 		zone->table = ck_create_table(zone->node_count);
 		if (zone->table == NULL) {
@@ -245,7 +246,7 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count)
 	} else {
 		zone->table = NULL;
 	}
-
+#endif
 	return zone;
 }
 
@@ -262,6 +263,7 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 	// how to know if this is successfull??
 	TREE_INSERT(zone->tree, dnslib_node, avl, node);
 
+#ifdef USE_HASH_TABLE
 	// add the node also to the hash table if authoritative, or deleg. point
 	if (zone->table != NULL
 	    && ck_insert_item(zone->table, (const char *)node->owner->name,
@@ -269,6 +271,7 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 		log_error("Error inserting node into hash table!\n");
 		return -3;
 	}
+#endif
 
 	debug_dnslib_zone("Inserted node %p with owner: %s (labels: %d), "
 	                  "pointer: %p\n", node,
@@ -411,7 +414,7 @@ DEBUG_DNSLIB_ZONE(
 }
 
 /*----------------------------------------------------------------------------*/
-
+#ifdef USE_HASH_TABLE
 int dnslib_zone_find_dname_hash(const dnslib_zone_t *zone,
                                 const dnslib_dname_t *name,
                                 const dnslib_node_t **node,
@@ -481,7 +484,7 @@ DEBUG_DNSLIB_ZONE(
 
 	return 0;
 }
-
+#endif
 /*----------------------------------------------------------------------------*/
 
 const dnslib_node_t *dnslib_zone_find_nsec3_node(const dnslib_zone_t *zone,
@@ -595,7 +598,11 @@ void dnslib_zone_free(dnslib_zone_t **zone)
 	free((*zone)->tree);
 	free((*zone)->nsec3_nodes);
 
-	ck_destroy_table(&(*zone)->table, NULL, 0);
+#ifdef USE_HASH_TABLE
+	if ((*zone)->table != NULL) {
+		ck_destroy_table(&(*zone)->table, NULL, 0);
+	}
+#endif
 
 	free(*zone);
 	*zone = NULL;
@@ -608,11 +615,11 @@ void dnslib_zone_deep_free(dnslib_zone_t **zone)
 	if (zone == NULL || *zone == NULL) {
 		return;
 	}
-
+#ifdef USE_HASH_TABLE
 	if ((*zone)->table != NULL) {
 		ck_destroy_table(&(*zone)->table, NULL, 0);
 	}
-
+#endif
 	/* has to go through zone twice, rdata may contain references to node
 	   owners earlier in the zone which may be already freed */
 
