@@ -55,7 +55,7 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 			fread(&dname_in_zone, sizeof(dname_in_zone), 1, f);
 			if (dname_in_zone) {
 				fread(&tmp_id, sizeof(void *), 1, f);
-				items[i].dname = id_array[(uint)tmp_id];
+				items[i].dname = id_array[(size_t)tmp_id];
 			} else {
 				fread(&dname_size, sizeof(dname_size), 1, f);
 				assert(dname_size < DNAME_MAX_WIRE_LENGTH);
@@ -86,9 +86,10 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 
 				if (has_wildcard) {
 					fread(&tmp_id, sizeof(void *), 1, f);
-					printf("read ID: %d\n", (uint)tmp_id);
+					printf("read ID: %zu\n", (size_t)tmp_id);
 					getchar();
-					items[i].dname->node = id_array[(uint)tmp_id]->node;
+					items[i].dname->node =
+					         id_array[(size_t)tmp_id]->node;
 				} else {
 					items[i].dname->node = NULL;
 				}
@@ -236,7 +237,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 
 	fread(&rrset_count, sizeof(rrset_count), 1, f);
 
-	dnslib_dname_t *owner = id_array[(uint)dname_id];
+	dnslib_dname_t *owner = id_array[(size_t)dname_id];
 
 	owner->name = malloc(sizeof(uint8_t) * dname_size);
 	memcpy(owner->name, dname_wire, dname_size);
@@ -264,8 +265,8 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 
 	//XXX will have to be set already...canonical order should do it
 
-	if ((uint)parent_id != 0) {
-		node->parent = id_array[(uint)parent_id]->node;
+	if (parent_id != 0) {
+		node->parent = id_array[(size_t)parent_id]->node;
 		assert(node->parent != NULL);
 	} else {
 		node->parent = NULL;

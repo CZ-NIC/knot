@@ -690,7 +690,7 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database)
 int ns_answer_request(ns_nameserver *nameserver, const uint8_t *query_wire,
                       size_t qsize, uint8_t *response_wire, size_t *rsize)
 {
-	debug_ns("ns_answer_request() called with query size %d.\n", qsize);
+	debug_ns("ns_answer_request() called with query size %zu.\n", qsize);
 	debug_ns_hex((char *)query_wire, qsize);
 
 	if (qsize < 2) {
@@ -746,7 +746,7 @@ int ns_answer_request(ns_nameserver *nameserver, const uint8_t *query_wire,
 	dnslib_response_free(&resp);
 	rcu_read_unlock();
 
-	debug_ns("Returning response with wire size %d\n", *rsize);
+	debug_ns("Returning response with wire size %zu\n", *rsize);
 	debug_ns_hex((char *)response_wire, *rsize);
 
 	return 0;
