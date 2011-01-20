@@ -515,6 +515,7 @@ static int test_response_to_wire()
 		if (ldns_pkt2wire(&ldns_wire, &LDNS_PACKETS[i],
 			          &ldns_wire_size) != LDNS_STATUS_OK) {
 			diag("Could not convert ldns packet to wire\n");
+			dnslib_response_free(&resp);
 			return 0;
 		}
 
@@ -524,6 +525,7 @@ static int test_response_to_wire()
 		if (dnslib_response_to_wire(resp, &dnslib_wire,
 			                    &dnslib_wire_size) != 0) {
 			diag("Could not convert dnslib response to wire\n");
+			dnslib_response_free(&resp);
 			return 0;
 		}
 
@@ -537,11 +539,15 @@ static int test_response_to_wire()
 		if (dnslib_response_parse_query(tmp_resp, dnslib_wire,
 			                        dnslib_wire_size) != 0) {
 			diag("Could not parse created wire");
+			dnslib_response_free(&resp);
+			dnslib_response_free(&tmp_resp);
 			return 0;
 		}
 
 		if (!check_response(tmp_resp, &RESPONSES[i], 1, 1, 1, 1, 1)) {
 			diag("Response parsed from wire does not match");
+			dnslib_response_free(&resp);
+			dnslib_response_free(&tmp_resp);
 			return 0;
 		}
 
