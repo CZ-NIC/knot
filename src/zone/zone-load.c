@@ -80,8 +80,6 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 
 				if (has_wildcard) {
 					fread(&tmp_id, sizeof(void *), 1, f);
-					printf("read ID: %d\n", (uint)tmp_id);
-					getchar();
 					items[i].dname->node = id_array[(uint)tmp_id]->node;
 				} else {
 					items[i].dname->node = NULL;
@@ -271,7 +269,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 		if ((tmp_rrset = dnslib_load_rrset(f)) == NULL) {
 			dnslib_node_free(&node, 1);
 			//TODO what else to free?
-			printf("could not load rrset\n");
+			fprintf(stderr, "Error: could not load rrset\n");
 			return NULL;
 		}
 		tmp_rrset->owner = node->owner;
@@ -354,7 +352,7 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 		malloc(sizeof(dnslib_dname_t *) *
 		(node_count + nsec3_node_count + 1));
 
-	printf("loading %u nodes\n", node_count);
+	debug_zp("loading %u nodes\n", node_count);
 
 	for (uint i = 1; i < (node_count + nsec3_node_count + 1); i++) {
 		id_array[i] = malloc(sizeof(dnslib_dname_t));
@@ -384,7 +382,7 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 		}
 	}
 
-	printf("loading %u nsec3 nodes\n", nsec3_node_count);
+	debug_zp("loading %u nsec3 nodes\n", nsec3_node_count);
 
 	for (uint i = 0; i < nsec3_node_count; i++) {
 		tmp_node = dnslib_load_node(f);
