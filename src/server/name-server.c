@@ -470,10 +470,10 @@ static void ns_answer_from_zone(const dnslib_zone_t *zone,
 		//qname_old = dnslib_dname_copy(qname);
 
 #ifdef USE_HASH_TABLE
-		int exact_match = dnslib_zone_find_dname_hash(zone, qname,
+		int find_ret = dnslib_zone_find_dname_hash(zone, qname,
 		                                      &node, &closest_encloser);
 #else
-		int exact_match = dnslib_zone_find_dname(zone, qname, &node,
+		int find_ret = dnslib_zone_find_dname(zone, qname, &node,
 		                                         &closest_encloser);
 #endif
 DEBUG_NS(
@@ -488,7 +488,7 @@ DEBUG_NS(
 			debug_ns("zone_find_dname() returned no node.\n");
 		}
 );
-		if (exact_match == -2) {  // name not in the zone
+		if (find_ret == DNSLIB_ZONE_NAME_NOT_IN_ZONE) {
 			// possible only if we followed cname
 			assert(cname != 0);
 			dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
@@ -504,7 +504,7 @@ DEBUG_NS(
 			break;
 		}
 
-		if (!exact_match) {
+		if (find_ret == DNSLIB_ZONE_NAME_NOT_FOUND) {
 			// DNAME?
 			const dnslib_rrset_t *dname_rrset =
 				dnslib_node_rrset(closest_encloser,

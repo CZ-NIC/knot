@@ -22,6 +22,14 @@
 typedef TREE_HEAD(avl_tree, dnslib_node) avl_tree_t;
 
 /*----------------------------------------------------------------------------*/
+
+enum dnslib_zone_errors {
+	DNSLIB_ZONE_NAME_NOT_IN_ZONE = -2,
+	DNSLIB_ZONE_NAME_FOUND = 1,
+	DNSLIB_ZONE_NAME_NOT_FOUND = 0
+};
+
+/*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure for holding DNS zone.
  *

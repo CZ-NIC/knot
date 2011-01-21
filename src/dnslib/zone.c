@@ -364,13 +364,13 @@ DEBUG_DNSLIB_ZONE(
 	if (dnslib_dname_compare(name, zone->apex->owner) == 0) {
 		*node = zone->apex;
 		*closest_encloser = *node;
-		return 1;
+		return DNSLIB_ZONE_NAME_FOUND;
 	}
 
 	if (!dnslib_dname_is_subdomain(name, zone->apex->owner)) {
 		*node = NULL;
 		*closest_encloser = NULL;
-		return -2;
+		return DNSLIB_ZONE_NAME_NOT_IN_ZONE;
 	}
 
 	// create dummy node to use for lookup
@@ -395,7 +395,7 @@ DEBUG_DNSLIB_ZONE(
 	// there must be at least one node with domain name less or equal to
 	// the searched name if the name belongs to the zone (the root)
 	if (*node == NULL) {
-		return -2;
+		return DNSLIB_ZONE_NAME_NOT_IN_ZONE;
 	}
 
 	if (!exact_match) {
@@ -410,7 +410,9 @@ DEBUG_DNSLIB_ZONE(
 
 	debug_dnslib_zone("find_dname() returning %d\n", exact_match);
 
-	return exact_match;
+	return (exact_match)
+	       ? DNSLIB_ZONE_NAME_FOUND
+	       : DNSLIB_ZONE_NAME_NOT_FOUND;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -437,13 +439,13 @@ DEBUG_DNSLIB_ZONE(
 	if (dnslib_dname_compare(name, zone->apex->owner) == 0) {
 		*node = zone->apex;
 		*closest_encloser = *node;
-		return 1;
+		return DNSLIB_ZONE_NAME_FOUND;
 	}
 
 	if (!dnslib_dname_is_subdomain(name, zone->apex->owner)) {
 		*node = NULL;
 		*closest_encloser = NULL;
-		return -2;
+		return DNSLIB_ZONE_NAME_NOT_IN_ZONE;
 	}
 
 	const ck_hash_table_item_t *item = ck_find_item(zone->table,
@@ -459,7 +461,7 @@ DEBUG_DNSLIB_ZONE(
 		                  dnslib_dname_label_count((*node)->owner));
 		assert(*node != NULL);
 		assert(*closest_encloser != NULL);
-		return 1;
+		return DNSLIB_ZONE_NAME_FOUND;
 	}
 
 	*node = NULL;
@@ -482,7 +484,7 @@ DEBUG_DNSLIB_ZONE(
 
 	*closest_encloser = (const dnslib_node_t *)item->value;
 
-	return 0;
+	return DNSLIB_ZONE_NAME_NOT_FOUND;
 }
 #endif
 /*----------------------------------------------------------------------------*/
