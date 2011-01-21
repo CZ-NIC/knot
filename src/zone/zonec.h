@@ -52,7 +52,7 @@ struct lex_data {
 typedef void namedb_type;
 
 struct rrsig_list {
-	dnslib_rrset_t *data;
+	dnslib_rrsig_set_t *data;
 	struct rrsig_list *next;
 };
 
@@ -82,13 +82,13 @@ struct zparser {
 	dnslib_rrset_t current_rrset;
 	dnslib_rdata_item_t *temporary_items;
 
-	skip_list_t *rrsig_orphans;
+	rrsig_list_t *rrsig_orphans;
 
 	dnslib_dname_t *root_domain;
 
 	slab_cache_t *parser_slab;
 
-	dnslib_rrset_t *last_rrsig;
+	dnslib_rrsig_set_t *last_rrsig;
 
 	int rdata_count;
 };
