@@ -627,7 +627,7 @@ static int test_response_getters(uint type)
 
 	dnslib_response_t *responses[RESPONSE_COUNT];
 
-	for (int i = 0; (i < RESPONSE_COUNT) && !errors; i++) {
+	for (int i = 0; (i < RESPONSE_COUNT); i++) {
 
 		responses[i] = dnslib_response_new_empty(NULL, 0);
 
@@ -662,26 +662,115 @@ static int test_response_getters(uint type)
 		}
 
 		responses[i]->size = RESPONSES[i].size;
-
-		switch (type) {
-			case 0: {
-				errors += test_response_qname(responses);
-				break;
-			}
-			case 1: {
-				errors += test_response_qtype(responses);
-				break;
-			}
-			case 2: {
-				errors += test_response_qclass(responses);
-				break;
-			}
-			default: {
-				diag("Unknown type");
-				return 0;
-			}
-		} /* switch */
 	}
+
+	switch (type) {
+		case 0: {
+			errors += test_response_qname(responses);
+			break;
+		}
+		case 1: {
+			errors += test_response_qtype(responses);
+			break;
+		}
+		case 2: {
+			errors += test_response_qclass(responses);
+			break;
+		}
+		default: {
+			diag("Unknown type");
+			return 0;
+		}
+	} /* switch */
+
+	return (errors == 0);
+}
+
+static int test_response_set_rcode(dnslib_response_t **responses)
+{
+	int errors = 0;
+/*	for (int i = 0; i < RESPONSE_COUNT; i++) {
+		if (dnslib_response_qclass(responses[i]) !=
+			                 RESPONSES[i].rclass) {
+			diag("Got wrong qclass value from response");
+			errors++;
+		}
+	}
+TODO*/
+	return errors;
+}
+
+static int test_response_set_aa(dnslib_response_t **responses)
+{
+	int errors = 0;
+/*	for (int i = 0; i < RESPONSE_COUNT; i++) {
+		if (dnslib_response_qclass(responses[i]) !=
+			                 RESPONSES[i].rclass) {
+			diag("Got wrong qclass value from response");
+			errors++;
+		}
+	}
+TODO*/
+	return errors;
+}
+
+static int test_response_setters(uint type)
+{
+	int errors = 0;
+
+	dnslib_response_t *responses[RESPONSE_COUNT];
+
+	for (int i = 0; (i < RESPONSE_COUNT); i++) {
+
+		responses[i] = dnslib_response_new_empty(NULL, 0);
+
+		responses[i]->header.id = RESPONSES[i].id;
+		//flags1?
+		responses[i]->header.qdcount = RESPONSES[i].qdcount;
+		responses[i]->header.ancount = RESPONSES[i].ancount;
+		responses[i]->header.nscount = RESPONSES[i].nscount;
+		responses[i]->header.arcount = RESPONSES[i].arcount;
+
+		responses[i]->question.qname = RESPONSES[i].owner;
+		responses[i]->question.qtype = RESPONSES[i].type;
+		responses[i]->question.qclass = RESPONSES[i].rclass;
+
+		for (int j = 0; j < RESPONSES[i].ancount; j++) {
+			if (&(RESPONSES[i].answer[j])) {
+				dnslib_response_add_rrset_answer(responses[i],
+					&(RESPONSES[i].answer[j]), 0);
+			}
+		}
+		for (int j = 0; j < RESPONSES[i].arcount; j++) {
+			if (&(RESPONSES[i].additional[j])) {
+				dnslib_response_add_rrset_additional(responses[i],
+					&(RESPONSES[i].additional[j]), 0);
+			}
+		}
+		for (int j = 0; j < RESPONSES[i].arcount; j++) {
+			if (&(RESPONSES[i].authority[j])) {
+				dnslib_response_add_rrset_authority(responses[i],
+					&(RESPONSES[i].authority[j]), 0);
+			}
+		}
+
+		responses[i]->size = RESPONSES[i].size;
+	}
+
+	switch (type) {
+		case 0: {
+			errors += test_response_set_rcode(responses);
+			break;
+		}
+		case 1: {
+			errors += test_response_set_aa(responses);
+			break;
+		}
+		default: {
+			diag("Unknown type");
+			return 0;
+		}
+	} /* switch */
 
 	return (errors == 0);
 }
