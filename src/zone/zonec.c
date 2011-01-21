@@ -1476,7 +1476,7 @@ int process_rr(void)
 
 		parser->last_rrsig = tmp_rrsig;
 
-		if (parser->last_node && 
+		if (parser->last_node &&
 		    dnslib_dname_compare(parser->last_node->owner,
 		    current_rrset->owner) != 0) {
 			/* RRSIG is first in the node */
@@ -1652,20 +1652,20 @@ void zone_read(char *name, const char *zonefile)
 	/* Parse and process all RRs.  */
 	yyparse();
 
-	printf("zone parsed\n");
+	debug_zp("zone parsed\n");
 
 	uint found_orphans;
 
 	found_orphans = find_rrsets_orphans(parser->current_zone,
 	                                    parser->rrsig_orphans);
 
-	printf("%u orphans found\n", found_orphans);
+	debug_zp("%u orphans found\n", found_orphans);
 
 	rrsig_list_delete(parser->rrsig_orphans);
 
 	dnslib_zone_adjust_dnames(parser->current_zone);
 
-	printf("rdata adjusted\n");
+	debug_zp("rdata adjusted\n");
 
 //	dnslib_zone_dump(parser->current_zone);
 
