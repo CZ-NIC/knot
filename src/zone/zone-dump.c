@@ -438,11 +438,11 @@ int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
 	       sizeof(zone->node_count),
 	       1, f);
 
-	printf("written %d normal nodes\n", tmp_count);
+	debug_zp("written %d normal nodes\n", tmp_count);
 
-	printf("written %d nsec3 nodes\n", node_count);
+	debug_zp("written %d nsec3 nodes\n", node_count);
 
-	printf("authorative nodes: %u\n", zone->node_count);
+	debug_zp("authorative nodes: %u\n", zone->node_count);
 
 	fclose(f);
 
