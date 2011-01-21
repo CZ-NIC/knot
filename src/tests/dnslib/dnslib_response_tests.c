@@ -569,7 +569,17 @@ static int test_response_to_wire()
 	return (errors == 0);
 }
 
-static const int DNSLIB_RESPONSE_TEST_COUNT = 6;
+static int test_response_free()
+{
+	dnslib_response_t *resp = dnslib_response_new_empty(NULL, 0);
+	assert(resp);
+
+	dnslib_response_free(&resp);
+
+	return (resp == NULL);
+}
+
+static const int DNSLIB_RESPONSE_TEST_COUNT = 7;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -629,6 +639,8 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	free(raw_queries);
 
 	endskip;
+
+	ok(test_response_free(), "response: free");
 
 	return 0;
 }
