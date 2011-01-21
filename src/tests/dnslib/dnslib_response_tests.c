@@ -579,7 +579,114 @@ static int test_response_free()
 	return (resp == NULL);
 }
 
-static const int DNSLIB_RESPONSE_TEST_COUNT = 7;
+static int test_response_qname(dnslib_response_t **responses)
+{
+	int errors = 0;
+	for (int i = 0; i < RESPONSE_COUNT; i++) {
+		if (dnslib_dname_compare(dnslib_response_qname(responses[i]), 
+			                 RESPONSES[i].owner) != 0) {
+			diag("Got wrong qname value from response");
+			errors++;
+		}
+	}
+
+	return errors;
+}
+
+static int test_response_qtype(dnslib_response_t **responses)
+{
+	int errors = 0;
+	for (int i = 0; i < RESPONSE_COUNT; i++) {
+		if (dnslib_response_qtype(responses[i]) !=
+			                 RESPONSES[i].type) {
+			diag("Got wrong qtype value from response");
+			errors++;
+		}
+	}
+
+	return errors;
+}
+
+static int test_response_qclass(dnslib_response_t **responses)
+{
+	int errors = 0;
+	for (int i = 0; i < RESPONSE_COUNT; i++) {
+		if (dnslib_response_qclass(responses[i]) !=
+			                 RESPONSES[i].rclass) {
+			diag("Got wrong qclass value from response");
+			errors++;
+		}
+	}
+
+	return errors;
+}
+
+static int test_response_getters(uint type)
+{
+	int errors = 0;
+
+	dnslib_response_t *responses[RESPONSE_COUNT];
+
+	for (int i = 0; (i < RESPONSE_COUNT) && !errors; i++) {
+
+		responses[i] = dnslib_response_new_empty(NULL, 0);
+
+		responses[i]->header.id = RESPONSES[i].id;
+		//flags1?
+		responses[i]->header.qdcount = RESPONSES[i].qdcount;
+		responses[i]->header.ancount = RESPONSES[i].ancount;
+		responses[i]->header.nscount = RESPONSES[i].nscount;
+		responses[i]->header.arcount = RESPONSES[i].arcount;
+
+		responses[i]->question.qname = RESPONSES[i].owner;
+		responses[i]->question.qtype = RESPONSES[i].type;
+		responses[i]->question.qclass = RESPONSES[i].rclass;
+
+		for (int j = 0; j < RESPONSES[i].ancount; j++) {
+			if (&(RESPONSES[i].answer[j])) {
+				dnslib_response_add_rrset_answer(responses[i],
+					&(RESPONSES[i].answer[j]), 0);
+			}
+		}
+		for (int j = 0; j < RESPONSES[i].arcount; j++) {
+			if (&(RESPONSES[i].additional[j])) {
+				dnslib_response_add_rrset_additional(responses[i],
+					&(RESPONSES[i].additional[j]), 0);
+			}
+		}
+		for (int j = 0; j < RESPONSES[i].arcount; j++) {
+			if (&(RESPONSES[i].authority[j])) {
+				dnslib_response_add_rrset_authority(responses[i],
+					&(RESPONSES[i].authority[j]), 0);
+			}
+		}
+
+		responses[i]->size = RESPONSES[i].size;
+
+		switch (type) {
+			case 0: {
+				errors += test_response_qname(responses);
+				break;
+			}
+			case 1: {
+				errors += test_response_qtype(responses);
+				break;
+			}
+			case 2: {
+				errors += test_response_qclass(responses);
+				break;
+			}
+			default: {
+				diag("Unknown type");
+				return 0;
+			}
+		} /* switch */
+	}
+
+	return (errors == 0);
+}
+
+static const int DNSLIB_RESPONSE_TEST_COUNT = 10;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -610,6 +717,12 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	test_raw_packet_t **raw_queries = NULL;
 	uint response_parsed_count;
 	uint8_t response_raw_count;
+
+	ok(test_response_getters(0), "response: get qname");
+
+	ok(test_response_getters(1), "response: get qtype");
+
+	ok(test_response_getters(2), "response: get qclass");
 
 	load_parsed_packets(&parsed_responses, &response_parsed_count,
 	                    "src/tests/dnslib/files/parsed_packets");
