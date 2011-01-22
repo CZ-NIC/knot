@@ -18,6 +18,7 @@
 #include "rdata.h"
 #include "rrset.h"
 #include "dname.h"
+#include "packet.h"
 
 #include "ldns/ldns.h"
 #include <stdbool.h>
@@ -689,28 +690,27 @@ static int test_response_getters(uint type)
 static int test_response_set_rcode(dnslib_response_t **responses)
 {
 	int errors = 0;
-/*	for (int i = 0; i < RESPONSE_COUNT; i++) {
-		if (dnslib_response_qclass(responses[i]) !=
-			                 RESPONSES[i].rclass) {
-			diag("Got wrong qclass value from response");
+	short rcode = 0xA;
+	for (int i = 0; i < RESPONSE_COUNT; i++) {
+		dnslib_response_set_rcode(responses[i], rcode);
+		if (dnslib_packet_flags_get_rcode(responses[i]->header.flags2) != rcode) {
+			diag("Set wrong rcode.");
 			errors++;
 		}
 	}
-TODO*/
 	return errors;
 }
 
 static int test_response_set_aa(dnslib_response_t **responses)
 {
 	int errors = 0;
-/*	for (int i = 0; i < RESPONSE_COUNT; i++) {
-		if (dnslib_response_qclass(responses[i]) !=
-			                 RESPONSES[i].rclass) {
-			diag("Got wrong qclass value from response");
+	for (int i = 0; i < RESPONSE_COUNT; i++) {
+		dnslib_response_set_aa(responses[i]);
+		if (dnslib_packet_flags_get_aa(responses[i]->header.flags1) != 1) {
+			diag("Set wrong aa bit.");
 			errors++;
 		}
 	}
-TODO*/
 	return errors;
 }
 
