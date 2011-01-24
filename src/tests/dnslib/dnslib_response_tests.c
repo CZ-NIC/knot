@@ -707,6 +707,7 @@ static int test_response_set_aa(dnslib_response_t **responses)
 	for (int i = 0; i < RESPONSE_COUNT; i++) {
 		dnslib_response_set_aa(responses[i]);
 		if (dnslib_packet_flags_get_aa(responses[i]->header.flags1) != 1) {
+			printf("%d\n", dnslib_packet_flags_get_aa(responses[i]->header.flags1));
 			diag("Set wrong aa bit.");
 			errors++;
 		}
@@ -775,7 +776,7 @@ static int test_response_setters(uint type)
 	return (errors == 0);
 }
 
-static const int DNSLIB_RESPONSE_TEST_COUNT = 10;
+static const int DNSLIB_RESPONSE_TEST_COUNT = 12;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -812,6 +813,10 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	ok(test_response_getters(1), "response: get qtype");
 
 	ok(test_response_getters(2), "response: get qclass");
+
+	ok(test_response_setters(0), "response: set rcode");
+
+	ok(test_response_setters(1), "response: set aa");
 
 	load_parsed_packets(&parsed_responses, &response_parsed_count,
 	                    "src/tests/dnslib/files/parsed_packets");
