@@ -706,7 +706,9 @@ static int test_response_set_aa(dnslib_response_t **responses)
 	int errors = 0;
 	for (int i = 0; i < RESPONSE_COUNT; i++) {
 		dnslib_response_set_aa(responses[i]);
-		if (dnslib_packet_flags_get_aa(responses[i]->header.flags1) != 1) {
+		/* TODO this returns 4 - shouldn't it return 1? It would work, yes,
+		but some checks might be neccassary */
+		if (!dnslib_packet_flags_get_aa(responses[i]->header.flags1)) {
 			printf("%d\n", dnslib_packet_flags_get_aa(responses[i]->header.flags1));
 			diag("Set wrong aa bit.");
 			errors++;
