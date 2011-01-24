@@ -4,6 +4,7 @@
 #include "dnslib/dnslib_rdata_tests.c"
 #include "dnslib/dnslib_node_tests.c"
 #include "dnslib/dnslib_rrset_tests.c"
+#include "dnslib/dnslib_rrsig_set_tests.c"
 #include "dnslib/dnslib_zone_tests.c"
 #include "dnslib/dnslib_response_tests.c"
 
@@ -29,6 +30,7 @@ static int dnslib_tests_count(int argc, char *argv[])
 	return dnslib_dname_tests_count(argc, argv)
 	       + dnslib_rdata_tests_count(argc, argv)
 	       + dnslib_rrset_tests_count(argc, argv)
+	       + dnslib_rrsig_set_tests_count(argc, argv)
 	       + dnslib_node_tests_count(argc, argv)
 	       + dnslib_zone_tests_count(argc, argv)
 	       + dnslib_response_tests_count(argc, argv);	       
@@ -54,6 +56,9 @@ static int dnslib_tests_run(int argc, char *argv[])
 
 	note("Testing module: rrset");
 	res = dnslib_rrset_tests_run(argc, argv);
+
+	note("Testing module: rrsig set");
+	res = dnslib_rrsig_set_tests_run(argc, argv);
 
 	skip(!res, node_tests + zone_tests);
 
