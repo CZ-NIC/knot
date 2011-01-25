@@ -95,10 +95,9 @@ int main(int argc, char **argv)
 
 	// Open log
 	int log_mask = LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING);
-	int print_mask = LOG_MASK(LOG_ERR);
+	int print_mask = LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING);
 	if (verbose) {
 		print_mask |= LOG_MASK(LOG_NOTICE);
-		print_mask |= LOG_MASK(LOG_WARNING);
 		print_mask |= LOG_MASK(LOG_INFO);
 		log_mask = print_mask;
 	}
