@@ -13,7 +13,7 @@ int log_open(int print_mask, int log_mask)
 	setlogmask(log_mask);
 
 	/// \todo May change to LOG_DAEMON.
-	openlog(PROJECT_NAME, LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+	openlog(PROJECT_NAME, LOG_CONS | LOG_PID, LOG_LOCAL1);
 	_LOG_MASK = print_mask;
 	_LOG_OPEN = 1;
 	return 0;
@@ -43,7 +43,7 @@ int print_msg(int level, const char *msg, ...)
 
 	// Check mask
 	int ret = 0;
-	if (level & _LOG_MASK) {
+	if (LOG_MASK(level) & _LOG_MASK) {
 		va_start(ap, msg);
 		ret = vfprintf(stream, msg, ap);
 		va_end(ap);
