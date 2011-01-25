@@ -4,7 +4,7 @@
 
 #include "common.h"
 #include "server.h"
-#include "zonec.h"
+#include "zoneparser.h"
 
 /*----------------------------------------------------------------------------*/
 

@@ -19,7 +19,7 @@
 
 #include "dname.h"
 #include "zone.h"
-#include "zonec.h"
+#include "zoneparser.h"
 #include "descriptor.h"
 
 /* these need to be global, otherwise they cannot be used inside yacc */

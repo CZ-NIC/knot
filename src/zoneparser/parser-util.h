@@ -14,7 +14,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
-#include "zonec.h"
+#include "zoneparser.h"
 #include "descriptor.h"
 
 size_t strlcpy(char *dst, const char *src, size_t siz);

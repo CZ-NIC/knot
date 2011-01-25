@@ -22,7 +22,7 @@
 #include <assert.h>
 
 #include "common.h"
-#include "zonec.h"
+#include "zoneparser.h"
 #include "dnslib/dname.h"
 #include "dnslib/rrset.h"
 #include "dnslib/rdata.h"
