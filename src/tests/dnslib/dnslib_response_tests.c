@@ -145,15 +145,24 @@ static int load_raw_packets(test_raw_packet_t ***raw_packets, uint8_t *count,
 		return 0;
 	}
 
-	fread(count, sizeof(uint8_t), 1, f);
+	if(fread(count, sizeof(uint8_t), 1, f) != sizeof(uint8_t)) {
+		fclose(f);
+		return -1;
+	}
 
 	*raw_packets = malloc(sizeof(test_raw_packet_t *) * *count);
 
 	for (int i = 0; i < *count; i++) {
-		fread(&tmp_size, sizeof(uint8_t), 1, f);
+		if(fread(&tmp_size, sizeof(uint8_t), 1, f) != sizeof(uint8_t)) {
+			break;
+		}
+
 		(*raw_packets)[i] = malloc(sizeof(test_raw_packet_t));
 		(*raw_packets)[i]->data = malloc(sizeof(uint8_t) * (tmp_size));
-		fread((*raw_packets)[i]->data, sizeof(uint8_t), tmp_size, f);
+		if(fread((*raw_packets)[i]->data, sizeof(uint8_t), tmp_size, f)
+		   != sizeof(uint8_t)) {
+			break;
+		}
 		(*raw_packets)[i]->size = tmp_size;
 	}
 
@@ -598,8 +607,8 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 
 	test_response_t **parsed_responses = NULL;
 	test_raw_packet_t **raw_queries = NULL;
-	uint response_parsed_count;
-	uint8_t response_raw_count;
+	uint response_parsed_count = 0;
+	uint8_t response_raw_count = 0;
 
 	load_parsed_packets(&parsed_responses, &response_parsed_count,
 	                    "src/tests/dnslib/files/parsed_packets");

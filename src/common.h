@@ -44,6 +44,21 @@ typedef unsigned int uint;
 #include "log.h"
 #include "debug.h"
 
+/* Common inlines.
+ */
+#include <stdio.h>
+static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
+{
+	int rc = fread(dst, size, n, fp);
+	if (rc != n) {
+		log_warning("fread: invalid read %d (expected %zu)\n",
+		            rc, n);
+	}
+
+	return rc == n;
+}
+
+
 /* Common macros.
  */
 
