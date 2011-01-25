@@ -262,7 +262,7 @@ static int test_response_new_empty()
 
 static int test_response_add_rrset(int (*add_func)
                                    (dnslib_response_t *,
-				   const dnslib_rrset_t *, int),
+				   const dnslib_rrset_t *, int, int),
 				   int array_id)
 {
 	int errors = 0;
@@ -292,7 +292,7 @@ static int test_response_add_rrset(int (*add_func)
 	} /* switch */
 
 	for (int i = 0; (i < RRSETS_COUNT) && !errors; i++) {
-		add_func(resp, &RESPONSE_RRSETS[i], 0);
+		add_func(resp, &RESPONSE_RRSETS[i], 0, 0);
 		errors += compare_rrsets(array[i], &RESPONSE_RRSETS[i]);
 	}
 
@@ -488,19 +488,19 @@ static int test_response_to_wire()
 		for (int j = 0; j < RESPONSES[i].ancount; j++) {
 			if (&(RESPONSES[i].answer[j])) {
 				dnslib_response_add_rrset_answer(resp,
-					&(RESPONSES[i].answer[j]), 0);
+					&(RESPONSES[i].answer[j]), 0, 0);
 			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			if (&(RESPONSES[i].additional[j])) {
 				dnslib_response_add_rrset_additional(resp,
-					&(RESPONSES[i].additional[j]), 0);
+					&(RESPONSES[i].additional[j]), 0, 0);
 			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			if (&(RESPONSES[i].authority[j])) {
 				dnslib_response_add_rrset_authority(resp,
-					&(RESPONSES[i].authority[j]), 0);
+					&(RESPONSES[i].authority[j]), 0, 0);
 			}
 		}
 
