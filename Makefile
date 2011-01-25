@@ -9,10 +9,10 @@ COL_CYAN = \033[01;36m
 COL_WHITE = \033[01;37m
 COL_END = \033[0m
 
-INC_DIRS = obj/ src/ src/hash/ src/dns/ src/other/ src/server/ src/zone/ src/tests src/tests/libtap src/dnslib/ src/stat src/alloc/
+INC_DIRS = obj/ src/ src/hash/ src/dns/ src/other/ src/server/ src/zoneparser/ src/tests src/tests/libtap src/dnslib/ src/stat src/alloc/
 SRC_DIRS = src/
 TESTS_DIR = src/tests/
-ZONEC_DIR = src/zone/
+ZONEC_DIR = src/zoneparser/
 OBJ_DIR = obj/
 BIN_DIR = bin/
 
@@ -37,7 +37,7 @@ CFLAGS_OPTIMAL = -O2 -funroll-loops -fomit-frame-pointer
 CFLAGS += -Wall -std=gnu99 -D _XOPEN_SOURCE=600 -D_GNU_SOURCE
 LDFLAGS += -lpthread -lurcu -lldns -lrt -lm
 
-all: cutedns unittests zonec
+all: cutedns unittests zoneparser
 ifeq ($(DEBUG),1)
 CFLAGS += $(CFLAGS_DEBUG)
 else
@@ -50,18 +50,18 @@ DEPEND = $(CC) $(addprefix -I ,$(INC_DIRS)) -MM $(SRC_FILES)   2>/dev/null | sed
 Makefile.depend:
 	@$(DEPEND) > Makefile.depend
 
-$(LEXER_OBJ).c: $(SRC_DIRS)zone/zlexer.lex
+$(LEXER_OBJ).c: $(ZONEC_DIR)/zlexer.lex
 	$(LEX) -i -t $< >> $@
 
-$(PARSER_OBJ).c $(PARSER_OBJ).h: $(SRC_DIRS)zone/zparser.y
-	$(YACC) -d -o $(PARSER_OBJ).c $(SRC_DIRS)zone/zparser.y
+$(PARSER_OBJ).c $(PARSER_OBJ).h: $(ZONEC_DIR)/zparser.y
+	$(YACC) -d -o $(PARSER_OBJ).c $(ZONEC_DIR)/zparser.y
 
 # cutedns
 cutedns: Makefile.depend $(PARSER_FILES) $(OBJS) $(SRC_DIRS)main.c
 	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(OBJS) $(SRC_DIRS)main.c$(COL_END)"
 	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) $(LDFLAGS) $(OBJS) $(SRC_DIRS)main.c -o ${BIN_DIR}$@
 
-zonec: Makefile.depend cutedns $(OBJS) $(PARSER_FILES) $(ZPARSER_FILES)
+zoneparser: Makefile.depend cutedns $(OBJS) $(PARSER_FILES) $(ZPARSER_FILES)
 	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(PARSER_FILES) $(OBJS) $(ZONEC_FILES)$(COL_END)"
 	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) $(LDFLAGS) $(OBJS) $(ZONEC_FILES) -o ${BIN_DIR}$@
 
