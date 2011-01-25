@@ -124,7 +124,7 @@ int main(int argc, char **argv)
 		// Change directory if daemonized
 		log_info("Server started.\n");
 		if (daemonize) {
-			chdir("/");
+			res = chdir("/");
 		}
 
 		if ((res = cute_wait(s_server)) != 0) {
