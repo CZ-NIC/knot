@@ -70,6 +70,10 @@ typedef struct dnslib_compressed_dnames dnslib_compressed_dnames_t;
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure representing the DNS packet header.
+ *
+ * \note Currently @a ancount, @a nscount and @a arcount hold the number of
+ *       RRSets of corresponding type in the response structure. Real RR
+ *       counts are counted in dnslib_response_to_wire() on-the-fly.
  */
 struct dnslib_header {
 	uint16_t id;      /*!< ID stored in host byte order. */
@@ -224,12 +228,17 @@ const uint16_t dnslib_response_qclass(const dnslib_response_t *response);
  * \param rrset RRSet to be added.
  * \param tc Set to <> 0 if omitting this RRSet should result in the TC bit set.
  *           Otherwise set to 0.
+ * \param check_duplicates Set to <> 0 if the RRSet should not be added to the
+ *                         response in case it is already there.
  *
  * \retval 0 if successful.
- * \retval <> 0 if an error occured.
+ * \retval 1 if @a check_duplicates was set and @a rrset was already present
+ *           in the response.
+ * \retval < 0 if an error occured.
  */
 int dnslib_response_add_rrset_answer(dnslib_response_t *response,
-                                     const dnslib_rrset_t *rrset, int tc);
+                                     const dnslib_rrset_t *rrset, int tc,
+                                     int check_duplicates);
 
 /*!
  * \brief Adds a RRSet to the Authority section of the response.
@@ -238,12 +247,17 @@ int dnslib_response_add_rrset_answer(dnslib_response_t *response,
  * \param rrset RRSet to be added.
  * \param tc Set to <> 0 if omitting this RRSet should result in the TC bit set.
  *           Otherwise set to 0.
+ * \param check_duplicates Set to <> 0 if the RRSet should not be added to the
+ *                         response in case it is already there.
  *
  * \retval 0 if successful.
- * \retval <> 0 if an error occured.
+ * \retval 1 if @a check_duplicates was set and @a rrset was already present
+ *           in the response.
+ * \retval < 0 if an error occured.
  */
 int dnslib_response_add_rrset_authority(dnslib_response_t *response,
-                                        const dnslib_rrset_t *rrset, int tc);
+                                        const dnslib_rrset_t *rrset, int tc,
+                                        int check_duplicates);
 
 /*!
  * \brief Adds a RRSet to the Additional section of the response.
@@ -252,12 +266,17 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
  * \param rrset RRSet to be added.
  * \param tc Set to <> 0 if omitting this RRSet should result in the TC bit set.
  *           Otherwise set to 0.
+ * \param check_duplicates Set to <> 0 if the RRSet should not be added to the
+ *                         response in case it is already there.
  *
  * \retval 0 if successful.
- * \retval <> 0 if an error occured.
+ * \retval 1 if @a check_duplicates was set and @a rrset was already present
+ *           in the response.
+ * \retval < 0 if an error occured.
  */
 int dnslib_response_add_rrset_additional(dnslib_response_t *response,
-                                         const dnslib_rrset_t *rrset, int tc);
+                                         const dnslib_rrset_t *rrset, int tc,
+                                         int check_duplicates);
 
 /*!
  * \brief Sets the RCODE of the response.

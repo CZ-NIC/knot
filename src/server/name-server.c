@@ -120,7 +120,7 @@ static void ns_follow_cname(const dnslib_node_t **node,
                             dnslib_response_t *resp,
                             int (*add_rrset_to_resp)(dnslib_response_t *,
                                                      const dnslib_rrset_t *,
-                                                     int))
+                                                     int, int))
 {
 	// TODO: test!!
 
@@ -146,7 +146,7 @@ static void ns_follow_cname(const dnslib_node_t **node,
 			                              (dnslib_rrset_t *)rrset);
 		}
 
-		add_rrset_to_resp(resp, rrset, 1);
+		add_rrset_to_resp(resp, rrset, 1, 0);
 DEBUG_NS(
 		char *name = dnslib_dname_to_str(dnslib_rrset_owner(rrset));
 		debug_ns("CNAME record for owner %s put to response.\n",
@@ -200,7 +200,7 @@ DEBUG_NS(
 			debug_ns("Found RRSet of type %s\n",
 				 dnslib_rrtype_to_string(type));
 			ns_check_wildcard(name, resp, &rrset);
-			dnslib_response_add_rrset_answer(resp, rrset, 1);
+			dnslib_response_add_rrset_answer(resp, rrset, 1, 0);
 			added = 1;
 		}
 	}
@@ -252,7 +252,7 @@ DEBUG_NS(
 				debug_ns("Found A RRsets.\n");
 				ns_check_wildcard(dname, resp, &rrset_add);
 				dnslib_response_add_rrset_additional(
-					resp, rrset_add, 0);
+					resp, rrset_add, 0, 1);
 			}
 
 			// AAAA RRSet
@@ -262,7 +262,7 @@ DEBUG_NS(
 				debug_ns("Found AAAA RRsets.\n");
 				ns_check_wildcard(dname, resp, &rrset_add);
 				dnslib_response_add_rrset_additional(
-					resp, rrset_add, 0);
+					resp, rrset_add, 0, 1);
 			}
 		}
 
@@ -314,7 +314,7 @@ static void ns_put_authority_ns(const dnslib_zone_t *zone,
 		dnslib_node_rrset(zone->apex, DNSLIB_RRTYPE_NS);
 	assert(ns_rrset != NULL);
 
-	dnslib_response_add_rrset_authority(resp, ns_rrset, 0);
+	dnslib_response_add_rrset_authority(resp, ns_rrset, 0, 1);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -326,7 +326,7 @@ static void ns_put_authority_soa(const dnslib_zone_t *zone,
 		dnslib_node_rrset(zone->apex, DNSLIB_RRTYPE_SOA);
 	assert(soa_rrset != NULL);
 
-	dnslib_response_add_rrset_authority(resp, soa_rrset, 0);
+	dnslib_response_add_rrset_authority(resp, soa_rrset, 0, 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -340,7 +340,7 @@ static inline void ns_referral(const dnslib_node_t *node,
 		dnslib_node_rrset(node, DNSLIB_RRTYPE_NS);
 	assert(ns_rrset != NULL);
 
-	dnslib_response_add_rrset_authority(resp, ns_rrset, 1);
+	dnslib_response_add_rrset_authority(resp, ns_rrset, 1, 0);
 	//ns_put_glues(node, resp);
 	ns_put_additional(resp);
 }
@@ -437,7 +437,7 @@ DEBUG_NS(
 	// TODO: check the number of RRs in the RRSet??
 
 	// put the DNAME RRSet into the answer
-	dnslib_response_add_rrset_answer(resp, dname_rrset, 1);
+	dnslib_response_add_rrset_answer(resp, dname_rrset, 1, 0);
 
 	if (ns_dname_is_too_long(dname_rrset, qname)) {
 		dnslib_response_set_rcode(resp, DNSLIB_RCODE_YXDOMAIN);
@@ -447,7 +447,7 @@ DEBUG_NS(
 	// synthetize CNAME (no way to tell that client supports DNAME)
 	dnslib_rrset_t *synth_cname = ns_cname_from_dname(dname_rrset, qname);
 	// add the synthetized RRSet to the Answer
-	dnslib_response_add_rrset_answer(resp, synth_cname, 1);
+	dnslib_response_add_rrset_answer(resp, synth_cname, 1, 0);
 	// add the synthetized RRSet into list of temporary RRSets of response
 	dnslib_response_add_tmp_rrset(resp, synth_cname);
 
