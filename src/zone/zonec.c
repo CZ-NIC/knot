@@ -183,7 +183,7 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint8_t *wireformat,
 			}
 			break;
 		case DNSLIB_RDATA_WF_IPSECGATEWAY:
-			switch (rdata_atom_data(temp_rdatas[1])[0]) { 
+			switch (rdata_atom_data(temp_rdatas[1])[0]) {
 			/* gateway type */
 			default:
 			case IPSECKEY_NOGATEWAY:
@@ -211,7 +211,7 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint8_t *wireformat,
 				break;
 			}
 
-			char *tmp_dname_str = malloc(sizeof(char) * length); 
+			char *tmp_dname_str = malloc(sizeof(char) * length);
 			//XXX ???
 
 			memcpy(tmp_dname_str, wireformat, length);
@@ -240,7 +240,7 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint8_t *wireformat,
 			/*temp_rdatas[i].data = (uint16_t *) region_alloc(
 				region, sizeof(uint16_t) + length);
 				temp_rdatas[i].data[0] = length;
-				buffer_read(packet, 
+				buffer_read(packet,
 					    temp_rdatas[i].data + 1, length);*/
 		}
 	}
@@ -468,7 +468,7 @@ uint8_t * zparser_conv_services(const char *protostr,
 			char *end;
 			port = strtol(word, &end, 10);
 			if (*end != '\0') {
-				fprintf(stderr, 
+				fprintf(stderr,
 				        "unknown service '%s' for"
 					" protocol '%s'",
 				        word, protostr);
@@ -1495,7 +1495,7 @@ int process_rr(void)
 
 	//get rid of the first statement
 
-	if (parser->last_node && current_rrset->type != DNSLIB_RRTYPE_SOA && 
+	if (parser->last_node && current_rrset->type != DNSLIB_RRTYPE_SOA &&
 	    dnslib_dname_compare(parser->last_node->owner,
 	                         current_rrset->owner) ==
 	    0) {
@@ -1522,8 +1522,7 @@ int process_rr(void)
 					node_get_func)) == NULL) {
 			return -1;
 		}
-	} 
-	else {
+	} else {
 		if (current_rrset->owner != node->owner) {
 			if (parser->last_node &&
 			    parser->last_node->owner != current_rrset->owner) {
@@ -1594,7 +1593,7 @@ int process_rr(void)
 	if (vflag > 1 && totalrrs > 0 && (totalrrs % progress == 0)) {
 		fprintf(stdout, "%ld\n", totalrrs);
 	}
-  
+
 	parser->last_node = node;
 
 	++totalrrs;
@@ -1630,7 +1629,7 @@ void zone_read(char *name, const char *zonefile)
 
 	strcpy(dump_file_name, zonefile);
 	strcat(dump_file_name, ".dump");
-	
+
 	dnslib_dname_t *dname;
 
 	dname = dnslib_dname_new_from_str(name, strlen(name), NULL);

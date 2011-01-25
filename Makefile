@@ -32,10 +32,17 @@ SRC_FILES = $(shell find $(SRC_DIRS) ! -path "*/tests/*" -name "*.c" ! -name "ma
 OBJS = $(PARSER_OBJ).c $(LEXER_OBJ).o $(addprefix $(OBJ_DIR), $(addsuffix .o, $(basename $(notdir $(SRC_FILES)))))
 
 CC = gcc
-CFLAGS += -Wall -std=gnu99 -D _XOPEN_SOURCE=600 -D_GNU_SOURCE -g
+CFLAGS_DEBUG = -g -O0
+CFLAGS_OPTIMAL = -O2 -funroll-loops -fomit-frame-pointer
+CFLAGS += -Wall -std=gnu99 -D _XOPEN_SOURCE=600 -D_GNU_SOURCE
 LDFLAGS += -lpthread -lurcu -lldns -lrt -lm
 
 all: cutedns unittests zonec
+ifeq ($(DEBUG),1)
+CFLAGS += $(CFLAGS_DEBUG)
+else
+CFLAGS += $(CFLAGS_OPTIMAL)
+endif
 
 ### Dependencies ###
 DEPEND = $(CC) $(addprefix -I ,$(INC_DIRS)) -MM $(SRC_FILES)   2>/dev/null | sed "s%^\([^\ \t\n]*\.o\)%$(OBJ_DIR)/\1%"
