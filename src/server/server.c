@@ -160,7 +160,7 @@ int cute_start(cute_server *server, char **filenames, uint zones)
 
 	for (uint i = 0; i < zones; ++i) {
 		debug_server("Parsing zone file %s..\n", filenames[i]);
-		if (!((zone = dnslib_zone_load(filenames[i])) != NULL
+		if (!((zone = dnslib_zload_load(filenames[i])) != NULL
 		    && dnslib_zonedb_add_zone(server->zone_db, zone) == 0)) {
 			return -1;
 		}
