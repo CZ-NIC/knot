@@ -71,7 +71,13 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 
 				fread(&has_wildcard, sizeof(uint8_t), 1, f);
 
-				items[i].dname = malloc(sizeof(dnslib_dname_t));
+				if (has_wildcard) {
+					fread(&tmp_id, sizeof(void *), 1, f);
+				} else {
+					tmp_id = NULL;
+				}
+
+				items[i].dname = dnslib_dname_new();
 
 				items[i].dname->name = dname_wire;
 				items[i].dname->size = dname_size;
@@ -80,8 +86,7 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 
 				if (has_wildcard) {
 					fread(&tmp_id, sizeof(void *), 1, f);
-					items[i].dname->node =
-					         id_array[(size_t)tmp_id]->node;
+					items[i].dname->node = id_array[(uint)tmp_id]->node;
 				} else {
 					items[i].dname->node = NULL;
 				}
@@ -356,7 +361,7 @@ dnslib_zone_t *dnslib_zone_load(const char *filename)
 	debug_zp("loading %u nodes\n", node_count);
 
 	for (uint i = 1; i < (node_count + nsec3_node_count + 1); i++) {
-		id_array[i] = malloc(sizeof(dnslib_dname_t));
+		id_array[i] = dnslib_dname_new();
 		id_array[i]->node = dnslib_node_new(NULL, NULL);
 	}
 
