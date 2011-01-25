@@ -71,8 +71,8 @@ src/zoneparser/main.c
 src/zoneparser/parser-util.h
 src/zoneparser/parser-util.c
 src/zoneparser/zlexer.lex
-src/zoneparser/zonec.c
-src/zoneparser/zonec.h
+src/zoneparser/zoneparser.c
+src/zoneparser/zoneparser.h
 src/zoneparser/zparser.y
 src/alloc/malloc.h
 src/alloc/malloc.c

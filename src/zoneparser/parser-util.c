@@ -12,7 +12,7 @@
 #include <netdb.h>
 
 #include "parser-util.h"
-#include "zonec.h"
+#include "zoneparser.h"
 #include "descriptor.h"
 
 #define IP6ADDRLEN	(128/8)

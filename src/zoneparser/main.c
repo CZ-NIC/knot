@@ -1,6 +1,6 @@
 #include <unistd.h>
 #include <stdlib.h>
-#include "zonec.h"
+#include "zoneparser.h"
 
 #include "dnslib/dnslib.h"
 
