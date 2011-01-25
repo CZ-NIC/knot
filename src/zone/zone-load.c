@@ -327,7 +327,7 @@ int dnslib_check_magic(FILE *f, const uint8_t* MAGIC, uint MAGIC_LENGTH)
 	return 1;
 }
 
-dnslib_zone_t *dnslib_zone_load(const char *filename)
+dnslib_zone_t *dnslib_zload_load(const char *filename)
 {
 	FILE *f = fopen(filename, "rb");
 
