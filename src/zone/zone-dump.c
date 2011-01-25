@@ -387,7 +387,7 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 }
 
-int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename)
+int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename)
 {
 	FILE *f;
 
