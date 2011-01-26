@@ -65,9 +65,9 @@ int main(int argc, char **argv)
 			break;
 		case 'V':
 			printf("%s, version %d.%d.%d\n", PROJECT_NAME,
-			       PROJECT_VER & 0xFF0000,
-			       PROJECT_VER & 0x00FF00,
-			       PROJECT_VER & 0x0000FF);
+			       PROJECT_VER >> 16 & 0x000000ff,
+			       PROJECT_VER >> 8 & 0x000000ff,
+			       PROJECT_VER >> 0 & 0x000000ff);
 			return 1;
 		case 'h':
 		case '?':
