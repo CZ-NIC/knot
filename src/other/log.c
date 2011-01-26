@@ -43,7 +43,7 @@ int print_msg(int level, const char *msg, ...)
 
 	// Check mask
 	int ret = 0;
-	if (LOG_MASK(level) & _LOG_MASK) {
+	if (LOG_MASK(level) & _LOG_MASK || level == LOG_DEBUG) {
 		va_start(ap, msg);
 		ret = vfprintf(stream, msg, ap);
 		va_end(ap);
