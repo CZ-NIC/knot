@@ -22,6 +22,7 @@ typedef unsigned int uint;
 
 #define PROJECT_NAME "CuteDNS" // Project name
 #define PROJECT_VER  0x000001  // 0xMMIIRR (MAJOR,MINOR,REVISION)
+#define PROJECT_PIDF "/.cutedns.pid" // Default project PID file
 
 /* Server. */
 #define CPU_ESTIMATE_MAGIC 2   // Extra threads above the number of processors
