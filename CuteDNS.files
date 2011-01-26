@@ -111,3 +111,5 @@ deprecated/dns/dns-simple.c
 deprecated/dns/dns-simple.h
 deprecated/dns/dns-utils.c
 deprecated/dns/dns-utils.h
+src/ctl/process.c
+src/ctl/process.h

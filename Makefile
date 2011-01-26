@@ -9,7 +9,7 @@ COL_CYAN = \033[01;36m
 COL_WHITE = \033[01;37m
 COL_END = \033[0m
 
-INC_DIRS = obj/ src/ src/hash/ src/dns/ src/other/ src/server/ src/zoneparser/ src/tests src/tests/libtap src/dnslib/ src/stat src/alloc/
+INC_DIRS = obj/ src/ src/hash/ src/dns/ src/other/ src/server/ src/zoneparser/ src/tests src/tests/libtap src/dnslib/ src/stat src/alloc/ src/ctl
 SRC_DIRS = src/
 TESTS_DIR = src/tests/
 ZONEC_DIR = src/zoneparser/
@@ -28,7 +28,7 @@ PARSER_FILES = $(PARSER_OBJ).c $(LEXER_OBJ).c
 TESTS_FILES = $(TESTS_DIR)/main.c $(TESTS_DIR)/libtap/tap.c
 ZONEC_FILES = $(ZONEC_DIR)/main.c
 CTL_FILES = $(CTL_DIR)/main.c
-CTL_OBJ = $(OBJ_DIR)log.o
+CTL_OBJ = $(OBJ_DIR)log.o $(OBJ_DIR)process.o
 
 SRC_FILES = $(shell find $(SRC_DIRS) ! -path "*/tests/*" -name "*.c" ! -name "main.c")
 
