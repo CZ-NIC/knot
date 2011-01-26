@@ -105,6 +105,18 @@ int main(int argc, char **argv)
 
 	log_open(print_mask, log_mask);
 
+	// Save PID
+	if (daemonize) {
+		int rc = pid_write(PROJECT_PIDF);
+		if (rc < 0) {
+			log_warning("Failed to create PID file '%s'.",
+			            PROJECT_PIDF);
+		} else {
+			log_info("PID file '%s' created.",
+			         PROJECT_PIDF);
+		}
+	}
+
 	// Create server instance
 	s_server = cute_create();
 
@@ -125,33 +137,13 @@ int main(int argc, char **argv)
 		// Change directory if daemonized
 		log_info("Server started.\n");
 		if (daemonize) {
-
 			log_info("Server running as daemon.\n");
 			res = chdir("/");
-
-			// Save pid
-			int rc = pid_write(PROJECT_PIDF);
-			if (rc < 0) {
-				log_warning("Failed to create PID file '%s'.",
-				            PROJECT_PIDF);
-			} else {
-				log_info("PID file '%s' created.",
-				         PROJECT_PIDF);
-			}
 		}
 
 		if ((res = cute_wait(s_server)) != 0) {
 			log_error("There was an error while waiting for server"
 			          " to finish.\n");
-		}
-
-		// Remove PID file if daemonized
-		if (daemonize) {
-			if (pid_remove(PROJECT_PIDF) < 0) {
-				log_warning("Failed to remove PID file.\n");
-			} else {
-				log_info("PID file safely removed.\n");
-			}
 		}
 	} else {
 		log_error("There was an error while starting the server, "
@@ -160,6 +152,16 @@ int main(int argc, char **argv)
 
 	// Stop server and close log
 	cute_destroy(&s_server);
+
+	// Remove PID file if daemonized
+	if (daemonize) {
+		if (pid_remove(PROJECT_PIDF) < 0) {
+			log_warning("Failed to remove PID file.\n");
+		} else {
+			log_info("PID file safely removed.\n");
+		}
+	}
+
 	log_info("Shutting down...\n");
 	log_close();
 
