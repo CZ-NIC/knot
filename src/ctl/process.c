@@ -34,11 +34,20 @@ pid_t pid_read(const char* fn)
 			return PID_NOFILE;
 		}
 
-		int rc = fread(buf, sizeof(buf), 1, fp);
+
+		int readb = 0;
+		int rc = fread(buf, 1, 1, fp);
+		while (rc > 0) {
+			if (++readb == sizeof(buf) - 1) {
+				break;
+			}
+			rc = fread(buf + readb, 1, 1, fp);
+		}
+		buf[readb] = '\0';
 		fclose(fp);
 
 		// Check read result
-		if (rc < 1) {
+		if (readb < 1) {
 			return PID_EMPTY;
 		}
 
