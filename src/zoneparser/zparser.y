@@ -257,7 +257,7 @@ abs_dname:	'.'
     {
 	    /*! \todo Get root domain from db. */
 		//$$ = parser->db->domains->root;
-	    $$ = dnslib_dname_copy(parser->root_domain); 
+	    $$ = dnslib_dname_copy(parser->root_domain);
     }
     |	'@'
     {
@@ -1027,7 +1027,7 @@ rdata_apl_seq:	dotted_str
     |	rdata_apl_seq sp dotted_str
     {
 	    zadd_rdata_wireformat(zparser_conv_apl_rdata($3.str));
-      
+
 	    free($3.str);
     }
     ;
@@ -1185,7 +1185,7 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			name = dnslib_dname_new_from_wire((uint8_t*)$7.str + 1,
 			                                  strlen($7.str + 1),
 			                                  NULL);
-			
+
 			if(!name) {
 				zc_error_prev_line("IPSECKEY bad gateway dname %s", $7.str);
 			}

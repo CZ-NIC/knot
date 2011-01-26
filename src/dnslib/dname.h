@@ -65,7 +65,7 @@ dnslib_dname_t *dnslib_dname_new();
  * \return Newly allocated and initialized dname structure representing the
  *         given domain name.
  */
-dnslib_dname_t *dnslib_dname_new_from_str(char *name, uint size,
+dnslib_dname_t *dnslib_dname_new_from_str(const char *name, uint size,
                                           struct dnslib_node *node);
 
 /*!

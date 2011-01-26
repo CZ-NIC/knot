@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "debug.h"
 #include "server.h"
 #include "udp-handler.h"
 #include "tcp-handler.h"
@@ -14,8 +15,24 @@
 
 cute_server *cute_create()
 {
+	// Create TCP+UDP sockets
+	debug_server("Binding sockets..\n");
+	int udp_sock = socket_create(PF_INET, SOCK_DGRAM);
+	if (socket_bind(udp_sock, "0.0.0.0", DEFAULT_PORT) < 0) {
+		socket_close(udp_sock);
+		return 0;
+	}
+
+	int tcp_sock = socket_create(PF_INET, SOCK_STREAM);
+	if (socket_bind(tcp_sock, "0.0.0.0", DEFAULT_PORT) < 0) {
+		socket_close(udp_sock);
+		socket_close(tcp_sock);
+		return 0;
+	}
+	socket_listen(tcp_sock, TCP_BACKLOG_SIZE);
+	debug_server("Done\n\n");
+
 	// Create server structure
-	debug_server("Creating Server structure..\n");
 	cute_server *server = malloc(sizeof(cute_server));
 	server->handlers = NULL;
 	server->state = ServerIdle;
@@ -43,7 +60,6 @@ cute_server *cute_create()
 	}
 
 	debug_server("Done\n\n");
-	debug_server("Creating workers..\n");
 
 	// Estimate number of threads/manager
 	int thr_count = dt_optimal_size();
@@ -51,26 +67,22 @@ cute_server *cute_create()
 		     thr_count);
 
 	// Create socket handlers
-	int sock = socket_create(PF_INET, SOCK_STREAM);
-	socket_bind(sock, "0.0.0.0", DEFAULT_PORT);
-	socket_listen(sock, TCP_BACKLOG_SIZE);
+	debug_server("Creating UDP workers..\n");
+	dt_unit_t *unit = dt_create_coherent(thr_count, &udp_master, 0);
+	cute_create_handler(server, udp_sock, unit);
+	debug_server("Done\n\n");
 
-	// Create threading unit
+	// Create TCP handlers
 	int tcp_unit_size = (thr_count >> 1);
 	if (tcp_unit_size < 2) {
 		tcp_unit_size = 2;
 	}
-	dt_unit_t *unit = dt_create(tcp_unit_size);
+
+	debug_server("Creating TCP workers..\n");
+	unit = dt_create(tcp_unit_size);
 	dt_repurpose(unit->threads[0], &tcp_master, 0);
-	cute_create_handler(server, sock, unit);
+	cute_create_handler(server, tcp_sock, unit);
 
-	// Create UDP socket
-	sock = socket_create(PF_INET, SOCK_DGRAM);
-	socket_bind(sock, "0.0.0.0", DEFAULT_PORT);
-
-	// Create threading unit
-	unit = dt_create_coherent(thr_count, &udp_master, 0);
-	cute_create_handler(server, sock, unit);
 	debug_server("Done\n\n");
 
 	return server;
@@ -150,6 +162,11 @@ int cute_remove_handler(cute_server *server, iohandler_t *ref)
 
 int cute_start(cute_server *server, char **filenames, uint zones)
 {
+	// Check server
+	if (server == 0) {
+		return -1;
+	}
+
 	debug_server("Starting server with %u zone files.\n", zones);
 	//stat
 
@@ -209,6 +226,14 @@ void cute_stop(cute_server *server)
 
 void cute_destroy(cute_server **server)
 {
+	// Check server
+	if (!server) {
+		return;
+	}
+	if (!*server) {
+		return;
+	}
+
 	// Free workers
 	iohandler_t *w = (*server)->handlers;
 	while (w != NULL) {
