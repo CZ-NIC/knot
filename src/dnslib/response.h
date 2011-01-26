@@ -125,9 +125,13 @@ struct dnslib_response {
 	const dnslib_rrset_t **authority;   /*!< Authority RRSets. */
 	const dnslib_rrset_t **additional;  /*!< Additional RRSets. */
 
-	short max_ancount; /*!< Allocated space for Answer RRsets. */
-	short max_nscount; /*!< Allocated space for Authority RRsets. */
-	short max_arcount; /*!< Allocated space for Additional RRsets. */
+	short an_rrsets;     /*!< Count of Answer RRSets in the response. */
+	short ns_rrsets;     /*!< Count of Authority RRSets in the response. */
+	short ar_rrsets;     /*!< Count of Additional RRSets in the response. */
+
+	short max_an_rrsets; /*!< Allocated space for Answer RRsets. */
+	short max_ns_rrsets; /*!< Allocated space for Authority RRsets. */
+	short max_ar_rrsets; /*!< Allocated space for Additional RRsets. */
 
 	/*!
 	 * \brief EDNS data parsed from query.
@@ -149,6 +153,7 @@ struct dnslib_response {
 	const uint8_t *edns_wire;
 	short edns_size;  /*!< Size of the server EDNS OPT RR in bytes. */
 
+	uint8_t *wireformat;  /*!< Wire format of the response. */
 	short size;      /*!< Current wire size of the response. */
 	short max_size;  /*!< Maximum allowed size of the response. */
 
