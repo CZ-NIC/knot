@@ -17,7 +17,7 @@
  * Incoherent function is when at least one thread executes
  * a different runnable than the others.
  *
- * \addtogroup server
+ * \addtogroup threading
  * @{
  */
 
