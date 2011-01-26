@@ -64,7 +64,7 @@ int socket_bind(int socket, const char *addr, unsigned short port)
 
 	// Bind to specified address
 	int res = bind(socket, (struct sockaddr *)& saddr, sizeof(saddr));
-	if (res == -1) {
+	if (res < 0) {
 		log_error("%s: cannot bind socket (errno %d): %s.\n",
 		          __func__, errno, strerror(errno));
 		return -3;

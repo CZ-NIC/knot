@@ -1627,7 +1627,7 @@ static uint find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
  * Reads the specified zone into the memory
  *
  */
-void zone_read(char *name, const char *zonefile)
+void zone_read(const char *name, const char *zonefile)
 {
 	char dump_file_name[(strlen(zonefile) + strlen(".dump"))];
 
@@ -1648,8 +1648,7 @@ void zone_read(char *name, const char *zonefile)
 
 	/* Open the zone file */
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
-		fprintf(stderr, "cannot open '%s': %s", zonefile,
-		        strerror(errno));
+		log_error("cannot open '%s': %s", zonefile, strerror(errno));
 		return;
 	}
 
