@@ -1,6 +1,7 @@
 Makefile
 src/common.h
 src/main.c
+src/ctl/main.c
 src/hash/cuckoo-hash-table.c
 src/hash/cuckoo-hash-table.h
 src/hash/hash-functions.c
