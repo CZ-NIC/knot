@@ -9,6 +9,50 @@
 #include "consts.h"
 #include "tolower.h"
 
+/* Memory cache.
+ */
+#include "slab.h"
+#include <stdio.h>
+#include <pthread.h>
+static pthread_key_t dname_ckey;
+
+static void dname_ckey_delete(void* ptr)
+{
+	//fprintf(stderr, "Thread %p calls %s()\n", (void*)pthread_self(), __func__);
+	slab_cache_t* cache = (slab_cache_t*)ptr;
+	if (cache) {
+		slab_cache_destroy(cache);
+		free(cache);
+	}
+}
+
+static dnslib_dname_t* dnslib_dname_alloc()
+{
+	slab_cache_t* cache = pthread_getspecific(dname_ckey);
+	if (unlikely(cache == 0)) {
+		cache = malloc(sizeof(slab_cache_t));
+		slab_cache_init(cache, sizeof(dnslib_dname_t));
+		(void) pthread_setspecific(dname_ckey, cache);
+		//fprintf(stderr, "Thread %p cache initialized.\n", (void*)pthread_self());
+	}
+
+	dnslib_dname_t* ret = slab_cache_alloc(cache);
+	return ret;
+}
+
+/* Main thread init. */
+static void __attribute__ ((constructor)) dnslib_dname_cache_init()
+{
+	(void) pthread_key_create(&dname_ckey, dname_ckey_delete);
+}
+
+/* Main thread cleanup. */
+static void __attribute__ ((destructor)) dnslib_dname_cache_cleanup()
+{
+	slab_cache_t* cache = pthread_getspecific(dname_ckey);
+	dname_ckey_delete(cache);
+}
+
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
@@ -206,14 +250,7 @@ static int dnslib_dname_find_labels(dnslib_dname_t *dname, int alloc)
 
 dnslib_dname_t *dnslib_dname_new()
 {
-	dnslib_dname_t *dname = 
-	(dnslib_dname_t *)malloc(sizeof(dnslib_dname_t));
-
-	if (dname == NULL) {
-		ERR_ALLOC_FAILED;
-		return NULL;
-	}
-
+	dnslib_dname_t *dname = dnslib_dname_alloc();
 	dname->name = NULL;
 	dname->size = 0;
 	dname->node = NULL;
@@ -225,15 +262,14 @@ dnslib_dname_t *dnslib_dname_new()
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_dname_t *dnslib_dname_new_from_str(char *name, uint size,
+dnslib_dname_t *dnslib_dname_new_from_str(const char *name, uint size,
                                           struct dnslib_node *node)
 {
 	if (name == NULL || size == 0) {
 		return NULL;
 	}
 
-	dnslib_dname_t *dname =
-			(dnslib_dname_t *)malloc(sizeof(dnslib_dname_t));
+	dnslib_dname_t *dname = dnslib_dname_alloc();
 
 	if (dname == NULL) {
 		ERR_ALLOC_FAILED;
@@ -289,8 +325,7 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 		return NULL;
 	}
 
-	dnslib_dname_t *dname =
-	    (dnslib_dname_t *)malloc(sizeof(dnslib_dname_t));
+	dnslib_dname_t *dname = dnslib_dname_alloc();
 
 	if (dname == NULL) {
 		ERR_ALLOC_FAILED;
@@ -300,7 +335,7 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 	dname->name = (uint8_t *)malloc(size * sizeof(uint8_t));
 	if (dname->name == NULL) {
 		ERR_ALLOC_FAILED;
-		free(dname);
+		dnslib_dname_free(&dname);
 		return NULL;
 	}
 
@@ -308,8 +343,7 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 	dname->size = size;
 
 	if (dnslib_dname_find_labels(dname, 1) != 0) {
-		free(dname->name);
-		free(dname);
+		dnslib_dname_free(&dname);
 		return NULL;
 	}
 
@@ -450,6 +484,30 @@ dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname)
 	parent->label_count = dname->label_count - 1;
 
 	return parent;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_dname_left_chop_no_copy(dnslib_dname_t *dname)
+{
+	// copy the name
+	short first_label_length = dname->labels[1];
+
+	if (dname->label_count > 1) {
+		memmove(dname->name, &dname->name[dname->labels[1]],
+			dname->size - first_label_length);
+		// adjust labels
+		for (int i = 0; i < dname->label_count - 1; ++i) {
+			dname->labels[i] = dname->labels[i + 1]
+			                   - first_label_length;
+		}
+		dname->label_count = dname->label_count - 1;
+		dname->size -= first_label_length;
+	} else {
+		dname->name[0] = '\0';
+		dname->size = 1;
+		dname->label_count = 0;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -625,7 +683,7 @@ void dnslib_dname_free(dnslib_dname_t **dname)
 		free((*dname)->labels);
 	}
 
-	free(*dname);
+	slab_free(*dname);
 	*dname = NULL;
 }
 

@@ -112,8 +112,11 @@ static void* slab_depot_alloc(size_t bufsize)
 		}
 		page = _depot_g.cache[--_depot_g.available];
 	} else {
-		posix_memalign(&page, SLAB_SIZE, SLAB_SIZE);
-		((slab_t*)page)->bufsize = 0;
+		if(posix_memalign(&page, SLAB_SIZE, SLAB_SIZE) == 0) {
+			((slab_t*)page)->bufsize = 0;
+		} else {
+			page = 0;
+		}
 
 	}
 

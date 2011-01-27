@@ -104,27 +104,13 @@ DEBUG_DNSLIB_ZONEDB(
 	debug_ns("Found zone for name %s: %p\n", name, zone);
 	free(name);
 );
+	if (dnslib_dname_compare(zone->apex->owner, dname) != 0
+	    && !dnslib_dname_is_subdomain(dname, zone->apex->owner)) {
+		zone = NULL;
+	}
 	rcu_read_unlock();
 
 	return zone;
-}
-
-/*----------------------------------------------------------------------------*/
-
-const dnslib_node_t *dnslib_zonedb_find_name_in_zone(const dnslib_zone_t *zone,
-                                                    const dnslib_dname_t *dname)
-{
-	assert(zone != NULL && dname != NULL);
-
-	// start of RCU reader critical section
-	rcu_read_lock();
-
-	const dnslib_node_t *n = dnslib_zonedb_find_name_in_zone(zone, dname);
-
-	// end of RCU reader critical section
-	rcu_read_unlock();
-
-	return n;
 }
 
 /*----------------------------------------------------------------------------*/

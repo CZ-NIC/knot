@@ -8,6 +8,9 @@
  * \note Loglevel defined in syslog.h, may be redefined in other backend, but
  * keep naming. LOG_ERR, LOG_WARNING, LOG_NOTICE, LOG_INFO, LOG_DEBUG
  *
+ * In standard mode, only LOG_ERR and LOG_WARNING is displayed and logged.
+ * Verbose mode enables LOG_NOTICE and LOG_INFO for additional information.
+ *
  * \addtogroup logging
  * @{
  */

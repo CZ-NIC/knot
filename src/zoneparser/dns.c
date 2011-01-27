@@ -26,7 +26,7 @@
 #include <assert.h>
 
 #include "dns.h"
-#include "zonec.h"
+#include "zoneparser.h"
 #include "zparser.h"
 #include "parser-util.h"
 

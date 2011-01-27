@@ -8,6 +8,7 @@
 #include "tree.h"
 #include "consts.h"
 #include "descriptor.h"
+#include "cuckoo-hash-table.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -223,8 +224,29 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count)
 	// how to know if this is successfull??
 	TREE_INSERT(zone->tree, dnslib_node, avl, apex);
 
-	zone->table = NULL;
+#ifdef USE_HASH_TABLE
+	if (zone->node_count > 0) {
+		zone->table = ck_create_table(zone->node_count);
+		if (zone->table == NULL) {
+			free(zone->tree);
+			free(zone->nsec3_nodes);
+			free(zone);
+			return NULL;
+		}
 
+		// insert the apex into the hash table
+		if (ck_insert_item(zone->table, (const char *)apex->owner->name,
+		                   apex->owner->size, (void *)apex) != 0) {
+			ck_destroy_table(&zone->table, NULL, 0);
+			free(zone->tree);
+			free(zone->nsec3_nodes);
+			free(zone);
+			return NULL;
+		}
+	} else {
+		zone->table = NULL;
+	}
+#endif
 	return zone;
 }
 
@@ -240,6 +262,21 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 	// add the node to the tree
 	// how to know if this is successfull??
 	TREE_INSERT(zone->tree, dnslib_node, avl, node);
+
+#ifdef USE_HASH_TABLE
+	// add the node also to the hash table if authoritative, or deleg. point
+	if (zone->table != NULL
+	    && ck_insert_item(zone->table, (const char *)node->owner->name,
+	                   node->owner->size, (void *)node) != 0) {
+		log_error("Error inserting node into hash table!\n");
+		return -3;
+	}
+#endif
+
+	debug_dnslib_zone("Inserted node %p with owner: %s (labels: %d), "
+	                  "pointer: %p\n", node,
+	                  dnslib_dname_to_str(node->owner),
+	                  dnslib_dname_label_count(node->owner), node->owner);
 
 	return 0;
 }
@@ -327,13 +364,13 @@ DEBUG_DNSLIB_ZONE(
 	if (dnslib_dname_compare(name, zone->apex->owner) == 0) {
 		*node = zone->apex;
 		*closest_encloser = *node;
-		return 1;
+		return DNSLIB_ZONE_NAME_FOUND;
 	}
 
 	if (!dnslib_dname_is_subdomain(name, zone->apex->owner)) {
 		*node = NULL;
 		*closest_encloser = NULL;
-		return -2;
+		return DNSLIB_ZONE_NAME_NOT_IN_ZONE;
 	}
 
 	// create dummy node to use for lookup
@@ -358,7 +395,7 @@ DEBUG_DNSLIB_ZONE(
 	// there must be at least one node with domain name less or equal to
 	// the searched name if the name belongs to the zone (the root)
 	if (*node == NULL) {
-		return -2;
+		return DNSLIB_ZONE_NAME_NOT_IN_ZONE;
 	}
 
 	if (!exact_match) {
@@ -373,9 +410,83 @@ DEBUG_DNSLIB_ZONE(
 
 	debug_dnslib_zone("find_dname() returning %d\n", exact_match);
 
-	return exact_match;
+	return (exact_match)
+	       ? DNSLIB_ZONE_NAME_FOUND
+	       : DNSLIB_ZONE_NAME_NOT_FOUND;
 }
 
+/*----------------------------------------------------------------------------*/
+#ifdef USE_HASH_TABLE
+int dnslib_zone_find_dname_hash(const dnslib_zone_t *zone,
+                                const dnslib_dname_t *name,
+                                const dnslib_node_t **node,
+                                const dnslib_node_t **closest_encloser)
+{
+	assert(zone);
+	assert(name);
+	assert(node);
+	assert(closest_encloser);
+
+DEBUG_DNSLIB_ZONE(
+	char *name_str = dnslib_dname_to_str(name);
+	char *zone_str = dnslib_dname_to_str(zone->apex->owner);
+	debug_dnslib_zone("Searching for name %s in zone %s...\n",
+			  name_str, zone_str);
+	free(name_str);
+	free(zone_str);
+);
+
+	if (dnslib_dname_compare(name, zone->apex->owner) == 0) {
+		*node = zone->apex;
+		*closest_encloser = *node;
+		return DNSLIB_ZONE_NAME_FOUND;
+	}
+
+	if (!dnslib_dname_is_subdomain(name, zone->apex->owner)) {
+		*node = NULL;
+		*closest_encloser = NULL;
+		return DNSLIB_ZONE_NAME_NOT_IN_ZONE;
+	}
+
+	const ck_hash_table_item_t *item = ck_find_item(zone->table,
+	                                               (const char *)name->name,
+	                                               name->size);
+
+	if (item != NULL) {
+		*node = (const dnslib_node_t *)item->value;
+		*closest_encloser = *node;
+
+		debug_dnslib_zone("Found node in hash table: %p (owner %p, "
+		                  "labels: %d)\n", *node, (*node)->owner,
+		                  dnslib_dname_label_count((*node)->owner));
+		assert(*node != NULL);
+		assert(*closest_encloser != NULL);
+		return DNSLIB_ZONE_NAME_FOUND;
+	}
+
+	*node = NULL;
+
+	// chop leftmost labels until some node is found
+	// copy the name for chopping
+	dnslib_dname_t *name_copy = dnslib_dname_copy(name);
+
+	while (item == NULL) {
+		dnslib_dname_left_chop_no_copy(name_copy);
+		assert(name_copy->label_count > 0);  // not satisfied in root zone!!
+
+		item = ck_find_item(zone->table, (const char *)name_copy->name,
+		                    name_copy->size);
+	}
+
+	dnslib_dname_free(&name_copy);
+
+	assert(item != NULL);
+
+	*closest_encloser = (const dnslib_node_t *)item->value;
+
+	return DNSLIB_ZONE_NAME_NOT_FOUND;
+}
+#endif
 /*----------------------------------------------------------------------------*/
 
 const dnslib_node_t *dnslib_zone_find_nsec3_node(const dnslib_zone_t *zone,
@@ -489,6 +600,12 @@ void dnslib_zone_free(dnslib_zone_t **zone)
 	free((*zone)->tree);
 	free((*zone)->nsec3_nodes);
 
+#ifdef USE_HASH_TABLE
+	if ((*zone)->table != NULL) {
+		ck_destroy_table(&(*zone)->table, NULL, 0);
+	}
+#endif
+
 	free(*zone);
 	*zone = NULL;
 }
@@ -500,7 +617,11 @@ void dnslib_zone_deep_free(dnslib_zone_t **zone)
 	if (zone == NULL || *zone == NULL) {
 		return;
 	}
-
+#ifdef USE_HASH_TABLE
+	if ((*zone)->table != NULL) {
+		ck_destroy_table(&(*zone)->table, NULL, 0);
+	}
+#endif
 	/* has to go through zone twice, rdata may contain references to node
 	   owners earlier in the zone which may be already freed */
 
