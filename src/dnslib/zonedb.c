@@ -115,24 +115,6 @@ DEBUG_DNSLIB_ZONEDB(
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_zonedb_find_name_in_zone(const dnslib_zone_t *zone,
-                                                    const dnslib_dname_t *dname)
-{
-	assert(zone != NULL && dname != NULL);
-
-	// start of RCU reader critical section
-	rcu_read_lock();
-
-	const dnslib_node_t *n = dnslib_zonedb_find_name_in_zone(zone, dname);
-
-	// end of RCU reader critical section
-	rcu_read_unlock();
-
-	return n;
-}
-
-/*----------------------------------------------------------------------------*/
-
 void dnslib_zonedb_deep_free(dnslib_zonedb_t **db)
 {
 	const skip_node_t *zn = skip_first((*db)->zones);

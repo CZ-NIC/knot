@@ -120,15 +120,24 @@ static int load_raw_packets(test_raw_packet_t ***raw_packets, uint8_t *count,
 		return 0;
 	}
 
-	fread(count, sizeof(uint8_t), 1, f);
+	if(fread(count, sizeof(uint8_t), 1, f) != sizeof(uint8_t)) {
+		fclose(f);
+		return -1;
+	}
 
 	*raw_packets = malloc(sizeof(test_raw_packet_t *) * *count);
 
 	for (int i = 0; i < *count; i++) {
-		fread(&tmp_size, sizeof(uint8_t), 1, f);
+		if(fread(&tmp_size, sizeof(uint8_t), 1, f) != sizeof(uint8_t)) {
+			break;
+		}
+
 		(*raw_packets)[i] = malloc(sizeof(test_raw_packet_t));
 		(*raw_packets)[i]->data = malloc(sizeof(uint8_t) * (tmp_size));
-		fread((*raw_packets)[i]->data, sizeof(uint8_t), tmp_size, f);
+		if(fread((*raw_packets)[i]->data, sizeof(uint8_t), tmp_size, f)
+		   != sizeof(uint8_t)) {
+			break;
+		}
 		(*raw_packets)[i]->size = tmp_size;
 	}
 
@@ -490,7 +499,7 @@ static int test_response_new_empty()
 
 static int test_response_add_rrset(int (*add_func)
                                    (dnslib_response_t *,
-				   const dnslib_rrset_t *, int),
+				   const dnslib_rrset_t *, int, int),
 				   int array_id)
 {
 	int errors = 0;
@@ -520,7 +529,7 @@ static int test_response_add_rrset(int (*add_func)
 	} /* switch */
 
 	for (int i = 0; (i < RRSETS_COUNT) && !errors; i++) {
-		add_func(resp, &RESPONSE_RRSETS[i], 0);
+		add_func(resp, &RESPONSE_RRSETS[i], 0, 0);
 		errors += compare_rrsets(array[i], &RESPONSE_RRSETS[i]);
 	}
 
@@ -716,19 +725,19 @@ static int test_response_to_wire()
 		for (int j = 0; j < RESPONSES[i].ancount; j++) {
 			if (&(RESPONSES[i].answer[j])) {
 				dnslib_response_add_rrset_answer(resp,
-					(RESPONSES[i].answer[j]), 0);
+					&(RESPONSES[i].answer[j]), 0, 0);
 			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			if (&(RESPONSES[i].additional[j])) {
 				dnslib_response_add_rrset_additional(resp,
-					(RESPONSES[i].additional[j]), 0);
+					&(RESPONSES[i].additional[j]), 0, 0);
 			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			if (&(RESPONSES[i].authority[j])) {
 				dnslib_response_add_rrset_authority(resp,
-					(RESPONSES[i].authority[j]), 0);
+					&(RESPONSES[i].authority[j]), 0, 0);
 			}
 		}
 
@@ -1021,8 +1030,8 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 
 	test_response_t **parsed_responses = NULL;
 	test_raw_packet_t **raw_queries = NULL;
-	uint response_parsed_count;
-	uint8_t response_raw_count;
+	uint response_parsed_count = 0;
+	uint8_t response_raw_count = 0;
 
 	ok(test_response_getters(0), "response: get qname");
 

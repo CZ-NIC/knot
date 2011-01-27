@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _DNSLIB_ZONEDUMP_H_
-#define _DNSLIB_ZONEDUMP_H_
+#ifndef _CUTEDNS_DNSLIB_ZONEDUMP_H_
+#define _CUTEDNS_DNSLIB_ZONEDUMP_H_
 
 #include "zone.h"
 
@@ -23,7 +23,7 @@
  * \retval 0 on success.
  * \retval 1 on error.
  */
-int dnslib_zone_dump_binary(dnslib_zone_t *zone, const char *filename);
+int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename);
 
 #endif /* _DNSLIB_ZONEDUMP_H_ */
 
