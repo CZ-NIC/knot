@@ -13,7 +13,7 @@ enum Constants {
 void help(int argc, char **argv)
 {
 	printf("Usage: %s [parameters] start|stop|restart|reload|running|compile"
-	       "[zone file]\n",
+	       " [zone file]\n",
 	       argv[0]);
 	printf("Parameters:\n"
 	       " -v\tVerbose mode - additional runtime information.\n"
@@ -22,12 +22,14 @@ void help(int argc, char **argv)
 	       PROJECT_NAME);
 	printf("Actions:\n"
 	       " start   [zone]  Start %s server with given zone (no-op if running).\n"
-	       " stop            Stop %s server (no-on if not running).\n"
+	       " stop            Stop %s server (no-op if not running).\n"
 	       " restart [zone]  Stops and then starts %s server.\n"
 	       " reload  [zone]  Reload %s configuration and zone files.\n"
 	       " running         Check if server is running.\n"
 	       "\n"
-	       " compile  <origin> <zone> Compile zone file.\n",
+	       " compile <zone_name> <zone> Compile zone file.\n"
+	       "                            (<zone_name> should be a fully-"
+	                                    "qualified domain name.)",
 	       PROJECT_NAME, PROJECT_NAME, PROJECT_NAME, PROJECT_NAME);
 }
 
@@ -130,7 +132,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 		// Check zone
 		valid_cmd = 1;
 		if (argc < 2) {
-			log_error("Zone file or origin not specified.\n");
+			log_error("Zone file or zone name not specified.\n");
 			free(pidfile);
 			return 1;
 		}
@@ -148,13 +150,13 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 		free(cmd);
 	}
 	if (!valid_cmd) {
-		log_error("invalid command: '%s'\n", action);
+		log_error("Invalid command: '%s'\n", action);
 		free(pidfile);
 		return 1;
 	}
 
 	// Log
-	log_info("server %s finished (return code %d)\n", action, rc);
+	log_info("Server %s finished (return code %d)\n", action, rc);
 	free(pidfile);
 	return rc;
 }
