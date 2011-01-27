@@ -380,7 +380,7 @@ size_t dnslib_strlcpy(char *dst, const char *src, size_t siz)
 
 dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_type(uint16_t type)
 {
-	if (type < DNSLIB_RRTYPE_DESCRIPTORS_LENGTH) {
+	if (type < DNSLIB_RRTYPE_LAST + 1) {
 		return &dnslib_rrtype_descriptors[type];
 	} else if (type == DNSLIB_RRTYPE_DLV) {
 		return &dnslib_rrtype_descriptors[DNSLIB_RRTYPE_DLV];
@@ -393,7 +393,7 @@ dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_name(const char *name)
 {
 	int i;
 
-	for (i = 0; i < DNSLIB_RRTYPE_DESCRIPTORS_LENGTH; ++i) {
+	for (i = 0; i < DNSLIB_RRTYPE_LAST + 1; ++i) {
 		if (dnslib_rrtype_descriptors[i].name &&
 		    strcasecmp(dnslib_rrtype_descriptors[i].name, name) == 0) {
 			return &dnslib_rrtype_descriptors[i];
