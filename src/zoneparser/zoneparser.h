@@ -140,7 +140,7 @@ void set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
 
 uint8_t *alloc_rdata_init(const void *data, size_t size);
 
-void zone_read(const char *name, const char *zonefile);
+void zone_read(const char *name, const char *zonefile, const char *outfile);
 
 /* zparser.y */
 zparser_type *zparser_create();
