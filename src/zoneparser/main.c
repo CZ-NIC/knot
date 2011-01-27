@@ -12,9 +12,10 @@ void help(int argc, char **argv)
 	printf("Usage: %s [parameters] origin zonefile\n",
 	       argv[0]);
 	printf("Parameters:\n"
-	       " -v\tVerbose mode - additional runtime information.\n"
-	       " -V\tPrint version of the server.\n"
-	       " -h\tPrint help and usage.\n");
+	       " -o <outfile> Override output file.\n"
+	       " -v           Verbose mode - additional runtime information.\n"
+	       " -V           Print version of the server.\n"
+	       " -h           Print help and usage.\n");
 }
 
 int main(int argc, char **argv)
@@ -24,9 +25,13 @@ int main(int argc, char **argv)
 	int verbose = 0;
 	const char* origin = 0;
 	const char* zonefile = 0;
-	while ((c = getopt (argc, argv, "vVh")) != -1) {
+	const char* outfile = 0;
+	while ((c = getopt (argc, argv, "o:vVh")) != -1) {
 		switch (c)
 		{
+		case 'o':
+			outfile = optarg;
+			break;
 		case 'v':
 			verbose = 1;
 			break;
@@ -39,6 +44,11 @@ int main(int argc, char **argv)
 		case 'h':
 		case '?':
 		default:
+			if (optopt == 'o') {
+				fprintf (stderr,
+					 "Option -%c requires an argument.\n",
+					 optopt);
+			}
 			help(argc, argv);
 			return 1;
 		}
@@ -65,7 +75,7 @@ int main(int argc, char **argv)
 	log_open(print_mask, log_mask);
 
 	log_info("parsing file '%s', origin '%s' ...\n",
-	         zonefile, origin);
+		 zonefile, origin);
 
 	parser = zparser_create();
 	if (!parser) {
@@ -74,7 +84,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	zone_read(origin, zonefile);
+	zone_read(origin, zonefile, outfile);
 
 	log_info("parser finished\n");
 	log_close();
