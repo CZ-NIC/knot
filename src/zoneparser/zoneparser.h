@@ -1,14 +1,19 @@
-/*
- * zonec.h -- zone compiler.
+/*!
+ * \file zoneparser.h
  *
- * Copyright (c) 2001-2006, NLnet Labs. All rights reserved.
+ * \author modifications by Jan Kadlec <jan.kadlec@nic.cz>, most of the code
+ *         by NLnet Labs
+ *         Copyright (c) 2001-2006, NLnet Labs. All rights reserved.
+ *         See LICENSE for the license.
  *
- * See LICENSE for the license.
+ * \brief Zone compiler.
  *
+ * \addtogroup zoneparser
+ * @{
  */
 
-#ifndef _ZONEC_H_
-#define _ZONEC_H_
+#ifndef _CUTEDNS_ZONEPARSER_H_
+#define _CUTEDNS_ZONEPARSER_H_
 
 #include <stdio.h>
 
@@ -121,7 +126,8 @@ uint8_t *zparser_conv_b32(const char *b32);
 uint8_t *zparser_conv_b64(const char *b64);
 uint8_t *zparser_conv_rrtype(const char *rr);
 uint8_t *zparser_conv_nxt(uint8_t nxtbits[]);
-uint8_t *zparser_conv_nsec(uint8_t nsecbits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE]);
+uint8_t *zparser_conv_nsec(uint8_t nsecbits[NSEC_WINDOW_COUNT]
+                                           [NSEC_WINDOW_BITS_SIZE]);
 uint8_t *zparser_conv_loc(char *str);
 uint8_t *zparser_conv_algorithm(const char *algstr);
 uint8_t *zparser_conv_certificate_type(const char *typestr);
@@ -149,4 +155,6 @@ void zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 
 void zparser_free();
 
-#endif /* _ZONEC_H_ */
+#endif /* _CUTEDNS_ZONEPARSER_H_ */
+
+/*! @} */
