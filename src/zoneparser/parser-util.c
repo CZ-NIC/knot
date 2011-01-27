@@ -96,8 +96,7 @@ size_t strlcpy(char *dst, const char *src, size_t siz)
  * author:
  *	Paul Vixie, 1996.
  */
-int
-inet_pton(int af, const char *src, void *dst)
+int inet_pton(int af, const char *src, void *dst)
 {
 	switch (af) {
 	case AF_INET:
@@ -171,10 +170,7 @@ static const char Pad64 = '=';
  * author:
  *	Paul Vixie, 1996.
  */
-int
-inet_pton4(src, dst)
-const char *src;
-uint8_t *dst;
+int inet_pton4(const char *src, uint8_t *dst)
 {
 	static const char digits[] = "0123456789";
 	int saw_digit, octets, ch;
@@ -230,10 +226,7 @@ uint8_t *dst;
  * author:
  *	Paul Vixie, 1996.
  */
-int
-inet_pton6(src, dst)
-const char *src;
-uint8_t *dst;
+int inet_pton6(const char *src, uint8_t *dst)
 {
 	static const char xdigits_l[] = "0123456789abcdef",
 	                                xdigits_u[] = "0123456789ABCDEF";
@@ -345,8 +338,7 @@ uint8_t *dst;
  * author:
  *	Paul Vixie, 1996.
  */
-const char *
-inet_ntop(int af, const void *src, char *dst, size_t size)
+const char *inet_ntop(int af, const void *src, char *dst, size_t size)
 {
 	switch (af) {
 	case AF_INET:
@@ -371,8 +363,7 @@ inet_ntop(int af, const void *src, char *dst, size_t size)
  * author:
  *	Paul Vixie, 1996.
  */
-const char *
-inet_ntop4(const u_char *src, char *dst, size_t size)
+const char *inet_ntop4(const u_char *src, char *dst, size_t size)
 {
 	static const char fmt[] = "%u.%u.%u.%u";
 	char tmp[sizeof "255.255.255.255"];
@@ -393,8 +384,7 @@ inet_ntop4(const u_char *src, char *dst, size_t size)
  * author:
  *	Paul Vixie, 1996.
  */
-const char *
-inet_ntop6(const u_char *src, char *dst, size_t size)
+const char *inet_ntop6(const u_char *src, char *dst, size_t size)
 {
 	/*
 	 * Note that int32_t and int16_t need only be "at least" large enough
@@ -526,8 +516,7 @@ static const uint8_t b64rmap_invalid = 0xff;
  * Initializing the reverse map is not thread safe.
  * Which is fine for NSD. For now...
  **/
-void
-b64_initialize_rmap()
+void b64_initialize_rmap()
 {
 	int i;
 	char ch;
@@ -559,8 +548,7 @@ b64_initialize_rmap()
 	b64rmap_initialized = 1;
 }
 
-int
-b64_pton_do(char const *src, uint8_t *target, size_t targsize)
+int b64_pton_do(char const *src, uint8_t *target, size_t targsize)
 {
 	int tarindex, state, ch;
 	uint8_t ofs;
@@ -686,8 +674,7 @@ b64_pton_do(char const *src, uint8_t *target, size_t targsize)
 }
 
 
-int
-b64_pton_len(char const *src)
+int b64_pton_len(char const *src)
 {
 	int tarindex, state, ch;
 	uint8_t ofs;
@@ -783,9 +770,7 @@ b64_pton_len(char const *src)
 	return (tarindex);
 }
 
-
-int
-b64_pton(char const *src, uint8_t *target, size_t targsize)
+int b64_pton(char const *src, uint8_t *target, size_t targsize)
 {
 	if (!b64rmap_initialized) {
 		b64_initialize_rmap();
@@ -798,14 +783,7 @@ b64_pton(char const *src, uint8_t *target, size_t targsize)
 	}
 }
 
-
-
-
-
-
-
-void
-set_bit(uint8_t bits[], size_t index)
+void set_bit(uint8_t bits[], size_t index)
 {
 	/*
 	 * The bits are counted from left to right, so bit #0 is the
@@ -814,8 +792,7 @@ set_bit(uint8_t bits[], size_t index)
 	bits[index / 8] |= (1 << (7 - index % 8));
 }
 
-uint32_t
-strtoserial(const char *nptr, const char **endptr)
+uint32_t strtoserial(const char *nptr, const char **endptr)
 {
 	uint32_t i = 0;
 	uint32_t serial = 0;
@@ -846,8 +823,7 @@ strtoserial(const char *nptr, const char **endptr)
 	return serial;
 }
 
-inline void
-write_uint32(void *dst, uint32_t data)
+inline void write_uint32(void *dst, uint32_t data)
 {
 #ifdef ALLOW_UNALIGNED_ACCESSES
 	*(uint32_t *) dst = htonl(data);
@@ -860,8 +836,7 @@ write_uint32(void *dst, uint32_t data)
 #endif
 }
 
-uint32_t
-strtottl(const char *nptr, const char **endptr)
+uint32_t strtottl(const char *nptr, const char **endptr)
 {
 	uint32_t i = 0;
 	uint32_t seconds = 0;
@@ -923,14 +898,12 @@ static const int mdays[] = {
     31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
 };
 
-static int
-is_leap_year(int year)
+static int is_leap_year(int year)
 {
     return year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
 }
 
-static int
-leap_days(int y1, int y2)
+static int leap_days(int y1, int y2)
 {
     --y1;
     --y2;
@@ -940,8 +913,7 @@ leap_days(int y1, int y2)
 /*
  * Code adapted from Python 2.4.1 sources (Lib/calendar.py).
  */
-time_t
-mktime_from_utc(const struct tm *tm)
+time_t mktime_from_utc(const struct tm *tm)
 {
     int year = 1900 + tm->tm_year;
     time_t days = 365 * (year - 1970) + leap_days(1970, year);

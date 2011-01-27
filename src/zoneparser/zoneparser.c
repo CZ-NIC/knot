@@ -1560,27 +1560,36 @@ int process_rr(void)
 		/* TODO Search for possible duplicates... */
 	}
 
-	/* TODO DNAME and CNAME checks */
+/* \note DNAME and CNAME checks disabled - would slow things down a little 
+ * plus it cannot be done in the fashion below - we don't have information
+ * about the length of rrset
+ */
 
-//	if(current_rrset->type == TYPE_DNAME && rrset->rr_count > 1) {
+//	if(current_rrset->type ==
+//	   DNSLIB_RRTYPE_DNAME &&
+//	   current_rrset->rdata->count > 1) {
 //		fprintf(stderr, "multiple DNAMEs at the same name");
 //	}
-//	if(current_rrset->type == TYPE_CNAME && rrset->rr_count > 1) {
+//	/* \note this actually counts items, not the legth we would need */
+//	if(current_rrset->type ==
+//	   DNSLIB_RRTYPE_CNAME &&
+//	   current_rrset->rdata->count > 1) {
 //		fprintf(stderr, "multiple CNAMEs at the same name");
+//	/* \note this actually counts items, not the legth we would need */
 //	}
-//	if((rr->type == TYPE_DNAME && domain_find_rrset(rr->owner, zone,
-//	                                                TYPE_CNAME))
-//	 ||(rr->type == TYPE_CNAME && domain_find_rrset(rr->owner, zone,
-//                                                      TYPE_DNAME))) {
+//	if((current_rrset->type == DNSLIB_RRTYPE_DNAME &&
+//	    dnslib_node_get_rrset(node, TYPE_CNAME)) ||
+//	    (current_rrset->type == DNSLIB_RRTYPE_CNAME &&
+//	    dnslib_node_get_rrset(node, TYPE_DNAME))) {
 //		fprintf(stderr, "DNAME and CNAME at the same name");
 //	}
+//	/* \note we don't have similar function - maybe
+//       * length of the skip_list
+//       * should stay disabled 
+//	 */
 //	if(domain_find_rrset(rr->owner, zone, TYPE_CNAME) &&
 //		domain_find_non_cname_rrset(rr->owner, zone)) {
 //		fprintf(stderr, "CNAME and other data at the same name");
-//	}
-//
-//	if (rr->type == TYPE_RRSIG && rr_rrsig_type_covered(rr) == TYPE_SOA) {
-//		rrset->zone->is_secure = 1;
 //	}
 
 	if (vflag > 1 && totalrrs > 0 && (totalrrs % progress == 0)) {

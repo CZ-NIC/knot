@@ -1,11 +1,16 @@
 %{
-/*
- * zlexer.lex - lexical analyzer for (DNS) zone files
+/*!
+ * \file zlexer.lex
  *
- * Copyright (c) 2001-2006, NLnet Labs. All rights reserved
+ * \author minor modifications by Jan Kadlec <jan.kadlec@nic.cz>,
+ *         most of the code by NLnet Labs
+ *         Copyright (c) 2001-2006, NLnet Labs. All rights reserved.
+ *         See LICENSE for the license.
  *
- * See LICENSE for the license.
+ * \brief lexical analyzer for (DNS) zone files.
  *
+ * \addtogroup zoneparser
+ * @{
  */
 
 #include "common.h"
@@ -381,7 +386,9 @@ zoctet(char *text)
 		if (s[0] != '\\') {
 			/* Ordinary character.  */
 			*p = *s;
-		} else if (isdigit((int)s[1]) && isdigit((int)s[2]) && isdigit((int)s[3])) {
+		} else if (isdigit((int)s[1]) &&
+		           isdigit((int)s[2]) &&
+			   isdigit((int)s[3])) {
 			/* \DDD escape.  */
 			int val = (hexdigit_to_int(s[1]) * 100 +
 				   hexdigit_to_int(s[2]) * 10 +

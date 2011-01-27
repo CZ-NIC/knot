@@ -1,11 +1,16 @@
 %{
-/*
- * zyparser.y -- yacc grammar for (DNS) zone files
+/*!
+ * \file zparser.y
  *
- * Copyright (c) 2001-2006, NLnet Labs. All rights reserved.
+ * \author modifications by Jan Kadlec <jan.kadlec@nic.cz>,
+ *         most of the code by NLnet Labs
+ *         Copyright (c) 2001-2006, NLnet Labs. All rights reserved.
+ *         See LICENSE for the license.
  *
- * See LICENSE for the license.
+ * \brief yacc grammar for (DNS) zone files
  *
+ * \addtogroup zoneparser
+ * @{
  */
 
 #include "common.h"
@@ -141,7 +146,7 @@ line:	NL
 		int ret;
 		if ((ret = process_rr()) != 0) {
 			char *tmp_dname_str =
-				dnslib_dname_to_str(parser->current_rrset.owner);
+			dnslib_dname_to_str(parser->current_rrset.owner);
 			fprintf(stderr, "Error: could not process RRSet\n"
 			        "owner: %s reason: %d\n", tmp_dname_str, ret);
 			hex_print((char *)parser->current_rrset.owner->labels,
@@ -169,7 +174,8 @@ trail:	NL
 
 ttl_directive:	DOLLAR_TTL sp STR trail
     {
-	parser->default_ttl = zparser_ttl2int($3.str, &(parser->error_occurred));
+	parser->default_ttl = zparser_ttl2int($3.str,
+	                                      &(parser->error_occurred));
 	if (parser->error_occurred == 1) {
 		parser->default_ttl = DEFAULT_TTL;
 		parser->error_occurred = 0;
@@ -179,15 +185,15 @@ ttl_directive:	DOLLAR_TTL sp STR trail
 
 origin_directive:	DOLLAR_ORIGIN sp abs_dname trail
     {
-	    //TODO figure out why dnames are not ended with '.' even though
-	    //     they should be
-	    dnslib_node_t *origin_node = dnslib_node_new(dnslib_dname_cat($3, parser->root_domain),
+	    dnslib_node_t *origin_node = dnslib_node_new(dnslib_dname_cat($3,
+	                                                 parser->root_domain),
 	                                                 NULL);
 	    parser->origin = origin_node;
     }
     |	DOLLAR_ORIGIN sp rel_dname trail
     {
-	    zc_error_prev_line("$ORIGIN directive requires absolute domain name");
+	    zc_error_prev_line("$ORIGIN directive requires"
+	                       "absolute domain name");
     }
     ;
 
@@ -242,11 +248,12 @@ dname:	abs_dname
             /*! \todo Fix domain_dname() and size */
 	    if ($1 == error_dname) {
 		    $$ = error_domain;
-	    } else if ($1->size + parser->origin->owner->size - 1 > MAXDOMAINLEN) {
-		    zc_error("domain name exceeds %d character limit", MAXDOMAINLEN);
+	    } else if ($1->size + parser->origin->owner->size - 1 >
+	               MAXDOMAINLEN) {
+		    zc_error("domain name exceeds %d character limit",
+		             MAXDOMAINLEN);
 		    $$ = error_domain;
 	    } else {
-		    //TODO
 		    $$ = dnslib_dname_cat($1,
 		                          parser->origin->owner);
 	    }
@@ -291,7 +298,8 @@ label:	STR
     }
     |	BITLAB
     {
-	    zc_error("bitlabels are not supported. RFC2673 has status experimental.");
+	    zc_error("bitlabels are not supported."
+	             "RFC2673 has status experimental.");
 	    $$ = error_dname;
     }
     ;
@@ -307,7 +315,6 @@ rel_dname:	label
 		    $$ = error_dname;
 	    } else {
 		    $$ = dnslib_dname_cat($1, $3);
-        //printf("free: %p %s (resulting in %s)\n", $3, dnslib_dname_to_str($3), dnslib_dname_to_str($$));
 		    dnslib_dname_free(&$3);
 	        }
     }
@@ -652,8 +659,22 @@ type_and_rdata:
     |	T_APL sp rdata_unknown { $$ = $1; parse_unknown_rdata($1, $3); }
     |	T_DS sp rdata_ds
     |	T_DS sp rdata_unknown { $$ = $1; parse_unknown_rdata($1, $3); }
-    |	T_DLV sp rdata_dlv { if (dlv_warn) { dlv_warn = 0; zc_warning_prev_line("DLV is experimental"); } }
-    |	T_DLV sp rdata_unknown { if (dlv_warn) { dlv_warn = 0; zc_warning_prev_line("DLV is experimental"); } $$ = $1; parse_unknown_rdata($1, $3); }
+    |	T_DLV sp rdata_dlv 
+    { 
+	    if (dlv_warn) {
+		    dlv_warn = 0;
+		    zc_warning_prev_line("DLV is experimental");
+            }
+    }
+    |	T_DLV sp rdata_unknown
+    {
+	    if (dlv_warn) {
+		    dlv_warn = 0;
+		    zc_warning_prev_line("DLV is experimental");
+	    }
+	    $$ = $1;
+	    parse_unknown_rdata($1, $3);
+    }
     |	T_SSHFP sp rdata_sshfp
     |	T_SSHFP sp rdata_unknown { $$ = $1; parse_unknown_rdata($1, $3); }
     |	T_RRSIG sp rdata_rrsig
@@ -735,7 +756,8 @@ rdata_soa:	dname sp dname sp STR sp STR sp STR sp STR sp STR trail
 rdata_wks:	dotted_str sp STR sp concatenated_str_seq trail
     {
 	    zadd_rdata_wireformat(zparser_conv_a($1.str)); /* address */
-	    zadd_rdata_wireformat(zparser_conv_services($3.str, $5.str)); /* protocol and services */
+	    zadd_rdata_wireformat(zparser_conv_services($3.str, $5.str));
+	    /* protocol and services */
 
 	    free($1.str);
 	    free($3.str);
@@ -839,7 +861,8 @@ rdata_afsdb:	STR sp dname trail
 /* RFC 1183 */
 rdata_x25:	STR trail
     {
-	    zadd_rdata_wireformat(zparser_conv_text($1.str, $1.len)); /* X.25 address. */
+	    zadd_rdata_wireformat(zparser_conv_text($1.str, $1.len));
+	    /* X.25 address. */
 
 	    free($1.str);
     }
@@ -848,14 +871,17 @@ rdata_x25:	STR trail
 /* RFC 1183 */
 rdata_isdn:	STR trail
     {
-	    zadd_rdata_wireformat(zparser_conv_text($1.str, $1.len)); /* address */
+	    zadd_rdata_wireformat(zparser_conv_text($1.str, $1.len));
+	    /* address */
 
 	    free($1.str);
     }
     |	STR sp STR trail
     {
-	    zadd_rdata_wireformat(zparser_conv_text($1.str, $1.len)); /* address */
-	    zadd_rdata_wireformat(zparser_conv_text($3.str, $3.len)); /* sub-address */
+	    zadd_rdata_wireformat(zparser_conv_text($1.str, $1.len));
+	    /* address */
+	    zadd_rdata_wireformat(zparser_conv_text($3.str, $3.len));
+	    /* sub-address */
 
 	    free($1.str);
 	    free($3.str);
@@ -886,7 +912,9 @@ rdata_nsap:	str_dot_seq trail
 	    if (strncasecmp($1.str, "0x", 2) != 0) {
 		    zc_error_prev_line("NSAP rdata must start with '0x'");
 	    } else {
-		    zadd_rdata_wireformat(zparser_conv_hex($1.str + 2, $1.len - 2)); /* NSAP */
+		    zadd_rdata_wireformat(zparser_conv_hex($1.str + 2,
+		                                           $1.len - 2));
+		    /* NSAP */
 	    }
 
 	    free($1.str);
@@ -916,7 +944,8 @@ rdata_px:	STR sp dname sp dname trail
 
 rdata_aaaa:	dotted_str trail
     {
-	    zadd_rdata_wireformat(zparser_conv_aaaa($1.str));  /* IPv6 address */
+	    zadd_rdata_wireformat(zparser_conv_aaaa($1.str));
+	    /* IPv6 address */
 
 	    free($1.str);
     }
@@ -971,9 +1000,12 @@ rdata_naptr:	STR sp STR sp STR sp STR sp STR sp dname trail
 		}
 	    zadd_rdata_wireformat(zparser_conv_short($1.str)); /* order */
 	    zadd_rdata_wireformat(zparser_conv_short($3.str)); /* preference */
-	    zadd_rdata_wireformat(zparser_conv_text($5.str, $5.len)); /* flags */
-	    zadd_rdata_wireformat(zparser_conv_text($7.str, $7.len)); /* service */
-	    zadd_rdata_wireformat(zparser_conv_text($9.str, $9.len)); /* regexp */
+	    zadd_rdata_wireformat(zparser_conv_text($5.str, $5.len));
+	    /* flags */
+	    zadd_rdata_wireformat(zparser_conv_text($7.str, $7.len));
+	    /* service */
+	    zadd_rdata_wireformat(zparser_conv_text($9.str, $9.len));
+	    /* regexp */
 	    zadd_rdata_domain($11); /* target name */
 
 	    free($1.str);
@@ -1002,10 +1034,13 @@ rdata_kx:	STR sp dname trail
 /* RFC 2538 */
 rdata_cert:	STR sp STR sp STR sp str_sp_seq trail
     {
-	    zadd_rdata_wireformat(zparser_conv_certificate_type($1.str)); /* type */
+	    zadd_rdata_wireformat(zparser_conv_certificate_type($1.str));
+	    /* type */
 	    zadd_rdata_wireformat(zparser_conv_short($3.str)); /* key tag */
-	    zadd_rdata_wireformat(zparser_conv_algorithm($5.str)); /* algorithm */
-	    zadd_rdata_wireformat(zparser_conv_b64($7.str)); /* certificate or CRL */
+	    zadd_rdata_wireformat(zparser_conv_algorithm($5.str));
+	    /* algorithm */
+	    zadd_rdata_wireformat(zparser_conv_b64($7.str));
+	    /* certificate or CRL */
 
 	    free($1.str);
 	    free($3.str);
@@ -1080,16 +1115,22 @@ rdata_dhcid:	str_sp_seq trail
     }
     ;
 
-rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR sp STR sp wire_dname sp str_sp_seq trail
+rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR
+                sp STR sp wire_dname sp str_sp_seq trail
     {
-	    zadd_rdata_wireformat(zparser_conv_rrtype($1.str)); /* rr covered */
+	    zadd_rdata_wireformat(zparser_conv_rrtype($1.str));
+	    /* rr covered */
 	    zadd_rdata_wireformat(zparser_conv_algorithm($3.str)); /* alg */
 	    zadd_rdata_wireformat(zparser_conv_byte($5.str)); /* # labels */
-	    zadd_rdata_wireformat(zparser_conv_period($7.str)); /* # orig TTL */
+	    zadd_rdata_wireformat(zparser_conv_period($7.str));
+	    /* # orig TTL */
 	    zadd_rdata_wireformat(zparser_conv_time($9.str)); /* sig exp */
 	    zadd_rdata_wireformat(zparser_conv_time($11.str)); /* sig inc */
 	    zadd_rdata_wireformat(zparser_conv_short($13.str)); /* key id */
-	    zadd_rdata_wireformat(zparser_conv_dns_name((const uint8_t*) $15.str,$15.len)); /* sig name */
+	    zadd_rdata_wireformat(zparser_conv_dns_name((const uint8_t*)
+	                                                 $15.str,
+	                                                 $15.len));
+	    /* sig name */
 	    zadd_rdata_wireformat(zparser_conv_b64($17.str)); /* sig data */
 
 	    free($1.str);
@@ -1106,8 +1147,12 @@ rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR sp STR sp wire_dname sp str_
 
 rdata_nsec:	wire_dname nsec_seq
     {
-	    zadd_rdata_wireformat(zparser_conv_dns_name((const uint8_t*) $1.str, $1.len)); /* nsec name */
-	    zadd_rdata_wireformat(zparser_conv_nsec(nsecbits)); /* nsec bitlist */
+	    zadd_rdata_wireformat(zparser_conv_dns_name((const uint8_t*)
+	                                                $1.str,
+							$1.len));
+	    /* nsec name */
+	    zadd_rdata_wireformat(zparser_conv_nsec(nsecbits));
+	    /* nsec bitlist */
 	    memset(nsecbits, 0, sizeof(nsecbits));
             nsec_highest_rcode = 0;
     }
@@ -1118,8 +1163,10 @@ rdata_nsec3:   STR sp STR sp STR sp STR sp STR nsec_seq
 #ifdef NSEC3
 	    nsec3_add_params($1.str, $3.str, $5.str, $7.str, $7.len);
 
-	    zadd_rdata_wireformat(zparser_conv_b32($9.str)); /* next hashed name */
-	    zadd_rdata_wireformat(zparser_conv_nsec(nsecbits)); /* nsec bitlist */
+	    zadd_rdata_wireformat(zparser_conv_b32($9.str));
+	    /* next hashed name */
+	    zadd_rdata_wireformat(zparser_conv_nsec(nsecbits));
+	    /* nsec bitlist */
 	    memset(nsecbits, 0, sizeof(nsecbits));
 	    nsec_highest_rcode = 0;
 #else
@@ -1166,7 +1213,8 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
     {
 	    const dnslib_dname_t* name = 0;
 	    zadd_rdata_wireformat(zparser_conv_byte($1.str)); /* precedence */
-	    zadd_rdata_wireformat(zparser_conv_byte($3.str)); /* gateway type */
+	    zadd_rdata_wireformat(zparser_conv_byte($3.str));
+	    /* gateway type */
 	    zadd_rdata_wireformat(zparser_conv_byte($5.str)); /* algorithm */
 	    switch(atoi($3.str)) {
 		case IPSECKEY_NOGATEWAY:
@@ -1181,13 +1229,15 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 		case IPSECKEY_DNAME:
 			/* convert and insert the dname */
 			if(strlen($7.str) == 0)
-				zc_error_prev_line("IPSECKEY must specify gateway name");
+				zc_error_prev_line("IPSECKEY must specify"
+				                   "gateway name");
 			name = dnslib_dname_new_from_wire((uint8_t*)$7.str + 1,
 			                                  strlen($7.str + 1),
 			                                  NULL);
 
 			if(!name) {
-				zc_error_prev_line("IPSECKEY bad gateway dname %s", $7.str);
+				zc_error_prev_line("IPSECKEY bad gateway"
+				                   "dname %s", $7.str);
 			}
 			if($7.str[strlen($7.str)-1] != '.') {
 			    dnslib_dname_t* tmpd;
@@ -1406,7 +1456,8 @@ nsec3_add_params(const char* hashalgo_str, const char* flag_str,
 
 	/* salt */
 	if(strcmp(salt_str, "-") != 0)
-		zadd_rdata_wireformat(zparser_conv_hex_length(salt_str, salt_len));
+		zadd_rdata_wireformat(zparser_conv_hex_length(salt_str,
+		                                              salt_len));
 	else
 		zadd_rdata_wireformat(alloc_rdata_init("", 1));
 }

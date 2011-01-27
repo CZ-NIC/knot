@@ -1,3 +1,16 @@
+/*!
+ * \file parser-util.h
+ *
+ * \author NLnet Labs
+ *         Copyright (c) 2001-2006, NLnet Labs. All rights reserved.
+ *         See LICENSE for the license.
+ *
+ * \brief Zone compiler utility functions.
+ *
+ * \addtogroup zoneparser
+ * @{
+ */
+
 #ifndef _CUTEDNS_PARSER_UTIL_H_
 #define _CUTEDNS_PARSER_UTIL_H_
 
@@ -21,7 +34,6 @@ size_t strlcpy(char *dst, const char *src, size_t siz);
 int inet_pton4(const char *src, uint8_t *dst);
 int inet_pton6(const char *src, uint8_t *dst);
 int my_b32_pton(const char *src, uint8_t *target, size_t tsize);
-// const char *inet_ntop(int af, const void *src, char *dst, size_t size);
 const char *inet_ntop4(const u_char *src, char *dst, size_t size);
 const char *inet_ntop6(const u_char *src, char *dst, size_t size);
 int inet_pton(int af, const char *src, void *dst);
@@ -41,3 +53,5 @@ dnslib_lookup_table_t *dnslib_lookup_by_id(dnslib_lookup_table_t *table,
                                            int id);
 
 #endif /* _CUTEDNS_PARSER_UTIL_H_ */
+
+/*! @} */
