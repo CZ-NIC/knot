@@ -22,7 +22,7 @@
 #include <assert.h>
 
 #include "common.h"
-#include "zonec.h"
+#include "zoneparser.h"
 #include "dnslib/dname.h"
 #include "dnslib/rrset.h"
 #include "dnslib/rdata.h"
@@ -115,6 +115,8 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint8_t *wireformat,
 	uint8_t const *end = wireformat + data_size; //XXX + 1?
 	size_t i;
 	dnslib_rdata_item_t temp_rdatas[MAXRDATALEN];
+	memset(temp_rdatas, 0, sizeof(temp_rdatas));
+
 	dnslib_rrtype_descriptor_t *descriptor =
 	        dnslib_rrtype_descriptor_by_type(rrtype);
 
@@ -183,7 +185,7 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint8_t *wireformat,
 			}
 			break;
 		case DNSLIB_RDATA_WF_IPSECGATEWAY:
-			switch (rdata_atom_data(temp_rdatas[1])[0]) { 
+			switch (rdata_atom_data(temp_rdatas[1])[0]) {
 			/* gateway type */
 			default:
 			case IPSECKEY_NOGATEWAY:
@@ -211,7 +213,7 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint8_t *wireformat,
 				break;
 			}
 
-			char *tmp_dname_str = malloc(sizeof(char) * length); 
+			char *tmp_dname_str = malloc(sizeof(char) * length);
 			//XXX ???
 
 			memcpy(tmp_dname_str, wireformat, length);
@@ -240,7 +242,7 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint8_t *wireformat,
 			/*temp_rdatas[i].data = (uint16_t *) region_alloc(
 				region, sizeof(uint16_t) + length);
 				temp_rdatas[i].data[0] = length;
-				buffer_read(packet, 
+				buffer_read(packet,
 					    temp_rdatas[i].data + 1, length);*/
 		}
 	}
@@ -468,7 +470,7 @@ uint8_t * zparser_conv_services(const char *protostr,
 			char *end;
 			port = strtol(word, &end, 10);
 			if (*end != '\0') {
-				fprintf(stderr, 
+				fprintf(stderr,
 				        "unknown service '%s' for"
 					" protocol '%s'",
 				        word, protostr);
@@ -1005,7 +1007,9 @@ uint8_t * zparser_conv_loc(char *str)
 	}
 
 	/* Meters of altitude... */
-	(void) strtol(str, &str, 10);
+	int ret = strtol(str, &str, 10);
+	UNUSED(ret); // Result checked in following switch
+
 	switch (*str) {
 	case ' ':
 	case '\0':
@@ -1332,7 +1336,7 @@ int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone, dnslib_rrsig_set_t *rrsig)
 	} else {
 		tmp_rrset->rrsigs = rrsig;
 	}
-	
+
 	return 0;
 }
 
@@ -1356,7 +1360,7 @@ int find_rrset_for_rrsig_in_node(dnslib_node_t *node, dnslib_rrsig_set_t *rrsig)
 	} else {
 		tmp_rrset->rrsigs = rrsig;
 	}
-	
+
 	debug_zp("setting rrsigs for rrset %s\n",
 	         dnslib_dname_to_str(rrsig->owner));
 
@@ -1379,17 +1383,17 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 	dnslib_dname_t *chopped =
 		dnslib_dname_left_chop(current_rrset->owner);
 
-	/* the following is the most common case - no need to 
+	/* the following is the most common case - no need to
 	 * search the zone */
 	if (dnslib_dname_compare(parser->origin->owner,
 		                 chopped) == 0 ) {
 		node->parent = parser->origin;
-	} else {           
+	} else {
 		while ((tmp_node = node_get_func(zone,
 			            chopped)) == NULL) {
 			tmp_node = dnslib_node_new(chopped, NULL);
 			last_node->parent = tmp_node;
-			
+
 			assert(node_get_func(zone, chopped) == NULL);
 			if (node_add_func(zone, tmp_node) != 0) {
 				return NULL;
@@ -1403,9 +1407,9 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 
 		last_node->parent = tmp_node;
 			//parent is already in the zone
-	}		
+	}
 	dnslib_dname_free(&chopped);
-    
+
 	return node;
 }
 
@@ -1438,7 +1442,7 @@ int process_rr(void)
 		fprintf(stderr, "only class IN is supported");
 		return -3;
 	}
-	
+
 //TODO
 	/* Make sure the maximum RDLENGTH does not exceed 65535 bytes.	*/
 //	max_rdlength = rdata_maximum_wireformat_size(
@@ -1495,7 +1499,7 @@ int process_rr(void)
 
 	//get rid of the first statement
 
-	if (parser->last_node && current_rrset->type != DNSLIB_RRTYPE_SOA && 
+	if (parser->last_node && current_rrset->type != DNSLIB_RRTYPE_SOA &&
 	    dnslib_dname_compare(parser->last_node->owner,
 	                         current_rrset->owner) ==
 	    0) {
@@ -1511,7 +1515,7 @@ int process_rr(void)
 			rrsig_list_add(&parser->rrsig_orphans,
 			               parser->last_rrsig);
 		}
-		
+
 		parser->last_rrsig = NULL;
     		node = node_get_func(zone, current_rrset->owner);
 	}
@@ -1522,8 +1526,7 @@ int process_rr(void)
 					node_get_func)) == NULL) {
 			return -1;
 		}
-	} 
-	else {
+	} else {
 		if (current_rrset->owner != node->owner) {
 			if (parser->last_node &&
 			    parser->last_node->owner != current_rrset->owner) {
@@ -1594,7 +1597,7 @@ int process_rr(void)
 	if (vflag > 1 && totalrrs > 0 && (totalrrs % progress == 0)) {
 		fprintf(stdout, "%ld\n", totalrrs);
 	}
-  
+
 	parser->last_node = node;
 
 	++totalrrs;
@@ -1624,13 +1627,13 @@ static uint find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
  * Reads the specified zone into the memory
  *
  */
-void zone_read(char *name, const char *zonefile)
+void zone_read(const char *name, const char *zonefile)
 {
 	char dump_file_name[(strlen(zonefile) + strlen(".dump"))];
 
 	strcpy(dump_file_name, zonefile);
 	strcat(dump_file_name, ".dump");
-	
+
 	dnslib_dname_t *dname;
 
 	dname = dnslib_dname_new_from_str(name, strlen(name), NULL);
@@ -1645,8 +1648,7 @@ void zone_read(char *name, const char *zonefile)
 
 	/* Open the zone file */
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
-		fprintf(stderr, "cannot open '%s': %s", zonefile,
-		        strerror(errno));
+		log_error("cannot open '%s': %s", zonefile, strerror(errno));
 		return;
 	}
 
@@ -1670,7 +1672,7 @@ void zone_read(char *name, const char *zonefile)
 
 //	dnslib_zone_dump(parser->current_zone);
 
-	dnslib_zone_dump_binary(parser->current_zone, dump_file_name);
+	dnslib_zdump_binary(parser->current_zone, dump_file_name);
 
 //	dnslib_zone_t *new_zone = dnslib_zone_load(dump_file_name);
 

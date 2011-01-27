@@ -76,18 +76,6 @@ const dnslib_zone_t *dnslib_zonedb_find_zone_for_name(dnslib_zonedb_t *db,
                                                    const dnslib_dname_t *dname);
 
 /*!
- * \brief Finds the given name in the zone database and returns corresponding
- *        zone node.
- *
- * \param database Zone database to search in.
- * \param dname Domain name to find.
- *
- * \return Proper zone node for the given name or NULL if not found.
- */
-const dnslib_node_t *dnslib_zonedb_find_name_in_zone(const dnslib_zone_t *zone,
-                                                   const dnslib_dname_t *dname);
-
-/*!
  * \brief Destroys and deallocates the whole zone database.
  *
  * \param database Pointer to pointer to the zone database to be destroyed.
