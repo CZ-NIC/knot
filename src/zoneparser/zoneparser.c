@@ -1,11 +1,3 @@
-/*
- * zonec.c -- zone compiler.
- *
- * Copyright (c) 2001-2006, NLnet Labs. All rights reserved.
- *
- * See LICENSE for the license.
- *
- */
 
 #include <assert.h>
 #include <fcntl.h>
@@ -36,18 +28,11 @@
 #include "zone-dump.h"
 #include "zone-load.h"
 
-//#include "dnslib/debug.h"
-
 #define IP6ADDRLEN	(128/8)
 #define	NS_INT16SZ	2
 #define NS_INADDRSZ 4
 #define NS_IN6ADDRSZ 16
 #define APL_NEGATION_MASK      0x80U
-
-void rrsig_list_init(rrsig_list_t **head)
-{
-	*head = NULL;
-}
 
 static inline uint8_t * rdata_atom_data(dnslib_rdata_item_t item)
 {
@@ -58,8 +43,7 @@ uint16_t rrsig_type_covered(dnslib_rrset_t *rrset)
 {
 	assert(rrset->rdata->items[0].raw_data[0] == sizeof(uint16_t));
 
-	/* TODO should this not be items[0].raw_data ? */
-	return ntohs(* (uint16_t *) rdata_atom_data(rrset->rdata->items[0]));
+	return ntohs(*(uint16_t *) rdata_atom_data(rrset->rdata->items[0]));
 }
 
 static void rrsig_list_add(rrsig_list_t **head, dnslib_rrsig_set_t *rrsig)
@@ -102,17 +86,20 @@ static inline uint8_t rdata_atom_wireformat_type(uint16_t type, size_t index)
 	const dnslib_rrtype_descriptor_t *descriptor
 	= dnslib_rrtype_descriptor_by_type(type);
 	assert(index < descriptor->length);
-//	return (rdata_wireformat_type) descriptor->wireformat[index];
 	return descriptor->wireformat[index];
 }
 
+/* \note this is untested, called only by parse_unknown data, which is
+ * untested as well - probably will not be even needed, when zone is
+ * properly formed i.e. by some tool
+ */
 ssize_t rdata_wireformat_to_rdata_atoms(const uint8_t *wireformat,
 					uint16_t rrtype,
 					const uint16_t data_size,
 					dnslib_rdata_item_t *items)
 {
 //	size_t end = buffer_position(packet) + data_size;
-	uint8_t const *end = wireformat + data_size; //XXX + 1?
+	uint8_t const *end = wireformat + data_size;
 	size_t i;
 	dnslib_rdata_item_t temp_rdatas[MAXRDATALEN];
 	memset(temp_rdatas, 0, sizeof(temp_rdatas));
@@ -464,7 +451,6 @@ uint8_t * zparser_conv_services(const char *protostr,
 		service = getservbyname(word, proto->p_name);
 		if (service) {
 			/* Note: ntohs not ntohl!  Strange but true.  */
-			/* XXX uint8_t ??? */
 			port = ntohs((uint16_t) service->s_port);
 		} else {
 			char *end;
@@ -498,7 +484,6 @@ uint8_t * zparser_conv_services(const char *protostr,
 
 uint8_t * zparser_conv_serial(const char *serialstr)
 {
-	//printf("CONV SERIAL: %s\n", serialstr);
 	uint8_t *r = NULL;
 	uint32_t serial;
 	const char *t;
@@ -1219,7 +1204,7 @@ void zadd_rdata_txt_wireformat(uint8_t *data, int first)
 		fprintf(stderr, "too large rdata element");
 		return;
 	}
-	//XXX why + 2? maybe there are two lengths
+
 	memcpy((uint8_t *)rd->raw_data + 2 + rd->raw_data[0],
 	       data + 1, data[0]);
 	rd->raw_data[0] += data[0];
@@ -1305,8 +1290,6 @@ void set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
 
 int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone, dnslib_rrsig_set_t *rrsig)
 {
-//	printf("Finding RRSet for RRSIG: %s\n",
-//	       dnslib_dname_to_str(rrset->owner));
 	assert(rrsig != NULL);
 	assert(rrsig->rdata->items[0].raw_data);
 
@@ -1373,7 +1356,11 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 					const dnslib_dname_t *owner))
 {
 	dnslib_node_t *tmp_node = NULL;
-	/* TODO other variable name */
+	/* \note there are two last_node variables
+	 * one is parser->last node (so that we don't have to search for
+	 * node each time), while this variable is used in creating
+	 * chain of dnames
+	 */
 	dnslib_node_t *last_node = dnslib_node_new(current_rrset->owner,
 						   NULL);
 	dnslib_node_t *node = last_node;
@@ -1406,8 +1393,9 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 		}
 
 		last_node->parent = tmp_node;
-			//parent is already in the zone
+		/* parent is already in the zone */
 	}
+
 	dnslib_dname_free(&chopped);
 
 	return node;
@@ -1484,7 +1472,9 @@ int process_rr(void)
 		if (parser->last_node &&
 		    dnslib_dname_compare(parser->last_node->owner,
 		    current_rrset->owner) != 0) {
-			/* RRSIG is first in the node */
+			/* RRSIG is first in the node, so we have to create it
+			 * before we return 
+			 */
 			if ((parser->last_node = create_node(zone, current_rrset,
 						node_add_func,
 						node_get_func)) == NULL) {
@@ -1497,9 +1487,8 @@ int process_rr(void)
 
 	dnslib_node_t *node;
 
-	//get rid of the first statement
-
-	if (parser->last_node && current_rrset->type != DNSLIB_RRTYPE_SOA &&
+	/* \note this could probably be much simpler */
+	if (parser->last_node && current_rrset->type != DNSLIB_RRTYPE_SOA && 
 	    dnslib_dname_compare(parser->last_node->owner,
 				 current_rrset->owner) ==
 	    0) {
@@ -1530,7 +1519,8 @@ int process_rr(void)
 		if (current_rrset->owner != node->owner) {
 			if (parser->last_node &&
 			    parser->last_node->owner != current_rrset->owner) {
-			//	dnslib_dname_free(&(current_rrset->owner));
+				dnslib_dname_free(&(current_rrset->owner));
+				/* XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX */
 			}
 			current_rrset->owner = node->owner;
 		}
@@ -1554,7 +1544,6 @@ int process_rr(void)
 			return -2;
 		}
 
-		/* Add it */
 		if (dnslib_node_add_rrset(node, rrset) != 0) {
 			return -2;
 		}
@@ -1673,18 +1662,10 @@ void zone_read(const char *name, const char *zonefile, const char *outfile)
 
 	debug_zp("rdata adjusted\n");
 
-//	dnslib_zone_dump(parser->current_zone);
-
 	dnslib_zdump_binary(parser->current_zone, outfile);
-
-//	dnslib_zone_t *new_zone = dnslib_zone_load(outfile);
-
-//	dnslib_zone_dump(new_zone);
 
 	/* This is *almost* unnecessary */
 	dnslib_zone_deep_free(&(parser->current_zone));
-
-//	dnslib_zone_deep_free(&new_zone);
 
 	fclose(yyin);
 
