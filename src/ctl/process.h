@@ -24,6 +24,16 @@ enum {
 /* PID handling */
 
 /*!
+ * \brief Return a filename of the default compiled database file.
+ *
+ * \retval Filename of the database file.
+ * \retval NULL if not exists.
+ *
+ * \todo Implement properly using configuration file.
+ */
+char* pid_filename();
+
+/*!
  * \brief Read PID from given file.
  *
  * \param fn Filename containing PID.
