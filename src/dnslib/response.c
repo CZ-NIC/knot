@@ -675,6 +675,32 @@ DEBUG_DNSLIB_RESPONSE(
 }
 
 /*----------------------------------------------------------------------------*/
+
+int dnslib_response_contains(const dnslib_response_t *resp,
+                             const dnslib_rrset_t *rrset)
+{
+	for (int i = 0; i < resp->header.ancount; ++i) {
+		if (resp->answer[i] == rrset) {
+			return 1;
+		}
+	}
+
+	for (int i = 0; i < resp->header.nscount; ++i) {
+		if (resp->authority[i] == rrset) {
+			return 1;
+		}
+	}
+
+	for (int i = 0; i < resp->header.arcount; ++i) {
+		if (resp->additional[i] == rrset) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -735,7 +761,8 @@ int dnslib_response_parse_query(dnslib_response_t *resp,
 
 	if (remaining > 0) {
 		// some trailing garbage; ignore, but log
-		log_info("%d bytes of trailing garbage in query.\n", remaining);
+		log_info("%zu bytes of trailing garbage in query.\n",
+		         remaining);
 	}
 #ifdef DNSLIB_RESPONSE_DEBUG
 	dnslib_response_dump(resp);
@@ -767,13 +794,18 @@ const uint16_t dnslib_response_qclass(const dnslib_response_t *response)
 /*----------------------------------------------------------------------------*/
 
 int dnslib_response_add_rrset_answer(dnslib_response_t *response,
-                                     const dnslib_rrset_t *rrset, int tc)
+                                     const dnslib_rrset_t *rrset, int tc,
+                                     int check_duplicates)
 {
 	if (response->header.ancount == response->max_ancount
 	    && dnslib_response_realloc_rrsets(&response->answer,
 			&response->max_ancount, DEFAULT_ANCOUNT, STEP_ANCOUNT)
 		!= 0) {
 		return -1;
+	}
+
+	if (check_duplicates && dnslib_response_contains(response, rrset)) {
+		return 1;
 	}
 
 	dnslib_response_try_add_rrset(response->answer,
@@ -786,7 +818,8 @@ int dnslib_response_add_rrset_answer(dnslib_response_t *response,
 /*----------------------------------------------------------------------------*/
 
 int dnslib_response_add_rrset_authority(dnslib_response_t *response,
-                                        const dnslib_rrset_t *rrset, int tc)
+                                        const dnslib_rrset_t *rrset, int tc,
+                                        int check_duplicates)
 {
 	if (response->header.nscount == response->max_nscount
 	    && dnslib_response_realloc_rrsets(&response->authority,
@@ -795,6 +828,9 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
 		return -1;
 	}
 
+	if (check_duplicates && dnslib_response_contains(response, rrset)) {
+		return 1;
+	}
 
 	dnslib_response_try_add_rrset(response->authority,
 	                              &response->header.nscount, response,
@@ -806,13 +842,18 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
 /*----------------------------------------------------------------------------*/
 
 int dnslib_response_add_rrset_additional(dnslib_response_t *response,
-                                         const dnslib_rrset_t *rrset, int tc)
+                                         const dnslib_rrset_t *rrset, int tc,
+                                         int check_duplicates)
 {
 	if (response->header.arcount == response->max_arcount
 	    && dnslib_response_realloc_rrsets(&response->additional,
 			&response->max_arcount, DEFAULT_ARCOUNT, STEP_ARCOUNT)
 		!= 0) {
 		return -1;
+	}
+
+	if (check_duplicates && dnslib_response_contains(response, rrset)) {
+		return 1;
 	}
 
 	dnslib_response_try_add_rrset(response->additional,

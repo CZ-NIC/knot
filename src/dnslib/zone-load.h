@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_ZONELOAD_H_
-#define _CUTEDNS_ZONELOAD_H_
+#ifndef _CUTEDNS_DNSLIB_ZONELOAD_H_
+#define _CUTEDNS_DNSLIB_ZONELOAD_H_
 
 #include "dnslib/zone.h"
 
@@ -21,7 +21,7 @@
  *
  * \return Loaded zone on success, NULL otherwise.
  */
-dnslib_zone_t *dnslib_zone_load(const char *filename);
+dnslib_zone_t *dnslib_zload_load(const char *filename);
 
 #endif /* _CUTEDNS_ZONELOAD_H_ */
 

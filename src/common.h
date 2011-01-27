@@ -24,6 +24,7 @@ typedef unsigned int uint;
 #define PROJECT_VER  0x000001  // 0xMMIIRR (MAJOR,MINOR,REVISION)
 
 /* Server. */
+#define CPU_ESTIMATE_MAGIC 2   // Extra threads above the number of processors
 #define DEFAULT_THR_COUNT 2    // Default thread count for socket manager
 #define DEFAULT_PORT 53531     // Default port
 
@@ -31,8 +32,10 @@ typedef unsigned int uint;
 #define TCP_BACKLOG_SIZE 5     // TCP listen backlog size
 
 /* Memory allocator. */
-//#define MEM_SLAB_CAP 3         // Cap slab_cache empty slab count (undefined = inf)
-#define MEM_COLORING           // Slab cache coloring
+//#define MEM_SLAB_CAP 3   // Cap slab_cache empty slab count (undefined = inf)
+#define MEM_COLORING       // Slab cache coloring
+
+//#define USE_HASH_TABLE
 
 /* Common includes.
  */
@@ -40,6 +43,21 @@ typedef unsigned int uint;
 #include "print.h"
 #include "log.h"
 #include "debug.h"
+
+/* Common inlines.
+ */
+#include <stdio.h>
+static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
+{
+	int rc = fread(dst, size, n, fp);
+	if (rc != n) {
+		log_warning("fread: invalid read %d (expected %zu)\n",
+		            rc, n);
+	}
+
+	return rc == n;
+}
+
 
 /* Common macros.
  */

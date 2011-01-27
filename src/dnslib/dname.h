@@ -65,7 +65,7 @@ dnslib_dname_t *dnslib_dname_new();
  * \return Newly allocated and initialized dname structure representing the
  *         given domain name.
  */
-dnslib_dname_t *dnslib_dname_new_from_str(char *name, uint size,
+dnslib_dname_t *dnslib_dname_new_from_str(const char *name, uint size,
                                           struct dnslib_node *node);
 
 /*!
@@ -161,6 +161,8 @@ int dnslib_dname_is_fqdn(const dnslib_dname_t *dname);
  *         leftmost label, which is removed.
  */
 dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname);
+
+void dnslib_dname_left_chop_no_copy(dnslib_dname_t *dname);
 
 /*!
  * \brief Checks if one domain name is a subdomain of other.

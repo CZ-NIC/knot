@@ -22,6 +22,14 @@
 typedef TREE_HEAD(avl_tree, dnslib_node) avl_tree_t;
 
 /*----------------------------------------------------------------------------*/
+
+enum dnslib_zone_errors {
+	DNSLIB_ZONE_NAME_NOT_IN_ZONE = -2,
+	DNSLIB_ZONE_NAME_FOUND = 1,
+	DNSLIB_ZONE_NAME_NOT_FOUND = 0
+};
+
+/*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure for holding DNS zone.
  *
@@ -33,7 +41,9 @@ struct dnslib_zone {
 	dnslib_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
 	avl_tree_t *tree;          /*!< AVL tree for holding zone nodes. */
 	avl_tree_t *nsec3_nodes;   /*!< AVL tree for holding NSEC3 nodes. */
+#ifdef USE_HASH_TABLE
 	ck_hash_table_t *table;     /*!< Hash table for holding zone nodes. */
+#endif
 	uint node_count;
 };
 
@@ -83,8 +93,6 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node);
  */
 int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node);
 
-int dnslib_zone_hash(dnslib_zone_t *zone);
-
 /*!
  * \brief Tries to find a node with the specified name in the zone.
  *
@@ -127,6 +135,12 @@ int dnslib_zone_find_dname(const dnslib_zone_t *zone,
                            const dnslib_node_t **node,
                            const dnslib_node_t **closest_encloser);
 
+#ifdef USE_HASH_TABLE
+int dnslib_zone_find_dname_hash(const dnslib_zone_t *zone,
+                                const dnslib_dname_t *name,
+                                const dnslib_node_t **node,
+                                const dnslib_node_t **closest_encloser);
+#endif
 /*!
  * \brief Tries to find a node with the specified name among the NSEC3 nodes
  *        of the zone.

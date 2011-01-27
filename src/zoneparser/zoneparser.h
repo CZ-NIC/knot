@@ -77,7 +77,7 @@ struct zparser {
 	unsigned int errors;
 	unsigned int line;
 
-	unsigned int id;
+	size_t id;
 
 	dnslib_rrset_t current_rrset;
 	dnslib_rdata_item_t *temporary_items;
@@ -140,7 +140,7 @@ void set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
 
 uint8_t *alloc_rdata_init(const void *data, size_t size);
 
-void zone_read(char *name, const char *zonefile);
+void zone_read(const char *name, const char *zonefile);
 
 /* zparser.y */
 zparser_type *zparser_create();

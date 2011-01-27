@@ -120,7 +120,7 @@ static void ns_follow_cname(const dnslib_node_t **node,
                             dnslib_response_t *resp,
                             int (*add_rrset_to_resp)(dnslib_response_t *,
                                                      const dnslib_rrset_t *,
-                                                     int))
+                                                     int, int))
 {
 	// TODO: test!!
 
@@ -146,7 +146,7 @@ static void ns_follow_cname(const dnslib_node_t **node,
 			                              (dnslib_rrset_t *)rrset);
 		}
 
-		add_rrset_to_resp(resp, rrset, 1);
+		add_rrset_to_resp(resp, rrset, 1, 0);
 DEBUG_NS(
 		char *name = dnslib_dname_to_str(dnslib_rrset_owner(rrset));
 		debug_ns("CNAME record for owner %s put to response.\n",
@@ -200,7 +200,7 @@ DEBUG_NS(
 			debug_ns("Found RRSet of type %s\n",
 				 dnslib_rrtype_to_string(type));
 			ns_check_wildcard(name, resp, &rrset);
-			dnslib_response_add_rrset_answer(resp, rrset, 1);
+			dnslib_response_add_rrset_answer(resp, rrset, 1, 0);
 			added = 1;
 		}
 	}
@@ -252,7 +252,7 @@ DEBUG_NS(
 				debug_ns("Found A RRsets.\n");
 				ns_check_wildcard(dname, resp, &rrset_add);
 				dnslib_response_add_rrset_additional(
-					resp, rrset_add, 0);
+					resp, rrset_add, 0, 1);
 			}
 
 			// AAAA RRSet
@@ -262,7 +262,7 @@ DEBUG_NS(
 				debug_ns("Found AAAA RRsets.\n");
 				ns_check_wildcard(dname, resp, &rrset_add);
 				dnslib_response_add_rrset_additional(
-					resp, rrset_add, 0);
+					resp, rrset_add, 0, 1);
 			}
 		}
 
@@ -314,7 +314,7 @@ static void ns_put_authority_ns(const dnslib_zone_t *zone,
 		dnslib_node_rrset(zone->apex, DNSLIB_RRTYPE_NS);
 	assert(ns_rrset != NULL);
 
-	dnslib_response_add_rrset_authority(resp, ns_rrset, 0);
+	dnslib_response_add_rrset_authority(resp, ns_rrset, 0, 1);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -326,7 +326,7 @@ static void ns_put_authority_soa(const dnslib_zone_t *zone,
 		dnslib_node_rrset(zone->apex, DNSLIB_RRTYPE_SOA);
 	assert(soa_rrset != NULL);
 
-	dnslib_response_add_rrset_authority(resp, soa_rrset, 0);
+	dnslib_response_add_rrset_authority(resp, soa_rrset, 0, 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -340,7 +340,7 @@ static inline void ns_referral(const dnslib_node_t *node,
 		dnslib_node_rrset(node, DNSLIB_RRTYPE_NS);
 	assert(ns_rrset != NULL);
 
-	dnslib_response_add_rrset_authority(resp, ns_rrset, 1);
+	dnslib_response_add_rrset_authority(resp, ns_rrset, 1, 0);
 	//ns_put_glues(node, resp);
 	ns_put_additional(resp);
 }
@@ -437,7 +437,7 @@ DEBUG_NS(
 	// TODO: check the number of RRs in the RRSet??
 
 	// put the DNAME RRSet into the answer
-	dnslib_response_add_rrset_answer(resp, dname_rrset, 1);
+	dnslib_response_add_rrset_answer(resp, dname_rrset, 1, 0);
 
 	if (ns_dname_is_too_long(dname_rrset, qname)) {
 		dnslib_response_set_rcode(resp, DNSLIB_RCODE_YXDOMAIN);
@@ -447,7 +447,7 @@ DEBUG_NS(
 	// synthetize CNAME (no way to tell that client supports DNAME)
 	dnslib_rrset_t *synth_cname = ns_cname_from_dname(dname_rrset, qname);
 	// add the synthetized RRSet to the Answer
-	dnslib_response_add_rrset_answer(resp, synth_cname, 1);
+	dnslib_response_add_rrset_answer(resp, synth_cname, 1, 0);
 	// add the synthetized RRSet into list of temporary RRSets of response
 	dnslib_response_add_tmp_rrset(resp, synth_cname);
 
@@ -469,8 +469,13 @@ static void ns_answer_from_zone(const dnslib_zone_t *zone,
 	while (1) {
 		//qname_old = dnslib_dname_copy(qname);
 
-		int exact_match = dnslib_zone_find_dname(zone, qname, &node,
+#ifdef USE_HASH_TABLE
+		int find_ret = dnslib_zone_find_dname_hash(zone, qname,
+		                                      &node, &closest_encloser);
+#else
+		int find_ret = dnslib_zone_find_dname(zone, qname, &node,
 		                                         &closest_encloser);
+#endif
 DEBUG_NS(
 		if (node) {
 			char *name = dnslib_dname_to_str(node->owner);
@@ -483,7 +488,7 @@ DEBUG_NS(
 			debug_ns("zone_find_dname() returned no node.\n");
 		}
 );
-		if (exact_match == -2) {  // name not in the zone
+		if (find_ret == DNSLIB_ZONE_NAME_NOT_IN_ZONE) {
 			// possible only if we followed cname
 			assert(cname != 0);
 			dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
@@ -499,7 +504,7 @@ DEBUG_NS(
 			break;
 		}
 
-		if (!exact_match) {
+		if (find_ret == DNSLIB_ZONE_NAME_NOT_FOUND) {
 			// DNAME?
 			const dnslib_rrset_t *dname_rrset =
 				dnslib_node_rrset(closest_encloser,
@@ -685,7 +690,7 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database)
 int ns_answer_request(ns_nameserver *nameserver, const uint8_t *query_wire,
                       size_t qsize, uint8_t *response_wire, size_t *rsize)
 {
-	debug_ns("ns_answer_request() called with query size %d.\n", qsize);
+	debug_ns("ns_answer_request() called with query size %zu.\n", qsize);
 	debug_ns_hex((char *)query_wire, qsize);
 
 	if (qsize < 2) {
@@ -741,7 +746,7 @@ int ns_answer_request(ns_nameserver *nameserver, const uint8_t *query_wire,
 	dnslib_response_free(&resp);
 	rcu_read_unlock();
 
-	debug_ns("Returning response with wire size %d\n", *rsize);
+	debug_ns("Returning response with wire size %zu\n", *rsize);
 	debug_ns_hex((char *)response_wire, *rsize);
 
 	return 0;
