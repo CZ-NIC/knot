@@ -40,7 +40,7 @@ void interrupt_handle(int s)
 
 void help(int argc, char **argv)
 {
-	printf("Usage: %s [parameters] <filename1> [<filename2> ...]\n",
+	printf("Usage: %s [parameters] [<filename1> <filename2> ...]\n",
 	       argv[0]);
 	printf("Parameters:\n"
 	       " -d\tRun server as a daemon.\n"
@@ -78,12 +78,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-	// Check if there's at least one remaining non-option
-	if (argc - optind < 1) {
-		help(argc, argv);
-		return 1;
-	}
-
 	// Now check if we want to daemonize
 	if (daemonize) {
 		if (daemon(1, 0) != 0) {
@@ -106,14 +100,39 @@ int main(int argc, char **argv)
 	log_open(print_mask, log_mask);
 
 	// Save PID
+	char* pidfile = pid_filename();
 	if (daemonize) {
-		int rc = pid_write(PROJECT_PIDF);
+		int rc = pid_write(pidfile);
 		if (rc < 0) {
 			log_warning("Failed to create PID file '%s'.",
-			            PROJECT_PIDF);
+				    pidfile);
 		} else {
 			log_info("PID file '%s' created.",
-			         PROJECT_PIDF);
+				 pidfile);
+		}
+	}
+
+	// Check if there's at least one remaining non-option
+	int zfs_count = argc - optind;
+	char **zfs = argv + optind;
+	char *default_zf = 0;
+	if (argc - optind < 1) {
+		// Check file
+		default_zf = dnslib_zonedb_dbpath();
+		FILE* fp = fopen(default_zf, "r");
+		if (fp) {
+			log_info("Default zone database '%s'.\n",
+				 default_zf);
+			zfs_count = 1;
+			zfs = &default_zf;
+			fclose(fp);
+		} else {
+			log_error("No zonefile specified and "
+				  "the default database not exists.\n");
+			log_info("shutting down...\n");
+			pid_remove(pidfile);
+			log_close();
+			return 1;
 		}
 	}
 
@@ -122,7 +141,7 @@ int main(int argc, char **argv)
 
 	// Run server
 	int res = 0;
-	if ((res = cute_start(s_server, argv + optind, argc - optind)) == 0) {
+	if ((res = cute_start(s_server, zfs, zfs_count)) == 0) {
 
 		// Register service and signal handler
 		struct sigaction sa;
@@ -143,11 +162,16 @@ int main(int argc, char **argv)
 
 		if ((res = cute_wait(s_server)) != 0) {
 			log_error("There was an error while waiting for server"
-			          " to finish.\n");
+				  " to finish.\n");
 		}
 	} else {
 		log_error("There was an error while starting the server, "
-		          "exiting...\n");
+			  "exiting...\n");
+	}
+
+	// Free default zone database
+	if (default_zf) {
+		free(default_zf);
 	}
 
 	// Stop server and close log
@@ -155,12 +179,13 @@ int main(int argc, char **argv)
 
 	// Remove PID file if daemonized
 	if (daemonize) {
-		if (pid_remove(PROJECT_PIDF) < 0) {
+		if (pid_remove(pidfile) < 0) {
 			log_warning("Failed to remove PID file.\n");
 		} else {
 			log_info("PID file safely removed.\n");
 		}
 	}
+	free(pidfile);
 
 	log_info("Shutting down...\n");
 	log_close();

@@ -7,11 +7,10 @@
 #include "process.h"
 #include "log.h"
 
-/*! \todo REMOVE this when configuration allows
- *        specification of an explicit PID file path.
- */
-static char *get_temporary_fn(const char* fn)
+char* pid_filename()
 {
+	// Construct filename
+	const char* fn = "/cutedns.pid";
 	char* home = getenv("HOME");
 	int len = strlen(home) + strlen(fn) + 1;
 	char* ret = malloc(len);
@@ -26,14 +25,10 @@ pid_t pid_read(const char* fn)
 	char buf[64];
 
 	if (fn) {
-		char* tmp = get_temporary_fn(fn);
-		FILE *fp = fopen(tmp, "r");
-		free(tmp);
-
+		FILE *fp = fopen(fn, "r");
 		if (!fp) {
 			return PID_NOFILE;
 		}
-
 
 		int readb = 0;
 		int rc = fread(buf, 1, 1, fp);
@@ -79,9 +74,7 @@ int pid_write(const char* fn)
 	}
 
 	// Write
-	char* tmp = get_temporary_fn(fn);
-	FILE *fp = fopen(tmp, "w");
-	free(tmp);
+	FILE *fp = fopen(fn, "w");
 
 	if (fp) {
 		int rc = fwrite(buf, wbytes, 1, fp);
@@ -98,9 +91,6 @@ int pid_write(const char* fn)
 
 int pid_remove(const char* fn)
 {
-	char* tmp = get_temporary_fn(fn);
-	int rc = unlink(tmp);
-	free(tmp);
-	return rc;
+	return unlink(fn);
 }
 
