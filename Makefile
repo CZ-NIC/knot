@@ -35,7 +35,7 @@ CC = gcc
 CFLAGS_DEBUG = -g -O0
 CFLAGS_OPTIMAL = -O2 -funroll-loops -fomit-frame-pointer
 CFLAGS += -Wall -std=gnu99 -D _XOPEN_SOURCE=600 -D_GNU_SOURCE
-LDFLAGS += -lpthread -lurcu -lldns -lrt -lm
+LDFLAGS += -lpthread -lurcu -lrt -lm
 
 all: cutedns unittests zoneparser
 ifeq ($(DEBUG),1)
