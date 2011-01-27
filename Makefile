@@ -9,7 +9,7 @@ COL_CYAN = \033[01;36m
 COL_WHITE = \033[01;37m
 COL_END = \033[0m
 
-INC_DIRS = obj/ src/ src/hash/ src/dns/ src/other/ src/server/ src/zoneparser/ src/tests src/tests/libtap src/dnslib/ src/stat src/alloc/ src/ctl
+INC_DIRS = obj/ src/ src/hash/ src/dns/ src/other/ src/server/ src/zoneparser/ src/tests src/tests/libtap src/dnslib/ src/stat src/alloc/ src/ctl/ src/lib/
 SRC_DIRS = src/
 TESTS_DIR = src/tests/
 ZONEC_DIR = src/zoneparser/
