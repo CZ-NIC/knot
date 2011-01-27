@@ -171,6 +171,7 @@ typedef enum dnslib_rdatawireformat dnslib_rdata_wireformat_t;
 
 struct dnslib_rrtype_descriptor {
 	uint16_t type;	/*!< RR type */
+	int token; /*< Token used in zoneparser */
 	const char *name;	/*!< Textual name.  */
 	uint8_t length;	/*!< Maximum number of RDATA items.  */
 	/*!
