@@ -128,8 +128,8 @@ int main(int argc, char **argv)
 			fclose(fp);
 		} else {
 			log_error("No zonefile specified and "
-				  "the default database not exists.\n");
-			log_info("shutting down...\n");
+				  "the default database does not exist.\n");
+			log_info("Shutting down...\n");
 			pid_remove(pidfile);
 			log_close();
 			return 1;

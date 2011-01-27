@@ -21,7 +21,7 @@
 typedef unsigned int uint;
 
 #define PROJECT_NAME "CuteDNS" // Project name
-#define PROJECT_VER  0x000001  // 0xMMIIRR (MAJOR,MINOR,REVISION)
+#define PROJECT_VER  0x000009  // 0xMMIIRR (MAJOR,MINOR,REVISION)
 #define PROJECT_EXEC "cutedns" // Project executable
 #define ZONEPARSER_EXEC "zoneparser" // Zoneparser executable
 
