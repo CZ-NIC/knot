@@ -28,8 +28,8 @@ void help(int argc, char **argv)
 	       " running         Check if server is running.\n"
 	       "\n"
 	       " compile <zone_name> <zone> Compile zone file.\n"
-	       "                            (<zone_name> should be a fully-"
-	                                    "qualified domain name.)",
+	       "                            <zone_name> should be a fully-"
+	                                    "qualified domain name\n",
 	       PROJECT_NAME, PROJECT_NAME, PROJECT_NAME, PROJECT_NAME);
 }
 

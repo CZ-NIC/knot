@@ -1,4 +1,6 @@
 Makefile
+Doxy.page.h
+CodingStyle
 src/common.h
 src/main.c
 src/hash/cuckoo-hash-table.c
