@@ -717,7 +717,7 @@ static int test_response_parse_query(test_response_t **responses,
 	return (errors == 0);
 }
 
-static int compare_wires(uint8_t *wire1, uint8_t *wire2, uint size)
+/*static int compare_wires(uint8_t *wire1, uint8_t *wire2, uint size)
 {
 	for (int i = 0; i < size; i++) {
 		if (wire1[i] != wire2[i]) {
@@ -725,7 +725,7 @@ static int compare_wires(uint8_t *wire1, uint8_t *wire2, uint size)
 		}
 	}
 	return 0;
-}
+}*/
 
 static int test_response_to_wire()
 {
