@@ -172,15 +172,23 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, FILE *f)
 
 			/* TODO maybe this does not need to be stored this big */
 
+			/* TODO freeing upon failed fread*/
+
 			uint8_t dname_size;
 			uint8_t *dname_wire = NULL; //[DNAME_MAX_WIRE_LENGTH] = { 0 };
 
-			fread(&dname_size, sizeof(dname_size), 1, f);
+			if (!fread_safe(&dname_size, sizeof(dname_size), 1, f)) {
+				return NULL;
+			}
+
 			assert(dname_size < DNAME_MAX_WIRE_LENGTH);
 
 			dname_wire = malloc(sizeof(uint8_t) * dname_size);
-			fread(dname_wire, sizeof(uint8_t),
-			      dname_size, f);
+
+			if (!fread_safe(dname_wire, sizeof(uint8_t),
+			      dname_size, f)) {
+				return NULL;
+			}
 
 			items[i].dname =
 				dnslib_dname_new_from_wire(dname_wire,
@@ -189,13 +197,17 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, FILE *f)
 			assert(items[i].dname);
 
 		} else {
-			fread(&raw_data_length, sizeof(raw_data_length), 1, f);
+			if (!fread_safe(&raw_data_length, sizeof(raw_data_length), 1, f)) {
+				return NULL;
+			}
 			debug_zp("read len: %d\n", raw_data_length);
 			items[i].raw_data =
 				malloc(sizeof(uint8_t) * raw_data_length + 1);
 			*(items[i].raw_data) = raw_data_length;
-			fread(items[i].raw_data + 1, sizeof(uint8_t),
-			      raw_data_length, f);
+			if (!fread_safe(items[i].raw_data + 1, sizeof(uint8_t),
+			      raw_data_length, f)) {
+				return NULL;
+			}
 		}
 	}
 
@@ -218,14 +230,22 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, FILE *f)
 
 	uint8_t rdata_count;
 
-	fread(&rrset_type, sizeof(rrset_type), 1, f);
+	if (!fread_safe(&rrset_type, sizeof(rrset_type), 1, f)) {
+		return NULL;
+	}
 	debug_zp("rrset type: %d\n", rrset_type);
-	fread(&rrset_class, sizeof(rrset_class), 1, f);
+	if (!fread_safe(&rrset_class, sizeof(rrset_class), 1, f)) {
+		return NULL;
+	}
 	debug_zp("rrset class %d\n", rrset_class);
-	fread(&rrset_ttl, sizeof(rrset_ttl), 1, f);
+	if (!fread_safe(&rrset_ttl, sizeof(rrset_ttl), 1, f)) {
+		return NULL;
+	}
 	debug_zp("rrset ttl %d\n", rrset_ttl);
 
-	fread(&rdata_count, sizeof(rdata_count), 1, f);
+	if (!fread_safe(&rdata_count, sizeof(rdata_count), 1, f)) {
+		return NULL;
+	}
 
 	rrsig = dnslib_rrsig_set_new(NULL, rrset_type, rrset_class, rrset_ttl);
 
@@ -261,12 +281,16 @@ static dnslib_rrset_t *load_response_rrset(FILE *f, char is_question)
 	uint8_t dname_size;
 	uint8_t *dname_wire = NULL;
 
-	fread(&dname_size, sizeof(dname_size), 1, f);
+	if (!fread_safe(&dname_size, sizeof(dname_size), 1, f)) {
+		return NULL;
+	}
 	assert(dname_size < DNAME_MAX_WIRE_LENGTH);
 
 	dname_wire = malloc(sizeof(uint8_t) * dname_size);
-	fread(dname_wire, sizeof(uint8_t),
-	      dname_size, f);
+	if (!fread_safe(dname_wire, sizeof(uint8_t),
+	      dname_size, f)) {
+		return NULL;
+	}
 
 	
 
@@ -275,11 +299,17 @@ static dnslib_rrset_t *load_response_rrset(FILE *f, char is_question)
 	                                   dname_size,
 					   NULL);
 
-	fread(&rrset_type, sizeof(rrset_type), 1, f);
-	fread(&rrset_class, sizeof(rrset_class), 1, f);
+	if (!fread_safe(&rrset_type, sizeof(rrset_type), 1, f)) {
+		return NULL;
+	}
+	if (!fread_safe(&rrset_class, sizeof(rrset_class), 1, f)) {
+		return NULL;
+	}
 
 	if (!is_question) {
-		fread(&rrset_ttl, sizeof(rrset_ttl), 1, f);
+		if (!fread_safe(&rrset_ttl, sizeof(rrset_ttl), 1, f)) {
+			return NULL;
+		}
 	}
 
 	rrset = dnslib_rrset_new(owner, rrset_type, rrset_class, rrset_ttl);
@@ -725,19 +755,19 @@ static int test_response_to_wire()
 		for (int j = 0; j < RESPONSES[i].ancount; j++) {
 			if (&(RESPONSES[i].answer[j])) {
 				dnslib_response_add_rrset_answer(resp,
-					&(RESPONSES[i].answer[j]), 0, 0);
+					RESPONSES[i].answer[j], 0, 0);
 			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			if (&(RESPONSES[i].additional[j])) {
 				dnslib_response_add_rrset_additional(resp,
-					&(RESPONSES[i].additional[j]), 0, 0);
+					RESPONSES[i].additional[j], 0, 0);
 			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			if (&(RESPONSES[i].authority[j])) {
 				dnslib_response_add_rrset_authority(resp,
-					&(RESPONSES[i].authority[j]), 0, 0);
+					RESPONSES[i].authority[j], 0, 0);
 			}
 		}
 
@@ -869,19 +899,19 @@ static int test_response_getters(uint type)
 		for (int j = 0; j < RESPONSES[i].ancount; j++) {
 			if (&(RESPONSES[i].answer[j])) {
 				dnslib_response_add_rrset_answer(responses[i],
-					(RESPONSES[i].answer[j]), 0);
+					RESPONSES[i].answer[j], 0, 0);
 			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			if (&(RESPONSES[i].additional[j])) {
 				dnslib_response_add_rrset_additional(responses[i],
-					(RESPONSES[i].additional[j]), 0);
+					RESPONSES[i].additional[j], 0, 0);
 			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			if (&(RESPONSES[i].authority[j])) {
 				dnslib_response_add_rrset_authority(responses[i],
-					 (RESPONSES[i].authority[j]), 0);
+					 RESPONSES[i].authority[j], 0, 0);
 			}
 		}
 
@@ -964,19 +994,19 @@ static int test_response_setters(uint type)
 		for (int j = 0; j < RESPONSES[i].ancount; j++) {
 			if (&(RESPONSES[i].answer[j])) {
 				dnslib_response_add_rrset_answer(responses[i],
-					(RESPONSES[i].answer[j]), 0);
+					(RESPONSES[i].answer[j]), 0, 0);
 			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			if (&(RESPONSES[i].additional[j])) {
 				dnslib_response_add_rrset_additional(responses[i],
-					(RESPONSES[i].additional[j]), 0);
+					(RESPONSES[i].additional[j]), 0, 0);
 			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			if (&(RESPONSES[i].authority[j])) {
 				dnslib_response_add_rrset_authority(responses[i],
-					(RESPONSES[i].authority[j]), 0);
+					(RESPONSES[i].authority[j]), 0, 0);
 			}
 		}
 
