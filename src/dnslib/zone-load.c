@@ -64,13 +64,13 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
 
-			/* TODO maybe this does not need to be stored this big */
+			/* TODO maybe this does not need to be stored this big*/
 
 			void *tmp_id;
 			uint8_t dname_in_zone;
 
 			uint8_t dname_size;
-			uint8_t *dname_wire = NULL; //[DNAME_MAX_WIRE_LENGTH] = { 0 };
+			uint8_t *dname_wire = NULL;
 			short label_count;
 			uint8_t *labels;
 
@@ -94,7 +94,8 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 				}
 				assert(dname_size < DNAME_MAX_WIRE_LENGTH);
 
-				dname_wire = malloc(sizeof(uint8_t) * dname_size);
+				dname_wire =
+					malloc(sizeof(uint8_t) * dname_size);
 				if(!fread_safe(dname_wire, sizeof(uint8_t),
 				               dname_size, f)) {
 					load_rdata_purge(rdata, items, i, type);
