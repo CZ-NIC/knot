@@ -332,29 +332,25 @@ static test_response_t *load_parsed_response(FILE *f)
 {
 	test_response_t *resp = malloc(sizeof(test_response_t));
 
-	if (fread(&resp->id, sizeof(resp->id), 1, f) != sizeof(resp->id)) {
+	if (!fread_safe(&resp->id, sizeof(resp->id), 1, f)) {
 		return NULL;
 	}
 
-	if (fread(&resp->qdcount, sizeof(resp->qdcount), 1, f) !=
-	    sizeof(resp->qdcount)) {
+	if (!fread_safe(&resp->qdcount, sizeof(resp->qdcount), 1, f)) {
 		return NULL;
 	}
 
-	if (fread(&resp->qdcount, sizeof(resp->ancount), 1, f) !=
-	    sizeof(resp->qdcount)) {
-		return NULL;
-	}
-
-
-	if (fread(&resp->qdcount, sizeof(resp->nscount), 1, f) !=
-	    sizeof(resp->qdcount)) {
+	if (!fread_safe(&resp->qdcount, sizeof(resp->ancount), 1, f)) {
 		return NULL;
 	}
 
 
-	if (fread(&resp->qdcount, sizeof(resp->arcount), 1, f) !=
-	    sizeof(resp->qdcount)) {
+	if (!fread_safe(&resp->qdcount, sizeof(resp->nscount), 1, f)) {
+		return NULL;
+	}
+
+
+	if (!fread_safe(&resp->qdcount, sizeof(resp->arcount), 1, f)) {
 		return NULL;
 	}
 
@@ -413,7 +409,8 @@ static int load_parsed_responses(test_response_t ***responses, uint32_t *count,
 		return -1;
 	}
 
-	if (fread(count, sizeof(*count), 1, f) != sizeof(*count)) {
+	if (!fread_safe(count, sizeof(*count), 1, f)) {
+		diag("Wrong read");
 		return -1;
 	}
 
@@ -422,6 +419,7 @@ static int load_parsed_responses(test_response_t ***responses, uint32_t *count,
 	for (int i = 0; i < *count; i++) {
 		*responses[i] = load_parsed_response(f);
 		if (responses[i] == NULL) {
+			diag("Could not load response - returned NULL");
 			return -1;
 		}
 	}
@@ -1074,15 +1072,17 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	ok(test_response_setters(1), "response: set aa");
 
 	if (load_parsed_responses(&parsed_responses, &response_parsed_count,
-	                    "files/parsed_data") != 0) {
+	                    "src/tests/dnslib/files/parsed_data") != 0) {
 		diag("Could not load parsed responses, skipping");
 		return 0;
 	}
 
 	diag("read %d responses\n", response_parsed_count);
 
+	printf("%d\n", parsed_responses[0]->id);
+
 	if (load_raw_packets(&raw_queries, &response_raw_count,
-	                 "files/raw_data") != 0) {
+	                 "src/tests/dnslib/files/parsed_data") != 0) {
 		diag("Could not load raw responses, skipping");
 		return 0;
 	}
@@ -1091,14 +1091,14 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 
 	assert(response_raw_count == response_parsed_count);
 
-	ok(test_response_parse_query(parsed_responses,
+/*	ok(test_response_parse_query(parsed_responses,
 	                             raw_queries,
 	                             response_parsed_count),
-	   "response: parse query");
+	   "response: parse query"); */
 
-	ok(test_response_to_wire(), "response: to wire");
+//	ok(test_response_to_wire(), "response: to wire");
 
-	for (int i = 0; i < response_parsed_count; i++) {
+/*	for (int i = 0; i < response_parsed_count; i++) {
 		dnslib_dname_free(&(parsed_responses[i]->owner));
 		free(parsed_responses[i]);
 		free(raw_queries[i]->data);
@@ -1107,6 +1107,8 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 
 	free(parsed_responses);
 	free(raw_queries);
+
+*/
 
 	endskip;
 
