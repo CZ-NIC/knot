@@ -241,11 +241,11 @@ static dnslib_rrtype_descriptor_t
   	  { DNSLIB_RDATA_WF_SHORT, DNSLIB_RDATA_WF_BYTE,
 	    DNSLIB_RDATA_WF_BYTE, DNSLIB_RDATA_WF_LONG,
   	    DNSLIB_RDATA_WF_LONG, DNSLIB_RDATA_WF_LONG,
-/*XXX*/	    DNSLIB_RDATA_WF_SHORT, DNSLIB_RDATA_WF_BINARY, //literal dname used to be here
+	    DNSLIB_RDATA_WF_SHORT, DNSLIB_RDATA_WF_BINARY,
 	    DNSLIB_RDATA_WF_BINARY }, true },
   	/* 47 */
   	{ DNSLIB_RRTYPE_NSEC, T_NSEC, "NSEC", 2,
-/*XXX*/ 	  { DNSLIB_RDATA_WF_BINARY, DNSLIB_RDATA_WF_BINARY }, true }, //same as above
+	  { DNSLIB_RDATA_WF_BINARY, DNSLIB_RDATA_WF_BINARY }, true },
   	/* 48 */
   	{ DNSLIB_RRTYPE_DNSKEY, T_DNSKEY, "DNSKEY", 4,
   	  { DNSLIB_RDATA_WF_SHORT, DNSLIB_RDATA_WF_BYTE,
@@ -271,6 +271,7 @@ static dnslib_rrtype_descriptor_t
 
     /* In NSD they have indices between 52 and 99 filled with
      unknown types. TODO add here if it's really needed? */
+     /* it is indeed needed, in rrtype_from_string */
 
     /* There's a GNU extension that works like this: [first ... last] = value */
 
@@ -388,7 +389,8 @@ dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_type(uint16_t type)
 	return &dnslib_rrtype_descriptors[0];
 }
 
-//Will we ever need this? XXX
+/* I see a lot of potential here to speed up zone parsing - this is O(n) *
+ * could be better */
 dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_name(const char *name)
 {
 	int i;

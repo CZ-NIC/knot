@@ -1,3 +1,16 @@
+/*!
+ * \file parser-util.c
+ *
+ * \author NLnet Labs
+ *         Copyright (c) 2001-2006, NLnet Labs. All rights reserved.
+ *         See LICENSE for the license.
+ *
+ * \brief utility functions for zone parser.
+ *
+ * \addtogroup zoneparser
+ * @{
+ */
+
 #include <assert.h>
 #include <fcntl.h>
 #include <ctype.h>

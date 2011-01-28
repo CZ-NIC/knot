@@ -1,3 +1,16 @@
+/*!
+ * \file zoneparser.c
+ *
+ * \author Jan Kadlec <jan.kadlec@nic.cz> process_rr(), RRSIG handling and
+ *         minor modifications. most of the code by NLnet Labs
+ *         Copyright (c) 2001-2006, NLnet Labs. All rights reserved.
+ *         See LICENSE for the license.
+ *
+ * \brief Zone compiler.
+ *
+ * \addtogroup zoneparser
+ * @{
+ */
 
 #include <assert.h>
 #include <fcntl.h>
@@ -1432,6 +1445,8 @@ int process_rr(void)
 	}
 
 //TODO
+/* Code from NSD */
+
 	/* Make sure the maximum RDLENGTH does not exceed 65535 bytes.	*/
 //	max_rdlength = rdata_maximum_wireformat_size(
 //		descriptor, rr->rdata_count, rr->rdatas);
@@ -1520,7 +1535,6 @@ int process_rr(void)
 			if (parser->last_node &&
 			    parser->last_node->owner != current_rrset->owner) {
 				dnslib_dname_free(&(current_rrset->owner));
-				/* XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX */
 			}
 			current_rrset->owner = node->owner;
 		}
@@ -1563,6 +1577,7 @@ int process_rr(void)
 /* \note DNAME and CNAME checks disabled - would slow things down a little 
  * plus it cannot be done in the fashion below - we don't have information
  * about the length of rrset
+ * Code from NSD
  */
 
 //	if(current_rrset->type ==
