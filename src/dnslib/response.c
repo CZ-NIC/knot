@@ -371,12 +371,23 @@ static int dnslib_response_parse_client_edns(const uint8_t **pos,
 
 /*---------------------------------------------------------------------------*/
 
+static int dnslib_response_store_dname_pos(const dnslib_dname_t *dname,
+                                           short pos)
+{
+	return 0;
+}
+
+/*---------------------------------------------------------------------------*/
+
 static int dnslib_response_compress_dname(const dnslib_dname_t *dname,
-	const dnslib_compressed_dnames_t *compr, uint8_t *dname_wire, short max)
+	const dnslib_compressed_dnames_t *compr, uint8_t *dname_wire, short max,
+	short pos)
 {
 	int size = 0;
 	/*!
 	 * \todo Compress!!
+	 *
+	 * if pos < 0, do not store the position!
 	 */
 	// now just copy the dname without compressing
 	if (dname->size > max) {
@@ -395,7 +406,8 @@ static int dnslib_response_rr_to_wire(const uint8_t *owner_wire,
                                       const dnslib_rrset_t *rrset,
                                       const dnslib_rdata_t *rdata,
                                       dnslib_compressed_dnames_t *compr,
-                                      uint8_t **rrset_wire, short max_size)
+                                      uint8_t **rrset_wire, short max_size,
+                                      short *pos)
 {
 	int size = 0;
 
@@ -434,20 +446,19 @@ static int dnslib_response_rr_to_wire(const uint8_t *owner_wire,
 	*rrset_wire += 2;
 
 	size += 10;
+	*pos += size;
 
 	dnslib_rrtype_descriptor_t *desc =
 		dnslib_rrtype_descriptor_by_type(rrset->type);
 
 	uint16_t rdlength = 0;
 
-	int fits = 1;
-
-	for (int i = 0; fits && i < rdata->count; ++i) {
+	for (int i = 0; i < rdata->count; ++i) {
 		switch (desc->wireformat[i]) {
 		case DNSLIB_RDATA_WF_COMPRESSED_DNAME: {
 			int ret = dnslib_response_compress_dname(
 				dnslib_rdata_item(rdata, i)->dname,
-				compr, *rrset_wire, max_size - size);
+				compr, *rrset_wire, max_size - size, *pos);
 
 			if (ret == -1) {
 				return -1;
@@ -457,6 +468,7 @@ static int dnslib_response_rr_to_wire(const uint8_t *owner_wire,
 			                      size);
 			*rrset_wire += ret;
 			rdlength += ret;
+			*pos += ret;
 			// TODO: compress domain name
 			break;
 		}
@@ -474,6 +486,7 @@ static int dnslib_response_rr_to_wire(const uint8_t *owner_wire,
 			                      dname->size);
 			*rrset_wire += dname->size;
 			rdlength += dname->size;
+			*pos += dname->size;
 			break;
 		}
 		case DNSLIB_RDATA_WF_BINARYWITHLENGTH: {
@@ -490,6 +503,7 @@ static int dnslib_response_rr_to_wire(const uint8_t *owner_wire,
 			                      raw_data[0] + 1);
 			*rrset_wire += raw_data[0] + 1;
 			rdlength += raw_data[0] + 1;
+			*pos += raw_data[0] + 1;
 			break;
 		}
 		default: {
@@ -506,6 +520,7 @@ static int dnslib_response_rr_to_wire(const uint8_t *owner_wire,
 			                      raw_data[0]);
 			*rrset_wire += raw_data[0];
 			rdlength += raw_data[0];
+			*pos += raw_data[0];
 			break;
 		}
 		}
@@ -522,7 +537,7 @@ static int dnslib_response_rr_to_wire(const uint8_t *owner_wire,
 
 static int dnslib_response_rrset_to_wire(const dnslib_rrset_t *rrset,
                                          uint8_t **pos, short *size,
-                                         short max_size,
+                                         short max_size, short wire_pos,
                                          uint8_t *owner_tmp,
                                          dnslib_compressed_dnames_t *compr)
 {
@@ -548,7 +563,8 @@ DEBUG_DNSLIB_RESPONSE(
 
 	//uint8_t *owner_wire = (uint8_t *)malloc(rrset->owner->size);
 	short owner_size = dnslib_response_compress_dname(rrset->owner, compr,
-	                                                  owner_tmp, max_size);
+	                                                  owner_tmp, max_size,
+	                                                  -1);
 	debug_dnslib_response("    Owner size: %d\n", owner_size);
 	if (owner_size < 0) {
 		return -1;
@@ -561,7 +577,8 @@ DEBUG_DNSLIB_RESPONSE(
 	do {
 		int ret = dnslib_response_rr_to_wire(owner_tmp, owner_size,
 		                                     rrset, rdata, compr, pos,
-		                                     max_size - rrset_size);
+		                                     max_size - rrset_size,
+		                                     &wire_pos);
 		if (ret == -1) {
 			// some RR didn't fit in, so no RRs should be used
 			debug_dnslib_response("Some RR didn't fit in.\n");
@@ -735,7 +752,7 @@ DEBUG_DNSLIB_RESPONSE(
 	uint8_t *pos = resp->wireformat + resp->size;
 	short size = 0;
 	int rrs = dnslib_response_rrset_to_wire(rrset, &pos, &size, max_size,
-	                                        resp->owner_tmp,
+	                                        resp->size, resp->owner_tmp,
 	                                        &resp->compression);
 
 	if (rrs >= 0) {
