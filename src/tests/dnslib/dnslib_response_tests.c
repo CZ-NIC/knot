@@ -427,7 +427,6 @@ static test_response_t *load_parsed_response(FILE *f)
 	resp->rclass = question_rrsets[0]->rclass;
 
 	for (int i = 0; i < resp->qdcount; i++) {
-		printf("%d\n", i);
 		dnslib_rrset_free(&(question_rrsets[i]));
 	}
 
@@ -461,6 +460,11 @@ static test_response_t *load_parsed_response(FILE *f)
 			return NULL;
 		}
 	}
+
+	/* TODO */
+
+	resp->flags1 = 0;
+	resp->flags2 = 0;
 
 	return resp;
 }
@@ -1082,7 +1086,7 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	ret = test_response_new_empty();
 	ok(ret, "response: create empty");
 
-	skip(!ret, 5);
+	skip(!ret, 10);
 
 	ok(test_response_add_rrset_answer(), "response: add rrset answer");
 	ok(test_response_add_rrset_authority(),
@@ -1091,9 +1095,13 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	   "response: add rrset additional");
 
 	test_response_t **parsed_responses = NULL;
+	test_response_t **parsed_queries = NULL;
+	test_raw_packet_t **raw_responses = NULL;
 	test_raw_packet_t **raw_queries = NULL;
 	uint32_t response_parsed_count = 0;
+	uint32_t query_parsed_count = 0;
 	uint32_t response_raw_count = 0;
+	uint32_t query_raw_count = 0;
 
 	ok(test_response_getters(0), "response: get qname");
 
@@ -1111,24 +1119,43 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 		return 0;
 	}
 
-	diag("read %d responses\n", response_parsed_count);
+	diag("read %d parsed responses\n", response_parsed_count);
 
-	if (load_raw_packets(&raw_queries, &response_raw_count,
+	if (load_raw_packets(&raw_responses, &response_raw_count,
 	                 "src/tests/dnslib/files/raw_data") != 0) {
 		diag("Could not load raw responses, skipping");
 		return 0;
 	}
 
-	diag("read %d responses\n", response_raw_count);
+	diag("read %d raw responses\n", response_raw_count);
 
 	assert(response_raw_count == response_parsed_count);
 
-/*	ok(test_response_parse_query(parsed_responses,
-	                             raw_queries,
-	                             response_parsed_count),
-	   "response: parse query"); */
+	
+	if (load_parsed_responses(&parsed_queries, &query_parsed_count,
+	                    "src/tests/dnslib/files/parsed_data_queries") != 0) {
+		diag("Could not load parsed queries, skipping");
+		return 0;
+	}
 
-	ok(test_response_to_wire(parsed_responses, raw_queries,
+	diag("read %d parsed queries\n", query_parsed_count);
+
+	if (load_raw_packets(&raw_queries, &query_raw_count,
+	                 "src/tests/dnslib/files/raw_data_queries") != 0) {
+		diag("Could not load raw queries, skipping");
+		return 0;
+	}
+
+	diag("read %d parsed queries\n", query_raw_count);
+
+	assert(query_raw_count == query_parsed_count);	
+
+	ok(test_response_parse_query(parsed_queries,
+	                             raw_queries,
+	                             query_parsed_count),
+	   "response: parse query");
+
+	ok(test_response_to_wire(parsed_responses, raw_responses,
 	                         response_parsed_count), "response: to wire");
 
 	for (int i = 0; i < response_parsed_count; i++) {
@@ -1146,12 +1173,12 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 			                       authority[j]), 1, 1);
 		}
 		free(parsed_responses[i]);
-		free(raw_queries[i]->data);
-		free(raw_queries[i]);
+		free(raw_responses[i]->data);
+		free(raw_responses[i]);
 	}
 
 	free(parsed_responses);
-	free(raw_queries);
+	free(raw_responses);
 
 	endskip;
 
