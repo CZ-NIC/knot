@@ -27,76 +27,13 @@
 #include "parser-util.h"
 #include "zoneparser.h"
 #include "descriptor.h"
+#include "utils.h"
 
 #define IP6ADDRLEN	(128/8)
 #define	NS_INT16SZ	2
 #define NS_INADDRSZ 4
 #define NS_IN6ADDRSZ 16
 #define APL_NEGATION_MASK      0x80U
-
-dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,
-                const char *name)
-{
-	while (table->name != NULL) {
-		if (strcasecmp(name, table->name) == 0) {
-			return table;
-		}
-		table++;
-	}
-
-	return NULL;
-}
-
-dnslib_lookup_table_t *dnslib_lookup_by_id(dnslib_lookup_table_t *table,
-                int id)
-{
-	while (table->name != NULL) {
-		if (table->id == id) {
-			return table;
-		}
-		table++;
-	}
-
-	return NULL;
-}
-
-/*!
- * \brief Strlcpy - safe string copy function, based on FreeBSD implementation.
- *
- * http://www.openbsd.org/cgi-bin/cvsweb/src/lib/libc/string/
- *
- * \param dst Destination string.
- * \param src Source string.
- * \param siz How many characters to copy - 1.
- *
- * \return strlen(src), if retval >= siz, truncation occurred.
- */
-size_t strlcpy(char *dst, const char *src, size_t siz)
-{
-	char *d = dst;
-	const char *s = src;
-	size_t n = siz;
-
-	/* Copy as many bytes as will fit */
-	if (n != 0 && --n != 0) {
-		do {
-			if ((*d++ = *s++) == 0) {
-				break;
-			}
-		} while (--n != 0);
-	}
-
-	/* Not enough room in dst, add NUL and traverse rest of src */
-	if (n == 0) {
-		if (siz != 0) {
-			*d = '\0';        /* NUL-terminate dst */
-		}
-		while (*s++)
-			;
-	}
-
-	return(s - src - 1);        /* count does not include NUL */
-}
 
 /* int
  * inet_pton(af, src, dst)
@@ -351,19 +288,19 @@ int inet_pton6(const char *src, uint8_t *dst)
  * author:
  *	Paul Vixie, 1996.
  */
-const char *inet_ntop(int af, const void *src, char *dst, size_t size)
-{
-	switch (af) {
-	case AF_INET:
-		return (inet_ntop4(src, dst, size));
-	case AF_INET6:
-		return (inet_ntop6(src, dst, size));
-	default:
-		errno = EAFNOSUPPORT;
-		return (NULL);
-	}
-	/* NOTREACHED */
-}
+//const char *inet_ntop(int af, const void *src, char *dst, size_t size)
+//{
+//	switch (af) {
+//	case AF_INET:
+//		return (inet_ntop4(src, dst, size));
+//	case AF_INET6:
+//		return (inet_ntop6(src, dst, size));
+//	default:
+//		errno = EAFNOSUPPORT;
+//		return (NULL);
+//	}
+//	/* NOTREACHED */
+//}
 
 /* const char *
  * inet_ntop4(src, dst, size)
@@ -387,7 +324,7 @@ const char *inet_ntop4(const u_char *src, char *dst, size_t size)
 		errno = ENOSPC;
 		return (NULL);
 	}
-	strlcpy(dst, tmp, size);
+	dnslib_strlcpy(dst, tmp, size);
 	return (dst);
 }
 
@@ -512,7 +449,7 @@ const char *inet_ntop6(const u_char *src, char *dst, size_t size)
 		errno = ENOSPC;
 		return (NULL);
 	}
-	strlcpy(dst, tmp, size);
+	dnslib_strlcpy(dst, tmp, size);
 	return (dst);
 }
 
