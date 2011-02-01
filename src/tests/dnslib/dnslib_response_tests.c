@@ -325,6 +325,7 @@ static dnslib_rrset_t *load_response_rrset(FILE *f, char is_question)
 	assert(dname_size < DNAME_MAX_WIRE_LENGTH);
 
 	dname_wire = malloc(sizeof(uint8_t) * dname_size);
+
 	if (!fread_safe(dname_wire, sizeof(uint8_t),
 	      dname_size, f)) {
 		return NULL;
@@ -412,7 +413,12 @@ static test_response_t *load_parsed_response(FILE *f)
 
 	resp->owner = question_rrsets[0]->owner;
 	resp->type = question_rrsets[0]->type;
-	resp->rclass = question_rrsets[0]->rclass;	
+	resp->rclass = question_rrsets[0]->rclass;
+
+	for (int i = 0; i < resp->qdcount; i++) {
+		dnslib_rrset_deep_free(&question_rrsets[0], 1, 0);
+	}
+
 
 	resp->answer = malloc(sizeof(dnslib_rrset_t *) * resp->ancount);
 
@@ -434,7 +440,7 @@ static test_response_t *load_parsed_response(FILE *f)
 		}
 	}
 
-	resp->additional= malloc(sizeof(dnslib_rrset_t *) * resp->arcount);
+	resp->additional = malloc(sizeof(dnslib_rrset_t *) * resp->arcount);
 
 	for (int i = 0; i < resp->arcount; i++) {
 		resp->additional[i] = load_response_rrset(f, 0);
@@ -937,6 +943,10 @@ static int test_response_getters(uint type)
 		}
 	} /* switch */
 
+	for (int i = 0; (i < RESPONSE_COUNT); i++) {
+		dnslib_response_free(&responses[i]);
+	}
+
 	return (errors == 0);
 }
 
@@ -1028,6 +1038,10 @@ static int test_response_setters(uint type)
 		}
 	} /* switch */
 
+	for (int i = 0; (i < RESPONSE_COUNT); i++) {
+		dnslib_response_free(&responses[i]);
+	}
+
 	return (errors == 0);
 }
 
@@ -1099,8 +1113,17 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	ok(test_response_to_wire(parsed_responses, raw_queries,
 	                         response_parsed_count), "response: to wire");
 
-/*	for (int i = 0; i < response_parsed_count; i++) {
+	for (int i = 0; i < response_parsed_count; i++) {
 		dnslib_dname_free(&(parsed_responses[i]->owner));
+		for (int j = 0; j < parsed_responses[i]->arcount; j++) {
+			dnslib_rrset_deep_free(&(parsed_responses[i]->additional[j]), 1, 1);
+		}
+		for (int j = 0; j < parsed_responses[i]->ancount; j++) {
+			dnslib_rrset_deep_free(&(parsed_responses[i]->answer[j]), 1, 1);
+		}
+		for (int j = 0; j < parsed_responses[i]->nscount; j++) {
+			dnslib_rrset_deep_free(&(parsed_responses[i]->authority[j]), 1, 1);
+		}
 		free(parsed_responses[i]);
 		free(raw_queries[i]->data);
 		free(raw_queries[i]);
@@ -1108,8 +1131,6 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 
 	free(parsed_responses);
 	free(raw_queries);
-
-*/
 
 	endskip;
 
