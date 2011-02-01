@@ -28,16 +28,6 @@ enum mxrdtln {
 /* 64 is in NSD. Seems a little too much, but I'd say it's not a real issue. */
 
 /*!
- * \brief A general purpose lookup table.
- */
-struct dnslib_lookup_table {
-	int id;
-	const char *name;
-};
-
-typedef struct dnslib_lookup_table dnslib_lookup_table_t;
-
-/*!
  * \brief Enum containing RR class codes.
  */
 enum dnslib_rr_class {
@@ -171,6 +161,7 @@ typedef enum dnslib_rdatawireformat dnslib_rdata_wireformat_t;
 
 struct dnslib_rrtype_descriptor {
 	uint16_t type;	/*!< RR type */
+	int token; /*< Token used in zoneparser */
 	const char *name;	/*!< Textual name.  */
 	uint8_t length;	/*!< Maximum number of RDATA items.  */
 	/*!
