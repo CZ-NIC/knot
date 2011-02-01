@@ -4,10 +4,7 @@
 
 #include "dnslib/dnslib.h"
 
-/* Total errors counter */
-long int totalerrors = 0;
-
-void help(int argc, char **argv)
+static void help(int argc, char **argv)
 {
 	printf("Usage: %s [parameters] origin zonefile\n",
 	       argv[0]);
@@ -74,9 +71,10 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	zone_read(origin, zonefile);
+	int errors = zone_read(origin, zonefile);
 
 	log_info("parser finished\n");
 	log_close();
-	return totalerrors ? 1 : 0;
+
+	return errors ? 1 : 0;
 }

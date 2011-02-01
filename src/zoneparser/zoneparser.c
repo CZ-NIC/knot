@@ -1490,9 +1490,9 @@ int process_rr(void)
 			/* RRSIG is first in the node, so we have to create it
 			 * before we return 
 			 */
-			if ((parser->last_node = create_node(zone, current_rrset,
-				                node_add_func,
-						node_get_func)) == NULL) {
+			if ((parser->last_node = create_node(zone,
+			                           current_rrset, node_add_func,
+			                           node_get_func)) == NULL) {
 				return -1;
 			}
 		}
@@ -1640,7 +1640,7 @@ static uint find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
  * Reads the specified zone into the memory
  *
  */
-void zone_read(const char *name, const char *zonefile)
+int zone_read(const char *name, const char *zonefile)
 {
 	char dump_file_name[(strlen(zonefile) + strlen(".dump"))];
 
@@ -1662,7 +1662,7 @@ void zone_read(const char *name, const char *zonefile)
 	/* Open the zone file */
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
 		log_error("cannot open '%s': %s", zonefile, strerror(errno));
-		return;
+		return -1;
 	}
 
 	/* Parse and process all RRs.  */
@@ -1695,5 +1695,7 @@ void zone_read(const char *name, const char *zonefile)
 	totalerrors += parser->errors;
 
 	zparser_free();
+
+	return totalerrors;
 }
 

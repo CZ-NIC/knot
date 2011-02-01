@@ -13,6 +13,36 @@
 #define _CUTEDNS_DNSLIB_UTILS_H_
 
 #include <stdint.h>
+#include <string.h>
+
+/*!
+ * \brief A general purpose lookup table.
+ */
+struct dnslib_lookup_table {
+	int id;
+	const char *name;
+};
+
+typedef struct dnslib_lookup_table dnslib_lookup_table_t;
+
+dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,
+                                             const char *name);
+
+dnslib_lookup_table_t *dnslib_lookup_by_id(dnslib_lookup_table_t *table,
+                                           int id);
+
+/*!
+ * \brief Strlcpy - safe string copy function, based on FreeBSD implementation.
+ *
+ * http://www.openbsd.org/cgi-bin/cvsweb/src/lib/libc/string/
+ *
+ * \param dst Destination string.
+ * \param src Source string.
+ * \param siz How many characters to copy - 1.
+ *
+ * \return strlen(src), if retval >= siz, truncation occurred.
+ */
+size_t dnslib_strlcpy(char *dst, const char *src, size_t size);
 
 /*
  * Writing / reading arbitrary data to / from wireformat.
