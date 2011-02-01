@@ -18,6 +18,9 @@
 
 #include "lib/lists.h"
 
+/* Constants. */
+#define CONFIG_DEFAULT_PATH "/etc/cutedns/cutedns.conf" //!< Default config path
+
 /*!
  * \brief Configuration for the interface
  *
@@ -25,7 +28,7 @@
  * used in the configuration.  Same interface could be used for
  * listening and outgoing function.
  */
-struct conf_iface {
+typedef struct {
 	node n;                /*!< */
 
 	/*! \brief Internal name for the interface (not system names). */
@@ -33,7 +36,7 @@ struct conf_iface {
 	char *address;         /*!< IP (IPv4/v6) address for this interface */
 	int   port;            /*!< Port number for this interface */
 	struct sockaddr *sa;   /*!< */
-};
+} conf_iface_t;
 
 /*!
  * \brief List of TSIG algoritms.
@@ -54,7 +57,7 @@ typedef enum {
 /*!
  * \brief Configuration for the TSIG key.
  */
-struct conf_key {
+typedef struct {
 	node n;            /*!< */
 	char *name;        /*!< Name of the key. */
 
@@ -65,28 +68,28 @@ struct conf_key {
 	 */
 	tsig_alg_t algorithm;
 	char *secret;       /*!< Key data. */
-};
+} conf_key_t;
 
 /*!
  * \brief Remote server for XFR/NOTIFY.
  *
  * \todo Long description.
  */
-struct conf_server {
+typedef struct {
 	node n;
 	char *name;     /*!< Name of the server in the configuration. */
 	char *address;  /*!< Hostname or IP address of the server. */
 	int   port;     /*!< Remote port. */
 
 	/*! \brief TSIG key used to authenticate messages from/to server. */
-	struct conf_key *key;
+	conf_key_t *key;
 
 	/*!
 	 * \brief Interface to use to communicate with the server (including
 	 *        outgoing IP address).
 	 */
-	struct conf_iface *iface;
-};
+	conf_iface_t *iface;
+} conf_server_t;
 
 /*!
  * \todo Import from dns library.
@@ -107,10 +110,10 @@ typedef enum {
  *
  * \todo Missing XFR type (AXFR/IXFR/IXFR-ONLY) for each server.
  */
-struct conf_zone {
+typedef struct {
 	node n;             /*!< */
 	char *name;         /*!< Zone name. */
-	conf_class_t class; /*!< Zone class (IN or CH). */
+	conf_class_t cls;   /*!< Zone class (IN or CH). */
 
 	/*! \todo Generic storage, now just a filename on the disk. */
 	char *storage;
@@ -123,26 +126,27 @@ struct conf_zone {
 
 	/*! \brief List of DNS servers to be notified on zone change. */
 	list notify_out;
-};
+} conf_zone_t;
 
 /*!
  * \brief Maps internal category to the (sys)log facility.
  *
  * \todo ref #1
  */
-struct conf_log_map {
+typedef struct {
 	node n;
 	int facility; /*!< (Sys)log facility, see man 3 syslog. */
 	int category; /*!< Internal log category. */
-};
+} conf_log_map_t;
 
 /*!
  * \brief Types of log output.
  */
 typedef enum {
-	LOG_SYSLOG,  /*!< Logging to standard syslog(3). */
-	LOG_STDERR,  /*!< Print error messages on the stderr. */
-	LOG_FILE     /*!< Generic logging to (unbuffered) file on the disk. */
+//	LOG_SYSLOG,  /*!< Logging to standard syslog(3). */
+//	LOG_STDERR,  /*!< Print error messages on the stderr. */
+//	LOG_FILE     /*!< Generic logging to (unbuffered) file on the disk. */
+	ABCD
 } log_type_t;
 
 /*!
@@ -150,12 +154,12 @@ typedef enum {
  *
  * \todo Give it some more thought (ref #1).
  */
-struct conf_log {
+typedef struct {
 	node n;              /*!< */
 	log_type_t log_type; /*!< Type of the log (SYSLOG/STDERR/FILE). */
 	char *log_output;    /*!< Filename in case of LOG_FILE, else NULL. */
 	list log_map;        /*!< What type of messages to log. */
-};
+} conf_log_t;
 
 /*!
  * \brief Main config structure.
@@ -164,7 +168,7 @@ struct conf_log {
  *
  * \todo More documentation.
  */
-struct config {
+typedef struct {
 	char *filename; /*!< Name of the config file. */
 
 	char *identity; /*!< Identity to return on CH TXT id.server. */
@@ -179,15 +183,16 @@ struct config {
 	list keys; /*!< List of TSIG keys. */
 	list servers; /*!< List of remote servers. */
 	list zones; /*!< List of zones. */
-};
+} config_t;
 
-extern struct config *new_config;
+extern config_t *new_config;
 
 extern int (*cf_read_hook)(unsigned char *buf, unsigned int max);
 
-struct config *config_alloc();
-int config_parse(struct config *);
-void config_free(struct config *);
+/* Specific configuration API. */
+config_t *config_new(const char* path);
+int config_parse(config_t *conf);
+void config_free(config_t *conf);
 
 #endif /* _CUTEDNS_CONF_H_ */
 

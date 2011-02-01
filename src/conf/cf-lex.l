@@ -5,7 +5,7 @@
 #include <stdarg.h>
 
 #include "conf/conf.h"
-#include "conf/cf-parse.tab.h"
+#include "cf-parse.h"
 
 int (*cf_read_hook)(unsigned char *buf, unsigned int max);
 

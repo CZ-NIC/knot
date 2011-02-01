@@ -6,6 +6,7 @@
 #include "server.h"
 #include "zoneparser.h"
 #include "process.h"
+#include "conf/conf.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -43,10 +44,11 @@ void help(int argc, char **argv)
 	printf("Usage: %s [parameters] [<filename1> <filename2> ...]\n",
 	       argv[0]);
 	printf("Parameters:\n"
-	       " -d\tRun server as a daemon.\n"
-	       " -v\tVerbose mode - additional runtime information.\n"
-	       " -V\tPrint version of the server.\n"
-	       " -h\tPrint help and usage.\n");
+	       " -c [file] Select configuration file.\n"
+	       " -d        Run server as a daemon.\n"
+	       " -v        Verbose mode - additional runtime information.\n"
+	       " -V        Print version of the server.\n"
+	       " -h        Print help and usage.\n");
 }
 
 int main(int argc, char **argv)
@@ -55,9 +57,13 @@ int main(int argc, char **argv)
 	int c = 0;
 	int verbose = 0;
 	int daemonize = 0;
-	while ((c = getopt (argc, argv, "dvVh")) != -1) {
+	const char* config_fn = 0;
+	while ((c = getopt (argc, argv, "c:dvVh")) != -1) {
 		switch (c)
 		{
+		case 'c':
+			config_fn = optarg;
+			break;
 		case 'd':
 			daemonize = 1;
 			break;
@@ -86,6 +92,16 @@ int main(int argc, char **argv)
 			log_close();
 			return 1;
 		}
+	}
+
+	// Open configuration
+	config_t* conf = config_new(config_fn);
+	if (config_parse(conf) != 0) {
+		config_free(conf);
+		log_open(0, LOG_MASK(LOG_ERR));
+		log_error("Opening config file %s failed...\n", config_fn);
+		log_close();
+		return 1;
 	}
 
 	// Open log
