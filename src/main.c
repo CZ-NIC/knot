@@ -95,13 +95,10 @@ int main(int argc, char **argv)
 	}
 
 	// Open configuration
-	config_t* conf = config_new(config_fn);
-	if (config_parse(conf) != 0) {
-		config_free(conf);
+	if (config_open(config_fn) != 0) {
 		log_open(0, LOG_MASK(LOG_ERR));
 		log_error("Opening config file %s failed...\n", config_fn);
 		log_close();
-		return 1;
 	}
 
 	// Open log
@@ -148,6 +145,7 @@ int main(int argc, char **argv)
 			log_info("Shutting down...\n");
 			pid_remove(pidfile);
 			log_close();
+			config_close();
 			return 1;
 		}
 	}
@@ -205,6 +203,7 @@ int main(int argc, char **argv)
 
 	log_info("Shutting down...\n");
 	log_close();
+	config_close();
 
 	return res;
 }
