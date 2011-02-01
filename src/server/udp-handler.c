@@ -4,6 +4,8 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <string.h>
+#include <assert.h>
 
 #include "udp-handler.h"
 #include "name-server.h"
@@ -60,7 +62,7 @@ int udp_master(dthread_t *thread)
 		stat_get_first(thread_stat, &faddr);
 
 		// Error and interrupt handling
-		if (n <= 0) {
+		if (unlikely(n <= 0)) {
 			if (errno != EINTR && errno != 0) {
 				log_error("udp: %s: failed: %d - %s\n",
 				          "socket_recvfrom()",

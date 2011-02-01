@@ -217,15 +217,18 @@ static void dt_delete_thread(dthread_t **thread)
 		return;
 	}
 
+	dthread_t* thr = *thread;
+	thr->unit = 0;
+	*thread = 0;
+
 	// Delete attribute
-	pthread_attr_destroy(&(*thread)->_attr);
+	pthread_attr_destroy(&(thr)->_attr);
 
 	// Delete mutex
-	pthread_mutex_destroy(&(*thread)->_mx);
+	pthread_mutex_destroy(&(thr)->_mx);
 
 	// Free memory
-	free(*thread);
-	*thread = 0;
+	free(thr);
 }
 
 dt_unit_t *dt_create(int count)
@@ -896,12 +899,17 @@ int dt_optimal_size()
 #ifdef _SC_NPROCESSORS_ONLN
 	int ret = (int) sysconf(_SC_NPROCESSORS_ONLN);
 	if (ret >= 1) {
-		return ret + 1;
+		return ret + CPU_ESTIMATE_MAGIC;
 	}
 #endif
 	log_info("server: failed to estimate the number of online CPUs");
 	return DEFAULT_THR_COUNT;
 }
+
+/*!
+ * \todo Use memory barriers or asynchronous read-only access, locking
+ *       poses a thread performance decrease by 1.31%.
+ */
 
 int dt_is_cancelled(dthread_t *thread)
 {

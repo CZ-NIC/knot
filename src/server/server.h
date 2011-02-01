@@ -19,11 +19,11 @@
 #ifndef _CUTEDNS_SERVER_H_
 #define _CUTEDNS_SERVER_H_
 
-#include "zone-database.h"
 #include "name-server.h"
 #include "common.h"
 #include "socket.h"
 #include "dthreads.h"
+#include "zonedb.h"
 
 /*! \brief I/O handler structure.
   */
@@ -67,7 +67,7 @@ typedef struct cute_server {
 	ns_nameserver *nameserver;
 
 	/*! \brief Reference to the zone database structure. */
-	zdb_database_t *zone_db;
+	dnslib_zonedb_t *zone_db;
 
 	/*! \brief I/O handlers list. */
 	struct iohandler_t *handlers;

@@ -27,6 +27,17 @@
 //#define SERVER_DEBUG
 //#define DT_DEBUG
 //#define NET_DEBUG
+//#define DNSLIB_DNAME_DEBUG
+
+//#define MEM_DEBUG
+//#define MEM_NOSLAB
+//#define MEM_POISON
+//#define DNSLIB_ZONE_DEBUG
+//#define DNSLIB_RESPONSE_DEBUG
+//#define DNSLIB_ZONEDB_DEBUG
+//#define DNSLIB_DNAME_DEBUG
+//#define DNSLIB_ZONE_DEBUG
+//#define DNSLIB_RESPONSE_DEBUG
 
 #ifdef SERVER_DEBUG
 #define debug_server(msg...) log_msg(LOG_DEBUG, msg)
@@ -42,6 +53,42 @@
 #else
 #define debug_dnss(msg...)
 #define debug_dnss_hex(data, len)
+#endif
+
+#ifdef DNSLIB_DNAME_DEBUG
+#define debug_dnslib_dname(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_dnslib_dname_hex(data, len) hex_print((data), (len))
+#define DEBUG_DNSLIB_DNAME(cmds) do { cmds } while (0)
+#else
+#define debug_dnslib_dname(msg...)
+#define debug_dnslib_dname_hex(data, len)
+#define DEBUG_DNSLIB_DNAME(cmds)
+#endif
+
+#ifdef DNSLIB_ZONE_DEBUG
+#define debug_dnslib_zone(msg...) log_msg(LOG_DEBUG, msg)
+#define DEBUG_DNSLIB_ZONE(cmds) do { cmds } while (0)
+#else
+#define debug_dnslib_zone(msg...)
+#define DEBUG_DNSLIB_ZONE(cmds)
+#endif
+
+#ifdef DNSLIB_ZONEDB_DEBUG
+#define debug_dnslib_zonedb(msg...) log_msg(LOG_DEBUG, msg)
+#define DEBUG_DNSLIB_ZONEDB(cmds) do { cmds } while (0)
+#else
+#define debug_dnslib_zonedb(msg...)
+#define DEBUG_DNSLIB_ZONEDB(cmds)
+#endif
+
+#ifdef DNSLIB_RESPONSE_DEBUG
+#define debug_dnslib_response(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_dnslib_response_hex(data, len) hex_print((data), (len))
+#define DEBUG_DNSLIB_RESPONSE(cmds) do { cmds } while (0)
+#else
+#define debug_dnslib_response(msg...)
+#define debug_dnslib_response_hex(data, len)
+#define DEBUG_DNSLIB_RESPONSE(cmds)
 #endif
 
 #ifdef CUCKOO_DEBUG
@@ -87,9 +134,11 @@
 #ifdef NS_DEBUG
 #define debug_ns(msg...) log_msg(LOG_DEBUG, msg)
 #define debug_ns_hex(data, len) hex_print((data), (len))
+#define DEBUG_NS(cmds) do { cmds } while (0)
 #else
 #define debug_ns(msg...)
 #define debug_ns_hex(data, len)
+#define DEBUG_NS(cmds)
 #endif
 
 #ifdef ZDB_DEBUG
@@ -126,6 +175,12 @@
 #define debug_st(msg...) log_msg(LOG_DEBUG, msg)
 #else
 #define debug_st(msg...)
+#endif
+
+#ifdef MEM_DEBUG
+#define debug_mem(msg...) log_msg(LOG_DEBUG, msg)
+#else
+#define debug_mem(msg...)
 #endif
 
 #endif /* _CUTEDNS_DEBUG_H_ */
