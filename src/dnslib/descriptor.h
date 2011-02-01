@@ -247,6 +247,14 @@ const char *dnslib_rrclass_to_string(uint16_t rrclass);
  */
 uint16_t dnslib_rrclass_from_string(const char *name);
 
+/*!
+ * \brief Returns size of wireformat type in bytes.
+ *
+ * \param wire_type Wireformat type.
+ *
+ * \retval Size of given type on success.
+ * \retval 0 on unknown type or type that has no length.
+ */
 size_t dnslib_wireformat_size(uint wire_type);
 
 #endif /* _CUTEDNS_DNSLIB_DESCRIPTOR_H_ */
