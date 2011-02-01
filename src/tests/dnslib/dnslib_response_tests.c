@@ -36,9 +36,9 @@ unit_api dnslib_response_tests_api = {
  */
 
 struct test_response {
-	dnslib_dname_t *owner;
-	uint16_t rclass;
-	uint16_t type;
+	dnslib_dname_t *qname;
+	uint16_t qclass;
+	uint16_t qtype;
 	uint16_t id;
 	uint8_t flags1;
 	uint8_t flags2;
@@ -124,9 +124,6 @@ static int load_raw_packets(test_raw_packet_t ***raw_packets, uint32_t *count,
 		fclose(f);
 		return -1;
 	}
-
-
-	printf("loading %d responses\n", *count);
 
 	*raw_packets = malloc(sizeof(test_raw_packet_t *) * *count);
 
@@ -426,9 +423,9 @@ static test_response_t *load_parsed_response(FILE *f)
 
 	/* only one question in our case */
 
-	resp->owner = question_rrsets[0]->owner;
-	resp->type = question_rrsets[0]->type;
-	resp->rclass = question_rrsets[0]->rclass;
+	resp->qname = question_rrsets[0]->owner;
+	resp->qtype = question_rrsets[0]->type;
+	resp->qclass = question_rrsets[0]->rclass;
 
 	for (int i = 0; i < resp->qdcount; i++) {
 		dnslib_rrset_free(&(question_rrsets[i]));
@@ -481,7 +478,7 @@ static test_response_t *load_parsed_response(FILE *f)
 		}
 	}
 
-	/* TODO */
+	/* this will never be used */
 
 	resp->flags1 = 0;
 	resp->flags2 = 0;
@@ -508,7 +505,6 @@ static int load_parsed_responses(test_response_t ***responses, uint32_t *count,
 		return -1;
 	}
 
-
 	*responses = malloc(sizeof(test_response_t *) * *count);
 
 	for (int i = 0; i < *count; i++) {
@@ -518,6 +514,8 @@ static int load_parsed_responses(test_response_t ***responses, uint32_t *count,
 			return -1;
 		}
 	}
+
+	fclose(f);
 
 	return 0;
 }
@@ -617,9 +615,9 @@ static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
 	if (check_question) {
 		/* again, in case of dnames, pointer would probably suffice */
 		if (dnslib_dname_compare(resp->question.qname,
-		                             test_resp->owner) != 0) {
+		                             test_resp->qname) != 0) {
 			char *tmp_dname1, *tmp_dname2;
-			tmp_dname1 = dnslib_dname_to_str(test_resp->owner);
+			tmp_dname1 = dnslib_dname_to_str(test_resp->qname);
 			tmp_dname2 = dnslib_dname_to_str(resp->question.qname);
 			diag("Qname in response is wrong:\
 			      should be: %s is: %s\n",
@@ -629,20 +627,25 @@ static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
 			return 0;
 		}
 
-		if (resp->question.qtype != test_resp->type) {
+		if (resp->question.qtype != test_resp->qtype) {
 			diag("Qtype value is wrong: is %u should be %u\n",
-			     resp->question.qtype, test_resp->type);
+			     resp->question.qtype, test_resp->qtype);
 			return 0;
 		}
-		if (resp->question.qclass != test_resp->rclass) {
+		if (resp->question.qclass != test_resp->qclass) {
 			diag("Qclass value is wrong: is %u should be %u\n",
-			     resp->question.qtype, test_resp->type);
+			     resp->question.qclass, test_resp->qclass);
 			return 0;
 		}
 	}
 
 	if (check_header) {
-		/* Well, this should be different by design. Wat do? */
+		/* Well, this should be different by design.*/
+		/* Disabled, since these check make no sense
+		 * if we have parsed the query, flags are now set to
+		 * the ones response should have */
+
+		/*
 		if (resp->header.flags1 != test_resp->flags1) {
 			diag("Flags1 value is wrong: is %u should be %u\n",
 			     resp->header.flags1, test_resp->flags1);
@@ -653,6 +656,8 @@ static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
 			     resp->header.flags2, test_resp->flags2);
 			return 0;
 		}
+		*/
+
 		if (resp->header.qdcount != test_resp->qdcount) {
 			diag("Qdcount value is wrong: is %u should be %u\n",
 			     resp->header.qdcount, test_resp->qdcount);
@@ -677,9 +682,22 @@ static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
 
 	if (check_question) {
 		/* Currently just one question RRSET allowed */
-		/* Will only check pointers, no copying takes place */
-		/* TODO do we even need to test this? */
-		;
+		if (dnslib_dname_compare(resp->question.qname,
+			                test_resp->qname) != 0) {
+			diag("Qname is wrongly set");
+			errors++;
+		}
+
+		if (resp->question.qtype != test_resp->qtype) {
+			diag("Qtype is wrongly set");			
+			errors++;
+		}
+
+		if (resp->question.qclass != test_resp->qclass) {
+			diag("Qclass is wrongly set");			
+			errors++;
+		}
+
 	}
 
 	if (check_authority) {
@@ -752,7 +770,7 @@ static int compare_wires(uint8_t *wire1, uint8_t *wire2, uint size)
 			diag("response");
 			hex_print((char *)&wire1[i], 1);
 		} else {
-			diag("Wires differ on tolerated "
+			diag("Wires differ at tolerated "
 			     "positions (AA bit, Additional section)");
 		}
 		}
@@ -782,16 +800,13 @@ static int test_response_to_wire(test_response_t **responses,
 		resp->header.id = responses[i]->id;
 		//flags1?
 		resp->header.qdcount = responses[i]->qdcount;
-/*		resp->header.ancount = responses[i]->ancount;
-		resp->header.nscount = responses[i]->nscount;
-		resp->header.arcount = responses[i]->arcount; */
 
-		assert(responses[i]->owner);
+		assert(responses[i]->qname);
 
-		resp->question.qname = responses[i]->owner;
-		resp->size += responses[i]->owner->size;
-		resp->question.qtype = responses[i]->type;
-		resp->question.qclass = responses[i]->rclass;
+		resp->question.qname = responses[i]->qname;
+		resp->size += responses[i]->qname->size;
+		resp->question.qtype = responses[i]->qtype;
+		resp->question.qclass = responses[i]->qclass;
 
 		resp->size += 4;
 
@@ -885,7 +900,7 @@ static int test_response_qname(dnslib_response_t **responses)
 	int errors = 0;
 	for (int i = 0; i < RESPONSE_COUNT; i++) {
 		if (dnslib_dname_compare(dnslib_response_qname(responses[i]), 
-			                 RESPONSES[i].owner) != 0) {
+			                 RESPONSES[i].qname) != 0) {
 			diag("Got wrong qname value from response");
 			errors++;
 		}
@@ -899,7 +914,7 @@ static int test_response_qtype(dnslib_response_t **responses)
 	int errors = 0;
 	for (int i = 0; i < RESPONSE_COUNT; i++) {
 		if (dnslib_response_qtype(responses[i]) !=
-			                 RESPONSES[i].type) {
+			                 RESPONSES[i].qtype) {
 			diag("Got wrong qtype value from response");
 			errors++;
 		}
@@ -913,7 +928,7 @@ static int test_response_qclass(dnslib_response_t **responses)
 	int errors = 0;
 	for (int i = 0; i < RESPONSE_COUNT; i++) {
 		if (dnslib_response_qclass(responses[i]) !=
-			                 RESPONSES[i].rclass) {
+			                 RESPONSES[i].qclass) {
 			diag("Got wrong qclass value from response");
 			errors++;
 		}
@@ -939,9 +954,9 @@ static int test_response_getters(uint type)
 		responses[i]->header.nscount = RESPONSES[i].nscount;
 		responses[i]->header.arcount = RESPONSES[i].arcount;
 
-		responses[i]->question.qname = RESPONSES[i].owner;
-		responses[i]->question.qtype = RESPONSES[i].type;
-		responses[i]->question.qclass = RESPONSES[i].rclass;
+		responses[i]->question.qname = RESPONSES[i].qname;
+		responses[i]->question.qtype = RESPONSES[i].qtype;
+		responses[i]->question.qclass = RESPONSES[i].qclass;
 
 		dnslib_response_t *tmp_resp = responses[i];
 
@@ -1043,9 +1058,9 @@ static int test_response_setters(uint type)
 		responses[i]->header.nscount = RESPONSES[i].nscount;
 		responses[i]->header.arcount = RESPONSES[i].arcount;
 
-		responses[i]->question.qname = RESPONSES[i].owner;
-		responses[i]->question.qtype = RESPONSES[i].type;
-		responses[i]->question.qclass = RESPONSES[i].rclass;
+		responses[i]->question.qname = RESPONSES[i].qname;
+		responses[i]->question.qtype = RESPONSES[i].qtype;
+		responses[i]->question.qclass = RESPONSES[i].qclass;
 
 		dnslib_response_t *tmp_resp = responses[i];
 
@@ -1185,7 +1200,7 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	                         response_parsed_count), "response: to wire");
 
 	for (int i = 0; i < response_parsed_count; i++) {
-		dnslib_dname_free(&(parsed_responses[i]->owner));
+		dnslib_dname_free(&(parsed_responses[i]->qname));
 		for (int j = 0; j < parsed_responses[i]->arcount; j++) {
 			dnslib_rrset_deep_free(&(parsed_responses[i]->
 			                       additional[j]), 1, 1);
@@ -1216,7 +1231,7 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	free(raw_responses);
 
 	for (int i = 0; i < query_parsed_count; i++) {
-		dnslib_dname_free(&(parsed_queries[i]->owner));
+		dnslib_dname_free(&(parsed_queries[i]->qname));
 		free(parsed_queries[i]);
 		free(raw_queries[i]->data);
 		free(raw_queries[i]);
