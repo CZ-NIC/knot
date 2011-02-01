@@ -143,11 +143,10 @@ typedef struct {
  * \brief Types of log output.
  */
 typedef enum {
-//	LOG_SYSLOG,  /*!< Logging to standard syslog(3). */
-//	LOG_STDERR,  /*!< Print error messages on the stderr. */
-//	LOG_FILE     /*!< Generic logging to (unbuffered) file on the disk. */
-	ABCD
-} log_type_t;
+	C_LOG_SYSLOG,  /*!< Logging to standard syslog(3). */
+	C_LOG_STDERR,  /*!< Print error messages on the stderr. */
+	C_LOG_FILE     /*!< Generic logging to (unbuffered) file on the disk. */
+} conf_logtype_t;
 
 /*!
  * \brief Where to send log messages.
@@ -156,7 +155,7 @@ typedef enum {
  */
 typedef struct {
 	node n;              /*!< */
-	log_type_t log_type; /*!< Type of the log (SYSLOG/STDERR/FILE). */
+	conf_logtype_t log_type; /*!< Type of the log (SYSLOG/STDERR/FILE). */
 	char *log_output;    /*!< Filename in case of LOG_FILE, else NULL. */
 	list log_map;        /*!< What type of messages to log. */
 } conf_log_t;
@@ -193,6 +192,12 @@ extern int (*cf_read_hook)(unsigned char *buf, unsigned int max);
 config_t *config_new(const char* path);
 int config_parse(config_t *conf);
 void config_free(config_t *conf);
+
+/* Singleton configuration API. */
+int config_open(const char* path);
+const config_t* config_get();
+int config_close();
+
 
 #endif /* _CUTEDNS_CONF_H_ */
 

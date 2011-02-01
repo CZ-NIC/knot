@@ -10,6 +10,7 @@
 extern int cf_parse();
 static jmp_buf conf_jmpbuf;
 config_t *new_config;
+static config_t *s_config;
 
 config_t *config_new(const char* path)
 {
@@ -47,4 +48,34 @@ void config_free(config_t *conf)
 		free(conf->filename);
 		free(conf);
 	}
+}
+
+int config_open(const char* path)
+{
+	s_config = config_new(path);
+	if (!s_config) {
+		return -1;
+	}
+	if (config_parse(s_config) != 0) {
+		config_free(s_config);
+		return -1;
+	}
+
+	return 0;
+}
+
+const config_t* config_get()
+{
+	return s_config;
+}
+
+int config_close()
+{
+	if (!s_config) {
+		return -1;
+	}
+
+	config_free(s_config);
+	s_config = 0;
+	return 0;
 }
