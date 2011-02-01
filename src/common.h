@@ -21,7 +21,9 @@
 typedef unsigned int uint;
 
 #define PROJECT_NAME "CuteDNS" // Project name
-#define PROJECT_VER  0x000001  // 0xMMIIRR (MAJOR,MINOR,REVISION)
+#define PROJECT_VER  0x000009  // 0xMMIIRR (MAJOR,MINOR,REVISION)
+#define PROJECT_EXEC "cutedns" // Project executable
+#define ZONEPARSER_EXEC "zoneparser" // Zoneparser executable
 
 /* Server. */
 #define CPU_ESTIMATE_MAGIC 2   // Extra threads above the number of processors
@@ -51,8 +53,7 @@ static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
 {
 	int rc = fread(dst, size, n, fp);
 	if (rc != n) {
-		log_warning("fread: invalid read %d (expected %zu)\n",
-		            rc, n);
+		log_warning("fread: invalid read %d (expected %zu)\n", rc, n);
 	}
 
 	return rc == n;
@@ -63,7 +64,7 @@ static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
  */
 
 #define ERR_ALLOC_FAILED log_error("Allocation failed at %s:%d (%s ver.%x)\n", \
-                                  __FILE__, __LINE__, PROJECT_NAME, PROJECT_VER)
+				  __FILE__, __LINE__, PROJECT_NAME, PROJECT_VER)
 
 #define CHECK_ALLOC_LOG(var, ret) \
 	do { \

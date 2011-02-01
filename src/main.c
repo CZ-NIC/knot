@@ -5,6 +5,7 @@
 #include "common.h"
 #include "server.h"
 #include "zoneparser.h"
+#include "process.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -39,7 +40,7 @@ void interrupt_handle(int s)
 
 void help(int argc, char **argv)
 {
-	printf("Usage: %s [parameters] <filename1> [<filename2> ...]\n",
+	printf("Usage: %s [parameters] [<filename1> <filename2> ...]\n",
 	       argv[0]);
 	printf("Parameters:\n"
 	       " -d\tRun server as a daemon.\n"
@@ -65,9 +66,9 @@ int main(int argc, char **argv)
 			break;
 		case 'V':
 			printf("%s, version %d.%d.%d\n", PROJECT_NAME,
-			       PROJECT_VER & 0xFF0000,
-			       PROJECT_VER & 0x00FF00,
-			       PROJECT_VER & 0x0000FF);
+			       PROJECT_VER >> 16 & 0x000000ff,
+			       PROJECT_VER >> 8 & 0x000000ff,
+			       PROJECT_VER >> 0 & 0x000000ff);
 			return 1;
 		case 'h':
 		case '?':
@@ -75,12 +76,6 @@ int main(int argc, char **argv)
 			help(argc, argv);
 			return 1;
 		}
-	}
-
-	// Check if there's at least one remaining non-option
-	if (argc - optind < 1) {
-		help(argc, argv);
-		return 1;
 	}
 
 	// Now check if we want to daemonize
@@ -104,12 +99,49 @@ int main(int argc, char **argv)
 
 	log_open(print_mask, log_mask);
 
+	// Save PID
+	char* pidfile = pid_filename();
+	if (daemonize) {
+		int rc = pid_write(pidfile);
+		if (rc < 0) {
+			log_warning("Failed to create PID file '%s'.",
+				    pidfile);
+		} else {
+			log_info("PID file '%s' created.",
+				 pidfile);
+		}
+	}
+
+	// Check if there's at least one remaining non-option
+	int zfs_count = argc - optind;
+	char **zfs = argv + optind;
+	char *default_zf = 0;
+	if (argc - optind < 1) {
+		// Check file
+		default_zf = dnslib_zonedb_dbpath();
+		FILE* fp = fopen(default_zf, "r");
+		if (fp) {
+			log_info("Default zone database '%s'.\n",
+				 default_zf);
+			zfs_count = 1;
+			zfs = &default_zf;
+			fclose(fp);
+		} else {
+			log_error("No zonefile specified and "
+				  "the default database does not exist.\n");
+			log_info("Shutting down...\n");
+			pid_remove(pidfile);
+			log_close();
+			return 1;
+		}
+	}
+
 	// Create server instance
 	s_server = cute_create();
 
 	// Run server
 	int res = 0;
-	if ((res = cute_start(s_server, argv + optind, argc - optind)) == 0) {
+	if ((res = cute_start(s_server, zfs, zfs_count)) == 0) {
 
 		// Register service and signal handler
 		struct sigaction sa;
@@ -124,20 +156,37 @@ int main(int argc, char **argv)
 		// Change directory if daemonized
 		log_info("Server started.\n");
 		if (daemonize) {
+			log_info("Server running as daemon.\n");
 			res = chdir("/");
 		}
 
 		if ((res = cute_wait(s_server)) != 0) {
 			log_error("There was an error while waiting for server"
-			          " to finish.\n");
+				  " to finish.\n");
 		}
 	} else {
 		log_error("There was an error while starting the server, "
-		          "exiting...\n");
+			  "exiting...\n");
+	}
+
+	// Free default zone database
+	if (default_zf) {
+		free(default_zf);
 	}
 
 	// Stop server and close log
 	cute_destroy(&s_server);
+
+	// Remove PID file if daemonized
+	if (daemonize) {
+		if (pid_remove(pidfile) < 0) {
+			log_warning("Failed to remove PID file.\n");
+		} else {
+			log_info("PID file safely removed.\n");
+		}
+	}
+	free(pidfile);
+
 	log_info("Shutting down...\n");
 	log_close();
 

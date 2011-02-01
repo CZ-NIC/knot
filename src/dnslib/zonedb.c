@@ -93,7 +93,7 @@ int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name)
 /*----------------------------------------------------------------------------*/
 
 const dnslib_zone_t *dnslib_zonedb_find_zone_for_name(dnslib_zonedb_t *db,
-                                                    const dnslib_dname_t *dname)
+						    const dnslib_dname_t *dname)
 {
 	rcu_read_lock();
 
@@ -139,4 +139,19 @@ void dnslib_zonedb_deep_free(dnslib_zonedb_t **db)
 	skip_destroy_list(&(*db)->zones, NULL, NULL);
 	free(*db);
 	*db = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
+char* dnslib_zonedb_dbpath()
+{
+	// Construct filename
+	const char* fn = "/cutedns.zdb";
+	char* home = getenv("HOME");
+	int len = strlen(home) + strlen(fn) + 1;
+	char* ret = malloc(len);
+	memset(ret, 0, len);
+	strcpy(ret, home);
+	strcat(ret, fn);
+	return ret;
 }

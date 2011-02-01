@@ -87,13 +87,13 @@ enum {
 
 static dnslib_dname_t DNAMES[DNAMES_COUNT] =
 	{ {(uint8_t *)"\7example\3com", 13, NULL}, //0's at the end are added
-          {(uint8_t *)"\2ns\7example\3com", 16, NULL} };
+	  {(uint8_t *)"\2ns\7example\3com", 16, NULL} };
 
 static uint8_t address[4] = {192, 168, 1, 1};
 
 static dnslib_rdata_item_t ITEMS[ITEMS_COUNT] =
 	{ {.dname = &DNAMES[1]},
-          {.raw_data = address } };
+	  {.raw_data = address } };
 
 static dnslib_rdata_t RDATA[RDATA_COUNT] = { {&ITEMS[0], 1, &RDATA[0]} };
 
@@ -196,7 +196,7 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, FILE *f)
 
 			items[i].dname =
 				dnslib_dname_new_from_wire(dname_wire,
-				                           dname_size,
+							   dname_size,
 							   NULL);
 
 			free(dname_wire);
@@ -343,7 +343,7 @@ static dnslib_rrset_t *load_response_rrset(FILE *f, char is_question)
 
 	dnslib_dname_t *owner =
 		dnslib_dname_new_from_wire(dname_wire,
-	                                   dname_size,
+					   dname_size,
 					   NULL);
 
 	free(dname_wire);
@@ -487,7 +487,7 @@ static test_response_t *load_parsed_response(FILE *f)
 }
 
 static int load_parsed_responses(test_response_t ***responses, uint32_t *count,
-                                const char *filename)
+				const char *filename)
 {
 	assert(*responses == NULL);
 
@@ -515,20 +515,18 @@ static int load_parsed_responses(test_response_t ***responses, uint32_t *count,
 		}
 	}
 
-	fclose(f);
-
 	return 0;
 }
 
 /* \note just checking the pointers probably would suffice */
 static int compare_rrsets(const dnslib_rrset_t *rrset1,
-                          const dnslib_rrset_t *rrset2)
+			  const dnslib_rrset_t *rrset2)
 {
 	assert(rrset1);
 	assert(rrset2);
 
 	return (!(dnslib_dname_compare(rrset1->owner, rrset2->owner) == 0 &&
-	        rrset1->type == rrset2->type &&
+		rrset1->type == rrset2->type &&
 		rrset1->rclass == rrset2->rclass &&
 		rrset1->ttl == rrset2->ttl &&
 		rrset1->rdata == rrset2->rdata));
@@ -548,7 +546,7 @@ static int test_response_new_empty()
 }
 
 static int test_response_add_rrset(int (*add_func)
-                                   (dnslib_response_t *,
+				   (dnslib_response_t *,
 				   const dnslib_rrset_t *, int, int),
 				   int array_id)
 {
@@ -591,22 +589,22 @@ static int test_response_add_rrset(int (*add_func)
 static int test_response_add_rrset_answer()
 {
 	return test_response_add_rrset(&dnslib_response_add_rrset_answer,
-	                               1);
+				       1);
 }
 
 static int test_response_add_rrset_authority()
 {
 	return test_response_add_rrset(&dnslib_response_add_rrset_authority,
-	                               2);
+				       2);
 }
 static int test_response_add_rrset_additional()
 {
 	return test_response_add_rrset(&dnslib_response_add_rrset_additional,
-	                               3);
+				       3);
 }
 
 static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
-                          int check_header, int check_question,
+			  int check_header, int check_question,
 			  int check_answer, int check_additional,
 			  int check_authority)
 {
@@ -734,8 +732,8 @@ static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
 }
 
 static int test_response_parse_query(test_response_t **responses,
-                                     test_raw_packet_t **raw_queries,
-                                     uint count)
+				     test_raw_packet_t **raw_queries,
+				     uint count)
 {
 	assert(responses);
 	assert(raw_queries);
@@ -746,7 +744,7 @@ static int test_response_parse_query(test_response_t **responses,
 		resp = dnslib_response_new_empty(NULL, 0);
 		assert(resp);
 		if (dnslib_response_parse_query(resp,
-			                        raw_queries[i]->data,
+						raw_queries[i]->data,
 						raw_queries[i]->size) != 0) {
 			errors++;
 		}
@@ -831,12 +829,12 @@ static int test_response_to_wire(test_response_t **responses,
 
 		uint8_t *dnslib_wire = NULL;
 
-		uint dnslib_wire_size;
+		size_t dnslib_wire_size;
 
 		assert(resp->question.qname);
 
 		if (dnslib_response_to_wire(resp, &dnslib_wire,
-			                    &dnslib_wire_size) != 0) {
+					    &dnslib_wire_size) != 0) {
 			diag("Could not convert dnslib response to wire\n");
 			dnslib_response_free(&resp);
 			return 0;
@@ -847,7 +845,7 @@ static int test_response_to_wire(test_response_t **responses,
 		assert(tmp_resp);
 
 		if (dnslib_response_parse_query(tmp_resp, dnslib_wire,
-			                        dnslib_wire_size) != 0) {
+						dnslib_wire_size) != 0) {
 			diag("Could not parse created wire");
 			dnslib_response_free(&resp);
 			dnslib_response_free(&tmp_resp);
@@ -1172,7 +1170,6 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 
 	assert(response_raw_count == response_parsed_count);
 
-	
 	if (load_parsed_responses(&parsed_queries, &query_parsed_count,
 	                    "src/tests/dnslib/files/parsed_data_queries") != 0) {
 		diag("Could not load parsed queries, skipping");

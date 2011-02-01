@@ -94,15 +94,5 @@ static int server_tests_run(int argc, char *argv[])
 	ok(test_server_destroy(server), "server: deinit");
 	endskip;
 
-	//! Evaluate
-	if (!ret) {
-		diag("--------------------------------");
-		diag("Server probably crashed because:");
-		if (argc < 2) {
-			diag(" - no zone file given (argc < 2)");
-		}
-		diag("--------------------------------");
-	}
-
 	return 0;
 }
