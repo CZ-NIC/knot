@@ -88,9 +88,9 @@ int test_skiplist_lookup_seq(skip_list_t *list, long *uitems, int uitems_count)
 	}
 
 	if (errors) {
-		diag("skiplist: sequential lookup: %d found %d missed," 
+		diag("skiplist: sequential lookup: %d found %d missed,"
 		     " %.2f%% success rate",
-		     uitems_count - errors, errors, 
+		     uitems_count - errors, errors,
 		     (uitems_count - errors) / (float) uitems_count * 100.0);
 	}
 
@@ -142,7 +142,7 @@ int test_skiplist_remove(skip_list_t *list, long *uitems, int uitems_count)
 	if (errors) {
 		diag("skiplist: sequential lookup: %d found %d missed, "
 		      "%.2f%% success rate",
-		     uitems_count - errors, errors, 
+		     uitems_count - errors, errors,
 		     (uitems_count - errors) / (float) uitems_count * 100.0);
 	}
 	return errors == 0;

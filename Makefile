@@ -9,24 +9,43 @@ COL_CYAN = \033[01;36m
 COL_WHITE = \033[01;37m
 COL_END = \033[0m
 
-INC_DIRS = src/ src/hash/ src/dns/ src/other/ src/server/ src/zone/ src/tests src/tests/libtap src/stat
+INC_DIRS = obj/ src/ src/hash/ src/dns/ src/other/ src/server/ src/zoneparser/ src/tests src/tests/libtap src/dnslib/ src/stat src/alloc/ src/ctl/ src/lib/
 SRC_DIRS = src/
 TESTS_DIR = src/tests/
+ZONEC_DIR = src/zoneparser/
+CTL_DIR = src/ctl
 OBJ_DIR = obj/
 BIN_DIR = bin/
 
+YACC = yacc
+LEX  = flex
+
 VPATH += ${SRC_DIRS} ${INC_DIRS} ${OBJ_DIR}
 
-SRC_FILES = $(shell find $(SRC_DIRS) ! -path "*/tests/*" -name "*.c" ! -name "main.c")
+PARSER_OBJ  = $(OBJ_DIR)zparser
+LEXER_OBJ   = $(OBJ_DIR)zlexer
+PARSER_FILES = $(PARSER_OBJ).c $(LEXER_OBJ).c
 TESTS_FILES = $(TESTS_DIR)/main.c $(TESTS_DIR)/libtap/tap.c
+ZONEC_FILES = $(ZONEC_DIR)/main.c
+CTL_FILES = $(CTL_DIR)/main.c
+CTL_OBJ = $(OBJ_DIR)log.o $(OBJ_DIR)process.o
 
-OBJS = $(addprefix $(OBJ_DIR), $(addsuffix .o, $(basename $(notdir $(SRC_FILES)))))
+SRC_FILES = $(shell find $(SRC_DIRS) ! -path "*/tests/*" -name "*.c" ! -name "main.c")
+
+OBJS = $(PARSER_OBJ).c $(LEXER_OBJ).o $(addprefix $(OBJ_DIR), $(addsuffix .o, $(basename $(notdir $(SRC_FILES)))))
 
 CC = gcc
-CFLAGS += -Wall -std=gnu99 -D _XOPEN_SOURCE=600 -D_GNU_SOURCE -g
-LDFLAGS += -lpthread -lurcu -lldns -lrt
+CFLAGS_DEBUG = -g -O0
+CFLAGS_OPTIMAL = -O2 -funroll-loops -fomit-frame-pointer
+CFLAGS += -Wall -std=gnu99 -D _XOPEN_SOURCE=600 -D_GNU_SOURCE
+LDFLAGS += -lpthread -lurcu -lrt -lm
 
-all: cutedns unittests
+all: cutedns unittests zoneparser cutectl
+ifeq ($(DEBUG),1)
+CFLAGS += $(CFLAGS_DEBUG)
+else
+CFLAGS += $(CFLAGS_OPTIMAL)
+endif
 
 ### Dependencies ###
 DEPEND = $(CC) $(addprefix -I ,$(INC_DIRS)) -MM $(SRC_FILES)   2>/dev/null | sed "s%^\([^\ \t\n]*\.o\)%$(OBJ_DIR)/\1%"
@@ -34,10 +53,24 @@ DEPEND = $(CC) $(addprefix -I ,$(INC_DIRS)) -MM $(SRC_FILES)   2>/dev/null | sed
 Makefile.depend:
 	@$(DEPEND) > Makefile.depend
 
+$(LEXER_OBJ).c: $(ZONEC_DIR)/zlexer.lex
+	$(LEX) -i -t $< >> $@
+
+$(PARSER_OBJ).c $(PARSER_OBJ).h: $(ZONEC_DIR)/zparser.y
+	$(YACC) -d -o $(PARSER_OBJ).c $(ZONEC_DIR)/zparser.y
+
 # cutedns
-cutedns: Makefile.depend $(OBJS) $(SRC_DIRS)main.c
+cutedns: Makefile.depend $(PARSER_FILES) $(OBJS) $(SRC_DIRS)main.c
 	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(OBJS) $(SRC_DIRS)main.c$(COL_END)"
 	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) $(LDFLAGS) $(OBJS) $(SRC_DIRS)main.c -o ${BIN_DIR}$@
+
+zoneparser: Makefile.depend cutedns $(OBJS) $(PARSER_FILES) $(ZPARSER_FILES)
+	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(PARSER_FILES) $(OBJS) $(ZONEC_FILES)$(COL_END)"
+	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) $(LDFLAGS) $(OBJS) $(ZONEC_FILES) -o ${BIN_DIR}$@
+
+cutectl: cutedns $(CTL_FILES) $(CTL_OBJ)
+	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(CTL_FILES) $(CTL_OBJ)$(COL_END)"
+	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) $(LDFLAGS) $(CTL_FILES) $(CTL_OBJ) -o ${BIN_DIR}$@
 
 unittests: Makefile.depend cutedns $(OBJS) $(TESTS_FILES)
 	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(OBJS) $(TESTS_FILES)$(COL_END)"
@@ -59,9 +92,14 @@ $(OBJ_DIR)%.o : %.c
 	@echo "$(COL_WHITE)Compiling $(COL_CYAN)$@: $(COL_BLUE)$< $(COL_END)"
 	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) -c -o $@ $<
 
-### Cleaning ###
-.PHONY: clean
+### Cleaning and documentation ###
+.PHONY: clean doc
 clean:
+	@echo "$(COL_WHITE)Cleaning flex & bison files ...$(COL_RED)"
+	@rm -vf $(OBJ_DIR)zlexer.c $(OBJ_DIR)zparser.h $(OBJ_DIR)zparser.c
 	@echo "$(COL_WHITE)Cleaning object files...$(COL_RED)"
 	@rm -vf ${OBJ_DIR}/*.o
 	@echo "$(COL_WHITE)done$(COL_END)"
+
+doc:
+	@doxygen "Doxyfile"

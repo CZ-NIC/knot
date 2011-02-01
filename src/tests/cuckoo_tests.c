@@ -41,14 +41,14 @@ unit_api cuckoo_tests_api = {
  * Unit implementation
  */
 static const int CUCKOO_TESTS_COUNT = 7;
-static const int CUCKOO_MAX_ITEMS = 1000;
+static const int CUCKOO_MAX_ITEMS = 100;
 static const int CUCKOO_TEST_MAX_KEY_SIZE = 10;
 
 typedef struct test_cuckoo_items {
 	char **keys;
-	int *key_sizes;
-	int *values;
-	int *deleted;
+	size_t *key_sizes;
+	size_t *values;
+	size_t *deleted;
 	int count;
 } test_cuckoo_items;
 
@@ -85,25 +85,31 @@ static int test_cuckoo_create(ck_hash_table_t **table, uint items)
 
 /*----------------------------------------------------------------------------*/
 
-static int test_cuckoo_insert(ck_hash_table_t *table, test_cuckoo_items *items)
+static int test_cuckoo_insert(ck_hash_table_t *table,
+                              const test_cuckoo_items *items)
 {
 	assert(table != NULL);
 	int errors = 0;
 	for (int i = 0; i < items->count; ++i) {
-//		printf("inserting item with key: %.*s (size %d), value: %d\n",
-//			items->key_sizes[i], items->keys[i], items->key_sizes[i],
-//			items->values[i]);
+//		note("Inserting item with key %.*s and value %d\n",
+//		     items->key_sizes[i], items->keys[i],
+//		     items->values[i]);
+		assert(items->values[i] != 0);
 		if (ck_insert_item(table, items->keys[i], items->key_sizes[i],
 		                   (void *)items->values[i]) != 0) {
 			++errors;
 		}
+//		note("Inserted item with key %.*s and value %d\n",
+//		     items->key_sizes[i], items->keys[i],
+//		     items->values[i]);
 	}
 	return errors == 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int test_cuckoo_lookup(ck_hash_table_t *table, test_cuckoo_items *items)
+static int test_cuckoo_lookup(ck_hash_table_t *table,
+                              const test_cuckoo_items *items)
 {
 	int errors = 0;
 	for (int i = 0; i < items->count; ++i) {
@@ -111,12 +117,21 @@ static int test_cuckoo_lookup(ck_hash_table_t *table, test_cuckoo_items *items)
 		                table, items->keys[i], items->key_sizes[i]);
 		if (!found) {
 			if (items->deleted[i] == 0) {
+				diag("Not found item with key %.*s\n",
+				     items->key_sizes[i], items->keys[i]);
 				++errors;
 			}
 		} else {
 			if (items->deleted[i] != 0
 			    || found->key != items->keys[i]
-			    || (int)(found->value) != items->values[i]) {
+			    || (size_t)(found->value) != items->values[i]) {
+				diag("Found item with key %.*s (size %u) "
+				     "(should be %.*s (size %u)) and value %zu "
+				     "(should be %d).\n",
+				     found->key_length, found->key,
+				     found->key_length, items->key_sizes[i],
+				     items->keys[i], items->key_sizes[i],
+				     (size_t)found->value, items->values[i]);
 				++errors;
 			}
 		}
@@ -190,22 +205,56 @@ static void create_random_items(test_cuckoo_items *items, int item_count)
 	assert(items != NULL);
 
 	items->count = item_count;
-	items->values = (int *)malloc(item_count * sizeof(int));
-	items->key_sizes = (int *)malloc(item_count * sizeof(int));
-	items->deleted = (int *)malloc(item_count * sizeof(int));
+	items->values = (size_t *)malloc(item_count * sizeof(size_t));
+	items->key_sizes = (size_t *)malloc(item_count * sizeof(size_t));
+	items->deleted = (size_t *)malloc(item_count * sizeof(size_t));
 	items->keys = (char **)malloc(item_count * sizeof(char *));
 
 	for (int i = 0; i < item_count; ++i) {
-		items->values[i] = rand() + 1;
-		items->key_sizes[i] = rand() % CUCKOO_TEST_MAX_KEY_SIZE + 1;
-		items->keys[i] = malloc(items->key_sizes[i] * sizeof(char));
-		rand_str(items->keys[i], items->key_sizes[i]);
-		items->deleted[i] = 0;
-//		printf("created item with key: %.*s (size %d), value: %d\n",
-//		       items->key_sizes[i], items->keys[i],
-//		       items->key_sizes[i], items->values[i]);
+		int value = rand() + 1;
+		int key_size = rand() % CUCKOO_TEST_MAX_KEY_SIZE + 1;
+		char *key = malloc(key_size * sizeof(char));
+		assert(key != NULL);
+		rand_str(key, key_size);
+
+		// check if the key is not already in the table
+		int found = 0;
+		for (int j = 0; j < i; ++j) {
+			if (items->key_sizes[j] == key_size
+			    && strncmp(items->keys[j], key, key_size) == 0) {
+				found = 1;
+				break;
+			}
+		}
+
+		if (!found) {
+			assert(value != 0);
+			items->values[i] = value;
+			items->key_sizes[i] = key_size;
+			items->keys[i] = key;
+			items->deleted[i] = 0;
+		} else {
+			free(key);
+			--i;
+		}
+//		note("created item with key: %.*s (size %d), value: %d\n",
+//		     items->key_sizes[i], items->keys[i],
+//		     items->key_sizes[i], items->values[i]);
 	}
 }
+
+/*----------------------------------------------------------------------------*/
+
+//static void print_items(const test_cuckoo_items *items)
+//{
+//	assert(items != NULL);
+
+//	for (int i = 0; i < items->count; ++i) {
+//		note("Item %d: key: %.*s (size %d), value: %d\n",
+//		     i, items->key_sizes[i], items->keys[i],
+//		     items->key_sizes[i], items->values[i]);
+//	}
+//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -227,6 +276,7 @@ static void delete_items(test_cuckoo_items *items)
 static int cuckoo_tests_run(int argc, char *argv[])
 {
 	srand(time(NULL));
+	int res;
 
 	const int item_count = rand() % CUCKOO_MAX_ITEMS + 1;
 	test_cuckoo_items *items = (test_cuckoo_items *)
@@ -235,10 +285,13 @@ static int cuckoo_tests_run(int argc, char *argv[])
 	ck_hash_table_t *table = NULL;
 
 	// Test 1: create
-	ok(test_cuckoo_create(&table, item_count), "cuckoo hashing: create");
+	ok(res = test_cuckoo_create(&table, item_count),
+	   "cuckoo hashing: create");
 
 	create_random_items(items, item_count);
+	//print_items(items);
 
+	skip(!res, 6);
 	// Test 2: insert
 	ok(test_cuckoo_insert(table, items), "cuckoo hashing: insert");
 
@@ -263,8 +316,10 @@ static int cuckoo_tests_run(int argc, char *argv[])
 	//ok(test_cuckoo_rehash(table), "cuckoo hashing: rehash");
 
 	// Test 9: lookup 4
-	//ok(test_cuckoo_lookup(table, items),
-	//   "cuckoo hashing: lookup after rehash");
+//	ok(test_cuckoo_lookup(table, items),
+//	   "cuckoo hashing: lookup after rehash");
+
+	endskip;
 
 	/**
 	 * \note These last 2 tests found some major bug in the cuckoo hash
