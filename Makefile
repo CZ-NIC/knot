@@ -9,10 +9,11 @@ COL_CYAN = \033[01;36m
 COL_WHITE = \033[01;37m
 COL_END = \033[0m
 
-INC_DIRS = obj/ src/ src/hash/ src/dns/ src/other/ src/server/ src/zoneparser/ src/tests src/tests/libtap src/dnslib/ src/stat src/alloc/ src/ctl/ src/lib/
+INC_DIRS = obj/ src/ src/hash/ src/dns/ src/other/ src/server/ src/zoneparser/ src/tests src/tests/libtap src/dnslib/ src/stat src/alloc/ src/ctl/ src/lib/ src/conf
 SRC_DIRS = src/
 TESTS_DIR = src/tests/
 ZONEC_DIR = src/zoneparser/
+CONF_DIR = src/conf
 CTL_DIR = src/ctl
 OBJ_DIR = obj/
 BIN_DIR = bin/
@@ -24,7 +25,10 @@ VPATH += ${SRC_DIRS} ${INC_DIRS} ${OBJ_DIR}
 
 PARSER_OBJ  = $(OBJ_DIR)zparser
 LEXER_OBJ   = $(OBJ_DIR)zlexer
+CFLEX_OBJ   = $(OBJ_DIR)cf-lex
+CFPAR_OBJ   = $(OBJ_DIR)cf-parse
 PARSER_FILES = $(PARSER_OBJ).c $(LEXER_OBJ).c
+CONF_FILES = $(CFLEX_OBJ).c $(CFPAR_OBJ).c
 TESTS_FILES = $(TESTS_DIR)/main.c $(TESTS_DIR)/libtap/tap.c
 ZONEC_FILES = $(ZONEC_DIR)/main.c
 CTL_FILES = $(CTL_DIR)/main.c
@@ -32,7 +36,7 @@ CTL_OBJ = $(OBJ_DIR)log.o $(OBJ_DIR)process.o
 
 SRC_FILES = $(shell find $(SRC_DIRS) ! -path "*/tests/*" -name "*.c" ! -name "main.c")
 
-OBJS = $(PARSER_OBJ).c $(LEXER_OBJ).o $(addprefix $(OBJ_DIR), $(addsuffix .o, $(basename $(notdir $(SRC_FILES)))))
+OBJS = $(CFLEX_OBJ).o $(CFPAR_OBJ).o $(PARSER_OBJ).c $(LEXER_OBJ).o $(addprefix $(OBJ_DIR), $(addsuffix .o, $(basename $(notdir $(SRC_FILES)))))
 
 CC = gcc
 CFLAGS_DEBUG = -g -O0
@@ -47,17 +51,25 @@ else
 CFLAGS += $(CFLAGS_OPTIMAL)
 endif
 
-### Dependencies ###
-DEPEND = $(CC) $(addprefix -I ,$(INC_DIRS)) -MM $(SRC_FILES)   2>/dev/null | sed "s%^\([^\ \t\n]*\.o\)%$(OBJ_DIR)/\1%"
+# Config lexer/parser
+$(CFLEX_OBJ).c: $(CONF_DIR)/cf-lex.l $(CFPAR_OBJ).h
+	$(LEX) -B -8 -o$(CFLEX_OBJ).c -Pcf_ $(CONF_DIR)/cf-lex.l
 
-Makefile.depend:
-	@$(DEPEND) > Makefile.depend
+$(CFPAR_OBJ).c $(CFPAR_OBJ).h: $(CONF_DIR)/cf-parse.y
+	$(YACC) -bcf-parse -dv -pcf_ -o $(CFPAR_OBJ).c $(CONF_DIR)/cf-parse.y
 
+# Server lexer/parser
 $(LEXER_OBJ).c: $(ZONEC_DIR)/zlexer.lex
 	$(LEX) -i -t $< >> $@
 
 $(PARSER_OBJ).c $(PARSER_OBJ).h: $(ZONEC_DIR)/zparser.y
 	$(YACC) -d -o $(PARSER_OBJ).c $(ZONEC_DIR)/zparser.y
+
+### Dependencies ###
+DEPEND = $(CC) $(addprefix -I ,$(INC_DIRS)) -MM $(SRC_FILES)   2>/dev/null | sed "s%^\([^\ \t\n]*\.o\)%$(OBJ_DIR)/\1%"
+
+Makefile.depend:
+	@$(DEPEND) > Makefile.depend
 
 # cutedns
 cutedns: Makefile.depend $(PARSER_FILES) $(OBJS) $(SRC_DIRS)main.c
@@ -96,7 +108,7 @@ $(OBJ_DIR)%.o : %.c
 .PHONY: clean doc
 clean:
 	@echo "$(COL_WHITE)Cleaning flex & bison files ...$(COL_RED)"
-	@rm -vf $(OBJ_DIR)zlexer.c $(OBJ_DIR)zparser.h $(OBJ_DIR)zparser.c
+	@rm -vf $(OBJ_DIR)/*.h $(OBJ_DIR)/*.c
 	@echo "$(COL_WHITE)Cleaning object files...$(COL_RED)"
 	@rm -vf ${OBJ_DIR}/*.o
 	@echo "$(COL_WHITE)done$(COL_END)"
