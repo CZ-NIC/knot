@@ -508,3 +508,24 @@ uint16_t dnslib_rrclass_from_string(const char *name)
 	return (uint16_t) rrclass;
 }
 
+size_t dnslib_wireformat_size(uint wire_type)
+{
+	switch(wire_type) {
+		case DNSLIB_RDATA_WF_BYTE:
+			return 1;
+			break;
+		case DNSLIB_RDATA_WF_SHORT:
+			return 2;
+			break;
+		case DNSLIB_RDATA_WF_LONG:
+			return 4;
+			break;
+		case DNSLIB_RDATA_WF_A:
+			return 4;
+			break;
+		default: /* unknown size */
+			return 0;
+			break;
+	} /* switch */
+}
+
