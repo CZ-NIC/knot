@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "stat.h"
 #include "gatherer.h"
