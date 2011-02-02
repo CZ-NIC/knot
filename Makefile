@@ -28,21 +28,26 @@ LEXER_OBJ   = $(OBJ_DIR)zlexer
 CFLEX_OBJ   = $(OBJ_DIR)cf-lex
 CFPAR_OBJ   = $(OBJ_DIR)cf-parse
 PARSER_FILES = $(PARSER_OBJ).c $(LEXER_OBJ).c
-CONF_FILES = $(CFLEX_OBJ).c $(CFPAR_OBJ).c
+PARSER_OBJS = $(PARSER_OBJ).c $(LEXER_OBJ).o
+CONF_FILES = $(CFLEX_OBJ).c $(CFPAR_OBJ).c $(CONF_DIR)/conf.c
+CONF_OBJS = $(CFLEX_OBJ).o $(CFPAR_OBJ).o $(OBJ_DIR)conf.o
 TESTS_FILES = $(TESTS_DIR)/main.c $(TESTS_DIR)/libtap/tap.c
 ZONEC_FILES = $(ZONEC_DIR)/main.c
 CTL_FILES = $(CTL_DIR)/main.c
 CTL_OBJ = $(OBJ_DIR)log.o $(OBJ_DIR)process.o
 
-SRC_FILES = $(shell find $(SRC_DIRS) ! -path "*/tests/*" -name "*.c" ! -name "main.c")
+ZPARSER_FILES = $(PARSER_OBJS) $(shell find $(SRC_DIRS)zoneparser -name "*.c")
+SRC_FILES = $(shell find $(SRC_DIRS) ! -path "*/tests/*" ! -path "*/zoneparser/*" ! -path "*/conf/*" -name "*.c" ! -name "main.c")
 
-OBJS = $(CFLEX_OBJ).o $(CFPAR_OBJ).o $(PARSER_OBJ).c $(LEXER_OBJ).o $(addprefix $(OBJ_DIR), $(addsuffix .o, $(basename $(notdir $(SRC_FILES)))))
+OBJS =  $(addprefix $(OBJ_DIR), $(addsuffix .o, $(basename $(notdir $(SRC_FILES)))))
 
 CC = gcc
 CFLAGS_DEBUG = -g -O0
 CFLAGS_OPTIMAL = -O2 -funroll-loops -fomit-frame-pointer
 CFLAGS += -Wall -std=gnu99 -D _XOPEN_SOURCE=600 -D_GNU_SOURCE
 LDFLAGS += -lpthread -lurcu -lrt -lm
+LEX_FLAGS += -dvBT
+YACC_FLAGS += -t -v
 
 all: cutedns unittests zoneparser cutectl
 ifeq ($(DEBUG),1)
@@ -53,17 +58,17 @@ endif
 
 # Config lexer/parser
 $(CFLEX_OBJ).c: $(CONF_DIR)/cf-lex.l $(CFPAR_OBJ).h
-	$(LEX) -B -8 -o$(CFLEX_OBJ).c -Pcf_ $(CONF_DIR)/cf-lex.l
+	$(LEX) $(LEX_FLAGS) -o$(CFLEX_OBJ).c -Pcf_ $(CONF_DIR)/cf-lex.l
 
 $(CFPAR_OBJ).c $(CFPAR_OBJ).h: $(CONF_DIR)/cf-parse.y
-	$(YACC) -bcf-parse -dv -pcf_ -o $(CFPAR_OBJ).c $(CONF_DIR)/cf-parse.y
+	$(YACC) $(YACC_FLAGS) -bcf-parse -dv -pcf_ -o $(CFPAR_OBJ).c $(CONF_DIR)/cf-parse.y
 
 # Server lexer/parser
-$(LEXER_OBJ).c: $(ZONEC_DIR)/zlexer.lex
-	$(LEX) -i -t $< >> $@
+$(LEXER_OBJ).c: $(ZONEC_DIR)/zlexer.lex $(PARSER_OBJ).h
+	$(LEX) $(LEX_FLAGS) -i -t $< >> $@
 
 $(PARSER_OBJ).c $(PARSER_OBJ).h: $(ZONEC_DIR)/zparser.y
-	$(YACC) -d -o $(PARSER_OBJ).c $(ZONEC_DIR)/zparser.y
+	$(YACC) $(YACC_FLAGS) -d -o $(PARSER_OBJ).c $(ZONEC_DIR)/zparser.y
 
 ### Dependencies ###
 DEPEND = $(CC) $(addprefix -I ,$(INC_DIRS)) -MM $(SRC_FILES)   2>/dev/null | sed "s%^\([^\ \t\n]*\.o\)%$(OBJ_DIR)/\1%"
@@ -72,21 +77,21 @@ Makefile.depend:
 	@$(DEPEND) > Makefile.depend
 
 # cutedns
-cutedns: Makefile.depend $(PARSER_FILES) $(OBJS) $(SRC_DIRS)main.c
-	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(OBJS) $(SRC_DIRS)main.c$(COL_END)"
-	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) $(LDFLAGS) $(OBJS) $(SRC_DIRS)main.c -o ${BIN_DIR}$@
+cutedns: Makefile.depend $(OBJS) $(CONF_OBJS) $(SRC_DIRS)main.c
+	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(OBJS) $(CONF_OBJS) $(SRC_DIRS)main.c$(COL_END)"
+	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) $(LDFLAGS) $(OBJS) $(CONF_OBJS) $(SRC_DIRS)main.c -o ${BIN_DIR}$@
 
-zoneparser: Makefile.depend cutedns $(OBJS) $(PARSER_FILES) $(ZPARSER_FILES)
-	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(PARSER_FILES) $(OBJS) $(ZONEC_FILES)$(COL_END)"
-	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) $(LDFLAGS) $(OBJS) $(ZONEC_FILES) -o ${BIN_DIR}$@
+zoneparser: Makefile.depend cutedns $(OBJS) $(ZPARSER_FILES)
+	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(ZPARSER_FILES) $(OBJS)$(COL_END)"
+	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) $(LDFLAGS) $(ZPARSER_FILES) $(OBJS) -o ${BIN_DIR}$@
 
-cutectl: cutedns $(CTL_FILES) $(CTL_OBJ)
-	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(CTL_FILES) $(CTL_OBJ)$(COL_END)"
-	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) $(LDFLAGS) $(CTL_FILES) $(CTL_OBJ) -o ${BIN_DIR}$@
+cutectl: cutedns $(CTL_FILES) $(CTL_OBJ) $(CONF_OBJS)
+	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(CTL_FILES) $(CTL_OBJ) $(CONF_OBJS) $(COL_END)"
+	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) $(LDFLAGS) $(CTL_FILES) $(CTL_OBJ) $(CONF_OBJS) -o ${BIN_DIR}$@
 
-unittests: Makefile.depend cutedns $(OBJS) $(TESTS_FILES)
-	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(OBJS) $(TESTS_FILES)$(COL_END)"
-	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) $(LDFLAGS) $(OBJS) $(TESTS_FILES) -o ${BIN_DIR}$@
+unittests: Makefile.depend cutedns $(OBJS) $(TESTS_FILES) $(CONF_OBJS)
+	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(OBJS) $(TESTS_FILES) $(CONF_OBJS)$(COL_END)"
+	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) $(LDFLAGS) $(OBJS) $(TESTS_FILES) $(CONF_OBJS) -o ${BIN_DIR}$@
 
 test: unittests
 	@bin/unittests samples/example.com.zone

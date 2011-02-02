@@ -6,12 +6,11 @@
 
 #include "conf/conf.h"
 #include "cf-parse.h"
-
 int (*cf_read_hook)(unsigned char *buf, unsigned int max);
 
 #define YY_INPUT(buf,result,max) result = cf_read_hook(buf, max);
 #define YY_NO_UNPUT
-#define YY_FATAL_ERROR(msg) cf_error(msg)
+//#define YY_FATAL_ERROR(msg) cf_error(msg)
 
 %}
 
@@ -28,3 +27,4 @@ WHITE [ \t]
 
 %%
 
+\#\#.*\n        ; // Ignore comments
