@@ -23,7 +23,7 @@
 
 #include "zoneparser.h"
 #include "dname.h"
-#include "descriptor.h"
+#include "parser-descriptor.h"
 #include "zparser.h"
 
 #define YY_NO_INPUT
@@ -353,10 +353,10 @@ ANY     [^\"\n\\]|\\.
 static int
 rrtype_to_token(const char *word, uint16_t *type)
 {
-	uint16_t t = dnslib_rrtype_from_string(word);
+	uint16_t t = parser_rrtype_from_string(word);
 	if (t != 0) {
-		dnslib_rrtype_descriptor_t *entry = 0;
-		entry = dnslib_rrtype_descriptor_by_type(t);
+		parser_rrtype_descriptor_t *entry = 0;
+		entry = parser_rrtype_descriptor_by_type(t);
 		*type = t;
 
 		/*! \todo entry should return associated token.
@@ -433,7 +433,7 @@ parse_token(int token, char *yytext, enum lexer_state *lexer_state)
 		}
 
 		/* class */
-		rrclass = dnslib_rrclass_from_string(yytext);
+		rrclass = parser_rrclass_from_string(yytext);
 		if (rrclass != 0) {
 			yylval.rclass = rrclass;
 			LEXOUT(("CLASS "));

@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include "zoneparser.h"
 
-#include "dnslib/dnslib.h"
-
 static void help(int argc, char **argv)
 {
 	printf("Usage: %s [parameters] origin zonefile\n",
