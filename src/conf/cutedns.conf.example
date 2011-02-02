@@ -72,29 +72,28 @@ zones {
   # long notation
 
   example.net {
-    storage "file:/var/lib/cutedns/example.net";
-#    storage "/var/lib/cutedns/example.net";
+    storage "/var/lib/cutedns/example.net";
 
     # xfr-from
-    xfr-in {
-      server0;
-    }
+    #xfr-in {
+    #  server0;
+    #}
     
     # xfr-to
-    xfr-out {
-      server1;
-    }
+    #xfr-out {
+    #  server1;
+    #}
     
     # notify-from
-    notify-in {
-      server0;
-      server2;
-    }
+    #notify-in {
+    #  server0;
+    #  server2;
+    #}
     
     # notify-to
-    notify-out {
-      server1;
-    }
+    #notify-out {
+    #  server1;
+    #}
   }
 }
 
@@ -103,18 +102,19 @@ system {
   identity "I have no mouth and must scream";
   version "Infinitesimal";
 
-  log {
-    syslog {
-      any notice;
-      zone any;
-    }
+  # Logging TODO
+  #log {
+  #  syslog {
+  #    any notice;
+  #    zone any;
+  #  }
 
-    file "/var/log/cutedns/cutedns.err" {
-      any error;
-    }
+  #  file "/var/log/cutedns/cutedns.err" {
+  #    any error;
+  #  }
 
-    stderr {
-      any warning;
-    }
-  }
+  #  stderr {
+  #    any warning;
+  #  }
+  #}
 }
