@@ -31,7 +31,7 @@ int config_parse(config_t *conf)
 	}
 
 	new_config = conf;
-	cf_parse();
+	//cf_parse();
 	return 0;
 }
 

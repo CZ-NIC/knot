@@ -1,10 +1,33 @@
 %{
 /* Headers */
+#include <stdio.h>
 #include "conf.h"
 
+config_t *new_config;
 static conf_iface_t *this_iface;
 static conf_key_t *this_key;
 static conf_server_t *this_server;
+static conf_zone_t *this_zone;
+
+#ifdef CF_STANDALONE
+#include <stdlib.h>
+void yyerror(const char *str)
+{
+	fprintf(stderr,"error: %s\n",str);
+}
+
+int yywrap()
+{
+	return 1;
+}
+
+main()
+{
+	new_config = malloc(sizeof(config_t));
+	yyparse();
+	free(new_config);
+}
+#endif // CF_STANDALONE
 
 %}
 
@@ -19,7 +42,10 @@ static conf_server_t *this_server;
 %token INTERFACES ADDRESS PORT
 %token ALGORITHM SECRET
 %token SERVERS KEYS KEY INTERFACE
+%token ZONES STORAGE
+%token <t> ZONE
 %token <t> TEXT
+%token <t> IPA
 
 %token <i> NUM
 %token <alg> TSIG_ALGO_NAME
@@ -41,7 +67,7 @@ interface_start: TEXT {
 
 interface:
    interface_start '{'
- | interface ADDRESS TEXT ';' { this_iface->address = $3; }
+ | interface ADDRESS IPA ';' { this_iface->address = $3; }
  | interface PORT NUM ';' { this_iface->port = $3; }
  ;
 
@@ -77,7 +103,7 @@ server_start: TEXT {
 
 server:
    server_start '{'
- | server ADDRESS TEXT ';' { this_server->address = $3; }
+ | server ADDRESS IPA ';' { this_server->address = $3; }
  | server PORT NUM ';' { this_server->port = $3; }
  | server KEY TEXT ';' {
 	 this_server->key = malloc(sizeof(conf_key_t));
@@ -101,6 +127,23 @@ system:
  | system IDENTITY TEXT ';' { new_config->identity = $3; }
  ;
 
-conf: ';' | system '}' | interfaces '}' | keys '}' | servers '}';
+zones:
+   ZONES '{'
+ | zones zone '}'
+ ;
+
+zone_start: ZONE {
+    this_zone = malloc(sizeof(conf_zone_t));
+    this_zone->name = $1;
+ }
+ ;
+
+zone:
+   zone_start '{'
+ | zone STORAGE TEXT ';' { this_zone->storage = $3; }
+ ;
+
+
+conf: ';' | system '}' | interfaces '}' | keys '}' | servers '}' | zones '}';
 
 %%
