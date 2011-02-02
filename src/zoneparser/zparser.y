@@ -25,7 +25,7 @@
 #include "dname.h"
 #include "zone.h"
 #include "zoneparser.h"
-#include "descriptor.h"
+#include "parser-descriptor.h"
 
 /* these need to be global, otherwise they cannot be used inside yacc */
 zparser_type *parser;
