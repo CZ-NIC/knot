@@ -26,7 +26,7 @@ static int conf_tests_count(int argc, char *argv[])
 
 static int cf_read(unsigned char *dest, unsigned int len)
 {
-	return fread(dest, len, 1, conf_fp);
+	return read(fileno(conf_fp), dest, len);
 }
 
 /*! Run all scheduled tests for given parameters.
@@ -39,8 +39,8 @@ static int conf_tests_run(int argc, char *argv[])
 		switch (c)
 		{
 		case 'c':
-			note("Using config: %s", config_fn);
 			config_fn = optarg;
+			note("Using config: %s", config_fn);
 			break;
 		}
 	}
