@@ -54,7 +54,7 @@ RC_OBJS = $(addprefix $(OBJ_DIR), $(addsuffix .rc, $(basename $(notdir $(RC_FILE
 
 $(OBJ_DIR)%.rc: $(RC_DIR)/%
 	@echo "$(COL_WHITE)Resource $(COL_CYAN)$@: $(COL_BLUE)$< $(COL_END)"
-	@./resource.sh $< >> $@
+	@./resource.sh $< > $@
 
 ### Dependencies ###
 DEPEND = $(CC) $(addprefix -I ,$(INC_DIRS)) -MM $(SRC_FILES)   2>/dev/null | sed "s%^\([^\ \t\n]*\.o\)%$(OBJ_DIR)/\1%"
