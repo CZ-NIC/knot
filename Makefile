@@ -31,6 +31,7 @@ PARSER_FILES = $(PARSER_OBJ).c $(LEXER_OBJ).c
 PARSER_OBJS = $(PARSER_OBJ).c $(LEXER_OBJ).o
 CONF_FILES = $(CFLEX_OBJ).c $(CFPAR_OBJ).c $(CONF_DIR)/conf.c
 CONF_OBJS = $(CFLEX_OBJ).o $(CFPAR_OBJ).o $(OBJ_DIR)conf.o
+CONF_EXTRA = $(OBJ_DIR)lists.o
 TESTS_FILES = $(TESTS_DIR)/main.c $(TESTS_DIR)/libtap/tap.c
 ZONEC_FILES = $(ZONEC_DIR)/main.c
 CTL_FILES = $(CTL_DIR)/main.c
@@ -85,9 +86,9 @@ zoneparser: Makefile.depend cutedns $(OBJS) $(ZPARSER_FILES)
 	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(ZPARSER_FILES) $(OBJS)$(COL_END)"
 	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) $(LDFLAGS) $(ZPARSER_FILES) $(OBJS) -o ${BIN_DIR}$@
 
-cutectl: cutedns $(CTL_FILES) $(CTL_OBJ) $(CONF_OBJS)
-	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(CTL_FILES) $(CTL_OBJ) $(CONF_OBJS) $(COL_END)"
-	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) $(LDFLAGS) $(CTL_FILES) $(CTL_OBJ) $(CONF_OBJS) -o ${BIN_DIR}$@
+cutectl: cutedns $(CTL_FILES) $(CTL_OBJ) $(CONF_OBJS) $(CONF_EXTRA)
+	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(CTL_FILES) $(CTL_OBJ) $(CONF_OBJS) $(CONF_EXTRA)$(COL_END)"
+	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) $(LDFLAGS) $(CTL_FILES) $(CTL_OBJ) $(CONF_OBJS) $(CONF_EXTRA) -o ${BIN_DIR}$@
 
 unittests: Makefile.depend cutedns $(OBJS) $(TESTS_FILES) $(CONF_OBJS)
 	@echo "$(COL_WHITE)Linking... $(COL_YELLOW)${BIN_DIR}$@$(COL_END) <-- $(COL_CYAN)$(OBJS) $(TESTS_FILES) $(CONF_OBJS)$(COL_END)"

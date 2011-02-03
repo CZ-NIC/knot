@@ -1,6 +1,14 @@
+/*!
+ * \file cf-parse.y
+ *
+ * \author Ondrej Sury <ondrej.sury@nic.cz>
+ *
+ * \brief Server configuration structures and API.
+ */
 %{
 /* Headers */
 #include <stdio.h>
+#include <string.h>
 #include "conf.h"
 
 extern void cf_error(const char *msg);
@@ -42,7 +50,9 @@ conf_entries:
 
 interface_start: TEXT {
     this_iface = malloc(sizeof(conf_iface_t));
+    memset(this_iface, 0, sizeof(conf_iface_t));
     this_iface->name = $1;
+    add_tail(&new_config->ifaces, &this_iface->n);
  }
  ;
 
@@ -59,7 +69,9 @@ interfaces:
 
 key_start: TEXT {
   this_key = malloc(sizeof(conf_key_t));
+  memset(this_key, 0, sizeof(conf_key_t));
   this_key->name = $1;
+  add_tail(&new_config->keys, &this_key->n);
  }
  ;
 
@@ -76,9 +88,9 @@ keys:
 
 server_start: TEXT {
   this_server = malloc(sizeof(conf_server_t));
+  memset(this_server, 0, sizeof(conf_server_t));
   this_server->name = $1;
-  this_server->key = NULL;
-  this_server->iface = NULL;
+  add_tail(&new_config->servers, &this_server->n);
  }
  ;
 
@@ -115,7 +127,9 @@ zones:
 
 zone_start: ZONE {
     this_zone = malloc(sizeof(conf_zone_t));
+    memset(this_zone, 0, sizeof(conf_zone_t));
     this_zone->name = $1;
+    add_tail(&new_config->zones, &this_zone->n);
  }
  ;
 

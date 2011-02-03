@@ -5,9 +5,6 @@
  *
  * \brief Server configuration structures and API.
  *
- * \addtogroup config
- * \{
- *
  * IP address conversions from BIRD, (c) 1998--2000 Martin Mares <mj@ucw.cz>
  */
 %{
@@ -22,7 +19,7 @@
 
 /* Imported symbols. */
 extern void cf_error(const char *msg);
-extern int cf_read_hook(char *buf, size_t nbytes);
+extern int (*cf_read_hook)(char *buf, size_t nbytes);
 
 #define YY_INPUT(buf,result,max) result = cf_read_hook(buf, max);
 #define YY_NO_UNPUT
