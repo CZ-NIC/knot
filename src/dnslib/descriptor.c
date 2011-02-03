@@ -6,7 +6,8 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include "descriptor.h"
+//#include "descriptor.h"
+#include "dnslib.h"
 
 enum desclen { DNSLIB_RRTYPE_DESCRIPTORS_LENGTH = 32770 }; // used to be 101
 
@@ -139,7 +140,7 @@ static dnslib_rrtype_descriptor_t
   	  { DNSLIB_RDATA_WF_SHORT, DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME,
   	    DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME }, true },
   	/* 27 */
-  	{ 27, NULL, 1, { DNSLIB_RDATA_WF_BINARY }, true },
+	{ 27, NULL, 1, { DNSLIB_RDATA_WF_BINARY }, true },
   	/* 28 */
   	{ DNSLIB_RRTYPE_AAAA, "AAAA", 1,
   	  { DNSLIB_RDATA_WF_AAAA }, true },
@@ -182,6 +183,7 @@ static dnslib_rrtype_descriptor_t
   	/* 40 */
   	{ 40, NULL, 1, { DNSLIB_RDATA_WF_BINARY }, true },
   	/* 41 */
+	/* OPT has its parser token, but should never be in zone file... */
   	{ DNSLIB_RRTYPE_OPT, "OPT", 1,
   	  { DNSLIB_RDATA_WF_BINARY }, true },
   	/* 42 */
@@ -236,11 +238,11 @@ static dnslib_rrtype_descriptor_t
   	  { DNSLIB_RDATA_WF_SHORT, DNSLIB_RDATA_WF_BYTE,
 	    DNSLIB_RDATA_WF_BYTE, DNSLIB_RDATA_WF_LONG,
   	    DNSLIB_RDATA_WF_LONG, DNSLIB_RDATA_WF_LONG,
-/*XXX*/	    DNSLIB_RDATA_WF_SHORT, DNSLIB_RDATA_WF_BINARY, //literal dname used to be here
+	    DNSLIB_RDATA_WF_SHORT, DNSLIB_RDATA_WF_BINARY,
 	    DNSLIB_RDATA_WF_BINARY }, true },
   	/* 47 */
   	{ DNSLIB_RRTYPE_NSEC, "NSEC", 2,
-/*XXX*/ 	  { DNSLIB_RDATA_WF_BINARY, DNSLIB_RDATA_WF_BINARY }, true }, //same as above
+	  { DNSLIB_RDATA_WF_BINARY, DNSLIB_RDATA_WF_BINARY }, true },
   	/* 48 */
   	{ DNSLIB_RRTYPE_DNSKEY, "DNSKEY", 4,
   	  { DNSLIB_RDATA_WF_SHORT, DNSLIB_RDATA_WF_BYTE,
@@ -266,6 +268,7 @@ static dnslib_rrtype_descriptor_t
 
     /* In NSD they have indices between 52 and 99 filled with
      unknown types. TODO add here if it's really needed? */
+     /* it is indeed needed, in rrtype_from_string */
 
     /* There's a GNU extension that works like this: [first ... last] = value */
 
@@ -309,73 +312,9 @@ static dnslib_rrtype_descriptor_t
 	    DNSLIB_RDATA_WF_BYTE, DNSLIB_RDATA_WF_BINARY } },
 };
 
-static dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,
-                                             const char *name)
-{
-	while (table->name != NULL) {
-		if (strcasecmp(name, table->name) == 0) {
-			return table;
-		}
-		table++;
-	}
-
-	return NULL;
-}
-
-static dnslib_lookup_table_t *dnslib_lookup_by_id(dnslib_lookup_table_t *table,
-					   int id)
-{
-	while (table->name != NULL) {
-		if (table->id == id) {
-			return table;
-		}
-		table++;
-	}
-
-	return NULL;
-}
-
-/*!
- * \brief Strlcpy - safe string copy function, based on FreeBSD implementation.
- *
- * http://www.openbsd.org/cgi-bin/cvsweb/src/lib/libc/string/
- *
- * \param dst Destination string.
- * \param src Source string.
- * \param siz How many characters to copy - 1.
- *
- * \return strlen(src), if retval >= siz, truncation occurred.
- */
-size_t dnslib_strlcpy(char *dst, const char *src, size_t siz)
-{
-	char *d = dst;
-	const char *s = src;
-	size_t n = siz;
-
-	/* Copy as many bytes as will fit */
-	if (n != 0 && --n != 0) {
-		do {
-			if ((*d++ = *s++) == 0) {
-				break;
-			}
-		} while (--n != 0);
-	}
-
-	/* Not enough room in dst, add NUL and traverse rest of src */
-	if (n == 0) {
-		if (siz != 0) {
-			*d = '\0';        /* NUL-terminate dst */
-		}
-		while (*s++)
-			;
-	}
-
-	return(s - src - 1);        /* count does not include NUL */
-}
-
 dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_type(uint16_t type)
 {
-	if (type < DNSLIB_RRTYPE_DESCRIPTORS_LENGTH) {
+	if (type < DNSLIB_RRTYPE_LAST + 1) {
 		return &dnslib_rrtype_descriptors[type];
 	} else if (type == DNSLIB_RRTYPE_DLV) {
 		return &dnslib_rrtype_descriptors[DNSLIB_RRTYPE_DLV];
@@ -383,12 +322,13 @@ dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_type(uint16_t type)
 	return &dnslib_rrtype_descriptors[0];
 }
 
-//Will we ever need this? XXX
+/* I see a lot of potential here to speed up zone parsing - this is O(n) *
+ * could be better */
 dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_name(const char *name)
 {
 	int i;
 
-	for (i = 0; i < DNSLIB_RRTYPE_DESCRIPTORS_LENGTH; ++i) {
+	for (i = 0; i < DNSLIB_RRTYPE_LAST + 1; ++i) {
 		if (dnslib_rrtype_descriptors[i].name &&
 		    strcasecmp(dnslib_rrtype_descriptors[i].name, name) == 0) {
 			return &dnslib_rrtype_descriptors[i];
@@ -499,5 +439,26 @@ uint16_t dnslib_rrclass_from_string(const char *name)
 	}
 
 	return (uint16_t) rrclass;
+}
+
+size_t dnslib_wireformat_size(uint wire_type)
+{
+	switch(wire_type) {
+		case DNSLIB_RDATA_WF_BYTE:
+			return 1;
+			break;
+		case DNSLIB_RDATA_WF_SHORT:
+			return 2;
+			break;
+		case DNSLIB_RDATA_WF_LONG:
+			return 4;
+			break;
+		case DNSLIB_RDATA_WF_A:
+			return 4;
+			break;
+		default: /* unknown size */
+			return 0;
+			break;
+	} /* switch */
 }
 

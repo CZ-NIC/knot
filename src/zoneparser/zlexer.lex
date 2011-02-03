@@ -1,11 +1,16 @@
 %{
-/*
- * zlexer.lex - lexical analyzer for (DNS) zone files
+/*!
+ * \file zlexer.lex
  *
- * Copyright (c) 2001-2006, NLnet Labs. All rights reserved
+ * \author minor modifications by Jan Kadlec <jan.kadlec@nic.cz>,
+ *         most of the code by NLnet Labs
+ *         Copyright (c) 2001-2006, NLnet Labs. All rights reserved.
+ *         See LICENSE for the license.
  *
- * See LICENSE for the license.
+ * \brief lexical analyzer for (DNS) zone files.
  *
+ * \addtogroup zoneparser
+ * @{
  */
 
 #include "common.h"
@@ -18,7 +23,7 @@
 
 #include "zoneparser.h"
 #include "dname.h"
-#include "dns.h"
+#include "parser-descriptor.h"
 #include "zparser.h"
 
 #define YY_NO_INPUT
@@ -348,10 +353,10 @@ ANY     [^\"\n\\]|\\.
 static int
 rrtype_to_token(const char *word, uint16_t *type)
 {
-	uint16_t t = rrtype_from_string(word);
+	uint16_t t = parser_rrtype_from_string(word);
 	if (t != 0) {
-		rrtype_descriptor_type *entry = 0;
-		entry = rrtype_descriptor_by_type(t);
+		parser_rrtype_descriptor_t *entry = 0;
+		entry = parser_rrtype_descriptor_by_type(t);
 		*type = t;
 
 		/*! \todo entry should return associated token.
@@ -381,7 +386,7 @@ zoctet(char *text)
 		if (s[0] != '\\') {
 			/* Ordinary character.  */
 			*p = *s;
-		} else if (isdigit((int)s[1]) && isdigit((int)s[2]) && isdigit((int)s[3])) {
+		} else if (isdigit((int)s[1]) && isdigit((int)s[2]) &&  isdigit((int)s[3])) {
 			/* \DDD escape.  */
 			int val = (hexdigit_to_int(s[1]) * 100 +
 				   hexdigit_to_int(s[2]) * 10 +
@@ -428,7 +433,7 @@ parse_token(int token, char *yytext, enum lexer_state *lexer_state)
 		}
 
 		/* class */
-		rrclass = rrclass_from_string(yytext);
+		rrclass = parser_rrclass_from_string(yytext);
 		if (rrclass != 0) {
 			yylval.rclass = rrclass;
 			LEXOUT(("CLASS "));
