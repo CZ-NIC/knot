@@ -57,6 +57,7 @@ src/dnslib/packet.h
 src/dnslib/response.c
 src/dnslib/edns.h
 src/dnslib/utils.h
+src/dnslib/utils.c
 src/dnslib/zonedb.h
 src/dnslib/zonedb.c
 src/dnslib/debug.h
@@ -67,9 +68,9 @@ src/dnslib/zone-dump.c
 src/dnslib/zone-dump.h
 src/dnslib/zone-load.c
 src/dnslib/zone-load.h
-src/zoneparser/dns.h
-src/zoneparser/dns.c
 src/zoneparser/main.c
+src/zoneparser/parser-descriptor.h
+src/zoneparser/parser-descriptor.c
 src/zoneparser/parser-util.h
 src/zoneparser/parser-util.c
 src/zoneparser/zlexer.lex

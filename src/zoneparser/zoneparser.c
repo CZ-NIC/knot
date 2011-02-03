@@ -1,3 +1,16 @@
+/*!
+ * \file zoneparser.c
+ *
+ * \author Jan Kadlec <jan.kadlec@nic.cz> process_rr(), RRSIG handling and
+ *         minor modifications. most of the code by NLnet Labs
+ *         Copyright (c) 2001-2006, NLnet Labs. All rights reserved.
+ *         See LICENSE for the license.
+ *
+ * \brief Zone compiler.
+ *
+ * \addtogroup zoneparser
+ * @{
+ */
 
 #include <assert.h>
 #include <fcntl.h>
@@ -1432,6 +1445,8 @@ int process_rr(void)
 	}
 
 //TODO
+/* Code from NSD */
+
 	/* Make sure the maximum RDLENGTH does not exceed 65535 bytes.	*/
 //	max_rdlength = rdata_maximum_wireformat_size(
 //		descriptor, rr->rdata_count, rr->rdatas);
@@ -1475,9 +1490,9 @@ int process_rr(void)
 			/* RRSIG is first in the node, so we have to create it
 			 * before we return 
 			 */
-			if ((parser->last_node = create_node(zone, current_rrset,
-						node_add_func,
-						node_get_func)) == NULL) {
+			if ((parser->last_node = create_node(zone,
+			                           current_rrset, node_add_func,
+			                           node_get_func)) == NULL) {
 				return -1;
 			}
 		}
@@ -1520,7 +1535,6 @@ int process_rr(void)
 			if (parser->last_node &&
 			    parser->last_node->owner != current_rrset->owner) {
 				dnslib_dname_free(&(current_rrset->owner));
-				/* XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX */
 			}
 			current_rrset->owner = node->owner;
 		}
@@ -1560,27 +1574,37 @@ int process_rr(void)
 		/* TODO Search for possible duplicates... */
 	}
 
-	/* TODO DNAME and CNAME checks */
+/* \note DNAME and CNAME checks disabled - would slow things down a little 
+ * plus it cannot be done in the fashion below - we don't have information
+ * about the length of rrset
+ * Code from NSD
+ */
 
-//	if(current_rrset->type == TYPE_DNAME && rrset->rr_count > 1) {
+//	if(current_rrset->type ==
+//	   DNSLIB_RRTYPE_DNAME &&
+//	   current_rrset->rdata->count > 1) {
 //		fprintf(stderr, "multiple DNAMEs at the same name");
 //	}
-//	if(current_rrset->type == TYPE_CNAME && rrset->rr_count > 1) {
+//	/* \note this actually counts items, not the legth we would need */
+//	if(current_rrset->type ==
+//	   DNSLIB_RRTYPE_CNAME &&
+//	   current_rrset->rdata->count > 1) {
 //		fprintf(stderr, "multiple CNAMEs at the same name");
+//	/* \note this actually counts items, not the legth we would need */
 //	}
-//	if((rr->type == TYPE_DNAME && domain_find_rrset(rr->owner, zone,
-//	                                                TYPE_CNAME))
-//	 ||(rr->type == TYPE_CNAME && domain_find_rrset(rr->owner, zone,
-//                                                      TYPE_DNAME))) {
+//	if((current_rrset->type == DNSLIB_RRTYPE_DNAME &&
+//	    dnslib_node_get_rrset(node, TYPE_CNAME)) ||
+//	    (current_rrset->type == DNSLIB_RRTYPE_CNAME &&
+//	    dnslib_node_get_rrset(node, TYPE_DNAME))) {
 //		fprintf(stderr, "DNAME and CNAME at the same name");
 //	}
+//	/* \note we don't have similar function - maybe
+//       * length of the skip_list
+//       * should stay disabled 
+//	 */
 //	if(domain_find_rrset(rr->owner, zone, TYPE_CNAME) &&
 //		domain_find_non_cname_rrset(rr->owner, zone)) {
 //		fprintf(stderr, "CNAME and other data at the same name");
-//	}
-//
-//	if (rr->type == TYPE_RRSIG && rr_rrsig_type_covered(rr) == TYPE_SOA) {
-//		rrset->zone->is_secure = 1;
 //	}
 
 	if (vflag > 1 && totalrrs > 0 && (totalrrs % progress == 0)) {
@@ -1616,7 +1640,7 @@ static uint find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
  * Reads the specified zone into the memory
  *
  */
-void zone_read(const char *name, const char *zonefile, const char *outfile)
+int zone_read(const char *name, const char *zonefile, const char *outfile)
 {
 	char* zdb_dbpath = dnslib_zonedb_dbpath();
 	if (!outfile) {
@@ -1641,7 +1665,7 @@ void zone_read(const char *name, const char *zonefile, const char *outfile)
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
 		log_error("cannot open '%s': %s", zonefile, strerror(errno));
 		free(zdb_dbpath);
-		return;
+		return -1;
 	}
 
 	/* Parse and process all RRs.  */
@@ -1674,6 +1698,9 @@ void zone_read(const char *name, const char *zonefile, const char *outfile)
 	totalerrors += parser->errors;
 
 	zparser_free();
+
 	free(zdb_dbpath);
+
+	return totalerrors;
 }
 
