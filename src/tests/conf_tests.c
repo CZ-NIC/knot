@@ -22,40 +22,46 @@ unit_api conf_tests_api = {
  */
 static int conf_tests_count(int argc, char *argv[])
 {
-	return 2;
+	return 10;
 }
 
 /*! Run all scheduled tests for given parameters.
  */
 static int conf_tests_run(int argc, char *argv[])
 {
-	int c = 0;
-	const char* config_fn = 0;
-	while ((c = getopt(argc, argv, "c:")) != -1) {
-		switch (c)
-		{
-		case 'c':
-			config_fn = optarg;
-			note("Using config: %s", config_fn);
-			break;
-		}
-	}
-
 
 	// Test 1: Allocate new config
+	const char *config_fn = "rc:/sample_conf";
 	config_t *conf = config_new(config_fn);
 	ok(conf != 0, "config_new()");
 
 	// Test 2: Parse config
-	int ret = 0;
-	if (config_fn) {
-		ret = config_parse(conf);
-	} else {
-		ret = config_parse_str(conf, sample_conf_rc);
-		config_fn = "rc:/sample_conf";
-	}
-
+	int ret = config_parse_str(conf, sample_conf_rc);
 	ok(ret == 0, "parsing configuration file %s", config_fn);
+
+	// Test 3: Test server version (0-level depth)
+	is(conf->version, "Infinitesimal", "server version loaded ok");
+
+	// Test 4: Test interfaces (1-level depth)
+	ok(!EMPTY_LIST(conf->ifaces), "configured interfaces exist");
+
+	// Test 5,6,7,8: Interfaces content (2-level depth)
+	struct node *n = HEAD(conf->ifaces);
+	conf_iface_t *iface = (conf_iface_t*)n;
+	is(iface->address, "10.10.1.1", "interface0 address check");
+	cmp_ok(iface->port, "==", 53, "interface0 port check");
+	n = n->next;
+	iface = (conf_iface_t*)n;
+	is(iface->address, "::0", "interface1 address check");
+	cmp_ok(iface->port, "==", 53, "interface1 default port check");
+
+	// Test 9,10: Check first key (2-level depth)
+	n = HEAD(conf->keys);
+	conf_key_t *key = (conf_key_t*)n;
+	cmp_ok(key->algorithm, "==", HMAC_MD5, "key0 algorithm enum check");
+	is(key->secret, "Wg==", "key0 secret check");
+
+	//! \todo Level-3 checks (logs), postprocess check (server->key,iface)
 
 	// Deallocating config
 	config_free(conf);
