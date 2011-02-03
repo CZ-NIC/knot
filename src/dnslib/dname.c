@@ -437,6 +437,13 @@ uint dnslib_dname_size(const dnslib_dname_t *dname)
 
 /*----------------------------------------------------------------------------*/
 
+const uint8_t dnslib_dname_size_part(const dnslib_dname_t *dname, int labels)
+{
+	return (dname->labels[labels]);
+}
+
+/*----------------------------------------------------------------------------*/
+
 const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname)
 {
 	return dname->node;
@@ -623,6 +630,22 @@ int dnslib_dname_matched_labels(const dnslib_dname_t *dname1,
 int dnslib_dname_label_count(const dnslib_dname_t *dname)
 {
 	return dname->label_count;
+}
+
+/*----------------------------------------------------------------------------*/
+
+uint8_t dnslib_dname_label_size(const dnslib_dname_t *dname, int i)
+{
+//	printf("Returning size of %d. label starting on %d\n",
+//	       i, dname->labels[i]);
+//	printf("Size from the name: %u\n", dname->name[dname->labels[i]]);
+//	printf("Size from label offsets: %u\n",
+//	       dname->labels[i + 1] - dname->labels[i]);
+
+	assert(i == dname->label_count
+	       || dname->labels[i + 1] - dname->labels[i] - 1
+	          == dname->name[dname->labels[i]]);
+	return dname->name[dname->labels[i]];
 }
 
 /*----------------------------------------------------------------------------*/
