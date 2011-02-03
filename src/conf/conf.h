@@ -186,6 +186,7 @@ typedef struct {
 /* Specific configuration API. */
 config_t *config_new(const char* path);
 int config_parse(config_t *conf);
+int config_parse_str(config_t *conf, const char* src);
 void config_free(config_t *conf);
 
 /* Singleton configuration API. */
