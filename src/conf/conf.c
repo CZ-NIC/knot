@@ -2,15 +2,39 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <setjmp.h>
+#include <pthread.h>
 
 #include "conf.h"
+#include "common.h"
 
-/* Prevent warnings from -Wmissing-prototypes.  */
+/* Prototypes for cf-parse.y */
 extern int cf_parse();
-static jmp_buf conf_jmpbuf;
 config_t *new_config;
-static config_t *s_config;
+
+/* Singleton config. */
+static config_t *s_config = 0;
+
+/* Config parser lock. */
+static volatile int _parser_res = 0;
+static FILE* _parser_fp = 0;
+static pthread_mutex_t _parser_lock = PTHREAD_MUTEX_INITIALIZER;
+
+/* Config file read hook. */
+int cf_read_hook(char *buf, size_t nbytes) {
+	if (_parser_fp == 0) {
+		return -1;
+	}
+
+	// Read a maximum of nbytes
+	return fread(buf, 1, nbytes, _parser_fp);
+}
+
+/* Config error report. */
+void cf_error(const char *msg)
+{
+	log_error("Config parser error: %s\n", msg);
+	_parser_res = -1;
+}
 
 config_t *config_new(const char* path)
 {
@@ -26,20 +50,32 @@ config_t *config_new(const char* path)
 
 int config_parse(config_t *conf)
 {
-	if (setjmp(conf_jmpbuf)) {
-		return 1;
+	if (!conf->filename) {
+		return -1;
 	}
 
+	int ret = 0;
+	pthread_mutex_lock(&_parser_lock);
+	// {
+	// Hook new configuration
 	new_config = conf;
-	//cf_parse();
-	return 0;
-}
+	_parser_fp = fopen(conf->filename, "r");
+	if (_parser_fp == 0) {
+		pthread_mutex_unlock(&_parser_lock);
+		return -2;
+	}
 
-void cf_error(char *msg)
-{
-	fputs(msg, stderr);
-	fputc('\n', stderr);
-	longjmp(conf_jmpbuf, 1);
+	// Parse config
+	_parser_res = 0;
+	cf_parse();
+	ret = _parser_res;
+	// }
+	pthread_mutex_unlock(&_parser_lock);
+
+	fclose(_parser_fp);
+	_parser_fp = 0;
+
+	return ret;
 }
 
 void config_free(config_t *conf)
