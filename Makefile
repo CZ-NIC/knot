@@ -47,10 +47,19 @@ else
 CFLAGS += $(CFLAGS_OPTIMAL)
 endif
 
+### Resources ###
+RC_DIR = src/tests/files
+RC_FILES = $(RC_DIR)/parsed_data $(RC_DIR)/parsed_data_queries $(RC_DIR)/raw_data $(RC_DIR)/raw_data_queries
+RC_OBJS = $(addprefix $(OBJ_DIR), $(addsuffix .rc, $(basename $(notdir $(RC_FILES)))))
+
+$(OBJ_DIR)%.rc: $(RC_DIR)/%
+	@echo "$(COL_WHITE)Resource $(COL_CYAN)$@: $(COL_BLUE)$< $(COL_END)"
+	@./resource.sh $< > $@
+
 ### Dependencies ###
 DEPEND = $(CC) $(addprefix -I ,$(INC_DIRS)) -MM $(SRC_FILES)   2>/dev/null | sed "s%^\([^\ \t\n]*\.o\)%$(OBJ_DIR)/\1%"
 
-Makefile.depend:
+Makefile.depend: $(RC_OBJS)
 	@$(DEPEND) > Makefile.depend
 
 $(LEXER_OBJ).c: $(ZONEC_DIR)/zlexer.lex
@@ -88,15 +97,17 @@ test: unittests
 
 ### Generic Rules ###
 
-$(OBJ_DIR)%.o : %.c
+$(OBJ_DIR)%.o: %.c
 	@echo "$(COL_WHITE)Compiling $(COL_CYAN)$@: $(COL_BLUE)$< $(COL_END)"
 	@$(CC) $(CFLAGS) $(addprefix -I ,$(INC_DIRS)) -c -o $@ $<
 
 ### Cleaning and documentation ###
 .PHONY: clean doc
 clean:
+	@echo "$(COL_WHITE)Cleaning resource files ...$(COL_RED)"
+	@rm -vf $(OBJ_DIR)/*.rc
 	@echo "$(COL_WHITE)Cleaning flex & bison files ...$(COL_RED)"
-	@rm -vf $(OBJ_DIR)zlexer.c $(OBJ_DIR)zparser.h $(OBJ_DIR)zparser.c
+	@rm -vf $(OBJ_DIR)/*.h $(OBJ_DIR)/*.c
 	@echo "$(COL_WHITE)Cleaning object files...$(COL_RED)"
 	@rm -vf ${OBJ_DIR}/*.o
 	@echo "$(COL_WHITE)done$(COL_END)"

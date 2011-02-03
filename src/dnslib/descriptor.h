@@ -28,16 +28,6 @@ enum mxrdtln {
 /* 64 is in NSD. Seems a little too much, but I'd say it's not a real issue. */
 
 /*!
- * \brief A general purpose lookup table.
- */
-struct dnslib_lookup_table {
-	int id;
-	const char *name;
-};
-
-typedef struct dnslib_lookup_table dnslib_lookup_table_t;
-
-/*!
  * \brief Enum containing RR class codes.
  */
 enum dnslib_rr_class {
@@ -146,22 +136,22 @@ enum dnslib_rdata_wireformat {
 	/*!
 	 * \brief Possibly compressed domain name.
 	 */	
-	DNSLIB_RDATA_WF_COMPRESSED_DNAME,
-	DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME, /*!< Uncompressed domain name.  */
-	DNSLIB_RDATA_WF_LITERAL_DNAME, /*!< Literal (not downcased) dname.  */
-	DNSLIB_RDATA_WF_BYTE, /*!< 8-bit integer.  */
-	DNSLIB_RDATA_WF_SHORT, /*!< 16-bit integer.  */
-	DNSLIB_RDATA_WF_LONG, /*!< 32-bit integer.  */
-	DNSLIB_RDATA_WF_TEXT, /*!< Text string.  */
-	DNSLIB_RDATA_WF_A, /*!< 32-bit IPv4 address.  */
-	DNSLIB_RDATA_WF_AAAA, /*!< 128-bit IPv6 address.  */
-	DNSLIB_RDATA_WF_BINARY, /*!< Binary data (unknown length).  */
+	DNSLIB_RDATA_WF_COMPRESSED_DNAME = 50,
+	DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME = 51, /*!< Uncompressed domain name.  */
+	DNSLIB_RDATA_WF_LITERAL_DNAME = 52, /*!< Literal (not downcased) dname.  */
+	DNSLIB_RDATA_WF_BYTE = 1, /*!< 8-bit integer.  */
+	DNSLIB_RDATA_WF_SHORT = 2, /*!< 16-bit integer.  */
+	DNSLIB_RDATA_WF_LONG = 4, /*!< 32-bit integer.  */
+	DNSLIB_RDATA_WF_TEXT = 53, /*!< Text string.  */
+	DNSLIB_RDATA_WF_A = 58, /*!< 32-bit IPv4 address.  */
+	DNSLIB_RDATA_WF_AAAA = 16, /*!< 128-bit IPv6 address.  */
+	DNSLIB_RDATA_WF_BINARY = 54, /*!< Binary data (unknown length).  */
 	/*!
 	 * \brief Binary data preceded by 1 byte length 
 	 */
-	DNSLIB_RDATA_WF_BINARYWITHLENGTH,
-	DNSLIB_RDATA_WF_APL, /*!< APL data.  */
-	DNSLIB_RDATA_WF_IPSECGATEWAY /*!< IPSECKEY gateway ip4, ip6 or dname. */
+	DNSLIB_RDATA_WF_BINARYWITHLENGTH = 55,
+	DNSLIB_RDATA_WF_APL = 56, /*!< APL data.  */
+	DNSLIB_RDATA_WF_IPSECGATEWAY = 57 /*!< IPSECKEY gateway ip4, ip6 or dname. */
 };
 
 /*!
@@ -245,6 +235,16 @@ const char *dnslib_rrclass_to_string(uint16_t rrclass);
  * \return Correct code if found, 0 otherwise.
  */
 uint16_t dnslib_rrclass_from_string(const char *name);
+
+/*!
+ * \brief Returns size of wireformat type in bytes.
+ *
+ * \param wire_type Wireformat type.
+ *
+ * \retval Size of given type on success.
+ * \retval 0 on unknown type or type that has no length.
+ */
+size_t dnslib_wireformat_size(uint wire_type);
 
 #endif /* _CUTEDNS_DNSLIB_DESCRIPTOR_H_ */
 
