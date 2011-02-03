@@ -642,6 +642,7 @@ uint8_t dnslib_dname_label_size(const dnslib_dname_t *dname, int i)
 //	printf("Size from label offsets: %u\n",
 //	       dname->labels[i + 1] - dname->labels[i]);
 
+	assert(i >= 0);
 	assert(i == dname->label_count
 	       || dname->labels[i + 1] - dname->labels[i] - 1
 	          == dname->name[dname->labels[i]]);

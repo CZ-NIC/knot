@@ -80,6 +80,8 @@ struct dnslib_compr {
 
 typedef struct dnslib_compr dnslib_compr_t;
 
+//static int COMPRESS_DNAMES = 1;
+
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
@@ -424,6 +426,22 @@ static int dnslib_response_realloc_compr(dnslib_compressed_dnames_t *table)
 	return 0;
 }
 
+static void dnslib_response_compr_save(dnslib_compressed_dnames_t *table,
+                                       const dnslib_dname_t *dname, short pos)
+{
+	assert(table->count < table->max);
+
+	for (int i = 0; i < table->count; ++i) {
+		if (table->dnames[i] == dname) {
+			return;
+		}
+	}
+
+	table->dnames[table->count] = dname;
+	table->offsets[table->count] = pos;
+	++table->count;
+}
+
 /*---------------------------------------------------------------------------*/
 
 static int dnslib_response_store_dname_pos(dnslib_compressed_dnames_t *table,
@@ -443,9 +461,9 @@ DEBUG_DNSLIB_RESPONSE(
 	}
 
 	// store the position of the name
-	table->dnames[table->count] = dname;
-	table->offsets[table->count] = pos;
-	++table->count;
+//	table->dnames[table->count] = dname;
+//	table->offsets[table->count] = pos;
+//	++table->count;
 
 	/*
 	 * Store positions of ancestors if more than 1 label was not matched.
@@ -464,12 +482,9 @@ DEBUG_DNSLIB_RESPONSE(
 	 */
 	const dnslib_dname_t *to_save = dname;
 	short parent_pos = pos;
-	for (int i = 1; i < not_matched; ++i) {
-		assert(to_save->node != NULL && to_save->node->parent != NULL);
-		to_save = to_save->node->parent->owner;
-		debug_dnslib_response("i: %d\n", i);
-		parent_pos += dnslib_dname_label_size(dname, i - 1) + 1;
+	int i = 0;
 
+	while (to_save != NULL) {
 DEBUG_DNSLIB_RESPONSE(
 		char *name = dnslib_dname_to_str(to_save);
 		debug_dnslib_response("Putting dname %s into compression table."
@@ -483,9 +498,16 @@ DEBUG_DNSLIB_RESPONSE(
 			return -1;
 		}
 
-		table->dnames[table->count] = to_save;
-		table->offsets[table->count] = parent_pos;
-		++table->count;
+		dnslib_response_compr_save(table, to_save, parent_pos);
+
+		to_save = (to_save->node != NULL
+		           && to_save->node->parent != NULL)
+		          ? to_save->node->parent->owner : NULL;
+
+		debug_dnslib_response("i: %d\n", i);
+		parent_pos += (i > 0)
+			      ? dnslib_dname_label_size(dname, i - 1) + 1 : 0;
+		++i;
 	}
 
 	return 0;
@@ -500,7 +522,8 @@ static short dnslib_response_find_dname_pos(
 	for (int i = 0; i < table->count; ++i) {
 		debug_dnslib_response("Comparing dnames %p and %p\n",
 		                      dname, table->dnames[i]);
-		if (table->dnames[i] == dname) {
+		//if (table->dnames[i] == dname) {
+		if (dnslib_dname_compare(table->dnames[i], dname) == 0) {
 			debug_dnslib_response("Found offset: %d\n",
 			                      table->offsets[i]);
 			return table->offsets[i];
@@ -570,7 +593,7 @@ DEBUG_DNSLIB_RESPONSE(
 
 	if (offset >= 0) {  // found such dname somewhere in the packet
 		debug_dnslib_response("Found name in the compression table.\n");
-		assert(offset > DNSLIB_PACKET_HEADER_SIZE);
+		assert(offset >= DNSLIB_PACKET_HEADER_SIZE);
 		size = dnslib_response_put_dname_ptr(dname, not_matched, offset,
 		                                     dname_wire, max);
 		if (size <= 0) {
@@ -669,7 +692,7 @@ static int dnslib_response_rr_to_wire(const dnslib_rrset_t *rrset,
 			}
 
 			debug_dnslib_response("Compressed dname size: %d\n",
-			                      size);
+			                      ret);
 			*rrset_wire += ret;
 			rdlength += ret;
 			compr->wire_pos += ret;
@@ -1057,6 +1080,10 @@ int dnslib_response_parse_query(dnslib_response_t *resp,
 		return err;
 	}
 	resp->header.qdcount = 1;
+
+	// put the qname into the compression table
+	dnslib_response_store_dname_pos(&resp->compression,
+	                                resp->question.qname, 0, size);
 
 	dnslib_response_question_to_wire(&resp->question, &resp_pos, &size);
 	debug_dnslib_response("Converted Question, size so far: %d\n", size);
