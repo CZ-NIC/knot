@@ -3,31 +3,12 @@
 #include <stdio.h>
 #include "conf.h"
 
-config_t *new_config;
+extern void cf_error(const char *msg);
+extern config_t *new_config;
 static conf_iface_t *this_iface;
 static conf_key_t *this_key;
 static conf_server_t *this_server;
 static conf_zone_t *this_zone;
-
-#ifdef CF_STANDALONE
-#include <stdlib.h>
-void yyerror(const char *str)
-{
-	fprintf(stderr,"error: %s\n",str);
-}
-
-int yywrap()
-{
-	return 1;
-}
-
-main()
-{
-	new_config = malloc(sizeof(config_t));
-	yyparse();
-	free(new_config);
-}
-#endif // CF_STANDALONE
 
 %}
 

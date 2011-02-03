@@ -19,13 +19,13 @@
 
 #include "conf/conf.h"
 #include "cf-parse.h"
-//int (*cf_read_hook)(unsigned char *buf, unsigned int max);
-extern void yyerror(const char *str); // cf-parse.y
 
-//#define YY_INPUT(buf,result,max) result = cf_read_hook(buf, max);
-//#define YY_NO_UNPUT
-//#define YY_FATAL_ERROR(msg) yyerror(msg)
-/*%token <alg> TSIG_ALGO_NAME*/
+/* Imported symbols. */
+extern void cf_error(const char *msg);
+extern int cf_read_hook(char *buf, size_t nbytes);
+
+#define YY_INPUT(buf,result,max) result = cf_read_hook(buf, max);
+#define YY_NO_UNPUT
 
 %}
 
@@ -62,7 +62,7 @@ zones           return ZONES;
 storage         return STORAGE;
 
 {DIGIT}+ {
-  yylval.i = atoi(yytext);
+  cf_lval.i = atoi(yytext);
   return NUM;
 }
 
@@ -70,39 +70,39 @@ storage         return STORAGE;
   unsigned char buf[sizeof(struct in_addr)];
   if (inet_pton(AF_INET, yytext, buf))
 	  return IPA;
-  yyerror("Invalid IP address.");
+  cf_error("Invalid IP address.");
 }
 
 ({HEXA}*::|({HEXA}*:){3,})({HEXA}*|{DIGIT}+\.{DIGIT}+\.{DIGIT}+\.{DIGIT}+) {
   unsigned char buf[sizeof(struct in6_addr)];
   if (inet_pton(AF_INET6, yytext, buf))
 	  return IPA;
-  yyerror("Invalid IPv6 address.");
+  cf_error("Invalid IPv6 address.");
 }
 
-gss-tsig        { yylval.alg = GSS_TSIG;    return TSIG_ALGO_NAME; }
-hmac-md5        { yylval.alg = HMAC_MD5;    return TSIG_ALGO_NAME; }
-hmac-sha1       { yylval.alg = HMAC_SHA1;   return TSIG_ALGO_NAME; }
-hmac-sha224     { yylval.alg = HMAC_SHA224; return TSIG_ALGO_NAME; }
-hmac-sha256     { yylval.alg = HMAC_SHA256; return TSIG_ALGO_NAME; }
-hamc-sha384     { yylval.alg = HMAC_SHA384; return TSIG_ALGO_NAME; }
-hmac-sha512     { yylval.alg = HMAC_SHA512; return TSIG_ALGO_NAME; }
+gss-tsig        { cf_lval.alg = GSS_TSIG;    return TSIG_ALGO_NAME; }
+hmac-md5        { cf_lval.alg = HMAC_MD5;    return TSIG_ALGO_NAME; }
+hmac-sha1       { cf_lval.alg = HMAC_SHA1;   return TSIG_ALGO_NAME; }
+hmac-sha224     { cf_lval.alg = HMAC_SHA224; return TSIG_ALGO_NAME; }
+hmac-sha256     { cf_lval.alg = HMAC_SHA256; return TSIG_ALGO_NAME; }
+hamc-sha384     { cf_lval.alg = HMAC_SHA384; return TSIG_ALGO_NAME; }
+hmac-sha512     { cf_lval.alg = HMAC_SHA512; return TSIG_ALGO_NAME; }
 
 ["][^"\n]*["] {
   yytext[yyleng-1] = 0;
-  yylval.t = strdup(yytext + 1);
+  cf_lval.t = strdup(yytext + 1);
   return TEXT;
 }
 
-["][^"\n]*\n    yyerror("Unterminated string.");
+["][^"\n]*\n    cf_error("Unterminated string.");
 
 {ALNUM}+ {
-  yylval.t = strdup(yytext);
+  cf_lval.t = strdup(yytext);
   return TEXT /* Last resort, alphanumeric word. */;
 }
 
 [a-zA-Z0-9\.]+  {
-  yylval.t = strdup(yytext);
+  cf_lval.t = strdup(yytext);
   return ZONE;
 }
 

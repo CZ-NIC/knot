@@ -14,7 +14,6 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <unistd.h>
 
 #include "lib/lists.h"
 
@@ -183,10 +182,6 @@ typedef struct {
 	list servers; /*!< List of remote servers. */
 	list zones; /*!< List of zones. */
 } config_t;
-
-extern config_t *new_config;
-
-extern int (*cf_read_hook)(unsigned char *buf, unsigned int max);
 
 /* Specific configuration API. */
 config_t *config_new(const char* path);
