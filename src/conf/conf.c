@@ -65,6 +65,63 @@ void cf_error(const char *msg)
 	_parser_res = -1;
 }
 
+/* Private helper functions. */
+static void iface_free(conf_iface_t *iface)
+{
+	if (!iface) {
+		return;
+	}
+
+	free(iface->name);
+	free(iface->address);
+	free(iface->sa);
+	free(iface);
+}
+
+static void key_free(conf_key_t *key)
+{
+	if (!key) {
+		return;
+	}
+
+	free(key->name);
+	free(key->secret);
+	free(key);
+}
+
+static void log_free(conf_log_t *log)
+{
+	if (!log) {
+		return;
+	}
+
+	free(log->log_output);
+	free(log);
+}
+
+static void server_free(conf_server_t *server)
+{
+	if (!server) {
+		return;
+	}
+
+	free(server->name);
+	free(server->address);
+	// Server key and iface should be already freed
+	free(server);
+}
+
+static void zone_free(conf_zone_t *zone)
+{
+	if (!zone) {
+		return;
+	}
+
+	free(zone->name);
+	free(zone->storage);
+	//! \todo Free zone lists.
+}
+
 config_t *config_new(const char* path)
 {
 	config_t *c = malloc(sizeof(config_t));
@@ -154,10 +211,40 @@ int config_parse_str(config_t *conf, const char* src)
 
 void config_free(config_t *conf)
 {
-	if (conf) {
-		free(conf->filename);
-		free(conf);
+	if (!conf) {
+		return;
 	}
+
+	// Free interfaces
+	struct node *n, *nxt;
+	WALK_LIST_DELSAFE(n, nxt, conf->ifaces) {
+		iface_free((conf_iface_t*)n);
+	}
+
+	// Free keys
+	WALK_LIST_DELSAFE(n, nxt, conf->keys) {
+		key_free((conf_key_t*)n);
+	}
+
+	// Free logs
+	WALK_LIST_DELSAFE(n, nxt, conf->logs) {
+		log_free((conf_log_t*)n);
+	}
+
+	// Free servers
+	WALK_LIST_DELSAFE(n, nxt, conf->servers) {
+		server_free((conf_server_t*)n);
+	}
+
+	// Free zones
+	WALK_LIST_DELSAFE(n, nxt, conf->zones) {
+		zone_free((conf_zone_t*)n);
+	}
+
+	free(conf->filename);
+	free(conf->identity);
+	free(conf->version);
+	free(conf);
 }
 
 int config_open(const char* path)

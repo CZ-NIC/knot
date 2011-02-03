@@ -52,6 +52,8 @@ interface_start: TEXT {
     this_iface = malloc(sizeof(conf_iface_t));
     memset(this_iface, 0, sizeof(conf_iface_t));
     this_iface->name = $1;
+    this_iface->address = 0; // No default address (mandatory)
+    this_iface->port = CONFIG_DEFAULT_PORT;
     add_tail(&new_config->ifaces, &this_iface->n);
  }
  ;

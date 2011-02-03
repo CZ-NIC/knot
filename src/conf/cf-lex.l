@@ -65,15 +65,19 @@ storage         return STORAGE;
 
 {DIGIT}+\.{DIGIT}+\.{DIGIT}+\.{DIGIT}+ {
   unsigned char buf[sizeof(struct in_addr)];
-  if (inet_pton(AF_INET, yytext, buf))
+  if (inet_pton(AF_INET, yytext, buf)) {
+	  cf_lval.t = strdup(yytext);
 	  return IPA;
+  }
   cf_error("Invalid IP address.");
 }
 
 ({HEXA}*::|({HEXA}*:){3,})({HEXA}*|{DIGIT}+\.{DIGIT}+\.{DIGIT}+\.{DIGIT}+) {
   unsigned char buf[sizeof(struct in6_addr)];
-  if (inet_pton(AF_INET6, yytext, buf))
+  if (inet_pton(AF_INET6, yytext, buf)) {
+	  cf_lval.t = strdup(yytext);
 	  return IPA;
+  }
   cf_error("Invalid IPv6 address.");
 }
 

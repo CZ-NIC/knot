@@ -18,6 +18,7 @@
 #include "lib/lists.h"
 
 /* Constants. */
+#define CONFIG_DEFAULT_PORT 53
 #define CONFIG_DEFAULT_PATH "/etc/cutedns/cutedns.conf" //!< Default config path
 
 /*!
