@@ -324,7 +324,7 @@ const dnslib_rrset_t *dnslib_response_additional_rrset(
  * \param resp_wire Here the wire format of the response will be stored.
  *                  Space for the response will be allocated. *resp_wire must
  *                  be set to NULL (to avoid leaks).
- * \param resp_size Size of the response in wire format.
+ * \param resp_size The size of the response in wire format will be stored here.
  *
  * \retval 0 if successful.
  * \retval -2 if \a *resp_wire was not set to NULL.
