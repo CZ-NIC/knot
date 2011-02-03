@@ -3,6 +3,9 @@
 #include "tap_unit.h"
 #include "conf/conf.h"
 
+/* Resources. */
+#include "sample_conf.rc"
+
 static int conf_tests_count(int argc, char *argv[]);
 static int conf_tests_run(int argc, char *argv[]);
 
@@ -27,7 +30,7 @@ static int conf_tests_count(int argc, char *argv[])
 static int conf_tests_run(int argc, char *argv[])
 {
 	int c = 0;
-	const char* config_fn = CONFIG_DEFAULT_PATH;
+	const char* config_fn = 0;
 	while ((c = getopt(argc, argv, "c:")) != -1) {
 		switch (c)
 		{
@@ -44,7 +47,14 @@ static int conf_tests_run(int argc, char *argv[])
 	ok(conf != 0, "config_new()");
 
 	// Test 2: Parse config
-	int ret = config_parse(conf);
+	int ret = 0;
+	if (config_fn) {
+		ret = config_parse(conf);
+	} else {
+		ret = config_parse_str(conf, sample_conf_rc);
+		config_fn = "rc:/sample_conf";
+	}
+
 	ok(ret == 0, "parsing configuration file %s", config_fn);
 
 	// Deallocating config

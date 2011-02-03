@@ -73,7 +73,7 @@ $(PARSER_OBJ).c $(PARSER_OBJ).h: $(ZONEC_DIR)/zparser.y
 
 ### Resources ###
 RC_DIR = src/tests/files
-RC_FILES = $(RC_DIR)/parsed_data $(RC_DIR)/parsed_data_queries $(RC_DIR)/raw_data $(RC_DIR)/raw_data_queries
+RC_FILES = $(RC_DIR)/parsed_data $(RC_DIR)/parsed_data_queries $(RC_DIR)/raw_data $(RC_DIR)/raw_data_queries $(RC_DIR)/sample_conf
 RC_OBJS = $(addprefix $(OBJ_DIR), $(addsuffix .rc, $(basename $(notdir $(RC_FILES)))))
 
 $(OBJ_DIR)%.rc: $(RC_DIR)/%
