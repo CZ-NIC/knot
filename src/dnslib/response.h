@@ -59,7 +59,7 @@ static const uint16_t EDNS_NOT_SUPPORTED = 65535;
  * \todo Consider using some better lookup structure, such as skip-list.
  */
 struct dnslib_compressed_dnames {
-	dnslib_dname_t **dnames;  /*!< Domain names present in packet. */
+	const dnslib_dname_t **dnames;  /*!< Domain names present in packet. */
 	short *offsets;           /*!< Offsets of domain names in the packet. */
 	short count;              /*!< Count of items in the previous arrays. */
 	short max;                /*!< Capacity of the structure (allocated). */
