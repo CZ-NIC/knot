@@ -9,6 +9,7 @@
 #include "descriptor.h"
 #include "edns.h"
 #include "utils.h"
+#include "node.h"
 
 enum {
 	DEFAULT_ANCOUNT = 6,
@@ -133,7 +134,7 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 	resp->max_ar_rrsets = DEFAULT_ARCOUNT;
 
 	// then domain names for compression and offsets
-	resp->compression.dnames = (dnslib_dname_t **)
+	resp->compression.dnames = (const dnslib_dname_t **)
 	                               (resp->additional + DEFAULT_ARCOUNT);
 	resp->compression.offsets = (short *)
 		(resp->compression.dnames + DEFAULT_DOMAINS_IN_RESPONSE);
@@ -386,12 +387,144 @@ static int dnslib_response_parse_client_edns(const uint8_t **pos,
 	return 0;
 }
 
+/*----------------------------------------------------------------------------*/
+
+static int dnslib_response_realloc_compr(dnslib_compressed_dnames_t *table)
+{
+	int free_old = table->max != DEFAULT_DOMAINS_IN_RESPONSE;
+	short *old_offsets = table->offsets;
+	const dnslib_dname_t **old_dnames = table->dnames;
+
+	short new_max_count = table->max + STEP_DOMAINS;
+
+	short *new_offsets = (short *)malloc(new_max_count * sizeof(short));
+	CHECK_ALLOC_LOG(new_offsets, -1);
+
+	const dnslib_dname_t **new_dnames = (const dnslib_dname_t **)malloc(
+		new_max_count * sizeof(dnslib_dname_t *));
+	if (new_dnames == NULL) {
+		ERR_ALLOC_FAILED;
+		free(new_offsets);
+		return -1;
+	}
+
+	memcpy(new_offsets, table->offsets, table->max * sizeof(short));
+	memcpy(new_dnames, table->dnames,
+	       table->max * sizeof(dnslib_dname_t *));
+
+	table->offsets = new_offsets;
+	table->dnames = new_dnames;
+	table->max = new_max_count;
+
+	if (free_old) {
+		free(old_offsets);
+		free(old_dnames);
+	}
+
+	return 0;
+}
+
 /*---------------------------------------------------------------------------*/
 
-static int dnslib_response_store_dname_pos(const dnslib_dname_t *dname,
-                                           short pos)
+static int dnslib_response_store_dname_pos(dnslib_compressed_dnames_t *table,
+                                           const dnslib_dname_t *dname,
+                                           int not_matched, short pos)
 {
+DEBUG_DNSLIB_RESPONSE(
+	char *name = dnslib_dname_to_str(dname);
+	debug_dnslib_response("Putting dname %s into compression table."
+	                      " Labels not matched: %d, position: %d,"
+	                      ", pointer: %p\n", name, not_matched, pos, dname);
+	free(name);
+);
+	if (table->count == table->max &&
+	    dnslib_response_realloc_compr(table) != 0) {
+		return -1;
+	}
+
+	// store the position of the name
+	table->dnames[table->count] = dname;
+	table->offsets[table->count] = pos;
+	++table->count;
+
+	/*
+	 * Store positions of ancestors if more than 1 label was not matched.
+	 *
+	 * In case the name is not in the zone, the counting to not_matched
+	 * may be limiting, because the search stopped before after the first
+	 * label (i.e. not_matched == 1). So we do not store the parents in
+	 * this case. However, storing them will require creating those domain
+	 * names, as they do not exist.
+	 *
+	 * The same problem is with domain names synthetized from wildcards.
+	 * These also do not have any node to follow.
+	 *
+	 * We accept this as performance has higher
+	 * priority than the best possible compression.
+	 */
+	const dnslib_dname_t *to_save = dname;
+	short parent_pos = pos;
+	for (int i = 1; i < not_matched; ++i) {
+		assert(to_save->node != NULL && to_save->node->parent != NULL);
+		to_save = to_save->node->parent->owner;
+		debug_dnslib_response("i: %d\n", i);
+		parent_pos += dnslib_dname_label_size(dname, i - 1) + 1;
+
+DEBUG_DNSLIB_RESPONSE(
+		char *name = dnslib_dname_to_str(to_save);
+		debug_dnslib_response("Putting dname %s into compression table."
+		                      " Position: %d, pointer: %p\n",
+		                      name, parent_pos, to_save);
+		free(name);
+);
+
+		if (table->count == table->max &&
+		    dnslib_response_realloc_compr(table) != 0) {
+			return -1;
+		}
+
+		table->dnames[table->count] = to_save;
+		table->offsets[table->count] = parent_pos;
+		++table->count;
+	}
+
 	return 0;
+}
+
+/*---------------------------------------------------------------------------*/
+
+static short dnslib_response_find_dname_pos(
+               const dnslib_compressed_dnames_t *table,
+               const dnslib_dname_t *dname)
+{
+	for (int i = 0; i < table->count; ++i) {
+		debug_dnslib_response("Comparing dnames %p and %p\n",
+		                      dname, table->dnames[i]);
+		if (table->dnames[i] == dname) {
+			debug_dnslib_response("Found offset: %d\n",
+			                      table->offsets[i]);
+			return table->offsets[i];
+		}
+	}
+	return -1;
+}
+
+/*---------------------------------------------------------------------------*/
+
+static int dnslib_response_put_dname_ptr(const dnslib_dname_t *dname,
+                                         int not_matched, short offset,
+                                         uint8_t *wire, short max)
+{
+	// put the not matched labels
+	short size = dnslib_dname_size_part(dname, not_matched);
+	if (size + 2 > max) {
+		return -1;
+	}
+
+	memcpy(wire, dnslib_dname_name(dname), size);
+	dnslib_packet_put_pointer(wire + size, offset);
+
+	return size + 2;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -405,13 +538,63 @@ static int dnslib_response_compress_dname(const dnslib_dname_t *dname,
 	 *
 	 * if pos < 0, do not store the position!
 	 */
-	// now just copy the dname without compressing
-	if (dname->size > max) {
-		return -1;
+
+	// try to find the name or one of its ancestors in the compr. table
+	const dnslib_dname_t *to_find = dname;
+	short offset = -1;
+	int not_matched = 0;
+
+	while (to_find != NULL) {
+DEBUG_DNSLIB_RESPONSE(
+		char *name = dnslib_dname_to_str(to_find);
+		debug_dnslib_response("Searching for name %s in the compression"
+		                      " table, not matched labels: %d\n", name,
+		                      not_matched);
+		free(name);
+);
+		offset = dnslib_response_find_dname_pos(compr->table,
+		                                        to_find);
+		if (offset < 0) {
+			++not_matched;
+		}
+
+		if (offset >= 0 || to_find->node == NULL
+		    || to_find->node->parent == NULL) {
+			break;
+		} else {
+			assert(to_find->node != to_find->node->parent);
+			assert(to_find != to_find->node->parent->owner);
+			to_find = to_find->node->parent->owner;
+		}
 	}
 
-	memcpy(dname_wire, dname->name, dname->size);
-	size = dname->size;
+	if (offset >= 0) {  // found such dname somewhere in the packet
+		debug_dnslib_response("Found name in the compression table.\n");
+		assert(offset > DNSLIB_PACKET_HEADER_SIZE);
+		size = dnslib_response_put_dname_ptr(dname, not_matched, offset,
+		                                     dname_wire, max);
+		if (size <= 0) {
+			return -1;
+		}
+	} else {
+		debug_dnslib_response("Not found, putting whole name.\n");
+		// now just copy the dname without compressing
+		if (dname->size > max) {
+			return -1;
+		}
+
+		memcpy(dname_wire, dname->name, dname->size);
+		size = dname->size;
+	}
+
+	// in either way, put info into the compression table
+	assert(compr->wire_pos >= 0);
+	if (not_matched > 0
+	    && dnslib_response_store_dname_pos(compr->table, dname, not_matched,
+	                                    compr->wire_pos) != 0) {
+		log_warning("Compression info could not be stored.\n");
+	}
+
 	return size;
 }
 
