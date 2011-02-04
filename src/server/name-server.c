@@ -499,6 +499,14 @@ DEBUG_NS(
 //		assert(exact_match == 1
 //		       || (exact_match == 0 && closest_encloser == node));
 
+		debug_ns("Closest encloser is deleg. point? %s\n",
+			 (dnslib_node_is_deleg_point(closest_encloser))
+			 ? "yes" : "no");
+
+		debug_ns("Closest encloser is non authoritative? %s\n",
+			 (dnslib_node_is_non_auth(closest_encloser))
+			 ? "yes" : "no");
+
 		if (dnslib_node_is_deleg_point(closest_encloser)) {
 			ns_referral(closest_encloser, resp);
 			break;
