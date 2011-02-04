@@ -446,7 +446,8 @@ static void dnslib_response_compr_save(dnslib_compressed_dnames_t *table,
 
 static int dnslib_response_store_dname_pos(dnslib_compressed_dnames_t *table,
                                            const dnslib_dname_t *dname,
-                                           int not_matched, short pos)
+                                           int not_matched, short pos,
+                                           short matched_offset)
 {
 DEBUG_DNSLIB_RESPONSE(
 	char *name = dnslib_dname_to_str(dname);
@@ -485,6 +486,10 @@ DEBUG_DNSLIB_RESPONSE(
 	int i = 0;
 
 	while (to_save != NULL) {
+		if (i == not_matched) {
+			parent_pos = matched_offset;
+		}
+
 DEBUG_DNSLIB_RESPONSE(
 		char *name = dnslib_dname_to_str(to_save);
 		debug_dnslib_response("Putting dname %s into compression table."
@@ -505,8 +510,9 @@ DEBUG_DNSLIB_RESPONSE(
 		          ? to_save->node->parent->owner : NULL;
 
 		debug_dnslib_response("i: %d\n", i);
-		parent_pos += (i > 0)
-			      ? dnslib_dname_label_size(dname, i - 1) + 1 : 0;
+		parent_pos += dnslib_dname_label_size(dname, i) + 1;
+//		parent_pos += (i > 0)
+//			      ? dnslib_dname_label_size(dname, i - 1) + 1 : 0;
 		++i;
 	}
 
@@ -575,8 +581,7 @@ DEBUG_DNSLIB_RESPONSE(
 		                      not_matched);
 		free(name);
 );
-		offset = dnslib_response_find_dname_pos(compr->table,
-		                                        to_find);
+		offset = dnslib_response_find_dname_pos(compr->table, to_find);
 		if (offset < 0) {
 			++not_matched;
 		}
@@ -612,9 +617,8 @@ DEBUG_DNSLIB_RESPONSE(
 
 	// in either way, put info into the compression table
 	assert(compr->wire_pos >= 0);
-	if (not_matched > 0
-	    && dnslib_response_store_dname_pos(compr->table, dname, not_matched,
-	                                    compr->wire_pos) != 0) {
+	if (dnslib_response_store_dname_pos(compr->table, dname, not_matched,
+	                                    compr->wire_pos, offset) != 0) {
 		log_warning("Compression info could not be stored.\n");
 	}
 
@@ -815,6 +819,9 @@ DEBUG_DNSLIB_RESPONSE(
 	do {
 		int ret = dnslib_response_rr_to_wire(rrset, rdata, &compr_info,
 		                                    pos, max_size - rrset_size);
+
+		assert(ret != 0);
+
 		if (ret == -1) {
 			// some RR didn't fit in, so no RRs should be used
 
@@ -824,6 +831,7 @@ DEBUG_DNSLIB_RESPONSE(
 			return -1;
 		}
 
+		debug_dnslib_response("RR of size %d added.\n", ret);
 		rrset_size += ret;
 		++rrs;
 	} while ((rdata = dnslib_rrset_rdata_next(rrset, rdata)) != NULL);
@@ -983,7 +991,7 @@ int dnslib_response_try_add_rrset(const dnslib_rrset_t **rrsets,
 
 DEBUG_DNSLIB_RESPONSE(
 	char *name = dnslib_dname_to_str(rrset->owner);
-	debug_dnslib_response("Adding RRSet with owner %s and type %s: \n",
+	debug_dnslib_response("\nAdding RRSet with owner %s and type %s: \n",
 	                      name, dnslib_rrtype_to_string(rrset->type));
 	free(name);
 );
@@ -997,8 +1005,9 @@ DEBUG_DNSLIB_RESPONSE(
 	if (rrs >= 0) {
 		rrsets[(*rrset_count)++] = rrset;
 		resp->size += size;
-		debug_dnslib_response("RRset added, size: %d, total size of "
-		                      "response: %d\n", size, resp->size);
+		debug_dnslib_response("RRset added, size: %d, RRs: %d, total "
+		                      "size of response: %d\n\n", size, rrs,
+		                      resp->size);
 	} else if (tc) {
 		dnslib_packet_flags_set_tc(&resp->header.flags1);
 	}
@@ -1083,7 +1092,7 @@ int dnslib_response_parse_query(dnslib_response_t *resp,
 
 	// put the qname into the compression table
 	dnslib_response_store_dname_pos(&resp->compression,
-	                                resp->question.qname, 0, size);
+	                                resp->question.qname, 0, size, size);
 
 	dnslib_response_question_to_wire(&resp->question, &resp_pos, &size);
 	debug_dnslib_response("Converted Question, size so far: %d\n", size);
@@ -1221,7 +1230,7 @@ int dnslib_response_add_rrset_additional(dnslib_response_t *response,
                                          int check_duplicates)
 {
 	// if this is the first additional RRSet, add EDNS OPT RR first
-	if (response->header.arcount == 0) {
+	if (response->header.arcount == 0 && response->edns_size > 0) {
 		assert(response->size + response->edns_size
 		       <= response->max_size);
 		memcpy(response->wireformat + response->size,
