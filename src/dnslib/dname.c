@@ -638,12 +638,15 @@ uint8_t dnslib_dname_label_size(const dnslib_dname_t *dname, int i)
 {
 //	printf("Returning size of %d. label starting on %d\n",
 //	       i, dname->labels[i]);
+//	printf("Label count: %d, size of %d. label: %d, size of %d.label: %d\n",
+//	       dname->label_count, i, dname->labels[i], i + 1,
+//	       dname->labels[i+1]);
 //	printf("Size from the name: %u\n", dname->name[dname->labels[i]]);
 //	printf("Size from label offsets: %u\n",
 //	       dname->labels[i + 1] - dname->labels[i]);
 
 	assert(i >= 0);
-	assert(i == dname->label_count
+	assert(i + 1 == dname->label_count
 	       || dname->labels[i + 1] - dname->labels[i] - 1
 	          == dname->name[dname->labels[i]]);
 	return dname->name[dname->labels[i]];
