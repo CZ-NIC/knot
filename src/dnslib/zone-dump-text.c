@@ -1,7 +1,11 @@
 #include <ctype.h>
+#include <assert.h>
+#include <arpa/inet.h>
 
 #include "dnslib.h"
 #include "dnslib/utils.h"
+
+/* TODO max length of alg */
 
 /* Taken from RFC 4398, section 2.1.  */
 dnslib_lookup_table_t dnslib_dns_certificate_types[] = {
@@ -36,6 +40,11 @@ dnslib_lookup_table_t dnslib_dns_algorithms[] = {
 	{ 0, NULL }
 };
 
+static inline uint8_t * rdata_item_data(dnslib_rdata_item_t item)
+{
+	return (uint8_t *)(item.raw_data + 1);
+}
+
 char *rdata_dname_to_string(dnslib_rdata_item_t item)
 {
 	return dnslib_dname_to_str(item.dname);
@@ -63,6 +72,8 @@ char *rdata_text_to_string(dnslib_rdata_item_t item)
 			if (ch == '"' || ch == '\\') {
 				strcat(ret, "\\");
 			}
+				/* XXX for the love of god, how to this better,
+				   but w/o obscure self-made functions */
 				char tmp_str[2];
 				tmp_str[0] = ch;
 				tmp_str[1] = 0;
@@ -85,108 +96,105 @@ char *rdata_text_to_string(dnslib_rdata_item_t item)
 
 char *rdata_byte_to_string(dnslib_rdata_item_t item)
 {
+	assert(item.raw_data[0] == 1);
 	uint8_t data = item.raw_data[1];
 	char *ret = malloc(sizeof(char) * 4);
 	snprintf(ret, 4, "%d", (char) data);
 	return ret;
 }
 
-/*char *rdata_short_to_string(dnslib_rdata_item_t item)
+char *rdata_short_to_string(dnslib_rdata_item_t item)
 {
-	uint16_t data = read_uint16(rdata_atom_data(rdata));
-	buffer_printf(output, "%lu", (unsigned long) data);
-	return 1;
+	uint16_t data = dnslib_wire_read_u16(rdata_item_data(item));
+	char *ret = malloc(sizeof(char) * 6);
+	snprintf(ret, 6, "%u", data);
+	/* XXX Use proper macros - see response tests*/
+	/* XXX check return value, return NULL on failure */
+	return ret;
 }
 
-static int
-rdata_long_to_string(buffer_type *output, rdata_atom_type rdata,
-	rr_type* ATTR_UNUSED(rr))
+char *rdata_long_to_string(dnslib_rdata_item_t item)
 {
-	uint32_t data = read_uint32(rdata_atom_data(rdata));
-	buffer_printf(output, "%lu", (unsigned long) data);
-	return 1;
+	uint32_t data = dnslib_wire_read_u32(rdata_item_data(item));
+	char *ret = malloc(sizeof(char) * 10);
+	/* u should be enough */
+	snprintf(ret, 10, "%u", data);
+	return ret;
 }
 
-static int
-rdata_a_to_string(buffer_type *output, rdata_atom_type rdata,
-	rr_type* ATTR_UNUSED(rr))
+char *rdata_a_to_string(dnslib_rdata_item_t item)
 {
-	int result = 0;
-	char str[200];
-	if (inet_ntop(AF_INET, rdata_atom_data(rdata), str, sizeof(str))) {
-		buffer_printf(output, "%s", str);
-		result = 1;
+	/* 200 seems like a little too much */
+	char *ret = malloc(sizeof(char) * 200);
+	if (inet_ntop(AF_INET, rdata_item_data(item), ret, 200)) {
+		return ret;
+	} else {
+		return NULL;
 	}
-	return result;
 }
 
-static int
-rdata_aaaa_to_string(buffer_type *output, rdata_atom_type rdata,
-	rr_type* ATTR_UNUSED(rr))
+char *rdata_aaaa_to_string(dnslib_rdata_item_t item)
 {
-	int result = 0;
-	char str[200];
-	if (inet_ntop(AF_INET6, rdata_atom_data(rdata), str, sizeof(str))) {
-		buffer_printf(output, "%s", str);
-		result = 1;
+	char *ret = malloc(sizeof(char) * 200);
+	if (inet_ntop(AF_INET6, rdata_item_data(item), ret, 200)) {
+		return ret;
+	} else {
+		return NULL;
 	}
-	return result;
 }
 
-static int
-rdata_rrtype_to_string(buffer_type *output, rdata_atom_type rdata,
-	rr_type* ATTR_UNUSED(rr))
+char *rdata_rrtype_to_string(dnslib_rdata_item_t item)
 {
-	uint16_t type = read_uint16(rdata_atom_data(rdata));
-	buffer_printf(output, "%s", rrtype_to_string(type));
-	return 1;
+	uint16_t type = dnslib_wire_read_u16(rdata_item_data(item));
+	const char *tmp = dnslib_rrtype_to_string(type);
+	char *ret = malloc(sizeof(char) * 20); /* TODO Move this to constant somewhere and lets hope nobody makes bigger rrype :) */
+	strncpy(ret, tmp, 20);
+	return ret;
 }
 
-static int
-rdata_algorithm_to_string(buffer_type *output, rdata_atom_type rdata,
-	rr_type* ATTR_UNUSED(rr))
+char *rdata_algorithm_to_string(dnslib_rdata_item_t item)
 {
-	uint8_t id = *rdata_atom_data(rdata);
-	lookup_table_type *alg
-		= lookup_by_id(dns_algorithms, id);
+	uint8_t id = *rdata_item_data(item);
+	char *ret = malloc(sizeof(char) * 20);
+	dnslib_lookup_table_t *alg
+		= dnslib_lookup_by_id(dnslib_dns_algorithms, id);
 	if (alg) {
-		buffer_printf(output, "%s", alg->name);
+		strncpy(ret, alg->name, 20);
 	} else {
-		buffer_printf(output, "%u", (unsigned) id);
+		snprintf(ret, 4, "%d", id);
 	}
-	return 1;
+
+	return ret;
 }
 
-static int
-rdata_certificate_type_to_string(buffer_type *output, rdata_atom_type rdata,
-	rr_type* ATTR_UNUSED(rr))
+char *rdata_certificate_type_to_string(dnslib_rdata_item_t item)
 {
-	uint16_t id = read_uint16(rdata_atom_data(rdata));
-	lookup_table_type *type
-		= lookup_by_id(dns_certificate_types, id);
+	uint16_t id = dnslib_wire_read_u16(rdata_item_data(item));
+	char *ret = malloc(sizeof(char) * 20);
+	dnslib_lookup_table_t *type
+		= dnslib_lookup_by_id(dnslib_dns_certificate_types, id);
 	if (type) {
-		buffer_printf(output, "%s", type->name);
+		strncpy(ret, type->name, 20);
 	} else {
-		buffer_printf(output, "%u", (unsigned) id);
+		snprintf(ret, 7, "%d", 20);
 	}
-	return 1;
+
+	return ret;
 }
 
-static int
-rdata_period_to_string(buffer_type *output, rdata_atom_type rdata,
-	rr_type* ATTR_UNUSED(rr))
+/*
+
+char *rdata_period_to_string(dnslib_rdata_item_t item)
 {
-	uint32_t period = read_uint32(rdata_atom_data(rdata));
+	uint32_t period = dnslib_read_u16(rdata_item_data(rdata));
 	buffer_printf(output, "%lu", (unsigned long) period);
 	return 1;
 }
 
-static int
-rdata_time_to_string(buffer_type *output, rdata_atom_type rdata,
-	rr_type* ATTR_UNUSED(rr))
+char *rdata_time_to_string(dnslib_rdata_item_t item)
 {
 	int result = 0;
-	time_t time = (time_t) read_uint32(rdata_atom_data(rdata));
+	time_t time = (time_t) read_uint32(rdata_item_data(rdata));
 	struct tm *tm = gmtime(&time);
 	char buf[15];
 	if (strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", tm)) {
@@ -196,9 +204,7 @@ rdata_time_to_string(buffer_type *output, rdata_atom_type rdata,
 	return result;
 }
 
-static int
-rdata_base32_to_string(buffer_type *output, rdata_atom_type rdata,
-	rr_type* ATTR_UNUSED(rr))
+char *rdata_base32_to_string(dnslib_rdata_item_t item)
 {
 	int length;
 	size_t size = rdata_atom_size(rdata);
@@ -208,7 +214,7 @@ rdata_base32_to_string(buffer_type *output, rdata_atom_type rdata,
 	}
 	size -= 1; // remove length byte from count
 	buffer_reserve(output, size * 2 + 1);
-	length = b32_ntop(rdata_atom_data(rdata)+1, size,
+	length = b32_ntop(rdata_item_data(rdata)+1, size,
 			  (char *) buffer_current(output), size * 2);
 	if (length > 0) {
 		buffer_skip(output, length);
@@ -217,14 +223,12 @@ rdata_base32_to_string(buffer_type *output, rdata_atom_type rdata,
 }
 
 
-static int
-rdata_base64_to_string(buffer_type *output, rdata_atom_type rdata,
-	rr_type* ATTR_UNUSED(rr))
+char *rdata_base64_to_string(dnslib_rdata_item_t item)
 {
 	int length;
 	size_t size = rdata_atom_size(rdata);
 	buffer_reserve(output, size * 2 + 1);
-	length = b64_ntop(rdata_atom_data(rdata), size,
+	length = b64_ntop(rdata_item_data(rdata), size,
 			  (char *) buffer_current(output), size * 2);
 	if (length > 0) {
 		buffer_skip(output, length);
@@ -232,9 +236,7 @@ rdata_base64_to_string(buffer_type *output, rdata_atom_type rdata,
 	return length != -1;
 }
 
-static void
-hex_to_string(buffer_type *output, const uint8_t *data, size_t size)
-{
+char *hex_to_string(dnslib_rdata_item_t item)
 	static const char hexdigits[] = {
 		'0', '1', '2', '3', '4', '5', '6', '7',
 		'8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
@@ -249,45 +251,37 @@ hex_to_string(buffer_type *output, const uint8_t *data, size_t size)
 	}
 }
 
-static int
-rdata_hex_to_string(buffer_type *output, rdata_atom_type rdata,
-	rr_type* ATTR_UNUSED(rr))
+char *rdata_hex_to_string(dnslib_rdata_item_t item)
 {
-	hex_to_string(output, rdata_atom_data(rdata), rdata_atom_size(rdata));
+	hex_to_string(output, rdata_item_data(rdata), rdata_atom_size(rdata));
 	return 1;
 }
 
-static int
-rdata_hexlen_to_string(buffer_type *output, rdata_atom_type rdata,
-	rr_type* ATTR_UNUSED(rr))
+char *rdata_hexlen_to_string(dnslib_rdata_item_t item)
 {
 	if(rdata_atom_size(rdata) <= 1) {
 		// NSEC3 salt hex can be empty
 		buffer_printf(output, "-");
 		return 1;
 	}
-	hex_to_string(output, rdata_atom_data(rdata)+1, rdata_atom_size(rdata)-1);
+	hex_to_string(output, rdata_item_data(rdata)+1, rdata_atom_size(rdata)-1);
 	return 1;
 }
 
-static int
-rdata_nsap_to_string(buffer_type *output, rdata_atom_type rdata,
-	rr_type* ATTR_UNUSED(rr))
+char *rdata_nsap_to_string(dnslib_rdata_item_t item)
 {
 	buffer_printf(output, "0x");
-	hex_to_string(output, rdata_atom_data(rdata), rdata_atom_size(rdata));
+	hex_to_string(output, rdata_item_data(rdata), rdata_atom_size(rdata));
 	return 1;
 }
 
-static int
-rdata_apl_to_string(buffer_type *output, rdata_atom_type rdata,
-	rr_type* ATTR_UNUSED(rr))
+char *rdata_apl_to_string(dnslib_rdata_item_t item)
 {
 	int result = 0;
 	buffer_type packet;
 
 	buffer_create_from(
-		&packet, rdata_atom_data(rdata), rdata_atom_size(rdata));
+		&packet, rdata_item_data(rdata), rdata_atom_size(rdata));
 
 	if (buffer_available(&packet, 4)) {
 		uint16_t address_family = buffer_read_u16(&packet);
@@ -319,15 +313,13 @@ rdata_apl_to_string(buffer_type *output, rdata_atom_type rdata,
 	return result;
 }
 
-static int
-rdata_services_to_string(buffer_type *output, rdata_atom_type rdata,
-	rr_type* ATTR_UNUSED(rr))
+char *rdata_services_to_string(dnslib_rdata_item_t item)
 {
 	int result = 0;
 	buffer_type packet;
 
 	buffer_create_from(
-		&packet, rdata_atom_data(rdata), rdata_atom_size(rdata));
+		&packet, rdata_item_data(rdata), rdata_atom_size(rdata));
 
 	if (buffer_available(&packet, 1)) {
 		uint8_t protocol_number = buffer_read_u8(&packet);
@@ -357,10 +349,9 @@ rdata_services_to_string(buffer_type *output, rdata_atom_type rdata,
 	return result;
 }
 
-static int
-rdata_ipsecgateway_to_string(buffer_type *output, rdata_atom_type rdata, rr_type* rr)
+char *rdata_ipsecgateway_to_string(dnslib_rdata_item_t item)
 {
-	int gateway_type = rdata_atom_data(rr->rdatas[1])[0];
+	int gateway_type = rdata_item_data(rr->rdatas[1])[0];
 	switch(gateway_type) {
 	case IPSECKEY_NOGATEWAY:
 		buffer_printf(output, ".");
@@ -380,12 +371,10 @@ rdata_ipsecgateway_to_string(buffer_type *output, rdata_atom_type rdata, rr_type
 	return 1;
 }
 
-static int
-rdata_nxt_to_string(buffer_type *output, rdata_atom_type rdata,
-	rr_type* ATTR_UNUSED(rr))
+char *rdata_nxt_to_string(dnslib_rdata_item_t item)
 {
 	size_t i;
-	uint8_t *bitmap = rdata_atom_data(rdata);
+	uint8_t *bitmap = rdata_item_data(rdata);
 	size_t bitmap_size = rdata_atom_size(rdata);
 
 	for (i = 0; i < bitmap_size * 8; ++i) {
@@ -399,16 +388,14 @@ rdata_nxt_to_string(buffer_type *output, rdata_atom_type rdata,
 	return 1;
 }
 
-static int
-rdata_nsec_to_string(buffer_type *output, rdata_atom_type rdata,
-	rr_type* ATTR_UNUSED(rr))
+char *rdata_nsec_to_string(dnslib_rdata_item_t item)
 {
 	size_t saved_position = buffer_position(output);
 	buffer_type packet;
 	int insert_space = 0;
 
 	buffer_create_from(
-		&packet, rdata_atom_data(rdata), rdata_atom_size(rdata));
+		&packet, rdata_item_data(rdata), rdata_atom_size(rdata));
 
 	while (buffer_available(&packet, 2)) {
 		uint8_t window = buffer_read_u8(&packet);
@@ -437,23 +424,18 @@ rdata_nsec_to_string(buffer_type *output, rdata_atom_type rdata,
 	return 1;
 }
 
-static int
-rdata_loc_to_string(buffer_type *ATTR_UNUSED(output),
-		    rdata_atom_type ATTR_UNUSED(rdata),
-		    rr_type* ATTR_UNUSED(rr))
+char *rdata_loc_to_string(dnslib_rdata_item_t item)
 {
 	
 	 // Returning 0 forces the record to be printed in unknown format
 	return 0;
 }
 
-static int
-rdata_unknown_to_string(buffer_type *output, rdata_atom_type rdata,
-	rr_type* ATTR_UNUSED(rr))
+char *rdata_unknown_to_string(dnslib_rdata_item_t item)
 {
  	uint16_t size = rdata_atom_size(rdata);
-pri	buffer_printf(output, "\\# %lu ", (unsigned long) size);
-	hex_to_string(output, rdata_atom_data(rdata), size);
+	buffer_printf(output, "\\# %lu ", (unsigned long) size);
+	hex_to_string(output, rdata_item_data(rdata), size);
 	return 1;
 }
 
@@ -466,9 +448,9 @@ static item_to_string_t item_to_string_table[DNSLIB_RDATA_ZF_UNKNOWN + 1] = {
 	rdata_dname_to_string,
 	rdata_dns_name_to_string,
 	rdata_text_to_string,
-	rdata_byte_to_string
-/*	rdata_short_to_string,
-	rdata_long_to_string,
+	rdata_byte_to_string,
+	rdata_short_to_string,
+	rdata_long_to_string /*
 	rdata_a_to_string,
 	rdata_aaaa_to_string,
 	rdata_rrtype_to_string,
