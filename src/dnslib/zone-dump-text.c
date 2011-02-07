@@ -504,7 +504,7 @@ char *rdata_base64_to_string(dnslib_rdata_item_t item)
 	int length;
 	size_t size = rdata_item_size(item);
 	/* XXX check with the originals !!! */
-	char *ret = malloc(sizeof(char) * 2 + 1 * sizeof(char));
+	char *ret = malloc((sizeof(char) * 2 * size) + 1 * sizeof(char));
 	length = b64_ntop(rdata_item_data(item), size,
 			  ret, size * 2);
 	if (length > 0) {
@@ -782,30 +782,65 @@ void rdata_dump_text(dnslib_rdata_t *rdata, uint16_t type, FILE *f)
 {
 	dnslib_rrtype_descriptor_t *desc = dnslib_rrtype_descriptor_by_type(type);
 	for (int i = 0; i < desc->length; i++) {
-		fprintf(f, "%s ", rdata_item_to_string(desc->zoneformat[i], rdata->items[i]));
+		fprintf(f, "%s ", rdata_item_to_string(desc->zoneformat[i],
+		                                       rdata->items[i]));
 	}
-	/* TODO some sane formatting*/
-	fprintf(f, "\t\t\t\t\n");
+}
+
+void dump_rrset_header(dnslib_rrset_t *rrset, FILE *f)
+{
+	char *name = dnslib_dname_to_str(rrset->owner);
+	fprintf(f, "%s ",  name);
+	free(name);
+	fprintf(f, "%u ", rrset->ttl);
+	fprintf(f, "%s ", dnslib_rrclass_to_string(rrset->rclass));
+	fprintf(f, "%s ",  dnslib_rrtype_to_string(rrset->type));
+}
+
+void dump_rrsig_set_header(dnslib_rrsig_set_t *rrsig, FILE *f)
+{
+	char *name = dnslib_dname_to_str(rrsig->owner);
+	fprintf(f, "%s ",  name);
+	free(name);
+	fprintf(f, "%u ", rrsig->ttl);
+	fprintf(f, "%s ", dnslib_rrclass_to_string(rrsig->rclass));
+	fprintf(f, "%s ",  dnslib_rrtype_to_string(DNSLIB_RRTYPE_RRSIG));
+}
+
+void rrsig_set_dump_text(dnslib_rrsig_set_t *rrsig, FILE *f)
+{
+	dump_rrsig_set_header(rrsig, f);
+	dnslib_rdata_t *tmp = rrsig->rdata;
+
+	while (tmp->next != rrsig->rdata) {
+		rdata_dump_text(rrsig->rdata, DNSLIB_RRTYPE_RRSIG, f);
+		dump_rrsig_set_header(rrsig, f);
+		tmp = tmp->next;
+	}
+
+	rdata_dump_text(rrsig->rdata, DNSLIB_RRTYPE_RRSIG, f);
+	fprintf(f, "\n");
 }
 
 
 void rrset_dump_text(dnslib_rrset_t *rrset, FILE *f)
 {
-	char *name = dnslib_dname_to_str(rrset->owner);
-	fprintf(f, "%s ",  name);
-	free(name);
-	fprintf(f, "%s ",  dnslib_rrtype_to_string(rrset->type));
-	fprintf(f, "%d ", rrset->ttl);
-
+	dump_rrset_header(rrset, f);
 	dnslib_rdata_t *tmp = rrset->rdata;
+
 	while (tmp->next != rrset->rdata) {
 		rdata_dump_text(rrset->rdata, rrset->type, f);
+		dump_rrset_header(rrset, f);
 		tmp = tmp->next;
 	}
 
 	rdata_dump_text(rrset->rdata, rrset->type, f);
+	dnslib_rrsig_set_t *rrsig_set = rrset->rrsigs;
+	if (rrsig_set != NULL) {
+		fprintf(f, "\n");
+		rrsig_set_dump_text(rrsig_set, f);
+	}
 	fprintf(f, "\n");
-
 }
 
 struct dump_param {
