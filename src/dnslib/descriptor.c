@@ -22,9 +22,9 @@ static dnslib_lookup_table_t dns_rrclasses[] = {
 static dnslib_rrtype_descriptor_t
        dnslib_rrtype_descriptors[DNSLIB_RRTYPE_DESCRIPTORS_LENGTH] = {
         /* 0 */
-  	{ 0, NULL, 1, { DNSLIB_RDATA_WF_BINARY }, { DNSLIB_RDATA_ZF_A }, true },
+  	{ 0, NULL, 1, { DNSLIB_RDATA_WF_BINARY }, { DNSLIB_RDATA_ZF_UNKNOWN }, true },
   	/* 1 */
-  	{ DNSLIB_RRTYPE_A, "A", 1, { DNSLIB_RDATA_WF_A }, { DNSLIB_RDATA_ZF_DNAME }, true },
+  	{ DNSLIB_RRTYPE_A, "A", 1, { DNSLIB_RDATA_WF_A }, { DNSLIB_RDATA_ZF_A }, true },
   	/* 2 */
   	{ DNSLIB_RRTYPE_NS, "NS", 1,
 	{ DNSLIB_RDATA_WF_COMPRESSED_DNAME }, { DNSLIB_RDATA_ZF_DNAME }, true },
