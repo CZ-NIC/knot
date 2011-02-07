@@ -457,6 +457,11 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 {
 	FILE *f = fopen(filename, "rb");
 
+	if (f == NULL) {
+		log_error("Could not open file '%s'\n", filename);
+		return NULL;
+	}
+
 	dnslib_node_t *tmp_node;
 
 	uint node_count;
