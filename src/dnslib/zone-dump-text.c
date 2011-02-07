@@ -4,8 +4,277 @@
 
 #include "dnslib.h"
 #include "dnslib/utils.h"
+/* TODO remove this depency, if possible */
+#include "zoneparser/parser-util.h"
+#include "skip-list.h"
 
 /* TODO max length of alg */
+
+enum uint_max_length { U8_MAX_STR_LEN = 4, U16_MAX_STR_LEN = 6, U32_MAX_STR_LEN = 11 };
+
+/* TODO to be moved elsewhere */
+int
+b32_ntop(uint8_t const *src, size_t srclength, char *target, size_t targsize)
+{
+	static char b32[]="0123456789abcdefghijklmnopqrstuv";
+	char buf[9];
+	ssize_t len=0;
+
+	while(srclength > 0)
+	{
+		int t;
+		memset(buf,'\0',sizeof buf);
+
+		/* xxxxx000 00000000 00000000 00000000 00000000 */
+		buf[0]=b32[src[0] >> 3];
+
+		/* 00000xxx xx000000 00000000 00000000 00000000 */
+		t=(src[0]&7) << 2;
+		if(srclength > 1)
+			t+=src[1] >> 6;
+		buf[1]=b32[t];
+		if(srclength == 1)
+			break;
+
+		/* 00000000 00xxxxx0 00000000 00000000 00000000 */
+		buf[2]=b32[(src[1] >> 1)&0x1f];
+
+		/* 00000000 0000000x xxxx0000 00000000 00000000 */
+		t=(src[1]&1) << 4;
+		if(srclength > 2)
+			t+=src[2] >> 4;
+		buf[3]=b32[t];
+		if(srclength == 2)
+			break;
+
+		/* 00000000 00000000 0000xxxx x0000000 00000000 */
+		t=(src[2]&0xf) << 1;
+		if(srclength > 3)
+			t+=src[3] >> 7;
+		buf[4]=b32[t];
+		if(srclength == 3)
+			break;
+
+		/* 00000000 00000000 00000000 0xxxxx00 00000000 */
+		buf[5]=b32[(src[3] >> 2)&0x1f];
+
+		/* 00000000 00000000 00000000 000000xx xxx00000 */
+		t=(src[3]&3) << 3;
+		if(srclength > 4)
+			t+=src[4] >> 5;
+		buf[6]=b32[t];
+		if(srclength == 4)
+			break;
+
+		/* 00000000 00000000 00000000 00000000 000xxxxx */
+		buf[7]=b32[src[4]&0x1f];
+
+		if(targsize < 8)
+			return -1;
+
+		src += 5;
+		srclength -= 5;
+
+		memcpy(target,buf,8);
+		target += 8;
+		targsize -= 8;
+		len += 8;
+	}
+	if(srclength)
+	{
+		if(targsize < strlen(buf)+1)
+			return -1;
+		dnslib_strlcpy(target, buf, targsize);
+		len += strlen(buf);
+	}
+	else if(targsize < 1)
+		return -1;
+	else
+		*target='\0';
+	return len;
+}
+
+/*
+ * Copyright (c) 1996, 1998 by Internet Software Consortium.
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM DISCLAIMS
+ * ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL INTERNET SOFTWARE
+ * CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
+ * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
+ * SOFTWARE.
+ */
+
+/*
+ * Portions Copyright (c) 1995 by International Business Machines, Inc.
+ *
+ * International Business Machines, Inc. (hereinafter called IBM) grants
+ * permission under its copyrights to use, copy, modify, and distribute this
+ * Software with or without fee, provided that the above copyright notice and
+ * all paragraphs of this notice appear in all copies, and that the name of IBM
+ * not be used in connection with the marketing of any product incorporating
+ * the Software or modifications thereof, without specific, written prior
+ * permission.
+ *
+ * To the extent it has a right to do so, IBM grants an immunity from suit
+ * under its patents, if any, for the use, sale or manufacture of products to
+ * the extent that such products are used for performing Domain Name System
+ * dynamic updates in TCP/IP networks by means of the Software.  No immunity is
+ * granted for any product per se or for any other function of any product.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", AND IBM DISCLAIMS ALL WARRANTIES,
+ * INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE.  IN NO EVENT SHALL IBM BE LIABLE FOR ANY SPECIAL,
+ * DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE, EVEN
+ * IF IBM IS APPRISED OF THE POSSIBILITY OF SUCH DAMAGES.
+ */
+#include <sys/types.h>
+#include <sys/param.h>
+#include <sys/socket.h>
+
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define Assert(Cond) if (!(Cond)) abort()
+
+static const char Base64[] =
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static const char Pad64 = '=';
+
+/* (From RFC1521 and draft-ietf-dnssec-secext-03.txt)
+   The following encoding technique is taken from RFC 1521 by Borenstein
+   and Freed.  It is reproduced here in a slightly edited form for
+   convenience.
+
+   A 65-character subset of US-ASCII is used, enabling 6 bits to be
+   represented per printable character. (The extra 65th character, "=",
+   is used to signify a special processing function.)
+
+   The encoding process represents 24-bit groups of input bits as output
+   strings of 4 encoded characters. Proceeding from left to right, a
+   24-bit input group is formed by concatenating 3 8-bit input groups.
+   These 24 bits are then treated as 4 concatenated 6-bit groups, each
+   of which is translated into a single digit in the base64 alphabet.
+
+   Each 6-bit group is used as an index into an array of 64 printable
+   characters. The character referenced by the index is placed in the
+   output string.
+
+                         Table 1: The Base64 Alphabet
+
+      Value Encoding  Value Encoding  Value Encoding  Value Encoding
+          0 A            17 R            34 i            51 z
+          1 B            18 S            35 j            52 0
+          2 C            19 T            36 k            53 1
+          3 D            20 U            37 l            54 2
+          4 E            21 V            38 m            55 3
+          5 F            22 W            39 n            56 4
+          6 G            23 X            40 o            57 5
+          7 H            24 Y            41 p            58 6
+          8 I            25 Z            42 q            59 7
+          9 J            26 a            43 r            60 8
+         10 K            27 b            44 s            61 9
+         11 L            28 c            45 t            62 +
+         12 M            29 d            46 u            63 /
+         13 N            30 e            47 v
+         14 O            31 f            48 w         (pad) =
+         15 P            32 g            49 x
+         16 Q            33 h            50 y
+
+   Special processing is performed if fewer than 24 bits are available
+   at the end of the data being encoded.  A full encoding quantum is
+   always completed at the end of a quantity.  When fewer than 24 input
+   bits are available in an input group, zero bits are added (on the
+   right) to form an integral number of 6-bit groups.  Padding at the
+   end of the data is performed using the '=' character.
+
+   Since all base64 input is an integral number of octets, only the
+         -------------------------------------------------                       
+   following cases can arise:
+   
+       (1) the final quantum of encoding input is an integral
+           multiple of 24 bits; here, the final unit of encoded
+	   output will be an integral multiple of 4 characters
+	   with no "=" padding,
+       (2) the final quantum of encoding input is exactly 8 bits;
+           here, the final unit of encoded output will be two
+	   characters followed by two "=" padding characters, or
+       (3) the final quantum of encoding input is exactly 16 bits;
+           here, the final unit of encoded output will be three
+	   characters followed by one "=" padding character.
+   */
+
+int
+b64_ntop(uint8_t const *src, size_t srclength, char *target, size_t targsize) {
+	size_t datalength = 0;
+	uint8_t input[3];
+	uint8_t output[4];
+	size_t i;
+
+	while (2 < srclength) {
+		input[0] = *src++;
+		input[1] = *src++;
+		input[2] = *src++;
+		srclength -= 3;
+
+		output[0] = input[0] >> 2;
+		output[1] = ((input[0] & 0x03) << 4) + (input[1] >> 4);
+		output[2] = ((input[1] & 0x0f) << 2) + (input[2] >> 6);
+		output[3] = input[2] & 0x3f;
+		Assert(output[0] < 64);
+		Assert(output[1] < 64);
+		Assert(output[2] < 64);
+		Assert(output[3] < 64);
+
+		if (datalength + 4 > targsize)
+			return (-1);
+		target[datalength++] = Base64[output[0]];
+		target[datalength++] = Base64[output[1]];
+		target[datalength++] = Base64[output[2]];
+		target[datalength++] = Base64[output[3]];
+	}
+    
+	/* Now we worry about padding. */
+	if (0 != srclength) {
+		/* Get what's left. */
+		input[0] = input[1] = input[2] = '\0';
+		for (i = 0; i < srclength; i++)
+			input[i] = *src++;
+	
+		output[0] = input[0] >> 2;
+		output[1] = ((input[0] & 0x03) << 4) + (input[1] >> 4);
+		output[2] = ((input[1] & 0x0f) << 2) + (input[2] >> 6);
+		Assert(output[0] < 64);
+		Assert(output[1] < 64);
+		Assert(output[2] < 64);
+
+		if (datalength + 4 > targsize)
+			return (-1);
+		target[datalength++] = Base64[output[0]];
+		target[datalength++] = Base64[output[1]];
+		if (srclength == 1)
+			target[datalength++] = Pad64;
+		else
+			target[datalength++] = Base64[output[2]];
+		target[datalength++] = Pad64;
+	}
+	if (datalength >= targsize)
+		return (-1);
+	target[datalength] = '\0';	/* Returned value doesn't count \0. */
+	return (datalength);
+}
 
 /* Taken from RFC 4398, section 2.1.  */
 dnslib_lookup_table_t dnslib_dns_certificate_types[] = {
@@ -43,6 +312,11 @@ dnslib_lookup_table_t dnslib_dns_algorithms[] = {
 static inline uint8_t * rdata_item_data(dnslib_rdata_item_t item)
 {
 	return (uint8_t *)(item.raw_data + 1);
+}
+
+static inline uint8_t rdata_item_size(dnslib_rdata_item_t item)
+{
+	return item.raw_data[0];
 }
 
 char *rdata_dname_to_string(dnslib_rdata_item_t item)
@@ -98,16 +372,16 @@ char *rdata_byte_to_string(dnslib_rdata_item_t item)
 {
 	assert(item.raw_data[0] == 1);
 	uint8_t data = item.raw_data[1];
-	char *ret = malloc(sizeof(char) * 4);
-	snprintf(ret, 4, "%d", (char) data);
+	char *ret = malloc(sizeof(char) * U8_MAX_STR_LEN);
+	snprintf(ret, U8_MAX_STR_LEN, "%d", (char) data);
 	return ret;
 }
 
 char *rdata_short_to_string(dnslib_rdata_item_t item)
 {
 	uint16_t data = dnslib_wire_read_u16(rdata_item_data(item));
-	char *ret = malloc(sizeof(char) * 6);
-	snprintf(ret, 6, "%u", data);
+	char *ret = malloc(sizeof(char) * U16_MAX_STR_LEN);
+	snprintf(ret, U16_MAX_STR_LEN, "%u", data);
 	/* XXX Use proper macros - see response tests*/
 	/* XXX check return value, return NULL on failure */
 	return ret;
@@ -116,9 +390,9 @@ char *rdata_short_to_string(dnslib_rdata_item_t item)
 char *rdata_long_to_string(dnslib_rdata_item_t item)
 {
 	uint32_t data = dnslib_wire_read_u32(rdata_item_data(item));
-	char *ret = malloc(sizeof(char) * 10);
+	char *ret = malloc(sizeof(char) * U32_MAX_STR_LEN);
 	/* u should be enough */
-	snprintf(ret, 10, "%u", data);
+	snprintf(ret, U32_MAX_STR_LEN, "%u", data);
 	return ret;
 }
 
@@ -161,7 +435,7 @@ char *rdata_algorithm_to_string(dnslib_rdata_item_t item)
 	if (alg) {
 		strncpy(ret, alg->name, 20);
 	} else {
-		snprintf(ret, 4, "%d", id);
+		snprintf(ret, U8_MAX_STR_LEN, "%d", id);
 	}
 
 	return ret;
@@ -176,107 +450,126 @@ char *rdata_certificate_type_to_string(dnslib_rdata_item_t item)
 	if (type) {
 		strncpy(ret, type->name, 20);
 	} else {
-		snprintf(ret, 7, "%d", 20);
+		snprintf(ret, U16_MAX_STR_LEN, "%d", id);
 	}
 
 	return ret;
 }
 
-/*
-
 char *rdata_period_to_string(dnslib_rdata_item_t item)
 {
-	uint32_t period = dnslib_read_u16(rdata_item_data(rdata));
-	buffer_printf(output, "%lu", (unsigned long) period);
-	return 1;
+	/* uint32 but read 16 XXX */
+	uint32_t period = dnslib_wire_read_u16(rdata_item_data(item));
+	char *ret = malloc(sizeof(char) * U32_MAX_STR_LEN);
+	snprintf(ret, U32_MAX_STR_LEN, "%u", period);
+	return ret;
 }
 
 char *rdata_time_to_string(dnslib_rdata_item_t item)
 {
-	int result = 0;
-	time_t time = (time_t) read_uint32(rdata_item_data(rdata));
+	time_t time = (time_t) dnslib_wire_read_u32(rdata_item_data(item));
 	struct tm *tm = gmtime(&time);
-	char buf[15];
-	if (strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", tm)) {
-		buffer_printf(output, "%s", buf);
-		result = 1;
+	char *ret = malloc(sizeof(char) * 15);
+	if (strftime(ret, 15, "%Y%m%d%H%M%S", tm)) {
+		return ret;
+	} else {
+		return NULL;
 	}
-	return result;
 }
 
 char *rdata_base32_to_string(dnslib_rdata_item_t item)
 {
 	int length;
-	size_t size = rdata_atom_size(rdata);
-	if(size == 0) {
-		buffer_write(output, "-", 1);
-		return 1;
+	size_t size = rdata_item_size(item);
+	if (size == 0) {
+		char *ret = malloc(sizeof(char) * 2);
+		ret[0] = '-';
+		ret[1] = '\0';
+		return ret;
 	}
 	size -= 1; // remove length byte from count
-	buffer_reserve(output, size * 2 + 1);
-	length = b32_ntop(rdata_item_data(rdata)+1, size,
-			  (char *) buffer_current(output), size * 2);
+	char *ret = malloc(sizeof(char) * (size * 2 + 1));
+	length = b32_ntop(rdata_item_data(item)+1, size,
+			  ret, size * 2);
 	if (length > 0) {
-		buffer_skip(output, length);
+		return ret;
+	} else {
+		free(ret);
+		return NULL;
 	}
-	return length != -1;
 }
-
 
 char *rdata_base64_to_string(dnslib_rdata_item_t item)
 {
 	int length;
-	size_t size = rdata_atom_size(rdata);
-	buffer_reserve(output, size * 2 + 1);
-	length = b64_ntop(rdata_item_data(rdata), size,
-			  (char *) buffer_current(output), size * 2);
+	size_t size = rdata_item_size(item);
+	/* XXX check with the originals !!! */
+	char *ret = malloc(sizeof(char) * 2 + 1 * sizeof(char));
+	length = b64_ntop(rdata_item_data(item), size,
+			  ret, size * 2);
 	if (length > 0) {
-		buffer_skip(output, length);
+		return ret;
+	} else {
+		free(ret);
+		return NULL;
 	}
-	return length != -1;
 }
 
-char *hex_to_string(dnslib_rdata_item_t item)
+char *hex_to_string(const uint8_t *data, size_t size)
+{
 	static const char hexdigits[] = {
 		'0', '1', '2', '3', '4', '5', '6', '7',
 		'8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
 	};
 	size_t i;
 
-	buffer_reserve(output, size * 2);
-	for (i = 0; i < size; ++i) {
+	char *ret = malloc(sizeof(char) * (size * 2) + 1 * sizeof(char));
+
+	for (i = 0; i < size * 2; i += 2) {
 		uint8_t octet = *data++;
-		buffer_write_u8(output, hexdigits[octet >> 4]);
-		buffer_write_u8(output, hexdigits[octet & 0x0f]);
+		ret[i] = hexdigits [octet >> 4];
+		ret[i + 1] = hexdigits [octet & 0x0f];
 	}
+
+	/* TODO triple check */
+
+	ret[i--] = '\0';
+
+	return ret;
 }
 
 char *rdata_hex_to_string(dnslib_rdata_item_t item)
 {
-	hex_to_string(output, rdata_item_data(rdata), rdata_atom_size(rdata));
-	return 1;
+	return hex_to_string(rdata_item_data(item), rdata_item_size(item));
 }
 
 char *rdata_hexlen_to_string(dnslib_rdata_item_t item)
 {
-	if(rdata_atom_size(rdata) <= 1) {
+	if(rdata_item_size(item) <= 1) {
 		// NSEC3 salt hex can be empty
-		buffer_printf(output, "-");
-		return 1;
+		char *ret = malloc(sizeof(char) * 2);
+		ret[0] = '-';
+		ret[1] = '\0';
+		return ret;
+	} else {
+		return hex_to_string(rdata_item_data(item)+1,
+		                     rdata_item_size(item)-1);
 	}
-	hex_to_string(output, rdata_item_data(rdata)+1, rdata_atom_size(rdata)-1);
-	return 1;
 }
 
 char *rdata_nsap_to_string(dnslib_rdata_item_t item)
 {
-	buffer_printf(output, "0x");
-	hex_to_string(output, rdata_item_data(rdata), rdata_atom_size(rdata));
-	return 1;
+	char *ret = malloc(sizeof(char) * (rdata_item_size(item) + 3));
+	strcat(ret, "0x");
+	/* TODO maybe assert? */
+	strcat(ret, hex_to_string(rdata_item_data(item), rdata_item_size(item)));
+	return ret;
 }
 
 char *rdata_apl_to_string(dnslib_rdata_item_t item)
 {
+	return NULL; /* experimental */
+	/*
 	int result = 0;
 	buffer_type packet;
 
@@ -293,7 +586,7 @@ char *rdata_apl_to_string(dnslib_rdata_item_t item)
 		length &= APL_LENGTH_MASK;
 		switch (address_family) {
 		case 1: af = AF_INET; break;
-		case 2: af = AF_INET6; break;
+		*case 2: af = AF_INET6; break;
 		}
 		if (af != -1 && buffer_available(&packet, length)) {
 			char text_address[1000];
@@ -311,11 +604,13 @@ char *rdata_apl_to_string(dnslib_rdata_item_t item)
 		}
 	}
 	return result;
+	*/
 }
 
 char *rdata_services_to_string(dnslib_rdata_item_t item)
 {
-	int result = 0;
+	return NULL;
+/*	int result = 0;
 	buffer_type packet;
 
 	buffer_create_from(
@@ -347,11 +642,13 @@ char *rdata_services_to_string(dnslib_rdata_item_t item)
 		}
 	}
 	return result;
+	*/
 }
 
 char *rdata_ipsecgateway_to_string(dnslib_rdata_item_t item)
 {
-	int gateway_type = rdata_item_data(rr->rdatas[1])[0];
+	return NULL;
+/*	int gateway_type = rdata_item_data(rr->rdatas[1])[0];
 	switch(gateway_type) {
 	case IPSECKEY_NOGATEWAY:
 		buffer_printf(output, ".");
@@ -368,12 +665,13 @@ char *rdata_ipsecgateway_to_string(dnslib_rdata_item_t item)
 	default:
 		return 0;
 	}
-	return 1;
+	return 1;*/
 }
 
 char *rdata_nxt_to_string(dnslib_rdata_item_t item)
 {
-	size_t i;
+	return NULL;
+/*	size_t i;
 	uint8_t *bitmap = rdata_item_data(rdata);
 	size_t bitmap_size = rdata_atom_size(rdata);
 
@@ -385,11 +683,13 @@ char *rdata_nxt_to_string(dnslib_rdata_item_t item)
 
 	buffer_skip(output, -1);
 
-	return 1;
+	return 1;*/
 }
 
 char *rdata_nsec_to_string(dnslib_rdata_item_t item)
 {
+	return NULL;
+	/*
 	size_t saved_position = buffer_position(output);
 	buffer_type packet;
 	int insert_space = 0;
@@ -422,27 +722,24 @@ char *rdata_nsec_to_string(dnslib_rdata_item_t item)
 	}
 
 	return 1;
-}
-
-char *rdata_loc_to_string(dnslib_rdata_item_t item)
-{
-	
-	 // Returning 0 forces the record to be printed in unknown format
-	return 0;
+	*/
 }
 
 char *rdata_unknown_to_string(dnslib_rdata_item_t item)
 {
- 	uint16_t size = rdata_atom_size(rdata);
-	buffer_printf(output, "\\# %lu ", (unsigned long) size);
-	hex_to_string(output, rdata_item_data(rdata), size);
-	return 1;
+ 	uint16_t size = rdata_item_size(item);
+	char *ret = malloc(sizeof(char) * (rdata_item_size(item) + strlen("\\# ") + U16_MAX_STR_LEN));
+	snprintf(ret, strlen("\\# ") + U16_MAX_STR_LEN, "%lu", (unsigned long) size);
+	strcat(ret, hex_to_string(rdata_item_data(item), size));
+	return ret;
 }
 
-*/
+char *rdata_loc_to_string(dnslib_rdata_item_t item)
+{
+	return rdata_unknown_to_string(item);
+}
 
 typedef char * (*item_to_string_t)(dnslib_rdata_item_t);
-
 
 static item_to_string_t item_to_string_table[DNSLIB_RDATA_ZF_UNKNOWN + 1] = {
 	rdata_dname_to_string,
@@ -450,7 +747,7 @@ static item_to_string_t item_to_string_table[DNSLIB_RDATA_ZF_UNKNOWN + 1] = {
 	rdata_text_to_string,
 	rdata_byte_to_string,
 	rdata_short_to_string,
-	rdata_long_to_string /*
+	rdata_long_to_string,
 	rdata_a_to_string,
 	rdata_aaaa_to_string,
 	rdata_rrtype_to_string,
@@ -469,7 +766,7 @@ static item_to_string_t item_to_string_table[DNSLIB_RDATA_ZF_UNKNOWN + 1] = {
 	rdata_nxt_to_string,
 	rdata_nsec_to_string,
 	rdata_loc_to_string,
-	rdata_unknown_to_string */
+	rdata_unknown_to_string
 };
 
 char *rdata_item_to_string(dnslib_rdata_zoneformat_t type, dnslib_rdata_item_t item)
@@ -477,3 +774,107 @@ char *rdata_item_to_string(dnslib_rdata_zoneformat_t type, dnslib_rdata_item_t i
 	return item_to_string_table[type](item);
 }
 
+/*void dnslib_zone_tree_apply_inorder(dnslib_zone_t *zone,
+                              void (*function)(dnslib_node_t *node, void *data),
+                              void *data); */
+
+void rdata_dump_text(dnslib_rdata_t *rdata, uint16_t type, FILE *f)
+{
+	dnslib_rrtype_descriptor_t *desc = dnslib_rrtype_descriptor_by_type(type);
+	for (int i = 0; i < desc->length; i++) {
+		fprintf(f, "%s ", rdata_item_to_string(desc->zoneformat[i], rdata->items[i]));
+	}
+	/* TODO some sane formatting*/
+	fprintf(f, "\t\t\t\t\n");
+}
+
+
+void rrset_dump_text(dnslib_rrset_t *rrset, FILE *f)
+{
+	char *name = dnslib_dname_to_str(rrset->owner);
+	fprintf(f, "%s ",  name);
+	free(name);
+	fprintf(f, "%s ",  dnslib_rrtype_to_string(rrset->type));
+	fprintf(f, "%d ", rrset->ttl);
+
+	dnslib_rdata_t *tmp = rrset->rdata;
+	while (tmp->next != rrset->rdata) {
+		rdata_dump_text(rrset->rdata, rrset->type, f);
+		tmp = tmp->next;
+	}
+
+	rdata_dump_text(rrset->rdata, rrset->type, f);
+	fprintf(f, "\n");
+
+}
+
+struct dump_param {
+	FILE *f;
+	dnslib_dname_t *origin;
+};
+
+void apex_node_dump_text(dnslib_node_t *node, FILE *f)
+{
+	int tmp = DNSLIB_RRTYPE_SOA;
+	dnslib_rrset_t *tmp_rrset =
+		(dnslib_rrset_t *)skip_find(node->rrsets,
+		                            &tmp);
+	rrset_dump_text(tmp_rrset, f);
+
+	const skip_node_t *skip_node =
+		skip_first(node->rrsets);
+
+	tmp_rrset = (dnslib_rrset_t *)skip_node->value;
+
+	if (tmp_rrset->type != DNSLIB_RRTYPE_SOA) {
+		rrset_dump_text(tmp_rrset, f);
+	}
+
+	while ((skip_node = skip_next(skip_node)) != NULL) {
+		tmp_rrset = (dnslib_rrset_t *)skip_node->value;
+		if (tmp_rrset->type != DNSLIB_RRTYPE_SOA) {
+			rrset_dump_text(tmp_rrset, f);
+		}
+	}
+}
+
+void node_dump_text(dnslib_node_t *node, void *data)
+{
+	struct dump_param *param;
+	param = (struct dump_param *)data;
+	FILE *f = param->f;
+	dnslib_dname_t *origin = param->origin;
+
+	/* pointers should do in this case */
+	if (node->owner == origin) {
+		apex_node_dump_text(node, f);
+		return;
+	}
+
+	const skip_node_t *skip_node =
+		skip_first(node->rrsets);
+
+	/* empty nodes should not be dumped */
+	if (skip_node == NULL) {
+		return;
+	}
+
+	dnslib_rrset_t *tmp = (dnslib_rrset_t *)skip_node->value;
+
+	rrset_dump_text(tmp, f);
+
+	while ((skip_node = skip_next(skip_node)) != NULL) {
+		tmp = (dnslib_rrset_t *)skip_node->value;
+		rrset_dump_text(tmp, f);
+	}
+}
+
+int zone_dump_text(dnslib_zone_t *zone, const char *filename)
+{
+	FILE *f = fopen(filename, "w");
+	struct dump_param param;
+	param.f = f;
+	param.origin = zone->apex->owner;
+	dnslib_zone_tree_apply_inorder(zone, node_dump_text, &param);
+	fclose(f);
+}
