@@ -6,14 +6,9 @@
  * Description:   
  */
 
-#ifndef __ZONE-DUMP-TEXT_H__
-#define __ZONE-DUMP-TEXT_H__
-
 #include "descriptor.h"
-#include "rdata.h"
+#include "zone.h"
 
-char *rdata_item_to_string(dnslib_rdata_zoneformat_t type, dnslib_rdata_item_t item);
-
-#endif
+int zone_dump_text(dnslib_zone_t *zone, const char *filename);
 
 /* end of file zone-dump-text.h */
