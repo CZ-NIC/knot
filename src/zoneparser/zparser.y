@@ -1131,7 +1131,10 @@ rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR
 	                                                 $15.str,
 	                                                 $15.len));*/
 	    dnslib_dname_t *dname =
-	    	dnslib_dname_new_from_str($15.str, $15.len, NULL);
+	    	dnslib_dname_new_from_wire($15.str, $15.len, NULL);
+
+	    dnslib_dname_cat(dname, parser->root_domain);
+
 	    zadd_rdata_domain(dname);
 	    /* sig name */
 	    zadd_rdata_wireformat(zparser_conv_b64($17.str)); /* sig data */
@@ -1155,7 +1158,10 @@ rdata_nsec:	wire_dname nsec_seq
 							$1.len));*/
 
 	    dnslib_dname_t *dname =
-	    	dnslib_dname_new_from_str($1.str, $1.len, NULL);
+	    	dnslib_dname_new_from_wire($1.str, $1.len, NULL);
+
+	    dnslib_dname_cat(dname, parser->root_domain);
+	
 	    zadd_rdata_domain(dname);
 	    /* nsec name */
 	    zadd_rdata_wireformat(zparser_conv_nsec(nsecbits));
