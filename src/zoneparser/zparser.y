@@ -1127,9 +1127,12 @@ rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR
 	    zadd_rdata_wireformat(zparser_conv_time($9.str)); /* sig exp */
 	    zadd_rdata_wireformat(zparser_conv_time($11.str)); /* sig inc */
 	    zadd_rdata_wireformat(zparser_conv_short($13.str)); /* key id */
-	    zadd_rdata_wireformat(zparser_conv_dns_name((const uint8_t*)
+/*	    zadd_rdata_wireformat(zparser_conv_dns_name((const uint8_t*)
 	                                                 $15.str,
-	                                                 $15.len));
+	                                                 $15.len));*/
+	    dnslib_dname_t *dname =
+	    	dnslib_dname_new_from_str($15.str, $15.len, NULL);
+	    zadd_rdata_domain(dname);
 	    /* sig name */
 	    zadd_rdata_wireformat(zparser_conv_b64($17.str)); /* sig data */
 
@@ -1147,9 +1150,13 @@ rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR
 
 rdata_nsec:	wire_dname nsec_seq
     {
-	    zadd_rdata_wireformat(zparser_conv_dns_name((const uint8_t*)
+/*	    zadd_rdata_wireformat(zparser_conv_dns_name((const uint8_t*)
 	                                                $1.str,
-							$1.len));
+							$1.len));*/
+
+	    dnslib_dname_t *dname =
+	    	dnslib_dname_new_from_str($1.str, $1.len, NULL);
+	    zadd_rdata_domain(dname);
 	    /* nsec name */
 	    zadd_rdata_wireformat(zparser_conv_nsec(nsecbits));
 	    /* nsec bitlist */
