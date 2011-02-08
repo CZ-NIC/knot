@@ -93,7 +93,7 @@ struct zparser {
 
 	slab_cache_t *parser_slab;
 
-	dnslib_rrsig_set_t *last_rrsig;
+	rrsig_list_t *node_rrsigs;
 
 	int rdata_count;
 };

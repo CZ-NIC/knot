@@ -1131,7 +1131,7 @@ rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR
 	                                                 $15.str,
 	                                                 $15.len));*/
 	    dnslib_dname_t *dname =
-	    	dnslib_dname_new_from_wire($15.str, $15.len, NULL);
+	    	dnslib_dname_new_from_wire((uint8_t *)$15.str, $15.len, NULL);
 
 	    dnslib_dname_cat(dname, parser->root_domain);
 
@@ -1158,7 +1158,7 @@ rdata_nsec:	wire_dname nsec_seq
 							$1.len));*/
 
 	    dnslib_dname_t *dname =
-	    	dnslib_dname_new_from_wire($1.str, $1.len, NULL);
+	    	dnslib_dname_new_from_wire((uint8_t *)$1.str, $1.len, NULL);
 
 	    dnslib_dname_cat(dname, parser->root_domain);
 	
@@ -1367,7 +1367,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->last_node = origin;
 	parser->root_domain = dnslib_dname_new_from_str(".", 1, NULL);
 
-	parser->last_rrsig = NULL;
+	parser->node_rrsigs = NULL;
 
 	parser->id = 1;
 
