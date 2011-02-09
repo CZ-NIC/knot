@@ -3,8 +3,21 @@
 
 # what to do with };
 # a) ignore ; if it follows }
-# b) fail
-# c) treat '[:white:]*;' as an empty token
+
+system {
+
+  identity "I have no mouth and must scream";
+  version "Infinitesimal";
+  storage "/var/run/cutedns/";
+  key hmac-md5 "Wg==";
+
+}
+
+zones {
+  example.net {
+    file "/var/lib/cutedns/example.net";
+  }
+}
 
 interfaces {
   # short notation
@@ -12,8 +25,7 @@ interfaces {
   # interface0 10.10.1.1@53;
   # will expand into long notation
   interface0 {
-    address 10.10.1.1;
-    port 53;
+    address 10.10.1.1@53531;
   }
 
   interface1 {
@@ -22,99 +34,17 @@ interfaces {
   }
 }
 
-keys {
-  # short notation
-  # key0 hmac-md5 "Wg==";
-  # will expand into
-  key0 {
-    algorithm hmac-md5;
-    secret "Wg==";
+log {
+  syslog {
+    any notice;
+    zone all;
   }
 
-  key1 {
-    algorithm hmac-sha1;
-    secret "lQ==";
+  file "/var/log/cutedns/server.err" {
+    server error;
   }
 
-}
-
-servers {
-  # short notation
-  # server0 192.168.1.1@53 key0;
-  server0 {
-    address 192.168.1.1;
-    port 53;
-    key key0;
-    # inteface interface0
+  stderr {
+    any warning;
   }
-
-  # server1 192.168.1.1 key1 interface1;
-  server1 {
-    address 192.168.1.1;
-    # port 53;
-    key key1;
-    interface interface1;
-  }
-
-  # server2 192.168.1.1;
-  server2 {
-    address 192.168.1.1;
-    # key
-    # if there is no key defined issue a warning
-  }
-}
-
-zones {
-  # short notation???
-  # name storage xfr-in xfr-out notify-in notify-out
-  # example.net file:/etc/cutedns/example.net server0 server1 server0,server2 server1;
-  # will expand into
-  # long notation
-
-  example.net {
-    storage "/var/lib/cutedns/example.net";
-
-    # xfr-from
-    #xfr-in {
-    #  server0;
-    #}
-    
-    # xfr-to
-    #xfr-out {
-    #  server1;
-    #}
-    
-    # notify-from
-    #notify-in {
-    #  server0;
-    #  server2;
-    #}
-    
-    # notify-to
-    #notify-out {
-    #  server1;
-    #}
-  }
-}
-
-system {
-
-  identity "I have no mouth and must scream";
-  version "Infinitesimal";
-
-  # Logging TODO
-  #log {
-  #  syslog {
-  #    any notice;
-  #    zone any;
-  #  }
-
-  #  file "/var/log/cutedns/cutedns.err" {
-  #    any error;
-  #  }
-
-  #  stderr {
-  #    any warning;
-  #  }
-  #}
 }

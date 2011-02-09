@@ -78,17 +78,6 @@ static void iface_free(conf_iface_t *iface)
 	free(iface);
 }
 
-static void key_free(conf_key_t *key)
-{
-	if (!key) {
-		return;
-	}
-
-	free(key->name);
-	free(key->secret);
-	free(key);
-}
-
 static void log_free(conf_log_t *log)
 {
 	if (!log) {
@@ -99,18 +88,6 @@ static void log_free(conf_log_t *log)
 	free(log);
 }
 
-static void server_free(conf_server_t *server)
-{
-	if (!server) {
-		return;
-	}
-
-	free(server->name);
-	free(server->address);
-	// Server key and iface should be already freed
-	free(server);
-}
-
 static void zone_free(conf_zone_t *zone)
 {
 	if (!zone) {
@@ -118,7 +95,7 @@ static void zone_free(conf_zone_t *zone)
 	}
 
 	free(zone->name);
-	free(zone->storage);
+	free(zone->file);
 	//! \todo Free zone lists.
 }
 
@@ -137,9 +114,6 @@ config_t *config_new(const char* path)
 	// Initialize lists
 	init_list(&c->logs);
 	init_list(&c->ifaces);
-	init_list(&c->keys);
-	init_list(&c->keys);
-	init_list(&c->servers);
 	init_list(&c->zones);
 
 	return c;
@@ -222,18 +196,13 @@ void config_free(config_t *conf)
 	}
 
 	// Free keys
-	WALK_LIST_DELSAFE(n, nxt, conf->keys) {
-		key_free((conf_key_t*)n);
+	if (conf->key.secret) {
+		free(conf->key.secret);
 	}
 
 	// Free logs
 	WALK_LIST_DELSAFE(n, nxt, conf->logs) {
 		log_free((conf_log_t*)n);
-	}
-
-	// Free servers
-	WALK_LIST_DELSAFE(n, nxt, conf->servers) {
-		server_free((conf_server_t*)n);
 	}
 
 	// Free zones
@@ -244,6 +213,7 @@ void config_free(config_t *conf)
 	free(conf->filename);
 	free(conf->identity);
 	free(conf->version);
+	free(conf->storage);
 	free(conf);
 }
 
@@ -255,6 +225,7 @@ int config_open(const char* path)
 	}
 	if (config_parse(s_config) != 0) {
 		config_free(s_config);
+		s_config = 0;
 		return -1;
 	}
 
