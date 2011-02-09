@@ -58,9 +58,6 @@ typedef enum {
  * \brief Configuration for the TSIG key.
  */
 typedef struct {
-	node n;            /*!< */
-	char *name;        /*!< Name of the key. */
-
 	/*!
 	 * \brief Key algorithm.
 	 *
@@ -69,27 +66,6 @@ typedef struct {
 	tsig_alg_t algorithm;
 	char *secret;       /*!< Key data. */
 } conf_key_t;
-
-/*!
- * \brief Remote server for XFR/NOTIFY.
- *
- * \todo Long description.
- */
-typedef struct {
-	node n;
-	char *name;     /*!< Name of the server in the configuration. */
-	char *address;  /*!< Hostname or IP address of the server. */
-	int   port;     /*!< Remote port. */
-
-	/*! \brief TSIG key used to authenticate messages from/to server. */
-	conf_key_t *key;
-
-	/*!
-	 * \brief Interface to use to communicate with the server (including
-	 *        outgoing IP address).
-	 */
-	conf_iface_t *iface;
-} conf_server_t;
 
 /*!
  * \todo Import from dns library.
@@ -115,17 +91,8 @@ typedef struct {
 	char *name;         /*!< Zone name. */
 	conf_class_t cls;   /*!< Zone class (IN or CH). */
 
-	/*! \todo Generic storage, now just a filename on the disk. */
-	char *storage;
-
-	list xfr_in;   /*!< List of DNS servers to get zone from. */
-	list xfr_out;  /*!< List of DNS servers allowed to transfer a zone. */
-
-	/*! \brief List of DNS servers allowed to send NOTIFY for the zone. */
-	list notify_in;
-
-	/*! \brief List of DNS servers to be notified on zone change. */
-	list notify_out;
+	/*! Path to a zone file. */
+	char *file;
 } conf_zone_t;
 
 /*!
@@ -177,10 +144,12 @@ typedef struct {
 	 */
 	char *version;
 
+	char *storage; /*!< Persistent storage path for pidfile, databases etc. */
+
+	conf_key_t key; /*!< Server TSIG key. */
+
 	list logs; /*!< List of logging destinations. */
 	list ifaces; /*!< List of interfaces. */
-	list keys; /*!< List of TSIG keys. */
-	list servers; /*!< List of remote servers. */
 	list zones; /*!< List of zones. */
 } config_t;
 

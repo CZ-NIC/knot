@@ -14,8 +14,6 @@
 extern void cf_error(const char *msg);
 extern config_t *new_config;
 static conf_iface_t *this_iface;
-static conf_key_t *this_key;
-static conf_server_t *this_server;
 static conf_zone_t *this_zone;
 
 %}
@@ -27,17 +25,21 @@ static conf_zone_t *this_zone;
 }
 
 %token END INVALID_TOKEN
-%token SYSTEM IDENTITY VERSION LOG
-%token INTERFACES ADDRESS PORT
-%token ALGORITHM SECRET
-%token SERVERS KEYS KEY INTERFACE
-%token ZONES STORAGE
-%token <t> ZONE
 %token <t> TEXT
+%token <i> NUM
+
+%token SYSTEM IDENTITY VERSION STORAGE KEY
+%token <alg> TSIG_ALGO_NAME
+
+%token ZONES FILENAME
+%token <t> ZONE
+
+%token INTERFACES ADDRESS PORT
 %token <t> IPA
 
-%token <i> NUM
-%token <alg> TSIG_ALGO_NAME
+%token LOG LOG_DEST
+%token <t> LOG_SRC
+%token <i> LOG_LEVEL
 
 %%
 
@@ -62,6 +64,10 @@ interface:
    interface_start '{'
  | interface ADDRESS IPA ';' { this_iface->address = $3; }
  | interface PORT NUM ';' { this_iface->port = $3; }
+ | interface ADDRESS IPA '@' NUM ';' {
+     this_iface->address = $3;
+     this_iface->port = $5;
+   }
  ;
 
 interfaces:
@@ -69,57 +75,15 @@ interfaces:
  | interfaces interface '}'
  ;
 
-key_start: TEXT {
-  this_key = malloc(sizeof(conf_key_t));
-  memset(this_key, 0, sizeof(conf_key_t));
-  this_key->name = $1;
-  add_tail(&new_config->keys, &this_key->n);
- }
- ;
-
-key:
-   key_start '{'
- | key ALGORITHM TSIG_ALGO_NAME ';' { this_key->algorithm = $3; }
- | key SECRET TEXT ';' { this_key->secret = $3; }
- ;
-
-keys:
-   KEYS '{'
- | keys key '}'
- ;
-
-server_start: TEXT {
-  this_server = malloc(sizeof(conf_server_t));
-  memset(this_server, 0, sizeof(conf_server_t));
-  this_server->name = $1;
-  add_tail(&new_config->servers, &this_server->n);
- }
- ;
-
-server:
-   server_start '{'
- | server ADDRESS IPA ';' { this_server->address = $3; }
- | server PORT NUM ';' { this_server->port = $3; }
- | server KEY TEXT ';' {
-	 this_server->key = malloc(sizeof(conf_key_t));
-	 this_server->key->name = $3;
-
-   }
- | server INTERFACE TEXT ';' {
-	 this_server->iface = malloc(sizeof(conf_iface_t));
-	 this_server->iface->name = $3;
-   }
- ;
-
-servers:
-   SERVERS '{'
- | servers server '}'
- ;
-
 system:
    SYSTEM '{'
  | system VERSION TEXT ';' { new_config->version = $3; }
  | system IDENTITY TEXT ';' { new_config->identity = $3; }
+ | system STORAGE TEXT ';' { new_config->storage = $3; }
+ | system KEY TSIG_ALGO_NAME TEXT ';' {
+     new_config->key.algorithm = $3;
+     new_config->key.secret = $4;
+   }
  ;
 
 zones:
@@ -137,10 +101,23 @@ zone_start: ZONE {
 
 zone:
    zone_start '{'
- | zone STORAGE TEXT ';' { this_zone->storage = $3; }
+ | zone FILENAME TEXT ';' { this_zone->file = $3; }
  ;
 
+log_flags:
+ | log_flags LOG_SRC LOG_LEVEL ';'
+ ;
 
-conf: ';' | system '}' | interfaces '}' | keys '}' | servers '}' | zones '}';
+log_dest:
+ | LOG_DEST '{' log_flags
+ | FILENAME TEXT '{' log_flags
+ ;
+
+log:
+   LOG '{'
+ | log log_dest '}'
+ ;
+
+conf: ';' | system '}' | interfaces '}' | zones '}' | log '}';
 
 %%

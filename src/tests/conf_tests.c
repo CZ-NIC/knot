@@ -38,6 +38,7 @@ static int conf_tests_run(int argc, char *argv[])
 	// Test 2: Parse config
 	int ret = config_parse_str(conf, sample_conf_rc);
 	ok(ret == 0, "parsing configuration file %s", config_fn);
+	skip(ret != 0, 8);
 
 	// Test 3: Test server version (0-level depth)
 	is(conf->version, "Infinitesimal", "server version loaded ok");
@@ -49,19 +50,20 @@ static int conf_tests_run(int argc, char *argv[])
 	struct node *n = HEAD(conf->ifaces);
 	conf_iface_t *iface = (conf_iface_t*)n;
 	is(iface->address, "10.10.1.1", "interface0 address check");
-	cmp_ok(iface->port, "==", 53, "interface0 port check");
+	cmp_ok(iface->port, "==", 53531, "interface0 port check");
 	n = n->next;
 	iface = (conf_iface_t*)n;
 	is(iface->address, "::0", "interface1 address check");
 	cmp_ok(iface->port, "==", 53, "interface1 default port check");
 
-	// Test 9,10: Check first key (2-level depth)
-	n = HEAD(conf->keys);
-	conf_key_t *key = (conf_key_t*)n;
-	cmp_ok(key->algorithm, "==", HMAC_MD5, "key0 algorithm enum check");
-	is(key->secret, "Wg==", "key0 secret check");
+	// Test 9,10: Check server key
+	cmp_ok(conf->key.algorithm, "==", HMAC_MD5, "TSIG key algorithm check");
+	is(conf->key.secret, "Wg==", "TSIG key secret check");
+
+	// Test 11...: Check logging facilities
 
 	//! \todo Level-3 checks (logs), postprocess check (server->key,iface)
+	endskip;
 
 	// Deallocating config
 	config_free(conf);

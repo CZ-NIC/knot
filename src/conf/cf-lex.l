@@ -15,6 +15,7 @@
 #include <arpa/inet.h>
 
 #include "conf/conf.h"
+#include "other/log.h"
 #include "cf-parse.h"
 
 /* Imported symbols. */
@@ -39,24 +40,24 @@ BLANK [ \t\n]
 
 %%
 
-\#.*\n          /* Ignore comments */;
-{BLANK}+        /* Ignore whitespace */;
-[{};]           { return yytext[0]; }
-system          return SYSTEM;
-identity        return IDENTITY;
-version         return VERSION;
-log             return LOG;
-interfaces      return INTERFACES;
-address         return ADDRESS;
-port            return PORT;
-algorithm       return ALGORITHM;
-secret          return SECRET;
-servers         return SERVERS;
-keys            return KEYS;
-key             return KEY;
-interface       return INTERFACE;
-zones           return ZONES;
-storage         return STORAGE;
+\#.*\n              /* Ignore comments */;
+{BLANK}+            /* Ignore whitespace */;
+[@{};]              { return yytext[0]; }
+system              return SYSTEM;
+identity            return IDENTITY;
+version             return VERSION;
+storage             return STORAGE;
+key                 return KEY;
+
+zones               return ZONES;
+file                return FILENAME;
+
+interfaces          return INTERFACES;
+address             return ADDRESS;
+port                return PORT;
+
+log                 return LOG;
+stderr|syslog       return LOG_DEST;
 
 {DIGIT}+ {
   cf_lval.i = atoi(yytext);
@@ -88,6 +89,26 @@ hmac-sha224     { cf_lval.alg = HMAC_SHA224; return TSIG_ALGO_NAME; }
 hmac-sha256     { cf_lval.alg = HMAC_SHA256; return TSIG_ALGO_NAME; }
 hamc-sha384     { cf_lval.alg = HMAC_SHA384; return TSIG_ALGO_NAME; }
 hmac-sha512     { cf_lval.alg = HMAC_SHA512; return TSIG_ALGO_NAME; }
+
+all|debug|info|notice|warning|error {
+  cf_lval.i = ~0;
+  if (strcmp(yytext, "debug")   == 0) { cf_lval.i = LOG_UPTO(LOG_DEBUG); }
+  if (strcmp(yytext, "info")    == 0) { cf_lval.i = LOG_UPTO(LOG_INFO); }
+  if (strcmp(yytext, "notice")  == 0) { cf_lval.i = LOG_UPTO(LOG_NOTICE); }
+  if (strcmp(yytext, "warning") == 0) { cf_lval.i = LOG_UPTO(LOG_WARNING); }
+  if (strcmp(yytext, "error")   == 0) { cf_lval.i = LOG_UPTO(LOG_ERR); }
+  return LOG_LEVEL;
+}
+
+any|server|dname|zone|zonedb|response|cuckoo|cuckoo-hash {
+  cf_lval.i = ~0; //! \todo Log system bitmask...
+  return LOG_SRC;
+}
+
+dynamic-array|net|dthreads|mem|nameserver|zoneparser|stats|mem {
+  cf_lval.i = ~0; //! \todo Log system bitmask...
+  return LOG_SRC;
+}
 
 ["][^"\n]*["] {
   yytext[yyleng-1] = 0;
