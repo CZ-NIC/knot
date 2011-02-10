@@ -296,6 +296,8 @@ const dnslib_rrset_t *dnslib_response_authority_rrset(
 const dnslib_rrset_t *dnslib_response_additional_rrset(
 	dnslib_response_t *response, short pos);
 
+int dnslib_response_dnssec_requested(const dnslib_response_t *response);
+
 /*!
  * \brief Converts the response to wire format.
  *
