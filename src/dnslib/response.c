@@ -86,15 +86,6 @@ typedef struct dnslib_compr dnslib_compr_t;
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-static void dnslib_response_parse_host_edns(dnslib_response_t *resp,
-                                            const uint8_t *edns_wire,
-                                            short edns_size)
-{
-	resp->max_size = dnslib_edns_get_payload(edns_wire);
-}
-
-/*----------------------------------------------------------------------------*/
-
 static void dnslib_response_init_pointers(dnslib_response_t *resp)
 {
 	debug_dnslib_response("Response pointer: %p\n", resp);
@@ -173,21 +164,24 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 /*----------------------------------------------------------------------------*/
 
 static int dnslib_response_init(dnslib_response_t *resp,
-                                 const uint8_t *edns_wire, short edns_size)
+                                const dnslib_opt_rr_t *opt_rr)
 {
 	memset(resp, 0, PREALLOC_TOTAL);
 
-	assert(edns_wire != NULL || edns_size == 0);
-
-	resp->edns_wire = edns_wire;
-	resp->edns_size = edns_size;
-
-	if (edns_wire != NULL && edns_size > 0) {
-		// parse given EDNS record and save max size
-		dnslib_response_parse_host_edns(resp, edns_wire, edns_size);
-	} else {
+	if (opt_rr == NULL) {
+		resp->edns_response.version = EDNS_NOT_SUPPORTED;
 		// set default max size of the response
 		resp->max_size = DNSLIB_MAX_RESPONSE_SIZE;
+	} else {
+		// copy the OPT RR
+		resp->edns_response.version = opt_rr->version;
+		resp->edns_response.ext_rcode = opt_rr->ext_rcode;
+		resp->edns_response.payload = opt_rr->payload;
+		resp->edns_response.wire = opt_rr->wire;
+		resp->edns_response.size = opt_rr->size;
+		resp->edns_response.allocated = 0;
+
+		resp->max_size = resp->edns_response.payload;
 	}
 
 	// pre-allocate space for wire format of the packet
@@ -199,21 +193,12 @@ static int dnslib_response_init(dnslib_response_t *resp,
 	// save default pointers to the space after the structure
 	dnslib_response_init_pointers(resp);
 
-	// actual size is always at least the header size + EDNS wire size
-//	resp->size = DNSLIB_PACKET_HEADER_SIZE + resp->edns_size;
-
-	// set the QR bit
-	//dnslib_packet_flags_set_qr(&resp->header.flags1);
-
 	// set header to all 0s
 	memset(resp->wireformat, 0, DNSLIB_PACKET_HEADER_SIZE);
 	// set the QR bit
 	dnslib_packet_set_qr(resp->wireformat);
 	// set the size to the size of header
 	resp->size = DNSLIB_PACKET_HEADER_SIZE;
-//	dnslib_response_header_to_wire(&resp->header, &pos, &resp->size);
-//	debug_dnslib_response("Converted header, size so far: %d\n",
-//	                      resp->size);
 
 	return 0;
 }
@@ -339,10 +324,10 @@ static void dnslib_response_question_to_wire(dnslib_question_t *question,
 
 static int dnslib_response_parse_client_edns(const uint8_t **pos,
                                              size_t *remaining,
-                                             dnslib_edns_data_t *edns)
+                                             dnslib_opt_rr_t *client_opt)
 {
 	if (pos == NULL || *pos == NULL || remaining == NULL
-	    || edns == NULL) {
+	    || client_opt == NULL) {
 		return -1;
 	}
 
@@ -367,10 +352,10 @@ static int dnslib_response_parse_client_edns(const uint8_t **pos,
 	}
 	*pos += 2;
 
-	edns->payload = dnslib_wire_read_u16(*pos);
+	client_opt->payload = dnslib_wire_read_u16(*pos);
 	*pos += 2;
-	edns->ext_rcode = *(*pos)++;
-	edns->version = *(*pos)++;
+	client_opt->ext_rcode = *(*pos)++;
+	client_opt->version = *(*pos)++;
 	// skip Z
 	*pos += 2;
 
@@ -1020,13 +1005,12 @@ int dnslib_response_contains(const dnslib_response_t *resp,
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-dnslib_response_t *dnslib_response_new_empty(const uint8_t *edns_wire,
-                                             short edns_size)
+dnslib_response_t *dnslib_response_new_empty(const dnslib_opt_rr_t *opt_rr)
 {
 	dnslib_response_t *resp = (dnslib_response_t *)malloc(PREALLOC_TOTAL);
 	CHECK_ALLOC_LOG(resp, NULL);
 
-	if (dnslib_response_init(resp, edns_wire, edns_size) != 0) {
+	if (dnslib_response_init(resp, opt_rr) != 0) {
 		free(resp);
 		return NULL;
 	}
@@ -1152,8 +1136,8 @@ int dnslib_response_add_rrset_answer(dnslib_response_t *response,
 	int rrs = dnslib_response_try_add_rrset(response->answer,
 	                                        &response->an_rrsets, response,
 	                                        response->max_size
-	                                         - response->size
-	                                         - response->edns_size,
+	                                        - response->size
+	                                        - response->edns_response.size,
 	                                        rrset, tc);
 
 	if (rrs >= 0) {
@@ -1186,8 +1170,8 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
 	int rrs = dnslib_response_try_add_rrset(response->authority,
 	                                        &response->ns_rrsets, response,
 	                                        response->max_size
-	                                         - response->size
-	                                         - response->edns_size,
+	                                        - response->size
+	                                        - response->edns_response.size,
 	                                        rrset, tc);
 
 	if (rrs >= 0) {
@@ -1205,12 +1189,14 @@ int dnslib_response_add_rrset_additional(dnslib_response_t *response,
                                          int check_duplicates)
 {
 	// if this is the first additional RRSet, add EDNS OPT RR first
-	if (response->header.arcount == 0 && response->edns_size > 0) {
-		assert(response->size + response->edns_size
+	if (response->header.arcount == 0
+	    && response->edns_response.version != EDNS_NOT_SUPPORTED) {
+		assert(response->size + response->edns_response.size
 		       <= response->max_size);
 		memcpy(response->wireformat + response->size,
-		       response->edns_wire, response->edns_size);
-		response->size += response->edns_size;
+		       response->edns_response.wire,
+		       response->edns_response.size);
+		response->size += response->edns_response.size;
 		response->header.arcount += 1;
 	}
 
@@ -1339,6 +1325,18 @@ int dnslib_response_to_wire(dnslib_response_t *resp,
 	}
 
 	assert(resp->size <= resp->max_size);
+
+	// if there are no additional RRSets, add EDNS OPT RR
+	if (resp->header.arcount == 0
+	    && resp->edns_response.version != EDNS_NOT_SUPPORTED) {
+		assert(resp->size + resp->edns_response.size
+		       <= resp->max_size);
+		memcpy(resp->wireformat + resp->size,
+		       resp->edns_response.wire,
+		       resp->edns_response.size);
+		resp->size += resp->edns_response.size;
+		resp->header.arcount += 1;
+	}
 
 	// set ANCOUNT to the packet
 	dnslib_packet_set_ancount(resp->wireformat, resp->header.ancount);
