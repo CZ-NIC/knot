@@ -33,9 +33,7 @@ struct dnslib_opt_rr {
 	 */
 	uint16_t version;
 
-	uint8_t *wire;
 	short size;
-	short allocated;
 };
 
 typedef struct dnslib_opt_rr dnslib_opt_rr_t;
@@ -49,6 +47,8 @@ enum dnslib_edns_offsets {
 };
 
 static const uint16_t EDNS_NOT_SUPPORTED = 65535;
+
+static const short DNSLIB_EDNS_MIN_SIZE = DNSLIB_EDNS_OFFSET_RDATA;
 
 /*----------------------------------------------------------------------------*/
 
@@ -66,7 +66,8 @@ uint8_t dnslib_edns_get_version(const dnslib_opt_rr_t *opt_rr);
 
 void dnslib_edns_set_version(dnslib_opt_rr_t *opt_rr, uint8_t version);
 
-const uint8_t *dnslib_edns_wire(dnslib_opt_rr_t *opt_rr);
+short dnslib_edns_to_wire(const dnslib_opt_rr_t *opt_rr, uint8_t *wire,
+                         short max_size);
 
 short dnslib_edns_size(dnslib_opt_rr_t *opt_rr);
 
