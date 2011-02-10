@@ -324,50 +324,16 @@ static int dnslib_response_parse_client_edns(const uint8_t **pos,
                                              size_t *remaining,
                                              dnslib_opt_rr_t *client_opt)
 {
-	if (pos == NULL || *pos == NULL || remaining == NULL
-	    || client_opt == NULL) {
+	debug_dnslib_response("Parsing client EDNS OPT RR.\n");
+	int parsed = dnslib_edns_new_from_wire(client_opt, *pos, *remaining);
+	if (parsed < 0) {
+		debug_dnslib_response("Error parsing EDNS OPT RR.\n");
 		return -1;
 	}
 
-	if (*remaining < DNSLIB_PACKET_RR_MIN_SIZE) {
-		debug_dnslib_response("Not enough data to parse ENDS.\n");
-		return -2;
-	}
-
-	// owner of EDNS OPT RR must be root (0)
-	if (**pos != 0) {
-		debug_dnslib_response("EDNS packet malformed (expected root "
-		                      "domain as owner).\n");
-		return -3;
-	}
-	*pos += 1;
-
-	// check the type of the record (must be OPT)
-	if (dnslib_wire_read_u16(*pos) != DNSLIB_RRTYPE_OPT) {
-		debug_dnslib_response("EDNS packet malformed (expected OPT type"
-		                      ".\n");
-		return -2;
-	}
-	*pos += 2;
-
-	client_opt->payload = dnslib_wire_read_u16(*pos);
-	*pos += 2;
-	client_opt->ext_rcode = *(*pos)++;
-	client_opt->version = *(*pos)++;
-	// skip Z
-	*pos += 2;
-
-	// ignore RDATA, but move pos behind them
-	uint16_t rdlength = dnslib_wire_read_u16(*pos);
-	*remaining -= 11;
-
-	if (*remaining < rdlength) {
-		debug_dnslib_response("Not enough data to parse ENDS.\n");
-		return -3;
-	}
-
-	*pos += 2 + rdlength;
-	*remaining -= rdlength;
+	assert(*remaining >= parsed);
+	*remaining -= parsed;
+	*pos += parsed;
 
 	return 0;
 }
@@ -1073,9 +1039,14 @@ int dnslib_response_parse_query(dnslib_response_t *resp,
 			       &pos, &remaining, &resp->edns_query))) {
 			return err;
 		}
-		if (resp->edns_query.payload
-		    && resp->edns_query.payload < resp->max_size) {
+		if (dnslib_edns_get_payload(&resp->edns_query)
+		    && dnslib_edns_get_payload(&resp->edns_query)
+			< resp->max_size) {
 			resp->max_size = resp->edns_query.payload;
+		}
+		// copy the DO bit into response
+		if (dnslib_edns_do(&resp->edns_query)) {
+			dnslib_edns_set_do(&resp->edns_response);
 		}
 	} else {
 		// set client EDNS version to EDNS_NOT_SUPPORTED
@@ -1316,6 +1287,13 @@ const dnslib_rrset_t *dnslib_response_additional_rrset(
 	}
 
 	return response->additional[pos];
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_response_dnssec_requested(const dnslib_response_t *response)
+{
+	return dnslib_edns_do(&response->edns_query);
 }
 
 /*----------------------------------------------------------------------------*/
