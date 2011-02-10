@@ -19,6 +19,7 @@ static const uint8_t  EDNS_VERSION         = 0;
 static const uint8_t  OPT_SIZE             = 11;
 static const int      EDNS_ENABLED         = 1;
 static const uint32_t SYNTH_CNAME_TTL      = 0;
+static const int      DNSSEC_ENABLED       = 1;
 
 /*----------------------------------------------------------------------------*/
 /* Private functions                                                          */
@@ -342,11 +343,21 @@ static inline void ns_referral(const dnslib_node_t *node,
 		node = node->parent;
 	}
 
-	const dnslib_rrset_t *ns_rrset =
+	const dnslib_rrset_t *rrset =
 		dnslib_node_rrset(node, DNSLIB_RRTYPE_NS);
-	assert(ns_rrset != NULL);
+	assert(rrset != NULL);
 
-	dnslib_response_add_rrset_authority(resp, ns_rrset, 1, 0);
+	dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+
+	// add DS records
+	debug_ns("DNSSEC requested: %d\n",
+		 dnslib_response_dnssec_requested(resp));
+	debug_ns("DS records: %p\n", dnslib_node_rrset(node, DNSLIB_RRTYPE_DS));
+	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)
+	    && (rrset = dnslib_node_rrset(node, DNSLIB_RRTYPE_DS)) != NULL) {
+		dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+	}
+
 	ns_put_additional(resp);
 
 	dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
