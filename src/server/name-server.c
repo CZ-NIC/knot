@@ -336,13 +336,19 @@ static inline void ns_referral(const dnslib_node_t *node,
 {
 	debug_ns("Referral response.\n");
 
+	while (!dnslib_node_is_deleg_point(node)) {
+		assert(node->parent != NULL);
+		node = node->parent;
+	}
+
 	const dnslib_rrset_t *ns_rrset =
 		dnslib_node_rrset(node, DNSLIB_RRTYPE_NS);
 	assert(ns_rrset != NULL);
 
 	dnslib_response_add_rrset_authority(resp, ns_rrset, 1, 0);
-	//ns_put_glues(node, resp);
 	ns_put_additional(resp);
+
+	dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -507,7 +513,8 @@ DEBUG_NS(
 			 (dnslib_node_is_non_auth(closest_encloser))
 			 ? "yes" : "no");
 
-		if (dnslib_node_is_deleg_point(closest_encloser)) {
+		if (dnslib_node_is_deleg_point(closest_encloser)
+		    || dnslib_node_is_non_auth(closest_encloser)) {
 			ns_referral(closest_encloser, resp);
 			break;
 		}

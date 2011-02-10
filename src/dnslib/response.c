@@ -851,31 +851,6 @@ DEBUG_DNSLIB_RESPONSE(
 
 /*----------------------------------------------------------------------------*/
 
-//static short dnslib_response_rrsets_to_wire(const dnslib_rrset_t **rrsets,
-//                                            short count, uint8_t **pos,
-//                                            short *size, short max_size,
-//                                            uint8_t *owner_tmp,
-//                                            dnslib_compressed_dnames_t *compr)
-//{
-//	// no compression for now
-//	int i = 0;
-
-//	debug_dnslib_response("Max size: %d\n", max_size);
-//	short rr_count = 0;
-
-//	while (i < count) {
-//		rr_count +=
-//		    dnslib_response_rrset_to_wire(rrsets[i], pos, size,
-//		                                  owner_tmp, compr);
-//		assert(*size <= max_size);
-//		++i;
-//	}
-
-//	return rr_count;
-//}
-
-/*----------------------------------------------------------------------------*/
-
 static void dnslib_response_free_tmp_rrsets(dnslib_response_t *resp)
 {
 	for (int i = 0; i < resp->tmp_rrsets_count; ++i) {
@@ -1363,54 +1338,10 @@ int dnslib_response_to_wire(dnslib_response_t *resp,
 
 	assert(resp->size <= resp->max_size);
 
-	debug_dnslib_response("Converting response to wire format, size: %d\n",
-	                      resp->size);
-	//*resp_wire = (uint8_t *)malloc(response->size);
-	//CHECK_ALLOC_LOG(*resp_wire, -1);
-
-	//uint8_t *pos = resp->wireformat + resp->size;
-
-	// reserve space for the EDNS OPT RR
-	//short size = resp->size + resp->edns_size;
-
-	//assert(resp->max_size > DNSLIB_PACKET_HEADER_SIZE);
-
-//	dnslib_response_header_to_wire(&response->header, &pos, &size);
-//	debug_dnslib_response("Converted header, size so far: %d\n", size);
-
-//	if (response->header.qdcount > 0) {
-//		dnslib_response_question_to_wire(
-//			&response->question, &pos, &size);
-//	}
-//	debug_dnslib_response("Converted Question, size so far: %d\n", size);
-
-//	short rr_count = dnslib_response_rrsets_to_wire(response->answer,
-//	                               response->an_rrsets, &pos, &size,
-//	                               response->max_size, response->owner_tmp,
-//	                               &response->compression);
-//	debug_dnslib_response("Converted Answer, size so far: %d\n", size);
 	// set ANCOUNT to the packet
 	dnslib_packet_set_ancount(resp->wireformat, resp->header.ancount);
-
-//	rr_count = dnslib_response_rrsets_to_wire(response->authority,
-//	                               response->ns_rrsets, &pos, &size,
-//	                               response->max_size, response->owner_tmp,
-//	                               &response->compression);
-//	debug_dnslib_response("Converted Authority, size so far: %d\n", size);
 	// set NSCOUNT to the packet
 	dnslib_packet_set_nscount(resp->wireformat, resp->header.nscount);
-
-	// put EDNS OPT RR
-//	memcpy(pos, response->edns_wire, response->edns_size);
-//	pos += response->edns_size;
-//	//size += response->edns_size;
-//	debug_dnslib_response("Converted OPT RR, size so far: %d\n", size);
-
-//	rr_count = dnslib_response_rrsets_to_wire(response->additional,
-//	                               response->ar_rrsets, &pos, &size,
-//	                               response->max_size, response->owner_tmp,
-//	                               &response->compression);
-//	debug_dnslib_response("Converted Additional, size so far: %d\n", size);
 	// set ARCOUNT to the packet
 	dnslib_packet_set_arcount(resp->wireformat, resp->header.arcount);
 
