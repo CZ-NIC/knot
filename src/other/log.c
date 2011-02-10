@@ -4,6 +4,16 @@
 #include "log.h"
 #include "common.h"
 
+typedef struct {
+	int c;
+	const char* str;
+} log_name_t;
+
+/*! Log source table. */
+/*const log_name_t log_src_table[] {
+	{
+}*/
+
 /// Global log-level.
 static int _LOG_OPEN = 0;
 static int _LOG_MASK = 0;

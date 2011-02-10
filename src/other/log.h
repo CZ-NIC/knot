@@ -21,6 +21,22 @@
  */
 #include <syslog.h>
 
+/*! \brief Log facility types (4 bits). */
+typedef enum {
+	LOGT_SYSLOG = 0, /*!< Logging to syslog(3) facility. */
+	LOGT_STDERR = 1, /*!< Print log messages to the stderr. */
+	LOGT_STDOUT = 2, /*!< Print log messages to the stdout. */
+	LOGT_FILE   = 3  /*!< Generic logging to (unbuffered) file on the disk. */
+} logtype_t;
+
+/*! \brief Log sources (8 bits). */
+typedef enum {
+	LOG_SERVER = 1 << 0, /*!< Server module. */
+	LOG_ANSWER = 1 << 1, /*!< Query answering module. */
+	LOG_ZONE   = 1 << 2, /*!< Zone manipulation module. */
+	LOG_ANY    = 0xff    /*!< Any module. */
+} logsrc_t;
+
 /* Logging facility setup. */
 
 /*!

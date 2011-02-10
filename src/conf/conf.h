@@ -16,6 +16,7 @@
 #include <sys/socket.h>
 
 #include "lib/lists.h"
+#include "other/log.h"
 
 /* Constants. */
 #define CONFIG_DEFAULT_PORT 53
@@ -96,35 +97,22 @@ typedef struct {
 } conf_zone_t;
 
 /*!
- * \brief Maps internal category to the (sys)log facility.
- *
- * \todo ref #1
+ * \brief Mapping of loglevels to message sources.
  */
 typedef struct {
 	node n;
-	int facility; /*!< (Sys)log facility, see man 3 syslog. */
-	int category; /*!< Internal log category. */
+	int source; /*!< Log message source mask. */
+	int levels; /*!< Log levels bitmask. */
 } conf_log_map_t;
 
 /*!
- * \brief Types of log output.
- */
-typedef enum {
-	C_LOG_SYSLOG,  /*!< Logging to standard syslog(3). */
-	C_LOG_STDERR,  /*!< Print error messages on the stderr. */
-	C_LOG_FILE     /*!< Generic logging to (unbuffered) file on the disk. */
-} conf_logtype_t;
-
-/*!
- * \brief Where to send log messages.
- *
- * \todo Give it some more thought (ref #1).
+ * \brief Log facility descriptor.
  */
 typedef struct {
-	node n;              /*!< */
-	conf_logtype_t log_type; /*!< Type of the log (SYSLOG/STDERR/FILE). */
-	char *log_output;    /*!< Filename in case of LOG_FILE, else NULL. */
-	list log_map;        /*!< What type of messages to log. */
+	node n;
+	logtype_t type;  /*!< Type of the log (SYSLOG/STDERR/FILE). */
+	char *file;      /*!< Filename in case of LOG_FILE, else NULL. */
+	list map;        /*!< Log levels mapping. */
 } conf_log_t;
 
 /*!

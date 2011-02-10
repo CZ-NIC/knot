@@ -25,7 +25,8 @@ interfaces {
   # interface0 10.10.1.1@53;
   # will expand into long notation
   interface0 {
-    address 10.10.1.1@53531;
+    address 10.10.1.1;
+    port 53531;
   }
 
   interface1 {
@@ -36,7 +37,7 @@ interfaces {
 
 log {
   syslog {
-    any notice;
+    any notice, warning, error;
     zone all;
   }
 
@@ -45,6 +46,10 @@ log {
   }
 
   stderr {
-    any warning;
+    any warning, error;
+  }
+
+  stdout {
+    any info;
   }
 }
