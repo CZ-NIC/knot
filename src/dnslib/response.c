@@ -177,9 +177,7 @@ static int dnslib_response_init(dnslib_response_t *resp,
 		resp->edns_response.version = opt_rr->version;
 		resp->edns_response.ext_rcode = opt_rr->ext_rcode;
 		resp->edns_response.payload = opt_rr->payload;
-		resp->edns_response.wire = opt_rr->wire;
 		resp->edns_response.size = opt_rr->size;
-		resp->edns_response.allocated = 0;
 
 		resp->max_size = resp->edns_response.payload;
 	}
@@ -1002,6 +1000,17 @@ int dnslib_response_contains(const dnslib_response_t *resp,
 }
 
 /*----------------------------------------------------------------------------*/
+
+void dnslib_response_edns_to_wire(dnslib_response_t *resp)
+{
+	resp->size += dnslib_edns_to_wire(&resp->edns_response,
+	                                  resp->wireformat + resp->size,
+	                                  resp->max_size - resp->size);
+
+	resp->header.arcount += 1;
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -1191,13 +1200,7 @@ int dnslib_response_add_rrset_additional(dnslib_response_t *response,
 	// if this is the first additional RRSet, add EDNS OPT RR first
 	if (response->header.arcount == 0
 	    && response->edns_response.version != EDNS_NOT_SUPPORTED) {
-		assert(response->size + response->edns_response.size
-		       <= response->max_size);
-		memcpy(response->wireformat + response->size,
-		       response->edns_response.wire,
-		       response->edns_response.size);
-		response->size += response->edns_response.size;
-		response->header.arcount += 1;
+		dnslib_response_edns_to_wire(response);
 	}
 
 	if (response->ar_rrsets == response->max_ar_rrsets
@@ -1329,13 +1332,7 @@ int dnslib_response_to_wire(dnslib_response_t *resp,
 	// if there are no additional RRSets, add EDNS OPT RR
 	if (resp->header.arcount == 0
 	    && resp->edns_response.version != EDNS_NOT_SUPPORTED) {
-		assert(resp->size + resp->edns_response.size
-		       <= resp->max_size);
-		memcpy(resp->wireformat + resp->size,
-		       resp->edns_response.wire,
-		       resp->edns_response.size);
-		resp->size += resp->edns_response.size;
-		resp->header.arcount += 1;
+	    dnslib_response_edns_to_wire(resp);
 	}
 
 	// set ANCOUNT to the packet
