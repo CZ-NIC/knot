@@ -22,7 +22,7 @@ unit_api conf_tests_api = {
  */
 static int conf_tests_count(int argc, char *argv[])
 {
-	return 10;
+	return 19;
 }
 
 /*! Run all scheduled tests for given parameters.
@@ -38,7 +38,8 @@ static int conf_tests_run(int argc, char *argv[])
 	// Test 2: Parse config
 	int ret = config_parse_str(conf, sample_conf_rc);
 	ok(ret == 0, "parsing configuration file %s", config_fn);
-	skip(ret != 0, 8);
+	skip(ret != 0, conf_tests_count(argc, argv) - 2);
+	{
 
 	// Test 3: Test server version (0-level depth)
 	is(conf->version, "Infinitesimal", "server version loaded ok");
@@ -60,9 +61,43 @@ static int conf_tests_run(int argc, char *argv[])
 	cmp_ok(conf->key.algorithm, "==", HMAC_MD5, "TSIG key algorithm check");
 	is(conf->key.secret, "Wg==", "TSIG key secret check");
 
-	// Test 11...: Check logging facilities
+	// Test 11,12,13,14,15,16,17: Check logging facilities
+	n = HEAD(conf->logs);
+	ok(!EMPTY_LIST(conf->logs), "log facilities not empty");
 
-	//! \todo Level-3 checks (logs), postprocess check (server->key,iface)
+	conf_log_t *log = (conf_log_t*)n;
+	node *nm = HEAD(log->map);
+	conf_log_map_t *m = (conf_log_map_t*)nm;
+	cmp_ok(log->type, "==", LOGT_SYSLOG, "log0 is syslog");
+
+	skip(EMPTY_LIST(log->map), 5);
+	{
+	  cmp_ok(m->source, "==", LOG_ANY, "syslog first rule is ANY");
+	  int mask = LOG_MASK(LOG_NOTICE)|LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR);
+	  cmp_ok(m->levels, "==", mask, "syslog mask is equal");
+	  nm = nm->next;
+	  m = (conf_log_map_t*)nm;
+	  ok(m != 0, "syslog has more than 1 rule");
+	  skip(!m, 2);
+	  {
+	    cmp_ok(m->source, "==", LOG_ZONE, "syslog next rule is for zone");
+	    cmp_ok(m->levels, "==", 0xff, "rule for zone is: any level");
+	  }
+	  endskip;
+	}
+	endskip;
+
+	// Test 18,19: File facility checks
+	n = n->next;
+	log = (conf_log_t*)n;
+	ok(n != 0, "log has next facility");
+	skip(!n, 1);
+	{
+	  is(log->file, "/var/log/cutedns/server.err", "log file matches");
+	}
+	endskip;
+
+	}
 	endskip;
 
 	// Deallocating config

@@ -13,8 +13,10 @@
 
 extern void cf_error(const char *msg);
 extern config_t *new_config;
-static conf_iface_t *this_iface;
-static conf_zone_t *this_zone;
+static conf_iface_t *this_iface = 0;
+static conf_zone_t *this_zone = 0;
+static conf_log_t *this_log = 0;
+static conf_log_map_t *this_logmap = 0;
 
 %}
 
@@ -37,8 +39,9 @@ static conf_zone_t *this_zone;
 %token INTERFACES ADDRESS PORT
 %token <t> IPA
 
-%token LOG LOG_DEST
-%token <t> LOG_SRC
+%token LOG
+%token <i> LOG_DEST
+%token <i> LOG_SRC
 %token <i> LOG_LEVEL
 
 %%
@@ -104,19 +107,59 @@ zone:
  | zone FILENAME TEXT ';' { this_zone->file = $3; }
  ;
 
-log_flags:
- | log_flags LOG_SRC LOG_LEVEL ';'
+log_levels_start: {
+  this_logmap = malloc(sizeof(conf_log_map_t));
+  this_logmap->source = 0;
+  this_logmap->levels = 0;
+  add_tail(&this_log->map, &this_logmap->n);
+}
+;
+
+log_levels:
+   log_levels_start
+ | log_levels LOG_LEVEL ',' { this_logmap->levels |= $2; }
+ | log_levels LOG_LEVEL ';' { this_logmap->levels |= $2; }
  ;
 
-log_dest:
- | LOG_DEST '{' log_flags
- | FILENAME TEXT '{' log_flags
+log_src:
+ | log_src LOG_SRC log_levels {
+     this_logmap->source = $2;
+     this_logmap = 0;
+   }
  ;
 
-log:
-   LOG '{'
- | log log_dest '}'
+log_dest: LOG_DEST {
+  this_log = malloc(sizeof(conf_log_t));
+  this_log->type = $1;
+  this_log->file = 0;
+  init_list(&this_log->map);
+  add_tail(&new_config->logs, &this_log->n);
+}
+;
+
+log_file: FILENAME TEXT {
+  this_log = malloc(sizeof(conf_log_t));
+  this_log->type = LOGT_FILE;
+  this_log->file = $2;
+  init_list(&this_log->map);
+  add_tail(&new_config->logs, &this_log->n);
+}
+;
+
+log_end: {
+   if (EMPTY_LIST(new_config->logs)) {
+     //! \todo Initialize default log facilities, missing.
+   }
+}
+;
+
+log_start:
+ | log_start log_dest '{' log_src '}'
+ | log_start log_file '{' log_src '}'
  ;
+
+log: LOG '{' log_start log_end;
+
 
 conf: ';' | system '}' | interfaces '}' | zones '}' | log '}';
 

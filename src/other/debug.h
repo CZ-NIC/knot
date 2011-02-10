@@ -47,14 +47,6 @@
 #define debug_server_hex(data, len)
 #endif
 
-#ifdef DNSS_DEBUG
-#define debug_dnss(msg...) log_msg(LOG_DEBUG, msg)
-#define debug_dnss_hex(data, len) hex_print((data), (len))
-#else
-#define debug_dnss(msg...)
-#define debug_dnss_hex(data, len)
-#endif
-
 #ifdef DNSLIB_DNAME_DEBUG
 #define debug_dnslib_dname(msg...) log_msg(LOG_DEBUG, msg)
 #define debug_dnslib_dname_hex(data, len) hex_print((data), (len))
@@ -141,34 +133,12 @@
 #define DEBUG_NS(cmds)
 #endif
 
-#ifdef ZDB_DEBUG
-#define debug_zdb(msg...) log_msg(LOG_DEBUG, msg)
-#define debug_zdb_hex(data, len) hex_print((data), (len))
-#else
-#define debug_zdb(msg...)
-#define debug_zdb_hex(data, len)
-#endif
-
-#ifdef ZN_DEBUG
-#define debug_zn(msg...) log_msg(LOG_DEBUG, msg)
-#else
-#define debug_zn(msg...)
-#endif
-
 #ifdef ZP_DEBUG
 #define debug_zp(msg...) log_msg(LOG_DEBUG, msg)
 #define debug_zp_hex(data, len) hex_print((data), (len))
 #else
 #define debug_zp(msg...)
 #define debug_zp_hex(data, len)
-#endif
-
-#ifdef ZP_DEBUG_PARSE
-#define debug_zp_parse(msg...) log_msg(LOG_DEBUG, msg)
-#define debug_zp_parse_hex(data, len) hex_print((data), (len))
-#else
-#define debug_zp_parse(msg...)
-#define debug_zp_parse_hex(data, len)
 #endif
 
 #ifdef ST_DEBUG
