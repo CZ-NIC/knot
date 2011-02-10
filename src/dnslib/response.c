@@ -1243,6 +1243,7 @@ int dnslib_response_add_rrset_additional(dnslib_response_t *response,
 void dnslib_response_set_rcode(dnslib_response_t *response, short rcode)
 {
 	dnslib_packet_flags_set_rcode(&response->header.flags2, rcode);
+	dnslib_packet_set_rcode(response->wireformat, rcode);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1250,6 +1251,7 @@ void dnslib_response_set_rcode(dnslib_response_t *response, short rcode)
 void dnslib_response_set_aa(dnslib_response_t *response)
 {
 	dnslib_packet_flags_set_aa(&response->header.flags1);
+	dnslib_packet_set_aa(response->wireformat);
 }
 
 /*----------------------------------------------------------------------------*/
