@@ -96,6 +96,7 @@ int main(int argc, char **argv)
 
 	// Open configuration
 	if (config_open(config_fn) != 0) {
+		config_fn = 0;
 		log_open(0, LOG_MASK(LOG_ERR));
 		log_error("Opening config file %s failed...\n", config_fn);
 		log_close();
