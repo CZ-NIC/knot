@@ -7,6 +7,7 @@
 #include "stat.h"
 #include "dnslib.h"
 #include "dnslib/debug.h"
+#include "edns.h"
 
 //static const uint8_t  RCODE_MASK           = 0xf0;
 static const int      OFFSET_FLAGS2        = 3;
@@ -671,7 +672,7 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database)
 	ns->zone_db = database;
 
 	// prepare empty response with SERVFAIL error
-	dnslib_response_t *err = dnslib_response_new_empty(NULL, 0);
+	dnslib_response_t *err = dnslib_response_new_empty(NULL);
 	if (err == NULL) {
 		return NULL;
 	}
@@ -686,7 +687,7 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database)
 
 	if (dnslib_response_to_wire(err, &ns->err_response, &ns->err_resp_size)
 	    != 0) {
-		log_error("Error while converting default error resposne to "
+		log_error("Error while converting default error response to "
 		          "wire format \n");
 		dnslib_response_free(&err);
 		free(ns);
@@ -695,10 +696,22 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database)
 
 	debug_ns("Done..\n");
 
+	if (EDNS_ENABLED) {
+		ns->opt_rr = dnslib_edns_new();
+		if (ns->opt_rr == NULL) {
+			log_error("Error while preparing OPT RR of the server.\n");
+			dnslib_response_free(&err);
+			free(ns);
+			return NULL;
+		}
+		dnslib_edns_set_version(ns->opt_rr, EDNS_VERSION);
+		dnslib_edns_set_payload(ns->opt_rr, MAX_UDP_PAYLOAD_EDNS);
+	} else {
+		ns->opt_rr = NULL;
+	}
+
 	//stat
-
 	stat_static_gath_init();
-
 	//!stat
 
 	dnslib_response_free(&err);
@@ -725,7 +738,7 @@ int ns_answer_request(ns_nameserver *nameserver, const uint8_t *query_wire,
 
 	// 1) create empty response
 	debug_ns("Parsing query using new dnslib structure...\n");
-	dnslib_response_t *resp = dnslib_response_new_empty(NULL, 0);
+	dnslib_response_t *resp = dnslib_response_new_empty(nameserver->opt_rr);
 
 	if (resp == NULL) {
 		log_error("Error while creating response packet!\n");

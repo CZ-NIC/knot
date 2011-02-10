@@ -19,6 +19,7 @@
 
 #include "dname.h"
 #include "rrset.h"
+#include "edns.h"
 
 /*!
  * \brief Default maximum DNS response size
@@ -26,28 +27,6 @@
  * This size must be supported by all servers and clients.
  */
 static const short DNSLIB_MAX_RESPONSE_SIZE = 512;
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Structure for holding EDNS parameters.
- *
- * \todo NSID
- */
-struct dnslib_edns_data {
-	uint16_t payload;    /*!< UDP payload. */
-	uint16_t ext_rcode;  /*!< Extended RCODE. */
-
-	/*!
-	 * \brief Supported version of EDNS.
-	 *
-	 * Set to EDNS_NOT_SUPPORTED if not supported.
-	 */
-	uint16_t version;
-};
-
-typedef struct dnslib_edns_data dnslib_edns_data_t;
-
-static const uint16_t EDNS_NOT_SUPPORTED = 65535;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -138,7 +117,8 @@ struct dnslib_response {
 	 *
 	 * \todo Do we need this actually??
 	 */
-	dnslib_edns_data_t edns_query;
+	dnslib_opt_rr_t edns_query;
+	dnslib_opt_rr_t edns_response;
 
 	/*!
 	 * \brief EDNS OPT RR provided by the server.
@@ -150,8 +130,8 @@ struct dnslib_response {
 	 * The necessary parsing which is done when creating the response is
 	 * much faster than converting some structure to wire format.
 	 */
-	const uint8_t *edns_wire;
-	short edns_size;  /*!< Size of the server EDNS OPT RR in bytes. */
+	//const uint8_t *edns_wire;
+	//short edns_size;  /*!< Size of the server EDNS OPT RR in bytes. */
 
 	uint8_t *wireformat;  /*!< Wire format of the response. */
 	short size;      /*!< Current wire size of the response. */
@@ -179,8 +159,7 @@ typedef struct dnslib_response dnslib_response_t;
  *
  * \return New empty response structure or NULL if an error occured.
  */
-dnslib_response_t *dnslib_response_new_empty(const uint8_t *edns_wire,
-                                             short edns_size);
+dnslib_response_t *dnslib_response_new_empty(const dnslib_opt_rr_t *opt_rr);
 
 /*!
  * \brief Parses the given query and saves important information into the

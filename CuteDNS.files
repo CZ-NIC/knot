@@ -56,6 +56,7 @@ src/dnslib/response.h
 src/dnslib/packet.h
 src/dnslib/response.c
 src/dnslib/edns.h
+src/dnslib/edns.c
 src/dnslib/utils.h
 src/dnslib/utils.c
 src/dnslib/zonedb.h
@@ -95,10 +96,12 @@ src/tests/cuckoo_tests.c
 src/tests/template_tests.c
 src/tests/dthreads_tests.c
 src/tests/dnslib/dnslib_dname_tests.c
+src/tests/dnslib/dnslib_edns_tests.c
 src/tests/dnslib/dnslib_rdata_tests.c
 src/tests/dnslib/dnslib_rrset_tests.c
 src/tests/dnslib/dnslib_node_tests.c
 src/tests/dnslib/dnslib_response_tests.c
+src/tests/dnslib/dnslib_rrsig_set_tests.c
 src/tests/dnslib/dnslib_zone_tests.c
 src/ctl/main.c
 src/ctl/process.c
