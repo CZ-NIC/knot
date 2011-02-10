@@ -519,6 +519,9 @@ DEBUG_NS(
 			break;
 		}
 
+		// in all cases this will be an authoritative answer
+		dnslib_response_set_aa(resp);
+
 		if (find_ret == DNSLIB_ZONE_NAME_NOT_FOUND) {
 			// DNAME?
 			const dnslib_rrset_t *dname_rrset =
@@ -534,8 +537,11 @@ DEBUG_NS(
 				dnslib_node_wildcard_child(closest_encloser);
 
 			if (wildcard_node == NULL) {
+				debug_ns("No wildcard node. (cname: %d)\n",
+				         cname);
 				auth_soa = 1;
 				if (cname == 0) {
+					debug_ns("Setting NXDOMAIN RCODE.\n");
 					// return NXDOMAIN
 					dnslib_response_set_rcode(resp,
 						DNSLIB_RCODE_NXDOMAIN);
