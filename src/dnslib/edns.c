@@ -193,6 +193,7 @@ int dnslib_edns_add_option(dnslib_opt_rr_t *opt_rr, uint16_t code,
 	opt_rr->options[opt_rr->option_count].length = length;
 
 	++opt_rr->option_count;
+	opt_rr->size += 4 + length;
 
 	return 0;
 }
@@ -218,8 +219,10 @@ short dnslib_edns_to_wire(const dnslib_opt_rr_t *opt_rr, uint8_t *wire,
 {
 	assert(DNSLIB_EDNS_MIN_SIZE <= max_size);
 
-	// as of now we do not support any options in EDNS
-	assert(opt_rr->size == DNSLIB_EDNS_MIN_SIZE);
+	if (max_size < opt_rr->size) {
+		debug_dnslib_edns("Not enough place for OPT RR wire format.\n");
+		return -1;
+	}
 
 	uint8_t *pos = wire;
 	*(pos++) = 0;
@@ -231,7 +234,23 @@ short dnslib_edns_to_wire(const dnslib_opt_rr_t *opt_rr, uint8_t *wire,
 	*(pos++) = opt_rr->version;
 	dnslib_wire_write_u16(pos, opt_rr->flags);
 	pos += 2;
-	dnslib_wire_write_u16(pos, 0);
+
+	uint8_t *rdlen = pos;
+	uint16_t len = 0;
+	pos += 2;
+
+	// OPTIONs
+	for (int i = 0; i < opt_rr->option_count; ++i) {
+		dnslib_wire_write_u16(pos, opt_rr->options[i].code);
+		pos += 2;
+		dnslib_wire_write_u16(pos, opt_rr->options[i].length);
+		pos += 2;
+		memcpy(pos, opt_rr->options[i].data, opt_rr->options[i].length);
+		pos += opt_rr->options[i].length;
+		len += 4 + opt_rr->options[i].length;
+	}
+
+	dnslib_wire_write_u16(rdlen, len);
 
 	return opt_rr->size;
 }
