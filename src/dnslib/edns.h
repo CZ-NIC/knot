@@ -52,17 +52,18 @@ struct dnslib_opt_rr {
 
 typedef struct dnslib_opt_rr dnslib_opt_rr_t;
 
-enum dnslib_edns_offsets {
-	DNSLIB_EDNS_OFFSET_PAYLOAD = 3,
-	DNSLIB_EDNS_OFFSET_EXT_RCODE = 5,
-	DNSLIB_EDNS_OFFSET_VERSION = 6,
-	DNSLIB_EDNS_OFFSET_RDLENGTH = 9,
-	DNSLIB_EDNS_OFFSET_RDATA = 11
+/*----------------------------------------------------------------------------*/
+
+enum dnslib_edns_versions {
+	EDNS_VERSION_0 = (uint8_t)0,
+	EDNS_NOT_SUPPORTED = (uint8_t)255
 };
 
-static const uint8_t EDNS_NOT_SUPPORTED = 255;
+static const short DNSLIB_EDNS_MIN_SIZE = 11;
 
-static const short DNSLIB_EDNS_MIN_SIZE = DNSLIB_EDNS_OFFSET_RDATA;
+enum dnslib_edns_option_codes {
+	EDNS_OPTION_NSID = (uint16_t)3
+};
 
 /*----------------------------------------------------------------------------*/
 
