@@ -7,7 +7,8 @@
 #include "descriptor.h"
 
 enum dnslib_edns_consts {
-	DNSLIB_EDNS_DO_MASK = (uint16_t)0x8000
+	DNSLIB_EDNS_DO_MASK = (uint16_t)0x8000,
+	DNSLIB_EDNS_OPTION_STEP = 1
 };
 
 /*----------------------------------------------------------------------------*/
@@ -70,12 +71,33 @@ int dnslib_edns_new_from_wire(dnslib_opt_rr_t *opt_rr, const uint8_t *wire,
 	uint16_t rdlength = dnslib_wire_read_u16(pos);
 
 	if (max_size - parsed < rdlength) {
-		debug_dnslib_response("Not enough data to parse ENDS.\n");
+		debug_dnslib_edns("Not enough data to parse OPT RR.\n");
 		return -3;
 	}
 
-	pos += 2 + rdlength;
-	parsed += rdlength;
+	while (parsed < rdlength + DNSLIB_EDNS_MIN_SIZE) {
+		if (max_size - parsed < 4) {
+			debug_dnslib_edns("Not enough data to parse OPT RR.\n");
+			return -3;
+		}
+		uint16_t code = dnslib_wire_read_u16(pos);
+		pos += 2;
+		uint16_t length = dnslib_wire_read_u16(pos);
+		pos += 2;
+		if (max_size - parsed - 4 < length) {
+			debug_dnslib_edns("Not enough data to parse OPT RR.\n");
+			return -3;
+		}
+		if (dnslib_edns_add_option(opt_rr, code, length, pos) != 0) {
+			debug_dnslib_edns("Error parsing OPT option field.\n");
+			return -4;
+		}
+		pos += length;
+		parsed += length + 4;
+	}
+
+//	pos += 2 + rdlength;
+//	parsed += rdlength;
 
 	return parsed;
 }
@@ -145,6 +167,48 @@ int dnslib_edns_do(const dnslib_opt_rr_t *opt_rr)
 void dnslib_edns_set_do(dnslib_opt_rr_t *opt_rr)
 {
 	opt_rr->flags |= DNSLIB_EDNS_DO_MASK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_edns_add_option(dnslib_opt_rr_t *opt_rr, uint16_t code,
+                           uint16_t length, const uint8_t *data)
+{
+	if (opt_rr->option_count == opt_rr->options_max) {
+		dnslib_opt_option_t *options_new =
+			(dnslib_opt_option_t *)calloc(
+				(opt_rr->options_max + DNSLIB_EDNS_OPTION_STEP),
+				sizeof(dnslib_opt_option_t));
+		CHECK_ALLOC_LOG(options_new, -1);
+		memcpy(options_new, opt_rr->options, opt_rr->option_count);
+		opt_rr->options = options_new;
+		opt_rr->options_max += DNSLIB_EDNS_OPTION_STEP;
+	}
+
+	opt_rr->options[opt_rr->option_count].data = (uint8_t *)malloc(length);
+	CHECK_ALLOC_LOG(opt_rr->options[opt_rr->option_count].data, -1);
+	memcpy(opt_rr->options[opt_rr->option_count].data, data, length);
+
+	opt_rr->options[opt_rr->option_count].code = code;
+	opt_rr->options[opt_rr->option_count].length = length;
+
+	++opt_rr->option_count;
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_edns_has_option(dnslib_opt_rr_t *opt_rr, uint16_t code)
+{
+	int i = 0;
+	while (i < opt_rr->option_count && opt_rr->options[i].code != code) {
+		++i;
+	}
+
+	assert(i >= opt_rr->option_count || opt_rr->options[i].code == code);
+
+	return (i < opt_rr->option_count);
 }
 
 /*----------------------------------------------------------------------------*/
