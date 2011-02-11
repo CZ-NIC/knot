@@ -36,7 +36,7 @@ int dnslib_edns_new_from_wire(dnslib_opt_rr_t *opt_rr, const uint8_t *wire,
 	}
 
 	if (max_size < DNSLIB_EDNS_MIN_SIZE) {
-		debug_dnslib_edns("Not enough data to parse ENDS.\n");
+		debug_dnslib_edns("Not enough data to parse OPT RR header.\n");
 		return -2;
 	}
 
@@ -69,6 +69,7 @@ int dnslib_edns_new_from_wire(dnslib_opt_rr_t *opt_rr, const uint8_t *wire,
 
 	// ignore RDATA, but move pos behind them
 	uint16_t rdlength = dnslib_wire_read_u16(pos);
+	pos += 2;
 
 	if (max_size - parsed < rdlength) {
 		debug_dnslib_edns("Not enough data to parse OPT RR.\n");
@@ -77,15 +78,19 @@ int dnslib_edns_new_from_wire(dnslib_opt_rr_t *opt_rr, const uint8_t *wire,
 
 	while (parsed < rdlength + DNSLIB_EDNS_MIN_SIZE) {
 		if (max_size - parsed < 4) {
-			debug_dnslib_edns("Not enough data to parse OPT RR.\n");
+			debug_dnslib_edns("Not enough data to parse OPT RR"
+			                  " OPTION header.\n");
 			return -3;
 		}
 		uint16_t code = dnslib_wire_read_u16(pos);
 		pos += 2;
 		uint16_t length = dnslib_wire_read_u16(pos);
 		pos += 2;
+		debug_dnslib_edns("EDNS OPTION: Code: %u, Length: %u\n",
+		                  code, length);
 		if (max_size - parsed - 4 < length) {
-			debug_dnslib_edns("Not enough data to parse OPT RR.\n");
+			debug_dnslib_edns("Not enough data to parse OPT RR"
+			                  " OPTION data.\n");
 			return -3;
 		}
 		if (dnslib_edns_add_option(opt_rr, code, length, pos) != 0) {
@@ -200,7 +205,7 @@ int dnslib_edns_add_option(dnslib_opt_rr_t *opt_rr, uint16_t code,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_edns_has_option(dnslib_opt_rr_t *opt_rr, uint16_t code)
+int dnslib_edns_has_option(const dnslib_opt_rr_t *opt_rr, uint16_t code)
 {
 	int i = 0;
 	while (i < opt_rr->option_count && opt_rr->options[i].code != code) {
