@@ -298,6 +298,11 @@ const dnslib_rrset_t *dnslib_response_additional_rrset(
 
 int dnslib_response_dnssec_requested(const dnslib_response_t *response);
 
+int dnslib_response_nsid_requested(const dnslib_response_t *response);
+
+int dnslib_response_add_nsid(dnslib_response_t *response, const uint8_t *data,
+                             uint16_t length);
+
 /*!
  * \brief Converts the response to wire format.
  *

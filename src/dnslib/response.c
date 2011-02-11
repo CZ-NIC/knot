@@ -1298,6 +1298,22 @@ int dnslib_response_dnssec_requested(const dnslib_response_t *response)
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_response_nsid_requested(const dnslib_response_t *response)
+{
+	return dnslib_edns_has_option(&response->edns_query, EDNS_OPTION_NSID);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_response_add_nsid(dnslib_response_t *response, const uint8_t *data,
+                             uint16_t length)
+{
+	return dnslib_edns_add_option(&response->edns_response,
+	                              EDNS_OPTION_NSID, length, data);
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_response_to_wire(dnslib_response_t *resp,
                             uint8_t **resp_wire, size_t *resp_size)
 {
