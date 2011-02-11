@@ -20,6 +20,9 @@ static const uint8_t  OPT_SIZE             = 11;
 static const int      EDNS_ENABLED         = 1;
 static const uint32_t SYNTH_CNAME_TTL      = 0;
 static const int      DNSSEC_ENABLED       = 1;
+static const int      NSID_ENABLED         = 1;
+static const uint16_t NSID_LENGTH          = 6;
+static const uint8_t  NSID_DATA[6] = {0x46, 0x6f, 0x6f, 0x42, 0x61, 0x72};
 
 /*----------------------------------------------------------------------------*/
 /* Private functions                                                          */
@@ -768,6 +771,11 @@ int ns_answer_request(ns_nameserver *nameserver, const uint8_t *query_wire,
 		                  response_wire, rsize);
 		dnslib_response_free(&resp);
 		return 0;
+	}
+
+	// NSID
+	if (NSID_ENABLED && dnslib_response_nsid_requested(resp)) {
+		(void)dnslib_response_add_nsid(resp, NSID_DATA, NSID_LENGTH);
 	}
 
 	debug_ns("Query parsed.\n");
