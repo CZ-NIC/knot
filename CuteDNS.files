@@ -68,6 +68,8 @@ src/dnslib/zone-dump.c
 src/dnslib/zone-dump.h
 src/dnslib/zone-load.c
 src/dnslib/zone-load.h
+src/dnslib/zone-dump-text.h
+src/dnslib/zone-dump-text.c
 src/zoneparser/main.c
 src/zoneparser/parser-descriptor.h
 src/zoneparser/parser-descriptor.c
