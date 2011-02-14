@@ -102,6 +102,7 @@ int main(int argc, char **argv)
 	}
 
 	// Open log
+	log_init();
 	if (config_get()) {
 		//! \todo Implement using config hooks.
 		log_load_conf();
