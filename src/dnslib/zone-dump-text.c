@@ -10,7 +10,11 @@
 
 /* TODO max length of alg */
 
-enum uint_max_length { U8_MAX_STR_LEN = 4, U16_MAX_STR_LEN = 6, U32_MAX_STR_LEN = 11 };
+enum uint_max_length {
+	U8_MAX_STR_LEN = 4, U16_MAX_STR_LEN = 6,
+	U32_MAX_STR_LEN = 11, MAX_RR_TYPE_LEN = 20,
+	MAX_NSEC_BIT_STR_LEN = 4096,
+	};
 
 /* TODO to be moved elsewhere */
 int
@@ -335,11 +339,17 @@ char *rdata_text_to_string(dnslib_rdata_item_t item)
 	uint8_t length = data[0];
 	size_t i;
 
-	char *ret = malloc(sizeof(char) * (length + 1));
+	/* XXX */
 
-	memset(ret, 0, sizeof(char) * (length + 1));
+	/* 3 because: opening '"', closing '"', and \0 at the end */
+	char *ret = malloc(sizeof(char) * (length + 3));
 
-	strcat(ret, "\"");
+	memset(ret, 0, sizeof(char) * (length + 3));
+
+	size_t current_length = sizeof(char) * (length + 3);
+
+	strcat(ret, "\\");
+
 	for (i = 1; i <= length; i++) {
 		char ch = (char) data[i];
 		if (isprint((int)ch)) {
@@ -348,6 +358,7 @@ char *rdata_text_to_string(dnslib_rdata_item_t item)
 			}
 				/* XXX for the love of god, how to this better,
 				   but w/o obscure self-made functions */
+				/* MANUALLY */
 				char tmp_str[2];
 				tmp_str[0] = ch;
 				tmp_str[1] = 0;
@@ -355,8 +366,16 @@ char *rdata_text_to_string(dnslib_rdata_item_t item)
 		} else {
 			strcat(ret, "\\");
 			char tmp_str[2];
+			/* TODO convert to unsigned*/
 			tmp_str[0] = ch;
 			tmp_str[1] = 0;
+
+			current_length += sizeof(char);
+
+			if (realloc(ret, current_length) == NULL) {
+				ERR_ALLOC_FAILED;
+				return NULL;
+			}
 
 			strcat(ret, tmp_str);
 			// XXX
@@ -523,7 +542,7 @@ char *hex_to_string(const uint8_t *data, size_t size)
 	};
 	size_t i;
 
-	char *ret = malloc(sizeof(char) * (size * 2) + 1 * sizeof(char));
+	char *ret = malloc(sizeof(char) * (size * 2 + 1));
 
 	for (i = 0; i < size * 2; i += 2) {
 		uint8_t octet = *data++;
@@ -533,7 +552,7 @@ char *hex_to_string(const uint8_t *data, size_t size)
 
 	/* TODO triple check */
 
-	ret[i--] = '\0';
+	ret[--i] = '\0';
 
 	return ret;
 }
@@ -686,18 +705,60 @@ char *rdata_nxt_to_string(dnslib_rdata_item_t item)
 	return 1;*/
 }
 
+int get_bit(uint8_t bits[], size_t index)
+{
+	/*
+	 * The bits are counted from left to right, so bit #0 is the
+	 * left most bit.
+	 */
+	return bits[index / 8] & (1 << (7 - index % 8));
+}
+
 char *rdata_nsec_to_string(dnslib_rdata_item_t item)
 {
-	return NULL;
-	/*
-	size_t saved_position = buffer_position(output);
-	buffer_type packet;
-	int insert_space = 0;
+//	int insert_space = 0;
 
-	buffer_create_from(
-		&packet, rdata_item_data(rdata), rdata_atom_size(rdata));
+	char *ret = malloc(sizeof(char) * MAX_NSEC_BIT_STR_LEN);
 
-	while (buffer_available(&packet, 2)) {
+	memset(ret, 0, MAX_NSEC_BIT_STR_LEN);
+
+	uint8_t *data = rdata_item_data(item);
+
+	int increment = 1;
+
+	for (int i = 1; i < rdata_item_size(item); i += increment) {
+		uint8_t window = data[i];
+		//TODO probably wrong set in parser, should be 0 in most of the cases
+		window = 0;
+		uint8_t bitmap_size = data[i+1];
+		uint8_t *bitmap =
+			malloc(sizeof(uint8_t) * (bitmap_size >
+			                          rdata_item_size(item) ?
+						  bitmap_size :
+						  rdata_item_size(item)));
+
+		memset(bitmap, 0,
+		       sizeof(uint8_t) *  bitmap_size > rdata_item_size(item) ?
+		       bitmap_size :
+		       rdata_item_size(item));
+
+		memcpy(bitmap, data + i + 1, rdata_item_size(item) - (i + 1));
+
+		increment += bitmap_size + 3;
+
+		for (int j = 0; j < bitmap_size * 8; j++) {
+			if (get_bit(bitmap, j)) {
+				strcat(ret, dnslib_rrtype_to_string(j + window * 256));
+				strcat(ret, " ");
+			}
+		}
+
+		free(bitmap);
+	}
+
+	return ret;
+
+/*	while (buffer_available(&packet, 2)) {
 		uint8_t window = buffer_read_u8(&packet);
 		uint8_t bitmap_size = buffer_read_u8(&packet);
 		uint8_t *bitmap = buffer_current(&packet);
@@ -721,8 +782,7 @@ char *rdata_nsec_to_string(dnslib_rdata_item_t item)
 		buffer_skip(&packet, bitmap_size);
 	}
 
-	return 1;
-	*/
+	return 1; */
 }
 
 char *rdata_unknown_to_string(dnslib_rdata_item_t item)
@@ -769,7 +829,8 @@ static item_to_string_t item_to_string_table[DNSLIB_RDATA_ZF_UNKNOWN + 1] = {
 	rdata_unknown_to_string
 };
 
-char *rdata_item_to_string(dnslib_rdata_zoneformat_t type, dnslib_rdata_item_t item)
+char *rdata_item_to_string(dnslib_rdata_zoneformat_t type,
+                           dnslib_rdata_item_t item)
 {
 	return item_to_string_table[type](item);
 }
@@ -780,31 +841,42 @@ char *rdata_item_to_string(dnslib_rdata_zoneformat_t type, dnslib_rdata_item_t i
 
 void rdata_dump_text(dnslib_rdata_t *rdata, uint16_t type, FILE *f)
 {
-	dnslib_rrtype_descriptor_t *desc = dnslib_rrtype_descriptor_by_type(type);
+	dnslib_rrtype_descriptor_t *desc =
+		dnslib_rrtype_descriptor_by_type(type);
+	char *item_str = NULL;
 	for (int i = 0; i < desc->length; i++) {
-		fprintf(f, "%s ", rdata_item_to_string(desc->zoneformat[i],
-		                                       rdata->items[i]));
+		item_str = rdata_item_to_string(desc->zoneformat[i], rdata->items[i]);
+		if (item_str == NULL) {
+			item_str = rdata_item_to_string(DNSLIB_RDATA_ZF_UNKNOWN, rdata->items[i]);
+		}
+		if (i != desc->length - 1) {
+			fprintf(f, "%s ", item_str);
+		} else {
+			fprintf(f, "%s", item_str);
+		}
+		free(item_str);
 	}
+	fprintf(f, "\n");
 }
 
 void dump_rrset_header(dnslib_rrset_t *rrset, FILE *f)
 {
 	char *name = dnslib_dname_to_str(rrset->owner);
-	fprintf(f, "%s ",  name);
+	fprintf(f, "%-20s ",  name);
 	free(name);
-	fprintf(f, "%u ", rrset->ttl);
-	fprintf(f, "%s ", dnslib_rrclass_to_string(rrset->rclass));
-	fprintf(f, "%s ",  dnslib_rrtype_to_string(rrset->type));
+	fprintf(f, "%-5u ", rrset->ttl);
+	fprintf(f, "%-2s ", dnslib_rrclass_to_string(rrset->rclass));
+	fprintf(f, "%-5s ",  dnslib_rrtype_to_string(rrset->type));
 }
 
 void dump_rrsig_set_header(dnslib_rrsig_set_t *rrsig, FILE *f)
 {
 	char *name = dnslib_dname_to_str(rrsig->owner);
-	fprintf(f, "%s ",  name);
+	fprintf(f, "%-20s ",  name);
 	free(name);
-	fprintf(f, "%u ", rrsig->ttl);
-	fprintf(f, "%s ", dnslib_rrclass_to_string(rrsig->rclass));
-	fprintf(f, "%s ",  dnslib_rrtype_to_string(DNSLIB_RRTYPE_RRSIG));
+	fprintf(f, "%-5u ", rrsig->ttl);
+	fprintf(f, "%-2s ", dnslib_rrclass_to_string(rrsig->rclass));
+	fprintf(f, "%-5s ",  dnslib_rrtype_to_string(DNSLIB_RRTYPE_RRSIG));
 }
 
 void rrsig_set_dump_text(dnslib_rrsig_set_t *rrsig, FILE *f)
@@ -813,13 +885,12 @@ void rrsig_set_dump_text(dnslib_rrsig_set_t *rrsig, FILE *f)
 	dnslib_rdata_t *tmp = rrsig->rdata;
 
 	while (tmp->next != rrsig->rdata) {
-		rdata_dump_text(rrsig->rdata, DNSLIB_RRTYPE_RRSIG, f);
+		rdata_dump_text(tmp, DNSLIB_RRTYPE_RRSIG, f);
 		dump_rrsig_set_header(rrsig, f);
 		tmp = tmp->next;
 	}
 
-	rdata_dump_text(rrsig->rdata, DNSLIB_RRTYPE_RRSIG, f);
-	fprintf(f, "\n");
+	rdata_dump_text(tmp, DNSLIB_RRTYPE_RRSIG, f);
 }
 
 
@@ -829,18 +900,16 @@ void rrset_dump_text(dnslib_rrset_t *rrset, FILE *f)
 	dnslib_rdata_t *tmp = rrset->rdata;
 
 	while (tmp->next != rrset->rdata) {
-		rdata_dump_text(rrset->rdata, rrset->type, f);
+		rdata_dump_text(tmp, rrset->type, f);
 		dump_rrset_header(rrset, f);
 		tmp = tmp->next;
 	}
 
-	rdata_dump_text(rrset->rdata, rrset->type, f);
+	rdata_dump_text(tmp, rrset->type, f);
 	dnslib_rrsig_set_t *rrsig_set = rrset->rrsigs;
 	if (rrsig_set != NULL) {
-		fprintf(f, "\n");
 		rrsig_set_dump_text(rrsig_set, f);
 	}
-	fprintf(f, "\n");
 }
 
 struct dump_param {
@@ -907,9 +976,21 @@ void node_dump_text(dnslib_node_t *node, void *data)
 int zone_dump_text(dnslib_zone_t *zone, const char *filename)
 {
 	FILE *f = fopen(filename, "w");
+	if (f == NULL) {
+		//TODO log message
+		return -1;
+	}
+
+	fprintf(f, ";Dumped using %s v. %d.%d.%d\n", PROJECT_NAME,
+	        PROJECT_VER / 10000,
+		(PROJECT_VER / 100) % 100,
+		PROJECT_VER % 100);
+
 	struct dump_param param;
 	param.f = f;
 	param.origin = zone->apex->owner;
 	dnslib_zone_tree_apply_inorder(zone, node_dump_text, &param);
 	fclose(f);
+
+	return 0;
 }
