@@ -16,6 +16,9 @@ enum uint_max_length {
 	MAX_NSEC_BIT_STR_LEN = 4096,
 	};
 
+#define APL_NEGATION_MASK      0x80U
+#define APL_LENGTH_MASK	       (~APL_NEGATION_MASK)
+
 /* TODO to be moved elsewhere */
 int
 b32_ntop(uint8_t const *src, size_t srclength, char *target, size_t targsize)
@@ -313,6 +316,15 @@ dnslib_lookup_table_t dnslib_dns_algorithms[] = {
 	{ 0, NULL }
 };
 
+int get_bit(uint8_t bits[], size_t index)
+{
+	/*
+	 * The bits are counted from left to right, so bit #0 is the
+	 * left most bit.
+	 */
+	return bits[index / 8] & (1 << (7 - index % 8));
+}
+
 static inline uint8_t * rdata_item_data(dnslib_rdata_item_t item)
 {
 	return (uint8_t *)(item.raw_data + 1);
@@ -587,8 +599,44 @@ char *rdata_nsap_to_string(dnslib_rdata_item_t item)
 
 char *rdata_apl_to_string(dnslib_rdata_item_t item)
 {
-	return NULL; /* experimental */
-	/*
+	uint8_t *data = rdata_item_data(item);
+	uint16_t address_family = dnslib_wire_read_u16(data);
+	uint8_t prefix = data[2];
+	uint8_t length = data[3];
+	int negated = length & APL_NEGATION_MASK;
+	int af = -1;
+
+	char *ret = malloc(sizeof(char) * MAX_NSEC_BIT_STR_LEN);
+
+	memset(ret, 0, MAX_NSEC_BIT_STR_LEN);
+
+	length &= APL_LENGTH_MASK;
+	switch (address_family) {
+		case 1: af = AF_INET; break;
+		case 2: af = AF_INET6; break;
+	}
+
+	if (af != -1) {
+		char text_address[1000];
+		uint8_t address[128];
+		memset(address, 0, sizeof(address));
+		memcpy(address, data + 4, length);
+		if (inet_ntop(af, address,
+			      text_address,
+			      sizeof(text_address))) {
+			snprintf(ret, sizeof(text_address) +
+				 U32_MAX_STR_LEN * 2,
+				 "%s%d:%s/%d",
+				 negated ? "!" : "",
+				 (int) address_family,
+				 text_address,
+				 (int) prefix);
+		}
+	}
+
+	return ret;
+
+		/*
 	int result = 0;
 	buffer_type packet;
 
@@ -624,6 +672,8 @@ char *rdata_apl_to_string(dnslib_rdata_item_t item)
 	}
 	return result;
 	*/
+
+
 }
 
 char *rdata_services_to_string(dnslib_rdata_item_t item)
@@ -689,30 +739,24 @@ char *rdata_ipsecgateway_to_string(dnslib_rdata_item_t item)
 
 char *rdata_nxt_to_string(dnslib_rdata_item_t item)
 {
-	return NULL;
-/*	size_t i;
-	uint8_t *bitmap = rdata_item_data(rdata);
-	size_t bitmap_size = rdata_atom_size(rdata);
+	size_t i;
+	uint8_t *bitmap = rdata_item_data(item);
+	size_t bitmap_size = rdata_item_size(item);
+
+	char *ret = malloc(sizeof(char) * MAX_NSEC_BIT_STR_LEN);
+
+	memset(ret, 0, MAX_NSEC_BIT_STR_LEN);
 
 	for (i = 0; i < bitmap_size * 8; ++i) {
 		if (get_bit(bitmap, i)) {
-			buffer_printf(output, "%s ", rrtype_to_string(i));
+			strcat(ret, dnslib_rrtype_to_string(i));
+				strcat(ret, " ");
 		}
 	}
 
-	buffer_skip(output, -1);
-
-	return 1;*/
+	return ret;
 }
 
-int get_bit(uint8_t bits[], size_t index)
-{
-	/*
-	 * The bits are counted from left to right, so bit #0 is the
-	 * left most bit.
-	 */
-	return bits[index / 8] & (1 << (7 - index % 8));
-}
 
 char *rdata_nsec_to_string(dnslib_rdata_item_t item)
 {
