@@ -679,6 +679,7 @@ char *rdata_apl_to_string(dnslib_rdata_item_t item)
 char *rdata_services_to_string(dnslib_rdata_item_t item)
 {
 	return NULL;
+
 	/*
 	int result = 0;
 	uint8_t protocol_number = buffer_read_u8(&packet);
