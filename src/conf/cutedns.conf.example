@@ -45,6 +45,12 @@ log {
     server error;
   }
 
+  # Multiple specification of a log facility
+  # means ORing the rules.
+  file "/var/log/cutedns/server.err" {
+    server warning;
+  }
+
   stderr {
     any warning, error;
   }

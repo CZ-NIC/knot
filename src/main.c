@@ -87,7 +87,7 @@ int main(int argc, char **argv)
 	// Now check if we want to daemonize
 	if (daemonize) {
 		if (daemon(1, 0) != 0) {
-			log_open(0, LOG_MASK(LOG_ERR));
+			log_init(0, LOG_MASK(LOG_ERR));
 			log_error("Daemonization failed, shutting down...\n");
 			log_close();
 			return 1;
@@ -97,21 +97,18 @@ int main(int argc, char **argv)
 	// Open configuration
 	if (config_open(config_fn) != 0) {
 		config_fn = 0;
-		log_open(0, LOG_MASK(LOG_ERR));
-		log_error("Opening config file %s failed...\n", config_fn);
-		log_close();
+		fprintf(stderr, "Opening config file %s failed...\n", config_fn);
+		//! \todo Load default configuration.
 	}
 
 	// Open log
-	int log_mask = LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING);
-	int print_mask = LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING);
-	if (verbose) {
-		print_mask |= LOG_MASK(LOG_NOTICE);
-		print_mask |= LOG_MASK(LOG_INFO);
-		log_mask = print_mask;
+	if (config_get()) {
+		//! \todo Implement using config hooks.
+		log_load_conf();
 	}
-
-	log_open(print_mask, log_mask);
+	if (verbose) {
+		//! \todo Support for verbose mode.
+	}
 
 	// Save PID
 	char* pidfile = pid_filename();

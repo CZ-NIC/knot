@@ -84,7 +84,10 @@ static void log_free(conf_log_t *log)
 		return;
 	}
 
-	free(log->log_output);
+	if (log->file) {
+		free(log->file);
+	}
+
 	free(log);
 }
 
@@ -223,6 +226,7 @@ int config_open(const char* path)
 	if (!s_config) {
 		return -1;
 	}
+
 	if (config_parse(s_config) != 0) {
 		config_free(s_config);
 		s_config = 0;

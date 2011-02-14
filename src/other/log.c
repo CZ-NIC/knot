@@ -1,24 +1,22 @@
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
 #include "log.h"
+#include "lists.h"
 #include "common.h"
-
-typedef struct {
-	int c;
-	const char* str;
-} log_name_t;
+#include "conf.h"
 
 /*! Log source table. */
-/*const log_name_t log_src_table[] {
-	{
-}*/
+uint8_t *LOG_LUT = 0;
+size_t LOG_LUT_SIZE = 0;
 
 /// Global log-level.
 static int _LOG_OPEN = 0;
 static int _LOG_MASK = 0;
 
-int log_open(int print_mask, int log_mask)
+int log_init(int print_mask, int log_mask)
 {
 	setlogmask(log_mask);
 
@@ -39,7 +37,7 @@ int log_close()
 
 int log_isopen()
 {
-	return _LOG_OPEN;
+	return LOG_LUT != 0;
 }
 
 int print_msg(int level, const char *msg, ...)

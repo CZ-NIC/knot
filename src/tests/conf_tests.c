@@ -22,7 +22,7 @@ unit_api conf_tests_api = {
  */
 static int conf_tests_count(int argc, char *argv[])
 {
-	return 19;
+	return 20;
 }
 
 /*! Run all scheduled tests for given parameters.
@@ -61,7 +61,8 @@ static int conf_tests_run(int argc, char *argv[])
 	cmp_ok(conf->key.algorithm, "==", HMAC_MD5, "TSIG key algorithm check");
 	is(conf->key.secret, "Wg==", "TSIG key secret check");
 
-	// Test 11,12,13,14,15,16,17: Check logging facilities
+	// Test 11,12,13,14,15,16,17,18: Check logging facilities
+	cmp_ok(conf->logs_count, "==", 4, "log facilites count check");
 	n = HEAD(conf->logs);
 	ok(!EMPTY_LIST(conf->logs), "log facilities not empty");
 
@@ -87,7 +88,7 @@ static int conf_tests_run(int argc, char *argv[])
 	}
 	endskip;
 
-	// Test 18,19: File facility checks
+	// Test 19,20: File facility checks
 	n = n->next;
 	log = (conf_log_t*)n;
 	ok(n != 0, "log has next facility");

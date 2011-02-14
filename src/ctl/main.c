@@ -201,7 +201,7 @@ int main(int argc, char **argv)
 		log_mask = print_mask;
 	}
 
-	log_open(print_mask, log_mask);
+	log_init(print_mask, log_mask);
 
 	// Fetch PID
 	char* pidfile = pid_filename();

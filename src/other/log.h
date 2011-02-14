@@ -29,30 +29,28 @@ typedef enum {
 	LOGT_FILE   = 3  /*!< Generic logging to (unbuffered) file on the disk. */
 } logtype_t;
 
-/*! \brief Log sources (8 bits). */
+/*! \brief Log sources (3 bits). */
 typedef enum {
-	LOG_SERVER = 1 << 0, /*!< Server module. */
-	LOG_ANSWER = 1 << 1, /*!< Query answering module. */
-	LOG_ZONE   = 1 << 2, /*!< Zone manipulation module. */
-	LOG_ANY    = 0xff    /*!< Any module. */
+	LOG_SERVER = 0, /*!< Server module. */
+	LOG_ANSWER = 1, /*!< Query answering module. */
+	LOG_ZONE   = 2, /*!< Zone manipulation module. */
+	LOG_ANY    = 7  /*!< Any module. */
 } logsrc_t;
 
 /* Logging facility setup. */
 
 /*!
- * \brief Open log and stdio output for given masks.
- *
- * For bitmasks, refer to syslog.h
+ * \brief Setup logging facilities without config.
  *
  * \see syslog.h
  *
  * \retval  0 On success.
  * \retval <0 If an error occured.
  */
-int log_open(int print_mask, int log_mask);
+int log_init(int print_mask, int log_mask);
 
 /*!
- * \brief Close log and stdio output.
+ * \brief Close and deinitialize log.
  *
  * \retval  0 On success.
  * \retval <0 If an error occured.
