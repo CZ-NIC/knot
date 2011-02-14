@@ -1426,7 +1426,7 @@ void process_rrsigs_in_node(dnslib_node_t *node)
 {
 	rrsig_list_t *tmp = parser->node_rrsigs;
 	while (tmp != NULL) {
-		if (find_rrset_for_rrsig_in_node(parser->last_node,
+		if (find_rrset_for_rrsig_in_node(node,
 					         tmp->data) != 0) {
 			rrsig_list_add(&parser->rrsig_orphans,
 			               tmp->data);
@@ -1503,20 +1503,26 @@ int process_rr(void)
 
 		dnslib_rrsig_set_add_rdata(tmp_rrsig, current_rrset->rdata);
 
-		rrsig_list_add(&parser->node_rrsigs, tmp_rrsig);
-
 		if (parser->last_node &&
 		    dnslib_dname_compare(parser->last_node->owner,
 		    current_rrset->owner) != 0) {
 			/* RRSIG is first in the node, so we have to create it
 			 * before we return 
 			 */
+			if (parser->node_rrsigs != NULL) {
+				process_rrsigs_in_node(parser->last_node);
+
+				rrsig_list_delete(&parser->node_rrsigs);
+			}
+
 			if ((parser->last_node = create_node(zone,
 			                           current_rrset, node_add_func,
 			                           node_get_func)) == NULL) {
 				return -1;
 			}
 		}
+
+		rrsig_list_add(&parser->node_rrsigs, tmp_rrsig);
 
 		return 0;
 	}
@@ -1535,11 +1541,16 @@ int process_rr(void)
 		}
 
 		rrsig_list_delete(&parser->node_rrsigs);
+
 		/* new node */
 		node = node_get_func(zone, current_rrset->owner);
 	}
 
 	if (node == NULL) {
+		if (parser->last_node && parser->node_rrsigs) {
+			process_rrsigs_in_node(parser->last_node);
+		}
+
 		if ((node = create_node(zone, current_rrset,
 					node_add_func,
 					node_get_func)) == NULL) {
