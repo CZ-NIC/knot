@@ -679,38 +679,34 @@ char *rdata_apl_to_string(dnslib_rdata_item_t item)
 char *rdata_services_to_string(dnslib_rdata_item_t item)
 {
 	return NULL;
-/*	int result = 0;
-	buffer_type packet;
+	/*
+	int result = 0;
+	uint8_t protocol_number = buffer_read_u8(&packet);
+	ssize_t bitmap_size = buffer_remaining(&packet);
+	uint8_t *bitmap = buffer_current(&packet);
+	struct protoent *proto = getprotobynumber(protocol_number);
 
-	buffer_create_from(
-		&packet, rdata_item_data(rdata), rdata_atom_size(rdata));
 
-	if (buffer_available(&packet, 1)) {
-		uint8_t protocol_number = buffer_read_u8(&packet);
-		ssize_t bitmap_size = buffer_remaining(&packet);
-		uint8_t *bitmap = buffer_current(&packet);
-		struct protoent *proto = getprotobynumber(protocol_number);
+	if (proto) {
+		int i;
 
-		if (proto) {
-			int i;
+		strcpy(ret, proto->p_name);
 
-			buffer_printf(output, "%s", proto->p_name);
-
-			for (i = 0; i < bitmap_size * 8; ++i) {
-				if (get_bit(bitmap, i)) {
-					struct servent *service = getservbyport((int)htons(i), proto->p_name);
-					if (service) {
-						buffer_printf(output, " %s", service->s_name);
-					} else {
-						buffer_printf(output, " %d", i);
-					}
+		for (i = 0; i < bitmap_size * 8; ++i) {
+			if (get_bit(bitmap, i)) {
+				struct servent *service =
+					getservbyport((int)htons(i),
+						      proto->p_name);
+				if (service) {
+					buffer_printf(output, " %s", service->s_name);
+				} else {
+					buffer_printf(output, " %d", i);
 				}
 			}
-			buffer_skip(&packet, bitmap_size);
-			result = 1;
 		}
+		result = 1;
 	}
-	return result;
+	return ret;
 	*/
 }
 
