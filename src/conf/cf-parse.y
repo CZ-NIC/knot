@@ -129,20 +129,52 @@ log_src:
  ;
 
 log_dest: LOG_DEST {
-  this_log = malloc(sizeof(conf_log_t));
-  this_log->type = $1;
-  this_log->file = 0;
-  init_list(&this_log->map);
-  add_tail(&new_config->logs, &this_log->n);
+  /* Find already existing rule. */
+  this_log = 0;
+  node *n = 0;
+  WALK_LIST(n, new_config->logs) {
+    conf_log_t* log = (conf_log_t*)n;
+    if (log->type == $1) {
+      this_log = log;
+      break;
+    }
+  }
+
+  if (!this_log) {
+    this_log = malloc(sizeof(conf_log_t));
+    this_log->type = $1;
+    this_log->file = 0;
+    init_list(&this_log->map);
+    add_tail(&new_config->logs, &this_log->n);
+    ++new_config->logs_count;
+  }
 }
 ;
 
 log_file: FILENAME TEXT {
-  this_log = malloc(sizeof(conf_log_t));
-  this_log->type = LOGT_FILE;
-  this_log->file = $2;
-  init_list(&this_log->map);
-  add_tail(&new_config->logs, &this_log->n);
+  /* Find already existing rule. */
+  this_log = 0;
+  node *n = 0;
+  WALK_LIST(n, new_config->logs) {
+    conf_log_t* log = (conf_log_t*)n;
+    if (log->type == LOGT_FILE) {
+      if (strcmp($2, log->file) == 0) {
+        this_log = log;
+        free($2);
+        break;
+      }
+    }
+  }
+
+  /* Create new rule. */
+  if (!this_log) {
+    this_log = malloc(sizeof(conf_log_t));
+    this_log->type = LOGT_FILE;
+    this_log->file = $2;
+    init_list(&this_log->map);
+    add_tail(&new_config->logs, &this_log->n);
+    ++new_config->logs_count;
+  }
 }
 ;
 

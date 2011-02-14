@@ -122,7 +122,7 @@ typedef struct {
  *
  * \todo More documentation.
  */
-typedef struct {
+typedef struct config_t {
 	char *filename; /*!< Name of the config file. */
 
 	char *identity; /*!< Identity to return on CH TXT id.server. */
@@ -136,7 +136,8 @@ typedef struct {
 
 	conf_key_t key; /*!< Server TSIG key. */
 
-	list logs; /*!< List of logging destinations. */
+	int logs_count; /*!< Count of logging facilities. */
+	list logs; /*!< List of logging facilites. */
 	list ifaces; /*!< List of interfaces. */
 	list zones; /*!< List of zones. */
 } config_t;
@@ -152,6 +153,8 @@ int config_open(const char* path);
 const config_t* config_get();
 int config_close();
 
+/* Modules. */
+#include "logconf.h"
 
 #endif /* _CUTEDNS_CONF_H_ */
 

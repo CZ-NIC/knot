@@ -110,5 +110,7 @@ src/conf/cf-lex.l
 src/conf/cf-parse.y
 src/conf/conf.c
 src/conf/conf.h
+src/conf/logconf.c
+src/conf/logconf.h
 src/conf/cutedns.conf.example
 tests/querytcp.c
