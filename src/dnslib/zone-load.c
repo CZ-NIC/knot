@@ -30,6 +30,21 @@ enum { DNAME_MAX_WIRE_LENGTH = 256 };
 //TODO move to parameters
 static dnslib_dname_t **id_array;
 
+static uint16_t * alloc_rdata(size_t size)
+{
+	uint16_t *result = malloc(sizeof(uint16_t) + size);
+	*result = size;
+	return result;
+}
+
+static uint16_t * alloc_rdata_init(const void *data, size_t size)
+{
+	uint16_t *result = malloc(sizeof(uint16_t) + size);
+	*result = size;
+	memcpy(result + 1, data, size);
+	return result;
+}
+
 static void load_rdata_purge(dnslib_rdata_t *rdata,
                                dnslib_rdata_item_t *items,
                                int count,
@@ -53,7 +68,7 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 	dnslib_rdata_item_t *items =
 		malloc(sizeof(dnslib_rdata_item_t) * desc->length);
 
-	uint8_t raw_data_length;
+	uint16_t raw_data_length;
 
 	debug_zp("Reading %d items\n", desc->length);
 
@@ -170,7 +185,7 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 
 			debug_zp("read len: %d\n", raw_data_length);
 			items[i].raw_data =
-				malloc(sizeof(uint8_t) * raw_data_length + 1);
+				malloc(sizeof(uint8_t) * raw_data_length + 2);
 			*(items[i].raw_data) = raw_data_length;
 
 			if (!fread_safe(items[i].raw_data + 1, sizeof(uint8_t),
