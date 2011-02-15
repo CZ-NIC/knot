@@ -69,6 +69,8 @@ src/dnslib/zone-dump.c
 src/dnslib/zone-dump.h
 src/dnslib/zone-load.c
 src/dnslib/zone-load.h
+src/dnslib/zone-dump-text.h
+src/dnslib/zone-dump-text.c
 src/zoneparser/main.c
 src/zoneparser/parser-descriptor.h
 src/zoneparser/parser-descriptor.c
@@ -99,6 +101,7 @@ src/tests/dnslib/dnslib_dname_tests.c
 src/tests/dnslib/dnslib_edns_tests.c
 src/tests/dnslib/dnslib_rdata_tests.c
 src/tests/dnslib/dnslib_rrset_tests.c
+src/tests/dnslib/dnslib_rrsig_set_tests.c
 src/tests/dnslib/dnslib_node_tests.c
 src/tests/dnslib/dnslib_response_tests.c
 src/tests/dnslib/dnslib_rrsig_set_tests.c
