@@ -1352,7 +1352,7 @@ int find_rrset_for_rrsig_in_node(dnslib_node_t *node, dnslib_rrset_t *rrsig)
 	assert(dnslib_dname_compare(rrsig->owner, node->owner) == 0);
 
 	dnslib_rrset_t *tmp_rrset =
-		dnslib_node_get_rrset(node, rrsig->type);
+		dnslib_node_get_rrset(node, rrsig_type_covered(rrsig));
 
 	if (tmp_rrset == NULL) {
 		return -1;
@@ -1429,7 +1429,7 @@ void process_rrsigs_in_node(dnslib_node_t *node)
 		if (find_rrset_for_rrsig_in_node(node,
 					         tmp->data) != 0) {
 			rrset_list_add(&parser->rrsig_orphans,
-			               tmp->data);
+				       tmp->data);
 		}
 		tmp = tmp->next;
 	}
