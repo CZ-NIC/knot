@@ -660,7 +660,8 @@ char *rdata_apl_to_string(dnslib_rdata_item_t item)
 			uint8_t address[128];
 			memset(address, 0, sizeof(address));
 			buffer_read(&packet, address, length);
-			if (inet_ntop(af, address, text_address, sizeof(text_address))) {
+			if (inet_ntop(af, address, text_address,
+			    sizeof(text_address))) {
 				buffer_printf(output, "%s%d:%s/%d",
 					      negated ? "!" : "",
 					      (int) address_family,
@@ -678,7 +679,42 @@ char *rdata_apl_to_string(dnslib_rdata_item_t item)
 
 char *rdata_services_to_string(dnslib_rdata_item_t item)
 {
-	return NULL;
+	uint8_t *data = rdata_item_data(item);
+	uint8_t protocol_number = data[0];
+	ssize_t bitmap_size = rdata_item_size(item) - 1;
+	uint8_t *bitmap = data + 1;
+	struct protoent *proto = getprotobynumber(protocol_number);
+
+	char *ret = malloc(sizeof(char) * MAX_NSEC_BIT_STR_LEN);
+
+	memset(ret, 0, MAX_NSEC_BIT_STR_LEN);
+
+	if (proto) {
+		int i;
+
+		strcpy(ret, proto->p_name);
+
+		strcat(ret, " ");
+
+		for (i = 0; i < bitmap_size * 8; ++i) {
+			if (get_bit(bitmap, i)) {
+				struct servent *service =
+					getservbyport((int)htons(i),
+						      proto->p_name);
+				if (service) {
+					strcat(ret, service->s_name);
+					strcat(ret, " ");
+				} else {
+					char tmp[U32_MAX_STR_LEN];
+					snprintf(tmp, U32_MAX_STR_LEN,
+						 "%d ", i);
+					strcat(ret, tmp);
+				}
+			}
+		}
+	}
+
+	return ret;
 
 	/*
 	int result = 0;
