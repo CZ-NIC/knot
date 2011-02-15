@@ -1,3 +1,10 @@
+/*!
+ * \file zone-dump-text.c
+ *
+ * \author Jan Kadlec <jan.kadlec@nic.cz>, conversion functions by NLabs,
+ *         see LICENSE. b64ntop by ISC.
+ */
+
 #include <ctype.h>
 #include <assert.h>
 #include <arpa/inet.h>
@@ -20,8 +27,8 @@ enum uint_max_length {
 #define APL_LENGTH_MASK	       (~APL_NEGATION_MASK)
 
 /* TODO to be moved elsewhere */
-int
-b32_ntop(uint8_t const *src, size_t srclength, char *target, size_t targsize)
+int b32_ntop(uint8_t const *src, size_t srclength, char *target,
+	     size_t targsize)
 {
 	static char b32[]="0123456789abcdefghijklmnopqrstuv";
 	char buf[9];
@@ -100,6 +107,8 @@ b32_ntop(uint8_t const *src, size_t srclength, char *target, size_t targsize)
 		*target='\0';
 	return len;
 }
+
+/* Following copyrights are only valid for b64_ntop function */
 
 /*
  * Copyright (c) 1996, 1998 by Internet Software Consortium.
@@ -223,8 +232,8 @@ static const char Pad64 = '=';
 	   characters followed by one "=" padding character.
    */
 
-int
-b64_ntop(uint8_t const *src, size_t srclength, char *target, size_t targsize) {
+int b64_ntop(uint8_t const *src, size_t srclength, char *target,
+	     size_t targsize) {
 	size_t datalength = 0;
 	uint8_t input[3];
 	uint8_t output[4];
@@ -452,21 +461,21 @@ char *rdata_rrtype_to_string(dnslib_rdata_item_t item)
 {
 	uint16_t type = dnslib_wire_read_u16(rdata_item_data(item));
 	const char *tmp = dnslib_rrtype_to_string(type);
-	char *ret = malloc(sizeof(char) * 20); /* TODO Move this to constant somewhere and lets hope nobody makes bigger rrype :) */
-	strncpy(ret, tmp, 20);
+	char *ret = malloc(sizeof(char) * MAX_RR_TYPE_LEN);
+	strncpy(ret, tmp, MAX_RR_TYPE_LEN);
 	return ret;
 }
 
 char *rdata_algorithm_to_string(dnslib_rdata_item_t item)
 {
 	uint8_t id = *rdata_item_data(item);
-	char *ret = malloc(sizeof(char) * 20);
+	char *ret = malloc(sizeof(char) * MAX_RR_TYPE_LEN);
 	dnslib_lookup_table_t *alg
 		= dnslib_lookup_by_id(dnslib_dns_algorithms, id);
 	if (alg) {
-		strncpy(ret, alg->name, 20);
+		strncpy(ret, alg->name, MAX_RR_TYPE_LEN);
 	} else {
-		snprintf(ret, U8_MAX_STR_LEN, "%d", id);
+		snprintf(ret, U8_MAX_STR_LEN, "%u", id);
 	}
 
 	return ret;
@@ -475,13 +484,13 @@ char *rdata_algorithm_to_string(dnslib_rdata_item_t item)
 char *rdata_certificate_type_to_string(dnslib_rdata_item_t item)
 {
 	uint16_t id = dnslib_wire_read_u16(rdata_item_data(item));
-	char *ret = malloc(sizeof(char) * 20);
+	char *ret = malloc(sizeof(char) * MAX_RR_TYPE_LEN);
 	dnslib_lookup_table_t *type
 		= dnslib_lookup_by_id(dnslib_dns_certificate_types, id);
 	if (type) {
-		strncpy(ret, type->name, 20);
+		strncpy(ret, type->name, MAX_RR_TYPE_LEN);
 	} else {
-		snprintf(ret, U16_MAX_STR_LEN, "%d", id);
+		snprintf(ret, U16_MAX_STR_LEN, "%u", id);
 	}
 
 	return ret;
@@ -490,7 +499,7 @@ char *rdata_certificate_type_to_string(dnslib_rdata_item_t item)
 char *rdata_period_to_string(dnslib_rdata_item_t item)
 {
 	/* uint32 but read 16 XXX */
-	uint32_t period = dnslib_wire_read_u16(rdata_item_data(item));
+	uint32_t period = dnslib_wire_read_u32(rdata_item_data(item));
 	char *ret = malloc(sizeof(char) * U32_MAX_STR_LEN);
 	snprintf(ret, U32_MAX_STR_LEN, "%u", period);
 	return ret;
@@ -593,7 +602,8 @@ char *rdata_nsap_to_string(dnslib_rdata_item_t item)
 	char *ret = malloc(sizeof(char) * (rdata_item_size(item) + 3));
 	strcat(ret, "0x");
 	/* TODO maybe assert? */
-	strcat(ret, hex_to_string(rdata_item_data(item), rdata_item_size(item)));
+	strcat(ret, hex_to_string(rdata_item_data(item),
+				  rdata_item_size(item)));
 	return ret;
 }
 
@@ -735,7 +745,8 @@ char *rdata_services_to_string(dnslib_rdata_item_t item)
 					getservbyport((int)htons(i),
 						      proto->p_name);
 				if (service) {
-					buffer_printf(output, " %s", service->s_name);
+					buffer_printf(output, " %s",
+						      service->s_name);
 				} else {
 					buffer_printf(output, " %d", i);
 				}
@@ -750,7 +761,8 @@ char *rdata_services_to_string(dnslib_rdata_item_t item)
 char *rdata_ipsecgateway_to_string(dnslib_rdata_item_t item)
 {
 	return NULL;
-/*	int gateway_type = rdata_item_data(rr->rdatas[1])[0];
+	/*
+	int gateway_type = rdata_item_data(rr->rdatas[1])[0];
 	switch(gateway_type) {
 	case IPSECKEY_NOGATEWAY:
 		buffer_printf(output, ".");
@@ -767,7 +779,8 @@ char *rdata_ipsecgateway_to_string(dnslib_rdata_item_t item)
 	default:
 		return 0;
 	}
-	return 1;*/
+	return 1;
+	*/
 }
 
 char *rdata_nxt_to_string(dnslib_rdata_item_t item)
@@ -805,7 +818,9 @@ char *rdata_nsec_to_string(dnslib_rdata_item_t item)
 
 	for (int i = 1; i < rdata_item_size(item); i += increment) {
 		uint8_t window = data[i];
-		//TODO probably wrong set in parser, should be 0 in most of the cases
+		/* TODO probably wrong set in parser, should
+		 *be 0 in most of the cases.
+		 */
 		window = 0;
 		uint8_t bitmap_size = data[i+1];
 		uint8_t *bitmap =
@@ -825,7 +840,9 @@ char *rdata_nsec_to_string(dnslib_rdata_item_t item)
 
 		for (int j = 0; j < bitmap_size * 8; j++) {
 			if (get_bit(bitmap, j)) {
-				strcat(ret, dnslib_rrtype_to_string(j + window * 256));
+				strcat(ret,
+				       dnslib_rrtype_to_string(j +
+							       window * 256));
 				strcat(ret, " ");
 			}
 		}
@@ -865,8 +882,11 @@ char *rdata_nsec_to_string(dnslib_rdata_item_t item)
 char *rdata_unknown_to_string(dnslib_rdata_item_t item)
 {
  	uint16_t size = rdata_item_size(item);
-	char *ret = malloc(sizeof(char) * (rdata_item_size(item) + strlen("\\# ") + U16_MAX_STR_LEN));
-	snprintf(ret, strlen("\\# ") + U16_MAX_STR_LEN, "%lu", (unsigned long) size);
+	char *ret =
+		malloc(sizeof(char) * (rdata_item_size(item) +
+				       strlen("\\# ") + U16_MAX_STR_LEN));
+	snprintf(ret, strlen("\\# ") + U16_MAX_STR_LEN, "%lu",
+		 (unsigned long) size);
 	strcat(ret, hex_to_string(rdata_item_data(item), size));
 	return ret;
 }
@@ -922,9 +942,12 @@ void rdata_dump_text(dnslib_rdata_t *rdata, uint16_t type, FILE *f)
 		dnslib_rrtype_descriptor_by_type(type);
 	char *item_str = NULL;
 	for (int i = 0; i < desc->length; i++) {
-		item_str = rdata_item_to_string(desc->zoneformat[i], rdata->items[i]);
+		item_str = rdata_item_to_string(desc->zoneformat[i],
+						rdata->items[i]);
 		if (item_str == NULL) {
-			item_str = rdata_item_to_string(DNSLIB_RDATA_ZF_UNKNOWN, rdata->items[i]);
+			item_str =
+				rdata_item_to_string(DNSLIB_RDATA_ZF_UNKNOWN,
+						     rdata->items[i]);
 		}
 		if (i != desc->length - 1) {
 			fprintf(f, "%s ", item_str);
