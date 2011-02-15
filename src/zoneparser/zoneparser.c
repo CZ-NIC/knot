@@ -1718,13 +1718,9 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 
 	debug_zp("rdata adjusted\n");
 
-	outfile = "dump.tmp";
-
 	dnslib_zdump_binary(parser->current_zone, outfile);
 
 	dnslib_zone_deep_free(&(parser->current_zone));
-
-	zone_dump_text(dnslib_zload_load("dump.tmp"), "testdump");
 
 	return totalerrors;
 }
