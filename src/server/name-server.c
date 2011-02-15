@@ -477,6 +477,17 @@ DEBUG_NS(
 
 /*----------------------------------------------------------------------------*/
 
+static void ns_add_dnskey(const dnslib_node_t *apex, dnslib_response_t *resp)
+{
+
+	const dnslib_rrset_t *rrset =
+		dnslib_node_rrset(apex, DNSLIB_RRTYPE_DNSKEY);
+	assert(rrset != NULL);
+	dnslib_response_add_rrset_additional(resp, rrset, 0, 0);
+}
+
+/*----------------------------------------------------------------------------*/
+
 static void ns_answer_from_zone(const dnslib_zone_t *zone,
                                 const dnslib_dname_t *qname, uint16_t qtype,
                                 dnslib_response_t *resp)
@@ -607,6 +618,17 @@ DEBUG_NS(
 
 		ns_answer_from_node(node, zone, qname, qtype, resp);
 		dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
+
+		// this is the only case when the servers answers from
+		// particular node, i.e. the only case when it may return SOA
+		// or NS records in Answer section
+		if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)
+		    && node == zone->apex
+		    && (qtype == DNSLIB_RRTYPE_SOA
+		        || qtype == DNSLIB_RRTYPE_NS)) {
+			ns_add_dnskey(node, resp);
+		}
+
 		break;
 	}
 
