@@ -19,14 +19,14 @@ static int dnslib_rdata_compare_binary(const uint8_t *d1, const uint8_t *d2,
 
 	// length stored in the first octet
 	if (count1 < 0) {
-		// take count from the first byte
-		count1 = (int)d1[0];
-		// and start from the second byte
-		i1 = 1;
+		// take count from the first two bytes
+		count1 = (int)(*(uint16_t *)d1);
+		// and start from the third byte
+		i1 = 2;
 	}
-	if (count2 < 0) {	// dtto
-		count2 = (int)d2[0];
-		i2 = 1;
+	if (count2 < 0) {  // dtto
+		count2 = (int)(*(uint16_t *)d2);
+		i2 = 2;
 	}
 
 
@@ -119,7 +119,7 @@ int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
 		return 1;
 	}
 
-	if (rdata->items != NULL) {	// not empty
+	if (rdata->items != NULL) {  // not empty
 		return -1;
 	}
 
@@ -177,7 +177,7 @@ int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, uint pos,
 /*----------------------------------------------------------------------------*/
 
 int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, uint pos,
-                                   uint8_t *raw_data)
+                                   uint16_t *raw_data)
 {
 	if (pos >= rdata->count) {
 		return -1;
@@ -299,7 +299,7 @@ int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
 	for (int i = 0; i < rdata->count; ++i) {
 		assert(copied < DNSLIB_MAX_RDATA_WIRE_SIZE);
 
-		const uint8_t *from = rdata->items[i].raw_data;
+		const uint8_t *from = (uint8_t *)rdata->items[i].raw_data;
 		uint size = 0;
 
 		switch (format[i]) {
@@ -327,17 +327,17 @@ int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
 			break;
 		case DNSLIB_RDATA_WF_TEXT:
 		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
-			// size stored in the first byte, but
-			// the first byte also needs to be copied
-			size = rdata->items[i].raw_data[0] + 1;
-			break;
+			// size stored in the first two bytes, but in little
+			// endian and we need only the lower byte from it
+			*to = *from; // lower byte is the first in little endian
+			to += 1;
 		case DNSLIB_RDATA_WF_BINARY:
 		case DNSLIB_RDATA_WF_APL:            // saved as binary
 		case DNSLIB_RDATA_WF_IPSECGATEWAY:   // saved as binary
-			// size stored in the first byte, first
-			// byte must not be copied
+			// size stored in the first two bytes, those bytes
+			// must not be copied
 			size = rdata->items[i].raw_data[0];
-			++from;
+			from += 2; // skip the first two bytes
 			break;
 		default:
 			assert(0);
@@ -391,7 +391,7 @@ dnslib_rdata_t *dnslib_rdata_copy(const dnslib_rdata_t *rdata, uint16_t type)
 			copy->items[i].dname =
 				dnslib_dname_copy(rdata->items[i].dname);
 		} else {
-			copy->items[i].raw_data = (uint8_t *)malloc(
+			copy->items[i].raw_data = (uint16_t *)malloc(
 					rdata->items[i].raw_data[0] + 1);
 			if (copy->items[i].raw_data == NULL) {
 				dnslib_rdata_deep_free(&copy, type, 1);
@@ -419,8 +419,8 @@ int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
 		dnslib_rdata_item_t *item1 = &r1->items[i];
 		dnslib_rdata_item_t *item2 = &r2->items[i];
 
-		const uint8_t *data1 = r1->items[i].raw_data;
-		const uint8_t *data2 = r2->items[i].raw_data;
+		const uint8_t *data1 = (uint8_t *)r1->items[i].raw_data;
+		const uint8_t *data2 = (uint8_t *)r2->items[i].raw_data;
 		int size1, size2;
 
 		switch (format[i]) {
