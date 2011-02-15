@@ -9,10 +9,11 @@
 #include "conf.h"
 #include "lists.h"
 
-int log_load_conf()
+int log_conf_hook()
 {
 	// Initialize logsystem
 	const config_t *conf = config_get();
+	log_truncate();
 	log_setup(conf->logs_count);
 
 	// Setup logs

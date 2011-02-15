@@ -14,6 +14,10 @@ static volatile size_t LOG_FCL_SIZE = 0;
 static FILE** LOG_FDS = 0;
 static size_t LOG_FDS_OPEN = 0;
 
+#define facility_at(i) (LOG_FCL + ((i) << LOG_SRC_BITS))
+#define facility_next(f) (f) += (1 << LOG_SRC_BITS)
+#define facility_levels(f, i) *((f) + (i))
+
 int log_setup(int facilities)
 {
 	/* Check facilities count. */
@@ -22,12 +26,11 @@ int log_setup(int facilities)
 	}
 
 	/* Reserve space for facilities. */
+	size_t new_size = facilities << LOG_SRC_BITS;
 	LOG_FDS = 0;
 	LOG_FDS_OPEN = 0;
-	LOG_FCL_SIZE = facilities << LOG_SRC_BITS;
-	LOG_FCL = malloc(LOG_FCL_SIZE);
+	LOG_FCL = malloc(new_size);
 	if (!LOG_FCL) {
-		LOG_FCL_SIZE = 0;
 		return -1;
 	}
 
@@ -36,7 +39,6 @@ int log_setup(int facilities)
 	if (files > 0) {
 		LOG_FDS = malloc(sizeof(FILE*) * files);
 		if (!LOG_FDS) {
-			LOG_FCL_SIZE = 0;
 			free(LOG_FCL);
 			LOG_FCL = 0;
 			return -1;
@@ -44,7 +46,8 @@ int log_setup(int facilities)
 	}
 
 	memset(LOG_FDS, 0, sizeof(FILE*) * files);
-	memset(LOG_FCL, 0, LOG_FCL_SIZE);
+	memset(LOG_FCL, 0, new_size);
+	LOG_FCL_SIZE = new_size; // Assign only when all is set
 	return 0;
 }
 
@@ -99,7 +102,7 @@ int log_isopen()
 int log_open_file(const char* filename)
 {
 	// Check facility
-	if (unlikely(!LOG_FCL || LOGT_FILE + LOG_FDS_OPEN >= LOG_FCL_SIZE)) {
+	if (unlikely(!LOG_FCL_SIZE || LOGT_FILE + LOG_FDS_OPEN >= LOG_FCL_SIZE)) {
 		return -1;
 	}
 
@@ -115,7 +118,7 @@ int log_open_file(const char* filename)
 uint8_t log_levels(int facility, logsrc_t src)
 {
 	// Check facility
-	if (unlikely(!LOG_FCL || facility >= LOG_FCL_SIZE)) {
+	if (unlikely(!LOG_FCL_SIZE || facility >= LOG_FCL_SIZE)) {
 		return 0;
 	}
 
@@ -125,7 +128,7 @@ uint8_t log_levels(int facility, logsrc_t src)
 int log_levels_set(int facility, logsrc_t src, uint8_t levels)
 {
 	// Check facility
-	if (unlikely(!LOG_FCL || facility >= LOG_FCL_SIZE)) {
+	if (unlikely(!LOG_FCL_SIZE || facility >= LOG_FCL_SIZE)) {
 		return -1;
 	}
 
@@ -151,27 +154,48 @@ int log_levels_add(int facility, logsrc_t src, uint8_t levels)
 	return log_levels_set(facility, src, new_levels);
 }
 
-int print_msg(int level, const char *msg, ...)
+int log_msg(logsrc_t src, int level, const char *msg, ...)
 {
-	//! \todo FIXME
-/*
-	// Get output stream
-	va_list ap;
-	FILE *stream = stdout;
-	if (level & (LOG_ERR | LOG_WARNING | LOG_CRIT | LOG_ALERT)) {
-		stream = stderr;
+	if(!log_isopen()) {
+		return -1;
 	}
 
-	// Check mask
 	int ret = 0;
-	if (LOG_MASK(level) & _LOG_MASK || level == LOG_DEBUG) {
+	va_list ap;
+	FILE *stream = stdout;
+	uint8_t *f = facility_at(LOGT_SYSLOG);
+
+	// Convert level to mask
+	level = LOG_MASK(level);
+
+	// Syslog
+	if (facility_levels(f, src) & level) {
 		va_start(ap, msg);
-		ret = vfprintf(stream, msg, ap);
+		vsyslog(level, msg, ap);
+		ret = 1; // To prevent considering the message as ignored.
 		va_end(ap);
 	}
 
-	return ret;
-*/
+	// Log streams
+	for (int i = LOGT_STDERR; i < LOGT_FILE + LOG_FDS_OPEN; ++i) {
 
-	return 0;
+		// Check facility levels mask
+		f = facility_at(i);
+		if (facility_levels(f, src) & level) {
+
+			// Select stream
+			switch(i) {
+			case LOGT_STDERR: stream = stderr; break;
+			case LOGT_STDOUT: stream = stdout; break;
+			default: stream = LOG_FDS[i - LOGT_FILE]; break;
+			}
+
+			// Print
+			va_start(ap, msg);
+			ret = vfprintf(stream, msg, ap);
+			va_end(ap);
+		}
+	}
+
+	return ret;
 }
