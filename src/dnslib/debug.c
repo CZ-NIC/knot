@@ -48,7 +48,7 @@ void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type)
 			hex_print(((char *)rdata->items[i].raw_data)/*[
 				(desc->wireformat[i]
 				 == DNSLIB_RDATA_WF_BINARYWITHLENGTH) ? 0 : 1]*/,
-				  rdata->items[i].raw_data[0]);
+				  rdata->items[i].raw_data[0] + 2);
 		}
 	}
 	printf("      ------- RDATA -------\n");
