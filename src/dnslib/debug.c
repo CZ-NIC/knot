@@ -6,7 +6,7 @@
 #include "debug.h"
 #include "dnslib/dnslib.h"
 
-void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type)
+void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type, char loaded_zone)
 {
 #if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_RDATA_DEBUG)
 	printf("      ------- RDATA -------\n");
@@ -28,13 +28,15 @@ void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type)
 			printf("      DNAME: %d: %s\n",
 			       i, name);
 			free(name);
-			if (rdata->items[i].dname->node) {
-				name =
-				dnslib_dname_to_str(rdata->items[i].dname->node->owner);
-				printf("      Has node owner: %s\n", name);
-				free(name);
-			} else {
-				printf("      No node set\n");
+			if (loaded_zone) {
+				if (rdata->items[i].dname->node) {
+					name =
+					dnslib_dname_to_str(rdata->items[i].dname->node->owner);
+					printf("      Has node owner: %s\n", name);
+					free(name);
+				} else {
+					printf("      No node set\n");
+				}
 			}
 			printf("      labels: ");
 			hex_print((char *)rdata->items[i].dname->labels,
@@ -45,17 +47,15 @@ void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type)
 			printf("      %d: raw_data: length: %d\n", i,
 			       *(rdata->items[i].raw_data));
 			printf("      ");
-			hex_print(((char *)rdata->items[i].raw_data)/*[
-				(desc->wireformat[i]
-				 == DNSLIB_RDATA_WF_BINARYWITHLENGTH) ? 0 : 1]*/,
-				  rdata->items[i].raw_data[0] + 2);
+			hex_print(((char *)(rdata->items[i].raw_data + 1)),
+				  rdata->items[i].raw_data[0]);
 		}
 	}
 	printf("      ------- RDATA -------\n");
 #endif
 }
 
-void dnslib_rrsig_dump(dnslib_rrsig_set_t *rrsig)
+void dnslib_rrsig_dump(dnslib_rrsig_set_t *rrsig, char loaded_zone)
 {
 #if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_RRSET_DEBUG)
 	printf("    ------- RRSIG -------\n");
@@ -75,17 +75,17 @@ void dnslib_rrsig_dump(dnslib_rrsig_set_t *rrsig)
 	}
 
 	while (tmp->next != rrsig->rdata) {
-		dnslib_rdata_dump(tmp, DNSLIB_RRTYPE_RRSIG);
+		dnslib_rdata_dump(tmp, DNSLIB_RRTYPE_RRSIG, loaded_zone);
 		tmp = tmp->next;
 	}
 
-	dnslib_rdata_dump(tmp, DNSLIB_RRTYPE_RRSIG); 
+	dnslib_rdata_dump(tmp, DNSLIB_RRTYPE_RRSIG, loaded_zone); 
 
 	printf("    ------- RRSIG -------\n");
 #endif
 }
 
-void dnslib_rrset_dump(dnslib_rrset_t *rrset)
+void dnslib_rrset_dump(dnslib_rrset_t *rrset, char loaded_zone)
 {
 #if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_RRSET_DEBUG)
 	printf("  ------- RRSET -------\n");
@@ -97,7 +97,7 @@ void dnslib_rrset_dump(dnslib_rrset_t *rrset)
 	printf("  class: %d\n", rrset->rclass);
 	printf("  ttl: %d\n", rrset->ttl);
 
-	dnslib_rrsig_dump(rrset->rrsigs);
+	dnslib_rrsig_dump(rrset->rrsigs, loaded_zone);
 
 	if (rrset->rdata == NULL) {
 		printf("  NO RDATA!\n");
@@ -108,19 +108,20 @@ void dnslib_rrset_dump(dnslib_rrset_t *rrset)
 	dnslib_rdata_t *tmp = rrset->rdata;
 
 	while (tmp->next != rrset->rdata) {
-		dnslib_rdata_dump(tmp, rrset->type);
+		dnslib_rdata_dump(tmp, rrset->type, loaded_zone);
 		tmp = tmp->next;
 	}
 
-	dnslib_rdata_dump(tmp, rrset->type);
+	dnslib_rdata_dump(tmp, rrset->type, loaded_zone);
 
 	printf("  ------- RRSET -------\n");
 #endif
 }
 
-void dnslib_node_dump(dnslib_node_t *node, void *void_param)
+void dnslib_node_dump(dnslib_node_t *node, void *data)
 {
 #if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_NODE_DEBUG)
+	char loaded_zone = *((char*) data);
 	printf("------- NODE --------\n");
 	printf("owner: %s\n", dnslib_dname_to_str(node->owner));
 	printf("labels: ");
@@ -166,30 +167,30 @@ void dnslib_node_dump(dnslib_node_t *node, void *void_param)
 
 	dnslib_rrset_t *tmp = (dnslib_rrset_t *)skip_node->value;
 
-	dnslib_rrset_dump(tmp);
+	dnslib_rrset_dump(tmp, loaded_zone);
 
 	while ((skip_node = skip_next(skip_node)) != NULL) {
 		tmp = (dnslib_rrset_t *)skip_node->value;
 	//	assert(tmp->owner->node == node);
-		dnslib_rrset_dump(tmp);
+		dnslib_rrset_dump(tmp, loaded_zone);
 	}
 	//assert(node->owner->node == node);
 	printf("------- NODE --------\n");
 #endif
 }
 
-void dnslib_zone_dump(dnslib_zone_t *zone)
+void dnslib_zone_dump(dnslib_zone_t *zone, char loaded_zone)
 {
 #if defined(DNSLIB_ZONE_DEBUG)
 	printf("------- ZONE --------\n");
 
-	dnslib_zone_tree_apply_inorder(zone, dnslib_node_dump, NULL);
+	dnslib_zone_tree_apply_inorder(zone, dnslib_node_dump, (void *)&loaded_zone);
 
 	printf("------- ZONE --------\n");
 	
 	printf("------- NSEC 3 tree -\n");
 
-	dnslib_zone_nsec3_apply_inorder(zone, dnslib_node_dump, NULL);
+	dnslib_zone_nsec3_apply_inorder(zone, dnslib_node_dump, (void *)&loaded_zone);
 
 	printf("------- NSEC 3 tree -\n");
 #endif
