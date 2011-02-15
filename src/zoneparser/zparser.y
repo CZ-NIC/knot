@@ -73,7 +73,7 @@ dnslib_dname_t *error_domain;
 	uint32_t             ttl;
 	uint16_t             rclass;
 	uint16_t             type;
-	uint8_t             *unknown;
+	uint16_t             *unknown;
 }
 
 /*
@@ -1268,7 +1268,7 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 
 			uint8_t* dncpy = malloc(name->size);
 			memcpy(dncpy, name->name, name->size);
-			zadd_rdata_wireformat((uint8_t *)dncpy);
+			zadd_rdata_wireformat((uint16_t *)dncpy);
 			//dnslib_dname_free(&name);
 			break;
 		default:
