@@ -33,19 +33,14 @@ union dnslib_rdata_item {
 	/*!
 	 * \brief RDATA item represented as raw array of octets.
 	 *
-	 * In some cases the first two octets will be the length of the item in
-	 * bytes. In other, the size is determined by the type (i.e. 4 bytes in
-	 * case of IPv4 address).
+	 * In some cases the first octet will be the length of the array.
+	 * In other, the size is determined by the type (i.e. 4 bytes in case of
+	 * IPv4 address).
 	 *
-	 * If the length is stored in the data, it is stored in little endian.
-	 *
-	 * In some cases the stored length is also used in the wire format of
-	 * RDATA (e.g. character-data as defined in RFC1035). In such case,
-	 * the length should fit in one byte.
-	 *
-	 * \todo Store the length in system byte order.
+	 * In some cases this length is also used in the wire format of RDATA
+	 * (e.g. character-data as defined in RFC1035).
 	 */
-	uint16_t *raw_data;
+	uint8_t *raw_data;
 };
 
 typedef union dnslib_rdata_item dnslib_rdata_item_t;
@@ -149,7 +144,7 @@ int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, uint pos,
                                 dnslib_dname_t *dname);
 
 int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, uint pos,
-                                   uint16_t *raw_data);
+                                   uint8_t *raw_data);
 
 /*!
  * \brief Returns the size of the RDATA in wire format.
