@@ -179,9 +179,6 @@ log_file: FILENAME TEXT {
 ;
 
 log_end: {
-   if (EMPTY_LIST(new_config->logs)) {
-     //! \todo Initialize default log facilities, missing.
-   }
 }
 ;
 
