@@ -392,14 +392,14 @@ dnslib_rdata_t *dnslib_rdata_copy(const dnslib_rdata_t *rdata, uint16_t type)
 				dnslib_dname_copy(rdata->items[i].dname);
 		} else {
 			copy->items[i].raw_data = (uint16_t *)malloc(
-					rdata->items[i].raw_data[0] + 1);
+					rdata->items[i].raw_data[0] + 2);
 			if (copy->items[i].raw_data == NULL) {
 				dnslib_rdata_deep_free(&copy, type, 1);
 				return NULL;
 			}
 			memcpy(copy->items[i].raw_data,
 			       rdata->items[i].raw_data,
-			       rdata->items[i].raw_data[0] + 1);
+			       rdata->items[i].raw_data[0] + 2);
 		}
 	}
 
