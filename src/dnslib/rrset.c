@@ -50,7 +50,7 @@ int dnslib_rrset_add_rdata(dnslib_rrset_t *rrset, dnslib_rdata_t *rdata)
 	return 0;
 }
 
-int dnslib_rrset_set_rrsigs(dnslib_rrset_t *rrset, dnslib_rrsig_set_t *rrsigs)
+int dnslib_rrset_set_rrsigs(dnslib_rrset_t *rrset, dnslib_rrset_t *rrsigs)
 {
 	if (rrset == NULL || rrsigs == NULL) {
 		return -1;
@@ -100,7 +100,7 @@ dnslib_rdata_t *dnslib_rrset_get_rdata(dnslib_rrset_t *rrset)
 	return rrset->rdata;
 }
 
-const dnslib_rrsig_set_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset)
+const dnslib_rrset_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset)
 {
 	return rrset->rrsigs;
 }
@@ -130,8 +130,7 @@ void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner,
 
 	// RRSIGs should have the same owner as this RRSet, so do not delete it
 	if ((*rrset)->rrsigs != NULL) {
-		dnslib_rrsig_set_deep_free(&(*rrset)->rrsigs, 0,
-		                           free_all_dnames);
+		dnslib_rrset_deep_free(&(*rrset)->rrsigs, 0, free_all_dnames);
 	}
 
 	if (free_owner) {
