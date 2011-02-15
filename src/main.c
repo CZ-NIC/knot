@@ -105,7 +105,7 @@ int main(int argc, char **argv)
 	log_init();
 	if (config_get()) {
 		//! \todo Implement using config hooks.
-		log_load_conf();
+		log_conf_hook();
 	}
 	if (verbose) {
 		//! \todo Support for verbose mode.

@@ -14,12 +14,15 @@
 /*!
  * \brief Setup logging facilities from config.
  *
+ * \todo There might be some issues with reloading config
+ *       on-the-fly in multithreaded environment, check afterwards.
+ *
  * \see syslog.h
  *
  * \retval  0 On success.
  * \retval <0 If an error occured.
  */
-int log_load_conf();
+int log_conf_hook();
 
 #endif /* _CUTEDNS_LOGCONF_H_ */
 

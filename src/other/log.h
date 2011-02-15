@@ -137,23 +137,46 @@ int log_levels_set(int facility, logsrc_t src, uint8_t levels);
  */
 int log_levels_add(int facility, logsrc_t src, uint8_t levels);
 
-/* Logging functions. */
-int print_msg(int level, const char *msg, ...) __attribute__((format(printf, 2, 3)));
-
-#define log_msg(level, msg...) \
-	do { \
-	if(log_isopen()) { \
-		syslog((level), msg); \
-	} \
-	print_msg((level), msg); \
-	} while (0)
+/*!
+ * \brief Log message.
+ *
+ * Function follows printf() format.
+ *
+ * \param src Origin of the message.
+ * \param level Message error level.
+ * \param msg Content of the logged message.
+ *
+ * \retval -1 On error.
+ * \retval  0 When the message is ignored.
+ * \retval >0 On success.
+ */
+int log_msg(logsrc_t src, int level, const char *msg, ...)
+    __attribute__((format(printf, 3, 4)));
 
 /* Convenient logging. */
-#define log_error(msg...)     log_msg(LOG_ERR, msg)
-#define log_warning(msg...)   log_msg(LOG_WARNING, msg)
-#define log_notice(msg...)    log_msg(LOG_NOTICE, msg)
-#define log_info(msg...)      log_msg(LOG_INFO, msg)
-#define log_debug(msg...)     log_msg(LOG_DEBUG, msg)
+#define log_error(msg...)            log_msg(LOG_ANY, LOG_ERR, msg)
+#define log_warning(msg...)          log_msg(LOG_ANY, LOG_WARNING, msg)
+#define log_notice(msg...)           log_msg(LOG_ANY, LOG_NOTICE, msg)
+#define log_info(msg...)             log_msg(LOG_ANY, LOG_INFO, msg)
+#define log_debug(msg...)            log_msg(LOG_ANY, LOG_DEBUG, msg)
+
+#define log_server_error(msg...)     log_msg(LOG_SERVER, LOG_ERR, msg)
+#define log_server_warning(msg...)   log_msg(LOG_SERVER, LOG_WARNING, msg)
+#define log_server_notice(msg...)    log_msg(LOG_SERVER, LOG_NOTICE, msg)
+#define log_server_info(msg...)      log_msg(LOG_SERVER, LOG_INFO, msg)
+#define log_server_debug(msg...)     log_msg(LOG_SERVER, LOG_DEBUG, msg)
+
+#define log_answer_error(msg...)     log_msg(LOG_ANSWER, LOG_ERR, msg)
+#define log_answer_warning(msg...)   log_msg(LOG_ANSWER, LOG_WARNING, msg)
+#define log_answer_notice(msg...)    log_msg(LOG_ANSWER, LOG_NOTICE, msg)
+#define log_answer_info(msg...)      log_msg(LOG_ANSWER, LOG_INFO, msg)
+#define log_answer_debug(msg...)     log_msg(LOG_ANSWER, LOG_DEBUG, msg)
+
+#define log_zone_error(msg...)       log_msg(LOG_ZONE, LOG_ERR, msg)
+#define log_zone_warning(msg...)     log_msg(LOG_ZONE, LOG_WARNING, msg)
+#define log_zone_notice(msg...)      log_msg(LOG_ZONE, LOG_NOTICE, msg)
+#define log_zone_info(msg...)        log_msg(LOG_ZONE, LOG_INFO, msg)
+#define log_zone_debug(msg...)       log_msg(LOG_ZONE, LOG_DEBUG, msg)
 
 #endif /* _CUTEDNS_LOG_H_ */
 
