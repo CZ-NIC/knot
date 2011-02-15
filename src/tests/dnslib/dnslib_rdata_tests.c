@@ -34,6 +34,7 @@
 #include "common.h"
 #include "rdata.h"
 #include "descriptor.h"
+#include "utils.h"
 
 static const struct test_domain test_domains_ok[];
 
@@ -53,7 +54,7 @@ unit_api dnslib_rdata_tests_api = {
  *  Unit implementation.
  */
 
-static uint8_t *RDATA_ITEM_PTR = (uint8_t *)0xDEADBEEF;
+static uint16_t *RDATA_ITEM_PTR = (uint16_t *)0xDEADBEEF;
 
 enum { RDATA_ITEMS_COUNT = 7, TEST_RDATA_COUNT = 4 , RDATA_DNAMES_COUNT = 2 };
 
@@ -64,10 +65,10 @@ static dnslib_dname_t RDATA_DNAMES[RDATA_DNAMES_COUNT] = {
 
 static dnslib_rdata_item_t TEST_RDATA_ITEMS[RDATA_ITEMS_COUNT] = {
 	{.dname = (dnslib_dname_t *)0xF00},
-	{.raw_data = (uint8_t *)"some data"},
-	{.raw_data = (uint8_t *)"other data"},
-	{.raw_data = (uint8_t *)"123456"},
-	{.raw_data = (uint8_t *)"654321"},
+	{.raw_data = (uint16_t *)"some data"},
+	{.raw_data = (uint16_t *)"other data"},
+	{.raw_data = (uint16_t *)"123456"},
+	{.raw_data = (uint16_t *)"654321"},
 	{.dname = &RDATA_DNAMES[0]},
 	{.dname = &RDATA_DNAMES[1]}
 };
@@ -221,11 +222,12 @@ static int fill_rdata(uint8_t *data, int max_size, uint16_t rrtype,
 		assert(size <= DNSLIB_MAX_RDATA_ITEM_SIZE);
 
 		if (binary) {
-			// Rewrite the actual byte in the data array
-			// with length octet.
+			// Rewrite the actual 2 bytes in the data array
+			// with length.
 			// (this is a bit ugly, but does the work ;-)
-			*pos = size;
-			++size;
+			dnslib_wire_write_u16(pos, size);
+			//*pos = size;
+			size += 2;
 		}
 
 		//note("Filling %u bytes", size);
@@ -240,11 +242,11 @@ static int fill_rdata(uint8_t *data, int max_size, uint16_t rrtype,
 		} else {
 			free(dname);
 //			note("Saved raw data ptr on index %d: %p",i, pos);
-			items[i].raw_data = pos;
+			items[i].raw_data = (uint16_t *)pos;
 			pos += size;
 			wire_size += size;
 			if (binary && !stored_size) {
-				--wire_size;
+				wire_size -= 2;
 			}
 		}
 	}

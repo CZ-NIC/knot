@@ -61,13 +61,13 @@ static dnslib_dname_t RR_DNAMES[RR_DNAMES_COUNT] =
           {(uint8_t *)"\2ns1\7example\3com", 17, NULL},
           {(uint8_t *)"\2ns2\7example\3com", 17, NULL} };
 
-/*			   192.168.1.1 */
-static uint8_t adress[4] = {0xc0, 0xa8, 0x01, 0x01};
+/*                         192.168.1.1 */
+static uint8_t address[4] = {0xc0, 0xa8, 0x01, 0x01};
 
 static dnslib_rdata_item_t RR_ITEMS[RR_ITEMS_COUNT] =
 	{ {.dname = &RR_DNAMES[1]},
 	  {.dname = &RR_DNAMES[2]},
-          {.raw_data = adress} };
+          {.raw_data = (uint16_t *)address} };
 
 static dnslib_rdata_t RR_RDATA[RR_RDATA_COUNT] =
 	{ {&RR_ITEMS[0], 1, &RR_RDATA[0]},
@@ -356,7 +356,7 @@ static int test_rrset_rdata()
 	for (int i = 0; i < 10; i++) {
 		r = dnslib_rdata_new();
 		item = malloc(sizeof(dnslib_rdata_item_t));
-		item->raw_data = (uint8_t *)test_strings[i];
+		item->raw_data = (uint16_t *)test_strings[i];
 		//following statement creates a copy
 		dnslib_rdata_set_items(r, item, 1);
 		dnslib_rrset_add_rdata(rrset, r);
@@ -431,7 +431,7 @@ static int test_rrset_rrsigs()
 		item = malloc(sizeof(dnslib_rdata_item_t));
 		/* signature is just a string, 
 		 * should be sufficient for testing */
-		item->raw_data = (uint8_t *)signature_strings[i];
+		item->raw_data = (uint16_t *)signature_strings[i];
 		dnslib_rdata_set_items(tmp, item, 1);
 		dnslib_rrsig_set_add_rdata(rrsig, tmp);
 

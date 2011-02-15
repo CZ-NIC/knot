@@ -62,7 +62,7 @@ static dnslib_dname_t RRS_DNAMES[RRS_DNAMES_COUNT] =
 static dnslib_rdata_item_t RRS_ITEMS[RRS_ITEMS_COUNT] =
 	{ {.dname = &RRS_DNAMES[1]},
 	  {.dname = &RRS_DNAMES[2]},
-          {.raw_data = adress} };
+          {.raw_data = (uint16_t *)address} };
 
 static dnslib_rdata_t RRS_RDATA[RRS_RDATA_COUNT] =
 	{ {&RRS_ITEMS[0], 1, &RRS_RDATA[0]},
@@ -281,7 +281,7 @@ static int test_rrsig_set_rdata()
 	for (int i = 0; i < 10; i++) {
 		r = dnslib_rdata_new();
 		item = malloc(sizeof(dnslib_rdata_item_t));
-		item->raw_data = (uint8_t *)test_strings[i];
+		item->raw_data = (uint16_t *)test_strings[i];
 		//following statement creates a copy
 		dnslib_rdata_set_items(r, item, 1);
 		dnslib_rrsig_set_add_rdata(rrsig_set, r);
