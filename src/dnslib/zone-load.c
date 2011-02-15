@@ -53,7 +53,7 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 	dnslib_rdata_item_t *items =
 		malloc(sizeof(dnslib_rdata_item_t) * desc->length);
 
-	uint8_t raw_data_length;
+	uint16_t raw_data_length;
 
 	debug_zp("Reading %d items\n", desc->length);
 
@@ -170,7 +170,7 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 
 			debug_zp("read len: %d\n", raw_data_length);
 			items[i].raw_data =
-				malloc(sizeof(uint8_t) * raw_data_length + 1);
+				malloc(sizeof(uint8_t) * raw_data_length + 2);
 			*(items[i].raw_data) = raw_data_length;
 
 			if (!fread_safe(items[i].raw_data + 1, sizeof(uint8_t),
@@ -456,6 +456,11 @@ int dnslib_check_magic(FILE *f, const uint8_t* MAGIC, uint MAGIC_LENGTH)
 dnslib_zone_t *dnslib_zload_load(const char *filename)
 {
 	FILE *f = fopen(filename, "rb");
+
+	if (f == NULL) {
+		log_error("Could not open file '%s'\n", filename);
+		return NULL;
+	}
 
 	dnslib_node_t *tmp_node;
 

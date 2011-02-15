@@ -19,14 +19,14 @@ static int dnslib_rdata_compare_binary(const uint8_t *d1, const uint8_t *d2,
 
 	// length stored in the first octet
 	if (count1 < 0) {
-		// take count from the first byte
-		count1 = (int)d1[0];
-		// and start from the second byte
-		i1 = 1;
+		// take count from the first two bytes
+		count1 = (int)(*(uint16_t *)d1);
+		// and start from the third byte
+		i1 = 2;
 	}
-	if (count2 < 0) {	// dtto
-		count2 = (int)d2[0];
-		i2 = 1;
+	if (count2 < 0) {  // dtto
+		count2 = (int)(*(uint16_t *)d2);
+		i2 = 2;
 	}
 
 
@@ -119,7 +119,7 @@ int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
 		return 1;
 	}
 
-	if (rdata->items != NULL) {	// not empty
+	if (rdata->items != NULL) {  // not empty
 		return -1;
 	}
 
@@ -177,7 +177,7 @@ int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, uint pos,
 /*----------------------------------------------------------------------------*/
 
 int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, uint pos,
-                                   uint8_t *raw_data)
+                                   uint16_t *raw_data)
 {
 	if (pos >= rdata->count) {
 		return -1;
@@ -244,123 +244,123 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
 
 /*----------------------------------------------------------------------------*/
 
-uint dnslib_rdata_wire_size(const dnslib_rdata_t *rdata,
-                            const uint8_t *format)
-{
-	uint size = 0;
+//uint dnslib_rdata_wire_size(const dnslib_rdata_t *rdata,
+//                            const uint8_t *format)
+//{
+//	uint size = 0;
 
-	for (int i = 0; i < rdata->count; ++i) {
-		switch (format[i]) {
-		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
-		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
-		case DNSLIB_RDATA_WF_LITERAL_DNAME:
-			size += dnslib_dname_size(rdata->items[i].dname);
-			break;
-		case DNSLIB_RDATA_WF_BYTE:
-			size += 1;
-			break;
-		case DNSLIB_RDATA_WF_SHORT:
-			size += 2;
-			break;
-		case DNSLIB_RDATA_WF_LONG:
-			size += 4;
-			break;
-		case DNSLIB_RDATA_WF_A:
-			size += 4;
-			break;
-		case DNSLIB_RDATA_WF_AAAA:
-			size += 16;
-			break;
-		case DNSLIB_RDATA_WF_BINARY:
-		case DNSLIB_RDATA_WF_APL:            // saved as binary
-		case DNSLIB_RDATA_WF_IPSECGATEWAY:   // saved as binary
-			size += rdata->items[i].raw_data[0];
-			break;
-		case DNSLIB_RDATA_WF_TEXT:
-		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
-			size += rdata->items[i].raw_data[0] + 1;
-			break;
-		default:
-			assert(0);
-		}
-	}
-	return size;
-}
+//	for (int i = 0; i < rdata->count; ++i) {
+//		switch (format[i]) {
+//		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
+//		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
+//		case DNSLIB_RDATA_WF_LITERAL_DNAME:
+//			size += dnslib_dname_size(rdata->items[i].dname);
+//			break;
+//		case DNSLIB_RDATA_WF_BYTE:
+//			size += 1;
+//			break;
+//		case DNSLIB_RDATA_WF_SHORT:
+//			size += 2;
+//			break;
+//		case DNSLIB_RDATA_WF_LONG:
+//			size += 4;
+//			break;
+//		case DNSLIB_RDATA_WF_A:
+//			size += 4;
+//			break;
+//		case DNSLIB_RDATA_WF_AAAA:
+//			size += 16;
+//			break;
+//		case DNSLIB_RDATA_WF_BINARY:
+//		case DNSLIB_RDATA_WF_APL:            // saved as binary
+//		case DNSLIB_RDATA_WF_IPSECGATEWAY:   // saved as binary
+//			size += rdata->items[i].raw_data[0];
+//			break;
+//		case DNSLIB_RDATA_WF_TEXT:
+//		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+//			size += rdata->items[i].raw_data[0] + 1;
+//			break;
+//		default:
+//			assert(0);
+//		}
+//	}
+//	return size;
+//}
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
-                         uint8_t *buffer, uint buf_size)
-{
-	uint copied = 0;
-	uint8_t tmp[DNSLIB_MAX_RDATA_WIRE_SIZE];
-	uint8_t *to = tmp;
+//int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
+//                         uint8_t *buffer, uint buf_size)
+//{
+//	uint copied = 0;
+//	uint8_t tmp[DNSLIB_MAX_RDATA_WIRE_SIZE];
+//	uint8_t *to = tmp;
 
-	for (int i = 0; i < rdata->count; ++i) {
-		assert(copied < DNSLIB_MAX_RDATA_WIRE_SIZE);
+//	for (int i = 0; i < rdata->count; ++i) {
+//		assert(copied < DNSLIB_MAX_RDATA_WIRE_SIZE);
 
-		const uint8_t *from = rdata->items[i].raw_data;
-		uint size = 0;
+//		const uint8_t *from = (uint8_t *)rdata->items[i].raw_data;
+//		uint size = 0;
 
-		switch (format[i]) {
-		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
-		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
-		case DNSLIB_RDATA_WF_LITERAL_DNAME:
-			size = dnslib_dname_size(rdata->items[i].dname);
-			from = dnslib_dname_name(rdata->items[i].dname);
+//		switch (format[i]) {
+//		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
+//		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
+//		case DNSLIB_RDATA_WF_LITERAL_DNAME:
+//			size = dnslib_dname_size(rdata->items[i].dname);
+//			from = dnslib_dname_name(rdata->items[i].dname);
 
-			break;
-		case DNSLIB_RDATA_WF_BYTE:
-			size = 1;
-			break;
-		case DNSLIB_RDATA_WF_SHORT:
-			size = 2;
-			break;
-		case DNSLIB_RDATA_WF_LONG:
-			size = 4;
-			break;
-		case DNSLIB_RDATA_WF_A:
-			size = 4;
-			break;
-		case DNSLIB_RDATA_WF_AAAA:
-			size = 16;
-			break;
-		case DNSLIB_RDATA_WF_TEXT:
-		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
-			// size stored in the first byte, but
-			// the first byte also needs to be copied
-			size = rdata->items[i].raw_data[0] + 1;
-			break;
-		case DNSLIB_RDATA_WF_BINARY:
-		case DNSLIB_RDATA_WF_APL:            // saved as binary
-		case DNSLIB_RDATA_WF_IPSECGATEWAY:   // saved as binary
-			// size stored in the first byte, first
-			// byte must not be copied
-			size = rdata->items[i].raw_data[0];
-			++from;
-			break;
-		default:
-			assert(0);
-		}
+//			break;
+//		case DNSLIB_RDATA_WF_BYTE:
+//			size = 1;
+//			break;
+//		case DNSLIB_RDATA_WF_SHORT:
+//			size = 2;
+//			break;
+//		case DNSLIB_RDATA_WF_LONG:
+//			size = 4;
+//			break;
+//		case DNSLIB_RDATA_WF_A:
+//			size = 4;
+//			break;
+//		case DNSLIB_RDATA_WF_AAAA:
+//			size = 16;
+//			break;
+//		case DNSLIB_RDATA_WF_TEXT:
+//		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+//			// size stored in the first two bytes, but in little
+//			// endian and we need only the lower byte from it
+//			*to = *from; // lower byte is the first in little endian
+//			to += 1;
+//		case DNSLIB_RDATA_WF_BINARY:
+//		case DNSLIB_RDATA_WF_APL:            // saved as binary
+//		case DNSLIB_RDATA_WF_IPSECGATEWAY:   // saved as binary
+//			// size stored in the first two bytes, those bytes
+//			// must not be copied
+//			size = rdata->items[i].raw_data[0];
+//			from += 2; // skip the first two bytes
+//			break;
+//		default:
+//			assert(0);
+//		}
 
-		assert(size != 0);
-		assert(copied + size < DNSLIB_MAX_RDATA_WIRE_SIZE);
+//		assert(size != 0);
+//		assert(copied + size < DNSLIB_MAX_RDATA_WIRE_SIZE);
 
-		memcpy(to, from, size);
-		to += size;
-		copied += size;
-	}
+//		memcpy(to, from, size);
+//		to += size;
+//		copied += size;
+//	}
 
-	if (copied > buf_size) {
-		log_warning("Not enough place allocated for function "
-		            "dnslib_rdata_to_wire(). Allocated %u, need %u\n",
-		            buf_size, copied);
-		return -1;
-	}
+//	if (copied > buf_size) {
+//		log_warning("Not enough place allocated for function "
+//		            "dnslib_rdata_to_wire(). Allocated %u, need %u\n",
+//		            buf_size, copied);
+//		return -1;
+//	}
 
-	memcpy(buffer, tmp, copied);
-	return 0;
-}
+//	memcpy(buffer, tmp, copied);
+//	return 0;
+//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -391,15 +391,15 @@ dnslib_rdata_t *dnslib_rdata_copy(const dnslib_rdata_t *rdata, uint16_t type)
 			copy->items[i].dname =
 				dnslib_dname_copy(rdata->items[i].dname);
 		} else {
-			copy->items[i].raw_data = (uint8_t *)malloc(
-					rdata->items[i].raw_data[0] + 1);
+			copy->items[i].raw_data = (uint16_t *)malloc(
+					rdata->items[i].raw_data[0] + 2);
 			if (copy->items[i].raw_data == NULL) {
 				dnslib_rdata_deep_free(&copy, type, 1);
 				return NULL;
 			}
 			memcpy(copy->items[i].raw_data,
 			       rdata->items[i].raw_data,
-			       rdata->items[i].raw_data[0] + 1);
+			       rdata->items[i].raw_data[0] + 2);
 		}
 	}
 
@@ -419,8 +419,8 @@ int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
 		dnslib_rdata_item_t *item1 = &r1->items[i];
 		dnslib_rdata_item_t *item2 = &r2->items[i];
 
-		const uint8_t *data1 = r1->items[i].raw_data;
-		const uint8_t *data2 = r2->items[i].raw_data;
+		const uint8_t *data1 = (uint8_t *)r1->items[i].raw_data;
+		const uint8_t *data2 = (uint8_t *)r2->items[i].raw_data;
 		int size1, size2;
 
 		switch (format[i]) {

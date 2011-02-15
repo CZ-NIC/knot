@@ -93,7 +93,7 @@ dnslib_rrset_t *ns_synth_from_wildcard(const dnslib_rrset_t *wildcard_rrset,
 	}
 
 	debug_ns("Created RRSet header:\n");
-	dnslib_rrset_dump(synth_rrset);
+	dnslib_rrset_dump(synth_rrset, 1);
 
 	// copy all RDATA
 	const dnslib_rdata_t *rdata = dnslib_rrset_rdata(wildcard_rrset);
@@ -109,7 +109,8 @@ dnslib_rrset_t *ns_synth_from_wildcard(const dnslib_rrset_t *wildcard_rrset,
 		}
 
 		debug_ns("Copied RDATA:\n");
-		dnslib_rdata_dump(rdata_copy, dnslib_rrset_type(synth_rrset));
+		dnslib_rdata_dump(rdata_copy,
+		                  dnslib_rrset_type(synth_rrset), 1);
 
 		dnslib_rrset_add_rdata(synth_rrset, rdata_copy);
 		rdata = dnslib_rrset_rdata_next(wildcard_rrset, rdata);
@@ -180,7 +181,7 @@ static void ns_check_wildcard(const dnslib_dname_t *name,
 		dnslib_rrset_t *synth_rrset =
 			ns_synth_from_wildcard(*rrset, name);
 		debug_ns("Synthetized RRSet:\n");
-		dnslib_rrset_dump(synth_rrset);
+		dnslib_rrset_dump(synth_rrset, 1);
 		dnslib_response_add_tmp_rrset(resp, synth_rrset);
 		*rrset = synth_rrset;
 	}

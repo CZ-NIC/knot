@@ -33,14 +33,17 @@ union dnslib_rdata_item {
 	/*!
 	 * \brief RDATA item represented as raw array of octets.
 	 *
-	 * In some cases the first octet will be the length of the array.
-	 * In other, the size is determined by the type (i.e. 4 bytes in case of
-	 * IPv4 address).
+	 * The first two bytes hold the length of the item in bytes. The length
+	 * is stored in little endian.
 	 *
-	 * In some cases this length is also used in the wire format of RDATA
-	 * (e.g. character-data as defined in RFC1035).
+	 * In some cases the stored length is also used in the wire format of
+	 * RDATA (e.g. character-data as defined in RFC1035). In such case,
+	 * the length should be less than 256, so that it fits into one byte
+	 * in the wireformat.
+	 *
+	 * \todo Store the length in system byte order.
 	 */
-	uint8_t *raw_data;
+	uint16_t *raw_data;
 };
 
 typedef union dnslib_rdata_item dnslib_rdata_item_t;
@@ -144,37 +147,37 @@ int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, uint pos,
                                 dnslib_dname_t *dname);
 
 int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, uint pos,
-                                   uint8_t *raw_data);
+                                   uint16_t *raw_data);
 
-/*!
- * \brief Returns the size of the RDATA in wire format.
- *
- * \param rdata RDATA structure to get the wire format size of.
- * \param format RDATA format descriptor.
- *
- * \return Size of the RDATA in wire format.
- *
- * \todo Consider adding the size to the structure for faster retrieval.
- */
-uint dnslib_rdata_wire_size(const dnslib_rdata_t *rdata,
-                            const uint8_t *format);
+///*!
+// * \brief Returns the size of the RDATA in wire format.
+// *
+// * \param rdata RDATA structure to get the wire format size of.
+// * \param format RDATA format descriptor.
+// *
+// * \return Size of the RDATA in wire format.
+// *
+// * \todo Consider adding the size to the structure for faster retrieval.
+// */
+//uint dnslib_rdata_wire_size(const dnslib_rdata_t *rdata,
+//                            const uint8_t *format);
 
-/*!
- * \brief Converts the RDATA to wire format.
- *
- * \param rdata RDATA structure to convert to wire format.
- * \param format RDATA format descriptor.
- * \param buffer Place to put the wire format into.
- * \param buf_size Size of the buffer.
- *
- * \retval 0 on success.
- * \retval <> 0 otherwise.
- *
- * \todo Shouldn't we keep the size of the data always in the item? It would
- *       make the converting quicker.
- */
-int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
-                         uint8_t *buffer, uint buf_size);
+///*!
+// * \brief Converts the RDATA to wire format.
+// *
+// * \param rdata RDATA structure to convert to wire format.
+// * \param format RDATA format descriptor.
+// * \param buffer Place to put the wire format into.
+// * \param buf_size Size of the buffer.
+// *
+// * \retval 0 on success.
+// * \retval <> 0 otherwise.
+// *
+// * \todo Shouldn't we keep the size of the data always in the item? It would
+// *       make the converting quicker.
+// */
+//int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
+//                         uint8_t *buffer, uint buf_size);
 
 /*!
  * \brief Copies the given RDATA.

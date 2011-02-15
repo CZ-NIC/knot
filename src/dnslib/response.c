@@ -670,7 +670,7 @@ static int dnslib_response_rr_to_wire(const dnslib_rrset_t *rrset,
 			break;
 		}
 		case DNSLIB_RDATA_WF_BINARYWITHLENGTH: {
-			uint8_t *raw_data =
+			uint16_t *raw_data =
 				dnslib_rdata_item(rdata, i)->raw_data;
 
 			if (size + raw_data[0] + 1 > max_size) {
@@ -678,16 +678,18 @@ static int dnslib_response_rr_to_wire(const dnslib_rrset_t *rrset,
 			}
 
 			// copy also the rdata item size
-			memcpy(*rrset_wire, raw_data, raw_data[0] + 1);
+			**rrset_wire = *((uint8_t *)raw_data);
+			*rrset_wire += 1;
+			memcpy(*rrset_wire, raw_data + 1, raw_data[0]);
 			debug_dnslib_response("Raw data size: %d\n",
 			                      raw_data[0] + 1);
-			*rrset_wire += raw_data[0] + 1;
+			*rrset_wire += raw_data[0];
 			rdlength += raw_data[0] + 1;
 			compr->wire_pos += raw_data[0] + 1;
 			break;
 		}
 		default: {
-			uint8_t *raw_data =
+			uint16_t *raw_data =
 				dnslib_rdata_item(rdata, i)->raw_data;
 
 			if (size + raw_data[0] > max_size) {

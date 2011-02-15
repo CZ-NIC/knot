@@ -73,7 +73,7 @@ dnslib_dname_t *error_domain;
 	uint32_t             ttl;
 	uint16_t             rclass;
 	uint16_t             type;
-	uint8_t             *unknown;
+	uint16_t             *unknown;
 }
 
 /*
@@ -1127,9 +1127,15 @@ rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR
 	    zadd_rdata_wireformat(zparser_conv_time($9.str)); /* sig exp */
 	    zadd_rdata_wireformat(zparser_conv_time($11.str)); /* sig inc */
 	    zadd_rdata_wireformat(zparser_conv_short($13.str)); /* key id */
-	    zadd_rdata_wireformat(zparser_conv_dns_name((const uint8_t*)
+/*	    zadd_rdata_wireformat(zparser_conv_dns_name((const uint8_t*)
 	                                                 $15.str,
-	                                                 $15.len));
+	                                                 $15.len));*/
+	    dnslib_dname_t *dname =
+	    	dnslib_dname_new_from_wire((uint8_t *)$15.str, $15.len, NULL);
+
+	    dnslib_dname_cat(dname, parser->root_domain);
+
+	    zadd_rdata_domain(dname);
 	    /* sig name */
 	    zadd_rdata_wireformat(zparser_conv_b64($17.str)); /* sig data */
 
@@ -1147,9 +1153,16 @@ rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR
 
 rdata_nsec:	wire_dname nsec_seq
     {
-	    zadd_rdata_wireformat(zparser_conv_dns_name((const uint8_t*)
+/*	    zadd_rdata_wireformat(zparser_conv_dns_name((const uint8_t*)
 	                                                $1.str,
-							$1.len));
+							$1.len));*/
+
+	    dnslib_dname_t *dname =
+	    	dnslib_dname_new_from_wire((uint8_t *)$1.str, $1.len, NULL);
+
+	    dnslib_dname_cat(dname, parser->root_domain);
+	
+	    zadd_rdata_domain(dname);
 	    /* nsec name */
 	    zadd_rdata_wireformat(zparser_conv_nsec(nsecbits));
 	    /* nsec bitlist */
@@ -1255,7 +1268,7 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 
 			uint8_t* dncpy = malloc(name->size);
 			memcpy(dncpy, name->name, name->size);
-			zadd_rdata_wireformat((uint8_t *)dncpy);
+			zadd_rdata_wireformat((uint16_t *)dncpy);
 			//dnslib_dname_free(&name);
 			break;
 		default:
@@ -1354,7 +1367,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->last_node = origin;
 	parser->root_domain = dnslib_dname_new_from_str(".", 1, NULL);
 
-	parser->last_rrsig = NULL;
+	parser->node_rrsigs = NULL;
 
 	parser->id = 1;
 

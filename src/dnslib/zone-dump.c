@@ -233,7 +233,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 		} else {
 			assert(rdata->items[i].raw_data != NULL);
 			fwrite(rdata->items[i].raw_data, sizeof(uint8_t),
-			       rdata->items[i].raw_data[0] + 1, f);
+			       rdata->items[i].raw_data[0] + 2, f);
 
 			debug_zp("Written %d long raw data\n",
 			         rdata->items[i].raw_data[0]);
