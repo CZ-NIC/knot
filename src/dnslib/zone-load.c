@@ -190,9 +190,9 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 	return rdata;
 }
 
-dnslib_rrsig_set_t *dnslib_load_rrsig(FILE *f)
+dnslib_rrset_t *dnslib_load_rrsig(FILE *f)
 {
-	dnslib_rrsig_set_t *rrsig;
+	dnslib_rrset_t *rrsig;
 
 	uint16_t rrset_type;
 	uint16_t rrset_class;
@@ -218,7 +218,7 @@ dnslib_rrsig_set_t *dnslib_load_rrsig(FILE *f)
 		return 0;
 	}
 
-	rrsig = dnslib_rrsig_set_new(NULL, rrset_type, rrset_class, rrset_ttl);
+	rrsig = dnslib_rrset_new(NULL, rrset_type, rrset_class, rrset_ttl);
 
 	dnslib_rdata_t *tmp_rdata;
 
@@ -227,9 +227,9 @@ dnslib_rrsig_set_t *dnslib_load_rrsig(FILE *f)
 	for (int i = 0; i < rdata_count; i++) {
 		tmp_rdata = dnslib_load_rdata(DNSLIB_RRTYPE_RRSIG, f);
 		if (tmp_rdata) {
-			dnslib_rrsig_set_add_rdata(rrsig, tmp_rdata);
+			dnslib_rrset_add_rdata(rrsig, tmp_rdata);
 		} else {
-			dnslib_rrsig_set_deep_free(&rrsig, 0, 1);
+			dnslib_rrset_deep_free(&rrsig, 0, 1);
 			return 0;
 		}
 	}
@@ -280,7 +280,7 @@ dnslib_rrset_t *dnslib_load_rrset(FILE *f)
 		}
 	}
 
-	dnslib_rrsig_set_t *tmp_rrsig = NULL;
+	dnslib_rrset_t *tmp_rrsig = NULL;
 
 	if (rrsig_count) {
 		tmp_rrsig = dnslib_load_rrsig(f);

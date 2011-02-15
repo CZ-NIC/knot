@@ -241,8 +241,9 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 	}
 }
 
-static void dnslib_rrsig_set_dump_binary(dnslib_rrsig_set_t *rrsig, arg_t *data)
+static void dnslib_rrsig_set_dump_binary(dnslib_rrset_t *rrsig, arg_t *data)
 {
+	assert(rrsig->type == DNSLIB_RRTYPE_RRSIG);
 	FILE *f = (FILE *)((arg_t *)data)->arg1;
 	fwrite(&rrsig->type, sizeof(rrsig->type), 1, f);
 	fwrite(&rrsig->rclass, sizeof(rrsig->rclass), 1, f);

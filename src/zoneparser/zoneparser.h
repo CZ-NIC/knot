@@ -56,12 +56,12 @@ struct lex_data {
 /*! \todo Implement ZoneDB. */
 typedef void namedb_type;
 
-struct rrsig_list {
-	dnslib_rrsig_set_t *data;
-	struct rrsig_list *next;
+struct rrset_list {
+	dnslib_rrset_t *data;
+	struct rrset_list *next;
 };
 
-typedef struct rrsig_list rrsig_list_t;
+typedef struct rrset_list rrset_list_t;
 
 /* administration struct */
 typedef struct zparser zparser_type;
@@ -87,13 +87,13 @@ struct zparser {
 	dnslib_rrset_t current_rrset;
 	dnslib_rdata_item_t *temporary_items;
 
-	rrsig_list_t *rrsig_orphans;
+	rrset_list_t *rrsig_orphans;
 
 	dnslib_dname_t *root_domain;
 
 	slab_cache_t *parser_slab;
 
-	rrsig_list_t *node_rrsigs;
+	rrset_list_t *node_rrsigs;
 
 	int rdata_count;
 };

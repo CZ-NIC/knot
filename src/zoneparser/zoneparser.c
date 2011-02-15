@@ -61,23 +61,23 @@ uint16_t rrsig_type_covered(dnslib_rrset_t *rrset)
 	return ntohs(*(uint16_t *) rdata_atom_data(rrset->rdata->items[0]));
 }
 
-static void rrsig_list_add(rrsig_list_t **head, dnslib_rrsig_set_t *rrsig)
+static void rrset_list_add(rrset_list_t **head, dnslib_rrset_t *rrsig)
 {
 	if (*head == NULL) {
-		*head = malloc(sizeof(rrsig_list_t));
+		*head = malloc(sizeof(rrset_list_t));
 		(*head)->next = NULL;
 		(*head)->data = rrsig;
 	} else {
-		rrsig_list_t *tmp = malloc(sizeof(*tmp));
+		rrset_list_t *tmp = malloc(sizeof(*tmp));
 		tmp->next = *head;
 		tmp->data = rrsig;
 		*head = tmp;
 	}
 }
 
-void rrsig_list_delete(rrsig_list_t **head)
+void rrset_list_delete(rrset_list_t **head)
 {
-	rrsig_list_t *tmp;
+	rrset_list_t *tmp;
 	if (*head == NULL) {
 		return;
 	}
@@ -1309,7 +1309,7 @@ void set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
 	bits[window][bit / 8] |= (1 << (7 - bit % 8));
 }
 
-int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone, dnslib_rrsig_set_t *rrsig)
+int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone, dnslib_rrset_t *rrsig)
 {
 	assert(rrsig != NULL);
 	assert(rrsig->rdata->items[0].raw_data);
@@ -1344,7 +1344,7 @@ int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone, dnslib_rrsig_set_t *rrsig)
 	return 0;
 }
 
-int find_rrset_for_rrsig_in_node(dnslib_node_t *node, dnslib_rrsig_set_t *rrsig)
+int find_rrset_for_rrsig_in_node(dnslib_node_t *node, dnslib_rrset_t *rrsig)
 {
 	assert(rrsig != NULL);
 	assert(rrsig->rdata->items[0].raw_data);
@@ -1424,11 +1424,11 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 
 void process_rrsigs_in_node(dnslib_node_t *node)
 {
-	rrsig_list_t *tmp = parser->node_rrsigs;
+	rrset_list_t *tmp = parser->node_rrsigs;
 	while (tmp != NULL) {
 		if (find_rrset_for_rrsig_in_node(node,
 					         tmp->data) != 0) {
-			rrsig_list_add(&parser->rrsig_orphans,
+			rrset_list_add(&parser->rrsig_orphans,
 			               tmp->data);
 		}
 		tmp = tmp->next;
@@ -1495,13 +1495,13 @@ int process_rr(void)
 	}
 
 	if (current_rrset->type == DNSLIB_RRTYPE_RRSIG) {
-		dnslib_rrsig_set_t *tmp_rrsig =
-			dnslib_rrsig_set_new(current_rrset->owner,
-					     rrsig_type_covered(current_rrset),
+		dnslib_rrset_t *tmp_rrsig =
+			dnslib_rrset_new(current_rrset->owner,
+					     DNSLIB_RRTYPE_RRSIG,
 					     current_rrset->rclass,
 					     current_rrset->ttl);
 
-		dnslib_rrsig_set_add_rdata(tmp_rrsig, current_rrset->rdata);
+		dnslib_rrset_add_rdata(tmp_rrsig, current_rrset->rdata);
 
 		if (parser->last_node &&
 		    dnslib_dname_compare(parser->last_node->owner,
@@ -1512,7 +1512,7 @@ int process_rr(void)
 			if (parser->node_rrsigs != NULL) {
 				process_rrsigs_in_node(parser->last_node);
 
-				rrsig_list_delete(&parser->node_rrsigs);
+				rrset_list_delete(&parser->node_rrsigs);
 			}
 
 			if ((parser->last_node = create_node(zone,
@@ -1522,7 +1522,7 @@ int process_rr(void)
 			}
 		}
 
-		rrsig_list_add(&parser->node_rrsigs, tmp_rrsig);
+		rrset_list_add(&parser->node_rrsigs, tmp_rrsig);
 
 		return 0;
 	}
@@ -1540,7 +1540,7 @@ int process_rr(void)
 			process_rrsigs_in_node(parser->last_node);
 		}
 
-		rrsig_list_delete(&parser->node_rrsigs);
+		rrset_list_delete(&parser->node_rrsigs);
 
 		/* new node */
 		node = node_get_func(zone, current_rrset->owner);
@@ -1644,7 +1644,8 @@ int process_rr(void)
 	return 0;
 }
 
-static uint find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
+static uint find_rrsets_orphans(dnslib_zone_t *zone, rrset_list_t
+				*head)
 {
 	uint found_rrsets = 0;
 	while (head != NULL) {
@@ -1655,7 +1656,7 @@ static uint find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
 				 dnslib_rrtype_to_string(head->data->type));
 		}
 		else { /* we can throw it away now */
-			dnslib_rrsig_set_free(&head->data);
+			dnslib_rrset_free(&head->data);
 		}
 		head = head->next;
 	}
@@ -1698,7 +1699,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 	if (parser->node_rrsigs != NULL) {
 		/* assign rrsigs to last node in the zone*/
 		process_rrsigs_in_node(parser->last_node);
-		rrsig_list_delete(&parser->node_rrsigs);
+		rrset_list_delete(&parser->node_rrsigs);
 	}
 
 	debug_zp("zone parsed\n");
@@ -1710,7 +1711,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 
 	debug_zp("%u orphans found\n", found_orphans);
 
-	rrsig_list_delete(&parser->rrsig_orphans);
+	rrset_list_delete(&parser->rrsig_orphans);
 
 	dnslib_zone_adjust_dnames(parser->current_zone);
 
