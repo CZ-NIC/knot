@@ -30,21 +30,6 @@ enum { DNAME_MAX_WIRE_LENGTH = 256 };
 //TODO move to parameters
 static dnslib_dname_t **id_array;
 
-static uint16_t * alloc_rdata(size_t size)
-{
-	uint16_t *result = malloc(sizeof(uint16_t) + size);
-	*result = size;
-	return result;
-}
-
-static uint16_t * alloc_rdata_init(const void *data, size_t size)
-{
-	uint16_t *result = malloc(sizeof(uint16_t) + size);
-	*result = size;
-	memcpy(result + 1, data, size);
-	return result;
-}
-
 static void load_rdata_purge(dnslib_rdata_t *rdata,
                                dnslib_rdata_item_t *items,
                                int count,
