@@ -260,7 +260,31 @@ DEBUG_NS(
 		break;
 	}
 	case DNSLIB_RRTYPE_RRSIG: {
+		debug_ns("Returning all RRSIGs.\n");
+		const dnslib_rrset_t **rrsets = dnslib_node_rrsets(node);
+		if (rrsets == NULL) {
+			break;
+		}
+		int i = 0;
+		int ret = 0;
+		const dnslib_rrset_t *rrset;
+		while (i < dnslib_node_rrset_count(node)) {
+			assert(rrsets[i] != NULL);
+			rrset = dnslib_rrset_rrsigs(rrsets[i]);
 
+			ns_check_wildcard(name, resp, &rrset);
+			ret = dnslib_response_add_rrset_answer(resp, rrset, 1,
+			                                       0);
+
+			if (ret < 0) {
+				free(rrsets);
+				break;
+			}
+
+			added += 1;
+			++i;
+		}
+		free(rrsets);
 		break;
 	}
 	default: {
