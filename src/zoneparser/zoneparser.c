@@ -1335,8 +1335,7 @@ int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone, dnslib_rrset_t *rrsig)
 	}
 
 	if (tmp_rrset->rrsigs != NULL) {
-		dnslib_rrsig_set_merge((void *)&tmp_rrset->rrsigs,
-				       (void *)&rrsig);
+		dnslib_rrset_merge((void *)&tmp_rrset->rrsigs, (void *)&rrsig);
 	} else {
 		tmp_rrset->rrsigs = rrsig;
 	}
@@ -1359,8 +1358,7 @@ int find_rrset_for_rrsig_in_node(dnslib_node_t *node, dnslib_rrset_t *rrsig)
 	}
 
 	if (tmp_rrset->rrsigs != NULL) {
-		dnslib_rrsig_set_merge((void *)&tmp_rrset->rrsigs,
-				       (void *)&rrsig);
+		dnslib_rrset_merge((void *)&tmp_rrset->rrsigs, (void *)&rrsig);
 	} else {
 		tmp_rrset->rrsigs = rrsig;
 	}
