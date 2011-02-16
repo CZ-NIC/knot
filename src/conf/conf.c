@@ -10,23 +10,6 @@
 #include "conf.h"
 #include "common.h"
 
-/* Singleton config. */
-conf_t *s_config = 0;
-
-void __attribute__ ((constructor)) conf_init()
-{
-	// Create new config
-	s_config = conf_new(0);
-}
-
-void __attribute__ ((destructor)) config_deinit()
-{
-	if (s_config) {
-		conf_free(s_config);
-		s_config = 0;
-	}
-}
-
 /* Utilities. */
 static char* strcdup(const char *s1, const char *s2)
 {
@@ -146,7 +129,6 @@ static void iface_free(conf_iface_t *iface)
 
 	free(iface->name);
 	free(iface->address);
-	free(iface->sa);
 	free(iface);
 }
 
@@ -158,6 +140,12 @@ static void log_free(conf_log_t *log)
 
 	if (log->file) {
 		free(log->file);
+	}
+
+	/* Free loglevel mapping. */
+	node *n = 0, *nxt = 0;
+	WALK_LIST_DELSAFE(n, nxt, log->map) {
+		free((conf_log_map_t*)n);
 	}
 
 	free(log);
@@ -176,7 +164,7 @@ static void zone_free(conf_zone_t *zone)
 
 /* Config processing. */
 
-static int config_process(conf_t *conf)
+static int conf_process(conf_t *conf)
 {
 	// Normalize paths
 	conf->storage = strcpath(conf->storage);
@@ -219,6 +207,65 @@ static int config_process(conf_t *conf)
 	return 0;
 }
 
+/* Singleton config. */
+conf_t *s_config = 0;
+
+void __attribute__ ((constructor)) conf_init()
+{
+	// Create new config
+	s_config = conf_new(0);
+
+	/* Create default interface. */
+	conf_iface_t * iface = malloc(sizeof(conf_iface_t));
+	iface->name = strdup("any");
+	iface->address = strdup("0.0.0.0");
+	iface->port = CONFIG_DEFAULT_PORT;
+	add_tail(&s_config->ifaces, &iface->n);
+	++s_config->ifaces_count;
+
+	/* Create default storage. */
+	s_config->storage = strdup("/var/lib/"PROJECT_EXEC);
+
+	/* Create default logs. */
+
+	/* Syslog */
+	conf_log_t *log = malloc(sizeof(conf_log_t));
+	log->type = LOGT_SYSLOG;
+	log->file = 0;
+	init_list(&log->map);
+
+	conf_log_map_t *map = malloc(sizeof(conf_log_map_t));
+	map->source = LOG_ANY;
+	map->levels = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR);
+	add_tail(&log->map, &map->n);
+	add_tail(&s_config->logs, &log->n);
+	++s_config->logs_count;
+
+	/* Stderr */
+	log = malloc(sizeof(conf_log_t));
+	log->type = LOGT_STDERR;
+	log->file = 0;
+	init_list(&log->map);
+
+	map = malloc(sizeof(conf_log_map_t));
+	map->source = LOG_ANY;
+	map->levels = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR);
+	add_tail(&log->map, &map->n);
+	add_tail(&s_config->logs, &log->n);
+	++s_config->logs_count;
+
+	/* Process config. */
+	conf_process(s_config);
+}
+
+void __attribute__ ((destructor)) conf_deinit()
+{
+	if (s_config) {
+		conf_free(s_config);
+		s_config = 0;
+	}
+}
+
 /* API functions. */
 
 conf_t *conf_new(const char* path)
@@ -229,8 +276,6 @@ conf_t *conf_new(const char* path)
 	// Add path
 	if (path) {
 		c->filename = strdup(path);
-	} else {
-		c->filename = strdup(CONFIG_DEFAULT_PATH);
 	}
 
 	// Initialize lists
@@ -281,7 +326,7 @@ int conf_parse(conf_t *conf)
 	pthread_mutex_unlock(&_parser_lock);
 
 	// Postprocess config
-	config_process(conf);
+	conf_process(conf);
 
 	return ret;
 }
@@ -317,7 +362,7 @@ int conf_parse_str(conf_t *conf, const char* src)
 	pthread_mutex_unlock(&_parser_lock);
 
 	// Postprocess config
-	config_process(conf);
+	conf_process(conf);
 
 	return ret;
 }
@@ -336,31 +381,36 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 			//! \todo call hook unload.
 			free((conf_hook_t*)n);
 		}
+		conf->hooks_count = 0;
+		init_list(&conf->hooks);
 	}
 
-	// Free interfaces
-	conf->ifaces_count = 0;
-	WALK_LIST_DELSAFE(n, nxt, conf->ifaces) {
-		iface_free((conf_iface_t*)n);
-	}
-
-	// Free keys
+	// Free key
 	if (conf->key.secret) {
 		free(conf->key.secret);
 	}
 	memset(&conf->key, 0, sizeof(conf_key_t));
 
+	// Free interfaces
+	WALK_LIST_DELSAFE(n, nxt, conf->ifaces) {
+		iface_free((conf_iface_t*)n);
+	}
+	conf->ifaces_count = 0;
+	init_list(&conf->ifaces);
+
 	// Free logs
-	conf->logs_count = 0;
 	WALK_LIST_DELSAFE(n, nxt, conf->logs) {
 		log_free((conf_log_t*)n);
 	}
+	conf->logs_count = 0;
+	init_list(&conf->logs);
 
 	// Free zones
-	conf->zones_count = 0;
 	WALK_LIST_DELSAFE(n, nxt, conf->zones) {
 		zone_free((conf_zone_t*)n);
 	}
+	conf->zones_count = 0;
+	init_list(&conf->zones);
 
 	if (conf->filename) {
 		free(conf->filename);
@@ -397,6 +447,23 @@ void conf_free(conf_t *conf)
 	free(conf);
 }
 
+char* conf_find_default()
+{
+	/* Try ~/.cutedns/cutedns.conf first. */
+	const char *dir = getenv("HOME");
+	const char *name = "/.cutedns/cutedns.conf";
+	char *path = strcdup(dir, name);
+	struct stat st;
+	if (stat(path, &st) == 0) {
+		return path;
+	} else {
+		free(path);
+	}
+
+	/* Try /etc/cutedns/cutedns.conf as a fallback. */
+	return strdup("/etc/cutedns/cutedns.conf");
+}
+
 int conf_open(const char* path)
 {
 	// Check existing config
@@ -407,6 +474,13 @@ int conf_open(const char* path)
 
 	// Check path
 	if (!path) {
+		errno = ENOENT; /* No such file or directory (POSIX.1) */
+		return -2;
+	}
+
+	// Check if exists
+	struct stat st;
+	if (stat(path, &st) != 0) {
 		errno = ENOENT; /* No such file or directory (POSIX.1) */
 		return -2;
 	}

@@ -104,20 +104,35 @@ int main(int argc, char **argv)
 	// Initialize configuration
 	conf_add_hook(conf(), log_conf_hook);
 
+	// Find implicit configuration file
+	char *default_fn = 0;
+	if (!config_fn) {
+		default_fn = conf_find_default();
+		config_fn = default_fn;
+	}
+
 	// Open configuration
 	if (conf_open(config_fn) != 0) {
-		//! \todo Load default configuration.
+
+		log_server_error("Failed to parse configuration '%s'.\n"
+		                 , config_fn);
+
 		if (zfs_count < 1) {
 			log_server_error("No zone files specified, "
 			                 "shutting down.\n");
 			log_close();
+			free(default_fn);
 			return 1;
 		}
 	}
 
+	// Free default config filename if exists
+	free(default_fn);
+
 	// Verbose mode
 	if (verbose) {
-		//! \todo Support for verbose mode.
+		int mask = LOG_MASK(LOG_INFO)|LOG_MASK(LOG_DEBUG);
+		log_levels_add(LOGT_STDOUT, LOG_ANY, mask);
 	}
 
 	// Save PID
