@@ -1642,11 +1642,10 @@ static uint find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
  */
 int zone_read(const char *name, const char *zonefile, const char *outfile)
 {
-	char* zdb_dbpath = dnslib_zonedb_dbpath();
 	if (!outfile) {
-		log_info("zone parser using default db for output: %s\n",
-			 zdb_dbpath);
-		outfile = zdb_dbpath;
+		log_error("missing output file for '%s'\n",
+			 zonefile);
+		return -1;
 	}
 
 	dnslib_dname_t *dname;
@@ -1664,7 +1663,6 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 	/* Open the zone file */
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
 		log_error("cannot open '%s': %s", zonefile, strerror(errno));
-		free(zdb_dbpath);
 		return -1;
 	}
 
@@ -1698,8 +1696,6 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 	totalerrors += parser->errors;
 
 	zparser_free();
-
-	free(zdb_dbpath);
 
 	return totalerrors;
 }
