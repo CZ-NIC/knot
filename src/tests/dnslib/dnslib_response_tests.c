@@ -788,8 +788,19 @@ static int compare_wires(uint8_t *wire1, uint8_t *wire2, uint size)
 }
 
 #ifdef TEST_WITH_LDNS
-static int compare_rrset_w_ldns_rr(dnslib_rrset_t *rrset, ldns_rr_list *rrlist)
+static int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
+				   ldns_rr *rr)
 {
+	return 0;
+}
+
+static int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
+				    ldns_rr_list *rrlist, uint count)
+{
+	for (int i = 0; i < count; i++) {
+		compare_rrset_w_ldns_rr(rrsets[i], rrlist->_rrs[i]);
+	}
+
 	return 0;
 }
 
@@ -822,7 +833,32 @@ static int compare_response_w_ldns_packet(dnslib_response_t *response,
 
 	if (dnslib_response_additional_rrset_count(response) !=
 	    ldns_pkt_ancount(packet)) {
-		diag("Aditional RRSet count wrongly converted");
+		diag("Additional RRSet count wrongly converted");
+		return 1;
+	}
+
+	/* Header checked */
+
+	/* Question section */
+
+	/* other RRSets */
+
+	if (compare_rrsets_w_ldns_rrlist(response->answer,
+					 ldns_pkt_answer(packet),
+					 response->header.ancount) != 0) {
+		diag("Answer rrsets wrongly converted");
+		return 1;
+	}
+	if (compare_rrsets_w_ldns_rrlist(response->authority,
+					 ldns_pkt_authority(packet),
+					 response->header.nscount) != 0) {
+		diag("Authority rrsets wrongly converted");
+		return 1;
+	}
+	if (compare_rrsets_w_ldns_rrlist(response->additional,
+					 ldns_pkt_additional(packet),
+					 response->header.arcount) != 0) {
+		diag("Additional rrsets wrongly converted");
 		return 1;
 	}
 
@@ -957,11 +993,13 @@ static int test_response_to_wire(test_response_t **responses,
 
 		ldns_pkt *packet = NULL;
 
-		if (ldns_wire2pkt(&packet, dnslib_wire,
-				  dnslib_wire_size) != LDNS_STATUS_OK) {
+		if (ldns_wire2pkt(&packet, raw_data[i]->data,
+				  raw_data[i]->size) != LDNS_STATUS_OK) {
 			diag("Could not parse wire using ldns");
-			diag("%s", ldns_get_errorstr_by_id(ldns_wire2pkt(&packet, dnslib_wire,
-				  dnslib_wire_size)));
+			diag("%s",
+			     ldns_get_errorstr_by_id(ldns_wire2pkt(&packet,
+							dnslib_wire,
+							dnslib_wire_size)));
 			return 0;
 		}
 
