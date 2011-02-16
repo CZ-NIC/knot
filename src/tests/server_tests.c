@@ -28,7 +28,7 @@ cute_server *test_server_create()
 /*! Test: start server. */
 int test_server_start(cute_server *s, char **filenames, uint zones)
 {
-	return cute_start(s, filenames, zones) == 0;
+	return cute_start(s, (const char**)filenames, zones) == 0;
 }
 
 /*! Test: finish server. */
