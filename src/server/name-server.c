@@ -377,6 +377,9 @@ static inline void ns_referral(const dnslib_node_t *node,
 		dnslib_node_rrset(node, DNSLIB_RRTYPE_NS);
 	assert(rrset != NULL);
 
+	// TODO: wildcards??
+	//ns_check_wildcard(name, resp, &rrset);
+
 	dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
 	ns_add_rrsigs(rrset, resp, dnslib_response_add_rrset_authority, 1);
 
@@ -580,9 +583,6 @@ DEBUG_NS(
 			break;
 		}
 
-		// in all cases this will be an authoritative answer
-		dnslib_response_set_aa(resp);
-
 		if (find_ret == DNSLIB_ZONE_NAME_NOT_FOUND) {
 			// DNAME?
 			const dnslib_rrset_t *dname_rrset =
@@ -618,6 +618,15 @@ DEBUG_NS(
 		}
 
 		// now we have the node for answering
+
+		if (dnslib_node_is_deleg_point(node)
+		    || dnslib_node_is_non_auth(node)) {
+			ns_referral(node, resp);
+			break;
+		}
+
+		// in other cases the answer is authoritative
+		dnslib_response_set_aa(resp);
 
 		if (dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME) != NULL) {
 DEBUG_NS(
