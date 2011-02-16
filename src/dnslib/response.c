@@ -1101,6 +1101,7 @@ int dnslib_response_add_rrset_answer(dnslib_response_t *response,
                                      const dnslib_rrset_t *rrset, int tc,
                                      int check_duplicates)
 {
+	debug_dnslib_response("add_rrset_answer()");
 	assert(response->header.arcount == 0);
 	assert(response->header.nscount == 0);
 
@@ -1114,6 +1115,8 @@ int dnslib_response_add_rrset_answer(dnslib_response_t *response,
 	if (check_duplicates && dnslib_response_contains(response, rrset)) {
 		return 1;
 	}
+
+	debug_dnslib_response("Trying to add RRSet to Answer section.\n");
 
 	int rrs = dnslib_response_try_add_rrset(response->answer,
 	                                        &response->an_rrsets, response,
@@ -1148,6 +1151,8 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
 	if (check_duplicates && dnslib_response_contains(response, rrset)) {
 		return 1;
 	}
+
+	debug_dnslib_response("Trying to add RRSet to Authority section.\n");
 
 	int rrs = dnslib_response_try_add_rrset(response->authority,
 	                                        &response->ns_rrsets, response,
@@ -1186,6 +1191,8 @@ int dnslib_response_add_rrset_additional(dnslib_response_t *response,
 	if (check_duplicates && dnslib_response_contains(response, rrset)) {
 		return 1;
 	}
+
+	debug_dnslib_response("Trying to add RRSet to Additional section.\n");
 
 	int rrs = dnslib_response_try_add_rrset(response->additional,
 	                                        &response->ar_rrsets, response,
