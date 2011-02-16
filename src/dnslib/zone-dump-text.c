@@ -969,24 +969,14 @@ void dump_rrset_header(dnslib_rrset_t *rrset, FILE *f)
 	fprintf(f, "%-5s ",  dnslib_rrtype_to_string(rrset->type));
 }
 
-void dump_rrsig_set_header(dnslib_rrsig_set_t *rrsig, FILE *f)
+void rrsig_set_dump_text(dnslib_rrset_t *rrsig, FILE *f)
 {
-	char *name = dnslib_dname_to_str(rrsig->owner);
-	fprintf(f, "%-20s ",  name);
-	free(name);
-	fprintf(f, "%-5u ", rrsig->ttl);
-	fprintf(f, "%-2s ", dnslib_rrclass_to_string(rrsig->rclass));
-	fprintf(f, "%-5s ",  dnslib_rrtype_to_string(DNSLIB_RRTYPE_RRSIG));
-}
-
-void rrsig_set_dump_text(dnslib_rrsig_set_t *rrsig, FILE *f)
-{
-	dump_rrsig_set_header(rrsig, f);
+	dump_rrset_header(rrsig, f);
 	dnslib_rdata_t *tmp = rrsig->rdata;
 
 	while (tmp->next != rrsig->rdata) {
 		rdata_dump_text(tmp, DNSLIB_RRTYPE_RRSIG, f);
-		dump_rrsig_set_header(rrsig, f);
+		dump_rrset_header(rrsig, f);
 		tmp = tmp->next;
 	}
 
@@ -1006,7 +996,7 @@ void rrset_dump_text(dnslib_rrset_t *rrset, FILE *f)
 	}
 
 	rdata_dump_text(tmp, rrset->type, f);
-	dnslib_rrsig_set_t *rrsig_set = rrset->rrsigs;
+	dnslib_rrset_t *rrsig_set = rrset->rrsigs;
 	if (rrsig_set != NULL) {
 		rrsig_set_dump_text(rrsig_set, f);
 	}
