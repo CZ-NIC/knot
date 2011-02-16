@@ -100,6 +100,8 @@ short dnslib_edns_to_wire(const dnslib_opt_rr_t *opt_rr, uint8_t *wire,
 
 short dnslib_edns_size(dnslib_opt_rr_t *opt_rr);
 
+void dnslib_edns_free(dnslib_opt_rr_t **opt_rr);
+
 #endif /* _CUTEDNS_DNSLIB_EDNS_H_ */
 
 /*! @} */
