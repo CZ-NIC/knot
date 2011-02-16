@@ -1,4 +1,5 @@
 #include <malloc.h>
+#include <assert.h>
 
 #include "node.h"
 #include "common.h"
@@ -63,8 +64,9 @@ dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent)
 
 	ret->owner = owner;
 	ret->parent = parent;
-	ret->next = NULL;
+	//ret->next = NULL;
 	ret->rrsets = skip_create_list(compare_rrset_types);
+	ret->rrset_count = 0;
 	ret->wildcard_child = NULL;
 	ret->flags = 0;
 
@@ -82,6 +84,8 @@ int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset)
 		return -2;
 	}
 
+	++node->rrset_count;
+
 	return 0;
 }
 
@@ -94,6 +98,31 @@ const dnslib_rrset_t *dnslib_node_rrset(const dnslib_node_t *node,
 dnslib_rrset_t *dnslib_node_get_rrset(dnslib_node_t *node, uint16_t type)
 {
 	return (dnslib_rrset_t *)skip_find(node->rrsets, (void *)&type);
+}
+
+short dnslib_node_rrset_count(const dnslib_node_t *node)
+{
+	return node->rrset_count;
+}
+
+const dnslib_rrset_t **dnslib_node_rrsets(const dnslib_node_t *node)
+{
+	const dnslib_rrset_t **rrsets = (const dnslib_rrset_t **)malloc(
+		node->rrset_count * sizeof(dnslib_rrset_t *));
+	CHECK_ALLOC_LOG(rrsets, NULL);
+
+	const skip_node_t *sn = skip_first(node->rrsets);
+	int i = 0;
+	while (sn != NULL) {
+		assert(i < node->rrset_count);
+		rrsets[i] = (const dnslib_rrset_t *)sn->value;
+		sn = skip_next(sn);
+		++i;
+	}
+
+	//printf("Returning %d RRSets.\n", i);
+
+	return rrsets;
 }
 
 const dnslib_node_t *dnslib_node_parent(const dnslib_node_t *node)

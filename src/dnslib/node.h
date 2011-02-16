@@ -36,7 +36,8 @@ struct dnslib_node {
 	skip_list_t *rrsets;
 
 	/*! \brief Next node in a general list of nodes. Temporary. */
-	struct dnslib_node *next;
+	//struct dnslib_node *next;
+	short rrset_count;
 
 	struct dnslib_node *wildcard_child;
 
@@ -98,6 +99,10 @@ const dnslib_rrset_t *dnslib_node_rrset(const dnslib_node_t *node,
  *         RRSet exists in this node.
  */
 dnslib_rrset_t *dnslib_node_get_rrset(dnslib_node_t *node, uint16_t type);
+
+short dnslib_node_rrset_count(const dnslib_node_t *node);
+
+const dnslib_rrset_t **dnslib_node_rrsets(const dnslib_node_t *node);
 
 /*!
  * \brief Returns the parent of the node.
