@@ -121,12 +121,29 @@ dnslib_rrset_t *ns_synth_from_wildcard(const dnslib_rrset_t *wildcard_rrset,
 
 /*----------------------------------------------------------------------------*/
 
+static void ns_add_rrsigs(const dnslib_rrset_t *rrset, dnslib_response_t *resp,
+                          int (*add_rrset_to_resp)(dnslib_response_t *,
+                                                   const dnslib_rrset_t *,
+                                                   int, int),
+                          int tc)
+{
+	const dnslib_rrset_t *rrsigs;
+
+	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)
+	    && (rrsigs = dnslib_rrset_rrsigs(rrset)) != NULL) {
+		add_rrset_to_resp(resp, rrsigs, tc, 0);
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 static void ns_follow_cname(const dnslib_node_t **node,
                             const dnslib_dname_t **qname,
                             dnslib_response_t *resp,
                             int (*add_rrset_to_resp)(dnslib_response_t *,
                                                      const dnslib_rrset_t *,
-                                                     int, int))
+                                                     int, int),
+                            int tc)
 {
 	// TODO: test!!
 
@@ -152,7 +169,8 @@ static void ns_follow_cname(const dnslib_node_t **node,
 			                              (dnslib_rrset_t *)rrset);
 		}
 
-		add_rrset_to_resp(resp, rrset, 1, 0);
+		add_rrset_to_resp(resp, rrset, tc, 0);
+		ns_add_rrsigs(rrset, resp, add_rrset_to_resp, tc);
 DEBUG_NS(
 		char *name = dnslib_dname_to_str(dnslib_rrset_owner(rrset));
 		debug_ns("CNAME record for owner %s put to response.\n",
@@ -207,6 +225,8 @@ DEBUG_NS(
 				 dnslib_rrtype_to_string(type));
 			ns_check_wildcard(name, resp, &rrset);
 			dnslib_response_add_rrset_answer(resp, rrset, 1, 0);
+			ns_add_rrsigs(rrset, resp,
+			              dnslib_response_add_rrset_answer, 1);
 			added = 1;
 		}
 	}
@@ -248,7 +268,7 @@ DEBUG_NS(
 				const dnslib_dname_t *dname
 						= dnslib_node_owner(node);
 				ns_follow_cname(&node, &dname, resp,
-					dnslib_response_add_rrset_additional);
+				    dnslib_response_add_rrset_additional, 0);
 			}
 
 			// A RRSet
@@ -259,6 +279,8 @@ DEBUG_NS(
 				ns_check_wildcard(dname, resp, &rrset_add);
 				dnslib_response_add_rrset_additional(
 					resp, rrset_add, 0, 1);
+				ns_add_rrsigs(rrset_add, resp,
+				       dnslib_response_add_rrset_additional, 0);
 			}
 
 			// AAAA RRSet
@@ -269,6 +291,8 @@ DEBUG_NS(
 				ns_check_wildcard(dname, resp, &rrset_add);
 				dnslib_response_add_rrset_additional(
 					resp, rrset_add, 0, 1);
+				ns_add_rrsigs(rrset_add, resp,
+				       dnslib_response_add_rrset_additional, 0);
 			}
 		}
 
@@ -321,6 +345,7 @@ static void ns_put_authority_ns(const dnslib_zone_t *zone,
 	assert(ns_rrset != NULL);
 
 	dnslib_response_add_rrset_authority(resp, ns_rrset, 0, 1);
+	ns_add_rrsigs(ns_rrset, resp, dnslib_response_add_rrset_authority, 1);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -333,6 +358,7 @@ static void ns_put_authority_soa(const dnslib_zone_t *zone,
 	assert(soa_rrset != NULL);
 
 	dnslib_response_add_rrset_authority(resp, soa_rrset, 0, 0);
+	ns_add_rrsigs(soa_rrset, resp, dnslib_response_add_rrset_authority, 1);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -352,6 +378,7 @@ static inline void ns_referral(const dnslib_node_t *node,
 	assert(rrset != NULL);
 
 	dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+	ns_add_rrsigs(rrset, resp, dnslib_response_add_rrset_authority, 1);
 
 	// add DS records
 	debug_ns("DNSSEC requested: %d\n",
@@ -360,6 +387,8 @@ static inline void ns_referral(const dnslib_node_t *node,
 	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)
 	    && (rrset = dnslib_node_rrset(node, DNSLIB_RRTYPE_DS)) != NULL) {
 		dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+		ns_add_rrsigs(rrset, resp, dnslib_response_add_rrset_authority,
+		              1);
 	}
 
 	ns_put_additional(resp);
@@ -460,6 +489,7 @@ DEBUG_NS(
 
 	// put the DNAME RRSet into the answer
 	dnslib_response_add_rrset_answer(resp, dname_rrset, 1, 0);
+	ns_add_rrsigs(dname_rrset, resp, dnslib_response_add_rrset_answer, 1);
 
 	if (ns_dname_is_too_long(dname_rrset, qname)) {
 		dnslib_response_set_rcode(resp, DNSLIB_RCODE_YXDOMAIN);
@@ -470,6 +500,9 @@ DEBUG_NS(
 	dnslib_rrset_t *synth_cname = ns_cname_from_dname(dname_rrset, qname);
 	// add the synthetized RRSet to the Answer
 	dnslib_response_add_rrset_answer(resp, synth_cname, 1, 0);
+
+	// no RRSIGs for this RRSet
+
 	// add the synthetized RRSet into list of temporary RRSets of response
 	dnslib_response_add_tmp_rrset(resp, synth_cname);
 
@@ -485,6 +518,7 @@ static void ns_add_dnskey(const dnslib_node_t *apex, dnslib_response_t *resp)
 		dnslib_node_rrset(apex, DNSLIB_RRTYPE_DNSKEY);
 	assert(rrset != NULL);
 	dnslib_response_add_rrset_additional(resp, rrset, 0, 0);
+	ns_add_rrsigs(rrset, resp, dnslib_response_add_rrset_additional, 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -594,7 +628,7 @@ DEBUG_NS(
 );
 			const dnslib_dname_t *act_name = qname;
 			ns_follow_cname(&node, &act_name, resp,
-			                dnslib_response_add_rrset_answer);
+			                dnslib_response_add_rrset_answer, 1);
 DEBUG_NS(
 			char *name2 = dnslib_dname_to_str(act_name);
 			debug_ns("Canonical name: %s, node found: %p\n",
