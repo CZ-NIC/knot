@@ -97,6 +97,7 @@ static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
 #endif
 
 //#define STAT_COMPILE
+#define TEST_WITH_LDNS
 
 #endif /* _CUTEDNS_COMMON_H_ */
 

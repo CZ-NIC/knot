@@ -37,8 +37,9 @@ OBJS = $(PARSER_OBJ).c $(LEXER_OBJ).o $(addprefix $(OBJ_DIR), $(addsuffix .o, $(
 CC = gcc
 CFLAGS_DEBUG = -g -O0
 CFLAGS_OPTIMAL = -O2 -funroll-loops -fomit-frame-pointer
+CFLAGS_OPTIMAL = -g
 CFLAGS += -Wall -std=gnu99 -D _XOPEN_SOURCE=600 -D_GNU_SOURCE
-LDFLAGS += -lpthread -lurcu -lrt -lm
+LDFLAGS += -lpthread -lurcu -lrt -lm -lldns
 
 all: cutedns unittests zoneparser cutectl
 ifeq ($(DEBUG),1)
