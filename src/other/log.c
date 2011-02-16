@@ -43,9 +43,9 @@ int log_setup(int facilities)
 			LOG_FCL = 0;
 			return -1;
 		}
+		memset(LOG_FDS, 0, sizeof(FILE*) * files);
 	}
 
-	memset(LOG_FDS, 0, sizeof(FILE*) * files);
 	memset(LOG_FCL, 0, new_size);
 	LOG_FCL_SIZE = new_size; // Assign only when all is set
 	return 0;
@@ -60,6 +60,11 @@ int log_init()
 	LOG_FCL_SIZE = 0;
 	LOG_FDS = 0;
 	LOG_FDS_OPEN = 0;
+
+	/* Setup initial state. */
+	log_setup(LOGT_FILE);
+	log_levels_set(LOGT_SYSLOG, LOG_ANY, LOG_MASK(LOG_ERR));
+	log_levels_set(LOGT_STDERR, LOG_ANY, LOG_MASK(LOG_ERR));
 
 	/// \todo May change to LOG_DAEMON.
 	setlogmask(LOG_UPTO(LOG_DEBUG));
@@ -154,14 +159,13 @@ int log_levels_add(int facility, logsrc_t src, uint8_t levels)
 	return log_levels_set(facility, src, new_levels);
 }
 
-int log_msg(logsrc_t src, int level, const char *msg, ...)
+static int _log_msg(logsrc_t src, int level, const char *msg)
 {
 	if(!log_isopen()) {
 		return -1;
 	}
 
 	int ret = 0;
-	va_list ap;
 	FILE *stream = stdout;
 	uint8_t *f = facility_at(LOGT_SYSLOG);
 
@@ -170,10 +174,8 @@ int log_msg(logsrc_t src, int level, const char *msg, ...)
 
 	// Syslog
 	if (facility_levels(f, src) & level) {
-		va_start(ap, msg);
-		vsyslog(level, msg, ap);
+		syslog(level, msg, "");
 		ret = 1; // To prevent considering the message as ignored.
-		va_end(ap);
 	}
 
 	// Log streams
@@ -191,10 +193,37 @@ int log_msg(logsrc_t src, int level, const char *msg, ...)
 			}
 
 			// Print
-			va_start(ap, msg);
-			ret = vfprintf(stream, msg, ap);
-			va_end(ap);
+			ret = fprintf(stream, msg, "");
 		}
+	}
+
+	return ret;
+}
+
+int log_msg(logsrc_t src, int level, const char *msg, ...)
+{
+	int ret = 0;
+	char buf[2048];
+	va_list ap;
+	va_start(ap, msg);
+	ret = vsnprintf(buf, sizeof(buf) - 1, msg, ap);
+	va_end(ap);
+
+	if (ret > 0) {
+		ret = _log_msg(src, level, buf);
+	}
+
+	return ret;
+}
+
+int log_vmsg(logsrc_t src, int level, const char *msg, va_list ap)
+{
+	int ret = 0;
+	char buf[2048];
+	ret = vsnprintf(buf, sizeof(buf) - 1, msg, ap);
+
+	if (ret > 0) {
+		ret = _log_msg(src, level, buf);
 	}
 
 	return ret;
