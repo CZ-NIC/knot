@@ -9,10 +9,12 @@
 /* Headers */
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include "dnslib/dname.h"
 #include "conf.h"
 
-extern void cf_error(const char *msg);
-extern config_t *new_config;
+extern void cf_error(const char *msg, ...);
+extern conf_t *new_config;
 static conf_iface_t *this_iface = 0;
 static conf_zone_t *this_zone = 0;
 static conf_log_t *this_log = 0;
@@ -34,7 +36,6 @@ static conf_log_map_t *this_logmap = 0;
 %token <alg> TSIG_ALGO_NAME
 
 %token ZONES FILENAME
-%token <t> ZONE
 
 %token INTERFACES ADDRESS PORT
 %token <t> IPA
@@ -60,6 +61,7 @@ interface_start: TEXT {
     this_iface->address = 0; // No default address (mandatory)
     this_iface->port = CONFIG_DEFAULT_PORT;
     add_tail(&new_config->ifaces, &this_iface->n);
+    ++new_config->ifaces_count;
  }
  ;
 
@@ -89,22 +91,41 @@ system:
    }
  ;
 
-zones:
-   ZONES '{'
- | zones zone '}'
- ;
+zone_start: TEXT {
+   this_zone = malloc(sizeof(conf_zone_t));
+   memset(this_zone, 0, sizeof(conf_zone_t));
+   this_zone->name = $1;
 
-zone_start: ZONE {
-    this_zone = malloc(sizeof(conf_zone_t));
-    memset(this_zone, 0, sizeof(conf_zone_t));
-    this_zone->name = $1;
-    add_tail(&new_config->zones, &this_zone->n);
+   // Append mising dot to ensure FQDN
+   size_t nlen = strlen(this_zone->name);
+   if (this_zone->name[nlen - 1] != '.') {
+     this_zone->name = realloc(this_zone->name, nlen + 1 + 1);
+     strcat(this_zone->name, ".");
+   }
+
+   // Check domain name
+   dnslib_dname_t *dn = dnslib_dname_new_from_str(this_zone->name,
+                                                  nlen + 1,
+                                                  0);
+   if (dn == 0) {
+     cf_error("invalid zone origin '%s'", this_zone->name);
+   } else {
+     dnslib_dname_free(&dn);
+   }
+
+   add_tail(&new_config->zones, &this_zone->n);
+   ++new_config->zones_count;
  }
  ;
 
 zone:
    zone_start '{'
  | zone FILENAME TEXT ';' { this_zone->file = $3; }
+ ;
+
+zones:
+   ZONES '{'
+ | zones zone '}'
  ;
 
 log_levels_start: {

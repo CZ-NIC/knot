@@ -11,6 +11,8 @@
 #ifndef _CUTEDNS_LOGCONF_H_
 #define _CUTEDNS_LOGCONF_H_
 
+struct conf_t;
+
 /*!
  * \brief Setup logging facilities from config.
  *
@@ -22,7 +24,7 @@
  * \retval  0 On success.
  * \retval <0 If an error occured.
  */
-int log_conf_hook();
+int log_conf_hook(const struct conf_t *conf);
 
 #endif /* _CUTEDNS_LOGCONF_H_ */
 
