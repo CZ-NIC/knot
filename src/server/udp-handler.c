@@ -50,8 +50,8 @@ int udp_master(dthread_t *thread)
 
 		// Receive data
 		n = socket_recvfrom(sock, inbuf, SOCKET_MTU_SZ, 0,
-		                    (struct sockaddr *)&faddr,
-		                    (socklen_t *)&addrsize);
+				    (struct sockaddr *)&faddr,
+				    (socklen_t *)&addrsize);
 
 		// Cancellation point
 		if (dt_is_cancelled(thread)) {
@@ -65,8 +65,8 @@ int udp_master(dthread_t *thread)
 		if (unlikely(n <= 0)) {
 			if (errno != EINTR && errno != 0) {
 				log_error("udp: %s: failed: %d - %s\n",
-				          "socket_recvfrom()",
-				          errno, strerror(errno));
+					  "socket_recvfrom()",
+					  errno, strerror(errno));
 			}
 
 			if (!(handler->state & ServerRunning)) {
@@ -81,30 +81,30 @@ int udp_master(dthread_t *thread)
 		debug_net("udp: received %d bytes.\n", n);
 		size_t answer_size = SOCKET_MTU_SZ;
 		int res = ns_answer_request(ns, inbuf, n, outbuf,
-		                            &answer_size);
+					    &answer_size);
 
 		debug_net("udp: got answer of size %u.\n",
-		          (unsigned) answer_size);
+			  (unsigned) answer_size);
 
 		// Send answer
 		if (res == 0) {
 
 			assert(answer_size > 0);
 			debug_net("udp: answer wire format (size %u):\n",
-			          (unsigned) answer_size);
+				  (unsigned) answer_size);
 			debug_net_hex((const char *) outbuf, answer_size);
 
 			// Send datagram
 			for (;;) {
 				res = socket_sendto(sock, outbuf, answer_size,0,
-				                    (struct sockaddr *) &faddr,
-				                    (socklen_t) addrsize);
+						    (struct sockaddr *) &faddr,
+						    (socklen_t) addrsize);
 
 				// Check result
 				if (res != answer_size) {
 					log_error("udp: %s: failed: %d - %s.\n",
-					          "socket_sendto()",
-					          res, strerror(res));
+						  "socket_sendto()",
+						  res, strerror(res));
 					continue;
 				}
 
