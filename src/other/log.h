@@ -22,6 +22,7 @@
 #include <syslog.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdarg.h>
 
 /*! \brief Log facility types. */
 typedef enum {
@@ -152,6 +153,13 @@ int log_levels_add(int facility, logsrc_t src, uint8_t levels);
  */
 int log_msg(logsrc_t src, int level, const char *msg, ...)
     __attribute__((format(printf, 3, 4)));
+
+/*!
+ * \brief Log message for stdarg.
+ *
+ * \see log_msg
+ */
+int log_vmsg(logsrc_t src, int level, const char *msg, va_list ap);
 
 /* Convenient logging. */
 #define log_error(msg...)            log_msg(LOG_ANY, LOG_ERR, msg)
