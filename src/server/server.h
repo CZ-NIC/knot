@@ -124,7 +124,7 @@ int cute_remove_handler(cute_server *server, iohandler_t *ref);
  * \todo When a module for configuration is added, the filename parameter will
  *       be removed.
  */
-int cute_start(cute_server *server, char **filenames, uint zones);
+int cute_start(cute_server *server, const char **filenames, uint zones);
 
 /*!
  * \brief Waits for the server to finish.

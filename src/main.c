@@ -7,6 +7,7 @@
 #include "zoneparser.h"
 #include "process.h"
 #include "conf/conf.h"
+#include "conf/logconf.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -84,35 +85,43 @@ int main(int argc, char **argv)
 		}
 	}
 
+	// Initialize log
+	log_init();
+
+	// Check if there's at least one remaining non-option
+	int zfs_count = argc - optind;
+	const char **zfs = (const char**)argv + optind;
+
 	// Now check if we want to daemonize
 	if (daemonize) {
 		if (daemon(1, 0) != 0) {
-			log_init(0, LOG_MASK(LOG_ERR));
-			log_error("Daemonization failed, shutting down...\n");
+			log_server_error("Daemonization failed, shutting down...\n");
 			log_close();
 			return 1;
 		}
 	}
 
+	// Initialize configuration
+	conf_add_hook(conf(), log_conf_hook);
+
 	// Open configuration
-	if (config_open(config_fn) != 0) {
-		config_fn = 0;
-		fprintf(stderr, "Opening config file %s failed...\n", config_fn);
+	if (conf_open(config_fn) != 0) {
 		//! \todo Load default configuration.
+		if (zfs_count < 1) {
+			log_server_error("No zone files specified, "
+			                 "shutting down.\n");
+			log_close();
+			return 1;
+		}
 	}
 
-	// Open log
-	log_init();
-	if (config_get()) {
-		//! \todo Implement using config hooks.
-		log_conf_hook();
-	}
+	// Verbose mode
 	if (verbose) {
 		//! \todo Support for verbose mode.
 	}
 
 	// Save PID
-	char* pidfile = pid_filename();
+	const char* pidfile = pid_filename();
 	if (daemonize) {
 		int rc = pid_write(pidfile);
 		if (rc < 0) {
@@ -124,30 +133,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	// Check if there's at least one remaining non-option
-	int zfs_count = argc - optind;
-	char **zfs = argv + optind;
-	char *default_zf = 0;
-	if (argc - optind < 1) {
-		// Check file
-		default_zf = dnslib_zonedb_dbpath();
-		FILE* fp = fopen(default_zf, "r");
-		if (fp) {
-			log_info("Default zone database '%s'.\n",
-				 default_zf);
-			zfs_count = 1;
-			zfs = &default_zf;
-			fclose(fp);
-		} else {
-			log_error("No zonefile specified and "
-				  "the default database does not exist.\n");
-			log_info("Shutting down...\n");
-			pid_remove(pidfile);
-			log_close();
-			config_close();
-			return 1;
-		}
-	}
+
 
 	// Create server instance
 	s_server = cute_create();
@@ -182,11 +168,6 @@ int main(int argc, char **argv)
 			  "exiting...\n");
 	}
 
-	// Free default zone database
-	if (default_zf) {
-		free(default_zf);
-	}
-
 	// Stop server and close log
 	cute_destroy(&s_server);
 
@@ -198,11 +179,9 @@ int main(int argc, char **argv)
 			log_info("PID file safely removed.\n");
 		}
 	}
-	free(pidfile);
 
 	log_info("Shutting down...\n");
 	log_close();
-	config_close();
 
 	return res;
 }
