@@ -21,7 +21,6 @@
 #include "rrset.h"
 #include "node.h"
 #include "rdata.h"
-#include "rrsig.h"
 #include "zone.h"
 #include "slab.h"
 
