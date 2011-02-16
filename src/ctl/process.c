@@ -6,18 +6,15 @@
 
 #include "process.h"
 #include "log.h"
+#include "conf.h"
 
-char* pid_filename()
+const char* pid_filename()
 {
-	// Construct filename
-	const char* fn = "/cutedns.pid";
-	char* home = getenv("HOME");
-	int len = strlen(home) + strlen(fn) + 1;
-	char* ret = malloc(len);
-	memset(ret, 0, len);
-	strcpy(ret, home);
-	strcat(ret, fn);
-	return ret;
+	if (conf()) {
+		return conf()->pidfile;
+	}
+
+	return 0;
 }
 
 pid_t pid_read(const char* fn)

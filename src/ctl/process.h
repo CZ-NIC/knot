@@ -28,10 +28,8 @@ enum {
  *
  * \retval Filename of the database file.
  * \retval NULL if not exists.
- *
- * \todo Implement properly using configuration file.
  */
-char* pid_filename();
+const char* pid_filename();
 
 /*!
  * \brief Read PID from given file.
