@@ -121,7 +121,7 @@ dnslib_rrset_t *ns_synth_from_wildcard(const dnslib_rrset_t *wildcard_rrset,
 
 /*----------------------------------------------------------------------------*/
 
-static void ns_add_rrsigs(const dnslib_rrset_t *rrset, dnslib_response_t *resp,
+static int ns_add_rrsigs(const dnslib_rrset_t *rrset, dnslib_response_t *resp,
                           int (*add_rrset_to_resp)(dnslib_response_t *,
                                                    const dnslib_rrset_t *,
                                                    int, int),
@@ -129,10 +129,18 @@ static void ns_add_rrsigs(const dnslib_rrset_t *rrset, dnslib_response_t *resp,
 {
 	const dnslib_rrset_t *rrsigs;
 
+	debug_ns("Adding RRSIGs for RRSet, type: %s.\n",
+		 dnslib_rrtype_to_string(dnslib_rrset_type(rrset)));
+
+	assert(resp != NULL);
+	assert(add_rrset_to_resp != NULL);
+
 	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)
 	    && (rrsigs = dnslib_rrset_rrsigs(rrset)) != NULL) {
-		add_rrset_to_resp(resp, rrsigs, tc, 0);
+		return add_rrset_to_resp(resp, rrsigs, tc, 0);
 	}
+
+	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -216,20 +224,63 @@ DEBUG_NS(
 	debug_ns("Putting answers from node %s.\n", name_str);
 	free(name_str);
 );
-	if (type == DNSLIB_RRTYPE_ANY) {
-		// TODO
-	} else {
+
+	switch (type) {
+	case DNSLIB_RRTYPE_ANY: {
+		debug_ns("Returning all RRTYPES.\n");
+		const dnslib_rrset_t **rrsets = dnslib_node_rrsets(node);
+		if (rrsets == NULL) {
+			break;
+		}
+		int i = 0;
+		int ret = 0;
+		const dnslib_rrset_t *rrset;
+		while (i < dnslib_node_rrset_count(node)) {
+			assert(rrsets[i] != NULL);
+			rrset = rrsets[i];
+
+			debug_ns("  Type: %s\n",
+			     dnslib_rrtype_to_string(dnslib_rrset_type(rrset)));
+
+			ns_check_wildcard(name, resp, &rrset);
+			ret = dnslib_response_add_rrset_answer(resp, rrset, 1,
+			                                       0);
+			if (ret >= 0 && (added += 1)
+			    && (ret = ns_add_rrsigs(rrset, resp,
+			           dnslib_response_add_rrset_answer, 1)) >=0 ) {
+				added += 1;
+			} else {
+				free(rrsets);
+				break;
+			}
+
+			++i;
+		}
+		free(rrsets);
+		break;
+	}
+	case DNSLIB_RRTYPE_RRSIG: {
+
+		break;
+	}
+	default: {
+		int ret = 0;
 		const dnslib_rrset_t *rrset = dnslib_node_rrset(node, type);
 		if (rrset != NULL) {
 			debug_ns("Found RRSet of type %s\n",
 				 dnslib_rrtype_to_string(type));
 			ns_check_wildcard(name, resp, &rrset);
-			dnslib_response_add_rrset_answer(resp, rrset, 1, 0);
-			ns_add_rrsigs(rrset, resp,
-			              dnslib_response_add_rrset_answer, 1);
-			added = 1;
+			ret = dnslib_response_add_rrset_answer(resp, rrset, 1,
+			                                       0);
+			if (ret >= 0 && (added += 1)
+			    && (ret = ns_add_rrsigs(rrset, resp,
+			        dnslib_response_add_rrset_answer, 1)) > 0) {
+				added += 1;
+			}
 		}
+	    }
 	}
+
 	dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
 	return added;
 }
@@ -779,7 +830,8 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database)
 	if (EDNS_ENABLED) {
 		ns->opt_rr = dnslib_edns_new();
 		if (ns->opt_rr == NULL) {
-			log_error("Error while preparing OPT RR of the server.\n");
+			log_error("Error while preparing OPT RR of the"
+			          " server.\n");
 			dnslib_response_free(&err);
 			free(ns);
 			return NULL;
@@ -877,6 +929,9 @@ void ns_destroy(ns_nameserver **nameserver)
 {
 	// do nothing with the zone database!
 	free((*nameserver)->err_response);
+	if ((*nameserver)->opt_rr != NULL) {
+		dnslib_edns_free(&(*nameserver)->opt_rr);
+	}
 	free(*nameserver);
 	*nameserver = NULL;
 }
