@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 
 #include "debug.h"
 #include "server.h"
@@ -209,9 +210,18 @@ int cute_load_zone(cute_server *server, const char *origin, const char *db)
 			}
 		}
 		if (!zone) {
-			log_server_error("Could not load database '%s' "
-			                 "for zone '%s'\n",
-			                 db, origin);
+			struct stat st;
+			if (stat(db, &st) != 0) {
+				log_server_error(
+				        "Database file '%s' not exists.\n",
+				        db);
+				log_server_error(
+				        "Please recompile zone databases.\n");
+			} else {
+				log_server_error("Could not load database '%s' "
+				                 "for zone '%s'\n",
+				                 db, origin);
+			}
 			return -1;
 		}
 	} else {

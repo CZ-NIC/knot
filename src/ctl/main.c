@@ -30,7 +30,7 @@ void help(int argc, char **argv)
 	       " reload  [zone]  Reload %s configuration and zone files.\n"
 	       " running         Check if server is running.\n"
 	       "\n"
-	       " compile         Compile zone file.\n"
+	       " compile         Compile zone file.\n",
 	       PROJECT_NAME, PROJECT_NAME, PROJECT_NAME, PROJECT_NAME);
 }
 

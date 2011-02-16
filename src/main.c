@@ -153,19 +153,19 @@ int main(int argc, char **argv)
 		sigaction(SIGALRM, &sa, NULL); // Interrupt
 
 		// Change directory if daemonized
-		log_info("Server started.\n");
+		log_server_info("Server started.\n");
 		if (daemonize) {
-			log_info("Server running as daemon.\n");
+			log_server_info("Server running as daemon.\n");
 			res = chdir("/");
 		}
 
 		if ((res = cute_wait(s_server)) != 0) {
-			log_error("There was an error while waiting for server"
-				  " to finish.\n");
+			log_server_error("An error occured while "
+			                 "waiting for server to finish.\n");
 		}
 	} else {
-		log_error("There was an error while starting the server, "
-			  "exiting...\n");
+		log_server_error("An error occured while "
+		                 "starting the server.\n");
 	}
 
 	// Stop server and close log
@@ -174,13 +174,13 @@ int main(int argc, char **argv)
 	// Remove PID file if daemonized
 	if (daemonize) {
 		if (pid_remove(pidfile) < 0) {
-			log_warning("Failed to remove PID file.\n");
+			log_server_warning("Failed to remove PID file.\n");
 		} else {
-			log_info("PID file safely removed.\n");
+			log_server_info("PID file safely removed.\n");
 		}
 	}
 
-	log_info("Shutting down...\n");
+	log_server_info("Shut down.\n");
 	log_close();
 
 	return res;
