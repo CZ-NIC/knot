@@ -32,11 +32,11 @@ static int conf_tests_run(int argc, char *argv[])
 
 	// Test 1: Allocate new config
 	const char *config_fn = "rc:/sample_conf";
-	config_t *conf = config_new(config_fn);
+	conf_t *conf = conf_new(config_fn);
 	ok(conf != 0, "config_new()");
 
 	// Test 2: Parse config
-	int ret = config_parse_str(conf, sample_conf_rc);
+	int ret = conf_parse_str(conf, sample_conf_rc);
 	ok(ret == 0, "parsing configuration file %s", config_fn);
 	skip(ret != 0, conf_tests_count(argc, argv) - 2);
 	{
@@ -102,7 +102,7 @@ static int conf_tests_run(int argc, char *argv[])
 	endskip;
 
 	// Deallocating config
-	config_free(conf);
+	conf_free(conf);
 
 	return 0;
 }
