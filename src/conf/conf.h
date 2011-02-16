@@ -20,7 +20,6 @@
 
 /* Constants. */
 #define CONFIG_DEFAULT_PORT 53
-#define CONFIG_DEFAULT_PATH "/etc/cutedns/cutedns.conf" //!< Default config path
 
 /*!
  * \brief Configuration for the interface
@@ -36,7 +35,6 @@ typedef struct {
 	char *name;
 	char *address;         /*!< IP (IPv4/v6) address for this interface */
 	int   port;            /*!< Port number for this interface */
-	struct sockaddr *sa;   /*!< */
 } conf_iface_t;
 
 /*!
@@ -123,7 +121,6 @@ typedef struct {
  */
 typedef struct conf_t {
 	char *filename; /*!< Name of the config file. */
-
 	char *identity; /*!< Identity to return on CH TXT id.server. */
 
 	/*!
@@ -164,6 +161,7 @@ void conf_truncate(conf_t *conf, int unload_hooks);
 void conf_free(conf_t *conf);
 
 /* Singleton configuration API. */
+char* conf_find_default();
 int conf_open(const char* path);
 extern conf_t *s_config; // Imported singleton
 static inline conf_t* conf() {
