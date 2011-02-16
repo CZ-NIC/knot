@@ -138,6 +138,8 @@ void dnslib_node_dump(dnslib_node_t *node, void *data)
 		printf("none\n");
 	}
 
+	printf("RRSet count: %d\n", node->rrset_count);
+
 	dnslib_rrset_t *tmp = (dnslib_rrset_t *)skip_node->value;
 
 	dnslib_rrset_dump(tmp, loaded_zone);
