@@ -50,8 +50,6 @@ src/dnslib/descriptor.h
 src/dnslib/descriptor.c
 src/dnslib/zone.h
 src/dnslib/zone.c
-src/dnslib/rrsig.h
-src/dnslib/rrsig.c
 src/dnslib/response.h
 src/dnslib/packet.h
 src/dnslib/response.c
@@ -101,7 +99,6 @@ src/tests/dnslib/dnslib_dname_tests.c
 src/tests/dnslib/dnslib_edns_tests.c
 src/tests/dnslib/dnslib_rdata_tests.c
 src/tests/dnslib/dnslib_rrset_tests.c
-src/tests/dnslib/dnslib_rrsig_set_tests.c
 src/tests/dnslib/dnslib_node_tests.c
 src/tests/dnslib/dnslib_response_tests.c
 src/tests/dnslib/dnslib_rrsig_set_tests.c

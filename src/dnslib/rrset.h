@@ -17,7 +17,6 @@
 #include "dname.h"
 #include "rdata.h"
 #include "common.h"
-#include "rrsig.h"
 
 /*----------------------------------------------------------------------------*/
 /*!
