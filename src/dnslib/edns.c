@@ -22,6 +22,10 @@ dnslib_opt_rr_t *dnslib_edns_new()
 	opt_rr->option_count = 0;
 	opt_rr->options_max = 0;
 
+	opt_rr->ext_rcode = 0;
+	opt_rr->flags = 0;
+	opt_rr->version = 0;
+
 	return opt_rr;
 }
 
