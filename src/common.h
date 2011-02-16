@@ -42,6 +42,7 @@ typedef unsigned int uint;
 /* Common includes.
  */
 
+#include "latency.h"
 #include "print.h"
 #include "log.h"
 #include "debug.h"

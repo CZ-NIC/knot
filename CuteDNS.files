@@ -14,6 +14,8 @@ src/other/print.h
 src/other/log.h
 src/other/log.c
 src/other/debug.h
+src/other/latency.c
+src/other/latency.h
 src/server/socket.c
 src/server/socket.h
 src/server/name-server.c
