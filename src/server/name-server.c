@@ -805,10 +805,13 @@ static int ns_response_to_wire(dnslib_response_t *resp, uint8_t *wire,
 		return -1;
 	}
 
-	assert(rsize <= *wire_size);
+	if (rsize > *wire_size) {
+		return -1;
+	}
+
 	memcpy(wire, rwire, rsize);
 	*wire_size = rsize;
-	free(rwire);
+	//free(rwire);
 
 	return 0;
 }
@@ -835,12 +838,13 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database)
 	debug_ns("Created default empty response...\n");
 
 	dnslib_response_set_rcode(err, DNSLIB_RCODE_SERVFAIL);
-	ns->err_response = NULL;
 	ns->err_resp_size = 0;
 
 	debug_ns("Converting default empty response to wire format...\n");
 
-	if (dnslib_response_to_wire(err, &ns->err_response, &ns->err_resp_size)
+	uint8_t *error_wire = NULL;
+
+	if (dnslib_response_to_wire(err, &error_wire, &ns->err_resp_size)
 	    != 0) {
 		log_error("Error while converting default error response to "
 		          "wire format \n");
@@ -848,6 +852,17 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database)
 		free(ns);
 		return NULL;
 	}
+
+	ns->err_response = (uint8_t *)malloc(ns->err_resp_size);
+	if (ns->err_response == NULL) {
+		log_error("Error while converting default error response to "
+		          "wire format \n");
+		dnslib_response_free(&err);
+		free(ns);
+		return NULL;
+	}
+
+	memcpy(ns->err_response, error_wire, ns->err_resp_size);
 
 	debug_ns("Done..\n");
 

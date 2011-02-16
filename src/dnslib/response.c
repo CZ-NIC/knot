@@ -1367,6 +1367,11 @@ void dnslib_response_free(dnslib_response_t **response)
 	// check if some additional space was allocated for the response
 	debug_dnslib_response("Freeing additional allocated space...\n");
 	dnslib_response_free_allocated_space(*response);
+
+	// free the space for wireformat
+	assert((*response)->wireformat != NULL);
+	free((*response)->wireformat);
+
 	debug_dnslib_response("Freeing response structure\n");
 	free(*response);
 	*response = NULL;
