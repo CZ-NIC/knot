@@ -91,9 +91,8 @@ typedef struct {
 	node n;             /*!< */
 	char *name;         /*!< Zone name. */
 	conf_class_t cls;   /*!< Zone class (IN or CH). */
-
-	/*! Path to a zone file. */
-	char *file;
+	char *file; /*!< Path to a zone file. */
+	char *db;   /*!< Path to a database file. */
 } conf_zone_t;
 
 /*!
@@ -122,7 +121,7 @@ typedef struct {
  *
  * \todo More documentation.
  */
-typedef struct config_t {
+typedef struct conf_t {
 	char *filename; /*!< Name of the config file. */
 
 	char *identity; /*!< Identity to return on CH TXT id.server. */
@@ -133,28 +132,43 @@ typedef struct config_t {
 	char *version;
 
 	char *storage; /*!< Persistent storage path for pidfile, databases etc. */
+	char *pidfile; /*!< PID file path. */
 
 	conf_key_t key; /*!< Server TSIG key. */
 
 	int logs_count; /*!< Count of logging facilities. */
+	int ifaces_count; /*!< Count of interfaces. */
+	int zones_count; /*!< Count of zones. */
+	int hooks_count; /*!< Count of config hooks. */
+
 	list logs; /*!< List of logging facilites. */
 	list ifaces; /*!< List of interfaces. */
 	list zones; /*!< List of zones. */
-} config_t;
+	list hooks; /*!< List of config hooks. */
+} conf_t;
+
+/*!
+ * \brief Config hook prototype.
+ */
+typedef struct {
+	node n;
+	int (*update)(const conf_t*); /*! Function executed on config load. */
+} conf_hook_t;
 
 /* Specific configuration API. */
-config_t *config_new(const char* path);
-int config_parse(config_t *conf);
-int config_parse_str(config_t *conf, const char* src);
-void config_free(config_t *conf);
+conf_t *conf_new(const char* path);
+int conf_add_hook(conf_t * conf, int (*on_update)(const conf_t*));
+int conf_parse(conf_t *conf);
+int conf_parse_str(conf_t *conf, const char* src);
+void conf_truncate(conf_t *conf, int unload_hooks);
+void conf_free(conf_t *conf);
 
 /* Singleton configuration API. */
-int config_open(const char* path);
-const config_t* config_get();
-int config_close();
-
-/* Modules. */
-#include "logconf.h"
+int conf_open(const char* path);
+extern conf_t *s_config; // Imported singleton
+static inline conf_t* conf() {
+	return s_config; // Inline for performance reasons.
+}
 
 #endif /* _CUTEDNS_CONF_H_ */
 

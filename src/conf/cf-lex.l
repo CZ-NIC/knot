@@ -110,14 +110,9 @@ hmac-sha512     { cf_lval.alg = HMAC_SHA512; return TSIG_ALGO_NAME; }
 
 ["][^"\n]*\n    cf_error("Unterminated string.");
 
-{ALNUM}+ {
+[a-zA-Z0-9\.]+ {
   cf_lval.t = strdup(yytext);
   return TEXT /* Last resort, alphanumeric word. */;
-}
-
-[a-zA-Z0-9\.]+  {
-  cf_lval.t = strdup(yytext);
-  return ZONE;
 }
 
 <<EOF>> return END;
