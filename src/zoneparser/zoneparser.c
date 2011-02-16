@@ -33,7 +33,6 @@
 #include "dnslib/rdata.h"
 #include "dnslib/node.h"
 #include "dnslib/zone.h"
-#include "dnslib/rrsig.h"
 #include "dnslib/descriptor.h"
 #include "dnslib/debug.h"
 #include "parser-util.h"
