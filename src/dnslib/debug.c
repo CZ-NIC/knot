@@ -67,8 +67,10 @@ void dnslib_rrset_dump(dnslib_rrset_t *rrset, char loaded_zone)
 	printf("  class: %d\n", rrset->rclass);
 	printf("  ttl: %d\n", rrset->ttl);
 
-	printf("  RRSIGs:\n");
-	dnslib_rrset_dump(rrset->rrsigs, loaded_zone);
+	if (rrset->rrsigs != NULL) {
+		printf("  RRSIGs:\n");
+		dnslib_rrset_dump(rrset->rrsigs, loaded_zone);
+	}
 
 	if (rrset->rdata == NULL) {
 		printf("  NO RDATA!\n");
