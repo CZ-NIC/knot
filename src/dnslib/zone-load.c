@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include "zone-load.h"
 #include "dnslib/dnslib.h"
@@ -455,7 +456,16 @@ int dnslib_check_magic(FILE *f, const uint8_t* MAGIC, uint MAGIC_LENGTH)
 
 dnslib_zone_t *dnslib_zload_load(const char *filename)
 {
+	if (unlikely(!filename)) {
+		errno = ENOENT; // No such file or directory (POSIX.1)
+		return 0;
+	}
+
 	FILE *f = fopen(filename, "rb");
+	if (unlikely(!f)) {
+		errno = ENOENT; // No such file or directory (POSIX.1)
+		return 0;
+	}
 
 	dnslib_node_t *tmp_node;
 
@@ -469,9 +479,8 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 	                                           /*c   u    t    e   0.1*/
 
 	if (!dnslib_check_magic(f, MAGIC, MAGIC_LENGTH)) {
-		log_error("!! compiled zone file '%s' has unknown format\n",
-		          filename);
 		fclose(f);
+		errno = EILSEQ; // Illegal byte sequence (POSIX.1, C99)
 		return 0;
 	}
 
