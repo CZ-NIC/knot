@@ -100,6 +100,11 @@ void dnslib_node_dump(dnslib_node_t *node, void *data)
 	printf("labels: ");
 	hex_print((char *)node->owner->labels, node->owner->label_count);
 	printf("node/id: %p\n", node->owner->node);
+	if (loaded_zone) {
+		char *prev_name = dnslib_dname_to_str(node->prev->owner);
+		printf("previous node: %s\n", prev_name);
+		free(prev_name);
+	}
 
 	if (dnslib_node_is_deleg_point(node)) {
 		printf("delegation point\n");
