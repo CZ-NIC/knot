@@ -518,9 +518,13 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 
 	apex->prev = NULL;
 
-	dnslib_node_t *last_node = apex;
+        dnslib_node_t *last_node;
 
-	/* \note This assumes that apex node is not empty */
+        if (dnslib_node_get_rrset(apex, DNSLIB_RRTYPE_NSEC) != NULL) {
+                last_node = apex;
+        } else {
+                last_node = NULL;
+        }
 
 	for (uint i = 1; i < node_count; i++) {
 		tmp_node = dnslib_load_node(f);
@@ -535,9 +539,11 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 
 			tmp_node->prev = last_node;
 
-			if (skip_first(tmp_node->rrsets) != NULL) {
-				last_node = tmp_node;
-			}
+                        if (skip_first(tmp_node->rrsets) != NULL &&
+                            dnslib_node_get_rrset(tmp_node,
+                                                  DNSLIB_RRTYPE_NSEC) != NULL) {
+                                last_node = tmp_node;
+                        }
 
 		} else {
 			log_error("!! node error (in %s)\n", filename);
@@ -552,7 +558,7 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 
 	debug_zp("loading %u nsec3 nodes\n", nsec3_node_count);
 
-	dnslib_node_t *nsec3_first = NULL;
+        dnslib_node_t *nsec3_first = NULL;
 
 	for (uint i = 0; i < nsec3_node_count; i++) {
 		tmp_node = dnslib_load_node(f);
@@ -569,15 +575,15 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 				find_and_set_wildcard_child(zone,
 				                            tmp_node,
 				                            1);
-			}
+                        }
+
+                        if (skip_first(tmp_node->rrsets) != NULL) {
+                                last_node = tmp_node;
+                        }
 
 			tmp_node->prev = last_node;
 
-                        if (skip_first(tmp_node->rrsets) != NULL &&
-                            dnslib_node_get_rrset(tmp_node,
-                                                  DNSLIB_RRTYPE_NSEC) != NULL) {
-				last_node = tmp_node;
-			}
+
 
 		} else {
 			log_error("!! node error (in %s)\n", filename);
