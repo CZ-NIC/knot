@@ -1,17 +1,18 @@
 $TTL 1h                  ; The default expiration time of a resource record without its own TTL value
-example.com.  IN  SOA  ns.example.com. username.example.com. (
-              2007120710 ; serial number of this zone file
+$ORIGIN example.com.
+@  IN  SOA  ns.example.com. username.example.com. (
+              2007120711 ; serial number of this zone file
               1d         ; slave refresh (1 day)
               1d         ; slave retry time in case of a problem (1 day)
               4w         ; slave expiration time (4 weeks)
               1h         ; minimum caching time in case of failed lookups (1 hour)
               )
-example.com.  NS    ns                    ; ns.example.com is the nameserver for example.com
-example.com.  NS    ns.somewhere.com.     ; ns.somewhere.com is a backup nameserver for example.com
-example.com.  MX    10 mail.example.com.  ; mail.example.com is the mailserver for example.com
-@             MX    20 mail2.example.com. ; Similar to above line, but using "@" to say "use $ORIGIN"
-@             MX    50 mail3              ; Similar to above line, but using a host within this domain
-example.com.  A     10.0.0.1              ; ip address for "example.com"
+  NS    ns                    ; ns.example.com is the nameserver for example.com
+  NS    ns.somewhere.com.     ; ns.somewhere.com is a backup nameserver for example.com
+  MX    10 mail.example.com.  ; mail.example.com is the mailserver for example.com
+             MX    20 mail2.example.com. ; Similar to above line, but using "@" to say "use $ORIGIN"
+             MX    50 mail3              ; Similar to above line, but using a host within this domain
+  A     10.0.0.1              ; ip address for "example.com"
 ns            A     10.0.0.2              ; ip address for "ns.example.com". Since there is no "." after ns, $ORIGIN is attached
 www           CNAME ns                    ; "www.example.com" is an alias for "ns.example.com"
 wwwtest	CNAME www                   ; "wwwtest.example.com" is another alias for "www.example.com"
@@ -23,9 +24,9 @@ a	A	10.0.0.4
 *.a	A	10.0.0.5
 
 c	CNAME	c.a.example.com.
-example.com.	NS	ns2
-ns2	CNAME	mail
-example.com.	NS	c.a.example.com.
+@	NS	ns2
+ns2	A	10.0.0.6
+@	NS	c.a.example.com.
 
 sub2	NS	ns.sub2.example.com.
 *.sub2	A	10.2.0.1
@@ -47,18 +48,18 @@ new-fast-box     A   172.30.79.13
 sub3	NS	ns.sub2.example.com.
 sub4	NS	ns.example.com.
 
-d.example.com.	CNAME	non-existing.example.com.
-e.example.com.	DNAME	bogus25.com.
-f.example.com.	CNAME	e.example.com.
-g.example.com.	CNAME	www.bogus25.com.
+d	CNAME	non-existing.example.com.
+e	DNAME	bogus25.com.
+f	CNAME	e.example.com.
+g	CNAME	www.bogus25.com.
 
 f.g	A	10.0.0.20
 h.i.j.k	A	10.0.0.21
 *.j.k	A	10.0.0.22
 
 sub5	CNAME	sub3
-*.l.example.com.	CNAME	c.example.com.
-*.m.example.com.	NS	ns.sub2.example.com.
-*.n.example.com.	DNAME	bogus25.com.
-o.example.com.	CNAME	a.e.example.com.
-p.example.com.	CNAME	a.sub.example.com.
+*.l	CNAME	c.example.com.
+;*.m	NS	ns.sub2.example.com.
+*.n	DNAME	bogus25.com.
+o	CNAME	a.e.example.com.
+p	CNAME	a.sub.example.com.
