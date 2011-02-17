@@ -476,6 +476,22 @@ static inline void ns_referral(const dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
+static void ns_put_nsec_nodata(const dnslib_node_t *node,
+                               dnslib_response_t *resp)
+{
+	const dnslib_rrset_t *rrset = NULL;
+	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)
+	    && (rrset = dnslib_node_rrset(node, DNSLIB_RRTYPE_NSEC)) != NULL) {
+		dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+		// add RRSIG for the RRSet
+		if ((rrset = dnslib_rrset_rrsigs(rrset)) != NULL) {
+			dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+		}
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 static void ns_answer_from_node(const dnslib_node_t *node,
                                 const dnslib_zone_t *zone,
                                 const dnslib_dname_t *qname, uint16_t qtype,
@@ -486,6 +502,7 @@ static void ns_answer_from_node(const dnslib_node_t *node,
 
 	if (answers == 0) {  // if NODATA response, put SOA
 		ns_put_authority_soa(zone, resp);
+		ns_put_nsec_nodata(node, resp);
 	} else {  // else put authority NS
 		ns_put_authority_ns(zone, resp);
 	}
