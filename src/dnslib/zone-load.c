@@ -573,7 +573,9 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 
 			tmp_node->prev = last_node;
 
-			if (skip_first(tmp_node->rrsets) != NULL) {
+                        if (skip_first(tmp_node->rrsets) != NULL &&
+                            dnslib_node_get_rrset(tmp_node,
+                                                  DNSLIB_RRTYPE_NSEC) != NULL) {
 				last_node = tmp_node;
 			}
 
