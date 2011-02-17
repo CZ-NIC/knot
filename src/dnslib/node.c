@@ -135,6 +135,16 @@ void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent)
 	node->parent = parent;
 }
 
+const dnslib_node_t *dnslib_node_previous(const dnslib_node_t *node)
+{
+	return node->prev;
+}
+
+void dnslib_node_set_previous(dnslib_node_t *node, dnslib_node_t *prev)
+{
+	node->prev = prev;
+}
+
 const dnslib_dname_t *dnslib_node_owner(const dnslib_node_t *node)
 {
 	return node->owner;

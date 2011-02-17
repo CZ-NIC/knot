@@ -41,6 +41,8 @@ struct dnslib_node {
 
 	struct dnslib_node *wildcard_child;
 
+	struct dnslib_node *prev;
+
 	/*!
 	 * \brief Various flags.
 	 *
@@ -121,6 +123,10 @@ const dnslib_node_t *dnslib_node_parent(const dnslib_node_t *node);
  * \param parent Parent to set to the node.
  */
 void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent);
+
+const dnslib_node_t *dnslib_node_previous(const dnslib_node_t *node);
+
+void dnslib_node_set_previous(dnslib_node_t *node, dnslib_node_t *prev);
 
 /*!
  * \brief Returns the owner of the node.
