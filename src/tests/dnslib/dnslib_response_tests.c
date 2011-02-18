@@ -805,12 +805,16 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
          * represented as rr_list ... */
 
         ldns_rr *rr = ldns_rr_list_pop_rr(rr_set);
-        ldns_rr_list_push_rr(rr_set, rr);
+//        ldns_rr_list_push_rr(rr_set, rr);
 
         /* compare headers */
 
         if (rrset->owner->size != ldns_rdf_size(ldns_rr_owner(rr))) {
                 diag("Owner names differ in length");
+                diag("ldns: %d, dnslib: %d", ldns_rdf_size(ldns_rr_owner(rr)),
+                     rrset->owner->size);
+                diag("%s", dnslib_dname_to_str(rrset->owner));
+                diag("%s", ldns_rdf_data(ldns_rr_owner(rr)));
                 return 1;
         }
 
@@ -820,6 +824,7 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
                 diag("Owner wireformats differ");
                 return 1;
         }
+
         return 0;
 }
 
@@ -828,18 +833,31 @@ static int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
 {
         int errors = 0;
 
-        for (int i = 0; i < count; i++) {
+        ldns_rr_list_sort(rrlist);
+
+        ldns_rr_list *rr_set = NULL;
+
+        for (int i = count - 1; i > -1; i--) {
+
+                rr_set = ldns_rr_list_pop_rrset(rrlist);
+
+                if (rr_set == NULL) {
+                        diag("ldns rrset contains no data (%d)", i);
+                        return 0;
+                }
+
                 if (compare_rrset_w_ldns_rrset(rrsets[i],
-                                        ldns_rr_list_pop_rrset(rrlist))) {
+                                        rr_set) != 0) {
                         errors++;
                 }
-	}
+        }
 
         return errors;
 }
 
-/* \note this is not actually compare, it just returns 1 everytime anything is
+/* \note this is not actuall compare, it just returns 1 everytime anything is
  * different.
+ * \todo well, call it "check" then
  */
 static int compare_response_w_ldns_packet(dnslib_response_t *response,
 					  ldns_pkt *packet)
@@ -882,13 +900,15 @@ static int compare_response_w_ldns_packet(dnslib_response_t *response,
 					 response->header.ancount) != 0) {
 		diag("Answer rrsets wrongly converted");
 		return 1;
-	}
+        }
+
 	if (compare_rrsets_w_ldns_rrlist(response->authority,
 					 ldns_pkt_authority(packet),
 					 response->header.nscount) != 0) {
 		diag("Authority rrsets wrongly converted");
 		return 1;
-	}
+        }
+
 	if (compare_rrsets_w_ldns_rrlist(response->additional,
 					 ldns_pkt_additional(packet),
 					 response->header.arcount) != 0) {
