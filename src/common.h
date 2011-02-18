@@ -38,6 +38,7 @@ typedef unsigned int uint;
 #define MEM_COLORING       // Slab cache coloring
 
 //#define USE_HASH_TABLE
+#define TEST_WITH_LDNS
 
 /* Common includes.
  */
