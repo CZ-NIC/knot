@@ -810,18 +810,33 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
         /* compare headers */
 
         if (rrset->owner->size != ldns_rdf_size(ldns_rr_owner(rr))) {
-                diag("Owner names differ in length");
+                diag("RRSet owner names differ in length");
                 diag("ldns: %d, dnslib: %d", ldns_rdf_size(ldns_rr_owner(rr)),
                      rrset->owner->size);
-                diag("%s", dnslib_dname_to_str(rrset->owner));
-                diag("%s", ldns_rdf_data(ldns_rr_owner(rr)));
+//                diag("%s", dnslib_dname_to_str(rrset->owner));
+//                diag("%s", ldns_rdf_data(ldns_rr_owner(rr)));
                 return 1;
         }
 
         if (compare_wires_simple(rrset->owner->name,
                                  ldns_rdf_data(ldns_rr_owner(rr)),
                                  rrset->owner->size) != 0) {
-                diag("Owner wireformats differ");
+                diag("RRSet owner wireformats differ");
+                return 1;
+        }
+
+        if (rrset->type != ldns_rr_get_type(rr)) {
+                diag("RRset types differ");
+                return 1;
+        }
+
+        if (rrset->rclass != ldns_rr_get_class(rr)) {
+                diag("RRset classes differ");
+                return 1;
+        }
+
+        if (rrset->ttl != ldns_rr_ttl(rr)) {
+                diag("RRset TTLs differ");
                 return 1;
         }
 
