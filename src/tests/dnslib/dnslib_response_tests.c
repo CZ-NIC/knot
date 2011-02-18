@@ -788,20 +788,54 @@ static int compare_wires(uint8_t *wire1, uint8_t *wire2, uint size)
 }
 
 #ifdef TEST_WITH_LDNS
-static int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
-				   ldns_rr *rr)
+/* count1 == count2 */
+static int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
 {
-	return 0;
+        int i = 0;
+        while (i < count &&
+               wire1[i] == wire2[i]) {
+                i++;
+        }
+        return (!(count == i));
+}
+static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
+                                      ldns_rr_list *rr_set)
+{
+        /* We should have only one rrset from ldns, although it is
+         * represented as rr_list ... */
+
+        ldns_rr *rr = ldns_rr_list_pop_rr(rr_set);
+        ldns_rr_list_push_rr(rr_set, rr);
+
+        /* compare headers */
+
+        if (rrset->owner->size != ldns_rdf_size(ldns_rr_owner(rr))) {
+                diag("Owner names differ in length");
+                return 1;
+        }
+
+        if (compare_wires_simple(rrset->owner->name,
+                                 ldns_rdf_data(ldns_rr_owner(rr)),
+                                 rrset->owner->size) != 0) {
+                diag("Owner wireformats differ");
+                return 1;
+        }
+        return 0;
 }
 
 static int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
-				    ldns_rr_list *rrlist, uint count)
+                                        ldns_rr_list *rrlist, uint count)
 {
-	for (int i = 0; i < count; i++) {
-		compare_rrset_w_ldns_rr(rrsets[i], rrlist->_rrs[i]);
+        int errors = 0;
+
+        for (int i = 0; i < count; i++) {
+                if (compare_rrset_w_ldns_rrset(rrsets[i],
+                                        ldns_rr_list_pop_rrset(rrlist))) {
+                        errors++;
+                }
 	}
 
-	return 0;
+        return errors;
 }
 
 /* \note this is not actually compare, it just returns 1 everytime anything is
@@ -832,8 +866,8 @@ static int compare_response_w_ldns_packet(dnslib_response_t *response,
 	}
 
 	if (dnslib_response_additional_rrset_count(response) !=
-	    ldns_pkt_ancount(packet)) {
-		diag("Additional RRSet count wrongly converted");
+            ldns_pkt_arcount(packet)) {
+                diag("Additional RRSet count wrongly converted");
 		return 1;
 	}
 
