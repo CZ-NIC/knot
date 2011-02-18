@@ -1477,10 +1477,11 @@ int process_rr(void)
 
 	/* Do we have the zone already? */
 	if (!zone) {
-		assert(parser->origin);
+                assert(parser->origin);
 
-		if (dnslib_dname_compare(parser->origin->owner,
-					 current_rrset->owner) == 0) {
+                if (dnslib_dname_compare(parser->origin->owner,
+                                         current_rrset->owner) == 0 &&
+                    parser->origin->owner != current_rrset->owner) {
 
 			dnslib_dname_free(&parser->origin->owner);
 			parser->origin->owner = current_rrset->owner;
@@ -1489,7 +1490,7 @@ int process_rr(void)
 		zone = dnslib_zone_new(parser->origin, 0);
 
 		parser->current_zone = zone;
-	}
+        }
 
 	if (current_rrset->type == DNSLIB_RRTYPE_RRSIG) {
 		dnslib_rrset_t *tmp_rrsig =
@@ -1519,7 +1520,7 @@ int process_rr(void)
 			}
 		}
 
-		rrset_list_add(&parser->node_rrsigs, tmp_rrsig);
+                rrset_list_add(&parser->node_rrsigs, tmp_rrsig);
 
 		return 0;
 	}
@@ -1539,7 +1540,8 @@ int process_rr(void)
 
 		rrset_list_delete(&parser->node_rrsigs);
 
-		/* new node */
+                /* new node */
+                /* not a new node !!! */
 		node = node_get_func(zone, current_rrset->owner);
 	}
 
@@ -1553,16 +1555,21 @@ int process_rr(void)
 					node_get_func)) == NULL) {
 			return -1;
 		}
-	} else {
-		if (current_rrset->owner != node->owner) {
+        } else {
+                /* TODO I bet this can be simplified a lot */
+                if (current_rrset->owner != node->owner) {
 			if (parser->last_node &&
-			    parser->last_node->owner != current_rrset->owner) {
-				dnslib_dname_free(&(current_rrset->owner));
+                            parser->last_node->owner != current_rrset->owner &&
+                            dnslib_dname_compare(parser->last_node->owner,
+                                                 current_rrset->owner) != 0) {
+                                /* This last case in if is weird - it should
+                                 * never happen, but it does, occasionally */
+                                dnslib_dname_free(&(current_rrset->owner));
 			}
 			current_rrset->owner = node->owner;
 		}
-		assert(current_rrset->owner == node->owner);
-	}
+                assert(current_rrset->owner == node->owner);
+        }
 
 	if (node->owner->node == NULL) {
 		node->owner->node = (dnslib_node_t *)parser->id;
@@ -1712,13 +1719,13 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 
 	dnslib_zone_adjust_dnames(parser->current_zone);
 
-	dnslib_zone_dump(parser->current_zone, 0);
-
 	debug_zp("rdata adjusted\n");
 
 	dnslib_zdump_binary(parser->current_zone, outfile);
 
-	dnslib_zone_deep_free(&(parser->current_zone));
+        dnslib_zone_deep_free(&(parser->current_zone));
+
+//	dnslib_zone_dump(dnslib_zload_load(outfile), 1);
 
 	return totalerrors;
 }

@@ -268,7 +268,7 @@ abs_dname:	'.'
     }
     |	'@'
     {
-	    $$ = parser->origin->owner;
+            $$ = parser->origin->owner;
     }
     |	rel_dname '.'
     {
