@@ -60,15 +60,19 @@ void dnslib_rrset_dump(dnslib_rrset_t *rrset, char loaded_zone)
 #if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_RRSET_DEBUG)
 	printf("  ------- RRSET -------\n");
 	printf("  %p\n", rrset);
-	char *name = dnslib_dname_to_str(rrset->owner);
-	printf("  owner: %s\n", name);
-	free(name);
+        char *name = dnslib_dname_to_str(rrset->owner);
+        printf("  owner: %s\n", name);
+        free(name);
 	printf("  type: %s\n", dnslib_rrtype_to_string(rrset->type));
 	printf("  class: %d\n", rrset->rclass);
 	printf("  ttl: %d\n", rrset->ttl);
 
-	printf("  RRSIGs:\n");
-	dnslib_rrset_dump(rrset->rrsigs, loaded_zone);
+        printf("  RRSIGs:\n");
+        if (rrset->rrsigs != NULL) {
+                dnslib_rrset_dump(rrset->rrsigs, loaded_zone);
+        } else {
+                printf("  none\n");
+        }
 
 	if (rrset->rdata == NULL) {
 		printf("  NO RDATA!\n");
