@@ -798,14 +798,61 @@ static int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
         }
         return (!(count == i));
 }
+
+/* compares only one rdata */
+static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
+			    uint16_t type)
+{
+	dnslib_rrtype_descriptor_t *desc =
+		dnslib_rrtype_descriptor_by_type(type);
+	for (int i = 0; i < rdata->count; i++) {
+		/* check for ldns "descriptors" as well */
+
+		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+		    desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME ||
+		    desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME) {
+			if (rdata->items[i].dname->size !=
+			    ldns_rdf_size(ldns_rr_rdf(rr, i))) {
+				diag("%s", rdata->items[i].dname->name);
+				diag("%s", ldns_rdf_data(ldns_rr_rdf(rr, i)));
+				diag("Dname sizes in rdata differ");
+				return 1;
+			}
+			if (compare_wires_simple(rdata->items[i].dname->name,
+				ldns_rdf_data(ldns_rr_rdf(rr, i)),
+				rdata->items[i].dname->size) != 0) {
+				diag("Dname wires in rdata differ");
+				return 1;
+			}
+		} else {
+			if (rdata->items[i].raw_data[0] !=
+			    ldns_rdf_size(ldns_rr_rdf(rr, i))) {
+				diag("Raw data sizes in rdata differ");
+				return 1;
+			}
+			if (compare_wires_simple((uint8_t *)
+				rdata->items[i].raw_data,
+				ldns_rdf_data(ldns_rr_rdf(rr, i)),
+				rdata->items[i].raw_data[0]) != 0) {
+				diag("Dname wires in rdata differ");
+				return 1;
+			}
+		}
+	}
+
+	return 0;
+}
+
 static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
                                       ldns_rr_list *rr_set)
 {
         /* We should have only one rrset from ldns, although it is
          * represented as rr_list ... */
 
+	/* TODO errors */
+
         ldns_rr *rr = ldns_rr_list_pop_rr(rr_set);
-//        ldns_rr_list_push_rr(rr_set, rr);
+	ldns_rr_list_push_rr(rr_set, rr);
 
         /* compare headers */
 
@@ -838,7 +885,39 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
         if (rrset->ttl != ldns_rr_ttl(rr)) {
                 diag("RRset TTLs differ");
                 return 1;
-        }
+	}
+
+	/* compare rdatas */
+
+	dnslib_rdata_t *tmp_rdata = rrset->rdata;
+
+	while (tmp_rdata->next != rrset->rdata) {
+		rr = ldns_rr_list_pop_rr(rr_set);
+		if (rr == NULL) {
+			diag("ldns rrset has more rdata entries"
+			     "than the one from dnslib");
+			return 1;
+		}
+
+		if (compare_rr_rdata(tmp_rdata, rr, rrset->type) != 0) {
+			diag("Rdata differ");
+			return 1;
+		}
+
+		tmp_rdata = tmp_rdata->next;
+	}
+
+	rr = ldns_rr_list_pop_rr(rr_set);
+	if (rr == NULL) {
+		diag("ldns rrset has more rdata entries"
+		     "than the one from dnslib");
+		return 1;
+	}
+
+	if (compare_rr_rdata(tmp_rdata, rr, rrset->type) != 0) {
+		diag("Rdata differ");
+		return 1;
+	}
 
         return 0;
 }
