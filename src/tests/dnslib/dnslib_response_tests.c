@@ -116,20 +116,23 @@ static dnslib_dname_t DNAMES[DNAMES_COUNT] =
 	  {(uint8_t *)"\2ns\7example\3com", 16,
 	   (uint8_t *)"\x0\x3\xb", 3, NULL} };
 
-//static uint8_t address[4] = {192, 168, 1, 1};
+static uint8_t address_w_length[6] = {5, 0, 192, 168, 1, 1};
 
 static dnslib_rdata_item_t ITEMS[ITEMS_COUNT] =
 	{ {.dname = &DNAMES[1]},
-	  {.raw_data = (uint16_t *)address } };
+	  {.raw_data = (uint16_t *)address_w_length } };
 
 static dnslib_rdata_t RDATA[RDATA_COUNT] = { {&ITEMS[0], 1, &RDATA[0]} };
 
-static dnslib_rrset_t RESPONSE_RRSETS[RRSETS_COUNT] =
-	{ {&DNAMES[0], 1, 1, 3600, &RDATA[0], NULL} };
+static dnslib_rrset_t TMP =
+	{ &DNAMES[0], DNSLIB_RRTYPE_NS, 1, 3600, &RDATA[0], NULL };
+
+static dnslib_rrset_t *RESPONSE_RRSETS[RRSETS_COUNT] =
+	{ &TMP };
 
 static test_response_t RESPONSES[RESPONSE_COUNT] =
 	{ {&DNAMES[0], 1, 1, 12345, 0, 0, 1, 0, 0, 0, NULL,
-	   (dnslib_rrset_t **)&RESPONSE_RRSETS, NULL, 29} };
+	   RESPONSE_RRSETS, NULL, 29} };
 
 
 static int load_raw_packets(test_raw_packet_t ***raw_packets, uint32_t *count,
@@ -583,13 +586,8 @@ static int test_response_add_rrset(int (*add_func)
 	} /* switch */
 
 	for (int i = 0; (i < RRSETS_COUNT) && !errors; i++) {
-		add_func(resp, &RESPONSE_RRSETS[i], 0, 0);
-		diag("%d", dnslib_response_add_rrset_answer(resp, &RESPONSE_RRSETS[i], 0, 0));
-		diag("%d", i);
-		diag("%p", resp->answer[0]);
-		diag("%p", resp->authority[0]);
-		diag("%p", resp->additional[0]);
-		errors += compare_rrsets(array[i], &RESPONSE_RRSETS[i]);
+		assert(add_func(resp, RESPONSE_RRSETS[i], 0, 0) == 0);
+		errors += compare_rrsets(array[i], RESPONSE_RRSETS[i]);
 	}
 
 	dnslib_response_free(&resp);
@@ -1424,11 +1422,11 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 
 	skip(!ret, 10);
 
-/*	ok(test_response_add_rrset_answer(), "response: add rrset answer");
+	ok(test_response_add_rrset_answer(), "response: add rrset answer");
 	ok(test_response_add_rrset_authority(),
 	   "response: add rrset authority");
 	ok(test_response_add_rrset_additional(),
-	   "response: add rrset additional"); */
+	   "response: add rrset additional");
 
 	test_response_t **parsed_responses = NULL;
 	test_response_t **parsed_queries = NULL;
@@ -1439,7 +1437,7 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	uint32_t response_raw_count = 0;
 	uint32_t query_raw_count = 0;
 
-/*	ok(test_response_getters(0), "response: get qname");
+	ok(test_response_getters(0), "response: get qname");
 
 	ok(test_response_getters(1), "response: get qtype");
 
@@ -1448,7 +1446,7 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	ok(test_response_setters(0), "response: set rcode");
 
 	ok(test_response_setters(1), "response: set aa");
-*/
+
 	if (load_parsed_responses(&parsed_responses, &response_parsed_count,
 			    parsed_data_rc, parsed_data_rc_size) != 0) {
 		diag("Could not load parsed responses, skipping");
