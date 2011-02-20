@@ -821,6 +821,9 @@ static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 			if (compare_wires_simple(rdata->items[i].dname->name,
 				ldns_rdf_data(ldns_rr_rdf(rr, i)),
 				rdata->items[i].dname->size) != 0) {
+				getchar();
+				diag("%s", rdata->items[i].dname->name);
+				diag("%s", ldns_rdf_data(ldns_rr_rdf(rr, i)));
 				diag("Dname wires in rdata differ");
 				return 1;
 			}
@@ -831,10 +834,14 @@ static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 				return 1;
 			}
 			if (compare_wires_simple((uint8_t *)
-				rdata->items[i].raw_data,
+				(rdata->items[i].raw_data + 1),
 				ldns_rdf_data(ldns_rr_rdf(rr, i)),
 				rdata->items[i].raw_data[0]) != 0) {
-				diag("Dname wires in rdata differ");
+				hex_print(rdata->items[i].raw_data + 1,
+					  rdata->items[i].raw_data[0] + 1);
+				hex_print(ldns_rdf_data(ldns_rr_rdf(rr, i)),
+					  rdata->items[i].raw_data[0] + 1);
+				diag("Raw data wires in rdata differ");
 				return 1;
 			}
 		}
@@ -891,8 +898,12 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
 
 	dnslib_rdata_t *tmp_rdata = rrset->rdata;
 
+	int i = 0;
+
 	while (tmp_rdata->next != rrset->rdata) {
-		rr = ldns_rr_list_pop_rr(rr_set);
+		rr = ldns_rr_list_rr(rr_set, i);
+		/* TODO use this in the other cases as
+		 * well, it's better than pop */
 		if (rr == NULL) {
 			diag("ldns rrset has more rdata entries"
 			     "than the one from dnslib");
@@ -905,9 +916,11 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
 		}
 
 		tmp_rdata = tmp_rdata->next;
+		i++;
 	}
 
-	rr = ldns_rr_list_pop_rr(rr_set);
+	/* TODO double check the indexing */
+	rr = ldns_rr_list_rr(rr_set, i);
 	if (rr == NULL) {
 		diag("ldns rrset has more rdata entries"
 		     "than the one from dnslib");
