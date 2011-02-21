@@ -505,7 +505,11 @@ static void ns_put_nsec_nxdomain(const dnslib_zone_t *zone,
 	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)) {
 		// 1) NSEC proving that there is no node with the searched name
 		rrset = dnslib_node_rrset(previous, DNSLIB_RRTYPE_NSEC);
-		assert(rrset != NULL);
+		if (rrset == NULL) {
+			// no NSEC records
+			return;
+		}
+
 		dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
 		rrset = dnslib_rrset_rrsigs(rrset);
 		assert(rrset != NULL);
