@@ -52,9 +52,10 @@ static void dnslib_zone_save_encloser_rdata_item(dnslib_rdata_t *rdata,
 		dnslib_dname_t *dname = dname_item->dname;
 		const dnslib_node_t *n = NULL;
 		const dnslib_node_t *closest_encloser = NULL;
+		const dnslib_node_t *prev = NULL;
 
 		int exact = dnslib_zone_find_dname(zone, dname, &n,
-		                                   &closest_encloser);
+		                                   &closest_encloser, &prev);
 
 //		n = dnslib_zone_find_node(zone, dname);
 

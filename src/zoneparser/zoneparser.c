@@ -1688,7 +1688,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 
 	origin_node = dnslib_node_new(dname, NULL);
 
-	assert(origin_node->next == NULL);
+	//assert(origin_node->next == NULL);
 
 	assert(origin_node->parent == NULL);
 

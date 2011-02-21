@@ -19,6 +19,12 @@ dnslib_opt_rr_t *dnslib_edns_new()
 	                                               sizeof(dnslib_opt_rr_t));
 	CHECK_ALLOC_LOG(opt_rr, NULL);
 	opt_rr->size = DNSLIB_EDNS_MIN_SIZE;
+	opt_rr->option_count = 0;
+	opt_rr->options_max = 0;
+
+	opt_rr->ext_rcode = 0;
+	opt_rr->flags = 0;
+	opt_rr->version = 0;
 
 	return opt_rr;
 }
@@ -265,4 +271,17 @@ short dnslib_edns_to_wire(const dnslib_opt_rr_t *opt_rr, uint8_t *wire,
 short dnslib_edns_size(dnslib_opt_rr_t *opt_rr)
 {
 	return opt_rr->size;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_edns_free(dnslib_opt_rr_t **opt_rr)
+{
+	assert(opt_rr);
+	assert(*opt_rr);
+	if ((*opt_rr)->option_count > 0) {
+		free((*opt_rr)->options);
+	}
+	free(*opt_rr);
+	*opt_rr = NULL;
 }
