@@ -375,12 +375,12 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 
 	node = owner->node;
 
-	node->owner = owner;
-
 	if (node == NULL) {
 		log_error("!! could not create node.\n");
 		return NULL;
 	}
+
+	node->owner = owner;
 
 	node->flags = flags;
 
@@ -554,19 +554,18 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 
 	zone->apex->prev = last_node;
 
-	last_node = NULL;
-
 	debug_zp("loading %u nsec3 nodes\n", nsec3_node_count);
 
-        dnslib_node_t *nsec3_first = NULL;
+	dnslib_node_t *nsec3_first = dnslib_load_node(f);
 
-	for (uint i = 0; i < nsec3_node_count; i++) {
+	assert(nsec3_first != NULL);
+
+	nsec3_first->prev = NULL;
+
+	last_node = nsec3_first;
+
+	for (uint i = 1; i < nsec3_node_count; i++) {
 		tmp_node = dnslib_load_node(f);
-		/* there has to be better way - maybe before this cycle
-		   but for now, let's hope for gcc optimizations */
-		if (i == 0) {
-			nsec3_first = tmp_node;
-		}
 
 		if (tmp_node != NULL) {
 			dnslib_zone_add_nsec3_node(zone, tmp_node);
@@ -582,8 +581,6 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
                         }
 
 			tmp_node->prev = last_node;
-
-
 
 		} else {
 			log_error("!! node error (in %s)\n", filename);
