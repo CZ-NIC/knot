@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include "dnslib/descriptor.h"
 #include "lib/lists.h"
 #include "other/log.h"
 
@@ -29,12 +30,10 @@
  * listening and outgoing function.
  */
 typedef struct {
-	node n;                /*!< */
-
-	/*! \brief Internal name for the interface (not system names). */
-	char *name;
-	char *address;         /*!< IP (IPv4/v6) address for this interface */
-	int   port;            /*!< Port number for this interface */
+	node n;
+	char *name;       /*!< Internal name for the interface. */
+	char *address;    /*!< IP (IPv4/v6) address for this interface */
+	int   port;       /*!< Port number for this interface */
 } conf_iface_t;
 
 /*!
@@ -57,22 +56,9 @@ typedef enum {
  * \brief Configuration for the TSIG key.
  */
 typedef struct {
-	/*!
-	 * \brief Key algorithm.
-	 *
-	 * \todo IANA lists that as strings
-	 */
-	tsig_alg_t algorithm;
-	char *secret;       /*!< Key data. */
+	tsig_alg_t algorithm; /*!< Key algorithm.  */
+	char *secret;         /*!< Key data. */
 } conf_key_t;
-
-/*!
- * \todo Import from dns library.
- */
-typedef enum {
-	RRCLASS_IN,
-	RRCLASS_CH
-} conf_class_t;
 
 /*!
  * \brief Zone configuration.
@@ -86,11 +72,11 @@ typedef enum {
  * \todo Missing XFR type (AXFR/IXFR/IXFR-ONLY) for each server.
  */
 typedef struct {
-	node n;             /*!< */
-	char *name;         /*!< Zone name. */
-	conf_class_t cls;   /*!< Zone class (IN or CH). */
-	char *file; /*!< Path to a zone file. */
-	char *db;   /*!< Path to a database file. */
+	node n;
+	char *name;                  /*!< Zone name. */
+	enum dnslib_rr_class cls;    /*!< Zone class (IN or CH). */
+	char *file;                  /*!< Path to a zone file. */
+	char *db;                    /*!< Path to a database file. */
 } conf_zone_t;
 
 /*!
@@ -99,7 +85,7 @@ typedef struct {
 typedef struct {
 	node n;
 	int source; /*!< Log message source mask. */
-	int levels; /*!< Log levels bitmask. */
+	int prios;  /*!< Log priorities mask. */
 } conf_log_map_t;
 
 /*!
@@ -113,35 +99,56 @@ typedef struct {
 } conf_log_t;
 
 /*!
+ * \brief Configuration sections.
+ */
+typedef enum {
+	CONF_LOG    = 1 << 0, /*!< Log section. */
+	CONF_IFACES = 1 << 1, /*!< Interfaces. */
+	CONF_ZONES  = 1 << 2, /*!< Zones. */
+	CONF_OTHER  = 1 << 3, /*!< Other sections. */
+	CONF_ALL    = ~0      /*!< All sections. */
+} conf_section_t;
+
+/*!
  * \brief Main config structure.
  *
- * Main configuration structure.
- *
- * \todo More documentation.
+ * Configuration structure.
  */
 typedef struct conf_t {
+	/*
+	 * System
+	 */
 	char *filename; /*!< Name of the config file. */
 	char *identity; /*!< Identity to return on CH TXT id.server. */
-
-	/*!
-	 * \brief Version to return on CH TXT version.bind. and version.server.
-	 */
-	char *version;
-
-	char *storage; /*!< Persistent storage path for pidfile, databases etc. */
-	char *pidfile; /*!< PID file path. */
-
+	char *version;  /*!< Version for CH TXT version.{bind|server} */
+	char *storage;  /*!< Persistent storage path for databases and such. */
+	char *pidfile;  /*!< PID file path. */
 	conf_key_t key; /*!< Server TSIG key. */
 
-	int logs_count; /*!< Count of logging facilities. */
-	int ifaces_count; /*!< Count of interfaces. */
-	int zones_count; /*!< Count of zones. */
-	int hooks_count; /*!< Count of config hooks. */
+	/*
+	 * Log
+	 */
+	list logs;        /*!< List of logging facilites. */
+	int logs_count;   /*!< Count of logging facilities. */
 
-	list logs; /*!< List of logging facilites. */
-	list ifaces; /*!< List of interfaces. */
-	list zones; /*!< List of zones. */
-	list hooks; /*!< List of config hooks. */
+	/*
+	 * Interfaces
+	 */
+	list ifaces;      /*!< List of interfaces. */
+	int ifaces_count; /*!< Count of interfaces. */
+
+	/*
+	 * Zones
+	 */
+	list zones;       /*!< List of zones. */
+	int zones_count;  /*!< Count of zones. */
+
+	/*
+	 * Implementation specifics
+	 */
+	list hooks;      /*!< List of config hooks. */
+	int hooks_count; /*!< Count of config hooks. */
+	int _touched;    /*!< Bitmask of sections touched by last update. */
 } conf_t;
 
 /*!
@@ -149,21 +156,113 @@ typedef struct conf_t {
  */
 typedef struct {
 	node n;
-	int (*update)(const conf_t*); /*! Function executed on config load. */
+	int sections; /*!< Bitmask of watched sections. */
+	int (*update)(const conf_t*); /*!< Function executed on config load. */
 } conf_hook_t;
 
-/* Specific configuration API. */
+/*
+ * Specific configuration API.
+ */
+
+/*!
+ * \brief Create new configuration structure.
+ *
+ * \param path Path to configuration file.
+ * \retval new structure if successful.
+ * \retval NULL on error.
+ */
 conf_t *conf_new(const char* path);
-int conf_add_hook(conf_t * conf, int (*on_update)(const conf_t*));
+
+/*!
+ * \brief Register on-update callback.
+ *
+ * \param conf Configuration context.
+ * \param sections Bitmask of watched sections or CONF_ALL.
+ * \param on_update Callback.
+ *
+ * \retval 0 on success.
+ * \retval <0 on error.
+ *
+ * \todo There might be some issues with reloading config
+ *       on-the-fly in multithreaded environment, check afterwards.
+ */
+int conf_add_hook(conf_t * conf, int sections, int (*on_update)(const conf_t*));
+
+/*!
+ * \brief Parse configuration from associated file.
+ *
+ * \note Registered callbacks may be executed if applicable.
+ *
+ * \param conf Configuration context.
+ *
+ * \retval 0 on success.
+ * \retval <0 on error.
+ */
 int conf_parse(conf_t *conf);
+
+/*!
+ * \brief Parse configuration from string.
+ *
+ * \note Registered callbacks may be executed if applicable.
+ *
+ * \param conf Configuration context.
+ * \param src Source string.
+ *
+ * \retval 0 on success.
+ * \retval <0 on error.
+ */
 int conf_parse_str(conf_t *conf, const char* src);
+
+/*!
+ * \brief Truncate configuration context.
+ *
+ * \param conf Configuration context.
+ * \param unload_hooks If true, hooks will be unregistered and freed as well.
+ */
 void conf_truncate(conf_t *conf, int unload_hooks);
+
+/*!
+ * \brief Destroy configuration context.
+ *
+ * \param conf Configuration context.
+ */
 void conf_free(conf_t *conf);
 
-/* Singleton configuration API. */
+/*
+ * Singleton configuration API.
+ */
+
+/*!
+ * \brief Find implicit configuration file.
+ *
+ * Ordering:
+ * 1. ~/.cutedns/cutedns.conf (if exists)
+ * 2. /etc/cutedns/cutedns.conf (fallback)
+ *
+ * \return Path to implicit configuration file.
+ */
 char* conf_find_default();
+
+/*!
+ * \brief Open singleton configuration from file.
+ *
+ * \note Registered callbacks may be executed if applicable.
+ *
+ * \param path Path to configuration file.
+ *
+ * \retval 0 on success.
+ * \retval <0 on error.
+ */
 int conf_open(const char* path);
-extern conf_t *s_config; // Imported singleton
+
+/* Imported singleton */
+extern conf_t *s_config;
+
+/*!
+ * \brief Singleton configuration context accessor.
+ *
+ * \return Configuration context.
+ */
 static inline conf_t* conf() {
 	return s_config; // Inline for performance reasons.
 }

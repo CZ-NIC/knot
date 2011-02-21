@@ -75,14 +75,14 @@ static int conf_tests_run(int argc, char *argv[])
 	{
 	  cmp_ok(m->source, "==", LOG_ANY, "syslog first rule is ANY");
 	  int mask = LOG_MASK(LOG_NOTICE)|LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR);
-	  cmp_ok(m->levels, "==", mask, "syslog mask is equal");
+	  cmp_ok(m->prios, "==", mask, "syslog mask is equal");
 	  nm = nm->next;
 	  m = (conf_log_map_t*)nm;
 	  ok(m != 0, "syslog has more than 1 rule");
 	  skip(!m, 2);
 	  {
 	    cmp_ok(m->source, "==", LOG_ZONE, "syslog next rule is for zone");
-	    cmp_ok(m->levels, "==", 0xff, "rule for zone is: any level");
+	    cmp_ok(m->prios, "==", 0xff, "rule for zone is: any level");
 	  }
 	  endskip;
 	}

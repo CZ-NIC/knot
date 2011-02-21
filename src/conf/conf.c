@@ -197,9 +197,10 @@ static int conf_process(conf_t *conf)
 
 	/* Update hooks */
 	/*! \todo Selective hooks. */
+	conf->_touched = CONF_ALL;
 	WALK_LIST (n, conf->hooks) {
 		conf_hook_t *hook = (conf_hook_t*)n;
-		if (hook->update) {
+		if ((hook->sections & conf->_touched) && hook->update) {
 			hook->update(conf);
 		}
 	}
@@ -236,7 +237,7 @@ void __attribute__ ((constructor)) conf_init()
 
 	conf_log_map_t *map = malloc(sizeof(conf_log_map_t));
 	map->source = LOG_ANY;
-	map->levels = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR);
+	map->prios = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR);
 	add_tail(&log->map, &map->n);
 	add_tail(&s_config->logs, &log->n);
 	++s_config->logs_count;
@@ -249,7 +250,7 @@ void __attribute__ ((constructor)) conf_init()
 
 	map = malloc(sizeof(conf_log_map_t));
 	map->source = LOG_ANY;
-	map->levels = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR);
+	map->prios = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR);
 	add_tail(&log->map, &map->n);
 	add_tail(&s_config->logs, &log->n);
 	++s_config->logs_count;
@@ -287,9 +288,10 @@ conf_t *conf_new(const char* path)
 	return c;
 }
 
-int conf_add_hook(conf_t * conf, int (*on_update)())
+int conf_add_hook(conf_t * conf, int sections, int (*on_update)())
 {
 	conf_hook_t *hook = malloc(sizeof(conf_hook_t));
+	hook->sections = sections;
 	hook->update = on_update;
 	add_tail(&conf->hooks, &hook->n);
 	++conf->hooks_count;
