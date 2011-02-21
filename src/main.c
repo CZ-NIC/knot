@@ -102,7 +102,7 @@ int main(int argc, char **argv)
 	}
 
 	// Initialize configuration
-	conf_add_hook(conf(), log_conf_hook);
+	conf_add_hook(conf(), CONF_LOG, log_conf_hook);
 
 	// Find implicit configuration file
 	char *default_fn = 0;

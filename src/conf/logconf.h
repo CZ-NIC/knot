@@ -16,9 +16,6 @@ struct conf_t;
 /*!
  * \brief Setup logging facilities from config.
  *
- * \todo There might be some issues with reloading config
- *       on-the-fly in multithreaded environment, check afterwards.
- *
  * \see syslog.h
  *
  * \retval  0 On success.

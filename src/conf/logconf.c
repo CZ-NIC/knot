@@ -32,7 +32,7 @@ int log_conf_hook(const struct conf_t *conf)
 
 			// Assign mapped level
 			conf_log_map_t *map = (conf_log_map_t*)m;
-			log_levels_add(facility, map->source, map->levels);
+			log_levels_add(facility, map->source, map->prios);
 		}
 	}
 

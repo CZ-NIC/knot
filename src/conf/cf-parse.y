@@ -128,22 +128,22 @@ zones:
  | zones zone '}'
  ;
 
-log_levels_start: {
+log_prios_start: {
   this_logmap = malloc(sizeof(conf_log_map_t));
   this_logmap->source = 0;
-  this_logmap->levels = 0;
+  this_logmap->prios = 0;
   add_tail(&this_log->map, &this_logmap->n);
 }
 ;
 
-log_levels:
-   log_levels_start
- | log_levels LOG_LEVEL ',' { this_logmap->levels |= $2; }
- | log_levels LOG_LEVEL ';' { this_logmap->levels |= $2; }
+log_prios:
+   log_prios_start
+ | log_prios LOG_LEVEL ',' { this_logmap->prios |= $2; }
+ | log_prios LOG_LEVEL ';' { this_logmap->prios |= $2; }
  ;
 
 log_src:
- | log_src LOG_SRC log_levels {
+ | log_src LOG_SRC log_prios {
      this_logmap->source = $2;
      this_logmap = 0;
    }
