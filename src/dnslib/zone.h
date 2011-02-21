@@ -29,6 +29,8 @@ enum dnslib_zone_errors {
 	DNSLIB_ZONE_NAME_NOT_FOUND = 0
 };
 
+typedef enum dnslib_zone_errors dnslib_zone_errors_t;
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure for holding DNS zone.
@@ -133,7 +135,8 @@ const dnslib_node_t *dnslib_zone_find_node(const dnslib_zone_t *zone,
 int dnslib_zone_find_dname(const dnslib_zone_t *zone,
                            const dnslib_dname_t *name,
                            const dnslib_node_t **node,
-                           const dnslib_node_t **closest_encloser);
+                           const dnslib_node_t **closest_encloser,
+                           const dnslib_node_t **previous);
 
 #ifdef USE_HASH_TABLE
 int dnslib_zone_find_dname_hash(const dnslib_zone_t *zone,
