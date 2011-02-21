@@ -556,13 +556,17 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 
 	debug_zp("loading %u nsec3 nodes\n", nsec3_node_count);
 
-	dnslib_node_t *nsec3_first = dnslib_load_node(f);
+	dnslib_node_t *nsec3_first = NULL;
 
-	assert(nsec3_first != NULL);
+	if (nsec3_node_count > 0) {
+		nsec3_first = dnslib_load_node(f);
 
-	nsec3_first->prev = NULL;
+		assert(nsec3_first != NULL);
 
-	last_node = nsec3_first;
+		nsec3_first->prev = NULL;
+
+		last_node = nsec3_first;
+	}
 
 	for (uint i = 1; i < nsec3_node_count; i++) {
 		tmp_node = dnslib_load_node(f);
