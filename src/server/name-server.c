@@ -558,6 +558,8 @@ static void ns_put_nsec_nxdomain(const dnslib_zone_t *zone,
 	}
 }
 
+/*----------------------------------------------------------------------------*/
+
 static void ns_put_nsec_wildcard(const dnslib_node_t *node,
                                  const dnslib_node_t *previous,
                                  dnslib_response_t *resp)
@@ -588,14 +590,15 @@ static void ns_answer_from_node(const dnslib_node_t *node,
 	int answers = ns_put_answer(node, qname, qtype, resp);
 
 	if (answers == 0) {  // if NODATA response, put SOA
-		ns_put_authority_soa(zone, resp);
 		if (dnslib_node_rrset_count(node) == 0) {
 			assert(dnslib_node_rrset_count(closest_encloser) > 0);
 			ns_put_nsec_nxdomain(zone, dnslib_node_previous(node),
 			                     closest_encloser, resp);
 		} else {
 			ns_put_nsec_nodata(node, resp);
+			ns_put_nsec_wildcard(node, previous, resp);
 		}
+		ns_put_authority_soa(zone, resp);
 	} else {  // else put authority NS
 		// if wildcard answer, add NSEC
 		ns_put_nsec_wildcard(node, previous, resp);
