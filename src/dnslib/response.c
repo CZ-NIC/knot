@@ -477,6 +477,13 @@ static short dnslib_response_find_dname_pos(
 	for (int i = 0; i < table->count; ++i) {
 		debug_dnslib_response("Comparing dnames %p and %p\n",
 		                      dname, table->dnames[i]);
+DEBUG_DNSLIB_RESPONSE(
+		char *name = dnslib_dname_to_str(dname);
+		debug_dnslib_response("(%s and ", name);
+		name = dnslib_dname_to_str(table->dnames[i]);
+		debug_dnslib_response("%s)\n", name);
+		free(name);
+);
 		//if (table->dnames[i] == dname) {
 		if (dnslib_dname_compare(table->dnames[i], dname) == 0) {
 			debug_dnslib_response("Found offset: %d\n",
@@ -1101,7 +1108,7 @@ int dnslib_response_add_rrset_answer(dnslib_response_t *response,
                                      const dnslib_rrset_t *rrset, int tc,
                                      int check_duplicates)
 {
-	debug_dnslib_response("add_rrset_answer()");
+	debug_dnslib_response("add_rrset_answer()\n");
 	assert(response->header.arcount == 0);
 	assert(response->header.nscount == 0);
 
