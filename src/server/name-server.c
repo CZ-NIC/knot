@@ -501,7 +501,7 @@ static void ns_put_nsec_nxdomain(const dnslib_zone_t *zone,
                                  const dnslib_node_t *closest_encloser,
                                  dnslib_response_t *resp)
 {
-	const dnslib_rrset_t *rrset;
+	const dnslib_rrset_t *rrset = NULL;
 	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)) {
 		// 1) NSEC proving that there is no node with the searched name
 		rrset = dnslib_node_rrset(previous, DNSLIB_RRTYPE_NSEC);
@@ -558,10 +558,28 @@ static void ns_put_nsec_nxdomain(const dnslib_zone_t *zone,
 	}
 }
 
+static void ns_put_nsec_wildcard(const dnslib_node_t *node,
+                                 const dnslib_node_t *previous,
+                                 dnslib_response_t *resp)
+{
+	const dnslib_rrset_t *rrset = NULL;
+	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)
+	    && dnslib_dname_is_wildcard(node->owner)
+	    && (rrset = dnslib_node_rrset(previous, DNSLIB_RRTYPE_NSEC))
+	        != NULL) {
+		// NSEC proving that there is no node with the searched name
+		dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+		rrset = dnslib_rrset_rrsigs(rrset);
+		assert(rrset != NULL);
+		dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+	}
+}
+
 /*----------------------------------------------------------------------------*/
 
 static void ns_answer_from_node(const dnslib_node_t *node,
                                 const dnslib_node_t *closest_encloser,
+                                const dnslib_node_t *previous,
                                 const dnslib_zone_t *zone,
                                 const dnslib_dname_t *qname, uint16_t qtype,
                                 dnslib_response_t *resp)
@@ -572,13 +590,6 @@ static void ns_answer_from_node(const dnslib_node_t *node,
 	if (answers == 0) {  // if NODATA response, put SOA
 		ns_put_authority_soa(zone, resp);
 		if (dnslib_node_rrset_count(node) == 0) {
-//			const dnslib_node_t *closest_encloser = node;
-//			while (dnslib_node_rrset_count(closest_encloser) == 0) {
-//				// this means that the found node was empty
-//				// non-terminal
-//				closest_encloser =
-//					dnslib_node_parent(closest_encloser);
-//			}
 			assert(dnslib_node_rrset_count(closest_encloser) > 0);
 			ns_put_nsec_nxdomain(zone, dnslib_node_previous(node),
 			                     closest_encloser, resp);
@@ -586,6 +597,8 @@ static void ns_answer_from_node(const dnslib_node_t *node,
 			ns_put_nsec_nodata(node, resp);
 		}
 	} else {  // else put authority NS
+		// if wildcard answer, add NSEC
+		ns_put_nsec_wildcard(node, previous, resp);
 		ns_put_authority_ns(zone, resp);
 	}
 
@@ -852,8 +865,8 @@ DEBUG_NS(
 			}
 		}
 
-		ns_answer_from_node(node, closest_encloser, zone, qname, qtype,
-		                    resp);
+		ns_answer_from_node(node, closest_encloser, previous, zone,
+		                    qname, qtype, resp);
 		dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
 
 		// this is the only case when the servers answers from
