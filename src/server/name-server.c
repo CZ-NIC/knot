@@ -729,12 +729,20 @@ DEBUG_NS(
 			debug_ns("zone_find_dname() returned no node,");
 		}
 
-		name = dnslib_dname_to_str(closest_encloser->owner);
-		debug_ns(" closest encloser %s.\n", name);
-		free(name);
-		name = dnslib_dname_to_str(previous->owner);
-		debug_ns(" and previous node: %s.\n", name);
-		free(name);
+		if (closest_encloser != NULL) {
+			name = dnslib_dname_to_str(closest_encloser->owner);
+			debug_ns(" closest encloser %s.\n", name);
+			free(name);
+		} else {
+			debug_ns(" closest encloser (nil).\n");
+		}
+		if (previous != NULL) {
+			name = dnslib_dname_to_str(previous->owner);
+			debug_ns(" and previous node: %s.\n", name);
+			free(name);
+		} else {
+			debug_ns(" and previous node: (nil).\n");
+		}
 );
 		if (find_ret == DNSLIB_ZONE_NAME_NOT_IN_ZONE) {
 			// possible only if we followed cname

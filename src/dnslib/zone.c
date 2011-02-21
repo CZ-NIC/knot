@@ -442,7 +442,9 @@ DEBUG_DNSLIB_ZONE(
 	if (found) {
 		free(name_str);
 	}
-	free(name_str2);
+	if (prev != NULL) {
+		free(name_str2);
+	}
 );
 
 	// there must be at least one node with domain name less or equal to
