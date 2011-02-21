@@ -596,7 +596,9 @@ static void ns_answer_from_node(const dnslib_node_t *node,
 			                     closest_encloser, resp);
 		} else {
 			ns_put_nsec_nodata(node, resp);
-			ns_put_nsec_wildcard(node, previous, resp);
+			if (node != previous) {
+				ns_put_nsec_wildcard(node, previous, resp);
+			}
 		}
 		ns_put_authority_soa(zone, resp);
 	} else {  // else put authority NS
@@ -769,6 +771,7 @@ DEBUG_NS(
 			assert(cname != 0);
 			dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
 			auth_soa = 1;
+			dnslib_response_set_aa(resp);
 			break;
 		}
 
@@ -797,6 +800,7 @@ DEBUG_NS(
 			if (dname_rrset != NULL) {
 				ns_process_dname(dname_rrset, qname, resp);
 				auth_soa = 1;
+				dnslib_response_set_aa(resp);
 				break;
 			}
 			// else check for a wildcard child
@@ -818,6 +822,7 @@ DEBUG_NS(
 					dnslib_response_set_rcode(resp,
 						DNSLIB_RCODE_NOERROR);
 				}
+				dnslib_response_set_aa(resp);
 				break;
 			}
 			// else set the node from which to take the answers to
@@ -832,9 +837,6 @@ DEBUG_NS(
 			ns_referral(node, resp);
 			break;
 		}
-
-		// in other cases the answer is authoritative
-		dnslib_response_set_aa(resp);
 
 		if (dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME) != NULL) {
 DEBUG_NS(
@@ -870,6 +872,7 @@ DEBUG_NS(
 
 		ns_answer_from_node(node, closest_encloser, previous, zone,
 		                    qname, qtype, resp);
+		dnslib_response_set_aa(resp);
 		dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
 
 		// this is the only case when the servers answers from
