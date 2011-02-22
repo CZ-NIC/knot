@@ -426,8 +426,8 @@ base32_decode (const char *in, size_t inlen,
 	    }
 	}
 
-      in += 5;
-      inlen -= 5;
+      in += 8;
+      inlen -= 8;
     }
 
   *outlen -= outleft;
