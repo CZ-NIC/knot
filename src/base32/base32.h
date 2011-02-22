@@ -31,13 +31,13 @@
 
 extern bool isbase32 (char ch);
 
-extern void base32_encode (const char *restrict in, size_t inlen,
-			   char *restrict out, size_t outlen);
+extern void base32_encode (const char *in, size_t inlen,
+			   char *out, size_t outlen);
 
 extern size_t base32_encode_alloc (const char *in, size_t inlen, char **out);
 
-extern bool base32_decode (const char *restrict in, size_t inlen,
-			   char *restrict out, size_t *outlen);
+extern bool base32_decode (const char *in, size_t inlen,
+			   char *out, size_t *outlen);
 
 extern bool base32_decode_alloc (const char *in, size_t inlen,
 				 char **out, size_t *outlen);
