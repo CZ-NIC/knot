@@ -261,18 +261,21 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 	dnslib_rdata_item_t *items =
 		malloc(sizeof(dnslib_rdata_item_t) * desc->length);
 
-	uint8_t raw_data_length; /* TODO should be bigger */
+	uint8_t total_raw_data_length; /* TODO should be bigger */
+	uint8_t raw_data_length;
 
 	/* TODO the are more types with no length for sure ... */
 	if (type != DNSLIB_RRTYPE_A &&
 	    type != DNSLIB_RRTYPE_NS) {
-		if (!mem_read(&raw_data_length,
-		     sizeof(raw_data_length), src, src_size)) {
+		if (!mem_read(&total_raw_data_length,
+		     sizeof(total_raw_data_length), src, src_size)) {
 			return NULL;
 		}
 
-		diag("READ it");
+		diag("READ it %d", total_raw_data_length);
 	}
+
+	size_t total_read = 0;
 
 	for (int i = 0; i < desc->length; i++) {
 		if ((desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
@@ -285,7 +288,7 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 
 			diag("%d", i);
 			diag("%s", dnslib_rrtype_to_string(type));
-			getchar();
+			//getchar();
 
 			do {
 				if (!mem_read(&label_size,
@@ -294,6 +297,8 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 					      src_size)) {
 					return NULL;
 				}
+
+				total_read++;
 
 				if (label_size == 0) {
 					diag("label is zero");
@@ -309,6 +314,8 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 					dnslib_dname_free(&root_dname);
 					break;
 				}
+
+				total_read += label_size;
 
 				diag("label_size: %d", label_size);
 
@@ -335,9 +342,9 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 
 				if (items[i].dname == NULL) {
 					items[i].dname =
-						dnslib_dname_new_from_wire(label_wire,
-										   label_size + 1,
-										   NULL);
+					dnslib_dname_new_from_wire(label_wire,
+								   label_size + 1,
+								   NULL);
 					assert(items[i].dname);
 				} else {
 					dnslib_dname_cat(items[i].dname,
@@ -360,15 +367,21 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 					return NULL;
 				}
 
+				total_read++;
+
 				items[i].raw_data =
 					malloc(sizeof(uint8_t) *
-					       raw_data_length + 1);
-				*(items[i].raw_data) = raw_data_length;
+					       (raw_data_length + 2));
+
+				items[i].raw_data[0] = raw_data_length;
+
 				if (!mem_read(items[i].raw_data + 1,
 					      sizeof(uint8_t) * raw_data_length,
 					      src, src_size)) {
 					return NULL;
 				}
+
+				total_read += sizeof(uint8_t) * raw_data_length;
 /*				printf("read len (from wire): %d\n",
 				       items[i].raw_data[0]);
 				hex_print((char *)items[i].raw_data + 1,
@@ -386,10 +399,21 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 									 items,
 									 i);
 					if (size_fr_desc == 0) {
-						if (type != DNSLIB_RRTYPE_OPT) {
+						if (i != desc->length - 1) {
+							diag("I dont know how"
+							"to parse this type");
 							return NULL;
 						} else {
-							continue;
+							size_fr_desc =
+							total_raw_data_length -
+							total_read;
+						diag("Guessed size: %d"
+						     " for type: %s"
+						     " and index: %d",
+						     size_fr_desc,
+						    dnslib_rrtype_to_string(type),
+						    i);
+						//getchar();
 						}
 					}
 				}
@@ -406,6 +430,8 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 					      src, src_size)) {
 					return NULL;
 				}
+
+				total_read += size_fr_desc;
 
 /*				printf("read len (from descriptor): %d\n",
 				       items[i].raw_data[0]);
@@ -501,8 +527,6 @@ static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 		return NULL;
 	}
 
-	diag("got size: %d", dname_size);
-
 	assert(dname_size < DNAME_MAX_WIRE_LENGTH);
 
 	dname_wire = malloc(sizeof(uint8_t) * dname_size);
@@ -515,8 +539,6 @@ static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 		dnslib_dname_new_from_wire(dname_wire,
 					   dname_size,
 					   NULL);
-
-	diag("got owner: %s", dnslib_dname_to_str(owner));
 
 	free(dname_wire);
 
@@ -642,7 +664,7 @@ static test_response_t *load_parsed_response(const char **src, unsigned *src_siz
 			return NULL;
 		}
 
-		if (tmp_rrset->type == DNSLIB_RRTYPE_RRSIG) {
+/*		if (tmp_rrset->type == DNSLIB_RRTYPE_RRSIG) {
 			rrsig_count++;
 			for (int j = 0; j < i ; j++) {
 				if (rrsig_type_covered(tmp_rrset) ==
@@ -652,17 +674,16 @@ static test_response_t *load_parsed_response(const char **src, unsigned *src_siz
 							   answer[j]->
 							   rrsigs,
 							   (void *)&tmp_rrset);
-					/* XXX is is this okay for NULL? */
 					} else {
 						resp->answer[j]->rrsigs
 							= tmp_rrset;
 					}
 				}
 			}
-		}
+		} */
 	}
 
-	resp->ancount -= rrsig_count;
+//	resp->ancount -= rrsig_count;
 
 	rrsig_count = 0;
 
@@ -681,7 +702,7 @@ static test_response_t *load_parsed_response(const char **src, unsigned *src_siz
 			return NULL;
 		}
 
-		if (tmp_rrset->type == DNSLIB_RRTYPE_RRSIG) {
+/*		if (tmp_rrset->type == DNSLIB_RRTYPE_RRSIG) {
 			rrsig_count++;
 			for (int j = 0; j < i ; j++) {
 				if (rrsig_type_covered(tmp_rrset) ==
@@ -692,17 +713,16 @@ static test_response_t *load_parsed_response(const char **src, unsigned *src_siz
 							   authority[j]->
 							   rrsigs,
 							   (void *)&tmp_rrset);
-					/* XXX is is this okay for NULL? */
 					} else {
 						resp->authority[j]->rrsigs
 							= tmp_rrset;
 					}
 				}
 			}
-		}
+		} */
 	}
 
-	resp->nscount -= rrsig_count;
+//	resp->nscount -= rrsig_count;
 
 	rrsig_count = 0;
 
@@ -715,13 +735,20 @@ static test_response_t *load_parsed_response(const char **src, unsigned *src_siz
 
 	for (int i = 0; i < resp->arcount; i++) {
 		tmp_rrset = load_response_rrset(src, src_size, 0);
-		resp->additional[i] = tmp_rrset;
+		if (tmp_rrset->type != DNSLIB_RRTYPE_OPT) {
+			resp->additional[i] = tmp_rrset;
+		} else {
+			assert(i + 1 == resp->arcount);
+			resp->arcount--;
+			break;
+		}
+
 		if (resp->additional[i] == NULL) {
 			diag("Could not load additional rrsets");
 			return NULL;
 		}
 
-		if (tmp_rrset->type == DNSLIB_RRTYPE_RRSIG) {
+/*		if (tmp_rrset->type == DNSLIB_RRTYPE_RRSIG) {
 			rrsig_count++;
 			for (int j = 0; j < i ; j++) {
 				if (rrsig_type_covered(tmp_rrset) ==
@@ -732,17 +759,17 @@ static test_response_t *load_parsed_response(const char **src, unsigned *src_siz
 						   additional[j]->
 						   rrsigs,
 						   (void *)&tmp_rrset);
-					/* XXX is is this okay for NULL? */
+					// XXX is is this okay for NULL?
 					} else {
 						resp->additional[j]->rrsigs
 							= tmp_rrset;
 					}
 				}
 			}
-		}
+		} */
 	}
 
-	resp->arcount -= rrsig_count;
+//	resp->arcount -= rrsig_count;
 
 	/* this will never be used */
 
@@ -1075,8 +1102,22 @@ static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 		} else {
 			if (rdata->items[i].raw_data[0] !=
 			    ldns_rdf_size(ldns_rr_rdf(rr, i))) {
+				/* \note ldns stores the size including the
+				 * length, dnslib does not */
 				diag("Raw data sizes in rdata differ");
-				return 1;
+				diag("dnslib: %d ldns: %d",
+				     rdata->items[i].raw_data[0],
+				     ldns_rdf_size(ldns_rr_rdf(rr, i)));
+				hex_print((char *)(rdata->items[i].raw_data + 1),
+					  rdata->items[i].raw_data[0]);
+				hex_print((char *)ldns_rdf_data(ldns_rr_rdf(rr,
+									    i)),
+					  ldns_rdf_size(ldns_rr_rdf(rr, i)));
+				if (abs(rdata->items[i].raw_data[0] -
+				    ldns_rdf_size(ldns_rr_rdf(rr, i))) != 1) {
+					diag("ASDFasdsdasdfasdfasdf");
+					return 1;
+				}
 			}
 			if (compare_wires_simple((uint8_t *)
 				(rdata->items[i].raw_data + 1),
@@ -1098,17 +1139,14 @@ static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 }
 
 static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
-                                      ldns_rr_list *rr_set)
+				      ldns_rr *rr)
 {
         /* We should have only one rrset from ldns, although it is
          * represented as rr_list ... */
 
 	/* TODO errors */
 
-	assert(ldns_is_rrset(rr_set));
-
-        ldns_rr *rr = ldns_rr_list_pop_rr(rr_set);
-	ldns_rr_list_push_rr(rr_set, rr);
+	assert(rr);
 
         /* compare headers */
 
@@ -1116,8 +1154,8 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
                 diag("RRSet owner names differ in length");
                 diag("ldns: %d, dnslib: %d", ldns_rdf_size(ldns_rr_owner(rr)),
                      rrset->owner->size);
-//                diag("%s", dnslib_dname_to_str(rrset->owner));
-//                diag("%s", ldns_rdf_data(ldns_rr_owner(rr)));
+		diag("%s", dnslib_dname_to_str(rrset->owner));
+		diag("%s", ldns_rdf_data(ldns_rr_owner(rr)));
                 return 1;
         }
 
@@ -1129,7 +1167,9 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
         }
 
         if (rrset->type != ldns_rr_get_type(rr)) {
-                diag("RRset types differ");
+		diag("RRset types differ");
+		diag("Dnslib type: %d Ldns type: %d", rrset->type,
+		     ldns_rr_get_type(rr));
                 return 1;
         }
 
@@ -1145,38 +1185,43 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
 
 	/* compare rdatas */
 
-	dnslib_rdata_t *tmp_rdata = rrset->rdata;
+//	dnslib_rdata_t *tmp_rdata = rrset->rdata;
 
-	int i = 0;
+//	int i = 0;
 
-	while (tmp_rdata->next != rrset->rdata) {
-		rr = ldns_rr_list_rr(rr_set, i);
-		/* TODO use this in the other cases as
-		 * well, it's better than pop */
-		if (rr == NULL) {
-			diag("ldns rrset has more rdata entries"
-			     "than the one from dnslib");
-			return 1;
-		}
+//	while (tmp_rdata->next != rrset->rdata) {
+//		rr = ldns_rr_list_rr(rr_set, i);
+//		/* TODO use this in the other cases as
+//		 * well, it's better than pop */
+//		if (rr == NULL) {
+//			diag("ldns rrset has more rdata entries"
+//			     "than the one from dnslib");
+//			return 1;
+//		}
 
-		if (compare_rr_rdata(tmp_rdata, rr, rrset->type) != 0) {
-			diag("Rdata differ");
-			return 1;
-		}
+//		if (compare_rr_rdata(tmp_rdata, rr, rrset->type) != 0) {
+//			diag("Rdata differ");
+//			return 1;
+//		}
 
-		tmp_rdata = tmp_rdata->next;
-		i++;
-	}
+//		tmp_rdata = tmp_rdata->next;
+//		i++;
+//	}
 
-	/* TODO double check the indexing */
-	rr = ldns_rr_list_rr(rr_set, i);
-	if (rr == NULL) {
-		diag("ldns rrset has more rdata entries"
-		     "than the one from dnslib");
-		return 1;
-	}
+//	/* TODO double check the indexing */
+//	rr = ldns_rr_list_rr(rr_set, i);
+//	if (rr == NULL) {
+//		diag("ldns rrset has more rdata entries"
+//		     "than the one from dnslib");
+//		return 1;
+//	}
 
-	if (compare_rr_rdata(tmp_rdata, rr, rrset->type) != 0) {
+//	if (compare_rr_rdata(tmp_rdata, rr, rrset->type) != 0) {
+//		diag("Rdata differ");
+//		return 1;
+//	}
+
+	if (compare_rr_rdata(rrset->rdata, rr, rrset->type) != 0) {
 		diag("Rdata differ");
 		return 1;
 	}
@@ -1187,29 +1232,27 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
 static int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
                                         ldns_rr_list *rrlist, uint count)
 {
-        int errors = 0;
+	int errors = 0;
 
-        ldns_rr_list_sort(rrlist);
+//        ldns_rr_list_sort(rrlist);
 
-        ldns_rr_list *rr_set = NULL;
+	/* There are no rrset currenty. Everythins is just rr */
 
-	for (int i = count - 1; i > -1 ; i--) {
+	ldns_rr *rr = NULL;
 
+	for (int i = 0; i < count ; i++) {
 
-                rr_set = ldns_rr_list_pop_rrset(rrlist);
+		rr = ldns_rr_list_rr(rrlist, i);
 
-                if (rr_set == NULL) {
+		if (rr == NULL) {
 			diag("Ldns and dnslib structures have different "
-			     "count of rrsets.");
-			/* Tolerate */
-
-			diag("returning %d", - (i + 1));
-			return - (i + 1);
+			     "counts of rrsets.");
+			return - ((count - 1) - i);
                 }
 
                 if (compare_rrset_w_ldns_rrset(rrsets[i],
-                                        rr_set) != 0) {
-                        errors++;
+					rr) != 0) {
+			errors++;
                 }
 	}
 
@@ -1270,12 +1313,16 @@ static int compare_response_w_ldns_packet(dnslib_response_t *response,
 //		return 1;
         }
 
+
+
 	if ((ret = compare_rrsets_w_ldns_rrlist(response->authority,
 					 ldns_pkt_authority(packet),
 					 response->header.nscount)) != 0) {
 		diag("Authority rrsets wrongly converted - %d", ret);
 //		return 1;
-        }
+	}
+
+	diag("testing additional with arcount: %d", response->header.arcount);
 
 	if ((ret = compare_rrsets_w_ldns_rrlist(response->additional,
 					 ldns_pkt_additional(packet),
@@ -1445,7 +1492,7 @@ static int test_response_to_wire(test_response_t **responses,
 #endif
 
 		free(dnslib_wire);
-		dnslib_response_free(&resp);
+//		dnslib_response_free(&resp);
 	}
 
 	return (errors == 0);
