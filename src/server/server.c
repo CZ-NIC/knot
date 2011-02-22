@@ -3,6 +3,8 @@
 #include <stdlib.h>
 
 #include <gnutls/gnutls.h>
+#include <gcrypt.h>
+#include <errno.h>
 
 #include "debug.h"
 #include "server.h"
@@ -14,6 +16,8 @@
 #include "zone-load.h"
 #include "dnslib/debug.h"
 #include "dnslib/dname.h"
+
+GCRY_THREAD_OPTION_PTHREAD_IMPL;
 
 cute_server *cute_create()
 {
@@ -65,6 +69,7 @@ cute_server *cute_create()
 	debug_server("Initializing GnuTLS...\n");
 
 	int res = 0;
+	gcry_control(GCRYCTL_SET_THREAD_CBS, &gcry_threads_pthread);
 	if ((res = gnutls_global_init()) != GNUTLS_E_SUCCESS) {
 		log_error("Failed to initalize GnuTLS.\n");
 		ns_destroy(&server->nameserver);
