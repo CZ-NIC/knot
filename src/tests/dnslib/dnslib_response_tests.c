@@ -360,13 +360,19 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 
 				items[i].raw_data =
 					malloc(sizeof(uint8_t) *
-					       (raw_data_length + 2));
+					       (raw_data_length + 3));
 
 				items[i].raw_data[0] =
 					(uint16_t) raw_data_length + 1;
 
-				if (!mem_read(items[i].raw_data + 1,
-					      sizeof(uint8_t) * raw_data_length,
+				/* let's store the length again */
+
+				((uint8_t *)items[i].raw_data)[2] =
+					raw_data_length;
+
+				if (!mem_read(((uint8_t *)items[i].raw_data) + 3,
+					      sizeof(uint8_t) *
+					      (raw_data_length),
 					      src, src_size)) {
 					return NULL;
 				}
@@ -387,7 +393,7 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 				if (size_fr_desc == 0) { /* unknown length */
 					size_fr_desc = wireformat_size_n(type,
 									 items,
-									 i);
+										i);
 					if (size_fr_desc == 0) {
 						if (i != desc->length - 1) {
 							diag("I dont know how"
@@ -1127,8 +1133,8 @@ static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 	return 0;
 }
 
-static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
-				      ldns_rr *rr)
+static int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
+				      ldns_rr *rr, char check_rdata)
 {
         /* We should have only one rrset from ldns, although it is
          * represented as rr_list ... */
@@ -1136,8 +1142,9 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
 	/* TODO errors */
 
 	assert(rr);
+	assert(rrset)	;
 
-        /* compare headers */
+	/* compare headers */
 
         if (rrset->owner->size != ldns_rdf_size(ldns_rr_owner(rr))) {
                 diag("RRSet owner names differ in length");
@@ -1168,7 +1175,8 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
         }
 
         if (rrset->ttl != ldns_rr_ttl(rr)) {
-                diag("RRset TTLs differ");
+		diag("RRset TTLs differ");
+		diag("dnslib: %d ldns: %d", rrset->ttl, ldns_rr_ttl(rr));
                 return 1;
 	}
 
@@ -1210,9 +1218,11 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
 //		return 1;
 //	}
 
-	if (compare_rr_rdata(rrset->rdata, rr, rrset->type) != 0) {
-		diag("Rdata differ");
-		return 1;
+	if (check_rdata) {
+		if (compare_rr_rdata(rrset->rdata, rr, rrset->type) != 0) {
+			diag("Rdata differ");
+			return 1;
+		}
 	}
 
         return 0;
@@ -1239,8 +1249,8 @@ static int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
 			return - ((count - 1) - i);
                 }
 
-                if (compare_rrset_w_ldns_rrset(rrsets[i],
-					rr) != 0) {
+		if (compare_rrset_w_ldns_rr(rrsets[i],
+					rr, 1) != 0) {
 			errors++;
                 }
 	}
@@ -1286,17 +1296,31 @@ static int compare_response_w_ldns_packet(dnslib_response_t *response,
 
 	/* Question section */
 
-	/* TODO */
+	int ret = 0;
+
+	dnslib_rrset_t *question_rrset = dnslib_rrset_new(response->
+							  question.qname,
+							  response->
+							  question.qtype,
+							  response->
+							  question.qclass,
+							  3600);
+
+	if ((ret = compare_rrset_w_ldns_rr(question_rrset,
+			ldns_rr_list_rr(ldns_pkt_question(packet),
+					0), 0)) != 0) {
+		diag("Question rrsets wrongly converted");
+		return 1;
+	}
 
 	/* other RRSets */
 
-	int ret = 0;
 
 	if ((ret = compare_rrsets_w_ldns_rrlist(response->answer,
 					 ldns_pkt_answer(packet),
 					 response->header.ancount)) != 0) {
 		diag("Answer rrsets wrongly converted");
-//		return 1;
+		return 1;
         }
 
 
@@ -1305,7 +1329,7 @@ static int compare_response_w_ldns_packet(dnslib_response_t *response,
 					 ldns_pkt_authority(packet),
 					 response->header.nscount)) != 0) {
 		diag("Authority rrsets wrongly converted - %d", ret);
-//		return 1;
+		return 1;
 	}
 
 	diag("testing additional with arcount: %d", response->header.arcount);
@@ -1314,7 +1338,7 @@ static int compare_response_w_ldns_packet(dnslib_response_t *response,
 					 ldns_pkt_additional(packet),
 					 response->header.arcount)) != 0) {
 		diag("Additional rrsets wrongly converted");
-//		return 1;
+		return 1;
 	}
 
 	return 0;
