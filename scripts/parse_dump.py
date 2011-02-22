@@ -34,31 +34,34 @@ def chop_and_write_rr_response(rr):
 
 	try:
 		rdata = dns.rdata.from_wire(rr.rclass, rr.type, rr.rdata, 0, len(rr.rdata))
-		fp.write(pack('B', len(rr.rdata))) 
+		fp.write(pack('B', len(rr.rdata)))
+#		print "type ", rr.type, "length ", len(rr.rdata)
+#		OPT has length 0 - wat do?
 		rdata.to_wire(fp)
 	except:
 
 		try:
-			if rr.rdata[0] != '\#':
-				rdata = dns.rdata.from_text(rr.rclass, rr.type, rr.rdata)
-				try:
-					fp.write(pack('B', len(rdata)))
-				except:
+#			if rr.rdata[0] != '\#':
+			rdata = dns.rdata.from_text(rr.rclass, rr.type, rr.rdata)
+			try:
+				fp.write(pack('B', len(rdata)))
+			except:
 				# no length - no way to know wire length
-					try:
-						if rr.type == 2:
-							fp.seek(1, 1)
-							old = fp.tell()
-							rdata.to_wire(fp)
-							size = fp.tell() - old
-							fp.seek(-(size + 1), 1)
-							fp.write(pack('B', size))
-							fp.seek(0, 2)
-						else:
-							rdata.to_wire(fp)
-					except Exception as e:
-						print 'Error, exiting: ', e
-						sys.exit(-1)
+				try:
+					print "unknown length for type", rr.type
+#						if rr.type == 2:
+#							fp.seek(1, 1)
+#							old = fp.tell()
+#							rdata.to_wire(fp)
+#							size = fp.tell() - old
+#							fp.seek(-(size + 1), 1)
+#							fp.write(pack('B', size))
+#							fp.seek(0, 2)
+#						else:
+					rdata.to_wire(fp)
+				except Exception as e:
+					print 'Error, exiting: ', e
+					sys.exit(-1)
 		except:
 			print 'could not parse rdata type: ', rr.type
 			print 'dumping directly (hopefully it is SOA)'
