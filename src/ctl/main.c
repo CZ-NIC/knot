@@ -49,9 +49,11 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 		}
 
 		// Prepare command
+		const char *cfg = conf()->filename;
 		char* cmd = 0;
-		const char *cmd_str = "%s -d %s%s";
+		const char *cmd_str = "%s %s%s -d %s%s";
 		rc = asprintf(&cmd, cmd_str, PROJECT_EXEC,
+		              cfg ? "-c " : "", cfg ? cfg : "",
 			      verbose ? "-v " : "", argc > 0 ? argv[0] : "");
 
 		// Execute command
