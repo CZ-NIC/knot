@@ -264,54 +264,94 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 	uint8_t raw_data_length; /* TODO should be bigger */
 
 	/* TODO the are more types with no length for sure ... */
-	if (type != DNSLIB_RRTYPE_NS &&
-	    type != DNSLIB_RRTYPE_A) {
+	if (type != DNSLIB_RRTYPE_A &&
+	    type != DNSLIB_RRTYPE_NS) {
 		if (!mem_read(&raw_data_length,
 		     sizeof(raw_data_length), src, src_size)) {
 			return NULL;
 		}
+
+		diag("READ it");
 	}
 
 	for (int i = 0; i < desc->length; i++) {
-		if ((i != 7 && type != DNSLIB_RRTYPE_RRSIG) && /* oh my */
-		(desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+		if ((desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
-		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME))	{
+		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME)) {
+			items[i].dname = NULL;
+			uint8_t label_size = 0;
+			uint8_t *label_wire = NULL;
+			dnslib_dname_t *partial_dname = NULL;
 
-			/* TODO maybe this does not need to be stored this big*/
+			diag("%d", i);
+			diag("%s", dnslib_rrtype_to_string(type));
+			getchar();
 
-			/* TODO freeing upon failed fread*/
+			do {
+				if (!mem_read(&label_size,
+					      sizeof(uint8_t),
+					      src,
+					      src_size)) {
+					return NULL;
+				}
 
-			uint8_t dname_size;
-			uint8_t *dname_wire = NULL;
+				if (label_size == 0) {
+					diag("label is zero");
+					dnslib_dname_t *root_dname =
+						dnslib_dname_new_from_str(".",
+										  1,
+										  NULL);
+					assert(items[i].dname != NULL);
 
-			if (!mem_read(&dname_size,
-				      sizeof(dname_size), src, src_size)) {
-				return NULL;
-			}
+					dnslib_dname_cat(items[i].dname,
+							 root_dname);
 
+					dnslib_dname_free(&root_dname);
+					break;
+				}
 
-			assert(dname_size < DNAME_MAX_WIRE_LENGTH);
+				diag("label_size: %d", label_size);
 
-			dname_wire = malloc(sizeof(uint8_t) * dname_size);
+				label_wire =
+						malloc(sizeof(uint8_t) *
+						       (label_size + 1));
 
-			if (!mem_read(dname_wire, sizeof(uint8_t) * dname_size,
-				      src, src_size)) {
-				return NULL;
-			}
+				label_wire[0] = label_size;
 
-			items[i].dname =
-				dnslib_dname_new_from_wire(dname_wire,
-							   dname_size,
-							   NULL);
+				if (!mem_read(label_wire + 1,
+					      sizeof(uint8_t) *
+					      label_size,
+					      src,
+					      src_size)) {
+					return NULL;
+				}
 
-			diag("read dname size %d %s", dname_size,
+				hex_print(label_wire, label_size + 1);
+
+				partial_dname =
+					dnslib_dname_new_from_wire(label_wire,
+								   label_size + 1,
+								   NULL);
+
+				if (items[i].dname == NULL) {
+					items[i].dname =
+						dnslib_dname_new_from_wire(label_wire,
+										   label_size + 1,
+										   NULL);
+					assert(items[i].dname);
+				} else {
+					dnslib_dname_cat(items[i].dname,
+							 partial_dname);
+				}
+
+				free(label_wire);
+
+				dnslib_dname_free(&partial_dname);
+			} while (label_size != 0);
+
+			assert(dnslib_dname_is_fqdn(items[i].dname));
+			diag("loaded dname by labels: %s",
 			     dnslib_dname_to_str(items[i].dname));
-
-			free(dname_wire);
-
-			assert(items[i].dname);
-
 		} else {
 			if (desc->wireformat[i] ==
 			    DNSLIB_RDATA_WF_BINARYWITHLENGTH) {
@@ -334,84 +374,6 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 				hex_print((char *)items[i].raw_data + 1,
 					  items[i].raw_data[0]);
 				*/
-			} else if (type == DNSLIB_RRTYPE_RRSIG && i == 7) {
-				/* we're in rrsig and we have to read signer's
-				   name ... label by label until 0 is found */
-				assert(i == 7);
-				items[i].dname = NULL;
-				uint8_t label_size = 0;
-				uint8_t *label_wire = NULL;
-				dnslib_dname_t *partial_dname = NULL;
-
-				diag("%d", i);
-				diag("%s", dnslib_rrtype_to_string(type));
-				getchar();
-
-				do {
-					if (!mem_read(&label_size,
-						      sizeof(uint8_t),
-						      src,
-						      src_size)) {
-						return NULL;
-					}
-
-					if (label_size == 0) {
-						diag("label is zero");
-						dnslib_dname_t *root_dname =
-						dnslib_dname_new_from_str(".",
-									  1,
-									  NULL);
-						assert(items[i].dname != NULL);
-
-						dnslib_dname_cat(items[i].dname,
-							 root_dname);
-
-						dnslib_dname_free(&root_dname);
-						break;
-					}
-
-					diag("label_size: %d", label_size);
-
-					label_wire =
-						malloc(sizeof(uint8_t) *
-						       (label_size + 1));
-
-					label_wire[0] = label_size;
-
-					if (!mem_read(label_wire + 1,
-						      sizeof(uint8_t) *
-						      label_size,
-						      src,
-						      src_size)) {
-						return NULL;
-					}
-
-					hex_print(label_wire, label_size + 1);
-
-					partial_dname =
-					dnslib_dname_new_from_wire(label_wire,
-								   label_size + 1,
-								   NULL);
-
-					if (items[i].dname == NULL) {
-						items[i].dname =
-					dnslib_dname_new_from_wire(label_wire,
-								   label_size + 1,
-								   NULL);
-					assert(items[i].dname);
-					} else {
-						dnslib_dname_cat(items[i].dname,
-								 partial_dname);
-					}
-
-					free(label_wire);
-
-					dnslib_dname_free(&partial_dname);
-				} while (label_size != 0);
-
-				assert(dnslib_dname_is_fqdn(items[i].dname));
-				diag("loaded dname by labels: %s",
-				     dnslib_dname_to_str(items[i].dname));
 			} else {
 				uint16_t size_fr_desc =
 					(uint16_t)
