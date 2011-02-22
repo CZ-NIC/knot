@@ -73,7 +73,7 @@ int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name);
 // *       in the linked list (zdb_zone.next).
  */
 const dnslib_zone_t *dnslib_zonedb_find_zone_for_name(dnslib_zonedb_t *db,
-						   const dnslib_dname_t *dname);
+                                                   const dnslib_dname_t *dname);
 
 /*!
  * \brief Destroys and deallocates the whole zone database.
