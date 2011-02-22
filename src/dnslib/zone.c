@@ -577,6 +577,40 @@ void dnslib_zone_adjust_dnames(dnslib_zone_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
+void dnslib_zone_load_nsec3param(dnslib_zone_t *zone)
+{
+	assert(zone);
+	assert(zone->apex);
+	const dnslib_rrset_t *rrset = dnslib_node_rrset(zone->apex,
+	                                              DNSLIB_RRTYPE_NSEC3PARAM);
+
+	if (rrset != NULL) {
+		dnslib_nsec3_params_from_wire(&zone->nsec3_params, rrset);
+	} else {
+		memset(&zone->nsec3_params, 0, sizeof(dnslib_nsec3_params_t));
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_zone_nsec3_enabled(const dnslib_zone_t *zone)
+{
+	return (zone->nsec3_params.algorithm != 0);
+}
+
+/*----------------------------------------------------------------------------*/
+
+const dnslib_nsec3_params_t *dnslib_zone_nsec3params(const dnslib_zone_t *zone)
+{
+	if (dnslib_zone_nsec3_enabled(zone)) {
+		return &zone->nsec3_params;
+	} else {
+		return NULL;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 void dnslib_zone_tree_apply_postorder(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data)
