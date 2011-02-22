@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <gnutls/gnutls.h>
+
 #include "debug.h"
 #include "server.h"
 #include "udp-handler.h"
@@ -54,6 +56,18 @@ cute_server *cute_create()
 
 	server->nameserver = ns_create(server->zone_db);
 	if (server->nameserver == NULL) {
+		dnslib_zonedb_deep_free(&server->zone_db);
+		free(server);
+		return NULL;
+	}
+
+	debug_server("Done\n\n");	
+	debug_server("Initializing GnuTLS...\n");
+
+	int res = 0;
+	if ((res = gnutls_global_init()) != GNUTLS_E_SUCCESS) {
+		log_error("Failed to initalize GnuTLS.\n");
+		ns_destroy(&server->nameserver);
 		dnslib_zonedb_deep_free(&server->zone_db);
 		free(server);
 		return NULL;
@@ -246,6 +260,9 @@ void cute_destroy(cute_server **server)
 	ns_destroy(&(*server)->nameserver);
 	dnslib_zonedb_deep_free(&(*server)->zone_db);
 	free(*server);
+
+	gnutls_global_deinit();
+
 	*server = NULL;
 }
 
