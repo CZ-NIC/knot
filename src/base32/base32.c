@@ -481,3 +481,56 @@ bool base32_decode_alloc (const char *in, size_t inlen, char **out,
 
 	return true;
 }
+
+#ifdef MAIN
+
+#include <stddef.h>
+#include <stdbool.h>
+#include <string.h>
+#include <stdio.h>
+#include "base32.h"
+
+int main(int argc, char **argv) {
+	int i = 1;
+	size_t inlen, outlen, argvlen;
+	char *out;
+	char *in;
+	bool ok;
+
+	while (argc > 1) {
+		argv++; argc--;
+		argvlen = strlen(*argv);
+
+		outlen = base32_encode_alloc(*argv, argvlen, &out);
+
+		if (out == NULL && outlen == 0 && inlen != 0) {
+			fprintf(stderr, "ERROR(encode): input too long: %zd\n", outlen);
+			return 1;
+		}
+
+		if (out == NULL) {
+			fprintf(stderr, "ERROR(encode): memory allocation error\n");
+			return 1;
+		}
+
+		ok = base32_decode_alloc(out, outlen, &in, &inlen);
+
+		if (!ok) {
+			fprintf(stderr, "ERROR(decode): input was not valid base32: `%s'\n", out);
+			return 1;
+		}
+
+		if (in == NULL) {
+			fprintf(stderr, "ERROR(decode): memory allocation error\n");
+		}
+
+		if ((inlen != argvlen) ||
+		    strcmp(*argv, in) != 0) {
+			fprintf(stderr, "ERROR(encode/decode): input `%s' and output `%s'\n", *argv, in);
+			return 1;
+		}
+		printf("INPUT: `%s'\nENCODE: `%s'\nDECODE: `%s'\n", *argv, out, in);
+	}
+}
+
+#endif
