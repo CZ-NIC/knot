@@ -31,7 +31,11 @@ int udp_master(dthread_t *thread)
 	 */
 	uint8_t inbuf[SOCKET_MTU_SZ];
 	uint8_t outbuf[SOCKET_MTU_SZ];
+#ifdef DISABLE_IPV6
 	struct sockaddr_in faddr;
+#else
+	struct sockaddr_in6 faddr;
+#endif
 	int addrsize = sizeof(faddr);
 
 	/* in case of STAT_COMPILE the following code will declare thread_stat
@@ -95,20 +99,16 @@ int udp_master(dthread_t *thread)
 			debug_net_hex((const char *) outbuf, answer_size);
 
 			// Send datagram
-			for (;;) {
-				res = socket_sendto(sock, outbuf, answer_size,0,
-						    (struct sockaddr *) &faddr,
-						    (socklen_t) addrsize);
+			res = socket_sendto(sock, outbuf, answer_size,0,
+				    (struct sockaddr *) &faddr,
+				    (socklen_t) addrsize);
 
-				// Check result
-				if (res != answer_size) {
-					log_error("udp: %s: failed: %d - %s.\n",
-						  "socket_sendto()",
-						  res, strerror(res));
-					continue;
-				}
-
-				break;
+			// Check result
+			if (res != answer_size) {
+				log_error("udp: %s: failed: %d - %s.\n",
+					  "socket_sendto()",
+					  res, strerror(res));
+				continue;
 			}
 
 			stat_get_second(thread_stat);
