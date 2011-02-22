@@ -12,38 +12,42 @@
 static uint8_t *LOG_FCL = 0;
 static volatile size_t LOG_FCL_SIZE = 0;
 static FILE** LOG_FDS = 0;
-static size_t LOG_FDS_OPEN = 0;
+static ssize_t LOG_FDS_OPEN = 0;
 
 #define facility_at(i) (LOG_FCL + ((i) << LOG_SRC_BITS))
 #define facility_next(f) (f) += (1 << LOG_SRC_BITS)
 #define facility_levels(f, i) *((f) + (i))
 
-int log_setup(int facilities)
+int log_setup(int logfiles)
 {
 	/* Check facilities count. */
-	if (facilities <= 0) {
+	if (logfiles < 0) {
 		return -1;
 	}
+
+	/* Ensure minimum facilities count. */
+	int facilities = LOGT_FILE + logfiles;
 
 	/* Reserve space for facilities. */
 	size_t new_size = facilities << LOG_SRC_BITS;
 	LOG_FDS = 0;
 	LOG_FDS_OPEN = 0;
+	LOG_FCL = 0;
+	LOG_FCL_SIZE = 0;
 	LOG_FCL = malloc(new_size);
 	if (!LOG_FCL) {
 		return -1;
 	}
 
 	/* Reserve space for logfiles. */
-	int files = (facilities - LOGT_FILE);
-	if (files > 0) {
-		LOG_FDS = malloc(sizeof(FILE*) * files);
+	if (logfiles > 0) {
+		LOG_FDS = malloc(sizeof(FILE*) * logfiles);
 		if (!LOG_FDS) {
 			free(LOG_FCL);
 			LOG_FCL = 0;
 			return -1;
 		}
-		memset(LOG_FDS, 0, sizeof(FILE*) * files);
+		memset(LOG_FDS, 0, sizeof(FILE*) * logfiles);
 	}
 
 	memset(LOG_FCL, 0, new_size);
@@ -62,7 +66,7 @@ int log_init()
 	LOG_FDS_OPEN = 0;
 
 	/* Setup initial state. */
-	log_setup(LOGT_FILE);
+	log_setup(0);
 	log_levels_set(LOGT_SYSLOG, LOG_ANY, LOG_MASK(LOG_ERR));
 	log_levels_set(LOGT_STDERR, LOG_ANY, LOG_MASK(LOG_ERR));
 

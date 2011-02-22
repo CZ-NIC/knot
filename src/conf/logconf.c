@@ -11,12 +11,21 @@
 
 int log_conf_hook(const struct conf_t *conf)
 {
+	// Find maximum log facility id
+	node *n = 0; size_t files = 0;
+	WALK_LIST(n, conf->logs) {
+		conf_log_t* log = (conf_log_t*)n;
+		if (log->type == LOGT_FILE) {
+			++files;
+		}
+	}
+
 	// Initialize logsystem
 	log_truncate();
-	log_setup(conf->logs_count);
+	log_setup(files);
 
 	// Setup logs
-	node *n = 0;
+	n = 0;
 	WALK_LIST(n, conf->logs) {
 
 		// Calculate offset
@@ -24,6 +33,11 @@ int log_conf_hook(const struct conf_t *conf)
 		int facility = log->type;
 		if (facility == LOGT_FILE) {
 			facility = log_open_file(log->file);
+			if (facility < 0) {
+				log_error("Failed to open logfile '%s'.\n",
+				          log->file);
+				continue;
+			}
 		}
 
 		// Setup sources mapping

@@ -52,12 +52,12 @@ typedef enum {
  * Facilities ordering: Syslog, Stderr, Stdout, File0...
  * \see logtype_t
  *
- * \param facilities Number of requested facilities.
+ * \param logfiles Number of extra logfiles.
  *
  * \retval 0 On success.
  * \retval <0 If an error occured.
  */
-int log_setup(int facilities);
+int log_setup(int logfiles);
 
 /*!
  * \brief Setup logging subsystem.

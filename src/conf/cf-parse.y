@@ -39,6 +39,7 @@ static conf_log_map_t *this_logmap = 0;
 
 %token INTERFACES ADDRESS PORT
 %token <t> IPA
+%token <t> IPA6
 
 %token LOG
 %token <i> LOG_DEST
@@ -67,12 +68,25 @@ interface_start: TEXT {
 
 interface:
    interface_start '{'
- | interface ADDRESS IPA ';' { this_iface->address = $3; }
  | interface PORT NUM ';' { this_iface->port = $3; }
+ | interface ADDRESS IPA ';' {
+     this_iface->address = $3;
+     this_iface->family = AF_INET;
+   }
  | interface ADDRESS IPA '@' NUM ';' {
      this_iface->address = $3;
+     this_iface->family = AF_INET;
      this_iface->port = $5;
    }
+   | interface ADDRESS IPA6 ';' {
+       this_iface->address = $3;
+       this_iface->family = AF_INET6;
+     }
+   | interface ADDRESS IPA6 '@' NUM ';' {
+       this_iface->address = $3;
+       this_iface->family = AF_INET6;
+       this_iface->port = $5;
+     }
  ;
 
 interfaces:
@@ -191,7 +205,7 @@ log_file: FILENAME TEXT {
   if (!this_log) {
     this_log = malloc(sizeof(conf_log_t));
     this_log->type = LOGT_FILE;
-    this_log->file = $2;
+    this_log->file = strcpath($2);
     init_list(&this_log->map);
     add_tail(&new_config->logs, &this_log->n);
     ++new_config->logs_count;

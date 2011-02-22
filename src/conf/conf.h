@@ -34,6 +34,7 @@ typedef struct {
 	char *name;       /*!< Internal name for the interface. */
 	char *address;    /*!< IP (IPv4/v6) address for this interface */
 	int   port;       /*!< Port number for this interface */
+	int family;       /*!< Address family. */
 } conf_iface_t;
 
 /*!
@@ -266,6 +267,19 @@ extern conf_t *s_config;
 static inline conf_t* conf() {
 	return s_config; // Inline for performance reasons.
 }
+
+/*
+ * Utilities.
+ */
+
+/*!
+ * \brief Return normalized path.
+ *
+ * \note Old pointer may be freed.
+ *
+ * \retval Pointer to normalized path.
+ */
+char* strcpath(char *path);
 
 #endif /* _CUTEDNS_CONF_H_ */
 
