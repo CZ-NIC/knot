@@ -42,8 +42,6 @@
  *
  */
 
-#include <config.h>
-
 /* Get prototype. */
 #include "base32.h"
 
@@ -65,8 +63,8 @@ to_uchar (char ch)
    possible.  If OUTLEN is larger than BASE32_LENGTH(INLEN), also zero
    terminate the output buffer. */
 void
-base32_encode (const char *restrict in, size_t inlen,
-	       char *restrict out, size_t outlen)
+base32_encode (const char *in, size_t inlen,
+	       char *out, size_t outlen)
 {
   static const char b32str[32] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -315,8 +313,8 @@ isbase32 (char ch)
    that, when applicable, you must remove any line terminators that is
    part of the data stream before calling this function.  */
 bool
-base32_decode (const char *restrict in, size_t inlen,
-	       char *restrict out, size_t *outlen)
+base32_decode (const char *in, size_t inlen,
+	       char *out, size_t *outlen)
 {
   size_t outleft = *outlen;
 
