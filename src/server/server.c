@@ -33,8 +33,8 @@ cute_server *cute_create()
 		conf_iface_t *iface = (conf_iface_t*)n;
 
 		// Create TCP+UDP sockets
-		int udp_sock = socket_create(PF_INET, SOCK_DGRAM);
-		if (socket_bind(udp_sock, iface->address, iface->port) < 0) {
+		int udp_sock = socket_create(iface->family, SOCK_DGRAM);
+		if (socket_bind(udp_sock, iface->family, iface->address, iface->port) < 0) {
 			log_server_error("Could not bind to "
 			                 "UDP interface on '%s:%d'.\n",
 			                 iface->address, iface->port);
@@ -46,8 +46,8 @@ cute_server *cute_create()
 		setsockopt(udp_sock, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(opt));
 		setsockopt(udp_sock, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt));
 
-		int tcp_sock = socket_create(PF_INET, SOCK_STREAM);
-		if (socket_bind(tcp_sock, iface->address, iface->port) < 0) {
+		int tcp_sock = socket_create(iface->family, SOCK_STREAM);
+		if (socket_bind(tcp_sock, iface->family, iface->address, iface->port) < 0) {
 			log_server_error("Could not bind to "
 			                 "TCP interface on '%s:%d'.\n",
 			                 iface->address, iface->port);
@@ -67,6 +67,8 @@ cute_server *cute_create()
 		for (int i = 0; i < tcp_loaded; ++i) {
 			close(tcp_socks[i]);
 		}
+		free(udp_socks);
+		free(tcp_socks);
 
 		return 0;
 	}
@@ -85,6 +87,7 @@ cute_server *cute_create()
 
 	server->zone_db = dnslib_zonedb_new();
 	if (server->zone_db == NULL) {
+		ERR_ALLOC_FAILED;
 		return NULL;
 	}
 
@@ -119,6 +122,9 @@ cute_server *cute_create()
 		dt_repurpose(unit->threads[0], &tcp_master, 0);
 		cute_create_handler(server, tcp_socks[i], unit);
 	}
+
+	free(udp_socks);
+	free(tcp_socks);
 	debug_server("Done\n\n");
 
 	return server;
