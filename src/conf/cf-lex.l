@@ -86,12 +86,21 @@ error                { cf_lval.i = LOG_MASK(LOG_ERR); return LOG_LEVEL; }
 }
 
 ({HEXA}*::|({HEXA}*:){3,})({HEXA}*|{DIGIT}+\.{DIGIT}+\.{DIGIT}+\.{DIGIT}+) {
+#ifdef DISABLE_IPV6
+unsigned char buf[sizeof(struct in6_addr)];
+if (inet_pton(AF_INET6, yytext, buf)) {
+        cf_lval.t = strdup(yytext);
+        return IPA6;
+}
+cf_error("Invalid IPv6 address.");
+#else
   unsigned char buf[sizeof(struct in6_addr)];
   if (inet_pton(AF_INET6, yytext, buf)) {
 	  cf_lval.t = strdup(yytext);
-	  return IPA;
+	  return IPA6;
   }
   cf_error("Invalid IPv6 address.");
+#endif
 }
 
 gss-tsig        { cf_lval.alg = GSS_TSIG;    return TSIG_ALGO_NAME; }

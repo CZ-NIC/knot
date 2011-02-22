@@ -21,37 +21,6 @@ static char* strcdup(const char *s1, const char *s2)
 	return dst;
 }
 
-static char* strcpath(char *path)
-{
-	// Remote trailing slash
-	size_t plen = strlen(path);
-	if (path[plen - 1] == '/') {
-		path[--plen] = '\0';
-	}
-
-	// Expand '~'
-	char* tild_p = strchr(path,'~');
-	if (tild_p != 0) {
-		// Get full path
-		char *tild_exp = getenv("HOME");
-		size_t tild_len = strlen(tild_exp);
-		if (tild_exp[tild_len - 1] == '/') {
-			tild_exp[--tild_len] = '\0';
-		}
-
-		// Expand
-		char *npath = malloc(plen + tild_len + 1);
-		npath[0] = '\0';
-		strncpy(npath, path, (size_t)(tild_p - path));
-		strcat(npath, tild_exp);
-		strcat(npath, tild_p + 1);
-		free(path);
-		path = npath;
-	}
-
-	return path;
-}
-
 static int rmkdir(char *path, int mode)
 {
 	char *p = path;
@@ -501,3 +470,35 @@ int conf_open(const char* path)
 
 	return 0;
 }
+
+char* strcpath(char *path)
+{
+	// Remote trailing slash
+	size_t plen = strlen(path);
+	if (path[plen - 1] == '/') {
+		path[--plen] = '\0';
+	}
+
+	// Expand '~'
+	char* tild_p = strchr(path,'~');
+	if (tild_p != 0) {
+		// Get full path
+		char *tild_exp = getenv("HOME");
+		size_t tild_len = strlen(tild_exp);
+		if (tild_exp[tild_len - 1] == '/') {
+			tild_exp[--tild_len] = '\0';
+		}
+
+		// Expand
+		char *npath = malloc(plen + tild_len + 1);
+		npath[0] = '\0';
+		strncpy(npath, path, (size_t)(tild_p - path));
+		strcat(npath, tild_exp);
+		strcat(npath, tild_p + 1);
+		free(path);
+		path = npath;
+	}
+
+	return path;
+}
+
