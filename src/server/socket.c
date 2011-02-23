@@ -7,19 +7,25 @@
 #include <netdb.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
 #include <arpa/inet.h>
 
 #include "socket.h"
 
 int socket_create(int family, int type)
 {
-	// Create socket
+	/* Create socket. */
 	return socket(family, type, 0);
 }
 
 int socket_connect(int fd, const char *addr, unsigned short port)
 {
-	// Create socket
+	/* NULL address => any */
+	if (!addr) {
+		addr = "0.0.0.0";
+	}
+
+	/* Resolve address. */
 	int ret = 0;
 	struct addrinfo hints, *res;
 	hints.ai_family = AF_UNSPEC;
@@ -60,7 +66,7 @@ int socket_connect(int fd, const char *addr, unsigned short port)
 
 int socket_bind(int socket, int family, const char *addr, unsigned short port)
 {
-	// Check address family
+	/* Check address family. */
 	struct sockaddr* paddr = 0;
 	socklen_t addrlen = 0;
 	struct sockaddr_in saddr;
@@ -69,14 +75,14 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 #endif
 	if (family == AF_INET) {
 
-		// Initialize socket address
+		/* Initialize socket address. */
 		paddr = (struct sockaddr*)&saddr;
 		addrlen = sizeof(saddr);
 		if (getsockname(socket, paddr, &addrlen) < 0) {
 			return -1;
 		}
 
-		// Set address and port
+		/* Set address and port. */
 		saddr.sin_port = htons(port);
 		if (inet_pton(family, addr, &saddr.sin_addr) < 0) {
 			saddr.sin_addr.s_addr = INADDR_ANY;
@@ -93,14 +99,14 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 		log_error("%s: ipv6 support disabled\n", __func__);
 		return -1;
 #else
-		// Initialize socket address
+		/* Initialize socket address. */
 		paddr = (struct sockaddr*)&saddr6;
 		addrlen = sizeof(saddr6);
 		if (getsockname(socket, paddr, &addrlen) < 0) {
 			return -1;
 		}
 
-		// Set address and port
+		/* Set address and port. */
 		saddr6.sin6_port = htons(port);
 		if (inet_pton(family, addr, &saddr6.sin6_addr) < 0) {
 			memcpy(&saddr6.sin6_addr, &in6addr_any, sizeof(in6addr_any));
@@ -113,7 +119,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 #endif
 	}
 
-	// Reuse old address if taken
+	/* Reuse old address if taken. */
 	int flag = 1;
 	int ret = setsockopt(socket, SOL_SOCKET, SO_REUSEADDR,
 	                     &flag, sizeof(flag));
@@ -121,7 +127,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 		return -2;
 	}
 
-	// Bind to specified address
+	/* Bind to specified address. */
 	int res = bind(socket, paddr, addrlen);
 	if (res < 0) {
 		log_error("%s: cannot bind socket (errno %d): %s.\n",
