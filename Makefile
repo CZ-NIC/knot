@@ -18,6 +18,7 @@ CTL_DIR = src/ctl
 LIB_DIR = src/lib
 OTHER_DIR = src/other
 ALLOC_DIR = src/alloc
+HASH_DIR = src/hash
 OBJ_DIR = obj/
 BIN_DIR = bin/
 
@@ -41,14 +42,14 @@ CTL_FILES = $(CTL_DIR)/main.c
 CTL_OBJ = $(OBJ_DIR)log.o $(OBJ_DIR)process.o $(OBJ_DIR)dname.o $(OBJ_DIR)slab.o $(OBJ_DIR)print.o
 
 ZPARSER_FILES = $(PARSER_OBJS) $(shell find $(SRC_DIRS)zoneparser -name "*.c")
-ZPARSER_EXTRA = $(ALLOC_DIR)/slab.c $(OTHER_DIR)/print.c $(OTHER_DIR)/log.c $(LIB_DIR)/skip-list.c $(shell find $(SRC_DIRS)dnslib -name "*.c")
+ZPARSER_EXTRA = $(LIB_DIR)/dynamic-array.c $(HASH_DIR)/hash-functions.c $(HASH_DIR)/universal-system.c $(HASH_DIR)/cuckoo-hash-table.c $(ALLOC_DIR)/slab.c $(OTHER_DIR)/print.c $(OTHER_DIR)/log.c $(LIB_DIR)/skip-list.c $(shell find $(SRC_DIRS)dnslib -name "*.c")
 ZPARSER_OBJS = $(addprefix $(OBJ_DIR), $(addsuffix .o, $(basename $(notdir $(ZPARSER_EXTRA)))))
 SRC_FILES = $(shell find $(SRC_DIRS) ! -path "*/tests/*" ! -path "*/zoneparser/*" ! -path "*/conf/*" -name "*.c" ! -name "main.c")
 OBJS =  $(addprefix $(OBJ_DIR), $(addsuffix .o, $(basename $(notdir $(SRC_FILES)))))
 
 CC = gcc
 CFLAGS_DEBUG = -g -O0 -fno-stack-protector
-CFLAGS_OPTIMAL = -O2 -funroll-loops -fomit-frame-pointer
+CFLAGS_OPTIMAL = -O2 #-funroll-loops -fomit-frame-pointer
 CFLAGS += -Wall -std=gnu99 -D _XOPEN_SOURCE=600 -D_GNU_SOURCE
 LDFLAGS += -lpthread -lurcu -lrt -lm
 LEX_FLAGS += #-dvBT

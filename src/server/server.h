@@ -30,6 +30,7 @@
 typedef struct iohandler_t {
 
 	int                fd;      /*!< I/O filedescriptor */
+	int                type;    /*!< Descriptor type/family. */
 	unsigned           state;   /*!< Handler state */
 	struct iohandler_t *next;   /*!< Next handler */
 	dt_unit_t          *unit;   /*!< Threading unit */
