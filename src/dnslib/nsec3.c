@@ -20,17 +20,29 @@ int dnslib_nsec3_params_from_wire(dnslib_nsec3_params_t *params,
 
 	assert(rdata->count == 4);
 
-	params->algorithm = *dnslib_rdata_item(rdata, 0)->raw_data;
-	params->flags = *dnslib_rdata_item(rdata, 1)->raw_data;
-	params->iterations = dnslib_wire_read_u16((uint8_t *)
-	                          dnslib_rdata_item(rdata, 2)->raw_data);
-	params->salt_length = *dnslib_rdata_item(rdata, 3)->raw_data;
+	params->algorithm = *(uint8_t *)
+	                     (&dnslib_rdata_item(rdata, 0)->raw_data[1]);
+	params->flags = *(uint8_t *)
+			(&dnslib_rdata_item(rdata, 1)->raw_data[1]);
+	params->iterations = dnslib_wire_read_u16(
+			(uint8_t *)(dnslib_rdata_item(rdata, 2)->raw_data + 1));
+	params->salt_length =
+		((uint8_t *)(dnslib_rdata_item(rdata, 3)->raw_data))[1];
 	params->salt = (uint8_t *)malloc(params->salt_length);
 
 	CHECK_ALLOC_LOG(params->salt, -1);
 
 	memcpy(params->salt, dnslib_rdata_item(rdata, 3)->raw_data + 1,
 	       params->salt_length);
+
+	printf("Parsed NSEC3PARAM:\n");
+	printf("Algorithm: %hu\n", params->algorithm);
+	printf("Flags: %hu\n", params->flags);
+	printf("Iterations: %hu\n", params->iterations);
+	printf("Salt length: %hu\n", params->salt_length);
+	printf("Salt: ");
+	hex_print((char *)params->salt, params->salt_length);
+	printf("\n");
 
 	return 0;
 }
@@ -96,6 +108,8 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params, const uint8_t *data,
 		return -1;
 	}
 
+	//printf("Iterations: %d\n", iterations);
+
 	// other iterations
 	for (int i = 0; i < iterations; ++i) {
 		memcpy(to_hash, digest_old, dig_size);
@@ -126,4 +140,3 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params, const uint8_t *data,
 
 	return 0;
 }
-
