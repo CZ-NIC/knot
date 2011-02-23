@@ -876,11 +876,11 @@ int dt_compact(dt_unit_t *unit)
 		lock_thread_rw(thread);
 		if (thread->state & (ThreadDead)) {
 			debug_dt("dthreads: [%p] %s: reclaiming thread\n",
-			         __func__, thread);
+			         thread, __func__);
 			unlock_thread_rw(thread);
 			pthread_join(thread->_thr, 0);
 			debug_dt("dthreads: [%p] %s: thread reclaimed\n",
-			         __func__, thread);
+			         thread, __func__);
 			thread->state = ThreadJoined;
 		} else {
 			unlock_thread_rw(thread);

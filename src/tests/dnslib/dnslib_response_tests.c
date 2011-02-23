@@ -767,9 +767,9 @@ static int compare_wires(uint8_t *wire1, uint8_t *wire2, uint size)
 			ret+=1;
 			diag("Bytes on position %d differ", i);
 			diag("pcap:");
-			hex_print((char *)&wire2[i], 1);
+			hex_printf((char *)&wire2[i], 1, &diag);
 			diag("response");
-			hex_print((char *)&wire1[i], 1);
+			hex_printf((char *)&wire1[i], 1, &diag);
 		} else {
 			diag("Wires differ at tolerated "
 			     "positions (AA bit, Additional section)");

@@ -133,7 +133,7 @@ static int dnslib_dname_str_to_wire(const char *name, uint size,
 		assert(w - wire - 1 == ch - (const uint8_t *)name);
 
 		if (*ch == '.') {
-			debug_dnslib_dname("Position %u (%p): "
+			debug_dnslib_dname("Position %ld (%p): "
 			                   "label length: %u\n",
 			                   label_start - wire,
 			                   label_start, label_length);
@@ -143,7 +143,7 @@ static int dnslib_dname_str_to_wire(const char *name, uint size,
 			label_length = 0;
 		} else {
 			assert(w - wire < wire_size);
-			debug_dnslib_dname("Position %u (%p): character: %c\n",
+			debug_dnslib_dname("Position %ld (%p): character: %c\n",
 			                   w - wire, w, *ch);
 			*w = *ch;
 			++label_length;
@@ -157,11 +157,11 @@ static int dnslib_dname_str_to_wire(const char *name, uint size,
 	--ch;
 	if (*ch == '.') { // put 0 for root label if the name ended with .
 		--w;
-		debug_dnslib_dname("Position %u (%p): character: (null)\n",
+		debug_dnslib_dname("Position %ld (%p): character: (null)\n",
 				   w - wire, w);
 		*w = 0;
 	} else { // otherwise we did not save the last label length
-		debug_dnslib_dname("Position %u (%p): "
+		debug_dnslib_dname("Position %ld (%p): "
 		                   "label length: %u\n",
 		                   label_start - wire,
 		                   label_start, label_length);

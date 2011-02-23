@@ -41,8 +41,8 @@
 //#define DNSLIB_RESPONSE_DEBUG
 
 #ifdef SERVER_DEBUG
-#define debug_server(msg...) log_msg(LOG_DEBUG, msg)
-#define debug_server_hex(data, len) hex_print((data), (len))
+#define debug_server(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define debug_server_hex(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
 #define debug_server(msg...)
 #define debug_server_hex(data, len)
@@ -50,7 +50,7 @@
 
 #ifdef DNSLIB_DNAME_DEBUG
 #define debug_dnslib_dname(msg...) log_msg(LOG_ANSWER, LOG_DEBUG, msg)
-#define debug_dnslib_dname_hex(data, len) hex_print((data), (len))
+#define debug_dnslib_dname_hex(data, len) hex_log(LOG_ANSWER, (data), (len))
 #define DEBUG_DNSLIB_DNAME(cmds) do { cmds } while (0)
 #else
 #define debug_dnslib_dname(msg...)
@@ -76,7 +76,7 @@
 
 #ifdef DNSLIB_RESPONSE_DEBUG
 #define debug_dnslib_response(msg...) log_msg(LOG_ANSWER, LOG_DEBUG, msg)
-#define debug_dnslib_response_hex(data, len) hex_print((data), (len))
+#define debug_dnslib_response_hex(data, len) hex_log(LOG_ANSWER, (data), (len))
 #define DEBUG_DNSLIB_RESPONSE(cmds) do { cmds } while (0)
 #else
 #define debug_dnslib_response(msg...)
@@ -85,17 +85,15 @@
 #endif
 
 #ifdef CUCKOO_DEBUG
-#define debug_ck(msg...) log_msg(LOG_DEBUG, msg)
-#define debug_ck_hex(data, len) hex_print((data), (len))
+#define debug_ck(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
 #else
 #define debug_ck(msg...)
-#define debug_ck_hex(data, len)
 #endif
 
 #ifdef CUCKOO_DEBUG_HASH
-#define debug_ck_hash(msg...) log_msg(LOG_DEBUG, msg)
-#define debug_ck_hash_hex(data, len) hex_print((data), (len))
-#define debug_ck_rehash(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_ck_hash(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define debug_ck_hash_hex(data, len) hex_log(LOG_SERVER, (data), (len))
+#define debug_ck_rehash(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
 #else
 #define debug_ck_hash(msg...)
 #define debug_ck_hash_hex(data, len)
@@ -103,22 +101,22 @@
 #endif
 
 #ifdef DA_DEBUG
-#define debug_da(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_da(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
 #else
 #define debug_da(msg...)
 #endif
 
 #ifdef NET_DEBUG
-#define debug_net(msg...) log_msg(LOG_DEBUG, msg)
-#define debug_net_hex(data, len) hex_print((data), (len))
+#define debug_net(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define debug_net_hex(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
 #define debug_net(msg...)
 #define debug_net_hex(data, len)
 #endif
 
 #ifdef DT_DEBUG
-#define debug_dt(msg...) log_msg(LOG_DEBUG, msg)
-#define debug_dt_hex(data, len) hex_print((data), (len))
+#define debug_dt(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define debug_dt_hex(data, len) hex_log(LOG_SERVER, (data), (len))
 #else
 #define debug_dt(msg...)
 #define debug_dt_hex(data, len)
@@ -126,7 +124,7 @@
 
 #ifdef NS_DEBUG
 #define debug_ns(msg...) log_msg(LOG_ANSWER, LOG_DEBUG, msg)
-#define debug_ns_hex(data, len) hex_print((data), (len))
+#define debug_ns_hex(data, len) hex_log(LOG_ANSWER, (data), (len))
 #define DEBUG_NS(cmds) do { cmds } while (0)
 #else
 #define debug_ns(msg...)
@@ -135,21 +133,21 @@
 #endif
 
 #ifdef ZP_DEBUG
-#define debug_zp(msg...) log_msg(LOG_DEBUG, msg)
-#define debug_zp_hex(data, len) hex_print((data), (len))
+#define debug_zp(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
+#define debug_zp_hex(data, len) hex_log(LOG_ZONE, (data), (len))
 #else
 #define debug_zp(msg...)
 #define debug_zp_hex(data, len)
 #endif
 
 #ifdef ST_DEBUG
-#define debug_st(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_st(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
 #else
 #define debug_st(msg...)
 #endif
 
 #ifdef MEM_DEBUG
-#define debug_mem(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_mem(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
 #else
 #define debug_mem(msg...)
 #endif
