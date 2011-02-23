@@ -765,13 +765,16 @@ static test_response_t *load_parsed_response(const char **src, unsigned *src_siz
 			diag("Could not load rrset (additional)");
 			return NULL;
 		}
-		if (tmp_rrset->type != DNSLIB_RRTYPE_OPT) {
+
+		resp->additional[i] = tmp_rrset;
+
+/*		if (tmp_rrset->type != DNSLIB_RRTYPE_OPT) {
 			resp->additional[i] = tmp_rrset;
 		} else {
 			assert(i + 1 == resp->arcount);
 			resp->arcount--;
 			break;
-		}
+		} */
 
 /*		if (tmp_rrset->type == DNSLIB_RRTYPE_RRSIG) {
 			rrsig_count++;
@@ -1277,8 +1280,10 @@ static int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
 		if (rr == NULL) {
 			diag("Ldns and dnslib structures have different "
 			     "counts of rrsets.");
-			return - ((count - 1) - i);
-                }
+			diag("dnslib: %d ldns: %d",
+			     count, (count - 1) - i);
+			return -1;
+		}
 
 		if (compare_rrset_w_ldns_rr(rrsets[i],
 					rr, 1) != 0) {
@@ -1363,11 +1368,15 @@ static int compare_response_w_ldns_packet(dnslib_response_t *response,
 		return 1;
 	}
 
-	diag("testing additional with arcount: %d", response->header.arcount);
+//	diag("testing additional with arcount: %d", response->header.arcount);
+
+	/* \note we don't want to test OPT RR, which is the last rrset
+	 * in the additional section */
+	/* TODO - test separetely */
 
 	if ((ret = compare_rrsets_w_ldns_rrlist(response->additional,
 					 ldns_pkt_additional(packet),
-					 response->header.arcount)) != 0) {
+					 response->header.arcount - 1)) != 0) {
 		diag("Additional rrsets wrongly converted");
 		return 1;
 	}
@@ -1444,9 +1453,6 @@ static int test_response_to_wire(test_response_t **responses,
 
 		for (int j = 0; j < responses[i]->arcount; j++) {
 			if (&(responses[i]->additional[j])) {
-				diag("%s",
-				dnslib_dname_to_str(responses[i]->
-						    additional[j]->owner));
 				if (responses[i]->additional[j]->type ==
 				    DNSLIB_RRTYPE_OPT) {
 					continue;
@@ -1458,8 +1464,6 @@ static int test_response_to_wire(test_response_t **responses,
 				}
 			}
 		}
-
-		diag("%d %d", resp->header.arcount, responses[i]->arcount);
 
 //		assert(resp->header.arcount == responses[i]->arcount);
 
