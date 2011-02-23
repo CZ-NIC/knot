@@ -285,8 +285,9 @@ dnslib_dname_t *dnslib_dname_new_from_str(const char *name, uint size,
 	debug_dnslib_dname("\n");
 
 	if (dname->size <= 0) {
-		log_warning("Could not parse domain name from string: '%.*s'\n",
-		            size, name);
+		log_answer_warning("dname: Could not parse domain name "
+		                   "from string: '%.*s'\n",
+		                   size, name);
 	}
 	assert(dname->name != NULL);
 

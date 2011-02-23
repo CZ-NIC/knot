@@ -75,9 +75,9 @@ int tcp_master(dthread_t *thread)
 		// Register to worker
 		if (incoming < 0) {
 			if (errno != EINTR) {
-				log_error("tcp_master: cannot accept incoming "
-				          "connection (errno %d): %s.\n",
-				          errno, strerror(errno));
+				log_server_error("tcp_master: Cannot accept "
+				                 "connection (errno %d): %s.\n",
+				                 errno, strerror(errno));
 			}
 		} else {
 
@@ -329,7 +329,8 @@ static int tcp_pool_add(int epfd, int socket, uint32_t events)
 	// All polled events should use non-blocking mode.
 	int old_flag = fcntl(socket, F_GETFL, 0);
 	if (fcntl(socket, F_SETFL, old_flag | O_NONBLOCK) == -1) {
-		log_error("error setting non-blocking mode on the socket.\n");
+		log_server_error("tcp: Error setting non-blocking mode "
+		                 "on the socket.\n");
 		return -1;
 	}
 
@@ -337,8 +338,9 @@ static int tcp_pool_add(int epfd, int socket, uint32_t events)
 	ev.data.fd = socket;
 	ev.events = events;
 	if (epoll_ctl(epfd, EPOLL_CTL_ADD, socket, &ev) != 0) {
-		log_error("failed to add socket to event set (errno %d): %s.\n",
-		          errno, strerror(errno));
+		log_server_error("tcp: Failed to add socket to "
+		                 "event set (errno %d): %s.\n",
+		                 errno, strerror(errno));
 		return -1;
 	}
 
@@ -350,9 +352,10 @@ static int tcp_pool_remove(int epfd, int socket)
 	// Compatibility with kernels < 2.6.9, require non-0 ptr.
 	struct epoll_event ev;
 
-	// find socket ptr
 	if (epoll_ctl(epfd, EPOLL_CTL_DEL, socket, &ev) != 0) {
-		perror("epoll_ctl");
+		log_server_error("tcp: Failed to remove socket from "
+		                 "event set (errno %d): %s.\n",
+		                 errno, strerror(errno));
 		return -1;
 	}
 

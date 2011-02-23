@@ -10,6 +10,16 @@
 #include "common.h"
 #include "debug.h"
 
+static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
+{
+	int rc = fread(dst, size, n, fp);
+	if (rc != n) {
+		log_zone_warning("fread: invalid read %d (expected %zu)\n", rc, n);
+	}
+
+	return rc == n;
+}
+
 /* \note Contents of dump file:
  * MAGIC(cutexx) NUMBER_OF_NORMAL_NODES NUMBER_OF_NSEC3_NODES
  * [normal_nodes] [nsec3_nodes]
@@ -183,7 +193,8 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 	}
 
 	if (dnslib_rdata_set_items(rdata, items, desc->length) != 0) {
-		log_error("!! could not set items when loading rdata\n");
+		log_zone_error("zoneload: Could not set items "
+		               "when loading rdata.\n");
 	}
 
 	free(items);
@@ -379,7 +390,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	node->owner = owner;
 
 	if (node == NULL) {
-		log_error("!! could not create node.\n");
+		log_zone_error("zone: Could not create node.\n");
 		return NULL;
 	}
 
@@ -400,7 +411,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 		if ((tmp_rrset = dnslib_load_rrset(f)) == NULL) {
 			dnslib_node_free(&node, 1);
 			//TODO what else to free?
-			log_error("!! could not load rrset.\n");
+			log_zone_error("zone: Could not load rrset.\n");
 			return NULL;
 		}
 		tmp_rrset->owner = node->owner;
@@ -408,7 +419,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 			tmp_rrset->rrsigs->owner = node->owner;
 		}
 		if (dnslib_node_add_rrset(node, tmp_rrset) != 0) {
-			log_error("!! could not add rrset.\n");
+			log_zone_error("zone: Could not add rrset.\n");
 			return NULL;
 		}
 	}
@@ -514,7 +525,7 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 	dnslib_node_t *apex = dnslib_load_node(f);
 
 	if (!apex) {
-		log_error("!! could not load apex node (in %s)\n", filename);
+		log_zone_error("zone: Could not load apex node (in %s)\n", filename);
 		return NULL;
 	}
 
@@ -530,7 +541,7 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 				                            0);
 			}
 		} else {
-			log_error("!! node error (in %s)\n", filename);
+			log_zone_error("zone: Node error (in %s).\n", filename);
 		}
 	}
 
@@ -541,7 +552,7 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 		if (tmp_node != NULL) {
 			dnslib_zone_add_nsec3_node(zone, tmp_node);
 		} else {
-			log_error("!! node error (in %s)\n", filename);
+			log_zone_error("zone: Node error (in %s).\n", filename);
 		}
 		if (dnslib_dname_is_wildcard(tmp_node->owner)) {
 			find_and_set_wildcard_child(zone,

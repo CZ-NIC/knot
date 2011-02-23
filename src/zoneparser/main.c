@@ -58,30 +58,23 @@ int main(int argc, char **argv)
 	origin = argv[optind];
 	zonefile = argv[optind + 1];
 
-	// Open log
-	int log_mask = LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING);
-	int print_mask = LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING);
-	if (verbose) {
-		print_mask |= LOG_MASK(LOG_NOTICE);
-		print_mask |= LOG_MASK(LOG_INFO);
-		log_mask = print_mask;
-	}
+	// Initialize log (no output)
+	log_init(0);
+	log_levels_set(LOGT_STDOUT, LOG_ANY, LOG_MASK(LOG_DEBUG));
 
-	log_init(print_mask, log_mask);
-
-	log_info("parsing file '%s', origin '%s' ...\n",
-		 zonefile, origin);
+	printf("Parsing file '%s', origin '%s' ...\n",
+	       zonefile, origin);
 
 	parser = zparser_create();
 	if (!parser) {
-		log_error("error creating the parser\n");
+		fprintf(stderr, "Failed to create parser.\n");
 		log_close();
 		return 1;
 	}
 
 	int errors = zone_read(origin, zonefile, outfile);
 
-	log_info("parser finished\n");
+	printf("Finished.\n");
 	log_close();
 
 	return errors ? 1 : 0;

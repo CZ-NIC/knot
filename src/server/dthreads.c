@@ -576,8 +576,9 @@ int dt_start(dt_unit_t *unit)
 		dthread_t *thread = unit->threads[i];
 		int res = dt_start_id(thread);
 		if (res != 0) {
-			log_error("dthreads: %s: failed to create thread %d",
-			          __func__, i);
+			log_server_error("dthreads: Failed to "
+			                 "create thread '%d'.",
+			                 i);
 			dt_unit_unlock(unit);
 			return res;
 		}
@@ -902,7 +903,7 @@ int dt_optimal_size()
 		return ret + CPU_ESTIMATE_MAGIC;
 	}
 #endif
-	log_info("server: failed to estimate the number of online CPUs");
+	log_server_info("dthreads: Failed to fetch the number of online CPUs.");
 	return DEFAULT_THR_COUNT;
 }
 

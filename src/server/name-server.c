@@ -624,8 +624,8 @@ static int ns_response_to_wire(dnslib_response_t *resp, uint8_t *wire,
 	int ret = 0;
 
 	if ((ret = dnslib_response_to_wire(resp, &rwire, &rsize)) != 0) {
-		log_error("Error converting response packet to wire format. "
-		          "dnslib returned: %d\n", ret);
+		log_answer_error("nameserver: Error converting response packet "
+		                 "to wire format (error %d).\n", ret);
 		return -1;
 	}
 
@@ -666,8 +666,9 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database)
 
 	if (dnslib_response_to_wire(err, &ns->err_response, &ns->err_resp_size)
 	    != 0) {
-		log_error("Error while converting default error resposne to "
-		          "wire format \n");
+		log_answer_error("nameserver: Error while converting a "
+		                 "default error response to "
+		                 "wire format \n");
 		dnslib_response_free(&err);
 		free(ns);
 		return NULL;
@@ -708,7 +709,7 @@ int ns_answer_request(ns_nameserver *nameserver, const uint8_t *query_wire,
 	dnslib_response_t *resp = dnslib_response_new_empty(NULL, 0);
 
 	if (resp == NULL) {
-		log_error("Error while creating response packet!\n");
+		log_answer_error("Error while creating response packet!\n");
 		ns_error_response(nameserver, query_wire, DNSLIB_RCODE_SERVFAIL,
 		                  response_wire, rsize);
 		return 0;
@@ -718,8 +719,9 @@ int ns_answer_request(ns_nameserver *nameserver, const uint8_t *query_wire,
 
 	// 2) parse the query
 	if ((ret = dnslib_response_parse_query(resp, query_wire, qsize)) != 0) {
-		log_info("Error while parsing query, dnslib returned: %d\n",
-			 ret);
+		log_answer_info("nameserver: Error while parsing query, "
+		                "dnslib error '%d'.\n",
+		                ret);
 		ns_error_response(nameserver, query_wire, DNSLIB_RCODE_FORMERR,
 		                  response_wire, rsize);
 		dnslib_response_free(&resp);

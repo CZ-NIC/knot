@@ -162,12 +162,6 @@ int log_msg(logsrc_t src, int level, const char *msg, ...)
 int log_vmsg(logsrc_t src, int level, const char *msg, va_list ap);
 
 /* Convenient logging. */
-#define log_error(msg...)            log_msg(LOG_ANY, LOG_ERR, msg)
-#define log_warning(msg...)          log_msg(LOG_ANY, LOG_WARNING, msg)
-#define log_notice(msg...)           log_msg(LOG_ANY, LOG_NOTICE, msg)
-#define log_info(msg...)             log_msg(LOG_ANY, LOG_INFO, msg)
-#define log_debug(msg...)            log_msg(LOG_ANY, LOG_DEBUG, msg)
-
 #define log_server_error(msg...)     log_msg(LOG_SERVER, LOG_ERR, msg)
 #define log_server_warning(msg...)   log_msg(LOG_SERVER, LOG_WARNING, msg)
 #define log_server_notice(msg...)    log_msg(LOG_SERVER, LOG_NOTICE, msg)

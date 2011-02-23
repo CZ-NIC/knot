@@ -352,9 +352,10 @@ int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
 	}
 
 	if (copied > buf_size) {
-		log_warning("Not enough place allocated for function "
-		            "dnslib_rdata_to_wire(). Allocated %u, need %u\n",
-		            buf_size, copied);
+		log_answer_warning("rdata: Not enough place allocated for "
+		                   "dnslib_rdata_to_wire(). "
+		                   "Allocated %u, need %u.\n",
+		                   buf_size, copied);
 		return -1;
 	}
 
