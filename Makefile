@@ -38,7 +38,7 @@ CC = gcc
 CFLAGS_DEBUG = -g -O0
 CFLAGS_OPTIMAL = -O2 -funroll-loops -fomit-frame-pointer
 CFLAGS += -Wall -std=gnu99 -D _XOPEN_SOURCE=600 -D_GNU_SOURCE `pkg-config gnutls --cflags`
-LDFLAGS += -lpthread -lurcu -lrt -lm `pkg-config gnutls --libs`
+LDFLAGS += -lpthread -lurcu -lrt -lm `pkg-config gnutls --libs` -lcrypto
 
 all: cutedns unittests zoneparser cutectl
 ifeq ($(DEBUG),1)
