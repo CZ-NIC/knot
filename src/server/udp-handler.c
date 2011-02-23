@@ -24,6 +24,26 @@ int udp_master(dthread_t *thread)
 		return 0;
 	}
 
+
+	/* Set socket options. */
+	int flag = 1;
+	if (handler->type == AF_INET6) {
+		/* Disable dual-stack for performance reasons. */
+		setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag));
+
+		/* UDP packets will not exceed a minimum MTU size. */
+		/*flag = IPV6_MIN_MTU;
+		setsockopt(fd, IPPROTO_IPV6, IPV6_MTU, &flag, sizeof(flag));
+		flag = 1; */
+	}
+	if (handler->type == AF_INET) {
+
+		/* Disable fragmentation. */
+		flag = IP_PMTUDISC_DONT;
+		setsockopt(sock, IPPROTO_IP, IP_MTU_DISCOVER, &flag, sizeof(flag));
+		flag = 1;
+	}
+
 	/*!
 	 * \todo Use custom allocator.
 	 *       Although this is much cheaper,
@@ -31,12 +51,32 @@ int udp_master(dthread_t *thread)
 	 */
 	uint8_t inbuf[SOCKET_MTU_SZ];
 	uint8_t outbuf[SOCKET_MTU_SZ];
-#ifdef DISABLE_IPV6
-	struct sockaddr_in faddr;
-#else
-	struct sockaddr_in6 faddr;
+	struct sockaddr* addr = 0;
+	socklen_t addrlen = 0;
+
+	struct sockaddr_in faddr4;
+	if (handler->type == AF_INET) {
+		addr = (struct sockaddr*)&faddr4;
+		addrlen = sizeof(faddr4);
+	}
+
+#ifndef DISABLE_IPV6
+	struct sockaddr_in6 faddr6;
+	if (handler->type == AF_INET6) {
+		addr = (struct sockaddr*)&faddr6;
+		addrlen = sizeof(faddr6);
+	}
 #endif
-	int addrsize = sizeof(faddr);
+
+	/*
+	 * Check addr len.
+	 */
+	if (!addr) {
+		log_server_error("UDP handler received invalid socket type %d, "
+		                 "AF_INET (%d) or AF_INET6 (%d) expected.\n",
+		                 handler->type, AF_INET, AF_INET6);
+		return 0;
+	}
 
 	/* in case of STAT_COMPILE the following code will declare thread_stat
 	 * variable in following fashion: stat_t *thread_stat;
@@ -51,11 +91,8 @@ int udp_master(dthread_t *thread)
 	int n = 0;
 	while (n >= 0) {
 
-
-		// Receive data
 		n = socket_recvfrom(sock, inbuf, SOCKET_MTU_SZ, 0,
-				    (struct sockaddr *)&faddr,
-				    (socklen_t *)&addrsize);
+		                    addr, &addrlen);
 
 		// Cancellation point
 		if (dt_is_cancelled(thread)) {
@@ -63,7 +100,7 @@ int udp_master(dthread_t *thread)
 		}
 
 		// faddr has to be read immediately.
-		stat_get_first(thread_stat, &faddr);
+		stat_get_first(thread_stat, addr);
 
 		// Error and interrupt handling
 		if (unlikely(n <= 0)) {
@@ -99,9 +136,8 @@ int udp_master(dthread_t *thread)
 			debug_net_hex((const char *) outbuf, answer_size);
 
 			// Send datagram
-			res = socket_sendto(sock, outbuf, answer_size,0,
-				    (struct sockaddr *) &faddr,
-				    (socklen_t) addrsize);
+			res = socket_sendto(sock, outbuf, answer_size,
+			                    0, addr, addrlen);
 
 			// Check result
 			if (res != answer_size) {
