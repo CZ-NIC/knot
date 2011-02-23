@@ -2,6 +2,8 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#include <sys/time.h>
+
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
 
@@ -55,6 +57,9 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params, const uint8_t *data,
 	assert(digest != NULL);
 	assert(digest_size != NULL);
 
+	unsigned long long total_time = 0;
+	unsigned long calls = 0;
+
 	if (data == NULL) {
 		return -3;
 	}
@@ -80,9 +85,15 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params, const uint8_t *data,
 	memcpy(to_hash, data, size);
 	memcpy(to_hash + size, salt, salt_length);
 
+	int res = 0;
+	long time = 0;
 	// first iteration
-	int res = gnutls_hash_fast(GNUTLS_DIG_SHA1, to_hash, to_hash_size,
-	                           digest_old);
+	perf_begin();
+	res = gnutls_hash_fast(GNUTLS_DIG_SHA1, to_hash, to_hash_size,
+	                       digest_old);
+	perf_end(time);
+	total_time += time;
+	++calls;
 
 	if (res != GNUTLS_E_SUCCESS) {
 		log_error("Error calculating SHA-1 hash.\n");
@@ -112,11 +123,14 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params, const uint8_t *data,
 
 	// other iterations
 	for (int i = 0; i < iterations; ++i) {
+
 		memcpy(to_hash, digest_old, dig_size);
 		memcpy(to_hash + dig_size, salt, salt_length);
 
+		perf_begin();
 		res = gnutls_hash_fast(GNUTLS_DIG_SHA1, to_hash, to_hash_size,
 		                       digest_new);
+		perf_end(time);
 
 		if (res != GNUTLS_E_SUCCESS) {
 			log_error("Error calculating SHA-1 hash.\n");
@@ -128,6 +142,10 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params, const uint8_t *data,
 
 		// copy the new digest to the old one and repeat
 		memcpy(digest_old, digest_new, dig_size);
+
+
+		total_time += time;
+		++calls;
 	}
 
 	free(digest_new);
@@ -137,6 +155,9 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params, const uint8_t *data,
 	*digest_size = dig_size;
 
 //	gnutls_hash_deinit(context, NULL);
+
+//	printf("NSEC3 hashing: calls: %lu, avg time per call: %f.\n",
+//	       calls, (double)(total_time) / calls);
 
 	return 0;
 }

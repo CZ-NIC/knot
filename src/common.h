@@ -27,7 +27,7 @@ typedef unsigned int uint;
 
 /* Server. */
 #define CPU_ESTIMATE_MAGIC 2   // Extra threads above the number of processors
-#define DEFAULT_THR_COUNT 2    // Default thread count for socket manager
+#define DEFAULT_THR_COUNT 1    // Default thread count for socket manager
 #define DEFAULT_PORT 53531     // Default port
 
 /* Sockets. */
@@ -95,6 +95,20 @@ static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
 #ifndef unlikely
 #define unlikely(x)     __builtin_expect((x),0)
 #endif
+
+
+#define perf_begin() \
+do { \
+ struct timeval __begin; \
+ gettimeofday(&__begin, 0)
+
+#define perf_end(d) \
+ struct timeval __end; \
+ gettimeofday(&__end, 0); \
+ unsigned long __us = (__end.tv_sec - __begin.tv_sec) * 1000L * 1000L; \
+ __us += (__end.tv_usec - __begin.tv_usec); \
+ (d) = __us; \
+} while(0)
 
 //#define STAT_COMPILE
 

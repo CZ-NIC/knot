@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
+#include <sys/time.h>
 
 #include <urcu.h>
 
@@ -8,6 +9,7 @@
 #include "dnslib.h"
 #include "dnslib/debug.h"
 #include "edns.h"
+#include "nsec3.h"
 
 //static const uint8_t  RCODE_MASK           = 0xf0;
 static const int      OFFSET_FLAGS2        = 3;
@@ -23,6 +25,11 @@ static const int      DNSSEC_ENABLED       = 1;
 static const int      NSID_ENABLED         = 1;
 static const uint16_t NSID_LENGTH          = 6;
 static const uint8_t  NSID_DATA[6] = {0x46, 0x6f, 0x6f, 0x42, 0x61, 0x72};
+
+static unsigned long long total_time;
+static unsigned long long time_answering;
+static unsigned long queries;
+static unsigned long queries_answering;
 
 /*----------------------------------------------------------------------------*/
 /* Private functions                                                          */
@@ -731,6 +738,9 @@ static void ns_answer_from_zone(const dnslib_zone_t *zone,
 	//dnslib_dname_t *qname_old = NULL;
 	int auth_soa = 0;
 
+	unsigned long t = 0;
+	perf_begin();
+
 	while (1) {
 		//qname_old = dnslib_dname_copy(qname);
 
@@ -888,10 +898,45 @@ DEBUG_NS(
 		break;
 	}
 
+	perf_end(t);
+	time_answering += t;
+	++queries_answering;
+
 	if (auth_soa) {
 		ns_put_authority_soa(zone, resp);
 	}
 	//dnslib_dname_free(&qname_old);
+
+	// try to hash the QNAME
+	if (dnslib_zone_nsec3_enabled(zone)) {
+		uint8_t *digest = NULL;
+		size_t digest_size = 0;
+
+		const dnslib_nsec3_params_t *nsec3params =
+			dnslib_zone_nsec3params(zone);
+
+		assert(nsec3params != NULL);
+
+		unsigned long long time;
+
+		perf_begin();
+
+		int res = dnslib_nsec3_sha1(nsec3params,
+			dnslib_dname_name(qname), dnslib_dname_size(qname),
+			&digest, &digest_size);
+
+		if (res != 0) {
+			log_error("Error while calculating SHA-1 hash of the "
+			          "QNAME.\n");
+		} /*else {
+			printf("Calculated hash: %.*s\n", digest_size,
+			       (char *)digest);
+		}*/
+
+		perf_end(time);
+		total_time += time;
+		++queries;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1024,6 +1069,11 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database)
 
 	dnslib_response_free(&err);
 
+	total_time = 0;
+	queries = 0;
+	time_answering = 0;
+	queries_answering = 0;
+
 	return ns;
 }
 
@@ -1110,5 +1160,11 @@ void ns_destroy(ns_nameserver **nameserver)
 	}
 	free(*nameserver);
 	*nameserver = NULL;
+
+	printf("Average time spent for hashing one name: %f us\n",
+	       (double)total_time / queries);
+
+	printf("Average time spent for answering one query: %f us\n",
+	       (double)time_answering / queries_answering);
 }
 
