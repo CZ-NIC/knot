@@ -921,7 +921,7 @@ DEBUG_NS(
 
 		perf_begin();
 
-		int res = dnslib_nsec3_sha1(nsec3params,
+		int res = dnslib_nsec3_sha1_3(nsec3params,
 			dnslib_dname_name(qname), dnslib_dname_size(qname),
 			&digest, &digest_size);
 

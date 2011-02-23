@@ -1,10 +1,11 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include <gnutls/gnutls.h>
 #include <gcrypt.h>
-#include <errno.h>
+#include <openssl/evp.h>
 
 #include "debug.h"
 #include "server.h"
@@ -65,7 +66,7 @@ cute_server *cute_create()
 		return NULL;
 	}
 
-	debug_server("Done\n\n");	
+	debug_server("Done\n\n");
 	debug_server("Initializing GnuTLS...\n");
 
 	int res = 0;
@@ -77,6 +78,11 @@ cute_server *cute_create()
 		free(server);
 		return NULL;
 	}
+
+	debug_server("Done\n\n");
+	debug_server("Initializing OpenSSL...\n");
+
+	OpenSSL_add_all_digests();
 
 	debug_server("Done\n\n");
 
