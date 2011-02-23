@@ -1381,6 +1381,14 @@ static int compare_response_w_ldns_packet(dnslib_response_t *response,
 		return 1;
 	}
 
+	/* OPT RR */
+
+	if (ldns_pkt_edns(packet)) {
+		/* let's assume for now that dnslib will always have
+		 * opt rr */
+		;
+	}
+
 	return 0;
 }
 
