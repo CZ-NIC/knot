@@ -52,7 +52,7 @@
 #include <limits.h>
 
 /* C89 compliant way to cast 'char' to 'unsigned char'. */
-static inline unsigned char to_uchar (char ch)
+static inline unsigned char to_uchar(char ch)
 {
 	return ch;
 }
@@ -61,66 +61,60 @@ static inline unsigned char to_uchar (char ch)
    If OUTLEN is less than BASE32_LENGTH(INLEN), write as many bytes as
    possible.  If OUTLEN is larger than BASE32_LENGTH(INLEN), also zero
    terminate the output buffer. */
-void base32_encode (const char *in, size_t inlen,
-		    char *out, size_t outlen)
+void base32_encode(const char *in, size_t inlen, char *out, size_t outlen)
 {
 	static const char b32str[32] =
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
 	while (inlen && outlen) {
-		*out++ = b32str[(to_uchar (in[0]) >> 3) & 0x1f];
+		*out++ = b32str[(to_uchar(in[0]) >> 3) & 0x1f];
 		if (!--outlen) {
 			break;
 		}
-		*out++ = b32str[((to_uchar (in[0]) << 2)
-				 + (--inlen ? to_uchar (in[1]) >> 6 : 0))
-				& 0x1f];
+		*out++ = b32str[((to_uchar(in[0]) << 2)
+		                + (--inlen ? to_uchar(in[1]) >> 6 : 0))
+		                & 0x1f];
 		if (!--outlen) {
 			break;
 		}
-		*out++ =
-			(inlen
-			 ? b32str[(to_uchar (in[1]) >> 1) & 0x1f]
-			 : '=');
+		*out++ =(inlen
+		         ? b32str[(to_uchar(in[1]) >> 1) & 0x1f]
+		         : '=');
 		if (!--outlen) {
 			break;
 		}
-		*out++ =
-			(inlen
-			 ? b32str[((to_uchar (in[1]) << 4)
-				   + (--inlen ? to_uchar (in[2]) >> 4 : 0))
-				  & 0x1f]
-			 : '=');
+		*out++ = (inlen
+		         ? b32str[((to_uchar(in[1]) << 4)
+		                   + (--inlen ? to_uchar(in[2]) >> 4 : 0))
+		                   & 0x1f]
+		         : '=');
 		if (!--outlen) {
 			break;
 		}
-		*out++ =
-			(inlen
-			 ? b32str[((to_uchar (in[2]) << 1)
-				   + (--inlen ? to_uchar (in[3]) >> 7 : 0))
-				  & 0x1f]
-			 : '=');
+		*out++ = (inlen
+		          ? b32str[((to_uchar(in[2]) << 1)
+		                   + (--inlen ? to_uchar(in[3]) >> 7 : 0))
+		                   & 0x1f]
+		          : '=');
 		if (!--outlen) {
 			break;
 		}
-		*out++ =
-			(inlen
-			 ? b32str[(to_uchar (in[3]) >> 2) & 0x1f]
-			 : '=');
+		*out++ = (inlen
+		          ? b32str[(to_uchar(in[3]) >> 2) & 0x1f]
+		          : '=');
 		if (!--outlen)
 		{
 			break;
 		}
-		*out++ =
-			(inlen
-			 ? b32str[((to_uchar (in[3]) << 3)
-				   + (--inlen ? to_uchar (in[4]) >> 5 : 0))
-				  & 0x1f]
-			 : '=');
+		*out++ = (inlen
+		          ? b32str[((to_uchar(in[3]) << 3)
+		                   + (--inlen ? to_uchar(in[4]) >> 5 : 0))
+		                   & 0x1f]
+		          : '=');
 		if (!--outlen) {
 			break;
 		}
-		*out++ = inlen ? b32str[to_uchar (in[4]) & 0x1f] : '=';
+		*out++ = inlen ? b32str[to_uchar(in[4]) & 0x1f] : '=';
 		if (!--outlen) {
 			break;
 		}
@@ -146,8 +140,7 @@ void base32_encode (const char *in, size_t inlen,
    memory allocation failed, OUT is set to NULL, and the return value
    indicates length of the requested memory block, i.e.,
    BASE32_LENGTH(inlen) + 1. */
-size_t
-base32_encode_alloc (const char *in, size_t inlen, char **out)
+size_t base32_encode_alloc(const char *in, size_t inlen, char **out)
 {
 	size_t outlen = 1 + BASE32_LENGTH (inlen);
 
@@ -169,12 +162,12 @@ base32_encode_alloc (const char *in, size_t inlen, char **out)
 		return 0;
 	}
 
-	*out = malloc (outlen);
+	*out = malloc(outlen);
 	if (!*out) {
 		return outlen;
 	}
 
-	base32_encode (in, inlen, *out, outlen);
+	base32_encode(in, inlen, *out, outlen);
 
 	return outlen - 1;
 }
@@ -291,17 +284,17 @@ static const signed char b32[0x100] = {
 };
 
 #if UCHAR_MAX == 255
-# define uchar_in_range(c) true
+#define uchar_in_range(c) true
 #else
-# define uchar_in_range(c) ((c) <= 255)
+#define uchar_in_range(c) ((c) <= 255)
 #endif
 
 /* Return true if CH is a character from the Base32 alphabet, and
    false otherwise.  Note that '=' is padding and not considered to be
    part of the alphabet.  */
-bool isbase32 (char ch)
+bool isbase32(char ch)
 {
-	return uchar_in_range (to_uchar (ch)) && 0 <= b32[to_uchar (ch)];
+	return uchar_in_range(to_uchar(ch)) && 0 <= b32[to_uchar(ch)];
 }
 
 /* Decode base32 encoded input array IN of length INLEN to output
@@ -313,19 +306,18 @@ bool isbase32 (char ch)
    encountered, decoding is stopped and false is returned.  This means
    that, when applicable, you must remove any line terminators that is
    part of the data stream before calling this function.  */
-bool base32_decode (const char *in, size_t inlen,
-		    char *out, size_t *outlen)
+bool base32_decode(const char *in, size_t inlen, char *out, size_t *outlen)
 {
 	size_t outleft = *outlen;
 
 	while (inlen >= 2) {
-		if (!isbase32 (in[0]) || !isbase32 (in[1])) {
+		if (!isbase32(in[0]) || !isbase32(in[1])) {
 			break;
 		}
 
 		if (outleft) {
-			*out++ = ((b32[to_uchar (in[0])] << 3)
-				  | (b32[to_uchar (in[1])] >> 2));
+			*out++ = ((b32[to_uchar(in[0])] << 3)
+			          | (b32[to_uchar(in[1])] >> 2));
 			outleft--;
 		}
 
@@ -346,14 +338,14 @@ bool base32_decode (const char *in, size_t inlen,
 				break;
 			}
 		} else {
-			if (!isbase32 (in[2]) || !isbase32 (in[3])) {
+			if (!isbase32(in[2]) || !isbase32(in[3])) {
 				break;
 			}
 
 			if (outleft) {
-				*out++ = ((b32[to_uchar (in[1])] << 6)
-					  | ((b32[to_uchar (in[2])] << 1) & 0x3E)
-					  | (b32[to_uchar (in[3])] >> 4));
+				*out++ = ((b32[to_uchar(in[1])] << 6)
+				          | ((b32[to_uchar(in[2])] << 1) & 0x3E)
+				          | (b32[to_uchar(in[3])] >> 4));
 				outleft--;
 			}
 			
@@ -372,13 +364,13 @@ bool base32_decode (const char *in, size_t inlen,
 					break;
 				}
 			} else {
-				if (!isbase32 (in[3]) || !isbase32 (in[4])) {
+				if (!isbase32 (in[3]) || !isbase32(in[4])) {
 					break;
 				}
 				
 				if (outleft) {
-					*out++ = ((b32[to_uchar (in[3])] << 4)
-						  | (b32[to_uchar (in[4])] >> 1));
+					*out++ = ((b32[to_uchar(in[3])] << 4)
+					        | (b32[to_uchar(in[4])] >> 1));
 					outleft--;
 				}
 
@@ -391,19 +383,22 @@ bool base32_decode (const char *in, size_t inlen,
 						break;
 					}
 					
-					if ((in[6] != '=') ||
-					    (in[7] != '=')) {
+					if ((in[6] != '=')
+					    || (in[7] != '=')) {
 						break;
 					}
 				} else {
-					if (!isbase32 (in[5]) || !isbase32 (in[6])) {
+					if (!isbase32 (in[5])
+					    || !isbase32 (in[6])) {
 						break;
 					}
 					
 					if (outleft) {
-						*out++ = ((b32[to_uchar (in[4])] << 7)
-							  | (b32[to_uchar (in[5])] << 2)
-							  | (b32[to_uchar (in[6])] >> 3));
+						*out++ = ((b32[to_uchar(in[4])]
+						           << 7)
+						  | (b32[to_uchar(in[5])] << 2)
+						  | (b32[to_uchar(in[6])]
+						     >> 3));
 						outleft--;
 					}
 
@@ -421,8 +416,10 @@ bool base32_decode (const char *in, size_t inlen,
 						}
 						
 						if (outleft) {
-							*out++ = ((b32[to_uchar (in[6])] << 5)
-								  | (b32[to_uchar (in[7])]));
+							*out++ =
+							  ((b32[to_uchar(in[6])]
+							   << 5) | (b32[
+							     to_uchar(in[7])]));
 							outleft--;
 						}
 					}
@@ -454,8 +451,8 @@ bool base32_decode (const char *in, size_t inlen,
    decoding and memory error.)  The function returns false if the
    input was invalid, in which case *OUT is NULL and *OUTLEN is
    undefined. */
-bool base32_decode_alloc (const char *in, size_t inlen, char **out,
-			  size_t *outlen)
+bool base32_decode_alloc(const char *in, size_t inlen, char **out,
+                         size_t *outlen)
 {
 	/* This may allocate a few bytes too much, depending on input,
 	   but it's not worth the extra CPU time to compute the exact amount.
@@ -464,12 +461,12 @@ bool base32_decode_alloc (const char *in, size_t inlen, char **out,
 	   Dividing before multiplying avoids the possibility of overflow.  */
 	size_t needlen = 5 * (inlen / 8) + 4;
 
-	*out = malloc (needlen);
+	*out = malloc(needlen);
 	if (!*out) {
 		return true;
 	}
 
-	if (!base32_decode (in, inlen, *out, &needlen)) {
+	if (!base32_decode(in, inlen, *out, &needlen)) {
 		free (*out);
 		*out = NULL;
 		return false;
@@ -504,32 +501,38 @@ int main(int argc, char **argv) {
 		outlen = base32_encode_alloc(*argv, argvlen, &out);
 
 		if (out == NULL && outlen == 0 && inlen != 0) {
-			fprintf(stderr, "ERROR(encode): input too long: %zd\n", outlen);
+			fprintf(stderr, "ERROR(encode): input too long: %zd\n",
+			        outlen);
 			return 1;
 		}
 
 		if (out == NULL) {
-			fprintf(stderr, "ERROR(encode): memory allocation error\n");
+			fprintf(stderr, "ERROR(encode): memory allocation error"
+			        "\n");
 			return 1;
 		}
 
 		ok = base32_decode_alloc(out, outlen, &in, &inlen);
 
 		if (!ok) {
-			fprintf(stderr, "ERROR(decode): input was not valid base32: `%s'\n", out);
+			fprintf(stderr, "ERROR(decode): input was not valid "
+			        "base32: `%s'\n", out);
 			return 1;
 		}
 
 		if (in == NULL) {
-			fprintf(stderr, "ERROR(decode): memory allocation error\n");
+			fprintf(stderr, "ERROR(decode): memory allocation "
+			        "error\n");
 		}
 
 		if ((inlen != argvlen) ||
 		    strcmp(*argv, in) != 0) {
-			fprintf(stderr, "ERROR(encode/decode): input `%s' and output `%s'\n", *argv, in);
+			fprintf(stderr, "ERROR(encode/decode): input `%s' and "
+			        "output `%s'\n", *argv, in);
 			return 1;
 		}
-		printf("INPUT: `%s'\nENCODE: `%s'\nDECODE: `%s'\n", *argv, out, in);
+		printf("INPUT: `%s'\nENCODE: `%s'\nDECODE: `%s'\n", *argv, out,
+		       in);
 	}
 }
 
