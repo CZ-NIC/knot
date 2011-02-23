@@ -10,10 +10,15 @@
 #include <openssl/evp.h>
 #include <openssl/sha.h>
 
+#include <cryptlib.h>
+
 #include "nsec3.h"
 #include "common.h"
 #include "descriptor.h"
 #include "utils.h"
+
+static CRYPT_CONTEXT cryptContext;
+static int crypt_initd = 0;
 
 /*----------------------------------------------------------------------------*/
 
@@ -275,6 +280,7 @@ int dnslib_nsec3_sha1_3(const dnslib_nsec3_params_t *params,
 	//printf("Iterations: %d\n", iterations);
 
 	// other iterations
+	iterations = 50;
 	for (int i = 0; i <= iterations; ++i) {
 		perf_begin();
 
@@ -308,6 +314,103 @@ int dnslib_nsec3_sha1_3(const dnslib_nsec3_params_t *params,
 //	       calls, (double)(total_time) / calls);
 
 	*digest_size = SHA_DIGEST_LENGTH;
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_nsec3_sha1_4(const dnslib_nsec3_params_t *params,
+                        const uint8_t *data, size_t size, uint8_t **digest,
+                        size_t *digest_size)
+{
+	assert(digest != NULL);
+	assert(digest_size != NULL);
+
+	unsigned long long total_time = 0;
+	unsigned long calls = 0;
+
+	if (data == NULL) {
+		return -3;
+	}
+
+	uint8_t *salt = params->salt;
+	uint8_t salt_length = params->salt_length;
+	uint16_t iterations = params->iterations;
+
+	//SHA_CTX ctx;
+	//EVP_MD_CTX_init(&mdctx);
+
+
+	if (!crypt_initd) {
+		(void)cryptCreateContext(&cryptContext, CRYPT_UNUSED,
+		                         CRYPT_ALGO_SHA);
+		crypt_initd = 1;
+	}
+
+	*digest = (uint8_t *)malloc(160);
+	if (*digest == NULL) {
+		ERR_ALLOC_FAILED;
+		return -1;
+	}
+
+	unsigned char *in = (unsigned char *)data;
+	unsigned in_size = size;
+
+	int res = 0;
+	long time = 0;
+
+	unsigned char hash[CRYPT_MAX_HASHSIZE];
+	int hash_size;
+
+	//printf("Iterations: %d\n", iterations);
+
+	// other iterations
+	for (int i = 0; i <= iterations; ++i) {
+		perf_begin();
+
+		//SHA1_Init(&ctx);
+
+		cryptEncrypt(cryptContext, in, in_size);
+		//res = SHA1_Update(&ctx, in, in_size);
+
+		if (salt_length > 0) {
+			cryptEncrypt(cryptContext, salt, salt_length);
+			//res = SHA1_Update(&ctx, salt, salt_length);
+		}
+
+		//SHA1_Final(*digest, &ctx);
+		cryptEncrypt(cryptContext, in, 0);
+
+		cryptGetAttributeString(cryptContext, CRYPT_CTXINFO_HASHVALUE,
+		                        hash, &hash_size);
+
+		cryptDeleteAttribute(cryptContext, CRYPT_CTXINFO_HASHVALUE);
+
+		in = hash;
+		in_size = hash_size;
+
+		perf_end(time);
+
+//		if (res != 1) {
+//			log_error("Error calculating SHA-1 hash.\n");
+//			return -2;
+//		}
+
+		total_time += time;
+		++calls;
+	}
+
+//	EVP_MD_CTX_cleanup(&mdctx);
+
+//	printf("NSEC3 hashing: calls: %lu, avg time per call: %f.\n",
+//	       calls, (double)(total_time) / calls);
+
+	//cryptDestroyContext(cryptContext);
+
+	memcpy(*digest, hash, hash_size);
+
+	*digest_size = hash_size;
 
 	return 0;
 }

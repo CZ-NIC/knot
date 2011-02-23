@@ -6,6 +6,7 @@
 #include <gnutls/gnutls.h>
 #include <gcrypt.h>
 #include <openssl/evp.h>
+#include <cryptlib.h>
 
 #include "debug.h"
 #include "server.h"
@@ -83,6 +84,11 @@ cute_server *cute_create()
 	debug_server("Initializing OpenSSL...\n");
 
 	OpenSSL_add_all_digests();
+
+	debug_server("Done\n\n");
+	debug_server("Initializing cryptlib...\n");
+
+	cryptInit();
 
 	debug_server("Done\n\n");
 
@@ -273,6 +279,8 @@ void cute_destroy(cute_server **server)
 	free(*server);
 
 	gnutls_global_deinit();
+
+	cryptEnd();
 
 	*server = NULL;
 }

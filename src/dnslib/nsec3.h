@@ -45,6 +45,10 @@ int dnslib_nsec3_sha1_3(const dnslib_nsec3_params_t *params,
                         const uint8_t *data, size_t size, uint8_t **digest,
                         size_t *digest_size);
 
+int dnslib_nsec3_sha1_4(const dnslib_nsec3_params_t *params,
+                        const uint8_t *data, size_t size, uint8_t **digest,
+                        size_t *digest_size);
+
 /*----------------------------------------------------------------------------*/
 
 #endif /* _CUTEDNS_DNSLIB_NSEC3_H_ */
