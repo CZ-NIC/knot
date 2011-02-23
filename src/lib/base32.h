@@ -16,30 +16,30 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.  */
 
-#ifndef BASE32_H
-# define BASE32_H
+#ifndef _BASE32_H_
+#define _BASE32_H_
 
 /* Get size_t. */
-# include <stddef.h>
+#include <stddef.h>
 
 /* Get bool. */
-# include <stdbool.h>
+#include <stdbool.h>
 
 /* This uses that the expression (n+(k-1))/k means the smallest
    integer >= n/k, i.e., the ceiling of n/k.  */
 # define BASE32_LENGTH(inlen) ((((inlen) + 4) / 5) * 8)
 
-extern bool isbase32 (char ch);
+extern bool isbase32(char ch);
 
-extern void base32_encode (const char *in, size_t inlen,
-			   char *out, size_t outlen);
+extern void base32_encode(const char *in, size_t inlen, char *out,
+                          size_t outlen);
 
-extern size_t base32_encode_alloc (const char *in, size_t inlen, char **out);
+extern size_t base32_encode_alloc(const char *in, size_t inlen, char **out);
 
-extern bool base32_decode (const char *in, size_t inlen,
-			   char *out, size_t *outlen);
+extern bool base32_decode(const char *in, size_t inlen, char *out,
+                          size_t *outlen);
 
-extern bool base32_decode_alloc (const char *in, size_t inlen,
-				 char **out, size_t *outlen);
+extern bool base32_decode_alloc(const char *in, size_t inlen, char **out,
+                                size_t *outlen);
 
-#endif /* BASE32_H */
+#endif /* _BASE32_H_ */
