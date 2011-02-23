@@ -143,7 +143,7 @@ static inline void tcp_answer(int fd, uint8_t *src, int inbuf_sz, uint8_t *dest,
 	faddr.sin_family = AF_INET;
 	faddr.sin_port = htons(0);
 	faddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-	stat_get_first(pool->stat, &faddr); //faddr has to be read immediately.
+	stat_get_first(pool->stat, (struct sockaddr*)&faddr);
 
 	// Check read result
 	if (n > 0) {

@@ -78,9 +78,10 @@ static inline void stat_set_protocol(stat_t *stat, int protocol) {}
  * \param s_addr Sockaddr structure to be used later for statistics.
  */
 #ifdef STAT_COMPILE
+#warning "stat fixme: pass sockaddr* for generic _in and _in6 support"
 void stat_get_first(stat_t *stat, struct sockaddr_in *s_addr);
 #else
-static inline void stat_get_first(stat_t *stat, struct sockaddr_in *s_addr) {}
+static inline void stat_get_first(stat_t *stat, struct sockaddr *s_addr) {}
 #endif /* STAT_COMPILE */
 
 /*!

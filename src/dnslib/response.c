@@ -82,7 +82,7 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 	resp->question.qname =
 		(dnslib_dname_t *)((char *)resp + PREALLOC_RESPONSE);
 
-	debug_dnslib_response("QNAME: %p (%d after start of response)\n",
+	debug_dnslib_response("QNAME: %p (%ld after start of response)\n",
 		resp->question.qname,
 		(void *)resp->question.qname - (void *)resp);
 
@@ -101,13 +101,13 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 	resp->authority = resp->answer + DEFAULT_ANCOUNT;
 	resp->additional = resp->authority + DEFAULT_NSCOUNT;
 
-	debug_dnslib_response("Answer section: %p (%d after QNAME)\n",
+	debug_dnslib_response("Answer section: %p (%ld after QNAME)\n",
 		resp->answer,
 		(void *)resp->answer - (void *)resp->question.qname);
-	debug_dnslib_response("Authority section: %p (%d after Answer)\n",
+	debug_dnslib_response("Authority section: %p (%ld after Answer)\n",
 		resp->authority,
 		(void *)resp->authority - (void *)resp->answer);
-	debug_dnslib_response("Additional section: %p (%d after Authority)\n",
+	debug_dnslib_response("Additional section: %p (%ld after Authority)\n",
 		resp->additional,
 		(void *)resp->additional - (void *)resp->authority);
 
@@ -121,10 +121,10 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 	resp->compression.offsets = (short *)
 		(resp->compression.dnames + DEFAULT_DOMAINS_IN_RESPONSE);
 
-	debug_dnslib_response("Compression dnames: %p (%d after Additional)\n",
+	debug_dnslib_response("Compression dnames: %p (%ld after Additional)\n",
 		resp->compression.dnames,
 		(void *)resp->compression.dnames - (void *)resp->additional);
-	debug_dnslib_response("Compression offsets: %p (%d after c. dnames)\n",
+	debug_dnslib_response("Compression offsets: %p (%ld after c. dnames)\n",
 		resp->compression.offsets,
 		(void *)resp->compression.offsets
 		  - (void *)resp->compression.dnames);
@@ -134,13 +134,13 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 	resp->tmp_rrsets = (const dnslib_rrset_t **)
 		(resp->compression.offsets + DEFAULT_DOMAINS_IN_RESPONSE);
 
-	debug_dnslib_response("Tmp rrsets: %p (%d after compression offsets)\n",
+	debug_dnslib_response("Tmp rrsets: %p (%ld after compression offsets)\n",
 		resp->tmp_rrsets,
 		(void *)resp->tmp_rrsets - (void *)resp->compression.offsets);
 
 	resp->tmp_rrsets_max = DEFAULT_TMP_RRSETS;
 
-	debug_dnslib_response("End of data: %p (%d after start of response)\n",
+	debug_dnslib_response("End of data: %p (%ld after start of response)\n",
 		resp->tmp_rrsets + DEFAULT_TMP_RRSETS,
 		(void *)(resp->tmp_rrsets + DEFAULT_TMP_RRSETS)
 		  - (void *)resp);

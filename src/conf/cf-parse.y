@@ -13,6 +13,7 @@
 #include "dnslib/dname.h"
 #include "conf.h"
 
+extern int cf_lex (void);
 extern void cf_error(const char *msg, ...);
 extern conf_t *new_config;
 static conf_iface_t *this_iface = 0;
