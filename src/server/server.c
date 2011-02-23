@@ -15,24 +15,29 @@
 #include "dnslib/debug.h"
 #include "dnslib/dname.h"
 
+typedef struct {
+	int fd;
+	int type;
+} ifaced_t;
 
 cute_server *cute_create()
 {
-	// Create interfaces
+	/* Create interfaces. */
 	node *n = 0;
 	int ifaces_count = conf()->ifaces_count;
 	int tcp_loaded = 0, udp_loaded = 0;
-	int *tcp_socks = malloc(ifaces_count * sizeof(int));
-	int *udp_socks = malloc(ifaces_count * sizeof(int));
+	ifaced_t *tcp_socks = malloc(ifaces_count * sizeof(ifaced_t));
+	ifaced_t *udp_socks = malloc(ifaces_count * sizeof(ifaced_t));
 
 	debug_server("Binding sockets..\n");
 	WALK_LIST(n, conf()->ifaces) {
 
-		// Get interface descriptor
-		int opt = 1024 * 1024; // 1M buffers for send/recv
+		/* Get interface descriptor. */
+		int opt = 1024 * 256; // 1M buffers for send/recv
+		int snd_opt = 1024 * 8;
 		conf_iface_t *iface = (conf_iface_t*)n;
 
-		// Create TCP+UDP sockets
+		/* Create TCP & UDP sockets. */
 		int udp_sock = socket_create(iface->family, SOCK_DGRAM);
 		if (socket_bind(udp_sock, iface->family, iface->address, iface->port) < 0) {
 			log_server_error("Could not bind to "
@@ -40,11 +45,18 @@ cute_server *cute_create()
 			                 iface->address, iface->port);
 			break;
 		}
-		udp_socks[udp_loaded++] = udp_sock;
+		udp_socks[udp_loaded].fd = udp_sock;
+		udp_socks[udp_loaded].type = iface->family;
+		udp_loaded++;
 
 		/* Set socket options. */
-		setsockopt(udp_sock, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(opt));
-		setsockopt(udp_sock, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt));
+		if (setsockopt(udp_sock, SOL_SOCKET, SO_SNDBUF, &snd_opt, sizeof(snd_opt)) < 0) {
+			fprintf(stderr, "SO_SNDBUF setting failed\n");
+		}
+		if (setsockopt(udp_sock, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
+			fprintf(stderr, "SO_SNDBUF setting failed\n");
+		}
+
 
 		int tcp_sock = socket_create(iface->family, SOCK_STREAM);
 		if (socket_bind(tcp_sock, iface->family, iface->address, iface->port) < 0) {
@@ -54,18 +66,20 @@ cute_server *cute_create()
 			break;
 		}
 		socket_listen(tcp_sock, TCP_BACKLOG_SIZE);
-		tcp_socks[tcp_loaded++] = tcp_sock;
+		tcp_socks[tcp_loaded].fd = tcp_sock;
+		tcp_socks[tcp_loaded].type = iface->family;
+		tcp_loaded++;
 	}
 
-	// Evaluate if all sockets loaded.
+	/* Evaluate if all sockets loaded. */
 	debug_server("Done\n\n");
 	if ((tcp_loaded != ifaces_count) ||
 	    (udp_loaded != ifaces_count)) {
 		for (int i = 0; i < udp_loaded; ++i) {
-			close(udp_socks[i]);
+			close(udp_socks[i].fd);
 		}
 		for (int i = 0; i < tcp_loaded; ++i) {
-			close(tcp_socks[i]);
+			close(tcp_socks[i].fd);
 		}
 		free(udp_socks);
 		free(tcp_socks);
@@ -115,12 +129,16 @@ cute_server *cute_create()
 	// Create socket handlers
 	// udp_loaded is equal to tcp_loaded.
 	debug_server("Creating socket handlers..\n");
+	iohandler_t* h = 0;
 	for (int i = 0; i < udp_loaded; ++i) {
 		dt_unit_t *unit = dt_create_coherent(thr_count, &udp_master, 0);
-		cute_create_handler(server, udp_socks[i], unit);
+		h = cute_create_handler(server, udp_socks[i].fd, unit);
+		h->type = udp_socks[i].type;
+
 		unit = dt_create(tcp_unit_size);
 		dt_repurpose(unit->threads[0], &tcp_master, 0);
-		cute_create_handler(server, tcp_socks[i], unit);
+		h = cute_create_handler(server, tcp_socks[i].fd, unit);
+		h->type = tcp_socks[i].type;
 	}
 
 	free(udp_socks);
@@ -135,11 +153,13 @@ iohandler_t *cute_create_handler(cute_server *server, int fd, dt_unit_t *unit)
 	// Create new worker
 	iohandler_t *handler = malloc(sizeof(iohandler_t));
 	if (handler == 0) {
+		ERR_ALLOC_FAILED;
 		return 0;
 	}
 
 	// Initialize
 	handler->fd = fd;
+	handler->type = 0;
 	handler->state = ServerIdle;
 	handler->next = server->handlers;
 	handler->server = server;
