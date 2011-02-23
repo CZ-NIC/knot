@@ -44,7 +44,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 		// Check PID
 		valid_cmd = 1;
 		if (pid > 0) {
-			log_info("Server PID found, already running.\n");
+			fprintf(stderr, "control: Server PID found, "
+			        "already running.\n");
 			return 1;
 		}
 
@@ -69,8 +70,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 		// Check PID
 		valid_cmd = 1;
 		if (pid <= 0) {
-			log_info("Server PID not found, "
-				 "probably not running.\n");
+			fprintf(stderr, "Server PID not found, "
+			        "probably not running.\n");
 			rc = 1;
 		} else {
 			// Stop
@@ -87,8 +88,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 		int i = 0;
 		while(pid_read(pidfile) > 0) {
 			if (i == WAITPID_TIMEOUT) {
-				log_warning("Timeout while waiting for server "
-					    "to finish...\n");
+				fprintf(stderr, "Timeout while "
+				        "waiting for the server to finish.\n");
 				pid_remove(pidfile);
 				break;
 			} else {
@@ -104,8 +105,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 		// Check PID
 		valid_cmd = 1;
 		if (pid <= 0) {
-			log_info("Server PID not found, "
-				 "probably not running.\n");
+			fprintf(stderr, "Server PID not found, "
+			        "probably not running.\n");
 			return 1;
 		}
 
@@ -124,7 +125,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 			       "probably not running.\n");
 			rc = 1;
 		} else {
-			printf("Server running as PID %ld.\n", (long)pid);
+			printf("Server running as PID %ld.\n",
+			       (long)pid);
 			rc = 0;
 		}
 	}
@@ -148,7 +150,10 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 			              zone->name, zone->file);
 
 			// Execute command
-			log_info("Compiling '%s'...\n", zone->name);
+			if (verbose) {
+				printf("Compiling '%s'...\n",
+				       zone->name);
+			}
 			if ((rc = system(cmd)) < 0) {
 				rc = 1;
 			}
@@ -156,12 +161,14 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 		}
 	}
 	if (!valid_cmd) {
-		log_error("Invalid command: '%s'\n", action);
+		fprintf(stderr, "Invalid command: '%s'\n", action);
 		return 1;
 	}
 
 	// Log
-	log_info("'%s' finished (return code %d)\n", action, rc);
+	if (verbose) {
+		printf("'%s' finished (return code %d)\n", action, rc);
+	}
 	return rc;
 }
 
@@ -200,11 +207,9 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	// Initialize log
-	log_init();
-
-	// Initialize configuration
-	conf_add_hook(conf(), CONF_LOG, log_conf_hook);
+	// Initialize log (no output)
+	log_setup(0);
+	log_levels_set(LOGT_STDOUT, LOG_ANY, LOG_MASK(LOG_DEBUG));
 
 	// Find implicit configuration file
 	char *default_fn = 0;
@@ -215,24 +220,18 @@ int main(int argc, char **argv)
 
 	// Open configuration
 	if (conf_open(config_fn) != 0) {
-		log_server_error("Failed to parse configuration '%s'.\n"
-		                 , config_fn);
+		fprintf(stderr, "Failed to parse configuration '%s'.\n",
+		        config_fn);
 	}
 
 	// Free default config filename if exists
 	free(default_fn);
 
-	// Verbose mode
-	if (verbose) {
-		int mask = LOG_MASK(LOG_INFO)|LOG_MASK(LOG_DEBUG);
-		log_levels_add(LOGT_STDOUT, LOG_ANY, mask);
-	}
-
 	// Fetch PID
 	const char* pidfile = pid_filename();
 	if (!pidfile) {
-		log_error("No configuration found, "
-		          "please specify with '-c' parameter.\n");
+		fprintf(stderr, "No configuration found, "
+		        "please specify with '-c' parameter.\n");
 		log_close();
 		return 1;
 	}

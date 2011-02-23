@@ -1643,8 +1643,8 @@ static uint find_rrsets_orphans(dnslib_zone_t *zone, rrsig_list_t *head)
 int zone_read(const char *name, const char *zonefile, const char *outfile)
 {
 	if (!outfile) {
-		log_error("missing output file for '%s'\n",
-			 zonefile);
+		fprintf(stderr, "Missing output file for '%s'\n",
+		        zonefile);
 		return -1;
 	}
 
@@ -1662,7 +1662,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 
 	/* Open the zone file */
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
-		log_error("cannot open '%s': %s", zonefile, strerror(errno));
+		fprintf(stderr, "Cannot open '%s': %s.",
+		        zonefile, strerror(errno));
 		return -1;
 	}
 

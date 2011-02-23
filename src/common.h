@@ -47,24 +47,10 @@ typedef unsigned int uint;
 #include "log.h"
 #include "debug.h"
 
-/* Common inlines.
- */
-#include <stdio.h>
-static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
-{
-	int rc = fread(dst, size, n, fp);
-	if (rc != n) {
-		log_warning("fread: invalid read %d (expected %zu)\n", rc, n);
-	}
-
-	return rc == n;
-}
-
-
 /* Common macros.
  */
 
-#define ERR_ALLOC_FAILED log_error("Allocation failed at %s:%d (%s ver.%x)\n", \
+#define ERR_ALLOC_FAILED log_server_error("Allocation failed at %s:%d (%s ver.%x)\n", \
 				  __FILE__, __LINE__, PROJECT_NAME, PROJECT_VER)
 
 #define CHECK_ALLOC_LOG(var, ret) \

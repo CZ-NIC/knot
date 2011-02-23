@@ -85,7 +85,7 @@ int cf_read_mem(char *buf, size_t nbytes) {
 /* Config error report. */
 void cf_error(const char *msg, ...)
 {
-	log_error("Config: %s.\n", msg);
+	log_server_error("config: %s.\n", msg);
 	_parser_res = -1;
 }
 

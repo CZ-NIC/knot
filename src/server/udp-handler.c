@@ -105,9 +105,9 @@ int udp_master(dthread_t *thread)
 		// Error and interrupt handling
 		if (unlikely(n <= 0)) {
 			if (errno != EINTR && errno != 0) {
-				log_error("udp: %s: failed: %d - %s\n",
-					  "socket_recvfrom()",
-					  errno, strerror(errno));
+				log_server_error("udp: %s: failed: %d - %s\n",
+				                 "socket_recvfrom()",
+				                 errno, strerror(errno));
 			}
 
 			if (!(handler->state & ServerRunning)) {
@@ -141,9 +141,9 @@ int udp_master(dthread_t *thread)
 
 			// Check result
 			if (res != answer_size) {
-				log_error("udp: %s: failed: %d - %s.\n",
-					  "socket_sendto()",
-					  res, strerror(res));
+				log_server_error("udp: %s: failed: %d - %s.\n",
+				                 "socket_sendto()",
+				                 res, strerror(res));
 				continue;
 			}
 

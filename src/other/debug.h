@@ -12,6 +12,7 @@
 #define _CUTEDNS_DEBUG_H_
 
 #include "log.h"
+#include "print.h"
 
 //#define ST_DEBUG
 //#define SM_DEBUG
@@ -48,7 +49,7 @@
 #endif
 
 #ifdef DNSLIB_DNAME_DEBUG
-#define debug_dnslib_dname(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_dnslib_dname(msg...) log_msg(LOG_ANSWER, LOG_DEBUG, msg)
 #define debug_dnslib_dname_hex(data, len) hex_print((data), (len))
 #define DEBUG_DNSLIB_DNAME(cmds) do { cmds } while (0)
 #else
@@ -58,7 +59,7 @@
 #endif
 
 #ifdef DNSLIB_ZONE_DEBUG
-#define debug_dnslib_zone(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_dnslib_zone(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
 #define DEBUG_DNSLIB_ZONE(cmds) do { cmds } while (0)
 #else
 #define debug_dnslib_zone(msg...)
@@ -66,7 +67,7 @@
 #endif
 
 #ifdef DNSLIB_ZONEDB_DEBUG
-#define debug_dnslib_zonedb(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_dnslib_zonedb(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
 #define DEBUG_DNSLIB_ZONEDB(cmds) do { cmds } while (0)
 #else
 #define debug_dnslib_zonedb(msg...)
@@ -74,7 +75,7 @@
 #endif
 
 #ifdef DNSLIB_RESPONSE_DEBUG
-#define debug_dnslib_response(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_dnslib_response(msg...) log_msg(LOG_ANSWER, LOG_DEBUG, msg)
 #define debug_dnslib_response_hex(data, len) hex_print((data), (len))
 #define DEBUG_DNSLIB_RESPONSE(cmds) do { cmds } while (0)
 #else
@@ -124,7 +125,7 @@
 #endif
 
 #ifdef NS_DEBUG
-#define debug_ns(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_ns(msg...) log_msg(LOG_ANSWER, LOG_DEBUG, msg)
 #define debug_ns_hex(data, len) hex_print((data), (len))
 #define DEBUG_NS(cmds) do { cmds } while (0)
 #else
