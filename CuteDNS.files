@@ -108,3 +108,4 @@ src/ctl/main.c
 src/ctl/process.c
 src/ctl/process.h
 tests/querytcp.c
+src/tests/zoneparser_tests.c
