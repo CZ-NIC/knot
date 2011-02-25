@@ -1,6 +1,6 @@
 %{
 /*!
- * \file zlexer.lex
+ * \file zlexer.l
  *
  * \author minor modifications by Jan Kadlec <jan.kadlec@nic.cz>,
  *         most of the code by NLnet Labs
