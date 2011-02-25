@@ -12,3 +12,4 @@ install-sh
 missing
 src/Makefile.in
 ylwrap
+autom4te.cache
