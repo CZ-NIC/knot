@@ -17,6 +17,7 @@
 #include "dnslib/rrset.h"
 #include "dnslib/dname.h"
 #include "dnslib/packet.h"
+#include "dnslib/descriptor.h"
 
 /*
  * Resources

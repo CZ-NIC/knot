@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
+#include <stdbool.h>
 
 #include "tests/tap_unit.h"
 #include "alloc/slab.h"
