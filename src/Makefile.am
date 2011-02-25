@@ -1,11 +1,10 @@
-ACLOCAL_AMFLAGS = -I../m4
+ACLOCAL_AMFLAGS = -I ../m4
 bin_PROGRAMS = knotc
-libexec_PROGRAMS = knot-zoneparser
-sbin_PROGRAMS = knot
+libexec_PROGRAMS = knot-zoneparser unittests
+sbin_PROGRAMS = knotd
 
 # FIXME: Move header files to $(topdir)/include
 AM_CFLAGS =		\
-	-I.		\
 	-std=gnu99	\
 	-D_XOPEN_SOURCE=600 \
 	-D_GNU_SOURCE
@@ -15,7 +14,20 @@ AM_YFLAGS = -d
 
 LDADD = libknot.a @LIBOBJS@
 
-TESTS = unittest
+BUILT_SOURCES =					\
+	tests/dnslib/parsed_data.rc		\
+	tests/dnslib/raw_data_queries.rc	\
+	tests/dnslib/raw_data.rc		\
+	tests/dnslib/parsed_data_queries.rc
+
+CLEANFILES =					\
+	tests/dnslib/parsed_data.rc		\
+	tests/dnslib/raw_data_queries.rc	\
+	tests/dnslib/raw_data.rc		\
+	tests/dnslib/parsed_data_queries.rc	\
+	zparser.h				\
+	zparser.c				\
+	zlexer.c
 
 knotc_SOURCES =					\
 	ctl/knotc_main.c
@@ -23,28 +35,26 @@ knotc_SOURCES =					\
 knot_zoneparser_SOURCES =			\
 	zoneparser/zoneparser_main.c
 
-#unittests_SOURCES =				\
-#	tests/zonedb_tests.c			\
-#	tests/dnslib_tests.c			\
-#	tests/dthreads_tests.c			\
-#	tests/libtap/tap.c			\
-#	tests/da_tests.c			\
-#	tests/server_tests.c			\
-#	tests/slab_tests.c			\
-#	tests/template_tests.c			\
-#	tests/dnslib/dnslib_response_tests.c	\
-#	tests/dnslib/dnslib_zone_tests.c	\
-#	tests/dnslib/dnslib_rrsig_set_tests.c	\
-#	tests/dnslib/dnslib_rrset_tests.c	\
-#	tests/dnslib/dnslib_edns_tests.c	\
-#	tests/dnslib/dnslib_rdata_tests.c	\
-#	tests/dnslib/dnslib_node_tests.c	\
-#	tests/dnslib/dnslib_dname_tests.c	\
-#	tests/skiplist_tests.c			\
-#	tests/cuckoo_tests.c			\
-#	tests/unittests_main.c
+unittests_SOURCES =				\
+	tests/zonedb_tests.c			\
+	tests/dnslib_tests.c			\
+	tests/dthreads_tests.c			\
+	tests/libtap/tap.c			\
+	tests/da_tests.c			\
+	tests/server_tests.c			\
+	tests/slab_tests.c			\
+	tests/template_tests.c			\
+	tests/skiplist_tests.c			\
+	tests/cuckoo_tests.c			\
+	tests/unittests_main.c
 
-knot_SOURCES =					\
+nodist_unittests_SOURCES =			\
+	tests/dnslib/parsed_data.rc		\
+	tests/dnslib/raw_data_queries.rc	\
+	tests/dnslib/raw_data.rc		\
+	tests/dnslib/parsed_data_queries.rc
+
+knotd_SOURCES =					\
 	main.c
 
 noinst_LIBRARIES = libknot.a
@@ -127,10 +137,24 @@ libknot_a_SOURCES =				\
 	hash/universal-system.h			\
 	hash/cuckoo-hash-table.h		\
 	hash/hash-functions.h			\
-	config.h				\
 	other/print.h				\
 	other/log.h				\
 	other/debug.h
 
 libknot_a_LIBADD = @LIBOBJS@
+
+# automake complains on % rules:
+#   `%'-style pattern rules are a GNU make extension
+
+tests/dnslib/parsed_data.rc: tests/files/parsed_data
+	../resource.sh $< >$@
+
+tests/dnslib/parsed_data_queries.rc: tests/files/parsed_data_queries
+	../resource.sh $< >$@
+
+tests/dnslib/raw_data_queries.rc: tests/files/raw_data_queries
+	../resource.sh $< >$@
+
+tests/dnslib/raw_data.rc: tests/files/raw_data
+	../resource.sh $< >$@
 

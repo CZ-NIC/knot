@@ -2,15 +2,19 @@
 
 AC_PREREQ([2.67])
 AC_INIT([knot], [0.2], [bug-me-knot@nic.cz])
-AM_INIT_AUTOMAKE([foreign -Wall -Werror])
+AM_INIT_AUTOMAKE([gnu -Wall -Werror])
 AC_CONFIG_SRCDIR([src/main.c])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
+
+# Enable maintainer mode by default for development
+AM_MAINTAINER_MODE([enable])
 
 # Set compiler compatibility flags
 AC_PROG_CPP_WERROR
 AC_PROG_CC_STDC
 AC_PROG_CC_C99
+AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
 
 # Initialize libtool
 LT_INIT
