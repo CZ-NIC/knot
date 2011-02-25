@@ -1,14 +1,15 @@
+#include <config.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <assert.h>
 
-#include "response.h"
-#include "rrset.h"
 #include "common.h"
-#include "packet.h"
-#include "descriptor.h"
-#include "edns.h"
-#include "utils.h"
+#include "dnslib/response.h"
+#include "dnslib/rrset.h"
+#include "dnslib/packet.h"
+#include "dnslib/descriptor.h"
+#include "dnslib/edns.h"
+#include "dnslib/utils.h"
 
 enum {
 	DEFAULT_ANCOUNT = 6,

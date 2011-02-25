@@ -18,8 +18,6 @@
 /* POSIX only. */
 #include <sys/socket.h>
 
-#include "common.h"
-
 /*! \brief Socket-related constants. */
 enum {
 	SOCKET_MTU_SZ = 8192,  /*!< \todo Determine UDP MTU size. */

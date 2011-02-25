@@ -14,10 +14,9 @@
 
 #include <stdint.h>
 
-#include "dname.h"
-#include "rdata.h"
-#include "common.h"
-#include "rrsig.h"
+#include "dnslib/dname.h"
+#include "dnslib/rdata.h"
+#include "dnslib/rrsig.h"
 
 /*----------------------------------------------------------------------------*/
 /*!

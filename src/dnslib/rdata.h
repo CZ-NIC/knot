@@ -15,8 +15,7 @@
 
 #include <stdint.h>
 
-#include "dname.h"
-#include "common.h"
+#include "dnslib/dname.h"
 
 /*----------------------------------------------------------------------------*/
 /*!

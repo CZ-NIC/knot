@@ -12,6 +12,7 @@
  * @{
  */
 
+#include <config.h>
 #include <assert.h>
 #include <fcntl.h>
 #include <ctype.h>

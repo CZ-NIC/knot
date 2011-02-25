@@ -1,4 +1,3 @@
-#include "config.h"
 #include "tests/tap_unit.h"
 
 #define CT_TEST_REHASH
@@ -7,7 +6,6 @@
 #include <assert.h>
 
 #include "hash/cuckoo-hash-table.h"
-#include "common.h"
 
 //#define CK_TEST_DEBUG
 //#define CK_TEST_LOOKUP

@@ -1,13 +1,14 @@
+#include <config.h>
 #include <assert.h>
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "zone-load.h"
-#include "dnslib/dnslib.h"
 #include "common.h"
-#include "debug.h"
+#include "dnslib/zone-load.h"
+#include "dnslib/dnslib.h"
+#include "dnslib/debug.h"
 
 /* \note Contents of dump file:
  * MAGIC(cutexx) NUMBER_OF_NORMAL_NODES NUMBER_OF_NSEC3_NODES

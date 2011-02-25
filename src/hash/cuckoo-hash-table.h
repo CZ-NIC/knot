@@ -25,7 +25,6 @@
 #include <stdlib.h> /* size_t */
 #include <pthread.h>
 
-#include "common.h"
 #include "hash/universal-system.h"
 #include "lib/dynamic-array.h"
 

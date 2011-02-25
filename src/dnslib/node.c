@@ -1,8 +1,9 @@
+#include <config.h>
 #include <malloc.h>
 
-#include "node.h"
 #include "common.h"
-#include "rrset.h"
+#include "dnslib/node.h"
+#include "dnslib/rrset.h"
 
 /*----------------------------------------------------------------------------*/
 

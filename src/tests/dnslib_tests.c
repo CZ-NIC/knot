@@ -1,7 +1,3 @@
-#include "config.h"
-#include "common.h"
-#include "tests/tap_unit.h"
-
 #include "tests/dnslib/dnslib_dname_tests.c"
 #include "tests/dnslib/dnslib_rdata_tests.c"
 #include "tests/dnslib/dnslib_node_tests.c"

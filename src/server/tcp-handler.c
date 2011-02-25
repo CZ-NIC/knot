@@ -1,4 +1,4 @@
-#include "config.h"
+#include <config.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "common.h"
 #include "server/tcp-handler.h"
 #include "server/name-server.h"
 #include "stat/stat.h"

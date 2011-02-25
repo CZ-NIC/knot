@@ -1,4 +1,3 @@
-#include "config.h"
 #include "tests/tap_unit.h"
 #include "lib/dynamic-array.h"
 #include <unistd.h>

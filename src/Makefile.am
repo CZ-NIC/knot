@@ -3,11 +3,6 @@ bin_PROGRAMS = knotc
 libexec_PROGRAMS = knot-zoneparser unittests
 sbin_PROGRAMS = knotd
 
-# FIXME: Move header files to $(topdir)/include
-AM_CFLAGS =		\
-	-D_XOPEN_SOURCE=600 \
-	-D_GNU_SOURCE
-
 # $(YACC) will generate header file
 AM_YFLAGS = -d
 

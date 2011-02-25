@@ -12,7 +12,6 @@
 #ifndef _CUTEDNS_DNSLIB_UTILS_H_
 #define _CUTEDNS_DNSLIB_UTILS_H_
 
-#include <stdint.h>
 #include <string.h>
 
 /*!

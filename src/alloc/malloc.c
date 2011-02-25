@@ -1,6 +1,4 @@
-#include "config.h"
-#include "other/debug.h"
-
+#include <config.h>
 /*
  * Skip unit if not debugging memory.
  */
@@ -8,6 +6,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/resource.h>
+
+#include "common.h"
+#include "other/debug.h"
 
 #ifdef MEM_DEBUG
 /*

@@ -1,4 +1,3 @@
-#include "config.h"
 #include "server/dthreads.h"
 #include "tests/tap_unit.h"
 #include <sys/select.h>

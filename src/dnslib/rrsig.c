@@ -1,8 +1,9 @@
+#include <config.h>
 #include <stdlib.h>
 
-#include "rrsig.h"
 #include "common.h"
-#include "descriptor.h"
+#include "dnslib/rrsig.h"
+#include "dnslib/descriptor.h"
 
 /*----------------------------------------------------------------------------*/
 

@@ -1,10 +1,12 @@
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
 #include <string.h>
 
-#include "process.h"
+#include "common.h"
+#include "ctl/process.h"
 #include "other/log.h"
 
 char* pid_filename()

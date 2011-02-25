@@ -1,8 +1,9 @@
-#include "config.h"
+#include <config.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "common.h"
 #include "other/debug.h"
 #include "server/server.h"
 #include "server/udp-handler.h"
