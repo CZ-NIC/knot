@@ -36,16 +36,7 @@ knot_zoneparser_SOURCES =			\
 	zoneparser/zoneparser_main.c
 
 unittests_SOURCES =				\
-	tests/zonedb_tests.c			\
-	tests/dnslib_tests.c			\
-	tests/dthreads_tests.c			\
 	tests/libtap/tap.c			\
-	tests/da_tests.c			\
-	tests/server_tests.c			\
-	tests/slab_tests.c			\
-	tests/template_tests.c			\
-	tests/skiplist_tests.c			\
-	tests/cuckoo_tests.c			\
 	tests/unittests_main.c
 
 nodist_unittests_SOURCES =			\
