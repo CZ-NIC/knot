@@ -5,7 +5,6 @@ sbin_PROGRAMS = knotd
 
 # FIXME: Move header files to $(topdir)/include
 AM_CFLAGS =		\
-	-std=gnu99	\
 	-D_XOPEN_SOURCE=600 \
 	-D_GNU_SOURCE
 
