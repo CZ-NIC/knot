@@ -1,8 +1,9 @@
+#include <config.h>
 #include <stdarg.h>
 #include <stdio.h>
 
-#include "other/log.h"
 #include "common.h"
+#include "other/log.h"
 
 /// Global log-level.
 static int _LOG_OPEN = 0;

@@ -1,5 +1,7 @@
+#include <config.h>
 #include <stdio.h>
 
+#include "common.h"
 #include "print.h"
 
 void hex_printf(const char *data, int length, printf_t print_handler)

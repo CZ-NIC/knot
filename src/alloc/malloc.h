@@ -13,7 +13,7 @@
 #define __CUTEDNS_MALLOC_H__
 
 #include <stdlib.h>
-#include "debug.h"
+#include "other/debug.h"
 
 /*! \brief Print usage statistics.
  *

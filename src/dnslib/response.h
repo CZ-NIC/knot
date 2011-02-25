@@ -17,8 +17,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "dname.h"
-#include "rrset.h"
+#include "dnslib/dname.h"
+#include "dnslib/rrset.h"
 
 /*!
  * \brief Default maximum DNS response size

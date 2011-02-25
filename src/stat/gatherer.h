@@ -14,8 +14,6 @@
 
 #include <stdint.h>
 
-#include "common.h"
-
 /* The bigger this number, the better the performance of hashing. */
 enum fbs { FREQ_BUFFER_SIZE = 100000 };
 

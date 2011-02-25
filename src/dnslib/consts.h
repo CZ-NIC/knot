@@ -13,7 +13,7 @@
 #define _CUTEDNS_DNSLIB_CONSTS_H_
 
 #include <stdint.h>
-#include "descriptor.h"
+#include "dnslib/descriptor.h"
 
 /*
  * OPCODEs

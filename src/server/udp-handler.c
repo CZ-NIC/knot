@@ -1,4 +1,4 @@
-#include "config.h"
+#include <config.h>
 #include <time.h>
 #include <unistd.h>
 #include <errno.h>
@@ -8,6 +8,7 @@
 #include <string.h>
 #include <assert.h>
 
+#include "common.h"
 #include "server/udp-handler.h"
 #include "server/name-server.h"
 #include "stat/stat.h"

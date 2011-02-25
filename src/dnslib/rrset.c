@@ -1,10 +1,11 @@
+#include <config.h>
 #include <stdint.h>
 #include <malloc.h>
 #include <assert.h>
 
-#include "rrset.h"
-#include "descriptor.h"
 #include "common.h"
+#include "dnslib/rrset.h"
+#include "dnslib/descriptor.h"
 
 dnslib_rrset_t *dnslib_rrset_new(dnslib_dname_t *owner, uint16_t type, 
 				 uint16_t rclass, uint32_t ttl)

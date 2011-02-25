@@ -1,8 +1,9 @@
-#include "config.h"
+#include <config.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
 
+#include "common.h"
 #include "dnslib/zone-dump.h"
 #include "dnslib/dnslib.h"
 #include "lib/skip-list.h"

@@ -18,8 +18,6 @@
 #include <string.h>
 #include <pthread.h>
 
-#include "common.h"
-
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Dynamic array structure.

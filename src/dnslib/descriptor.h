@@ -15,8 +15,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "common.h"
-
 enum mxrdtln {
 	DNSLIB_MAX_RDATA_ITEMS = 64,
 	DNSLIB_MAX_RDATA_ITEM_SIZE = 255,

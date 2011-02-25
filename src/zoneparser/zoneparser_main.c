@@ -1,6 +1,8 @@
+#include <config.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include "zoneparser.h"
+#include "common.h"
+#include "zoneparser/zoneparser.h"
 
 static void help(int argc, char **argv)
 {

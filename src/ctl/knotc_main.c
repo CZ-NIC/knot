@@ -1,10 +1,11 @@
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 
 #include "common.h"
-#include "process.h"
+#include "ctl/process.h"
 
 enum Constants {
 	WAITPID_TIMEOUT = 10

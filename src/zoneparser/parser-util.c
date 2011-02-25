@@ -11,6 +11,7 @@
  * @{
  */
 
+#include <config.h>
 #include <assert.h>
 #include <fcntl.h>
 #include <ctype.h>
@@ -24,6 +25,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
+#include "common.h"
 #include "zoneparser/parser-util.h"
 #include "zoneparser/zoneparser.h"
 #include "dnslib/descriptor.h"

@@ -14,7 +14,7 @@
 
 #include <stdint.h>
 
-#include "utils.h"
+#include "dnslib/utils.h"
 
 enum dnslib_edns_offsets {
 	DNSLIB_EDNS_OFFSET_PAYLOAD = 3,

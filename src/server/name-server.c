@@ -1,9 +1,10 @@
-#include "config.h"
+#include <config.h>
 #include <stdio.h>
 #include <assert.h>
 
 #include <urcu.h>
 
+#include "common.h"
 #include "server/name-server.h"
 #include "stat/stat.h"
 #include "dnslib/dnslib.h"
