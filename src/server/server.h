@@ -19,11 +19,11 @@
 #ifndef _CUTEDNS_SERVER_H_
 #define _CUTEDNS_SERVER_H_
 
-#include "name-server.h"
 #include "common.h"
-#include "socket.h"
-#include "dthreads.h"
-#include "zonedb.h"
+#include "server/name-server.h"
+#include "server/socket.h"
+#include "server/dthreads.h"
+#include "dnslib/zonedb.h"
 
 /*! \brief I/O handler structure.
   */

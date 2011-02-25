@@ -1,7 +1,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#include "log.h"
+#include "other/log.h"
 #include "common.h"
 
 /// Global log-level.

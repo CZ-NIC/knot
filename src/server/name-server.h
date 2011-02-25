@@ -20,10 +20,11 @@
 #ifndef _CUTEDNS_NAME_SERVER_H_
 #define _CUTEDNS_NAME_SERVER_H_
 
+#include "config.h"
 #include <stdint.h>
 
 #include "common.h"
-#include "zonedb.h"
+#include "dnslib/zonedb.h"
 
 /*----------------------------------------------------------------------------*/
 /*!

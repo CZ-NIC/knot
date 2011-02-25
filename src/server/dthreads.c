@@ -7,7 +7,7 @@
 
 #include "dthreads.h"
 #include "common.h"
-#include "log.h"
+#include "other/log.h"
 
 /* Lock thread state for R/W. */
 static inline void lock_thread_rw(dthread_t *thread)

@@ -14,13 +14,14 @@
 
 #include <signal.h>
 #include <stdint.h>
+#include "config.h"
 
 /* Common types and constants.
  */
 
 typedef unsigned int uint;
 
-#define PROJECT_NAME "CuteDNS" // Project name
+#define PROJECT_NAME PACKAGE // Project name
 #define PROJECT_VER  0x000100  // 0xMMIIRR (MAJOR,MINOR,REVISION)
 #define PROJECT_EXEC "cutedns" // Project executable
 #define ZONEPARSER_EXEC "zoneparser" // Zoneparser executable
@@ -42,9 +43,9 @@ typedef unsigned int uint;
 /* Common includes.
  */
 
-#include "print.h"
-#include "log.h"
-#include "debug.h"
+#include "other/print.h"
+#include "other/log.h"
+#include "other/debug.h"
 
 /* Common inlines.
  */

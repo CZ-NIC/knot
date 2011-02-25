@@ -21,9 +21,9 @@
 #include <strings.h>
 #include <assert.h>
 
-#include "zoneparser.h"
-#include "dname.h"
-#include "parser-descriptor.h"
+#include "zoneparser/zoneparser.h"
+#include "dnslib/dname.h"
+#include "zoneparser/parser-descriptor.h"
 #include "zparser.h"
 
 #define YY_NO_INPUT

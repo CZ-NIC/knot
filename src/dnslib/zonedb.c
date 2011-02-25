@@ -1,14 +1,15 @@
+#include "config.h"
 #include <stdlib.h>
 #include <assert.h>
 
 #include <urcu.h>
 
-#include "zonedb.h"
 #include "common.h"
-#include "skip-list.h"
-#include "zone.h"
-#include "dname.h"
-#include "node.h"
+#include "dnslib/zonedb.h"
+#include "lib/skip-list.h"
+#include "dnslib/zone.h"
+#include "dnslib/dname.h"
+#include "dnslib/node.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */

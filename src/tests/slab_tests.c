@@ -1,9 +1,10 @@
+#include "config.h"
 #include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
 
-#include "tap_unit.h"
-#include "slab.h"
+#include "tests/tap_unit.h"
+#include "alloc/slab.h"
 
 /* Explicitly ask for symbols,
  * as the constructor and desctructor

@@ -29,11 +29,8 @@
 
 #include <stdlib.h>
 
-#include "tap_unit.h"
-
-#include "common.h"
-#include "rdata.h"
-#include "descriptor.h"
+#include "dnslib/rdata.h"
+#include "dnslib/descriptor.h"
 
 static const struct test_domain test_domains_ok[];
 

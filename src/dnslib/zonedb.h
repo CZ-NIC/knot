@@ -15,10 +15,10 @@
 #ifndef _CUTEDNS_DNSLIB_ZONEDB_H_
 #define _CUTEDNS_DNSLIB_ZONEDB_H_
 
-#include "skip-list.h"
-#include "zone.h"
-#include "node.h"
-#include "dname.h"
+#include "lib/skip-list.h"
+#include "dnslib/zone.h"
+#include "dnslib/node.h"
+#include "dnslib/dname.h"
 
 struct dnslib_zonedb {
 	skip_list_t *zones;

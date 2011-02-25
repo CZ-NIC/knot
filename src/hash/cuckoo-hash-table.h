@@ -26,8 +26,8 @@
 #include <pthread.h>
 
 #include "common.h"
-#include "universal-system.h"
-#include "dynamic-array.h"
+#include "hash/universal-system.h"
+#include "lib/dynamic-array.h"
 
 /*----------------------------------------------------------------------------*/
 

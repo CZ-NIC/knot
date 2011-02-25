@@ -17,15 +17,15 @@
 
 #include <stdio.h>
 
-#include "dname.h"
-#include "rrset.h"
-#include "node.h"
-#include "rdata.h"
-#include "rrsig.h"
-#include "zone.h"
-#include "slab.h"
+#include "dnslib/dname.h"
+#include "dnslib/rrset.h"
+#include "dnslib/node.h"
+#include "dnslib/rdata.h"
+#include "dnslib/rrsig.h"
+#include "dnslib/zone.h"
+#include "alloc/slab.h"
 
-#include "skip-list.h"
+#include "lib/skip-list.h"
 
 #define MAXRDATALEN	64
 #define MAXLABELLEN	63

@@ -1,4 +1,5 @@
-#include "debug.h"
+#include "config.h"
+#include "other/debug.h"
 
 /*
  * Skip unit if not debugging memory.

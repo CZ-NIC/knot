@@ -1,5 +1,5 @@
 #include "server/server.h"
-#include "tap_unit.h"
+#include "tests/tap_unit.h"
 
 static int server_tests_count(int argc, char *argv[]);
 static int server_tests_run(int argc, char *argv[]);

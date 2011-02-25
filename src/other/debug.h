@@ -11,7 +11,7 @@
 #ifndef _CUTEDNS_DEBUG_H_
 #define _CUTEDNS_DEBUG_H_
 
-#include "log.h"
+#include "other/log.h"
 
 //#define ST_DEBUG
 //#define SM_DEBUG

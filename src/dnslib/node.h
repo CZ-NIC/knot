@@ -13,10 +13,10 @@
 #ifndef _CUTEDNS_DNSLIB_NODE_H_
 #define _CUTEDNS_DNSLIB_NODE_H_
 
-#include "dname.h"
-#include "skip-list.h"
-#include "rrset.h"
-#include "tree.h"
+#include "dnslib/dname.h"
+#include "lib/skip-list.h"
+#include "dnslib/rrset.h"
+#include "lib/tree.h"
 
 /*----------------------------------------------------------------------------*/
 /*!
