@@ -1,14 +1,15 @@
+#include "config.h"
 #include <stdlib.h>
 #include <assert.h>
 
-#include "zone.h"
 #include "common.h"
-#include "node.h"
-#include "dname.h"
-#include "tree.h"
-#include "consts.h"
-#include "descriptor.h"
-#include "cuckoo-hash-table.h"
+#include "dnslib/zone.h"
+#include "dnslib/node.h"
+#include "dnslib/dname.h"
+#include "lib/tree.h"
+#include "dnslib/consts.h"
+#include "dnslib/descriptor.h"
+#include "hash/cuckoo-hash-table.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */

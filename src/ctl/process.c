@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include "process.h"
-#include "log.h"
+#include "other/log.h"
 
 char* pid_filename()
 {

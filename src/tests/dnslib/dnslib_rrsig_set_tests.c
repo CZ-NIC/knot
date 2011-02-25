@@ -9,12 +9,9 @@
  * - RRSIG set API
  */
 
-#include "tap_unit.h"
-
-#include "common.h"
-#include "rrsig.h"
-#include "dname.h"
-#include "rdata.h"
+#include "dnslib/rrsig.h"
+#include "dnslib/dname.h"
+#include "dnslib/rdata.h"
 
 static int dnslib_rrsig_set_tests_count(int argc, char *argv[]);
 static int dnslib_rrsig_set_tests_run(int argc, char *argv[]);

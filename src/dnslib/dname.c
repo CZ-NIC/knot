@@ -1,17 +1,18 @@
+#include "config.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
 #include <ctype.h>	// tolower()
 
-#include "dname.h"
 #include "common.h"
-#include "consts.h"
-#include "tolower.h"
+#include "dnslib/dname.h"
+#include "dnslib/consts.h"
+#include "dnslib/tolower.h"
 
 /* Memory cache.
  */
-#include "slab.h"
+#include "alloc/slab.h"
 #include <stdio.h>
 #include <pthread.h>
 static pthread_key_t dname_ckey;

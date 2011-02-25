@@ -20,12 +20,12 @@
 #include <string.h>
 #include <assert.h>
 
-#include "parser-util.h"
+#include "zoneparser/parser-util.h"
 
-#include "dname.h"
-#include "zone.h"
-#include "zoneparser.h"
-#include "parser-descriptor.h"
+#include "dnslib/dname.h"
+#include "dnslib/zone.h"
+#include "zoneparser/zoneparser.h"
+#include "zoneparser/parser-descriptor.h"
 
 /* these need to be global, otherwise they cannot be used inside yacc */
 zparser_type *parser;

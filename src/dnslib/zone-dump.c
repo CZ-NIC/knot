@@ -1,10 +1,11 @@
+#include "config.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
 
-#include "zone-dump.h"
-#include "dnslib.h"
-#include "skip-list.h"
+#include "dnslib/zone-dump.h"
+#include "dnslib/dnslib.h"
+#include "lib/skip-list.h"
 
 /* \note For space and speed purposes, dname ID (to be later used in loading)
  * is being stored in dname->node field. Not to be confused with dname's actual

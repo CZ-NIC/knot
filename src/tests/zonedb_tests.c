@@ -1,4 +1,5 @@
-#include "tap_unit.h"
+#include "config.h"
+#include "tests/tap_unit.h"
 
 static int zonedb_tests_count(int argc, char *argv[]);
 static int zonedb_tests_run(int argc, char *argv[]);

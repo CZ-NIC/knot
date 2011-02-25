@@ -1,4 +1,5 @@
-#include "libtap/tap.h"
+#include "config.h"
+#include "tests/tap_unit.h"
 #include "common.h"
 
 // Units to test

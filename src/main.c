@@ -1,11 +1,12 @@
+#include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
 #include "common.h"
-#include "server.h"
-#include "zoneparser.h"
-#include "process.h"
+#include "server/server.h"
+#include "zoneparser/zoneparser.h"
+#include "ctl/process.h"
 
 /*----------------------------------------------------------------------------*/
 

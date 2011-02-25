@@ -13,7 +13,7 @@
 #ifndef _CUTEDNS_TAP_UNIT_H_
 #define _CUTEDNS_TAP_UNIT_H_
 
-#include "libtap/tap.h"
+#include "tests/libtap/tap.h"
 
 /*! \brief Pointer to function for unit_api. */
 typedef int(unitapi_f)(int, char*[]);

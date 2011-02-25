@@ -1,15 +1,16 @@
+#include "config.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "debug.h"
-#include "server.h"
-#include "udp-handler.h"
-#include "tcp-handler.h"
-#include "name-server.h"
-#include "stat.h"
-#include "zonedb.h"
-#include "zone-load.h"
+#include "other/debug.h"
+#include "server/server.h"
+#include "server/udp-handler.h"
+#include "server/tcp-handler.h"
+#include "server/name-server.h"
+#include "stat/stat.h"
+#include "dnslib/zonedb.h"
+#include "dnslib/zone-load.h"
 #include "dnslib/debug.h"
 #include "dnslib/dname.h"
 
