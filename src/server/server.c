@@ -182,7 +182,7 @@ int cute_start(cute_server *server, char **filenames, uint zones)
 			return -1;
 		}
 		// dump zone
-		//dnslib_zone_dump(zone);
+		dnslib_zone_dump(zone, 1);
 	}
 
 	debug_server("\nDone\n\n");

@@ -2,6 +2,7 @@
  * \file descriptor.h
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>, most of the work by the NSD team
+ * TODO link to NDS's license + add license !!!
  *
  * \brief Contains resource record descriptor and its API
  * 
@@ -154,6 +155,36 @@ enum dnslib_rdata_wireformat {
 	DNSLIB_RDATA_WF_IPSECGATEWAY = 57 /*!< IPSECKEY gateway ip4, ip6 or dname. */
 };
 
+enum dnslib_rdata_zoneformat
+{
+	DNSLIB_RDATA_ZF_DNAME,		/* Domain name.  */
+	DNSLIB_RDATA_ZF_LITERAL_DNAME,	/* DNS name (not lowercased domain name).  */
+	DNSLIB_RDATA_ZF_TEXT,		/* Text string.  */
+	DNSLIB_RDATA_ZF_BYTE,		/* 8-bit integer.  */
+	DNSLIB_RDATA_ZF_SHORT,		/* 16-bit integer.  */
+	DNSLIB_RDATA_ZF_LONG,		/* 32-bit integer.  */
+	DNSLIB_RDATA_ZF_A,		/* 32-bit IPv4 address.  */
+	DNSLIB_RDATA_ZF_AAAA,		/* 128-bit IPv6 address.  */
+	DNSLIB_RDATA_ZF_RRTYPE,		/* RR type.  */
+	DNSLIB_RDATA_ZF_ALGORITHM,	/* Cryptographic algorithm.  */
+	DNSLIB_RDATA_ZF_CERTIFICATE_TYPE,
+	DNSLIB_RDATA_ZF_PERIOD,		/* Time period.  */
+	DNSLIB_RDATA_ZF_TIME,
+	DNSLIB_RDATA_ZF_BASE64,		/* Base-64 binary data.  */
+	DNSLIB_RDATA_ZF_BASE32,		/* Base-32 binary data.  */
+	DNSLIB_RDATA_ZF_HEX,		/* Hexadecimal binary data.  */
+	DNSLIB_RDATA_ZF_HEX_LEN,	/* Hexadecimal binary data. Skip initial length byte. */
+	DNSLIB_RDATA_ZF_NSAP,		/* NSAP.  */
+	DNSLIB_RDATA_ZF_APL,		/* APL.  */
+	DNSLIB_RDATA_ZF_IPSECGATEWAY,	/* IPSECKEY gateway ip4, ip6 or dname. */
+	DNSLIB_RDATA_ZF_SERVICES,	/* Protocol and port number bitmap.  */
+	DNSLIB_RDATA_ZF_NXT,		/* NXT type bitmap.  */
+	DNSLIB_RDATA_ZF_NSEC,		/* NSEC type bitmap.  */
+	DNSLIB_RDATA_ZF_LOC,		/* Location data.  */
+	DNSLIB_RDATA_ZF_UNKNOWN	/* Unknown data.  */
+};
+typedef enum dnslib_rdata_zoneformat dnslib_rdata_zoneformat_t;
+
 /*!
  * \brief Enum containing wireformat codes. Taken from NSD's "dns.h"
  */
@@ -166,7 +197,8 @@ struct dnslib_rrtype_descriptor {
 	/*!
 	 * \brief rdata_wireformat_type
 	 */
-	uint8_t wireformat[DNSLIB_MAX_RDATA_ITEMS]; 
+	uint8_t wireformat[DNSLIB_MAX_RDATA_ITEMS];
+	uint8_t zoneformat[DNSLIB_MAX_RDATA_ITEMS];
 	bool fixed_items; /*!< Has fixed number of RDATA items? */
 };
 

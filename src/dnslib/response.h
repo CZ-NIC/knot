@@ -19,6 +19,7 @@
 
 #include "dname.h"
 #include "rrset.h"
+#include "edns.h"
 
 /*!
  * \brief Default maximum DNS response size
@@ -26,28 +27,6 @@
  * This size must be supported by all servers and clients.
  */
 static const short DNSLIB_MAX_RESPONSE_SIZE = 512;
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Structure for holding EDNS parameters.
- *
- * \todo NSID
- */
-struct dnslib_edns_data {
-	uint16_t payload;    /*!< UDP payload. */
-	uint16_t ext_rcode;  /*!< Extended RCODE. */
-
-	/*!
-	 * \brief Supported version of EDNS.
-	 *
-	 * Set to EDNS_NOT_SUPPORTED if not supported.
-	 */
-	uint16_t version;
-};
-
-typedef struct dnslib_edns_data dnslib_edns_data_t;
-
-static const uint16_t EDNS_NOT_SUPPORTED = 65535;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -59,7 +38,7 @@ static const uint16_t EDNS_NOT_SUPPORTED = 65535;
  * \todo Consider using some better lookup structure, such as skip-list.
  */
 struct dnslib_compressed_dnames {
-	dnslib_dname_t **dnames;  /*!< Domain names present in packet. */
+	const dnslib_dname_t **dnames;  /*!< Domain names present in packet. */
 	short *offsets;           /*!< Offsets of domain names in the packet. */
 	short count;              /*!< Count of items in the previous arrays. */
 	short max;                /*!< Capacity of the structure (allocated). */
@@ -125,16 +104,21 @@ struct dnslib_response {
 	const dnslib_rrset_t **authority;   /*!< Authority RRSets. */
 	const dnslib_rrset_t **additional;  /*!< Additional RRSets. */
 
-	short max_ancount; /*!< Allocated space for Answer RRsets. */
-	short max_nscount; /*!< Allocated space for Authority RRsets. */
-	short max_arcount; /*!< Allocated space for Additional RRsets. */
+	short an_rrsets;     /*!< Count of Answer RRSets in the response. */
+	short ns_rrsets;     /*!< Count of Authority RRSets in the response. */
+	short ar_rrsets;     /*!< Count of Additional RRSets in the response. */
+
+	short max_an_rrsets; /*!< Allocated space for Answer RRsets. */
+	short max_ns_rrsets; /*!< Allocated space for Authority RRsets. */
+	short max_ar_rrsets; /*!< Allocated space for Additional RRsets. */
 
 	/*!
 	 * \brief EDNS data parsed from query.
 	 *
 	 * \todo Do we need this actually??
 	 */
-	dnslib_edns_data_t edns_query;
+	dnslib_opt_rr_t edns_query;
+	dnslib_opt_rr_t edns_response;
 
 	/*!
 	 * \brief EDNS OPT RR provided by the server.
@@ -146,9 +130,10 @@ struct dnslib_response {
 	 * The necessary parsing which is done when creating the response is
 	 * much faster than converting some structure to wire format.
 	 */
-	const uint8_t *edns_wire;
-	short edns_size;  /*!< Size of the server EDNS OPT RR in bytes. */
+	//const uint8_t *edns_wire;
+	//short edns_size;  /*!< Size of the server EDNS OPT RR in bytes. */
 
+	uint8_t *wireformat;  /*!< Wire format of the response. */
 	short size;      /*!< Current wire size of the response. */
 	short max_size;  /*!< Maximum allowed size of the response. */
 
@@ -174,8 +159,7 @@ typedef struct dnslib_response dnslib_response_t;
  *
  * \return New empty response structure or NULL if an error occured.
  */
-dnslib_response_t *dnslib_response_new_empty(const uint8_t *edns_wire,
-                                             short edns_size);
+dnslib_response_t *dnslib_response_new_empty(const dnslib_opt_rr_t *opt_rr);
 
 /*!
  * \brief Parses the given query and saves important information into the
@@ -312,6 +296,13 @@ const dnslib_rrset_t *dnslib_response_authority_rrset(
 const dnslib_rrset_t *dnslib_response_additional_rrset(
 	dnslib_response_t *response, short pos);
 
+int dnslib_response_dnssec_requested(const dnslib_response_t *response);
+
+int dnslib_response_nsid_requested(const dnslib_response_t *response);
+
+int dnslib_response_add_nsid(dnslib_response_t *response, const uint8_t *data,
+                             uint16_t length);
+
 /*!
  * \brief Converts the response to wire format.
  *
@@ -319,7 +310,7 @@ const dnslib_rrset_t *dnslib_response_additional_rrset(
  * \param resp_wire Here the wire format of the response will be stored.
  *                  Space for the response will be allocated. *resp_wire must
  *                  be set to NULL (to avoid leaks).
- * \param resp_size Size of the response in wire format.
+ * \param resp_size The size of the response in wire format will be stored here.
  *
  * \retval 0 if successful.
  * \retval -2 if \a *resp_wire was not set to NULL.

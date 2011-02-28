@@ -53,7 +53,7 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 	dnslib_rdata_item_t *items =
 		malloc(sizeof(dnslib_rdata_item_t) * desc->length);
 
-	uint8_t raw_data_length;
+	uint16_t raw_data_length;
 
 	debug_zp("Reading %d items\n", desc->length);
 
@@ -170,7 +170,7 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 
 			debug_zp("read len: %d\n", raw_data_length);
 			items[i].raw_data =
-				malloc(sizeof(uint8_t) * raw_data_length + 1);
+				malloc(sizeof(uint8_t) * raw_data_length + 2);
 			*(items[i].raw_data) = raw_data_length;
 
 			if (!fread_safe(items[i].raw_data + 1, sizeof(uint8_t),
@@ -190,9 +190,9 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 	return rdata;
 }
 
-dnslib_rrsig_set_t *dnslib_load_rrsig(FILE *f)
+dnslib_rrset_t *dnslib_load_rrsig(FILE *f)
 {
-	dnslib_rrsig_set_t *rrsig;
+	dnslib_rrset_t *rrsig;
 
 	uint16_t rrset_type;
 	uint16_t rrset_class;
@@ -218,7 +218,7 @@ dnslib_rrsig_set_t *dnslib_load_rrsig(FILE *f)
 		return 0;
 	}
 
-	rrsig = dnslib_rrsig_set_new(NULL, rrset_type, rrset_class, rrset_ttl);
+	rrsig = dnslib_rrset_new(NULL, rrset_type, rrset_class, rrset_ttl);
 
 	dnslib_rdata_t *tmp_rdata;
 
@@ -227,9 +227,9 @@ dnslib_rrsig_set_t *dnslib_load_rrsig(FILE *f)
 	for (int i = 0; i < rdata_count; i++) {
 		tmp_rdata = dnslib_load_rdata(DNSLIB_RRTYPE_RRSIG, f);
 		if (tmp_rdata) {
-			dnslib_rrsig_set_add_rdata(rrsig, tmp_rdata);
+			dnslib_rrset_add_rdata(rrsig, tmp_rdata);
 		} else {
-			dnslib_rrsig_set_deep_free(&rrsig, 0, 1);
+			dnslib_rrset_deep_free(&rrsig, 0, 1);
 			return 0;
 		}
 	}
@@ -280,7 +280,7 @@ dnslib_rrset_t *dnslib_load_rrset(FILE *f)
 		}
 	}
 
-	dnslib_rrsig_set_t *tmp_rrsig = NULL;
+	dnslib_rrset_t *tmp_rrsig = NULL;
 
 	if (rrsig_count) {
 		tmp_rrsig = dnslib_load_rrsig(f);
@@ -375,12 +375,12 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 
 	node = owner->node;
 
-	node->owner = owner;
-
 	if (node == NULL) {
 		log_error("!! could not create node.\n");
 		return NULL;
 	}
+
+	node->owner = owner;
 
 	node->flags = flags;
 
@@ -457,6 +457,11 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 {
 	FILE *f = fopen(filename, "rb");
 
+	if (f == NULL) {
+		log_error("Could not open file '%s'\n", filename);
+		return NULL;
+	}
+
 	dnslib_node_t *tmp_node;
 
 	uint node_count;
@@ -511,8 +516,19 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 
 	dnslib_zone_t *zone = dnslib_zone_new(apex, auth_node_count);
 
+	apex->prev = NULL;
+
+        dnslib_node_t *last_node;
+
+        if (dnslib_node_get_rrset(apex, DNSLIB_RRTYPE_NSEC) != NULL) {
+                last_node = apex;
+        } else {
+                last_node = NULL;
+        }
+
 	for (uint i = 1; i < node_count; i++) {
 		tmp_node = dnslib_load_node(f);
+
 		if (tmp_node != NULL) {
 			dnslib_zone_add_node(zone, tmp_node);
 			if (dnslib_dname_is_wildcard(tmp_node->owner)) {
@@ -520,25 +536,64 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 				                            tmp_node,
 				                            0);
 			}
+
+			tmp_node->prev = last_node;
+
+                        if (skip_first(tmp_node->rrsets) != NULL &&
+                            dnslib_node_get_rrset(tmp_node,
+                                                  DNSLIB_RRTYPE_NSEC) != NULL) {
+                                last_node = tmp_node;
+                        }
+
 		} else {
 			log_error("!! node error (in %s)\n", filename);
 		}
 	}
 
+	assert(zone->apex->prev == NULL);
+
+	zone->apex->prev = last_node;
+
 	debug_zp("loading %u nsec3 nodes\n", nsec3_node_count);
 
-	for (uint i = 0; i < nsec3_node_count; i++) {
+	dnslib_node_t *nsec3_first = NULL;
+
+	if (nsec3_node_count > 0) {
+		nsec3_first = dnslib_load_node(f);
+
+		assert(nsec3_first != NULL);
+
+		nsec3_first->prev = NULL;
+
+		last_node = nsec3_first;
+	}
+
+	for (uint i = 1; i < nsec3_node_count; i++) {
 		tmp_node = dnslib_load_node(f);
+
 		if (tmp_node != NULL) {
 			dnslib_zone_add_nsec3_node(zone, tmp_node);
+
+			if (dnslib_dname_is_wildcard(tmp_node->owner)) {
+				find_and_set_wildcard_child(zone,
+				                            tmp_node,
+				                            1);
+                        }
+
+                        if (skip_first(tmp_node->rrsets) != NULL) {
+                                last_node = tmp_node;
+                        }
+
+			tmp_node->prev = last_node;
+
 		} else {
 			log_error("!! node error (in %s)\n", filename);
 		}
-		if (dnslib_dname_is_wildcard(tmp_node->owner)) {
-			find_and_set_wildcard_child(zone,
-			                            tmp_node,
-			                            1);
-		}
+	}
+
+	if (nsec3_node_count) {
+		assert(nsec3_first->prev == NULL);
+		nsec3_first->prev = last_node;
 	}
 
 	fclose(f);

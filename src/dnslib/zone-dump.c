@@ -52,9 +52,10 @@ static void dnslib_zone_save_encloser_rdata_item(dnslib_rdata_t *rdata,
 		dnslib_dname_t *dname = dname_item->dname;
 		const dnslib_node_t *n = NULL;
 		const dnslib_node_t *closest_encloser = NULL;
+		const dnslib_node_t *prev = NULL;
 
 		int exact = dnslib_zone_find_dname(zone, dname, &n,
-		                                   &closest_encloser);
+		                                   &closest_encloser, &prev);
 
 //		n = dnslib_zone_find_node(zone, dname);
 
@@ -233,7 +234,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 		} else {
 			assert(rdata->items[i].raw_data != NULL);
 			fwrite(rdata->items[i].raw_data, sizeof(uint8_t),
-			       rdata->items[i].raw_data[0] + 1, f);
+			       rdata->items[i].raw_data[0] + 2, f);
 
 			debug_zp("Written %d long raw data\n",
 			         rdata->items[i].raw_data[0]);
@@ -241,8 +242,9 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 	}
 }
 
-static void dnslib_rrsig_set_dump_binary(dnslib_rrsig_set_t *rrsig, arg_t *data)
+static void dnslib_rrsig_set_dump_binary(dnslib_rrset_t *rrsig, arg_t *data)
 {
+	assert(rrsig->type == DNSLIB_RRTYPE_RRSIG);
 	FILE *f = (FILE *)((arg_t *)data)->arg1;
 	fwrite(&rrsig->type, sizeof(rrsig->type), 1, f);
 	fwrite(&rrsig->rclass, sizeof(rrsig->rclass), 1, f);

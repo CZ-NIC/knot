@@ -137,7 +137,7 @@
   }													\
 													\
   int TREE_FIND_LESS_EQUAL_##node##_##field								\
-    (struct node *self, struct node *elm, int (*compare)(struct node *lhs, struct node *rhs), struct node **found)		\
+    (struct node *self, struct node *elm, int (*compare)(struct node *lhs, struct node *rhs), struct node **found, struct node **prev)		\
   {													\
     if (!self)												\
       return 0;												\
@@ -146,10 +146,11 @@
       return 1;												\
     }													\
     if (compare(elm, self) < 0)										\
-      return TREE_FIND_LESS_EQUAL_##node##_##field(self->field.avl_left, elm, compare, found);			\
+      return TREE_FIND_LESS_EQUAL_##node##_##field(self->field.avl_left, elm, compare, found, prev);			\
     else {												\
       *found = self;											\
-      return TREE_FIND_LESS_EQUAL_##node##_##field(self->field.avl_right, elm, compare, found);			\
+      *prev = self;											\
+      return TREE_FIND_LESS_EQUAL_##node##_##field(self->field.avl_right, elm, compare, found, prev);			\
     }													\
   }													\
 													\
@@ -219,8 +220,8 @@
 #define TREE_FIND(head, node, field, elm)				\
   (TREE_FIND_##node##_##field((head)->th_root, (elm), (head)->th_cmp))
 
-#define TREE_FIND_LESS_EQUAL(head, node, field, elm, found)				\
-  (TREE_FIND_LESS_EQUAL_##node##_##field((head)->th_root, (elm), (head)->th_cmp, found))
+#define TREE_FIND_LESS_EQUAL(head, node, field, elm, found, prev)				\
+  (TREE_FIND_LESS_EQUAL_##node##_##field((head)->th_root, (elm), (head)->th_cmp, found, prev))
 
 #define TREE_REMOVE(head, node, field, elm)						\
   ((head)->th_root= TREE_REMOVE_##node##_##field((head)->th_root, (elm), (head)->th_cmp))
