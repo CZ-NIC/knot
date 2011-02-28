@@ -35,8 +35,8 @@ $ make
 
 1. Compile zones
 \code
-$ bin/zoneparser -o example.com.db example.com. samples/example.com.zone
-$ bin/zoneparser -o other-zone.db other-zone.com. other-zone.com.zone
+$ bin/knot-zoneparser -o example.com.db example.com. samples/example.com.zone
+$ bin/knot-zoneparser -o other-zone.db other-zone.com. other-zone.com.zone
 \endcode
 
 2. Run the server with the compiled zones (use -d to run as a daemon)
@@ -48,7 +48,7 @@ $ bin/knot example.com.db other-zone.db
 - This approach currently supports only one zone file.
 - Compiled zone is stored in user's home directory.
 
-1. Add path to knot and zoneparser executables to PATH
+1. Add path to knot and knot-zoneparser executables to PATH
 
 2. Compile zone
 \code
