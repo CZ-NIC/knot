@@ -9,6 +9,8 @@
 #include "consts.h"
 #include "descriptor.h"
 #include "cuckoo-hash-table.h"
+#include "nsec3.h"
+#include "base32.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -173,6 +175,7 @@ DEBUG_DNSLIB_ZONE(
 	free(name);
 );
 
+	// adjust domain names
 	for (int i = 0; i < DNSLIB_COMPRESSIBLE_TYPES; ++i) {
 		dnslib_zone_adjust_type(node, zone,
 		                        dnslib_compressible_types[i]);
@@ -199,6 +202,10 @@ DEBUG_DNSLIB_ZONE(
 		   && node != zone->apex) {
 		dnslib_node_set_deleg_point(node);
 	}
+
+	// NSEC3 node
+	assert(node->owner);
+	node->nsec3_node = dnslib_zone_find_nsec3_for_name(zone, node->owner);
 
 	debug_dnslib_zone("Set flags to the node: \n");
 	debug_dnslib_zone("Delegation point: %s\n",
@@ -558,6 +565,93 @@ const dnslib_node_t *dnslib_zone_find_nsec3_node(const dnslib_zone_t *zone,
                                                  const dnslib_dname_t *name)
 {
 	return dnslib_zone_get_nsec3_node(zone, name);
+}
+
+/*----------------------------------------------------------------------------*/
+
+const dnslib_node_t *dnslib_zone_find_nsec3_for_name(const dnslib_zone_t *zone,
+                                                    const dnslib_dname_t *name)
+{
+	if (zone == NULL || name == NULL) {
+		return NULL;
+	}
+
+	uint8_t *hashed_name = NULL;
+	size_t hash_size = 0;
+
+	const dnslib_nsec3_params_t *nsec3_params =
+		dnslib_zone_nsec3params(zone);
+
+	if (nsec3_params == NULL) {
+DEBUG_DNSLIB_ZONE(
+		char *n = dnslib_dname_to_str(zone->apex->owner);
+		debug_dnslib_zone("No NSEC3PARAMS for zone %s.\n", n);
+		free(n);
+);
+		return NULL;
+	}
+
+DEBUG_DNSLIB_ZONE(
+	char *n = dnslib_dname_to_str(name);
+	debug_dnslib_zone("Hashing name %s.\n", n);
+	free(n);
+);
+
+	int res = dnslib_nsec3_sha1(nsec3_params, dnslib_dname_name(name),
+	                  dnslib_dname_size(name), &hashed_name, &hash_size);
+
+	if (res != 0) {
+		char *n = dnslib_dname_to_str(name);
+		log_warning("Error while hashing name %s.\n", n);
+		free(n);
+		return NULL;
+	}
+
+	debug_dnslib_zone("Hash: %.*s\n", hash_size, hashed_name);
+
+	char *name_b32 = NULL;
+	size_t size = base32_encode_alloc((char *)hashed_name, hash_size,
+	                                  &name_b32);
+
+	if (size == 0) {
+		char *n = dnslib_dname_to_str(name);
+		log_warning("Error while encoding hashed name %s to base32.\n",
+		            n);
+		free(n);
+		return NULL;
+	}
+
+	assert(name_b32 != NULL);
+
+	debug_dnslib_zone("Base32-encoded hash: %s\n", name_b32);
+
+	dnslib_dname_t *nsec3_name =
+		dnslib_dname_new_from_wire((uint8_t *)name_b32, size + 1, NULL);
+
+	if (nsec3_name == NULL) {
+		log_warning("Error while creating domain name for hashed name"
+		            "%.*s\n", (size_t)hash_size, hashed_name);
+		return NULL;
+	}
+
+	assert(zone->apex->owner != NULL);
+	dnslib_dname_t *ret = dnslib_dname_cat(nsec3_name, zone->apex->owner);
+
+	if (ret == NULL) {
+		log_warning("Error while creating NSEC3 domain name for hashed "
+		            "name %.*s\n", (size_t)hash_size, hashed_name);
+		return NULL;
+	}
+
+	assert(ret == nsec3_name);
+
+DEBUG_DNSLIB_ZONE(
+	char *n = dnslib_dname_to_str(nsec3_name);
+	debug_dnslib_zone("NSEC3 node name: %s.\n", n);
+	free(n);
+);
+
+	return dnslib_zone_find_nsec3_node(zone, nsec3_name);
 }
 
 /*----------------------------------------------------------------------------*/
