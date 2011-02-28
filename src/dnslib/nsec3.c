@@ -1,24 +1,15 @@
 #include <stdint.h>
 #include <assert.h>
 #include <stdlib.h>
-
 #include <sys/time.h>
-
-#include <gnutls/gnutls.h>
-#include <gnutls/crypto.h>
 
 #include <openssl/evp.h>
 #include <openssl/sha.h>
-
-#include <cryptlib.h>
 
 #include "nsec3.h"
 #include "common.h"
 #include "descriptor.h"
 #include "utils.h"
-
-static CRYPT_CONTEXT cryptContext;
-static int crypt_initd = 0;
 
 /*----------------------------------------------------------------------------*/
 
@@ -45,142 +36,26 @@ int dnslib_nsec3_params_from_wire(dnslib_nsec3_params_t *params,
 	memcpy(params->salt, dnslib_rdata_item(rdata, 3)->raw_data + 1,
 	       params->salt_length);
 
-	printf("Parsed NSEC3PARAM:\n");
-	printf("Algorithm: %hu\n", params->algorithm);
-	printf("Flags: %hu\n", params->flags);
-	printf("Iterations: %hu\n", params->iterations);
-	printf("Salt length: %hu\n", params->salt_length);
-	printf("Salt: ");
-	hex_print((char *)params->salt, params->salt_length);
-	printf("\n");
+	debug_dnslib_nsec3("Parsed NSEC3PARAM:\n");
+	debug_dnslib_nsec3("Algorithm: %hu\n", params->algorithm);
+	debug_dnslib_nsec3("Flags: %hu\n", params->flags);
+	debug_dnslib_nsec3("Iterations: %hu\n", params->iterations);
+	debug_dnslib_nsec3("Salt length: %hu\n", params->salt_length);
+	debug_dnslib_nsec3("Salt: ");
+	debug_dnslib_nsec3_hex((char *)params->salt, params->salt_length);
+	debug_dnslib_nsec3("\n");
 
 	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params, const uint8_t *data,
-                      size_t size, uint8_t **digest, size_t *digest_size)
+int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params,
+                      const uint8_t *data, size_t size, uint8_t **digest,
+                      size_t *digest_size)
 {
 	assert(digest != NULL);
 	assert(digest_size != NULL);
-
-	unsigned long long total_time = 0;
-	unsigned long calls = 0;
-
-	if (data == NULL) {
-		return -3;
-	}
-
-	uint8_t *salt = params->salt;
-	uint8_t salt_length = params->salt_length;
-	uint16_t iterations = params->iterations;
-
-	int dig_size = gnutls_hash_get_len(GNUTLS_DIG_SHA1);
-
-	void *digest_old = malloc(dig_size);
-	CHECK_ALLOC_LOG(digest_old, -1);
-
-	size_t to_hash_size = size + salt_length;
-
-	void *to_hash = malloc(to_hash_size);
-	if (to_hash == NULL) {
-		ERR_ALLOC_FAILED;
-		free(digest_old);
-		return -1;
-	}
-
-	memcpy(to_hash, data, size);
-	memcpy(to_hash + size, salt, salt_length);
-
-	int res = 0;
-	long time = 0;
-	// first iteration
-	perf_begin();
-	res = gnutls_hash_fast(GNUTLS_DIG_SHA1, to_hash, to_hash_size,
-	                       digest_old);
-	perf_end(time);
-	total_time += time;
-	++calls;
-
-	if (res != GNUTLS_E_SUCCESS) {
-		log_error("Error calculating SHA-1 hash.\n");
-		free(digest_old);
-		free(to_hash);
-		return -2;
-	}
-
-	void *digest_new = malloc(dig_size);
-	if (digest_new == NULL) {
-		ERR_ALLOC_FAILED;
-		free(digest_old);
-		return -1;
-	}
-
-	to_hash_size = dig_size + salt_length;
-	free(to_hash);
-	to_hash = malloc(to_hash_size);
-	if (to_hash == NULL) {
-		ERR_ALLOC_FAILED;
-		free(digest_old);
-		free(digest_new);
-		return -1;
-	}
-
-	//printf("Iterations: %d\n", iterations);
-
-	// other iterations
-	for (int i = 0; i < iterations; ++i) {
-
-		memcpy(to_hash, digest_old, dig_size);
-		memcpy(to_hash + dig_size, salt, salt_length);
-
-		perf_begin();
-		res = gnutls_hash_fast(GNUTLS_DIG_SHA1, to_hash, to_hash_size,
-		                       digest_new);
-		perf_end(time);
-
-		if (res != GNUTLS_E_SUCCESS) {
-			log_error("Error calculating SHA-1 hash.\n");
-			free(digest_old);
-			free(digest_new);
-			free(to_hash);
-			return -2;
-		}
-
-		// copy the new digest to the old one and repeat
-		memcpy(digest_old, digest_new, dig_size);
-
-
-		total_time += time;
-		++calls;
-	}
-
-	free(digest_new);
-	free(to_hash);
-
-	*digest = digest_old;
-	*digest_size = dig_size;
-
-//	gnutls_hash_deinit(context, NULL);
-
-//	printf("NSEC3 hashing: calls: %lu, avg time per call: %f.\n",
-//	       calls, (double)(total_time) / calls);
-
-	return 0;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int dnslib_nsec3_sha1_2(const dnslib_nsec3_params_t *params,
-                        const uint8_t *data, size_t size, uint8_t **digest,
-                        size_t *digest_size)
-{
-	assert(digest != NULL);
-	assert(digest_size != NULL);
-
-	unsigned long long total_time = 0;
-	unsigned long calls = 0;
 
 	if (data == NULL) {
 		return -3;
@@ -203,13 +78,17 @@ int dnslib_nsec3_sha1_2(const dnslib_nsec3_params_t *params,
 	unsigned in_size = size;
 
 	int res = 0;
+
+#ifdef DNSLIB_NSEC3_DEBUG
+	unsigned long long total_time = 0;
+	unsigned long calls = 0;
 	long time = 0;
+#endif
 
-	//printf("Iterations: %d\n", iterations);
-
-	// other iterations
 	for (int i = 0; i <= iterations; ++i) {
+#ifdef DNSLIB_NSEC3_DEBUG
 		perf_begin();
+#endif
 
 		EVP_DigestInit_ex(&mdctx, EVP_sha1(), NULL);
 
@@ -223,36 +102,34 @@ int dnslib_nsec3_sha1_2(const dnslib_nsec3_params_t *params,
 		in = *digest;
 		in_size = *digest_size;
 
+#ifdef DNSLIB_NSEC3_DEBUG
 		perf_end(time);
+		total_time += time;
+		++calls;
+#endif
 
 		if (res != 1) {
 			log_error("Error calculating SHA-1 hash.\n");
 			return -2;
 		}
-
-		total_time += time;
-		++calls;
 	}
 
 	EVP_MD_CTX_cleanup(&mdctx);
 
-//	printf("NSEC3 hashing: calls: %lu, avg time per call: %f.\n",
-//	       calls, (double)(total_time) / calls);
+	debug_dnslib_nsec3("NSEC3 hashing: calls: %lu, avg time per call: %f."
+	                   "\n", calls, (double)(total_time) / calls);
 
 	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_nsec3_sha1_3(const dnslib_nsec3_params_t *params,
+int dnslib_nsec3_sha1_2(const dnslib_nsec3_params_t *params,
                         const uint8_t *data, size_t size, uint8_t **digest,
                         size_t *digest_size)
 {
 	assert(digest != NULL);
 	assert(digest_size != NULL);
-
-	unsigned long long total_time = 0;
-	unsigned long calls = 0;
 
 	if (data == NULL) {
 		return -3;
@@ -263,7 +140,6 @@ int dnslib_nsec3_sha1_3(const dnslib_nsec3_params_t *params,
 	uint16_t iterations = params->iterations;
 
 	SHA_CTX ctx;
-	//EVP_MD_CTX_init(&mdctx);
 
 	*digest = (uint8_t *)malloc(SHA_DIGEST_LENGTH);
 	if (*digest == NULL) {
@@ -275,14 +151,18 @@ int dnslib_nsec3_sha1_3(const dnslib_nsec3_params_t *params,
 	unsigned in_size = size;
 
 	int res = 0;
-	long time = 0;
 
-	//printf("Iterations: %d\n", iterations);
+#ifdef DNSLIB_NSEC3_DEBUG
+	long time = 0;
+	unsigned long long total_time = 0;
+	unsigned long calls = 0;
+#endif
 
 	// other iterations
-	iterations = 50;
 	for (int i = 0; i <= iterations; ++i) {
+#ifdef DNSLIB_NSEC3_DEBUG
 		perf_begin();
+#endif
 
 		SHA1_Init(&ctx);
 
@@ -297,120 +177,22 @@ int dnslib_nsec3_sha1_3(const dnslib_nsec3_params_t *params,
 		in = *digest;
 		in_size = SHA_DIGEST_LENGTH;
 
+#ifdef DNSLIB_NSEC3_DEBUG
 		perf_end(time);
+		total_time += time;
+		++calls;
+#endif
 
 		if (res != 1) {
 			log_error("Error calculating SHA-1 hash.\n");
 			return -2;
 		}
-
-		total_time += time;
-		++calls;
 	}
 
-//	EVP_MD_CTX_cleanup(&mdctx);
-
-//	printf("NSEC3 hashing: calls: %lu, avg time per call: %f.\n",
-//	       calls, (double)(total_time) / calls);
+	debug_dnslib_nsec3("NSEC3 hashing: calls: %lu, avg time per call: %f."
+	                   "\n", calls, (double)(total_time) / calls);
 
 	*digest_size = SHA_DIGEST_LENGTH;
-
-	return 0;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int dnslib_nsec3_sha1_4(const dnslib_nsec3_params_t *params,
-                        const uint8_t *data, size_t size, uint8_t **digest,
-                        size_t *digest_size)
-{
-	assert(digest != NULL);
-	assert(digest_size != NULL);
-
-	unsigned long long total_time = 0;
-	unsigned long calls = 0;
-
-	if (data == NULL) {
-		return -3;
-	}
-
-	uint8_t *salt = params->salt;
-	uint8_t salt_length = params->salt_length;
-	uint16_t iterations = params->iterations;
-
-	//SHA_CTX ctx;
-	//EVP_MD_CTX_init(&mdctx);
-
-
-	if (!crypt_initd) {
-		(void)cryptCreateContext(&cryptContext, CRYPT_UNUSED,
-		                         CRYPT_ALGO_SHA);
-		crypt_initd = 1;
-	}
-
-	*digest = (uint8_t *)malloc(160);
-	if (*digest == NULL) {
-		ERR_ALLOC_FAILED;
-		return -1;
-	}
-
-	unsigned char *in = (unsigned char *)data;
-	unsigned in_size = size;
-
-	int res = 0;
-	long time = 0;
-
-	unsigned char hash[CRYPT_MAX_HASHSIZE];
-	int hash_size;
-
-	//printf("Iterations: %d\n", iterations);
-
-	// other iterations
-	for (int i = 0; i <= iterations; ++i) {
-		perf_begin();
-
-		//SHA1_Init(&ctx);
-
-		cryptEncrypt(cryptContext, in, in_size);
-		//res = SHA1_Update(&ctx, in, in_size);
-
-		if (salt_length > 0) {
-			cryptEncrypt(cryptContext, salt, salt_length);
-			//res = SHA1_Update(&ctx, salt, salt_length);
-		}
-
-		//SHA1_Final(*digest, &ctx);
-		cryptEncrypt(cryptContext, in, 0);
-
-		cryptGetAttributeString(cryptContext, CRYPT_CTXINFO_HASHVALUE,
-		                        hash, &hash_size);
-
-		cryptDeleteAttribute(cryptContext, CRYPT_CTXINFO_HASHVALUE);
-
-		in = hash;
-		in_size = hash_size;
-
-		perf_end(time);
-
-//		if (res != 1) {
-//			log_error("Error calculating SHA-1 hash.\n");
-//			return -2;
-//		}
-
-		total_time += time;
-		++calls;
-	}
-
-//	EVP_MD_CTX_cleanup(&mdctx);
-
-//	printf("NSEC3 hashing: calls: %lu, avg time per call: %f.\n",
-//	       calls, (double)(total_time) / calls);
-
-	//cryptDestroyContext(cryptContext);
-
-	memcpy(*digest, hash, hash_size);
-
-	*digest_size = hash_size;
 
 	return 0;
 }

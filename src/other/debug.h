@@ -40,6 +40,7 @@
 //#define DNSLIB_RESPONSE_DEBUG
 //#define DNSLIB_EDNS_DEBUG
 //#define DNSLIB_RRSET_DEBUG
+#define DNSLIB_NSEC3_DEBUG
 
 #ifdef SERVER_DEBUG
 #define debug_server(msg...) log_msg(LOG_DEBUG, msg)
@@ -97,6 +98,16 @@
 #define debug_dnslib_edns(msg...) log_msg(LOG_DEBUG, msg)
 #else
 #define debug_dnslib_edns(msg...)
+#endif
+
+#ifdef DNSLIB_NSEC3_DEBUG
+#define debug_dnslib_nsec3(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_dnslib_nsec3_hex(data, len) hex_print((data), (len))
+#define DEBUG_DNSLIB_NSEC3(cmds) do { cmds } while (0)
+#else
+#define debug_dnslib_nsec3(msg...)
+#define debug_dnslib_nsec3_hex(data, len)
+#define DEBUG_DNSLIB_NSEC3(cmds)
 #endif
 
 #ifdef CUCKOO_DEBUG

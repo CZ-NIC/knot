@@ -3,10 +3,7 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#include <gnutls/gnutls.h>
-#include <gcrypt.h>
 #include <openssl/evp.h>
-#include <cryptlib.h>
 
 #include "debug.h"
 #include "server.h"
@@ -18,8 +15,6 @@
 #include "zone-load.h"
 #include "dnslib/debug.h"
 #include "dnslib/dname.h"
-
-GCRY_THREAD_OPTION_PTHREAD_IMPL;
 
 cute_server *cute_create()
 {
@@ -68,27 +63,11 @@ cute_server *cute_create()
 	}
 
 	debug_server("Done\n\n");
-	debug_server("Initializing GnuTLS...\n");
-
-	int res = 0;
-	gcry_control(GCRYCTL_SET_THREAD_CBS, &gcry_threads_pthread);
-	if ((res = gnutls_global_init()) != GNUTLS_E_SUCCESS) {
-		log_error("Failed to initalize GnuTLS.\n");
-		ns_destroy(&server->nameserver);
-		dnslib_zonedb_deep_free(&server->zone_db);
-		free(server);
-		return NULL;
-	}
 
 	debug_server("Done\n\n");
 	debug_server("Initializing OpenSSL...\n");
 
 	OpenSSL_add_all_digests();
-
-	debug_server("Done\n\n");
-	debug_server("Initializing cryptlib...\n");
-
-	cryptInit();
 
 	debug_server("Done\n\n");
 
@@ -277,10 +256,6 @@ void cute_destroy(cute_server **server)
 	ns_destroy(&(*server)->nameserver);
 	dnslib_zonedb_deep_free(&(*server)->zone_db);
 	free(*server);
-
-	gnutls_global_deinit();
-
-	cryptEnd();
 
 	*server = NULL;
 }
