@@ -3,11 +3,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include "zone-load.h"
 #include "dnslib/dnslib.h"
 #include "common.h"
 #include "debug.h"
+
+static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
+{
+	int rc = fread(dst, size, n, fp);
+	if (rc != n) {
+		log_zone_warning("fread: invalid read %d (expected %zu)\n", rc, n);
+	}
+
+	return rc == n;
+}
 
 /* \note Contents of dump file:
  * MAGIC(cutexx) NUMBER_OF_NORMAL_NODES NUMBER_OF_NSEC3_NODES
@@ -182,7 +193,8 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 	}
 
 	if (dnslib_rdata_set_items(rdata, items, desc->length) != 0) {
-		log_error("!! could not set items when loading rdata\n");
+		log_zone_error("zoneload: Could not set items "
+		               "when loading rdata.\n");
 	}
 
 	free(items);
@@ -376,7 +388,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	node = owner->node;
 
 	if (node == NULL) {
-		log_error("!! could not create node.\n");
+		log_zone_error("zone: Could not create node.\n");
 		return NULL;
 	}
 
@@ -399,7 +411,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 		if ((tmp_rrset = dnslib_load_rrset(f)) == NULL) {
 			dnslib_node_free(&node, 1);
 			//TODO what else to free?
-			log_error("!! could not load rrset.\n");
+			log_zone_error("zone: Could not load rrset.\n");
 			return NULL;
 		}
 		tmp_rrset->owner = node->owner;
@@ -407,7 +419,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 			tmp_rrset->rrsigs->owner = node->owner;
 		}
 		if (dnslib_node_add_rrset(node, tmp_rrset) != 0) {
-			log_error("!! could not add rrset.\n");
+			log_zone_error("zone: Could not add rrset.\n");
 			return NULL;
 		}
 	}
@@ -455,10 +467,19 @@ int dnslib_check_magic(FILE *f, const uint8_t* MAGIC, uint MAGIC_LENGTH)
 
 dnslib_zone_t *dnslib_zload_load(const char *filename)
 {
+	if (unlikely(!filename)) {
+		errno = ENOENT; // No such file or directory (POSIX.1)
+		return 0;
+	}
+
 	FILE *f = fopen(filename, "rb");
+	if (unlikely(!f)) {
+		errno = ENOENT; // No such file or directory (POSIX.1)
+		return 0;
+	}
 
 	if (f == NULL) {
-		log_error("Could not open file '%s'\n", filename);
+		fprintf(stderr, "Could not open file '%s'\n", filename);
 		return NULL;
 	}
 
@@ -474,9 +495,8 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 	                                           /*c   u    t    e   0.1*/
 
 	if (!dnslib_check_magic(f, MAGIC, MAGIC_LENGTH)) {
-		log_error("!! compiled zone file '%s' has unknown format\n",
-		          filename);
 		fclose(f);
+		errno = EILSEQ; // Illegal byte sequence (POSIX.1, C99)
 		return 0;
 	}
 
@@ -510,7 +530,7 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 	dnslib_node_t *apex = dnslib_load_node(f);
 
 	if (!apex) {
-		log_error("!! could not load apex node (in %s)\n", filename);
+		log_zone_error("zone: Could not load apex node (in %s)\n", filename);
 		return NULL;
 	}
 
@@ -546,7 +566,7 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
                         }
 
 		} else {
-			log_error("!! node error (in %s)\n", filename);
+			log_zone_error("zone: Node error (in %s).\n", filename);
 		}
 	}
 
@@ -587,7 +607,7 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 			tmp_node->prev = last_node;
 
 		} else {
-			log_error("!! node error (in %s)\n", filename);
+			log_zone_error("zone: Node error (in %s).\n", filename);
 		}
 	}
 

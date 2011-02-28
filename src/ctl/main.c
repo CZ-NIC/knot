@@ -5,6 +5,8 @@
 
 #include "common.h"
 #include "process.h"
+#include "conf/conf.h"
+#include "conf/logconf.h"
 
 enum Constants {
 	WAITPID_TIMEOUT = 10
@@ -16,6 +18,7 @@ void help(int argc, char **argv)
 	       " [zone file]\n",
 	       argv[0]);
 	printf("Parameters:\n"
+	       " -c [file] Select configuration file.\n"
 	       " -v\tVerbose mode - additional runtime information.\n"
 	       " -V\tPrint %s server version.\n"
 	       " -h\tPrint help and usage.\n",
@@ -27,9 +30,7 @@ void help(int argc, char **argv)
 	       " reload  [zone]  Reload %s configuration and zone files.\n"
 	       " running         Check if server is running.\n"
 	       "\n"
-	       " compile <zone_name> <zone> Compile zone file.\n"
-	       "                            <zone_name> should be a fully-"
-	                                    "qualified domain name\n",
+	       " compile         Compile zone file.\n",
 	       PROJECT_NAME, PROJECT_NAME, PROJECT_NAME, PROJECT_NAME);
 }
 
@@ -37,21 +38,23 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 {
 	int valid_cmd = 0;
 	int rc = 0;
-	char* pidfile = pid_filename();
+	const char* pidfile = pid_filename();
 	if (strcmp(action, "start") == 0) {
 
 		// Check PID
 		valid_cmd = 1;
 		if (pid > 0) {
-			log_info("Server PID found, already running.\n");
-			free(pidfile);
+			fprintf(stderr, "control: Server PID found, "
+			        "already running.\n");
 			return 1;
 		}
 
 		// Prepare command
+		const char *cfg = conf()->filename;
 		char* cmd = 0;
-		const char *cmd_str = "%s -d %s%s";
+		const char *cmd_str = "%s %s%s -d %s%s";
 		rc = asprintf(&cmd, cmd_str, PROJECT_EXEC,
+		              cfg ? "-c " : "", cfg ? cfg : "",
 			      verbose ? "-v " : "", argc > 0 ? argv[0] : "");
 
 		// Execute command
@@ -67,8 +70,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 		// Check PID
 		valid_cmd = 1;
 		if (pid <= 0) {
-			log_info("Server PID not found, "
-				 "probably not running.\n");
+			fprintf(stderr, "Server PID not found, "
+			        "probably not running.\n");
 			rc = 1;
 		} else {
 			// Stop
@@ -85,8 +88,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 		int i = 0;
 		while(pid_read(pidfile) > 0) {
 			if (i == WAITPID_TIMEOUT) {
-				log_warning("Timeout while waiting for server "
-					    "to finish...\n");
+				fprintf(stderr, "Timeout while "
+				        "waiting for the server to finish.\n");
 				pid_remove(pidfile);
 				break;
 			} else {
@@ -102,9 +105,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 		// Check PID
 		valid_cmd = 1;
 		if (pid <= 0) {
-			log_info("Server PID not found, "
-				 "probably not running.\n");
-			free(pidfile);
+			fprintf(stderr, "Server PID not found, "
+			        "probably not running.\n");
 			return 1;
 		}
 
@@ -123,7 +125,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 			       "probably not running.\n");
 			rc = 1;
 		} else {
-			printf("Server running as PID %ld.\n", (long)pid);
+			printf("Server running as PID %ld.\n",
+			       (long)pid);
 			rc = 0;
 		}
 	}
@@ -131,33 +134,41 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 
 		// Check zone
 		valid_cmd = 1;
-		if (argc < 2) {
-			log_error("Zone file or zone name not specified.\n");
-			free(pidfile);
-			return 1;
-		}
 
-		// Prepare command
-		char* cmd = 0;
-		const char *cmd_str = "%s %s%s %s";
-		rc = asprintf(&cmd, cmd_str, ZONEPARSER_EXEC,
-			      verbose ? "-v " : "", argv[0], argv[1]);
+		// Generate databases for all zones
+		node *n = 0;
+		WALK_LIST(n, conf()->zones) {
 
-		// Execute command
-		if ((rc = system(cmd)) < 0) {
-			rc = 1;
+			// Fetch zone
+			conf_zone_t *zone = (conf_zone_t*)n;
+
+			// Prepare command
+			char* cmd = 0;
+			const char *cmd_str = "%s -o %s %s%s %s";
+			rc = asprintf(&cmd, cmd_str, ZONEPARSER_EXEC,
+			              zone->db, verbose ? "-v " : "",
+			              zone->name, zone->file);
+
+			// Execute command
+			if (verbose) {
+				printf("Compiling '%s'...\n",
+				       zone->name);
+			}
+			if ((rc = system(cmd)) < 0) {
+				rc = 1;
+			}
+			free(cmd);
 		}
-		free(cmd);
 	}
 	if (!valid_cmd) {
-		log_error("Invalid command: '%s'\n", action);
-		free(pidfile);
+		fprintf(stderr, "Invalid command: '%s'\n", action);
 		return 1;
 	}
 
 	// Log
-	log_info("Server %s finished (return code %d)\n", action, rc);
-	free(pidfile);
+	if (verbose) {
+		printf("'%s' finished (return code %d)\n", action, rc);
+	}
 	return rc;
 }
 
@@ -166,9 +177,13 @@ int main(int argc, char **argv)
 	// Parse command line arguments
 	int c = 0;
 	int verbose = 0;
-	while ((c = getopt (argc, argv, "vVh")) != -1) {
+	const char* config_fn = 0;
+	while ((c = getopt (argc, argv, "c:vVh")) != -1) {
 		switch (c)
 		{
+		case 'c':
+			config_fn = optarg;
+			break;
 		case 'v':
 			verbose = 1;
 			break;
@@ -192,19 +207,35 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	// Open log
-	int log_mask = LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING);
-	int print_mask = LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING);
-	if (verbose) {
-		print_mask |= LOG_MASK(LOG_NOTICE);
-		print_mask |= LOG_MASK(LOG_INFO);
-		log_mask = print_mask;
+	// Initialize log (no output)
+	log_setup(0);
+	log_levels_set(LOGT_STDOUT, LOG_ANY, LOG_MASK(LOG_DEBUG));
+
+	// Find implicit configuration file
+	char *default_fn = 0;
+	if (!config_fn) {
+		default_fn = conf_find_default();
+		config_fn = default_fn;
 	}
 
-	log_open(print_mask, log_mask);
+	// Open configuration
+	if (conf_open(config_fn) != 0) {
+		fprintf(stderr, "Failed to parse configuration '%s'.\n",
+		        config_fn);
+	}
+
+	// Free default config filename if exists
+	free(default_fn);
 
 	// Fetch PID
-	char* pidfile = pid_filename();
+	const char* pidfile = pid_filename();
+	if (!pidfile) {
+		fprintf(stderr, "No configuration found, "
+		        "please specify with '-c' parameter.\n");
+		log_close();
+		return 1;
+	}
+
 	pid_t pid = pid_read(pidfile);
 
 	// Actions
@@ -215,7 +246,6 @@ int main(int argc, char **argv)
 			 pid, verbose);
 
 	// Finish
-	free(pidfile);
 	log_close();
 	return rc;
 }

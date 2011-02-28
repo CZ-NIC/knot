@@ -292,10 +292,10 @@ static ck_hash_table_item_t **ck_find_in_stash(const ck_hash_table_t *table,
 {
 	ck_stash_item_t *item = table->stash2;
 	while (item != NULL) {
-		debug_ck("Comparing item in stash (key: %.*s (size %d))"
-		         "with searched item (key %.*s (size %d)).\n",
-		         item->item->key_length, item->item->key,
-		         item->item->key_length, length, key, length);
+		debug_ck("Comparing item in stash (key: %.*s (size %zu))"
+		         "with searched item (key %.*s (size %u)).\n",
+		         (int)item->item->key_length, item->item->key,
+		         item->item->key_length, (int)length, key, length);
 		if (ck_items_match(item->item, key, length)) {
 			return &item->item;
 		}
@@ -343,13 +343,13 @@ static ck_hash_table_item_t **ck_find_gen(const ck_hash_table_t *table,
 	for (uint t = TABLE_FIRST; t <= TABLE_LAST(table->table_count); ++t) {
 		hash = HASH(key, length, table->table_size_exp, generation, t);
 
-		debug_ck("Hash: %u, key: %.*s\n", hash, length, key);
+		debug_ck("Hash: %u, key: %.*s\n", hash, (int)length, key);
 		debug_ck("Table %d, hash: %u, item: %p\n", t + 1, hash,
 		         table->tables[t][hash]);
 		if (table->tables[t][hash] != NULL) {
-			debug_ck("Table %d, key: %.*s, value: %p, key "
-			         "length: %u\n",
-			         t + 1, table->tables[t][hash]->key_length,
+			debug_ck("Table %u, key: %.*s, value: %p, key "
+			         "length: %zu\n",
+			         t + 1, (int)table->tables[t][hash]->key_length,
 			         table->tables[t][hash]->key,
 			         table->tables[t][hash]->value,
 			         table->tables[t][hash]->key_length);
@@ -370,8 +370,8 @@ static ck_hash_table_item_t **ck_find_gen(const ck_hash_table_t *table,
 
 	debug_ck("Found pointer: %p\n", found);
 	if (found != NULL) {
-		debug_ck("Stash, key: %.*s, value: %p, key length: %u\n",
-		         (*found)->key_length, (*found)->key,
+		debug_ck("Stash, key: %.*s, value: %p, key length: %zu\n",
+		         (int)(*found)->key_length, (*found)->key,
 	                 (*found)->value, (*found)->key_length);
 	}
 
@@ -418,8 +418,8 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 
 	// hash until empty cell is encountered or until loop appears
 
-	debug_ck_hash("Hashing key: %.*s of size %u.\n",
-	              (*to_hash)->key_length, (*to_hash)->key,
+	debug_ck_hash("Hashing key: %.*s of size %zu.\n",
+	              (int)(*to_hash)->key_length, (*to_hash)->key,
 	              (*to_hash)->key_length);
 
 	uint next_table = TABLE_FIRST;
@@ -450,7 +450,7 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 		moving = next;
 
 		debug_ck_hash("Moving item from table %u, key: %.*s, hash %u ",
-		              next_table + 1, (*moving)->key_length,
+		              next_table + 1, (int)(*moving)->key_length,
 		              (*moving)->key, hash);
 
 		// if rehashing and the 'next' item is from the old generation,
@@ -471,7 +471,7 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 		if ((*next) != NULL) {
 			debug_ck_hash("Table %u, hash: %u, key: %.*s\n",
 			              next_table + 1, hash,
-			              (*next)->key_length, (*next)->key);
+			              (int)(*next)->key_length, (*next)->key);
 		}
 
 		// check if this cell wasn't already used in this item's hashing
@@ -549,8 +549,8 @@ int ck_add_to_stash(ck_hash_table_t *table, ck_hash_table_item_t *item)
 	new_item->next = table->stash2;
 	rcu_set_pointer(&table->stash2, new_item);
 
-	debug_ck_hash("First item in stash (now inserted): key: %.*s (size %d),"
-	              " value: %p\n", table->stash2->item->key_length,
+	debug_ck_hash("First item in stash (now inserted): key: %.*s (size %zu),"
+	              " value: %p\n", (int)table->stash2->item->key_length,
 	              table->stash2->item->key, table->stash2->item->key_length,
 	              table->stash2->item->value);
 	return 0;
@@ -578,7 +578,7 @@ ck_hash_table_t *ck_create_table(uint items)
 	debug_ck("Creating hash table for %u items.\n", items);
 	debug_ck("Exponent: %u, number of tables: %u\n ",
 		 table->table_size_exp, table->table_count);
-	debug_ck("Table size: %u items, each %u bytes, total %u bytes\n",
+	debug_ck("Table size: %u items, each %lu bytes, total %lu bytes\n",
 	         hashsize(table->table_size_exp),
 	         sizeof(ck_hash_table_item_t *),
 	         hashsize(table->table_size_exp)
@@ -722,7 +722,7 @@ int ck_insert_item(ck_hash_table_t *table, const char *key,
 
 	assert(value != NULL);
 
-	debug_ck_hash("Inserting item with key: %.*s.\n", length, key);
+	debug_ck_hash("Inserting item with key: %.*s.\n", (int)length, key);
 	debug_ck_hash_hex(key, length);
 	debug_ck_hash("\n");
 
@@ -740,7 +740,7 @@ int ck_insert_item(ck_hash_table_t *table, const char *key,
 	                 table->generation) != 0) {
 
 		debug_ck("Adding item with key %.*s to stash.\n",
-		         free_place->key_length, free_place->key);
+		         (int)free_place->key_length, free_place->key);
 
 		// maybe some limit on the stash and rehash if full
 		if (ck_add_to_stash(table, free_place) != 0) {
@@ -784,7 +784,8 @@ int ck_insert_item(ck_hash_table_t *table, const char *key,
 const ck_hash_table_item_t *ck_find_item(const ck_hash_table_t *table,
                                          const char *key, size_t length)
 {
-	debug_ck("ck_find_item(), key: %.*s, size: %u\n", length, key, length);
+	debug_ck("ck_find_item(), key: %.*s, size: %zu\n",
+	         (int)length, key, length);
 	ck_hash_table_item_t **found = ck_find_item_nc(table, key, length);
 	return (found == NULL) ? NULL : rcu_dereference(*found);
 }
@@ -1103,7 +1104,7 @@ void ck_dump_table(const ck_hash_table_t *table)
 
 		for (i = 0; i < hashsize(table->table_size_exp); i++) {
 			debug_ck("Hash: %u, Key: %.*s, Value: %p.\n", i,
-			         (table->tables[t])[i]->key_length,
+			         (int)(table->tables[t])[i]->key_length,
 			         (table->tables[t])[i]->key,
 			         (table->tables[t])[i]->value);
 		}
@@ -1122,7 +1123,7 @@ void ck_dump_table(const ck_hash_table_t *table)
 	ck_stash_item_t *item = table->stash2;
 	while (item != NULL) {
 		debug_ck("Hash: %u, Key: %.*s, Value: %p.\n", i,
-			 item->item->key_length, item->item->key,
+			 (int)item->item->key_length, item->item->key,
 			 item->item->value);
 		item = item->next;
 	}

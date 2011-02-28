@@ -10,23 +10,25 @@
 #include "dnslib_tests.c"
 #include "server_tests.c"
 #include "slab_tests.c"
+#include "conf_tests.c"
 
 // Run all loaded units
 int main(int argc, char *argv[])
 {
 	// Open log
-	log_open(LOG_UPTO(LOG_ERR), LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING));
+	log_init(LOG_UPTO(LOG_ERR), LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING));
 
 	// Build test set
 	unit_api *tests[] = {
-	        &skiplist_tests_api, //! Skip list unit
-	        &dthreads_tests_api, //! DThreads testing unit
-	        &da_tests_api,       //! Dynamic array unit
-	        &cuckoo_tests_api,   //! Cuckoo hashing unit
-	        &zonedb_tests_api,   //! Zone database unit
-	        &dnslib_tests_api,   //! DNS library unit
-	        &server_tests_api,   //! Server unit
-	        &slab_tests_api,     //! SLAB allocator unit
+		&skiplist_tests_api, //! Skip list unit
+		&dthreads_tests_api, //! DThreads testing unit
+		&da_tests_api,       //! Dynamic array unit
+		&cuckoo_tests_api,   //! Cuckoo hashing unit
+		&zonedb_tests_api,   //! Zone database unit
+		&conf_tests_api,     //! Configuration parser tests
+		&dnslib_tests_api,   //! DNS library unit
+		&server_tests_api,   //! Server unit
+		&slab_tests_api,     //! SLAB allocator unit
 		NULL
 	};
 

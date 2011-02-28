@@ -29,7 +29,7 @@ enum {
  * \brief Create socket.
  *
  * \param family Socket family (PF_INET, PF_IPX, PF_PACKET, PF_UNIX).
- * \param type Socket type (SOCK_STREAM, SOCK_DGRAM, SOCK_RAW).
+ * \param type   Socket type (SOCK_STREAM, SOCK_DGRAM, SOCK_RAW).
  *
  * \retval  0 On success.
  * \retval <0 If an error occured.
@@ -39,42 +39,43 @@ int socket_create(int family, int type);
 /*!
  * \brief Connect to remote host.
  *
- * \param socket Socket filedescriptor.
- * \param addr Requested address.
- * \param port Requested port.
+ * \param fd     Socket filedescriptor.
+ * \param addr   Requested address.
+ * \param port   Requested port.
  *
  * \retval  0 On success.
  * \retval <0 If an error occured.
  */
-int socket_connect(int socket, const char *addr, unsigned short port);
+int socket_connect(int fd, const char *addr, unsigned short port);
 
 /*!
  * \brief Listen on given socket.
  *
- * \param socket Socket filedescriptor.
- * \param addr Requested address.
- * \param port Requested port.
+ * \param fd     Socket filedescriptor.
+ * \param family Socket family.
+ * \param addr   Requested address.
+ * \param port   Requested port.
  *
  * \retval  0 On success.
  * \retval <0 If an error occured.
  */
-int socket_bind(int socket, const char *addr, unsigned short port);
+int socket_bind(int fd, int family, const char *addr, unsigned short port);
 
 /*!
  * \brief Listen on given TCP socket.
  *
- * \param socket Socket filedescriptor.
+ * \param fd           Socket filedescriptor.
  * \param backlog_size Requested TCP backlog size.
  *
  * \retval  0 On success.
  * \retval <0 If an error occured.
  */
-int socket_listen(int socket, int backlog_size);
+int socket_listen(int fd, int backlog_size);
 
 /*!
  * \brief Receive data from connection-mode socket.
  *
- * \param socket Socket filedescriptor.
+ * \param fd     Socket filedescriptor.
  * \param buf    Destination buffer.
  * \param len    Maximum data length.
  * \param flags  Additional flags.
@@ -82,12 +83,15 @@ int socket_listen(int socket, int backlog_size);
  * \retval  0 On success.
  * \retval <0 If an error occured.
  */
-ssize_t socket_recv(int socket, void *buf, size_t len, int flags);
+static inline ssize_t socket_recv(int socket, void *buf, size_t len, int flags)
+{
+	return recv(socket, buf, len, flags);
+}
 
 /*!
  * \brief Receive data from datagram-mode socket.
  *
- * \param socket  Socket filedescriptor.
+ * \param fd      Socket filedescriptor.
  * \param buf     Destination buffer.
  * \param len     Maximum data length.
  * \param flags   Additional flags.
@@ -97,13 +101,17 @@ ssize_t socket_recv(int socket, void *buf, size_t len, int flags);
  * \retval  0 On success.
  * \retval <0 If an error occured.
  */
-ssize_t socket_recvfrom(int socket, void *buf, size_t len, int flags,
-                        struct sockaddr *from, socklen_t *fromlen);
+static inline ssize_t socket_recvfrom(int socket, void *buf, size_t len,
+                                      int flags, struct sockaddr *from,
+                                      socklen_t *fromlen)
+{
+	return recvfrom(socket, buf, len, flags, from, fromlen);
+}
 
 /*!
  * \brief Send data to connection-mode socket.
  *
- * \param socket Socket filedescriptor.
+ * \param fd     Socket filedescriptor.
  * \param buf    Source buffer.
  * \param len    Data length.
  * \param flags  Additional flags.
@@ -111,12 +119,16 @@ ssize_t socket_recvfrom(int socket, void *buf, size_t len, int flags,
  * \retval  0 On success.
  * \retval <0 If an error occured.
  */
-ssize_t socket_send(int socket, const void *buf, size_t len, int flags);
+static inline ssize_t socket_send(int socket, const void *buf, size_t len,
+                                  int flags)
+{
+	return send(socket, buf, len, flags);
+}
 
 /*!
  * \brief Send data to datagram-mode socket.
  *
- * \param socket Socket filedescriptor.
+ * \param fd     Socket filedescriptor.
  * \param buf    Source buffer.
  * \param len    Data length.
  * \param flags  Additional flags.
@@ -126,18 +138,21 @@ ssize_t socket_send(int socket, const void *buf, size_t len, int flags);
  * \retval  0 On success.
  * \retval <0 If an error occured.
  */
-ssize_t socket_sendto(int socket, const void *buf, size_t len, int flags,
-                      const struct sockaddr *to, socklen_t tolen);
-
+static inline ssize_t socket_sendto(int socket, const void *buf, size_t len,
+                                    int flags, const struct sockaddr *to,
+                                    socklen_t tolen)
+{
+	return sendto(socket, buf, len, flags, to, tolen);
+}
 /*!
  * \brief Close and deinitialize socket.
  *
- * \param socket Socket filedescriptor.
+ * \param fd Socket filedescriptor.
  *
  * \retval  0 On success.
  * \retval <0 If an error occured.
  */
-int socket_close(int socket);
+int socket_close(int fd);
 
 #endif // _CUTEDNS_SOCKET_H_
 

@@ -14,6 +14,8 @@ src/other/print.h
 src/other/log.h
 src/other/log.c
 src/other/debug.h
+src/other/latency.c
+src/other/latency.h
 src/server/socket.c
 src/server/socket.h
 src/server/name-server.c
@@ -37,6 +39,8 @@ src/lib/skip-list.c
 src/lib/tree.h
 src/lib/bitset.h
 src/lib/bitset.c
+src/lib/lists.h
+src/lib/lists.c
 src/dnslib/dname.h
 src/dnslib/dname.c
 src/dnslib/rrset.h
@@ -82,6 +86,7 @@ src/alloc/malloc.h
 src/alloc/malloc.c
 src/alloc/slab.h
 src/alloc/slab.c
+src/tests/conf_tests.c
 src/tests/libtap/tap.c
 src/tests/libtap/tap.h
 src/tests/main.c
@@ -106,4 +111,11 @@ src/tests/dnslib/dnslib_zone_tests.c
 src/ctl/main.c
 src/ctl/process.c
 src/ctl/process.h
+src/conf/cf-lex.l
+src/conf/cf-parse.y
+src/conf/conf.c
+src/conf/conf.h
+src/conf/logconf.c
+src/conf/logconf.h
+src/conf/cutedns.conf.example
 tests/querytcp.c
