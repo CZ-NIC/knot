@@ -31,6 +31,7 @@ extern int (*cf_read_hook)(char *buf, size_t nbytes);
 %option noinput
 %option nounput
 %option noreject
+%option yylineno
 
 ALPHA [a-zA-Z_]
 DIGIT [0-9]
@@ -39,7 +40,6 @@ ALNUM [a-zA-Z_0-9]
 BLANK [ \t\n]
 
 %%
-
 \#.*\n               /* Ignore comments */;
 {BLANK}+             /* Ignore whitespace */;
 [@{};,]              { return yytext[0]; }

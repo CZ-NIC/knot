@@ -119,7 +119,8 @@ int main(int argc, char **argv)
 
 		if (zfs_count < 1) {
 			log_server_error("server: No zone files specified, "
-			                 "shutting down.\n");
+			                 "shutting down.\n\n");
+			help(argc, argv);
 			log_close();
 			free(default_fn);
 			return 1;
