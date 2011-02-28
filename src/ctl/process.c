@@ -12,7 +12,7 @@
 char* pid_filename()
 {
 	// Construct filename
-	const char* fn = "/cutedns.pid";
+	const char* fn = PID_FILE;
 	char* home = getenv("HOME");
 	int len = strlen(home) + strlen(fn) + 1;
 	char* ret = malloc(len);

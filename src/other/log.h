@@ -14,8 +14,8 @@
  * \addtogroup logging
  * @{
  */
-#ifndef _CUTEDNS_LOG_H_
-#define _CUTEDNS_LOG_H_
+#ifndef _KNOT_LOG_H_
+#define _KNOT_LOG_H_
 
 /*
  */
@@ -69,6 +69,6 @@ int print_msg(int level, const char *msg, ...) __attribute__((format(printf, 2, 
 #define log_info(msg...)      log_msg(LOG_INFO, msg)
 #define log_debug(msg...)     log_msg(LOG_DEBUG, msg)
 
-#endif /* _CUTEDNS_LOG_H_ */
+#endif /* _KNOT_LOG_H_ */
 
 /*! @} */

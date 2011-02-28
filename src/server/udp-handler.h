@@ -13,8 +13,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_UDPHANDLER_H_
-#define _CUTEDNS_UDPHANDLER_H_
+#ifndef _KNOT_UDPHANDLER_H_
+#define _KNOT_UDPHANDLER_H_
 
 #include "server/socket.h"
 #include "server/server.h"

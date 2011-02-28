@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_DNSLIB_EDNS_H_
-#define _CUTEDNS_DNSLIB_EDNS_H_
+#ifndef _KNOT_DNSLIB_EDNS_H_
+#define _KNOT_DNSLIB_EDNS_H_
 
 #include <stdint.h>
 
@@ -56,6 +56,6 @@ static inline void dnslib_edns_set_version(uint8_t *edns_wire, uint8_t version)
 	*(edns_wire + DNSLIB_EDNS_OFFSET_VERSION) = version;
 }
 
-#endif /* _CUTEDNS_DNSLIB_EDNS_H_ */
+#endif /* _KNOT_DNSLIB_EDNS_H_ */
 
 /*! @} */

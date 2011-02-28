@@ -10,8 +10,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_DNSLIB_RDATA_H_
-#define _CUTEDNS_DNSLIB_RDATA_H_
+#ifndef _KNOT_DNSLIB_RDATA_H_
+#define _KNOT_DNSLIB_RDATA_H_
 
 #include <stdint.h>
 
@@ -234,6 +234,6 @@ const dnslib_dname_t *dnslib_rdata_dname_target(const dnslib_rdata_t *rdata);
 const dnslib_dname_t *dnslib_rdata_get_name(const dnslib_rdata_t *rdata,
                                             uint16_t type);
 
-#endif /* _CUTEDNS_DNSLIB_RDATA_H */
+#endif /* _KNOT_DNSLIB_RDATA_H */
 
 /*! @} */

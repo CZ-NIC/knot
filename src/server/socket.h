@@ -12,8 +12,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_SOCKET_H_
-#define _CUTEDNS_SOCKET_H_
+#ifndef _KNOT_SOCKET_H_
+#define _KNOT_SOCKET_H_
 
 /* POSIX only. */
 #include <sys/socket.h>
@@ -137,7 +137,7 @@ ssize_t socket_sendto(int socket, const void *buf, size_t len, int flags,
  */
 int socket_close(int socket);
 
-#endif // _CUTEDNS_SOCKET_H_
+#endif // _KNOT_SOCKET_H_
 
 /*! @} */
 

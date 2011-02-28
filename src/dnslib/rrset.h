@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_DNSLIB_RRSET_H_
-#define _CUTEDNS_DNSLIB_RRSET_H_
+#ifndef _KNOT_DNSLIB_RRSET_H_
+#define _KNOT_DNSLIB_RRSET_H_
 
 #include <stdint.h>
 
@@ -211,6 +211,6 @@ void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner,
  */
 int dnslib_rrset_merge(void **r1, void **r2);
 
-#endif /* _CUTEDNS_DNSLIB_RRSET_H_ */
+#endif /* _KNOT_DNSLIB_RRSET_H_ */
 
 /*! @} */

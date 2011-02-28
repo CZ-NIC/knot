@@ -12,8 +12,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_PRINT_H_
-#define _CUTEDNS_PRINT_H_
+#ifndef _KNOT_PRINT_H_
+#define _KNOT_PRINT_H_
 
 typedef int (*printf_t)(const char *fmt, ...);
 
@@ -29,6 +29,6 @@ void hex_printf(const char *data, int length, printf_t print_handler);
 void bit_print(const char *data, int length);
 void bit_printf(const char *data, int length, printf_t print_handler);
 
-#endif /* _CUTEDNS_PRINT_H_ */
+#endif /* _KNOT_PRINT_H_ */
 
 /*! @} */

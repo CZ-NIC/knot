@@ -23,8 +23,8 @@
  * \addtogroup hashing
  * @}
  */
-#ifndef _CUTEDNS_UNIVERSAL_SYSTEM_H_
-#define _CUTEDNS_UNIVERSAL_SYSTEM_H_
+#ifndef _KNOT_UNIVERSAL_SYSTEM_H_
+#define _KNOT_UNIVERSAL_SYSTEM_H_
 
 #include <stdint.h>
 
@@ -68,6 +68,6 @@ uint32_t us_hash(uint32_t value, uint table_exp, uint fnc, uint generation);
 
 /*----------------------------------------------------------------------------*/
 
-#endif /* _CUTEDNS_UNIVERSAL_SYSTEM_H_ */
+#endif /* _KNOT_UNIVERSAL_SYSTEM_H_ */
 
 /*! @} */

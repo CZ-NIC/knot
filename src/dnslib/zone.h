@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_DNSLIB_ZONE_H_
-#define _CUTEDNS_DNSLIB_ZONE_H_
+#ifndef _KNOT_DNSLIB_ZONE_H_
+#define _KNOT_DNSLIB_ZONE_H_
 
 #include "dnslib/node.h"
 #include "dnslib/dname.h"

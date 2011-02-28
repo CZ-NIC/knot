@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef __CUTEDNS_MALLOC_H__
-#define __CUTEDNS_MALLOC_H__
+#ifndef __KNOT_MALLOC_H__
+#define __KNOT_MALLOC_H__
 
 #include <stdlib.h>
 #include "other/debug.h"
