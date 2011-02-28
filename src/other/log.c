@@ -121,6 +121,9 @@ int log_open_file(const char* filename)
 		return -1;
 	}
 
+	// Disable buffering
+	setvbuf(LOG_FDS[LOG_FDS_OPEN], (char *)NULL, _IONBF, 0);
+
 	return LOGT_FILE + LOG_FDS_OPEN++;
 }
 
