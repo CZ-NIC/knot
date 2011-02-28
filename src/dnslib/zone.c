@@ -107,8 +107,8 @@ static void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata,
 
 /*----------------------------------------------------------------------------*/
 
-static void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
-                                    dnslib_zone_t *zone)
+static void dnslib_zone_adjust_type(dnslib_node_t *node, dnslib_zone_t *zone,
+                                    dnslib_rr_type_t type)
 {
 	dnslib_rrset_t *rrset = dnslib_node_get_rrset(node, type);
 	if (!rrset) {
@@ -160,7 +160,36 @@ static void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
 			dnslib_zone_adjust_rdata_item(rdata, zone, i);
 		}
 	}
+}
 
+/*----------------------------------------------------------------------------*/
+
+static void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_zone_t *zone)
+{
+
+DEBUG_DNSLIB_ZONE(
+	char *name = dnslib_dname_to_str(node->owner);
+	debug_dnslib_zone("----- Adjusting node %s -----\n", name);
+	free(name);
+);
+
+	for (int i = 0; i < DNSLIB_COMPRESSIBLE_TYPES; ++i) {
+		dnslib_zone_adjust_type(node, zone,
+		                        dnslib_compressible_types[i]);
+	}
+DEBUG_DNSLIB_ZONE(
+	if (node->parent) {
+		char *name = dnslib_dname_to_str(node->parent->owner);
+		debug_dnslib_zone("Parent: %s\n", name);
+		debug_dnslib_zone("Parent is delegation point: %s\n",
+		       dnslib_node_is_deleg_point(node->parent) ? "yes" : "no");
+		debug_dnslib_zone("Parent is non-authoritative: %s\n",
+		       dnslib_node_is_non_auth(node->parent) ? "yes" : "no");
+		free(name);
+	} else {
+		debug_dnslib_zone("No parent!\n");
+	}
+);
 	// delegation point / non-authoritative node
 	if (node->parent
 	    && (dnslib_node_is_deleg_point(node->parent)
@@ -170,6 +199,12 @@ static void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_rr_type_t type,
 		   && node != zone->apex) {
 		dnslib_node_set_deleg_point(node);
 	}
+
+	debug_dnslib_zone("Set flags to the node: \n");
+	debug_dnslib_zone("Delegation point: %s\n",
+	       dnslib_node_is_deleg_point(node) ? "yes" : "no");
+	debug_dnslib_zone("Non-authoritative: %s\n",
+	       dnslib_node_is_non_auth(node) ? "yes" : "no");
 }
 
 /*----------------------------------------------------------------------------*/
@@ -179,10 +214,7 @@ static void dnslib_zone_adjust_node_in_tree(dnslib_node_t *node, void *data)
 	assert(data != NULL);
 	dnslib_zone_t *zone = (dnslib_zone_t *)data;
 
-	for (int i = 0; i < DNSLIB_COMPRESSIBLE_TYPES; ++i) {
-		dnslib_zone_adjust_node(node, dnslib_compressible_types[i],
-		                        zone);
-	}
+	dnslib_zone_adjust_node(node, zone);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -343,14 +375,17 @@ const dnslib_node_t *dnslib_zone_find_node(const dnslib_zone_t *zone,
 int dnslib_zone_find_dname(const dnslib_zone_t *zone,
                            const dnslib_dname_t *name,
                            const dnslib_node_t **node,
-                           const dnslib_node_t **closest_encloser)
+                           const dnslib_node_t **closest_encloser,
+                           const dnslib_node_t **previous)
 {
 	assert(zone);
 	assert(name);
 	assert(node);
 	assert(closest_encloser);
+	assert(previous);
 
 	dnslib_node_t *found = NULL;
+	dnslib_node_t *prev = NULL;
 
 DEBUG_DNSLIB_ZONE(
 	char *name_str = dnslib_dname_to_str(name);
@@ -376,19 +411,39 @@ DEBUG_DNSLIB_ZONE(
 	// create dummy node to use for lookup
 	dnslib_node_t *tmp = dnslib_node_new((dnslib_dname_t *)name, NULL);
 	int exact_match = TREE_FIND_LESS_EQUAL(
-	                      zone->tree, dnslib_node, avl, tmp, &found);
+	                   zone->tree, dnslib_node, avl, tmp, &found, &prev);
 	dnslib_node_free(&tmp, 0);
 
 	*node = found;
 	*closest_encloser = found;
 
+	if (prev == NULL) {
+		// either the returned node is the root of the tree, or it is
+		// the leftmost node in the tree; in both cases node was found
+		// set the previous node of the found node
+		assert(exact_match);
+		assert(found != NULL);
+		*previous = dnslib_node_previous(found);
+	} else {
+		// otherwise check if the previous node is not an empty
+		// non-terminal
+		*previous = (dnslib_node_rrset_count(prev) == 0)
+		            ? dnslib_node_previous(prev)
+		            : prev;
+	}
+
 DEBUG_DNSLIB_ZONE(
 	char *name_str = (found) ? dnslib_dname_to_str(found->owner) : "(nil)";
-	debug_dnslib_zone("Search function returned %d and node %s\n",
-	                  exact_match, name_str);
+	char *name_str2 = (prev != NULL) ? dnslib_dname_to_str(prev->owner)
+	                                 : "(nil)";
+	debug_dnslib_zone("Search function returned %d, node %s and prev: %s\n",
+	                  exact_match, name_str, name_str2);
 
 	if (found) {
 		free(name_str);
+	}
+	if (prev != NULL) {
+		free(name_str2);
 	}
 );
 
@@ -397,6 +452,9 @@ DEBUG_DNSLIB_ZONE(
 	if (*node == NULL) {
 		return DNSLIB_ZONE_NAME_NOT_IN_ZONE;
 	}
+
+	// TODO: this could be replaced by saving pointer to closest encloser
+	//       in node
 
 	if (!exact_match) {
 		int matched_labels = dnslib_dname_matched_labels(
@@ -407,6 +465,13 @@ DEBUG_DNSLIB_ZONE(
 			assert(*closest_encloser);
 		}
 	}
+
+//	if (dnslib_node_is_non_auth(*closest_encloser)) {
+//		while (dnslib_node_is_non_auth(*closest_encloser)) {
+//			(*closest_encloser) = (*closest_encloser)->parent;
+//			assert(*closest_encloser);
+//		}
+//	}
 
 	debug_dnslib_zone("find_dname() returning %d\n", exact_match);
 

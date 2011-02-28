@@ -43,7 +43,7 @@ struct test_rrset {
 	uint16_t rclass;
 	uint32_t  ttl;
 	dnslib_rdata_t *rdata;
-	const dnslib_rrsig_set_t *rrsigs;
+	const dnslib_rrset_t *rrsigs;
 };
 
 static const char *signature_strings[TEST_RRSIGS] = 
@@ -61,13 +61,13 @@ static dnslib_dname_t RR_DNAMES[RR_DNAMES_COUNT] =
           {(uint8_t *)"\2ns1\7example\3com", 17, NULL},
           {(uint8_t *)"\2ns2\7example\3com", 17, NULL} };
 
-/*			   192.168.1.1 */
-static uint8_t adress[4] = {0xc0, 0xa8, 0x01, 0x01};
+/*                         192.168.1.1 */
+static uint8_t address[4] = {0xc0, 0xa8, 0x01, 0x01};
 
 static dnslib_rdata_item_t RR_ITEMS[RR_ITEMS_COUNT] =
 	{ {.dname = &RR_DNAMES[1]},
 	  {.dname = &RR_DNAMES[2]},
-          {.raw_data = adress} };
+          {.raw_data = (uint16_t *)address} };
 
 static dnslib_rdata_t RR_RDATA[RR_RDATA_COUNT] =
 	{ {&RR_ITEMS[0], 1, &RR_RDATA[0]},
@@ -252,7 +252,7 @@ static int check_rrset(const dnslib_rrset_t *rrset, int i,
 
 	if (check_rrsigs) {
 
-		const dnslib_rrsig_set_t *rrsigs;
+		const dnslib_rrset_t *rrsigs;
 
 		rrsigs = dnslib_rrset_rrsigs(rrset);
 		if (strcmp((const char *)rrsigs->rdata->items[0].raw_data,
@@ -356,7 +356,7 @@ static int test_rrset_rdata()
 	for (int i = 0; i < 10; i++) {
 		r = dnslib_rdata_new();
 		item = malloc(sizeof(dnslib_rdata_item_t));
-		item->raw_data = (uint8_t *)test_strings[i];
+		item->raw_data = (uint16_t *)test_strings[i];
 		//following statement creates a copy
 		dnslib_rdata_set_items(r, item, 1);
 		dnslib_rrset_add_rdata(rrset, r);
@@ -422,7 +422,7 @@ static int test_rrset_rrsigs()
 
 		assert(TEST_RRSETS == TEST_RRSIGS);
 
-		dnslib_rrsig_set_t *rrsig = dnslib_rrsig_set_new(owner,
+		dnslib_rrset_t *rrsig = dnslib_rrset_new(owner,
 		                                         test_rrsigs[i].type,
 		                                         test_rrsigs[i].rclass,
 		                                         test_rrsigs[i].ttl);
@@ -431,9 +431,9 @@ static int test_rrset_rrsigs()
 		item = malloc(sizeof(dnslib_rdata_item_t));
 		/* signature is just a string, 
 		 * should be sufficient for testing */
-		item->raw_data = (uint8_t *)signature_strings[i];
+		item->raw_data = (uint16_t *)signature_strings[i];
 		dnslib_rdata_set_items(tmp, item, 1);
-		dnslib_rrsig_set_add_rdata(rrsig, tmp);
+		dnslib_rrset_add_rdata(rrsig, tmp);
 
 		if (dnslib_rrset_set_rrsigs(rrset, rrsig)
 		      != 0) {
@@ -445,7 +445,7 @@ static int test_rrset_rrsigs()
 		dnslib_rrset_free(&rrset);
 		free(item);
 		dnslib_rdata_free(&tmp);
-		dnslib_rrsig_set_free(&rrsig);
+		dnslib_rrset_free(&rrsig);
 	}
 	return (errors == 0);
 }

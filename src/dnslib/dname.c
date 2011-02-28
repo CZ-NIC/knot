@@ -65,6 +65,8 @@ static int dnslib_dname_set(dnslib_dname_t *dname, uint8_t *wire,
 	dname->size = wire_size;
 	dname->label_count = label_count;
 
+	assert(label_count >= 0);
+
 	dname->labels = (uint8_t *)malloc(dname->label_count * sizeof(uint8_t));
 	CHECK_ALLOC_LOG(dname->labels, -1);
 	memcpy(dname->labels, labels, dname->label_count);
@@ -277,6 +279,7 @@ dnslib_dname_t *dnslib_dname_new_from_str(const char *name, uint size,
 	}
 
 	dnslib_dname_str_to_wire(name, size, dname);
+	assert(dname->label_count >= 0);
 	debug_dnslib_dname("Created dname with size: %d\n", dname->size);
 	debug_dnslib_dname("Label offsets: ");
 	for (int i = 0; i < dname->label_count; ++i) {
@@ -346,6 +349,7 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 		dnslib_dname_free(&dname);
 		return NULL;
 	}
+	assert(dname->label_count >= 0);
 
 	dname->node = node;
 
@@ -368,6 +372,7 @@ int dnslib_dname_from_wire(const uint8_t *name, uint size,
 	if (dnslib_dname_find_labels(target, 0) != 0) {
 		return -1;
 	}
+	assert(target->label_count >= 0);
 
 	return 0;
 }
@@ -437,6 +442,15 @@ uint dnslib_dname_size(const dnslib_dname_t *dname)
 
 /*----------------------------------------------------------------------------*/
 
+const uint8_t dnslib_dname_size_part(const dnslib_dname_t *dname, int labels)
+{
+	assert(labels < dname->label_count);
+	assert(dname->labels != NULL);
+	return (dname->labels[labels]);
+}
+
+/*----------------------------------------------------------------------------*/
+
 const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname)
 {
 	return dname->node;
@@ -482,6 +496,7 @@ dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname)
 		parent->labels[i] = dname->labels[i + 1] - first_label_length;
 	}
 	parent->label_count = dname->label_count - 1;
+	assert(dname->label_count >= 0);
 
 	return parent;
 }
@@ -503,6 +518,7 @@ void dnslib_dname_left_chop_no_copy(dnslib_dname_t *dname)
 		}
 		dname->label_count = dname->label_count - 1;
 		dname->size -= first_label_length;
+		assert(dname->label_count >= 0);
 	} else {
 		dname->name[0] = '\0';
 		dname->size = 1;
@@ -622,7 +638,28 @@ int dnslib_dname_matched_labels(const dnslib_dname_t *dname1,
 
 int dnslib_dname_label_count(const dnslib_dname_t *dname)
 {
+	assert(dname->label_count >= 0);
 	return dname->label_count;
+}
+
+/*----------------------------------------------------------------------------*/
+
+uint8_t dnslib_dname_label_size(const dnslib_dname_t *dname, int i)
+{
+//	printf("Returning size of %d. label starting on %d\n",
+//	       i, dname->labels[i]);
+//	printf("Label count: %d, size of %d. label: %d, size of %d.label: %d\n",
+//	       dname->label_count, i, dname->labels[i], i + 1,
+//	       dname->labels[i+1]);
+//	printf("Size from the name: %u\n", dname->name[dname->labels[i]]);
+//	printf("Size from label offsets: %u\n",
+//	       dname->labels[i + 1] - dname->labels[i]);
+
+	assert(i >= 0);
+	assert(i + 1 == dname->label_count
+	       || dname->labels[i + 1] - dname->labels[i] - 1
+	          == dname->name[dname->labels[i]]);
+	return dname->name[dname->labels[i]];
 }
 
 /*----------------------------------------------------------------------------*/
@@ -663,6 +700,10 @@ DEBUG_DNSLIB_DNAME(
 	memcpy(res->name + dname->size - size, suffix->name, suffix->size);
 
 	debug_dnslib_dname_hex((char *)res->name, res->size);
+
+	dnslib_dname_find_labels(res, 1);
+
+	assert(res->label_count >= 0);
 
 	return res;
 }
@@ -730,6 +771,8 @@ DEBUG_DNSLIB_DNAME(
 	int l1 = d1->label_count;
 	int l2 = d2->label_count;
 	debug_dnslib_dname("Label counts: %d and %d\n", l1, l2);
+	assert(l1 > 0);
+	assert(l2 > 0);
 
 	// compare labels from last to first
 	while (l1 > 0 && l2 > 0) {
@@ -807,6 +850,8 @@ dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2)
 	free(old_name);
 
 	d1->size += d2->size;
+
+	assert(d1->label_count >= 0);
 
 	return d1;
 }

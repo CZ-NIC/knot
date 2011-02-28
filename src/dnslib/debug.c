@@ -47,43 +47,11 @@ void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type, char loaded_zone)
 			printf("      %d: raw_data: length: %d\n", i,
 			       *(rdata->items[i].raw_data));
 			printf("      ");
-			hex_print((char *)&rdata->items[i].raw_data[
-				(desc->wireformat[i]
-				 == DNSLIB_RDATA_WF_BINARYWITHLENGTH) ? 0 : 1],
+			hex_print(((char *)(rdata->items[i].raw_data + 1)),
 				  rdata->items[i].raw_data[0]);
 		}
 	}
 	printf("      ------- RDATA -------\n");
-#endif
-}
-
-void dnslib_rrsig_dump(dnslib_rrsig_set_t *rrsig, char loaded_zone)
-{
-#if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_RRSET_DEBUG)
-	printf("    ------- RRSIG -------\n");
-	if (rrsig == NULL) {
-		printf("    RRSIG is not set\n");
-		printf("    ------- RRSIG -------\n");
-		return;
-	}
-	printf("    type: %s\n", dnslib_rrtype_to_string(rrsig->type));
-	printf("    class: %d\n", rrsig->rclass);
-	printf("    ttl: %d\n", rrsig->ttl);
-
-	dnslib_rdata_t *tmp = rrsig->rdata;
-
-	if (tmp == NULL) {
-		return;
-	}
-
-	while (tmp->next != rrsig->rdata) {
-		dnslib_rdata_dump(tmp, DNSLIB_RRTYPE_RRSIG, loaded_zone);
-		tmp = tmp->next;
-	}
-
-	dnslib_rdata_dump(tmp, DNSLIB_RRTYPE_RRSIG, loaded_zone); 
-
-	printf("    ------- RRSIG -------\n");
 #endif
 }
 
@@ -92,14 +60,19 @@ void dnslib_rrset_dump(dnslib_rrset_t *rrset, char loaded_zone)
 #if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_RRSET_DEBUG)
 	printf("  ------- RRSET -------\n");
 	printf("  %p\n", rrset);
-	char *name = dnslib_dname_to_str(rrset->owner);
-	printf("  owner: %s\n", name);
-	free(name);
+        char *name = dnslib_dname_to_str(rrset->owner);
+        printf("  owner: %s\n", name);
+        free(name);
 	printf("  type: %s\n", dnslib_rrtype_to_string(rrset->type));
 	printf("  class: %d\n", rrset->rclass);
 	printf("  ttl: %d\n", rrset->ttl);
 
-	dnslib_rrsig_dump(rrset->rrsigs, loaded_zone);
+        printf("  RRSIGs:\n");
+        if (rrset->rrsigs != NULL) {
+                dnslib_rrset_dump(rrset->rrsigs, loaded_zone);
+        } else {
+                printf("  none\n");
+        }
 
 	if (rrset->rdata == NULL) {
 		printf("  NO RDATA!\n");
@@ -129,6 +102,11 @@ void dnslib_node_dump(dnslib_node_t *node, void *data)
 	printf("labels: ");
 	hex_print((char *)node->owner->labels, node->owner->label_count);
 	printf("node/id: %p\n", node->owner->node);
+        if (loaded_zone && node->prev != NULL) {
+		char *prev_name = dnslib_dname_to_str(node->prev->owner);
+		printf("previous node: %s\n", prev_name);
+		free(prev_name);
+	}
 
 	if (dnslib_node_is_deleg_point(node)) {
 		printf("delegation point\n");
@@ -166,6 +144,8 @@ void dnslib_node_dump(dnslib_node_t *node, void *data)
 	} else {
 		printf("none\n");
 	}
+
+	printf("RRSet count: %d\n", node->rrset_count);
 
 	dnslib_rrset_t *tmp = (dnslib_rrset_t *)skip_node->value;
 

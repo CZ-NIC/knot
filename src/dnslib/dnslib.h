@@ -19,7 +19,6 @@
 #include "rdata.h"
 #include "response.h"
 #include "rrset.h"
-#include "rrsig.h"
 #include "zone.h"
 #include "zonedb.h"
 

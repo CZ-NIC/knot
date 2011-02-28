@@ -13,6 +13,7 @@
 #define _CUTEDNS_DNSLIB_PACKET_H_
 
 #include <stdint.h>
+#include <assert.h>
 
 #include "utils.h"
 
@@ -111,29 +112,29 @@ static inline void dnslib_packet_set_arcount(uint8_t *packet, uint16_t arcount)
  */
 
 enum dnslib_packet_flags1_consts {
-	RD_MASK = (uint8_t)0x01U,
-	RD_SHIFT = 0,
-	TC_MASK = (uint8_t)0x02U,
-	TC_SHIFT = 1,
-	AA_MASK = (uint8_t)0x04U,
-	AA_SHIFT = 2,
-	OPCODE_MASK = (uint8_t)0x78U,
-	OPCODE_SHIFT = 3,
-	QR_MASK = (uint8_t)0x80U,
-	QR_SHIFT = 7
+	DNSLIB_PACKET_RD_MASK = (uint8_t)0x01U,
+	DNSLIB_PACKET_RD_SHIFT = 0,
+	DNSLIB_PACKET_TC_MASK = (uint8_t)0x02U,
+	DNSLIB_PACKET_TC_SHIFT = 1,
+	DNSLIB_PACKET_AA_MASK = (uint8_t)0x04U,
+	DNSLIB_PACKET_AA_SHIFT = 2,
+	DNSLIB_PACKET_OPCODE_MASK = (uint8_t)0x78U,
+	DNSLIB_PACKET_OPCODE_SHIFT = 3,
+	DNSLIB_PACKET_QR_MASK = (uint8_t)0x80U,
+	DNSLIB_PACKET_QR_SHIFT = 7
 };
 
 enum dnslib_packet_flags2_consts {
-	RCODE_MASK = (uint8_t)0x0fU,
-	RCODE_SHIFT = 0,
-	CD_MASK = (uint8_t)0x10U,
-	CD_SHIFT = 4,
-	AD_MASK = (uint8_t)0x20U,
-	AD_SHIFT = 5,
-	Z_MASK = (uint8_t)0x40U,
-	Z_SHIFT = 6,
-	RA_MASK = (uint8_t)0x80U,
-	RA_SHIFT = 7
+	DNSLIB_PACKET_RCODE_MASK = (uint8_t)0x0fU,
+	DNSLIB_PACKET_RCODE_SHIFT = 0,
+	DNSLIB_PACKET_CD_MASK = (uint8_t)0x10U,
+	DNSLIB_PACKET_CD_SHIFT = 4,
+	DNSLIB_PACKET_AD_MASK = (uint8_t)0x20U,
+	DNSLIB_PACKET_AD_SHIFT = 5,
+	DNSLIB_PACKET_Z_MASK = (uint8_t)0x40U,
+	DNSLIB_PACKET_Z_SHIFT = 6,
+	DNSLIB_PACKET_RA_MASK = (uint8_t)0x80U,
+	DNSLIB_PACKET_RA_SHIFT = 7
 };
 
 /*
@@ -142,145 +143,147 @@ enum dnslib_packet_flags2_consts {
 
 static inline uint8_t dnslib_packet_get_rd(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_PACKET_OFFSET_FLAGS1) & RD_MASK;
+	return *(packet + DNSLIB_PACKET_OFFSET_FLAGS1) & DNSLIB_PACKET_RD_MASK;
 }
 
 static inline void dnslib_packet_set_rd(uint8_t *packet)
 {
-	*(packet + DNSLIB_PACKET_OFFSET_FLAGS1) |= RD_MASK;
+	*(packet + DNSLIB_PACKET_OFFSET_FLAGS1) |= DNSLIB_PACKET_RD_MASK;
 }
 
 static inline void dnslib_packet_flags_clear_rd(uint8_t *packet)
 {
-	*(packet + DNSLIB_PACKET_OFFSET_FLAGS1) &= ~RD_MASK;
+	*(packet + DNSLIB_PACKET_OFFSET_FLAGS1) &= ~DNSLIB_PACKET_RD_MASK;
 }
 
 static inline uint8_t dnslib_packet_get_tc(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_PACKET_OFFSET_FLAGS1) & TC_MASK;
+	return *(packet + DNSLIB_PACKET_OFFSET_FLAGS1) & DNSLIB_PACKET_TC_MASK;
 }
 
 static inline void dnslib_packet_set_tc(uint8_t *packet)
 {
-	*(packet + DNSLIB_PACKET_OFFSET_FLAGS1) |= TC_MASK;
+	*(packet + DNSLIB_PACKET_OFFSET_FLAGS1) |= DNSLIB_PACKET_TC_MASK;
 }
 
 static inline void dnslib_packet_clear_tc(uint8_t *packet)
 {
-	*(packet + DNSLIB_PACKET_OFFSET_FLAGS1) &= ~TC_MASK;
+	*(packet + DNSLIB_PACKET_OFFSET_FLAGS1) &= ~DNSLIB_PACKET_TC_MASK;
 }
 
 static inline uint8_t dnslib_packet_get_aa(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_PACKET_OFFSET_FLAGS1) & AA_MASK;
+	return *(packet + DNSLIB_PACKET_OFFSET_FLAGS1) & DNSLIB_PACKET_AA_MASK;
 }
 
 static inline void dnslib_packet_set_aa(uint8_t *packet)
 {
-	*(packet + DNSLIB_PACKET_OFFSET_FLAGS1) |= AA_MASK;
+	*(packet + DNSLIB_PACKET_OFFSET_FLAGS1) |= DNSLIB_PACKET_AA_MASK;
 }
 
 static inline void dnslib_packet_clear_aa(uint8_t *packet)
 {
-	*(packet + DNSLIB_PACKET_OFFSET_FLAGS1) &= ~AA_MASK;
+	*(packet + DNSLIB_PACKET_OFFSET_FLAGS1) &= ~DNSLIB_PACKET_AA_MASK;
 }
 
 static inline uint8_t dnslib_packet_get_opcode(const uint8_t *packet)
 {
-	return (*(packet + DNSLIB_PACKET_OFFSET_FLAGS1) & OPCODE_MASK)
-	        >> OPCODE_SHIFT;
+	return (*(packet + DNSLIB_PACKET_OFFSET_FLAGS1)
+	        & DNSLIB_PACKET_OPCODE_MASK) >> DNSLIB_PACKET_OPCODE_SHIFT;
 }
 
 static inline void dnslib_packet_set_opcode(uint8_t *packet, short opcode)
 {
 	uint8_t *flags1 = packet + DNSLIB_PACKET_OFFSET_FLAGS1;
-	*flags1 = (*flags1 & ~OPCODE_MASK) | ((opcode) << OPCODE_SHIFT);
+	*flags1 = (*flags1 & ~DNSLIB_PACKET_OPCODE_MASK)
+	          | ((opcode) << DNSLIB_PACKET_OPCODE_SHIFT);
 }
 
 static inline uint8_t dnslib_packet_get_qr(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_PACKET_OFFSET_FLAGS1) & QR_MASK;
+	return *(packet + DNSLIB_PACKET_OFFSET_FLAGS1) & DNSLIB_PACKET_QR_MASK;
 }
 
 static inline void dnslib_packet_set_qr(uint8_t *packet)
 {
-	*(packet + DNSLIB_PACKET_OFFSET_FLAGS1) |= QR_MASK;
+	*(packet + DNSLIB_PACKET_OFFSET_FLAGS1) |= DNSLIB_PACKET_QR_MASK;
 }
 
 static inline void dnslib_packet_clear_qr(uint8_t *packet)
 {
-	*(packet + DNSLIB_PACKET_OFFSET_FLAGS1) &= ~QR_MASK;
+	*(packet + DNSLIB_PACKET_OFFSET_FLAGS1) &= ~DNSLIB_PACKET_QR_MASK;
 }
 
 static inline uint8_t dnslib_packet_get_rcode(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_PACKET_OFFSET_FLAGS2) & RCODE_MASK;
+	return *(packet + DNSLIB_PACKET_OFFSET_FLAGS2)
+	       & DNSLIB_PACKET_RCODE_MASK;
 }
 
 static inline void dnslib_packet_set_rcode(uint8_t *packet, short rcode)
 {
 	uint8_t *flags2 = packet + DNSLIB_PACKET_OFFSET_FLAGS2;
-	*flags2 = (*flags2 & ~RCODE_MASK) | (rcode);
+	*flags2 = (*flags2 & ~DNSLIB_PACKET_RCODE_MASK) | (rcode);
 }
 
 static inline uint8_t dnslib_packet_get_cd(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_PACKET_OFFSET_FLAGS2) & CD_MASK;
+	return *(packet + DNSLIB_PACKET_OFFSET_FLAGS2) & DNSLIB_PACKET_CD_MASK;
 }
 
 static inline void dnslib_packet_set_cd(uint8_t *packet)
 {
-	*(packet + DNSLIB_PACKET_OFFSET_FLAGS2) |= CD_MASK;
+	*(packet + DNSLIB_PACKET_OFFSET_FLAGS2) |= DNSLIB_PACKET_CD_MASK;
 }
 
 static inline void dnslib_packet_clear_cd(uint8_t *packet)
 {
-	*(packet + DNSLIB_PACKET_OFFSET_FLAGS2) &= ~CD_MASK;
+	*(packet + DNSLIB_PACKET_OFFSET_FLAGS2) &= ~DNSLIB_PACKET_CD_MASK;
 }
 
 static inline uint8_t dnslib_packet_get_ad(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_PACKET_OFFSET_FLAGS2) & AD_MASK;
+	return *(packet + DNSLIB_PACKET_OFFSET_FLAGS2) & DNSLIB_PACKET_AD_MASK;
 }
 
 static inline void dnslib_packet_set_ad(uint8_t *packet)
 {
-	*(packet + DNSLIB_PACKET_OFFSET_FLAGS2) |= AD_MASK;
+	*(packet + DNSLIB_PACKET_OFFSET_FLAGS2) |= DNSLIB_PACKET_AD_MASK;
 }
 
 static inline void dnslib_packet_clear_ad(uint8_t *packet)
 {
-	*(packet + DNSLIB_PACKET_OFFSET_FLAGS2) &= ~AD_MASK;
+	*(packet + DNSLIB_PACKET_OFFSET_FLAGS2) &= ~DNSLIB_PACKET_AD_MASK;
 }
 
 static inline uint8_t dnslib_packet_get_z(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_PACKET_OFFSET_FLAGS2) & Z_MASK;
+	return *(packet + DNSLIB_PACKET_OFFSET_FLAGS2) & DNSLIB_PACKET_Z_MASK;
 }
 
 static inline void dnslib_packet_set_z(uint8_t *packet)
 {
-	*(packet + DNSLIB_PACKET_OFFSET_FLAGS2) |= Z_MASK;
+	*(packet + DNSLIB_PACKET_OFFSET_FLAGS2) |= DNSLIB_PACKET_Z_MASK;
 }
 
 static inline void dnslib_packet_clear_z(uint8_t *packet)
 {
-	*(packet + DNSLIB_PACKET_OFFSET_FLAGS2) &= ~Z_MASK;
+	*(packet + DNSLIB_PACKET_OFFSET_FLAGS2) &= ~DNSLIB_PACKET_Z_MASK;
 }
 
 static inline uint8_t dnslib_packet_get_ra(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_PACKET_OFFSET_FLAGS2) & RA_MASK;
+	return *(packet + DNSLIB_PACKET_OFFSET_FLAGS2) & DNSLIB_PACKET_RA_MASK;
 }
 
 static inline void dnslib_packet_set_ra(uint8_t *packet)
 {
-	*(packet + DNSLIB_PACKET_OFFSET_FLAGS2) |= RA_MASK;
+	*(packet + DNSLIB_PACKET_OFFSET_FLAGS2) |= DNSLIB_PACKET_RA_MASK;
 }
 
 static inline void dnslib_packet_clear_ra(uint8_t *packet)
 {
-	*(packet + DNSLIB_PACKET_OFFSET_FLAGS2) &= ~RA_MASK;
+	*(packet + DNSLIB_PACKET_OFFSET_FLAGS2) &= ~DNSLIB_PACKET_RA_MASK;
 }
 
 /*
@@ -289,142 +292,160 @@ static inline void dnslib_packet_clear_ra(uint8_t *packet)
 
 static inline uint8_t dnslib_packet_flags_get_rd(uint8_t flags1)
 {
-	return flags1 & RD_MASK;
+	return flags1 & DNSLIB_PACKET_RD_MASK;
 }
 
 static inline void dnslib_packet_flags_set_rd(uint8_t *flags1)
 {
-	*flags1 |= RD_MASK;
+	*flags1 |= DNSLIB_PACKET_RD_MASK;
 }
 
 static inline void dnslib_packet_flags_flags_clear_rd(uint8_t *flags1)
 {
-	*flags1 &= ~RD_MASK;
+	*flags1 &= ~DNSLIB_PACKET_RD_MASK;
 }
 
 static inline uint8_t dnslib_packet_flags_get_tc(uint8_t flags1)
 {
-	return flags1 & TC_MASK;
+	return flags1 & DNSLIB_PACKET_TC_MASK;
 }
 
 static inline void dnslib_packet_flags_set_tc(uint8_t *flags1)
 {
-	*flags1 |= TC_MASK;
+	*flags1 |= DNSLIB_PACKET_TC_MASK;
 }
 
 static inline void dnslib_packet_flags_clear_tc(uint8_t *flags1)
 {
-	*flags1 &= ~TC_MASK;
+	*flags1 &= ~DNSLIB_PACKET_TC_MASK;
 }
 
 static inline uint8_t dnslib_packet_flags_get_aa(uint8_t flags1)
 {
-	return flags1 & AA_MASK;
+	return flags1 & DNSLIB_PACKET_AA_MASK;
 }
 
 static inline void dnslib_packet_flags_set_aa(uint8_t *flags1)
 {
-	*flags1 |= AA_MASK;
+	*flags1 |= DNSLIB_PACKET_AA_MASK;
 }
 
 static inline void dnslib_packet_flags_clear_aa(uint8_t *flags1)
 {
-	*flags1 &= ~AA_MASK;
+	*flags1 &= ~DNSLIB_PACKET_AA_MASK;
 }
 
 static inline uint8_t dnslib_packet_flags_get_opcode(uint8_t flags1)
 {
-	return (flags1 & OPCODE_MASK) >> OPCODE_SHIFT;
+	return (flags1 & DNSLIB_PACKET_OPCODE_MASK)
+	        >> DNSLIB_PACKET_OPCODE_SHIFT;
 }
 
 static inline void dnslib_packet_flags_set_opcode(uint8_t *flags1, short opcode)
 {
-	*flags1 = (*flags1 & ~OPCODE_MASK) | ((opcode) << OPCODE_SHIFT);
+	*flags1 = (*flags1 & ~DNSLIB_PACKET_OPCODE_MASK)
+	          | ((opcode) << DNSLIB_PACKET_OPCODE_SHIFT);
 }
 
 static inline uint8_t dnslib_packet_flags_get_qr(uint8_t flags1)
 {
-	return flags1 & QR_MASK;
+	return flags1 & DNSLIB_PACKET_QR_MASK;
 }
 
 static inline void dnslib_packet_flags_set_qr(uint8_t *flags1)
 {
-	*flags1 |= QR_MASK;
+	*flags1 |= DNSLIB_PACKET_QR_MASK;
 }
 
 static inline void dnslib_packet_flags_clear_qr(uint8_t *flags1)
 {
-	*flags1 &= ~QR_MASK;
+	*flags1 &= ~DNSLIB_PACKET_QR_MASK;
 }
 
 static inline uint8_t dnslib_packet_flags_get_rcode(uint8_t flags2)
 {
-	return flags2 & RCODE_MASK;
+	return flags2 & DNSLIB_PACKET_RCODE_MASK;
 }
 
 static inline void dnslib_packet_flags_set_rcode(uint8_t *flags2, short rcode)
 {
-	*flags2 = (*flags2 & ~RCODE_MASK) | (rcode);
+	*flags2 = (*flags2 & ~DNSLIB_PACKET_RCODE_MASK) | (rcode);
 }
 
 static inline uint8_t dnslib_packet_flags_get_cd(uint8_t flags2)
 {
-	return flags2 & CD_MASK;
+	return flags2 & DNSLIB_PACKET_CD_MASK;
 }
 
 static inline void dnslib_packet_flags_set_cd(uint8_t *flags2)
 {
-	*flags2 |= CD_MASK;
+	*flags2 |= DNSLIB_PACKET_CD_MASK;
 }
 
 static inline void dnslib_packet_flags_clear_cd(uint8_t *flags2)
 {
-	*flags2 &= ~CD_MASK;
+	*flags2 &= ~DNSLIB_PACKET_CD_MASK;
 }
 
 static inline uint8_t dnslib_packet_flags_get_ad(uint8_t flags2)
 {
-	return flags2 & AD_MASK;
+	return flags2 & DNSLIB_PACKET_AD_MASK;
 }
 
 static inline void dnslib_packet_flags_set_ad(uint8_t *flags2)
 {
-	*flags2 |= AD_MASK;
+	*flags2 |= DNSLIB_PACKET_AD_MASK;
 }
 
 static inline void dnslib_packet_flags_clear_ad(uint8_t *flags2)
 {
-	*flags2 &= ~AD_MASK;
+	*flags2 &= ~DNSLIB_PACKET_AD_MASK;
 }
 
 static inline uint8_t dnslib_packet_flags_get_z(uint8_t flags2)
 {
-	return flags2 & Z_MASK;
+	return flags2 & DNSLIB_PACKET_Z_MASK;
 }
 
 static inline void dnslib_packet_flags_set_z(uint8_t *flags2)
 {
-	*flags2 |= Z_MASK;
+	*flags2 |= DNSLIB_PACKET_Z_MASK;
 }
 
 static inline void dnslib_packet_flags_clear_z(uint8_t *flags2)
 {
-	*flags2 &= ~Z_MASK;
+	*flags2 &= ~DNSLIB_PACKET_Z_MASK;
 }
 
 static inline uint8_t dnslib_packet_flags_get_ra(uint8_t flags2)
 {
-	return flags2 & RA_MASK;
+	return flags2 & DNSLIB_PACKET_RA_MASK;
 }
 
 static inline void dnslib_packet_flags_set_ra(uint8_t *flags2)
 {
-	*flags2 |= RA_MASK;
+	*flags2 |= DNSLIB_PACKET_RA_MASK;
 }
 
 static inline void dnslib_packet_flags_clear_ra(uint8_t *flags2)
 {
-	*flags2 &= ~RA_MASK;
+	*flags2 &= ~DNSLIB_PACKET_RA_MASK;
+}
+
+/*
+ * Pointer manipulation
+ */
+
+enum dnslib_packet_pointer_consts {
+	DNSLIB_PACKET_PTR = (uint8_t)0xc0U
+};
+
+static inline void dnslib_packet_put_pointer(uint8_t *pos, short ptr)
+{
+	uint16_t p = ptr;
+	dnslib_wire_write_u16(pos, p);
+	assert((pos[0] & DNSLIB_PACKET_PTR) == 0);
+	pos[0] |= DNSLIB_PACKET_PTR;
 }
 
 #endif /* _CUTEDNS_DNSLIB_PACKET_H_ */

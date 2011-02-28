@@ -134,6 +134,16 @@ const uint8_t *dnslib_dname_name(const dnslib_dname_t *dname);
 uint dnslib_dname_size(const dnslib_dname_t *dname);
 
 /*!
+ * \brief Returns size of a part of domain name.
+ *
+ * \param dname Domain name.
+ * \param labels Count of labels to get the size of (counted from left).
+ *
+ * \return Size of first \a labels labels of \a dname, counted from left.
+ */
+const uint8_t dnslib_dname_size_part(const dnslib_dname_t *dname, int labels);
+
+/*!
  * \brief Returns the zone node the domain name belongs to.
  *
  * \param dname Domain name to get the zone node of.
@@ -208,6 +218,16 @@ int dnslib_dname_matched_labels(const dnslib_dname_t *dname1,
  * \todo Find out if this counts the root label also.
  */
 int dnslib_dname_label_count(const dnslib_dname_t *dname);
+
+/*!
+ * \brief Returns the size of the requested label in the domain name.
+ *
+ * \param dname Domain name to get the label size from.
+ * \param i Index of the label (0 is the leftmost label).
+ *
+ * \return Size of \a i-th label in \a dname (counted from left).
+ */
+uint8_t dnslib_dname_label_size(const dnslib_dname_t *dname, int i);
 
 /*!
  * \brief Replaces the suffix of given size in one domain name with other domain

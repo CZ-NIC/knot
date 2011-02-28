@@ -114,11 +114,11 @@ static dnslib_dname_t DNAMES[DNAMES_COUNT] =
 	{ {(uint8_t *)"\7example\3com", 13, NULL}, //0's at the end are added
 	  {(uint8_t *)"\2ns\7example\3com", 16, NULL} };
 
-static uint8_t address[4] = {192, 168, 1, 1};
+//static uint8_t address[4] = {192, 168, 1, 1};
 
 static dnslib_rdata_item_t ITEMS[ITEMS_COUNT] =
 	{ {.dname = &DNAMES[1]},
-	  {.raw_data = address } };
+	  {.raw_data = (uint16_t *)address } };
 
 static dnslib_rdata_t RDATA[RDATA_COUNT] = { {&ITEMS[0], 1, &RDATA[0]} };
 
@@ -537,7 +537,7 @@ static int compare_rrsets(const dnslib_rrset_t *rrset1,
 
 static int test_response_new_empty()
 {
-	dnslib_response_t *resp = dnslib_response_new_empty(NULL, 0);
+	dnslib_response_t *resp = dnslib_response_new_empty(NULL);
 
 	if (resp != NULL) {
 		dnslib_response_free(&resp);
@@ -555,7 +555,7 @@ static int test_response_add_rrset(int (*add_func)
 {
 	int errors = 0;
 
-	dnslib_response_t *resp = dnslib_response_new_empty(NULL, 0);
+	dnslib_response_t *resp = dnslib_response_new_empty(NULL);
 	assert(resp);
 
 	const dnslib_rrset_t **array;
@@ -744,7 +744,7 @@ static int test_response_parse_query(test_response_t **responses,
 	int errors = 0;
 	dnslib_response_t *resp = NULL;
 	for (int i = 0; (i < count) && !errors; i++) {
-		resp = dnslib_response_new_empty(NULL, 0);
+		resp = dnslib_response_new_empty(NULL);
 		assert(resp);
 		if (dnslib_response_parse_query(resp,
 						raw_queries[i]->data,
@@ -796,7 +796,7 @@ static int test_response_to_wire(test_response_t **responses,
 
 		assert(responses[i]);
 
-		resp = dnslib_response_new_empty(NULL, 0);
+		resp = dnslib_response_new_empty(NULL);
 
 		resp->header.id = responses[i]->id;
 		//flags1?
@@ -843,7 +843,7 @@ static int test_response_to_wire(test_response_t **responses,
 			return 0;
 		}
 
-/*		tmp_resp = dnslib_response_new_empty(NULL, 0);
+/*		tmp_resp = dnslib_response_new_empty(NULL);
 
 		assert(tmp_resp);
 
@@ -888,7 +888,7 @@ static int test_response_to_wire(test_response_t **responses,
 
 static int test_response_free()
 {
-	dnslib_response_t *resp = dnslib_response_new_empty(NULL, 0);
+	dnslib_response_t *resp = dnslib_response_new_empty(NULL);
 	assert(resp);
 
 	dnslib_response_free(&resp);
@@ -946,7 +946,7 @@ static int test_response_getters(uint type)
 
 	for (int i = 0; (i < RESPONSE_COUNT); i++) {
 
-		responses[i] = dnslib_response_new_empty(NULL, 0);
+		responses[i] = dnslib_response_new_empty(NULL);
 
 		responses[i]->header.id = RESPONSES[i].id;
 		//flags1?
@@ -1050,7 +1050,7 @@ static int test_response_setters(uint type)
 
 	for (int i = 0; (i < RESPONSE_COUNT); i++) {
 
-		responses[i] = dnslib_response_new_empty(NULL, 0);
+		responses[i] = dnslib_response_new_empty(NULL);
 
 		responses[i]->header.id = RESPONSES[i].id;
 		//flags1?

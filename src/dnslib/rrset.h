@@ -17,7 +17,6 @@
 #include "dname.h"
 #include "rdata.h"
 #include "common.h"
-#include "rrsig.h"
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -43,7 +42,7 @@ struct dnslib_rrset {
 	 *       possible round-robin rotation of RRSets.
 	 */
 	dnslib_rdata_t *rdata;
-	dnslib_rrsig_set_t *rrsigs; /*!< Set of RRSIGs covering this RRSet. */
+	struct dnslib_rrset *rrsigs; /*!< Set of RRSIGs covering this RRSet. */
 };
 
 typedef struct dnslib_rrset dnslib_rrset_t;
@@ -87,7 +86,7 @@ int dnslib_rrset_add_rdata(dnslib_rrset_t *rrset, dnslib_rdata_t *rdata);
  * \retval 0 if successful.
  * \retval <> 0 if an error occured.
  */
-int dnslib_rrset_set_rrsigs(dnslib_rrset_t *rrset, dnslib_rrsig_set_t *rrsigs);
+int dnslib_rrset_set_rrsigs(dnslib_rrset_t *rrset, dnslib_rrset_t *rrsigs);
 
 /*!
  * \brief Returns the Owner of the RRSet.
@@ -165,7 +164,7 @@ dnslib_rdata_t *dnslib_rrset_get_rdata(dnslib_rrset_t *rrset);
  *
  * \return Set of RRSIGs which cover the given RRSet.
  */
-const dnslib_rrsig_set_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset);
+const dnslib_rrset_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset);
 
 /*!
  * \brief Destroys the RRSet structure.
