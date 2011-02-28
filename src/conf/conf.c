@@ -35,6 +35,8 @@ static int rmkdir(char *path, int mode)
 }
 
 /* Prototypes for cf-parse.y */
+extern char* cf_text;
+extern int cf_lineno;
 extern int cf_parse();
 conf_t *new_config;
 
@@ -83,9 +85,11 @@ int cf_read_mem(char *buf, size_t nbytes) {
 }
 
 /* Config error report. */
-void cf_error(const char *msg, ...)
+void cf_error(const char *msg)
 {
-	log_server_error("config: %s.\n", msg);
+	log_server_error("config: '%s' - %s on line %d (current token '%s').\n",
+	                 new_config->filename, msg, cf_lineno, cf_text);
+
 	_parser_res = -1;
 }
 
@@ -325,7 +329,10 @@ int conf_parse_str(conf_t *conf, const char* src)
 	// Parse config
 	_parser_res = 0;
 	cf_read_hook = cf_read_mem;
+	char *oldfn = new_config->filename;
+	new_config->filename = "(stdin)";
 	cf_parse();
+	new_config->filename = oldfn;
 	ret = _parser_res;
 	_parser_src = 0;
 	_parser_remaining = -1;
@@ -425,14 +432,19 @@ char* conf_find_default()
 	const char *name = "/.cutedns/cutedns.conf";
 	char *path = strcdup(dir, name);
 	struct stat st;
-	if (stat(path, &st) == 0) {
-		return path;
-	} else {
+	if (stat(path, &st) != 0) {
+		const char* fallback_path = "/etc/cutedns/cutedns.conf";
+		log_server_error("config: Trying '%s' as default configuration.\n",
+		                 path);
 		free(path);
+
+		/* Try /etc/cutedns/cutedns.conf as a fallback. */
+		path = strdup(fallback_path);
 	}
 
-	/* Try /etc/cutedns/cutedns.conf as a fallback. */
-	return strdup("/etc/cutedns/cutedns.conf");
+	log_server_error("config: Using '%s' as default configuration.\n",
+	                path);
+	return path;
 }
 
 int conf_open(const char* path)

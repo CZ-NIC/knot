@@ -14,14 +14,17 @@
 #include "conf.h"
 
 extern int cf_lex (void);
-extern void cf_error(const char *msg, ...);
+extern void cf_error(const char *msg);
 extern conf_t *new_config;
 static conf_iface_t *this_iface = 0;
 static conf_zone_t *this_zone = 0;
 static conf_log_t *this_log = 0;
 static conf_log_map_t *this_logmap = 0;
+//#define YYERROR_VERBOSE 1
 
 %}
+
+%locations
 
 %union {
     char *t;
@@ -123,7 +126,7 @@ zone_start: TEXT {
                                                   nlen + 1,
                                                   0);
    if (dn == 0) {
-     cf_error("invalid zone origin '%s'", this_zone->name);
+     cf_error("invalid zone origin");
    } else {
      dnslib_dname_free(&dn);
    }
@@ -229,3 +232,4 @@ log: LOG '{' log_start log_end;
 conf: ';' | system '}' | interfaces '}' | zones '}' | log '}';
 
 %%
+
