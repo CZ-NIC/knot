@@ -9,6 +9,7 @@
 #include "zone.h"
 #include "dname.h"
 #include "node.h"
+#include "conf.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -144,15 +145,3 @@ void dnslib_zonedb_deep_free(dnslib_zonedb_t **db)
 
 /*----------------------------------------------------------------------------*/
 
-char* dnslib_zonedb_dbpath()
-{
-	// Construct filename
-	const char* fn = "/cutedns.zdb";
-	char* home = getenv("HOME");
-	int len = strlen(home) + strlen(fn) + 1;
-	char* ret = malloc(len);
-	memset(ret, 0, len);
-	strcpy(ret, home);
-	strcat(ret, fn);
-	return ret;
-}

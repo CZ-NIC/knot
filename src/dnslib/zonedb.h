@@ -90,16 +90,6 @@ const dnslib_zone_t *dnslib_zonedb_find_zone_for_name(dnslib_zonedb_t *db,
  */
 void dnslib_zonedb_deep_free(dnslib_zonedb_t **db);
 
-/*!
- * \brief Return a filename of the default compiled database file.
- *
- * \retval Filename of the database file.
- * \retval NULL if not exists.
- *
- * \todo Implement properly using configuration file.
- */
-char* dnslib_zonedb_dbpath();
-
 /*----------------------------------------------------------------------------*/
 
 #endif /* _CUTEDNS_DNSLIB_ZONEDB_H_ */

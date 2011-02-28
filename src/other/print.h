@@ -20,6 +20,7 @@ typedef int (*printf_t)(const char *fmt, ...);
 /* Hex-value printing.
  */
 
+void hex_log(int source, const char *data, int length);
 void hex_print(const char *data, int length);
 void hex_printf(const char *data, int length, printf_t print_handler);
 
