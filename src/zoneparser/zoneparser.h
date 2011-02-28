@@ -12,8 +12,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_ZONEPARSER_H_
-#define _CUTEDNS_ZONEPARSER_H_
+#ifndef _KNOT_ZONEPARSER_H_
+#define _KNOT_ZONEPARSER_H_
 
 #include <stdio.h>
 
@@ -155,6 +155,6 @@ void zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 
 void zparser_free();
 
-#endif /* _CUTEDNS_ZONEPARSER_H_ */
+#endif /* _KNOT_ZONEPARSER_H_ */
 
 /*! @} */

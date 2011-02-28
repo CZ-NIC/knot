@@ -10,8 +10,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_TAP_UNIT_H_
-#define _CUTEDNS_TAP_UNIT_H_
+#ifndef _KNOT_TAP_UNIT_H_
+#define _KNOT_TAP_UNIT_H_
 
 #include "tests/libtap/tap.h"
 
@@ -31,7 +31,7 @@ typedef struct {
 	unitapi_f  *run;   /*!< Function to run unit tests. */
 } unit_api;
 
-#endif // _CUTEDNS_TAP_UNIT_H_
+#endif // _KNOT_TAP_UNIT_H_
 
 /*! @} */
 

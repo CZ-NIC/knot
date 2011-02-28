@@ -11,8 +11,8 @@
  * \addtogroup dnslib
  * @{
  */
-#ifndef _CUTEDNS_DNSLIB_RESPONSE_H_
-#define _CUTEDNS_DNSLIB_RESPONSE_H_
+#ifndef _KNOT_DNSLIB_RESPONSE_H_
+#define _KNOT_DNSLIB_RESPONSE_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -336,6 +336,6 @@ void dnslib_response_free(dnslib_response_t **response);
 
 void dnslib_response_dump(const dnslib_response_t *resp);
 
-#endif /* _CUTEDNS_DNSLIB_RESPONSE_H_ */
+#endif /* _KNOT_DNSLIB_RESPONSE_H_ */
 
 /*! @} */

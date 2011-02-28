@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_DNSLIB_PACKET_H_
-#define _CUTEDNS_DNSLIB_PACKET_H_
+#ifndef _KNOT_DNSLIB_PACKET_H_
+#define _KNOT_DNSLIB_PACKET_H_
 
 #include <stdint.h>
 
@@ -427,6 +427,6 @@ static inline void dnslib_packet_flags_clear_ra(uint8_t *flags2)
 	*flags2 &= ~RA_MASK;
 }
 
-#endif /* _CUTEDNS_DNSLIB_PACKET_H_ */
+#endif /* _KNOT_DNSLIB_PACKET_H_ */
 
 /*! @} */

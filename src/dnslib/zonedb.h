@@ -12,8 +12,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_DNSLIB_ZONEDB_H_
-#define _CUTEDNS_DNSLIB_ZONEDB_H_
+#ifndef _KNOT_DNSLIB_ZONEDB_H_
+#define _KNOT_DNSLIB_ZONEDB_H_
 
 #include "lib/skip-list.h"
 #include "dnslib/zone.h"
@@ -102,6 +102,6 @@ char* dnslib_zonedb_dbpath();
 
 /*----------------------------------------------------------------------------*/
 
-#endif /* _CUTEDNS_DNSLIB_ZONEDB_H_ */
+#endif /* _KNOT_DNSLIB_ZONEDB_H_ */
 
 /*! @} */
