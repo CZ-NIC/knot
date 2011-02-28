@@ -656,6 +656,15 @@ DEBUG_DNSLIB_ZONE(
 
 /*----------------------------------------------------------------------------*/
 
+const dnslib_node_t *dnslib_zone_find_covering_nsec3(const dnslib_zone_t *zone,
+                                                    const dnslib_dname_t *name)
+{
+	// TODO
+	return NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
 const dnslib_node_t *dnslib_zone_apex(const dnslib_zone_t *zone)
 {
 	return zone->apex;
