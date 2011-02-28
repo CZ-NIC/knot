@@ -35,13 +35,13 @@ struct dnslib_node {
 	/*! \brief Type-ordered list of RRSets belonging to this node. */
 	skip_list_t *rrsets;
 
-	/*! \brief Next node in a general list of nodes. Temporary. */
-	//struct dnslib_node *next;
 	short rrset_count;
 
 	struct dnslib_node *wildcard_child;
 
 	struct dnslib_node *prev;
+
+	const struct dnslib_node *nsec3_node;
 
 	/*!
 	 * \brief Various flags.
