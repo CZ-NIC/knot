@@ -485,7 +485,26 @@ static inline void ns_referral(const dnslib_node_t *node,
 static dnslib_dname_t *ns_next_closer(const dnslib_dname_t *closest_encloser,
                                       const dnslib_dname_t *qname)
 {
-	return NULL;
+	int ce_labels = dnslib_dname_label_count(closest_encloser);
+	int qname_labels = dnslib_dname_label_count(qname);
+
+	assert(ce_labels > qname_labels);
+
+	// the common labels should match
+	assert(dnslib_dname_matched_labels(closest_encloser, qname)
+	       == ce_labels);
+
+	// chop some labels from the qname
+	dnslib_dname_t *next_closer = dnslib_dname_copy(qname);
+	if (next_closer == NULL) {
+		return NULL;
+	}
+
+	for (int i = 0; i < (qname_labels - ce_labels - 1); ++i) {
+		dnslib_dname_left_chop_no_copy(next_closer);
+	}
+
+	return next_closer;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -585,6 +604,9 @@ DEBUG_NS(
 		if ((rrset = dnslib_rrset_rrsigs(rrset)) != NULL) {
 			dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
 		}
+
+		// the cast is ugly, but no better way around it
+		dnslib_dname_free((dnslib_dname_t **)&next_closer);
 	}
 }
 
