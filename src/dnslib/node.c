@@ -146,6 +146,16 @@ void dnslib_node_set_previous(dnslib_node_t *node, dnslib_node_t *prev)
 	node->prev = prev;
 }
 
+const dnslib_node_t *dnslib_node_nsec3_node(const dnslib_node_t *node)
+{
+	return node->nsec3_node;
+}
+
+void dnslib_node_set_nsec3_node(dnslib_node_t *node, dnslib_node_t *nsec3_node)
+{
+	node->nsec3_node = nsec3_node;
+}
+
 const dnslib_dname_t *dnslib_node_owner(const dnslib_node_t *node)
 {
 	return node->owner;
