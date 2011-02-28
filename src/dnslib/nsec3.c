@@ -49,7 +49,7 @@ int dnslib_nsec3_params_from_wire(dnslib_nsec3_params_t *params,
 }
 
 /*----------------------------------------------------------------------------*/
-
+#if DNSLIB_NSEC3_SHA_USE_EVP
 int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params,
                       const uint8_t *data, size_t size, uint8_t **digest,
                       size_t *digest_size)
@@ -123,10 +123,10 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params,
 }
 
 /*----------------------------------------------------------------------------*/
-
-int dnslib_nsec3_sha1_2(const dnslib_nsec3_params_t *params,
-                        const uint8_t *data, size_t size, uint8_t **digest,
-                        size_t *digest_size)
+#else
+int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params,
+                      const uint8_t *data, size_t size, uint8_t **digest,
+                      size_t *digest_size)
 {
 	assert(digest != NULL);
 	assert(digest_size != NULL);
@@ -196,3 +196,4 @@ int dnslib_nsec3_sha1_2(const dnslib_nsec3_params_t *params,
 
 	return 0;
 }
+#endif

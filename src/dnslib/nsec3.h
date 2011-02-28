@@ -17,6 +17,8 @@
 
 #include "rrset.h"
 
+#define DNSLIB_NSEC3_SHA_USE_EVP 0
+
 /*----------------------------------------------------------------------------*/
 
 struct dnslib_nsec3_params {
@@ -36,10 +38,6 @@ int dnslib_nsec3_params_from_wire(dnslib_nsec3_params_t *params,
 
 int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params, const uint8_t *data,
                       size_t size, uint8_t **digest, size_t *digest_size);
-
-int dnslib_nsec3_sha1_2(const dnslib_nsec3_params_t *params,
-                        const uint8_t *data, size_t size, uint8_t **digest,
-                        size_t *digest_size);
 
 /*----------------------------------------------------------------------------*/
 
