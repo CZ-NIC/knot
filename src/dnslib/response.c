@@ -1232,6 +1232,14 @@ void dnslib_response_set_aa(dnslib_response_t *response)
 
 /*----------------------------------------------------------------------------*/
 
+void dnslib_response_set_tc(dnslib_response_t *response)
+{
+	dnslib_packet_flags_set_tc(&response->header.flags1);
+	dnslib_packet_set_tc(response->wireformat);
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_response_add_tmp_rrset(dnslib_response_t *response,
                                   dnslib_rrset_t *tmp_rrset)
 {
