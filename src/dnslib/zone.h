@@ -164,6 +164,9 @@ const dnslib_node_t *dnslib_zone_find_nsec3_node(const dnslib_zone_t *zone,
 const dnslib_node_t *dnslib_zone_find_nsec3_for_name(const dnslib_zone_t *zone,
                                                     const dnslib_dname_t *name);
 
+const dnslib_node_t *dnslib_zone_find_covering_nsec3(const dnslib_zone_t *zone,
+                                                    const dnslib_dname_t *name);
+
 /*!
  * \brief Returns the apex node of the zone.
  *

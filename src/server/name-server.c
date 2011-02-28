@@ -482,6 +482,114 @@ static inline void ns_referral(const dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
+static dnslib_dname_t *ns_next_closer(const dnslib_dname_t *closest_encloser,
+                                      const dnslib_dname_t *qname)
+{
+	return NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void ns_put_nsec3_closest_encloser_proof(const dnslib_zone_t *zone,
+                                          const dnslib_node_t *closest_encloser,
+                                          const dnslib_dname_t *qname,
+                                          dnslib_response_t *resp)
+{
+	assert(zone != NULL);
+	assert(closest_encloser != NULL);
+	assert(qname != NULL);
+	assert(resp != NULL);
+
+	if (!DNSSEC_ENABLED || dnslib_response_dnssec_requested(resp)) {
+		return;
+	}
+
+	const dnslib_nsec3_params_t *nsec3params;
+	if ((nsec3params = dnslib_zone_nsec3params(zone)) == NULL) {
+DEBUG_NS(
+		char *name = dnslib_dname_to_str(zone->apex->owner);
+		debug_ns("No NSEC3PARAM found in zone %s.\n", name);
+		free(name);
+);
+		return;
+	}
+
+DEBUG_NS(
+	char *name = dnslib_dname_to_str(closest_encloser->owner);
+	debug_ns("Closest encloser: %s\n", name);
+	free(name);
+);
+
+	/*
+	 * 1) NSEC3 that matches closest provable encloser.
+	 */
+	const dnslib_node_t *nsec3_node = NULL;
+	const dnslib_dname_t *next_closer = NULL;
+	while ((nsec3_node = dnslib_node_nsec3_node(closest_encloser))
+	       == NULL) {
+		next_closer = dnslib_node_owner(closest_encloser);
+		closest_encloser = dnslib_node_parent(closest_encloser);
+		assert(closest_encloser != NULL);
+	}
+
+	assert(nsec3_node != NULL);
+
+DEBUG_NS(
+	char *name = dnslib_dname_to_str(closest_encloser->owner);
+	debug_ns("Closest provable encloser: %s\n", name);
+	free(name);
+);
+
+	const dnslib_rrset_t *rrset = dnslib_node_rrset(nsec3_node,
+	                                                DNSLIB_RRTYPE_NSEC3);
+	assert(rrset != NULL);
+
+	dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+	// add RRSIG for the RRSet
+	if ((rrset = dnslib_rrset_rrsigs(rrset)) != NULL) {
+		dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+	}
+
+	/*
+	 * 2) NSEC3 that covers the "next closer" name.
+	 */
+	if (next_closer == NULL) {
+		// create the "next closer" name by appending from qname
+		next_closer = ns_next_closer(closest_encloser->owner, qname);
+
+		if (next_closer == NULL) {
+			// set TC as something is definitely missing
+			dnslib_response_set_tc(resp);
+			return;
+		}
+DEBUG_NS(
+		char *name = dnslib_dname_to_str(next_closer);
+		debug_ns("Next closer name: %s\n", name);
+		free(name);
+);
+		nsec3_node = dnslib_zone_find_covering_nsec3(zone, next_closer);
+		assert(nsec3_node != NULL);
+
+DEBUG_NS(
+		char *name = dnslib_dname_to_str(nsec3_node->owner);
+		debug_ns("Covering NSEC3 node: %s\n", name);
+		free(name);
+);
+
+		const dnslib_rrset_t *rrset =
+			dnslib_node_rrset(nsec3_node, DNSLIB_RRTYPE_NSEC3);
+		assert(rrset != NULL);
+
+		dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+		// add RRSIG for the RRSet
+		if ((rrset = dnslib_rrset_rrsigs(rrset)) != NULL) {
+			dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+		}
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 static void ns_put_nsec_nodata(const dnslib_node_t *node,
                                dnslib_response_t *resp)
 {
