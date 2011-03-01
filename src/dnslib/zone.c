@@ -238,7 +238,7 @@ static dnslib_dname_t *dnslib_zone_nsec3_name(const dnslib_zone_t *zone,
 	if (nsec3_params == NULL) {
 DEBUG_DNSLIB_ZONE(
 		char *n = dnslib_dname_to_str(zone->apex->owner);
-		debug_dnslib_zone("No NSEC3PARAMS for zone %s.\n", n);
+		debug_dnslib_zone("No NSEC3PARAM for zone %s.\n", n);
 		free(n);
 );
 		return NULL;
@@ -264,7 +264,9 @@ DEBUG_DNSLIB_ZONE(
 		return NULL;
 	}
 
-	debug_dnslib_zone("Hash: %.*s\n", hash_size, hashed_name);
+	debug_dnslib_zone("Hash: ");
+	debug_dnslib_zone_hex((char *)hashed_name, hash_size);
+	debug_dnslib_zone("\n");
 
 	char *name_b32 = NULL;
 	size_t size = base32_encode_alloc((char *)hashed_name, hash_size,
@@ -283,13 +285,13 @@ DEBUG_DNSLIB_ZONE(
 	debug_dnslib_zone("Base32-encoded hash: %s\n", name_b32);
 
 	dnslib_dname_t *nsec3_name =
-		dnslib_dname_new_from_wire((uint8_t *)name_b32, size + 1, NULL);
+		dnslib_dname_new_from_str(name_b32, size, NULL);
 
 	free(name_b32);
 
 	if (nsec3_name == NULL) {
-		log_warning("Error while creating domain name for hashed name"
-		            "%.*s\n", (size_t)hash_size, hashed_name);
+		log_warning("Error while creating domain name for hashed name."
+		            "\n");
 		return NULL;
 	}
 
@@ -663,6 +665,10 @@ int dnslib_zone_find_nsec3_for_name(const dnslib_zone_t *zone,
 
 	dnslib_dname_t *nsec3_name = dnslib_zone_nsec3_name(zone, name);
 
+	if (nsec3_name == NULL) {
+		return DNSLIB_ZONE_NAME_ERROR;
+	}
+
 DEBUG_DNSLIB_ZONE(
 	char *n = dnslib_dname_to_str(nsec3_name);
 	debug_dnslib_zone("NSEC3 node name: %s.\n", n);
@@ -687,7 +693,7 @@ DEBUG_DNSLIB_ZONE(
 	}
 
 	if (prev) {
-		char *n = dnslib_dname_to_str(prev>owner);
+		char *n = dnslib_dname_to_str(prev->owner);
 		debug_dnslib_zone("Found previous NSEC3 node: %s.\n", n);
 		free(n);
 	} else {
@@ -725,6 +731,9 @@ const dnslib_node_t *dnslib_zone_apex(const dnslib_zone_t *zone)
 
 void dnslib_zone_adjust_dnames(dnslib_zone_t *zone)
 {
+	// load NSEC3PARAM (needed on adjusting function)
+	dnslib_zone_load_nsec3param(zone);
+
 	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl,
 	                   dnslib_zone_adjust_node_in_tree, zone);
 }
