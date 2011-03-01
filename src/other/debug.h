@@ -40,7 +40,7 @@
 //#define DNSLIB_RESPONSE_DEBUG
 //#define DNSLIB_EDNS_DEBUG
 //#define DNSLIB_RRSET_DEBUG
-#define DNSLIB_NSEC3_DEBUG
+//#define DNSLIB_NSEC3_DEBUG
 
 #ifdef SERVER_DEBUG
 #define debug_server(msg...) log_msg(LOG_DEBUG, msg)
@@ -70,9 +70,11 @@
 
 #ifdef DNSLIB_ZONE_DEBUG
 #define debug_dnslib_zone(msg...) log_msg(LOG_DEBUG, msg)
+#define debug_dnslib_zone_hex(data, len) hex_print((data), (len))
 #define DEBUG_DNSLIB_ZONE(cmds) do { cmds } while (0)
 #else
 #define debug_dnslib_zone(msg...)
+#define debug_dnslib_zone_hex(data, len)
 #define DEBUG_DNSLIB_ZONE(cmds)
 #endif
 

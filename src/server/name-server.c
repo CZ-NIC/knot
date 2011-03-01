@@ -595,6 +595,13 @@ DEBUG_NS(
 	char *name = dnslib_dname_to_str(closest_encloser->owner);
 	debug_ns("Closest provable encloser: %s\n", name);
 	free(name);
+	if (next_closer != NULL) {
+		name = dnslib_dname_to_str(next_closer);
+		debug_ns("Next closer name: %s\n", name);
+		free(name);
+	} else {
+		debug_ns("Next closer name: none\n");
+	}
 );
 
 	ns_put_nsec3_from_node(nsec3_node, resp);
@@ -608,6 +615,7 @@ DEBUG_NS(
 
 		if (next_closer == NULL) {
 			// set TC as something is definitely missing
+			// TODO: maybe SERVFAIL?
 			dnslib_response_set_tc(resp);
 			return;
 		}
@@ -656,10 +664,11 @@ static void ns_put_nsec3_no_wildcard_child(const dnslib_zone_t *zone,
 	dnslib_dname_t *wildcard = ns_wildcard_child_name(node->owner);
 	if (wildcard == NULL) {
 		// some internal problem, set TC
+		// TODO: SERVFAIL??
 		dnslib_response_set_tc(resp);
+	} else {
+		ns_put_covering_nsec3(zone, wildcard, resp);
 	}
-
-	ns_put_covering_nsec3(zone, wildcard, resp);
 }
 /*----------------------------------------------------------------------------*/
 
@@ -708,6 +717,7 @@ static void ns_put_nsec_nxdomain(const dnslib_zone_t *zone,
 			ns_wildcard_child_name(closest_encloser->owner);
 		if (wildcard == NULL) {
 			// some internal problem, set TC
+			// TODO: SERVFAIL??
 			dnslib_response_set_tc(resp);
 		}
 
@@ -772,7 +782,8 @@ static void ns_answer_from_node(const dnslib_node_t *node,
 
 	if (answers == 0) {  // if NODATA response, put SOA
 		if (dnslib_node_rrset_count(node) == 0) {
-			assert(dnslib_node_rrset_count(closest_encloser) > 0);
+			// node is an empty non-terminal => NSEC for NXDOMAIN
+			//assert(dnslib_node_rrset_count(closest_encloser) > 0);
 			ns_put_nsec_nxdomain(zone, dnslib_node_previous(node),
 			                     closest_encloser, resp);
 		} else {
