@@ -363,13 +363,12 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 	debug_zp("Written flags: %u\n", node->flags);
 
-
 	if (node->nsec3_node != NULL) {
-		fwrite(node->nsec3_node->owner->node, sizeof(void *), 1, f);
+		fwrite(&node->nsec3_node->owner->node, sizeof(void *), 1, f);
 		debug_zp("Written nsec3 node id: %p\n",
 			 node->nsec3_node->owner->node);
 	} else {
-		fwrite(node->nsec3_node, sizeof(void *), 1, f);
+		fwrite(&node->nsec3_node, sizeof(void *), 1, f);
 		debug_zp("Written nsec3 node id: %p\n",
 			 node->nsec3_node);
 	}
