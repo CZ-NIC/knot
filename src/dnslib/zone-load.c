@@ -548,7 +548,10 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 		tmp_node = dnslib_load_node(f);
 
 		if (tmp_node != NULL) {
-			dnslib_zone_add_node(zone, tmp_node);
+			if (dnslib_zone_add_node(zone, tmp_node) != 0) {
+				log_error("!! cannot add node\n");
+				continue;
+			}
 			if (dnslib_dname_is_wildcard(tmp_node->owner)) {
 				find_and_set_wildcard_child(zone,
 				                            tmp_node,
@@ -581,6 +584,12 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 
 		assert(nsec3_first != NULL);
 
+		if (dnslib_zone_add_nsec3_node(zone, nsec3_first) != 0) {
+			log_error("!! cannot add first nsec3 node, exiting.\n");
+			/* TODO leaks */
+			return NULL;
+		}
+
 		nsec3_first->prev = NULL;
 
 		last_node = nsec3_first;
@@ -590,20 +599,14 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 		tmp_node = dnslib_load_node(f);
 
 		if (tmp_node != NULL) {
-			dnslib_zone_add_nsec3_node(zone, tmp_node);
-
-			if (dnslib_dname_is_wildcard(tmp_node->owner)) {
-				find_and_set_wildcard_child(zone,
-				                            tmp_node,
-				                            1);
-                        }
-
-                        if (skip_first(tmp_node->rrsets) != NULL) {
-                                last_node = tmp_node;
-                        }
+			if (dnslib_zone_add_nsec3_node(zone, tmp_node) != 0) {
+				log_error("!! cannot add nsec3 node\n");
+				continue;
+			}
 
 			tmp_node->prev = last_node;
 
+			last_node = tmp_node;
 		} else {
 			log_error("!! node error (in %s)\n", filename);
 		}
