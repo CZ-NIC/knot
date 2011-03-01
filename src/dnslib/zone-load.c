@@ -203,6 +203,11 @@ dnslib_rrset_t *dnslib_load_rrsig(FILE *f)
 	if (!fread_safe(&rrset_type, sizeof(rrset_type), 1, f)) {
 		return 0;
 	}
+
+	if (rrset_type != DNSLIB_RRTYPE_RRSIG) {
+		log_error("!! Error: rrsig has wrong type\n");
+		return 0;
+	}
 	debug_zp("rrset type: %d\n", rrset_type);
 	if (!fread_safe(&rrset_class, sizeof(rrset_class), 1, f)) {
 		return 0;
@@ -308,6 +313,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	uint8_t rrset_count;
 	void *dname_id; //ID, technically it's an integer(32 or 64 bites)
 	void *parent_id;
+	void *nsec3_node_id;
 
 	short label_count = 0;
 	uint8_t *labels = NULL;
@@ -353,6 +359,11 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 		return 0;
 	}
 
+	if (!fread_safe(&nsec3_node_id, sizeof(nsec3_node_id), 1, f)) {
+		free(labels);
+		return 0;
+	}
+
 	if (!fread(&rrset_count, sizeof(rrset_count), 1, f)) {
 		free(labels);
 		return 0;
@@ -378,6 +389,13 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	if (node == NULL) {
 		log_error("!! could not create node.\n");
 		return NULL;
+	}
+
+	/* XXX can it be 0, ever? I think not. */
+	if ((size_t)nsec3_node_id != 0) {
+		node->nsec3_node = id_array[(size_t)nsec3_node_id]->node;
+	} else {
+		node->nsec3_node = NULL;
 	}
 
 	node->owner = owner;
@@ -470,8 +488,8 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 
 	uint auth_node_count;
 
-	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101, 0, 2};
-	                                           /*c   u    t    e   0.1*/
+	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101, 0, 3};
+						   /*c   u    t    e   0.3*/
 
 	if (!dnslib_check_magic(f, MAGIC, MAGIC_LENGTH)) {
 		log_error("!! compiled zone file '%s' has unknown format\n",

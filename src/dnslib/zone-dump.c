@@ -309,6 +309,9 @@ static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, void *data)
 	dnslib_rdata_dump_binary(tmp_rdata, rrset->type, data);
 	rdata_count++;
 
+	/* This is now obsolete, although I'd rather not use recursion - that
+	 * would probably not work */
+
 	if (rrset->rrsigs != NULL) {
 		dnslib_rrsig_set_dump_binary(rrset->rrsigs, data);
 		rrsig_count = 1;
@@ -347,7 +350,7 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 	fwrite(&(node->owner->node), sizeof(void *), 1, f);
 
-	debug_zp("Writing id: %p\n", node->owner->node);
+	debug_zp("Written id: %p\n", node->owner->node);
 
 	/* TODO investigate whether this is necessary */
 	if (node->parent != NULL) {
@@ -358,8 +361,18 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 	fwrite(&(node->flags), sizeof(node->flags), 1, f);
 
-	debug_zp("Writing flags: %u\n", node->flags);
+	debug_zp("Written flags: %u\n", node->flags);
 
+
+	if (node->nsec3_node != NULL) {
+		fwrite(node->nsec3_node->owner->node, sizeof(void *), 1, f);
+		debug_zp("Written nsec3 node id: %p\n",
+			 node->nsec3_node->owner->node);
+	} else {
+		fwrite(node->nsec3_node, sizeof(void *), 1, f);
+		debug_zp("Written nsec3 node id: %p\n",
+			 node->nsec3_node);
+	}
 
 	/* Now we need (or do we?) count of rrsets to be read
 	 * but that number is yet unknown */
@@ -423,8 +436,8 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename)
 
 	dnslib_zone_save_enclosers(zone, encloser_list);
 
-	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101, 0, 2};
-	                                           /*c   u    t    e   0.1*/
+	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101, 0, 3};
+	/* zoneparser version */		   /*c   u    t    e   0.3*/
 
 	fwrite(&MAGIC, sizeof(uint8_t), MAGIC_LENGTH, f);
 
