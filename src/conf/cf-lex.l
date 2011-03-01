@@ -108,7 +108,7 @@ hmac-md5        { cf_lval.alg = HMAC_MD5;    return TSIG_ALGO_NAME; }
 hmac-sha1       { cf_lval.alg = HMAC_SHA1;   return TSIG_ALGO_NAME; }
 hmac-sha224     { cf_lval.alg = HMAC_SHA224; return TSIG_ALGO_NAME; }
 hmac-sha256     { cf_lval.alg = HMAC_SHA256; return TSIG_ALGO_NAME; }
-hamc-sha384     { cf_lval.alg = HMAC_SHA384; return TSIG_ALGO_NAME; }
+hmac-sha384     { cf_lval.alg = HMAC_SHA384; return TSIG_ALGO_NAME; }
 hmac-sha512     { cf_lval.alg = HMAC_SHA512; return TSIG_ALGO_NAME; }
 
 ["][^"\n]*["] {
