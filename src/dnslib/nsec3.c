@@ -31,12 +31,12 @@ int dnslib_nsec3_params_from_wire(dnslib_nsec3_params_t *params,
 		((uint8_t *)(dnslib_rdata_item(rdata, 3)->raw_data))[1];
 	if (params->salt_length > 0) {
 		params->salt = (uint8_t *)malloc(params->salt_length);
+		CHECK_ALLOC_LOG(params->salt, -1);
+		memcpy(params->salt, dnslib_rdata_item(rdata, 3)->raw_data + 1,
+		       params->salt_length);
+	} else {
+		params->salt = NULL;
 	}
-
-	CHECK_ALLOC_LOG(params->salt, -1);
-
-	memcpy(params->salt, dnslib_rdata_item(rdata, 3)->raw_data + 1,
-	       params->salt_length);
 
 	debug_dnslib_nsec3("Parsed NSEC3PARAM:\n");
 	debug_dnslib_nsec3("Algorithm: %hu\n", params->algorithm);
@@ -44,8 +44,13 @@ int dnslib_nsec3_params_from_wire(dnslib_nsec3_params_t *params,
 	debug_dnslib_nsec3("Iterations: %hu\n", params->iterations);
 	debug_dnslib_nsec3("Salt length: %hu\n", params->salt_length);
 	debug_dnslib_nsec3("Salt: ");
-	debug_dnslib_nsec3_hex((char *)params->salt, params->salt_length);
-	debug_dnslib_nsec3("\n");
+	if (params->salt != NULL) {
+		debug_dnslib_nsec3_hex((char *)params->salt,
+		                       params->salt_length);
+		debug_dnslib_nsec3("\n");
+	} else {
+		debug_dnslib_nsec3("none\n");
+	}
 
 	return 0;
 }

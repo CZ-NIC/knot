@@ -91,8 +91,10 @@ int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset)
 }
 
 const dnslib_rrset_t *dnslib_node_rrset(const dnslib_node_t *node,
-                                            uint16_t type)
+                                        uint16_t type)
 {
+	assert(node != NULL);
+	assert(node->rrsets != NULL);
 	return (const dnslib_rrset_t *)skip_find(node->rrsets, (void *)&type);
 }
 
