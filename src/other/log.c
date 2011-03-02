@@ -37,7 +37,8 @@ int print_msg(int level, const char *msg, ...)
 	// Get output stream
 	va_list ap;
 	FILE *stream = stdout;
-	if (level & (LOG_ERR | LOG_WARNING | LOG_CRIT | LOG_ALERT)) {
+	if (LOG_MASK(level) & (LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING)
+	            | LOG_MASK(LOG_CRIT) | LOG_MASK(LOG_ALERT))) {
 		stream = stderr;
 	}
 
