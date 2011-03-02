@@ -669,12 +669,18 @@ static void ns_put_nsec3_no_wildcard_child(const dnslib_zone_t *zone,
 }
 /*----------------------------------------------------------------------------*/
 
-static void ns_put_nsec_nodata(const dnslib_node_t *node,
-                               dnslib_response_t *resp)
+static void ns_put_nsec_nsec3_nodata(const dnslib_node_t *node,
+                                     dnslib_response_t *resp)
 {
+	if (!DNSSEC_ENABLED || !dnslib_response_dnssec_requested(resp)) {
+		return;
+	}
+
+	const dnslib_node_t *nsec3_node = dnslib_node_nsec3_node(node);
 	const dnslib_rrset_t *rrset = NULL;
-	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)
-	    && (rrset = dnslib_node_rrset(node, DNSLIB_RRTYPE_NSEC)) != NULL) {
+	if ((rrset = dnslib_node_rrset(node, DNSLIB_RRTYPE_NSEC)) != NULL
+	    || (nsec3_node != NULL && (rrset =
+	         dnslib_node_rrset(nsec3_node, DNSLIB_RRTYPE_NSEC3)) != NULL)) {
 		dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
 		// add RRSIG for the RRSet
 		if ((rrset = dnslib_rrset_rrsigs(rrset)) != NULL) {
@@ -781,7 +787,6 @@ static void ns_put_nsec_wildcard(const dnslib_node_t *node,
 {
 	const dnslib_rrset_t *rrset = NULL;
 	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)
-	    && dnslib_dname_is_wildcard(node->owner)
 	    && (rrset = dnslib_node_rrset(previous, DNSLIB_RRTYPE_NSEC))
 	        != NULL) {
 		// NSEC proving that there is no node with the searched name
@@ -812,8 +817,8 @@ static void ns_answer_from_node(const dnslib_node_t *node,
 				dnslib_node_previous(node), closest_encloser,
 				qname, resp);
 		} else {
-			ns_put_nsec_nodata(node, resp);
-			if (node != previous) {
+			ns_put_nsec_nsec3_nodata(node, resp);
+			if (dnslib_dname_is_wildcard(node->owner)) {
 				ns_put_nsec_wildcard(node, previous, resp);
 			}
 		}
