@@ -300,7 +300,7 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 	if (zone->table != NULL
 	    && ck_insert_item(zone->table, (const char *)node->owner->name,
 	                   node->owner->size, (void *)node) != 0) {
-		log_error("Error inserting node into hash table!\n");
+		log_zone_error("Error inserting node into hash table!\n");
 		return -3;
 	}
 #endif
