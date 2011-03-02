@@ -397,10 +397,11 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 	}
 #endif
 
+	char *name = dnslib_dname_to_str(node->owner);
 	debug_dnslib_zone("Inserted node %p with owner: %s (labels: %d), "
-	                  "pointer: %p\n", node,
-	                  dnslib_dname_to_str(node->owner),
+	                  "pointer: %p\n", node, name,
 	                  dnslib_dname_label_count(node->owner), node->owner);
+	free(name);
 
 	return 0;
 }
@@ -868,6 +869,8 @@ void dnslib_zone_free(dnslib_zone_t **zone)
 	}
 #endif
 
+	dnslib_nsec3_params_free(&(*zone)->nsec3_params);
+
 	free(*zone);
 	*zone = NULL;
 }
@@ -898,6 +901,8 @@ void dnslib_zone_deep_free(dnslib_zone_t **zone)
 
 	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
 	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
+
+	dnslib_nsec3_params_free(&(*zone)->nsec3_params);
 
 	free((*zone)->tree);
 	free((*zone)->nsec3_nodes);

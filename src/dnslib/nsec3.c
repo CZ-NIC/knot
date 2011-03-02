@@ -29,7 +29,9 @@ int dnslib_nsec3_params_from_wire(dnslib_nsec3_params_t *params,
 			(uint8_t *)(dnslib_rdata_item(rdata, 2)->raw_data + 1));
 	params->salt_length =
 		((uint8_t *)(dnslib_rdata_item(rdata, 3)->raw_data))[1];
-	params->salt = (uint8_t *)malloc(params->salt_length);
+	if (params->salt_length > 0) {
+		params->salt = (uint8_t *)malloc(params->salt_length);
+	}
 
 	CHECK_ALLOC_LOG(params->salt, -1);
 
@@ -197,3 +199,12 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params,
 	return 0;
 }
 #endif
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_nsec3_params_free(dnslib_nsec3_params_t *params)
+{
+	if (params->salt != NULL) {
+		free(params->salt);
+	}
+}

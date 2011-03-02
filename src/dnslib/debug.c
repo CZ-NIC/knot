@@ -97,15 +97,19 @@ void dnslib_node_dump(dnslib_node_t *node, void *data)
 {
 #if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_NODE_DEBUG)
 	char loaded_zone = *((char*) data);
+	char *name;
+
 	printf("------- NODE --------\n");
-	printf("owner: %s\n", dnslib_dname_to_str(node->owner));
+	name = dnslib_dname_to_str(node->owner);
+	printf("owner: %s\n", name);
+	free(name);
 	printf("labels: ");
 	hex_print((char *)node->owner->labels, node->owner->label_count);
 	printf("node/id: %p\n", node->owner->node);
         if (loaded_zone && node->prev != NULL) {
-		char *prev_name = dnslib_dname_to_str(node->prev->owner);
-		printf("previous node: %s\n", prev_name);
-		free(prev_name);
+		name = dnslib_dname_to_str(node->prev->owner);
+		printf("previous node: %s\n", name);
+		free(name);
 	}
 
 	if (dnslib_node_is_deleg_point(node)) {
@@ -115,8 +119,6 @@ void dnslib_node_dump(dnslib_node_t *node, void *data)
 	if (dnslib_node_is_non_auth(node)) {
 		printf("non-authoritative node\n");
 	}
-
-	char *name;
 
 	if (node->parent != NULL) {
 		name = dnslib_dname_to_str(node->parent->owner);
