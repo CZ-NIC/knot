@@ -97,11 +97,13 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params,
 		return -1;
 	}
 
-	uint8_t *in = dnslib_nsec3_to_lowercase(data, size);
-	if (in == NULL) {
+	uint8_t *data_low = dnslib_nsec3_to_lowercase(data, size);
+	if (data_low == NULL) {
 		free(*digest);
 		return -1;
 	}
+
+	const uint8_t *in = data_low;
 	unsigned in_size = size;
 
 	int res = 0;
@@ -137,7 +139,7 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params,
 
 		if (res != 1) {
 			log_error("Error calculating SHA-1 hash.\n");
-			free(in);
+			free(data_low);
 			free(*digest);
 			return -2;
 		}
@@ -148,7 +150,7 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params,
 	debug_dnslib_nsec3("NSEC3 hashing: calls: %lu, avg time per call: %f."
 	                   "\n", calls, (double)(total_time) / calls);
 
-	free(in);
+	free(data_low);
 	return 0;
 }
 
@@ -191,11 +193,13 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params,
 		return -1;
 	}
 
-	uint8_t *in = dnslib_nsec3_to_lowercase(data, size);
-	if (in == NULL) {
+	uint8_t *data_low = dnslib_nsec3_to_lowercase(data, size);
+	if (data_low == NULL) {
 		free(*digest);
 		return -1;
 	}
+
+	const uint8_t *in = data_low;
 	unsigned in_size = size;
 
 	int res = 0;
@@ -233,7 +237,7 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params,
 
 		if (res != 1) {
 			log_error("Error calculating SHA-1 hash.\n");
-			free(in);
+			free(data_low);
 			free(*digest);
 			return -2;
 		}
@@ -248,7 +252,7 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params,
 	debug_dnslib_nsec3_hex((const char *)*digest, *digest_size);
 	debug_dnslib_nsec3("\n");
 
-	free(in);
+	free(data_low);
 	return 0;
 }
 #endif
