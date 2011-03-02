@@ -281,6 +281,7 @@ DEBUG_DNSLIB_ZONE(
 	}
 
 	assert(name_b32 != NULL);
+	free(hashed_name);
 
 	debug_dnslib_zone("Base32-encoded hash: %s\n", name_b32);
 
@@ -300,7 +301,7 @@ DEBUG_DNSLIB_ZONE(
 
 	if (ret == NULL) {
 		log_warning("Error while creating NSEC3 domain name for hashed "
-		            "name %.*s\n", (size_t)hash_size, hashed_name);
+		            "name.\n");
 		return NULL;
 	}
 
@@ -682,7 +683,7 @@ DEBUG_DNSLIB_ZONE(
 	dnslib_node_t *tmp = dnslib_node_new(nsec3_name, NULL);
 	int exact_match = TREE_FIND_LESS_EQUAL(zone->nsec3_nodes, dnslib_node, \
 	                   avl, tmp, &found, &prev);
-	dnslib_node_free(&tmp, 0);
+	dnslib_node_free(&tmp, 1);
 
 DEBUG_DNSLIB_ZONE(
 	if (found) {

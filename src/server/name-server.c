@@ -606,6 +606,10 @@ static dnslib_dname_t *ns_wildcard_child_name(const dnslib_dname_t *name)
 	assert(name != NULL);
 
 	dnslib_dname_t *wildcard = dnslib_dname_new_from_str("*", 1, NULL);
+	if (wildcard == NULL) {
+		return NULL;
+	}
+
 	if (dnslib_dname_cat(wildcard, name) == NULL) {
 		dnslib_dname_free(&wildcard);
 		return NULL;
@@ -629,13 +633,17 @@ static int ns_put_nsec3_no_wildcard_child(const dnslib_zone_t *zone,
 	assert(resp != NULL);
 	assert(node->owner != NULL);
 
+	int ret = 0;
 	dnslib_dname_t *wildcard = ns_wildcard_child_name(node->owner);
 	if (wildcard == NULL) {
 		// TODO: SERVFAIL??
-		return NS_ERR_SERVFAIL;
+		ret = NS_ERR_SERVFAIL;
 	} else {
-		return ns_put_covering_nsec3(zone, wildcard, resp);
+		ret = ns_put_covering_nsec3(zone, wildcard, resp);
+		dnslib_dname_free(&wildcard);
 	}
+
+	return ret;
 }
 /*----------------------------------------------------------------------------*/
 
@@ -855,7 +863,8 @@ static int ns_put_nsec_nsec3_wildcard_answer(const dnslib_node_t *node,
                                           dnslib_response_t *resp)
 {
 	int r = 0;
-	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)) {
+	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)
+	    && dnslib_dname_is_wildcard(dnslib_node_owner(node))) {
 		ns_put_nsec_wildcard(node, previous, resp);
 		r = ns_put_nsec3_wildcard(zone, closest_encloser, qname, resp);
 	}
