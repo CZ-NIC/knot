@@ -27,7 +27,7 @@ typedef unsigned int uint;
 
 /* Server. */
 #define CPU_ESTIMATE_MAGIC 2   // Extra threads above the number of processors
-#define DEFAULT_THR_COUNT 1    // Default thread count for socket manager
+#define DEFAULT_THR_COUNT 2    // Default thread count for socket manager
 #define DEFAULT_PORT 53531     // Default port
 
 /* Sockets. */
