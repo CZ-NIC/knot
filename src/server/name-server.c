@@ -443,45 +443,6 @@ static void ns_put_authority_soa(const dnslib_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static inline void ns_referral(const dnslib_node_t *node,
-                               dnslib_response_t *resp)
-{
-	debug_ns("Referral response.\n");
-
-	while (!dnslib_node_is_deleg_point(node)) {
-		assert(node->parent != NULL);
-		node = node->parent;
-	}
-
-	const dnslib_rrset_t *rrset =
-		dnslib_node_rrset(node, DNSLIB_RRTYPE_NS);
-	assert(rrset != NULL);
-
-	// TODO: wildcards??
-	//ns_check_wildcard(name, resp, &rrset);
-
-	dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
-	ns_add_rrsigs(rrset, resp, node->owner,
-	              dnslib_response_add_rrset_authority, 1);
-
-	// add DS records
-	debug_ns("DNSSEC requested: %d\n",
-		 dnslib_response_dnssec_requested(resp));
-	debug_ns("DS records: %p\n", dnslib_node_rrset(node, DNSLIB_RRTYPE_DS));
-	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)
-	    && (rrset = dnslib_node_rrset(node, DNSLIB_RRTYPE_DS)) != NULL) {
-		dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
-		ns_add_rrsigs(rrset, resp, node->owner,
-		              dnslib_response_add_rrset_authority, 1);
-	}
-
-	ns_put_additional(resp);
-
-	dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
-}
-
-/*----------------------------------------------------------------------------*/
-
 static dnslib_dname_t *ns_next_closer(const dnslib_dname_t *closest_encloser,
                                       const dnslib_dname_t *qname)
 {
@@ -876,6 +837,61 @@ static void ns_put_nsec_nsec3_wildcard_answer(const dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
+static inline void ns_referral(const dnslib_node_t *node,
+                               const dnslib_zone_t *zone,
+                               const dnslib_dname_t *qname,
+                               dnslib_response_t *resp)
+{
+	debug_ns("Referral response.\n");
+
+	while (!dnslib_node_is_deleg_point(node)) {
+		assert(node->parent != NULL);
+		node = node->parent;
+	}
+
+	const dnslib_rrset_t *rrset =
+		dnslib_node_rrset(node, DNSLIB_RRTYPE_NS);
+	assert(rrset != NULL);
+
+	// TODO: wildcards??
+	//ns_check_wildcard(name, resp, &rrset);
+
+	dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+	ns_add_rrsigs(rrset, resp, node->owner,
+	              dnslib_response_add_rrset_authority, 1);
+
+	// add DS records
+	debug_ns("DNSSEC requested: %d\n",
+		 dnslib_response_dnssec_requested(resp));
+	debug_ns("DS records: %p\n", dnslib_node_rrset(node, DNSLIB_RRTYPE_DS));
+	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)) {
+		rrset = dnslib_node_rrset(node, DNSLIB_RRTYPE_DS);
+		if (rrset != NULL) {
+			dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+			ns_add_rrsigs(rrset, resp, node->owner,
+			              dnslib_response_add_rrset_authority, 1);
+		} else {
+			// no DS, add NSEC3
+			const dnslib_node_t *nsec3_node =
+				dnslib_node_nsec3_node(node);
+			if (nsec3_node != NULL) {
+				ns_put_nsec3_from_node(nsec3_node, resp);
+			} else {
+				// no NSEC3 (probably Opt-Out)
+				// TODO: check if the zone is Opt-Out
+				ns_put_nsec3_closest_encloser_proof(zone,
+					&node, qname, resp);
+			}
+		}
+	}
+
+	ns_put_additional(resp);
+
+	dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
+}
+
+/*----------------------------------------------------------------------------*/
+
 static void ns_answer_from_node(const dnslib_node_t *node,
                                 const dnslib_node_t *closest_encloser,
                                 const dnslib_node_t *previous,
@@ -1090,7 +1106,7 @@ DEBUG_NS(
 
 		if (dnslib_node_is_deleg_point(closest_encloser)
 		    || dnslib_node_is_non_auth(closest_encloser)) {
-			ns_referral(closest_encloser, resp);
+			ns_referral(closest_encloser, zone, qname, resp);
 			break;
 		}
 
@@ -1137,7 +1153,7 @@ DEBUG_NS(
 
 		if (dnslib_node_is_deleg_point(node)
 		    || dnslib_node_is_non_auth(node)) {
-			ns_referral(node, resp);
+			ns_referral(node, zone, qname, resp);
 			break;
 		}
 
@@ -1168,7 +1184,7 @@ DEBUG_NS(
 			}
 			// if the node is delegation point, return referral
 			if (dnslib_node_is_deleg_point(node)) {
-				ns_referral(node, resp);
+				ns_referral(node, zone, qname, resp);
 				break;
 			}
 		}
