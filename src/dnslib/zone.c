@@ -206,9 +206,11 @@ DEBUG_DNSLIB_ZONE(
 	// NSEC3 node
 	assert(node->owner);
 	const dnslib_node_t *prev;
-	node->nsec3_node = NULL;
-	(void)dnslib_zone_find_nsec3_for_name(zone, node->owner,
-	                                      &node->nsec3_node, &prev);
+	int match = dnslib_zone_find_nsec3_for_name(zone, node->owner,
+	                                            &node->nsec3_node, &prev);
+	if (match != DNSLIB_ZONE_NAME_FOUND) {
+		node->nsec3_node = NULL;
+	}
 
 	debug_dnslib_zone("Set flags to the node: \n");
 	debug_dnslib_zone("Delegation point: %s\n",
