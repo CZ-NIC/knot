@@ -28,12 +28,15 @@ int dnslib_nsec3_params_from_wire(dnslib_nsec3_params_t *params,
 			(&dnslib_rdata_item(rdata, 1)->raw_data[1]);
 	params->iterations = dnslib_wire_read_u16(
 			(uint8_t *)(dnslib_rdata_item(rdata, 2)->raw_data + 1));
+
 	params->salt_length =
-		((uint8_t *)(dnslib_rdata_item(rdata, 3)->raw_data))[1];
+		((uint8_t *)dnslib_rdata_item(rdata, 3)->raw_data)[2];
+
 	if (params->salt_length > 0) {
 		params->salt = (uint8_t *)malloc(params->salt_length);
 		CHECK_ALLOC_LOG(params->salt, -1);
-		memcpy(params->salt, dnslib_rdata_item(rdata, 3)->raw_data + 1,
+		memcpy(params->salt,
+		       (uint8_t *)dnslib_rdata_item(rdata, 3)->raw_data + 3,
 		       params->salt_length);
 	} else {
 		params->salt = NULL;

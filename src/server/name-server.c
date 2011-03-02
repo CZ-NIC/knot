@@ -911,9 +911,12 @@ static inline int ns_referral(const dnslib_node_t *node,
 			// no DS, add NSEC3
 			const dnslib_node_t *nsec3_node =
 				dnslib_node_nsec3_node(node);
+			debug_ns("There is no DS, putting NSEC3s...\n");
 			if (nsec3_node != NULL) {
+				debug_ns("Putting NSEC3s from the node.\n");
 				ns_put_nsec3_from_node(nsec3_node, resp);
 			} else {
+				debug_ns("Putting Opt-Out NSEC3s.\n");
 				// no NSEC3 (probably Opt-Out)
 				// TODO: check if the zone is Opt-Out
 				ret = ns_put_nsec3_closest_encloser_proof(zone,
