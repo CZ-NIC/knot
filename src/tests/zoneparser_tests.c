@@ -24,99 +24,62 @@ unit_api zoneparser_tests_api = {
 
 /*
  *  Unit implementation.
- */
-
-/*static ldns_rdf *convert_dnslib_rdata_to_rr(dnslib_rdata *rdata,
-					     uint16_t type)
+ */static int compare_wires_simple_zp(uint8_t *wire1,
+				      uint8_t *wire2, uint count)
 {
-	dnslib_rrtype_descriptor_t *desc =
-		dnslib_rrtype_descriptor_from_type(type);
-
-	ldns_rdf *rdf = NULL;
-
-	ldns_rr *ret = ldns_rr_new_frm_type(type);
-
-	for (int i = 0; i < rdata->count; i++) {
-		if (desc->wireformat[i] == DNSLIB_RRTYPE_LITERAL_DNAME ||
-		    desc->wireformat[i] == DNSLIB_RRTYPE_COMPRESSED_DNAME ||
-		    desc->wireformat[i] == DNSLIB_RRTYPE_UNCOMPRESSED_DNAME) {
-
-			rdf = ldns_rdf_new_frm_data(LDNS_RDF_TYPE_DNAME,
-					    rdata->items[i].dname->size,
-					    rdata->items[i].dname->name);
-
-		}
-
-		if (desc->wireformat[i] ==
-		ldns_rr_push_rdf(ret, rdf);
+	int i = 0;
+	while (i < count &&
+	       wire1[i] == wire2[i]) {
+		i++;
 	}
+	return (!(count == i));
 }
 
-static ldns_rr_list *convert_dnslib_rdata_to_list(dnslib_rdata_t *rdata,
-						  uint16_t type)
-{
-	ldns_rr_list *ret = ldns_rr_list_new();
-
-	ldns_rr *rr = ldns_rr_new_frm_type(type);
-
-	ldns_rdf *rdf = NULL;
-
-	while (tmp_rdata->next != rrset->rdata) {
-		tmp_rdata = tmp_rdata->next;
-	}
-
-	rr = ldns_rr_list_rr(rrs, i);
-
-	if (rr == NULL) {
-		diag("ldns rrset has more rdata entries"
-		     "than the one from dnslib");
-		return 1;
-	}
-
-	if (compare_rr_rdata(tmp_rdata, rr, rrset->type) != 0) {
-		diag("Rdata differ");
-		return 1;
-	}
-} */
-
-/*static int sort_rdata(dnslib_rdata_t *rdata, uint16_t type)
+/* compares only one rdata */
+static int compare_rr_rdata_silent(dnslib_rdata_t *rdata, ldns_rr *rr,
+				   uint16_t type)
 {
 	dnslib_rrtype_descriptor_t *desc =
 		dnslib_rrtype_descriptor_by_type(type);
+	for (int i = 0; i < rdata->count; i++) {
+		/* check for ldns "descriptors" as well */
 
-	char no_swap = 1;
-
-	dnslib_rdata_t *tmp_rdata = rdata;
-
-	dnslib_rdata_t *last_rdata = rdata;
-
-	dnslib_rdata_item_t *tmp_items = NULL;
-	uint tmp_count = 0;
-
-	while (last_rdata->next != rdata->next) {
-		tmp_rdata = last_rdata;
-		while (dnslib_rdata_compare(tmp_rdata,
-					    tmp_rdata->next,
-					    desc->wireformat) <= 0) {
-			tmp_rdata = tmp_rdata->next;				;
+		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+		    desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME ||
+		    desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME) {
+			if (rdata->items[i].dname->size !=
+			    ldns_rdf_size(ldns_rr_rdf(rr, i))) {
+				return 1;
+			}
+			if (compare_wires_simple_zp(rdata->items[i].dname->name,
+				ldns_rdf_data(ldns_rr_rdf(rr, i)),
+				rdata->items[i].dname->size) != 0) {
+				return 1;
+			}
+		} else {
+			if (rdata->items[i].raw_data[0] !=
+			    ldns_rdf_size(ldns_rr_rdf(rr, i))) {
+				/* \note ldns stores the size including the
+				 * length, dnslib does not */
+				if (abs(rdata->items[i].raw_data[0] -
+				    ldns_rdf_size(ldns_rr_rdf(rr, i))) != 1) {
+					return 1;
+				}
+			}
+			if (compare_wires_simple((uint8_t *)
+				(rdata->items[i].raw_data + 1),
+				ldns_rdf_data(ldns_rr_rdf(rr, i)),
+				rdata->items[i].raw_data[0]) != 0) {
+				return 1;
+			}
 		}
-
-		tmp_items = tmp_rdata->items;
-		tmp_count = tmp_rdata->count;
-		tmp_rdata->items = tmp_rdata->next->items;
-		tmp_rdata->count = tmp_rdata->next->count;
-		tmp_rdata->next->items = tmp_items;
-		tmp_rdata->next->count = tmp_count;
-		no_swap = 1;
-		last_rdata = last_rdata->next;
 	}
-} */
-
-static int status = 0;
+	return 0;
+}
 
 static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
 				      ldns_rr_list *rrs,
-				      char check_rdata)
+				      char check_rdata, char verbose)
 {
 	/* We should have only one rrset from ldns, although it is
 	 * represented as rr_list ... */
@@ -134,6 +97,9 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
 
 	if (rrset->owner->size != ldns_rdf_size(ldns_rr_owner(rr))) {
 		diag("RRSet owner names differ in length");
+		if (!verbose) {
+			return 1;
+		}
 		diag("ldns: %d, dnslib: %d", ldns_rdf_size(ldns_rr_owner(rr)),
 		     rrset->owner->size);
 		diag("%s", dnslib_dname_to_str(rrset->owner));
@@ -150,6 +116,9 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
 
 	if (rrset->type != ldns_rr_get_type(rr)) {
 		diag("RRset types differ");
+		if (!verbose) {
+			return 1;
+		}
 		diag("Dnslib type: %d Ldns type: %d", rrset->type,
 		     ldns_rr_get_type(rr));
 		return 1;
@@ -162,6 +131,9 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
 
 	if (rrset->ttl != ldns_rr_ttl(rr)) {
 		diag("RRset TTLs differ");
+		if (!verbose) {
+			return 1;
+		}
 		diag("dnslib: %d ldns: %d", rrset->ttl, ldns_rr_ttl(rr));
 		return 1;
 	}
@@ -176,13 +148,6 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
 
 	dnslib_rdata_t *tmp_rdata = rrset->rdata;
 
-/*	while (tmp_rdata->next != rrset->rdata) {
-		dnslib_rdata_dump(tmp_rdata, rrset->type, 1);
-		tmp_rdata = tmp_rdata->next;
-	}
-
-	dnslib_rdata_dump(tmp_rdata, rrset->type, 1); */
-
 	rr = ldns_rr_list_pop_rr(rrs);
 
 	char found;
@@ -192,102 +157,62 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
 		tmp_rdata = rrset->rdata;
 		while (!found &&
 		       tmp_rdata->next != rrset->rdata) {
-			if (compare_rr_rdata(tmp_rdata, rr, rrset->type) == 0) {
+			if (compare_rr_rdata_silent(tmp_rdata, rr,
+						    rrset->type) == 0) {
 				found = 1;
 			}
 			tmp_rdata = tmp_rdata->next;
 		}
 
 		if (!found &&
-		    compare_rr_rdata(tmp_rdata, rr, rrset->type) == 0) {
+		    compare_rr_rdata_silent(tmp_rdata, rr, rrset->type) == 0) {
 			found = 1;
 		}
 
 		/* remove the found rdata from list */
 		if (!found) {
+			diag("RRsets rdata differ");
 			return 1;
 		}
 		rr = ldns_rr_list_pop_rr(rrs);
 	}
 
-/*	while (tmp_rdata->next != rrset->rdata) {
-		dnslib_rdata_dump(tmp_rdata, rrset->type, 1);
-		tmp_rdata = tmp_rdata->next;
-	}
-
-	dnslib_rdata_dump(tmp_rdata, rrset->type, 1);
-
-	getchar();
-
-	tmp_rdata = rrset->rdata;
-
-	int i = 0;
-
-	while (tmp_rdata->next != rrset->rdata) {
-		rr = ldns_rr_list_rr(rrs, i);
-
-		if (rr == NULL) {
-			diag("ldns rrset has more rdata entries"
-			     "than the one from dnslib");
-			return 1;
-		}
-
-		if (compare_rr_rdata(tmp_rdata, rr, rrset->type) != 0) {
-			diag("Rdata differ on index: %d", i);
-			return 1;
-		}
-
-		tmp_rdata = tmp_rdata->next;
-		i++;
-	}
-
-	rr = ldns_rr_list_rr(rrs, i);
-
-	if (rr == NULL) {
-		diag("ldns rrset has more rdata entries"
-		     "than the one from dnslib");
-		return 1;
-	}
-
-	if (compare_rr_rdata(tmp_rdata, rr, rrset->type) != 0) {
-		diag("Rdata differ last index");
-		return 1;
-	} */
-
 	return 0;
 }
 
-void compare_zones(dnslib_node_t *node, void *data)
+int compare_zones(dnslib_zone_t *zone, ldns_rr_list *ldns_list, char verbose)
 {
-	/* maybe put status > 0 check here */
-	diag("status: %d", status);
-	if (status != 0) {
-		/* no point in checking now */
-		return;
-	}
-
-	ldns_rr_list *ldns_list = (ldns_rr_list *)data;
-
-
 	dnslib_rrset_t *tmp_rrset = NULL;
 
-	const skip_node_t *skip_node = skip_first(node->rrsets);
+	dnslib_dname_t *tmp_dname = NULL;
 
-	if (skip_node == NULL) {
-		diag("Error: empty node -> owner: %s",
-		     dnslib_dname_to_str(node->owner));
-		return;
-	}
+	dnslib_node_t *node = NULL;
 
 	ldns_rr_list *ldns_rrset = ldns_rr_list_pop_rrset(ldns_list);
 
 	if (ldns_rrset == NULL) {
 		diag("Error: empty node");
-		return;
+		return 1;
 	}
+
+	ldns_rr *rr = NULL;
 
 	/* \note ldns_rr_list_pop_rrset should pop the first rrset */
 	while (ldns_rrset != NULL) {
+		rr = ldns_rr_list_rr(ldns_rrset, 0);
+		tmp_dname =
+dnslib_dname_new_from_wire(ldns_rdf_data(ldns_rr_owner(rr)),
+			   ldns_rdf_size(ldns_rr_owner(rr)), NULL);
+
+		node = dnslib_zone_get_node(zone, tmp_dname);
+
+		if (node == NULL) {
+			node = dnslib_zone_get_nsec3_node(zone, tmp_dname);
+		}
+
+		if (node == NULL) {
+			return 1;
+		}
 
 		tmp_rrset = dnslib_node_get_rrset(node,
 				ldns_rr_get_type(ldns_rr_list_rr(ldns_rrset,
@@ -296,10 +221,12 @@ void compare_zones(dnslib_node_t *node, void *data)
 		if (tmp_rrset == NULL &&
 		    ldns_rr_get_type(ldns_rr_list_rr(ldns_rrset, 0)) !=
 		    DNSLIB_RRTYPE_RRSIG) {
+			if (!verbose) {
+				return 1;
+			}
 			ldns_rr_list_print(stdout, ldns_rrset);
 			diag("%s", dnslib_dname_to_str(node->owner));
-			status++;
-			return;
+			return 1;
 		} else if (ldns_rr_get_type(ldns_rr_list_rr(ldns_rrset, 0)) ==
 			   DNSLIB_RRTYPE_RRSIG) {
 			dnslib_rrset_t *rrsigs = NULL;
@@ -310,28 +237,25 @@ void compare_zones(dnslib_node_t *node, void *data)
 				ldns_rdf_data(ldns_rr_rdf(
 					ldns_rr_list_rr(ldns_rrset, i), 0))[1];
 
-				diag("type covered: %d", type_covered);
 				tmp_rrset = dnslib_node_get_rrset(node,
 								  type_covered);
 
 				if (tmp_rrset == NULL) {
+					if (!verbose) {
+						return 1;
+					}
+					diag("following rrset "
+					     "could not be found");
 					ldns_rr_list_print(stdout, ldns_rrset);
-					diag("%s", node->owner->name);
-					diag("eh?");
-					status++;
-					return;
+					return 1;
 				}
 
 				if (rrsigs == NULL) {
 					rrsigs = tmp_rrset->rrsigs;
 				} else {
 					dnslib_rrset_merge((void *)&rrsigs,
-							   (void *)&(tmp_rrset->rrsigs));
+					(void *)&(tmp_rrset->rrsigs));
 				}
-
-/*				diag("Type covered dnslib: %d",
-				     ntohs(*(tmp_rrset->rdata->items[0].raw_data + 1)));
-				diag("type covered ldns: %d", type_covered); */
 			}
 			tmp_rrset = rrsigs;
 		}
@@ -346,13 +270,10 @@ void compare_zones(dnslib_node_t *node, void *data)
 
 //		dnslib_rrset_dump(tmp_rrset, 1);
 
-		if (compare_rrset_w_ldns_rrset(tmp_rrset, ldns_rrset, 1) != 0) {
+		if (compare_rrset_w_ldns_rrset(tmp_rrset, ldns_rrset,
+					       1, 0) != 0) {
 			diag("RRSets did not match");
-			status++;
-			return;
-//			dnslib_rrset_dump(tmp_rrset, 1);
-		} else {
-			diag("ok");
+			dnslib_rrset_dump(tmp_rrset, 1);
 		}
 
 		ldns_rrset = ldns_rr_list_pop_rrset(ldns_list);
@@ -361,11 +282,10 @@ void compare_zones(dnslib_node_t *node, void *data)
 			ldns_rrset = ldns_rr_list_pop_rrset(ldns_list);
 		}
 	}
-
-	assert(ldns_list->_rr_count == 0);
+	return 0;
 }
 
-static int compare_dnslib_zone_ldns_zone(dnslib_zone_t *dnsl_zone,
+/*static int compare_dnslib_zone_ldns_zone(dnslib_zone_t *dnsl_zone,
 					 ldns_zone *ldns_zone)
 {
 	ldns_rr_list *ldns_list = ldns_zone_rrs(ldns_zone);
@@ -378,7 +298,7 @@ static int compare_dnslib_zone_ldns_zone(dnslib_zone_t *dnsl_zone,
 				       (void *)ldns_list);
 
 	return status;
-}
+}*/
 
 static int test_zoneparser_zone_read(const char *origin, const char *filename,
 				     const char *outfile)
@@ -405,6 +325,8 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 
 	dnslib_zone_dump(dnsl_zone, 1);
 
+	getchar();
+
 	FILE *f = fopen(filename, "r");
 
 	ldns_zone *ldns_zone = NULL;
@@ -417,7 +339,15 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 
 	ldns_zone_sort(ldns_zone);
 
-	if (compare_dnslib_zone_ldns_zone(dnsl_zone, ldns_zone) != 0) {
+/*	if (compare_dnslib_zone_ldns_zone(dnsl_zone, ldns_zone) != 0) {
+		return 0;
+	}*/
+
+	ldns_rr_list *ldns_list = ldns_zone_rrs(ldns_zone);
+
+	ldns_rr_list_push_rr(ldns_list, ldns_zone_soa(ldns_zone));
+
+	if (compare_zones(dnsl_zone, ldns_list, 0) != 0) {
 		return 0;
 	}
 
@@ -443,7 +373,7 @@ static int zoneparser_tests_count(int argc, char *argv[])
 static int zoneparser_tests_run(int argc, char *argv[])
 {
 	ok(test_zoneparser_zone_read("example.com.", "/home/jan/work/cutedns/samples/"
-				     "dnssec.zone",
+				     "example.com.zone",
 				     "foo_zone"));
         return 1;
 }
