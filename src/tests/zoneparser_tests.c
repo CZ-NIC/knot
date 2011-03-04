@@ -35,6 +35,8 @@ unit_api zoneparser_tests_api = {
 	return (!(count == i));
 }
 
+#ifdef TEST_WITH_LDNS
+
 /* compares only one rdata */
 static int compare_rr_rdata_silent(dnslib_rdata_t *rdata, ldns_rr *rr,
 				   uint16_t type)
@@ -43,10 +45,10 @@ static int compare_rr_rdata_silent(dnslib_rdata_t *rdata, ldns_rr *rr,
 		dnslib_rrtype_descriptor_by_type(type);
 	for (int i = 0; i < rdata->count; i++) {
 		/* check for ldns "descriptors" as well */
-
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 		    desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME ||
 		    desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME) {
+			assert(ldns_rr_rdf(rr, i));
 			if (rdata->items[i].dname->size !=
 			    ldns_rdf_size(ldns_rr_rdf(rr, i))) {
 				return 1;
@@ -57,8 +59,15 @@ static int compare_rr_rdata_silent(dnslib_rdata_t *rdata, ldns_rr *rr,
 				return 1;
 			}
 		} else {
+			if (ldns_rr_rdf(rr, i) == NULL &&
+			    rdata->items[i].raw_data[0] != 0) {
+				return 1;
+			} else {
+				continue;
+			}
 			if (rdata->items[i].raw_data[0] !=
 			    ldns_rdf_size(ldns_rr_rdf(rr, i))) {
+
 				/* \note ldns stores the size including the
 				 * length, dnslib does not */
 				if (abs(rdata->items[i].raw_data[0] -
@@ -174,6 +183,8 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
 			diag("RRsets rdata differ");
 			return 1;
 		}
+		ldns_rr_free(rr);
+
 		rr = ldns_rr_list_pop_rr(rrs);
 	}
 
@@ -211,8 +222,12 @@ dnslib_dname_new_from_wire(ldns_rdf_data(ldns_rr_owner(rr)),
 		}
 
 		if (node == NULL) {
+			diag("Could not find node");
+			diag("%s", dnslib_dname_to_str(tmp_dname));
 			return 1;
 		}
+
+		dnslib_dname_free(&tmp_dname);
 
 		tmp_rrset = dnslib_node_get_rrset(node,
 				ldns_rr_get_type(ldns_rr_list_rr(ldns_rrset,
@@ -221,6 +236,7 @@ dnslib_dname_new_from_wire(ldns_rdf_data(ldns_rr_owner(rr)),
 		if (tmp_rrset == NULL &&
 		    ldns_rr_get_type(ldns_rr_list_rr(ldns_rrset, 0)) !=
 		    DNSLIB_RRTYPE_RRSIG) {
+			diag("Could not find rrset");
 			if (!verbose) {
 				return 1;
 			}
@@ -273,7 +289,8 @@ dnslib_dname_new_from_wire(ldns_rdf_data(ldns_rr_owner(rr)),
 		if (compare_rrset_w_ldns_rrset(tmp_rrset, ldns_rrset,
 					       1, 0) != 0) {
 			diag("RRSets did not match");
-			dnslib_rrset_dump(tmp_rrset, 1);
+//			dnslib_rrset_dump(tmp_rrset, 1);
+			return 1;
 		}
 
 		ldns_rr_list_deep_free(ldns_rrset);
@@ -286,6 +303,8 @@ dnslib_dname_new_from_wire(ldns_rdf_data(ldns_rr_owner(rr)),
 	}
 	return 0;
 }
+
+#endif
 
 /*static int compare_dnslib_zone_ldns_zone(dnslib_zone_t *dnsl_zone,
 					 ldns_zone *ldns_zone)
@@ -307,7 +326,7 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 {
 #ifndef TEST_WITH_LDNS
 	diag("Zoneparser tests without usage of ldns are not implemented");
-	return 1;
+	return 0;
 #endif
 
 #ifdef TEST_WITH_LDNS
@@ -324,10 +343,6 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 		diag("Could not load parsed zone");
 		return 0;
 	}
-
-	dnslib_zone_dump(dnsl_zone, 1);
-
-	getchar();
 
 	FILE *f = fopen(filename, "r");
 
@@ -353,7 +368,7 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 		return 0;
 	}
 
-	dnslib_zone_deep_free(&dnsl_zone);
+//	dnslib_zone_deep_free(&dnsl_zone);
 
 	ldns_zone_free(ldns_zone);
 
@@ -375,7 +390,7 @@ static int zoneparser_tests_count(int argc, char *argv[])
 static int zoneparser_tests_run(int argc, char *argv[])
 {
 	ok(test_zoneparser_zone_read("example.com.", "/home/jan/work/cutedns/samples/"
-				     "example.com.zone",
-				     "foo_zone"));
+				     "example.com.zone.signed",
+				     "foo_zone"), "zoneparser: read (%s)", "filename");
         return 1;
 }
