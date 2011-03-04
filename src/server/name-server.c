@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
+#include <sys/time.h>
 
 #include <urcu.h>
 
@@ -8,6 +9,7 @@
 #include "dnslib.h"
 #include "dnslib/debug.h"
 #include "edns.h"
+#include "nsec3.h"
 
 //static const uint8_t  RCODE_MASK           = 0xf0;
 static const int      OFFSET_FLAGS2        = 3;
@@ -480,6 +482,196 @@ static inline void ns_referral(const dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
+static dnslib_dname_t *ns_next_closer(const dnslib_dname_t *closest_encloser,
+                                      const dnslib_dname_t *qname)
+{
+	int ce_labels = dnslib_dname_label_count(closest_encloser);
+	int qname_labels = dnslib_dname_label_count(qname);
+
+	assert(ce_labels > qname_labels);
+
+	// the common labels should match
+	assert(dnslib_dname_matched_labels(closest_encloser, qname)
+	       == ce_labels);
+
+	// chop some labels from the qname
+	dnslib_dname_t *next_closer = dnslib_dname_copy(qname);
+	if (next_closer == NULL) {
+		return NULL;
+	}
+
+	for (int i = 0; i < (qname_labels - ce_labels - 1); ++i) {
+		dnslib_dname_left_chop_no_copy(next_closer);
+	}
+
+	return next_closer;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void ns_put_nsec3_from_node(const dnslib_node_t *node,
+                                   dnslib_response_t *resp)
+{
+	const dnslib_rrset_t *rrset = dnslib_node_rrset(node,
+	                                                DNSLIB_RRTYPE_NSEC3);
+	assert(rrset != NULL);
+
+	dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+	// add RRSIG for the RRSet
+	if ((rrset = dnslib_rrset_rrsigs(rrset)) != NULL) {
+		dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void ns_put_covering_nsec3(const dnslib_zone_t *zone,
+                                  const dnslib_dname_t *nsec3_name,
+                                  dnslib_response_t *resp)
+{
+	const dnslib_node_t *prev, *node;
+	int match = dnslib_zone_find_nsec3_for_name(zone, nsec3_name,
+	                                            &node, &prev);
+
+	assert(match == DNSLIB_ZONE_NAME_NOT_FOUND);
+	assert(node == NULL);
+
+DEBUG_NS(
+	char *name = dnslib_dname_to_str(prev->owner);
+	debug_ns("Covering NSEC3 node: %s\n", name);
+	free(name);
+);
+
+	ns_put_nsec3_from_node(prev, resp);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void ns_put_nsec3_closest_encloser_proof(const dnslib_zone_t *zone,
+                                          const dnslib_node_t *closest_encloser,
+                                          const dnslib_dname_t *qname,
+                                          dnslib_response_t *resp)
+{
+	assert(zone != NULL);
+	assert(closest_encloser != NULL);
+	assert(qname != NULL);
+	assert(resp != NULL);
+
+	if (!DNSSEC_ENABLED || dnslib_response_dnssec_requested(resp)) {
+		return;
+	}
+
+	const dnslib_nsec3_params_t *nsec3params;
+	if ((nsec3params = dnslib_zone_nsec3params(zone)) == NULL) {
+DEBUG_NS(
+		char *name = dnslib_dname_to_str(zone->apex->owner);
+		debug_ns("No NSEC3PARAM found in zone %s.\n", name);
+		free(name);
+);
+		return;
+	}
+
+DEBUG_NS(
+	char *name = dnslib_dname_to_str(closest_encloser->owner);
+	debug_ns("Closest encloser: %s\n", name);
+	free(name);
+);
+
+	/*
+	 * 1) NSEC3 that matches closest provable encloser.
+	 */
+	const dnslib_node_t *nsec3_node = NULL;
+	const dnslib_dname_t *next_closer = NULL;
+	while ((nsec3_node = dnslib_node_nsec3_node(closest_encloser))
+	       == NULL) {
+		next_closer = dnslib_node_owner(closest_encloser);
+		closest_encloser = dnslib_node_parent(closest_encloser);
+		assert(closest_encloser != NULL);
+	}
+
+	assert(nsec3_node != NULL);
+
+DEBUG_NS(
+	char *name = dnslib_dname_to_str(closest_encloser->owner);
+	debug_ns("Closest provable encloser: %s\n", name);
+	free(name);
+	if (next_closer != NULL) {
+		name = dnslib_dname_to_str(next_closer);
+		debug_ns("Next closer name: %s\n", name);
+		free(name);
+	} else {
+		debug_ns("Next closer name: none\n");
+	}
+);
+
+	ns_put_nsec3_from_node(nsec3_node, resp);
+
+	/*
+	 * 2) NSEC3 that covers the "next closer" name.
+	 */
+	if (next_closer == NULL) {
+		// create the "next closer" name by appending from qname
+		next_closer = ns_next_closer(closest_encloser->owner, qname);
+
+		if (next_closer == NULL) {
+			// set TC as something is definitely missing
+			// TODO: maybe SERVFAIL?
+			dnslib_response_set_tc(resp);
+			return;
+		}
+DEBUG_NS(
+		char *name = dnslib_dname_to_str(next_closer);
+		debug_ns("Next closer name: %s\n", name);
+		free(name);
+);
+		ns_put_covering_nsec3(zone, next_closer, resp);
+
+		// the cast is ugly, but no better way around it
+		dnslib_dname_free((dnslib_dname_t **)&next_closer);
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+static dnslib_dname_t *ns_wildcard_child_name(const dnslib_dname_t *name)
+{
+	assert(name != NULL);
+
+	dnslib_dname_t *wildcard = dnslib_dname_new_from_str("*", 1, NULL);
+	if (dnslib_dname_cat(wildcard, name) == NULL) {
+		dnslib_dname_free(&wildcard);
+		return NULL;
+	}
+
+DEBUG_NS(
+	char *name = dnslib_dname_to_str(wildcard);
+	debug_ns("Wildcard: %s\n", name);
+	free(name);
+);
+	return wildcard;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void ns_put_nsec3_no_wildcard_child(const dnslib_zone_t *zone,
+                                           const dnslib_node_t *node,
+                                           dnslib_response_t *resp)
+{
+	assert(node != NULL);
+	assert(resp != NULL);
+	assert(node->owner != NULL);
+
+	dnslib_dname_t *wildcard = ns_wildcard_child_name(node->owner);
+	if (wildcard == NULL) {
+		// some internal problem, set TC
+		// TODO: SERVFAIL??
+		dnslib_response_set_tc(resp);
+	} else {
+		ns_put_covering_nsec3(zone, wildcard, resp);
+	}
+}
+/*----------------------------------------------------------------------------*/
+
 static void ns_put_nsec_nodata(const dnslib_node_t *node,
                                dnslib_response_t *resp)
 {
@@ -520,14 +712,14 @@ static void ns_put_nsec_nxdomain(const dnslib_zone_t *zone,
 		// before 'previous' in canonical order, i.e. we can
 		// search for previous until we find name lesser than wildcard
 		assert(closest_encloser != NULL);
-		dnslib_dname_t *encloser =
-			dnslib_dname_copy(dnslib_node_owner(closest_encloser));
-		dnslib_dname_t *wildcard =
-			dnslib_dname_new_from_str("*", 1, NULL);
-		dnslib_dname_cat(wildcard, encloser);
 
-		debug_ns("Wildcard: %s\n",
-		    dnslib_dname_to_str(wildcard));
+		dnslib_dname_t *wildcard =
+			ns_wildcard_child_name(closest_encloser->owner);
+		if (wildcard == NULL) {
+			// some internal problem, set TC
+			// TODO: SERVFAIL??
+			dnslib_response_set_tc(resp);
+		}
 
 		const dnslib_node_t *prev_new = previous;
 
@@ -545,7 +737,6 @@ static void ns_put_nsec_nxdomain(const dnslib_zone_t *zone,
 		    dnslib_dname_to_str(dnslib_node_owner(prev_new)));
 
 		dnslib_dname_free(&wildcard);
-		dnslib_dname_free(&encloser);
 
 		if (prev_new != previous) {
 			rrset = dnslib_node_rrset(prev_new, DNSLIB_RRTYPE_NSEC);
@@ -591,7 +782,8 @@ static void ns_answer_from_node(const dnslib_node_t *node,
 
 	if (answers == 0) {  // if NODATA response, put SOA
 		if (dnslib_node_rrset_count(node) == 0) {
-			assert(dnslib_node_rrset_count(closest_encloser) > 0);
+			// node is an empty non-terminal => NSEC for NXDOMAIN
+			//assert(dnslib_node_rrset_count(closest_encloser) > 0);
 			ns_put_nsec_nxdomain(zone, dnslib_node_previous(node),
 			                     closest_encloser, resp);
 		} else {

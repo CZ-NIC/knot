@@ -1,6 +1,9 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
+
+#include <openssl/evp.h>
 
 #include "debug.h"
 #include "server.h"
@@ -58,6 +61,13 @@ cute_server *cute_create()
 		free(server);
 		return NULL;
 	}
+
+	debug_server("Done\n\n");
+
+	debug_server("Done\n\n");
+	debug_server("Initializing OpenSSL...\n");
+
+	OpenSSL_add_all_digests();
 
 	debug_server("Done\n\n");
 
@@ -246,6 +256,7 @@ void cute_destroy(cute_server **server)
 	ns_destroy(&(*server)->nameserver);
 	dnslib_zonedb_deep_free(&(*server)->zone_db);
 	free(*server);
+
 	*server = NULL;
 }
 

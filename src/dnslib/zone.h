@@ -16,6 +16,7 @@
 #include "dname.h"
 #include "tree.h"
 #include "cuckoo-hash-table.h"
+#include "nsec3.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -24,6 +25,7 @@ typedef TREE_HEAD(avl_tree, dnslib_node) avl_tree_t;
 /*----------------------------------------------------------------------------*/
 
 enum dnslib_zone_errors {
+	DNSLIB_ZONE_NAME_ERROR = -255,
 	DNSLIB_ZONE_NAME_NOT_IN_ZONE = -2,
 	DNSLIB_ZONE_NAME_FOUND = 1,
 	DNSLIB_ZONE_NAME_NOT_FOUND = 0
@@ -47,6 +49,7 @@ struct dnslib_zone {
 	ck_hash_table_t *table;     /*!< Hash table for holding zone nodes. */
 #endif
 	uint node_count;
+	dnslib_nsec3_params_t nsec3_params;
 };
 
 typedef struct dnslib_zone dnslib_zone_t;
@@ -159,6 +162,10 @@ int dnslib_zone_find_dname_hash(const dnslib_zone_t *zone,
 const dnslib_node_t *dnslib_zone_find_nsec3_node(const dnslib_zone_t *zone,
                                                  const dnslib_dname_t *name);
 
+int dnslib_zone_find_nsec3_for_name(const dnslib_zone_t *zone,
+                                    const dnslib_dname_t *name,
+                                    const dnslib_node_t **nsec3_node,
+                                    const dnslib_node_t **nsec3_previous);
 /*!
  * \brief Returns the apex node of the zone.
  *
@@ -175,6 +182,12 @@ const dnslib_node_t *dnslib_zone_apex(const dnslib_zone_t *zone);
  * \param zone Zone to adjust domain names in.
  */
 void dnslib_zone_adjust_dnames(dnslib_zone_t *zone);
+
+void dnslib_zone_load_nsec3param(dnslib_zone_t *zone);
+
+int dnslib_zone_nsec3_enabled(const dnslib_zone_t *zone);
+
+const dnslib_nsec3_params_t *dnslib_zone_nsec3params(const dnslib_zone_t *zone);
 
 /*!
  * \brief Applies the given function to each regular node in the zone.

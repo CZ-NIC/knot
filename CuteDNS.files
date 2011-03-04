@@ -37,6 +37,8 @@ src/lib/skip-list.c
 src/lib/tree.h
 src/lib/bitset.h
 src/lib/bitset.c
+src/lib/base32.h
+src/lib/base32.c
 src/dnslib/dname.h
 src/dnslib/dname.c
 src/dnslib/rrset.h
@@ -63,6 +65,8 @@ src/dnslib/debug.h
 src/dnslib/debug.c
 src/dnslib/dnslib.h
 src/dnslib/tolower.h
+src/dnslib/nsec3.h
+src/dnslib/nsec3.c
 src/dnslib/zone-dump.c
 src/dnslib/zone-dump.h
 src/dnslib/zone-load.c

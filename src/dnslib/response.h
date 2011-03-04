@@ -277,6 +277,7 @@ void dnslib_response_set_rcode(dnslib_response_t *response, short rcode);
  */
 void dnslib_response_set_aa(dnslib_response_t *response);
 
+void dnslib_response_set_tc(dnslib_response_t *response);
 
 int dnslib_response_add_tmp_rrset(dnslib_response_t *response,
                                   dnslib_rrset_t *tmp_rrset);
