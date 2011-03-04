@@ -276,6 +276,8 @@ dnslib_dname_new_from_wire(ldns_rdf_data(ldns_rr_owner(rr)),
 			dnslib_rrset_dump(tmp_rrset, 1);
 		}
 
+		ldns_rr_list_deep_free(ldns_rrset);
+
 		ldns_rrset = ldns_rr_list_pop_rrset(ldns_list);
 
 		if (ldns_rrset == NULL) {
@@ -337,7 +339,7 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 		return 0;
 	}
 
-	ldns_zone_sort(ldns_zone);
+//	ldns_zone_sort(ldns_zone);
 
 /*	if (compare_dnslib_zone_ldns_zone(dnsl_zone, ldns_zone) != 0) {
 		return 0;
@@ -351,9 +353,9 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 		return 0;
 	}
 
-//	dnslib_zone_deep_free(&dnsl_zone);
+	dnslib_zone_deep_free(&dnsl_zone);
 
-//	ldns_zone_deep_free(ldns_zone);
+	ldns_zone_free(ldns_zone);
 
 	fclose(f);
 
