@@ -275,7 +275,9 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 
 	size_t total_read = 0;
 
-	for (int i = 0; i < desc->length; i++) {
+	int i;
+
+	for (i = 0; i < desc->length; i++) {
 		if ((desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME)) {
@@ -398,6 +400,8 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 									i);
 					/* XXXXXXXXXXX */
 
+					/* TODO remove */
+
 					size_fr_desc = 0;
 
 					/* XXXXXXXXXXX */
@@ -415,8 +419,9 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 							total_read;
 							if (desc->wireformat[i] ==
 							DNSLIB_RDATA_WF_TEXT) {
-								i = desc->length;
-								i--;
+								//i = desc->length;
+								//i--;
+								break;
 							}
 						diag("Guessed size: %d"
 						     " for type: %s"
@@ -462,7 +467,7 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 		}
 	}
 
-	if (dnslib_rdata_set_items(rdata, items, desc->length) != 0) {
+	if (dnslib_rdata_set_items(rdata, items, i) != 0) {
 		fprintf(stderr, "Error: could not set items\n");
 	}
 
@@ -512,14 +517,9 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 	return rrsig;
 } */
 
-/* TODO change load_parsed_response_rrsets's type to int */
-static char bad_class = 0;
-
 static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 					   char is_question)
 {
-	bad_class = 1;
-
 	dnslib_rrset_t *rrset;
 	uint16_t rrset_type;
 	uint16_t rrset_class;
@@ -1158,7 +1158,9 @@ static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 				hex_print((char *)
 					  ldns_rdf_data(ldns_rr_rdf(rr, i)),
 					  rdata->items[i].raw_data[0]);
-				diag("Raw data wires in rdata differ");
+				diag("Raw data wires in rdata differ in item "
+				     "%d", i);
+
 				return 1;
 			}
 		}
@@ -1176,7 +1178,7 @@ static int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
 	/* TODO errors */
 
 	assert(rr);
-	assert(rrset)	;
+	assert(rrset);
 
 	/* compare headers */
 
@@ -1275,6 +1277,7 @@ static int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
 
 	for (int i = 0; i < count ; i++) {
 
+		/* normally ldns_pop_rrset or such should be here */
 		rr = ldns_rr_list_rr(rrlist, i);
 
 		if (rr == NULL) {
@@ -1394,6 +1397,18 @@ static int compare_response_w_ldns_packet(dnslib_response_t *response,
 
 #endif
 
+static dnslib_opt_rr_t *opt_rrset_to_opt_rr(dnslib_rrset_t *rrset)
+{
+	if (rrset == NULL) {
+		return NULL;
+	}
+
+	dnslib_opt_rr_t *opt_rr = dnslib_edns_new();
+
+	assert(opt_rr);
+
+}
+
 static int test_response_to_wire(test_response_t **responses,
 				 test_raw_packet_t **raw_data,
 				 uint count)
@@ -1404,15 +1419,26 @@ static int test_response_to_wire(test_response_t **responses,
 
 	dnslib_response_t *resp;
 
-	dnslib_opt_rr_t *opt_rr = dnslib_edns_new();
+	dnslib_opt_rr_t *opt_rr = NULL;
+
+	dnslib_rrset_t *parsed_opt = NULL;
 
 	/* TODO read this from the dump first */
 
 	dnslib_edns_set_payload(opt_rr, 4096);
 
 	for (int i = 0; i < count; i++) {
-
 		assert(responses[i]);
+
+		parsed_opt = NULL;
+
+		for (int j = 0; j < responses[i]->arcount; j++) {
+			if (responses[i]->additional[j] == DNSLIB_RRTYPE_OPT) {
+				parsed_opt = responses[i]->additional[j];
+			}
+		}
+
+		opt_rr = opt_rrset_to_opt_rr(persed_opt);
 
 		resp = dnslib_response_new_empty(opt_rr);
 
