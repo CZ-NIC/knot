@@ -1407,6 +1407,13 @@ static dnslib_opt_rr_t *opt_rrset_to_opt_rr(dnslib_rrset_t *rrset)
 
 	assert(opt_rr);
 
+	dnslib_edns_set_payload(opt_rr, rrset->rclass);
+
+	dnslib_edns_set_ext_rcode(opt_rr, rrset->ttl);
+
+	/* TODO rdata? mostly empty, I guess */
+
+	return opt_rr;
 }
 
 static int test_response_to_wire(test_response_t **responses,
@@ -1423,24 +1430,23 @@ static int test_response_to_wire(test_response_t **responses,
 
 	dnslib_rrset_t *parsed_opt = NULL;
 
-	/* TODO read this from the dump first */
-
-	dnslib_edns_set_payload(opt_rr, 4096);
-
 	for (int i = 0; i < count; i++) {
 		assert(responses[i]);
 
 		parsed_opt = NULL;
 
 		for (int j = 0; j < responses[i]->arcount; j++) {
-			if (responses[i]->additional[j] == DNSLIB_RRTYPE_OPT) {
+			if (responses[i]->additional[j]->type ==
+			    DNSLIB_RRTYPE_OPT) {
 				parsed_opt = responses[i]->additional[j];
 			}
 		}
 
-		opt_rr = opt_rrset_to_opt_rr(persed_opt);
+		opt_rr = opt_rrset_to_opt_rr(parsed_opt);
 
 		resp = dnslib_response_new_empty(opt_rr);
+
+		dnslib_edns_free(&opt_rr);
 
 		resp->header.id = responses[i]->id;
 		//flags1?
