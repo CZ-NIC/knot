@@ -1303,7 +1303,9 @@ static int compare_response_w_ldns_packet(dnslib_response_t *response,
 					0), 0)) != 0) {
 		diag("Question rrsets wrongly converted");
 		return 1;
-	}
+        }
+
+        dnslib_rrset_free(&question_rrset);
 
 	/* other RRSets */
 
@@ -1493,7 +1495,7 @@ static int test_response_to_wire(test_response_t **responses,
 			diag("Could not convert dnslib response to wire\n");
 			dnslib_response_free(&resp);
 			return 0;
-		}
+                }
 
 /*		tmp_resp = dnslib_response_new_empty(NULL);
 
@@ -1558,13 +1560,13 @@ static int test_response_to_wire(test_response_t **responses,
 			return 0;
 		}
 
+                ldns_pkt_free(packet);
 #endif
 
-		free(dnslib_wire);
-//		dnslib_response_free(&resp);
-	}
+        dnslib_response_free(&resp);
+        }
 
-	return (errors == 0);
+        return (errors == 0);
 }
 
 static int test_response_free()
