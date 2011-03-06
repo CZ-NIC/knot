@@ -55,7 +55,8 @@ unit_api dnslib_response_tests_api = {
  */
 
 /* Virtual I/O over memory. */
-static int mem_read(void *dst, size_t n, const char **src, unsigned *remaining) {
+static int mem_read(void *dst, size_t n, const char **src,
+unsigned *remaining) {
 	if (n > *remaining) {
 		return 0;
 	}
@@ -364,9 +365,10 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 				((uint8_t *)items[i].raw_data)[2] =
 					raw_data_length;
 
-                                if (!mem_read(((uint8_t *)items[i].raw_data) + 3,
-                                              sizeof(uint8_t) * (raw_data_length),
-					      src, src_size)) {
+                                if (!mem_read(((uint8_t *)
+                                    items[i].raw_data) + 3,
+                                    sizeof(uint8_t) * (raw_data_length),
+                                    src, src_size)) {
 					return NULL;
 				}
 
@@ -417,7 +419,7 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 				}
 
 				items[i].raw_data =
-                                        malloc(sizeof(uint8_t) * size_fr_desc + 2);
+                                malloc(sizeof(uint8_t) * size_fr_desc + 2);
 
 				items[i].raw_data[0] = size_fr_desc;
 
@@ -1004,6 +1006,7 @@ static int test_response_parse_query(test_response_t **responses,
 	return (errors == 0);
 }
 
+#ifndef TEST_WITH_LDNS
 static int compare_wires(uint8_t *wire1, uint8_t *wire2, uint size)
 {
 	uint ret = 0;
@@ -1024,6 +1027,7 @@ static int compare_wires(uint8_t *wire1, uint8_t *wire2, uint size)
 	}
 	return ret;
 }
+#endif
 
 #ifdef TEST_WITH_LDNS
 /* count1 == count2 */
@@ -1073,7 +1077,8 @@ static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 				diag("dnslib: %d ldns: %d",
 				     rdata->items[i].raw_data[0],
 				     ldns_rdf_size(ldns_rr_rdf(rr, i)));
-				hex_print((char *)(rdata->items[i].raw_data + 1),
+                                hex_print((char *)
+(rdata->items[i].raw_data + 1),
 					  rdata->items[i].raw_data[0]);
 				hex_print((char *)ldns_rdf_data(ldns_rr_rdf(rr,
 									    i)),
@@ -1437,7 +1442,8 @@ static int test_response_to_wire(test_response_t **responses,
 		for (int j = 0; j < responses[i]->nscount; j++) {
 			if (&(responses[i]->authority[j])) {
 				if (dnslib_response_add_rrset_authority(resp,
-                                        responses[i]->authority[j], 0, 0) != 0) {
+                                        responses[i]->authority[j],
+                                        0, 0) != 0) {
 					diag("Could not add authority rrset");
 					return 0;
 				}
@@ -1455,7 +1461,7 @@ static int test_response_to_wire(test_response_t **responses,
 				}
 				if (dnslib_response_add_rrset_additional(resp,
                                         responses[i]->additional[j],
-0, 0) != 0) {
+                                        0, 0) != 0) {
 					diag("Could not add additional rrset");
 					return 0;
 				}
@@ -1476,33 +1482,6 @@ static int test_response_to_wire(test_response_t **responses,
 			dnslib_response_free(&resp);
 			return 0;
                 }
-
-/*		tmp_resp = dnslib_response_new_empty(NULL);
-
-		assert(tmp_resp);
-
-		if (dnslib_response_parse_query(tmp_resp, dnslib_wire,
-						dnslib_wire_size) != 0) {
-			diag("Could not parse created wire");
-			dnslib_response_free(&resp);
-			dnslib_response_free(&tmp_resp);
-			free(dnslib_wire);
-			return 0;
-		}
-
-		if (!check_response(tmp_resp, responses[i], 1, 1, 1, 1, 1)) {
-			diag("Response parsed from wire does not match");
-			dnslib_response_free(&resp);
-			dnslib_response_free(&tmp_resp);
-			return 0;
-		}
-
-		dnslib_dname_free(&(tmp_resp->question.qname));
-		dnslib_response_free(&tmp_resp);
-
-		*/
-
-//		assert(dnslib_wire_size == raw_data[i]->size);
 
 #ifndef TEST_WITH_LDNS
 
