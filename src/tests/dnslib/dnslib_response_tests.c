@@ -28,6 +28,8 @@
 #include "descriptor.h"
 #include "edns.h"
 
+//#define RESP_TEST_DEBUG
+
 /*
  * Resources
  * \note .rc files are generated on compile-time.
@@ -167,21 +169,6 @@ struct alg_lookup_table {
 };
 
 /* size in BYTES */
-//alg_lookup_table_ dns_algorithm_sizes[] = {
-//	{ 1, "RSAMD5" },	/* RFC 2537 */
-//	/* nobody in his right mind should use the first one */
-//	{ 2, "DH" },		/* RFC 2539 */
-//	{ 3, "DSA" },		/* RFC 2536 */
-//	{ 4, "ECC" },
-//	{ 5, "RSASHA1" },	/* RFC 3110 */
-//	{ 10, 64}
-//	{ 252, "INDIRECT" },
-//	{ 253, "PRIVATEDNS" },
-//	{ 254, "PRIVATEOID" },
-//	{ 0, NULL }
-//};
-
-/* size in BYTES */
 size_t dns_algorithm_sizes[256] = {
 	[5] = 20,
 	[10] = 128
@@ -206,9 +193,11 @@ size_t wireformat_size_n(uint16_t type, dnslib_rdata_item_t *items,
 		assert(n == 3);
 		uint8_t alg = ((uint8_t *)items[1].raw_data)[2];
 		return dns_algorithm_sizes[alg];
-	}
+        }
 
+#ifdef RESP_TEST_DEBUG
 	diag("Unknown type: %s", dnslib_rrtype_to_string(type));
+#endif
 
 	/* unknown */
 
@@ -422,13 +411,16 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 								//i = desc->length;
 								//i--;
 								break;
-							}
-						diag("Guessed size: %d"
+                                                        }
+
+#ifdef RESP_TEST_DEBUG
+                                                diag("Guessed size: %d"
 						     " for type: %s"
 						     " and index: %d",
 						     size_fr_desc,
 						    dnslib_rrtype_to_string(type),
-						    i);
+                                                    i);
+#endif
 						}
 					}
 				}
@@ -448,7 +440,8 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 
 				total_read += size_fr_desc;
 
-				printf("read len (from descriptor): %d\n",
+#ifdef RESP_TEST_DEBUG
+                                diag("read len (from descriptor): %d\n",
 				       items[i].raw_data[0]);
 /*				hex_print((char *)items[i].raw_data + 1,
 					  items[i].raw_data[0]); */
@@ -462,60 +455,21 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 				} else {
 					hex_print((char *)items[i].raw_data,
 						  items[i].raw_data[0] + 2);
-				}
+                                }
+#endif
 			}
 		}
 	}
 
 	if (dnslib_rdata_set_items(rdata, items, i) != 0) {
-		fprintf(stderr, "Error: could not set items\n");
+                diag("Error: could not set items\n");
+                return NULL;
 	}
 
 	free(items);
 
 	return rdata;
 }
-
-/*dnslib_rrsig_set_t *dnslib_load_rrsig(FILE *f)
-{
-	dnslib_rrsig_set_t *rrsig;
-
-	uint16_t rrset_type;
-	uint16_t rrset_class;
-	uint32_t rrset_ttl;
-
-	uint8_t rdata_count;
-
-	if (!fread_safe(&rrset_type, sizeof(rrset_type), 1, f)) {
-		return NULL;
-	}
-	debug_zp("rrset type: %d\n", rrset_type);
-	if (!fread_safe(&rrset_class, sizeof(rrset_class), 1, f)) {
-		return NULL;
-	}
-	debug_zp("rrset class %d\n", rrset_class);
-	if (!fread_safe(&rrset_ttl, sizeof(rrset_ttl), 1, f)) {
-		return NULL;
-	}
-	debug_zp("rrset ttl %d\n", rrset_ttl);
-
-	if (!fread_safe(&rdata_count, sizeof(rdata_count), 1, f)) {
-		return NULL;
-	}
-
-	rrsig = dnslib_rrsig_set_new(NULL, rrset_type, rrset_class, rrset_ttl);
-
-	dnslib_rdata_t *tmp_rdata;
-
-	debug_zp("loading %d rdata entries\n", rdata_count);
-
-	for (int i = 0; i < rdata_count; i++) {
-		tmp_rdata = dnslib_load_rdata(DNSLIB_RRTYPE_RRSIG, f);
-		dnslib_rrsig_set_add_rdata(rrsig, tmp_rdata);
-	}
-
-	return rrsig;
-} */
 
 static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 					   char is_question)
@@ -526,13 +480,7 @@ static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 	uint32_t rrset_ttl;
 
 	/* Each rrset will only have one rdata entry */
-	/* RRSIGs will be read as separate RRSets for now */
-	/* TODO probably change it in python dump so that it complies with our
-	 * implementation
-	 */
-
-/*	uint8_t rdata_count;
-	uint8_t rrsig_count; */
+        /* RRSIGs will be read as separate RRSets */
 
 	uint8_t dname_size;
 	uint8_t *dname_wire = NULL;
@@ -556,7 +504,9 @@ static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 
 	free(dname_wire);
 
-//	diag("Got owner: %s", dnslib_dname_to_str(owner));
+#ifdef RESP_TEST_DEBUG
+        diag("Got owner: %s", dnslib_dname_to_str(owner));
+#endif
 
 
 	if (!mem_read(&rrset_type, sizeof(rrset_type), src, src_size)) {
@@ -825,8 +775,11 @@ static int load_parsed_responses(test_response_t ***responses, uint32_t *count,
 			diag("Could not load response - %d - returned NULL",
 			     i);
 			return -1;
-		}
-		diag("resp. ok: %d", i);
+                }
+
+#ifdef RESP_TEST_DEBUG
+                diag("resp. ok: %d", i);
+#endif
 	}
 
 	return 0;
@@ -1386,10 +1339,32 @@ static int compare_response_w_ldns_packet(dnslib_response_t *response,
 
 	/* OPT RR */
 
-	if (ldns_pkt_edns(packet)) {
-		/* let's assume for now that dnslib will always have
-		 * opt rr */
-		;
+        if (ldns_pkt_edns(packet)) {
+/*                if (response->edns_response == NULL) {
+                        diag("ldns has edns section, dnslib has not");
+                        return 1;
+                } */
+
+                dnslib_opt_rr_t *opt = &(response->edns_response);
+
+                if (ldns_pkt_edns_udp_size(packet) !=
+                    dnslib_edns_get_payload(opt)) {
+                        diag("Payloads in EDNS are different");
+                        return 1;
+                }
+
+                if (ldns_pkt_edns_version(packet) !=
+                    dnslib_edns_get_version(opt)) {
+                        diag("Versions in EDNS are different");
+                        return 1;
+                }
+
+                if (ldns_pkt_edns_extended_rcode(packet) !=
+                    dnslib_edns_get_ext_rcode(opt)) {
+                        diag("Extended rcodes in EDNS are different");
+                        return 1;
+                }
+                /* TODO parse flags */
 	}
 
 	return 0;
@@ -1836,11 +1811,11 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 
 	skip(!ret, 10);
 
-/*	ok(test_response_add_rrset_answer(), "response: add rrset answer");
+        ok(test_response_add_rrset_answer(), "response: add rrset answer");
 	ok(test_response_add_rrset_authority(),
 	   "response: add rrset authority");
 	ok(test_response_add_rrset_additional(),
-	   "response: add rrset additional"); */
+           "response: add rrset additional");
 
 	test_response_t **parsed_responses = NULL;
 	test_response_t **parsed_queries = NULL;
@@ -1851,7 +1826,7 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	uint32_t response_raw_count = 0;
 	uint32_t query_raw_count = 0;
 
-/*	ok(test_response_getters(0), "response: get qname");
+        ok(test_response_getters(0), "response: get qname");
 
 	ok(test_response_getters(1), "response: get qtype");
 
@@ -1859,7 +1834,7 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 
 	ok(test_response_setters(0), "response: set rcode");
 
-	ok(test_response_setters(1), "response: set aa"); */
+        ok(test_response_setters(1), "response: set aa");
 
 	if (load_parsed_responses(&parsed_responses, &response_parsed_count,
 			    parsed_data_rc, parsed_data_rc_size) != 0) {
@@ -1899,10 +1874,10 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 
 	assert(query_raw_count == query_parsed_count);
 
-/*	ok(test_response_parse_query(parsed_queries,
+        ok(test_response_parse_query(parsed_queries,
 				     raw_queries,
 				     query_parsed_count),
-	   "response: parse query"); */
+           "response: parse query");
 
 	ok(test_response_to_wire(parsed_responses, raw_responses,
 				 response_parsed_count), "response: to wire");
