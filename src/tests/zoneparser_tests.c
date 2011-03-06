@@ -10,6 +10,9 @@
 #include "zoneparser.h"
 #include "dnslib/debug.h"
 
+#define ZONE_ORIGIN "example.com."
+#define ZONE_FILE "samples/example.com.zone"
+
 static int zoneparser_tests_count(int argc, char *argv[]);
 static int zoneparser_tests_run(int argc, char *argv[]);
 
@@ -300,26 +303,12 @@ dnslib_dname_new_from_wire(ldns_rdf_data(ldns_rr_owner(rr)),
 		if (ldns_rrset == NULL) {
 			ldns_rrset = ldns_rr_list_pop_rrset(ldns_list);
 		}
-	}
+        }
+
 	return 0;
 }
 
 #endif
-
-/*static int compare_dnslib_zone_ldns_zone(dnslib_zone_t *dnsl_zone,
-					 ldns_zone *ldns_zone)
-{
-	ldns_rr_list *ldns_list = ldns_zone_rrs(ldns_zone);
-
-	ldns_rr_list_push_rr(ldns_list, ldns_zone_soa(ldns_zone));
-
-	ldns_rr_list_sort(ldns_list);
-
-	dnslib_zone_tree_apply_inorder_reverse(dnsl_zone, compare_zones,
-				       (void *)ldns_list);
-
-	return status;
-}*/
 
 static int test_zoneparser_zone_read(const char *origin, const char *filename,
 				     const char *outfile)
@@ -337,7 +326,9 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 		return 0;
 	}
 
-	dnslib_zone_t *dnsl_zone = dnslib_zload_load(outfile);
+        dnslib_zone_t *dnsl_zone = dnslib_zload_load(outfile);
+
+        assert(remove(outfile) == 0);
 
 	if (dnsl_zone == NULL) {
 		diag("Could not load parsed zone");
@@ -356,10 +347,6 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 
 //	ldns_zone_sort(ldns_zone);
 
-/*	if (compare_dnslib_zone_ldns_zone(dnsl_zone, ldns_zone) != 0) {
-		return 0;
-	}*/
-
 	ldns_rr_list *ldns_list = ldns_zone_rrs(ldns_zone);
 
 	ldns_rr_list_push_rr(ldns_list, ldns_zone_soa(ldns_zone));
@@ -368,7 +355,7 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 		return 0;
 	}
 
-//	dnslib_zone_deep_free(&dnsl_zone);
+        dnslib_zone_deep_free(&dnsl_zone);
 
 	ldns_zone_free(ldns_zone);
 
@@ -389,8 +376,8 @@ static int zoneparser_tests_count(int argc, char *argv[])
 /*! API: run tests. */
 static int zoneparser_tests_run(int argc, char *argv[])
 {
-	ok(test_zoneparser_zone_read("example.com.", "/home/jan/work/cutedns/samples/"
-				     "example.com.zone.signed",
-				     "foo_zone"), "zoneparser: read (%s)", "filename");
+        ok(test_zoneparser_zone_read(ZONE_ORIGIN, ZONE_FILE,
+                                     "foo_zone"), "zoneparser: read (%s)",
+           ZONE_FILE);
         return 1;
 }
