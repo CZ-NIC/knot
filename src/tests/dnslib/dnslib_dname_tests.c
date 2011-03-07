@@ -386,10 +386,10 @@ static int test_dname_compare()
 	}
 
         /* foo.bar.net. < . */
-//	if (dnslib_dname_compare(dnames[5], dnames[0]) >= 0) {
-//		diag("Dname comparison error");
-//		errors++;
-//	}
+	if (dnslib_dname_compare(dnames[5], dnames[0]) >= 0) {
+		diag("Dname comparison error");
+		errors++;
+	}
 
         /* bar.net. < foo.bar.net. */
 	if (dnslib_dname_compare(dnames[7], dnames[6]) >= 0) {
