@@ -39,6 +39,8 @@ src/lib/bitset.h
 src/lib/bitset.c
 src/lib/base32.h
 src/lib/base32.c
+src/lib/base32hex.h
+src/lib/base32hex.c
 src/dnslib/dname.h
 src/dnslib/dname.c
 src/dnslib/rrset.h
