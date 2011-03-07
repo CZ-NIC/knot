@@ -41,8 +41,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 Retrieved from: http://en.literateprograms.org/Skip_list_(C)?oldid=12811
 */
 
-#ifndef _CUTEDNS_SKIP_LIST_H_
-#define _CUTEDNS_SKIP_LIST_H_
+#ifndef _KNOT_SKIP_LIST_H_
+#define _KNOT_SKIP_LIST_H_
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -196,6 +196,6 @@ const skip_node_t *skip_next(const skip_node_t *node);
 void skip_print_list(const skip_list_t *list,
                      void (*print_item)(void *, void *));
 
-#endif /* _CUTEDNS_SKIP_LIST_H_ */
+#endif /* _KNOT_SKIP_LIST_H_ */
 
 /*! \} */

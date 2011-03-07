@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_STAT_H_
-#define _CUTEDNS_STAT_H_
+#ifndef _KNOT_STAT_H_
+#define _KNOT_STAT_H_
 
 #include <time.h>
 #include <stdbool.h>
@@ -20,7 +20,6 @@
 #include <netinet/in.h>
 
 #include "gatherer.h"
-#include "common.h"
 
 #ifdef STAT_COMPILE
 #define STAT_INIT(x) x = stat_new()
@@ -78,9 +77,10 @@ static inline void stat_set_protocol(stat_t *stat, int protocol) {}
  * \param s_addr Sockaddr structure to be used later for statistics.
  */
 #ifdef STAT_COMPILE
+#warning "stat fixme: pass sockaddr* for generic _in and _in6 support"
 void stat_get_first(stat_t *stat, struct sockaddr_in *s_addr);
 #else
-static inline void stat_get_first(stat_t *stat, struct sockaddr_in *s_addr) {}
+static inline void stat_get_first(stat_t *stat, struct sockaddr *s_addr) {}
 #endif /* STAT_COMPILE */
 
 /*!
@@ -133,6 +133,6 @@ void stat_static_gath_free();
 static inline void stat_static_gath_free() {}
 #endif /* STAT_COMPILE */
 
-#endif /* _CUTEDNS_STAT_H_ */
+#endif /* _KNOT_STAT_H_ */
 
 /*! @} */

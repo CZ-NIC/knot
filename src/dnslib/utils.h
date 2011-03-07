@@ -9,10 +9,9 @@
  * @{
  */
 
-#ifndef _CUTEDNS_DNSLIB_UTILS_H_
-#define _CUTEDNS_DNSLIB_UTILS_H_
+#ifndef _KNOT_DNSLIB_UTILS_H_
+#define _KNOT_DNSLIB_UTILS_H_
 
-#include <stdint.h>
 #include <string.h>
 
 /*!
@@ -72,7 +71,7 @@ static inline void dnslib_wire_write_u32(uint8_t *pos, uint32_t data)
 	pos[3] = (uint8_t)(data & 0xff);
 }
 
-#endif /* _CUTEDNS_DNSLIB_UTILS_H_ */
+#endif /* _KNOT_DNSLIB_UTILS_H_ */
 
 /*! @} */
 

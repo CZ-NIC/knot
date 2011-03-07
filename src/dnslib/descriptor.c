@@ -1,3 +1,4 @@
+#include <config.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -7,7 +8,8 @@
 #include <sys/types.h>
 
 //#include "descriptor.h"
-#include "dnslib.h"
+#include "common.h"
+#include "dnslib/dnslib.h"
 
 enum desclen { DNSLIB_RRTYPE_DESCRIPTORS_LENGTH = 32770 }; // used to be 101
 

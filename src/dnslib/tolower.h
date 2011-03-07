@@ -10,8 +10,8 @@
 
 #include <stdint.h>
 
-#ifndef _CUTEDNS_DNSLIB_TOLOWER_H_
-#define _CUTEDNS_DNSLIB_TOLOWER_H_
+#ifndef _KNOT_DNSLIB_TOLOWER_H_
+#define _KNOT_DNSLIB_TOLOWER_H_
 
 enum {
 	CHAR_TABLE_SIZE = 256
@@ -281,4 +281,4 @@ static inline uint8_t dnslib_tolower(uint8_t c) {
 	return char_table[c];
 }
 
-#endif /* _CUTEDNS_DNSLIB_TOLOWER_H_ */
+#endif /* _KNOT_DNSLIB_TOLOWER_H_ */

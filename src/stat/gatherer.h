@@ -9,12 +9,10 @@
  * @{
  */
 
-#ifndef _CUTEDNS_GATHERER_H_
-#define _CUTEDNS_GATHERER_H_
+#ifndef _KNOT_GATHERER_H_
+#define _KNOT_GATHERER_H_
 
 #include <stdint.h>
-
-#include "common.h"
 
 /* The bigger this number, the better the performance of hashing. */
 enum fbs { FREQ_BUFFER_SIZE = 100000 };
@@ -92,6 +90,6 @@ gatherer_t *new_gatherer();
  */
 void gatherer_free(gatherer_t *gatherer);
 
-#endif /* _CUTEDNS_STAT_GATHERER_H_ */
+#endif /* _KNOT_STAT_GATHERER_H_ */
 
 /*! @} */

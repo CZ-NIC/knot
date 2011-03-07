@@ -1,11 +1,8 @@
 #include <string.h>
 #include <assert.h>
 
-#include "tap_unit.h"
-
-#include "common.h"
-#include "dname.h"
-#include "node.h"
+#include "dnslib/dname.h"
+#include "dnslib/node.h"
 
 static int dnslib_dname_tests_count(int argc, char *argv[]);
 static int dnslib_dname_tests_run(int argc, char *argv[]);

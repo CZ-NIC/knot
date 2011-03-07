@@ -1,12 +1,12 @@
-#include "tap_unit.h"
+#include "tests/tap_unit.h"
 
-#include "dnslib/dnslib_dname_tests.c"
-#include "dnslib/dnslib_rdata_tests.c"
-#include "dnslib/dnslib_node_tests.c"
-#include "dnslib/dnslib_rrset_tests.c"
-#include "dnslib/dnslib_zone_tests.c"
-#include "dnslib/dnslib_response_tests.c"
-#include "dnslib/dnslib_edns_tests.c"
+#include "tests/dnslib/dnslib_dname_tests.c"
+#include "tests/dnslib/dnslib_rdata_tests.c"
+#include "tests/dnslib/dnslib_node_tests.c"
+#include "tests/dnslib/dnslib_rrset_tests.c"
+#include "tests/dnslib/dnslib_zone_tests.c"
+#include "tests/dnslib/dnslib_response_tests.c"
+#include "tests/dnslib/dnslib_edns_tests.c"
 
 static int dnslib_tests_count(int argc, char *argv[]);
 static int dnslib_tests_run(int argc, char *argv[]);

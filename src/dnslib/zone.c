@@ -1,16 +1,17 @@
+#include <config.h>
 #include <stdlib.h>
 #include <assert.h>
 
-#include "zone.h"
 #include "common.h"
-#include "node.h"
-#include "dname.h"
-#include "tree.h"
-#include "consts.h"
-#include "descriptor.h"
-#include "cuckoo-hash-table.h"
-#include "nsec3.h"
-#include "base32.h"
+#include "dnslib/zone.h"
+#include "dnslib/node.h"
+#include "dnslib/dname.h"
+#include "lib/tree.h"
+#include "dnslib/consts.h"
+#include "dnslib/descriptor.h"
+#include "hash/cuckoo-hash-table.h"
+#include "dnslib/nsec3.h"
+#include "lib/base32hex.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -34,9 +35,9 @@ static int dnslib_zone_check_node(const dnslib_zone_t *zone,
 	if (!dnslib_dname_is_subdomain(node->owner, zone->apex->owner)) {
 		char *node_owner = dnslib_dname_to_str(node->owner);
 		char *apex_owner = dnslib_dname_to_str(zone->apex->owner);
-		log_error("Trying to insert foreign node to a zone. "
-			  "Node owner: %s, zone apex: %s\n",
-			  node_owner, apex_owner);
+		log_zone_error("zone: Trying to insert foreign node to a zone. "
+		               "Node owner: %s, zone apex: %s\n",
+		               node_owner, apex_owner);
 		free(node_owner);
 		free(apex_owner);
 		return -2;
@@ -206,9 +207,11 @@ DEBUG_DNSLIB_ZONE(
 	// NSEC3 node
 	assert(node->owner);
 	const dnslib_node_t *prev;
-	node->nsec3_node = NULL;
-	(void)dnslib_zone_find_nsec3_for_name(zone, node->owner,
-	                                      &node->nsec3_node, &prev);
+	int match = dnslib_zone_find_nsec3_for_name(zone, node->owner,
+	                                            &node->nsec3_node, &prev);
+	if (match != DNSLIB_ZONE_NAME_FOUND) {
+		node->nsec3_node = NULL;
+	}
 
 	debug_dnslib_zone("Set flags to the node: \n");
 	debug_dnslib_zone("Delegation point: %s\n",
@@ -259,7 +262,7 @@ DEBUG_DNSLIB_ZONE(
 
 	if (res != 0) {
 		char *n = dnslib_dname_to_str(name);
-		log_warning("Error while hashing name %s.\n", n);
+		debug_dnslib_zone("Error while hashing name %s.\n", n);
 		free(n);
 		return NULL;
 	}
@@ -269,18 +272,19 @@ DEBUG_DNSLIB_ZONE(
 	debug_dnslib_zone("\n");
 
 	char *name_b32 = NULL;
-	size_t size = base32_encode_alloc((char *)hashed_name, hash_size,
-	                                  &name_b32);
+	size_t size = base32hex_encode_alloc((char *)hashed_name, hash_size,
+	                                     &name_b32);
 
 	if (size == 0) {
 		char *n = dnslib_dname_to_str(name);
-		log_warning("Error while encoding hashed name %s to base32.\n",
-			    n);
+		debug_dnslib_zone("Error while encoding hashed name %s to "
+		                  "base32.\n", n);
 		free(n);
 		return NULL;
 	}
 
 	assert(name_b32 != NULL);
+	free(hashed_name);
 
 	debug_dnslib_zone("Base32-encoded hash: %s\n", name_b32);
 
@@ -290,8 +294,8 @@ DEBUG_DNSLIB_ZONE(
 	free(name_b32);
 
 	if (nsec3_name == NULL) {
-		log_warning("Error while creating domain name for hashed name."
-		            "\n");
+		debug_dnslib_zone("Error while creating domain name for hashed"
+		                  " name.\n");
 		return NULL;
 	}
 
@@ -299,8 +303,8 @@ DEBUG_DNSLIB_ZONE(
 	dnslib_dname_t *ret = dnslib_dname_cat(nsec3_name, zone->apex->owner);
 
 	if (ret == NULL) {
-		log_warning("Error while creating NSEC3 domain name for hashed "
-		            "name %.*s\n", (size_t)hash_size, hashed_name);
+		debug_dnslib_zone("Error while creating NSEC3 domain name for "
+		            "hashed name.\n");
 		return NULL;
 	}
 
@@ -392,15 +396,16 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 	if (zone->table != NULL
 	    && ck_insert_item(zone->table, (const char *)node->owner->name,
 	                   node->owner->size, (void *)node) != 0) {
-		log_error("Error inserting node into hash table!\n");
+		log_zone_error("Error inserting node into hash table!\n");
 		return -3;
 	}
 #endif
 
+	char *name = dnslib_dname_to_str(node->owner);
 	debug_dnslib_zone("Inserted node %p with owner: %s (labels: %d), "
-	                  "pointer: %p\n", node,
-	                  dnslib_dname_to_str(node->owner),
+	                  "pointer: %p\n", node, name,
 	                  dnslib_dname_label_count(node->owner), node->owner);
+	free(name);
 
 	return 0;
 }
@@ -534,6 +539,14 @@ DEBUG_DNSLIB_ZONE(
 		free(name_str);
 	}
 	if (prev != NULL) {
+		free(name_str2);
+	}
+
+	name_str2 = ((*previous) != NULL)
+	                   ? dnslib_dname_to_str((*previous)->owner)
+	                   : "(nil)";
+	debug_dnslib_zone("Previous set to: %s\n", name_str2);
+	if ((*previous) != NULL) {
 		free(name_str2);
 	}
 );
@@ -675,13 +688,13 @@ DEBUG_DNSLIB_ZONE(
 	free(n);
 );
 
-	dnslib_node_t *found, *prev;
+	dnslib_node_t *found = NULL, *prev = NULL;
 
 	// create dummy node to use for lookup
 	dnslib_node_t *tmp = dnslib_node_new(nsec3_name, NULL);
 	int exact_match = TREE_FIND_LESS_EQUAL(zone->nsec3_nodes, dnslib_node, \
 	                   avl, tmp, &found, &prev);
-	dnslib_node_free(&tmp, 0);
+	dnslib_node_free(&tmp, 1);
 
 DEBUG_DNSLIB_ZONE(
 	if (found) {
@@ -693,6 +706,7 @@ DEBUG_DNSLIB_ZONE(
 	}
 
 	if (prev) {
+		assert(prev->owner);
 		char *n = dnslib_dname_to_str(prev->owner);
 		debug_dnslib_zone("Found previous NSEC3 node: %s.\n", n);
 		free(n);
@@ -708,7 +722,7 @@ DEBUG_DNSLIB_ZONE(
 		// set the previous node of the found node
 		assert(exact_match);
 		assert(*nsec3_node != NULL);
-		*nsec3_previous = dnslib_node_previous(*nsec3_previous);
+		*nsec3_previous = dnslib_node_previous(*nsec3_node);
 	} else {
 		*nsec3_previous = prev;
 	}
@@ -868,6 +882,8 @@ void dnslib_zone_free(dnslib_zone_t **zone)
 	}
 #endif
 
+	dnslib_nsec3_params_free(&(*zone)->nsec3_params);
+
 	free(*zone);
 	*zone = NULL;
 }
@@ -898,6 +914,8 @@ void dnslib_zone_deep_free(dnslib_zone_t **zone)
 
 	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
 	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
+
+	dnslib_nsec3_params_free(&(*zone)->nsec3_params);
 
 	free((*zone)->tree);
 	free((*zone)->nsec3_nodes);

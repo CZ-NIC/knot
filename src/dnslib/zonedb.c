@@ -1,14 +1,16 @@
+#include <config.h>
 #include <stdlib.h>
 #include <assert.h>
 
 #include <urcu.h>
 
-#include "zonedb.h"
 #include "common.h"
-#include "skip-list.h"
-#include "zone.h"
-#include "dname.h"
-#include "node.h"
+#include "dnslib/zonedb.h"
+#include "lib/skip-list.h"
+#include "dnslib/zone.h"
+#include "dnslib/dname.h"
+#include "dnslib/node.h"
+#include "conf/conf.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -146,15 +148,3 @@ void dnslib_zonedb_deep_free(dnslib_zonedb_t **db)
 
 /*----------------------------------------------------------------------------*/
 
-char* dnslib_zonedb_dbpath()
-{
-	// Construct filename
-	const char* fn = "/cutedns.zdb";
-	char* home = getenv("HOME");
-	int len = strlen(home) + strlen(fn) + 1;
-	char* ret = malloc(len);
-	memset(ret, 0, len);
-	strcpy(ret, home);
-	strcat(ret, fn);
-	return ret;
-}

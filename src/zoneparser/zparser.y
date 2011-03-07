@@ -20,12 +20,12 @@
 #include <string.h>
 #include <assert.h>
 
-#include "parser-util.h"
+#include "zoneparser/parser-util.h"
 
-#include "dname.h"
-#include "zone.h"
-#include "zoneparser.h"
-#include "parser-descriptor.h"
+#include "dnslib/dname.h"
+#include "dnslib/zone.h"
+#include "zoneparser/zoneparser.h"
+#include "zoneparser/parser-descriptor.h"
 
 /* these need to be global, otherwise they cannot be used inside yacc */
 zparser_type *parser;
@@ -149,8 +149,9 @@ line:	NL
 			dnslib_dname_to_str(parser->current_rrset.owner);
 			fprintf(stderr, "Error: could not process RRSet\n"
 			        "owner: %s reason: %d\n", tmp_dname_str, ret);
-			hex_print((char *)parser->current_rrset.owner->labels,
-			          parser->current_rrset.owner->label_count);
+			hex_printf((char *)parser->current_rrset.owner->labels,
+			          parser->current_rrset.owner->label_count,
+				  &printf);
 			free(tmp_dname_str);
 		}
 	    }
