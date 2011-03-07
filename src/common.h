@@ -23,8 +23,8 @@ typedef unsigned int uint;
 
 #define PROJECT_NAME PACKAGE // Project name
 #define PROJECT_VER  0x000100  // 0xMMIIRR (MAJOR,MINOR,REVISION)
-#define PROJECT_EXEC "knot" // Project executable
-#define ZONEPARSER_EXEC "zoneparser" // Zoneparser executable
+#define PROJECT_EXEC "knotd" // Project executable
+#define ZONEPARSER_EXEC "knot-zcompile" // Zoneparser executable
 #define PID_FILE "knot.pid"
 
 /* Server. */
