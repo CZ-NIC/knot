@@ -16,7 +16,7 @@
 
 #include "conf/conf.h"
 #include "other/log.h"
-#include "libknot_a-cf-parse.h" /* Automake generated header. */
+#include "libknot_la-cf-parse.h" /* Automake generated header. */
 
 /* Imported symbols. */
 #define yylex cf_lex
