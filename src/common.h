@@ -14,6 +14,7 @@
 
 #include <signal.h>
 #include <stdint.h>
+#include "config.h"
 
 /* Common types and constants.
  */
@@ -38,7 +39,7 @@ typedef unsigned int uint;
 //#define MEM_SLAB_CAP 3   // Cap slab_cache empty slab count (undefined = inf)
 #define MEM_COLORING       // Slab cache coloring
 
-//#define USE_HASH_TABLE
+#define USE_HASH_TABLE
 
 /* Common includes.
  */
