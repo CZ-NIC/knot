@@ -10,6 +10,11 @@
 #include "conf/conf.h"
 #include "common.h"
 
+static const char *DEFAULT_CONFIG_1 = "/." PROJECT_EXEC "/" PROJECT_EXEC \
+                                      ".conf";
+static const char *DEFAULT_CONFIG_2 = "/etc/" PROJECT_EXEC "/" PROJECT_EXEC \
+                                      ".conf";
+
 /* Utilities. */
 static char* strcdup(const char *s1, const char *s2)
 {
@@ -147,7 +152,7 @@ static int conf_process(conf_t *conf)
 	}
 
 	// Create PID file
-	conf->pidfile = strcdup(conf->storage, "/cutedns.pid");
+	conf->pidfile = strcdup(conf->storage, "/" PID_FILE);
 
 	// Postprocess zones
 	node *n = 0;
@@ -427,18 +432,18 @@ void conf_free(conf_t *conf)
 
 char* conf_find_default()
 {
-	/* Try ~/.cutedns/cutedns.conf first. */
+	/* Try DEFAULT_CONFIG_1 first. */
 	const char *dir = getenv("HOME");
-	const char *name = "/.cutedns/cutedns.conf";
+	const char *name = DEFAULT_CONFIG_1;
 	char *path = strcdup(dir, name);
 	struct stat st;
 	if (stat(path, &st) != 0) {
-		const char* fallback_path = "/etc/cutedns/cutedns.conf";
+		const char* fallback_path = DEFAULT_CONFIG_2;
 		log_server_error("config: Trying '%s' as default configuration.\n",
 		                 path);
 		free(path);
 
-		/* Try /etc/cutedns/cutedns.conf as a fallback. */
+		/* Try DEFAULT_CONFIG_2 as a fallback. */
 		path = strdup(fallback_path);
 	}
 

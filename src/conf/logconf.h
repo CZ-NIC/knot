@@ -8,8 +8,8 @@
  * \addtogroup logging
  * @{
  */
-#ifndef _CUTEDNS_LOGCONF_H_
-#define _CUTEDNS_LOGCONF_H_
+#ifndef _KNOT_LOGCONF_H_
+#define _KNOT_LOGCONF_H_
 
 struct conf_t;
 
@@ -23,6 +23,6 @@ struct conf_t;
  */
 int log_conf_hook(const struct conf_t *conf);
 
-#endif /* _CUTEDNS_LOGCONF_H_ */
+#endif /* _KNOT_LOGCONF_H_ */
 
 /*! @} */
