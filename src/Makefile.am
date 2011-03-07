@@ -5,10 +5,10 @@ sbin_PROGRAMS = knotd
 
 # $(YACC) will generate header file
 AM_YFLAGS = -d
-libknot_a_YFLAGS = -pcf_ -d
-libknot_a_LFLAGS = # TODO: reentrant parser, prefix
+libknot_la_YFLAGS = -pcf_ -d
+libknot_la_LFLAGS = # TODO: reentrant parser, prefix
 
-LDADD = libknot.a @LIBOBJS@
+LDADD = libknot.la @LIBOBJS@
 
 BUILT_SOURCES =					\
 	tests/dnslib/parsed_data.rc		\
@@ -25,11 +25,10 @@ CLEANFILES =					\
         tests/sample_conf.rc                    \
 	zparser.h				\
 	zparser.c				\
-	zlexer.c                                \
-        libknot_a-cf-lex.c                      \
-        libknot_a-cf-parse.c                    \
-        libknot_a-cf-parse.h
-   
+	zlexer.c				\
+        libknot_la-cf-lex.c			\
+        libknot_la-cf-parse.c			\
+        libknot_la-cf-parse.h
 
 knotc_SOURCES =					\
 	ctl/knotc_main.c
@@ -58,8 +57,8 @@ nodist_unittests_SOURCES =			\
 knotd_SOURCES =					\
 	main.c
 
-noinst_LIBRARIES = libknot.a
-libknot_a_SOURCES =				\
+noinst_LTLIBRARIES = libknot.la
+libknot_la_SOURCES =				\
 	common.h				\
 	alloc/slab.c				\
 	alloc/malloc.c				\
@@ -142,7 +141,7 @@ libknot_a_SOURCES =				\
 	other/log.h				\
 	other/debug.h      
 
-libknot_a_LIBADD = @LIBOBJS@
+libknot_la_LIBADD = @LIBOBJS@
 
 # automake complains on % rules:
 #   `%'-style pattern rules are a GNU make extension
