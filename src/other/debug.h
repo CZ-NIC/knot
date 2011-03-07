@@ -8,11 +8,11 @@
  * \addtogroup debugging
  * @{
  */
-#ifndef _CUTEDNS_DEBUG_H_
-#define _CUTEDNS_DEBUG_H_
+#ifndef _KNOT_DEBUG_H_
+#define _KNOT_DEBUG_H_
 
-#include "log.h"
-#include "print.h"
+#include "other/log.h"
+#include "other/print.h"
 
 //#define ST_DEBUG
 //#define SM_DEBUG
@@ -160,6 +160,6 @@
 #define debug_mem(msg...)
 #endif
 
-#endif /* _CUTEDNS_DEBUG_H_ */
+#endif /* _KNOT_DEBUG_H_ */
 
 /*! @} */

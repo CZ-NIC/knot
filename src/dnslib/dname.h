@@ -8,12 +8,10 @@
  * @{
  */
 
-#ifndef _CUTEDNS_DNSLIB_DNAME_H_
-#define _CUTEDNS_DNSLIB_DNAME_H_
+#ifndef _KNOT_DNSLIB_DNAME_H_
+#define _KNOT_DNSLIB_DNAME_H_
 
 #include <stdint.h>
-
-#include "common.h"
 
 struct dnslib_node;
 
@@ -282,6 +280,6 @@ int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2);
  */
 dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2);
 
-#endif /* _CUTEDNS_DNSLIB_DNAME_H_ */
+#endif /* _KNOT_DNSLIB_DNAME_H_ */
 
 /*! @} */

@@ -11,8 +11,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_PARSER_UTIL_H_
-#define _CUTEDNS_PARSER_UTIL_H_
+#ifndef _KNOT_PARSER_UTIL_H_
+#define _KNOT_PARSER_UTIL_H_
 
 #include <assert.h>
 #include <fcntl.h>
@@ -27,8 +27,8 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
-#include "zoneparser.h"
-#include "descriptor.h"
+#include "zoneparser/zoneparser.h"
+#include "dnslib/descriptor.h"
 
 int inet_pton4(const char *src, uint8_t *dst);
 
@@ -60,6 +60,6 @@ uint32_t strtottl(const char *nptr, const char **endptr);
 
 time_t mktime_from_utc(const struct tm *tm);
 
-#endif /* _CUTEDNS_PARSER_UTIL_H_ */
+#endif /* _KNOT_PARSER_UTIL_H_ */
 
 /*! @} */

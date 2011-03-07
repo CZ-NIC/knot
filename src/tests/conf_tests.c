@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "tap_unit.h"
+#include "tests/tap_unit.h"
 #include "conf/conf.h"
 
 /* Resources. */

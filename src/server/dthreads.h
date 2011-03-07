@@ -21,8 +21,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_DTHREADS_H_
-#define _CUTEDNS_DTHREADS_H_
+#ifndef _KNOT_DTHREADS_H_
+#define _KNOT_DTHREADS_H_
 
 #include <pthread.h>
 
@@ -325,7 +325,7 @@ int dt_unit_lock(dt_unit_t *unit);
  */
 int dt_unit_unlock(dt_unit_t *unit);
 
-#endif // _CUTEDNS_DTHREADS_H_
+#endif // _KNOT_DTHREADS_H_
 
 /*! @} */
 

@@ -12,13 +12,11 @@
  * \addtogroup data_structures
  * @{
  */
-#ifndef _CUTEDNS_DYNAMIC_ARRAY_H_
-#define _CUTEDNS_DYNAMIC_ARRAY_H_
+#ifndef _KNOT_DYNAMIC_ARRAY_H_
+#define _KNOT_DYNAMIC_ARRAY_H_
 
 #include <string.h>
 #include <pthread.h>
-
-#include "common.h"
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -137,6 +135,6 @@ uint da_get_count(const da_array_t *array);
 
 /*----------------------------------------------------------------------------*/
 
-#endif /* _CUTEDNS_DYNAMIC_ARRAY_H_ */
+#endif /* _KNOT_DYNAMIC_ARRAY_H_ */
 
 /*! @} */

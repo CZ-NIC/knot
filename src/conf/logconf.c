@@ -4,10 +4,10 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "logconf.h"
-#include "log.h"
-#include "conf.h"
-#include "lists.h"
+#include "conf/logconf.h"
+#include "conf/conf.h"
+#include "other/log.h"
+#include "lib/lists.h"
 
 int log_conf_hook(const struct conf_t *conf)
 {

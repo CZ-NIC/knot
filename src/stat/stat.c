@@ -1,3 +1,4 @@
+#include <config.h>
 #include <time.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -8,9 +9,9 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "stat.h"
-#include "gatherer.h"
 #include "common.h"
+#include "stat/stat.h"
+#include "stat/gatherer.h"
 
 #ifdef STAT_COMPILE
 

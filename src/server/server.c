@@ -1,26 +1,28 @@
+#include <config.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 
-#include "debug.h"
-#include "server.h"
-#include "conf.h"
-#include "udp-handler.h"
-#include "tcp-handler.h"
-#include "name-server.h"
-#include "stat.h"
-#include "zonedb.h"
-#include "zone-load.h"
+#include "common.h"
+#include "other/debug.h"
+#include "server/server.h"
+#include "server/udp-handler.h"
+#include "server/tcp-handler.h"
+#include "server/name-server.h"
+#include "stat/stat.h"
+#include "dnslib/zonedb.h"
+#include "dnslib/zone-load.h"
 #include "dnslib/debug.h"
 #include "dnslib/dname.h"
+#include "conf/conf.h"
 
 typedef struct {
 	int fd;
 	int type;
 } ifaced_t;
 
-cute_server *cute_create()
+server_t *server_create()
 {
 	/* Create interfaces. */
 	node *n = 0;
@@ -88,7 +90,7 @@ cute_server *cute_create()
 	}
 
 	// Create server structure
-	cute_server *server = malloc(sizeof(cute_server));
+	server_t *server = malloc(sizeof(server_t));
 	server->handlers = NULL;
 	server->state = ServerIdle;
 	if (server == NULL) {
@@ -132,12 +134,12 @@ cute_server *cute_create()
 	iohandler_t* h = 0;
 	for (int i = 0; i < udp_loaded; ++i) {
 		dt_unit_t *unit = dt_create_coherent(thr_count, &udp_master, 0);
-		h = cute_create_handler(server, udp_socks[i].fd, unit);
+		h = server_create_handler(server, udp_socks[i].fd, unit);
 		h->type = udp_socks[i].type;
 
 		unit = dt_create(tcp_unit_size);
 		dt_repurpose(unit->threads[0], &tcp_master, 0);
-		h = cute_create_handler(server, tcp_socks[i].fd, unit);
+		h = server_create_handler(server, tcp_socks[i].fd, unit);
 		h->type = tcp_socks[i].type;
 	}
 
@@ -148,7 +150,7 @@ cute_server *cute_create()
 	return server;
 }
 
-iohandler_t *cute_create_handler(cute_server *server, int fd, dt_unit_t *unit)
+iohandler_t *server_create_handler(server_t *server, int fd, dt_unit_t *unit)
 {
 	// Create new worker
 	iohandler_t *handler = malloc(sizeof(iohandler_t));
@@ -182,7 +184,7 @@ iohandler_t *cute_create_handler(cute_server *server, int fd, dt_unit_t *unit)
 	return handler;
 }
 
-int cute_remove_handler(cute_server *server, iohandler_t *ref)
+int server_remove_handler(server_t *server, iohandler_t *ref)
 {
 	// Find worker
 	iohandler_t *w = 0, *p = 0;
@@ -222,7 +224,7 @@ int cute_remove_handler(cute_server *server, iohandler_t *ref)
 	return 0;
 }
 
-int cute_load_zone(cute_server *server, const char *origin, const char *db)
+int server_load_zone(server_t *server, const char *origin, const char *db)
 {
 	dnslib_zone_t *zone = NULL;
 
@@ -258,7 +260,7 @@ int cute_load_zone(cute_server *server, const char *origin, const char *db)
 	return 0;
 }
 
-int cute_start(cute_server *server, const char **filenames, uint zones)
+int server_start(server_t *server, const char **filenames, uint zones)
 {
 	// Check server
 	if (server == 0) {
@@ -280,14 +282,14 @@ int cute_start(cute_server *server, const char **filenames, uint zones)
 		conf_zone_t *z = (conf_zone_t*)n;
 
 		// Load zone
-		if (cute_load_zone(server, z->name, z->db) < 0) {
+		if (server_load_zone(server, z->name, z->db) < 0) {
 			return -1;
 		}
 	}
 
 	// Load given zones
 	for (uint i = 0; i < zones; ++i) {
-		if (cute_load_zone(server, "??", filenames[i]) < 0) {
+		if (server_load_zone(server, "??", filenames[i]) < 0) {
 			return -1;
 		}
 	}
@@ -306,7 +308,7 @@ int cute_start(cute_server *server, const char **filenames, uint zones)
 	return ret;
 }
 
-int cute_wait(cute_server *server)
+int server_wait(server_t *server)
 {
 	// Wait for dispatchers to finish
 	int ret = 0;
@@ -314,14 +316,14 @@ int cute_wait(cute_server *server)
 		debug_server("server: [%p] joining threading unit\n",
 			     server->handlers);
 		ret += dt_join(server->handlers->unit);
-		cute_remove_handler(server, server->handlers);
+		server_remove_handler(server, server->handlers);
 		debug_server("server: joined threading unit\n");
 	}
 
 	return ret;
 }
 
-void cute_stop(cute_server *server)
+void server_stop(server_t *server)
 {
 	// Notify servers to stop
 	server->state &= ~ServerRunning;
@@ -331,7 +333,7 @@ void cute_stop(cute_server *server)
 	}
 }
 
-void cute_destroy(cute_server **server)
+void server_destroy(server_t **server)
 {
 	// Check server
 	if (!server) {
@@ -345,7 +347,7 @@ void cute_destroy(cute_server **server)
 	iohandler_t *w = (*server)->handlers;
 	while (w != NULL) {
 		iohandler_t *n = w->next;
-		cute_remove_handler(*server, w);
+		server_remove_handler(*server, w);
 		w = n;
 	}
 

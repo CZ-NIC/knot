@@ -12,13 +12,11 @@
  * @{
  */
 
-#ifndef _CUTEDNS_SOCKET_H_
-#define _CUTEDNS_SOCKET_H_
+#ifndef _KNOT_SOCKET_H_
+#define _KNOT_SOCKET_H_
 
 /* POSIX only. */
 #include <sys/socket.h>
-
-#include "common.h"
 
 /*! \brief Socket-related constants. */
 enum {
@@ -154,7 +152,7 @@ static inline ssize_t socket_sendto(int socket, const void *buf, size_t len,
  */
 int socket_close(int fd);
 
-#endif // _CUTEDNS_SOCKET_H_
+#endif // _KNOT_SOCKET_H_
 
 /*! @} */
 

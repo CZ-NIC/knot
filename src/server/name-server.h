@@ -17,14 +17,14 @@
  * @{
  */
 
-#ifndef _CUTEDNS_NAME_SERVER_H_
-#define _CUTEDNS_NAME_SERVER_H_
+#ifndef _KNOT_NAME_SERVER_H_
+#define _KNOT_NAME_SERVER_H_
 
 #include <stdint.h>
 
 #include "common.h"
-#include "zonedb.h"
-#include "edns.h"
+#include "dnslib/zonedb.h"
+#include "dnslib/edns.h"
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -85,7 +85,7 @@ int ns_answer_request(ns_nameserver *nameserver,
  */
 void ns_destroy(ns_nameserver **nameserver);
 
-#endif /* _CUTEDNS_NAME_SERVER_H_ */
+#endif /* _KNOT_NAME_SERVER_H_ */
 
 /*! @} */
 

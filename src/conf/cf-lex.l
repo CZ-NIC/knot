@@ -16,9 +16,10 @@
 
 #include "conf/conf.h"
 #include "other/log.h"
-#include "cf-parse.h"
+#include "libknot_la-cf-parse.h" /* Automake generated header. */
 
 /* Imported symbols. */
+#define yylex cf_lex
 extern void cf_error(const char *msg);
 extern int (*cf_read_hook)(char *buf, size_t nbytes);
 

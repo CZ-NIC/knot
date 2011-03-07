@@ -1,5 +1,7 @@
+#include <config.h>
 #include <stdio.h>
 
+#include "common.h"
 #include "print.h"
 #include "log.h"
 

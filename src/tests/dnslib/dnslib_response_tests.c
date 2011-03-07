@@ -12,22 +12,21 @@
 #include <assert.h>
 #include <inttypes.h>
 
-#include "tap_unit.h"
-
-#include "response.h"
-#include "rdata.h"
-#include "rrset.h"
-#include "dname.h"
-#include "packet.h"
+#include "dnslib/response.h"
+#include "dnslib/rdata.h"
+#include "dnslib/rrset.h"
+#include "dnslib/dname.h"
+#include "dnslib/packet.h"
+#include "dnslib/descriptor.h"
 
 /*
  * Resources
  * \note .rc files are generated on compile-time.
  */
-#include "parsed_data_queries.rc"
-#include "parsed_data.rc"
-#include "raw_data_queries.rc"
-#include "raw_data.rc"
+#include "tests/dnslib/parsed_data_queries.rc"
+#include "tests/dnslib/parsed_data.rc"
+#include "tests/dnslib/raw_data_queries.rc"
+#include "tests/dnslib/raw_data.rc"
 
 static int dnslib_response_tests_count(int argc, char *argv[]);
 static int dnslib_response_tests_run(int argc, char *argv[]);
