@@ -1,8 +1,5 @@
-#include "tap_unit.h"
-
-#include "common.h"
-#include "zone.h"
-#include "node.h"
+#include "dnslib/zone.h"
+#include "dnslib/node.h"
 
 static int dnslib_zone_tests_count(int argc, char *argv[]);
 static int dnslib_zone_tests_run(int argc, char *argv[]);

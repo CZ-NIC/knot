@@ -1,6 +1,6 @@
 %{
 /*!
- * \file zlexer.lex
+ * \file zlexer.l
  *
  * \author minor modifications by Jan Kadlec <jan.kadlec@nic.cz>,
  *         most of the code by NLnet Labs
@@ -21,9 +21,9 @@
 #include <strings.h>
 #include <assert.h>
 
-#include "zoneparser.h"
-#include "dname.h"
-#include "parser-descriptor.h"
+#include "zoneparser/zoneparser.h"
+#include "dnslib/dname.h"
+#include "zoneparser/parser-descriptor.h"
 #include "zparser.h"
 
 #define YY_NO_INPUT

@@ -1,5 +1,5 @@
 #include "server/server.h"
-#include "tap_unit.h"
+#include "tests/tap_unit.h"
 
 static int server_tests_count(int argc, char *argv[]);
 static int server_tests_run(int argc, char *argv[]);
@@ -20,27 +20,27 @@ unit_api server_tests_api = {
 static const int SERVER_TEST_COUNT = 4;
 
 /*! Test: create server. */
-cute_server *test_server_create()
+server_t *test_server_create()
 {
-	return cute_create();
+	return server_create();
 }
 
 /*! Test: start server. */
-int test_server_start(cute_server *s, char **filenames, uint zones)
+int test_server_start(server_t *s, char **filenames, uint zones)
 {
-	return cute_start(s, (const char**)filenames, zones) == 0;
+	return server_start(s, (const char **)filenames, zones) == 0;
 }
 
 /*! Test: finish server. */
-int test_server_finish(cute_server *s)
+int test_server_finish(server_t *s)
 {
-	return cute_wait(s) == 0;
+	return server_wait(s) == 0;
 }
 
 /*! Test: stop server. */
-int test_server_destroy(cute_server *s)
+int test_server_destroy(server_t *s)
 {
-	cute_destroy(&s);
+	server_destroy(&s);
 	return s == 0;
 }
 
@@ -58,7 +58,7 @@ static void interrupt_handle(int s)
 /*! API: run tests. */
 static int server_tests_run(int argc, char *argv[])
 {
-	cute_server *server = 0;
+	server_t *server = 0;
 	int ret = 0;
 
 	// Register service and signal handler
@@ -81,7 +81,7 @@ static int server_tests_run(int argc, char *argv[])
 	//! Test server exit code
 	ok(ret, "server: started ok");
 	if (ret) {
-		cute_stop(server);
+		server_stop(server);
 	} else {
 		diag("server crashed, skipping deinit and destroy tests");
 	}

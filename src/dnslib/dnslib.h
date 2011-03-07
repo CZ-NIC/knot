@@ -10,17 +10,17 @@
 #ifndef __DNSLIB_H__
 #define __DNSLIB_H__
 
-#include "consts.h"
-#include "descriptor.h"
-#include "dname.h"
-#include "edns.h"
-#include "node.h"
-#include "packet.h"
-#include "rdata.h"
-#include "response.h"
-#include "rrset.h"
-#include "zone.h"
-#include "zonedb.h"
+#include "dnslib/consts.h"
+#include "dnslib/descriptor.h"
+#include "dnslib/dname.h"
+#include "dnslib/edns.h"
+#include "dnslib/node.h"
+#include "dnslib/packet.h"
+#include "dnslib/rdata.h"
+#include "dnslib/response.h"
+#include "dnslib/rrset.h"
+#include "dnslib/zone.h"
+#include "dnslib/zonedb.h"
 
 #endif
 

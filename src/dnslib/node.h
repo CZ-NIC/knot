@@ -10,13 +10,13 @@
  * @{
  */
 
-#ifndef _CUTEDNS_DNSLIB_NODE_H_
-#define _CUTEDNS_DNSLIB_NODE_H_
+#ifndef _KNOT_DNSLIB_NODE_H_
+#define _KNOT_DNSLIB_NODE_H_
 
-#include "dname.h"
-#include "skip-list.h"
-#include "rrset.h"
-#include "tree.h"
+#include "dnslib/dname.h"
+#include "lib/skip-list.h"
+#include "dnslib/rrset.h"
+#include "lib/tree.h"
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -198,6 +198,6 @@ void dnslib_node_free_tmp(dnslib_node_t **node, int free_rrsets);
  */
 int dnslib_node_compare(dnslib_node_t *node1, dnslib_node_t *node2);
 
-#endif /* _CUTEDNS_DNSLIB_NODE_H_ */
+#endif /* _KNOT_DNSLIB_NODE_H_ */
 
 /*! @} */

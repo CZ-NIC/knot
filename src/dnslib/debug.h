@@ -8,8 +8,8 @@
  * \addtogroup dnslib
  * @{
  */
-#ifndef _CUTEDNS_DNSLIB_DEBUG_H_
-#define _CUTEDNS_DNSLIB_DEBUG_H_
+#ifndef _KNOT_DNSLIB_DEBUG_H_
+#define _KNOT_DNSLIB_DEBUG_H_
 
 #include <stdint.h>
 #include "dnslib.h"

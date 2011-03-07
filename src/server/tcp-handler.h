@@ -13,12 +13,12 @@
  * @{
  */
 
-#ifndef _CUTEDNS_TCPHANDLER_H_
-#define _CUTEDNS_TCPHANDLER_H_
+#ifndef _KNOT_TCPHANDLER_H_
+#define _KNOT_TCPHANDLER_H_
 
-#include "socket.h"
-#include "server.h"
-#include "dthreads.h"
+#include "server/socket.h"
+#include "server/server.h"
+#include "server/dthreads.h"
 
 
 /*!
@@ -35,7 +35,7 @@
  */
 int tcp_master(dthread_t *thread);
 
-#endif // _CUTEDNS_TCPHANDLER_H_
+#endif // _KNOT_TCPHANDLER_H_
 
 /*! @} */
 

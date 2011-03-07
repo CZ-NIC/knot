@@ -11,6 +11,7 @@
  * @{
  */
 
+#include <config.h>
 #include <assert.h>
 #include <fcntl.h>
 #include <ctype.h>
@@ -24,10 +25,11 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
-#include "parser-util.h"
-#include "zoneparser.h"
-#include "descriptor.h"
-#include "utils.h"
+#include "common.h"
+#include "zoneparser/parser-util.h"
+#include "zoneparser/zoneparser.h"
+#include "dnslib/descriptor.h"
+#include "dnslib/utils.h"
 
 #define IP6ADDRLEN	(128/8)
 #define	NS_INT16SZ	2

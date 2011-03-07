@@ -1,5 +1,5 @@
 #include "server/dthreads.h"
-#include "tap_unit.h"
+#include "tests/tap_unit.h"
 #include <sys/select.h>
 #include <pthread.h>
 #include <sched.h>

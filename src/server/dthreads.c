@@ -1,3 +1,4 @@
+#include <config.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,9 +6,9 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "dthreads.h"
 #include "common.h"
-#include "log.h"
+#include "dthreads.h"
+#include "other/log.h"
 
 /* Lock thread state for R/W. */
 static inline void lock_thread_rw(dthread_t *thread)

@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_DNSLIB_ZONELOAD_H_
-#define _CUTEDNS_DNSLIB_ZONELOAD_H_
+#ifndef _KNOT_DNSLIB_ZONELOAD_H_
+#define _KNOT_DNSLIB_ZONELOAD_H_
 
 #include "dnslib/zone.h"
 
@@ -23,5 +23,5 @@
  */
 dnslib_zone_t *dnslib_zload_load(const char *filename);
 
-#endif /* _CUTEDNS_ZONELOAD_H_ */
+#endif /* _KNOT_ZONELOAD_H_ */
 

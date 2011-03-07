@@ -1,3 +1,4 @@
+#include <config.h>
 #include <assert.h>
 #include <malloc.h>
 #include <stdio.h>
@@ -5,10 +6,10 @@
 #include <string.h>
 #include <errno.h>
 
-#include "zone-load.h"
-#include "dnslib/dnslib.h"
 #include "common.h"
-#include "debug.h"
+#include "dnslib/zone-load.h"
+#include "dnslib/dnslib.h"
+#include "dnslib/debug.h"
 
 static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
 {
