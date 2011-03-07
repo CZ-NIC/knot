@@ -1,9 +1,11 @@
+#include <config.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
 #include <stdlib.h>
 
-#include "debug.h"
+#include "common.h"
+#include "dnslib/debug.h"
 #include "dnslib/dnslib.h"
 
 void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type, char loaded_zone)

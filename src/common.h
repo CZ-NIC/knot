@@ -9,21 +9,23 @@
  * @{
  */
 
-#ifndef _CUTEDNS_COMMON_H_
-#define _CUTEDNS_COMMON_H_
+#ifndef _KNOT_COMMON_H_
+#define _KNOT_COMMON_H_
 
 #include <signal.h>
 #include <stdint.h>
+#include "config.h"
 
 /* Common types and constants.
  */
 
 typedef unsigned int uint;
 
-#define PROJECT_NAME "CuteDNS" // Project name
+#define PROJECT_NAME PACKAGE // Project name
 #define PROJECT_VER  0x000100  // 0xMMIIRR (MAJOR,MINOR,REVISION)
-#define PROJECT_EXEC "cutedns" // Project executable
-#define ZONEPARSER_EXEC "zoneparser" // Zoneparser executable
+#define PROJECT_EXEC "knotd" // Project executable
+#define ZONEPARSER_EXEC "knot-zcompile" // Zoneparser executable
+#define PID_FILE "knot.pid"
 
 /* Server. */
 #define CPU_ESTIMATE_MAGIC 2   // Extra threads above the number of processors
@@ -42,28 +44,15 @@ typedef unsigned int uint;
 /* Common includes.
  */
 
-#include "print.h"
-#include "log.h"
-#include "debug.h"
-
-/* Common inlines.
- */
-#include <stdio.h>
-static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
-{
-	int rc = fread(dst, size, n, fp);
-	if (rc != n) {
-		log_warning("fread: invalid read %d (expected %zu)\n", rc, n);
-	}
-
-	return rc == n;
-}
-
+#include "other/latency.h"
+#include "other/print.h"
+#include "other/log.h"
+#include "other/debug.h"
 
 /* Common macros.
  */
 
-#define ERR_ALLOC_FAILED log_error("Allocation failed at %s:%d (%s ver.%x)\n", \
+#define ERR_ALLOC_FAILED log_server_error("Allocation failed at %s:%d (%s ver.%x)\n", \
 				  __FILE__, __LINE__, PROJECT_NAME, PROJECT_VER)
 
 #define CHECK_ALLOC_LOG(var, ret) \
@@ -112,6 +101,6 @@ do { \
 
 //#define STAT_COMPILE
 
-#endif /* _CUTEDNS_COMMON_H_ */
+#endif /* _KNOT_COMMON_H_ */
 
 /*! @} */

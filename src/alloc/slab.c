@@ -1,11 +1,13 @@
+#include <config.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <sys/mman.h>
-#include "slab.h"
+
 #include "common.h"
+#include "slab.h"
 
 
 /* Magic constants.

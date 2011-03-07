@@ -1,8 +1,9 @@
+#include <config.h>
 #include <pthread.h>
 
-#include "malloc.h"
-#include "gatherer.h"
 #include "common.h"
+#include "alloc/malloc.h"
+#include "stat/gatherer.h"
 
 gatherer_t *new_gatherer()
 {

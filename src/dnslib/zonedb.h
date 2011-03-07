@@ -12,13 +12,13 @@
  * @{
  */
 
-#ifndef _CUTEDNS_DNSLIB_ZONEDB_H_
-#define _CUTEDNS_DNSLIB_ZONEDB_H_
+#ifndef _KNOT_DNSLIB_ZONEDB_H_
+#define _KNOT_DNSLIB_ZONEDB_H_
 
-#include "skip-list.h"
-#include "zone.h"
-#include "node.h"
-#include "dname.h"
+#include "lib/skip-list.h"
+#include "dnslib/zone.h"
+#include "dnslib/node.h"
+#include "dnslib/dname.h"
 
 struct dnslib_zonedb {
 	skip_list_t *zones;
@@ -90,18 +90,8 @@ const dnslib_zone_t *dnslib_zonedb_find_zone_for_name(dnslib_zonedb_t *db,
  */
 void dnslib_zonedb_deep_free(dnslib_zonedb_t **db);
 
-/*!
- * \brief Return a filename of the default compiled database file.
- *
- * \retval Filename of the database file.
- * \retval NULL if not exists.
- *
- * \todo Implement properly using configuration file.
- */
-char* dnslib_zonedb_dbpath();
-
 /*----------------------------------------------------------------------------*/
 
-#endif /* _CUTEDNS_DNSLIB_ZONEDB_H_ */
+#endif /* _KNOT_DNSLIB_ZONEDB_H_ */
 
 /*! @} */

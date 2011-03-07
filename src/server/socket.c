@@ -1,3 +1,4 @@
+#include <config.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -7,54 +8,122 @@
 #include <netdb.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
 #include <arpa/inet.h>
 
+#include "common.h"
 #include "socket.h"
 
 int socket_create(int family, int type)
 {
-	// Create socket
+	/* Create socket. */
 	return socket(family, type, 0);
 }
 
-int socket_connect(int socket, const char *addr, unsigned short port)
+int socket_connect(int fd, const char *addr, unsigned short port)
 {
-	// Create socket
-	struct hostent *hent = gethostbyname(addr);
-	if (hent == 0) {
+	/* NULL address => any */
+	if (!addr) {
+		addr = "0.0.0.0";
+	}
+
+	/* Resolve address. */
+	int ret = 0;
+	struct addrinfo hints, *res;
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	if ((ret = getaddrinfo(addr, NULL, &hints, &res)) != 0) {
 		return -1;
 	}
 
-	// Prepare host address
-	struct sockaddr_in saddr;
-	socklen_t addrlen = sizeof(struct sockaddr_in);
-	saddr.sin_family = AF_INET;
-	saddr.sin_port = htons(port);
-	memcpy(&saddr.sin_addr, hent->h_addr, hent->h_length);
+	/* Evaluate address type. */
+	struct sockaddr *saddr = 0;
+	socklen_t addrlen = 0;
+#ifndef DISABLE_IPV6
+	if (res->ai_family == AF_INET6) {
+		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6*)res->ai_addr;
+		ipv6->sin6_port = htons(port);
+		saddr = (struct sockaddr*)ipv6;
+		addrlen = sizeof(struct sockaddr_in6);
+	}
+#endif
+	if (res->ai_family == AF_INET) {
+		struct sockaddr_in *ipv4 = (struct sockaddr_in*)res->ai_addr;
+		ipv4->sin_port = htons(port);
+		saddr = (struct sockaddr*)ipv4;
+		addrlen = sizeof(struct sockaddr_in);
+	}
 
-	// Connect to host
-	return connect(socket, (struct sockaddr *)&saddr, addrlen);
+	/* Connect. */
+	ret = -1;
+	if (addr) {
+		ret = connect(fd, saddr, addrlen);
+	}
+
+	/* Free addresses. */
+	freeaddrinfo(res);
+
+	return ret;
 }
 
-int socket_bind(int socket, const char *addr, unsigned short port)
+int socket_bind(int socket, int family, const char *addr, unsigned short port)
 {
-	// Initialize socket address
+	/* Check address family. */
+	struct sockaddr* paddr = 0;
+	socklen_t addrlen = 0;
 	struct sockaddr_in saddr;
-	socklen_t addrlen = sizeof(struct sockaddr_in);
-	if (getsockname(socket, &saddr, &addrlen) < 0) {
+#ifndef DISABLE_IPV6
+	struct sockaddr_in6 saddr6;
+#endif
+	if (family == AF_INET) {
+
+		/* Initialize socket address. */
+		paddr = (struct sockaddr*)&saddr;
+		addrlen = sizeof(saddr);
+		if (getsockname(socket, paddr, &addrlen) < 0) {
+			return -1;
+		}
+
+		/* Set address and port. */
+		saddr.sin_port = htons(port);
+		if (inet_pton(family, addr, &saddr.sin_addr) < 0) {
+			saddr.sin_addr.s_addr = INADDR_ANY;
+			char buf[INET_ADDRSTRLEN];
+			inet_ntop(family, &saddr.sin_addr, buf, sizeof(buf));
+			log_server_error("sockets: Address '%s' is invalid, "
+			                 "using '%s' instead.\n",
+			                 addr, buf);
+
+		}
+
+	} else {
+
+#ifdef DISABLE_IPV6
+		log_error("sockets: ipv6 support disabled\n");
 		return -1;
+#else
+		/* Initialize socket address. */
+		paddr = (struct sockaddr*)&saddr6;
+		addrlen = sizeof(saddr6);
+		if (getsockname(socket, paddr, &addrlen) < 0) {
+			return -1;
+		}
+
+		/* Set address and port. */
+		saddr6.sin6_port = htons(port);
+		if (inet_pton(family, addr, &saddr6.sin6_addr) < 0) {
+			memcpy(&saddr6.sin6_addr, &in6addr_any, sizeof(in6addr_any));
+			char buf[INET6_ADDRSTRLEN];
+			inet_ntop(family, &saddr6.sin6_addr, buf, sizeof(buf));
+			log_server_error("sockets: Address '%s' is invalid, "
+			                 "using '%s' instead\n",
+			                 addr, buf);
+
+		}
+#endif
 	}
 
-	// Set address and port
-	saddr.sin_port = htons(port);
-	saddr.sin_addr.s_addr = inet_addr(addr);
-	if (saddr.sin_addr.s_addr == INADDR_NONE) {
-		log_error("%s: address %s is invalid, using 0.0.0.0 instead",
-		          __func__, addr);
-		saddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	}
-
-	// Reuse old address if taken
+	/* Reuse old address if taken. */
 	int flag = 1;
 	int ret = setsockopt(socket, SOL_SOCKET, SO_REUSEADDR,
 	                     &flag, sizeof(flag));
@@ -62,11 +131,11 @@ int socket_bind(int socket, const char *addr, unsigned short port)
 		return -2;
 	}
 
-	// Bind to specified address
-	int res = bind(socket, (struct sockaddr *)& saddr, sizeof(saddr));
+	/* Bind to specified address. */
+	int res = bind(socket, paddr, addrlen);
 	if (res < 0) {
-		log_error("%s: cannot bind socket (errno %d): %s.\n",
-		          __func__, errno, strerror(errno));
+		log_server_error("%s: cannot bind socket (errno %d): %s.\n",
+		                 __func__, errno, strerror(errno));
 		return -3;
 	}
 
@@ -76,28 +145,6 @@ int socket_bind(int socket, const char *addr, unsigned short port)
 int socket_listen(int socket, int backlog_size)
 {
 	return listen(socket, backlog_size);
-}
-
-ssize_t socket_recv(int socket, void *buf, size_t len, int flags)
-{
-	return recv(socket, buf, len, flags);
-}
-
-ssize_t socket_recvfrom(int socket, void *buf, size_t len, int flags,
-                        struct sockaddr *from, socklen_t *fromlen)
-{
-	return recvfrom(socket, buf, len, flags, from, fromlen);
-}
-
-ssize_t socket_send(int socket, const void *buf, size_t len, int flags)
-{
-	return send(socket, buf, len, flags);
-}
-
-ssize_t socket_sendto(int socket, const void *buf, size_t len, int flags,
-                      const struct sockaddr *to, socklen_t tolen)
-{
-	return sendto(socket, buf, len, flags, to, tolen);
 }
 
 int socket_close(int socket)

@@ -12,19 +12,18 @@
  * @{
  */
 
-#ifndef _CUTEDNS_ZONEPARSER_H_
-#define _CUTEDNS_ZONEPARSER_H_
+#ifndef _KNOT_ZONEPARSER_H_
+#define _KNOT_ZONEPARSER_H_
 
 #include <stdio.h>
 
-#include "dname.h"
-#include "rrset.h"
-#include "node.h"
-#include "rdata.h"
-#include "zone.h"
-#include "slab.h"
-
-#include "skip-list.h"
+#include "dnslib/dname.h"
+#include "dnslib/rrset.h"
+#include "dnslib/node.h"
+#include "dnslib/rdata.h"
+#include "dnslib/zone.h"
+#include "alloc/slab.h"
+#include "lib/skip-list.h"
 
 #define MAXRDATALEN	64
 #define MAXLABELLEN	63
@@ -154,6 +153,6 @@ void zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 
 void zparser_free();
 
-#endif /* _CUTEDNS_ZONEPARSER_H_ */
+#endif /* _KNOT_ZONEPARSER_H_ */
 
 /*! @} */

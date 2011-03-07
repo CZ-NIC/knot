@@ -9,12 +9,9 @@
  * -
  */
 
-#include "tap_unit.h"
-
-#include "common.h"
-#include "rrset.h"
-#include "dname.h"
-#include "rdata.h"
+#include "dnslib/rrset.h"
+#include "dnslib/dname.h"
+#include "dnslib/rdata.h"
 
 static int dnslib_rrset_tests_count(int argc, char *argv[]);
 static int dnslib_rrset_tests_run(int argc, char *argv[]);

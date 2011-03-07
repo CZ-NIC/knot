@@ -1,12 +1,13 @@
+#include <config.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
 
-#include "rdata.h"
 #include "common.h"
-#include "descriptor.h"
-#include "dname.h"
+#include "dnslib/rdata.h"
+#include "dnslib/descriptor.h"
+#include "dnslib/dname.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */

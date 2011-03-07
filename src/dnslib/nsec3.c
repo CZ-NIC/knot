@@ -6,11 +6,11 @@
 #include <openssl/evp.h>
 #include <openssl/sha.h>
 
-#include "nsec3.h"
+#include "dnslib/nsec3.h"
 #include "common.h"
-#include "descriptor.h"
-#include "utils.h"
-#include "tolower.h"
+#include "dnslib/descriptor.h"
+#include "dnslib/utils.h"
+#include "dnslib/tolower.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -138,7 +138,7 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params,
 #endif
 
 		if (res != 1) {
-			log_error("Error calculating SHA-1 hash.\n");
+			debug_dnslib_nsec3("Error calculating SHA-1 hash.\n");
 			free(data_low);
 			free(*digest);
 			return -2;
@@ -236,7 +236,7 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params,
 #endif
 
 		if (res != 1) {
-			log_error("Error calculating SHA-1 hash.\n");
+			debug_dnslib_nsec3("Error calculating SHA-1 hash.\n");
 			free(data_low);
 			free(*digest);
 			return -2;

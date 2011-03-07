@@ -1,10 +1,12 @@
+#include <config.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
 
-#include "zone-dump.h"
-#include "dnslib.h"
-#include "skip-list.h"
+#include "common.h"
+#include "dnslib/zone-dump.h"
+#include "dnslib/dnslib.h"
+#include "lib/skip-list.h"
 
 /* \note For space and speed purposes, dname ID (to be later used in loading)
  * is being stored in dname->node field. Not to be confused with dname's actual
@@ -12,7 +14,7 @@
  */
 
 /* \note Contents of dump file:
- * MAGIC(cutexx) NUMBER_OF_NORMAL_NODES NUMBER_OF_NSEC3_NODES
+ * MAGIC(knotxx) NUMBER_OF_NORMAL_NODES NUMBER_OF_NSEC3_NODES
  * [normal_nodes] [nsec3_nodes]
  * node has following format:
  * owner_size owner_wire owner_label_size owner_labels owner_id
@@ -435,8 +437,8 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename)
 
 	dnslib_zone_save_enclosers(zone, encloser_list);
 
-	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101, 0, 3};
-	/* zoneparser version */		   /*c   u    t    e   0.3*/
+	static const uint8_t MAGIC[MAGIC_LENGTH] = {107, 110, 111, 116, 0, 2};
+	                                           /*k   n    o    t   0.1*/
 
 	fwrite(&MAGIC, sizeof(uint8_t), MAGIC_LENGTH, f);
 
