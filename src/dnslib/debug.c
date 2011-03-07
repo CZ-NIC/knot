@@ -128,6 +128,14 @@ void dnslib_node_dump(dnslib_node_t *node, void *data)
 		printf("no parent\n");
 	}
 
+	if (node->prev != NULL) {
+		name = dnslib_dname_to_str(node->prev->owner);
+		printf("previous node: %s\n", name);
+		free(name);
+	} else {
+		printf("previous node: none\n");
+	}
+
 	const skip_node_t *skip_node =
 		skip_first(node->rrsets);
 
