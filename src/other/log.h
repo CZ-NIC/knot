@@ -14,8 +14,8 @@
  * \addtogroup logging
  * @{
  */
-#ifndef _CUTEDNS_LOG_H_
-#define _CUTEDNS_LOG_H_
+#ifndef _KNOT_LOG_H_
+#define _KNOT_LOG_H_
 
 /*
  */
@@ -180,6 +180,6 @@ int log_vmsg(logsrc_t src, int level, const char *msg, va_list ap);
 #define log_zone_info(msg...)        log_msg(LOG_ZONE, LOG_INFO, msg)
 #define log_zone_debug(msg...)       log_msg(LOG_ZONE, LOG_DEBUG, msg)
 
-#endif /* _CUTEDNS_LOG_H_ */
+#endif /* _KNOT_LOG_H_ */
 
 /*! @} */

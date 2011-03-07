@@ -9,11 +9,11 @@
  * @{
  */
 
-#ifndef _CUTEDNS_DNSLIB_CONSTS_H_
-#define _CUTEDNS_DNSLIB_CONSTS_H_
+#ifndef _KNOT_DNSLIB_CONSTS_H_
+#define _KNOT_DNSLIB_CONSTS_H_
 
 #include <stdint.h>
-#include "descriptor.h"
+#include "dnslib/descriptor.h"
 
 /*
  * OPCODEs
@@ -80,6 +80,6 @@ static const dnslib_rr_type_t
 	DNSLIB_RRTYPE_RT
 };
 
-#endif /* _CUTEDNS_DNSLIB_CONSTS_H_ */
+#endif /* _KNOT_DNSLIB_CONSTS_H_ */
 
 /*! @} */

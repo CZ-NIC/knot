@@ -1,13 +1,15 @@
+#include <config.h>
 #include <stdio.h>
 #include <assert.h>
 
 #include <urcu.h>
 
-#include "name-server.h"
-#include "stat.h"
-#include "dnslib.h"
+#include "common.h"
+#include "server/name-server.h"
+#include "stat/stat.h"
+#include "dnslib/dnslib.h"
 #include "dnslib/debug.h"
-#include "edns.h"
+#include "dnslib/edns.h"
 
 //static const uint8_t  RCODE_MASK           = 0xf0;
 static const int      OFFSET_FLAGS2        = 3;

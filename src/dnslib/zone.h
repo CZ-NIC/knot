@@ -9,13 +9,13 @@
  * @{
  */
 
-#ifndef _CUTEDNS_DNSLIB_ZONE_H_
-#define _CUTEDNS_DNSLIB_ZONE_H_
+#ifndef _KNOT_DNSLIB_ZONE_H_
+#define _KNOT_DNSLIB_ZONE_H_
 
-#include "node.h"
-#include "dname.h"
-#include "tree.h"
-#include "cuckoo-hash-table.h"
+#include "dnslib/node.h"
+#include "dnslib/dname.h"
+#include "lib/tree.h"
+#include "hash/cuckoo-hash-table.h"
 
 /*----------------------------------------------------------------------------*/
 
