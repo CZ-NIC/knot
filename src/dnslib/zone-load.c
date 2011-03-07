@@ -538,11 +538,7 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 
         dnslib_node_t *last_node;
 
-        if (dnslib_node_get_rrset(apex, DNSLIB_RRTYPE_NSEC) != NULL) {
-                last_node = apex;
-        } else {
-                last_node = NULL;
-        }
+	last_node = apex;
 
 	for (uint i = 1; i < node_count; i++) {
 		tmp_node = dnslib_load_node(f);
@@ -560,9 +556,9 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 
 			tmp_node->prev = last_node;
 
-                        if (skip_first(tmp_node->rrsets) != NULL &&
-                            dnslib_node_get_rrset(tmp_node,
-                                                  DNSLIB_RRTYPE_NSEC) != NULL) {
+			if (skip_first(tmp_node->rrsets) != NULL &&
+			    (dnslib_node_is_deleg_point(tmp_node) ||
+			    !dnslib_node_is_non_auth(tmp_node))) {
                                 last_node = tmp_node;
                         }
 
