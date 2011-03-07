@@ -1,13 +1,12 @@
-#include "tap_unit.h"
 #ifdef TEST_WITH_LDNS
 #include "ldns/ldns.h"
 #endif
 
-#include "zone.h"
-#include "zone-load.h"
-#include "rrset.h"
-#include "descriptor.h"
-#include "zoneparser.h"
+#include "dnslib/zone.h"
+#include "dnslib/zone-load.h"
+#include "dnslib/rrset.h"
+#include "dnslib/descriptor.h"
+#include "zoneparser/zoneparser.h"
 #include "dnslib/debug.h"
 
 #define ZONE_ORIGIN "example.com."

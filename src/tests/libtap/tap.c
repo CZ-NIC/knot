@@ -1,7 +1,10 @@
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+
+#include "common.h"
 #include "tap.h"
 
 static int expected_tests = NO_PLAN;

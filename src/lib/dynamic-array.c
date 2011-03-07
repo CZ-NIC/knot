@@ -1,10 +1,12 @@
+#include <config.h>
 #include <pthread.h>
 #include <assert.h>
 #include <stdio.h>
 
 #include <urcu.h>
 
-#include "dynamic-array.h"
+#include "common.h"
+#include "lib/dynamic-array.h"
 
 /*----------------------------------------------------------------------------*/
 /* Private functions                                                          */

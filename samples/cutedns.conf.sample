@@ -1,0 +1,138 @@
+#
+# cutendns.conf.sample
+#
+# This is a sample configuration file for CuteDNS authoritative DNS server.
+#
+
+# This is a comment.
+
+#
+# There are 4 main sections of this config file:
+#   system, zones, interfaces and log
+#
+
+# Section 'system' contains general options for the server
+system {
+
+  # Identity of the server (see RFC 4892). Not used yet.
+  identity "I have no mouth and must scream";
+
+  # Version of the server (see RFC 4892). Not used yet.
+  version "0.1";
+
+  # Working directory of the server
+  # Used to store compiled zones and PID file
+  storage "~/.cutedns";
+
+  # TSIG key
+  #
+  # format: key key-type "<key>";
+  # where key-type may be one of the following:
+  #   hmac-md5
+  #   hmac-sha1
+  #   hmac-sha224
+  #   hmac-sha256
+  #   hmac-sha384
+  #   hmac-sha512
+  # and <key> is the private key
+  key hmac-md5 "Wg==";
+
+}
+
+# Section 'zones' contains information about zones to be served.
+zones {
+
+  # Zone entry
+  #
+  # Format: <zone-name> { file "<path-to-zone-file>"; }
+  example.com {  # <zone-name> is the DNS name of the zone (zone root)
+    # <path-to-zone-file> may be either absolute or relative, in which case
+    #   it is considered relative to the current directory from which the server
+    #   was started.
+    file "samples/example.com.zone";
+  }
+}
+
+# Section 'interfaces' contains definitions of listening interfaces.
+interfaces {
+
+  # Interface entry
+  #
+  # Format 1: <name> { address <address>; [port <port>;] }
+  ipv4 {                # <name> is an arbitrary symbolic name
+    address 127.0.0.1;  # <address> may be ither IPv4 or IPv6 address
+    port 53531;         # port is optional (default: 53)
+  }
+
+  # Format 2: <name> { address <address>@<port>; }
+  shortipv4 {
+    address 127.0.0.1@1234;
+  }
+
+}
+
+# Section 'log' configures logging of server messages.
+#
+# Logging recognizes 3 symbolic names of log devices: 
+#   stdout    - Standard output
+#   stderr    - Standard error output
+#   syslog    - Syslog
+# 
+# In addition, arbitrary number of log files may be specified (see below).
+#
+# Log messages are characterized by severity and category.
+# Supported severities: 
+#   debug     - Debug messages. Must be turned on at compile time.
+#   info      - Informational messages.
+#   notice    - Notices and hints.
+#   warning   - Warnings. An action from the operator may be required.
+#   error     - Recoverable error. Some action should be taken.
+#   fatal     - Non-recoverable errors resulting in server shutdown.
+#               (Not supported yet.)
+#   all       - All severities.
+#
+# Categories designate the source of the log message and roughly correspond
+#   to server modules
+# Supported categories:
+#   server    - Messages related to general operation of the server.
+#   zone      - Messages related to zones, zone parsing and loading.
+#   answering - Messages regarding query processing and response creation.
+#   any       - All categories
+#
+# More severities (separated by commas) may be listed for each category.
+# All applicable severities must be listed. 
+#   (I.e. specifying 'error' severity does mean: 'log error messages', 
+#    and NOT 'log all messages of severity error and above'.)
+#
+# Default settings (in case there are no entries in 'log' section or the section
+# is missing at all):
+#
+# stderr { any error; }
+# syslog { any error; }
+log {
+
+  # Log entry
+  #
+  # Format 1: 
+  # <log> { 
+  #   <category1> <severity1> [, <severity2> ...]; 
+  #   <category2> <severity1> [, <severity2> ...];
+  #   ...
+  # } 
+  syslog {     # <log> is a symbolic name of a log device (see above)
+    # log errors of any category 
+    any error;    # for <category> and <severity> see above
+    # log also warnings and notices from category 'zone'
+    zone warning, notice;
+  }
+
+  # Format 2:
+  # file <path> {
+  #   <category1> <severity1> [, <severity2> ...];
+  #   <category2> <severity1> [, <severity2> ...];
+  # }
+  file "~/server.debug" {  # <path> is absolute or relative path to log file
+    server debug;
+  }
+
+}

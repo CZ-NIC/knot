@@ -1,16 +1,19 @@
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
 #include "common.h"
-#include "server.h"
-#include "zoneparser.h"
-#include "process.h"
+#include "server/server.h"
+#include "zoneparser/zoneparser.h"
+#include "ctl/process.h"
+#include "conf/conf.h"
+#include "conf/logconf.h"
 
 /*----------------------------------------------------------------------------*/
 
 static volatile short s_stopping = 0;
-static cute_server *s_server = NULL;
+static server_t *s_server = NULL;
 
 // SIGINT signal handler
 void interrupt_handle(int s)
@@ -22,7 +25,7 @@ void interrupt_handle(int s)
 
 	// Reload configuration
 	if (s == SIGHUP) {
-		log_info("TODO: reload configuration...\n");
+		log_server_info("server: fixme: reload configuration.\n");
 		/// \todo Reload configuration?
 	}
 
@@ -30,9 +33,9 @@ void interrupt_handle(int s)
 	if (s == SIGINT || s == SIGTERM) {
 		if (s_stopping == 0) {
 			s_stopping = 1;
-			cute_stop(s_server);
+			server_stop(s_server);
 		} else {
-			log_error("\nOK! OK! Exiting immediately.\n");
+			log_server_error("server: \nOK! OK! Exiting immediately.\n");
 			exit(1);
 		}
 	}
@@ -43,10 +46,11 @@ void help(int argc, char **argv)
 	printf("Usage: %s [parameters] [<filename1> <filename2> ...]\n",
 	       argv[0]);
 	printf("Parameters:\n"
-	       " -d\tRun server as a daemon.\n"
-	       " -v\tVerbose mode - additional runtime information.\n"
-	       " -V\tPrint version of the server.\n"
-	       " -h\tPrint help and usage.\n");
+	       " -c [file] Select configuration file.\n"
+	       " -d        Run server as a daemon.\n"
+	       " -v        Verbose mode - additional runtime information.\n"
+	       " -V        Print version of the server.\n"
+	       " -h        Print help and usage.\n");
 }
 
 int main(int argc, char **argv)
@@ -55,9 +59,13 @@ int main(int argc, char **argv)
 	int c = 0;
 	int verbose = 0;
 	int daemonize = 0;
-	while ((c = getopt (argc, argv, "dvVh")) != -1) {
+	const char* config_fn = 0;
+	while ((c = getopt (argc, argv, "c:dvVh")) != -1) {
 		switch (c)
 		{
+		case 'c':
+			config_fn = optarg;
+			break;
 		case 'd':
 			daemonize = 1;
 			break;
@@ -78,70 +86,79 @@ int main(int argc, char **argv)
 		}
 	}
 
-	// Now check if we want to daemonize
-	if (daemonize) {
-		if (daemon(1, 0) != 0) {
-			log_open(0, LOG_MASK(LOG_ERR));
-			log_error("Daemonization failed, shutting down...\n");
-			log_close();
-			return 1;
-		}
-	}
-
-	// Open log
-	int log_mask = LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING);
-	int print_mask = LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING);
-	if (verbose) {
-		print_mask |= LOG_MASK(LOG_NOTICE);
-		print_mask |= LOG_MASK(LOG_INFO);
-		log_mask = print_mask;
-	}
-
-	log_open(print_mask, log_mask);
-
-	// Save PID
-	char* pidfile = pid_filename();
-	if (daemonize) {
-		int rc = pid_write(pidfile);
-		if (rc < 0) {
-			log_warning("Failed to create PID file '%s'.",
-				    pidfile);
-		} else {
-			log_info("PID file '%s' created.",
-				 pidfile);
-		}
-	}
+	// Initialize log
+	log_init();
 
 	// Check if there's at least one remaining non-option
 	int zfs_count = argc - optind;
-	char **zfs = argv + optind;
-	char *default_zf = 0;
-	if (argc - optind < 1) {
-		// Check file
-		default_zf = dnslib_zonedb_dbpath();
-		FILE* fp = fopen(default_zf, "r");
-		if (fp) {
-			log_info("Default zone database '%s'.\n",
-				 default_zf);
-			zfs_count = 1;
-			zfs = &default_zf;
-			fclose(fp);
-		} else {
-			log_error("No zonefile specified and "
-				  "the default database does not exist.\n");
-			log_info("Shutting down...\n");
-			pid_remove(pidfile);
+	const char **zfs = (const char**)argv + optind;
+
+	// Now check if we want to daemonize
+	if (daemonize) {
+		if (daemon(1, 0) != 0) {
+			log_server_error("Daemonization failed, shutting down...\n");
 			log_close();
 			return 1;
 		}
 	}
 
+	// Initialize configuration
+	conf_add_hook(conf(), CONF_LOG, log_conf_hook);
+
+	// Find implicit configuration file
+	char *default_fn = 0;
+	if (!config_fn) {
+		default_fn = conf_find_default();
+		config_fn = default_fn;
+	}
+
+	// Open configuration
+	if (conf_open(config_fn) != 0) {
+
+		log_server_error("server: Failed to parse configuration '%s'.\n"
+		                 , config_fn);
+
+		if (zfs_count < 1) {
+			log_server_error("server: No zone files specified, "
+			                 "shutting down.\n\n");
+			help(argc, argv);
+			log_close();
+			free(default_fn);
+			return 1;
+		}
+	}
+
+	// Free default config filename if exists
+	free(default_fn);
+
+	// Verbose mode
+	if (verbose) {
+		int mask = LOG_MASK(LOG_INFO)|LOG_MASK(LOG_DEBUG);
+		log_levels_add(LOGT_STDOUT, LOG_ANY, mask);
+	}
+
+	// Save PID
+	const char* pidfile = pid_filename();
+	if (daemonize) {
+		int rc = pid_write(pidfile);
+		if (rc < 0) {
+			log_server_warning("server: Failed to create PID "
+			                   "file '%s'.",
+			                   pidfile);
+		} else {
+			log_server_info("server: PID file '%s' created.",
+			                pidfile);
+		}
+	}
+
+
+
 	// Create server instance
-	s_server = cute_create();
+	s_server = server_create();
 
 	// Run server
 	int res = 0;
-	if ((res = cute_start(s_server, zfs, zfs_count)) == 0) {
+	if ((res = server_start(s_server, zfs, zfs_count)) == 0) {
 
 		// Register service and signal handler
 		struct sigaction sa;
@@ -154,40 +171,35 @@ int main(int argc, char **argv)
 		sigaction(SIGALRM, &sa, NULL); // Interrupt
 
 		// Change directory if daemonized
-		log_info("Server started.\n");
+		log_server_info("server: Started.\n");
 		if (daemonize) {
-			log_info("Server running as daemon.\n");
+			log_server_info("Server running as daemon.\n");
 			res = chdir("/");
 		}
 
-		if ((res = cute_wait(s_server)) != 0) {
-			log_error("There was an error while waiting for server"
-				  " to finish.\n");
+		if ((res = server_wait(s_server)) != 0) {
+			log_server_error("server: An error occured while "
+			                 "waiting for server to finish.\n");
 		}
 	} else {
-		log_error("There was an error while starting the server, "
-			  "exiting...\n");
-	}
-
-	// Free default zone database
-	if (default_zf) {
-		free(default_zf);
+		log_server_error("server: An error occured while "
+		                 "starting the server.\n");
 	}
 
 	// Stop server and close log
-	cute_destroy(&s_server);
+	server_destroy(&s_server);
 
 	// Remove PID file if daemonized
 	if (daemonize) {
 		if (pid_remove(pidfile) < 0) {
-			log_warning("Failed to remove PID file.\n");
+			log_server_warning("server: Failed to remove "
+			                   "PID file.\n");
 		} else {
-			log_info("PID file safely removed.\n");
+			log_server_info("server: PID file safely removed.\n");
 		}
 	}
-	free(pidfile);
 
-	log_info("Shutting down...\n");
+	log_server_info("server: Shut down.\n");
 	log_close();
 
 	return res;

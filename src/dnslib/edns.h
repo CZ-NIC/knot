@@ -9,12 +9,12 @@
  * @{
  */
 
-#ifndef _CUTEDNS_DNSLIB_EDNS_H_
-#define _CUTEDNS_DNSLIB_EDNS_H_
+#ifndef _KNOT_DNSLIB_EDNS_H_
+#define _KNOT_DNSLIB_EDNS_H_
 
 #include <stdint.h>
 
-#include "utils.h"
+#include "dnslib/utils.h"
 
 /*----------------------------------------------------------------------------*/
 struct dnslib_opt_option {
@@ -102,6 +102,6 @@ short dnslib_edns_size(dnslib_opt_rr_t *opt_rr);
 
 void dnslib_edns_free(dnslib_opt_rr_t **opt_rr);
 
-#endif /* _CUTEDNS_DNSLIB_EDNS_H_ */
+#endif /* _KNOT_DNSLIB_EDNS_H_ */
 
 /*! @} */

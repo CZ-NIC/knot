@@ -28,14 +28,15 @@ Retrieved from: http://en.literateprograms.org/Skip_list_(C)?oldid=12811
  * Modifications by Lubos Slovak, 2010
  */
 
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
 #include <assert.h>
 
-#include "skip-list.h"
 #include "common.h"
+#include "skip-list.h"
 
 /*----------------------------------------------------------------------------*/
 

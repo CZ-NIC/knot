@@ -1,23 +1,22 @@
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
 #include <string.h>
 
-#include "process.h"
-#include "log.h"
+#include "common.h"
+#include "ctl/process.h"
+#include "other/log.h"
+#include "conf/conf.h"
 
-char* pid_filename()
+const char* pid_filename()
 {
-	// Construct filename
-	const char* fn = "/cutedns.pid";
-	char* home = getenv("HOME");
-	int len = strlen(home) + strlen(fn) + 1;
-	char* ret = malloc(len);
-	memset(ret, 0, len);
-	strcpy(ret, home);
-	strcat(ret, fn);
-	return ret;
+	if (conf()) {
+		return conf()->pidfile;
+	}
+
+	return 0;
 }
 
 pid_t pid_read(const char* fn)

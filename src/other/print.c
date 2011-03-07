@@ -1,6 +1,9 @@
+#include <config.h>
 #include <stdio.h>
 
+#include "common.h"
 #include "print.h"
+#include "log.h"
 
 void hex_printf(const char *data, int length, printf_t print_handler)
 {
@@ -14,6 +17,16 @@ void hex_printf(const char *data, int length, printf_t print_handler)
 void hex_print(const char *data, int length)
 {
 	hex_printf(data, length, &printf);
+}
+
+void hex_log(int source, const char *data, int length)
+{
+	int ptr = 0;
+	for (; ptr < length; ptr++) {
+		log_msg(source, LOG_DEBUG, "0x%02x ",
+		        (unsigned char)*(data + ptr));
+	}
+	log_msg(source, LOG_DEBUG, "\n");
 }
 
 void bit_printf(const char *data, int length, printf_t print_handler)

@@ -1,3 +1,4 @@
+#include <config.h>
 #include <limits.h>
 #include <stdint.h>
 #include <time.h>
@@ -5,6 +6,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#include "common.h"
 #include "universal-system.h"
 
 /*----------------------------------------------------------------------------*/

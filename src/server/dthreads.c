@@ -1,3 +1,4 @@
+#include <config.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,9 +6,9 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "dthreads.h"
 #include "common.h"
-#include "log.h"
+#include "dthreads.h"
+#include "other/log.h"
 
 /* Lock thread state for R/W. */
 static inline void lock_thread_rw(dthread_t *thread)
@@ -576,8 +577,9 @@ int dt_start(dt_unit_t *unit)
 		dthread_t *thread = unit->threads[i];
 		int res = dt_start_id(thread);
 		if (res != 0) {
-			log_error("dthreads: %s: failed to create thread %d",
-			          __func__, i);
+			log_server_error("dthreads: Failed to "
+			                 "create thread '%d'.",
+			                 i);
 			dt_unit_unlock(unit);
 			return res;
 		}
@@ -875,11 +877,11 @@ int dt_compact(dt_unit_t *unit)
 		lock_thread_rw(thread);
 		if (thread->state & (ThreadDead)) {
 			debug_dt("dthreads: [%p] %s: reclaiming thread\n",
-			         __func__, thread);
+			         thread, __func__);
 			unlock_thread_rw(thread);
 			pthread_join(thread->_thr, 0);
 			debug_dt("dthreads: [%p] %s: thread reclaimed\n",
-			         __func__, thread);
+			         thread, __func__);
 			thread->state = ThreadJoined;
 		} else {
 			unlock_thread_rw(thread);
@@ -896,13 +898,13 @@ int dt_compact(dt_unit_t *unit)
 
 int dt_optimal_size()
 {
-//#ifdef _SC_NPROCESSORS_ONLN
-//	int ret = (int) sysconf(_SC_NPROCESSORS_ONLN);
-//	if (ret >= 1) {
-//		return ret + CPU_ESTIMATE_MAGIC;
-//	}
-//#endif
-	log_info("server: failed to estimate the number of online CPUs");
+#ifdef _SC_NPROCESSORS_ONLN
+	int ret = (int) sysconf(_SC_NPROCESSORS_ONLN);
+	if (ret >= 1) {
+		return ret + CPU_ESTIMATE_MAGIC;
+	}
+#endif
+	log_server_info("dthreads: Failed to fetch the number of online CPUs.");
 	return DEFAULT_THR_COUNT;
 }
 

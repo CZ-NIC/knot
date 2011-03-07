@@ -1,5 +1,5 @@
-#include "tap_unit.h"
-#include "dynamic-array.h"
+#include "tests/tap_unit.h"
+#include "lib/dynamic-array.h"
 #include <unistd.h>
 #include <urcu.h>
 

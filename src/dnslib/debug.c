@@ -1,9 +1,11 @@
+#include <config.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
 #include <stdlib.h>
 
-#include "debug.h"
+#include "common.h"
+#include "dnslib/debug.h"
 #include "dnslib/dnslib.h"
 
 void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type, char loaded_zone)
@@ -97,15 +99,19 @@ void dnslib_node_dump(dnslib_node_t *node, void *data)
 {
 #if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_NODE_DEBUG)
 	char loaded_zone = *((char*) data);
+	char *name;
+
 	printf("------- NODE --------\n");
-	printf("owner: %s\n", dnslib_dname_to_str(node->owner));
+	name = dnslib_dname_to_str(node->owner);
+	printf("owner: %s\n", name);
+	free(name);
 	printf("labels: ");
 	hex_print((char *)node->owner->labels, node->owner->label_count);
 	printf("node/id: %p\n", node->owner->node);
         if (loaded_zone && node->prev != NULL) {
-		char *prev_name = dnslib_dname_to_str(node->prev->owner);
-		printf("previous node: %s\n", prev_name);
-		free(prev_name);
+		name = dnslib_dname_to_str(node->prev->owner);
+		printf("previous node: %s\n", name);
+		free(name);
 	}
 
 	if (dnslib_node_is_deleg_point(node)) {
@@ -116,14 +122,20 @@ void dnslib_node_dump(dnslib_node_t *node, void *data)
 		printf("non-authoritative node\n");
 	}
 
-	char *name;
-
 	if (node->parent != NULL) {
 		name = dnslib_dname_to_str(node->parent->owner);
 		printf("parent: %s\n", name);
 		free(name);
 	} else {
 		printf("no parent\n");
+	}
+
+	if (node->prev != NULL) {
+		name = dnslib_dname_to_str(node->prev->owner);
+		printf("previous node: %s\n", name);
+		free(name);
+	} else {
+		printf("previous node: none\n");
 	}
 
 	const skip_node_t *skip_node =

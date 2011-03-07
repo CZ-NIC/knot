@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_PROCESS_H_
-#define _CUTEDNS_PROCESS_H_
+#ifndef _KNOT_PROCESS_H_
+#define _KNOT_PROCESS_H_
 
 #include <unistd.h>
 
@@ -28,10 +28,8 @@ enum {
  *
  * \retval Filename of the database file.
  * \retval NULL if not exists.
- *
- * \todo Implement properly using configuration file.
  */
-char* pid_filename();
+const char* pid_filename();
 
 /*!
  * \brief Read PID from given file.
@@ -65,4 +63,4 @@ int pid_write(const char* fn);
  */
 int pid_remove(const char* fn);
 
-#endif // _CUTEDNS_PROCESS_H_
+#endif // _KNOT_PROCESS_H_

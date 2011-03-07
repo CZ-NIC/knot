@@ -9,8 +9,6 @@
  * - ENDS API
  */
 
-#include "tap_unit.h"
-
 #include "dnslib/edns.h"
 
 static int dnslib_edns_tests_count(int argc, char *argv[]);

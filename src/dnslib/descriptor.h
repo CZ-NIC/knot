@@ -10,13 +10,11 @@
  * @{
  */
 
-#ifndef _CUTEDNS_DNSLIB_DESCRIPTOR_H_
-#define _CUTEDNS_DNSLIB_DESCRIPTOR_H_
+#ifndef _KNOT_DNSLIB_DESCRIPTOR_H_
+#define _KNOT_DNSLIB_DESCRIPTOR_H_
 
 #include <stdint.h>
 #include <stdbool.h>
-
-#include "common.h"
 
 enum mxrdtln {
 	DNSLIB_MAX_RDATA_ITEMS = 64,
@@ -278,7 +276,7 @@ uint16_t dnslib_rrclass_from_string(const char *name);
  */
 size_t dnslib_wireformat_size(uint wire_type);
 
-#endif /* _CUTEDNS_DNSLIB_DESCRIPTOR_H_ */
+#endif /* _KNOT_DNSLIB_DESCRIPTOR_H_ */
 
 /*! @} */
 
