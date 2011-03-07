@@ -6,9 +6,9 @@
  * \brief Logging facility.
  *
  * \note Loglevel defined in syslog.h, may be redefined in other backend, but
- * keep naming. LOG_ERR, LOG_WARNING, LOG_NOTICE, LOG_INFO, LOG_DEBUG
+ * keep naming. LOG_FATAL, LOG_ERR, LOG_WARNING, LOG_NOTICE, LOG_INFO, LOG_DEBUG
  *
- * In standard mode, only LOG_ERR and LOG_WARNING is displayed and logged.
+ * In standard mode, only LOG_FATAL, LOG_ERR and LOG_WARNING is logged.
  * Verbose mode enables LOG_NOTICE and LOG_INFO for additional information.
  *
  * \addtogroup logging
@@ -42,6 +42,9 @@ typedef enum {
 	LOG_ZONE   = 2, /*!< Zone manipulation module. */
 	LOG_ANY    = 7  /*!< Any module. */
 } logsrc_t;
+
+/*! \brief Severity mapping. */
+#define LOG_FATAL LOG_CRIT /*!< Fatal errors cannot be masked. */
 
 /* Logging facility setup. */
 
@@ -162,18 +165,21 @@ int log_msg(logsrc_t src, int level, const char *msg, ...)
 int log_vmsg(logsrc_t src, int level, const char *msg, va_list ap);
 
 /* Convenient logging. */
+#define log_server_fatal(msg...)     log_msg(LOG_SERVER, LOG_FATAL, msg)
 #define log_server_error(msg...)     log_msg(LOG_SERVER, LOG_ERR, msg)
 #define log_server_warning(msg...)   log_msg(LOG_SERVER, LOG_WARNING, msg)
 #define log_server_notice(msg...)    log_msg(LOG_SERVER, LOG_NOTICE, msg)
 #define log_server_info(msg...)      log_msg(LOG_SERVER, LOG_INFO, msg)
 #define log_server_debug(msg...)     log_msg(LOG_SERVER, LOG_DEBUG, msg)
 
+#define log_answer_fatal(msg...)     log_msg(LOG_ANSWER, LOG_FATAL, msg)
 #define log_answer_error(msg...)     log_msg(LOG_ANSWER, LOG_ERR, msg)
 #define log_answer_warning(msg...)   log_msg(LOG_ANSWER, LOG_WARNING, msg)
 #define log_answer_notice(msg...)    log_msg(LOG_ANSWER, LOG_NOTICE, msg)
 #define log_answer_info(msg...)      log_msg(LOG_ANSWER, LOG_INFO, msg)
 #define log_answer_debug(msg...)     log_msg(LOG_ANSWER, LOG_DEBUG, msg)
 
+#define log_zone_fatal(msg...)       log_msg(LOG_ZONE, LOG_FATAL, msg)
 #define log_zone_error(msg...)       log_msg(LOG_ZONE, LOG_ERR, msg)
 #define log_zone_warning(msg...)     log_msg(LOG_ZONE, LOG_WARNING, msg)
 #define log_zone_notice(msg...)      log_msg(LOG_ZONE, LOG_NOTICE, msg)

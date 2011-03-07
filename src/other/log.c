@@ -67,9 +67,10 @@ int log_init()
 	LOG_FDS_OPEN = 0;
 
 	/* Setup initial state. */
+	int bmask = LOG_MASK(LOG_ERR)|LOG_MASK(LOG_FATAL);
 	log_setup(0);
-	log_levels_set(LOGT_SYSLOG, LOG_ANY, LOG_MASK(LOG_ERR));
-	log_levels_set(LOGT_STDERR, LOG_ANY, LOG_MASK(LOG_ERR));
+	log_levels_set(LOGT_SYSLOG, LOG_ANY, bmask);
+	log_levels_set(LOGT_STDERR, LOG_ANY, bmask);
 
 	/// \todo May change to LOG_DAEMON.
 	setlogmask(LOG_UPTO(LOG_DEBUG));
