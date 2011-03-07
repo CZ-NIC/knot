@@ -771,8 +771,8 @@ DEBUG_DNSLIB_DNAME(
 	int l1 = d1->label_count;
 	int l2 = d2->label_count;
 	debug_dnslib_dname("Label counts: %d and %d\n", l1, l2);
-	assert(l1 > 0);
-	assert(l2 > 0);
+	assert(l1 >= 0);
+	assert(l2 >= 0);
 
 	// compare labels from last to first
 	while (l1 > 0 && l2 > 0) {
