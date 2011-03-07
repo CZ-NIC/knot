@@ -45,6 +45,8 @@ static int dnslib_tests_run(int argc, char *argv[])
         int rrset_tests = dnslib_rrset_tests_count(argc, argv);
 	int node_tests = dnslib_node_tests_count(argc, argv);
 	int zone_tests = dnslib_zone_tests_count(argc, argv);
+	int response_tests = dnslib_response_tests_count(argc, argv);
+	int edns_tests = dnslib_edns_tests_count(argc, argv);
 
         note("Testing module: dname");
 	res = dnslib_dname_tests_run(argc, argv);
@@ -52,12 +54,12 @@ static int dnslib_tests_run(int argc, char *argv[])
 	note("Testing module: rdata");
 	res *= dnslib_rdata_tests_run(argc, argv);
 
-	skip(!res, rrset_tests + node_tests + zone_tests);
+	skip(!res, rrset_tests + node_tests + zone_tests + response_tests);
 
 	note("Testing module: rrset");
 	res = dnslib_rrset_tests_run(argc, argv);
 
-	skip(!res, node_tests + zone_tests);
+	skip(!res, node_tests + zone_tests + response_tests);
 
 	note("Testing module: node");
 	res = dnslib_node_tests_run(argc, argv);
@@ -70,14 +72,19 @@ static int dnslib_tests_run(int argc, char *argv[])
 	note("Testing module: response");
 	res = dnslib_response_tests_run(argc, argv);
 
+	skip(!res, edns_tests);
+
         note("Testing module: edns");
 	res = dnslib_edns_tests_run(argc, argv);
+
+
+	endskip; // skipped edns
 
 	endskip; // skipped zone
 
 	endskip; // skipped node & zone
 
-        endskip; // skipped rrset & node & zone
+	endskip; // skipped rrset & node & zone & response & edns
 
 	return res;
 }
