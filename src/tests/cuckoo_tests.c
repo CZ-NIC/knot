@@ -1,12 +1,11 @@
-#include "tap_unit.h"
+#include "tests/tap_unit.h"
 
 #define CT_TEST_REHASH
 
 #include <time.h>
 #include <assert.h>
 
-#include "cuckoo-hash-table.h"
-#include "common.h"
+#include "hash/cuckoo-hash-table.h"
 
 //#define CK_TEST_DEBUG
 //#define CK_TEST_LOOKUP

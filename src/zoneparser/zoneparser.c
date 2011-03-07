@@ -12,6 +12,7 @@
  * @{
  */
 
+#include <config.h>
 #include <assert.h>
 #include <fcntl.h>
 #include <ctype.h>
@@ -27,7 +28,7 @@
 #include <assert.h>
 
 #include "common.h"
-#include "zoneparser.h"
+#include "zoneparser/zoneparser.h"
 #include "dnslib/dname.h"
 #include "dnslib/rrset.h"
 #include "dnslib/rdata.h"
@@ -35,12 +36,11 @@
 #include "dnslib/zone.h"
 #include "dnslib/descriptor.h"
 #include "dnslib/debug.h"
-#include "parser-util.h"
+#include "zoneparser/parser-util.h"
 #include "zparser.h"
-#include "zone-dump.h"
-#include "zone-load.h"
-
-#include "zone-dump-text.h"
+#include "dnslib/zone-dump.h"
+#include "dnslib/zone-load.h"
+#include "dnslib/zone-dump-text.h"
 
 #define IP6ADDRLEN	(128/8)
 #define	NS_INT16SZ	2
@@ -1673,11 +1673,10 @@ static uint find_rrsets_orphans(dnslib_zone_t *zone, rrset_list_t
  */
 int zone_read(const char *name, const char *zonefile, const char *outfile)
 {
-	char* zdb_dbpath = dnslib_zonedb_dbpath();
 	if (!outfile) {
-		log_info("zone parser using default db for output: %s\n",
-			 zdb_dbpath);
-		outfile = zdb_dbpath;
+		fprintf(stderr, "Missing output file for '%s'\n",
+		        zonefile);
+		return -1;
 	}
 
 	dnslib_dname_t *dname;
@@ -1693,8 +1692,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 	assert(origin_node->parent == NULL);
 
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
-		log_error("cannot open '%s': %s", zonefile, strerror(errno));
-		free(zdb_dbpath);
+		fprintf(stderr, "Cannot open '%s': %s.",
+		        zonefile, strerror(errno));
 		return -1;
 	}
 
@@ -1723,9 +1722,16 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 
 	dnslib_zdump_binary(parser->current_zone, outfile);
 
-        dnslib_zone_deep_free(&(parser->current_zone));
+	/* This is *almost* unnecessary */
+	dnslib_zone_deep_free(&(parser->current_zone));
 
-//	dnslib_zone_dump(dnslib_zload_load(outfile), 1);
+	fclose(yyin);
+
+	fflush(stdout);
+
+	totalerrors += parser->errors;
+
+	zparser_free();
 
 	return totalerrors;
 }

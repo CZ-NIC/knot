@@ -67,8 +67,8 @@
  * @{
  */
 
-#ifndef _CUTEDNS_SLAB_H_
-#define _CUTEDNS_SLAB_H_
+#ifndef _KNOT_SLAB_H_
+#define _KNOT_SLAB_H_
 
 #include <pthread.h>
 #include <stdint.h>
@@ -329,6 +329,6 @@ void *slab_alloc_realloc(slab_alloc_t* alloc, void *ptr, size_t size);
  */
 void slab_alloc_stats(slab_alloc_t* alloc);
 
-#endif /* _CUTEDNS_SLAB_H_ */
+#endif /* _KNOT_SLAB_H_ */
 
 /*! \} */
