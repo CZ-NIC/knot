@@ -9,8 +9,8 @@
  * \{
  */
 
-#ifndef _CUTEDNS_CONF_H_
-#define _CUTENDS_CONF_H_
+#ifndef _KNOT_CONF_H_
+#define _KNOT_CONF_H_
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -237,8 +237,8 @@ void conf_free(conf_t *conf);
  * \brief Find implicit configuration file.
  *
  * Ordering:
- * 1. ~/.cutedns/cutedns.conf (if exists)
- * 2. /etc/cutedns/cutedns.conf (fallback)
+ * 1. ~/.knot/knot.conf (if exists)
+ * 2. /etc/knot/knot.conf (fallback)
  *
  * \return Path to implicit configuration file.
  */
@@ -281,6 +281,6 @@ static inline conf_t* conf() {
  */
 char* strcpath(char *path);
 
-#endif /* _CUTEDNS_CONF_H_ */
+#endif /* _KNOT_CONF_H_ */
 
 /*! \} */

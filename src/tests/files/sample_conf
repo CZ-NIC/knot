@@ -8,14 +8,14 @@ system {
 
   identity "I have no mouth and must scream";
   version "Infinitesimal";
-  storage "/var/run/cutedns/";
+  storage "/var/run/knot/";
   key hmac-md5 "Wg==";
 
 }
 
 zones {
   example.net {
-    file "/var/lib/cutedns/example.net";
+    file "/var/lib/knot/example.net";
   }
 }
 
@@ -41,7 +41,7 @@ log {
     zone all;
   }
 
-  file "/var/log/cutedns/server.err" {
+  file "/var/log/knot/server.err" {
     server error;
   }
 

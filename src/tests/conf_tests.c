@@ -94,7 +94,7 @@ static int conf_tests_run(int argc, char *argv[])
 	ok(n != 0, "log has next facility");
 	skip(!n, 1);
 	{
-	  is(log->file, "/var/log/cutedns/server.err", "log file matches");
+	  is(log->file, "/var/log/knot/server.err", "log file matches");
 	}
 	endskip;
 

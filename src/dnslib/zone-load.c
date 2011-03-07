@@ -22,7 +22,7 @@ static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
 }
 
 /* \note Contents of dump file:
- * MAGIC(cutexx) NUMBER_OF_NORMAL_NODES NUMBER_OF_NSEC3_NODES
+ * MAGIC(knotxx) NUMBER_OF_NORMAL_NODES NUMBER_OF_NSEC3_NODES
  * [normal_nodes] [nsec3_nodes]
  * node has following format:
  * owner_size owner_wire owner_label_size owner_labels owner_id
@@ -492,8 +492,8 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 
 	uint auth_node_count;
 
-	static const uint8_t MAGIC[MAGIC_LENGTH] = {99, 117, 116, 101, 0, 2};
-	                                           /*c   u    t    e   0.1*/
+	static const uint8_t MAGIC[MAGIC_LENGTH] = {107, 110, 111, 116, 0, 2};
+	                                           /*k   n    o    t   0.1*/
 
 	if (!dnslib_check_magic(f, MAGIC, MAGIC_LENGTH)) {
 		fclose(f);
