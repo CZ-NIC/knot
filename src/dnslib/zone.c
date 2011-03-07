@@ -10,7 +10,7 @@
 #include "descriptor.h"
 #include "cuckoo-hash-table.h"
 #include "nsec3.h"
-#include "base32.h"
+#include "base32hex.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -271,8 +271,8 @@ DEBUG_DNSLIB_ZONE(
 	debug_dnslib_zone("\n");
 
 	char *name_b32 = NULL;
-	size_t size = base32_encode_alloc((char *)hashed_name, hash_size,
-	                                  &name_b32);
+	size_t size = base32hex_encode_alloc((char *)hashed_name, hash_size,
+	                                     &name_b32);
 
 	if (size == 0) {
 		char *n = dnslib_dname_to_str(name);
@@ -540,6 +540,14 @@ DEBUG_DNSLIB_ZONE(
 	if (prev != NULL) {
 		free(name_str2);
 	}
+
+	name_str2 = ((*previous) != NULL)
+	                   ? dnslib_dname_to_str((*previous)->owner)
+	                   : "(nil)";
+	debug_dnslib_zone("Previous set to: %s\n", name_str2);
+	if ((*previous) != NULL) {
+		free(name_str2);
+	}
 );
 
 	// there must be at least one node with domain name less or equal to
@@ -679,7 +687,7 @@ DEBUG_DNSLIB_ZONE(
 	free(n);
 );
 
-	dnslib_node_t *found, *prev;
+	dnslib_node_t *found = NULL, *prev = NULL;
 
 	// create dummy node to use for lookup
 	dnslib_node_t *tmp = dnslib_node_new(nsec3_name, NULL);
@@ -697,6 +705,7 @@ DEBUG_DNSLIB_ZONE(
 	}
 
 	if (prev) {
+		assert(prev->owner);
 		char *n = dnslib_dname_to_str(prev->owner);
 		debug_dnslib_zone("Found previous NSEC3 node: %s.\n", n);
 		free(n);
