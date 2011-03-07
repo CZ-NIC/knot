@@ -1,6 +1,6 @@
 ACLOCAL_AMFLAGS = -I ../m4
 bin_PROGRAMS = knotc
-libexec_PROGRAMS = knot-zoneparser unittests
+libexec_PROGRAMS = knot-zcompile unittests
 sbin_PROGRAMS = knotd
 
 # $(YACC) will generate header file
@@ -33,7 +33,7 @@ CLEANFILES =					\
 knotc_SOURCES =					\
 	ctl/knotc_main.c
 
-knot_zoneparser_SOURCES =			\
+knot_zcompile_SOURCES =			\
 	zoneparser/zoneparser_main.c            \
 	zoneparser/parser-util.h		\
 	zoneparser/parser-descriptor.h		\
