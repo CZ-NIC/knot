@@ -96,7 +96,7 @@ int main(int argc, char **argv)
 	// Now check if we want to daemonize
 	if (daemonize) {
 		if (daemon(1, 0) != 0) {
-			log_server_error("Daemonization failed, shutting down...\n");
+			log_server_fatal("Daemonization failed, shutting down...\n");
 			log_close();
 			return 1;
 		}
@@ -119,7 +119,7 @@ int main(int argc, char **argv)
 		                 , config_fn);
 
 		if (zfs_count < 1) {
-			log_server_error("server: No zone files specified, "
+			log_server_fatal("server: No zone files specified, "
 			                 "shutting down.\n\n");
 			help(argc, argv);
 			log_close();
@@ -182,7 +182,7 @@ int main(int argc, char **argv)
 			                 "waiting for server to finish.\n");
 		}
 	} else {
-		log_server_error("server: An error occured while "
+		log_server_fatal("server: An error occured while "
 		                 "starting the server.\n");
 	}
 
