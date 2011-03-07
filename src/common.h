@@ -9,21 +9,23 @@
  * @{
  */
 
-#ifndef _CUTEDNS_COMMON_H_
-#define _CUTEDNS_COMMON_H_
+#ifndef _KNOT_COMMON_H_
+#define _KNOT_COMMON_H_
 
 #include <signal.h>
 #include <stdint.h>
+#include "config.h"
 
 /* Common types and constants.
  */
 
 typedef unsigned int uint;
 
-#define PROJECT_NAME "CuteDNS" // Project name
+#define PROJECT_NAME PACKAGE // Project name
 #define PROJECT_VER  0x000100  // 0xMMIIRR (MAJOR,MINOR,REVISION)
-#define PROJECT_EXEC "cutedns" // Project executable
-#define ZONEPARSER_EXEC "zoneparser" // Zoneparser executable
+#define PROJECT_EXEC "knotd" // Project executable
+#define ZONEPARSER_EXEC "knot-zcompile" // Zoneparser executable
+#define PID_FILE "knot.pid"
 
 /* Server. */
 #define CPU_ESTIMATE_MAGIC 2   // Extra threads above the number of processors
@@ -42,10 +44,10 @@ typedef unsigned int uint;
 /* Common includes.
  */
 
-#include "latency.h"
-#include "print.h"
-#include "log.h"
-#include "debug.h"
+#include "other/latency.h"
+#include "other/print.h"
+#include "other/log.h"
+#include "other/debug.h"
 
 /* Common macros.
  */
@@ -85,6 +87,6 @@ typedef unsigned int uint;
 
 //#define STAT_COMPILE
 
-#endif /* _CUTEDNS_COMMON_H_ */
+#endif /* _KNOT_COMMON_H_ */
 
 /*! @} */

@@ -13,12 +13,12 @@
  * @{
  */
 
-#ifndef _CUTEDNS_UDPHANDLER_H_
-#define _CUTEDNS_UDPHANDLER_H_
+#ifndef _KNOT_UDPHANDLER_H_
+#define _KNOT_UDPHANDLER_H_
 
-#include "socket.h"
-#include "server.h"
-#include "dthreads.h"
+#include "server/socket.h"
+#include "server/server.h"
+#include "server/dthreads.h"
 
 /*!
  * \brief UDP handler thread runnable.

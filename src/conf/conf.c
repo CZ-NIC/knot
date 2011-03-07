@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "conf.h"
+#include "conf/conf.h"
 #include "common.h"
 
 /* Utilities. */
@@ -35,8 +35,8 @@ static int rmkdir(char *path, int mode)
 }
 
 /* Prototypes for cf-parse.y */
-extern char* cf_text;
-extern int cf_lineno;
+extern char* yytext;
+extern int yylineno;
 extern int cf_parse();
 conf_t *new_config;
 
@@ -88,7 +88,7 @@ int cf_read_mem(char *buf, size_t nbytes) {
 void cf_error(const char *msg)
 {
 	log_server_error("config: '%s' - %s on line %d (current token '%s').\n",
-	                 new_config->filename, msg, cf_lineno, cf_text);
+	                 new_config->filename, msg, yylineno, yytext);
 
 	_parser_res = -1;
 }

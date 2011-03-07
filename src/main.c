@@ -1,18 +1,19 @@
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
 #include "common.h"
-#include "server.h"
-#include "zoneparser.h"
-#include "process.h"
+#include "server/server.h"
+#include "zoneparser/zoneparser.h"
+#include "ctl/process.h"
 #include "conf/conf.h"
 #include "conf/logconf.h"
 
 /*----------------------------------------------------------------------------*/
 
 static volatile short s_stopping = 0;
-static cute_server *s_server = NULL;
+static server_t *s_server = NULL;
 
 // SIGINT signal handler
 void interrupt_handle(int s)
@@ -32,7 +33,7 @@ void interrupt_handle(int s)
 	if (s == SIGINT || s == SIGTERM) {
 		if (s_stopping == 0) {
 			s_stopping = 1;
-			cute_stop(s_server);
+			server_stop(s_server);
 		} else {
 			log_server_error("server: \nOK! OK! Exiting immediately.\n");
 			exit(1);
@@ -153,11 +154,11 @@ int main(int argc, char **argv)
 
 
 	// Create server instance
-	s_server = cute_create();
+	s_server = server_create();
 
 	// Run server
 	int res = 0;
-	if ((res = cute_start(s_server, zfs, zfs_count)) == 0) {
+	if ((res = server_start(s_server, zfs, zfs_count)) == 0) {
 
 		// Register service and signal handler
 		struct sigaction sa;
@@ -176,7 +177,7 @@ int main(int argc, char **argv)
 			res = chdir("/");
 		}
 
-		if ((res = cute_wait(s_server)) != 0) {
+		if ((res = server_wait(s_server)) != 0) {
 			log_server_error("server: An error occured while "
 			                 "waiting for server to finish.\n");
 		}
@@ -186,7 +187,7 @@ int main(int argc, char **argv)
 	}
 
 	// Stop server and close log
-	cute_destroy(&s_server);
+	server_destroy(&s_server);
 
 	// Remove PID file if daemonized
 	if (daemonize) {

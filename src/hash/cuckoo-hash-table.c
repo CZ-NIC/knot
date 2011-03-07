@@ -1,3 +1,4 @@
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,10 +8,10 @@
 
 #include <urcu.h>
 
-#include "cuckoo-hash-table.h"
-#include "hash-functions.h"
-#include "dynamic-array.h"
 #include "common.h"
+#include "hash/cuckoo-hash-table.h"
+#include "hash/hash-functions.h"
+#include "lib/dynamic-array.h"
 
 /*----------------------------------------------------------------------------*/
 /* Macros and inline functions                                                */

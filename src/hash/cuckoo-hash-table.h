@@ -18,16 +18,15 @@
  * \addtogroup hashing
  * @{
  */
-#ifndef _CUTEDNS_CUCKOO_HASH_TABLE_H_
-#define _CUTEDNS_CUCKOO_HASH_TABLE_H_
+#ifndef _KNOT_CUCKOO_HASH_TABLE_H_
+#define _KNOT_CUCKOO_HASH_TABLE_H_
 
 #include <stdint.h> /* uint32_t */
 #include <stdlib.h> /* size_t */
 #include <pthread.h>
 
-#include "common.h"
-#include "universal-system.h"
-#include "dynamic-array.h"
+#include "hash/universal-system.h"
+#include "lib/dynamic-array.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -273,6 +272,6 @@ void ck_dump_table(const ck_hash_table_t *table);
 
 /*----------------------------------------------------------------------------*/
 
-#endif /* _CUTEDNS_CUCKOO_HASH_TABLE_H_ */
+#endif /* _KNOT_CUCKOO_HASH_TABLE_H_ */
 
 /*! @} */

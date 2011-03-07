@@ -1,3 +1,4 @@
+#include <config.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -6,9 +7,11 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include "parser-descriptor.h"
+#include "common.h"
+#include "zoneparser/parser-descriptor.h"
 /* TODO this has to be removed - move tokens to separate file */
-#include "zoneparser.h"
+#include "zoneparser/zoneparser.h"
+/* FIXME: Generate .y and .l to zoneparser/ */
 #include "zparser.h"
 
 enum desclen { PARSER_RRTYPE_DESCRIPTORS_LENGTH = 32770 }; // used to be 101

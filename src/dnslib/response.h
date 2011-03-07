@@ -11,15 +11,15 @@
  * \addtogroup dnslib
  * @{
  */
-#ifndef _CUTEDNS_DNSLIB_RESPONSE_H_
-#define _CUTEDNS_DNSLIB_RESPONSE_H_
+#ifndef _KNOT_DNSLIB_RESPONSE_H_
+#define _KNOT_DNSLIB_RESPONSE_H_
 
 #include <stdint.h>
 #include <string.h>
 
-#include "dname.h"
-#include "rrset.h"
-#include "edns.h"
+#include "dnslib/dname.h"
+#include "dnslib/rrset.h"
+#include "dnslib/edns.h"
 
 /*!
  * \brief Default maximum DNS response size
@@ -327,6 +327,6 @@ void dnslib_response_free(dnslib_response_t **response);
 
 void dnslib_response_dump(const dnslib_response_t *resp);
 
-#endif /* _CUTEDNS_DNSLIB_RESPONSE_H_ */
+#endif /* _KNOT_DNSLIB_RESPONSE_H_ */
 
 /*! @} */
