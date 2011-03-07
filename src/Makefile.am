@@ -5,6 +5,8 @@ sbin_PROGRAMS = knotd
 
 # $(YACC) will generate header file
 AM_YFLAGS = -d
+libknot_a_YFLAGS = -pcf_ -d
+libknot_a_LFLAGS = # TODO: reentrant parser, prefix
 
 LDADD = libknot.a @LIBOBJS@
 
@@ -12,22 +14,35 @@ BUILT_SOURCES =					\
 	tests/dnslib/parsed_data.rc		\
 	tests/dnslib/raw_data_queries.rc	\
 	tests/dnslib/raw_data.rc		\
-	tests/dnslib/parsed_data_queries.rc
+	tests/dnslib/parsed_data_queries.rc     \
+        tests/sample_conf.rc
 
 CLEANFILES =					\
 	tests/dnslib/parsed_data.rc		\
 	tests/dnslib/raw_data_queries.rc	\
 	tests/dnslib/raw_data.rc		\
-	tests/dnslib/parsed_data_queries.rc	\
+	tests/dnslib/parsed_data_queries.rc     \
+        tests/sample_conf.rc                    \
 	zparser.h				\
 	zparser.c				\
-	zlexer.c
+	zlexer.c                                \
+        libknot_a-cf-lex.c                      \
+        libknot_a-cf-parse.c                    \
+        libknot_a-cf-parse.h
+   
 
 knotc_SOURCES =					\
 	ctl/knotc_main.c
 
 knot_zoneparser_SOURCES =			\
-	zoneparser/zoneparser_main.c
+	zoneparser/zoneparser_main.c            \
+	zoneparser/parser-util.h		\
+	zoneparser/parser-descriptor.h		\
+	zoneparser/zparser.y			\
+	zoneparser/zlexer.l			\
+	zoneparser/zoneparser.c			\
+	zoneparser/parser-util.c		\
+	zoneparser/parser-descriptor.c		
 
 unittests_SOURCES =				\
 	tests/libtap/tap.c			\
@@ -37,26 +52,29 @@ nodist_unittests_SOURCES =			\
 	tests/dnslib/parsed_data.rc		\
 	tests/dnslib/raw_data_queries.rc	\
 	tests/dnslib/raw_data.rc		\
-	tests/dnslib/parsed_data_queries.rc
+	tests/dnslib/parsed_data_queries.rc     \
+        tests/sample_conf.rc
 
 knotd_SOURCES =					\
 	main.c
 
 noinst_LIBRARIES = libknot.a
 libknot_a_SOURCES =				\
-	ctl/process.c				\
-	zoneparser/zparser.y			\
-	zoneparser/zlexer.l			\
-	zoneparser/zoneparser.c			\
-	zoneparser/parser-util.c		\
-	zoneparser/parser-descriptor.c		\
+	common.h				\
 	alloc/slab.c				\
 	alloc/malloc.c				\
+	conf/cf-parse.y                         \
+	conf/cf-lex.l                           \
+	conf/conf.c                             \
+	conf/logconf.c                          \
+	ctl/process.c				\
+	lib/lists.c	            		\
 	lib/dynamic-array.c			\
 	lib/bitset.c				\
 	lib/skip-list.c				\
 	stat/gatherer.c				\
 	stat/stat.c				\
+        dnslib/edns.c                           \
 	dnslib/utils.c				\
 	dnslib/rrset.c				\
 	dnslib/dname.c				\
@@ -80,20 +98,20 @@ libknot_a_SOURCES =				\
 	hash/universal-system.c			\
 	other/log.c				\
 	other/print.c				\
-	src/alloc/slab.h			\
+	alloc/slab.h			        \
 	alloc/malloc.h				\
+	conf/logconf.h                          \
+	conf/conf.h                             \
+	ctl/process.h		                \
+	lib/lists.h	            		\
 	lib/skip-list.h				\
 	lib/dynamic-array.h			\
 	lib/tree.h				\
 	lib/bitset.h				\
-	common.h				\
 	tests/libtap/tap.h			\
 	tests/tap_unit.h			\
-	zoneparser/parser-util.h		\
-	zoneparser/parser-descriptor.h		\
 	stat/gatherer.h				\
 	stat/stat.h				\
-	ctl/process.h				\
 	dnslib/zonedb.h				\
 	dnslib/consts.h				\
 	dnslib/node.h				\
@@ -139,5 +157,8 @@ tests/dnslib/raw_data_queries.rc: tests/files/raw_data_queries
 	../resource.sh $< >$@
 
 tests/dnslib/raw_data.rc: tests/files/raw_data
+	../resource.sh $< >$@
+
+tests/sample_conf.rc: tests/files/sample_conf
 	../resource.sh $< >$@
 
