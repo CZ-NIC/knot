@@ -144,6 +144,7 @@ static void dnslib_zone_save_enclosers_node(dnslib_node_t *node,
 static int check_cname_cycles_in_zone(dnslib_zone_t *zone,
 				      dnslib_node_t *node)
 {
+//	printf("CHECK FOR: %s\n", dnslib_dname_to_str(node->owner));
 	const dnslib_rrset_t *next_rrset =
 		dnslib_node_get_rrset(node, DNSLIB_RRTYPE_CNAME);
 
@@ -155,9 +156,16 @@ static int check_cname_cycles_in_zone(dnslib_zone_t *zone,
 
 	const dnslib_node_t *next_node = node;
 
-	const dnslib_dname_t *next_dname = dnslib_rrset_owner(next_rrset);
+	dnslib_rdata_t *tmp_rdata = dnslib_rrset_rdata(next_rrset);
+
+	assert(tmp_rdata);
+
+	const dnslib_dname_t *next_dname =
+//		dnslib_rdata_get_item(tmp_rdata, 0)->dname;
+next_rrset->rdata->items[0].dname;
 
 	while (i < MAX_CNAME_CYCLE_DEPTH && next_node != NULL) {
+//		printf("next: %s\n", dnslib_dname_to_str(next_dname));
 		next_node = dnslib_zone_get_node(zone, next_dname);
 		if (next_node == NULL) {
 			next_node =
@@ -168,10 +176,16 @@ static int check_cname_cycles_in_zone(dnslib_zone_t *zone,
 			next_rrset = dnslib_node_rrset(next_node,
 						       DNSLIB_RRTYPE_CNAME);
 			if (next_rrset != NULL) {
-				next_dname = dnslib_rrset_owner(next_rrset);
+				next_dname = next_rrset->rdata->items[0].dname;
 			} else {
+				next_node = NULL;
 				next_dname = NULL;
 			}
+		} else {
+			/* This should be different error, but
+			 * error nonetheless
+			 */
+			;
 		}
 		i++;
 	}
