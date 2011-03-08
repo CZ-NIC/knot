@@ -1256,7 +1256,7 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 
 //	buffer_create_from(&packet, wireformat + 1, *wireformat);
 	rdata_count = rdata_wireformat_to_rdata_atoms(wireformat, type,
-						      size, items);
+						      size, &items);
 	if (rdata_count == -1) {
 		fprintf(stderr, "bad unknown RDATA");
 		return;
