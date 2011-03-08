@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <errno.h>
+
+#include <openssl/evp.h>
 
 #include "common.h"
 #include "other/debug.h"
@@ -116,6 +119,13 @@ server_t *server_create()
 		free(server);
 		return NULL;
 	}
+
+	debug_server("Done\n\n");
+
+	debug_server("Done\n\n");
+	debug_server("Initializing OpenSSL...\n");
+
+	OpenSSL_add_all_digests();
 
 	debug_server("Done\n\n");
 
@@ -257,6 +267,8 @@ int server_load_zone(server_t *server, const char *origin, const char *db)
 		                 db, origin);
 	}
 
+	dnslib_zone_dump(zone, 1);
+
 	return 0;
 }
 
@@ -355,6 +367,9 @@ void server_destroy(server_t **server)
 	ns_destroy(&(*server)->nameserver);
 	dnslib_zonedb_deep_free(&(*server)->zone_db);
 	free(*server);
+
+	EVP_cleanup();
+
 	*server = NULL;
 }
 

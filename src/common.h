@@ -85,6 +85,20 @@ typedef unsigned int uint;
 #define unlikely(x)     __builtin_expect((x),0)
 #endif
 
+
+#define perf_begin() \
+do { \
+ struct timeval __begin; \
+ gettimeofday(&__begin, 0)
+
+#define perf_end(d) \
+ struct timeval __end; \
+ gettimeofday(&__end, 0); \
+ unsigned long __us = (__end.tv_sec - __begin.tv_sec) * 1000L * 1000L; \
+ __us += (__end.tv_usec - __begin.tv_usec); \
+ (d) = __us; \
+} while(0)
+
 //#define STAT_COMPILE
 
 #endif /* _KNOT_COMMON_H_ */

@@ -71,6 +71,8 @@ libknot_la_SOURCES =				\
 	lib/dynamic-array.c			\
 	lib/bitset.c				\
 	lib/skip-list.c				\
+	lib/base32.c				\
+	lib/base32hex.c				\
 	stat/gatherer.c				\
 	stat/stat.c				\
         dnslib/edns.c                           \
@@ -86,6 +88,7 @@ libknot_la_SOURCES =				\
 	dnslib/zone-dump.c			\
 	dnslib/rdata.c				\
 	dnslib/descriptor.c			\
+	dnslib/nsec3.c				\
 	server/dthreads.c			\
 	server/socket.c				\
 	server/name-server.c			\
@@ -107,6 +110,8 @@ libknot_la_SOURCES =				\
 	lib/dynamic-array.h			\
 	lib/tree.h				\
 	lib/bitset.h				\
+	lib/base32.h				\
+	lib/base32hex.h				\
 	tests/libtap/tap.h			\
 	tests/tap_unit.h			\
 	stat/gatherer.h				\
@@ -128,6 +133,7 @@ libknot_la_SOURCES =				\
 	dnslib/utils.h				\
 	dnslib/packet.h				\
 	dnslib/debug.h				\
+	dnslib/nsec3.h				\
 	server/socket.h				\
 	server/name-server.h			\
 	server/udp-handler.h			\

@@ -15,3 +15,4 @@ ylwrap
 autom4te.cache
 *.o
 *.orig
+*.lo

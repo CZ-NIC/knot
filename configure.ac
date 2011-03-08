@@ -30,6 +30,7 @@ AC_CHECK_LIB([m], [pow])
 AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([urcu], [rcu_read_lock])
 AC_CHECK_LIB([rt], [clock_gettime])
+AC_CHECK_LIB([crypto], [OpenSSL_add_all_digests])
 
 # Checks for header files.
 AC_HEADER_RESOLV

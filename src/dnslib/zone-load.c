@@ -216,6 +216,11 @@ dnslib_rrset_t *dnslib_load_rrsig(FILE *f)
 	if (!fread_safe(&rrset_type, sizeof(rrset_type), 1, f)) {
 		return 0;
 	}
+
+	if (rrset_type != DNSLIB_RRTYPE_RRSIG) {
+		log_zone_error("!! Error: rrsig has wrong type\n");
+		return 0;
+	}
 	debug_zp("rrset type: %d\n", rrset_type);
 	if (!fread_safe(&rrset_class, sizeof(rrset_class), 1, f)) {
 		return 0;
@@ -321,6 +326,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	uint8_t rrset_count;
 	void *dname_id; //ID, technically it's an integer(32 or 64 bites)
 	void *parent_id;
+	void *nsec3_node_id;
 
 	short label_count = 0;
 	uint8_t *labels = NULL;
@@ -366,6 +372,11 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 		return 0;
 	}
 
+	if (!fread_safe(&nsec3_node_id, sizeof(nsec3_node_id), 1, f)) {
+		free(labels);
+		return 0;
+	}
+
 	if (!fread(&rrset_count, sizeof(rrset_count), 1, f)) {
 		free(labels);
 		return 0;
@@ -391,6 +402,13 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	if (node == NULL) {
 		log_zone_error("zone: Could not create node.\n");
 		return NULL;
+	}
+
+	/* XXX can it be 0, ever? I think not. */
+	if ((size_t)nsec3_node_id != 0) {
+		node->nsec3_node = id_array[(size_t)nsec3_node_id]->node;
+	} else {
+		node->nsec3_node = NULL;
 	}
 
 	node->owner = owner;
@@ -541,17 +559,16 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 
         dnslib_node_t *last_node;
 
-        if (dnslib_node_get_rrset(apex, DNSLIB_RRTYPE_NSEC) != NULL) {
-                last_node = apex;
-        } else {
-                last_node = NULL;
-        }
+	last_node = apex;
 
 	for (uint i = 1; i < node_count; i++) {
 		tmp_node = dnslib_load_node(f);
 
 		if (tmp_node != NULL) {
-			dnslib_zone_add_node(zone, tmp_node);
+			if (dnslib_zone_add_node(zone, tmp_node) != 0) {
+				log_zone_error("!! cannot add node\n");
+				continue;
+			}
 			if (dnslib_dname_is_wildcard(tmp_node->owner)) {
 				find_and_set_wildcard_child(zone,
 				                            tmp_node,
@@ -560,9 +577,9 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 
 			tmp_node->prev = last_node;
 
-                        if (skip_first(tmp_node->rrsets) != NULL &&
-                            dnslib_node_get_rrset(tmp_node,
-                                                  DNSLIB_RRTYPE_NSEC) != NULL) {
+			if (skip_first(tmp_node->rrsets) != NULL &&
+			    (dnslib_node_is_deleg_point(tmp_node) ||
+			    !dnslib_node_is_non_auth(tmp_node))) {
                                 last_node = tmp_node;
                         }
 
@@ -584,6 +601,13 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 
 		assert(nsec3_first != NULL);
 
+		if (dnslib_zone_add_nsec3_node(zone, nsec3_first) != 0) {
+			log_zone_error("!! cannot add first nsec3 node, "
+			               "exiting.\n");
+			/* TODO leaks */
+			return NULL;
+		}
+
 		nsec3_first->prev = NULL;
 
 		last_node = nsec3_first;
@@ -593,20 +617,14 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 		tmp_node = dnslib_load_node(f);
 
 		if (tmp_node != NULL) {
-			dnslib_zone_add_nsec3_node(zone, tmp_node);
-
-			if (dnslib_dname_is_wildcard(tmp_node->owner)) {
-				find_and_set_wildcard_child(zone,
-				                            tmp_node,
-				                            1);
-                        }
-
-                        if (skip_first(tmp_node->rrsets) != NULL) {
-                                last_node = tmp_node;
-                        }
+			if (dnslib_zone_add_nsec3_node(zone, tmp_node) != 0) {
+				log_zone_error("!! cannot add nsec3 node\n");
+				continue;
+			}
 
 			tmp_node->prev = last_node;
 
+			last_node = tmp_node;
 		} else {
 			log_zone_error("zone: Node error (in %s).\n", filename);
 		}
