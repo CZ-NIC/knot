@@ -27,6 +27,8 @@
  * or raw data stored like this: data_len [data]
  */
 
+static const uint MAX_CNAME_CYCLE_DEPTH = 15;
+
 struct arg {
 	void *arg1; /* FILE *f / zone */
 	void *arg2; /* skip_list_t */
@@ -138,23 +140,87 @@ static void dnslib_zone_save_enclosers_node(dnslib_node_t *node,
 	}
 }
 
+/* ret 0 OK, -1 otherwise */
+static int check_cname_cycles_in_zone(dnslib_zone_t *zone,
+				      dnslib_node_t *node)
+{
+	const dnslib_rrset_t *next_rrset =
+		dnslib_node_get_rrset(node, DNSLIB_RRTYPE_CNAME);
+
+	if (next_rrset == NULL) {
+		return 0;
+	}
+
+	uint i = 0;
+
+	const dnslib_node_t *next_node = node;
+
+	const dnslib_dname_t *next_dname = dnslib_rrset_owner(next_rrset);
+
+	while (i < MAX_CNAME_CYCLE_DEPTH && next_node != NULL) {
+		next_node = dnslib_zone_get_node(zone, next_dname);
+		if (next_node == NULL) {
+			next_node =
+				dnslib_zone_get_nsec3_node(zone, next_dname);
+		}
+
+		if (next_node != NULL) {
+			next_rrset = dnslib_node_rrset(next_node,
+						       DNSLIB_RRTYPE_CNAME);
+			if (next_rrset != NULL) {
+				next_dname = dnslib_rrset_owner(next_rrset);
+			} else {
+				next_dname = NULL;
+			}
+		}
+		i++;
+	}
+
+	/* even if the length is 0, i will be 1 */
+	if (i >= MAX_CNAME_CYCLE_DEPTH) {
+		return -1;
+	}
+
+	return 0;
+}
+
 static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 {
 	assert(data != NULL);
 	arg_t *args = (arg_t *)data;
 
+	/* XXX dnslib_compressible are only 12 ... XXX */
+
 	for (int i = 0; i < DNSLIB_COMPRESSIBLE_TYPES; ++i) {
 		dnslib_zone_save_enclosers_node(node, dnslib_compressible_types[i],
 		                                  (dnslib_zone_t *)args->arg1,
-					          (skip_list_t *)args->arg2);
+						  (skip_list_t *)args->arg2);
+
+		if (i == DNSLIB_RRTYPE_CNAME) {
+			if (check_cname_cycles_in_zone((dnslib_zone_t *)
+							args->arg1,
+							node) != 0) {
+				char *name =
+					dnslib_dname_to_str(
+					dnslib_node_owner(node));
+				log_zone_warning("Node: %s contains "
+						 "CNAME cycle!\n", name);
+				printf("%s\n", name);
+				free(name);
+				getchar();
+				/* do something */
+			}
+		}
 	}
 }
 
-void dnslib_zone_save_enclosers(dnslib_zone_t *zone, skip_list_t *list)
+void zone_save_enclosers_sem_check(dnslib_zone_t *zone, skip_list_t *list,
+				   char do_checks)
 {
 	arg_t arguments;
 	arguments.arg1 = zone;
 	arguments.arg2 = list;
+	arguments.arg3 = &do_checks;
 
 	dnslib_zone_tree_apply_inorder(zone,
 	                   dnslib_zone_save_enclosers_in_tree,
@@ -421,7 +487,8 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 }
 
-int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename)
+int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
+			char do_checks)
 {
 	FILE *f;
 
@@ -435,7 +502,7 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename)
 
 	skip_list_t *encloser_list = skip_create_list(compare_pointers);
 
-	dnslib_zone_save_enclosers(zone, encloser_list);
+	zone_save_enclosers_sem_check(zone, encloser_list, do_checks);
 
 	static const uint8_t MAGIC[MAGIC_LENGTH] = {107, 110, 111, 116, 0, 2};
 	                                           /*k   n    o    t   0.1*/
