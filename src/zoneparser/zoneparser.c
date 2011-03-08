@@ -228,6 +228,8 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			dname = dnslib_dname_new_from_str(tmp_dname_str,
 							  strlen(tmp_dname_str),
 							  NULL);
+			free(tmp_dname_str);
+
 			if (is_wirestore) { //XXX WTH...
 				/*temp_rdatas[i].raw_data =
 					(uint16_t *) region_alloc(
