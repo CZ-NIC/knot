@@ -51,8 +51,7 @@ unit_api dnslib_response_tests_api = {
  */
 
 /* Virtual I/O over memory. */
-static int mem_read(void *dst, size_t n, const char **src,
-unsigned *remaining) {
+static int mem_read(void *dst, size_t n, const char **src, unsigned *remaining) {
 	if (n > *remaining) {
 		return 0;
 	}
@@ -494,8 +493,6 @@ static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 	if (!mem_read(&dname_size, sizeof(dname_size), src, src_size)) {
 		return NULL;
 	}
-
-	assert(dname_size < DNAME_MAX_WIRE_LENGTH);
 
 	dname_wire = malloc(sizeof(uint8_t) * dname_size);
 
