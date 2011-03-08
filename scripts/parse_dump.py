@@ -12,18 +12,18 @@ fp = open(sys.argv[1] + ".parsed_data", 'wb')
 
 def chop_and_write_rr_query(rr):
 	name = dns.name.from_text(rr.qname)
-	print rr.qname
+#	print rr.qname
 
 	wire = name.to_wire()
 	fp.write(pack('B', len(wire)))
-	print len(wire)
+#	print len(wire)
 	fp.write(wire)
 	fp.write(pack('H', rr.qtype))
 	fp.write(pack('H', rr.qclass))
 
 def chop_and_write_rr_response(rr):
 	name = dns.name.from_text(rr.rrname)
-	print rr.rrname
+#	print rr.rrname
 
 	wire = name.to_wire()
 	fp.write(pack('B', len(wire)))
@@ -34,35 +34,40 @@ def chop_and_write_rr_response(rr):
 
 	try:
 		rdata = dns.rdata.from_wire(rr.rclass, rr.type, rr.rdata, 0, len(rr.rdata))
-		fp.write(pack('B', len(rr.rdata))) 
+		fp.write(pack('H', len(rr.rdata)))
+#		print "type ", rr.type, "length ", len(rr.rdata)
+#		OPT has length 0 - it should have no rdata
 		rdata.to_wire(fp)
 	except:
 
 		try:
-			if rr.rdata[0] != '\#':
-				rdata = dns.rdata.from_text(rr.rclass, rr.type, rr.rdata)
-				try:
-					fp.write(pack('B', len(rdata)))
-				except:
+#			if rr.rdata[0] != '\#':
+			rdata = dns.rdata.from_text(rr.rclass, rr.type, rr.rdata)
+			try:
+				fp.write(pack('H', len(rdata)))
+			except:
 				# no length - no way to know wire length
-					try:
-						if rr.type == 2:
-							fp.seek(1, 1)
-							old = fp.tell()
-							rdata.to_wire(fp)
-							size = fp.tell() - old
-							fp.seek(-(size + 1), 1)
-							fp.write(pack('B', size))
-							fp.seek(0, 2)
-						else:
-							rdata.to_wire(fp)
-					except Exception as e:
-						print 'Error, exiting: ', e
-						sys.exit(-1)
-		except:
+				try:
+#					print "unknown length for type", rr.type
+#						if rr.type == 2:
+#							fp.seek(1, 1)
+#							old = fp.tell()
+#							rdata.to_wire(fp)
+#							size = fp.tell() - old
+#							fp.seek(-(size + 1), 1)
+#							fp.write(pack('B', size))
+#							fp.seek(0, 2)
+#						else:
+					rdata.to_wire(fp)
+				except Exception as e:
+					print 'Error, exiting: ', e
+					sys.exit(-1)
+		except Exception as e:
+			print 'Error,', e
 			print 'could not parse rdata type: ', rr.type
 			print 'dumping directly (hopefully it is SOA)'
-			fp.write(pack('B', len(rr.rdata)))
+# i need to do some kind of rollback here...
+			fp.write(pack('H', len(rr.rdata)))
 			fp.write(rr.rdata)
 
 	

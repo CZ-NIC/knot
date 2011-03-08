@@ -40,6 +40,7 @@ typedef unsigned int uint;
 #define MEM_COLORING       // Slab cache coloring
 
 //#define USE_HASH_TABLE
+//#define TEST_WITH_LDNS
 
 /* Common includes.
  */
@@ -100,6 +101,9 @@ do { \
 } while(0)
 
 //#define STAT_COMPILE
+#ifdef HAVE_LIBLDNS
+#define TEST_WITH_LDNS
+#endif
 
 #endif /* _KNOT_COMMON_H_ */
 

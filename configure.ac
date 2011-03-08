@@ -24,6 +24,23 @@ AC_PROG_INSTALL
 AC_PROG_CPP_WERROR
 AC_PROG_CC_C99
 
+#AC_ARG_ENABLE([ldns],
+#[ --enable-ldns Enable tests with ldns],
+#[case "${enableval}" in 
+#	yes) ldns=true ;;
+#	no) ldns=false ;;
+#])
+
+AC_ARG_ENABLE([ldns],
+     [  --enable-ldns    Enable tests with ldns],
+     [case "${enableval}" in
+       yes) AC_CHECK_LIB([ldns], [ldns_rr_list_pop_rrset]) ;;
+       no)  ldns=false ;;
+       *) AC_MSG_ERROR([bad value ${enableval} for --enable-ldns]) ;;
+     esac],[ldns=false])
+
+#AM_CONDITIONAL([ldns], [test x$ldns = xtrue])
+
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lm':
 AC_CHECK_LIB([m], [pow])
@@ -31,6 +48,7 @@ AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([urcu], [rcu_read_lock])
 AC_CHECK_LIB([rt], [clock_gettime])
 AC_CHECK_LIB([crypto], [OpenSSL_add_all_digests])
+#AC_CHECK_LIB([ldns], [ldns_rr_list_pop_rrset])
 
 # Checks for header files.
 AC_HEADER_RESOLV
