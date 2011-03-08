@@ -66,6 +66,7 @@ dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent)
 	ret->owner = owner;
 	ret->parent = parent;
 	ret->prev = NULL;
+	ret->nsec3_node = NULL;
 	ret->rrsets = skip_create_list(compare_rrset_types);
 	ret->rrset_count = 0;
 	ret->wildcard_child = NULL;
@@ -91,8 +92,10 @@ int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset)
 }
 
 const dnslib_rrset_t *dnslib_node_rrset(const dnslib_node_t *node,
-                                            uint16_t type)
+                                        uint16_t type)
 {
+	assert(node != NULL);
+	assert(node->rrsets != NULL);
 	return (const dnslib_rrset_t *)skip_find(node->rrsets, (void *)&type);
 }
 
@@ -144,6 +147,16 @@ const dnslib_node_t *dnslib_node_previous(const dnslib_node_t *node)
 void dnslib_node_set_previous(dnslib_node_t *node, dnslib_node_t *prev)
 {
 	node->prev = prev;
+}
+
+const dnslib_node_t *dnslib_node_nsec3_node(const dnslib_node_t *node)
+{
+	return node->nsec3_node;
+}
+
+void dnslib_node_set_nsec3_node(dnslib_node_t *node, dnslib_node_t *nsec3_node)
+{
+	node->nsec3_node = nsec3_node;
 }
 
 const dnslib_dname_t *dnslib_node_owner(const dnslib_node_t *node)

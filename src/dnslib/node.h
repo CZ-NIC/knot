@@ -35,13 +35,13 @@ struct dnslib_node {
 	/*! \brief Type-ordered list of RRSets belonging to this node. */
 	skip_list_t *rrsets;
 
-	/*! \brief Next node in a general list of nodes. Temporary. */
-	//struct dnslib_node *next;
 	short rrset_count;
 
 	struct dnslib_node *wildcard_child;
 
 	struct dnslib_node *prev;
+
+	const struct dnslib_node *nsec3_node;
 
 	/*!
 	 * \brief Various flags.
@@ -127,6 +127,10 @@ void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent);
 const dnslib_node_t *dnslib_node_previous(const dnslib_node_t *node);
 
 void dnslib_node_set_previous(dnslib_node_t *node, dnslib_node_t *prev);
+
+const dnslib_node_t *dnslib_node_nsec3_node(const dnslib_node_t *node);
+
+void dnslib_node_set_nsec3_node(dnslib_node_t *node, dnslib_node_t *nsec3_node);
 
 /*!
  * \brief Returns the owner of the node.
