@@ -144,7 +144,7 @@ int udp_master(dthread_t *thread)
 
 			// Check result
 			if (res != answer_size) {
-				char *buf[256];
+				char buf[256];
 				log_server_error("udp: %s: failed: %zd - %s.\n",
 				                 "socket_sendto()",
 				                 res, strerror_r((int)res, buf, sizeof(buf)));

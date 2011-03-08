@@ -44,6 +44,7 @@ server_t *server_create()
 
 		/* Create TCP & UDP sockets. */
 		int udp_sock = socket_create(iface->family, SOCK_DGRAM);
+		assert(udp_sock > 0);
 		if (socket_bind(udp_sock, iface->family, iface->address, iface->port) < 0) {
 			log_server_error("Could not bind to "
 			                 "UDP interface on '%s:%d'.\n",
@@ -64,6 +65,7 @@ server_t *server_create()
 
 
 		int tcp_sock = socket_create(iface->family, SOCK_STREAM);
+		assert(tcp_sock > 0);
 		if (socket_bind(tcp_sock, iface->family, iface->address, iface->port) < 0) {
 			log_server_error("Could not bind to "
 			                 "TCP interface on '%s:%d'.\n",
