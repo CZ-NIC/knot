@@ -141,6 +141,9 @@ int dnslib_zone_find_dname(const dnslib_zone_t *zone,
                            const dnslib_node_t **closest_encloser,
                            const dnslib_node_t **previous);
 
+const dnslib_node_t *dnslib_zone_find_previous(const dnslib_zone_t *zone,
+                                               const dnslib_dname_t *name);
+
 #ifdef USE_HASH_TABLE
 int dnslib_zone_find_dname_hash(const dnslib_zone_t *zone,
                                 const dnslib_dname_t *name,

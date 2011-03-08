@@ -314,6 +314,40 @@ DEBUG_DNSLIB_ZONE(
 }
 
 /*----------------------------------------------------------------------------*/
+
+static int dnslib_zone_find_in_tree(const dnslib_zone_t *zone,
+                                    const dnslib_dname_t *name,
+                                    dnslib_node_t **node,
+                                    dnslib_node_t **previous)
+{
+	assert(zone != NULL);
+	assert(name != NULL);
+	assert(node != NULL);
+	assert(previous != NULL);
+
+	// create dummy node to use for lookup
+	dnslib_node_t *tmp = dnslib_node_new((dnslib_dname_t *)name, NULL);
+	int exact_match = TREE_FIND_LESS_EQUAL(
+	                   zone->tree, dnslib_node, avl, tmp, node, previous);
+	dnslib_node_free(&tmp, 0);
+
+	if (*previous == NULL) {
+		// either the returned node is the root of the tree, or it is
+		// the leftmost node in the tree; in both cases node was found
+		// set the previous node of the found node
+		assert(exact_match);
+		assert(*node != NULL);
+		*previous = dnslib_node_previous(*node);
+	} else if (dnslib_node_rrset_count(*previous) == 0) {
+		// otherwise check if the previous node is not an empty
+		// non-terminal
+		*previous = dnslib_node_previous(*previous);
+	}
+
+	return exact_match;
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -504,29 +538,32 @@ DEBUG_DNSLIB_ZONE(
 		return DNSLIB_ZONE_NAME_NOT_IN_ZONE;
 	}
 
-	// create dummy node to use for lookup
-	dnslib_node_t *tmp = dnslib_node_new((dnslib_dname_t *)name, NULL);
-	int exact_match = TREE_FIND_LESS_EQUAL(
-	                   zone->tree, dnslib_node, avl, tmp, &found, &prev);
-	dnslib_node_free(&tmp, 0);
+	int exact_match = dnslib_zone_find_in_tree(zone, name, &found, &prev);
+	//assert(prev != NULL);
 
-	*node = found;
-	*closest_encloser = found;
+//	// create dummy node to use for lookup
+//	dnslib_node_t *tmp = dnslib_node_new((dnslib_dname_t *)name, NULL);
+//	int exact_match = TREE_FIND_LESS_EQUAL(
+//	                   zone->tree, dnslib_node, avl, tmp, &found, &prev);
+//	dnslib_node_free(&tmp, 0);
 
-	if (prev == NULL) {
-		// either the returned node is the root of the tree, or it is
-		// the leftmost node in the tree; in both cases node was found
-		// set the previous node of the found node
-		assert(exact_match);
-		assert(found != NULL);
-		*previous = dnslib_node_previous(found);
-	} else {
-		// otherwise check if the previous node is not an empty
-		// non-terminal
-		*previous = (dnslib_node_rrset_count(prev) == 0)
-		            ? dnslib_node_previous(prev)
-		            : prev;
-	}
+//	*node = found;
+//	*closest_encloser = found;
+
+//	if (prev == NULL) {
+//		// either the returned node is the root of the tree, or it is
+//		// the leftmost node in the tree; in both cases node was found
+//		// set the previous node of the found node
+//		assert(exact_match);
+//		assert(found != NULL);
+//		*previous = dnslib_node_previous(found);
+//	} else {
+//		// otherwise check if the previous node is not an empty
+//		// non-terminal
+//		*previous = (dnslib_node_rrset_count(prev) == 0)
+//		            ? dnslib_node_previous(prev)
+//		            : prev;
+//	}
 
 DEBUG_DNSLIB_ZONE(
 	char *name_str = (found) ? dnslib_dname_to_str(found->owner) : "(nil)";
@@ -550,6 +587,9 @@ DEBUG_DNSLIB_ZONE(
 		free(name_str2);
 	}
 );
+
+	*node = found;
+	*closest_encloser = found;
 
 	// there must be at least one node with domain name less or equal to
 	// the searched name if the name belongs to the zone (the root)
@@ -582,6 +622,23 @@ DEBUG_DNSLIB_ZONE(
 	return (exact_match)
 	       ? DNSLIB_ZONE_NAME_FOUND
 	       : DNSLIB_ZONE_NAME_NOT_FOUND;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const dnslib_node_t *dnslib_zone_find_previous(const dnslib_zone_t *zone,
+                                               const dnslib_dname_t *name)
+{
+	if (zone == NULL || name == NULL) {
+		return NULL;
+	}
+
+	dnslib_node_t *found = NULL, *prev = NULL;
+
+	(void)dnslib_zone_find_in_tree(zone, name, &found, &prev);
+	assert(prev != NULL);
+
+	return prev;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -641,7 +698,9 @@ DEBUG_DNSLIB_ZONE(
 
 	while (item == NULL) {
 		dnslib_dname_left_chop_no_copy(name_copy);
-		assert(name_copy->label_count > 0);  // not satisfied in root zone!!
+
+		// not satisfied in root zone!!
+		assert(name_copy->label_count > 0);
 
 		item = ck_find_item(zone->table, (const char *)name_copy->name,
 		                    name_copy->size);

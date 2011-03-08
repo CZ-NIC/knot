@@ -82,7 +82,6 @@ static const dnslib_zone_t *ns_get_zone_for_qname(dnslib_zonedb_t *zdb,
 dnslib_rrset_t *ns_synth_from_wildcard(const dnslib_rrset_t *wildcard_rrset,
                                        const dnslib_dname_t *qname)
 {
-	// TODO: test!!
 	debug_ns("Synthetizing RRSet from wildcard...\n");
 
 	dnslib_dname_t *owner = dnslib_dname_copy(qname);
@@ -582,7 +581,6 @@ DEBUG_NS(
 		next_closer = ns_next_closer((*closest_encloser)->owner, qname);
 
 		if (next_closer == NULL) {
-			// TODO: maybe SERVFAIL?
 			return NS_ERR_SERVFAIL;
 		}
 DEBUG_NS(
@@ -638,7 +636,6 @@ static int ns_put_nsec3_no_wildcard_child(const dnslib_zone_t *zone,
 	int ret = 0;
 	dnslib_dname_t *wildcard = ns_wildcard_child_name(node->owner);
 	if (wildcard == NULL) {
-		// TODO: SERVFAIL??
 		ret = NS_ERR_SERVFAIL;
 	} else {
 		ret = ns_put_covering_nsec3(zone, wildcard, resp);
@@ -671,18 +668,25 @@ static void ns_put_nsec_nsec3_nodata(const dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_put_nsec_nxdomain(const dnslib_zone_t *zone,
+static int ns_put_nsec_nxdomain(const dnslib_dname_t *qname,
+                                const dnslib_zone_t *zone,
                                 const dnslib_node_t *previous,
                                 const dnslib_node_t *closest_encloser,
                                 dnslib_response_t *resp)
 {
 	const dnslib_rrset_t *rrset = NULL;
 
+	// check if we have previous; if not, find one using the tree
+	if (previous == NULL) {
+		previous = dnslib_zone_find_previous(zone, qname);
+		assert(previous != NULL);
+	}
+
 	// 1) NSEC proving that there is no node with the searched name
 	rrset = dnslib_node_rrset(previous, DNSLIB_RRTYPE_NSEC);
 	if (rrset == NULL) {
 		// no NSEC records
-		return 0;
+		return 1;
 	}
 
 	dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
@@ -699,7 +703,6 @@ static int ns_put_nsec_nxdomain(const dnslib_zone_t *zone,
 	dnslib_dname_t *wildcard =
 		ns_wildcard_child_name(closest_encloser->owner);
 	if (wildcard == NULL) {
-		// TODO: SERVFAIL??
 		return NS_ERR_SERVFAIL;
 	}
 
@@ -761,11 +764,12 @@ static int ns_put_nsec_nsec3_nxdomain(const dnslib_zone_t *zone,
 {
 	int ret = 0;
 	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)) {
-		ret = ns_put_nsec_nxdomain(zone, previous, closest_encloser,
-		                           resp);
-		if (ret == 0) {
+		if (dnslib_zone_nsec3_enabled(zone)) {
 			ret = ns_put_nsec3_nxdomain(zone, closest_encloser,
 			                            qname, resp);
+		} else {
+			ret = ns_put_nsec_nxdomain(qname, zone, previous,
+		                                   closest_encloser, resp);
 		}
 	}
 	return ret;
@@ -791,7 +795,6 @@ static int ns_put_nsec3_wildcard(const dnslib_zone_t *zone,
 		ns_next_closer(closest_encloser->owner, qname);
 
 	if (next_closer == NULL) {
-		// TODO: maybe SERVFAIL?
 		return NS_ERR_SERVFAIL;
 	}
 DEBUG_NS(
@@ -809,11 +812,19 @@ DEBUG_NS(
 
 /*----------------------------------------------------------------------------*/
 
-static void ns_put_nsec_wildcard(const dnslib_node_t *node,
+static void ns_put_nsec_wildcard(const dnslib_zone_t *zone,
+                                 const dnslib_dname_t *qname,
+                                 const dnslib_node_t *node,
                                  const dnslib_node_t *previous,
                                  dnslib_response_t *resp)
 {
 	assert(DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp));
+
+	// check if we have previous; if not, find one using the tree
+	if (previous == NULL) {
+		previous = dnslib_zone_find_previous(zone, qname);
+		assert(previous != NULL);
+	}
 
 	const dnslib_rrset_t *rrset =
 		dnslib_node_rrset(previous, DNSLIB_RRTYPE_NSEC);
@@ -837,19 +848,19 @@ static int ns_put_nsec_nsec3_wildcard_nodata(const dnslib_node_t *node,
 {
 	int ret = 0;
 	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)) {
-		ns_put_nsec_wildcard(node, previous, resp);
-		ret = ns_put_nsec3_closest_encloser_proof(zone,
-		                                          &closest_encloser,
-		                                          qname, resp);
+		if (dnslib_zone_nsec3_enabled(zone)) {
+			ret = ns_put_nsec3_closest_encloser_proof(zone,
+			                                      &closest_encloser,
+			                                      qname, resp);
 
-		if (ret != 0) {
-			return ret;
-		}
-
-		const dnslib_node_t *nsec3_node =
-			dnslib_node_nsec3_node(node);
-		if (nsec3_node != NULL) {
-			ns_put_nsec3_from_node(nsec3_node, resp);
+			const dnslib_node_t *nsec3_node;
+			if (ret == 0
+			    && (nsec3_node = dnslib_node_nsec3_node(node))
+			        != NULL) {
+				ns_put_nsec3_from_node(nsec3_node, resp);
+			}
+		} else {
+			ns_put_nsec_wildcard(zone, qname, node, previous, resp);
 		}
 	}
 	return ret;
@@ -867,8 +878,12 @@ static int ns_put_nsec_nsec3_wildcard_answer(const dnslib_node_t *node,
 	int r = 0;
 	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)
 	    && dnslib_dname_is_wildcard(dnslib_node_owner(node))) {
-		ns_put_nsec_wildcard(node, previous, resp);
-		r = ns_put_nsec3_wildcard(zone, closest_encloser, qname, resp);
+		if (dnslib_zone_nsec3_enabled(zone)) {
+			r = ns_put_nsec3_wildcard(zone, closest_encloser, qname,
+			                          resp);
+		} else {
+			ns_put_nsec_wildcard(zone, qname, node, previous, resp);
+		}
 	}
 	return r;
 }
@@ -1272,8 +1287,7 @@ DEBUG_NS(
 
 static int ns_answer(dnslib_zonedb_t *db, dnslib_response_t *resp)
 {
-	// TODO: the copying is not needed maybe
-	dnslib_dname_t *qname = /*dnslib_dname_copy(*/resp->question.qname/*)*/;
+	dnslib_dname_t *qname = resp->question.qname;
 	uint16_t qtype = resp->question.qtype;
 DEBUG_NS(
 	char *name_str = dnslib_dname_to_str(qname);
