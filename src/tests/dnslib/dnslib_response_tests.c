@@ -351,8 +351,11 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 
 			assert(dnslib_dname_is_fqdn(items[i].dname));
 #ifdef RESP_TEST_DEBUG
-                        diag("loaded dname by labels: %s",
-                             dnslib_dname_to_str(items[i].dname));
+			{
+				char tmp_dname = dnslib_dname_to_str(items[i].dname);
+				diag("loaded dname by labels: %s", tmp_dname);
+				free(tmp_dname);
+			}
 #endif
 		} else {
 			if (desc->wireformat[i] ==
@@ -508,7 +511,11 @@ static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 	free(dname_wire);
 
 #ifdef RESP_TEST_DEBUG
-        diag("Got owner: %s", dnslib_dname_to_str(owner));
+	{
+		char *tmp_dname = dnslib_dname_to_str(owner);
+		diag("Got owner: %s", tmp_dname);
+		free(tmp_dname);
+	}
 #endif
 
 
@@ -1184,11 +1191,13 @@ static int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
 	/* compare headers */
 
         if (rrset->owner->size != ldns_rdf_size(ldns_rr_owner(rr))) {
+		char *tmp_dname = dnslib_dname_to_str(rrset->owner);
                 diag("RRSet owner names differ in length");
                 diag("ldns: %d, dnslib: %d", ldns_rdf_size(ldns_rr_owner(rr)),
                      rrset->owner->size);
-		diag("%s", dnslib_dname_to_str(rrset->owner));
+		diag("%s", tmp_dname);
 		diag("%s", ldns_rdf_data(ldns_rr_owner(rr)));
+		free(tmp_dname);
                 return 1;
         }
 
@@ -1496,10 +1505,12 @@ static int test_response_to_wire(test_response_t **responses,
 			if (&(responses[i]->answer[j])) {
 				if (dnslib_response_add_rrset_answer(resp,
 					responses[i]->answer[j], 0, 0) != 0) {
+					char *tmp_dname = dnslib_dname_to_str(responses[i]->answer[j]->owner);
 					diag("Could not add answer rrset");
 					diag("owner: %s type: %d",
-                     dnslib_dname_to_str(responses[i]->answer[j]->owner),
-                     responses[i]->answer[j]->type);
+					     tmp_dname,
+					     responses[i]->answer[j]->type);
+					free(tmp_dname);
 					return 0;
 				}
 			}
