@@ -104,7 +104,6 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 					load_rdata_purge(rdata, items, i, type);
 					return 0;
 				}
-				assert(dname_size < DNAME_MAX_WIRE_LENGTH);
 
 				dname_wire =
 					malloc(sizeof(uint8_t) * dname_size);
@@ -335,8 +334,6 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	}
 
 	debug_zp("%d\n", dname_size);
-
-	assert(dname_size < DNAME_MAX_WIRE_LENGTH);
 
 	if (!fread_safe(dname_wire, sizeof(uint8_t), dname_size, f)) {
 		return 0;
