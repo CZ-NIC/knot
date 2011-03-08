@@ -1518,6 +1518,7 @@ int process_rr(void)
 			if ((parser->last_node = create_node(zone,
 			                           current_rrset, node_add_func,
 			                           node_get_func)) == NULL) {
+				free(tmp_rrsig);
 				return -1;
 			}
 		}
