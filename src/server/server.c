@@ -94,12 +94,12 @@ server_t *server_create()
 
 	// Create server structure
 	server_t *server = malloc(sizeof(server_t));
-	server->handlers = NULL;
-	server->state = ServerIdle;
 	if (server == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
+	server->handlers = NULL;
+	server->state = ServerIdle;
 
 	debug_server("Done\n\n");
 	debug_server("Creating Zone Database structure..\n");
