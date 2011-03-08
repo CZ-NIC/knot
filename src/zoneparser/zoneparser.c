@@ -370,6 +370,7 @@ uint16_t * zparser_conv_hex(const char *hex, size_t len)
 					fprintf(stderr,
 						"illegal hex character '%c'",
 						(int) *hex);
+					free(r);
 					return NULL;
 				}
 				++hex;
