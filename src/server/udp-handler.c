@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <assert.h>
+#include <errno.h>
 
 #include "common.h"
 #include "server/udp-handler.h"
@@ -90,7 +91,7 @@ int udp_master(dthread_t *thread)
 
 	// Loop until all data is read
 	debug_net("udp: thread started (worker %p).\n", thread);
-	int n = 0;
+	ssize_t n = 0;
 	while (n >= 0) {
 
 		n = socket_recvfrom(sock, inbuf, SOCKET_MTU_SZ, 0,
@@ -121,19 +122,19 @@ int udp_master(dthread_t *thread)
 		}
 
 		// Answer request
-		debug_net("udp: received %d bytes.\n", n);
-		size_t answer_size = SOCKET_MTU_SZ;
-		int res = ns_answer_request(ns, inbuf, n, outbuf,
-					    &answer_size);
+		debug_net("udp: received %zd bytes.\n", n);
+		ssize_t answer_size = SOCKET_MTU_SZ;
+		ssize_t res = (ssize_t)ns_answer_request(ns, inbuf, n, outbuf,
+							 &answer_size);
 
-		debug_net("udp: got answer of size %u.\n",
-			  (unsigned) answer_size);
+		debug_net("udp: got answer of size %zd.\n",
+			  answer_size);
 
 		// Send answer
 		if (res == 0) {
 
 			assert(answer_size > 0);
-			debug_net("udp: answer wire format (size %u):\n",
+			debug_net("udp: answer wire format (size %zd):\n",
 				  (unsigned) answer_size);
 			debug_net_hex((const char *) outbuf, answer_size);
 
@@ -143,9 +144,10 @@ int udp_master(dthread_t *thread)
 
 			// Check result
 			if (res != answer_size) {
-				log_server_error("udp: %s: failed: %d - %s.\n",
+				char *buf[256];
+				log_server_error("udp: %s: failed: %zd - %s.\n",
 				                 "socket_sendto()",
-				                 res, strerror(res));
+				                 res, strerror_r((int)res, buf, sizeof(buf)));
 				continue;
 			}
 
