@@ -417,50 +417,21 @@ int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
 	int cmp = 0;
 
 	for (int i = 0; i < count; ++i) {
-		dnslib_rdata_item_t *item1 = &r1->items[i];
-		dnslib_rdata_item_t *item2 = &r2->items[i];
-
-		const uint8_t *data1 = (uint8_t *)r1->items[i].raw_data;
-		const uint8_t *data2 = (uint8_t *)r2->items[i].raw_data;
+		const uint8_t *data1, *data2;
 		int size1, size2;
 
-		switch (format[i]) {
-		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
-		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
-		case DNSLIB_RDATA_WF_LITERAL_DNAME:
-			data1 = dnslib_dname_name(item1->dname);
-			size1 = dnslib_dname_size(item1->dname);
-			data2 = dnslib_dname_name(item2->dname);
-			size2 = dnslib_dname_size(item2->dname);
-			break;
-		case DNSLIB_RDATA_WF_BYTE:
-			size1 = size2 = 1;
-			break;
-		case DNSLIB_RDATA_WF_SHORT:
-			size1 = size2 = 2;
-			break;
-		case DNSLIB_RDATA_WF_LONG:
-			size1 = size2 = 4;
-			break;
-		case DNSLIB_RDATA_WF_A:
-			size1 = size2 = 4;
-			break;
-		case DNSLIB_RDATA_WF_AAAA:
-			size1 = size2 = 16;
-			break;
-		case DNSLIB_RDATA_WF_TEXT:
-		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
-			size1 = (int)item1->raw_data[0] + 1;
-			size2 = (int)item1->raw_data[0] + 1;
-			break;
-		case DNSLIB_RDATA_WF_BINARY:
-		case DNSLIB_RDATA_WF_APL:            // saved as binary
-		case DNSLIB_RDATA_WF_IPSECGATEWAY:   // saved as binary
-			size1 = -1;
-			size2 = -1;
-			break;
-		default:
-			assert(0);
+		if (format[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+		    format[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
+		    format[i] == DNSLIB_RDATA_WF_LITERAL_DNAME) {
+			data1 = dnslib_dname_name(r1->items[i].dname);
+			data2 = dnslib_dname_name(r2->items[i].dname);
+			size1 = dnslib_dname_size(r2->items[i].dname);
+			size2 = dnslib_dname_size(r2->items[i].dname);
+		} else {
+			data1 = (uint8_t *)(r1->items[i].raw_data + 1);
+			data2 = (uint8_t *)(r2->items[i].raw_data + 1);
+			size1 = r1->items[i].raw_data[0];
+			size2 = r1->items[i].raw_data[0];
 		}
 
 		cmp = dnslib_rdata_compare_binary(data1, data2, size1, size2);

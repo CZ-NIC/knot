@@ -1,6 +1,6 @@
 ACLOCAL_AMFLAGS = -I ../m4
 bin_PROGRAMS = knotc
-libexec_PROGRAMS = knot-zcompile unittests
+libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile
 sbin_PROGRAMS = knotd
 
 # $(YACC) will generate header file
@@ -46,6 +46,17 @@ knot_zcompile_SOURCES =			\
 unittests_SOURCES =				\
 	tests/libtap/tap.c			\
 	tests/unittests_main.c
+
+unittests_zcompile_SOURCES =		\
+	zoneparser/parser-util.h		\
+	zoneparser/parser-descriptor.h		\
+	zoneparser/zparser.y			\
+	zoneparser/zlexer.l			\
+	zoneparser/zoneparser.c			\
+	zoneparser/parser-util.c		\
+	zoneparser/parser-descriptor.c		\
+	tests/libtap/tap.c			\
+	zoneparser/tests/unittests_zp_main.c	
 
 nodist_unittests_SOURCES =			\
 	tests/dnslib/parsed_data.rc		\

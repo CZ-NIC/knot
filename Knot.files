@@ -119,6 +119,19 @@ src/tests/skiplist_tests.c
 src/tests/slab_tests.c
 src/tests/tap_unit.h
 src/tests/template_tests.c
+src/tests/dthreads_tests.c
+src/tests/dnslib/dnslib_dname_tests.c
+src/tests/dnslib/dnslib_edns_tests.c
+src/tests/dnslib/dnslib_rdata_tests.c
+src/tests/dnslib/dnslib_rrset_tests.c
+src/tests/dnslib/dnslib_node_tests.c
+src/tests/dnslib/dnslib_response_tests.c
+src/tests/dnslib/dnslib_rrsig_set_tests.c
+src/tests/dnslib/dnslib_zone_tests.c
+src/tests/dnslib/dnslib_edns_tests.c
+src/ctl/main.c
+src/ctl/process.c
+src/ctl/process.h
 src/conf/cf-lex.l
 src/conf/cf-parse.y
 src/conf/conf.c
@@ -126,3 +139,4 @@ src/conf/conf.h
 src/conf/logconf.c
 src/conf/logconf.h
 tests/querytcp.c
+src/tests/zoneparser_tests.c
