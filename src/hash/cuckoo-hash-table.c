@@ -52,7 +52,7 @@ static const uint8_t FLAG_REHASH          = 0x4; // 00000100
 
 static inline void CLEAR_FLAGS(uint8_t *flags)
 {
-	(*flags) &= (uint8_t)0x0;
+	*flags = (uint8_t)0x0;
 }
 
 static inline uint8_t GET_GENERATION(uint8_t flags)
