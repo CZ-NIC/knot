@@ -23,7 +23,8 @@
  * \retval 0 on success.
  * \retval 1 on error.
  */
-int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename);
+int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
+			char do_checks);
 
 #endif /* _DNSLIB_ZONEDUMP_H_ */
 
