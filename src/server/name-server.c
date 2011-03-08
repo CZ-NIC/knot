@@ -255,12 +255,15 @@ DEBUG_NS(
 				added += 1;
 			} else {
 				free(rrsets);
+				rrsets = NULL;
 				break;
 			}
 
 			++i;
 		}
-		free(rrsets);
+		if (rrsets != NULL) {
+			free(rrsets);
+		}
 		break;
 	}
 	case DNSLIB_RRTYPE_RRSIG: {
