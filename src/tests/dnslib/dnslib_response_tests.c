@@ -229,6 +229,21 @@ static int load_raw_packets(test_raw_packet_t ***raw_packets, uint32_t *count,
 	return 0;
 }
 
+void free_raw_packets(test_raw_packet_t ***raw_packets, uint32_t *count)
+{
+	if (*raw_packets != NULL) {
+		for (int i = 0; i < *count; i++) {
+			if ((*raw_packets)[i] != NULL) {
+				if ((*raw_packets)[i]->data != NULL) {
+					free((*raw_packets)[i]->data);
+				}
+				free((*raw_packets)[i]);
+			}
+		}
+		free(*raw_packets);
+	}
+}
+
 static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 					   unsigned *src_size)
 {
@@ -585,6 +600,11 @@ unsigned *src_size)
 		question_rrsets[i] = load_response_rrset(src, src_size, 1);
 		if (question_rrsets[i] == NULL) {
 			diag("Could not load question rrsets");
+
+			for (int j = 0; j < i; j++) {
+				dnslib_rrset_free(&(question_rrsets[i]));
+			}
+			free(question_rrsets);
 			return NULL;
 		}
 	}
@@ -737,6 +757,42 @@ unsigned *src_size)
 	return resp;
 }
 
+static void free_parsed_response(test_response_t **response)
+{
+	if (*response != NULL) {
+
+		if ((*response)->qname != NULL) {
+			dnslib_dname_free(&((*response)->qname));
+		}
+
+		if ((*response)->additional != NULL) {
+			for (int j = 0; j < (*response)->arcount; j++) {
+				dnslib_rrset_deep_free(&((*response)->additional[j]), 1, 1);
+			}
+
+			free((*response)->additional);
+		}
+
+		if ((*response)->answer != NULL) {
+			for (int j = 0; j < (*response)->ancount; j++) {
+				dnslib_rrset_deep_free(&((*response)->answer[j]), 1, 1);
+			}
+
+			free((*response)->answer);
+		}
+
+		if ((*response)->authority != NULL) {
+			for (int j = 0; j < (*response)->nscount; j++) {
+				dnslib_rrset_deep_free(&((*response)->authority[j]), 1, 1);
+			}
+
+			free((*response)->authority);
+		}
+
+		free(*response);
+	}
+}
+
 static int load_parsed_responses(test_response_t ***responses, uint32_t *count,
 				 const char* src, unsigned src_size)
 {
@@ -763,6 +819,16 @@ static int load_parsed_responses(test_response_t ***responses, uint32_t *count,
 	}
 
 	return 0;
+}
+
+void free_parsed_responses(test_response_t ***responses, uint32_t *count)
+{
+	if (*responses != NULL) {
+		for (int i = 0; i < *count; i++) {
+			free_parsed_response(&(*responses[i]));
+		}
+		free(*responses);
+	}
 }
 
 /* \note just checking the pointers probably would suffice */
@@ -1809,6 +1875,7 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	if (load_parsed_responses(&parsed_responses, &response_parsed_count,
 			    parsed_data_rc, parsed_data_rc_size) != 0) {
 		diag("Could not load parsed responses, skipping");
+		free_parsed_responses(&parsed_responses, &response_parsed_count);
 		return 0;
 	}
 
@@ -1817,6 +1884,7 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	if (load_raw_packets(&raw_responses, &response_raw_count,
 			 raw_data_rc, raw_data_rc_size) != 0) {
 		diag("Could not load raw responses, skipping");
+		free_raw_packets(&raw_responses, &response_raw_count);
 		return 0;
 	}
 
@@ -1828,6 +1896,7 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 				  parsed_data_queries_rc,
 				  parsed_data_queries_rc_size) != 0) {
 		diag("Could not load parsed queries, skipping");
+		free_parsed_responses(&parsed_queries, &query_parsed_count);
 		return 0;
 	}
 
@@ -1837,6 +1906,7 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 			     raw_data_queries_rc,
 			     raw_data_queries_rc_size) != 0) {
 		diag("Could not load raw queries, skipping");
+		free_raw_packets(&raw_queries, &query_raw_count);
 		return 0;
 	}
 
@@ -1852,46 +1922,11 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	ok(test_response_to_wire(parsed_responses, raw_responses,
 				 response_parsed_count), "response: to wire");
 
-	for (int i = 0; i < response_parsed_count; i++) {
-		dnslib_dname_free(&(parsed_responses[i]->qname));
-		for (int j = 0; j < parsed_responses[i]->arcount; j++) {
-			dnslib_rrset_deep_free(&(parsed_responses[i]->
-					       additional[j]), 1, 1);
-		}
+	free_parsed_responses(&parsed_responses, &response_parsed_count);
+	free_raw_packets(&raw_responses, &response_raw_count);
 
-		free(parsed_responses[i]->additional);
-
-		for (int j = 0; j < parsed_responses[i]->ancount; j++) {
-			dnslib_rrset_deep_free(&(parsed_responses[i]->
-					       answer[j]), 1, 1);
-		}
-
-		free(parsed_responses[i]->answer);
-
-		for (int j = 0; j < parsed_responses[i]->nscount; j++) {
-			dnslib_rrset_deep_free(&(parsed_responses[i]->
-					       authority[j]), 1, 1);
-		}
-
-		free(parsed_responses[i]->authority);
-
-		free(parsed_responses[i]);
-		free(raw_responses[i]->data);
-		free(raw_responses[i]);
-	}
-
-	free(parsed_responses);
-	free(raw_responses);
-
-	for (int i = 0; i < query_parsed_count; i++) {
-		dnslib_dname_free(&(parsed_queries[i]->qname));
-		free(parsed_queries[i]);
-		free(raw_queries[i]->data);
-		free(raw_queries[i]);
-	}
-
-	free(parsed_queries);
-	free(raw_queries);
+	free_parsed_responses(&parsed_queries, &query_parsed_count);
+	free_raw_packets(&raw_queries, &query_raw_count);
 
 	endskip;
 
