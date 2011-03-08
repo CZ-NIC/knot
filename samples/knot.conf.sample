@@ -1,7 +1,7 @@
 #
-# cutendns.conf.sample
+# knot.conf.sample
 #
-# This is a sample configuration file for CuteDNS authoritative DNS server.
+# This is a sample configuration file for Knot authoritative DNS server.
 #
 
 # This is a comment.
@@ -22,7 +22,7 @@ system {
 
   # Working directory of the server
   # Used to store compiled zones and PID file
-  storage "~/.cutedns";
+  storage "~/.knot";
 
   # TSIG key
   #
