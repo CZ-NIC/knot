@@ -1587,10 +1587,12 @@ int process_rr(void)
 		assert(rrset != NULL);
 
 		if (dnslib_rrset_add_rdata(rrset, current_rrset->rdata) != 0) {
+			free(rrset);
 			return -2;
 		}
 
 		if (dnslib_node_add_rrset(node, rrset) != 0) {
+			free(rrset);
 			return -2;
 		}
 	} else {
