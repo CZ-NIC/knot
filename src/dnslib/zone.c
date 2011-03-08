@@ -317,31 +317,35 @@ DEBUG_DNSLIB_ZONE(
 
 static int dnslib_zone_find_in_tree(const dnslib_zone_t *zone,
                                     const dnslib_dname_t *name,
-                                    dnslib_node_t **node,
-                                    dnslib_node_t **previous)
+                                    const dnslib_node_t **node,
+                                    const dnslib_node_t **previous)
 {
 	assert(zone != NULL);
 	assert(name != NULL);
 	assert(node != NULL);
 	assert(previous != NULL);
 
+	dnslib_node_t *found = NULL, *prev = NULL;
+
 	// create dummy node to use for lookup
 	dnslib_node_t *tmp = dnslib_node_new((dnslib_dname_t *)name, NULL);
 	int exact_match = TREE_FIND_LESS_EQUAL(
-	                   zone->tree, dnslib_node, avl, tmp, node, previous);
+	                   zone->tree, dnslib_node, avl, tmp, &found, &prev);
 	dnslib_node_free(&tmp, 0);
 
-	if (*previous == NULL) {
+	if (prev == NULL) {
 		// either the returned node is the root of the tree, or it is
 		// the leftmost node in the tree; in both cases node was found
 		// set the previous node of the found node
 		assert(exact_match);
-		assert(*node != NULL);
-		*previous = dnslib_node_previous(*node);
-	} else if (dnslib_node_rrset_count(*previous) == 0) {
+		assert(found != NULL);
+		*previous = dnslib_node_previous(found);
+	} else {
 		// otherwise check if the previous node is not an empty
 		// non-terminal
-		*previous = dnslib_node_previous(*previous);
+		*previous = (dnslib_node_rrset_count(prev) == 0)
+		            ? dnslib_node_previous(prev)
+		            : prev;
 	}
 
 	return exact_match;
@@ -514,8 +518,8 @@ int dnslib_zone_find_dname(const dnslib_zone_t *zone,
 		return DNSLIB_ZONE_NAME_ERROR;
 	}
 
-	dnslib_node_t *found = NULL;
-	dnslib_node_t *prev = NULL;
+	const dnslib_node_t *found = NULL;
+	const dnslib_node_t *prev = NULL;
 
 DEBUG_DNSLIB_ZONE(
 	char *name_str = dnslib_dname_to_str(name);
@@ -633,7 +637,7 @@ const dnslib_node_t *dnslib_zone_find_previous(const dnslib_zone_t *zone,
 		return NULL;
 	}
 
-	dnslib_node_t *found = NULL, *prev = NULL;
+	const dnslib_node_t *found = NULL, *prev = NULL;
 
 	(void)dnslib_zone_find_in_tree(zone, name, &found, &prev);
 	assert(prev != NULL);
