@@ -101,7 +101,9 @@ do { \
 } while(0)
 
 //#define STAT_COMPILE
+#ifdef HAVE_LIBLDNS
 #define TEST_WITH_LDNS
+#endif
 
 #endif /* _KNOT_COMMON_H_ */
 
