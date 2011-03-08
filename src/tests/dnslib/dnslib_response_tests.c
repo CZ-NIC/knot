@@ -481,8 +481,7 @@ static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 
 	dname_wire = malloc(sizeof(uint8_t) * dname_size);
 
-        if (!mem_read(dname_wire,
-sizeof(uint8_t) * dname_size, src, src_size)) {
+        if (!mem_read(dname_wire, sizeof(uint8_t) * dname_size, src, src_size)) {
 		return NULL;
 	}
 
@@ -510,25 +509,25 @@ sizeof(uint8_t) * dname_size, src, src_size)) {
 		if (!mem_read(&rrset_ttl, sizeof(rrset_ttl), src, src_size)) {
 			return NULL;
 		}
+	} else {
+		rrset_ttl = 0;
 	}
 
 	rrset = dnslib_rrset_new(owner, rrset_type, rrset_class, rrset_ttl);
 
-	if (is_question) {
-		return rrset;
+	if (!is_question) {
+		dnslib_rdata_t *tmp_rdata;
+
+		tmp_rdata = load_response_rdata(rrset->type, src, src_size);
+
+		if (tmp_rdata == NULL) {
+			diag("Could not load rrset rdata - type: %d", rrset->type);
+			/* TODO some freeing */
+			return NULL;
+		}
+
+		dnslib_rrset_add_rdata(rrset, tmp_rdata);
 	}
-
-	dnslib_rdata_t *tmp_rdata;
-
-	tmp_rdata = load_response_rdata(rrset->type, src, src_size);
-
-	if (tmp_rdata == NULL) {
-		diag("Could not load rrset rdata - type: %d", rrset->type);
-		/* TODO some freeing */
-		return NULL;
-	}
-
-	dnslib_rrset_add_rdata(rrset, tmp_rdata);
 
 	return rrset;
 }
