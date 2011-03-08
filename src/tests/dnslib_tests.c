@@ -51,8 +51,8 @@ static int dnslib_tests_run(int argc, char *argv[])
         note("Testing module: dname");
 	res = dnslib_dname_tests_run(argc, argv);
 
-	note("Testing module: rdata");
-	res *= dnslib_rdata_tests_run(argc, argv);
+/*	note("Testing module: rdata");
+	res *= dnslib_rdata_tests_run(argc, argv); */
 
 	skip(!res, rrset_tests + node_tests + zone_tests + response_tests);
 
