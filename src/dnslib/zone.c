@@ -405,6 +405,12 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count)
 			return NULL;
 		}
 
+		char *n = dnslib_dname_to_str(apex->owner);
+		printf("Inserting zone apex to the hash table: %s (%.*s, size "
+		       "%u)\n", n, apex->owner->size, apex->owner->name,
+		       apex->owner->size);
+		free(n);
+
 		// insert the apex into the hash table
 		if (ck_insert_item(zone->table, (const char *)apex->owner->name,
 		                   apex->owner->size, (void *)apex) != 0) {
@@ -435,6 +441,7 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 	TREE_INSERT(zone->tree, dnslib_node, avl, node);
 
 #ifdef USE_HASH_TABLE
+	assert(zone->table != NULL);
 	// add the node also to the hash table if authoritative, or deleg. point
 	if (zone->table != NULL
 	    && ck_insert_item(zone->table, (const char *)node->owner->name,
@@ -445,7 +452,7 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 #endif
 
 	char *name = dnslib_dname_to_str(node->owner);
-	debug_dnslib_zone("Inserted node %p with owner: %s (labels: %d), "
+	printf("Inserted node %p with owner: %s (labels: %d), "
 	                  "pointer: %p\n", node, name,
 	                  dnslib_dname_label_count(node->owner), node->owner);
 	free(name);
@@ -705,8 +712,17 @@ DEBUG_DNSLIB_ZONE(
 	// copy the name for chopping
 	dnslib_dname_t *name_copy = dnslib_dname_copy(name);
 
+	char *n = dnslib_dname_to_str(name_copy);
+	printf("Finding closest encloser...\nStarting with: %s\n", n);
+	free(n);
+
 	while (item == NULL) {
 		dnslib_dname_left_chop_no_copy(name_copy);
+
+		n = dnslib_dname_to_str(name_copy);
+		printf("Chopped leftmost label: %s (%.*s, size %u)\n", n,
+		       name_copy->size, name_copy->name, name_copy->size);
+		free(n);
 
 		// not satisfied in root zone!!
 		assert(name_copy->label_count > 0);
