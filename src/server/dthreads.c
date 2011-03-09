@@ -58,7 +58,7 @@ static inline int dt_update_thread(dthread_t *thread, int state)
 		pthread_mutex_unlock(&unit->_notify_mx);
 	} else {
 		unlock_thread_rw(thread);
-		pthread_mutex_lock(&unit->_notify_mx);
+		pthread_mutex_unlock(&unit->_notify_mx);
 		return -1;
 	}
 
