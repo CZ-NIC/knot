@@ -624,6 +624,8 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 
 	dnslib_zone_t *zone = dnslib_zone_new(apex, auth_node_count);
 
+	assert(zone != NULL);
+
 	apex->prev = NULL;
 
         dnslib_node_t *last_node;
@@ -674,7 +676,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		if (dnslib_zone_add_nsec3_node(zone, nsec3_first) != 0) {
 			log_zone_error("!! cannot add first nsec3 node, "
 			               "exiting.\n");
-			/* TODO leaks */
+			dnslib_zone_deep_free(zone);
 			return NULL;
 		}
 
