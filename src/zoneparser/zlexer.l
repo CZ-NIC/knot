@@ -212,8 +212,8 @@ ANY     [^\"\n\\]|\\.
 			 */
 			const dnslib_dname_t *dname;
 			dname = dnslib_dname_new_from_wire((uint8_t*)tmp + 1,
-			                                   strlen(tmp + 1),
-			                                   NULL);
+							   strlen(tmp + 1),
+							   NULL);
 			if (!dname) {
 				zc_error("incorrect include origin '%s'",
 					 tmp + 1);
@@ -454,15 +454,15 @@ parse_token(int token, char *yytext, enum lexer_state *lexer_state)
 	yylval.data.str = str;
 	yylval.data.len = len; 
 
-  if (strcmp(yytext, ".") == 0) {
-      free(str);
-      yylval.data.str=".";
-  }
+	if (strcmp(yytext, ".") == 0) {
+		free(str);
+		yylval.data.str=".";
+	}
 
-  if (strcmp(yytext, "@") == 0) {
-      free(str);
-      yylval.data.str="@";
-  }
+	if (strcmp(yytext, "@") == 0) {
+		free(str);
+		yylval.data.str="@";
+	}
 
 	LEXOUT(("%d[%s] ", token, yytext));
 	return token;
