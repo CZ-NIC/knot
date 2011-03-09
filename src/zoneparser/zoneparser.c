@@ -262,7 +262,7 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 		return -1;
 	}
 
-	*items = *temp_rdatas;
+	*items = temp_rdatas;
 	/*	*rdatas = (rdata_atom_type *) region_alloc_init(
 			region, temp_rdatas, i * sizeof(rdata_atom_type)); */
 	return (ssize_t)i;
