@@ -116,7 +116,7 @@ static inline uint8_t rdata_atom_wireformat_type(uint16_t type, size_t index)
 ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 					uint16_t rrtype,
 					const uint16_t data_size,
-					dnslib_rdata_item_t *items)
+					dnslib_rdata_item_t **items)
 {
 //	size_t end = buffer_position(packet) + data_size;
 	uint16_t const *end = wireformat + data_size;
@@ -228,6 +228,8 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			dname = dnslib_dname_new_from_str(tmp_dname_str,
 							  strlen(tmp_dname_str),
 							  NULL);
+			free(tmp_dname_str);
+
 			if (is_wirestore) { //XXX WTH...
 				/*temp_rdatas[i].raw_data =
 					(uint16_t *) region_alloc(
@@ -260,7 +262,7 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 		return -1;
 	}
 
-	*items = *temp_rdatas;
+	*items = temp_rdatas;
 	/*	*rdatas = (rdata_atom_type *) region_alloc_init(
 			region, temp_rdatas, i * sizeof(rdata_atom_type)); */
 	return (ssize_t)i;
@@ -370,6 +372,7 @@ uint16_t * zparser_conv_hex(const char *hex, size_t len)
 					fprintf(stderr,
 						"illegal hex character '%c'",
 						(int) *hex);
+					free(r);
 					return NULL;
 				}
 				++hex;
@@ -410,6 +413,7 @@ uint16_t * zparser_conv_hex_length(const char *hex, size_t len)
 					fprintf(stderr,
 						"illegal hex character '%c'",
 						(int) *hex);
+					free(r);
 					return NULL;
 				}
 				++hex;
@@ -1252,7 +1256,7 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 
 //	buffer_create_from(&packet, wireformat + 1, *wireformat);
 	rdata_count = rdata_wireformat_to_rdata_atoms(wireformat, type,
-						      size, items);
+						      size, &items);
 	if (rdata_count == -1) {
 		fprintf(stderr, "bad unknown RDATA");
 		return;
@@ -1516,6 +1520,7 @@ int process_rr(void)
 			if ((parser->last_node = create_node(zone,
 			                           current_rrset, node_add_func,
 			                           node_get_func)) == NULL) {
+				free(tmp_rrsig);
 				return -1;
 			}
 		}
@@ -1585,10 +1590,12 @@ int process_rr(void)
 		assert(rrset != NULL);
 
 		if (dnslib_rrset_add_rdata(rrset, current_rrset->rdata) != 0) {
+			free(rrset);
 			return -2;
 		}
 
 		if (dnslib_node_add_rrset(node, rrset) != 0) {
+			free(rrset);
 			return -2;
 		}
 	} else {
@@ -1720,7 +1727,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 
 	debug_zp("rdata adjusted\n");
 
-	dnslib_zdump_binary(parser->current_zone, outfile, 1);
+	dnslib_zdump_binary(parser->current_zone, outfile, 1, zonefile);
 
 	/* This is *almost* unnecessary */
 	dnslib_zone_deep_free(&(parser->current_zone));

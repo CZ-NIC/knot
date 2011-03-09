@@ -137,28 +137,26 @@ int main(int argc, char **argv)
 		log_levels_add(LOGT_STDOUT, LOG_ANY, mask);
 	}
 
-	// Save PID
-	const char* pidfile = pid_filename();
-	if (daemonize) {
-		int rc = pid_write(pidfile);
-		if (rc < 0) {
-			log_server_warning("server: Failed to create PID "
-			                   "file '%s'.",
-			                   pidfile);
-		} else {
-			log_server_info("server: PID file '%s' created.",
-			                pidfile);
-		}
-	}
-
-
-
 	// Create server instance
+	const char* pidfile = pid_filename();
 	s_server = server_create();
 
 	// Run server
 	int res = 0;
 	if ((res = server_start(s_server, zfs, zfs_count)) == 0) {
+
+		// Save PID
+		if (daemonize) {
+			int rc = pid_write(pidfile);
+			if (rc < 0) {
+				log_server_warning("server: Failed to create PID "
+				                   "file '%s'.",
+				                   pidfile);
+			} else {
+				log_server_info("server: PID file '%s' created.",
+				                pidfile);
+			}
+		}
 
 		// Register service and signal handler
 		struct sigaction sa;

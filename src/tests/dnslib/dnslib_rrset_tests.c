@@ -451,19 +451,21 @@ static int test_rrset_merge()
 {
 	dnslib_rrset_t *merger1;
 	dnslib_rrset_t *merger2;
+	dnslib_dname_t *owner1;
+	dnslib_dname_t *owner2;
 
-	dnslib_dname_t *owner1 =
-		dnslib_dname_new_from_str(test_rrsets[3].owner,
-		                          strlen(test_rrsets[3].owner), NULL);
+	int r;
+
+	owner1 = dnslib_dname_new_from_str(test_rrsets[3].owner,
+					   strlen(test_rrsets[3].owner), NULL);
 	merger1 = dnslib_rrset_new(owner1, test_rrsets[3].type,
 	                           test_rrsets[3].rclass,
 				   test_rrsets[3].ttl);
 
 	dnslib_rrset_add_rdata(merger1, test_rrsets[3].rdata);
 
-	dnslib_dname_t *owner2 =
-		dnslib_dname_new_from_str(test_rrsets[4].owner,
-		                          strlen(test_rrsets[4].owner), NULL);
+	owner2 = dnslib_dname_new_from_str(test_rrsets[4].owner,
+					   strlen(test_rrsets[4].owner), NULL);
 	merger2 = dnslib_rrset_new(owner2, test_rrsets[4].type,
 	                           test_rrsets[4].rclass,
 				   test_rrsets[4].ttl);
@@ -472,15 +474,17 @@ static int test_rrset_merge()
 
 	dnslib_rrset_merge((void **)&merger1, (void **)&merger2);
 
-	if (check_rrset(merger1, 5, 0, 1, 0)) {
-		diag("Merged rdata are wrongly set.");
-		return 0;
-	}
+	r = check_rrset(merger1, 5, 0, 1, 0);
 
 	dnslib_dname_free(&owner1);
 	dnslib_dname_free(&owner2);
 	dnslib_rrset_free(&merger1);
 	dnslib_rrset_free(&merger2);
+
+	if (r) {
+		diag("Merged rdata are wrongly set.");
+		return 0;
+	}
 
 	return 1;
 }
