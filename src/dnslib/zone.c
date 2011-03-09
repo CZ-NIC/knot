@@ -435,11 +435,11 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 	TREE_INSERT(zone->tree, dnslib_node, avl, node);
 
 #ifdef USE_HASH_TABLE
-	assert(zone->table != NULL);
+	//assert(zone->table != NULL);
 	// add the node also to the hash table if authoritative, or deleg. point
 	if (zone->table != NULL
 	    && ck_insert_item(zone->table, (const char *)node->owner->name,
-	                   node->owner->size, (void *)node) != 0) {
+	                      node->owner->size, (void *)node) != 0) {
 		log_zone_error("Error inserting node into hash table!\n");
 		return -3;
 	}
@@ -586,6 +586,11 @@ DEBUG_DNSLIB_ZONE(
 			assert(*closest_encloser);
 		}
 	}
+DEBUG_DNSLIB_ZONE(
+	char *n = dnslib_dname_to_str((*closest_encloser)->owner);
+	debug_dnslib_zone("Closest encloser: %s\n", n);
+	free(n);
+);
 
 	debug_dnslib_zone("find_dname() returning %d\n", exact_match);
 
