@@ -1360,6 +1360,7 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database)
 	// prepare empty response with SERVFAIL error
 	dnslib_response_t *err = dnslib_response_new_empty(NULL);
 	if (err == NULL) {
+		free(ns);
 		return NULL;
 	}
 
