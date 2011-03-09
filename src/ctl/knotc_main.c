@@ -47,7 +47,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 
 		// Check PID
 		valid_cmd = 1;
-		if (pid > 0) {
+		if (pid > 0 && pid_running(pid)) {
 
 			fprintf(stderr, "control: Server PID found, "
 			        "already running.\n");
@@ -81,7 +81,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		// Check PID
 		valid_cmd = 1;
 		rc = 0;
-		if (pid <= 0) {
+		if (pid <= 0 || !pid_running(pid)) {
 			fprintf(stderr, "Server PID not found, "
 			        "probably not running.\n");
 
@@ -106,7 +106,12 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		execute("stop", argv, argc, pid, verbose, force);
 
 		int i = 0;
-		while(pid_read(pidfile) > 0) {
+		while((pid = pid_read(pidfile)) > 0) {
+
+			if (!pid_running(pid)) {
+				pid_remove(pidfile);
+				break;
+			}
 			if (i == WAITPID_TIMEOUT) {
 				fprintf(stderr, "Timeout while "
 				        "waiting for the server to finish.\n");
@@ -118,13 +123,14 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			}
 		}
 
+		printf("Restarting server.\n");
 		rc = execute("start", argv, argc, -1, verbose, force);
 	}
 	if (strcmp(action, "reload") == 0) {
 
 		// Check PID
 		valid_cmd = 1;
-		if (pid <= 0) {
+		if (pid <= 0 || !pid_running(pid)) {
 			fprintf(stderr, "Server PID not found, "
 			        "probably not running.\n");
 
@@ -151,8 +157,15 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			       "probably not running.\n");
 			rc = 1;
 		} else {
-			printf("Server running as PID %ld.\n",
-			       (long)pid);
+			if (!pid_running(pid)) {
+				printf("Server PID not found, "
+				       "probably not running.\n");
+				fprintf(stderr,
+				        "warning: PID file is stale.\n");
+			} else {
+				printf("Server running as PID %ld.\n",
+				       (long)pid);
+			}
 			rc = 0;
 		}
 	}
