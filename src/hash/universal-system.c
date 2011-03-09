@@ -11,9 +11,6 @@
 
 /*----------------------------------------------------------------------------*/
 
-enum { GEN_COUNT = 2 };
-static uint coefs[US_FNC_COUNT * GEN_COUNT];
-
 const uint MAX_UINT_EXP = 32;
 const unsigned long MAX_UINT_MY = 4294967295;
 
@@ -21,21 +18,25 @@ const unsigned long MAX_UINT_MY = 4294967295;
 /* Private functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-static void us_generate_coefs(uint from, uint to)
+static void us_generate_coefs(us_system_t *system, uint from, uint to)
 {
+	assert(system != NULL);
+
 	for (uint i = from; i < to; ++i) {
 		int used = 0;
 
 		do {
 			// generate random odd number
-			coefs[i] = rand() % MAX_UINT_MY;
-			if (coefs[i] % 2 == 0) {
-				coefs[i] = (coefs[i] == 0) ? 1 : coefs[i] - 1;
+			system->coefs[i] = rand() % MAX_UINT_MY;
+			if (system->coefs[i] % 2 == 0) {
+				system->coefs[i] = (system->coefs[i] == 0)
+				                    ? 1
+				                    : system->coefs[i] - 1;
 			}
 			// check if this coeficient is already used
 			uint j = from;
 			while (used == 0 && j < i) {
-				if (coefs[j++] == coefs[i]) {
+				if (system->coefs[j++] == system->coefs[i]) {
 					used = 1;
 				}
 			}
@@ -48,31 +49,34 @@ static void us_generate_coefs(uint from, uint to)
 /* Public functions                                                           */
 /*----------------------------------------------------------------------------*/
 
-void us_initialize()
+void us_initialize(us_system_t *system)
 {
+	assert(system != NULL);
 	assert(UINT_MAX == MAX_UINT_MY);
 	srand(time(NULL));
 
 	// Initialize both generations of functions by generating random odd
 	// numbers
-	us_generate_coefs(0, US_FNC_COUNT * GEN_COUNT);
+	us_generate_coefs(system, 0, US_FNC_COUNT * GEN_COUNT);
 }
 
 /*----------------------------------------------------------------------------*/
 /*!
  * \note \a generation starts from 1
  */
-int us_next(uint generation)
+int us_next(us_system_t *system, uint generation)
 {
+	assert(system != NULL);
 	// generate new coeficients for the new generation
-	us_generate_coefs((generation - 1) * US_FNC_COUNT,
+	us_generate_coefs(system, (generation - 1) * US_FNC_COUNT,
 	                  generation * US_FNC_COUNT);
 	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
-uint32_t us_hash(uint32_t value, uint table_exp, uint fnc, uint generation)
+uint32_t us_hash(const us_system_t *system, uint32_t value, uint table_exp,
+                 uint fnc, uint generation)
 {
 	/*
 	 * multiplication should overflow if larger than MAX_UINT
@@ -80,9 +84,11 @@ uint32_t us_hash(uint32_t value, uint table_exp, uint fnc, uint generation)
 	 *
 	 * TODO: maybe we should not rely on this
 	 */
+	assert(system != NULL);
 	assert(table_exp <= 32);
 	assert(fnc < US_FNC_COUNT);
 	assert(generation <= GEN_COUNT);
-	return ((coefs[((generation - 1) * US_FNC_COUNT) + fnc] * value)
+
+	return ((system->coefs[((generation - 1) * US_FNC_COUNT) + fnc] * value)
 	        >> (MAX_UINT_EXP - table_exp));
 }
