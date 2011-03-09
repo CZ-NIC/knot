@@ -120,6 +120,7 @@ server_t *server_create()
 		ERR_ALLOC_FAILED;
 		free(udp_socks);
 		free(tcp_socks);
+		free(server);
 		return NULL;
 	}
 
