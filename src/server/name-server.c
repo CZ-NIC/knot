@@ -284,7 +284,6 @@ DEBUG_NS(
 			                                       0);
 
 			if (ret < 0) {
-				free(rrsets);
 				break;
 			}
 
