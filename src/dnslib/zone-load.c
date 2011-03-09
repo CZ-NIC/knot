@@ -148,10 +148,12 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 				}
 
 				labels = malloc(sizeof(uint8_t) * label_count);
+				assert(labels != NULL); /* FIXME */
 				if(!fread_safe(labels,sizeof(uint8_t),
 				               label_count, f)) {
 					load_rdata_purge(rdata, items, i, type);
 					free(dname_wire);
+					free(labels);
 					return 0;
 				}
 
@@ -159,6 +161,7 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 				               1, f)) {
 					load_rdata_purge(rdata, items, i, type);
 					free(dname_wire);
+					free(labels);
 					return 0;
 				}
 
@@ -168,6 +171,7 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 						load_rdata_purge(rdata, items,
 						                 i, type);
 						free(dname_wire);
+						free(labels);
 						return 0;
 					}
 				} else {
