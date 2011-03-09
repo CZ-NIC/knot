@@ -43,8 +43,6 @@ static const float SIZE_RATIO_2 = 2;
 static const float SIZE_RATIO_3 = 1.15;
 static const float SIZE_RATIO_4 = 1.08;
 
-static const char CZ_NAME[4] = { 0x02, 0x63, 0x7a, 0x00 };
-
 /*----------------------------------------------------------------------------*/
 
 static const uint8_t FLAG_GENERATION1     = 0x1; // 00000001
@@ -347,14 +345,6 @@ static ck_hash_table_item_t **ck_find_gen(const ck_hash_table_t *table,
 		hash = HASH(&table->hash_system, key, length,
 		            table->table_size_exp, generation, t);
 
-		if (strncmp(CZ_NAME, key, length) == 0) {
-			debug_ck("[hash] Hashing name 'cz' (size %u), table: %u"
-			         ", generation: %u, exp: %u, hash: %u.\n",
-			         length, t, generation, table->table_size_exp,
-				 hash);
-			hex_print(key, length);
-		}
-
 		debug_ck("Hash: %u, key: %.*s\n", hash, (int)length, key);
 		debug_ck("Table %d, hash: %u, item: %p\n", t + 1, hash,
 		         table->tables[t][hash]);
@@ -443,15 +433,6 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 	debug_ck_hash("New hash: %u.\n", hash);
 	assert(hash < hashsize(table->table_size_exp));
 
-
-	if (strncmp(CZ_NAME, (*to_hash)->key, (*to_hash)->key_length) == 0) {
-		debug_ck("[hash] Hashing name 'cz' (size %u), table: %u, "
-			 "exp: %u, generation: %u, hash: %u.\n",
-			 (*to_hash)->key_length, next_table, table->table_size_exp,
-			 generation, hash);
-		hex_print((*to_hash)->key, (*to_hash)->key_length);
-	}
-
 	((uint *)da_get_items(&used[next_table]))
 	[da_get_count(&used[next_table])] = hash;
 	ck_hash_table_item_t **next = &table->tables[next_table][hash];
@@ -488,25 +469,10 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 		            (*next)->key_length, table->table_size_exp,
 		            generation, next_table);
 
-		if (strncmp(CZ_NAME, (*next)->key, (*next)->key_length) == 0) {
-			printf("[hash] Hashing name 'cz' (size: %u), table: %u,"
-			       " exp: %u, generation: %u, hash: %u.\n",
-			       (*next)->key_length, next_table,
-			       table->table_size_exp, generation, hash);
-			hex_print((*next)->key, (*next)->key_length);
-		}
-
 		next = &table->tables[next_table][hash];
 
 		debug_ck_hash("to table %u, hash %u, item: %p, place: %p\n",
 		              next_table + 1, hash, *next, next);
-
-		if (strncmp(CZ_NAME, (*moving)->key, (*moving)->key_length) == 0) {
-			printf("[hash] Moving item with key 'cz', item pointer: %p ",
-			       (*moving));
-			printf("to table %u, hash %u, place: %p\n",
-			       next_table, hash, next);
-		}
 
 		if ((*next) != NULL) {
 			debug_ck_hash("Table %u, hash: %u, key: %.*s\n",
@@ -525,23 +491,11 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 	debug_ck_hash("Putting pointer %p (*moving) to item %p (next).\n",
 	              *moving, next);
 
-	if (strncmp(CZ_NAME, (*moving)->key, (*moving)->key_length) == 0) {
-		printf("[hash] Moving item with key 'cz', item pointer: %p ",
-		       (*moving));
-		printf("to item %p (next), hash: %u.\n", next, hash);
-	}
-
 	ck_put_item(next, *moving);
 	// set the new generation for the inserted item
 	SET_GENERATION(&(*next)->timestamp, generation);
 	debug_ck_hash("Putting pointer %p (*old) to item %p (moving).\n",
 	              *to_hash, moving);
-
-	if (strncmp(CZ_NAME, (*to_hash)->key, (*to_hash)->key_length) == 0) {
-		printf("[hash] Moving item with key 'cz', item pointer: %p ",
-		       (*to_hash));
-		printf("to item %p (moving).\n", moving);
-	}
 
 	ck_put_item(moving, *to_hash);
 	// set the new generation for the inserted item
@@ -787,12 +741,6 @@ int ck_insert_item(ck_hash_table_t *table, const char *key,
 	ck_fill_item(key, length, value, GET_GENERATION(table->generation),
 	             new_item);
 
-	if (strncmp(CZ_NAME, key, length) == 0) {
-		printf("[hash] Inserting item with key 'cz' (size %u),"
-		       "item pointer: %p\n", length, new_item);
-		hex_print(key, length);
-	}
-
 	// there should be at least 2 free places
 	//assert(da_try_reserve(&table->stash, 2) == 0);
 	//da_reserve(&table->stash, 1);
@@ -802,11 +750,6 @@ int ck_insert_item(ck_hash_table_t *table, const char *key,
 
 		debug_ck("Adding item with key %.*s to stash.\n",
 		         (int)free_place->key_length, free_place->key);
-
-		if (strncmp(CZ_NAME, key, length) == 0) {
-			printf("[hash] Adding item with key %.*s to stash.\n",
-			       (int)free_place->key_length, free_place->key);
-		}
 
 		// maybe some limit on the stash and rehash if full
 		if (ck_add_to_stash(table, free_place) != 0) {
@@ -853,16 +796,7 @@ const ck_hash_table_item_t *ck_find_item(const ck_hash_table_t *table,
 	debug_ck("ck_find_item(), key: %.*s, size: %zu\n",
 	         (int)length, key, length);
 
-	if (strncmp(CZ_NAME, key, length) == 0) {
-		printf("[hash] Searching for name 'cz'\n");
-	}
-
 	ck_hash_table_item_t **found = ck_find_item_nc(table, key, length);
-
-	if (strncmp(CZ_NAME, key, length) == 0) {
-		printf("[hash] Result (found: %p, *found: %p)\n",
-		       found, (found) ? *found : NULL);
-	}
 
 	return (found == NULL) ? NULL : rcu_dereference(*found);
 }
