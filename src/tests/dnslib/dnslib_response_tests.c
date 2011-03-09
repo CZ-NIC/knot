@@ -1568,6 +1568,8 @@ static int test_response_to_wire(test_response_t **responses,
 
 		return 0;
 
+/*
+
 		note("Comparing wires directly - might not be sufficient"
 		     "Test with LDNS, if possible");
 
@@ -1579,7 +1581,7 @@ static int test_response_to_wire(test_response_t **responses,
 			diag("Wires did not match - differ in %d places",
 			     tmp_places);
 			errors++;
-		}
+		} */
 
 #endif
 
