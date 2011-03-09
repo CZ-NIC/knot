@@ -761,39 +761,39 @@ unsigned *src_size)
 	return resp;
 }
 
-static void free_parsed_response(test_response_t **response)
+static void free_parsed_response(test_response_t *response)
 {
-	if (*response != NULL) {
+	if (response != NULL) {
 
-		if ((*response)->qname != NULL) {
-			dnslib_dname_free(&((*response)->qname));
+		if (response->qname != NULL) {
+			dnslib_dname_free(&(response->qname));
 		}
 
-		if ((*response)->additional != NULL) {
-			for (int j = 0; j < (*response)->arcount; j++) {
-				dnslib_rrset_deep_free(&((*response)->additional[j]), 1, 1);
+		if (response->additional != NULL) {
+			for (int j = 0; j < response->arcount; j++) {
+				dnslib_rrset_deep_free(&(response->additional[j]), 1, 1);
 			}
 
-			free((*response)->additional);
+			free(response->additional);
 		}
 
-		if ((*response)->answer != NULL) {
-			for (int j = 0; j < (*response)->ancount; j++) {
-				dnslib_rrset_deep_free(&((*response)->answer[j]), 1, 1);
+		if (response->answer != NULL) {
+			for (int j = 0; j < response->ancount; j++) {
+				dnslib_rrset_deep_free(&(response->answer[j]), 1, 1);
 			}
 
-			free((*response)->answer);
+			free(response->answer);
 		}
 
-		if ((*response)->authority != NULL) {
-			for (int j = 0; j < (*response)->nscount; j++) {
-				dnslib_rrset_deep_free(&((*response)->authority[j]), 1, 1);
+		if (response->authority != NULL) {
+			for (int j = 0; j < response->nscount; j++) {
+				dnslib_rrset_deep_free(&(response->authority[j]), 1, 1);
 			}
 
-			free((*response)->authority);
+			free(response->authority);
 		}
 
-		free(*response);
+		free(response);
 	}
 }
 
@@ -829,7 +829,7 @@ void free_parsed_responses(test_response_t ***responses, uint32_t *count)
 {
 	if (*responses != NULL) {
 		for (int i = 0; i < *count; i++) {
-			free_parsed_response(&(*responses[i]));
+			free_parsed_response((*responses)[i]);
 		}
 		free(*responses);
 	}
