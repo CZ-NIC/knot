@@ -82,7 +82,7 @@ struct zparser {
 
 	size_t id;
 
-	dnslib_rrset_t current_rrset;
+	dnslib_rrset_t *current_rrset;
 	dnslib_rdata_item_t *temporary_items;
 
 	rrset_list_t *rrsig_orphans;
