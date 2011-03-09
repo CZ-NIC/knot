@@ -458,8 +458,7 @@ parse_token(int token, char *yytext, enum lexer_state *lexer_state)
 		free(str);
 		yylval.data.str=".";
 	}
-
-	if (strcmp(yytext, "@") == 0) {
+	else if (strcmp(yytext, "@") == 0) {
 		free(str);
 		yylval.data.str="@";
 	}
