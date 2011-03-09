@@ -336,6 +336,8 @@ static int dnslib_zone_find_in_tree(const dnslib_zone_t *zone,
 	                   zone->tree, dnslib_node, avl, tmp, &found, &prev);
 	dnslib_node_free(&tmp, 0);
 
+	*node = found;
+
 	if (prev == NULL) {
 		// either the returned node is the root of the tree, or it is
 		// the leftmost node in the tree; in both cases node was found
