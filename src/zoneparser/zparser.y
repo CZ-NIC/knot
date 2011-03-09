@@ -126,9 +126,12 @@ line:	NL
 	if (!parser->error_occurred) {
 		dnslib_rdata_t *tmp_rdata = dnslib_rdata_new();
 
+		assert(tmp_rdata != NULL);
+
 		if (dnslib_rdata_set_items(tmp_rdata,
 		    parser->temporary_items,
 		    parser->rdata_count) != 0) {
+			dnslib_rdata_free(&tmp_rdata);
 			return -1;
 		}
 
