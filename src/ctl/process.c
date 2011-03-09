@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <string.h>
+#include <signal.h>
 
 #include "common.h"
 #include "ctl/process.h"
@@ -91,5 +92,10 @@ int pid_write(const char* fn)
 int pid_remove(const char* fn)
 {
 	return unlink(fn);
+}
+
+int pid_running(pid_t pid)
+{
+	return kill(pid, 0) == 0;
 }
 

@@ -63,4 +63,14 @@ int pid_write(const char* fn);
  */
 int pid_remove(const char* fn);
 
+/*!
+ * \brief Return true if the PID is running.
+ *
+ * \param pid Process ID.
+ *
+ * \retval True if running.
+ * \retval False if not running or on errors.
+ */
+int pid_running(pid_t pid);
+
 #endif // _KNOT_PROCESS_H_
