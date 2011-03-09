@@ -983,11 +983,5 @@ void dnslib_zone_deep_free(dnslib_zone_t **zone)
 	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
 	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
 
-	dnslib_nsec3_params_free(&(*zone)->nsec3_params);
-
-	free((*zone)->tree);
-	free((*zone)->nsec3_nodes);
-
-	free(*zone);
-	*zone = NULL;
+	dnslib_zone_free(zone);
 }
