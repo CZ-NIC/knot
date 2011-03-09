@@ -1727,7 +1727,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 
 	debug_zp("rdata adjusted\n");
 
-	dnslib_zdump_binary(parser->current_zone, outfile);
+	dnslib_zdump_binary(parser->current_zone, outfile, zonefile);
 
 	/* This is *almost* unnecessary */
 	dnslib_zone_deep_free(&(parser->current_zone));
