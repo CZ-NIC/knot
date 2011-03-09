@@ -34,8 +34,8 @@
 // random walk
 #define NEXT_TABLE(table, count) (rand() % count)
 
-#define HASH(key, length, exp, gen, table) \
-	us_hash(fnv_hash(key, length, -1), exp, table, gen)
+#define HASH(system, key, length, exp, gen, table) \
+	us_hash(system, fnv_hash(key, length, -1), exp, table, gen)
 
 #define STASH_ITEMS(stash) ((ck_hash_table_item_t **)(da_get_items(stash)))
 
@@ -344,7 +344,8 @@ static ck_hash_table_item_t **ck_find_gen(const ck_hash_table_t *table,
 
 	// check hash tables
 	for (uint t = TABLE_FIRST; t <= TABLE_LAST(table->table_count); ++t) {
-		hash = HASH(key, length, table->table_size_exp, generation, t);
+		hash = HASH(&table->hash_system, key, length,
+		            table->table_size_exp, generation, t);
 
 		if (strncmp(CZ_NAME, key, length) == 0) {
 			debug_ck("[hash] Hashing name 'cz' (size %u), table: %u"
@@ -373,7 +374,7 @@ static ck_hash_table_item_t **ck_find_gen(const ck_hash_table_t *table,
 		}
 	}
 
-	// try to find in buffer
+	// try to find in stash
 	debug_ck("Searching in stash...\n");
 
 	ck_hash_table_item_t **found =
@@ -435,8 +436,9 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 
 	uint next_table = TABLE_FIRST;
 
-	uint32_t hash = HASH((*to_hash)->key, (*to_hash)->key_length,
-	                     table->table_size_exp, generation, next_table);
+	uint32_t hash = HASH(&table->hash_system, (*to_hash)->key,
+	                     (*to_hash)->key_length, table->table_size_exp,
+	                     generation, next_table);
 
 	debug_ck_hash("New hash: %u.\n", hash);
 	assert(hash < hashsize(table->table_size_exp));
@@ -482,8 +484,9 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 			ck_next_table(&next_table, table->table_count);
 		}
 
-		hash = HASH((*next)->key, (*next)->key_length,
-		            table->table_size_exp, generation, next_table);
+		hash = HASH(&table->hash_system, (*next)->key,
+		            (*next)->key_length, table->table_size_exp,
+		            generation, next_table);
 
 		if (strncmp(CZ_NAME, (*next)->key, (*next)->key_length) == 0) {
 			printf("[hash] Hashing name 'cz' (size: %u), table: %u,"
@@ -629,7 +632,7 @@ ck_hash_table_t *ck_create_table(uint items)
 	debug_ck("Creating hash table for %u items.\n", items);
 	debug_ck("Exponent: %u, number of tables: %u\n ",
 		 table->table_size_exp, table->table_count);
-	debug_ck("Table size: %u items, each %lu bytes, total %lu bytes\n",
+	debug_ck("Table size: %u items, each %zu bytes, total %zu bytes\n",
 	         hashsize(table->table_size_exp),
 	         sizeof(ck_hash_table_item_t *),
 	         hashsize(table->table_size_exp)
@@ -675,7 +678,8 @@ ck_hash_table_t *ck_create_table(uint items)
 	// set the generation to 1 and initialize the universal system
 	CLEAR_FLAGS(&table->generation);
 	SET_GENERATION1(&table->generation);
-	us_initialize();
+
+	us_initialize(&table->hash_system);
 
 	return table;
 }

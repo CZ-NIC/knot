@@ -64,7 +64,7 @@ struct ck_hash_table_item {
 	 * xy - generation; may be 01 (1) or 10 (2).
 	 */
 	uint8_t timestamp;
-};	// size 13 B
+};
 
 typedef struct ck_hash_table_item ck_hash_table_item_t;
 
@@ -133,6 +133,8 @@ struct ck_hash_table {
 	 * both sets of functions when searching for item.
 	 */
 	uint8_t generation;
+
+	us_system_t hash_system; /*!< Universal system of hash functions. */
 };
 
 typedef struct ck_hash_table ck_hash_table_t;
