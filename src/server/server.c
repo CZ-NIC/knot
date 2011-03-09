@@ -44,7 +44,11 @@ server_t *server_create()
 
 		/* Create TCP & UDP sockets. */
 		int udp_sock = socket_create(iface->family, SOCK_DGRAM);
-		assert(udp_sock > 0);
+		if (udp_sock <= 0) {
+			log_server_error("Could not create UDP socket: %s.\n",
+			                 strerror(errno));
+			break;
+		}
 		if (socket_bind(udp_sock, iface->family, iface->address, iface->port) < 0) {
 			log_server_error("Could not bind to "
 			                 "UDP interface on '%s:%d'.\n",
@@ -65,7 +69,11 @@ server_t *server_create()
 
 
 		int tcp_sock = socket_create(iface->family, SOCK_STREAM);
-		assert(tcp_sock > 0);
+		if (tcp_sock <= 0) {
+			log_server_error("Could not create TCP socket: %s.\n",
+			                 strerror(errno));
+			break;
+		}
 		if (socket_bind(tcp_sock, iface->family, iface->address, iface->port) < 0) {
 			log_server_error("Could not bind to "
 			                 "TCP interface on '%s:%d'.\n",
@@ -98,6 +106,8 @@ server_t *server_create()
 	server_t *server = malloc(sizeof(server_t));
 	if (server == NULL) {
 		ERR_ALLOC_FAILED;
+		free(udp_socks);
+		free(tcp_socks);
 		return NULL;
 	}
 	server->handlers = NULL;
@@ -109,6 +119,8 @@ server_t *server_create()
 	server->zone_db = dnslib_zonedb_new();
 	if (server->zone_db == NULL) {
 		ERR_ALLOC_FAILED;
+		free(udp_socks);
+		free(tcp_socks);
 		return NULL;
 	}
 
@@ -119,6 +131,8 @@ server_t *server_create()
 	if (server->nameserver == NULL) {
 		dnslib_zonedb_deep_free(&server->zone_db);
 		free(server);
+		free(udp_socks);
+		free(tcp_socks);
 		return NULL;
 	}
 
