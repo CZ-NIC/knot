@@ -140,32 +140,25 @@ static void dnslib_zone_save_enclosers_node(dnslib_node_t *node,
 	}
 }
 
-/* ret 0 OK, -1 otherwise */
+/* ret 0 OK, -1 cycle, -2 invalid cycle (destination not found) */
 static int check_cname_cycles_in_zone(dnslib_zone_t *zone,
-				      dnslib_node_t *node)
+				      dnslib_rrset_t *rrset)
 {
-//	printf("CHECK FOR: %s\n", dnslib_dname_to_str(node->owner));
-	const dnslib_rrset_t *next_rrset =
-		dnslib_node_get_rrset(node, DNSLIB_RRTYPE_CNAME);
-
-	if (next_rrset == NULL) {
-		return 0;
-	}
+	const dnslib_rrset_t *next_rrset = rrset;
+	assert(rrset);
+	const dnslib_rdata_t *tmp_rdata = dnslib_rrset_rdata(next_rrset);
+	const dnslib_node_t *next_node = NULL;
 
 	uint i = 0;
-
-	const dnslib_node_t *next_node = node;
-
-	dnslib_rdata_t *tmp_rdata = dnslib_rrset_rdata(next_rrset);
 
 	assert(tmp_rdata);
 
 	const dnslib_dname_t *next_dname =
-//		dnslib_rdata_get_item(tmp_rdata, 0)->dname;
-next_rrset->rdata->items[0].dname;
+		dnslib_rdata_cname_name(tmp_rdata);
 
-	while (i < MAX_CNAME_CYCLE_DEPTH && next_node != NULL) {
-//		printf("next: %s\n", dnslib_dname_to_str(next_dname));
+	assert(next_dname);
+
+	while (i < MAX_CNAME_CYCLE_DEPTH && next_dname != NULL) {
 		next_node = dnslib_zone_get_node(zone, next_dname);
 		if (next_node == NULL) {
 			next_node =
@@ -176,16 +169,14 @@ next_rrset->rdata->items[0].dname;
 			next_rrset = dnslib_node_rrset(next_node,
 						       DNSLIB_RRTYPE_CNAME);
 			if (next_rrset != NULL) {
-				next_dname = next_rrset->rdata->items[0].dname;
+				next_dname =
+				dnslib_rdata_cname_name(next_rrset->rdata);
 			} else {
 				next_node = NULL;
 				next_dname = NULL;
 			}
 		} else {
-			/* This should be different error, but
-			 * error nonetheless
-			 */
-			;
+			next_dname = NULL;
 		}
 		i++;
 	}
@@ -203,26 +194,31 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 	assert(data != NULL);
 	arg_t *args = (arg_t *)data;
 
+	char do_checks = *((char *)(args->arg3));
+
 	/* XXX dnslib_compressible are only 12 ... XXX */
 
 	for (int i = 0; i < DNSLIB_COMPRESSIBLE_TYPES; ++i) {
-		dnslib_zone_save_enclosers_node(node, dnslib_compressible_types[i],
-		                                  (dnslib_zone_t *)args->arg1,
-						  (skip_list_t *)args->arg2);
+		dnslib_zone_save_enclosers_node(node,
+						dnslib_compressible_types[i],
+						(dnslib_zone_t *)args->arg1,
+						(skip_list_t *)args->arg2);
+	}
 
-		if (i == DNSLIB_RRTYPE_CNAME) {
+	dnslib_rrset_t *cname_rrset = NULL;
+	if (do_checks) {
+		cname_rrset = dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME);
+		if (cname_rrset != NULL) {
 			if (check_cname_cycles_in_zone((dnslib_zone_t *)
-							args->arg1,
-							node) != 0) {
+				args->arg1,
+				cname_rrset) != 0) {
 				char *name =
-					dnslib_dname_to_str(
-					dnslib_node_owner(node));
-				log_zone_warning("Node: %s contains "
-						 "CNAME cycle!\n", name);
-				printf("%s\n", name);
+				dnslib_dname_to_str(dnslib_node_owner(node));
+				log_zone_error("Node: %s contains "
+					       "CNAME cycle!\n", name);
 				free(name);
-				getchar();
-				/* do something */
+
+				/* TODO how to propagate the error */
 			}
 		}
 	}
