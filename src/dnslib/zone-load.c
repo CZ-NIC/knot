@@ -370,7 +370,11 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	}
 
 	labels = malloc(sizeof(uint8_t) * label_count);
+
+	assert(labels != NULL);
+
 	if (!fread_safe(labels, sizeof(uint8_t), label_count, f)) {
+		free(labels);
 		return 0;
 	}
 
