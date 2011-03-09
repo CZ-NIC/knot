@@ -237,7 +237,15 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				temp_rdatas[i].data[0] = dname->name_size;
 				memcpy(temp_rdatas[i].data+1, dname_name(dname),
 				dname->name_size); */
+				temp_rdatas[i].raw_data =
+					malloc(sizeof(uint16_t) +
+					       sizeof(uint8_t) * dname->size);
+				temp_rdatas[i].raw_data[0] = dname->size;
+				memcpy(temp_rdatas[i].raw_data + 1,
+				       dname->name, dname->size);
 			}
+
+			dnslib_dname_free(&dname);
 		} else {
 			if (wireformat + length > end) {
 				if (required) {
