@@ -255,12 +255,15 @@ DEBUG_NS(
 				added += 1;
 			} else {
 				free(rrsets);
+				rrsets = NULL;
 				break;
 			}
 
 			++i;
 		}
-		free(rrsets);
+		if (rrsets != NULL) {
+			free(rrsets);
+		}
 		break;
 	}
 	case DNSLIB_RRTYPE_RRSIG: {
@@ -281,7 +284,6 @@ DEBUG_NS(
 			                                       0);
 
 			if (ret < 0) {
-				free(rrsets);
 				break;
 			}
 
@@ -527,8 +529,7 @@ static int ns_put_nsec3_closest_encloser_proof(const dnslib_zone_t *zone,
 	assert(qname != NULL);
 	assert(resp != NULL);
 
-	const dnslib_nsec3_params_t *nsec3params;
-	if ((nsec3params = dnslib_zone_nsec3params(zone)) == NULL) {
+	if (dnslib_zone_nsec3params(zone) == NULL) {
 DEBUG_NS(
 		char *name = dnslib_dname_to_str(zone->apex->owner);
 		debug_ns("No NSEC3PARAM found in zone %s.\n", name);
@@ -1357,6 +1358,7 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database)
 	// prepare empty response with SERVFAIL error
 	dnslib_response_t *err = dnslib_response_new_empty(NULL);
 	if (err == NULL) {
+		free(ns);
 		return NULL;
 	}
 
@@ -1381,8 +1383,8 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database)
 
 	ns->err_response = (uint8_t *)malloc(ns->err_resp_size);
 	if (ns->err_response == NULL) {
-		log_answer_error("nameserver: Error while converting default error response "
-		                 "to wire format \n");
+		log_answer_error("nameserver: Error while converting default "
+		                 "error response to wire format \n");
 		dnslib_response_free(&err);
 		free(ns);
 		return NULL;

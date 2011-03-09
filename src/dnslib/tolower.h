@@ -13,8 +13,10 @@
 #ifndef _KNOT_DNSLIB_TOLOWER_H_
 #define _KNOT_DNSLIB_TOLOWER_H_
 
+#define KNOT_CHAR_TABLE_SIZE 256
+
 enum {
-	CHAR_TABLE_SIZE = 256
+	CHAR_TABLE_SIZE = KNOT_CHAR_TABLE_SIZE
 };
 
 static const uint8_t char_table[CHAR_TABLE_SIZE] = {
@@ -277,7 +279,9 @@ static const uint8_t char_table[CHAR_TABLE_SIZE] = {
 };
 
 static inline uint8_t dnslib_tolower(uint8_t c) {
+#if KNOT_CHAR_TABLE_SIZE < 256
 	assert(c < CHAR_TABLE_SIZE);
+#endif
 	return char_table[c];
 }
 

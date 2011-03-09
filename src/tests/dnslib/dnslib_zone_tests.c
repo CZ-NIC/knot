@@ -363,7 +363,7 @@ static int test_zone_tree_apply(dnslib_zone_t *zone,
 {
 
 	assert(node_index == 0);
-	assert(compare_ok = 1);
+	assert(compare_ok == 1);
 
 	void (*traversal_func)(dnslib_zone_t *zone,
 	                       void (*function)(dnslib_node_t *node,

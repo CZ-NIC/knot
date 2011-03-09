@@ -280,6 +280,9 @@ DEBUG_DNSLIB_ZONE(
 		debug_dnslib_zone("Error while encoding hashed name %s to "
 		                  "base32.\n", n);
 		free(n);
+		if (name_b32 != NULL) {
+			free(name_b32);
+		}
 		return NULL;
 	}
 
@@ -332,6 +335,8 @@ static int dnslib_zone_find_in_tree(const dnslib_zone_t *zone,
 	int exact_match = TREE_FIND_LESS_EQUAL(
 	                   zone->tree, dnslib_node, avl, tmp, &found, &prev);
 	dnslib_node_free(&tmp, 0);
+
+	*node = found;
 
 	if (prev == NULL) {
 		// either the returned node is the root of the tree, or it is
@@ -430,6 +435,7 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 	TREE_INSERT(zone->tree, dnslib_node, avl, node);
 
 #ifdef USE_HASH_TABLE
+	assert(zone->table != NULL);
 	// add the node also to the hash table if authoritative, or deleg. point
 	if (zone->table != NULL
 	    && ck_insert_item(zone->table, (const char *)node->owner->name,
@@ -438,12 +444,13 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 		return -3;
 	}
 #endif
-
+DEBUG_DNSLIB_ZONE(
 	char *name = dnslib_dname_to_str(node->owner);
 	debug_dnslib_zone("Inserted node %p with owner: %s (labels: %d), "
 	                  "pointer: %p\n", node, name,
 	                  dnslib_dname_label_count(node->owner), node->owner);
 	free(name);
+);
 
 	return 0;
 }
@@ -518,9 +525,6 @@ int dnslib_zone_find_dname(const dnslib_zone_t *zone,
 		return DNSLIB_ZONE_NAME_ERROR;
 	}
 
-	const dnslib_node_t *found = NULL;
-	const dnslib_node_t *prev = NULL;
-
 DEBUG_DNSLIB_ZONE(
 	char *name_str = dnslib_dname_to_str(name);
 	char *zone_str = dnslib_dname_to_str(zone->apex->owner);
@@ -542,58 +546,27 @@ DEBUG_DNSLIB_ZONE(
 		return DNSLIB_ZONE_NAME_NOT_IN_ZONE;
 	}
 
-	int exact_match = dnslib_zone_find_in_tree(zone, name, &found, &prev);
-	//assert(prev != NULL);
-
-//	// create dummy node to use for lookup
-//	dnslib_node_t *tmp = dnslib_node_new((dnslib_dname_t *)name, NULL);
-//	int exact_match = TREE_FIND_LESS_EQUAL(
-//	                   zone->tree, dnslib_node, avl, tmp, &found, &prev);
-//	dnslib_node_free(&tmp, 0);
-
-//	*node = found;
-//	*closest_encloser = found;
-
-//	if (prev == NULL) {
-//		// either the returned node is the root of the tree, or it is
-//		// the leftmost node in the tree; in both cases node was found
-//		// set the previous node of the found node
-//		assert(exact_match);
-//		assert(found != NULL);
-//		*previous = dnslib_node_previous(found);
-//	} else {
-//		// otherwise check if the previous node is not an empty
-//		// non-terminal
-//		*previous = (dnslib_node_rrset_count(prev) == 0)
-//		            ? dnslib_node_previous(prev)
-//		            : prev;
-//	}
+	int exact_match = dnslib_zone_find_in_tree(zone, name, node,
+	                                           previous);
 
 DEBUG_DNSLIB_ZONE(
-	char *name_str = (found) ? dnslib_dname_to_str(found->owner) : "(nil)";
-	char *name_str2 = (prev != NULL) ? dnslib_dname_to_str(prev->owner)
-	                                 : "(nil)";
+	char *name_str = (*node) ? dnslib_dname_to_str((*node)->owner)
+	                         : "(nil)";
+	char *name_str2 = (*previous != NULL)
+	                  ? dnslib_dname_to_str((*previous)->owner)
+	                  : "(nil)";
 	debug_dnslib_zone("Search function returned %d, node %s and prev: %s\n",
 	                  exact_match, name_str, name_str2);
 
-	if (found) {
+	if (*node) {
 		free(name_str);
 	}
-	if (prev != NULL) {
-		free(name_str2);
-	}
-
-	name_str2 = ((*previous) != NULL)
-	                   ? dnslib_dname_to_str((*previous)->owner)
-	                   : "(nil)";
-	debug_dnslib_zone("Previous set to: %s\n", name_str2);
-	if ((*previous) != NULL) {
+	if (*previous != NULL) {
 		free(name_str2);
 	}
 );
 
-	*node = found;
-	*closest_encloser = found;
+	*closest_encloser = *node;
 
 	// there must be at least one node with domain name less or equal to
 	// the searched name if the name belongs to the zone (the root)
@@ -613,13 +586,6 @@ DEBUG_DNSLIB_ZONE(
 			assert(*closest_encloser);
 		}
 	}
-
-//	if (dnslib_node_is_non_auth(*closest_encloser)) {
-//		while (dnslib_node_is_non_auth(*closest_encloser)) {
-//			(*closest_encloser) = (*closest_encloser)->parent;
-//			assert(*closest_encloser);
-//		}
-//	}
 
 	debug_dnslib_zone("find_dname() returning %d\n", exact_match);
 
@@ -699,10 +665,21 @@ DEBUG_DNSLIB_ZONE(
 	// chop leftmost labels until some node is found
 	// copy the name for chopping
 	dnslib_dname_t *name_copy = dnslib_dname_copy(name);
+DEBUG_DNSLIB_ZONE(
+	char *n = dnslib_dname_to_str(name_copy);
+	debug_dnslib_zone("Finding closest encloser..\nStarting with: %s\n", n);
+	free(n);
+);
 
 	while (item == NULL) {
 		dnslib_dname_left_chop_no_copy(name_copy);
-
+DEBUG_DNSLIB_ZONE(
+		n = dnslib_dname_to_str(name_copy);
+		debug_dnslib_zone("Chopped leftmost label: %s (%.*s, size %u)"
+		                  "\n", n, name_copy->size, name_copy->name,
+		                  name_copy->size);
+		free(n);
+);
 		// not satisfied in root zone!!
 		assert(name_copy->label_count > 0);
 
@@ -713,8 +690,6 @@ DEBUG_DNSLIB_ZONE(
 	dnslib_dname_free(&name_copy);
 
 	assert(item != NULL);
-
-	*closest_encloser = (const dnslib_node_t *)item->value;
 
 	return DNSLIB_ZONE_NAME_NOT_FOUND;
 }
@@ -978,11 +953,5 @@ void dnslib_zone_deep_free(dnslib_zone_t **zone)
 	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
 	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
 
-	dnslib_nsec3_params_free(&(*zone)->nsec3_params);
-
-	free((*zone)->tree);
-	free((*zone)->nsec3_nodes);
-
-	free(*zone);
-	*zone = NULL;
+	dnslib_zone_free(zone);
 }

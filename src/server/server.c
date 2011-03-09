@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <errno.h>
-
 #include <openssl/evp.h>
 
 #include "common.h"
@@ -44,6 +43,11 @@ server_t *server_create()
 
 		/* Create TCP & UDP sockets. */
 		int udp_sock = socket_create(iface->family, SOCK_DGRAM);
+		if (udp_sock <= 0) {
+			log_server_error("Could not create UDP socket: %s.\n",
+			                 strerror(errno));
+			break;
+		}
 		if (socket_bind(udp_sock, iface->family, iface->address, iface->port) < 0) {
 			log_server_error("Could not bind to "
 			                 "UDP interface on '%s:%d'.\n",
@@ -64,6 +68,11 @@ server_t *server_create()
 
 
 		int tcp_sock = socket_create(iface->family, SOCK_STREAM);
+		if (tcp_sock <= 0) {
+			log_server_error("Could not create TCP socket: %s.\n",
+			                 strerror(errno));
+			break;
+		}
 		if (socket_bind(tcp_sock, iface->family, iface->address, iface->port) < 0) {
 			log_server_error("Could not bind to "
 			                 "TCP interface on '%s:%d'.\n",
@@ -94,12 +103,14 @@ server_t *server_create()
 
 	// Create server structure
 	server_t *server = malloc(sizeof(server_t));
-	server->handlers = NULL;
-	server->state = ServerIdle;
 	if (server == NULL) {
 		ERR_ALLOC_FAILED;
+		free(udp_socks);
+		free(tcp_socks);
 		return NULL;
 	}
+	server->handlers = NULL;
+	server->state = ServerIdle;
 
 	debug_server("Done\n\n");
 	debug_server("Creating Zone Database structure..\n");
@@ -107,6 +118,9 @@ server_t *server_create()
 	server->zone_db = dnslib_zonedb_new();
 	if (server->zone_db == NULL) {
 		ERR_ALLOC_FAILED;
+		free(udp_socks);
+		free(tcp_socks);
+		free(server);
 		return NULL;
 	}
 
@@ -117,6 +131,8 @@ server_t *server_create()
 	if (server->nameserver == NULL) {
 		dnslib_zonedb_deep_free(&server->zone_db);
 		free(server);
+		free(udp_socks);
+		free(tcp_socks);
 		return NULL;
 	}
 
@@ -241,7 +257,24 @@ int server_load_zone(server_t *server, const char *origin, const char *db)
 	// Check path
 	if (db) {
 		debug_server("Parsing zone database '%s'\n", db);
-		zone = dnslib_zload_load(db);
+		zloader_t *zl = dnslib_zload_open(db);
+		if (!zl && errno == EILSEQ) {
+			log_server_error("Compiled db '%s' is too old, "
+			                 " please recompile.\n",
+			                 db);
+			return -1;
+		}
+
+		// Check if the db is up-to-date
+		if (dnslib_zload_needs_update(zl)) {
+			log_server_warning("warning: Zone file for '%s' "
+			                   "has changed, it is recommended to "
+			                   "recompile it.\n",
+			                   origin);
+		}
+
+		zone = dnslib_zload_load(zl);
+		dnslib_zload_close(zl);
 		if (zone) {
 			if (dnslib_zonedb_add_zone(server->zone_db, zone) != 0){
 				dnslib_zone_deep_free(&zone);
@@ -256,8 +289,8 @@ int server_load_zone(server_t *server, const char *origin, const char *db)
 				log_server_error(
 				        "Please recompile zone databases.\n");
 			} else {
-				log_server_error("Could not load database '%s' "
-				                 "for zone '%s'\n",
+				log_server_error("Failed to load db '%s' "
+				                 "for zone '%s'.\n",
 				                 db, origin);
 			}
 			return -1;
@@ -267,7 +300,7 @@ int server_load_zone(server_t *server, const char *origin, const char *db)
 		                 db, origin);
 	}
 
-	dnslib_zone_dump(zone, 1);
+//	dnslib_zone_dump(zone, 1);
 
 	return 0;
 }
@@ -287,23 +320,29 @@ int server_start(server_t *server, const char **filenames, uint zones)
 	//!stat
 
 	// Load zones from config
-	node *n = 0;
+	node *n = 0; int zones_loaded = 0;
 	WALK_LIST (n, conf()->zones) {
 
 		// Fetch zone
 		conf_zone_t *z = (conf_zone_t*)n;
 
 		// Load zone
-		if (server_load_zone(server, z->name, z->db) < 0) {
-			return -1;
+		if (server_load_zone(server, z->name, z->db) == 0) {
+			++zones_loaded;
 		}
 	}
 
 	// Load given zones
 	for (uint i = 0; i < zones; ++i) {
-		if (server_load_zone(server, "??", filenames[i]) < 0) {
-			return -1;
+		if (server_load_zone(server, "??", filenames[i]) == 0) {
+			++zones_loaded;
 		}
+	}
+
+	/* Check the number of loaded zones. */
+	if (zones_loaded == 0) {
+		log_server_error("No valid database loaded, shutting down.\n");
+		return -1;
 	}
 
 	debug_server("\nDone\n\n");

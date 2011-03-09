@@ -51,7 +51,7 @@ int log_conf_hook(const struct conf_t *conf)
 		if (facility <= LOGT_STDERR) {
 			int mask = LOG_MASK(LOG_FATAL);
 			log_levels_add(facility, LOG_ANY, mask);
-			loaded_sections |= facility;
+			loaded_sections |= 1 << facility;
 		}
 
 		// Setup sources mapping
@@ -66,10 +66,10 @@ int log_conf_hook(const struct conf_t *conf)
 
 	// Load defaults for syslog or stderr
 	int bmask = LOG_MASK(LOG_ERR)|LOG_MASK(LOG_FATAL);
-	if (!(loaded_sections & LOGT_SYSLOG)) {
+	if (!(loaded_sections & (1 << LOGT_SYSLOG))) {
 		log_levels_set(LOGT_SYSLOG, LOG_ANY, bmask);
 	}
-	if (!(loaded_sections & LOGT_STDERR)) {
+	if (!(loaded_sections & (1 << LOGT_STDERR))) {
 		log_levels_set(LOGT_STDERR, LOG_ANY, bmask);
 	}
 
