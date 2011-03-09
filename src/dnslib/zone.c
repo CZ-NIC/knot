@@ -280,6 +280,9 @@ DEBUG_DNSLIB_ZONE(
 		debug_dnslib_zone("Error while encoding hashed name %s to "
 		                  "base32.\n", n);
 		free(n);
+		if (name_b32 != NULL) {
+			free(name_b32);
+		}
 		return NULL;
 	}
 
