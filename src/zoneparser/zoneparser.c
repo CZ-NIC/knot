@@ -47,6 +47,7 @@
 #define NS_INADDRSZ 4
 #define NS_IN6ADDRSZ 16
 #define APL_NEGATION_MASK      0x80U
+#define APL_LENGTH_MASK	       (~APL_NEGATION_MASK)
 
 static inline uint16_t * rdata_atom_data(dnslib_rdata_item_t item)
 {
@@ -116,22 +117,18 @@ static inline uint8_t rdata_atom_wireformat_type(uint16_t type, size_t index)
 ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 					uint16_t rrtype,
 					const uint16_t data_size,
-					dnslib_rdata_item_t *items)
+					dnslib_rdata_item_t **items)
 {
-//	size_t end = buffer_position(packet) + data_size;
 	uint16_t const *end = wireformat + data_size;
 	size_t i;
-	dnslib_rdata_item_t temp_rdatas[MAXRDATALEN];
+	dnslib_rdata_item_t *temp_rdatas =
+		malloc(sizeof(dnslib_rdata_item_t) * MAXRDATALEN);
 	memset(temp_rdatas, 0, sizeof(temp_rdatas));
 
 	dnslib_rrtype_descriptor_t *descriptor =
 		dnslib_rrtype_descriptor_by_type(rrtype);
 
 	assert(descriptor->length <= MAXRDATALEN);
-
-	/*	if (!buffer_available(packet, data_size)) {
-			return -1;
-		}*/
 
 	for (i = 0; i < descriptor->length; ++i) {
 		int is_domain = 0;
@@ -163,7 +160,9 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
 			/* Length is stored in the first byte.  */
 			length = 1;
-			if (wireformat <= end) {
+			if (wireformat + length <= end) {
+			//	length += wireformat[length - 1];
+				length += wireformat[0];
 			}
 			/*if (buffer_position(packet) + length <= end) {
 			length += buffer_current(packet)[length - 1];
@@ -186,9 +185,8 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				  + sizeof(uint8_t)); /* length */
 			if (wireformat + length <= end) {
 				/* Mask out negation bit.  */
-//				length += (wireformat[length - 1]
-//TODO					   & APL_LENGTH_MASK);
-				assert(0); // not yet implemented
+				length += (wireformat[length - 1]
+					   & APL_LENGTH_MASK);
 			}
 			break;
 		case DNSLIB_RDATA_WF_IPSECGATEWAY:
@@ -199,7 +197,7 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				length = 0;
 				break;
 			case IPSECKEY_IP4:
-				length = 4; //IP4ADDRLEN; XXX
+				length = 4;
 				break;
 			case IPSECKEY_IP6:
 				length = IP6ADDRLEN;
@@ -214,14 +212,13 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 		}
 
 		if (is_domain) {
-			const dnslib_dname_t *dname;
+			dnslib_dname_t *dname;
 
 			if (!required && (wireformat == end)) {
 				break;
 			}
 
 			char *tmp_dname_str = malloc(sizeof(char) * length);
-			//XXX ???
 
 			memcpy(tmp_dname_str, wireformat, length);
 
@@ -230,7 +227,7 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 							  NULL);
 			free(tmp_dname_str);
 
-			if (is_wirestore) { //XXX WTH...
+			if (is_wirestore) {
 				/*temp_rdatas[i].raw_data =
 					(uint16_t *) region_alloc(
 				region, sizeof(uint16_t) + dname->name_size);
@@ -240,12 +237,21 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				temp_rdatas[i].raw_data =
 					malloc(sizeof(uint16_t) +
 					       sizeof(uint8_t) * dname->size);
+
+				if (temp_rdatas[i].raw_data == NULL) {
+					ERR_ALLOC_FAILED;
+					return -1;
+				}
+
 				temp_rdatas[i].raw_data[0] = dname->size;
 				memcpy(temp_rdatas[i].raw_data + 1,
 				       dname->name, dname->size);
+
+				dnslib_dname_free(&dname);
+			} else {
+				temp_rdatas[i].dname = dname;
 			}
 
-			dnslib_dname_free(&dname);
 		} else {
 			if (wireformat + length > end) {
 				if (required) {
@@ -256,12 +262,24 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				}
 			}
 
-			/*temp_rdatas[i].data = (uint16_t *) region_alloc(
+			temp_rdatas[i].raw_data =
+				malloc(sizeof(uint16_t) + sizeof(uint16_t));
+
+			if (temp_rdatas[i].raw_data == NULL) {
+				ERR_ALLOC_FAILED;
+				return -1;
+			}
+
+			temp_rdatas[i].raw_data[0] = length;
+			memcpy(temp_rdatas[i].raw_data + 1, wireformat, length);
+
+/*			temp_rdatas[i].data = (uint16_t *) region_alloc(
 				region, sizeof(uint16_t) + length);
 				temp_rdatas[i].data[0] = length;
 				buffer_read(packet,
-					    temp_rdatas[i].data + 1, length);*/
+					    temp_rdatas[i].data + 1, length); */
 		}
+		wireformat += length;
 	}
 
 	if (wireformat < end) {
@@ -270,7 +288,7 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 		return -1;
 	}
 
-	*items = *temp_rdatas;
+	*items = temp_rdatas;
 	/*	*rdatas = (rdata_atom_type *) region_alloc_init(
 			region, temp_rdatas, i * sizeof(rdata_atom_type)); */
 	return (ssize_t)i;
@@ -1278,6 +1296,8 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 			zadd_rdata_wireformat((uint16_t *)items[i].raw_data);
 		}
 	}
+
+	free(items);
 }
 
 /*
