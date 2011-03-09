@@ -423,7 +423,9 @@ int dt_resize(dt_unit_t *unit, int size)
 
 		dthread_t **threads = realloc(unit->threads,
 		                              size * sizeof(dthread_t *));
-		if (threads == 0) {
+		if (threads == NULL) {
+			dt_unit_unlock(unit);
+			pthread_mutex_unlock(&unit->_notify_mx);
 			return -1;
 		}
 
