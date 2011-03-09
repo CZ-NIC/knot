@@ -116,7 +116,7 @@ static inline uint8_t rdata_atom_wireformat_type(uint16_t type, size_t index)
 ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 					uint16_t rrtype,
 					const uint16_t data_size,
-					dnslib_rdata_item_t *items)
+					dnslib_rdata_item_t **items)
 {
 //	size_t end = buffer_position(packet) + data_size;
 	uint16_t const *end = wireformat + data_size;
