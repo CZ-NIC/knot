@@ -1318,6 +1318,7 @@ zparser_type *
 zparser_create()
 {
 	zparser_type *result;
+	dnslib_rrset_t *rrset;
 
 	result = (zparser_type *)malloc(sizeof(zparser_type));
 	if (result == NULL)
@@ -1333,8 +1334,11 @@ zparser_create()
 	result->temporary_items = malloc(MAXRDATALEN *
 	                                  sizeof(dnslib_rdata_item_t));
 
-	result->current_rrset = *dnslib_rrset_new(NULL, 0, 0, 0);
+	rrset = dnslib_rrset_new(NULL, 0, 0, 0);
+	/* FIXME: double allocation, either move initialization of empty current_rrset here, or use allocated rrset. OS */
+	result->current_rrset = *rrset;
 	result->current_rrset.rdata = NULL;
+	free(rrset);
 
 	result->rrsig_orphans = NULL;
 
