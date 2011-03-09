@@ -1467,7 +1467,7 @@ void process_rrsigs_in_node(dnslib_node_t *node)
 int process_rr(void)
 {
 	dnslib_zone_t *zone = parser->current_zone;
-	dnslib_rrset_t *current_rrset = &parser->current_rrset;
+	dnslib_rrset_t *current_rrset = parser->current_rrset;
 	dnslib_rrset_t *rrset;
 	dnslib_rrtype_descriptor_t *descriptor
 	= dnslib_rrtype_descriptor_by_type(current_rrset->type);
