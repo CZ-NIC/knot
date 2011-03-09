@@ -5,11 +5,38 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <sys/stat.h>
+#include <time.h>
 
 #include "common.h"
 #include "dnslib/zone-load.h"
+#include "dnslib/zone-dump.h"
 #include "dnslib/dnslib.h"
 #include "dnslib/debug.h"
+
+static int timespec_cmp(struct timespec *x, struct timespec *y)
+{
+	/* Calculate difference in the scale of seconds. */
+	long diff = x->tv_sec - y->tv_sec;
+
+	/* If it is equal, need to measure nanosecs. */
+	if (diff == 0) {
+		diff = x->tv_nsec - y->tv_nsec;
+	}
+
+	/* X and Y are equal. */
+	if (diff == 0) {
+		return 0;
+	}
+
+	/* X is newer. */
+	if (diff > 0) {
+		return 1;
+	}
+
+	/* Y is newer. */
+	return -1;
+}
 
 static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
 {
@@ -34,8 +61,6 @@ static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
  * or dname ID, if dname is in the zone
  * or raw data stored like this: data_len [data]
  */
-
-enum { MAGIC_LENGTH = 6 };
 
 enum { DNAME_MAX_WIRE_LENGTH = 256 };
 
@@ -480,23 +505,82 @@ int dnslib_check_magic(FILE *f, const uint8_t* MAGIC, uint MAGIC_LENGTH)
 	return 1;
 }
 
-dnslib_zone_t *dnslib_zload_load(const char *filename)
+zloader_t *dnslib_zload_open(const char *filename)
 {
 	if (unlikely(!filename)) {
 		errno = ENOENT; // No such file or directory (POSIX.1)
 		return 0;
 	}
 
+	/* Open file for binary read. */
 	FILE *f = fopen(filename, "rb");
 	if (unlikely(!f)) {
+		debug_zp("dnslib_zload_open: failed to open '%s'\n", filename);
 		errno = ENOENT; // No such file or directory (POSIX.1)
 		return 0;
 	}
 
-	if (f == NULL) {
-		fprintf(stderr, "Could not open file '%s'\n", filename);
-		return NULL;
+	/* Check magic sequence. */
+	static const uint8_t MAGIC[MAGIC_LENGTH] = MAGIC_BYTES;
+	if (!dnslib_check_magic(f, MAGIC, MAGIC_LENGTH)) {
+		fclose(f);
+		debug_zp("dnslib_zload_open: magic bytes in don't match '%*s' "
+		         "(%s)\n",
+		         (int)MAGIC_LENGTH, (const char*)MAGIC, filename);
+		errno = EILSEQ; // Illegal byte sequence (POSIX.1, C99)
+		return 0;
 	}
+
+	/* Read source file length. */
+	uint32_t sflen = 0;
+	if (fread(&sflen, 1, sizeof(uint32_t), f) != sizeof(uint32_t)) {
+		debug_zp("dnslib_zload_open: failed to read sfile length\n");
+		fclose(f);
+		errno = EIO; // I/O error.
+		return 0;
+	}
+
+	/* Read source file. */
+	char *sfile = malloc(sflen);
+	if (!sfile) {
+		debug_zp("dnslib_zload_open: invalid sfile length %u\n", sflen);
+		fclose(f);
+		errno = ENOMEM; // Not enough space.
+		return 0;
+	}
+	if (fread(sfile, 1, sflen, f) < sflen) {
+		debug_zp("dnslib_zload_open: failed to read %uB source file\n",
+		         sflen);
+		free(sfile);
+		fclose(f);
+		errno = EIO; // I/O error.
+		return 0;
+	}
+
+	/* Allocate new loader. */
+	zloader_t *zl = malloc(sizeof(zloader_t));
+	if (!zl) {
+		errno = ENOMEM; // Not enough space.
+		free(sfile);
+		fclose(f);
+		return 0;
+	}
+
+	debug_zp("dnslib_zload_open: opened '%s' as fp %p (source is '%s')\n",
+	         filename, f, sfile);
+	zl->filename = strdup(filename);
+	zl->source = sfile;
+	zl->fp = f;
+	return zl;
+}
+
+dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
+{
+	if (!loader) {
+		return 0;
+	}
+
+	FILE *f = loader->fp;
 
 	dnslib_node_t *tmp_node;
 
@@ -506,26 +590,14 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 
 	uint auth_node_count;
 
-	static const uint8_t MAGIC[MAGIC_LENGTH] = {107, 110, 111, 116, 0, 2};
-	                                           /*k   n    o    t   0.1*/
-
-	if (!dnslib_check_magic(f, MAGIC, MAGIC_LENGTH)) {
-		fclose(f);
-		errno = EILSEQ; // Illegal byte sequence (POSIX.1, C99)
-		return 0;
-	}
-
 	if (!fread_safe(&node_count, sizeof(node_count), 1, f)) {
-		fclose(f);
 		return 0;
 	}
 	if (!fread_safe(&nsec3_node_count, sizeof(nsec3_node_count), 1, f)) {
-		fclose(f);
 		return 0;
 	}
 	if (!fread_safe(&auth_node_count,
 	      sizeof(auth_node_count), 1, f)) {
-		fclose(f);
 		return 0;
 	}
 
@@ -545,8 +617,9 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 	dnslib_node_t *apex = dnslib_load_node(f);
 
 	if (!apex) {
-		log_zone_error("zone: Could not load apex node (in %s)\n", filename);
-		return NULL;
+		log_zone_error("zone: Could not load apex node (in %s)\n",
+		               loader->filename);
+		return 0;
 	}
 
 	dnslib_zone_t *zone = dnslib_zone_new(apex, auth_node_count);
@@ -580,7 +653,8 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
                         }
 
 		} else {
-			log_zone_error("zone: Node error (in %s).\n", filename);
+			log_zone_error("zone: Node error (in %s).\n",
+			               loader->filename);
 		}
 	}
 
@@ -622,7 +696,8 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 
 			last_node = tmp_node;
 		} else {
-			log_zone_error("zone: Node error (in %s).\n", filename);
+			log_zone_error("zone: Node error (in %s).\n",
+			               loader->filename);
 		}
 	}
 
@@ -631,8 +706,44 @@ dnslib_zone_t *dnslib_zload_load(const char *filename)
 		nsec3_first->prev = last_node;
 	}
 
-	fclose(f);
-
 	return zone;
+}
+
+int dnslib_zload_needs_update(zloader_t *loader)
+{
+	if (!loader) {
+		return 1;
+	}
+
+	/* Check if the source still exists. */
+	struct stat st_src;
+	if (stat(loader->source, &st_src) != 0) {
+		return 1;
+	}
+
+	/* Check if the compiled file still exists. */
+	struct stat st_bin;
+	if (stat(loader->filename, &st_bin) != 0) {
+		return 1;
+	}
+
+	/* Compare the mtime of the source and file. */
+	if (timespec_cmp(&st_bin.st_mtim, &st_src.st_mtim) < 0) {
+		return 1;
+	}
+
+	return 0;
+}
+
+void dnslib_zload_close(zloader_t *loader)
+{
+	if (!loader) {
+		return;
+	}
+
+	free(loader->filename);
+	free(loader->source);
+	fclose(loader->fp);
+	free(loader);
 }
 

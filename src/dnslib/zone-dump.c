@@ -161,8 +161,6 @@ void dnslib_zone_save_enclosers(dnslib_zone_t *zone, skip_list_t *list)
 			   (void *)&arguments);
 }
 
-enum { MAGIC_LENGTH = 6 };
-
 /* TODO Think of a better way than a global variable */
 static uint node_count = 0;
 
@@ -421,7 +419,8 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 }
 
-int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename)
+int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
+                        const char *sfilename)
 {
 	FILE *f;
 
@@ -437,11 +436,28 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename)
 
 	dnslib_zone_save_enclosers(zone, encloser_list);
 
-	static const uint8_t MAGIC[MAGIC_LENGTH] = {107, 110, 111, 116, 0, 2};
-	                                           /*k   n    o    t   0.1*/
-
+	/* Start writing header - magic bytes. */
+	size_t header_len = MAGIC_LENGTH;
+	static const uint8_t MAGIC[MAGIC_LENGTH] = MAGIC_BYTES;
 	fwrite(&MAGIC, sizeof(uint8_t), MAGIC_LENGTH, f);
 
+	/* Write source file length. */
+	uint32_t sflen = 0;
+	if (sfilename) {
+		sflen = strlen(sfilename) + 1;
+	}
+	fwrite(&sflen, sizeof(uint32_t), 1, f);
+	header_len += sizeof(uint32_t);
+
+	/* Write source file. */
+	fwrite(sfilename, sflen, 1, f);
+	header_len += sflen;
+
+	/* Notice: End of header,
+	 * length must be marked for future return.
+	 */
+
+	/* Start writing compiled data. */
 	fwrite(&node_count, sizeof(node_count), 1, f);
 	fwrite(&node_count, sizeof(node_count), 1, f);
 	fwrite(&zone->node_count,
@@ -464,8 +480,8 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename)
 	dnslib_zone_nsec3_apply_inorder(zone, dnslib_node_dump_binary,
 	                                (void *)&arguments);
 
-	fseek(f, MAGIC_LENGTH, SEEK_SET);
-
+	/* Update counters. */
+	fseek(f, header_len, SEEK_SET);
 	fwrite(&tmp_count, sizeof(tmp_count), 1, f);
 	fwrite(&node_count, sizeof(node_count), 1, f);
 	fwrite(&zone->node_count,

@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <errno.h>
-
 #include <openssl/evp.h>
 
 #include "common.h"
@@ -257,7 +256,24 @@ int server_load_zone(server_t *server, const char *origin, const char *db)
 	// Check path
 	if (db) {
 		debug_server("Parsing zone database '%s'\n", db);
-		zone = dnslib_zload_load(db);
+		zloader_t *zl = dnslib_zload_open(db);
+		if (!zl && errno == EILSEQ) {
+			log_server_error("Compiled db '%s' is too old, "
+			                 " please recompile.\n",
+			                 db);
+			return -1;
+		}
+
+		// Check if the db is up-to-date
+		if (dnslib_zload_needs_update(zl)) {
+			log_server_warning("warning: Zone file for '%s' "
+			                   "has changed, it is recommended to "
+			                   "recompile it.\n",
+			                   origin);
+		}
+
+		zone = dnslib_zload_load(zl);
+		dnslib_zload_close(zl);
 		if (zone) {
 			if (dnslib_zonedb_add_zone(server->zone_db, zone) != 0){
 				dnslib_zone_deep_free(&zone);
@@ -272,8 +288,8 @@ int server_load_zone(server_t *server, const char *origin, const char *db)
 				log_server_error(
 				        "Please recompile zone databases.\n");
 			} else {
-				log_server_error("Could not load database '%s' "
-				                 "for zone '%s'\n",
+				log_server_error("Failed to load db '%s' "
+				                 "for zone '%s'.\n",
 				                 db, origin);
 			}
 			return -1;
@@ -303,23 +319,29 @@ int server_start(server_t *server, const char **filenames, uint zones)
 	//!stat
 
 	// Load zones from config
-	node *n = 0;
+	node *n = 0; int zones_loaded = 0;
 	WALK_LIST (n, conf()->zones) {
 
 		// Fetch zone
 		conf_zone_t *z = (conf_zone_t*)n;
 
 		// Load zone
-		if (server_load_zone(server, z->name, z->db) < 0) {
-			return -1;
+		if (server_load_zone(server, z->name, z->db) == 0) {
+			++zones_loaded;
 		}
 	}
 
 	// Load given zones
 	for (uint i = 0; i < zones; ++i) {
-		if (server_load_zone(server, "??", filenames[i]) < 0) {
-			return -1;
+		if (server_load_zone(server, "??", filenames[i]) == 0) {
+			++zones_loaded;
 		}
+	}
+
+	/* Check the number of loaded zones. */
+	if (zones_loaded == 0) {
+		log_server_error("No valid database loaded, shutting down.\n");
+		return -1;
 	}
 
 	debug_server("\nDone\n\n");
