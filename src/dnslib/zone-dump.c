@@ -189,8 +189,132 @@ static int check_cname_cycles_in_zone(dnslib_zone_t *zone,
 	return 0;
 }
 
+static inline uint16_t *rdata_item_data(const dnslib_rdata_item_t *item)
+{
+	return (uint16_t *)(item->raw_data + 1);
+}
+
+uint16_t type_covered_from_rdata(const dnslib_rdata_t *rdata)
+{
+	return ntohs(*(uint16_t *) rdata_item_data(&(rdata->items[0])));
+}
+
 static int check_dnskey()
 {
+}
+
+static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrset,
+			     const dnslib_rdata_t *rdata_rrsig,
+			     const dnslib_rrset_t *rrset,
+			     const dnslib_rrset_t *rrsig,
+			     const dnslib_rrset_t *dnskey_rrset)
+{
+	if (type_covered_from_rdata(rdata_rrsig) !=
+	    dnslib_rrset_type(rrset)) {
+		/* zoneparser would not let this happen
+		 * but to be on the safe side
+		 */
+		return -1;
+	}
+
+	/* label number at the 2nd index should be same as owner's */
+	uint16_t *raw_data =
+		rdata_item_data(dnslib_rdata_item(rdata_rrsig, 2));
+
+	uint8_t labels_rdata = ((uint8_t *)raw_data)[0];
+
+	if (labels_rdata !=
+	    dnslib_dname_label_count(dnslib_rrset_owner(rrset))) {
+		return -3;
+	}
+
+	/* signer's name is same as in the zone apex */
+	dnslib_dname_t *signer_name =
+		dnslib_rdata_item(rdata_rrsig, 7)->dname;
+
+	/* dnskey is in the apex node */
+	if (dnslib_dname_compare(signer_name,
+				 dnslib_rrset_owner(dnskey_rrset)) != 0) {
+		return -4;
+	}
+
+	/* Compare algorithm, key tag and signer's name with DNSKEY */
+	uint8_t alg =
+		((uint8_t *)(dnslib_rdata_item(rdata_rrsig, 1)->raw_data))[0];
+	uint8_t alg_dnskey =
+		((uint8_t *)(dnslib_rdata_item(dnslib_rrset_rdata(dnskey_rrset),
+					       1)->raw_data))[0];
+	if (alg != alg_dnskey) {
+		return -5;
+	}
+
+	raw_data = rdata_item_data(dnslib_rdata_item(rdata_rrsig, 6));
+	uint16_t key_tag_rrsig = dnslib_wire_read_u16((uint8_t *)raw_data);
+
+	raw_data = rdata_item_data(dnslib_rdata_item(
+				   dnslib_rrset_rdata(dnskey_rrset), 6));
+	uint16_t key_tag_dnskey = dnslib_wire_read_u16((uint8_t *)raw_data);
+
+	if (key_tag_rrsig != key_tag_dnskey) {
+		return -6;
+	}
+
+	return 0;
+}
+
+/*
+  return 0 - Ok
+  return -1 NO RRSIGS
+  return -2
+
+ */
+static int check_rrsig_in_rrset(dnslib_rrset_t *rrset,
+				dnslib_rrset_t *dnskey_rrset)
+{
+	assert(dnskey_rrset && rrset);
+
+	const dnslib_rrset_t *rrsigs = dnslib_rrset_rrsigs(rrset);
+
+	if (rrsigs == NULL) {
+		return -1;
+	}
+
+	/* signed rrsig - nonsense */
+	if (dnslib_rrset_rrsigs(rrsigs) != NULL) {
+		return -2;
+	}
+
+	/* Different owner, class, ttl */
+
+//	todo
+
+	/* Check whether all rrsets have their rrsigs */
+	const dnslib_rdata_t *tmp_rdata = dnslib_rrset_rdata(rrset);
+	const dnslib_rdata_t *tmp_rrsig_rdata = dnslib_rrset_rdata(rrsigs);
+
+	assert(tmp_rdata);
+	assert(tmp_rrsig_rdata);
+	do {
+		if (check_rrsig_rdata(tmp_rdata,
+				      tmp_rrsig_rdata,
+				      rrset,
+				      rrsigs,
+				      dnskey_rrset) != 0) {
+			return -3;
+		}
+	} while ((tmp_rdata = dnslib_rrset_rdata_next(rrset, tmp_rdata))
+		!= NULL &&
+		((tmp_rrsig_rdata =
+			dnslib_rrset_rdata_next(rrsigs, tmp_rrsig_rdata))
+		!= NULL));
+
+	if (tmp_rdata != NULL &&
+	    tmp_rrsig_rdata != NULL) {
+		/* Not all records are signed */
+		return -4;
+	}
+
+	return 0;
 }
 
 static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
