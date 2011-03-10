@@ -245,6 +245,15 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 				free(name);
 			}
 		}
+
+		if (dnslib_rrset_rdata(cname_rrset)->next !=
+		    dnslib_rrset_rdata(cname_rrset)) {
+			char *name =
+				dnslib_dname_to_str(dnslib_node_owner(node));
+			log_zone_error("Node %s contains more than one CNAME "
+				       "record!\n", name);
+			free(name);
+		}
 	}
 
 	if (do_checks == 2) {
