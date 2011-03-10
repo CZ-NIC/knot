@@ -142,7 +142,7 @@ static void dnslib_zone_save_enclosers_node(dnslib_node_t *node,
 
 /* ret 0 OK, -1 cycle, -2 invalid cycle (destination not found) */
 static int check_cname_cycles_in_zone(dnslib_zone_t *zone,
-				      dnslib_rrset_t *rrset)
+				      const dnslib_rrset_t *rrset)
 {
 	const dnslib_rrset_t *next_rrset = rrset;
 	assert(rrset);
@@ -189,6 +189,10 @@ static int check_cname_cycles_in_zone(dnslib_zone_t *zone,
 	return 0;
 }
 
+static int check_dnskey()
+{
+}
+
 static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 {
 	assert(data != NULL);
@@ -205,7 +209,7 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 						(skip_list_t *)args->arg2);
 	}
 
-	dnslib_rrset_t *cname_rrset = NULL;
+	const dnslib_rrset_t *cname_rrset = NULL;
 	if (do_checks) {
 		cname_rrset = dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME);
 		if (cname_rrset != NULL) {
@@ -214,12 +218,43 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 				cname_rrset) != 0) {
 				char *name =
 				dnslib_dname_to_str(dnslib_node_owner(node));
-				log_zone_error("Node: %s contains "
+				log_zone_error("Node %s contains "
 					       "CNAME cycle!\n", name);
 				free(name);
 
 				/* TODO how to propagate the error */
 			}
+		}
+
+		/* No DNSSEC and yet there is more than one rrset in node */
+		if (dnslib_node_rrset_count(node) != 1 && do_checks == 1) {
+			char *name =
+			dnslib_dname_to_str(dnslib_node_owner(node));
+			log_zone_error("Node %s contains more than one RRSet "
+				       "but has CNAME record!\n", name);
+			free(name);
+		} else if (dnslib_node_rrset_count(node) != 1) {
+			/* With DNSSEC node can contain RRSIG or NSEC */
+			if (!(dnslib_node_rrset(node, DNSLIB_RRTYPE_RRSIG) ||
+			    dnslib_node_rrset(node, DNSLIB_RRTYPE_NSEC))) {
+				char *name =
+				dnslib_dname_to_str(dnslib_node_owner(node));
+				log_zone_error("Node %s contains other records "
+				"than RRSIG and/or NSEC together with CNAME "
+				"record!\n", name);
+				free(name);
+			}
+		}
+	}
+
+	if (do_checks == 2) {
+		uint rrset_count = dnslib_node_rrset_count(node);
+		const dnslib_rrset_t **rrsets = dnslib_node_rrsets(node);
+		int auth = !dnslib_node_is_non_auth(node);
+		/* there is no point in checking non_authoritative node */
+		for (int i = 0; i < rrset_count && auth; i++) {
+			const dnslib_rrset_t *rrset = rrsets[i];
+
 		}
 	}
 }
@@ -495,6 +530,16 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 }
 
+static int zone_is_secure(dnslib_zone_t *zone)
+{
+	if (dnslib_node_rrset(dnslib_zone_apex(zone),
+			      DNSLIB_RRTYPE_DNSKEY) == NULL) {
+		return 0;
+	} else {
+		return 1;
+	}
+}
+
 int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 			char do_checks, const char *sfilename)
 {
@@ -509,6 +554,10 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	zone->node_count = 0;
 
 	skip_list_t *encloser_list = skip_create_list(compare_pointers);
+
+	if (do_checks && zone_is_secure(zone)) {
+		do_checks = 2;
+	}
 
 	zone_save_enclosers_sem_check(zone, encloser_list, do_checks);
 
