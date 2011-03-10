@@ -203,10 +203,8 @@ static int check_dnskey()
 {
 }
 
-static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrset,
-			     const dnslib_rdata_t *rdata_rrsig,
+static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
 			     const dnslib_rrset_t *rrset,
-			     const dnslib_rrset_t *rrsig,
 			     const dnslib_rrset_t *dnskey_rrset)
 {
 	if (type_covered_from_rdata(rdata_rrsig) !=
@@ -225,6 +223,15 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrset,
 
 	if (labels_rdata !=
 	    dnslib_dname_label_count(dnslib_rrset_owner(rrset))) {
+		return -2;
+	}
+
+	/* check original TTL */
+	uint32_t original_ttl =
+		dnslib_wire_read_u32((uint8_t *)rdata_item_data(
+				     dnslib_rdata_item(rdata_rrsig, 3)));
+
+	if (original_ttl != dnslib_rrset_ttl(rrset)) {
 		return -3;
 	}
 
@@ -238,25 +245,40 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrset,
 		return -4;
 	}
 
-	/* Compare algorithm, key tag and signer's name with DNSKEY */
-	uint8_t alg =
+	/* Compare algorithm, key tag and signer's name with DNSKEY rrset
+	 * one of the records has to match. Signer name has been checked
+	 * before */
+	char match = 0;
+	const dnslib_rdata_t *tmp_dnskey_rdata =
+		dnslib_rrset_rdata(dnskey_rrset);
+	do {
+		uint8_t alg =
 		((uint8_t *)(dnslib_rdata_item(rdata_rrsig, 1)->raw_data))[0];
-	uint8_t alg_dnskey =
-		((uint8_t *)(dnslib_rdata_item(dnslib_rrset_rdata(dnskey_rrset),
+		uint8_t alg_dnskey =
+		((uint8_t *)(dnslib_rdata_item(tmp_dnskey_rdata,
 					       1)->raw_data))[0];
-	if (alg != alg_dnskey) {
+
+		raw_data = rdata_item_data(dnslib_rdata_item(rdata_rrsig, 6));
+		uint16_t key_tag_rrsig =
+			dnslib_wire_read_u16((uint8_t *)raw_data);
+
+		raw_data =
+			rdata_item_data(dnslib_rdata_item(
+					tmp_dnskey_rdata, 2));
+		uint16_t key_tag_dnskey =
+			dnslib_wire_read_u16((uint8_t *)raw_data);
+
+		match = (alg == alg_dnskey) &&
+			(key_tag_rrsig == key_tag_dnskey);
+
+	} while (!match &&
+		 ((tmp_dnskey_rdata =
+			dnslib_rrset_rdata_next(dnskey_rrset,
+						tmp_dnskey_rdata))
+		!= NULL));
+
+	if (!match) {
 		return -5;
-	}
-
-	raw_data = rdata_item_data(dnslib_rdata_item(rdata_rrsig, 6));
-	uint16_t key_tag_rrsig = dnslib_wire_read_u16((uint8_t *)raw_data);
-
-	raw_data = rdata_item_data(dnslib_rdata_item(
-				   dnslib_rrset_rdata(dnskey_rrset), 6));
-	uint16_t key_tag_dnskey = dnslib_wire_read_u16((uint8_t *)raw_data);
-
-	if (key_tag_rrsig != key_tag_dnskey) {
-		return -6;
 	}
 
 	return 0;
@@ -286,7 +308,18 @@ static int check_rrsig_in_rrset(dnslib_rrset_t *rrset,
 
 	/* Different owner, class, ttl */
 
-//	todo
+	if (dnslib_dname_compare(dnslib_rrset_owner(rrset),
+				 dnslib_rrset_owner(rrsigs)) != 0) {
+		return -3;
+	}
+
+	if (dnslib_rrset_class(rrset) != dnslib_rrset_class(rrsigs)) {
+		return -4;
+	}
+
+	if (dnslib_rrset_ttl(rrset) != dnslib_rrset_ttl(rrset)) {
+		return -5;
+	}
 
 	/* Check whether all rrsets have their rrsigs */
 	const dnslib_rdata_t *tmp_rdata = dnslib_rrset_rdata(rrset);
@@ -294,13 +327,12 @@ static int check_rrsig_in_rrset(dnslib_rrset_t *rrset,
 
 	assert(tmp_rdata);
 	assert(tmp_rrsig_rdata);
+	int ret = 0;
 	do {
-		if (check_rrsig_rdata(tmp_rdata,
-				      tmp_rrsig_rdata,
-				      rrset,
-				      rrsigs,
-				      dnskey_rrset) != 0) {
-			return -3;
+		if ((ret = check_rrsig_rdata(tmp_rrsig_rdata,
+					     rrset,
+					     dnskey_rrset)) != 0) {
+			return ret * 10;
 		}
 	} while ((tmp_rdata = dnslib_rrset_rdata_next(rrset, tmp_rdata))
 		!= NULL &&
@@ -310,8 +342,8 @@ static int check_rrsig_in_rrset(dnslib_rrset_t *rrset,
 
 	if (tmp_rdata != NULL &&
 	    tmp_rrsig_rdata != NULL) {
-		/* Not all records are signed */
-		return -4;
+		/* Not all records in rrset are signed */
+		return -6;
 	}
 
 	return 0;
