@@ -28,6 +28,8 @@ src/lib/skip-list.h
 src/lib/tree.h
 src/lib/lists.h
 src/lib/lists.c
+src/lib/evqueue.h
+src/lib/evqueue.c
 src/lib/base32.h
 src/lib/base32.c
 src/lib/base32hex.h
