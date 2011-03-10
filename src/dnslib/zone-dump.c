@@ -402,13 +402,43 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 			}
 		}
 
-		if (dnslib_rrset_rdata(cname_rrset)->next !=
-		    dnslib_rrset_rdata(cname_rrset)) {
+		if (dnslib_rrset_rdata(cname_rrset)->count != 1) {
 			char *name =
 				dnslib_dname_to_str(dnslib_node_owner(node));
 			log_zone_error("Node %s contains more than one CNAME "
 				       "record!\n", name);
 			free(name);
+		}
+
+		/* check for glue records at zone cuts */
+		if (dnslib_node_is_deleg_point(node)) {
+			const dnslib_rrset_t *ns_rrset =
+				dnslib_node_rrset(node, DNSLIB_RRTYPE_NS);
+			assert(ns_rrset);
+			//FIXME this should be an error as well ! (i guess)
+
+			const dnslib_dname_t *ns_dname =
+				dnslib_rdata_get_item(dnslib_rrset_rdata
+						      (ns_rrset), 1)->dname;
+
+			assert(ns_dname);
+
+			const dnslib_node_t *glue_node =
+				dnslib_zone_find_node((dnslib_zone_t *)
+						      args->arg1, ns_dname);
+
+			if (glue_node == NULL) {
+				log_zone_error("TODO");
+				return;
+			}
+
+			if ((dnslib_node_rrset(glue_node,
+					       DNSLIB_RRTYPE_A) == NULL) &&
+			    (dnslib_node_rrset(glue_node,
+					       DNSLIB_RRTYPE_AAAA) == NULL)) {
+				log_zone_error("TODO");
+			}
+
 		}
 	}
 
