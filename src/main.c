@@ -175,6 +175,9 @@ int main(int argc, char **argv)
 			res = chdir("/");
 		}
 
+		/* Run event loop. */
+
+
 		if ((res = server_wait(s_server)) != 0) {
 			log_server_error("server: An error occured while "
 			                 "waiting for server to finish.\n");
