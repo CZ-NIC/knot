@@ -365,7 +365,7 @@ static int check_rrsig_in_rrset(const dnslib_rrset_t *rrset,
 	return 0;
 }
 
-static inline uint16_t rdata_item_size(dnslib_rdata_item_t *item)
+static inline uint16_t rdata_item_size(const dnslib_rdata_item_t *item)
 {
 	return item->raw_data[0];
 }
@@ -379,7 +379,7 @@ int get_bit(uint8_t bits[], size_t index)
 	return bits[index / 8] & (1 << (7 - index % 8));
 }
 
-static int rdata_nsec_to_type_array(dnslib_rdata_item_t *item,
+static int rdata_nsec_to_type_array(const dnslib_rdata_item_t *item,
 			      uint16_t **array,
 			      uint *count)
 {
@@ -432,8 +432,53 @@ static int rdata_nsec_to_type_array(dnslib_rdata_item_t *item,
 
 static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 {
-	dnslib_node_t *nsec3_node = NULL;
+	const dnslib_node_t *nsec3_node = dnslib_node_nsec3_node(node);
 
+	if (nsec3_node == NULL) {
+		/* I know it's probably not what RFCs say, but it will have to
+		 * do for now. */
+		if (dnslib_node_rrset(node, DNSLIB_RRTYPE_DS) != NULL) {
+			return -1;
+		} else {
+			/* Unsecured delegation, check whether it is part of
+			 * opt-out span */
+			/* TODO */
+			;
+		}
+	}
+
+	const dnslib_rrset_t *nsec3_rrset =
+		dnslib_node_rrset(nsec3_node, DNSLIB_RRTYPE_NSEC3);
+
+	assert(nsec3_rrset);
+
+	uint32_t minimum_ttl =
+		dnslib_wire_read_u32((uint8_t *)
+		rdata_item_data(
+		dnslib_rdata_item(
+		dnslib_rrset_rdata(
+		dnslib_node_rrset(
+		dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA)), 6)));
+	/* are those getter even worth this? */
+
+	if (dnslib_rrset_ttl(nsec3_rrset) != minimum_ttl) {
+		return -2;
+	}
+
+	/* check that next dname is in the zone */
+
+	dnslib_dname_t *next_dname =
+		dnslib_rdata_item(
+		dnslib_rrset_rdata(nsec3_rrset), 6)->dname;
+
+	if (dnslib_zone_find_nsec3_node(zone, next_dname) == NULL) {
+		return -3;
+	}
+
+	/* This is probably not sufficient, but again, it is covered in
+	 * zone load time */
+
+	return 0;
 }
 
 static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
@@ -538,9 +583,9 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 		}
 	}
 
-	int auth = !dnslib_node_is_non_auth(node);
-	/* there is no point in checking non_authoritative node */
-	if (do_checks > 1 && auth) {
+	if (do_checks > 1) {
+		char auth = !dnslib_node_is_non_auth(node);
+		char deleg = dnslib_node_is_deleg_point(node);
 		uint rrset_count = dnslib_node_rrset_count(node);
 		const dnslib_rrset_t **rrsets = dnslib_node_rrsets(node);
 		const dnslib_rrset_t *dnskey_rrset =
@@ -550,14 +595,15 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 
 		char nsec3 = do_checks == 3;
 
-		for (int i = 0; i < rrset_count; i++) {
+		/* there is no point in checking non_authoritative node */
+		for (int i = 0; i < rrset_count && auth; i++) {
 			const dnslib_rrset_t *rrset = rrsets[i];
 			if (check_rrsig_in_rrset(rrset, dnskey_rrset,
 						 nsec3) != 0) {
 				log_zone_error("TODO");
 			}
 
-			if (!nsec3) {
+			if (!nsec3 && auth) {
 				/* check for NSEC record */
 				const dnslib_rrset_t *nsec_rrset =
 					dnslib_node_rrset(node,
@@ -640,7 +686,7 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 					log_zone_error("NSEC chain is not "
 						       "coherent!\n");
 				}
-			} else { /* nsec3 */
+			} else if (auth || deleg) { /* nsec3 */
 				/* TODO do this at the beginning! */
 				dnslib_zone_t *zone =
 					(dnslib_zone_t *)args->arg1;
