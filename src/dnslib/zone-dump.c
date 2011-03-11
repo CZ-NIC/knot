@@ -71,8 +71,9 @@ static void dnslib_zone_save_encloser_rdata_item(dnslib_rdata_t *rdata,
 			dnslib_rdata_item_t *item =
 				dnslib_rdata_get_item(rdata, pos);
 			assert(item->dname != NULL);
+			assert(item->dname->node == NULL);
 			skip_insert(list, (void *)item->dname,
-			            (void *)closest_encloser->owner, NULL);
+				    (void *)closest_encloser->owner, NULL);
 		}
 	}
 }
@@ -632,9 +633,11 @@ static void dnslib_dname_dump_binary(dnslib_dname_t *dname, FILE *f)
 	dnslib_labels_dump_binary(dname, f);
 }
 
-static dnslib_dname_t *dnslib_find_wildcard(dnslib_dname_t *dname, skip_list_t *list)
+static dnslib_dname_t *dnslib_find_wildcard(dnslib_dname_t *dname,
+					    skip_list_t *list)
 {
-	return (dnslib_dname_t *)skip_find(list, (void *)dname);
+	dnslib_dname_t *d = (dnslib_dname_t *)skip_find(list, (void *)dname);
+	return d;
 }
 
 static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
@@ -661,11 +664,13 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 			assert(rdata->items[i].dname != NULL);
 			dnslib_dname_t *wildcard = NULL;
 
-			if (rdata->items[i].dname->node == NULL ||
-			    (wildcard =
-				dnslib_find_wildcard(rdata->items[i].dname, list)) ) {
+			if (rdata->items[i].dname->node == NULL) {
+				wildcard =
+					dnslib_find_wildcard(rdata->items[i].dname,
+						     list);
 				debug_zp("Not in the zone: %s\n",
 				       dnslib_dname_to_str((rdata->items[i].dname)));
+
 				fwrite((uint8_t *)"\0", sizeof(uint8_t), 1, f);
 				dnslib_dname_dump_binary(rdata->items[i].dname, f);
 				if (wildcard) {
