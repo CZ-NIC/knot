@@ -478,6 +478,8 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 	/* This is probably not sufficient, but again, it is covered in
 	 * zone load time */
 
+	/* TODO bitmap, but that is buggy right now */
+
 	return 0;
 }
 
@@ -513,14 +515,18 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 			}
 		}
 
+		/* TODO move things below to the if above */
+
 		/* No DNSSEC and yet there is more than one rrset in node */
-		if (dnslib_node_rrset_count(node) != 1 && do_checks == 1) {
+		if (cname_rrset &&
+		    dnslib_node_rrset_count(node) != 1 && do_checks == 1) {
 			char *name =
 			dnslib_dname_to_str(dnslib_node_owner(node));
 			log_zone_error("Node %s contains more than one RRSet "
 				       "but has CNAME record!\n", name);
 			free(name);
-		} else if (dnslib_node_rrset_count(node) != 1) {
+		} else if (cname_rrset &&
+			   dnslib_node_rrset_count(node) != 1) {
 			/* With DNSSEC node can contain RRSIG or NSEC */
 			if (!(dnslib_node_rrset(node, DNSLIB_RRTYPE_RRSIG) ||
 			    dnslib_node_rrset(node, DNSLIB_RRTYPE_NSEC))) {
@@ -533,7 +539,10 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 			}
 		}
 
-		if (dnslib_rrset_rdata(cname_rrset)->count != 1) {
+		/* same thing */
+
+		if (cname_rrset &&
+		    dnslib_rrset_rdata(cname_rrset)->count != 1) {
 			char *name =
 				dnslib_dname_to_str(dnslib_node_owner(node));
 			log_zone_error("Node %s contains more than one CNAME "
@@ -550,7 +559,7 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 
 			const dnslib_dname_t *ns_dname =
 				dnslib_rdata_get_item(dnslib_rrset_rdata
-						      (ns_rrset), 1)->dname;
+						      (ns_rrset), 0)->dname;
 
 			assert(ns_dname);
 
@@ -600,7 +609,7 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 			const dnslib_rrset_t *rrset = rrsets[i];
 			if (check_rrsig_in_rrset(rrset, dnskey_rrset,
 						 nsec3) != 0) {
-				log_zone_error("TODO");
+				log_zone_error("TODO rrsig");
 			}
 
 			if (!nsec3 && auth) {
@@ -610,7 +619,7 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 							  DNSLIB_RRTYPE_NSEC);
 
 				if (nsec_rrset == NULL) {
-					log_zone_error("TODO");
+					log_zone_error("TODO nsec");
 					return;
 				}
 
@@ -691,7 +700,7 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 				dnslib_zone_t *zone =
 					(dnslib_zone_t *)args->arg1;
 				if (check_nsec3_node_in_zone(zone, node) != 0) {
-					log_zone_error("TODO");
+					log_zone_error("TODO nsec3");
 				}
 			}
 		}
