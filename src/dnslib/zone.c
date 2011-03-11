@@ -674,7 +674,7 @@ DEBUG_DNSLIB_ZONE(
 	while (item == NULL) {
 		dnslib_dname_left_chop_no_copy(name_copy);
 DEBUG_DNSLIB_ZONE(
-		n = dnslib_dname_to_str(name_copy);
+		char *n = dnslib_dname_to_str(name_copy);
 		debug_dnslib_zone("Chopped leftmost label: %s (%.*s, size %u)"
 		                  "\n", n, name_copy->size, name_copy->name,
 		                  name_copy->size);
