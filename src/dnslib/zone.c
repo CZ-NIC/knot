@@ -444,13 +444,13 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 		return -3;
 	}
 #endif
-DEBUG_DNSLIB_ZONE(
-	char *name = dnslib_dname_to_str(node->owner);
-	debug_dnslib_zone("Inserted node %p with owner: %s (labels: %d), "
-	                  "pointer: %p\n", node, name,
-	                  dnslib_dname_label_count(node->owner), node->owner);
-	free(name);
-);
+//DEBUG_DNSLIB_ZONE(
+//	char *name = dnslib_dname_to_str(node->owner);
+//	debug_dnslib_zone("Inserted node %p with owner: %s (labels: %d), "
+//	                  "pointer: %p\n", node, name,
+//	                  dnslib_dname_label_count(node->owner), node->owner);
+//	free(name);
+//);
 
 	return 0;
 }
@@ -690,6 +690,7 @@ DEBUG_DNSLIB_ZONE(
 	dnslib_dname_free(&name_copy);
 
 	assert(item != NULL);
+	*closest_encloser = (const dnslib_node_t *)item->value;
 
 	return DNSLIB_ZONE_NAME_NOT_FOUND;
 }
