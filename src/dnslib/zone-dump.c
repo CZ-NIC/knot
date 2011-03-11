@@ -430,14 +430,18 @@ static int rdata_nsec_to_type_array(dnslib_rdata_item_t *item,
 	return 0;
 }
 
+static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
+{
+	dnslib_node_t *nsec3_node = NULL;
+
+}
+
 static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 {
 	assert(data != NULL);
 	arg_t *args = (arg_t *)data;
 
 	char do_checks = *((char *)(args->arg3));
-
-	/* XXX dnslib_compressible are only 12 ... XXX */
 
 	for (int i = 0; i < DNSLIB_COMPRESSIBLE_TYPES; ++i) {
 		dnslib_zone_save_enclosers_node(node,
@@ -446,9 +450,10 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 						(skip_list_t *)args->arg2);
 	}
 
-	const dnslib_rrset_t *cname_rrset = NULL;
+	/* TODO move to separate function */
 	if (do_checks) {
-		cname_rrset = dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME);
+		const dnslib_rrset_t *cname_rrset =
+			dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME);
 		if (cname_rrset != NULL) {
 			if (check_cname_cycles_in_zone((dnslib_zone_t *)
 				args->arg1,
@@ -590,11 +595,57 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 						log_zone_error("Node %s does "
 						"not contain RRSet of type %s "
 						"but NSEC bitmap says "
-						"it does\n", name,
+						"it does!\n", name,
 						dnslib_rrtype_to_string(type));
 
 						free(name);
 					}
+				}
+
+				/* Test that only one record is in the
+				 * NSEC RRSet */
+
+				if (dnslib_rrset_rdata(nsec_rrset)->count !=
+				    1) {
+					char *name =
+						dnslib_dname_to_str(
+						dnslib_node_owner(node));
+					log_zone_error("Node %s contains more "
+						       "than one NSEC "
+						       "record!\n", name);
+					free(name);
+				}
+
+				/*
+				 * Test that NSEC chain is coherent.
+				 * We have already checked that every
+				 * authoritative node contains NSEC record
+				 * so checking should only be matter of testing
+				 * the next link in each node.
+				 */
+
+				dnslib_dname_t *next_domain =
+					dnslib_rdata_item(
+					dnslib_rrset_rdata(nsec_rrset),
+					0)->dname;
+
+				assert(next_domain);
+
+				/* TODO do this at the beginning! */
+				dnslib_zone_t *zone =
+					(dnslib_zone_t *)args->arg1;
+
+				if (dnslib_zone_find_node(zone, next_domain) ==
+				    NULL) {
+					log_zone_error("NSEC chain is not "
+						       "coherent!\n");
+				}
+			} else { /* nsec3 */
+				/* TODO do this at the beginning! */
+				dnslib_zone_t *zone =
+					(dnslib_zone_t *)args->arg1;
+				if (check_nsec3_node_in_zone(zone, node) != 0) {
+					log_zone_error("TODO");
 				}
 			}
 		}
