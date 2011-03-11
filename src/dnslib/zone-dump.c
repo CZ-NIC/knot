@@ -199,8 +199,21 @@ uint16_t type_covered_from_rdata(const dnslib_rdata_t *rdata)
 	return ntohs(*(uint16_t *) rdata_item_data(&(rdata->items[0])));
 }
 
-static int check_dnskey()
+static int check_dnskey_rdata(const dnslib_rdata_t *rdata)
 {
+	/* check that Zone key bit it set - position 7 in net order */
+	/* FIXME endian */
+	uint16_t mask = 0b0000000100000000;
+
+	uint16_t flags =
+		dnslib_wire_read_u16((uint8_t *)rdata_item_data
+				     (dnslib_rdata_item(rdata, 0)));
+
+	if (flags & mask) {
+		return 0;
+	} else {
+		return -1;
+	}
 }
 
 static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
@@ -269,7 +282,8 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
 			dnslib_wire_read_u16((uint8_t *)raw_data);
 
 		match = (alg == alg_dnskey) &&
-			(key_tag_rrsig == key_tag_dnskey);
+			(key_tag_rrsig == key_tag_dnskey) &&
+			check_dnskey_rdata(tmp_dnskey_rdata);
 
 	} while (!match &&
 		 ((tmp_dnskey_rdata =
@@ -290,8 +304,9 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
   return -2
 
  */
-static int check_rrsig_in_rrset(dnslib_rrset_t *rrset,
-				dnslib_rrset_t *dnskey_rrset)
+static int check_rrsig_in_rrset(const dnslib_rrset_t *rrset,
+				const dnslib_rrset_t *dnskey_rrset,
+				char nsec3)
 {
 	assert(dnskey_rrset && rrset);
 
@@ -344,6 +359,71 @@ static int check_rrsig_in_rrset(dnslib_rrset_t *rrset,
 	    tmp_rrsig_rdata != NULL) {
 		/* Not all records in rrset are signed */
 		return -6;
+	}
+
+	return 0;
+}
+
+static inline uint16_t rdata_item_size(dnslib_rdata_item_t *item)
+{
+	return item->raw_data[0];
+}
+
+int get_bit(uint8_t bits[], size_t index)
+{
+	/*
+	 * The bits are counted from left to right, so bit #0 is the
+	 * left most bit.
+	 */
+	return bits[index / 8] & (1 << (7 - index % 8));
+}
+
+static int rdata_nsec_to_type_array(dnslib_rdata_item_t *item,
+			      uint16_t **array,
+			      uint *count)
+{
+	assert(*array == NULL);
+
+	uint8_t *data = (uint8_t *)rdata_item_data(item);
+
+	*count = 1;
+
+	int increment = 1;
+
+	for (int i = 1; i < rdata_item_size(item); i += increment) {
+		uint8_t window = data[i];
+		/* TODO probably wrong set in parser, should
+		 *be 0 in most of the cases.
+		 */
+		window = 0;
+		uint8_t bitmap_size = data[i+1];
+		uint8_t *bitmap =
+			malloc(sizeof(uint8_t) * (bitmap_size >
+						  rdata_item_size(item) ?
+						  bitmap_size :
+						  rdata_item_size(item)));
+
+		memset(bitmap, 0,
+		       sizeof(uint8_t) *  bitmap_size > rdata_item_size(item) ?
+		       bitmap_size :
+		       rdata_item_size(item));
+
+		memcpy(bitmap, data + i + 1, rdata_item_size(item) - (i + 1));
+
+		increment += bitmap_size + 3;
+
+		for (int j = 0; j < bitmap_size * 8; j++) {
+			if (get_bit(bitmap, j)) {
+				void *tmp = realloc(*array,
+						    sizeof(uint16_t) *
+						    *count);
+				CHECK_ALLOC_LOG(tmp, -1);
+				*array = tmp;
+				(*array)[*count - 1] = j + window * 256;
+				(*count)++;
+			}
+		}
+		free(bitmap);
 	}
 
 	return 0;
@@ -428,7 +508,12 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 						      args->arg1, ns_dname);
 
 			if (glue_node == NULL) {
-				log_zone_error("TODO");
+				char *name =
+					dnslib_dname_to_str(ns_dname);
+				log_zone_error("Glue node not found "
+					       "for dname: %s\n",
+					       name);
+				free(name);
 				return;
 			}
 
@@ -436,20 +521,81 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 					       DNSLIB_RRTYPE_A) == NULL) &&
 			    (dnslib_node_rrset(glue_node,
 					       DNSLIB_RRTYPE_AAAA) == NULL)) {
-				log_zone_error("TODO");
+				char *name =
+					dnslib_dname_to_str(ns_dname);
+				log_zone_error("Glue address not found "
+					       "for dname: %s\n",
+					       name);
+				free(name);
+				return;
 			}
-
 		}
 	}
 
-	if (do_checks == 2) {
+	int auth = !dnslib_node_is_non_auth(node);
+	/* there is no point in checking non_authoritative node */
+	if (do_checks > 1 && auth) {
 		uint rrset_count = dnslib_node_rrset_count(node);
 		const dnslib_rrset_t **rrsets = dnslib_node_rrsets(node);
-		int auth = !dnslib_node_is_non_auth(node);
-		/* there is no point in checking non_authoritative node */
-		for (int i = 0; i < rrset_count && auth; i++) {
-			const dnslib_rrset_t *rrset = rrsets[i];
+		const dnslib_rrset_t *dnskey_rrset =
+			dnslib_node_rrset(dnslib_zone_apex(
+					  (dnslib_zone_t *)args->arg1),
+					  DNSLIB_RRTYPE_DNSKEY);
 
+		char nsec3 = do_checks == 3;
+
+		for (int i = 0; i < rrset_count; i++) {
+			const dnslib_rrset_t *rrset = rrsets[i];
+			if (check_rrsig_in_rrset(rrset, dnskey_rrset,
+						 nsec3) != 0) {
+				log_zone_error("TODO");
+			}
+
+			if (!nsec3) {
+				/* check for NSEC record */
+				const dnslib_rrset_t *nsec_rrset =
+					dnslib_node_rrset(node,
+							  DNSLIB_RRTYPE_NSEC);
+
+				if (nsec_rrset == NULL) {
+					log_zone_error("TODO");
+					return;
+				}
+
+				/* check NSEC/NSEC3 bitmap */
+
+				uint count;
+
+				uint16_t *array = NULL;
+
+				if (rdata_nsec_to_type_array(
+				    dnslib_rdata_item(
+				    dnslib_rrset_rdata(nsec_rrset),1),
+				    &array, &count) != 0) {
+					//error
+					;
+				}
+
+				uint16_t type = 0;
+				for (int j = 0; j < count; j++) {
+					/* test for each type's presence */
+					type = array[j];
+					if (dnslib_node_rrset(node,
+							      type) == NULL) {
+						char *name =
+						dnslib_dname_to_str(
+						dnslib_node_owner(node));
+
+						log_zone_error("Node %s does "
+						"not contain RRSet of type %s "
+						"but NSEC bitmap says "
+						"it does\n", name,
+						dnslib_rrtype_to_string(type));
+
+						free(name);
+					}
+				}
+			}
 		}
 	}
 }
@@ -731,7 +877,12 @@ static int zone_is_secure(dnslib_zone_t *zone)
 			      DNSLIB_RRTYPE_DNSKEY) == NULL) {
 		return 0;
 	} else {
-		return 1;
+		if (dnslib_node_rrset(dnslib_zone_apex(zone),
+				      DNSLIB_RRTYPE_NSEC3PARAM) != NULL) {
+			return 2;
+		} else {
+			return 1;
+		}
 	}
 }
 
