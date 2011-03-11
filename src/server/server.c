@@ -300,7 +300,7 @@ int server_load_zone(server_t *server, const char *origin, const char *db)
 		                 db, origin);
 	}
 
-//	dnslib_zone_dump(zone, 1);
+	dnslib_zone_dump(zone, 1);
 
 	return 0;
 }
