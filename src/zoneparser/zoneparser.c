@@ -1442,9 +1442,9 @@ int process_rr(void)
 	dnslib_rrset_t *current_rrset = &parser->current_rrset;
 	dnslib_rrset_t *rrset;
 	dnslib_rrtype_descriptor_t *descriptor
-	= dnslib_rrtype_descriptor_by_type(current_rrset->type);
+        = dnslib_rrtype_descriptor_by_type(current_rrset->type);
 
-	assert(current_rrset->rdata->count == descriptor->length);
+        assert(current_rrset->rdata->count == descriptor->length);
 
 	assert(dnslib_dname_is_fqdn(current_rrset->owner));
 
@@ -1563,16 +1563,18 @@ int process_rr(void)
         } else {
                 /* TODO I bet this can be simplified a lot */
                 if (current_rrset->owner != node->owner) {
-			if (parser->last_node &&
+                        if (parser->last_node &&
                             parser->last_node->owner != current_rrset->owner &&
                             dnslib_dname_compare(parser->last_node->owner,
-                                                 current_rrset->owner) != 0) {
+                                                 current_rrset->owner) != 0 &&
+                            node->rrset_count > 0) {
                                 /* This last case in if is weird - it should
                                  * never happen, but it does, occasionally */
+                                /* and if it does, it is sign of a leak smwh */
                                 dnslib_dname_free(&(current_rrset->owner));
-			}
-			current_rrset->owner = node->owner;
-		}
+                        }
+                        current_rrset->owner = node->owner;
+                }
                 assert(current_rrset->owner == node->owner);
         }
 
@@ -1650,9 +1652,9 @@ int process_rr(void)
 
 	parser->last_node = node;
 
-	++totalrrs;
+        ++totalrrs;
 
-	return 0;
+        return 0;
 }
 
 static uint find_rrsets_orphans(dnslib_zone_t *zone, rrset_list_t
@@ -1727,7 +1729,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 
 	debug_zp("rdata adjusted\n");
 
-	dnslib_zdump_binary(parser->current_zone, outfile, 1, zonefile);
+        dnslib_zdump_binary(parser->current_zone, outfile, 0, zonefile);
 
 	/* This is *almost* unnecessary */
 	dnslib_zone_deep_free(&(parser->current_zone));
