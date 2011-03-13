@@ -8,6 +8,8 @@
 #include "dnslib/dnslib.h"
 #include "lib/skip-list.h"
 
+#define ZONECHECKS_VERBOSE
+
 /* \note For space and speed purposes, dname ID (to be later used in loading)
  * is being stored in dname->node field. Not to be confused with dname's actual
  * node.
@@ -217,6 +219,63 @@ static int check_dnskey_rdata(const dnslib_rdata_t *rdata)
 	}
 }
 
+
+/* Taken from RFC 4034 */
+/*
+ * Assumes that int is at least 16 bits.
+ * First octet of the key tag is the most significant 8 bits of the
+ * return value;
+ * Second octet of the key tag is the least significant 8 bits of the
+ * return value.
+ */
+
+static uint16_t keytag(uint8_t *key, uint16_t keysize )
+{
+        uint32_t ac = 0;     /* assumed to be 32 bits or larger */
+
+        for(int i = 0; i < keysize; i++) {
+                ac += (i & 1) ? key[i] : key[i] << 8;
+        }
+
+        ac += (ac >> 16) & 0xFFFF;
+        uint16_t kokotina = (uint16_t) (ac & 0xFFFF);
+        return (uint16_t)ac & 0xFFFF;
+}
+
+static uint16_t keytag_1(uint8_t *key, uint16_t keysize)
+{
+        uint16_t ac = 0;
+        if (keysize > 4) {
+                memmove(&ac, key + keysize - 3, 2);
+        }
+
+        ac = ntohs(ac);
+        return ac;
+}
+
+static inline uint16_t rdata_item_size(const dnslib_rdata_item_t *item)
+{
+        return item->raw_data[0];
+}
+
+
+uint remove_me = 0;
+
+static uint16_t *dnskey_to_wire(dnslib_rdata_t *rdata)
+{
+        uint8_t *data =
+malloc(sizeof(uint8_t) * (2 + 1 + 1 + rdata->items[3].raw_data[0]));
+        remove_me = sizeof(uint8_t) * (2 + 1 + 1 + rdata->items[3].raw_data[0]);
+        data[0] = ((uint8_t *)(rdata->items[0].raw_data))[2];
+        data[1] = ((uint8_t *)(rdata->items[0].raw_data))[3];
+
+        data[2] = ((uint8_t *)(rdata->items[1].raw_data))[2];
+        data[3] = ((uint8_t *)(rdata->items[2].raw_data))[2];
+        memcpy(data + 4, rdata->items[3].raw_data + 1,
+               rdata->items[3].raw_data[0]);
+        return (uint16_t *) data;
+}
+
 static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
 			     const dnslib_rrset_t *rrset,
 			     const dnslib_rrset_t *dnskey_rrset)
@@ -236,8 +295,13 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
 	uint8_t labels_rdata = ((uint8_t *)raw_data)[0];
 
 	if (labels_rdata !=
-	    dnslib_dname_label_count(dnslib_rrset_owner(rrset))) {
-		return -2;
+            dnslib_dname_label_count(dnslib_rrset_owner(rrset))) {
+#ifdef ZONECHECKS_VERBOSE
+                log_zone_error("Label counts do not match: in rdata: %d "
+                               "in owner: %d\n", labels_rdata,
+                        dnslib_dname_label_count(dnslib_rrset_owner(rrset)));
+#endif
+                return -2;
 	}
 
 	/* check original TTL */
@@ -267,24 +331,28 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
 		dnslib_rrset_rdata(dnskey_rrset);
 	do {
 		uint8_t alg =
-		((uint8_t *)(dnslib_rdata_item(rdata_rrsig, 1)->raw_data))[0];
+                ((uint8_t *)(dnslib_rdata_item(rdata_rrsig, 1)->raw_data))[2];
 		uint8_t alg_dnskey =
 		((uint8_t *)(dnslib_rdata_item(tmp_dnskey_rdata,
-					       1)->raw_data))[0];
+                                               2)->raw_data))[2];
 
 		raw_data = rdata_item_data(dnslib_rdata_item(rdata_rrsig, 6));
 		uint16_t key_tag_rrsig =
 			dnslib_wire_read_u16((uint8_t *)raw_data);
 
-		raw_data =
+                raw_data =
 			rdata_item_data(dnslib_rdata_item(
-					tmp_dnskey_rdata, 2));
-		uint16_t key_tag_dnskey =
-			dnslib_wire_read_u16((uint8_t *)raw_data);
+                                        tmp_dnskey_rdata, 3));
+
+                uint16_t raw_length = rdata_item_size(dnslib_rdata_item(
+                                                     tmp_dnskey_rdata, 3));
+
+                uint16_t key_tag_dnskey = keytag(dnskey_to_wire(tmp_dnskey_rdata),
+                                                 remove_me);
 
 		match = (alg == alg_dnskey) &&
 			(key_tag_rrsig == key_tag_dnskey) &&
-			check_dnskey_rdata(tmp_dnskey_rdata);
+                        !check_dnskey_rdata(tmp_dnskey_rdata);
 
 	} while (!match &&
 		 ((tmp_dnskey_rdata =
@@ -365,11 +433,6 @@ static int check_rrsig_in_rrset(const dnslib_rrset_t *rrset,
 	return 0;
 }
 
-static inline uint16_t rdata_item_size(const dnslib_rdata_item_t *item)
-{
-	return item->raw_data[0];
-}
-
 int get_bit(uint8_t bits[], size_t index)
 {
 	/*
@@ -385,24 +448,25 @@ static int rdata_nsec_to_type_array(const dnslib_rdata_item_t *item,
 {
 	assert(*array == NULL);
 
-	uint8_t *data = (uint8_t *)rdata_item_data(item);
+        hex_print(rdata_item_data(item), rdata_item_size(item));
 
-	*count = 1;
+	uint8_t *data = (uint8_t *)rdata_item_data(item);
 
 	int increment = 1;
 
-	for (int i = 1; i < rdata_item_size(item); i += increment) {
+        for (int i = 1; i < rdata_item_size(item); i += increment) {
+                *count = 0;
 		uint8_t window = data[i];
 		/* TODO probably wrong set in parser, should
 		 *be 0 in most of the cases.
 		 */
-		window = 0;
+                window = 0;
 		uint8_t bitmap_size = data[i+1];
-		uint8_t *bitmap =
+                uint8_t *bitmap =
 			malloc(sizeof(uint8_t) * (bitmap_size >
 						  rdata_item_size(item) ?
 						  bitmap_size :
-						  rdata_item_size(item)));
+                                                  rdata_item_size(item)));
 
 		memset(bitmap, 0,
 		       sizeof(uint8_t) *  bitmap_size > rdata_item_size(item) ?
@@ -414,18 +478,18 @@ static int rdata_nsec_to_type_array(const dnslib_rdata_item_t *item,
 		increment += bitmap_size + 3;
 
 		for (int j = 0; j < bitmap_size * 8; j++) {
-			if (get_bit(bitmap, j)) {
+                        if (get_bit(bitmap, j)) {
+                                (*count)++;
 				void *tmp = realloc(*array,
 						    sizeof(uint16_t) *
 						    *count);
 				CHECK_ALLOC_LOG(tmp, -1);
 				*array = tmp;
-				(*array)[*count - 1] = j + window * 256;
-				(*count)++;
+                                (*array)[*count - 1] = j + window * 256;
 			}
 		}
 		free(bitmap);
-	}
+        }
 
 	return 0;
 }
@@ -602,14 +666,17 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 					  (dnslib_zone_t *)args->arg1),
 					  DNSLIB_RRTYPE_DNSKEY);
 
-		char nsec3 = do_checks == 3;
+                char nsec3 = do_checks == 3;
+
+                int ret = 0;
 
 		/* there is no point in checking non_authoritative node */
 		for (int i = 0; i < rrset_count && auth; i++) {
-			const dnslib_rrset_t *rrset = rrsets[i];
-			if (check_rrsig_in_rrset(rrset, dnskey_rrset,
-						 nsec3) != 0) {
-				log_zone_error("TODO rrsig");
+                        const dnslib_rrset_t *rrset = rrsets[i];
+                        if ((ret = check_rrsig_in_rrset(rrset, dnskey_rrset,
+                                                 nsec3)) != 0) {
+                                log_zone_error("RRSIG %d node %s\n", ret,
+                                               dnslib_dname_to_str(node->owner));
 			}
 
 			if (!nsec3 && auth) {
@@ -631,8 +698,9 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 
 				if (rdata_nsec_to_type_array(
 				    dnslib_rdata_item(
-				    dnslib_rrset_rdata(nsec_rrset),1),
-				    &array, &count) != 0) {
+                                    dnslib_rrset_rdata(nsec_rrset),1),
+                                    &array, &count) != 0) {
+                                        assert(0);
 					//error
 					;
 				}
@@ -640,7 +708,10 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 				uint16_t type = 0;
 				for (int j = 0; j < count; j++) {
 					/* test for each type's presence */
-					type = array[j];
+                                        type = array[j];
+                                        if (type == DNSLIB_RRTYPE_RRSIG) {
+                                                continue;
+                                        }
 					if (dnslib_node_rrset(node,
 							      type) == NULL) {
 						char *name =
@@ -660,14 +731,16 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 				/* Test that only one record is in the
 				 * NSEC RRSet */
 
-				if (dnslib_rrset_rdata(nsec_rrset)->count !=
-				    1) {
+                                if (dnslib_rrset_rdata(nsec_rrset)->next !=
+                                    dnslib_rrset_rdata(nsec_rrset)) {
 					char *name =
 						dnslib_dname_to_str(
 						dnslib_node_owner(node));
 					log_zone_error("Node %s contains more "
 						       "than one NSEC "
-						       "record!\n", name);
+                                                       "record!\n", name);
+                                        printf("FDASDF %d\n", nsec_rrset->rdata->count);
+                                        dnslib_rrset_dump(nsec_rrset, 0);
 					free(name);
 				}
 
@@ -1006,7 +1079,9 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 
 	if (f == NULL) {
 		return -1;
-	}
+        }
+
+//        dnslib_zone_dump(zone, 0);
 
 	zone->node_count = 0;
 
