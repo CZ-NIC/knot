@@ -74,37 +74,21 @@ static void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata,
 	if (dname_item != NULL) {
 		dnslib_dname_t *dname = dname_item->dname;
 		const dnslib_node_t *n = NULL;
-//		const dnslib_node_t *closest_encloser = NULL;
 
-//		int exact = dnslib_zone_find_dname(zone, dname, &n,
-//		                                   &closest_encloser);
 		n = dnslib_zone_find_node(zone, dname);
 
 		if (n == NULL) {
 			return;
 		}
 
-//		assert(!exact || n == closest_encloser);
+		if (n->owner == dname_item->dname) {
+			return;
+		}
+		debug_dnslib_zone("Replacing dname %s by reference to "
+		  "dname %s in zone.\n", dname->name, n->owner->name);
 
-//		if (exact) {
-			// just doble-check if the domain name is not already
-			// adjusted
-			if (n->owner == dname_item->dname) {
-				return;
-			}
-			debug_dnslib_zone("Replacing dname %s by reference to "
-			  "dname %s in zone.\n", dname->name, n->owner->name);
-
-			dnslib_rdata_item_set_dname(rdata, pos, n->owner);
-			dnslib_dname_free(&dname);
-//		} else if (closest_encloser != NULL) {
-//			debug_dnslib_zone("Saving closest encloser to RDATA.\n");
-			// save pointer to the closest encloser
-//			dnslib_rdata_item_t *item =
-//				dnslib_rdata_get_item(rdata, pos);
-//			assert(item->dname != NULL);
-//			item->dname->node = (dnslib_node_t *)closest_encloser;
-//		}
+		dnslib_rdata_item_set_dname(rdata, pos, n->owner);
+		dnslib_dname_free(&dname);
 	}
 }
 
