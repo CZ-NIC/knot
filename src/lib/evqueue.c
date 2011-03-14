@@ -50,38 +50,32 @@ int evqueue_poll(evqueue_t *q, const sigset_t *sigmask)
 
 }
 
-void *evqueue_get(evqueue_t *q)
+int evqueue_get(evqueue_t *q, event_t *ev)
 {
 	/* Check. */
-	if (!q) {
-		return 0;
-	}
-
-	/* Prepare msg. */
-	event_t ev;
-
-	/* Read data. */
-	if (read(q->fds[EVQUEUE_READFD], &ev, sizeof(ev)) != sizeof(ev)) {
-		return 0;
-	}
-
-	return ev.data;
-}
-
-int evqueue_add(evqueue_t *q, void *item)
-{
-	/* Check. */
-	if (!q) {
+	if (!q || !ev) {
 		return -1;
 	}
 
-	/* Prepare msg. */
-	event_t ev;
-	ev.data = item;
+	/* Read data. */
+	int ret = read(q->fds[EVQUEUE_READFD], ev, sizeof(event_t));
+	if (ret != sizeof(event_t)) {
+		return -2;
+	}
+
+	return 0;
+}
+
+int evqueue_add(evqueue_t *q, const event_t *ev)
+{
+	/* Check. */
+	if (!q || !ev) {
+		return -1;
+	}
 
 	/* Write data. */
-	int ret = write(q->fds[EVQUEUE_WRITEFD], &ev, sizeof(ev));
-	if (ret != sizeof(ev)) {
+	int ret = write(q->fds[EVQUEUE_WRITEFD], ev, sizeof(event_t));
+	if (ret != sizeof(event_t)) {
 		return -2;
 	}
 

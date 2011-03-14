@@ -16,11 +16,20 @@
 #include "common.h"
 #include "lib/lists.h"
 
+struct event_t;
+
+/*!
+ * \brief Event callback.
+ */
+typedef int (*eventcb_t)(struct event_t *);
+
 /*!
  * \brief Event structure.
  */
-typedef struct {
-	void *data; /*!< Usable data ptr. */
+typedef struct event_t {
+	int code;     /*!< Event code. */
+	void *data;   /*!< Usable data ptr. */
+	eventcb_t cb; /*!< Event callback. */
 } event_t;
 
 /*!
@@ -77,20 +86,22 @@ int evqueue_poll(evqueue_t *q, const sigset_t *sigmask);
  * \brief Read event from event queue.
  *
  * \param q Event queue.
- * \retval Event data on success.
- * \retval NULL on error.
+ * \param ev Event structure for writing.
+ *
+ * \retval 0 on success.
+ * \retval <0 on error.
  */
-void *evqueue_get(evqueue_t *q);
+int evqueue_get(evqueue_t *q, event_t *ev);
 
 /*!
  * \brief Add event to queue.
  *
  * \param q Event queue.
- * \param item Pointer to event-related data.
+ * \param ev Event structure to read.
  * \retval 0 on success.
  * \retval <0 on error.
  */
-int evqueue_add(evqueue_t *q, void *item);
+int evqueue_add(evqueue_t *q, const event_t *ev);
 
 /* Singleton event queue pointer. */
 extern evqueue_t *s_evqueue;
