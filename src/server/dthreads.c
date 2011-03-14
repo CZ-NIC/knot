@@ -583,6 +583,7 @@ int dt_start(dt_unit_t *unit)
 			                 "create thread '%d'.",
 			                 i);
 			dt_unit_unlock(unit);
+			pthread_mutex_unlock(&unit->_notify_mx);
 			return res;
 		}
 
