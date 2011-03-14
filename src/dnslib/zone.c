@@ -695,6 +695,7 @@ DEBUG_DNSLIB_ZONE(
 	dnslib_dname_free(&name_copy);
 
 	assert(item != NULL);
+	*closest_encloser = item->value;
 
 	return DNSLIB_ZONE_NAME_NOT_FOUND;
 }
