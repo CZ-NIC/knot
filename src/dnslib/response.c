@@ -527,7 +527,9 @@ static int dnslib_response_compress_dname(const dnslib_dname_t *dname,
 
 	// try to find the name or one of its ancestors in the compr. table
 #ifdef COMPRESSION_PEDANTIC
-	dnslib_dname_t *to_find = dnslib_dname_copy(dname);
+	//dnslib_dname_t *to_find = dnslib_dname_copy(dname);
+	dnslib_dname_t *to_find = (dnslib_dname_t *)dname;
+	int copied = 0;
 #else
 	const dnslib_dname_t *to_find = dname;
 #endif
@@ -549,7 +551,19 @@ DEBUG_DNSLIB_RESPONSE(
 			break;
 		}
 #ifdef COMPRESSION_PEDANTIC
-		dnslib_dname_left_chop_no_copy(to_find);
+		if (to_find->node == NULL
+		    || to_find->node->owner != to_find
+		    || to_find->node->parent == NULL) {
+			if (!copied) {
+				to_find = dnslib_dname_left_chop(to_find);
+			} else {
+				dnslib_dname_left_chop_no_copy(to_find);
+			}
+		} else {
+			assert(to_find->node != to_find->node->parent);
+			assert(to_find != to_find->node->parent->owner);
+			to_find = to_find->node->parent->owner;
+		}
 #else
 		if (to_find->node == NULL
 		    || to_find->node->owner != to_find
@@ -564,7 +578,9 @@ DEBUG_DNSLIB_RESPONSE(
 	}
 
 #ifdef COMPRESSION_PEDANTIC
-	dnslib_dname_free(&to_find);
+	if (copied) {
+		dnslib_dname_free(&to_find);
+	}
 #endif
 
 	if (offset >= 0) {  // found such dname somewhere in the packet
