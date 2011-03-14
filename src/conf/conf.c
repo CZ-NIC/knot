@@ -159,6 +159,9 @@ static int conf_process(conf_t *conf)
 	WALK_LIST (n, conf->zones) {
 		conf_zone_t *zone = (conf_zone_t*)n;
 
+		// Normalize zone filename
+		zone->file = strcpath(zone->file);
+
 		// Create zone db filename
 		size_t stor_len = strlen(conf->storage);
 		size_t size = stor_len + strlen(zone->name) + 4; // db/,\0
