@@ -335,6 +335,13 @@ static void ns_put_additional_for_rrset(dnslib_response_t *resp,
 		assert(dname != NULL);
 		node = dnslib_dname_node(dname);
 
+		if (node != NULL && node->owner != dname) {
+			// the stored node should be the closest encloser
+			assert(dnslib_dname_is_subdomain(dname, node->owner));
+			// try the wildcard child, if any
+			node = dnslib_node_wildcard_child(node);
+		}
+
 		const dnslib_rrset_t *rrset_add;
 
 		if (node != NULL) {
@@ -358,9 +365,10 @@ DEBUG_NS(
 			rrset_add = dnslib_node_rrset(node, DNSLIB_RRTYPE_A);
 			if (rrset_add != NULL) {
 				debug_ns("Found A RRsets.\n");
-				ns_check_wildcard(dname, resp, &rrset_add);
+				const dnslib_rrset_t *rrset_add2 = rrset_add;
+				ns_check_wildcard(dname, resp, &rrset_add2);
 				dnslib_response_add_rrset_additional(
-					resp, rrset_add, 0, 1);
+					resp, rrset_add2, 0, 1);
 				ns_add_rrsigs(rrset_add, resp, dname,
 				       dnslib_response_add_rrset_additional, 0);
 			}
@@ -370,9 +378,10 @@ DEBUG_NS(
 			rrset_add = dnslib_node_rrset(node, DNSLIB_RRTYPE_AAAA);
 			if (rrset_add != NULL) {
 				debug_ns("Found AAAA RRsets.\n");
-				ns_check_wildcard(dname, resp, &rrset_add);
+				const dnslib_rrset_t *rrset_add2 = rrset_add;
+				ns_check_wildcard(dname, resp, &rrset_add2);
 				dnslib_response_add_rrset_additional(
-					resp, rrset_add, 0, 1);
+					resp, rrset_add2, 0, 1);
 				ns_add_rrsigs(rrset_add, resp, dname,
 				       dnslib_response_add_rrset_additional, 0);
 			}
