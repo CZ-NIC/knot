@@ -300,7 +300,7 @@ int server_load_zone(server_t *server, const char *origin, const char *db)
 		                 db, origin);
 	}
 
-	dnslib_zone_dump(zone, 1);
+//	dnslib_zone_dump(zone, 1);
 
 	return 0;
 }
@@ -325,6 +325,17 @@ int server_start(server_t *server, const char **filenames, uint zones)
 
 		// Fetch zone
 		conf_zone_t *z = (conf_zone_t*)n;
+
+		// Check if the source has changed
+		zloader_t *zl = dnslib_zload_open(z->db);
+		int src_changed = strcmp(z->file, zl->source) != 0;
+		if (src_changed) {
+			log_server_warning("warning: Zone source file for '%s' "
+			                   "has changed, it is recommended to "
+			                   "recompile it.\n",
+			                   z->name);
+		}
+		dnslib_zload_close(zl);
 
 		// Load zone
 		if (server_load_zone(server, z->name, z->db) == 0) {
