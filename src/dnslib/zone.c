@@ -166,7 +166,7 @@ static void dnslib_zone_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
 
 /*----------------------------------------------------------------------------*/
 
-static void dnslib_zone_adjust_rdata(dnslib_node_t *node, dnslib_zone_t *zone)
+static void dnslib_zone_adjust_rrsets(dnslib_node_t *node, dnslib_zone_t *zone)
 {
 	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
 	short count = dnslib_node_rrset_count(node);
@@ -176,6 +176,10 @@ static void dnslib_zone_adjust_rdata(dnslib_node_t *node, dnslib_zone_t *zone)
 	for (int r = 0; r < count; ++r) {
 		assert(rrsets[r] != NULL);
 		dnslib_zone_adjust_rdata_in_rrset(rrsets[r], zone);
+		dnslib_rrset_t *rrsigs = rrsets[r]->rrsigs;
+		if (rrsigs != NULL) {
+			dnslib_zone_adjust_rdata_in_rrset(rrsigs, zone);
+		}
 	}
 }
 
@@ -191,7 +195,7 @@ DEBUG_DNSLIB_ZONE(
 );
 
 	// adjust domain names in RDATA
-	dnslib_zone_adjust_rdata(node, zone);
+	dnslib_zone_adjust_rrsets(node, zone);
 
 DEBUG_DNSLIB_ZONE(
 	if (node->parent) {
@@ -234,12 +238,51 @@ DEBUG_DNSLIB_ZONE(
 
 /*----------------------------------------------------------------------------*/
 
+static void dnslib_zone_adjust_nsec3_node(dnslib_node_t *node,
+                                          dnslib_zone_t *zone)
+{
+
+DEBUG_DNSLIB_ZONE(
+	char *name = dnslib_dname_to_str(node->owner);
+	debug_dnslib_zone("----- Adjusting node %s -----\n", name);
+	free(name);
+);
+
+	// adjust domain names in RDATA
+	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
+	short count = dnslib_node_rrset_count(node);
+
+	assert(count == 0 || rrsets != NULL);
+
+	for (int r = 0; r < count; ++r) {
+		assert(rrsets[r] != NULL);
+		assert(dnslib_rrset_type(rrsets[r]) == DNSLIB_RRTYPE_NSEC3);
+		dnslib_rrset_t *rrsigs = rrsets[r]->rrsigs;
+		if (rrsigs != NULL) {
+			dnslib_zone_adjust_rdata_in_rrset(rrsigs, zone);
+		}
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 static void dnslib_zone_adjust_node_in_tree(dnslib_node_t *node, void *data)
 {
 	assert(data != NULL);
 	dnslib_zone_t *zone = (dnslib_zone_t *)data;
 
 	dnslib_zone_adjust_node(node, zone);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void dnslib_zone_adjust_nsec3_node_in_tree(dnslib_node_t *node,
+                                                  void *data)
+{
+	assert(data != NULL);
+	dnslib_zone_t *zone = (dnslib_zone_t *)data;
+
+	dnslib_zone_adjust_nsec3_node(node, zone);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -806,6 +849,9 @@ void dnslib_zone_adjust_dnames(dnslib_zone_t *zone)
 
 	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl,
 	                   dnslib_zone_adjust_node_in_tree, zone);
+
+	TREE_FORWARD_APPLY(zone->nsec3_nodes, dnslib_node, avl,
+	                   dnslib_zone_adjust_nsec3_node_in_tree, zone);
 }
 
 /*----------------------------------------------------------------------------*/
