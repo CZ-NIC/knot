@@ -146,8 +146,8 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 	resp->tmp_rrsets = (const dnslib_rrset_t **)
 		(resp->compression.offsets + DEFAULT_DOMAINS_IN_RESPONSE);
 
-	debug_dnslib_response("Tmp rrsets: %p (%zd after compression offsets)\n",
-		resp->tmp_rrsets,
+	debug_dnslib_response("Tmp rrsets: %p (%zd after compression offsets)"
+		"\n", resp->tmp_rrsets,
 		(void *)resp->tmp_rrsets - (void *)resp->compression.offsets);
 
 	resp->tmp_rrsets_max = DEFAULT_TMP_RRSETS;
@@ -376,6 +376,8 @@ static int dnslib_response_realloc_compr(dnslib_compressed_dnames_t *table)
 	return 0;
 }
 
+/*----------------------------------------------------------------------------*/
+
 static void dnslib_response_compr_save(dnslib_compressed_dnames_t *table,
                                        const dnslib_dname_t *dname, short pos)
 {
@@ -392,7 +394,7 @@ static void dnslib_response_compr_save(dnslib_compressed_dnames_t *table,
 	++table->count;
 }
 
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 
 static int dnslib_response_store_dname_pos(dnslib_compressed_dnames_t *table,
                                            const dnslib_dname_t *dname,
