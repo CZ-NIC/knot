@@ -1124,14 +1124,14 @@ const dnslib_dname_t *dnslib_response_qname(const dnslib_response_t *response)
 
 /*----------------------------------------------------------------------------*/
 
-const uint16_t dnslib_response_qtype(const dnslib_response_t *response)
+uint16_t dnslib_response_qtype(const dnslib_response_t *response)
 {
 	return response->question.qtype;
 }
 
 /*----------------------------------------------------------------------------*/
 
-const uint16_t dnslib_response_qclass(const dnslib_response_t *response)
+uint16_t dnslib_response_qclass(const dnslib_response_t *response)
 {
 	return response->question.qclass;
 }
