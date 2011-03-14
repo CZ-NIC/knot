@@ -76,15 +76,11 @@ static void dnslib_zone_save_encloser_rdata_item(dnslib_rdata_t *rdata,
 	}
 }
 
-static void dnslib_zone_save_enclosers_node(dnslib_node_t *node,
-                                            dnslib_rr_type_t type,
-                                            dnslib_zone_t *zone,
-					    skip_list_t *list)
+static void dnslib_zone_save_enclosers_rrset(dnslib_rrset_t *rrset,
+                                             dnslib_zone_t *zone,
+                                             skip_list_t *list)
 {
-	dnslib_rrset_t *rrset = dnslib_node_get_rrset(node, type);
-	if (!rrset) {
-		return;
-	}
+	uint16_t type = dnslib_rrset_type(rrset);
 
 	dnslib_rrtype_descriptor_t *desc =
 		dnslib_rrtype_descriptor_by_type(type);
@@ -144,10 +140,16 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 	assert(data != NULL);
 	arg_t *args = (arg_t *)data;
 
-	for (int i = 0; i < DNSLIB_COMPRESSIBLE_TYPES; ++i) {
-		dnslib_zone_save_enclosers_node(node, dnslib_compressible_types[i],
-		                                  (dnslib_zone_t *)args->arg1,
-					          (skip_list_t *)args->arg2);
+	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
+	short count = dnslib_node_rrset_count(node);
+
+	assert(count == 0 || rrsets != NULL);
+
+	for (int i = 0; i < count; ++i) {
+		assert(rrsets[i] != NULL);
+		dnslib_zone_save_enclosers_rrset(rrsets[i],
+		                                 (dnslib_zone_t *)args->arg1,
+		                                 (skip_list_t *)args->arg2);
 	}
 }
 
