@@ -524,13 +524,15 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 		} else {
 			/* Unsecured delegation, check whether it is part of
 			 * opt-out span */
-			const dnslib_node_t *nsec3_previous = NULL;
-			const dnslib_node_t *nsec3_node = NULL;
+			const dnslib_node_t *nsec3_previous;
+			const dnslib_node_t *nsec3_node;
 
-			dnslib_zone_find_nsec3_for_name(zone,
-						dnslib_node_owner(nsec3_node),
+			if (dnslib_zone_find_nsec3_for_name(zone,
+						dnslib_node_owner(node),
 						&nsec3_node,
-						&nsec3_previous);
+						&nsec3_previous) != 0) {
+				return -2;
+			}
 
 			assert(nsec3_node == NULL); /* TODO error */
 
@@ -574,11 +576,12 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 
 	/* check that next dname is in the zone */
 
-	return 0;
+//	dnslib_dname_t *next_dname = dnslib_rdata_item(
+//		dnslib_rrset_rdata(nsec3_rrset), 6);//->dname;
+	dnslib_dname_t *next_dname = nsec3_rrset->rdata->items[6].dname;
 
-	dnslib_dname_t *next_dname =
-		dnslib_rdata_item(
-		dnslib_rrset_rdata(nsec3_rrset), 6)->dname;
+	printf("%s\n", dnslib_dname_to_str(next_dname));
+		return 0;
 
 	if (dnslib_zone_find_nsec3_node(zone, next_dname) == NULL) {
 		return -3;
@@ -711,7 +714,7 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 					  (dnslib_zone_t *)args->arg1),
 					  DNSLIB_RRTYPE_DNSKEY);
 
-		char nsec3 = do_checks == 2;
+		char nsec3 = do_checks == 3;
 
                 int ret = 0;
 
@@ -731,7 +734,11 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 							  DNSLIB_RRTYPE_NSEC);
 
 				if (nsec_rrset == NULL) {
-					log_zone_error("TODO nsec");
+					char *name =
+					dnslib_dname_to_str(node->owner);
+					log_zone_error("Missing NSEC in node: "
+						       "%s\n");
+					free(name);
 					return;
 				}
 
@@ -744,10 +751,9 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 				if (rdata_nsec_to_type_array(
 				    dnslib_rdata_item(
                                     dnslib_rrset_rdata(nsec_rrset),1),
-                                    &array, &count) != 0) {
-                                        assert(0);
-					//error
-					;
+				    &array, &count) != 0) {
+					ERR_ALLOC_FAILED;
+					return;
 				}
 
 				uint16_t type = 0;
@@ -812,7 +818,7 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 					log_zone_error("NSEC chain is not "
 						       "coherent!\n");
 				}
-			} else if (auth || deleg) { /* nsec3 */
+			} else if (nsec3 && (auth || deleg)) { /* nsec3 */
 				/* TODO do this at the beginning! */
 				dnslib_zone_t *zone =
 					(dnslib_zone_t *)args->arg1;
@@ -1132,7 +1138,7 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	skip_list_t *encloser_list = skip_create_list(compare_pointers);
 
 	if (do_checks && zone_is_secure(zone)) {
-		do_checks = 2;
+		do_checks += zone_is_secure(zone);
 	}
 
 	zone_save_enclosers_sem_check(zone, encloser_list, do_checks);
