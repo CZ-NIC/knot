@@ -129,6 +129,26 @@ const dnslib_rrset_t **dnslib_node_rrsets(const dnslib_node_t *node)
 	return rrsets;
 }
 
+dnslib_rrset_t **dnslib_node_get_rrsets(const dnslib_node_t *node)
+{
+	dnslib_rrset_t **rrsets = (dnslib_rrset_t **)malloc(
+		node->rrset_count * sizeof(dnslib_rrset_t *));
+	CHECK_ALLOC_LOG(rrsets, NULL);
+
+	const skip_node_t *sn = skip_first(node->rrsets);
+	int i = 0;
+	while (sn != NULL) {
+		assert(i < node->rrset_count);
+		rrsets[i] = (dnslib_rrset_t *)sn->value;
+		sn = skip_next(sn);
+		++i;
+	}
+
+	//printf("Returning %d RRSets.\n", i);
+
+	return rrsets;
+}
+
 const dnslib_node_t *dnslib_node_parent(const dnslib_node_t *node)
 {
 	return node->parent;
