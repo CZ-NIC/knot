@@ -110,16 +110,14 @@ static void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata,
 
 /*----------------------------------------------------------------------------*/
 
-static void dnslib_zone_adjust_type(dnslib_node_t *node, dnslib_zone_t *zone,
-                                    dnslib_rr_type_t type)
+static void dnslib_zone_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
+                                              dnslib_zone_t *zone)
 {
-	dnslib_rrset_t *rrset = dnslib_node_get_rrset(node, type);
-	if (!rrset) {
-		return;
-	}
+	uint16_t type = dnslib_rrset_type(rrset);
 
 	dnslib_rrtype_descriptor_t *desc =
 		dnslib_rrtype_descriptor_by_type(type);
+
 	dnslib_rdata_t *rdata_first = dnslib_rrset_get_rdata(rrset);
 	dnslib_rdata_t *rdata = rdata_first;
 
@@ -163,6 +161,22 @@ static void dnslib_zone_adjust_type(dnslib_node_t *node, dnslib_zone_t *zone,
 			dnslib_zone_adjust_rdata_item(rdata, zone, i);
 		}
 	}
+
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void dnslib_zone_adjust_rdata(dnslib_node_t *node, dnslib_zone_t *zone)
+{
+	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
+	short count = dnslib_node_rrset_count(node);
+
+	assert(count == 0 || rrsets != NULL);
+
+	for (int r = 0; r < count; ++r) {
+		assert(rrsets[r] != NULL);
+		dnslib_zone_adjust_rdata_in_rrset(rrsets[r], zone);
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -176,11 +190,9 @@ DEBUG_DNSLIB_ZONE(
 	free(name);
 );
 
-	// adjust domain names
-	for (int i = 0; i < DNSLIB_COMPRESSIBLE_TYPES; ++i) {
-		dnslib_zone_adjust_type(node, zone,
-		                        dnslib_compressible_types[i]);
-	}
+	// adjust domain names in RDATA
+	dnslib_zone_adjust_rdata(node, zone);
+
 DEBUG_DNSLIB_ZONE(
 	if (node->parent) {
 		char *name = dnslib_dname_to_str(node->parent->owner);
