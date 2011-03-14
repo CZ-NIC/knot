@@ -556,6 +556,7 @@ DEBUG_DNSLIB_RESPONSE(
 		    || to_find->node->parent == NULL) {
 			if (!copied) {
 				to_find = dnslib_dname_left_chop(to_find);
+				copied = 1;
 			} else {
 				dnslib_dname_left_chop_no_copy(to_find);
 			}
