@@ -106,6 +106,8 @@ short dnslib_node_rrset_count(const dnslib_node_t *node);
 
 const dnslib_rrset_t **dnslib_node_rrsets(const dnslib_node_t *node);
 
+dnslib_rrset_t **dnslib_node_get_rrsets(const dnslib_node_t *node);
+
 /*!
  * \brief Returns the parent of the node.
  *
