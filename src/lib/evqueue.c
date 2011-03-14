@@ -1,67 +1,23 @@
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "common.h"
 #include "lib/evqueue.h"
 
-static inline int evqueue_lock(evqueue_t *q)
-{
-	return pthread_mutex_lock(&q->mx);
-}
-
-static inline int evqueue_unlock(evqueue_t *q)
-{
-	return pthread_mutex_unlock(&q->mx);
-}
+evqueue_t *s_evqueue = 0;
 
 evqueue_t *evqueue_new()
 {
 	evqueue_t* q = malloc(sizeof(evqueue_t));
-	if (evqueue_init(q) < 0) {
+
+	/* Initialize fds. */
+	if (pipe(q->fds) < 0) {
 		free(q);
 		q = 0;
 	}
 
 	return q;
-}
-
-int evqueue_init(evqueue_t *q)
-{
-	/* Initialize queue. */
-	init_list(&q->q);
-
-	/* Initialize synchronisation. */
-	if (pthread_mutex_init(&q->mx, 0) != 0) {
-		return -1;
-	}
-
-	if (pthread_cond_init(&q->notify, 0) != 0) {
-		pthread_mutex_destroy(&q->mx);
-		return -1;
-	}
-
-	return 0;
-}
-
-int evqueue_clear(evqueue_t *q)
-{
-	if (!q) {
-		return -1;
-	}
-
-	if (evqueue_lock(q) != 0) {
-		return -2;
-	}
-
-	int i = 0;
-	node *n = 0, *nxt = 0;
-	WALK_LIST_DELSAFE (n, nxt, q->q) {
-		free(n);
-		++i;
-	}
-
-	evqueue_unlock(q);
-	return i;
 }
 
 void evqueue_free(evqueue_t **q)
@@ -70,60 +26,65 @@ void evqueue_free(evqueue_t **q)
 	evqueue_t *eq = *q;
 	*q = 0;
 
-	/* Clear queue. */
-	evqueue_clear(eq);
-
 	/* Deinitialize. */
-	pthread_mutex_destroy(&eq->mx);
-	pthread_cond_destroy(&eq->notify);
+	close(eq->fds[EVQUEUE_READFD]);
+	close(eq->fds[EVQUEUE_WRITEFD]);
 	free(eq);
+}
+
+int evqueue_poll(evqueue_t *q, const sigset_t *sigmask)
+{
+	/* Check. */
+	if (!q) {
+		return -1;
+	}
+
+	/* Prepare fd set. */
+	fd_set rfds;
+	FD_ZERO(&rfds);
+	FD_SET(q->fds[EVQUEUE_READFD], &rfds);
+
+	/* Wait for events. */
+	return pselect(q->fds[EVQUEUE_READFD] + 1, &rfds,
+	               0, 0, 0, sigmask);
+
 }
 
 void *evqueue_get(evqueue_t *q)
 {
-	void *ret = 0;
-
-	/* Lock event queue. */
+	/* Check. */
 	if (!q) {
-		return ret;
+		return 0;
 	}
 
-	if (evqueue_lock(q) != 0) {
-		return ret;
+	/* Prepare msg. */
+	event_t ev;
+
+	/* Read data. */
+	if (read(q->fds[EVQUEUE_READFD], &ev, sizeof(ev)) != sizeof(ev)) {
+		return 0;
 	}
 
-	/* Take first event. */
-	event_t *ev = (event_t*)HEAD(q->q);
-	if (ev) {
-		rem_node((node *)ev);
-		ret = ev->data;
-		free(ev);
-	}
-
-	/* Unlock and return. */
-	evqueue_unlock(q);
-	return ret;
+	return ev.data;
 }
 
 int evqueue_add(evqueue_t *q, void *item)
 {
+	/* Check. */
 	if (!q) {
 		return -1;
 	}
 
-	/* Create item. */
-	event_t *ev = malloc(sizeof(event_t));
-	ev->data = item;
+	/* Prepare msg. */
+	event_t ev;
+	ev.data = item;
 
-	/* Lock event queue. */
-	if (evqueue_lock(q) != 0) {
-		free(ev);
-		return -1;
+	/* Write data. */
+	int ret = write(q->fds[EVQUEUE_WRITEFD], &ev, sizeof(ev));
+	if (ret != sizeof(ev)) {
+		return -2;
 	}
 
-	/* Insert into queue. */
-	add_tail(&q->q, (node *)ev);
-	evqueue_unlock(q);
 	return 0;
 }
 
