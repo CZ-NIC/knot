@@ -328,6 +328,13 @@ int server_start(server_t *server, const char **filenames, uint zones)
 
 		// Check if the source has changed
 		zloader_t *zl = dnslib_zload_open(z->db);
+		if (zl == NULL) {
+			log_server_warning("warning: Zone source file for '%s'  "
+					   "doesn't exists.\n",
+					   z->name);
+			continue;
+		}
+		assert(zl != NULL);
 		int src_changed = strcmp(z->file, zl->source) != 0;
 		if (src_changed) {
 			log_server_warning("warning: Zone source file for '%s' "
