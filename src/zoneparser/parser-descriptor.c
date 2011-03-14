@@ -260,7 +260,7 @@ static parser_rrtype_descriptor_t
   	    PARSER_RDATA_WF_BYTE, /* flags */
   	    PARSER_RDATA_WF_SHORT, /* iterations */
   	    PARSER_RDATA_WF_BINARYWITHLENGTH, /* salt */
-  	    PARSER_RDATA_WF_BINARYWITHLENGTH, /* next hashed name */
+	    PARSER_RDATA_WF_LITERAL_DNAME, /* next hashed name */
   	    PARSER_RDATA_WF_BINARY /* type bitmap */ }, true },
   	/* 51 */
   	{ PARSER_RRTYPE_NSEC3PARAM, T_NSEC3PARAM, "NSEC3PARAM", 4,

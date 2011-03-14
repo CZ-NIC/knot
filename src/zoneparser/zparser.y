@@ -1180,7 +1180,15 @@ rdata_nsec3:   STR sp STR sp STR sp STR sp STR nsec_seq
 #ifdef NSEC3
 	    nsec3_add_params($1.str, $3.str, $5.str, $7.str, $7.len);
 
-	    zadd_rdata_wireformat(zparser_conv_b32($9.str));
+	    dnslib_dname_t *dname =
+		dnslib_dname_new_from_str($9.str, $9.len, NULL);
+
+	    printf("%s\n", dnslib_dname_to_str(dname));
+	    getchar();
+
+	    zadd_rdata_domain(dname);
+
+//	    zadd_rdata_wireformat(zparser_conv_b32($9.str));
 	    /* next hashed name */
 	    zadd_rdata_wireformat(zparser_conv_nsec(nsecbits));
 	    /* nsec bitlist */
