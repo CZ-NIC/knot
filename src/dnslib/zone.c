@@ -74,52 +74,34 @@ static void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata,
 	if (dname_item != NULL) {
 		dnslib_dname_t *dname = dname_item->dname;
 		const dnslib_node_t *n = NULL;
-//		const dnslib_node_t *closest_encloser = NULL;
 
-//		int exact = dnslib_zone_find_dname(zone, dname, &n,
-//		                                   &closest_encloser);
 		n = dnslib_zone_find_node(zone, dname);
 
 		if (n == NULL) {
 			return;
 		}
 
-//		assert(!exact || n == closest_encloser);
+		if (n->owner == dname_item->dname) {
+			return;
+		}
+		debug_dnslib_zone("Replacing dname %s by reference to "
+		  "dname %s in zone.\n", dname->name, n->owner->name);
 
-//		if (exact) {
-			// just doble-check if the domain name is not already
-			// adjusted
-			if (n->owner == dname_item->dname) {
-				return;
-			}
-			debug_dnslib_zone("Replacing dname %s by reference to "
-			  "dname %s in zone.\n", dname->name, n->owner->name);
-
-			dnslib_rdata_item_set_dname(rdata, pos, n->owner);
-			dnslib_dname_free(&dname);
-//		} else if (closest_encloser != NULL) {
-//			debug_dnslib_zone("Saving closest encloser to RDATA.\n");
-			// save pointer to the closest encloser
-//			dnslib_rdata_item_t *item =
-//				dnslib_rdata_get_item(rdata, pos);
-//			assert(item->dname != NULL);
-//			item->dname->node = (dnslib_node_t *)closest_encloser;
-//		}
+		dnslib_rdata_item_set_dname(rdata, pos, n->owner);
+		dnslib_dname_free(&dname);
 	}
 }
 
 /*----------------------------------------------------------------------------*/
 
-static void dnslib_zone_adjust_type(dnslib_node_t *node, dnslib_zone_t *zone,
-                                    dnslib_rr_type_t type)
+static void dnslib_zone_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
+                                              dnslib_zone_t *zone)
 {
-	dnslib_rrset_t *rrset = dnslib_node_get_rrset(node, type);
-	if (!rrset) {
-		return;
-	}
+	uint16_t type = dnslib_rrset_type(rrset);
 
 	dnslib_rrtype_descriptor_t *desc =
 		dnslib_rrtype_descriptor_by_type(type);
+
 	dnslib_rdata_t *rdata_first = dnslib_rrset_get_rdata(rrset);
 	dnslib_rdata_t *rdata = rdata_first;
 
@@ -163,6 +145,26 @@ static void dnslib_zone_adjust_type(dnslib_node_t *node, dnslib_zone_t *zone,
 			dnslib_zone_adjust_rdata_item(rdata, zone, i);
 		}
 	}
+
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void dnslib_zone_adjust_rrsets(dnslib_node_t *node, dnslib_zone_t *zone)
+{
+	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
+	short count = dnslib_node_rrset_count(node);
+
+	assert(count == 0 || rrsets != NULL);
+
+	for (int r = 0; r < count; ++r) {
+		assert(rrsets[r] != NULL);
+		dnslib_zone_adjust_rdata_in_rrset(rrsets[r], zone);
+		dnslib_rrset_t *rrsigs = rrsets[r]->rrsigs;
+		if (rrsigs != NULL) {
+			dnslib_zone_adjust_rdata_in_rrset(rrsigs, zone);
+		}
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -176,11 +178,9 @@ DEBUG_DNSLIB_ZONE(
 	free(name);
 );
 
-	// adjust domain names
-	for (int i = 0; i < DNSLIB_COMPRESSIBLE_TYPES; ++i) {
-		dnslib_zone_adjust_type(node, zone,
-		                        dnslib_compressible_types[i]);
-	}
+	// adjust domain names in RDATA
+	dnslib_zone_adjust_rrsets(node, zone);
+
 DEBUG_DNSLIB_ZONE(
 	if (node->parent) {
 		char *name = dnslib_dname_to_str(node->parent->owner);
@@ -222,12 +222,51 @@ DEBUG_DNSLIB_ZONE(
 
 /*----------------------------------------------------------------------------*/
 
+static void dnslib_zone_adjust_nsec3_node(dnslib_node_t *node,
+                                          dnslib_zone_t *zone)
+{
+
+DEBUG_DNSLIB_ZONE(
+	char *name = dnslib_dname_to_str(node->owner);
+	debug_dnslib_zone("----- Adjusting node %s -----\n", name);
+	free(name);
+);
+
+	// adjust domain names in RDATA
+	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
+	short count = dnslib_node_rrset_count(node);
+
+	assert(count == 0 || rrsets != NULL);
+
+	for (int r = 0; r < count; ++r) {
+		assert(rrsets[r] != NULL);
+		assert(dnslib_rrset_type(rrsets[r]) == DNSLIB_RRTYPE_NSEC3);
+		dnslib_rrset_t *rrsigs = rrsets[r]->rrsigs;
+		if (rrsigs != NULL) {
+			dnslib_zone_adjust_rdata_in_rrset(rrsigs, zone);
+		}
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 static void dnslib_zone_adjust_node_in_tree(dnslib_node_t *node, void *data)
 {
 	assert(data != NULL);
 	dnslib_zone_t *zone = (dnslib_zone_t *)data;
 
 	dnslib_zone_adjust_node(node, zone);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void dnslib_zone_adjust_nsec3_node_in_tree(dnslib_node_t *node,
+                                                  void *data)
+{
+	assert(data != NULL);
+	dnslib_zone_t *zone = (dnslib_zone_t *)data;
+
+	dnslib_zone_adjust_nsec3_node(node, zone);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -794,6 +833,9 @@ void dnslib_zone_adjust_dnames(dnslib_zone_t *zone)
 
 	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl,
 	                   dnslib_zone_adjust_node_in_tree, zone);
+
+	TREE_FORWARD_APPLY(zone->nsec3_nodes, dnslib_node, avl,
+	                   dnslib_zone_adjust_nsec3_node_in_tree, zone);
 }
 
 /*----------------------------------------------------------------------------*/
