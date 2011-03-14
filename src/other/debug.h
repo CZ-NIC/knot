@@ -19,8 +19,8 @@
 //#define DA_DEBUG
 //#define CUCKOO_DEBUG
 //#define CUCKOO_DEBUG_HASH
-#define ZP_DEBUG
-#define NS_DEBUG
+//#define ZP_DEBUG
+//#define NS_DEBUG
 //#define ZDB_DEBUG
 //#define ZDB_DEBUG_INSERT_CHECK
 //#define ZN_DEBUG
@@ -33,7 +33,7 @@
 //#define MEM_DEBUG
 //#define MEM_NOSLAB
 //#define MEM_POISON
-#define DNSLIB_ZONE_DEBUG
+//#define DNSLIB_ZONE_DEBUG
 //#define DNSLIB_RESPONSE_DEBUG
 //#define DNSLIB_ZONEDB_DEBUG
 //#define DNSLIB_DNAME_DEBUG
