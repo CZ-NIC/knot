@@ -186,12 +186,6 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 				items[i].dname->label_count = label_count;
 
 				if (has_wildcard) {
-					if (!fread_safe(&tmp_id, sizeof(void *),
-					           1, f)) {
-						load_rdata_purge(rdata, items,
-						                 i + 1, type);
-						return 0;
-					}
 					items[i].dname->node =
 					         id_array[(size_t)tmp_id]->node;
 				} else {
