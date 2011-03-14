@@ -219,6 +219,16 @@ static int check_dnskey_rdata(const dnslib_rdata_t *rdata)
 	}
 }
 
+static uint16_t keytag_1(uint8_t *key, uint16_t keysize)
+{
+	uint16_t ac = 0;
+	if (keysize > 4) {
+		memmove(&ac, key + keysize - 3, 2);
+	}
+
+	ac = ntohs(ac);
+	return ac;
+}
 
 /* Taken from RFC 4034 */
 /*
@@ -231,26 +241,19 @@ static int check_dnskey_rdata(const dnslib_rdata_t *rdata)
 
 static uint16_t keytag(uint8_t *key, uint16_t keysize )
 {
-        uint32_t ac = 0;     /* assumed to be 32 bits or larger */
+	uint32_t ac = 0;     /* assumed to be 32 bits or larger */
 
-        for(int i = 0; i < keysize; i++) {
-                ac += (i & 1) ? key[i] : key[i] << 8;
-        }
+	/* algorithm RSA/SHA */
+	if (key[3] == 1) {
+		return keytag_1(key, keysize);
+	} else {
+		for(int i = 0; i < keysize; i++) {
+			ac += (i & 1) ? key[i] : key[i] << 8;
+		}
 
-        ac += (ac >> 16) & 0xFFFF;
-        uint16_t kokotina = (uint16_t) (ac & 0xFFFF);
-        return (uint16_t)ac & 0xFFFF;
-}
-
-static uint16_t keytag_1(uint8_t *key, uint16_t keysize)
-{
-        uint16_t ac = 0;
-        if (keysize > 4) {
-                memmove(&ac, key + keysize - 3, 2);
-        }
-
-        ac = ntohs(ac);
-        return ac;
+		ac += (ac >> 16) & 0xFFFF;
+		return (uint16_t)ac & 0xFFFF;
+	}
 }
 
 static inline uint16_t rdata_item_size(const dnslib_rdata_item_t *item)
@@ -258,22 +261,27 @@ static inline uint16_t rdata_item_size(const dnslib_rdata_item_t *item)
         return item->raw_data[0];
 }
 
-
-uint remove_me = 0;
-
-static uint16_t *dnskey_to_wire(dnslib_rdata_t *rdata)
+static int dnskey_to_wire(const dnslib_rdata_t *rdata, uint8_t **wire,
+			  uint *size)
 {
-        uint8_t *data =
-malloc(sizeof(uint8_t) * (2 + 1 + 1 + rdata->items[3].raw_data[0]));
-        remove_me = sizeof(uint8_t) * (2 + 1 + 1 + rdata->items[3].raw_data[0]);
-        data[0] = ((uint8_t *)(rdata->items[0].raw_data))[2];
-        data[1] = ((uint8_t *)(rdata->items[0].raw_data))[3];
+	assert(*wire == NULL);
+	/* flags + algorithm + protocol + keysize */
+	*size = 2 + 1 + 1 + dnslib_rdata_item(rdata, 3)->raw_data[0];
+	*wire = malloc(sizeof(uint8_t) * *size);
+	CHECK_ALLOC_LOG(*wire, 0);
 
-        data[2] = ((uint8_t *)(rdata->items[1].raw_data))[2];
-        data[3] = ((uint8_t *)(rdata->items[2].raw_data))[2];
-        memcpy(data + 4, rdata->items[3].raw_data + 1,
-               rdata->items[3].raw_data[0]);
-        return (uint16_t *) data;
+	/* copy the wire octet by octet */
+
+	(*wire)[0] = ((uint8_t *)(dnslib_rdata_item(rdata, 0)->raw_data))[2];
+	(*wire)[1] = ((uint8_t *)(dnslib_rdata_item(rdata, 0)->raw_data))[3];
+
+	(*wire)[2] = ((uint8_t *)(dnslib_rdata_item(rdata, 1)->raw_data))[2];
+	(*wire)[3] = ((uint8_t *)(dnslib_rdata_item(rdata, 2)->raw_data))[2];
+
+	memcpy(*wire + 4, dnslib_rdata_item(rdata, 3)->raw_data + 1,
+	       dnslib_rdata_item(rdata, 3)->raw_data[0]);
+
+	return 0;
 }
 
 static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
@@ -345,10 +353,20 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
                                         tmp_dnskey_rdata, 3));
 
                 uint16_t raw_length = rdata_item_size(dnslib_rdata_item(
-                                                     tmp_dnskey_rdata, 3));
+						     tmp_dnskey_rdata, 3));
 
-                uint16_t key_tag_dnskey = keytag(dnskey_to_wire(tmp_dnskey_rdata),
-                                                 remove_me);
+		uint8_t *dnskey_wire = NULL;
+		uint dnskey_wire_size = 0;
+
+		if (dnskey_to_wire(tmp_dnskey_rdata, &dnskey_wire,
+				   &dnskey_wire_size) != 0) {
+			return -100;
+		}
+
+		uint16_t key_tag_dnskey =
+			keytag(dnskey_wire, dnskey_wire_size);
+
+		free(dnskey_wire);
 
 		match = (alg == alg_dnskey) &&
 			(key_tag_rrsig == key_tag_dnskey) &&
@@ -448,7 +466,7 @@ static int rdata_nsec_to_type_array(const dnslib_rdata_item_t *item,
 {
 	assert(*array == NULL);
 
-        hex_print(rdata_item_data(item), rdata_item_size(item));
+//        hex_print(rdata_item_data(item), rdata_item_size(item));
 
 	uint8_t *data = (uint8_t *)rdata_item_data(item);
 
@@ -506,8 +524,33 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 		} else {
 			/* Unsecured delegation, check whether it is part of
 			 * opt-out span */
-			/* TODO */
-			;
+			const dnslib_node_t *nsec3_previous = NULL;
+			const dnslib_node_t *nsec3_node = NULL;
+
+			dnslib_zone_find_nsec3_for_name(zone,
+						dnslib_node_owner(nsec3_node),
+						&nsec3_node,
+						&nsec3_previous);
+
+			assert(nsec3_node == NULL); /* TODO error */
+
+			assert(nsec3_previous);
+
+			const dnslib_rrset_t *previous_rrset =
+				dnslib_node_rrset(nsec3_previous,
+						  DNSLIB_RRTYPE_NSEC3);
+
+			assert(previous_rrset);
+
+			/* check for Opt-Out flag */
+			uint8_t flags =
+		((uint8_t *)(previous_rrset->rdata->items[1].raw_data))[2];
+
+			uint8_t opt_out_mask = 0b00000001;
+
+			if (!(flags & opt_out_mask)) {
+				return -2;
+			}
 		}
 	}
 
@@ -523,13 +566,15 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 		dnslib_rrset_rdata(
 		dnslib_node_rrset(
 		dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA)), 6)));
-	/* are those getter even worth this? */
+	/* are those getters even worth this? */
 
 	if (dnslib_rrset_ttl(nsec3_rrset) != minimum_ttl) {
 		return -2;
 	}
 
 	/* check that next dname is in the zone */
+
+	return 0;
 
 	dnslib_dname_t *next_dname =
 		dnslib_rdata_item(
@@ -666,7 +711,7 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 					  (dnslib_zone_t *)args->arg1),
 					  DNSLIB_RRTYPE_DNSKEY);
 
-                char nsec3 = do_checks == 3;
+		char nsec3 = do_checks == 2;
 
                 int ret = 0;
 
@@ -739,7 +784,6 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 					log_zone_error("Node %s contains more "
 						       "than one NSEC "
                                                        "record!\n", name);
-                                        printf("FDASDF %d\n", nsec_rrset->rdata->count);
                                         dnslib_rrset_dump(nsec_rrset, 0);
 					free(name);
 				}
