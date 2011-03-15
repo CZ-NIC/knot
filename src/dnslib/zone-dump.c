@@ -7,8 +7,90 @@
 #include "dnslib/zone-dump.h"
 #include "dnslib/dnslib.h"
 #include "lib/skip-list.h"
+#include "lib/base32.h"
 
 #define ZONECHECKS_VERBOSE
+
+int b32_ntop(uint8_t const *src, size_t srclength, char *target,
+	     size_t targsize)
+{
+	static char b32[]="0123456789abcdefghijklmnopqrstuv";
+	char buf[9];
+	ssize_t len=0;
+
+	while(srclength > 0)
+	{
+		int t;
+		memset(buf,'\0',sizeof buf);
+
+		/* xxxxx000 00000000 00000000 00000000 00000000 */
+		buf[0]=b32[src[0] >> 3];
+
+		/* 00000xxx xx000000 00000000 00000000 00000000 */
+		t=(src[0]&7) << 2;
+		if(srclength > 1)
+			t+=src[1] >> 6;
+		buf[1]=b32[t];
+		if(srclength == 1)
+			break;
+
+		/* 00000000 00xxxxx0 00000000 00000000 00000000 */
+		buf[2]=b32[(src[1] >> 1)&0x1f];
+
+		/* 00000000 0000000x xxxx0000 00000000 00000000 */
+		t=(src[1]&1) << 4;
+		if(srclength > 2)
+			t+=src[2] >> 4;
+		buf[3]=b32[t];
+		if(srclength == 2)
+			break;
+
+		/* 00000000 00000000 0000xxxx x0000000 00000000 */
+		t=(src[2]&0xf) << 1;
+		if(srclength > 3)
+			t+=src[3] >> 7;
+		buf[4]=b32[t];
+		if(srclength == 3)
+			break;
+
+		/* 00000000 00000000 00000000 0xxxxx00 00000000 */
+		buf[5]=b32[(src[3] >> 2)&0x1f];
+
+		/* 00000000 00000000 00000000 000000xx xxx00000 */
+		t=(src[3]&3) << 3;
+		if(srclength > 4)
+			t+=src[4] >> 5;
+		buf[6]=b32[t];
+		if(srclength == 4)
+			break;
+
+		/* 00000000 00000000 00000000 00000000 000xxxxx */
+		buf[7]=b32[src[4]&0x1f];
+
+		if(targsize < 8)
+			return -1;
+
+		src += 5;
+		srclength -= 5;
+
+		memcpy(target,buf,8);
+		target += 8;
+		targsize -= 8;
+		len += 8;
+	}
+	if(srclength)
+	{
+		if(targsize < strlen(buf)+1)
+			return -1;
+		dnslib_strlcpy(target, buf, targsize);
+		len += strlen(buf);
+	}
+	else if(targsize < 1)
+		return -1;
+	else
+		*target='\0';
+	return len;
+}
 
 /* \note For space and speed purposes, dname ID (to be later used in loading)
  * is being stored in dname->node field. Not to be confused with dname's actual
@@ -302,14 +384,18 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
 
 	uint8_t labels_rdata = ((uint8_t *)raw_data)[0];
 
-	if (labels_rdata !=
-            dnslib_dname_label_count(dnslib_rrset_owner(rrset))) {
-#ifdef ZONECHECKS_VERBOSE
-                log_zone_error("Label counts do not match: in rdata: %d "
-                               "in owner: %d\n", labels_rdata,
-                        dnslib_dname_label_count(dnslib_rrset_owner(rrset)));
-#endif
-                return -2;
+	int tmp = dnslib_dname_label_count(dnslib_rrset_owner(rrset)) -
+		  labels_rdata;
+
+	if (tmp != 0) {
+		/* if name has wildcard, label must not be included */
+		if (!dnslib_dname_is_wildcard(dnslib_rrset_owner(rrset))) {
+			return -2;
+		} else {
+			if (abs(tmp) != 1) {
+				return -2;
+			}
+		}
 	}
 
 	/* check original TTL */
@@ -534,7 +620,11 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 				return -2;
 			}
 
-			assert(nsec3_node == NULL); /* TODO error */
+/*			if (nsec3_node == NULL) {
+				return -3;
+			} *	/
+
+//			assert(nsec3_node == NULL); /* TODO error */
 
 			assert(nsec3_previous);
 
@@ -551,7 +641,7 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 			uint8_t opt_out_mask = 0b00000001;
 
 			if (!(flags & opt_out_mask)) {
-				return -2;
+				return -2000;
 			}
 		}
 	}
@@ -571,24 +661,80 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 	/* are those getters even worth this? */
 
 	if (dnslib_rrset_ttl(nsec3_rrset) != minimum_ttl) {
-		return -2;
+		return -4;
 	}
 
 	/* check that next dname is in the zone */
 
-//	dnslib_dname_t *next_dname = dnslib_rdata_item(
-//		dnslib_rrset_rdata(nsec3_rrset), 6);//->dname;
-	dnslib_dname_t *next_dname = nsec3_rrset->rdata->items[6].dname;
+	/* TODO should look nicer :) */
 
-	printf("%s\n", dnslib_dname_to_str(next_dname));
-		return 0;
+	uint8_t *next_dname_decoded = malloc(sizeof(uint8_t) * 34);
+	/* 34 because of the "0" at the end */
+	size_t next_dname_decoded_size = 33;
+
+	assert(b32_ntop(((char *)(nsec3_rrset->rdata->items[4].raw_data)) + 3,
+		   ((uint8_t *)(nsec3_rrset->rdata->items[4].raw_data))[2],
+		   next_dname_decoded +	1,
+		   next_dname_decoded_size) != 0);
+
+	next_dname_decoded[0] = 32;
+
+	dnslib_dname_t *next_dname =
+		dnslib_dname_new_from_wire(next_dname_decoded,
+					   next_dname_decoded_size, NULL);
+
+/*	printf("\n%s\n", dnslib_dname_to_str(next_dname)); */
+
+	/* TODO this should not work, unless what about 0 at the end??? */
+
+	if (dnslib_dname_cat(next_dname,
+		     dnslib_node_owner(dnslib_zone_apex(zone))) == NULL) {
+		return -10;
+	}
+
+//	dnslib_dname
+
 
 	if (dnslib_zone_find_nsec3_node(zone, next_dname) == NULL) {
-		return -3;
+		return -5;
 	}
+
+	dnslib_dname_free(&next_dname);
 
 	/* This is probably not sufficient, but again, it is covered in
 	 * zone load time */
+
+	uint count;
+	uint16_t *array = NULL;
+	if (rdata_nsec_to_type_array(
+	    dnslib_rdata_item(
+	    dnslib_rrset_rdata(nsec3_rrset), 5),
+	    &array, &count) != 0) {
+		ERR_ALLOC_FAILED;
+		return -19213;
+	}
+
+	uint16_t type = 0;
+	for (int j = 0; j < count; j++) {
+		/* test for each type's presence */
+		type = array[j];
+		if (type == DNSLIB_RRTYPE_RRSIG) {
+		       continue;
+		}
+		if (dnslib_node_rrset(node,
+				      type) == NULL) {
+			char *name =
+				dnslib_dname_to_str(
+					dnslib_node_owner(node));
+
+			log_zone_error("Node %s does "
+					"not contain RRSet of type %s "
+					"but NSEC bitmap says "
+					"it does!\n", name,
+					dnslib_rrtype_to_string(type));
+			free(name);
+		}
+	}
 
 	/* TODO bitmap, but that is buggy right now */
 
@@ -600,6 +746,10 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 	assert(data != NULL);
 	arg_t *args = (arg_t *)data;
 
+	dnslib_zone_t *zone = (dnslib_zone_t *)args->arg1;
+
+	assert(zone);
+
 	char do_checks = *((char *)(args->arg3));
 
 	for (int i = 0; i < DNSLIB_COMPRESSIBLE_TYPES; ++i) {
@@ -610,7 +760,7 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 	}
 
 	/* TODO move to separate function */
-	if (do_checks) {
+	 if (do_checks) {
 		const dnslib_rrset_t *cname_rrset =
 			dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME);
 		if (cname_rrset != NULL) {
@@ -679,27 +829,30 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 				dnslib_zone_find_node((dnslib_zone_t *)
 						      args->arg1, ns_dname);
 
-			if (glue_node == NULL) {
-				char *name =
-					dnslib_dname_to_str(ns_dname);
-				log_zone_error("Glue node not found "
-					       "for dname: %s\n",
-					       name);
-				free(name);
-				return;
-			}
+			if (dnslib_dname_is_subdomain(ns_dname,
+				dnslib_node_owner(dnslib_zone_apex(zone)))) {
+				if (glue_node == NULL) {
+					char *name =
+						dnslib_dname_to_str(ns_dname);
+/*					log_zone_error("Glue node not found "
+						       "for dname: %s\n",
+						       name); */
+					free(name);
+					return;
+				}
 
-			if ((dnslib_node_rrset(glue_node,
-					       DNSLIB_RRTYPE_A) == NULL) &&
-			    (dnslib_node_rrset(glue_node,
-					       DNSLIB_RRTYPE_AAAA) == NULL)) {
-				char *name =
-					dnslib_dname_to_str(ns_dname);
-				log_zone_error("Glue address not found "
-					       "for dname: %s\n",
-					       name);
-				free(name);
-				return;
+				if ((dnslib_node_rrset(glue_node,
+						       DNSLIB_RRTYPE_A) == NULL) &&
+				    (dnslib_node_rrset(glue_node,
+						       DNSLIB_RRTYPE_AAAA) == NULL)) {
+					char *name =
+						dnslib_dname_to_str(ns_dname);
+					log_zone_error("Glue address not found "
+						       "for dname: %s\n",
+						       name);
+					free(name);
+					return;
+				}
 			}
 		}
 	}
@@ -720,8 +873,9 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 
 		/* there is no point in checking non_authoritative node */
 		for (int i = 0; i < rrset_count && auth; i++) {
-                        const dnslib_rrset_t *rrset = rrsets[i];
-                        if ((ret = check_rrsig_in_rrset(rrset, dnskey_rrset,
+			const dnslib_rrset_t *rrset = rrsets[i];
+			if (!deleg &&
+			    (ret = check_rrsig_in_rrset(rrset, dnskey_rrset,
                                                  nsec3)) != 0) {
                                 log_zone_error("RRSIG %d node %s\n", ret,
                                                dnslib_dname_to_str(node->owner));
@@ -737,7 +891,7 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 					char *name =
 					dnslib_dname_to_str(node->owner);
 					log_zone_error("Missing NSEC in node: "
-						       "%s\n");
+						       "%s\n", name);
 					free(name);
 					return;
 				}
@@ -809,21 +963,17 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 
 				assert(next_domain);
 
-				/* TODO do this at the beginning! */
-				dnslib_zone_t *zone =
-					(dnslib_zone_t *)args->arg1;
-
 				if (dnslib_zone_find_node(zone, next_domain) ==
 				    NULL) {
 					log_zone_error("NSEC chain is not "
 						       "coherent!\n");
 				}
 			} else if (nsec3 && (auth || deleg)) { /* nsec3 */
-				/* TODO do this at the beginning! */
-				dnslib_zone_t *zone =
-					(dnslib_zone_t *)args->arg1;
-				if (check_nsec3_node_in_zone(zone, node) != 0) {
-					log_zone_error("TODO nsec3");
+				int ret = check_nsec3_node_in_zone(zone, node);
+				if (ret != 0) {
+					log_zone_error("NSEC3 error: %d\n", ret);
+					log_zone_error("NODE: %s\n",
+					dnslib_dname_to_str(node->owner));
 				}
 			}
 		}
