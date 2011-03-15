@@ -36,7 +36,7 @@ Retrieved from: http://en.literateprograms.org/Skip_list_(C)?oldid=12811
 #include <assert.h>
 
 #include "common.h"
-#include "skip-list.h"
+#include "dnslib/ext/skip-list.h"
 
 /*----------------------------------------------------------------------------*/
 

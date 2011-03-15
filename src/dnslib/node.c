@@ -2,9 +2,11 @@
 #include <malloc.h>
 #include <assert.h>
 
-#include "common.h"
+#include "dnslib-common.h"
 #include "dnslib/node.h"
 #include "dnslib/rrset.h"
+#include "dnslib/ext/skip-list.h"
+#include "dnslib/ext/tree.h"
 
 /*----------------------------------------------------------------------------*/
 

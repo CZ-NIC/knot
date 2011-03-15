@@ -79,11 +79,11 @@ libknot_la_SOURCES =				\
 	conf/logconf.c                          \
 	ctl/process.c				\
 	lib/lists.c	            		\
-	lib/dynamic-array.c			\
+	dnslib/ext/dynamic-array.c			\
 	lib/bitset.c				\
-	lib/skip-list.c				\
+	dnslib/ext/skip-list.c				\
 	lib/base32.c				\
-	lib/base32hex.c				\
+	dnslib/ext/base32hex.c				\
 	stat/gatherer.c				\
 	stat/stat.c				\
         dnslib/edns.c                           \
@@ -106,9 +106,9 @@ libknot_la_SOURCES =				\
 	server/server.c				\
 	server/udp-handler.c			\
 	server/tcp-handler.c			\
-	hash/hash-functions.c			\
-	hash/cuckoo-hash-table.c		\
-	hash/universal-system.c			\
+	dnslib/hash/hash-functions.c			\
+	dnslib/hash/cuckoo-hash-table.c		\
+	dnslib/hash/universal-system.c			\
 	other/log.c				\
 	other/print.c				\
 	alloc/slab.h			        \
@@ -117,12 +117,12 @@ libknot_la_SOURCES =				\
 	conf/conf.h                             \
 	ctl/process.h		                \
 	lib/lists.h	            		\
-	lib/skip-list.h				\
-	lib/dynamic-array.h			\
-	lib/tree.h				\
+	dnslib/ext/skip-list.h				\
+	dnslib/ext/dynamic-array.h			\
+	dnslib/ext/tree.h				\
 	lib/bitset.h				\
 	lib/base32.h				\
-	lib/base32hex.h				\
+	dnslib/ext/base32hex.h				\
 	tests/libtap/tap.h			\
 	tests/tap_unit.h			\
 	stat/gatherer.h				\
@@ -151,9 +151,9 @@ libknot_la_SOURCES =				\
 	server/tcp-handler.h			\
 	server/dthreads.h			\
 	server/server.h				\
-	hash/universal-system.h			\
-	hash/cuckoo-hash-table.h		\
-	hash/hash-functions.h			\
+	dnslib/hash/universal-system.h			\
+	dnslib/hash/cuckoo-hash-table.h		\
+	dnslib/hash/hash-functions.h			\
 	other/print.h				\
 	other/log.h				\
 	other/debug.h      

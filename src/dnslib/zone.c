@@ -2,16 +2,18 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "common.h"
+#include "dnslib-common.h"
 #include "dnslib/zone.h"
 #include "dnslib/node.h"
 #include "dnslib/dname.h"
-#include "lib/tree.h"
 #include "dnslib/consts.h"
 #include "dnslib/descriptor.h"
-#include "hash/cuckoo-hash-table.h"
 #include "dnslib/nsec3.h"
-#include "lib/base32hex.h"
+#include "dnslib/debug.h"
+#include "dnslib/utils.h"
+#include "dnslib/ext/tree.h"
+#include "dnslib/ext/base32hex.h"
+#include "dnslib/hash/cuckoo-hash-table.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */

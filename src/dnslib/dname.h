@@ -11,6 +11,7 @@
 #ifndef _KNOT_DNSLIB_DNAME_H_
 #define _KNOT_DNSLIB_DNAME_H_
 
+#include "dnslib-common.h"
 #include <stdint.h>
 
 struct dnslib_node;

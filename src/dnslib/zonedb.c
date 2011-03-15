@@ -4,13 +4,13 @@
 
 #include <urcu.h>
 
-#include "common.h"
+#include "dnslib-common.h"
 #include "dnslib/zonedb.h"
-#include "lib/skip-list.h"
 #include "dnslib/zone.h"
 #include "dnslib/dname.h"
 #include "dnslib/node.h"
-#include "conf/conf.h"
+#include "dnslib/debug.h"
+#include "dnslib/ext/skip-list.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */

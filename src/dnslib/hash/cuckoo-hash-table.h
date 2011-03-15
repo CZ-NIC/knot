@@ -25,8 +25,8 @@
 #include <stdlib.h> /* size_t */
 #include <pthread.h>
 
-#include "hash/universal-system.h"
-#include "lib/dynamic-array.h"
+#include "dnslib/hash/universal-system.h"
+#include "dnslib/ext/dynamic-array.h"
 
 /*----------------------------------------------------------------------------*/
 

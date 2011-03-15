@@ -3,7 +3,7 @@
 #include <malloc.h>
 #include <assert.h>
 
-#include "common.h"
+#include "dnslib-common.h"
 #include "dnslib/rrset.h"
 #include "dnslib/descriptor.h"
 

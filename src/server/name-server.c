@@ -10,8 +10,6 @@
 #include "stat/stat.h"
 #include "dnslib/dnslib.h"
 #include "dnslib/debug.h"
-#include "dnslib/edns.h"
-#include "dnslib/nsec3.h"
 
 //static const uint8_t  RCODE_MASK           = 0xf0;
 static const int      OFFSET_FLAGS2        = 3;

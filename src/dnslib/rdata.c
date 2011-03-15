@@ -3,8 +3,9 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
 
-#include "common.h"
+#include "dnslib-common.h"
 #include "dnslib/rdata.h"
 #include "dnslib/descriptor.h"
 #include "dnslib/dname.h"

@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <assert.h>
 
-#include "common.h"
+#include "dnslib-common.h"
 #include "dnslib/response.h"
 #include "dnslib/rrset.h"
 #include "dnslib/packet.h"
@@ -11,6 +11,7 @@
 #include "dnslib/edns.h"
 #include "dnslib/utils.h"
 #include "dnslib/node.h"
+#include "dnslib/debug.h"
 
 enum {
 	DEFAULT_ANCOUNT = 6,

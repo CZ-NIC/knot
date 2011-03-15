@@ -29,18 +29,9 @@
 
 #include "common.h"
 #include "zoneparser/zoneparser.h"
-#include "dnslib/dname.h"
-#include "dnslib/rrset.h"
-#include "dnslib/rdata.h"
-#include "dnslib/node.h"
-#include "dnslib/zone.h"
-#include "dnslib/descriptor.h"
-#include "dnslib/debug.h"
 #include "zoneparser/parser-util.h"
 #include "zparser.h"
-#include "dnslib/zone-dump.h"
-#include "dnslib/zone-load.h"
-#include "dnslib/zone-dump-text.h"
+#include "dnslib/dnslib.h"
 
 #define IP6ADDRLEN	(128/8)
 #define	NS_INT16SZ	2

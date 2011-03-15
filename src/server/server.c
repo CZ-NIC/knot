@@ -5,9 +5,9 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <openssl/evp.h>
+#include <assert.h>
 
 #include "common.h"
-#include "other/debug.h"
 #include "server/server.h"
 #include "server/udp-handler.h"
 #include "server/tcp-handler.h"

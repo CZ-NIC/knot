@@ -7,7 +7,6 @@
 
 #include "common.h"
 #include "ctl/process.h"
-#include "other/log.h"
 #include "conf/conf.h"
 
 const char* pid_filename()

@@ -7,8 +7,7 @@
 #include <errno.h>
 
 #include "common.h"
-#include "dthreads.h"
-#include "other/log.h"
+#include "server/dthreads.h"
 
 /* Lock thread state for R/W. */
 static inline void lock_thread_rw(dthread_t *thread)
