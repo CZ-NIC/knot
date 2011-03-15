@@ -1452,7 +1452,16 @@ int process_rr(void)
 	dnslib_node_t *(*node_get_func)(const dnslib_zone_t *zone,
 					const dnslib_dname_t *owner);
 
-	if (current_rrset->type != DNSLIB_RRTYPE_NSEC3) {
+	/* If we have RRSIG of NSEC3 type first node will have
+	 * to be created in NSEC3 part of the zone */
+
+	uint16_t type_covered = 0;
+	if (current_rrset->type == DNSLIB_RRTYPE_RRSIG) {
+		type_covered = rrsig_type_covered(current_rrset);
+	}
+
+	if (current_rrset->type != DNSLIB_RRTYPE_NSEC3 &&
+	    type_covered != DNSLIB_RRTYPE_NSEC3) {
 		node_add_func = &dnslib_zone_add_node;
 		node_get_func = &dnslib_zone_get_node;
 	} else {
@@ -1729,7 +1738,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 
 	debug_zp("rdata adjusted\n");
 
-        dnslib_zdump_binary(parser->current_zone, outfile, 0, zonefile);
+	dnslib_zdump_binary(parser->current_zone, outfile, 1, zonefile);
 
 	/* This is *almost* unnecessary */
 	dnslib_zone_deep_free(&(parser->current_zone));
