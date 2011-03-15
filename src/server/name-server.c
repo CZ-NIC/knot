@@ -1103,10 +1103,11 @@ static void ns_add_dnskey(const dnslib_node_t *apex, dnslib_response_t *resp)
 
 	const dnslib_rrset_t *rrset =
 		dnslib_node_rrset(apex, DNSLIB_RRTYPE_DNSKEY);
-	assert(rrset != NULL);
-	dnslib_response_add_rrset_additional(resp, rrset, 0, 0);
-	ns_add_rrsigs(rrset, resp, apex->owner,
-	              dnslib_response_add_rrset_additional, 0);
+	if (rrset != NULL) {
+		dnslib_response_add_rrset_additional(resp, rrset, 0, 0);
+		ns_add_rrsigs(rrset, resp, apex->owner,
+			      dnslib_response_add_rrset_additional, 0);
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1123,168 +1124,176 @@ static int ns_answer_from_zone(const dnslib_zone_t *zone,
 	int auth_soa = 0;
 
 	int ret = 0;
-	while (1) {
+	int find_ret = 0;
+	//while (1) {
 		//qname_old = dnslib_dname_copy(qname);
-
+search:
 #ifdef USE_HASH_TABLE
-		int find_ret = dnslib_zone_find_dname_hash(zone, qname,
-		                                      &node, &closest_encloser);
+	find_ret = dnslib_zone_find_dname_hash(zone, qname,
+					      &node, &closest_encloser);
 #else
-		int find_ret = dnslib_zone_find_dname(zone, qname, &node,
-		                                  &closest_encloser, &previous);
+	find_ret = dnslib_zone_find_dname(zone, qname, &node,
+					  &closest_encloser, &previous);
 #endif
 DEBUG_NS(
-		char *name;
-		if (node) {
-			name = dnslib_dname_to_str(node->owner);
-			debug_ns("zone_find_dname() returned node %s ", name);
-			free(name);
-		} else {
-			debug_ns("zone_find_dname() returned no node,");
-		}
+	char *name;
+	if (node) {
+		name = dnslib_dname_to_str(node->owner);
+		debug_ns("zone_find_dname() returned node %s ", name);
+		free(name);
+	} else {
+		debug_ns("zone_find_dname() returned no node,");
+	}
 
-		if (closest_encloser != NULL) {
-			name = dnslib_dname_to_str(closest_encloser->owner);
-			debug_ns(" closest encloser %s.\n", name);
-			free(name);
-		} else {
-			debug_ns(" closest encloser (nil).\n");
-		}
-		if (previous != NULL) {
-			name = dnslib_dname_to_str(previous->owner);
-			debug_ns(" and previous node: %s.\n", name);
-			free(name);
-		} else {
-			debug_ns(" and previous node: (nil).\n");
-		}
+	if (closest_encloser != NULL) {
+		name = dnslib_dname_to_str(closest_encloser->owner);
+		debug_ns(" closest encloser %s.\n", name);
+		free(name);
+	} else {
+		debug_ns(" closest encloser (nil).\n");
+	}
+	if (previous != NULL) {
+		name = dnslib_dname_to_str(previous->owner);
+		debug_ns(" and previous node: %s.\n", name);
+		free(name);
+	} else {
+		debug_ns(" and previous node: (nil).\n");
+	}
 );
-		if (find_ret == DNSLIB_ZONE_NAME_NOT_IN_ZONE) {
-			// possible only if we followed cname
-			assert(cname != 0);
-			dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
+	if (find_ret == DNSLIB_ZONE_NAME_NOT_IN_ZONE) {
+		// possible only if we followed cname
+		assert(cname != 0);
+		dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
+		auth_soa = 1;
+		dnslib_response_set_aa(resp);
+		goto finalize;
+	}
+
+have_node:
+
+//	assert(exact_match == 1
+//	       || (exact_match == 0 && closest_encloser == node));
+
+	debug_ns("Closest encloser is deleg. point? %s\n",
+		 (dnslib_node_is_deleg_point(closest_encloser))
+		 ? "yes" : "no");
+
+	debug_ns("Closest encloser is non authoritative? %s\n",
+		 (dnslib_node_is_non_auth(closest_encloser))
+		 ? "yes" : "no");
+
+	if (dnslib_node_is_deleg_point(closest_encloser)
+	    || dnslib_node_is_non_auth(closest_encloser)) {
+		ret = ns_referral(closest_encloser, zone, qname, resp);
+		goto finalize;
+	}
+
+	if (find_ret == DNSLIB_ZONE_NAME_NOT_FOUND) {
+		// DNAME?
+		const dnslib_rrset_t *dname_rrset =
+			dnslib_node_rrset(closest_encloser,
+					  DNSLIB_RRTYPE_DNAME);
+		if (dname_rrset != NULL) {
+			ns_process_dname(dname_rrset, qname, resp);
 			auth_soa = 1;
 			dnslib_response_set_aa(resp);
-			break;
+			goto finalize;
 		}
+		// else check for a wildcard child
+		const dnslib_node_t *wildcard_node =
+			dnslib_node_wildcard_child(closest_encloser);
 
-//		assert(exact_match == 1
-//		       || (exact_match == 0 && closest_encloser == node));
-
-		debug_ns("Closest encloser is deleg. point? %s\n",
-			 (dnslib_node_is_deleg_point(closest_encloser))
-			 ? "yes" : "no");
-
-		debug_ns("Closest encloser is non authoritative? %s\n",
-			 (dnslib_node_is_non_auth(closest_encloser))
-			 ? "yes" : "no");
-
-		if (dnslib_node_is_deleg_point(closest_encloser)
-		    || dnslib_node_is_non_auth(closest_encloser)) {
-			ret = ns_referral(closest_encloser, zone, qname, resp);
-			break;
-		}
-
-		if (find_ret == DNSLIB_ZONE_NAME_NOT_FOUND) {
-			// DNAME?
-			const dnslib_rrset_t *dname_rrset =
-				dnslib_node_rrset(closest_encloser,
-				                  DNSLIB_RRTYPE_DNAME);
-			if (dname_rrset != NULL) {
-				ns_process_dname(dname_rrset, qname, resp);
-				auth_soa = 1;
-				dnslib_response_set_aa(resp);
-				break;
-			}
-			// else check for a wildcard child
-			const dnslib_node_t *wildcard_node =
-				dnslib_node_wildcard_child(closest_encloser);
-
-			if (wildcard_node == NULL) {
-				debug_ns("No wildcard node. (cname: %d)\n",
-				         cname);
-				auth_soa = 1;
-				if (cname == 0) {
-					debug_ns("Setting NXDOMAIN RCODE.\n");
-					// return NXDOMAIN
-					dnslib_response_set_rcode(resp,
-						DNSLIB_RCODE_NXDOMAIN);
-					if (ns_put_nsec_nsec3_nxdomain(zone,
-						previous, closest_encloser,
-						qname, resp) != 0) {
-						return NS_ERR_SERVFAIL;
-					}
-				} else {
-					dnslib_response_set_rcode(resp,
-						DNSLIB_RCODE_NOERROR);
+		if (wildcard_node == NULL) {
+			debug_ns("No wildcard node. (cname: %d)\n",
+				 cname);
+			auth_soa = 1;
+			if (cname == 0) {
+				debug_ns("Setting NXDOMAIN RCODE.\n");
+				// return NXDOMAIN
+				dnslib_response_set_rcode(resp,
+					DNSLIB_RCODE_NXDOMAIN);
+				if (ns_put_nsec_nsec3_nxdomain(zone,
+					previous, closest_encloser,
+					qname, resp) != 0) {
+					return NS_ERR_SERVFAIL;
 				}
-				dnslib_response_set_aa(resp);
-				break;
+			} else {
+				dnslib_response_set_rcode(resp,
+					DNSLIB_RCODE_NOERROR);
 			}
-			// else set the node from which to take the answers to
-			// the wildcard node
-			node = wildcard_node;
+			dnslib_response_set_aa(resp);
+			goto finalize;
 		}
-
-		// now we have the node for answering
-
-		if (dnslib_node_is_deleg_point(node)
-		    || dnslib_node_is_non_auth(node)) {
-			ret = ns_referral(node, zone, qname, resp);
-			break;
-		}
-
-		if (dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME) != NULL) {
-DEBUG_NS(
-			char *name = dnslib_dname_to_str(node->owner);
-			debug_ns("Node %s has CNAME record, resolving...\n",
-				 name);
-			free(name);
-);
-			const dnslib_dname_t *act_name = qname;
-			ns_follow_cname(&node, &act_name, resp,
-			                dnslib_response_add_rrset_answer, 1);
-DEBUG_NS(
-			char *name2 = dnslib_dname_to_str(act_name);
-			debug_ns("Canonical name: %s, node found: %p\n",
-			         name2, node);
-			free(name2);
-);
-			if (act_name != qname) {
-				qname = act_name;
-			}
-			cname = 1;
-
-			// otherwise search for the new name
-			if (node == NULL) {
-				continue; // infinite loop better than goto? :)
-			}
-			// if the node is delegation point, return referral
-			if (dnslib_node_is_deleg_point(node)) {
-				ret = ns_referral(node, zone, qname, resp);
-				break;
-			}
-		}
-
-		ret = ns_answer_from_node(node, closest_encloser, previous,
-		                    zone, qname, qtype, resp);
-		if (ret != 0) {
-			break;
-		}
-		dnslib_response_set_aa(resp);
-		dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
-
-		// this is the only case when the servers answers from
-		// particular node, i.e. the only case when it may return SOA
-		// or NS records in Answer section
-		if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)
-		    && node == zone->apex
-		    && (qtype == DNSLIB_RRTYPE_SOA
-		        || qtype == DNSLIB_RRTYPE_NS)) {
-			ns_add_dnskey(node, resp);
-		}
-
-		break;
+		// else set the node from which to take the answers to
+		// the wildcard node
+		node = wildcard_node;
 	}
+
+	// now we have the node for answering
+
+	if (dnslib_node_is_deleg_point(node)
+	    || dnslib_node_is_non_auth(node)) {
+		ret = ns_referral(node, zone, qname, resp);
+		goto finalize;
+	}
+
+	if (dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME) != NULL) {
+DEBUG_NS(
+		char *name = dnslib_dname_to_str(node->owner);
+		debug_ns("Node %s has CNAME record, resolving...\n",
+			 name);
+		free(name);
+);
+		const dnslib_dname_t *act_name = qname;
+		ns_follow_cname(&node, &act_name, resp,
+				dnslib_response_add_rrset_answer, 1);
+DEBUG_NS(
+		char *name2 = dnslib_dname_to_str(act_name);
+		debug_ns("Canonical name: %s, node found: %p\n",
+			 name2, node);
+		free(name2);
+);
+		if (act_name != qname) {
+			qname = act_name;
+		}
+		cname = 1;
+
+		// otherwise search for the new name
+		if (node == NULL) {
+			goto search;
+		} else if (node->owner != act_name) {
+			// the stored node is closest encloser
+			find_ret = DNSLIB_ZONE_NAME_NOT_FOUND;
+			closest_encloser = node;
+			node = NULL;
+			goto have_node;
+		} // else do nothing, just continue
+		// if the node is delegation point, return referral
+//		if (dnslib_node_is_deleg_point(node)) {
+//			ret = ns_referral(node, zone, qname, resp);
+//			goto finalize;
+//		}
+	}
+
+	ret = ns_answer_from_node(node, closest_encloser, previous,
+			    zone, qname, qtype, resp);
+	if (ret != 0) {
+		goto finalize;
+	}
+	dnslib_response_set_aa(resp);
+	dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
+
+	// this is the only case when the servers answers from
+	// particular node, i.e. the only case when it may return SOA
+	// or NS records in Answer section
+	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)
+	    && node == zone->apex
+	    && (qtype == DNSLIB_RRTYPE_SOA
+		|| qtype == DNSLIB_RRTYPE_NS)) {
+		ns_add_dnskey(node, resp);
+	}
+
+finalize:
 
 	if (ret == 0 && auth_soa) {
 		ns_put_authority_soa(zone, resp);
