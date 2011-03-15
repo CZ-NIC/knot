@@ -183,7 +183,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 
 			// Check source files and mtime
 			zloader_t *zl = dnslib_zload_open(zone->db);
-			if (!dnslib_zload_needs_update(zl)) {
+			int src_changed = strcmp(zone->file, zl->source) != 0;
+			if (!src_changed && !dnslib_zload_needs_update(zl)) {
 				printf("Zone '%s' is up-to-date.\n",
 				       zone->name);
 

@@ -29,24 +29,24 @@ unsigned long int fnv_hash(const char *data, int size, int bits)
 	return (hash ^(hash >> shift)) & mask;
 }
 
-unsigned long int fnv_hash2(char *data, int size, int bits)
-{
-	int i;
-	const unsigned int p = 16777619;
-	unsigned long int hash = 2166136261;
+//unsigned long int fnv_hash2(char *data, int size, int bits)
+//{
+//	int i;
+//	const unsigned int p = 16777619;
+//	unsigned long int hash = 2166136261;
 
-	for (i = 0; i < size; i++) {
-		hash = (hash ^ data[i]) * p;
-	}
+//	for (i = 0; i < size; i++) {
+//		hash = (hash ^ data[i]) * p;
+//	}
 
-	hash += hash << 13;
-	hash ^= hash >> 7;
-	hash += hash << 3;
-	hash ^= hash >> 17;
-	hash += hash << 5;
+//	hash += hash << 13;
+//	hash ^= hash >> 7;
+//	hash += hash << 3;
+//	hash ^= hash >> 17;
+//	hash += hash << 5;
 
-	return hash;
-}
+//	return hash;
+//}
 
 /*------------------------------- JENKINS HASH -------------------------------*/
 

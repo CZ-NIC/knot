@@ -21,7 +21,7 @@ typedef  unsigned     char  u1;   /* unsigned 1-byte type */
 
 unsigned long int fnv_hash(const char *data, int size, int bits);
 
-unsigned long int fnv_hash2(char *data, int size, int bits);
+//unsigned long int fnv_hash2(char *data, int size, int bits);
 
 u4 jhash(register u1 *k, u4 length, u4 initval);
 
