@@ -10,8 +10,6 @@
 #include <arpa/inet.h>
 
 #include "dnslib.h"
-/* TODO remove this depency, if possible */
-#include "zoneparser/parser-util.h"
 #include "dnslib/ext/skip-list.h"
 
 /* TODO max length of alg */
