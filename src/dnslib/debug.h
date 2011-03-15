@@ -2,6 +2,7 @@
  * \file descriptor.h
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>
+ * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
  * \brief Functions for debug output of dnslib structures.
  *
