@@ -9,7 +9,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "common.h"
+#include "stat/stat-common.h"
 #include "stat/stat.h"
 #include "stat/gatherer.h"
 
