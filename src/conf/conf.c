@@ -152,7 +152,7 @@ static void conf_update_hooks(conf_t *conf)
 	WALK_LIST (n, conf->hooks) {
 		conf_hook_t *hook = (conf_hook_t*)n;
 		if ((hook->sections & conf->_touched) && hook->update) {
-			hook->update(conf);
+			hook->update(conf, hook->data);
 		}
 	}
 }
@@ -339,11 +339,13 @@ conf_t *conf_new(const char* path)
 	return c;
 }
 
-int conf_add_hook(conf_t * conf, int sections, int (*on_update)())
+int conf_add_hook(conf_t * conf, int sections,
+                  int (*on_update)(const conf_t*, void*), void *data)
 {
 	conf_hook_t *hook = malloc(sizeof(conf_hook_t));
 	hook->sections = sections;
 	hook->update = on_update;
+	hook->data = data;
 	add_tail(&conf->hooks, &hook->n);
 	++conf->hooks_count;
 
@@ -509,10 +511,13 @@ int conf_open(const char* path)
 	conf_t *oldconf = rcu_xchg_pointer(&s_config, nconf);
 
 	/* Copy hooks. */
-	node *n = 0;
-	WALK_LIST (n, oldconf->hooks) {
-		conf_hook_t *hook = (conf_hook_t*)n;
-		conf_add_hook(nconf, hook->sections, hook->update);
+	if (oldconf) {
+		node *n = 0;
+		WALK_LIST (n, oldconf->hooks) {
+			conf_hook_t *hook = (conf_hook_t*)n;
+			conf_add_hook(nconf, hook->sections,
+			              hook->update, hook->data);
+		}
 	}
 
 	/* Postprocess config. */
@@ -522,7 +527,9 @@ int conf_open(const char* path)
 	synchronize_rcu();
 
 	/* Free old config. */
-	conf_free(oldconf);
+	if (oldconf) {
+		conf_free(oldconf);
+	}
 
 	/* Update hooks. */
 	conf_update_hooks(nconf);

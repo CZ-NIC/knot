@@ -105,7 +105,7 @@ int main(int argc, char **argv)
 
 	// Initialize configuration
 	conf_read_lock();
-	conf_add_hook(conf(), CONF_LOG, log_conf_hook);
+	conf_add_hook(conf(), CONF_LOG, log_conf_hook, 0);
 	conf_read_unlock();
 
 	// Find implicit configuration file

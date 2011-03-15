@@ -9,8 +9,11 @@
 #include "other/log.h"
 #include "lib/lists.h"
 
-int log_conf_hook(const struct conf_t *conf)
+int log_conf_hook(const struct conf_t *conf, void *data)
 {
+	// Data not used
+	data = data;
+
 	// Check if log declaration exists, otherwise ignore
 	if (conf->logs_count < 1) {
 		return 0;
