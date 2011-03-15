@@ -21,7 +21,7 @@ struct conf_t;
  * \retval  0 On success.
  * \retval <0 If an error occured.
  */
-int log_conf_hook(const struct conf_t *conf);
+int log_conf_hook(const struct conf_t *conf, void *data);
 
 #endif /* _KNOT_LOGCONF_H_ */
 

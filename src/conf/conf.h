@@ -160,7 +160,8 @@ typedef struct conf_t {
 typedef struct {
 	node n;
 	int sections; /*!< Bitmask of watched sections. */
-	int (*update)(const conf_t*); /*!< Function executed on config load. */
+	int (*update)(const conf_t*, void*); /*!< Function executed on config load. */
+	void *data;
 } conf_hook_t;
 
 /*
@@ -182,14 +183,13 @@ conf_t *conf_new(const char* path);
  * \param conf Configuration context.
  * \param sections Bitmask of watched sections or CONF_ALL.
  * \param on_update Callback.
+ * \param data User specified data for hook.
  *
  * \retval 0 on success.
  * \retval <0 on error.
- *
- * \todo There might be some issues with reloading config
- *       on-the-fly in multithreaded environment, check afterwards.
  */
-int conf_add_hook(conf_t * conf, int sections, int (*on_update)(const conf_t*));
+int conf_add_hook(conf_t * conf, int sections,
+                  int (*on_update)(const conf_t*, void*), void *data);
 
 /*!
  * \brief Parse configuration from associated file.
