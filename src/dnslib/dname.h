@@ -139,7 +139,7 @@ uint dnslib_dname_size(const dnslib_dname_t *dname);
  *
  * \return Size of first \a labels labels of \a dname, counted from left.
  */
-const uint8_t dnslib_dname_size_part(const dnslib_dname_t *dname, int labels);
+uint8_t dnslib_dname_size_part(const dnslib_dname_t *dname, int labels);
 
 /*!
  * \brief Returns the zone node the domain name belongs to.

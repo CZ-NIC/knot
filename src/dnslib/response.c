@@ -94,7 +94,7 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 	resp->question.qname =
 		(dnslib_dname_t *)((char *)resp + PREALLOC_RESPONSE);
 
-	debug_dnslib_response("QNAME: %p (%ld after start of response)\n",
+	debug_dnslib_response("QNAME: %p (%zd after start of response)\n",
 		resp->question.qname,
 		(void *)resp->question.qname - (void *)resp);
 
@@ -113,13 +113,13 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 	resp->authority = resp->answer + DEFAULT_ANCOUNT;
 	resp->additional = resp->authority + DEFAULT_NSCOUNT;
 
-	debug_dnslib_response("Answer section: %p (%ld after QNAME)\n",
+	debug_dnslib_response("Answer section: %p (%zd after QNAME)\n",
 		resp->answer,
 		(void *)resp->answer - (void *)resp->question.qname);
-	debug_dnslib_response("Authority section: %p (%ld after Answer)\n",
+	debug_dnslib_response("Authority section: %p (%zd after Answer)\n",
 		resp->authority,
 		(void *)resp->authority - (void *)resp->answer);
-	debug_dnslib_response("Additional section: %p (%ld after Authority)\n",
+	debug_dnslib_response("Additional section: %p (%zd after Authority)\n",
 		resp->additional,
 		(void *)resp->additional - (void *)resp->authority);
 
@@ -133,10 +133,10 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 	resp->compression.offsets = (short *)
 		(resp->compression.dnames + DEFAULT_DOMAINS_IN_RESPONSE);
 
-	debug_dnslib_response("Compression dnames: %p (%ld after Additional)\n",
+	debug_dnslib_response("Compression dnames: %p (%zd after Additional)\n",
 		resp->compression.dnames,
 		(void *)resp->compression.dnames - (void *)resp->additional);
-	debug_dnslib_response("Compression offsets: %p (%ld after c. dnames)\n",
+	debug_dnslib_response("Compression offsets: %p (%zd after c. dnames)\n",
 		resp->compression.offsets,
 		(void *)resp->compression.offsets
 		  - (void *)resp->compression.dnames);
@@ -146,13 +146,13 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 	resp->tmp_rrsets = (const dnslib_rrset_t **)
 		(resp->compression.offsets + DEFAULT_DOMAINS_IN_RESPONSE);
 
-	debug_dnslib_response("Tmp rrsets: %p (%ld after compression offsets)\n",
-		resp->tmp_rrsets,
+	debug_dnslib_response("Tmp rrsets: %p (%zd after compression offsets)"
+		"\n", resp->tmp_rrsets,
 		(void *)resp->tmp_rrsets - (void *)resp->compression.offsets);
 
 	resp->tmp_rrsets_max = DEFAULT_TMP_RRSETS;
 
-	debug_dnslib_response("End of data: %p (%ld after start of response)\n",
+	debug_dnslib_response("End of data: %p (%zd after start of response)\n",
 		resp->tmp_rrsets + DEFAULT_TMP_RRSETS,
 		(void *)(resp->tmp_rrsets + DEFAULT_TMP_RRSETS)
 		  - (void *)resp);
@@ -376,6 +376,8 @@ static int dnslib_response_realloc_compr(dnslib_compressed_dnames_t *table)
 	return 0;
 }
 
+/*----------------------------------------------------------------------------*/
+
 static void dnslib_response_compr_save(dnslib_compressed_dnames_t *table,
                                        const dnslib_dname_t *dname, short pos)
 {
@@ -392,7 +394,7 @@ static void dnslib_response_compr_save(dnslib_compressed_dnames_t *table,
 	++table->count;
 }
 
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 
 static int dnslib_response_store_dname_pos(dnslib_compressed_dnames_t *table,
                                            const dnslib_dname_t *dname,
@@ -526,11 +528,17 @@ static int dnslib_response_compress_dname(const dnslib_dname_t *dname,
 	 */
 
 	// try to find the name or one of its ancestors in the compr. table
+#ifdef COMPRESSION_PEDANTIC
+	//dnslib_dname_t *to_find = dnslib_dname_copy(dname);
+	dnslib_dname_t *to_find = (dnslib_dname_t *)dname;
+	int copied = 0;
+#else
 	const dnslib_dname_t *to_find = dname;
+#endif
 	short offset = -1;
 	int not_matched = 0;
 
-	while (to_find != NULL) {
+	while (to_find != NULL && dnslib_dname_label_count(to_find) != 0) {
 DEBUG_DNSLIB_RESPONSE(
 		char *name = dnslib_dname_to_str(to_find);
 		debug_dnslib_response("Searching for name %s in the compression"
@@ -541,9 +549,27 @@ DEBUG_DNSLIB_RESPONSE(
 		offset = dnslib_response_find_dname_pos(compr->table, to_find);
 		if (offset < 0) {
 			++not_matched;
+		} else {
+			break;
 		}
-
-		if (offset >= 0 || to_find->node == NULL
+#ifdef COMPRESSION_PEDANTIC
+		if (to_find->node == NULL
+		    || to_find->node->owner != to_find
+		    || to_find->node->parent == NULL) {
+			if (!copied) {
+				to_find = dnslib_dname_left_chop(to_find);
+				copied = 1;
+			} else {
+				dnslib_dname_left_chop_no_copy(to_find);
+			}
+		} else {
+			assert(to_find->node != to_find->node->parent);
+			assert(to_find != to_find->node->parent->owner);
+			to_find = to_find->node->parent->owner;
+		}
+#else
+		if (to_find->node == NULL
+		    || to_find->node->owner != to_find
 		    || to_find->node->parent == NULL) {
 			break;
 		} else {
@@ -551,7 +577,14 @@ DEBUG_DNSLIB_RESPONSE(
 			assert(to_find != to_find->node->parent->owner);
 			to_find = to_find->node->parent->owner;
 		}
+#endif
 	}
+
+#ifdef COMPRESSION_PEDANTIC
+	if (copied) {
+		dnslib_dname_free(&to_find);
+	}
+#endif
 
 	if (offset >= 0) {  // found such dname somewhere in the packet
 		debug_dnslib_response("Found name in the compression table.\n");
@@ -1093,14 +1126,14 @@ const dnslib_dname_t *dnslib_response_qname(const dnslib_response_t *response)
 
 /*----------------------------------------------------------------------------*/
 
-const uint16_t dnslib_response_qtype(const dnslib_response_t *response)
+uint16_t dnslib_response_qtype(const dnslib_response_t *response)
 {
 	return response->question.qtype;
 }
 
 /*----------------------------------------------------------------------------*/
 
-const uint16_t dnslib_response_qclass(const dnslib_response_t *response)
+uint16_t dnslib_response_qclass(const dnslib_response_t *response)
 {
 	return response->question.qclass;
 }
