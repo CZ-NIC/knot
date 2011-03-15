@@ -5,8 +5,23 @@
 
 #include <urcu.h>
 
-#include "common.h"
-#include "lib/dynamic-array.h"
+//#include "common.h"
+#include "dnslib/ext/dynamic-array.h"
+
+#ifndef ERR_ALLOC_FAILED
+#define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d\n", \
+				 __FILE__, __LINE__)
+#endif
+
+//#define DA_DEBUG
+
+#ifndef debug_da
+#ifdef DA_DEBUG
+#define debug_da(msg...) fprintf(stderr, msg)
+#else
+#define debug_da(msg...)
+#endif
+#endif
 
 /*----------------------------------------------------------------------------*/
 /* Private functions                                                          */

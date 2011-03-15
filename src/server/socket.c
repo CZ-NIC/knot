@@ -12,7 +12,7 @@
 #include <arpa/inet.h>
 
 #include "common.h"
-#include "socket.h"
+#include "server/socket.h"
 
 int socket_create(int family, int type)
 {

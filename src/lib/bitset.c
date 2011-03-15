@@ -3,8 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "common.h"
-#include "bitset.h"
+#include "lib/bitset.h"
 
 #define WORD_SIZE 32
 #define WORD_CHECK 31

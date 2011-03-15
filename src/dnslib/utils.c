@@ -1,8 +1,17 @@
 #include <config.h>
 #include <string.h>
 
-#include "common.h"
+#include "dnslib-common.h"
 #include "dnslib/utils.h"
+
+void dnslib_hex_printf(const char *data, int length, printf_t print_handler)
+{
+	int ptr = 0;
+	for (; ptr < length; ptr++) {
+		print_handler("0x%02x ", (unsigned char)*(data + ptr));
+	}
+	print_handler("\n");
+}
 
 dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,
                                              const char *name)

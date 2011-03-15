@@ -9,9 +9,9 @@
 #include <urcu.h>
 
 #include "common.h"
-#include "hash/cuckoo-hash-table.h"
-#include "hash/hash-functions.h"
-#include "lib/dynamic-array.h"
+#include "dnslib/hash/cuckoo-hash-table.h"
+#include "dnslib/hash/hash-functions.h"
+#include "dnslib/ext/dynamic-array.h"
 
 /*----------------------------------------------------------------------------*/
 /* Macros and inline functions                                                */

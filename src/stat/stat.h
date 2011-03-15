@@ -19,7 +19,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#include "gatherer.h"
+#include "stat/gatherer.h"
 
 #ifdef STAT_COMPILE
 #define STAT_INIT(x) x = stat_new()

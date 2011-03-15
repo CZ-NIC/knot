@@ -23,7 +23,6 @@
 #include "dnslib/rdata.h"
 #include "dnslib/zone.h"
 #include "alloc/slab.h"
-#include "lib/skip-list.h"
 
 #define MAXRDATALEN	64
 #define MAXLABELLEN	63

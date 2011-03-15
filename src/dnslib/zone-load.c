@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 #include <time.h>
 
-#include "common.h"
+#include "dnslib-common.h"
 #include "dnslib/zone-load.h"
 #include "dnslib/zone-dump.h"
 #include "dnslib/dnslib.h"

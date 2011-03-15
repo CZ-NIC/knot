@@ -4,7 +4,6 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "common.h"
 #include "dnslib/debug.h"
 #include "dnslib/dnslib.h"
 
