@@ -14,7 +14,6 @@
 #include "other/log.h"
 #include "other/print.h"
 
-//#define ST_DEBUG
 //#define SM_DEBUG
 //#define CUCKOO_DEBUG
 //#define CUCKOO_DEBUG_HASH
@@ -86,11 +85,6 @@
 #define debug_zp_hex(data, len)
 #endif
 
-#ifdef ST_DEBUG
-#define debug_st(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#else
-#define debug_st(msg...)
-#endif
 #endif /* _KNOT_DEBUG_H_ */
 
 /*! @} */

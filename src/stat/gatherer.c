@@ -1,7 +1,7 @@
 #include <config.h>
 #include <pthread.h>
 
-#include "common.h"
+#include "stat/stat-common.h"
 #include "alloc/malloc.h"
 #include "stat/gatherer.h"
 

@@ -44,6 +44,7 @@ src/stat/gatherer.c
 src/stat/gatherer.h
 src/stat/stat.h
 src/stat/stat.c
+src/stat/stat-common.h
 src/dnslib/dnslib-common.h
 src/dnslib/dname.h
 src/dnslib/dname.c
