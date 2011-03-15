@@ -187,21 +187,27 @@ int main(int argc, char **argv)
 		}
 
 		/* Run event loop. */
-		fprintf(stderr, "<<in event loop>>\n");
 		for(;;) {
 			int ret = evqueue_poll(evqueue(), &emptyset);
 
 			/* Interrupts. */
 			if (ret == -1) {
+				/*! \todo More robust way to exit evloop.
+				 *        Event loop should exit with a special
+				 *        event.
+				 */
 				if (sig_req_stop) {
+					debug_server("evqueue:"
+					             "server stop requested\n");
 					sig_req_stop = 0;
 					server_stop(server);
-					fprintf(stderr, "<<stop req>>\n");
+					break;
 				}
 				if (sig_req_reload) {
+					debug_server("evqueue:"
+					             "reloading config\n");
 					sig_req_reload = 0;
 					//! \todo Reload config.
-					fprintf(stderr, "<<reload config>>\n");
 				}
 			}
 
@@ -209,7 +215,8 @@ int main(int argc, char **argv)
 			if (ret > 0) {
 				event_t ev;
 				if (evqueue_get(evqueue(), &ev) == 0) {
-					fprintf(stderr, "received new event\n");
+					debug_server("evqueue:"
+					             "received new event\n");
 					if (ev.cb) {
 						ev.cb(&ev);
 					}
@@ -218,7 +225,6 @@ int main(int argc, char **argv)
 
 		}
 
-		fprintf(stderr, "<<out of event loop>>\n");
 		if ((res = server_wait(server)) != 0) {
 			log_server_error("server: An error occured while "
 			                 "waiting for server to finish.\n");

@@ -86,7 +86,6 @@ server_t *server_create()
 	}
 
 	/* Evaluate if all sockets loaded. */
-	debug_server("Done\n\n");
 	if ((tcp_loaded != ifaces_count) ||
 	    (udp_loaded != ifaces_count)) {
 		for (int i = 0; i < udp_loaded; ++i) {
@@ -112,9 +111,8 @@ server_t *server_create()
 	server->handlers = NULL;
 	server->state = ServerIdle;
 
-	debug_server("Done\n\n");
+	// Create zone database structure
 	debug_server("Creating Zone Database structure..\n");
-
 	server->zone_db = dnslib_zonedb_new();
 	if (server->zone_db == NULL) {
 		ERR_ALLOC_FAILED;
@@ -124,9 +122,8 @@ server_t *server_create()
 		return NULL;
 	}
 
-	debug_server("Done\n\n");
+	// Create name server
 	debug_server("Creating Name Server structure..\n");
-
 	server->nameserver = ns_create(server->zone_db);
 	if (server->nameserver == NULL) {
 		dnslib_zonedb_deep_free(&server->zone_db);
@@ -135,15 +132,9 @@ server_t *server_create()
 		free(tcp_socks);
 		return NULL;
 	}
-
-	debug_server("Done\n\n");
-
 	debug_server("Done\n\n");
 	debug_server("Initializing OpenSSL...\n");
-
 	OpenSSL_add_all_digests();
-
-	debug_server("Done\n\n");
 
 	// Estimate number of threads/manager
 	int thr_count = dt_optimal_size();
@@ -312,7 +303,8 @@ int server_start(server_t *server, const char **filenames, uint zones)
 		return -1;
 	}
 
-	debug_server("Starting server with %u zone files.\n", zones);
+	debug_server("Starting server with %u zone files.\n",
+	             zones + conf()->zones_count);
 	//stat
 
 	stat_static_gath_start();
@@ -345,7 +337,6 @@ int server_start(server_t *server, const char **filenames, uint zones)
 		return -1;
 	}
 
-	debug_server("\nDone\n\n");
 	debug_server("Starting servers..\n");
 
 	// Start dispatchers
@@ -355,6 +346,8 @@ int server_start(server_t *server, const char **filenames, uint zones)
 		w->state = ServerRunning;
 		ret += dt_start(w->unit);
 	}
+
+	debug_server("Done\n\n");
 
 	return ret;
 }
