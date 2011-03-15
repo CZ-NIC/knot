@@ -3,13 +3,15 @@
  *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
- * \brief Debugging facility for alloc.
+ * \brief Common macros for alloc.
  *
  * \addtogroup alloc
  * @{
  */
 #ifndef _KNOT_ALLOC_COMMON_H_
 #define _KNOT_ALLOC_COMMON_H_
+
+#include <stdio.h>
 
 #define MEM_DEBUG
 #define MEM_NOSLAB
