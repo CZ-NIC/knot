@@ -11,13 +11,19 @@
 #include "other/log.h"
 #include "conf/conf.h"
 
-const char* pid_filename()
+char* pid_filename()
 {
+	conf_read_lock();
+
+	/* Read configuration. */
+	char* ret = 0;
 	if (conf()) {
-		return conf()->pidfile;
+		ret = strdup(conf()->pidfile);
 	}
 
-	return 0;
+	conf_read_unlock();
+
+	return ret;
 }
 
 pid_t pid_read(const char* fn)

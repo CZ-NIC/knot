@@ -29,7 +29,7 @@ enum {
  * \retval Filename of the database file.
  * \retval NULL if not exists.
  */
-const char* pid_filename();
+char* pid_filename();
 
 /*!
  * \brief Read PID from given file.

@@ -26,6 +26,9 @@ typedef struct {
 
 server_t *server_create()
 {
+	/* Lock configuration. */
+	conf_read_lock();
+
 	/* Create interfaces. */
 	node *n = 0;
 	int ifaces_count = conf()->ifaces_count;
@@ -84,6 +87,9 @@ server_t *server_create()
 		tcp_socks[tcp_loaded].type = iface->family;
 		tcp_loaded++;
 	}
+
+	/* Unlock configuration. */
+	conf_read_unlock();
 
 	/* Evaluate if all sockets loaded. */
 	if ((tcp_loaded != ifaces_count) ||
@@ -303,6 +309,9 @@ int server_start(server_t *server, const char **filenames, uint zones)
 		return -1;
 	}
 
+	/* Lock configuration. */
+	conf_read_lock();
+
 	debug_server("Starting server with %u zone files.\n",
 	             zones + conf()->zones_count);
 	//stat
@@ -341,6 +350,9 @@ int server_start(server_t *server, const char **filenames, uint zones)
 			++zones_loaded;
 		}
 	}
+
+	/* Unlock configuration. */
+	conf_read_unlock();
 
 	// Load given zones
 	for (uint i = 0; i < zones; ++i) {
