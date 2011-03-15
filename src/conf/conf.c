@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include <urcu.h>
+
 #include "conf/conf.h"
 #include "common.h"
 
@@ -142,6 +144,19 @@ static void zone_free(conf_zone_t *zone)
 
 /* Config processing. */
 
+static void conf_update_hooks(conf_t *conf)
+{
+	/*! \todo Selective hooks. */
+	node *n = 0;
+	conf->_touched = CONF_ALL;
+	WALK_LIST (n, conf->hooks) {
+		conf_hook_t *hook = (conf_hook_t*)n;
+		if ((hook->sections & conf->_touched) && hook->update) {
+			hook->update(conf);
+		}
+	}
+}
+
 static int conf_process(conf_t *conf)
 {
 	// Normalize paths
@@ -174,16 +189,6 @@ static int conf_process(conf_t *conf)
 		strcat(dest, zone->name);
 		strcat(dest, "db");
 		zone->db = dest;
-	}
-
-	/* Update hooks */
-	/*! \todo Selective hooks. */
-	conf->_touched = CONF_ALL;
-	WALK_LIST (n, conf->hooks) {
-		conf_hook_t *hook = (conf_hook_t*)n;
-		if ((hook->sections & conf->_touched) && hook->update) {
-			hook->update(conf);
-		}
 	}
 
 	return 0;
@@ -248,6 +253,71 @@ void __attribute__ ((destructor)) conf_deinit()
 	}
 }
 
+static int conf_fparser(conf_t *conf)
+{
+	if (!conf->filename) {
+		return -1;
+	}
+
+	int ret = 0;
+	pthread_mutex_lock(&_parser_lock);
+	// {
+	// Hook new configuration
+	new_config = conf;
+	_parser_src = fopen(conf->filename, "r");
+	_parser_remaining = -1;
+	if (_parser_src == 0) {
+		pthread_mutex_unlock(&_parser_lock);
+		return -2;
+	}
+
+	// Parse config
+	_parser_res = 0;
+	cf_read_hook = cf_read_file;
+	cf_parse();
+	ret = _parser_res;
+	fclose((FILE*)_parser_src);
+	_parser_src = 0;
+	// }
+	pthread_mutex_unlock(&_parser_lock);
+	return ret;
+}
+
+static int conf_strparser(conf_t *conf, const char *src)
+{
+	if (!src) {
+		return -1;
+	}
+
+	int ret = 0;
+	pthread_mutex_lock(&_parser_lock);
+	// {
+	// Hook new configuration
+	new_config = conf;
+	_parser_src = (char*)src;
+	_parser_remaining = strlen(src);
+	if (_parser_src == 0) {
+		_parser_src = 0;
+		_parser_remaining = -1;
+		pthread_mutex_unlock(&_parser_lock);
+		return -2;
+	}
+
+	// Parse config
+	_parser_res = 0;
+	cf_read_hook = cf_read_mem;
+	char *oldfn = new_config->filename;
+	new_config->filename = "(stdin)";
+	cf_parse();
+	new_config->filename = oldfn;
+	ret = _parser_res;
+	_parser_src = 0;
+	_parser_remaining = -1;
+	// }
+	pthread_mutex_unlock(&_parser_lock);
+	return ret;
+}
+
 /* API functions. */
 
 conf_t *conf_new(const char* path)
@@ -282,73 +352,28 @@ int conf_add_hook(conf_t * conf, int sections, int (*on_update)())
 
 int conf_parse(conf_t *conf)
 {
-	if (!conf->filename) {
-		return -1;
-	}
+	/* Parse file. */
+	int ret = conf_fparser(conf);
 
-	int ret = 0;
-	pthread_mutex_lock(&_parser_lock);
-	// {
-	// Hook new configuration
-	new_config = conf;
-	_parser_src = fopen(conf->filename, "r");
-	_parser_remaining = -1;
-	if (_parser_src == 0) {
-		pthread_mutex_unlock(&_parser_lock);
-		return -2;
-	}
-
-	// Parse config
-	_parser_res = 0;
-	cf_read_hook = cf_read_file;
-	cf_parse();
-	ret = _parser_res;
-	fclose((FILE*)_parser_src);
-	_parser_src = 0;
-	// }
-	pthread_mutex_unlock(&_parser_lock);
-
-	// Postprocess config
+	/* Postprocess config. */
 	conf_process(conf);
+
+	/* Update hooks. */
+	conf_update_hooks(conf);
 
 	return ret;
 }
 
 int conf_parse_str(conf_t *conf, const char* src)
 {
-	if (!src) {
-		return -1;
-	}
+	/* Parse config from string. */
+	int ret = conf_strparser(conf, src);
 
-	int ret = 0;
-	pthread_mutex_lock(&_parser_lock);
-	// {
-	// Hook new configuration
-	new_config = conf;
-	_parser_src = (char*)src;
-	_parser_remaining = strlen(src);
-	if (_parser_src == 0) {
-		_parser_src = 0;
-		_parser_remaining = -1;
-		pthread_mutex_unlock(&_parser_lock);
-		return -2;
-	}
-
-	// Parse config
-	_parser_res = 0;
-	cf_read_hook = cf_read_mem;
-	char *oldfn = new_config->filename;
-	new_config->filename = "(stdin)";
-	cf_parse();
-	new_config->filename = oldfn;
-	ret = _parser_res;
-	_parser_src = 0;
-	_parser_remaining = -1;
-	// }
-	pthread_mutex_unlock(&_parser_lock);
-
-	// Postprocess config
+	/* Postprocess config. */
 	conf_process(conf);
+
+	/* Update hooks */
+	conf_update_hooks(conf);
 
 	return ret;
 }
@@ -457,36 +482,50 @@ char* conf_find_default()
 
 int conf_open(const char* path)
 {
-	// Check existing config
-	if (!s_config) {
-		errno = ENOLINK; /* Link has been severed (POSIX.1) */
-		return -1;
-	}
-
-	// Check path
+	/* Check path. */
 	if (!path) {
 		errno = ENOENT; /* No such file or directory (POSIX.1) */
 		return -2;
 	}
 
-	// Check if exists
+	/* Check if exists. */
 	struct stat st;
 	if (stat(path, &st) != 0) {
 		errno = ENOENT; /* No such file or directory (POSIX.1) */
 		return -2;
 	}
 
-	// Truncate config
-	conf_truncate(s_config, 0);
+	/* Create new config. */
+	conf_t *nconf = conf_new(path);
 
-	// Parse config
-	s_config->filename = strdup(path);
-	int ret = conf_parse(s_config);
+	/* Parse config. */
+	int ret = conf_fparser(nconf);
 	if (ret != 0) {
-		conf_free(s_config);
-		s_config = 0;
+		conf_free(nconf);
 		return ret;
 	}
+
+	/* Replace current config. */
+	conf_t *oldconf = rcu_xchg_pointer(&s_config, nconf);
+
+	/* Copy hooks. */
+	node *n = 0;
+	WALK_LIST (n, oldconf->hooks) {
+		conf_hook_t *hook = (conf_hook_t*)n;
+		conf_add_hook(nconf, hook->sections, hook->update);
+	}
+
+	/* Postprocess config. */
+	conf_process(nconf);
+
+	/* Synchronize. */
+	synchronize_rcu();
+
+	/* Free old config. */
+	conf_free(oldconf);
+
+	/* Update hooks. */
+	conf_update_hooks(nconf);
 
 	return 0;
 }

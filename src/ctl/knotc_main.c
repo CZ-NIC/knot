@@ -38,11 +38,10 @@ void help(int argc, char **argv)
 }
 
 int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
-            int force)
+            int force, const char *pidfile)
 {
 	int valid_cmd = 0;
 	int rc = 0;
-	const char* pidfile = pid_filename();
 	if (strcmp(action, "start") == 0) {
 
 		// Check PID
@@ -60,6 +59,9 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			}
 		}
 
+		// Lock configuration
+		conf_read_lock();
+
 		// Prepare command
 		const char *cfg = conf()->filename;
 		char* cmd = 0;
@@ -68,13 +70,15 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		              cfg ? "-c " : "", cfg ? cfg : "",
 			      verbose ? "-v " : "", argc > 0 ? argv[0] : "");
 
+		// Unlock configuration
+		conf_read_unlock();
+
 		// Execute command
 		if ((rc = system(cmd)) < 0) {
 			pid_remove(pidfile);
 			rc = 1;
 		}
 		free(cmd);
-
 	}
 	if (strcmp(action, "stop") == 0) {
 
@@ -103,7 +107,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 	}
 	if (strcmp(action, "restart") == 0) {
 		valid_cmd = 1;
-		execute("stop", argv, argc, pid, verbose, force);
+		execute("stop", argv, argc, pid, verbose, force, pidfile);
 
 		int i = 0;
 		while((pid = pid_read(pidfile)) > 0) {
@@ -124,7 +128,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		}
 
 		printf("Restarting server.\n");
-		rc = execute("start", argv, argc, -1, verbose, force);
+		rc = execute("start", argv, argc, -1, verbose, force, pidfile);
 	}
 	if (strcmp(action, "reload") == 0) {
 
@@ -174,6 +178,9 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		// Check zone
 		valid_cmd = 1;
 
+		// Lock configuration
+		conf_read_lock();
+
 		// Generate databases for all zones
 		node *n = 0;
 		WALK_LIST(n, conf()->zones) {
@@ -215,6 +222,9 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			}
 			free(cmd);
 		}
+
+		// Unlock configuration
+		conf_read_unlock();
 	}
 	if (!valid_cmd) {
 		fprintf(stderr, "Invalid command: '%s'\n", action);
@@ -293,7 +303,7 @@ int main(int argc, char **argv)
 	}
 
 	// Fetch PID
-	const char* pidfile = pid_filename();
+	char* pidfile = pid_filename();
 	if (!pidfile) {
 		fprintf(stderr, "No configuration found, "
 		        "please specify with '-c' parameter.\n");
@@ -308,9 +318,10 @@ int main(int argc, char **argv)
 
 	// Execute action
 	int rc = execute(action, argv + optind + 1, argc - optind - 1,
-			 pid, verbose, force);
+			 pid, verbose, force, pidfile);
 
 	// Finish
+	free(pidfile);
 	log_close();
 	return rc;
 }

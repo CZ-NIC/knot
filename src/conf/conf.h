@@ -15,6 +15,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include <urcu.h>
+
 #include "dnslib/descriptor.h"
 #include "lib/lists.h"
 #include "other/log.h"
@@ -266,6 +268,22 @@ extern conf_t *s_config;
  */
 static inline conf_t* conf() {
 	return s_config; // Inline for performance reasons.
+}
+
+/*!
+ * \brief Lock configuration for reading.
+ *
+ * \return Configuration context.
+ */
+static inline void conf_read_lock() {
+	rcu_read_lock();
+}
+
+/*!
+ * \brief Unlock configuration for reading.
+ */
+static inline void conf_read_unlock() {
+	rcu_read_unlock();
 }
 
 /*

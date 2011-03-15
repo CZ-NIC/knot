@@ -104,7 +104,9 @@ int main(int argc, char **argv)
 	}
 
 	// Initialize configuration
+	conf_read_lock();
 	conf_add_hook(conf(), CONF_LOG, log_conf_hook);
+	conf_read_unlock();
 
 	// Find implicit configuration file
 	char *default_fn = 0;
@@ -129,9 +131,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-	// Free default config filename if exists
-	free(default_fn);
-
 	// Verbose mode
 	if (verbose) {
 		int mask = LOG_MASK(LOG_INFO)|LOG_MASK(LOG_DEBUG);
@@ -139,7 +138,7 @@ int main(int argc, char **argv)
 	}
 
 	// Create server instance
-	const char* pidfile = pid_filename();
+	char* pidfile = pid_filename();
 	server_t *server = server_create();
 
 	// Run server
@@ -157,6 +156,13 @@ int main(int argc, char **argv)
 				log_server_info("server: PID file '%s' created.",
 				                pidfile);
 			}
+		}
+
+		// Change directory if daemonized
+		log_server_info("server: Started.\n");
+		if (daemonize) {
+			log_server_info("Server running as daemon.\n");
+			res = chdir("/");
 		}
 
 		// Setup signal blocking
@@ -179,13 +185,6 @@ int main(int argc, char **argv)
 		sigaction(SIGALRM, &sa, NULL); // Interrupt
 		sa.sa_flags = 0;
 
-		// Change directory if daemonized
-		log_server_info("server: Started.\n");
-		if (daemonize) {
-			log_server_info("Server running as daemon.\n");
-			res = chdir("/");
-		}
-
 		/* Run event loop. */
 		for(;;) {
 			int ret = evqueue_poll(evqueue(), &emptyset);
@@ -197,17 +196,17 @@ int main(int argc, char **argv)
 				 *        event.
 				 */
 				if (sig_req_stop) {
-					debug_server("evqueue:"
+					debug_server("evqueue: "
 					             "server stop requested\n");
 					sig_req_stop = 0;
 					server_stop(server);
 					break;
 				}
 				if (sig_req_reload) {
-					debug_server("evqueue:"
+					debug_server("evqueue: "
 					             "reloading config\n");
 					sig_req_reload = 0;
-					//! \todo Reload config.
+					conf_open(config_fn);
 				}
 			}
 
@@ -215,7 +214,7 @@ int main(int argc, char **argv)
 			if (ret > 0) {
 				event_t ev;
 				if (evqueue_get(evqueue(), &ev) == 0) {
-					debug_server("evqueue:"
+					debug_server("evqueue: "
 					             "received new event\n");
 					if (ev.cb) {
 						ev.cb(&ev);
@@ -250,10 +249,14 @@ int main(int argc, char **argv)
 
 	log_server_info("server: Shut down.\n");
 	log_close();
+	free(pidfile);
 
 	// Destroy event loop
 	evqueue_t *q = evqueue();
 	evqueue_free(&q);
+
+	// Free default config filename if exists
+	free(default_fn);
 
 	return res;
 }
