@@ -9,6 +9,7 @@ src/alloc/malloc.c
 src/alloc/malloc.h
 src/alloc/slab.c
 src/alloc/slab.h
+src/alloc/alloc-common.h
 src/common.h
 src/ctl/knotc_main.c
 src/ctl/process.c

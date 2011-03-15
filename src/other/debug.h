@@ -27,9 +27,6 @@
 //#define SERVER_DEBUG
 //#define DT_DEBUG
 //#define NET_DEBUG
-//#define MEM_DEBUG
-//#define MEM_NOSLAB
-//#define MEM_POISON
 
 #ifdef SERVER_DEBUG
 #define debug_server(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
@@ -94,13 +91,6 @@
 #else
 #define debug_st(msg...)
 #endif
-
-#ifdef MEM_DEBUG
-#define debug_mem(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#else
-#define debug_mem(msg...)
-#endif
-
 #endif /* _KNOT_DEBUG_H_ */
 
 /*! @} */

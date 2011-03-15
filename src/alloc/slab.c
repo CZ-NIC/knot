@@ -6,9 +6,8 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 
-#include "common.h"
-#include "slab.h"
-
+#include "alloc/alloc-common.h"
+#include "alloc/slab.h"
 
 /* Magic constants.
  */
