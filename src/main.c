@@ -103,9 +103,14 @@ int main(int argc, char **argv)
 		}
 	}
 
+	// Create server
+	server_t *server = server_create();
+
 	// Initialize configuration
 	conf_read_lock();
 	conf_add_hook(conf(), CONF_LOG, log_conf_hook, 0);
+	conf_add_hook(conf(), CONF_LOG, ns_conf_hook, server);
+	conf_add_hook(conf(), CONF_LOG, server_conf_hook, server);
 	conf_read_unlock();
 
 	// Find implicit configuration file
@@ -139,7 +144,6 @@ int main(int argc, char **argv)
 
 	// Create server instance
 	char* pidfile = pid_filename();
-	server_t *server = server_create();
 
 	// Run server
 	int res = 0;
@@ -166,17 +170,12 @@ int main(int argc, char **argv)
 		}
 
 		// Setup signal blocking
-		sigset_t emptyset, blockset;
+		sigset_t emptyset;
 		sigemptyset(&emptyset);
-		sigemptyset(&blockset);
-		sigaddset(&blockset, SIGINT);
-		sigaddset(&blockset, SIGTERM);
-		sigaddset(&blockset, SIGHUP);
-		sigaddset(&blockset, SIGALRM); // Interrupt
-		sigprocmask(SIG_BLOCK, &blockset, NULL);
 
 		// Setup signal handler
 		struct sigaction sa;
+		memset(&sa, 0, sizeof(sa));
 		sa.sa_handler = interrupt_handle;
 		sigemptyset(&sa.sa_mask);
 		sigaction(SIGINT,  &sa, NULL);
@@ -184,6 +183,8 @@ int main(int argc, char **argv)
 		sigaction(SIGHUP,  &sa, NULL);
 		sigaction(SIGALRM, &sa, NULL); // Interrupt
 		sa.sa_flags = 0;
+		sigprocmask(SIG_BLOCK, &sa.sa_mask, NULL);
+
 
 		/* Run event loop. */
 		for(;;) {
@@ -196,15 +197,15 @@ int main(int argc, char **argv)
 				 *        event.
 				 */
 				if (sig_req_stop) {
-					debug_server("evqueue: "
-					             "server stop requested\n");
+					debug_server("Event: "
+					             "stopping server.\n");
 					sig_req_stop = 0;
 					server_stop(server);
 					break;
 				}
 				if (sig_req_reload) {
-					debug_server("evqueue: "
-					             "reloading config\n");
+					debug_server("Event: "
+					             "reloading config.\n");
 					sig_req_reload = 0;
 					conf_open(config_fn);
 				}
@@ -214,16 +215,16 @@ int main(int argc, char **argv)
 			if (ret > 0) {
 				event_t ev;
 				if (evqueue_get(evqueue(), &ev) == 0) {
-					debug_server("evqueue: "
-					             "received new event\n");
+					debug_server("Event: "
+					             "received new event.\n");
 					if (ev.cb) {
 						ev.cb(&ev);
 					}
 				}
 			}
-
 		}
 
+		//sigprocmask(SIG_SETMASK, &emptyset, 0);
 		if ((res = server_wait(server)) != 0) {
 			log_server_error("server: An error occured while "
 			                 "waiting for server to finish.\n");
