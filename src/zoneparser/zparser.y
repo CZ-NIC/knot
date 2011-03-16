@@ -13,7 +13,7 @@
  * @{
  */
 
-#include "common.h"
+//#include "common.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -152,9 +152,6 @@ line:	NL
 			dnslib_dname_to_str(parser->current_rrset.owner);
 			fprintf(stderr, "Error: could not process RRSet\n"
 			        "owner: %s reason: %d\n", tmp_dname_str, ret);
-			hex_printf((char *)parser->current_rrset.owner->labels,
-			          parser->current_rrset.owner->label_count,
-				  &printf);
 			free(tmp_dname_str);
 		}
 	    }
