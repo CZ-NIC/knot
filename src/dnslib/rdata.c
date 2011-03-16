@@ -354,7 +354,7 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
 //	}
 
 //	if (copied > buf_size) {
-//		log_warning("Not enough place allocated for function "
+//		debug_dnslib_rdata("Not enough place allocated for function "
 //		            "dnslib_rdata_to_wire(). Allocated %u, need %u\n",
 //		            buf_size, copied);
 //		return -1;

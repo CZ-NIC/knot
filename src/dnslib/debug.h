@@ -18,6 +18,7 @@
 #include "dnslib/rrset.h"
 #include "dnslib/node.h"
 #include "dnslib/zone.h"
+#include "dnslib/utils.h"
 
 void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type, char loaded_zone);
 
@@ -38,6 +39,10 @@ void dnslib_zone_dump(dnslib_zone_t *zone, char loaded_zone);
 #define DNSLIB_EDNS_DEBUG
 #define DNSLIB_RRSET_DEBUG
 #define DNSLIB_NSEC3_DEBUG
+#define DNSLIB_ZDUMP_DEBUG
+#define DNSLIB_ZLOAD_DEBUG
+#define CUCKOO_DEBUG
+#define CUCKOO_DEBUG_HASH
 
 #ifdef DNSLIB_DNAME_DEBUG
 #define debug_dnslib_dname(msg...) fprintf(stderr, msg)
@@ -91,6 +96,36 @@ void dnslib_zone_dump(dnslib_zone_t *zone, char loaded_zone);
 #define debug_dnslib_nsec3(msg...)
 #define debug_dnslib_nsec3_hex(data, len)
 #define DEBUG_DNSLIB_NSEC3(cmds)
+#endif
+
+#ifdef DNSLIB_ZDUMP_DEBUG
+#define debug_dnslib_zdump(msg...) fprintf(stderr, msg)
+#define DEBUG_DNSLIB_ZDUMP(cmds) do { cmds } while (0)
+#else
+#define debug_dnslib_zdump(msg...)
+#define DEBUG_DNSLIB_ZDUMP(cmds)
+#endif
+
+#ifdef DNSLIB_ZLOAD_DEBUG
+#define debug_dnslib_zload(msg...) fprintf(stderr, msg)
+#else
+#define debug_dnslib_zload(msg...)
+#endif
+
+#ifdef CUCKOO_DEBUG
+#define debug_ck(msg...) fprintf(stderr, msg)
+#else
+#define debug_ck(msg...)
+#endif
+
+#ifdef CUCKOO_DEBUG_HASH
+#define debug_ck_hash(msg...) fprintf(stderr, msg)
+#define debug_ck_hash_hex(data, len) dnslib_hex_print((data), (len))
+#define debug_ck_rehash(msg...) fprintf(stderr, msg)
+#else
+#define debug_ck_hash(msg...)
+#define debug_ck_hash_hex(data, len)
+#define debug_ck_rehash(msg...)
 #endif
 
 #endif

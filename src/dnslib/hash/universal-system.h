@@ -28,7 +28,7 @@
 
 #include <stdint.h>
 
-#include "common.h"
+typedef unsigned int uint;
 
 enum { US_FNC_COUNT = 4 };
 
