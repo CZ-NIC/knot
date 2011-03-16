@@ -2,9 +2,6 @@ Doxy.page.h
 CodingStyle
 Makefile.am
 src/Makefile.am
-obj/zlexer.c
-obj/zparser.c
-obj/zparser.h
 src/alloc/malloc.c
 src/alloc/malloc.h
 src/alloc/slab.c
