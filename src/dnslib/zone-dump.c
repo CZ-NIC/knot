@@ -113,10 +113,241 @@ int b32_ntop(uint8_t const *src, size_t srclength, char *target,
 
 static const uint MAX_CNAME_CYCLE_DEPTH = 15;
 
+enum zonechecks_errors {
+	ZC_ERR_ALLOC = 1,
+	ZC_ERR_UNKNOWN,
+
+	ZC_ERR_RRSIG_RDATA_TYPE_COVERED,
+	ZC_ERR_RRSIG_RDATA_TTL,
+	ZC_ERR_RRSIG_RDATA_LABELS,
+	ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER,
+	ZC_ERR_RRSIG_RDATA_SIGNED_WRONG,
+	ZC_ERR_RRSIG_NO_RRSIG,
+	ZC_ERR_RRSIG_SIGNED,
+	ZC_ERR_RRSIG_OWNER,
+	ZC_ERR_RRSIG_CLASS,
+	ZC_ERR_RRSIG_TTL,
+	ZC_ERR_RRSIG_NOT_ALL,
+
+	ZC_ERR_RRSIG_GENERAL_ERROR,
+
+	ZC_ERR_NO_NSEC,
+	ZC_ERR_NSEC_RDATA_BITMAP,
+	ZC_ERR_NSEC_RDATA_MULTIPLE,
+	ZC_ERR_NSEC_RDATA_CHAIN,
+
+	ZC_ERR_NSEC_GENERAL_ERROR,
+
+	ZC_ERR_NSEC3_UNSECURED_DELEGATION,
+	ZC_ERR_NSEC3_NOT_FOUND,
+	ZC_ERR_NSEC3_UNSECURED_DELEGATION_OPT,
+	ZC_ERR_NSEC3_RDATA_TTL,
+	ZC_ERR_NSEC3_RDATA_CHAIN,
+	ZC_ERR_NSEC3_RDATA_BITMAP,
+
+	ZC_ERR_NSEC3_GENERAL_ERROR,
+
+	ZC_ERR_CNAME_CYCLE,
+	ZC_ERR_CNAME_EXTRA_RECORDS,
+	ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC,
+	ZC_ERR_CNAME_MULTIPLE,
+
+	ZC_ERR_CNAME_GENERAL_ERROR,
+
+	ZC_ERR_GLUE_NODE,
+	ZC_ERR_GLUE_RECORD,
+
+	ZC_ERR_GLUE_GENERAL_ERROR,
+};
+
+static char *error_messages[ZC_ERR_GLUE_RECORD + 1] = {
+	[0] = "nil\n",
+
+	[ZC_ERR_ALLOC] = "Memory allocation error!\n",
+
+	[ZC_ERR_RRSIG_RDATA_TYPE_COVERED] =
+	"RRSIG: Type covered rdata field is wrong!\n",
+	[ZC_ERR_RRSIG_RDATA_TTL] =
+	"RRSIG: TTL rdata field is wrong!\n",
+	[ZC_ERR_RRSIG_RDATA_LABELS] =
+	"RRSIG: Labels rdata field is wrong!\n",
+	[ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER] =
+	"RRSIG: Signer name is different than in DNSKEY!\n",
+	[ZC_ERR_RRSIG_RDATA_SIGNED_WRONG] =
+	"RRSIG: Key error!\n",
+	[ZC_ERR_RRSIG_NO_RRSIG] =
+	"RRSIG: No RRSIG!\n",
+	[ZC_ERR_RRSIG_SIGNED] =
+	"RRSIG: Signed RRSIG!\n",
+	[ZC_ERR_RRSIG_OWNER] =
+	"RRSIG: Owner name rdata field is wrong!\n",
+	[ZC_ERR_RRSIG_CLASS] =
+	"RRSIG: Class is wrong!\n",
+	[ZC_ERR_RRSIG_TTL] =
+	"RRSIG: TTL is wrong!\n",
+	[ZC_ERR_RRSIG_NOT_ALL] =
+	"RRSIG: Not all RRs are signed!\n",
+
+	[ZC_ERR_NO_NSEC] =
+	"NSEC: Missing NSEC record\n",
+	[ZC_ERR_NSEC_RDATA_BITMAP] =
+	"NSEC: Wrong NSEC bitmap!\n",
+	[ZC_ERR_NSEC_RDATA_MULTIPLE] =
+	"NSEC: Multiple NSEC records!\n",
+	[ZC_ERR_NSEC_RDATA_CHAIN] =
+	"NSEC: NSEC chain is not coherent!\n",
+
+	[ZC_ERR_NSEC3_UNSECURED_DELEGATION] =
+	"NSEC3: Zone contains unsecured delegation!\n",
+	[ZC_ERR_NSEC3_NOT_FOUND] =
+	"NSEC3: Could not find previous NSEC3 record in the zone!\n",
+	[ZC_ERR_NSEC3_UNSECURED_DELEGATION_OPT] =
+	"NSEC3: Unsecured delegation is not part "
+	"of the Opt-Out span!\n",
+	[ZC_ERR_NSEC3_RDATA_TTL] =
+	"NSEC3: Original TTL rdata field is wrong!\n",
+	[ZC_ERR_NSEC3_RDATA_CHAIN] =
+	"NSEC3: NSEC3 chain is not coherent!\n",
+	[ZC_ERR_NSEC3_RDATA_BITMAP] =
+	"NSEC3: NSEC3 bitmap error!\n",
+
+	[ZC_ERR_CNAME_CYCLE] =
+	"CNAME: CNAME cycle!\n",
+	[ZC_ERR_CNAME_EXTRA_RECORDS] =
+	"CNAME: Node with CNAME record has other records!\n",
+	[ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC] =
+	"CNAME: Node with CNAME record has other "
+	"records than RRSIG and NSEC/NSEC3!\n",
+	[ZC_ERR_CNAME_MULTIPLE] = "CNAME: Multiple CNAME records!\n",
+
+	/* ^
+	   | Important errors (to be logged on first occurence and counted) */
+
+
+	/* Below are errors of lesser importance, to be counted unless
+	   specified otherwise */
+
+	[ZC_ERR_GLUE_NODE] =
+	"GLUE: Node with Glue record missing!\n",
+	[ZC_ERR_GLUE_RECORD] =
+	"GLUE: Record with Glue address missing\n",
+};
+
+struct handler_options {
+	char log_cname;
+	char log_glue;
+	char log_rrsigs;
+	char log_nsec;
+	char log_nsec3;
+};
+
+struct err_handler {
+	/* Consider moving error messages here */
+	struct handler_options options;
+	uint errors[ZC_ERR_GLUE_GENERAL_ERROR + 1];
+};
+
+typedef struct err_handler err_handler_t;
+
+static err_handler_t *handler_new(char log_cname, char log_glue,
+				  char log_rrsigs, char log_nsec,
+				  char log_nsec3)
+{
+	err_handler_t *handler = malloc(sizeof(err_handler_t));
+	CHECK_ALLOC_LOG(handler, NULL);
+
+	/* It should be initialized, but to be safe */
+	memset(handler->errors, 0, sizeof(uint) * (ZC_ERR_GLUE_RECORD + 1));
+
+	handler->options.log_cname = log_cname;
+	handler->options.log_glue = log_glue;
+	handler->options.log_rrsigs = log_rrsigs;
+	handler->options.log_nsec = log_nsec;
+	handler->options.log_nsec3 = log_nsec3;
+}
+
+static char error_is_severe(uint error)
+{
+	if (error <= ZC_ERR_CNAME_GENERAL_ERROR) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+static int log_error_from_node(dnslib_node_t *node,
+			       uint error)
+{
+	char *name =
+		dnslib_dname_to_str(dnslib_node_owner(node));
+	log_zone_error("Semantic error in node: %s: ",
+		       name);
+	log_zone_error("%s", error_messages[error]);
+	free(name);
+}
+
+static int err_handler_handle_error(err_handler_t *handler,
+				    dnslib_node_t *node,
+				    uint error)
+{
+	if (error <= ZC_ERR_GLUE_RECORD) {
+		return ZC_ERR_UNKNOWN;
+	}
+
+	if (error == ZC_ERR_ALLOC) {
+		ERR_ALLOC_FAILED;
+		return ZC_ERR_ALLOC;
+	}
+
+	if ((error > 0) &&
+	    (error < ZC_ERR_RRSIG_GENERAL_ERROR) &&
+	    ((handler->errors[error] == 0) ||
+	     (handler->options.log_rrsigs))) {
+
+		log_error_from_node(node, error);
+
+	} else if ((error > ZC_ERR_RRSIG_GENERAL_ERROR) &&
+		   (error < ZC_ERR_NSEC_GENERAL_ERROR) &&
+		   ((handler->errors[error] == 0) ||
+		    (handler->options.log_nsec))) {
+
+		log_error_from_node(node, error);
+
+	} else if ((error > ZC_ERR_NSEC_GENERAL_ERROR) &&
+		   (error < ZC_ERR_NSEC3_GENERAL_ERROR) &&
+		   ((handler->errors[error] == 0) ||
+		    (handler->options.log_nsec3))) {
+
+		log_error_from_node(node, error);
+
+	} else if ((error > ZC_ERR_NSEC3_GENERAL_ERROR) &&
+		   (error < ZC_ERR_CNAME_GENERAL_ERROR) &&
+		   ((handler->errors[error] == 0) ||
+		    (handler->options.log_cname))) {
+
+		log_error_from_node(node, error);
+
+	} else if ((error > ZC_ERR_CNAME_GENERAL_ERROR) &&
+		   (error < ZC_ERR_GLUE_GENERAL_ERROR) &&
+		    handler->options.log_glue) {
+
+		log_error_from_node(node, error);
+
+	}
+
+	handler->errors[error]++;
+
+	return 0;
+}
+
+/* TODO CHANGE FROM VOID POINTERS */
 struct arg {
 	void *arg1; /* FILE *f / zone */
 	void *arg2; /* skip_list_t */
 	void *arg3; /* zone */
+	void *arg4; /* first node */
+	void *arg5; /* last node */
+	void *arg6; /* error handler */
 };
 
 typedef struct arg arg_t;
@@ -312,15 +543,6 @@ static uint16_t keytag_1(uint8_t *key, uint16_t keysize)
 	return ac;
 }
 
-/* Taken from RFC 4034 */
-/*
- * Assumes that int is at least 16 bits.
- * First octet of the key tag is the most significant 8 bits of the
- * return value;
- * Second octet of the key tag is the least significant 8 bits of the
- * return value.
- */
-
 static uint16_t keytag(uint8_t *key, uint16_t keysize )
 {
 	uint32_t ac = 0;     /* assumed to be 32 bits or larger */
@@ -375,7 +597,7 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
 		/* zoneparser would not let this happen
 		 * but to be on the safe side
 		 */
-		return -1;
+		return ZC_ERR_RRSIG_RDATA_TYPE_COVERED;
 	}
 
 	/* label number at the 2nd index should be same as owner's */
@@ -390,10 +612,10 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
 	if (tmp != 0) {
 		/* if name has wildcard, label must not be included */
 		if (!dnslib_dname_is_wildcard(dnslib_rrset_owner(rrset))) {
-			return -2;
+			return ZC_ERR_RRSIG_RDATA_LABELS;
 		} else {
 			if (abs(tmp) != 1) {
-				return -2;
+				return ZC_ERR_RRSIG_RDATA_LABELS;
 			}
 		}
 	}
@@ -404,7 +626,7 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
 				     dnslib_rdata_item(rdata_rrsig, 3)));
 
 	if (original_ttl != dnslib_rrset_ttl(rrset)) {
-		return -3;
+		return ZC_ERR_RRSIG_RDATA_TTL;
 	}
 
 	/* signer's name is same as in the zone apex */
@@ -414,7 +636,7 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
 	/* dnskey is in the apex node */
 	if (dnslib_dname_compare(signer_name,
 				 dnslib_rrset_owner(dnskey_rrset)) != 0) {
-		return -4;
+		return ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER;
 	}
 
 	/* Compare algorithm, key tag and signer's name with DNSKEY rrset
@@ -446,7 +668,7 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
 
 		if (dnskey_to_wire(tmp_dnskey_rdata, &dnskey_wire,
 				   &dnskey_wire_size) != 0) {
-			return -100;
+			return ZC_ERR_ALLOC;
 		}
 
 		uint16_t key_tag_dnskey =
@@ -465,7 +687,7 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
 		!= NULL));
 
 	if (!match) {
-		return -5;
+		return ZC_ERR_RRSIG_RDATA_SIGNED_WRONG;
 	}
 
 	return 0;
@@ -486,27 +708,27 @@ static int check_rrsig_in_rrset(const dnslib_rrset_t *rrset,
 	const dnslib_rrset_t *rrsigs = dnslib_rrset_rrsigs(rrset);
 
 	if (rrsigs == NULL) {
-		return -1;
+		return ZC_ERR_RRSIG_NO_RRSIG;
 	}
 
 	/* signed rrsig - nonsense */
 	if (dnslib_rrset_rrsigs(rrsigs) != NULL) {
-		return -2;
+		return ZC_ERR_RRSIG_SIGNED;
 	}
 
 	/* Different owner, class, ttl */
 
 	if (dnslib_dname_compare(dnslib_rrset_owner(rrset),
 				 dnslib_rrset_owner(rrsigs)) != 0) {
-		return -3;
+		return ZC_ERR_RRSIG_OWNER;
 	}
 
 	if (dnslib_rrset_class(rrset) != dnslib_rrset_class(rrsigs)) {
-		return -4;
+		return ZC_ERR_RRSIG_CLASS;
 	}
 
 	if (dnslib_rrset_ttl(rrset) != dnslib_rrset_ttl(rrset)) {
-		return -5;
+		return ZC_ERR_RRSIG_TTL;
 	}
 
 	/* Check whether all rrsets have their rrsigs */
@@ -520,7 +742,7 @@ static int check_rrsig_in_rrset(const dnslib_rrset_t *rrset,
 		if ((ret = check_rrsig_rdata(tmp_rrsig_rdata,
 					     rrset,
 					     dnskey_rrset)) != 0) {
-			return ret * 10;
+			return ret;
 		}
 	} while ((tmp_rdata = dnslib_rrset_rdata_next(rrset, tmp_rdata))
 		!= NULL &&
@@ -531,7 +753,7 @@ static int check_rrsig_in_rrset(const dnslib_rrset_t *rrset,
 	if (tmp_rdata != NULL &&
 	    tmp_rrsig_rdata != NULL) {
 		/* Not all records in rrset are signed */
-		return -6;
+		return ZC_ERR_RRSIG_NOT_ALL;
 	}
 
 	return 0;
@@ -606,7 +828,7 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 		/* I know it's probably not what RFCs say, but it will have to
 		 * do for now. */
 		if (dnslib_node_rrset(node, DNSLIB_RRTYPE_DS) != NULL) {
-			return -1;
+			return ZC_ERR_NSEC3_UNSECURED_DELEGATION;
 		} else {
 			/* Unsecured delegation, check whether it is part of
 			 * opt-out span */
@@ -617,14 +839,14 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 						dnslib_node_owner(node),
 						&nsec3_node,
 						&nsec3_previous) != 0) {
-				return -2;
+				return ZC_ERR_NSEC3_NOT_FOUND;
 			}
 
-/*			if (nsec3_node == NULL) {
+/* ???			if (nsec3_node == NULL) {
 				return -3;
-			} *	/
+			} */
 
-//			assert(nsec3_node == NULL); /* TODO error */
+			assert(nsec3_node == NULL); /* TODO error */
 
 			assert(nsec3_previous);
 
@@ -641,7 +863,7 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 			uint8_t opt_out_mask = 0b00000001;
 
 			if (!(flags & opt_out_mask)) {
-				return -2000;
+				return ZC_ERR_NSEC3_UNSECURED_DELEGATION_OPT;
 			}
 		}
 	}
@@ -661,7 +883,7 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 	/* are those getters even worth this? */
 
 	if (dnslib_rrset_ttl(nsec3_rrset) != minimum_ttl) {
-		return -4;
+		return ZC_ERR_NSEC3_RDATA_TTL;
 	}
 
 	/* check that next dname is in the zone */
@@ -689,15 +911,17 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 
 	if (dnslib_dname_cat(next_dname,
 		     dnslib_node_owner(dnslib_zone_apex(zone))) == NULL) {
-		return -10;
+		return ZC_ERR_ALLOC;
 	}
 
 //	dnslib_dname
 
 
 	if (dnslib_zone_find_nsec3_node(zone, next_dname) == NULL) {
-		return -5;
+		return ZC_ERR_NSEC3_RDATA_CHAIN;
 	}
+
+	/* TODO first node in the nsec3 tree */
 
 	dnslib_dname_free(&next_dname);
 
@@ -710,8 +934,7 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 	    dnslib_rdata_item(
 	    dnslib_rrset_rdata(nsec3_rrset), 5),
 	    &array, &count) != 0) {
-		ERR_ALLOC_FAILED;
-		return -19213;
+		return ZC_ERR_ALLOC;
 	}
 
 	uint16_t type = 0;
@@ -723,22 +946,244 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 		}
 		if (dnslib_node_rrset(node,
 				      type) == NULL) {
-			char *name =
+			return ZC_ERR_NSEC3_RDATA_BITMAP;
+/*			char *name =
 				dnslib_dname_to_str(
-					dnslib_node_owner(node));
-
 			log_zone_error("Node %s does "
 					"not contain RRSet of type %s "
 					"but NSEC bitmap says "
 					"it does!\n", name,
 					dnslib_rrtype_to_string(type));
-			free(name);
+			free(name); */
 		}
 	}
 
-	/* TODO bitmap, but that is buggy right now */
-
 	return 0;
+}
+
+static int semantic_checks_plain(dnslib_zone_t *zone,
+				 dnslib_node_t *node,
+				 err_handler_t *handler)
+{
+	const dnslib_rrset_t *cname_rrset =
+			dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME);
+	if (cname_rrset != NULL) {
+		if (check_cname_cycles_in_zone(zone, cname_rrset) != 0) {
+			err_handler_handle_error(handler, node,
+						 ZC_ERR_CNAME_CYCLE);
+		}
+	}
+
+	/* TODO move things below to the if above */
+
+	/* No DNSSEC and yet there is more than one rrset in node */
+	if (cname_rrset &&
+	    dnslib_node_rrset_count(node) != 1) {
+		err_handler_handle_error(handler, node,
+					 ZC_ERR_CNAME_EXTRA_RECORDS);
+	} else if (cname_rrset &&
+		   dnslib_node_rrset_count(node) != 1) {
+		/* With DNSSEC node can contain RRSIG or NSEC */
+		if (!(dnslib_node_rrset(node, DNSLIB_RRTYPE_RRSIG) ||
+		      dnslib_node_rrset(node, DNSLIB_RRTYPE_NSEC))) {
+			err_handler_handle_error(handler, node,
+					 ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC);
+		}
+	}
+
+	/* same thing */
+
+	if (cname_rrset &&
+	    dnslib_rrset_rdata(cname_rrset)->count != 1) {
+		err_handler_handle_error(handler, node,
+					 ZC_ERR_CNAME_MULTIPLE);
+	}
+
+	/* check for glue records at zone cuts */
+	if (dnslib_node_is_deleg_point(node)) {
+		const dnslib_rrset_t *ns_rrset =
+				dnslib_node_rrset(node, DNSLIB_RRTYPE_NS);
+		assert(ns_rrset);
+		//FIXME this should be an error as well ! (i guess)
+
+		const dnslib_dname_t *ns_dname =
+				dnslib_rdata_get_item(dnslib_rrset_rdata
+						      (ns_rrset), 0)->dname;
+
+		assert(ns_dname);
+
+		const dnslib_node_t *glue_node =
+				dnslib_zone_find_node(zone, ns_dname);
+
+		if (dnslib_dname_is_subdomain(ns_dname,
+			      dnslib_node_owner(dnslib_zone_apex(zone)))) {
+			if (glue_node == NULL) {
+				err_handler_handle_error(handler, node,
+							 ZC_ERR_GLUE_NODE);
+			} else {
+				if ((dnslib_node_rrset(glue_node,
+					       DNSLIB_RRTYPE_A) == NULL) &&
+				    (dnslib_node_rrset(glue_node,
+					       DNSLIB_RRTYPE_AAAA) == NULL)) {
+					err_handler_handle_error(handler, node,
+							 ZC_ERR_GLUE_RECORD);
+				}
+			}
+		}
+	}
+}
+
+static int semantic_checks_dnssec(dnslib_zone_t *zone,
+				  dnslib_node_t *node,
+				  dnslib_node_t *first_node,
+				  dnslib_node_t *last_node,
+				  err_handler_t *handler,
+				  char nsec3)
+{
+	char auth = !dnslib_node_is_non_auth(node);
+	char deleg = dnslib_node_is_deleg_point(node);
+	uint rrset_count = dnslib_node_rrset_count(node);
+	const dnslib_rrset_t **rrsets = dnslib_node_rrsets(node);
+	const dnslib_rrset_t *dnskey_rrset =
+		dnslib_node_rrset(dnslib_zone_apex(zone),
+				  DNSLIB_RRTYPE_DNSKEY);
+
+	int ret = 0;
+
+	/* there is no point in checking non_authoritative node */
+	for (int i = 0; i < rrset_count && auth; i++) {
+		const dnslib_rrset_t *rrset = rrsets[i];
+		if (!deleg &&
+		    (ret = check_rrsig_in_rrset(rrset, dnskey_rrset,
+						nsec3)) != 0) {
+/*			log_zone_error("RRSIG %d node %s\n", ret,
+				       dnslib_dname_to_str(node->owner));*/
+
+			err_handler_handle_error(handler, node, ret);
+		}
+
+		if (!nsec3 && auth) {
+			/* check for NSEC record */
+			const dnslib_rrset_t *nsec_rrset =
+					dnslib_node_rrset(node,
+							  DNSLIB_RRTYPE_NSEC);
+
+			if (nsec_rrset == NULL) {
+				err_handler_handle_error(handler, node,
+							 ZC_ERR_NO_NSEC);
+/*				char *name =
+					dnslib_dname_to_str(node->owner);
+				log_zone_error("Missing NSEC in node: "
+					       "%s\n", name);
+				free(name);
+				return; */
+			} else {
+
+				/* check NSEC/NSEC3 bitmap */
+
+				uint count;
+
+				uint16_t *array = NULL;
+
+				if (rdata_nsec_to_type_array(
+						dnslib_rdata_item(
+						dnslib_rrset_rdata(nsec_rrset),
+						1),
+						&array, &count) != 0) {
+					err_handler_handle_error(handler,
+								 NULL,
+								 ZC_ERR_ALLOC);
+					return ZC_ERR_ALLOC; /* ... */
+					/*return; */
+				}
+
+				uint16_t type = 0;
+				for (int j = 0; j < count; j++) {
+					/* test for each type's presence */
+					type = array[j];
+					if (type == DNSLIB_RRTYPE_RRSIG) {
+						continue;
+					}
+					if (dnslib_node_rrset(node,
+							      type) == NULL) {
+					err_handler_handle_error(
+						handler,
+						node,
+						ZC_ERR_NSEC_RDATA_BITMAP);
+	/*					char *name =
+							dnslib_dname_to_str(
+							dnslib_node_owner(node));
+
+						log_zone_error("Node %s does "
+						"not contain RRSet of type %s "
+						"but NSEC bitmap says "
+					       "it does!\n", name,
+					       dnslib_rrtype_to_string(type));
+
+					free(name); */
+					}
+				}
+			}
+
+			/* Test that only one record is in the
+				 * NSEC RRSet */
+
+			if (dnslib_rrset_rdata(nsec_rrset)->next !=
+			    dnslib_rrset_rdata(nsec_rrset)) {
+				err_handler_handle_error(handler,
+						 node,
+						 ZC_ERR_NSEC_RDATA_MULTIPLE);
+/*				char *name =
+					dnslib_dname_to_str(
+					dnslib_node_owner(node));
+				log_zone_error("Node %s contains more "
+					       "than one NSEC "
+					       "record!\n", name);
+				dnslib_rrset_dump(nsec_rrset, 0);
+				free(name); */
+			}
+
+			/*
+				 * Test that NSEC chain is coherent.
+				 * We have already checked that every
+				 * authoritative node contains NSEC record
+				 * so checking should only be matter of testing
+				 * the next link in each node.
+				 */
+
+			dnslib_dname_t *next_domain =
+					dnslib_rdata_item(
+					dnslib_rrset_rdata(nsec_rrset),
+					0)->dname;
+
+			assert(next_domain);
+
+			if (dnslib_zone_find_node(zone, next_domain) ==
+			    NULL) {
+				err_handler_handle_error(handler,
+						node,
+						ZC_ERR_NSEC_RDATA_CHAIN);
+/*				log_zone_error("NSEC chain is not "
+					       "coherent!\n"); */
+			}
+
+			if (dnslib_dname_compare(next_domain,
+			    dnslib_node_owner(dnslib_zone_apex(zone))) == 0) {
+				/* saving the last node */
+				last_node = node;
+			}
+		} else if (nsec3 && (auth || deleg)) { /* nsec3 */
+			int ret = check_nsec3_node_in_zone(zone, node);
+			if (ret != 0) {
+/*				log_zone_error("NSEC3 error:%d\n", ret);
+				log_zone_error("NODE: %s\n",
+				       dnslib_dname_to_str(node->owner)); */
+				err_handler_handle_error(handler,
+							 node,
+							 ret);
+			}
+		}
+	}
 }
 
 static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
@@ -750,243 +1195,40 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 
 	assert(zone);
 
+	dnslib_node_t *first_node = (dnslib_node_t *)args->arg4;
+	dnslib_node_t *last_node = (dnslib_node_t *)args->arg5;
+
+	err_handler_t *handler = (err_handler_t *)args->arg6;
+
 	char do_checks = *((char *)(args->arg3));
 
 	for (int i = 0; i < DNSLIB_COMPRESSIBLE_TYPES; ++i) {
 		dnslib_zone_save_enclosers_node(node,
 						dnslib_compressible_types[i],
-						(dnslib_zone_t *)args->arg1,
+						zone,
 						(skip_list_t *)args->arg2);
 	}
 
 	/* TODO move to separate function */
 	 if (do_checks) {
-		const dnslib_rrset_t *cname_rrset =
-			dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME);
-		if (cname_rrset != NULL) {
-			if (check_cname_cycles_in_zone((dnslib_zone_t *)
-				args->arg1,
-				cname_rrset) != 0) {
-				char *name =
-				dnslib_dname_to_str(dnslib_node_owner(node));
-				log_zone_error("Node %s contains "
-					       "CNAME cycle!\n", name);
-				free(name);
-
-				/* TODO how to propagate the error */
-			}
-		}
-
-		/* TODO move things below to the if above */
-
-		/* No DNSSEC and yet there is more than one rrset in node */
-		if (cname_rrset &&
-		    dnslib_node_rrset_count(node) != 1 && do_checks == 1) {
-			char *name =
-			dnslib_dname_to_str(dnslib_node_owner(node));
-			log_zone_error("Node %s contains more than one RRSet "
-				       "but has CNAME record!\n", name);
-			free(name);
-		} else if (cname_rrset &&
-			   dnslib_node_rrset_count(node) != 1) {
-			/* With DNSSEC node can contain RRSIG or NSEC */
-			if (!(dnslib_node_rrset(node, DNSLIB_RRTYPE_RRSIG) ||
-			    dnslib_node_rrset(node, DNSLIB_RRTYPE_NSEC))) {
-				char *name =
-				dnslib_dname_to_str(dnslib_node_owner(node));
-				log_zone_error("Node %s contains other records "
-				"than RRSIG and/or NSEC together with CNAME "
-				"record!\n", name);
-				free(name);
-			}
-		}
-
-		/* same thing */
-
-		if (cname_rrset &&
-		    dnslib_rrset_rdata(cname_rrset)->count != 1) {
-			char *name =
-				dnslib_dname_to_str(dnslib_node_owner(node));
-			log_zone_error("Node %s contains more than one CNAME "
-				       "record!\n", name);
-			free(name);
-		}
-
-		/* check for glue records at zone cuts */
-		if (dnslib_node_is_deleg_point(node)) {
-			const dnslib_rrset_t *ns_rrset =
-				dnslib_node_rrset(node, DNSLIB_RRTYPE_NS);
-			assert(ns_rrset);
-			//FIXME this should be an error as well ! (i guess)
-
-			const dnslib_dname_t *ns_dname =
-				dnslib_rdata_get_item(dnslib_rrset_rdata
-						      (ns_rrset), 0)->dname;
-
-			assert(ns_dname);
-
-			const dnslib_node_t *glue_node =
-				dnslib_zone_find_node((dnslib_zone_t *)
-						      args->arg1, ns_dname);
-
-			if (dnslib_dname_is_subdomain(ns_dname,
-				dnslib_node_owner(dnslib_zone_apex(zone)))) {
-				if (glue_node == NULL) {
-					char *name =
-						dnslib_dname_to_str(ns_dname);
-/*					log_zone_error("Glue node not found "
-						       "for dname: %s\n",
-						       name); */
-					free(name);
-					return;
-				}
-
-				if ((dnslib_node_rrset(glue_node,
-						       DNSLIB_RRTYPE_A) == NULL) &&
-				    (dnslib_node_rrset(glue_node,
-						       DNSLIB_RRTYPE_AAAA) == NULL)) {
-					char *name =
-						dnslib_dname_to_str(ns_dname);
-					log_zone_error("Glue address not found "
-						       "for dname: %s\n",
-						       name);
-					free(name);
-					return;
-				}
-			}
-		}
+		 semantic_checks_plain(zone, node, handler);
 	}
 
 	if (do_checks > 1) {
-		char auth = !dnslib_node_is_non_auth(node);
-		char deleg = dnslib_node_is_deleg_point(node);
-		uint rrset_count = dnslib_node_rrset_count(node);
-		const dnslib_rrset_t **rrsets = dnslib_node_rrsets(node);
-		const dnslib_rrset_t *dnskey_rrset =
-			dnslib_node_rrset(dnslib_zone_apex(
-					  (dnslib_zone_t *)args->arg1),
-					  DNSLIB_RRTYPE_DNSKEY);
-
-		char nsec3 = do_checks == 3;
-
-                int ret = 0;
-
-		/* there is no point in checking non_authoritative node */
-		for (int i = 0; i < rrset_count && auth; i++) {
-			const dnslib_rrset_t *rrset = rrsets[i];
-			if (!deleg &&
-			    (ret = check_rrsig_in_rrset(rrset, dnskey_rrset,
-                                                 nsec3)) != 0) {
-                                log_zone_error("RRSIG %d node %s\n", ret,
-                                               dnslib_dname_to_str(node->owner));
-			}
-
-			if (!nsec3 && auth) {
-				/* check for NSEC record */
-				const dnslib_rrset_t *nsec_rrset =
-					dnslib_node_rrset(node,
-							  DNSLIB_RRTYPE_NSEC);
-
-				if (nsec_rrset == NULL) {
-					char *name =
-					dnslib_dname_to_str(node->owner);
-					log_zone_error("Missing NSEC in node: "
-						       "%s\n", name);
-					free(name);
-					return;
-				}
-
-				/* check NSEC/NSEC3 bitmap */
-
-				uint count;
-
-				uint16_t *array = NULL;
-
-				if (rdata_nsec_to_type_array(
-				    dnslib_rdata_item(
-                                    dnslib_rrset_rdata(nsec_rrset),1),
-				    &array, &count) != 0) {
-					ERR_ALLOC_FAILED;
-					return;
-				}
-
-				uint16_t type = 0;
-				for (int j = 0; j < count; j++) {
-					/* test for each type's presence */
-                                        type = array[j];
-                                        if (type == DNSLIB_RRTYPE_RRSIG) {
-                                                continue;
-                                        }
-					if (dnslib_node_rrset(node,
-							      type) == NULL) {
-						char *name =
-						dnslib_dname_to_str(
-						dnslib_node_owner(node));
-
-						log_zone_error("Node %s does "
-						"not contain RRSet of type %s "
-						"but NSEC bitmap says "
-						"it does!\n", name,
-						dnslib_rrtype_to_string(type));
-
-						free(name);
-					}
-				}
-
-				/* Test that only one record is in the
-				 * NSEC RRSet */
-
-                                if (dnslib_rrset_rdata(nsec_rrset)->next !=
-                                    dnslib_rrset_rdata(nsec_rrset)) {
-					char *name =
-						dnslib_dname_to_str(
-						dnslib_node_owner(node));
-					log_zone_error("Node %s contains more "
-						       "than one NSEC "
-                                                       "record!\n", name);
-                                        dnslib_rrset_dump(nsec_rrset, 0);
-					free(name);
-				}
-
-				/*
-				 * Test that NSEC chain is coherent.
-				 * We have already checked that every
-				 * authoritative node contains NSEC record
-				 * so checking should only be matter of testing
-				 * the next link in each node.
-				 */
-
-				dnslib_dname_t *next_domain =
-					dnslib_rdata_item(
-					dnslib_rrset_rdata(nsec_rrset),
-					0)->dname;
-
-				assert(next_domain);
-
-				if (dnslib_zone_find_node(zone, next_domain) ==
-				    NULL) {
-					log_zone_error("NSEC chain is not "
-						       "coherent!\n");
-				}
-			} else if (nsec3 && (auth || deleg)) { /* nsec3 */
-				int ret = check_nsec3_node_in_zone(zone, node);
-				if (ret != 0) {
-					log_zone_error("NSEC3 error: %d\n", ret);
-					log_zone_error("NODE: %s\n",
-					dnslib_dname_to_str(node->owner));
-				}
-			}
-		}
+		semantic_checks_dnssec(zone, node, first_node, last_node,
+				       handler, do_checks == 3);
 	}
 }
 
 void zone_save_enclosers_sem_check(dnslib_zone_t *zone, skip_list_t *list,
 				   char do_checks)
 {
+	dnslib_node_t *last_node = NULL;
 	arg_t arguments;
 	arguments.arg1 = zone;
 	arguments.arg2 = list;
 	arguments.arg3 = &do_checks;
+	arguments.arg4 = &last_node;
 
 	dnslib_zone_tree_apply_inorder(zone,
 	                   dnslib_zone_save_enclosers_in_tree,
@@ -1323,9 +1565,12 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 
 	arg_t arguments;
 
+	err_handler_t *handler = handler_new(1, 1, 1, 1, 1);
+
 	arguments.arg1 = f;
 	arguments.arg2 = encloser_list;
 	arguments.arg3 = zone;
+	arguments.arg6 = handler;
 
 	/* TODO is there a way how to stop the traversal upon error? */
 	dnslib_zone_tree_apply_inorder(zone, dnslib_node_dump_binary,
