@@ -8,9 +8,12 @@
 #include "conf/conf.h"
 #include "other/log.h"
 #include "lib/lists.h"
+#include "other/debug.h"
 
 int log_conf_hook(const struct conf_t *conf, void *data)
 {
+	debug_server("Event: reconfiguring logsystem.\n");
+
 	// Data not used
 	data = data;
 
