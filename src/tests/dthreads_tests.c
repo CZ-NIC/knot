@@ -1,4 +1,4 @@
-#include "server/dthreads.h"
+#include "knot/server/dthreads.h"
 #include "tests/tap_unit.h"
 #include <sys/select.h>
 #include <pthread.h>

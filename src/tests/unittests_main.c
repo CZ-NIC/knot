@@ -1,5 +1,5 @@
 #include <config.h>
-#include "common.h"
+#include "knot/common.h"
 #include "tests/tap_unit.h"
 
 // Units to test
