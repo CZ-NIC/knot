@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 #include "tests/tap_unit.h"
-#include "conf/conf.h"
+#include "knot/conf/conf.h"
 
 /* Resources. */
 #include "sample_conf.rc"
