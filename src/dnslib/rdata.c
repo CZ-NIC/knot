@@ -8,6 +8,7 @@
 #include "dnslib/rdata.h"
 #include "dnslib/descriptor.h"
 #include "dnslib/dname.h"
+#include "dnslib/error.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -105,10 +106,10 @@ int dnslib_rdata_set_item(dnslib_rdata_t *rdata, uint pos,
                           dnslib_rdata_item_t item)
 {
 	if (pos >= rdata->count) {
-		return -1;
+		return DNSLIB_EBADARG;
 	}
 	rdata->items[pos] = item; // this should copy the union; or use memcpy?
-	return 0;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -116,25 +117,22 @@ int dnslib_rdata_set_item(dnslib_rdata_t *rdata, uint pos,
 int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
                            const dnslib_rdata_item_t *items, uint count)
 {
-	if (rdata == NULL || items == NULL || count == 0) {
-		return 1;
-	}
-
-	if (rdata->items != NULL) {  // not empty
-		return -1;
+	if (rdata == NULL || items == NULL || count == 0 ||
+	    rdata->items != NULL) {
+		return DNSLIB_EBADARG;
 	}
 
 	assert(rdata->count == 0);
 	if ((rdata->items = (dnslib_rdata_item_t *)malloc(
 	                     count * sizeof(dnslib_rdata_item_t))) == NULL) {
 		ERR_ALLOC_FAILED;
-		return -2;
+		return DNSLIB_ENOMEM;
 	}
 
 	memcpy(rdata->items, items, count * sizeof(dnslib_rdata_item_t));
 	rdata->count = count;
 
-	return 0;
+	return DSNLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -167,12 +165,12 @@ int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, uint pos,
                                 dnslib_dname_t *dname)
 {
 	if (pos >= rdata->count) {
-		return -1;
+		return DNSLIB_EBADARG;
 	}
 
 	rdata->items[pos].dname = dname;
 
-	return 0;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -181,12 +179,12 @@ int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, uint pos,
                                    uint16_t *raw_data)
 {
 	if (pos >= rdata->count) {
-		return -1;
+		return DNSLIB_EBADARG;
 	}
 
 	rdata->items[pos].raw_data = raw_data;
 
-	return 0;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -475,13 +473,12 @@ const dnslib_dname_t *dnslib_rdata_get_name(const dnslib_rdata_t *rdata,
 	switch (type) {
 	case DNSLIB_RRTYPE_NS:
 		return dnslib_rdata_ns_name(rdata);
-		break;
 	case DNSLIB_RRTYPE_MX:
 		return dnslib_rdata_mx_name(rdata);
-		break;
 	case DNSLIB_RRTYPE_SRV:
 		return dnslib_rdata_srv_name(rdata);
-		break;
+	case DNSLIB_RRTYPE_CNAME:
+		return dnslib_rdata_cname_name(rdata);
 	}
 
 	return NULL;

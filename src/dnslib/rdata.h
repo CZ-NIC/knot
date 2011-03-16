@@ -93,8 +93,8 @@ dnslib_rdata_t *dnslib_rdata_new();
  * \param pos Position of the RDATA item to be set.
  * \param item RDATA item value to be set.
  *
- * \retval 0 if successful.
- * \retval -1 if \a pos is not a valid position.
+ * \retval DNSLIB_EOK if successful.
+ * \retval DNSLIB_EBADARG if \a pos is not a valid position.
  *
  * \todo Use the union or a pointer to it as parameter? IMHO there is always
  *       only one pointer that is copied, so it doesn't matter.
@@ -115,9 +115,8 @@ int dnslib_rdata_set_item(dnslib_rdata_t *rdata, uint pos,
  * \param count Count of RDATA items to be stored.
  *
  * \retval 0 if successful.
- * \retval 1 if \a rdata is NULL or \a items is NULL or \a count is 0.
- * \retval -1 if \a rdata was not empty.
- * \retval -2 if allocation of necessary space was not successful.
+ * \retval DNSLIB_EBADARG
+ * \retval DNSLIB_ENOMEM
  */
 int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
                            const dnslib_rdata_item_t *items, uint count);
@@ -133,18 +132,51 @@ int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
  *
  * \return The RDATA item on position \a pos, or NULL if such position does not
  *         exist within the given RDATA structure.
+ */
+dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
+                                           uint pos);
+
+/*!
+ * \brief Returns the RDATA item on position \a pos.
  *
- * \todo rename to dnslib_rdata_item()
+ * \note Although returning union would be OK (no overhead), we need to be able
+ *       to distinguish errors (in this case by returning NULL).
+ * \note This function is identical to dnslib_rdata_get_item(), only it returns
+ *       constant data.
+ *
+ * \param rdata RDATA structure to get the item from.
+ * \param pos Position of the item to retrieve.
+ *
+ * \return The RDATA item on position \a pos, or NULL if such position does not
+ *         exist within the given RDATA structure.
  */
 const dnslib_rdata_item_t *dnslib_rdata_item(const dnslib_rdata_t *rdata,
                                              uint pos);
 
-dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
-                                           uint pos);
-
+/*!
+ * \brief Sets the given domain name as a value of RDATA item on position
+ *        \a pos.
+ *
+ * \param rdata RDATA structure to set the item in.
+ * \param pos Position of the RDATA item to set.
+ * \param dname Domain name to set to the item.
+ *
+ * \retval DNSLIB_EOK if successful.
+ * \retval DNSLIB_EBADARG
+ */
 int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, uint pos,
                                 dnslib_dname_t *dname);
 
+/*!
+ * \brief Sets the given raw data as a value of RDATA item on position \a pos.
+ *
+ * \param rdata RDATA structure to set the item in.
+ * \param pos Position of the RDATA item to set.
+ * \param dname Raw data to set to the item.
+ *
+ * \retval DNSLIB_EOK if successful.
+ * \retval DNSLIB_EBADARG
+ */
 int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, uint pos,
                                    uint16_t *raw_data);
 
@@ -222,18 +254,60 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
  * \param format Descriptor of the RDATA format.
  *
  * \retval 0 if RDATAs are equal.
- * \retval -1 if \a r1 goes before \a r2 in canonical order.
- * \retval 1 if \a r1 goes after \a r2 in canonical order.
+ * \retval < 0 if \a r1 goes before \a r2 in canonical order.
+ * \retval > 0 if \a r1 goes after \a r2 in canonical order.
  *
  * \todo Domain names in certain types should be converted to lowercase.
  */
 int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
                          const uint8_t *format);
 
+/*!
+ * \brief Retrieves the domain name from CNAME RDATA.
+ *
+ * \note This is only convenience function. It does not (and cannot) check if
+ *       the given RDATA is of the right type, so it always returns the first
+ *       RDATA item, even if it is not a domain name.
+ *
+ * \param rdata RDATA to get the CNAME domain name from.
+ *
+ * \return Canonical name stored in \a rdata or NULL if \a rdata has no items.
+ */
 const dnslib_dname_t *dnslib_rdata_cname_name(const dnslib_rdata_t *rdata);
 
+/*!
+ * \brief Retrieves the domain name from DNAME RDATA.
+ *
+ * \note This is only convenience function. It does not (and cannot) check if
+ *       the given RDATA is of the right type, so it always returns the first
+ *       RDATA item, even if it is not a domain name.
+ *
+ * \param rdata RDATA to get the DNAME domain name from.
+ *
+ * \return Target domain name stored in \a rdata or NULL if \a rdata has no
+ *         items.
+ */
 const dnslib_dname_t *dnslib_rdata_dname_target(const dnslib_rdata_t *rdata);
 
+/*!
+ * \brief Retrieves the domain name from RDATA of given type.
+ *
+ * Supported types:
+ * - DNSLIB_RRTYPE_NS
+ * - DNSLIB_RRTYPE_MX
+ * - DNSLIB_RRTYPE_SRV
+ * - DNSLIB_RRTYPE_CNAME
+ *
+ * \note This is only convenience function. It does not (and cannot) check if
+ *       the given RDATA is of the right type, so it always returns the RDATA
+ *       item according to the given type, even if it is not a domain name.
+ *
+ * \param rdata RDATA to get the domain name from.
+ * \param type RR type of the RDATA.
+ *
+ * \return Domain name stored in \a rdata or NULL if \a rdata has not enough
+ *         items.
+ */
 const dnslib_dname_t *dnslib_rdata_get_name(const dnslib_rdata_t *rdata,
                                             uint16_t type);
 
