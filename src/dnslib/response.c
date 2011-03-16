@@ -1109,9 +1109,8 @@ int dnslib_response_parse_query(dnslib_response_t *resp,
 
 	if (remaining > 0) {
 		// some trailing garbage; ignore, but log
-		log_answer_info("response: %zu bytes of trailing garbage "
-		                "in query.\n",
-		                remaining);
+		debug_dnslib_response("response: %zu bytes of trailing garbage "
+		                      "in query.\n", remaining);
 	}
 #ifdef DNSLIB_RESPONSE_DEBUG
 	dnslib_response_dump(resp);

@@ -8,7 +8,7 @@
 
 #include <urcu.h>
 
-#include "common.h"
+#include "dnslib/debug.h"
 #include "dnslib/hash/cuckoo-hash-table.h"
 #include "dnslib/hash/hash-functions.h"
 #include "dnslib/ext/dynamic-array.h"
@@ -16,11 +16,6 @@
 /*----------------------------------------------------------------------------*/
 /* Macros and inline functions                                                */
 /*----------------------------------------------------------------------------*/
-
-#define ERR_WRONG_TABLE log_error("Wrong hash table used.\n")
-#define ERR_BITSET log_error("Bitset not correct.\n");
-#define ERR_REHASHING_NOT_IMPL \
-	log_error("Rehashing needed, but not supported.\n");
 
 #define CK_SIZE_NEAREST 1
 #define CK_SIZE_LARGER 2
@@ -771,7 +766,7 @@ int ck_insert_item(ck_hash_table_t *table, const char *key,
 		// if only one place left, rehash (this place is used in
 		// rehashing)
 //		if (da_try_reserve(&table->stash, 2) != 0) {
-//			log_info("Rehash...\n");
+//			debug_ck_hash("Rehash...\n");
 //			int res = ck_rehash(table);
 //			if (res != 0) {
 //				debug_ck_hash("Rehashing not successful, "
@@ -894,11 +889,11 @@ int ck_remove_item(const ck_hash_table_t *table, const char *key, size_t length,
 //	                          (malloc(sizeof(ck_hash_table_item_t)));
 
 //	do {
-//		log_info("Rehash!\n");
+//		debug_ck_hash("Rehash!\n");
 
 //		if (da_get_count(&table->stash) > STASH_SIZE) {
-//			log_info("STASH RESIZED!!! (new stash size: %d)\n",
-//			         da_get_count(&table->stash));
+//			debug_ck_hash("STASH RESIZED!!! (new stash size: %d)\n",
+//			              da_get_count(&table->stash));
 //		}
 
 //		// rehash items from stash, starting from the last old item
@@ -963,7 +958,8 @@ int ck_remove_item(const ck_hash_table_t *table, const char *key, size_t length,
 //				// TODO: Why???
 //				if (da_reserve(&table->stash, 2) < 0) {
 //					// stash could not be resized => !!!
-//					log_error("Failed to rehash items from "
+//					debug_ck_hash("Failed to rehash items "
+//					              "from "
 //					  "table, no other rehash possible!\n");
 //					// so rollback
 //					ck_rollback_rehash(table);
@@ -984,7 +980,7 @@ int ck_remove_item(const ck_hash_table_t *table, const char *key, size_t length,
 //			assert(STASH_ITEMS(&table->stash)[i] != NULL);
 //			++i;
 //		}
-//		log_info("OK\n");
+//		debug_ck_hash("OK\n");
 //		assert(da_try_reserve(&table->stash, 1) == 0);
 //		assert(STASH_ITEMS(&table->stash)[da_get_count(&table->stash)]
 //		       == NULL);
@@ -1063,8 +1059,8 @@ int ck_remove_item(const ck_hash_table_t *table, const char *key, size_t length,
 //					// stash TODO: Why?
 //					if (da_reserve(&table->stash, 2) < 0) {
 //						// stash could not be resized
-//						log_error("Failed to rehash "
-//						  "items from table, no other "
+//						debug_ck_hash("Failed to rehash"
+//						  " items from table, no other "
 //						  "rehash possible!\n");
 //						// so rollback
 //						ck_rollback_rehash(table);

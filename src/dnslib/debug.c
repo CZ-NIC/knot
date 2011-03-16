@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#include "dnslib/utils.h"
 #include "dnslib/debug.h"
 #include "dnslib/dnslib.h"
 
@@ -40,16 +41,17 @@ void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type, char loaded_zone)
 				}
 			}
 			printf("      labels: ");
-			hex_print((char *)rdata->items[i].dname->labels,
-			          rdata->items[i].dname->label_count);
+			dnslib_hex_print((char *)rdata->items[i].dname->labels,
+			                 rdata->items[i].dname->label_count);
 
 		} else {
 			assert(rdata->items[i].raw_data != NULL);
 			printf("      %d: raw_data: length: %d\n", i,
 			       *(rdata->items[i].raw_data));
 			printf("      ");
-			hex_print(((char *)(rdata->items[i].raw_data + 1)),
-				  rdata->items[i].raw_data[0]);
+			dnslib_hex_print(((char *)(
+				rdata->items[i].raw_data + 1)),
+				rdata->items[i].raw_data[0]);
 		}
 	}
 	printf("      ------- RDATA -------\n");
@@ -105,9 +107,9 @@ void dnslib_node_dump(dnslib_node_t *node, void *data)
 	printf("owner: %s\n", name);
 	free(name);
 	printf("labels: ");
-	hex_print((char *)node->owner->labels, node->owner->label_count);
+	dnslib_hex_print((char *)node->owner->labels, node->owner->label_count);
 	printf("node/id: %p\n", node->owner->node);
-        if (loaded_zone && node->prev != NULL) {
+	if (loaded_zone && node->prev != NULL) {
 		name = dnslib_dname_to_str(node->prev->owner);
 		printf("previous node: %s\n", name);
 		free(name);
