@@ -140,5 +140,4 @@ src/tests/dnslib/dnslib_response_tests.c
 src/tests/dnslib/dnslib_rrsig_set_tests.c
 src/tests/dnslib/dnslib_zone_tests.c
 src/tests/dnslib/dnslib_edns_tests.c
-src/tests/zoneparser_tests.c
 tests/querytcp.c
