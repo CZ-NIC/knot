@@ -27,7 +27,7 @@
 #include <netdb.h>
 #include <assert.h>
 
-#include "common.h"
+//#include "common.h"
 #include "zoneparser/zoneparser.h"
 #include "zoneparser/parser-util.h"
 #include "zparser.h"
@@ -38,6 +38,14 @@
 #define NS_INADDRSZ 4
 #define NS_IN6ADDRSZ 16
 #define APL_NEGATION_MASK      0x80U
+
+#define ZP_DEBUG
+
+#ifdef ZP_DEBUG
+#define debug_zp(msg...) fprintf(stderr, msg)
+#else
+#define debug_zp(msg...)
+#endif
 
 static inline uint16_t * rdata_atom_data(dnslib_rdata_item_t item)
 {
@@ -1734,3 +1742,4 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 	return totalerrors;
 }
 
+/*! @} */

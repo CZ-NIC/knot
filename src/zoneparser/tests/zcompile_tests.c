@@ -1,12 +1,14 @@
-#ifdef TEST_WITH_LDNS
-#include "ldns/ldns.h"
-#endif
+#include <assert.h>
 
 #include "dnslib/zone.h"
 #include "dnslib/zone-load.h"
 #include "dnslib/rrset.h"
 #include "dnslib/descriptor.h"
 #include "zoneparser/zoneparser.h"
+
+#ifdef TEST_WITH_LDNS
+#include "ldns/ldns.h"
+#endif
 
 static int zoneparser_tests_count(int argc, char *argv[]);
 static int zoneparser_tests_run(int argc, char *argv[]);
@@ -320,9 +322,14 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 		return 0;
 	}
 
-        dnslib_zone_t *dnsl_zone = dnslib_zload_load(outfile);
+	zloader_t *zloader = dnslib_zload_open(outfile);
+	if (zloader == NULL) {
+		diag("Problem creating zone loader structure.\n");
+		return 0;
+	}
+	dnslib_zone_t *dnsl_zone = dnslib_zload_load(zloader);
 
-        assert(remove(outfile) == 0);
+	assert(remove(outfile) == 0);
 
 	if (dnsl_zone == NULL) {
 		diag("Could not load parsed zone");
@@ -354,6 +361,8 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 	ldns_zone_free(ldns_zone);
 
 	fclose(f);
+
+	dnslib_zload_close(zloader);
 
 	return 1;
 #endif
