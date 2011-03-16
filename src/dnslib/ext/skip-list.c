@@ -35,8 +35,11 @@ Retrieved from: http://en.literateprograms.org/Skip_list_(C)?oldid=12811
 #include <string.h>
 #include <assert.h>
 
-#include "common.h"
+//#include "common.h"
 #include "dnslib/ext/skip-list.h"
+
+#define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d\n", \
+				 __FILE__, __LINE__)
 
 /*----------------------------------------------------------------------------*/
 

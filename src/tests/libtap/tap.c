@@ -4,7 +4,7 @@
 #include <stdarg.h>
 #include <string.h>
 
-#include "common.h"
+//#include "common.h"
 #include "tap.h"
 
 static int expected_tests = NO_PLAN;
