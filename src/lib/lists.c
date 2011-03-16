@@ -27,6 +27,7 @@
 #define _BIRD_LISTS_C_
 
 #include <stdlib.h>
+#include <string.h>
 #include "lib/lists.h"
 
 /**
@@ -134,4 +135,24 @@ add_tail_list(list *to, list *l)
   q = l->tail;
   q->next = (node *) &to->null;
   to->tail = q;
+}
+
+/**
+ * list_dup - duplicate list
+ * @to: destination list
+ * @l: source list
+ *
+ * This function duplicates all elements of the list @l to
+ * the list @to in linear time.
+ *
+ * This function only works with a homogenous item size.
+ */
+void list_dup(list *dst, list *src, size_t itemsz)
+{
+	node *n = 0;
+	WALK_LIST(n, *src) {
+		node *i = malloc(itemsz);
+		memcpy(i, n, itemsz);
+		add_tail(dst, i);
+	}
 }
