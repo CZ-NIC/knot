@@ -89,6 +89,28 @@ dnslib_dname_t *dnslib_dname_new_from_str(const char *name, uint size,
 dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
                 struct dnslib_node *node);
 
+/*!
+ * \brief Initializes domain name by the name given in wire format.
+ *
+ * \note The name is copied into the structure.
+ * \note If there is any name in the structure, it will be replaced.
+ * \note If the given name is not a FQDN, the result will be neither.
+ *
+ * \param name Domain name in wire format.
+ * \param size Size of the domain name in octets.
+ * \param node Zone node the domain name belongs to. Set to NULL if not
+ *             applicable.
+ * \param target Domain name structure to initialize.
+ *
+ * \retval DNSLIB_EOK on success.
+ * \retval DNSLIB_ENOMEM if allocation of labels info failed.
+ *
+ * \todo This function does not check if the given data is in correct wire
+ *       format at all. It thus creates a invalid domain name, which if passed
+ *       e.g. to dnslib_dname_to_str() may result in crash. Decide whether it
+ *       is OK to retain this and check the data in other functions before
+ *       calling this one, or if it should verify the given data.
+ */
 int dnslib_dname_from_wire(const uint8_t *name, uint size,
                            struct dnslib_node *node, dnslib_dname_t *target);
 
@@ -155,21 +177,26 @@ const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname);
  *
  * \param dname Domain name to check.
  *
- * \retval 0 if \a dname is not a FQDN.
- * \retval <> if \a dname is a FQDN.
+ * \retval <> 0 if \a dname is a FQDN.
+ * \retval 0 otherwise.
  */
 int dnslib_dname_is_fqdn(const dnslib_dname_t *dname);
 
 /*!
  * \brief Creates new domain name by removing leftmost label from \a dname.
  *
- * \param dname Domain name to removing the first label from.
+ * \param dname Domain name to remove the first label from.
  *
  * \return New domain name with the same labels as \a dname, except for the
  *         leftmost label, which is removed.
  */
 dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname);
 
+/*!
+ * \brief Removes leftmost label from \a dname.
+ *
+ * \param dname Domain name to remove the first label from.
+ */
 void dnslib_dname_left_chop_no_copy(dnslib_dname_t *dname);
 
 /*!
@@ -178,8 +205,8 @@ void dnslib_dname_left_chop_no_copy(dnslib_dname_t *dname);
  * \param sub Domain name to be the possible subdomain.
  * \param domain Domain name to be the possible parent domain.
  *
- * \retval 0 if \a sub is not a subdomain of \a domain.
- * \retval > 0 if \a sub is a subdomain of \a domain.
+ * \retval <> 0 if \a sub is a subdomain of \a domain.
+ * \retval 0 otherwise.
  */
 int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
                               const dnslib_dname_t *domain);

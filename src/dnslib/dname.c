@@ -6,6 +6,7 @@
 #include <ctype.h>	// tolower()
 
 #include "common.h"
+#include "dnslib/error.h"
 #include "dnslib/dname.h"
 #include "dnslib/consts.h"
 #include "dnslib/tolower.h"
@@ -238,7 +239,7 @@ static int dnslib_dname_find_labels(dnslib_dname_t *dname, int alloc)
 	if (alloc) {
 		dname->labels
 			= (uint8_t *)malloc(label_count * sizeof(uint8_t));
-		CHECK_ALLOC_LOG(dname->labels, -1);
+		CHECK_ALLOC_LOG(dname->labels, DNSLIB_ENOMEM);
 	}
 
 	memcpy(dname->labels, labels, label_count);
@@ -365,18 +366,14 @@ int dnslib_dname_from_wire(const uint8_t *name, uint size,
 {
 	if (name == NULL) { /* && size != 0) { !OS: Nerozumjaju */
 		debug_dnslib_dname("No name given, but size = %u!\n", size);
-		return -1;
+		return DNSLIB_EBADARG;
 	}
 
 	memcpy(target->name, name, size);
 	target->size = size;
 	target->node = node;
-	if (dnslib_dname_find_labels(target, 0) != 0) {
-		return -1;
-	}
-	assert(target->label_count >= 0);
 
-	return 0;
+	return dnslib_dname_find_labels(target, 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -555,16 +552,6 @@ DEBUG_DNSLIB_DNAME(
 		return 0;
 	}
 
-	// jump to the last label and store addresses of labels
-	// on the way there
-	// TODO: consider storing label offsets in the domain name structure
-//	const uint8_t *labels1[DNSLIB_MAX_DNAME_LABELS];
-//	const uint8_t *labels2[DNSLIB_MAX_DNAME_LABELS];
-//	int l1 = 0;
-//	int l2 = 0;
-
-//	dnslib_dname_find_labels(sub, labels1, &l1);
-//	dnslib_dname_find_labels(domain, labels2, &l2);
 	int l1 = sub->label_count;
 	int l2 = domain->label_count;
 
