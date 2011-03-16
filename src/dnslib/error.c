@@ -8,7 +8,8 @@ static const dnslib_lookup_table_t dnslib_error_msgs[] = {
 	{DNSLIB_EBADARG, "Wrong argument supported."},
 	{DNSLIB_EFEWDATA, "Not enough data to parse."},
 	{DNSLIB_ESPACE, "Not enough space provided."},
-	{DNSLIB_EMALF, "Malformed data."}
+	{DNSLIB_EMALF, "Malformed data."},
+	{DNSLIB_ECRYPTO, "Error in crypto library."}
 };
 
 /*----------------------------------------------------------------------------*/
