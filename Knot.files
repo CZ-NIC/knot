@@ -101,6 +101,9 @@ src/zoneparser/parser-util.c
 src/zoneparser/zoneparser.c
 src/zoneparser/zoneparser.h
 src/zoneparser/zparser.y
+src/zoneparser/zlexer.l
+src/zoneparser/tests/unittests_zp_main.c
+src/zoneparser/tests/zcompile_tests.c
 src/tests/conf_tests.c
 src/tests/cuckoo_tests.c
 src/tests/da_tests.c
