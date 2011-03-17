@@ -792,33 +792,27 @@ static int rdata_nsec_to_type_array(const dnslib_rdata_item_t *item,
 
 	uint8_t *data = (uint8_t *)rdata_item_data(item);
 
-	int increment = 1;
+	int increment = 0;
+	*count = 0;
 
-        for (int i = 1; i < rdata_item_size(item); i += increment) {
-                *count = 0;
+	for (int i = 0; i < rdata_item_size(item); i += increment) {
+		increment = 0;
 		uint8_t window = data[i];
-		/* TODO probably wrong set in parser, should
-		 *be 0 in most of the cases.
-		 */
-                window = 0;
-		uint8_t bitmap_size = data[i+1];
-                uint8_t *bitmap =
-			malloc(sizeof(uint8_t) * (bitmap_size >
-						  rdata_item_size(item) ?
-						  bitmap_size :
-                                                  rdata_item_size(item)));
+		increment++;
 
-		memset(bitmap, 0,
-		       sizeof(uint8_t) *  bitmap_size > rdata_item_size(item) ?
-		       bitmap_size :
-		       rdata_item_size(item));
+		uint8_t bitmap_size = data[i + increment];
+		increment++;
 
-		memcpy(bitmap, data + i + 1, rdata_item_size(item) - (i + 1));
+		uint8_t *bitmap =
+			malloc(sizeof(uint8_t) * (bitmap_size));
 
-		increment += bitmap_size + 3;
+		memcpy(bitmap, data + i + increment,
+		       bitmap_size);
+
+		increment += bitmap_size;
 
 		for (int j = 0; j < bitmap_size * 8; j++) {
-                        if (get_bit(bitmap, j)) {
+			if (get_bit(bitmap, j)) {
                                 (*count)++;
 				void *tmp = realloc(*array,
 						    sizeof(uint16_t) *
@@ -829,7 +823,7 @@ static int rdata_nsec_to_type_array(const dnslib_rdata_item_t *item,
 			}
 		}
 		free(bitmap);
-        }
+	}
 
 	return 0;
 }
@@ -1141,7 +1135,6 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 						handler,
 						node,
 						ZC_ERR_NSEC_RDATA_BITMAP);
-					break;
 	/*					char *name =
 							dnslib_dname_to_str(
 							dnslib_node_owner(node));
