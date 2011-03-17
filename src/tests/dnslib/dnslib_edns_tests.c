@@ -26,19 +26,30 @@ unit_api dnslib_ends_tests_api = {
  *  Unit implementation.
  */
 
-dnslib_dname_t root_domain = { (uint8_t *)"0", 1, (uint8_t *)"0" , 1, NULL };
-
 enum { TEST_EDNS = 1 };
 
-struct edns {
-	dnslib_dname_t *owner;
-	uint16_t type;
+struct test_edns_options {
+	uint16_t code;
+	uint16_t length;
+	uint8_t *data;
+};
+
+struct test_edns {
+	struct test_edns_options *options;
 	uint16_t payload;
 	uint8_t ext_rcode;
 	uint8_t version;
+	uint16_t flags;
+	short option_count;
+	short options_max;
+	short size;
 };
 
-typedef struct edns edns_t;
+typedef struct test_edns test_edns_t;
+
+test_edns_t test_edns_data[TEST_EDNS] = {
+{ NULL, 4096, 0, 0, 0, 0, 0, 11}
+};
 
 //static edns_t test_edns[TEST_EDNS] = {
 //{ &root_domain,
@@ -55,7 +66,76 @@ typedef struct edns edns_t;
 //  0x00, /* higher bits in extended rcode */
 //  0x00 }; /* ENDS version */
 
-//static uint8_t *edns_wire[TEST_EDNS] = { wire };
+static uint8_t *edns_wire[TEST_EDNS] = { wire };
+
+static int edns_compare_wires(uint8_t *wire1,
+			      uint8_t *wire2,
+			      uint16_t length)
+{
+	for (uint i = 0; i < length; i++) {
+		if (wire1[i] != wire2[i]) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+static int check_ends(const dnslib_opt_rr_t *edns,
+		      const test_edns_t *test_edns)
+{
+	if (edns->option_count != test_edns->option_count) {
+		diag("Option count is wrong");
+		return -1;
+	}
+
+	for (int i = 0; i < edns->option_count; i++) {
+		/* check options */
+		if (edns->options[i].code != test_edns->options[i].code) {
+			diag("Code in options is wrong");
+			return -1;
+		}
+
+		if (edns->options[i].length != test_edns->options[i].length) {
+			diag("Length in options is wrong");
+			return -1;
+		}
+
+		if (edns_compare_wires(edns->options[i].data,
+				       test_edns->options[i].data,
+				       edns->options[i].length) != 0)  {
+			diag("Data in options are wrong");
+			return -1;
+		}
+	}
+
+	if (edns->version != test_edns->version) {
+		diag("Version is wrong");
+		return -1;
+	}
+
+	if (edns->flags != test_edns->flags) {
+		diag("Flags are wrong");
+		return -1;
+	}
+
+	if (edns->size != test_edns->size) {
+		diag("Size is wrong");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int test_edns_getters()
+{
+	;
+}
+
+static int test_edns_setters()
+{
+	;
+}
 
 //static int test_edns_get_payload()
 //{
