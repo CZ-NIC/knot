@@ -135,6 +135,7 @@ enum zonechecks_errors {
 	ZC_ERR_NSEC_RDATA_BITMAP,
 	ZC_ERR_NSEC_RDATA_MULTIPLE,
 	ZC_ERR_NSEC_RDATA_CHAIN,
+	ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC,
 
 	ZC_ERR_NSEC_GENERAL_ERROR,
 
@@ -196,6 +197,8 @@ static char *error_messages[ZC_ERR_GLUE_RECORD + 1] = {
 	"NSEC: Multiple NSEC records!\n",
 	[ZC_ERR_NSEC_RDATA_CHAIN] =
 	"NSEC: NSEC chain is not coherent!\n",
+	[ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC] =
+	"NSEC: NSEC chain is not cyclic!\n",
 
 	[ZC_ERR_NSEC3_UNSECURED_DELEGATION] =
 	"NSEC3: Zone contains unsecured delegation!\n",
@@ -923,7 +926,7 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 
 /*	printf("\n%s\n", dnslib_dname_to_str(next_dname)); */
 
-	/* TODO this should not work, unless what about 0 at the end??? */
+	/* TODO this should not work, what about 0 at the end??? */
 
 	if (dnslib_dname_cat(next_dname,
 		     dnslib_node_owner(dnslib_zone_apex(zone))) == NULL) {
@@ -987,6 +990,7 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 
 static int semantic_checks_plain(dnslib_zone_t *zone,
 				 dnslib_node_t *node,
+				 char do_checks,
 				 err_handler_t *handler)
 {
 	const dnslib_rrset_t *cname_rrset =
@@ -1001,7 +1005,7 @@ static int semantic_checks_plain(dnslib_zone_t *zone,
 	/* TODO move things below to the if above */
 
 	/* No DNSSEC and yet there is more than one rrset in node */
-	if (cname_rrset &&
+	if (cname_rrset && do_checks == 1 &&
 	    dnslib_node_rrset_count(node) != 1) {
 		err_handler_handle_error(handler, node,
 					 ZC_ERR_CNAME_EXTRA_RECORDS);
@@ -1061,7 +1065,7 @@ static int semantic_checks_plain(dnslib_zone_t *zone,
 static int semantic_checks_dnssec(dnslib_zone_t *zone,
 				  dnslib_node_t *node,
 				  dnslib_node_t *first_node,
-				  dnslib_node_t *last_node,
+				  dnslib_node_t **last_node,
 				  err_handler_t *handler,
 				  char nsec3)
 {
@@ -1196,7 +1200,7 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 			if (dnslib_dname_compare(next_domain,
 			    dnslib_node_owner(dnslib_zone_apex(zone))) == 0) {
 				/* saving the last node */
-				last_node = node;
+				*last_node = node;
 			}
 		} else if (nsec3 && (auth || deleg)) { /* nsec3 */
 			int ret = check_nsec3_node_in_zone(zone, node, handler);
@@ -1215,7 +1219,7 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 	assert(zone);
 
 	dnslib_node_t *first_node = (dnslib_node_t *)args->arg4;
-	dnslib_node_t *last_node = (dnslib_node_t *)args->arg5;
+	dnslib_node_t **last_node = (dnslib_node_t **)args->arg5;
 
 	err_handler_t *handler = (err_handler_t *)args->arg6;
 
@@ -1228,26 +1232,26 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 						(skip_list_t *)args->arg2);
 	}
 
-	/* TODO move to separate function */
 	 if (do_checks) {
-		 semantic_checks_plain(zone, node, handler);
+		 semantic_checks_plain(zone, node, do_checks, handler);
 	}
 
 	if (do_checks > 1) {
 		semantic_checks_dnssec(zone, node, first_node, last_node,
-				       handler, do_checks == 3);
+				       handler, do_checks == 3);	
 	}
 }
 
 void zone_save_enclosers_sem_check(dnslib_zone_t *zone, skip_list_t *list,
-				   char do_checks, err_handler_t *handler)
+				   char do_checks, err_handler_t *handler,
+				   dnslib_node_t **last_node)
 {
 	arg_t arguments;
 	arguments.arg1 = zone;
 	arguments.arg2 = list;
 	arguments.arg3 = &do_checks;
 	arguments.arg4 = NULL;
-	arguments.arg5 = NULL;
+	arguments.arg5 = last_node;
 	arguments.arg6 = handler;
 
 	dnslib_zone_tree_apply_inorder(zone,
@@ -1301,7 +1305,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
-			/* TODO some temp variables - this is way too long */
+			/*  some temp variables - this is way too long */
 			assert(rdata->items[i].dname != NULL);
 			dnslib_dname_t *wildcard = NULL;
 
@@ -1532,6 +1536,43 @@ static int zone_is_secure(dnslib_zone_t *zone)
 	}
 }
 
+static void log_cyclic_errors_in_zone(err_handler_t *handler,
+				      dnslib_zone_t *zone,
+				      dnslib_node_t *last_node,
+				      char do_checks)
+{
+	if (do_checks == 3) {
+		/* TODO I can check it points somewhere allright, but
+		 * to be sure it's really the first node I would have to have
+		 * first node of NSEC3 tree as well - impossible without
+		 * receiving it explicitely or going through the whole tree.*/
+		;
+	} else if (do_checks == 2 ) {
+		const dnslib_rrset_t *nsec_rrset =
+			dnslib_node_rrset(last_node, DNSLIB_RRTYPE_NSEC);
+
+		if (nsec_rrset == NULL) {
+			err_handler_handle_error(handler, last_node,
+				 ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC);
+			return;
+		}
+
+		const dnslib_dname_t *next_dname =
+			dnslib_rdata_item(
+			dnslib_rrset_rdata(nsec_rrset), 0)->dname;
+		assert(next_dname);
+
+		const dnslib_dname_t *apex_dname =
+			dnslib_node_owner(dnslib_zone_apex(zone));
+		assert(apex_dname);
+
+		if (dnslib_dname_compare(next_dname, apex_dname) !=0) {
+			err_handler_handle_error(handler, last_node,
+				 ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC);
+		}
+	}
+}
+
 int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 			char do_checks, const char *sfilename)
 {
@@ -1543,8 +1584,6 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 		return -1;
         }
 
-//        dnslib_zone_dump(zone, 0);
-
 	zone->node_count = 0;
 
 	skip_list_t *encloser_list = skip_create_list(compare_pointers);
@@ -1555,7 +1594,12 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 
 	err_handler_t *handler = handler_new(1, 0, 1, 1, 1);
 
-	zone_save_enclosers_sem_check(zone, encloser_list, do_checks, handler);
+	dnslib_node_t *last_node = NULL;
+
+	zone_save_enclosers_sem_check(zone, encloser_list, do_checks, handler,
+				      &last_node);
+
+	log_cyclic_errors_in_zone(handler, zone, last_node, do_checks);
 
 	err_handler_log_all(handler);
 
