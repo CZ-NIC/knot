@@ -1452,6 +1452,7 @@ int process_rr(void)
 	dnslib_node_t *(*node_get_func)(const dnslib_zone_t *zone,
 					const dnslib_dname_t *owner);
 
+
 	/* If we have RRSIG of NSEC3 type first node will have
 	 * to be created in NSEC3 part of the zone */
 
@@ -1469,10 +1470,10 @@ int process_rr(void)
 		node_get_func = &dnslib_zone_get_nsec3_node;
 	}
 
-	/* We only support IN class */
-	if (current_rrset->rclass != DNSLIB_CLASS_IN) {
-		fprintf(stderr, "only class IN is supported");
-		return -3;
+	if ((current_rrset->type == DNSLIB_RRTYPE_SOA) && (zone != NULL)) {
+		if (dnslib_node_rrset(zone->apex, DNSLIB_RRTYPE_SOA) != NULL) {
+			return -2;
+		}
 	}
 
 //TODO
