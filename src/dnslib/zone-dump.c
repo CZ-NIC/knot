@@ -275,22 +275,28 @@ static char error_is_severe(uint error)
 	}
 }
 
-static int log_error_from_node(dnslib_node_t *node,
-			       uint error)
+static int log_error_from_node(err_handler_t *handler, dnslib_node_t *node,
+			       uint error, char log_count)
 {
-	char *name =
-		dnslib_dname_to_str(dnslib_node_owner(node));
-	log_zone_error("Semantic error in node: %s: ",
-		       name);
-	log_zone_error("%s", error_messages[error]);
-	free(name);
+	/* todo not like this */
+	if (node != NULL) {
+		char *name =
+			dnslib_dname_to_str(dnslib_node_owner(node));
+		log_zone_error("Semantic error in node: %s: ",
+			       name);
+		log_zone_error("%s", error_messages[error]);
+		free(name);
+	} else {
+		log_zone_error("Total number: %d: %s", handler->errors[error],
+			       error_messages[error]);
+	}
 }
 
 static int err_handler_handle_error(err_handler_t *handler,
 				    dnslib_node_t *node,
 				    uint error)
 {
-	if (error <= ZC_ERR_GLUE_RECORD) {
+	if (error > ZC_ERR_GLUE_RECORD) {
 		return ZC_ERR_UNKNOWN;
 	}
 
@@ -304,40 +310,49 @@ static int err_handler_handle_error(err_handler_t *handler,
 	    ((handler->errors[error] == 0) ||
 	     (handler->options.log_rrsigs))) {
 
-		log_error_from_node(node, error);
+		log_error_from_node(handler, node, error, 0);
 
 	} else if ((error > ZC_ERR_RRSIG_GENERAL_ERROR) &&
 		   (error < ZC_ERR_NSEC_GENERAL_ERROR) &&
 		   ((handler->errors[error] == 0) ||
 		    (handler->options.log_nsec))) {
 
-		log_error_from_node(node, error);
+		log_error_from_node(handler, node, error, 0);
 
 	} else if ((error > ZC_ERR_NSEC_GENERAL_ERROR) &&
 		   (error < ZC_ERR_NSEC3_GENERAL_ERROR) &&
 		   ((handler->errors[error] == 0) ||
 		    (handler->options.log_nsec3))) {
 
-		log_error_from_node(node, error);
+		log_error_from_node(handler, node, error, 0);
 
 	} else if ((error > ZC_ERR_NSEC3_GENERAL_ERROR) &&
 		   (error < ZC_ERR_CNAME_GENERAL_ERROR) &&
 		   ((handler->errors[error] == 0) ||
 		    (handler->options.log_cname))) {
 
-		log_error_from_node(node, error);
+		log_error_from_node(handler, node, error, 0);
 
 	} else if ((error > ZC_ERR_CNAME_GENERAL_ERROR) &&
 		   (error < ZC_ERR_GLUE_GENERAL_ERROR) &&
 		    handler->options.log_glue) {
 
-		log_error_from_node(node, error);
+		log_error_from_node(handler, node, error, 0);
 
 	}
 
 	handler->errors[error]++;
 
 	return 0;
+}
+
+static void err_handler_log_all(err_handler_t *handler)
+{
+	for (int i = 0; i < ZC_ERR_GLUE_GENERAL_ERROR; i++) {
+		if (handler->errors[i] > 0) {
+			log_error_from_node(handler, NULL, i, 1);
+		}
+	}
 }
 
 /* TODO CHANGE FROM VOID POINTERS */
@@ -456,7 +471,6 @@ static void dnslib_zone_save_enclosers_node(dnslib_node_t *node,
 	}
 }
 
-/* ret 0 OK, -1 cycle, -2 invalid cycle (destination not found) */
 static int check_cname_cycles_in_zone(dnslib_zone_t *zone,
 				      const dnslib_rrset_t *rrset)
 {
@@ -820,7 +834,9 @@ static int rdata_nsec_to_type_array(const dnslib_rdata_item_t *item,
 	return 0;
 }
 
-static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
+/* should write error, not return values !!! */
+static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
+				    err_handler_t *handler)
 {
 	const dnslib_node_t *nsec3_node = dnslib_node_nsec3_node(node);
 
@@ -828,7 +844,8 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 		/* I know it's probably not what RFCs say, but it will have to
 		 * do for now. */
 		if (dnslib_node_rrset(node, DNSLIB_RRTYPE_DS) != NULL) {
-			return ZC_ERR_NSEC3_UNSECURED_DELEGATION;
+			err_handler_handle_error(handler, node,
+					ZC_ERR_NSEC3_UNSECURED_DELEGATION);
 		} else {
 			/* Unsecured delegation, check whether it is part of
 			 * opt-out span */
@@ -839,7 +856,8 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 						dnslib_node_owner(node),
 						&nsec3_node,
 						&nsec3_previous) != 0) {
-				return ZC_ERR_NSEC3_NOT_FOUND;
+				err_handler_handle_error(handler, node,
+						 ZC_ERR_NSEC3_NOT_FOUND);
 			}
 
 /* ???			if (nsec3_node == NULL) {
@@ -863,7 +881,8 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 			uint8_t opt_out_mask = 0b00000001;
 
 			if (!(flags & opt_out_mask)) {
-				return ZC_ERR_NSEC3_UNSECURED_DELEGATION_OPT;
+				err_handler_handle_error(handler, node,
+					ZC_ERR_NSEC3_UNSECURED_DELEGATION_OPT);
 			}
 		}
 	}
@@ -883,7 +902,8 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 	/* are those getters even worth this? */
 
 	if (dnslib_rrset_ttl(nsec3_rrset) != minimum_ttl) {
-		return ZC_ERR_NSEC3_RDATA_TTL;
+			err_handler_handle_error(handler, node,
+						 ZC_ERR_NSEC3_RDATA_TTL);
 	}
 
 	/* check that next dname is in the zone */
@@ -905,20 +925,24 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 		dnslib_dname_new_from_wire(next_dname_decoded,
 					   next_dname_decoded_size, NULL);
 
+	free(next_dname_decoded);
+
 /*	printf("\n%s\n", dnslib_dname_to_str(next_dname)); */
 
 	/* TODO this should not work, unless what about 0 at the end??? */
 
 	if (dnslib_dname_cat(next_dname,
 		     dnslib_node_owner(dnslib_zone_apex(zone))) == NULL) {
-		return ZC_ERR_ALLOC;
+			err_handler_handle_error(handler, node,
+						 ZC_ERR_ALLOC);
 	}
 
 //	dnslib_dname
 
 
 	if (dnslib_zone_find_nsec3_node(zone, next_dname) == NULL) {
-		return ZC_ERR_NSEC3_RDATA_CHAIN;
+		err_handler_handle_error(handler, node,
+					 ZC_ERR_NSEC3_RDATA_CHAIN);
 	}
 
 	/* TODO first node in the nsec3 tree */
@@ -934,7 +958,9 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 	    dnslib_rdata_item(
 	    dnslib_rrset_rdata(nsec3_rrset), 5),
 	    &array, &count) != 0) {
-		return ZC_ERR_ALLOC;
+			err_handler_handle_error(handler, node,
+						 ZC_ERR_ALLOC);
+			return -1;
 	}
 
 	uint16_t type = 0;
@@ -946,7 +972,9 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 		}
 		if (dnslib_node_rrset(node,
 				      type) == NULL) {
-			return ZC_ERR_NSEC3_RDATA_BITMAP;
+			err_handler_handle_error(handler, node,
+						 ZC_ERR_NSEC3_RDATA_BITMAP);
+			break;
 /*			char *name =
 				dnslib_dname_to_str(
 			log_zone_error("Node %s does "
@@ -957,6 +985,8 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node)
 			free(name); */
 		}
 	}
+
+	free(array);
 
 	return 0;
 }
@@ -1031,6 +1061,7 @@ static int semantic_checks_plain(dnslib_zone_t *zone,
 			}
 		}
 	}
+	return 0;
 }
 
 static int semantic_checks_dnssec(dnslib_zone_t *zone,
@@ -1110,6 +1141,7 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 						handler,
 						node,
 						ZC_ERR_NSEC_RDATA_BITMAP);
+					break;
 	/*					char *name =
 							dnslib_dname_to_str(
 							dnslib_node_owner(node));
@@ -1123,6 +1155,7 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 					free(name); */
 					}
 				}
+				free(array);
 			}
 
 			/* Test that only one record is in the
@@ -1173,17 +1206,10 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 				last_node = node;
 			}
 		} else if (nsec3 && (auth || deleg)) { /* nsec3 */
-			int ret = check_nsec3_node_in_zone(zone, node);
-			if (ret != 0) {
-/*				log_zone_error("NSEC3 error:%d\n", ret);
-				log_zone_error("NODE: %s\n",
-				       dnslib_dname_to_str(node->owner)); */
-				err_handler_handle_error(handler,
-							 node,
-							 ret);
-			}
+			int ret = check_nsec3_node_in_zone(zone, node, handler);
 		}
 	}
+	free(rrsets);
 }
 
 static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
@@ -1221,14 +1247,15 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 }
 
 void zone_save_enclosers_sem_check(dnslib_zone_t *zone, skip_list_t *list,
-				   char do_checks)
+				   char do_checks, err_handler_t *handler)
 {
-	dnslib_node_t *last_node = NULL;
 	arg_t arguments;
 	arguments.arg1 = zone;
 	arguments.arg2 = list;
 	arguments.arg3 = &do_checks;
-	arguments.arg4 = &last_node;
+	arguments.arg4 = NULL;
+	arguments.arg5 = NULL;
+	arguments.arg6 = handler;
 
 	dnslib_zone_tree_apply_inorder(zone,
 	                   dnslib_zone_save_enclosers_in_tree,
@@ -1533,7 +1560,13 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 		do_checks += zone_is_secure(zone);
 	}
 
-	zone_save_enclosers_sem_check(zone, encloser_list, do_checks);
+	err_handler_t *handler = handler_new(1, 0, 1, 1, 1);
+
+	zone_save_enclosers_sem_check(zone, encloser_list, do_checks, handler);
+
+	err_handler_log_all(handler);
+
+	free(handler);
 
 	/* Start writing header - magic bytes. */
 	size_t header_len = MAGIC_LENGTH;
@@ -1565,12 +1598,10 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 
 	arg_t arguments;
 
-	err_handler_t *handler = handler_new(1, 1, 1, 1, 1);
 
 	arguments.arg1 = f;
 	arguments.arg2 = encloser_list;
 	arguments.arg3 = zone;
-	arguments.arg6 = handler;
 
 	/* TODO is there a way how to stop the traversal upon error? */
 	dnslib_zone_tree_apply_inorder(zone, dnslib_node_dump_binary,
