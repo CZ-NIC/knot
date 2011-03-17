@@ -129,7 +129,7 @@ enum dnslib_rr_type {
  */
 typedef enum dnslib_rr_type dnslib_rr_type_t;
 
-static uint const DNSLIB_RRTYPE_LAST = DNSLIB_RRTYPE_NSEC3PARAM;
+static const uint DNSLIB_RRTYPE_LAST = DNSLIB_RRTYPE_NSEC3PARAM;
 
 enum dnslib_rdata_wireformat {
 	/*!
