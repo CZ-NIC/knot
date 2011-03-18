@@ -107,6 +107,7 @@ static int test_rdata_create()
 
 	if (dnslib_rdata_item(rdata, 0) != NULL) {
 		diag("Get item returned something else than NULL!");
+		dnslib_rdata_free(&rdata);
 		return 0;
 	}
 
@@ -514,6 +515,7 @@ static int test_rdata_set_item()
 	// set items through set_items() and then call set_item()
 	uint16_t rrtype = rand() % DNSLIB_RRTYPE_LAST + 1;
 	if (fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, rrtype, rdata) < 0) {
+		dnslib_rdata_free(&rdata);
 		diag("Error filling RDATA");
 		return 0;
 	}
@@ -878,7 +880,7 @@ static int test_rdata_deep_free()
 {
 	return 1;
 
-	int errors = 0;
+/*	int errors = 0;
 
 	dnslib_rdata_t *tmp_rdata;
 
@@ -893,7 +895,7 @@ static int test_rdata_deep_free()
 		errors += (tmp_rdata != NULL);
 	}
 
-	return (errors == 0);
+	return (errors == 0); */
 }
 
 /*----------------------------------------------------------------------------*/
@@ -915,7 +917,7 @@ static int dnslib_rdata_tests_run(int argc, char *argv[])
 	int res = 0,
 	    res_final = 1;
 
-	res = test_rdata_create(0);
+	res = test_rdata_create();
 	ok(res, "rdata: create empty");
 	res_final *= res;
 
