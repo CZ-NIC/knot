@@ -479,7 +479,7 @@ static int test_edns_wire()
 		}
 
 		free(wire);
-
+		dnslib_edns_free(&edns_from_wire);
 		dnslib_edns_free(&edns);
 	}
 	return 1;
