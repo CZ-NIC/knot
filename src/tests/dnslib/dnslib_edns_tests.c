@@ -26,7 +26,7 @@ unit_api dnslib_edns_tests_api = {
  *  Unit implementation.
  */
 
-enum { TEST_EDNS = 1 };
+enum { TEST_EDNS = 1, OPTION_COUNT = 3 };
 
 struct test_edns_options {
 	uint16_t code;
@@ -47,8 +47,14 @@ struct test_edns {
 
 typedef struct test_edns test_edns_t;
 
+struct test_edns_options test_options_data[OPTION_COUNT] = {
+	{5, 7, (uint8_t *)"123456"},
+	{4, 3, (uint8_t *)"12"},
+	{1, 5, (uint8_t *)"13333"}
+};
+
 test_edns_t test_edns_data[TEST_EDNS] = {
-{ NULL, 4096, 0, 0, 0, 0, 0, 11}
+{ NULL, 4096, 2, 0, 0, 0, 10, 11}
 };
 
 //static edns_t test_edns[TEST_EDNS] = {
@@ -444,7 +450,16 @@ static int test_edns_wire()
 		}
 
 		uint8_t *wire = NULL;
+		wire = malloc(sizeof(uint8_t) * edns->size);
+		CHECK_ALLOC_LOG(wire, 0);
+
 		short wire_size = dnslib_edns_to_wire(edns, wire, 100);
+
+		if (wire_size == -1) {
+			diag("Could not create EDNS wire");
+			return 0;
+		}
+
 		dnslib_opt_rr_t *edns_from_wire = dnslib_edns_new();
 		if (edns == NULL) {
 			return 0;
@@ -452,8 +467,8 @@ static int test_edns_wire()
 
 		if (dnslib_edns_new_from_wire(edns_from_wire,
 					      wire,
-					      100) != 0) {
-			diag("Could not create wire");
+					      100) <= 0) {
+			diag("Could not create from wire");
 			return 0;
 		}
 
@@ -462,6 +477,10 @@ static int test_edns_wire()
 			diag("EDNS created from wire is different from the "
 			     "original one");
 		}
+
+		free(wire);
+
+		dnslib_edns_free(&edns);
 	}
 	return 1;
 }
@@ -640,7 +659,7 @@ static int test_edns_has_option()
 //	return (errors == 0);
 //}
 
-static const int DNSLIB_EDNS_TESTS_COUNT = 9;
+static const int DNSLIB_EDNS_TESTS_COUNT = 12;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
