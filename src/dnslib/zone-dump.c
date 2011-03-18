@@ -151,6 +151,8 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 		                                 (dnslib_zone_t *)args->arg1,
 		                                 (skip_list_t *)args->arg2);
 	}
+
+	free(rrsets);
 }
 
 void dnslib_zone_save_enclosers(dnslib_zone_t *zone, skip_list_t *list)
