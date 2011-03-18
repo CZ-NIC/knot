@@ -28,14 +28,26 @@
 
 #include <stdint.h>
 
+#include "common.h"
+
 enum { US_FNC_COUNT = 4 };
+
+enum { GEN_COUNT = 2 };
+
+/*----------------------------------------------------------------------------*/
+
+struct us_system {
+	uint coefs[US_FNC_COUNT * GEN_COUNT];
+};
+
+typedef struct us_system us_system_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Initializes the universal system by generating coeficients for all
  *        hash functions and all generations.
  */
-void us_initialize();
+void us_initialize(us_system_t *system);
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -43,7 +55,7 @@ void us_initialize();
  *
  * \return 0
  */
-int us_next(uint generation);
+int us_next(us_system_t *system, uint generation);
 
 /*----------------------------------------------------------------------------*/
 
@@ -64,7 +76,8 @@ int us_next(uint generation);
  *
  * \return Hash value (32bit unsigned).
  */
-uint32_t us_hash(uint32_t value, uint table_exp, uint fnc, uint generation);
+uint32_t us_hash(const us_system_t *system, uint32_t value, uint table_exp,
+                 uint fnc, uint generation);
 
 /*----------------------------------------------------------------------------*/
 

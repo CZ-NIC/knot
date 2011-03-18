@@ -268,6 +268,8 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 	    type != DNSLIB_RRTYPE_AAAA) {
 		if (!mem_read(&total_raw_data_length,
 		     sizeof(total_raw_data_length), src, src_size)) {
+			dnslib_rdata_free(&rdata);
+			free(items);
 			return NULL;
 		}
 	}
@@ -324,6 +326,7 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 					      label_size,
 					      src,
 					      src_size)) {
+					free(label_wire);
 					return NULL;
 				}
 
@@ -540,8 +543,11 @@ static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 		tmp_rdata = load_response_rdata(rrset->type, src, src_size);
 
 		if (tmp_rdata == NULL) {
-			diag("Could not load rrset rdata - type: %d", rrset->type);
-			/* TODO some freeing */
+			diag("Could not load rrset rdata - type: %d",
+			     rrset->type);
+
+			free(rrset);
+
 			return NULL;
 		}
 
@@ -761,39 +767,39 @@ unsigned *src_size)
 	return resp;
 }
 
-static void free_parsed_response(test_response_t **response)
+static void free_parsed_response(test_response_t *response)
 {
-	if (*response != NULL) {
+	if (response != NULL) {
 
-		if ((*response)->qname != NULL) {
-			dnslib_dname_free(&((*response)->qname));
+		if (response->qname != NULL) {
+			dnslib_dname_free(&(response->qname));
 		}
 
-		if ((*response)->additional != NULL) {
-			for (int j = 0; j < (*response)->arcount; j++) {
-				dnslib_rrset_deep_free(&((*response)->additional[j]), 1, 1);
+		if (response->additional != NULL) {
+			for (int j = 0; j < response->arcount; j++) {
+				dnslib_rrset_deep_free(&(response->additional[j]), 1, 1);
 			}
 
-			free((*response)->additional);
+			free(response->additional);
 		}
 
-		if ((*response)->answer != NULL) {
-			for (int j = 0; j < (*response)->ancount; j++) {
-				dnslib_rrset_deep_free(&((*response)->answer[j]), 1, 1);
+		if (response->answer != NULL) {
+			for (int j = 0; j < response->ancount; j++) {
+				dnslib_rrset_deep_free(&(response->answer[j]), 1, 1);
 			}
 
-			free((*response)->answer);
+			free(response->answer);
 		}
 
-		if ((*response)->authority != NULL) {
-			for (int j = 0; j < (*response)->nscount; j++) {
-				dnslib_rrset_deep_free(&((*response)->authority[j]), 1, 1);
+		if (response->authority != NULL) {
+			for (int j = 0; j < response->nscount; j++) {
+				dnslib_rrset_deep_free(&(response->authority[j]), 1, 1);
 			}
 
-			free((*response)->authority);
+			free(response->authority);
 		}
 
-		free(*response);
+		free(response);
 	}
 }
 
@@ -829,7 +835,7 @@ void free_parsed_responses(test_response_t ***responses, uint32_t *count)
 {
 	if (*responses != NULL) {
 		for (int i = 0; i < *count; i++) {
-			free_parsed_response(&(*responses[i]));
+			free_parsed_response((*responses)[i]);
 		}
 		free(*responses);
 	}
@@ -1917,6 +1923,7 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 			     raw_data_queries_rc_size) != 0) {
 		diag("Could not load raw queries, skipping");
 		free_raw_packets(&raw_queries, &query_raw_count);
+		free_parsed_responses(&parsed_queries, &query_parsed_count);
 		return 0;
 	}
 

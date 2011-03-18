@@ -39,7 +39,8 @@ typedef unsigned int uint;
 //#define MEM_SLAB_CAP 3   // Cap slab_cache empty slab count (undefined = inf)
 #define MEM_COLORING       // Slab cache coloring
 
-//#define USE_HASH_TABLE
+#define USE_HASH_TABLE
+//#define COMPRESSION_PEDANTIC
 //#define TEST_WITH_LDNS
 
 /* Common includes.
