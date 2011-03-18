@@ -499,7 +499,9 @@ static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 
 	dname_wire = malloc(sizeof(uint8_t) * dname_size);
 
-        if (!mem_read(dname_wire, sizeof(uint8_t) * dname_size, src, src_size)) {
+	if (!mem_read(dname_wire, sizeof(uint8_t) * dname_size, src,
+		      src_size)) {
+		free(dname_wire);
 		return NULL;
 	}
 
@@ -562,7 +564,10 @@ unsigned *src_size)
 {
 	test_response_t *resp = malloc(sizeof(test_response_t));
 
+	CHECK_ALLOC_LOG(resp, NULL);
+
 	if (!mem_read(&resp->id, sizeof(resp->id), src, src_size)) {
+		free(resp);
 		return NULL;
 	}
 
@@ -571,6 +576,7 @@ unsigned *src_size)
 #endif
 
 	if (!mem_read(&resp->qdcount, sizeof(resp->qdcount), src, src_size)) {
+		free(resp);
 		return NULL;
 	}
 
@@ -579,6 +585,7 @@ unsigned *src_size)
 #endif
 
 	if (!mem_read(&resp->ancount, sizeof(resp->ancount), src, src_size)) {
+		free(resp);
 		return NULL;
 	}
 
@@ -587,6 +594,7 @@ unsigned *src_size)
 #endif
 
 	if (!mem_read(&resp->nscount, sizeof(resp->nscount), src, src_size)) {
+		free(resp);
 		return NULL;
 	}
 
@@ -595,6 +603,7 @@ unsigned *src_size)
 #endif
 
 	if (!mem_read(&resp->arcount, sizeof(resp->arcount), src, src_size)) {
+		free(resp);
 		return NULL;
 	}
 
@@ -615,6 +624,7 @@ unsigned *src_size)
 				dnslib_rrset_free(&(question_rrsets[i]));
 			}
 			free(question_rrsets);
+			free(resp);
 			return NULL;
 		}
 	}
@@ -647,6 +657,8 @@ unsigned *src_size)
 		resp->answer[i] = tmp_rrset;
 		if (resp->answer[i] == NULL) {
 			diag("Could not load answer rrsets");
+			free(resp->answer);
+			free(resp);
 			return NULL;
 		}
 
@@ -685,6 +697,9 @@ unsigned *src_size)
 		resp->authority[i] = tmp_rrset;
 		if (resp->authority[i] == NULL) {
 			diag("Could not load authority rrsets");
+			free(resp->authority);
+			free(resp->answer);
+			free(resp);
 			return NULL;
 		}
 
@@ -723,6 +738,10 @@ unsigned *src_size)
 		tmp_rrset = load_response_rrset(src, src_size, 0);
 		if (tmp_rrset == NULL) {
 			diag("Could not load rrset (additional)");
+			free(resp->additional);
+			free(resp->authority);
+			free(resp->answer);
+			free(resp);
 			return NULL;
 		}
 
@@ -1891,7 +1910,8 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	if (load_parsed_responses(&parsed_responses, &response_parsed_count,
 			    parsed_data_rc, parsed_data_rc_size) != 0) {
 		diag("Could not load parsed responses, skipping");
-		free_parsed_responses(&parsed_responses, &response_parsed_count);
+		free_parsed_responses(&parsed_responses,
+				      &response_parsed_count);
 		return 0;
 	}
 
@@ -1901,6 +1921,8 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 			 raw_data_rc, raw_data_rc_size) != 0) {
 		diag("Could not load raw responses, skipping");
 		free_raw_packets(&raw_responses, &response_raw_count);
+		free_parsed_responses(&parsed_responses,
+				      &response_parsed_count);
 		return 0;
 	}
 
@@ -1913,6 +1935,9 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 				  parsed_data_queries_rc_size) != 0) {
 		diag("Could not load parsed queries, skipping");
 		free_parsed_responses(&parsed_queries, &query_parsed_count);
+		free_raw_packets(&raw_responses, &response_raw_count);
+		free_parsed_responses(&parsed_responses,
+				      &response_parsed_count);
 		return 0;
 	}
 
@@ -1924,6 +1949,9 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 		diag("Could not load raw queries, skipping");
 		free_raw_packets(&raw_queries, &query_raw_count);
 		free_parsed_responses(&parsed_queries, &query_parsed_count);
+		free_raw_packets(&raw_responses, &response_raw_count);
+		free_parsed_responses(&parsed_responses,
+				      &response_parsed_count);
 		return 0;
 	}
 
