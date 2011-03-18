@@ -69,21 +69,18 @@ static void dnslib_zone_save_encloser_rdata_item(dnslib_rdata_t *rdata,
 			dnslib_rdata_item_t *item =
 				dnslib_rdata_get_item(rdata, pos);
 			assert(item->dname != NULL);
+			assert(item->dname->node == NULL);
 			skip_insert(list, (void *)item->dname,
-			            (void *)closest_encloser->owner, NULL);
+				    (void *)closest_encloser->owner, NULL);
 		}
 	}
 }
 
-static void dnslib_zone_save_enclosers_node(dnslib_node_t *node,
-                                            dnslib_rr_type_t type,
-                                            dnslib_zone_t *zone,
-					    skip_list_t *list)
+static void dnslib_zone_save_enclosers_rrset(dnslib_rrset_t *rrset,
+                                             dnslib_zone_t *zone,
+                                             skip_list_t *list)
 {
-	dnslib_rrset_t *rrset = dnslib_node_get_rrset(node, type);
-	if (!rrset) {
-		return;
-	}
+	uint16_t type = dnslib_rrset_type(rrset);
 
 	dnslib_rrtype_descriptor_t *desc =
 		dnslib_rrtype_descriptor_by_type(type);
@@ -143,10 +140,16 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 	assert(data != NULL);
 	arg_t *args = (arg_t *)data;
 
-	for (int i = 0; i < DNSLIB_COMPRESSIBLE_TYPES; ++i) {
-		dnslib_zone_save_enclosers_node(node, dnslib_compressible_types[i],
-		                                  (dnslib_zone_t *)args->arg1,
-					          (skip_list_t *)args->arg2);
+	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
+	short count = dnslib_node_rrset_count(node);
+
+	assert(count == 0 || rrsets != NULL);
+
+	for (int i = 0; i < count; ++i) {
+		assert(rrsets[i] != NULL);
+		dnslib_zone_save_enclosers_rrset(rrsets[i],
+		                                 (dnslib_zone_t *)args->arg1,
+		                                 (skip_list_t *)args->arg2);
 	}
 }
 
@@ -160,8 +163,6 @@ void dnslib_zone_save_enclosers(dnslib_zone_t *zone, skip_list_t *list)
 	                   dnslib_zone_save_enclosers_in_tree,
 			   (void *)&arguments);
 }
-
-enum { MAGIC_LENGTH = 6 };
 
 /* TODO Think of a better way than a global variable */
 static uint node_count = 0;
@@ -182,9 +183,11 @@ static void dnslib_dname_dump_binary(dnslib_dname_t *dname, FILE *f)
 	dnslib_labels_dump_binary(dname, f);
 }
 
-static dnslib_dname_t *dnslib_find_wildcard(dnslib_dname_t *dname, skip_list_t *list)
+static dnslib_dname_t *dnslib_find_wildcard(dnslib_dname_t *dname,
+					    skip_list_t *list)
 {
-	return (dnslib_dname_t *)skip_find(list, (void *)dname);
+	dnslib_dname_t *d = (dnslib_dname_t *)skip_find(list, (void *)dname);
+	return d;
 }
 
 static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
@@ -211,11 +214,13 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 			assert(rdata->items[i].dname != NULL);
 			dnslib_dname_t *wildcard = NULL;
 
-			if (rdata->items[i].dname->node == NULL ||
-			    (wildcard =
-				dnslib_find_wildcard(rdata->items[i].dname, list)) ) {
+			if (rdata->items[i].dname->node == NULL) {
+				wildcard =
+					dnslib_find_wildcard(rdata->items[i].dname,
+						     list);
 				debug_zp("Not in the zone: %s\n",
 				       dnslib_dname_to_str((rdata->items[i].dname)));
+
 				fwrite((uint8_t *)"\0", sizeof(uint8_t), 1, f);
 				dnslib_dname_dump_binary(rdata->items[i].dname, f);
 				if (wildcard) {
@@ -421,7 +426,8 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 }
 
-int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename)
+int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
+                        const char *sfilename)
 {
 	FILE *f;
 
@@ -437,11 +443,28 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename)
 
 	dnslib_zone_save_enclosers(zone, encloser_list);
 
-	static const uint8_t MAGIC[MAGIC_LENGTH] = {107, 110, 111, 116, 0, 2};
-	                                           /*k   n    o    t   0.1*/
-
+	/* Start writing header - magic bytes. */
+	size_t header_len = MAGIC_LENGTH;
+	static const uint8_t MAGIC[MAGIC_LENGTH] = MAGIC_BYTES;
 	fwrite(&MAGIC, sizeof(uint8_t), MAGIC_LENGTH, f);
 
+	/* Write source file length. */
+	uint32_t sflen = 0;
+	if (sfilename) {
+		sflen = strlen(sfilename) + 1;
+	}
+	fwrite(&sflen, sizeof(uint32_t), 1, f);
+	header_len += sizeof(uint32_t);
+
+	/* Write source file. */
+	fwrite(sfilename, sflen, 1, f);
+	header_len += sflen;
+
+	/* Notice: End of header,
+	 * length must be marked for future return.
+	 */
+
+	/* Start writing compiled data. */
 	fwrite(&node_count, sizeof(node_count), 1, f);
 	fwrite(&node_count, sizeof(node_count), 1, f);
 	fwrite(&zone->node_count,
@@ -464,8 +487,8 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename)
 	dnslib_zone_nsec3_apply_inorder(zone, dnslib_node_dump_binary,
 	                                (void *)&arguments);
 
-	fseek(f, MAGIC_LENGTH, SEEK_SET);
-
+	/* Update counters. */
+	fseek(f, header_len, SEEK_SET);
 	fwrite(&tmp_count, sizeof(tmp_count), 1, f);
 	fwrite(&node_count, sizeof(node_count), 1, f);
 	fwrite(&zone->node_count,

@@ -8,6 +8,7 @@
 #include "ctl/process.h"
 #include "conf/conf.h"
 #include "conf/logconf.h"
+#include "dnslib/zone-load.h"
 
 enum Constants {
 	WAITPID_TIMEOUT = 10
@@ -15,11 +16,12 @@ enum Constants {
 
 void help(int argc, char **argv)
 {
-	printf("Usage: %s [parameters] start|stop|restart|reload|running|compile"
-	       " [zone file]\n",
+	printf("Usage: %s [parameters] start|stop|restart|reload|running|"
+	       "compile\n",
 	       argv[0]);
 	printf("Parameters:\n"
 	       " -c [file] Select configuration file.\n"
+	       " -f\tForce operation - override some checks.\n"
 	       " -v\tVerbose mode - additional runtime information.\n"
 	       " -V\tPrint %s server version.\n"
 	       " -h\tPrint help and usage.\n",
@@ -35,7 +37,8 @@ void help(int argc, char **argv)
 	       PROJECT_NAME, PROJECT_NAME, PROJECT_NAME, PROJECT_NAME);
 }
 
-int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
+int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
+            int force)
 {
 	int valid_cmd = 0;
 	int rc = 0;
@@ -45,9 +48,16 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 		// Check PID
 		valid_cmd = 1;
 		if (pid > 0) {
+
 			fprintf(stderr, "control: Server PID found, "
 			        "already running.\n");
-			return 1;
+
+			if (!force) {
+				return 1;
+			} else {
+				fprintf(stderr, "control: forcing "
+				        "server start.\n");
+			}
 		}
 
 		// Prepare command
@@ -70,12 +80,21 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 
 		// Check PID
 		valid_cmd = 1;
+		rc = 0;
 		if (pid <= 0) {
 			fprintf(stderr, "Server PID not found, "
 			        "probably not running.\n");
-			rc = 1;
-		} else {
-			// Stop
+
+			if (!force) {
+				rc = 1;
+			} else {
+				fprintf(stderr, "control: forcing "
+				        "server stop.\n");
+			}
+		}
+
+		// Stop
+		if (rc == 0) {
 			if (kill(pid, SIGTERM) < 0) {
 				pid_remove(pidfile);
 				rc = 1;
@@ -84,7 +103,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 	}
 	if (strcmp(action, "restart") == 0) {
 		valid_cmd = 1;
-		execute("stop", argv, argc, pid, verbose);
+		execute("stop", argv, argc, pid, verbose, force);
 
 		int i = 0;
 		while(pid_read(pidfile) > 0) {
@@ -99,7 +118,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 			}
 		}
 
-		rc = execute("start", argv, argc, -1, verbose);
+		rc = execute("start", argv, argc, -1, verbose, force);
 	}
 	if (strcmp(action, "reload") == 0) {
 
@@ -108,7 +127,13 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 		if (pid <= 0) {
 			fprintf(stderr, "Server PID not found, "
 			        "probably not running.\n");
-			return 1;
+
+			if (force) {
+				fprintf(stderr, "control: forcing "
+				        "server stop.\n");
+			} else {
+				return 1;
+			}
 		}
 
 		// Stop
@@ -142,6 +167,23 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose)
 
 			// Fetch zone
 			conf_zone_t *zone = (conf_zone_t*)n;
+
+			// Check source files and mtime
+			zloader_t *zl = dnslib_zload_open(zone->db);
+			int src_changed = strcmp(zone->file, zl->source) != 0;
+			if (!src_changed && !dnslib_zload_needs_update(zl)) {
+				printf("Zone '%s' is up-to-date.\n",
+				       zone->name);
+
+				if (force) {
+					fprintf(stderr, "control: forcing "
+					        "zone recompilation.\n");
+				} else {
+					dnslib_zload_close(zl);
+					continue;
+				}
+			}
+			dnslib_zload_close(zl);
 
 			// Prepare command
 			char* cmd = 0;
@@ -177,11 +219,15 @@ int main(int argc, char **argv)
 {
 	// Parse command line arguments
 	int c = 0;
+	int force = 0;
 	int verbose = 0;
 	const char* config_fn = 0;
-	while ((c = getopt (argc, argv, "c:vVh")) != -1) {
+	while ((c = getopt (argc, argv, "fc:vVh")) != -1) {
 		switch (c)
 		{
+		case 'f':
+			force = 1;
+			break;
 		case 'c':
 			config_fn = optarg;
 			break;
@@ -209,8 +255,7 @@ int main(int argc, char **argv)
 	}
 
 	// Initialize log (no output)
-	log_setup(0);
-	log_levels_set(LOGT_STDOUT, LOG_ANY, LOG_MASK(LOG_DEBUG));
+	log_init();
 
 	// Find implicit configuration file
 	char *default_fn = 0;
@@ -228,6 +273,12 @@ int main(int argc, char **argv)
 	// Free default config filename if exists
 	free(default_fn);
 
+	// Verbose mode
+	if (verbose) {
+		int mask = LOG_MASK(LOG_INFO)|LOG_MASK(LOG_DEBUG);
+		log_levels_add(LOGT_STDOUT, LOG_ANY, mask);
+	}
+
 	// Fetch PID
 	const char* pidfile = pid_filename();
 	if (!pidfile) {
@@ -244,7 +295,7 @@ int main(int argc, char **argv)
 
 	// Execute action
 	int rc = execute(action, argv + optind + 1, argc - optind - 1,
-			 pid, verbose);
+			 pid, verbose, force);
 
 	// Finish
 	log_close();

@@ -57,29 +57,6 @@ static const uint16_t DNSLIB_RCODE_NOTZONE = 10;	/* name not inside zone */
 static const unsigned int DNSLIB_MAX_DNAME_LENGTH = 255;
 static const unsigned int DNSLIB_MAX_DNAME_LABELS = 127;	// 1-char labels
 
-/*
- * RR types in which domain name in RDATA may be compressed.
- */
-enum {
-	DNSLIB_COMPRESSIBLE_TYPES = 12
-};
-
-static const dnslib_rr_type_t
-		dnslib_compressible_types[DNSLIB_COMPRESSIBLE_TYPES] = {
-	DNSLIB_RRTYPE_NS,
-	DNSLIB_RRTYPE_SOA,
-	DNSLIB_RRTYPE_CNAME,
-	DNSLIB_RRTYPE_PTR,
-	DNSLIB_RRTYPE_MB,
-	DNSLIB_RRTYPE_MG,
-	DNSLIB_RRTYPE_MR,
-	DNSLIB_RRTYPE_MINFO,
-	DNSLIB_RRTYPE_MX,
-	DNSLIB_RRTYPE_AFSDB,
-	DNSLIB_RRTYPE_RP,
-	DNSLIB_RRTYPE_RT
-};
-
 #endif /* _KNOT_DNSLIB_CONSTS_H_ */
 
 /*! @} */

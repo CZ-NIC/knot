@@ -444,7 +444,7 @@ uint dnslib_dname_size(const dnslib_dname_t *dname)
 
 /*----------------------------------------------------------------------------*/
 
-const uint8_t dnslib_dname_size_part(const dnslib_dname_t *dname, int labels)
+uint8_t dnslib_dname_size_part(const dnslib_dname_t *dname, int labels)
 {
 	assert(labels < dname->label_count);
 	assert(dname->labels != NULL);
