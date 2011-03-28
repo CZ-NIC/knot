@@ -595,6 +595,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	if (!fread_safe(&node_count, sizeof(node_count), 1, f)) {
 		return 0;
 	}
+
 	if (!fread_safe(&nsec3_node_count, sizeof(nsec3_node_count), 1, f)) {
 		return 0;
 	}
