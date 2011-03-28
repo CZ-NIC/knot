@@ -12,6 +12,7 @@
 #include "hash/cuckoo-hash-table.h"
 #include "dnslib/nsec3.h"
 #include "lib/base32hex.h"
+#include "dnslib/error.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -26,7 +27,7 @@ static int dnslib_zone_check_node(const dnslib_zone_t *zone,
                                   const dnslib_node_t *node)
 {
 	if (zone == NULL || node == NULL) {
-		return -1;
+		return DNSLIB_EBADARG;
 	}
 
 	// assert or just check??
@@ -40,9 +41,9 @@ static int dnslib_zone_check_node(const dnslib_zone_t *zone,
 		               node_owner, apex_owner);
 		free(node_owner);
 		free(apex_owner);
-		return -2;
+		return DNSLIB_EBADZONE;
 	}
-	return 0;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -271,9 +272,14 @@ static void dnslib_zone_adjust_nsec3_node_in_tree(dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-static dnslib_dname_t *dnslib_zone_nsec3_name(const dnslib_zone_t *zone,
-                                              const dnslib_dname_t *name)
+static int dnslib_zone_nsec3_name(const dnslib_zone_t *zone,
+                                  const dnslib_dname_t *name,
+                                  dnslib_dname_t **nsec3_name)
 {
+	assert(nsec3_name != NULL);
+
+	*nsec3_name = NULL;
+
 	const dnslib_nsec3_params_t *nsec3_params =
 		dnslib_zone_nsec3params(zone);
 
@@ -283,7 +289,7 @@ DEBUG_DNSLIB_ZONE(
 		debug_dnslib_zone("No NSEC3PARAM for zone %s.\n", n);
 		free(n);
 );
-		return NULL;
+		return DNSLIB_ENSEC3PAR;
 	}
 
 	uint8_t *hashed_name = NULL;
@@ -303,7 +309,7 @@ DEBUG_DNSLIB_ZONE(
 		char *n = dnslib_dname_to_str(name);
 		debug_dnslib_zone("Error while hashing name %s.\n", n);
 		free(n);
-		return NULL;
+		return DNSLIB_ECRYPTO;
 	}
 
 	debug_dnslib_zone("Hash: ");
@@ -322,7 +328,7 @@ DEBUG_DNSLIB_ZONE(
 		if (name_b32 != NULL) {
 			free(name_b32);
 		}
-		return NULL;
+		return DNSLIB_ECRYPTO;
 	}
 
 	assert(name_b32 != NULL);
@@ -330,15 +336,14 @@ DEBUG_DNSLIB_ZONE(
 
 	debug_dnslib_zone("Base32-encoded hash: %s\n", name_b32);
 
-	dnslib_dname_t *nsec3_name =
-		dnslib_dname_new_from_str(name_b32, size, NULL);
+	*nsec3_name = dnslib_dname_new_from_str(name_b32, size, NULL);
 
 	free(name_b32);
 
 	if (nsec3_name == NULL) {
 		debug_dnslib_zone("Error while creating domain name for hashed"
 		                  " name.\n");
-		return NULL;
+		return DNSLIB_ERROR;
 	}
 
 	assert(zone->apex->owner != NULL);
@@ -346,13 +351,15 @@ DEBUG_DNSLIB_ZONE(
 
 	if (ret == NULL) {
 		debug_dnslib_zone("Error while creating NSEC3 domain name for "
-		            "hashed name.\n");
-		return NULL;
+		                  "hashed name.\n");
+		dnslib_dname_free(*nsec3_name);
+		*nsec3_name = NULL;
+		return DNSLIB_ERROR;
 	}
 
 	assert(ret == nsec3_name);
 
-	return nsec3_name;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -480,18 +487,10 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 	    && ck_insert_item(zone->table, (const char *)node->owner->name,
 	                      node->owner->size, (void *)node) != 0) {
 		log_zone_error("Error inserting node into hash table!\n");
-		return -3;
+		return DNSLIB_EHASH;
 	}
 #endif
-//DEBUG_DNSLIB_ZONE(
-//	char *name = dnslib_dname_to_str(node->owner);
-//	debug_dnslib_zone("Inserted node %p with owner: %s (labels: %d), "
-//	                  "pointer: %p\n", node, name,
-//	                  dnslib_dname_label_count(node->owner), node->owner);
-//	free(name);
-//);
-
-	return 0;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -506,7 +505,7 @@ int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node)
 	// how to know if this is successfull??
 	TREE_INSERT(zone->nsec3_nodes, dnslib_node, avl, node);
 
-	return 0;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -561,7 +560,7 @@ int dnslib_zone_find_dname(const dnslib_zone_t *zone,
 {
 	if (zone == NULL || name == NULL || node == NULL
 	    || closest_encloser == NULL || previous == NULL) {
-		return DNSLIB_ZONE_NAME_ERROR;
+		return DNSLIB_EBADARG;
 	}
 
 DEBUG_DNSLIB_ZONE(
@@ -582,11 +581,10 @@ DEBUG_DNSLIB_ZONE(
 	if (!dnslib_dname_is_subdomain(name, zone->apex->owner)) {
 		*node = NULL;
 		*closest_encloser = NULL;
-		return DNSLIB_ZONE_NAME_NOT_IN_ZONE;
+		return DNSLIB_EBADZONE;
 	}
 
-	int exact_match = dnslib_zone_find_in_tree(zone, name, node,
-	                                           previous);
+	int exact_match = dnslib_zone_find_in_tree(zone, name, node, previous);
 
 DEBUG_DNSLIB_ZONE(
 	char *name_str = (*node) ? dnslib_dname_to_str((*node)->owner)
@@ -610,7 +608,7 @@ DEBUG_DNSLIB_ZONE(
 	// there must be at least one node with domain name less or equal to
 	// the searched name if the name belongs to the zone (the root)
 	if (*node == NULL) {
-		return DNSLIB_ZONE_NAME_NOT_IN_ZONE;
+		return DNSLIB_EBADZONE;
 	}
 
 	// TODO: this could be replaced by saving pointer to closest encloser
@@ -662,10 +660,10 @@ int dnslib_zone_find_dname_hash(const dnslib_zone_t *zone,
                                 const dnslib_node_t **node,
                                 const dnslib_node_t **closest_encloser)
 {
-	assert(zone);
-	assert(name);
-	assert(node);
-	assert(closest_encloser);
+	if (zone == NULL || name == NULL || node == NULL
+	    || closest_encloser == NULL) {
+		return DNSLIB_EBADARG;
+	}
 
 DEBUG_DNSLIB_ZONE(
 	char *name_str = dnslib_dname_to_str(name);
@@ -685,7 +683,7 @@ DEBUG_DNSLIB_ZONE(
 	if (!dnslib_dname_is_subdomain(name, zone->apex->owner)) {
 		*node = NULL;
 		*closest_encloser = NULL;
-		return DNSLIB_ZONE_NAME_NOT_IN_ZONE;
+		return DNSLIB_EBADZONE;
 	}
 
 	const ck_hash_table_item_t *item = ck_find_item(zone->table,
@@ -756,13 +754,14 @@ int dnslib_zone_find_nsec3_for_name(const dnslib_zone_t *zone,
 {
 	if (zone == NULL || name == NULL
 	    || nsec3_node == NULL || nsec3_previous == NULL) {
-		return DNSLIB_ZONE_NAME_ERROR;
+		return DNSLIB_EBADARG;
 	}
 
-	dnslib_dname_t *nsec3_name = dnslib_zone_nsec3_name(zone, name);
+	dnslib_dname_t *nsec3_name = NULL;
+	int ret = dnslib_zone_nsec3_name(zone, name, nsec3_name);
 
-	if (nsec3_name == NULL) {
-		return DNSLIB_ZONE_NAME_ERROR;
+	if (ret != DNSLIB_EOK) {
+		return ret;
 	}
 
 DEBUG_DNSLIB_ZONE(

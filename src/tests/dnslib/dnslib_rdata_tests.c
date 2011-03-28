@@ -107,6 +107,7 @@ static int test_rdata_create()
 
 	if (dnslib_rdata_item(rdata, 0) != NULL) {
 		diag("Get item returned something else than NULL!");
+		dnslib_rdata_free(&rdata);
 		return 0;
 	}
 
@@ -187,37 +188,10 @@ static int fill_rdata(uint8_t *data, int max_size, uint16_t rrtype,
 			memcpy(pos, dnslib_dname_name(dname), size);
 			pos += size;
 			break;
-		case DNSLIB_RDATA_WF_BYTE:
-			size = 1;
-			break;
-		case DNSLIB_RDATA_WF_SHORT:
-			size = 2;
-			break;
-		case DNSLIB_RDATA_WF_LONG:
-			size = 4;
-			break;
-		case DNSLIB_RDATA_WF_A:
-			size = 4;
-			break;
-		case DNSLIB_RDATA_WF_AAAA:
-			size = 16;
-			break;
-		case DNSLIB_RDATA_WF_TEXT:
-		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
-			stored_size = 1;
-		case DNSLIB_RDATA_WF_BINARY:
-		case DNSLIB_RDATA_WF_APL:            // saved as binary
-		case DNSLIB_RDATA_WF_IPSECGATEWAY:   // saved as binary
-			// size stored in the first byte
-			size = rand() % DNSLIB_MAX_RDATA_ITEM_SIZE + 1;
-			binary = 1;
-			break;
 		default:
-			assert(0);
+			binary = 1;
+			size = rand() % 65534;
 		}
-
-		assert(size > 0);
-		assert(size <= DNSLIB_MAX_RDATA_ITEM_SIZE);
 
 		if (binary) {
 			// Rewrite the actual 2 bytes in the data array
@@ -225,7 +199,6 @@ static int fill_rdata(uint8_t *data, int max_size, uint16_t rrtype,
 			// (this is a bit ugly, but does the work ;-)
 			dnslib_wire_write_u16(pos, size);
 			//*pos = size;
-			size += 2;
 		}
 
 		//note("Filling %u bytes", size);
@@ -301,38 +274,11 @@ static int check_rdata(const uint8_t *data, int max_size, uint16_t rrtype,
 			size = dnslib_dname_size(dnslib_rdata_item(
 						 rdata, i)->dname);
 			break;
-		case DNSLIB_RDATA_WF_BYTE:
-			//note("    1byte int");
-			size = 1;
-			break;
-		case DNSLIB_RDATA_WF_SHORT:
-			//note("    2byte int");
-			size = 2;
-			break;
-		case DNSLIB_RDATA_WF_LONG:
-			//note("    4byte int");
-			size = 4;
-			break;
-		case DNSLIB_RDATA_WF_A:
-			//note("    A");
-			size = 4;
-			break;
-		case DNSLIB_RDATA_WF_AAAA:
-			//note("    AAAA");
-			size = 16;
-			break;
-		case DNSLIB_RDATA_WF_BINARY:
-		case DNSLIB_RDATA_WF_APL:            // saved as binary
-		case DNSLIB_RDATA_WF_IPSECGATEWAY:   // saved as binary
-			//note("    binary");
-		case DNSLIB_RDATA_WF_TEXT:
-		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
-			//note("    text or binary with length (%u)", *pos);
-			size = *pos + 1;
-			binary = 1;
-			break;
 		default:
-			assert(0);
+			size =
+			dnslib_wire_read_u16((uint8_t *)
+					     (dnslib_rdata_item(
+					      rdata, i)->raw_data));
 		}
 
 		assert(size > 0);
@@ -369,7 +315,9 @@ static int check_rdata(const uint8_t *data, int max_size, uint16_t rrtype,
 		}
 
 		if (binary && 
-		    size != dnslib_rdata_item(rdata, i)->raw_data[0] + 1) {
+		    size !=
+		    dnslib_wire_read_u16(
+			(uint8_t *)(dnslib_rdata_item(rdata, i)->raw_data))) {
 		    diag("Size of stored binary data is wrong:"
 		         " %u (should be %u)",
 			 dnslib_rdata_item(rdata, i)->raw_data[0] + 1, 
@@ -514,6 +462,7 @@ static int test_rdata_set_item()
 	// set items through set_items() and then call set_item()
 	uint16_t rrtype = rand() % DNSLIB_RRTYPE_LAST + 1;
 	if (fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, rrtype, rdata) < 0) {
+		dnslib_rdata_free(&rdata);
 		diag("Error filling RDATA");
 		return 0;
 	}
@@ -878,7 +827,7 @@ static int test_rdata_deep_free()
 {
 	return 1;
 
-	int errors = 0;
+/*	int errors = 0;
 
 	dnslib_rdata_t *tmp_rdata;
 
@@ -893,7 +842,7 @@ static int test_rdata_deep_free()
 		errors += (tmp_rdata != NULL);
 	}
 
-	return (errors == 0);
+	return (errors == 0); */
 }
 
 /*----------------------------------------------------------------------------*/
@@ -915,7 +864,7 @@ static int dnslib_rdata_tests_run(int argc, char *argv[])
 	int res = 0,
 	    res_final = 1;
 
-	res = test_rdata_create(0);
+	res = test_rdata_create();
 	ok(res, "rdata: create empty");
 	res_final *= res;
 
