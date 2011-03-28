@@ -10,10 +10,12 @@
 #include "conf/logconf.h"
 #include "dnslib/zone-load.h"
 
+/*! \brief Controller constants. */
 enum Constants {
-	WAITPID_TIMEOUT = 10
+	WAITPID_TIMEOUT = 10 /*!< \brief Timeout for waiting for process. */
 };
 
+/*! \brief Print help. */
 void help(int argc, char **argv)
 {
 	printf("Usage: %s [parameters] start|stop|restart|reload|running|"
@@ -37,6 +39,20 @@ void help(int argc, char **argv)
 	       PROJECT_NAME, PROJECT_NAME, PROJECT_NAME, PROJECT_NAME);
 }
 
+/*!
+ * \brief Execute specified action.
+ *
+ * \param action Action to be executed (start, stop, restart...)
+ * \param argv Additional arguments vector.
+ * \param argc Addition arguments count.
+ * \param pid Specified PID for action.
+ * \param verbose True if running in verbose mode.
+ * \param force True if forced operation is required.
+ * \param pidfile Specified PID file for action.
+ *
+ * \retval 0 on success.
+ * \retval error return code for main on error.
+ */
 int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
             int force, const char *pidfile)
 {

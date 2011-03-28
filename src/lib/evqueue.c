@@ -5,6 +5,7 @@
 #include "common.h"
 #include "lib/evqueue.h"
 
+/*! \brief Singleton application-wide event queue. */
 evqueue_t *s_evqueue = 0;
 
 evqueue_t *evqueue_new()

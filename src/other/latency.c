@@ -1,6 +1,5 @@
 #ifdef PROF_LATENCY
 
-#include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
 #include <string.h>
@@ -10,20 +9,22 @@
 #include <pthread.h>
 
 
-/* Profiler structs. */
-typedef struct {
-	double M;
-	unsigned long min, max;
-	unsigned long total;
-	unsigned long count;
+/*! \brief Profiler statistics. */
+typedef struct pstat_t {
+	double M;               /*!< \brief Mean value. */
+	unsigned long min, max; /*!< \brief Minimum, maximum. */
+	unsigned long total;    /*!< \brief Total profiled time. */
+	unsigned long count;    /*!< \brief Number of profiled calls. */
 } pstat_t;
 
-typedef struct {
+/*! \brief Function call profile. */
+typedef struct profile_t {
 	const char* call;
 	pstat_t stat;
 } profile_t;
 
-enum {
+/*! \brief Observed function call codes. */
+enum pcall_code_t {
 	PF_RECVFROM = 0,
 	PF_SENDTO,
 	PF_PTHREAD_MUTEX_LOCK,
@@ -31,6 +32,7 @@ enum {
 	PF_CALL_SIZE
 } pcall_code_t;
 
+/*! \brief Table of observed function calls. */
 static profile_t table[] = {
 	{ "recvfrom",             {0} },
 	{ "sendto",               {0} },
@@ -39,20 +41,8 @@ static profile_t table[] = {
 	{ "NULL",                 {0} }
 };
 
-/* Profiler tools */
-#define perf_begin() \
-do { \
-	struct timeval __begin; \
-	gettimeofday(&__begin, 0)
 
-#define perf_end(d) \
-	struct timeval __end; \
-	gettimeofday(&__end, 0); \
-	unsigned long __us = (__end.tv_sec - __begin.tv_sec) * 1000L * 1000L; \
-	__us += (__end.tv_usec - __begin.tv_usec); \
-	(d) = __us; \
-} while(0)
-
+/*! \brief Add value to statistics. */
 static inline void add_stat(pstat_t *stat, unsigned long val) {
 
 	if (val < stat->min) {
@@ -72,7 +62,7 @@ static inline void add_stat(pstat_t *stat, unsigned long val) {
 	++stat->count;
 }
 
-/* Initializers */
+/*! \brief Call profiler table initialization (automatically called on load). */
 void __attribute__ ((constructor)) profiler_init()
 {
 	for (int i = 0; i < PF_CALL_SIZE; ++i) {
@@ -85,6 +75,7 @@ void __attribute__ ((constructor)) profiler_init()
 	}
 }
 
+/*! \brief Call profiler table evaluation (automatically called on exit). */
 void __attribute__ ((destructor)) profiler_deinit()
 {
 
@@ -118,7 +109,6 @@ void __attribute__ ((destructor)) profiler_deinit()
 
 }
 
-/* Sockets */
 ssize_t pf_recvfrom(int socket, void *buf, size_t len, int flags,
 		    struct sockaddr *from, socklen_t *fromlen,
 		    const char* caller, const char* file, int line)
