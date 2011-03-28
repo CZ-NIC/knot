@@ -267,6 +267,8 @@ static err_handler_t *handler_new(char log_cname, char log_glue,
 	handler->options.log_rrsigs = log_rrsigs;
 	handler->options.log_nsec = log_nsec;
 	handler->options.log_nsec3 = log_nsec3;
+
+	return handler;
 }
 
 static char error_is_severe(uint error)
@@ -831,6 +833,8 @@ static int rdata_nsec_to_type_array(const dnslib_rdata_item_t *item,
 static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 				    err_handler_t *handler)
 {
+
+	assert(handler);
 	const dnslib_node_t *nsec3_node = dnslib_node_nsec3_node(node);
 
 	if (nsec3_node == NULL) {
@@ -989,6 +993,7 @@ static int semantic_checks_plain(dnslib_zone_t *zone,
 				 char do_checks,
 				 err_handler_t *handler)
 {
+	assert(handler);
 	const dnslib_rrset_t *cname_rrset =
 			dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME);
 	if (cname_rrset != NULL) {
@@ -1065,6 +1070,7 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 				  err_handler_t *handler,
 				  char nsec3)
 {
+	assert(handler);
 	char auth = !dnslib_node_is_non_auth(node);
 	char deleg = dnslib_node_is_deleg_point(node);
 	uint rrset_count = dnslib_node_rrset_count(node);
@@ -1170,12 +1176,12 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 			}
 
 			/*
-				 * Test that NSEC chain is coherent.
-				 * We have already checked that every
-				 * authoritative node contains NSEC record
-				 * so checking should only be matter of testing
-				 * the next link in each node.
-				 */
+			 * Test that NSEC chain is coherent.
+			 * We have already checked that every
+			 * authoritative node contains NSEC record
+			 * so checking should only be matter of testing
+			 * the next link in each node.
+			 */
 
 			dnslib_dname_t *next_domain =
 					dnslib_rdata_item(
@@ -1219,6 +1225,7 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 
 	assert(zone);
 
+
 	for (int i = 0; i < count; ++i) {
 		assert(rrsets[i] != NULL);
 		dnslib_zone_save_enclosers_rrset(rrsets[i],
@@ -1230,6 +1237,8 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 	dnslib_node_t **last_node = (dnslib_node_t **)args->arg5;
 
 	err_handler_t *handler = (err_handler_t *)args->arg6;
+
+	assert(handler);
 
 	char do_checks = *((char *)(args->arg3));
 
@@ -1249,6 +1258,7 @@ void zone_save_enclosers_sem_check(dnslib_zone_t *zone, skip_list_t *list,
 				   char do_checks, err_handler_t *handler,
 				   dnslib_node_t **last_node)
 {
+	assert(handler);
 	arg_t arguments;
 	arguments.arg1 = zone;
 	arguments.arg2 = list;
@@ -1596,6 +1606,8 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	}
 
 	err_handler_t *handler = handler_new(1, 0, 1, 1, 1);
+
+	assert(handler);
 
 	dnslib_node_t *last_node = NULL;
 
