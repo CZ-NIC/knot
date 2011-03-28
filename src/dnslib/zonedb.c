@@ -67,7 +67,7 @@ DEBUG_DNSLIB_ZONEDB(
 
 	int ret = skip_insert(db->zones, zone->apex->owner, zone, NULL);
 	assert(ret == 0 || ret == 1 || ret == -1);
-	return ret;
+	return (ret != 0) ? DNSLIB_EZONEIN : DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -78,7 +78,7 @@ int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name)
 	dnslib_zone_t *z = (dnslib_zone_t *)skip_find(db->zones, zone_name);
 
 	if (z == NULL) {
-		return -1;
+		return DNSLIB_ENOZONE;
 	}
 
 	// remove the zone from the skip list, but do not destroy it
@@ -91,7 +91,7 @@ int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name)
 	// properly destroy the zone and all its contents
 	dnslib_zone_deep_free(&z);
 
-	return 0;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

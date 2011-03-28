@@ -13,6 +13,8 @@ static const dnslib_lookup_table_t dnslib_error_msgs[] = {
 	{DNSLIB_ENSEC3PAR, "Missing or wrong NSEC3PARAM record."},
 	{DNSLIB_EBADZONE, "Domain name does not belong to the given zone."},
 	{DNSLIB_EHASH, "Error in hash table."},
+	{DNSLIB_EZONEIN, "Error inserting zone."},
+	{DNSLIB_ENOZONE, "No such zone found."},
 	{DNSLIB_ERROR, NULL}
 };
 
