@@ -79,6 +79,7 @@ libknot_la_SOURCES =				\
 	conf/logconf.c                          \
 	ctl/process.c				\
 	lib/lists.c	            		\
+        lib/evqueue.c                           \
 	lib/dynamic-array.c			\
 	lib/bitset.c				\
 	lib/skip-list.c				\
@@ -117,6 +118,7 @@ libknot_la_SOURCES =				\
 	conf/conf.h                             \
 	ctl/process.h		                \
 	lib/lists.h	            		\
+        lib/evqueue.h                           \
 	lib/skip-list.h				\
 	lib/dynamic-array.h			\
 	lib/tree.h				\
