@@ -11,13 +11,28 @@
 #include "dnslib/consts.h"
 #include "dnslib/tolower.h"
 
-/* Memory cache.
+/*
+ * Memory cache.
  */
 #include "alloc/slab.h"
 #include <stdio.h>
 #include <pthread.h>
+
+/*! \brief TLS unique key for each thread cache. */
 static pthread_key_t dname_ckey;
 
+/*! \brief Create thread cache. */
+static void dname_ckey_create()
+{
+	slab_cache_t *cache = malloc(sizeof(slab_cache_t));
+	if (cache) {
+		slab_cache_init(cache, sizeof(dnslib_dname_t));
+	}
+
+	(void) pthread_setspecific(dname_ckey, cache);
+}
+
+/*! \brief Delete thread cache. */
 static void dname_ckey_delete(void* ptr)
 {
 	//fprintf(stderr, "Thread %p calls %s()\n", (void*)pthread_self(), __func__);
@@ -28,27 +43,26 @@ static void dname_ckey_delete(void* ptr)
 	}
 }
 
+/*!
+ * \brief Allocate item from thread cache.
+ * \retval Allocated dname instance on success.
+ * \retval NULL on error.
+ */
 static dnslib_dname_t* dnslib_dname_alloc()
 {
 	slab_cache_t* cache = pthread_getspecific(dname_ckey);
-	if (unlikely(cache == 0)) {
-		cache = malloc(sizeof(slab_cache_t));
-		slab_cache_init(cache, sizeof(dnslib_dname_t));
-		(void) pthread_setspecific(dname_ckey, cache);
-		//fprintf(stderr, "Thread %p cache initialized.\n", (void*)pthread_self());
-	}
-
 	dnslib_dname_t* ret = slab_cache_alloc(cache);
 	return ret;
 }
 
-/* Main thread init. */
+/*! \brief Initialize thread dname cache (automatically called). */
 static void __attribute__ ((constructor)) dnslib_dname_cache_init()
 {
 	(void) pthread_key_create(&dname_ckey, dname_ckey_delete);
+	dname_ckey_create();
 }
 
-/* Main thread cleanup. */
+/*! \brief Destroy thread dname cache (automatically called). */
 static void __attribute__ ((destructor)) dnslib_dname_cache_cleanup()
 {
 	slab_cache_t* cache = pthread_getspecific(dname_ckey);
