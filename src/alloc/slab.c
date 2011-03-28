@@ -9,30 +9,28 @@
 #include "common.h"
 #include "slab.h"
 
-
-/* Magic constants.
- */
-#define SLAB_MAGIC    0x51  // "Sl" magic byte
-#define LOBJ_MAGIC    0x0B  // "Ob" magic byte
-#define POISON_DWORD  0xdeadbeef // Memory boundary guard magic
-#define SLAB_MINCOLOR 64 // Minimum space reserved for cache coloring
-#define SLAB_HEADER   sizeof(slab_t)
-
 /*
- * Fast cache id lookup table.
+ * Magic constants.
+ */
+#define SLAB_MAGIC    0x51  /*!< "Sl" magic byte (slab type). */
+#define LOBJ_MAGIC    0x0B  /*!< "Ob" magic byte (object type). */
+#define POISON_DWORD  0xdeadbeef /*!< Memory boundary guard magic. */
+#define SLAB_MINCOLOR 64 /*!< Minimum space reserved for cache coloring. */
+#define SLAB_HEADER   sizeof(slab_t) /*!< Slab header size. */
+#define ALIGN_PTRSZ   __attribute__ ((__aligned__(sizeof(void*))))
+
+/*! \brief Fast cache id lookup table.
+ *
  * Provides O(1) lookup.
  * Filled with interesting values from default
  * or on-demand.
  */
-unsigned __attribute__ ((__aligned__(sizeof(void*))))
-SLAB_CACHE_LUT[SLAB_SIZE] = {
+unsigned ALIGN_PTRSZ SLAB_CACHE_LUT[SLAB_SIZE] = {
         [24]  = SLAB_GP_COUNT + 1,
         [800] = SLAB_GP_COUNT + 2
 };
 
-/*
- * Find the next highest power of 2.
- */
+/*! \brief Find the next highest power of 2. */
 static inline unsigned get_next_pow2(unsigned v)
 {
 	// Next highest power of 2
@@ -45,9 +43,7 @@ static inline unsigned get_next_pow2(unsigned v)
 	return v;
 }
 
-/*
- * Return binary logarithm of a number, which is a power of 2.
- */
+/*! \brief Return binary logarithm of a number, which is a power of 2. */
 static inline unsigned fastlog2(unsigned v)
 {
 	// Works if we know the size is a power of 2
@@ -59,9 +55,11 @@ static inline unsigned fastlog2(unsigned v)
 	return r;
 }
 
-/*
- * Fast hashing function.
+/*!
+ * \brief Fast hashing function.
+ *
  * Finds the next highest power of 2 and returns binary logarithm.
+ * Values are stored in LUT cache for future access.
  */
 static unsigned slab_cache_id(unsigned size)
 {
@@ -93,14 +91,27 @@ static unsigned slab_cache_id(unsigned size)
 /*
  * Slab run-time constants.
  */
-size_t SLAB_MASK = 0;
-static unsigned SLAB_LOGSIZE = 0;
 
-/*
- * Depot helpers.
+size_t SLAB_MASK = 0; /*!< \brief Slab address mask (for computing offsets). */
+static unsigned SLAB_LOGSIZE = 0; /*!< \brief Binary logarithm of slab size. */
+
+/*!
+ * Depot is a caching sub-allocator of slabs.
+ * It mitigates performance impact of sequentially allocating and freeing
+ * from a slab with just a few slab items by caching N slabs before returning
+ * them to the system.
+ *
+ * \todo With wider use, locking or RCU will be necessary.
  */
-static slab_depot_t _depot_g;
 
+static slab_depot_t _depot_g; /*! \brief Global slab depot. */
+
+/*!
+ * \brief Allocate a slab of given bufsize from depot.
+ *
+ * \retval Reserved memory for slab on success.
+ * \retval NULL on errors.
+ */
 static void* slab_depot_alloc(size_t bufsize)
 {
 	void *page = 0;
@@ -125,21 +136,28 @@ static void* slab_depot_alloc(size_t bufsize)
 	return page;
 }
 
-static inline void slab_depot_free(void* page)
+/*!
+ * \brief Return a slab to the depot.
+ *
+ * \note If the depot is full, slab gets immediately freed.
+ */
+static inline void slab_depot_free(void* slab)
 {
 	if (_depot_g.available < SLAB_DEPOT_SIZE) {
-		_depot_g.cache[_depot_g.available++] = page;
+		_depot_g.cache[_depot_g.available++] = slab;
 	} else {
-		free(page);
+		free(slab);
 	}
 }
 
+/*! \brief Initialize slab depot. */
 static void slab_depot_init()
 {
 	_depot_g.available = 0;
 
 }
 
+/*! \brief Destroy slab depot. */
 static void slab_depot_destroy()
 {
 	while(_depot_g.available) {
@@ -150,6 +168,8 @@ static void slab_depot_destroy()
 /*
  * Initializers.
  */
+
+/*! \brief Initializes slab subsystem (it is called automatically). */
 void __attribute__ ((constructor)) slab_init()
 {
 	// Fetch page size
@@ -166,6 +186,7 @@ void __attribute__ ((constructor)) slab_init()
 	slab_depot_init();
 }
 
+/*! \brief Deinitializes slab subsystem (it is called automatically). */
 void __attribute__ ((destructor)) slab_deinit()
 {
 	// Deinitialize global allocator
@@ -178,7 +199,9 @@ void __attribute__ ((destructor)) slab_deinit()
 /*
  * Cache helper functions.
  */
-/*static void slab_dump(slab_t* slab) {
+
+/* \notice Not used right now.
+static void slab_dump(slab_t* slab) {
 
 	printf("%s: buffers (bufsize=%zuB, %u/%u free): \n",
 	       __func__, slab->cache->bufsize, slab->bufs_free,
@@ -198,8 +221,13 @@ void __attribute__ ((destructor)) slab_deinit()
 	}
 
 	printf("\n");
-}*/
+}
+*/
 
+/*!
+ * \brief Free all slabs from a slab cache.
+ * \return Number of freed slabs.
+ */
 static inline int slab_cache_free_slabs(slab_t* slab)
 {
 	int count = 0;
@@ -216,6 +244,8 @@ static inline int slab_cache_free_slabs(slab_t* slab)
 /*
  * Slab helper functions.
  */
+
+/*! \brief Return number of slabs in a linked list. */
 static inline unsigned slab_list_walk(slab_t* slab)
 {
 	unsigned count = 0;
@@ -226,6 +256,7 @@ static inline unsigned slab_list_walk(slab_t* slab)
 	return count;
 }
 
+/*! \brief Remove slab from a linked list. */
 static void slab_list_remove(slab_t* slab)
 {
 	// Disconnect from list
@@ -246,6 +277,8 @@ static void slab_list_remove(slab_t* slab)
 		}
 	}
 }
+
+/*! \brief Insert slab into a linked list. */
 static void slab_list_insert(slab_t** list, slab_t* item)
 {
 	// If list exists, push to the top
@@ -256,6 +289,8 @@ static void slab_list_insert(slab_t** list, slab_t* item)
 	}
 	*list = item;
 }
+
+/*! \brief Move slab from one linked list to another. */
 static inline void slab_list_move(slab_t** target, slab_t* slab)
 {
 	slab_list_remove(slab);
