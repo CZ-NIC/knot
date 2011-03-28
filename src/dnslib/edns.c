@@ -7,10 +7,16 @@
 #include "descriptor.h"
 #include "dnslib/error.h"
 
+/*! \brief Various EDNS constatns. */
 enum dnslib_edns_consts {
+	/*! \brief Mask for the DO bit. */
 	DNSLIB_EDNS_DO_MASK = (uint16_t)0x8000,
+	/*! \brief Step for allocation of space for option entries. */
 	DNSLIB_EDNS_OPTION_STEP = 1
 };
+
+/*! \brief Minimum size of EDNS OPT RR in wire format. */
+static const short DNSLIB_EDNS_MIN_SIZE = 11;
 
 /*----------------------------------------------------------------------------*/
 

@@ -11,6 +11,7 @@
 #ifndef _KNOT_DNSLIB_ERROR_H_
 #define _KNOT_DNSLIB_ERROR_H_
 
+/*! \brief Error codes used in the dnslib library. */
 enum dnslib_error {
 	DNSLIB_EOK = 0,
 	DNSLIB_ERROR = -10000,
@@ -28,8 +29,16 @@ enum dnslib_error {
 
 };
 
+/*! \brief Error codes used in the dnslib library. */
 typedef enum dnslib_error dnslib_error_t;
 
+/*!
+ * \brief Returns error message for the given error code.
+ *
+ * \param errno Error code.
+ *
+ * \return String containing the error message.
+ */
 const char *dnslib_strerror(dnslib_error_t errno);
 
 #endif /* _KNOT_DNSLIB_ERROR_H_ */
