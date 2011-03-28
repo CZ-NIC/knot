@@ -35,7 +35,7 @@ enum {
  * \retval 1 on error.
  */
 int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
-                        const char *sfilename);
+			char do_checks, const char *sfilename);
 
 #endif /* _DNSLIB_ZONEDUMP_H_ */
 
