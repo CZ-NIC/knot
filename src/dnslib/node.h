@@ -24,9 +24,6 @@
  *        name in a zone.
  *
  * RRSets are ordered by type and stored in a skip-list to allow fast lookup.
- *
- * \todo How to return all RRSets?? An array? Or return the skip list and let
- *       the user iterate over it?
  */
 struct dnslib_node {
 	dnslib_dname_t *owner; /*!< Domain name being the owner of this node. */
@@ -35,12 +32,26 @@ struct dnslib_node {
 	/*! \brief Type-ordered list of RRSets belonging to this node. */
 	skip_list_t *rrsets;
 
-	short rrset_count;
+	short rrset_count; /*!< Number of RRSets stored in the node. */
 
+	/*! \brief Wildcard node being the direct descendant of this node. */
 	struct dnslib_node *wildcard_child;
 
+	/*!
+	 * \brief Previous node in canonical order.
+	 *
+	 * Only authoritative nodes or delegation points are referenced by this,
+	 * as only they may contain NSEC records needed for authenticating
+	 * negative answers.
+	 */
 	struct dnslib_node *prev;
 
+	/*!
+	 * \brief NSEC3 node corresponding to this node.
+	 *
+	 * Such NSEC3 node has owner in form of the hashed domain name of this
+	 * node prepended as a single label to the zone name.
+	 */
 	const struct dnslib_node *nsec3_node;
 
 	/*!
@@ -52,6 +63,7 @@ struct dnslib_node {
 	 */
 	uint8_t flags;
 
+	/*! \brief Structure for connecting this node to an AVL tree. */
 	TREE_ENTRY(dnslib_node) avl;
 };
 
