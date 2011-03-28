@@ -95,10 +95,10 @@ void dnslib_rrset_dump(dnslib_rrset_t *rrset, char loaded_zone)
 #endif
 }
 
-void dnslib_node_dump(dnslib_node_t *node, void *data)
+void dnslib_node_dump(dnslib_node_t *node, void *loaded_zone)
 {
 #if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_NODE_DEBUG)
-	char loaded_zone = *((char*) data);
+	//char loaded_zone = *((char*) data);
 	char *name;
 
 	printf("------- NODE --------\n");
