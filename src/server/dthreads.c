@@ -10,18 +10,18 @@
 #include "dthreads.h"
 #include "other/log.h"
 
-/* Lock thread state for R/W. */
+/*! \brief Lock thread state for R/W. */
 static inline void lock_thread_rw(dthread_t *thread)
 {
 	pthread_mutex_lock(&thread->_mx);
 }
-/* Unlock thread state for R/W. */
+/*! \brief Unlock thread state for R/W. */
 static inline void unlock_thread_rw(dthread_t *thread)
 {
 	pthread_mutex_unlock(&thread->_mx);
 }
 
-/* Signalize thread state change. */
+/*! \brief Signalize thread state change. */
 static inline void unit_signalize_change(dt_unit_t *unit)
 {
 	pthread_mutex_lock(&unit->_report_mx);
@@ -29,7 +29,13 @@ static inline void unit_signalize_change(dt_unit_t *unit)
 	pthread_mutex_unlock(&unit->_report_mx);
 }
 
-/* Update thread state. */
+/*!
+ * \brief Update thread state with notification.
+ * \param thread Given thread.
+ * \param state New state for thread.
+ * \retval 0 on success.
+ * \retval -1 on error.
+ */
 static inline int dt_update_thread(dthread_t *thread, int state)
 {
 	// Check
@@ -65,18 +71,26 @@ static inline int dt_update_thread(dthread_t *thread, int state)
 	return 0;
 }
 
-/*
- * Thread entrypoint interrupt handler.
+/*!
+ * \brief Thread entrypoint interrupt handler.
+ *
+ * Threads shouldn't use global interrupt handler, so this no-op function
+ * is provided.
  */
 static void thread_ep_intr(int s)
 {
 }
 
-/*
- * Thread entrypoint function.
- * This is an Idle state of each thread.
- * Depending on thread state, runnable is run or
- * thread blocks until it is requested.
+/*!
+ * \brief Thread entrypoint function.
+ *
+ * When a thread is created and started, it immediately enters this function.
+ * Depending on thread state, it either enters runnable or
+ * blocks until it is awakened.
+ *
+ * This function also handles "ThreadIdle" state to quickly suspend and resume
+ * threads and mitigate thread creation costs. Also, thread runnable may
+ * be changed to alter the thread behavior on runtime
  */
 static void *thread_ep(void *data)
 {
@@ -176,8 +190,8 @@ static void *thread_ep(void *data)
 
 /*!
  * \brief Create single thread.
- * \return New thread instance or 0.
- * \private
+ * \retval New thread instance on success.
+ * \retval NULL on error.
  */
 static dthread_t *dt_create_thread(dt_unit_t *unit)
 {
@@ -204,10 +218,7 @@ static dthread_t *dt_create_thread(dt_unit_t *unit)
 	return thread;
 }
 
-/*!
- * \brief Delete single thread.
- * \private
- */
+/*! \brief Delete single thread. */
 static void dt_delete_thread(dthread_t **thread)
 {
 	// Check
@@ -231,6 +242,10 @@ static void dt_delete_thread(dthread_t **thread)
 	// Free memory
 	free(thr);
 }
+
+/*
+ * Public APIs.
+ */
 
 dt_unit_t *dt_create(int count)
 {
