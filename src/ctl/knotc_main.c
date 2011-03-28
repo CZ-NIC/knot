@@ -38,16 +38,15 @@ void help(int argc, char **argv)
 }
 
 int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
-            int force)
+            int force, const char *pidfile)
 {
 	int valid_cmd = 0;
 	int rc = 0;
-	const char* pidfile = pid_filename();
 	if (strcmp(action, "start") == 0) {
 
 		// Check PID
 		valid_cmd = 1;
-		if (pid > 0) {
+		if (pid > 0 && pid_running(pid)) {
 
 			fprintf(stderr, "control: Server PID found, "
 			        "already running.\n");
@@ -60,6 +59,9 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			}
 		}
 
+		// Lock configuration
+		conf_read_lock();
+
 		// Prepare command
 		const char *cfg = conf()->filename;
 		char* cmd = 0;
@@ -68,20 +70,22 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		              cfg ? "-c " : "", cfg ? cfg : "",
 			      verbose ? "-v " : "", argc > 0 ? argv[0] : "");
 
+		// Unlock configuration
+		conf_read_unlock();
+
 		// Execute command
 		if ((rc = system(cmd)) < 0) {
 			pid_remove(pidfile);
 			rc = 1;
 		}
 		free(cmd);
-
 	}
 	if (strcmp(action, "stop") == 0) {
 
 		// Check PID
 		valid_cmd = 1;
 		rc = 0;
-		if (pid <= 0) {
+		if (pid <= 0 || !pid_running(pid)) {
 			fprintf(stderr, "Server PID not found, "
 			        "probably not running.\n");
 
@@ -103,10 +107,15 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 	}
 	if (strcmp(action, "restart") == 0) {
 		valid_cmd = 1;
-		execute("stop", argv, argc, pid, verbose, force);
+		execute("stop", argv, argc, pid, verbose, force, pidfile);
 
 		int i = 0;
-		while(pid_read(pidfile) > 0) {
+		while((pid = pid_read(pidfile)) > 0) {
+
+			if (!pid_running(pid)) {
+				pid_remove(pidfile);
+				break;
+			}
 			if (i == WAITPID_TIMEOUT) {
 				fprintf(stderr, "Timeout while "
 				        "waiting for the server to finish.\n");
@@ -118,13 +127,14 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			}
 		}
 
-		rc = execute("start", argv, argc, -1, verbose, force);
+		printf("Restarting server.\n");
+		rc = execute("start", argv, argc, -1, verbose, force, pidfile);
 	}
 	if (strcmp(action, "reload") == 0) {
 
 		// Check PID
 		valid_cmd = 1;
-		if (pid <= 0) {
+		if (pid <= 0 || !pid_running(pid)) {
 			fprintf(stderr, "Server PID not found, "
 			        "probably not running.\n");
 
@@ -151,8 +161,15 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			       "probably not running.\n");
 			rc = 1;
 		} else {
-			printf("Server running as PID %ld.\n",
-			       (long)pid);
+			if (!pid_running(pid)) {
+				printf("Server PID not found, "
+				       "probably not running.\n");
+				fprintf(stderr,
+				        "warning: PID file is stale.\n");
+			} else {
+				printf("Server running as PID %ld.\n",
+				       (long)pid);
+			}
 			rc = 0;
 		}
 	}
@@ -160,6 +177,9 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 
 		// Check zone
 		valid_cmd = 1;
+
+		// Lock configuration
+		conf_read_lock();
 
 		// Generate databases for all zones
 		node *n = 0;
@@ -202,6 +222,9 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			}
 			free(cmd);
 		}
+
+		// Unlock configuration
+		conf_read_unlock();
 	}
 	if (!valid_cmd) {
 		fprintf(stderr, "Invalid command: '%s'\n", action);
@@ -280,7 +303,7 @@ int main(int argc, char **argv)
 	}
 
 	// Fetch PID
-	const char* pidfile = pid_filename();
+	char* pidfile = pid_filename();
 	if (!pidfile) {
 		fprintf(stderr, "No configuration found, "
 		        "please specify with '-c' parameter.\n");
@@ -295,9 +318,10 @@ int main(int argc, char **argv)
 
 	// Execute action
 	int rc = execute(action, argv + optind + 1, argc - optind - 1,
-			 pid, verbose, force);
+			 pid, verbose, force, pidfile);
 
 	// Finish
+	free(pidfile);
 	log_close();
 	return rc;
 }

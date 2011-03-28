@@ -28,6 +28,8 @@ src/lib/skip-list.h
 src/lib/tree.h
 src/lib/lists.h
 src/lib/lists.c
+src/lib/evqueue.h
+src/lib/evqueue.c
 src/lib/base32.h
 src/lib/base32.c
 src/lib/base32hex.h
@@ -129,9 +131,6 @@ src/tests/dnslib/dnslib_response_tests.c
 src/tests/dnslib/dnslib_rrsig_set_tests.c
 src/tests/dnslib/dnslib_zone_tests.c
 src/tests/dnslib/dnslib_edns_tests.c
-src/ctl/main.c
-src/ctl/process.c
-src/ctl/process.h
 src/conf/cf-lex.l
 src/conf/cf-parse.y
 src/conf/conf.c
