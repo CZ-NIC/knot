@@ -338,7 +338,7 @@ static dnslib_rrtype_descriptor_t
   	    DNSLIB_RDATA_WF_BYTE, /* flags */
   	    DNSLIB_RDATA_WF_SHORT, /* iterations */
   	    DNSLIB_RDATA_WF_BINARYWITHLENGTH, /* salt */
-  	    DNSLIB_RDATA_WF_BINARYWITHLENGTH, /* next hashed name */
+	    DNSLIB_RDATA_WF_BINARYWITHLENGTH, /* next hashed name */
   	    DNSLIB_RDATA_WF_BINARY /* type bitmap */ }, 
 	  { DNSLIB_RDATA_ZF_BYTE, DNSLIB_RDATA_ZF_BYTE, DNSLIB_RDATA_ZF_SHORT, DNSLIB_RDATA_ZF_HEX_LEN,
 	    DNSLIB_RDATA_ZF_BASE32, DNSLIB_RDATA_ZF_NSEC }, 
