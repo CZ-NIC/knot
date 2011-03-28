@@ -101,6 +101,7 @@ libknot_la_SOURCES =				\
 	dnslib/rdata.c				\
 	dnslib/descriptor.c			\
 	dnslib/nsec3.c				\
+	dnslib/tolower.c			\
 	server/dthreads.c			\
 	server/socket.c				\
 	server/name-server.c			\
