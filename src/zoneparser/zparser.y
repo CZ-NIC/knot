@@ -135,13 +135,13 @@ line:	NL
 			return -1;
 		}
 
-		assert(parser->current_rrset.rdata == NULL);
-		dnslib_rrset_add_rdata(&(parser->current_rrset), tmp_rdata);
+		assert(parser->current_rrset->rdata == NULL);
+		dnslib_rrset_add_rdata(parser->current_rrset, tmp_rdata);
 
-		if (!dnslib_dname_is_fqdn(parser->current_rrset.owner)) {
+		if (!dnslib_dname_is_fqdn(parser->current_rrset->owner)) {
 
-			parser->current_rrset.owner =
-				dnslib_dname_cat(parser->current_rrset.owner,
+			parser->current_rrset->owner =
+				dnslib_dname_cat(parser->current_rrset->owner,
 				                 parser->root_domain);
 
 		}
@@ -149,16 +149,16 @@ line:	NL
 		int ret;
 		if ((ret = process_rr()) != 0) {
 			char *tmp_dname_str =
-			dnslib_dname_to_str(parser->current_rrset.owner);
+			dnslib_dname_to_str(parser->current_rrset->owner);
 			fprintf(stderr, "Error: could not process RRSet\n"
 			        "owner: %s reason: %d\n", tmp_dname_str, ret);
 			free(tmp_dname_str);
 		}
 	    }
 
-	    parser->current_rrset.type = 0;
+	    parser->current_rrset->type = 0;
 	    parser->rdata_count = 0;
-	    parser->current_rrset.rdata = NULL;
+	    parser->current_rrset->rdata = NULL;
 	    parser->error_occurred = 0;
     }
     |	error NL
@@ -200,8 +200,8 @@ origin_directive:	DOLLAR_ORIGIN sp abs_dname trail
 
 rr:	owner classttl type_and_rdata
     {
-	    parser->current_rrset.owner = $1;
-	    parser->current_rrset.type = $3;
+	    parser->current_rrset->owner = $1;
+	    parser->current_rrset->type = $3;
     }
     ;
 
@@ -218,28 +218,28 @@ owner:	dname sp
 
 classttl:	/* empty - fill in the default, def. ttl and IN class */
     {
-	    parser->current_rrset.ttl = parser->default_ttl;
-	    parser->current_rrset.rclass = parser->default_class;
+	    parser->current_rrset->ttl = parser->default_ttl;
+	    parser->current_rrset->rclass = parser->default_class;
     }
     |	T_RRCLASS sp		/* no ttl */
     {
-	    parser->current_rrset.ttl = parser->default_ttl;
-	    parser->current_rrset.rclass = $1;
+	    parser->current_rrset->ttl = parser->default_ttl;
+	    parser->current_rrset->rclass = $1;
     }
     |	T_TTL sp		/* no class */
     {
-	    parser->current_rrset.ttl = $1;
-	    parser->current_rrset.rclass = parser->default_class;
+	    parser->current_rrset->ttl = $1;
+	    parser->current_rrset->rclass = parser->default_class;
     }
     |	T_TTL sp T_RRCLASS sp	/* the lot */
     {
-	    parser->current_rrset.ttl = $1;
-	    parser->current_rrset.rclass = $3;
+	    parser->current_rrset->ttl = $1;
+	    parser->current_rrset->rclass = $3;
     }
     |	T_RRCLASS sp T_TTL sp	/* the lot - reversed */
     {
-	    parser->current_rrset.ttl = $3;
-	    parser->current_rrset.rclass = $1;
+	    parser->current_rrset->ttl = $3;
+	    parser->current_rrset->rclass = $1;
     }
     ;
 
@@ -716,7 +716,7 @@ rdata_domain_name:	dname trail
 	    		if (!dnslib_dname_is_fqdn($1)) {
 
 
-			parser->current_rrset.owner =
+			parser->current_rrset->owner =
 				dnslib_dname_cat($1, parser->root_domain);
 
 		}
@@ -729,12 +729,12 @@ rdata_soa:	dname sp dname sp STR sp STR sp STR sp STR sp STR trail
 	    /* convert the soa data */
 	    		if (!dnslib_dname_is_fqdn($1)) {
 
-			parser->current_rrset.owner =
+			parser->current_rrset->owner =
 				dnslib_dname_cat($1, parser->root_domain);
 
 		}
 			    		if (!dnslib_dname_is_fqdn($3)) {
-			parser->current_rrset.owner =
+			parser->current_rrset->owner =
 				dnslib_dname_cat($3, parser->root_domain);
 
 		}
@@ -780,13 +780,13 @@ rdata_minfo:	dname sp dname trail
     {
 	    	    		if (!dnslib_dname_is_fqdn($1)) {
 
-			parser->current_rrset.owner =
+			parser->current_rrset->owner =
 				dnslib_dname_cat($1, parser->root_domain);
 
 		}
 			    		if (!dnslib_dname_is_fqdn($3)) {
 
-			parser->current_rrset.owner =
+			parser->current_rrset->owner =
 				dnslib_dname_cat($3, parser->root_domain);
 
 		}
@@ -802,7 +802,7 @@ rdata_mx:	STR sp dname trail
 			    		if (!dnslib_dname_is_fqdn($3)) {
 
 
-			parser->current_rrset.owner =
+			parser->current_rrset->owner =
 				dnslib_dname_cat($3, parser->root_domain);
 
 		}
@@ -825,13 +825,13 @@ rdata_rp:	dname sp dname trail
     {
 	    	    	    		if (!dnslib_dname_is_fqdn($1)) {
 
-			parser->current_rrset.owner =
+			parser->current_rrset->owner =
 				dnslib_dname_cat($1, parser->root_domain);
 
 		}
 			    		if (!dnslib_dname_is_fqdn($3)) {
 
-			parser->current_rrset.owner =
+			parser->current_rrset->owner =
 				dnslib_dname_cat($3, parser->root_domain);
 
 		}
@@ -847,7 +847,7 @@ rdata_afsdb:	STR sp dname trail
 			    		if (!dnslib_dname_is_fqdn($3)) {
 
 
-			parser->current_rrset.owner =
+			parser->current_rrset->owner =
 				dnslib_dname_cat($3, parser->root_domain);
 
 		}
@@ -894,7 +894,7 @@ rdata_rt:	STR sp dname trail
     {
 	    	    	    	    		if (!dnslib_dname_is_fqdn($3)) {
 
-			parser->current_rrset.owner =
+			parser->current_rrset->owner =
 				dnslib_dname_cat($3, parser->root_domain);
 
 		}
@@ -926,12 +926,12 @@ rdata_nsap:	str_dot_seq trail
 rdata_px:	STR sp dname sp dname trail
     {
 	    		if (!dnslib_dname_is_fqdn($3)) {
-			parser->current_rrset.owner =
+			parser->current_rrset->owner =
 				dnslib_dname_cat($3, parser->root_domain);
 
 		}
 			    		if (!dnslib_dname_is_fqdn($5)) {
-			parser->current_rrset.owner =
+			parser->current_rrset->owner =
 				dnslib_dname_cat($5, parser->root_domain);
 
 		}
@@ -963,7 +963,7 @@ rdata_loc:	concatenated_str_seq trail
 rdata_nxt:	dname sp nxt_seq trail
     {
 	    	    		if (!dnslib_dname_is_fqdn($1)) {
-			parser->current_rrset.owner =
+			parser->current_rrset->owner =
 				dnslib_dname_cat($1, parser->root_domain);
 
 		}
@@ -976,7 +976,7 @@ rdata_nxt:	dname sp nxt_seq trail
 rdata_srv:	STR sp STR sp STR sp dname trail
     {
 	    	    		if (!dnslib_dname_is_fqdn($7)) {
-			parser->current_rrset.owner =
+			parser->current_rrset->owner =
 				dnslib_dname_cat($7, parser->root_domain);
 
 		}
@@ -995,7 +995,7 @@ rdata_srv:	STR sp STR sp STR sp dname trail
 rdata_naptr:	STR sp STR sp STR sp STR sp STR sp dname trail
     {
 	    	    		if (!dnslib_dname_is_fqdn($11)) {
-			parser->current_rrset.owner =
+			parser->current_rrset->owner =
 				dnslib_dname_cat($11, parser->root_domain);
 
 		}
@@ -1021,7 +1021,7 @@ rdata_naptr:	STR sp STR sp STR sp STR sp STR sp dname trail
 rdata_kx:	STR sp dname trail
     {
 	    	    		if (!dnslib_dname_is_fqdn($3)) {
-			parser->current_rrset.owner =
+			parser->current_rrset->owner =
 				dnslib_dname_cat($3, parser->root_domain);
 
 		}
@@ -1339,11 +1339,8 @@ zparser_create()
 	result->temporary_items = malloc(MAXRDATALEN *
 	                                  sizeof(dnslib_rdata_item_t));
 
-	rrset = dnslib_rrset_new(NULL, 0, 0, 0);
-	/* FIXME: double allocation, either move initialization of empty current_rrset here, or use allocated rrset. OS */
-	result->current_rrset = *rrset;
-	result->current_rrset.rdata = NULL;
-	free(rrset);
+	result->current_rrset = dnslib_rrset_new(NULL, 0, 0, 0);
+	result->current_rrset->rdata = NULL;
 
 	result->rrsig_orphans = NULL;
 
@@ -1381,7 +1378,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 
 	parser->id = 1;
 
-	parser->current_rrset.rclass = parser->default_class;
+	parser->current_rrset->rclass = parser->default_class;
 }
 
 
@@ -1389,11 +1386,7 @@ void zparser_free()
 {
 //	dnslib_dname_free(&(parser->root_domain));
 	free(parser->temporary_items);
-/*	dnslib_rrset_t *tmp_rrset = &parser->current_rrset;
-	dnslib_rrset_free(&tmp_rrset);
-
-	free(&parser->current_rrset); */
-
+	dnslib_rrset_free(&(parser->current_rrset));
 	free(parser);
 }
 
