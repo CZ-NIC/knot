@@ -134,7 +134,6 @@ src/tests/dnslib/dnslib_rdata_tests.c
 src/tests/dnslib/dnslib_rrset_tests.c
 src/tests/dnslib/dnslib_node_tests.c
 src/tests/dnslib/dnslib_response_tests.c
-src/tests/dnslib/dnslib_rrsig_set_tests.c
 src/tests/dnslib/dnslib_zone_tests.c
 src/tests/dnslib/dnslib_edns_tests.c
 src/conf/cf-lex.l
