@@ -4,6 +4,8 @@
 #include "common.h"
 #include "dnslib/utils.h"
 
+/*----------------------------------------------------------------------------*/
+
 dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,
                                              const char *name)
 {
@@ -17,6 +19,8 @@ dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,
 	return NULL;
 }
 
+/*----------------------------------------------------------------------------*/
+
 dnslib_lookup_table_t *dnslib_lookup_by_id(dnslib_lookup_table_t *table,
                                            int id)
 {
@@ -29,6 +33,8 @@ dnslib_lookup_table_t *dnslib_lookup_by_id(dnslib_lookup_table_t *table,
 
 	return NULL;
 }
+
+/*----------------------------------------------------------------------------*/
 
 size_t dnslib_strlcpy(char *dst, const char *src, size_t size)
 {
