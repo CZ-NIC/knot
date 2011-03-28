@@ -1382,7 +1382,7 @@ int dnslib_response_to_wire(dnslib_response_t *resp,
                             uint8_t **resp_wire, size_t *resp_size)
 {
 	if (resp == NULL || resp_wire == NULL || resp_size == NULL
-	    || resp_wire != NULL) {
+	    || *resp_wire != NULL) {
 		return DNSLIB_EBADARG;
 	}
 
