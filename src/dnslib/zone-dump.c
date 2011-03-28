@@ -1241,6 +1241,8 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 		semantic_checks_dnssec(zone, node, first_node, last_node,
 				       handler, do_checks == 3);	
 	}
+
+	free(rrsets);
 }
 
 void zone_save_enclosers_sem_check(dnslib_zone_t *zone, skip_list_t *list,
