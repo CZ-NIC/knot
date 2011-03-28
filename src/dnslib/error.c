@@ -10,6 +10,9 @@ static const dnslib_lookup_table_t dnslib_error_msgs[] = {
 	{DNSLIB_ESPACE, "Not enough space provided."},
 	{DNSLIB_EMALF, "Malformed data."},
 	{DNSLIB_ECRYPTO, "Error in crypto library."},
+	{DNSLIB_ENSEC3PAR, "Missing or wrong NSEC3PARAM record."},
+	{DNSLIB_EBADZONE, "Domain name does not belong to the given zone."},
+	{DNSLIB_EHASH, "Error in hash table."},
 	{DNSLIB_ERROR, NULL}
 };
 

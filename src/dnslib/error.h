@@ -19,7 +19,11 @@ enum dnslib_error {
 	DNSLIB_EFEWDATA,
 	DNSLIB_ESPACE,
 	DNSLIB_EMALF,
-	DNSLIB_ECRYPTO
+	DNSLIB_ECRYPTO,
+	DNSLIB_ENSEC3PAR,
+	DNSLIB_EBADZONE,
+	DNSLIB_EHASH
+
 };
 
 typedef enum dnslib_error dnslib_error_t;
