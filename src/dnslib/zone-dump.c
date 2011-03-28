@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
+#include <netinet/in.h>
 
 #include "common.h"
 #include "dnslib/zone-dump.h"
