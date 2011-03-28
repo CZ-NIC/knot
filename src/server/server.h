@@ -24,19 +24,24 @@
 #include "server/socket.h"
 #include "server/dthreads.h"
 #include "dnslib/zonedb.h"
+#include "lib/lists.h"
 
-struct server;
+/* Forwad declarations. */
+struct iface_t;
+struct iohandler_t;
+struct server_t;
+struct conf_t;
 
 /*! \brief I/O handler structure.
   */
 typedef struct iohandler_t {
-
+	struct node *next, *prev;
 	int                fd;      /*!< I/O filedescriptor */
 	int                type;    /*!< Descriptor type/family. */
 	unsigned           state;   /*!< Handler state */
-	struct iohandler_t *next;   /*!< Next handler */
 	dt_unit_t          *unit;   /*!< Threading unit */
-	struct server *server; /*!< Reference to server */
+	struct iface_t     *iface;  /*!< Reference to associated interface. */
+	struct server_t    *server; /*!< Reference to server */
 
 } iohandler_t;
 
@@ -52,19 +57,31 @@ typedef enum {
 	ServerRunning = 1 << 0  /*!< Server is running. */
 } server_state;
 
-/* Forwad declarations. */
+/*!
+ * \brief Server interface structure.
+ */
+typedef struct iface_t {
+	struct node *next, *prev;
+	int fd[2];   /*!< \brief Socket filedescriptors (UDP, TCP). */
+	int type[2]; /*!< \brief Socket type. */
+	int port;    /*!< \brief Socket port. */
+	char* addr;  /*!< \brief Socket address. */
+	iohandler_t* handler[2]; /*!< \brief Associated I/O handlers. */
+} iface_t;
 
-struct iohandler_t;
+/* Interface indexes. */
+#define UDP_ID 0
+#define TCP_ID 1
 
 /*!
  * \brief Main server structure.
  *
  * Keeps references to all important structures needed for operation.
  */
-typedef struct server {
+typedef struct server_t {
 
 	/*! \brief Server state tracking. */
-	unsigned state;
+	volatile unsigned state;
 
 	/*! \brief Reference to the name server structure. */
 	ns_nameserver *nameserver;
@@ -73,7 +90,10 @@ typedef struct server {
 	dnslib_zonedb_t *zone_db;
 
 	/*! \brief I/O handlers list. */
-	struct iohandler_t *handlers;
+	list handlers;
+
+	/*! \brief List of interfaces. */
+	list* ifaces;
 
 } server_t;
 
@@ -152,6 +172,13 @@ void server_stop(server_t *server);
  * \param server Server structure to be used for operation.
  */
 void server_destroy(server_t **server);
+
+/*!
+ * \brief Server config hook.
+ *
+ * Routine for dynamic server reconfiguration.
+ */
+int server_conf_hook(const struct conf_t *conf, void *data);
 
 #endif // _KNOT_SERVER_H_
 
