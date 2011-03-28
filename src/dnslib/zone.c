@@ -347,17 +347,16 @@ DEBUG_DNSLIB_ZONE(
 	}
 
 	assert(zone->apex->owner != NULL);
-	dnslib_dname_t *ret = dnslib_dname_cat(nsec3_name, zone->apex->owner);
+	dnslib_dname_t *ret = dnslib_dname_cat(*nsec3_name, zone->apex->owner);
 
 	if (ret == NULL) {
 		debug_dnslib_zone("Error while creating NSEC3 domain name for "
 		                  "hashed name.\n");
-		dnslib_dname_free(*nsec3_name);
-		*nsec3_name = NULL;
+		dnslib_dname_free(nsec3_name);
 		return DNSLIB_ERROR;
 	}
 
-	assert(ret == nsec3_name);
+	assert(ret == *nsec3_name);
 
 	return DNSLIB_EOK;
 }
@@ -758,7 +757,7 @@ int dnslib_zone_find_nsec3_for_name(const dnslib_zone_t *zone,
 	}
 
 	dnslib_dname_t *nsec3_name = NULL;
-	int ret = dnslib_zone_nsec3_name(zone, name, nsec3_name);
+	int ret = dnslib_zone_nsec3_name(zone, name, &nsec3_name);
 
 	if (ret != DNSLIB_EOK) {
 		return ret;

@@ -10,8 +10,6 @@
 #include "stat/stat.h"
 #include "dnslib/dnslib.h"
 #include "dnslib/debug.h"
-#include "dnslib/edns.h"
-#include "dnslib/nsec3.h"
 
 //static const uint8_t  RCODE_MASK           = 0xf0;
 static const int      OFFSET_FLAGS2        = 3;
@@ -1153,7 +1151,7 @@ DEBUG_NS(
 		debug_ns(" and previous node: (nil).\n");
 	}
 );
-	if (find_ret == DNSLIB_ZONE_NAME_NOT_IN_ZONE) {
+	if (find_ret == DNSLIB_EBADZONE) {
 		// possible only if we followed cname
 		assert(cname != 0);
 		dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);

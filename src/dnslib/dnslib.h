@@ -21,6 +21,7 @@
 #include "dnslib/rrset.h"
 #include "dnslib/zone.h"
 #include "dnslib/zonedb.h"
+#include "dnslib/error.h"
 
 #endif
 

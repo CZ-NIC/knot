@@ -11,6 +11,7 @@
 #include "dnslib/dname.h"
 #include "dnslib/node.h"
 #include "conf/conf.h"
+#include "dnslib/error.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
