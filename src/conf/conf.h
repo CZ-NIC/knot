@@ -291,7 +291,7 @@ static inline void conf_read_unlock() {
  */
 
 /*!
- * \brief Return normalized path.
+ * \brief Normalize file path and expand '~' placeholders.
  *
  * \note Old pointer may be freed.
  *
