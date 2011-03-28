@@ -206,7 +206,7 @@ int dnslib_edns_add_option(dnslib_opt_rr_t *opt_rr, uint16_t code,
 	++opt_rr->option_count;
 	opt_rr->size += 4 + length;
 
-	return DSNLIB_EOK;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
