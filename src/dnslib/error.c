@@ -1,6 +1,7 @@
 #include "dnslib/error.h"
 #include "dnslib/utils.h"
 
+/*! \brief Table linking error messages to error codes. */
 static const dnslib_lookup_table_t dnslib_error_msgs[] = {
 	{DNSLIB_EOK, "OK"},
 	{DNSLIB_ERROR, "General dnslib error."},

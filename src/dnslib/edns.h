@@ -17,15 +17,14 @@
 #include "dnslib/utils.h"
 
 /*----------------------------------------------------------------------------*/
-/*!
- * \brief Structure representing one OPT RR Option.
- */
+/*! \brief Structure representing one OPT RR Option. */
 struct dnslib_opt_option {
 	uint16_t code;
 	uint16_t length;
 	uint8_t *data;
 };
 
+/*! \brief Structure representing one OPT RR Option. */
 typedef struct dnslib_opt_option dnslib_opt_option_t;
 
 /*!
@@ -51,19 +50,19 @@ struct dnslib_opt_rr {
 	short size;             /*!< Total size of the OPT RR in wire format. */
 };
 
+/*! \brief Structure for holding EDNS parameters. */
 typedef struct dnslib_opt_rr dnslib_opt_rr_t;
 
 /*----------------------------------------------------------------------------*/
-
+/*! \brief Constants for supported versions of EDNS. */
 enum dnslib_edns_versions {
-	EDNS_VERSION_0 = (uint8_t)0,
-	EDNS_NOT_SUPPORTED = (uint8_t)255
+	EDNS_VERSION_0 = (uint8_t)0,       /*!< EDNS version 0. */
+	EDNS_NOT_SUPPORTED = (uint8_t)255  /*!< EDNS not supported. */
 };
 
-static const short DNSLIB_EDNS_MIN_SIZE = 11;
-
+/*! \brief Constants for EDNS option codes. */
 enum dnslib_edns_option_codes {
-	EDNS_OPTION_NSID = (uint16_t)3
+	EDNS_OPTION_NSID = (uint16_t)3 /*!< NSID option code. */
 };
 
 /*----------------------------------------------------------------------------*/

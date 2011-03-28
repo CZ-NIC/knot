@@ -5,6 +5,8 @@
  * TODO link to NDS's license + add license !!!
  *
  * \brief Contains resource record descriptor and its API
+ *
+ * \note Most of the constants and functions were taken from NSD's dns.h.
  * 
  * \addtogroup dnslib
  * @{
@@ -15,19 +17,23 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 
 enum mxrdtln {
+	/*! \brief Maximum items in RDATA wireformat. */
 	DNSLIB_MAX_RDATA_ITEMS = 64,
+	/*! \brief Maximum size of one item in RDATA wireformat. */
 	DNSLIB_MAX_RDATA_ITEM_SIZE = 65534,
+	/*! \brief Maximum wire size of one RDATA. */
 	DNSLIB_MAX_RDATA_WIRE_SIZE =
-	  DNSLIB_MAX_RDATA_ITEMS * DNSLIB_MAX_RDATA_ITEM_SIZE
+	DNSLIB_MAX_RDATA_ITEMS * DNSLIB_MAX_RDATA_ITEM_SIZE
 };
 //#define MAXRDATALEN 64
 
 /* 64 is in NSD. Seems a little too much, but I'd say it's not a real issue. */
 
 /*!
- * \brief Enum containing RR class codes.
+ * \brief Resource record class codes.
  */
 enum dnslib_rr_class {
 	DNSLIB_CLASS_IN = 1,
@@ -40,6 +46,9 @@ enum dnslib_rr_class {
 
 typedef enum dnslib_rr_class dnslib_rr_class_t;
 
+/*!
+ * \brief Resource record type constants.
+ */
 enum dnslib_rr_type {
 	DNSLIB_RRTYPE_UNKNOWN, /*!< 0 - an unknown type */
 	DNSLIB_RRTYPE_A, /*!< 1 - a host address */
@@ -104,9 +113,9 @@ enum dnslib_rr_type {
 	DNSLIB_RRTYPE_SPF = 99,      /*!< RFC 4408 */
 
 	// not designating any RRs
-	DNSLIB_RRTYPE_TSIG = 250,
-	DNSLIB_RRTYPE_IXFR = 251,
-	DNSLIB_RRTYPE_AXFR = 252,
+	DNSLIB_RRTYPE_TSIG = 250, /*!< TSIG (not an actual RR). */
+	DNSLIB_RRTYPE_IXFR = 251, /*!< IXFR (not an actual RR). */
+	DNSLIB_RRTYPE_AXFR = 252, /*!< AXFR (not an actual RR). */
 	/*!
 	 * \brief A request for mailbox-related records (MB, MG or MR)
 	 */
@@ -129,8 +138,10 @@ enum dnslib_rr_type {
  */
 typedef enum dnslib_rr_type dnslib_rr_type_t;
 
+/*! \brief Last normal RR type. */
 static const uint DNSLIB_RRTYPE_LAST = DNSLIB_RRTYPE_NSEC3PARAM;
 
+/*! \brief Constants characterising the wire format of RDATA items. */
 enum dnslib_rdata_wireformat {
 	/*!
 	 * \brief Possibly compressed domain name.
@@ -153,6 +164,7 @@ enum dnslib_rdata_wireformat {
 	DNSLIB_RDATA_WF_IPSECGATEWAY = 57 /*!< IPSECKEY gateway ip4, ip6 or dname. */
 };
 
+/*! \brief Constants characterising the format of RDATA items in zone file. */
 enum dnslib_rdata_zoneformat
 {
 	DNSLIB_RDATA_ZF_DNAME,		/* Domain name.  */
@@ -181,28 +193,29 @@ enum dnslib_rdata_zoneformat
 	DNSLIB_RDATA_ZF_LOC,		/* Location data.  */
 	DNSLIB_RDATA_ZF_UNKNOWN	/* Unknown data.  */
 };
+
+/*! \brief Constants characterising the wire format of RDATA items. */
 typedef enum dnslib_rdata_zoneformat dnslib_rdata_zoneformat_t;
 
-/*!
- * \brief Enum containing wireformat codes. Taken from NSD's "dns.h"
- */
+/*! \brief Enum containing wireformat codes. */
 typedef enum dnslib_rdatawireformat dnslib_rdata_wireformat_t;
 
+/*! \brief Structure holding RR descriptor. */
 struct dnslib_rrtype_descriptor {
-	uint16_t type;	/*!< RR type */
-	const char *name;	/*!< Textual name.  */
-	uint8_t length;	/*!< Maximum number of RDATA items.  */
-	/*!
-	 * \brief rdata_wireformat_type
-	 */
+	uint16_t type;          /*!< RR type */
+	const char *name;       /*!< Textual name.  */
+	uint8_t length;         /*!< Maximum number of RDATA items.  */
+
+	/*! \brief Wire format specification for the RDATA. */
 	uint8_t wireformat[DNSLIB_MAX_RDATA_ITEMS];
+
+	/*! \brief Zone file format specification for the RDATA. */
 	uint8_t zoneformat[DNSLIB_MAX_RDATA_ITEMS];
+
 	bool fixed_items; /*!< Has fixed number of RDATA items? */
 };
 
-/*!
- * \brief Structure holding RR descriptor
- */
+/*! \brief Structure holding RR descriptor. */
 typedef struct dnslib_rrtype_descriptor dnslib_rrtype_descriptor_t;
 
 /*!

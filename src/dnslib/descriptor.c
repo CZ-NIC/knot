@@ -13,7 +13,9 @@
 
 enum desclen { DNSLIB_RRTYPE_DESCRIPTORS_LENGTH = 32770 }; // used to be 101
 
-/* Taken from RFC 1035, section 3.2.4.  */
+/*!
+ * \brief Table for linking RR class constants to their textual representation.
+ */
 static dnslib_lookup_table_t dns_rrclasses[] = {
 	{ DNSLIB_CLASS_IN, "IN" },	/* the Internet */
 	{ DNSLIB_CLASS_CS, "CS" },	/* the CSNET class (Obsolete) */
@@ -21,6 +23,8 @@ static dnslib_lookup_table_t dns_rrclasses[] = {
 	{ DNSLIB_CLASS_HS, "HS" },	/* Hesiod */
 	{ 0, NULL }
 };
+
+/*! \brief RR type descriptors. */
 static dnslib_rrtype_descriptor_t
        dnslib_rrtype_descriptors[DNSLIB_RRTYPE_DESCRIPTORS_LENGTH] = {
         /* 0 */
