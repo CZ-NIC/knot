@@ -51,7 +51,8 @@ unit_api dnslib_response_tests_api = {
  */
 
 /* Virtual I/O over memory. */
-static int mem_read(void *dst, size_t n, const char **src, unsigned *remaining) {
+static int mem_read(void *dst, size_t n, const char **src,
+		    unsigned *remaining) {
 	if (n > *remaining) {
 		return 0;
 	}
@@ -67,6 +68,7 @@ static int mem_read(void *dst, size_t n, const char **src, unsigned *remaining) 
  */
 
 struct test_response {
+	/* This is basically same thing as actual response structure */
 	dnslib_dname_t *qname;
 	uint16_t qclass;
 	uint16_t qtype;
@@ -77,6 +79,8 @@ struct test_response {
 	uint16_t ancount;
 	uint16_t nscount;
 	uint16_t arcount;
+
+	/* Arrays of rrsets */
 
 	dnslib_rrset_t **answer;
 	dnslib_rrset_t **authority;
@@ -92,6 +96,7 @@ struct test_response {
 
 typedef struct test_response test_response_t;
 
+/* Parsed raw packet*/
 struct test_raw_packet {
 	uint size;
 	uint8_t *data;
@@ -101,6 +106,7 @@ typedef struct test_raw_packet test_raw_packet_t;
 
 enum { DNAME_MAX_WIRE_LENGTH = 256 };
 
+/* Static data constants */
 enum {
 	DNAMES_COUNT = 2,
 	ITEMS_COUNT = 2,
@@ -133,7 +139,7 @@ static test_response_t RESPONSES[RESPONSE_COUNT] =
 	{ {&DNAMES[0], 1, 1, 12345, 0, 0, 1, 0, 0, 0, NULL,
 	   RESPONSE_RRSETS, NULL, 29} };
 
-
+/* Returns size of type where avalailable */
 size_t wireformat_size(uint wire_type)
 {
         switch(wire_type) {
@@ -205,6 +211,8 @@ static int load_raw_packets(test_raw_packet_t ***raw_packets, uint32_t *count,
 	assert(*raw_packets == NULL);
 	uint16_t tmp_size = 0;
 
+	/* Packets are stored like this: [size][packet_data]+ */
+
 	if(!mem_read(count, sizeof(uint32_t), &src, &src_size)) {
 		return -1;
 	}
@@ -246,7 +254,14 @@ void free_raw_packets(test_raw_packet_t ***raw_packets, uint32_t *count)
 static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 					   unsigned *src_size)
 {
-//	diag("reading rdata for type: %d", type);
+#ifdef RESP_TEST_DEBUG
+	diag("reading rdata for type: %s", dnslib_rrtype_to_string(type));
+#endif
+	/*
+	 * Binary format of rdata is as following:
+	 * [total_length(except for some types) - see below][rdata_item]+
+	 * Dname items are read label by label
+	 */
 
 	dnslib_rdata_t *rdata;
 
@@ -262,12 +277,18 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 	uint16_t total_raw_data_length;
 	uint8_t raw_data_length;
 
+	/*
+	 * These types have no length, unfortunatelly (python library
+	 * does not provide this)
+	 */
 	/* TODO the are more types with no length for sure ... */
 	if (type != DNSLIB_RRTYPE_A &&
 	    type != DNSLIB_RRTYPE_NS &&
 	    type != DNSLIB_RRTYPE_AAAA) {
 		if (!mem_read(&total_raw_data_length,
 		     sizeof(total_raw_data_length), src, src_size)) {
+			dnslib_rdata_free(&rdata);
+			free(items);
 			return NULL;
 		}
 	}
@@ -276,10 +297,15 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 
 	int i;
 
+	/*
+	 * TODO save number of items
+	 * in the dump - of minor importance, however
+	 */
 	for (i = 0; i < desc->length; i++) {
 		if ((desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME)) {
+			/* Dnames have to be read label by label */
 			items[i].dname = NULL;
 			uint8_t label_size = 0;
 			uint8_t *label_wire = NULL;
@@ -311,8 +337,6 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 
 				total_read += label_size;
 
-//				diag("label_size: %d", label_size);
-
 				label_wire =
                                         malloc(sizeof(uint8_t) *
                                                (label_size + 1));
@@ -324,6 +348,7 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 					      label_size,
 					      src,
 					      src_size)) {
+					free(label_wire);
 					return NULL;
 				}
 
@@ -351,7 +376,8 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 			assert(dnslib_dname_is_fqdn(items[i].dname));
 #ifdef RESP_TEST_DEBUG
 			{
-				char tmp_dname = dnslib_dname_to_str(items[i].dname);
+				char tmp_dname =
+					dnslib_dname_to_str(items[i].dname);
 				diag("loaded dname by labels: %s", tmp_dname);
 				free(tmp_dname);
 			}
@@ -392,6 +418,7 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 					  items[i].raw_data[0]);
 				*/
 			} else {
+				/* Other type than dname of BINARYWITHLENGTH */
 				uint16_t size_fr_desc =
 					(uint16_t)
                                         wireformat_size(desc->wireformat[i]);
@@ -485,7 +512,13 @@ static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 	uint32_t rrset_ttl;
 
 	/* Each rrset will only have one rdata entry */
-        /* RRSIGs will be read as separate RRSets */
+
+	/*
+	 * RRSIGs will be read as separate RRSets because that's the way they
+	 * are stored in responses
+	 */
+
+	/* Read owner first */
 
 	uint8_t dname_size;
 	uint8_t *dname_wire = NULL;
@@ -496,7 +529,9 @@ static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 
 	dname_wire = malloc(sizeof(uint8_t) * dname_size);
 
-        if (!mem_read(dname_wire, sizeof(uint8_t) * dname_size, src, src_size)) {
+	if (!mem_read(dname_wire, sizeof(uint8_t) * dname_size, src,
+		      src_size)) {
+		free(dname_wire);
 		return NULL;
 	}
 
@@ -514,7 +549,7 @@ static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 		free(tmp_dname);
 	}
 #endif
-
+	/* Read other data */
 
 	if (!mem_read(&rrset_type, sizeof(rrset_type), src, src_size)) {
 		return NULL;
@@ -534,14 +569,17 @@ static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 
 	rrset = dnslib_rrset_new(owner, rrset_type, rrset_class, rrset_ttl);
 
+	/* Question rrsets have no rdata */
+
 	if (!is_question) {
 		dnslib_rdata_t *tmp_rdata;
 
 		tmp_rdata = load_response_rdata(rrset->type, src, src_size);
 
 		if (tmp_rdata == NULL) {
-			diag("Could not load rrset rdata - type: %d", rrset->type);
-			/* TODO some freeing */
+			diag("Could not load rrset rdata - type: %d",
+			     rrset->type);
+			free(rrset);
 			return NULL;
 		}
 
@@ -552,11 +590,21 @@ static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 }
 
 static test_response_t *load_parsed_response(const char **src,
-unsigned *src_size)
+					     unsigned *src_size)
 {
+	/* Loads parsed response/query from binary format,
+	 * which is as following:
+	 * [id][qdcount][ancount][nscount][arcount]
+	 * [question_rrset+][answer_rrset+][authority_rrset+]
+	 * [additional_rrset]+
+	 */
+
 	test_response_t *resp = malloc(sizeof(test_response_t));
 
+	CHECK_ALLOC_LOG(resp, NULL);
+
 	if (!mem_read(&resp->id, sizeof(resp->id), src, src_size)) {
+		free(resp);
 		return NULL;
 	}
 
@@ -565,6 +613,7 @@ unsigned *src_size)
 #endif
 
 	if (!mem_read(&resp->qdcount, sizeof(resp->qdcount), src, src_size)) {
+		free(resp);
 		return NULL;
 	}
 
@@ -573,6 +622,7 @@ unsigned *src_size)
 #endif
 
 	if (!mem_read(&resp->ancount, sizeof(resp->ancount), src, src_size)) {
+		free(resp);
 		return NULL;
 	}
 
@@ -581,6 +631,7 @@ unsigned *src_size)
 #endif
 
 	if (!mem_read(&resp->nscount, sizeof(resp->nscount), src, src_size)) {
+		free(resp);
 		return NULL;
 	}
 
@@ -589,6 +640,7 @@ unsigned *src_size)
 #endif
 
 	if (!mem_read(&resp->arcount, sizeof(resp->arcount), src, src_size)) {
+		free(resp);
 		return NULL;
 	}
 
@@ -609,6 +661,7 @@ unsigned *src_size)
 				dnslib_rrset_free(&(question_rrsets[i]));
 			}
 			free(question_rrsets);
+			free(resp);
 			return NULL;
 		}
 	}
@@ -641,29 +694,11 @@ unsigned *src_size)
 		resp->answer[i] = tmp_rrset;
 		if (resp->answer[i] == NULL) {
 			diag("Could not load answer rrsets");
+			free(resp->answer);
+			free(resp);
 			return NULL;
 		}
-
-/*		if (tmp_rrset->type == DNSLIB_RRTYPE_RRSIG) {
-			rrsig_count++;
-			for (int j = 0; j < i ; j++) {
-				if (rrsig_type_covered(tmp_rrset) ==
-				    resp->answer[j]->type) {
-					if (resp->answer[j]->rrsigs != NULL) {
-					dnslib_rrset_merge((void *)&resp->
-							   answer[j]->
-							   rrsigs,
-							   (void *)&tmp_rrset);
-					} else {
-						resp->answer[j]->rrsigs
-							= tmp_rrset;
-					}
-				}
-			}
-		} */
 	}
-
-//	resp->ancount -= rrsig_count;
 
 	rrsig_count = 0;
 
@@ -679,30 +714,12 @@ unsigned *src_size)
 		resp->authority[i] = tmp_rrset;
 		if (resp->authority[i] == NULL) {
 			diag("Could not load authority rrsets");
+			free(resp->authority);
+			free(resp->answer);
+			free(resp);
 			return NULL;
 		}
-
-/*		if (tmp_rrset->type == DNSLIB_RRTYPE_RRSIG) {
-			rrsig_count++;
-			for (int j = 0; j < i ; j++) {
-				if (rrsig_type_covered(tmp_rrset) ==
-				    resp->authority[j]->type) {
-					if (resp->authority[j]->
-					    rrsigs != NULL) {
-					dnslib_rrset_merge((void *)&resp->
-							   authority[j]->
-							   rrsigs,
-							   (void *)&tmp_rrset);
-					} else {
-						resp->authority[j]->rrsigs
-							= tmp_rrset;
-					}
-				}
-			}
-		} */
 	}
-
-//	resp->nscount -= rrsig_count;
 
 	rrsig_count = 0;
 
@@ -717,41 +734,15 @@ unsigned *src_size)
 		tmp_rrset = load_response_rrset(src, src_size, 0);
 		if (tmp_rrset == NULL) {
 			diag("Could not load rrset (additional)");
+			free(resp->additional);
+			free(resp->authority);
+			free(resp->answer);
+			free(resp);
 			return NULL;
 		}
 
 		resp->additional[i] = tmp_rrset;
-
-/*		if (tmp_rrset->type != DNSLIB_RRTYPE_OPT) {
-			resp->additional[i] = tmp_rrset;
-		} else {
-			assert(i + 1 == resp->arcount);
-			resp->arcount--;
-			break;
-		} */
-
-/*		if (tmp_rrset->type == DNSLIB_RRTYPE_RRSIG) {
-			rrsig_count++;
-			for (int j = 0; j < i ; j++) {
-				if (rrsig_type_covered(tmp_rrset) ==
-				    resp->additional[j]->type) {
-					if (resp->additional[j]->
-					    rrsigs != NULL) {
-				dnslib_rrset_merge((void *)&resp->
-						   additional[j]->
-						   rrsigs,
-						   (void *)&tmp_rrset);
-					// XXX is is this okay for NULL?
-					} else {
-						resp->additional[j]->rrsigs
-							= tmp_rrset;
-					}
-				}
-			}
-		} */
 	}
-
-//	resp->arcount -= rrsig_count;
 
 	/* this will never be used */
 
@@ -771,7 +762,8 @@ static void free_parsed_response(test_response_t *response)
 
 		if (response->additional != NULL) {
 			for (int j = 0; j < response->arcount; j++) {
-				dnslib_rrset_deep_free(&(response->additional[j]), 1, 1);
+				dnslib_rrset_deep_free(&(response->
+							 additional[j]), 1, 1);
 			}
 
 			free(response->additional);
@@ -779,7 +771,8 @@ static void free_parsed_response(test_response_t *response)
 
 		if (response->answer != NULL) {
 			for (int j = 0; j < response->ancount; j++) {
-				dnslib_rrset_deep_free(&(response->answer[j]), 1, 1);
+				dnslib_rrset_deep_free(&(response->
+							 answer[j]), 1, 1);
 			}
 
 			free(response->answer);
@@ -787,7 +780,8 @@ static void free_parsed_response(test_response_t *response)
 
 		if (response->authority != NULL) {
 			for (int j = 0; j < response->nscount; j++) {
-				dnslib_rrset_deep_free(&(response->authority[j]), 1, 1);
+				dnslib_rrset_deep_free(&(response->
+							 authority[j]), 1, 1);
 			}
 
 			free(response->authority);
@@ -814,7 +808,7 @@ static int load_parsed_responses(test_response_t ***responses, uint32_t *count,
 		if ((*responses)[i] == NULL) {
 			diag("Could not load response - %d - returned NULL",
 			     i);
-//			return -1;
+			return -1;
                 }
 
 #ifdef RESP_TEST_DEBUG
@@ -842,11 +836,15 @@ static int compare_rrsets(const dnslib_rrset_t *rrset1,
 	assert(rrset1);
 	assert(rrset2);
 
+	dnslib_rrtype_descriptor_t *desc =
+		dnslib_rrtype_descriptor_by_type(rrset1->type);
+
 	return (!(dnslib_dname_compare(rrset1->owner, rrset2->owner) == 0 &&
 		rrset1->type == rrset2->type &&
 		rrset1->rclass == rrset2->rclass &&
 		rrset1->ttl == rrset2->ttl &&
-		rrset1->rdata == rrset2->rdata));
+		dnslib_rdata_compare(rrset1->rdata, rrset2->rdata,
+				     desc->wireformat) == 0));
 }
 
 static int test_response_new_empty()
@@ -867,6 +865,10 @@ static int test_response_add_rrset(int (*add_func)
 				   const dnslib_rrset_t *, int, int),
 				   int array_id)
 {
+	/*
+	 * Tests add_rrset by adding it and then manually looking for it
+	 * in the array using compare_rrsets.
+	 */
 	int errors = 0;
 
 	dnslib_response_t *resp = dnslib_response_new_empty(NULL);
@@ -1106,7 +1108,10 @@ static int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
         return (!(count == i));
 }
 
-/* compares only one rdata */
+/* Compares one rdata dnslib with rdata from ldns.
+ * Comparison is done through comparing wireformats.
+ * Returns 0 if rdata are the same, 1 otherwise
+ */
 static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 			    uint16_t type)
 {
@@ -1134,6 +1139,7 @@ static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 				return 1;
 			}
 		} else {
+			/* Compare sizes first, then actual data */
 			if (rdata->items[i].raw_data[0] !=
 			    ldns_rdf_size(ldns_rr_rdf(rr, i))) {
 				/* \note ldns stores the size including the
@@ -1142,8 +1148,8 @@ static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 				diag("dnslib: %d ldns: %d",
 				     rdata->items[i].raw_data[0],
 				     ldns_rdf_size(ldns_rr_rdf(rr, i)));
-                                hex_print((char *)
-(rdata->items[i].raw_data + 1),
+				hex_print((char *)
+					  (rdata->items[i].raw_data + 1),
 					  rdata->items[i].raw_data[0]);
 				hex_print((char *)ldns_rdf_data(ldns_rr_rdf(rr,
 									    i)),
@@ -1179,8 +1185,6 @@ static int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
 {
         /* We should have only one rrset from ldns, although it is
          * represented as rr_list ... */
-
-	/* TODO errors */
 
 	assert(rr);
 	assert(rrset);
@@ -1278,7 +1282,7 @@ static int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
 {
 	int errors = 0;
 
-	/* There are no rrset currenty. Everythins is just rr */
+	/* There are no rrsets currenty. Everything is just rr */
 
 	ldns_rr *rr = NULL;
 
@@ -1287,7 +1291,6 @@ static int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
 	}
 
 	for (int i = 0; i < count ; i++) {
-
 		/* normally ldns_pop_rrset or such should be here */
 		rr = ldns_rr_list_rr(rrlist, i);
 
@@ -1308,9 +1311,9 @@ static int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
         return errors;
 }
 
-/* \note this is not actuall compare, it just returns 1 everytime anything is
+/* This is not actuall compare, it just returns 1 everytime anything is
  * different.
- * \todo well, call it "check" then
+ * TODO well, call it "check" then
  */
 static int compare_response_w_ldns_packet(dnslib_response_t *response,
 					  ldns_pkt *packet)
@@ -1320,7 +1323,7 @@ static int compare_response_w_ldns_packet(dnslib_response_t *response,
 		return 1;
 	}
 
-	/* \note qdcount is always 1 in dnslib's case */
+	/* qdcount is always 1 in dnslib's case */
 
 	/* TODO check flags1 and flags2 - no API for that, write my own*/
 
@@ -1367,7 +1370,6 @@ static int compare_response_w_ldns_packet(dnslib_response_t *response,
 
 	/* other RRSets */
 
-
 	if ((ret = compare_rrsets_w_ldns_rrlist(response->answer,
 					 ldns_pkt_answer(packet),
 					 response->header.ancount)) != 0) {
@@ -1384,7 +1386,7 @@ static int compare_response_w_ldns_packet(dnslib_response_t *response,
 		return 1;
 	}
 
-	/* \note we don't want to test OPT RR, which is the last rrset
+	/* We don't want to test OPT RR, which is the last rrset
 	 * in the additional section */
 
 	if ((ret = compare_rrsets_w_ldns_rrlist(response->additional,
@@ -1430,6 +1432,7 @@ static int compare_response_w_ldns_packet(dnslib_response_t *response,
 
 #endif
 
+/* Converts dnslib_rrset_t to dnslib_opt_rr */
 static dnslib_opt_rr_t *opt_rrset_to_opt_rr(dnslib_rrset_t *rrset)
 {
 	if (rrset == NULL) {
@@ -1444,11 +1447,16 @@ static dnslib_opt_rr_t *opt_rrset_to_opt_rr(dnslib_rrset_t *rrset)
 
 	dnslib_edns_set_ext_rcode(opt_rr, rrset->ttl);
 
-	/* TODO rdata? mostly empty, I guess */
+	/* TODO rdata? mostly empty, I guess, but should be done */
 
 	return opt_rr;
 }
 
+/*
+ * Tests response_to_wire by creating wireformat from parsed response, then,
+ * using that wire, creates ldns structure which is then compared with the
+ * original dnslib structure.
+ */
 static int test_response_to_wire(test_response_t **responses,
 				 test_raw_packet_t **raw_data,
 				 uint count)
@@ -1463,6 +1471,7 @@ static int test_response_to_wire(test_response_t **responses,
 
 	dnslib_rrset_t *parsed_opt = NULL;
 
+	/* This cycle creates actual dnslib_response_t's from parsed ones */
 	for (int i = 0; i < count; i++) {
 		if (responses[i] == NULL) {
 			continue;
@@ -1497,12 +1506,13 @@ static int test_response_to_wire(test_response_t **responses,
 
 		resp->size += 4;
 
-
 		for (int j = 0; j < responses[i]->ancount; j++) {
 			if (&(responses[i]->answer[j])) {
 				if (dnslib_response_add_rrset_answer(resp,
 					responses[i]->answer[j], 0, 0) != 0) {
-					char *tmp_dname = dnslib_dname_to_str(responses[i]->answer[j]->owner);
+					char *tmp_dname =
+					dnslib_dname_to_str(responses[i]->
+							    answer[j]->owner);
 					diag("Could not add answer rrset");
 					diag("owner: %s type: %d",
 					     tmp_dname,
@@ -1545,6 +1555,8 @@ static int test_response_to_wire(test_response_t **responses,
 			}
 		}
 
+		/* Response is created */
+
 //		assert(resp->header.arcount == responses[i]->arcount);
 
 		uint8_t *dnslib_wire = NULL;
@@ -1568,6 +1580,8 @@ static int test_response_to_wire(test_response_t **responses,
 
 		return 0;
 
+/*
+
 		note("Comparing wires directly - might not be sufficient"
 		     "Test with LDNS, if possible");
 
@@ -1579,7 +1593,7 @@ static int test_response_to_wire(test_response_t **responses,
 			diag("Wires did not match - differ in %d places",
 			     tmp_places);
 			errors++;
-		}
+		} */
 
 #endif
 
@@ -1883,7 +1897,8 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 	if (load_parsed_responses(&parsed_responses, &response_parsed_count,
 			    parsed_data_rc, parsed_data_rc_size) != 0) {
 		diag("Could not load parsed responses, skipping");
-		free_parsed_responses(&parsed_responses, &response_parsed_count);
+		free_parsed_responses(&parsed_responses,
+				      &response_parsed_count);
 		return 0;
 	}
 
@@ -1893,6 +1908,8 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 			 raw_data_rc, raw_data_rc_size) != 0) {
 		diag("Could not load raw responses, skipping");
 		free_raw_packets(&raw_responses, &response_raw_count);
+		free_parsed_responses(&parsed_responses,
+				      &response_parsed_count);
 		return 0;
 	}
 
@@ -1905,6 +1922,9 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 				  parsed_data_queries_rc_size) != 0) {
 		diag("Could not load parsed queries, skipping");
 		free_parsed_responses(&parsed_queries, &query_parsed_count);
+		free_raw_packets(&raw_responses, &response_raw_count);
+		free_parsed_responses(&parsed_responses,
+				      &response_parsed_count);
 		return 0;
 	}
 
@@ -1915,6 +1935,10 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 			     raw_data_queries_rc_size) != 0) {
 		diag("Could not load raw queries, skipping");
 		free_raw_packets(&raw_queries, &query_raw_count);
+		free_parsed_responses(&parsed_queries, &query_parsed_count);
+		free_raw_packets(&raw_responses, &response_raw_count);
+		free_parsed_responses(&parsed_responses,
+				      &response_parsed_count);
 		return 0;
 	}
 

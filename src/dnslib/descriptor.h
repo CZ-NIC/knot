@@ -18,7 +18,7 @@
 
 enum mxrdtln {
 	DNSLIB_MAX_RDATA_ITEMS = 64,
-	DNSLIB_MAX_RDATA_ITEM_SIZE = 255,
+	DNSLIB_MAX_RDATA_ITEM_SIZE = 65534,
 	DNSLIB_MAX_RDATA_WIRE_SIZE =
 	  DNSLIB_MAX_RDATA_ITEMS * DNSLIB_MAX_RDATA_ITEM_SIZE
 };
@@ -129,7 +129,7 @@ enum dnslib_rr_type {
  */
 typedef enum dnslib_rr_type dnslib_rr_type_t;
 
-static uint const DNSLIB_RRTYPE_LAST = DNSLIB_RRTYPE_NSEC3PARAM;
+static const uint DNSLIB_RRTYPE_LAST = DNSLIB_RRTYPE_NSEC3PARAM;
 
 enum dnslib_rdata_wireformat {
 	/*!
