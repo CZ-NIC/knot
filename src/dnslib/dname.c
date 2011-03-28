@@ -364,8 +364,7 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 int dnslib_dname_from_wire(const uint8_t *name, uint size,
                            struct dnslib_node *node, dnslib_dname_t *target)
 {
-	if (name == NULL) { /* && size != 0) { !OS: Nerozumjaju */
-		debug_dnslib_dname("No name given, but size = %u!\n", size);
+	if (name == NULL || target != NULL) {
 		return DNSLIB_EBADARG;
 	}
 
