@@ -1071,6 +1071,7 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 				  char nsec3)
 {
 	assert(handler);
+	assert(node);
 	char auth = !dnslib_node_is_non_auth(node);
 	char deleg = dnslib_node_is_deleg_point(node);
 	uint rrset_count = dnslib_node_rrset_count(node);
@@ -1160,7 +1161,8 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 			/* Test that only one record is in the
 				 * NSEC RRSet */
 
-			if (dnslib_rrset_rdata(nsec_rrset)->next !=
+			if ((nsec_rrset != NULL) &&
+			    dnslib_rrset_rdata(nsec_rrset)->next !=
 			    dnslib_rrset_rdata(nsec_rrset)) {
 				err_handler_handle_error(handler,
 						 node,
@@ -1183,26 +1185,30 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 			 * the next link in each node.
 			 */
 
-			dnslib_dname_t *next_domain =
+			if (nsec_rrset != NULL) {
+				dnslib_dname_t *next_domain =
 					dnslib_rdata_item(
 					dnslib_rrset_rdata(nsec_rrset),
 					0)->dname;
 
-			assert(next_domain);
+				assert(next_domain);
 
-			if (dnslib_zone_find_node(zone, next_domain) ==
-			    NULL) {
-				err_handler_handle_error(handler,
-						node,
-						ZC_ERR_NSEC_RDATA_CHAIN);
-/*				log_zone_error("NSEC chain is not "
-					       "coherent!\n"); */
-			}
+				if (dnslib_zone_find_node(zone, next_domain) ==
+				    NULL) {
+					err_handler_handle_error(handler,
+							node,
+							ZC_ERR_NSEC_RDATA_CHAIN);
+/*					log_zone_error("NSEC chain is not "
+						       "coherent!\n"); */
+				}
 
-			if (dnslib_dname_compare(next_domain,
-			    dnslib_node_owner(dnslib_zone_apex(zone))) == 0) {
-				/* saving the last node */
-				*last_node = node;
+				if (dnslib_dname_compare(next_domain,
+				    dnslib_node_owner(dnslib_zone_apex(zone)))
+					== 0) {
+					/* saving the last node */
+					*last_node = node;
+				}
+
 			}
 		} else if (nsec3 && (auth || deleg)) { /* nsec3 */
 			int ret = check_nsec3_node_in_zone(zone, node, handler);
@@ -1561,28 +1567,34 @@ static void log_cyclic_errors_in_zone(err_handler_t *handler,
 		 * receiving it explicitely or going through the whole tree.*/
 		;
 	} else if (do_checks == 2 ) {
-		const dnslib_rrset_t *nsec_rrset =
-			dnslib_node_rrset(last_node, DNSLIB_RRTYPE_NSEC);
-
-		if (nsec_rrset == NULL) {
+		if (last_node == NULL) {
 			err_handler_handle_error(handler, last_node,
-				 ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC);
-			return;
-		}
+				ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC);
+				return;
+		} else {
+			const dnslib_rrset_t *nsec_rrset =
+				dnslib_node_rrset(last_node, DNSLIB_RRTYPE_NSEC);
 
-		const dnslib_dname_t *next_dname =
-			dnslib_rdata_item(
-			dnslib_rrset_rdata(nsec_rrset), 0)->dname;
-		assert(next_dname);
+			if (nsec_rrset == NULL) {
+				err_handler_handle_error(handler, last_node,
+					 ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC);
+				return;
+			}
 
-		const dnslib_dname_t *apex_dname =
-			dnslib_node_owner(dnslib_zone_apex(zone));
-		assert(apex_dname);
+			const dnslib_dname_t *next_dname =
+				dnslib_rdata_item(
+				dnslib_rrset_rdata(nsec_rrset), 0)->dname;
+			assert(next_dname);
 
-		if (dnslib_dname_compare(next_dname, apex_dname) !=0) {
-			err_handler_handle_error(handler, last_node,
-				 ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC);
-		}
+			const dnslib_dname_t *apex_dname =
+				dnslib_node_owner(dnslib_zone_apex(zone));
+			assert(apex_dname);
+
+			if (dnslib_dname_compare(next_dname, apex_dname) !=0) {
+				err_handler_handle_error(handler, last_node,
+					 ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC);
+			}
+	}
 	}
 }
 
