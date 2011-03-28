@@ -132,7 +132,7 @@ int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
 	memcpy(rdata->items, items, count * sizeof(dnslib_rdata_item_t));
 	rdata->count = count;
 
-	return DSNLIB_EOK;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

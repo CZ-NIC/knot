@@ -373,7 +373,7 @@ static int dnslib_response_realloc_compr(dnslib_compressed_dnames_t *table)
 		free(old_dnames);
 	}
 
-	return DSNLIB_EOK;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -468,7 +468,7 @@ DEBUG_DNSLIB_RESPONSE(
 		++i;
 	}
 
-	return DSNLIB_EOK;
+	return DNSLIB_EOK;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -1041,8 +1041,8 @@ dnslib_response_t *dnslib_response_new_empty(const dnslib_opt_rr_t *opt_rr)
 int dnslib_response_parse_query(dnslib_response_t *resp,
                                 const uint8_t *query_wire, size_t query_size)
 {
-	if (resp == NULL || resp->header == NULL || query_wire == NULL
-	    || resp->question == NULL || resp->question.qname == NULL) {
+	if (resp == NULL || query_wire == NULL
+	    || resp->question.qname == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
