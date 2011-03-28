@@ -8,44 +8,80 @@
 #include "dnslib/error.h"
 
 /*----------------------------------------------------------------------------*/
-
+/*! \brief Flags used to mark nodes with some property. */
 enum {
+	/*! \brief Node is a delegation point (i.e. marking a zone cut). */
 	DNSLIB_NODE_FLAGS_DELEG = (uint8_t)0x01,
+	/*! \brief Node is not authoritative (i.e. below a zone cut). */
 	DNSLIB_NODE_FLAGS_NONAUTH = (uint8_t)0x02
 };
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Returns the delegation point flag
+ *
+ * \param flags Flags to retrieve the flag from.
+ *
+ * \return A byte with only the delegation point flag set if it was set in
+ *         \a flags.
+ */
 static inline uint8_t dnslib_node_flags_get_deleg(uint8_t flags)
 {
 	return flags & DNSLIB_NODE_FLAGS_DELEG;
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Sets the delegation point flag.
+ *
+ * \param flags Flags to set the flag in.
+ */
 static inline void dnslib_node_flags_set_deleg(uint8_t *flags)
 {
 	*flags |= DNSLIB_NODE_FLAGS_DELEG;
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Returns the non-authoritative node flag
+ *
+ * \param flags Flags to retrieve the flag from.
+ *
+ * \return A byte with only the non-authoritative node flag set if it was set in
+ *         \a flags.
+ */
 static inline uint8_t dnslib_node_flags_get_nonauth(uint8_t flags)
 {
 	return flags & DNSLIB_NODE_FLAGS_NONAUTH;
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Sets the non-authoritative node flag.
+ *
+ * \param flags Flags to set the flag in.
+ */
 static inline void dnslib_node_flags_set_nonauth(uint8_t *flags)
 {
 	*flags |= DNSLIB_NODE_FLAGS_NONAUTH;
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Compares the two keys as RR types.
+ *
+ * \note This function may be used in data structures requiring generic
+ *       comparation function.
+ *
+ * \param key1 First RR type.
+ * \param key2 Second RR type.
+ *
+ * \retval 0 if \a key1 is equal to \a key2.
+ * \retval < 0 if \a key1 is lower than \a key2.
+ * \retval > 0 if \a key1 is higher than \a key2.
+ */
 static int compare_rrset_types(void *key1, void *key2)
 {
 	return (*((uint16_t *)key1) == *((uint16_t *)key2) ?
