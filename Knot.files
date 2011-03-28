@@ -74,6 +74,8 @@ src/dnslib/packet.h
 src/dnslib/response.c
 src/dnslib/edns.h
 src/dnslib/edns.c
+src/dnslib/error.h
+src/dnslib/error.c
 src/dnslib/utils.h
 src/dnslib/utils.c
 src/dnslib/zonedb.h
