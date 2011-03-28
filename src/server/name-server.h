@@ -26,6 +26,8 @@
 #include "dnslib/zonedb.h"
 #include "dnslib/edns.h"
 
+struct conf_t;
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Name server structure. Holds all important data needed for the
@@ -84,6 +86,14 @@ int ns_answer_request(ns_nameserver *nameserver,
  *       structure. This must be kept and destroyed elsewhere.
  */
 void ns_destroy(ns_nameserver **nameserver);
+
+/*!
+ * \brief Name server config hook.
+ *
+ * Routine for dynamic name server reconfiguration.
+ */
+int ns_conf_hook(const struct conf_t *conf, void *data);
+
 
 #endif /* _KNOT_NAME_SERVER_H_ */
 

@@ -4,19 +4,26 @@
 #include <ctype.h>
 #include <errno.h>
 #include <string.h>
+#include <signal.h>
 
 #include "common.h"
 #include "ctl/process.h"
 #include "other/log.h"
 #include "conf/conf.h"
 
-const char* pid_filename()
+char* pid_filename()
 {
+	conf_read_lock();
+
+	/* Read configuration. */
+	char* ret = 0;
 	if (conf()) {
-		return conf()->pidfile;
+		ret = strdup(conf()->pidfile);
 	}
 
-	return 0;
+	conf_read_unlock();
+
+	return ret;
 }
 
 pid_t pid_read(const char* fn)
@@ -91,5 +98,10 @@ int pid_write(const char* fn)
 int pid_remove(const char* fn)
 {
 	return unlink(fn);
+}
+
+int pid_running(pid_t pid)
+{
+	return kill(pid, 0) == 0;
 }
 

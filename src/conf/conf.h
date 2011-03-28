@@ -15,6 +15,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include <urcu.h>
+
 #include "dnslib/descriptor.h"
 #include "lib/lists.h"
 #include "other/log.h"
@@ -158,7 +160,8 @@ typedef struct conf_t {
 typedef struct {
 	node n;
 	int sections; /*!< Bitmask of watched sections. */
-	int (*update)(const conf_t*); /*!< Function executed on config load. */
+	int (*update)(const conf_t*, void*); /*!< Function executed on config load. */
+	void *data;
 } conf_hook_t;
 
 /*
@@ -180,14 +183,13 @@ conf_t *conf_new(const char* path);
  * \param conf Configuration context.
  * \param sections Bitmask of watched sections or CONF_ALL.
  * \param on_update Callback.
+ * \param data User specified data for hook.
  *
  * \retval 0 on success.
  * \retval <0 on error.
- *
- * \todo There might be some issues with reloading config
- *       on-the-fly in multithreaded environment, check afterwards.
  */
-int conf_add_hook(conf_t * conf, int sections, int (*on_update)(const conf_t*));
+int conf_add_hook(conf_t * conf, int sections,
+                  int (*on_update)(const conf_t*, void*), void *data);
 
 /*!
  * \brief Parse configuration from associated file.
@@ -266,6 +268,22 @@ extern conf_t *s_config;
  */
 static inline conf_t* conf() {
 	return s_config; // Inline for performance reasons.
+}
+
+/*!
+ * \brief Lock configuration for reading.
+ *
+ * \return Configuration context.
+ */
+static inline void conf_read_lock() {
+	rcu_read_lock();
+}
+
+/*!
+ * \brief Unlock configuration for reading.
+ */
+static inline void conf_read_unlock() {
+	rcu_read_unlock();
 }
 
 /*

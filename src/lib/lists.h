@@ -53,6 +53,7 @@ void rem_node(node *);
 void add_tail_list(list *, list *);
 void init_list(list *);
 void insert_node(node *, node *);
+void list_dup(list *dst, list *src, size_t itemsz);
 
 /*! \todo This is broken atm.
 #ifndef _BIRD_LISTS_C_

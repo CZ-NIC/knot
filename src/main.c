@@ -9,31 +9,29 @@
 #include "ctl/process.h"
 #include "conf/conf.h"
 #include "conf/logconf.h"
+#include "lib/evqueue.h"
 
 /*----------------------------------------------------------------------------*/
 
-static volatile short s_stopping = 0;
-static server_t *s_server = NULL;
+/* Signal flags. */
+static volatile short sig_req_stop = 0;
+static volatile short sig_req_reload = 0;
+static volatile short sig_stopping = 0;
 
 // SIGINT signal handler
 void interrupt_handle(int s)
 {
-	// Omit other signals
-	if (s_server == NULL) {
-		return;
-	}
-
 	// Reload configuration
 	if (s == SIGHUP) {
-		log_server_info("server: fixme: reload configuration.\n");
-		/// \todo Reload configuration?
+		sig_req_reload = 1;
+		return;
 	}
 
 	// Stop server
 	if (s == SIGINT || s == SIGTERM) {
-		if (s_stopping == 0) {
-			s_stopping = 1;
-			server_stop(s_server);
+		if (sig_stopping == 0) {
+			sig_req_stop = 1;
+			sig_stopping = 1;
 		} else {
 			log_server_error("server: \nOK! OK! Exiting immediately.\n");
 			exit(1);
@@ -86,6 +84,9 @@ int main(int argc, char **argv)
 		}
 	}
 
+	// Setup event queue
+	evqueue_set(evqueue_new());
+
 	// Initialize log
 	log_init();
 
@@ -102,8 +103,15 @@ int main(int argc, char **argv)
 		}
 	}
 
+	// Create server
+	server_t *server = server_create();
+
 	// Initialize configuration
-	conf_add_hook(conf(), CONF_LOG, log_conf_hook);
+	conf_read_lock();
+	conf_add_hook(conf(), CONF_LOG, log_conf_hook, 0);
+	conf_add_hook(conf(), CONF_LOG, ns_conf_hook, server);
+	conf_add_hook(conf(), CONF_LOG, server_conf_hook, server);
+	conf_read_unlock();
 
 	// Find implicit configuration file
 	char *default_fn = 0;
@@ -128,9 +136,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-	// Free default config filename if exists
-	free(default_fn);
-
 	// Verbose mode
 	if (verbose) {
 		int mask = LOG_MASK(LOG_INFO)|LOG_MASK(LOG_DEBUG);
@@ -138,12 +143,11 @@ int main(int argc, char **argv)
 	}
 
 	// Create server instance
-	const char* pidfile = pid_filename();
-	s_server = server_create();
+	char* pidfile = pid_filename();
 
 	// Run server
 	int res = 0;
-	if ((res = server_start(s_server, zfs, zfs_count)) == 0) {
+	if ((res = server_start(server, zfs, zfs_count)) == 0) {
 
 		// Save PID
 		if (daemonize) {
@@ -158,16 +162,6 @@ int main(int argc, char **argv)
 			}
 		}
 
-		// Register service and signal handler
-		struct sigaction sa;
-		sa.sa_handler = interrupt_handle;
-		sigemptyset(&sa.sa_mask);
-		sa.sa_flags = 0;
-		sigaction(SIGINT,  &sa, NULL);
-		sigaction(SIGTERM, &sa, NULL);
-		sigaction(SIGHUP,  &sa, NULL);
-		sigaction(SIGALRM, &sa, NULL); // Interrupt
-
 		// Change directory if daemonized
 		log_server_info("server: Started.\n");
 		if (daemonize) {
@@ -175,17 +169,74 @@ int main(int argc, char **argv)
 			res = chdir("/");
 		}
 
-		if ((res = server_wait(s_server)) != 0) {
+		// Setup signal blocking
+		sigset_t emptyset;
+		sigemptyset(&emptyset);
+
+		// Setup signal handler
+		struct sigaction sa;
+		memset(&sa, 0, sizeof(sa));
+		sa.sa_handler = interrupt_handle;
+		sigemptyset(&sa.sa_mask);
+		sigaction(SIGINT,  &sa, NULL);
+		sigaction(SIGTERM, &sa, NULL);
+		sigaction(SIGHUP,  &sa, NULL);
+		sigaction(SIGALRM, &sa, NULL); // Interrupt
+		sa.sa_flags = 0;
+		sigprocmask(SIG_BLOCK, &sa.sa_mask, NULL);
+
+
+		/* Run event loop. */
+		for(;;) {
+			int ret = evqueue_poll(evqueue(), &emptyset);
+
+			/* Interrupts. */
+			if (ret == -1) {
+				/*! \todo More robust way to exit evloop.
+				 *        Event loop should exit with a special
+				 *        event.
+				 */
+				if (sig_req_stop) {
+					debug_server("Event: "
+					             "stopping server.\n");
+					sig_req_stop = 0;
+					server_stop(server);
+					break;
+				}
+				if (sig_req_reload) {
+					debug_server("Event: "
+					             "reloading config.\n");
+					sig_req_reload = 0;
+					conf_open(config_fn);
+				}
+			}
+
+			/* Events. */
+			if (ret > 0) {
+				event_t ev;
+				if (evqueue_get(evqueue(), &ev) == 0) {
+					debug_server("Event: "
+					             "received new event.\n");
+					if (ev.cb) {
+						ev.cb(&ev);
+					}
+				}
+			}
+		}
+
+		//sigprocmask(SIG_SETMASK, &emptyset, 0);
+		if ((res = server_wait(server)) != 0) {
 			log_server_error("server: An error occured while "
 			                 "waiting for server to finish.\n");
 		}
+
 	} else {
 		log_server_fatal("server: An error occured while "
 		                 "starting the server.\n");
 	}
 
 	// Stop server and close log
-	server_destroy(&s_server);
+	server_destroy(&server);
 
 	// Remove PID file if daemonized
 	if (daemonize) {
@@ -199,6 +250,14 @@ int main(int argc, char **argv)
 
 	log_server_info("server: Shut down.\n");
 	log_close();
+	free(pidfile);
+
+	// Destroy event loop
+	evqueue_t *q = evqueue();
+	evqueue_free(&q);
+
+	// Free default config filename if exists
+	free(default_fn);
 
 	return res;
 }
