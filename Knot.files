@@ -34,6 +34,8 @@ src/lib/base32hex.h
 src/lib/base32hex.c
 src/main.c
 src/other/debug.h
+src/other/error.h
+src/other/error.c
 src/other/log.c
 src/other/log.h
 src/other/print.c

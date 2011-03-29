@@ -111,6 +111,7 @@ libknot_la_SOURCES =				\
 	hash/hash-functions.c			\
 	hash/cuckoo-hash-table.c		\
 	hash/universal-system.c			\
+	other/error.c                           \
 	other/log.c				\
 	other/print.c				\
 	alloc/slab.h			        \
@@ -159,7 +160,8 @@ libknot_la_SOURCES =				\
 	hash/hash-functions.h			\
 	other/print.h				\
 	other/log.h				\
-	other/debug.h      
+	other/debug.h                           \
+	other/error.h
 
 libknot_la_LIBADD = @LIBOBJS@
 
