@@ -1,3 +1,16 @@
+/*!
+ * \file latency.h
+ *
+ * \author Marek Vavrusa <marek.vavrusa@nic.cz>
+ *
+ * \brief Utilities for latency profiling.
+ *
+ * Selected calls latency profiler is enabled with PROF_LATENCY define.
+ * You can roughly profile own code with perf_begin() and perf_end() macros.
+ *
+ * \addtogroup utils
+ * @{
+ */
 #ifndef _LATENCYPROF_H_
 #define _LATENCYPROF_H_
 
