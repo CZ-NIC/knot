@@ -33,8 +33,9 @@ const error_table_t *error_lookup_by_id(const error_table_t *table, int id)
 
 /*! \brief Table linking error messages to error codes. */
 static const error_table_t knot_error_msgs[] = {
+
+        /* Mapped errors. */
         {KNOT_EOK, "OK"},
-        {KNOT_ERROR, "Generic error."},
         {KNOT_ENOMEM, "Not enough memory."},
         {KNOT_EINVAL, "Invalid parameter passed."},
         {KNOT_ENOTSUP, "Parameter not supported."},
@@ -44,6 +45,11 @@ static const error_table_t knot_error_msgs[] = {
         {KNOT_ECONNREFUSED, "Connection is refused."},
         {KNOT_EISCONN, "Already connected."},
         {KNOT_EADDRINUSE, "Address already in use."},
+        {KNOT_ENOENT, "Resource not found."},
+        {KNOT_ERANGE, "Value is out of range."},
+
+        /* Custom errors. */
+        {KNOT_ERROR, "Generic error."},
         {KNOT_EADDRINVAL, "Invalid address."},
         {KNOT_EZONEINVAL, "Invalid zone file."},
         {KNOT_ENOTRUNNING, "Resource is not running."},

@@ -13,6 +13,7 @@
 #include "knot/common.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/name-server.h"
+#include "knot/other/error.h"
 #include "knot/stat/stat.h"
 
 /*! \brief TCP connection pool. */
@@ -381,6 +382,13 @@ int tcp_master(dthread_t *thread)
 	dt_unit_t *unit = thread->unit;
 	iohandler_t *handler = (iohandler_t *)thread->data;
 	int master_sock = handler->fd;
+
+	/* Check socket. */
+	if (master_sock < 0) {
+		debug_net("tcp_master: null socket recevied, finishing.\n");
+		return KNOT_EINVAL;
+	}
+
 	debug_dt("dthreads: [%p] is TCP master, state: %d\n",
 	         thread, thread->state);
 
