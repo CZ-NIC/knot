@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include <assert.h>
 
-#include "utils.h"
+#include "dnslib/utils.h"
 
 enum dnslib_packet_offsets {
 	DNSLIB_PACKET_OFFSET_ID = 0,

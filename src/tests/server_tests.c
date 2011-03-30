@@ -1,4 +1,4 @@
-#include "server/server.h"
+#include "knot/server/server.h"
 #include "tests/tap_unit.h"
 
 static int server_tests_count(int argc, char *argv[]);

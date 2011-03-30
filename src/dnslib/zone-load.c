@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 #include <time.h>
 
-#include "common.h"
+#include "dnslib-common.h"
 #include "dnslib/zone-load.h"
 #include "dnslib/zone-dump.h"
 #include "dnslib/dnslib.h"
@@ -42,7 +42,8 @@ static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
 {
 	int rc = fread(dst, size, n, fp);
 	if (rc != n) {
-		log_zone_warning("fread: invalid read %d (expected %zu)\n", rc, n);
+		fprintf(stderr, "fread: invalid read %d (expected %zu)\n", rc,
+		        n);
 	}
 
 	return rc == n;
@@ -92,9 +93,9 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 
 	uint16_t raw_data_length;
 
-	debug_zp("Reading %d items\n", desc->length);
+	debug_dnslib_zload("Reading %d items\n", desc->length);
 
-	debug_zp("current type: %s\n", dnslib_rrtype_to_string(type));
+	debug_dnslib_zload("current type: %s\n", dnslib_rrtype_to_string(type));
 
 	for (int i = 0; i < desc->length; i++) {
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
@@ -202,7 +203,7 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 				return 0;
 			}
 
-			debug_zp("read len: %d\n", raw_data_length);
+			debug_dnslib_zload("read len: %d\n", raw_data_length);
 			items[i].raw_data =
 				malloc(sizeof(uint8_t) * raw_data_length + 2);
 			*(items[i].raw_data) = raw_data_length;
@@ -216,8 +217,8 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 	}
 
 	if (dnslib_rdata_set_items(rdata, items, desc->length) != 0) {
-		log_zone_error("zoneload: Could not set items "
-		               "when loading rdata.\n");
+		fprintf(stderr, "zoneload: Could not set items "
+		        "when loading rdata.\n");
 	}
 
 	free(items);
@@ -240,19 +241,19 @@ dnslib_rrset_t *dnslib_load_rrsig(FILE *f)
 	}
 
 	if (rrset_type != DNSLIB_RRTYPE_RRSIG) {
-		log_zone_error("!! Error: rrsig has wrong type\n");
+		fprintf(stderr, "!! Error: rrsig has wrong type\n");
 		return 0;
 	}
-	debug_zp("rrset type: %d\n", rrset_type);
+	debug_dnslib_zload("rrset type: %d\n", rrset_type);
 	if (!fread_safe(&rrset_class, sizeof(rrset_class), 1, f)) {
 		return 0;
 	}
-	debug_zp("rrset class %d\n", rrset_class);
+	debug_dnslib_zload("rrset class %d\n", rrset_class);
 
 	if (!fread_safe(&rrset_ttl, sizeof(rrset_ttl), 1, f)) {
 		return 0;
 	}
-	debug_zp("rrset ttl %d\n", rrset_ttl);
+	debug_dnslib_zload("rrset ttl %d\n", rrset_ttl);
 
 	if (!fread_safe(&rdata_count, sizeof(rdata_count), 1, f)) {
 		return 0;
@@ -262,7 +263,7 @@ dnslib_rrset_t *dnslib_load_rrsig(FILE *f)
 
 	dnslib_rdata_t *tmp_rdata;
 
-	debug_zp("loading %d rdata entries\n", rdata_count);
+	debug_dnslib_zload("loading %d rdata entries\n", rdata_count);
 
 	for (int i = 0; i < rdata_count; i++) {
 		tmp_rdata = dnslib_load_rdata(DNSLIB_RRTYPE_RRSIG, f);
@@ -306,7 +307,7 @@ dnslib_rrset_t *dnslib_load_rrset(FILE *f)
 
 	rrset = dnslib_rrset_new(NULL, rrset_type, rrset_class, rrset_ttl);
 
-	debug_zp("RRSet type: %d\n", rrset->type);
+	debug_dnslib_zload("RRSet type: %d\n", rrset->type);
 
 	dnslib_rdata_t *tmp_rdata;
 
@@ -356,7 +357,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 		return 0;
 	}
 
-	debug_zp("%d\n", dname_size);
+	debug_dnslib_zload("%d\n", dname_size);
 
 	if (!fread_safe(dname_wire, sizeof(uint8_t), dname_size, f)) {
 		return 0;
@@ -383,7 +384,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 		return 0;
 	}
 
-	debug_zp("id: %p\n", dname_id);
+	debug_dnslib_zload("id: %p\n", dname_id);
 
 	if (!fread(&parent_id, sizeof(dname_id), 1, f)) {
 		free(labels);
@@ -414,16 +415,16 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	owner->labels = labels;
 	owner->label_count = label_count;
 
-	debug_zp("Node owned by: %s\n", dnslib_dname_to_str(owner));
-	debug_zp("labels: %d\n", owner->label_count);
+	debug_dnslib_zload("Node owned by: %s\n", dnslib_dname_to_str(owner));
+	debug_dnslib_zload("labels: %d\n", owner->label_count);
 //	hex_print(owner->labels, owner->label_count);
 
-	debug_zp("Number of RRSets in a node: %d\n", rrset_count);
+	debug_dnslib_zload("Number of RRSets in a node: %d\n", rrset_count);
 
 	node = owner->node;
 
 	if (node == NULL) {
-		log_zone_error("zone: Could not create node.\n");
+		fprintf(stderr, "zone: Could not create node.\n");
 		return NULL;
 	}
 
@@ -453,7 +454,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 		if ((tmp_rrset = dnslib_load_rrset(f)) == NULL) {
 			dnslib_node_free(&node, 1);
 			//TODO what else to free?
-			log_zone_error("zone: Could not load rrset.\n");
+			fprintf(stderr, "zone: Could not load rrset.\n");
 			return NULL;
 		}
 		tmp_rrset->owner = node->owner;
@@ -461,7 +462,7 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 			tmp_rrset->rrsigs->owner = node->owner;
 		}
 		if (dnslib_node_add_rrset(node, tmp_rrset) != 0) {
-			log_zone_error("zone: Could not add rrset.\n");
+			fprintf(stderr, "zone: Could not add rrset.\n");
 			return NULL;
 		}
 	}
@@ -517,7 +518,7 @@ zloader_t *dnslib_zload_open(const char *filename)
 	/* Open file for binary read. */
 	FILE *f = fopen(filename, "rb");
 	if (unlikely(!f)) {
-		debug_zp("dnslib_zload_open: failed to open '%s'\n", filename);
+		debug_dnslib_zload("dnslib_zload_open: failed to open '%s'\n", filename);
 		errno = ENOENT; // No such file or directory (POSIX.1)
 		return 0;
 	}
@@ -526,7 +527,7 @@ zloader_t *dnslib_zload_open(const char *filename)
 	static const uint8_t MAGIC[MAGIC_LENGTH] = MAGIC_BYTES;
 	if (!dnslib_check_magic(f, MAGIC, MAGIC_LENGTH)) {
 		fclose(f);
-		debug_zp("dnslib_zload_open: magic bytes in don't match '%*s' "
+		debug_dnslib_zload("dnslib_zload_open: magic bytes in don't match '%*s' "
 		         "(%s)\n",
 		         (int)MAGIC_LENGTH, (const char*)MAGIC, filename);
 		errno = EILSEQ; // Illegal byte sequence (POSIX.1, C99)
@@ -536,7 +537,7 @@ zloader_t *dnslib_zload_open(const char *filename)
 	/* Read source file length. */
 	uint32_t sflen = 0;
 	if (fread(&sflen, 1, sizeof(uint32_t), f) != sizeof(uint32_t)) {
-		debug_zp("dnslib_zload_open: failed to read sfile length\n");
+		debug_dnslib_zload("dnslib_zload_open: failed to read sfile length\n");
 		fclose(f);
 		errno = EIO; // I/O error.
 		return 0;
@@ -545,13 +546,13 @@ zloader_t *dnslib_zload_open(const char *filename)
 	/* Read source file. */
 	char *sfile = malloc(sflen);
 	if (!sfile) {
-		debug_zp("dnslib_zload_open: invalid sfile length %u\n", sflen);
+		debug_dnslib_zload("dnslib_zload_open: invalid sfile length %u\n", sflen);
 		fclose(f);
 		errno = ENOMEM; // Not enough space.
 		return 0;
 	}
 	if (fread(sfile, 1, sflen, f) < sflen) {
-		debug_zp("dnslib_zload_open: failed to read %uB source file\n",
+		debug_dnslib_zload("dnslib_zload_open: failed to read %uB source file\n",
 		         sflen);
 		free(sfile);
 		fclose(f);
@@ -568,7 +569,7 @@ zloader_t *dnslib_zload_open(const char *filename)
 		return 0;
 	}
 
-	debug_zp("dnslib_zload_open: opened '%s' as fp %p (source is '%s')\n",
+	debug_dnslib_zload("dnslib_zload_open: opened '%s' as fp %p (source is '%s')\n",
 	         filename, f, sfile);
 	zl->filename = strdup(filename);
 	zl->source = sfile;
@@ -604,13 +605,13 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		return 0;
 	}
 
-	debug_zp("authorative nodes: %u\n", auth_node_count);
+	debug_dnslib_zload("authorative nodes: %u\n", auth_node_count);
 
 	id_array =
 		malloc(sizeof(dnslib_dname_t *) *
 		(node_count + nsec3_node_count + 1));
 
-	debug_zp("loading %u nodes\n", node_count);
+	debug_dnslib_zload("loading %u nodes\n", node_count);
 
 	for (uint i = 1; i < (node_count + nsec3_node_count + 1); i++) {
 		id_array[i] = dnslib_dname_new();
@@ -620,8 +621,8 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	dnslib_node_t *apex = dnslib_load_node(f);
 
 	if (!apex) {
-		log_zone_error("zone: Could not load apex node (in %s)\n",
-		               loader->filename);
+		fprintf(stderr, "zone: Could not load apex node (in %s)\n",
+		        loader->filename);
 		return 0;
 	}
 
@@ -640,7 +641,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 
 		if (tmp_node != NULL) {
 			if (dnslib_zone_add_node(zone, tmp_node) != 0) {
-				log_zone_error("!! cannot add node\n");
+				fprintf(stderr, "!! cannot add node\n");
 				continue;
 			}
 			if (dnslib_dname_is_wildcard(tmp_node->owner)) {
@@ -658,8 +659,8 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
                         }
 
 		} else {
-			log_zone_error("zone: Node error (in %s).\n",
-			               loader->filename);
+			fprintf(stderr, "zone: Node error (in %s).\n",
+			        loader->filename);
 		}
 	}
 
@@ -667,7 +668,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 
 	zone->apex->prev = last_node;
 
-	debug_zp("loading %u nsec3 nodes\n", nsec3_node_count);
+	debug_dnslib_zload("loading %u nsec3 nodes\n", nsec3_node_count);
 
 	dnslib_node_t *nsec3_first = NULL;
 
@@ -677,8 +678,8 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		assert(nsec3_first != NULL);
 
 		if (dnslib_zone_add_nsec3_node(zone, nsec3_first) != 0) {
-			log_zone_error("!! cannot add first nsec3 node, "
-			               "exiting.\n");
+			fprintf(stderr, "!! cannot add first nsec3 node, "
+			        "exiting.\n");
 			dnslib_zone_deep_free(&zone);
 			return NULL;
 		}
@@ -693,7 +694,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 
 		if (tmp_node != NULL) {
 			if (dnslib_zone_add_nsec3_node(zone, tmp_node) != 0) {
-				log_zone_error("!! cannot add nsec3 node\n");
+				fprintf(stderr, "!! cannot add nsec3 node\n");
 				continue;
 			}
 
@@ -701,8 +702,8 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 
 			last_node = tmp_node;
 		} else {
-			log_zone_error("zone: Node error (in %s).\n",
-			               loader->filename);
+			fprintf(stderr, "zone: Node error (in %s).\n",
+			        loader->filename);
 		}
 	}
 

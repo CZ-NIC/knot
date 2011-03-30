@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <assert.h>
 
-#include "common.h"
+#include "dnslib-common.h"
 #include "dnslib/response.h"
 #include "dnslib/rrset.h"
 #include "dnslib/packet.h"
@@ -11,6 +11,7 @@
 #include "dnslib/edns.h"
 #include "dnslib/utils.h"
 #include "dnslib/node.h"
+#include "dnslib/debug.h"
 
 enum {
 	DEFAULT_ANCOUNT = 6,
@@ -1108,9 +1109,8 @@ int dnslib_response_parse_query(dnslib_response_t *resp,
 
 	if (remaining > 0) {
 		// some trailing garbage; ignore, but log
-		log_answer_info("response: %zu bytes of trailing garbage "
-		                "in query.\n",
-		                remaining);
+		debug_dnslib_response("response: %zu bytes of trailing garbage "
+		                      "in query.\n", remaining);
 	}
 #ifdef DNSLIB_RESPONSE_DEBUG
 	dnslib_response_dump(resp);

@@ -1,7 +1,7 @@
 #include <config.h>
 #include <string.h>
 
-#include "common.h"
+#include "dnslib-common.h"
 #include "dnslib/utils.h"
 
 dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,

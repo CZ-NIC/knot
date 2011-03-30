@@ -31,7 +31,7 @@ CLEANFILES =					\
         libknot_la-cf-parse.h
 
 knotc_SOURCES =					\
-	ctl/knotc_main.c
+	knot/ctl/knotc_main.c
 
 knot_zcompile_SOURCES =			\
 	zoneparser/zoneparser_main.c            \
@@ -66,28 +66,32 @@ nodist_unittests_SOURCES =			\
         tests/sample_conf.rc
 
 knotd_SOURCES =					\
-	main.c
+	knot/main.c
 
 noinst_LTLIBRARIES = libknot.la
 libknot_la_SOURCES =				\
-	common.h				\
-	alloc/slab.c				\
-	alloc/malloc.c				\
-	conf/cf-parse.y                         \
-	conf/cf-lex.l                           \
-	conf/conf.c                             \
-	conf/logconf.c                          \
-	ctl/process.c				\
-	lib/lists.c	            		\
-        lib/evqueue.c                           \
-	lib/dynamic-array.c			\
-	lib/bitset.c				\
-	lib/skip-list.c				\
-	lib/base32.c				\
-	lib/base32hex.c				\
-	stat/gatherer.c				\
-	stat/stat.c				\
-        dnslib/edns.c                           \
+	common/slab/slab.c				\
+	common/slab/malloc.c				\
+	common/slab/slab.h			        \
+	common/slab/malloc.h				\
+	common/lists.c	            		\
+	common/base32.c				\
+	common/lists.h	            		\
+	common/base32.h				\
+	common/print.c				\
+	common/print.h				\
+	common/dynamic-array.c			\
+	common/skip-list.c				\
+	common/base32hex.c				\
+	common/skip-list.h				\
+	common/dynamic-array.h			\
+	common/tree.h				\
+	common/base32hex.h				\
+	knot/stat/gatherer.c				\
+	knot/stat/stat.c				\
+	knot/stat/gatherer.h				\
+	knot/stat/stat.h				\
+	dnslib/edns.c                           \
 	dnslib/utils.c				\
 	dnslib/rrset.c				\
 	dnslib/dname.c				\
@@ -101,34 +105,12 @@ libknot_la_SOURCES =				\
 	dnslib/rdata.c				\
 	dnslib/descriptor.c			\
 	dnslib/nsec3.c				\
-	server/dthreads.c			\
-	server/socket.c				\
-	server/name-server.c			\
-	server/server.c				\
-	server/udp-handler.c			\
-	server/tcp-handler.c			\
-	hash/hash-functions.c			\
-	hash/cuckoo-hash-table.c		\
-	hash/universal-system.c			\
-	other/log.c				\
-	other/print.c				\
-	alloc/slab.h			        \
-	alloc/malloc.h				\
-	conf/logconf.h                          \
-	conf/conf.h                             \
-	ctl/process.h		                \
-	lib/lists.h	            		\
-        lib/evqueue.h                           \
-	lib/skip-list.h				\
-	lib/dynamic-array.h			\
-	lib/tree.h				\
-	lib/bitset.h				\
-	lib/base32.h				\
-	lib/base32hex.h				\
-	tests/libtap/tap.h			\
-	tests/tap_unit.h			\
-	stat/gatherer.h				\
-	stat/stat.h				\
+	dnslib/hash/hash-functions.c			\
+	dnslib/hash/cuckoo-hash-table.c		\
+	dnslib/hash/universal-system.c			\
+	dnslib/hash/universal-system.h			\
+	dnslib/hash/cuckoo-hash-table.h		\
+	dnslib/hash/hash-functions.h			\
 	dnslib/zonedb.h				\
 	dnslib/consts.h				\
 	dnslib/node.h				\
@@ -147,18 +129,34 @@ libknot_la_SOURCES =				\
 	dnslib/packet.h				\
 	dnslib/debug.h				\
 	dnslib/nsec3.h				\
-	server/socket.h				\
-	server/name-server.h			\
-	server/udp-handler.h			\
-	server/tcp-handler.h			\
-	server/dthreads.h			\
-	server/server.h				\
-	hash/universal-system.h			\
-	hash/cuckoo-hash-table.h		\
-	hash/hash-functions.h			\
-	other/print.h				\
-	other/log.h				\
-	other/debug.h      
+	knot/common.h				\
+	knot/other/log.c				\
+	knot/other/log.h				\
+	knot/other/debug.h			\
+	knot/other/evqueue.h		\
+	knot/other/evqueue.c		\
+	knot/conf/cf-parse.y                         \
+	knot/conf/cf-lex.l                           \
+	knot/conf/conf.c                             \
+	knot/conf/logconf.c                          \
+	knot/conf/logconf.h                          \
+	knot/conf/conf.h                             \
+	knot/ctl/process.c				\
+	knot/ctl/process.h		                \
+	knot/server/dthreads.c			\
+	knot/server/socket.c				\
+	knot/server/name-server.c			\
+	knot/server/server.c				\
+	knot/server/udp-handler.c			\
+	knot/server/tcp-handler.c			\
+	knot/server/socket.h				\
+	knot/server/name-server.h			\
+	knot/server/udp-handler.h			\
+	knot/server/tcp-handler.h			\
+	knot/server/dthreads.h			\
+	knot/server/server.h				\
+	tests/libtap/tap.h			\
+	tests/tap_unit.h
 
 libknot_la_LIBADD = @LIBOBJS@
 

@@ -2,9 +2,10 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "edns.h"
-#include "common.h"
-#include "descriptor.h"
+#include "dnslib/edns.h"
+#include "dnslib-common.h"
+#include "dnslib/descriptor.h"
+#include "dnslib/debug.h"
 
 enum dnslib_edns_consts {
 	DNSLIB_EDNS_DO_MASK = (uint16_t)0x8000,

@@ -12,6 +12,8 @@
 #ifndef _KNOT_DNSLIB_ZONELOAD_H_
 #define _KNOT_DNSLIB_ZONELOAD_H_
 
+#include <stdio.h>
+
 #include "dnslib/zone.h"
 
 /*!

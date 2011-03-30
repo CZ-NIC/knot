@@ -7,8 +7,6 @@
 #include <string.h>
 #include <sys/types.h>
 
-//#include "descriptor.h"
-#include "common.h"
 #include "dnslib/dnslib.h"
 
 enum desclen { DNSLIB_RRTYPE_DESCRIPTORS_LENGTH = 32770 }; // used to be 101

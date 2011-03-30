@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 #include "tests/tap_unit.h"
-#include "alloc/slab.h"
+#include "common/slab/slab.h"
 
 /* Explicitly ask for symbols,
  * as the constructor and desctructor

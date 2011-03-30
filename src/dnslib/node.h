@@ -14,9 +14,9 @@
 #define _KNOT_DNSLIB_NODE_H_
 
 #include "dnslib/dname.h"
-#include "lib/skip-list.h"
+#include "common/skip-list.h"
 #include "dnslib/rrset.h"
-#include "lib/tree.h"
+#include "common/tree.h"
 
 /*----------------------------------------------------------------------------*/
 /*!
