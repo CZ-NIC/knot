@@ -31,7 +31,9 @@ typedef enum knot_error_t {
 	KNOT_EACCES = -EACCES, /*!< \brief Permission is denied. */
 	KNOT_ECONNREFUSED = -ECONNREFUSED, /*!< \brief Connection is refused. */
 	KNOT_EISCONN = -EISCONN, /*!< \brief Already connected. */
-	KNOT_EADDRINUSE = -EADDRINUSE, /*! \brief Address already in use. */
+	KNOT_EADDRINUSE = -EADDRINUSE, /*!< \brief Address already in use. */
+	KNOT_ENOENT = -ENOENT, /*!< \brief Resource not found. */
+	KNOT_ERANGE = -ERANGE, /*!< \brief Value is out of range. */
 
 	/* Custom error codes. */
 	KNOT_ERROR = -16384, /*!< \brief Generic error. */

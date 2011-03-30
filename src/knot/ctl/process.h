@@ -14,15 +14,6 @@
 
 #include <unistd.h>
 
-/* Constants. */
-enum {
-	PID_NOFILE = -1, /* Cannot open file. */
-	PID_EMPTY  = -2, /* File is empty. */
-	PID_INVAL  = -3  /* Invalid conversion to/from string. */
-};
-
-/* PID handling */
-
 /*!
  * \brief Return a filename of the default compiled database file.
  *
@@ -37,7 +28,7 @@ char* pid_filename();
  * \param fn Filename containing PID.
  *
  * \retval PID on success.
- * \retval negative integer on error.
+ * \retval negative integer on error (EINVAL, ENOENT, ERANGE).
  */
 pid_t pid_read(const char* fn);
 
@@ -46,8 +37,8 @@ pid_t pid_read(const char* fn);
  *
  * \param fn Filename containing PID.
  *
- * \retval 0 on success.
- * \retval negative integer on error.
+ * \retval 0 on success (EOK).
+ * \retval negative integer on error (ENOENT, EINVAL, ERROR).
  */
 int pid_write(const char* fn);
 
@@ -58,8 +49,8 @@ int pid_write(const char* fn);
  *
  * \warning Filename content won't be checked.
  *
- * \retval 0 on success.
- * \retval negative integer on error.
+ * \retval 0 on success (EOK).
+ * \retval negative integer on error (EINVAL).
  */
 int pid_remove(const char* fn);
 
