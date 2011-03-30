@@ -154,11 +154,11 @@
     }													\
   }													\
 													\
-  struct node *TREE_MOVE_RIGHT(struct node *self, struct node *rhs)					\
+  struct node *TREE_MOVE_RIGHT_##node##_##field(struct node *self, struct node *rhs)					\
   {													\
     if (!self)												\
       return rhs;											\
-    self->field.avl_right= TREE_MOVE_RIGHT(self->field.avl_right, rhs);					\
+    self->field.avl_right= TREE_MOVE_RIGHT_##node##_##field(self->field.avl_right, rhs);					\
     return TREE_BALANCE_##node##_##field(self);								\
   }													\
 													\
@@ -169,7 +169,7 @@
 													\
     if (compare(elm, self) == 0)									\
       {													\
-	struct node *tmp= TREE_MOVE_RIGHT(self->field.avl_left, self->field.avl_right);			\
+	struct node *tmp= TREE_MOVE_RIGHT_##node##_##field(self->field.avl_left, self->field.avl_right);			\
 	self->field.avl_left= 0;									\
 	self->field.avl_right= 0;									\
 	return tmp;											\
