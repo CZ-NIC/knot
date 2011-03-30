@@ -4,6 +4,7 @@
 
 #include "knot/common.h"
 #include "knot/other/evqueue.h"
+#include "knot/other/error.h"
 
 /*! \brief Singleton application-wide event queue. */
 evqueue_t *s_evqueue = 0;
@@ -37,7 +38,7 @@ int evqueue_poll(evqueue_t *q, const sigset_t *sigmask)
 {
 	/* Check. */
 	if (!q) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	/* Prepare fd set. */
@@ -46,40 +47,44 @@ int evqueue_poll(evqueue_t *q, const sigset_t *sigmask)
 	FD_SET(q->fds[EVQUEUE_READFD], &rfds);
 
 	/* Wait for events. */
-	return pselect(q->fds[EVQUEUE_READFD] + 1, &rfds,
-	               0, 0, 0, sigmask);
+	int ret = pselect(q->fds[EVQUEUE_READFD] + 1, &rfds,
+	                  0, 0, 0, sigmask);
+	if (ret < 0) {
+		return knot_map_errno(EINTR, EINVAL, ENOMEM);
+	}
 
+	return ret;
 }
 
 int evqueue_get(evqueue_t *q, event_t *ev)
 {
 	/* Check. */
 	if (!q || !ev) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	/* Read data. */
 	int ret = read(q->fds[EVQUEUE_READFD], ev, sizeof(event_t));
 	if (ret != sizeof(event_t)) {
-		return -2;
+		return knot_map_errno(EINVAL, EINTR, EAGAIN);
 	}
 
-	return 0;
+	return KNOT_EOK;
 }
 
 int evqueue_add(evqueue_t *q, const event_t *ev)
 {
 	/* Check. */
 	if (!q || !ev) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	/* Write data. */
 	int ret = write(q->fds[EVQUEUE_WRITEFD], ev, sizeof(event_t));
 	if (ret != sizeof(event_t)) {
-		return -2;
+		return knot_map_errno(EINVAL, EINTR, EAGAIN);
 	}
 
-	return 0;
+	return KNOT_EOK;
 }
 
