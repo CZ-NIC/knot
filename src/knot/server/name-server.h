@@ -21,8 +21,8 @@
 #define _KNOT_NAME_SERVER_H_
 
 #include <stdint.h>
+#include <string.h>
 
-#include "knot/common.h"
 #include "dnslib/zonedb.h"
 #include "dnslib/edns.h"
 
