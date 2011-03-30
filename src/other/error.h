@@ -38,6 +38,24 @@ typedef enum knot_error_t {
  */
 const char *knot_strerror(int errno);
 
+/*!
+ * \brief Safe error mapper that automatically appends sentinel value.
+ * \see knot_map_errno_f
+ */
+#define knot_map_errno(err...) _knot_map_errno(err, KNOT_ERROR);
+
+/*!
+ * \brief Returns a mapped POSIX errcode.
+ *
+ * \warning Last error must be KNOT_ERROR, it serves as a fallback and
+ *          a sentinel value as well. Use knot_map_errno() instead.
+ *
+ * \param err POSIX errno.
+ * \param ... List of handled codes.
+ * \return Mapped error code.
+ */
+int _knot_map_errno(int err, ...);
+
 #endif /* _KNOT_ERROR_H_ */
 
 /*! @} */
