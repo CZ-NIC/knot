@@ -977,14 +977,9 @@ int dt_unit_lock(dt_unit_t *unit)
 	/* Map errors. */
 	switch (ret) {
 	case KNOT_EOK:
-		return ret;
-		break;
-
-	/* Directly mapped errors. */
 	case EBUSY:  /* KNOT_EBUSY */
 	case EINVAL: /* KNOT_EINVAL */
 	case EAGAIN: /* KNOT_EAGAIN */
-	case ENOMEM: /* KNOT_ENOMEM */
 		return ret;
 		break;
 	default:
@@ -1004,13 +999,10 @@ int dt_unit_unlock(dt_unit_t *unit)
 	/* Map errors. */
 	switch (ret) {
 	case KNOT_EOK:
-		return KNOT_EINVAL;
-		break;
-	case EBUSY:
-	case EINVAL:
-	case EAGAIN:
-	case ENOMEM:
-		return ret; /* Directly mapped errors. */
+	case EBUSY:  /* KNOT_EBUSY */
+	case EINVAL: /* KNOT_EINVAL */
+	case EAGAIN: /* KNOT_EAGAIN */
+		return ret;
 		break;
 	default:
 		return KNOT_ERROR;
