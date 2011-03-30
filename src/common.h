@@ -73,11 +73,14 @@ typedef unsigned int uint;
 	} while (0)
 
 /* Eliminate compiler warning with unused parameters. */
-#define UNUSED(param) (param) = (param)
+#define UNUSED(param) (void)(param)
 
-/* Minimum and maximum macros. */
-#define MIN(x,y) ((x) < (y) ? (x) : (y))
-#define MAX(x,y) ((x) > (y) ? (x) : (y))
+/* Type-safe minimum and maximum macros. */
+#define MIN(a, b) \
+	({ typeof (a) _a = (a); typeof (b) _b = (b); _a < _b ? _a : _b; })
+
+#define MAX(a, b) \
+	({ typeof (a) _a = (a); typeof (b) _b = (b); _a > _b ? _a : _b; })
 
 /* Optimisation macros. */
 #ifndef likely
