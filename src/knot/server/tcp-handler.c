@@ -448,5 +448,5 @@ int tcp_master(dthread_t *thread)
 
 	// Stop whole unit
 	debug_net("tcp: stopping (%d master, %d pools)\n", 1, unit->size - 1);
-	return 0;
+	return KNOT_EOK;
 }

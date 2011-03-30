@@ -10,6 +10,7 @@
 #include <errno.h>
 
 #include "knot/common.h"
+#include "knot/other/error.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/name-server.h"
 #include "knot/stat/stat.h"
@@ -21,10 +22,10 @@ int udp_master(dthread_t *thread)
 	ns_nameserver *ns = handler->server->nameserver;
 	int sock = handler->fd;
 
-	// Check socket
+	/* Check socket. */
 	if (sock < 0) {
-		debug_net("udp_worker: null socket recevied, finishing.\n");
-		return 0;
+		debug_net("udp_master: null socket recevied, finishing.\n");
+		return KNOT_EINVAL;
 	}
 
 
@@ -78,7 +79,7 @@ int udp_master(dthread_t *thread)
 		log_server_error("UDP handler received invalid socket type %d, "
 		                 "AF_INET (%d) or AF_INET6 (%d) expected.\n",
 		                 handler->type, AF_INET, AF_INET6);
-		return 0;
+		return KNOT_EADDRINVAL;
 	}
 
 	/* in case of STAT_COMPILE the following code will declare thread_stat
@@ -157,6 +158,6 @@ int udp_master(dthread_t *thread)
 
 	stat_free(thread_stat);
 	debug_net("udp: worker %p finished.\n", thread);
-	return 0;
+	return KNOT_EOK;
 }
 

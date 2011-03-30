@@ -29,8 +29,8 @@
  *
  * \param thread Associated thread from DThreads unit.
  *
- * \retval  0 On success.
- * \retval <0 If an error occured.
+ * \retval  0 On success (EOK).
+ * \retval <0 If an error occured (EINVAL, EADDRINVAL).
  */
 int udp_master(dthread_t *thread);
 
