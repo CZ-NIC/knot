@@ -14,7 +14,6 @@
 
 #include <stdint.h>
 
-#include "dnslib-common.h"
 #include "dnslib/dname.h"
 #include "dnslib/rdata.h"
 
