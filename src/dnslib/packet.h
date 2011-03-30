@@ -871,9 +871,17 @@ static inline void dnslib_packet_flags_clear_ra(uint8_t *flags2)
  */
 
 enum dnslib_packet_pointer_consts {
+	/*! \brief DNS packet pointer designation (first two bits set to 1).  */
 	DNSLIB_PACKET_PTR = (uint8_t)0xc0U
 };
 
+/*!
+ * \brief Creates a DNS packet pointer and stores it in wire format.
+ *
+ * \param pos Position where tu put the pointer.
+ * \param ptr Relative position of the item to which the pointer should point in
+ *            the wire format of the packet.
+ */
 static inline void dnslib_packet_put_pointer(uint8_t *pos, short ptr)
 {
 	uint16_t p = ptr;
