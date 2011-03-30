@@ -130,8 +130,8 @@ iohandler_t *server_create_handler(server_t *server, int fd, dt_unit_t *unit);
  * \param server Server structure to be used for operation.
  * \param ref I/O handler instance.
  *
- * \retval  0 On success.
- * \retval <0 If an error occured.
+ * \retval 0 if successful (EOK).
+ * \retval <0 on errors (EINVAL).
  */
 int server_remove_handler(server_t *server, iohandler_t *ref);
 
@@ -141,8 +141,8 @@ int server_remove_handler(server_t *server, iohandler_t *ref);
  * \param server Server structure to be used for operation.
  * \param filename Zone file name to be used by the server.
  *
- * \retval  0 On success.
- * \retval <0 If an error occured.
+ * \retval  0 On success (EOK).
+ * \retval <0 If an error occured (EINVAL, EZONEINVAL).
  *
  * \todo When a module for configuration is added, the filename parameter will
  *       be removed.
@@ -154,8 +154,8 @@ int server_start(server_t *server, const char **filenames, uint zones);
  *
  * \param server Server structure to be used for operation.
  *
- * \retval  0 On success.
- * \retval <0 If an error occured.
+ * \retval  0 On success (EOK).
+ * \retval <0 If an error occured (EINVAL).
  */
 int server_wait(server_t *server);
 
@@ -177,6 +177,9 @@ void server_destroy(server_t **server);
  * \brief Server config hook.
  *
  * Routine for dynamic server reconfiguration.
+ *
+ * \retval  0 On success (EOK).
+ * \retval <0 If an error occured (ERROR, EINVAL, ENOTRUNNING).
  */
 int server_conf_hook(const struct conf_t *conf, void *data);
 

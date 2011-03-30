@@ -975,7 +975,11 @@ int dt_unit_lock(dt_unit_t *unit)
 	int ret = pthread_mutex_lock(&unit->_mx);
 
 	/* Map errors. */
-	return knot_map_errno(ret, 0, EBUSY, EINVAL, EAGAIN);
+	if (ret < 0) {
+		return knot_map_errno(EBUSY, EINVAL, EAGAIN);
+	}
+
+	return KNOT_EOK;
 }
 
 int dt_unit_unlock(dt_unit_t *unit)
@@ -988,5 +992,9 @@ int dt_unit_unlock(dt_unit_t *unit)
 	int ret = pthread_mutex_unlock(&unit->_mx);
 
 	/* Map errors. */
-	return knot_map_errno(ret, 0, EBUSY, EINVAL, EAGAIN);
+	if (ret < 0) {
+		return knot_map_errno(EBUSY, EINVAL, EAGAIN);
+	}
+
+	return KNOT_EOK;
 }

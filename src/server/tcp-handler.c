@@ -59,7 +59,7 @@ static inline int tcp_answer(int fd, uint8_t *src, int inbuf_sz, uint8_t *dest,
 {
 	// Receive size
 	unsigned short pktsize = 0;
-	int n = socket_recv(fd, &pktsize, sizeof(unsigned short), 0);
+	int n = recv(fd, &pktsize, sizeof(unsigned short), 0);
 	pktsize = ntohs(pktsize);
 	debug_net("tcp: incoming packet size on %d: %u buffer size: %u\n",
 	          fd, (unsigned) pktsize, (unsigned) inbuf_sz);
@@ -68,7 +68,7 @@ static inline int tcp_answer(int fd, uint8_t *src, int inbuf_sz, uint8_t *dest,
 	if (n > 0 && pktsize > 0) {
 		if (pktsize <= inbuf_sz) {
 			/*! \todo Check buffer overflow. */
-			n = socket_recv(fd, src, pktsize, 0);
+			n = recv(fd, src, pktsize, 0);
 		} else {
 			/*! \todo Buffer too small error code. */
 			n = 0;
@@ -107,9 +107,9 @@ static inline int tcp_answer(int fd, uint8_t *src, int inbuf_sz, uint8_t *dest,
 			((unsigned short *) dest)[0] = htons(answer_size);
 			int sent = -1;
 			while (sent < 0) {
-				sent = socket_send(fd, dest,
-				                   answer_size + sizeof(short),
-				                   0);
+				sent = send(fd, dest,
+				            answer_size + sizeof(short),
+				            0);
 			}
 
 			// Uncork

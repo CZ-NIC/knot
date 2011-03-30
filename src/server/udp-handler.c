@@ -94,8 +94,8 @@ int udp_master(dthread_t *thread)
 	ssize_t n = 0;
 	while (n >= 0) {
 
-		n = socket_recvfrom(sock, inbuf, SOCKET_MTU_SZ, 0,
-		                    addr, &addrlen);
+		n = recvfrom(sock, inbuf, SOCKET_MTU_SZ, 0,
+		             addr, &addrlen);
 
 		// Cancellation point
 		if (dt_is_cancelled(thread)) {
@@ -139,8 +139,8 @@ int udp_master(dthread_t *thread)
 			debug_net_hex((const char *) outbuf, answer_size);
 
 			// Send datagram
-			res = socket_sendto(sock, outbuf, answer_size,
-			                    0, addr, addrlen);
+			res = sendto(sock, outbuf, answer_size,
+			             0, addr, addrlen);
 
 			// Check result
 			if (res != answer_size) {
