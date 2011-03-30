@@ -40,6 +40,7 @@ typedef enum knot_error_t {
 	KNOT_EADDRINVAL, /*!< \brief Invalid address. */
 	KNOT_EZONEINVAL, /*!< \brief Invalid zone file. */
 	KNOT_ENOTRUNNING, /*!< \brief Resource is not running. */
+	KNOT_EPARSEFAIL, /*!< \brief Parser fail. */
 	KNOT_ENOIPV6 /*! \brief No IPv6 support. */
 } knot_error_t;
 

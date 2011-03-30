@@ -185,8 +185,8 @@ conf_t *conf_new(const char* path);
  * \param on_update Callback.
  * \param data User specified data for hook.
  *
- * \retval 0 on success.
- * \retval <0 on error.
+ * \retval 0 on success (EOK).
+ * \retval <0 on error ().
  */
 int conf_add_hook(conf_t * conf, int sections,
                   int (*on_update)(const conf_t*, void*), void *data);
@@ -198,8 +198,8 @@ int conf_add_hook(conf_t * conf, int sections,
  *
  * \param conf Configuration context.
  *
- * \retval 0 on success.
- * \retval <0 on error.
+ * \retval 0 on success (EOK).
+ * \retval <0 on error (EPARSEFAIL).
  */
 int conf_parse(conf_t *conf);
 
@@ -211,8 +211,8 @@ int conf_parse(conf_t *conf);
  * \param conf Configuration context.
  * \param src Source string.
  *
- * \retval 0 on success.
- * \retval <0 on error.
+ * \retval 0 on success (EOK).
+ * \retval <0 on error (EPARSEFAIL).
  */
 int conf_parse_str(conf_t *conf, const char* src);
 
@@ -253,8 +253,8 @@ char* conf_find_default();
  *
  * \param path Path to configuration file.
  *
- * \retval 0 on success.
- * \retval <0 on error.
+ * \retval 0 on success (EOK).
+ * \retval <0 on error (EINVAL, ENOENT).
  */
 int conf_open(const char* path);
 
