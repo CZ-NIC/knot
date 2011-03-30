@@ -17,6 +17,11 @@
 //#define MEM_NOSLAB
 //#define MEM_POISON
 
+/* Eliminate compiler warning with unused parameters. */
+#ifndef UNUSED
+#define UNUSED(param) (void)(param)
+#endif
+
 /* Optimisation macros. */
 #ifndef likely
 #define likely(x)       __builtin_expect((x),1)

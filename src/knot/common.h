@@ -19,8 +19,6 @@
 /* Common types and constants.
  */
 
-typedef unsigned int uint;
-
 #define PROJECT_NAME PACKAGE // Project name
 #define PROJECT_VER  0x000100  // 0xMMIIRR (MAJOR,MINOR,REVISION)
 #define PROJECT_EXEC "knotd" // Project executable
@@ -50,37 +48,24 @@ typedef unsigned int uint;
 #include "common/print.h"
 #include "knot/other/log.h"
 #include "knot/other/debug.h"
+#include "dnslib/dnslib-common.h"
 
-/* Common macros.
- */
-
-#define ERR_ALLOC_FAILED log_server_error("Allocation failed at %s:%d (%s ver.%x)\n", \
-				  __FILE__, __LINE__, PROJECT_NAME, PROJECT_VER)
-
-#define CHECK_ALLOC_LOG(var, ret) \
-	do { \
-		if ((var) == NULL) { \
-			ERR_ALLOC_FAILED; \
-			return (ret); \
-		} \
-	} while (0)
-
-#define CHECK_ALLOC(var, ret) \
-	do { \
-		if ((var) == NULL) { \
-			return (ret); \
-		} \
-	} while (0)
 
 /* Eliminate compiler warning with unused parameters. */
+#ifndef UNUSED
 #define UNUSED(param) (void)(param)
+#endif
 
 /* Type-safe minimum and maximum macros. */
+#ifndef MIN
 #define MIN(a, b) \
 	({ typeof (a) _a = (a); typeof (b) _b = (b); _a < _b ? _a : _b; })
+#endif
 
+#ifndef MAX
 #define MAX(a, b) \
 	({ typeof (a) _a = (a); typeof (b) _b = (b); _a > _b ? _a : _b; })
+#endif
 
 /* Optimisation macros. */
 #ifndef likely
