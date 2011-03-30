@@ -1069,9 +1069,9 @@ int zone_dump_text(dnslib_zone_t *zone, const char *filename)
 	}
 
 	fprintf(f, ";Dumped using %s v. %d.%d.%d\n", PROJECT_NAME,
-	        PROJECT_VER / 10000,
-		(PROJECT_VER / 100) % 100,
-		PROJECT_VER % 100);
+	        DNSLIB_VER / 10000,
+		(DNSLIB_VER / 100) % 100,
+		DNSLIB_VER % 100);
 
 	struct dump_param param;
 	param.f = f;
