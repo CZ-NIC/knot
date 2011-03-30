@@ -4,11 +4,12 @@
 #include <assert.h>
 #include <netinet/in.h>
 
-#include "common.h"
+#include "dnslib/dnslib-common.h"
 #include "dnslib/zone-dump.h"
 #include "dnslib/dnslib.h"
-#include "lib/skip-list.h"
-#include "lib/base32.h"
+#include "dnslib/debug.h"
+#include "common/skip-list.h"
+#include "common/base32.h"
 
 #define ZONECHECKS_VERBOSE
 
@@ -268,6 +269,8 @@ static err_handler_t *handler_new(char log_cname, char log_glue,
 	handler->options.log_rrsigs = log_rrsigs;
 	handler->options.log_nsec = log_nsec;
 	handler->options.log_nsec3 = log_nsec3;
+
+	return handler;
 }
 
 static char error_is_severe(uint error)
@@ -286,13 +289,12 @@ static int log_error_from_node(err_handler_t *handler, dnslib_node_t *node,
 	if (node != NULL) {
 		char *name =
 			dnslib_dname_to_str(dnslib_node_owner(node));
-		log_zone_error("Semantic error in node: %s: ",
-			       name);
-		log_zone_error("%s", error_messages[error]);
+		fprintf(stderr, "Semantic error in node: %s: ", name);
+		fprintf(stderr, "%s", error_messages[error]);
 		free(name);
 	} else {
-		log_zone_error("Total number: %d: %s", handler->errors[error],
-			       error_messages[error]);
+		fprintf(stderr, "Total number: %d: %s", handler->errors[error],
+		        error_messages[error]);
 	}
 }
 
@@ -375,7 +377,8 @@ typedef struct arg arg_t;
  * pointers directly */
 static int compare_pointers(void *p1, void *p2)
 {
-	return ((size_t)p1 == (size_t)p2 ? 0 : (size_t)p1 < (size_t)p2 ? -1 : 1);
+	return ((size_t)p1 == (size_t)p2
+	        ? 0 : (size_t)p1 < (size_t)p2 ? -1 : 1);
 }
 
 /* Functions for zone traversal are taken from dnslib/zone.c */
@@ -400,7 +403,8 @@ static void dnslib_zone_save_encloser_rdata_item(dnslib_rdata_t *rdata,
 		assert(!exact || n == closest_encloser);
 
 		if (!exact && (closest_encloser != NULL)) {
-			debug_dnslib_zone("Saving closest encloser to RDATA.\n");
+			debug_dnslib_zdump("Saving closest encloser to RDATA."
+					   "\n");
 			// save pointer to the closest encloser
 			dnslib_rdata_item_t *item =
 				dnslib_rdata_get_item(rdata, pos);
@@ -435,7 +439,7 @@ static void dnslib_zone_save_enclosers_rrset(dnslib_rrset_t *rrset,
 			       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
 			    || desc->wireformat[i]
 			       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
-				debug_dnslib_zone("Adjusting domain name at "
+				debug_dnslib_zdump("Adjusting domain name at "
 				  "position %d of RDATA of record with owner "
 				  "%s and type %s.\n",
 				  i, rrset->owner->name,
@@ -457,7 +461,7 @@ static void dnslib_zone_save_enclosers_rrset(dnslib_rrset_t *rrset,
 		       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
 		    || desc->wireformat[i]
 		       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
-			debug_dnslib_zone("Adjusting domain name at "
+			debug_dnslib_zdump("Adjusting domain name at "
 			  "position %d of RDATA of record with owner "
 			  "%s and type %s.\n",
 			  i, rrset->owner->name,
@@ -832,6 +836,8 @@ static int rdata_nsec_to_type_array(const dnslib_rdata_item_t *item,
 static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 				    err_handler_t *handler)
 {
+
+	assert(handler);
 	const dnslib_node_t *nsec3_node = dnslib_node_nsec3_node(node);
 
 	if (nsec3_node == NULL) {
@@ -990,6 +996,7 @@ static int semantic_checks_plain(dnslib_zone_t *zone,
 				 char do_checks,
 				 err_handler_t *handler)
 {
+	assert(handler);
 	const dnslib_rrset_t *cname_rrset =
 			dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME);
 	if (cname_rrset != NULL) {
@@ -1066,6 +1073,8 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 				  err_handler_t *handler,
 				  char nsec3)
 {
+	assert(handler);
+	assert(node);
 	char auth = !dnslib_node_is_non_auth(node);
 	char deleg = dnslib_node_is_deleg_point(node);
 	uint rrset_count = dnslib_node_rrset_count(node);
@@ -1155,7 +1164,8 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 			/* Test that only one record is in the
 				 * NSEC RRSet */
 
-			if (dnslib_rrset_rdata(nsec_rrset)->next !=
+			if ((nsec_rrset != NULL) &&
+			    dnslib_rrset_rdata(nsec_rrset)->next !=
 			    dnslib_rrset_rdata(nsec_rrset)) {
 				err_handler_handle_error(handler,
 						 node,
@@ -1171,33 +1181,37 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 			}
 
 			/*
-				 * Test that NSEC chain is coherent.
-				 * We have already checked that every
-				 * authoritative node contains NSEC record
-				 * so checking should only be matter of testing
-				 * the next link in each node.
-				 */
+			 * Test that NSEC chain is coherent.
+			 * We have already checked that every
+			 * authoritative node contains NSEC record
+			 * so checking should only be matter of testing
+			 * the next link in each node.
+			 */
 
-			dnslib_dname_t *next_domain =
+			if (nsec_rrset != NULL) {
+				dnslib_dname_t *next_domain =
 					dnslib_rdata_item(
 					dnslib_rrset_rdata(nsec_rrset),
 					0)->dname;
 
-			assert(next_domain);
+				assert(next_domain);
 
-			if (dnslib_zone_find_node(zone, next_domain) ==
-			    NULL) {
-				err_handler_handle_error(handler,
-						node,
-						ZC_ERR_NSEC_RDATA_CHAIN);
-/*				log_zone_error("NSEC chain is not "
-					       "coherent!\n"); */
-			}
+				if (dnslib_zone_find_node(zone, next_domain) ==
+				    NULL) {
+					err_handler_handle_error(handler,
+							node,
+							ZC_ERR_NSEC_RDATA_CHAIN);
+/*					log_zone_error("NSEC chain is not "
+						       "coherent!\n"); */
+				}
 
-			if (dnslib_dname_compare(next_domain,
-			    dnslib_node_owner(dnslib_zone_apex(zone))) == 0) {
-				/* saving the last node */
-				*last_node = node;
+				if (dnslib_dname_compare(next_domain,
+				    dnslib_node_owner(dnslib_zone_apex(zone)))
+					== 0) {
+					/* saving the last node */
+					*last_node = node;
+				}
+
 			}
 		} else if (nsec3 && (auth || deleg)) { /* nsec3 */
 			int ret = check_nsec3_node_in_zone(zone, node, handler);
@@ -1220,6 +1234,7 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 
 	assert(zone);
 
+
 	for (int i = 0; i < count; ++i) {
 		assert(rrsets[i] != NULL);
 		dnslib_zone_save_enclosers_rrset(rrsets[i],
@@ -1231,6 +1246,8 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 	dnslib_node_t **last_node = (dnslib_node_t **)args->arg5;
 
 	err_handler_t *handler = (err_handler_t *)args->arg6;
+
+	assert(handler);
 
 	char do_checks = *((char *)(args->arg3));
 
@@ -1250,6 +1267,7 @@ void zone_save_enclosers_sem_check(dnslib_zone_t *zone, skip_list_t *list,
 				   char do_checks, err_handler_t *handler,
 				   dnslib_node_t **last_node)
 {
+	assert(handler);
 	arg_t arguments;
 	arguments.arg1 = zone;
 	arguments.arg2 = list;
@@ -1268,7 +1286,7 @@ static uint node_count = 0;
 
 static void dnslib_labels_dump_binary(dnslib_dname_t *dname, FILE *f)
 {
-	debug_zp("label count: %d\n", dname->label_count);
+	debug_dnslib_zdump("label count: %d\n", dname->label_count);
 	fwrite(&(dname->label_count), sizeof(dname->label_count), 1, f);
 //	hex_print(dname->labels, dname->label_count);
 	fwrite(dname->labels, sizeof(uint8_t), dname->label_count, f);
@@ -1278,7 +1296,7 @@ static void dnslib_dname_dump_binary(dnslib_dname_t *dname, FILE *f)
 {
 	fwrite(&(dname->size), sizeof(uint8_t), 1, f);
 	fwrite(dname->name, sizeof(uint8_t), dname->size, f);
-	debug_zp("dname size: %d\n", dname->size);
+	debug_dnslib_zdump("dname size: %d\n", dname->size);
 	dnslib_labels_dump_binary(dname, f);
 }
 
@@ -1298,14 +1316,14 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 		dnslib_rrtype_descriptor_by_type(type);
 	assert(desc != NULL);
 
-	debug_zp("dumping type: %s\n", dnslib_rrtype_to_string(type));
+	debug_dnslib_zdump("dumping type: %s\n", dnslib_rrtype_to_string(type));
 
 	for (int i = 0; i < desc->length; i++) {
 		if (&(rdata->items[i]) == NULL) {
-			debug_zp("Item n. %d is not set!\n", i);
+			debug_dnslib_zdump("Item n. %d is not set!\n", i);
 			continue;
 		}
-		debug_zp("Item n: %d\n", i);
+		debug_dnslib_zdump("Item n: %d\n", i);
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
@@ -1314,24 +1332,30 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 			dnslib_dname_t *wildcard = NULL;
 
 			if (rdata->items[i].dname->node == NULL) {
-				wildcard =
-					dnslib_find_wildcard(rdata->items[i].dname,
-						     list);
-				debug_zp("Not in the zone: %s\n",
-				       dnslib_dname_to_str((rdata->items[i].dname)));
+				wildcard = dnslib_find_wildcard(
+					rdata->items[i].dname, list);
+DEBUG_DNSLIB_ZDUMP(
+				char *name = dnslib_dname_to_str(
+				                  rdata->items[i].dname);
+				debug_dnslib_zdump("Not in the zone: %s\n",
+				       name);
+				free(name);
+);
 
 				fwrite((uint8_t *)"\0", sizeof(uint8_t), 1, f);
-				dnslib_dname_dump_binary(rdata->items[i].dname, f);
+				dnslib_dname_dump_binary(rdata->items[i].dname,
+				                         f);
 				if (wildcard) {
 					fwrite((uint8_t *)"\1",
 					       sizeof(uint8_t), 1, f);
 					fwrite(&wildcard->node,
 					       sizeof(void *), 1, f);
 				} else {
-					fwrite((uint8_t *)"\0", sizeof(uint8_t), 1, f);
+					fwrite((uint8_t *)"\0", sizeof(uint8_t),
+					       1, f);
 				}
 			} else {
-				debug_zp("In the zone\n");
+				debug_dnslib_zdump("In the zone\n");
 				fwrite((uint8_t *)"\1", sizeof(uint8_t), 1, f);
 				fwrite(&(rdata->items[i].dname->node),
 				       sizeof(void *), 1, f);
@@ -1342,7 +1366,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 			fwrite(rdata->items[i].raw_data, sizeof(uint8_t),
 			       rdata->items[i].raw_data[0] + 2, f);
 
-			debug_zp("Written %d long raw data\n",
+			debug_dnslib_zdump("Written %d long raw data\n",
 			         rdata->items[i].raw_data[0]);
 		}
 	}
@@ -1456,7 +1480,7 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 	fwrite(&(node->owner->node), sizeof(void *), 1, f);
 
-	debug_zp("Written id: %p\n", node->owner->node);
+	debug_dnslib_zdump("Written id: %p\n", node->owner->node);
 
 	/* TODO investigate whether this is necessary */
 	if (node->parent != NULL) {
@@ -1467,15 +1491,15 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 	fwrite(&(node->flags), sizeof(node->flags), 1, f);
 
-	debug_zp("Written flags: %u\n", node->flags);
+	debug_dnslib_zdump("Written flags: %u\n", node->flags);
 
 	if (node->nsec3_node != NULL) {
 		fwrite(&node->nsec3_node->owner->node, sizeof(void *), 1, f);
-		debug_zp("Written nsec3 node id: %p\n",
+		debug_dnslib_zdump("Written nsec3 node id: %p\n",
 			 node->nsec3_node->owner->node);
 	} else {
 		fwrite(&node->nsec3_node, sizeof(void *), 1, f);
-		debug_zp("Written nsec3 node id: %p\n",
+		debug_dnslib_zdump("Written nsec3 node id: %p\n",
 			 node->nsec3_node);
 	}
 
@@ -1486,7 +1510,7 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 	fgetpos(f, &rrset_count_pos);
 
-	debug_zp("Position rrset_count: %ld\n", ftell(f));
+	debug_dnslib_zdump("Position rrset_count: %ld\n", ftell(f));
 
 	uint8_t rrset_count = 0;
 
@@ -1511,17 +1535,17 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 	fgetpos(f, &tmp_pos);
 
-	debug_zp("Position after all rrsets: %ld\n", ftell(f));
+	debug_dnslib_zdump("Position after all rrsets: %ld\n", ftell(f));
 
 	fsetpos(f, &rrset_count_pos);
 
-	debug_zp("Writing here: %ld\n", ftell(f));
+	debug_dnslib_zdump("Writing here: %ld\n", ftell(f));
 
 	fwrite(&rrset_count, sizeof(rrset_count), 1, f);
 
 	fsetpos(f, &tmp_pos);
 
-	debug_zp("Function ends with: %ld\n\n", ftell(f));
+	debug_dnslib_zdump("Function ends with: %ld\n\n", ftell(f));
 
 }
 
@@ -1552,28 +1576,34 @@ static void log_cyclic_errors_in_zone(err_handler_t *handler,
 		 * receiving it explicitely or going through the whole tree.*/
 		;
 	} else if (do_checks == 2 ) {
-		const dnslib_rrset_t *nsec_rrset =
-			dnslib_node_rrset(last_node, DNSLIB_RRTYPE_NSEC);
-
-		if (nsec_rrset == NULL) {
+		if (last_node == NULL) {
 			err_handler_handle_error(handler, last_node,
-				 ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC);
-			return;
-		}
+				ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC);
+				return;
+		} else {
+			const dnslib_rrset_t *nsec_rrset =
+				dnslib_node_rrset(last_node, DNSLIB_RRTYPE_NSEC);
 
-		const dnslib_dname_t *next_dname =
-			dnslib_rdata_item(
-			dnslib_rrset_rdata(nsec_rrset), 0)->dname;
-		assert(next_dname);
+			if (nsec_rrset == NULL) {
+				err_handler_handle_error(handler, last_node,
+					 ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC);
+				return;
+			}
 
-		const dnslib_dname_t *apex_dname =
-			dnslib_node_owner(dnslib_zone_apex(zone));
-		assert(apex_dname);
+			const dnslib_dname_t *next_dname =
+				dnslib_rdata_item(
+				dnslib_rrset_rdata(nsec_rrset), 0)->dname;
+			assert(next_dname);
 
-		if (dnslib_dname_compare(next_dname, apex_dname) !=0) {
-			err_handler_handle_error(handler, last_node,
-				 ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC);
-		}
+			const dnslib_dname_t *apex_dname =
+				dnslib_node_owner(dnslib_zone_apex(zone));
+			assert(apex_dname);
+
+			if (dnslib_dname_compare(next_dname, apex_dname) !=0) {
+				err_handler_handle_error(handler, last_node,
+					 ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC);
+			}
+	}
 	}
 }
 
@@ -1597,6 +1627,8 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	}
 
 	err_handler_t *handler = handler_new(1, 0, 1, 1, 1);
+
+	assert(handler);
 
 	dnslib_node_t *last_node = NULL;
 
@@ -1662,11 +1694,11 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	       sizeof(zone->node_count),
 	       1, f);
 
-	debug_zp("written %d normal nodes\n", tmp_count);
+	debug_dnslib_zdump("written %d normal nodes\n", tmp_count);
 
-	debug_zp("written %d nsec3 nodes\n", node_count);
+	debug_dnslib_zdump("written %d nsec3 nodes\n", node_count);
 
-	debug_zp("authorative nodes: %u\n", zone->node_count);
+	debug_dnslib_zdump("authorative nodes: %u\n", zone->node_count);
 
 	fclose(f);
 

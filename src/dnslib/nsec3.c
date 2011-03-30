@@ -7,11 +7,12 @@
 #include <openssl/sha.h>
 
 #include "dnslib/nsec3.h"
-#include "common.h"
+#include "dnslib/dnslib-common.h"
 #include "dnslib/descriptor.h"
 #include "dnslib/utils.h"
 #include "dnslib/tolower.h"
 #include "dnslib/error.h"
+#include "dnslib/debug.h"
 
 /*----------------------------------------------------------------------------*/
 

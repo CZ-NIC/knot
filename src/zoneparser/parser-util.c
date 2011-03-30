@@ -25,7 +25,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
-#include "common.h"
+//#include "common.h"
 #include "zoneparser/parser-util.h"
 #include "zoneparser/zoneparser.h"
 #include "dnslib/descriptor.h"

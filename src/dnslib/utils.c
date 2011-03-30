@@ -1,7 +1,7 @@
 #include <config.h>
 #include <string.h>
 
-#include "common.h"
+#include "dnslib/dnslib-common.h"
 #include "dnslib/utils.h"
 
 /*----------------------------------------------------------------------------*/

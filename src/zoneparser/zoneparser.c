@@ -27,20 +27,11 @@
 #include <netdb.h>
 #include <assert.h>
 
-#include "common.h"
+//#include "common.h"
 #include "zoneparser/zoneparser.h"
-#include "dnslib/dname.h"
-#include "dnslib/rrset.h"
-#include "dnslib/rdata.h"
-#include "dnslib/node.h"
-#include "dnslib/zone.h"
-#include "dnslib/descriptor.h"
-#include "dnslib/debug.h"
 #include "zoneparser/parser-util.h"
 #include "zparser.h"
-#include "dnslib/zone-dump.h"
-#include "dnslib/zone-load.h"
-#include "dnslib/zone-dump-text.h"
+#include "dnslib/dnslib.h"
 
 #define IP6ADDRLEN	(128/8)
 #define	NS_INT16SZ	2
@@ -48,6 +39,20 @@
 #define NS_IN6ADDRSZ 16
 #define APL_NEGATION_MASK      0x80U
 #define APL_LENGTH_MASK	       (~APL_NEGATION_MASK)
+
+#define ZP_DEBUG
+
+#ifdef ZP_DEBUG
+#define debug_zp(msg...) fprintf(stderr, msg)
+#else
+#define debug_zp(msg...)
+#endif
+
+/* Eliminate compiler warning with unused parameters. */
+#define UNUSED(param) (param) = (param)
+
+#define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d\n", \
+				  __FILE__, __LINE__)
 
 static inline uint16_t * rdata_atom_data(dnslib_rdata_item_t item)
 {
@@ -1783,3 +1788,4 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 	return totalerrors;
 }
 
+/*! @} */

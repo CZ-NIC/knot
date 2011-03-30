@@ -5,7 +5,7 @@
 #include <time.h>
 #include <assert.h>
 
-#include "hash/cuckoo-hash-table.h"
+#include "dnslib/hash/cuckoo-hash-table.h"
 
 //#define CK_TEST_DEBUG
 //#define CK_TEST_LOOKUP
