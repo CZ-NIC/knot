@@ -47,6 +47,9 @@
 #define debug_zp(msg...)
 #endif
 
+/* Eliminate compiler warning with unused parameters. */
+#define UNUSED(param) (param) = (param)
+
 static inline uint16_t * rdata_atom_data(dnslib_rdata_item_t item)
 {
 	return (uint16_t *)(item.raw_data + 1);

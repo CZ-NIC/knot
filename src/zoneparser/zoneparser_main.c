@@ -2,8 +2,11 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-//#include "common.h"
 #include "zoneparser/zoneparser.h"
+#include "config.h"
+
+#define PROJECT_NAME PACKAGE // Project name
+#define PROJECT_VER  0x000100  // 0xMMIIRR (MAJOR,MINOR,REVISION)
 
 static void help(int argc, char **argv)
 {
