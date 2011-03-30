@@ -5,16 +5,18 @@
 #include <string.h>
 #include <ctype.h>	// tolower()
 
-#include "common.h"
+#include "dnslib/dnslib-common.h"
 #include "dnslib/error.h"
 #include "dnslib/dname.h"
 #include "dnslib/consts.h"
 #include "dnslib/tolower.h"
+#include "dnslib/debug.h"
+#include "dnslib/utils.h"
 
 /*
  * Memory cache.
  */
-#include "alloc/slab.h"
+#include "common/slab/slab.h"
 #include <stdio.h>
 #include <pthread.h>
 
@@ -151,7 +153,7 @@ static int dnslib_dname_str_to_wire(const char *name, uint size,
 		assert(w - wire - 1 == ch - (const uint8_t *)name);
 
 		if (*ch == '.') {
-			debug_dnslib_dname("Position %ld (%p): "
+			debug_dnslib_dname("Position %zd (%p): "
 			                   "label length: %u\n",
 			                   label_start - wire,
 			                   label_start, label_length);
@@ -161,7 +163,7 @@ static int dnslib_dname_str_to_wire(const char *name, uint size,
 			label_length = 0;
 		} else {
 			assert(w - wire < wire_size);
-			debug_dnslib_dname("Position %ld (%p): character: %c\n",
+			debug_dnslib_dname("Position %zd (%p): character: %c\n",
 			                   w - wire, w, *ch);
 			*w = *ch;
 			++label_length;
@@ -175,11 +177,11 @@ static int dnslib_dname_str_to_wire(const char *name, uint size,
 	--ch;
 	if (*ch == '.') { // put 0 for root label if the name ended with .
 		--w;
-		debug_dnslib_dname("Position %ld (%p): character: (null)\n",
+		debug_dnslib_dname("Position %zd (%p): character: (null)\n",
 				   w - wire, w);
 		*w = 0;
 	} else { // otherwise we did not save the last label length
-		debug_dnslib_dname("Position %ld (%p): "
+		debug_dnslib_dname("Position %zd (%p): "
 		                   "label length: %u\n",
 		                   label_start - wire,
 		                   label_start, label_length);
@@ -304,9 +306,8 @@ dnslib_dname_t *dnslib_dname_new_from_str(const char *name, uint size,
 	debug_dnslib_dname("\n");
 
 	if (dname->size <= 0) {
-		log_answer_warning("dname: Could not parse domain name "
-		                   "from string: '%.*s'\n",
-		                   size, name);
+		fprintf(stderr, "Could not parse domain name "
+		        "from string: '%.*s'\n", size, name);
 	}
 	assert(dname->name != NULL);
 

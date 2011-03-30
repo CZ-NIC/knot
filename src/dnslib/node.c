@@ -2,10 +2,12 @@
 #include <malloc.h>
 #include <assert.h>
 
-#include "common.h"
+#include "dnslib/dnslib-common.h"
 #include "dnslib/node.h"
 #include "dnslib/rrset.h"
 #include "dnslib/error.h"
+#include "common/skip-list.h"
+#include "common/tree.h"
 
 /*----------------------------------------------------------------------------*/
 /*! \brief Flags used to mark nodes with some property. */
