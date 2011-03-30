@@ -468,10 +468,14 @@ void slab_free(void* ptr)
 		// Presuming it's a large block
 		slab_obj_t* bs = (slab_obj_t*)ptr - 1;
 
+#ifdef MEM_POISON
+		// Remove memory barrier
+		mprotect(ptr + bs->size, sizeof(int), PROT_READ|PROT_WRITE);
+#endif
+
 		// Unmap
 		debug_mem("%s: unmapping large block of %zu bytes at %p\n",
 		          __func__, bs->size, ptr);
-		//munmap(bs, bs->size);
 		free(bs);
 	}
 }
@@ -592,9 +596,12 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 
 		/* Initialize. */
 		p->magic = LOBJ_MAGIC;
-		p->size = size;
+		p->size = size - sizeof(slab_obj_t);
 
 #ifdef MEM_POISON
+		// Reduce real size
+		p->size -= sizeof(int);
+
 		// Memory barrier
 		int* pb = (int*)((char*)p + size - sizeof(int));
 		*pb = POISON_DWORD;
@@ -635,9 +642,9 @@ void* slab_alloc_alloc(slab_alloc_t* alloc, size_t size)
 
 #ifdef MEM_POISON
 	// Memory barrier
-	int* pb = (int*)((char*)mem + size - sizeof(int));
-	*pb = POISON_DWORD;
-	mprotect(pb, sizeof(int), PROT_NONE);
+	/*! \todo Broken, need to store the barrier byte size. */
+	//int* pb = (int*)((char*)mem + size - sizeof(int));
+	//mprotect(pb, sizeof(int), PROT_NONE);
 #endif
 	return mem;
 }
