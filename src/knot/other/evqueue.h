@@ -78,7 +78,7 @@ void evqueue_free(evqueue_t **q);
  * \param sigmask Bitmask of signals to receive.
  *
  * \retval Number of polled events on success.
- * \retval -1 On error or signal interrupt.
+ * \retval <0 On error or signal interrupt (EINTR, EINVAL, ENOMEM).
  */
 int evqueue_poll(evqueue_t *q, const sigset_t *sigmask);
 
@@ -88,8 +88,8 @@ int evqueue_poll(evqueue_t *q, const sigset_t *sigmask);
  * \param q Event queue.
  * \param ev Event structure for writing.
  *
- * \retval 0 on success.
- * \retval <0 on error.
+ * \retval 0 on success (EOK).
+ * \retval <0 on error (EINVAL, EINTR, EAGAIN).
  */
 int evqueue_get(evqueue_t *q, event_t *ev);
 
@@ -98,8 +98,9 @@ int evqueue_get(evqueue_t *q, event_t *ev);
  *
  * \param q Event queue.
  * \param ev Event structure to read.
- * \retval 0 on success.
- * \retval <0 on error.
+ *
+ * \retval 0 on success (EOK).
+ * \retval <0 on error (EINVAL, EINTR, EAGAIN).
  */
 int evqueue_add(evqueue_t *q, const event_t *ev);
 

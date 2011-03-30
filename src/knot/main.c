@@ -191,7 +191,7 @@ int main(int argc, char **argv)
 			int ret = evqueue_poll(evqueue(), &emptyset);
 
 			/* Interrupts. */
-			if (ret == -1) {
+			if (ret < 0) {
 				/*! \todo More robust way to exit evloop.
 				 *        Event loop should exit with a special
 				 *        event.

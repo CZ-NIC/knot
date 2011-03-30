@@ -57,8 +57,8 @@ typedef enum {
  *
  * \param logfiles Number of extra logfiles.
  *
- * \retval 0 On success.
- * \retval <0 If an error occured.
+ * \retval 0 On success (EOK).
+ * \retval <0 If an error occured (EINVAL, ENOMEM).
  */
 int log_setup(int logfiles);
 
@@ -67,16 +67,16 @@ int log_setup(int logfiles);
  *
  * \see syslog.h
  *
- * \retval  0 On success.
- * \retval <0 If an error occured.
+ * \retval 0 On success (EOK).
+ * \retval <0 If an error occured (EINVAL, ENOMEM).
  */
 int log_init();
 
 /*!
  * \brief Close and deinitialize log.
  *
- * \retval  0 On success.
- * \retval <0 If an error occured.
+ * \retval  0 On success (EOK).
+ * \retval <0 If an error occured ().
  */
 int log_close();
 
@@ -99,7 +99,7 @@ int log_isopen();
  * \param filename File path.
  *
  * \retval associated facility index on success.
- * \retval <0 on error.
+ * \retval <0 on error (EINVAL, ERROR).
  */
 int log_open_file(const char* filename);
 
@@ -121,8 +121,8 @@ uint8_t log_levels(int facility, logsrc_t src);
  * \param src Logging source (LOG_SERVER...LOG_ANY).
  * \param levels Bitmask of specified log levels.
  *
- * \retval 0 On success.
- * \retval <0 On error.
+ * \retval 0 On success (EOK).
+ * \retval <0 On error (EINVAL).
  */
 int log_levels_set(int facility, logsrc_t src, uint8_t levels);
 
@@ -136,8 +136,8 @@ int log_levels_set(int facility, logsrc_t src, uint8_t levels);
  * \param src Logging source (LOG_SERVER...LOG_ANY).
  * \param levels Bitmask of specified log levels.
  *
- * \retval 0 On success.
- * \retval <0 On error.
+ * \retval 0 On success (EOK).
+ * \retval <0 On error (EINVAL).
  */
 int log_levels_add(int facility, logsrc_t src, uint8_t levels);
 
@@ -150,7 +150,7 @@ int log_levels_add(int facility, logsrc_t src, uint8_t levels);
  * \param level Message error level.
  * \param msg Content of the logged message.
  *
- * \retval -1 On error.
+ * \retval <0 On error (EINVAL, ERROR).
  * \retval  0 When the message is ignored.
  * \retval >0 On success.
  */
