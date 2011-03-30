@@ -7,7 +7,7 @@
 #include <string.h>
 #include <sys/resource.h>
 
-#include "alloc/alloc-common.h"
+#include "common/slab/alloc-common.h"
 
 #ifdef MEM_DEBUG
 /*

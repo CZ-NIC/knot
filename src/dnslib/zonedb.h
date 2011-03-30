@@ -15,7 +15,7 @@
 #ifndef _KNOT_DNSLIB_ZONEDB_H_
 #define _KNOT_DNSLIB_ZONEDB_H_
 
-#include "dnslib/ext/skip-list.h"
+#include "common/skip-list.h"
 #include "dnslib/zone.h"
 #include "dnslib/node.h"
 #include "dnslib/dname.h"

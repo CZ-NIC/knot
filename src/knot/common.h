@@ -46,8 +46,8 @@ typedef unsigned int uint;
 /* Common includes.
  */
 
-#include "knot/other/latency.h"
-#include "knot/other/print.h"
+#include "common/latency.h"
+#include "common/print.h"
 #include "knot/other/log.h"
 #include "knot/other/debug.h"
 

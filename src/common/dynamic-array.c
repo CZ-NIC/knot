@@ -6,7 +6,7 @@
 #include <urcu.h>
 
 //#include "common.h"
-#include "dnslib/ext/dynamic-array.h"
+#include "common/dynamic-array.h"
 
 #ifndef ERR_ALLOC_FAILED
 #define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d\n", \

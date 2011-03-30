@@ -1,6 +1,6 @@
 #include <time.h>
 #include "tests/tap_unit.h"
-#include "dnslib/ext/skip-list.h"
+#include "common/skip-list.h"
 
 static int skiplist_tests_count(int argc, char *argv[]);
 static int skiplist_tests_run(int argc, char *argv[]);

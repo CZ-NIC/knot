@@ -11,8 +11,8 @@
 #include "dnslib/nsec3.h"
 #include "dnslib/debug.h"
 #include "dnslib/utils.h"
-#include "dnslib/ext/tree.h"
-#include "dnslib/ext/base32hex.h"
+#include "common/tree.h"
+#include "common/base32hex.h"
 #include "dnslib/hash/cuckoo-hash-table.h"
 
 /*----------------------------------------------------------------------------*/

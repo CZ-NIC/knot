@@ -6,7 +6,7 @@
 
 #include "knot/common.h"
 #include "knot/other/log.h"
-#include "knot/lib/lists.h"
+#include "common/lists.h"
 #include "knot/conf/conf.h"
 
 /*! Log source table. */
@@ -236,4 +236,14 @@ int log_vmsg(logsrc_t src, int level, const char *msg, va_list ap)
 	}
 
 	return ret;
+}
+
+void hex_log(int source, const char *data, int length)
+{
+	int ptr = 0;
+	for (; ptr < length; ptr++) {
+		log_msg(source, LOG_DEBUG, "0x%02x ",
+		        (unsigned char)*(data + ptr));
+	}
+	log_msg(source, LOG_DEBUG, "\n");
 }

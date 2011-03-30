@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef __KNOT_MALLOC_H__
-#define __KNOT_MALLOC_H__
+#ifndef _KNOT_COMMON_MALLOC_H_
+#define _KNOT_COMMON_MALLOC_H_
 
 #include <stdlib.h>
 
@@ -23,4 +23,4 @@
  */
 void usage_dump();
 
-#endif
+#endif // _KNOT_COMMON_MALLOC_H_

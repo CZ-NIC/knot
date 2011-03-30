@@ -27,7 +27,7 @@
 #define _BIRD_LISTS_C_
 
 #include <stdlib.h>
-#include "knot/lib/lists.h"
+#include "common/lists.h"
 
 /**
  * add_tail - append a node to a list

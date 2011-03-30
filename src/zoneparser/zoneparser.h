@@ -22,7 +22,7 @@
 #include "dnslib/node.h"
 #include "dnslib/rdata.h"
 #include "dnslib/zone.h"
-#include "alloc/slab.h"
+#include "common/slab/slab.h"
 
 #define MAXRDATALEN	64
 #define MAXLABELLEN	63

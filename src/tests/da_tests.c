@@ -1,5 +1,5 @@
 #include "tests/tap_unit.h"
-#include "dnslib/ext/dynamic-array.h"
+#include "common/dynamic-array.h"
 #include <unistd.h>
 #include <urcu.h>
 

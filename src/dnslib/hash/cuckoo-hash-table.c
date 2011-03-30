@@ -11,7 +11,7 @@
 #include "dnslib/debug.h"
 #include "dnslib/hash/cuckoo-hash-table.h"
 #include "dnslib/hash/hash-functions.h"
-#include "dnslib/ext/dynamic-array.h"
+#include "common/dynamic-array.h"
 
 /*----------------------------------------------------------------------------*/
 /* Macros and inline functions                                                */

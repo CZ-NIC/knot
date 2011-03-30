@@ -16,7 +16,7 @@
 #include <sys/socket.h>
 
 #include "dnslib/descriptor.h"
-#include "knot/lib/lists.h"
+#include "common/lists.h"
 #include "knot/other/log.h"
 
 /* Constants. */

@@ -5,8 +5,8 @@
 #include "dnslib-common.h"
 #include "dnslib/node.h"
 #include "dnslib/rrset.h"
-#include "dnslib/ext/skip-list.h"
-#include "dnslib/ext/tree.h"
+#include "common/skip-list.h"
+#include "common/tree.h"
 
 /*----------------------------------------------------------------------------*/
 
