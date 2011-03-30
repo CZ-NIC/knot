@@ -10,7 +10,7 @@
 #include "dnslib/dname.h"
 #include "dnslib/node.h"
 #include "dnslib/debug.h"
-#include "dnslib/ext/skip-list.h"
+#include "common/skip-list.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */

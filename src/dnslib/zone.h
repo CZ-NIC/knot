@@ -15,7 +15,7 @@
 #include "dnslib/node.h"
 #include "dnslib/dname.h"
 #include "dnslib/nsec3.h"
-#include "dnslib/ext/tree.h"
+#include "common/tree.h"
 #include "dnslib/hash/cuckoo-hash-table.h"
 
 /*----------------------------------------------------------------------------*/

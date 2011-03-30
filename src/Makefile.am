@@ -70,21 +70,27 @@ knotd_SOURCES =					\
 
 noinst_LTLIBRARIES = libknot.la
 libknot_la_SOURCES =				\
-	alloc/slab.c				\
-	alloc/malloc.c				\
-	alloc/slab.h			        \
-	alloc/malloc.h				\
+	common/slab/slab.c				\
+	common/slab/malloc.c				\
+	common/slab/slab.h			        \
+	common/slab/malloc.h				\
+	common/lists.c	            		\
+	common/base32.c				\
+	common/lists.h	            		\
+	common/base32.h				\
+	common/print.c				\
+	common/print.h				\
+	common/dynamic-array.c			\
+	common/skip-list.c				\
+	common/base32hex.c				\
+	common/skip-list.h				\
+	common/dynamic-array.h			\
+	common/tree.h				\
+	common/base32hex.h				\
 	knot/stat/gatherer.c				\
 	knot/stat/stat.c				\
 	knot/stat/gatherer.h				\
 	knot/stat/stat.h				\
-	dnslib/ext/dynamic-array.c			\
-	dnslib/ext/skip-list.c				\
-	dnslib/ext/base32hex.c				\
-	dnslib/ext/skip-list.h				\
-	dnslib/ext/dynamic-array.h			\
-	dnslib/ext/tree.h				\
-	dnslib/ext/base32hex.h				\
 	dnslib/edns.c                           \
 	dnslib/utils.c				\
 	dnslib/rrset.c				\
@@ -124,15 +130,7 @@ libknot_la_SOURCES =				\
 	dnslib/debug.h				\
 	dnslib/nsec3.h				\
 	knot/common.h				\
-	knot/lib/lists.c	            		\
-	knot/lib/bitset.c				\
-	knot/lib/base32.c				\
-	knot/lib/lists.h	            		\
-	knot/lib/bitset.h				\
-	knot/lib/base32.h				\
 	knot/other/log.c				\
-	knot/other/print.c				\
-	knot/other/print.h				\
 	knot/other/log.h				\
 	knot/other/debug.h			\
 	knot/conf/cf-parse.y                         \

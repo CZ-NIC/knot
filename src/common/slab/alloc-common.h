@@ -8,8 +8,8 @@
  * \addtogroup alloc
  * @{
  */
-#ifndef _KNOT_ALLOC_COMMON_H_
-#define _KNOT_ALLOC_COMMON_H_
+#ifndef _KNOT_COMMON_ALLOC_COMMON_H_
+#define _KNOT_COMMON_ALLOC_COMMON_H_
 
 #include <stdio.h>
 
@@ -32,6 +32,6 @@
 #endif
 
 
-#endif /* _KNOT_ALLOC_COMMON_H_ */
+#endif /* _KNOT_COMMON_ALLOC_COMMON_H_ */
 
 /*! @} */

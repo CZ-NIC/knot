@@ -14,7 +14,7 @@
 
 /* Memory cache.
  */
-#include "alloc/slab.h"
+#include "common/slab/slab.h"
 #include <stdio.h>
 #include <pthread.h>
 static pthread_key_t dname_ckey;

@@ -2,7 +2,7 @@
 #include <pthread.h>
 
 #include "knot/stat/stat-common.h"
-#include "alloc/malloc.h"
+#include "common/slab/malloc.h"
 #include "knot/stat/gatherer.h"
 
 gatherer_t *new_gatherer()

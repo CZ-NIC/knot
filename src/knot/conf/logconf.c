@@ -7,7 +7,7 @@
 #include "knot/conf/logconf.h"
 #include "knot/conf/conf.h"
 #include "knot/other/log.h"
-#include "knot/lib/lists.h"
+#include "common/lists.h"
 
 int log_conf_hook(const struct conf_t *conf)
 {

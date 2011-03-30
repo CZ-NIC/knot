@@ -10,7 +10,7 @@
 #include <arpa/inet.h>
 
 #include "dnslib.h"
-#include "dnslib/ext/skip-list.h"
+#include "common/skip-list.h"
 
 /* TODO max length of alg */
 

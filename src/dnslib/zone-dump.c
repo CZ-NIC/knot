@@ -7,7 +7,7 @@
 #include "dnslib/zone-dump.h"
 #include "dnslib/dnslib.h"
 #include "dnslib/debug.h"
-#include "dnslib/ext/skip-list.h"
+#include "common/skip-list.h"
 
 /* \note For space and speed purposes, dname ID (to be later used in loading)
  * is being stored in dname->node field. Not to be confused with dname's actual

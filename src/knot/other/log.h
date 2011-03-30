@@ -164,6 +164,8 @@ int log_msg(logsrc_t src, int level, const char *msg, ...)
  */
 int log_vmsg(logsrc_t src, int level, const char *msg, va_list ap);
 
+void hex_log(int source, const char *data, int length);
+
 /* Convenient logging. */
 #define log_server_fatal(msg...)     log_msg(LOG_SERVER, LOG_FATAL, msg)
 #define log_server_error(msg...)     log_msg(LOG_SERVER, LOG_ERR, msg)

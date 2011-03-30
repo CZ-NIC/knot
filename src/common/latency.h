@@ -1,5 +1,5 @@
-#ifndef _LATENCYPROF_H_
-#define _LATENCYPROF_H_
+#ifndef _KNOT_COMMON_LATENCY_H_
+#define _KNOT_COMMON_LATENCY_H_
 
 /* Optional. */
 #ifdef PROF_LATENCY
@@ -40,4 +40,4 @@ int pf_pthread_mutex_unlock(pthread_mutex_t *mutex,
 	pf_pthread_mutex_unlock(m, __FUNCTION__, __FILE__, __LINE__)
 
 #endif // PROF_LATENCY
-#endif // _LATENCYPROF_H_
+#endif // _KNOT_COMMON_LATENCY_H_

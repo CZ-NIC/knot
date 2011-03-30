@@ -26,7 +26,7 @@
 #include <pthread.h>
 
 #include "dnslib/hash/universal-system.h"
-#include "dnslib/ext/dynamic-array.h"
+#include "common/dynamic-array.h"
 
 /*----------------------------------------------------------------------------*/
 

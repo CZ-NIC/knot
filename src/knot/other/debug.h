@@ -12,7 +12,7 @@
 #define _KNOT_DEBUG_H_
 
 #include "knot/other/log.h"
-#include "knot/other/print.h"
+#include "common/print.h"
 
 //#define SM_DEBUG
 //#define NS_DEBUG
