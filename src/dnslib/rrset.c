@@ -3,7 +3,7 @@
 #include <malloc.h>
 #include <assert.h>
 
-#include "common.h"
+#include "dnslib/dnslib-common.h"
 #include "dnslib/rrset.h"
 #include "dnslib/descriptor.h"
 #include "dnslib/error.h"
@@ -163,7 +163,7 @@ void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner,
 	dnslib_rdata_t *next_rdata;
 	tmp_rdata = (*rrset)->rdata;
 
-	while ((tmp_rdata->next != (*rrset)->rdata) &&
+	while ((tmp_rdata != NULL) && (tmp_rdata->next != (*rrset)->rdata) &&
 		(tmp_rdata->next != NULL)) {
 		next_rdata = tmp_rdata->next;
 		dnslib_rdata_deep_free(&tmp_rdata, (*rrset)->type,

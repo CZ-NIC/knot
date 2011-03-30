@@ -4,14 +4,14 @@
 
 #include <urcu.h>
 
-#include "common.h"
+#include "dnslib/dnslib-common.h"
 #include "dnslib/zonedb.h"
-#include "lib/skip-list.h"
 #include "dnslib/zone.h"
 #include "dnslib/dname.h"
 #include "dnslib/node.h"
-#include "conf/conf.h"
 #include "dnslib/error.h"
+#include "dnslib/debug.h"
+#include "common/skip-list.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -106,7 +106,7 @@ const dnslib_zone_t *dnslib_zonedb_find_zone_for_name(dnslib_zonedb_t *db,
 
 DEBUG_DNSLIB_ZONEDB(
 	char *name = dnslib_dname_to_str(dname);
-	debug_ns("Found zone for name %s: %p\n", name, zone);
+	debug_dnslib_zonedb("Found zone for name %s: %p\n", name, zone);
 	free(name);
 );
 	if (zone != NULL

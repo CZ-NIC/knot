@@ -7,7 +7,7 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include "common.h"
+//#include "common.h"
 #include "zoneparser/parser-descriptor.h"
 /* TODO this has to be removed - move tokens to separate file */
 #include "zoneparser/zoneparser.h"

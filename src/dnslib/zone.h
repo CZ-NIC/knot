@@ -14,9 +14,9 @@
 
 #include "dnslib/node.h"
 #include "dnslib/dname.h"
-#include "lib/tree.h"
-#include "hash/cuckoo-hash-table.h"
 #include "dnslib/nsec3.h"
+#include "common/tree.h"
+#include "dnslib/hash/cuckoo-hash-table.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -47,9 +47,7 @@ struct dnslib_zone {
 	dnslib_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
 	avl_tree_t *tree;          /*!< AVL tree for holding zone nodes. */
 	avl_tree_t *nsec3_nodes;   /*!< AVL tree for holding NSEC3 nodes. */
-#ifdef USE_HASH_TABLE
 	ck_hash_table_t *table;     /*!< Hash table for holding zone nodes. */
-#endif
 	uint node_count;
 	dnslib_nsec3_params_t nsec3_params;
 };

@@ -2,9 +2,10 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "edns.h"
-#include "common.h"
-#include "descriptor.h"
+#include "dnslib/edns.h"
+#include "dnslib/dnslib-common.h"
+#include "dnslib/descriptor.h"
+#include "dnslib/debug.h"
 #include "dnslib/error.h"
 
 /*! \brief Various EDNS constatns. */

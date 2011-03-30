@@ -1,5 +1,5 @@
 #include <config.h>
-#include "common.h"
+#include "knot/common.h"
 #include "tests/tap_unit.h"
 
 // Units to test
@@ -11,7 +11,6 @@
 #include "dnslib_tests.c"
 #include "server_tests.c"
 #include "slab_tests.c"
-//#include "zoneparser_tests.c"
 #include "conf_tests.c"
 
 // Run all loaded units
@@ -31,7 +30,6 @@ int main(int argc, char *argv[])
 		&dnslib_tests_api,   //! DNS library unit
 		&server_tests_api,   //! Server unit
 		&slab_tests_api,     //! SLAB allocator unit
-//		&zoneparser_tests_api, //! Zoneparser unit
 		NULL
 	};
 
