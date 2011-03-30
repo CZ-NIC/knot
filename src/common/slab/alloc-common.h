@@ -14,7 +14,7 @@
 #include <stdio.h>
 
 #define MEM_DEBUG
-#define MEM_NOSLAB
+//#define MEM_NOSLAB
 #define MEM_POISON
 
 /* Optimisation macros. */
