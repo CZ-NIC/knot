@@ -1,5 +1,6 @@
 #include "dnslib/dname.h"
 #include "dnslib/node.h"
+#include "dnslib/descriptor.h"
 
 static int dnslib_node_tests_count(int argc, char *argv[]);
 static int dnslib_node_tests_run(int argc, char *argv[]);
@@ -45,6 +46,7 @@ static dnslib_rrset_t rrsets[RRSETS] = {
 
 static int test_node_create()
 {
+	/* Tests creation of node by comparing with test_node struct */
 	dnslib_node_t *tmp;
 	int errors = 0;
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
@@ -68,13 +70,40 @@ static int test_node_add_rrset()
 	dnslib_rrset_t *rrset;
 	int errors = 0;
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
+		/* create node from test_node structure */
 		tmp = dnslib_node_new(&test_nodes[i].owner,
 		                      test_nodes[i].parent);
-		rrset = &rrsets[0];
+		rrset = &rrsets[i];
 		if (dnslib_node_add_rrset(tmp, rrset) != 0) {
 			errors++;
 			diag("Failed to insert rrset into node");
 		}
+
+		/* check if rrset is really there */
+
+		const dnslib_rrset_t *rrset_from_node = NULL;
+		if ((rrset_from_node =
+			     dnslib_node_rrset(tmp, rrset->type)) == NULL) {
+			errors++;
+			diag("Inserted rrset could not be found");
+		}
+
+		/* compare rrset from node with original rrset */
+
+		const dnslib_rrtype_descriptor_t *desc =
+			dnslib_rrtype_descriptor_by_type(rrset->type);
+
+		if (!((rrset_from_node->type == rrset->type) &&
+		    (rrset_from_node->rclass == rrset->rclass) &&
+		    (rrset_from_node->ttl == rrset->ttl) &&
+		    (rrset_from_node->rrsigs == rrset->rrsigs) &&
+		    (dnslib_rdata_compare(rrset_from_node->rdata,
+					  rrset->rdata,
+					  desc->wireformat) == 0))) {
+			errors++;
+			diag("Values in found rrset are wrong");
+		}
+
 		dnslib_node_free(&tmp, 0);
 	}
 
@@ -148,22 +177,27 @@ static int test_node_sorting()
 
 	tmp = dnslib_node_new(&test_nodes[0].owner, test_nodes[0].parent);
 
+	/* Will add rrsets to node. */
+
 	for (int i = 0; i < RRSETS && !errors; i++) {
 		rrset = &rrsets[i];
 		dnslib_node_add_rrset(tmp, rrset);
 	}
 
-	const skip_node_t *node;
-
-	node = skip_first(tmp->rrsets);
+	const skip_node_t *node = skip_first(tmp->rrsets);
 
 	int last = *((uint16_t *)node->key);
+
+	/* TODO there is now an API function dnslib_node_rrsets ... */
+
+	/* Iterates through skip list and checks, whether it is sorted. */
 
 	while ((node = skip_next(node)) != NULL) {
 		if (last > *((uint16_t *)node->key)) {
 			errors++;
 			diag("RRset sorting error");
 		}
+		last = *((uint16_t *)node->key);
 	}
 
 	dnslib_node_free(&tmp, 0);
