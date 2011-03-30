@@ -27,17 +27,25 @@ static struct zone_test_node test_apex =
 {{(uint8_t *)"\3com\0", 5, (uint8_t *)"\x0", 1}, (dnslib_node_t *)NULL};
 
 static struct zone_test_node test_nodes_bad[TEST_NODES_BAD] = {
-	{{(uint8_t *)"\5other\6domain\0", 14, (uint8_t *)"\x0\x6", 2}, (dnslib_node_t *)NULL}
+	{{(uint8_t *)"\5other\6domain\0", 14, (uint8_t *)"\x0\x6", 2},
+	 (dnslib_node_t *)NULL}
 };
 
 static struct zone_test_node test_nodes_good[TEST_NODES_GOOD] = {
-	{{(uint8_t *)"\7example\3com\0", 13, (uint8_t *)"\x0\x8", 2}, (dnslib_node_t *)NULL},
-	{{(uint8_t *)"\3www\7example\3com\0", 17, (uint8_t *)"\x0\x4\xC", 3}, (dnslib_node_t *)NULL},
-	{{(uint8_t *)"\7another\6domain\3com\0", 20, (uint8_t *)"\x0\x8\xF", 3}, (dnslib_node_t *)NULL},
-	{{(uint8_t *)"\5mail1\7example\3com\0", 19, (uint8_t *)"\x0\x6\xE", 3}, (dnslib_node_t *)NULL},
-	{{(uint8_t *)"\5mail2\7example\3com\0", 19, (uint8_t *)"\x0\x6\xE", 3}, (dnslib_node_t *)NULL},
-	{{(uint8_t *)"\3smb\7example\3com\0", 17, (uint8_t *)"\x0\x4\xC", 3}, (dnslib_node_t *)NULL},
-	{{(uint8_t *)"\4smtp\7example\3com\0", 18, (uint8_t *)"\x0\x5\xD", 3}, (dnslib_node_t *)NULL},
+	{{(uint8_t *)"\7example\3com\0", 13, (uint8_t *)"\x0\x8", 2},
+	 (dnslib_node_t *)NULL},
+	{{(uint8_t *)"\3www\7example\3com\0", 17, (uint8_t *)"\x0\x4\xC", 3},
+	 (dnslib_node_t *)NULL},
+	{{(uint8_t *)"\7another\6domain\3com\0", 20, (uint8_t *)"\x0\x8\xF", 3},
+	 (dnslib_node_t *)NULL},
+	{{(uint8_t *)"\5mail1\7example\3com\0", 19, (uint8_t *)"\x0\x6\xE", 3},
+	 (dnslib_node_t *)NULL},
+	{{(uint8_t *)"\5mail2\7example\3com\0", 19, (uint8_t *)"\x0\x6\xE", 3},
+	 (dnslib_node_t *)NULL},
+	{{(uint8_t *)"\3smb\7example\3com\0", 17, (uint8_t *)"\x0\x4\xC", 3},
+	 (dnslib_node_t *)NULL},
+	{{(uint8_t *)"\4smtp\7example\3com\0", 18, (uint8_t *)"\x0\x5\xD", 3},
+	 (dnslib_node_t *)NULL},
 };
 
 static int test_zone_check_node(const dnslib_node_t *node,
@@ -105,6 +113,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 			dnslib_node_free(&node, 0);
 			++errors;
 		}
+		/* TODO check values in the node as well */
 	}
 
 	//note("Bad nodes");
@@ -328,7 +337,7 @@ static void test_zone_destroy_node_from_tree(dnslib_node_t *node,
 /* explained below */
 static size_t node_index = 0;
 
-/* \brief
+/*! \brief
  * This function will overwrite parent field in node structure -
  * we don't (and can't, with current structures) use it in these tests anyway.
  * Since zone structure itself has no count field, only option known to me
@@ -414,9 +423,18 @@ static int test_zone_tree_apply(dnslib_zone_t *zone,
 		}
 	}
 
+	/*
+	 * This will iterate through tree and set node->parent field values
+	 * from 0 to number of nodes.
+	 */
+
 	traversal_func(zone, &tmp_apply_function, NULL);
 
 	node_index = 0;
+
+	/*
+	 * This will check whether the values were set accordingly.
+	 */
 
 	traversal_func(zone, &tmp_compare_function, NULL);
 
@@ -428,6 +446,7 @@ static int test_zone_tree_apply(dnslib_zone_t *zone,
 	return (ret);
 }
 
+/* Tests all kinds of zone traversals, explainded above */
 static int test_zone_traversals(dnslib_zone_t *zone)
 {
 	for (int i = 0; i < TRAVERSAL_TYPES; i++) {
