@@ -2,16 +2,18 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "common.h"
+#include "dnslib-common.h"
 #include "dnslib/zone.h"
 #include "dnslib/node.h"
 #include "dnslib/dname.h"
-#include "lib/tree.h"
 #include "dnslib/consts.h"
 #include "dnslib/descriptor.h"
-#include "hash/cuckoo-hash-table.h"
 #include "dnslib/nsec3.h"
-#include "lib/base32hex.h"
+#include "dnslib/debug.h"
+#include "dnslib/utils.h"
+#include "common/tree.h"
+#include "common/base32hex.h"
+#include "dnslib/hash/cuckoo-hash-table.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -35,9 +37,9 @@ static int dnslib_zone_check_node(const dnslib_zone_t *zone,
 	if (!dnslib_dname_is_subdomain(node->owner, zone->apex->owner)) {
 		char *node_owner = dnslib_dname_to_str(node->owner);
 		char *apex_owner = dnslib_dname_to_str(zone->apex->owner);
-		log_zone_error("zone: Trying to insert foreign node to a zone. "
-		               "Node owner: %s, zone apex: %s\n",
-		               node_owner, apex_owner);
+		debug_dnslib_zone("zone: Trying to insert foreign node to a "
+		                  "zone. Node owner: %s, zone apex: %s\n",
+		                  node_owner, apex_owner);
 		free(node_owner);
 		free(apex_owner);
 		return -2;
@@ -479,7 +481,7 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 	if (zone->table != NULL
 	    && ck_insert_item(zone->table, (const char *)node->owner->name,
 	                      node->owner->size, (void *)node) != 0) {
-		log_zone_error("Error inserting node into hash table!\n");
+		debug_dnslib_zone("Error inserting node into hash table!\n");
 		return -3;
 	}
 #endif
@@ -656,7 +658,7 @@ const dnslib_node_t *dnslib_zone_find_previous(const dnslib_zone_t *zone,
 }
 
 /*----------------------------------------------------------------------------*/
-#ifdef USE_HASH_TABLE
+
 int dnslib_zone_find_dname_hash(const dnslib_zone_t *zone,
                                 const dnslib_dname_t *name,
                                 const dnslib_node_t **node,
@@ -738,7 +740,7 @@ DEBUG_DNSLIB_ZONE(
 
 	return DNSLIB_ZONE_NAME_NOT_FOUND;
 }
-#endif
+
 /*----------------------------------------------------------------------------*/
 
 const dnslib_node_t *dnslib_zone_find_nsec3_node(const dnslib_zone_t *zone,

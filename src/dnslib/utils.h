@@ -13,6 +13,18 @@
 #define _KNOT_DNSLIB_UTILS_H_
 
 #include <string.h>
+#include <stdint.h>
+#include <stdio.h>
+#include "common/print.h"
+
+/*
+ * Printing functions
+ */
+
+inline void dnslib_hex_print(const char *data, int length)
+{
+	hex_print(data, length);
+}
 
 /*!
  * \brief A general purpose lookup table.

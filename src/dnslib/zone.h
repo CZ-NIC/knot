@@ -14,9 +14,9 @@
 
 #include "dnslib/node.h"
 #include "dnslib/dname.h"
-#include "lib/tree.h"
-#include "hash/cuckoo-hash-table.h"
 #include "dnslib/nsec3.h"
+#include "common/tree.h"
+#include "dnslib/hash/cuckoo-hash-table.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -45,9 +45,7 @@ struct dnslib_zone {
 	dnslib_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
 	avl_tree_t *tree;          /*!< AVL tree for holding zone nodes. */
 	avl_tree_t *nsec3_nodes;   /*!< AVL tree for holding NSEC3 nodes. */
-#ifdef USE_HASH_TABLE
 	ck_hash_table_t *table;     /*!< Hash table for holding zone nodes. */
-#endif
 	uint node_count;
 	dnslib_nsec3_params_t nsec3_params;
 };
@@ -144,12 +142,11 @@ int dnslib_zone_find_dname(const dnslib_zone_t *zone,
 const dnslib_node_t *dnslib_zone_find_previous(const dnslib_zone_t *zone,
                                                const dnslib_dname_t *name);
 
-#ifdef USE_HASH_TABLE
 int dnslib_zone_find_dname_hash(const dnslib_zone_t *zone,
                                 const dnslib_dname_t *name,
                                 const dnslib_node_t **node,
                                 const dnslib_node_t **closest_encloser);
-#endif
+
 /*!
  * \brief Tries to find a node with the specified name among the NSEC3 nodes
  *        of the zone.

@@ -9,8 +9,8 @@
  * @{
  */
 
-#include "descriptor.h"
-#include "zone.h"
+#include "dnslib/descriptor.h"
+#include "dnslib/zone.h"
 
 /*!
  * \brief Dumps given zone to text (BIND-like) file.
