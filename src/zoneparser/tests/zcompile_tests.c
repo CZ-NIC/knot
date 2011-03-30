@@ -6,8 +6,6 @@
 #include "dnslib/descriptor.h"
 #include "zoneparser/zoneparser.h"
 
-#define TEST_WITH_LDNS
-
 #ifdef TEST_WITH_LDNS
 #include "ldns/ldns.h"
 #endif
