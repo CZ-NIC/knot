@@ -77,13 +77,6 @@ static const struct test_domain
 	{ "ex.com.\5", "\3ex\3com\0\5", 10, "", 0 }
 };
 
-
-/*!
- * \brief Tests dnslib_dname_new().
- *
- * \retval > 0 on success.
- * \retval 0 otherwise.
- */
 static int test_dname_create()
 {
 	dnslib_dname_t *dname = dnslib_dname_new();
@@ -103,12 +96,6 @@ static int test_dname_create()
 	return 1;
 }
 
-/*!
- * \brief Tests dnslib_dname_free().
- *
- * \retval > 0 on success.
- * \retval 0 otherwise.
- */
 static int test_dname_delete()
 {
 	// how to test this??
@@ -167,12 +154,6 @@ static int check_domain_name(const dnslib_dname_t *dname,
 	return errors;
 }
 
-/*!
- * \brief Tests dnslib_dname_new_from_str().
- *
- * \retval > 0 on success.
- * \retval 0 otherwise.
- */
 static int test_dname_create_from_str()
 {
 	int errors = 0;
@@ -209,6 +190,11 @@ static int test_dname_cat()
 {
 	int errors = 0;
 
+	/*
+	 * This uses three particular dnames from test_domains structure
+	 * where the third dname is a concatenation of the first two dnames.
+	 */
+
 	dnslib_dname_t *d1, *d2, *d3;
 
 	d1 = dnslib_dname_new_from_str(test_domains_non_fqdn[0].str,
@@ -226,6 +212,10 @@ static int test_dname_cat()
 	dnslib_dname_free(&d1);
 	dnslib_dname_free(&d2);
 	dnslib_dname_free(&d3);
+
+	/*
+	 * Same thing as above, only different case.
+	 */
 
 	d1 = dnslib_dname_new_from_str(test_domains_non_fqdn[4].str,
 	                               strlen(test_domains_non_fqdn[4].str),
@@ -248,6 +238,10 @@ static int test_dname_cat()
 static int test_dname_left_chop()
 {
 	int errors = 0;
+
+	/* Uses same principle as test_dname_cat(), only reversed */
+
+	/* TODO this would maybe deserver separate structure */
 
 	dnslib_dname_t *d1;
 
@@ -278,12 +272,6 @@ static int test_dname_left_chop()
 	return (errors == 0);
 }
 
-/*!
- * \brief Tests dnslib_dname_new_from_wire().
- *
- * \retval > 0 on success.
- * \retval 0 otherwise.
- */
 static int test_dname_create_from_wire()
 {
 	int errors = 0;
@@ -302,15 +290,15 @@ static int test_dname_create_from_wire()
 	return (errors == 0);
 }
 
-/*!
- * \brief Tests dnslib_dname_to_str().
- *
- * \retval > 0 on success.
- * \retval 0 otherwise.
- */
 static int test_dname_to_str()
 {
 	int errors = 0;
+
+	/*
+	 * Converts dname wireformat to string represenation, which is compared
+	 * with entries in test_domains structure.
+	 */
+
 	dnslib_dname_t *dname = NULL;
 
 	for (int i = 0; i < TEST_DOMAINS_OK && errors == 0; ++i) {
@@ -336,6 +324,11 @@ static int test_faulty_data()
 {
 	dnslib_dname_t *dname = NULL;
 
+	/*
+	 * This takes dnames from test_domains_bad array, which contains
+	 * malformed dnames. TODO add something like: 2www3foo - it's gonna fail
+	 */
+
 	for (int i = 0; i < TEST_DOMAINS_BAD; i++) {
 
 		if (test_domains_bad[i].str != NULL) {
@@ -356,12 +349,15 @@ static int test_faulty_data()
 
 		dnslib_dname_free(&dname);
 	}
+
 	return 1; //did it get here? success
 }
 
 static int test_dname_compare()
 {
 	dnslib_dname_t *dnames[TEST_DOMAINS_OK];
+
+	/* This uses particular dnames from TEST_DOMAINS_OK array */
 
 	for (int i = 0; i < TEST_DOMAINS_OK; ++i) {
 		dnames[i] = dnslib_dname_new_from_wire(
@@ -437,6 +433,8 @@ static int test_dname_is_fqdn()
 
 	dnslib_dname_t *dname;
 
+	/* All dnames in TEST_DOMAINS_OK are fqdn */
+
 	for (int i = 0; i < TEST_DOMAINS_OK && !errors; ++i) {
 		dname = dnslib_dname_new_from_wire(
 		                (uint8_t *)test_domains_ok[i].wire,
@@ -444,6 +442,8 @@ static int test_dname_is_fqdn()
 		errors += !dnslib_dname_is_fqdn(dname);
 		dnslib_dname_free(&dname);
 	}
+
+	/* None of the following dnames should be fqdn */
 
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN && !errors; ++i) {
 		dname = dnslib_dname_new_from_str(test_domains_non_fqdn[i].str,
