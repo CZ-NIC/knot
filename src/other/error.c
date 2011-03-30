@@ -1,5 +1,6 @@
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "other/error.h"
 
@@ -32,14 +33,22 @@ const error_table_t *error_lookup_by_id(const error_table_t *table, int id)
 
 /*! \brief Table linking error messages to error codes. */
 static const error_table_t knot_error_msgs[] = {
-	{KNOT_EOK, "OK"},
+        {KNOT_EOK, "OK"},
         {KNOT_ERROR, "Generic error."},
         {KNOT_ENOMEM, "Not enough memory."},
-        {KNOT_EINVAL, "Invalid parameter passsed."},
+        {KNOT_EINVAL, "Invalid parameter passed."},
         {KNOT_ENOTSUP, "Parameter not supported."},
         {KNOT_EBUSY,   "Requested resource is busy."},
         {KNOT_EAGAIN,  "The system lacked the necessary resource, try again."},
-	{KNOT_ERROR, 0}
+        {KNOT_EACCES,  "Permission to perform requested operation is denied."},
+        {KNOT_ECONNREFUSED, "Connection is refused."},
+        {KNOT_EISCONN, "Already connected."},
+        {KNOT_EADDRINUSE, "Address already in use."},
+        {KNOT_EADDRINVAL, "Invalid address."},
+        {KNOT_EZONEINVAL, "Invalid zone file."},
+        {KNOT_ENOTRUNNING, "Resource is not running."},
+        {KNOT_ENOIPV6, "IPv6 support disabled."},
+        {KNOT_ERROR, 0}
 };
 
 const char *knot_strerror(int errno)
@@ -53,18 +62,19 @@ const char *knot_strerror(int errno)
 	}
 }
 
-int _knot_map_errno(int err, ...)
+int _knot_map_errno(int arg0, ...)
 {
 	/* Iterate all variable-length arguments. */
 	va_list ap;
-	va_start(ap, err);
+	va_start(ap, arg0);
 
 	/* KNOT_ERROR serves as a sentinel. */
-	for (int c = va_arg(ap, int); c != KNOT_ERROR; c = va_arg(ap, int)) {
+	for (int c = arg0; c != KNOT_ERROR; c = va_arg(ap, int)) {
 
 		/* Error code matches with mapped. */
-		if (c == err) {
-			return c;
+		if (c == errno) {
+			/* Return negative value of the code. */
+			return -abs(c);
 		}
 	}
 	va_end(ap);
