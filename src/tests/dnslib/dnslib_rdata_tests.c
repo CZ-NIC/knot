@@ -32,6 +32,7 @@
 #include "dnslib/rdata.h"
 #include "dnslib/descriptor.h"
 #include "dnslib/utils.h"
+#include "dnslib/error.h"
 
 static const struct test_domain test_domains_ok[];
 
@@ -528,20 +529,21 @@ static int test_rdata_set_items()
 	int errors = 0;
 
 	// check error return values
-	if (dnslib_rdata_set_items(rdata, NULL, 0) != 1) {
-		diag("Return value of dnslib_rdata_set_items()"
+	if (dnslib_rdata_set_items(rdata, NULL, 0) != DNSLIB_EBADARG) {
+		diag("Return value of dnslib_rdata_set_items() "
 		     "when rdata == NULL is wrong");
 		return 0;
 	} else {
 		rdata = dnslib_rdata_new();
 		assert(rdata != NULL);
 
-		if (dnslib_rdata_set_items(rdata, NULL, 0) != 1) {
+		if (dnslib_rdata_set_items(rdata, NULL, 0) != DNSLIB_EBADARG) {
 			diag("Return value of dnslib_rdata_set_items()"
 			     " when items == NULL is wrong");
 			dnslib_rdata_free(&rdata);
 			return 0;
-		} else if (dnslib_rdata_set_items(rdata, item, 0) != 1) {
+		} else if (dnslib_rdata_set_items(rdata, item, 0) !=
+			   DNSLIB_EBADARG) {
 			diag("Return value of dnslib_rdata_set_items()"
 			     " when count == 0"
 			     "is wrong");
