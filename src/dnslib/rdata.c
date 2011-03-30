@@ -14,7 +14,20 @@
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Compares two RDATA items as binary data.
+ *
+ * \param d1 First item.
+ * \param d2 Second item.
+ * \param count1 Size of the first item in bytes. If set to < 0, the size will
+ *               be taken from the first two bytes of \a d1.
+ * \param count2 Size of the second item in bytes. If set to < 0, the size will
+ *               be taken from the first two bytes of \a d2.
+ *
+ * \retval 0 if the items are identical.
+ * \retval < 0 if \a d1 goes before \a d2 in canonical order.
+ * \retval > 0 if \a d1 goes after \a d2 in canonical order.
+ */
 static int dnslib_rdata_compare_binary(const uint8_t *d1, const uint8_t *d2,
                                        int count1, int count2)
 {
@@ -53,7 +66,18 @@ static int dnslib_rdata_compare_binary(const uint8_t *d1, const uint8_t *d2,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Retrieves the domain name from MX RDATA.
+ *
+ * \note This is only convenience function. It does not (and cannot) check if
+ *       the given RDATA is of the right type, so it always returns the second
+ *       RDATA item, even if it is not a domain name.
+ *
+ * \param rdata RDATA to get the MX domain name from.
+ *
+ * \return MX domain name stored in \a rdata or NULL if \a rdata has less than 2
+ *         items.
+ */
 static const dnslib_dname_t *dnslib_rdata_mx_name(const dnslib_rdata_t *rdata)
 {
 	if (rdata->count < 2) {
@@ -63,7 +87,17 @@ static const dnslib_dname_t *dnslib_rdata_mx_name(const dnslib_rdata_t *rdata)
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Retrieves the domain name from NS RDATA.
+ *
+ * \note This is only convenience function. It does not (and cannot) check if
+ *       the given RDATA is of the right type, so it always returns the first
+ *       RDATA item, even if it is not a domain name.
+ *
+ * \param rdata RDATA to get the NS domain name from.
+ *
+ * \return NS domain name stored in \a rdata or NULL if \a rdata has no items.
+ */
 static const dnslib_dname_t *dnslib_rdata_ns_name(const dnslib_rdata_t *rdata)
 {
 	if (rdata->count < 1) {
@@ -73,7 +107,18 @@ static const dnslib_dname_t *dnslib_rdata_ns_name(const dnslib_rdata_t *rdata)
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Retrieves the domain name from SRV RDATA.
+ *
+ * \note This is only convenience function. It does not (and cannot) check if
+ *       the given RDATA is of the right type, so it always returns the fourth
+ *       RDATA item, even if it is not a domain name.
+ *
+ * \param rdata RDATA to get the SRV domain name from.
+ *
+ * \return SRV domain name stored in \a rdata or NULL if \a rdata has less than
+ *         4 items.
+ */
 static const dnslib_dname_t *dnslib_rdata_srv_name(const dnslib_rdata_t *rdata)
 {
 	if (rdata->count < 4) {
