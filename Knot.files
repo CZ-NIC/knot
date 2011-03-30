@@ -34,8 +34,6 @@ src/lib/base32hex.h
 src/lib/base32hex.c
 src/main.c
 src/other/debug.h
-src/other/error.h
-src/other/error.c
 src/other/log.c
 src/other/log.h
 src/other/print.c
@@ -131,7 +129,6 @@ src/tests/dnslib/dnslib_rdata_tests.c
 src/tests/dnslib/dnslib_rrset_tests.c
 src/tests/dnslib/dnslib_node_tests.c
 src/tests/dnslib/dnslib_response_tests.c
-src/tests/dnslib/dnslib_rrsig_set_tests.c
 src/tests/dnslib/dnslib_zone_tests.c
 src/tests/dnslib/dnslib_edns_tests.c
 src/conf/cf-lex.l
