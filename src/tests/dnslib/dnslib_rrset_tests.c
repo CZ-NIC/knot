@@ -43,6 +43,7 @@ struct test_rrset {
 	const dnslib_rrset_t *rrsigs;
 };
 
+/* this has to changed */
 static const char *signature_strings[TEST_RRSIGS] = 
 {"signature 1", "signature 2", "signature 3",
  "signature 4", "signature 5", "signature 6"};
@@ -55,8 +56,8 @@ enum {
 
 static dnslib_dname_t RR_DNAMES[RR_DNAMES_COUNT] =
 	{ {(uint8_t *)"\7example\3com", 13, NULL}, //0's at the end are added
-          {(uint8_t *)"\2ns1\7example\3com", 17, NULL},
-          {(uint8_t *)"\2ns2\7example\3com", 17, NULL} };
+	  {(uint8_t *)"\3ns1\7example\3com", 17, NULL},
+	  {(uint8_t *)"\3ns2\7example\3com", 17, NULL} };
 
 /*                         192.168.1.1 */
 static uint8_t address[4] = {0xc0, 0xa8, 0x01, 0x01};
@@ -74,102 +75,49 @@ static dnslib_rdata_t RR_RDATA[RR_RDATA_COUNT] =
 	  {&RR_ITEMS[2], 1, &RR_RDATA[3]} };
 
 static struct test_rrset test_rrsets[TEST_RRSETS] = {
-	{
-		"example.com.",
-		2,
-		DNSLIB_CLASS_IN,
-		3600,
-		NULL,
-		NULL,
-	},
-	{
-		"example2.com.",
-		2,
-		DNSLIB_CLASS_IN,
-		3600,
-		NULL,
-		NULL,
-	},
-	{
-		"example3.com.",
-		2,
-		DNSLIB_CLASS_IN,
-		3600,
-		NULL,
-		NULL,
-	},
+	{ "example.com.",  DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
+	  3600, NULL, NULL },
+	{ "example2.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
+	  3600, NULL, NULL },
+	{ "example3.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
+	  3600, NULL, NULL },
 	{ "example.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
 	  3600, &RR_RDATA[1], NULL },
 	{ "example.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
 	  3600, &RR_RDATA[2], NULL },
 	{ "example.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
-	  3600, &RR_RDATA[3], NULL },
+	  3600, &RR_RDATA[3], NULL }
 };
 
 static const struct test_rrset test_rrsigs[TEST_RRSIGS] = {
-	{
-		"example.com.",
-		46,
-		1,
-		3600,
-		NULL,
-	},
-	{
-		"example2.com.",
-		46,
-		1,
-		3600,
-		NULL,
-	},
-	{
-		"example3.com.",
-		46,
-		1,
-		3600,
-		NULL,
-	},
-	{
-		"example4.com.",
-		46,
-		1,
-		3600,
-		NULL,
-	},
-	{
-		"example5.com.",
-		46,
-		1,
-		3600,
-		NULL,
-	},
-	{
-		"example6.com.",
-		46,
-		1,
-		3600,
-		NULL,
-	}
+	{ "example.com.", 46, 1, 3600, NULL },
+	{ "example2.com.", 46, 1, 3600, NULL },
+	{ "example3.com.", 46, 1, 3600, NULL },
+	{ "example4.com.", 46, 1, 3600,	NULL },
+	{ "example5.com.", 46, 1, 3600,	NULL },
+	{ "example6.com.", 46, 1, 3600, NULL }
 };
 
-
-/* fills test_rrsets with random rdata */
+/* fills test_rrsets with random rdata when empty */
 static void create_rdata()
 {
 	dnslib_rdata_t *r;
 	for (int i = 0; i < TEST_RRSETS; i++) {
-		r = dnslib_rdata_new();
-		dnslib_rdata_item_t item;
-		item.raw_data = RDATA_ITEM_PTR;
+		if (test_rrsets[i].rdata == NULL) {
+			r = dnslib_rdata_new();
+			dnslib_rdata_item_t item;
+			item.raw_data = RDATA_ITEM_PTR;
 
-		dnslib_rdata_set_item(r, 0, item);
+			dnslib_rdata_set_item(r, 0, item);
 
-		uint8_t data[DNSLIB_MAX_RDATA_WIRE_SIZE];
-		generate_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE);
+			uint8_t data[DNSLIB_MAX_RDATA_WIRE_SIZE];
+			/* from rdata tests */
+			generate_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE);
+			fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE,
+				   test_rrsets[i].type, r);
 
-		// from dnslib_rdata_tests.c
-		fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, 
-		           test_rrsets[i].type, r);
-		test_rrsets[i].rdata = r;
+			test_rrsets[i].rdata = r;
+		}
 	}
 }
 
@@ -177,6 +125,7 @@ static int check_rrset(const dnslib_rrset_t *rrset, int i,
                        int check_rdata, int check_items,
 		       int check_rrsigs)
 {
+	/* following implementation should be self-explanatory */
 	int errors = 0;
 
 	if (rrset == NULL) {
@@ -211,6 +160,7 @@ static int check_rrset(const dnslib_rrset_t *rrset, int i,
 	}
 
 	if (check_rdata) {
+		/* TODO use rdata_compare */
 		dnslib_rdata_t *rdata = rrset->rdata;
 
 		if (rdata == NULL) {
@@ -223,7 +173,7 @@ static int check_rrset(const dnslib_rrset_t *rrset, int i,
 				rdata = rdata->next;
 			}
 			if (rdata->next == NULL) {
-				diag("The list of RDATAs is not cyclical!");
+				diag("The list of RDATAs is not cyclic!");
 				++errors;
 			} else {
 				assert(rdata == rrset->rdata);
@@ -242,10 +192,14 @@ static int check_rrset(const dnslib_rrset_t *rrset, int i,
 		}
 	}
 
-	/* will work only with nul terminated strings,
-	 * consider changing to more versatile implementation */
+	/* TODO this deserves a major improvement!!! */
 
-	 /* How about, once it's tested, using rdata_compare */
+	/*
+	 * Will work only with null terminated strings,
+	 * consider changing to more versatile implementation
+	 */
+
+	/* How about, once it's tested, using rdata_compare */
 
 	if (check_rrsigs) {
 
@@ -265,12 +219,6 @@ static int check_rrset(const dnslib_rrset_t *rrset, int i,
 	return errors;
 }
 
-/*!
- * \brief Tests dnslib_rrset_new().
- *
- * \retval > 0 on success.
- * \retval 0 otherwise.
- */
 static int test_rrset_create()
 {
 	int errors = 0;
@@ -300,20 +248,13 @@ static int test_rrset_create()
 	return (errors == 0);
 }
 
-/*!
- * \brief Tests dnslib_rrset_free().
- *
- * \retval > 0 on success.
- * \retval 0 otherwise.
- *
- * \todo How to test this?
- */
+/* Not implemented - no way how to test unfreed memory from here (yet) */
 static int test_rrset_delete()
 {
 	return 0;
 }
 
-static int test_rrset_rdata()
+static int test_rrset_add_rdata()
 {
 	/* rdata add */
 	int errors = 0;
@@ -326,6 +267,7 @@ static int test_rrset_rdata()
 			diag("Error creating owner domain name!");
 			return 0;
 		}
+
 		dnslib_rrset_t *rrset = dnslib_rrset_new(owner,
 		                                         test_rrsets[i].type,
 		                                         test_rrsets[i].rclass,
@@ -339,7 +281,12 @@ static int test_rrset_rdata()
 		dnslib_dname_free(&owner);
 	}
 
-	//test whether adding works properly = keeps order of added elements
+	/* test whether adding works properly = keeps order of added elements */
+
+	/*
+	 * Beware, this is dependent on the internal structure of rrset and
+	 * may change.
+	 */
 
 	dnslib_rrset_t *rrset = dnslib_rrset_new(NULL, 0, 0, 0);
 
@@ -347,8 +294,10 @@ static int test_rrset_rdata()
 
 	dnslib_rdata_item_t *item;
 
-	char *test_strings[10] =
+	static const char *test_strings[10] =
 	    { "-2", "9", "2", "10", "1", "5", "8", "4", "6", "7" };
+
+	/* add items */
 
 	for (int i = 0; i < 10; i++) {
 		r = dnslib_rdata_new();
@@ -361,6 +310,8 @@ static int test_rrset_rdata()
 	}
 
 	dnslib_rdata_t *tmp = rrset->rdata;
+
+	/* check if order has been kept */
 
 	int i = 0;
 	while (tmp->next != rrset->rdata && !errors) {
@@ -401,6 +352,8 @@ static int test_rrset_rrsigs()
 	dnslib_dname_t *owner;
 
 	dnslib_rrset_t *rrset;
+
+	/* Gets rrsigs and checks, if signatures are the same */
 
 	for (int i = 0; i < TEST_RRSETS; i++) {
 		owner = dnslib_dname_new_from_str(test_rrsets[i].owner,
@@ -742,7 +695,7 @@ static int dnslib_rrset_tests_run(int argc, char *argv[])
 	ok(res = test_rrset_getters(6), "rrset: rrsigs");
 	res_final *= res;
 
-	ok(res = test_rrset_rdata(), "rrset: rdata manipulation");
+	ok(res = test_rrset_add_rdata(), "rrset: add_rdata");
 	res_final *= res;
 
 	ok(res = test_rrset_rrsigs(), "rrset: rrsigs manipulation");
@@ -755,25 +708,6 @@ static int dnslib_rrset_tests_run(int argc, char *argv[])
 	res_final *= res;
 
 	endskip;	/* !res_create */
-
-
-/*	dnslib_rrtype_descriptor_t *desc;
-
-	for (int i = 0; i < TEST_RRSETS; i++) {
-		desc =  dnslib_rrtype_descriptor_by_type(test_rrsets[i].type);
-		for (int x = 0; x < test_rrsets[i].rdata->count; x++) {
-			if (
-			desc->wireformat[x] == 
-			DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
-			desc->wireformat[x] == 
-			DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
-			desc->wireformat[x] == DNSLIB_RDATA_WF_LITERAL_DNAME) {
-				dnslib_dname_free(
-				&(test_rrsets[i].rdata->items[x].dname));
-			}
-		}
-		dnslib_rdata_free(&test_rrsets[i].rdata);
-	} */
 
 	return res_final;
 }
