@@ -11,6 +11,7 @@
 
 #ifndef _KNOT_ERROR_H_
 #define _KNOT_ERROR_H_
+#include <errno.h>
 
 /*!
  * \brief Error codes used in the server.
