@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include <assert.h>
 
-#include "utils.h"
+#include "dnslib/utils.h"
 
 /*! \brief Offset of DNS header fields in wireformat. */
 enum dnslib_packet_offsets {

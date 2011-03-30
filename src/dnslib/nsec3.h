@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "rrset.h"
+#include "dnslib/rrset.h"
 
 #define DNSLIB_NSEC3_SHA_USE_EVP 0
 

@@ -1,8 +1,12 @@
 #include <config.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include "common.h"
+
 #include "zoneparser/zoneparser.h"
+#include "config.h"
+
+#define PROJECT_NAME PACKAGE // Project name
+#define PROJECT_VER  0x000100  // 0xMMIIRR (MAJOR,MINOR,REVISION)
 
 static void help(int argc, char **argv)
 {
@@ -61,8 +65,8 @@ int main(int argc, char **argv)
 	zonefile = argv[optind + 1];
 
 	// Initialize log (no output)
-	log_init(0);
-	log_levels_set(LOGT_STDOUT, LOG_ANY, LOG_MASK(LOG_DEBUG));
+	//log_init(0);
+	//log_levels_set(LOGT_STDOUT, LOG_ANY, LOG_MASK(LOG_DEBUG));
 
 	printf("Parsing file '%s', origin '%s' ...\n",
 	       zonefile, origin);
@@ -70,14 +74,14 @@ int main(int argc, char **argv)
 	parser = zparser_create();
 	if (!parser) {
 		fprintf(stderr, "Failed to create parser.\n");
-		log_close();
+		//log_close();
 		return 1;
 	}
 
 	int errors = zone_read(origin, zonefile, outfile);
 
 	printf("Finished.\n");
-	log_close();
+	//log_close();
 
 	return errors ? 1 : 0;
 }
