@@ -6,6 +6,8 @@
 #include "dnslib/descriptor.h"
 #include "zoneparser/zoneparser.h"
 
+#define TEST_WITH_LDNS
+
 #ifdef TEST_WITH_LDNS
 #include "ldns/ldns.h"
 #endif
@@ -356,9 +358,9 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 		return 0;
 	}
 
-        dnslib_zone_deep_free(&dnsl_zone);
+//        dnslib_zone_deep_free(&dnsl_zone);
 
-	ldns_zone_free(ldns_zone);
+//	ldns_zone_free(ldns_zone);
 
 	fclose(f);
 
