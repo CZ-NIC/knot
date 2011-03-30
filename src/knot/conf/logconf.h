@@ -18,8 +18,8 @@ struct conf_t;
  *
  * \see syslog.h
  *
- * \retval  0 On success.
- * \retval <0 If an error occured.
+ * \retval  0 On success (EOK).
+ * \retval <0 If an error occured (EINVAL, ENOMEM).
  */
 int log_conf_hook(const struct conf_t *conf, void *data);
 

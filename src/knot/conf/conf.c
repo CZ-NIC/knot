@@ -10,6 +10,7 @@
 #include <urcu.h>
 #include "knot/conf/conf.h"
 #include "knot/common.h"
+#include "knot/other/error.h"
 
 /*
  * Defaults.
@@ -424,7 +425,7 @@ int conf_add_hook(conf_t * conf, int sections,
 	add_tail(&conf->hooks, &hook->n);
 	++conf->hooks_count;
 
-	return 0;
+	return KNOT_EOK;
 }
 
 int conf_parse(conf_t *conf)
@@ -438,7 +439,11 @@ int conf_parse(conf_t *conf)
 	/* Update hooks. */
 	conf_update_hooks(conf);
 
-	return ret;
+	if (ret < 0) {
+		return KNOT_EPARSEFAIL;
+	}
+
+	return KNOT_EOK;
 }
 
 int conf_parse_str(conf_t *conf, const char* src)
@@ -452,7 +457,11 @@ int conf_parse_str(conf_t *conf, const char* src)
 	/* Update hooks */
 	conf_update_hooks(conf);
 
-	return ret;
+	if (ret < 0) {
+		return KNOT_EPARSEFAIL;
+	}
+
+	return KNOT_EOK;
 }
 
 void conf_truncate(conf_t *conf, int unload_hooks)
@@ -567,15 +576,13 @@ int conf_open(const char* path)
 {
 	/* Check path. */
 	if (!path) {
-		errno = ENOENT; /* No such file or directory (POSIX.1) */
-		return -2;
+		return KNOT_EINVAL;
 	}
 
 	/* Check if exists. */
 	struct stat st;
 	if (stat(path, &st) != 0) {
-		errno = ENOENT; /* No such file or directory (POSIX.1) */
-		return -2;
+		return KNOT_ENOENT;
 	}
 
 	/* Create new config. */
@@ -615,7 +622,7 @@ int conf_open(const char* path)
 	/* Update hooks. */
 	conf_update_hooks(nconf);
 
-	return 0;
+	return KNOT_EOK;
 }
 
 char* strcpath(char *path)
