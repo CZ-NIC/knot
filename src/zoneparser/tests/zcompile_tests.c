@@ -211,8 +211,9 @@ int compare_zones(dnslib_zone_t *zone, ldns_rr_list *ldns_list, char verbose)
 	while (ldns_rrset != NULL) {
 		rr = ldns_rr_list_rr(ldns_rrset, 0);
 		tmp_dname =
-dnslib_dname_new_from_wire(ldns_rdf_data(ldns_rr_owner(rr)),
-			   ldns_rdf_size(ldns_rr_owner(rr)), NULL);
+		dnslib_dname_new_from_wire(ldns_rdf_data(ldns_rr_owner(rr)),
+					   ldns_rdf_size(ldns_rr_owner(rr)),
+					   NULL);
 
 		node = dnslib_zone_get_node(zone, tmp_dname);
 
@@ -315,6 +316,7 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 #endif
 
 #ifdef TEST_WITH_LDNS
+	/* Calls zcompile. */
 	parser = zparser_create();
 	int ret = zone_read(origin, filename, outfile);
 	if (ret != 0) {
@@ -327,6 +329,8 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 		diag("Problem creating zone loader structure.\n");
 		return 0;
 	}
+
+	/* Loads created dump */
 	dnslib_zone_t *dnsl_zone = dnslib_zload_load(zloader);
 
 	assert(remove(outfile) == 0);
@@ -347,6 +351,8 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 	}
 
 //	ldns_zone_sort(ldns_zone);
+
+	/* LDNS stores SOA record independently - create a list with all rec. */
 
 	ldns_rr_list *ldns_list = ldns_zone_rrs(ldns_zone);
 
