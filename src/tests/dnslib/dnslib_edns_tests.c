@@ -57,28 +57,16 @@ test_edns_t test_edns_data[TEST_EDNS] = {
 { NULL, 4096, 2, 0, 0, 0, 10, 11}
 };
 
-//static edns_t test_edns[TEST_EDNS] = {
-//{ &root_domain,
-//  DNSLIB_RRTYPE_OPT,
-//  4096,
-//  0,
-//  0 }
-//};
-
-//uint8_t wire[7] =
-//{ 0x00, /* root */
-//  0x00, 0x29, /* type OPT */
-//  0x10, 0x00, /* UDP payload size */
-//  0x00, /* higher bits in extended rcode */
-//  0x00 }; /* ENDS version */
-
 enum edns_mask {
 	DNSLIB_EDNS_DO_MASK = (uint16_t)0x8000
 };
 
+/* Creates actual dnslib_opt_rr_t variable from test_edns_t variable */
 static dnslib_opt_rr_t *opt_rr_from_test_edns(test_edns_t *test_edns)
 {
 	dnslib_opt_rr_t *ret = dnslib_edns_new();
+
+	CHECK_ALLOC_LOG(ret, NULL);
 
 	ret->flags = test_edns->flags;
 	ret->ext_rcode = test_edns->ext_rcode;
@@ -97,6 +85,7 @@ static dnslib_opt_rr_t *opt_rr_from_test_edns(test_edns_t *test_edns)
 	return ret;
 }
 
+/* simple wire compare - 0 if same, 1 otherwise */
 static int edns_compare_wires(uint8_t *wire1,
 			      uint8_t *wire2,
 			      uint16_t length)
@@ -109,45 +98,6 @@ static int edns_compare_wires(uint8_t *wire1,
 
 	return 0;
 }
-
-/*
-  return 0 if same, 1 otherwise (not real compare!)
- */
-/*static int compare_edns(const dnslib_opt_rr_t *edns1,
-			const dnslib_opt_rr_t *edns2)
-{
-	if (edns1->ext_rcode != edns2->ext_rcode) {
-		return 1;
-	}
-
-	if (edns1->payload != edns2->payload) {
-		return 1;
-	}
-
-	if (edns1->options_max != edns2->options_max) {
-		return 1;
-	}
-
-	if (edns1->flags != edns2->flags) {
-		return 1;
-	}
-
-	if (edns1->size != edns2->size) {
-		return 1;
-	}
-
-	if (edns1->version != edns2->version) {
-		return 1;
-	}
-
-	if (edns1->version != edns2->version) {
-		return 1;
-	}
-
-	for (int i = 0)
-
-	return 0;
-}*/
 
 static int check_edns(const dnslib_opt_rr_t *edns,
 		      const test_edns_t *test_edns)
@@ -284,18 +234,6 @@ static int test_edns_set_ext_rcode(dnslib_opt_rr_t *edns,
 		return 1;
 	}
 }
-
-/*static int test_edns_set_flags(dnslib_opt_rr_t *edns,
-			       test_edns_t *test_edns)
-{
-	dnslib_edns_set_flags(edns, test_edns->flags);
-
-	if (edns->flags != test_edns->flags) {
-		return 0;
-	} else {
-		return 1;
-	}
-}*/
 
 static int test_edns_set_version(dnslib_opt_rr_t *edns,
 				 test_edns_t *test_edns)
@@ -440,8 +378,12 @@ static int test_edns_setters(uint type)
 
 static int test_edns_wire()
 {
+	/*
+	 * Tests to_wire and from_wire in one test.
+	 */
 	int errors = 0;
 	for (int i = 0; i < TEST_EDNS; i++) {
+		/* Creates instance from test_edns_t. */
 		dnslib_opt_rr_t *edns =
 			opt_rr_from_test_edns(&(test_edns_data[i]));
 		if (edns == NULL) {
@@ -453,6 +395,7 @@ static int test_edns_wire()
 		wire = malloc(sizeof(uint8_t) * edns->size);
 		CHECK_ALLOC_LOG(wire, 0);
 
+		/* Converts EDNS to wire. */
 		short wire_size = dnslib_edns_to_wire(edns, wire, 100);
 
 		if (wire_size == -1) {
@@ -465,6 +408,8 @@ static int test_edns_wire()
 			return 0;
 		}
 
+		/* TODO use some constant */
+		/* Creates new EDNS from wire */
 		if (dnslib_edns_new_from_wire(edns_from_wire,
 					      wire,
 					      100) <= 0) {
@@ -472,6 +417,7 @@ static int test_edns_wire()
 			return 0;
 		}
 
+		/* Checks whether EDNS created from wire is the same */
 		if (check_edns(edns_from_wire,
 			      &(test_edns_data[i])) != 0) {
 			diag("EDNS created from wire is different from the "
@@ -487,9 +433,9 @@ static int test_edns_wire()
 
 static int test_edns_add_option()
 {
-	/* Create empty EDNS and add options one by one, testing their
-	   presence
-	*/
+	/*
+	 * Create empty EDNS and add options one by one, testing their presence.
+	 */
 	for (int i = 0; i < TEST_EDNS; i++) {
 		dnslib_opt_rr_t *edns = dnslib_edns_new();
 		assert(edns->option_count == 0);
@@ -536,9 +482,9 @@ static int test_edns_add_option()
 
 static int test_edns_has_option()
 {
-	/* Create empty EDNS and add options one by one, testing their
-	   presence
-	*/
+	/*
+	 * Create empty EDNS and add options one by one, testing their presence
+	 */
 	for (int i = 0; i < TEST_EDNS; i++) {
 		dnslib_opt_rr_t *edns = dnslib_edns_new();
 		assert(edns->option_count == 0);
@@ -568,96 +514,6 @@ static int test_edns_has_option()
 	}
 	return 1;
 }
-
-//static int test_edns_get_payload()
-//{
-//	int errors = 0;
-
-//	for (int i = 0; i < TEST_EDNS; i++) {
-//		if (dnslib_edns_get_payload(edns_wire[i]) != test_edns[i].payload) {
-//			diag("Got wrong payload from wire");
-//			errors++;
-//		}
-//	}
-//	return (errors == 0);
-//}
-
-//static int test_edns_get_ext_rcode()
-//{
-//	int errors = 0;
-
-//	for (int i = 0; i < TEST_EDNS; i++) {
-//		if (dnslib_edns_get_ext_rcode(edns_wire[i]) != test_edns[i].ext_rcode) {
-//			diag("Got wrong extended rcode from wire");
-//			errors++;
-//		}
-//	}
-//	return (errors == 0);
-//}
-
-//static int test_edns_get_version()
-//{
-//	int errors = 0;
-
-//	for (int i = 0; i < TEST_EDNS; i++) {
-//		if (dnslib_edns_get_version(edns_wire[i]) != test_edns[i].version) {
-//			diag("Got wrong version from wire");
-//			errors++;
-//		}
-//	}
-//	return (errors == 0);
-//}
-
-//static int test_edns_set_payload()
-//{
-//	int errors = 0;
-
-//	uint16_t payload = 1024;
-
-//	for (int i = 0; i < TEST_EDNS; i++) {
-//		dnslib_edns_set_payload(edns_wire[i], payload);
-
-//		if (dnslib_edns_get_payload(edns_wire[i]) != payload) {
-//			diag("Set wrong payload");
-//			errors++;
-//		}
-//	}
-//	return (errors == 0);
-//}
-
-//static int test_edns_set_ext_rcode()
-//{
-//	int errors = 0;
-
-//	uint8_t rcode = 0x12;
-
-//	for (int i = 0; i < TEST_EDNS; i++) {
-//		dnslib_edns_set_ext_rcode(edns_wire[i], rcode);
-
-//		if (dnslib_edns_get_ext_rcode(edns_wire[i]) != rcode) {
-//			diag("Set wrong rcode");
-//			errors++;
-//		}
-//	}
-//	return (errors == 0);
-//}
-
-//static int test_edns_set_version()
-//{
-//	int errors = 0;
-
-//	uint8_t version = 1;
-
-//	for (int i = 0; i < TEST_EDNS; i++) {
-//		dnslib_edns_set_version(edns_wire[i], version);
-
-//		if (dnslib_edns_get_version(edns_wire[i]) != version) {
-//			diag("Set wrong version");
-//			errors++;
-//		}
-//	}
-//	return (errors == 0);
-//}
 
 static const int DNSLIB_EDNS_TESTS_COUNT = 12;
 
