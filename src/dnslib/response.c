@@ -1135,52 +1135,71 @@ static int dnslib_response_realloc_rrsets(const dnslib_rrset_t ***rrsets,
 
 /*----------------------------------------------------------------------------*/
 /*!
- *
+ * \brief 
  */
-static short dnslib_response_rrset_size(const dnslib_rrset_t *rrset,
-                                        const dnslib_compressed_dnames_t *compr)
-{
-	// TODO: count in possible compression
-	short size = 0;
+//static short dnslib_response_rrset_size(const dnslib_rrset_t *rrset,
+//                                        const dnslib_compressed_dnames_t *compr)
+//{
+//	// TODO: count in possible compression
+//	short size = 0;
 
-	dnslib_rrtype_descriptor_t *desc =
-			dnslib_rrtype_descriptor_by_type(rrset->type);
+//	dnslib_rrtype_descriptor_t *desc =
+//			dnslib_rrtype_descriptor_by_type(rrset->type);
 
-	const dnslib_rdata_t *rdata = dnslib_rrset_rdata(rrset);
-	while (rdata != NULL) {
-		size += 10;  // 2 type, 2 class, 4 ttl, 2 rdlength
-		size += rrset->owner->size;   // owner
+//	const dnslib_rdata_t *rdata = dnslib_rrset_rdata(rrset);
+//	while (rdata != NULL) {
+//		size += 10;  // 2 type, 2 class, 4 ttl, 2 rdlength
+//		size += rrset->owner->size;   // owner
 
-		for (int i = 0; i < rdata->count; ++i) {
-			switch (desc->wireformat[i]) {
-			case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
-			case DNSLIB_RDATA_WF_LITERAL_DNAME:
-			case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
-				debug_dnslib_response("dname size: %d\n",
-					rdata->items[i].dname->size);
-				size += rdata->items[i].dname->size;
-				break;
-			case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
-				debug_dnslib_response("raw data size: %d\n",
-					rdata->items[i].raw_data[0] + 1);
-				size += rdata->items[i].raw_data[0] + 1;
-				break;
-			default:
-				debug_dnslib_response("raw data size: %d\n",
-					rdata->items[i].raw_data[0]);
-				size += rdata->items[i].raw_data[0];
-				break;
-			}
-		}
+//		for (int i = 0; i < rdata->count; ++i) {
+//			switch (desc->wireformat[i]) {
+//			case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
+//			case DNSLIB_RDATA_WF_LITERAL_DNAME:
+//			case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
+//				debug_dnslib_response("dname size: %d\n",
+//					rdata->items[i].dname->size);
+//				size += rdata->items[i].dname->size;
+//				break;
+//			case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+//				debug_dnslib_response("raw data size: %d\n",
+//					rdata->items[i].raw_data[0] + 1);
+//				size += rdata->items[i].raw_data[0] + 1;
+//				break;
+//			default:
+//				debug_dnslib_response("raw data size: %d\n",
+//					rdata->items[i].raw_data[0]);
+//				size += rdata->items[i].raw_data[0];
+//				break;
+//			}
+//		}
 
-		rdata = dnslib_rrset_rdata_next(rrset, rdata);
-	}
+//		rdata = dnslib_rrset_rdata_next(rrset, rdata);
+//	}
 
-	return size;
-}
+//	return size;
+//}
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Tries to add RRSet to the response.
+ *
+ * This function tries to convert the RRSet to wire format and add it to the
+ * wire format of the response and if successful, adds the RRSet to the given 
+ * list (and updates its size). If the RRSet did not fit into the available
+ * space (\a max_size), it is omitted as a whole and the TC bit may be set 
+ * (according to \a tc).
+ *
+ * \param rrsets Lists of RRSets to which this RRSet should be added.
+ * \param rrset_count Number of RRSets in the list.
+ * \param resp Response structure where the RRSet should be added.
+ * \param max_size Maximum available space in wire format of the response.
+ * \param rrset RRSet to add.
+ * \param tc Set to <> 0 if omitting the RRSet should cause the TC bit to be 
+ *           set in the response.
+ *
+ * \return Count of RRs added to the response or DNSLIB_ESPACE if the RRSet did
+ *         not fit in the available space.
+ */
 static int dnslib_response_try_add_rrset(const dnslib_rrset_t **rrsets,
                                         short *rrset_count,
                                         dnslib_response_t *resp, short max_size,
@@ -1215,7 +1234,21 @@ DEBUG_DNSLIB_RESPONSE(
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Checks if the response already contains the given RRSet.
+ *
+ * It searches for the RRSet in the three lists of RRSets corresponding to
+ * Answer, Authority and Additional sections of the response.
+ * 
+ * \note Only pointers are compared, i.e. two instances of dnslib_rrset_t with 
+ * the same data will be considered different.
+ *
+ * \param resp Response to look for the RRSet in.
+ * \param rrset RRSet to look for.
+ *
+ * \retval 0 if \a resp does not contain \a rrset.
+ * \retval <> 0 if \a resp does contain \a rrset.
+ */
 static int dnslib_response_contains(const dnslib_response_t *resp,
                                     const dnslib_rrset_t *rrset)
 {
@@ -1241,7 +1274,12 @@ static int dnslib_response_contains(const dnslib_response_t *resp,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Converts the stored response OPT RR to wire format and adds it to
+ *        the response wire format.
+ *
+ * \param resp Response structure.
+ */
 static void dnslib_response_edns_to_wire(dnslib_response_t *resp)
 {
 	resp->size += dnslib_edns_to_wire(&resp->edns_response,
