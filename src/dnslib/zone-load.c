@@ -14,6 +14,16 @@
 #include "dnslib/dnslib.h"
 #include "dnslib/debug.h"
 
+/*!
+ * \brief Compares two timespec structures.
+ *
+ * \param x First timespec structure to be compared.
+ * \param y Second timespec structure to be compared.
+ *
+ * \retval 0 when times are the some.
+ * \retval 1 when y < x.
+ * \retval -1 when x > y.
+ */
 static int timespec_cmp(struct timespec *x, struct timespec *y)
 {
 	/* Calculate difference in the scale of seconds. */
@@ -38,6 +48,17 @@ static int timespec_cmp(struct timespec *x, struct timespec *y)
 	return -1;
 }
 
+/*!
+ * \brief Safe wrapper around fread.
+ *
+ * \param dst Destination pointer.
+ * \param size Size of element to be read.
+ * \param n Number of elements to be read.
+ * \param fp File to read from.
+ *
+ * \retval > 0 if succesfull.
+ * \retval 0 if failed.
+ */
 static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
 {
 	int rc = fread(dst, size, n, fp);
@@ -49,7 +70,7 @@ static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
 	return rc == n;
 }
 
-/* \note Contents of dump file:
+/*! \note Contents of dump file:
  * MAGIC(knotxx) NUMBER_OF_NORMAL_NODES NUMBER_OF_NSEC3_NODES
  * [normal_nodes] [nsec3_nodes]
  * node has following format:
@@ -68,17 +89,33 @@ enum { DNAME_MAX_WIRE_LENGTH = 256 };
 //TODO move to parameters
 static dnslib_dname_t **id_array;
 
+/*!
+ * \brief Helper function. Frees rdata items and temporary array of items.
+ *
+ * \param rdata Rdata to be freed.
+ * \param items Items to be freed.
+ * \param count Current count of rdata items.
+ * \param type RRSet type.
+ */
 static void load_rdata_purge(dnslib_rdata_t *rdata,
-                               dnslib_rdata_item_t *items,
-                               int count,
-                               uint16_t type)
+                             dnslib_rdata_item_t *items,
+                             int count,
+                             uint16_t type)
 {
 	dnslib_rdata_set_items(rdata, items, count);
 	dnslib_rdata_deep_free(&rdata, type, 0);
 	free(items);
 }
 
-dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
+/*!
+ * \brief Load rdata in binary format from file.
+ *
+ * \param type Type of RRSet containing read rdata.
+ * \param f File to read binary data from.
+ *
+ * \return Pointer to read and created rdata on success, NULL otherwise.
+ */
+static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 {
 	dnslib_rdata_t *rdata;
 
@@ -226,7 +263,14 @@ dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
 	return rdata;
 }
 
-dnslib_rrset_t *dnslib_load_rrsig(FILE *f)
+/*!
+ * \brief Loads RRSIG from binary file.
+ *
+ * \param f File to read from.
+ *
+ * \return pointer to created and read RRSIG on success, NULL otherwise.
+ */
+static dnslib_rrset_t *dnslib_load_rrsig(FILE *f)
 {
 	dnslib_rrset_t *rrsig;
 
@@ -278,7 +322,14 @@ dnslib_rrset_t *dnslib_load_rrsig(FILE *f)
 	return rrsig;
 }
 
-dnslib_rrset_t *dnslib_load_rrset(FILE *f)
+/*!
+ * \brief Loads RRSet from binary file.
+ *
+ * \param f File to read from.
+ *
+ * \return pointer to created and read RRSet on success, NULL otherwise.
+ */
+static dnslib_rrset_t *dnslib_load_rrset(FILE *f)
 {
 	dnslib_rrset_t *rrset;
 
@@ -332,7 +383,14 @@ dnslib_rrset_t *dnslib_load_rrset(FILE *f)
 	return rrset;
 }
 
-dnslib_node_t *dnslib_load_node(FILE *f)
+/*!
+ * \brief Loads node from binary file.
+ *
+ * \param f File to read from.
+ *
+ * \return Pointer to created and read node on success, NULL otherwise.
+ */
+static dnslib_node_t *dnslib_load_node(FILE *f)
 {
 	uint8_t dname_size = 0;
 	uint8_t flags = 0;
@@ -470,7 +528,14 @@ dnslib_node_t *dnslib_load_node(FILE *f)
 	return node;
 }
 
-void find_and_set_wildcard_child(dnslib_zone_t *zone,
+/*!
+ * \brief Finds and sets wildcard child for given node's owner.
+ *
+ * \param zone Current zone.
+ * \param node Node to be used.
+ * \param nsec3 Is NSEC3 node.
+ */
+static void find_and_set_wildcard_child(dnslib_zone_t *zone,
                                  dnslib_node_t *node, int nsec3)
 {
 	dnslib_dname_t *chopped = dnslib_dname_left_chop(node->owner);
@@ -491,7 +556,18 @@ void find_and_set_wildcard_child(dnslib_zone_t *zone,
 	wildcard_parent->wildcard_child = node;
 }
 
-int dnslib_check_magic(FILE *f, const uint8_t* MAGIC, uint MAGIC_LENGTH)
+/*!
+ * \brief Checks if magic string at the beginning of the file is the same
+ *        as defined.
+ *
+ * \param f File to read magic string from.
+ * \param MAGIC Magic string.
+ * \param MAGIC_LENGTH Length of magic string.
+ *
+ * \retval 1 if magic is the same.
+ * \retval 0 otherwise.
+ */
+static int dnslib_check_magic(FILE *f, const uint8_t* MAGIC, uint MAGIC_LENGTH)
 {
 	uint8_t tmp_magic[MAGIC_LENGTH];
 
@@ -518,7 +594,8 @@ zloader_t *dnslib_zload_open(const char *filename)
 	/* Open file for binary read. */
 	FILE *f = fopen(filename, "rb");
 	if (unlikely(!f)) {
-		debug_dnslib_zload("dnslib_zload_open: failed to open '%s'\n", filename);
+                debug_dnslib_zload("dnslib_zload_open: failed to open '%s'\n",
+                                   filename);
 		errno = ENOENT; // No such file or directory (POSIX.1)
 		return 0;
 	}
@@ -527,7 +604,8 @@ zloader_t *dnslib_zload_open(const char *filename)
 	static const uint8_t MAGIC[MAGIC_LENGTH] = MAGIC_BYTES;
 	if (!dnslib_check_magic(f, MAGIC, MAGIC_LENGTH)) {
 		fclose(f);
-		debug_dnslib_zload("dnslib_zload_open: magic bytes in don't match '%*s' "
+                debug_dnslib_zload("dnslib_zload_open: magic bytes "
+                                   "in don't match '%*s' "
 		         "(%s)\n",
 		         (int)MAGIC_LENGTH, (const char*)MAGIC, filename);
 		errno = EILSEQ; // Illegal byte sequence (POSIX.1, C99)
@@ -537,7 +615,8 @@ zloader_t *dnslib_zload_open(const char *filename)
 	/* Read source file length. */
 	uint32_t sflen = 0;
 	if (fread(&sflen, 1, sizeof(uint32_t), f) != sizeof(uint32_t)) {
-		debug_dnslib_zload("dnslib_zload_open: failed to read sfile length\n");
+                debug_dnslib_zload("dnslib_zload_open: failed to read "
+                                   "sfile length\n");
 		fclose(f);
 		errno = EIO; // I/O error.
 		return 0;
@@ -546,13 +625,15 @@ zloader_t *dnslib_zload_open(const char *filename)
 	/* Read source file. */
 	char *sfile = malloc(sflen);
 	if (!sfile) {
-		debug_dnslib_zload("dnslib_zload_open: invalid sfile length %u\n", sflen);
+                debug_dnslib_zload("dnslib_zload_open: invalid sfile "
+                                   "length %u\n", sflen);
 		fclose(f);
 		errno = ENOMEM; // Not enough space.
 		return 0;
 	}
 	if (fread(sfile, 1, sflen, f) < sflen) {
-		debug_dnslib_zload("dnslib_zload_open: failed to read %uB source file\n",
+                debug_dnslib_zload("dnslib_zload_open: failed to read %uB "
+                                   "source file\n",
 		         sflen);
 		free(sfile);
 		fclose(f);
@@ -569,7 +650,8 @@ zloader_t *dnslib_zload_open(const char *filename)
 		return 0;
 	}
 
-	debug_dnslib_zload("dnslib_zload_open: opened '%s' as fp %p (source is '%s')\n",
+        debug_dnslib_zload("dnslib_zload_open: opened '%s' as fp %p "
+                           "(source is '%s')\n",
 	         filename, f, sfile);
 	zl->filename = strdup(filename);
 	zl->source = sfile;
