@@ -9,97 +9,16 @@
 #include "dnslib/dnslib.h"
 #include "dnslib/debug.h"
 #include "common/skip-list.h"
-#include "common/base32.h"
+#include "common/base32hex.h"
 
 #define ZONECHECKS_VERBOSE
 
-int b32_ntop(uint8_t const *src, size_t srclength, char *target,
-	     size_t targsize)
-{
-	static char b32[]="0123456789abcdefghijklmnopqrstuv";
-	char buf[9];
-	ssize_t len=0;
-
-	while(srclength > 0)
-	{
-		int t;
-		memset(buf,'\0',sizeof buf);
-
-		/* xxxxx000 00000000 00000000 00000000 00000000 */
-		buf[0]=b32[src[0] >> 3];
-
-		/* 00000xxx xx000000 00000000 00000000 00000000 */
-		t=(src[0]&7) << 2;
-		if(srclength > 1)
-			t+=src[1] >> 6;
-		buf[1]=b32[t];
-		if(srclength == 1)
-			break;
-
-		/* 00000000 00xxxxx0 00000000 00000000 00000000 */
-		buf[2]=b32[(src[1] >> 1)&0x1f];
-
-		/* 00000000 0000000x xxxx0000 00000000 00000000 */
-		t=(src[1]&1) << 4;
-		if(srclength > 2)
-			t+=src[2] >> 4;
-		buf[3]=b32[t];
-		if(srclength == 2)
-			break;
-
-		/* 00000000 00000000 0000xxxx x0000000 00000000 */
-		t=(src[2]&0xf) << 1;
-		if(srclength > 3)
-			t+=src[3] >> 7;
-		buf[4]=b32[t];
-		if(srclength == 3)
-			break;
-
-		/* 00000000 00000000 00000000 0xxxxx00 00000000 */
-		buf[5]=b32[(src[3] >> 2)&0x1f];
-
-		/* 00000000 00000000 00000000 000000xx xxx00000 */
-		t=(src[3]&3) << 3;
-		if(srclength > 4)
-			t+=src[4] >> 5;
-		buf[6]=b32[t];
-		if(srclength == 4)
-			break;
-
-		/* 00000000 00000000 00000000 00000000 000xxxxx */
-		buf[7]=b32[src[4]&0x1f];
-
-		if(targsize < 8)
-			return -1;
-
-		src += 5;
-		srclength -= 5;
-
-		memcpy(target,buf,8);
-		target += 8;
-		targsize -= 8;
-		len += 8;
-	}
-	if(srclength)
-	{
-		if(targsize < strlen(buf)+1)
-			return -1;
-		dnslib_strlcpy(target, buf, targsize);
-		len += strlen(buf);
-	}
-	else if(targsize < 1)
-		return -1;
-	else
-		*target='\0';
-	return len;
-}
-
-/* \note For space and speed purposes, dname ID (to be later used in loading)
+/*! \note For space and speed purposes, dname ID (to be later used in loading)
  * is being stored in dname->node field. Not to be confused with dname's actual
  * node.
  */
 
-/* \note Contents of dump file:
+/*! \note Contents of dump file:
  * MAGIC(knotxx) NUMBER_OF_NORMAL_NODES NUMBER_OF_NSEC3_NODES
  * [normal_nodes] [nsec3_nodes]
  * node has following format:
@@ -914,10 +833,15 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 	/* 34 because of the "0" at the end */
 	size_t next_dname_decoded_size = 33;
 
-	assert(b32_ntop(((char *)(nsec3_rrset->rdata->items[4].raw_data)) + 3,
+        if (base32hex_decode(((char *)(nsec3_rrset->rdata->items[4].raw_data)) + 3,
 		   ((uint8_t *)(nsec3_rrset->rdata->items[4].raw_data))[2],
 		   next_dname_decoded +	1,
-		   next_dname_decoded_size) != 0);
+                   next_dname_decoded_size) != 0) {
+                fprintf(stderr, "Could not decode base32 string!\n");
+                return 1;
+        }
+
+        /* !!! TODO !!! */
 
 	next_dname_decoded[0] = 32;
 
