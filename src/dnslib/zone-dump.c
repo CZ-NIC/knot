@@ -1346,10 +1346,11 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 }
 
 /*!
- * \brief
+ * \brief Function called by zone traversal function. Used to call
+ *        dnslib_zone_save_enclosers.
  *
- * \param node
- * \param data
+ * \param node Node to be searched.
+ * \param data Arguments.
  */
 static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 {
@@ -1395,13 +1396,14 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 }
 
 /*!
- * \brief
+ * \brief Helper function - wraps its arguments into arg_t structure and
+ *        calls function that does the actual work.
  *
- * \param zone
- * \param list
- * \param do_checks
- * \param handler
- * \param last_node
+ * \param zone Zone to be searched / checked
+ * \param list Skip list of closests enclosers.
+ * \param do_checks Level of semantic checks.
+ * \param handler Semantic error handler.
+ * \param last_node Last checked node, which is part of NSEC(3) chain.
  */
 void zone_save_enclosers_sem_check(dnslib_zone_t *zone, skip_list_t *list,
 				   char do_checks, err_handler_t *handler,
@@ -1425,24 +1427,23 @@ void zone_save_enclosers_sem_check(dnslib_zone_t *zone, skip_list_t *list,
 static uint node_count = 0;
 
 /*!
- * \brief
+ * \brief Dumps dname labels in binary format to given file.
  *
- * \param dname
- * \param f
+ * \param dname Dname whose labels are to be dumped.
+ * \param f Output file.
  */
 static void dnslib_labels_dump_binary(dnslib_dname_t *dname, FILE *f)
 {
 	debug_dnslib_zdump("label count: %d\n", dname->label_count);
 	fwrite(&(dname->label_count), sizeof(dname->label_count), 1, f);
-//	hex_print(dname->labels, dname->label_count);
 	fwrite(dname->labels, sizeof(uint8_t), dname->label_count, f);
 }
 
 /*!
- * \brief
+ * \brief Dumps dname in binary format to given file.
  *
- * \param dname
- * \param f
+ * \param dname Dname to be dumped.
+ * \param f Output file.
  */
 static void dnslib_dname_dump_binary(dnslib_dname_t *dname, FILE *f)
 {
@@ -1453,25 +1454,24 @@ static void dnslib_dname_dump_binary(dnslib_dname_t *dname, FILE *f)
 }
 
 /*!
- * \brief
+ * \brief Finds wildcard for dname in list of closest enclosers.
  *
- * \param dname
- * \param list
- * \return dnslib_dname_t *
+ * \param dname Dname to find wildcard for.
+ * \param list Skip list of closest enclosers.
+ * \return Found wildcard or NULL.
  */
 static dnslib_dname_t *dnslib_find_wildcard(dnslib_dname_t *dname,
 					    skip_list_t *list)
 {
-	dnslib_dname_t *d = (dnslib_dname_t *)skip_find(list, (void *)dname);
-	return d;
+        return (dnslib_dname_t *)skip_find(list, (void *)dname);
 }
 
 /*!
- * \brief
+ * \brief Dumps given rdata in binary format to given file.
  *
- * \param rdata
- * \param type
- * \param data
+ * \param rdata Rdata to be dumped.
+ * \param type Type of rdata.
+ * \param data Arguments to be propagated.
  */
 static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
                                      uint32_t type, void *data)
@@ -1538,11 +1538,11 @@ DEBUG_DNSLIB_ZDUMP(
 	}
 }
 
-/*!
- * \brief
+y/*!
+ * \brief Dumps RRSIG in binary format to given file.
  *
- * \param rrsig
- * \param data
+ * \param rrsig RRSIG to be dumped.
+ * \param data Arguments to be propagated.
  */
 static void dnslib_rrsig_set_dump_binary(dnslib_rrset_t *rrsig, arg_t *data)
 {
@@ -1584,10 +1584,10 @@ static void dnslib_rrsig_set_dump_binary(dnslib_rrset_t *rrsig, arg_t *data)
 }
 
 /*!
- * \brief
+ * \brief Dumps RRSet in binary format to given file.
  *
- * \param rrset
- * \param data
+ * \param rrsig RRSSet to be dumped.
+ * \param data Arguments to be propagated.
  */
 static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, void *data)
 {
@@ -1638,10 +1638,10 @@ static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, void *data)
 }
 
 /*!
- * \brief
+ * \brief Dumps all RRSets in node to file in binary format.
  *
- * \param node
- * \param data
+ * \param node Node to dumped.
+ * \param data Arguments to be propagated.
  */
 static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 {
@@ -1734,10 +1734,13 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 }
 
 /*!
- * \brief
+ * \brief Checks if zone uses DNSSEC and/or NSEC3
  *
- * \param zone
- * \return int
+ * \param zone Zone to be checked.
+ *
+ * \retval 0 if zone is not secured.
+ * \retval 2 if zone uses NSEC3
+ * \retval 1 if zone uses NSEC
  */
 static int zone_is_secure(dnslib_zone_t *zone)
 {
@@ -1755,12 +1758,13 @@ static int zone_is_secure(dnslib_zone_t *zone)
 }
 
 /*!
- * \brief
+ * \brief Checks if last node in NSEC/NSEC3 chain points to first node in the
+ *        chain and prints possible errors.
  *
- * \param handler
- * \param zone
- * \param last_node
- * \param do_checks
+ * \param handler Semantic error handler.
+ * \param zone Current zone.
+ * \param last_node Last node in NSEC/NSEC3 chain.
+ * \param do_checks Level of semantic checks.
  */
 static void log_cyclic_errors_in_zone(err_handler_t *handler,
 				      dnslib_zone_t *zone,
