@@ -49,7 +49,7 @@ struct gatherer {
 	double udp_qps; /*!< Queries per second - UDP. */
 	double tcp_qps; /*!< Queries per second - TCP. */
 
-	/*  latency currently disabled */
+        /*!< \note latency currently disabled */
 	/*  double mean_latency;
 	    double udp_mean_latency;
 	    double tcp_mean_latency;

@@ -37,12 +37,14 @@ static uint const ACTIVE_FLOW_THRESHOLD = 10;
 /*!
  * \brief Statistics structure, unique for each UDP/TCP thread.
  */
-typedef struct stat_t {
+struct stat_t {
 //	struct timespec t1, t2; /* Currently disabled */
 	protocol_t protocol; /*!< Flags. */
 	struct sockaddr_in *s_addr;
 //  gatherer_t *gatherer; / * not needed when using static gatherer. */
-} stat_t;
+};
+
+typedef struct stat stat_t;
 
 /*!
  * \brief Creates new stat_t structure.

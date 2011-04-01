@@ -27,6 +27,8 @@ src/dnslib/dname.h
 src/dnslib/dname.c
 src/dnslib/rrset.h
 src/dnslib/rrset.c
+src/dnslib/error.c
+src/dnslib/error.h
 src/dnslib/rdata.h
 src/dnslib/rdata.c
 src/dnslib/node.h
