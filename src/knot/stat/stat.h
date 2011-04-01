@@ -4,7 +4,7 @@
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
  * \brief Contains statistics structure and its API.
- * 
+ *
  * \addtogroup statistics
  * @{
  */
@@ -27,24 +27,26 @@
 #define STAT_INIT(x) x = NULL //UNUSED(x)
 #endif /* STAT_COMPILE */
 
-/* Determines how long until the sleeper thread wakes and runs computations. */
+/* Determines how long until the sleeper thread
+ * wakes up and runs computations.
+ */
 static uint const SLEEP_TIME = 15;
 
-/* Sets threshold for active flow detection, will 
+/* Sets threshold for active flow detection, will
  * probably have to be changed. */
 static uint const ACTIVE_FLOW_THRESHOLD = 10;
 
 /*!
  * \brief Statistics structure, unique for each UDP/TCP thread.
  */
-struct stat_t {
+struct stat_stat {
 //	struct timespec t1, t2; /* Currently disabled */
 	protocol_t protocol; /*!< Flags. */
 	struct sockaddr_in *s_addr;
 //  gatherer_t *gatherer; / * not needed when using static gatherer. */
 };
 
-typedef struct stat stat_t;
+typedef struct stat_stat stat_t;
 
 /*!
  * \brief Creates new stat_t structure.

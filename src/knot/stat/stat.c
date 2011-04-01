@@ -13,8 +13,6 @@
 #include "knot/stat/stat.h"
 #include "knot/stat/gatherer.h"
 
-#define STAT_COMPILE
-
 #ifdef STAT_COMPILE
 
 /* Static local gatherer variable, to be used with all functions. */
@@ -60,7 +58,7 @@ static void stat_inc_query(stat_t *stat)
  */
 static uint return_index(struct sockaddr_in *s_addr , protocol_t protocol)
 {
-        /* TODO IPv6 */
+	/* TODO IPv6 */
 	/* This is the first "hash" I could think of quickly. */
 	uint ret = 0;
 
@@ -96,7 +94,7 @@ static uint return_index(struct sockaddr_in *s_addr , protocol_t protocol)
  */
 static int stat_gatherer_add_data(stat_t *stat)
 {
-        /* TODO IPv6*/
+	/* TODO IPv6*/
 	uint index = return_index(stat->s_addr, stat->protocol);
 	if (!local_gath->freq_array[index]) {
 		char addr[24];
@@ -242,7 +240,7 @@ void stat_static_gath_init()
 void stat_static_gath_start()
 {
 	pthread_create(&(local_gath->sleeper_thread), NULL,
-	               (void *) &stat_sleep_compute, NULL);
+		       (void *) &stat_sleep_compute, NULL);
 }
 
 void stat_static_gath_free()
