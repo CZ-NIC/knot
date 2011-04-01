@@ -36,7 +36,7 @@ static const uint MAX_CNAME_CYCLE_DEPTH = 15;
 
 /*! \brief Internal error constants. */
 enum zonechecks_errors {
-        ZC_ERR_ALLOC = -33,
+	ZC_ERR_ALLOC = -33,
 	ZC_ERR_UNKNOWN,
 
 	ZC_ERR_RRSIG_RDATA_TYPE_COVERED,
@@ -86,64 +86,64 @@ enum zonechecks_errors {
 static char *error_messages[(-ZC_ERR_ALLOC) + 1] = {
 	[0] = "nil\n",
 
-        [-ZC_ERR_ALLOC] = "Memory allocation error!\n",
+	[-ZC_ERR_ALLOC] = "Memory allocation error!\n",
 
-        [-ZC_ERR_RRSIG_RDATA_TYPE_COVERED] =
+	[-ZC_ERR_RRSIG_RDATA_TYPE_COVERED] =
 	"RRSIG: Type covered rdata field is wrong!\n",
-        [-ZC_ERR_RRSIG_RDATA_TTL] =
+	[-ZC_ERR_RRSIG_RDATA_TTL] =
 	"RRSIG: TTL rdata field is wrong!\n",
-        [-ZC_ERR_RRSIG_RDATA_LABELS] =
+	[-ZC_ERR_RRSIG_RDATA_LABELS] =
 	"RRSIG: Labels rdata field is wrong!\n",
-        [-ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER] =
+	[-ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER] =
 	"RRSIG: Signer name is different than in DNSKEY!\n",
-        [-ZC_ERR_RRSIG_RDATA_SIGNED_WRONG] =
+	[-ZC_ERR_RRSIG_RDATA_SIGNED_WRONG] =
 	"RRSIG: Key error!\n",
-        [-ZC_ERR_RRSIG_NO_RRSIG] =
+	[-ZC_ERR_RRSIG_NO_RRSIG] =
 	"RRSIG: No RRSIG!\n",
-        [-ZC_ERR_RRSIG_SIGNED] =
+	[-ZC_ERR_RRSIG_SIGNED] =
 	"RRSIG: Signed RRSIG!\n",
-        [-ZC_ERR_RRSIG_OWNER] =
+	[-ZC_ERR_RRSIG_OWNER] =
 	"RRSIG: Owner name rdata field is wrong!\n",
-        [-ZC_ERR_RRSIG_CLASS] =
+	[-ZC_ERR_RRSIG_CLASS] =
 	"RRSIG: Class is wrong!\n",
-        [-ZC_ERR_RRSIG_TTL] =
+	[-ZC_ERR_RRSIG_TTL] =
 	"RRSIG: TTL is wrong!\n",
-        [-ZC_ERR_RRSIG_NOT_ALL] =
+	[-ZC_ERR_RRSIG_NOT_ALL] =
 	"RRSIG: Not all RRs are signed!\n",
 
-        [-ZC_ERR_NO_NSEC] =
+	[-ZC_ERR_NO_NSEC] =
 	"NSEC: Missing NSEC record\n",
-        [-ZC_ERR_NSEC_RDATA_BITMAP] =
+	[-ZC_ERR_NSEC_RDATA_BITMAP] =
 	"NSEC: Wrong NSEC bitmap!\n",
-        [-ZC_ERR_NSEC_RDATA_MULTIPLE] =
+	[-ZC_ERR_NSEC_RDATA_MULTIPLE] =
 	"NSEC: Multiple NSEC records!\n",
-        [-ZC_ERR_NSEC_RDATA_CHAIN] =
+	[-ZC_ERR_NSEC_RDATA_CHAIN] =
 	"NSEC: NSEC chain is not coherent!\n",
-        [-ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC] =
+	[-ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC] =
 	"NSEC: NSEC chain is not cyclic!\n",
 
-        [-ZC_ERR_NSEC3_UNSECURED_DELEGATION] =
+	[-ZC_ERR_NSEC3_UNSECURED_DELEGATION] =
 	"NSEC3: Zone contains unsecured delegation!\n",
-        [-ZC_ERR_NSEC3_NOT_FOUND] =
+	[-ZC_ERR_NSEC3_NOT_FOUND] =
 	"NSEC3: Could not find previous NSEC3 record in the zone!\n",
-        [-ZC_ERR_NSEC3_UNSECURED_DELEGATION_OPT] =
+	[-ZC_ERR_NSEC3_UNSECURED_DELEGATION_OPT] =
 	"NSEC3: Unsecured delegation is not part "
 	"of the Opt-Out span!\n",
-        [-ZC_ERR_NSEC3_RDATA_TTL] =
+	[-ZC_ERR_NSEC3_RDATA_TTL] =
 	"NSEC3: Original TTL rdata field is wrong!\n",
-        [-ZC_ERR_NSEC3_RDATA_CHAIN] =
+	[-ZC_ERR_NSEC3_RDATA_CHAIN] =
 	"NSEC3: NSEC3 chain is not coherent!\n",
-        [-ZC_ERR_NSEC3_RDATA_BITMAP] =
+	[-ZC_ERR_NSEC3_RDATA_BITMAP] =
 	"NSEC3: NSEC3 bitmap error!\n",
 
-        [-ZC_ERR_CNAME_CYCLE] =
+	[-ZC_ERR_CNAME_CYCLE] =
 	"CNAME: CNAME cycle!\n",
-        [-ZC_ERR_CNAME_EXTRA_RECORDS] =
+	[-ZC_ERR_CNAME_EXTRA_RECORDS] =
 	"CNAME: Node with CNAME record has other records!\n",
-        [-ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC] =
+	[-ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC] =
 	"CNAME: Node with CNAME record has other "
 	"records than RRSIG and NSEC/NSEC3!\n",
-        [-ZC_ERR_CNAME_MULTIPLE] = "CNAME: Multiple CNAME records!\n",
+	[-ZC_ERR_CNAME_MULTIPLE] = "CNAME: Multiple CNAME records!\n",
 
 	/* ^
 	   | Important errors (to be logged on first occurence and counted) */
@@ -152,9 +152,9 @@ static char *error_messages[(-ZC_ERR_ALLOC) + 1] = {
 	/* Below are errors of lesser importance, to be counted unless
 	   specified otherwise */
 
-        [-ZC_ERR_GLUE_NODE] =
+	[-ZC_ERR_GLUE_NODE] =
 	"GLUE: Node with Glue record missing!\n",
-        [-ZC_ERR_GLUE_RECORD] =
+	[-ZC_ERR_GLUE_RECORD] =
 	"GLUE: Record with Glue address missing\n",
 };
 
@@ -162,11 +162,11 @@ static char *error_messages[(-ZC_ERR_ALLOC) + 1] = {
  * \brief Structure representing handle options.
  */
 struct handler_options {
-        char log_cname; /*!< Log all CNAME related semantic errors. */
-        char log_glue; /*!< Log all glue related semantic errors. */
-        char log_rrsigs; /*!< Log all RRSIG related semantic errors. */
-        char log_nsec; /*!< Log all NSEC related semantic errors. */
-        char log_nsec3; /*!< Log all NSEC3 related semantic errors. */
+	char log_cname; /*!< Log all CNAME related semantic errors. */
+	char log_glue; /*!< Log all glue related semantic errors. */
+	char log_rrsigs; /*!< Log all RRSIG related semantic errors. */
+	char log_nsec; /*!< Log all NSEC related semantic errors. */
+	char log_nsec3; /*!< Log all NSEC3 related semantic errors. */
 };
 
 /*!
@@ -174,8 +174,8 @@ struct handler_options {
  */
 struct err_handler {
 	/* Consider moving error messages here */
-        struct handler_options options; /*!< Handler options. */
-        uint errors[(-ZC_ERR_ALLOC) + 1]; /*!< Array with error messages */
+	struct handler_options options; /*!< Handler options. */
+	uint errors[(-ZC_ERR_ALLOC) + 1]; /*!< Array with error messages */
 };
 
 typedef struct err_handler err_handler_t;
@@ -218,7 +218,7 @@ static err_handler_t *handler_new(char log_cname, char log_glue,
  * \param error Type of error.
  */
 static void log_error_from_node(err_handler_t *handler, dnslib_node_t *node,
-                               uint error)
+			       uint error)
 {
 	/* todo not like this */
 	if (node != NULL) {
@@ -228,10 +228,10 @@ static void log_error_from_node(err_handler_t *handler, dnslib_node_t *node,
 		fprintf(stderr, "%s", error_messages[error]);
 		free(name);
 	} else {
-                fprintf(stderr, "Total number of errors: %s: %d",
-                        error_messages[error],
-                        handler->errors[error]);
-        }
+		fprintf(stderr, "Total number of errors: %s: %d",
+			error_messages[error],
+			handler->errors[error]);
+	}
 }
 
 /* TODO adjust */
@@ -252,7 +252,7 @@ static int err_handler_handle_error(err_handler_t *handler,
 				    dnslib_node_t *node,
 				    uint error)
 {
-        if (error > ZC_ERR_GLUE_RECORD) {
+	if (error > ZC_ERR_GLUE_RECORD) {
 		return ZC_ERR_UNKNOWN;
 	}
 
@@ -261,45 +261,45 @@ static int err_handler_handle_error(err_handler_t *handler,
 		return ZC_ERR_ALLOC;
 	}
 
-        if ((error != 0) &&
+	if ((error != 0) &&
 	    (error < ZC_ERR_RRSIG_GENERAL_ERROR) &&
 	    ((handler->errors[error] == 0) ||
 	     (handler->options.log_rrsigs))) {
 
-                log_error_from_node(handler, node, error);
+		log_error_from_node(handler, node, error);
 
 	} else if ((error > ZC_ERR_RRSIG_GENERAL_ERROR) &&
 		   (error < ZC_ERR_NSEC_GENERAL_ERROR) &&
 		   ((handler->errors[error] == 0) ||
 		    (handler->options.log_nsec))) {
 
-                log_error_from_node(handler, node, error);
+		log_error_from_node(handler, node, error);
 
 	} else if ((error > ZC_ERR_NSEC_GENERAL_ERROR) &&
 		   (error < ZC_ERR_NSEC3_GENERAL_ERROR) &&
 		   ((handler->errors[error] == 0) ||
 		    (handler->options.log_nsec3))) {
 
-                log_error_from_node(handler, node, error);
+		log_error_from_node(handler, node, error);
 
 	} else if ((error > ZC_ERR_NSEC3_GENERAL_ERROR) &&
 		   (error < ZC_ERR_CNAME_GENERAL_ERROR) &&
 		   ((handler->errors[error] == 0) ||
 		    (handler->options.log_cname))) {
 
-                log_error_from_node(handler, node, error);
+		log_error_from_node(handler, node, error);
 
 	} else if ((error > ZC_ERR_CNAME_GENERAL_ERROR) &&
 		   (error < ZC_ERR_GLUE_GENERAL_ERROR) &&
 		    handler->options.log_glue) {
 
-                log_error_from_node(handler, node, error);
+		log_error_from_node(handler, node, error);
 
 	}
 
 	handler->errors[error]++;
 
-        return DNSLIB_EOK;
+	return DNSLIB_EOK;
 }
 
 /*!
@@ -311,7 +311,7 @@ static void err_handler_log_all(err_handler_t *handler)
 {
 	for (int i = 0; i < ZC_ERR_GLUE_GENERAL_ERROR; i++) {
 		if (handler->errors[i] > 0) {
-                        log_error_from_node(handler, NULL, i);
+			log_error_from_node(handler, NULL, i);
 		}
 	}
 }
@@ -322,7 +322,7 @@ static void err_handler_log_all(err_handler_t *handler)
  *
  */
 struct arg {
-        void *arg1; /* FILE *f / zone *//*!< TODO */\n
+	void *arg1; /* FILE *f / zone */
 	void *arg2; /* skip_list_t */
 	void *arg3; /* zone */
 	void *arg4; /* first node */
@@ -348,7 +348,7 @@ typedef struct arg arg_t;
 static int compare_pointers(void *p1, void *p2)
 {
 	return ((size_t)p1 == (size_t)p2
-	        ? 0 : (size_t)p1 < (size_t)p2 ? -1 : 1);
+		? 0 : (size_t)p1 < (size_t)p2 ? -1 : 1);
 }
 
 /*!
@@ -360,8 +360,8 @@ static int compare_pointers(void *p1, void *p2)
  * \param list Skip list used for storing closest enclosers.
  */
 static void dnslib_zone_save_encloser_rdata_item(dnslib_rdata_t *rdata,
-                                                 dnslib_zone_t *zone, uint pos,
-					         skip_list_t *list)
+						 dnslib_zone_t *zone, uint pos,
+						 skip_list_t *list)
 {
 	const dnslib_rdata_item_t *dname_item
 		= dnslib_rdata_item(rdata, pos);
@@ -373,7 +373,7 @@ static void dnslib_zone_save_encloser_rdata_item(dnslib_rdata_t *rdata,
 		const dnslib_node_t *prev = NULL;
 
 		int exact = dnslib_zone_find_dname(zone, dname, &n,
-		                                   &closest_encloser, &prev);
+						   &closest_encloser, &prev);
 
 //		n = dnslib_zone_find_node(zone, dname);
 
@@ -401,8 +401,8 @@ static void dnslib_zone_save_encloser_rdata_item(dnslib_rdata_t *rdata,
  * \param list Skip list used for storing closest enclosers.
  */
 static void dnslib_zone_save_enclosers_rrset(dnslib_rrset_t *rrset,
-                                             dnslib_zone_t *zone,
-                                             skip_list_t *list)
+					     dnslib_zone_t *zone,
+					     skip_list_t *list)
 {
 	uint16_t type = dnslib_rrset_type(rrset);
 
@@ -430,7 +430,7 @@ static void dnslib_zone_save_enclosers_rrset(dnslib_rrset_t *rrset,
 				  dnslib_rrtype_to_string(type));
 
 				dnslib_zone_save_encloser_rdata_item(rdata,
-				                                     zone,
+								     zone,
 								     i,
 								     list);
 			}
@@ -452,7 +452,7 @@ static void dnslib_zone_save_enclosers_rrset(dnslib_rrset_t *rrset,
 			  dnslib_rrtype_to_string(type));
 
 				dnslib_zone_save_encloser_rdata_item(rdata,
-				                                     zone,
+								     zone,
 								     i,
 								     list);
 		}
@@ -514,7 +514,7 @@ static int check_cname_cycles_in_zone(dnslib_zone_t *zone,
 		return -1;
 	}
 
-        return 0;
+	return 0;
 }
 
 /*!
@@ -558,7 +558,7 @@ static int check_dnskey_rdata(const dnslib_rdata_t *rdata)
 				     (dnslib_rdata_item(rdata, 0)));
 
 	if (flags & mask) {
-                return 0;
+		return 0;
 	} else {
 		return -1;
 	}
@@ -593,7 +593,7 @@ static uint16_t keytag_1(uint8_t *key, uint16_t keysize)
  */
 static uint16_t keytag(uint8_t *key, uint16_t keysize )
 {
-        uint32_t ac = 0; /* assumed to be 32 bits or larger */
+	uint32_t ac = 0; /* assumed to be 32 bits or larger */
 
 	/* algorithm RSA/SHA */
 	if (key[3] == 1) {
@@ -617,7 +617,7 @@ static uint16_t keytag(uint8_t *key, uint16_t keysize )
  */
 static inline uint16_t rdata_item_size(const dnslib_rdata_item_t *item)
 {
-        return item->raw_data[0];
+	return item->raw_data[0];
 }
 
 /*!
@@ -637,11 +637,11 @@ static int dnskey_to_wire(const dnslib_rdata_t *rdata, uint8_t **wire,
 	/* flags + algorithm + protocol + keysize */
 	*size = 2 + 1 + 1 + dnslib_rdata_item(rdata, 3)->raw_data[0];
 	*wire = malloc(sizeof(uint8_t) * *size);
-        CHECK_ALLOC_LOG(*wire, DNSLIB_ENOMEM);
+	CHECK_ALLOC_LOG(*wire, DNSLIB_ENOMEM);
 
 	/* copy the wire octet by octet */
 
-        /* TODO check if we really have that many items */
+	/* TODO check if we really have that many items */
 
 	(*wire)[0] = ((uint8_t *)(dnslib_rdata_item(rdata, 0)->raw_data))[2];
 	(*wire)[1] = ((uint8_t *)(dnslib_rdata_item(rdata, 0)->raw_data))[3];
@@ -652,7 +652,7 @@ static int dnskey_to_wire(const dnslib_rdata_t *rdata, uint8_t **wire,
 	memcpy(*wire + 4, dnslib_rdata_item(rdata, 3)->raw_data + 1,
 	       dnslib_rdata_item(rdata, 3)->raw_data[0]);
 
-        return DNSLIB_EOK;
+	return DNSLIB_EOK;
 }
 
 /*!
@@ -725,20 +725,20 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
 		dnslib_rrset_rdata(dnskey_rrset);
 	do {
 		uint8_t alg =
-                ((uint8_t *)(dnslib_rdata_item(rdata_rrsig, 1)->raw_data))[2];
+		((uint8_t *)(dnslib_rdata_item(rdata_rrsig, 1)->raw_data))[2];
 		uint8_t alg_dnskey =
 		((uint8_t *)(dnslib_rdata_item(tmp_dnskey_rdata,
-                                               2)->raw_data))[2];
+					       2)->raw_data))[2];
 
 		raw_data = rdata_item_data(dnslib_rdata_item(rdata_rrsig, 6));
 		uint16_t key_tag_rrsig =
 			dnslib_wire_read_u16((uint8_t *)raw_data);
 
-                raw_data =
+		raw_data =
 			rdata_item_data(dnslib_rdata_item(
-                                        tmp_dnskey_rdata, 3));
+					tmp_dnskey_rdata, 3));
 
-                uint16_t raw_length = rdata_item_size(dnslib_rdata_item(
+		uint16_t raw_length = rdata_item_size(dnslib_rdata_item(
 						     tmp_dnskey_rdata, 3));
 
 		uint8_t *dnskey_wire = NULL;
@@ -756,7 +756,7 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
 
 		match = (alg == alg_dnskey) &&
 			(key_tag_rrsig == key_tag_dnskey) &&
-                        !check_dnskey_rdata(tmp_dnskey_rdata);
+			!check_dnskey_rdata(tmp_dnskey_rdata);
 
 	} while (!match &&
 		 ((tmp_dnskey_rdata =
@@ -768,7 +768,7 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
 		return ZC_ERR_RRSIG_RDATA_SIGNED_WRONG;
 	}
 
-        return DNSLIB_EOK;
+	return DNSLIB_EOK;
 }
 
 /*!
@@ -839,7 +839,7 @@ static int check_rrsig_in_rrset(const dnslib_rrset_t *rrset,
 		return ZC_ERR_RRSIG_NOT_ALL;
 	}
 
-        return DNSLIB_EOK;
+	return DNSLIB_EOK;
 }
 
 /*!
@@ -854,7 +854,7 @@ int get_bit(uint8_t *bits, size_t index)
 {
 	/*
 	 * The bits are counted from left to right, so bit #0 is the
-         * leftmost bit.
+	 * leftmost bit.
 	 */
 	return bits[index / 8] & (1 << (7 - index % 8));
 }
@@ -900,19 +900,19 @@ static int rdata_nsec_to_type_array(const dnslib_rdata_item_t *item,
 
 		for (int j = 0; j < bitmap_size * 8; j++) {
 			if (get_bit(bitmap, j)) {
-                                (*count)++;
+				(*count)++;
 				void *tmp = realloc(*array,
 						    sizeof(uint16_t) *
 						    *count);
-                                CHECK_ALLOC_LOG(tmp, DNSLIB_ENOMEM);
+				CHECK_ALLOC_LOG(tmp, DNSLIB_ENOMEM);
 				*array = tmp;
-                                (*array)[*count - 1] = j + window * 256;
+				(*array)[*count - 1] = j + window * 256;
 			}
 		}
 		free(bitmap);
 	}
 
-        return DNSLIB_EOK;
+	return DNSLIB_EOK;
 }
 
 /* should write error, not return values !!! */
@@ -1009,15 +1009,15 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 	/* 34 because of the "0" at the end */
 	size_t next_dname_decoded_size = 33;
 
-        if (base32hex_decode(((char *)(nsec3_rrset->rdata->items[4].raw_data)) + 3,
+	if (base32hex_decode(((char *)(nsec3_rrset->rdata->items[4].raw_data)) + 3,
 		   ((uint8_t *)(nsec3_rrset->rdata->items[4].raw_data))[2],
 		   next_dname_decoded +	1,
-                   &next_dname_decoded_size) != 0) {
-                fprintf(stderr, "Could not decode base32 string!\n");
-                return 1;
-        }
+		   &next_dname_decoded_size) != 0) {
+		fprintf(stderr, "Could not decode base32 string!\n");
+		return 1;
+	}
 
-        /* !!! TODO !!! */
+	/* !!! TODO !!! */
 
 	next_dname_decoded[0] = 32;
 
@@ -1088,7 +1088,7 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 
 	free(array);
 
-        return DNSLIB_EOK;
+	return DNSLIB_EOK;
 }
 
 /*!
@@ -1175,7 +1175,7 @@ static int semantic_checks_plain(dnslib_zone_t *zone,
 			}
 		}
 	}
-        return DNSLIB_EOK;
+	return DNSLIB_EOK;
 }
 
 /*!
@@ -1271,8 +1271,8 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 						node,
 						ZC_ERR_NSEC_RDATA_BITMAP);
 	/*					char *name =
-                                                dnslib_dname_to_str(
-                                                dnslib_node_owner(node));
+						dnslib_dname_to_str(
+						dnslib_node_owner(node));
 
 						log_zone_error("Node %s does "
 						"not contain RRSet of type %s "
@@ -1324,8 +1324,8 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 				if (dnslib_zone_find_node(zone, next_domain) ==
 				    NULL) {
 					err_handler_handle_error(handler,
-                                                node,
-                                                ZC_ERR_NSEC_RDATA_CHAIN);
+						node,
+						ZC_ERR_NSEC_RDATA_CHAIN);
 /*					log_zone_error("NSEC chain is not "
 						       "coherent!\n"); */
 				}
@@ -1389,7 +1389,7 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 
 	if (do_checks > 1) {
 		semantic_checks_dnssec(zone, node, first_node, last_node,
-				       handler, do_checks == 3);	
+				       handler, do_checks == 3);
 	}
 
 	free(rrsets);
@@ -1419,7 +1419,7 @@ void zone_save_enclosers_sem_check(dnslib_zone_t *zone, skip_list_t *list,
 	arguments.arg6 = handler;
 
 	dnslib_zone_tree_apply_inorder(zone,
-	                   dnslib_zone_save_enclosers_in_tree,
+			   dnslib_zone_save_enclosers_in_tree,
 			   (void *)&arguments);
 }
 
@@ -1463,7 +1463,7 @@ static void dnslib_dname_dump_binary(dnslib_dname_t *dname, FILE *f)
 static dnslib_dname_t *dnslib_find_wildcard(dnslib_dname_t *dname,
 					    skip_list_t *list)
 {
-        return (dnslib_dname_t *)skip_find(list, (void *)dname);
+	return (dnslib_dname_t *)skip_find(list, (void *)dname);
 }
 
 /*!
@@ -1474,7 +1474,7 @@ static dnslib_dname_t *dnslib_find_wildcard(dnslib_dname_t *dname,
  * \param data Arguments to be propagated.
  */
 static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
-                                     uint32_t type, void *data)
+				     uint32_t type, void *data)
 {
 	FILE *f = (FILE *)((arg_t *)data)->arg1;
 	skip_list_t *list = (skip_list_t *)((arg_t *)data)->arg2;
@@ -1502,7 +1502,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 					rdata->items[i].dname, list);
 DEBUG_DNSLIB_ZDUMP(
 				char *name = dnslib_dname_to_str(
-				                  rdata->items[i].dname);
+						  rdata->items[i].dname);
 				debug_dnslib_zdump("Not in the zone: %s\n",
 				       name);
 				free(name);
@@ -1510,7 +1510,7 @@ DEBUG_DNSLIB_ZDUMP(
 
 				fwrite((uint8_t *)"\0", sizeof(uint8_t), 1, f);
 				dnslib_dname_dump_binary(rdata->items[i].dname,
-				                         f);
+							 f);
 				if (wildcard) {
 					fwrite((uint8_t *)"\1",
 					       sizeof(uint8_t), 1, f);
@@ -1533,12 +1533,12 @@ DEBUG_DNSLIB_ZDUMP(
 			       rdata->items[i].raw_data[0] + 2, f);
 
 			debug_dnslib_zdump("Written %d long raw data\n",
-			         rdata->items[i].raw_data[0]);
+				 rdata->items[i].raw_data[0]);
 		}
 	}
 }
 
-y/*!
+/*!
  * \brief Dumps RRSIG in binary format to given file.
  *
  * \param rrsig RRSIG to be dumped.
@@ -1746,7 +1746,7 @@ static int zone_is_secure(dnslib_zone_t *zone)
 {
 	if (dnslib_node_rrset(dnslib_zone_apex(zone),
 			      DNSLIB_RRTYPE_DNSKEY) == NULL) {
-                return 0;
+		return 0;
 	} else {
 		if (dnslib_node_rrset(dnslib_zone_apex(zone),
 				      DNSLIB_RRTYPE_NSEC3PARAM) != NULL) {
@@ -1784,8 +1784,8 @@ static void log_cyclic_errors_in_zone(err_handler_t *handler,
 				return;
 		} else {
 			const dnslib_rrset_t *nsec_rrset =
-                                dnslib_node_rrset(last_node,
-                                                  DNSLIB_RRTYPE_NSEC);
+				dnslib_node_rrset(last_node,
+						  DNSLIB_RRTYPE_NSEC);
 
 			if (nsec_rrset == NULL) {
 				err_handler_handle_error(handler, last_node,
@@ -1806,7 +1806,7 @@ static void log_cyclic_errors_in_zone(err_handler_t *handler,
 				err_handler_handle_error(handler, last_node,
 					 ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC);
 			}
-                }
+		}
 	}
 }
 
@@ -1819,7 +1819,7 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 
 	if (f == NULL) {
 		return -1;
-        }
+	}
 
 	zone->node_count = 0;
 
@@ -1881,13 +1881,13 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 
 	/* TODO is there a way how to stop the traversal upon error? */
 	dnslib_zone_tree_apply_inorder(zone, dnslib_node_dump_binary,
-	                               (void *)&arguments);
+				       (void *)&arguments);
 
 	uint tmp_count = node_count;
 
 	node_count = 0;
 	dnslib_zone_nsec3_apply_inorder(zone, dnslib_node_dump_binary,
-	                                (void *)&arguments);
+					(void *)&arguments);
 
 	/* Update counters. */
 	fseek(f, header_len, SEEK_SET);
@@ -1905,5 +1905,5 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 
 	fclose(f);
 
-        return DNSLIB_EOK;
+	return DNSLIB_EOK;
 }
