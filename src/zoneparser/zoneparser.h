@@ -57,8 +57,8 @@ typedef void namedb_type;
  * \brief One-purpose linked list holding pointers to RRSets.
  */
 struct rrset_list {
-        dnslib_rrset_t *data; /*!< List data. */
-        struct rrset_list *next; /*!< Next node. */
+	dnslib_rrset_t *data; /*!< List data. */
+	struct rrset_list *next; /*!< Next node. */
 };
 
 typedef struct rrset_list rrset_list_t;
@@ -67,39 +67,39 @@ typedef struct rrset_list rrset_list_t;
  * \brief Main zoneparser structure.
  */
 struct zparser {
-        const char *filename; /*!< TODO */
-        uint32_t default_ttl; /*!< Default TTL. */
-        uint16_t default_class; /*!< Default class. */
-        dnslib_zone_t *current_zone; /*!< Current zone. */
-        dnslib_node_t *origin; /*!< Origin node. */
-        dnslib_dname_t *prev_dname; /*!< Previous dname. */
-        dnslib_node_t *default_apex; /*!< Zone default apex. */
+	const char *filename; /*!< TODO */
+	uint32_t default_ttl; /*!< Default TTL. */
+	uint16_t default_class; /*!< Default class. */
+	dnslib_zone_t *current_zone; /*!< Current zone. */
+	dnslib_node_t *origin; /*!< Origin node. */
+	dnslib_dname_t *prev_dname; /*!< Previous dname. */
+	dnslib_node_t *default_apex; /*!< Zone default apex. */
 
-        dnslib_node_t *last_node; /*!< Last processed node. */
+	dnslib_node_t *last_node; /*!< Last processed node. */
 
-        char *dname_str; /*!< TODO */
+	char *dname_str; /*!< TODO */
 
-        int error_occurred; /*!< TODO */
-        unsigned int errors; /*!< TODO */
-        unsigned int line; /*!< TODO */
+	int error_occurred; /*!< TODO */
+	unsigned int errors; /*!< TODO */
+	unsigned int line; /*!< TODO */
 
-        size_t id; /*!< TODO */
+	size_t id; /*!< TODO */
 
-        dnslib_rrset_t *current_rrset; /*!< Current RRSet. */
-        dnslib_rdata_item_t *temporary_items; /*!< Temporary rdata items. */
+	dnslib_rrset_t *current_rrset; /*!< Current RRSet. */
+	dnslib_rdata_item_t *temporary_items; /*!< Temporary rdata items. */
 
-        /*!
-         * \brief list of RRSIGs that were not inside their nodes in zone file
-         */
-        rrset_list_t *rrsig_orphans;
+	/*!
+	 * \brief list of RRSIGs that were not inside their nodes in zone file
+	 */
+	rrset_list_t *rrsig_orphans;
 
-        dnslib_dname_t *root_domain; /*!< Root domain name. */
+	dnslib_dname_t *root_domain; /*!< Root domain name. */
 
-        slab_cache_t *parser_slab; /*!< Slab for parser. */
+	slab_cache_t *parser_slab; /*!< Slab for parser. */
 
-        rrset_list_t *node_rrsigs; /*!< List of RRSIGs in current node. */
+	rrset_list_t *node_rrsigs; /*!< List of RRSIGs in current node. */
 
-        int rdata_count; /*!< Count of parsed rdata. */
+	int rdata_count; /*!< Count of parsed rdata. */
 };
 
 typedef struct zparser zparser_type;
@@ -239,136 +239,138 @@ uint16_t *zparser_conv_b64(const char *b64);
 uint16_t *zparser_conv_rrtype(const char *rr);
 
 /*!
- * \brief
+ * \brief Converts NXT string to wireformat.
  *
- * \param nxtbits
+ * \param nxtbits NXT string.
  */
 uint16_t *zparser_conv_nxt(uint8_t *nxtbits);
 
 /*!
- * \brief
+ * \brief Converts NSEC bitmap to wireformat.
  *
- * \param nsecbits[][]
+ * \param nsecbits[][] NSEC bits.
  */
 uint16_t *zparser_conv_nsec(uint8_t nsecbits[NSEC_WINDOW_COUNT]
-                                           [NSEC_WINDOW_BITS_SIZE]);
+					   [NSEC_WINDOW_BITS_SIZE]);
 /*!
- * \brief
+ * \brief Converts LOC string to wireformat.
  *
- * \param str
+ * \param str LOC string.
  */
 uint16_t *zparser_conv_loc(char *str);
 
 /*!
- * \brief
+ * \brief Converts algorithm string to wireformat.
  *
- * \param algstr
+ * \param algstr Algorithm string.
  */
 uint16_t *zparser_conv_algorithm(const char *algstr);
 
 /*!
- * \brief
+ * \brief Converts certificate type string to wireformat.
  *
- * \param typestr
+ * \param typestr Certificate type mnemonic string.
  */
 uint16_t *zparser_conv_certificate_type(const char *typestr);
 
 /*!
- * \brief
+ * \brief Converts APL data to wireformat.
  *
- * \param str
+ * \param str APL data string.
  */
 uint16_t *zparser_conv_apl_rdata(char *str);
 
 /*!
- * \brief
+ * \brief Parses unknown rdata.
  *
- * \param type
- * \param wireformat
+ * \param type Type of data.
+ * \param wireformat Wireformat of data.
  */
 void parse_unknown_rdata(uint16_t type, uint16_t *wireformat);
 
 /*!
- * \brief
+ * \brief Converts TTL string to int.
  *
- * \param ttlstr
- * \param error
+ * \param ttlstr String
+ * \param error Error code.
  */
 uint32_t zparser_ttl2int(const char *ttlstr, int* error);
 
 /*!
- * \brief
+ * \brief Adds wireformat to temporary list of rdata items.
  *
- * \param data
+ * \param data Wireformat to be added.
  */
 void zadd_rdata_wireformat(uint16_t *data);
 
 /*!
- * \brief
+ * \brief Adds TXT wireformat to temporary list of rdata items.
  *
- * \param data
- * \param first
+ * \param data Wireformat to be added.
+ * \param first This is first text to be added.
  */
 void zadd_rdata_txt_wireformat(uint16_t *data, int first);
 
 /*!
- * \brief
- *
+ * \brief Cleans after using zadd_rdata_txt_wireformat().
  */
 void zadd_rdata_txt_clean_wireformat();
 
 /*!
- * \brief
+ * \brief Adds domain name to temporary list of rdata items.
  *
- * \param domain
+ * \param domain Domain name to be added.
  */
 void zadd_rdata_domain(dnslib_dname_t *domain);
 
 /*!
- * \brief
+ * \brief Sets bit in NSEC bitmap.
  *
- * \param bits[][]
- * \param index
+ * \param bits[][] NSEC bitmaps.
+ * \param index Index on which bit is to be set.
  */
 void set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
 		 uint16_t index);
 
 /*!
- * \brief
+ * \brief Allocate and init wireformat.
  *
- * \param data
- * \param size
+ * \param data Data to be copied into newly created wireformat.
+ * \param size Size of data.
  */
 uint16_t *alloc_rdata_init(const void *data, size_t size);
 
 /*!
- * \brief
+ * \brief Parses and creates zone from given file.
  *
- * \param name
- * \param zonefile
- * \param outfile
+ * \param name Origin domain name string.
+ * \param zonefile File containing the zone.
+ * \param outfile File to save dump of the zone to.
+ *
+ * \retval 0 on success.
+ * \retval -1 on error.
  */
 int zone_read(const char *name, const char *zonefile, const char *outfile);
 
-/* zparser.y */
 /*!
- * \brief
+ * \brief Creates zparser instance.
  *
  */
 zparser_type *zparser_create();
+
 /*!
- * \brief
+ * \brief Inits zoneparser structure.
  *
- * \param filename
- * \param ttl
- * \param rclass
- * \param origin
+ * \param filename Name of file with zone.
+ * \param ttl Default TTL.
+ * \param rclass Default class.
+ * \param origin Zone origin.
  */
 void zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 		  dnslib_node_t *origin);
 
 /*!
- * \brief
+ * \brief Frees zoneparser structure.
  *
  */
 void zparser_free();
