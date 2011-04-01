@@ -115,7 +115,7 @@ static inline uint8_t rdata_atom_wireformat_type(uint16_t type, size_t index)
 	return descriptor->wireformat[index];
 }
 
-/* \note this is untested, called only by parse_unknown data, which is
+/*! \note this is untested, called only by parse_unknown data, which is
  * untested as well - probably will not be even needed, when zone is
  * properly formed i.e. by some tool
  */
@@ -298,8 +298,6 @@ ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			region, temp_rdatas, i * sizeof(rdata_atom_type)); */
 	return (ssize_t)i;
 }
-
-
 
 /* Taken from RFC 2535, section 7.  */
 dnslib_lookup_table_t dns_algorithms[] = {
