@@ -54,18 +54,36 @@
 #define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d\n", \
 				  __FILE__, __LINE__)
 
+/*!
+ * \brief Return data of raw data item.
+ *
+ * \param item Item.
+ * \return uint16_t * Raw data.
+ */
 static inline uint16_t * rdata_atom_data(dnslib_rdata_item_t item)
 {
 	return (uint16_t *)(item.raw_data + 1);
 }
 
-uint16_t rrsig_type_covered(dnslib_rrset_t *rrset)
+/*!
+ * \brief Return type of RRSet covered by given RRSIG.
+ *
+ * \param rrset RRSIG.
+ * \return uint16_t Type covered.
+ */
+static uint16_t rrsig_type_covered(dnslib_rrset_t *rrset)
 {
 	assert(rrset->rdata->items[0].raw_data[0] == sizeof(uint16_t));
 
 	return ntohs(*(uint16_t *) rdata_atom_data(rrset->rdata->items[0]));
 }
 
+/*!
+ * \brief Adds RRSet to list.
+ *
+ * \param head Head of list.
+ * \param rrsig RRSet to be added.
+ */
 static void rrset_list_add(rrset_list_t **head, dnslib_rrset_t *rrsig)
 {
 	if (*head == NULL) {
@@ -80,7 +98,12 @@ static void rrset_list_add(rrset_list_t **head, dnslib_rrset_t *rrsig)
 	}
 }
 
-void rrset_list_delete(rrset_list_t **head)
+/*!
+ * \brief Deletes RRSet list. Sets pointer to NULL.
+ *
+ * \param head Head of list to be deleted.
+ */
+static void rrset_list_delete(rrset_list_t **head)
 {
 	rrset_list_t *tmp;
 	if (*head == NULL) {
@@ -96,6 +119,14 @@ void rrset_list_delete(rrset_list_t **head)
 	*head = NULL;
 }
 
+/*!
+ * \brief Checks if item contains domain.
+ *
+ * \param type Type of RRSet.
+ * \param index Index to check.
+ *
+ * \return > 1 if item is domain, 0 otherwise.
+ */
 static inline int rdata_atom_is_domain(uint16_t type, size_t index)
 {
 	const dnslib_rrtype_descriptor_t *descriptor
@@ -107,6 +138,14 @@ static inline int rdata_atom_is_domain(uint16_t type, size_t index)
 		DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME));
 }
 
+/*!
+ * \brief Returns which wireformat type is on given index.
+ *
+ * \param type Type of RRSet.
+ * \param index Index.
+ *
+ * \return uint8_t Wireformat type.
+ */
 static inline uint8_t rdata_atom_wireformat_type(uint16_t type, size_t index)
 {
 	const dnslib_rrtype_descriptor_t *descriptor
@@ -119,7 +158,18 @@ static inline uint8_t rdata_atom_wireformat_type(uint16_t type, size_t index)
  * untested as well - probably will not be even needed, when zone is
  * properly formed i.e. by some tool
  */
-ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
+
+/*!
+ * \brief Converts rdata wireformat to rdata items.
+ *
+ * \param wireformat Wireformat/.
+ * \param rrtype RR type.
+ * \param data_size Size of wireformat.
+ * \param items created rdata items.
+ *
+ * \return Number of items converted.
+ */
+static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 					uint16_t rrtype,
 					const uint16_t data_size,
 					dnslib_rdata_item_t **items)
@@ -350,9 +400,11 @@ static long int totalrrs = 0;
 extern uint8_t nsecbits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE];
 extern uint16_t nsec_highest_rcode;
 
-/*
- * Allocate SIZE+sizeof(uint16_t) bytes and store SIZE in the first
- * element.  Return a pointer to the allocation.
+/*!
+ * \brief Allocate SIZE+sizeof(uint16_t) bytes and store SIZE in the first
+ *        element.  Return a pointer to the allocation.
+ *
+ * \param size How many bytes to allocate.
  */
 static uint16_t * alloc_rdata(size_t size)
 {
@@ -470,8 +522,7 @@ uint16_t * zparser_conv_time(const char *time)
 	return r;
 }
 
-uint16_t * zparser_conv_services(const char *protostr,
-		      char *servicestr)
+uint16_t * zparser_conv_services(const char *protostr, char *servicestr)
 {
 	/*
 	 * Convert a protocol and a list of service port numbers
@@ -1459,7 +1510,7 @@ void process_rrsigs_in_node(dnslib_node_t *node)
 	rrset_list_t *tmp = parser->node_rrsigs;
 	while (tmp != NULL) {
 		if (find_rrset_for_rrsig_in_node(node,
-					         tmp->data) != 0) {
+						 tmp->data) != 0) {
 			rrset_list_add(&parser->rrsig_orphans,
 				       tmp->data);
 		}
@@ -1473,9 +1524,9 @@ int process_rr(void)
 	dnslib_rrset_t *current_rrset = parser->current_rrset;
 	dnslib_rrset_t *rrset;
 	dnslib_rrtype_descriptor_t *descriptor
-        = dnslib_rrtype_descriptor_by_type(current_rrset->type);
+	= dnslib_rrtype_descriptor_by_type(current_rrset->type);
 
-        assert(current_rrset->rdata->count == descriptor->length);
+	assert(current_rrset->rdata->count == descriptor->length);
 
 	assert(dnslib_dname_is_fqdn(current_rrset->owner));
 
@@ -1522,11 +1573,11 @@ int process_rr(void)
 
 	/* Do we have the zone already? */
 	if (!zone) {
-                assert(parser->origin);
+		assert(parser->origin);
 
-                if (dnslib_dname_compare(parser->origin->owner,
-                                         current_rrset->owner) == 0 &&
-                    parser->origin->owner != current_rrset->owner) {
+		if (dnslib_dname_compare(parser->origin->owner,
+					 current_rrset->owner) == 0 &&
+		    parser->origin->owner != current_rrset->owner) {
 
 			dnslib_dname_free(&parser->origin->owner);
 			parser->origin->owner = current_rrset->owner;
@@ -1535,7 +1586,7 @@ int process_rr(void)
 		zone = dnslib_zone_new(parser->origin, 0);
 
 		parser->current_zone = zone;
-        }
+	}
 
 	if (current_rrset->type == DNSLIB_RRTYPE_RRSIG) {
 		dnslib_rrset_t *tmp_rrsig =
@@ -1550,7 +1601,7 @@ int process_rr(void)
 		    dnslib_dname_compare(parser->last_node->owner,
 		    current_rrset->owner) != 0) {
 			/* RRSIG is first in the node, so we have to create it
-			 * before we return 
+			 * before we return
 			 */
 			if (parser->node_rrsigs != NULL) {
 				process_rrsigs_in_node(parser->last_node);
@@ -1559,14 +1610,14 @@ int process_rr(void)
 			}
 
 			if ((parser->last_node = create_node(zone,
-			                           current_rrset, node_add_func,
-			                           node_get_func)) == NULL) {
+						   current_rrset, node_add_func,
+						   node_get_func)) == NULL) {
 				free(tmp_rrsig);
 				return -1;
 			}
 		}
 
-                rrset_list_add(&parser->node_rrsigs, tmp_rrsig);
+		rrset_list_add(&parser->node_rrsigs, tmp_rrsig);
 
 		return 0;
 	}
@@ -1574,7 +1625,7 @@ int process_rr(void)
 	dnslib_node_t *node;
 
 	/* \note this could probably be much simpler */
-	if (parser->last_node && current_rrset->type != DNSLIB_RRTYPE_SOA && 
+	if (parser->last_node && current_rrset->type != DNSLIB_RRTYPE_SOA &&
 	    dnslib_dname_compare(parser->last_node->owner,
 				 current_rrset->owner) ==
 	    0) {
@@ -1586,8 +1637,8 @@ int process_rr(void)
 
 		rrset_list_delete(&parser->node_rrsigs);
 
-                /* new node */
-                /* not a new node !!! */
+		/* new node */
+		/* not a new node !!! */
 		node = node_get_func(zone, current_rrset->owner);
 	}
 
@@ -1601,23 +1652,23 @@ int process_rr(void)
 					node_get_func)) == NULL) {
 			return -1;
 		}
-        } else {
-                /* TODO I bet this can be simplified a lot */
-                if (current_rrset->owner != node->owner) {
-                        if (parser->last_node &&
-                            parser->last_node->owner != current_rrset->owner &&
-                            dnslib_dname_compare(parser->last_node->owner,
-                                                 current_rrset->owner) != 0 &&
-                            node->rrset_count > 0) {
-                                /* This last case in if is weird - it should
-                                 * never happen, but it does, occasionally */
-                                /* and if it does, it is sign of a leak smwh */
-                                dnslib_dname_free(&(current_rrset->owner));
-                        }
-                        current_rrset->owner = node->owner;
-                }
-                assert(current_rrset->owner == node->owner);
-        }
+	} else {
+		/* TODO I bet this can be simplified a lot */
+		if (current_rrset->owner != node->owner) {
+			if (parser->last_node &&
+			    parser->last_node->owner != current_rrset->owner &&
+			    dnslib_dname_compare(parser->last_node->owner,
+						 current_rrset->owner) != 0 &&
+			    node->rrset_count > 0) {
+				/* This last case in if is weird - it should
+				 * never happen, but it does, occasionally */
+				/* and if it does, it is sign of a leak smwh */
+				dnslib_dname_free(&(current_rrset->owner));
+			}
+			current_rrset->owner = node->owner;
+		}
+		assert(current_rrset->owner == node->owner);
+	}
 
 	if (node->owner->node == NULL) {
 		node->owner->node = (dnslib_node_t *)parser->id;
@@ -1654,7 +1705,7 @@ int process_rr(void)
 		/* TODO Search for possible duplicates... */
 	}
 
-/* \note DNAME and CNAME checks disabled - would slow things down a little 
+/* \note DNAME and CNAME checks disabled - would slow things down a little
  * plus it cannot be done in the fashion below - we don't have information
  * about the length of rrset
  * Code from NSD
@@ -1680,7 +1731,7 @@ int process_rr(void)
 //	}
 //	/* \note we don't have similar function - maybe
 //       * length of the skip_list
-//       * should stay disabled 
+//       * should stay disabled
 //	 */
 //	if(domain_find_rrset(rr->owner, zone, TYPE_CNAME) &&
 //		domain_find_non_cname_rrset(rr->owner, zone)) {
@@ -1693,9 +1744,9 @@ int process_rr(void)
 
 	parser->last_node = node;
 
-        ++totalrrs;
+	++totalrrs;
 
-        return 0;
+	return 0;
 }
 
 static uint find_rrsets_orphans(dnslib_zone_t *zone, rrset_list_t
@@ -1725,7 +1776,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 {
 	if (!outfile) {
 		fprintf(stderr, "Missing output file for '%s'\n",
-		        zonefile);
+			zonefile);
 		return -1;
 	}
 
@@ -1743,7 +1794,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
 		fprintf(stderr, "Cannot open '%s': %s.",
-		        zonefile, strerror(errno));
+			zonefile, strerror(errno));
 		return -1;
 	}
 
