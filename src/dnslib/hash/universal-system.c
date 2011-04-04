@@ -27,7 +27,7 @@ static void us_generate_coefs(us_system_t *system, uint from, uint to)
 
 		do {
 			// generate random odd number
-			system->coefs[i] = rand() % MAX_UINT_MY;
+			system->coefs[i] = rand_r(&system->seed) % MAX_UINT_MY;
 			if (system->coefs[i] % 2 == 0) {
 				system->coefs[i] = (system->coefs[i] == 0)
 				                    ? 1
@@ -53,7 +53,7 @@ void us_initialize(us_system_t *system)
 {
 	assert(system != NULL);
 	assert(UINT_MAX == MAX_UINT_MY);
-	srand(time(NULL));
+	system->seed = (unsigned)time(0);
 
 	// Initialize both generations of functions by generating random odd
 	// numbers

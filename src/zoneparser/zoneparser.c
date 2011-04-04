@@ -548,7 +548,8 @@ uint16_t * zparser_conv_services(const char *protostr, char *servicestr)
 		return NULL;
 	}
 
-	for (word = strtok(servicestr, sep); word; word = strtok(NULL, sep)) {
+	char *sp = 0;
+	while ((word = strtok_r(servicestr, sep, &sp))) {
 		struct servent *service;
 		int port;
 
@@ -1212,7 +1213,9 @@ uint16_t * zparser_conv_apl_rdata(char *str)
 		fprintf(stderr, "invalid address '%s'", colon + 1);
 		return NULL;
 	} else if (rc == -1) {
-		fprintf(stderr, "inet_pton failed: %s", strerror(errno));
+		char ebuf[256];
+		fprintf(stderr, "inet_pton failed: %s",
+			strerror_r(errno, ebuf, sizeof(ebuf)));
 		return NULL;
 	}
 
@@ -1780,6 +1783,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 		return -1;
 	}
 
+	char ebuf[256];
+
 	dnslib_dname_t *dname;
 
 	dname = dnslib_dname_new_from_str(name, strlen(name), NULL);
@@ -1794,7 +1799,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
 		fprintf(stderr, "Cannot open '%s': %s.",
-			zonefile, strerror(errno));
+			zonefile, strerror_r(errno, ebuf, sizeof(ebuf)));
 		return -1;
 	}
 

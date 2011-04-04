@@ -37,6 +37,7 @@ enum { GEN_COUNT = 2 };
 /*----------------------------------------------------------------------------*/
 
 struct us_system {
+	uint seed; /*!< \brief Seed for random number generator. */
 	uint coefs[US_FNC_COUNT * GEN_COUNT];
 };
 

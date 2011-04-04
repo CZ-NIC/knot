@@ -98,13 +98,13 @@ static int test_da_init(da_array_t *arr)
 
 static int test_da_random_op(da_array_t *arr)
 {
-	srand(time(NULL));
+	unsigned seed = (unsigned)time(0);
 	uint allocated = DA_DEF_SIZE;
 	uint size = 0;
 
 	for (int i = 0; i < DA_OPERATIONS; ++i) {
-		int r = rand() % DA_OPCOUNT;
-		int count = rand() % DA_FRAGMENT + 1;
+		int r = rand_r(&seed) % DA_OPCOUNT;
+		int count = rand_r(&seed) % DA_FRAGMENT + 1;
 
 		switch (r) {
 
@@ -128,7 +128,7 @@ static int test_da_random_op(da_array_t *arr)
 			if (da_occupy(arr, count) == 0) {
 				uint *items = (uint *) da_get_items(arr);
 				for (int j = 0; j < da_get_count(arr); ++j) {
-					items[j] = rand();
+					items[j] = rand_r(&seed);
 				}
 				if (size <= allocated && 
 				    (allocated - size) >= count) {
@@ -147,7 +147,7 @@ static int test_da_random_op(da_array_t *arr)
 			// Perform release operation
 		case DA_RELEASE:
 			if (arr->count > 0) {
-				count = (rand() % DA_FRAGMENT) % arr->count;
+				count = (rand_r(&seed) % DA_FRAGMENT) % arr->count;
 				da_release(arr, count);
 
 				if (size <= allocated && size >= count) {
@@ -179,8 +179,9 @@ void *test_da_read(void *obj)
 	rcu_register_thread();
 	rcu_read_lock();
 
+	unsigned seed = (unsigned)time(0);
 	da_array_t *arr = (da_array_t *) obj;
-	int index = rand() % da_get_count(arr);
+	int index = rand_r(&seed) % da_get_count(arr);
 
 	note("  dynamic-array: read thread");
 	note("    read thread: saving pointer to %d. item", index);
@@ -243,6 +244,7 @@ static int test_da_resize_holding(da_array_t *arr)
 
 static int test_da_resize(da_array_t *arr)
 {
+	unsigned seed = (unsigned)time(0);
 	int orig_count = da_get_count(arr);
 	note("dynamic-array: allocated: %d, items: %d", arr->allocated,
 	     orig_count);
@@ -258,7 +260,7 @@ static int test_da_resize(da_array_t *arr)
 		int i = da_get_count(arr);
 		da_occupy(arr, 10);
 		for (; i < da_get_count(arr); ++i) {
-			((int *)da_get_items(arr))[i] = rand();
+			((int *)da_get_items(arr))[i] = rand_r(&seed);
 		}
 	}
 

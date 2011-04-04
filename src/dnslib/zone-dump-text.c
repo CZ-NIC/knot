@@ -505,12 +505,15 @@ char *rdata_period_to_string(dnslib_rdata_item_t item)
 char *rdata_time_to_string(dnslib_rdata_item_t item)
 {
 	time_t time = (time_t) dnslib_wire_read_u32(rdata_item_data(item));
-	struct tm *tm = gmtime(&time);
+	struct tm tm_conv;
+	if (gmtime_r(&time, &tm_conv) == 0) {
+		return 0;
+	}
 	char *ret = malloc(sizeof(char) * 15);
-	if (strftime(ret, 15, "%Y%m%d%H%M%S", tm)) {
+	if (strftime(ret, 15, "%Y%m%d%H%M%S", &tm_conv)) {
 		return ret;
 	} else {
-		return NULL;
+		return 0;
 	}
 }
 
