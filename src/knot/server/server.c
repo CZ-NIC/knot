@@ -83,7 +83,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	                cfg_if->address, cfg_if->port) < 0) {
 		socket_close(sock);
 		log_server_error("server: Could not bind to "
-				 "UDP interface %s port %d.\n",
+		                 "UDP interface %s port %d.\n",
 		                 cfg_if->address, cfg_if->port);
 		return knot_map_errno(EACCES, EINVAL, ENOMEM);
 	}
@@ -94,11 +94,11 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	/* Set socket options. */
 	if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &snd_opt, sizeof(snd_opt)) < 0) {
 		log_server_warning("server: Failed to configure socket "
-				   "write buffers.\n");
+		                   "write buffers.\n");
 	}
 	if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
 		log_server_warning("server: Failed to configure socket "
-				   "read buffers.\n");
+		                   "read buffers.\n");
 	}
 
 	/* Create TCP socket. */
@@ -107,7 +107,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	if (sock <= 0) {
 		socket_close(new_if->fd[UDP_ID]);
 		log_server_error("server: Could not create TCP socket: %s.\n",
-				 strerror_r(errno, errbuf, sizeof(errbuf)));
+		                 strerror_r(errno, errbuf, sizeof(errbuf)));
 		return sock;
 	}
 
@@ -116,7 +116,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 		socket_close(new_if->fd[UDP_ID]);
 		socket_close(sock);
 		log_server_error("server: Could not bind to "
-				 "TCP interface %s port %d.\n",
+		                 "TCP interface %s port %d.\n",
 		                 cfg_if->address, cfg_if->port);
 		return ret;
 	}
@@ -126,7 +126,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 		socket_close(new_if->fd[UDP_ID]);
 		socket_close(sock);
 		log_server_error("server: Failed to listen on "
-				 "TCP interface %s port %d.\n",
+		                 "TCP interface %s port %d.\n",
 		                 cfg_if->address, cfg_if->port);
 		return ret;
 	}
@@ -209,7 +209,7 @@ static int server_bind_sockets(server_t *server)
 			}
 
 			log_server_info("Binding to interface %s port %d.\n",
-					cfg_if->address, cfg_if->port);
+			                cfg_if->address, cfg_if->port);
 		}
 
 		/* Move to new list. */
@@ -232,7 +232,7 @@ static int server_bind_sockets(server_t *server)
 	WALK_LIST_DELSAFE(n, m, unmatched) {
 		iface_t *rm_if = (iface_t*)n;
 		log_server_info("Removing interface %s port %d.\n",
-				rm_if->addr, rm_if->port);
+		                rm_if->addr, rm_if->port);
 		server_remove_iface(rm_if);
 	}
 
@@ -522,8 +522,7 @@ int server_start(server_t *server, const char **filenames, uint zones)
 	/* Lock configuration. */
 	conf_read_lock();
 
-	log_server_info("Loading zone files...\n",
-			zones_total);
+	log_server_info("Loading zone files...\n", zones_total);
 	//stat
 
 	stat_static_gath_start();
@@ -541,8 +540,8 @@ int server_start(server_t *server, const char **filenames, uint zones)
 		zloader_t *zl = dnslib_zload_open(z->db);
 		if (zl == NULL) {
 			log_server_error("error: Zone source file for '%s'  "
-					 "doesn't exists.\n",
-					 z->name);
+			                 "doesn't exists.\n",
+			                 z->name);
 			continue;
 		}
 		assert(zl != NULL);
@@ -590,7 +589,7 @@ int server_start(server_t *server, const char **filenames, uint zones)
 		log_server_error("server: No valid zone found.\n");
 	} else {
 		log_server_info("Successfully loaded %d/%d zones.\n",
-				zones_loaded, zones_total);
+		                zones_loaded, zones_total);
 	}
 
 	debug_server("Starting handlers...\n");
@@ -712,14 +711,14 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 	int ret = KNOT_EOK;
 	if ((ret = server_bind_sockets(server)) < 0) {
 		log_server_error("server: Failed to bind configured "
-				 "interfaces.\n");
+		                 "interfaces.\n");
 		return KNOT_ERROR;
 	}
 
 	/* Update handlers. */
 	if ((ret = server_bind_handlers(server)) < 0) {
 		log_server_error("server: Failed to create handlers for "
-				 "configured interfaces.\n");
+		                 "configured interfaces.\n");
 		return ret;
 	}
 
@@ -739,9 +738,9 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 			ret = dt_start(h->unit);
 			if (ret < 0) {
 				log_server_error("server: Handler for %s:%d "
-						 "has failed to start.\n",
-						 h->iface->addr,
-						 h->iface->port);
+				                 "has failed to start.\n",
+				                  h->iface->addr,
+				                  h->iface->port);
 				break;
 			}
 		}

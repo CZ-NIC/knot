@@ -148,7 +148,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 	int res = bind(socket, paddr, addrlen);
 	if (res < 0) {
 		log_server_error("server: Cannot bind to socket (%d).\n",
-				 errno);
+		                 errno);
 		return knot_map_errno(EADDRINUSE, EINVAL, EACCES, ENOMEM);
 	}
 
