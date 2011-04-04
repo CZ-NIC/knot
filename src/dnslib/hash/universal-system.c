@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <assert.h>
 
-//#include "common.h"
 #include "universal-system.h"
 
 /*----------------------------------------------------------------------------*/
@@ -17,7 +16,13 @@ const unsigned long MAX_UINT_MY = 4294967295;
 /*----------------------------------------------------------------------------*/
 /* Private functions                                                          */
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Generates new set of coeficients.
+ *
+ * \param system Universal system to generate the coeficients for.
+ * \param from First coeficient to be replaced.
+ * \param to Up to this the coeficients will be replaced.
+ */
 static void us_generate_coefs(us_system_t *system, uint from, uint to)
 {
 	assert(system != NULL);
