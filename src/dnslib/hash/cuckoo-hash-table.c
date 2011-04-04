@@ -25,6 +25,12 @@
 #define RELOCATIONS_DEFAULT 200
 
 /*!
+ * \brief Maximum size table holding information about used hash table cells
+ *        when hashing (just for debug issues).
+ */
+#define RELOCATIONS_MAX 1000
+
+/*!
  * \brief Macro for hashing the given key using the universal system.
  *
  * \param system Universal system to use for the hashing.
