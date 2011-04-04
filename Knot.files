@@ -51,6 +51,7 @@ src/dnslib/debug.h
 src/dnslib/debug.c
 src/dnslib/dnslib.h
 src/dnslib/tolower.h
+src/dnslib/tolower.c
 src/dnslib/nsec3.h
 src/dnslib/nsec3.c
 src/dnslib/zone-dump.c

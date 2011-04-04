@@ -120,6 +120,7 @@ libknot_la_SOURCES =				\
 	dnslib/descriptor.h			\
 	dnslib/dnslib.h				\
 	dnslib/tolower.h			\
+	dnslib/tolower.c			\
 	dnslib/zone-dump.h			\
 	dnslib/dname.h				\
 	dnslib/response.h			\
