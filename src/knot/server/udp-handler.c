@@ -53,6 +53,7 @@ int udp_master(dthread_t *thread)
 	 *       Although this is much cheaper,
 	 *       16kB worth of buffers *may* pose a problem.
 	 */
+	char errbuf[128];
 	uint8_t inbuf[SOCKET_MTU_SZ];
 	uint8_t outbuf[SOCKET_MTU_SZ];
 	struct sockaddr* addr = 0;
@@ -76,7 +77,7 @@ int udp_master(dthread_t *thread)
 	 * Check addr len.
 	 */
 	if (!addr) {
-		log_server_error("UDP handler received invalid socket type %d, "
+		log_server_error("udp: received invalid socket type %d,"
 		                 "AF_INET (%d) or AF_INET6 (%d) expected.\n",
 		                 handler->type, AF_INET, AF_INET6);
 		return KNOT_EADDRINVAL;
@@ -109,9 +110,9 @@ int udp_master(dthread_t *thread)
 		// Error and interrupt handling
 		if (unlikely(n <= 0)) {
 			if (errno != EINTR && errno != 0) {
-				log_server_error("udp: %s: failed: %d - %s\n",
-				                 "socket_recvfrom()",
-				                 errno, strerror(errno));
+				log_server_error("udp: recvfrom() failed: %s\n",
+						 strerror_r(errno, errbuf,
+							    sizeof(errbuf)));
 			}
 
 			if (!(handler->state & ServerRunning)) {
@@ -145,10 +146,11 @@ int udp_master(dthread_t *thread)
 
 			// Check result
 			if (res != answer_size) {
-				char buf[256];
 				log_server_error("udp: %s: failed: %zd - %s.\n",
 				                 "socket_sendto()",
-				                 res, strerror_r((int)res, buf, sizeof(buf)));
+						 res,
+						 strerror_r((int)res, errbuf,
+							    sizeof(errbuf)));
 				continue;
 			}
 

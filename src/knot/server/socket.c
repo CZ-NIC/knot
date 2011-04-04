@@ -112,7 +112,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 	} else {
 
 #ifdef DISABLE_IPV6
-		log_error("sockets: ipv6 support disabled\n");
+		log_server_error("sockets: ipv6 support disabled\n");
 		return KNOT_ENOIPV6;
 #else
 		/* Initialize socket address. */
@@ -147,8 +147,8 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 	/* Bind to specified address. */
 	int res = bind(socket, paddr, addrlen);
 	if (res < 0) {
-		log_server_error("%s: cannot bind socket (errno %d): %s.\n",
-		                 __func__, errno, strerror(errno));
+		log_server_error("server: Cannot bind to socket (%d).\n",
+				 errno);
 		return knot_map_errno(EADDRINUSE, EINVAL, EACCES, ENOMEM);
 	}
 

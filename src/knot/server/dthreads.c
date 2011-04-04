@@ -814,8 +814,8 @@ int dt_setprio(dthread_t *thread, int prio)
 
 	/* Map error codes. */
 	if (ret < 0) {
-		debug_dt("dthreads: [%p] %s(%d): failed: %s",
-		         thread, __func__, prio, strerror(errno));
+		debug_dt("dthreads: [%p] %s(%d): failed",
+			 thread, __func__, prio);
 
 		/* Map "not supported". */
 		if (ret == ENOTSUP) {
