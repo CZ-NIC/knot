@@ -10,7 +10,7 @@
 #include "knot/stat/stat.h"
 #include "dnslib/dnslib.h"
 #include "dnslib/debug.h"
-#include "other/error.h"
+#include "knot/other/error.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -303,7 +303,6 @@ DEBUG_NS(
 }
 
 /*----------------------------------------------------------------------------*/
-
 /*!
  * \brief Retrieves RRSet(s) of given type from the given node and adds them to
  *        the response's Answer section.
@@ -414,7 +413,6 @@ DEBUG_NS(
 }
 
 /*----------------------------------------------------------------------------*/
-
 /*!
  * \brief Adds RRSets to Additional section of the response.
  *
@@ -508,7 +506,6 @@ DEBUG_NS(
 }
 
 /*----------------------------------------------------------------------------*/
-
 /*!
  * \brief Checks whether the given type requires additional processing.
  *
@@ -527,7 +524,6 @@ static int ns_additional_needed(uint16_t qtype)
 }
 
 /*----------------------------------------------------------------------------*/
-
 /*!
  * \brief Adds whatever Additional RRSets are required for the response.
  *
@@ -560,7 +556,6 @@ static void ns_put_additional(dnslib_response_t *resp)
 }
 
 /*----------------------------------------------------------------------------*/
-
 /*!
  * \brief Puts authority NS RRSet to the Auhority section of the response.
  *
@@ -580,7 +575,6 @@ static void ns_put_authority_ns(const dnslib_zone_t *zone,
 }
 
 /*----------------------------------------------------------------------------*/
-
 /*!
  * \brief Puts SOA RRSet to the Auhority section of the response.
  *
@@ -600,7 +594,6 @@ static void ns_put_authority_soa(const dnslib_zone_t *zone,
 }
 
 /*----------------------------------------------------------------------------*/
-
 /*!
  * \brief Creates a 'next closer name' to the given domain name.
  *
@@ -638,7 +631,6 @@ static dnslib_dname_t *ns_next_closer(const dnslib_dname_t *closest_encloser,
 }
 
 /*----------------------------------------------------------------------------*/
-
 /*!
  * \brief Adds NSEC3 RRSet (together with corresponding RRSIGs) from the given
  *        node into the response.
@@ -663,7 +655,6 @@ static void ns_put_nsec3_from_node(const dnslib_node_t *node,
 }
 
 /*----------------------------------------------------------------------------*/
-
 /*!
  * \brief Finds and adds NSEC3 covering the given domain name (and their
  *        associated RRSIGs) to the response.
@@ -672,7 +663,7 @@ static void ns_put_nsec3_from_node(const dnslib_node_t *node,
  * \param name Domain name to cover.
  * \param resp Response where to add the RRSets.
  *
- * \retval KNOT_OK
+ * \retval KNOT_EOK
  * \retval NS_ERR_SERVFAIL if a runtime collision occured. The server should
  *                         respond with SERVFAIL in such case.
  */
@@ -697,20 +688,24 @@ DEBUG_NS(
 
 	ns_put_nsec3_from_node(prev, resp);
 
-	return KNOT_OK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
-
 /*!
- * \brief
+ * \brief Adds NSEC3s comprising the 'closest encloser proof' for the given
+ *        (non-existent) domain name to the response.
  *
- * \param zone
- * \param closest_encloser
- * \param qname
- * \param resp
+ * For definition of 'closest encloser proof', see RFC5155, section 7.2.1,
+ * Page 18.
  *
- * \return int
+ * \param zone Zone where to take the 'closest encloser proof' from.
+ * \param closest_encloser Closest encloser of \a qname in the zone.
+ * \param qname Searched (non-existent) name.
+ * \param resp Response where to add the NSEC3s.
+ *
+ * \retval KNOT_EOK
+ * \retval NS_ERR_SERVFAIL
  */
 static int ns_put_nsec3_closest_encloser_proof(const dnslib_zone_t *zone,
                                          const dnslib_node_t **closest_encloser,
@@ -729,7 +724,7 @@ DEBUG_NS(
 		debug_ns("No NSEC3PARAM found in zone %s.\n", name);
 		free(name);
 );
-		return 0;
+		return KNOT_EOK;
 	}
 
 DEBUG_NS(
@@ -795,12 +790,12 @@ DEBUG_NS(
 }
 
 /*----------------------------------------------------------------------------*/
-
 /*!
- * \brief
+ * \brief Creates a name of a wildcard child of \a name.
  *
- * \param name
- * \return dnslib_dname_t *
+ * \param name Domain name to get the wildcard child name of.
+ *
+ * \return Wildcard child name or NULL if an error occured.
  */
 static dnslib_dname_t *ns_wildcard_child_name(const dnslib_dname_t *name)
 {
@@ -825,14 +820,15 @@ DEBUG_NS(
 }
 
 /*----------------------------------------------------------------------------*/
-
 /*!
- * \brief
+ * \brief Puts NSEC3s covering the non-existent wildcard child of a node.
  *
- * \param zone
- * \param node
- * \param resp
- * \return int
+ * \param zone Zone where to get the NSEC3s from.
+ * \param node Node whose non-existent wildcard child should be covered.
+ * \param resp Response where to add the NSEC3s.
+ *
+ * \retval KNOT_EOK
+ * \retval NS_ERR_SERVFAIL
  */
 static int ns_put_nsec3_no_wildcard_child(const dnslib_zone_t *zone,
                                           const dnslib_node_t *node,
