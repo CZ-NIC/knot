@@ -988,17 +988,19 @@ void dnslib_zone_deep_free(dnslib_zone_t **zone)
 #endif
 	/* has to go through zone twice, rdata may contain references to node
 	   owners earlier in the zone which may be already freed */
+	/* NSEC3 tree is deleted first as it may contain references to the
+	   normal tree. */
+
+	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
+	                      dnslib_zone_destroy_node_rrsets_from_tree, NULL);
+
+	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
+	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
 
 	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
 	                      dnslib_zone_destroy_node_rrsets_from_tree, NULL);
 
  	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
-	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
-
-	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
-	                      dnslib_zone_destroy_node_rrsets_from_tree, NULL);
-
-	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
 	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
 
 	dnslib_zone_free(zone);
