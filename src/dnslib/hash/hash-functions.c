@@ -1,5 +1,4 @@
 #include <config.h>
-//#include "common.h"
 #include "hash-functions.h"
 
 /*--------------------------------- FNV HASH ---------------------------------*/
@@ -135,7 +134,7 @@ unsigned long sdbm_hash(const unsigned char *key, int size)
 	return h;
 }
 
-/*--------------------------------- SDBM HASH --------------------------------*/
+/*---------------------------------- DJB HASH --------------------------------*/
 
 unsigned long djb_hash(const unsigned char *key, int size)
 {
