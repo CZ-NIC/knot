@@ -227,8 +227,9 @@ ANY     [^\"\n\\]|\\.
 		if (strlen(yytext) == 0) {
 			zc_error("missing file name in $INCLUDE directive");
 		} else if (!(input = fopen(yytext, "r"))) {
+			char ebuf[256];
 			zc_error("cannot open include file '%s': %s",
-				 yytext, strerror(errno));
+				 yytext, strerror_r(errno, ebuf, sizeof(ebuf)));
 		} else {
 			/* Initialize parser for include file.  */
 			char *filename = strdup(yytext);

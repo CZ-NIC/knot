@@ -58,7 +58,8 @@ static const int MAX_LEVEL = 6;
  */
 static float frand()
 {
-	return (float) rand() / RAND_MAX;
+	unsigned seed = (unsigned)time(0);
+	return (float) rand_r(&seed) / RAND_MAX;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -71,7 +72,6 @@ static int skip_random_level()
 	int lvl = 0;
 
 	if (first) {
-		srand((unsigned)time(NULL));
 		first = 0;
 	}
 
