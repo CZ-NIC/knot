@@ -16,7 +16,18 @@
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Compares the two arguments interpreted as zone names (domain names).
+ *
+ * Use this function with generic data structures (such as the skip list).
+ *
+ * \param d1 First zone name.
+ * \param d2 Second zone name.
+ *
+ * \retval 0 if the two zone names are equal.
+ * \retval < 0 if \a d1 is before \a d2 in canonical order.
+ * \retval > 0 if \a d1 is after \a d2 in canonical order.
+ */
 static int dnslib_zonedb_compare_zone_names(void *d1, void *d2)
 {
 	const dnslib_dname_t *dname1 = (const dnslib_dname_t *)d1;
@@ -98,7 +109,7 @@ int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name)
 /*----------------------------------------------------------------------------*/
 
 const dnslib_zone_t *dnslib_zonedb_find_zone_for_name(dnslib_zonedb_t *db,
-						    const dnslib_dname_t *dname)
+                                                    const dnslib_dname_t *dname)
 {
 	rcu_read_lock();
 
