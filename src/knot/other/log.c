@@ -128,7 +128,7 @@ int log_open_file(const char* filename)
 	}
 
 	// Disable buffering
-	setvbuf(LOG_FDS[LOG_FDS_OPEN], (char *)NULL, _IONBF, 0);
+	setvbuf(LOG_FDS[LOG_FDS_OPEN], (char *)0, _IONBF, 0);
 
 	return LOGT_FILE + LOG_FDS_OPEN++;
 }
@@ -207,6 +207,9 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 
 			// Print
 			ret = fprintf(stream, msg, "");
+			if (stream == stdout) {
+				fflush(stream);
+			}
 		}
 	}
 

@@ -14,8 +14,6 @@
 
 int log_conf_hook(const struct conf_t *conf, void *data)
 {
-	debug_server("Event: reconfiguring logsystem.\n");
-
 	// Data not used
 	int ret = 0;
 	UNUSED(data);

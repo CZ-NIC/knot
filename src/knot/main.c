@@ -33,7 +33,8 @@ void interrupt_handle(int s)
 			sig_req_stop = 1;
 			sig_stopping = 1;
 		} else {
-			log_server_error("server: \nOK! OK! Exiting immediately.\n");
+			log_server_error("\nserver: "
+					 "OK! Exiting immediately.\n");
 			exit(1);
 		}
 	}
@@ -97,7 +98,8 @@ int main(int argc, char **argv)
 	// Now check if we want to daemonize
 	if (daemonize) {
 		if (daemon(1, 0) != 0) {
-			log_server_fatal("Daemonization failed, shutting down...\n");
+			log_server_fatal("server: Daemonization failed, "
+			                 "shutting down...\n");
 			log_close();
 			return 1;
 		}
@@ -121,10 +123,11 @@ int main(int argc, char **argv)
 	}
 
 	// Open configuration
+	log_server_info("Parsing configuration...\n");
 	if (conf_open(config_fn) != 0) {
 
-		log_server_error("server: Failed to parse configuration '%s'.\n"
-		                 , config_fn);
+		log_server_error("server: Failed to parse configuration "
+		                 "'%s'.\n", config_fn);
 
 		if (zfs_count < 1) {
 			log_server_fatal("server: No zone files specified, "
@@ -134,7 +137,12 @@ int main(int argc, char **argv)
 			free(default_fn);
 			return 1;
 		}
+	} else {
+		log_server_info("Configured %d interfaces and %d zones.\n",
+				conf()->ifaces_count, conf()->zones_count);
 	}
+
+	log_server_info("\n");
 
 	// Verbose mode
 	if (verbose) {
@@ -147,27 +155,28 @@ int main(int argc, char **argv)
 
 	// Run server
 	int res = 0;
+	log_server_info("Starting server...\n");
 	if ((res = server_start(server, zfs, zfs_count)) == 0) {
 
 		// Save PID
 		if (daemonize) {
 			int rc = pid_write(pidfile);
 			if (rc < 0) {
-				log_server_warning("server: Failed to create PID "
-				                   "file '%s'.",
-				                   pidfile);
-			} else {
-				log_server_info("server: PID file '%s' created.",
-				                pidfile);
+				log_server_warning("server: Failed to create "
+				                   "PID file '%s'.", pidfile);
 			}
 		}
 
 		// Change directory if daemonized
-		log_server_info("server: Started.\n");
 		if (daemonize) {
-			log_server_info("Server running as daemon.\n");
+			log_server_info("Server started as a daemon, "
+					"PID=\"%ld\".\n", (long)getpid());
 			res = chdir("/");
+		} else {
+			log_server_info("Server started in foreground, "
+					"PID=\"%ld\".\n", (long)getpid());
 		}
+		log_server_info("\n");
 
 		// Setup signal blocking
 		sigset_t emptyset;
@@ -191,24 +200,23 @@ int main(int argc, char **argv)
 			int ret = evqueue_poll(evqueue(), &emptyset);
 
 			/* Interrupts. */
-			if (ret < 0) {
-				/*! \todo More robust way to exit evloop.
-				 *        Event loop should exit with a special
-				 *        event.
-				 */
-				if (sig_req_stop) {
-					debug_server("Event: "
-					             "stopping server.\n");
-					sig_req_stop = 0;
-					server_stop(server);
-					break;
+			/*! \todo More robust way to exit evloop.
+			 *        Event loop should exit with a special
+			 *        event.
+			 */
+			if (sig_req_stop) {
+				sig_req_stop = 0;
+				server_stop(server);
+				break;
+			}
+			if (sig_req_reload) {
+				log_server_info("Reloading configuration...\n");
+				sig_req_reload = 0;
+				if (conf_open(config_fn) == 0) {
+					log_server_error("Configuration "
+							 "reloaded.\n");
 				}
-				if (sig_req_reload) {
-					debug_server("Event: "
-					             "reloading config.\n");
-					sig_req_reload = 0;
-					conf_open(config_fn);
-				}
+
 			}
 
 			/* Events. */
@@ -224,13 +232,15 @@ int main(int argc, char **argv)
 			}
 		}
 
-		//sigprocmask(SIG_SETMASK, &emptyset, 0);
 		if ((res = server_wait(server)) != 0) {
 			log_server_error("server: An error occured while "
 			                 "waiting for server to finish.\n");
+		} else {
+			log_server_info("Server finished.\n");
 		}
 
 	} else {
+		log_server_info("Failed\n");
 		log_server_fatal("server: An error occured while "
 		                 "starting the server.\n");
 	}
@@ -243,12 +253,10 @@ int main(int argc, char **argv)
 		if (pid_remove(pidfile) < 0) {
 			log_server_warning("server: Failed to remove "
 			                   "PID file.\n");
-		} else {
-			log_server_info("server: PID file safely removed.\n");
 		}
 	}
 
-	log_server_info("server: Shut down.\n");
+	log_server_info("Shut down.\n");
 	log_close();
 	free(pidfile);
 
