@@ -10,27 +10,52 @@
 #include "knot/stat/stat.h"
 #include "dnslib/dnslib.h"
 #include "dnslib/debug.h"
+#include "other/error.h"
 
-//static const uint8_t  RCODE_MASK           = 0xf0;
-static const int      OFFSET_FLAGS2        = 3;
-static const size_t   RR_FIXED_SIZE        = 10;
-static const size_t   QUESTION_FIXED_SIZE  = 4;
+/*----------------------------------------------------------------------------*/
+
+/*! \brief Maximum UDP payload with EDNS enabled. */
 static const uint16_t MAX_UDP_PAYLOAD_EDNS = 4096;
+/*! \brief Maximum UDP payload with EDNS disabled. */
 static const uint16_t MAX_UDP_PAYLOAD      = 512;
+/*! \brief Supported EDNS version. */
 static const uint8_t  EDNS_VERSION         = 0;
-static const uint8_t  OPT_SIZE             = 11;
+/*! \brief Determines whether EDNS is enabled. */
 static const int      EDNS_ENABLED         = 1;
+
+/*! \brief TTL of a CNAME synthetized from a DNAME. */
 static const uint32_t SYNTH_CNAME_TTL      = 0;
+
+/*! \brief Determines whether DNSSEC is enabled. */
 static const int      DNSSEC_ENABLED       = 1;
+
+/*! \brief Determines whether NSID is enabled. */
 static const int      NSID_ENABLED         = 1;
+
+/*! \brief Length of NSID option data. */
 static const uint16_t NSID_LENGTH          = 6;
+/*! \brief NSID option data. */
 static const uint8_t  NSID_DATA[6] = {0x46, 0x6f, 0x6f, 0x42, 0x61, 0x72};
+
+/*! \brief Internal error code to propagate need for SERVFAIL response. */
 static const int      NS_ERR_SERVFAIL      = -999;
 
 /*----------------------------------------------------------------------------*/
 /* Private functions                                                          */
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Prepares wire format of an error response using generic error template
+ *        stored in the nameserver structure.
+ *
+ * The error response will not contain the Question section from the query, just
+ * a header with ID copied from the query and the given RCODE.
+ *
+ * \param nameserver Nameserver structure containing the error template.
+ * \param query_wire Wire format of the query.
+ * \param rcode RCODE to set in the response.
+ * \param response_wire Place for wire format of the response.
+ * \param rsize Size of the error response will be stored here.
+ */
 static inline void ns_error_response(ns_nameserver *nameserver,
                                      const uint8_t *query_wire,
                                      uint8_t rcode,
@@ -47,7 +72,19 @@ static inline void ns_error_response(ns_nameserver *nameserver,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Finds zone where to search for the QNAME.
+ *
+ * \note As QTYPE DS requires special handling, this function finds a zone for
+ *       a direct predecessor of QNAME in such case.
+ *
+ * \param zdb Zone database where to search for the proper zone.
+ * \param qname QNAME.
+ * \param qtype QTYPE.
+ *
+ * \return Zone to which QNAME belongs (according to QTYPE), or NULL if no such
+ *         zone was found.
+ */
 static const dnslib_zone_t *ns_get_zone_for_qname(dnslib_zonedb_t *zdb,
                                                   const dnslib_dname_t *qname,
                                                   uint16_t qtype)
@@ -76,7 +113,18 @@ static const dnslib_zone_t *ns_get_zone_for_qname(dnslib_zonedb_t *zdb,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Synthetizes RRSet from a wildcard RRSet using the given QNAME.
+ *
+ * The synthetized RRSet is identical to the wildcard RRSets, except that the
+ * owner name is replaced by \a qname.
+ *
+ * \param wildcard_rrset Wildcard RRSet to synthetize from.
+ * \param qname Domain name to be used as the owner of the synthetized RRset.
+ *
+ * \return The synthetized RRSet (this is a newly created RRSet, remember to
+ *         free it).
+ */
 dnslib_rrset_t *ns_synth_from_wildcard(const dnslib_rrset_t *wildcard_rrset,
                                        const dnslib_dname_t *qname)
 {
@@ -122,7 +170,16 @@ dnslib_rrset_t *ns_synth_from_wildcard(const dnslib_rrset_t *wildcard_rrset,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Checks if the given RRSet is a wildcard RRSet and replaces it with
+ *        a synthetized RRSet if required.
+ *
+ * \param name Domain name to be used as the owner of the possibly synthetized
+ *             RRSet
+ * \param resp Response to which the synthetized RRSet should be stored (as a
+ *             temporary RRSet).
+ * \param rrset RRSet to check (and possibly replace).
+ */
 static void ns_check_wildcard(const dnslib_dname_t *name,
                               dnslib_response_t *resp,
                               const dnslib_rrset_t **rrset)
@@ -138,7 +195,26 @@ static void ns_check_wildcard(const dnslib_dname_t *name,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Adds signatures (RRSIGs) for the given RRSet to the response.
+ *
+ * This function first checks if DNSSEC is enabled and if it was requested in
+ * the response (DO bit set). If not, it does nothing and returns 0. If yes,
+ * it retrieves RRSIGs stored in the RRSet, deals with possible wildcard owner
+ * and adds the RRSIGs to response using the given function (that determines
+ * to which section of the response they will be added).
+ *
+ * \param rrset RRSet to get the RRSIGs from.
+ * \param resp Response where to add the RRSIGs.
+ * \param name Actual name to be used as owner in case of wildcard RRSet.
+ * \param add_rrset_to_resp Function for adding the RRSIG RRset to the response.
+ * \param tc Set to 1 if omitting the RRSIG RRSet should result in setting the
+ *           TC bit in the response.
+ *
+ * \return KNOT_EOK
+ * \return DNSLIB_ENOMEM
+ * \return DNSLIB_ESPACE
+ */
 static int ns_add_rrsigs(const dnslib_rrset_t *rrset, dnslib_response_t *resp,
                          const dnslib_dname_t *name,
                          int (*add_rrset_to_resp)(dnslib_response_t *,
@@ -160,11 +236,22 @@ static int ns_add_rrsigs(const dnslib_rrset_t *rrset, dnslib_response_t *resp,
 		return add_rrset_to_resp(resp, rrsigs, tc, 0);
 	}
 
-	return 0;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Resolves CNAME chain starting in \a node, stores all the CNAMEs in the
+ *        response and updates \a node and \a qname to the last node in the
+ *        chain.
+ *
+ * \param node Node (possibly) containing a CNAME RR.
+ * \param qname Searched name. Will be updated to the canonical name.
+ * \param resp Response where to add the CNAME RRs.
+ * \param add_rrset_to_resp Function for adding the CNAME RRs to the response.
+ * \param tc Set to 1 if omitting the RRSIG RRSet should result in setting the
+ *           TC bit in the response.
+ */
 static void ns_follow_cname(const dnslib_node_t **node,
                             const dnslib_dname_t **qname,
                             dnslib_response_t *resp,
@@ -217,6 +304,18 @@ DEBUG_NS(
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief Retrieves RRSet(s) of given type from the given node and adds them to
+ *        the response's Answer section.
+ *
+ * \param node Node where to take the RRSet from.
+ * \param name Actual searched name (used in case of wildcard RRSet(s)).
+ * \param type Type of the RRSet(s). If set to DNSLIB_RRTYPE_ANY, all RRSets
+ *             from the node will be added to the answer.
+ * \param resp Response where to add the RRSets.
+ *
+ * \return Number of RRSets added.
+ */
 static int ns_put_answer(const dnslib_node_t *node, const dnslib_dname_t *name,
                           uint16_t type, dnslib_response_t *resp)
 {
@@ -316,6 +415,23 @@ DEBUG_NS(
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief Adds RRSets to Additional section of the response.
+ *
+ * This function uses dnslib_rdata_get_name() to get the domain name from the
+ * RDATA of the RRSet according to its type. It also does not search for the
+ * retrieved domain name, but just uses its node field. Thus to work correctly,
+ * the zone where the RRSet is from should be adjusted using
+ * dnslib_zone_adjust_dnames().
+ *
+ * A and AAAA RRSets (and possible CNAMEs) for the found domain names are added.
+ *
+ * \warning Use this function only with types containing some domain name,
+ *          otherwise it will crash (or behave strangely).
+ *
+ * \param resp Response where to add the Additional data.
+ * \param rrset RRSet to get the Additional data for.
+ */
 static void ns_put_additional_for_rrset(dnslib_response_t *resp,
                                         const dnslib_rrset_t *rrset)
 {
@@ -329,7 +445,7 @@ static void ns_put_additional_for_rrset(dnslib_response_t *resp,
 		debug_ns("Getting name from RDATA, type %s..\n",
 			 dnslib_rrtype_to_string(dnslib_rrset_type(rrset)));
 		dname = dnslib_rdata_get_name(rdata,
-					      dnslib_rrset_type(rrset));
+		                              dnslib_rrset_type(rrset));
 		assert(dname != NULL);
 		node = dnslib_dname_node(dname);
 
@@ -393,6 +509,16 @@ DEBUG_NS(
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief Checks whether the given type requires additional processing.
+ *
+ * Only MX, NS and SRV types require additional processing.
+ *
+ * \param qtype Type to check.
+ *
+ * \retval <> 0 if additional processing is needed for \a qtype.
+ * \retval 0 otherwise.
+ */
 static int ns_additional_needed(uint16_t qtype)
 {
 	return (qtype == DNSLIB_RRTYPE_MX ||
@@ -402,6 +528,15 @@ static int ns_additional_needed(uint16_t qtype)
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief Adds whatever Additional RRSets are required for the response.
+ *
+ * For each RRSet in Answer and Authority sections this function checks if
+ * additional processing is needed and if yes, it puts any Additional RRSets
+ * available to the Additional section of the response.
+ *
+ * \param resp Response to process.
+ */
 static void ns_put_additional(dnslib_response_t *resp)
 {
         debug_ns("ADDITIONAL SECTION PROCESSING\n");
@@ -426,6 +561,12 @@ static void ns_put_additional(dnslib_response_t *resp)
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief Puts authority NS RRSet to the Auhority section of the response.
+ *
+ * \param zone Zone to take the authority NS RRSet from.
+ * \param resp Response where to add the RRSet.
+ */
 static void ns_put_authority_ns(const dnslib_zone_t *zone,
                                 dnslib_response_t *resp)
 {
@@ -440,6 +581,12 @@ static void ns_put_authority_ns(const dnslib_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief Puts SOA RRSet to the Auhority section of the response.
+ *
+ * \param zone Zone to take the SOA RRSet from.
+ * \param resp Response where to add the RRSet.
+ */
 static void ns_put_authority_soa(const dnslib_zone_t *zone,
                                  dnslib_response_t *resp)
 {
@@ -454,20 +601,31 @@ static void ns_put_authority_soa(const dnslib_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief Creates a 'next closer name' to the given domain name.
+ *
+ * For definition of 'next closer name', see RFC5155, Page 6.
+ *
+ * \param closest_encloser Closest encloser of \a name.
+ * \param name Domain name to create the 'next closer' name to.
+ *
+ * \return 'Next closer name' to the given domain name or NULL if an error
+ *         occured.
+ */
 static dnslib_dname_t *ns_next_closer(const dnslib_dname_t *closest_encloser,
-                                      const dnslib_dname_t *qname)
+                                      const dnslib_dname_t *name)
 {
 	int ce_labels = dnslib_dname_label_count(closest_encloser);
-	int qname_labels = dnslib_dname_label_count(qname);
+	int qname_labels = dnslib_dname_label_count(name);
 
 	assert(ce_labels < qname_labels);
 
 	// the common labels should match
-	assert(dnslib_dname_matched_labels(closest_encloser, qname)
+	assert(dnslib_dname_matched_labels(closest_encloser, name)
 	       == ce_labels);
 
 	// chop some labels from the qname
-	dnslib_dname_t *next_closer = dnslib_dname_copy(qname);
+	dnslib_dname_t *next_closer = dnslib_dname_copy(name);
 	if (next_closer == NULL) {
 		return NULL;
 	}
@@ -481,6 +639,13 @@ static dnslib_dname_t *ns_next_closer(const dnslib_dname_t *closest_encloser,
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief Adds NSEC3 RRSet (together with corresponding RRSIGs) from the given
+ *        node into the response.
+ *
+ * \param node Node to get the NSEC3 RRSet from.
+ * \param resp Response where to add the RRSets.
+ */
 static void ns_put_nsec3_from_node(const dnslib_node_t *node,
                                    dnslib_response_t *resp)
 {
@@ -499,12 +664,24 @@ static void ns_put_nsec3_from_node(const dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief Finds and adds NSEC3 covering the given domain name (and their
+ *        associated RRSIGs) to the response.
+ *
+ * \param zone Zone where to take the NSEC3s from.
+ * \param name Domain name to cover.
+ * \param resp Response where to add the RRSets.
+ *
+ * \retval KNOT_OK
+ * \retval NS_ERR_SERVFAIL if a runtime collision occured. The server should
+ *                         respond with SERVFAIL in such case.
+ */
 static int ns_put_covering_nsec3(const dnslib_zone_t *zone,
-                                  const dnslib_dname_t *nsec3_name,
-                                  dnslib_response_t *resp)
+                                 const dnslib_dname_t *name,
+                                 dnslib_response_t *resp)
 {
 	const dnslib_node_t *prev, *node;
-	int match = dnslib_zone_find_nsec3_for_name(zone, nsec3_name,
+	int match = dnslib_zone_find_nsec3_for_name(zone, name,
 	                                            &node, &prev);
 
 	if (match == DNSLIB_ZONE_NAME_FOUND){
@@ -520,11 +697,21 @@ DEBUG_NS(
 
 	ns_put_nsec3_from_node(prev, resp);
 
-	return 0;
+	return KNOT_OK;
 }
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param zone
+ * \param closest_encloser
+ * \param qname
+ * \param resp
+ *
+ * \return int
+ */
 static int ns_put_nsec3_closest_encloser_proof(const dnslib_zone_t *zone,
                                          const dnslib_node_t **closest_encloser,
                                          const dnslib_dname_t *qname,
@@ -609,6 +796,12 @@ DEBUG_NS(
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param name
+ * \return dnslib_dname_t *
+ */
 static dnslib_dname_t *ns_wildcard_child_name(const dnslib_dname_t *name)
 {
 	assert(name != NULL);
@@ -633,6 +826,14 @@ DEBUG_NS(
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param zone
+ * \param node
+ * \param resp
+ * \return int
+ */
 static int ns_put_nsec3_no_wildcard_child(const dnslib_zone_t *zone,
                                           const dnslib_node_t *node,
                                           dnslib_response_t *resp)
@@ -654,6 +855,12 @@ static int ns_put_nsec3_no_wildcard_child(const dnslib_zone_t *zone,
 }
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param node
+ * \param resp
+ */
 static void ns_put_nsec_nsec3_nodata(const dnslib_node_t *node,
                                      dnslib_response_t *resp)
 {
@@ -676,6 +883,16 @@ static void ns_put_nsec_nsec3_nodata(const dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param qname
+ * \param zone
+ * \param previous
+ * \param closest_encloser
+ * \param resp
+ * \return int
+ */
 static int ns_put_nsec_nxdomain(const dnslib_dname_t *qname,
                                 const dnslib_zone_t *zone,
                                 const dnslib_node_t *previous,
@@ -745,6 +962,15 @@ static int ns_put_nsec_nxdomain(const dnslib_dname_t *qname,
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param zone
+ * \param closest_encloser
+ * \param qname
+ * \param resp
+ * \return int
+ */
 static int ns_put_nsec3_nxdomain(const dnslib_zone_t *zone,
                                  const dnslib_node_t *closest_encloser,
                                  const dnslib_dname_t *qname,
@@ -764,6 +990,16 @@ static int ns_put_nsec3_nxdomain(const dnslib_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param zone
+ * \param previous
+ * \param closest_encloser
+ * \param qname
+ * \param resp
+ * \return int
+ */
 static int ns_put_nsec_nsec3_nxdomain(const dnslib_zone_t *zone,
                                       const dnslib_node_t *previous,
                                       const dnslib_node_t *closest_encloser,
@@ -785,6 +1021,15 @@ static int ns_put_nsec_nsec3_nxdomain(const dnslib_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param zone
+ * \param closest_encloser
+ * \param qname
+ * \param resp
+ * \return int
+ */
 static int ns_put_nsec3_wildcard(const dnslib_zone_t *zone,
                                  const dnslib_node_t *closest_encloser,
                                  const dnslib_dname_t *qname,
@@ -820,6 +1065,15 @@ DEBUG_NS(
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param zone
+ * \param qname
+ * \param node
+ * \param previous
+ * \param resp
+ */
 static void ns_put_nsec_wildcard(const dnslib_zone_t *zone,
                                  const dnslib_dname_t *qname,
                                  const dnslib_node_t *node,
@@ -847,6 +1101,17 @@ static void ns_put_nsec_wildcard(const dnslib_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param node
+ * \param closest_encloser
+ * \param previous
+ * \param zone
+ * \param qname
+ * \param resp
+ * \return int
+ */
 static int ns_put_nsec_nsec3_wildcard_nodata(const dnslib_node_t *node,
                                           const dnslib_node_t *closest_encloser,
                                           const dnslib_node_t *previous,
@@ -876,6 +1141,17 @@ static int ns_put_nsec_nsec3_wildcard_nodata(const dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param node
+ * \param closest_encloser
+ * \param previous
+ * \param zone
+ * \param qname
+ * \param resp
+ * \return int
+ */
 static int ns_put_nsec_nsec3_wildcard_answer(const dnslib_node_t *node,
                                           const dnslib_node_t *closest_encloser,
                                           const dnslib_node_t *previous,
@@ -898,6 +1174,15 @@ static int ns_put_nsec_nsec3_wildcard_answer(const dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param node
+ * \param zone
+ * \param qname
+ * \param resp
+ * \return int
+ */
 static inline int ns_referral(const dnslib_node_t *node,
                               const dnslib_zone_t *zone,
                               const dnslib_dname_t *qname,
@@ -959,6 +1244,18 @@ static inline int ns_referral(const dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param node
+ * \param closest_encloser
+ * \param previous
+ * \param zone
+ * \param qname
+ * \param qtype
+ * \param resp
+ * \return int
+ */
 static int ns_answer_from_node(const dnslib_node_t *node,
                                const dnslib_node_t *closest_encloser,
                                const dnslib_node_t *previous,
@@ -1001,6 +1298,13 @@ static int ns_answer_from_node(const dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param dname_rrset
+ * \param qname
+ * \return dnslib_rrset_t *
+ */
 static dnslib_rrset_t *ns_cname_from_dname(const dnslib_rrset_t *dname_rrset,
                                            const dnslib_dname_t *qname)
 {
@@ -1043,6 +1347,13 @@ DEBUG_NS(
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param dname_rrset
+ * \param qname
+ * \return int
+ */
 static int ns_dname_is_too_long(const dnslib_rrset_t *dname_rrset,
                                 const dnslib_dname_t *qname)
 {
@@ -1060,6 +1371,13 @@ static int ns_dname_is_too_long(const dnslib_rrset_t *dname_rrset,
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param dname_rrset
+ * \param qname
+ * \param resp
+ */
 static void ns_process_dname(const dnslib_rrset_t *dname_rrset,
                              const dnslib_dname_t *qname,
                              dnslib_response_t *resp)
@@ -1096,6 +1414,12 @@ DEBUG_NS(
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param apex
+ * \param resp
+ */
 static void ns_add_dnskey(const dnslib_node_t *apex, dnslib_response_t *resp)
 {
 
@@ -1110,6 +1434,15 @@ static void ns_add_dnskey(const dnslib_node_t *apex, dnslib_response_t *resp)
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param zone
+ * \param qname
+ * \param qtype
+ * \param resp
+ * \return int
+ */
 static int ns_answer_from_zone(const dnslib_zone_t *zone,
                                const dnslib_dname_t *qname, uint16_t qtype,
                                dnslib_response_t *resp)
@@ -1275,6 +1608,13 @@ finalize:
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param db
+ * \param resp
+ * \return int
+ */
 static int ns_answer(dnslib_zonedb_t *db, dnslib_response_t *resp)
 {
 	dnslib_dname_t *qname = resp->question.qname;
@@ -1307,6 +1647,14 @@ DEBUG_NS(
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief
+ *
+ * \param resp
+ * \param wire
+ * \param wire_size
+ * \return int
+ */
 static int ns_response_to_wire(dnslib_response_t *resp, uint8_t *wire,
                                size_t *wire_size)
 {
@@ -1493,6 +1841,8 @@ void ns_destroy(ns_nameserver **nameserver)
 	free(*nameserver);
 	*nameserver = NULL;
 }
+
+/*----------------------------------------------------------------------------*/
 
 int ns_conf_hook(const struct conf_t *conf, void *data)
 {
