@@ -10,6 +10,7 @@
 #include "dnslib/descriptor.h"
 #include "dnslib/dname.h"
 #include "dnslib/error.h"
+#include "dnslib/node.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -29,7 +30,7 @@
  * \retval > 0 if \a d1 goes after \a d2 in canonical order.
  */
 static int dnslib_rdata_compare_binary(const uint8_t *d1, const uint8_t *d2,
-                                       int count1, int count2)
+				       int count1, int count2)
 {
 	int i1 = 0, i2 = 0;
 
@@ -149,7 +150,7 @@ dnslib_rdata_t *dnslib_rdata_new()
 /*----------------------------------------------------------------------------*/
 
 int dnslib_rdata_set_item(dnslib_rdata_t *rdata, uint pos,
-                          dnslib_rdata_item_t item)
+			  dnslib_rdata_item_t item)
 {
 	if (pos >= rdata->count) {
 		return DNSLIB_EBADARG;
@@ -161,7 +162,7 @@ int dnslib_rdata_set_item(dnslib_rdata_t *rdata, uint pos,
 /*----------------------------------------------------------------------------*/
 
 int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
-                           const dnslib_rdata_item_t *items, uint count)
+			   const dnslib_rdata_item_t *items, uint count)
 {
 	if (rdata == NULL || items == NULL || count == 0 ||
 	    rdata->items != NULL) {
@@ -170,7 +171,7 @@ int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
 
 	assert(rdata->count == 0);
 	if ((rdata->items = (dnslib_rdata_item_t *)malloc(
-	                     count * sizeof(dnslib_rdata_item_t))) == NULL) {
+			     count * sizeof(dnslib_rdata_item_t))) == NULL) {
 		ERR_ALLOC_FAILED;
 		return DNSLIB_ENOMEM;
 	}
@@ -184,7 +185,7 @@ int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
 /*----------------------------------------------------------------------------*/
 
 const dnslib_rdata_item_t *dnslib_rdata_item(const dnslib_rdata_t *rdata,
-                                             uint pos)
+					     uint pos)
 {
 	if (pos >= rdata->count) {
 		return NULL;
@@ -196,7 +197,7 @@ const dnslib_rdata_item_t *dnslib_rdata_item(const dnslib_rdata_t *rdata,
 /*----------------------------------------------------------------------------*/
 
 dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
-                                           uint pos)
+					   uint pos)
 {
 	if (pos >= rdata->count) {
 		return NULL;
@@ -208,7 +209,7 @@ dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
 /*----------------------------------------------------------------------------*/
 
 int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, uint pos,
-                                dnslib_dname_t *dname)
+				dnslib_dname_t *dname)
 {
 	if (pos >= rdata->count) {
 		return DNSLIB_EBADARG;
@@ -222,7 +223,7 @@ int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, uint pos,
 /*----------------------------------------------------------------------------*/
 
 int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, uint pos,
-                                   uint16_t *raw_data)
+				   uint16_t *raw_data)
 {
 	if (pos >= rdata->count) {
 		return DNSLIB_EBADARG;
@@ -251,7 +252,7 @@ void dnslib_rdata_free(dnslib_rdata_t **rdata)
 /*----------------------------------------------------------------------------*/
 
 void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
-                            int free_all_dnames)
+			    int free_all_dnames)
 {
 	if (rdata == NULL || *rdata == NULL) {
 		return;
@@ -272,7 +273,10 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
 		    || desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME ) {
 			if (((*rdata)->items[i].dname != NULL) &&
 			    (free_all_dnames ||
-			     ((*rdata)->items[i].dname->node == NULL))) {
+			     (((*rdata)->items[i].dname->node == NULL) ||
+			     ((*rdata)->items[i].dname->node->owner !=
+			      (*rdata)->items[i].dname)))) {
+
 				dnslib_dname_free(&(*rdata)->items[i].dname);
 			}
 		} else {
@@ -454,7 +458,7 @@ dnslib_rdata_t *dnslib_rdata_copy(const dnslib_rdata_t *rdata, uint16_t type)
 /*----------------------------------------------------------------------------*/
 
 int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
-                         const uint8_t *format)
+			 const uint8_t *format)
 {
 	uint count = (r1->count < r2->count) ? r1->count : r2->count;
 
@@ -512,7 +516,7 @@ const dnslib_dname_t *dnslib_rdata_dname_target(const dnslib_rdata_t *rdata)
 /*----------------------------------------------------------------------------*/
 
 const dnslib_dname_t *dnslib_rdata_get_name(const dnslib_rdata_t *rdata,
-                                            uint16_t type)
+					    uint16_t type)
 {
 	// iterate over the rdata items or act as if we knew where the name is?
 
