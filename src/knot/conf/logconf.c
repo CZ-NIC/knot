@@ -50,8 +50,7 @@ int log_conf_hook(const struct conf_t *conf, void *data)
 			facility = log_open_file(log->file);
 			if (facility < 0) {
 				log_server_error("config: Failed to open "
-				                 "logfile '%s'.\n",
-				                 log->file);
+				                 "logfile '%s'.\n", log->file);
 				continue;
 			}
 		}

@@ -111,8 +111,8 @@ int udp_master(dthread_t *thread)
 		if (unlikely(n <= 0)) {
 			if (errno != EINTR && errno != 0) {
 				log_server_error("udp: recvfrom() failed: %s\n",
-						 strerror_r(errno, errbuf,
-							    sizeof(errbuf)));
+				                 strerror_r(errno, errbuf,
+				                            sizeof(errbuf)));
 			}
 
 			if (!(handler->state & ServerRunning)) {
@@ -148,9 +148,9 @@ int udp_master(dthread_t *thread)
 			if (res != answer_size) {
 				log_server_error("udp: %s: failed: %zd - %s.\n",
 				                 "socket_sendto()",
-						 res,
-						 strerror_r((int)res, errbuf,
-							    sizeof(errbuf)));
+				                 res,
+				                 strerror_r((int)res, errbuf,
+				                            sizeof(errbuf)));
 				continue;
 			}
 

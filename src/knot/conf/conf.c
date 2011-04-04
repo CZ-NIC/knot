@@ -557,7 +557,7 @@ char* conf_find_default()
 			break;
 		}
 
-		log_server_notice("config: Config '%s' not exists.\n",
+		log_server_notice("config: Config '%s' does not exist.\n",
 		                  path);
 
 		/* Keep the last item. */
