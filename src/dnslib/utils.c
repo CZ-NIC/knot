@@ -1,5 +1,6 @@
 #include <config.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "dnslib/dnslib-common.h"
 #include "dnslib/utils.h"
@@ -63,8 +64,28 @@ size_t dnslib_strlcpy(char *dst, const char *src, size_t size)
 	return(s - src - 1);        /* count does not include NUL */
 }
 
-unsigned dnslib_lcg_rand()
+/*! \brief TLS key for rand seed. */
+static pthread_key_t _qr_key;
+static pthread_once_t _qr_once = PTHREAD_ONCE_INIT;
+
+/*! \brief TLS key initializer. */
+static void _qr_init()
 {
-	static unsigned x = time(0);
-	return x = 1664525 * x + 1013904223;
+	(void) pthread_key_create(&_qr_key, NULL);
+	(void) pthread_setspecific(_qr_key, (void*)time(0));
+}
+
+size_t dnslib_quick_rand()
+{
+	(void) pthread_once(&_qr_once, _qr_init);
+	size_t x = (size_t)pthread_getspecific(_qr_key);
+
+	/* Numerical Recipes in C.
+	 * The Art of Scientific Computing, 2nd Edition,
+	 * 1992, ISBN 0-521-43108-5.
+	 * Page 284.
+	 */
+	x = 1664525L * x + 1013904223L;
+	(void) pthread_setspecific(_qr_key, (void*)x);
+	return x;
 }

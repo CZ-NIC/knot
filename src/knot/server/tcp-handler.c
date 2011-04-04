@@ -255,7 +255,7 @@ static int tcp_pool_add(tcp_pool_t* pool, int newsock, uint32_t events)
 	// All polled events should use non-blocking mode.
 	int old_flag = fcntl(newsock, F_GETFL, 0);
 	if (fcntl(newsock, F_SETFL, old_flag | O_NONBLOCK) == -1) {
-		log_server_error("tcp: Error setting non-blocking mode "
+		log_server_error("Error setting non-blocking mode "
 		                 "on the socket.\n");
 		return -1;
 	}
@@ -264,9 +264,9 @@ static int tcp_pool_add(tcp_pool_t* pool, int newsock, uint32_t events)
 	ev.data.fd = newsock;
 	ev.events = events;
 	if (epoll_ctl(pool->epfd, EPOLL_CTL_ADD, newsock, &ev) != 0) {
-		log_server_error("tcp: Failed to add socket to "
-		                 "event set (%d).\n",
-		                  errno);
+		debug_net("Failed to add socket to "
+			  "event set (%d).\n",
+			  errno);
 		return -1;
 	}
 
@@ -286,9 +286,9 @@ static int tcp_pool_remove(tcp_pool_t* pool, int socket)
 	struct epoll_event ev;
 
 	if (epoll_ctl(pool->epfd, EPOLL_CTL_DEL, socket, &ev) != 0) {
-		log_server_error("tcp: Failed to remove socket from "
-		                 "event set (%d).\n",
-		                 errno);
+		debug_net("Failed to remove socket from "
+			  "event set (%d).\n",
+			  errno);
 		return -1;
 	}
 
@@ -416,9 +416,8 @@ int tcp_master(dthread_t *thread)
 		// Register to worker
 		if (incoming < 0) {
 			if (errno != EINTR) {
-				log_server_error("tcp_master: Cannot accept "
-						 "connection (%d).\n",
-						 errno);
+				log_server_error("Cannot accept connection "
+						 "(%d).\n", errno);
 			}
 		} else {
 
