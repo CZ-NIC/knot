@@ -33,8 +33,7 @@ void interrupt_handle(int s)
 			sig_req_stop = 1;
 			sig_stopping = 1;
 		} else {
-			log_server_error("\nserver: "
-					 "OK! Exiting immediately.\n");
+			log_server_error("\nOK! Exiting immediately.\n");
 			exit(1);
 		}
 	}
@@ -98,7 +97,7 @@ int main(int argc, char **argv)
 	// Now check if we want to daemonize
 	if (daemonize) {
 		if (daemon(1, 0) != 0) {
-			log_server_fatal("server: Daemonization failed, "
+			log_server_fatal("Daemonization failed, "
 			                 "shutting down...\n");
 			log_close();
 			return 1;
@@ -126,12 +125,12 @@ int main(int argc, char **argv)
 	log_server_info("Parsing configuration...\n");
 	if (conf_open(config_fn) != 0) {
 
-		log_server_error("server: Failed to parse configuration "
-		                 "'%s'.\n", config_fn);
+		log_server_error("Failed to parse configuration '%s'.\n",
+				 config_fn);
 
 		if (zfs_count < 1) {
-			log_server_fatal("server: No zone files specified, "
-			                 "shutting down.\n\n");
+			log_server_fatal("No zone files specified, "
+					 "shutting down.\n\n");
 			help(argc, argv);
 			log_close();
 			free(default_fn);
@@ -162,7 +161,7 @@ int main(int argc, char **argv)
 		if (daemonize) {
 			int rc = pid_write(pidfile);
 			if (rc < 0) {
-				log_server_warning("server: Failed to create "
+				log_server_warning("Failed to create "
 				                   "PID file '%s'.", pidfile);
 			}
 		}
@@ -213,8 +212,8 @@ int main(int argc, char **argv)
 				log_server_info("Reloading configuration...\n");
 				sig_req_reload = 0;
 				if (conf_open(config_fn) == 0) {
-					log_server_error("Configuration "
-							 "reloaded.\n");
+					log_server_info("Configuration "
+							"reloaded.\n");
 				}
 
 			}
@@ -233,15 +232,14 @@ int main(int argc, char **argv)
 		}
 
 		if ((res = server_wait(server)) != 0) {
-			log_server_error("server: An error occured while "
+			log_server_error("An error occured while "
 			                 "waiting for server to finish.\n");
 		} else {
 			log_server_info("Server finished.\n");
 		}
 
 	} else {
-		log_server_info("Failed\n");
-		log_server_fatal("server: An error occured while "
+		log_server_fatal("An error occured while "
 		                 "starting the server.\n");
 	}
 
@@ -251,8 +249,7 @@ int main(int argc, char **argv)
 	// Remove PID file if daemonized
 	if (daemonize) {
 		if (pid_remove(pidfile) < 0) {
-			log_server_warning("server: Failed to remove "
-			                   "PID file.\n");
+			log_server_warning("Failed to remove PID file.\n");
 		}
 	}
 

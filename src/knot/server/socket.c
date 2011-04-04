@@ -103,7 +103,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 			saddr.sin_addr.s_addr = INADDR_ANY;
 			char buf[INET_ADDRSTRLEN];
 			inet_ntop(family, &saddr.sin_addr, buf, sizeof(buf));
-			log_server_error("sockets: Address '%s' is invalid, "
+			log_server_error("Address '%s' is invalid, "
 			                 "using '%s' instead.\n",
 			                 addr, buf);
 
@@ -112,7 +112,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 	} else {
 
 #ifdef DISABLE_IPV6
-		log_server_error("sockets: ipv6 support disabled\n");
+		log_server_error("ipv6 support disabled\n");
 		return KNOT_ENOIPV6;
 #else
 		/* Initialize socket address. */
@@ -128,7 +128,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 			memcpy(&saddr6.sin6_addr, &in6addr_any, sizeof(in6addr_any));
 			char buf[INET6_ADDRSTRLEN];
 			inet_ntop(family, &saddr6.sin6_addr, buf, sizeof(buf));
-			log_server_error("sockets: Address '%s' is invalid, "
+			log_server_error("Address '%s' is invalid, "
 			                 "using '%s' instead\n",
 			                 addr, buf);
 
@@ -147,7 +147,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 	/* Bind to specified address. */
 	int res = bind(socket, paddr, addrlen);
 	if (res < 0) {
-		log_server_error("server: Cannot bind to socket (%d).\n",
+		log_server_error("Cannot bind to socket (%d).\n",
 		                 errno);
 		return knot_map_errno(EADDRINUSE, EINVAL, EACCES, ENOMEM);
 	}

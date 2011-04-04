@@ -138,9 +138,9 @@ static inline void dnslib_wire_write_u32(uint8_t *pos, uint32_t data)
  *
  * Simple pseudorandom generator for general purpose.
  * \warning Do not use for cryptography.
- * \return Random number <0, UINT_MAX>
+ * \return Random number <0, (size_t)~0>
  */
-unsigned dnslib_lcg_rand();
+size_t dnslib_quick_rand();
 
 #endif /* _KNOT_DNSLIB_UTILS_H_ */
 

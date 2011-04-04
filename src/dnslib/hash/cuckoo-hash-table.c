@@ -8,6 +8,7 @@
 
 #include <urcu.h>
 
+#include "dnslib/utils.h"
 #include "dnslib/dnslib-common.h"
 #include "dnslib/debug.h"
 #include "dnslib/hash/cuckoo-hash-table.h"
@@ -324,7 +325,7 @@ static inline uint ck_items_match(const ck_hash_table_item_t *item,
 static inline void ck_next_table(uint *table, uint table_count)
 {
 	uint next;
-	while ((*table) == (next = rand() % table_count)) {}
+	while ((*table) == (next = dnslib_quick_rand() % table_count)) {}
 	*table = next;
 }
 

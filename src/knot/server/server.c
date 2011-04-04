@@ -75,14 +75,14 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	/* Create UDP socket. */
 	int sock = socket_create(cfg_if->family, SOCK_DGRAM);
 	if (sock <= 0) {
-		log_server_error("server: Could not create UDP socket: %s.\n",
+		log_server_error("Could not create UDP socket: %s.\n",
 				 strerror_r(errno, errbuf, sizeof(errbuf)));
 		return sock;
 	}
 	if (socket_bind(sock, cfg_if->family,
 	                cfg_if->address, cfg_if->port) < 0) {
 		socket_close(sock);
-		log_server_error("server: Could not bind to "
+		log_server_error("Could not bind to "
 		                 "UDP interface %s port %d.\n",
 		                 cfg_if->address, cfg_if->port);
 		return knot_map_errno(EACCES, EINVAL, ENOMEM);
@@ -93,12 +93,11 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 
 	/* Set socket options. */
 	if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &snd_opt, sizeof(snd_opt)) < 0) {
-		log_server_warning("server: Failed to configure socket "
+		log_server_warning("Failed to configure socket "
 		                   "write buffers.\n");
 	}
 	if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
-		log_server_warning("server: Failed to configure socket "
-		                   "read buffers.\n");
+		log_server_warning("Failed to configure socket read buffers.\n");
 	}
 
 	/* Create TCP socket. */
@@ -106,7 +105,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	sock = socket_create(cfg_if->family, SOCK_STREAM);
 	if (sock <= 0) {
 		socket_close(new_if->fd[UDP_ID]);
-		log_server_error("server: Could not create TCP socket: %s.\n",
+		log_server_error("Could not create TCP socket: %s.\n",
 		                 strerror_r(errno, errbuf, sizeof(errbuf)));
 		return sock;
 	}
@@ -115,7 +114,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	if (ret < 0) {
 		socket_close(new_if->fd[UDP_ID]);
 		socket_close(sock);
-		log_server_error("server: Could not bind to "
+		log_server_error("Could not bind to "
 		                 "TCP interface %s port %d.\n",
 		                 cfg_if->address, cfg_if->port);
 		return ret;
@@ -125,7 +124,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	if (ret < 0) {
 		socket_close(new_if->fd[UDP_ID]);
 		socket_close(sock);
-		log_server_error("server: Failed to listen on "
+		log_server_error("Failed to listen on "
 		                 "TCP interface %s port %d.\n",
 		                 cfg_if->address, cfg_if->port);
 		return ret;
@@ -333,7 +332,7 @@ static int server_load_zone(server_t *server, const char *origin, const char *db
 		debug_server("Parsing zone database '%s'\n", db);
 		zloader_t *zl = dnslib_zload_open(db);
 		if (!zl && errno == EILSEQ) {
-			log_server_error("server: Compiled db '%s' is too old, "
+			log_server_error("Compiled db '%s' is too old, "
 			                 " please recompile.\n",
 			                 db);
 			return KNOT_EZONEINVAL;
@@ -341,7 +340,7 @@ static int server_load_zone(server_t *server, const char *origin, const char *db
 
 		// Check if the db is up-to-date
 		if (dnslib_zload_needs_update(zl)) {
-			log_server_warning("warning: Zone file for '%s' "
+			log_server_warning("Zone file for '%s' "
 			                   "has changed, it is recommended to "
 			                   "recompile it.\n",
 			                   origin);
@@ -366,7 +365,7 @@ static int server_load_zone(server_t *server, const char *origin, const char *db
 					"server: Please recompile zone "
 					"databases.\n");
 			} else {
-				log_server_error("server: Failed to load "
+				log_server_error("Failed to load "
 						 "db '%s' for zone '%s'.\n",
 				                 db, origin);
 			}
@@ -539,7 +538,7 @@ int server_start(server_t *server, const char **filenames, uint zones)
 		// Check if the source has changed
 		zloader_t *zl = dnslib_zload_open(z->db);
 		if (zl == NULL) {
-			log_server_error("error: Zone source file for '%s'  "
+			log_server_error("Zone source file for '%s'  "
 			                 "doesn't exists.\n",
 			                 z->name);
 			continue;
@@ -548,7 +547,7 @@ int server_start(server_t *server, const char **filenames, uint zones)
 
 		int src_changed = strcmp(z->file, zl->source) != 0;
 		if (src_changed || dnslib_zload_needs_update(zl)) {
-			log_server_warning("warning: Zone source file for '%s' "
+			log_server_warning("Zone source file for '%s' "
 			                   "has changed, it is recommended to "
 			                   "recompile it.\n",
 			                   z->name);
@@ -586,7 +585,7 @@ int server_start(server_t *server, const char **filenames, uint zones)
 
 	/* Check the number of loaded zones. */
 	if (zones_loaded == 0) {
-		log_server_error("server: No valid zone found.\n");
+		log_server_error("No valid zone found.\n");
 	} else {
 		log_server_info("Successfully loaded %d/%d zones.\n",
 		                zones_loaded, zones_total);
@@ -710,14 +709,14 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 	/* Update bound sockets. */
 	int ret = KNOT_EOK;
 	if ((ret = server_bind_sockets(server)) < 0) {
-		log_server_error("server: Failed to bind configured "
+		log_server_error("Failed to bind configured "
 		                 "interfaces.\n");
 		return KNOT_ERROR;
 	}
 
 	/* Update handlers. */
 	if ((ret = server_bind_handlers(server)) < 0) {
-		log_server_error("server: Failed to create handlers for "
+		log_server_error("Failed to create handlers for "
 		                 "configured interfaces.\n");
 		return ret;
 	}
@@ -737,7 +736,7 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 			h->state = ServerRunning;
 			ret = dt_start(h->unit);
 			if (ret < 0) {
-				log_server_error("server: Handler for %s:%d "
+				log_server_error("Handler for %s:%d "
 				                 "has failed to start.\n",
 				                  h->iface->addr,
 				                  h->iface->port);

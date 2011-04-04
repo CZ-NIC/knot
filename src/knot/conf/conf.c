@@ -137,7 +137,7 @@ int cf_read_mem(char *buf, size_t nbytes) {
 /*! \brief Config error report. */
 void cf_error(const char *msg)
 {
-	log_server_error("config: '%s' - %s on line %d (current token '%s').\n",
+	log_server_error("Config '%s' - %s on line %d (current token '%s').\n",
 	                 new_config->filename, msg, yylineno, yytext);
 
 	_parser_res = -1;
@@ -557,7 +557,7 @@ char* conf_find_default()
 			break;
 		}
 
-		log_server_notice("config: Config '%s' does not exist.\n",
+		log_server_notice("Config '%s' does not exist.\n",
 		                  path);
 
 		/* Keep the last item. */
@@ -567,7 +567,7 @@ char* conf_find_default()
 		}
 	}
 
-	log_server_info("config: Using '%s' as default configuration.\n",
+	log_server_info("Using '%s' as default configuration.\n",
 	                path);
 	return path;
 }
