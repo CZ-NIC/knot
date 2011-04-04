@@ -18,94 +18,131 @@
 /* Macros and inline functions                                                */
 /*----------------------------------------------------------------------------*/
 
-#define CK_SIZE_NEAREST 1
-#define CK_SIZE_LARGER 2
-#define CK_SIZE CK_SIZE_LARGER
-
+/*!
+ * \brief Default size table holding information about used hash table cells
+ *        when hashing.
+ */
 #define RELOCATIONS_DEFAULT 200
-#define RELOCATIONS_MAX 1000
 
-#define TABLE_FIRST 0
-#define TABLE_LAST(count) (count - 1)
-// random walk
-#define NEXT_TABLE(table, count) (rand() % count)
-
+/*!
+ * \brief Macro for hashing the given key using the universal system.
+ *
+ * \param system Universal system to use for the hashing.
+ * \param key Key to hash.
+ * \param length Size of the key in bytes.
+ * \param exp Exponent of the hash table size (the size is a power of 2).
+ * \param table Hash table index.
+ * \param gen Universal system generation.
+ *
+ * \return Hashed key.
+ */
 #define HASH(system, key, length, exp, gen, table) \
 	us_hash(system, fnv_hash(key, length, -1), exp, table, gen)
 
-#define STASH_ITEMS(stash) ((ck_hash_table_item_t **)(da_get_items(stash)))
-
+/*!
+ * \brief Approximate ratio of hash table size to number of hashed items when 2
+ *        tables are used.
+ */
 static const float SIZE_RATIO_2 = 2;
+
+/*!
+ * \brief Approximate ratio of hash table size to number of hashed items when 3
+ *        tables are used.
+ */
 static const float SIZE_RATIO_3 = 1.15;
+
+/*!
+ * \brief Approximate ratio of hash table size to number of hashed items when 4
+ *        tables are used.
+ */
 static const float SIZE_RATIO_4 = 1.08;
 
 /*----------------------------------------------------------------------------*/
 
+/*! \brief Flag marking the generation of hash table or its item to be 1. */
 static const uint8_t FLAG_GENERATION1     = 0x1; // 00000001
+/*! \brief Flag marking the generation of hash table or its item to be 2. */
 static const uint8_t FLAG_GENERATION2     = 0x2; // 00000010
+/*! \brief Flag marking both generations. */
 static const uint8_t FLAG_GENERATION_BOTH = 0x3; // 00000011
+
+/*! \brief Flag used to mark the table when it's being rehashed. */
 static const uint8_t FLAG_REHASH          = 0x4; // 00000100
 
+/*----------------------------------------------------------------------------*/
+/*! \brief Clears the table / item flags. */
 static inline void CLEAR_FLAGS(uint8_t *flags)
 {
 	*flags = (uint8_t)0x0;
 }
 
+/*! \brief Returns the generation stored in the flags. */
 static inline uint8_t GET_GENERATION(uint8_t flags)
 {
 	return (flags & FLAG_GENERATION_BOTH);
 }
 
+/*! \brief Checks if the generation stored in both flags are the same. */
 static inline int EQUAL_GENERATIONS(uint8_t flags1, uint8_t flags2)
 {
 	return (GET_GENERATION(flags1) == GET_GENERATION(flags2));
 }
 
+/*! \brief Checks if the generation stored in the flags is 1. */
 static inline int IS_GENERATION1(uint8_t flags)
 {
 	return ((flags & FLAG_GENERATION1) != 0);
 }
 
+/*! \brief Sets the generation stored in the flags to 1. */
 static inline void SET_GENERATION1(uint8_t *flags)
 {
 	*flags = ((*flags) & ~FLAG_GENERATION2) | FLAG_GENERATION1;
 }
 
+/*! \brief Checks if the generation stored in the flags is 2. */
 static inline int IS_GENERATION2(uint8_t flags)
 {
 	return ((flags & FLAG_GENERATION2) != 0);
 }
 
+/*! \brief Sets the generation stored in the flags to 2. */
 static inline void SET_GENERATION2(uint8_t *flags)
 {
 	*flags = ((*flags) & ~FLAG_GENERATION1) | FLAG_GENERATION2;
 }
 
+/*! \brief Sets the generation stored in the flags to the given generation. */
 static inline void SET_GENERATION(uint8_t *flags, uint8_t generation)
 {
 	*flags = ((*flags) & ~FLAG_GENERATION_BOTH) | generation;
 }
 
+/*! \brief Sets the generation stored in the flags to the next one (cyclic). */
 static inline uint8_t SET_NEXT_GENERATION(uint8_t *flags)
 {
 	return ((*flags) ^= FLAG_GENERATION_BOTH);
 }
 
+/*! \brief Returns the next generation to the one stored in flags (cyclic). */
 static inline uint8_t NEXT_GENERATION(uint8_t flags)
 {
 	return ((flags & FLAG_GENERATION_BOTH) ^ FLAG_GENERATION_BOTH);
 }
 
+/*! \brief Sets the rehashing flag to the flags. */
 static inline void SET_REHASHING_ON(uint8_t *flags)
 {
 	*flags = (*flags | FLAG_REHASH);
 }
 
+/*! \brief Removes the rehashing flag from the flags. */
 static inline void SET_REHASHING_OFF(uint8_t *flags)
 {
 	*flags = (*flags & ~FLAG_REHASH);
 }
 
+/*! \brief Checks if the rehashing flag is set in the flags. */
 static inline int IS_REHASHING(uint8_t flags)
 {
 	return ((flags & FLAG_REHASH) != 0);
@@ -113,25 +150,6 @@ static inline int IS_REHASHING(uint8_t flags)
 
 /*----------------------------------------------------------------------------*/
 /* Private functions                                                          */
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Returns the exponent of the nearest power of two.
- */
-//static uint get_nearest_exp(uint n)
-//{
-//	// TODO: optimize
-//	uint prev = 1;
-//	uint next = 2;
-
-//	while (hashsize(next) < n) {
-//		prev = next++;
-//	}
-
-//	return ((n - hashsize(prev)) < (hashsize(next) - n))
-//	       ? prev
-//	       : next;
-//}
-
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Returns the exponent of the nearest larger power of two.
@@ -146,7 +164,15 @@ static uint get_larger_exp(uint n)
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Returns ideal size of one table.
+ * \brief Counts the ideal table count and the exponent of those tables' sizes.
+ *
+ * Only 3 or 4 hash tables are considered. The setup in which less items are
+ * wasted is recommended.
+ *
+ * \param items Number of items to hash.
+ * \param table_count Recommended number of tables will be saved here.
+ *
+ * \return Exponent of the tables' sizes.
  */
 static uint get_table_exp_and_count(uint items, uint *table_count)
 {
@@ -180,7 +206,7 @@ static uint get_table_exp_and_count(uint items, uint *table_count)
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Clears the given item by assigning a NULL pointer to it.
+ * \brief Clears the given item by assigning a NULL pointer to it (using RCU).
  */
 static inline void ck_clear_item(ck_hash_table_item_t **item)
 {
@@ -189,7 +215,7 @@ static inline void ck_clear_item(ck_hash_table_item_t **item)
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Insert given contents to the item.
+ * \brief Insert given contents to the hash table item.
  */
 static void ck_fill_item(const char *key, size_t key_length, void *value,
                          uint generation, ck_hash_table_item_t *item)
@@ -204,7 +230,7 @@ static void ck_fill_item(const char *key, size_t key_length, void *value,
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Swaps two hash table items.
+ * \brief Swaps two hash table items (using RCU).
  */
 static inline void ck_swap_items(ck_hash_table_item_t **item1,
                                  ck_hash_table_item_t **item2)
@@ -216,7 +242,7 @@ static inline void ck_swap_items(ck_hash_table_item_t **item1,
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Sets the \a item pointer to the \a to pointer.
+ * \brief Sets the \a item pointer to the \a to pointer (using RCU).
  */
 static inline void ck_put_item(ck_hash_table_item_t **to,
                                ck_hash_table_item_t *item)
@@ -226,13 +252,20 @@ static inline void ck_put_item(ck_hash_table_item_t **to,
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Checks if the current hash was already use twice.
+ * \brief Checks if the hash was already used twice.
  *
  * If yes, it means we entered a loop in the hashing process, so we must stop.
  * Otherwise it remembers that we used the hash.
  *
  * \note According to Kirsch, et al. a check that at most one hash was used
  *       twice should be sufficient. We will retain our version for now.
+ *
+ * \param used Array of used table indices (hashes).
+ * \param hash Hash to check.
+ *
+ * \retval -1 if the hash was already used twice.
+ * \retval -2 if an error occured.
+ * \retval 0 if the hash was not used twice yet.
  */
 static uint ck_check_used_twice(da_array_t *used, uint32_t hash)
 {
@@ -262,6 +295,13 @@ static uint ck_check_used_twice(da_array_t *used, uint32_t hash)
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Compares the key of item with the given key.
+ *
+ * \param item Item to compare with.
+ * \param key Key to compare.
+ * \param length Size of the key in bytes.
+ *
+ * \return <> 0 if the keys match.
+ * \return 0 if they don't.
  */
 static inline uint ck_items_match(const ck_hash_table_item_t *item,
                                   const char *key, size_t length)
@@ -283,7 +323,15 @@ static inline void ck_next_table(uint *table, uint table_count)
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Tries to find the given key in the hash table's stash.
+ *
+ * \param table Hash table to search in.
+ * \param key Key to find.
+ * \param length Size of the key in bytes.
+ *
+ * \return Hash table item matching the key or NULL if not found in the stash.
+ */
 static ck_hash_table_item_t **ck_find_in_stash(const ck_hash_table_t *table,
                                                const char *key, uint length)
 {
@@ -328,6 +376,12 @@ static ck_hash_table_item_t **ck_find_in_stash(const ck_hash_table_t *table,
 /*!
  * \brief Tries to find item with given key using hash functions from the given
  *        generation.
+ *
+ * \param table Hash table to search in.
+ * \param key Key to find.
+ * \param length Size of the key in bytes.
+ * \param generation Generation of items (table) to use. Items having other
+ *                   generation are ignored.
  */
 static ck_hash_table_item_t **ck_find_gen(const ck_hash_table_t *table,
                                           const char *key,
@@ -337,7 +391,7 @@ static ck_hash_table_item_t **ck_find_gen(const ck_hash_table_t *table,
 	debug_ck("Finding item in generation: %u\n", generation);
 
 	// check hash tables
-	for (uint t = TABLE_FIRST; t <= TABLE_LAST(table->table_count); ++t) {
+	for (uint t = 0; t < table->table_count; ++t) {
 		hash = HASH(&table->hash_system, key, length,
 		            table->table_size_exp, generation, t);
 
@@ -382,6 +436,10 @@ static ck_hash_table_item_t **ck_find_gen(const ck_hash_table_t *table,
 /*!
  * \brief Finds item with given key and returns non-constant pointer to pointer
  *        to the appropriate hash table item.
+ *
+ * \param table Hash table to search in.
+ * \param key Key to find.
+ * \param length Size of the key in bytes.
  */
 static ck_hash_table_item_t **ck_find_item_nc(const ck_hash_table_t *table,
                                               const char *key, size_t length)
@@ -403,6 +461,15 @@ static ck_hash_table_item_t **ck_find_item_nc(const ck_hash_table_t *table,
 
 /*----------------------------------------------------------------------------*/
 /*!
+ * \brief Hashes the given item using the given generation.
+ *
+ * \param table Hash table where to put the item.
+ * \param to_hash In: Item to hash. Out: NULL if successful, item that failed
+ *                to hash if not.
+ * \param free Free place where to put the last moved item when the hasing
+ *             is unsuccessful.
+ * \param generation Generation of items (table) to be used for hashing.
+ *
  * \retval 0 if successful and no loop occured.
  * \retval 1 if a loop occured and the item was inserted to the \a free place.
  */
@@ -420,7 +487,7 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 	              (int)(*to_hash)->key_length, (*to_hash)->key,
 	              (*to_hash)->key_length);
 
-	uint next_table = TABLE_FIRST;
+	uint next_table = 0;
 
 	uint32_t hash = HASH(&table->hash_system, (*to_hash)->key,
 	                     (*to_hash)->key_length, table->table_size_exp,
@@ -456,7 +523,7 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 		// start from table 1
 		if (generation != table->generation &&
 		    EQUAL_GENERATIONS((*next)->timestamp, table->generation)) {
-			next_table = TABLE_FIRST;
+			next_table = 0;
 		} else {
 			ck_next_table(&next_table, table->table_count);
 		}
@@ -539,7 +606,15 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 //}
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Adds the given item to the hash table's stash.
+ *
+ * \param table Hash table to add the item to.
+ * \param item Item to add.
+ *
+ * \retval 0 if successful.
+ * \retval -1 if an error occured.
+ */
 int ck_add_to_stash(ck_hash_table_t *table, ck_hash_table_item_t *item)
 {
 	ck_stash_item_t *new_item
@@ -553,8 +628,8 @@ int ck_add_to_stash(ck_hash_table_t *table, ck_hash_table_item_t *item)
 	new_item->next = table->stash2;
 	rcu_set_pointer(&table->stash2, new_item);
 
-	debug_ck_hash("First item in stash (now inserted): key: %.*s (size %zu),"
-	              " value: %p\n", (int)table->stash2->item->key_length,
+	debug_ck_hash("First item in stash (now inserted): key: %.*s (size %zu)"
+	              ", value: %p\n", (int)table->stash2->item->key_length,
 	              table->stash2->item->key, table->stash2->item->key_length,
 	              table->stash2->item->value);
 	return 0;
@@ -589,7 +664,7 @@ ck_hash_table_t *ck_create_table(uint items)
 	           * sizeof(ck_hash_table_item_t *));
 
 	// create tables
-	for (uint t = TABLE_FIRST; t <= TABLE_LAST(table->table_count); ++t) {
+	for (uint t = 0; t < table->table_count; ++t) {
 		debug_ck("Creating table %u...\n", t);
 		table->tables[t] =
 		        (ck_hash_table_item_t **)malloc(
@@ -597,7 +672,7 @@ ck_hash_table_t *ck_create_table(uint items)
 		                        * sizeof(ck_hash_table_item_t *));
 		if (table->tables[t] == NULL) {
 			ERR_ALLOC_FAILED;
-			for (uint i = TABLE_FIRST; i < t; ++i) {
+			for (uint i = 0; i < t; ++i) {
 				free(table->tables[i]);
 			}
 			free(table);
@@ -645,8 +720,7 @@ void ck_destroy_table(ck_hash_table_t **table, void (*dtor_value)(void *value),
 
 	// destroy items in tables
 	for (uint i = 0; i < hashsize((*table)->table_size_exp); ++i) {
-		for (uint t = TABLE_FIRST;
-		     t <= TABLE_LAST((*table)->table_count); ++t) {
+		for (uint t = 0; t < (*table)->table_count; ++t) {
 			if ((*table)->tables[t][i] != NULL) {
 				if (dtor_value) {
 					dtor_value(
@@ -693,8 +767,7 @@ void ck_destroy_table(ck_hash_table_t **table, void (*dtor_value)(void *value),
 	}
 
 	// deallocate tables
-	for (uint t = TABLE_FIRST;
-	     t <= TABLE_LAST((*table)->table_count); ++t) {
+	for (uint t = 0; t < (*table)->table_count; ++t) {
 		free((*table)->tables[t]);
 	}
 	// destroy stash
@@ -1107,7 +1180,7 @@ void ck_dump_table(const ck_hash_table_t *table)
 	debug_ck("Hash table dump:\n\n");
 	debug_ck("Size of each table: %u\n\n", hashsize(table->table_size_exp));
 
-	for (uint t = TABLE_FIRST; t <= TABLE_LAST(table->table_count); ++t) {
+	for (uint t = 0; t < table->table_count; ++t) {
 		debug_ck("Table %d:\n", t + 1);
 
 		for (i = 0; i < hashsize(table->table_size_exp); i++) {

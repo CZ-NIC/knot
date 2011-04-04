@@ -268,7 +268,7 @@ int ck_remove_item(const ck_hash_table_t *table, const char *key, size_t length,
 #endif
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Dumps the whole hash table to the console.
+ * \brief Dumps the whole hash table to the standard output.
  */
 void ck_dump_table(const ck_hash_table_t *table);
 
