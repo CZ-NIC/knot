@@ -62,3 +62,9 @@ size_t dnslib_strlcpy(char *dst, const char *src, size_t size)
 
 	return(s - src - 1);        /* count does not include NUL */
 }
+
+unsigned dnslib_lcg_rand()
+{
+	static unsigned x = time(0);
+	return x = 1664525 * x + 1013904223;
+}
