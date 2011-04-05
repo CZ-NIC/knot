@@ -23,6 +23,8 @@ src/common/base32hex.h
 src/common/base32hex.c
 src/common/evqueue.c
 src/common/evqueue.h
+src/common/errors.h
+src/common/errors.c
 src/dnslib/dnslib-common.h
 src/dnslib/dname.h
 src/dnslib/dname.c

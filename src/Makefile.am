@@ -93,6 +93,8 @@ libknot_la_SOURCES =				\
 	common/base32hex.h				\
 	common/evqueue.h		\
 	common/evqueue.c		\
+	common/errors.h			\
+	common/errors.c			\
 	knot/stat/gatherer.c				\
 	knot/stat/stat.c				\
 	knot/stat/gatherer.h				\
