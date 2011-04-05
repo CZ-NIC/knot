@@ -1,6 +1,6 @@
 #                                               -*- Autoconf -*-
 
-AC_PREREQ([2.67])
+AC_PREREQ([2.65])
 AC_INIT([knot], [0.2], [bug-me-knot@nic.cz])
 AM_INIT_AUTOMAKE([gnu -Wall -Werror])
 AC_CONFIG_SRCDIR([src/knot/main.c])
