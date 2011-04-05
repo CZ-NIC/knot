@@ -12,6 +12,8 @@
 #ifndef _KNOT_DNSLIB_ERROR_H_
 #define _KNOT_DNSLIB_ERROR_H_
 
+#include "common/errors.h"
+
 /*! \brief Error codes used in the dnslib library. */
 enum dnslib_error {
 	DNSLIB_EOK = 0,
@@ -26,12 +28,13 @@ enum dnslib_error {
 	DNSLIB_EBADZONE,
 	DNSLIB_EHASH,
 	DNSLIB_EZONEIN,
-	DNSLIB_ENOZONE
+	DNSLIB_ENOZONE,
 
+	DNSLIB_ERROR_COUNT = 14
 };
 
-/*! \brief Error codes used in the dnslib library. */
-typedef enum dnslib_error dnslib_error_t;
+/*! \brief Table linking error messages to error codes. */
+const error_table_t dnslib_error_msgs[DNSLIB_ERROR_COUNT];
 
 /*!
  * \brief Returns error message for the given error code.
@@ -40,7 +43,10 @@ typedef enum dnslib_error dnslib_error_t;
  *
  * \return String containing the error message.
  */
-const char *dnslib_strerror(dnslib_error_t errno);
+static inline const char *dnslib_strerror(int errno)
+{
+	return error_to_str(&dnslib_error_msgs, errno);
+}
 
 #endif /* _KNOT_DNSLIB_ERROR_H_ */
 
