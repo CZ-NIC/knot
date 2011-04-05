@@ -1,3 +1,7 @@
+#include <assert.h>
+
+#include "tests/dnslib/zone_tests.h"
+#include "dnslib/dnslib-common.h"
 #include "dnslib/zone.h"
 #include "dnslib/node.h"
 
@@ -6,7 +10,7 @@ static int dnslib_zone_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
-unit_api dnslib_zone_tests_api = {
+unit_api zone_tests_api = {
 	"DNS library - zone",        //! Unit name
 	&dnslib_zone_tests_count,  //! Count scheduled tests
 	&dnslib_zone_tests_run     //! Run scheduled tests

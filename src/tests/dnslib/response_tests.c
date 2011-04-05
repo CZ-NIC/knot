@@ -1,15 +1,3 @@
-/*!
- * \file dnslib_response_tests.c
- *
- * \author Jan Kadlec <jan.kadlec@nic.cz>
- *
- * Contains unit tests for response structure (dnslib_response_t) and its API.
- *
- * Contains tests for:
- * - Response API
- * - \todo
- */
-
 #include <assert.h>
 #include <inttypes.h>
 
@@ -18,6 +6,8 @@
 #endif
 
 //#define RESP_TEST_DEBUG
+#include "tests/dnslib/response_tests.h"
+#include "dnslib/dnslib-common.h"
 #include "dnslib/response.h"
 #include "dnslib/rdata.h"
 #include "dnslib/rrset.h"
@@ -40,7 +30,7 @@ static int dnslib_response_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
-unit_api dnslib_response_tests_api = {
+unit_api response_tests_api = {
 	"DNS library - response",      //! Unit name
 	&dnslib_response_tests_count,  //! Count scheduled tests
 	&dnslib_response_tests_run     //! Run scheduled tests

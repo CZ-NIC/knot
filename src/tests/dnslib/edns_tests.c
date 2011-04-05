@@ -1,14 +1,7 @@
-/*!
- * \file dnslib_edns_tests.c
- *
- * \author Jan Kadlec <jan.kadlec@nic.cz>
- *
- * Contains unit tests for ENDS API
- *
- * Contains tests for:
- * - ENDS API
- */
+#include <assert.h>
 
+#include "tests/dnslib/edns_tests.h"
+#include "dnslib/dnslib-common.h"
 #include "dnslib/edns.h"
 
 static int dnslib_edns_tests_count(int argc, char *argv[]);
@@ -16,7 +9,7 @@ static int dnslib_edns_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
-unit_api dnslib_edns_tests_api = {
+unit_api edns_tests_api = {
 	"DNS library - EDNS",      //! Unit name
 	&dnslib_edns_tests_count,  //! Count scheduled tests
 	&dnslib_edns_tests_run     //! Run scheduled tests
