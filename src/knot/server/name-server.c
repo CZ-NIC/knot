@@ -125,8 +125,8 @@ static const dnslib_zone_t *ns_get_zone_for_qname(dnslib_zonedb_t *zdb,
  * \return The synthetized RRSet (this is a newly created RRSet, remember to
  *         free it).
  */
-dnslib_rrset_t *ns_synth_from_wildcard(const dnslib_rrset_t *wildcard_rrset,
-                                       const dnslib_dname_t *qname)
+static dnslib_rrset_t *ns_synth_from_wildcard(
+	const dnslib_rrset_t *wildcard_rrset, const dnslib_dname_t *qname)
 {
 	debug_ns("Synthetizing RRSet from wildcard...\n");
 
