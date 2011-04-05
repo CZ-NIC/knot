@@ -1,24 +1,20 @@
-/*!
- * \file dnslib_rrset_tests.c
- *
- * \author Jan Kadlec <jan.kadlec@nic.cz>
- *
- * Contains unit tests for RRSet (dnslib_rrset_t) and its API.
- *
- * Contains tests for:
- * -
- */
+#include <assert.h>
 
+#include "tests/dnslib/rrset_tests.h"
+#include "dnslib/dnslib-common.h"
+#include "dnslib/descriptor.h"
 #include "dnslib/rrset.h"
 #include "dnslib/dname.h"
 #include "dnslib/rdata.h"
+#include "dnslib/utils.h"
+#include "dnslib/node.h"
 
 static int dnslib_rrset_tests_count(int argc, char *argv[]);
 static int dnslib_rrset_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
-unit_api dnslib_rrset_tests_api = {
+unit_api rrset_tests_api = {
 	"DNS library - rrset",        //! Unit name
 	&dnslib_rrset_tests_count,  //! Count scheduled tests
 	&dnslib_rrset_tests_run     //! Run scheduled tests
@@ -29,10 +25,21 @@ unit_api dnslib_rrset_tests_api = {
  *  Unit implementation.
  */
 
+static dnslib_node_t *NODE_ADDRESS = (dnslib_node_t *)0xDEADBEEF;
+static uint16_t *RDATA_ITEM_PTR = (uint16_t *)0xDEADBEEF;
+
 enum { TEST_RRSETS = 6 , TEST_RRSIGS = 6};
 
 //void *RRSIG_ADDRESS = (void *)0xDEADBEEF;
 //void *RRSIG_FIRST = RRSIG_ADDRESS + 10;
+
+struct test_domain {
+	char *str;
+	char *wire;
+	uint size;
+	char *labels;
+	short label_count;
+};
 
 struct test_rrset {
 	char *owner;
@@ -54,6 +61,8 @@ enum {
 	RR_RDATA_COUNT = 5,
 };
 
+enum { TEST_DOMAINS_OK = 8 };
+
 static dnslib_dname_t RR_DNAMES[RR_DNAMES_COUNT] =
 	{ {(uint8_t *)"\7example\3com", 13, NULL}, //0's at the end are added
 	  {(uint8_t *)"\3ns1\7example\3com", 17, NULL},
@@ -73,6 +82,29 @@ static dnslib_rdata_t RR_RDATA[RR_RDATA_COUNT] =
 	  {&RR_ITEMS[2], 1, &RR_RDATA[2]}, /* second ns */
 	  {&RR_ITEMS[1], 1, &RR_RDATA[4]}, /* both in cyclic list */
 	  {&RR_ITEMS[2], 1, &RR_RDATA[3]} };
+
+/*! \warning Do not change the order in those, if you want to test some other
+ *           feature with new dname, add it at the end of these arrays.
+ */
+static const struct test_domain
+		test_domains_ok[TEST_DOMAINS_OK] = {
+	{ "abc.test.domain.com.", "\3abc\4test\6domain\3com", 21,
+	  "\x0\x4\x9\x10", 4 },
+	{ "some.test.domain.com.", "\4some\4test\6domain\3com", 22,
+	  "\x0\x5\xA\x11", 4 },
+	{ "xyz.test.domain.com.", "\3xyz\4test\6domain\3com", 21,
+	  "\x0\x4\x9\x10", 4 },
+	{ "some.test.domain.com.", "\4some\4test\6domain\3com", 22,
+	  "\x0\x5\xA\x11", 4 },
+	{ "test.domain.com.", "\4test\6domain\3com", 17,
+	  "\x0\x5\xC", 3 },
+	{ ".", "\0", 1,
+	  "", 0 },
+	{ "foo.bar.net.", "\3foo\3bar\3net", 13,
+	  "\x0\x4\x8", 3},
+	{ "bar.net.", "\3bar\3net", 9,
+	  "\x0\x4", 2}
+};
 
 static struct test_rrset test_rrsets[TEST_RRSETS] = {
 	{ "example.com.",  DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
@@ -97,6 +129,107 @@ static const struct test_rrset test_rrsigs[TEST_RRSIGS] = {
 	{ "example5.com.", 46, 1, 3600,	NULL },
 	{ "example6.com.", 46, 1, 3600, NULL }
 };
+
+static void generate_rdata(uint8_t *data, int size)
+{
+	for (int i = 0; i < size; ++i) {
+		data[i] = rand() % 256;
+	}
+}
+
+static int fill_rdata(uint8_t *data, int max_size, uint16_t rrtype,
+		      dnslib_rdata_t *rdata)
+{
+	assert(rdata != NULL);
+	assert(data != NULL);
+	assert(max_size > 0);
+
+	uint8_t *pos = data;
+	int used = 0;
+	int wire_size = 0;
+
+	//note("Filling RRType %u", rrtype);
+
+	dnslib_rrtype_descriptor_t *desc =
+	dnslib_rrtype_descriptor_by_type(rrtype);
+
+	uint item_count = desc->length;
+	dnslib_rdata_item_t *items =
+	(dnslib_rdata_item_t *)malloc(item_count
+				      * sizeof(dnslib_rdata_item_t));
+
+	for (int i = 0; i < item_count; ++i) {
+		uint size = 0;
+		int domain = 0;
+		dnslib_dname_t *dname = NULL;
+		int binary = 0;
+		int stored_size = 0;
+
+		switch (desc->wireformat[i]) {
+		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
+		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
+		case DNSLIB_RDATA_WF_LITERAL_DNAME:
+			dname = dnslib_dname_new_from_wire(
+					(uint8_t *)test_domains_ok[0].wire,
+					test_domains_ok[0].size, NULL);
+			assert(dname != NULL);
+			/* note("Created domain name: %s",
+				 dnslib_dname_name(dname)); */
+			//note("Domain name ptr: %p", dname);
+			domain = 1;
+			size = dnslib_dname_size(dname);
+			//note("Size of created domain name: %u", size);
+			assert(size < DNSLIB_MAX_RDATA_ITEM_SIZE);
+			// store size of the domain name
+			*(pos++) = size;
+			// copy the domain name
+			memcpy(pos, dnslib_dname_name(dname), size);
+			pos += size;
+			break;
+		default:
+			binary = 1;
+			size = rand() % 65534;
+		}
+
+		if (binary) {
+			// Rewrite the actual 2 bytes in the data array
+			// with length.
+			// (this is a bit ugly, but does the work ;-)
+			dnslib_wire_write_u16(pos, size);
+			//*pos = size;
+		}
+
+		//note("Filling %u bytes", size);
+		used += size;
+		assert(used < max_size);
+
+		if (domain) {
+			items[i].dname = dname;
+			wire_size += dnslib_dname_size(dname);
+/*			note("Saved domain name ptr on index %d: %p",
+			      i, items[i].dname); */
+		} else {
+			free(dname);
+//			note("Saved raw data ptr on index %d: %p",i, pos);
+			items[i].raw_data = (uint16_t *)pos;
+			pos += size;
+			wire_size += size;
+			if (binary && !stored_size) {
+				wire_size -= 2;
+			}
+		}
+	}
+
+	int res = dnslib_rdata_set_items(rdata, items, item_count);
+	if (res != 0) {
+		diag("dnslib_rdata_set_items() returned %d.", res);
+		free(items);
+		return -1;
+	} else {
+		free(items);
+		return wire_size;
+	}
+}
 
 /* fills test_rrsets with random rdata when empty */
 static void create_rdata()

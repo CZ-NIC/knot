@@ -3,8 +3,9 @@
 #include <time.h>
 #include <stdbool.h>
 
-#include "tests/tap_unit.h"
+#include "tests/common/slab_tests.h"
 #include "common/slab/slab.h"
+#include "knot/common.h"
 
 /* Explicitly ask for symbols,
  * as the constructor and desctructor
@@ -102,7 +103,7 @@ static int slab_tests_run(int argc, char *argv[])
 	for(int i = 0; i < alloc_count; ++i) {
 		double roll = rand() / (double) RAND_MAX;
 		size_t bsize = roll * 2048;
-		bsize = max(bsize, 8);
+		bsize = MAX(bsize, 8);
 		if ((ptrs_i == 0) || (roll < 0.6)) {
 			void* m = slab_alloc_alloc(&alloc, bsize);
 			if (m == 0) {

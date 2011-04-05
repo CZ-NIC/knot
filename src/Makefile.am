@@ -47,6 +47,21 @@ knot_zcompile_SOURCES =			\
 
 unittests_SOURCES =				\
 	tests/libtap/tap.c			\
+	tests/common/da_tests.c			\
+	tests/common/skiplist_tests.c		\
+	tests/common/slab_tests.c		\
+	tests/dnslib/cuckoo_tests.c		\
+	tests/dnslib/dname_tests.c		\
+	tests/dnslib/edns_tests.c		\
+	tests/dnslib/node_tests.c		\
+	tests/dnslib/rdata_tests.c		\
+	tests/dnslib/response_tests.c		\
+	tests/dnslib/rrset_tests.c		\
+	tests/dnslib/zone_tests.c		\
+	tests/dnslib/zonedb_tests.c		\
+	tests/knot/conf_tests.c			\
+	tests/knot/dthreads_tests.c		\
+	tests/knot/server_tests.c		\
 	tests/unittests_main.c
 
 unittests_zcompile_SOURCES =		\
