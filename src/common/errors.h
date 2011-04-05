@@ -28,7 +28,7 @@ typedef struct error_table_t {
  *
  * \return String containing the error message.
  */
-const char *error_to_str(const error_table_t *table, const int code);
+const char *error_to_str(const error_table_t *table, int code);
 
 /*!
  * \brief Safe errno mapper that automatically appends sentinel value.
