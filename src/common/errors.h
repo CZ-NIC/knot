@@ -19,7 +19,7 @@
 typedef struct error_table_t {
 	int id;
 	const char *name;
-} _knot_error_table_t;
+} error_table_t;
 
 /*!
  * \brief Returns error message for the given error code.
@@ -28,7 +28,7 @@ typedef struct error_table_t {
  *
  * \return String containing the error message.
  */
-const char *_knot_strerror(_knot_error_table_t *table, int errno);
+const char *error_to_str(error_table_t *table, int errno);
 
 /*!
  * \brief Safe errno mapper that automatically appends sentinel value.
@@ -42,8 +42,7 @@ const char *_knot_strerror(_knot_error_table_t *table, int errno);
  *
  * \return Mapped error code.
  */
-#define _knot_map_errno(fallback_value, err...) \
-	__knot_map_errno(fallback_value, err, 0);
+#define map_errno(fallback_value, err...) _map_errno(fallback_value, err, 0)
 
 /*!
  * \brief Returns a mapped POSIX errcode.
@@ -58,7 +57,7 @@ const char *_knot_strerror(_knot_error_table_t *table, int errno);
  *
  * \return Mapped error code.
  */
-int __knot_map_errno(int fallback_value, int arg0, ...);
+int _map_errno(int fallback_value, int arg0, ...);
 
 #endif /* _KNOT_COMMON_ERROR_H_ */
 
