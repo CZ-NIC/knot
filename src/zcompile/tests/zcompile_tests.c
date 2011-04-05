@@ -4,7 +4,7 @@
 #include "dnslib/zone-load.h"
 #include "dnslib/rrset.h"
 #include "dnslib/descriptor.h"
-#include "zoneparser/zoneparser.h"
+#include "zcompile/zcompile.h"
 
 #ifdef TEST_WITH_LDNS
 #include "ldns/ldns.h"
@@ -17,9 +17,9 @@ static int zoneparser_tests_run(int argc, char *argv[]);
  * Unit API.
  */
 unit_api zoneparser_tests_api = {
-        "Zoneparser",
-        &zoneparser_tests_count,
-        &zoneparser_tests_run
+	"Zoneparser",
+	&zoneparser_tests_count,
+	&zoneparser_tests_run
 };
 
 /*
@@ -43,7 +43,7 @@ static int compare_rr_rdata_silent(dnslib_rdata_t *rdata, ldns_rr *rr,
 	dnslib_rrtype_descriptor_t *desc =
 		dnslib_rrtype_descriptor_by_type(type);
 	for (int i = 0; i < rdata->count; i++) {
-                /* TODO check for ldns "descriptors" as well */
+		/* TODO check for ldns "descriptors" as well */
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 		    desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME ||
 		    desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME) {
@@ -67,7 +67,7 @@ static int compare_rr_rdata_silent(dnslib_rdata_t *rdata, ldns_rr *rr,
 			if (rdata->items[i].raw_data[0] !=
 			    ldns_rdf_size(ldns_rr_rdf(rr, i))) {
 
-                                /* ldns stores the size including the
+				/* ldns stores the size including the
 				 * length, dnslib does not */
 				if (abs(rdata->items[i].raw_data[0] -
 				    ldns_rdf_size(ldns_rr_rdf(rr, i))) != 1) {
@@ -192,8 +192,8 @@ static int compare_rrset_w_ldns_rrset(const dnslib_rrset_t *rrset,
 
 int compare_zones(dnslib_zone_t *zone, ldns_rr_list *ldns_list, char verbose)
 {
-        /* TODO currently test fail when encountering first error -
-         * it should finish going through the zone */
+	/* TODO currently test fail when encountering first error -
+	 * it should finish going through the zone */
 	dnslib_rrset_t *tmp_rrset = NULL;
 
 	dnslib_dname_t *tmp_dname = NULL;
@@ -207,15 +207,15 @@ int compare_zones(dnslib_zone_t *zone, ldns_rr_list *ldns_list, char verbose)
 		return 1;
 	}
 
-        ldns_rr *rr = NULL;
+	ldns_rr *rr = NULL;
 
-        /*
-         * Following cycle works like this: First, we get RR from ldns rrset,
-         * then we search for the node containing the rrset, then we get the
-         * rrset, which is then compared with whole ldns rrset.
-         */
+	/*
+	 * Following cycle works like this: First, we get RR from ldns rrset,
+	 * then we search for the node containing the rrset, then we get the
+	 * rrset, which is then compared with whole ldns rrset.
+	 */
 
-        /* ldns_rr_list_pop_rrset should pop the first rrset */
+	/* ldns_rr_list_pop_rrset should pop the first rrset */
 	while (ldns_rrset != NULL) {
 		rr = ldns_rr_list_rr(ldns_rrset, 0);
 		tmp_dname =
@@ -260,11 +260,11 @@ int compare_zones(dnslib_zone_t *zone, ldns_rr_list *ldns_list, char verbose)
 				ldns_rdf_data(ldns_rr_rdf(
 					ldns_rr_list_rr(ldns_rrset, i), 0))[1];
 
-                                /*
-                                 * Dnslib stores RRSIGs separately -
-                                 * we have to find get it from its "parent"
-                                 * rrset.
-                                 */
+				/*
+				 * Dnslib stores RRSIGs separately -
+				 * we have to find get it from its "parent"
+				 * rrset.
+				 */
 
 				tmp_rrset = dnslib_node_get_rrset(node,
 								  type_covered);
@@ -313,7 +313,7 @@ int compare_zones(dnslib_zone_t *zone, ldns_rr_list *ldns_list, char verbose)
 		if (ldns_rrset == NULL) {
 			ldns_rrset = ldns_rr_list_pop_rrset(ldns_list);
 		}
-        }
+	}
 
 	return 0;
 }
@@ -365,10 +365,10 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 
 //	ldns_zone_sort(ldns_zone);
 
-        /*
-         * LDNS stores SOA record independently - create a list with all
-         * records in it.
-         */
+	/*
+	 * LDNS stores SOA record independently - create a list with all
+	 * records in it.
+	 */
 
 	ldns_rr_list *ldns_list = ldns_zone_rrs(ldns_zone);
 
@@ -378,7 +378,7 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 		return 0;
 	}
 
-        dnslib_zone_deep_free(&dnsl_zone);
+	dnslib_zone_deep_free(&dnsl_zone);
 
 	ldns_zone_free(ldns_zone);
 
@@ -395,21 +395,21 @@ static const int ZONEPARSER_TEST_COUNT = 1;
 /*! API: return number of tests. */
 static int zoneparser_tests_count(int argc, char *argv[])
 {
-        return ZONEPARSER_TEST_COUNT;
+	return ZONEPARSER_TEST_COUNT;
 }
 
 /*! API: run tests. */
 static int zoneparser_tests_run(int argc, char *argv[])
 {
 	if (argc == 3) {
-       		ok(test_zoneparser_zone_read(argv[1], argv[2],
-                                             "foo_test_zone"),
-                                             "zoneparser: read (%s)",
-	           argv[2]);
+		ok(test_zoneparser_zone_read(argv[1], argv[2],
+					     "foo_test_zone"),
+					     "zoneparser: read (%s)",
+		   argv[2]);
 	} else {
-                diag("Wrong parameters\n usage: "
-                     "knot-zcompile-unittests origin zonefile");
+		diag("Wrong parameters\n usage: "
+		     "knot-zcompile-unittests origin zonefile");
 		return 0;
 	}
-        return 1;
+	return 1;
 }

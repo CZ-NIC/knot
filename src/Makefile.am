@@ -35,31 +35,31 @@ knotc_SOURCES =					\
 	knot/ctl/knotc_main.c
 
 knot_zcompile_SOURCES =			\
-	zoneparser/zoneparser_main.c            \
-	zoneparser/zcompile-error.h		\
-	zoneparser/parser-util.h		\
-	zoneparser/parser-descriptor.h		\
-	zoneparser/zparser.y			\
-	zoneparser/zlexer.l			\
-	zoneparser/zoneparser.c			\
-	zoneparser/parser-util.c		\
-	zoneparser/parser-descriptor.c
+	zcompile/zcompile_main.c            \
+	zcompile/zcompile-error.h		\
+	zcompile/parser-util.h		\
+	zcompile/parser-descriptor.h		\
+	zcompile/zparser.y			\
+	zcompile/zlexer.l			\
+	zcompile/zcompile.c			\
+	zcompile/parser-util.c		\
+	zcompile/parser-descriptor.c
 
 unittests_SOURCES =				\
 	tests/libtap/tap.c			\
 	tests/unittests_main.c
 
 unittests_zcompile_SOURCES =		\
-	zoneparser/parser-util.h		\
-	zoneparser/parser-descriptor.h		\
-	zoneparser/zcompile-error.h		\
-	zoneparser/zparser.y			\
-	zoneparser/zlexer.l			\
-	zoneparser/zoneparser.c			\
-	zoneparser/parser-util.c		\
-	zoneparser/parser-descriptor.c		\
+	zcompile/parser-util.h		\
+	zcompile/parser-descriptor.h		\
+	zcompile/zcompile-error.h		\
+	zcompile/zparser.y			\
+	zcompile/zlexer.l			\
+	zcompile/zcompile.c			\
+	zcompile/parser-util.c		\
+	zcompile/parser-descriptor.c		\
 	tests/libtap/tap.c			\
-	zoneparser/tests/unittests_zp_main.c
+	zcompile/tests/unittests_zp_main.c
 
 nodist_unittests_SOURCES =			\
 	tests/dnslib/parsed_data.rc		\

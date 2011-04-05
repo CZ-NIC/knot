@@ -28,10 +28,10 @@
 #include <assert.h>
 
 //#include "common.h"
-#include "zoneparser/zoneparser.h"
-#include "zoneparser/parser-util.h"
+#include "zcompile/zcompile.h"
+#include "zcompile/parser-util.h"
 #include "zparser.h"
-#include "zoneparser/zcompile-error.h"
+#include "zcompile/zcompile-error.h"
 #include "dnslib/dnslib.h"
 
 #define IP6ADDRLEN	(128/8)

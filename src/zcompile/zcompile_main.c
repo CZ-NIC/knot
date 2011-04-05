@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#include "zoneparser/zoneparser.h"
+#include "zcompile/zcompile.h"
 #include "config.h"
 
 #define PROJECT_NAME PACKAGE // Project name
