@@ -9,6 +9,7 @@
  * \addtogroup dnslib
  * @{
  */
+
 #ifndef _KNOT_DNSLIB_DEBUG_H_
 #define _KNOT_DNSLIB_DEBUG_H_
 

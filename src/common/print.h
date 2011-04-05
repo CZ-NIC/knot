@@ -8,7 +8,7 @@
  * Downloaded hex_print, bit_print from http://www.digitalpeer.com/id/print
  * Updated with generic printf handler.
  *
- * \addtogroup utils
+ * \addtogroup common_lib
  * @{
  */
 

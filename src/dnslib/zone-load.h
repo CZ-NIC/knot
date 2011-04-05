@@ -67,3 +67,4 @@ void dnslib_zload_close(zloader_t *loader);
 
 #endif /* _KNOT_ZONELOAD_H_ */
 
+/*! @} */

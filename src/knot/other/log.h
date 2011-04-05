@@ -14,6 +14,7 @@
  * \addtogroup logging
  * @{
  */
+
 #ifndef _KNOT_LOG_H_
 #define _KNOT_LOG_H_
 

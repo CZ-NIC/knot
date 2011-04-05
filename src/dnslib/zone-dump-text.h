@@ -9,6 +9,9 @@
  * @{
  */
 
+#ifndef _KNOT_DNSLIB_ZONE_DUMP_TEXT_H_
+#define _KNOT_DNSLIB_ZONE_DUMP_TEXT_H_
+
 #include "dnslib/descriptor.h"
 #include "dnslib/zone.h"
 
@@ -22,3 +25,7 @@
  * \retval -1 on error.
  */
 int zone_dump_text(dnslib_zone_t *zone, const char *filename);
+
+#endif // _KNOT_DNSLIB_ZONE_DUMP_TEXT_H_
+
+/*! @} */

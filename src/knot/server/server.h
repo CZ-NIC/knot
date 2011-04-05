@@ -13,9 +13,11 @@
  * format.
  *
  * \see zone-parser.h
+ *
  * \addtogroup server
  * @{
  */
+
 #ifndef _KNOT_SERVER_H_
 #define _KNOT_SERVER_H_
 
@@ -186,4 +188,3 @@ int server_conf_hook(const struct conf_t *conf, void *data);
 #endif // _KNOT_SERVER_H_
 
 /*! @} */
-

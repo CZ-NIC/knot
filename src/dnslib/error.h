@@ -1,5 +1,6 @@
 /*!
  * \file error.h
+ *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
  * \brief Error codes and function for getting error message.

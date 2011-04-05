@@ -39,3 +39,4 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 
 #endif /* _DNSLIB_ZONEDUMP_H_ */
 
+/*! @} */

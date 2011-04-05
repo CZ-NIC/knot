@@ -1,12 +1,13 @@
 /*!
  * \file conf.h
  *
- * \author Ondrej Sury <ondrej.sury\nic.cz>
+ * \author Ondrej Sury <ondrej.sury@nic.cz>
+ * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *
  * \brief Server configuration structures and API.
  *
  * \addtogroup config
- * \{
+ * @{
  */
 
 #ifndef _KNOT_CONF_H_
@@ -301,4 +302,4 @@ char* strcpath(char *path);
 
 #endif /* _KNOT_CONF_H_ */
 
-/*! \} */
+/*! @} */

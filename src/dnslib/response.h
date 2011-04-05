@@ -11,6 +11,7 @@
  * \addtogroup dnslib
  * @{
  */
+
 #ifndef _KNOT_DNSLIB_RESPONSE_H_
 #define _KNOT_DNSLIB_RESPONSE_H_
 

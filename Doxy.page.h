@@ -4,16 +4,16 @@
 \defgroup threading         Threading API.
 \defgroup network           Socket API.
 \defgroup query_processing  DNS query processing.
+\defgroup utils             Utilities, constants and macros.
+\defgroup debugging         Server debugging API.
+\defgroup logging           Server logging API.
+\defgroup statistics        Statistics module (optional).
 \defgroup dnslib            dnslib - Generic DNS library.
 \defgroup hashing           Hash table and functions.
-\defgroup data_structures   Other data structures.
-\defgroup utils             Utilities, constants and macros.
+\defgroup common_lib        Common library.
 \defgroup alloc             Memory allocation.
-\defgroup statistics        Statistics module (optional).
-\defgroup debugging         Project debugging API.
-\defgroup logging           Logging API.
 \defgroup tests             Unit tests.
-\defgroup zoneparser        Zone parser utility
+\defgroup zoneparser        Zone compiler utility
 \defgroup ctl               Control utility
 
 \mainpage Knot API documentation.
@@ -65,14 +65,20 @@ $ bin/knotc start
 - \ref threading
 - \ref network
 - \ref query_processing
-- \ref dnslib
-- \ref hashing
-- \ref data_structures
 - \ref utils
-- \ref alloc
-- \ref statistics
 - \ref debugging
 - \ref logging
+- \ref statistics
+
+<h2>DNS library</h2>
+
+- \ref dnslib
+- \ref hashing
+
+<h2>Common library</h2>
+
+- \ref common_lib
+- \ref alloc
 
 <h2>Other modules</h2>
 - \ref tests

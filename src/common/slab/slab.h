@@ -331,4 +331,4 @@ void slab_alloc_stats(slab_alloc_t* alloc);
 
 #endif /* _KNOT_COMMON_SLAB_H_ */
 
-/*! \} */
+/*! @} */

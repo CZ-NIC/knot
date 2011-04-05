@@ -1,5 +1,6 @@
 /*!
  * \file dname.h
+ *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
  * \brief Domain name structure and API for manipulating it.

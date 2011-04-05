@@ -21,8 +21,9 @@
  * \todo Check out some better random number generator.
  *
  * \addtogroup hashing
- * @}
+ * @{
  */
+
 #ifndef _KNOT_UNIVERSAL_SYSTEM_H_
 #define _KNOT_UNIVERSAL_SYSTEM_H_
 

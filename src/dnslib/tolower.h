@@ -1,5 +1,6 @@
 /*!
  * \file tolower.h
+ *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
  * \brief Table for converting ASCII characters to lowercase.
@@ -8,10 +9,10 @@
  * @{
  */
 
-#include <stdint.h>
-
 #ifndef _KNOT_DNSLIB_TOLOWER_H_
 #define _KNOT_DNSLIB_TOLOWER_H_
+
+#include <stdint.h>
 
 #define KNOT_CHAR_TABLE_SIZE 256
 
