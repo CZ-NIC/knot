@@ -56,9 +56,6 @@ int dnslib_zonedb_add_zone(dnslib_zonedb_t *db, dnslib_zone_t *zone);
  * \param db Zone database to remove from.
  * \param zone_name Name of the zone to be removed.
  *
- * The removal of a zone is synchronized using RCU mechanism, so the zone data
- * will not be destroyed while some thread may be using it.
- *
  * \retval DNSLIB_EOK
  * \retval DNSLIB_ENOZONE
  */
@@ -77,13 +74,27 @@ const dnslib_zone_t *dnslib_zonedb_find_zone_for_name(dnslib_zonedb_t *db,
                                                    const dnslib_dname_t *dname);
 
 /*!
- * \brief Destroys and deallocates the whole zone database.
+ * \brief Copies the zone database structure (but not the zones within).
  *
- * \param database Pointer to pointer to the zone database to be destroyed.
+ * \param db Zone database to copy.
  *
- * The zones are destroyed one-by-one and the process is synchronized using
- * RCU mechanism, so the zone data will not be destroyed while some thread may
- * be using it.
+ * \return A new zone database structure containing the same zones as \a db or
+ *         NULL if an error occured.
+ */
+dnslib_zonedb_t *dnslib_zonedb_copy(const dnslib_zonedb_t *db);
+
+/*!
+ * \brief Destroys and deallocates the zone database structure (but not the
+ *        zones within).
+ *
+ * \param database Zone database to be destroyed.
+ */
+void dnslib_zonedb_free(dnslib_zonedb_t **db);
+
+/*!
+ * \brief Destroys and deallocates the whole zone database including the zones.
+ *
+ * \param database Zone database to be destroyed.
  */
 void dnslib_zonedb_deep_free(dnslib_zonedb_t **db);
 
