@@ -22,42 +22,57 @@ Knot is an open-source, high-performace, purely authoritative DNS server.
 
 <h2>Requirements</h2>
 - liburcu (at least 0.4.5): http://lttng.org/urcu
+- automake
+- autoconf
+- libtool
 
 <h2>Installation</h2>
-- Compile the server (and all utilities).
+Knot uses autotools to generate makefiles.
+
+\todo Add some more info about usage and requirements.
+
 \code
+$ autoreconf -i
+$ ./configure
 $ make
 \endcode
 
 <h2>Starting the server</h2>
 
+When compiled, the following executables are created (in the src/ directory):
+- \em knotd              - The server
+- \em knotc              - Control utility
+- \em knot-zcompile      - Zone compiler
+- \em unittests          - Unit tests for the server and dnslib
+- \em unittests-zcompile - Unit tests for the zone compiler
+
 <h3>Manual approach</h3>
 
 1. Compile zones
 \code
-$ bin/knot-zoneparser -o example.com.db example.com. samples/example.com.zone
-$ bin/knot-zoneparser -o other-zone.db other-zone.com. other-zone.com.zone
+$ src/knot-zcompile -o example.com.db example.com. samples/example.com.zone
+$ src/knot-zcompile -o other-zone.db other-zone.com. other-zone.com.zone
 \endcode
 
 2. Run the server with the compiled zones (use -d to run as a daemon)
 \code
-$ bin/knot example.com.db other-zone.db
+$ src/knotd example.com.db other-zone.db
 \endcode
 
 <h3>Using knotc</h3>
-- This approach currently supports only one zone file.
-- Compiled zone is stored in user's home directory.
+1. Add path to knotd and knot-zcompile executables to PATH
 
-1. Add path to knot and knot-zoneparser executables to PATH
+2. Prepare a configuration file. You may copy and edit the one provided with
+   the server (\em samples/knot.conf.sample).
 
 2. Compile zone
 \code
-$ bin/knotc compile example.com. samples/example.com.zone
+$ src/knotc -c path-to-config-file compile
 \endcode
 
 3. Run the server
 \code
-$ bin/knotc start
+$ src/knotc -c path-to-config-file start
 \endcode
 
 <h2>Server modules</h2>

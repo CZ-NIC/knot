@@ -2,6 +2,7 @@ CodingStyle
 Makefile.am
 Doxy.page.h
 Doxyfile
+Doxyfile.devel
 src/Makefile.am
 src/common/slab/malloc.c
 src/common/slab/malloc.h
