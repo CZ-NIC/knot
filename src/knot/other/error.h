@@ -12,7 +12,10 @@
 
 #ifndef _KNOT_ERROR_H_
 #define _KNOT_ERROR_H_
+
 #include <errno.h>
+
+#include "common/errors.h"
 
 /*!
  * \brief Error codes used in the server.
@@ -20,7 +23,7 @@
  * Some viable errors are directly mapped
  * to libc errno codes.
  */
-typedef enum knot_error_t {
+enum knot_error_t {
 
 	/* Directly mapped error codes. */
 	KNOT_EOK = 0,
@@ -42,8 +45,12 @@ typedef enum knot_error_t {
 	KNOT_EZONEINVAL, /*!< \brief Invalid zone file. */
 	KNOT_ENOTRUNNING, /*!< \brief Resource is not running. */
 	KNOT_EPARSEFAIL, /*!< \brief Parser fail. */
-	KNOT_ENOIPV6 /*! \brief No IPv6 support. */
-} knot_error_t;
+	KNOT_ENOIPV6, /*! \brief No IPv6 support. */
+
+	KNOT_ERROR_COUNT = 19
+};
+
+const _knot_error_table_t knot_error_msgs[KNOT_ERROR_COUNT];
 
 /*!
  * \brief Returns error message for the given error code.
@@ -52,29 +59,34 @@ typedef enum knot_error_t {
  *
  * \return String containing the error message.
  */
-const char *knot_strerror(int errno);
+inline const char *knot_strerror(int errno)
+{
+	return _knot_strerror(&knot_error_msgs, errno);
+}
 
 /*!
- * \brief Safe errno mapper that automatically appends sentinel value.
- * \see knot_map_errno_f
+ * \brief errno mapper that automatically prepends fallback value.
+ *
+ * \see _knot_map_errno()
  *
  * \param err POSIX errno.
  * \param ... List of handled codes.
+ *
  * \return Mapped error code.
  */
-#define knot_map_errno(err...) _knot_map_errno(err, KNOT_ERROR);
+#define knot_map_errno(err...) _knot_map_errno(KNOT_ERROR, err);
 
-/*!
- * \brief Returns a mapped POSIX errcode.
- *
- * \warning Last error must be KNOT_ERROR, it serves as a fallback and
- *          a sentinel value as well. Use knot_map_errno() instead.
- *
- * \param arg0 First mandatory argument.
- * \param ... List of handled codes.
- * \return Mapped error code.
- */
-int _knot_map_errno(int arg0, ...);
+///*!
+// * \brief Returns a mapped POSIX errcode.
+// *
+// * \warning Last error must be KNOT_ERROR, it serves as a fallback and
+// *          a sentinel value as well. Use knot_map_errno() instead.
+// *
+// * \param arg0 First mandatory argument.
+// * \param ... List of handled codes.
+// * \return Mapped error code.
+// */
+//int _knot_map_errno(int arg0, ...);
 
 #endif /* _KNOT_ERROR_H_ */
 
