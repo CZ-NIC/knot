@@ -1,8 +1,9 @@
 #include "dnslib/error.h"
 #include "dnslib/utils.h"
 
-/*! \brief Table linking error messages to error codes. */
-static const dnslib_lookup_table_t dnslib_error_msgs[] = {
+#include "common/errors.h"
+
+const error_table_t dnslib_error_msgs[DNSLIB_ERROR_COUNT] = {
 	{DNSLIB_EOK, "OK"},
 	{DNSLIB_ERROR, "General dnslib error."},
 	{DNSLIB_ENOMEM, "Not enough memory."},
@@ -16,19 +17,5 @@ static const dnslib_lookup_table_t dnslib_error_msgs[] = {
 	{DNSLIB_EHASH, "Error in hash table."},
 	{DNSLIB_EZONEIN, "Error inserting zone."},
 	{DNSLIB_ENOZONE, "No such zone found."},
-	{DNSLIB_ERROR, NULL}
+	{DNSLIB_ERROR, 0}
 };
-
-/*----------------------------------------------------------------------------*/
-
-const char *dnslib_strerror(dnslib_error_t errno)
-{
-	dnslib_lookup_table_t *msg = dnslib_lookup_by_id(dnslib_error_msgs,
-							 errno);
-	if (msg != NULL) {
-		return msg->name;
-	} else {
-		return "Unknown error.";
-	}
-}
-

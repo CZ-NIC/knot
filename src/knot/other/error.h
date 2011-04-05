@@ -50,6 +50,7 @@ enum knot_error_t {
 	KNOT_ERROR_COUNT = 19
 };
 
+/*! \brief Table linking error messages to error codes. */
 const error_table_t knot_error_msgs[KNOT_ERROR_COUNT];
 
 /*!
