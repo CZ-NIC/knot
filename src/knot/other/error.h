@@ -50,7 +50,7 @@ enum knot_error_t {
 	KNOT_ERROR_COUNT = 19
 };
 
-const _knot_error_table_t knot_error_msgs[KNOT_ERROR_COUNT];
+const error_table_t knot_error_msgs[KNOT_ERROR_COUNT];
 
 /*!
  * \brief Returns error message for the given error code.
@@ -59,9 +59,9 @@ const _knot_error_table_t knot_error_msgs[KNOT_ERROR_COUNT];
  *
  * \return String containing the error message.
  */
-inline const char *knot_strerror(int errno)
+static inline const char *knot_strerror(int errno)
 {
-	return _knot_strerror(&knot_error_msgs, errno);
+	return error_to_str(&knot_error_msgs, errno);
 }
 
 /*!
@@ -74,19 +74,7 @@ inline const char *knot_strerror(int errno)
  *
  * \return Mapped error code.
  */
-#define knot_map_errno(err...) _knot_map_errno(KNOT_ERROR, err);
-
-///*!
-// * \brief Returns a mapped POSIX errcode.
-// *
-// * \warning Last error must be KNOT_ERROR, it serves as a fallback and
-// *          a sentinel value as well. Use knot_map_errno() instead.
-// *
-// * \param arg0 First mandatory argument.
-// * \param ... List of handled codes.
-// * \return Mapped error code.
-// */
-//int _knot_map_errno(int arg0, ...);
+#define knot_map_errno(err...) map_errno(KNOT_ERROR, err);
 
 #endif /* _KNOT_ERROR_H_ */
 

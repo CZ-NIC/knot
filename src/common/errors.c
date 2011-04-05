@@ -13,8 +13,8 @@
  * \return Item in the lookup table with the given id or NULL if no such is
  *         present.
  */
-static const _knot_error_table_t *error_lookup_by_id(
-	const _knot_error_table_t *table, int id)
+static const error_table_t *error_lookup_by_id(const error_table_t *table,
+                                               int id)
 {
 	while (table->name != 0) {
 		if (table->id == id) {
@@ -26,9 +26,9 @@ static const _knot_error_table_t *error_lookup_by_id(
 	return 0;
 }
 
-const char *_knot_strerror(_knot_error_table_t *table, int errno)
+const char *error_to_str(error_table_t *table, int errno)
 {
-	const _knot_error_table_t *msg = error_lookup_by_id(table, errno);
+	const error_table_t *msg = error_lookup_by_id(table, errno);
 	if (msg != 0) {
 		return msg->name;
 	} else {
@@ -36,7 +36,7 @@ const char *_knot_strerror(_knot_error_table_t *table, int errno)
 	}
 }
 
-int __knot_map_errno(int fallback_value, int arg0, ...)
+int _map_errno(int fallback_value, int arg0, ...)
 {
 	/* Iterate all variable-length arguments. */
 	va_list ap;

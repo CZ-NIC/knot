@@ -6,7 +6,7 @@
 #include "common/errors.h"
 
 /*! \brief Table linking error messages to error codes. */
-const _knot_error_table_t knot_error_msgs[] = {
+const error_table_t knot_error_msgs[] = {
 
         /* Mapped errors. */
         {KNOT_EOK, "OK"},
