@@ -56,19 +56,19 @@ const error_table_t knot_error_msgs[KNOT_ERROR_COUNT];
 /*!
  * \brief Returns error message for the given error code.
  *
- * \param errno Error code.
+ * \param code Error code.
  *
  * \return String containing the error message.
  */
-static inline const char *knot_strerror(int errno)
+static inline const char *knot_strerror(int code)
 {
-	return error_to_str(&knot_error_msgs, errno);
+	return error_to_str((const error_table_t*)knot_error_msgs, code);
 }
 
 /*!
  * \brief errno mapper that automatically prepends fallback value.
  *
- * \see _knot_map_errno()
+ * \see map_errno()
  *
  * \param err POSIX errno.
  * \param ... List of handled codes.
