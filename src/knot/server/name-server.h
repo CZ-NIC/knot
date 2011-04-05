@@ -98,4 +98,3 @@ int ns_conf_hook(const struct conf_t *conf, void *data);
 #endif /* _KNOT_NAME_SERVER_H_ */
 
 /*! @} */
-

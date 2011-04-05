@@ -328,4 +328,3 @@ int dt_unit_unlock(dt_unit_t *unit);
 #endif // _KNOT_DTHREADS_H_
 
 /*! @} */
-

@@ -10,7 +10,7 @@
  * \todo Add references to sources.
  *
  * \addtogroup hashing
- * @}
+ * @{
  */
 
 #ifndef _KNOT_HASH_FUNCTIONS_H_

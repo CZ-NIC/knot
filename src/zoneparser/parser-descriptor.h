@@ -1,11 +1,11 @@
 /*!
- * \file descriptor.h
+ * \file parser-descriptor.h
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>, most of the work by the NSD team
  *
  * \brief Contains resource record descriptor and its API
  * 
- * \addtogroup dnslib
+ * \addtogroup zoneparser
  * @{
  */
 
@@ -240,4 +240,3 @@ uint16_t parser_rrclass_from_string(const char *name);
 #endif /* _KNOT_PARSER_DESCRIPTOR_H_ */
 
 /*! @} */
-

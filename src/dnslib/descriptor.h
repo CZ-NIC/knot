@@ -2,11 +2,12 @@
  * \file descriptor.h
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>, most of the work by the NSD team
- * TODO link to NDS's license + add license !!!
  *
  * \brief Contains resource record descriptor and its API
  *
  * \note Most of the constants and functions were taken from NSD's dns.h.
+ *
+ * \todo Link to NDS's license + add license !!!
  * 
  * \addtogroup dnslib
  * @{

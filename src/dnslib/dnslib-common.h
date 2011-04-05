@@ -8,6 +8,7 @@
  * \addtogroup dnslib
  * @{
  */
+
 #ifndef _KNOT_DNSLIB_COMMON_H_
 #define _KNOT_DNSLIB_COMMON_H_
 

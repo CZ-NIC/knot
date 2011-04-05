@@ -88,4 +88,3 @@ int socket_close(int fd);
 #endif // _KNOT_SOCKET_H_
 
 /*! @} */
-

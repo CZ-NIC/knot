@@ -8,6 +8,7 @@
  * \addtogroup logging
  * @{
  */
+
 #ifndef _KNOT_LOGCONF_H_
 #define _KNOT_LOGCONF_H_
 

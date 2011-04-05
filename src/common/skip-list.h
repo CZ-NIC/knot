@@ -11,8 +11,8 @@
  * Original retrieved from http://en.literateprograms.org/Skip_list_(C)?oldid=12811
  * Modifications by Lubos Slovak, 2010
  *
- * \addtogroup data_structures
- * \{
+ * \addtogroup common_lib
+ * @{
  */
 
 /* Copyright (c) 2010 the authors listed at the following URL, and/or
@@ -198,4 +198,4 @@ void skip_print_list(const skip_list_t *list,
 
 #endif /* _KNOT_COMMON_SKIP_LIST_H_ */
 
-/*! \} */
+/*! @} */

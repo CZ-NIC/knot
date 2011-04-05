@@ -8,6 +8,7 @@
  * \addtogroup alloc
  * @{
  */
+
 #ifndef _KNOT_COMMON_ALLOC_COMMON_H_
 #define _KNOT_COMMON_ALLOC_COMMON_H_
 

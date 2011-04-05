@@ -65,3 +65,5 @@ int pid_remove(const char* fn);
 int pid_running(pid_t pid);
 
 #endif // _KNOT_PROCESS_H_
+
+/*! @} */

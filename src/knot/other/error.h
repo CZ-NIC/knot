@@ -1,5 +1,6 @@
 /*!
  * \file error.h
+ *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *

@@ -8,6 +8,7 @@
  * \addtogroup debugging
  * @{
  */
+
 #ifndef _KNOT_DEBUG_H_
 #define _KNOT_DEBUG_H_
 

@@ -8,9 +8,10 @@
  * Selected calls latency profiler is enabled with PROF_LATENCY define.
  * You can roughly profile own code with perf_begin() and perf_end() macros.
  *
- * \addtogroup utils
+ * \addtogroup common_lib
  * @{
  */
+
 #ifndef _KNOT_COMMON_LATENCY_H_
 #define _KNOT_COMMON_LATENCY_H_
 
@@ -95,3 +96,5 @@ int pf_pthread_mutex_unlock(pthread_mutex_t *mutex,
 
 #endif // PROF_LATENCY
 #endif // _KNOT_COMMON_LATENCY_H_
+
+/*! @} */

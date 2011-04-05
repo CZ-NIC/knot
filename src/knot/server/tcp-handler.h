@@ -20,7 +20,6 @@
 #include "knot/server/server.h"
 #include "knot/server/dthreads.h"
 
-
 /*!
  * \brief TCP master socket runnable.
  *
@@ -38,4 +37,3 @@ int tcp_master(dthread_t *thread);
 #endif // _KNOT_TCPHANDLER_H_
 
 /*! @} */
-
