@@ -30,8 +30,8 @@
 //#include "common.h"
 #include "zoneparser/zoneparser.h"
 #include "zoneparser/parser-util.h"
-#include "zoneparser/zcompile_error.h"
 #include "zparser.h"
+#include "zoneparser/zcompile-error.h"
 #include "dnslib/dnslib.h"
 
 #define IP6ADDRLEN	(128/8)
@@ -1805,7 +1805,9 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 		return KNOT_ZCOMPILE_EZONEINVAL;
 	}
 
-	yyparse();
+	if (yyparse() != 0) {
+		return KNOT_ZCOMPILE_ESYNT;
+	}
 
 	if (parser->node_rrsigs != NULL) {
 		/* assign rrsigs to last node in the zone*/

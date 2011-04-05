@@ -26,6 +26,8 @@
 #include "dnslib/zone.h"
 #include "zoneparser/zoneparser.h"
 #include "zoneparser/parser-descriptor.h"
+#include "zoneparser/zcompile-error.h"
+#include "common/errors.h"
 
 /* these need to be global, otherwise they cannot be used inside yacc */
 zparser_type *parser;
@@ -132,7 +134,7 @@ line:	NL
 		    parser->temporary_items,
 		    parser->rdata_count) != 0) {
 			dnslib_rdata_free(&tmp_rdata);
-			return -1;
+			return KNOT_ZCOMPILE_EBRDATA;
 		}
 
 		assert(parser->current_rrset->rdata == NULL);
@@ -142,16 +144,18 @@ line:	NL
 
 			parser->current_rrset->owner =
 				dnslib_dname_cat(parser->current_rrset->owner,
-				                 parser->root_domain);
+						 parser->root_domain);
 
 		}
 
 		int ret;
 		if ((ret = process_rr()) != 0) {
+			/* Should it fail? */
 			char *tmp_dname_str =
 			dnslib_dname_to_str(parser->current_rrset->owner);
 			fprintf(stderr, "Error: could not process RRSet\n"
-			        "owner: %s reason: %d\n", tmp_dname_str, ret);
+				"owner: %s reason: %s\n", tmp_dname_str,
+				error_to_str(knot_zcompile_error_msgs, ret));
 			free(tmp_dname_str);
 		}
 	    }
@@ -176,7 +180,7 @@ trail:	NL
 ttl_directive:	DOLLAR_TTL sp STR trail
     {
 	parser->default_ttl = zparser_ttl2int($3.str,
-	                                      &(parser->error_occurred));
+					      &(parser->error_occurred));
 	if (parser->error_occurred == 1) {
 		parser->default_ttl = DEFAULT_TTL;
 		parser->error_occurred = 0;
@@ -187,14 +191,14 @@ ttl_directive:	DOLLAR_TTL sp STR trail
 origin_directive:	DOLLAR_ORIGIN sp abs_dname trail
     {
 	    dnslib_node_t *origin_node = dnslib_node_new(dnslib_dname_cat($3,
-	                                                 parser->root_domain),
-	                                                 NULL);
+							 parser->root_domain),
+							 NULL);
 	    parser->origin = origin_node;
     }
     |	DOLLAR_ORIGIN sp rel_dname trail
     {
 	    zc_error_prev_line("$ORIGIN directive requires"
-	                       "absolute domain name");
+			       "absolute domain name");
     }
     ;
 
@@ -246,17 +250,17 @@ classttl:	/* empty - fill in the default, def. ttl and IN class */
 dname:	abs_dname
     |	rel_dname
     {
-            /*! \todo Fix domain_dname() and size */
+	    /*! \todo Fix domain_dname() and size */
 	    if ($1 == error_dname) {
 		    $$ = error_domain;
 	    } else if ($1->size + parser->origin->owner->size - 1 >
-	               MAXDOMAINLEN) {
+		       MAXDOMAINLEN) {
 		    zc_error("domain name exceeds %d character limit",
-		             MAXDOMAINLEN);
+			     MAXDOMAINLEN);
 		    $$ = error_domain;
 	    } else {
 		    $$ = dnslib_dname_cat($1,
-		                          parser->origin->owner);
+					  parser->origin->owner);
 	    }
     }
     ;
@@ -269,12 +273,12 @@ abs_dname:	'.'
     }
     |	'@'
     {
-            $$ = parser->origin->owner;
+	    $$ = parser->origin->owner;
     }
     |	rel_dname '.'
     {
 	    if ($1 != error_dname) {
-	            /*! \todo What a mysterious function is this? */
+		    /*! \todo What a mysterious function is this? */
 		    /* $$ = dns(parser->db->domains, $1); */
 		    $$ = $1;
 
@@ -291,7 +295,7 @@ label:	STR
 		    $$ = error_dname;
 	    } else {
 		    $$ = dnslib_dname_new_from_str($1.str, $1.len, NULL);
-        //printf("new: %p %s\n", $$, dnslib_dname_to_str($$));
+	//printf("new: %p %s\n", $$, dnslib_dname_to_str($$));
 	    }
 
 	    free($1.str);
@@ -300,7 +304,7 @@ label:	STR
     |	BITLAB
     {
 	    zc_error("bitlabels are not supported."
-	             "RFC2673 has status experimental.");
+		     "RFC2673 has status experimental.");
 	    $$ = error_dname;
     }
     ;
@@ -317,7 +321,7 @@ rel_dname:	label
 	    } else {
 		    $$ = dnslib_dname_cat($1, $3);
 		    dnslib_dname_free(&$3);
-	        }
+		}
     }
     ;
 
@@ -475,9 +479,9 @@ nsec_more:	SP nsec_more
     {
 	    uint16_t type = dnslib_rrtype_from_string($1.str);
 	    if (type != 0) {
-                    if (type > nsec_highest_rcode) {
-                            nsec_highest_rcode = type;
-                    }
+		    if (type > nsec_highest_rcode) {
+			    nsec_highest_rcode = type;
+		    }
 		    set_bitnsec(nsecbits, type);
 	    } else {
 		    zc_error("bad type %d in NSEC record", (int) type);
@@ -570,7 +574,7 @@ type_and_rdata:
     /*
      * All supported RR types.	We don't support NULL and types marked obsolete.
      */
-    	T_A sp rdata_a
+	T_A sp rdata_a
     |	T_A sp rdata_unknown { $$ = $1; parse_unknown_rdata($1, $3); }
     |	T_NS sp rdata_domain_name
     |	T_NS sp rdata_unknown { $$ = $1; parse_unknown_rdata($1, $3); }
@@ -660,12 +664,12 @@ type_and_rdata:
     |	T_APL sp rdata_unknown { $$ = $1; parse_unknown_rdata($1, $3); }
     |	T_DS sp rdata_ds
     |	T_DS sp rdata_unknown { $$ = $1; parse_unknown_rdata($1, $3); }
-    |	T_DLV sp rdata_dlv 
-    { 
+    |	T_DLV sp rdata_dlv
+    {
 	    if (dlv_warn) {
 		    dlv_warn = 0;
 		    zc_warning_prev_line("DLV is experimental");
-            }
+	    }
     }
     |	T_DLV sp rdata_unknown
     {
@@ -713,7 +717,7 @@ rdata_a:	dotted_str trail
 rdata_domain_name:	dname trail
     {
 	    /* convert a single dname record */
-	    		if (!dnslib_dname_is_fqdn($1)) {
+			if (!dnslib_dname_is_fqdn($1)) {
 
 
 			parser->current_rrset->owner =
@@ -727,13 +731,13 @@ rdata_domain_name:	dname trail
 rdata_soa:	dname sp dname sp STR sp STR sp STR sp STR sp STR trail
     {
 	    /* convert the soa data */
-	    		if (!dnslib_dname_is_fqdn($1)) {
+			if (!dnslib_dname_is_fqdn($1)) {
 
 			parser->current_rrset->owner =
 				dnslib_dname_cat($1, parser->root_domain);
 
 		}
-			    		if (!dnslib_dname_is_fqdn($3)) {
+					if (!dnslib_dname_is_fqdn($3)) {
 			parser->current_rrset->owner =
 				dnslib_dname_cat($3, parser->root_domain);
 
@@ -778,13 +782,13 @@ rdata_hinfo:	STR sp STR trail
 
 rdata_minfo:	dname sp dname trail
     {
-	    	    		if (!dnslib_dname_is_fqdn($1)) {
+				if (!dnslib_dname_is_fqdn($1)) {
 
 			parser->current_rrset->owner =
 				dnslib_dname_cat($1, parser->root_domain);
 
 		}
-			    		if (!dnslib_dname_is_fqdn($3)) {
+					if (!dnslib_dname_is_fqdn($3)) {
 
 			parser->current_rrset->owner =
 				dnslib_dname_cat($3, parser->root_domain);
@@ -799,7 +803,7 @@ rdata_minfo:	dname sp dname trail
 
 rdata_mx:	STR sp dname trail
     {
-			    		if (!dnslib_dname_is_fqdn($3)) {
+					if (!dnslib_dname_is_fqdn($3)) {
 
 
 			parser->current_rrset->owner =
@@ -823,13 +827,13 @@ rdata_txt:	str_seq trail
 /* RFC 1183 */
 rdata_rp:	dname sp dname trail
     {
-	    	    	    		if (!dnslib_dname_is_fqdn($1)) {
+					if (!dnslib_dname_is_fqdn($1)) {
 
 			parser->current_rrset->owner =
 				dnslib_dname_cat($1, parser->root_domain);
 
 		}
-			    		if (!dnslib_dname_is_fqdn($3)) {
+					if (!dnslib_dname_is_fqdn($3)) {
 
 			parser->current_rrset->owner =
 				dnslib_dname_cat($3, parser->root_domain);
@@ -844,7 +848,7 @@ rdata_rp:	dname sp dname trail
 /* RFC 1183 */
 rdata_afsdb:	STR sp dname trail
     {
-			    		if (!dnslib_dname_is_fqdn($3)) {
+					if (!dnslib_dname_is_fqdn($3)) {
 
 
 			parser->current_rrset->owner =
@@ -892,7 +896,7 @@ rdata_isdn:	STR trail
 /* RFC 1183 */
 rdata_rt:	STR sp dname trail
     {
-	    	    	    	    		if (!dnslib_dname_is_fqdn($3)) {
+						if (!dnslib_dname_is_fqdn($3)) {
 
 			parser->current_rrset->owner =
 				dnslib_dname_cat($3, parser->root_domain);
@@ -914,7 +918,7 @@ rdata_nsap:	str_dot_seq trail
 		    zc_error_prev_line("NSAP rdata must start with '0x'");
 	    } else {
 		    zadd_rdata_wireformat(zparser_conv_hex($1.str + 2,
-		                                           $1.len - 2));
+							   $1.len - 2));
 		    /* NSAP */
 	    }
 
@@ -925,12 +929,12 @@ rdata_nsap:	str_dot_seq trail
 /* RFC 2163 */
 rdata_px:	STR sp dname sp dname trail
     {
-	    		if (!dnslib_dname_is_fqdn($3)) {
+			if (!dnslib_dname_is_fqdn($3)) {
 			parser->current_rrset->owner =
 				dnslib_dname_cat($3, parser->root_domain);
 
 		}
-			    		if (!dnslib_dname_is_fqdn($5)) {
+					if (!dnslib_dname_is_fqdn($5)) {
 			parser->current_rrset->owner =
 				dnslib_dname_cat($5, parser->root_domain);
 
@@ -962,7 +966,7 @@ rdata_loc:	concatenated_str_seq trail
 
 rdata_nxt:	dname sp nxt_seq trail
     {
-	    	    		if (!dnslib_dname_is_fqdn($1)) {
+				if (!dnslib_dname_is_fqdn($1)) {
 			parser->current_rrset->owner =
 				dnslib_dname_cat($1, parser->root_domain);
 
@@ -975,7 +979,7 @@ rdata_nxt:	dname sp nxt_seq trail
 
 rdata_srv:	STR sp STR sp STR sp dname trail
     {
-	    	    		if (!dnslib_dname_is_fqdn($7)) {
+				if (!dnslib_dname_is_fqdn($7)) {
 			parser->current_rrset->owner =
 				dnslib_dname_cat($7, parser->root_domain);
 
@@ -994,7 +998,7 @@ rdata_srv:	STR sp STR sp STR sp dname trail
 /* RFC 2915 */
 rdata_naptr:	STR sp STR sp STR sp STR sp STR sp dname trail
     {
-	    	    		if (!dnslib_dname_is_fqdn($11)) {
+				if (!dnslib_dname_is_fqdn($11)) {
 			parser->current_rrset->owner =
 				dnslib_dname_cat($11, parser->root_domain);
 
@@ -1020,7 +1024,7 @@ rdata_naptr:	STR sp STR sp STR sp STR sp STR sp dname trail
 /* RFC 2230 */
 rdata_kx:	STR sp dname trail
     {
-	    	    		if (!dnslib_dname_is_fqdn($3)) {
+				if (!dnslib_dname_is_fqdn($3)) {
 			parser->current_rrset->owner =
 				dnslib_dname_cat($3, parser->root_domain);
 
@@ -1117,7 +1121,7 @@ rdata_dhcid:	str_sp_seq trail
     ;
 
 rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR
-                sp STR sp wire_dname sp str_sp_seq trail
+		sp STR sp wire_dname sp str_sp_seq trail
     {
 	    zadd_rdata_wireformat(zparser_conv_rrtype($1.str));
 	    /* rr covered */
@@ -1129,10 +1133,10 @@ rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR
 	    zadd_rdata_wireformat(zparser_conv_time($11.str)); /* sig inc */
 	    zadd_rdata_wireformat(zparser_conv_short($13.str)); /* key id */
 /*	    zadd_rdata_wireformat(zparser_conv_dns_name((const uint8_t*)
-	                                                 $15.str,
-	                                                 $15.len));*/
+							 $15.str,
+							 $15.len));*/
 	    dnslib_dname_t *dname =
-	    	dnslib_dname_new_from_wire((uint8_t *)$15.str, $15.len, NULL);
+		dnslib_dname_new_from_wire((uint8_t *)$15.str, $15.len, NULL);
 
 	    dnslib_dname_cat(dname, parser->root_domain);
 
@@ -1155,20 +1159,20 @@ rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR
 rdata_nsec:	wire_dname nsec_seq
     {
 /*	    zadd_rdata_wireformat(zparser_conv_dns_name((const uint8_t*)
-	                                                $1.str,
+							$1.str,
 							$1.len));*/
 
 	    dnslib_dname_t *dname =
-	    	dnslib_dname_new_from_wire((uint8_t *)$1.str, $1.len, NULL);
+		dnslib_dname_new_from_wire((uint8_t *)$1.str, $1.len, NULL);
 
 	    dnslib_dname_cat(dname, parser->root_domain);
-	
+
 	    zadd_rdata_domain(dname);
 	    /* nsec name */
 	    zadd_rdata_wireformat(zparser_conv_nsec(nsecbits));
 	    /* nsec bitlist */
 	    memset(nsecbits, 0, sizeof(nsecbits));
-            nsec_highest_rcode = 0;
+	    nsec_highest_rcode = 0;
     }
     ;
 
@@ -1207,9 +1211,9 @@ rdata_nsec3_param:   STR sp STR sp STR sp STR trail
 	    zc_error_prev_line("nsec3 not supported");
 #endif /* NSEC3 */
 
-            free($1.str);
-            free($3.str);
-            free($5.str);
+	    free($1.str);
+	    free($3.str);
+	    free($5.str);
 	    free($7.str);
     }
     ;
@@ -1249,22 +1253,22 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			/* convert and insert the dname */
 			if(strlen($7.str) == 0)
 				zc_error_prev_line("IPSECKEY must specify"
-				                   "gateway name");
+						   "gateway name");
 			name = dnslib_dname_new_from_wire((uint8_t*)$7.str + 1,
-			                                  strlen($7.str + 1),
-			                                  NULL);
+							  strlen($7.str + 1),
+							  NULL);
 
 			if(!name) {
 				zc_error_prev_line("IPSECKEY bad gateway"
-				                   "dname %s", $7.str);
+						   "dname %s", $7.str);
 			}
 			if($7.str[strlen($7.str)-1] != '.') {
 			    dnslib_dname_t* tmpd;
 			    tmpd = dnslib_dname_new_from_wire(name->name,
-			                                      name->size,
-			    				      NULL);
+							      name->size,
+							      NULL);
 			    name = dnslib_dname_cat(tmpd,
-			            dnslib_node_parent(parser->origin)->owner);
+				    dnslib_node_parent(parser->origin)->owner);
 			}
 
 			free($1.str);
@@ -1310,6 +1314,7 @@ rdata_unknown:	URR sp STR sp str_sp_seq trail
     ;
 %%
 
+/* ??? */
 int
 yywrap(void)
 {
@@ -1326,8 +1331,9 @@ zparser_create()
 	dnslib_rrset_t *rrset;
 
 	result = (zparser_type *)malloc(sizeof(zparser_type));
-	if (result == NULL)
+	if (result == NULL) {
 	    return NULL;
+	}
 
 	result->current_zone = NULL;
 	result->filename = NULL;
@@ -1337,7 +1343,7 @@ zparser_create()
 	result->default_apex = NULL;
 
 	result->temporary_items = malloc(MAXRDATALEN *
-	                                  sizeof(dnslib_rdata_item_t));
+					  sizeof(dnslib_rdata_item_t));
 
 	result->current_rrset = dnslib_rrset_new(NULL, 0, 0, 0);
 	result->current_rrset->rdata = NULL;
@@ -1356,7 +1362,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 {
 	memset(nxtbits, 0, sizeof(nxtbits));
 	memset(nsecbits, 0, sizeof(nsecbits));
-        nsec_highest_rcode = 0;
+	nsec_highest_rcode = 0;
 
 	parser->default_ttl = ttl;
 	parser->default_class = rclass;
@@ -1473,7 +1479,7 @@ nsec3_add_params(const char* hashalgo_str, const char* flag_str,
 	/* salt */
 	if(strcmp(salt_str, "-") != 0)
 		zadd_rdata_wireformat(zparser_conv_hex_length(salt_str,
-		                                              salt_len));
+							      salt_len));
 	else
 		zadd_rdata_wireformat(alloc_rdata_init("", 1));
 }

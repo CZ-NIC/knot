@@ -81,8 +81,7 @@ src/zoneparser/zoneparser.c
 src/zoneparser/zoneparser.h
 src/zoneparser/zparser.y
 src/zoneparser/zlexer.l
-src/zoneparser/zcompile_error.c
-src/zoneparser/zcompile_error.h
+src/zoneparser/zcompile-error.h
 src/knot/common.h
 src/knot/main.c
 src/knot/ctl/knotc_main.c

@@ -36,8 +36,7 @@ knotc_SOURCES =					\
 
 knot_zcompile_SOURCES =			\
 	zoneparser/zoneparser_main.c            \
-	zoneparser/zcompile_error.h		\
-	zoneparser/zcompile_error.c		\
+	zoneparser/zcompile-error.h		\
 	zoneparser/parser-util.h		\
 	zoneparser/parser-descriptor.h		\
 	zoneparser/zparser.y			\
@@ -53,8 +52,7 @@ unittests_SOURCES =				\
 unittests_zcompile_SOURCES =		\
 	zoneparser/parser-util.h		\
 	zoneparser/parser-descriptor.h		\
-	zoneparser/zcompile_error.h		\
-	zoneparser/zcompile_error.c		\
+	zoneparser/zcompile-error.h		\
 	zoneparser/zparser.y			\
 	zoneparser/zlexer.l			\
 	zoneparser/zoneparser.c			\
