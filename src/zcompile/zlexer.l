@@ -21,9 +21,9 @@
 #include <strings.h>
 #include <assert.h>
 
-#include "zoneparser/zoneparser.h"
+#include "zcompile/zcompile.h"
 #include "dnslib/dname.h"
-#include "zoneparser/parser-descriptor.h"
+#include "zcompile/parser-descriptor.h"
 #include "zparser.h"
 
 #define YY_NO_INPUT
@@ -361,7 +361,7 @@ rrtype_to_token(const char *word, uint16_t *type)
 		*type = t;
 
 		/*! \todo entry should return associated token.
-		          see nsd/dns.c */
+			  see nsd/dns.c */
 		return entry->token;
 	}
 
@@ -448,12 +448,12 @@ parse_token(int token, char *yytext, enum lexer_state *lexer_state)
 			return T_TTL;
 		}
 	}
-  
+
 	str = strdup(yytext);
 	len = zoctet(str);
 
 	yylval.data.str = str;
-	yylval.data.len = len; 
+	yylval.data.len = len;
 
 	if (strcmp(yytext, ".") == 0) {
 		free(str);

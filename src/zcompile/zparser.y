@@ -20,13 +20,13 @@
 #include <string.h>
 #include <assert.h>
 
-#include "zoneparser/parser-util.h"
+#include "zcompile/parser-util.h"
 
 #include "dnslib/dname.h"
 #include "dnslib/zone.h"
-#include "zoneparser/zoneparser.h"
-#include "zoneparser/parser-descriptor.h"
-#include "zoneparser/zcompile-error.h"
+#include "zcompile/zcompile.h"
+#include "zcompile/parser-descriptor.h"
+#include "zcompile/zcompile-error.h"
 #include "common/errors.h"
 
 /* these need to be global, otherwise they cannot be used inside yacc */

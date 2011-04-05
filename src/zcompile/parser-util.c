@@ -26,8 +26,8 @@
 #include <netdb.h>
 
 //#include "common.h"
-#include "zoneparser/parser-util.h"
-#include "zoneparser/zoneparser.h"
+#include "zcompile/parser-util.h"
+#include "zcompile/zcompile.h"
 #include "dnslib/descriptor.h"
 #include "dnslib/utils.h"
 
@@ -109,7 +109,7 @@ int my_b32_pton(const char *src, uint8_t *target, size_t tsize)
 #define Assert(Cond) if (!(Cond)) abort()
 
 static const char Base64[] =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const char Pad64 = '=';
 
 /* int
@@ -181,7 +181,7 @@ int inet_pton4(const char *src, uint8_t *dst)
 int inet_pton6(const char *src, uint8_t *dst)
 {
 	static const char xdigits_l[] = "0123456789abcdef",
-	                                xdigits_u[] = "0123456789ABCDEF";
+					xdigits_u[] = "0123456789ABCDEF";
 	uint8_t tmp[NS_IN6ADDRSZ], *tp, *endp, *colonp;
 	const char *xdigits, *curtok;
 	int ch, saw_xdigit;
@@ -232,7 +232,7 @@ int inet_pton6(const char *src, uint8_t *dst)
 			continue;
 		}
 		if (ch == '.' && ((tp + NS_INADDRSZ) <= endp) &&
-		                inet_pton4(curtok, tp) > 0) {
+				inet_pton4(curtok, tp) > 0) {
 			tp += NS_INADDRSZ;
 			saw_xdigit = 0;
 			break;	/* '\0' was seen by inet_pton4(). */
@@ -399,7 +399,7 @@ const char *inet_ntop6(const u_char *src, char *dst, size_t size)
 	for (i = 0; i < (IN6ADDRSZ / INT16SZ) && tp < ep; i++) {
 		/* Are we inside the best run of 0x00's? */
 		if (best.base != -1 && i >= best.base &&
-		                i < (best.base + best.len)) {
+				i < (best.base + best.len)) {
 			if (i == best.base) {
 				if (tp + 1 >= ep) {
 					return (NULL);
@@ -417,7 +417,7 @@ const char *inet_ntop6(const u_char *src, char *dst, size_t size)
 		}
 		/* Is this address an encapsulated IPv4? */
 		if (i == 6 && best.base == 0 &&
-		                (best.len == 6 ||
+				(best.len == 6 ||
 				(best.len == 5 && words[5] == 0xffff))) {
 			if (!inet_ntop4(src + 12, tp, (size_t)(ep - tp))) {
 				return (NULL);
@@ -539,7 +539,7 @@ int b64_pton_do(char const *src, uint8_t *target, size_t targsize)
 			}
 			target[tarindex]   |=  ofs >> 4;
 			target[tarindex+1]  = (ofs & 0x0f)
-			                      << 4 ;
+					      << 4 ;
 			tarindex++;
 			state = 2;
 			break;
@@ -549,7 +549,7 @@ int b64_pton_do(char const *src, uint8_t *target, size_t targsize)
 			}
 			target[tarindex]   |=  ofs >> 2;
 			target[tarindex+1]  = (ofs & 0x03)
-			                      << 6;
+					      << 6;
 			tarindex++;
 			state = 3;
 			break;
@@ -875,10 +875,10 @@ time_t mktime_from_utc(const struct tm *tm)
     int i;
 
     for (i = 0; i < tm->tm_mon; ++i) {
-        days += mdays[i];
+	days += mdays[i];
     }
     if (tm->tm_mon > 1 && is_leap_year(year)) {
-        ++days;
+	++days;
     }
     days += tm->tm_mday - 1;
 

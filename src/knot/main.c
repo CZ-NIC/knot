@@ -5,7 +5,7 @@
 
 #include "knot/common.h"
 #include "knot/server/server.h"
-#include "zoneparser/zoneparser.h"
+#include "zcompile/zcompile.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/logconf.h"
@@ -98,7 +98,7 @@ int main(int argc, char **argv)
 	if (daemonize) {
 		if (daemon(1, 0) != 0) {
 			log_server_fatal("Daemonization failed, "
-			                 "shutting down...\n");
+					 "shutting down...\n");
 			log_close();
 			return 1;
 		}
@@ -162,7 +162,7 @@ int main(int argc, char **argv)
 			int rc = pid_write(pidfile);
 			if (rc < 0) {
 				log_server_warning("Failed to create "
-				                   "PID file '%s'.", pidfile);
+						   "PID file '%s'.", pidfile);
 			}
 		}
 
@@ -223,7 +223,7 @@ int main(int argc, char **argv)
 				event_t ev;
 				if (evqueue_get(evqueue(), &ev) == 0) {
 					debug_server("Event: "
-					             "received new event.\n");
+						     "received new event.\n");
 					if (ev.cb) {
 						ev.cb(&ev);
 					}
@@ -233,14 +233,14 @@ int main(int argc, char **argv)
 
 		if ((res = server_wait(server)) != 0) {
 			log_server_error("An error occured while "
-			                 "waiting for server to finish.\n");
+					 "waiting for server to finish.\n");
 		} else {
 			log_server_info("Server finished.\n");
 		}
 
 	} else {
 		log_server_fatal("An error occured while "
-		                 "starting the server.\n");
+				 "starting the server.\n");
 	}
 
 	// Stop server and close log

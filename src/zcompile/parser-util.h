@@ -27,7 +27,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
-#include "zoneparser/zoneparser.h"
+#include "zcompile/zcompile.h"
 #include "dnslib/descriptor.h"
 
 int inet_pton4(const char *src, uint8_t *dst);
