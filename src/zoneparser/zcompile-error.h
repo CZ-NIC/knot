@@ -12,7 +12,7 @@
 
 #ifndef _KNOT_ZCOMPILE_ERROR_H_
 #define _KNOT_ZCOMPILE_ERROR_H_
-#include <errno.h>
+#include "common/errors.h"
 
 /*!
  * \brief Error codes used in the server.
@@ -51,7 +51,7 @@ enum knot_zcompile_error {
 	/* Custom error codes. */
 	KNOT_ZCOMPILE_ERROR = -16384, /*!< \brief Generic error. */
 	KNOT_ZCOMPILE_ESEMERR,
-	KNOT_ZCOMPILE_ESYNERR,
+	KNOT_ZCOMPILE_ESYNT,
 	KNOT_ZCOMPILE_EBADNODE,
 	KNOT_ZCOMPILE_EBRDATA,
 	KNOT_ZCOMPILE_ESOA,
@@ -63,38 +63,36 @@ enum knot_zcompile_error {
 
 typedef enum knot_zcompile_error knot_zcompile_error_t;
 
-/*!
- * \brief Returns error message for the given error code.
- *
- * \param errno Error code.
- *
- * \return String containing the error message.
- */
-const char *knot_zcompile_strerror(int errno);
+/*! \brief Table linking error messages to error codes. */
+static const error_table_t knot_zcompile_error_msgs[] = {
 
-/*!
- * \brief Safe errno mapper that automatically appends sentinel value.
- * \see knot_map_errno_f
- *
- * \param err POSIX errno.
- * \param ... List of handled codes.
- *
- * \return Mapped error code.
- */
-#define knot_zcompile_map_errno(err...) _knot_zcompile_map_errno(err, KNOT_ZONEPARSER_ERROR);
+	/* Mapped errors. */
+	{KNOT_ZCOMPILE_EOK, "OK"},
+	{KNOT_ZCOMPILE_ENOMEM, "Not enough memory."},
+	{KNOT_ZCOMPILE_EINVAL, "Invalid parameter passed."},
+	{KNOT_ZCOMPILE_ENOTSUP, "Parameter not supported."},
+	{KNOT_ZCOMPILE_EBUSY, "Requested resource is busy."},
+	{KNOT_ZCOMPILE_EAGAIN,
+	 "The system lacked the necessary resource, try again."},
+	{KNOT_ZCOMPILE_EACCES,
+	 "Permission to perform requested operation is denied."},
+	{KNOT_ZCOMPILE_ECONNREFUSED, "Connection is refused."},
+	{KNOT_ZCOMPILE_EISCONN, "Already connected."},
+	{KNOT_ZCOMPILE_EADDRINUSE, "Address already in use."},
+	{KNOT_ZCOMPILE_ENOENT, "Resource not found."},
+	{KNOT_ZCOMPILE_ERANGE, "Value is out of range."},
 
-/*!
- * \brief Returns a mapped POSIX errcode.
- *
- * \warning Last error must be KNOT_ZCOMPILE_ERROR, it serves as a fallback and
- *          a sentinel value as well. Use knot_map_errno() instead.
- *
- * \param arg0 First mandatory argument.
- * \param ... List of handled codes.
- *
- * \return Mapped error code.
- */
-int _knot_map_errno(int arg0, ...);
+	/* Custom errors. */
+	{KNOT_ZCOMPILE_ERROR, "Generic error."},
+	{KNOT_ZCOMPILE_EBRDATA, "Malformed RDATA."},
+	{KNOT_ZCOMPILE_ESOA, "Multiple SOA records."},
+	{KNOT_ZCOMPILE_EBADNODE, "Error handling node."},
+	{KNOT_ZCOMPILE_EZONEINVAL, "Invalid zone file."},
+	{KNOT_ZCOMPILE_EPARSEFAIL, "Parser failed."},
+	{KNOT_ZCOMPILE_ENOIPV6, "IPv6 support disabled."},
+	{KNOT_ZCOMPILE_ESYNT, "Parser syntactic error."},
+	{KNOT_ZCOMPILE_ERROR, 0}
+};
 
 #endif /* _KNOT_ZCOMPILE_ERROR_H_ */
 
