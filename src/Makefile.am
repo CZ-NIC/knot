@@ -91,6 +91,8 @@ libknot_la_SOURCES =				\
 	common/dynamic-array.h			\
 	common/tree.h				\
 	common/base32hex.h				\
+	common/evqueue.h		\
+	common/evqueue.c		\
 	knot/stat/gatherer.c				\
 	knot/stat/stat.c				\
 	knot/stat/gatherer.h				\
@@ -138,8 +140,6 @@ libknot_la_SOURCES =				\
 	knot/other/log.c				\
 	knot/other/log.h				\
 	knot/other/debug.h			\
-	knot/other/evqueue.h		\
-	knot/other/evqueue.c		\
 	knot/other/error.h			\
 	knot/other/error.c			\
 	knot/conf/cf-parse.y                         \

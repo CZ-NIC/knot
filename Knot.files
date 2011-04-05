@@ -21,6 +21,8 @@ src/common/skip-list.h
 src/common/tree.h
 src/common/base32hex.h
 src/common/base32hex.c
+src/common/evqueue.c
+src/common/evqueue.h
 src/dnslib/dnslib-common.h
 src/dnslib/dname.h
 src/dnslib/dname.c
@@ -86,8 +88,6 @@ src/knot/other/log.c
 src/knot/other/log.h
 src/knot/other/error.c
 src/knot/other/error.h
-src/knot/other/evqueue.c
-src/knot/other/evqueue.h
 src/knot/stat/gatherer.c
 src/knot/stat/gatherer.h
 src/knot/stat/stat.h

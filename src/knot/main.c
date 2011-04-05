@@ -9,7 +9,7 @@
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/logconf.h"
-#include "knot/other/evqueue.h"
+#include "common/evqueue.h"
 
 /*----------------------------------------------------------------------------*/
 
