@@ -5,15 +5,17 @@
  *
  * \brief Event queue.
  *
- * \addtogroup data_structures
+ * \addtogroup common_lib
  * @{
  */
-#ifndef _CUTEDNS_EVQUEUE_H_
-#define _CUTEDNS_EVQUEUE_H_
+
+#ifndef _KNOT_COMMON_EVQUEUE_H_
+#define _KNOT_COMMON_EVQUEUE_H_
 
 #include <pthread.h>
+#include <signal.h> // sigset_t
 
-#include "knot/common.h"
+//#include "knot/common.h"
 #include "common/lists.h"
 
 struct event_t;
@@ -121,6 +123,6 @@ static inline void evqueue_set(evqueue_t *q) {
 	s_evqueue = q;
 }
 
-#endif /* _CUTEDNS_EVQUEUE_H_ */
+#endif /* _KNOT_COMMON_EVQUEUE_H_ */
 
 /*! @} */
