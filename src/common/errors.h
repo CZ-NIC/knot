@@ -24,16 +24,16 @@ typedef struct error_table_t {
 /*!
  * \brief Returns error message for the given error code.
  *
- * \param errno Error code.
+ * \param code Error code.
  *
  * \return String containing the error message.
  */
-const char *error_to_str(error_table_t *table, int errno);
+const char *error_to_str(const error_table_t *table, const int code);
 
 /*!
  * \brief Safe errno mapper that automatically appends sentinel value.
  *
- * \see _knot_map_errno()
+ * \see _map_errno()
  *
  * \param fallback_value Fallback error value (used if the code could not be
  *                       mapped.
@@ -48,7 +48,7 @@ const char *error_to_str(error_table_t *table, int errno);
  * \brief Returns a mapped POSIX errcode.
  *
  * \warning Last error must be 0, it serves as a sentinel value.
- *          Use knot_map_errno() instead.
+ *          Use map_errno() instead.
  *
  * \param fallback_value Fallback error value (used if the code could not be
  *                       mapped.

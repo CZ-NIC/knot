@@ -14,7 +14,7 @@
  *         present.
  */
 static const error_table_t *error_lookup_by_id(const error_table_t *table,
-                                               int id)
+					       const int id)
 {
 	while (table->name != 0) {
 		if (table->id == id) {
@@ -26,9 +26,9 @@ static const error_table_t *error_lookup_by_id(const error_table_t *table,
 	return 0;
 }
 
-const char *error_to_str(error_table_t *table, int errno)
+const char *error_to_str(const error_table_t *table, const int code)
 {
-	const error_table_t *msg = error_lookup_by_id(table, errno);
+	const error_table_t *msg = error_lookup_by_id(table, code);
 	if (msg != 0) {
 		return msg->name;
 	} else {

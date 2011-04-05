@@ -1,7 +1,3 @@
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-
 #include "knot/other/error.h"
 #include "common/errors.h"
 

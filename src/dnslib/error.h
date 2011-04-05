@@ -39,13 +39,13 @@ const error_table_t dnslib_error_msgs[DNSLIB_ERROR_COUNT];
 /*!
  * \brief Returns error message for the given error code.
  *
- * \param errno Error code.
+ * \param code Error code.
  *
  * \return String containing the error message.
  */
-static inline const char *dnslib_strerror(int errno)
+static inline const char *dnslib_strerror(int code)
 {
-	return error_to_str(&dnslib_error_msgs, errno);
+	return error_to_str((const error_table_t*)dnslib_error_msgs, code);
 }
 
 #endif /* _KNOT_DNSLIB_ERROR_H_ */
