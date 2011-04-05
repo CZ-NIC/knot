@@ -15,33 +15,35 @@ BUILT_SOURCES =					\
 	tests/dnslib/raw_data_queries.rc	\
 	tests/dnslib/raw_data.rc		\
 	tests/dnslib/parsed_data_queries.rc     \
-        tests/sample_conf.rc
+	tests/sample_conf.rc
 
 CLEANFILES =					\
 	tests/dnslib/parsed_data.rc		\
 	tests/dnslib/raw_data_queries.rc	\
 	tests/dnslib/raw_data.rc		\
 	tests/dnslib/parsed_data_queries.rc     \
-        tests/sample_conf.rc                    \
+	tests/sample_conf.rc                    \
 	zparser.h				\
 	zparser.c				\
 	zlexer.c				\
-        libknot_la-cf-lex.c			\
-        libknot_la-cf-parse.c			\
-        libknot_la-cf-parse.h
+	libknot_la-cf-lex.c			\
+	libknot_la-cf-parse.c			\
+	libknot_la-cf-parse.h
 
 knotc_SOURCES =					\
 	knot/ctl/knotc_main.c
 
 knot_zcompile_SOURCES =			\
 	zoneparser/zoneparser_main.c            \
+	zoneparser/zcompile_error.h		\
+	zoneparser/zcompile_error.c		\
 	zoneparser/parser-util.h		\
 	zoneparser/parser-descriptor.h		\
 	zoneparser/zparser.y			\
 	zoneparser/zlexer.l			\
 	zoneparser/zoneparser.c			\
 	zoneparser/parser-util.c		\
-	zoneparser/parser-descriptor.c		
+	zoneparser/parser-descriptor.c
 
 unittests_SOURCES =				\
 	tests/libtap/tap.c			\
@@ -50,20 +52,22 @@ unittests_SOURCES =				\
 unittests_zcompile_SOURCES =		\
 	zoneparser/parser-util.h		\
 	zoneparser/parser-descriptor.h		\
+	zoneparser/zcompile_error.h		\
+	zoneparser/zcompile_error.c		\
 	zoneparser/zparser.y			\
 	zoneparser/zlexer.l			\
 	zoneparser/zoneparser.c			\
 	zoneparser/parser-util.c		\
 	zoneparser/parser-descriptor.c		\
 	tests/libtap/tap.c			\
-	zoneparser/tests/unittests_zp_main.c	
+	zoneparser/tests/unittests_zp_main.c
 
 nodist_unittests_SOURCES =			\
 	tests/dnslib/parsed_data.rc		\
 	tests/dnslib/raw_data_queries.rc	\
 	tests/dnslib/raw_data.rc		\
 	tests/dnslib/parsed_data_queries.rc     \
-        tests/sample_conf.rc
+	tests/sample_conf.rc
 
 knotd_SOURCES =					\
 	knot/main.c

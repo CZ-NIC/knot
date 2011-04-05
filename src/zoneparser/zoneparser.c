@@ -30,6 +30,7 @@
 //#include "common.h"
 #include "zoneparser/zoneparser.h"
 #include "zoneparser/parser-util.h"
+#include "zoneparser/zcompile_error.h"
 #include "zparser.h"
 #include "dnslib/dnslib.h"
 
