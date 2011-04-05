@@ -10,6 +10,7 @@
 #include "dnslib/debug.h"
 #include "common/skip-list.h"
 #include "common/base32hex.h"
+#include "dnslib/error.h"
 
 #define ZONECHECKS_VERBOSE
 
@@ -466,8 +467,8 @@ static void dnslib_zone_save_enclosers_rrset(dnslib_rrset_t *rrset,
  * \param zone Zone containing the RRSet.
  * \param rrset RRSet to be tested.
  *
- * \retval 0 when there is no cycle.
- * \retval 1 when cycle is present.
+ * \retval DNSLIB_EOK when there is no cycle.
+ * \retval ZC_ERR_CNAME_CYCLE when cycle is present.
  */
 static int check_cname_cycles_in_zone(dnslib_zone_t *zone,
 				      const dnslib_rrset_t *rrset)
@@ -511,10 +512,10 @@ static int check_cname_cycles_in_zone(dnslib_zone_t *zone,
 
 	/* even if the length is 0, i will be 1 */
 	if (i >= MAX_CNAME_CYCLE_DEPTH) {
-		return -1;
+		return ZC_ERR_CNAME_CYCLE;
 	}
 
-	return 0;
+	return DNSLIB_EOK;
 }
 
 /*!
@@ -544,8 +545,8 @@ uint16_t type_covered_from_rdata(const dnslib_rdata_t *rdata)
  *
  * \param rdata DNSKEY rdata to be checked.
  *
- * \retval 0 when rdata are OK.
- * \retval -1 when rdata are not OK.
+ * \retval DNSLIB_EOK when rdata are OK.
+ * \retval ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER when rdata are not OK.
  */
 static int check_dnskey_rdata(const dnslib_rdata_t *rdata)
 {
@@ -558,9 +559,11 @@ static int check_dnskey_rdata(const dnslib_rdata_t *rdata)
 				     (dnslib_rdata_item(rdata, 0)));
 
 	if (flags & mask) {
-		return 0;
+		return DNSLIB_EOK;
 	} else {
-		return -1;
+		/* This error does not exactly fit, but it's better
+		 * than a new one */
+		return ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER;
 	}
 }
 
@@ -1014,7 +1017,7 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 		   next_dname_decoded +	1,
 		   &next_dname_decoded_size) != 0) {
 		fprintf(stderr, "Could not decode base32 string!\n");
-		return 1;
+		return DNSLIB_ERROR;
 	}
 
 	/* !!! TODO !!! */
@@ -1060,7 +1063,7 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 	    &array, &count) != 0) {
 			err_handler_handle_error(handler, node,
 						 ZC_ERR_ALLOC);
-			return -1;
+			return DNSLIB_ERROR;
 	}
 
 	uint16_t type = 0;
@@ -1112,7 +1115,8 @@ static int semantic_checks_plain(dnslib_zone_t *zone,
 	const dnslib_rrset_t *cname_rrset =
 			dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME);
 	if (cname_rrset != NULL) {
-		if (check_cname_cycles_in_zone(zone, cname_rrset) != 0) {
+		if (check_cname_cycles_in_zone(zone, cname_rrset) !=
+				DNSLIB_EOK) {
 			err_handler_handle_error(handler, node,
 						 ZC_ERR_CNAME_CYCLE);
 		}
@@ -1818,7 +1822,7 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	f = fopen(filename, "wb");
 
 	if (f == NULL) {
-		return -1;
+		return DNSLIB_EBADARG;
 	}
 
 	zone->node_count = 0;
