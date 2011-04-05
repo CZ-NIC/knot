@@ -340,9 +340,9 @@ static int server_load_zone(server_t *server, const char *origin, const char *db
 
 		// Check if the db is up-to-date
 		if (dnslib_zload_needs_update(zl)) {
-			log_server_warning("Zone file for '%s' "
-			                   "has changed, it is recommended to "
-			                   "recompile it.\n",
+			log_server_warning("Database for zone '%s' "
+					   "is not up-to-date. "
+					   "Please recompile.\n",
 			                   origin);
 		}
 
@@ -528,14 +528,13 @@ int server_start(server_t *server, const char **filenames, uint zones)
 
 	//!stat
 
-	// Load zones from config
+	/* Load zones from config. */
 	node *n = 0; int zones_loaded = 0;
 	WALK_LIST (n, conf()->zones) {
 
-		// Fetch zone
 		conf_zone_t *z = (conf_zone_t*)n;
 
-		// Check if the source has changed
+		/* Attempt to read db header. */
 		zloader_t *zl = dnslib_zload_open(z->db);
 		if (zl == NULL) {
 			log_server_error("Zone source file for '%s'  "
@@ -545,8 +544,9 @@ int server_start(server_t *server, const char **filenames, uint zones)
 		}
 		assert(zl != NULL);
 
+		/* Check zone source file against configured source. */
 		int src_changed = strcmp(z->file, zl->source) != 0;
-		if (src_changed || dnslib_zload_needs_update(zl)) {
+		if (src_changed) {
 			log_server_warning("Zone source file for '%s' "
 			                   "has changed, it is recommended to "
 			                   "recompile it.\n",
@@ -561,7 +561,7 @@ int server_start(server_t *server, const char **filenames, uint zones)
 
 		pct += pct_incr;
 		while (pct >= pct_threshold) {
-			log_server_info("..%d%s", pct_threshold, "%%");
+			log_server_info("..%d%%", pct_threshold);
 			pct_threshold += pct_step;
 		}
 	}
@@ -577,7 +577,7 @@ int server_start(server_t *server, const char **filenames, uint zones)
 
 		pct += pct_incr;
 		while (pct >= pct_threshold) {
-			log_server_info("..%d%s", pct_threshold, "%%");
+			log_server_info("..%d%%", pct_threshold);
 			pct_threshold += pct_step;
 		}
 	}
