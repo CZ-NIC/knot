@@ -72,13 +72,12 @@ src/dnslib/hash/hash-functions.c
 src/dnslib/hash/hash-functions.h
 src/dnslib/hash/universal-system.c
 src/dnslib/hash/universal-system.h
-src/zcompile/zcompile_main.c
+src/zcompile/zoneparser_main.c
 src/zcompile/parser-descriptor.h
 src/zcompile/parser-descriptor.c
 src/zcompile/parser-util.h
-src/zzcompile/oneparser/parser-util.c
-src/zcompile/zcompile.c
-src/zcompile/zcompile.h
+src/zcompile/zoneparser.c
+src/zcompile/zoneparser.h
 src/zcompile/zparser.y
 src/zcompile/zlexer.l
 src/zcompile/zcompile-error.h
