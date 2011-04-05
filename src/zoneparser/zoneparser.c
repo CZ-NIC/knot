@@ -296,7 +296,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 
 				if (temp_rdatas[i].raw_data == NULL) {
 					ERR_ALLOC_FAILED;
-					return -1;
+					return KNOT_ZCOMPILE_ENOMEM;
 				}
 
 				temp_rdatas[i].raw_data[0] = dname->size;
@@ -312,7 +312,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			if (wireformat + length > end) {
 				if (required) {
 					/* Truncated RDATA.  */
-					return -1;
+					return KNOT_ZCOMPILE_EBRDATA;
 				} else {
 					break;
 				}
@@ -341,7 +341,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 	if (wireformat < end) {
 		/* Trailing garbage.  */
 //		region_destroy(temp_region);
-		return -1;
+		return KNOT_ZCOMPILE_EBRDATA;
 	}
 
 	*items = temp_rdatas;
@@ -1384,7 +1384,6 @@ static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 	return 1;
 }
 
-
 void set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
 	    uint16_t index)
 {
@@ -1413,14 +1412,14 @@ int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone, dnslib_rrset_t *rrsig)
 	}
 
 	if (tmp_node == NULL) {
-		return -1;
+		return KNOT_ZCOMPILE_EINVAL;
 	}
 
 	dnslib_rrset_t *tmp_rrset =
 		dnslib_node_get_rrset(tmp_node, rrsig->type);
 
 	if (tmp_rrset == NULL) {
-		return -1;
+		return KNOT_ZCOMPILE_EINVAL;
 	}
 
 	if (tmp_rrset->rrsigs != NULL) {
@@ -1429,7 +1428,7 @@ int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone, dnslib_rrset_t *rrsig)
 		tmp_rrset->rrsigs = rrsig;
 	}
 
-	return 0;
+	return KNOT_ZCOMPILE_EOK;
 }
 
 int find_rrset_for_rrsig_in_node(dnslib_node_t *node, dnslib_rrset_t *rrsig)
@@ -1443,7 +1442,7 @@ int find_rrset_for_rrsig_in_node(dnslib_node_t *node, dnslib_rrset_t *rrsig)
 		dnslib_node_get_rrset(node, rrsig_type_covered(rrsig));
 
 	if (tmp_rrset == NULL) {
-		return -1;
+		return KNOT_ZCOMPILE_EINVAL;
 	}
 
 	if (tmp_rrset->rrsigs != NULL) {
@@ -1455,7 +1454,7 @@ int find_rrset_for_rrsig_in_node(dnslib_node_t *node, dnslib_rrset_t *rrsig)
 	debug_zp("setting rrsigs for rrset %s\n",
 		 dnslib_dname_to_str(rrsig->owner));
 
-	return 0;
+	return KNOT_ZCOMPILE_EOK;
 }
 
 dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
@@ -1558,7 +1557,7 @@ int process_rr(void)
 
 	if ((current_rrset->type == DNSLIB_RRTYPE_SOA) && (zone != NULL)) {
 		if (dnslib_node_rrset(zone->apex, DNSLIB_RRTYPE_SOA) != NULL) {
-			return -2;
+			return KNOT_ZCOMPILE_ESOA;
 		}
 	}
 
@@ -1617,14 +1616,16 @@ int process_rr(void)
 						   current_rrset, node_add_func,
 						   node_get_func)) == NULL) {
 				free(tmp_rrsig);
-				return -1;
+				return KNOT_ZCOMPILE_EBADNODE;
 			}
 		}
 
 		rrset_list_add(&parser->node_rrsigs, tmp_rrsig);
 
-		return 0;
+		return KNOT_ZCOMPILE_EOK;
 	}
+
+	assert(current_rrset->type != DNSLIB_RRTYPE_RRSIG);
 
 	dnslib_node_t *node;
 
@@ -1654,7 +1655,7 @@ int process_rr(void)
 		if ((node = create_node(zone, current_rrset,
 					node_add_func,
 					node_get_func)) == NULL) {
-			return -1;
+			return KNOT_ZCOMPILE_EBADNODE;
 		}
 	} else {
 		/* TODO I bet this can be simplified a lot */
@@ -1689,12 +1690,12 @@ int process_rr(void)
 
 		if (dnslib_rrset_add_rdata(rrset, current_rrset->rdata) != 0) {
 			free(rrset);
-			return -2;
+			return KNOT_ZCOMPILE_EBRDATA;
 		}
 
 		if (dnslib_node_add_rrset(node, rrset) != 0) {
 			free(rrset);
-			return -2;
+			return KNOT_ZCOMPILE_EBRDATA;
 		}
 	} else {
 		if (current_rrset->type !=
@@ -1750,7 +1751,7 @@ int process_rr(void)
 
 	++totalrrs;
 
-	return 0;
+	return KNOT_ZCOMPILE_EOK;
 }
 
 static uint find_rrsets_orphans(dnslib_zone_t *zone, rrset_list_t
@@ -1801,7 +1802,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
 		fprintf(stderr, "Cannot open '%s': %s.",
 			zonefile, strerror_r(errno, ebuf, sizeof(ebuf)));
-		return -1;
+		return KNOT_ZCOMPILE_EZONEINVAL;
 	}
 
 	yyparse();

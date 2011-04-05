@@ -52,6 +52,9 @@ static const error_table_t knot_zcompile_error_msgs[] = {
 
 	/* Custom errors. */
 	{KNOT_ZCOMPILE_ERROR, "Generic error."},
+	{KNOT_ZCOMPILE_EBRDATA, "Malformed RDATA."},
+	{KNOT_ZCOMPILE_ESOA, "Multiple SOA records."},
+	{KNOT_ZCOMPILE_EBADNODE, "Error handling node."},
 	{KNOT_ZCOMPILE_EZONEINVAL, "Invalid zone file."},
 	{KNOT_ZCOMPILE_EPARSEFAIL, "Parser failed."},
 	{KNOT_ZCOMPILE_ENOIPV6, "IPv6 support disabled."},
