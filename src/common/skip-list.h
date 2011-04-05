@@ -196,6 +196,17 @@ const skip_node_t *skip_next(const skip_node_t *node);
 void skip_print_list(const skip_list_t *list,
                      void (*print_item)(void *, void *));
 
+/*!
+ * \brief Copies the skip list.
+ *
+ * \param list Skip list to be copied.
+ *
+ * \return Copy of \a list.
+ *
+ * \todo Test!!!
+ */
+skip_list_t *skip_copy_list(const skip_list_t *list);
+
 #endif /* _KNOT_COMMON_SKIP_LIST_H_ */
 
 /*! @} */
