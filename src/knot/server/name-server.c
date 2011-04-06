@@ -1931,7 +1931,7 @@ int ns_conf_hook(const struct conf_t *conf, void *data)
 
 	dnslib_zonedb_t *old_db;
 
-	int ret = zone_update_db_from_config(conf, ns, &old_db);
+	int ret = zones_update_db_from_config(conf, ns, &old_db);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

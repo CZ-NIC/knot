@@ -488,7 +488,7 @@ int server_start(server_t *server, const char **filenames, uint zones)
 		dnslib_zload_close(zl);
 
 		// Load zone
-		if (zone_load(server->zone_db, z->name, z->db) == 0) {
+		if (zones_load_zone(server->zone_db, z->name, z->db) == 0) {
 			++zones_loaded;
 		}
 
@@ -504,7 +504,7 @@ int server_start(server_t *server, const char **filenames, uint zones)
 
 	// Load given zones
 	for (uint i = 0; i < zones; ++i) {
-		if (zone_load(server->zone_db, "??", filenames[i])
+		if (zones_load_zone(server->zone_db, "??", filenames[i])
 		    == 0) {
 			++zones_loaded;
 		}
