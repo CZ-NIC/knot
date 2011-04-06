@@ -29,14 +29,20 @@ static int zones_insert_zones(const list *zone_conf,
 			                 " name\n");
 			return KNOT_ERROR;
 		}
+
+		debug_zones("Inserting zone %s into the new database.\n",
+		            z->name);
+
 		// try to find the zone in the current zone db
 		dnslib_zone_t *zone = dnslib_zonedb_find_zone(db_old,
 		                                              zone_name);
 		if (zone != NULL) {
 			// if found, just insert the zone into the new zone db
+			debug_zones("Found in old database, copying to new.\n");
 			(void)dnslib_zonedb_add_zone(db_new, zone);
 		} else {
 			// if not found, the zone must be loaded
+			debug_zones("Not found in old database, loading...\n");
 			(void)zones_load_zone(db_new, z->name, z->db);
 			// unused return value, if not loaded, just continue
 		}
@@ -60,6 +66,8 @@ static int zones_remove_zones(const list *zone_conf, dnslib_zonedb_t *db_old)
 			                 " name\n");
 			return KNOT_ERROR;
 		}
+		debug_zones("Removing zone %s from the old database.\n",
+		            z->name);
 		// remove the zone from the old zone db, but do not delete it
 		dnslib_zonedb_remove_zone(db_old, zone_name, 0);
 	}
@@ -174,6 +182,9 @@ int zones_update_db_from_config(const conf_t *conf, ns_nameserver_t *ns,
 
 	// Unlock RCU, messing with any data will not affect us now
 	rcu_read_unlock();
+
+	debug_zones("Old database is empty (%p): %s\n", (*db_old)->zones,
+	            skip_is_empty((*db_old)->zones) ? "yes" : "no");
 
 	return KNOT_EOK;
 }
