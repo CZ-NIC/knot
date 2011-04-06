@@ -6,7 +6,7 @@
 #endif
 
 //#define RESP_TEST_DEBUG
-#include "tests/dnslib/response_tests.h"
+#include "dnslib/tests/dnslib/response_tests.h"
 #include "dnslib/dnslib-common.h"
 #include "dnslib/response.h"
 #include "dnslib/rdata.h"
@@ -20,10 +20,10 @@
  * Resources
  * \note .rc files are generated on compile-time.
  */
-#include "tests/dnslib/parsed_data_queries.rc"
-#include "tests/dnslib/parsed_data.rc"
-#include "tests/dnslib/raw_data_queries.rc"
-#include "tests/dnslib/raw_data.rc"
+#include "dnslib/tests/parsed_data_queries.rc"
+#include "dnslib/tests/parsed_data.rc"
+#include "dnslib/tests/raw_data_queries.rc"
+#include "dnslib/tests/raw_data.rc"
 
 static int dnslib_response_tests_count(int argc, char *argv[]);
 static int dnslib_response_tests_run(int argc, char *argv[]);

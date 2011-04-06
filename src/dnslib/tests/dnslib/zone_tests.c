@@ -1,6 +1,6 @@
 #include <assert.h>
 
-#include "tests/dnslib/zone_tests.h"
+#include "dnslib/tests/dnslib/zone_tests.h"
 #include "dnslib/dnslib-common.h"
 #include "dnslib/zone.h"
 #include "dnslib/node.h"

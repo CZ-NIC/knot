@@ -1,6 +1,6 @@
 #include <assert.h>
 
-#include "tests/dnslib/edns_tests.h"
+#include "dnslib/tests/dnslib/edns_tests.h"
 #include "dnslib/dnslib-common.h"
 #include "dnslib/edns.h"
 

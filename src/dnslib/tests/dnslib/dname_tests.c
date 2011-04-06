@@ -1,7 +1,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "tests/dnslib/dname_tests.h"
+#include "dnslib/tests/dnslib/dname_tests.h"
 #include "dnslib/dname.h"
 #include "dnslib/node.h"
 

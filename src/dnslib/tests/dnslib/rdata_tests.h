@@ -29,7 +29,7 @@
 #ifndef _KNOT_RDATA_TESTS_H_
 #define _KNOT_RDATA_TESTS_H_
 
-#include "tests/libtap/tap_unit.h"
+#include "common/libtap/tap_unit.h"
 
 /* Unit API. */
 unit_api rdata_tests_api;
