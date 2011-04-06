@@ -30,7 +30,7 @@ struct dnslib_dname {
 	 * \brief Size of the domain name in octets.
 	 * \todo Is this needed? Every dname should end with \0 or pointer.
 	 */
-	uint size;
+	unsigned int size;
 	uint8_t *labels;
 	short label_count;
 	struct dnslib_node *node; /*!< Zone node the domain name belongs to. */
@@ -64,7 +64,7 @@ dnslib_dname_t *dnslib_dname_new();
  * \return Newly allocated and initialized dname structure representing the
  *         given domain name.
  */
-dnslib_dname_t *dnslib_dname_new_from_str(const char *name, uint size,
+dnslib_dname_t *dnslib_dname_new_from_str(const char *name, unsigned int size,
                                           struct dnslib_node *node);
 
 /*!
@@ -87,8 +87,9 @@ dnslib_dname_t *dnslib_dname_new_from_str(const char *name, uint size,
  *       is OK to retain this and check the data in other functions before
  *       calling this one, or if it should verify the given data.
  */
-dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
-                struct dnslib_node *node);
+dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name,
+                                           unsigned int size,
+                                           struct dnslib_node *node);
 
 /*!
  * \brief Initializes domain name by the name given in wire format.
@@ -112,7 +113,7 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
  *       is OK to retain this and check the data in other functions before
  *       calling this one, or if it should verify the given data.
  */
-int dnslib_dname_from_wire(const uint8_t *name, uint size,
+int dnslib_dname_from_wire(const uint8_t *name, unsigned int size,
                            struct dnslib_node *node, dnslib_dname_t *target);
 
 /*!
@@ -152,7 +153,7 @@ const uint8_t *dnslib_dname_name(const dnslib_dname_t *dname);
  *
  * \return Size of the domain name in wire format in octets.
  */
-uint dnslib_dname_size(const dnslib_dname_t *dname);
+unsigned int dnslib_dname_size(const dnslib_dname_t *dname);
 
 /*!
  * \brief Returns size of a part of domain name.

@@ -72,7 +72,7 @@ typedef union dnslib_rdata_item dnslib_rdata_item_t;
  */
 struct dnslib_rdata {
 	dnslib_rdata_item_t *items; /*!< RDATA items comprising this RDATA. */
-	uint count; /*! < Count of RDATA items in this RDATA. */
+	unsigned int count; /*! < Count of RDATA items in this RDATA. */
 	struct dnslib_rdata *next; /*!< Next RDATA item in a linked list. */
 };
 
@@ -99,7 +99,7 @@ dnslib_rdata_t *dnslib_rdata_new();
  * \todo Use the union or a pointer to it as parameter? IMHO there is always
  *       only one pointer that is copied, so it doesn't matter.
  */
-int dnslib_rdata_set_item(dnslib_rdata_t *rdata, uint pos,
+int dnslib_rdata_set_item(dnslib_rdata_t *rdata, unsigned int pos,
                           dnslib_rdata_item_t item);
 
 /*!
@@ -119,7 +119,8 @@ int dnslib_rdata_set_item(dnslib_rdata_t *rdata, uint pos,
  * \retval DNSLIB_ENOMEM
  */
 int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
-                           const dnslib_rdata_item_t *items, uint count);
+                           const dnslib_rdata_item_t *items,
+                           unsigned int count);
 
 /*!
  * \brief Returns the RDATA item on position \a pos.
@@ -134,7 +135,7 @@ int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
  *         exist within the given RDATA structure.
  */
 dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
-                                           uint pos);
+                                           unsigned int pos);
 
 /*!
  * \brief Returns the RDATA item on position \a pos.
@@ -151,7 +152,7 @@ dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
  *         exist within the given RDATA structure.
  */
 const dnslib_rdata_item_t *dnslib_rdata_item(const dnslib_rdata_t *rdata,
-                                             uint pos);
+                                             unsigned int pos);
 
 /*!
  * \brief Sets the given domain name as a value of RDATA item on position
@@ -164,7 +165,7 @@ const dnslib_rdata_item_t *dnslib_rdata_item(const dnslib_rdata_t *rdata,
  * \retval DNSLIB_EOK if successful.
  * \retval DNSLIB_EBADARG
  */
-int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, uint pos,
+int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, unsigned int pos,
                                 dnslib_dname_t *dname);
 
 /*!
@@ -177,7 +178,7 @@ int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, uint pos,
  * \retval DNSLIB_EOK if successful.
  * \retval DNSLIB_EBADARG
  */
-int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, uint pos,
+int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, unsigned int pos,
                                    uint16_t *raw_data);
 
 ///*!
@@ -190,7 +191,7 @@ int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, uint pos,
 // *
 // * \todo Consider adding the size to the structure for faster retrieval.
 // */
-//uint dnslib_rdata_wire_size(const dnslib_rdata_t *rdata,
+//unsigned int dnslib_rdata_wire_size(const dnslib_rdata_t *rdata,
 //                            const uint8_t *format);
 
 ///*!
@@ -208,7 +209,7 @@ int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, uint pos,
 // *       make the converting quicker.
 // */
 //int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
-//                         uint8_t *buffer, uint buf_size);
+//                         uint8_t *buffer, unsigned int buf_size);
 
 /*!
  * \brief Copies the given RDATA.
@@ -240,7 +241,7 @@ void dnslib_rdata_free(dnslib_rdata_t **rdata);
  * \param rdata RDATA structure to be destroyed.
  * \param type RR Type of the RDATA.
  */
-void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
+void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, unsigned int type,
                             int free_all_dnames);
 
 /*!
