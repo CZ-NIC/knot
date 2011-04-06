@@ -19,6 +19,7 @@
 #include "dnslib/debug.h"
 #include "dnslib/dname.h"
 #include "knot/conf/conf.h"
+#include "knot/server/zones.h"
 
 /*! \brief List item for generic pointers. */
 typedef struct pnode_t {
@@ -313,74 +314,6 @@ static int server_bind_handlers(server_t *server)
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Load zone to server.
- *
- * \param server Server instance.
- * \param origin Zone origin.
- * \param db Path to requested zone database.
- *
- * \retval 0 if successful (EOK).
- * \retval <0 on errors (KNOT_EINVAL, KNOT_EZONEINVAL).
- */
-static int server_load_zone(server_t *server, const char *origin, const char *db)
-{
-	dnslib_zone_t *zone = NULL;
-
-	// Check path
-	if (db) {
-		debug_server("Parsing zone database '%s'\n", db);
-		zloader_t *zl = dnslib_zload_open(db);
-		if (!zl && errno == EILSEQ) {
-			log_server_error("Compiled db '%s' is too old, "
-			                 " please recompile.\n",
-			                 db);
-			return KNOT_EZONEINVAL;
-		}
-
-		// Check if the db is up-to-date
-		if (dnslib_zload_needs_update(zl)) {
-			log_server_warning("Database for zone '%s' "
-					   "is not up-to-date. "
-					   "Please recompile.\n",
-			                   origin);
-		}
-
-		zone = dnslib_zload_load(zl);
-		dnslib_zload_close(zl);
-		if (zone) {
-			if (dnslib_zonedb_add_zone(server->zone_db, zone) != 0){
-				dnslib_zone_deep_free(&zone);
-				zone = 0;
-			}
-		}
-
-		if (!zone) {
-			struct stat st;
-			if (stat(db, &st) != 0) {
-				log_server_error(
-					"server: Database file '%s' does not"
-					"exist.\n", db);
-				log_server_error(
-					"server: Please recompile zone "
-					"databases.\n");
-			} else {
-				log_server_error("Failed to load "
-						 "db '%s' for zone '%s'.\n",
-				                 db, origin);
-			}
-			return KNOT_EZONEINVAL;
-		}
-	} else {
-		/* db is null. */
-		return KNOT_EINVAL;
-	}
-
-//	dnslib_zone_dump(zone, 1);
-
-	return KNOT_EOK;
-}
-
 server_t *server_create()
 {
 	// Create server structure
@@ -555,7 +488,7 @@ int server_start(server_t *server, const char **filenames, uint zones)
 		dnslib_zload_close(zl);
 
 		// Load zone
-		if (server_load_zone(server, z->name, z->db) == 0) {
+		if (zone_load(server->zone_db, z->name, z->db) == 0) {
 			++zones_loaded;
 		}
 
@@ -571,7 +504,8 @@ int server_start(server_t *server, const char **filenames, uint zones)
 
 	// Load given zones
 	for (uint i = 0; i < zones; ++i) {
-		if (server_load_zone(server, "??", filenames[i]) == 0) {
+		if (zone_load(server->zone_db, "??", filenames[i])
+		    == 0) {
 			++zones_loaded;
 		}
 
