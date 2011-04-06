@@ -22,6 +22,8 @@
  *     tail                    tail_node.prev
  */
 
+#include <string.h>  // size_t
+
 typedef struct node {
   struct node *next, *prev;
 } node;

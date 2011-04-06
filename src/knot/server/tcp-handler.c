@@ -23,7 +23,7 @@ typedef struct tcp_pool_t {
 	struct epoll_event *events;    /*!< Epoll events backing store. */
 	int                ebs_size;   /*!< Epoll events backing store size. */
 	pthread_mutex_t    mx;         /*!< Pool synchronisation lock. */
-	ns_nameserver      *ns;        /* reference to name server */
+	ns_nameserver_t      *ns;        /* reference to name server */
 	iohandler_t        *handler;   /* master I/O handler */
 	stat_t             *stat;      /* statistics gatherer */
 } tcp_pool_t;

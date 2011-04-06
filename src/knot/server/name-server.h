@@ -44,7 +44,7 @@ typedef struct ns_nameserver {
 	uint8_t *err_response; /*!< Prepared generic error response. */
 	size_t err_resp_size;  /*!< Size of the prepared error response. */
 	dnslib_opt_rr_t *opt_rr;  /*!< OPT RR with the server's EDNS0 info. */
-} ns_nameserver;
+} ns_nameserver_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -55,7 +55,7 @@ typedef struct ns_nameserver {
  *
  * \return Pointer to the name server structure.
  */
-ns_nameserver *ns_create(dnslib_zonedb_t *database);
+ns_nameserver_t *ns_create(dnslib_zonedb_t *database);
 
 /*!
  * \brief Creates a response for the given query using the data of the name
@@ -73,7 +73,7 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database);
  *
  * \todo Truncation of the packet.
  */
-int ns_answer_request(ns_nameserver *nameserver,
+int ns_answer_request(ns_nameserver_t *nameserver,
                       const uint8_t *query_wire,
                       size_t qsize,
                       uint8_t *response_wire,
@@ -85,7 +85,7 @@ int ns_answer_request(ns_nameserver *nameserver,
  * \note This functions does not destroy the zone database saved in the
  *       structure. This must be kept and destroyed elsewhere.
  */
-void ns_destroy(ns_nameserver **nameserver);
+void ns_destroy(ns_nameserver_t **nameserver);
 
 /*!
  * \brief Name server config hook.

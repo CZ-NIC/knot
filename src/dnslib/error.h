@@ -16,19 +16,19 @@
 
 /*! \brief Error codes used in the dnslib library. */
 enum dnslib_error {
-	DNSLIB_EOK = 0,
-	DNSLIB_ERROR = -10000,
-	DNSLIB_ENOMEM,
-	DNSLIB_EBADARG,
-	DNSLIB_EFEWDATA,
-	DNSLIB_ESPACE,
-	DNSLIB_EMALF,
-	DNSLIB_ECRYPTO,
-	DNSLIB_ENSEC3PAR,
-	DNSLIB_EBADZONE,
-	DNSLIB_EHASH,
-	DNSLIB_EZONEIN,
-	DNSLIB_ENOZONE,
+	DNSLIB_EOK = 0,         /*!< OK */
+	DNSLIB_ERROR = -10000,  /*!< General dnslib error. */
+	DNSLIB_ENOMEM,          /*!< Not enough memory. */
+	DNSLIB_EBADARG,         /*!< Wrong argument supported. */
+	DNSLIB_EFEWDATA,        /*!< Not enough data to parse. */
+	DNSLIB_ESPACE,          /*!< Not enough space provided. */
+	DNSLIB_EMALF,           /*!< Malformed data. */
+	DNSLIB_ECRYPTO,         /*!< Error in crypto library. */
+	DNSLIB_ENSEC3PAR,       /*!< Missing or wrong NSEC3PARAM record. */
+	DNSLIB_EBADZONE,        /*!< Domain name does not belong to the zone. */
+	DNSLIB_EHASH,           /*!< Error in hash table. */
+	DNSLIB_EZONEIN,         /*!< Error inserting zone. */
+	DNSLIB_ENOZONE,         /*!< No such zone found. */
 
 	DNSLIB_ERROR_COUNT = 14
 };

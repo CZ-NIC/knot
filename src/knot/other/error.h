@@ -45,9 +45,10 @@ enum knot_error_t {
 	KNOT_EZONEINVAL, /*!< \brief Invalid zone file. */
 	KNOT_ENOTRUNNING, /*!< \brief Resource is not running. */
 	KNOT_EPARSEFAIL, /*!< \brief Parser fail. */
-	KNOT_ENOIPV6, /*! \brief No IPv6 support. */
+	KNOT_ENOIPV6, /*!< \brief No IPv6 support. */
+	KNOT_EMALF, /*!< Malformed packet. */
 
-	KNOT_ERROR_COUNT = 19
+	KNOT_ERROR_COUNT = 20
 };
 
 /*! \brief Table linking error messages to error codes. */
