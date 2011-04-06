@@ -50,10 +50,10 @@ enum knot_zcompile_error {
 
 	/* Custom error codes. */
 	KNOT_ZCOMPILE_ERROR = -16384, /*!< \brief Generic error. */
-	KNOT_ZCOMPILE_ESEMERR,
 	KNOT_ZCOMPILE_ESYNT,
 	KNOT_ZCOMPILE_EBADNODE,
 	KNOT_ZCOMPILE_EBRDATA,
+	KNOT_ZCOMPILE_EBADSOA,
 	KNOT_ZCOMPILE_ESOA,
 
 	KNOT_ZCOMPILE_EZONEINVAL, /*!< \brief Invalid zone file. */
@@ -86,6 +86,7 @@ static const error_table_t knot_zcompile_error_msgs[] = {
 	{KNOT_ZCOMPILE_ERROR, "Generic error."},
 	{KNOT_ZCOMPILE_EBRDATA, "Malformed RDATA."},
 	{KNOT_ZCOMPILE_ESOA, "Multiple SOA records."},
+	{KNOT_ZCOMPILE_EBADSOA, "SOA record has diffent owner than in config."},
 	{KNOT_ZCOMPILE_EBADNODE, "Error handling node."},
 	{KNOT_ZCOMPILE_EZONEINVAL, "Invalid zone file."},
 	{KNOT_ZCOMPILE_EPARSEFAIL, "Parser failed."},

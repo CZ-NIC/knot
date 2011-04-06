@@ -1582,7 +1582,7 @@ int process_rr(void)
 				"in config!\n");
 			/* Such SOA cannot even be added, because
 			 * it would not be in the zone apex. */
-			return KNOT_ZCOMPILE_EBADNODE;
+			return KNOT_ZCOMPILE_EBADSOA;
 		}
 	}
 

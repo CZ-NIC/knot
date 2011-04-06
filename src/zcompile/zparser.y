@@ -159,6 +159,14 @@ line:	NL
 				"owner: %s reason: %s\n", tmp_dname_str,
 				error_to_str(knot_zcompile_error_msgs, ret));
 			free(tmp_dname_str);
+			if (ret == KNOT_ZCOMPILE_EBADSOA) {
+				dnslib_rdata_free(&tmp_rdata);
+				dnslib_rrset_deep_free(&(parser->current_rrset),
+						       1, 1);
+				dnslib_zone_deep_free(&(parser->current_zone),
+						      1);
+				YYABORT;
+			}
 		}
 	    }
 
