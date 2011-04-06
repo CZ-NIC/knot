@@ -233,13 +233,18 @@ void dnslib_rdata_free(dnslib_rdata_t **rdata);
  * \brief Destroys the RDATA structure and all its RDATA items.
  *
  * RDATA items are deleted according to the given RR Type. In case of domain
- * name, it is deallocated only if it does not contain reference to a node
- * (i.e. it is not an owner of some node).
+ * name, it is deallocated only if either the free_all_dnames parameter is set
+ * to <> 0 or the name does not contain reference to a node (i.e. it is not an
+ * owner of some node) or if it does contain a reference to a node, but is
+ * not equal to its owner. (If free_all_dnames is set to <> 0, no other
+ * condition is evaluated.)
  *
  * Also sets the given pointer to NULL.
  *
  * \param rdata RDATA structure to be destroyed.
  * \param type RR Type of the RDATA.
+ * \param free_all_dnames Set to <> 0 if you want to delete ALL domain names
+ *                        from the RDATA. Set to 0 otherwise.
  */
 void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, unsigned int type,
                             int free_all_dnames);
