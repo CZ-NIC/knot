@@ -17,8 +17,36 @@
 
 typedef unsigned int uint;
 
-/* Common macros.
- */
+/*! \brief Eliminate compiler warning with unused parameters. */
+#define UNUSED(param) (void)(param)
+
+/*! \brief Type-safe minimum macro. */
+#define MIN(a, b) \
+	({ typeof (a) _a = (a); typeof (b) _b = (b); _a < _b ? _a : _b; })
+
+/*! \brief Type-safe maximum macro. */
+#define MAX(a, b) \
+	({ typeof (a) _a = (a); typeof (b) _b = (b); _a > _b ? _a : _b; })
+
+/* Optimisation macros. */
+#ifndef likely
+/*! \brief Optimize for x to be true value. */
+#define likely(x)       __builtin_expect((x),1)
+#endif
+#ifndef unlikely
+/*! \brief Optimize for x to be false value. */
+#define unlikely(x)     __builtin_expect((x),0)
+#endif
+
+/* Optimisation macros. */
+#ifndef likely
+/*! \brief Optimize for x to be true value. */
+#define likely(x)       __builtin_expect((x),1)
+#endif
+#ifndef unlikely
+/*! \brief Optimize for x to be false value. */
+#define unlikely(x)     __builtin_expect((x),0)
+#endif
 /*! \todo Refactor theese. We should have an allocator function handling this.*/
 #ifndef ERR_ALLOC_FAILED
 #define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d (%s ver.%x)\n", \
@@ -42,30 +70,6 @@ typedef unsigned int uint;
 			return (ret); \
 		} \
 	} while (0)
-#endif
-
-/* Eliminate compiler warning with unused parameters. */
-#ifndef UNUSED
-#define UNUSED(param) (void)(param)
-#endif
-
-/* Type-safe minimum and maximum macros. */
-#ifndef MIN
-#define MIN(a, b) \
-	({ typeof (a) _a = (a); typeof (b) _b = (b); _a < _b ? _a : _b; })
-#endif
-
-#ifndef MAX
-#define MAX(a, b) \
-	({ typeof (a) _a = (a); typeof (b) _b = (b); _a > _b ? _a : _b; })
-#endif
-
-/* Optimisation macros. */
-#ifndef likely
-#define likely(x)       __builtin_expect((x),1)
-#endif
-#ifndef unlikely
-#define unlikely(x)     __builtin_expect((x),0)
 #endif
 
 #endif /* _KNOT_DNSLIB_COMMON_H_ */
