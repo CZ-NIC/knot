@@ -762,7 +762,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		if (dnslib_zone_add_nsec3_node(zone, nsec3_first) != 0) {
 			fprintf(stderr, "!! cannot add first nsec3 node, "
 				"exiting.\n");
-			dnslib_zone_deep_free(&zone);
+			dnslib_zone_deep_free(&zone, 0);
 			return NULL;
 		}
 

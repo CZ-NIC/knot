@@ -268,7 +268,7 @@ static int test_node_free_rrsets()
 		tmp_node = dnslib_node_new(&test_nodes[i].owner,
 				      test_nodes[i].parent);
 
-		dnslib_node_free_rrsets(tmp_node);
+		dnslib_node_free_rrsets(tmp_node, 0);
 
 		errors += (tmp_node->rrsets != NULL);
 

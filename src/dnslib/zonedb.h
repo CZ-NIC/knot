@@ -53,16 +53,33 @@ int dnslib_zonedb_add_zone(dnslib_zonedb_t *db, dnslib_zone_t *zone);
 /*!
  * \brief Removes the given zone from the database if it exists.
  *
+ * \note Assumes that the zone was adjusted using dnslib_zone_adjust_dnames().
+ *       If it was not, it may leak some memory due to checks used in
+ *       dnslib_rdata_deep_free().
+ *
  * \param db Zone database to remove from.
  * \param zone_name Name of the zone to be removed.
- *
- * The removal of a zone is synchronized using RCU mechanism, so the zone data
- * will not be destroyed while some thread may be using it.
+ * \param destroy_zone Set to <> 0 if you do want the function to destroy the
+ *                     zone after removing from zone database. Set to 0
+ *                     otherwise.
  *
  * \retval DNSLIB_EOK
  * \retval DNSLIB_ENOZONE
  */
-int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name);
+int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name,
+                              int destroy_zone);
+
+/*!
+ * \brief Finds zone exactly matching the given zone name.
+ *
+ * \param db Zone database to search in.
+ * \param zone_name Domain name representing the zone name.
+ *
+ * \return Zone with \a zone_name being the owner of the zone apex or NULL if
+ *         not found.
+ */
+dnslib_zone_t *dnslib_zonedb_find_zone(const dnslib_zonedb_t *db,
+                                       const dnslib_dname_t *zone_name);
 
 /*!
  * \brief Finds zone the given domain name should belong to.
@@ -77,13 +94,31 @@ const dnslib_zone_t *dnslib_zonedb_find_zone_for_name(dnslib_zonedb_t *db,
                                                    const dnslib_dname_t *dname);
 
 /*!
- * \brief Destroys and deallocates the whole zone database.
+ * \brief Copies the zone database structure (but not the zones within).
  *
- * \param database Pointer to pointer to the zone database to be destroyed.
+ * \param db Zone database to copy.
  *
- * The zones are destroyed one-by-one and the process is synchronized using
- * RCU mechanism, so the zone data will not be destroyed while some thread may
- * be using it.
+ * \return A new zone database structure containing the same zones as \a db or
+ *         NULL if an error occured.
+ */
+dnslib_zonedb_t *dnslib_zonedb_copy(const dnslib_zonedb_t *db);
+
+/*!
+ * \brief Destroys and deallocates the zone database structure (but not the
+ *        zones within).
+ *
+ * \param database Zone database to be destroyed.
+ */
+void dnslib_zonedb_free(dnslib_zonedb_t **db);
+
+/*!
+ * \brief Destroys and deallocates the whole zone database including the zones.
+ *
+ * \note Assumes that the zone was adjusted using dnslib_zone_adjust_dnames().
+ *       If it was not, it may leak some memory due to checks used in
+ *       dnslib_rdata_deep_free().
+ *
+ * \param database Zone database to be destroyed.
  */
 void dnslib_zonedb_deep_free(dnslib_zonedb_t **db);
 
