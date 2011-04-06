@@ -24,7 +24,20 @@
 TREE_DEFINE(dnslib_node, avl);
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Checks if the given node can be inserted into the given zone.
+ *
+ * Checks if both the arguments are non-NULL and if the owner of the node
+ * belongs to the zone (i.e. is a subdomain of the zone apex).
+ *
+ * \param zone Zone to which the node is going to be inserted.
+ * \param node Node to check.
+ *
+ * \retval DNSLIB_EOK if both arguments are non-NULL and the node belongs to the
+ *         zone.
+ * \retval DNSLIB_EBADARG if either of the arguments is NULL.
+ * \retval DNSLIB_EBADZONE if the node does not belong to the zone.
+ */
 static int dnslib_zone_check_node(const dnslib_zone_t *zone,
                                   const dnslib_node_t *node)
 {
@@ -36,6 +49,7 @@ static int dnslib_zone_check_node(const dnslib_zone_t *zone,
 	assert(zone->apex != NULL);
 
 	if (!dnslib_dname_is_subdomain(node->owner, zone->apex->owner)) {
+DEBUG_DNSLIB_ZONE(
 		char *node_owner = dnslib_dname_to_str(node->owner);
 		char *apex_owner = dnslib_dname_to_str(zone->apex->owner);
 		debug_dnslib_zone("zone: Trying to insert foreign node to a "
@@ -43,13 +57,21 @@ static int dnslib_zone_check_node(const dnslib_zone_t *zone,
 		                  node_owner, apex_owner);
 		free(node_owner);
 		free(apex_owner);
+);
 		return DNSLIB_EBADZONE;
 	}
 	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Destroys all RRSets in a node.
+ *
+ * This function is designed to be used in the tree-iterating functions.
+ *
+ * \param node Node to destroy RRSets from.
+ * \param data Unused parameter.
+ */
 static void dnslib_zone_destroy_node_rrsets_from_tree(dnslib_node_t *node,
                                                       void *data)
 {
@@ -58,7 +80,14 @@ static void dnslib_zone_destroy_node_rrsets_from_tree(dnslib_node_t *node,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Destroys node owner.
+ *
+ * This function is designed to be used in the tree-iterating functions.
+ *
+ * \param node Node to destroy the owner of.
+ * \param data Unused parameter.
+ */
 static void dnslib_zone_destroy_node_owner_from_tree(dnslib_node_t *node,
                                                      void *data)
 {
@@ -67,7 +96,22 @@ static void dnslib_zone_destroy_node_owner_from_tree(dnslib_node_t *node,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Adjusts one RDATA item by replacing domain name by one present in the
+ *        zone.
+ *
+ * This function tries to find the domain name in the zone. If the name is not
+ * in the zone, it does nothing. If it is there, it destroys the domain name 
+ * stored in the RDATA item and replaces it by pointer to the domain name from
+ * the zone.
+ *
+ * \warning Call this function only with RDATA items which store domain names,
+ *          otherwise the behaviour is undefined.
+ *
+ * \param rdata RDATA where the item is located.
+ * \param zone Zone to which the RDATA belongs.
+ * \param pos Position of the RDATA item in the RDATA.
+ */
 static void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata,
                                           dnslib_zone_t *zone, int pos)
 {
@@ -96,7 +140,9 @@ static void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Adjusts all RDATA 
+ */
 static void dnslib_zone_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
                                               dnslib_zone_t *zone)
 {
