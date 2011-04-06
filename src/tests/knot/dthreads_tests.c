@@ -1,8 +1,9 @@
-#include "knot/server/dthreads.h"
-#include "tests/tap_unit.h"
-#include <sys/select.h>
 #include <pthread.h>
 #include <sched.h>
+#include <sys/select.h>
+
+#include "tests/knot/dthreads_tests.h"
+#include "knot/server/dthreads.h"
 
 static int dt_tests_count(int argc, char *argv[]);
 static int dt_tests_run(int argc, char *argv[]);

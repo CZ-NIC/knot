@@ -267,8 +267,8 @@ static int server_bind_handlers(server_t *server)
 		tcp_unit_size = 2;
 	}
 
-	/* Lock RCU. */
-	rcu_read_lock();
+	/* Lock config. */
+	conf_read_lock();
 
 	/* Create socket handlers. */
 	node *n = 0;
@@ -308,8 +308,8 @@ static int server_bind_handlers(server_t *server)
 
 	}
 
-	/* Unlock RCU. */
-	rcu_read_unlock();
+	/* Unlock config. */
+	conf_read_unlock();
 
 	return KNOT_EOK;
 }
@@ -542,8 +542,8 @@ int server_start(server_t *server, const char **filenames, uint zones)
 		}
 	}
 
-	/* Unlock RCU. */
-	rcu_read_unlock();
+	/* Unlock configuration. */
+	conf_read_unlock();
 
 	debug_server("Done.\n");
 
@@ -552,8 +552,8 @@ int server_start(server_t *server, const char **filenames, uint zones)
 
 int server_wait(server_t *server)
 {
-	/* Lock configuration. */
-	conf_read_lock();
+	/* Lock RCU. */
+	rcu_read_lock();
 
 	// Wait for dispatchers to finish
 	int ret = 0;
@@ -679,8 +679,8 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 		}
 	}
 
-	/* Unlock RCU. */
-	rcu_read_unlock();
+	/* Unlock config. */
+	conf_read_unlock();
 
 	return ret;
 }

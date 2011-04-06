@@ -1,10 +1,10 @@
 #include <stdio.h>
 
-#include "tests/tap_unit.h"
+#include "tests/knot/conf_tests.h"
 #include "knot/conf/conf.h"
 
 /* Resources. */
-#include "sample_conf.rc"
+#include "tests/sample_conf.rc"
 
 static int conf_tests_count(int argc, char *argv[]);
 static int conf_tests_run(int argc, char *argv[]);

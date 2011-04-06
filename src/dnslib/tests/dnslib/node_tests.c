@@ -1,3 +1,4 @@
+#include "dnslib/tests/dnslib/node_tests.h"
 #include "dnslib/dname.h"
 #include "dnslib/node.h"
 #include "dnslib/descriptor.h"
@@ -7,7 +8,7 @@ static int dnslib_node_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
-unit_api dnslib_node_tests_api = {
+unit_api node_tests_api = {
 	"DNS library - node",       //! Unit name
 	&dnslib_node_tests_count,  //! Count scheduled tests
 	&dnslib_node_tests_run     //! Run scheduled tests
@@ -50,9 +51,9 @@ static int test_node_create()
 	dnslib_node_t *tmp;
 	int errors = 0;
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
-		tmp = dnslib_node_new(&test_nodes[i].owner, 
-		                      test_nodes[i].parent);
-		if (tmp == NULL || 
+		tmp = dnslib_node_new(&test_nodes[i].owner,
+				      test_nodes[i].parent);
+		if (tmp == NULL ||
 		    tmp->owner != &test_nodes[i].owner ||
 		    tmp->parent != test_nodes[i].parent ||
 		    tmp->rrsets == NULL) {
@@ -72,7 +73,7 @@ static int test_node_add_rrset()
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
 		/* create node from test_node structure */
 		tmp = dnslib_node_new(&test_nodes[i].owner,
-		                      test_nodes[i].parent);
+				      test_nodes[i].parent);
 		rrset = &rrsets[i];
 		if (dnslib_node_add_rrset(tmp, rrset) != 0) {
 			errors++;
@@ -86,6 +87,7 @@ static int test_node_add_rrset()
 			     dnslib_node_rrset(tmp, rrset->type)) == NULL) {
 			errors++;
 			diag("Inserted rrset could not be found");
+			continue;
 		}
 
 		/* compare rrset from node with original rrset */
@@ -93,13 +95,25 @@ static int test_node_add_rrset()
 		const dnslib_rrtype_descriptor_t *desc =
 			dnslib_rrtype_descriptor_by_type(rrset->type);
 
+		int cmp = 0;
+
+		if ((rrset_from_node->rdata == NULL) &&
+		    (rrset->rdata == NULL)) {
+			cmp = 0;
+		} else if ((rrset_from_node->rdata != NULL) &&
+			   (rrset->rdata != NULL)) {
+			cmp = dnslib_rdata_compare(rrset_from_node->rdata,
+						   rrset->rdata,
+						   desc->wireformat);
+		} else { /* one is not NULL and other is -> error */
+			cmp = 1;
+		}
+
 		if (!((rrset_from_node->type == rrset->type) &&
 		    (rrset_from_node->rclass == rrset->rclass) &&
 		    (rrset_from_node->ttl == rrset->ttl) &&
 		    (rrset_from_node->rrsigs == rrset->rrsigs) &&
-		    (dnslib_rdata_compare(rrset_from_node->rdata,
-					  rrset->rdata,
-					  desc->wireformat) == 0))) {
+		     (cmp == 0))) {
 			errors++;
 			diag("Values in found rrset are wrong");
 		}
@@ -120,7 +134,7 @@ static int test_node_get_rrset()
 
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
 		tmp = dnslib_node_new(&test_nodes[i].owner,
-		                      test_nodes[i].parent);
+				      test_nodes[i].parent);
 		nodes[i] = tmp;
 		for (int j = 0; j < RRSETS; j++) {
 			dnslib_node_add_rrset(tmp, &rrsets[j]);
@@ -152,7 +166,7 @@ static int test_node_get_parent()
 
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
 		tmp = dnslib_node_new(&test_nodes[i].owner,
-		                      test_nodes[i].parent);
+				      test_nodes[i].parent);
 		nodes[i] = tmp;
 		rrset = &rrsets[i];
 		dnslib_node_add_rrset(tmp, rrset);
@@ -212,7 +226,7 @@ static int test_node_delete()
 
 	for (int i = 0; i < TEST_NODES; i++) {
 		tmp_node = dnslib_node_new(&test_nodes[i].owner,
-		                      test_nodes[i].parent);
+				      test_nodes[i].parent);
 
 		dnslib_node_free(&tmp_node, 0);
 
@@ -231,7 +245,7 @@ static int test_node_set_parent()
 
 	for (int i = 0; i < TEST_NODES; i++) {
 		tmp_node = dnslib_node_new(&test_nodes[i].owner,
-		                      test_nodes[i].parent);
+				      test_nodes[i].parent);
 
 		dnslib_node_set_parent(tmp_node, tmp_parent);
 
@@ -252,7 +266,7 @@ static int test_node_free_rrsets()
 
 	for (int i = 0; i < TEST_NODES; i++) {
 		tmp_node = dnslib_node_new(&test_nodes[i].owner,
-		                      test_nodes[i].parent);
+				      test_nodes[i].parent);
 
 		dnslib_node_free_rrsets(tmp_node);
 
