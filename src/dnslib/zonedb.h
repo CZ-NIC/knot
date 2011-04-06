@@ -55,11 +55,27 @@ int dnslib_zonedb_add_zone(dnslib_zonedb_t *db, dnslib_zone_t *zone);
  *
  * \param db Zone database to remove from.
  * \param zone_name Name of the zone to be removed.
+ * \param destroy_zone Set to <> 0 if you do want the function to destroy the
+ *                     zone after removing from zone database. Set to 0
+ *                     otherwise.
  *
  * \retval DNSLIB_EOK
  * \retval DNSLIB_ENOZONE
  */
-int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name);
+int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name,
+                              int destroy_zone);
+
+/*!
+ * \brief Finds zone exactly matching the given zone name.
+ *
+ * \param db Zone database to search in.
+ * \param zone_name Domain name representing the zone name.
+ *
+ * \return Zone with \a zone_name being the owner of the zone apex or NULL if
+ *         not found.
+ */
+dnslib_zone_t *dnslib_zonedb_find_zone(const dnslib_zonedb_t *db,
+                                       const dnslib_dname_t *zone_name);
 
 /*!
  * \brief Finds zone the given domain name should belong to.
