@@ -27,7 +27,6 @@
 #include "zcompile/zcompile.h"
 #include "zcompile/parser-descriptor.h"
 #include "zcompile/zcompile-error.h"
-#include "common/errors.h"
 
 /* these need to be global, otherwise they cannot be used inside yacc */
 zparser_type *parser;

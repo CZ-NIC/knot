@@ -97,7 +97,6 @@ src/dnslib/tests/unittests_dnslib.c
 src/zcompile/parser-descriptor.h
 src/zcompile/parser-descriptor.c
 src/zcompile/parser-util.h
-src/zcompile/parser-util.c
 src/zcompile/zcompile.c
 src/zcompile/zcompile.h
 src/zcompile/zparser.y
@@ -130,8 +129,6 @@ src/knot/server/tcp-handler.c
 src/knot/server/tcp-handler.h
 src/knot/server/udp-handler.c
 src/knot/server/udp-handler.h
-src/knot/server/zones.c
-src/knot/server/zones.h
 src/knot/ctl/process.c
 src/knot/ctl/process.h
 src/knot/conf/cf-lex.l
@@ -156,3 +153,4 @@ src/tests/unittests_main.c
 tests/querytcp.c
 src/zcompile/tests/unittests_zp_main.c
 src/zcompile/tests/zcompile_tests.c
+src/zcompile/zcompile-error.c
