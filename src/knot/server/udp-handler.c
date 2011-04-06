@@ -53,7 +53,6 @@ int udp_master(dthread_t *thread)
 	 *       Although this is much cheaper,
 	 *       16kB worth of buffers *may* pose a problem.
 	 */
-	char errbuf[128];
 	uint8_t inbuf[SOCKET_MTU_SZ];
 	uint8_t outbuf[SOCKET_MTU_SZ];
 	struct sockaddr* addr = 0;
@@ -110,9 +109,8 @@ int udp_master(dthread_t *thread)
 		// Error and interrupt handling
 		if (unlikely(n <= 0)) {
 			if (errno != EINTR && errno != 0) {
-				debug_net("udp: recvfrom() failed: %s\n",
-					  strerror_r(errno, errbuf,
-						     sizeof(errbuf)));
+				debug_net("udp: recvfrom() failed: %d\n",
+					  errno);
 			}
 
 			if (!(handler->state & ServerRunning)) {
@@ -125,9 +123,9 @@ int udp_master(dthread_t *thread)
 
 		// Answer request
 		debug_net("udp: received %zd bytes.\n", n);
-		ssize_t answer_size = SOCKET_MTU_SZ;
-		ssize_t res = (ssize_t)ns_answer_request(ns, inbuf, n, outbuf,
-							 &answer_size);
+		size_t answer_size = SOCKET_MTU_SZ;
+		int res = ns_answer_request(ns, inbuf, n, outbuf,
+					    &answer_size);
 
 		debug_net("udp: got answer of size %zd.\n",
 			  answer_size);
@@ -145,12 +143,10 @@ int udp_master(dthread_t *thread)
 			             0, addr, addrlen);
 
 			// Check result
-			if (res != answer_size) {
-				debug_net("udp: %s: failed: %zd - %s.\n",
+			if (res != (int)answer_size) {
+				debug_net("udp: %s: failed: %d - %d.\n",
 					  "socket_sendto()",
-					  res,
-					  strerror_r((int)res, errbuf,
-						     sizeof(errbuf)));
+					  res, errno);
 				continue;
 			}
 

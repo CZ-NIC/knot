@@ -120,6 +120,8 @@ static inline int tcp_answer(int fd, uint8_t *src, int inbuf_sz, uint8_t *dest,
 			debug_net("tcp: sent answer to %d\n", fd);
 		}
 	}
+
+	return 0;
 }
 
 /*!
