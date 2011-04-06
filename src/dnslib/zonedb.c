@@ -84,7 +84,8 @@ DEBUG_DNSLIB_ZONEDB(
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name)
+int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name,
+                              int destroy_zone)
 {
 	// add some lock to avoid multiple removals
 	dnslib_zone_t *z = (dnslib_zone_t *)skip_find(db->zones, zone_name);
@@ -97,10 +98,20 @@ int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name)
 	int ret = skip_remove(db->zones, zone_name, NULL, NULL);
 	assert(ret == 0);
 
-	// properly destroy the zone and all its contents
-	dnslib_zone_deep_free(&z);
+	if (destroy_zone) {
+		// properly destroy the zone and all its contents
+		dnslib_zone_deep_free(&z);
+	}
 
 	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnslib_zone_t *dnslib_zonedb_find_zone(const dnslib_zonedb_t *db,
+                                       const dnslib_dname_t *zone_name)
+{
+	return (dnslib_zone_t *)skip_find(db->zones, (void *)zone_name);
 }
 
 /*----------------------------------------------------------------------------*/
