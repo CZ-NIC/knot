@@ -1,5 +1,6 @@
 #include <time.h>
-#include "tests/tap_unit.h"
+
+#include "tests/common/skiplist_tests.h"
 #include "common/skip-list.h"
 
 static int skiplist_tests_count(int argc, char *argv[]);

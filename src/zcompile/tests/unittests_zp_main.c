@@ -1,6 +1,7 @@
 #include <config.h>
 #include "knot/common.h"
-#include "tests/tap_unit.h"
+#include "common/libtap/tap_unit.h"
+
 // Units to test
 #include "zcompile_tests.c"
 

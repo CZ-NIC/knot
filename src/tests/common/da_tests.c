@@ -1,4 +1,4 @@
-#include "tests/tap_unit.h"
+#include "tests/common/da_tests.h"
 #include "common/dynamic-array.h"
 #include <unistd.h>
 #include <urcu.h>
