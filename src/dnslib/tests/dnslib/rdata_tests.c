@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "tests/dnslib/rdata_tests.h"
+#include "dnslib/tests/dnslib/rdata_tests.h"
 #include "dnslib/dnslib-common.h"
 #include "dnslib/rdata.h"
 #include "dnslib/descriptor.h"

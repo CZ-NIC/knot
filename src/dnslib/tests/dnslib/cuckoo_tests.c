@@ -1,7 +1,7 @@
 #include <time.h>
 #include <assert.h>
 
-#include "tests/dnslib/cuckoo_tests.h"
+#include "dnslib/tests/dnslib/cuckoo_tests.h"
 #include "dnslib/hash/cuckoo-hash-table.h"
 
 #define CT_TEST_REHASH

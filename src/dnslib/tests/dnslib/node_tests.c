@@ -1,4 +1,4 @@
-#include "tests/dnslib/node_tests.h"
+#include "dnslib/tests/dnslib/node_tests.h"
 #include "dnslib/dname.h"
 #include "dnslib/node.h"
 #include "dnslib/descriptor.h"

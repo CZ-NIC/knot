@@ -1,6 +1,6 @@
 #include <assert.h>
 
-#include "tests/dnslib/rrset_tests.h"
+#include "dnslib/tests/dnslib/rrset_tests.h"
 #include "dnslib/dnslib-common.h"
 #include "dnslib/descriptor.h"
 #include "dnslib/rrset.h"
