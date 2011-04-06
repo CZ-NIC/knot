@@ -445,6 +445,8 @@ int server_start(server_t *server, const char **filenames, uint zones)
 		return KNOT_EINVAL;
 	}
 
+#if 0
+
 	/* Percentage. */
 	int zones_total = zones + conf()->zones_count;
 	int pct = 0, pct_step = 10;
@@ -462,6 +464,7 @@ int server_start(server_t *server, const char **filenames, uint zones)
 	//!stat
 
 	/* Load zones from config. */
+
 	node *n = 0; int zones_loaded = 0;
 	WALK_LIST (n, conf()->zones) {
 
@@ -524,6 +527,7 @@ int server_start(server_t *server, const char **filenames, uint zones)
 		log_server_info("Successfully loaded %d/%d zones.\n",
 		                zones_loaded, zones_total);
 	}
+#endif
 
 	debug_server("Starting handlers...\n");
 
@@ -535,6 +539,12 @@ int server_start(server_t *server, const char **filenames, uint zones)
 	server->state |= ServerRunning;
 	iohandler_t *h = 0;
 	WALK_LIST(h, server->handlers) {
+
+		/* Already running. */
+		if (h->state & ServerRunning) {
+			continue;
+		}
+
 		h->state = ServerRunning;
 		ret = dt_start(h->unit);
 		if (ret < 0) {
