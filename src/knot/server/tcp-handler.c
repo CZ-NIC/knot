@@ -407,7 +407,7 @@ int tcp_master(dthread_t *thread)
 
 		// Cancellation point
 		if (dt_is_cancelled(thread)) {
-			return -1;
+			return KNOT_EOK;
 		}
 
 		// Accept on master socket
