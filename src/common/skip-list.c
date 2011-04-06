@@ -25,7 +25,7 @@ Retrieved from: http://en.literateprograms.org/Skip_list_(C)?oldid=12811
 */
 
 /*
- * Modifications by Lubos Slovak, 2010
+ * Modifications by Lubos Slovak, 2010-2011
  */
 
 #include <config.h>
@@ -380,4 +380,47 @@ void skip_print_list(const skip_list_t *list,
 		print_item(x->key, x->value);
 		x = x->forward[0];
 	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+skip_list_t *skip_copy_list(const skip_list_t *list)
+{
+	skip_list_t *ss = (skip_list_t *)malloc(sizeof(skip_list_t));
+	if (ss == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+
+	ss->head = skip_make_node(list->level, NULL, NULL);
+	if (ss->head == NULL) {
+		ERR_ALLOC_FAILED;
+		free(ss);
+		return NULL;
+	}
+
+	ss->level = list->level;
+	ss->compare_keys = list->compare_keys;
+
+	skip_node_t *x = list->head->forward[0];
+	skip_node_t *prev = list->head;
+	skip_node_t *new_prev = ss->head;
+	while (x != NULL) {
+		//print_item(x->key, x->value);
+
+		// create new node
+		skip_node_t *n = skip_make_node(list->level, x->key, x->value);
+		// set forward pointers from the previous node
+		for (int i = 0; i <= list->level; ++i) {
+			if (prev->forward[i] == x) {
+				new_prev->forward[i] = n;
+			}
+		}
+
+		prev = x;
+		x = x->forward[0];
+		new_prev = n;
+	}
+
+	return ss;
 }

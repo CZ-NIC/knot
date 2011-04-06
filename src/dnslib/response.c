@@ -1343,8 +1343,8 @@ int dnslib_response_parse_query(dnslib_response_t *resp,
 	resp->header.qdcount = 1;
 
 	// put the qname into the compression table
-	if (err = dnslib_response_store_dname_pos(&resp->compression,
-	              resp->question.qname, 0, size, size) != DNSLIB_EOK) {
+	if ((err = dnslib_response_store_dname_pos(&resp->compression,
+	              resp->question.qname, 0, size, size)) != DNSLIB_EOK) {
 		return err;
 	}
 

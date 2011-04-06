@@ -189,9 +189,12 @@ void dnslib_rrset_free(dnslib_rrset_t **rrset);
  * \param rrset RRset to be destroyed.
  * \param free_owner Set to 0 if you do not want the owner domain name to be
  *                   destroyed also. Set to <> 0 otherwise.
+ * \param free_rdata_dnames Set to <> 0 if you want to delete ALL domain names
+ *                          present in RDATA. Set to 0 otherwise. (See
+ *                          dnslib_rdata_deep_free().)
  */
 void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner,
-                            int free_all_dnames);
+                            int free_rdata_dnames);
 
 /*!
  * \brief Merges two RRSets.
