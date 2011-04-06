@@ -87,7 +87,7 @@ void dnslib_zone_dump(dnslib_zone_t *zone, char loaded_zone);
 
 #ifdef DNSLIB_DNAME_DEBUG
 #define debug_dnslib_dname(msg...) fprintf(stderr, msg)
-#define debug_dnslib_dname_hex(data, len) dnslib_hex_print((data), (len))
+#define debug_dnslib_dname_hex(data, len) hex_print((data), (len))
 #define DEBUG_DNSLIB_DNAME(cmds) do { cmds } while (0)
 #else
 #define debug_dnslib_dname(msg...)
@@ -97,7 +97,7 @@ void dnslib_zone_dump(dnslib_zone_t *zone, char loaded_zone);
 
 #ifdef DNSLIB_ZONE_DEBUG
 #define debug_dnslib_zone(msg...) fprintf(stderr, msg)
-#define debug_dnslib_zone_hex(data, len) dnslib_hex_print((data), (len))
+#define debug_dnslib_zone_hex(data, len) hex_print((data), (len))
 #define DEBUG_DNSLIB_ZONE(cmds) do { cmds } while (0)
 #else
 #define debug_dnslib_zone(msg...)
@@ -115,7 +115,7 @@ void dnslib_zone_dump(dnslib_zone_t *zone, char loaded_zone);
 
 #ifdef DNSLIB_RESPONSE_DEBUG
 #define debug_dnslib_response(msg...) fprintf(stderr, msg)
-#define debug_dnslib_response_hex(data, len) dnslib_hex_print((data), (len))
+#define debug_dnslib_response_hex(data, len) hex_print((data), (len))
 #define DEBUG_DNSLIB_RESPONSE(cmds) do { cmds } while (0)
 #else
 #define debug_dnslib_response(msg...)
@@ -131,7 +131,7 @@ void dnslib_zone_dump(dnslib_zone_t *zone, char loaded_zone);
 
 #ifdef DNSLIB_NSEC3_DEBUG
 #define debug_dnslib_nsec3(msg...) fprintf(stderr, msg)
-#define debug_dnslib_nsec3_hex(data, len) dnslib_hex_print((data), (len))
+#define debug_dnslib_nsec3_hex(data, len) hex_print((data), (len))
 #define DEBUG_DNSLIB_NSEC3(cmds) do { cmds } while (0)
 #else
 #define debug_dnslib_nsec3(msg...)
@@ -161,7 +161,7 @@ void dnslib_zone_dump(dnslib_zone_t *zone, char loaded_zone);
 
 #ifdef CUCKOO_DEBUG_HASH
 #define debug_ck_hash(msg...) fprintf(stderr, msg)
-#define debug_ck_hash_hex(data, len) dnslib_hex_print((data), (len))
+#define debug_ck_hash_hex(data, len) hex_print((data), (len))
 #define debug_ck_rehash(msg...) fprintf(stderr, msg)
 #else
 #define debug_ck_hash(msg...)
