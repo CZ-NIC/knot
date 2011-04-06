@@ -11,6 +11,7 @@
 #include "dnslib/dnslib.h"
 #include "dnslib/debug.h"
 #include "knot/other/error.h"
+#include "knot/server/zones.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -56,7 +57,7 @@ static const int      NS_ERR_SERVFAIL      = -999;
  * \param response_wire Place for wire format of the response.
  * \param rsize Size of the error response will be stored here.
  */
-static inline void ns_error_response(ns_nameserver *nameserver,
+static inline void ns_error_response(ns_nameserver_t *nameserver,
                                      const uint8_t *query_wire,
                                      uint8_t rcode,
                                      uint8_t *response_wire,
@@ -1762,9 +1763,9 @@ static int ns_response_to_wire(dnslib_response_t *resp, uint8_t *wire,
 /* Public functions                                                           */
 /*----------------------------------------------------------------------------*/
 
-ns_nameserver *ns_create(dnslib_zonedb_t *database)
+ns_nameserver_t *ns_create(dnslib_zonedb_t *database)
 {
-	ns_nameserver *ns = malloc(sizeof(ns_nameserver));
+	ns_nameserver_t *ns = malloc(sizeof(ns_nameserver_t));
 	if (ns == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -1789,7 +1790,7 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database)
 
 	if (dnslib_response_to_wire(err, &error_wire, &ns->err_resp_size)
 	    != 0) {
-		log_answer_error("Error while converting a "
+		log_answer_error("Error while converting "
 		                 "default error response to "
 		                 "wire format \n");
 		dnslib_response_free(&err);
@@ -1836,14 +1837,14 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database)
 
 /*----------------------------------------------------------------------------*/
 
-int ns_answer_request(ns_nameserver *nameserver, const uint8_t *query_wire,
+int ns_answer_request(ns_nameserver_t *nameserver, const uint8_t *query_wire,
                       size_t qsize, uint8_t *response_wire, size_t *rsize)
 {
 	debug_ns("ns_answer_request() called with query size %zu.\n", qsize);
 	debug_ns_hex((char *)query_wire, qsize);
 
 	if (qsize < 2) {
-		return -1;
+		return KNOT_EMALF;
 	}
 
 	// 1) create empty response
@@ -1854,7 +1855,7 @@ int ns_answer_request(ns_nameserver *nameserver, const uint8_t *query_wire,
 		log_answer_error("Error while creating response packet!\n");
 		ns_error_response(nameserver, query_wire, DNSLIB_RCODE_SERVFAIL,
 		                  response_wire, rsize);
-		return 0;
+		return KNOT_EOK;
 	}
 
 	int ret = 0;
@@ -1867,7 +1868,7 @@ int ns_answer_request(ns_nameserver *nameserver, const uint8_t *query_wire,
 		ns_error_response(nameserver, query_wire, DNSLIB_RCODE_FORMERR,
 		                  response_wire, rsize);
 		dnslib_response_free(&resp);
-		return 0;
+		return KNOT_EOK;
 	}
 
 	// NSID
@@ -1905,12 +1906,12 @@ int ns_answer_request(ns_nameserver *nameserver, const uint8_t *query_wire,
 	debug_ns("Returning response with wire size %zu\n", *rsize);
 	debug_ns_hex((char *)response_wire, *rsize);
 
-	return 0;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void ns_destroy(ns_nameserver **nameserver)
+void ns_destroy(ns_nameserver_t **nameserver)
 {
 	// do nothing with the zone database!
 	free((*nameserver)->err_response);
@@ -1925,8 +1926,20 @@ void ns_destroy(ns_nameserver **nameserver)
 
 int ns_conf_hook(const struct conf_t *conf, void *data)
 {
-	ns_nameserver *ns = (ns_nameserver *)data;
+	ns_nameserver_t *ns = (ns_nameserver_t *)data;
 	debug_server("Event: reconfiguring name server.\n");
+
+	dnslib_zonedb_t *old_db;
+
+	int ret = zones_update_db_from_config(conf, ns, &old_db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	// Wait until all readers finish with reading the zones.
+	synchronize_rcu();
+
+	// Delete all deprecated zones and delete the old database.
+	dnslib_zonedb_deep_free(&old_db);
 
 	return KNOT_EOK;
 }

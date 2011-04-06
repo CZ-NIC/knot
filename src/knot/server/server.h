@@ -86,7 +86,7 @@ typedef struct server_t {
 	volatile unsigned state;
 
 	/*! \brief Reference to the name server structure. */
-	ns_nameserver *nameserver;
+	ns_nameserver_t *nameserver;
 
 	/*! \brief Reference to the zone database structure. */
 	dnslib_zonedb_t *zone_db;
