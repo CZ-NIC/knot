@@ -186,7 +186,7 @@ static int test_edns_do(const dnslib_opt_rr_t *edns,
 			test_edns_t *test_edns)
 {
 	if (dnslib_edns_do(edns) !=
-	    test_edns->flags & DNSLIB_EDNS_DO_MASK) {
+	    (test_edns->flags & DNSLIB_EDNS_DO_MASK)) {
 		return 0;
 	} else {
 		return 1;
@@ -374,7 +374,6 @@ static int test_edns_wire()
 	/*
 	 * Tests to_wire and from_wire in one test.
 	 */
-	int errors = 0;
 	for (int i = 0; i < TEST_EDNS; i++) {
 		/* Creates instance from test_edns_t. */
 		dnslib_opt_rr_t *edns =
