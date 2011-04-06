@@ -1927,5 +1927,7 @@ int ns_conf_hook(const struct conf_t *conf, void *data)
 {
 	ns_nameserver *ns = (ns_nameserver *)data;
 	debug_server("Event: reconfiguring name server.\n");
+
+	return KNOT_EOK;
 }
 

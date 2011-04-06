@@ -521,7 +521,7 @@ int server_start(server_t *server, const char **filenames, uint zones)
 	/* Lock configuration. */
 	conf_read_lock();
 
-	log_server_info("Loading zone files...\n", zones_total);
+	log_server_info("Loading zone files...\n");
 	//stat
 
 	stat_static_gath_start();
