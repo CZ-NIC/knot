@@ -1574,6 +1574,18 @@ int process_rr(void)
 //		return 0;
 //	}
 
+	if (current_rrset->type == DNSLIB_RRTYPE_SOA) {
+		if (dnslib_dname_compare(current_rrset->owner,
+					 parser->origin->owner) != 0) {
+			fprintf(stderr, "SOA record has a different "
+				"owner than the one specified "
+				"in config!\n");
+			/* Such SOA cannot even be added, because
+			 * it would not be in the zone apex. */
+			return KNOT_ZCOMPILE_EBADNODE;
+		}
+	}
+
 	/* Do we have the zone already? */
 	if (!zone) {
 		assert(parser->origin);
@@ -1581,6 +1593,7 @@ int process_rr(void)
 		if (dnslib_dname_compare(parser->origin->owner,
 					 current_rrset->owner) == 0 &&
 		    parser->origin->owner != current_rrset->owner) {
+			/* if SOA, it has been checked above */
 
 			dnslib_dname_free(&parser->origin->owner);
 			parser->origin->owner = current_rrset->owner;
