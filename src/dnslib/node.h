@@ -267,8 +267,11 @@ int dnslib_node_is_non_auth(const dnslib_node_t *node);
  * \brief Destroys the RRSets within the node structure.
  *
  * \param node Node to be destroyed.
+ * \param free_rdata_dnames Set to <> 0 if you want to delete ALL domain names
+ *                          present in RDATA. Set to 0 otherwise. (See
+ *                          dnslib_rdata_deep_free().)
  */
-void dnslib_node_free_rrsets(dnslib_node_t *node);
+void dnslib_node_free_rrsets(dnslib_node_t *node, int free_rdata_dnames);
 
 /*!
  * \brief Destroys the node structure.

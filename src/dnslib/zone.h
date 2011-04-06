@@ -410,8 +410,11 @@ void dnslib_zone_free(dnslib_zone_t **zone);
  * Also sets the given pointer to NULL.
  *
  * \param zone Zone to be freed.
+ * \param free_rdata_dnames Set to <> 0 if you want to delete ALL domain names
+ *                          present in RDATA. Set to 0 otherwise. (See
+ *                          dnslib_rdata_deep_free().)
  */
-void dnslib_zone_deep_free(dnslib_zone_t **zone);
+void dnslib_zone_deep_free(dnslib_zone_t **zone, int free_rdata_dnames);
 
 #endif
 

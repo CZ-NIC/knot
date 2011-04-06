@@ -53,6 +53,10 @@ int dnslib_zonedb_add_zone(dnslib_zonedb_t *db, dnslib_zone_t *zone);
 /*!
  * \brief Removes the given zone from the database if it exists.
  *
+ * \note Assumes that the zone was adjusted using dnslib_zone_adjust_dnames().
+ *       If it was not, it may leak some memory due to checks used in
+ *       dnslib_rdata_deep_free().
+ *
  * \param db Zone database to remove from.
  * \param zone_name Name of the zone to be removed.
  * \param destroy_zone Set to <> 0 if you do want the function to destroy the
@@ -109,6 +113,10 @@ void dnslib_zonedb_free(dnslib_zonedb_t **db);
 
 /*!
  * \brief Destroys and deallocates the whole zone database including the zones.
+ *
+ * \note Assumes that the zone was adjusted using dnslib_zone_adjust_dnames().
+ *       If it was not, it may leak some memory due to checks used in
+ *       dnslib_rdata_deep_free().
  *
  * \param database Zone database to be destroyed.
  */

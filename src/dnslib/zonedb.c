@@ -100,7 +100,7 @@ int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name,
 
 	if (destroy_zone) {
 		// properly destroy the zone and all its contents
-		dnslib_zone_deep_free(&z);
+		dnslib_zone_deep_free(&z, 0);
 	}
 
 	return DNSLIB_EOK;
@@ -177,7 +177,7 @@ void dnslib_zonedb_deep_free(dnslib_zonedb_t **db)
 		// wait for all readers to finish
 		synchronize_rcu();
 		// destroy the zone
-		dnslib_zone_deep_free(&zone);
+		dnslib_zone_deep_free(&zone, 0);
 
 		zn = skip_first((*db)->zones);
 	}
