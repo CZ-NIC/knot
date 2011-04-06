@@ -13,7 +13,7 @@
 
 /*----------------------------------------------------------------------------*/
 
-static int zone_insert_zones(const list *zone_conf,
+static int zones_insert_zones(const list *zone_conf,
                              const dnslib_zonedb_t *db_old,
                              dnslib_zonedb_t *db_new)
 {
@@ -46,7 +46,7 @@ static int zone_insert_zones(const list *zone_conf,
 
 /*----------------------------------------------------------------------------*/
 
-static int zone_remove_zones(const list *zone_conf, dnslib_zonedb_t *db_old)
+static int zones_remove_zones(const list *zone_conf, dnslib_zonedb_t *db_old)
 {
 	node *n;
 	// for all zones in the configuration
@@ -68,7 +68,7 @@ static int zone_remove_zones(const list *zone_conf, dnslib_zonedb_t *db_old)
 
 /*----------------------------------------------------------------------------*/
 
-int zone_load(dnslib_zonedb_t *zonedb, const char *zone_name,
+int zones_load(dnslib_zonedb_t *zonedb, const char *zone_name,
               const char *filename)
 {
 	dnslib_zone_t *zone = NULL;
@@ -86,9 +86,8 @@ int zone_load(dnslib_zonedb_t *zonedb, const char *zone_name,
 
 		// Check if the db is up-to-date
 		if (dnslib_zload_needs_update(zl)) {
-			log_server_warning("Database for zone '%s' "
-			                   "is not up-to-date. "
-			                   "Please recompile.\n",
+			log_server_warning("Database for zone '%s' is not "
+			                   "up-to-date. Please recompile.\n",
 			                   zone_name);
 		}
 
@@ -129,7 +128,7 @@ int zone_load(dnslib_zonedb_t *zonedb, const char *zone_name,
 
 /*----------------------------------------------------------------------------*/
 
-int zone_update_db_from_config(const conf_t *conf, ns_nameserver_t *ns,
+int zones_update_db_from_config(const conf_t *conf, ns_nameserver_t *ns,
                                dnslib_zonedb_t **db_old)
 {
 	// Check parameters

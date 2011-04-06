@@ -28,7 +28,7 @@
  * \retval KNOT_EINVAL
  * \retval KNOT_EZONEINVAL
  */
-int zone_load(dnslib_zonedb_t *zonedb, const char *zone_name,
+int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
               const char *filename);
 
 /*!
@@ -53,7 +53,7 @@ int zone_load(dnslib_zonedb_t *zonedb, const char *zone_name,
  * \retval KNOT_EINVAL
  * \retval KNOT_ERROR
  */
-int zone_update_db_from_config(const conf_t *conf, ns_nameserver_t *ns,
+int zones_update_db_from_config(const conf_t *conf, ns_nameserver_t *ns,
                                dnslib_zonedb_t **db_old);
 
 #endif // _KNOT_ZONES_H_
