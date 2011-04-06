@@ -1846,7 +1846,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 	dnslib_zdump_binary(parser->current_zone, outfile, 1, zonefile);
 
 	/* This is *almost* unnecessary */
-//	dnslib_zone_deep_free(&(parser->current_zone));
+	dnslib_zone_deep_free(&(parser->current_zone), 1);
 
 	fclose(yyin);
 

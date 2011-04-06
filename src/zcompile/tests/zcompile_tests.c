@@ -378,7 +378,7 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 		return 0;
 	}
 
-	dnslib_zone_deep_free(&dnsl_zone);
+	dnslib_zone_deep_free(&dnsl_zone, 0);
 
 	ldns_zone_free(ldns_zone);
 
