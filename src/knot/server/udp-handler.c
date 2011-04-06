@@ -19,7 +19,7 @@
 int udp_master(dthread_t *thread)
 {
 	iohandler_t *handler = (iohandler_t *)thread->data;
-	ns_nameserver *ns = handler->server->nameserver;
+	ns_nameserver_t *ns = handler->server->nameserver;
 	int sock = handler->fd;
 
 	/* Check socket. */

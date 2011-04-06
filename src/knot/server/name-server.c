@@ -56,7 +56,7 @@ static const int      NS_ERR_SERVFAIL      = -999;
  * \param response_wire Place for wire format of the response.
  * \param rsize Size of the error response will be stored here.
  */
-static inline void ns_error_response(ns_nameserver *nameserver,
+static inline void ns_error_response(ns_nameserver_t *nameserver,
                                      const uint8_t *query_wire,
                                      uint8_t rcode,
                                      uint8_t *response_wire,
@@ -1762,9 +1762,9 @@ static int ns_response_to_wire(dnslib_response_t *resp, uint8_t *wire,
 /* Public functions                                                           */
 /*----------------------------------------------------------------------------*/
 
-ns_nameserver *ns_create(dnslib_zonedb_t *database)
+ns_nameserver_t *ns_create(dnslib_zonedb_t *database)
 {
-	ns_nameserver *ns = malloc(sizeof(ns_nameserver));
+	ns_nameserver_t *ns = malloc(sizeof(ns_nameserver_t));
 	if (ns == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -1836,7 +1836,7 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database)
 
 /*----------------------------------------------------------------------------*/
 
-int ns_answer_request(ns_nameserver *nameserver, const uint8_t *query_wire,
+int ns_answer_request(ns_nameserver_t *nameserver, const uint8_t *query_wire,
                       size_t qsize, uint8_t *response_wire, size_t *rsize)
 {
 	debug_ns("ns_answer_request() called with query size %zu.\n", qsize);
@@ -1910,7 +1910,7 @@ int ns_answer_request(ns_nameserver *nameserver, const uint8_t *query_wire,
 
 /*----------------------------------------------------------------------------*/
 
-void ns_destroy(ns_nameserver **nameserver)
+void ns_destroy(ns_nameserver_t **nameserver)
 {
 	// do nothing with the zone database!
 	free((*nameserver)->err_response);
@@ -1925,7 +1925,7 @@ void ns_destroy(ns_nameserver **nameserver)
 
 int ns_conf_hook(const struct conf_t *conf, void *data)
 {
-	ns_nameserver *ns = (ns_nameserver *)data;
+	ns_nameserver_t *ns = (ns_nameserver_t *)data;
 	debug_server("Event: reconfiguring name server.\n");
 	return KNOT_EOK;
 }
