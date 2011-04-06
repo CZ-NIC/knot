@@ -49,7 +49,11 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 // * If not defined, some tests will be disabled.
 // */
 //#define TEST_WITH_LDNS
+
+///*! \brief If defined, the statistics module will be enabled. */
 //#define STAT_COMPILE
+
+
 #ifdef HAVE_LIBLDNS
 #define TEST_WITH_LDNS
 #endif
