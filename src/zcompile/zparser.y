@@ -134,7 +134,9 @@ line:	NL
 		    parser->temporary_items,
 		    parser->rdata_count) != 0) {
 			dnslib_rdata_free(&tmp_rdata);
-			return KNOT_ZCOMPILE_EBRDATA;
+			dnslib_rrset_deep_free(&(parser->current_rrset), 1, 1);
+			dnslib_zone_deep_free(&(parser->current_zone), 1);
+			YYABORT;
 		}
 
 		assert(parser->current_rrset->rdata == NULL);
