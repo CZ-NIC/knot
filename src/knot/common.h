@@ -37,8 +37,17 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 #define DEFAULT_PORT 53531   /*!< \brief Default interface port. */
 #define TCP_BACKLOG_SIZE 5   /*!< \brief TCP listen backlog size. */
 
+/*! \brief If defined, zone structures will use hash table for lookup. */
 #define USE_HASH_TABLE
+
+///*! \brief If defined, zone structures will use hash table for lookup. */
 //#define COMPRESSION_PEDANTIC
+
+///*!
+// * \brief If defined, tests will use ldns library to parse sample data.
+// *
+// * If not defined, some tests will be disabled.
+// */
 //#define TEST_WITH_LDNS
 //#define STAT_COMPILE
 #ifdef HAVE_LIBLDNS
