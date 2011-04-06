@@ -37,7 +37,7 @@ static int zones_insert_zones(const list *zone_conf,
 			(void)dnslib_zonedb_add_zone(db_new, zone);
 		} else {
 			// if not found, the zone must be loaded
-			(void)zone_load(db_new, z->name, z->db);
+			(void)zones_load_zone(db_new, z->name, z->db);
 			// unused return value, if not loaded, just continue
 		}
 	}
@@ -68,8 +68,8 @@ static int zones_remove_zones(const list *zone_conf, dnslib_zonedb_t *db_old)
 
 /*----------------------------------------------------------------------------*/
 
-int zones_load(dnslib_zonedb_t *zonedb, const char *zone_name,
-              const char *filename)
+int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
+                    const char *filename)
 {
 	dnslib_zone_t *zone = NULL;
 
@@ -95,7 +95,7 @@ int zones_load(dnslib_zonedb_t *zonedb, const char *zone_name,
 		dnslib_zload_close(zl);
 		if (zone) {
 			if (dnslib_zonedb_add_zone(zonedb, zone) != 0){
-				dnslib_zone_deep_free(&zone);
+				dnslib_zone_deep_free(&zone, 0);
 				zone = 0;
 			}
 		}
@@ -154,7 +154,7 @@ int zones_update_db_from_config(const conf_t *conf, ns_nameserver_t *ns,
 	}
 
 	// Insert all required zones to the new zone DB.
-	int ret = zone_insert_zones(&conf->zones, *db_old, db_new);
+	int ret = zones_insert_zones(&conf->zones, *db_old, db_new);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -167,7 +167,7 @@ int zones_update_db_from_config(const conf_t *conf, ns_nameserver_t *ns,
 	 *  No new thread can access these zones in the old DB, as the
 	 *  databases are already switched.
 	 */
-	ret = zone_remove_zones(&conf->zones, *db_old);
+	ret = zones_remove_zones(&conf->zones, *db_old);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

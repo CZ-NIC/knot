@@ -29,7 +29,7 @@
  * \retval KNOT_EZONEINVAL
  */
 int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
-              const char *filename);
+                    const char *filename);
 
 /*!
  * \brief Update zone database according to configuration.
