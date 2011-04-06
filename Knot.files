@@ -94,12 +94,11 @@ src/dnslib/tests/dnslib/zonedb_tests.h
 src/dnslib/tests/dnslib/cuckoo_tests.c
 src/dnslib/tests/dnslib/cuckoo_tests.h
 src/dnslib/tests/unittests_dnslib.c
-src/zcompile/zoneparser_main.c
 src/zcompile/parser-descriptor.h
 src/zcompile/parser-descriptor.c
 src/zcompile/parser-util.h
-src/zcompile/zoneparser.c
-src/zcompile/zoneparser.h
+src/zcompile/zcompile.c
+src/zcompile/zcompile.h
 src/zcompile/zparser.y
 src/zcompile/zlexer.l
 src/zcompile/zcompile-error.h

@@ -35,10 +35,17 @@
 
 static const uint MAX_CNAME_CYCLE_DEPTH = 15;
 
-/*! \brief Internal error constants. */
+/*!
+ *\brief Internal error constants. General errors are added for convenience,
+ *       so that code does not have to change if new errors are added.
+ */
 enum zonechecks_errors {
-	ZC_ERR_ALLOC = -33,
+	ZC_ERR_ALLOC = -35,
 	ZC_ERR_UNKNOWN,
+
+	ZC_ERR_MISSING_SOA,
+
+	ZC_ERR_GENERIC_GENERAL_ERROR, /* isn't there a better name? */
 
 	ZC_ERR_RRSIG_RDATA_TYPE_COVERED,
 	ZC_ERR_RRSIG_RDATA_TTL,
@@ -88,6 +95,8 @@ static char *error_messages[(-ZC_ERR_ALLOC) + 1] = {
 	[0] = "nil\n",
 
 	[-ZC_ERR_ALLOC] = "Memory allocation error!\n",
+
+	[-ZC_ERR_MISSING_SOA] = "SOA record missing in zone!\n",
 
 	[-ZC_ERR_RRSIG_RDATA_TYPE_COVERED] =
 	"RRSIG: Type covered rdata field is wrong!\n",
@@ -200,7 +209,7 @@ static err_handler_t *handler_new(char log_cname, char log_glue,
 	CHECK_ALLOC_LOG(handler, NULL);
 
 	/* It should be initialized, but to be safe */
-	memset(handler->errors, 0, sizeof(uint) * (ZC_ERR_GLUE_RECORD + 1));
+	memset(handler->errors, 0, sizeof(uint) * (-ZC_ERR_ALLOC + 1));
 
 	handler->options.log_cname = log_cname;
 	handler->options.log_glue = log_glue;
@@ -215,13 +224,14 @@ static err_handler_t *handler_new(char log_cname, char log_glue,
  * \brief Prints error message with node information.
  *
  * \param handler Error handler.
- * \param node Node with semanatic error in it.
+ * \param node Node with semantic error in it.
  * \param error Type of error.
  */
-static void log_error_from_node(err_handler_t *handler, dnslib_node_t *node,
-			       uint error)
+static void log_error_from_node(err_handler_t *handler,
+				const dnslib_node_t *node,
+				uint error)
 {
-	/* todo not like this */
+	/* TODO not like this */
 	if (node != NULL) {
 		char *name =
 			dnslib_dname_to_str(dnslib_node_owner(node));
@@ -234,8 +244,6 @@ static void log_error_from_node(err_handler_t *handler, dnslib_node_t *node,
 			handler->errors[error]);
 	}
 }
-
-/* TODO adjust */
 
 /*!
  * \brief Called when error has been encountered in node. Will either log error
@@ -250,10 +258,12 @@ static void log_error_from_node(err_handler_t *handler, dnslib_node_t *node,
  * \retval ZC_ERR_ALLOC if memory error.
  */
 static int err_handler_handle_error(err_handler_t *handler,
-				    dnslib_node_t *node,
+				    const dnslib_node_t *node,
 				    uint error)
 {
-	if (error > ZC_ERR_GLUE_RECORD) {
+	printf("%d\n", error);
+	if ((error != 0) &&
+	    (error > ZC_ERR_GLUE_GENERAL_ERROR)) {
 		return ZC_ERR_UNKNOWN;
 	}
 
@@ -262,10 +272,18 @@ static int err_handler_handle_error(err_handler_t *handler,
 		return ZC_ERR_ALLOC;
 	}
 
+	/* missing SOA can only occur once, so there
+	 * needn't to be an option for it */
+
 	if ((error != 0) &&
-	    (error < ZC_ERR_RRSIG_GENERAL_ERROR) &&
-	    ((handler->errors[error] == 0) ||
-	     (handler->options.log_rrsigs))) {
+	    (error < ZC_ERR_GENERIC_GENERAL_ERROR)) {
+
+		/* The two errors before SOA were handled */
+		log_error_from_node(handler, node, error);
+
+	} else if ((error < ZC_ERR_RRSIG_GENERAL_ERROR) &&
+		   ((handler->errors[error] == 0) ||
+		   (handler->options.log_rrsigs))) {
 
 		log_error_from_node(handler, node, error);
 
@@ -737,12 +755,12 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
 		uint16_t key_tag_rrsig =
 			dnslib_wire_read_u16((uint8_t *)raw_data);
 
-		raw_data =
+/*		raw_data =
 			rdata_item_data(dnslib_rdata_item(
 					tmp_dnskey_rdata, 3));
 
 		uint16_t raw_length = rdata_item_size(dnslib_rdata_item(
-						     tmp_dnskey_rdata, 3));
+						     tmp_dnskey_rdata, 3)); */
 
 		uint8_t *dnskey_wire = NULL;
 		uint dnskey_wire_size = 0;
@@ -878,8 +896,6 @@ static int rdata_nsec_to_type_array(const dnslib_rdata_item_t *item,
 {
 	assert(*array == NULL);
 
-//        hex_print(rdata_item_data(item), rdata_item_size(item));
-
 	uint8_t *data = (uint8_t *)rdata_item_data(item);
 
 	int increment = 0;
@@ -1012,15 +1028,16 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 	/* 34 because of the "0" at the end */
 	size_t next_dname_decoded_size = 33;
 
-	if (base32hex_decode(((char *)(nsec3_rrset->rdata->items[4].raw_data)) + 3,
+	if (base32hex_decode(((char *)
+		   (nsec3_rrset->rdata->items[4].raw_data)) + 3,
 		   ((uint8_t *)(nsec3_rrset->rdata->items[4].raw_data))[2],
-		   next_dname_decoded +	1,
+		   (char *)(next_dname_decoded + 1),
 		   &next_dname_decoded_size) != 0) {
 		fprintf(stderr, "Could not decode base32 string!\n");
 		return DNSLIB_ERROR;
 	}
 
-	/* !!! TODO !!! */
+	/* !!! TODO - read length from rdata? !!! */
 
 	next_dname_decoded[0] = 32;
 
@@ -1030,8 +1047,6 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 
 	free(next_dname_decoded);
 
-/*	printf("\n%s\n", dnslib_dname_to_str(next_dname)); */
-
 	/* TODO this should not work, what about 0 at the end??? */
 
 	if (dnslib_dname_cat(next_dname,
@@ -1040,15 +1055,13 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 						 ZC_ERR_ALLOC);
 	}
 
-//	dnslib_dname
-
 
 	if (dnslib_zone_find_nsec3_node(zone, next_dname) == NULL) {
 		err_handler_handle_error(handler, node,
 					 ZC_ERR_NSEC3_RDATA_CHAIN);
 	}
 
-	/* TODO first node in the nsec3 tree */
+	/* TODO first node in the nsec3 tree - is there a way? */
 
 	dnslib_dname_free(&next_dname);
 
@@ -1344,9 +1357,15 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 			}
 		} else if (nsec3 && (auth || deleg)) { /* nsec3 */
 			int ret = check_nsec3_node_in_zone(zone, node, handler);
+			if (ret != DNSLIB_EOK) {
+				free(rrsets);
+				return ret;
+			}
 		}
 	}
 	free(rrsets);
+
+	return DNSLIB_EOK;
 }
 
 /*!
@@ -1382,8 +1401,6 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 	dnslib_node_t **last_node = (dnslib_node_t **)args->arg5;
 
 	err_handler_t *handler = (err_handler_t *)args->arg6;
-
-	assert(handler);
 
 	char do_checks = *((char *)(args->arg3));
 
@@ -1833,9 +1850,22 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 		do_checks += zone_is_secure(zone);
 	}
 
-	err_handler_t *handler = handler_new(1, 0, 1, 1, 1);
+	err_handler_t *handler = NULL;
 
-	assert(handler);
+	if (do_checks) {
+		handler = handler_new(1, 0, 1, 1, 1);
+		if (handler == NULL) {
+			/* disable checks and we can continue */
+			do_checks = 0;
+		} else { /* Do check for SOA right now */
+			if (dnslib_node_rrset(dnslib_zone_apex(zone),
+					      DNSLIB_RRTYPE_SOA) == NULL) {
+				err_handler_handle_error(handler,
+							 dnslib_zone_apex(zone),
+							 ZC_ERR_MISSING_SOA);
+			}
+		}
+	}
 
 	dnslib_node_t *last_node = NULL;
 
