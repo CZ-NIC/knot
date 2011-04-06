@@ -24,24 +24,27 @@
 #include "dnslib/zone.h"
 #include "common/slab/slab.h"
 
-#define MAXRDATALEN	64
-#define MAXLABELLEN	63
-#define MAXDOMAINLEN	255
-#define MAX_RDLENGTH	65535
-#define	MAXTOKENSLEN	512		/* Maximum number of tokens per entry */
-#define	B64BUFSIZE	65535		/* Buffer size for b64 conversion */
-#define	ROOT		(const uint8_t *)"\001"
+#define MAXRDATALEN	64	/* Maximum number of RDATA items. */
+#define MAXLABELLEN	63	/* Maximum label length. */
+#define MAXDOMAINLEN	255	/* Maximum domain name length */
+#define MAX_RDLENGTH	65535	/* Maximum length of RDATA item */
+#define	MAXTOKENSLEN	512	/* Maximum number of tokens per entry. */
+#define	B64BUFSIZE	65535	/* Buffer size for b64 conversion. */
+#define	ROOT		(const uint8_t *)"\001" /* Root domain name. */
 
-#define NSEC_WINDOW_COUNT     256
-#define NSEC_WINDOW_BITS_COUNT 256
+#define NSEC_WINDOW_COUNT     256	/* Number of NSEC windows. */
+#define NSEC_WINDOW_BITS_COUNT 256	/* Number of bits in NSEC window. */
 #define NSEC_WINDOW_BITS_SIZE  (NSEC_WINDOW_BITS_COUNT / 8)
 
-#define IPSECKEY_NOGATEWAY      0       /* RFC 4025 */
+/*
+ * RFC 4025 - codes for different types that IPSECKEY can hold.
+ */
+#define IPSECKEY_NOGATEWAY      0
 #define IPSECKEY_IP4            1
 #define IPSECKEY_IP6            2
 #define IPSECKEY_DNAME          3
 
-#define LINEBUFSZ 1024
+#define LINEBUFSZ 1024	/* Buffer size for one line in zone file. */
 
 struct lex_data {
     size_t   len;		/* holds the label length */
@@ -67,7 +70,7 @@ typedef struct rrset_list rrset_list_t;
  * \brief Main zoneparser structure.
  */
 struct zparser {
-	const char *filename; /*!< TODO */
+	const char *filename; /*!< File with zone. */
 	uint32_t default_ttl; /*!< Default TTL. */
 	uint16_t default_class; /*!< Default class. */
 	dnslib_zone_t *current_zone; /*!< Current zone. */
@@ -77,13 +80,13 @@ struct zparser {
 
 	dnslib_node_t *last_node; /*!< Last processed node. */
 
-	char *dname_str; /*!< TODO */
+	char *dname_str; /*!< Temporary dname. */
 
-	int error_occurred; /*!< TODO */
-	unsigned int errors; /*!< TODO */
-	unsigned int line; /*!< TODO */
+	int error_occurred; /*!< Error occured flag */
+	unsigned int errors; /*!< Number of errors. */
+	unsigned int line; /*!< Current line */
 
-	size_t id; /*!< TODO */
+	size_t id; /*!< Current dname ID */
 
 	dnslib_rrset_t *current_rrset; /*!< Current RRSet. */
 	dnslib_rdata_item_t *temporary_items; /*!< Temporary rdata items. */
@@ -94,9 +97,7 @@ struct zparser {
 	rrset_list_t *rrsig_orphans;
 
 	dnslib_dname_t *root_domain; /*!< Root domain name. */
-
 	slab_cache_t *parser_slab; /*!< Slab for parser. */
-
 	rrset_list_t *node_rrsigs; /*!< List of RRSIGs in current node. */
 
 	int rdata_count; /*!< Count of parsed rdata. */
@@ -125,6 +126,8 @@ int process_rr();
  *
  * \param hex String to be converted.
  * \param len Length of string.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_hex(const char *hex, size_t len);
 
@@ -133,6 +136,8 @@ uint16_t *zparser_conv_hex(const char *hex, size_t len);
  *
  * \param hex String to be converted/.
  * \param len Length of string.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_hex_length(const char *hex, size_t len);
 
@@ -140,6 +145,8 @@ uint16_t *zparser_conv_hex_length(const char *hex, size_t len);
  * \brief Converts time string to wireformat.
  *
  * \param time Time string to be converted.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_time(const char *time);
 /*!
@@ -148,19 +155,25 @@ uint16_t *zparser_conv_time(const char *time);
  *
  * \param protostr Protocol string.
  * \param servicestr Service string.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_services(const char *protostr, char *servicestr);
 
 /*!
  * \brief Converts serial to wireformat.
  *
- * \param periodstr Serial string.
+ * \param serialstr Serial string.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_serial(const char *serialstr);
 /*!
  * \brief Converts period to wireformat.
  *
  * \param periodstr Period string.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_period(const char *periodstr);
 
@@ -168,6 +181,8 @@ uint16_t *zparser_conv_period(const char *periodstr);
  * \brief Converts short int to wireformat.
  *
  * \param text String containing short int.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_short(const char *text);
 
@@ -175,6 +190,8 @@ uint16_t *zparser_conv_short(const char *text);
  * \brief Converts long int to wireformat.
  *
  * \param text String containing long int.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_long(const char *text);
 
@@ -182,6 +199,8 @@ uint16_t *zparser_conv_long(const char *text);
  * \brief Converts byte to wireformat.
  *
  * \param text String containing byte.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_byte(const char *text);
 
@@ -189,6 +208,8 @@ uint16_t *zparser_conv_byte(const char *text);
  * \brief Converts A rdata string to wireformat.
  *
  * \param text String containing A rdata.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_a(const char *text);
 
@@ -196,6 +217,8 @@ uint16_t *zparser_conv_a(const char *text);
  * \brief Converts AAAA rdata string to wireformat.
  *
  * \param text String containing AAAA rdata.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_aaaa(const char *text);
 
@@ -204,6 +227,8 @@ uint16_t *zparser_conv_aaaa(const char *text);
  *
  * \param text Text string.
  * \param len Length of string.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_text(const char *text, size_t len);
 
@@ -212,6 +237,8 @@ uint16_t *zparser_conv_text(const char *text, size_t len);
  *
  * \param name Domain name string.
  * \param len Length of string.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_dns_name(const uint8_t* name, size_t len);
 
@@ -220,6 +247,8 @@ uint16_t *zparser_conv_dns_name(const uint8_t* name, size_t len);
  * TODO consider replacing with our implementation.
  *
  * \param b32 Base32 encoded string.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_b32(const char *b32);
 
@@ -228,6 +257,8 @@ uint16_t *zparser_conv_b32(const char *b32);
  * TODO consider replacing with our implementation.
  *
  * \param b64 Base64 encoded string.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_b64(const char *b64);
 
@@ -235,6 +266,8 @@ uint16_t *zparser_conv_b64(const char *b64);
  * \brief Converts RR type string to wireformat.
  *
  * \param rr RR type string.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_rrtype(const char *rr);
 
@@ -242,6 +275,8 @@ uint16_t *zparser_conv_rrtype(const char *rr);
  * \brief Converts NXT string to wireformat.
  *
  * \param nxtbits NXT string.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_nxt(uint8_t *nxtbits);
 
@@ -249,6 +284,8 @@ uint16_t *zparser_conv_nxt(uint8_t *nxtbits);
  * \brief Converts NSEC bitmap to wireformat.
  *
  * \param nsecbits[][] NSEC bits.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_nsec(uint8_t nsecbits[NSEC_WINDOW_COUNT]
 					   [NSEC_WINDOW_BITS_SIZE]);
@@ -256,6 +293,8 @@ uint16_t *zparser_conv_nsec(uint8_t nsecbits[NSEC_WINDOW_COUNT]
  * \brief Converts LOC string to wireformat.
  *
  * \param str LOC string.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_loc(char *str);
 
@@ -263,6 +302,8 @@ uint16_t *zparser_conv_loc(char *str);
  * \brief Converts algorithm string to wireformat.
  *
  * \param algstr Algorithm string.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_algorithm(const char *algstr);
 
@@ -270,6 +311,8 @@ uint16_t *zparser_conv_algorithm(const char *algstr);
  * \brief Converts certificate type string to wireformat.
  *
  * \param typestr Certificate type mnemonic string.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_certificate_type(const char *typestr);
 
@@ -277,6 +320,8 @@ uint16_t *zparser_conv_certificate_type(const char *typestr);
  * \brief Converts APL data to wireformat.
  *
  * \param str APL data string.
+ *
+ * \return Converted wireformat.
  */
 uint16_t *zparser_conv_apl_rdata(char *str);
 
@@ -285,6 +330,8 @@ uint16_t *zparser_conv_apl_rdata(char *str);
  *
  * \param type Type of data.
  * \param wireformat Wireformat of data.
+ *
+ * \return Converted wireformat.
  */
 void parse_unknown_rdata(uint16_t type, uint16_t *wireformat);
 
@@ -293,6 +340,8 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat);
  *
  * \param ttlstr String
  * \param error Error code.
+ *
+ * \return Converted wireformat.
  */
 uint32_t zparser_ttl2int(const char *ttlstr, int* error);
 
@@ -337,6 +386,8 @@ void set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
  *
  * \param data Data to be copied into newly created wireformat.
  * \param size Size of data.
+ *
+ * \return Allocated wireformat.
  */
 uint16_t *alloc_rdata_init(const void *data, size_t size);
 
@@ -355,6 +406,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile);
 /*!
  * \brief Creates zparser instance.
  *
+ *
+ * \return Created zparser instance.
  */
 zparser_type *zparser_create();
 
