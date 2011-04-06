@@ -141,7 +141,15 @@ static void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata,
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Adjusts all RDATA 
+ * \brief Adjusts all RDATA in the given RRSet by replacing domain names by ones
+ *        present in the zone.
+ *
+ * This function selects the RDATA items containing a domain name (according to
+ * RR type descriptor of the RRSet's type and adjusts the item using
+ * dnslib_zone_adjust_rdata_item().
+ *
+ * \param rrset RRSet to adjust RDATA in.
+ * \param zone Zone to which the RRSet belongs.
  */
 static void dnslib_zone_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
                                               dnslib_zone_t *zone)
@@ -198,7 +206,16 @@ static void dnslib_zone_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Adjusts all RRSets in the given node by replacing domain names in
+ *        RDATA by ones present in the zone.
+ *
+ * This function just calls dnslib_zone_adjust_rdata_in_rrset() for all RRSets
+ * in the node (including all RRSIG RRSets).
+ *
+ * \param node Zone node to adjust the RRSets in.
+ * \param zone Zone to which the node belongs.
+ */
 static void dnslib_zone_adjust_rrsets(dnslib_node_t *node, dnslib_zone_t *zone)
 {
 	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
@@ -217,7 +234,17 @@ static void dnslib_zone_adjust_rrsets(dnslib_node_t *node, dnslib_zone_t *zone)
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Adjusts zone node for faster query processing.
+ *
+ * - Adjusts RRSets in the node (see dnslib_zone_adjust_rrsets()).
+ * - Marks the node as delegation point or non-authoritative (below a zone cut)
+ *   if applicable.
+ * - Stores reference to corresponding NSEC3 node if applicable.
+ *
+ * \param node Zone node to adjust.
+ * \param zone Zone the node belongs to.
+ */
 static void dnslib_zone_adjust_node(dnslib_node_t *node, dnslib_zone_t *zone)
 {
 
@@ -270,7 +297,15 @@ DEBUG_DNSLIB_ZONE(
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Adjusts a NSEC3 node for faster query processing.
+ *
+ * This function just adjusts all RRSets in the node, similarly as the
+ * dnslib_zone_adjust_rrsets() function.
+ *
+ * \param node Zone node to adjust.
+ * \param zone Zone the node belongs to.
+ */
 static void dnslib_zone_adjust_nsec3_node(dnslib_node_t *node,
                                           dnslib_zone_t *zone)
 {
@@ -298,7 +333,15 @@ DEBUG_DNSLIB_ZONE(
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Adjusts zone node for faster query processing.
+ *
+ * This function is just a wrapper over dnslib_zone_adjust_node() to be used
+ * in tree-traversing functions.
+ *
+ * \param node Zone node to adjust.
+ * \param data Zone the node belongs to.
+ */
 static void dnslib_zone_adjust_node_in_tree(dnslib_node_t *node, void *data)
 {
 	assert(data != NULL);
@@ -308,7 +351,15 @@ static void dnslib_zone_adjust_node_in_tree(dnslib_node_t *node, void *data)
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Adjusts NSEC3 node for faster query processing.
+ *
+ * This function is just a wrapper over dnslib_zone_adjust_nsec3_node() to be
+ * used in tree-traversing functions.
+ *
+ * \param node Zone node to adjust.
+ * \param data Zone the node belongs to.
+ */
 static void dnslib_zone_adjust_nsec3_node_in_tree(dnslib_node_t *node,
                                                   void *data)
 {
@@ -319,7 +370,22 @@ static void dnslib_zone_adjust_nsec3_node_in_tree(dnslib_node_t *node,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Creates a NSEC3 hashed name for the given domain name.
+ *
+ * \note The zone's NSEC3PARAM record must be parsed prior to calling this
+ *       function (see dnslib_zone_load_nsec3param()).
+ *
+ * \param zone Zone from which to take the NSEC3 parameters.
+ * \param name Domain name to hash.
+ * \param nsec3name Hashed name.
+ *
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_ENSEC3PAR
+ * \retval DNSLIB_ECRYPTO
+ * \retval DNSLIB_ERROR if an error occured while creating a new domain name
+ *                      from the hash or concatenating it with the zone name.
+ */
 static int dnslib_zone_nsec3_name(const dnslib_zone_t *zone,
                                   const dnslib_dname_t *name,
                                   dnslib_dname_t **nsec3_name)
@@ -388,7 +454,7 @@ DEBUG_DNSLIB_ZONE(
 
 	free(name_b32);
 
-	if (nsec3_name == NULL) {
+	if (*nsec3_name == NULL) {
 		debug_dnslib_zone("Error while creating domain name for hashed"
 		                  " name.\n");
 		return DNSLIB_ERROR;
@@ -410,7 +476,22 @@ DEBUG_DNSLIB_ZONE(
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Tries to find the given domain name in the zone tree.
+ *
+ * \param zone Zone to search in.
+ * \param name Domain name to find.
+ * \param node Found node.
+ * \param previous Previous node in canonical order (i.e. the one directly
+ *                 preceding \a name in canonical order, regardless if the name
+ *                 is in the zone or not).
+ *
+ * \retval <> 0 if the domain name was found. In such case \a node holds the
+ *              zone node with \a name as its owner. \a previous is set
+ *              properly.
+ * \retval 0 if the domain name was not found. \a node may hold any (or none)
+ *           node. \a previous is set properly.
+ */
 static int dnslib_zone_find_in_tree(const dnslib_zone_t *zone,
                                     const dnslib_dname_t *name,
                                     const dnslib_node_t **node,
