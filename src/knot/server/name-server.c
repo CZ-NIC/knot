@@ -1929,7 +1929,7 @@ int ns_conf_hook(const struct conf_t *conf, void *data)
 	ns_nameserver_t *ns = (ns_nameserver_t *)data;
 	debug_server("Event: reconfiguring name server.\n");
 
-	dnslib_zonedb_t *old_db;
+	dnslib_zonedb_t *old_db = 0;
 
 	int ret = zones_update_db_from_config(conf, ns, &old_db);
 	if (ret != KNOT_EOK) {

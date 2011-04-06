@@ -110,7 +110,7 @@ int main(int argc, char **argv)
 	// Initialize configuration
 	conf_read_lock();
 	conf_add_hook(conf(), CONF_LOG, log_conf_hook, 0);
-	conf_add_hook(conf(), CONF_LOG, ns_conf_hook, server);
+	conf_add_hook(conf(), CONF_LOG, ns_conf_hook, server->nameserver);
 	conf_add_hook(conf(), CONF_LOG, server_conf_hook, server);
 	conf_read_unlock();
 
