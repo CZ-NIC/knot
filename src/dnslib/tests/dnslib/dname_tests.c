@@ -1,6 +1,7 @@
 #include <string.h>
 #include <assert.h>
 
+#include "dnslib/tests/dnslib/dname_tests.h"
 #include "dnslib/dname.h"
 #include "dnslib/node.h"
 
@@ -9,7 +10,7 @@ static int dnslib_dname_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
-unit_api dnslib_dname_tests_api = {
+unit_api dname_tests_api = {
 	"DNS library - dname",        //! Unit name
 	&dnslib_dname_tests_count,  //! Count scheduled tests
 	&dnslib_dname_tests_run     //! Run scheduled tests

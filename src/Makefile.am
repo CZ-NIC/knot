@@ -1,6 +1,6 @@
 ACLOCAL_AMFLAGS = -I ../m4
 bin_PROGRAMS = knotc
-libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile
+libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-dnslib
 sbin_PROGRAMS = knotd
 
 # $(YACC) will generate header file
@@ -12,17 +12,17 @@ libknot_la_LFLAGS = # TODO: reentrant parser, prefix
 LDADD = libknot.la @LIBOBJS@
 
 BUILT_SOURCES =					\
-	tests/dnslib/parsed_data.rc		\
-	tests/dnslib/raw_data_queries.rc	\
-	tests/dnslib/raw_data.rc		\
-	tests/dnslib/parsed_data_queries.rc     \
+	dnslib/tests/parsed_data.rc		\
+	dnslib/tests/raw_data_queries.rc	\
+	dnslib/tests/raw_data.rc		\
+	dnslib/tests/parsed_data_queries.rc     \
 	tests/sample_conf.rc
 
 CLEANFILES =					\
-	tests/dnslib/parsed_data.rc		\
-	tests/dnslib/raw_data_queries.rc	\
-	tests/dnslib/raw_data.rc		\
-	tests/dnslib/parsed_data_queries.rc     \
+	dnslib/tests/parsed_data.rc		\
+	dnslib/tests/raw_data_queries.rc	\
+	dnslib/tests/raw_data.rc		\
+	dnslib/tests/parsed_data_queries.rc     \
 	tests/sample_conf.rc                    \
 	zparser.h				\
 	zparser.c				\
@@ -46,8 +46,25 @@ knot_zcompile_SOURCES =			\
 	zcompile/parser-descriptor.c
 
 unittests_SOURCES =				\
-	tests/libtap/tap.c			\
+	tests/common/da_tests.c			\
+	tests/common/skiplist_tests.c		\
+	tests/common/slab_tests.c		\
+	tests/knot/conf_tests.c			\
+	tests/knot/dthreads_tests.c		\
+	tests/knot/server_tests.c		\
 	tests/unittests_main.c
+
+unittests_dnslib_SOURCES =			\
+	dnslib/tests/dnslib/cuckoo_tests.c	\
+	dnslib/tests/dnslib/dname_tests.c	\
+	dnslib/tests/dnslib/edns_tests.c	\
+	dnslib/tests/dnslib/node_tests.c	\
+	dnslib/tests/dnslib/rdata_tests.c	\
+	dnslib/tests/dnslib/response_tests.c	\
+	dnslib/tests/dnslib/rrset_tests.c	\
+	dnslib/tests/dnslib/zone_tests.c	\
+	dnslib/tests/dnslib/zonedb_tests.c	\
+	dnslib/tests/unittests_dnslib.c
 
 unittests_zcompile_SOURCES =		\
 	zcompile/parser-util.h		\
@@ -58,14 +75,13 @@ unittests_zcompile_SOURCES =		\
 	zcompile/zcompile.c			\
 	zcompile/parser-util.c		\
 	zcompile/parser-descriptor.c		\
-	tests/libtap/tap.c			\
 	zcompile/tests/unittests_zp_main.c
 
 nodist_unittests_SOURCES =			\
-	tests/dnslib/parsed_data.rc		\
-	tests/dnslib/raw_data_queries.rc	\
-	tests/dnslib/raw_data.rc		\
-	tests/dnslib/parsed_data_queries.rc     \
+	dnslib/tests/parsed_data.rc		\
+	dnslib/tests/raw_data_queries.rc	\
+	dnslib/tests/raw_data.rc		\
+	dnslib/tests/parsed_data_queries.rc     \
 	tests/sample_conf.rc
 
 knotd_SOURCES =					\
@@ -77,6 +93,9 @@ libknot_la_SOURCES =				\
 	common/slab/malloc.c				\
 	common/slab/slab.h			        \
 	common/slab/malloc.h				\
+	common/libtap/tap.c			\
+	common/libtap/tap.h			\
+	common/tap_unit.h			\
 	common/lists.c	            		\
 	common/base32.c				\
 	common/lists.h	            		\
@@ -163,26 +182,24 @@ libknot_la_SOURCES =				\
 	knot/server/udp-handler.h			\
 	knot/server/tcp-handler.h			\
 	knot/server/dthreads.h			\
-	knot/server/server.h				\
 	knot/server/zones.h				\
-	tests/libtap/tap.h			\
-	tests/tap_unit.h
+	knot/server/server.h
 
 libknot_la_LIBADD = @LIBOBJS@
 
 # automake complains on % rules:
 #   `%'-style pattern rules are a GNU make extension
 
-tests/dnslib/parsed_data.rc: tests/files/parsed_data
+dnslib/tests/parsed_data.rc: dnslib/tests/files/parsed_data
 	../resource.sh $< >$@
 
-tests/dnslib/parsed_data_queries.rc: tests/files/parsed_data_queries
+dnslib/tests/parsed_data_queries.rc: dnslib/tests/files/parsed_data_queries
 	../resource.sh $< >$@
 
-tests/dnslib/raw_data_queries.rc: tests/files/raw_data_queries
+dnslib/tests/raw_data_queries.rc: dnslib/tests/files/raw_data_queries
 	../resource.sh $< >$@
 
-tests/dnslib/raw_data.rc: tests/files/raw_data
+dnslib/tests/raw_data.rc: dnslib/tests/files/raw_data
 	../resource.sh $< >$@
 
 tests/sample_conf.rc: tests/files/sample_conf

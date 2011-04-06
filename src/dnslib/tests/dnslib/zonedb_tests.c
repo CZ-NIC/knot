@@ -1,3 +1,6 @@
+#include "dnslib/tests/dnslib/zonedb_tests.h"
+
+
 static int zonedb_tests_count(int argc, char *argv[]);
 static int zonedb_tests_run(int argc, char *argv[]);
 
@@ -8,9 +11,6 @@ unit_api zonedb_tests_api = {
 	&zonedb_tests_count,  //! Count scheduled tests
 	&zonedb_tests_run     //! Run scheduled tests
 };
-
-/*! \todo Implement theese tests into API.
-  */
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.

@@ -1,11 +1,10 @@
-#include "tests/tap_unit.h"
-
-#define CT_TEST_REHASH
-
 #include <time.h>
 #include <assert.h>
 
+#include "dnslib/tests/dnslib/cuckoo_tests.h"
 #include "dnslib/hash/cuckoo-hash-table.h"
+
+#define CT_TEST_REHASH
 
 //#define CK_TEST_DEBUG
 //#define CK_TEST_LOOKUP

@@ -1,47 +1,53 @@
-/*!
- * \file dnslib_rdata_tests.c
- *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- *
- * Contains unit tests for RDATA (dnslib_rdata_t) and RDATA item
- * (dnslib_rdata_item_t) structures.
- *
- * Contains tests for:
- * - creating empty RDATA structure with or without reserved space.
- * - setting RDATA items one-by-one
- * - setting RDATA items all at once
- *
- * As for now, the tests use several (TEST_RDATAS) RDATA structures, each
- * with different number of RDATA items (given by test_rdatas). These are all
- * initialized to pointers derived from RDATA_ITEM_PTR (first is RDATA_ITEM_PTR,
- * second RDATA_ITEM_PTR + 1, etc.). The functions only test if the pointer
- * is set properly.
- *
- * \todo It may be better to test also some RDATAs with predefined contents,
- *       such as some numbers, some domain name, etc. For this purpose, we'd
- *       need RDATA descriptors (telling the types of each RDATA item within an
- *       RDATA).
- *
- * \todo It will be fine to test all possible output values of all functions,
- *       e.g. test whether dnslib_rdata_get_item() returns NULL when passed an
- *       illegal position, etc.
- */
-
 #include <stdlib.h>
+#include <assert.h>
 
+#include "dnslib/tests/dnslib/rdata_tests.h"
+#include "dnslib/dnslib-common.h"
 #include "dnslib/rdata.h"
 #include "dnslib/descriptor.h"
 #include "dnslib/utils.h"
 #include "dnslib/error.h"
 
-static const struct test_domain test_domains_ok[];
+enum { TEST_DOMAINS_OK = 8 };
+
+struct test_domain {
+	char *str;
+	char *wire;
+	uint size;
+	char *labels;
+	short label_count;
+};
+
+/*! \warning Do not change the order in those, if you want to test some other
+ *           feature with new dname, add it at the end of these arrays.
+ */
+static const struct test_domain
+		test_domains_ok[TEST_DOMAINS_OK] = {
+	{ "abc.test.domain.com.", "\3abc\4test\6domain\3com", 21,
+	  "\x0\x4\x9\x10", 4 },
+	{ "some.test.domain.com.", "\4some\4test\6domain\3com", 22,
+	  "\x0\x5\xA\x11", 4 },
+	{ "xyz.test.domain.com.", "\3xyz\4test\6domain\3com", 21,
+	  "\x0\x4\x9\x10", 4 },
+	{ "some.test.domain.com.", "\4some\4test\6domain\3com", 22,
+	  "\x0\x5\xA\x11", 4 },
+	{ "test.domain.com.", "\4test\6domain\3com", 17,
+	  "\x0\x5\xC", 3 },
+	{ ".", "\0", 1,
+	  "", 0 },
+	{ "foo.bar.net.", "\3foo\3bar\3net", 13,
+	  "\x0\x4\x8", 3},
+	{ "bar.net.", "\3bar\3net", 9,
+	  "\x0\x4", 2}
+};
+
 
 static int dnslib_rdata_tests_count(int argc, char *argv[]);
 static int dnslib_rdata_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
-unit_api dnslib_rdata_tests_api = {
+unit_api rdata_tests_api = {
 	"DNS library - rdata",        //! Unit name
 	&dnslib_rdata_tests_count,  //! Count scheduled tests
 	&dnslib_rdata_tests_run     //! Run scheduled tests
