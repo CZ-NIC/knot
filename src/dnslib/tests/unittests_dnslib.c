@@ -32,6 +32,7 @@ int main(int argc, char *argv[])
 		&rrset_tests_api,    //! DNS library (rrset) unit
 		&zone_tests_api,     //! DNS library (zone) unit
 		&zonedb_tests_api,   //! DNS library (zonedb) unit
+		NULL
 	};
 
 	// Plan number of tests
