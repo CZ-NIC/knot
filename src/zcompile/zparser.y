@@ -1328,7 +1328,6 @@ zparser_type *
 zparser_create()
 {
 	zparser_type *result;
-	dnslib_rrset_t *rrset;
 
 	result = (zparser_type *)malloc(sizeof(zparser_type));
 	if (result == NULL) {
