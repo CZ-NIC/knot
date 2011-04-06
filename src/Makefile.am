@@ -36,7 +36,7 @@ knotc_SOURCES =					\
 
 knot_zcompile_SOURCES =			\
 	zcompile/zcompile_main.c            \
-	zcompile/zcompile-error.h		\
+	zcompile/zcompile-error.c		\
 	zcompile/parser-util.h		\
 	zcompile/parser-descriptor.h		\
 	zcompile/zparser.y			\
@@ -69,7 +69,7 @@ unittests_dnslib_SOURCES =			\
 unittests_zcompile_SOURCES =		\
 	zcompile/parser-util.h		\
 	zcompile/parser-descriptor.h		\
-	zcompile/zcompile-error.h		\
+	zcompile/zcompile-error.c		\
 	zcompile/zparser.y			\
 	zcompile/zlexer.l			\
 	zcompile/zcompile.c			\

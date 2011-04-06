@@ -12,6 +12,7 @@
 
 #ifndef _KNOT_ZCOMPILE_ERROR_H_
 #define _KNOT_ZCOMPILE_ERROR_H_
+
 #include "common/errors.h"
 
 /*!
@@ -50,51 +51,23 @@ enum knot_zcompile_error {
 
 	/* Custom error codes. */
 	KNOT_ZCOMPILE_ERROR = -16384, /*!< \brief Generic error. */
-	KNOT_ZCOMPILE_ESYNT,
-	KNOT_ZCOMPILE_EBADNODE,
-	KNOT_ZCOMPILE_EBRDATA,
-	KNOT_ZCOMPILE_EBADSOA,
-	KNOT_ZCOMPILE_ESOA,
+	KNOT_ZCOMPILE_ESYNT, /*!< \brief Syntax error. */
+	KNOT_ZCOMPILE_EBADNODE, /*!< \brief Node error. */
+	KNOT_ZCOMPILE_EBRDATA, /*!< \brief RDATA error. */
+	KNOT_ZCOMPILE_EBADSOA, /*!< \brief SOA owner error. */
+	KNOT_ZCOMPILE_ESOA, /*!< \brief Multiple SOA records. */
 
 	KNOT_ZCOMPILE_EZONEINVAL, /*!< \brief Invalid zone file. */
 	KNOT_ZCOMPILE_EPARSEFAIL, /*!< \brief Parser fail. */
-	KNOT_ZCOMPILE_ENOIPV6 /*! \brief No IPv6 support. */
+	KNOT_ZCOMPILE_ENOIPV6, /*! \brief No IPv6 support. */
+
+	KNOT_ZCOMPILE_ERROR_COUNT = 22
 };
 
 typedef enum knot_zcompile_error knot_zcompile_error_t;
 
 /*! \brief Table linking error messages to error codes. */
-static const error_table_t knot_zcompile_error_msgs[] = {
-
-	/* Mapped errors. */
-	{KNOT_ZCOMPILE_EOK, "OK"},
-	{KNOT_ZCOMPILE_ENOMEM, "Not enough memory."},
-	{KNOT_ZCOMPILE_EINVAL, "Invalid parameter passed."},
-	{KNOT_ZCOMPILE_ENOTSUP, "Parameter not supported."},
-	{KNOT_ZCOMPILE_EBUSY, "Requested resource is busy."},
-	{KNOT_ZCOMPILE_EAGAIN,
-	 "The system lacked the necessary resource, try again."},
-	{KNOT_ZCOMPILE_EACCES,
-	 "Permission to perform requested operation is denied."},
-	{KNOT_ZCOMPILE_ECONNREFUSED, "Connection is refused."},
-	{KNOT_ZCOMPILE_EISCONN, "Already connected."},
-	{KNOT_ZCOMPILE_EADDRINUSE, "Address already in use."},
-	{KNOT_ZCOMPILE_ENOENT, "Resource not found."},
-	{KNOT_ZCOMPILE_ERANGE, "Value is out of range."},
-
-	/* Custom errors. */
-	{KNOT_ZCOMPILE_ERROR, "Generic error."},
-	{KNOT_ZCOMPILE_EBRDATA, "Malformed RDATA."},
-	{KNOT_ZCOMPILE_ESOA, "Multiple SOA records."},
-	{KNOT_ZCOMPILE_EBADSOA, "SOA record has different owner "
-	 "than in config - parser will not continue!"},
-	{KNOT_ZCOMPILE_EBADNODE, "Error handling node."},
-	{KNOT_ZCOMPILE_EZONEINVAL, "Invalid zone file."},
-	{KNOT_ZCOMPILE_EPARSEFAIL, "Parser failed."},
-	{KNOT_ZCOMPILE_ENOIPV6, "IPv6 support disabled."},
-	{KNOT_ZCOMPILE_ESYNT, "Parser syntactic error."},
-	{KNOT_ZCOMPILE_ERROR, 0}
-};
+const error_table_t knot_zcompile_error_msgs[KNOT_ZCOMPILE_ERROR_COUNT];
 
 #endif /* _KNOT_ZCOMPILE_ERROR_H_ */
 
