@@ -33,6 +33,92 @@
  * or raw data stored like this: data_len [data]
  */
 
+/* TODO to be moved elsewhere */
+int b32_ntop(uint8_t const *src, size_t srclength, char *target,
+	     size_t targsize)
+{
+	static char b32[]="0123456789abcdefghijklmnopqrstuv";
+	char buf[9];
+	ssize_t len=0;
+
+	while(srclength > 0)
+	{
+		int t;
+		memset(buf,'\0',sizeof buf);
+
+		/* xxxxx000 00000000 00000000 00000000 00000000 */
+		buf[0]=b32[src[0] >> 3];
+
+		/* 00000xxx xx000000 00000000 00000000 00000000 */
+		t=(src[0]&7) << 2;
+		if(srclength > 1)
+			t+=src[1] >> 6;
+		buf[1]=b32[t];
+		if(srclength == 1)
+			break;
+
+		/* 00000000 00xxxxx0 00000000 00000000 00000000 */
+		buf[2]=b32[(src[1] >> 1)&0x1f];
+
+		/* 00000000 0000000x xxxx0000 00000000 00000000 */
+		t=(src[1]&1) << 4;
+		if(srclength > 2)
+			t+=src[2] >> 4;
+		buf[3]=b32[t];
+		if(srclength == 2)
+			break;
+
+		/* 00000000 00000000 0000xxxx x0000000 00000000 */
+		t=(src[2]&0xf) << 1;
+		if(srclength > 3)
+			t+=src[3] >> 7;
+		buf[4]=b32[t];
+		if(srclength == 3)
+			break;
+
+		/* 00000000 00000000 00000000 0xxxxx00 00000000 */
+		buf[5]=b32[(src[3] >> 2)&0x1f];
+
+		/* 00000000 00000000 00000000 000000xx xxx00000 */
+		t=(src[3]&3) << 3;
+		if(srclength > 4)
+			t+=src[4] >> 5;
+		buf[6]=b32[t];
+		if(srclength == 4)
+			break;
+
+		/* 00000000 00000000 00000000 00000000 000xxxxx */
+		buf[7]=b32[src[4]&0x1f];
+
+		if(targsize < 8) {
+			printf("ou\n");
+			return -1;
+		}
+
+		src += 5;
+		srclength -= 5;
+
+		memcpy(target,buf,8);
+		target += 8;
+		targsize -= 8;
+		len += 8;
+	}
+	if(srclength)
+	{
+		if(targsize < strlen(buf)+1) {
+			printf("ou");
+			return -1;
+		}
+		dnslib_strlcpy(target, buf, targsize);
+		len += strlen(buf);
+	}
+	else if(targsize < 1)
+		return -1;
+	else
+		*target='\0';
+	return len;
+}
+
 static const uint MAX_CNAME_CYCLE_DEPTH = 15;
 
 /*!
@@ -40,7 +126,7 @@ static const uint MAX_CNAME_CYCLE_DEPTH = 15;
  *       so that code does not have to change if new errors are added.
  */
 enum zonechecks_errors {
-	ZC_ERR_ALLOC = -35,
+	ZC_ERR_ALLOC = -37,
 	ZC_ERR_UNKNOWN,
 
 	ZC_ERR_MISSING_SOA,
@@ -92,8 +178,6 @@ enum zonechecks_errors {
 };
 
 static char *error_messages[(-ZC_ERR_ALLOC) + 1] = {
-	[0] = "nil\n",
-
 	[-ZC_ERR_ALLOC] = "Memory allocation error!\n",
 
 	[-ZC_ERR_MISSING_SOA] = "SOA record missing in zone!\n",
@@ -236,12 +320,12 @@ static void log_error_from_node(err_handler_t *handler,
 		char *name =
 			dnslib_dname_to_str(dnslib_node_owner(node));
 		fprintf(stderr, "Semantic error in node: %s: ", name);
-		fprintf(stderr, "%s", error_messages[error]);
+		fprintf(stderr, "%s", error_messages[-error]);
 		free(name);
 	} else {
 		fprintf(stderr, "Total number of errors: %s: %d",
-			error_messages[error],
-			handler->errors[error]);
+			error_messages[-error],
+			handler->errors[-error]);
 	}
 }
 
@@ -261,13 +345,13 @@ static int err_handler_handle_error(err_handler_t *handler,
 				    const dnslib_node_t *node,
 				    uint error)
 {
-	printf("%d\n", error);
 	if ((error != 0) &&
 	    (error > ZC_ERR_GLUE_GENERAL_ERROR)) {
 		return ZC_ERR_UNKNOWN;
 	}
 
 	if (error == ZC_ERR_ALLOC) {
+		return ZC_ERR_UNKNOWN;
 		ERR_ALLOC_FAILED;
 		return ZC_ERR_ALLOC;
 	}
@@ -282,28 +366,28 @@ static int err_handler_handle_error(err_handler_t *handler,
 		log_error_from_node(handler, node, error);
 
 	} else if ((error < ZC_ERR_RRSIG_GENERAL_ERROR) &&
-		   ((handler->errors[error] == 0) ||
+		   ((handler->errors[-error] == 0) ||
 		   (handler->options.log_rrsigs))) {
 
 		log_error_from_node(handler, node, error);
 
 	} else if ((error > ZC_ERR_RRSIG_GENERAL_ERROR) &&
 		   (error < ZC_ERR_NSEC_GENERAL_ERROR) &&
-		   ((handler->errors[error] == 0) ||
+		   ((handler->errors[-error] == 0) ||
 		    (handler->options.log_nsec))) {
 
 		log_error_from_node(handler, node, error);
 
 	} else if ((error > ZC_ERR_NSEC_GENERAL_ERROR) &&
 		   (error < ZC_ERR_NSEC3_GENERAL_ERROR) &&
-		   ((handler->errors[error] == 0) ||
+		   ((handler->errors[-error] == 0) ||
 		    (handler->options.log_nsec3))) {
 
 		log_error_from_node(handler, node, error);
 
 	} else if ((error > ZC_ERR_NSEC3_GENERAL_ERROR) &&
 		   (error < ZC_ERR_CNAME_GENERAL_ERROR) &&
-		   ((handler->errors[error] == 0) ||
+		   ((handler->errors[-error] == 0) ||
 		    (handler->options.log_cname))) {
 
 		log_error_from_node(handler, node, error);
@@ -314,9 +398,12 @@ static int err_handler_handle_error(err_handler_t *handler,
 
 		log_error_from_node(handler, node, error);
 
+	} else {
+		/* Out of bounds error */
+		return DNSLIB_ERROR;
 	}
 
-	handler->errors[error]++;
+	handler->errors[-error]++;
 
 	return DNSLIB_EOK;
 }
@@ -1024,37 +1111,46 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 
 	/* TODO should look nicer :) */
 
-	uint8_t *next_dname_decoded = malloc(sizeof(uint8_t) * 34);
-	/* 34 because of the "0" at the end */
-	size_t next_dname_decoded_size = 33;
+	size_t next_dname_decoded_size =
+		rdata_item_size(dnslib_rdata_item(nsec3_rrset->rdata, 4));
 
-	if (base32hex_decode(((char *)
-		   (nsec3_rrset->rdata->items[4].raw_data)) + 3,
-		   ((uint8_t *)(nsec3_rrset->rdata->items[4].raw_data))[2],
-		   (char *)(next_dname_decoded + 1),
-		   &next_dname_decoded_size) != 0) {
+	/* Maximum length of decoded string + 1 */
+	size_t alloc_size = (next_dname_decoded_size - 1) * 2 + 2;
+
+	uint8_t *next_dname_decoded = malloc(sizeof(uint8_t) * alloc_size);
+
+	CHECK_ALLOC_LOG(next_dname_decoded, DNSLIB_ENOMEM);
+
+	memset(next_dname_decoded, 0, alloc_size);
+
+	size_t real_size;
+
+	if ((real_size = b32_ntop(((uint8_t *)
+		rdata_item_data(&(nsec3_rrset->rdata->items[4]))) + 1,
+		next_dname_decoded_size - 1,
+		(char *)next_dname_decoded + 1,
+		alloc_size)) <= 0) {
 		fprintf(stderr, "Could not decode base32 string!\n");
 		return DNSLIB_ERROR;
 	}
 
-	/* !!! TODO - read length from rdata? !!! */
-
-	next_dname_decoded[0] = 32;
+	/* This is why we allocate maximum length of decoded string + 1 */
+	next_dname_decoded[0] = real_size;
 
 	dnslib_dname_t *next_dname =
 		dnslib_dname_new_from_wire(next_dname_decoded,
-					   next_dname_decoded_size, NULL);
+					   real_size + 1, NULL);
+
+	CHECK_ALLOC_LOG(next_dname, DNSLIB_ENOMEM);
 
 	free(next_dname_decoded);
 
-	/* TODO this should not work, what about 0 at the end??? */
-
 	if (dnslib_dname_cat(next_dname,
 		     dnslib_node_owner(dnslib_zone_apex(zone))) == NULL) {
-			err_handler_handle_error(handler, node,
-						 ZC_ERR_ALLOC);
-	}
+		fprintf(stderr, "Could not concatenate dnames!\n");
+		return DNSLIB_ERROR;
 
+	}
 
 	if (dnslib_zone_find_nsec3_node(zone, next_dname) == NULL) {
 		err_handler_handle_error(handler, node,
@@ -1853,7 +1949,7 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	err_handler_t *handler = NULL;
 
 	if (do_checks) {
-		handler = handler_new(1, 0, 1, 1, 1);
+		handler = handler_new(1, 1, 1, 1, 1);
 		if (handler == NULL) {
 			/* disable checks and we can continue */
 			do_checks = 0;
