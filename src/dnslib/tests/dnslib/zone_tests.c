@@ -3,6 +3,7 @@
 #include "dnslib/tests/dnslib/zone_tests.h"
 #include "dnslib/dnslib-common.h"
 #include "dnslib/zone.h"
+#include "dnslib/error.h"
 #include "dnslib/node.h"
 
 static int dnslib_zone_tests_count(int argc, char *argv[]);
@@ -131,9 +132,11 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 		}
 
 		if ((res = ((nsec3) ? dnslib_zone_add_nsec3_node(zone, node)
-			: dnslib_zone_add_node(zone, node))) != -2) {
+			: dnslib_zone_add_node(zone, node))) !=
+		                DNSLIB_EBADZONE) {
 			diag("zone: Inserting wrong node did not result in"
-			     "proper return value (%d instead of -2).", res);
+			     "proper return value (%d instead of %d).", res,
+			     DNSLIB_EBADZONE);
 			++errors;
 		}
 		dnslib_node_free(&node, 0);
@@ -151,9 +154,10 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 	}
 
 	if ((res = ((nsec3) ? dnslib_zone_add_nsec3_node(NULL, node)
-		: dnslib_zone_add_node(NULL, node))) != -1) {
+		: dnslib_zone_add_node(NULL, node))) != DNSLIB_EBADARG) {
 		diag("zone: Inserting node to NULL zone did not result in"
-		     "proper return value (%d instead of -1)", res);
+		     "proper return value (%d instead of %d)", res,
+		     DNSLIB_EBADARG);
 		++errors;
 	}
 
@@ -163,9 +167,10 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 	note("Inserting NULL node...\n");
 
 	if ((res = ((nsec3) ? dnslib_zone_add_nsec3_node(zone, NULL)
-		: dnslib_zone_add_node(zone, NULL))) != -1) {
+		: dnslib_zone_add_node(zone, NULL))) != DNSLIB_EBADARG) {
 		diag("zone: Inserting NULL node to zone did not result in"
-		     "proper return value (%d instead of -1)", res);
+		     "proper return value (%d instead of %d)", res,
+		     DNSLIB_EBADARG);
 		++errors;
 	}
 
@@ -180,9 +185,11 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 
 		//note("Apex again");
 
-		if ((res = dnslib_zone_add_node(zone, node)) != -2) {
+		if ((res = dnslib_zone_add_node(zone, node)) !=
+		                DNSLIB_EBADZONE) {
 			diag("zone: Inserting zone apex again did not result in"
-			     "proper return value (%d instead of -2)", res);
+			     "proper return value (%d instead of -2)",
+			     DNSLIB_EBADZONE);
 			++errors;
 		}
 
