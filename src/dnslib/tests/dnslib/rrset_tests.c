@@ -115,11 +115,11 @@ static struct test_rrset test_rrsets[TEST_RRSETS] = {
 	{ "example3.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
 	  3600, NULL, NULL },
 	{ "example.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
-	  3600, &RR_RDATA[0], NULL },
+	  3600, NULL, NULL },
 	{ "example.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
-	  3600, &RR_RDATA[1], NULL },
+	  3600, NULL, NULL },
 	{ "example.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
-	  3600, &RR_RDATA[2], NULL }
+	  3600, NULL, NULL }
 };
 
 static const struct test_rrset test_rrsigs[TEST_RRSIGS] = {
@@ -149,7 +149,7 @@ static int fill_rdata_r(uint8_t *data, int max_size, uint16_t rrtype,
 	int used = 0;
 	int wire_size = 0;
 
-	note("Filling RRType %u", rrtype);
+//	note("Filling RRType %u", rrtype);
 
 	dnslib_rrtype_descriptor_t *desc =
 	dnslib_rrtype_descriptor_by_type(rrtype);
@@ -174,12 +174,12 @@ static int fill_rdata_r(uint8_t *data, int max_size, uint16_t rrtype,
 					(uint8_t *)test_domains_ok[0].wire,
 					test_domains_ok[0].size, NULL);
 			assert(dname != NULL);
-			note("Created domain name: %s",
-				dnslib_dname_name(dname));
-			note("Domain name ptr: %p", dname);
+//			note("Created domain name: %s",
+//				dnslib_dname_name(dname));
+//			note("Domain name ptr: %p", dname);
 			domain = 1;
 			size = dnslib_dname_size(dname);
-			note("Size of created domain name: %u", size);
+//			note("Size of created domain name: %u", size);
 			assert(size < DNSLIB_MAX_RDATA_ITEM_SIZE);
 			// store size of the domain name
 			*(pos++) = size;
@@ -462,6 +462,7 @@ static int test_rrset_add_rdata()
 		}
 		i++;
 		tmp = tmp->next;
+
 	}
 
 	tmp = rrset->rdata;
@@ -763,9 +764,7 @@ static int test_rrset_getters(uint type)
 
 static int test_rrset_deep_free()
 {
-	return 1;
-	/* Currently untested - rdata are on stack */
-	/*
+	/* Cannot be run when some rdata are on stack */
 	int errors = 0;
 
 	dnslib_rrset_t  *tmp_rrset;
@@ -793,7 +792,6 @@ static int test_rrset_deep_free()
 	}
 
 	return (errors == 0);
-	*/
 }
 
 /*----------------------------------------------------------------------------*/

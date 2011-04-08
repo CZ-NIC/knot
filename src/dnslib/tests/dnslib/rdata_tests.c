@@ -463,6 +463,7 @@ static int test_rdata_set_item()
 	}
 
 	uint8_t *data = malloc(sizeof(uint8_t) * DNSLIB_MAX_RDATA_WIRE_SIZE);
+	assert(data);
 	generate_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE);
 
 	// set items through set_items() and then call set_item()
@@ -513,6 +514,8 @@ static int test_rdata_set_item()
 	       }
 	}
 
+	free(data);
+
 	dnslib_rdata_free(&rdata);
 	return 1;
 }
@@ -561,6 +564,7 @@ static int test_rdata_set_items()
 
 	// generate some random data
 	uint8_t *data = malloc(sizeof(uint8_t) * DNSLIB_MAX_RDATA_WIRE_SIZE);
+	assert(data);
 	generate_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE);
 
 	for (int i = 0; i <= DNSLIB_RRTYPE_LAST; ++i) {
@@ -590,6 +594,8 @@ static int test_rdata_set_items()
 
 		dnslib_rdata_free(&rdata);
 	}
+
+	free(data);
 
 	return (errors == 0);
 }
