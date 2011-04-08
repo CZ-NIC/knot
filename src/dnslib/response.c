@@ -378,9 +378,7 @@ static int dnslib_response_parse_question(const uint8_t **pos,
 		return DNSLIB_EFEWDATA;  // no 0 found or not enough data left
 	}
 
-	printf("pos before: %p\n", pos);
 	int res = dnslib_dname_from_wire(*pos, i + 1, NULL, question->qname);
-	printf("pos after: %p\n", pos);
 	if (res != DNSLIB_EOK) {
 		assert(res != DNSLIB_EBADARG);
 		return res;

@@ -1052,7 +1052,7 @@ static int test_response_parse_query(test_response_t **responses,
 		resp = dnslib_response_new_empty(NULL);
 		assert(resp);
 
-		hex_print(raw_queries[i]->data, raw_queries[i]->size);
+//		hex_print(raw_queries[i]->data, raw_queries[i]->size);
 
 		if (dnslib_response_parse_query(resp,
 						raw_queries[i]->data,
