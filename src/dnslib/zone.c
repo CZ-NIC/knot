@@ -566,6 +566,13 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count)
 
 	zone->node_count = node_count;
 
+	/* Initialize NSEC3 params */
+	zone->nsec3_params.algorithm = 0;
+	zone->nsec3_params.flags = 0;
+	zone->nsec3_params.iterations = 0;
+	zone->nsec3_params.salt_length = 0;
+	zone->nsec3_params.salt = NULL;
+
 	TREE_INIT(zone->tree, dnslib_node_compare);
 	TREE_INIT(zone->nsec3_nodes, dnslib_node_compare);
 
