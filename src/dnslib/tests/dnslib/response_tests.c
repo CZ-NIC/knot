@@ -1940,10 +1940,10 @@ static int dnslib_response_tests_run(int argc, char *argv[])
 
 	assert(query_raw_count == query_parsed_count);
 
-/*	ok(test_response_parse_query(parsed_queries,
+	ok(test_response_parse_query(parsed_queries,
 				     raw_queries,
 				     query_parsed_count),
-	   "response: parse query"); */
+	   "response: parse query");
 
 	ok(test_response_to_wire(parsed_responses, raw_responses,
 				 response_parsed_count), "response: to wire");

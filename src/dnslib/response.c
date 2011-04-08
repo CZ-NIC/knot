@@ -378,7 +378,9 @@ static int dnslib_response_parse_question(const uint8_t **pos,
 		return DNSLIB_EFEWDATA;  // no 0 found or not enough data left
 	}
 
+	printf("pos before: %p\n", pos);
 	int res = dnslib_dname_from_wire(*pos, i + 1, NULL, question->qname);
+	printf("pos after: %p\n", pos);
 	if (res != DNSLIB_EOK) {
 		assert(res != DNSLIB_EBADARG);
 		return res;
@@ -1135,7 +1137,7 @@ static int dnslib_response_realloc_rrsets(const dnslib_rrset_t ***rrsets,
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief 
+ * \brief
  */
 //static short dnslib_response_rrset_size(const dnslib_rrset_t *rrset,
 //                                        const dnslib_compressed_dnames_t *compr)
@@ -1184,9 +1186,9 @@ static int dnslib_response_realloc_rrsets(const dnslib_rrset_t ***rrsets,
  * \brief Tries to add RRSet to the response.
  *
  * This function tries to convert the RRSet to wire format and add it to the
- * wire format of the response and if successful, adds the RRSet to the given 
+ * wire format of the response and if successful, adds the RRSet to the given
  * list (and updates its size). If the RRSet did not fit into the available
- * space (\a max_size), it is omitted as a whole and the TC bit may be set 
+ * space (\a max_size), it is omitted as a whole and the TC bit may be set
  * (according to \a tc).
  *
  * \param rrsets Lists of RRSets to which this RRSet should be added.
@@ -1194,7 +1196,7 @@ static int dnslib_response_realloc_rrsets(const dnslib_rrset_t ***rrsets,
  * \param resp Response structure where the RRSet should be added.
  * \param max_size Maximum available space in wire format of the response.
  * \param rrset RRSet to add.
- * \param tc Set to <> 0 if omitting the RRSet should cause the TC bit to be 
+ * \param tc Set to <> 0 if omitting the RRSet should cause the TC bit to be
  *           set in the response.
  *
  * \return Count of RRs added to the response or DNSLIB_ESPACE if the RRSet did
@@ -1239,8 +1241,8 @@ DEBUG_DNSLIB_RESPONSE(
  *
  * It searches for the RRSet in the three lists of RRSets corresponding to
  * Answer, Authority and Additional sections of the response.
- * 
- * \note Only pointers are compared, i.e. two instances of dnslib_rrset_t with 
+ *
+ * \note Only pointers are compared, i.e. two instances of dnslib_rrset_t with
  * the same data will be considered different.
  *
  * \param resp Response to look for the RRSet in.
