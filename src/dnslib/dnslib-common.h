@@ -8,6 +8,11 @@
  * \addtogroup dnslib
  * @{
  */
+#include <config.h>
+
+#ifdef HAVE_LIBLDNS
+#define TEST_WITH_LDNS
+#endif
 
 #ifndef _KNOT_DNSLIB_COMMON_H_
 #define _KNOT_DNSLIB_COMMON_H_
