@@ -158,11 +158,11 @@ static int fill_rdata(uint8_t *data, int max_size, uint16_t rrtype,
 
 	//note("Filling RRType %u", rrtype);
 
-	dnslib_rrtype_descriptor_t *desc = 
+	dnslib_rrtype_descriptor_t *desc =
 	dnslib_rrtype_descriptor_by_type(rrtype);
 
 	uint item_count = desc->length;
-	dnslib_rdata_item_t *items = 
+	dnslib_rdata_item_t *items =
 	(dnslib_rdata_item_t *)malloc(item_count
 				      * sizeof(dnslib_rdata_item_t));
 
@@ -181,7 +181,7 @@ static int fill_rdata(uint8_t *data, int max_size, uint16_t rrtype,
 			                (uint8_t *)test_domains_ok[0].wire,
 			                test_domains_ok[0].size, NULL);
 			assert(dname != NULL);
-			/* note("Created domain name: %s", 
+			/* note("Created domain name: %s",
 			         dnslib_dname_name(dname)); */
 			//note("Domain name ptr: %p", dname);
 			domain = 1;
@@ -196,7 +196,7 @@ static int fill_rdata(uint8_t *data, int max_size, uint16_t rrtype,
 			break;
 		default:
 			binary = 1;
-			size = rand() % 65534;
+			size = rand() % DNSLIB_MAX_RDATA_ITEM_SIZE;
 		}
 
 		if (binary) {
@@ -295,7 +295,7 @@ static int check_rdata(const uint8_t *data, int max_size, uint16_t rrtype,
 		//note("    item size: %u", size);
 
 		if (domain) {
-			/*note("Domain name ptr: %p", 
+			/*note("Domain name ptr: %p",
 				dnslib_rdata_get_item(rdata, i)->dname);*/
 			// check dname size
 			if (*pos != size) {
@@ -320,13 +320,13 @@ static int check_rdata(const uint8_t *data, int max_size, uint16_t rrtype,
 			continue;
 		}
 
-		if (binary && 
+		if (binary &&
 		    size !=
 		    dnslib_wire_read_u16(
 			(uint8_t *)(dnslib_rdata_item(rdata, i)->raw_data))) {
 		    diag("Size of stored binary data is wrong:"
 		         " %u (should be %u)",
-			 dnslib_rdata_item(rdata, i)->raw_data[0] + 1, 
+			 dnslib_rdata_item(rdata, i)->raw_data[0] + 1,
 			                       size);
 			++errors;
 		}
@@ -334,7 +334,7 @@ static int check_rdata(const uint8_t *data, int max_size, uint16_t rrtype,
 		if (strncmp((char *)
 		   (&dnslib_rdata_item(rdata, i)->raw_data[0]),
 		   (char *)pos, size) != 0) {
-/*			dnslib_rrtype_descriptor_t *desc = 
+/*			dnslib_rrtype_descriptor_t *desc =
 			dnslib_rrtype_descriptor_by_type(rrtype); */
 
 			diag("Data stored in %d-th RDATA item are wrong.", i);
@@ -462,7 +462,7 @@ static int test_rdata_set_item()
 		return 0;
 	}
 
-	uint8_t data[DNSLIB_MAX_RDATA_WIRE_SIZE];
+	uint8_t *data = malloc(sizeof(uint8_t) * DNSLIB_MAX_RDATA_WIRE_SIZE);
 	generate_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE);
 
 	// set items through set_items() and then call set_item()
@@ -495,19 +495,19 @@ static int test_rdata_set_item()
 
 	if (dnslib_rdata_item(rdata, pos)->raw_data != RDATA_ITEM_PTR) {
 		diag("RDATA item on position %d is wrong: %p (should be %p).",
-		     pos, dnslib_rdata_item(rdata, pos)->raw_data, 
+		     pos, dnslib_rdata_item(rdata, pos)->raw_data,
 		     RDATA_ITEM_PTR);
 		dnslib_rdata_free(&rdata);
 		return 0;
 	}
-	
+
 	for (int x = 0; x < desc->length; x++) {
 	       if (x != pos && (
 		   desc->wireformat[x] ==
 	               DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
-	           desc->wireformat[x] == 
+	           desc->wireformat[x] ==
 	               DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
-	           desc->wireformat[x] == 
+	           desc->wireformat[x] ==
 	               DNSLIB_RDATA_WF_LITERAL_DNAME)) {
 		dnslib_dname_free(&(rdata->items[x].dname));
 	       }
@@ -560,7 +560,7 @@ static int test_rdata_set_items()
 	}
 
 	// generate some random data
-	uint8_t data[DNSLIB_MAX_RDATA_WIRE_SIZE];
+	uint8_t *data = malloc(sizeof(uint8_t) * DNSLIB_MAX_RDATA_WIRE_SIZE);
 	generate_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE);
 
 	for (int i = 0; i <= DNSLIB_RRTYPE_LAST; ++i) {
@@ -573,15 +573,15 @@ static int test_rdata_set_items()
 		errors += check_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i,
 		                      rdata);
 
-		dnslib_rrtype_descriptor_t *desc = 
+		dnslib_rrtype_descriptor_t *desc =
 		dnslib_rrtype_descriptor_by_type(i);
 
 		for (int x = 0; x < desc->length; x++) {
-			if (desc->wireformat[x] == 
+			if (desc->wireformat[x] ==
 			    DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
-			    desc->wireformat[x] == 
+			    desc->wireformat[x] ==
 			    DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
-			    desc->wireformat[x] == 
+			    desc->wireformat[x] ==
 			    DNSLIB_RDATA_WF_LITERAL_DNAME) {
 //            printf("freeing %p\n", rdata->items[x].dname);
 				dnslib_dname_free(&(rdata->items[x].dname));
@@ -838,7 +838,7 @@ static int test_rdata_deep_free()
 
 	dnslib_rdata_t *tmp_rdata;
 
-	uint8_t data[DNSLIB_MAX_RDATA_WIRE_SIZE];	
+	uint8_t data[DNSLIB_MAX_RDATA_WIRE_SIZE];
 
 	for (int i = 0; i <= DNSLIB_RRTYPE_LAST; i++) {
 		tmp_rdata = dnslib_rdata_new();
