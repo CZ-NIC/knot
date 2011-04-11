@@ -323,9 +323,9 @@ static void log_error_from_node(err_handler_t *handler,
 		fprintf(stderr, "%s", error_messages[-error]);
 		free(name);
 	} else {
-		fprintf(stderr, "Total number of errors: %s: %d",
-			error_messages[-error],
-			handler->errors[-error]);
+		fprintf(stderr, "Total number of errors is: %d for error: %s:",
+			handler->errors[-error],
+			error_messages[-error]);
 	}
 }
 
@@ -415,8 +415,8 @@ static int err_handler_handle_error(err_handler_t *handler,
  */
 static void err_handler_log_all(err_handler_t *handler)
 {
-	for (int i = 0; i < ZC_ERR_GLUE_GENERAL_ERROR; i++) {
-		if (handler->errors[i] > 0) {
+	for (int i = ZC_ERR_ALLOC; i < ZC_ERR_GLUE_GENERAL_ERROR; i++) {
+		if (handler->errors[-i] > 0) {
 			log_error_from_node(handler, NULL, i);
 		}
 	}
@@ -1956,7 +1956,7 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	err_handler_t *handler = NULL;
 
 	if (do_checks) {
-		handler = handler_new(1, 0, 1, 1, 1);
+		handler = handler_new(1, 1, 1, 1, 1);
 		if (handler == NULL) {
 			/* disable checks and we can continue */
 			do_checks = 0;
@@ -1975,11 +1975,11 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	zone_save_enclosers_sem_check(zone, encloser_list, do_checks, handler,
 				      &last_node);
 
-	log_cyclic_errors_in_zone(handler, zone, last_node, do_checks);
-
-	err_handler_log_all(handler);
-
-	free(handler);
+	if (do_checks) {
+		log_cyclic_errors_in_zone(handler, zone, last_node, do_checks);
+		err_handler_log_all(handler);
+		free(handler);
+	}
 
 	/* Start writing header - magic bytes. */
 	size_t header_len = MAGIC_LENGTH;
