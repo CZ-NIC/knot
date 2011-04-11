@@ -134,11 +134,7 @@ typedef struct dnslib_response dnslib_response_t;
 /*!
  * \brief Creates new empty response structure.
  *
- * \note Does not copy the given EDNS wire data, only stores reference to it.
- *
- * \param edns_wire Wire format of the EDNS OPT pseudo-RR specifying EDNS
- *                  parameters of the host who creates the response.
- * \param edns_size Size of \a edns_wire in bytes.
+ * \param opt_rr OPT RR of the nameserver to be used in the response.
  *
  * \return New empty response structure or NULL if an error occured.
  */

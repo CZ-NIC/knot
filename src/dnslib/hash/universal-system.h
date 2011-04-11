@@ -31,13 +31,14 @@
 
 typedef unsigned int uint;
 
-enum { US_FNC_COUNT = 4 };
+enum { US_FNC_COUNT = 4 /*!< Number of functions for one generation. */ };
 
-enum { GEN_COUNT = 2 };
+enum { GEN_COUNT = 2 /*!< Number of generations. */ };
 
 /*----------------------------------------------------------------------------*/
-
+/*! \brief Analytically defined universal system of hashing functions. */
 struct us_system {
+	/*! \brief Coeficients for the functions */
 	uint coefs[US_FNC_COUNT * GEN_COUNT];
 };
 
@@ -47,12 +48,17 @@ typedef struct us_system us_system_t;
 /*!
  * \brief Initializes the universal system by generating coeficients for all
  *        hash functions and all generations.
+ *
+ * \param system Universal system to be used.
  */
 void us_initialize(us_system_t *system);
 
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Generates new hash functions' coeficients for the given \a generation.
+ *
+ * \param system Universal system to be used.
+ * \param generation Generation for which to generate the new coeficients.
  *
  * \return 0
  */
@@ -67,6 +73,7 @@ int us_next(us_system_t *system, uint generation);
  * h = ((coef * value) mod 2^32) / 2^(32 - table_exp)
  * where \a coef is the proper coeficient.
  *
+ * \param system Universal system to be used.
  * \param value Value to be hashed.
  * \param table_exp Determines the upper bound for the result - the hash will
  *                  be between 0 and 2^(32 - table_exp).

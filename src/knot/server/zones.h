@@ -46,7 +46,7 @@ int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
  *
  * \param[in] conf Configuration.
  * \param[in] ns Nameserver which holds the zone database.
- * \param[out] old_db Old database, containing only zones which should be
+ * \param[out] db_old Old database, containing only zones which should be
  *                    deleted afterwards.
  *
  * \retval KNOT_EOK

@@ -48,10 +48,7 @@ typedef struct ns_nameserver {
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Allocates and initializes the name server structure for the given
- *        database.
- *
- * \param database Zone database which will be used for the DNS functions.
+ * \brief Allocates and initializes the name server structure.
  *
  * \return Pointer to the name server structure.
  */
@@ -82,8 +79,7 @@ int ns_answer_request(ns_nameserver_t *nameserver,
 /*!
  * \brief Properly destroys the name server structure.
  *
- * \note This functions does not destroy the zone database saved in the
- *       structure. This must be kept and destroyed elsewhere.
+ * \param nameserver Nameserver to destroy.
  */
 void ns_destroy(ns_nameserver_t **nameserver);
 
@@ -91,6 +87,9 @@ void ns_destroy(ns_nameserver_t **nameserver);
  * \brief Name server config hook.
  *
  * Routine for dynamic name server reconfiguration.
+ *
+ * \param conf Current configuration.
+ * \param data Instance of the nameserver structure to update.
  */
 int ns_conf_hook(const struct conf_t *conf, void *data);
 

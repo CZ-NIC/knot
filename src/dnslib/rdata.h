@@ -173,7 +173,7 @@ int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, unsigned int pos,
  *
  * \param rdata RDATA structure to set the item in.
  * \param pos Position of the RDATA item to set.
- * \param dname Raw data to set to the item.
+ * \param raw_data Raw data to set to the item.
  *
  * \retval DNSLIB_EOK if successful.
  * \retval DNSLIB_EBADARG
@@ -181,40 +181,11 @@ int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, unsigned int pos,
 int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, unsigned int pos,
                                    uint16_t *raw_data);
 
-///*!
-// * \brief Returns the size of the RDATA in wire format.
-// *
-// * \param rdata RDATA structure to get the wire format size of.
-// * \param format RDATA format descriptor.
-// *
-// * \return Size of the RDATA in wire format.
-// *
-// * \todo Consider adding the size to the structure for faster retrieval.
-// */
-//unsigned int dnslib_rdata_wire_size(const dnslib_rdata_t *rdata,
-//                            const uint8_t *format);
-
-///*!
-// * \brief Converts the RDATA to wire format.
-// *
-// * \param rdata RDATA structure to convert to wire format.
-// * \param format RDATA format descriptor.
-// * \param buffer Place to put the wire format into.
-// * \param buf_size Size of the buffer.
-// *
-// * \retval 0 on success.
-// * \retval <> 0 otherwise.
-// *
-// * \todo Shouldn't we keep the size of the data always in the item? It would
-// *       make the converting quicker.
-// */
-//int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
-//                         uint8_t *buffer, unsigned int buf_size);
-
 /*!
  * \brief Copies the given RDATA.
  *
  * \param rdata RDATA to copy.
+ * \param type RR type of the RDATA.
  *
  * \return Copy of \a rdata.
  */

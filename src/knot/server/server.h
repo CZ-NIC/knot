@@ -127,13 +127,11 @@ iohandler_t *server_create_handler(server_t *server, int fd, dt_unit_t *unit);
 /*!
  * \brief Delete handler.
  *
- * \param fd I/O handler filedescriptor.
- *
  * \param server Server structure to be used for operation.
  * \param ref I/O handler instance.
  *
- * \retval 0 if successful (EOK).
- * \retval <0 on errors (EINVAL).
+ * \retval 0 if successful (KNOT_EOK).
+ * \retval <0 on errors (KNOT_EINVAL).
  */
 int server_remove_handler(server_t *server, iohandler_t *ref);
 

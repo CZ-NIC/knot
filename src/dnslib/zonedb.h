@@ -42,7 +42,7 @@ dnslib_zonedb_t *dnslib_zonedb_new();
 /*!
  * \brief Adds new zone to the database.
  *
- * \param database Zone database to store the zone.
+ * \param db Zone database to store the zone.
  * \param zone Parsed zone.
  *
  * \retval DNSLIB_EOK
@@ -84,7 +84,7 @@ dnslib_zone_t *dnslib_zonedb_find_zone(const dnslib_zonedb_t *db,
 /*!
  * \brief Finds zone the given domain name should belong to.
  *
- * \param database Zone database to search in.
+ * \param db Zone database to search in.
  * \param dname Domain name to find zone for.
  *
  * \retval Zone in which the domain name should be present or NULL if no such
@@ -107,7 +107,7 @@ dnslib_zonedb_t *dnslib_zonedb_copy(const dnslib_zonedb_t *db);
  * \brief Destroys and deallocates the zone database structure (but not the
  *        zones within).
  *
- * \param database Zone database to be destroyed.
+ * \param db Zone database to be destroyed.
  */
 void dnslib_zonedb_free(dnslib_zonedb_t **db);
 
@@ -118,7 +118,7 @@ void dnslib_zonedb_free(dnslib_zonedb_t **db);
  *       If it was not, it may leak some memory due to checks used in
  *       dnslib_rdata_deep_free().
  *
- * \param database Zone database to be destroyed.
+ * \param db Zone database to be destroyed.
  */
 void dnslib_zonedb_deep_free(dnslib_zonedb_t **db);
 

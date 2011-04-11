@@ -54,7 +54,7 @@ dnslib_dname_t *dnslib_dname_new();
  *        format.
  *
  * The resulting domain name is stored in wire format, but it may not end with
- * root label (\0).
+ * root label (0).
  *
  * \param name Domain name in presentation format (labels separated by dots).
  * \param size Size of the domain name (count of characters with all dots).
