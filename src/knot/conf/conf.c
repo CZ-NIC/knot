@@ -29,27 +29,6 @@ static const char *DEFAULT_CONFIG[2] = {
  */
 
 /*!
- * \brief Create new string from a concatenation of s1 and s2.
- * \param s1 First string.
- * \param s2 Second string.
- * \retval Newly allocated string on success.
- * \retval NULL on error.
- */
-static char* strcdup(const char *s1, const char *s2)
-{
-	size_t slen = strlen(s1);
-	size_t nlen = slen + strlen(s2) + 1;
-	char* dst = malloc(nlen);
-	if (!dst) {
-		return 0;
-	}
-
-	memcpy(dst, s1, slen);
-	strcpy(dst + slen, s2); // With trailing '\0'
-	return dst;
-}
-
-/*!
  * \brief Recursively create directories.
  *
  * Similar to "mkdir -p".
@@ -140,7 +119,7 @@ void cf_error(const char *msg)
 	log_server_error("Config '%s' - %s on line %d (current token '%s').\n",
 	                 new_config->filename, msg, yylineno, yytext);
 
-	_parser_res = -1;
+	_parser_res = KNOT_EPARSEFAIL;
 }
 
 /*
@@ -327,10 +306,10 @@ void __attribute__ ((destructor)) conf_deinit()
 static int conf_fparser(conf_t *conf)
 {
 	if (!conf->filename) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
-	int ret = 0;
+	int ret = KNOT_EOK;
 	pthread_mutex_lock(&_parser_lock);
 	// {
 	// Hook new configuration
@@ -339,11 +318,11 @@ static int conf_fparser(conf_t *conf)
 	_parser_remaining = -1;
 	if (_parser_src == 0) {
 		pthread_mutex_unlock(&_parser_lock);
-		return -2;
+		return KNOT_ENOENT;
 	}
 
 	// Parse config
-	_parser_res = 0;
+	_parser_res = KNOT_EOK;
 	cf_read_hook = cf_read_file;
 	cf_parse();
 	ret = _parser_res;
@@ -360,10 +339,10 @@ static int conf_fparser(conf_t *conf)
 static int conf_strparser(conf_t *conf, const char *src)
 {
 	if (!src) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
-	int ret = 0;
+	int ret = KNOT_EOK;
 	pthread_mutex_lock(&_parser_lock);
 	// {
 	// Hook new configuration
@@ -374,11 +353,11 @@ static int conf_strparser(conf_t *conf, const char *src)
 		_parser_src = 0;
 		_parser_remaining = -1;
 		pthread_mutex_unlock(&_parser_lock);
-		return -2;
+		return KNOT_ENOENT;
 	}
 
 	// Parse config
-	_parser_res = 0;
+	_parser_res = KNOT_EOK;
 	cf_read_hook = cf_read_mem;
 	char *oldfn = new_config->filename;
 	new_config->filename = "(stdin)";
@@ -627,6 +606,20 @@ int conf_open(const char* path)
 	conf_update_hooks(nconf);
 
 	return KNOT_EOK;
+}
+
+char* strcdup(const char *s1, const char *s2)
+{
+	size_t slen = strlen(s1);
+	size_t nlen = slen + strlen(s2) + 1;
+	char* dst = malloc(nlen);
+	if (!dst) {
+		return 0;
+	}
+
+	memcpy(dst, s1, slen);
+	strcpy(dst + slen, s2); // With trailing '\0'
+	return dst;
 }
 
 char* strcpath(char *path)

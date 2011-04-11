@@ -293,6 +293,17 @@ static inline void conf_read_unlock() {
  */
 
 /*!
+ * \brief Create new string from a concatenation of s1 and s2.
+ *
+ * \param s1 First string.
+ * \param s2 Second string.
+ *
+ * \retval Newly allocated string on success.
+ * \retval NULL on error.
+ */
+char* strcdup(const char *s1, const char *s2);
+
+/*!
  * \brief Normalize file path and expand '~' placeholders.
  *
  * \note Old pointer may be freed.
