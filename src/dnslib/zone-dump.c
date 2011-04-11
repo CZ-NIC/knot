@@ -1534,7 +1534,6 @@ void zone_save_enclosers_sem_check(dnslib_zone_t *zone, skip_list_t *list,
 				   char do_checks, err_handler_t *handler,
 				   dnslib_node_t **last_node)
 {
-	assert(handler);
 	arg_t arguments;
 	arguments.arg1 = zone;
 	arguments.arg2 = list;
