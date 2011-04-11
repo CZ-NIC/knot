@@ -1955,8 +1955,6 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 
 	err_handler_t *handler = NULL;
 
-	printf("CGHECKS: %d\n", do_checks);
-
 	if (do_checks) {
 		handler = handler_new(1, 1, 1, 1, 1);
 		if (handler == NULL) {
