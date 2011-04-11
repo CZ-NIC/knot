@@ -659,7 +659,8 @@ ck_hash_table_t *ck_create_table(uint items)
 	// determine ideal size of one table in powers of 2 and save the
 	// exponent
 	table->table_size_exp = get_table_exp_and_count(items,
-							&table->table_count);
+	                                                &table->table_count);
+	assert(table->table_size_exp <= 32);
 
 	debug_ck("Creating hash table for %u items.\n", items);
 	debug_ck("Exponent: %u, number of tables: %u\n ",
@@ -710,6 +711,8 @@ ck_hash_table_t *ck_create_table(uint items)
 	// set the generation to 1 and initialize the universal system
 	CLEAR_FLAGS(&table->generation);
 	SET_GENERATION1(&table->generation);
+
+	printf("Table generation: %u\n", table->generation);
 
 	us_initialize(&table->hash_system);
 
