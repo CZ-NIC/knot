@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "knot/common.h"
+#include "knot/other/error.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/logconf.h"
@@ -37,6 +38,35 @@ void help(int argc, char **argv)
 	       "\n"
 	       " compile         Compile zone file.\n",
 	       PROJECT_NAME, PROJECT_NAME, PROJECT_NAME, PROJECT_NAME);
+}
+
+/*!
+ * \brief Check if the zone needs recompilation.
+ *
+ * \param db Path to zone db file.
+ * \param source Path to zone source file.
+ *
+ * \retval KNOT_EOK if up to date.
+ * \retval KNOT_ERROR if needs recompilation.
+ */
+int check_zone(const char *db, const char* source)
+{
+
+	/* Read zonedb header. */
+	zloader_t *zl = dnslib_zload_open(db);
+	if (!zl) {
+		return KNOT_ERROR;
+	}
+
+	/* Check source files and mtime. */
+	int ret = KNOT_ERROR;
+	int src_changed = strcmp(source, zl->source) != 0;
+	if (!src_changed && !dnslib_zload_needs_update(zl)) {
+		ret = KNOT_EOK;
+	}
+
+	dnslib_zload_close(zl);
+	return ret;
 }
 
 /*!
@@ -205,21 +235,17 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			conf_zone_t *zone = (conf_zone_t*)n;
 
 			// Check source files and mtime
-			zloader_t *zl = dnslib_zload_open(zone->db);
-			int src_changed = strcmp(zone->file, zl->source) != 0;
-			if (!src_changed && !dnslib_zload_needs_update(zl)) {
+			if (check_zone(zone->db, zone->file) == KNOT_EOK) {
 				printf("Zone '%s' is up-to-date.\n",
 				       zone->name);
 
 				if (force) {
 					fprintf(stderr, "control: forcing "
-					        "zone recompilation.\n");
+						"zone recompilation.\n");
 				} else {
-					dnslib_zload_close(zl);
 					continue;
 				}
 			}
-			dnslib_zload_close(zl);
 
 			// Prepare command
 			char* cmd = 0;

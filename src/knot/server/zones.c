@@ -113,19 +113,9 @@ int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
 		}
 
 		if (!zone) {
-			struct stat st;
-			if (stat(filename, &st) != 0) {
-				log_server_error(
-					"server: Database file '%s' does not"
-					"exist.\n", filename);
-				log_server_error(
-					"server: Please recompile zone "
-					"databases.\n");
-			} else {
-				log_server_error("Failed to load "
-				                 "db '%s' for zone '%s'.\n",
-				                 filename, zone_name);
-			}
+			log_server_error("Failed to load "
+					 "db '%s' for zone '%s'.\n",
+					 filename, zone_name);
 			return KNOT_EZONEINVAL;
 		}
 	} else {
