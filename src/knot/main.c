@@ -58,12 +58,12 @@ int main(int argc, char **argv)
 	int c = 0;
 	int verbose = 0;
 	int daemonize = 0;
-	const char* config_fn = 0;
+	char* config_fn = 0;
 	while ((c = getopt (argc, argv, "c:dvVh")) != -1) {
 		switch (c)
 		{
 		case 'c':
-			config_fn = optarg;
+			config_fn = strdup(optarg);
 			break;
 		case 'd':
 			daemonize = 1;
@@ -85,20 +85,25 @@ int main(int argc, char **argv)
 		}
 	}
 
+	// Now check if we want to daemonize
+	if (daemonize) {
+		if (daemon(1, 0) != 0) {
+			fprintf(stderr, "Daemonization failed, "
+					"shutting down...\n");
+			return 1;
+		}
+	}
+
 	// Setup event queue
 	evqueue_set(evqueue_new());
 
 	// Initialize log
 	log_init();
 
-	// Now check if we want to daemonize
-	if (daemonize) {
-		if (daemon(1, 0) != 0) {
-			log_server_fatal("Daemonization failed, "
-					 "shutting down...\n");
-			log_close();
-			return 1;
-		}
+	// Verbose mode
+	if (verbose) {
+		int mask = LOG_MASK(LOG_INFO)|LOG_MASK(LOG_DEBUG);
+		log_levels_add(LOGT_STDOUT, LOG_ANY, mask);
 	}
 
 	// Create server
@@ -112,17 +117,39 @@ int main(int argc, char **argv)
 	conf_read_unlock();
 
 	// Find implicit configuration file
-	char *default_fn = 0;
 	if (!config_fn) {
-		default_fn = conf_find_default();
-		config_fn = default_fn;
+		config_fn = conf_find_default();
+	}
+
+	// Find absolute path for config file
+	if (config_fn[0] != '/')
+	{
+		// Get absolute path to cwd
+		size_t cwbuflen = 64;
+		char *cwbuf = malloc((cwbuflen + 1) * sizeof(char));
+		while (getcwd(cwbuf, cwbuflen) == 0) {
+			cwbuflen += 64;
+			cwbuf = realloc(cwbuf, (cwbuflen + 1) * sizeof(char));
+		}
+		cwbuflen = strlen(cwbuf);
+
+		// Append ending slash
+		if (cwbuf[cwbuflen - 1] != '/') {
+			cwbuf = strcat(cwbuf, "/");
+		}
+
+		// Assemble path to config file
+		char *abs_cfg = strcdup(cwbuf, config_fn);
+		free(config_fn);
+		free(cwbuf);
+		config_fn = abs_cfg;
 	}
 
 	// Open configuration
-	log_server_info("Parsing configuration...\n");
+	log_server_info("Parsing configuration '%s' ...\n", config_fn);
 	if (conf_open(config_fn) != KNOT_EOK) {
 
-		log_server_error("Failed to parse configuration '%s'.\n",
+		log_server_error("Failed to parse configuration file '%s'.\n",
 				 config_fn);
 
 		log_server_warning("No zone served.\n");
@@ -130,14 +157,7 @@ int main(int argc, char **argv)
 		log_server_info("Configured %d interfaces and %d zones.\n",
 				conf()->ifaces_count, conf()->zones_count);
 	}
-
 	log_server_info("\n");
-
-	// Verbose mode
-	if (verbose) {
-		int mask = LOG_MASK(LOG_INFO)|LOG_MASK(LOG_DEBUG);
-		log_levels_add(LOGT_STDOUT, LOG_ANY, mask);
-	}
 
 	// Create server instance
 	char* pidfile = pid_filename();
@@ -164,7 +184,6 @@ int main(int argc, char **argv)
 					"PID = %ld\n", (long)getpid());
 		}
 		log_server_info("PID stored in %s\n", pidfile);
-		log_server_info("\n");
 
 		// Setup signal blocking
 		sigset_t emptyset;
@@ -200,11 +219,23 @@ int main(int argc, char **argv)
 			if (sig_req_reload) {
 				log_server_info("Reloading configuration...\n");
 				sig_req_reload = 0;
-				if (conf_open(config_fn) == 0) {
+				int cf_ret = cf_ret = conf_open(config_fn);
+				switch (cf_ret) {
+				case KNOT_EOK:
 					log_server_info("Configuration "
 							"reloaded.\n");
+					break;
+				case KNOT_ENOENT:
+					log_server_error("Configuration "
+							 "file '%s' "
+							 "not found.\n",
+							 conf()->filename);
+					break;
+				default:
+					log_server_error("Configuration "
+							 "reload failed.\n");
+					break;
 				}
-
 			}
 
 			/* Events. */
@@ -249,7 +280,7 @@ int main(int argc, char **argv)
 	evqueue_free(&q);
 
 	// Free default config filename if exists
-	free(default_fn);
+	free(config_fn);
 
 	return res;
 }
