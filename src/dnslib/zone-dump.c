@@ -478,14 +478,21 @@ static void dnslib_zone_save_encloser_rdata_item(dnslib_rdata_t *rdata,
 		const dnslib_node_t *closest_encloser = NULL;
 		const dnslib_node_t *prev = NULL;
 
-		int exact = dnslib_zone_find_dname(zone, dname, &n,
-						   &closest_encloser, &prev);
+		int ret = dnslib_zone_find_dname(zone, dname, &n,
+		                                 &closest_encloser, &prev);
 
 //		n = dnslib_zone_find_node(zone, dname);
 
-		assert(!exact || n == closest_encloser);
+		if (ret == DNSLIB_EBADARG || ret == DNSLIB_EBADZONE) {
+			// TODO: do some cleanup if needed
+			return;
+		}
 
-		if (!exact && (closest_encloser != NULL)) {
+		assert(ret != DNSLIB_ZONE_NAME_FOUND
+		       || n == closest_encloser);
+
+		if (ret != DNSLIB_ZONE_NAME_FOUND
+		    && (closest_encloser != NULL)) {
 			debug_dnslib_zdump("Saving closest encloser to RDATA."
 					   "\n");
 			// save pointer to the closest encloser
