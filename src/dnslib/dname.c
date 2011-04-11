@@ -23,6 +23,9 @@
 /*! \brief TLS unique key for each thread cache. */
 static pthread_key_t dname_ckey;
 
+/*! \brief TLS once for key initialization. */
+static pthread_once_t dname_once = PTHREAD_ONCE_INIT;
+
 /*! \brief Create thread cache. */
 static void dname_ckey_create()
 {
@@ -37,12 +40,18 @@ static void dname_ckey_create()
 /*! \brief Delete thread cache. */
 static void dname_ckey_delete(void* ptr)
 {
-	//fprintf(stderr, "Thread %p calls %s()\n", (void*)pthread_self(), __func__);
-	slab_cache_t* cache = (slab_cache_t*)ptr;
+	slab_cache_t* cache = pthread_getspecific(dname_ckey);
 	if (cache) {
 		slab_cache_destroy(cache);
 		free(cache);
 	}
+}
+
+/*! \brief Initialize thread dname cache (automatically called). */
+static void dnslib_dname_cache_init()
+{
+	(void) pthread_key_create(&dname_ckey, dname_ckey_delete);
+	dname_ckey_create();
 }
 
 /*!
@@ -52,23 +61,10 @@ static void dname_ckey_delete(void* ptr)
  */
 static dnslib_dname_t* dnslib_dname_alloc()
 {
+	(void) pthread_once(&dname_once, dnslib_dname_cache_init);
 	slab_cache_t* cache = pthread_getspecific(dname_ckey);
 	dnslib_dname_t* ret = slab_cache_alloc(cache);
 	return ret;
-}
-
-/*! \brief Initialize thread dname cache (automatically called). */
-static void __attribute__ ((constructor)) dnslib_dname_cache_init()
-{
-	(void) pthread_key_create(&dname_ckey, dname_ckey_delete);
-	dname_ckey_create();
-}
-
-/*! \brief Destroy thread dname cache (automatically called). */
-static void __attribute__ ((destructor)) dnslib_dname_cache_cleanup()
-{
-	slab_cache_t* cache = pthread_getspecific(dname_ckey);
-	dname_ckey_delete(cache);
 }
 
 /*----------------------------------------------------------------------------*/
