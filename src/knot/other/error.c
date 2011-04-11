@@ -19,11 +19,10 @@ const error_table_t knot_error_msgs[] = {
 
 	/* Custom errors. */
 	{KNOT_ERROR, "Generic error."},
-	{KNOT_EADDRINVAL, "Invalid address."},
 	{KNOT_EZONEINVAL, "Invalid zone file."},
 	{KNOT_ENOTRUNNING, "Resource is not running."},
 	{KNOT_EPARSEFAIL, "Parser failed."},
 	{KNOT_ENOIPV6, "IPv6 support disabled."},
-	{KNOT_EMALF, "Malformed packet."},
+	{KNOT_EMALF, "Malformed data."},
 	{KNOT_ERROR, 0}
 };

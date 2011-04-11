@@ -429,96 +429,12 @@ int server_remove_handler(server_t *server, iohandler_t *h)
 	return KNOT_EOK;
 }
 
-int server_start(server_t *server, const char **filenames, uint zones)
+int server_start(server_t *server)
 {
 	// Check server
 	if (server == 0) {
 		return KNOT_EINVAL;
 	}
-
-#if 0
-
-	/* Percentage. */
-	int zones_total = zones + conf()->zones_count;
-	int pct = 0, pct_step = 10;
-	int pct_threshold = pct + pct_step;
-	double pct_incr = 100.0 / zones_total;
-
-	/* Lock configuration. */
-	conf_read_lock();
-
-	log_server_info("Loading zone files...\n");
-	//stat
-
-	stat_static_gath_start();
-
-	//!stat
-
-	/* Load zones from config. */
-
-	node *n = 0; int zones_loaded = 0;
-	WALK_LIST (n, conf()->zones) {
-
-		conf_zone_t *z = (conf_zone_t*)n;
-
-		/* Attempt to read db header. */
-		zloader_t *zl = dnslib_zload_open(z->db);
-		if (zl == NULL) {
-			log_server_error("Zone source file for '%s'  "
-			                 "doesn't exists.\n",
-			                 z->name);
-			continue;
-		}
-		assert(zl != NULL);
-
-		/* Check zone source file against configured source. */
-		int src_changed = strcmp(z->file, zl->source) != 0;
-		if (src_changed) {
-			log_server_warning("Zone source file for '%s' "
-			                   "has changed, it is recommended to "
-			                   "recompile it.\n",
-			                   z->name);
-		}
-		dnslib_zload_close(zl);
-
-		// Load zone
-		if (zones_load_zone(server->zone_db, z->name, z->db) == 0) {
-			++zones_loaded;
-		}
-
-		pct += pct_incr;
-		while (pct >= pct_threshold) {
-			log_server_info("..%d%%", pct_threshold);
-			pct_threshold += pct_step;
-		}
-	}
-
-	/* Unlock configuration. */
-	conf_read_unlock();
-
-	// Load given zones
-	for (uint i = 0; i < zones; ++i) {
-		if (zones_load_zone(server->zone_db, "??", filenames[i])
-		    == 0) {
-			++zones_loaded;
-		}
-
-		pct += pct_incr;
-		while (pct >= pct_threshold) {
-			log_server_info("..%d%%", pct_threshold);
-			pct_threshold += pct_step;
-		}
-	}
-	log_server_info("\n");
-
-	/* Check the number of loaded zones. */
-	if (zones_loaded == 0) {
-		log_server_error("No valid zone found.\n");
-	} else {
-		log_server_info("Successfully loaded %d/%d zones.\n",
-		                zones_loaded, zones_total);
-	}
-#endif
 
 	debug_server("Starting handlers...\n");
 

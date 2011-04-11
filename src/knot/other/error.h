@@ -41,12 +41,11 @@ enum knot_error_t {
 
 	/* Custom error codes. */
 	KNOT_ERROR = -16384, /*!< \brief Generic error. */
-	KNOT_EADDRINVAL, /*!< \brief Invalid address. */
 	KNOT_EZONEINVAL, /*!< \brief Invalid zone file. */
 	KNOT_ENOTRUNNING, /*!< \brief Resource is not running. */
 	KNOT_EPARSEFAIL, /*!< \brief Parser fail. */
 	KNOT_ENOIPV6, /*!< \brief No IPv6 support. */
-	KNOT_EMALF, /*!< Malformed packet. */
+	KNOT_EMALF, /*!< \brief Malformed data. */
 
 	KNOT_ERROR_COUNT = 20
 };

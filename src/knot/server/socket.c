@@ -39,7 +39,7 @@ int socket_connect(int fd, const char *addr, unsigned short port)
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	if ((ret = getaddrinfo(addr, NULL, &hints, &res)) != 0) {
-		return KNOT_EADDRINVAL;
+		return KNOT_EINVAL;
 	}
 
 	/* Evaluate address type. */
@@ -69,7 +69,7 @@ int socket_connect(int fd, const char *addr, unsigned short port)
 			                     ECONNREFUSED, EISCONN);
 		}
 	} else {
-		ret = KNOT_EADDRINVAL;
+		ret = KNOT_EINVAL;
 	}
 
 
@@ -94,7 +94,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 		paddr = (struct sockaddr*)&saddr;
 		addrlen = sizeof(saddr);
 		if (getsockname(socket, paddr, &addrlen) < 0) {
-			return KNOT_EADDRINVAL;
+			return KNOT_EINVAL;
 		}
 
 		/* Set address and port. */
@@ -119,7 +119,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 		paddr = (struct sockaddr*)&saddr6;
 		addrlen = sizeof(saddr6);
 		if (getsockname(socket, paddr, &addrlen) < 0) {
-			return KNOT_EADDRINVAL;
+			return KNOT_EINVAL;
 		}
 
 		/* Set address and port. */

@@ -65,8 +65,8 @@ ns_nameserver_t *ns_create();
  * \param rsize Input: maximum acceptable size of the response. Output: real
  *              size of the response.
  *
- * \retval 0 if a valid response was created.
- * \retval -1 if an error occured and the response is not valid.
+ * \retval KNOT_EOK if a valid response was created.
+ * \retval KNOT_EMALF if an error occured and the response is not valid.
  *
  * \todo Truncation of the packet.
  */
@@ -90,6 +90,10 @@ void ns_destroy(ns_nameserver_t **nameserver);
  *
  * \param conf Current configuration.
  * \param data Instance of the nameserver structure to update.
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL
+ * \retval KNOT_ERROR
  */
 int ns_conf_hook(const struct conf_t *conf, void *data);
 

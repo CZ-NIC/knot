@@ -419,6 +419,10 @@ int conf_add_hook(conf_t * conf, int sections,
                   int (*on_update)(const conf_t*, void*), void *data)
 {
 	conf_hook_t *hook = malloc(sizeof(conf_hook_t));
+	if (!hook) {
+		return KNOT_ENOMEM;
+	}
+
 	hook->sections = sections;
 	hook->update = on_update;
 	hook->data = data;

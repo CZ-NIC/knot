@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include "knot/common.h"
+#include "knot/other/error.h"
 #include "knot/server/server.h"
 #include "zcompile/zcompile.h"
 #include "knot/ctl/process.h"
@@ -41,7 +42,7 @@ void interrupt_handle(int s)
 
 void help(int argc, char **argv)
 {
-	printf("Usage: %s [parameters] [<filename1> <filename2> ...]\n",
+	printf("Usage: %s [parameters]\n",
 	       argv[0]);
 	printf("Parameters:\n"
 	       " -c [file] Select configuration file.\n"
@@ -90,10 +91,6 @@ int main(int argc, char **argv)
 	// Initialize log
 	log_init();
 
-	// Check if there's at least one remaining non-option
-	int zfs_count = argc - optind;
-	const char **zfs = (const char**)argv + optind;
-
 	// Now check if we want to daemonize
 	if (daemonize) {
 		if (daemon(1, 0) != 0) {
@@ -123,19 +120,12 @@ int main(int argc, char **argv)
 
 	// Open configuration
 	log_server_info("Parsing configuration...\n");
-	if (conf_open(config_fn) != 0) {
+	if (conf_open(config_fn) != KNOT_EOK) {
 
 		log_server_error("Failed to parse configuration '%s'.\n",
 				 config_fn);
 
-		if (zfs_count < 1) {
-			log_server_fatal("No zone files specified, "
-					 "shutting down.\n\n");
-			help(argc, argv);
-			log_close();
-			free(default_fn);
-			return 1;
-		}
+		log_server_warning("No zone served.\n");
 	} else {
 		log_server_info("Configured %d interfaces and %d zones.\n",
 				conf()->ifaces_count, conf()->zones_count);
@@ -155,7 +145,7 @@ int main(int argc, char **argv)
 	// Run server
 	int res = 0;
 	log_server_info("Starting server...\n");
-	if ((res = server_start(server, zfs, zfs_count)) == 0) {
+	if ((res = server_start(server)) == KNOT_EOK) {
 
 		// Save PID
 		if (daemonize) {
@@ -169,11 +159,11 @@ int main(int argc, char **argv)
 		// Change directory if daemonized
 		if (daemonize) {
 			log_server_info("Server started as a daemon, "
-					"PID=\"%ld\".\n", (long)getpid());
+					"PID = %ld\n", (long)getpid());
 			res = chdir("/");
 		} else {
 			log_server_info("Server started in foreground, "
-					"PID=\"%ld\".\n", (long)getpid());
+					"PID = %ld\n", (long)getpid());
 		}
 		log_server_info("\n");
 
@@ -231,7 +221,7 @@ int main(int argc, char **argv)
 			}
 		}
 
-		if ((res = server_wait(server)) != 0) {
+		if ((res = server_wait(server)) != KNOT_EOK) {
 			log_server_error("An error occured while "
 					 "waiting for server to finish.\n");
 		} else {
