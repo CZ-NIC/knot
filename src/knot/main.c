@@ -148,12 +148,10 @@ int main(int argc, char **argv)
 	if ((res = server_start(server)) == KNOT_EOK) {
 
 		// Save PID
-		if (daemonize) {
-			int rc = pid_write(pidfile);
-			if (rc < 0) {
-				log_server_warning("Failed to create "
-						   "PID file '%s'.", pidfile);
-			}
+		int rc = pid_write(pidfile);
+		if (rc < 0) {
+			log_server_warning("Failed to create "
+					   "PID file '%s'.", pidfile);
 		}
 
 		// Change directory if daemonized
@@ -165,6 +163,7 @@ int main(int argc, char **argv)
 			log_server_info("Server started in foreground, "
 					"PID = %ld\n", (long)getpid());
 		}
+		log_server_info("PID stored in %s\n", pidfile);
 		log_server_info("\n");
 
 		// Setup signal blocking
@@ -236,11 +235,9 @@ int main(int argc, char **argv)
 	// Stop server and close log
 	server_destroy(&server);
 
-	// Remove PID file if daemonized
-	if (daemonize) {
-		if (pid_remove(pidfile) < 0) {
-			log_server_warning("Failed to remove PID file.\n");
-		}
+	// Remove PID file
+	if (pid_remove(pidfile) < 0) {
+		log_server_warning("Failed to remove PID file.\n");
 	}
 
 	log_server_info("Shut down.\n");
