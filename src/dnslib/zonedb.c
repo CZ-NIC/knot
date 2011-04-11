@@ -165,6 +165,10 @@ void dnslib_zonedb_free(dnslib_zonedb_t **db)
 
 void dnslib_zonedb_deep_free(dnslib_zonedb_t **db)
 {
+	debug_dnslib_zonedb("Deleting zone db (%p).\n", *db);
+	debug_dnslib_zonedb("Is it empty (%p)? %s\n",
+	       (*db)->zones, skip_is_empty((*db)->zones) ? "yes" : "no");
+
 	const skip_node_t *zn = skip_first((*db)->zones);
 	dnslib_zone_t *zone = NULL;
 

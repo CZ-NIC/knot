@@ -20,7 +20,7 @@
 //#define SERVER_DEBUG
 //#define DT_DEBUG
 //#define NET_DEBUG
-#define ZONES_DEBUG
+//#define ZONES_DEBUG
 
 #ifdef SERVER_DEBUG
 #define debug_server(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)

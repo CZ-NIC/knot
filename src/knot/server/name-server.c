@@ -1763,18 +1763,27 @@ static int ns_response_to_wire(dnslib_response_t *resp, uint8_t *wire,
 /* Public functions                                                           */
 /*----------------------------------------------------------------------------*/
 
-ns_nameserver_t *ns_create(dnslib_zonedb_t *database)
+ns_nameserver_t *ns_create()
 {
 	ns_nameserver_t *ns = malloc(sizeof(ns_nameserver_t));
 	if (ns == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
-	ns->zone_db = database;
+
+	// Create zone database structure
+	debug_ns("Creating Zone Database structure...\n");
+	ns->zone_db = dnslib_zonedb_new();
+	if (ns->zone_db == NULL) {
+		ERR_ALLOC_FAILED;
+		free(ns);
+		return NULL;
+	}
 
 	// prepare empty response with SERVFAIL error
 	dnslib_response_t *err = dnslib_response_new_empty(NULL);
 	if (err == NULL) {
+		ERR_ALLOC_FAILED;
 		free(ns);
 		return NULL;
 	}
@@ -1913,11 +1922,16 @@ int ns_answer_request(ns_nameserver_t *nameserver, const uint8_t *query_wire,
 
 void ns_destroy(ns_nameserver_t **nameserver)
 {
-	// do nothing with the zone database!
+	synchronize_rcu();
+
 	free((*nameserver)->err_response);
 	if ((*nameserver)->opt_rr != NULL) {
 		dnslib_edns_free(&(*nameserver)->opt_rr);
 	}
+
+	// destroy the zone db
+	dnslib_zonedb_deep_free(&(*nameserver)->zone_db);
+
 	free(*nameserver);
 	*nameserver = NULL;
 }
@@ -1927,7 +1941,7 @@ void ns_destroy(ns_nameserver_t **nameserver)
 int ns_conf_hook(const struct conf_t *conf, void *data)
 {
 	ns_nameserver_t *ns = (ns_nameserver_t *)data;
-	debug_server("Event: reconfiguring name server.\n");
+	debug_ns("Event: reconfiguring name server.\n");
 
 	dnslib_zonedb_t *old_db = 0;
 
@@ -1937,6 +1951,8 @@ int ns_conf_hook(const struct conf_t *conf, void *data)
 	}
 	// Wait until all readers finish with reading the zones.
 	synchronize_rcu();
+
+	debug_ns("Nameserver's zone db: %p, old db: %p\n", ns->zone_db, old_db);
 
 	// Delete all deprecated zones and delete the old database.
 	dnslib_zonedb_deep_free(&old_db);
