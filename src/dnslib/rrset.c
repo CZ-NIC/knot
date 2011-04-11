@@ -193,12 +193,10 @@ int dnslib_rrset_merge(void **r1, void **r2)
 	dnslib_rrset_t *rrset1 = (dnslib_rrset_t *)(*r1);
 	dnslib_rrset_t *rrset2 = (dnslib_rrset_t *)(*r2);
 
-	/*!< \note Does not call dnslib_dname_compare unless necassary. */
-	if (!((rrset1->owner == rrset2->owner) ||
-	       (dnslib_dname_compare(rrset1->owner, rrset2->owner) == 0)) &&
-	    (rrset1->rclass == rrset2->rclass) &&
-	    (rrset1->type == rrset2->type) &&
-	    (rrset1->ttl == rrset2->type)) {
+	if ((dnslib_dname_compare(rrset1->owner, rrset2->owner) != 0)
+	    || rrset1->rclass != rrset2->rclass
+	    || rrset1->type != rrset2->type
+	    || rrset1->ttl != rrset2->ttl) {
 		return DNSLIB_EBADARG;
 	}
 
