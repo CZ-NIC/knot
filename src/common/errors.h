@@ -24,6 +24,7 @@ typedef struct error_table_t {
 /*!
  * \brief Returns error message for the given error code.
  *
+ * \param table Table of error messages to use.
  * \param code Error code.
  *
  * \return String containing the error message.

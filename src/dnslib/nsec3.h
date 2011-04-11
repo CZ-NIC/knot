@@ -35,7 +35,7 @@ typedef struct dnslib_nsec3_params dnslib_nsec3_params_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \param Initializes the NSEC3PARAM structure.
+ * \brief Initializes the NSEC3PARAM structure.
  *
  * \param params NSEC3PARAM structure to initialize.
  * \param nsec3param The NSEC3PARAM RRset.

@@ -76,8 +76,7 @@ void evqueue_free(evqueue_t **q);
  * in a sigmask.
  *
  * \param q Event queue.
- * \param timeout Specified timeout. Use NULL for infinite.
- * \param sigmask Bitmask of signals to receive.
+  * \param sigmask Bitmask of signals to receive.
  *
  * \retval Number of polled events on success.
  * \retval <0 On error or signal interrupt (EINTR, EINVAL, ENOMEM).

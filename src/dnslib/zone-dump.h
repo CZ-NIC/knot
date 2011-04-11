@@ -29,6 +29,7 @@ enum {
  *
  * \param zone Zone to be saved.
  * \param filename Name of file to be created.
+ * \param do_checks Set to 1 to enable checking the zone for semantic errors.
  * \param sfilename Source filename of the text zone file.
  *
  * \retval DNSLIB_EOK on success.

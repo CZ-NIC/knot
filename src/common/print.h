@@ -31,7 +31,7 @@ void hex_print(const char *data, int length);
  *
  * \param data Data to print.
  * \param length Size of the \a data array.
- * \param printf_t Handler for printing.
+ * \param print_handler Handler for printing.
  */
 void hex_printf(const char *data, int length, printf_t print_handler);
 
@@ -48,7 +48,7 @@ void bit_print(const char *data, int length);
  *
  * \param data Data to print.
  * \param length Size of the \a data array.
- * \param printf_t Handler for printing.
+ * \param print_handler Handler for printing.
  */
 void bit_printf(const char *data, int length, printf_t print_handler);
 

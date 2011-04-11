@@ -59,7 +59,7 @@ dnslib_lookup_table_t *dnslib_lookup_by_id(dnslib_lookup_table_t *table,
  *
  * \param dst Destination string.
  * \param src Source string.
- * \param siz How many characters to copy - 1.
+ * \param size How many characters to copy - 1.
  *
  * \return strlen(src), if retval >= siz, truncation occurred.
  */

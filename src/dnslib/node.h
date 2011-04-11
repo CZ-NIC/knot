@@ -198,7 +198,7 @@ const dnslib_node_t *dnslib_node_nsec3_node(const dnslib_node_t *node);
  * \brief Sets the corresponding NSEC3 node of the given node.
  *
  * \param node Node to set the NSEC3 node to.
- * \param prev NSEC3 node to set.
+ * \param nsec3_node NSEC3 node to set.
  */
 void dnslib_node_set_nsec3_node(dnslib_node_t *node, dnslib_node_t *nsec3_node);
 
@@ -224,7 +224,7 @@ const dnslib_node_t *dnslib_node_wildcard_child(const dnslib_node_t *node);
  * \brief Sets the wildcard child of the node.
  *
  * \param node Node to set the wildcard child of.
- * \param parent Wildcard child of the node.
+ * \param wildcard_child Wildcard child of the node.
  */
 void dnslib_node_set_wildcard_child(dnslib_node_t *node,
                                     dnslib_node_t *wildcard_child);
