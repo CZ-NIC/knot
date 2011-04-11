@@ -767,7 +767,7 @@ static int test_rrset_getters(uint type)
 
 static int test_rrset_deep_free()
 {
-	/* Cannot be run when some rdata are on stack */
+	/*!< \warning Cannot be run when some rdata are on stack! */
 	int errors = 0;
 
 	dnslib_rrset_t  *tmp_rrset;
