@@ -792,7 +792,7 @@ const dnslib_node_t *dnslib_zone_find_previous(const dnslib_zone_t *zone,
 }
 
 /*----------------------------------------------------------------------------*/
-
+#ifdef USE_HASH_TABLE
 int dnslib_zone_find_dname_hash(const dnslib_zone_t *zone,
                                 const dnslib_dname_t *name,
                                 const dnslib_node_t **node,
@@ -874,7 +874,7 @@ DEBUG_DNSLIB_ZONE(
 
 	return DNSLIB_ZONE_NAME_NOT_FOUND;
 }
-
+#endif
 /*----------------------------------------------------------------------------*/
 
 const dnslib_node_t *dnslib_zone_find_nsec3_node(const dnslib_zone_t *zone,
