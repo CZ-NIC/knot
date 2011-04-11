@@ -307,6 +307,7 @@ static int check_rrset(const dnslib_rrset_t *rrset, int i,
 			diag("There are no RDATAs in the RRSet");
 			++errors;
 		}
+
 		if (rdata != NULL) {
 			while (rdata->next != NULL &&
 			       rdata->next != rrset->rdata) {
@@ -316,7 +317,7 @@ static int check_rrset(const dnslib_rrset_t *rrset, int i,
 				diag("The list of RDATAs is not cyclic!");
 				++errors;
 			} else {
-				assert(rdata == rrset->rdata);
+				assert(rdata->next == rrset->rdata);
 			}
 		}
 	}
@@ -543,8 +544,6 @@ static int test_rrset_rrsigs()
 
 static int test_rrset_merge()
 {
-	return 0;
-	/*
 	dnslib_rrset_t *merger1;
 	dnslib_rrset_t *merger2;
 	dnslib_dname_t *owner1;
@@ -568,12 +567,16 @@ static int test_rrset_merge()
 
 	dnslib_rrset_add_rdata(merger2, test_rrsets[4].rdata);
 
+//	dnslib_rrset_dump(merger1, 1);
+
 	int ret = 0;
 	if ((ret = dnslib_rrset_merge((void **)&merger1,
 	                              (void **)&merger2)) != 0) {
 		diag("Could not merge rrsets. (reason %d)", ret);
 		return 0;
 	}
+
+//	dnslib_rrset_dump(merger1, 1);
 
 	r = check_rrset(merger1, 5, 1, 1, 0);
 
@@ -587,7 +590,7 @@ static int test_rrset_merge()
 		return 0;
 	}
 
-	return 1; */
+	return 1;
 }
 
 static int test_rrset_owner(dnslib_rrset_t **rrsets)
