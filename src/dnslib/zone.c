@@ -381,7 +381,7 @@ static void dnslib_zone_adjust_nsec3_node_in_tree(dnslib_node_t *node,
  *
  * \param zone Zone from which to take the NSEC3 parameters.
  * \param name Domain name to hash.
- * \param nsec3name Hashed name.
+ * \param nsec3_name Hashed name.
  *
  * \retval DNSLIB_EOK
  * \retval DNSLIB_ENSEC3PAR

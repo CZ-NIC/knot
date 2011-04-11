@@ -101,7 +101,7 @@ static inline uint8_t dnslib_packet_get_flags2(const uint8_t *packet)
  * \brief Sets the second byte of flags to the wire format of the packet.
  *
  * \param packet Wire format of the packet.
- * \param flags1 Second byte of the DNS flags.
+ * \param flags2 Second byte of the DNS flags.
  */
 static inline uint8_t dnslib_packet_set_flags2(uint8_t *packet, uint8_t flags2)
 {
@@ -151,7 +151,7 @@ static inline uint16_t dnslib_packet_get_ancount(const uint8_t *packet)
  *        packet.
  *
  * \param packet Wire format of the packet.
- * \param qdcount ANCOUNT (count of Answer entries in the packet).
+ * \param ancount ANCOUNT (count of Answer entries in the packet).
  */
 static inline void dnslib_packet_set_ancount(uint8_t *packet, uint16_t ancount)
 {
@@ -176,7 +176,7 @@ static inline uint16_t dnslib_packet_get_nscount(const uint8_t *packet)
  *        packet.
  *
  * \param packet Wire format of the packet.
- * \param qdcount NSCOUNT (count of Authority entries in the packet).
+ * \param nscount NSCOUNT (count of Authority entries in the packet).
  */
 static inline void dnslib_packet_set_nscount(uint8_t *packet, uint16_t nscount)
 {
@@ -201,7 +201,7 @@ static inline uint16_t dnslib_packet_get_arcount(const uint8_t *packet)
  *        packet.
  *
  * \param packet Wire format of the packet.
- * \param qdcount ARCOUNT (count of Additional entries in the packet).
+ * \param arcount ARCOUNT (count of Additional entries in the packet).
  */
 static inline void dnslib_packet_set_arcount(uint8_t *packet, uint16_t arcount)
 {
@@ -714,7 +714,7 @@ static inline void dnslib_packet_flags_clear_qr(uint8_t *flags1)
 /*!
  * \brief Returns the RCODE from the second byte of flags.
  *
- * \param flags1 First byte of DNS header flags.
+ * \param flags2 First byte of DNS header flags.
  *
  * \return RCODE
  */

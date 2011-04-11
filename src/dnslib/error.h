@@ -1,5 +1,5 @@
 /*!
- * \file error.h
+ * \file dnslib/error.h
  *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *

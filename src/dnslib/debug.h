@@ -1,5 +1,5 @@
 /*!
- * \file descriptor.h
+ * \file dnslib/debug.h
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  * \author Lubos Slovak <lubos.slovak@nic.cz>

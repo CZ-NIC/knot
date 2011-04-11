@@ -1,12 +1,13 @@
 /*!
- * \file error.h
+ * \file zcompile-error.h
+ *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
  * \brief Error codes and function for getting error message.
  *
- * \addtogroup utils
+ * \addtogroup zoneparser
  * @{
  */
 

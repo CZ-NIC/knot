@@ -100,8 +100,7 @@ static int dnslib_dname_set(dnslib_dname_t *dname, uint8_t *wire,
  * \param name Domain name in string representation (presentation format).
  * \param size Size of the given domain name in characters (not counting the
  *             terminating 0 character.
- * \param wire [in/out] Pointer to position where the wire format of the domain
- *             name will be stored.
+ * \param dname Domain name where to store the wire format.
  *
  * \return Size of the wire format of the domain name in octets. If 0, no
  *         space has been allocated.

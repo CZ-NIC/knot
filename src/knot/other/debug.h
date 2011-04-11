@@ -1,5 +1,5 @@
 /*!
- * \file debug.h
+ * \file other/debug.h
  *
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *

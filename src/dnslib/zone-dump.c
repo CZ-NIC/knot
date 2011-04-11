@@ -1306,6 +1306,7 @@ static int semantic_checks_plain(dnslib_zone_t *zone,
  * \param first_node First node in canonical order.
  * \param last_node Last node in canonical order.
  * \param handler Error handler.
+ * \param nsec3 NSEC3 used.
  *
  * \retval DNSLIB_EOK if no error was found.
  *
@@ -1710,7 +1711,7 @@ static void dnslib_rrsig_set_dump_binary(dnslib_rrset_t *rrsig, arg_t *data)
 /*!
  * \brief Dumps RRSet in binary format to given file.
  *
- * \param rrsig RRSSet to be dumped.
+ * \param rrset RRSSet to be dumped.
  * \param data Arguments to be propagated.
  */
 static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, void *data)

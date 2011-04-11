@@ -1,5 +1,5 @@
 /*!
- * \file dnslib_rdata_tests.c
+ * \file rdata_tests.h
  *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *

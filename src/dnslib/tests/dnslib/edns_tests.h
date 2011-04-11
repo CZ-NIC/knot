@@ -1,5 +1,5 @@
 /*!
- * \file dnslib_edns_tests.c
+ * \file edns_tests.h
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *

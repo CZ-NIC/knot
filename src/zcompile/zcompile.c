@@ -1,5 +1,5 @@
 /*!
- * \file zoneparser.c
+ * \file zcompile.c
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz> process_rr(), RRSIG handling and
  *         minor modifications. most of the code by NLnet Labs

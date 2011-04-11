@@ -1,5 +1,5 @@
 /*!
- * \file dnslib_response_tests.c
+ * \file response_tests.h
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
