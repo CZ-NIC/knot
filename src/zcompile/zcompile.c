@@ -41,7 +41,7 @@
 #define APL_NEGATION_MASK      0x80U
 #define APL_LENGTH_MASK	       (~APL_NEGATION_MASK)
 
-#define ZP_DEBUG
+//#define ZP_DEBUG
 
 #ifdef ZP_DEBUG
 #define debug_zp(msg...) fprintf(stderr, msg)
