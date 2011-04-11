@@ -18,44 +18,51 @@
 /*
  * OPCODEs
  */
-static const uint16_t DNSLIB_OPCODE_QUERY = 0;  /* a standard query (QUERY) */
-static const uint16_t DNSLIB_OPCODE_IQUERY = 1; /* an inverse query (IQUERY) */
-static const uint16_t DNSLIB_OPCODE_STATUS = 2; /* a server status request (STATUS) */
-static const uint16_t DNSLIB_OPCODE_NOTIFY = 4; /* NOTIFY */
-static const uint16_t DNSLIB_OPCODE_UPDATE = 5; /* Dynamic update */
-
-static const uint16_t DNSLIB_OPCODE_OFFSET = 14;
+typedef enum dnslib_opcode {
+	DNSLIB_OPCODE_QUERY  = 0, /* a standard query (QUERY) */
+	DNSLIB_OPCODE_IQUERY = 1, /* an inverse query (IQUERY) */
+	DNSLIB_OPCODE_STATUS = 2, /* a server status request (STATUS) */
+	DNSLIB_OPCODE_NOTIFY = 4, /* NOTIFY */
+	DNSLIB_OPCODE_UPDATE = 5, /* Dynamic update */
+	DNSLIB_OPCODE_OFFSET = 14
+} dnslib_opcode_t;
 
 /*
  * RCODEs
  */
-static const uint16_t DNSLIB_RCODE_NOERROR = 0; 	/* No error condition */
-static const uint16_t DNSLIB_RCODE_FORMERR = 1; 	/* Format error */
-static const uint16_t DNSLIB_RCODE_SERVFAIL = 2; 	/* Server failure */
-static const uint16_t DNSLIB_RCODE_NXDOMAIN = 3; 	/* Name Error */
-static const uint16_t DNSLIB_RCODE_NOTIMPL = 4; 	/* Not implemented */
-static const uint16_t DNSLIB_RCODE_REFUSED = 5; 	/* Refused */
-static const uint16_t DNSLIB_RCODE_YXDOMAIN = 6;	/* name should not exist */
-static const uint16_t DNSLIB_RCODE_YXRRSET = 7;	/* rrset should not exist */
-static const uint16_t DNSLIB_RCODE_NXRRSET = 8;	/* rrset does not exist */
-static const uint16_t DNSLIB_RCODE_NOTAUTH = 9;	/* server not authoritative */
-static const uint16_t DNSLIB_RCODE_NOTZONE = 10;	/* name not inside zone */
+typedef enum dnslib_rcode {
+	DNSLIB_RCODE_NOERROR  = 0,  /* No error condition */
+	DNSLIB_RCODE_FORMERR  = 1,  /* Format error */
+	DNSLIB_RCODE_SERVFAIL = 2,  /* Server failure */
+	DNSLIB_RCODE_NXDOMAIN = 3,  /* Name Error */
+	DNSLIB_RCODE_NOTIMPL  = 4,  /* Not implemented */
+	DNSLIB_RCODE_REFUSED  = 5,  /* Refused */
+	DNSLIB_RCODE_YXDOMAIN = 6,  /* name should not exist */
+	DNSLIB_RCODE_YXRRSET  = 7,  /* rrset should not exist */
+	DNSLIB_RCODE_NXRRSET  = 8,  /* rrset does not exist */
+	DNSLIB_RCODE_NOTAUTH  = 9,  /* server not authoritative */
+	DNSLIB_RCODE_NOTZONE  = 10  /* name not inside zone */
+} dnslib_rcode_t;
 
 /*
  * CLASSes
  */
-//const uint16_t DNSLIB_CLASS_IN = 1;	/* Class IN */
-//const uint16_t DNSLIB_CLASS_CS = 2;	/* Class CS */
-//const uint16_t DNSLIB_CLASS_CH = 3;	/* Class CHAOS */
-//const uint16_t DNSLIB_CLASS_HS = 4;	/* Class HS */
-//const uint16_t DNSLIB_CLASS_NONE = 254;	/* Class NONE rfc2136 */
-//const uint16_t DNSLIB_CLASS_ANY = 255;	/* Class ANY */
+//typedef enum dnslib_class {
+//	DNSLIB_CLASS_IN = 1,	/* Class IN */
+//	DNSLIB_CLASS_CS = 2,	/* Class CS */
+//	DNSLIB_CLASS_CH = 3,	/* Class CHAOS */
+//	DNSLIB_CLASS_HS = 4,	/* Class HS */
+//	DNSLIB_CLASS_NONE = 254,	/* Class NONE rfc2136 */
+//	DNSLIB_CLASS_ANY = 255	/* Class ANY */
+//} dnslib_class_t;
 
 /*
  * Other
  */
-static const unsigned int DNSLIB_MAX_DNAME_LENGTH = 255;
-static const unsigned int DNSLIB_MAX_DNAME_LABELS = 127;	// 1-char labels
+typedef enum dnslib_const {
+	DNSLIB_MAX_DNAME_LENGTH = 255,
+	DNSLIB_MAX_DNAME_LABELS = 127  // 1-char labels
+} dnslib_const_t;
 
 #endif /* _KNOT_DNSLIB_CONSTS_H_ */
 
