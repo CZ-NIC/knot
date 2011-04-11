@@ -55,7 +55,7 @@ typedef struct ns_nameserver {
  *
  * \return Pointer to the name server structure.
  */
-ns_nameserver_t *ns_create(dnslib_zonedb_t *database);
+ns_nameserver_t *ns_create();
 
 /*!
  * \brief Creates a response for the given query using the data of the name

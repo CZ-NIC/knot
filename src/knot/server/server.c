@@ -328,20 +328,10 @@ server_t *server_create()
 	server->ifaces = malloc(sizeof(list));
 	init_list(server->ifaces);
 
-	// Create zone database structure
-	debug_server("Creating Zone Database structure...\n");
-	server->zone_db = dnslib_zonedb_new();
-	if (server->zone_db == NULL) {
-		ERR_ALLOC_FAILED;
-		free(server);
-		return NULL;
-	}
-
 	// Create name server
 	debug_server("Creating Name Server structure...\n");
-	server->nameserver = ns_create(server->zone_db);
+	server->nameserver = ns_create();
 	if (server->nameserver == NULL) {
-		dnslib_zonedb_deep_free(&server->zone_db);
 		free(server);
 		return NULL;
 	}
@@ -634,7 +624,7 @@ void server_destroy(server_t **server)
 
 	stat_static_gath_free();
 	ns_destroy(&(*server)->nameserver);
-	dnslib_zonedb_deep_free(&(*server)->zone_db);
+
 	free(*server);
 
 	EVP_cleanup();

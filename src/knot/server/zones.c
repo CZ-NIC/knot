@@ -167,8 +167,14 @@ int zones_update_db_from_config(const conf_t *conf, ns_nameserver_t *ns,
 		return ret;
 	}
 
+	debug_zones("Old db in nameserver: %p, old db stored: %p, new db: %p\n",
+	            ns->zone_db, *db_old, db_new);
+
 	// Switch the databases.
 	(void)rcu_xchg_pointer(&ns->zone_db, db_new);
+
+	debug_zones("db in nameserver: %p, old db stored: %p, new db: %p\n",
+	            ns->zone_db, *db_old, db_new);
 
 	/*
 	 *  Remove all zones present in the new DB from the old DB.
