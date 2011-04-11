@@ -74,17 +74,21 @@
 #include <stdint.h>
 
 /* Constants. */
-#define SLAB_SIZE (4096*4) // Slab size (16K blocks)
-#define SLAB_MIN_BUFLEN 8  // Minimal allocation block size is 8B.
-#define SLAB_EXP_OFFSET 3  // Minimal allocation size is 8B = 2^3, exp is 3.
-#define SLAB_GP_COUNT  10  // General-purpose caches count.
-#define SLAB_US_COUNT  10  // User-specified caches count.
-#define SLAB_DEPOT_SIZE 16 // N slabs cached = N*SLAB_SIZE kB cap
-#define SLAB_CACHE_COUNT (SLAB_GP_COUNT + SLAB_US_COUNT)
+#define SLAB_SIZE (4096*4) //!< Slab size (16K blocks)
+#define SLAB_MIN_BUFLEN 8  //!< Minimal allocation block size is 8B.
+#define SLAB_EXP_OFFSET 3  //!< Minimal allocation size is 8B = 2^3, exp is 3.
+#define SLAB_GP_COUNT  10  //!< General-purpose caches count.
+#define SLAB_US_COUNT  10  //!< User-specified caches count.
+#define SLAB_DEPOT_SIZE 16 //!< N slabs cached = N*SLAB_SIZE kB cap
+#define SLAB_CACHE_COUNT (SLAB_GP_COUNT + SLAB_US_COUNT) //!< Slab cache count.
 struct slab_cache_t;
 
 /* Macros. */
+
+/*! \brief Return slab base address from pointer. */
 #define slab_from_ptr(p) ((void*)((size_t)(p) & SLAB_MASK))
+
+/*! \brief Return true if slab is empty. */
 #define slab_isempty(s) ((s)->bufs_free == (s)->bufs_count)
 
 /*!
@@ -331,4 +335,4 @@ void slab_alloc_stats(slab_alloc_t* alloc);
 
 #endif /* _KNOT_COMMON_SLAB_H_ */
 
-/*! \} */
+/*! @} */

@@ -8,6 +8,9 @@
  * This file provides platform-independent sockets.
  * Functions work on sockets created via system socket(2) functions.
  *
+ * You can use standard I/O functions send(), sendto(), recv(), recvfrom()
+ * like you would with a normal sockets.
+ *
  * \addtogroup network
  * @{
  */
@@ -29,8 +32,11 @@ enum {
  * \param family Socket family (PF_INET, PF_IPX, PF_PACKET, PF_UNIX).
  * \param type   Socket type (SOCK_STREAM, SOCK_DGRAM, SOCK_RAW).
  *
- * \retval  0 On success.
- * \retval <0 If an error occured.
+ * \retval new socket filedescriptor on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_ENOMEM out of memory error.
+ * \retval KNOT_EACCES process does not have appropriate privileges.
+ * \retval KNOT_ERROR unspecified error.
  */
 int socket_create(int family, int type);
 
@@ -41,8 +47,14 @@ int socket_create(int family, int type);
  * \param addr   Requested address.
  * \param port   Requested port.
  *
- * \retval  0 On success.
- * \retval <0 If an error occured.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL invalid parameters.
+ * \retval KNOT_EACCES process does not have appropriate privileges.
+ * \retval KNOT_EAGAIN lack of resources, try again.
+ * \retval KNOT_EADDRINUSE address already in use.
+ * \retval KNOT_ECONNREFUSED connection refused.
+ * \retval KNOT_EISCONN already connected.
+ * \retval KNOT_ERROR unspecified error.
  */
 int socket_connect(int fd, const char *addr, unsigned short port);
 
@@ -54,8 +66,13 @@ int socket_connect(int fd, const char *addr, unsigned short port);
  * \param addr   Requested address.
  * \param port   Requested port.
  *
- * \retval  0 On success.
- * \retval <0 If an error occured.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL invalid parameters.
+ * \retval KNOT_EACCES process does not have appropriate privileges.
+ * \retval KNOT_EADDRINUSE address already in use.
+ * \retval KNOT_ENOMEM out of memory error.
+ * \retval KNOT_ENOIPV6 IPv6 support is not available.
+ * \retval KNOT_ERROR unspecified error.
  */
 int socket_bind(int fd, int family, const char *addr, unsigned short port);
 
@@ -65,94 +82,22 @@ int socket_bind(int fd, int family, const char *addr, unsigned short port);
  * \param fd           Socket filedescriptor.
  * \param backlog_size Requested TCP backlog size.
  *
- * \retval  0 On success.
- * \retval <0 If an error occured.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EADDRINUSE address already in use.
+ * \retval KNOT_ERROR unspecified error.
  */
 int socket_listen(int fd, int backlog_size);
 
-/*!
- * \brief Receive data from connection-mode socket.
- *
- * \param fd     Socket filedescriptor.
- * \param buf    Destination buffer.
- * \param len    Maximum data length.
- * \param flags  Additional flags.
- *
- * \retval  0 On success.
- * \retval <0 If an error occured.
- */
-static inline ssize_t socket_recv(int socket, void *buf, size_t len, int flags)
-{
-	return recv(socket, buf, len, flags);
-}
-
-/*!
- * \brief Receive data from datagram-mode socket.
- *
- * \param fd      Socket filedescriptor.
- * \param buf     Destination buffer.
- * \param len     Maximum data length.
- * \param flags   Additional flags.
- * \param from    Datagram source address.
- * \param fromlen Address length.
- *
- * \retval  0 On success.
- * \retval <0 If an error occured.
- */
-static inline ssize_t socket_recvfrom(int socket, void *buf, size_t len,
-                                      int flags, struct sockaddr *from,
-                                      socklen_t *fromlen)
-{
-	return recvfrom(socket, buf, len, flags, from, fromlen);
-}
-
-/*!
- * \brief Send data to connection-mode socket.
- *
- * \param fd     Socket filedescriptor.
- * \param buf    Source buffer.
- * \param len    Data length.
- * \param flags  Additional flags.
- *
- * \retval  0 On success.
- * \retval <0 If an error occured.
- */
-static inline ssize_t socket_send(int socket, const void *buf, size_t len,
-                                  int flags)
-{
-	return send(socket, buf, len, flags);
-}
-
-/*!
- * \brief Send data to datagram-mode socket.
- *
- * \param fd     Socket filedescriptor.
- * \param buf    Source buffer.
- * \param len    Data length.
- * \param flags  Additional flags.
- * \param to     Datagram source address.
- * \param tolen  Address length.
- *
- * \retval  0 On success.
- * \retval <0 If an error occured.
- */
-static inline ssize_t socket_sendto(int socket, const void *buf, size_t len,
-                                    int flags, const struct sockaddr *to,
-                                    socklen_t tolen)
-{
-	return sendto(socket, buf, len, flags, to, tolen);
-}
 /*!
  * \brief Close and deinitialize socket.
  *
  * \param fd Socket filedescriptor.
  *
- * \retval  0 On success.
- * \retval <0 If an error occured.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL invalid parameters.
  */
 int socket_close(int fd);
 
 #endif // _KNOT_SOCKET_H_
 
 /*! @} */
-

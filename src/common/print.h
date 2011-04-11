@@ -8,7 +8,7 @@
  * Downloaded hex_print, bit_print from http://www.digitalpeer.com/id/print
  * Updated with generic printf handler.
  *
- * \addtogroup utils
+ * \addtogroup common_lib
  * @{
  */
 
@@ -17,16 +17,39 @@
 
 typedef int (*printf_t)(const char *fmt, ...);
 
-/* Hex-value printing.
+/*!
+ * \brief Prints the given data as hexadecimal characters.
+ *
+ * \param data Data to print.
+ * \param length Size of the \a data array.
  */
-
 void hex_print(const char *data, int length);
+
+/*!
+ * \brief Prints the given data as hexadecimal characters using the given
+ *        handler.
+ *
+ * \param data Data to print.
+ * \param length Size of the \a data array.
+ * \param print_handler Handler for printing.
+ */
 void hex_printf(const char *data, int length, printf_t print_handler);
 
-/* Bit-value printing.
+/*!
+ * \brief Prints the given data as a bitmap.
+ *
+ * \param data Data to print.
+ * \param length Size of the \a data array.
  */
-
 void bit_print(const char *data, int length);
+
+/*!
+ * \brief Prints the given data as a bitmap using the given handler.
+ *
+ * \param data Data to print.
+ * \param length Size of the \a data array.
+ * \param print_handler Handler for printing.
+ */
 void bit_printf(const char *data, int length, printf_t print_handler);
 
 #endif /* _KNOT_COMMON_PRINT_H_ */

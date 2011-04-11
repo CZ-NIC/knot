@@ -24,9 +24,6 @@
  *        name in a zone.
  *
  * RRSets are ordered by type and stored in a skip-list to allow fast lookup.
- *
- * \todo How to return all RRSets?? An array? Or return the skip list and let
- *       the user iterate over it?
  */
 struct dnslib_node {
 	dnslib_dname_t *owner; /*!< Domain name being the owner of this node. */
@@ -35,12 +32,26 @@ struct dnslib_node {
 	/*! \brief Type-ordered list of RRSets belonging to this node. */
 	skip_list_t *rrsets;
 
-	short rrset_count;
+	short rrset_count; /*!< Number of RRSets stored in the node. */
 
+	/*! \brief Wildcard node being the direct descendant of this node. */
 	struct dnslib_node *wildcard_child;
 
+	/*!
+	 * \brief Previous node in canonical order.
+	 *
+	 * Only authoritative nodes or delegation points are referenced by this,
+	 * as only they may contain NSEC records needed for authenticating
+	 * negative answers.
+	 */
 	struct dnslib_node *prev;
 
+	/*!
+	 * \brief NSEC3 node corresponding to this node.
+	 *
+	 * Such NSEC3 node has owner in form of the hashed domain name of this
+	 * node prepended as a single label to the zone name.
+	 */
 	const struct dnslib_node *nsec3_node;
 
 	/*!
@@ -52,6 +63,7 @@ struct dnslib_node {
 	 */
 	uint8_t flags;
 
+	/*! \brief Structure for connecting this node to an AVL tree. */
 	TREE_ENTRY(dnslib_node) avl;
 };
 
@@ -74,8 +86,8 @@ dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent);
  * \param node Node to add the RRSet to.
  * \param rrset RRSet to add.
  *
- * \retval 0 on success.
- * \retval -2 if rrset can not be inserted.
+ * \retval DNSLIB_EOK on success.
+ * \retval DNSLIB_ERROR if the RRSet could not be inserted.
  */
 int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset);
 
@@ -102,11 +114,35 @@ const dnslib_rrset_t *dnslib_node_rrset(const dnslib_node_t *node,
  */
 dnslib_rrset_t *dnslib_node_get_rrset(dnslib_node_t *node, uint16_t type);
 
+/*!
+ * \brief Returns number of RRSets in the node.
+ *
+ * \param node Node to get the RRSet count from.
+ *
+ * \return Number of RRSets in \a node.
+ */
 short dnslib_node_rrset_count(const dnslib_node_t *node);
 
-const dnslib_rrset_t **dnslib_node_rrsets(const dnslib_node_t *node);
-
+/*!
+ * \brief Returns all RRSets from the node.
+ *
+ * \param node Node to get the RRSets from.
+ *
+ * \return Newly allocated array of RRSets or NULL if an error occured.
+ */
 dnslib_rrset_t **dnslib_node_get_rrsets(const dnslib_node_t *node);
+
+/*!
+ * \brief Returns all RRSets from the node.
+ *
+ * \note This function is identical to dnslib_node_get_rrsets(), only it returns
+ *       non-modifiable data.
+ *
+ * \param node Node to get the RRSets from.
+ *
+ * \return Newly allocated array of RRSets or NULL if an error occured.
+ */
+const dnslib_rrset_t **dnslib_node_rrsets(const dnslib_node_t *node);
 
 /*!
  * \brief Returns the parent of the node.
@@ -126,12 +162,44 @@ const dnslib_node_t *dnslib_node_parent(const dnslib_node_t *node);
  */
 void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent);
 
+/*!
+ * \brief Returns the previous authoritative node or delegation point in
+ *        canonical order or the first node in zone.
+ *
+ * \param node Node to get the previous node of.
+ *
+ * \return Previous authoritative node or delegation point in canonical order or
+ *         the first node in zone if \a node is the last node in zone.
+ * \retval NULL if previous node is not set.
+ */
 const dnslib_node_t *dnslib_node_previous(const dnslib_node_t *node);
 
+/*!
+ * \brief Sets the previous node of the given node.
+ *
+ * \param node Node to set the previous node to.
+ * \param prev Previous node to set.
+ */
 void dnslib_node_set_previous(dnslib_node_t *node, dnslib_node_t *prev);
 
+/*!
+ * \brief Returns the NSEC3 node corresponding to the given node.
+ *
+ * \param node Node to get the NSEC3 node for.
+ *
+ * \return NSEC3 node corresponding to \a node (i.e. node with owner name
+ *         created by concatenating the hash of owner domain name of \a node
+ *         and the name of the zone \a node belongs to).
+ * \retval NULL if the NSEC3 node is not set.
+ */
 const dnslib_node_t *dnslib_node_nsec3_node(const dnslib_node_t *node);
 
+/*!
+ * \brief Sets the corresponding NSEC3 node of the given node.
+ *
+ * \param node Node to set the NSEC3 node to.
+ * \param nsec3_node NSEC3 node to set.
+ */
 void dnslib_node_set_nsec3_node(dnslib_node_t *node, dnslib_node_t *nsec3_node);
 
 /*!
@@ -156,26 +224,54 @@ const dnslib_node_t *dnslib_node_wildcard_child(const dnslib_node_t *node);
  * \brief Sets the wildcard child of the node.
  *
  * \param node Node to set the wildcard child of.
- * \param parent Wildcard child of the node.
+ * \param wildcard_child Wildcard child of the node.
  */
 void dnslib_node_set_wildcard_child(dnslib_node_t *node,
                                     dnslib_node_t *wildcard_child);
 
-
+/*!
+ * \brief Mark the node as a delegation point.
+ *
+ * \param node Node to mark as a delegation point.
+ */
 void dnslib_node_set_deleg_point(dnslib_node_t *node);
 
+/*!
+ * \brief Checks if the node is a delegation point.
+ *
+ * \param node Node to check.
+ *
+ * \retval <> 0 if \a node is marked as delegation point.
+ * \retval 0 otherwise.
+ */
 int dnslib_node_is_deleg_point(const dnslib_node_t *node);
 
+/*!
+ * \brief Mark the node as non-authoritative.
+ *
+ * \param node Node to mark as non-authoritative.
+ */
 void dnslib_node_set_non_auth(dnslib_node_t *node);
 
+/*!
+ * \brief Checks if the node is non-authoritative.
+ *
+ * \param node Node to check.
+ *
+ * \retval <> 0 if \a node is marked as non-authoritative.
+ * \retval 0 otherwise.
+ */
 int dnslib_node_is_non_auth(const dnslib_node_t *node);
 
 /*!
  * \brief Destroys the RRSets within the node structure.
  *
  * \param node Node to be destroyed.
+ * \param free_rdata_dnames Set to <> 0 if you want to delete ALL domain names
+ *                          present in RDATA. Set to 0 otherwise. (See
+ *                          dnslib_rdata_deep_free().)
  */
-void dnslib_node_free_rrsets(dnslib_node_t *node);
+void dnslib_node_free_rrsets(dnslib_node_t *node, int free_rdata_dnames);
 
 /*!
  * \brief Destroys the node structure.
@@ -189,18 +285,16 @@ void dnslib_node_free_rrsets(dnslib_node_t *node);
  */
 void dnslib_node_free(dnslib_node_t **node, int free_owner);
 
-void dnslib_node_free_tmp(dnslib_node_t **node, int free_rrsets);
-
 /*!
  * \brief Compares two nodes according to their owner.
  *
  * \param node1 First node.
  * \param node2 Second node.
  *
- * \retval -1 if \a node1 goes before \a node2 according to canonical order
+ * \retval < 0 if \a node1 goes before \a node2 according to canonical order
  *         of their owner names.
  * \retval 0 if they are equal.
- * \retval 1 if \a node1 goes after \a node2.
+ * \retval > 0 if \a node1 goes after \a node2.
  */
 int dnslib_node_compare(dnslib_node_t *node1, dnslib_node_t *node2);
 

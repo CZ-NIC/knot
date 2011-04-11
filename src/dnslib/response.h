@@ -11,6 +11,7 @@
  * \addtogroup dnslib
  * @{
  */
+
 #ifndef _KNOT_DNSLIB_RESPONSE_H_
 #define _KNOT_DNSLIB_RESPONSE_H_
 
@@ -112,26 +113,8 @@ struct dnslib_response {
 	short max_ns_rrsets; /*!< Allocated space for Authority RRsets. */
 	short max_ar_rrsets; /*!< Allocated space for Additional RRsets. */
 
-	/*!
-	 * \brief EDNS data parsed from query.
-	 *
-	 * \todo Do we need this actually??
-	 */
-	dnslib_opt_rr_t edns_query;
-	dnslib_opt_rr_t edns_response;
-
-	/*!
-	 * \brief EDNS OPT RR provided by the server.
-	 *
-	 * This is stored in wire format, as it may be prepared by the server
-	 * in advance and only passed on response creation, there is no need to
-	 * convert it each time.
-	 *
-	 * The necessary parsing which is done when creating the response is
-	 * much faster than converting some structure to wire format.
-	 */
-	//const uint8_t *edns_wire;
-	//short edns_size;  /*!< Size of the server EDNS OPT RR in bytes. */
+	dnslib_opt_rr_t edns_query;     /*!< EDNS data parsed from query. */
+	dnslib_opt_rr_t edns_response;  /*!< EDNS data provided by the server.*/
 
 	uint8_t *wireformat;  /*!< Wire format of the response. */
 	short size;      /*!< Current wire size of the response. */
@@ -151,11 +134,7 @@ typedef struct dnslib_response dnslib_response_t;
 /*!
  * \brief Creates new empty response structure.
  *
- * \note Does not copy the given EDNS wire data, only stores reference to it.
- *
- * \param edns_wire Wire format of the EDNS OPT pseudo-RR specifying EDNS
- *                  parameters of the host who creates the response.
- * \param edns_size Size of \a edns_wire in bytes.
+ * \param opt_rr OPT RR of the nameserver to be used in the response.
  *
  * \return New empty response structure or NULL if an error occured.
  */
@@ -172,8 +151,10 @@ dnslib_response_t *dnslib_response_new_empty(const dnslib_opt_rr_t *opt_rr);
  * \param query_wire Query in wire format.
  * \param query_size Size of the query in bytes.
  *
- * \retval 0 if successful.
- * \retval <> 0 if an error occured.
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_EMALF
+ * \retval DNSLIB_EFEWDATA
+ * \retval DNSLIB_ENOMEM
  */
 int dnslib_response_parse_query(dnslib_response_t *response,
                                 const uint8_t *query_wire, size_t query_size);
@@ -215,10 +196,9 @@ uint16_t dnslib_response_qclass(const dnslib_response_t *response);
  * \param check_duplicates Set to <> 0 if the RRSet should not be added to the
  *                         response in case it is already there.
  *
- * \retval 0 if successful.
- * \retval 1 if @a check_duplicates was set and @a rrset was already present
- *           in the response.
- * \retval < 0 if an error occured.
+ * \retval DNSLIB_EOK if successful, or the RRSet was already in the answer.
+ * \retval DNSLIB_ENOMEM
+ * \retval DNSLIB_ESPACE
  */
 int dnslib_response_add_rrset_answer(dnslib_response_t *response,
                                      const dnslib_rrset_t *rrset, int tc,
@@ -234,10 +214,9 @@ int dnslib_response_add_rrset_answer(dnslib_response_t *response,
  * \param check_duplicates Set to <> 0 if the RRSet should not be added to the
  *                         response in case it is already there.
  *
- * \retval 0 if successful.
- * \retval 1 if @a check_duplicates was set and @a rrset was already present
- *           in the response.
- * \retval < 0 if an error occured.
+ * \retval DNSLIB_EOK if successful, or the RRSet was already in the answer.
+ * \retval DNSLIB_ENOMEM
+ * \retval DNSLIB_ESPACE
  */
 int dnslib_response_add_rrset_authority(dnslib_response_t *response,
                                         const dnslib_rrset_t *rrset, int tc,
@@ -253,10 +232,9 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
  * \param check_duplicates Set to <> 0 if the RRSet should not be added to the
  *                         response in case it is already there.
  *
- * \retval 0 if successful.
- * \retval 1 if @a check_duplicates was set and @a rrset was already present
- *           in the response.
- * \retval < 0 if an error occured.
+ * \retval DNSLIB_EOK if successful, or the RRSet was already in the answer.
+ * \retval DNSLIB_ENOMEM
+ * \retval DNSLIB_ESPACE
  */
 int dnslib_response_add_rrset_additional(dnslib_response_t *response,
                                          const dnslib_rrset_t *rrset, int tc,
@@ -277,30 +255,120 @@ void dnslib_response_set_rcode(dnslib_response_t *response, short rcode);
  */
 void dnslib_response_set_aa(dnslib_response_t *response);
 
+/*!
+ * \brief Sets the TC bit of the response to 1.
+ *
+ * \param response Response in which the TC bit should be set.
+ */
 void dnslib_response_set_tc(dnslib_response_t *response);
 
+/*!
+ * \brief Adds RRSet to the list of temporary RRSets.
+ *
+ * Temporary RRSets are fully freed when the response structure is destroyed.
+ *
+ * \param response Response to which the temporary RRSet should be added.
+ * \param tmp_rrset Temporary RRSet to be stored in the response.
+ *
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_ENOMEM
+ */
 int dnslib_response_add_tmp_rrset(dnslib_response_t *response,
                                   dnslib_rrset_t *tmp_rrset);
 
+/*!
+ * \brief Returns number of RRSets in Answer section of the response.
+ *
+ * \param response Response to get the Answer RRSet count from.
+ */
 short dnslib_response_answer_rrset_count(const dnslib_response_t *response);
 
+/*!
+ * \brief Returns number of RRSets in Authority section of the response.
+ *
+ * \param response Response to get the Authority RRSet count from.
+ */
 short dnslib_response_authority_rrset_count(const dnslib_response_t *response);
 
+/*!
+ * \brief Returns number of RRSets in Additional section of the response.
+ *
+ * \param response Response to get the Additional RRSet count from.
+ */
 short dnslib_response_additional_rrset_count(const dnslib_response_t *response);
 
+/*!
+ * \brief Returns the requested Answer RRset.
+ *
+ * \param response Response to get the RRSet from.
+ * \param pos Position of the RRSet in the Answer section (RRSets are stored
+ *            in the order they were added to the response).
+ *
+ * \return The RRSet on position \a pos in the Answer section of \a response
+ *         or NULL if there is no such RRSet.
+ */
 const dnslib_rrset_t *dnslib_response_answer_rrset(
 	const dnslib_response_t *response, short pos);
 
+/*!
+ * \brief Returns the requested Authority RRset.
+ *
+ * \param response Response to get the RRSet from.
+ * \param pos Position of the RRSet in the Authority section (RRSets are stored
+ *            in the order they were added to the response).
+ *
+ * \return The RRSet on position \a pos in the Authority section of \a response
+ *         or NULL if there is no such RRSet.
+ */
 const dnslib_rrset_t *dnslib_response_authority_rrset(
 	dnslib_response_t *response, short pos);
 
+/*!
+ * \brief Returns the requested Additional RRset.
+ *
+ * \param response Response to get the RRSet from.
+ * \param pos Position of the RRSet in the Additional section (RRSets are stored
+ *            in the order they were added to the response).
+ *
+ * \return The RRSet on position \a pos in the Additional section of \a response
+ *         or NULL if there is no such RRSet.
+ */
 const dnslib_rrset_t *dnslib_response_additional_rrset(
 	dnslib_response_t *response, short pos);
 
+/*!
+ * \brief Checks if DNSSEC was requested in the query (i.e. the DO bit was set).
+ *
+ * \param response Response where the parsed query is stored.
+ *
+ * \retval 0 if the DO bit was not set in the query, or the query is not yet
+ *         parsed.
+ * \retval > 0 if DO bit was set in the query.
+ */
 int dnslib_response_dnssec_requested(const dnslib_response_t *response);
 
+/*!
+ * \brief Checks if NSID was requested in the query (i.e. the NSID option was
+ *        present in the query OPT RR).
+ *
+ * \param response Response where the parsed query is stored.
+ *
+ * \retval 0 if the NSID option was not present in the query, or the query is
+ *         not yet parsed.
+ * \retval > 0 if the NSID option was present in the query.
+ */
 int dnslib_response_nsid_requested(const dnslib_response_t *response);
 
+/*!
+ * \brief Adds NSID option to the response.
+ *
+ * \param response Response to add the NSID option into.
+ * \param data NSID data.
+ * \param length Size of NSID data in bytes.
+ *
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_ENOMEM
+ */
 int dnslib_response_add_nsid(dnslib_response_t *response, const uint8_t *data,
                              uint16_t length);
 
@@ -313,8 +381,8 @@ int dnslib_response_add_nsid(dnslib_response_t *response, const uint8_t *data,
  *                  be set to NULL (to avoid leaks).
  * \param resp_size The size of the response in wire format will be stored here.
  *
- * \retval 0 if successful.
- * \retval -2 if \a *resp_wire was not set to NULL.
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_EBADARG
  */
 int dnslib_response_to_wire(dnslib_response_t *response,
                             uint8_t **resp_wire, size_t *resp_size);
@@ -326,6 +394,13 @@ int dnslib_response_to_wire(dnslib_response_t *response,
  */
 void dnslib_response_free(dnslib_response_t **response);
 
+/*!
+ * \brief Dumps the whole response in human-readable form.
+ *
+ * \note This function is empty unless DNSLIB_RESPONSE_DEBUG is defined.
+ *
+ * \param resp Response to dump.
+ */
 void dnslib_response_dump(const dnslib_response_t *resp);
 
 #endif /* _KNOT_DNSLIB_RESPONSE_H_ */

@@ -1,5 +1,5 @@
 /*!
- * \file debug.h
+ * \file other/debug.h
  *
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *
@@ -8,6 +8,7 @@
  * \addtogroup debugging
  * @{
  */
+
 #ifndef _KNOT_DEBUG_H_
 #define _KNOT_DEBUG_H_
 
@@ -19,6 +20,7 @@
 //#define SERVER_DEBUG
 //#define DT_DEBUG
 //#define NET_DEBUG
+//#define ZONES_DEBUG
 
 #ifdef SERVER_DEBUG
 #define debug_server(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
@@ -52,6 +54,16 @@
 #define debug_ns(msg...)
 #define debug_ns_hex(data, len)
 #define DEBUG_NS(cmds)
+#endif
+
+#ifdef ZONES_DEBUG
+#define debug_zones(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define debug_zones_hex(data, len) hex_log(LOG_SERVER, (data), (len))
+#define DEBUG_zones(cmds) do { cmds } while (0)
+#else
+#define debug_zones(msg...)
+#define debug_zones_hex(data, len)
+#define DEBUG_zones(cmds)
 #endif
 
 #endif /* _KNOT_DEBUG_H_ */

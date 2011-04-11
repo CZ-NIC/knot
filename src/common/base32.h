@@ -25,20 +25,96 @@
 /* Get bool. */
 #include <stdbool.h>
 
-/* This uses that the expression (n+(k-1))/k means the smallest
-   integer >= n/k, i.e., the ceiling of n/k.  */
-# define BASE32_LENGTH(inlen) ((((inlen) + 4) / 5) * 8)
+/*!
+ * \brief Counts the size of the Base32-encoded output for given input length.
+ *
+ * \note This uses that the expression (n+(k-1))/k means the smallest
+ *       integer >= n/k, i.e., the ceiling of n/k.
+ */
+#define BASE32_LENGTH(inlen) ((((inlen) + 4) / 5) * 8)
 
+/*!
+ * \brief Checks if the given character belongs to the Base32 alphabet.
+ *
+ * \param ch Character to check.
+ *
+ * \retval true if \a ch belongs to the Base32 alphabet.
+ * \retval false otherwise.
+ */
 extern bool isbase32(char ch);
 
+/*!
+ * \brief Encodes the given character array using Base32 encoding.
+ *
+ * If \a outlen is less than BASE32_LENGTH(\a inlen), the function writes as
+ * many bytes as possible to the output buffer. If \a outlen is more than
+ * BASE32_LENGTH(\a inlen), the output will be zero-terminated.
+ *
+ * \param in Input array of characters.
+ * \param inlen Length of the input array.
+ * \param out Output buffer.
+ * \param outlen Size of the output buffer.
+ */
 extern void base32_encode(const char *in, size_t inlen, char *out,
                           size_t outlen);
 
+/*!
+ * \brief Encodes the given character array using Base32 encoding and allocates
+ *        space for the output.
+ *
+ * \param in Input array of characters.
+ * \param inlen Length of the input array.
+ * \param out Output buffer.
+ *
+ * \return Size of the allocated output buffer (0 if failed).
+ */
 extern size_t base32_encode_alloc(const char *in, size_t inlen, char **out);
 
+/*!
+ * \brief Decodes the given character array in Base32 encoding.
+ *
+ * If \a *outlen is too small, as many bytes as possible will be written to
+ * \a out. On return, \a *outlen holds the length of decoded bytes in \a out.
+ *
+ * \note As soon as any non-alphabet characters are encountered, decoding is
+ *       stopped and false is returned.  This means that, when applicable, you
+ *       must remove any line terminators that is part of the data stream before
+ *       calling this function.
+ *
+ * \param in Input array of characters.
+ * \param inlen Length of the input array.
+ * \param out Output buffer.
+ * \param outlen Size of the output buffer.
+ *
+ * \retval true if decoding was successful, i.e. if the input was valid base32
+ *              data.
+ * \retval false otherwise.
+ */
 extern bool base32_decode(const char *in, size_t inlen, char *out,
                           size_t *outlen);
 
+/*!
+ * \brief Allocate an output buffer and decode the base32 encoded data to it.
+ *
+ * On return, the size of the decoded data is stored in \a *outlen. \a outlen
+ * may be NULL, if the caller is not interested in the decoded length. \a *out
+ * may be NULL to indicate an out of memory error, in which case \a *outlen
+ * contains the size of the memory block needed.
+ *
+ * \param in Input array of characters.
+ * \param inlen Length of the input array.
+ * \param out Output buffer. \a *out may be NULL to indicate an out of memory
+ *            error in which case \a *outlen contains the size of the memory
+ *            block needed
+ * \param outlen Size of the output buffer. May be NULL, if the caller is not
+ *               interested in the decoded length
+ *
+ * \retval true on successful decoding and memory allocation errors. (Use the
+ *              \a *out and \a *outlen parameters to differentiate between
+ *              successful decoding and memory error.)
+ * \retval false if the input was invalid, in which case \a *out is NULL and
+ *               \a *outlen is undefined.
+ */
 extern bool base32_decode_alloc(const char *in, size_t inlen, char **out,
                                 size_t *outlen);
 

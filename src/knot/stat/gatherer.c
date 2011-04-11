@@ -14,7 +14,9 @@ gatherer_t *new_gatherer()
 		return NULL;
 	}
 
-	pthread_mutex_init(&ret->mutex_read, NULL);
+        pthread_mutex_init(&ret->mutex_read, NULL);
+
+        /* TODO check success */
 
 	for (int i = 0; i < FREQ_BUFFER_SIZE; i++) {
 		ret->freq_array[i] = 0;

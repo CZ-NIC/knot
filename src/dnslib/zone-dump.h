@@ -29,13 +29,15 @@ enum {
  *
  * \param zone Zone to be saved.
  * \param filename Name of file to be created.
+ * \param do_checks Set to 1 to enable checking the zone for semantic errors.
  * \param sfilename Source filename of the text zone file.
  *
- * \retval 0 on success.
- * \retval 1 on error.
+ * \retval DNSLIB_EOK on success.
+ * \retval DNSLIB_EBADARG if the file cannot be opened for writing.
  */
 int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 			char do_checks, const char *sfilename);
 
 #endif /* _DNSLIB_ZONEDUMP_H_ */
 
+/*! @} */

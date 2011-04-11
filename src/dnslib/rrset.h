@@ -69,8 +69,8 @@ dnslib_rrset_t *dnslib_rrset_new(dnslib_dname_t *owner, uint16_t type,
  * \param rrset RRSet to add the RDATA to.
  * \param rdata RDATA to add to the RRSet.
  *
- * \retval 0 if successful.
- * \retval -2 if either rrset or rdata was equal to NULL.
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_EBADARG
  *
  * \todo Provide some function for comparing RDATAs.
  */
@@ -82,8 +82,8 @@ int dnslib_rrset_add_rdata(dnslib_rrset_t *rrset, dnslib_rdata_t *rdata);
  * \param rrset RRSet to add the signatures into.
  * \param rrsigs Set of RRSIGs covering this RRSet.
  *
- * \retval 0 if successful.
- * \retval <> 0 if an error occured.
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_EBADARG
  */
 int dnslib_rrset_set_rrsigs(dnslib_rrset_t *rrset, dnslib_rrset_t *rrsigs);
 
@@ -152,7 +152,8 @@ const dnslib_rdata_t *dnslib_rrset_rdata_next(const dnslib_rrset_t *rrset,
  *
  * \param rrset RRSet to get the RDATA from.
  *
- * \return First RDATA in the given RRSet.
+ * \return First RDATA in the given RRSet or NULL if there is none or if no
+ *         rrset was provided (\a rrset is NULL).
  */
 dnslib_rdata_t *dnslib_rrset_get_rdata(dnslib_rrset_t *rrset);
 
@@ -161,7 +162,8 @@ dnslib_rdata_t *dnslib_rrset_get_rdata(dnslib_rrset_t *rrset);
  *
  * \param rrset RRSet to get the signatures for.
  *
- * \return Set of RRSIGs which cover the given RRSet.
+ * \return Set of RRSIGs which cover the given RRSet or NULL if there is none or
+ *         if no rrset was provided (\a rrset is NULL).
  */
 const dnslib_rrset_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset);
 
@@ -187,9 +189,12 @@ void dnslib_rrset_free(dnslib_rrset_t **rrset);
  * \param rrset RRset to be destroyed.
  * \param free_owner Set to 0 if you do not want the owner domain name to be
  *                   destroyed also. Set to <> 0 otherwise.
+ * \param free_rdata_dnames Set to <> 0 if you want to delete ALL domain names
+ *                          present in RDATA. Set to 0 otherwise. (See
+ *                          dnslib_rdata_deep_free().)
  */
 void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner,
-                            int free_all_dnames);
+                            int free_rdata_dnames);
 
 /*!
  * \brief Merges two RRSets.
@@ -204,9 +209,9 @@ void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner,
  * \param r1 Pointer to RRSet to be merged into.
  * \param r2 Poitner to RRSet to be merged.
  *
- * \retval 0 on success.
- * \retval -1 if the RRSets could not be merged, because their Owner, Type,
- *         Class or TTL does not match.
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_EBADARG if the RRSets could not be merged, because their
+ *         Owner, Type, Class or TTL does not match.
  */
 int dnslib_rrset_merge(void **r1, void **r2);
 

@@ -21,8 +21,8 @@
 #define _KNOT_NAME_SERVER_H_
 
 #include <stdint.h>
+#include <string.h>
 
-#include "knot/common.h"
 #include "dnslib/zonedb.h"
 #include "dnslib/edns.h"
 
@@ -44,18 +44,15 @@ typedef struct ns_nameserver {
 	uint8_t *err_response; /*!< Prepared generic error response. */
 	size_t err_resp_size;  /*!< Size of the prepared error response. */
 	dnslib_opt_rr_t *opt_rr;  /*!< OPT RR with the server's EDNS0 info. */
-} ns_nameserver;
+} ns_nameserver_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Allocates and initializes the name server structure for the given
- *        database.
- *
- * \param database Zone database which will be used for the DNS functions.
+ * \brief Allocates and initializes the name server structure.
  *
  * \return Pointer to the name server structure.
  */
-ns_nameserver *ns_create(dnslib_zonedb_t *database);
+ns_nameserver_t *ns_create();
 
 /*!
  * \brief Creates a response for the given query using the data of the name
@@ -68,12 +65,12 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database);
  * \param rsize Input: maximum acceptable size of the response. Output: real
  *              size of the response.
  *
- * \retval 0 if a valid response was created.
- * \retval -1 if an error occured and the response is not valid.
+ * \retval KNOT_EOK if a valid response was created.
+ * \retval KNOT_EMALF if an error occured and the response is not valid.
  *
  * \todo Truncation of the packet.
  */
-int ns_answer_request(ns_nameserver *nameserver,
+int ns_answer_request(ns_nameserver_t *nameserver,
                       const uint8_t *query_wire,
                       size_t qsize,
                       uint8_t *response_wire,
@@ -82,15 +79,21 @@ int ns_answer_request(ns_nameserver *nameserver,
 /*!
  * \brief Properly destroys the name server structure.
  *
- * \note This functions does not destroy the zone database saved in the
- *       structure. This must be kept and destroyed elsewhere.
+ * \param nameserver Nameserver to destroy.
  */
-void ns_destroy(ns_nameserver **nameserver);
+void ns_destroy(ns_nameserver_t **nameserver);
 
 /*!
  * \brief Name server config hook.
  *
  * Routine for dynamic name server reconfiguration.
+ *
+ * \param conf Current configuration.
+ * \param data Instance of the nameserver structure to update.
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL
+ * \retval KNOT_ERROR
  */
 int ns_conf_hook(const struct conf_t *conf, void *data);
 
@@ -98,4 +101,3 @@ int ns_conf_hook(const struct conf_t *conf, void *data);
 #endif /* _KNOT_NAME_SERVER_H_ */
 
 /*! @} */
-

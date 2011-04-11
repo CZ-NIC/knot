@@ -8,6 +8,7 @@
 #include <assert.h>
 
 #include "knot/common.h"
+#include "knot/other/error.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
@@ -18,12 +19,15 @@
 #include "dnslib/debug.h"
 #include "dnslib/dname.h"
 #include "knot/conf/conf.h"
+#include "knot/server/zones.h"
 
-typedef struct ptrnode_t {
-	struct node *next, *prev;
-	void *p;
-} ptrnode_t;
+/*! \brief List item for generic pointers. */
+typedef struct pnode_t {
+	struct node *next, *prev; /* Keep the ordering for lib/lists.h */
+	void *p; /*!< \brief Useful data pointer. */
+} pnode_t;
 
+/*! \brief Unbind and dispose given interface. */
 static void server_remove_iface(iface_t *iface)
 {
 	/* Free UDP handler. */
@@ -51,9 +55,21 @@ static void server_remove_iface(iface_t *iface)
 	free(iface);
 }
 
-static int server_create_iface(iface_t *new_if, conf_iface_t *cfg_if)
+/*!
+ * \brief Initialize new interface from config value.
+ *
+ * Both TCP and UDP sockets will be created for the interface.
+ *
+ * \param new_if Allocated memory for the interface.
+ * \param cfg_if Interface template from config.
+ *
+ * \retval 0 if successful (EOK).
+ * \retval <0 on errors (EACCES, EINVAL, ENOMEM, EADDRINUSE).
+ */
+static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 {
 	/* Initialize interface. */
+	char errbuf[128];
 	int opt = 1024 * 256;
 	int snd_opt = 1024 * 8;
 	memset(new_if, 0, sizeof(iface_t));
@@ -62,16 +78,16 @@ static int server_create_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	int sock = socket_create(cfg_if->family, SOCK_DGRAM);
 	if (sock <= 0) {
 		log_server_error("Could not create UDP socket: %s.\n",
-		                 strerror(errno));
-		return -1;
+				 strerror_r(errno, errbuf, sizeof(errbuf)));
+		return sock;
 	}
 	if (socket_bind(sock, cfg_if->family,
 	                cfg_if->address, cfg_if->port) < 0) {
 		socket_close(sock);
 		log_server_error("Could not bind to "
-		                 "UDP interface '%s:%d'.\n",
+		                 "UDP interface %s port %d.\n",
 		                 cfg_if->address, cfg_if->port);
-		return -2;
+		return knot_map_errno(EACCES, EINVAL, ENOMEM);
 	}
 
 	new_if->fd[UDP_ID] = sock;
@@ -79,45 +95,56 @@ static int server_create_iface(iface_t *new_if, conf_iface_t *cfg_if)
 
 	/* Set socket options. */
 	if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &snd_opt, sizeof(snd_opt)) < 0) {
-		log_server_error("SO_SNDBUF setting failed\n");
+		log_server_warning("Failed to configure socket "
+		                   "write buffers.\n");
 	}
 	if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
-		log_server_error("SO_SNDBUF setting failed\n");
+		log_server_warning("Failed to configure socket read buffers.\n");
 	}
 
 	/* Create TCP socket. */
+	int ret = 0;
 	sock = socket_create(cfg_if->family, SOCK_STREAM);
 	if (sock <= 0) {
 		socket_close(new_if->fd[UDP_ID]);
 		log_server_error("Could not create TCP socket: %s.\n",
-		                 strerror(errno));
-		return -3;
+		                 strerror_r(errno, errbuf, sizeof(errbuf)));
+		return sock;
 	}
-	if (socket_bind(sock, cfg_if->family, cfg_if->address, cfg_if->port) < 0) {
+
+	ret = socket_bind(sock, cfg_if->family, cfg_if->address, cfg_if->port);
+	if (ret < 0) {
 		socket_close(new_if->fd[UDP_ID]);
 		socket_close(sock);
 		log_server_error("Could not bind to "
-		                 "TCP interface '%s:%d'.\n",
+		                 "TCP interface %s port %d.\n",
 		                 cfg_if->address, cfg_if->port);
-		return -4;
+		return ret;
 	}
 
-	if (socket_listen(sock, TCP_BACKLOG_SIZE) < 0) {
+	ret = socket_listen(sock, TCP_BACKLOG_SIZE);
+	if (ret < 0) {
 		socket_close(new_if->fd[UDP_ID]);
 		socket_close(sock);
 		log_server_error("Failed to listen on "
-		                 "TCP interface '%s:%d'.\n",
+		                 "TCP interface %s port %d.\n",
 		                 cfg_if->address, cfg_if->port);
-		return -5;
+		return ret;
 	}
 
 	new_if->fd[TCP_ID] = sock;
 	new_if->type[TCP_ID] = cfg_if->family;
 	new_if->port = cfg_if->port;
 	new_if->addr = strdup(cfg_if->address);
-	return 0;
+	return KNOT_EOK;
 }
 
+/*!
+ * \brief Update bound sockets according to configuration.
+ *
+ * \param server Server instance.
+ * \return number of added sockets.
+ */
 static int server_bind_sockets(server_t *server)
 {
 	/*! \todo This requires locking to disable parallel updates. */
@@ -177,13 +204,13 @@ static int server_bind_sockets(server_t *server)
 
 			/* Create new interface. */
 			m = malloc(sizeof(iface_t));
-			if (server_create_iface((iface_t*)m, cfg_if) < 0) {
+			if (server_init_iface((iface_t*)m, cfg_if) < 0) {
 				free(m);
 				m = 0;
 			}
 
-			debug_server("Creating interface '%s:%d'\n",
-			             cfg_if->address, cfg_if->port);
+			log_server_info("Binding to interface %s port %d.\n",
+			                cfg_if->address, cfg_if->port);
 		}
 
 		/* Move to new list. */
@@ -205,7 +232,8 @@ static int server_bind_sockets(server_t *server)
 	/* Remove deprecated interfaces. */
 	WALK_LIST_DELSAFE(n, m, unmatched) {
 		iface_t *rm_if = (iface_t*)n;
-		debug_server("Removing interface '%s:%d'\n", rm_if->addr, rm_if->port);
+		log_server_info("Removing interface %s port %d.\n",
+		                rm_if->addr, rm_if->port);
 		server_remove_iface(rm_if);
 	}
 
@@ -220,10 +248,17 @@ static int server_bind_sockets(server_t *server)
 	return bound;
 }
 
+/*!
+ * \brief Update socket handlers according to configuration.
+ *
+ * \param server Server instance.
+ * \retval 0 if successful (EOK).
+ * \retval <0 on errors (EINVAL).
+ */
 static int server_bind_handlers(server_t *server)
 {
 	if (!server || !server->ifaces) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	/* Estimate number of threads/manager. */
@@ -233,8 +268,8 @@ static int server_bind_handlers(server_t *server)
 		tcp_unit_size = 2;
 	}
 
-	/* Lock RCU. */
-	rcu_read_lock();
+	/* Lock config. */
+	conf_read_lock();
 
 	/* Create socket handlers. */
 	node *n = 0;
@@ -274,10 +309,10 @@ static int server_bind_handlers(server_t *server)
 
 	}
 
-	/* Unlock RCU. */
-	rcu_read_unlock();
+	/* Unlock config. */
+	conf_read_unlock();
 
-	return 0;
+	return KNOT_EOK;
 }
 
 server_t *server_create()
@@ -294,28 +329,17 @@ server_t *server_create()
 	server->ifaces = malloc(sizeof(list));
 	init_list(server->ifaces);
 
-	// Create zone database structure
-	debug_server("Creating Zone Database structure..\n");
-	server->zone_db = dnslib_zonedb_new();
-	if (server->zone_db == NULL) {
-		ERR_ALLOC_FAILED;
-		free(server);
-		return NULL;
-	}
-
 	// Create name server
-	debug_server("Creating Name Server structure..\n");
-	server->nameserver = ns_create(server->zone_db);
+	debug_server("Creating Name Server structure...\n");
+	server->nameserver = ns_create();
 	if (server->nameserver == NULL) {
-		dnslib_zonedb_deep_free(&server->zone_db);
 		free(server);
 		return NULL;
 	}
-	debug_server("Done\n\n");
 	debug_server("Initializing OpenSSL...\n");
 	OpenSSL_add_all_digests();
 
-	debug_server("Done\n\n");
+	debug_server("Done.\n");
 	return server;
 }
 
@@ -360,7 +384,7 @@ int server_remove_handler(server_t *server, iohandler_t *h)
 {
 	// Check
 	if (h == 0) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	/* Lock RCU. */
@@ -402,155 +426,51 @@ int server_remove_handler(server_t *server, iohandler_t *h)
 	// Destroy dispatcher and worker
 	dt_delete(&h->unit);
 	free(h);
-	return 0;
+	return KNOT_EOK;
 }
 
-int server_load_zone(server_t *server, const char *origin, const char *db)
-{
-	dnslib_zone_t *zone = NULL;
-
-	// Check path
-	if (db) {
-		debug_server("Parsing zone database '%s'\n", db);
-		zloader_t *zl = dnslib_zload_open(db);
-		if (!zl && errno == EILSEQ) {
-			log_server_error("Compiled db '%s' is too old, "
-			                 " please recompile.\n",
-			                 db);
-			return -1;
-		}
-
-		// Check if the db is up-to-date
-		if (dnslib_zload_needs_update(zl)) {
-			log_server_warning("warning: Zone file for '%s' "
-			                   "has changed, it is recommended to "
-			                   "recompile it.\n",
-			                   origin);
-		}
-
-		zone = dnslib_zload_load(zl);
-		dnslib_zload_close(zl);
-		if (zone) {
-			if (dnslib_zonedb_add_zone(server->zone_db, zone) != 0){
-				dnslib_zone_deep_free(&zone);
-			}
-		}
-		if (!zone) {
-			struct stat st;
-			if (stat(db, &st) != 0) {
-				log_server_error(
-				        "Database file '%s' not exists.\n",
-				        db);
-				log_server_error(
-				        "Please recompile zone databases.\n");
-			} else {
-				log_server_error("Failed to load db '%s' "
-				                 "for zone '%s'.\n",
-				                 db, origin);
-			}
-			return -1;
-		}
-	} else {
-		log_server_error("Invalid database '%s' for zone '%s'\n",
-		                 db, origin);
-	}
-
-//	dnslib_zone_dump(zone, 1);
-
-	return 0;
-}
-
-int server_start(server_t *server, const char **filenames, uint zones)
+int server_start(server_t *server)
 {
 	// Check server
 	if (server == 0) {
-		return -1;
+		return KNOT_EINVAL;
 	}
+
+	debug_server("Starting handlers...\n");
 
 	/* Lock configuration. */
 	conf_read_lock();
 
-	debug_server("Starting server with %u zone files.\n",
-	             zones + conf()->zones_count);
-	//stat
+	// Start dispatchers
+	int ret = KNOT_EOK;
+	server->state |= ServerRunning;
+	iohandler_t *h = 0;
+	WALK_LIST(h, server->handlers) {
 
-	stat_static_gath_start();
-
-	//!stat
-
-	// Load zones from config
-	node *n = 0; int zones_loaded = 0;
-	WALK_LIST (n, conf()->zones) {
-
-		// Fetch zone
-		conf_zone_t *z = (conf_zone_t*)n;
-
-		// Check if the source has changed
-		zloader_t *zl = dnslib_zload_open(z->db);
-		if (zl == NULL) {
-			log_server_warning("warning: Zone source file for '%s'  "
-					   "doesn't exists.\n",
-					   z->name);
+		/* Already running. */
+		if (h->state & ServerRunning) {
 			continue;
 		}
-		assert(zl != NULL);
-		int src_changed = strcmp(z->file, zl->source) != 0;
-		if (src_changed) {
-			log_server_warning("warning: Zone source file for '%s' "
-			                   "has changed, it is recommended to "
-			                   "recompile it.\n",
-			                   z->name);
-		}
-		dnslib_zload_close(zl);
 
-		// Load zone
-		if (server_load_zone(server, z->name, z->db) == 0) {
-			++zones_loaded;
+		h->state = ServerRunning;
+		ret = dt_start(h->unit);
+		if (ret < 0) {
+			break;
 		}
 	}
 
 	/* Unlock configuration. */
 	conf_read_unlock();
 
-	// Load given zones
-	for (uint i = 0; i < zones; ++i) {
-		if (server_load_zone(server, "??", filenames[i]) == 0) {
-			++zones_loaded;
-		}
-	}
-
-	/* Check the number of loaded zones. */
-	if (zones_loaded == 0) {
-		log_server_error("No valid database loaded, shutting down.\n");
-		return -1;
-	}
-
-	debug_server("Starting servers..\n");
-
-	/* Lock configuration. */
-	conf_read_lock();
-
-	// Start dispatchers
-	int ret = 0;
-	server->state |= ServerRunning;
-	iohandler_t *h = 0;
-	WALK_LIST(h, server->handlers) {
-		h->state = ServerRunning;
-		ret += dt_start(h->unit);
-	}
-
-	/* Unlock RCU. */
-	rcu_read_unlock();
-
-	debug_server("Done\n\n");
+	debug_server("Done.\n");
 
 	return ret;
 }
 
 int server_wait(server_t *server)
 {
-	/* Lock configuration. */
-	conf_read_lock();
+	/* Lock RCU. */
+	rcu_read_lock();
 
 	// Wait for dispatchers to finish
 	int ret = 0;
@@ -563,7 +483,10 @@ int server_wait(server_t *server)
 		rcu_read_unlock();
 
 		/* Remove handler. */
-		ret += dt_join(h->unit);
+		int dret = dt_join(h->unit);
+		if (dret < 0) {
+			ret = dret;
+		}
 		server_remove_handler(server, h);
 
 		/* Relock RCU. */
@@ -584,6 +507,7 @@ void server_stop(server_t *server)
 	rcu_read_lock();
 
 	// Notify servers to stop
+	log_server_info("Stopping server...\n");
 	server->state &= ~ServerRunning;
 	iohandler_t *h = 0;
 	WALK_LIST(h, server->handlers) {
@@ -617,7 +541,7 @@ void server_destroy(server_t **server)
 
 	stat_static_gath_free();
 	ns_destroy(&(*server)->nameserver);
-	dnslib_zonedb_deep_free(&(*server)->zone_db);
+
 	free(*server);
 
 	EVP_cleanup();
@@ -627,24 +551,30 @@ void server_destroy(server_t **server)
 
 int server_conf_hook(const struct conf_t *conf, void *data)
 {
-	debug_server("Event: reconfiguring server.\n");
 	server_t *server = (server_t *)data;
 
 	if (!server) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
-	if (server_bind_sockets(server) < 0) {
-		return -2;
+	/* Update bound sockets. */
+	int ret = KNOT_EOK;
+	if ((ret = server_bind_sockets(server)) < 0) {
+		log_server_error("Failed to bind configured "
+		                 "interfaces.\n");
+		return KNOT_ERROR;
 	}
 
-	if (server_bind_handlers(server) < 0) {
-		return -3;
+	/* Update handlers. */
+	if ((ret = server_bind_handlers(server)) < 0) {
+		log_server_error("Failed to create handlers for "
+		                 "configured interfaces.\n");
+		return ret;
 	}
 
 	/* Exit if the server is not running. */
 	if (!(server->state & ServerRunning)) {
-		return 0;
+		return KNOT_ENOTRUNNING;
 	}
 
 	/* Lock configuration. */
@@ -655,13 +585,20 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 	WALK_LIST(h, server->handlers) {
 		if (!(h->state & ServerRunning)) {
 			h->state = ServerRunning;
-			dt_start(h->unit);
+			ret = dt_start(h->unit);
+			if (ret < 0) {
+				log_server_error("Handler for %s:%d "
+				                 "has failed to start.\n",
+				                  h->iface->addr,
+				                  h->iface->port);
+				break;
+			}
 		}
 	}
 
-	/* Unlock RCU. */
-	rcu_read_unlock();
+	/* Unlock config. */
+	conf_read_unlock();
 
-	return 0;
+	return ret;
 }
 

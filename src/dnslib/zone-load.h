@@ -52,8 +52,8 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader);
  *
  * \param loader Zone loader instance.
  *
- * \retval True is if needs to be recompiled.
- * \retval False if it is up to date.
+ * \retval 1 is if needs to be recompiled.
+ * \retval 0 if it is up to date.
  */
 int dnslib_zload_needs_update(zloader_t *loader);
 
@@ -67,3 +67,4 @@ void dnslib_zload_close(zloader_t *loader);
 
 #endif /* _KNOT_ZONELOAD_H_ */
 
+/*! @} */

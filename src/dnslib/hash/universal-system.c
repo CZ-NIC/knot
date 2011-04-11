@@ -6,18 +6,24 @@
 #include <stdlib.h>
 #include <assert.h>
 
-//#include "common.h"
 #include "universal-system.h"
+#include "dnslib/utils.h"
 
 /*----------------------------------------------------------------------------*/
 
 const uint MAX_UINT_EXP = 32;
-const unsigned long MAX_UINT_MY = 4294967295;
+const unsigned long MAX_UINT_MY = UINT32_MAX; /* 4294967295 */
 
 /*----------------------------------------------------------------------------*/
 /* Private functions                                                          */
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Generates new set of coeficients.
+ *
+ * \param system Universal system to generate the coeficients for.
+ * \param from First coeficient to be replaced.
+ * \param to Up to this the coeficients will be replaced.
+ */
 static void us_generate_coefs(us_system_t *system, uint from, uint to)
 {
 	assert(system != NULL);
@@ -27,7 +33,7 @@ static void us_generate_coefs(us_system_t *system, uint from, uint to)
 
 		do {
 			// generate random odd number
-			system->coefs[i] = rand() % MAX_UINT_MY;
+			system->coefs[i] = dnslib_quick_rand() % MAX_UINT_MY;
 			if (system->coefs[i] % 2 == 0) {
 				system->coefs[i] = (system->coefs[i] == 0)
 				                    ? 1
@@ -53,7 +59,6 @@ void us_initialize(us_system_t *system)
 {
 	assert(system != NULL);
 	assert(UINT_MAX == MAX_UINT_MY);
-	srand(time(NULL));
 
 	// Initialize both generations of functions by generating random odd
 	// numbers

@@ -7,10 +7,11 @@
 #include <openssl/sha.h>
 
 #include "dnslib/nsec3.h"
-#include "dnslib-common.h"
+#include "dnslib/dnslib-common.h"
 #include "dnslib/descriptor.h"
 #include "dnslib/utils.h"
 #include "dnslib/tolower.h"
+#include "dnslib/error.h"
 #include "dnslib/debug.h"
 
 /*----------------------------------------------------------------------------*/
@@ -57,7 +58,7 @@ int dnslib_nsec3_params_from_wire(dnslib_nsec3_params_t *params,
 		debug_dnslib_nsec3("none\n");
 	}
 
-	return 0;
+	return DNSLIB_EOK;
 }
 
 static uint8_t *dnslib_nsec3_to_lowercase(const uint8_t *data, size_t size)
@@ -78,11 +79,8 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params,
                       const uint8_t *data, size_t size, uint8_t **digest,
                       size_t *digest_size)
 {
-	assert(digest != NULL);
-	assert(digest_size != NULL);
-
-	if (data == NULL) {
-		return -3;
+	if (digest == NULL || digest_size == NULL || data == NULL) {
+		return DNSLIB_EBADARG;
 	}
 
 	uint8_t *salt = params->salt;
@@ -162,11 +160,8 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params,
                       const uint8_t *data, size_t size, uint8_t **digest,
                       size_t *digest_size)
 {
-	assert(digest != NULL);
-	assert(digest_size != NULL);
-
-	if (data == NULL) {
-		return -3;
+	if (digest == NULL || digest_size == NULL || data == NULL) {
+		return DNSLIB_EBADARG;
 	}
 
 	uint8_t *salt = params->salt;
@@ -191,13 +186,13 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params,
 	*digest = (uint8_t *)malloc(SHA_DIGEST_LENGTH);
 	if (*digest == NULL) {
 		ERR_ALLOC_FAILED;
-		return -1;
+		return DNSLIB_ENOMEM;
 	}
 
 	uint8_t *data_low = dnslib_nsec3_to_lowercase(data, size);
 	if (data_low == NULL) {
 		free(*digest);
-		return -1;
+		return DNSLIB_ENOMEM;
 	}
 
 	const uint8_t *in = data_low;
@@ -240,7 +235,7 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params,
 			debug_dnslib_nsec3("Error calculating SHA-1 hash.\n");
 			free(data_low);
 			free(*digest);
-			return -2;
+			return DNSLIB_ECRYPTO;
 		}
 	}
 
@@ -254,7 +249,7 @@ int dnslib_nsec3_sha1(const dnslib_nsec3_params_t *params,
 	debug_dnslib_nsec3("\n");
 
 	free(data_low);
-	return 0;
+	return DNSLIB_EOK;
 }
 #endif
 

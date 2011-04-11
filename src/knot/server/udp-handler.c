@@ -10,6 +10,7 @@
 #include <errno.h>
 
 #include "knot/common.h"
+#include "knot/other/error.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/name-server.h"
 #include "knot/stat/stat.h"
@@ -18,13 +19,13 @@
 int udp_master(dthread_t *thread)
 {
 	iohandler_t *handler = (iohandler_t *)thread->data;
-	ns_nameserver *ns = handler->server->nameserver;
+	ns_nameserver_t *ns = handler->server->nameserver;
 	int sock = handler->fd;
 
-	// Check socket
+	/* Check socket. */
 	if (sock < 0) {
-		debug_net("udp_worker: null socket recevied, finishing.\n");
-		return 0;
+		debug_net("udp_master: null socket recevied, finishing.\n");
+		return KNOT_EINVAL;
 	}
 
 
@@ -75,10 +76,10 @@ int udp_master(dthread_t *thread)
 	 * Check addr len.
 	 */
 	if (!addr) {
-		log_server_error("UDP handler received invalid socket type %d, "
-		                 "AF_INET (%d) or AF_INET6 (%d) expected.\n",
-		                 handler->type, AF_INET, AF_INET6);
-		return 0;
+		debug_net("udp: received invalid socket type %d,"
+			  "AF_INET (%d) or AF_INET6 (%d) expected.\n",
+			  handler->type, AF_INET, AF_INET6);
+		return KNOT_EINVAL;
 	}
 
 	/* in case of STAT_COMPILE the following code will declare thread_stat
@@ -94,8 +95,8 @@ int udp_master(dthread_t *thread)
 	ssize_t n = 0;
 	while (n >= 0) {
 
-		n = socket_recvfrom(sock, inbuf, SOCKET_MTU_SZ, 0,
-		                    addr, &addrlen);
+		n = recvfrom(sock, inbuf, SOCKET_MTU_SZ, 0,
+		             addr, &addrlen);
 
 		// Cancellation point
 		if (dt_is_cancelled(thread)) {
@@ -108,9 +109,8 @@ int udp_master(dthread_t *thread)
 		// Error and interrupt handling
 		if (unlikely(n <= 0)) {
 			if (errno != EINTR && errno != 0) {
-				log_server_error("udp: %s: failed: %d - %s\n",
-				                 "socket_recvfrom()",
-				                 errno, strerror(errno));
+				debug_net("udp: recvfrom() failed: %d\n",
+					  errno);
 			}
 
 			if (!(handler->state & ServerRunning)) {
@@ -123,9 +123,9 @@ int udp_master(dthread_t *thread)
 
 		// Answer request
 		debug_net("udp: received %zd bytes.\n", n);
-		ssize_t answer_size = SOCKET_MTU_SZ;
-		ssize_t res = (ssize_t)ns_answer_request(ns, inbuf, n, outbuf,
-							 &answer_size);
+		size_t answer_size = SOCKET_MTU_SZ;
+		int res = ns_answer_request(ns, inbuf, n, outbuf,
+					    &answer_size);
 
 		debug_net("udp: got answer of size %zd.\n",
 			  answer_size);
@@ -139,15 +139,14 @@ int udp_master(dthread_t *thread)
 			debug_net_hex((const char *) outbuf, answer_size);
 
 			// Send datagram
-			res = socket_sendto(sock, outbuf, answer_size,
-			                    0, addr, addrlen);
+			res = sendto(sock, outbuf, answer_size,
+			             0, addr, addrlen);
 
 			// Check result
-			if (res != answer_size) {
-				char buf[256];
-				log_server_error("udp: %s: failed: %zd - %s.\n",
-				                 "socket_sendto()",
-				                 res, strerror_r((int)res, buf, sizeof(buf)));
+			if (res != (int)answer_size) {
+				debug_net("udp: %s: failed: %d - %d.\n",
+					  "socket_sendto()",
+					  res, errno);
 				continue;
 			}
 
@@ -157,6 +156,6 @@ int udp_master(dthread_t *thread)
 
 	stat_free(thread_stat);
 	debug_net("udp: worker %p finished.\n", thread);
-	return 0;
+	return KNOT_EOK;
 }
 

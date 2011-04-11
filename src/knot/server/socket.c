@@ -11,13 +11,19 @@
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 
+#include "knot/other/error.h"
 #include "knot/common.h"
 #include "knot/server/socket.h"
 
 int socket_create(int family, int type)
 {
 	/* Create socket. */
-	return socket(family, type, 0);
+	int ret = socket(family, type, 0);
+	if (ret < 0) {
+		return knot_map_errno(EACCES, EINVAL, ENOMEM);
+	}
+
+	return ret;
 }
 
 int socket_connect(int fd, const char *addr, unsigned short port)
@@ -28,12 +34,12 @@ int socket_connect(int fd, const char *addr, unsigned short port)
 	}
 
 	/* Resolve address. */
-	int ret = 0;
+	int ret = KNOT_EOK;
 	struct addrinfo hints, *res;
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	if ((ret = getaddrinfo(addr, NULL, &hints, &res)) != 0) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	/* Evaluate address type. */
@@ -58,7 +64,14 @@ int socket_connect(int fd, const char *addr, unsigned short port)
 	ret = -1;
 	if (addr) {
 		ret = connect(fd, saddr, addrlen);
+		if (ret < 0) {
+			ret = knot_map_errno(EACCES, EADDRINUSE, EAGAIN,
+			                     ECONNREFUSED, EISCONN);
+		}
+	} else {
+		ret = KNOT_EINVAL;
 	}
+
 
 	/* Free addresses. */
 	freeaddrinfo(res);
@@ -81,7 +94,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 		paddr = (struct sockaddr*)&saddr;
 		addrlen = sizeof(saddr);
 		if (getsockname(socket, paddr, &addrlen) < 0) {
-			return -1;
+			return KNOT_EINVAL;
 		}
 
 		/* Set address and port. */
@@ -90,7 +103,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 			saddr.sin_addr.s_addr = INADDR_ANY;
 			char buf[INET_ADDRSTRLEN];
 			inet_ntop(family, &saddr.sin_addr, buf, sizeof(buf));
-			log_server_error("sockets: Address '%s' is invalid, "
+			log_server_error("Address '%s' is invalid, "
 			                 "using '%s' instead.\n",
 			                 addr, buf);
 
@@ -99,14 +112,14 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 	} else {
 
 #ifdef DISABLE_IPV6
-		log_error("sockets: ipv6 support disabled\n");
-		return -1;
+		log_server_error("ipv6 support disabled\n");
+		return KNOT_ENOIPV6;
 #else
 		/* Initialize socket address. */
 		paddr = (struct sockaddr*)&saddr6;
 		addrlen = sizeof(saddr6);
 		if (getsockname(socket, paddr, &addrlen) < 0) {
-			return -1;
+			return KNOT_EINVAL;
 		}
 
 		/* Set address and port. */
@@ -115,7 +128,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 			memcpy(&saddr6.sin6_addr, &in6addr_any, sizeof(in6addr_any));
 			char buf[INET6_ADDRSTRLEN];
 			inet_ntop(family, &saddr6.sin6_addr, buf, sizeof(buf));
-			log_server_error("sockets: Address '%s' is invalid, "
+			log_server_error("Address '%s' is invalid, "
 			                 "using '%s' instead\n",
 			                 addr, buf);
 
@@ -128,27 +141,36 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 	int ret = setsockopt(socket, SOL_SOCKET, SO_REUSEADDR,
 	                     &flag, sizeof(flag));
 	if (ret < 0) {
-		return -2;
+		return KNOT_EINVAL;
 	}
 
 	/* Bind to specified address. */
 	int res = bind(socket, paddr, addrlen);
 	if (res < 0) {
-		log_server_error("%s: cannot bind socket (errno %d): %s.\n",
-		                 __func__, errno, strerror(errno));
-		return -3;
+		log_server_error("Cannot bind to socket (%d).\n",
+		                 errno);
+		return knot_map_errno(EADDRINUSE, EINVAL, EACCES, ENOMEM);
 	}
 
-	return 0;
+	return KNOT_EOK;
 }
 
 int socket_listen(int socket, int backlog_size)
 {
-	return listen(socket, backlog_size);
+	int ret = listen(socket, backlog_size);
+	if (ret < 0) {
+		return knot_map_errno(EADDRINUSE);
+	}
+
+	return KNOT_EOK;
 }
 
 int socket_close(int socket)
 {
-	return close(socket);
+	if (close(socket) < 0) {
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
 }
 

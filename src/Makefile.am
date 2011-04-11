@@ -1,9 +1,10 @@
 ACLOCAL_AMFLAGS = -I ../m4
 bin_PROGRAMS = knotc
-libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile
+libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-dnslib
 sbin_PROGRAMS = knotd
 
 # $(YACC) will generate header file
+AM_CFLAGS = -Wall
 AM_YFLAGS = -d
 libknot_la_YFLAGS = -pcf_ -d
 libknot_la_LFLAGS = # TODO: reentrant parser, prefix
@@ -11,59 +12,77 @@ libknot_la_LFLAGS = # TODO: reentrant parser, prefix
 LDADD = libknot.la @LIBOBJS@
 
 BUILT_SOURCES =					\
-	tests/dnslib/parsed_data.rc		\
-	tests/dnslib/raw_data_queries.rc	\
-	tests/dnslib/raw_data.rc		\
-	tests/dnslib/parsed_data_queries.rc     \
-        tests/sample_conf.rc
+	dnslib/tests/parsed_data.rc		\
+	dnslib/tests/raw_data_queries.rc	\
+	dnslib/tests/raw_data.rc		\
+	dnslib/tests/parsed_data_queries.rc     \
+	tests/sample_conf.rc
 
 CLEANFILES =					\
-	tests/dnslib/parsed_data.rc		\
-	tests/dnslib/raw_data_queries.rc	\
-	tests/dnslib/raw_data.rc		\
-	tests/dnslib/parsed_data_queries.rc     \
-        tests/sample_conf.rc                    \
+	dnslib/tests/parsed_data.rc		\
+	dnslib/tests/raw_data_queries.rc	\
+	dnslib/tests/raw_data.rc		\
+	dnslib/tests/parsed_data_queries.rc     \
+	tests/sample_conf.rc                    \
 	zparser.h				\
 	zparser.c				\
 	zlexer.c				\
-        libknot_la-cf-lex.c			\
-        libknot_la-cf-parse.c			\
-        libknot_la-cf-parse.h
+	libknot_la-cf-lex.c			\
+	libknot_la-cf-parse.c			\
+	libknot_la-cf-parse.h
 
 knotc_SOURCES =					\
 	knot/ctl/knotc_main.c
 
 knot_zcompile_SOURCES =			\
-	zoneparser/zoneparser_main.c            \
-	zoneparser/parser-util.h		\
-	zoneparser/parser-descriptor.h		\
-	zoneparser/zparser.y			\
-	zoneparser/zlexer.l			\
-	zoneparser/zoneparser.c			\
-	zoneparser/parser-util.c		\
-	zoneparser/parser-descriptor.c		
+	zcompile/zcompile_main.c            \
+	zcompile/zcompile-error.c		\
+	zcompile/parser-util.h		\
+	zcompile/parser-descriptor.h		\
+	zcompile/zparser.y			\
+	zcompile/zlexer.l			\
+	zcompile/zcompile.c			\
+	zcompile/parser-util.c		\
+	zcompile/parser-descriptor.c
 
 unittests_SOURCES =				\
-	tests/libtap/tap.c			\
+	tests/common/da_tests.c			\
+	tests/common/skiplist_tests.c		\
+	tests/common/slab_tests.c		\
+	tests/knot/conf_tests.c			\
+	tests/knot/dthreads_tests.c		\
+	tests/knot/server_tests.c		\
 	tests/unittests_main.c
 
+unittests_dnslib_SOURCES =			\
+	dnslib/tests/dnslib/cuckoo_tests.c	\
+	dnslib/tests/dnslib/dname_tests.c	\
+	dnslib/tests/dnslib/edns_tests.c	\
+	dnslib/tests/dnslib/node_tests.c	\
+	dnslib/tests/dnslib/rdata_tests.c	\
+	dnslib/tests/dnslib/response_tests.c	\
+	dnslib/tests/dnslib/rrset_tests.c	\
+	dnslib/tests/dnslib/zone_tests.c	\
+	dnslib/tests/dnslib/zonedb_tests.c	\
+	dnslib/tests/unittests_dnslib.c
+
 unittests_zcompile_SOURCES =		\
-	zoneparser/parser-util.h		\
-	zoneparser/parser-descriptor.h		\
-	zoneparser/zparser.y			\
-	zoneparser/zlexer.l			\
-	zoneparser/zoneparser.c			\
-	zoneparser/parser-util.c		\
-	zoneparser/parser-descriptor.c		\
-	tests/libtap/tap.c			\
-	zoneparser/tests/unittests_zp_main.c	
+	zcompile/parser-util.h		\
+	zcompile/parser-descriptor.h		\
+	zcompile/zcompile-error.c		\
+	zcompile/zparser.y			\
+	zcompile/zlexer.l			\
+	zcompile/zcompile.c			\
+	zcompile/parser-util.c		\
+	zcompile/parser-descriptor.c		\
+	zcompile/tests/unittests_zp_main.c
 
 nodist_unittests_SOURCES =			\
-	tests/dnslib/parsed_data.rc		\
-	tests/dnslib/raw_data_queries.rc	\
-	tests/dnslib/raw_data.rc		\
-	tests/dnslib/parsed_data_queries.rc     \
-        tests/sample_conf.rc
+	dnslib/tests/parsed_data.rc		\
+	dnslib/tests/raw_data_queries.rc	\
+	dnslib/tests/raw_data.rc		\
+	dnslib/tests/parsed_data_queries.rc     \
+	tests/sample_conf.rc
 
 knotd_SOURCES =					\
 	knot/main.c
@@ -74,6 +93,9 @@ libknot_la_SOURCES =				\
 	common/slab/malloc.c				\
 	common/slab/slab.h			        \
 	common/slab/malloc.h				\
+	common/libtap/tap.c			\
+	common/libtap/tap.h			\
+	common/tap_unit.h			\
 	common/lists.c	            		\
 	common/base32.c				\
 	common/lists.h	            		\
@@ -87,6 +109,10 @@ libknot_la_SOURCES =				\
 	common/dynamic-array.h			\
 	common/tree.h				\
 	common/base32hex.h				\
+	common/evqueue.h		\
+	common/evqueue.c		\
+	common/errors.h			\
+	common/errors.c			\
 	knot/stat/gatherer.c				\
 	knot/stat/stat.c				\
 	knot/stat/gatherer.h				\
@@ -120,6 +146,7 @@ libknot_la_SOURCES =				\
 	dnslib/descriptor.h			\
 	dnslib/dnslib.h				\
 	dnslib/tolower.h			\
+	dnslib/tolower.c			\
 	dnslib/zone-dump.h			\
 	dnslib/dname.h				\
 	dnslib/response.h			\
@@ -133,8 +160,8 @@ libknot_la_SOURCES =				\
 	knot/other/log.c				\
 	knot/other/log.h				\
 	knot/other/debug.h			\
-	knot/other/evqueue.h		\
-	knot/other/evqueue.c		\
+	knot/other/error.h			\
+	knot/other/error.c			\
 	knot/conf/cf-parse.y                         \
 	knot/conf/cf-lex.l                           \
 	knot/conf/conf.c                             \
@@ -149,30 +176,30 @@ libknot_la_SOURCES =				\
 	knot/server/server.c				\
 	knot/server/udp-handler.c			\
 	knot/server/tcp-handler.c			\
+	knot/server/zones.c				\
 	knot/server/socket.h				\
 	knot/server/name-server.h			\
 	knot/server/udp-handler.h			\
 	knot/server/tcp-handler.h			\
 	knot/server/dthreads.h			\
-	knot/server/server.h				\
-	tests/libtap/tap.h			\
-	tests/tap_unit.h
+	knot/server/zones.h				\
+	knot/server/server.h
 
 libknot_la_LIBADD = @LIBOBJS@
 
 # automake complains on % rules:
 #   `%'-style pattern rules are a GNU make extension
 
-tests/dnslib/parsed_data.rc: tests/files/parsed_data
+dnslib/tests/parsed_data.rc: dnslib/tests/files/parsed_data
 	../resource.sh $< >$@
 
-tests/dnslib/parsed_data_queries.rc: tests/files/parsed_data_queries
+dnslib/tests/parsed_data_queries.rc: dnslib/tests/files/parsed_data_queries
 	../resource.sh $< >$@
 
-tests/dnslib/raw_data_queries.rc: tests/files/raw_data_queries
+dnslib/tests/raw_data_queries.rc: dnslib/tests/files/raw_data_queries
 	../resource.sh $< >$@
 
-tests/dnslib/raw_data.rc: tests/files/raw_data
+dnslib/tests/raw_data.rc: dnslib/tests/files/raw_data
 	../resource.sh $< >$@
 
 tests/sample_conf.rc: tests/files/sample_conf

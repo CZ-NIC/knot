@@ -8,19 +8,21 @@
 
 #include "knot/common.h"
 #include "knot/server/dthreads.h"
+#include "knot/other/log.h"
+#include "knot/other/error.h"
 
-/* Lock thread state for R/W. */
+/*! \brief Lock thread state for R/W. */
 static inline void lock_thread_rw(dthread_t *thread)
 {
 	pthread_mutex_lock(&thread->_mx);
 }
-/* Unlock thread state for R/W. */
+/*! \brief Unlock thread state for R/W. */
 static inline void unlock_thread_rw(dthread_t *thread)
 {
 	pthread_mutex_unlock(&thread->_mx);
 }
 
-/* Signalize thread state change. */
+/*! \brief Signalize thread state change. */
 static inline void unit_signalize_change(dt_unit_t *unit)
 {
 	pthread_mutex_lock(&unit->_report_mx);
@@ -28,18 +30,24 @@ static inline void unit_signalize_change(dt_unit_t *unit)
 	pthread_mutex_unlock(&unit->_report_mx);
 }
 
-/* Update thread state. */
+/*!
+ * \brief Update thread state with notification.
+ * \param thread Given thread.
+ * \param state New state for thread.
+ * \retval 0 on success.
+ * \retval <0 on error (EINVAL, ENOTSUP).
+ */
 static inline int dt_update_thread(dthread_t *thread, int state)
 {
 	// Check
 	if (thread == 0) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	// Cancel with lone thread
 	dt_unit_t *unit = thread->unit;
 	if (unit == 0) {
-		return 0;
+		return KNOT_ENOTSUP;
 	}
 
 	// Cancel current runnable if running
@@ -56,26 +64,35 @@ static inline int dt_update_thread(dthread_t *thread, int state)
 		pthread_cond_broadcast(&unit->_notify);
 		pthread_mutex_unlock(&unit->_notify_mx);
 	} else {
+		/* Unable to update thread, it is already dead. */
 		unlock_thread_rw(thread);
 		pthread_mutex_unlock(&unit->_notify_mx);
-		return -1;
+		return KNOT_EINVAL;
 	}
 
-	return 0;
+	return KNOT_EOK;
 }
 
-/*
- * Thread entrypoint interrupt handler.
+/*!
+ * \brief Thread entrypoint interrupt handler.
+ *
+ * Threads shouldn't use global interrupt handler, so this no-op function
+ * is provided.
  */
 static void thread_ep_intr(int s)
 {
 }
 
-/*
- * Thread entrypoint function.
- * This is an Idle state of each thread.
- * Depending on thread state, runnable is run or
- * thread blocks until it is requested.
+/*!
+ * \brief Thread entrypoint function.
+ *
+ * When a thread is created and started, it immediately enters this function.
+ * Depending on thread state, it either enters runnable or
+ * blocks until it is awakened.
+ *
+ * This function also handles "ThreadIdle" state to quickly suspend and resume
+ * threads and mitigate thread creation costs. Also, thread runnable may
+ * be changed to alter the thread behavior on runtime
  */
 static void *thread_ep(void *data)
 {
@@ -175,8 +192,8 @@ static void *thread_ep(void *data)
 
 /*!
  * \brief Create single thread.
- * \return New thread instance or 0.
- * \private
+ * \retval New thread instance on success.
+ * \retval NULL on error.
  */
 static dthread_t *dt_create_thread(dt_unit_t *unit)
 {
@@ -203,10 +220,7 @@ static dthread_t *dt_create_thread(dt_unit_t *unit)
 	return thread;
 }
 
-/*!
- * \brief Delete single thread.
- * \private
- */
+/*! \brief Delete single thread. */
 static void dt_delete_thread(dthread_t **thread)
 {
 	// Check
@@ -230,6 +244,10 @@ static void dt_delete_thread(dthread_t **thread)
 	// Free memory
 	free(thr);
 }
+
+/*
+ * Public APIs.
+ */
 
 dt_unit_t *dt_create(int count)
 {
@@ -398,7 +416,7 @@ int dt_resize(dt_unit_t *unit, int size)
 {
 	// Check input
 	if (unit == 0 || size <= 0) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	// Evaluate delta
@@ -452,7 +470,7 @@ int dt_resize(dt_unit_t *unit, int size)
 	// New threads vector
 	dthread_t **threads = malloc(size * sizeof(dthread_t *));
 	if (threads == 0) {
-		return -1;
+		return KNOT_ENOMEM;
 	}
 
 	// Lock unit
@@ -567,7 +585,7 @@ int dt_start(dt_unit_t *unit)
 {
 	// Check input
 	if (unit == 0) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	// Lock unit
@@ -578,9 +596,7 @@ int dt_start(dt_unit_t *unit)
 		dthread_t *thread = unit->threads[i];
 		int res = dt_start_id(thread);
 		if (res != 0) {
-			log_server_error("dthreads: Failed to "
-			                 "create thread '%d'.",
-			                 i);
+			debug_dt("dthreads: Failed to create thread '%d'.", i);
 			dt_unit_unlock(unit);
 			pthread_mutex_unlock(&unit->_notify_mx);
 			return res;
@@ -601,7 +617,7 @@ int dt_start_id(dthread_t *thread)
 {
 	// Check input
 	if (thread == 0) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	lock_thread_rw(thread);
@@ -637,17 +653,29 @@ int dt_signalize(dthread_t *thread, int signum)
 {
 	// Check input
 	if (thread == 0) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
-	return pthread_kill(thread->_thr, signum);
+	int ret = pthread_kill(thread->_thr, signum);
+
+	/* Not thread id found or invalid signum. */
+	if (ret == EINVAL || ret == ESRCH) {
+		return KNOT_EINVAL;
+	}
+
+	/* Generic error. */
+	if (ret < 0) {
+		return KNOT_ERROR;
+	}
+
+	return KNOT_EOK;
 }
 
 int dt_join(dt_unit_t *unit)
 {
 	// Check input
 	if (unit == 0) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	for (;;) {
@@ -695,14 +723,14 @@ int dt_join(dt_unit_t *unit)
 		pthread_mutex_unlock(&unit->_report_mx);
 	}
 
-	return 0;
+	return KNOT_EOK;
 }
 
 int dt_stop_id(dthread_t *thread)
 {
 	// Check input
 	if (thread == 0) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	// Signalize active thread to stop
@@ -721,14 +749,14 @@ int dt_stop_id(dthread_t *thread)
 		pthread_mutex_unlock(&unit->_notify_mx);
 	}
 
-	return 0;
+	return KNOT_EOK;
 }
 
 int dt_stop(dt_unit_t *unit)
 {
 	// Check unit
 	if (unit == 0) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	// Lock unit
@@ -757,14 +785,14 @@ int dt_stop(dt_unit_t *unit)
 	pthread_cond_broadcast(&unit->_notify);
 	pthread_mutex_unlock(&unit->_notify_mx);
 
-	return 0;
+	return KNOT_EOK;
 }
 
 int dt_setprio(dthread_t *thread, int prio)
 {
 	// Check input
 	if (thread == 0) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	// Clamp priority
@@ -782,20 +810,27 @@ int dt_setprio(dthread_t *thread, int prio)
 		ret = pthread_attr_setschedparam(&thread->_attr, &sp);
 	}
 
-	// Report
+	/* Map error codes. */
 	if (ret < 0) {
-		debug_dt("dthreads: [%p] %s(%d): failed: %s",
-		         thread, __func__, prio, strerror(errno));
+		debug_dt("dthreads: [%p] %s(%d): failed",
+			 thread, __func__, prio);
+
+		/* Map "not supported". */
+		if (ret == ENOTSUP) {
+			return KNOT_ENOTSUP;
+		}
+
+		return KNOT_EINVAL;
 	}
 
-	return ret;
+	return KNOT_EOK;
 }
 
 int dt_repurpose(dthread_t *thread, runnable_t runnable, void *data)
 {
 	// Check
 	if (thread == 0) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	// Stop here if thread isn't a member of a unit
@@ -804,7 +839,7 @@ int dt_repurpose(dthread_t *thread, runnable_t runnable, void *data)
 		lock_thread_rw(thread);
 		thread->state = ThreadActive | ThreadCancelled;
 		unlock_thread_rw(thread);
-		return 0;
+		return KNOT_ENOTSUP;
 	}
 
 	// Lock thread state changes
@@ -830,7 +865,7 @@ int dt_repurpose(dthread_t *thread, runnable_t runnable, void *data)
 		pthread_mutex_unlock(&unit->_notify_mx);
 	}
 
-	return 0;
+	return KNOT_EOK;
 }
 
 int dt_activate(dthread_t *thread)
@@ -847,7 +882,7 @@ int dt_compact(dt_unit_t *unit)
 {
 	// Check input
 	if (unit == 0) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	// Lock unit
@@ -895,7 +930,7 @@ int dt_compact(dt_unit_t *unit)
 	// Unlock unit
 	dt_unit_unlock(unit);
 
-	return 0;
+	return KNOT_EOK;
 }
 
 int dt_optimal_size()
@@ -906,7 +941,7 @@ int dt_optimal_size()
 		return ret + CPU_ESTIMATE_MAGIC;
 	}
 #endif
-	log_server_info("dthreads: Failed to fetch the number of online CPUs.");
+	debug_dt("dthreads: Failed to fetch the number of online CPUs.");
 	return DEFAULT_THR_COUNT;
 }
 
@@ -932,18 +967,32 @@ int dt_unit_lock(dt_unit_t *unit)
 {
 	// Check input
 	if (unit == 0) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
-	return pthread_mutex_lock(&unit->_mx);
+	int ret = pthread_mutex_lock(&unit->_mx);
+
+	/* Map errors. */
+	if (ret < 0) {
+		return knot_map_errno(EINVAL, EAGAIN);
+	}
+
+	return KNOT_EOK;
 }
 
 int dt_unit_unlock(dt_unit_t *unit)
 {
 	// Check input
 	if (unit == 0) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
-	return pthread_mutex_unlock(&unit->_mx);
+	int ret = pthread_mutex_unlock(&unit->_mx);
+
+	/* Map errors. */
+	if (ret < 0) {
+		return knot_map_errno(EINVAL, EAGAIN);
+	}
+
+	return KNOT_EOK;
 }

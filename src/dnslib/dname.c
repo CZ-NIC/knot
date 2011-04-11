@@ -5,20 +5,36 @@
 #include <string.h>
 #include <ctype.h>	// tolower()
 
-#include "dnslib-common.h"
+#include "dnslib/dnslib-common.h"
+#include "dnslib/error.h"
 #include "dnslib/dname.h"
 #include "dnslib/consts.h"
 #include "dnslib/tolower.h"
 #include "dnslib/debug.h"
 #include "dnslib/utils.h"
 
-/* Memory cache.
+/*
+ * Memory cache.
  */
 #include "common/slab/slab.h"
 #include <stdio.h>
 #include <pthread.h>
+
+/*! \brief TLS unique key for each thread cache. */
 static pthread_key_t dname_ckey;
 
+/*! \brief Create thread cache. */
+static void dname_ckey_create()
+{
+	slab_cache_t *cache = malloc(sizeof(slab_cache_t));
+	if (cache) {
+		slab_cache_init(cache, sizeof(dnslib_dname_t));
+	}
+
+	(void) pthread_setspecific(dname_ckey, cache);
+}
+
+/*! \brief Delete thread cache. */
 static void dname_ckey_delete(void* ptr)
 {
 	//fprintf(stderr, "Thread %p calls %s()\n", (void*)pthread_self(), __func__);
@@ -29,27 +45,26 @@ static void dname_ckey_delete(void* ptr)
 	}
 }
 
+/*!
+ * \brief Allocate item from thread cache.
+ * \retval Allocated dname instance on success.
+ * \retval NULL on error.
+ */
 static dnslib_dname_t* dnslib_dname_alloc()
 {
 	slab_cache_t* cache = pthread_getspecific(dname_ckey);
-	if (unlikely(cache == 0)) {
-		cache = malloc(sizeof(slab_cache_t));
-		slab_cache_init(cache, sizeof(dnslib_dname_t));
-		(void) pthread_setspecific(dname_ckey, cache);
-		//fprintf(stderr, "Thread %p cache initialized.\n", (void*)pthread_self());
-	}
-
 	dnslib_dname_t* ret = slab_cache_alloc(cache);
 	return ret;
 }
 
-/* Main thread init. */
+/*! \brief Initialize thread dname cache (automatically called). */
 static void __attribute__ ((constructor)) dnslib_dname_cache_init()
 {
 	(void) pthread_key_create(&dname_ckey, dname_ckey_delete);
+	dname_ckey_create();
 }
 
-/* Main thread cleanup. */
+/*! \brief Destroy thread dname cache (automatically called). */
 static void __attribute__ ((destructor)) dnslib_dname_cache_cleanup()
 {
 	slab_cache_t* cache = pthread_getspecific(dname_ckey);
@@ -85,8 +100,7 @@ static int dnslib_dname_set(dnslib_dname_t *dname, uint8_t *wire,
  * \param name Domain name in string representation (presentation format).
  * \param size Size of the given domain name in characters (not counting the
  *             terminating 0 character.
- * \param wire [in/out] Pointer to position where the wire format of the domain
- *             name will be stored.
+ * \param dname Domain name where to store the wire format.
  *
  * \return Size of the wire format of the domain name in octets. If 0, no
  *         space has been allocated.
@@ -240,7 +254,7 @@ static int dnslib_dname_find_labels(dnslib_dname_t *dname, int alloc)
 	if (alloc) {
 		dname->labels
 			= (uint8_t *)malloc(label_count * sizeof(uint8_t));
-		CHECK_ALLOC_LOG(dname->labels, -1);
+		CHECK_ALLOC_LOG(dname->labels, DNSLIB_ENOMEM);
 	}
 
 	memcpy(dname->labels, labels, label_count);
@@ -364,20 +378,16 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 int dnslib_dname_from_wire(const uint8_t *name, uint size,
                            struct dnslib_node *node, dnslib_dname_t *target)
 {
-	if (name == NULL) { /* && size != 0) { !OS: Nerozumjaju */
-		debug_dnslib_dname("No name given, but size = %u!\n", size);
-		return -1;
+	/* Change by JK, was target != NULL, which made no sense to me */
+	if (name == NULL || target == NULL) {
+		return DNSLIB_EBADARG;
 	}
 
 	memcpy(target->name, name, size);
 	target->size = size;
 	target->node = node;
-	if (dnslib_dname_find_labels(target, 0) != 0) {
-		return -1;
-	}
-	assert(target->label_count >= 0);
 
-	return 0;
+	return dnslib_dname_find_labels(target, 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -556,16 +566,6 @@ DEBUG_DNSLIB_DNAME(
 		return 0;
 	}
 
-	// jump to the last label and store addresses of labels
-	// on the way there
-	// TODO: consider storing label offsets in the domain name structure
-//	const uint8_t *labels1[DNSLIB_MAX_DNAME_LABELS];
-//	const uint8_t *labels2[DNSLIB_MAX_DNAME_LABELS];
-//	int l1 = 0;
-//	int l2 = 0;
-
-//	dnslib_dname_find_labels(sub, labels1, &l1);
-//	dnslib_dname_find_labels(domain, labels2, &l2);
 	int l1 = sub->label_count;
 	int l2 = domain->label_count;
 

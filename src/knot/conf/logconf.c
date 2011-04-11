@@ -8,18 +8,19 @@
 #include "knot/conf/logconf.h"
 #include "knot/conf/conf.h"
 #include "knot/other/log.h"
+#include "knot/other/error.h"
 #include "common/lists.h"
+#include "knot/common.h"
 
 int log_conf_hook(const struct conf_t *conf, void *data)
 {
-	debug_server("Event: reconfiguring logsystem.\n");
-
 	// Data not used
-	data = data;
+	int ret = 0;
+	UNUSED(data);
 
 	// Check if log declaration exists, otherwise ignore
 	if (conf->logs_count < 1) {
-		return 0;
+		return KNOT_EINVAL;
 	}
 
 	// Find maximum log facility id
@@ -33,7 +34,9 @@ int log_conf_hook(const struct conf_t *conf, void *data)
 
 	// Initialize logsystem
 	log_truncate();
-	log_setup(files);
+	if ((ret = log_setup(files)) < 0) {
+		return ret;
+	}
 
 	// Setup logs
 	int loaded_sections = 0;
@@ -46,9 +49,8 @@ int log_conf_hook(const struct conf_t *conf, void *data)
 		if (facility == LOGT_FILE) {
 			facility = log_open_file(log->file);
 			if (facility < 0) {
-				log_server_error("config: Failed to open "
-				                 "logfile '%s'.\n",
-				                 log->file);
+				log_server_error("Failed to open "
+				                 "logfile '%s'.\n", log->file);
 				continue;
 			}
 		}
@@ -79,6 +81,6 @@ int log_conf_hook(const struct conf_t *conf, void *data)
 		log_levels_set(LOGT_STDERR, LOG_ANY, bmask);
 	}
 
-	return 0;
+	return KNOT_EOK;
 }
 

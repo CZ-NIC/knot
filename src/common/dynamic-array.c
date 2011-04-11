@@ -43,7 +43,7 @@ static int da_resize(da_array_t *array, da_resize_type_t type)
 	debug_da("da_resize(): array pointer: %p, items pointer: %p\n", array,
 	         array->items);
 
-	uint new_size = ((type == DA_LARGER)
+	unsigned new_size = ((type == DA_LARGER)
 	                 ? (array->allocated *= 2)
 	                 : (array->allocated /= 2));
 
@@ -78,7 +78,7 @@ static int da_resize(da_array_t *array, da_resize_type_t type)
 /* Public functions                                                           */
 /*----------------------------------------------------------------------------*/
 
-da_array_t *da_create(uint count, size_t item_size)
+da_array_t *da_create(unsigned count, size_t item_size)
 {
 	da_array_t *a = (da_array_t *)malloc(sizeof(da_array_t));
 	if (a == NULL) {
@@ -91,7 +91,7 @@ da_array_t *da_create(uint count, size_t item_size)
 
 /*----------------------------------------------------------------------------*/
 
-int da_initialize(da_array_t *array, uint count, size_t item_size)
+int da_initialize(da_array_t *array, unsigned count, size_t item_size)
 {
 	assert(array != NULL);
 	pthread_mutex_init(&array->mtx, NULL);
@@ -116,10 +116,10 @@ int da_initialize(da_array_t *array, uint count, size_t item_size)
 
 /*----------------------------------------------------------------------------*/
 
-int da_reserve(da_array_t *array, uint count)
+int da_reserve(da_array_t *array, unsigned count)
 {
 	pthread_mutex_lock(&array->mtx);
-	uint res = 0;
+	unsigned res = 0;
 
 	assert(array->allocated >= array->count);
 	if ((array->allocated - array->count) >= count) {
@@ -136,10 +136,10 @@ int da_reserve(da_array_t *array, uint count)
 
 /*----------------------------------------------------------------------------*/
 
-int da_occupy(da_array_t *array, uint count)
+int da_occupy(da_array_t *array, unsigned count)
 {
 	pthread_mutex_lock(&array->mtx);
-	uint res = 0;
+	unsigned res = 0;
 	assert(array->allocated >= array->count);
 
 	if ((array->allocated - array->count) < count) {
@@ -155,7 +155,7 @@ int da_occupy(da_array_t *array, uint count)
 
 /*----------------------------------------------------------------------------*/
 
-uint da_try_reserve(const da_array_t *array, uint count)
+unsigned da_try_reserve(const da_array_t *array, unsigned count)
 {
 	assert(array->allocated >= array->count);
 	if ((array->allocated - array->count) >= count) {
@@ -167,7 +167,7 @@ uint da_try_reserve(const da_array_t *array, uint count)
 
 /*----------------------------------------------------------------------------*/
 
-void da_release(da_array_t *array, uint count)
+void da_release(da_array_t *array, unsigned count)
 {
 	pthread_mutex_lock(&array->mtx);
 
@@ -202,7 +202,7 @@ void *da_get_items(const da_array_t *array)
 
 /*----------------------------------------------------------------------------*/
 
-uint da_get_count(const da_array_t *array)
+unsigned da_get_count(const da_array_t *array)
 {
 	return array->count;
 }

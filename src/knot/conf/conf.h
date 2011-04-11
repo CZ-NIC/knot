@@ -1,12 +1,13 @@
 /*!
  * \file conf.h
  *
- * \author Ondrej Sury <ondrej.sury\nic.cz>
+ * \author Ondrej Sury <ondrej.sury@nic.cz>
+ * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *
  * \brief Server configuration structures and API.
  *
  * \addtogroup config
- * \{
+ * @{
  */
 
 #ifndef _KNOT_CONF_H_
@@ -185,8 +186,8 @@ conf_t *conf_new(const char* path);
  * \param on_update Callback.
  * \param data User specified data for hook.
  *
- * \retval 0 on success.
- * \retval <0 on error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_ENOMEM out of memory error.
  */
 int conf_add_hook(conf_t * conf, int sections,
                   int (*on_update)(const conf_t*, void*), void *data);
@@ -198,8 +199,8 @@ int conf_add_hook(conf_t * conf, int sections,
  *
  * \param conf Configuration context.
  *
- * \retval 0 on success.
- * \retval <0 on error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EPARSEFAIL on parser error.
  */
 int conf_parse(conf_t *conf);
 
@@ -211,8 +212,8 @@ int conf_parse(conf_t *conf);
  * \param conf Configuration context.
  * \param src Source string.
  *
- * \retval 0 on success.
- * \retval <0 on error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EPARSEFAIL on parser error.
  */
 int conf_parse_str(conf_t *conf, const char* src);
 
@@ -253,8 +254,9 @@ char* conf_find_default();
  *
  * \param path Path to configuration file.
  *
- * \retval 0 on success.
- * \retval <0 on error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on null path.
+ * \retval KNOT_ENOENT if the path doesn't exist.
  */
 int conf_open(const char* path);
 
@@ -291,7 +293,7 @@ static inline void conf_read_unlock() {
  */
 
 /*!
- * \brief Return normalized path.
+ * \brief Normalize file path and expand '~' placeholders.
  *
  * \note Old pointer may be freed.
  *
@@ -301,4 +303,4 @@ char* strcpath(char *path);
 
 #endif /* _KNOT_CONF_H_ */
 
-/*! \} */
+/*! @} */

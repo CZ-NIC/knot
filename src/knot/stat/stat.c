@@ -33,6 +33,11 @@ static uint stat_last_query_time( stat_t *stat )
 	return (stat->t2).tv_nsec-(stat->t1).tv_nsec;
 }*/
 
+/*!
+ * \brief Increases query count in the local data gatherer.
+ *
+ * \param stat Current stat instance.
+ */
 static void stat_inc_query(stat_t *stat)
 {
 	if (stat->protocol == stat_UDP) {
@@ -42,8 +47,18 @@ static void stat_inc_query(stat_t *stat)
 	}
 }
 
+/*!
+ * \brief Calculates very simple hash from IPv4 address and returns index to
+ *        array.
+ *
+ * \param s_addr Socket address structure.
+ * \param protocol Used protocol.
+ *
+ * \return uint Calculated index.
+ */
 static uint return_index(struct sockaddr_in *s_addr , protocol_t protocol)
 {
+	/* TODO IPv6 */
 	/* This is the first "hash" I could think of quickly. */
 	uint ret = 0;
 
@@ -69,8 +84,17 @@ static uint return_index(struct sockaddr_in *s_addr , protocol_t protocol)
 	return ret;
 }
 
+/*!
+ * \brief Adds data to local gatherer structure.
+ *
+ * \param stat Current stat variable.
+ *
+ * \retval 0 on success.
+ * \retval -1 on memory error.
+ */
 static int stat_gatherer_add_data(stat_t *stat)
 {
+	/* TODO IPv6*/
 	uint index = return_index(stat->s_addr, stat->protocol);
 	if (!local_gath->freq_array[index]) {
 		char addr[24];
@@ -99,6 +123,9 @@ static int stat_gatherer_add_data(stat_t *stat)
 	return 0;
 }
 
+/*!
+ * \brief Resets logging array.
+ */
 static void stat_reset_gatherer_array()
 {
 	for (int i = 0; i < FREQ_BUFFER_SIZE; i++) {
@@ -106,6 +133,10 @@ static void stat_reset_gatherer_array()
 	}
 }
 
+/*!
+ * \brief Sleeps for given time and then runs all the computations,
+ *        results of which are stored in local gatherer.
+ */
 static void stat_sleep_compute()
 {
 	while (1) {
@@ -183,16 +214,16 @@ void stat_set_protocol(stat_t *stat, int protocol)
 
 void stat_get_first(stat_t *stat , struct sockaddr_in *s_addr)
 {
-//  gettimeofday(&stat->t2, NULL);
+//	gettimeofday(&stat->t2, NULL);
 	stat->s_addr = s_addr;
-	//check if s_addr does not get overwritten
+//	check if s_addr does not get overwritten
 }
 
 void stat_get_second(stat_t *stat)
 {
-//  gettimeofday(&stat->t2, NULL);
+//	gettimeofday(&stat->t2, NULL);
 	stat_inc_query(stat);
-//  stat_inc_latency(stat, stat_last_query_time(stat));
+//	stat_inc_latency(stat, stat_last_query_time(stat));
 	stat_gatherer_add_data(stat);
 }
 
@@ -209,7 +240,7 @@ void stat_static_gath_init()
 void stat_static_gath_start()
 {
 	pthread_create(&(local_gath->sleeper_thread), NULL,
-	               (void *) &stat_sleep_compute, NULL);
+		       (void *) &stat_sleep_compute, NULL);
 }
 
 void stat_static_gath_free()

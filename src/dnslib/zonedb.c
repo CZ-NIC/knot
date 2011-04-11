@@ -4,18 +4,30 @@
 
 #include <urcu.h>
 
-#include "dnslib-common.h"
+#include "dnslib/dnslib-common.h"
 #include "dnslib/zonedb.h"
 #include "dnslib/zone.h"
 #include "dnslib/dname.h"
 #include "dnslib/node.h"
+#include "dnslib/error.h"
 #include "dnslib/debug.h"
 #include "common/skip-list.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Compares the two arguments interpreted as zone names (domain names).
+ *
+ * Use this function with generic data structures (such as the skip list).
+ *
+ * \param d1 First zone name.
+ * \param d2 Second zone name.
+ *
+ * \retval 0 if the two zone names are equal.
+ * \retval < 0 if \a d1 is before \a d2 in canonical order.
+ * \retval > 0 if \a d1 is after \a d2 in canonical order.
+ */
 static int dnslib_zonedb_compare_zone_names(void *d1, void *d2)
 {
 	const dnslib_dname_t *dname1 = (const dnslib_dname_t *)d1;
@@ -67,40 +79,46 @@ DEBUG_DNSLIB_ZONEDB(
 
 	int ret = skip_insert(db->zones, zone->apex->owner, zone, NULL);
 	assert(ret == 0 || ret == 1 || ret == -1);
-	return ret;
+	return (ret != 0) ? DNSLIB_EZONEIN : DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name)
+int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name,
+                              int destroy_zone)
 {
 	// add some lock to avoid multiple removals
 	dnslib_zone_t *z = (dnslib_zone_t *)skip_find(db->zones, zone_name);
 
 	if (z == NULL) {
-		return -1;
+		return DNSLIB_ENOZONE;
 	}
 
 	// remove the zone from the skip list, but do not destroy it
 	int ret = skip_remove(db->zones, zone_name, NULL, NULL);
 	assert(ret == 0);
 
-	// wait for all readers to finish
-	synchronize_rcu();
+	if (destroy_zone) {
+		// properly destroy the zone and all its contents
+		dnslib_zone_deep_free(&z, 0);
+	}
 
-	// properly destroy the zone and all its contents
-	dnslib_zone_deep_free(&z);
+	return DNSLIB_EOK;
+}
 
-	return 0;
+/*----------------------------------------------------------------------------*/
+
+dnslib_zone_t *dnslib_zonedb_find_zone(const dnslib_zonedb_t *db,
+                                       const dnslib_dname_t *zone_name)
+{
+	return (dnslib_zone_t *)skip_find(db->zones, (void *)zone_name);
 }
 
 /*----------------------------------------------------------------------------*/
 
 const dnslib_zone_t *dnslib_zonedb_find_zone_for_name(dnslib_zonedb_t *db,
-						    const dnslib_dname_t *dname)
+                                                    const dnslib_dname_t *dname)
 {
-	rcu_read_lock();
-
 	dnslib_zone_t *zone = skip_find_less_or_equal(db->zones, (void *)dname);
 
 DEBUG_DNSLIB_ZONEDB(
@@ -113,15 +131,44 @@ DEBUG_DNSLIB_ZONEDB(
 	    && !dnslib_dname_is_subdomain(dname, zone->apex->owner)) {
 		zone = NULL;
 	}
-	rcu_read_unlock();
 
 	return zone;
 }
 
 /*----------------------------------------------------------------------------*/
 
+dnslib_zonedb_t *dnslib_zonedb_copy(const dnslib_zonedb_t *db)
+{
+	dnslib_zonedb_t *db_new =
+		(dnslib_zonedb_t *)malloc(sizeof(dnslib_zonedb_t));
+	CHECK_ALLOC_LOG(db_new, NULL);
+
+	db_new->zones = skip_copy_list(db->zones);
+	if (db_new->zones == NULL) {
+		free(db_new);
+		return NULL;
+	}
+
+	return db_new;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_zonedb_free(dnslib_zonedb_t **db)
+{
+	skip_destroy_list(&(*db)->zones, NULL, NULL);
+	free(*db);
+	*db = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void dnslib_zonedb_deep_free(dnslib_zonedb_t **db)
 {
+	debug_dnslib_zonedb("Deleting zone db (%p).\n", *db);
+	debug_dnslib_zonedb("Is it empty (%p)? %s\n",
+	       (*db)->zones, skip_is_empty((*db)->zones) ? "yes" : "no");
+
 	const skip_node_t *zn = skip_first((*db)->zones);
 	dnslib_zone_t *zone = NULL;
 
@@ -134,7 +181,7 @@ void dnslib_zonedb_deep_free(dnslib_zonedb_t **db)
 		// wait for all readers to finish
 		synchronize_rcu();
 		// destroy the zone
-		dnslib_zone_deep_free(&zone);
+		dnslib_zone_deep_free(&zone, 0);
 
 		zn = skip_first((*db)->zones);
 	}

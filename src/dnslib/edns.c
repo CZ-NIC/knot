@@ -3,14 +3,21 @@
 #include <assert.h>
 
 #include "dnslib/edns.h"
-#include "dnslib-common.h"
+#include "dnslib/dnslib-common.h"
 #include "dnslib/descriptor.h"
 #include "dnslib/debug.h"
+#include "dnslib/error.h"
 
+/*! \brief Various EDNS constatns. */
 enum dnslib_edns_consts {
+	/*! \brief Mask for the DO bit. */
 	DNSLIB_EDNS_DO_MASK = (uint16_t)0x8000,
+	/*! \brief Step for allocation of space for option entries. */
 	DNSLIB_EDNS_OPTION_STEP = 1
 };
+
+/*! \brief Minimum size of EDNS OPT RR in wire format. */
+static const short DNSLIB_EDNS_MIN_SIZE = 11;
 
 /*----------------------------------------------------------------------------*/
 
@@ -39,19 +46,19 @@ int dnslib_edns_new_from_wire(dnslib_opt_rr_t *opt_rr, const uint8_t *wire,
 	int parsed = 0;
 
 	if (pos == NULL || max_size == 0 || opt_rr == NULL) {
-		return -1;
+		return DNSLIB_EBADARG;
 	}
 
 	if (max_size < DNSLIB_EDNS_MIN_SIZE) {
 		debug_dnslib_edns("Not enough data to parse OPT RR header.\n");
-		return -2;
+		return DNSLIB_EFEWDATA;
 	}
 
 	// owner of EDNS OPT RR must be root (0)
 	if (*pos != 0) {
 		debug_dnslib_edns("EDNS packet malformed (expected root "
 		                  "domain as owner).\n");
-		return -3;
+		return DNSLIB_EMALF;
 	}
 	pos += 1;
 
@@ -59,7 +66,7 @@ int dnslib_edns_new_from_wire(dnslib_opt_rr_t *opt_rr, const uint8_t *wire,
 	if (dnslib_wire_read_u16(pos) != DNSLIB_RRTYPE_OPT) {
 		debug_dnslib_edns("EDNS packet malformed (expected OPT type"
 		                  ".\n");
-		return -2;
+		return DNSLIB_EMALF;
 	}
 	pos += 2;
 
@@ -80,14 +87,14 @@ int dnslib_edns_new_from_wire(dnslib_opt_rr_t *opt_rr, const uint8_t *wire,
 
 	if (max_size - parsed < rdlength) {
 		debug_dnslib_edns("Not enough data to parse OPT RR.\n");
-		return -3;
+		return DNSLIB_EFEWDATA;
 	}
 
 	while (parsed < rdlength + DNSLIB_EDNS_MIN_SIZE) {
 		if (max_size - parsed < 4) {
 			debug_dnslib_edns("Not enough data to parse OPT RR"
 			                  " OPTION header.\n");
-			return -3;
+			return DNSLIB_EFEWDATA;
 		}
 		uint16_t code = dnslib_wire_read_u16(pos);
 		pos += 2;
@@ -98,18 +105,17 @@ int dnslib_edns_new_from_wire(dnslib_opt_rr_t *opt_rr, const uint8_t *wire,
 		if (max_size - parsed - 4 < length) {
 			debug_dnslib_edns("Not enough data to parse OPT RR"
 			                  " OPTION data.\n");
-			return -3;
+			return DNSLIB_EFEWDATA;
 		}
-		if (dnslib_edns_add_option(opt_rr, code, length, pos) != 0) {
+		int ret;
+		if ((ret =
+		     dnslib_edns_add_option(opt_rr, code, length, pos)) != 0) {
 			debug_dnslib_edns("Error parsing OPT option field.\n");
-			return -4;
+			return ret;
 		}
 		pos += length;
 		parsed += length + 4;
 	}
-
-//	pos += 2 + rdlength;
-//	parsed += rdlength;
 
 	return parsed;
 }
@@ -191,14 +197,14 @@ int dnslib_edns_add_option(dnslib_opt_rr_t *opt_rr, uint16_t code,
 			(dnslib_opt_option_t *)calloc(
 				(opt_rr->options_max + DNSLIB_EDNS_OPTION_STEP),
 				sizeof(dnslib_opt_option_t));
-		CHECK_ALLOC_LOG(options_new, -1);
+		CHECK_ALLOC_LOG(options_new, DNSLIB_ENOMEM);
 		memcpy(options_new, opt_rr->options, opt_rr->option_count);
 		opt_rr->options = options_new;
 		opt_rr->options_max += DNSLIB_EDNS_OPTION_STEP;
 	}
 
 	opt_rr->options[opt_rr->option_count].data = (uint8_t *)malloc(length);
-	CHECK_ALLOC_LOG(opt_rr->options[opt_rr->option_count].data, -1);
+	CHECK_ALLOC_LOG(opt_rr->options[opt_rr->option_count].data, DNSLIB_ENOMEM);
 	memcpy(opt_rr->options[opt_rr->option_count].data, data, length);
 
 	opt_rr->options[opt_rr->option_count].code = code;
@@ -207,7 +213,7 @@ int dnslib_edns_add_option(dnslib_opt_rr_t *opt_rr, uint16_t code,
 	++opt_rr->option_count;
 	opt_rr->size += 4 + length;
 
-	return 0;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -233,7 +239,7 @@ short dnslib_edns_to_wire(const dnslib_opt_rr_t *opt_rr, uint8_t *wire,
 
 	if (max_size < opt_rr->size) {
 		debug_dnslib_edns("Not enough place for OPT RR wire format.\n");
-		return -1;
+		return DNSLIB_ESPACE;
 	}
 
 	uint8_t *pos = wire;
@@ -278,8 +284,10 @@ short dnslib_edns_size(dnslib_opt_rr_t *opt_rr)
 
 void dnslib_edns_free(dnslib_opt_rr_t **opt_rr)
 {
-	assert(opt_rr);
-	assert(*opt_rr);
+	if (opt_rr == NULL || *opt_rr == NULL) {
+		return;
+	}
+
 	if ((*opt_rr)->option_count > 0) {
 		free((*opt_rr)->options);
 	}
