@@ -12,12 +12,24 @@
 #include "knot/other/debug.h"
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Fill the new database with zones.
+ *
+ * Zones that should be retained are just added from the old database to the
+ * new. New zones are loaded.
+ *
+ * \param zone_conf Zone configuration.
+ * \param db_old Old zone database.
+ * \param db_new New zone database.
+ *
+ * \return Number of inserted zones.
+ */
 static int zones_insert_zones(const list *zone_conf,
-                             const dnslib_zonedb_t *db_old,
-                             dnslib_zonedb_t *db_new)
+                              const dnslib_zonedb_t *db_old,
+                              dnslib_zonedb_t *db_new)
 {
 	node *n;
+	int inserted = 0;
 	// for all zones in the configuration
 	WALK_LIST(n, *zone_conf) {
 		conf_zone_t *z = (conf_zone_t *)n;
@@ -27,7 +39,7 @@ static int zones_insert_zones(const list *zone_conf,
 		if (zone_name == NULL) {
 			log_server_error("Error creating domain name from zone"
 			                 " name\n");
-			return KNOT_ERROR;
+			return inserted;
 		}
 
 		debug_zones("Inserting zone %s into the new database.\n",
@@ -39,21 +51,46 @@ static int zones_insert_zones(const list *zone_conf,
 		if (zone != NULL) {
 			// if found, just insert the zone into the new zone db
 			debug_zones("Found in old database, copying to new.\n");
-			(void)dnslib_zonedb_add_zone(db_new, zone);
+			int ret = dnslib_zonedb_add_zone(db_new, zone);
+			if (ret != EOK) {
+				log_server_error("Error adding old zone to"
+				                 " the new database: %s\n",
+				                 knot_strerror(ret));
+			} else {
+				++inserted;
+			}
 		} else {
 			// if not found, the zone must be loaded
 			debug_zones("Not found in old database, loading...\n");
-			(void)zones_load_zone(db_new, z->name, z->db);
+			int ret = zones_load_zone(db_new, z->name, z->db);
+			if (ret != EOK) {
+				log_server_error("Error loading new zone to"
+				                 " the new database: %s\n",
+				                 knot_strerror(ret));
+			} else {
+				++inserted;
+			}
 			// unused return value, if not loaded, just continue
 		}
 
 		dnslib_dname_free(&zone_name);
 	}
-	return KNOT_EOK;
+	return inserted;
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Remove zones present in the configuration from the old database.
+ *
+ * After calling this function, the old zone database should contain only zones
+ * that should be completely deleted.
+ *
+ * \param zone_conf Zone configuration.
+ * \param db_old Old zone database to remove zones from.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_ERROR
+ */
 static int zones_remove_zones(const list *zone_conf, dnslib_zonedb_t *db_old)
 {
 	node *n;
@@ -79,9 +116,19 @@ static int zones_remove_zones(const list *zone_conf, dnslib_zonedb_t *db_old)
 }
 
 /*----------------------------------------------------------------------------*/
-
-int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
-                    const char *filename)
+/*!
+ * \brief Load zone to zone database.
+ *
+ * \param zonedb Zone database to load the zone into.
+ * \param zone_name Zone name (owner of the apex node).
+ * \param filename Path to requested compiled zone file.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_EINVAL
+ * \retval KNOT_EZONEINVAL
+ */
+static int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
+                           const char *filename)
 {
 	dnslib_zone_t *zone = NULL;
 
@@ -129,6 +176,8 @@ int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
 }
 
 /*----------------------------------------------------------------------------*/
+/* API functions                                                              */
+/*----------------------------------------------------------------------------*/
 
 int zones_update_db_from_config(const conf_t *conf, ns_nameserver_t *ns,
                                dnslib_zonedb_t **db_old)
@@ -155,10 +204,16 @@ int zones_update_db_from_config(const conf_t *conf, ns_nameserver_t *ns,
 		return KNOT_ERROR;
 	}
 
+	log_server_info("Loading %d zones...\n", conf->zones_count);
+
 	// Insert all required zones to the new zone DB.
-	int ret = zones_insert_zones(&conf->zones, *db_old, db_new);
-	if (ret != KNOT_EOK) {
-		return ret;
+	int inserted = zones_insert_zones(&conf->zones, *db_old, db_new);
+
+	log_server_info("Loaded %d out of %d zones.\n", inserted,
+	                conf->zones_count);
+
+	if (inserted != conf->zones_count) {
+		log_server_warning("Not all the zones were loaded.\n");
 	}
 
 	debug_zones("Old db in nameserver: %p, old db stored: %p, new db: %p\n",

@@ -18,20 +18,6 @@
 #include "knot/conf/conf.h"
 
 /*!
- * \brief Load zone to zone database.
- *
- * \param zonedb Zone database to load the zone into.
- * \param zone_name Zone name (owner of the apex node).
- * \param filename Path to requested compiled zone file.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- * \retval KNOT_EZONEINVAL
- */
-int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
-                    const char *filename);
-
-/*!
  * \brief Update zone database according to configuration.
  *
  * Creates a new database, copies references those zones from the old database
