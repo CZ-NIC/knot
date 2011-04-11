@@ -46,6 +46,8 @@ static int zones_insert_zones(const list *zone_conf,
 			(void)zones_load_zone(db_new, z->name, z->db);
 			// unused return value, if not loaded, just continue
 		}
+
+		dnslib_dname_free(&zone_name);
 	}
 	return KNOT_EOK;
 }
@@ -70,6 +72,8 @@ static int zones_remove_zones(const list *zone_conf, dnslib_zonedb_t *db_old)
 		            z->name);
 		// remove the zone from the old zone db, but do not delete it
 		dnslib_zonedb_remove_zone(db_old, zone_name, 0);
+
+		dnslib_dname_free(&zone_name);
 	}
 	return KNOT_EOK;
 }
