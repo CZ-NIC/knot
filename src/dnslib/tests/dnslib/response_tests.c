@@ -1142,12 +1142,12 @@ static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 				diag("dnslib: %d ldns: %d",
 				     rdata->items[i].raw_data[0],
 				     ldns_rdf_size(ldns_rr_rdf(rr, i)));
-				hex_print((char *)
-					  (rdata->items[i].raw_data + 1),
-					  rdata->items[i].raw_data[0]);
-				hex_print((char *)ldns_rdf_data(ldns_rr_rdf(rr,
-									    i)),
-					  ldns_rdf_size(ldns_rr_rdf(rr, i)));
+//				hex_print((char *)
+//					  (rdata->items[i].raw_data + 1),
+//					  rdata->items[i].raw_data[0]);
+//				hex_print((char *)ldns_rdf_data(ldns_rr_rdf(rr,
+//									    i)),
+//					  ldns_rdf_size(ldns_rr_rdf(rr, i)));
 				if (abs(rdata->items[i].raw_data[0] -
 				    ldns_rdf_size(ldns_rr_rdf(rr, i))) != 1) {
 					return 1;
