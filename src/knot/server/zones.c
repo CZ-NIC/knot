@@ -13,110 +13,6 @@
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Fill the new database with zones.
- *
- * Zones that should be retained are just added from the old database to the
- * new. New zones are loaded.
- *
- * \param zone_conf Zone configuration.
- * \param db_old Old zone database.
- * \param db_new New zone database.
- *
- * \return Number of inserted zones.
- */
-static int zones_insert_zones(const list *zone_conf,
-                              const dnslib_zonedb_t *db_old,
-                              dnslib_zonedb_t *db_new)
-{
-	node *n;
-	int inserted = 0;
-	// for all zones in the configuration
-	WALK_LIST(n, *zone_conf) {
-		conf_zone_t *z = (conf_zone_t *)n;
-		// convert the zone name into a domain name
-		dnslib_dname_t *zone_name = dnslib_dname_new_from_str(z->name,
-		                                         strlen(z->name), NULL);
-		if (zone_name == NULL) {
-			log_server_error("Error creating domain name from zone"
-			                 " name\n");
-			return inserted;
-		}
-
-		debug_zones("Inserting zone %s into the new database.\n",
-		            z->name);
-
-		// try to find the zone in the current zone db
-		dnslib_zone_t *zone = dnslib_zonedb_find_zone(db_old,
-		                                              zone_name);
-		if (zone != NULL) {
-			// if found, just insert the zone into the new zone db
-			debug_zones("Found in old database, copying to new.\n");
-			int ret = dnslib_zonedb_add_zone(db_new, zone);
-			if (ret != EOK) {
-				log_server_error("Error adding old zone to"
-				                 " the new database: %s\n",
-				                 knot_strerror(ret));
-			} else {
-				++inserted;
-			}
-		} else {
-			// if not found, the zone must be loaded
-			debug_zones("Not found in old database, loading...\n");
-			int ret = zones_load_zone(db_new, z->name, z->db);
-			if (ret != EOK) {
-				log_server_error("Error loading new zone to"
-				                 " the new database: %s\n",
-				                 knot_strerror(ret));
-			} else {
-				++inserted;
-			}
-			// unused return value, if not loaded, just continue
-		}
-
-		dnslib_dname_free(&zone_name);
-	}
-	return inserted;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Remove zones present in the configuration from the old database.
- *
- * After calling this function, the old zone database should contain only zones
- * that should be completely deleted.
- *
- * \param zone_conf Zone configuration.
- * \param db_old Old zone database to remove zones from.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ERROR
- */
-static int zones_remove_zones(const list *zone_conf, dnslib_zonedb_t *db_old)
-{
-	node *n;
-	// for all zones in the configuration
-	WALK_LIST(n, *zone_conf) {
-		conf_zone_t *z = (conf_zone_t *)n;
-		// convert the zone name into a domain name
-		dnslib_dname_t *zone_name = dnslib_dname_new_from_str(z->name,
-		                                         strlen(z->name), NULL);
-		if (zone_name == NULL) {
-			log_server_error("Error creating domain name from zone"
-			                 " name\n");
-			return KNOT_ERROR;
-		}
-		debug_zones("Removing zone %s from the old database.\n",
-		            z->name);
-		// remove the zone from the old zone db, but do not delete it
-		dnslib_zonedb_remove_zone(db_old, zone_name, 0);
-
-		dnslib_dname_free(&zone_name);
-	}
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
  * \brief Load zone to zone database.
  *
  * \param zonedb Zone database to load the zone into.
@@ -176,6 +72,110 @@ static int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
 }
 
 /*----------------------------------------------------------------------------*/
+/*!
+ * \brief Fill the new database with zones.
+ *
+ * Zones that should be retained are just added from the old database to the
+ * new. New zones are loaded.
+ *
+ * \param zone_conf Zone configuration.
+ * \param db_old Old zone database.
+ * \param db_new New zone database.
+ *
+ * \return Number of inserted zones.
+ */
+static int zones_insert_zones(const list *zone_conf,
+                              const dnslib_zonedb_t *db_old,
+                              dnslib_zonedb_t *db_new)
+{
+	node *n;
+	int inserted = 0;
+	// for all zones in the configuration
+	WALK_LIST(n, *zone_conf) {
+		conf_zone_t *z = (conf_zone_t *)n;
+		// convert the zone name into a domain name
+		dnslib_dname_t *zone_name = dnslib_dname_new_from_str(z->name,
+		                                         strlen(z->name), NULL);
+		if (zone_name == NULL) {
+			log_server_error("Error creating domain name from zone"
+			                 " name\n");
+			return inserted;
+		}
+
+		debug_zones("Inserting zone %s into the new database.\n",
+		            z->name);
+
+		// try to find the zone in the current zone db
+		dnslib_zone_t *zone = dnslib_zonedb_find_zone(db_old,
+		                                              zone_name);
+		if (zone != NULL) {
+			// if found, just insert the zone into the new zone db
+			debug_zones("Found in old database, copying to new.\n");
+			int ret = dnslib_zonedb_add_zone(db_new, zone);
+			if (ret != KNOT_EOK) {
+				log_server_error("Error adding old zone to"
+				                 " the new database: %s\n",
+				                 knot_strerror(ret));
+			} else {
+				++inserted;
+			}
+		} else {
+			// if not found, the zone must be loaded
+			debug_zones("Not found in old database, loading...\n");
+			int ret = zones_load_zone(db_new, z->name, z->db);
+			if (ret != KNOT_EOK) {
+				log_server_error("Error loading new zone to"
+				                 " the new database: %s\n",
+				                 knot_strerror(ret));
+			} else {
+				++inserted;
+			}
+			// unused return value, if not loaded, just continue
+		}
+
+		dnslib_dname_free(&zone_name);
+	}
+	return inserted;
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Remove zones present in the configuration from the old database.
+ *
+ * After calling this function, the old zone database should contain only zones
+ * that should be completely deleted.
+ *
+ * \param zone_conf Zone configuration.
+ * \param db_old Old zone database to remove zones from.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_ERROR
+ */
+static int zones_remove_zones(const list *zone_conf, dnslib_zonedb_t *db_old)
+{
+	node *n;
+	// for all zones in the configuration
+	WALK_LIST(n, *zone_conf) {
+		conf_zone_t *z = (conf_zone_t *)n;
+		// convert the zone name into a domain name
+		dnslib_dname_t *zone_name = dnslib_dname_new_from_str(z->name,
+		                                         strlen(z->name), NULL);
+		if (zone_name == NULL) {
+			log_server_error("Error creating domain name from zone"
+			                 " name\n");
+			return KNOT_ERROR;
+		}
+		debug_zones("Removing zone %s from the old database.\n",
+		            z->name);
+		// remove the zone from the old zone db, but do not delete it
+		dnslib_zonedb_remove_zone(db_old, zone_name, 0);
+
+		dnslib_dname_free(&zone_name);
+	}
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -230,7 +230,7 @@ int zones_update_db_from_config(const conf_t *conf, ns_nameserver_t *ns,
 	 *  No new thread can access these zones in the old DB, as the
 	 *  databases are already switched.
 	 */
-	ret = zones_remove_zones(&conf->zones, *db_old);
+	int ret = zones_remove_zones(&conf->zones, *db_old);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
