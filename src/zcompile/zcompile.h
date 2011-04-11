@@ -24,16 +24,17 @@
 #include "dnslib/zone.h"
 #include "common/slab/slab.h"
 
-#define MAXRDATALEN	64	/* Maximum number of RDATA items. */
-#define MAXLABELLEN	63	/* Maximum label length. */
-#define MAXDOMAINLEN	255	/* Maximum domain name length */
-#define MAX_RDLENGTH	65535	/* Maximum length of RDATA item */
-#define	MAXTOKENSLEN	512	/* Maximum number of tokens per entry. */
-#define	B64BUFSIZE	65535	/* Buffer size for b64 conversion. */
-#define	ROOT		(const uint8_t *)"\001" /* Root domain name. */
+#define MAXRDATALEN	64	/*!< Maximum number of RDATA items. */
+#define MAXLABELLEN	63	/*!< Maximum label length. */
+#define MAXDOMAINLEN	255	/*!< Maximum domain name length */
+#define MAX_RDLENGTH	65535	/*!< Maximum length of RDATA item */
+#define	MAXTOKENSLEN	512	/*!< Maximum number of tokens per entry. */
+#define	B64BUFSIZE	65535	/*!< Buffer size for b64 conversion. */
+#define	ROOT		(const uint8_t *)"\001" /*!< Root domain name. */
 
-#define NSEC_WINDOW_COUNT     256	/* Number of NSEC windows. */
-#define NSEC_WINDOW_BITS_COUNT 256	/* Number of bits in NSEC window. */
+#define NSEC_WINDOW_COUNT     256	/*!< Number of NSEC windows. */
+#define NSEC_WINDOW_BITS_COUNT 256	/*!< Number of bits in NSEC window. */
+/*! \brief Size of NSEC window in bytes. */
 #define NSEC_WINDOW_BITS_SIZE  (NSEC_WINDOW_BITS_COUNT / 8)
 
 /*
@@ -44,11 +45,11 @@
 #define IPSECKEY_IP6            2
 #define IPSECKEY_DNAME          3
 
-#define LINEBUFSZ 1024	/* Buffer size for one line in zone file. */
+#define LINEBUFSZ 1024	/*!< Buffer size for one line in zone file. */
 
 struct lex_data {
-    size_t   len;		/* holds the label length */
-    char    *str;		/* holds the data */
+    size_t   len;		/*!< holds the label length */
+    char    *str;		/*!< holds the data */
 };
 
 #define DEFAULT_TTL 3600
