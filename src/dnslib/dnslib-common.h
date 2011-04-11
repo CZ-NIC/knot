@@ -8,20 +8,57 @@
  * \addtogroup dnslib
  * @{
  */
+#include <config.h>
+
+#ifdef HAVE_LIBLDNS
+#define TEST_WITH_LDNS
+#endif
+
 #ifndef _KNOT_DNSLIB_COMMON_H_
 #define _KNOT_DNSLIB_COMMON_H_
 
-#define PROJECT_NAME "dnslib" // Project name
-#define PROJECT_VER  0x000100  // 0xMMIIRR (MAJOR,MINOR,REVISION)
+#define DNSLIB_NAME "dnslib" // Project name
+#define DNSLIB_VER  0x000100  // 0xMMIIRR (MAJOR,MINOR,REVISION)
 
 typedef unsigned int uint;
 
-/* Common macros.
- */
+/*! \brief Eliminate compiler warning with unused parameters. */
+#define UNUSED(param) (void)(param)
 
+/*! \brief Type-safe minimum macro. */
+#define MIN(a, b) \
+	({ typeof (a) _a = (a); typeof (b) _b = (b); _a < _b ? _a : _b; })
+
+/*! \brief Type-safe maximum macro. */
+#define MAX(a, b) \
+	({ typeof (a) _a = (a); typeof (b) _b = (b); _a > _b ? _a : _b; })
+
+/* Optimisation macros. */
+#ifndef likely
+/*! \brief Optimize for x to be true value. */
+#define likely(x)       __builtin_expect((x),1)
+#endif
+#ifndef unlikely
+/*! \brief Optimize for x to be false value. */
+#define unlikely(x)     __builtin_expect((x),0)
+#endif
+
+/* Optimisation macros. */
+#ifndef likely
+/*! \brief Optimize for x to be true value. */
+#define likely(x)       __builtin_expect((x),1)
+#endif
+#ifndef unlikely
+/*! \brief Optimize for x to be false value. */
+#define unlikely(x)     __builtin_expect((x),0)
+#endif
+/*! \todo Refactor theese. We should have an allocator function handling this.*/
+#ifndef ERR_ALLOC_FAILED
 #define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d (%s ver.%x)\n", \
-				 __FILE__, __LINE__, PROJECT_NAME, PROJECT_VER)
+				 __FILE__, __LINE__, DNSLIB_NAME, DNSLIB_VER)
+#endif
 
+#ifndef CHECK_ALLOC_LOG
 #define CHECK_ALLOC_LOG(var, ret) \
 	do { \
 		if ((var) == NULL) { \
@@ -29,42 +66,16 @@ typedef unsigned int uint;
 			return (ret); \
 		} \
 	} while (0)
+#endif
 
+#ifndef CHECK_ALLOC
 #define CHECK_ALLOC(var, ret) \
 	do { \
 		if ((var) == NULL) { \
 			return (ret); \
 		} \
 	} while (0)
-
-/* Eliminate compiler warning with unused parameters. */
-#define UNUSED(param) (param) = (param)
-
-/* Minimum and maximum macros. */
-#define MIN(x,y) ((x) < (y) ? (x) : (y))
-#define MAX(x,y) ((x) > (y) ? (x) : (y))
-
-/* Optimisation macros. */
-#ifndef likely
-#define likely(x)       __builtin_expect((x),1)
 #endif
-#ifndef unlikely
-#define unlikely(x)     __builtin_expect((x),0)
-#endif
-
-
-#define perf_begin() \
-do { \
- struct timeval __begin; \
- gettimeofday(&__begin, 0)
-
-#define perf_end(d) \
- struct timeval __end; \
- gettimeofday(&__end, 0); \
- unsigned long __us = (__end.tv_sec - __begin.tv_sec) * 1000L * 1000L; \
- __us += (__end.tv_usec - __begin.tv_usec); \
- (d) = __us; \
-} while(0)
 
 #endif /* _KNOT_DNSLIB_COMMON_H_ */
 

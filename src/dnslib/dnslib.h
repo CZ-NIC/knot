@@ -1,14 +1,16 @@
-/*
- * File:     dnslib.h
- * Date:     02.12.2010 12:37
- * Author:   jan
- * Project:  
- * Description:   
+/*!
+ * \file dnslib.h
+ *
+ * \author Jan Kadlec <jan.kadlec@nic.cz>
+ *
+ * \brief Convenience header for including whole dnslib.
+ *
+ * \addtogroup dnslib
+ * @{
  */
 
-
-#ifndef __DNSLIB_H__
-#define __DNSLIB_H__
+#ifndef _KNOT_DNSLIB_DNSLIB_H_
+#define _KNOT_DNSLIB_DNSLIB_H_
 
 #include "dnslib/consts.h"
 #include "dnslib/descriptor.h"
@@ -27,7 +29,8 @@
 #include "dnslib/zone-load.h"
 #include "dnslib/zone.h"
 #include "dnslib/zonedb.h"
+#include "dnslib/error.h"
 
 #endif
 
-/* end of file dnslib.h */
+/*! @} */

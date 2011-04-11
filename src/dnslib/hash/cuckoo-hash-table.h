@@ -172,7 +172,7 @@ ck_hash_table_t *ck_create_table(uint items);
  * \note Make sure the table and its items are not used anymore when calling
  * this function.
  */
-void ck_destroy_table(ck_hash_table_t **tables,
+void ck_destroy_table(ck_hash_table_t **table,
                       void (*dtor_value)(void *value), int delete_key);
 
 /*----------------------------------------------------------------------------*/
@@ -268,7 +268,7 @@ int ck_remove_item(const ck_hash_table_t *table, const char *key, size_t length,
 #endif
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Dumps the whole hash table to the console.
+ * \brief Dumps the whole hash table to the standard output.
  */
 void ck_dump_table(const ck_hash_table_t *table);
 

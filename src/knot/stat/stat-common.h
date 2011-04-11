@@ -5,9 +5,10 @@
  *
  * \brief Common macros for stat.
  *
- * \addtogroup stat
+ * \addtogroup statistics
  * @{
  */
+
 #ifndef _KNOT_STAT_COMMON_H_
 #define _KNOT_STAT_COMMON_H_
 

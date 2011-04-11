@@ -5,17 +5,32 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "dnslib-common.h"
+#include "dnslib/dnslib-common.h"
 #include "dnslib/rdata.h"
 #include "dnslib/descriptor.h"
 #include "dnslib/dname.h"
+#include "dnslib/error.h"
+#include "dnslib/node.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Compares two RDATA items as binary data.
+ *
+ * \param d1 First item.
+ * \param d2 Second item.
+ * \param count1 Size of the first item in bytes. If set to < 0, the size will
+ *               be taken from the first two bytes of \a d1.
+ * \param count2 Size of the second item in bytes. If set to < 0, the size will
+ *               be taken from the first two bytes of \a d2.
+ *
+ * \retval 0 if the items are identical.
+ * \retval < 0 if \a d1 goes before \a d2 in canonical order.
+ * \retval > 0 if \a d1 goes after \a d2 in canonical order.
+ */
 static int dnslib_rdata_compare_binary(const uint8_t *d1, const uint8_t *d2,
-                                       int count1, int count2)
+				       int count1, int count2)
 {
 	int i1 = 0, i2 = 0;
 
@@ -52,7 +67,18 @@ static int dnslib_rdata_compare_binary(const uint8_t *d1, const uint8_t *d2,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Retrieves the domain name from MX RDATA.
+ *
+ * \note This is only convenience function. It does not (and cannot) check if
+ *       the given RDATA is of the right type, so it always returns the second
+ *       RDATA item, even if it is not a domain name.
+ *
+ * \param rdata RDATA to get the MX domain name from.
+ *
+ * \return MX domain name stored in \a rdata or NULL if \a rdata has less than 2
+ *         items.
+ */
 static const dnslib_dname_t *dnslib_rdata_mx_name(const dnslib_rdata_t *rdata)
 {
 	if (rdata->count < 2) {
@@ -62,7 +88,17 @@ static const dnslib_dname_t *dnslib_rdata_mx_name(const dnslib_rdata_t *rdata)
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Retrieves the domain name from NS RDATA.
+ *
+ * \note This is only convenience function. It does not (and cannot) check if
+ *       the given RDATA is of the right type, so it always returns the first
+ *       RDATA item, even if it is not a domain name.
+ *
+ * \param rdata RDATA to get the NS domain name from.
+ *
+ * \return NS domain name stored in \a rdata or NULL if \a rdata has no items.
+ */
 static const dnslib_dname_t *dnslib_rdata_ns_name(const dnslib_rdata_t *rdata)
 {
 	if (rdata->count < 1) {
@@ -72,7 +108,18 @@ static const dnslib_dname_t *dnslib_rdata_ns_name(const dnslib_rdata_t *rdata)
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Retrieves the domain name from SRV RDATA.
+ *
+ * \note This is only convenience function. It does not (and cannot) check if
+ *       the given RDATA is of the right type, so it always returns the fourth
+ *       RDATA item, even if it is not a domain name.
+ *
+ * \param rdata RDATA to get the SRV domain name from.
+ *
+ * \return SRV domain name stored in \a rdata or NULL if \a rdata has less than
+ *         4 items.
+ */
 static const dnslib_dname_t *dnslib_rdata_srv_name(const dnslib_rdata_t *rdata)
 {
 	if (rdata->count < 4) {
@@ -103,45 +150,42 @@ dnslib_rdata_t *dnslib_rdata_new()
 /*----------------------------------------------------------------------------*/
 
 int dnslib_rdata_set_item(dnslib_rdata_t *rdata, uint pos,
-                          dnslib_rdata_item_t item)
+			  dnslib_rdata_item_t item)
 {
 	if (pos >= rdata->count) {
-		return -1;
+		return DNSLIB_EBADARG;
 	}
 	rdata->items[pos] = item; // this should copy the union; or use memcpy?
-	return 0;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
 int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
-                           const dnslib_rdata_item_t *items, uint count)
+			   const dnslib_rdata_item_t *items, uint count)
 {
-	if (rdata == NULL || items == NULL || count == 0) {
-		return 1;
-	}
-
-	if (rdata->items != NULL) {  // not empty
-		return -1;
+	if (rdata == NULL || items == NULL || count == 0 ||
+	    rdata->items != NULL) {
+		return DNSLIB_EBADARG;
 	}
 
 	assert(rdata->count == 0);
 	if ((rdata->items = (dnslib_rdata_item_t *)malloc(
-	                     count * sizeof(dnslib_rdata_item_t))) == NULL) {
+			     count * sizeof(dnslib_rdata_item_t))) == NULL) {
 		ERR_ALLOC_FAILED;
-		return -2;
+		return DNSLIB_ENOMEM;
 	}
 
 	memcpy(rdata->items, items, count * sizeof(dnslib_rdata_item_t));
 	rdata->count = count;
 
-	return 0;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
 const dnslib_rdata_item_t *dnslib_rdata_item(const dnslib_rdata_t *rdata,
-                                             uint pos)
+					     uint pos)
 {
 	if (pos >= rdata->count) {
 		return NULL;
@@ -153,7 +197,7 @@ const dnslib_rdata_item_t *dnslib_rdata_item(const dnslib_rdata_t *rdata,
 /*----------------------------------------------------------------------------*/
 
 dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
-                                           uint pos)
+					   uint pos)
 {
 	if (pos >= rdata->count) {
 		return NULL;
@@ -165,29 +209,29 @@ dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
 /*----------------------------------------------------------------------------*/
 
 int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, uint pos,
-                                dnslib_dname_t *dname)
+				dnslib_dname_t *dname)
 {
 	if (pos >= rdata->count) {
-		return -1;
+		return DNSLIB_EBADARG;
 	}
 
 	rdata->items[pos].dname = dname;
 
-	return 0;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
 int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, uint pos,
-                                   uint16_t *raw_data)
+				   uint16_t *raw_data)
 {
 	if (pos >= rdata->count) {
-		return -1;
+		return DNSLIB_EBADARG;
 	}
 
 	rdata->items[pos].raw_data = raw_data;
 
-	return 0;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -208,7 +252,7 @@ void dnslib_rdata_free(dnslib_rdata_t **rdata)
 /*----------------------------------------------------------------------------*/
 
 void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
-                            int free_all_dnames)
+			    int free_all_dnames)
 {
 	if (rdata == NULL || *rdata == NULL) {
 		return;
@@ -229,7 +273,10 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
 		    || desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME ) {
 			if (((*rdata)->items[i].dname != NULL) &&
 			    (free_all_dnames ||
-			     ((*rdata)->items[i].dname->node == NULL))) {
+			     (((*rdata)->items[i].dname->node == NULL) ||
+			     ((*rdata)->items[i].dname->node->owner !=
+			      (*rdata)->items[i].dname)))) {
+
 				dnslib_dname_free(&(*rdata)->items[i].dname);
 			}
 		} else {
@@ -411,7 +458,7 @@ dnslib_rdata_t *dnslib_rdata_copy(const dnslib_rdata_t *rdata, uint16_t type)
 /*----------------------------------------------------------------------------*/
 
 int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
-                         const uint8_t *format)
+			 const uint8_t *format)
 {
 	uint count = (r1->count < r2->count) ? r1->count : r2->count;
 
@@ -469,20 +516,19 @@ const dnslib_dname_t *dnslib_rdata_dname_target(const dnslib_rdata_t *rdata)
 /*----------------------------------------------------------------------------*/
 
 const dnslib_dname_t *dnslib_rdata_get_name(const dnslib_rdata_t *rdata,
-                                            uint16_t type)
+					    uint16_t type)
 {
 	// iterate over the rdata items or act as if we knew where the name is?
 
 	switch (type) {
 	case DNSLIB_RRTYPE_NS:
 		return dnslib_rdata_ns_name(rdata);
-		break;
 	case DNSLIB_RRTYPE_MX:
 		return dnslib_rdata_mx_name(rdata);
-		break;
 	case DNSLIB_RRTYPE_SRV:
 		return dnslib_rdata_srv_name(rdata);
-		break;
+	case DNSLIB_RRTYPE_CNAME:
+		return dnslib_rdata_cname_name(rdata);
 	}
 
 	return NULL;

@@ -1,6 +1,6 @@
 #                                               -*- Autoconf -*-
 
-AC_PREREQ([2.67])
+AC_PREREQ([2.65])
 AC_INIT([knot], [0.2], [bug-me-knot@nic.cz])
 AM_INIT_AUTOMAKE([gnu -Wall -Werror])
 AC_CONFIG_SRCDIR([src/knot/main.c])
@@ -24,13 +24,6 @@ AC_PROG_INSTALL
 AC_PROG_CPP_WERROR
 AC_PROG_CC_C99
 
-#AC_ARG_ENABLE([ldns],
-#[ --enable-ldns Enable tests with ldns],
-#[case "${enableval}" in 
-#	yes) ldns=true ;;
-#	no) ldns=false ;;
-#])
-
 AC_ARG_ENABLE([ldns],
      [  --enable-ldns    Enable tests with ldns],
      [case "${enableval}" in
@@ -38,8 +31,6 @@ AC_ARG_ENABLE([ldns],
        no)  ldns=false ;;
        *) AC_MSG_ERROR([bad value ${enableval} for --enable-ldns]) ;;
      esac],[ldns=false])
-
-#AM_CONDITIONAL([ldns], [test x$ldns = xtrue])
 
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lm':

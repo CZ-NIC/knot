@@ -4,12 +4,13 @@
 #include <unistd.h>
 
 #include "knot/common.h"
+#include "knot/other/error.h"
 #include "knot/server/server.h"
-#include "zoneparser/zoneparser.h"
+#include "zcompile/zcompile.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/logconf.h"
-#include "knot/other/evqueue.h"
+#include "common/evqueue.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -33,7 +34,7 @@ void interrupt_handle(int s)
 			sig_req_stop = 1;
 			sig_stopping = 1;
 		} else {
-			log_server_error("server: \nOK! OK! Exiting immediately.\n");
+			log_server_error("\nOK! Exiting immediately.\n");
 			exit(1);
 		}
 	}
@@ -41,7 +42,7 @@ void interrupt_handle(int s)
 
 void help(int argc, char **argv)
 {
-	printf("Usage: %s [parameters] [<filename1> <filename2> ...]\n",
+	printf("Usage: %s [parameters]\n",
 	       argv[0]);
 	printf("Parameters:\n"
 	       " -c [file] Select configuration file.\n"
@@ -90,14 +91,11 @@ int main(int argc, char **argv)
 	// Initialize log
 	log_init();
 
-	// Check if there's at least one remaining non-option
-	int zfs_count = argc - optind;
-	const char **zfs = (const char**)argv + optind;
-
 	// Now check if we want to daemonize
 	if (daemonize) {
 		if (daemon(1, 0) != 0) {
-			log_server_fatal("Daemonization failed, shutting down...\n");
+			log_server_fatal("Daemonization failed, "
+					 "shutting down...\n");
 			log_close();
 			return 1;
 		}
@@ -109,7 +107,7 @@ int main(int argc, char **argv)
 	// Initialize configuration
 	conf_read_lock();
 	conf_add_hook(conf(), CONF_LOG, log_conf_hook, 0);
-	conf_add_hook(conf(), CONF_LOG, ns_conf_hook, server);
+	conf_add_hook(conf(), CONF_LOG, ns_conf_hook, server->nameserver);
 	conf_add_hook(conf(), CONF_LOG, server_conf_hook, server);
 	conf_read_unlock();
 
@@ -121,20 +119,19 @@ int main(int argc, char **argv)
 	}
 
 	// Open configuration
-	if (conf_open(config_fn) != 0) {
+	log_server_info("Parsing configuration...\n");
+	if (conf_open(config_fn) != KNOT_EOK) {
 
-		log_server_error("server: Failed to parse configuration '%s'.\n"
-		                 , config_fn);
+		log_server_error("Failed to parse configuration '%s'.\n",
+				 config_fn);
 
-		if (zfs_count < 1) {
-			log_server_fatal("server: No zone files specified, "
-			                 "shutting down.\n\n");
-			help(argc, argv);
-			log_close();
-			free(default_fn);
-			return 1;
-		}
+		log_server_warning("No zone served.\n");
+	} else {
+		log_server_info("Configured %d interfaces and %d zones.\n",
+				conf()->ifaces_count, conf()->zones_count);
 	}
+
+	log_server_info("\n");
 
 	// Verbose mode
 	if (verbose) {
@@ -147,27 +144,28 @@ int main(int argc, char **argv)
 
 	// Run server
 	int res = 0;
-	if ((res = server_start(server, zfs, zfs_count)) == 0) {
+	log_server_info("Starting server...\n");
+	if ((res = server_start(server)) == KNOT_EOK) {
 
 		// Save PID
 		if (daemonize) {
 			int rc = pid_write(pidfile);
 			if (rc < 0) {
-				log_server_warning("server: Failed to create PID "
-				                   "file '%s'.",
-				                   pidfile);
-			} else {
-				log_server_info("server: PID file '%s' created.",
-				                pidfile);
+				log_server_warning("Failed to create "
+						   "PID file '%s'.", pidfile);
 			}
 		}
 
 		// Change directory if daemonized
-		log_server_info("server: Started.\n");
 		if (daemonize) {
-			log_server_info("Server running as daemon.\n");
+			log_server_info("Server started as a daemon, "
+					"PID = %ld\n", (long)getpid());
 			res = chdir("/");
+		} else {
+			log_server_info("Server started in foreground, "
+					"PID = %ld\n", (long)getpid());
 		}
+		log_server_info("\n");
 
 		// Setup signal blocking
 		sigset_t emptyset;
@@ -191,24 +189,23 @@ int main(int argc, char **argv)
 			int ret = evqueue_poll(evqueue(), &emptyset);
 
 			/* Interrupts. */
-			if (ret == -1) {
-				/*! \todo More robust way to exit evloop.
-				 *        Event loop should exit with a special
-				 *        event.
-				 */
-				if (sig_req_stop) {
-					debug_server("Event: "
-					             "stopping server.\n");
-					sig_req_stop = 0;
-					server_stop(server);
-					break;
+			/*! \todo More robust way to exit evloop.
+			 *        Event loop should exit with a special
+			 *        event.
+			 */
+			if (sig_req_stop) {
+				sig_req_stop = 0;
+				server_stop(server);
+				break;
+			}
+			if (sig_req_reload) {
+				log_server_info("Reloading configuration...\n");
+				sig_req_reload = 0;
+				if (conf_open(config_fn) == 0) {
+					log_server_info("Configuration "
+							"reloaded.\n");
 				}
-				if (sig_req_reload) {
-					debug_server("Event: "
-					             "reloading config.\n");
-					sig_req_reload = 0;
-					conf_open(config_fn);
-				}
+
 			}
 
 			/* Events. */
@@ -216,7 +213,7 @@ int main(int argc, char **argv)
 				event_t ev;
 				if (evqueue_get(evqueue(), &ev) == 0) {
 					debug_server("Event: "
-					             "received new event.\n");
+						     "received new event.\n");
 					if (ev.cb) {
 						ev.cb(&ev);
 					}
@@ -224,15 +221,16 @@ int main(int argc, char **argv)
 			}
 		}
 
-		//sigprocmask(SIG_SETMASK, &emptyset, 0);
-		if ((res = server_wait(server)) != 0) {
-			log_server_error("server: An error occured while "
-			                 "waiting for server to finish.\n");
+		if ((res = server_wait(server)) != KNOT_EOK) {
+			log_server_error("An error occured while "
+					 "waiting for server to finish.\n");
+		} else {
+			log_server_info("Server finished.\n");
 		}
 
 	} else {
-		log_server_fatal("server: An error occured while "
-		                 "starting the server.\n");
+		log_server_fatal("An error occured while "
+				 "starting the server.\n");
 	}
 
 	// Stop server and close log
@@ -241,14 +239,11 @@ int main(int argc, char **argv)
 	// Remove PID file if daemonized
 	if (daemonize) {
 		if (pid_remove(pidfile) < 0) {
-			log_server_warning("server: Failed to remove "
-			                   "PID file.\n");
-		} else {
-			log_server_info("server: PID file safely removed.\n");
+			log_server_warning("Failed to remove PID file.\n");
 		}
 	}
 
-	log_server_info("server: Shut down.\n");
+	log_server_info("Shut down.\n");
 	log_close();
 	free(pidfile);
 

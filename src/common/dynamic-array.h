@@ -9,9 +9,10 @@
  *       Maybe some magic, or so.
  * \todo This structure is too slow because of the mutex.
  *
- * \addtogroup data_structures
+ * \addtogroup common_lib
  * @{
  */
+
 #ifndef _KNOT_COMMON_DYNAMIC_ARRAY_H_
 #define _KNOT_COMMON_DYNAMIC_ARRAY_H_
 
@@ -53,10 +54,10 @@ struct da_array {
 	/*!
 	 * \brief Size of allocated space in number of items that can be stored.
 	 */
-	uint allocated;
+	unsigned allocated;
 
 	/*! \brief Number of items actually stored in the array. */
-	uint count;
+	unsigned count;
 
 	/*! \brief Mutex. */
 	pthread_mutex_t mtx;
@@ -74,7 +75,7 @@ typedef struct da_array da_array_t;
  * \retval 0 if successful.
  * \retval -1 if not successful.
  */
-da_array_t *da_create(uint count, size_t item_size);
+da_array_t *da_create(unsigned count, size_t item_size);
 
 /*!
  * \brief Initializes the dynamic array.
@@ -85,7 +86,7 @@ da_array_t *da_create(uint count, size_t item_size);
  * \retval 0 if successful.
  * \retval -1 if not successful.
  */
-int da_initialize(da_array_t *array, uint count, size_t item_size);
+int da_initialize(da_array_t *array, unsigned count, size_t item_size);
 
 /*!
  * \brief Reserves space for \a count more items.
@@ -94,7 +95,7 @@ int da_initialize(da_array_t *array, uint count, size_t item_size);
  * \retval 1 if successful and the array was enlarged.
  * \retval -1 if not successful - resizing was needed but could not be done.
  */
-int da_reserve(da_array_t *array, uint count);
+int da_reserve(da_array_t *array, unsigned count);
 
 /*!
  * \brief Increases the number of items in array by \a count.
@@ -103,7 +104,7 @@ int da_reserve(da_array_t *array, uint count);
  * \retval -1 If not successful (not enough allocated space, i.e. must run
  *            da_reserve()).
  */
-int da_occupy(da_array_t *array, uint count);
+int da_occupy(da_array_t *array, unsigned count);
 
 /*!
  * \brief Tries to reserve space for \a count more items.
@@ -111,12 +112,12 @@ int da_occupy(da_array_t *array, uint count);
  * \retval 0 if successful and resizing is not necessary.
  * \retval 1 if successful but the array will need to be resized.
  */
-uint da_try_reserve(const da_array_t *array, uint count);
+unsigned da_try_reserve(const da_array_t *array, unsigned count);
 
 /*!
  * \brief Releases space taken by \a count items.
  */
-void da_release(da_array_t *array, uint count);
+void da_release(da_array_t *array, unsigned count);
 
 /*!
  * \brief Poperly deallocates the array.
@@ -131,7 +132,7 @@ void *da_get_items(const da_array_t *array);
 /*!
  * \brief Returns count of items in the array.
  */
-uint da_get_count(const da_array_t *array);
+unsigned da_get_count(const da_array_t *array);
 
 /*----------------------------------------------------------------------------*/
 

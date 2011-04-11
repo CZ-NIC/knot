@@ -20,7 +20,6 @@
 #include "knot/server/server.h"
 #include "knot/server/dthreads.h"
 
-
 /*!
  * \brief TCP master socket runnable.
  *
@@ -30,12 +29,11 @@
  *
  * \param thread Associated thread from DThreads unit.
  *
- * \retval  0 On success.
- * \retval <0 If an error occured.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL invalid parameters.
  */
 int tcp_master(dthread_t *thread);
 
 #endif // _KNOT_TCPHANDLER_H_
 
 /*! @} */
-

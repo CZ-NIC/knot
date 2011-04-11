@@ -10,28 +10,54 @@
 #include "knot/stat/stat.h"
 #include "dnslib/dnslib.h"
 #include "dnslib/debug.h"
+#include "knot/other/error.h"
+#include "knot/server/zones.h"
 
-//static const uint8_t  RCODE_MASK           = 0xf0;
-static const int      OFFSET_FLAGS2        = 3;
-static const size_t   RR_FIXED_SIZE        = 10;
-static const size_t   QUESTION_FIXED_SIZE  = 4;
+/*----------------------------------------------------------------------------*/
+
+/*! \brief Maximum UDP payload with EDNS enabled. */
 static const uint16_t MAX_UDP_PAYLOAD_EDNS = 4096;
+/*! \brief Maximum UDP payload with EDNS disabled. */
 static const uint16_t MAX_UDP_PAYLOAD      = 512;
+/*! \brief Supported EDNS version. */
 static const uint8_t  EDNS_VERSION         = 0;
-static const uint8_t  OPT_SIZE             = 11;
+/*! \brief Determines whether EDNS is enabled. */
 static const int      EDNS_ENABLED         = 1;
+
+/*! \brief TTL of a CNAME synthetized from a DNAME. */
 static const uint32_t SYNTH_CNAME_TTL      = 0;
+
+/*! \brief Determines whether DNSSEC is enabled. */
 static const int      DNSSEC_ENABLED       = 1;
+
+/*! \brief Determines whether NSID is enabled. */
 static const int      NSID_ENABLED         = 1;
+
+/*! \brief Length of NSID option data. */
 static const uint16_t NSID_LENGTH          = 6;
+/*! \brief NSID option data. */
 static const uint8_t  NSID_DATA[6] = {0x46, 0x6f, 0x6f, 0x42, 0x61, 0x72};
+
+/*! \brief Internal error code to propagate need for SERVFAIL response. */
 static const int      NS_ERR_SERVFAIL      = -999;
 
 /*----------------------------------------------------------------------------*/
 /* Private functions                                                          */
 /*----------------------------------------------------------------------------*/
-
-static inline void ns_error_response(ns_nameserver *nameserver,
+/*!
+ * \brief Prepares wire format of an error response using generic error template
+ *        stored in the nameserver structure.
+ *
+ * The error response will not contain the Question section from the query, just
+ * a header with ID copied from the query and the given RCODE.
+ *
+ * \param nameserver Nameserver structure containing the error template.
+ * \param query_wire Wire format of the query.
+ * \param rcode RCODE to set in the response.
+ * \param response_wire Place for wire format of the response.
+ * \param rsize Size of the error response will be stored here.
+ */
+static inline void ns_error_response(ns_nameserver_t *nameserver,
                                      const uint8_t *query_wire,
                                      uint8_t rcode,
                                      uint8_t *response_wire,
@@ -47,7 +73,19 @@ static inline void ns_error_response(ns_nameserver *nameserver,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Finds zone where to search for the QNAME.
+ *
+ * \note As QTYPE DS requires special handling, this function finds a zone for
+ *       a direct predecessor of QNAME in such case.
+ *
+ * \param zdb Zone database where to search for the proper zone.
+ * \param qname QNAME.
+ * \param qtype QTYPE.
+ *
+ * \return Zone to which QNAME belongs (according to QTYPE), or NULL if no such
+ *         zone was found.
+ */
 static const dnslib_zone_t *ns_get_zone_for_qname(dnslib_zonedb_t *zdb,
                                                   const dnslib_dname_t *qname,
                                                   uint16_t qtype)
@@ -76,9 +114,20 @@ static const dnslib_zone_t *ns_get_zone_for_qname(dnslib_zonedb_t *zdb,
 }
 
 /*----------------------------------------------------------------------------*/
-
-dnslib_rrset_t *ns_synth_from_wildcard(const dnslib_rrset_t *wildcard_rrset,
-                                       const dnslib_dname_t *qname)
+/*!
+ * \brief Synthetizes RRSet from a wildcard RRSet using the given QNAME.
+ *
+ * The synthetized RRSet is identical to the wildcard RRSets, except that the
+ * owner name is replaced by \a qname.
+ *
+ * \param wildcard_rrset Wildcard RRSet to synthetize from.
+ * \param qname Domain name to be used as the owner of the synthetized RRset.
+ *
+ * \return The synthetized RRSet (this is a newly created RRSet, remember to
+ *         free it).
+ */
+static dnslib_rrset_t *ns_synth_from_wildcard(
+	const dnslib_rrset_t *wildcard_rrset, const dnslib_dname_t *qname)
 {
 	debug_ns("Synthetizing RRSet from wildcard...\n");
 
@@ -122,7 +171,16 @@ dnslib_rrset_t *ns_synth_from_wildcard(const dnslib_rrset_t *wildcard_rrset,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Checks if the given RRSet is a wildcard RRSet and replaces it with
+ *        a synthetized RRSet if required.
+ *
+ * \param name Domain name to be used as the owner of the possibly synthetized
+ *             RRSet
+ * \param resp Response to which the synthetized RRSet should be stored (as a
+ *             temporary RRSet).
+ * \param rrset RRSet to check (and possibly replace).
+ */
 static void ns_check_wildcard(const dnslib_dname_t *name,
                               dnslib_response_t *resp,
                               const dnslib_rrset_t **rrset)
@@ -138,7 +196,26 @@ static void ns_check_wildcard(const dnslib_dname_t *name,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Adds signatures (RRSIGs) for the given RRSet to the response.
+ *
+ * This function first checks if DNSSEC is enabled and if it was requested in
+ * the response (DO bit set). If not, it does nothing and returns 0. If yes,
+ * it retrieves RRSIGs stored in the RRSet, deals with possible wildcard owner
+ * and adds the RRSIGs to response using the given function (that determines
+ * to which section of the response they will be added).
+ *
+ * \param rrset RRSet to get the RRSIGs from.
+ * \param resp Response where to add the RRSIGs.
+ * \param name Actual name to be used as owner in case of wildcard RRSet.
+ * \param add_rrset_to_resp Function for adding the RRSIG RRset to the response.
+ * \param tc Set to 1 if omitting the RRSIG RRSet should result in setting the
+ *           TC bit in the response.
+ *
+ * \return KNOT_EOK
+ * \return DNSLIB_ENOMEM
+ * \return DNSLIB_ESPACE
+ */
 static int ns_add_rrsigs(const dnslib_rrset_t *rrset, dnslib_response_t *resp,
                          const dnslib_dname_t *name,
                          int (*add_rrset_to_resp)(dnslib_response_t *,
@@ -160,11 +237,22 @@ static int ns_add_rrsigs(const dnslib_rrset_t *rrset, dnslib_response_t *resp,
 		return add_rrset_to_resp(resp, rrsigs, tc, 0);
 	}
 
-	return 0;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Resolves CNAME chain starting in \a node, stores all the CNAMEs in the
+ *        response and updates \a node and \a qname to the last node in the
+ *        chain.
+ *
+ * \param node Node (possibly) containing a CNAME RR.
+ * \param qname Searched name. Will be updated to the canonical name.
+ * \param resp Response where to add the CNAME RRs.
+ * \param add_rrset_to_resp Function for adding the CNAME RRs to the response.
+ * \param tc Set to 1 if omitting the RRSIG RRSet should result in setting the
+ *           TC bit in the response.
+ */
 static void ns_follow_cname(const dnslib_node_t **node,
                             const dnslib_dname_t **qname,
                             dnslib_response_t *resp,
@@ -216,7 +304,18 @@ DEBUG_NS(
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Retrieves RRSet(s) of given type from the given node and adds them to
+ *        the response's Answer section.
+ *
+ * \param node Node where to take the RRSet from.
+ * \param name Actual searched name (used in case of wildcard RRSet(s)).
+ * \param type Type of the RRSet(s). If set to DNSLIB_RRTYPE_ANY, all RRSets
+ *             from the node will be added to the answer.
+ * \param resp Response where to add the RRSets.
+ *
+ * \return Number of RRSets added.
+ */
 static int ns_put_answer(const dnslib_node_t *node, const dnslib_dname_t *name,
                           uint16_t type, dnslib_response_t *resp)
 {
@@ -315,7 +414,23 @@ DEBUG_NS(
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Adds RRSets to Additional section of the response.
+ *
+ * This function uses dnslib_rdata_get_name() to get the domain name from the
+ * RDATA of the RRSet according to its type. It also does not search for the
+ * retrieved domain name, but just uses its node field. Thus to work correctly,
+ * the zone where the RRSet is from should be adjusted using
+ * dnslib_zone_adjust_dnames().
+ *
+ * A and AAAA RRSets (and possible CNAMEs) for the found domain names are added.
+ *
+ * \warning Use this function only with types containing some domain name,
+ *          otherwise it will crash (or behave strangely).
+ *
+ * \param resp Response where to add the Additional data.
+ * \param rrset RRSet to get the Additional data for.
+ */
 static void ns_put_additional_for_rrset(dnslib_response_t *resp,
                                         const dnslib_rrset_t *rrset)
 {
@@ -329,7 +444,7 @@ static void ns_put_additional_for_rrset(dnslib_response_t *resp,
 		debug_ns("Getting name from RDATA, type %s..\n",
 			 dnslib_rrtype_to_string(dnslib_rrset_type(rrset)));
 		dname = dnslib_rdata_get_name(rdata,
-					      dnslib_rrset_type(rrset));
+		                              dnslib_rrset_type(rrset));
 		assert(dname != NULL);
 		node = dnslib_dname_node(dname);
 
@@ -392,7 +507,16 @@ DEBUG_NS(
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Checks whether the given type requires additional processing.
+ *
+ * Only MX, NS and SRV types require additional processing.
+ *
+ * \param qtype Type to check.
+ *
+ * \retval <> 0 if additional processing is needed for \a qtype.
+ * \retval 0 otherwise.
+ */
 static int ns_additional_needed(uint16_t qtype)
 {
 	return (qtype == DNSLIB_RRTYPE_MX ||
@@ -401,7 +525,15 @@ static int ns_additional_needed(uint16_t qtype)
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Adds whatever Additional RRSets are required for the response.
+ *
+ * For each RRSet in Answer and Authority sections this function checks if
+ * additional processing is needed and if yes, it puts any Additional RRSets
+ * available to the Additional section of the response.
+ *
+ * \param resp Response to process.
+ */
 static void ns_put_additional(dnslib_response_t *resp)
 {
         debug_ns("ADDITIONAL SECTION PROCESSING\n");
@@ -425,7 +557,12 @@ static void ns_put_additional(dnslib_response_t *resp)
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Puts authority NS RRSet to the Auhority section of the response.
+ *
+ * \param zone Zone to take the authority NS RRSet from.
+ * \param resp Response where to add the RRSet.
+ */
 static void ns_put_authority_ns(const dnslib_zone_t *zone,
                                 dnslib_response_t *resp)
 {
@@ -439,7 +576,12 @@ static void ns_put_authority_ns(const dnslib_zone_t *zone,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Puts SOA RRSet to the Auhority section of the response.
+ *
+ * \param zone Zone to take the SOA RRSet from.
+ * \param resp Response where to add the RRSet.
+ */
 static void ns_put_authority_soa(const dnslib_zone_t *zone,
                                  dnslib_response_t *resp)
 {
@@ -453,21 +595,31 @@ static void ns_put_authority_soa(const dnslib_zone_t *zone,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Creates a 'next closer name' to the given domain name.
+ *
+ * For definition of 'next closer name', see RFC5155, Page 6.
+ *
+ * \param closest_encloser Closest encloser of \a name.
+ * \param name Domain name to create the 'next closer' name to.
+ *
+ * \return 'Next closer name' to the given domain name or NULL if an error
+ *         occured.
+ */
 static dnslib_dname_t *ns_next_closer(const dnslib_dname_t *closest_encloser,
-                                      const dnslib_dname_t *qname)
+                                      const dnslib_dname_t *name)
 {
 	int ce_labels = dnslib_dname_label_count(closest_encloser);
-	int qname_labels = dnslib_dname_label_count(qname);
+	int qname_labels = dnslib_dname_label_count(name);
 
 	assert(ce_labels < qname_labels);
 
 	// the common labels should match
-	assert(dnslib_dname_matched_labels(closest_encloser, qname)
+	assert(dnslib_dname_matched_labels(closest_encloser, name)
 	       == ce_labels);
 
 	// chop some labels from the qname
-	dnslib_dname_t *next_closer = dnslib_dname_copy(qname);
+	dnslib_dname_t *next_closer = dnslib_dname_copy(name);
 	if (next_closer == NULL) {
 		return NULL;
 	}
@@ -480,7 +632,13 @@ static dnslib_dname_t *ns_next_closer(const dnslib_dname_t *closest_encloser,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Adds NSEC3 RRSet (together with corresponding RRSIGs) from the given
+ *        node into the response.
+ *
+ * \param node Node to get the NSEC3 RRSet from.
+ * \param resp Response where to add the RRSets.
+ */
 static void ns_put_nsec3_from_node(const dnslib_node_t *node,
                                    dnslib_response_t *resp)
 {
@@ -498,13 +656,24 @@ static void ns_put_nsec3_from_node(const dnslib_node_t *node,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Finds and adds NSEC3 covering the given domain name (and their
+ *        associated RRSIGs) to the response.
+ *
+ * \param zone Zone used for answering.
+ * \param name Domain name to cover.
+ * \param resp Response where to add the RRSets.
+ *
+ * \retval KNOT_EOK
+ * \retval NS_ERR_SERVFAIL if a runtime collision occured. The server should
+ *                         respond with SERVFAIL in such case.
+ */
 static int ns_put_covering_nsec3(const dnslib_zone_t *zone,
-                                  const dnslib_dname_t *nsec3_name,
-                                  dnslib_response_t *resp)
+                                 const dnslib_dname_t *name,
+                                 dnslib_response_t *resp)
 {
 	const dnslib_node_t *prev, *node;
-	int match = dnslib_zone_find_nsec3_for_name(zone, nsec3_name,
+	int match = dnslib_zone_find_nsec3_for_name(zone, name,
 	                                            &node, &prev);
 
 	if (match == DNSLIB_ZONE_NAME_FOUND){
@@ -520,11 +689,29 @@ DEBUG_NS(
 
 	ns_put_nsec3_from_node(prev, resp);
 
-	return 0;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Adds NSEC3s comprising the 'closest encloser proof' for the given
+ *        (non-existent) domain name (and their associated RRSIGs) to the
+ *        response.
+ *
+ * For definition of 'closest encloser proof', see RFC5155, section 7.2.1,
+ * Page 18.
+ *
+ * \note This function does not check if DNSSEC is enabled, nor if it is
+ *       requested by the query.
+ *
+ * \param zone Zone used for answering.
+ * \param closest_encloser Closest encloser of \a qname in the zone.
+ * \param qname Searched (non-existent) name.
+ * \param resp Response where to add the NSEC3s.
+ *
+ * \retval KNOT_EOK
+ * \retval NS_ERR_SERVFAIL
+ */
 static int ns_put_nsec3_closest_encloser_proof(const dnslib_zone_t *zone,
                                          const dnslib_node_t **closest_encloser,
                                          const dnslib_dname_t *qname,
@@ -542,7 +729,7 @@ DEBUG_NS(
 		debug_ns("No NSEC3PARAM found in zone %s.\n", name);
 		free(name);
 );
-		return 0;
+		return KNOT_EOK;
 	}
 
 DEBUG_NS(
@@ -608,7 +795,13 @@ DEBUG_NS(
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Creates a name of a wildcard child of \a name.
+ *
+ * \param name Domain name to get the wildcard child name of.
+ *
+ * \return Wildcard child name or NULL if an error occured.
+ */
 static dnslib_dname_t *ns_wildcard_child_name(const dnslib_dname_t *name)
 {
 	assert(name != NULL);
@@ -632,7 +825,20 @@ DEBUG_NS(
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Puts NSEC3s covering the non-existent wildcard child of a node
+ *        (and their associated RRSIGs) into the response.
+ *
+ * \note This function does not check if DNSSEC is enabled, nor if it is
+ *       requested by the query.
+ *
+ * \param zone Zone used for answering.
+ * \param node Node whose non-existent wildcard child should be covered.
+ * \param resp Response where to add the NSEC3s.
+ *
+ * \retval KNOT_EOK
+ * \retval NS_ERR_SERVFAIL
+ */
 static int ns_put_nsec3_no_wildcard_child(const dnslib_zone_t *zone,
                                           const dnslib_node_t *node,
                                           dnslib_response_t *resp)
@@ -653,7 +859,18 @@ static int ns_put_nsec3_no_wildcard_child(const dnslib_zone_t *zone,
 	return ret;
 }
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Puts NSECs or NSEC3s for NODATA error (and their associated RRSIGs)
+ *        to the response.
+ *
+ * \note This function first checks if DNSSEC is enabled and requested by the
+ *       query.
+ * \note Note that for each zone there are either NSEC or NSEC3 records used.
+ *
+ * \param node Node which generated the NODATA response (i.e. not containing
+ *             RRSets of the requested type).
+ * \param resp Response where to add the NSECs or NSEC3s.
+ */
 static void ns_put_nsec_nsec3_nodata(const dnslib_node_t *node,
                                      dnslib_response_t *resp)
 {
@@ -675,7 +892,23 @@ static void ns_put_nsec_nsec3_nodata(const dnslib_node_t *node,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Puts NSECs for NXDOMAIN error to the response.
+ *
+ * \note This function does not check if DNSSEC is enabled, nor if it is
+ *       requested by the query.
+ *
+ * \param qname QNAME which generated the NXDOMAIN error (i.e. not found in the
+ *              zone).
+ * \param zone Zone used for answering.
+ * \param previous Previous node to \a qname in the zone. May also be NULL. In
+ *                 such case the function finds the previous node in the zone.
+ * \param closest_encloser Closest encloser of \a qname. Must not be NULL.
+ * \param resp Response where to put the NSECs.
+ *
+ * \retval KNOT_EOK
+ * \retval NS_ERR_SERVFAIL
+ */
 static int ns_put_nsec_nxdomain(const dnslib_dname_t *qname,
                                 const dnslib_zone_t *zone,
                                 const dnslib_node_t *previous,
@@ -694,7 +927,7 @@ static int ns_put_nsec_nxdomain(const dnslib_dname_t *qname,
 	rrset = dnslib_node_rrset(previous, DNSLIB_RRTYPE_NSEC);
 	if (rrset == NULL) {
 		// no NSEC records
-		return 1;
+		return NS_ERR_SERVFAIL;
 	}
 
 	dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
@@ -740,11 +973,25 @@ static int ns_put_nsec_nxdomain(const dnslib_dname_t *qname,
 		dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
 	}
 
-	return 0;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Puts NSEC3s for NXDOMAIN error to the response.
+ *
+ * \note This function does not check if DNSSEC is enabled, nor if it is
+ *       requested by the query.
+ *
+ * \param zone Zone used for answering.
+ * \param closest_encloser Closest encloser of \a qname.
+ * \param qname Domain name which generated the NXDOMAIN error (i.e. not found
+ *              in the zone.
+ * \param resp Response where to put the NSEC3s.
+ *
+ * \retval KNOT_OK
+ * \retval NS_ERR_SERVFAIL
+ */
 static int ns_put_nsec3_nxdomain(const dnslib_zone_t *zone,
                                  const dnslib_node_t *closest_encloser,
                                  const dnslib_dname_t *qname,
@@ -754,7 +1001,7 @@ static int ns_put_nsec3_nxdomain(const dnslib_zone_t *zone,
 	int ret = ns_put_nsec3_closest_encloser_proof(zone, &closest_encloser,
 	                                              qname, resp);
 	// 2) NSEC3 covering non-existent wildcard
-	if (ret == 0) {
+	if (ret == KNOT_EOK) {
 		ret = ns_put_nsec3_no_wildcard_child(zone, closest_encloser,
 		                                     resp);
 	}
@@ -763,7 +1010,24 @@ static int ns_put_nsec3_nxdomain(const dnslib_zone_t *zone,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Puts NSECs or NSEC3s for the NXDOMAIN error to the response.
+ *
+ * \note This function first checks if DNSSEC is enabled and requested by the
+ *       query.
+ * \note Note that for each zone there are either NSEC or NSEC3 records used.
+ *
+ * \param zone Zone used for answering.
+ * \param previous Previous node to \a qname in the zone. May also be NULL. In
+ *                 such case the function finds the previous node in the zone.
+ * \param closest_encloser Closest encloser of \a qname. Must not be NULL.
+ * \param qname QNAME which generated the NXDOMAIN error (i.e. not found in the
+ *              zone).
+ * \param resp Response where to put the NSECs.
+ *
+ * \retval KNOT_OK
+ * \retval NS_ERR_SERVFAIL
+ */
 static int ns_put_nsec_nsec3_nxdomain(const dnslib_zone_t *zone,
                                       const dnslib_node_t *previous,
                                       const dnslib_node_t *closest_encloser,
@@ -784,7 +1048,22 @@ static int ns_put_nsec_nsec3_nxdomain(const dnslib_zone_t *zone,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Puts NSEC3s for wildcard answer into the response.
+ *
+ * \note This function does not check if DNSSEC is enabled, nor if it is
+ *       requested by the query.
+ *
+ * \param zone Zone used for answering.
+ * \param closest_encloser Closest encloser of \a qname in the zone. In this
+ *                         case it is the parent of the source of synthesis.
+ * \param qname Domain name covered by the wildcard used for answering the
+ *              query.
+ * \param resp Response to put the NSEC3s into.
+ *
+ * \retval KNOT_EOK
+ * \retval NS_ERR_SERVFAIL
+ */
 static int ns_put_nsec3_wildcard(const dnslib_zone_t *zone,
                                  const dnslib_node_t *closest_encloser,
                                  const dnslib_dname_t *qname,
@@ -819,10 +1098,20 @@ DEBUG_NS(
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Puts NSECs for wildcard answer into the response.
+ *
+ * \note This function does not check if DNSSEC is enabled, nor if it is
+ *       requested by the query.
+ *
+ * \param zone Zone used for answering.
+ * \param qname Domain name covered by the wildcard used for answering the
+ *              query.
+ * \param previous Previous node of \a qname in canonical order.
+ * \param resp Response to put the NSEC3s into.
+ */
 static void ns_put_nsec_wildcard(const dnslib_zone_t *zone,
                                  const dnslib_dname_t *qname,
-                                 const dnslib_node_t *node,
                                  const dnslib_node_t *previous,
                                  dnslib_response_t *resp)
 {
@@ -846,7 +1135,22 @@ static void ns_put_nsec_wildcard(const dnslib_zone_t *zone,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Puts NSECs or NSEC3s for wildcard NODATA answer into the response.
+ *
+ * \note This function first checks if DNSSEC is enabled and requested by the
+ *       query.
+ *
+ * \param node Node used for answering.
+ * \param closest_encloser Closest encloser of \a qname in the zone.
+ * \param previous Previous node of \a qname in canonical order.
+ * \param zone Zone used for answering.
+ * \param qname Actual searched domain name.
+ * \param resp Response where to put the NSECs and NSEC3s.
+ *
+ * \retval KNOT_EOK
+ * \retval NS_ERR_SERVFAIL
+ */
 static int ns_put_nsec_nsec3_wildcard_nodata(const dnslib_node_t *node,
                                           const dnslib_node_t *closest_encloser,
                                           const dnslib_node_t *previous,
@@ -854,7 +1158,7 @@ static int ns_put_nsec_nsec3_wildcard_nodata(const dnslib_node_t *node,
                                           const dnslib_dname_t *qname,
                                           dnslib_response_t *resp)
 {
-	int ret = 0;
+	int ret = KNOT_EOK;
 	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)) {
 		if (dnslib_zone_nsec3_enabled(zone)) {
 			ret = ns_put_nsec3_closest_encloser_proof(zone,
@@ -868,14 +1172,29 @@ static int ns_put_nsec_nsec3_wildcard_nodata(const dnslib_node_t *node,
 				ns_put_nsec3_from_node(nsec3_node, resp);
 			}
 		} else {
-			ns_put_nsec_wildcard(zone, qname, node, previous, resp);
+			ns_put_nsec_wildcard(zone, qname, previous, resp);
 		}
 	}
 	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Puts NSECs or NSEC3s for wildcard answer into the response.
+ *
+ * \note This function first checks if DNSSEC is enabled and requested by the
+ *       query and if the node's owner is a wildcard.
+ *
+ * \param node Node used for answering.
+ * \param closest_encloser Closest encloser of \a qname in the zone.
+ * \param previous Previous node of \a qname in canonical order.
+ * \param zone Zone used for answering.
+ * \param qname Actual searched domain name.
+ * \param resp Response where to put the NSECs and NSEC3s.
+ *
+ * \retval KNOT_EOK
+ * \retval NS_ERR_SERVFAIL
+ */
 static int ns_put_nsec_nsec3_wildcard_answer(const dnslib_node_t *node,
                                           const dnslib_node_t *closest_encloser,
                                           const dnslib_node_t *previous,
@@ -883,21 +1202,37 @@ static int ns_put_nsec_nsec3_wildcard_answer(const dnslib_node_t *node,
                                           const dnslib_dname_t *qname,
                                           dnslib_response_t *resp)
 {
-	int r = 0;
+	int r = KNOT_EOK;
 	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)
 	    && dnslib_dname_is_wildcard(dnslib_node_owner(node))) {
 		if (dnslib_zone_nsec3_enabled(zone)) {
 			r = ns_put_nsec3_wildcard(zone, closest_encloser, qname,
 			                          resp);
 		} else {
-			ns_put_nsec_wildcard(zone, qname, node, previous, resp);
+			ns_put_nsec_wildcard(zone, qname, previous, resp);
 		}
 	}
 	return r;
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Creates a referral response.
+ *
+ * This function puts the delegation NS RRSet to the Authority section of the
+ * response, possibly adds DS and their associated RRSIGs (if DNSSEC is enabled
+ * and requested by the query) and adds any available additional data (A and
+ * AAAA RRSets for the names in the NS RRs) with their associated RRSIGs
+ * to the Additional section.
+ *
+ * \param node Delegation point node.
+ * \param zone Parent zone (the one from which the response is generated).
+ * \param qname Searched name (which caused the referral).
+ * \param resp Response.
+ *
+ * \retval KNOT_EOK
+ * \retval NS_ERR_SERVFAIL
+ */
 static inline int ns_referral(const dnslib_node_t *node,
                               const dnslib_zone_t *zone,
                               const dnslib_dname_t *qname,
@@ -910,8 +1245,7 @@ static inline int ns_referral(const dnslib_node_t *node,
 		node = node->parent;
 	}
 
-	const dnslib_rrset_t *rrset =
-		dnslib_node_rrset(node, DNSLIB_RRTYPE_NS);
+	const dnslib_rrset_t *rrset = dnslib_node_rrset(node, DNSLIB_RRTYPE_NS);
 	assert(rrset != NULL);
 
 	// TODO: wildcards??
@@ -921,7 +1255,7 @@ static inline int ns_referral(const dnslib_node_t *node,
 	ns_add_rrsigs(rrset, resp, node->owner,
 	              dnslib_response_add_rrset_authority, 1);
 
-	int ret = 0;
+	int ret = KNOT_EOK;
 	// add DS records
 	debug_ns("DNSSEC requested: %d\n",
 		 dnslib_response_dnssec_requested(resp));
@@ -950,7 +1284,7 @@ static inline int ns_referral(const dnslib_node_t *node,
 		}
 	}
 
-	if (ret == 0) {
+	if (ret == KNOT_EOK) {
 		ns_put_additional(resp);
 		dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
 	}
@@ -959,6 +1293,29 @@ static inline int ns_referral(const dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief Tries to answer the query from the given node.
+ *
+ * Tries to put RRSets of requested type (\a qtype) to the Answer section of the
+ * response. If successful, it also adds authority NS RRSet to the Authority
+ * section and it may add NSEC or NSEC3s in case of a wildcard answer (\a node
+ * is a wildcard node). If not successful (there are no such RRSets), it adds
+ * the SOA record to the Authority section and may add NSEC or NSEC3s according
+ * to the type of the response (NXDOMAIN if \a node is an empty non-terminal,
+ * NODATA if it is a regular node). It also adds any additional data that may
+ * be required.
+ *
+ * \param node Node to answer from.
+ * \param closest_encloser Closest encloser of \a qname in the zone.
+ * \param previous Previous domain name of \a qname in canonical order.
+ * \param zone Zone used for answering.
+ * \param qname Searched domain name.
+ * \param qtype Searched RR type.
+ * \param resp Response.
+ *
+ * \retval KNOT_EOK
+ * \retval NS_ERR_SERVFAIL
+ */
 static int ns_answer_from_node(const dnslib_node_t *node,
                                const dnslib_node_t *closest_encloser,
                                const dnslib_node_t *previous,
@@ -969,7 +1326,7 @@ static int ns_answer_from_node(const dnslib_node_t *node,
 	debug_ns("Putting answers from found node to the response...\n");
 	int answers = ns_put_answer(node, qname, qtype, resp);
 
-	int ret = 0;
+	int ret = KNOT_EOK;
 	if (answers == 0) {  // if NODATA response, put SOA
 		if (dnslib_node_rrset_count(node) == 0) {
 			// node is an empty non-terminal => NSEC for NXDOMAIN
@@ -993,7 +1350,7 @@ static int ns_answer_from_node(const dnslib_node_t *node,
 		ns_put_authority_ns(zone, resp);
 	}
 
-	if (ret == 0) {
+	if (ret == KNOT_EOK) {
 		ns_put_additional(resp);
 	}
 	return ret;
@@ -1001,6 +1358,16 @@ static int ns_answer_from_node(const dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief Synthetizes a CNAME RR from a DNAME.
+ *
+ * \param dname_rrset DNAME RRSet to synthetize from (only the first RR is
+ *                    used).
+ * \param qname Name to be used as the owner name of the synthetized CNAME.
+ *
+ * \return Synthetized CNAME RRset (this is a newly created RRSet, remember to
+ *         free it).
+ */
 static dnslib_rrset_t *ns_cname_from_dname(const dnslib_rrset_t *dname_rrset,
                                            const dnslib_dname_t *qname)
 {
@@ -1014,8 +1381,7 @@ static dnslib_rrset_t *ns_cname_from_dname(const dnslib_rrset_t *dname_rrset,
 	}
 
 	dnslib_rrset_t *cname_rrset = dnslib_rrset_new(
-			owner, DNSLIB_RRTYPE_CNAME,
-			DNSLIB_CLASS_IN, SYNTH_CNAME_TTL);
+		owner, DNSLIB_RRTYPE_CNAME, DNSLIB_CLASS_IN, SYNTH_CNAME_TTL);
 
 	if (cname_rrset == NULL) {
 		dnslib_dname_free(&owner);
@@ -1042,7 +1408,16 @@ DEBUG_NS(
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Checks if the name created by replacing the owner of \a dname_rrset
+ *        in the \a qname by the DNAME's target would be longer than allowed.
+ *
+ * \param dname_rrset DNAME RRSet to be used for the check.
+ * \param qname Name whose part is to be replaced.
+ *
+ * \retval <>0 if the created domain name would be too long.
+ * \retval 0 otherwise.
+ */
 static int ns_dname_is_too_long(const dnslib_rrset_t *dname_rrset,
                                 const dnslib_dname_t *qname)
 {
@@ -1050,7 +1425,7 @@ static int ns_dname_is_too_long(const dnslib_rrset_t *dname_rrset,
 	if (dnslib_dname_label_count(qname)
 	        - dnslib_dname_label_count(dnslib_rrset_owner(dname_rrset))
 	        + dnslib_dname_label_count(dnslib_rdata_get_item(
-				dnslib_rrset_rdata(dname_rrset), 0)->dname)
+	                             dnslib_rrset_rdata(dname_rrset), 0)->dname)
 	        > DNSLIB_MAX_DNAME_LENGTH) {
 		return 1;
 	} else {
@@ -1059,7 +1434,18 @@ static int ns_dname_is_too_long(const dnslib_rrset_t *dname_rrset,
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief DNAME processing.
+ *
+ * This function adds the DNAME RRSet (and possibly its associated RRSIGs to the
+ * Answer section of the response, synthetizes CNAME record from the DNAME and
+ * adds it there too. It also stores the synthetized CNAME in the temporary
+ * RRSets of the response.
+ *
+ * \param dname_rrset DNAME RRSet to use.
+ * \param qname Searched name.
+ * \param resp Response.
+ */
 static void ns_process_dname(const dnslib_rrset_t *dname_rrset,
                              const dnslib_dname_t *qname,
                              dnslib_response_t *resp)
@@ -1095,7 +1481,12 @@ DEBUG_NS(
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Adds DNSKEY RRSet from the apex of a zone to the response.
+ *
+ * \param apex Zone apex node.
+ * \param resp Response.
+ */
 static void ns_add_dnskey(const dnslib_node_t *apex, dnslib_response_t *resp)
 {
 
@@ -1109,14 +1500,28 @@ static void ns_add_dnskey(const dnslib_node_t *apex, dnslib_response_t *resp)
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Answers the query from the given zone.
+ *
+ * This function performs the actual answering logic.
+ *
+ * \param zone Zone to use for answering.
+ * \param qname QNAME from the query.
+ * \param qtype QTYPE from the query.
+ * \param resp Response to fill in.
+ *
+ * \retval KNOT_EOK
+ * \retval NS_ERR_SERVFAIL
+ *
+ * \todo Describe the answering logic in detail.
+ */
 static int ns_answer_from_zone(const dnslib_zone_t *zone,
                                const dnslib_dname_t *qname, uint16_t qtype,
                                dnslib_response_t *resp)
 {
 	const dnslib_node_t *node = NULL, *closest_encloser = NULL,
 	                    *previous = NULL;
-	int cname = 0, auth_soa = 0, ret = 1, find_ret = 0;
+	int cname = 0, auth_soa = 0, ret = 0, find_ret = 0;
 
 search:
 #ifdef USE_HASH_TABLE
@@ -1126,6 +1531,10 @@ search:
 	find_ret = dnslib_zone_find_dname(zone, qname, &node,
 	                                  &closest_encloser, &previous);
 #endif
+	if (find_ret == DNSLIB_EBADARG) {
+		return NS_ERR_SERVFAIL;
+	}
+
 DEBUG_NS(
 	char *name;
 	if (node) {
@@ -1151,7 +1560,7 @@ DEBUG_NS(
 		debug_ns(" and previous node: (nil).\n");
 	}
 );
-	if (find_ret == DNSLIB_ZONE_NAME_NOT_IN_ZONE) {
+	if (find_ret == DNSLIB_EBADZONE) {
 		// possible only if we followed cname
 		assert(cname != 0);
 		dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOERROR);
@@ -1250,7 +1659,7 @@ DEBUG_NS(
 
 	ret = ns_answer_from_node(node, closest_encloser, previous, zone, qname,
 	                          qtype, resp);
-	if (ret != 0) {
+	if (ret != KNOT_EOK) {
 		goto finalize;
 	}
 	dnslib_response_set_aa(resp);
@@ -1266,7 +1675,7 @@ DEBUG_NS(
 	}
 
 finalize:
-	if (ret == 0 && auth_soa) {
+	if (ret == KNOT_EOK && auth_soa) {
 		ns_put_authority_soa(zone, resp);
 	}
 
@@ -1274,7 +1683,19 @@ finalize:
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Answers the query from the given zone database.
+ *
+ * First it searches for a zone to answer from. If there is none, it sets
+ * RCODE REFUSED to the response and ends. Otherwise it tries to answer the
+ * query using the found zone (see ns_answer_from_zone()).
+ *
+ * \param db Zone database to use for answering.
+ * \param resp Response that holds the parsed query.
+ *
+ * \retval KNOT_EOK
+ * \retval NS_ERR_SERVFAIL
+ */
 static int ns_answer(dnslib_zonedb_t *db, dnslib_response_t *resp)
 {
 	dnslib_dname_t *qname = resp->question.qname;
@@ -1293,7 +1714,7 @@ DEBUG_NS(
 		debug_ns("No zone found.\n");
 		dnslib_response_set_rcode(resp, DNSLIB_RCODE_REFUSED);
 		//dnslib_dname_free(&qname);
-		return 0;
+		return KNOT_EOK;
 	}
 DEBUG_NS(
 	char *name_str2 = dnslib_dname_to_str(zone->apex->owner);
@@ -1306,7 +1727,17 @@ DEBUG_NS(
 }
 
 /*----------------------------------------------------------------------------*/
-
+/*!
+ * \brief Converts the response to wire format.
+ *
+ * \param resp Response to convert.
+ * \param wire Place for the wire format of the response.
+ * \param wire_size In: space available for the wire format in bytes.
+ *                  Out: actual size of the wire format in bytes.
+ *
+ * \retval KNOT_EOK
+ * \retval NS_ERR_SERVFAIL
+ */
 static int ns_response_to_wire(dnslib_response_t *resp, uint8_t *wire,
                                size_t *wire_size)
 {
@@ -1314,8 +1745,9 @@ static int ns_response_to_wire(dnslib_response_t *resp, uint8_t *wire,
 	size_t rsize = 0;
 	int ret = 0;
 
-	if ((ret = dnslib_response_to_wire(resp, &rwire, &rsize)) != 0) {
-		log_answer_error("nameserver: Error converting response packet "
+	if ((ret = dnslib_response_to_wire(resp, &rwire, &rsize))
+	     != DNSLIB_EOK) {
+		log_answer_error("Error converting response packet "
 		                 "to wire format (error %d).\n", ret);
 		return NS_ERR_SERVFAIL;
 	}
@@ -1328,25 +1760,34 @@ static int ns_response_to_wire(dnslib_response_t *resp, uint8_t *wire,
 	*wire_size = rsize;
 	//free(rwire);
 
-	return 0;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 /* Public functions                                                           */
 /*----------------------------------------------------------------------------*/
 
-ns_nameserver *ns_create(dnslib_zonedb_t *database)
+ns_nameserver_t *ns_create()
 {
-	ns_nameserver *ns = malloc(sizeof(ns_nameserver));
+	ns_nameserver_t *ns = malloc(sizeof(ns_nameserver_t));
 	if (ns == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
-	ns->zone_db = database;
+
+	// Create zone database structure
+	debug_ns("Creating Zone Database structure...\n");
+	ns->zone_db = dnslib_zonedb_new();
+	if (ns->zone_db == NULL) {
+		ERR_ALLOC_FAILED;
+		free(ns);
+		return NULL;
+	}
 
 	// prepare empty response with SERVFAIL error
 	dnslib_response_t *err = dnslib_response_new_empty(NULL);
 	if (err == NULL) {
+		ERR_ALLOC_FAILED;
 		free(ns);
 		return NULL;
 	}
@@ -1362,7 +1803,7 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database)
 
 	if (dnslib_response_to_wire(err, &error_wire, &ns->err_resp_size)
 	    != 0) {
-		log_answer_error("nameserver: Error while converting a "
+		log_answer_error("Error while converting "
 		                 "default error response to "
 		                 "wire format \n");
 		dnslib_response_free(&err);
@@ -1372,7 +1813,7 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database)
 
 	ns->err_response = (uint8_t *)malloc(ns->err_resp_size);
 	if (ns->err_response == NULL) {
-		log_answer_error("nameserver: Error while converting default "
+		log_answer_error("Error while converting default "
 		                 "error response to wire format \n");
 		dnslib_response_free(&err);
 		free(ns);
@@ -1409,14 +1850,14 @@ ns_nameserver *ns_create(dnslib_zonedb_t *database)
 
 /*----------------------------------------------------------------------------*/
 
-int ns_answer_request(ns_nameserver *nameserver, const uint8_t *query_wire,
+int ns_answer_request(ns_nameserver_t *nameserver, const uint8_t *query_wire,
                       size_t qsize, uint8_t *response_wire, size_t *rsize)
 {
 	debug_ns("ns_answer_request() called with query size %zu.\n", qsize);
 	debug_ns_hex((char *)query_wire, qsize);
 
 	if (qsize < 2) {
-		return -1;
+		return KNOT_EMALF;
 	}
 
 	// 1) create empty response
@@ -1427,20 +1868,20 @@ int ns_answer_request(ns_nameserver *nameserver, const uint8_t *query_wire,
 		log_answer_error("Error while creating response packet!\n");
 		ns_error_response(nameserver, query_wire, DNSLIB_RCODE_SERVFAIL,
 		                  response_wire, rsize);
-		return 0;
+		return KNOT_EOK;
 	}
 
 	int ret = 0;
 
 	// 2) parse the query
 	if ((ret = dnslib_response_parse_query(resp, query_wire, qsize)) != 0) {
-		log_answer_info("nameserver: Error while parsing query, "
+		log_answer_info("Error while parsing query, "
 		                "dnslib error '%d'.\n",
 		                ret);
 		ns_error_response(nameserver, query_wire, DNSLIB_RCODE_FORMERR,
 		                  response_wire, rsize);
 		dnslib_response_free(&resp);
-		return 0;
+		return KNOT_EOK;
 	}
 
 	// NSID
@@ -1478,25 +1919,48 @@ int ns_answer_request(ns_nameserver *nameserver, const uint8_t *query_wire,
 	debug_ns("Returning response with wire size %zu\n", *rsize);
 	debug_ns_hex((char *)response_wire, *rsize);
 
-	return 0;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void ns_destroy(ns_nameserver **nameserver)
+void ns_destroy(ns_nameserver_t **nameserver)
 {
-	// do nothing with the zone database!
+	synchronize_rcu();
+
 	free((*nameserver)->err_response);
 	if ((*nameserver)->opt_rr != NULL) {
 		dnslib_edns_free(&(*nameserver)->opt_rr);
 	}
+
+	// destroy the zone db
+	dnslib_zonedb_deep_free(&(*nameserver)->zone_db);
+
 	free(*nameserver);
 	*nameserver = NULL;
 }
 
+/*----------------------------------------------------------------------------*/
+
 int ns_conf_hook(const struct conf_t *conf, void *data)
 {
-	ns_nameserver *ns = (ns_nameserver *)data;
-	debug_server("Event: reconfiguring name server.\n");
+	ns_nameserver_t *ns = (ns_nameserver_t *)data;
+	debug_ns("Event: reconfiguring name server.\n");
+
+	dnslib_zonedb_t *old_db = 0;
+
+	int ret = zones_update_db_from_config(conf, ns, &old_db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	// Wait until all readers finish with reading the zones.
+	synchronize_rcu();
+
+	debug_ns("Nameserver's zone db: %p, old db: %p\n", ns->zone_db, old_db);
+
+	// Delete all deprecated zones and delete the old database.
+	dnslib_zonedb_deep_free(&old_db);
+
+	return KNOT_EOK;
 }
 

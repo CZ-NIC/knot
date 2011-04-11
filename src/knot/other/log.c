@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include "knot/common.h"
+#include "knot/other/error.h"
 #include "knot/other/log.h"
 #include "common/lists.h"
 #include "knot/conf/conf.h"
@@ -23,7 +24,7 @@ int log_setup(int logfiles)
 {
 	/* Check facilities count. */
 	if (logfiles < 0) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	/* Ensure minimum facilities count. */
@@ -37,7 +38,7 @@ int log_setup(int logfiles)
 	LOG_FCL_SIZE = 0;
 	LOG_FCL = malloc(new_size);
 	if (!LOG_FCL) {
-		return -1;
+		return KNOT_ENOMEM;
 	}
 
 	/* Reserve space for logfiles. */
@@ -46,14 +47,14 @@ int log_setup(int logfiles)
 		if (!LOG_FDS) {
 			free(LOG_FCL);
 			LOG_FCL = 0;
-			return -1;
+			return KNOT_ENOMEM;
 		}
 		memset(LOG_FDS, 0, sizeof(FILE*) * logfiles);
 	}
 
 	memset(LOG_FCL, 0, new_size);
 	LOG_FCL_SIZE = new_size; // Assign only when all is set
-	return 0;
+	return KNOT_EOK;
 }
 
 
@@ -67,22 +68,24 @@ int log_init()
 	LOG_FDS_OPEN = 0;
 
 	/* Setup initial state. */
-	int bmask = LOG_MASK(LOG_ERR)|LOG_MASK(LOG_FATAL);
-	log_setup(0);
-	log_levels_set(LOGT_SYSLOG, LOG_ANY, bmask);
-	log_levels_set(LOGT_STDERR, LOG_ANY, bmask);
+	int ret = KNOT_EOK;
+	int emask = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR)|LOG_MASK(LOG_FATAL);
+	int imask = LOG_MASK(LOG_INFO)|LOG_MASK(LOG_NOTICE);
+	ret = log_setup(0);
+	log_levels_set(LOGT_SYSLOG, LOG_ANY, emask);
+	log_levels_set(LOGT_STDERR, LOG_ANY, emask);
+	log_levels_set(LOGT_STDOUT, LOG_ANY, imask);
 
 	/// \todo May change to LOG_DAEMON.
 	setlogmask(LOG_UPTO(LOG_DEBUG));
 	openlog(PROJECT_NAME, LOG_CONS | LOG_PID, LOG_LOCAL1);
-	return 0;
+	return ret;
 }
 
-int log_close()
+void log_close()
 {
 	log_truncate();
 	closelog();
-	return 0;
 }
 
 void log_truncate()
@@ -114,17 +117,17 @@ int log_open_file(const char* filename)
 {
 	// Check facility
 	if (unlikely(!LOG_FCL_SIZE || LOGT_FILE + LOG_FDS_OPEN >= LOG_FCL_SIZE)) {
-		return -1;
+		return KNOT_ERROR;
 	}
 
 	// Open file
 	LOG_FDS[LOG_FDS_OPEN] = fopen(filename, "w");
 	if (!LOG_FDS[LOG_FDS_OPEN]) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	// Disable buffering
-	setvbuf(LOG_FDS[LOG_FDS_OPEN], (char *)NULL, _IONBF, 0);
+	setvbuf(LOG_FDS[LOG_FDS_OPEN], (char *)0, _IONBF, 0);
 
 	return LOGT_FILE + LOG_FDS_OPEN++;
 }
@@ -143,7 +146,7 @@ int log_levels_set(int facility, logsrc_t src, uint8_t levels)
 {
 	// Check facility
 	if (unlikely(!LOG_FCL_SIZE || facility >= LOG_FCL_SIZE)) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	// Get facility pointer from offset
@@ -159,7 +162,7 @@ int log_levels_set(int facility, logsrc_t src, uint8_t levels)
 		}
 	}
 
-	return 0;
+	return KNOT_EOK;
 }
 
 int log_levels_add(int facility, logsrc_t src, uint8_t levels)
@@ -171,7 +174,7 @@ int log_levels_add(int facility, logsrc_t src, uint8_t levels)
 static int _log_msg(logsrc_t src, int level, const char *msg)
 {
 	if(!log_isopen()) {
-		return -1;
+		return KNOT_ERROR;
 	}
 
 	int ret = 0;
@@ -183,7 +186,7 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 
 	// Syslog
 	if (facility_levels(f, src) & level) {
-		syslog(level, msg, "");
+		syslog(level, "%s", msg);
 		ret = 1; // To prevent considering the message as ignored.
 	}
 
@@ -202,8 +205,15 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 			}
 
 			// Print
-			ret = fprintf(stream, msg, "");
+			ret = fprintf(stream, "%s", msg);
+			if (stream == stdout) {
+				fflush(stream);
+			}
 		}
+	}
+
+	if (ret < 0) {
+		return KNOT_EINVAL;
 	}
 
 	return ret;
@@ -211,6 +221,18 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 
 int log_msg(logsrc_t src, int level, const char *msg, ...)
 {
+	/* Prefix error level. */
+	switch (level) {
+	case LOG_DEBUG: break;
+	case LOG_INFO:  break;
+	case LOG_NOTICE:  _log_msg(src, level, "notice: "); break;
+	case LOG_WARNING: _log_msg(src, level, "warning: "); break;
+	case LOG_ERR:     _log_msg(src, level, "error: "); break;
+	case LOG_FATAL:   _log_msg(src, level, "fatal: "); break;
+	default: break;
+	}
+
+	/* Compile log message. */
 	int ret = 0;
 	char buf[2048];
 	va_list ap;
@@ -218,6 +240,7 @@ int log_msg(logsrc_t src, int level, const char *msg, ...)
 	ret = vsnprintf(buf, sizeof(buf) - 1, msg, ap);
 	va_end(ap);
 
+	/* Send to logging facilities. */
 	if (ret > 0) {
 		ret = _log_msg(src, level, buf);
 	}

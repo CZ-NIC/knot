@@ -24,3 +24,5 @@
 void usage_dump();
 
 #endif // _KNOT_COMMON_MALLOC_H_
+
+/*! @} */

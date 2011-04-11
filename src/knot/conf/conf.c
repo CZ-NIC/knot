@@ -10,23 +10,53 @@
 #include <urcu.h>
 #include "knot/conf/conf.h"
 #include "knot/common.h"
+#include "knot/other/error.h"
 
-static const char *DEFAULT_CONFIG_1 = "/." PROJECT_EXEC "/" PROJECT_EXEC \
-                                      ".conf";
-static const char *DEFAULT_CONFIG_2 = "/etc/" PROJECT_EXEC "/" PROJECT_EXEC \
-                                      ".conf";
+/*
+ * Defaults.
+ */
 
-/* Utilities. */
+#define DEFAULT_CONF_COUNT 2 /*!< \brief Number of default config paths. */
+
+/*! \brief Default config paths. */
+static const char *DEFAULT_CONFIG[2] = {
+        "~/." PROJECT_EXEC "/" PROJECT_EXEC ".conf",
+        "/etc/" PROJECT_EXEC "/" PROJECT_EXEC ".conf"
+};
+
+/*
+ * Utilities.
+ */
+
+/*!
+ * \brief Create new string from a concatenation of s1 and s2.
+ * \param s1 First string.
+ * \param s2 Second string.
+ * \retval Newly allocated string on success.
+ * \retval NULL on error.
+ */
 static char* strcdup(const char *s1, const char *s2)
 {
 	size_t slen = strlen(s1);
 	size_t nlen = slen + strlen(s2) + 1;
 	char* dst = malloc(nlen);
+	if (!dst) {
+		return 0;
+	}
+
 	memcpy(dst, s1, slen);
 	strcpy(dst + slen, s2); // With trailing '\0'
 	return dst;
 }
 
+/*!
+ * \brief Recursively create directories.
+ *
+ * Similar to "mkdir -p".
+ *
+ * \retval 0 on success.
+ * \retval <0 on error.
+ */
 static int rmkdir(char *path, int mode)
 {
 	char *p = path;
@@ -44,16 +74,26 @@ static int rmkdir(char *path, int mode)
 extern char* yytext;
 extern int yylineno;
 extern int cf_parse();
-conf_t *new_config;
 
-/* Parser instance globals. */
-static volatile int _parser_res = 0;
-static void *_parser_src = 0;
-static ssize_t _parser_remaining = -1;
+/*
+ * Parser instance globals.
+ * \todo: Use pure reentrant parser to get rid of the globals.
+ */
+conf_t *new_config = 0; /*!< \brief Currently parsed config. */
+static volatile int _parser_res = 0; /*!< \brief Parser result. */
+static void *_parser_src = 0; /*!< \brief Parser data source. */
+static ssize_t _parser_remaining = -1; /*!< \brief Parser remaining bytes. */
 static pthread_mutex_t _parser_lock = PTHREAD_MUTEX_INITIALIZER;
 int (*cf_read_hook)(char *buf, size_t nbytes) = 0;
 
-/* Config file read hook. */
+/*!
+ * \brief Config file read hook.
+ *
+ * Wrapper for fread().
+ *
+ * \retval number of read bytes on success.
+ * \retval <0 on error.
+ */
 int cf_read_file(char *buf, size_t nbytes) {
 	if (_parser_src == 0) {
 		return -1;
@@ -63,7 +103,11 @@ int cf_read_file(char *buf, size_t nbytes) {
 	return fread(buf, 1, nbytes, (FILE*)_parser_src);
 }
 
-/* Config file read hook - memory. */
+/*!
+ * \brief Config file read hook (from memory).
+ * \retval number of read bytes on success.
+ * \retval <0 on error.
+ */
 int cf_read_mem(char *buf, size_t nbytes) {
 	if (_parser_src == 0 || _parser_remaining < 0) {
 		return -1;
@@ -90,16 +134,20 @@ int cf_read_mem(char *buf, size_t nbytes) {
 	return -1;
 }
 
-/* Config error report. */
+/*! \brief Config error report. */
 void cf_error(const char *msg)
 {
-	log_server_error("config: '%s' - %s on line %d (current token '%s').\n",
+	log_server_error("Config '%s' - %s on line %d (current token '%s').\n",
 	                 new_config->filename, msg, yylineno, yytext);
 
 	_parser_res = -1;
 }
 
-/* Private helper functions. */
+/*
+ * Config helper functions.
+ */
+
+/*! \brief Free config interfaces. */
 static void iface_free(conf_iface_t *iface)
 {
 	if (!iface) {
@@ -111,6 +159,7 @@ static void iface_free(conf_iface_t *iface)
 	free(iface);
 }
 
+/*! \brief Free config logs. */
 static void log_free(conf_log_t *log)
 {
 	if (!log) {
@@ -130,6 +179,7 @@ static void log_free(conf_log_t *log)
 	free(log);
 }
 
+/*! \brief Free config zones. */
 static void zone_free(conf_zone_t *zone)
 {
 	if (!zone) {
@@ -141,11 +191,15 @@ static void zone_free(conf_zone_t *zone)
 	free(zone->db);
 }
 
-/* Config processing. */
-
+/*!
+ * \brief Call config hooks that need updating.
+ *
+ * This function is called automatically after config update.
+ *
+ * \todo Selective hooks.
+ */
 static void conf_update_hooks(conf_t *conf)
 {
-	/*! \todo Selective hooks. */
 	node *n = 0;
 	conf->_touched = CONF_ALL;
 	WALK_LIST (n, conf->hooks) {
@@ -156,6 +210,15 @@ static void conf_update_hooks(conf_t *conf)
 	}
 }
 
+/*!
+ * \brief Process parsed configuration.
+ *
+ * This functions is called automatically after config parsing.
+ * It is needed to setup needed primitives, check and update paths.
+ *
+ * \retval 0 on success.
+ * \retval <0 on error.
+ */
 static int conf_process(conf_t *conf)
 {
 	// Normalize paths
@@ -193,9 +256,13 @@ static int conf_process(conf_t *conf)
 	return 0;
 }
 
-/* Singleton config. */
-conf_t *s_config = 0;
+/*
+ * Singletion configuration API.
+ */
 
+conf_t *s_config = 0; /*! \brief Singleton config instance. */
+
+/*! \brief Singleton config constructor (automatically called on load). */
 void __attribute__ ((constructor)) conf_init()
 {
 	// Create new config
@@ -244,6 +311,7 @@ void __attribute__ ((constructor)) conf_init()
 	conf_process(s_config);
 }
 
+/*! \brief Singleton config destructor (automatically called on exit). */
 void __attribute__ ((destructor)) conf_deinit()
 {
 	if (s_config) {
@@ -252,6 +320,10 @@ void __attribute__ ((destructor)) conf_deinit()
 	}
 }
 
+/*!
+ * \brief Parse config (from file).
+ * \return yyparser return value.
+ */
 static int conf_fparser(conf_t *conf)
 {
 	if (!conf->filename) {
@@ -282,6 +354,9 @@ static int conf_fparser(conf_t *conf)
 	return ret;
 }
 
+/*! \brief Parse config (from string).
+ * \return yyparser return value.
+ */
 static int conf_strparser(conf_t *conf, const char *src)
 {
 	if (!src) {
@@ -317,7 +392,9 @@ static int conf_strparser(conf_t *conf, const char *src)
 	return ret;
 }
 
-/* API functions. */
+/*
+ * API functions.
+ */
 
 conf_t *conf_new(const char* path)
 {
@@ -342,13 +419,17 @@ int conf_add_hook(conf_t * conf, int sections,
                   int (*on_update)(const conf_t*, void*), void *data)
 {
 	conf_hook_t *hook = malloc(sizeof(conf_hook_t));
+	if (!hook) {
+		return KNOT_ENOMEM;
+	}
+
 	hook->sections = sections;
 	hook->update = on_update;
 	hook->data = data;
 	add_tail(&conf->hooks, &hook->n);
 	++conf->hooks_count;
 
-	return 0;
+	return KNOT_EOK;
 }
 
 int conf_parse(conf_t *conf)
@@ -362,7 +443,11 @@ int conf_parse(conf_t *conf)
 	/* Update hooks. */
 	conf_update_hooks(conf);
 
-	return ret;
+	if (ret < 0) {
+		return KNOT_EPARSEFAIL;
+	}
+
+	return KNOT_EOK;
 }
 
 int conf_parse_str(conf_t *conf, const char* src)
@@ -376,7 +461,11 @@ int conf_parse_str(conf_t *conf, const char* src)
 	/* Update hooks */
 	conf_update_hooks(conf);
 
-	return ret;
+	if (ret < 0) {
+		return KNOT_EPARSEFAIL;
+	}
+
+	return KNOT_EOK;
 }
 
 void conf_truncate(conf_t *conf, int unload_hooks)
@@ -461,22 +550,28 @@ void conf_free(conf_t *conf)
 
 char* conf_find_default()
 {
-	/* Try DEFAULT_CONFIG_1 first. */
-	const char *dir = getenv("HOME");
-	const char *name = DEFAULT_CONFIG_1;
-	char *path = strcdup(dir, name);
-	struct stat st;
-	if (stat(path, &st) != 0) {
-		const char* fallback_path = DEFAULT_CONFIG_2;
-		log_server_error("config: Trying '%s' as default configuration.\n",
-		                 path);
-		free(path);
+	/* Try sequentially each default path. */
+	char *path = 0;
+	for (int i = 0; i < DEFAULT_CONF_COUNT; ++i) {
+		path = strcpath(strdup(DEFAULT_CONFIG[i]));
 
-		/* Try DEFAULT_CONFIG_2 as a fallback. */
-		path = strdup(fallback_path);
+		/* Break, if the path exists. */
+		struct stat st;
+		if (stat(path, &st) == 0) {
+			break;
+		}
+
+		log_server_notice("Config '%s' does not exist.\n",
+		                  path);
+
+		/* Keep the last item. */
+		if (i < DEFAULT_CONF_COUNT - 1) {
+			free(path);
+			path = 0;
+		}
 	}
 
-	log_server_error("config: Using '%s' as default configuration.\n",
+	log_server_info("Using '%s' as default configuration.\n",
 	                path);
 	return path;
 }
@@ -485,15 +580,13 @@ int conf_open(const char* path)
 {
 	/* Check path. */
 	if (!path) {
-		errno = ENOENT; /* No such file or directory (POSIX.1) */
-		return -2;
+		return KNOT_EINVAL;
 	}
 
 	/* Check if exists. */
 	struct stat st;
 	if (stat(path, &st) != 0) {
-		errno = ENOENT; /* No such file or directory (POSIX.1) */
-		return -2;
+		return KNOT_ENOENT;
 	}
 
 	/* Create new config. */
@@ -533,7 +626,7 @@ int conf_open(const char* path)
 	/* Update hooks. */
 	conf_update_hooks(nconf);
 
-	return 0;
+	return KNOT_EOK;
 }
 
 char* strcpath(char *path)
