@@ -272,8 +272,8 @@ static int dnslib_response_init(dnslib_response_t *resp,
  *       bytes in the wire format (\a remaining) according to what was parsed
  *       (though it actually always parses the 12 bytes of the header).
  *
- * \param[in/out] pos Wire format to parse the header from.
- * \param[in/out] remaining Remaining size of the wire format.
+ * \param[in,out] pos Wire format to parse the header from.
+ * \param[in,out] remaining Remaining size of the wire format.
  * \param[out] header Header structure to fill in.
  *
  * \retval DNSLIB_EOK
@@ -344,8 +344,8 @@ static void dnslib_response_header_to_wire(const dnslib_header_t *header,
  * \note This function also adjusts the position (\a pos) and size of remaining
  *       bytes in the wire format (\a remaining) according to what was parsed.
  *
- * \param[in/out] pos Wire format to parse the Question from.
- * \param[in/out] remaining Remaining size of the wire format.
+ * \param[in,out] pos Wire format to parse the Question from.
+ * \param[in,out] remaining Remaining size of the wire format.
  * \param[out] question DNS Question structure to be filled.
  *
  * \retval DNSLIB_EOK
@@ -402,7 +402,7 @@ static int dnslib_response_parse_question(const uint8_t **pos,
  * \note This function also adjusts the position (\a pos) according to
  *       the size of the converted wire format.
  *
- * \param[in] header DNS Question structure to convert.
+ * \param[in] question DNS Question structure to convert.
  * \param[out] pos Position where to put the converted header.
  * \param[out] size Size of the wire format of the header in bytes.
  */

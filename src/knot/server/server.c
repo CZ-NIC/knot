@@ -61,7 +61,8 @@ static void server_remove_iface(iface_t *iface)
  * Both TCP and UDP sockets will be created for the interface.
  *
  * \param new_if Allocated memory for the interface.
- * \param conf_if Interface template from config.
+ * \param cfg_if Interface template from config.
+ *
  * \retval 0 if successful (EOK).
  * \retval <0 on errors (EACCES, EINVAL, ENOMEM, EADDRINUSE).
  */

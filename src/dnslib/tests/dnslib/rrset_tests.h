@@ -1,5 +1,5 @@
 /*!
- * \file dnslib_rrset_tests.c
+ * \file rrset_tests.h
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
