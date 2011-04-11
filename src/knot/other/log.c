@@ -221,28 +221,39 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 
 int log_msg(logsrc_t src, int level, const char *msg, ...)
 {
+	/* Buffer for log message. */
+	char sbuf[2048];
+	char *buf = sbuf;
+	int buflen = sizeof(sbuf) - 1;
+
 	/* Prefix error level. */
+	const char *prefix = "";
 	switch (level) {
 	case LOG_DEBUG: break;
 	case LOG_INFO:  break;
-	case LOG_NOTICE:  _log_msg(src, level, "notice: "); break;
-	case LOG_WARNING: _log_msg(src, level, "warning: "); break;
-	case LOG_ERR:     _log_msg(src, level, "error: "); break;
-	case LOG_FATAL:   _log_msg(src, level, "fatal: "); break;
+	case LOG_NOTICE:  prefix = "notice: "; break;
+	case LOG_WARNING: prefix = "warning: "; break;
+	case LOG_ERR:     prefix = "error: "; break;
+	case LOG_FATAL:   prefix = "fatal: "; break;
 	default: break;
 	}
 
+	/* Prepend prefix. */
+	int plen = strlen(prefix);
+	strcpy(buf, prefix);
+	buf += plen;
+	buflen -= plen;
+
 	/* Compile log message. */
 	int ret = 0;
-	char buf[2048];
 	va_list ap;
 	va_start(ap, msg);
-	ret = vsnprintf(buf, sizeof(buf) - 1, msg, ap);
+	ret = vsnprintf(buf, buflen, msg, ap);
 	va_end(ap);
 
 	/* Send to logging facilities. */
 	if (ret > 0) {
-		ret = _log_msg(src, level, buf);
+		ret = _log_msg(src, level, sbuf);
 	}
 
 	return ret;
