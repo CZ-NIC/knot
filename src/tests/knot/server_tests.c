@@ -26,9 +26,9 @@ server_t *test_server_create()
 }
 
 /*! Test: start server. */
-int test_server_start(server_t *s, char **filenames, uint zones)
+int test_server_start(server_t *s)
 {
-	return server_start(s, (const char **)filenames, zones) == 0;
+	return server_start(s) == 0;
 }
 
 /*! Test: finish server. */
@@ -75,7 +75,7 @@ static int server_tests_run(int argc, char *argv[])
 	//! Test server startup
 	ret = 0;
 	lives_ok( {
-		ret = test_server_start(server, argv + 1, argc - 1);
+		ret = test_server_start(server);
 	}, "server: not crashing on runtime");
 
 	//! Test server exit code

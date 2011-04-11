@@ -58,8 +58,8 @@ typedef enum {
  *
  * \param logfiles Number of extra logfiles.
  *
- * \retval 0 On success (EOK).
- * \retval <0 If an error occured (EINVAL, ENOMEM).
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL invalid number of logfiles (negative).
  */
 int log_setup(int logfiles);
 
@@ -68,18 +68,15 @@ int log_setup(int logfiles);
  *
  * \see syslog.h
  *
- * \retval 0 On success (EOK).
- * \retval <0 If an error occured (EINVAL, ENOMEM).
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_ENOMEM out of memory error.
  */
 int log_init();
 
 /*!
  * \brief Close and deinitialize log.
- *
- * \retval  0 On success (EOK).
- * \retval <0 If an error occured ().
  */
-int log_close();
+void log_close();
 
 /*!
  * \brief Truncate current log setup.
@@ -100,7 +97,8 @@ int log_isopen();
  * \param filename File path.
  *
  * \retval associated facility index on success.
- * \retval <0 on error (EINVAL, ERROR).
+ * \retval KNOT_EINVAL filename cannot be opened for writing.
+ * \retval KNOT_ERROR unspecified error.
  */
 int log_open_file(const char* filename);
 
@@ -122,8 +120,8 @@ uint8_t log_levels(int facility, logsrc_t src);
  * \param src Logging source (LOG_SERVER...LOG_ANY).
  * \param levels Bitmask of specified log levels.
  *
- * \retval 0 On success (EOK).
- * \retval <0 On error (EINVAL).
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL invalid parameters (facility out of range).
  */
 int log_levels_set(int facility, logsrc_t src, uint8_t levels);
 
@@ -137,8 +135,8 @@ int log_levels_set(int facility, logsrc_t src, uint8_t levels);
  * \param src Logging source (LOG_SERVER...LOG_ANY).
  * \param levels Bitmask of specified log levels.
  *
- * \retval 0 On success (EOK).
- * \retval <0 On error (EINVAL).
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL invalid parameters (facility out of range).
  */
 int log_levels_add(int facility, logsrc_t src, uint8_t levels);
 
@@ -151,9 +149,10 @@ int log_levels_add(int facility, logsrc_t src, uint8_t levels);
  * \param level Message error level.
  * \param msg Content of the logged message.
  *
- * \retval <0 On error (EINVAL, ERROR).
- * \retval  0 When the message is ignored.
- * \retval >0 On success.
+ * \retval Number of logged bytes on success.
+ * \retval 0 When the message is ignored.
+ * \retval KNOT_EINVAL invalid parameters.
+ * \retval KNOT_ERROR unspecified error.
  */
 int log_msg(logsrc_t src, int level, const char *msg, ...)
     __attribute__((format(printf, 3, 4)));

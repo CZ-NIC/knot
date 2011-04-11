@@ -974,7 +974,7 @@ int dt_unit_lock(dt_unit_t *unit)
 
 	/* Map errors. */
 	if (ret < 0) {
-		return knot_map_errno(EBUSY, EINVAL, EAGAIN);
+		return knot_map_errno(EINVAL, EAGAIN);
 	}
 
 	return KNOT_EOK;
@@ -984,14 +984,14 @@ int dt_unit_unlock(dt_unit_t *unit)
 {
 	// Check input
 	if (unit == 0) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	int ret = pthread_mutex_unlock(&unit->_mx);
 
 	/* Map errors. */
 	if (ret < 0) {
-		return knot_map_errno(EBUSY, EINVAL, EAGAIN);
+		return knot_map_errno(EINVAL, EAGAIN);
 	}
 
 	return KNOT_EOK;

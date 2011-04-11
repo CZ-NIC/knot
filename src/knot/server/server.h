@@ -88,9 +88,6 @@ typedef struct server_t {
 	/*! \brief Reference to the name server structure. */
 	ns_nameserver_t *nameserver;
 
-	/*! \brief Reference to the zone database structure. */
-	dnslib_zonedb_t *zone_db;
-
 	/*! \brief I/O handlers list. */
 	list handlers;
 
@@ -105,7 +102,7 @@ typedef struct server_t {
  * Creates all other main structures.
  *
  * \retval New instance if successful.
- * \retval 0 If an error occured.
+ * \retval NULL If an error occured.
  */
 server_t *server_create();
 
@@ -120,7 +117,7 @@ server_t *server_create();
  * \param unit Threading unit to serve given filedescriptor.
  *
  * \retval Handler instance if successful.
- * \retval 0 If an error occured.
+ * \retval NULL If an error occured.
  */
 iohandler_t *server_create_handler(server_t *server, int fd, dt_unit_t *unit);
 
@@ -130,8 +127,8 @@ iohandler_t *server_create_handler(server_t *server, int fd, dt_unit_t *unit);
  * \param server Server structure to be used for operation.
  * \param ref I/O handler instance.
  *
- * \retval 0 if successful (KNOT_EOK).
- * \retval <0 on errors (KNOT_EINVAL).
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
  */
 int server_remove_handler(server_t *server, iohandler_t *ref);
 
@@ -139,15 +136,14 @@ int server_remove_handler(server_t *server, iohandler_t *ref);
  * \brief Starts the server.
  *
  * \param server Server structure to be used for operation.
- * \param filename Zone file name to be used by the server.
  *
- * \retval  0 On success (EOK).
- * \retval <0 If an error occured (EINVAL, EZONEINVAL).
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
  *
  * \todo When a module for configuration is added, the filename parameter will
  *       be removed.
  */
-int server_start(server_t *server, const char **filenames, uint zones);
+int server_start(server_t *server);
 
 /*!
  * \brief Waits for the server to finish.
@@ -178,8 +174,10 @@ void server_destroy(server_t **server);
  *
  * Routine for dynamic server reconfiguration.
  *
- * \retval  0 On success (EOK).
- * \retval <0 If an error occured (ERROR, EINVAL, ENOTRUNNING).
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_ENOTRUNNING if the server is not running.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_ERROR unspecified error.
  */
 int server_conf_hook(const struct conf_t *conf, void *data);
 

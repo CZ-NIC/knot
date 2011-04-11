@@ -82,11 +82,10 @@ int log_init()
 	return ret;
 }
 
-int log_close()
+void log_close()
 {
 	log_truncate();
 	closelog();
-	return 0;
 }
 
 void log_truncate()

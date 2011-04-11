@@ -19,8 +19,9 @@ struct conf_t;
  *
  * \see syslog.h
  *
- * \retval  0 On success (EOK).
- * \retval <0 If an error occured (EINVAL, ENOMEM).
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_ENOMEM out of memory error.
  */
 int log_conf_hook(const struct conf_t *conf, void *data);
 

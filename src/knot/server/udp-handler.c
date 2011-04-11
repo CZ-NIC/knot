@@ -79,7 +79,7 @@ int udp_master(dthread_t *thread)
 		debug_net("udp: received invalid socket type %d,"
 			  "AF_INET (%d) or AF_INET6 (%d) expected.\n",
 			  handler->type, AF_INET, AF_INET6);
-		return KNOT_EADDRINVAL;
+		return KNOT_EINVAL;
 	}
 
 	/* in case of STAT_COMPILE the following code will declare thread_stat
