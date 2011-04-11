@@ -398,9 +398,6 @@ static int err_handler_handle_error(err_handler_t *handler,
 
 		log_error_from_node(handler, node, error);
 
-	} else {
-		/* Out of bounds error */
-		return DNSLIB_ERROR;
 	}
 
 	handler->errors[-error]++;
@@ -1956,7 +1953,7 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	err_handler_t *handler = NULL;
 
 	if (do_checks) {
-		handler = handler_new(1, 1, 1, 1, 1);
+		handler = handler_new(1, 0, 1, 1, 1);
 		if (handler == NULL) {
 			/* disable checks and we can continue */
 			do_checks = 0;
