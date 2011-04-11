@@ -1531,6 +1531,10 @@ search:
 	find_ret = dnslib_zone_find_dname(zone, qname, &node,
 	                                  &closest_encloser, &previous);
 #endif
+	if (find_ret == DNSLIB_EBADARG) {
+		return NS_ERR_SERVFAIL;
+	}
+
 DEBUG_NS(
 	char *name;
 	if (node) {
