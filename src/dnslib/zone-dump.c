@@ -278,10 +278,10 @@ typedef struct err_handler err_handler_t;
  * \brief Creates new semantic error handler.
  *
  * \param log_cname If true, log all CNAME related events.
- * \param log_glue If true, log all CNAME related events.
- * \param log_rrsigs If true, log all CNAME related events.
- * \param log_nsec If true, log all CNAME related events.
- * \param log_nsec3 If true, log all CNAME related events.
+ * \param log_glue If true, log all Glue related events.
+ * \param log_rrsigs If true, log all RRSIGs related events.
+ * \param log_nsec If true, log all NSEC related events.
+ * \param log_nsec3 If true, log all NSEC3 related events.
  *
  * \return err_handler_t * Created error handler.
  */
@@ -1957,7 +1957,7 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	err_handler_t *handler = NULL;
 
 	if (do_checks) {
-		handler = handler_new(1, 1, 1, 1, 1);
+		handler = handler_new(1, 0, 1, 1, 1);
 		if (handler == NULL) {
 			/* disable checks and we can continue */
 			do_checks = 0;
