@@ -1067,8 +1067,7 @@ int zone_dump_text(dnslib_zone_t *zone, const char *filename)
 {
 	FILE *f = fopen(filename, "w");
 	if (f == NULL) {
-		//TODO log message
-		return -1;
+		return DNSLIB_EBADARG;
 	}
 
 	fprintf(f, ";Dumped using %s v. %d.%d.%d\n", PROJECT_NAME,
@@ -1082,5 +1081,5 @@ int zone_dump_text(dnslib_zone_t *zone, const char *filename)
 	dnslib_zone_tree_apply_inorder(zone, node_dump_text, &param);
 	fclose(f);
 
-	return 0;
+	return DNSLIB_EOK;
 }

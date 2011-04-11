@@ -106,6 +106,7 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name,
  *
  * \retval DNSLIB_EOK on success.
  * \retval DNSLIB_ENOMEM if allocation of labels info failed.
+ * \retval DNSLIB_EBADARG if name or target is null.
  *
  * \todo This function does not check if the given data is in correct wire
  *       format at all. It thus creates a invalid domain name, which if passed

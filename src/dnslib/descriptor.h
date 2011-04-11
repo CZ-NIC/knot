@@ -20,7 +20,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-enum mxrdtln {
+enum dnslib_mxrdtln {
 	/*! \brief Maximum items in RDATA wireformat. */
 	DNSLIB_MAX_RDATA_ITEMS = 64,
 	/*! \brief Maximum size of one item in RDATA wireformat. */
@@ -29,6 +29,8 @@ enum mxrdtln {
 	DNSLIB_MAX_RDATA_WIRE_SIZE =
 	DNSLIB_MAX_RDATA_ITEMS * DNSLIB_MAX_RDATA_ITEM_SIZE
 };
+
+typedef enum dnslib_mxrdtln dnslib_mxrdtln_t;
 //#define MAXRDATALEN 64
 
 /* 64 is in NSD. Seems a little too much, but I'd say it's not a real issue. */
@@ -49,6 +51,7 @@ typedef enum dnslib_rr_class dnslib_rr_class_t;
 
 /*!
  * \brief Resource record type constants.
+ * \todo Not all indices can be used for indexing.
  */
 enum dnslib_rr_type {
 	DNSLIB_RRTYPE_UNKNOWN, /*!< 0 - an unknown type */
@@ -129,18 +132,13 @@ enum dnslib_rr_type {
 
 	// totally weird numbers (cannot use for indexing)
 	DNSLIB_RRTYPE_TA = 32768, /*!< DNSSEC Trust Authorities */
-	DNSLIB_RRTYPE_DLV = 32769 /*!< RFC 4431 */
+	DNSLIB_RRTYPE_DLV = 32769, /*!< RFC 4431 */
+
+	/*! \brief Last normal RR type. */
+	DNSLIB_RRTYPE_LAST = DNSLIB_RRTYPE_NSEC3PARAM
 };
 
-/*!
- * \brief Enum containing RR type codes.
- *
- * \todo Not all indices can be used for indexing.
- */
 typedef enum dnslib_rr_type dnslib_rr_type_t;
-
-/*! \brief Last normal RR type. */
-static const uint DNSLIB_RRTYPE_LAST = DNSLIB_RRTYPE_NSEC3PARAM;
 
 /*! \brief Constants characterising the wire format of RDATA items. */
 enum dnslib_rdata_wireformat {

@@ -21,8 +21,8 @@
  * \param zone Zone to be saved.
  * \param filename Name of file to be created.
  *
- * \retval 0 on success.
- * \retval -1 on error.
+ * \retval DNSLIB_EOK on success.
+ * \retval DNSLIB_EBADARG if the specified file is not valid for writing.
  */
 int zone_dump_text(dnslib_zone_t *zone, const char *filename);
 

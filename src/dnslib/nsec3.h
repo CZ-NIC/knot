@@ -56,6 +56,7 @@ int dnslib_nsec3_params_from_wire(dnslib_nsec3_params_t *params,
  * \param[out] digest_size Size of the result in octets will be stored here.
  *
  * \retval DNSLIB_EOK if successful.
+ * \retval DNSLIB_ENOMEM
  * \retval DNSLIB_EBADARG
  * \retval DNSLIB_ECRYPTO
  */

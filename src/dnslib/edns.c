@@ -204,7 +204,7 @@ int dnslib_edns_add_option(dnslib_opt_rr_t *opt_rr, uint16_t code,
 	}
 
 	opt_rr->options[opt_rr->option_count].data = (uint8_t *)malloc(length);
-	CHECK_ALLOC_LOG(opt_rr->options[opt_rr->option_count].data, -1);
+	CHECK_ALLOC_LOG(opt_rr->options[opt_rr->option_count].data, DNSLIB_ENOMEM);
 	memcpy(opt_rr->options[opt_rr->option_count].data, data, length);
 
 	opt_rr->options[opt_rr->option_count].code = code;
