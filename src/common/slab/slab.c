@@ -136,9 +136,9 @@ static void* slab_depot_alloc(size_t bufsize)
 	}
 #else // MEM_SLAB_DEPOT
     if(posix_memalign(&page, SLAB_SIZE, SLAB_SIZE) == 0) {
-        ((slab_t*)page)->bufsize = 0;
+	((slab_t*)page)->bufsize = 0;
     } else {
-        page = 0;
+	page = 0;
     }
 #endif // MEM_SLAB_DEPOT
 
@@ -159,7 +159,6 @@ static inline void slab_depot_free(void* slab)
 		free(slab);
 	}
 #else // MEM_SLAB_DEPOT
-    fprintf(stderr, "slab depot disabled, freeing");
     free(slab);
 #endif // MEM_SLAB_DEPOT
 }
