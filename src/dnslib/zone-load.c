@@ -725,7 +725,9 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	dnslib_zone_t *zone = dnslib_zone_new(apex, auth_node_count);
 
 	if (zone == NULL) {
-
+		cleanup_id_array(id_array, 1,
+		                 node_count + nsec3_node_count + 1);
+		return NULL;
 	}
 
 	apex->prev = NULL;
