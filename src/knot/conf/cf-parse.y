@@ -126,13 +126,14 @@ zone_start: TEXT {
                                                   nlen + 1,
                                                   0);
    if (dn == 0) {
+     free(this_zone->name);
+     free(this_zone);
      cf_error("invalid zone origin");
    } else {
      dnslib_dname_free(&dn);
+     add_tail(&new_config->zones, &this_zone->n);
+     ++new_config->zones_count;
    }
-
-   add_tail(&new_config->zones, &this_zone->n);
-   ++new_config->zones_count;
  }
  ;
 
