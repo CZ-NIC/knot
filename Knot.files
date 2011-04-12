@@ -102,6 +102,7 @@ src/zcompile/zcompile.h
 src/zcompile/zparser.y
 src/zcompile/zlexer.l
 src/zcompile/zcompile-error.h
+src/zcompile/zcompile_main.c
 src/knot/common.h
 src/knot/main.c
 src/knot/ctl/knotc_main.c

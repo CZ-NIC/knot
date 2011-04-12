@@ -712,8 +712,6 @@ ck_hash_table_t *ck_create_table(uint items)
 	CLEAR_FLAGS(&table->generation);
 	SET_GENERATION1(&table->generation);
 
-	printf("Table generation: %u\n", table->generation);
-
 	us_initialize(&table->hash_system);
 
 	return table;
