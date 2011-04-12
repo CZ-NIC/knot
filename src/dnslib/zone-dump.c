@@ -323,7 +323,7 @@ static void log_error_from_node(err_handler_t *handler,
 		fprintf(stderr, "%s", error_messages[-error]);
 		free(name);
 	} else {
-		fprintf(stderr, "Total number of errors is: %d for error: %s:",
+		fprintf(stderr, "Total number of errors is: %d for error: %s",
 			handler->errors[-error],
 			error_messages[-error]);
 	}
@@ -1932,7 +1932,7 @@ static void log_cyclic_errors_in_zone(err_handler_t *handler,
 }
 
 int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
-			char do_checks, const char *sfilename)
+			int do_checks, const char *sfilename)
 {
 	FILE *f;
 

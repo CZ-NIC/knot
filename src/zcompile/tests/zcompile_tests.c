@@ -331,7 +331,7 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 #ifdef TEST_WITH_LDNS
 	/* Calls zcompile. */
 	parser = zparser_create();
-	int ret = zone_read(origin, filename, outfile);
+	int ret = zone_read(origin, filename, outfile, 0);
 	if (ret != 0) {
 		diag("Could not load zone from file: %s", filename);
 		return 0;

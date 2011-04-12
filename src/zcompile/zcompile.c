@@ -1790,7 +1790,8 @@ static uint find_rrsets_orphans(dnslib_zone_t *zone, rrset_list_t
  * Reads the specified zone into the memory
  *
  */
-int zone_read(const char *name, const char *zonefile, const char *outfile)
+int zone_read(const char *name, const char *zonefile, const char *outfile,
+              int semantic_checks)
 {
 	if (!outfile) {
 		fprintf(stderr, "Missing output file for '%s'\n",
@@ -1843,7 +1844,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile)
 
 	debug_zp("rdata adjusted\n");
 
-	dnslib_zdump_binary(parser->current_zone, outfile, 1, zonefile);
+	dnslib_zdump_binary(parser->current_zone, outfile, semantic_checks,
+	                    zonefile);
 
 	/* This is *almost* unnecessary */
 	dnslib_zone_deep_free(&(parser->current_zone), 1);
