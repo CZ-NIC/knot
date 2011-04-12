@@ -42,6 +42,14 @@ system {
 # Section 'zones' contains information about zones to be served.
 zones {
 
+  # Shared options for all listed zones
+  #
+
+  # Enable semantic checks for all zones (if 'on')
+  # Possible values: on|off
+  # Default value: off
+  semantic-checks off;
+
   # Zone entry
   #
   # Format: <zone-name> { file "<path-to-zone-file>"; }
@@ -50,6 +58,11 @@ zones {
     #   it is considered relative to the current directory from which the server
     #   was started.
     file "samples/example.com.zone";
+
+    # Enable zone semantic checks
+    # Possible values: on|off
+    # Default value: off
+    semantic-checks on;
   }
 }
 
