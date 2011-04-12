@@ -31,12 +31,14 @@ static void dnslib_dname_cache_free()
 	if (cache) {
 		slab_cache_destroy(cache);
 		free(cache);
+        (void) pthread_setspecific(dname_ckey, 0);
 	}
 }
 
 static void dnslib_dname_cache_init()
 {
 	(void) pthread_key_create(&dname_ckey, dnslib_dname_cache_free);
+    atexit(dnslib_dname_cache_free); // Main thread cleanup
 }
 
 /*!
