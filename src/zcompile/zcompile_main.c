@@ -24,10 +24,11 @@ int main(int argc, char **argv)
 	// Parse command line arguments
 	int c = 0;
 	int verbose = 0;
+	int semantic_checks = 0;
 	const char* origin = 0;
 	const char* zonefile = 0;
 	const char* outfile = 0;
-	while ((c = getopt (argc, argv, "o:vVh")) != -1) {
+	while ((c = getopt (argc, argv, "o:vVsh")) != -1) {
 		switch (c)
 		{
 		case 'o':
@@ -42,6 +43,9 @@ int main(int argc, char **argv)
 			       PROJECT_VER >> 8 & 0x000000ff,
 			       PROJECT_VER >> 0 & 0x000000ff);
 			return 1;
+		case 's':
+			semantic_checks = 1;
+			break;
 		case 'h':
 		case '?':
 		default:
@@ -78,7 +82,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	int errors = zone_read(origin, zonefile, outfile);
+	int errors = zone_read(origin, zonefile, outfile, semantic_checks);
 
 	printf("Finished.\n");
 	//log_close();

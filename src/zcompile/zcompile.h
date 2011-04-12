@@ -398,11 +398,13 @@ uint16_t *alloc_rdata_init(const void *data, size_t size);
  * \param name Origin domain name string.
  * \param zonefile File containing the zone.
  * \param outfile File to save dump of the zone to.
+ * \param semantic_checks Enables or disables sematic checks.
  *
  * \retval 0 on success.
  * \retval -1 on error.
  */
-int zone_read(const char *name, const char *zonefile, const char *outfile);
+int zone_read(const char *name, const char *zonefile, const char *outfile,
+              int semantic_checks);
 
 /*!
  * \brief Creates zparser instance.
