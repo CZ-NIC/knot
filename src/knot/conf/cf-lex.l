@@ -26,6 +26,21 @@ extern int (*cf_read_hook)(char *buf, size_t nbytes);
 #define YY_INPUT(buf,result,max) result = cf_read_hook(buf, max);
 #define YY_NO_UNPUT
 
+/*! \warning Free yy buffers until reentrant parser is made. */
+void __attribute__ ((destructor)) yy_deinit()
+{
+	/* Pop the buffer stack, destroying each element. */
+	while (YY_CURRENT_BUFFER) {
+		yy_delete_buffer(YY_CURRENT_BUFFER);
+		YY_CURRENT_BUFFER_LVALUE = NULL;
+		yypop_buffer_state();
+	}
+
+	/* Destroy the stack itself. */
+	yyfree(yy_buffer_stack);
+	yy_buffer_stack = NULL;
+}
+
 %}
 
 %option noyywrap
