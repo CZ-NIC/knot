@@ -216,6 +216,11 @@ static int conf_process(conf_t *conf)
 	WALK_LIST (n, conf->zones) {
 		conf_zone_t *zone = (conf_zone_t*)n;
 
+		// Default policy for semantic checks
+		if (conf->zone_checks) {
+			zone->enable_checks = 1;
+		}
+
 		// Normalize zone filename
 		zone->file = strcpath(zone->file);
 
@@ -391,6 +396,9 @@ conf_t *conf_new(const char* path)
 	init_list(&c->ifaces);
 	init_list(&c->zones);
 	init_list(&c->hooks);
+
+	// Defaults
+	c->zone_checks = 0;
 
 	return c;
 }

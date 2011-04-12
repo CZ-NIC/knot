@@ -35,11 +35,13 @@ static conf_log_map_t *this_logmap = 0;
 %token END INVALID_TOKEN
 %token <t> TEXT
 %token <i> NUM
+%token <i> BOOL
 
 %token SYSTEM IDENTITY VERSION STORAGE KEY
 %token <alg> TSIG_ALGO_NAME
 
 %token ZONES FILENAME
+%token SEMANTIC_CHECKS
 
 %token INTERFACES ADDRESS PORT
 %token <t> IPA
@@ -140,11 +142,13 @@ zone_start: TEXT {
 zone:
    zone_start '{'
  | zone FILENAME TEXT ';' { this_zone->file = $3; }
+ | zone SEMANTIC_CHECKS BOOL ';' { this_zone->enable_checks = $3; }
  ;
 
 zones:
    ZONES '{'
  | zones zone '}'
+ | zones SEMANTIC_CHECKS BOOL ';' { new_config->zone_checks = $3; }
  ;
 
 log_prios_start: {
