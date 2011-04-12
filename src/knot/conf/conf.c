@@ -168,6 +168,7 @@ static void zone_free(conf_zone_t *zone)
 	free(zone->name);
 	free(zone->file);
 	free(zone->db);
+	free(zone);
 }
 
 /*!
@@ -573,7 +574,7 @@ int conf_open(const char* path)
 
 	/* Parse config. */
 	int ret = conf_fparser(nconf);
-	if (ret != 0) {
+	if (ret != KNOT_EOK) {
 		conf_free(nconf);
 		return ret;
 	}
@@ -583,8 +584,8 @@ int conf_open(const char* path)
 
 	/* Copy hooks. */
 	if (oldconf) {
-		node *n = 0;
-		WALK_LIST (n, oldconf->hooks) {
+		node *n = 0, *nxt = 0;
+		WALK_LIST_DELSAFE (n, nxt, oldconf->hooks) {
 			conf_hook_t *hook = (conf_hook_t*)n;
 			conf_add_hook(nconf, hook->sections,
 			              hook->update, hook->data);
