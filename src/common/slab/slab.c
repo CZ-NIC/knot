@@ -103,8 +103,9 @@ static unsigned SLAB_LOGSIZE = 0; /*!< \brief Binary logarithm of slab size. */
  *
  * \todo With wider use, locking or RCU will be necessary.
  */
-
+#ifdef MEM_SLAB_DEPOT
 static slab_depot_t _depot_g; /*! \brief Global slab depot. */
+#endif // MEM_SLAB_DEPOT
 
 /*!
  * \brief Allocate a slab of given bufsize from depot.
@@ -114,7 +115,8 @@ static slab_depot_t _depot_g; /*! \brief Global slab depot. */
  */
 static void* slab_depot_alloc(size_t bufsize)
 {
-	void *page = 0;
+    void *page = 0;
+#ifdef MEM_SLAB_DEPOT
 	if (_depot_g.available) {
 		for (int i = _depot_g.available - 1; i > -1 ; --i) {
 			if(_depot_g.cache[i]->bufsize == bufsize) {
@@ -132,6 +134,13 @@ static void* slab_depot_alloc(size_t bufsize)
 		}
 
 	}
+#else // MEM_SLAB_DEPOT
+    if(posix_memalign(&page, SLAB_SIZE, SLAB_SIZE) == 0) {
+        ((slab_t*)page)->bufsize = 0;
+    } else {
+        page = 0;
+    }
+#endif // MEM_SLAB_DEPOT
 
 	return page;
 }
@@ -143,26 +152,34 @@ static void* slab_depot_alloc(size_t bufsize)
  */
 static inline void slab_depot_free(void* slab)
 {
+#ifdef MEM_SLAB_DEPOT
 	if (_depot_g.available < SLAB_DEPOT_SIZE) {
 		_depot_g.cache[_depot_g.available++] = slab;
 	} else {
 		free(slab);
 	}
+#else // MEM_SLAB_DEPOT
+    fprintf(stderr, "slab depot disabled, freeing");
+    free(slab);
+#endif // MEM_SLAB_DEPOT
 }
 
 /*! \brief Initialize slab depot. */
 static void slab_depot_init()
 {
+#ifdef MEM_SLAB_DEPOT
 	_depot_g.available = 0;
-
+#endif // MEM_SLAB_DEPOT
 }
 
 /*! \brief Destroy slab depot. */
 static void slab_depot_destroy()
 {
+#ifdef MEM_SLAB_DEPOT
 	while(_depot_g.available) {
 		free(_depot_g.cache[--_depot_g.available]);
 	}
+#endif // MEM_SLAB_DEPOT
 }
 
 /*
