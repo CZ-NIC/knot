@@ -25,6 +25,8 @@
 
 #include "dnslib/zonedb.h"
 #include "dnslib/edns.h"
+#include "dnslib/response.h"
+#include "dnslib/consts.h"
 
 struct conf_t;
 
@@ -53,6 +55,53 @@ typedef struct ns_nameserver {
  * \return Pointer to the name server structure.
  */
 ns_nameserver_t *ns_create();
+
+/*!
+ * \brief Parses the given query into the response structure and recognizes
+ *        type of the query.
+ *
+ * Some query types are distinguished by OPCODE (NOTIFY, UPDATE, etc.), some
+ * by QTYPE (AXFR, IXFR). As these information are needed on the same layer
+ * to decide what to do with the query, the dnslib_query_t type is used for this
+ * purpose.
+ *
+ * \param query_wire Wire format of the query.
+ * \param qsize Size of the query in octets.
+ * \param parsed Response structure to be filled with the parsed query.
+ * \param type Type of the query.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_EMALF if the query is totally unusable. Such query must be
+ *                    ignored.
+ * \retval DNSLIB_RCODE_SERVFAIL if there was some internal error. Call
+ *                               ns_error_response() with \a rcode set to this
+ *                               value to get proper error response.
+ * \retval DNSLIB_RCODE_FORMERR if the query was malformed, but can be used to
+ *                              construct an error response. Call
+ *                              ns_error_response() with \a rcode set to this
+ *                              value to get proper error response.
+ * \retval DNSLIB_RCODE_NOTIMPL if the query has an unsupported type. Call
+ *                              ns_error_response() with \a rcode set to this
+ *                              value to get proper error response.
+ */
+int ns_parse_query(const uint8_t *query_wire, size_t qsize,
+                   dnslib_response_t *parsed, dnslib_query_t *type);
+
+/*!
+ * \brief Prepares wire format of an error response using generic error template
+ *        stored in the nameserver structure.
+ *
+ * The error response will not contain the Question section from the query, just
+ * a header with ID copied from the query and the given RCODE.
+ *
+ * \param nameserver Nameserver structure containing the error template.
+ * \param query_wire Wire format of the query.
+ * \param rcode RCODE to set in the response.
+ * \param response_wire Place for wire format of the response.
+ * \param rsize Size of the error response will be stored here.
+ */
+void ns_error_response(ns_nameserver_t *nameserver, const uint8_t *query_wire,
+                       uint8_t rcode, uint8_t *response_wire, size_t *rsize);
 
 /*!
  * \brief Creates a response for the given query using the data of the name

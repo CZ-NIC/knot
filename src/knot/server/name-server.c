@@ -45,35 +45,6 @@ static const int      NS_ERR_SERVFAIL      = -999;
 /* Private functions                                                          */
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Prepares wire format of an error response using generic error template
- *        stored in the nameserver structure.
- *
- * The error response will not contain the Question section from the query, just
- * a header with ID copied from the query and the given RCODE.
- *
- * \param nameserver Nameserver structure containing the error template.
- * \param query_wire Wire format of the query.
- * \param rcode RCODE to set in the response.
- * \param response_wire Place for wire format of the response.
- * \param rsize Size of the error response will be stored here.
- */
-static inline void ns_error_response(ns_nameserver_t *nameserver,
-                                     const uint8_t *query_wire,
-                                     uint8_t rcode,
-                                     uint8_t *response_wire,
-                                     size_t *rsize)
-{
-	memcpy(response_wire, nameserver->err_response,
-	       nameserver->err_resp_size);
-	// copy ID of the query
-	memcpy(response_wire, query_wire, 2);
-	// set the RCODE
-	dnslib_packet_set_rcode(response_wire, rcode);
-	*rsize = nameserver->err_resp_size;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
  * \brief Finds zone where to search for the QNAME.
  *
  * \note As QTYPE DS requires special handling, this function finds a zone for
@@ -1846,6 +1817,84 @@ ns_nameserver_t *ns_create()
 	dnslib_response_free(&err);
 
 	return ns;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int ns_parse_query(const uint8_t *query_wire, size_t qsize,
+                   dnslib_response_t *parsed, dnslib_query_t *type)
+{
+	debug_ns("ns_answer_request() called with query size %zu.\n", qsize);
+	debug_ns_hex((char *)query_wire, qsize);
+
+	if (qsize < 2) {
+		return KNOT_EMALF;
+	}
+
+	// 1) create empty response
+	debug_ns("Parsing query using new dnslib structure...\n");
+	parsed = dnslib_response_new_empty(NULL);
+
+	if (parsed == NULL) {
+		log_answer_error("Error while creating response packet!\n");
+		return DNSLIB_RCODE_SERVFAIL;
+	}
+
+	int ret = 0;
+
+	// 2) parse the query
+	if ((ret = dnslib_response_parse_query(parsed, query_wire,
+	                                       qsize)) != 0) {
+		log_answer_info("Error while parsing query, "
+		                "dnslib error '%d'.\n",
+		                ret);
+		dnslib_response_free(&parsed);
+		return DNSLIB_RCODE_FORMERR;
+	}
+
+	debug_ns("Query parsed.\n");
+	dnslib_response_dump(parsed);
+
+	// 3) determine the query type
+	switch (dnslib_response_opcode(parsed))  {
+	case DNSLIB_OPCODE_QUERY:
+		switch (dnslib_response_qtype(parsed)) {
+		case DNSLIB_RRTYPE_AXFR:
+			*type = DNSLIB_QUERY_AXFR;
+			break;
+		case DNSLIB_RRTYPE_IXFR:
+			*type = DNSLIB_QUERY_IXFR;
+			break;
+		default:
+			*type = DNSLIB_QUERY_NORMAL;
+		}
+
+		break;
+	case DNSLIB_OPCODE_NOTIFY:
+		*type = DNSLIB_QUERY_NOTIFY;
+		break;
+	case DNSLIB_OPCODE_UPDATE:
+		*type = DNSLIB_QUERY_UPDATE;
+		break;
+	default:
+		return DNSLIB_RCODE_NOTIMPL;
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void ns_error_response(ns_nameserver_t *nameserver, const uint8_t *query_wire,
+                       uint8_t rcode, uint8_t *response_wire, size_t *rsize)
+{
+	memcpy(response_wire, nameserver->err_response,
+	       nameserver->err_resp_size);
+	// copy ID of the query
+	memcpy(response_wire, query_wire, 2);
+	// set the RCODE
+	dnslib_packet_set_rcode(response_wire, rcode);
+	*rsize = nameserver->err_resp_size;
 }
 
 /*----------------------------------------------------------------------------*/
