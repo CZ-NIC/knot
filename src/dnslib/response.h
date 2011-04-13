@@ -160,9 +160,18 @@ int dnslib_response_parse_query(dnslib_response_t *response,
                                 const uint8_t *query_wire, size_t query_size);
 
 /*!
+ * \brief Returns the OPCODE of the query.
+ *
+ * \param response Response (with parsed query) to get the OPCODE from.
+ *
+ * \return OPCODE stored in the response.
+ */
+uint8_t dnslib_response_opcode(const dnslib_response_t *response);
+
+/*!
  * \brief Returns the QNAME from the response.
  *
- * \param response Response to get the QNAME from.
+ * \param response Response (with parsed query) to get the QNAME from.
  *
  * \return QNAME stored in the response.
  */
@@ -171,7 +180,7 @@ const dnslib_dname_t *dnslib_response_qname(const dnslib_response_t *response);
 /*!
  * \brief Returns the QTYPE from the response.
  *
- * \param response Response to get the QTYPE from.
+ * \param response Responsee (with parsed query) to get the QTYPE from.
  *
  * \return QTYPE stored in the response.
  */
@@ -180,7 +189,7 @@ uint16_t dnslib_response_qtype(const dnslib_response_t *response);
 /*!
  * \brief Returns the QCLASS from the response.
  *
- * \param response Response to get the QCLASS from.
+ * \param response Responsee (with parsed query) to get the QCLASS from.
  *
  * \return QCLASS stored in the response.
  */
