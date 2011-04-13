@@ -1308,6 +1308,66 @@ dnslib_response_t *dnslib_response_new_empty(const dnslib_opt_rr_t *opt_rr)
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_response_add_opt(dnslib_response_t *resp,
+                            const dnslib_opt_rr_t *opt_rr)
+{
+	if (resp == NULL || opt_rr == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
+	// copy the OPT RR
+	resp->edns_response.version = opt_rr->version;
+	resp->edns_response.ext_rcode = opt_rr->ext_rcode;
+	resp->edns_response.payload = opt_rr->payload;
+	resp->edns_response.size = opt_rr->size;
+
+	if (resp->max_size < resp->edns_response.payload) {
+		// reallocate space for the wire format (and copy anything
+		// that might have been there before
+		uint8_t *wire_new = (uint8_t *)malloc(
+		                      resp->edns_response.payload);
+		if (wire_new == NULL) {
+			return DNSLIB_ENOMEM;
+		}
+
+		memcpy(wire_new, resp->wireformat, resp->max_size);
+		resp->wireformat = wire_new;
+	}
+
+	// set max size (should override??)
+	resp->max_size = resp->edns_response.payload;
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_response_set_max_size(dnslib_response_t *resp, int max_size)
+{
+	if (resp == NULL || max_size <= 0) {
+		return DNSLIB_EBADARG;
+	}
+
+	if (resp->max_size < max_size) {
+		// reallocate space for the wire format (and copy anything
+		// that might have been there before
+		uint8_t *wire_new = (uint8_t *)malloc(max_size);
+		if (wire_new == NULL) {
+			return DNSLIB_ENOMEM;
+		}
+
+		memcpy(wire_new, resp->wireformat, resp->max_size);
+		resp->wireformat = wire_new;
+	}
+
+	// set max size (should override??)
+	resp->max_size = max_size;
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_response_parse_query(dnslib_response_t *resp,
                                 const uint8_t *query_wire, size_t query_size)
 {
