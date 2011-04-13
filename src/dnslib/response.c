@@ -1394,6 +1394,13 @@ int dnslib_response_parse_query(dnslib_response_t *resp,
 
 /*----------------------------------------------------------------------------*/
 
+uint8_t dnslib_response_opcode(const dnslib_response_t *response)
+{
+	return dnslib_packet_flags_get_opcode(response->header.flags1);
+}
+
+/*----------------------------------------------------------------------------*/
+
 const dnslib_dname_t *dnslib_response_qname(const dnslib_response_t *response)
 {
 	return response->question.qname;
