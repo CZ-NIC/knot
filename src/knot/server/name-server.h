@@ -125,6 +125,36 @@ int ns_answer_request(ns_nameserver_t *nameserver,
                       uint8_t *response_wire,
                       size_t *rsize);
 
+/*! \brief Callback for sending one packet back through a TCP connection. */
+typedef int (*axfr_callback_t)(int session, uint8_t *packet, size_t size);
+
+/*!
+ * \brief Processes an AXFR query.
+ *
+ * This function sequentially creates DNS packets to be sent as a response
+ * to the AXFR query and sends each packet using the given callback (\a
+ * send_packet).
+ *
+ * \param namserver Name server structure to provide the data for answering.
+ * \param resp Response structure with parsed query.
+ * \param send_packet Callback to function for sending one packet.
+ * \param session Opaque TCP session identifier.
+ *
+ * \note Currently only a stub which sends one error response using the given
+ *       callback.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_EINVAL
+ * \retval KNOT_ENOMEM
+ * \retval KNOT_ERROR
+ *
+ * \todo Implement.
+ * \todo Maybe the place for the wire format should be passed in as in
+ *       the ns_answer_request() function...?
+ */
+int ns_answer_axfr(ns_nameserver_t *nameserver, dnslib_response_t *resp,
+                   axfr_callback_t send_packet, int session);
+
 /*!
  * \brief Properly destroys the name server structure.
  *

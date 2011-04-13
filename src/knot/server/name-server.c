@@ -1973,6 +1973,47 @@ int ns_answer_request(ns_nameserver_t *nameserver, const uint8_t *query_wire,
 
 /*----------------------------------------------------------------------------*/
 
+int ns_answer_axfr(ns_nameserver_t *nameserver, dnslib_response_t *resp,
+                   axfr_callback_t send_packet, int session)
+{
+	if (nameserver == NULL || resp == NULL || send_packet == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOTIMPL);
+
+	debug_ns("Created response packet.\n");
+	dnslib_response_dump(resp);
+
+	// TODO: this is ugly, either remove, or add getter for max size
+	uint8_t *response_wire = (uint8_t *)malloc(resp->max_size);
+	if (response_wire == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	size_t rsize;
+
+	// 4) Transform the packet into wire format
+	if (ns_response_to_wire(resp, response_wire, &rsize) != 0) {
+		// send back SERVFAIL (as this is our problem)
+		// TODO: change API to get query ID, not the whole wire format
+		// This is uber-ugly, to pass wire format of the response there
+		ns_error_response(nameserver, resp->wireformat,
+		                  DNSLIB_RCODE_SERVFAIL, response_wire, &rsize);
+	}
+
+	int ret = send_packet(session, response_wire, rsize);
+
+	if (ret != KNOT_EOK) {
+		// there was some error but there is not much to do about it
+		return KNOT_ERROR;
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void ns_destroy(ns_nameserver_t **nameserver)
 {
 	synchronize_rcu();
