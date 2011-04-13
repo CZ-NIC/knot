@@ -141,6 +141,51 @@ typedef struct dnslib_response dnslib_response_t;
 dnslib_response_t *dnslib_response_new_empty(const dnslib_opt_rr_t *opt_rr);
 
 /*!
+ * \brief Sets the OPT RR of the response.
+ *
+ * This function also allocates space for the wireformat of the response, if
+ * the payload in the OPT RR is larger than the current maximum size of the
+ * response and copies the current wireformat over to the new space.
+ *
+ * \note The contents of the OPT RR are copied.
+ *
+ * \param resp Response to set the OPT RR to.
+ * \param opt_rr OPT RR to set.
+ *
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_EBADARG
+ * \retval DNSLIB_ENOMEM
+ *
+ * \todo Needs test.
+ */
+int dnslib_response_set_opt(dnslib_response_t *resp,
+                            const dnslib_opt_rr_t *opt_rr);
+
+/*!
+ * \brief Sets the maximum size of the response and allocates space for wire
+ *        format (if needed).
+ *
+ * This function also allocates space for the wireformat of the response, if
+ * the given max size is larger than the current maximum size of the response
+ * and copies the current wireformat over to the new space.
+ *
+ * \warning Do not call this function if you are not completely sure that the
+ *          current wire format of the response fits into the new space.
+ *          It does not update the current size of the wire format, so the
+ *          produced response may be larger than the given max size.
+ *
+ * \param resp Response to set the maximum size of.
+ * \param max_size Maximum size of the response.
+ *
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_EBADARG
+ * \retval DNSLIB_ENOMEM
+ *
+ * \todo Needs test.
+ */
+int dnslib_response_set_max_size(dnslib_response_t *resp, int max_size);
+
+/*!
  * \brief Parses the given query and saves important information into the
  *        response structure.
  *
