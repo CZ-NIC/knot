@@ -19,6 +19,8 @@
 static const uint16_t MAX_UDP_PAYLOAD_EDNS = 4096;
 /*! \brief Maximum UDP payload with EDNS disabled. */
 static const uint16_t MAX_UDP_PAYLOAD      = 512;
+/*! \brief Maximum size of one AXFR response packet. */
+static const uint16_t MAX_AXFR_PAYLOAD     = 65535;
 /*! \brief Supported EDNS version. */
 static const uint8_t  EDNS_VERSION         = 0;
 /*! \brief Determines whether EDNS is enabled. */
@@ -1669,8 +1671,8 @@ finalize:
  */
 static int ns_answer(dnslib_zonedb_t *db, dnslib_response_t *resp)
 {
-	dnslib_dname_t *qname = resp->question.qname;
-	uint16_t qtype = resp->question.qtype;
+	const dnslib_dname_t *qname = dnslib_response_qname(resp);
+	uint16_t qtype = dnslib_response_qtype(resp);
 DEBUG_NS(
 	char *name_str = dnslib_dname_to_str(qname);
 	debug_ns("Trying to find zone for QNAME %s\n", name_str);
@@ -1695,6 +1697,45 @@ DEBUG_NS(
 	return ns_answer_from_zone(zone, qname, qtype, resp);
 
 	//dnslib_dname_free(&qname);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int ns_axfr_from_zone(const dnslib_zone_t *zone, dnslib_response_t *resp,
+                             axfr_callback_t send_packet, int session)
+{
+	return KNOT_ERROR;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int ns_axfr(const dnslib_zonedb_t *zonedb, dnslib_response_t *resp,
+                   axfr_callback_t send_packet, int session)
+{
+	const dnslib_dname_t *qname = dnslib_response_qname(resp);
+
+	assert(dnslib_response_qtype(resp) == DNSLIB_RRTYPE_AXFR);
+
+DEBUG_NS(
+	char *name_str = dnslib_dname_to_str(qname);
+	debug_ns("Trying to find zone with name %s\n", name_str);
+	free(name_str);
+);
+	// find zone in which to search for the name
+	const dnslib_zone_t *zone = dnslib_zonedb_find_zone(zonedb, qname);
+
+	// if no zone found, return NotAuth
+	if (zone == NULL) {
+		debug_ns("No zone found.\n");
+		dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOTAUTH);
+		return KNOT_EOK;
+	}
+DEBUG_NS(
+	char *name_str2 = dnslib_dname_to_str(zone->apex->owner);
+	debug_ns("Found zone for QNAME %s\n", name_str2);
+	free(name_str2);
+);
+	return ns_axfr_from_zone(zone, resp, send_packet, session);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1943,8 +1984,9 @@ int ns_answer_request(ns_nameserver_t *nameserver, const uint8_t *query_wire,
 
 	// 3) get the answer for the query
 	rcu_read_lock();
+	dnslib_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
 
-	ret = ns_answer(nameserver->zone_db, resp);
+	ret = ns_answer(zonedb, resp);
 	if (ret != 0) {
 		// now only one type of error (SERVFAIL), later maybe more
 		ns_error_response(nameserver, query_wire, DNSLIB_RCODE_SERVFAIL,
@@ -1980,29 +2022,31 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, dnslib_response_t *resp,
 		return KNOT_EINVAL;
 	}
 
-	dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOTIMPL);
+	// Get pointer to the zone database
+	rcu_read_lock();
+	dnslib_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
 
-	debug_ns("Created response packet.\n");
-	dnslib_response_dump(resp);
+	int ret = ns_axfr(zonedb, resp, send_packet, session);
 
-	// TODO: this is ugly, either remove, or add getter for max size
-	uint8_t *response_wire = (uint8_t *)malloc(resp->max_size);
-	if (response_wire == NULL) {
-		return KNOT_ENOMEM;
-	}
+	if (ret != KNOT_EOK) {
+		// allocate some place for the error response
+		uint8_t *response_wire = (uint8_t *)malloc(MAX_UDP_PAYLOAD);
+		if (response_wire == NULL) {
+			return KNOT_ENOMEM;
+		}
 
-	size_t rsize;
+		size_t rsize = MAX_UDP_PAYLOAD;
 
-	// 4) Transform the packet into wire format
-	if (ns_response_to_wire(resp, response_wire, &rsize) != 0) {
-		// send back SERVFAIL (as this is our problem)
-		// TODO: change API to get query ID, not the whole wire format
-		// This is uber-ugly, to pass wire format of the response there
+		// now only one type of error (SERVFAIL), later maybe more
 		ns_error_response(nameserver, resp->wireformat,
-		                  DNSLIB_RCODE_SERVFAIL, response_wire, &rsize);
+				  DNSLIB_RCODE_SERVFAIL, response_wire,
+				  &rsize);
+		ret = send_packet(session, response_wire, rsize);
 	}
 
-	int ret = send_packet(session, response_wire, rsize);
+	dnslib_response_free(&resp);
+
+	rcu_read_unlock();
 
 	if (ret != KNOT_EOK) {
 		// there was some error but there is not much to do about it
