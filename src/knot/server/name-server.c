@@ -1769,6 +1769,7 @@ static int ns_axfr_send_and_clear(ns_xfr_t *xfr)
 	xfr->send(xfr->session, xfr->response_wire, xfr->rsize);
 
 	// Clean the response structure
+	dnslib_response_clear(xfr->response);
 
 	return KNOT_EOK;
 }
@@ -1911,13 +1912,20 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 	if (ret == DNSLIB_ESPACE) {
 		// if there is not enough space, send the response and
 		// add the SOA record to a new packet
+		ns_axfr_send_and_clear(xfr);
 
-		// TODO
+		ret = dnslib_response_add_rrset_answer(xfr->response, soa_rrset,
+		                                       0, 0);
+		if (ret != DNSLIB_EOK) {
+			return KNOT_ERROR;
+		}
 
 	} else if (ret != DNSLIB_EOK) {
 		// something is really wrong
 		return KNOT_ERROR;
 	}
+
+	ns_axfr_send_and_clear(xfr);
 
 	return KNOT_EOK;
 }
