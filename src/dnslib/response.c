@@ -1325,6 +1325,13 @@ dnslib_response_t *dnslib_response_new(size_t max_wire_size)
 
 /*----------------------------------------------------------------------------*/
 
+void dnslib_response_clear(dnslib_response_t *response)
+{
+	// TODO: implement
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_response_add_opt(dnslib_response_t *resp,
                             const dnslib_opt_rr_t *opt_rr)
 {

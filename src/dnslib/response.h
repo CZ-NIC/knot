@@ -150,6 +150,16 @@ dnslib_response_t *dnslib_response_new_empty(const dnslib_opt_rr_t *opt_rr);
 dnslib_response_t *dnslib_response_new(size_t max_wire_size);
 
 /*!
+ * \brief Clears the response structure for reuse.
+ *
+ * After call to this function, the response will be in the same state as if
+ * dnslib_response_new() was called. The maximum wire size is retained.
+ *
+ * \param response Response structure to clear.
+ */
+void dnslib_response_clear(dnslib_response_t *response);
+
+/*!
  * \brief Sets the OPT RR of the response.
  *
  * This function also allocates space for the wireformat of the response, if
