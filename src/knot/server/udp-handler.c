@@ -107,7 +107,7 @@ int udp_master(dthread_t *thread)
 		size_t resp_len = sizeof(qbuf);
 
 		/* Parse query. */
-		res = ns_parse_query(qbuf, sizeof(qbuf), resp, &qtype);
+		res = ns_parse_query(qbuf, n, resp, &qtype);
 		if (unlikely(res < 0)) {
 
 			/* Send error response. */
@@ -127,11 +127,12 @@ int udp_master(dthread_t *thread)
 			res = ns_answer_normal(ns, resp, qbuf, &resp_len);
 			break;
 		case DNSLIB_QUERY_AXFR:
-			/*! \todo Enqueue xfr request. */
-			break;
 		case DNSLIB_QUERY_IXFR:
+			/*! \todo Send error, not available on UDP. */
+			break;
 		case DNSLIB_QUERY_NOTIFY:
 		case DNSLIB_QUERY_UPDATE:
+			/*! \todo Implement query notify/update. */
 			break;
 		}
 
@@ -140,8 +141,8 @@ int udp_master(dthread_t *thread)
 
 		dnslib_response_free(&resp);
 
-		// Send answer
-		if (res == 0) {
+		/* Send answer. */
+		if (res == KNOT_EOK) {
 
 			assert(resp_len > 0);
 			debug_net("udp: answer wire format (size %zd):\n",

@@ -75,7 +75,7 @@ DEBUG_DNSLIB_ZONE(
 static void dnslib_zone_destroy_node_rrsets_from_tree(dnslib_node_t *node,
                                                       void *data)
 {
-	int free_rdata_dnames = (int)data;
+	int free_rdata_dnames = (int)((intptr_t)data);
 	dnslib_node_free_rrsets(node, free_rdata_dnames);
 }
 
@@ -1130,14 +1130,14 @@ void dnslib_zone_deep_free(dnslib_zone_t **zone, int free_rdata_dnames)
 
 	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
 	                      dnslib_zone_destroy_node_rrsets_from_tree,
-	                      (void *)free_rdata_dnames);
+			      (void *)((intptr_t)free_rdata_dnames));
 
 	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
 	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
 
 	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
 	                      dnslib_zone_destroy_node_rrsets_from_tree,
-	                      (void *)free_rdata_dnames);
+			      (void *)((intptr_t)free_rdata_dnames));
 
 	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
 	                      dnslib_zone_destroy_node_owner_from_tree, NULL);

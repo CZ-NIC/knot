@@ -20,6 +20,7 @@
 #include "dnslib/node.h"
 #include "dnslib/zone.h"
 #include "dnslib/utils.h"
+#include "common/print.h"
 
 /*!
  * \brief Dumps RDATA of the given type.

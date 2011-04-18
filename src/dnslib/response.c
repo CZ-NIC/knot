@@ -14,6 +14,7 @@
 #include "dnslib/error.h"
 #include "dnslib/debug.h"
 
+
 /*!
  * \brief Default sizes for response structure parts and steps for increasing
  *        them.
