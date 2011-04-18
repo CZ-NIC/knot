@@ -222,19 +222,21 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
  *
  * \param resp Response structure to initialize.
  * \param opt_rr OPT RR to be put to the response.
+ * \param max_size Maximum size of the wire format of the response.
  *
  * \retval DNSLIB_EOK
  * \retval DNSLIB_ENOMEM
  */
 static int dnslib_response_init(dnslib_response_t *resp,
-                                const dnslib_opt_rr_t *opt_rr)
+                                const dnslib_opt_rr_t *opt_rr,
+                                size_t max_size)
 {
 	memset(resp, 0, PREALLOC_TOTAL);
 
 	if (opt_rr == NULL) {
 		resp->edns_response.version = EDNS_NOT_SUPPORTED;
 		// set default max size of the response
-		resp->max_size = DNSLIB_MAX_RESPONSE_SIZE;
+		resp->max_size = max_size;
 	} else {
 		// copy the OPT RR
 		resp->edns_response.version = opt_rr->version;
@@ -1298,7 +1300,22 @@ dnslib_response_t *dnslib_response_new_empty(const dnslib_opt_rr_t *opt_rr)
 	dnslib_response_t *resp = (dnslib_response_t *)malloc(PREALLOC_TOTAL);
 	CHECK_ALLOC_LOG(resp, NULL);
 
-	if (dnslib_response_init(resp, opt_rr) != 0) {
+	if (dnslib_response_init(resp, opt_rr, DNSLIB_MAX_RESPONSE_SIZE) != 0) {
+		free(resp);
+		return NULL;
+	}
+
+	return resp;
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnslib_response_t *dnslib_response_new(size_t max_wire_size)
+{
+	dnslib_response_t *resp = (dnslib_response_t *)malloc(PREALLOC_TOTAL);
+	CHECK_ALLOC_LOG(resp, NULL);
+
+	if (dnslib_response_init(resp, NULL, max_wire_size) != 0) {
 		free(resp);
 		return NULL;
 	}

@@ -141,6 +141,15 @@ typedef struct dnslib_response dnslib_response_t;
 dnslib_response_t *dnslib_response_new_empty(const dnslib_opt_rr_t *opt_rr);
 
 /*!
+ * \brief Creates new empty response structure.
+ *
+ * \param max_wire_size Maximum size of the wire format of the response.
+ *
+ * \return New empty response structure or NULL if an error occured.
+ */
+dnslib_response_t *dnslib_response_new(size_t max_wire_size);
+
+/*!
  * \brief Sets the OPT RR of the response.
  *
  * This function also allocates space for the wireformat of the response, if
