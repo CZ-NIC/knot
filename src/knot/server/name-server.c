@@ -206,7 +206,9 @@ static int ns_add_rrsigs(const dnslib_rrset_t *rrset, dnslib_response_t *resp,
 
 	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)
 	    && (rrsigs = dnslib_rrset_rrsigs(rrset)) != NULL) {
-		ns_check_wildcard(name, resp, &rrsigs);
+		if (name != NULL) {
+			ns_check_wildcard(name, resp, &rrsigs);
+		}
 		return add_rrset_to_resp(resp, rrsigs, tc, 0);
 	}
 
@@ -1729,43 +1731,48 @@ static void ns_axfr_from_node(dnslib_node_t *node, void *data)
 		return;
 	}
 
-	/*
-	 * Copy-paste
-	 */
-//	int i = 0;
-//	int ret = 0;
-//	const dnslib_rrset_t *rrset;
-//	while (i < dnslib_node_rrset_count(node)) {
-//		assert(rrsets[i] != NULL);
-//		rrset = rrsets[i];
+	int i = 0;
+	int ret = 0;
+	int added = 0;
+	const dnslib_rrset_t *rrset;
+	while (i < dnslib_node_rrset_count(node)) {
+		assert(rrsets[i] != NULL);
+		rrset = rrsets[i];
 
-//		debug_ns("  Type: %s\n",
-//		     dnslib_rrtype_to_string(dnslib_rrset_type(rrset)));
+		debug_ns("  Type: %s\n",
+		     dnslib_rrtype_to_string(dnslib_rrset_type(rrset)));
 
-//		ns_check_wildcard(name, resp, &rrset);
-//		ret = dnslib_response_add_rrset_answer(resp, rrset, 1,
-//						       0);
-//		if (ret >= 0 && (added += 1)
-//		    && (ret = ns_add_rrsigs(rrset, resp, name,
-//			   dnslib_response_add_rrset_answer, 1)) >=0 ) {
-//			added += 1;
-//		} else {
-//			free(rrsets);
-//			rrsets = NULL;
-//			break;
-//		}
+		// do not add SOA
+		if (dnslib_rrset_type(rrset) == DNSLIB_RRTYPE_SOA) {
+			++i;
+			continue;
+		}
 
-//		++i;
-//	}
+		ret = dnslib_response_add_rrset_answer(params->xfr->response,
+		                                       rrset, 0, 0);
+
+		// we can send the RRSets in any order, so add the RRSIGs now
+		if (ret >= 0 && (added += 1) /* WTF?? */
+		    && (ret = ns_add_rrsigs(rrset, params->xfr->response, NULL,
+			   dnslib_response_add_rrset_answer, 0)) >=0 ) {
+			added += 1;
+		} else {
+			free(rrsets);
+			rrsets = NULL;
+			break;
+		}
+
+		// this way only whole RRSets are always sent
+		// we guess, it will not create too much overhead
+
+		++i;
+	}
 	if (rrsets != NULL) {
 		free(rrsets);
 	}
 
-	/*
-	 * End of copy-paste
-	 */
-
-	params->ret = KNOT_ERROR;
+	/*! \todo maybe distinguish some error codes. */
+	params->ret = (ret == 0) ? KNOT_EOK : KNOT_ERROR;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1776,7 +1783,15 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 	params.xfr = xfr;
 	params.ret = KNOT_EOK;
 
+	/*
+	 * TODO: First send SOA!!!
+	 */
+
 	dnslib_zone_tree_apply_inorder(zone, ns_axfr_from_node, &params);
+
+	/*
+	 * TODO: Last send also SOA!!!
+	 */
 
 	return KNOT_ERROR;
 }
