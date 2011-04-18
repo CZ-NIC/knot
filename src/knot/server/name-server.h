@@ -137,6 +137,22 @@ typedef struct ns_xfr {
 } ns_xfr_t;
 
 /*!
+ * \brief Creates a response for the given normal query using the data of the
+ *        nameserver.
+ *
+ * \param nameserver Name server structure to provide the needed data.
+ * \param resp Response structure with parsed query.
+ * \param response_wire Place for the response in wire format.
+ * \param rsize Input: maximum acceptable size of the response. Output: real
+ *              size of the response.
+ *
+ * \retval KNOT_EOK if a valid response was created.
+ * \retval KNOT_EMALF if an error occured and the response is not valid.
+ */
+int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_response_t *resp,
+                     uint8_t *response_wire, size_t *rsize);
+
+/*!
  * \brief Processes an AXFR query.
  *
  * This function sequentially creates DNS packets to be sent as a response
@@ -144,9 +160,7 @@ typedef struct ns_xfr {
  * send_packet).
  *
  * \param namserver Name server structure to provide the data for answering.
- * \param resp Response structure with parsed query.
- * \param send_packet Callback to function for sending one packet.
- * \param session Opaque TCP session identifier.
+ * \param xfr
  *
  * \note Currently only a stub which sends one error response using the given
  *       callback.
