@@ -95,12 +95,12 @@ int ns_parse_query(const uint8_t *query_wire, size_t qsize,
  * a header with ID copied from the query and the given RCODE.
  *
  * \param nameserver Nameserver structure containing the error template.
- * \param query_wire Wire format of the query.
+ * \param query_id ID of the query.
  * \param rcode RCODE to set in the response.
  * \param response_wire Place for wire format of the response.
  * \param rsize Size of the error response will be stored here.
  */
-void ns_error_response(ns_nameserver_t *nameserver, const uint8_t *query_wire,
+void ns_error_response(ns_nameserver_t *nameserver, uint16_t query_id,
                        uint8_t rcode, uint8_t *response_wire, size_t *rsize);
 
 /*!

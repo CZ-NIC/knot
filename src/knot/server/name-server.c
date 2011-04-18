@@ -2058,13 +2058,13 @@ int ns_parse_query(const uint8_t *query_wire, size_t qsize,
 
 /*----------------------------------------------------------------------------*/
 
-void ns_error_response(ns_nameserver_t *nameserver, const uint8_t *query_wire,
+void ns_error_response(ns_nameserver_t *nameserver, uint16_t query_id,
                        uint8_t rcode, uint8_t *response_wire, size_t *rsize)
 {
 	memcpy(response_wire, nameserver->err_response,
 	       nameserver->err_resp_size);
 	// copy ID of the query
-	memcpy(response_wire, query_wire, 2);
+	dnslib_packet_set_id(response_wire, query_id);
 	// set the RCODE
 	dnslib_packet_set_rcode(response_wire, rcode);
 	*rsize = nameserver->err_resp_size;
@@ -2088,8 +2088,8 @@ int ns_answer_request(ns_nameserver_t *nameserver, const uint8_t *query_wire,
 
 	if (resp == NULL) {
 		log_answer_error("Error while creating response packet!\n");
-		ns_error_response(nameserver, query_wire, DNSLIB_RCODE_SERVFAIL,
-		                  response_wire, rsize);
+		ns_error_response(nameserver, dnslib_packet_get_id(query_wire),
+		                  DNSLIB_RCODE_SERVFAIL, response_wire, rsize);
 		return KNOT_EOK;
 	}
 
@@ -2100,8 +2100,8 @@ int ns_answer_request(ns_nameserver_t *nameserver, const uint8_t *query_wire,
 		log_answer_info("Error while parsing query, "
 		                "dnslib error '%d'.\n",
 		                ret);
-		ns_error_response(nameserver, query_wire, DNSLIB_RCODE_FORMERR,
-		                  response_wire, rsize);
+		ns_error_response(nameserver, dnslib_packet_get_id(query_wire),
+		                  DNSLIB_RCODE_FORMERR, response_wire, rsize);
 		dnslib_response_free(&resp);
 		return KNOT_EOK;
 	}
@@ -2121,8 +2121,8 @@ int ns_answer_request(ns_nameserver_t *nameserver, const uint8_t *query_wire,
 	ret = ns_answer(zonedb, resp);
 	if (ret != 0) {
 		// now only one type of error (SERVFAIL), later maybe more
-		ns_error_response(nameserver, query_wire, DNSLIB_RCODE_SERVFAIL,
-		                  response_wire, rsize);
+		ns_error_response(nameserver, dnslib_packet_get_id(query_wire),
+		                  DNSLIB_RCODE_SERVFAIL, response_wire, rsize);
 	} else {
 		debug_ns("Created response packet.\n");
 		dnslib_response_dump(resp);
@@ -2130,7 +2130,8 @@ int ns_answer_request(ns_nameserver_t *nameserver, const uint8_t *query_wire,
 		// 4) Transform the packet into wire format
 		if (ns_response_to_wire(resp, response_wire, rsize) != 0) {
 			// send back SERVFAIL (as this is our problem)
-			ns_error_response(nameserver, query_wire,
+			ns_error_response(nameserver,
+			                  dnslib_packet_get_id(query_wire),
 			                  DNSLIB_RCODE_SERVFAIL, response_wire,
 			                  rsize);
 		}
@@ -2157,7 +2158,7 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_response_t *resp,
 	int ret = ns_answer(zonedb, resp);
 	if (ret != 0) {
 		// now only one type of error (SERVFAIL), later maybe more
-		ns_error_response(nameserver, resp->wireformat,
+		ns_error_response(nameserver, resp->header.id,
 		                  DNSLIB_RCODE_SERVFAIL, response_wire, rsize);
 	} else {
 		debug_ns("Created response packet.\n");
@@ -2166,7 +2167,7 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_response_t *resp,
 		// 4) Transform the packet into wire format
 		if (ns_response_to_wire(resp, response_wire, rsize) != 0) {
 			// send back SERVFAIL (as this is our problem)
-			ns_error_response(nameserver, resp->wireformat,
+			ns_error_response(nameserver, resp->header.id,
 			                  DNSLIB_RCODE_SERVFAIL, response_wire,
 			                  rsize);
 		}
@@ -2197,7 +2198,7 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 
 	if (ret != KNOT_EOK) {
 		// now only one type of error (SERVFAIL), later maybe more
-		ns_error_response(nameserver, xfr->response->wireformat,
+		ns_error_response(nameserver, xfr->response->header.id,
 				  DNSLIB_RCODE_SERVFAIL, xfr->response_wire,
 				  &xfr->rsize);
 		ret = xfr->send(xfr->session, xfr->response_wire, xfr->rsize);
