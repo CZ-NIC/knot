@@ -128,6 +128,14 @@ int ns_answer_request(ns_nameserver_t *nameserver,
 /*! \brief Callback for sending one packet back through a TCP connection. */
 typedef int (*axfr_callback_t)(int session, uint8_t *packet, size_t size);
 
+typedef struct ns_xfr {
+	dnslib_response_t *response;
+	axfr_callback_t send;
+	int session;
+	uint8_t *response_wire;
+	size_t rsize;
+} ns_xfr_t;
+
 /*!
  * \brief Processes an AXFR query.
  *
@@ -152,8 +160,7 @@ typedef int (*axfr_callback_t)(int session, uint8_t *packet, size_t size);
  * \todo Maybe the place for the wire format should be passed in as in
  *       the ns_answer_request() function...?
  */
-int ns_answer_axfr(ns_nameserver_t *nameserver, dnslib_response_t *resp,
-                   axfr_callback_t send_packet, int session);
+int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
 
 /*!
  * \brief Properly destroys the name server structure.
