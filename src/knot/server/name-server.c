@@ -1768,7 +1768,10 @@ static int ns_axfr_send_and_clear(ns_xfr_t *xfr)
 	}
 
 	// Send the response
-	xfr->send(xfr->session, xfr->response_wire, xfr->rsize);
+	int res = xfr->send(xfr->session, xfr->response_wire, xfr->rsize);
+	if (res != KNOT_EOK) {
+		return res;
+	}
 
 	// Clean the response structure
 	dnslib_response_clear(xfr->response);
@@ -1821,7 +1824,7 @@ rrset:
 		if (ret == DNSLIB_ESPACE) {
 			// TODO: send the packet and clean the structure
 			ret = ns_axfr_send_and_clear(params->xfr);
-			if (ret != DNSLIB_EOK) {
+			if (ret != KNOT_EOK) {
 				// some wierd problem, we should end
 				params->ret = KNOT_ERROR;
 				break;
@@ -1843,7 +1846,7 @@ rrsigs:
 		if (ret == DNSLIB_ESPACE) {
 			// TODO: send the packet and clean the structure
 			ret = ns_axfr_send_and_clear(params->xfr);
-			if (ret != DNSLIB_EOK) {
+			if (ret != KNOT_EOK) {
 				// some wierd problem, we should end
 				params->ret = KNOT_ERROR;
 				break;
@@ -1914,7 +1917,10 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 	if (ret == DNSLIB_ESPACE) {
 		// if there is not enough space, send the response and
 		// add the SOA record to a new packet
-		ns_axfr_send_and_clear(xfr);
+		ret = ns_axfr_send_and_clear(xfr);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 
 		ret = dnslib_response_add_rrset_answer(xfr->response, soa_rrset,
 		                                       0, 0);
@@ -1927,9 +1933,7 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 		return KNOT_ERROR;
 	}
 
-	ns_axfr_send_and_clear(xfr);
-
-	return KNOT_EOK;
+	return ns_axfr_send_and_clear(xfr);
 }
 
 /*----------------------------------------------------------------------------*/
