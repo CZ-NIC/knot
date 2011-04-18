@@ -1325,9 +1325,15 @@ dnslib_response_t *dnslib_response_new(size_t max_wire_size)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_response_clear(dnslib_response_t *response)
+void dnslib_response_clear(dnslib_response_t *resp)
 {
-	// TODO: implement
+	resp->size = DNSLIB_PACKET_HEADER_SIZE;
+	resp->an_rrsets = 0;
+	resp->ns_rrsets = 0;
+	resp->ar_rrsets = 0;
+	resp->compression.count = 0;
+	dnslib_response_free_tmp_rrsets(resp);
+	resp->tmp_rrsets_count = 0;
 }
 
 /*----------------------------------------------------------------------------*/
