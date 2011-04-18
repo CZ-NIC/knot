@@ -1725,7 +1725,7 @@ static void ns_axfr_from_node(dnslib_node_t *node, void *data)
 
 	debug_ns("Params OK, answering AXFR from node %p.\n", node);
 
-	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
+	const dnslib_rrset_t **rrsets = dnslib_node_rrsets(node);
 	if (rrsets == NULL) {
 		params->ret = KNOT_ENOMEM;
 		return;
@@ -1733,7 +1733,6 @@ static void ns_axfr_from_node(dnslib_node_t *node, void *data)
 
 	int i = 0;
 	int ret = 0;
-	int added = 0;
 	const dnslib_rrset_t *rrset;
 	while (i < dnslib_node_rrset_count(node)) {
 		assert(rrsets[i] != NULL);
@@ -1751,19 +1750,27 @@ static void ns_axfr_from_node(dnslib_node_t *node, void *data)
 		ret = dnslib_response_add_rrset_answer(params->xfr->response,
 		                                       rrset, 0, 0);
 
+		if (ret == DNSLIB_ESPACE) {
+			// TODO: send the packet and clean the structure
+		} else if (ret != DNSLIB_EOK) {
+			// some wierd problem, we should end
+			break;
+		}
+
 		// we can send the RRSets in any order, so add the RRSIGs now
-		if (ret >= 0 && (added += 1) /* WTF?? */
-		    && (ret = ns_add_rrsigs(rrset, params->xfr->response, NULL,
-			   dnslib_response_add_rrset_answer, 0)) >=0 ) {
-			added += 1;
-		} else {
-			free(rrsets);
-			rrsets = NULL;
+		rrset = dnslib_rrset_rrsigs(rrset);
+
+		ret = dnslib_response_add_rrset_answer(params->xfr->response,
+		                                       rrset, 0, 0);
+		if (ret == DNSLIB_ESPACE) {
+			// TODO: send the packet and clean the structure
+		} else if (ret != DNSLIB_EOK) {
+			// some wierd problem, we should end
 			break;
 		}
 
 		// this way only whole RRSets are always sent
-		// we guess, it will not create too much overhead
+		// we guess it will not create too much overhead
 
 		++i;
 	}
@@ -1779,21 +1786,56 @@ static void ns_axfr_from_node(dnslib_node_t *node, void *data)
 
 static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 {
+	assert(xfr != NULL);
+	assert(xfr->response != NULL);
+	assert(xfr->response_wire != NULL);
+	assert(xfr->send != NULL);
+
 	ns_axfr_params_t params;
 	params.xfr = xfr;
 	params.ret = KNOT_EOK;
 
 	/*
-	 * TODO: First send SOA!!!
+	 * First SOA
 	 */
+
+	// retrieve SOA - must be send as first and last RR
+	const dnslib_rrset_t *soa_rrset = dnslib_node_rrset(
+		dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
+	if (soa_rrset == NULL) {
+		// some really serious error
+		return KNOT_ERROR;
+	}
+
+	int ret;
+
+	// add SOA RR to the response
+	ret = dnslib_response_add_rrset_answer(xfr->response, soa_rrset, 0, 0);
+	if (ret != DNSLIB_EOK) {
+		// something is really wrong
+		return KNOT_ERROR;
+	}
 
 	dnslib_zone_tree_apply_inorder(zone, ns_axfr_from_node, &params);
 
 	/*
-	 * TODO: Last send also SOA!!!
+	 * Last SOA
 	 */
 
-	return KNOT_ERROR;
+	// try to add the SOA to the response again (last RR)
+	ret = dnslib_response_add_rrset_answer(xfr->response, soa_rrset, 0, 0);
+	if (ret == DNSLIB_ESPACE) {
+		// if there is not enough space, send the response and
+		// add the SOA record to a new packet
+
+		// TODO
+
+	} else if (ret != DNSLIB_EOK) {
+		// something is really wrong
+		return KNOT_ERROR;
+	}
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
