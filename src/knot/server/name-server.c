@@ -1674,6 +1674,8 @@ finalize:
 static int ns_answer(dnslib_zonedb_t *db, dnslib_response_t *resp)
 {
 	const dnslib_dname_t *qname = dnslib_response_qname(resp);
+	assert(qname != NULL);
+
 	uint16_t qtype = dnslib_response_qtype(resp);
 DEBUG_NS(
 	char *name_str = dnslib_dname_to_str(qname);
@@ -2052,7 +2054,12 @@ ns_nameserver_t *ns_create()
 int ns_parse_query(const uint8_t *query_wire, size_t qsize,
                    dnslib_response_t *parsed, dnslib_query_t *type)
 {
-	debug_ns("ns_answer_request() called with query size %zu.\n", qsize);
+	if (parsed == NULL || query_wire == NULL || type == NULL) {
+		log_answer_error("Missing parameter to query parsing.\n");
+		return KNOT_EINVAL;
+	}
+
+	debug_ns("ns_parse_query() called with query size %zu.\n", qsize);
 	debug_ns_hex((char *)query_wire, qsize);
 
 	if (qsize < 2) {
@@ -2060,13 +2067,8 @@ int ns_parse_query(const uint8_t *query_wire, size_t qsize,
 	}
 
 	// 1) create empty response
-	debug_ns("Parsing query using new dnslib structure...\n");
-	parsed = dnslib_response_new_empty(NULL);
-
-	if (parsed == NULL) {
-		log_answer_error("Error while creating response packet!\n");
-		return DNSLIB_RCODE_SERVFAIL;
-	}
+	debug_ns("Parsing query...\n");
+	//parsed = dnslib_response_new_empty(NULL);
 
 	int ret = 0;
 
@@ -2082,6 +2084,7 @@ int ns_parse_query(const uint8_t *query_wire, size_t qsize,
 
 	debug_ns("Query parsed.\n");
 	dnslib_response_dump(parsed);
+	debug_ns("Done\n");
 
 	// 3) determine the query type
 	switch (dnslib_response_opcode(parsed))  {
@@ -2209,6 +2212,8 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_response_t *resp,
 	// get the answer for the query
 	rcu_read_lock();
 	dnslib_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
+
+	debug_ns("ns_answer_normal()\n");
 
 	int ret = ns_answer(zonedb, resp);
 	if (ret != 0) {
