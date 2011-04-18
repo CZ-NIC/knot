@@ -1702,11 +1702,77 @@ DEBUG_NS(
 }
 
 /*----------------------------------------------------------------------------*/
+/*!
+ * \brief Converts the response to wire format.
+ *
+ * \param resp Response to convert.
+ * \param wire Place for the wire format of the response.
+ * \param wire_size In: space available for the wire format in bytes.
+ *                  Out: actual size of the wire format in bytes.
+ *
+ * \retval KNOT_EOK
+ * \retval NS_ERR_SERVFAIL
+ */
+static int ns_response_to_wire(dnslib_response_t *resp, uint8_t *wire,
+                               size_t *wire_size)
+{
+	uint8_t *rwire = NULL;
+	size_t rsize = 0;
+	int ret = 0;
+
+	if ((ret = dnslib_response_to_wire(resp, &rwire, &rsize))
+	     != DNSLIB_EOK) {
+		log_answer_error("Error converting response packet "
+		                 "to wire format (error %d).\n", ret);
+		return NS_ERR_SERVFAIL;
+	}
+
+	if (rsize > *wire_size) {
+		return NS_ERR_SERVFAIL;
+	}
+
+	memcpy(wire, rwire, rsize);
+	*wire_size = rsize;
+	//free(rwire);
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
 
 typedef struct ns_axfr_params {
 	ns_xfr_t *xfr;
 	int ret;
 } ns_axfr_params_t;
+
+/*----------------------------------------------------------------------------*/
+
+static int ns_axfr_send_and_clear(ns_xfr_t *xfr)
+{
+	assert(xfr != NULL);
+	assert(xfr->response != NULL);
+	assert(xfr->response_wire != NULL);
+	assert(xfr->send != NULL);
+
+	// Transform the packet into wire format
+	if (ns_response_to_wire(xfr->response, xfr->response_wire, &xfr->rsize)
+	    != 0) {
+		return NS_ERR_SERVFAIL;
+//		// send back SERVFAIL (as this is our problem)
+//		ns_error_response(nameserver,
+//				  dnslib_packet_get_id(query_wire),
+//				  DNSLIB_RCODE_SERVFAIL, response_wire,
+//				  rsize);
+	}
+
+	// Send the response
+	xfr->send(xfr->session, xfr->response_wire, xfr->rsize);
+
+	// Clean the response structure
+	dnslib_response_clear(xfr->response);
+
+	return KNOT_EOK;
+}
 
 /*----------------------------------------------------------------------------*/
 
@@ -1733,11 +1799,11 @@ static void ns_axfr_from_node(dnslib_node_t *node, void *data)
 
 	int i = 0;
 	int ret = 0;
-	const dnslib_rrset_t *rrset;
+	const dnslib_rrset_t *rrset = NULL;
 	while (i < dnslib_node_rrset_count(node)) {
 		assert(rrsets[i] != NULL);
 		rrset = rrsets[i];
-
+rrset:
 		debug_ns("  Type: %s\n",
 		     dnslib_rrtype_to_string(dnslib_rrset_type(rrset)));
 
@@ -1752,20 +1818,39 @@ static void ns_axfr_from_node(dnslib_node_t *node, void *data)
 
 		if (ret == DNSLIB_ESPACE) {
 			// TODO: send the packet and clean the structure
+			ret = ns_axfr_send_and_clear(params->xfr);
+			if (ret != DNSLIB_EOK) {
+				// some wierd problem, we should end
+				params->ret = KNOT_ERROR;
+				break;
+			}
+			// otherwise try once more with the same RRSet
+			goto rrset;
 		} else if (ret != DNSLIB_EOK) {
 			// some wierd problem, we should end
+			params->ret = KNOT_ERROR;
 			break;
 		}
 
 		// we can send the RRSets in any order, so add the RRSIGs now
 		rrset = dnslib_rrset_rrsigs(rrset);
-
+rrsigs:
 		ret = dnslib_response_add_rrset_answer(params->xfr->response,
 		                                       rrset, 0, 0);
+
 		if (ret == DNSLIB_ESPACE) {
 			// TODO: send the packet and clean the structure
+			ret = ns_axfr_send_and_clear(params->xfr);
+			if (ret != DNSLIB_EOK) {
+				// some wierd problem, we should end
+				params->ret = KNOT_ERROR;
+				break;
+			}
+			// otherwise try once more with the same RRSet
+			goto rrsigs;
 		} else if (ret != DNSLIB_EOK) {
 			// some wierd problem, we should end
+			params->ret = KNOT_ERROR;
 			break;
 		}
 
@@ -1779,7 +1864,7 @@ static void ns_axfr_from_node(dnslib_node_t *node, void *data)
 	}
 
 	/*! \todo maybe distinguish some error codes. */
-	params->ret = (ret == 0) ? KNOT_EOK : KNOT_ERROR;
+	//params->ret = (ret == 0) ? KNOT_EOK : KNOT_ERROR;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1827,13 +1912,20 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 	if (ret == DNSLIB_ESPACE) {
 		// if there is not enough space, send the response and
 		// add the SOA record to a new packet
+		ns_axfr_send_and_clear(xfr);
 
-		// TODO
+		ret = dnslib_response_add_rrset_answer(xfr->response, soa_rrset,
+		                                       0, 0);
+		if (ret != DNSLIB_EOK) {
+			return KNOT_ERROR;
+		}
 
 	} else if (ret != DNSLIB_EOK) {
 		// something is really wrong
 		return KNOT_ERROR;
 	}
+
+	ns_axfr_send_and_clear(xfr);
 
 	return KNOT_EOK;
 }
@@ -1868,43 +1960,6 @@ DEBUG_NS(
 	free(name_str2);
 );
 	return ns_axfr_from_zone(zone, xfr);
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Converts the response to wire format.
- *
- * \param resp Response to convert.
- * \param wire Place for the wire format of the response.
- * \param wire_size In: space available for the wire format in bytes.
- *                  Out: actual size of the wire format in bytes.
- *
- * \retval KNOT_EOK
- * \retval NS_ERR_SERVFAIL
- */
-static int ns_response_to_wire(dnslib_response_t *resp, uint8_t *wire,
-                               size_t *wire_size)
-{
-	uint8_t *rwire = NULL;
-	size_t rsize = 0;
-	int ret = 0;
-
-	if ((ret = dnslib_response_to_wire(resp, &rwire, &rsize))
-	     != DNSLIB_EOK) {
-		log_answer_error("Error converting response packet "
-		                 "to wire format (error %d).\n", ret);
-		return NS_ERR_SERVFAIL;
-	}
-
-	if (rsize > *wire_size) {
-		return NS_ERR_SERVFAIL;
-	}
-
-	memcpy(wire, rwire, rsize);
-	*wire_size = rsize;
-	//free(rwire);
-
-	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
