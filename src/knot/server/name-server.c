@@ -1701,9 +1701,45 @@ DEBUG_NS(
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_axfr_from_zone(const dnslib_zone_t *zone, dnslib_response_t *resp,
+typedef struct ns_axfr_params {
+	dnslib_response_t *resp;
+	axfr_callback_t send_packet;
+	int session;
+	int ret;
+} ns_axfr_params_t;
+
+/*----------------------------------------------------------------------------*/
+
+static void ns_axfr_from_node(dnslib_node_t *node, void *data)
+{
+	assert(node != NULL);
+	assert(data != NULL);
+
+	ns_axfr_params_t *params = (ns_axfr_params_t *)data;
+
+	if (params->ret != KNOT_EOK) {
+		// just skip (will be called on next node with the same params
+		debug_ns("Params contain error, skipping node...\n");
+		return;
+	}
+
+	debug_ns("Params OK, answering AXFR from node %p.\n", node);
+	params->ret = KNOT_ERROR;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int ns_axfr_from_zone(dnslib_zone_t *zone, dnslib_response_t *resp,
                              axfr_callback_t send_packet, int session)
 {
+	ns_axfr_params_t params;
+	params.resp = resp;
+	params.send_packet = send_packet;
+	params.session = session;
+	params.ret = KNOT_EOK;
+
+	dnslib_zone_tree_apply_inorder(zone, ns_axfr_from_node, &params);
+
 	return KNOT_ERROR;
 }
 
@@ -1722,7 +1758,7 @@ DEBUG_NS(
 	free(name_str);
 );
 	// find zone in which to search for the name
-	const dnslib_zone_t *zone = dnslib_zonedb_find_zone(zonedb, qname);
+	dnslib_zone_t *zone = dnslib_zonedb_find_zone(zonedb, qname);
 
 	// if no zone found, return NotAuth
 	if (zone == NULL) {
