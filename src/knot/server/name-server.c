@@ -1702,9 +1702,7 @@ DEBUG_NS(
 /*----------------------------------------------------------------------------*/
 
 typedef struct ns_axfr_params {
-	dnslib_response_t *resp;
-	axfr_callback_t send_packet;
-	int session;
+	ns_xfr_t *xfr;
 	int ret;
 } ns_axfr_params_t;
 
@@ -1724,18 +1722,58 @@ static void ns_axfr_from_node(dnslib_node_t *node, void *data)
 	}
 
 	debug_ns("Params OK, answering AXFR from node %p.\n", node);
+
+	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
+	if (rrsets == NULL) {
+		params->ret = KNOT_ENOMEM;
+		return;
+	}
+
+	/*
+	 * Copy-paste
+	 */
+//	int i = 0;
+//	int ret = 0;
+//	const dnslib_rrset_t *rrset;
+//	while (i < dnslib_node_rrset_count(node)) {
+//		assert(rrsets[i] != NULL);
+//		rrset = rrsets[i];
+
+//		debug_ns("  Type: %s\n",
+//		     dnslib_rrtype_to_string(dnslib_rrset_type(rrset)));
+
+//		ns_check_wildcard(name, resp, &rrset);
+//		ret = dnslib_response_add_rrset_answer(resp, rrset, 1,
+//						       0);
+//		if (ret >= 0 && (added += 1)
+//		    && (ret = ns_add_rrsigs(rrset, resp, name,
+//			   dnslib_response_add_rrset_answer, 1)) >=0 ) {
+//			added += 1;
+//		} else {
+//			free(rrsets);
+//			rrsets = NULL;
+//			break;
+//		}
+
+//		++i;
+//	}
+	if (rrsets != NULL) {
+		free(rrsets);
+	}
+
+	/*
+	 * End of copy-paste
+	 */
+
 	params->ret = KNOT_ERROR;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_axfr_from_zone(dnslib_zone_t *zone, dnslib_response_t *resp,
-                             axfr_callback_t send_packet, int session)
+static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 {
 	ns_axfr_params_t params;
-	params.resp = resp;
-	params.send_packet = send_packet;
-	params.session = session;
+	params.xfr = xfr;
 	params.ret = KNOT_EOK;
 
 	dnslib_zone_tree_apply_inorder(zone, ns_axfr_from_node, &params);
@@ -1745,12 +1783,11 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, dnslib_response_t *resp,
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_axfr(const dnslib_zonedb_t *zonedb, dnslib_response_t *resp,
-                   axfr_callback_t send_packet, int session)
+static int ns_axfr(const dnslib_zonedb_t *zonedb, ns_xfr_t *xfr)
 {
-	const dnslib_dname_t *qname = dnslib_response_qname(resp);
+	const dnslib_dname_t *qname = dnslib_response_qname(xfr->response);
 
-	assert(dnslib_response_qtype(resp) == DNSLIB_RRTYPE_AXFR);
+	assert(dnslib_response_qtype(xfr->response) == DNSLIB_RRTYPE_AXFR);
 
 DEBUG_NS(
 	char *name_str = dnslib_dname_to_str(qname);
@@ -1758,12 +1795,14 @@ DEBUG_NS(
 	free(name_str);
 );
 	// find zone in which to search for the name
-	dnslib_zone_t *zone = dnslib_zonedb_find_zone(zonedb, qname);
+	dnslib_zone_t *zone =
+		dnslib_zonedb_find_zone(zonedb,
+		                        dnslib_response_qname(xfr->response));
 
 	// if no zone found, return NotAuth
 	if (zone == NULL) {
 		debug_ns("No zone found.\n");
-		dnslib_response_set_rcode(resp, DNSLIB_RCODE_NOTAUTH);
+		dnslib_response_set_rcode(xfr->response, DNSLIB_RCODE_NOTAUTH);
 		return KNOT_EOK;
 	}
 DEBUG_NS(
@@ -1771,7 +1810,7 @@ DEBUG_NS(
 	debug_ns("Found zone for QNAME %s\n", name_str2);
 	free(name_str2);
 );
-	return ns_axfr_from_zone(zone, resp, send_packet, session);
+	return ns_axfr_from_zone(zone, xfr);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2051,10 +2090,45 @@ int ns_answer_request(ns_nameserver_t *nameserver, const uint8_t *query_wire,
 
 /*----------------------------------------------------------------------------*/
 
-int ns_answer_axfr(ns_nameserver_t *nameserver, dnslib_response_t *resp,
-                   axfr_callback_t send_packet, int session)
+int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_response_t *resp,
+                     uint8_t *response_wire, size_t *rsize)
 {
-	if (nameserver == NULL || resp == NULL || send_packet == NULL) {
+	// get the answer for the query
+	rcu_read_lock();
+	dnslib_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
+
+	int ret = ns_answer(zonedb, resp);
+	if (ret != 0) {
+		// now only one type of error (SERVFAIL), later maybe more
+		ns_error_response(nameserver, resp->wireformat,
+		                  DNSLIB_RCODE_SERVFAIL, response_wire, rsize);
+	} else {
+		debug_ns("Created response packet.\n");
+		dnslib_response_dump(resp);
+
+		// 4) Transform the packet into wire format
+		if (ns_response_to_wire(resp, response_wire, rsize) != 0) {
+			// send back SERVFAIL (as this is our problem)
+			ns_error_response(nameserver, resp->wireformat,
+			                  DNSLIB_RCODE_SERVFAIL, response_wire,
+			                  rsize);
+		}
+	}
+
+	//dnslib_response_free(&resp);
+	rcu_read_unlock();
+
+	debug_ns("Returning response with wire size %zu\n", *rsize);
+	debug_ns_hex((char *)response_wire, *rsize);
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
+{
+	if (nameserver == NULL || xfr == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -2062,25 +2136,17 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, dnslib_response_t *resp,
 	rcu_read_lock();
 	dnslib_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
 
-	int ret = ns_axfr(zonedb, resp, send_packet, session);
+	int ret = ns_axfr(zonedb, xfr);
 
 	if (ret != KNOT_EOK) {
-		// allocate some place for the error response
-		uint8_t *response_wire = (uint8_t *)malloc(MAX_UDP_PAYLOAD);
-		if (response_wire == NULL) {
-			return KNOT_ENOMEM;
-		}
-
-		size_t rsize = MAX_UDP_PAYLOAD;
-
 		// now only one type of error (SERVFAIL), later maybe more
-		ns_error_response(nameserver, resp->wireformat,
-				  DNSLIB_RCODE_SERVFAIL, response_wire,
-				  &rsize);
-		ret = send_packet(session, response_wire, rsize);
+		ns_error_response(nameserver, xfr->response->wireformat,
+				  DNSLIB_RCODE_SERVFAIL, xfr->response_wire,
+				  &xfr->rsize);
+		ret = xfr->send(xfr->session, xfr->response_wire, xfr->rsize);
 	}
 
-	dnslib_response_free(&resp);
+	//dnslib_response_free(&resp);
 
 	rcu_read_unlock();
 
