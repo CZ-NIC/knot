@@ -118,6 +118,7 @@ libknot_la_SOURCES =				\
 	knot/stat/gatherer.h				\
 	knot/stat/stat.h				\
 	dnslib/edns.c                           \
+	dnslib/dnslib-error.c			\
 	dnslib/utils.c				\
 	dnslib/rrset.c				\
 	dnslib/dname.c				\
