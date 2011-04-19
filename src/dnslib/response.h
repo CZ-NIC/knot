@@ -117,8 +117,8 @@ struct dnslib_response {
 	dnslib_opt_rr_t edns_response;  /*!< EDNS data provided by the server.*/
 
 	uint8_t *wireformat;  /*!< Wire format of the response. */
-	int size;      /*!< Current wire size of the response. */
-	int max_size;  /*!< Maximum allowed size of the response. */
+	size_t size;      /*!< Current wire size of the response. */
+	size_t max_size;  /*!< Maximum allowed size of the response. */
 
 	/*! \brief Information needed for compressing domain names in packet. */
 	dnslib_compressed_dnames_t compression;
