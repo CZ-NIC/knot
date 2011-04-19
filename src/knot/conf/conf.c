@@ -217,8 +217,8 @@ static int conf_process(conf_t *conf)
 		conf_zone_t *zone = (conf_zone_t*)n;
 
 		// Default policy for semantic checks
-		if (conf->zone_checks) {
-			zone->enable_checks = 1;
+		if (zone->enable_checks < 0) {
+			zone->enable_checks = conf->zone_checks;
 		}
 
 		// Normalize zone filename

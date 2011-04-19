@@ -114,6 +114,7 @@ system:
 zone_start: TEXT {
    this_zone = malloc(sizeof(conf_zone_t));
    memset(this_zone, 0, sizeof(conf_zone_t));
+   this_zone->enable_checks = -1; // Default policy applies
    this_zone->name = $1;
 
    // Append mising dot to ensure FQDN
