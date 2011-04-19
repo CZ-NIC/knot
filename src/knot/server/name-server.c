@@ -1840,6 +1840,11 @@ rrset:
 		// we can send the RRSets in any order, so add the RRSIGs now
 		rrset = dnslib_rrset_rrsigs(rrset);
 rrsigs:
+		if (rrset == NULL) {
+			++i;
+			continue;
+		}
+
 		ret = dnslib_response_add_rrset_answer(params->xfr->response,
 		                                       rrset, 0, 0);
 
