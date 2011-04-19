@@ -40,7 +40,7 @@ static const short DNSLIB_MAX_RESPONSE_SIZE = 512;
  */
 struct dnslib_compressed_dnames {
 	const dnslib_dname_t **dnames;  /*!< Domain names present in packet. */
-	short *offsets;           /*!< Offsets of domain names in the packet. */
+	size_t *offsets;          /*!< Offsets of domain names in the packet. */
 	short count;              /*!< Count of items in the previous arrays. */
 	short max;                /*!< Capacity of the structure (allocated). */
 };
