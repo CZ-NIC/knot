@@ -127,6 +127,8 @@ typedef struct dnslib_compr dnslib_compr_t;
 
 //static int COMPRESS_DNAMES = 1;
 
+static const size_t DNSLIB_RESPONSE_MAX_PTR = 16383;
+
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
@@ -565,6 +567,12 @@ DEBUG_DNSLIB_RESPONSE(
 	                      ", pointer: %p\n", name, not_matched, pos, dname);
 	free(name);
 );
+	if (pos > DNSLIB_RESPONSE_MAX_PTR) {
+		debug_dnslib_response("Pointer larger than it can be, not"
+		                      " saving\n");
+		return DNSLIB_EDNAMEPTR;
+	}
+
 	if (table->count == table->max &&
 	    dnslib_response_realloc_compr(table) != 0) {
 		return DNSLIB_ENOMEM;
