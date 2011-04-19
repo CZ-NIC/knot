@@ -1913,6 +1913,8 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 
 	dnslib_zone_tree_apply_inorder(zone, ns_axfr_from_node, &params);
 
+	dnslib_zone_nsec3_apply_inorder(zone, ns_axfr_from_node, &params);
+
 	/*
 	 * Last SOA
 	 */
