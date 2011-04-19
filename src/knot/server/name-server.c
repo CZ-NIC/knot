@@ -1840,6 +1840,11 @@ rrset:
 		// we can send the RRSets in any order, so add the RRSIGs now
 		rrset = dnslib_rrset_rrsigs(rrset);
 rrsigs:
+		if (rrset == NULL) {
+			++i;
+			continue;
+		}
+
 		ret = dnslib_response_add_rrset_answer(params->xfr->response,
 		                                       rrset, 0, 0);
 
@@ -1907,6 +1912,8 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 	}
 
 	dnslib_zone_tree_apply_inorder(zone, ns_axfr_from_node, &params);
+
+	dnslib_zone_nsec3_apply_inorder(zone, ns_axfr_from_node, &params);
 
 	/*
 	 * Last SOA

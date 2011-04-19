@@ -29,8 +29,9 @@ enum dnslib_error {
 	DNSLIB_EHASH,           /*!< Error in hash table. */
 	DNSLIB_EZONEIN,         /*!< Error inserting zone. */
 	DNSLIB_ENOZONE,         /*!< No such zone found. */
+	DNSLIB_EDNAMEPTR,       /*!< Domain name pointer larger than allowed. */
 
-	DNSLIB_ERROR_COUNT = 14
+	DNSLIB_ERROR_COUNT = 15
 };
 
 /*! \brief Table linking error messages to error codes. */
