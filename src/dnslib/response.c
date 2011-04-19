@@ -127,6 +127,8 @@ typedef struct dnslib_compr dnslib_compr_t;
 
 //static int COMPRESS_DNAMES = 1;
 
+static const size_t DNSLIB_RESPONSE_MAX_PTR = 16383;
+
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
@@ -565,6 +567,12 @@ DEBUG_DNSLIB_RESPONSE(
 	                      ", pointer: %p\n", name, not_matched, pos, dname);
 	free(name);
 );
+	if (pos > DNSLIB_RESPONSE_MAX_PTR) {
+		debug_dnslib_response("Pointer larger than it can be, not"
+		                      " saving\n");
+		return DNSLIB_EDNAMEPTR;
+	}
+
 	if (table->count == table->max &&
 	    dnslib_response_realloc_compr(table) != 0) {
 		return DNSLIB_ENOMEM;
@@ -1525,6 +1533,10 @@ int dnslib_response_add_rrset_answer(dnslib_response_t *response,
                                      const dnslib_rrset_t *rrset, int tc,
                                      int check_duplicates)
 {
+	if (response == NULL || rrset == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	debug_dnslib_response("add_rrset_answer()\n");
 	assert(response->header.arcount == 0);
 	assert(response->header.nscount == 0);
@@ -1541,6 +1553,8 @@ int dnslib_response_add_rrset_answer(dnslib_response_t *response,
 	}
 
 	debug_dnslib_response("Trying to add RRSet to Answer section.\n");
+	debug_dnslib_response("RRset: %p\n", rrset);
+	debug_dnslib_response("Owner: %p\n", rrset->owner);
 
 	int rrs = dnslib_response_try_add_rrset(response->answer,
 	                                        &response->an_rrsets, response,
@@ -1563,6 +1577,10 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
                                         const dnslib_rrset_t *rrset, int tc,
                                         int check_duplicates)
 {
+	if (response == NULL || rrset == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	assert(response->header.arcount == 0);
 
 	if (response->ns_rrsets == response->max_ns_rrsets
@@ -1599,6 +1617,10 @@ int dnslib_response_add_rrset_additional(dnslib_response_t *response,
                                          const dnslib_rrset_t *rrset, int tc,
                                          int check_duplicates)
 {
+	if (response == NULL || rrset == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	// if this is the first additional RRSet, add EDNS OPT RR first
 	if (response->header.arcount == 0
 	    && response->edns_response.version != EDNS_NOT_SUPPORTED) {
