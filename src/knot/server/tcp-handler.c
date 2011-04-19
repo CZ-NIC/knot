@@ -107,6 +107,11 @@ static inline int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	debug_net("tcp: incoming packet size on %d: %hu buffer size: %zu\n",
 		  fd, pktsize, len);
 
+	// Check packet size for NULL
+	if (pktsize == 0) {
+		return KNOT_ERROR;
+	}
+
 	// Check packet size
 	if (len < pktsize) {
 		return KNOT_ENOMEM;
@@ -144,6 +149,9 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 
 	/* Receive data. */
 	int n = tcp_recv(fd, qbuf, qbuf_maxlen, &addr);
+	if (n <= 0) {
+		return KNOT_ERROR;
+	}
 
 	/* Parse query. */
 	dnslib_response_t *resp = dnslib_response_new(qbuf_maxlen);
@@ -152,10 +160,10 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 	/* Parse query. */
 	dnslib_query_t qtype = DNSLIB_QUERY_NORMAL;
 	int res = ns_parse_query(qbuf, n, resp, &qtype);
-	if (unlikely(res < 0)) {
+	if (unlikely(res != KNOT_EOK)) {
 
-		/* Send error response. */
-		if (res != KNOT_EMALF ) {
+		/* Send error response on dnslib RCODE. */
+		if (res > 0) {
 			uint16_t pkt_id = dnslib_packet_get_id(qbuf);
 			ns_error_response(pool->ns, pkt_id, res,
 					  qbuf, &resp_len);
@@ -201,11 +209,10 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 			debug_net("tcp: %s: failed: %d - %d.\n",
 				  "socket_send()",
 				  res, errno);
-			return res;
 		}
 	}
 
-	return KNOT_EOK;
+	return res;
 }
 
 /*!
@@ -451,11 +458,14 @@ static int tcp_pool(dthread_t *thread)
 			          pool->epfd, fd);
 
 			/* Handle TCP request. */
-			if (pool->events[i].events & EPOLLIN) {
-				tcp_handle(pool, fd, qbuf, sizeof(qbuf));
-			} else {
-				// Disconnect
+			int ret = KNOT_EOK;
+			if (pool->events[i].events & EPOLLERR) {
 				tcp_disconnect(pool, fd);
+			} else {
+				ret = tcp_handle(pool, fd, qbuf, sizeof(qbuf));
+				if (ret != KNOT_EOK) {
+					tcp_disconnect(pool, fd);
+				}
 			}
 
 			debug_net("tcp: pool #%d finished fd=%d (%d remain).\n",

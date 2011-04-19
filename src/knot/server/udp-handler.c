@@ -108,10 +108,10 @@ int udp_master(dthread_t *thread)
 
 		/* Parse query. */
 		res = ns_parse_query(qbuf, n, resp, &qtype);
-		if (unlikely(res < 0)) {
+		if (unlikely(res != KNOT_EOK)) {
 
-			/* Send error response. */
-			if (res != KNOT_EMALF ) {
+			/* Send error response on dnslib RCODE. */
+			if (res > 0) {
 				uint16_t pkt_id = dnslib_packet_get_id(qbuf);
 				ns_error_response(ns, pkt_id, res,
 						  qbuf, &resp_len);
@@ -145,9 +145,9 @@ int udp_master(dthread_t *thread)
 		if (res == KNOT_EOK) {
 
 			assert(resp_len > 0);
-			debug_net("udp: answer wire format (size %zd):\n",
-				  (unsigned) answer_size);
-			debug_net_hex((const char *) outbuf, resp_len);
+			//debug_net("udp: answer wire format (size %zd):\n",
+			//	  resp_len);
+			//debug_net_hex((const char *) outbuf, resp_len);
 
 			// Send datagram
 			res = sendto(sock, qbuf, resp_len,
