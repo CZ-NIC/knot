@@ -248,6 +248,8 @@ static int dnslib_response_init(dnslib_response_t *resp,
 		resp->max_size = resp->edns_response.payload;
 	}
 
+	debug_dnslib_response("Response max size: %zd\n", resp->max_size);
+
 	// pre-allocate space for wire format of the packet
 	resp->wireformat = (uint8_t *)malloc(resp->max_size);
 	if (resp->wireformat == NULL) {
