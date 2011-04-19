@@ -264,8 +264,8 @@ static int server_bind_handlers(server_t *server)
 	/* Estimate number of threads/manager. */
 	int thr_count = dt_optimal_size();
 	int tcp_unit_size = (thr_count >> 1);
-	if (tcp_unit_size < 2) {
-		tcp_unit_size = 2;
+	if (tcp_unit_size < 3) {
+		tcp_unit_size = 3;
 	}
 
 	/* Lock config. */
