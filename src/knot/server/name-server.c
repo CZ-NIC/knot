@@ -2080,9 +2080,8 @@ int ns_parse_query(const uint8_t *query_wire, size_t qsize,
 	if ((ret = dnslib_response_parse_query(parsed, query_wire,
 	                                       qsize)) != 0) {
 		log_answer_info("Error while parsing query, "
-		                "dnslib error '%d'.\n",
-		                ret);
-		dnslib_response_free(&parsed);
+		                "dnslib error '%s'.\n", dnslib_strerror(ret));
+		//dnslib_response_free(&parsed);
 		return DNSLIB_RCODE_FORMERR;
 	}
 
@@ -2160,8 +2159,7 @@ int ns_answer_request(ns_nameserver_t *nameserver, const uint8_t *query_wire,
 	// 2) parse the query
 	if ((ret = dnslib_response_parse_query(resp, query_wire, qsize)) != 0) {
 		log_answer_info("Error while parsing query, "
-		                "dnslib error '%d'.\n",
-		                ret);
+		                "dnslib error '%s'.\n", dnslib_strerror(ret));
 		ns_error_response(nameserver, dnslib_packet_get_id(query_wire),
 		                  DNSLIB_RCODE_FORMERR, response_wire, rsize);
 		dnslib_response_free(&resp);
