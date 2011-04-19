@@ -1525,6 +1525,10 @@ int dnslib_response_add_rrset_answer(dnslib_response_t *response,
                                      const dnslib_rrset_t *rrset, int tc,
                                      int check_duplicates)
 {
+	if (response == NULL || rrset == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	debug_dnslib_response("add_rrset_answer()\n");
 	assert(response->header.arcount == 0);
 	assert(response->header.nscount == 0);
@@ -1541,6 +1545,8 @@ int dnslib_response_add_rrset_answer(dnslib_response_t *response,
 	}
 
 	debug_dnslib_response("Trying to add RRSet to Answer section.\n");
+	debug_dnslib_response("RRset: %p\n", rrset);
+	debug_dnslib_response("Owner: %p\n", rrset->owner);
 
 	int rrs = dnslib_response_try_add_rrset(response->answer,
 	                                        &response->an_rrsets, response,
@@ -1563,6 +1569,10 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
                                         const dnslib_rrset_t *rrset, int tc,
                                         int check_duplicates)
 {
+	if (response == NULL || rrset == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	assert(response->header.arcount == 0);
 
 	if (response->ns_rrsets == response->max_ns_rrsets
@@ -1599,6 +1609,10 @@ int dnslib_response_add_rrset_additional(dnslib_response_t *response,
                                          const dnslib_rrset_t *rrset, int tc,
                                          int check_duplicates)
 {
+	if (response == NULL || rrset == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	// if this is the first additional RRSet, add EDNS OPT RR first
 	if (response->header.arcount == 0
 	    && response->edns_response.version != EDNS_NOT_SUPPORTED) {
