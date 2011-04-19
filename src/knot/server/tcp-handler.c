@@ -12,6 +12,7 @@
 
 #include "knot/common.h"
 #include "knot/server/tcp-handler.h"
+#include "knot/server/xfr-handler.h"
 #include "knot/server/name-server.h"
 #include "knot/other/error.h"
 #include "knot/stat/stat.h"
@@ -24,8 +25,9 @@ typedef struct tcp_pool_t {
 	struct epoll_event *events;    /*!< Epoll events backing store. */
 	int                ebs_size;   /*!< Epoll events backing store size. */
 	pthread_mutex_t    mx;         /*!< Pool synchronisation lock. */
-	ns_nameserver_t      *ns;        /* reference to name server */
-	iohandler_t        *handler;   /* master I/O handler */
+	ns_nameserver_t    *ns;        /* reference to name server */
+	iohandler_t        *io_h;      /* master I/O handler */
+	xfrhandler_t       *xfr_h;     /* XFR handler */
 	stat_t             *stat;      /* statistics gatherer */
 } tcp_pool_t;
 
@@ -140,10 +142,10 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 			     uint8_t *qbuf, size_t qbuf_maxlen)
 {
 	sockaddr_t addr;
-	if (socket_initaddr(&addr, pool->handler->type) != KNOT_EOK) {
+	if (socket_initaddr(&addr, pool->io_h->type) != KNOT_EOK) {
 		log_server_error("Socket type %d is not supported, "
 				 "IPv6 support is probably disabled.\n",
-				 pool->handler->type);
+				 pool->io_h->type);
 		return KNOT_ENOTSUP;
 	}
 
@@ -180,21 +182,22 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 		res = ns_answer_normal(pool->ns, resp, qbuf, &resp_len);
 		break;
 	case DNSLIB_QUERY_AXFR:
-		/*! \todo Implement async axfr handler. */
 		xfr.response = resp;
 		xfr.send = tcp_send;
 		xfr.session = fd;
-		xfr.response_wire = qbuf;
-		xfr.rsize = resp_len;
-		res = ns_answer_axfr(pool->ns, &xfr);
-		break;
+		xfr.response_wire = 0;
+		xfr.rsize = 0;
+		xfr_request(pool->xfr_h, &xfr);
+		debug_net("tcp: enqueued AXFR request size %zd.\n",
+			  resp_len);
+		return KNOT_EOK;
 	case DNSLIB_QUERY_IXFR:
 	case DNSLIB_QUERY_NOTIFY:
 	case DNSLIB_QUERY_UPDATE:
 		break;
 	}
 
-	debug_net("udp: got answer of size %zd.\n",
+	debug_net("tcp: got answer of size %zd.\n",
 		  resp_len);
 
 	dnslib_response_free(&resp);
@@ -266,10 +269,11 @@ static tcp_pool_t *tcp_pool_new(iohandler_t *handler)
 
 	// Initialize
 	memset(pool, 0, sizeof(tcp_pool_t));
-	pool->handler = handler;
+	pool->io_h = handler;
 	pool->ns = handler->server->nameserver;
 	pool->evcount = 0;
 	pool->ebs_size = 0;
+	pool->xfr_h = handler->server->xfr_h;
 
 	// Create epoll fd
 	pool->epfd = epoll_create(1);
@@ -430,7 +434,7 @@ static int tcp_pool(dthread_t *thread)
 
 	// Poll new data from clients
 	int nfds = 0;
-	uint8_t qbuf[64 * 1024]; // 64K buffer
+	uint8_t qbuf[64 * 1024 - 1]; // 64K buffer
 	while (pool->evcount > 0) {
 
 		// Poll sockets
@@ -474,7 +478,7 @@ static int tcp_pool(dthread_t *thread)
 	}
 
 	// If exiting, cleanup
-	if (pool->handler->state == ServerIdle) {
+	if (pool->io_h->state == ServerIdle) {
 		debug_net("tcp: pool #%d is finishing\n", pool->epfd);
 		tcp_pool_del(&pool);
 		return 0;
@@ -518,6 +522,8 @@ int tcp_master(dthread_t *thread)
 
 		// Cancellation point
 		if (dt_is_cancelled(thread)) {
+			debug_net("tcp: stopping (%d master, %d pools)\n",
+				  1, unit->size - 1);
 			return KNOT_EOK;
 		}
 

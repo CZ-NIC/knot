@@ -128,6 +128,8 @@ src/knot/server/socket.c
 src/knot/server/socket.h
 src/knot/server/tcp-handler.c
 src/knot/server/tcp-handler.h
+src/knot/server/xfr-handler.c
+src/knot/server/xfr-handler.h
 src/knot/server/udp-handler.c
 src/knot/server/udp-handler.h
 src/knot/server/zones.c
