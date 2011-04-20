@@ -2273,13 +2273,17 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		ret = xfr->send(xfr->session, xfr->response_wire, xfr->rsize);
 	}
 
-	//dnslib_response_free(&resp);
-
 	rcu_read_unlock();
 
-	if (ret != KNOT_EOK) {
+	if (ret < 0) {
+		log_server_error("Error while sending AXFR: %s\n",
+		                 knot_strerror(ret));
 		// there was some error but there is not much to do about it
-		return KNOT_ERROR;
+		return ret;
+	} else if (ret != xfr->rsize) {
+		log_server_warning("AXFR did not send right amount of bytes."
+		                   " Transfer size: %zu, sent: %d\n",
+		                   xfr->rsize, ret);
 	}
 
 	return KNOT_EOK;
