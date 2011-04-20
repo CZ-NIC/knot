@@ -233,7 +233,7 @@ int dnslib_edns_has_option(const dnslib_opt_rr_t *opt_rr, uint16_t code)
 /*----------------------------------------------------------------------------*/
 
 short dnslib_edns_to_wire(const dnslib_opt_rr_t *opt_rr, uint8_t *wire,
-                          short max_size)
+                          size_t max_size)
 {
 	assert(DNSLIB_EDNS_MIN_SIZE <= max_size);
 
