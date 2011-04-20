@@ -1730,6 +1730,8 @@ static int ns_response_to_wire(dnslib_response_t *resp, uint8_t *wire,
 	}
 
 	if (rsize > *wire_size) {
+		debug_ns("Reponse size (%zu) larger than allowed wire size "
+		         "(%zu).\n", rsize, *wire_size);
 		return NS_ERR_SERVFAIL;
 	}
 
@@ -1757,7 +1759,9 @@ static int ns_axfr_send_and_clear(ns_xfr_t *xfr)
 	assert(xfr->send != NULL);
 
 	// Transform the packet into wire format
-	if (ns_response_to_wire(xfr->response, xfr->response_wire, &xfr->rsize)
+	debug_ns("Converting response to wire format..\n");
+	size_t real_size;
+	if (ns_response_to_wire(xfr->response, xfr->response_wire, &real_size)
 	    != 0) {
 		return NS_ERR_SERVFAIL;
 //		// send back SERVFAIL (as this is our problem)
@@ -1768,17 +1772,24 @@ static int ns_axfr_send_and_clear(ns_xfr_t *xfr)
 	}
 
 	// Send the response
-	int res = xfr->send(xfr->session, xfr->response_wire, xfr->rsize);
+	debug_ns("Sending response (size %zu)..\n", real_size);
+	debug_ns_hex(xfr->response_wire, real_size);
+	int res = xfr->send(xfr->session, xfr->response_wire, real_size);
 	if (res < 0) {
+		debug_ns("Send returned %d\n", res);
 		return res;
-	} else if (res != xfr->rsize) {
+	} else if (res != real_size) {
 		log_server_warning("AXFR did not send right amount of bytes."
 		                   " Transfer size: %zu, sent: %d\n",
-		                   xfr->rsize, res);
+		                   real_size, res);
 	}
 
 	// Clean the response structure
-	dnslib_response_clear(xfr->response);
+	debug_ns("Clearing response structure..\n");
+	dnslib_response_clear(xfr->response, 0);
+
+	debug_ns("Response structure after clearing:\n");
+	dnslib_response_dump(xfr->response);
 
 	return KNOT_EOK;
 }
@@ -1827,6 +1838,7 @@ rrset:
 
 		if (ret == DNSLIB_ESPACE) {
 			// TODO: send the packet and clean the structure
+			debug_ns("Packet full, sending..\n");
 			ret = ns_axfr_send_and_clear(params->xfr);
 			if (ret != KNOT_EOK) {
 				// some wierd problem, we should end
@@ -1854,6 +1866,7 @@ rrsigs:
 
 		if (ret == DNSLIB_ESPACE) {
 			// TODO: send the packet and clean the structure
+			debug_ns("Packet full, sending..\n");
 			ret = ns_axfr_send_and_clear(params->xfr);
 			if (ret != KNOT_EOK) {
 				// some wierd problem, we should end
@@ -1917,7 +1930,15 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 
 	dnslib_zone_tree_apply_inorder(zone, ns_axfr_from_node, &params);
 
+	if (params.ret != KNOT_EOK) {
+		return KNOT_ERROR;	// maybe do something with the code
+	}
+
 	dnslib_zone_nsec3_apply_inorder(zone, ns_axfr_from_node, &params);
+
+	if (params.ret != KNOT_EOK) {
+		return KNOT_ERROR;	// maybe do something with the code
+	}
 
 	/*
 	 * Last SOA
@@ -1928,6 +1949,7 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 	if (ret == DNSLIB_ESPACE) {
 		// if there is not enough space, send the response and
 		// add the SOA record to a new packet
+		debug_ns("Packet full, sending..\n");
 		ret = ns_axfr_send_and_clear(xfr);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -1944,6 +1966,7 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 		return KNOT_ERROR;
 	}
 
+	debug_ns("Sending packet...\n");
 	return ns_axfr_send_and_clear(xfr);
 }
 
@@ -1962,8 +1985,7 @@ DEBUG_NS(
 );
 	// find zone in which to search for the name
 	dnslib_zone_t *zone =
-		dnslib_zonedb_find_zone(zonedb,
-		                        dnslib_response_qname(xfr->response));
+		dnslib_zonedb_find_zone(zonedb, qname);
 
 	// if no zone found, return NotAuth
 	if (zone == NULL) {
@@ -2133,6 +2155,9 @@ int ns_parse_query(const uint8_t *query_wire, size_t qsize,
 void ns_error_response(ns_nameserver_t *nameserver, uint16_t query_id,
                        uint8_t rcode, uint8_t *response_wire, size_t *rsize)
 {
+	debug_ns("Error response: \n");
+	debug_ns_hex(nameserver->err_response, nameserver->err_resp_size);
+
 	memcpy(response_wire, nameserver->err_response,
 	       nameserver->err_resp_size);
 	// copy ID of the query
@@ -2228,7 +2253,14 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_response_t *resp,
 
 	debug_ns("ns_answer_normal()\n");
 
-	int ret = ns_answer(zonedb, resp);
+	// set the OPT RR to the response
+	int ret = dnslib_response_add_opt(resp, nameserver->opt_rr);
+	if (ret != DNSLIB_EOK) {
+		log_server_notice("Failed to set OPT RR to the response: %s\n",
+		                  dnslib_strerror(ret));
+	}
+
+	ret = ns_answer(zonedb, resp);
 	if (ret != 0) {
 		// now only one type of error (SERVFAIL), later maybe more
 		ns_error_response(nameserver, resp->header.id,
@@ -2263,18 +2295,31 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		return KNOT_EINVAL;
 	}
 
+	// set the OPT RR to the response
+	int ret = dnslib_response_add_opt(xfr->response, nameserver->opt_rr);
+	if (ret != DNSLIB_EOK) {
+		log_server_notice("Failed to set OPT RR to the response: %s\n",
+		                  dnslib_strerror(ret));
+	}
+
 	// Get pointer to the zone database
 	rcu_read_lock();
 	dnslib_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
 
-	int ret = ns_axfr(zonedb, xfr);
+	ret = ns_axfr(zonedb, xfr);
 
+	/*! \todo Somehow distinguish when it makes sense to send the SERVFAIL
+	 *        and when it does not. E.g. if there was problem in sending
+	 *        packet, it will probably fail when sending the SERVFAIL also.
+	 */
 	if (ret != KNOT_EOK) {
+		debug_ns("AXFR failed, sending SERVFAIL.\n");
 		// now only one type of error (SERVFAIL), later maybe more
+		size_t real_size;
 		ns_error_response(nameserver, xfr->response->header.id,
-				  DNSLIB_RCODE_SERVFAIL, xfr->response_wire,
-				  &xfr->rsize);
-		ret = xfr->send(xfr->session, xfr->response_wire, xfr->rsize);
+		                  DNSLIB_RCODE_SERVFAIL, xfr->response_wire,
+		                  &real_size);
+		ret = xfr->send(xfr->session, xfr->response_wire, real_size);
 	}
 
 	rcu_read_unlock();
@@ -2284,10 +2329,6 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		                 knot_strerror(ret));
 		// there was some error but there is not much to do about it
 		return ret;
-	} else if (ret != xfr->rsize) {
-		log_server_warning("AXFR did not send right amount of bytes."
-		                   " Transfer size: %zu, sent: %d\n",
-		                   xfr->rsize, ret);
 	}
 
 	return KNOT_EOK;
