@@ -157,7 +157,7 @@ dnslib_response_t *dnslib_response_new(size_t max_wire_size);
  *
  * \param response Response structure to clear.
  */
-void dnslib_response_clear(dnslib_response_t *resp);
+void dnslib_response_clear(dnslib_response_t *resp, int clear_question);
 
 /*!
  * \brief Sets the OPT RR of the response.
