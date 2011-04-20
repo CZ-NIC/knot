@@ -1346,15 +1346,20 @@ dnslib_response_t *dnslib_response_new(size_t max_wire_size)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_response_clear(dnslib_response_t *resp)
+void dnslib_response_clear(dnslib_response_t *resp, int clear_question)
 {
-	resp->size = DNSLIB_PACKET_HEADER_SIZE;
+	resp->size = (clear_question) ? DNSLIB_PACKET_HEADER_SIZE
+	              : DNSLIB_PACKET_HEADER_SIZE + 4
+	                + dnslib_dname_size(resp->question.qname);
 	resp->an_rrsets = 0;
 	resp->ns_rrsets = 0;
 	resp->ar_rrsets = 0;
 	resp->compression.count = 0;
 	dnslib_response_free_tmp_rrsets(resp);
 	resp->tmp_rrsets_count = 0;
+	resp->header.ancount = 0;
+	resp->header.nscount = 0;
+	resp->header.arcount = 0;
 }
 
 /*----------------------------------------------------------------------------*/
