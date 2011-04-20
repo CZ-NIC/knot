@@ -281,7 +281,7 @@ DEBUG_DNSLIB_DNAME(
 	free(name2);
 );
 
-	if (d1 == d2) {
+	if (!cs && d1 == d2) {
 		return 0;
 	}
 
