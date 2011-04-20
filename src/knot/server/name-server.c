@@ -2254,7 +2254,7 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_response_t *resp,
 	debug_ns("ns_answer_normal()\n");
 
 	// set the OPT RR to the response
-	int ret = dnslib_response_add_opt(resp, nameserver->opt_rr);
+	int ret = dnslib_response_add_opt(resp, nameserver->opt_rr, 1);
 	if (ret != DNSLIB_EOK) {
 		log_server_notice("Failed to set OPT RR to the response: %s\n",
 		                  dnslib_strerror(ret));
@@ -2296,7 +2296,7 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	}
 
 	// set the OPT RR to the response
-	int ret = dnslib_response_add_opt(xfr->response, nameserver->opt_rr);
+	int ret = dnslib_response_add_opt(xfr->response, nameserver->opt_rr, 0);
 	if (ret != DNSLIB_EOK) {
 		log_server_notice("Failed to set OPT RR to the response: %s\n",
 		                  dnslib_strerror(ret));

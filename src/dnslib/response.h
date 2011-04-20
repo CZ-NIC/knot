@@ -178,7 +178,8 @@ void dnslib_response_clear(dnslib_response_t *resp, int clear_question);
  * \todo Needs test.
  */
 int dnslib_response_add_opt(dnslib_response_t *resp,
-                            const dnslib_opt_rr_t *opt_rr);
+                            const dnslib_opt_rr_t *opt_rr,
+                            int override_max_size);
 
 /*!
  * \brief Sets the maximum size of the response and allocates space for wire
