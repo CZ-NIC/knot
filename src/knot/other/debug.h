@@ -16,7 +16,7 @@
 #include "common/print.h"
 
 //#define SM_DEBUG
-#define NS_DEBUG
+//#define NS_DEBUG
 //#define SERVER_DEBUG
 //#define DT_DEBUG
 //#define NET_DEBUG
