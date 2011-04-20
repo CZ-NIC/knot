@@ -1769,8 +1769,12 @@ static int ns_axfr_send_and_clear(ns_xfr_t *xfr)
 
 	// Send the response
 	int res = xfr->send(xfr->session, xfr->response_wire, xfr->rsize);
-	if (res != KNOT_EOK) {
+	if (res < 0) {
 		return res;
+	} else if (res != xfr->rsize) {
+		log_server_warning("AXFR did not send right amount of bytes."
+		                   " Transfer size: %zu, sent: %d\n",
+		                   xfr->rsize, res);
 	}
 
 	// Clean the response structure
