@@ -249,9 +249,11 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 
 			// Prepare command
 			char* cmd = 0;
-			const char *cmd_str = "%s -o %s %s%s %s";
+			const char *cmd_str = "%s %s%s-o %s %s %s";
 			rc = asprintf(&cmd, cmd_str, ZONEPARSER_EXEC,
-			              zone->db, verbose ? "-v " : "",
+				      zone->enable_checks ? "-s " : "",
+				      verbose ? "-v " : "",
+				      zone->db,
 			              zone->name, zone->file);
 
 			// Execute command

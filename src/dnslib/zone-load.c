@@ -86,9 +86,6 @@ static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
 
 enum { DNAME_MAX_WIRE_LENGTH = 256 };
 
-//TODO move to parameters
-static dnslib_dname_t **id_array;
-
 /*!
  * \brief Helper function. Frees rdata items and temporary array of items.
  *
@@ -115,7 +112,8 @@ static void load_rdata_purge(dnslib_rdata_t *rdata,
  *
  * \return Pointer to read and created rdata on success, NULL otherwise.
  */
-static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
+static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
+                                         dnslib_dname_t **id_array)
 {
 	dnslib_rdata_t *rdata;
 
@@ -270,7 +268,7 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f)
  *
  * \return pointer to created and read RRSIG on success, NULL otherwise.
  */
-static dnslib_rrset_t *dnslib_load_rrsig(FILE *f)
+static dnslib_rrset_t *dnslib_load_rrsig(FILE *f, dnslib_dname_t **id_array)
 {
 	dnslib_rrset_t *rrsig;
 
@@ -310,7 +308,8 @@ static dnslib_rrset_t *dnslib_load_rrsig(FILE *f)
 	debug_dnslib_zload("loading %d rdata entries\n", rdata_count);
 
 	for (int i = 0; i < rdata_count; i++) {
-		tmp_rdata = dnslib_load_rdata(DNSLIB_RRTYPE_RRSIG, f);
+		tmp_rdata = dnslib_load_rdata(DNSLIB_RRTYPE_RRSIG, f,
+		                              id_array);
 		if (tmp_rdata) {
 			dnslib_rrset_add_rdata(rrsig, tmp_rdata);
 		} else {
@@ -329,7 +328,7 @@ static dnslib_rrset_t *dnslib_load_rrsig(FILE *f)
  *
  * \return pointer to created and read RRSet on success, NULL otherwise.
  */
-static dnslib_rrset_t *dnslib_load_rrset(FILE *f)
+static dnslib_rrset_t *dnslib_load_rrset(FILE *f, dnslib_dname_t **id_array)
 {
 	dnslib_rrset_t *rrset;
 
@@ -363,7 +362,8 @@ static dnslib_rrset_t *dnslib_load_rrset(FILE *f)
 	dnslib_rdata_t *tmp_rdata;
 
 	for (int i = 0; i < rdata_count; i++) {
-		tmp_rdata = dnslib_load_rdata(rrset->type, f);
+		tmp_rdata = dnslib_load_rdata(rrset->type, f,
+		                              id_array);
 		if (tmp_rdata) {
 			dnslib_rrset_add_rdata(rrset, tmp_rdata);
 		} else {
@@ -375,7 +375,7 @@ static dnslib_rrset_t *dnslib_load_rrset(FILE *f)
 	dnslib_rrset_t *tmp_rrsig = NULL;
 
 	if (rrsig_count) {
-		tmp_rrsig = dnslib_load_rrsig(f);
+		tmp_rrsig = dnslib_load_rrsig(f, id_array);
 	}
 
 	rrset->rrsigs = tmp_rrsig;
@@ -390,7 +390,7 @@ static dnslib_rrset_t *dnslib_load_rrset(FILE *f)
  *
  * \return Pointer to created and read node on success, NULL otherwise.
  */
-static dnslib_node_t *dnslib_load_node(FILE *f)
+static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 {
 	uint8_t dname_size = 0;
 	uint8_t flags = 0;
@@ -509,7 +509,7 @@ static dnslib_node_t *dnslib_load_node(FILE *f)
 	dnslib_rrset_t *tmp_rrset;
 
 	for (int i = 0; i < rrset_count; i++) {
-		if ((tmp_rrset = dnslib_load_rrset(f)) == NULL) {
+		if ((tmp_rrset = dnslib_load_rrset(f, id_array)) == NULL) {
 			dnslib_node_free(&node, 1);
 			//TODO what else to free?
 			fprintf(stderr, "zone: Could not load rrset.\n");
@@ -659,6 +659,16 @@ zloader_t *dnslib_zload_open(const char *filename)
 	return zl;
 }
 
+static void cleanup_id_array(dnslib_dname_t **id_array,
+                             const uint from, const uint to)
+{
+	for (uint i = from; i < to; i++) {
+		dnslib_dname_free(&(id_array[i]));
+	}
+
+	free(id_array);
+}
+
 dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 {
 	if (!loader) {
@@ -687,11 +697,13 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		return NULL;
 	}
 
-	debug_dnslib_zload("authorative nodes: %u\n", auth_node_count);
+	debug_dnslib_zload("authoritative nodes: %u\n", auth_node_count);
 
-	id_array =
+	dnslib_dname_t **id_array =
 		malloc(sizeof(dnslib_dname_t *) *
 		(node_count + nsec3_node_count + 1));
+
+	CHECK_ALLOC_LOG(id_array, NULL);
 
 	debug_dnslib_zload("loading %u nodes\n", node_count);
 
@@ -700,17 +712,23 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		id_array[i]->node = dnslib_node_new(NULL, NULL);
 	}
 
-	dnslib_node_t *apex = dnslib_load_node(f);
+	dnslib_node_t *apex = dnslib_load_node(f, id_array);
 
 	if (!apex) {
 		fprintf(stderr, "zone: Could not load apex node (in %s)\n",
 			loader->filename);
+		cleanup_id_array(id_array, 1,
+		                 node_count + nsec3_node_count + 1);
 		return NULL;
 	}
 
 	dnslib_zone_t *zone = dnslib_zone_new(apex, auth_node_count);
 
-	assert(zone != NULL);
+	if (zone == NULL) {
+		cleanup_id_array(id_array, 1,
+		                 node_count + nsec3_node_count + 1);
+		return NULL;
+	}
 
 	apex->prev = NULL;
 
@@ -719,7 +737,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	last_node = apex;
 
 	for (uint i = 1; i < node_count; i++) {
-		tmp_node = dnslib_load_node(f);
+		tmp_node = dnslib_load_node(f, id_array);
 
 		if (tmp_node != NULL) {
 			if (dnslib_zone_add_node(zone, tmp_node) != 0) {
@@ -755,14 +773,17 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	dnslib_node_t *nsec3_first = NULL;
 
 	if (nsec3_node_count > 0) {
-		nsec3_first = dnslib_load_node(f);
+		nsec3_first = dnslib_load_node(f, id_array);
 
 		assert(nsec3_first != NULL);
 
 		if (dnslib_zone_add_nsec3_node(zone, nsec3_first) != 0) {
 			fprintf(stderr, "!! cannot add first nsec3 node, "
 				"exiting.\n");
-			dnslib_zone_deep_free(&zone, 0);
+			dnslib_zone_deep_free(&zone, 1);
+			free(id_array);
+			/* TODO this will leak dnames from id_array that were
+			 * not assigned. */
 			return NULL;
 		}
 
@@ -772,7 +793,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	}
 
 	for (uint i = 1; i < nsec3_node_count; i++) {
-		tmp_node = dnslib_load_node(f);
+		tmp_node = dnslib_load_node(f, id_array);
 
 		if (tmp_node != NULL) {
 			if (dnslib_zone_add_nsec3_node(zone, tmp_node) != 0) {
@@ -788,6 +809,8 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 				loader->filename);
 		}
 	}
+
+	free(id_array);
 
 	if (nsec3_node_count) {
 		assert(nsec3_first->prev == NULL);

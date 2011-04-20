@@ -168,6 +168,7 @@ static void zone_free(conf_zone_t *zone)
 	free(zone->name);
 	free(zone->file);
 	free(zone->db);
+	free(zone);
 }
 
 /*!
@@ -214,6 +215,11 @@ static int conf_process(conf_t *conf)
 	node *n = 0;
 	WALK_LIST (n, conf->zones) {
 		conf_zone_t *zone = (conf_zone_t*)n;
+
+		// Default policy for semantic checks
+		if (zone->enable_checks < 0) {
+			zone->enable_checks = conf->zone_checks;
+		}
 
 		// Normalize zone filename
 		zone->file = strcpath(zone->file);
@@ -390,6 +396,9 @@ conf_t *conf_new(const char* path)
 	init_list(&c->ifaces);
 	init_list(&c->zones);
 	init_list(&c->hooks);
+
+	// Defaults
+	c->zone_checks = 0;
 
 	return c;
 }
@@ -573,7 +582,7 @@ int conf_open(const char* path)
 
 	/* Parse config. */
 	int ret = conf_fparser(nconf);
-	if (ret != 0) {
+	if (ret != KNOT_EOK) {
 		conf_free(nconf);
 		return ret;
 	}
@@ -583,8 +592,8 @@ int conf_open(const char* path)
 
 	/* Copy hooks. */
 	if (oldconf) {
-		node *n = 0;
-		WALK_LIST (n, oldconf->hooks) {
+		node *n = 0, *nxt = 0;
+		WALK_LIST_DELSAFE (n, nxt, oldconf->hooks) {
 			conf_hook_t *hook = (conf_hook_t*)n;
 			conf_add_hook(nconf, hook->sections,
 			              hook->update, hook->data);

@@ -35,11 +35,13 @@ static conf_log_map_t *this_logmap = 0;
 %token END INVALID_TOKEN
 %token <t> TEXT
 %token <i> NUM
+%token <i> BOOL
 
 %token SYSTEM IDENTITY VERSION STORAGE KEY
 %token <alg> TSIG_ALGO_NAME
 
 %token ZONES FILENAME
+%token SEMANTIC_CHECKS
 
 %token INTERFACES ADDRESS PORT
 %token <t> IPA
@@ -112,6 +114,7 @@ system:
 zone_start: TEXT {
    this_zone = malloc(sizeof(conf_zone_t));
    memset(this_zone, 0, sizeof(conf_zone_t));
+   this_zone->enable_checks = -1; // Default policy applies
    this_zone->name = $1;
 
    // Append mising dot to ensure FQDN
@@ -126,24 +129,27 @@ zone_start: TEXT {
                                                   nlen + 1,
                                                   0);
    if (dn == 0) {
+     free(this_zone->name);
+     free(this_zone);
      cf_error("invalid zone origin");
    } else {
      dnslib_dname_free(&dn);
+     add_tail(&new_config->zones, &this_zone->n);
+     ++new_config->zones_count;
    }
-
-   add_tail(&new_config->zones, &this_zone->n);
-   ++new_config->zones_count;
  }
  ;
 
 zone:
    zone_start '{'
  | zone FILENAME TEXT ';' { this_zone->file = $3; }
+ | zone SEMANTIC_CHECKS BOOL ';' { this_zone->enable_checks = $3; }
  ;
 
 zones:
    ZONES '{'
  | zones zone '}'
+ | zones SEMANTIC_CHECKS BOOL ';' { new_config->zone_checks = $3; }
  ;
 
 log_prios_start: {

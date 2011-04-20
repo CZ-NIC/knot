@@ -36,7 +36,7 @@ enum {
  * \retval DNSLIB_EBADARG if the file cannot be opened for writing.
  */
 int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
-			char do_checks, const char *sfilename);
+			int do_checks, const char *sfilename);
 
 #endif /* _DNSLIB_ZONEDUMP_H_ */
 

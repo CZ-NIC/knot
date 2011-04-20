@@ -81,6 +81,7 @@ typedef struct {
 	enum dnslib_rr_class cls;    /*!< Zone class (IN or CH). */
 	char *file;                  /*!< Path to a zone file. */
 	char *db;                    /*!< Path to a database file. */
+	int  enable_checks;          /*!< Semantic checks for parser.*/
 } conf_zone_t;
 
 /*!
@@ -146,6 +147,7 @@ typedef struct conf_t {
 	 */
 	list zones;       /*!< List of zones. */
 	int zones_count;  /*!< Count of zones. */
+	int zone_checks;  /*!< Semantic checks for parser.*/
 
 	/*
 	 * Implementation specifics
