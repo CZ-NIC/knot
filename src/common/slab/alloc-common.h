@@ -17,7 +17,7 @@
 //#define MEM_DEBUG
 //#define MEM_NOSLAB
 //#define MEM_POISON
-//#define MEM_SLAB_CAP 3   // Cap slab_cache empty slab count (undefined = inf)
+#define MEM_SLAB_CAP 5   // Cap slab_cache empty slab count (undefined = inf)
 #define MEM_COLORING       // Slab cache coloring
 //#define MEM_SLAB_DEPOT     // Use slab depot for slab caching (not thread-safe)
 

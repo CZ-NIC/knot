@@ -67,6 +67,7 @@ key                  return KEY;
 
 zones                return ZONES;
 file                 return FILENAME;
+semantic-checks      return SEMANTIC_CHECKS;
 
 interfaces           return INTERFACES;
 address              return ADDRESS;
@@ -86,6 +87,14 @@ info                 { cf_lval.i = LOG_MASK(LOG_INFO); return LOG_LEVEL; }
 notice               { cf_lval.i = LOG_MASK(LOG_NOTICE); return LOG_LEVEL; }
 warning              { cf_lval.i = LOG_MASK(LOG_WARNING); return LOG_LEVEL; }
 error                { cf_lval.i = LOG_MASK(LOG_ERR); return LOG_LEVEL; }
+
+on|off {
+  cf_lval.i = 0;
+  if (strcmp(yytext, "on") == 0) {
+    cf_lval.i = 1;
+  }
+  return BOOL;
+}
 
 {DIGIT}+ {
   cf_lval.i = atoi(yytext);
