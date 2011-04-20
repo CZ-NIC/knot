@@ -852,7 +852,7 @@ static int test_response_new_empty()
 
 static int test_response_add_rrset(int (*add_func)
 				   (dnslib_response_t *,
-				   const dnslib_rrset_t *, int, int),
+				   const dnslib_rrset_t *, int, int, int),
 				   int array_id)
 {
 	/*
@@ -886,7 +886,7 @@ static int test_response_add_rrset(int (*add_func)
 	} /* switch */
 
 	for (int i = 0; (i < RRSETS_COUNT) && !errors; i++) {
-		assert(add_func(resp, RESPONSE_RRSETS[i], 0, 0) == 0);
+		assert(add_func(resp, RESPONSE_RRSETS[i], 0, 0, 0) == 0);
 		errors += compare_rrsets(array[i], RESPONSE_RRSETS[i]);
 	}
 
@@ -1503,7 +1503,7 @@ static int test_response_to_wire(test_response_t **responses,
 		for (int j = 0; j < responses[i]->ancount; j++) {
 			if (&(responses[i]->answer[j])) {
 				if (dnslib_response_add_rrset_answer(resp,
-					responses[i]->answer[j], 0, 0) != 0) {
+				    responses[i]->answer[j], 0, 0, 0) != 0) {
 					char *tmp_dname =
 					dnslib_dname_to_str(responses[i]->
 							    answer[j]->owner);
@@ -1524,7 +1524,7 @@ static int test_response_to_wire(test_response_t **responses,
 			if (&(responses[i]->authority[j])) {
 				if (dnslib_response_add_rrset_authority(resp,
 					responses[i]->authority[j],
-					0, 0) != 0) {
+					0, 0, 0) != 0) {
 					diag("Could not add authority rrset");
 					return 0;
 				}
@@ -1542,7 +1542,7 @@ static int test_response_to_wire(test_response_t **responses,
 				}
 				if (dnslib_response_add_rrset_additional(resp,
 					responses[i]->additional[j],
-					0, 0) != 0) {
+					0, 0, 0) != 0) {
 					diag("Could not add additional rrset");
 					return 0;
 				}
@@ -1697,19 +1697,19 @@ static int test_response_getters(uint type)
 		for (int j = 0; j < RESPONSES[i].ancount; j++) {
 			if (&(RESPONSES[i].answer[j])) {
 				dnslib_response_add_rrset_answer(tmp_resp,
-					RESPONSES[i].answer[j], 0, 0);
+					RESPONSES[i].answer[j], 0, 0, 0);
 			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			if (&(RESPONSES[i].additional[j])) {
 				dnslib_response_add_rrset_additional(tmp_resp,
-					RESPONSES[i].additional[j], 0, 0);
+					RESPONSES[i].additional[j], 0, 0, 0);
 			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			if (&(RESPONSES[i].authority[j])) {
 				dnslib_response_add_rrset_authority(tmp_resp,
-					 RESPONSES[i].authority[j], 0, 0);
+					 RESPONSES[i].authority[j], 0, 0, 0);
 			}
 		}
 
@@ -1801,19 +1801,19 @@ static int test_response_setters(uint type)
 		for (int j = 0; j < RESPONSES[i].ancount; j++) {
 			if (&(RESPONSES[i].answer[j])) {
 				dnslib_response_add_rrset_answer(tmp_resp,
-					(RESPONSES[i].answer[j]), 0, 0);
+					(RESPONSES[i].answer[j]), 0, 0, 0);
 			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			if (&(RESPONSES[i].additional[j])) {
 				dnslib_response_add_rrset_additional(tmp_resp,
-					(RESPONSES[i].additional[j]), 0, 0);
+					(RESPONSES[i].additional[j]), 0, 0, 0);
 			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			if (&(RESPONSES[i].authority[j])) {
 				dnslib_response_add_rrset_authority(tmp_resp,
-					(RESPONSES[i].authority[j]), 0, 0);
+					(RESPONSES[i].authority[j]), 0, 0, 0);
 			}
 		}
 
