@@ -17,7 +17,9 @@ extern int yylex (void);
 extern void cf_error(const char *msg);
 extern conf_t *new_config;
 static conf_iface_t *this_iface = 0;
+static conf_iface_t *this_remote = 0;
 static conf_zone_t *this_zone = 0;
+static list *this_list = 0;
 static conf_log_t *this_log = 0;
 static conf_log_map_t *this_logmap = 0;
 //#define YYERROR_VERBOSE 1
@@ -40,8 +42,14 @@ static conf_log_map_t *this_logmap = 0;
 %token SYSTEM IDENTITY VERSION STORAGE KEY
 %token <alg> TSIG_ALGO_NAME
 
+%token REMOTES
+
 %token ZONES FILENAME
 %token SEMANTIC_CHECKS
+%token XFR_IN
+%token XFR_OUT
+%token NOTIFY_IN
+%token NOTIFY_OUT
 
 %token INTERFACES ADDRESS PORT
 %token <t> IPA
@@ -84,15 +92,15 @@ interface:
      this_iface->family = AF_INET;
      this_iface->port = $5;
    }
-   | interface ADDRESS IPA6 ';' {
-       this_iface->address = $3;
-       this_iface->family = AF_INET6;
-     }
-   | interface ADDRESS IPA6 '@' NUM ';' {
-       this_iface->address = $3;
-       this_iface->family = AF_INET6;
-       this_iface->port = $5;
-     }
+ | interface ADDRESS IPA6 ';' {
+     this_iface->address = $3;
+     this_iface->family = AF_INET6;
+   }
+ | interface ADDRESS IPA6 '@' NUM ';' {
+     this_iface->address = $3;
+     this_iface->family = AF_INET6;
+     this_iface->port = $5;
+   }
  ;
 
 interfaces:
@@ -108,6 +116,92 @@ system:
  | system KEY TSIG_ALGO_NAME TEXT ';' {
      new_config->key.algorithm = $3;
      new_config->key.secret = $4;
+   }
+ ;
+
+remote_start: TEXT {
+    this_remote = malloc(sizeof(conf_iface_t));
+    memset(this_remote, 0, sizeof(conf_iface_t));
+    this_remote->name = $1;
+    this_remote->address = 0; // No default address (mandatory)
+    this_remote->port = CONFIG_DEFAULT_PORT;
+    add_tail(&new_config->remotes, &this_remote->n);
+    ++new_config->remotes_count;
+ }
+ ;
+
+remote:
+   remote_start '{'
+ | remote PORT NUM ';' { this_remote->port = $3; }
+ | remote ADDRESS IPA ';' {
+     this_remote->address = $3;
+     this_remote->family = AF_INET;
+   }
+ | remote ADDRESS IPA '@' NUM ';' {
+     this_remote->address = $3;
+     this_remote->family = AF_INET;
+     this_remote->port = $5;
+   }
+ | remote ADDRESS IPA6 ';' {
+     this_remote->address = $3;
+     this_remote->family = AF_INET6;
+   }
+ | remote ADDRESS IPA6 '@' NUM ';' {
+     this_remote->address = $3;
+     this_remote->family = AF_INET6;
+     this_remote->port = $5;
+   }
+ ;
+
+remotes:
+   REMOTES '{'
+ | remotes remote '}'
+ ;
+
+zone_acl_start:
+   XFR_IN {
+      this_list = &this_zone->acl.xfr_in;
+   }
+ | XFR_OUT {
+      this_list = &this_zone->acl.xfr_out;
+   }
+ | NOTIFY_IN {
+      this_list = &this_zone->acl.notify_in;
+   }
+ | NOTIFY_OUT {
+      this_list = &this_zone->acl.notify_out;
+   }
+ ;
+
+zone_acl:
+   zone_acl_start '{'
+ | zone_acl TEXT ';' {
+      /* Find existing node in remotes. */
+      node* r = 0; conf_iface_t* found = 0;
+      WALK_LIST (r, new_config->remotes) {
+	 if (strcmp(((conf_iface_t*)r)->name, $2) == 0) {
+	    found = (conf_iface_t*)r;
+	    break;
+	 }
+      }
+
+      /* Append to list if found. */
+      if (!found) {
+	 char buf[256];
+	 snprintf(buf, sizeof(buf), "remote '%s' is not defined", $2);
+	 cf_error(buf);
+      } else {
+	 conf_remote_t *remote = malloc(sizeof(conf_remote_t));
+	 if (!remote) {
+	    cf_error("out of memory");
+	 } else {
+	    remote->remote = found;
+	    add_tail(this_list, &remote->n);
+	 }
+      }
+
+      /* Free text token. */
+      free($2);
    }
  ;
 
@@ -136,14 +230,21 @@ zone_start: TEXT {
      dnslib_dname_free(&dn);
      add_tail(&new_config->zones, &this_zone->n);
      ++new_config->zones_count;
-   }
+
+     /* Initialize ACL lists. */
+     init_list(&this_zone->acl.xfr_in);
+     init_list(&this_zone->acl.xfr_out);
+     init_list(&this_zone->acl.notify_in);
+     init_list(&this_zone->acl.notify_out);
+   }  
  }
  ;
 
 zone:
    zone_start '{'
- | zone FILENAME TEXT ';' { this_zone->file = $3; }
+ | zone zone_acl '}'
  | zone SEMANTIC_CHECKS BOOL ';' { this_zone->enable_checks = $3; }
+ | zone FILENAME TEXT ';' { this_zone->file = $3; }
  ;
 
 zones:
@@ -235,7 +336,7 @@ log_start:
 log: LOG '{' log_start log_end;
 
 
-conf: ';' | system '}' | interfaces '}' | zones '}' | log '}';
+conf: ';' | system '}' | interfaces '}' | remotes '}' | zones '}' | log '}';
 
 %%
 

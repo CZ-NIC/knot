@@ -32,7 +32,7 @@
  * used in the configuration.  Same interface could be used for
  * listening and outgoing function.
  */
-typedef struct {
+typedef struct conf_iface_t {
 	node n;
 	char *name;       /*!< Internal name for the interface. */
 	char *address;    /*!< IP (IPv4/v6) address for this interface */
@@ -41,12 +41,22 @@ typedef struct {
 } conf_iface_t;
 
 /*!
+ * \brief Node containing poiner to remote.
+ *
+ * Used for zone ACL lists to prevent node duplication.
+ */
+typedef struct conf_remote_t {
+	node n;	              /*!< List node. */
+	conf_iface_t *remote; /*!< Pointer to interface descriptor. */
+} conf_remote_t;
+
+/*!
  * \brief List of TSIG algoritms.
  *
  * Master list of TSIG algoritms as per IANA registry
  * http://www.iana.org/assignments/tsig-algorithm-names/tsig-algorithm-names.xhtml
  */
-typedef enum {
+typedef enum tsig_alg_t {
 	GSS_TSIG,
 	HMAC_MD5,
 	HMAC_SHA1,
@@ -59,7 +69,7 @@ typedef enum {
 /*!
  * \brief Configuration for the TSIG key.
  */
-typedef struct {
+typedef struct conf_key_t {
 	tsig_alg_t algorithm; /*!< Key algorithm.  */
 	char *secret;         /*!< Key data. */
 } conf_key_t;
@@ -75,19 +85,25 @@ typedef struct {
  *
  * \todo Missing XFR type (AXFR/IXFR/IXFR-ONLY) for each server.
  */
-typedef struct {
+typedef struct conf_zone_t {
 	node n;
 	char *name;                  /*!< Zone name. */
 	enum dnslib_rr_class cls;    /*!< Zone class (IN or CH). */
 	char *file;                  /*!< Path to a zone file. */
 	char *db;                    /*!< Path to a database file. */
 	int  enable_checks;          /*!< Semantic checks for parser.*/
+	struct {
+		list xfr_in;         /*!< Remotes accepted for for xfr-in.*/
+		list xfr_out;        /*!< Remotes accepted for xfr-out.*/
+		list notify_in;      /*!< Remotes accepted for notify-in.*/
+		list notify_out;     /*!< Remotes accepted for notify-out.*/
+	} acl;
 } conf_zone_t;
 
 /*!
  * \brief Mapping of loglevels to message sources.
  */
-typedef struct {
+typedef struct conf_log_map_t {
 	node n;
 	int source; /*!< Log message source mask. */
 	int prios;  /*!< Log priorities mask. */
@@ -96,7 +112,7 @@ typedef struct {
 /*!
  * \brief Log facility descriptor.
  */
-typedef struct {
+typedef struct conf_log_t {
 	node n;
 	logtype_t type;  /*!< Type of the log (SYSLOG/STDERR/FILE). */
 	char *file;      /*!< Filename in case of LOG_FILE, else NULL. */
@@ -106,7 +122,7 @@ typedef struct {
 /*!
  * \brief Configuration sections.
  */
-typedef enum {
+typedef enum conf_section_t {
 	CONF_LOG    = 1 << 0, /*!< Log section. */
 	CONF_IFACES = 1 << 1, /*!< Interfaces. */
 	CONF_ZONES  = 1 << 2, /*!< Zones. */
@@ -143,6 +159,12 @@ typedef struct conf_t {
 	int ifaces_count; /*!< Count of interfaces. */
 
 	/*
+	 * Remotse
+	 */
+	list remotes;     /*!< List of remotes. */
+	int remotes_count;/*!< Count of remotes. */
+
+	/*
 	 * Zones
 	 */
 	list zones;       /*!< List of zones. */
@@ -160,7 +182,7 @@ typedef struct conf_t {
 /*!
  * \brief Config hook prototype.
  */
-typedef struct {
+typedef struct conf_hook_t {
 	node n;
 	int sections; /*!< Bitmask of watched sections. */
 	int (*update)(const conf_t*, void*); /*!< Function executed on config load. */
