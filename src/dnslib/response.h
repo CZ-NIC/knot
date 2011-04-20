@@ -269,6 +269,8 @@ uint16_t dnslib_response_qclass(const dnslib_response_t *response);
  *           Otherwise set to 0.
  * \param check_duplicates Set to <> 0 if the RRSet should not be added to the
  *                         response in case it is already there.
+ * \param compr_cs Set to <> 0 if dname compression should use case sensitive
+ *                 comparation. Set to 0 otherwise.
  *
  * \retval DNSLIB_EOK if successful, or the RRSet was already in the answer.
  * \retval DNSLIB_ENOMEM
@@ -276,7 +278,7 @@ uint16_t dnslib_response_qclass(const dnslib_response_t *response);
  */
 int dnslib_response_add_rrset_answer(dnslib_response_t *response,
                                      const dnslib_rrset_t *rrset, int tc,
-                                     int check_duplicates);
+                                     int check_duplicates, int compr_cs);
 
 /*!
  * \brief Adds a RRSet to the Authority section of the response.
@@ -287,6 +289,8 @@ int dnslib_response_add_rrset_answer(dnslib_response_t *response,
  *           Otherwise set to 0.
  * \param check_duplicates Set to <> 0 if the RRSet should not be added to the
  *                         response in case it is already there.
+ * \param compr_cs Set to <> 0 if dname compression should use case sensitive
+ *                 comparation. Set to 0 otherwise.
  *
  * \retval DNSLIB_EOK if successful, or the RRSet was already in the answer.
  * \retval DNSLIB_ENOMEM
@@ -294,7 +298,7 @@ int dnslib_response_add_rrset_answer(dnslib_response_t *response,
  */
 int dnslib_response_add_rrset_authority(dnslib_response_t *response,
                                         const dnslib_rrset_t *rrset, int tc,
-                                        int check_duplicates);
+                                        int check_duplicates, int compr_cs);
 
 /*!
  * \brief Adds a RRSet to the Additional section of the response.
@@ -305,6 +309,8 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
  *           Otherwise set to 0.
  * \param check_duplicates Set to <> 0 if the RRSet should not be added to the
  *                         response in case it is already there.
+ * \param compr_cs Set to <> 0 if dname compression should use case sensitive
+ *                 comparation. Set to 0 otherwise.
  *
  * \retval DNSLIB_EOK if successful, or the RRSet was already in the answer.
  * \retval DNSLIB_ENOMEM
@@ -312,7 +318,7 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
  */
 int dnslib_response_add_rrset_additional(dnslib_response_t *response,
                                          const dnslib_rrset_t *rrset, int tc,
-                                         int check_duplicates);
+                                         int check_duplicates, int compr_cs);
 
 /*!
  * \brief Sets the RCODE of the response.
