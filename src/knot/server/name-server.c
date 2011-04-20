@@ -193,7 +193,7 @@ static int ns_add_rrsigs(const dnslib_rrset_t *rrset, dnslib_response_t *resp,
                          const dnslib_dname_t *name,
                          int (*add_rrset_to_resp)(dnslib_response_t *,
                                                    const dnslib_rrset_t *,
-                                                   int, int),
+                                                   int, int, int),
                          int tc)
 {
 	const dnslib_rrset_t *rrsigs;
@@ -209,7 +209,7 @@ static int ns_add_rrsigs(const dnslib_rrset_t *rrset, dnslib_response_t *resp,
 		if (name != NULL) {
 			ns_check_wildcard(name, resp, &rrsigs);
 		}
-		return add_rrset_to_resp(resp, rrsigs, tc, 0);
+		return add_rrset_to_resp(resp, rrsigs, tc, 0, 0);
 	}
 
 	return KNOT_EOK;
@@ -233,7 +233,7 @@ static void ns_follow_cname(const dnslib_node_t **node,
                             dnslib_response_t *resp,
                             int (*add_rrset_to_resp)(dnslib_response_t *,
                                                      const dnslib_rrset_t *,
-                                                     int, int),
+                                                     int, int, int),
                             int tc)
 {
 	debug_ns("Resolving CNAME chain...\n");
@@ -258,7 +258,7 @@ static void ns_follow_cname(const dnslib_node_t **node,
 			                              (dnslib_rrset_t *)rrset);
 		}
 
-		add_rrset_to_resp(resp, rrset, tc, 0);
+		add_rrset_to_resp(resp, rrset, tc, 0, 0);
 		ns_add_rrsigs(rrset, resp, *qname, add_rrset_to_resp, tc);
 DEBUG_NS(
 		char *name = dnslib_dname_to_str(dnslib_rrset_owner(rrset));
@@ -320,10 +320,11 @@ DEBUG_NS(
 
 			ns_check_wildcard(name, resp, &rrset);
 			ret = dnslib_response_add_rrset_answer(resp, rrset, 1,
-			                                       0);
+			                                       0, 0);
 			if (ret >= 0 && (added += 1)
 			    && (ret = ns_add_rrsigs(rrset, resp, name,
-			           dnslib_response_add_rrset_answer, 1)) >=0 ) {
+			           dnslib_response_add_rrset_answer, 1))
+			            >=0 ) {
 				added += 1;
 			} else {
 				free(rrsets);
@@ -353,7 +354,7 @@ DEBUG_NS(
 
 			ns_check_wildcard(name, resp, &rrset);
 			ret = dnslib_response_add_rrset_answer(resp, rrset, 1,
-			                                       0);
+			                                       0, 0);
 
 			if (ret < 0) {
 				break;
@@ -374,7 +375,7 @@ DEBUG_NS(
 				 dnslib_rrtype_to_string(type));
 			ns_check_wildcard(name, resp, &rrset2);
 			ret = dnslib_response_add_rrset_answer(resp, rrset2, 1,
-			                                       0);
+			                                       0, 0);
 			if (ret >= 0 && (added += 1)
 			    && (ret = ns_add_rrsigs(rrset, resp, name,
 			        dnslib_response_add_rrset_answer, 1)) > 0) {
@@ -456,7 +457,7 @@ DEBUG_NS(
 				const dnslib_rrset_t *rrset_add2 = rrset_add;
 				ns_check_wildcard(dname, resp, &rrset_add2);
 				dnslib_response_add_rrset_additional(
-					resp, rrset_add2, 0, 1);
+					resp, rrset_add2, 0, 1, 0);
 				ns_add_rrsigs(rrset_add, resp, dname,
 				       dnslib_response_add_rrset_additional, 0);
 			}
@@ -469,7 +470,7 @@ DEBUG_NS(
 				const dnslib_rrset_t *rrset_add2 = rrset_add;
 				ns_check_wildcard(dname, resp, &rrset_add2);
 				dnslib_response_add_rrset_additional(
-					resp, rrset_add2, 0, 1);
+					resp, rrset_add2, 0, 1, 0);
 				ns_add_rrsigs(rrset_add, resp, dname,
 				       dnslib_response_add_rrset_additional, 0);
 			}
@@ -545,7 +546,7 @@ static void ns_put_authority_ns(const dnslib_zone_t *zone,
 		dnslib_node_rrset(zone->apex, DNSLIB_RRTYPE_NS);
 	assert(ns_rrset != NULL);
 
-	dnslib_response_add_rrset_authority(resp, ns_rrset, 0, 1);
+	dnslib_response_add_rrset_authority(resp, ns_rrset, 0, 1, 0);
 	ns_add_rrsigs(ns_rrset, resp, zone->apex->owner,
 	              dnslib_response_add_rrset_authority, 1);
 }
@@ -564,7 +565,7 @@ static void ns_put_authority_soa(const dnslib_zone_t *zone,
 		dnslib_node_rrset(zone->apex, DNSLIB_RRTYPE_SOA);
 	assert(soa_rrset != NULL);
 
-	dnslib_response_add_rrset_authority(resp, soa_rrset, 0, 0);
+	dnslib_response_add_rrset_authority(resp, soa_rrset, 0, 0, 0);
 	ns_add_rrsigs(soa_rrset, resp, zone->apex->owner,
 	              dnslib_response_add_rrset_authority, 1);
 }
@@ -623,10 +624,10 @@ static void ns_put_nsec3_from_node(const dnslib_node_t *node,
 	                                                DNSLIB_RRTYPE_NSEC3);
 	assert(rrset != NULL);
 
-	int res = dnslib_response_add_rrset_authority(resp, rrset, 1, 1);
+	int res = dnslib_response_add_rrset_authority(resp, rrset, 1, 1, 0);
 	// add RRSIG for the RRSet
 	if (res == 0 && (rrset = dnslib_rrset_rrsigs(rrset)) != NULL) {
-		dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+		dnslib_response_add_rrset_authority(resp, rrset, 1, 0, 0);
 	}
 }
 
@@ -858,10 +859,11 @@ static void ns_put_nsec_nsec3_nodata(const dnslib_node_t *node,
 	if ((rrset = dnslib_node_rrset(node, DNSLIB_RRTYPE_NSEC)) != NULL
 	    || (nsec3_node != NULL && (rrset =
 	         dnslib_node_rrset(nsec3_node, DNSLIB_RRTYPE_NSEC3)) != NULL)) {
-		dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+		dnslib_response_add_rrset_authority(resp, rrset, 1, 0, 0);
 		// add RRSIG for the RRSet
 		if ((rrset = dnslib_rrset_rrsigs(rrset)) != NULL) {
-			dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+			dnslib_response_add_rrset_authority(resp, rrset, 1,
+			                                    0, 0);
 		}
 	}
 }
@@ -905,10 +907,10 @@ static int ns_put_nsec_nxdomain(const dnslib_dname_t *qname,
 		return NS_ERR_SERVFAIL;
 	}
 
-	dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+	dnslib_response_add_rrset_authority(resp, rrset, 1, 0, 0);
 	rrset = dnslib_rrset_rrsigs(rrset);
 	assert(rrset != NULL);
-	dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+	dnslib_response_add_rrset_authority(resp, rrset, 1, 0, 0);
 
 	// 2) NSEC proving that there is no wildcard covering the name
 	// this is only different from 1) if the wildcard would be
@@ -942,10 +944,10 @@ static int ns_put_nsec_nxdomain(const dnslib_dname_t *qname,
 	if (prev_new != previous) {
 		rrset = dnslib_node_rrset(prev_new, DNSLIB_RRTYPE_NSEC);
 		assert(rrset != NULL);
-		dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+		dnslib_response_add_rrset_authority(resp, rrset, 1, 0, 0);
 		rrset = dnslib_rrset_rrsigs(rrset);
 		assert(rrset != NULL);
-		dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+		dnslib_response_add_rrset_authority(resp, rrset, 1, 0, 0);
 	}
 
 	return KNOT_EOK;
@@ -1102,10 +1104,10 @@ static void ns_put_nsec_wildcard(const dnslib_zone_t *zone,
 		dnslib_node_rrset(previous, DNSLIB_RRTYPE_NSEC);
 	if (rrset != NULL) {
 		// NSEC proving that there is no node with the searched name
-		dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+		dnslib_response_add_rrset_authority(resp, rrset, 1, 0, 0);
 		rrset = dnslib_rrset_rrsigs(rrset);
 		assert(rrset != NULL);
-		dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+		dnslib_response_add_rrset_authority(resp, rrset, 1, 0, 0);
 	}
 }
 
@@ -1226,7 +1228,7 @@ static inline int ns_referral(const dnslib_node_t *node,
 	// TODO: wildcards??
 	//ns_check_wildcard(name, resp, &rrset);
 
-	dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+	dnslib_response_add_rrset_authority(resp, rrset, 1, 0, 0);
 	ns_add_rrsigs(rrset, resp, node->owner,
 	              dnslib_response_add_rrset_authority, 1);
 
@@ -1238,7 +1240,8 @@ static inline int ns_referral(const dnslib_node_t *node,
 	if (DNSSEC_ENABLED && dnslib_response_dnssec_requested(resp)) {
 		rrset = dnslib_node_rrset(node, DNSLIB_RRTYPE_DS);
 		if (rrset != NULL) {
-			dnslib_response_add_rrset_authority(resp, rrset, 1, 0);
+			dnslib_response_add_rrset_authority(resp, rrset, 1, 0,
+			                                    0);
 			ns_add_rrsigs(rrset, resp, node->owner,
 			              dnslib_response_add_rrset_authority, 1);
 		} else {
@@ -1433,7 +1436,7 @@ DEBUG_NS(
 	// TODO: check the number of RRs in the RRSet??
 
 	// put the DNAME RRSet into the answer
-	dnslib_response_add_rrset_answer(resp, dname_rrset, 1, 0);
+	dnslib_response_add_rrset_answer(resp, dname_rrset, 1, 0, 0);
 	ns_add_rrsigs(dname_rrset, resp, qname,
 	              dnslib_response_add_rrset_answer, 1);
 
@@ -1445,7 +1448,7 @@ DEBUG_NS(
 	// synthetize CNAME (no way to tell that client supports DNAME)
 	dnslib_rrset_t *synth_cname = ns_cname_from_dname(dname_rrset, qname);
 	// add the synthetized RRSet to the Answer
-	dnslib_response_add_rrset_answer(resp, synth_cname, 1, 0);
+	dnslib_response_add_rrset_answer(resp, synth_cname, 1, 0, 0);
 
 	// no RRSIGs for this RRSet
 
@@ -1468,7 +1471,7 @@ static void ns_add_dnskey(const dnslib_node_t *apex, dnslib_response_t *resp)
 	const dnslib_rrset_t *rrset =
 		dnslib_node_rrset(apex, DNSLIB_RRTYPE_DNSKEY);
 	if (rrset != NULL) {
-		dnslib_response_add_rrset_additional(resp, rrset, 0, 0);
+		dnslib_response_add_rrset_additional(resp, rrset, 0, 0, 0);
 		ns_add_rrsigs(rrset, resp, apex->owner,
 			      dnslib_response_add_rrset_additional, 0);
 	}
@@ -1730,6 +1733,8 @@ static int ns_response_to_wire(dnslib_response_t *resp, uint8_t *wire,
 	}
 
 	if (rsize > *wire_size) {
+		debug_ns("Reponse size (%zu) larger than allowed wire size "
+		         "(%zu).\n", rsize, *wire_size);
 		return NS_ERR_SERVFAIL;
 	}
 
@@ -1757,7 +1762,9 @@ static int ns_axfr_send_and_clear(ns_xfr_t *xfr)
 	assert(xfr->send != NULL);
 
 	// Transform the packet into wire format
-	if (ns_response_to_wire(xfr->response, xfr->response_wire, &xfr->rsize)
+	debug_ns("Converting response to wire format..\n");
+	size_t real_size;
+	if (ns_response_to_wire(xfr->response, xfr->response_wire, &real_size)
 	    != 0) {
 		return NS_ERR_SERVFAIL;
 //		// send back SERVFAIL (as this is our problem)
@@ -1768,17 +1775,24 @@ static int ns_axfr_send_and_clear(ns_xfr_t *xfr)
 	}
 
 	// Send the response
-	int res = xfr->send(xfr->session, xfr->response_wire, xfr->rsize);
+	debug_ns("Sending response (size %zu)..\n", real_size);
+	debug_ns_hex(xfr->response_wire, real_size);
+	int res = xfr->send(xfr->session, xfr->response_wire, real_size);
 	if (res < 0) {
+		debug_ns("Send returned %d\n", res);
 		return res;
-	} else if (res != xfr->rsize) {
+	} else if (res != real_size) {
 		log_server_warning("AXFR did not send right amount of bytes."
 		                   " Transfer size: %zu, sent: %d\n",
-		                   xfr->rsize, res);
+		                   real_size, res);
 	}
 
 	// Clean the response structure
-	dnslib_response_clear(xfr->response);
+	debug_ns("Clearing response structure..\n");
+	dnslib_response_clear(xfr->response, 0);
+
+	debug_ns("Response structure after clearing:\n");
+	dnslib_response_dump(xfr->response);
 
 	return KNOT_EOK;
 }
@@ -1823,10 +1837,11 @@ rrset:
 		}
 
 		ret = dnslib_response_add_rrset_answer(params->xfr->response,
-		                                       rrset, 0, 0);
+		                                       rrset, 0, 0, 1);
 
 		if (ret == DNSLIB_ESPACE) {
 			// TODO: send the packet and clean the structure
+			debug_ns("Packet full, sending..\n");
 			ret = ns_axfr_send_and_clear(params->xfr);
 			if (ret != KNOT_EOK) {
 				// some wierd problem, we should end
@@ -1850,10 +1865,11 @@ rrsigs:
 		}
 
 		ret = dnslib_response_add_rrset_answer(params->xfr->response,
-		                                       rrset, 0, 0);
+		                                       rrset, 0, 0, 1);
 
 		if (ret == DNSLIB_ESPACE) {
 			// TODO: send the packet and clean the structure
+			debug_ns("Packet full, sending..\n");
 			ret = ns_axfr_send_and_clear(params->xfr);
 			if (ret != KNOT_EOK) {
 				// some wierd problem, we should end
@@ -1909,7 +1925,8 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 	int ret;
 
 	// add SOA RR to the response
-	ret = dnslib_response_add_rrset_answer(xfr->response, soa_rrset, 0, 0);
+	ret = dnslib_response_add_rrset_answer(xfr->response, soa_rrset, 0, 0,
+	                                       1);
 	if (ret != DNSLIB_EOK) {
 		// something is really wrong
 		return KNOT_ERROR;
@@ -1917,24 +1934,34 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 
 	dnslib_zone_tree_apply_inorder(zone, ns_axfr_from_node, &params);
 
+	if (params.ret != KNOT_EOK) {
+		return KNOT_ERROR;	// maybe do something with the code
+	}
+
 	dnslib_zone_nsec3_apply_inorder(zone, ns_axfr_from_node, &params);
+
+	if (params.ret != KNOT_EOK) {
+		return KNOT_ERROR;	// maybe do something with the code
+	}
 
 	/*
 	 * Last SOA
 	 */
 
 	// try to add the SOA to the response again (last RR)
-	ret = dnslib_response_add_rrset_answer(xfr->response, soa_rrset, 0, 0);
+	ret = dnslib_response_add_rrset_answer(xfr->response, soa_rrset, 0, 0,
+	                                       1);
 	if (ret == DNSLIB_ESPACE) {
 		// if there is not enough space, send the response and
 		// add the SOA record to a new packet
+		debug_ns("Packet full, sending..\n");
 		ret = ns_axfr_send_and_clear(xfr);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 
 		ret = dnslib_response_add_rrset_answer(xfr->response, soa_rrset,
-		                                       0, 0);
+		                                       0, 0, 1);
 		if (ret != DNSLIB_EOK) {
 			return KNOT_ERROR;
 		}
@@ -1944,6 +1971,7 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 		return KNOT_ERROR;
 	}
 
+	debug_ns("Sending packet...\n");
 	return ns_axfr_send_and_clear(xfr);
 }
 
@@ -1962,8 +1990,7 @@ DEBUG_NS(
 );
 	// find zone in which to search for the name
 	dnslib_zone_t *zone =
-		dnslib_zonedb_find_zone(zonedb,
-		                        dnslib_response_qname(xfr->response));
+		dnslib_zonedb_find_zone(zonedb, qname);
 
 	// if no zone found, return NotAuth
 	if (zone == NULL) {
@@ -2133,6 +2160,9 @@ int ns_parse_query(const uint8_t *query_wire, size_t qsize,
 void ns_error_response(ns_nameserver_t *nameserver, uint16_t query_id,
                        uint8_t rcode, uint8_t *response_wire, size_t *rsize)
 {
+	debug_ns("Error response: \n");
+	debug_ns_hex(nameserver->err_response, nameserver->err_resp_size);
+
 	memcpy(response_wire, nameserver->err_response,
 	       nameserver->err_resp_size);
 	// copy ID of the query
@@ -2228,7 +2258,14 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_response_t *resp,
 
 	debug_ns("ns_answer_normal()\n");
 
-	int ret = ns_answer(zonedb, resp);
+	// set the OPT RR to the response
+	int ret = dnslib_response_add_opt(resp, nameserver->opt_rr, 1);
+	if (ret != DNSLIB_EOK) {
+		log_server_notice("Failed to set OPT RR to the response: %s\n",
+		                  dnslib_strerror(ret));
+	}
+
+	ret = ns_answer(zonedb, resp);
 	if (ret != 0) {
 		// now only one type of error (SERVFAIL), later maybe more
 		ns_error_response(nameserver, resp->header.id,
@@ -2263,18 +2300,31 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		return KNOT_EINVAL;
 	}
 
+	// set the OPT RR to the response
+	int ret = dnslib_response_add_opt(xfr->response, nameserver->opt_rr, 0);
+	if (ret != DNSLIB_EOK) {
+		log_server_notice("Failed to set OPT RR to the response: %s\n",
+		                  dnslib_strerror(ret));
+	}
+
 	// Get pointer to the zone database
 	rcu_read_lock();
 	dnslib_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
 
-	int ret = ns_axfr(zonedb, xfr);
+	ret = ns_axfr(zonedb, xfr);
 
+	/*! \todo Somehow distinguish when it makes sense to send the SERVFAIL
+	 *        and when it does not. E.g. if there was problem in sending
+	 *        packet, it will probably fail when sending the SERVFAIL also.
+	 */
 	if (ret != KNOT_EOK) {
+		debug_ns("AXFR failed, sending SERVFAIL.\n");
 		// now only one type of error (SERVFAIL), later maybe more
+		size_t real_size;
 		ns_error_response(nameserver, xfr->response->header.id,
-				  DNSLIB_RCODE_SERVFAIL, xfr->response_wire,
-				  &xfr->rsize);
-		ret = xfr->send(xfr->session, xfr->response_wire, xfr->rsize);
+		                  DNSLIB_RCODE_SERVFAIL, xfr->response_wire,
+		                  &real_size);
+		ret = xfr->send(xfr->session, xfr->response_wire, real_size);
 	}
 
 	rcu_read_unlock();
@@ -2284,10 +2334,6 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		                 knot_strerror(ret));
 		// there was some error but there is not much to do about it
 		return ret;
-	} else if (ret != xfr->rsize) {
-		log_server_warning("AXFR did not send right amount of bytes."
-		                   " Transfer size: %zu, sent: %d\n",
-		                   xfr->rsize, ret);
 	}
 
 	return KNOT_EOK;

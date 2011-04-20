@@ -30,8 +30,9 @@ enum dnslib_error {
 	DNSLIB_EZONEIN,         /*!< Error inserting zone. */
 	DNSLIB_ENOZONE,         /*!< No such zone found. */
 	DNSLIB_EDNAMEPTR,       /*!< Domain name pointer larger than allowed. */
+	DNSLIB_EPAYLOAD,    /*!< Payload in OPT RR larger than max wire size. */
 
-	DNSLIB_ERROR_COUNT = 15
+	DNSLIB_ERROR_COUNT = 16
 };
 
 /*! \brief Table linking error messages to error codes. */
