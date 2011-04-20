@@ -71,6 +71,10 @@ int log_init()
 	int ret = KNOT_EOK;
 	int emask = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR)|LOG_MASK(LOG_FATAL);
 	int imask = LOG_MASK(LOG_INFO)|LOG_MASK(LOG_NOTICE);
+
+	/* Add debug messages. */
+	emask |= LOG_MASK(LOG_DEBUG);
+
 	ret = log_setup(0);
 	log_levels_set(LOGT_SYSLOG, LOG_ANY, imask|emask);
 	log_levels_set(LOGT_STDERR, LOG_ANY, emask);
