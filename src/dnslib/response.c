@@ -1365,7 +1365,8 @@ void dnslib_response_clear(dnslib_response_t *resp, int clear_question)
 /*----------------------------------------------------------------------------*/
 
 int dnslib_response_add_opt(dnslib_response_t *resp,
-                            const dnslib_opt_rr_t *opt_rr)
+                            const dnslib_opt_rr_t *opt_rr,
+                            int override_max_size)
 {
 	if (resp == NULL || opt_rr == NULL) {
 		return DNSLIB_EBADARG;
@@ -1380,7 +1381,8 @@ int dnslib_response_add_opt(dnslib_response_t *resp,
 	// if max size is set, it means there is some reason to be that way,
 	// so we can't just set it to higher value
 
-	if (resp->max_size > 0 && resp->max_size < opt_rr->payload) {
+	if (override_max_size && resp->max_size > 0
+	    && resp->max_size < opt_rr->payload) {
 		return DNSLIB_EPAYLOAD;
 	}
 
@@ -1398,7 +1400,9 @@ int dnslib_response_add_opt(dnslib_response_t *resp,
 //	}
 
 	// set max size (less is OK)
-	resp->max_size = resp->edns_response.payload;
+	if (override_max_size) {
+		resp->max_size = resp->edns_response.payload;
+	}
 
 	return DNSLIB_EOK;
 }
