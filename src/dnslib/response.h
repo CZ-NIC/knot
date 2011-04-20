@@ -177,7 +177,7 @@ void dnslib_response_clear(dnslib_response_t *resp);
  *
  * \todo Needs test.
  */
-int dnslib_response_set_opt(dnslib_response_t *resp,
+int dnslib_response_add_opt(dnslib_response_t *resp,
                             const dnslib_opt_rr_t *opt_rr);
 
 /*!
