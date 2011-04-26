@@ -4,12 +4,15 @@
  * \author Jan Kadlec <jan.kadlec@nic.cz>, conversion functions by NLabs,
  *         see LICENSE. b64ntop by ISC.
  */
+#include <config.h>
 
 #include <ctype.h>
 #include <assert.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 
-#include "dnslib.h"
+#include "dnslib/dnslib.h"
+#include "dnslib/dnslib-common.h"
 #include "common/skip-list.h"
 
 /* TODO max length of alg */
@@ -214,9 +217,9 @@ static const char Pad64 = '=';
    end of the data is performed using the '=' character.
 
    Since all base64 input is an integral number of octets, only the
-         -------------------------------------------------                       
+         -------------------------------------------------
    following cases can arise:
-   
+
        (1) the final quantum of encoding input is an integral
            multiple of 24 bits; here, the final unit of encoded
 	   output will be an integral multiple of 4 characters
@@ -258,14 +261,14 @@ int b64_ntop(uint8_t const *src, size_t srclength, char *target,
 		target[datalength++] = Base64[output[2]];
 		target[datalength++] = Base64[output[3]];
 	}
-    
+
 	/* Now we worry about padding. */
 	if (0 != srclength) {
 		/* Get what's left. */
 		input[0] = input[1] = input[2] = '\0';
 		for (i = 0; i < srclength; i++)
 			input[i] = *src++;
-	
+
 		output[0] = input[0] >> 2;
 		output[1] = ((input[0] & 0x03) << 4) + (input[1] >> 4);
 		output[2] = ((input[1] & 0x0f) << 2) + (input[2] >> 6);
@@ -1070,7 +1073,7 @@ int zone_dump_text(dnslib_zone_t *zone, const char *filename)
 		return DNSLIB_EBADARG;
 	}
 
-	fprintf(f, ";Dumped using %s v. %d.%d.%d\n", PROJECT_NAME,
+	fprintf(f, ";Dumped using %s v. %d.%d.%d\n", DNSLIB_NAME,
 	        DNSLIB_VER / 10000,
 		(DNSLIB_VER / 100) % 100,
 		DNSLIB_VER % 100);
