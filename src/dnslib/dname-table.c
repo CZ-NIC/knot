@@ -19,7 +19,10 @@ static int compare_dname_table_nodes(struct dname_table_node *n1,
 
 static void delete_dname_table_node(struct dname_table_node *node, void *data)
 {
-	UNUSED(data);
+	if (data) {
+		dnslib_dname_free(&node->dname);
+	}
+
 	/*!< \todo it would be nice to set pointers to NULL, too. */
 	free(node);
 }
@@ -37,12 +40,14 @@ dnslib_dname_table_t *dnslib_dname_table_new()
 	}
 
 	TREE_INIT(ret->tree, compare_dname_table_nodes);
+
+	ret->id_counter = 1;
+
 	return ret;
 }
 
-const dnslib_dname_t *dnslib_dname_table_find_dname(
-	const dnslib_dname_table_t *table,
-	const dnslib_dname_t *dname)
+dnslib_dname_t *dnslib_dname_table_find_dname(const dnslib_dname_table_t *table,
+                                              dnslib_dname_t *dname)
 {
 	struct dname_table_node *node = NULL;
 	struct dname_table_node sought;
@@ -57,8 +62,8 @@ const dnslib_dname_t *dnslib_dname_table_find_dname(
 	}
 }
 
-int dnslib_dname_table_add_dname(const dnslib_dname_table_t *table,
-                                 const dnslib_dname_t *dname)
+int dnslib_dname_table_add_dname(dnslib_dname_table_t *table,
+                                 dnslib_dname_t *dname)
 {
 	/* Node for insertion has to be created */
 	struct dname_table_node *node =
@@ -66,6 +71,11 @@ int dnslib_dname_table_add_dname(const dnslib_dname_table_t *table,
 	CHECK_ALLOC_LOG(node, DNSLIB_ENOMEM);
 
 	node->dname = dname;
+	node->avl.avl_height = 0;
+	node->avl.avl_left = NULL;
+	node->avl.avl_right = NULL;
+
+	node->dname->id = table->id_counter++;
 
 	TREE_INSERT(table->tree, dname_table_node, avl, node);
 	return DNSLIB_EOK;
@@ -78,8 +88,22 @@ void dnslib_dname_table_free(dnslib_dname_table_t **table)
 	}
 
 	/* Walk the tree and free each node, but not the dnames. */
-	TREE_FORWARD_APPLY((*table)->tree, dname_table_node, avl,
-	                   delete_dname_table_node, NULL);
+	TREE_POST_ORDER_APPLY((*table)->tree, dname_table_node, avl,
+	                      delete_dname_table_node, 0);
+
+	free(*table);
+	*table = NULL;
+}
+
+void dnslib_dname_table_deep_free(dnslib_dname_table_t **table)
+{
+	if (table == NULL || *table == NULL) {
+		return;
+	}
+
+	/* Walk the tree and free each node, but not the dnames. */
+	TREE_POST_ORDER_APPLY((*table)->tree, dname_table_node, avl,
+	                      delete_dname_table_node, (void *) 1);
 
 	free(*table);
 	*table = NULL;
