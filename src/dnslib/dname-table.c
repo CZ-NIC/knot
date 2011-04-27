@@ -40,8 +40,9 @@ dnslib_dname_table_t *dnslib_dname_table_new()
 	return ret;
 }
 
-const dnslib_dname_t *dname_table_find_dname(const dnslib_dname_table_t *table,
-                                             const dnslib_dname_t *dname)
+const dnslib_dname_t *dnslib_dname_table_find_dname(
+	const dnslib_dname_table_t *table,
+	const dnslib_dname_t *dname)
 {
 	struct dname_table_node *node = NULL;
 	struct dname_table_node sought;
@@ -56,8 +57,8 @@ const dnslib_dname_t *dname_table_find_dname(const dnslib_dname_table_t *table,
 	}
 }
 
-int dname_table_add_dname(const dnslib_dname_table_t *table,
-                          const dnslib_dname_t *dname)
+int dnslib_dname_table_add_dname(const dnslib_dname_table_t *table,
+                                 const dnslib_dname_t *dname)
 {
 	/* Node for insertion has to be created */
 	struct dname_table_node *node =
@@ -70,7 +71,7 @@ int dname_table_add_dname(const dnslib_dname_table_t *table,
 	return DNSLIB_EOK;
 }
 
-void dname_table_free(dnslib_dname_table_t **table)
+void dnslib_dname_table_free(dnslib_dname_table_t **table)
 {
 	if (table == NULL || *table == NULL) {
 		return;
@@ -79,4 +80,7 @@ void dname_table_free(dnslib_dname_table_t **table)
 	/* Walk the tree and free each node, but not the dnames. */
 	TREE_FORWARD_APPLY((*table)->tree, dname_table_node, avl,
 	                   delete_dname_table_node, NULL);
+
+	free(*table);
+	*table = NULL;
 }
