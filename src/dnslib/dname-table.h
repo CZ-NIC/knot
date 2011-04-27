@@ -23,15 +23,15 @@ struct dnslib_dname_table {
 
 typedef struct dnslib_dname_table dnslib_dname_table_t;
 
-dnslib_dname_table_t *dname_table_new();
+dnslib_dname_table_t *dnslib_dname_table_new();
 
-const dnslib_dname_t *dname_table_find_dname(const dnslib_dname_table_t *table,
-                                             const dnslib_dname_t *dname);
+const dnslib_dname_t *dnslib_dname_table_find_dname(
+	const dnslib_dname_table_t *table,
+	const dnslib_dname_t *dname);
 
-int dname_table_add_dname(const dnslib_dname_table_t *table,
-                          const dnslib_dname_t *dname);
+int dnslib_dname_table_add_dname(const dnslib_dname_table_t *table,
+                                 const dnslib_dname_t *dname);
 
-void dname_table_free(dnslib_dname_table_t **table);
-
+void dnslib_dname_table_free(dnslib_dname_table_t **table);
 
 #endif // DNAMETABLE_H
