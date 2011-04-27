@@ -2259,7 +2259,7 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_response_t *resp,
 	debug_ns("ns_answer_normal()\n");
 
 	// set the OPT RR to the response
-	int ret = dnslib_response_add_opt(resp, nameserver->opt_rr, 1);
+	int ret = dnslib_response_add_opt(resp, nameserver->opt_rr, 0);
 	if (ret != DNSLIB_EOK) {
 		log_server_notice("Failed to set OPT RR to the response: %s\n",
 		                  dnslib_strerror(ret));
