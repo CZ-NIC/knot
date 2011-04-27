@@ -564,6 +564,14 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count)
 		return NULL;
 	}
 
+	zone->dname_table = dnslib_dname_table_new();
+	if (zone->dname_table == NULL) {
+		ERR_ALLOC_FAILED;
+		free(zone->tree);
+		free(zone->nsec3_nodes);
+		free(zone);
+	}
+
 	zone->node_count = node_count;
 
 	/* Initialize NSEC3 params */
@@ -585,6 +593,7 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count)
 		if (zone->table == NULL) {
 			free(zone->tree);
 			free(zone->nsec3_nodes);
+			free(zone->dname_table);
 			free(zone);
 			return NULL;
 		}
