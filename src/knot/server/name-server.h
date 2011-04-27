@@ -84,8 +84,8 @@ ns_nameserver_t *ns_create();
  *                              ns_error_response() with \a rcode set to this
  *                              value to get proper error response.
  */
-int ns_parse_query(const uint8_t *query_wire, size_t qsize,
-                   dnslib_response_t *parsed, dnslib_query_t *type);
+int ns_parse_packet(const uint8_t *query_wire, size_t qsize,
+                    dnslib_response_t *parsed, dnslib_packet_type_t *type);
 
 /*!
  * \brief Prepares wire format of an error response using generic error template

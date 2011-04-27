@@ -254,7 +254,7 @@ uint16_t dnslib_response_qtype(const dnslib_response_t *response);
 /*!
  * \brief Returns the QCLASS from the response.
  *
- * \param response Responsee (with parsed query) to get the QCLASS from.
+ * \param response Response (with parsed query) to get the QCLASS from.
  *
  * \return QCLASS stored in the response.
  */

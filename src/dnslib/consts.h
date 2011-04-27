@@ -33,13 +33,17 @@ typedef enum dnslib_opcode {
  * This type encompasses the different query types distinguished by both the
  * OPCODE and the QTYPE.
  */
-typedef enum dnslib_query {
-	DNSLIB_QUERY_NORMAL,  /*!< Normal query. */
-	DNSLIB_QUERY_AXFR,    /*!< Request for AXFR transfer. */
-	DNSLIB_QUERY_IXFR,    /*!< Request for IXFR transfer. */
-	DNSLIB_QUERY_NOTIFY,  /*!< NOTIFY query. */
-	DNSLIB_QUERY_UPDATE   /*!< Dynamic update. */
-} dnslib_query_t;
+typedef enum dnslib_packet_type {
+	DNSLIB_QUERY_NORMAL,    /*!< Normal query. */
+	DNSLIB_QUERY_AXFR,      /*!< Request for AXFR transfer. */
+	DNSLIB_QUERY_IXFR,      /*!< Request for IXFR transfer. */
+	DNSLIB_QUERY_NOTIFY,    /*!< NOTIFY query. */
+	DNSLIB_QUERY_UPDATE,    /*!< Dynamic update. */
+	DNSLIB_RESPONSE_NORMAL, /*!< Normal response. */
+	DNSLIB_RESPONSE_AXFR,   /*!< AXFR transfer response. */
+	DNSLIB_RESPONSE_IXFR,   /*!< IXFR transfer response. */
+	DNSLIB_RESPONSE_NOTIFY  /*!< NOTIFY response. */
+} dnslib_packet_type_t;
 
 /*
  * RCODEs
