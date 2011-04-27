@@ -2,7 +2,7 @@
 
 AC_PREREQ([2.65])
 AC_INIT([knot], [0.2], [bug-me-knot@nic.cz])
-AM_INIT_AUTOMAKE([gnu -Wall -Werror])
+AM_INIT_AUTOMAKE([gnu -Wall -Werror silent-rules])
 AC_CONFIG_SRCDIR([src/knot/main.c])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
