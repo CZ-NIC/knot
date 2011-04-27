@@ -160,8 +160,8 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 	size_t resp_len = qbuf_maxlen; // 64K
 
 	/* Parse query. */
-	dnslib_query_t qtype = DNSLIB_QUERY_NORMAL;
-	int res = ns_parse_query(qbuf, n, resp, &qtype);
+	dnslib_packet_type_t qtype = DNSLIB_QUERY_NORMAL;
+	int res = ns_parse_packet(qbuf, n, resp, &qtype);
 	if (unlikely(res != KNOT_EOK)) {
 
 		/* Send error response on dnslib RCODE. */

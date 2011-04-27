@@ -72,7 +72,7 @@ int udp_master(dthread_t *thread)
 	int res = 0;
 	ssize_t n = 0;
 	uint8_t qbuf[SOCKET_MTU_SZ];
-	dnslib_query_t qtype = DNSLIB_QUERY_NORMAL;
+	dnslib_packet_type_t qtype = DNSLIB_QUERY_NORMAL;
 	while (n >= 0) {
 
 		n = recvfrom(sock, qbuf, sizeof(qbuf), 0,
@@ -107,7 +107,7 @@ int udp_master(dthread_t *thread)
 		size_t resp_len = sizeof(qbuf);
 
 		/* Parse query. */
-		res = ns_parse_query(qbuf, n, resp, &qtype);
+		res = ns_parse_packet(qbuf, n, resp, &qtype);
 		if (unlikely(res != KNOT_EOK)) {
 
 			/* Send error response on dnslib RCODE. */

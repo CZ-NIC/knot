@@ -2093,15 +2093,15 @@ ns_nameserver_t *ns_create()
 
 /*----------------------------------------------------------------------------*/
 
-int ns_parse_query(const uint8_t *query_wire, size_t qsize,
-                   dnslib_response_t *parsed, dnslib_query_t *type)
+int ns_parse_packet(const uint8_t *query_wire, size_t qsize,
+                    dnslib_response_t *parsed, dnslib_packet_type_t *type)
 {
 	if (parsed == NULL || query_wire == NULL || type == NULL) {
 		log_answer_error("Missing parameter to query parsing.\n");
 		return KNOT_EINVAL;
 	}
 
-	debug_ns("ns_parse_query() called with query size %zu.\n", qsize);
+	debug_ns("ns_parse_packet() called with query size %zu.\n", qsize);
 	debug_ns_hex((char *)query_wire, qsize);
 
 	if (qsize < 2) {
@@ -2109,7 +2109,7 @@ int ns_parse_query(const uint8_t *query_wire, size_t qsize,
 	}
 
 	// 1) create empty response
-	debug_ns("Parsing query...\n");
+	debug_ns("Parsing packet...\n");
 	//parsed = dnslib_response_new_empty(NULL);
 
 	int ret = 0;
@@ -2117,13 +2117,13 @@ int ns_parse_query(const uint8_t *query_wire, size_t qsize,
 	// 2) parse the query
 	if ((ret = dnslib_response_parse_query(parsed, query_wire,
 	                                       qsize)) != 0) {
-		log_answer_info("Error while parsing query, "
+		log_answer_info("Error while parsing packet, "
 		                "dnslib error '%s'.\n", dnslib_strerror(ret));
 		//dnslib_response_free(&parsed);
 		return DNSLIB_RCODE_FORMERR;
 	}
 
-	debug_ns("Query parsed.\n");
+	debug_ns("Packet parsed.\n");
 	dnslib_response_dump(parsed);
 	debug_ns("Done\n");
 
@@ -2132,20 +2132,25 @@ int ns_parse_query(const uint8_t *query_wire, size_t qsize,
 	case DNSLIB_OPCODE_QUERY:
 		switch (dnslib_response_qtype(parsed)) {
 		case DNSLIB_RRTYPE_AXFR:
-			*type = DNSLIB_QUERY_AXFR;
+			*type = (dnslib_packet_get_qr(query_wire) == 0)
+			         ? DNSLIB_QUERY_AXFR : DNSLIB_RESPONSE_AXFR;
 			break;
 		case DNSLIB_RRTYPE_IXFR:
-			*type = DNSLIB_QUERY_IXFR;
+			*type = (dnslib_packet_get_qr(query_wire) == 0)
+			         ? DNSLIB_QUERY_IXFR : DNSLIB_RESPONSE_IXFR;
 			break;
 		default:
-			*type = DNSLIB_QUERY_NORMAL;
+			*type = (dnslib_packet_get_qr(query_wire) == 0)
+			         ? DNSLIB_QUERY_NORMAL : DNSLIB_RESPONSE_NORMAL;
 		}
 
 		break;
 	case DNSLIB_OPCODE_NOTIFY:
-		*type = DNSLIB_QUERY_NOTIFY;
+		*type = (dnslib_packet_get_qr(query_wire) == 0)
+		         ? DNSLIB_QUERY_NOTIFY : DNSLIB_RESPONSE_NOTIFY;
 		break;
 	case DNSLIB_OPCODE_UPDATE:
+		assert(dnslib_packet_get_qr(query_wire) == 0);
 		*type = DNSLIB_QUERY_UPDATE;
 		break;
 	default:
