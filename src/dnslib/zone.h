@@ -15,6 +15,7 @@
 #include "dnslib/node.h"
 #include "dnslib/dname.h"
 #include "dnslib/nsec3.h"
+#include "dnslib/dname-table.h"
 #include "common/tree.h"
 #include "dnslib/hash/cuckoo-hash-table.h"
 
@@ -50,6 +51,7 @@ struct dnslib_zone {
 	ck_hash_table_t *table;     /*!< Hash table for holding zone nodes. */
 	uint node_count;
 	dnslib_nsec3_params_t nsec3_params;
+	dnslib_dname_table_t *dname_table;
 };
 
 typedef struct dnslib_zone dnslib_zone_t;

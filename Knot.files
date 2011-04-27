@@ -157,3 +157,5 @@ tests/querytcp.c
 src/zcompile/tests/unittests_zp_main.c
 src/zcompile/tests/zcompile_tests.c
 src/zcompile/zcompile-error.c
+src/dnslib/dname-table.h
+src/dnslib/dname-table.c

@@ -131,6 +131,7 @@ libknot_la_SOURCES =				\
 	dnslib/rdata.c				\
 	dnslib/descriptor.c			\
 	dnslib/nsec3.c				\
+	dnslib/dname-table.c			\
 	dnslib/hash/hash-functions.c			\
 	dnslib/hash/cuckoo-hash-table.c		\
 	dnslib/hash/universal-system.c			\
@@ -156,6 +157,7 @@ libknot_la_SOURCES =				\
 	dnslib/packet.h				\
 	dnslib/debug.h				\
 	dnslib/nsec3.h				\
+	dnslib/dname-table.h			\
 	knot/common.h				\
 	knot/other/log.c				\
 	knot/other/log.h				\
