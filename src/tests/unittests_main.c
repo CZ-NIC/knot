@@ -5,6 +5,7 @@
 // Units to test
 #include "tests/common/slab_tests.h"
 #include "tests/common/skiplist_tests.h"
+#include "tests/common/events_tests.h"
 #include "tests/common/da_tests.h"
 #include "tests/knot/dthreads_tests.h"
 #include "tests/knot/server_tests.h"
@@ -22,6 +23,7 @@ int main(int argc, char *argv[])
 		&slab_tests_api,     //! SLAB allocator unit
 		&skiplist_tests_api, //! Skip list unit
 		&dthreads_tests_api, //! DThreads testing unit
+		&events_tests_api,   //! Events testing unit
 		&da_tests_api,       //! Dynamic array unit
 
 		/* Server parts. */
