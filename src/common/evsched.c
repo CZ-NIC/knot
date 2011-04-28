@@ -3,6 +3,31 @@
 
 #include "common/evsched.h"
 
+/*!
+ * \brief Set event timer to T (now) + dt miliseconds.
+ */
+static void evsched_settimer(event_t *e, int dt)
+{
+	if (!e) {
+		return;
+	}
+
+	/* Get absolute time T. */
+	gettimeofday(&e->tv, 0);
+
+	/* Add number of seconds. */
+	e->tv.tv_sec += dt / 1000;
+
+	/* Add the number of microseconds. */
+	e->tv.tv_usec += (dt % 1000) * 1000;
+
+	/* Check for overflow. */
+	while (e->tv.tv_usec > 999999) {
+		e->tv.tv_sec += 1;
+		e->tv.tv_usec -= 1 * 1000 * 1000;
+	}
+}
+
 evsched_t *evsched_new()
 {
 	evsched_t *s = malloc(sizeof(evsched_t));
@@ -153,7 +178,7 @@ int evsched_schedule(evsched_t *s, event_t *ev)
 	return 0;
 }
 
-event_t* evsched_schedule_cb(evsched_t *s, event_cb_t cb, void *data, int dt_msec)
+event_t* evsched_schedule_cb(evsched_t *s, event_cb_t cb, void *data, int dt)
 {
 	if (!s) {
 		return 0;
@@ -166,20 +191,7 @@ event_t* evsched_schedule_cb(evsched_t *s, event_cb_t cb, void *data, int dt_mse
 
 	e->cb = cb;
 	e->data = data;
-	gettimeofday(&e->tv, 0);
-
-	/* Add number of seconds. */
-	e->tv.tv_sec += dt_msec / 1000;
-
-	/* Add the number of microseconds. */
-	e->tv.tv_usec += (dt_msec % 1000) * 1000;
-
-	/* Check for overflow. */
-	while (e->tv.tv_usec > 999999) {
-		e->tv.tv_sec += 1;
-		e->tv.tv_usec -= 1 * 1000 * 1000;
-	}
-
+	evsched_settimer(e, dt);
 	if (evsched_schedule(s, e) != 0) {
 		evsched_event_free(s, e);
 		e = 0;
@@ -188,7 +200,7 @@ event_t* evsched_schedule_cb(evsched_t *s, event_cb_t cb, void *data, int dt_mse
 	return e;
 }
 
-event_t* evsched_schedule_term(evsched_t *s)
+event_t* evsched_schedule_term(evsched_t *s, int dt)
 {
 	if (!s) {
 		return 0;
@@ -199,7 +211,7 @@ event_t* evsched_schedule_term(evsched_t *s)
 		return 0;
 	}
 
-	gettimeofday(&e->tv, 0);
+	evsched_settimer(e, dt);
 	if (evsched_schedule(s, e) != 0) {
 		evsched_event_free(s, e);
 		e = 0;
