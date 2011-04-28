@@ -204,7 +204,7 @@ int main(int argc, char **argv)
 
 		/* Run event loop. */
 		for(;;) {
-			int ret = evqueue_poll(evqueue(), &emptyset);
+			int ret = evqueue_poll(evqueue(), 0, &emptyset);
 
 			/* Interrupts. */
 			/*! \todo More robust way to exit evloop.

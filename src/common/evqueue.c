@@ -2,9 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-//#include "knot/common.h"
 #include "common/evqueue.h"
-//#include "knot/other/error.h"
 
 /*! \brief Singleton application-wide event queue. */
 evqueue_t *s_evqueue = 0;
@@ -24,6 +22,11 @@ evqueue_t *evqueue_new()
 
 void evqueue_free(evqueue_t **q)
 {
+	/* Check. */
+	if (!q) {
+		return;
+	}
+
 	/* Invalidate pointer to queue. */
 	evqueue_t *eq = *q;
 	*q = 0;
@@ -34,11 +37,12 @@ void evqueue_free(evqueue_t **q)
 	free(eq);
 }
 
-int evqueue_poll(evqueue_t *q, const sigset_t *sigmask)
+int evqueue_poll(evqueue_t *q, const struct timespec *ts,
+		 const sigset_t *sigmask)
 {
 	/* Check. */
 	if (!q) {
-		return /*KNOT_EINVAL*/ -1;
+		return -1;
 	}
 
 	/* Prepare fd set. */
@@ -48,9 +52,8 @@ int evqueue_poll(evqueue_t *q, const sigset_t *sigmask)
 
 	/* Wait for events. */
 	int ret = pselect(q->fds[EVQUEUE_READFD] + 1, &rfds,
-			  0, 0, 0, sigmask);
+			  0, 0, ts, sigmask);
 	if (ret < 0) {
-//		return knot_map_errno(EINTR, EINVAL, ENOMEM);
 		return -1;
 	}
 
@@ -59,46 +62,51 @@ int evqueue_poll(evqueue_t *q, const sigset_t *sigmask)
 
 int evqueue_read(evqueue_t *q, void *dst, size_t len)
 {
-	/* Read data. */
+	if (!q || !dst || len == 0) {
+		return;
+	}
+
 	return read(q->fds[EVQUEUE_READFD], dst, len);
 }
 
-int evqueue_write(evqueue_t *q, const void *dst, size_t len)
+int evqueue_write(evqueue_t *q, const void *src, size_t len)
 {
-	return write(q->fds[EVQUEUE_WRITEFD], dst, len);
+	if (!q || !src || len == 0) {
+		return;
+	}
+
+	return write(q->fds[EVQUEUE_WRITEFD], src, len);
 }
 
 int evqueue_get(evqueue_t *q, event_t *ev)
 {
 	/* Check. */
 	if (!q || !ev) {
-		return /*KNOT_EINVAL*/ -1;
+		return -1;
 	}
 
 	/* Read data. */
 	int ret = evqueue_read(q, ev, sizeof(event_t));
 	if (ret != sizeof(event_t)) {
-//		return knot_map_errno(EINVAL, EINTR, EAGAIN);
 		return -1;
 	}
 
-	return /*KNOT_EOK*/ 0;
+	return 0;
 }
 
 int evqueue_add(evqueue_t *q, const event_t *ev)
 {
 	/* Check. */
 	if (!q || !ev) {
-		return /*KNOT_EINVAL*/ -1;
+		return -1;
 	}
 
 	/* Write data. */
 	int ret = evqueue_write(q, ev, sizeof(event_t));
 	if (ret != sizeof(event_t)) {
-//		return knot_map_errno(EINVAL, EINTR, EAGAIN);
 		return -1;
 	}
 
-	return /*KNOT_EOK*/ 0;
+	return 0;
 }
 
