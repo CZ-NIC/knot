@@ -27,6 +27,7 @@
 #include "knot/server/socket.h"
 #include "knot/server/dthreads.h"
 #include "dnslib/zonedb.h"
+#include "common/evsched.h"
 #include "common/lists.h"
 
 /* Forwad declarations. */
@@ -92,6 +93,9 @@ typedef struct server_t {
 
 	/*! \brief XFR handler. */
 	xfrhandler_t *xfr_h;
+
+	/*! \brief Event scheduler. */
+	evsched_t *sched;
 
 	/*! \brief I/O handlers list. */
 	list handlers;

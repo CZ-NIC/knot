@@ -134,11 +134,12 @@ event_t* evsched_next(evsched_t *s);
  *
  * \param s Event scheduler.
  * \param ev Prepared event.
+ * \param dt Time difference in milliseconds from now (dt is relative).
  *
  * \retval 0 on success.
  * \retval <0 on error.
  */
-int evsched_schedule(evsched_t *s, event_t *ev);
+int evsched_schedule(evsched_t *s, event_t *ev, int dt);
 
 /*!
  * \brief Schedule callback event.
@@ -178,6 +179,23 @@ event_t* evsched_schedule_term(evsched_t *s, int dt);
  * \retval <0 on error.
  */
 int evsched_cancel(evsched_t *s, event_t *ev);
+
+/* Singleton event scheduler pointer. */
+extern evsched_t *s_evsched;
+
+/*!
+ * \brief Event scheduler singleton.
+ */
+static inline evsched_t *evsched() {
+	return s_evsched;
+}
+
+/*!
+ * \brief Set event scheduler singleton.
+ */
+static inline void evsched_set(evsched_t *s) {
+	s_evsched = s;
+}
 
 
 #endif /* _KNOT_COMMON_EVSCHED_H_ */
