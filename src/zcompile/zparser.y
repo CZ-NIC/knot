@@ -149,6 +149,11 @@ line:	NL
 
 		}
 
+		if (save_dnames_in_table(parser->dname_table,
+		                         parser->current_rrset) != 0) {
+					 /* \todo */
+		}
+
 		int ret;
 		if ((ret = process_rr()) != 0) {
 			/* Should it fail? */
@@ -159,6 +164,7 @@ line:	NL
 				error_to_str(knot_zcompile_error_msgs, ret));
 			free(tmp_dname_str);
 			if (ret == KNOT_ZCOMPILE_EBADSOA) {
+				/* \todo this will crash! */
 				dnslib_rdata_free(&tmp_rdata);
 				dnslib_rrset_deep_free(&(parser->current_rrset),
 						       1, 1);
@@ -1355,6 +1361,11 @@ zparser_create()
 
 	result->current_rrset = dnslib_rrset_new(NULL, 0, 0, 0);
 	result->current_rrset->rdata = NULL;
+
+	result->dname_table = dnslib_dname_table_new();
+	if (result->dname_table == NULL) {
+		return NULL;
+	}
 
 	result->rrsig_orphans = NULL;
 
