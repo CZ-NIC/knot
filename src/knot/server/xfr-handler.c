@@ -96,7 +96,7 @@ int xfr_master(dthread_t *thread)
 	for (;;) {
 
 		/* Poll new events. */
-		int ret = evqueue_poll(data->q, 0);
+		int ret = evqueue_poll(data->q, 0, 0);
 
 		/* Cancellation point. */
 		if (dt_is_cancelled(thread)) {
