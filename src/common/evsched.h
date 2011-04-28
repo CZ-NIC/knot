@@ -5,6 +5,45 @@
  *
  * \brief Event scheduler.
  *
+ * Scheduler works with the same event_t type as event queue.
+ * It is also thread-safe so the scheduler can run in a separate thread
+ * while events can be enqueued from different threads.
+ *
+ * Guideline is, that the scheduler run loop should exit with
+ * a special event type EVSCHED_TERM.
+ *
+ * Example usage:
+ * \code
+ * evsched_t *s = evsched_new();
+ *
+ * // Schedule myfunc() after 1000ms
+ * evsched_schedule_cb(s, myfunc, data, 1000)
+ *
+ * // Schedule termination event after 1500ms
+ * evsched_schedule_term(s, 1500);
+ *
+ * // Event scheduler main loop
+ * while (1) {
+ *    // Wait for next scheduled event
+ *    event_t *ev = evsched_next();
+ *
+ *    // Break on termination event
+ *    if (ev->type == EVSCHED_TERM) {
+ *       evsched_event_free(s, ev);
+ *       break;
+ *    }
+ *
+ *    // Execute and discard event
+ *    if (ev->cb) {
+ *       ev->cb(ev);
+ *    }
+ *    evsched_event_free(s, ev); // Free executed event
+ * }
+ *
+ * // Delete event scheduler
+ * evsched_delete(s);
+ * \endcode
+ *
  * \addtogroup common_lib
  * @{
  */
@@ -109,12 +148,12 @@ int evsched_schedule(evsched_t *s, event_t *ev);
  * \param s Event scheduler.
  * \param cb Callback handler.
  * \param data Data for callback.
- * \param dt_msec Time difference in milliseconds from now.
+ * \param dt Time difference in milliseconds from now (dt is relative).
  *
  * \retval Event instance on success.
  * \retval NULL on error.
  */
-event_t* evsched_schedule_cb(evsched_t *s, event_cb_t cb, void *data, int dt_msec);
+event_t* evsched_schedule_cb(evsched_t *s, event_cb_t cb, void *data, int dt);
 
 /*!
  * \brief Schedule termination event.
@@ -122,11 +161,12 @@ event_t* evsched_schedule_cb(evsched_t *s, event_cb_t cb, void *data, int dt_mse
  * Special action for scheduler termination.
  *
  * \param s Event scheduler.
+ * \param dt Time difference in milliseconds from now (dt is relative).
  *
  * \retval Event instance on success.
  * \retval NULL on error.
  */
-event_t* evsched_schedule_term(evsched_t *s);
+event_t* evsched_schedule_term(evsched_t *s, int dt);
 
 /*!
  * \brief Cancel a scheduled event.
