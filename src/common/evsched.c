@@ -28,6 +28,9 @@ static void evsched_settimer(event_t *e, int dt)
 	}
 }
 
+/*! \brief Singleton application-wide event scheduler. */
+evsched_t *s_evsched = 0;
+
 evsched_t *evsched_new()
 {
 	evsched_t *s = malloc(sizeof(evsched_t));
@@ -143,11 +146,14 @@ event_t* evsched_next(evsched_t *s)
 
 }
 
-int evsched_schedule(evsched_t *s, event_t *ev)
+int evsched_schedule(evsched_t *s, event_t *ev, int dt)
 {
-	if (!s || !ev) {
+	if (!s || !ev || dt < 0) {
 		return -1;
 	}
+
+	/* Update event timer. */
+	evsched_settimer(ev, dt);
 
 	/* Lock calendar. */
 	pthread_mutex_lock(&s->mx);
@@ -184,15 +190,16 @@ event_t* evsched_schedule_cb(evsched_t *s, event_cb_t cb, void *data, int dt)
 		return 0;
 	}
 
+	/* Create event. */
 	event_t *e = evsched_event_new(s, EVSCHED_CB);
 	if (!e) {
 		return 0;
 	}
-
 	e->cb = cb;
 	e->data = data;
-	evsched_settimer(e, dt);
-	if (evsched_schedule(s, e) != 0) {
+
+	/* Schedule. */
+	if (evsched_schedule(s, e, dt) != 0) {
 		evsched_event_free(s, e);
 		e = 0;
 	}
@@ -206,13 +213,14 @@ event_t* evsched_schedule_term(evsched_t *s, int dt)
 		return 0;
 	}
 
+	/* Create event. */
 	event_t *e = evsched_event_new(s, EVSCHED_TERM);
 	if (!e) {
 		return 0;
 	}
 
-	evsched_settimer(e, dt);
-	if (evsched_schedule(s, e) != 0) {
+	/* Schedule. */
+	if (evsched_schedule(s, e, dt) != 0) {
 		evsched_event_free(s, e);
 		e = 0;
 	}
@@ -238,3 +246,4 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 
 	return 0;
 }
+

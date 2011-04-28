@@ -22,6 +22,47 @@
 #include "knot/conf/conf.h"
 #include "knot/server/zones.h"
 
+/*! \brief Event scheduler loop. */
+static int evsched_run(dthread_t *thread)
+{
+	iohandler_t *sched_h = (iohandler_t *)thread->data;
+	evsched_t *s = (evsched_t*)sched_h->data;
+	if (!s) {
+		return KNOT_EINVAL;
+	}
+
+	/* Run event loop. */
+	event_t *ev = 0;
+	while((ev = evsched_next(s))) {
+
+		/* Error. */
+		if (!ev) {
+			return KNOT_ERROR;
+		}
+
+		/* Process termination event. */
+		if (ev->type == EVSCHED_TERM) {
+			evsched_event_free(s, ev);
+			break;
+		}
+
+		/* Process event. */
+		if (ev->type == EVSCHED_CB && ev->cb) {
+			ev->caller = s;
+			ev->cb(ev);
+		} else {
+			evsched_event_free(s, ev);
+		}
+
+		/* Check for thread cancellation. */
+		if (dt_is_cancelled(thread)) {
+			break;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
 /*! \brief List item for generic pointers. */
 typedef struct pnode_t {
 	struct node *next, *prev; /* Keep the ordering for lib/lists.h */
@@ -330,6 +371,13 @@ server_t *server_create()
 	server->ifaces = malloc(sizeof(list));
 	init_list(server->ifaces);
 
+	// Create event scheduler
+	debug_server("Creating event scheduler...\n");
+	server->sched = evsched_new();
+	dt_unit_t *unit = dt_create_coherent(1, evsched_run, 0);
+	iohandler_t *h = server_create_handler(server, -1, unit);
+	h->data = server->sched;
+
 	// Create name server
 	debug_server("Creating Name Server structure...\n");
 	server->nameserver = ns_create();
@@ -413,8 +461,10 @@ int server_remove_handler(server_t *server, iohandler_t *h)
 	}
 
 	// Close socket
-	socket_close(h->fd);
-	h->fd = -1;
+	if (h->fd >= 0) {
+		socket_close(h->fd);
+		h->fd = -1;
+	}
 
 	// Update interface
 	if (h->iface) {
@@ -520,6 +570,9 @@ int server_wait(server_t *server)
 
 void server_stop(server_t *server)
 {
+	/* Send termination event. */
+	evsched_schedule_term(server->sched, 0);
+
 	/* Lock RCU. */
 	rcu_read_lock();
 
@@ -558,6 +611,9 @@ void server_destroy(server_t **server)
 
 	// Free XFR master
 	xfr_free((*server)->xfr_h);
+
+	// Delete event scheduler
+	evsched_delete(&(*server)->sched);
 
 	stat_static_gath_free();
 	ns_destroy(&(*server)->nameserver);
