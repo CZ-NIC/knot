@@ -669,6 +669,89 @@ static void cleanup_id_array(dnslib_dname_t **id_array,
 	free(id_array);
 }
 
+dnslib_dname_t *read_dname_with_id(FILE *f)
+{
+	dnslib_dname_t *ret = dnslib_dname_new();
+	CHECK_ALLOC_LOG(ret, DNSLIB_ENOMEM);
+	/* Read size of dname. */
+	if (!fread_safe(&ret->size, sizeof(ret->size), 1, f)) {
+		return NULL;
+	}
+	assert(ret->size <= DNAME_MAX_WIRE_LENGTH);
+
+	/* Read wireformat of dname. */
+	ret->name = malloc(sizeof(uint8_t) * ret->size);
+	if (ret->name == NULL) {
+		ERR_ALLOC_FAILED;
+		free(ret);
+		return NULL;
+	}
+
+	if (!fread_safe(&ret->size, sizeof(ret->size), 1, f)) {
+		free(ret->name);
+		free(ret);
+		return NULL;
+	}
+
+	/* Read labels. */
+	if (!fread_safe(&ret->label_count, sizeof(ret->label_count), 1, f)) {
+		free(ret->name);
+		free(ret);
+		return NULL;
+	}
+
+	ret->labels = malloc(sizeof(uint8_t) * ret->label_count);
+	if (ret->labels == NULL) {
+		ERR_ALLOC_FAILED;
+		free(ret->name);
+		free(ret);
+		return NULL;
+	}
+
+	/* Read ID. */
+	if (!fread_safe(&ret->id, sizeof(ret->id), 1, f)) {
+		free(ret->name);
+		free(ret->labels);
+		free(ret);
+		return NULL;
+	}
+
+	return ret;
+}
+
+static dnslib_dname_table_t *create_dname_table(FILE *f)
+{
+	if (f == NULL ) {
+		return NULL;
+	}
+
+	uint max_id = 0;
+
+	if (!fread_safe(&max_id, sizeof(max_id), 1, f)) {
+		return NULL;
+	}
+
+	dnslib_dname_table_t *dname_table = dnslib_dname_table_new();
+	if (dname_table == NULL) {
+		return NULL;
+	}
+
+	/* Create nodes containing dnames. */
+	for (uint i = 1; i < max_id; i++) {
+		dnslib_dname_t *loaded_dname = read_dname_with_id(f);
+		if (loaded_dname == NULL) {
+			dnslib_dname_table_deep_free(&dname_table);
+			return NULL;
+		}
+		if (dnslib_dname_table_add_dname(dname_table,
+		                                 loaded_dname) != DNSLIB_EOK) {
+
+		}
+	}
+
+	return dname_table;
+}
+
 dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 {
 	if (!loader) {
@@ -679,10 +762,14 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 
 	dnslib_node_t *tmp_node;
 
+	/* load dname table */
+	const dnslib_dname_table_t *dname_table = create_dname_table(f);
+	if (dname_table == NULL) {
+		return NULL;
+	}
+
 	uint node_count;
-
 	uint nsec3_node_count;
-
 	uint auth_node_count;
 
 	if (!fread_safe(&node_count, sizeof(node_count), 1, f)) {
@@ -707,6 +794,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 
 	debug_dnslib_zload("loading %u nodes\n", node_count);
 
+	/*!< \todo malloc checks! */
 	for (uint i = 1; i < (node_count + nsec3_node_count + 1); i++) {
 		id_array[i] = dnslib_dname_new();
 		id_array[i]->node = dnslib_node_new(NULL, NULL);
