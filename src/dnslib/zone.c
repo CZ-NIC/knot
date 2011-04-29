@@ -92,7 +92,8 @@ static void dnslib_zone_destroy_node_owner_from_tree(dnslib_node_t *node,
                                                      void *data)
 {
 	UNUSED(data);
-	dnslib_node_free(&node, 1);
+	/*!< \todo change completely! */
+	dnslib_node_free(&node, 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -115,6 +116,7 @@ static void dnslib_zone_destroy_node_owner_from_tree(dnslib_node_t *node,
 static void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata,
                                           dnslib_zone_t *zone, int pos)
 {
+	return;
 	const dnslib_rdata_item_t *dname_item
 		= dnslib_rdata_item(rdata, pos);
 
@@ -157,6 +159,7 @@ static void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata,
 static void dnslib_zone_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
                                               dnslib_zone_t *zone)
 {
+	return;
 	uint16_t type = dnslib_rrset_type(rrset);
 
 	dnslib_rrtype_descriptor_t *desc =
@@ -221,6 +224,7 @@ static void dnslib_zone_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
  */
 static void dnslib_zone_adjust_rrsets(dnslib_node_t *node, dnslib_zone_t *zone)
 {
+	return;
 	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
 	short count = dnslib_node_rrset_count(node);
 
@@ -564,13 +568,7 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count)
 		return NULL;
 	}
 
-	zone->dname_table = dnslib_dname_table_new();
-	if (zone->dname_table == NULL) {
-		ERR_ALLOC_FAILED;
-		free(zone->tree);
-		free(zone->nsec3_nodes);
-		free(zone);
-	}
+	zone->dname_table = NULL;
 
 	zone->node_count = node_count;
 
@@ -1150,6 +1148,8 @@ void dnslib_zone_deep_free(dnslib_zone_t **zone, int free_rdata_dnames)
 
 	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
 	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
+
+	dnslib_dname_table_deep_free(&(*zone)->dname_table);
 
 	dnslib_zone_free(zone);
 }

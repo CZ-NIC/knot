@@ -1569,7 +1569,8 @@ static void dnslib_labels_dump_binary(dnslib_dname_t *dname, FILE *f)
  */
 static void dnslib_dname_dump_binary(dnslib_dname_t *dname, FILE *f)
 {
-	fwrite(&(dname->size), sizeof(uint8_t), 1, f);
+	fwrite(&(dname->size), sizeof(dname->size), 1, f);
+	printf("saving size: %d\n", dname->size);
 	fwrite(dname->name, sizeof(uint8_t), dname->size, f);
 	debug_dnslib_zdump("dname size: %d\n", dname->size);
 	dnslib_labels_dump_binary(dname, f);
@@ -1742,11 +1743,8 @@ static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, void *data)
 static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 {
 	arg_t *args = (arg_t *)data;
-
 	dnslib_zone_t *zone = (dnslib_zone_t *)args->arg3;
-
 	FILE *f = (FILE *)args->arg1;
-
 
 	node_count++;
 	/* first write dname */
@@ -1758,6 +1756,9 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 	/* Write owner ID. */
 	fwrite(&node->owner->id, sizeof(node->owner->id), 1, f);
+	printf("ID write: %d (%s)\n", node->owner->id,
+	       dnslib_dname_to_str(node->owner));
+	getchar();
 
 	/* TODO investigate whether this is necessary */
 	if (node->parent != NULL) {
@@ -1914,9 +1915,9 @@ static void log_cyclic_errors_in_zone(err_handler_t *handler,
  * \retval > 0 if succesfull.
  * \retval 0 if failed.
  */
-static inline int fwrite_safe(void *dst, size_t size, size_t n, FILE *fp)
+static inline int fwrite_safe(void *src, size_t size, size_t n, FILE *fp)
 {
-	int rc = fwrite(dst, size, n, fp);
+	int rc = fwrite(src, size, n, fp);
 	if (rc != n) {
 		fprintf(stderr, "fwrite: invalid write %d (expected %zu)\n", rc,
 			n);
@@ -1924,12 +1925,14 @@ static inline int fwrite_safe(void *dst, size_t size, size_t n, FILE *fp)
 
 	return rc == n;
 }
+
 static int dump_dname_with_id(const dnslib_dname_t *dname, FILE *f)
 {
+	fwrite(&dname->id, sizeof(dname->id), 1, f);
 	dnslib_dname_dump_binary(dname, f);
-	if (!fwrite_safe(&dname->id, sizeof(dname->id), 1, f)) {
+/*	if (!fwrite_safe(&dname->id, sizeof(dname->id), 1, f)) {
 		return DNSLIB_ERROR;
-	}
+	} */
 
 	return DNSLIB_EOK;
 }
@@ -2025,6 +2028,20 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	fwrite(&zone->node_count,
 	       sizeof(zone->node_count),
 	       1, f);
+
+	/* Write total number of dnames */
+	assert(zone->dname_table);
+	fwrite(&(zone->dname_table->id_counter),
+	       sizeof(zone->dname_table->id_counter), 1, f);
+
+	/* Write dname table. */
+	if (dnslib_dump_dname_table(zone->dname_table, f) != DNSLIB_EOK) {
+		return DNSLIB_ERROR;
+	}
+
+	/* test value */
+	int a = 5;
+	fwrite(&a, sizeof(a), 1, f);
 
 	arg_t arguments;
 

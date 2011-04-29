@@ -76,6 +76,7 @@ int dnslib_dname_table_add_dname(dnslib_dname_table_t *table,
 	node->avl.avl_right = NULL;
 
 	node->dname->id = table->id_counter++;
+	assert(node->dname->id != 0);
 
 	TREE_INSERT(table->tree, dname_table_node, avl, node);
 	return DNSLIB_EOK;
