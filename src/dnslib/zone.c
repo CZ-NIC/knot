@@ -289,6 +289,9 @@ DEBUG_DNSLIB_ZONE(
 
 	// NSEC3 node
 	assert(node->owner);
+	if (node->owner->node == NULL) {
+		node->owner->node = node;
+	}
 	const dnslib_node_t *prev;
 	int match = dnslib_zone_find_nsec3_for_name(zone, node->owner,
 						    &node->nsec3_node, &prev);
