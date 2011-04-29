@@ -1774,7 +1774,7 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 	/* TODO investigate whether this is necessary */
 	if (node->parent != NULL) {
-		fwrite(&(node->parent->owner->node), sizeof(void *), 1, f);
+		fwrite(&(node->parent->owner->id), sizeof(uint), 1, f);
 	} else {
 		fwrite(&(node->parent), sizeof(void *), 1, f);
 	}
