@@ -49,12 +49,6 @@
 #define debug_zp(msg...)
 #endif
 
-/* Eliminate compiler warning with unused parameters. */
-#define UNUSED(param) (param) = (param)
-
-#define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d\n", \
-				  __FILE__, __LINE__)
-
 /*!
  * \brief Return data of raw data item.
  *
@@ -1485,6 +1479,12 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 	} else {
 		while ((tmp_node = node_get_func(zone,
 				    chopped)) == NULL) {
+			/* Adding new dname to zone - add to table as well. */
+			if (dnslib_dname_table_add_dname(parser->dname_table,
+			                                 chopped) != 0) {
+				/* TODO Cleanup? EVERYWHERE */
+				return NULL;
+			}
 			tmp_node = dnslib_node_new(chopped, NULL);
 			last_node->parent = tmp_node;
 
@@ -1493,8 +1493,6 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 				return NULL;
 			}
 
-			chopped->node = (dnslib_node_t *)parser->id;
-			parser->id++;
 			last_node = tmp_node;
 			chopped = dnslib_dname_left_chop(chopped);
 		}
@@ -1526,8 +1524,10 @@ int process_rr(void)
 	dnslib_zone_t *zone = parser->current_zone;
 	dnslib_rrset_t *current_rrset = parser->current_rrset;
 	dnslib_rrset_t *rrset;
-	dnslib_rrtype_descriptor_t *descriptor
-	= dnslib_rrtype_descriptor_by_type(current_rrset->type);
+	dnslib_rrtype_descriptor_t *descriptor =
+		dnslib_rrtype_descriptor_by_type(current_rrset->type);
+
+//	printf("%s\n", dnslib_dname_to_str(parser->current_rrset->owner));
 
 	assert(current_rrset->rdata->count == descriptor->length);
 
@@ -1670,28 +1670,8 @@ int process_rr(void)
 					node_get_func)) == NULL) {
 			return KNOT_ZCOMPILE_EBADNODE;
 		}
-	} else {
-		/* TODO I bet this can be simplified a lot */
-		if (current_rrset->owner != node->owner) {
-			if (parser->last_node &&
-			    parser->last_node->owner != current_rrset->owner &&
-			    dnslib_dname_compare(parser->last_node->owner,
-						 current_rrset->owner) != 0 &&
-			    node->rrset_count > 0) {
-				/* This last case in if is weird - it should
-				 * never happen, but it does, occasionally */
-				/* and if it does, it is sign of a leak smwh */
-				dnslib_dname_free(&(current_rrset->owner));
-			}
-			current_rrset->owner = node->owner;
-		}
-		assert(current_rrset->owner == node->owner);
 	}
 
-	if (node->owner->node == NULL) {
-		node->owner->node = (dnslib_node_t *)parser->id;
-		parser->id++;
-	}
 	rrset = dnslib_node_get_rrset(node, current_rrset->type);
 	if (!rrset) {
 		rrset = dnslib_rrset_new(current_rrset->owner,
@@ -1844,11 +1824,14 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	debug_zp("rdata adjusted\n");
 
+	parser->current_zone->dname_table = parser->dname_table;
+
 	dnslib_zdump_binary(parser->current_zone, outfile, semantic_checks,
 	                    zonefile);
 
+
 	/* This is *almost* unnecessary */
-	dnslib_zone_deep_free(&(parser->current_zone), 1);
+//	dnslib_zone_deep_free(&(parser->current_zone), 0);
 
 	fclose(yyin);
 
@@ -1859,6 +1842,72 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	zparser_free();
 
 	return totalerrors;
+}
+
+static void save_replace_dnames_in_rdata(dnslib_dname_table_t *table,
+                                         dnslib_rdata_t *rdata, uint16_t type)
+{
+	assert(rdata && rdata->items);
+	const dnslib_rrtype_descriptor_t *desc =
+		dnslib_rrtype_descriptor_by_type(type);
+	assert(desc);
+
+	for (int i = 0; i < rdata->count; i++) {
+		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+		    desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
+		    desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME) {
+			/* See if dname is not in the table already. */
+			dnslib_dname_t *found_dname = NULL;
+			dnslib_dname_t *searched_dname = rdata->items[i].dname;
+			if ((found_dname =
+			     	dnslib_dname_table_find_dname(table,
+			     	searched_dname)) != NULL) {
+				/* Delete and replace dname. */
+				dnslib_dname_free(&rdata->items[i].dname);
+				rdata->items[i].dname = found_dname;
+			} else {
+				/* Insert dname in the table. */
+				dnslib_dname_table_add_dname(table,
+				                             searched_dname);
+			}
+		}
+	}
+}
+
+int save_dnames_in_table(dnslib_dname_table_t *table,
+                         dnslib_rrset_t *rrset)
+{
+	if (rrset == NULL) {
+		return KNOT_ZCOMPILE_EINVAL;
+	}
+	/* Check and possibly delete the owner first */
+	dnslib_dname_t *found_dname = NULL;
+	if ((found_dname =
+	     	dnslib_dname_table_find_dname(table, rrset->owner)) != NULL &&
+	    found_dname != rrset->owner) {
+//		dnslib_dname_free(&rrset->owner);
+		/* owner is now a reference from the table */
+		rrset->owner = found_dname;
+	} else if (found_dname != rrset->owner) {
+		/* Insert the dname in the table. */
+		if (dnslib_dname_table_add_dname(table, rrset->owner) != 0) {
+			return KNOT_ZCOMPILE_ENOMEM;
+		}
+	}
+
+	dnslib_rdata_t *tmp_rdata = dnslib_rrset_get_rdata(rrset);
+
+	while (tmp_rdata->next != dnslib_rrset_rdata(rrset)) {
+		save_replace_dnames_in_rdata(table, tmp_rdata,
+		                             dnslib_rrset_type(rrset));
+	}
+
+	save_replace_dnames_in_rdata(table, tmp_rdata,
+	                             dnslib_rrset_type(rrset));
+
+	assert(rrset->owner != NULL);
+
+	return KNOT_ZCOMPILE_EOK;
 }
 
 /*! @} */
