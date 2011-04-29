@@ -496,9 +496,10 @@ static void dnslib_zone_save_encloser_rdata_item(dnslib_rdata_t *rdata,
 			dnslib_rdata_item_t *item =
 				dnslib_rdata_get_item(rdata, pos);
 			assert(item->dname != NULL);
-			assert(item->dname->node == NULL);
-			skip_insert(list, (void *)item->dname,
-				    (void *)closest_encloser->owner, NULL);
+//			assert(item->dname->node == NULL);
+//			skip_insert(list, (void *)item->dname,
+//				    (void *)closest_encloser->owner, NULL);
+			item->dname->node = closest_encloser->owner->node;
 		}
 	}
 }
@@ -1575,19 +1576,6 @@ static void dnslib_dname_dump_binary(dnslib_dname_t *dname, FILE *f)
 }
 
 /*!
- * \brief Finds wildcard for dname in list of closest enclosers.
- *
- * \param dname Dname to find wildcard for.
- * \param list Skip list of closest enclosers.
- * \return Found wildcard or NULL.
- */
-static dnslib_dname_t *dnslib_find_wildcard(dnslib_dname_t *dname,
-					    skip_list_t *list)
-{
-	return (dnslib_dname_t *)skip_find(list, (void *)dname);
-}
-
-/*!
  * \brief Dumps given rdata in binary format to given file.
  *
  * \param rdata Rdata to be dumped.
@@ -1618,34 +1606,21 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 			assert(rdata->items[i].dname != NULL);
 			dnslib_dname_t *wildcard = NULL;
 
-			if (rdata->items[i].dname->node == NULL) {
-				wildcard = dnslib_find_wildcard(
-					rdata->items[i].dname, list);
-DEBUG_DNSLIB_ZDUMP(
-				char *name = dnslib_dname_to_str(
-						  rdata->items[i].dname);
-				debug_dnslib_zdump("Not in the zone: %s\n",
-				       name);
-				free(name);
-);
+			if (rdata->items[i].dname->node != NULL) {
+				wildcard = rdata->items[i].dname->node->owner;
+			}
+			/* Write ID. */
+			fwrite(&(rdata->items[i].dname->id),
+			       sizeof(void *), 1, f);
 
-				fwrite((uint8_t *)"\0", sizeof(uint8_t), 1, f);
-				dnslib_dname_dump_binary(rdata->items[i].dname,
-							 f);
-				if (wildcard) {
-					fwrite((uint8_t *)"\1",
-					       sizeof(uint8_t), 1, f);
-					fwrite(&wildcard->node,
-					       sizeof(void *), 1, f);
-				} else {
-					fwrite((uint8_t *)"\0", sizeof(uint8_t),
-					       1, f);
-				}
-			} else {
-				debug_dnslib_zdump("In the zone\n");
-				fwrite((uint8_t *)"\1", sizeof(uint8_t), 1, f);
-				fwrite(&(rdata->items[i].dname->node),
+			if (wildcard) {
+				fwrite((uint8_t *)"\1",
+				       sizeof(uint8_t), 1, f);
+				fwrite(&wildcard->id,
 				       sizeof(void *), 1, f);
+			} else {
+				fwrite((uint8_t *)"\0", sizeof(uint8_t),
+				       1, f);
 			}
 
 		} else {
@@ -1654,7 +1629,7 @@ DEBUG_DNSLIB_ZDUMP(
 			       rdata->items[i].raw_data[0] + 2, f);
 
 			debug_dnslib_zdump("Written %d long raw data\n",
-				 rdata->items[i].raw_data[0]);
+			                   rdata->items[i].raw_data[0]);
 		}
 	}
 }
@@ -1781,11 +1756,8 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 		zone->node_count++;
 	}
 
-	dnslib_dname_dump_binary(node->owner, f);
-
-	fwrite(&(node->owner->node), sizeof(void *), 1, f);
-
-	debug_dnslib_zdump("Written id: %p\n", node->owner->node);
+	/* Write owner ID. */
+	fwrite(&node->owner->id, sizeof(node->owner->id), 1, f);
 
 	/* TODO investigate whether this is necessary */
 	if (node->parent != NULL) {
@@ -1929,6 +1901,54 @@ static void log_cyclic_errors_in_zone(err_handler_t *handler,
 			}
 		}
 	}
+}
+
+/*!
+ * \brief Safe wrapper around fwrite.
+ *
+ * \param dst Destination pointer.
+ * \param size Size of element to be written.
+ * \param n Number of elements to be written.
+ * \param fp File to write to.
+ *
+ * \retval > 0 if succesfull.
+ * \retval 0 if failed.
+ */
+static inline int fwrite_safe(void *dst, size_t size, size_t n, FILE *fp)
+{
+	int rc = fwrite(dst, size, n, fp);
+	if (rc != n) {
+		fprintf(stderr, "fwrite: invalid write %d (expected %zu)\n", rc,
+			n);
+	}
+
+	return rc == n;
+}
+static int dump_dname_with_id(const dnslib_dname_t *dname, FILE *f)
+{
+	dnslib_dname_dump_binary(dname, f);
+	if (!fwrite_safe(&dname->id, sizeof(dname->id), 1, f)) {
+		return DNSLIB_ERROR;
+	}
+
+	return DNSLIB_EOK;
+}
+
+static int dump_dname_from_tree(const struct dname_table_node *node,
+                                void *data)
+{
+	FILE *f = (FILE *)data;
+	return dump_dname_with_id(node->dname, f);
+}
+
+static int dnslib_dump_dname_table(const dnslib_dname_table_t *dname_table,
+                                   FILE *f)
+{
+	/* Go through the tree and dump each dname along with its ID. */
+	TREE_FORWARD_APPLY(dname_table->tree, dname_table_node, avl,
+	                   dump_dname_from_tree, (void *)f);
+
+	return DNSLIB_EOK;
 }
 
 int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
