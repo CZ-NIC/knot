@@ -139,10 +139,16 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 
 			/* TODO maybe this does not need to be stored this big*/
 
-			uint dname_id;
-			uint8_t has_wildcard;
+			uint dname_id = 0;
+			uint8_t has_wildcard = 0;
+			uint8_t in_the_zone = 0;
 
 			if(!fread_safe(&dname_id, sizeof(void *), 1, f)) {
+				load_rdata_purge(rdata, items, i, type);
+				return NULL;
+			}
+
+			if(!fread_safe(&in_the_zone, sizeof(uint8_t), 1, f)) {
 				load_rdata_purge(rdata, items, i, type);
 				return NULL;
 			}
@@ -155,8 +161,6 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 				return NULL;
 			}
 
-			dname_id = 0;
-
 			if (has_wildcard) {
 				if(!fread_safe(&dname_id, sizeof(void *),
 				               1, f)) {
@@ -164,12 +168,17 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 					                 i, type);
 					return NULL;
 				}
+				printf("%d %p\n", dname_id, id_array[dname_id]);
 				items[i].dname->node =
 				                id_array[dname_id]->node;
-			} else { /* destroy the node */
-//				dnslib_node_free(&items[i].dname->node,
-//				                 0);
+			} else if (!in_the_zone) { /* destroy the node */
 
+				printf("UID: %d %s %p\n", dname_id, dnslib_dname_to_str(id_array[dname_id]),
+				       id_array[dname_id]->node);
+				if (id_array[dname_id]->node != NULL) {
+					dnslib_node_free(&id_array[dname_id]->
+					                 node, 0);
+				}
 				/* Also sets node to NULL! */
 			}
 			assert(items[i].dname);

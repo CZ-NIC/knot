@@ -1611,8 +1611,20 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 				wildcard = rdata->items[i].dname->node->owner;
 			}
 			/* Write ID. */
+			assert(rdata->items[i].dname->id != 0);
 			fwrite(&(rdata->items[i].dname->id),
-			       sizeof(void *), 1, f);
+			       sizeof(rdata->items[i].dname->id), 1, f);
+
+			/* Write in the zone bit */
+			if (rdata->items[i].dname->node != NULL) {
+				fwrite((uint8_t *)"\1",
+				       sizeof(uint8_t), 1, f);
+			} else {
+				printf("NOT IN THE ZONE: %s\n",
+				       dnslib_dname_to_str(rdata->items[i].dname));
+				fwrite((uint8_t *)"\0", sizeof(uint8_t),
+				       1, f);
+			}
 
 			if (wildcard) {
 				fwrite((uint8_t *)"\1",
