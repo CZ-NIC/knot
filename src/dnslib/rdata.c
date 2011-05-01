@@ -272,11 +272,7 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
 		    || desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
 		    || desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME ) {
 			if (((*rdata)->items[i].dname != NULL) &&
-			    (free_all_dnames ||
-			     (((*rdata)->items[i].dname->node == NULL) ||
-			     ((*rdata)->items[i].dname->node->owner !=
-			      (*rdata)->items[i].dname)))) {
-
+			    free_all_dnames) {
 				dnslib_dname_free(&(*rdata)->items[i].dname);
 			}
 		} else {

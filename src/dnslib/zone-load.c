@@ -113,7 +113,7 @@ static void load_rdata_purge(dnslib_rdata_t *rdata,
  * \return Pointer to read and created rdata on success, NULL otherwise.
  */
 static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
-                                         dnslib_dname_t **id_array)
+					 dnslib_dname_t **id_array)
 {
 	dnslib_rdata_t *rdata;
 
@@ -156,28 +156,24 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 			items[i].dname = id_array[dname_id];
 
 			if(!fread_safe(&has_wildcard, sizeof(uint8_t),
-			               1, f)) {
+				       1, f)) {
 				load_rdata_purge(rdata, items, i, type);
 				return NULL;
 			}
 
 			if (has_wildcard) {
 				if(!fread_safe(&dname_id, sizeof(void *),
-				               1, f)) {
+					       1, f)) {
 					load_rdata_purge(rdata, items,
-					                 i, type);
+							 i, type);
 					return NULL;
 				}
-				printf("%d %p\n", dname_id, id_array[dname_id]);
 				items[i].dname->node =
-				                id_array[dname_id]->node;
+						id_array[dname_id]->node;
 			} else if (!in_the_zone) { /* destroy the node */
-
-				printf("UID: %d %s %p\n", dname_id, dnslib_dname_to_str(id_array[dname_id]),
-				       id_array[dname_id]->node);
 				if (id_array[dname_id]->node != NULL) {
 					dnslib_node_free(&id_array[dname_id]->
-					                 node, 0);
+							 node, 0);
 				}
 				/* Also sets node to NULL! */
 			}
@@ -260,7 +256,7 @@ static dnslib_rrset_t *dnslib_load_rrsig(FILE *f, dnslib_dname_t **id_array)
 
 	for (int i = 0; i < rdata_count; i++) {
 		tmp_rdata = dnslib_load_rdata(DNSLIB_RRTYPE_RRSIG, f,
-		                              id_array);
+					      id_array);
 		if (tmp_rdata) {
 			dnslib_rrset_add_rdata(rrsig, tmp_rdata);
 		} else {
@@ -314,7 +310,7 @@ static dnslib_rrset_t *dnslib_load_rrset(FILE *f, dnslib_dname_t **id_array)
 
 	for (int i = 0; i < rdata_count; i++) {
 		tmp_rdata = dnslib_load_rdata(rrset->type, f,
-		                              id_array);
+					      id_array);
 		if (tmp_rdata) {
 			dnslib_rrset_add_rdata(rrset, tmp_rdata);
 		} else {
@@ -417,8 +413,6 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 	if (!fread(&rrset_count, sizeof(rrset_count), 1, f)) {
 		return NULL;
 	}
-
-	printf("%d ID IN NODE\n", dname_id);
 
 	dnslib_dname_t *owner = id_array[dname_id];
 
@@ -606,7 +600,7 @@ zloader_t *dnslib_zload_open(const char *filename)
 }
 
 static void cleanup_id_array(dnslib_dname_t **id_array,
-                             const uint from, const uint to)
+			     const uint from, const uint to)
 {
 	for (uint i = from; i < to; i++) {
 		dnslib_dname_free(&(id_array[i]));
@@ -628,13 +622,10 @@ dnslib_dname_t *read_dname_with_id(FILE *f)
 		return NULL;
 	}
 
-	printf("ID: %d\n", ret->id);
-
 	/* Read size of dname. */
 	if (!fread_safe(&ret->size, sizeof(ret->size), 1, f)) {
 		return NULL;
 	}
-	printf("%d\n", ret->size);
 	assert(ret->size <= DNAME_MAX_WIRE_LENGTH);
 
 	/* Read wireformat of dname. */
@@ -651,16 +642,12 @@ dnslib_dname_t *read_dname_with_id(FILE *f)
 		return NULL;
 	}
 
-	printf("wire: %s\n", ret->name);
-
 	/* Read labels. */
 	if (!fread_safe(&ret->label_count, sizeof(ret->label_count), 1, f)) {
 		free(ret->name);
 		free(ret);
 		return NULL;
 	}
-
-	printf("label count: %d\n", ret->label_count);
 
 	ret->labels = malloc(sizeof(uint8_t) * ret->label_count);
 	if (ret->labels == NULL) {
@@ -710,13 +697,39 @@ dnslib_dname_t *read_dname_with_id(FILE *f)
 //	return dname_table;
 //}
 
+static dnslib_dname_table_t *create_dname_table_from_array(
+	const dnslib_dname_t **array, uint max_id)
+{
+	if (array == NULL) {
+		/* should I set errno or what ... ? */
+		return NULL;
+	}
+
+	assert(array[0] == NULL);
+
+	dnslib_dname_table_t *ret = dnslib_dname_table_new();
+	CHECK_ALLOC_LOG(ret, NULL);
+
+	/* Table will have max_id entries */
+	for (uint i = 1; i < max_id; i++) {
+		if (dnslib_dname_table_add_dname(ret,
+						 array[i]) != DNSLIB_EOK) {
+			dnslib_dname_table_deep_free(&ret);
+			return NULL;
+		}
+	}
+
+	return ret;
+}
+
 static dnslib_dname_t **create_dname_array(FILE *f, uint max_id)
 {
 	if (f == NULL) {
 		return NULL;
 	}
 
-	dnslib_dname_t **array = malloc(sizeof(dnslib_dname_t *) * max_id + 1);
+	dnslib_dname_t **array =
+		malloc(sizeof(dnslib_dname_t *) * ( max_id + 1));
 	memset(array, 0, sizeof(dnslib_dname_t *) * (max_id + 1));
 	if (array == NULL) {
 		ERR_ALLOC_FAILED;
@@ -781,9 +794,9 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	      sizeof(auth_node_count), 1, f)) {
 		return NULL;
 	}
-	printf("authoritative nodes: %u\n", auth_node_count);
+	debug_dnslib_zload("authoritative nodes: %u\n", auth_node_count);
 
-	printf("loading %u nodes\n", node_count);
+	debug_dnslib_zload("loading %u nodes\n", node_count);
 
 	uint total_dnames = 0;
 	/* First, read number of dnames in dname table. */
@@ -791,7 +804,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		return NULL;
 	}
 
-	printf("total dname count: %d\n", total_dnames);
+	debug_dnslib_zload("total dname count: %d\n", total_dnames);
 
 	/* Create id array. */
 	dnslib_dname_t **id_array = create_dname_array(f, total_dnames);
@@ -799,13 +812,13 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		return NULL;
 	}
 
-	printf("ID array created...\n");
-
-	/* read test value */
-	int a = 12;
-	fread(&a, sizeof(a), 1, f);
-	printf("%d\n", a);
-	assert(a == 5);
+	dnslib_dname_table_t *dname_table =
+		create_dname_table_from_array(id_array, total_dnames);
+	if (dname_table == NULL) {
+		ERR_ALLOC_FAILED;
+		cleanup_id_array(id_array, 1, total_dnames);
+		return NULL;
+	}
 
 	dnslib_node_t *apex = dnslib_load_node(f, id_array);
 
@@ -813,17 +826,18 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		fprintf(stderr, "zone: Could not load apex node (in %s)\n",
 			loader->filename);
 		cleanup_id_array(id_array, 1,
-		                 node_count + nsec3_node_count + 1);
+				 node_count + nsec3_node_count + 1);
 		return NULL;
 	}
 
 	dnslib_zone_t *zone = dnslib_zone_new(apex, auth_node_count);
-
 	if (zone == NULL) {
 		cleanup_id_array(id_array, 1,
-		                 node_count + nsec3_node_count + 1);
+				 node_count + nsec3_node_count + 1);
 		return NULL;
 	}
+	/* Assign dname table to the new zone. */
+	zone->dname_table = dname_table;
 
 	apex->prev = NULL;
 
@@ -905,12 +919,13 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		}
 	}
 
-	free(id_array);
-
 	if (nsec3_node_count) {
 		assert(nsec3_first->prev == NULL);
 		nsec3_first->prev = last_node;
 	}
+
+	/* ID array is now useless */
+	free(id_array);
 
 	return zone;
 }

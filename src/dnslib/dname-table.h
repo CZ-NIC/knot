@@ -27,10 +27,10 @@ typedef struct dnslib_dname_table dnslib_dname_table_t;
 dnslib_dname_table_t *dnslib_dname_table_new();
 
 dnslib_dname_t *dnslib_dname_table_find_dname(const dnslib_dname_table_t *table,
-                                              dnslib_dname_t *dname);
+					      dnslib_dname_t *dname);
 
 int dnslib_dname_table_add_dname(dnslib_dname_table_t *table,
-                                 dnslib_dname_t *dname);
+				 dnslib_dname_t *dname);
 
 void dnslib_dname_table_free(dnslib_dname_table_t **table);
 void dnslib_dname_table_deep_free(dnslib_dname_table_t **table);
