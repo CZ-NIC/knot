@@ -150,7 +150,7 @@ line:	NL
 		}
 
 		if (save_dnames_in_table(parser->dname_table,
-		                         parser->current_rrset) != 0) {
+					 parser->current_rrset) != 0) {
 					 /* \todo */
 		}
 

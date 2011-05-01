@@ -91,7 +91,6 @@ int b32_ntop(uint8_t const *src, size_t srclength, char *target,
 		buf[7]=b32[src[4]&0x1f];
 
 		if(targsize < 8) {
-			printf("ou\n");
 			return -1;
 		}
 
@@ -106,7 +105,6 @@ int b32_ntop(uint8_t const *src, size_t srclength, char *target,
 	if(srclength)
 	{
 		if(targsize < strlen(buf)+1) {
-			printf("ou");
 			return -1;
 		}
 		dnslib_strlcpy(target, buf, targsize);
@@ -476,7 +474,7 @@ static void dnslib_zone_save_encloser_rdata_item(dnslib_rdata_t *rdata,
 		const dnslib_node_t *prev = NULL;
 
 		int ret = dnslib_zone_find_dname(zone, dname, &n,
-		                                 &closest_encloser, &prev);
+						 &closest_encloser, &prev);
 
 //		n = dnslib_zone_find_node(zone, dname);
 
@@ -1570,7 +1568,6 @@ static void dnslib_labels_dump_binary(dnslib_dname_t *dname, FILE *f)
 static void dnslib_dname_dump_binary(dnslib_dname_t *dname, FILE *f)
 {
 	fwrite(&(dname->size), sizeof(dname->size), 1, f);
-	printf("saving size: %d\n", dname->size);
 	fwrite(dname->name, sizeof(uint8_t), dname->size, f);
 	debug_dnslib_zdump("dname size: %d\n", dname->size);
 	dnslib_labels_dump_binary(dname, f);
@@ -1592,7 +1589,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 		dnslib_rrtype_descriptor_by_type(type);
 	assert(desc != NULL);
 
-	debug_dnslib_zdump("dumping type: %s\n", dnslib_rrtype_to_string(type));
+	printf("dumping type: %s\n", dnslib_rrtype_to_string(type));
 
 	for (int i = 0; i < desc->length; i++) {
 		if (&(rdata->items[i]) == NULL) {
@@ -1620,8 +1617,8 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 				fwrite((uint8_t *)"\1",
 				       sizeof(uint8_t), 1, f);
 			} else {
-				printf("NOT IN THE ZONE: %s\n",
-				       dnslib_dname_to_str(rdata->items[i].dname));
+//				printf("NOT IN THE ZONE: %s\n",
+//				       dnslib_dname_to_str(rdata->items[i].dname));
 				fwrite((uint8_t *)"\0", sizeof(uint8_t),
 				       1, f);
 			}
@@ -1642,7 +1639,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 			       rdata->items[i].raw_data[0] + 2, f);
 
 			debug_dnslib_zdump("Written %d long raw data\n",
-			                   rdata->items[i].raw_data[0]);
+					   rdata->items[i].raw_data[0]);
 		}
 	}
 }
@@ -1768,9 +1765,8 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 	/* Write owner ID. */
 	fwrite(&node->owner->id, sizeof(node->owner->id), 1, f);
-	printf("ID write: %d (%s)\n", node->owner->id,
-	       dnslib_dname_to_str(node->owner));
-	getchar();
+//	printf("ID write: %d (%s)\n", node->owner->id,
+//	       dnslib_dname_to_str(node->owner));
 
 	/* TODO investigate whether this is necessary */
 	if (node->parent != NULL) {
@@ -1950,18 +1946,18 @@ static int dump_dname_with_id(const dnslib_dname_t *dname, FILE *f)
 }
 
 static int dump_dname_from_tree(const struct dname_table_node *node,
-                                void *data)
+				void *data)
 {
 	FILE *f = (FILE *)data;
 	return dump_dname_with_id(node->dname, f);
 }
 
 static int dnslib_dump_dname_table(const dnslib_dname_table_t *dname_table,
-                                   FILE *f)
+				   FILE *f)
 {
 	/* Go through the tree and dump each dname along with its ID. */
 	TREE_FORWARD_APPLY(dname_table->tree, dname_table_node, avl,
-	                   dump_dname_from_tree, (void *)f);
+			   dump_dname_from_tree, (void *)f);
 
 	return DNSLIB_EOK;
 }
@@ -2013,6 +2009,8 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 		free(handler);
 	}
 
+	printf("enclosers saved\n");
+
 	/* Start writing header - magic bytes. */
 	size_t header_len = MAGIC_LENGTH;
 	static const uint8_t MAGIC[MAGIC_LENGTH] = MAGIC_BYTES;
@@ -2038,8 +2036,7 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	fwrite(&node_count, sizeof(node_count), 1, f);
 	fwrite(&node_count, sizeof(node_count), 1, f);
 	fwrite(&zone->node_count,
-	       sizeof(zone->node_count),
-	       1, f);
+	       sizeof(zone->node_count), 1, f);
 
 	/* Write total number of dnames */
 	assert(zone->dname_table);
@@ -2051,13 +2048,9 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 		return DNSLIB_ERROR;
 	}
 
-	/* test value */
-	int a = 5;
-	fwrite(&a, sizeof(a), 1, f);
+	printf("dname table dumped\n");
 
 	arg_t arguments;
-
-
 	arguments.arg1 = f;
 	arguments.arg2 = encloser_list;
 	arguments.arg3 = zone;
@@ -2081,10 +2074,11 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	       1, f);
 
 	debug_dnslib_zdump("written %d normal nodes\n", tmp_count);
-
 	debug_dnslib_zdump("written %d nsec3 nodes\n", node_count);
-
 	debug_dnslib_zdump("authorative nodes: %u\n", zone->node_count);
+
+	tmp_count = 0;
+	node_count = 0;
 
 	fclose(f);
 

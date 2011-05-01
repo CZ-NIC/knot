@@ -9,12 +9,12 @@
 TREE_DEFINE(dname_table_node, avl);
 
 static int compare_dname_table_nodes(struct dname_table_node *n1,
-                                     struct dname_table_node *n2)
+				     struct dname_table_node *n2)
 {
 	assert(n1 && n2);
 	return (strncmp((char *)n1->dname->name, (char *)n2->dname->name,
-	                (n1->dname->size < n2->dname->size) ?
-	                (n1->dname->size):(n2->dname->size)));
+			(n1->dname->size < n2->dname->size) ?
+			(n1->dname->size):(n2->dname->size)));
 }
 
 static void delete_dname_table_node(struct dname_table_node *node, void *data)
@@ -47,7 +47,7 @@ dnslib_dname_table_t *dnslib_dname_table_new()
 }
 
 dnslib_dname_t *dnslib_dname_table_find_dname(const dnslib_dname_table_t *table,
-                                              dnslib_dname_t *dname)
+					      dnslib_dname_t *dname)
 {
 	struct dname_table_node *node = NULL;
 	struct dname_table_node sought;
@@ -63,8 +63,12 @@ dnslib_dname_t *dnslib_dname_table_find_dname(const dnslib_dname_table_t *table,
 }
 
 int dnslib_dname_table_add_dname(dnslib_dname_table_t *table,
-                                 dnslib_dname_t *dname)
+				 dnslib_dname_t *dname)
 {
+	if (dname == NULL || table == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	/* Node for insertion has to be created */
 	struct dname_table_node *node =
 		malloc(sizeof(struct dname_table_node));
@@ -90,7 +94,7 @@ void dnslib_dname_table_free(dnslib_dname_table_t **table)
 
 	/* Walk the tree and free each node, but not the dnames. */
 	TREE_POST_ORDER_APPLY((*table)->tree, dname_table_node, avl,
-	                      delete_dname_table_node, 0);
+			      delete_dname_table_node, 0);
 
 	free(*table);
 	*table = NULL;
@@ -104,7 +108,7 @@ void dnslib_dname_table_deep_free(dnslib_dname_table_t **table)
 
 	/* Walk the tree and free each node, but not the dnames. */
 	TREE_POST_ORDER_APPLY((*table)->tree, dname_table_node, avl,
-	                      delete_dname_table_node, (void *) 1);
+			      delete_dname_table_node, (void *) 1);
 
 	free(*table);
 	*table = NULL;
