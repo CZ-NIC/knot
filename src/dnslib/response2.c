@@ -1009,23 +1009,6 @@ void dnslib_response_set_tc(dnslib_packet_t *response)
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_response_add_tmp_rrset(dnslib_packet_t *response,
-                                  dnslib_rrset_t *tmp_rrset)
-{
-	if (response->tmp_rrsets_count == response->tmp_rrsets_max
-	    && dnslib_response_realloc_rrsets(&response->tmp_rrsets,
-			&response->tmp_rrsets_max, DEFAULT_TMP_RRSETS,
-			STEP_TMP_RRSETS) != DNSLIB_EOK) {
-		return DNSLIB_ENOMEM;
-	}
-
-	response->tmp_rrsets[response->tmp_rrsets_count++] = tmp_rrset;
-
-	return DNSLIB_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
 int dnslib_response_add_nsid(dnslib_packet_t *response, const uint8_t *data,
                              uint16_t length)
 {

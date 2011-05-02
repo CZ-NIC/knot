@@ -185,6 +185,8 @@ uint16_t dnslib_packet_qtype(const dnslib_packet_t *packet);
  */
 uint16_t dnslib_packet_qclass(const dnslib_packet_t *packet);
 
+//int dnslib_packet_add_rrset_answer(dnslib_packet_t *packet);
+
 /*!
  * \brief Returns number of RRSets in Answer section of the packet.
  *
@@ -265,6 +267,20 @@ const dnslib_rrset_t *dnslib_packet_additional_rrset(
  */
 int dnslib_packet_contains(const dnslib_packet_t *packet,
                            const dnslib_rrset_t *rrset);
+
+/*!
+ * \brief Adds RRSet to the list of temporary RRSets.
+ *
+ * Temporary RRSets are fully freed when the response structure is destroyed.
+ *
+ * \param response Response to which the temporary RRSet should be added.
+ * \param tmp_rrset Temporary RRSet to be stored in the response.
+ *
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_ENOMEM
+ */
+int dnslib_packet_add_tmp_rrset(dnslib_packet_t *response,
+                                dnslib_rrset_t *tmp_rrset);
 
 /*!
  * \brief Properly destroys the packet structure.

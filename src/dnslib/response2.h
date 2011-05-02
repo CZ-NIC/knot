@@ -176,20 +176,6 @@ void dnslib_response_set_aa(dnslib_packet_t *response);
 void dnslib_response_set_tc(dnslib_packet_t *response);
 
 /*!
- * \brief Adds RRSet to the list of temporary RRSets.
- *
- * Temporary RRSets are fully freed when the response structure is destroyed.
- *
- * \param response Response to which the temporary RRSet should be added.
- * \param tmp_rrset Temporary RRSet to be stored in the response.
- *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_ENOMEM
- */
-int dnslib_response_add_tmp_rrset(dnslib_packet_t *response,
-                                  dnslib_rrset_t *tmp_rrset);
-
-/*!
  * \brief Adds NSID option to the response.
  *
  * \param response Response to add the NSID option into.
