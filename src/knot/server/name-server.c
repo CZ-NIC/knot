@@ -185,6 +185,11 @@ static void ns_check_wildcard(const dnslib_dname_t *name,
                               dnslib_response_t *resp,
                               const dnslib_rrset_t **rrset)
 {
+	assert(name != NULL);
+	assert(resp != NULL);
+	assert(rrset != NULL);
+	assert(*rrset != NULL);
+
 	if (dnslib_dname_is_wildcard((*rrset)->owner)) {
 		dnslib_rrset_t *synth_rrset =
 			ns_synth_from_wildcard(*rrset, name);
