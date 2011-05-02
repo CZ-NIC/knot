@@ -446,11 +446,11 @@ typedef struct arg arg_t;
  * \retval -1 when first pointer is "bigger" than the first.
  * \retval 1 when second pointer is "bigger" than the first.
  */
-static int compare_pointers(void *p1, void *p2)
-{
-	return ((size_t)p1 == (size_t)p2
-		? 0 : (size_t)p1 < (size_t)p2 ? -1 : 1);
-}
+//static int compare_pointers(void *p1, void *p2)
+//{
+//	return ((size_t)p1 == (size_t)p2
+//		? 0 : (size_t)p1 < (size_t)p2 ? -1 : 1);
+//}
 
 /*!
  * \brief Saves closest encloser from rdata to given skip list.
@@ -460,47 +460,47 @@ static int compare_pointers(void *p1, void *p2)
  * \param pos Position of item in rdata to be searched.
  * \param list Skip list used for storing closest enclosers.
  */
-static void dnslib_zone_save_encloser_rdata_item(dnslib_rdata_t *rdata,
-						 dnslib_zone_t *zone, uint pos,
-						 skip_list_t *list)
-{
-	const dnslib_rdata_item_t *dname_item
-		= dnslib_rdata_item(rdata, pos);
+//static void dnslib_zone_save_encloser_rdata_item(dnslib_rdata_t *rdata,
+//						 dnslib_zone_t *zone, uint pos,
+//						 skip_list_t *list)
+//{
+//	const dnslib_rdata_item_t *dname_item
+//		= dnslib_rdata_item(rdata, pos);
 
-	if (dname_item != NULL) {
-		dnslib_dname_t *dname = dname_item->dname;
-		const dnslib_node_t *n = NULL;
-		const dnslib_node_t *closest_encloser = NULL;
-		const dnslib_node_t *prev = NULL;
+//	if (dname_item != NULL) {
+//		dnslib_dname_t *dname = dname_item->dname;
+//		const dnslib_node_t *n = NULL;
+//		const dnslib_node_t *closest_encloser = NULL;
+//		const dnslib_node_t *prev = NULL;
 
-		int ret = dnslib_zone_find_dname(zone, dname, &n,
-						 &closest_encloser, &prev);
+//		int ret = dnslib_zone_find_dname(zone, dname, &n,
+//						 &closest_encloser, &prev);
 
-//		n = dnslib_zone_find_node(zone, dname);
+////		n = dnslib_zone_find_node(zone, dname);
 
-		if (ret == DNSLIB_EBADARG || ret == DNSLIB_EBADZONE) {
-			// TODO: do some cleanup if needed
-			return;
-		}
+//		if (ret == DNSLIB_EBADARG || ret == DNSLIB_EBADZONE) {
+//			// TODO: do some cleanup if needed
+//			return;
+//		}
 
-		assert(ret != DNSLIB_ZONE_NAME_FOUND
-		       || n == closest_encloser);
+//		assert(ret != DNSLIB_ZONE_NAME_FOUND
+//		       || n == closest_encloser);
 
-		if (ret != DNSLIB_ZONE_NAME_FOUND
-		    && (closest_encloser != NULL)) {
-			debug_dnslib_zdump("Saving closest encloser to RDATA."
-					   "\n");
-			// save pointer to the closest encloser
-			dnslib_rdata_item_t *item =
-				dnslib_rdata_get_item(rdata, pos);
-			assert(item->dname != NULL);
-//			assert(item->dname->node == NULL);
-//			skip_insert(list, (void *)item->dname,
-//				    (void *)closest_encloser->owner, NULL);
-			item->dname->node = closest_encloser->owner->node;
-		}
-	}
-}
+//		if (ret != DNSLIB_ZONE_NAME_FOUND
+//		    && (closest_encloser != NULL)) {
+//			debug_dnslib_zdump("Saving closest encloser to RDATA."
+//					   "\n");
+//			// save pointer to the closest encloser
+//			dnslib_rdata_item_t *item =
+//				dnslib_rdata_get_item(rdata, pos);
+//			assert(item->dname != NULL);
+////			assert(item->dname->node == NULL);
+////			skip_insert(list, (void *)item->dname,
+////				    (void *)closest_encloser->owner, NULL);
+//			item->dname->node = closest_encloser->owner->node;
+//		}
+//	}
+//}
 
 /*!
  * \brief Saves closest enclosers from all entries in rrset.
@@ -509,64 +509,64 @@ static void dnslib_zone_save_encloser_rdata_item(dnslib_rdata_t *rdata,
  * \param zone Zone containing the rrset.
  * \param list Skip list used for storing closest enclosers.
  */
-static void dnslib_zone_save_enclosers_rrset(dnslib_rrset_t *rrset,
-					     dnslib_zone_t *zone,
-					     skip_list_t *list)
-{
-	uint16_t type = dnslib_rrset_type(rrset);
+//static void dnslib_zone_save_enclosers_rrset(dnslib_rrset_t *rrset,
+//					     dnslib_zone_t *zone,
+//					     skip_list_t *list)
+//{
+//	uint16_t type = dnslib_rrset_type(rrset);
 
-	dnslib_rrtype_descriptor_t *desc =
-		dnslib_rrtype_descriptor_by_type(type);
-	dnslib_rdata_t *rdata_first = dnslib_rrset_get_rdata(rrset);
-	dnslib_rdata_t *rdata = rdata_first;
+//	dnslib_rrtype_descriptor_t *desc =
+//		dnslib_rrtype_descriptor_by_type(type);
+//	dnslib_rdata_t *rdata_first = dnslib_rrset_get_rdata(rrset);
+//	dnslib_rdata_t *rdata = rdata_first;
 
-	if (rdata == NULL) {
-		return;
-	}
+//	if (rdata == NULL) {
+//		return;
+//	}
 
-	while (rdata->next != rdata_first) {
-		for (int i = 0; i < rdata->count; ++i) {
-			if (desc->wireformat[i]
-			    == DNSLIB_RDATA_WF_COMPRESSED_DNAME
-			    || desc->wireformat[i]
-			       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
-			    || desc->wireformat[i]
-			       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
-				debug_dnslib_zdump("Adjusting domain name at "
-				  "position %d of RDATA of record with owner "
-				  "%s and type %s.\n",
-				  i, rrset->owner->name,
-				  dnslib_rrtype_to_string(type));
+//	while (rdata->next != rdata_first) {
+//		for (int i = 0; i < rdata->count; ++i) {
+//			if (desc->wireformat[i]
+//			    == DNSLIB_RDATA_WF_COMPRESSED_DNAME
+//			    || desc->wireformat[i]
+//			       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
+//			    || desc->wireformat[i]
+//			       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
+//				debug_dnslib_zdump("Adjusting domain name at "
+//				  "position %d of RDATA of record with owner "
+//				  "%s and type %s.\n",
+//				  i, rrset->owner->name,
+//				  dnslib_rrtype_to_string(type));
 
-				dnslib_zone_save_encloser_rdata_item(rdata,
-								     zone,
-								     i,
-								     list);
-			}
-		}
-		rdata = rdata->next;
-	}
+//				dnslib_zone_save_encloser_rdata_item(rdata,
+//								     zone,
+//								     i,
+//								     list);
+//			}
+//		}
+//		rdata = rdata->next;
+//	}
 
-	for (int i = 0; i < rdata->count; ++i) {
-		if (desc->wireformat[i]
-		    == DNSLIB_RDATA_WF_COMPRESSED_DNAME
-		    || desc->wireformat[i]
-		       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
-		    || desc->wireformat[i]
-		       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
-			debug_dnslib_zdump("Adjusting domain name at "
-			  "position %d of RDATA of record with owner "
-			  "%s and type %s.\n",
-			  i, rrset->owner->name,
-			  dnslib_rrtype_to_string(type));
+//	for (int i = 0; i < rdata->count; ++i) {
+//		if (desc->wireformat[i]
+//		    == DNSLIB_RDATA_WF_COMPRESSED_DNAME
+//		    || desc->wireformat[i]
+//		       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
+//		    || desc->wireformat[i]
+//		       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
+//			debug_dnslib_zdump("Adjusting domain name at "
+//			  "position %d of RDATA of record with owner "
+//			  "%s and type %s.\n",
+//			  i, rrset->owner->name,
+//			  dnslib_rrtype_to_string(type));
 
-				dnslib_zone_save_encloser_rdata_item(rdata,
-								     zone,
-								     i,
-								     list);
-		}
-	}
-}
+//				dnslib_zone_save_encloser_rdata_item(rdata,
+//								     zone,
+//								     i,
+//								     list);
+//		}
+//	}
+//}
 
 /*!
  * \brief Semantic check - CNAME cycles. Uses constant value with maximum
@@ -1475,7 +1475,7 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
  * \param node Node to be searched.
  * \param data Arguments.
  */
-static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
+static void do_checks_in_tree(dnslib_node_t *node, void *data)
 {
 	assert(data != NULL);
 	arg_t *args = (arg_t *)data;
@@ -1490,12 +1490,12 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 	assert(zone);
 
 
-	for (int i = 0; i < count; ++i) {
+/*	for (int i = 0; i < count; ++i) {
 		assert(rrsets[i] != NULL);
 		dnslib_zone_save_enclosers_rrset(rrsets[i],
 						 zone,
 						 (skip_list_t *)args->arg2);
-	}
+	} */
 
 	dnslib_node_t *first_node = (dnslib_node_t *)args->arg4;
 	dnslib_node_t **last_node = (dnslib_node_t **)args->arg5;
@@ -1526,20 +1526,23 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
  * \param handler Semantic error handler.
  * \param last_node Last checked node, which is part of NSEC(3) chain.
  */
-void zone_save_enclosers_sem_check(dnslib_zone_t *zone, skip_list_t *list,
-				   char do_checks, err_handler_t *handler,
-				   dnslib_node_t **last_node)
+void zone_do_sem_checks(dnslib_zone_t *zone, char do_checks,
+                        err_handler_t *handler,
+                        dnslib_node_t **last_node)
 {
+	if (!do_checks) {
+		return;
+	}
+
 	arg_t arguments;
 	arguments.arg1 = zone;
-	arguments.arg2 = list;
 	arguments.arg3 = &do_checks;
 	arguments.arg4 = NULL;
 	arguments.arg5 = last_node;
 	arguments.arg6 = handler;
 
 	dnslib_zone_tree_apply_inorder(zone,
-			   dnslib_zone_save_enclosers_in_tree,
+			   do_checks_in_tree,
 			   (void *)&arguments);
 }
 
@@ -1973,7 +1976,7 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 
 	zone->node_count = 0;
 
-	skip_list_t *encloser_list = skip_create_list(compare_pointers);
+//	skip_list_t *encloser_list = skip_create_list(compare_pointers);
 
 	if (do_checks && zone_is_secure(zone)) {
 		do_checks += zone_is_secure(zone);
@@ -1997,9 +2000,7 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	}
 
 	dnslib_node_t *last_node = NULL;
-
-	zone_save_enclosers_sem_check(zone, encloser_list, do_checks, handler,
-				      &last_node);
+	zone_do_sem_checks(zone, do_checks, handler, &last_node);
 
 	if (do_checks) {
 		log_cyclic_errors_in_zone(handler, zone, last_node, do_checks);
@@ -2050,7 +2051,7 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 
 	arg_t arguments;
 	arguments.arg1 = f;
-	arguments.arg2 = encloser_list;
+//	arguments.arg2 = encloser_list;
 	arguments.arg3 = zone;
 
 	/* TODO is there a way how to stop the traversal upon error? */
