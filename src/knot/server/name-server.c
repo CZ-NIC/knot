@@ -376,6 +376,11 @@ DEBUG_NS(
 			assert(rrsets[i] != NULL);
 			rrset = dnslib_rrset_rrsigs(rrsets[i]);
 
+			if (rrset == NULL) {
+				++i;
+				continue;
+			}
+
 			ns_check_wildcard(name, resp, &rrset);
 			ret = dnslib_response_add_rrset_answer(resp, rrset, 1,
 			                                       0);
