@@ -78,6 +78,7 @@ void dnslib_zone_dump(dnslib_zone_t *zone, char loaded_zone);
 //#define DNSLIB_ZONEDB_DEBUG
 //#define DNSLIB_DNAME_DEBUG
 //#define DNSLIB_RESPONSE_DEBUG
+//#define DNSLIB_PACKET_DEBUG
 //#define DNSLIB_EDNS_DEBUG
 //#define DNSLIB_RRSET_DEBUG
 //#define DNSLIB_NSEC3_DEBUG
@@ -122,6 +123,16 @@ void dnslib_zone_dump(dnslib_zone_t *zone, char loaded_zone);
 #define debug_dnslib_response(msg...)
 #define debug_dnslib_response_hex(data, len)
 #define DEBUG_DNSLIB_RESPONSE(cmds)
+#endif
+
+#ifdef DNSLIB_PACKET_DEBUG
+#define debug_dnslib_packet(msg...) fprintf(stderr, msg)
+#define debug_dnslib_packet_hex(data, len) hex_print((data), (len))
+#define DEBUG_DNSLIB_PACKET(cmds) do { cmds } while (0)
+#else
+#define debug_dnslib_packet(msg...)
+#define debug_dnslib_packet_hex(data, len)
+#define DEBUG_DNSLIB_PACKET(cmds)
 #endif
 
 #ifdef DNSLIB_EDNS_DEBUG

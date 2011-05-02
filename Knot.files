@@ -49,6 +49,12 @@ src/dnslib/descriptor.h
 src/dnslib/descriptor.c
 src/dnslib/zone.h
 src/dnslib/zone.c
+src/dnslib/packet.h
+src/dnslib/packet.c
+src/dnslib/query.h
+src/dnslib/query.c
+src/dnslib/response2.h
+src/dnslib/response2.c
 src/dnslib/response.h
 src/dnslib/wire.h
 src/dnslib/response.c
