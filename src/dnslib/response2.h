@@ -36,13 +36,16 @@ static const short DNSLIB_MAX_RESPONSE_SIZE = 512;
  * stores pointer to the query packet structure in the response packet
  * structure.
  *
+ * \warning Never free the query packet structure after calling this function,
+ *          it will be freed when the response structure is freed.
+ *
  * \param response Packet structure representing the response.
  * \param query Packet structure representing the query.
  *
  * \retval DNSLIB_EOK
  */
-int dnslib_packet_response_from_query(dnslib_packet_t *response,
-                                      dnslib_packet_t *query);
+int dnslib_response_init_from_query(dnslib_packet_t *response,
+                                    dnslib_packet_t *query);
 
 /*!
  * \brief Sets the OPT RR of the response.
