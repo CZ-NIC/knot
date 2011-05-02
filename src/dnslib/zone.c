@@ -116,7 +116,6 @@ static void dnslib_zone_destroy_node_owner_from_tree(dnslib_node_t *node,
 static void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata,
                                           dnslib_zone_t *zone, int pos)
 {
-	return;
 	const dnslib_rdata_item_t *dname_item
 		= dnslib_rdata_item(rdata, pos);
 
@@ -159,7 +158,6 @@ static void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata,
 static void dnslib_zone_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
                                               dnslib_zone_t *zone)
 {
-	return;
 	uint16_t type = dnslib_rrset_type(rrset);
 
 	dnslib_rrtype_descriptor_t *desc =
@@ -262,7 +260,7 @@ DEBUG_DNSLIB_ZONE(
 );
 
 	// adjust domain names in RDATA
-	dnslib_zone_adjust_rrsets(node, zone);
+//	dnslib_zone_adjust_rrsets(node, zone);
 
 DEBUG_DNSLIB_ZONE(
 	if (node->parent) {
