@@ -91,6 +91,10 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name,
                                            unsigned int size,
                                            struct dnslib_node *node);
 
+dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *name,
+                                             unsigned int max_size,
+                                             struct dnslib_node *node);
+
 /*!
  * \brief Initializes domain name by the name given in wire format.
  *
