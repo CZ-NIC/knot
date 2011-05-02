@@ -16,7 +16,7 @@
 #include "knot/server/name-server.h"
 #include "knot/other/error.h"
 #include "knot/stat/stat.h"
-#include "dnslib/packet.h"
+#include "dnslib/wire.h"
 
 /*! \brief TCP connection pool. */
 typedef struct tcp_pool_t {

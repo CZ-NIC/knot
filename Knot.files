@@ -50,7 +50,7 @@ src/dnslib/descriptor.c
 src/dnslib/zone.h
 src/dnslib/zone.c
 src/dnslib/response.h
-src/dnslib/packet.h
+src/dnslib/wire.h
 src/dnslib/response.c
 src/dnslib/edns.h
 src/dnslib/edns.c
