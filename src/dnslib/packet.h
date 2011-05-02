@@ -249,6 +249,24 @@ const dnslib_rrset_t *dnslib_packet_additional_rrset(
 	dnslib_packet_t *packet, short pos);
 
 /*!
+ * \brief Checks if the packet already contains the given RRSet.
+ *
+ * It searches for the RRSet in the three lists of RRSets corresponding to
+ * Answer, Authority and Additional sections of the packet.
+ *
+ * \note Only pointers are compared, i.e. two instances of dnslib_rrset_t with
+ * the same data will be considered different.
+ *
+ * \param packet Packet to look for the RRSet in.
+ * \param rrset RRSet to look for.
+ *
+ * \retval 0 if \a resp does not contain \a rrset.
+ * \retval <> 0 if \a resp does contain \a rrset.
+ */
+int dnslib_packet_contains(const dnslib_packet_t *packet,
+                           const dnslib_rrset_t *rrset);
+
+/*!
  * \brief Properly destroys the packet structure.
  *
  * \param response Packet to be destroyed.

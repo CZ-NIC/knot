@@ -87,17 +87,209 @@ enum {
 	                 + PREALLOC_RRSETS(DEFAULT_TMP_RRSETS_QUERY),
 
 	/*! \brief Total preallocated size for the response. */
-	PREALLOC_TOTAL = PREALLOC_PACKET
+	PREALLOC_RESPONSE = PREALLOC_PACKET
 	                 + PREALLOC_QNAME
 	                 + PREALLOC_RR_OWNER
-	                 + PREALLOC_RRSETS
+	                 + PREALLOC_RRSETS(DEFAULT_ANCOUNT)
+	                 + PREALLOC_RRSETS(DEFAULT_NSCOUNT)
+	                 + PREALLOC_RRSETS(DEFAULT_ARCOUNT)
 	                 + PREALLOC_COMPRESSION
-	                 + PREALLOC_RRSETS(DEFAULT_TMP_RRSETS),
+	                 + PREALLOC_RRSETS(DEFAULT_TMP_RRSETS)
 };
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
+/*!
+ * \brief Sets all the pointers in the packet structure to the respective
+ *        parts of the pre-allocated space.
+ */
+static void dnslib_packet_init_pointers_response(dnslib_packet_t *pkt)
+{
+	debug_dnslib_packet("Packet pointer: %p\n", pkt);
+
+	// put QNAME directly after the structure
+	pkt->question.qname =
+		(dnslib_dname_t *)((char *)pkt + PREALLOC_PACKET);
+
+	debug_dnslib_packet("QNAME: %p (%zu after start of packet)\n",
+		pkt->question.qname,
+		(void *)pkt->question.qname - (void *)pkt);
+
+	pkt->question.qname->name = (uint8_t *)((char *)pkt->question.qname
+	                                         + PREALLOC_QNAME_DNAME);
+	pkt->question.qname->labels = (uint8_t *)((char *)
+	                                           pkt->question.qname->name
+	                                           + PREALLOC_QNAME_NAME);
+
+	pkt->owner_tmp = (uint8_t *)((char *)pkt->question.qname->labels
+	                              + PREALLOC_QNAME_LABELS);
+
+	// then answer, authority and additional sections
+	pkt->answer = (const dnslib_rrset_t **)
+	                   ((char *)pkt->owner_tmp + PREALLOC_RR_OWNER);
+	pkt->authority = pkt->answer + DEFAULT_ANCOUNT;
+	pkt->additional = pkt->authority + DEFAULT_NSCOUNT;
+
+	debug_dnslib_packet("Answer section: %p (%zu after QNAME)\n",
+		pkt->answer,
+		(void *)pkt->answer - (void *)pkt->question.qname);
+	debug_dnslib_packet("Authority section: %p (%zu after Answer)\n",
+		pkt->authority,
+		(void *)pkt->authority - (void *)pkt->answer);
+	debug_dnslib_packet("Additional section: %p (%zu after Authority)\n",
+		pkt->additional,
+		(void *)pkt->additional - (void *)pkt->authority);
+
+	pkt->max_an_rrsets = DEFAULT_ANCOUNT;
+	pkt->max_ns_rrsets = DEFAULT_NSCOUNT;
+	pkt->max_ar_rrsets = DEFAULT_ARCOUNT;
+
+	// then domain names for compression and offsets
+	pkt->compression.dnames = (const dnslib_dname_t **)
+	                               (pkt->additional + DEFAULT_ARCOUNT);
+	pkt->compression.offsets = (size_t *)
+		(pkt->compression.dnames + DEFAULT_DOMAINS_IN_RESPONSE);
+
+	debug_dnslib_packet("Compression dnames: %p (%zu after Additional)\n",
+		pkt->compression.dnames,
+		(void *)pkt->compression.dnames - (void *)pkt->additional);
+	debug_dnslib_packet("Compression offsets: %p (%zu after c. dnames)\n",
+		pkt->compression.offsets,
+		(void *)pkt->compression.offsets
+		  - (void *)pkt->compression.dnames);
+
+	pkt->compression.max = DEFAULT_DOMAINS_IN_RESPONSE;
+
+	pkt->tmp_rrsets = (const dnslib_rrset_t **)
+		(pkt->compression.offsets + DEFAULT_DOMAINS_IN_RESPONSE);
+
+	debug_dnslib_packet("Tmp rrsets: %p (%zu after compression offsets)"
+		"\n", pkt->tmp_rrsets,
+		(void *)pkt->tmp_rrsets - (void *)pkt->compression.offsets);
+
+	pkt->tmp_rrsets_max = DEFAULT_TMP_RRSETS;
+
+	debug_dnslib_packet("End of data: %p (%zu after start of packet)\n",
+		pkt->tmp_rrsets + DEFAULT_TMP_RRSETS,
+		(void *)(pkt->tmp_rrsets + DEFAULT_TMP_RRSETS) - (void *)pkt);
+	debug_dnslib_packet("Allocated total: %u\n", PREALLOC_RESPONSE);
+
+	assert((char *)(pkt->tmp_rrsets + DEFAULT_TMP_RRSETS)
+	       == (char *)pkt + PREALLOC_RESPONSE);
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Sets all the pointers in the packet structure to the respective
+ *        parts of the pre-allocated space.
+ */
+static void dnslib_packet_init_pointers_query(dnslib_packet_t *pkt)
+{
+	debug_dnslib_packet("Packet pointer: %p\n", pkt);
+
+	// put QNAME directly after the structure
+	pkt->question.qname =
+		(dnslib_dname_t *)((char *)pkt + PREALLOC_PACKET);
+
+	debug_dnslib_packet("QNAME: %p (%zu after start of packet)\n",
+		pkt->question.qname,
+		(void *)pkt->question.qname - (void *)pkt);
+
+	pkt->question.qname->name = (uint8_t *)((char *)pkt->question.qname
+	                                         + PREALLOC_QNAME_DNAME);
+	pkt->question.qname->labels = (uint8_t *)((char *)
+	                                           pkt->question.qname->name
+	                                           + PREALLOC_QNAME_NAME);
+
+
+
+	pkt->owner_tmp = (uint8_t *)((char *)pkt->question.qname->labels
+	                              + PREALLOC_QNAME_LABELS);
+
+	// then answer, authority and additional sections
+	pkt->answer = (const dnslib_rrset_t **)
+	          ((char *)pkt->question.qname->labels + PREALLOC_QNAME_LABELS);
+	pkt->authority = pkt->answer + DEFAULT_ANCOUNT_QUERY;
+	pkt->additional = pkt->authority + DEFAULT_NSCOUNT_QUERY;
+
+	debug_dnslib_packet("Answer section: %p (%zu after QNAME)\n",
+		pkt->answer,
+		(void *)pkt->answer - (void *)pkt->question.qname);
+	debug_dnslib_packet("Authority section: %p (%zu after Answer)\n",
+		pkt->authority,
+		(void *)pkt->authority - (void *)pkt->answer);
+	debug_dnslib_packet("Additional section: %p (%zu after Authority)\n",
+		pkt->additional,
+		(void *)pkt->additional - (void *)pkt->authority);
+
+	pkt->max_an_rrsets = DEFAULT_ANCOUNT_QUERY;
+	pkt->max_ns_rrsets = DEFAULT_NSCOUNT_QUERY;
+	pkt->max_ar_rrsets = DEFAULT_ARCOUNT_QUERY;
+
+	pkt->tmp_rrsets = (const dnslib_rrset_t **)
+	                      (pkt->additional + DEFAULT_ARCOUNT);
+
+	debug_dnslib_packet("Tmp rrsets: %p (%zu after Additional)\n",
+		pkt->tmp_rrsets,
+		(void *)pkt->tmp_rrsets - (void *)pkt->additional);
+
+	pkt->tmp_rrsets_max = DEFAULT_TMP_RRSETS_QUERY;
+
+	debug_dnslib_packet("End of data: %p (%zu after start of packet)\n",
+		pkt->tmp_rrsets + DEFAULT_TMP_RRSETS_QUERY,
+		(void *)(pkt->tmp_rrsets + DEFAULT_TMP_RRSETS_QUERY)
+		- (void *)pkt);
+	debug_dnslib_packet("Allocated total: %u\n", PREALLOC_QUERY);
+
+	assert((char *)(pkt->tmp_rrsets + DEFAULT_TMP_RRSETS_QUERY)
+	       == (char *)pkt + PREALLOC_QUERY);
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Frees all temporary RRSets stored in the response structure.
+ *
+ * \param resp Response structure to free the temporary RRSets from.
+ */
+static void dnslib_packet_free_tmp_rrsets(dnslib_packet_t *pkt)
+{
+	for (int i = 0; i < pkt->tmp_rrsets_count; ++i) {
+		// TODO: this is quite ugly, but better than copying whole
+		// function (for reallocating rrset array)
+		dnslib_rrset_deep_free(
+			&(((dnslib_rrset_t **)(pkt->tmp_rrsets))[i]), 1, 1);
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Deallocates all space which was allocated additionally to the
+ *        pre-allocated space of the response structure.
+ *
+ * \param resp Response structure that holds pointers to the allocated space.
+ */
+static void dnslib_packet_free_allocated_space(dnslib_packet_t *pkt)
+{
+	if (pkt->max_an_rrsets > DEFAULT_ANCOUNT) {
+		free(pkt->answer);
+	}
+	if (pkt->max_ns_rrsets > DEFAULT_NSCOUNT) {
+		free(pkt->authority);
+	}
+	if (pkt->max_ar_rrsets > DEFAULT_ARCOUNT) {
+		free(pkt->additional);
+	}
+
+	if (pkt->compression.max > DEFAULT_DOMAINS_IN_RESPONSE) {
+		free(pkt->compression.dnames);
+		free(pkt->compression.offsets);
+	}
+
+	if (pkt->tmp_rrsets_max > DEFAULT_TMP_RRSETS) {
+		free(pkt->tmp_rrsets);
+	}
+}
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
@@ -105,8 +297,32 @@ enum {
 
 dnslib_packet_t *dnslib_packet_new(dnslib_packet_prealloc_type_t prealloc)
 {
-	/*! \todo Implement! */
-	return NULL;
+	dnslib_packet_t *pkt;
+	void (*init_pointers)(dnslib_packet_t *pkt) = NULL;
+	size_t size;
+
+	switch (prealloc) {
+	case DNSLIB_PACKET_PREALLOC_NONE:
+		size = sizeof(dnslib_packet_t);
+		break;
+	case DNSLIB_PACKET_PREALLOC_QUERY:
+		size = PREALLOC_QUERY;
+		init_pointers = dnslib_packet_init_pointers_query;
+		break;
+	case DNSLIB_PACKET_PREALLOC_RESPONSE:
+		size = PREALLOC_RESPONSE;
+		init_pointers = dnslib_packet_init_pointers_response;
+		break;
+	}
+
+	pkt = (dnslib_packet_t *)malloc(size);
+	CHECK_ALLOC_LOG(pkt, NULL);
+	memset(pkt, 0, size);
+	if (init_pointers != NULL) {
+		init_pointers(pkt);
+	}
+
+	return pkt;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -201,6 +417,32 @@ const dnslib_rrset_t *dnslib_packet_additional_rrset(
 	}
 
 	return packet->additional[pos];
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_packet_contains(const dnslib_packet_t *packet,
+                           const dnslib_rrset_t *rrset)
+{
+	for (int i = 0; i < packet->header.ancount; ++i) {
+		if (packet->answer[i] == rrset) {
+			return 1;
+		}
+	}
+
+	for (int i = 0; i < packet->header.nscount; ++i) {
+		if (packet->authority[i] == rrset) {
+			return 1;
+		}
+	}
+
+	for (int i = 0; i < packet->header.arcount; ++i) {
+		if (packet->additional[i] == rrset) {
+			return 1;
+		}
+	}
+
+	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
