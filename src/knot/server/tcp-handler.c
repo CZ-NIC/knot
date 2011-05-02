@@ -166,7 +166,7 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 
 		/* Send error response on dnslib RCODE. */
 		if (res > 0) {
-			uint16_t pkt_id = dnslib_packet_get_id(qbuf);
+			uint16_t pkt_id = dnslib_wire_get_id(qbuf);
 			ns_error_response(pool->ns, pkt_id, res,
 					  qbuf, &resp_len);
 		}
