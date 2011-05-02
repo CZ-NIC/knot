@@ -113,8 +113,8 @@ zones {
     # ACL list specification for AXFR/IXFR OUT
     xfr-out server0;
 
-    # ACL list specification for NOTIFY OUT
-    notify-in server 0;
+    # ACL list specification for NOTIFY IN
+    notify-in server0;
 
     # ACL list specification for NOTIFY OUT
     notify-out server0;
