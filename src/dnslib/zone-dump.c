@@ -1589,8 +1589,6 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 		dnslib_rrtype_descriptor_by_type(type);
 	assert(desc != NULL);
 
-	printf("dumping type: %s\n", dnslib_rrtype_to_string(type));
-
 	for (int i = 0; i < desc->length; i++) {
 		if (&(rdata->items[i]) == NULL) {
 			debug_dnslib_zdump("Item n. %d is not set!\n", i);
