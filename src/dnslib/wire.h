@@ -1,5 +1,5 @@
 /*!
- * \file packet.h
+ * \file wire.h
  *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *

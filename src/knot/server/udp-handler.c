@@ -15,7 +15,7 @@
 #include "knot/server/name-server.h"
 #include "knot/stat/stat.h"
 #include "knot/server/server.h"
-#include "dnslib/packet.h"
+#include "dnslib/wire.h"
 
 int udp_master(dthread_t *thread)
 {

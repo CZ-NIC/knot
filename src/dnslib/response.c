@@ -6,7 +6,7 @@
 #include "dnslib/dnslib-common.h"
 #include "dnslib/response.h"
 #include "dnslib/rrset.h"
-#include "dnslib/packet.h"
+#include "dnslib/wire.h"
 #include "dnslib/descriptor.h"
 #include "dnslib/edns.h"
 #include "dnslib/utils.h"

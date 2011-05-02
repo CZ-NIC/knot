@@ -18,7 +18,7 @@
 #include "dnslib/edns.h"
 #include "dnslib/node.h"
 #include "dnslib/nsec3.h"
-#include "dnslib/packet.h"
+#include "dnslib/wire.h"
 #include "dnslib/rdata.h"
 #include "dnslib/response.h"
 #include "dnslib/rrset.h"

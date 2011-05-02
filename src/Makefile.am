@@ -173,7 +173,7 @@ libknot_la_SOURCES =				\
 	dnslib/rrset.h				\
 	dnslib/zone-load.h			\
 	dnslib/utils.h				\
-	dnslib/packet.h				\
+	dnslib/wire.h				\
 	dnslib/debug.h				\
 	dnslib/nsec3.h				\
 	knot/common.h				\

@@ -8,7 +8,7 @@
 #include "dnslib/rdata.h"
 #include "dnslib/rrset.h"
 #include "dnslib/dname.h"
-#include "dnslib/packet.h"
+#include "dnslib/wire.h"
 #include "dnslib/descriptor.h"
 #include "dnslib/edns.h"
 
