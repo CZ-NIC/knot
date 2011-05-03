@@ -1820,6 +1820,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	debug_zp("zone parsed\n");
 
+
 	uint found_orphans;
 
 	found_orphans = find_rrsets_orphans(parser->current_zone,
