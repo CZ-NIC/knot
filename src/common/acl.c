@@ -23,13 +23,50 @@ static int acl_compare(void *k1, void *k2)
 			return ldiff < 0 ? -1 : 1;
 		}
 
+		/* Port = 0 means any port match. */
+		/*! \todo Is key order interchangeable?
+		 *        Only stored keys should be able to have any port.
+		 *        k1 must be stored key and k2 has to be seeked key.
+		 */
+		if (a1->addr4.sin_port == 0) {
+			return 0;
+		}
+
 		/* Compare ports on address match. */
 		ldiff = ntohs(a1->addr4.sin_port) - ntohs(a2->addr4.sin_port);
 		return ldiff < 0 ? -1 : 1;
 	}
 
 	/* IPv6 matching. */
-	/*! \todo */
+#ifndef DISABLE_IPV6
+	if (a1->len == sizeof(struct sockaddr_in6)) {
+
+		/* Compare address. */
+		/*! \todo Maybe use memcmp()? */
+		ldiff = 0;
+		const char *a6 = (const char*)&a1->addr6.sin6_addr;
+		const char *b6 = (const char*)&a1->addr6.sin6_addr;
+		for (int i = 0; i < sizeof(struct in6_addr); ++i) {
+			ldiff = a6[i] - b6[i];
+			if (ldiff < 0) {
+				return -1;
+			}
+			if (ldiff > 0) {
+				return 1;
+			}
+		}
+
+		/* Port = 0 means any port match. */
+		if (a1->addr6.sin6_port == 0) {
+			return 0;
+		}
+
+		/* Compare ports on address match. */
+		ldiff = ntohs(a1->addr6.sin6_port) - ntohs(a2->addr6.sin6_port);
+		return ldiff < 0 ? -1 : 1;
+	}
+#endif
+
 	return 0;
 }
 
