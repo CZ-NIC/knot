@@ -56,6 +56,8 @@ struct lex_data {
 
 #define DEFAULT_TTL 3600
 
+int yylex_destroy();
+
 /*! \todo Implement ZoneDB. */
 typedef void namedb_type;
 
