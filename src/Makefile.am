@@ -132,6 +132,10 @@ libknot_la_SOURCES =				\
 	common/evsched.c		\
 	common/errors.h			\
 	common/errors.c			\
+	common/acl.h				\
+	common/acl.c				\
+	common/sockaddr.h				\
+	common/sockaddr.c				\
 	knot/stat/gatherer.c				\
 	knot/stat/stat.c				\
 	knot/stat/gatherer.h				\
