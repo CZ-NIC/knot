@@ -2004,15 +2004,15 @@ DEBUG_NS(
 	free(name_str2);
 );
 	// Check xfr-out ACL
-	char *nstr = dnslib_dname_to_str(qname);
 	if (acl_match(zone->acl.xfr_out, &xfr->from) == ACL_DENY) {
 		/*! \todo What should we return here? */
+		debug_ns("Request for AXFR OUT is not authorized.\n");
 		dnslib_response_set_rcode(xfr->response, DNSLIB_RCODE_NOTAUTH);
 		return KNOT_EOK;
 	} else {
-		fprintf(stderr, "xfr request is authorized for zone %s\n",
-			nstr);
+		debug_ns("Authorized AXFR OUT request.\n");
 	}
+
 
 	return ns_axfr_from_zone(zone, xfr);
 }
