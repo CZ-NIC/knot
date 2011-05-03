@@ -2007,12 +2007,6 @@ DEBUG_NS(
 	char *nstr = dnslib_dname_to_str(qname);
 	if (acl_match(zone->acl.xfr_out, &xfr->from) == ACL_DENY) {
 		/*! \todo What should we return here? */
-		/*
-		char buf[512];
-		inet_ntop(AF_INET, &xfr->from.addr4.sin_addr, buf, sizeof(buf));
-		fprintf(stderr, "xfr request from %s:%d is not in ACL for zone %s\n",
-			buf, ntohs(xfr->from.addr4.sin_port), nstr);
-		 */
 		dnslib_response_set_rcode(xfr->response, DNSLIB_RCODE_NOTAUTH);
 		return KNOT_EOK;
 	} else {

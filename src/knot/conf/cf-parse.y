@@ -124,7 +124,7 @@ remote_start: TEXT {
     memset(this_remote, 0, sizeof(conf_iface_t));
     this_remote->name = $1;
     this_remote->address = 0; // No default address (mandatory)
-    this_remote->port = CONFIG_DEFAULT_PORT;
+    this_remote->port = 0; // Port wildcard
     add_tail(&new_config->remotes, &this_remote->n);
     ++new_config->remotes_count;
  }
