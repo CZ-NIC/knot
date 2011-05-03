@@ -120,6 +120,7 @@ int xfr_master(dthread_t *thread)
 		}
 
 		/* Update request. */
+		sockaddr_update(&xfr.from);
 		xfr.response_wire = buf;
 		xfr.rsize = sizeof(buf);
 
