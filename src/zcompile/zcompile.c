@@ -1441,6 +1441,7 @@ int find_rrset_for_rrsig_in_node(dnslib_node_t *node, dnslib_rrset_t *rrsig)
 
 	if (tmp_rrset->rrsigs != NULL) {
 		dnslib_rrset_merge((void *)&tmp_rrset->rrsigs, (void *)&rrsig);
+		dnslib_rrset_free(&rrsig);
 	} else {
 		tmp_rrset->rrsigs = rrsig;
 	}
@@ -1480,10 +1481,19 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 		while ((tmp_node = node_get_func(zone,
 				    chopped)) == NULL) {
 			/* Adding new dname to zone - add to table as well. */
-			if (dnslib_dname_table_add_dname(parser->dname_table,
+//			printf("adding new dname (created from parent)%s %p\n",
+//			       dnslib_dname_to_str(chopped), chopped);
+			dnslib_dname_t *found_dname = NULL;
+			if ((!(found_dname =
+			       dnslib_dname_table_find_dname(parser->dname_table,
+			                                    chopped))) &&
+			    dnslib_dname_table_add_dname(parser->dname_table,
 							 chopped) != 0) {
 				/* TODO Cleanup? EVERYWHERE */
 				return NULL;
+			} else if (found_dname != NULL) {
+				dnslib_dname_free(&chopped);
+				chopped = found_dname;
 			}
 			tmp_node = dnslib_node_new(chopped, NULL);
 			last_node->parent = tmp_node;
@@ -1605,6 +1615,7 @@ int process_rr(void)
 	}
 
 	if (current_rrset->type == DNSLIB_RRTYPE_RRSIG) {
+		/*!< \todo Still a leak somewhere. */
 		dnslib_rrset_t *tmp_rrsig =
 			dnslib_rrset_new(current_rrset->owner,
 					     DNSLIB_RRTYPE_RRSIG,
@@ -1621,14 +1632,13 @@ int process_rr(void)
 			 */
 			if (parser->node_rrsigs != NULL) {
 				process_rrsigs_in_node(parser->last_node);
-
 				rrset_list_delete(&parser->node_rrsigs);
 			}
 
 			if ((parser->last_node = create_node(zone,
 						   current_rrset, node_add_func,
 						   node_get_func)) == NULL) {
-				free(tmp_rrsig);
+				dnslib_rrset_free(&tmp_rrsig);
 				return KNOT_ZCOMPILE_EBADNODE;
 			}
 		}
@@ -1656,7 +1666,6 @@ int process_rr(void)
 		rrset_list_delete(&parser->node_rrsigs);
 
 		/* new node */
-		/* not a new node !!! */
 		node = node_get_func(zone, current_rrset->owner);
 	}
 
@@ -1874,12 +1883,22 @@ static void save_replace_dnames_in_rdata(dnslib_dname_table_t *table,
 				dnslib_dname_table_find_dname(table,
 				searched_dname)) != NULL) {
 				/* Delete and replace dname. */
+//				printf("freeing %p %p %s\n", rdata->items[i].dname,
+//				       rdata->items[i].dname->name,
+//				       dnslib_dname_to_str(rdata->items[i].dname));
 				dnslib_dname_free(&rdata->items[i].dname);
 				rdata->items[i].dname = found_dname;
 			} else {
+//				printf("adding in rdata: %p %p %s\n", rdata->items[i].dname,
+//				       rdata->items[i].dname->name,
+//				       dnslib_dname_to_str(rdata->items[i].dname));
 				/* Insert dname in the table. */
-				dnslib_dname_table_add_dname(table,
-							     searched_dname);
+				if (dnslib_dname_table_add_dname(table,
+							        searched_dname)
+				   != 0) {
+					fprintf(stderr, "Could not add name to table!\n");
+					return;
+				}
 			}
 		}
 	}
@@ -1895,10 +1914,20 @@ int save_dnames_in_table(dnslib_dname_table_t *table,
 	dnslib_dname_t *found_dname = NULL;
 	if ((found_dname =
 		dnslib_dname_table_find_dname(table, rrset->owner)) != NULL &&
-	    found_dname != rrset->owner) {
-//		dnslib_dname_free(&rrset->owner);
+		found_dname != rrset->owner) {
+		assert(rrset->owner != found_dname);
+		assert(found_dname->name != rrset->owner->name);
+		assert(found_dname->labels != rrset->owner->labels);
+		assert(rrset->owner != parser->last_node->owner);
+//		printf("freeing %s %s\n"
+//		       "old: %p found: %p found name: %p freed name: %p\n", dnslib_dname_to_str(rrset->owner),
+//		       dnslib_dname_to_str(found_dname), rrset->owner, found_dname, found_dname->name,
+//		       rrset->owner->name);
+		assert(parser->last_node->owner != rrset->owner);
+		dnslib_dname_free(&rrset->owner);
 		/* owner is now a reference from the table */
 		rrset->owner = found_dname;
+		assert(parser->current_rrset->owner == rrset->owner);
 	} else if (found_dname != rrset->owner) {
 		/* Insert the dname in the table. */
 		if (dnslib_dname_table_add_dname(table, rrset->owner) != 0) {
