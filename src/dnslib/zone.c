@@ -280,6 +280,8 @@ static void dnslib_zone_adjust_rrsets(dnslib_node_t *node, dnslib_zone_t *zone)
 			dnslib_zone_adjust_rdata_in_rrset(rrsigs, zone);
 		}
 	}
+
+	free(rrsets);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -382,6 +384,8 @@ DEBUG_DNSLIB_ZONE(
 			dnslib_zone_adjust_rdata_in_rrset(rrsigs, zone);
 		}
 	}
+
+	free(rrsets);
 }
 
 /*----------------------------------------------------------------------------*/

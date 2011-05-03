@@ -20,6 +20,8 @@ static int compare_dname_table_nodes(struct dname_table_node *n1,
 static void delete_dname_table_node(struct dname_table_node *node, void *data)
 {
 	if (data) {
+//		printf("Freeing: %s (%p)\n", dnslib_dname_to_str(node->dname),
+//		                                                 node->dname->name);
 		dnslib_dname_free(&node->dname);
 	}
 
@@ -109,6 +111,8 @@ void dnslib_dname_table_deep_free(dnslib_dname_table_t **table)
 	/* Walk the tree and free each node, but not the dnames. */
 	TREE_POST_ORDER_APPLY((*table)->tree, dname_table_node, avl,
 			      delete_dname_table_node, (void *) 1);
+
+	free((*table)->tree);
 
 	free(*table);
 	*table = NULL;

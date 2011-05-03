@@ -15,6 +15,7 @@ static void help(int argc, char **argv)
 	printf("Parameters:\n"
 	       " -o <outfile> Override output file.\n"
 	       " -v           Verbose mode - additional runtime information.\n"
+	       " -s           Enable semantic checks.\n"
 	       " -V           Print version of the server.\n"
 	       " -h           Print help and usage.\n");
 }

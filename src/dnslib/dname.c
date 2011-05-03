@@ -285,7 +285,8 @@ dnslib_dname_t *dnslib_dname_new_from_str(const char *name, uint size,
 		return NULL;
 	}
 
-	dnslib_dname_t *dname = dnslib_dname_alloc();
+//	dnslib_dname_t *dname = dnslib_dname_alloc();
+	dnslib_dname_t *dname = dnslib_dname_new();
 
 	if (dname == NULL) {
 		ERR_ALLOC_FAILED;
@@ -726,7 +727,7 @@ void dnslib_dname_free(dnslib_dname_t **dname)
 		free((*dname)->labels);
 	}
 
-	slab_free(*dname);
+//	slab_free(*dname);
 	*dname = NULL;
 }
 
