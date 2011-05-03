@@ -5,9 +5,17 @@
 #include "dnslib/dname-table.h"
 #include "dnslib/error.h"
 
-/* Tree functions. */
+/*!< Tree functions. */
 TREE_DEFINE(dname_table_node, avl);
 
+/*!
+ * \brief Comparison function to be used with tree.
+ *
+ * \param n1 First dname to be compared.
+ * \param n2 Second dname to be compared.
+ *
+ * \return strncmp of dname's wireformats.
+ */
 static int compare_dname_table_nodes(struct dname_table_node *n1,
 				     struct dname_table_node *n2)
 {
@@ -17,15 +25,19 @@ static int compare_dname_table_nodes(struct dname_table_node *n1,
 			(n1->dname->size):(n2->dname->size)));
 }
 
+/*!
+ * \brief Deletes tree node along with its domain name.
+ *
+ * \param node Node to be deleted.
+ * \param data If <> 0, dname in the node will be freed as well.
+ */
 static void delete_dname_table_node(struct dname_table_node *node, void *data)
 {
 	if (data) {
-//		printf("Freeing: %s (%p)\n", dnslib_dname_to_str(node->dname),
-//		                                                 node->dname->name);
 		dnslib_dname_free(&node->dname);
 	}
 
-	/*!< \todo it would be nice to set pointers to NULL, too. */
+	/*!< \todo it would be nice to set pointers to NULL. */
 	free(node);
 }
 
