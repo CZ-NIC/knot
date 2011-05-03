@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <errno.h>
 
+#include "common/sockaddr.h"
 #include "knot/common.h"
 #include "knot/other/error.h"
 #include "knot/server/udp-handler.h"
@@ -16,6 +17,7 @@
 #include "knot/stat/stat.h"
 #include "knot/server/server.h"
 #include "dnslib/wire.h"
+#include "dnslib/consts.h"
 
 int udp_master(dthread_t *thread)
 {
@@ -31,7 +33,7 @@ int udp_master(dthread_t *thread)
 
 
 	sockaddr_t addr;
-	if (socket_initaddr(&addr, handler->type) != KNOT_EOK) {
+	if (sockaddr_init(&addr, handler->type) != KNOT_EOK) {
 		log_server_error("Socket type %d is not supported, "
 				 "IPv6 support is probably disabled.\n",
 				 handler->type);
