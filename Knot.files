@@ -33,6 +33,10 @@ src/common/evsched.c
 src/common/evsched.h
 src/common/errors.h
 src/common/errors.c
+src/common/acl.c
+src/common/acl.h
+src/common/sockaddr.h
+src/common/sockaddr.c
 src/dnslib/dnslib-common.h
 src/dnslib/dname.h
 src/dnslib/dname.c
