@@ -23,7 +23,7 @@ enum {
 };
 
 /*! \brief Character table mapping uppercase letters to lowercase. */
-const uint8_t char_table[CHAR_TABLE_SIZE];
+extern const uint8_t char_table[CHAR_TABLE_SIZE];
 
 /*!
  * \brief Converts ASCII character to lowercase.

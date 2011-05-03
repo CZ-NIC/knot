@@ -51,7 +51,7 @@ enum knot_error_t {
 };
 
 /*! \brief Table linking error messages to error codes. */
-const error_table_t knot_error_msgs[KNOT_ERROR_COUNT];
+extern const error_table_t knot_error_msgs[KNOT_ERROR_COUNT];
 
 /*!
  * \brief Returns error message for the given error code.

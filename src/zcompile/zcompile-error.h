@@ -68,7 +68,7 @@ enum knot_zcompile_error {
 typedef enum knot_zcompile_error knot_zcompile_error_t;
 
 /*! \brief Table linking error messages to error codes. */
-const error_table_t knot_zcompile_error_msgs[KNOT_ZCOMPILE_ERROR_COUNT];
+extern const error_table_t knot_zcompile_error_msgs[KNOT_ZCOMPILE_ERROR_COUNT];
 
 #endif /* _KNOT_ZCOMPILE_ERROR_H_ */
 
