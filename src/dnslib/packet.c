@@ -519,8 +519,8 @@ static int dnslib_packet_add_rrset(dnslib_rrset_t *rrset,
 	if (dupl == DNSLIB_PACKET_DUPL_MERGE) {
 		// try to find the RRSet in this array of RRSets
 		for (int i = 0; i < *rrset_count; ++i) {
-			if (dnslib_rrset_compare_no_rdata((*rrsets)[i],
-			                                  rrset)) {
+			if (dnslib_rrset_compare((*rrsets)[i], rrset,
+			                         DNSLIB_RRSET_COMPARE_WHOLE)) {
 				int rc = dnslib_rrset_merge((*rrsets) + i,
 				                            rrset);
 				if (rc != DNSLIB_EOK) {
