@@ -148,6 +148,8 @@ src/knot/conf/conf.c
 src/knot/conf/conf.h
 src/knot/conf/logconf.c
 src/knot/conf/logconf.h
+src/tests/common/acl_tests.c
+src/tests/common/acl_tests.h
 src/tests/common/da_tests.c
 src/tests/common/da_tests.h
 src/tests/common/events_tests.c
