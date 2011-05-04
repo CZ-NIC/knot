@@ -163,6 +163,7 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
 
 	size_t item_size;
 	uint8_t gateway_type = 0;  // only to handle IPSECKEY record
+	dnslib_dname_t *dname;
 
 	while (parsed < rdlength && i < desc->length) {
 		item_type = desc->wireformat[i];
@@ -172,7 +173,7 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
 		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
 		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
 		case DNSLIB_RDATA_WF_LITERAL_DNAME:
-			dnslib_dname_t *dname = dnslib_dname_parse_from_wire(
+			dname = dnslib_dname_parse_from_wire(
 				wire, pos, total_size, NULL);
 			if (dname == NULL) {
 				free(items);
@@ -225,7 +226,7 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
 				item_size = 16;
 				break;
 			case 3:
-				dnslib_dname_t *dname =
+				dname =
 					dnslib_dname_parse_from_wire(
 					           wire, pos, total_size, NULL);
 				if (dname == NULL) {
