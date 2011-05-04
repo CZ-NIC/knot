@@ -46,6 +46,8 @@ knot_zcompile_SOURCES =			\
 	zcompile/parser-descriptor.c
 
 unittests_SOURCES =				\
+	tests/common/acl_tests.c		\
+	tests/common/acl_tests.h		\
 	tests/common/da_tests.c			\
 	tests/common/da_tests.h			\
 	tests/common/events_tests.c		\

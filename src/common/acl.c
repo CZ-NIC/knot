@@ -34,7 +34,10 @@ static int acl_compare(void *k1, void *k2)
 
 		/* Compare ports on address match. */
 		ldiff = ntohs(a1->addr4.sin_port) - ntohs(a2->addr4.sin_port);
-		return ldiff < 0 ? -1 : 1;
+		if (ldiff != 0) {
+			return ldiff < 0 ? -1 : 1;
+		}
+		return 0;
 	}
 
 	/* IPv6 matching. */
@@ -63,7 +66,10 @@ static int acl_compare(void *k1, void *k2)
 
 		/* Compare ports on address match. */
 		ldiff = ntohs(a1->addr6.sin6_port) - ntohs(a2->addr6.sin6_port);
-		return ldiff < 0 ? -1 : 1;
+		if (ldiff != 0) {
+			return ldiff < 0 ? -1 : 1;
+		}
+		return 0;
 	}
 #endif
 

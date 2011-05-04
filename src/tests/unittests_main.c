@@ -7,6 +7,7 @@
 #include "tests/common/skiplist_tests.h"
 #include "tests/common/events_tests.h"
 #include "tests/common/da_tests.h"
+#include "tests/common/acl_tests.h"
 #include "tests/knot/dthreads_tests.h"
 #include "tests/knot/server_tests.h"
 #include "tests/knot/conf_tests.h"
@@ -25,6 +26,7 @@ int main(int argc, char *argv[])
 		&dthreads_tests_api, //! DThreads testing unit
 		&events_tests_api,   //! Events testing unit
 		&da_tests_api,       //! Dynamic array unit
+		&acl_tests_api,      //! ACLs
 
 		/* Server parts. */
 		&conf_tests_api,     //! Configuration parser tests

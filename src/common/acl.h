@@ -96,6 +96,10 @@ int acl_truncate(acl_t *acl);
  * \retval ACL name.
  */
 static inline const char* acl_name(acl_t *acl) {
+	if (!acl) {
+		return 0;
+	}
+
 	return acl->name;
 }
 
