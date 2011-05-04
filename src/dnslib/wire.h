@@ -890,6 +890,21 @@ static inline void dnslib_wire_put_pointer(uint8_t *pos, size_t ptr)
 	pos[0] |= DNSLIB_WIRE_PTR;
 }
 
+static inline int dnslib_wire_is_pointer(const uint8_t *pos)
+{
+	return ((pos[0] & DNSLIB_WIRE_PTR) != 0);
+}
+
+static inline size_t dnslib_wire_get_pointer(const uint8_t *pos)
+{
+	uint16_t p = 0;
+	memcpy(&p, pos, 2);
+	p &= ~DNSLIB_WIRE_PTR;
+
+	uint16_t p2 = dnslib_wire_read_u16(&p);
+	return p2;
+}
+
 #endif /* _KNOT_DNSLIB_WIRE_H_ */
 
 /*! @} */
