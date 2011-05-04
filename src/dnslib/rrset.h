@@ -167,6 +167,9 @@ dnslib_rdata_t *dnslib_rrset_get_rdata(dnslib_rrset_t *rrset);
  */
 const dnslib_rrset_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset);
 
+int dnslib_rrset_compare_no_rdata(const dnslib_rrset_t *r1,
+                                  const dnslib_rrset_t *r2);
+
 /*!
  * \brief Destroys the RRSet structure.
  *

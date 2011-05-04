@@ -483,11 +483,19 @@ static dnslib_rrset_t *dnslib_packet_parse_rr(const uint8_t *wire, size_t *pos,
 	return NULL;
 }
 
+typedef enum {
+	DNSLIB_PACKET_DUPL_IGNORE,
+	DNSLIB_PACKET_DUPL_SKIP,
+	DNSLIB_PACKET_DUPL_MERGE
+} dnslib_packet_duplicate_handling_t;
+
 /*----------------------------------------------------------------------------*/
 
 static int dnslib_packet_add_rrset(dnslib_rrset_t *rrset,
                                    dnslib_rrset_t ***rrsets, short *rrset_count,
-                                   short *max_rrsets)
+                                   short *max_rrsets,
+                                   const dnslib_packet_t *packet,
+                                   dnslib_packet_duplicate_handling_t dupl)
 {
 
 	assert(rrset != NULL);
@@ -497,36 +505,36 @@ static int dnslib_packet_add_rrset(dnslib_rrset_t *rrset,
 
 	debug_dnslib_response("packet_add_rrset()\n");
 
-//	if (*rrset_count == *max_rrsets
-//	    && dnslib_packet_realloc_rrsets(rrsets, max_rrsets, DEFAULT_ANCOUNT, STEP_ANCOUNT)
-//	       != DNSLIB_EOK) {
-//		return DNSLIB_ENOMEM;
-//	}
+	if (*rrset_count == *max_rrsets
+	    && dnslib_packet_realloc_rrsets(rrsets, max_rrsets, DEFAULT_ANCOUNT,
+	                                    STEP_ANCOUNT) != DNSLIB_EOK) {
+		return DNSLIB_ENOMEM;
+	}
 
-//	if (check_duplicates && dnslib_response_contains(response, rrset)) {
-//		return DNSLIB_EOK;
-//	}
+	if (dupl == DNSLIB_PACKET_DUPL_SKIP &&
+	    dnslib_packet_contains(packet, rrset)) {
+		return DNSLIB_EOK;
+	}
 
-//	debug_dnslib_response("Trying to add RRSet to Answer section.\n");
-//	debug_dnslib_response("RRset: %p\n", rrset);
-//	debug_dnslib_response("Owner: %p\n", rrset->owner);
+	if (dupl == DNSLIB_PACKET_DUPL_MERGE) {
+		// try to find the RRSet in this array of RRSets
+		for (int i = 0; i < *rrset_count; ++i) {
+			if (dnslib_rrset_compare_no_rdata((*rrsets)[i],
+			                                  rrset)) {
+				int rc = dnslib_rrset_merge((*rrsets) + i,
+				                            rrset);
+				if (rc != DNSLIB_EOK) {
+					return rc;
+				}
+				return DNSLIB_EOK;
+			}
+		}
+	}
 
-//	int rrs = dnslib_response_try_add_rrset(response->answer,
-//	                                        &response->an_rrsets, response,
-//	                                        response->max_size
-//	                                        - response->size
-//	                                        - response->edns_response.size,
-//	                                        rrset, tc, compr_cs);
+	(*rrsets)[*rrset_count] = rrset;
+	++(*rrset_count);
 
-//	if (rrs >= 0) {
-//		response->header.ancount += rrs;
-//		return DNSLIB_EOK;
-//	}
-
-//	return DNSLIB_ESPACE;
-
-	/*! @todo Implement! */
-	return DNSLIB_ERROR;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -565,7 +573,8 @@ static int dnslib_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 		}
 
 		err = dnslib_packet_add_rrset(rrset, rrsets, rrset_count,
-		                              max_rrsets);
+		                              max_rrsets, packet,
+		                              DNSLIB_PACKET_DUPL_MERGE);
 		if (err < 0) {
 			break;
 		} else if (err > 0) {	// merged
