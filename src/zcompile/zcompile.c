@@ -12,6 +12,8 @@
  * @{
  */
 
+
+
 #include <config.h>
 #include <assert.h>
 #include <fcntl.h>
@@ -33,6 +35,18 @@
 #include "zparser.h"
 #include "zcompile/zcompile-error.h"
 #include "dnslib/dnslib.h"
+
+//#define DEBUG_UNKNOWN_RDATA
+
+#ifdef DEBUG_UNKNOWN_RDATA
+#define dbg_rdata(msg...) fprintf(stderr, msg)
+#define DBG_RDATA(cmds) do { cmds } while (0)
+#else
+#define dbg_rdata(msg...)
+#define DBG_RDATA(cmds)
+#endif
+
+
 
 #define IP6ADDRLEN	(128/8)
 #define	NS_INT16SZ	2
@@ -169,7 +183,11 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 					const uint16_t data_size,
 					dnslib_rdata_item_t **items)
 {
-	uint16_t const *end = wireformat + data_size;
+	dbg_rdata("read length: %d\n", data_size);
+//	hex_print(wireformat, data_size);
+	uint16_t const *end = (uint16_t *)((uint8_t *)wireformat + (data_size));
+	dbg_rdata("set end pointer: %p which means length: %d\n", end,
+	          (uint8_t *)end - (uint8_t *)wireformat);
 	size_t i;
 	dnslib_rdata_item_t *temp_rdatas =
 		malloc(sizeof(dnslib_rdata_item_t) * MAXRDATALEN);
@@ -180,11 +198,15 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 
 	assert(descriptor->length <= MAXRDATALEN);
 
+	dbg_rdata("will be parsing %d items, total size: %d\n",
+	          descriptor->length, data_size);
+
 	for (i = 0; i < descriptor->length; ++i) {
 		int is_domain = 0;
 		int is_normalized = 0;
 		int is_wirestore = 0;
 		size_t length = 0;
+		length = 0;
 		int required = descriptor->length;
 
 		switch (rdata_atom_wireformat_type(rrtype, i)) {
@@ -210,9 +232,11 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
 			/* Length is stored in the first byte.  */
 			length = 1;
-			if (wireformat + length <= end) {
+			if ((uint8_t *)wireformat + length <= (uint8_t *)end) {
 			//	length += wireformat[length - 1];
-				length += wireformat[0];
+				length += *((uint8_t *)wireformat);
+				dbg_rdata("%d: set new length: %d\n", i,
+				          length);
 			}
 			/*if (buffer_position(packet) + length <= end) {
 			length += buffer_current(packet)[length - 1];
@@ -226,14 +250,17 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			break;
 		case DNSLIB_RDATA_WF_BINARY:
 			/* Remaining RDATA is binary.  */
-			length = end - wireformat;
+			dbg_rdata("%d: guessing length from pointers: %p %p\n",
+			          i,
+			          wireformat, end);
+			length = (uint8_t *)end - (uint8_t *)wireformat;
 //			length = end - buffer_position(packet);
 			break;
 		case DNSLIB_RDATA_WF_APL:
 			length = (sizeof(uint16_t)    /* address family */
 				  + sizeof(uint8_t)   /* prefix */
 				  + sizeof(uint8_t)); /* length */
-			if (wireformat + length <= end) {
+			if ((uint8_t *)wireformat + length <= (uint8_t *)end) {
 				/* Mask out negation bit.  */
 				length += (wireformat[length - 1]
 					   & APL_LENGTH_MASK);
@@ -268,14 +295,16 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				break;
 			}
 
-			char *tmp_dname_str = malloc(sizeof(char) * length);
-
-			memcpy(tmp_dname_str, wireformat, length);
-
-			dname = dnslib_dname_new_from_str(tmp_dname_str,
-							  strlen(tmp_dname_str),
+			dname = dnslib_dname_new_from_str((uint8_t *)wireformat,
+							  length,
 							  NULL);
-			free(tmp_dname_str);
+
+			if (dname == NULL) {
+				dbg_rdata("malformed dname!\n");
+				return KNOT_ZCOMPILE_EBRDATA;
+			}
+			dbg_rdata("%d: created dname: %s\n", i,
+			          dnslib_dname_to_str(dname));
 
 			if (is_wirestore) {
 				/*temp_rdatas[i].raw_data =
@@ -303,25 +332,32 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			}
 
 		} else {
-			if (wireformat + length > end) {
+			dbg_rdata("%d :length: %d %d %p %p\n", i, length,
+			          end - wireformat,
+			          wireformat, end);
+			if ((uint8_t *)wireformat + length > (uint8_t *)end) {
 				if (required) {
 					/* Truncated RDATA.  */
+					dbg_rdata("truncated rdata\n");
 					return KNOT_ZCOMPILE_EBRDATA;
 				} else {
 					break;
 				}
 			}
 
-			temp_rdatas[i].raw_data =
-				malloc(sizeof(uint16_t) + sizeof(uint16_t));
+			assert(wireformat <= end); /*!< \todo remove! */
+			dbg_rdata("calling init with: %p and length : %d\n",
+			          wireformat, length);
+			temp_rdatas[i].raw_data = alloc_rdata_init(wireformat,
+			                                           length);
 
 			if (temp_rdatas[i].raw_data == NULL) {
 				ERR_ALLOC_FAILED;
 				return -1;
 			}
 
-			temp_rdatas[i].raw_data[0] = length;
-			memcpy(temp_rdatas[i].raw_data + 1, wireformat, length);
+//			temp_rdatas[i].raw_data[0] = length;
+//			memcpy(temp_rdatas[i].raw_data + 1, wireformat, length);
 
 /*			temp_rdatas[i].data = (uint16_t *) region_alloc(
 				region, sizeof(uint16_t) + length);
@@ -329,11 +365,22 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				buffer_read(packet,
 					    temp_rdatas[i].data + 1, length); */
 		}
-		wireformat += length;
+		dbg_rdata("%d: adding length: %d (remaining: %d)\n", i, length,
+		          (uint8_t *)end - ((uint8_t *)wireformat + length));
+//		hex_print(temp_rdatas[i].raw_data + 1, length);
+		wireformat = (uint16_t *)((uint8_t *)wireformat + length);
+//		wireformat = wireformat + length;
+		dbg_rdata("wire: %p\n", wireformat);
+		dbg_rdata("remaining now: %d\n",
+		          end - wireformat);
+
 	}
+
+	dbg_rdata("%p %p\n", wireformat, (uint8_t *)wireformat);
 
 	if (wireformat < end) {
 		/* Trailing garbage.  */
+		dbg_rdata("w: %p e: %p %d\n", wireformat, end, end - wireformat);
 //		region_destroy(temp_region);
 		return KNOT_ZCOMPILE_EBRDATA;
 	}
@@ -408,9 +455,12 @@ static uint16_t * alloc_rdata(size_t size)
 	return result;
 }
 
-uint16_t * alloc_rdata_init(const void *data, size_t size)
+uint16_t *alloc_rdata_init(const void *data, size_t size)
 {
 	uint16_t *result = malloc(sizeof(uint16_t) + size);
+	if (result == NULL) {
+		return NULL;
+	}
 	*result = size;
 	memcpy(result + 1, data, size);
 	return result;
@@ -1320,6 +1370,7 @@ void zadd_rdata_domain(dnslib_dname_t *dname)
 
 void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 {
+	dbg_rdata("parsing unknown rdata for type: %d\n", type);
 //	buffer_type packet;
 	uint16_t size;
 	ssize_t rdata_count;
@@ -1333,10 +1384,14 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 	}
 
 //	buffer_create_from(&packet, wireformat + 1, *wireformat);
-	rdata_count = rdata_wireformat_to_rdata_atoms(wireformat, type,
+	rdata_count = rdata_wireformat_to_rdata_atoms(wireformat + 1, type,
 						      size, &items);
-	if (rdata_count == -1) {
-		fprintf(stderr, "bad unknown RDATA");
+//	dbg_rdata("got %d items\n", rdata_count);
+	dbg_rdata("wf to items returned error: %s (%d)\n",
+	          error_to_str(knot_zcompile_error_msgs, rdata_count),
+	                       rdata_count);
+	if (rdata_count < 0) {
+		fprintf(stderr, "bad unknown RDATA\n");
 		return;
 	}
 
