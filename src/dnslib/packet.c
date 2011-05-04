@@ -265,34 +265,32 @@ static void dnslib_packet_init_pointers_query(dnslib_packet_t *pkt)
  * \retval DNSLIB_EOK
  * \retval DNSLIB_EFEWDATA
  */
-static int dnslib_packet_parse_header(const uint8_t **pos, size_t *remaining,
-                                      dnslib_header_t *header)
+static int dnslib_packet_parse_header(const uint8_t *wire, size_t *pos,
+                                      size_t size, dnslib_header_t *header)
 {
+	assert(wire != NULL);
 	assert(pos != NULL);
-	assert(*pos != NULL);
-	assert(remaining != NULL);
 	assert(header != NULL);
 
-	if (*remaining < DNSLIB_WIRE_HEADER_SIZE) {
+	if (size - *pos < DNSLIB_WIRE_HEADER_SIZE) {
 		debug_dnslib_response("Not enough data to parse header.\n");
 		return DNSLIB_EFEWDATA;
 	}
 
-	header->id = dnslib_wire_get_id(*pos);
+	header->id = dnslib_wire_get_id(wire);
 	// copy some of the flags: OPCODE and RD
 	// do this by copying flags1 and setting QR to 1, AA to 0 and TC to 0
-	header->flags1 = dnslib_wire_get_flags1(*pos);
-	dnslib_wire_flags_set_qr(&header->flags1);
-	dnslib_wire_flags_clear_aa(&header->flags1);
-	dnslib_wire_flags_clear_tc(&header->flags1);
+	header->flags1 = dnslib_wire_get_flags1(wire);
+//	dnslib_wire_flags_set_qr(&header->flags1);
+//	dnslib_wire_flags_clear_aa(&header->flags1);
+//	dnslib_wire_flags_clear_tc(&header->flags1);
 	// do not copy flags2 (all set by server)
-	header->qdcount = dnslib_wire_get_qdcount(*pos);
-	header->ancount = dnslib_wire_get_ancount(*pos);
-	header->nscount = dnslib_wire_get_nscount(*pos);
-	header->arcount = dnslib_wire_get_arcount(*pos);
+	header->qdcount = dnslib_wire_get_qdcount(wire);
+	header->ancount = dnslib_wire_get_ancount(wire);
+	header->nscount = dnslib_wire_get_nscount(wire);
+	header->arcount = dnslib_wire_get_arcount(wire);
 
 	*pos += DNSLIB_WIRE_HEADER_SIZE;
-	*remaining -= DNSLIB_WIRE_HEADER_SIZE;
 
 	return DNSLIB_EOK;
 }
@@ -312,45 +310,45 @@ static int dnslib_packet_parse_header(const uint8_t **pos, size_t *remaining,
  * \retval DNSLIB_EFEWDATA
  * \retval DNSLIB_ENOMEM
  */
-static int dnslib_packet_parse_question(const uint8_t **pos,
-                                        size_t *remaining,
+static int dnslib_packet_parse_question(const uint8_t *wire, size_t *pos,
+                                        size_t size,
                                         dnslib_question_t *question)
 {
 	assert(pos != NULL);
-	assert(*pos != NULL);
-	assert(remaining != NULL);
+	assert(wire != NULL);
 	assert(question != NULL);
 	assert(question->qname != NULL);
 
-	if (*remaining < DNSLIB_WIRE_QUESTION_MIN_SIZE) {
+	if (size - *pos < DNSLIB_WIRE_QUESTION_MIN_SIZE) {
 		debug_dnslib_response("Not enough data to parse question.\n");
 		return DNSLIB_EFEWDATA;  // malformed
 	}
 
 	// domain name must end with 0, so just search for 0
-	int i = 0;
-	while (i < *remaining && (*pos)[i] != 0) {
+	int i = *pos;
+	while (i < size && wire[i] != 0) {
 		++i;
 	}
 
-	if (i == *remaining || *remaining - i - 1 < 4) {
+	if (size - i - 1 < 4) {
 		debug_dnslib_response("Not enough data to parse question.\n");
 		return DNSLIB_EFEWDATA;  // no 0 found or not enough data left
 	}
 
-	int res = dnslib_dname_from_wire(*pos, i + 1, NULL, question->qname);
+	int res = dnslib_dname_from_wire(wire + *pos, i - *pos + 1, NULL,
+	                                 question->qname);
 	if (res != DNSLIB_EOK) {
 		assert(res != DNSLIB_EBADARG);
 		return res;
 	}
 
-	*pos += i + 1;
-	question->qtype = dnslib_wire_read_u16(*pos);
-	*pos += 2;
-	question->qclass = dnslib_wire_read_u16(*pos);
-	*pos += 2;
+	*pos = i + 1;
+	question->qtype = dnslib_wire_read_u16(wire + i);
+	//*pos += 2;
+	question->qclass = dnslib_wire_read_u16(wire + i + 2);
+	//*pos += 2;
 
-	*remaining -= (i + 5);
+	*pos += 4;
 
 	return DNSLIB_EOK;
 }
@@ -394,9 +392,9 @@ static int dnslib_packet_realloc_rrsets(const dnslib_rrset_t ***rrsets,
 
 /*----------------------------------------------------------------------------*/
 
-static dnslib_rdata_t *dnslib_packet_parse_rdata(uint8_t **pos,
-                                                 size_t *remaining,
-                                               dnslib_rrtype_descriptor_t *desc)
+static dnslib_rdata_t *dnslib_packet_parse_rdata(const uint8_t *wire,
+	size_t *pos, size_t total_size, size_t rdlength,
+	const dnslib_rrtype_descriptor_t *desc)
 {
 	if (desc->type == 0) {
 		debug_dnslib_packet("Unknown RR type.\n");
@@ -415,22 +413,23 @@ static dnslib_rdata_t *dnslib_packet_parse_rdata(uint8_t **pos,
 
 /*----------------------------------------------------------------------------*/
 
-static dnslib_rrset_t *dnslib_packet_parse_rr(uint8_t **pos, size_t *remaining)
+static dnslib_rrset_t *dnslib_packet_parse_rr(const uint8_t *wire, size_t *pos,
+                                              size_t size)
 {
 	dnslib_rrset_t *rrset =
 		(dnslib_rrset_t *)malloc(sizeof(dnslib_rrset_t));
 	CHECK_ALLOC_LOG(rrset, NULL);
 
-	rrset->owner = dnslib_dname_parse_from_wire(*pos, *remaining, NULL);
+	rrset->owner = dnslib_dname_parse_from_wire(wire, pos, size, NULL);
 	if (rrset->owner == NULL) {
 		free(rrset);
 		return NULL;
 	}
 
-	*remaining -= dnslib_dname_size(rrset->owner);
+	//*remaining -= dnslib_dname_size(rrset->owner);
 
 	/*! @todo Get rid of the numerical constant. */
-	if (*remaining < 10) {
+	if (size - *pos < 10) {
 		debug_dnslib_packet("Malformed RR: Not enough data to parse RR"
 		                    " header.\n");
 		dnslib_dname_free(rrset->owner);
@@ -438,19 +437,14 @@ static dnslib_rrset_t *dnslib_packet_parse_rr(uint8_t **pos, size_t *remaining)
 		return NULL;
 	}
 
-	rrset->type = dnslib_wire_read_u16(*pos);
-	*pos += 2;
-	rrset->rclass = dnslib_wire_read_u16(*pos);
-	*pos += 2;
-	rrset->ttl = dnslib_wire_read_u32(*pos);
-	*pos += 4;
+	rrset->type = dnslib_wire_read_u16(wire + *pos);
+	rrset->rclass = dnslib_wire_read_u16(wire + *pos + 2);
+	rrset->ttl = dnslib_wire_read_u32(wire + *pos + 4);
+	uint16_t rdlength = dnslib_wire_read_u16(wire + *pos + 8);
 
-	uint16_t rdlength = dnslib_wire_read_u16(*pos);
-	*pos += 2;
+	*pos += 10;
 
-	*remaining -= 10;
-
-	if (*remaining < rdlength) {
+	if (size - *pos < rdlength) {
 		debug_dnslib_packet("Malformed RR: Not enough data to parse RR"
 		                    " RDATA.\n");
 		dnslib_dname_free(rrset->owner);
@@ -459,7 +453,8 @@ static dnslib_rrset_t *dnslib_packet_parse_rr(uint8_t **pos, size_t *remaining)
 	}
 
 	// parse RDATA
-	dnslib_rdata_t *rdata = dnslib_packet_parse_rdata(pos, remaining,
+	dnslib_rdata_t *rdata = dnslib_packet_parse_rdata(wire, pos, size,
+	                         rdlength,
 	                         dnslib_rrtype_descriptor_by_type(rrset->type));
 	if (rdata == NULL) {
 		debug_dnslib_packet("Malformed RR: Could not parse RDATA.\n");
@@ -487,21 +482,60 @@ static int dnslib_packet_add_rrset(dnslib_rrset_t *rrset,
                                    dnslib_rrset_t ***rrsets, short *rrset_count,
                                    short *max_rrsets)
 {
+
+	assert(rrset != NULL);
+	assert(rrsets != NULL);
+	assert(rrset_count != NULL);
+	assert(max_rrsets != NULL);
+
+	debug_dnslib_response("packet_add_rrset()\n");
+
+//	if (*rrset_count == *max_rrsets
+//	    && dnslib_packet_realloc_rrsets(rrsets, max_rrsets, DEFAULT_ANCOUNT, STEP_ANCOUNT)
+//	       != DNSLIB_EOK) {
+//		return DNSLIB_ENOMEM;
+//	}
+
+//	if (check_duplicates && dnslib_response_contains(response, rrset)) {
+//		return DNSLIB_EOK;
+//	}
+
+//	debug_dnslib_response("Trying to add RRSet to Answer section.\n");
+//	debug_dnslib_response("RRset: %p\n", rrset);
+//	debug_dnslib_response("Owner: %p\n", rrset->owner);
+
+//	int rrs = dnslib_response_try_add_rrset(response->answer,
+//	                                        &response->an_rrsets, response,
+//	                                        response->max_size
+//	                                        - response->size
+//	                                        - response->edns_response.size,
+//	                                        rrset, tc, compr_cs);
+
+//	if (rrs >= 0) {
+//		response->header.ancount += rrs;
+//		return DNSLIB_EOK;
+//	}
+
+//	return DNSLIB_ESPACE;
+
 	/*! @todo Implement! */
 	return DNSLIB_ERROR;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int dnslib_packet_parse_rrs(uint8_t **pos, size_t *remaining,
-                                   uint16_t rr_count, dnslib_rrset_t ***rrsets,
+static int dnslib_packet_parse_rrs(const uint8_t *wire, size_t *pos,
+                                   size_t size, uint16_t rr_count,
+                                   dnslib_rrset_t ***rrsets,
                                    short *rrset_count, short *max_rrsets,
                                    dnslib_packet_t *packet)
 {
 	assert(pos != NULL);
-	assert(*pos != NULL);
-	assert(remaining != NULL);
+	assert(wire != NULL);
 	assert(rrsets != NULL);
+	assert(rrset_count != NULL);
+	assert(max_rrsets != NULL);
+	assert(packet != NULL);
 
 //	if (*rrsets == NULL) {
 //		dnslib_packet_realloc_rrsets(rrsets, max_rrsets, 0, 1);
@@ -516,7 +550,7 @@ static int dnslib_packet_parse_rrs(uint8_t **pos, size_t *remaining,
 	dnslib_rrset_t *rrset = NULL;
 
 	for (int i = 0; i < rr_count; ++i) {
-		rrset = dnslib_packet_parse_rr(pos, remaining);
+		rrset = dnslib_packet_parse_rr(wire, pos, size);
 		if (rrset == NULL) {
 			debug_dnslib_packet("Failed to parse RR!\n");
 			err = DNSLIB_EMALF;
@@ -632,15 +666,16 @@ int dnslib_packet_parse_from_wire(dnslib_packet_t *packet, uint8_t *wireformat,
 
 	int err;
 
-	uint8_t *pos = wireformat;
-	size_t remaining = size;
+	//uint8_t *pos = wireformat;
+	size_t pos = 0;
+	//size_t remaining = size;
 
-	if ((err = dnslib_packet_parse_header(&pos, &remaining,
+	if ((err = dnslib_packet_parse_header(wireformat, &pos, size,
 	                                      &packet->header)) != DNSLIB_EOK) {
 		return err;
 	}
 
-	if ((err = dnslib_packet_parse_question(&pos, &remaining,
+	if ((err = dnslib_packet_parse_question(wireformat, &pos, size,
 	                                    &packet->question)) != DNSLIB_EOK) {
 		return err;
 	}
@@ -650,19 +685,19 @@ int dnslib_packet_parse_from_wire(dnslib_packet_t *packet, uint8_t *wireformat,
 		return DNSLIB_EOK;
 	}
 
-	if ((err = dnslib_packet_parse_rrs(&pos, &remaining,
+	if ((err = dnslib_packet_parse_rrs(wireformat, &pos, size,
 	    packet->header.ancount, &packet->an_rrsets, &packet->an_rrsets,
 	    &packet->max_an_rrsets, packet)) != DNSLIB_EOK) {
 		return err;
 	}
 
-	if ((err = dnslib_packet_parse_rrs(&pos, &remaining,
+	if ((err = dnslib_packet_parse_rrs(wireformat, &pos, size,
 	    packet->header.nscount, &packet->ns_rrsets, &packet->ns_rrsets,
 	    &packet->max_ns_rrsets, packet)) != DNSLIB_EOK) {
 		return err;
 	}
 
-	if ((err = dnslib_packet_parse_rrs(&pos, &remaining,
+	if ((err = dnslib_packet_parse_rrs(wireformat, &pos, size,
 	    packet->header.arcount, &packet->ar_rrsets, &packet->ar_rrsets,
 	    &packet->max_ar_rrsets, packet)) != DNSLIB_EOK) {
 		return err;
