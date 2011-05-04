@@ -120,7 +120,7 @@ void dnslib_dname_table_deep_free(dnslib_dname_table_t **table)
 		return;
 	}
 
-	/* Walk the tree and free each node, but not the dnames. */
+	/* Walk the tree and free each node, but free the dnames. */
 	TREE_POST_ORDER_APPLY((*table)->tree, dname_table_node, avl,
 			      delete_dname_table_node, (void *) 1);
 
