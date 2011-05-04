@@ -18,51 +18,52 @@
 #include "dnslib/dname.h"
 #include "dnslib/rrset.h"
 #include "dnslib/edns.h"
+#include "dnslib/response.h"
 
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Structure for holding information needed for compressing domain names.
- *
- * It's a simple table of domain names and their offsets in wire format of the
- * packet.
- *
- * \todo Consider using some better lookup structure, such as skip-list.
- */
-struct dnslib_compressed_dnames {
-	const dnslib_dname_t **dnames;  /*!< Domain names present in packet. */
-	size_t *offsets;          /*!< Offsets of domain names in the packet. */
-	short count;              /*!< Count of items in the previous arrays. */
-	short max;                /*!< Capacity of the structure (allocated). */
-};
+///*----------------------------------------------------------------------------*/
+///*!
+// * \brief Structure for holding information needed for compressing domain names.
+// *
+// * It's a simple table of domain names and their offsets in wire format of the
+// * packet.
+// *
+// * \todo Consider using some better lookup structure, such as skip-list.
+// */
+//struct dnslib_compressed_dnames {
+//	const dnslib_dname_t **dnames;  /*!< Domain names present in packet. */
+//	size_t *offsets;          /*!< Offsets of domain names in the packet. */
+//	short count;              /*!< Count of items in the previous arrays. */
+//	short max;                /*!< Capacity of the structure (allocated). */
+//};
 
-typedef struct dnslib_compressed_dnames dnslib_compressed_dnames_t;
+//typedef struct dnslib_compressed_dnames dnslib_compressed_dnames_t;
 
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Structure representing the DNS packet header.
- */
-struct dnslib_header {
-	uint16_t id;      /*!< ID stored in host byte order. */
-	uint8_t flags1;   /*!< First octet of header flags. */
-	uint8_t flags2;   /*!< Second octet of header flags. */
-	uint16_t qdcount; /*!< Number of Question RRs, in host byte order. */
-	uint16_t ancount; /*!< Number of Answer RRs, in host byte order. */
-	uint16_t nscount; /*!< Number of Authority RRs, in host byte order. */
-	uint16_t arcount; /*!< Number of Additional RRs, in host byte order. */
-};
+///*----------------------------------------------------------------------------*/
+///*!
+// * \brief Structure representing the DNS packet header.
+// */
+//struct dnslib_header {
+//	uint16_t id;      /*!< ID stored in host byte order. */
+//	uint8_t flags1;   /*!< First octet of header flags. */
+//	uint8_t flags2;   /*!< Second octet of header flags. */
+//	uint16_t qdcount; /*!< Number of Question RRs, in host byte order. */
+//	uint16_t ancount; /*!< Number of Answer RRs, in host byte order. */
+//	uint16_t nscount; /*!< Number of Authority RRs, in host byte order. */
+//	uint16_t arcount; /*!< Number of Additional RRs, in host byte order. */
+//};
 
-typedef struct dnslib_header dnslib_header_t;
+//typedef struct dnslib_header dnslib_header_t;
 
-/*!
- * \brief Structure representing one Question entry in the DNS packet.
- */
-struct dnslib_question {
-	dnslib_dname_t *qname;  /*!< Question domain name. */
-	uint16_t qtype;         /*!< Question TYPE. */
-	uint16_t qclass;        /*!< Question CLASS. */
-};
+///*!
+// * \brief Structure representing one Question entry in the DNS packet.
+// */
+//struct dnslib_question {
+//	dnslib_dname_t *qname;  /*!< Question domain name. */
+//	uint16_t qtype;         /*!< Question TYPE. */
+//	uint16_t qclass;        /*!< Question CLASS. */
+//};
 
-typedef struct dnslib_question dnslib_question_t;
+//typedef struct dnslib_question dnslib_question_t;
 
 enum dnslib_packet_prealloc_type {
 	DNSLIB_PACKET_PREALLOC_NONE,
@@ -146,8 +147,9 @@ dnslib_packet_t *dnslib_packet_new(dnslib_packet_prealloc_type_t prealloc);
  *
  * \retval DNSLIB_EOK
  */
-int dnslib_packet_parse_from_wire(dnslib_packet_t *packet, uint8_t *wireformat,
-                                  size_t size, int question_only);
+int dnslib_packet_parse_from_wire(dnslib_packet_t *packet,
+                                  const uint8_t *wireformat, size_t size,
+                                  int question_only);
 
 /*!
  * \brief Returns the OPCODE of the packet.
@@ -264,7 +266,8 @@ const dnslib_rrset_t *dnslib_packet_additional_rrset(
  * \retval <> 0 if \a resp does contain \a rrset.
  */
 int dnslib_packet_contains(const dnslib_packet_t *packet,
-                           const dnslib_rrset_t *rrset);
+                           const dnslib_rrset_t *rrset,
+                           dnslib_rrset_compare_type_t cmp);
 
 /*!
  * \brief Adds RRSet to the list of temporary RRSets.

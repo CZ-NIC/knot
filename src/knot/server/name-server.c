@@ -12,6 +12,7 @@
 #include "dnslib/debug.h"
 #include "knot/other/error.h"
 #include "knot/server/zones.h"
+#include "dnslib/packet.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -2120,6 +2121,22 @@ int ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 		log_answer_info("Error while parsing packet, "
 		                "dnslib error '%s'.\n", dnslib_strerror(ret));
 		//dnslib_response_free(&parsed);
+		return DNSLIB_RCODE_FORMERR;
+	}
+
+	// parse the query to the new structuer
+	dnslib_packet_t *packet = dnslib_packet_new(DNSLIB_PACKET_PREALLOC_NONE);
+	if (packet == NULL) {
+		log_answer_info("Error while creating packet structure.");
+		dnslib_response_free(&parsed);
+		return DNSLIB_RCODE_SERVFAIL;
+	}
+
+	if ((ret = dnslib_packet_parse_from_wire(packet, query_wire,
+	                                         qsize, 0)) != 0) {
+		log_answer_info("Error while parsing packet, "
+		                "dnslib error '%s'.\n", dnslib_strerror(ret));
+		dnslib_response_free(&parsed);
 		return DNSLIB_RCODE_FORMERR;
 	}
 
