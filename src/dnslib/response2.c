@@ -877,7 +877,8 @@ int dnslib_response_add_rrset_answer(dnslib_packet_t *response,
 		return DNSLIB_ENOMEM;
 	}
 
-	if (check_duplicates && dnslib_packet_contains(response, rrset)) {
+	if (check_duplicates && dnslib_packet_contains(response, rrset,
+	                                            DNSLIB_RRSET_COMPARE_PTR)) {
 		return DNSLIB_EOK;
 	}
 
@@ -919,7 +920,8 @@ int dnslib_response_add_rrset_authority(dnslib_packet_t *response,
 		return DNSLIB_ENOMEM;
 	}
 
-	if (check_duplicates && dnslib_packet_contains(response, rrset)) {
+	if (check_duplicates && dnslib_packet_contains(response, rrset,
+	                                           DNSLIB_RRSET_COMPARE_PTR))) {
 		return DNSLIB_EOK;
 	}
 
@@ -963,7 +965,8 @@ int dnslib_response_add_rrset_additional(dnslib_packet_t *response,
 		return DNSLIB_ENOMEM;
 	}
 
-	if (check_duplicates && dnslib_packet_contains(response, rrset)) {
+	if (check_duplicates && dnslib_packet_contains(response, rrset,
+	                                            DNSLIB_RRSET_COMPARE_PTR)) {
 		return DNSLIB_EOK;
 	}
 
