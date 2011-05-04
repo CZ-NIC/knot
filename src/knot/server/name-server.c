@@ -2005,7 +2005,8 @@ DEBUG_NS(
 	if (zone == NULL) {
 		debug_ns("No zone found.\n");
 		dnslib_response_set_rcode(xfr->response, DNSLIB_RCODE_NOTAUTH);
-		return KNOT_EOK;
+
+		return ns_axfr_send_and_clear(xfr);
 	}
 DEBUG_NS(
 	char *name_str2 = dnslib_dname_to_str(zone->apex->owner);
