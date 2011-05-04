@@ -88,6 +88,22 @@ typedef struct dnslib_rdata dnslib_rdata_t;
  */
 dnslib_rdata_t *dnslib_rdata_new();
 
+/*!
+ * \brief Parses RDATA from the given data in wire format.
+ *
+ * \param rdata RDATA to fill.
+ * \param wire Wire format of the whole data in which the RDATA are present.
+ * \param pos Position in \a wire where to start parsing.
+ * \param total_size Size of the whole data.
+ * \param rdlength Size of the RDATA to parse in bytes.
+ * \param desc RR type descriptor for the RDATA type.
+ *
+ * \retval DNSLIB_ENOMEM
+ * \retval DNSLIB_EFEWDATA
+ * \retval DNSLIB_EMALF
+ * \retval DNSLIB_ERROR
+ * \retval DNSLIB_EOK
+ */
 int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
                            size_t *pos, size_t total_size, size_t rdlength,
                            const dnslib_rrtype_descriptor_t *desc);
