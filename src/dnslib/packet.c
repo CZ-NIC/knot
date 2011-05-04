@@ -408,7 +408,14 @@ static dnslib_rdata_t *dnslib_packet_parse_rdata(const uint8_t *wire,
 		return NULL;
 	}
 
-	/*! @todo Implement! */
+	int rc = dnslib_rdata_from_wire(rdata, wire, pos, total_size, rdlength,
+	                                desc);
+	if (rc != DNSLIB_EOK) {
+		dnslib_rdata_free(&rdata);
+		return NULL;
+	}
+
+	return rdata;
 }
 
 /*----------------------------------------------------------------------------*/
