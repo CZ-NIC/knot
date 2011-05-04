@@ -89,7 +89,7 @@ typedef struct dnslib_rdata dnslib_rdata_t;
 dnslib_rdata_t *dnslib_rdata_new();
 
 int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
-                           size_t length,
+                           size_t *pos, size_t total_size, size_t rdlength,
                            const dnslib_rrtype_descriptor_t *desc);
 
 /*!
