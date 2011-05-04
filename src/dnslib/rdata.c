@@ -149,6 +149,55 @@ dnslib_rdata_t *dnslib_rdata_new()
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
+                           size_t length,
+                           const dnslib_rrtype_descriptor_t *desc)
+{
+	int i = 0;
+	uint8_t item_type;
+	size_t parsed = 0;
+
+	while (parsed < length && i < desc->length) {
+		item_type = desc->wireformat[i];
+
+		switch (item_type) {
+		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
+			break;
+		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
+			break;
+		case DNSLIB_RDATA_WF_LITERAL_DNAME:
+			break;
+		case DNSLIB_RDATA_WF_BYTE:
+			break;
+		case DNSLIB_RDATA_WF_SHORT:
+			break;
+		case DNSLIB_RDATA_WF_LONG:
+			break;
+		case DNSLIB_RDATA_WF_TEXT:
+			break;
+		case DNSLIB_RDATA_WF_A:
+			break;
+		case DNSLIB_RDATA_WF_AAAA:
+			break;
+		case DNSLIB_RDATA_WF_BINARY:
+			break;
+		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+			break;
+		case DNSLIB_RDATA_WF_APL:
+			break;
+		case DNSLIB_RDATA_WF_IPSECGATEWAY:
+			break;
+		default:
+			return DNSLIB_EMALF;
+
+		}
+
+		++i;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_rdata_set_item(dnslib_rdata_t *rdata, uint pos,
 			  dnslib_rdata_item_t item)
 {

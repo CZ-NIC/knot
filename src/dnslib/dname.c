@@ -430,8 +430,8 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *name,
-                                             unsigned int max_size,
+dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
+                                             size_t *pos, size_t size,
                                              struct dnslib_node *node)
 {
 	/*! @todo Implement! */
