@@ -140,6 +140,16 @@ const dnslib_rrset_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset)
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_rrset_compare_no_rdata(const dnslib_rrset_t *r1,
+                                  const dnslib_rrset_t *r2)
+{
+	return ((r1->rclass == r2->rclass)
+	        && (r1->type == r2->type)
+	        && dnslib_dname_compare(r1->owner, r2->owner) == 0);
+}
+
+/*----------------------------------------------------------------------------*/
+
 void dnslib_rrset_free(dnslib_rrset_t **rrset)
 {
 	if (rrset == NULL || *rrset == NULL) {
