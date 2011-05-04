@@ -24,10 +24,6 @@ static int acl_compare(void *k1, void *k2)
 		}
 
 		/* Port = 0 means any port match. */
-		/*! \todo Is key order interchangeable?
-		 *        Only stored keys should be able to have any port.
-		 *        k1 must be stored key and k2 has to be seeked key.
-		 */
 		if (a1->addr4.sin_port == 0) {
 			return 0;
 		}
