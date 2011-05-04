@@ -150,50 +150,125 @@ dnslib_rdata_t *dnslib_rdata_new()
 /*----------------------------------------------------------------------------*/
 
 int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
-                           size_t length,
+                           size_t *pos, size_t total_size, size_t rdlength,
                            const dnslib_rrtype_descriptor_t *desc)
 {
 	int i = 0;
 	uint8_t item_type;
 	size_t parsed = 0;
 
-	while (parsed < length && i < desc->length) {
+	dnslib_rdata_item_t *items = (dnslib_rdata_item_t *)malloc(
+	                            desc->length * sizeof(dnslib_rdata_item_t));
+	CHECK_ALLOC_LOG(items, DNSLIB_ENOMEM);
+
+	size_t item_size;
+	uint8_t gateway_type = 0;  // only to handle IPSECKEY record
+
+	while (parsed < rdlength && i < desc->length) {
 		item_type = desc->wireformat[i];
+		item_size = 0;
 
 		switch (item_type) {
 		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
-			break;
 		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
-			break;
 		case DNSLIB_RDATA_WF_LITERAL_DNAME:
+			dnslib_dname_t *dname = dnslib_dname_parse_from_wire(
+				wire, pos, total_size, NULL);
+			if (dname == NULL) {
+				free(items);
+				return DNSLIB_ERROR;
+			}
+			items[i].dname = dname;
+			*pos += dname->size;
+			parsed += dname->size;
 			break;
 		case DNSLIB_RDATA_WF_BYTE:
+			if (desc->type == DNSLIB_RRTYPE_IPSECKEY && i == 1) {
+				gateway_type = *(wire + *pos);
+			}
+			item_size = 1;
 			break;
 		case DNSLIB_RDATA_WF_SHORT:
+			item_size = 2;
 			break;
 		case DNSLIB_RDATA_WF_LONG:
+			item_size = 4;
 			break;
 		case DNSLIB_RDATA_WF_TEXT:
 			break;
 		case DNSLIB_RDATA_WF_A:
+			item_size = 4;
 			break;
 		case DNSLIB_RDATA_WF_AAAA:
+			item_size = 16;
 			break;
 		case DNSLIB_RDATA_WF_BINARY:
+			// the rest of the RDATA is this item
+			item_size = rdlength - parsed;
 			break;
 		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+			item_size = *(wire + *pos);
 			break;
 		case DNSLIB_RDATA_WF_APL:
+			// WTF? what to do with this??
 			break;
 		case DNSLIB_RDATA_WF_IPSECGATEWAY:
+			// determine size based on the 'gateway type' field
+			switch (gateway_type) {
+			case 0:
+				item_size = 0;
+				break;
+			case 1:
+				item_size = 4;
+				break;
+			case 2:
+				item_size = 16;
+				break;
+			case 3:
+				dnslib_dname_t *dname =
+					dnslib_dname_parse_from_wire(
+					           wire, pos, total_size, NULL);
+				if (dname == NULL) {
+					return DNSLIB_ERROR;
+				}
+				items[i].dname = dname;
+				*pos += dname->size;
+				parsed += dname->size;
+				break;
+			default:
+				assert(0);
+			}
+
 			break;
 		default:
 			return DNSLIB_EMALF;
 
 		}
 
+		if (item_size != 0) {
+			if (parsed + item_size > rdlength) {
+				free(items);
+				return DNSLIB_EFEWDATA;
+			}
+
+			items[i].raw_data = (uint8_t *)malloc(item_size);
+			if (items[i].raw_data == NULL) {
+				free(items);
+				return DNSLIB_ENOMEM;
+			}
+			memcpy(items[i].raw_data, wire + *pos, item_size);
+			*pos += item_size;
+			parsed += item_size;
+		}
+
 		++i;
 	}
+
+	// all items are parsed, insert into the RDATA
+	int rc;
+	rc = dnslib_rdata_set_items(rdata, items, i);
+	free(items);
+	return rc;
 }
 
 /*----------------------------------------------------------------------------*/
