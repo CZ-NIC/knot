@@ -286,7 +286,7 @@ uint16_t dnslib_rrclass_from_string(const char *name);
  * \retval Size of given type on success.
  * \retval 0 on unknown type or type that has no length.
  */
-size_t dnslib_wireformat_size(uint wire_type);
+size_t dnslib_wireformat_size(unsigned int wire_type);
 
 #endif /* _KNOT_DNSLIB_DESCRIPTOR_H_ */
 
