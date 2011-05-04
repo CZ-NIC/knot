@@ -570,6 +570,9 @@ static int dnslib_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 	assert(max_rrsets != NULL);
 	assert(packet != NULL);
 
+	debug_dnslib_packet("Parsing RRSets starting on position: %zu\n",
+	                    *pos);
+
 //	if (*rrsets == NULL) {
 //		dnslib_packet_realloc_rrsets(rrsets, max_rrsets, 0, 1);
 //	}
@@ -684,6 +687,9 @@ dnslib_packet_t *dnslib_packet_new(dnslib_packet_prealloc_type_t prealloc)
 	if (init_pointers != NULL) {
 		init_pointers(pkt);
 	}
+
+	// set EDNS version to not supported
+	pkt->opt_rr.version = EDNS_NOT_SUPPORTED;
 
 	return pkt;
 }
