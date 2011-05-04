@@ -2005,7 +2005,6 @@ DEBUG_NS(
 );
 	// Check xfr-out ACL
 	if (acl_match(zone->acl.xfr_out, &xfr->from) == ACL_DENY) {
-		/*! \todo What should we return here? */
 		debug_ns("Request for AXFR OUT is not authorized.\n");
 		dnslib_response_set_rcode(xfr->response, DNSLIB_RCODE_REFUSED);
 		return KNOT_EOK;
