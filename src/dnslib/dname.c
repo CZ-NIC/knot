@@ -12,6 +12,7 @@
 #include "dnslib/tolower.h"
 #include "dnslib/debug.h"
 #include "dnslib/utils.h"
+#include "dnslib/wire.h"
 
 /*
  * Memory cache.
@@ -432,10 +433,74 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 
 dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
                                              size_t *pos, size_t size,
-                                             struct dnslib_node *node)
+                                             dnslib_node_t *node)
 {
-	/*! @todo Implement! */
-	return NULL;
+	uint8_t name[DNSLIB_MAX_DNAME_LENGTH];
+	uint8_t labels[DNSLIB_MAX_DNAME_LABELS];
+
+	short l = 0;
+	size_t i = 0, p = *pos;
+	int pointer_used = 0;
+
+	while (p < size && wire[p] != 0) {
+		labels[l] = i;
+
+		if (dnslib_wire_is_pointer(wire + p)) {
+			// pointer.
+			p = dnslib_wire_get_pointer(wire + p);
+			*pos += 2;
+			pointer_used = 1;
+			if (p >= size) {
+				return NULL;
+			}
+		} else {
+			// label; first byte is label length
+			uint8_t length = *(wire + p);
+			memcpy(name + i, wire + p, length + 1);
+			p += length + 1;
+			i += length + 1;
+			if (!pointer_used) {
+				*pos += length + 1;
+			}
+			++l;
+		}
+	}
+	if (p >= size) {
+		return NULL;
+	}
+
+	name[i] = 0;
+
+	dnslib_dname_t *dname = dnslib_dname_alloc();
+
+	if (dname == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+
+	dname->name = (uint8_t *)malloc((i + 1) * sizeof(uint8_t));
+	if (dname->name == NULL) {
+		ERR_ALLOC_FAILED;
+		dnslib_dname_free(&dname);
+		return NULL;
+	}
+
+	memcpy(dname->name, name, i + 1);
+	dname->size = i + 1;
+
+	dname->labels = (uint8_t *)malloc(l * sizeof(uint8_t));
+	if (dname->labels == NULL) {
+		ERR_ALLOC_FAILED;
+		dnslib_dname_free(&dname);
+		return NULL;
+	}
+	memcpy(dname->labels, labels, l);
+
+	dname->label_count = l - 1;
+
+	dname->node = node;
+
+	return dname;
 }
 
 /*----------------------------------------------------------------------------*/
