@@ -320,12 +320,14 @@ static int dnslib_packet_parse_question(const uint8_t *wire, size_t *pos,
 	assert(pos != NULL);
 	assert(wire != NULL);
 	assert(question != NULL);
-	assert(question->qname != NULL);
 
 	if (size - *pos < DNSLIB_WIRE_QUESTION_MIN_SIZE) {
 		debug_dnslib_response("Not enough data to parse question.\n");
 		return DNSLIB_EFEWDATA;  // malformed
 	}
+
+	debug_dnslib_response("Parsing Question starting on position %zu.\n",
+	                      *pos);
 
 	// domain name must end with 0, so just search for 0
 	int i = *pos;
@@ -338,17 +340,27 @@ static int dnslib_packet_parse_question(const uint8_t *wire, size_t *pos,
 		return DNSLIB_EFEWDATA;  // no 0 found or not enough data left
 	}
 
-	int res = dnslib_dname_from_wire(wire + *pos, i - *pos + 1, NULL,
-	                                 question->qname);
-	if (res != DNSLIB_EOK) {
-		assert(res != DNSLIB_EBADARG);
-		return res;
+	debug_dnslib_response("Parsing dname starting on position %zu and "
+	                      "%zu bytes long.\n", *pos, i - *pos + 1);
+	if (question->qname == NULL) {
+		question->qname = dnslib_dname_new_from_wire(wire + *pos,
+		                                            i - *pos + 1, NULL);
+		if (question->qname == NULL) {
+			return DNSLIB_ENOMEM;
+		}
+	} else {
+		int res = dnslib_dname_from_wire(wire + *pos, i - *pos + 1,
+	                                         NULL, question->qname);
+		if (res != DNSLIB_EOK) {
+			assert(res != DNSLIB_EBADARG);
+			return res;
+		}
 	}
 
 	*pos = i + 1;
-	question->qtype = dnslib_wire_read_u16(wire + i);
+	question->qtype = dnslib_wire_read_u16(wire + i + 1);
 	//*pos += 2;
-	question->qclass = dnslib_wire_read_u16(wire + i + 2);
+	question->qclass = dnslib_wire_read_u16(wire + i + 3);
 	//*pos += 2;
 
 	*pos += 4;
