@@ -822,19 +822,19 @@ int dnslib_packet_contains(const dnslib_packet_t *packet,
                            dnslib_rrset_compare_type_t cmp)
 {
 	for (int i = 0; i < packet->header.ancount; ++i) {
-		if (packet->answer[i] == rrset) {
+		if (dnslib_rrset_compare(packet->answer[i], rrset, cmp)) {
 			return 1;
 		}
 	}
 
 	for (int i = 0; i < packet->header.nscount; ++i) {
-		if (packet->authority[i] == rrset) {
+		if (dnslib_rrset_compare(packet->authority[i], rrset, cmp)) {
 			return 1;
 		}
 	}
 
 	for (int i = 0; i < packet->header.arcount; ++i) {
-		if (packet->additional[i] == rrset) {
+		if (dnslib_rrset_compare(packet->additional[i], rrset, cmp)) {
 			return 1;
 		}
 	}
