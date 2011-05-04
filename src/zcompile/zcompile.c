@@ -1790,13 +1790,10 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	char ebuf[256];
 
-	dnslib_dname_t *dname;
+	dnslib_dname_t *dname =
+		dnslib_dname_new_from_str(name, strlen(name), NULL);
 
-	dname = dnslib_dname_new_from_str(name, strlen(name), NULL);
-
-	dnslib_node_t *origin_node;
-
-	origin_node = dnslib_node_new(dname, NULL);
+	dnslib_node_t *origin_node = dnslib_node_new(dname, NULL);
 
 	//assert(origin_node->next == NULL);
 

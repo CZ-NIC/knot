@@ -3,6 +3,8 @@
 #include <stdlib.h>
 
 #include "zcompile/zcompile.h"
+#include "zcompile/zcompile-error.h"
+#include "common/errors.h"
 #include "config.h"
 
 #define PROJECT_NAME PACKAGE // Project name
@@ -83,10 +85,11 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	int errors = zone_read(origin, zonefile, outfile, semantic_checks);
+	int error = zone_read(origin, zonefile, outfile, semantic_checks);
 
-	printf("Finished.\n");
+	printf("Finished with error: %s.\n",
+	       error_to_str(knot_zcompile_error_msgs, error));
 	//log_close();
 
-	return errors ? 1 : 0;
+	return error ? 1 : 0;
 }
