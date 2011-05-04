@@ -140,12 +140,32 @@ const dnslib_rrset_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset)
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_rrset_compare_no_rdata(const dnslib_rrset_t *r1,
-                                  const dnslib_rrset_t *r2)
+int dnslib_rrset_compare(const dnslib_rrset_t *r1,
+                         const dnslib_rrset_t *r2,
+                         dnslib_rrset_compare_type_t cmp)
 {
-	return ((r1->rclass == r2->rclass)
-	        && (r1->type == r2->type)
-	        && dnslib_dname_compare(r1->owner, r2->owner) == 0);
+	if (cmp == DNSLIB_RRSET_COMPARE_PTR) {
+		return (r1 == r2);
+	}
+
+	int res = ((r1->rclass == r2->rclass)
+	           && (r1->type == r2->type)
+	           && dnslib_dname_compare(r1->owner, r2->owner) == 0);
+
+	if (cmp == DNSLIB_RRSET_COMPARE_WHOLE && res) {
+		dnslib_rrtype_descriptor_t *desc =
+			dnslib_rrtype_descriptor_by_type(r1->type);
+
+		if (desc == NULL) {
+			return 0;
+		}
+
+		/*! @todo Implement RDATA comparation */
+		res = res && dnslib_rdata_compare(r1->rdata, r2->rdata,
+		                                  desc->wireformat);
+	}
+
+	return res;
 }
 
 /*----------------------------------------------------------------------------*/

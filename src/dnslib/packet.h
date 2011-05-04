@@ -185,8 +185,6 @@ uint16_t dnslib_packet_qtype(const dnslib_packet_t *packet);
  */
 uint16_t dnslib_packet_qclass(const dnslib_packet_t *packet);
 
-//int dnslib_packet_add_rrset_answer(dnslib_packet_t *packet);
-
 /*!
  * \brief Returns number of RRSets in Answer section of the packet.
  *

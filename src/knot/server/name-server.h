@@ -170,7 +170,6 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_response_t *resp,
  * \retval KNOT_ENOMEM
  * \retval KNOT_ERROR
  *
- * \todo Implement.
  * \todo Maybe the place for the wire format should be passed in as in
  *       the ns_answer_request() function...?
  */
