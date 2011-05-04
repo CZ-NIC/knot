@@ -675,7 +675,6 @@ dnslib_packet_t *dnslib_packet_new(dnslib_packet_prealloc_type_t prealloc)
 int dnslib_packet_parse_from_wire(dnslib_packet_t *packet, uint8_t *wireformat,
                                   size_t size, int question_only)
 {
-	/*! \todo Implement! */
 	if (packet == NULL || wireformat == NULL) {
 		return DNSLIB_EBADARG;
 	}
@@ -819,7 +818,8 @@ const dnslib_rrset_t *dnslib_packet_additional_rrset(
 /*----------------------------------------------------------------------------*/
 
 int dnslib_packet_contains(const dnslib_packet_t *packet,
-                           const dnslib_rrset_t *rrset)
+                           const dnslib_rrset_t *rrset,
+                           dnslib_rrset_compare_type_t cmp)
 {
 	for (int i = 0; i < packet->header.ancount; ++i) {
 		if (packet->answer[i] == rrset) {
