@@ -95,6 +95,13 @@ void dnslib_dname_table_free(dnslib_dname_table_t **table);
  */
 void dnslib_dname_table_deep_free(dnslib_dname_table_t **table);
 
+/*!
+ * \brief Encapsulation of domain name table tree traversal function.
+ *
+ * \param table Table containing tree to be traversed.
+ * \param applied_function Function to be used to process nodes.
+ * \param data Data to be passed to processing function.
+ */
 void dnslib_dname_table_tree_inorder_apply(const dnslib_dname_table_t *table,
             void (*applied_function)(struct dname_table_node *node,
                                      void *data),
