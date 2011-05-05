@@ -107,23 +107,17 @@ zones {
       server1;
     }
 
+    # Alternative shorter ACL list specification
+    xfr-in server0, server1;
+
     # ACL list specification for AXFR/IXFR OUT
-    xfr-out {
-      # Symbolic name for remote
-      server0;
-    }
+    xfr-out server0;
+
+    # ACL list specification for NOTIFY IN
+    notify-in server0;
 
     # ACL list specification for NOTIFY OUT
-    notify-in {
-      # Symbolic name for remote
-      server1;
-    }
-
-    # ACL list specification for NOTIFY OUT
-    notify-out {
-      # Symbolic name for remote
-      server0;
-    }
+    notify-out server0;
   }
 }
 

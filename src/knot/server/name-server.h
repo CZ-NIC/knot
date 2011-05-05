@@ -129,6 +129,7 @@ int ns_answer_request(ns_nameserver_t *nameserver,
 typedef int (*axfr_callback_t)(int session, uint8_t *packet, size_t size);
 
 typedef struct ns_xfr {
+	sockaddr_t from;
 	dnslib_response_t *response;
 	axfr_callback_t send;
 	int session;

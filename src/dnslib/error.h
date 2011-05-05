@@ -36,7 +36,7 @@ enum dnslib_error {
 };
 
 /*! \brief Table linking error messages to error codes. */
-const error_table_t dnslib_error_msgs[DNSLIB_ERROR_COUNT];
+extern const error_table_t dnslib_error_msgs[DNSLIB_ERROR_COUNT];
 
 /*!
  * \brief Returns error message for the given error code.
