@@ -20,8 +20,6 @@ mail          A     10.0.0.3              ; ip address for "mail.example.com", a
 sub	NS	ns.sub.example.com.	; delegation
 ns.sub	A	10.1.0.1	; glue
 
-ns.sub TYPE23444 \# abcedfg
-
 a	A	10.0.0.4
 *.a	A	10.0.0.5
 
