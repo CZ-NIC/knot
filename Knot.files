@@ -98,6 +98,7 @@ src/dnslib/tests/unittests_dnslib.c
 src/zcompile/parser-descriptor.h
 src/zcompile/parser-descriptor.c
 src/zcompile/parser-util.h
+src/zcompile/parser-util.c
 src/zcompile/zcompile.c
 src/zcompile/zcompile.h
 src/zcompile/zparser.y
