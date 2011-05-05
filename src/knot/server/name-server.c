@@ -2174,6 +2174,8 @@ int ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 		return DNSLIB_RCODE_NOTIMPL;
 	}
 
+	dnslib_packet_free(&packet);
+
 	return KNOT_EOK;
 }
 
