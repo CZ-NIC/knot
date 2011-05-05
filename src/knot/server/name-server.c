@@ -2124,7 +2124,7 @@ int ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 		return DNSLIB_RCODE_FORMERR;
 	}
 
-	// parse the query to the new structuer
+	// parse the query to the new structure
 	dnslib_packet_t *packet = dnslib_packet_new(DNSLIB_PACKET_PREALLOC_NONE);
 	if (packet == NULL) {
 		log_answer_info("Error while creating packet structure.");
@@ -2145,29 +2145,29 @@ int ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 	debug_ns("Done\n");
 
 	// 3) determine the query type
-	switch (dnslib_response_opcode(parsed))  {
+	switch (dnslib_packet_opcode(packet))  {
 	case DNSLIB_OPCODE_QUERY:
-		switch (dnslib_response_qtype(parsed)) {
+		switch (dnslib_packet_qtype(packet)) {
 		case DNSLIB_RRTYPE_AXFR:
-			*type = (dnslib_wire_get_qr(query_wire) == 0)
+			*type = (dnslib_packet_is_query(packet))
 			         ? DNSLIB_QUERY_AXFR : DNSLIB_RESPONSE_AXFR;
 			break;
 		case DNSLIB_RRTYPE_IXFR:
-			*type = (dnslib_wire_get_qr(query_wire) == 0)
+			*type = (dnslib_packet_is_query(packet))
 			         ? DNSLIB_QUERY_IXFR : DNSLIB_RESPONSE_IXFR;
 			break;
 		default:
-			*type = (dnslib_wire_get_qr(query_wire) == 0)
+			*type = (dnslib_packet_is_query(packet))
 			         ? DNSLIB_QUERY_NORMAL : DNSLIB_RESPONSE_NORMAL;
 		}
 
 		break;
 	case DNSLIB_OPCODE_NOTIFY:
-		*type = (dnslib_wire_get_qr(query_wire) == 0)
+		*type = (dnslib_packet_is_query(packet))
 		         ? DNSLIB_QUERY_NOTIFY : DNSLIB_RESPONSE_NOTIFY;
 		break;
 	case DNSLIB_OPCODE_UPDATE:
-		assert(dnslib_wire_get_qr(query_wire) == 0);
+		assert(dnslib_packet_is_query(packet));
 		*type = DNSLIB_QUERY_UPDATE;
 		break;
 	default:

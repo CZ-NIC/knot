@@ -706,6 +706,11 @@ int dnslib_packet_parse_from_wire(dnslib_packet_t *packet,
 
 	int err;
 
+	// save the wireformat in the packet
+	// TODO: can we just save the pointer, or we have to copy the data??
+	assert(packet->wireformat == NULL);
+	packet->wireformat = wireformat;
+
 	//uint8_t *pos = wireformat;
 	size_t pos = 0;
 	//size_t remaining = size;
@@ -786,6 +791,13 @@ uint16_t dnslib_packet_qtype(const dnslib_packet_t *packet)
 uint16_t dnslib_packet_qclass(const dnslib_packet_t *packet)
 {
 	return packet->question.qclass;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_packet_is_query(const dnslib_packet_t *packet)
+{
+	return (dnslib_wire_flags_get_qr(packet->header.flags1) == 0);
 }
 
 /*----------------------------------------------------------------------------*/
