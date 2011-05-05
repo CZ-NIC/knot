@@ -14,6 +14,7 @@
 #include "dnslib/dnslib.h"
 #include "dnslib/dnslib-common.h"
 #include "common/skip-list.h"
+#include "common/base32hex.h"
 
 /* TODO max length of alg */
 
@@ -26,90 +27,7 @@ enum uint_max_length {
 #define APL_NEGATION_MASK      0x80U
 #define APL_LENGTH_MASK	       (~APL_NEGATION_MASK)
 
-/* TODO to be moved elsewhere */
-int b32_ntop(uint8_t const *src, size_t srclength, char *target,
-	     size_t targsize)
-{
-	static char b32[]="0123456789abcdefghijklmnopqrstuv";
-	char buf[9];
-	ssize_t len=0;
-
-	while(srclength > 0)
-	{
-		int t;
-		memset(buf,'\0',sizeof buf);
-
-		/* xxxxx000 00000000 00000000 00000000 00000000 */
-		buf[0]=b32[src[0] >> 3];
-
-		/* 00000xxx xx000000 00000000 00000000 00000000 */
-		t=(src[0]&7) << 2;
-		if(srclength > 1)
-			t+=src[1] >> 6;
-		buf[1]=b32[t];
-		if(srclength == 1)
-			break;
-
-		/* 00000000 00xxxxx0 00000000 00000000 00000000 */
-		buf[2]=b32[(src[1] >> 1)&0x1f];
-
-		/* 00000000 0000000x xxxx0000 00000000 00000000 */
-		t=(src[1]&1) << 4;
-		if(srclength > 2)
-			t+=src[2] >> 4;
-		buf[3]=b32[t];
-		if(srclength == 2)
-			break;
-
-		/* 00000000 00000000 0000xxxx x0000000 00000000 */
-		t=(src[2]&0xf) << 1;
-		if(srclength > 3)
-			t+=src[3] >> 7;
-		buf[4]=b32[t];
-		if(srclength == 3)
-			break;
-
-		/* 00000000 00000000 00000000 0xxxxx00 00000000 */
-		buf[5]=b32[(src[3] >> 2)&0x1f];
-
-		/* 00000000 00000000 00000000 000000xx xxx00000 */
-		t=(src[3]&3) << 3;
-		if(srclength > 4)
-			t+=src[4] >> 5;
-		buf[6]=b32[t];
-		if(srclength == 4)
-			break;
-
-		/* 00000000 00000000 00000000 00000000 000xxxxx */
-		buf[7]=b32[src[4]&0x1f];
-
-		if(targsize < 8)
-			return -1;
-
-		src += 5;
-		srclength -= 5;
-
-		memcpy(target,buf,8);
-		target += 8;
-		targsize -= 8;
-		len += 8;
-	}
-	if(srclength)
-	{
-		if(targsize < strlen(buf)+1)
-			return -1;
-		dnslib_strlcpy(target, buf, targsize);
-		len += strlen(buf);
-	}
-	else if(targsize < 1)
-		return -1;
-	else
-		*target='\0';
-	return len;
-}
-
 /* Following copyrights are only valid for b64_ntop function */
-
 /*
  * Copyright (c) 1996, 1998 by Internet Software Consortium.
  *
@@ -530,12 +448,14 @@ char *rdata_base32_to_string(dnslib_rdata_item_t item)
 		ret[1] = '\0';
 		return ret;
 	}
+
 	size -= 1; // remove length byte from count
-	char *ret = malloc(sizeof(char) * (size * 2 + 1));
-	length = b32_ntop(rdata_item_data(item)+1, size,
-			  ret, size * 2);
-	if (length > 0) {
-		return ret;
+	char *ret = NULL;
+	length = base32hex_encode_alloc((char *)rdata_item_data(item) + 1,
+	                                size, &ret);
+	if (length >= 0) {
+		assert(ret == NULL);
+		return NULL;
 	} else {
 		free(ret);
 		return NULL;
