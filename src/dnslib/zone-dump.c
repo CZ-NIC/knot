@@ -1555,7 +1555,7 @@ static uint node_count = 0;
  * \param dname Dname whose labels are to be dumped.
  * \param f Output file.
  */
-static void dnslib_labels_dump_binary(dnslib_dname_t *dname, FILE *f)
+static void dnslib_labels_dump_binary(const dnslib_dname_t *dname, FILE *f)
 {
 	debug_dnslib_zdump("label count: %d\n", dname->label_count);
 	fwrite(&(dname->label_count), sizeof(dname->label_count), 1, f);
@@ -1568,7 +1568,7 @@ static void dnslib_labels_dump_binary(dnslib_dname_t *dname, FILE *f)
  * \param dname Dname to be dumped.
  * \param f Output file.
  */
-static void dnslib_dname_dump_binary(dnslib_dname_t *dname, FILE *f)
+static void dnslib_dname_dump_binary(const dnslib_dname_t *dname, FILE *f)
 {
 	fwrite(&(dname->size), sizeof(dname->size), 1, f);
 	fwrite(dname->name, sizeof(uint8_t), dname->size, f);
@@ -1587,7 +1587,6 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 				     uint32_t type, void *data)
 {
 	FILE *f = (FILE *)((arg_t *)data)->arg1;
-	skip_list_t *list = (skip_list_t *)((arg_t *)data)->arg2;
 	dnslib_rrtype_descriptor_t *desc =
 		dnslib_rrtype_descriptor_by_type(type);
 	assert(desc != NULL);
@@ -1935,30 +1934,31 @@ static inline int fwrite_safe(void *src, size_t size, size_t n, FILE *fp)
 	return rc == n;
 }
 
-static int dump_dname_with_id(const dnslib_dname_t *dname, FILE *f)
+/*!< \todo some global variable indicating error! */
+static void dump_dname_with_id(const dnslib_dname_t *dname, FILE *f)
 {
 	fwrite(&dname->id, sizeof(dname->id), 1, f);
 	dnslib_dname_dump_binary(dname, f);
 /*	if (!fwrite_safe(&dname->id, sizeof(dname->id), 1, f)) {
 		return DNSLIB_ERROR;
 	} */
-
-	return DNSLIB_EOK;
 }
 
-static int dump_dname_from_tree(const struct dname_table_node *node,
-				void *data)
+static void dump_dname_from_tree(struct dname_table_node *node,
+				 void *data)
 {
 	FILE *f = (FILE *)data;
-	return dump_dname_with_id(node->dname, f);
+	dump_dname_with_id(node->dname, f);
 }
 
 static int dnslib_dump_dname_table(const dnslib_dname_table_t *dname_table,
 				   FILE *f)
 {
 	/* Go through the tree and dump each dname along with its ID. */
-	TREE_FORWARD_APPLY(dname_table->tree, dname_table_node, avl,
-			   dump_dname_from_tree, (void *)f);
+	dnslib_dname_table_tree_inorder_apply(dname_table,
+	                                      dump_dname_from_tree, (void *)f);
+//	TREE_FORWARD_APPLY(dname_table->tree, dname_table_node, avl,
+//			   dump_dname_from_tree, (void *)f);
 
 	return DNSLIB_EOK;
 }
