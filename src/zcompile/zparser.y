@@ -158,17 +158,17 @@ line:	NL
 //void *tmp1 = parser->current_rrset->owner;
 //void *tmp2 = parser->current_rrset->owner->name;
 
-		if (save_dnames_in_table(parser->dname_table,
-					 parser->current_rrset) != 0) {
-					 /* \todo */
-		}
-
 //if (tmp1 != parser->current_rrset->owner ||
 //tmp2 != parser->current_rrset->owner->name) {
 //printf("before: %p %p\n", tmp1, tmp2);
 //printf("after: %p %p\n", parser->current_rrset->owner, parser->current_rrset->owner->name);
 //printf("%s\n", dnslib_dname_to_str(parser->current_rrset->owner));
 //}
+
+		if (save_dnames_in_table(parser->dname_table,
+						 parser->current_rrset) != 0) {
+						 /* \todo */
+		}
 
 		assert(parser->current_rrset->owner != NULL);
 //		printf("after cat: %s (%p)\n", dnslib_dname_to_str(parser->current_rrset->owner), parser->current_rrset->owner->name);
@@ -183,6 +183,19 @@ line:	NL
 				"owner: %s reason: %s\n", tmp_dname_str,
 				error_to_str(knot_zcompile_error_msgs, ret));
 			free(tmp_dname_str);
+			/* Free rdata, it will not be added and hence cannot be
+			 * freed with rest of the zone */
+			dnslib_rdata_deep_free(&tmp_rdata,
+			                       parser->current_rrset->type,
+					       0);
+
+			/* If the owner is not already in the table, free it. */
+			if (dnslib_dname_table_find_dname(parser->dname_table,
+				parser->current_rrset->owner) == NULL) {
+				dnslib_dname_free(&parser->
+				                  current_rrset->owner);
+			}
+
 			if (ret == KNOT_ZCOMPILE_EBADSOA) {
 				/*!< \todo this will crash! */
 				dnslib_rdata_free(&tmp_rdata);
@@ -192,8 +205,19 @@ line:	NL
 						      1);
 				YYABORT;
 			}
+		} else { ;
+		/* In case of adding failure, dnames have to be processed
+		 * AFTER they've been added, so that we won't pollute the table
+		 * with freed dnames */
+
+		/*!< \todo Current implementation might introduce redundant
+		 * dnames to the table (from rdata section, which was processed
+		 * and its dnames added to the table, but then was not acutally
+		 * added to the zone.
+		 */
+
 		}
-	    }
+	}
 
 //	printf("Current rrset name: %p (%s)\n", parser->current_rrset->owner->name,
 //	dnslib_dname_to_str(parser->current_rrset->owner));
@@ -225,6 +249,8 @@ ttl_directive:	DOLLAR_TTL sp STR trail
 		parser->default_ttl = DEFAULT_TTL;
 		parser->error_occurred = 0;
 	}
+
+	free($3.str);
     }
     ;
 
@@ -1354,12 +1380,13 @@ rdata_unknown:	URR sp STR sp str_sp_seq trail
     {
 	    /* $2 is the number of octects, currently ignored */
 	    $$ = zparser_conv_hex($5.str, $5.len);
-
-			free($5.str);
+	    free($5.str);
+	    free($3.str);
     }
     |	URR sp STR trail
     {
 	    $$ = zparser_conv_hex("", 0);
+	    free($3.str);
     }
     |	URR error NL
     {
@@ -1539,5 +1566,6 @@ nsec3_add_params(const char* hashalgo_str, const char* flag_str,
 							      salt_len));
 	else
 		zadd_rdata_wireformat(alloc_rdata_init("", 1));
+
 }
 #endif /* NSEC3 */

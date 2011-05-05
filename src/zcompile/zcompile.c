@@ -506,6 +506,7 @@ uint16_t * zparser_conv_hex(const char *hex, size_t len)
 			++t;
 		}
 	}
+
 	return r;
 }
 
@@ -1392,6 +1393,7 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 	                       rdata_count);
 	if (rdata_count < 0) {
 		fprintf(stderr, "bad unknown RDATA\n");
+		/*!< \todo leaks */
 		return;
 	}
 
@@ -1403,8 +1405,9 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 			zadd_rdata_wireformat((uint16_t *)items[i].raw_data);
 		}
 	}
-
 	free(items);
+	/* Free wireformat */
+	free(wireformat);
 }
 
 /*
