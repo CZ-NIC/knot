@@ -31,6 +31,7 @@ int dnslib_nsec3_params_from_wire(dnslib_nsec3_params_t *params,
 	params->iterations = dnslib_wire_read_u16(
 			(uint8_t *)(dnslib_rdata_item(rdata, 2)->raw_data + 1));
 
+	assert(dnslib_rdata_item(rdata, 3)->raw_data);
 	params->salt_length =
 		((uint8_t *)dnslib_rdata_item(rdata, 3)->raw_data)[2];
 

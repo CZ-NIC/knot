@@ -877,7 +877,7 @@ static int check_rrsig_in_rrset(const dnslib_rrset_t *rrset,
  *
  * \return int Bit on given index.
  */
-int get_bit(uint8_t *bits, size_t index)
+static int get_bit(uint8_t *bits, size_t index)
 {
 	/*
 	 * The bits are counted from left to right, so bit #0 is the
