@@ -637,6 +637,7 @@ static void dnslib_packet_free_tmp_rrsets(dnslib_packet_t *pkt)
  */
 static void dnslib_packet_free_allocated_space(dnslib_packet_t *pkt)
 {
+	/*! @todo These checks are no longer OK. */
 	if (pkt->max_an_rrsets > DEFAULT_ANCOUNT) {
 		free(pkt->answer);
 	}
@@ -917,9 +918,10 @@ void dnslib_packet_free(dnslib_packet_t **packet)
 	debug_dnslib_packet("Freeing additional allocated space...\n");
 	dnslib_packet_free_allocated_space(*packet);
 
+	// do not free wireformat for now - TODO: change
 	// free the space for wireformat
-	assert((*packet)->wireformat != NULL);
-	free((*packet)->wireformat);
+//	assert((*packet)->wireformat != NULL);
+//	free((*packet)->wireformat);
 
 	debug_dnslib_packet("Freeing packet structure\n");
 	free(*packet);
