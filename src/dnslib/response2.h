@@ -44,8 +44,20 @@ static const short DNSLIB_MAX_RESPONSE_SIZE = 512;
  *
  * \retval DNSLIB_EOK
  */
-int dnslib_response_init_from_query(dnslib_packet_t *response,
+int dnslib_response2_init_from_query(dnslib_packet_t *response,
                                     dnslib_packet_t *query);
+
+/*!
+ * \brief Clears the response structure for reuse.
+ *
+ * After call to this function, the response will be in the same state as if
+ * dnslib_response_new() was called. The maximum wire size is retained.
+ *
+ * \param response Response structure to clear.
+ *
+ * \todo Replace the use of this function with something else maybe?
+ */
+void dnslib_response2_clear(dnslib_packet_t *resp, int clear_question);
 
 /*!
  * \brief Sets the OPT RR of the response.
@@ -65,7 +77,7 @@ int dnslib_response_init_from_query(dnslib_packet_t *response,
  *
  * \todo Needs test.
  */
-int dnslib_response_add_opt(dnslib_packet_t *resp,
+int dnslib_response2_add_opt(dnslib_packet_t *resp,
                             const dnslib_opt_rr_t *opt_rr,
                             int override_max_size);
 
@@ -91,7 +103,7 @@ int dnslib_response_add_opt(dnslib_packet_t *resp,
  *
  * \todo Needs test.
  */
-int dnslib_response_set_max_size(dnslib_packet_t *resp, int max_size);
+int dnslib_response2_set_max_size(dnslib_packet_t *resp, int max_size);
 
 /*!
  * \brief Adds a RRSet to the Answer section of the response.
@@ -109,7 +121,7 @@ int dnslib_response_set_max_size(dnslib_packet_t *resp, int max_size);
  * \retval DNSLIB_ENOMEM
  * \retval DNSLIB_ESPACE
  */
-int dnslib_response_add_rrset_answer(dnslib_packet_t *response,
+int dnslib_response2_add_rrset_answer(dnslib_packet_t *response,
                                      const dnslib_rrset_t *rrset, int tc,
                                      int check_duplicates, int compr_cs);
 
@@ -129,7 +141,7 @@ int dnslib_response_add_rrset_answer(dnslib_packet_t *response,
  * \retval DNSLIB_ENOMEM
  * \retval DNSLIB_ESPACE
  */
-int dnslib_response_add_rrset_authority(dnslib_packet_t *response,
+int dnslib_response2_add_rrset_authority(dnslib_packet_t *response,
                                         const dnslib_rrset_t *rrset, int tc,
                                         int check_duplicates, int compr_cs);
 
@@ -149,7 +161,7 @@ int dnslib_response_add_rrset_authority(dnslib_packet_t *response,
  * \retval DNSLIB_ENOMEM
  * \retval DNSLIB_ESPACE
  */
-int dnslib_response_add_rrset_additional(dnslib_packet_t *response,
+int dnslib_response2_add_rrset_additional(dnslib_packet_t *response,
                                          const dnslib_rrset_t *rrset, int tc,
                                          int check_duplicates, int compr_cs);
 
@@ -159,21 +171,21 @@ int dnslib_response_add_rrset_additional(dnslib_packet_t *response,
  * \param response Response to set the RCODE in.
  * \param rcode RCODE to set.
  */
-void dnslib_response_set_rcode(dnslib_packet_t *response, short rcode);
+void dnslib_response2_set_rcode(dnslib_packet_t *response, short rcode);
 
 /*!
  * \brief Sets the AA bit of the response to 1.
  *
  * \param response Response in which the AA bit should be set.
  */
-void dnslib_response_set_aa(dnslib_packet_t *response);
+void dnslib_response2_set_aa(dnslib_packet_t *response);
 
 /*!
  * \brief Sets the TC bit of the response to 1.
  *
  * \param response Response in which the TC bit should be set.
  */
-void dnslib_response_set_tc(dnslib_packet_t *response);
+void dnslib_response2_set_tc(dnslib_packet_t *response);
 
 /*!
  * \brief Adds NSID option to the response.
@@ -185,7 +197,7 @@ void dnslib_response_set_tc(dnslib_packet_t *response);
  * \retval DNSLIB_EOK
  * \retval DNSLIB_ENOMEM
  */
-int dnslib_response_add_nsid(dnslib_packet_t *response, const uint8_t *data,
+int dnslib_response2_add_nsid(dnslib_packet_t *response, const uint8_t *data,
                              uint16_t length);
 
 /*!
@@ -200,8 +212,8 @@ int dnslib_response_add_nsid(dnslib_packet_t *response, const uint8_t *data,
  * \retval DNSLIB_EOK
  * \retval DNSLIB_EBADARG
  */
-int dnslib_response_to_wire(dnslib_packet_t *response,
-                            uint8_t **resp_wire, size_t *resp_size);
+int dnslib_response2_to_wire(dnslib_packet_t *response,
+                             uint8_t **resp_wire, size_t *resp_size);
 
 #endif /* _KNOT_DNSLIB_RESPONSE2_H_ */
 

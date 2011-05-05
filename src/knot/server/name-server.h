@@ -25,8 +25,9 @@
 
 #include "dnslib/zonedb.h"
 #include "dnslib/edns.h"
-#include "dnslib/response.h"
+//#include "dnslib/response.h"
 #include "dnslib/consts.h"
+#include "dnslib/packet.h"
 
 struct conf_t;
 
@@ -67,7 +68,7 @@ ns_nameserver_t *ns_create();
  *
  * \param query_wire Wire format of the query.
  * \param qsize Size of the query in octets.
- * \param parsed Response structure to be filled with the parsed query.
+ * \param packet Packet structure to be filled with the parsed query.
  * \param type Type of the query.
  *
  * \retval KNOT_EOK
@@ -85,7 +86,7 @@ ns_nameserver_t *ns_create();
  *                              value to get proper error response.
  */
 int ns_parse_packet(const uint8_t *query_wire, size_t qsize,
-                    dnslib_response_t *parsed, dnslib_packet_type_t *type);
+                    dnslib_packet_t *packet, dnslib_packet_type_t *type);
 
 /*!
  * \brief Prepares wire format of an error response using generic error template
@@ -130,7 +131,8 @@ typedef int (*axfr_callback_t)(int session, uint8_t *packet, size_t size);
 
 typedef struct ns_xfr {
 	sockaddr_t from;
-	dnslib_response_t *response;
+	dnslib_packet_t *query;
+	dnslib_packet_t *response;
 	axfr_callback_t send;
 	int session;
 	uint8_t *response_wire;
@@ -150,7 +152,7 @@ typedef struct ns_xfr {
  * \retval KNOT_EOK if a valid response was created.
  * \retval KNOT_EMALF if an error occured and the response is not valid.
  */
-int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_response_t *resp,
+int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
                      uint8_t *response_wire, size_t *rsize);
 
 /*!

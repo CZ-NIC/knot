@@ -14,6 +14,12 @@
 #include "dnslib/error.h"
 #include "dnslib/debug.h"
 
+/*!
+ * \brief Default maximum DNS response size
+ *
+ * This size must be supported by all servers and clients.
+ */
+static const short DNSLIB_MAX_RESPONSE_SIZE = 512;
 
 /*!
  * \brief Default sizes for response structure parts and steps for increasing

@@ -22,13 +22,6 @@
 #include "dnslib/rrset.h"
 #include "dnslib/edns.h"
 
-/*!
- * \brief Default maximum DNS response size
- *
- * This size must be supported by all servers and clients.
- */
-static const short DNSLIB_MAX_RESPONSE_SIZE = 512;
-
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure for holding information needed for compressing domain names.

@@ -75,8 +75,6 @@ unittests_dnslib_SOURCES =			\
 	dnslib/tests/dnslib/node_tests.h	\
 	dnslib/tests/dnslib/rdata_tests.c	\
 	dnslib/tests/dnslib/rdata_tests.h	\
-	dnslib/tests/dnslib/response_tests.c	\
-	dnslib/tests/dnslib/response_tests.h	\
 	dnslib/tests/dnslib/rrset_tests.c	\
 	dnslib/tests/dnslib/rrset_tests.h	\
 	dnslib/tests/dnslib/zone_tests.c	\
@@ -148,8 +146,9 @@ libknot_la_SOURCES =				\
 	dnslib/rrset.c				\
 	dnslib/dname.c				\
 	dnslib/node.c				\
-	dnslib/response.c			\
 	dnslib/packet.c			\
+	dnslib/query.c			\
+	dnslib/response2.c			\
 	dnslib/zone.c				\
 	dnslib/zonedb.c				\
 	dnslib/zone-load.c			\
@@ -176,8 +175,9 @@ libknot_la_SOURCES =				\
 	dnslib/tolower.c			\
 	dnslib/zone-dump.h			\
 	dnslib/dname.h				\
-	dnslib/response.h			\
 	dnslib/packet.h			\
+	dnslib/query.h				\
+	dnslib/response2.h			\
 	dnslib/rrset.h				\
 	dnslib/zone-load.h			\
 	dnslib/utils.h				\
