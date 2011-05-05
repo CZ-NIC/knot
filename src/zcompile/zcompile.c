@@ -819,7 +819,7 @@ uint16_t * zparser_conv_b64(const char *b64)
 
 	i = b64_pton(b64, buffer, B64BUFSIZE);
 	if (i == -1) {
-		fprintf(stderr, "invalid base64 data");
+		fprintf(stderr, "invalid base64 data\n");
 	} else {
 		r = alloc_rdata_init(buffer, i);
 	}
@@ -1898,15 +1898,10 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	dnslib_zone_deep_free(&(parser->current_zone), 0);
 
 /*	dnslib_zone_t *new_zone = dnslib_zload_load(dnslib_zload_open(outfile));
-
 	dnslib_zdump_binary(new_zone, "testttt", 0, zonefile);
-
 	dnslib_zone_deep_free(&new_zone, 0);
-
 	dnslib_zone_t *new_zone2 = dnslib_zload_load(dnslib_zload_open("testttt"));
-
 	printf("apex: %s\n", dnslib_dname_to_str(new_zone2->apex->owner));
-
 	dnslib_zone_deep_free(&new_zone2, 0); */
 
 	fclose(yyin);

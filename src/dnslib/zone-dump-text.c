@@ -243,7 +243,7 @@ dnslib_lookup_table_t dnslib_dns_algorithms[] = {
 	{ 0, NULL }
 };
 
-int get_bit(uint8_t bits[], size_t index)
+static int get_bit(uint8_t bits[], size_t index)
 {
 	/*
 	 * The bits are counted from left to right, so bit #0 is the
@@ -257,7 +257,7 @@ static inline uint8_t * rdata_item_data(dnslib_rdata_item_t item)
 	return (uint8_t *)(item.raw_data + 1);
 }
 
-static inline uint8_t rdata_item_size(dnslib_rdata_item_t item)
+static inline uint16_t rdata_item_size(dnslib_rdata_item_t item)
 {
 	return item.raw_data[0];
 }
@@ -453,9 +453,8 @@ char *rdata_base32_to_string(dnslib_rdata_item_t item)
 	char *ret = NULL;
 	length = base32hex_encode_alloc((char *)rdata_item_data(item) + 1,
 	                                size, &ret);
-	if (length >= 0) {
-		assert(ret == NULL);
-		return NULL;
+	if (length > 0) {
+		return ret;
 	} else {
 		free(ret);
 		return NULL;
@@ -466,10 +465,9 @@ char *rdata_base64_to_string(dnslib_rdata_item_t item)
 {
 	int length;
 	size_t size = rdata_item_size(item);
-	/* XXX check with the originals !!! */
 	char *ret = malloc((sizeof(char) * 2 * size) + 1 * sizeof(char));
 	length = b64_ntop(rdata_item_data(item), size,
-			  ret, size * 2);
+			  ret, (sizeof(char)) * (size * 2 + 1));
 	if (length > 0) {
 		return ret;
 	} else {
@@ -482,7 +480,7 @@ char *hex_to_string(const uint8_t *data, size_t size)
 {
 	static const char hexdigits[] = {
 		'0', '1', '2', '3', '4', '5', '6', '7',
-		'8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
+		'8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
 	};
 	size_t i;
 
@@ -494,9 +492,7 @@ char *hex_to_string(const uint8_t *data, size_t size)
 		ret[i + 1] = hexdigits [octet & 0x0f];
 	}
 
-	/* TODO triple check */
-
-	ret[--i] = '\0';
+	ret[i] = '\0';
 
 	return ret;
 }
@@ -737,29 +733,22 @@ char *rdata_nsec_to_string(dnslib_rdata_item_t item)
 
 	uint8_t *data = rdata_item_data(item);
 
-	int increment = 1;
+	int increment = 0;
 
-	for (int i = 1; i < rdata_item_size(item); i += increment) {
+	for (int i = 0; i < rdata_item_size(item); i += increment) {
+		increment = 0;
 		uint8_t window = data[i];
-		/* TODO probably wrong set in parser, should
-		 *be 0 in most of the cases.
-		 */
-		window = 0;
-		uint8_t bitmap_size = data[i+1];
-		uint8_t *bitmap =
-			malloc(sizeof(uint8_t) * (bitmap_size >
-			                          rdata_item_size(item) ?
-						  bitmap_size :
-						  rdata_item_size(item)));
+		increment++;
 
-		memset(bitmap, 0,
-		       sizeof(uint8_t) *  bitmap_size > rdata_item_size(item) ?
-		       bitmap_size :
-		       rdata_item_size(item));
+		uint8_t bitmap_size = data[i + increment];
+		increment++;
 
-		memcpy(bitmap, data + i + 1, rdata_item_size(item) - (i + 1));
+		uint8_t *bitmap = malloc(sizeof(uint8_t) * bitmap_size);
 
-		increment += bitmap_size + 3;
+		memcpy(bitmap, data + i + increment,
+		       bitmap_size);
+
+		increment += bitmap_size;
 
 		for (int j = 0; j < bitmap_size * 8; j++) {
 			if (get_bit(bitmap, j)) {
@@ -986,7 +975,7 @@ void node_dump_text(dnslib_node_t *node, void *data)
 	}
 }
 
-int zone_dump_text(dnslib_zone_t *zone, const char *filename)
+int zone_dump_text(const dnslib_zone_t *zone, const char *filename)
 {
 	FILE *f = fopen(filename, "w");
 	if (f == NULL) {
@@ -1002,6 +991,7 @@ int zone_dump_text(dnslib_zone_t *zone, const char *filename)
 	param.f = f;
 	param.origin = zone->apex->owner;
 	dnslib_zone_tree_apply_inorder(zone, node_dump_text, &param);
+	dnslib_zone_nsec3_apply_inorder(zone, node_dump_text, &param);
 	fclose(f);
 
 	return DNSLIB_EOK;
