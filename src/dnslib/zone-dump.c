@@ -33,90 +33,6 @@
  * or raw data stored like this: data_len [data]
  */
 
-/* TODO to be moved elsewhere */
-int b32_ntop(uint8_t const *src, size_t srclength, char *target,
-	     size_t targsize)
-{
-	static char b32[]="0123456789abcdefghijklmnopqrstuv";
-	char buf[9];
-	ssize_t len=0;
-
-	while(srclength > 0)
-	{
-		int t;
-		memset(buf,'\0',sizeof buf);
-
-		/* xxxxx000 00000000 00000000 00000000 00000000 */
-		buf[0]=b32[src[0] >> 3];
-
-		/* 00000xxx xx000000 00000000 00000000 00000000 */
-		t=(src[0]&7) << 2;
-		if(srclength > 1)
-			t+=src[1] >> 6;
-		buf[1]=b32[t];
-		if(srclength == 1)
-			break;
-
-		/* 00000000 00xxxxx0 00000000 00000000 00000000 */
-		buf[2]=b32[(src[1] >> 1)&0x1f];
-
-		/* 00000000 0000000x xxxx0000 00000000 00000000 */
-		t=(src[1]&1) << 4;
-		if(srclength > 2)
-			t+=src[2] >> 4;
-		buf[3]=b32[t];
-		if(srclength == 2)
-			break;
-
-		/* 00000000 00000000 0000xxxx x0000000 00000000 */
-		t=(src[2]&0xf) << 1;
-		if(srclength > 3)
-			t+=src[3] >> 7;
-		buf[4]=b32[t];
-		if(srclength == 3)
-			break;
-
-		/* 00000000 00000000 00000000 0xxxxx00 00000000 */
-		buf[5]=b32[(src[3] >> 2)&0x1f];
-
-		/* 00000000 00000000 00000000 000000xx xxx00000 */
-		t=(src[3]&3) << 3;
-		if(srclength > 4)
-			t+=src[4] >> 5;
-		buf[6]=b32[t];
-		if(srclength == 4)
-			break;
-
-		/* 00000000 00000000 00000000 00000000 000xxxxx */
-		buf[7]=b32[src[4]&0x1f];
-
-		if(targsize < 8) {
-			return -1;
-		}
-
-		src += 5;
-		srclength -= 5;
-
-		memcpy(target,buf,8);
-		target += 8;
-		targsize -= 8;
-		len += 8;
-	}
-	if(srclength)
-	{
-		if(targsize < strlen(buf)+1) {
-			return -1;
-		}
-		dnslib_strlcpy(target, buf, targsize);
-		len += strlen(buf);
-	}
-	else if(targsize < 1)
-		return -1;
-	else
-		*target='\0';
-	return len;
-}
-
 static const uint MAX_CNAME_CYCLE_DEPTH = 15;
 
 /*!
@@ -1103,7 +1019,8 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 		dnslib_rrset_rdata(
 		dnslib_node_rrset(
 		dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA)), 6)));
-	/* are those getters even worth this? */
+	/* Are those getters even worth this?
+	 * Now I have no idea what this code does. */
 
 	if (dnslib_rrset_ttl(nsec3_rrset) != minimum_ttl) {
 			err_handler_handle_error(handler, node,
@@ -1111,39 +1028,25 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 	}
 
 	/* check that next dname is in the zone */
+	uint8_t *next_dname_decoded = NULL;
+	size_t real_size = 0;
 
-	/* TODO should look nicer :) */
-
-	size_t next_dname_decoded_size =
-		rdata_item_size(dnslib_rdata_item(nsec3_rrset->rdata, 4));
-
-	/* Maximum length of decoded string + 1 */
-	size_t alloc_size = (next_dname_decoded_size - 1) * 2 + 2;
-
-	uint8_t *next_dname_decoded = malloc(sizeof(uint8_t) * alloc_size);
-
-	CHECK_ALLOC_LOG(next_dname_decoded, DNSLIB_ENOMEM);
-
-	memset(next_dname_decoded, 0, alloc_size);
-
-	size_t real_size;
-
-	if ((real_size = b32_ntop(((uint8_t *)
+	if (((real_size = base32hex_encode_alloc(((char *)
 		rdata_item_data(&(nsec3_rrset->rdata->items[4]))) + 1,
-		next_dname_decoded_size - 1,
-		(char *)next_dname_decoded + 1,
-		alloc_size)) <= 0) {
-		fprintf(stderr, "Could not decode base32 string!\n");
+		rdata_item_size(&nsec3_rrset->rdata->items[4]) - 1,
+		(char **)&next_dname_decoded)) <= 0) ||
+		(next_dname_decoded == NULL)) {
+		fprintf(stderr, "Could not encode base32 string!\n");
 		return DNSLIB_ERROR;
 	}
 
 	/* This is why we allocate maximum length of decoded string + 1 */
+	memmove(next_dname_decoded + 1, next_dname_decoded, real_size);
 	next_dname_decoded[0] = real_size;
 
 	dnslib_dname_t *next_dname =
 		dnslib_dname_new_from_wire(next_dname_decoded,
 					   real_size + 1, NULL);
-
 	CHECK_ALLOC_LOG(next_dname, DNSLIB_ENOMEM);
 
 	free(next_dname_decoded);
