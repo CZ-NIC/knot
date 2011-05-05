@@ -18,52 +18,52 @@
 #include "dnslib/dname.h"
 #include "dnslib/rrset.h"
 #include "dnslib/edns.h"
-#include "dnslib/response.h"
+//#include "dnslib/response.h"
 
-///*----------------------------------------------------------------------------*/
-///*!
-// * \brief Structure for holding information needed for compressing domain names.
-// *
-// * It's a simple table of domain names and their offsets in wire format of the
-// * packet.
-// *
-// * \todo Consider using some better lookup structure, such as skip-list.
-// */
-//struct dnslib_compressed_dnames {
-//	const dnslib_dname_t **dnames;  /*!< Domain names present in packet. */
-//	size_t *offsets;          /*!< Offsets of domain names in the packet. */
-//	short count;              /*!< Count of items in the previous arrays. */
-//	short max;                /*!< Capacity of the structure (allocated). */
-//};
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Structure for holding information needed for compressing domain names.
+ *
+ * It's a simple table of domain names and their offsets in wire format of the
+ * packet.
+ *
+ * \todo Consider using some better lookup structure, such as skip-list.
+ */
+struct dnslib_compressed_dnames {
+	const dnslib_dname_t **dnames;  /*!< Domain names present in packet. */
+	size_t *offsets;          /*!< Offsets of domain names in the packet. */
+	short count;              /*!< Count of items in the previous arrays. */
+	short max;                /*!< Capacity of the structure (allocated). */
+};
 
-//typedef struct dnslib_compressed_dnames dnslib_compressed_dnames_t;
+typedef struct dnslib_compressed_dnames dnslib_compressed_dnames_t;
 
-///*----------------------------------------------------------------------------*/
-///*!
-// * \brief Structure representing the DNS packet header.
-// */
-//struct dnslib_header {
-//	uint16_t id;      /*!< ID stored in host byte order. */
-//	uint8_t flags1;   /*!< First octet of header flags. */
-//	uint8_t flags2;   /*!< Second octet of header flags. */
-//	uint16_t qdcount; /*!< Number of Question RRs, in host byte order. */
-//	uint16_t ancount; /*!< Number of Answer RRs, in host byte order. */
-//	uint16_t nscount; /*!< Number of Authority RRs, in host byte order. */
-//	uint16_t arcount; /*!< Number of Additional RRs, in host byte order. */
-//};
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Structure representing the DNS packet header.
+ */
+struct dnslib_header {
+	uint16_t id;      /*!< ID stored in host byte order. */
+	uint8_t flags1;   /*!< First octet of header flags. */
+	uint8_t flags2;   /*!< Second octet of header flags. */
+	uint16_t qdcount; /*!< Number of Question RRs, in host byte order. */
+	uint16_t ancount; /*!< Number of Answer RRs, in host byte order. */
+	uint16_t nscount; /*!< Number of Authority RRs, in host byte order. */
+	uint16_t arcount; /*!< Number of Additional RRs, in host byte order. */
+};
 
-//typedef struct dnslib_header dnslib_header_t;
+typedef struct dnslib_header dnslib_header_t;
 
-///*!
-// * \brief Structure representing one Question entry in the DNS packet.
-// */
-//struct dnslib_question {
-//	dnslib_dname_t *qname;  /*!< Question domain name. */
-//	uint16_t qtype;         /*!< Question TYPE. */
-//	uint16_t qclass;        /*!< Question CLASS. */
-//};
+/*!
+ * \brief Structure representing one Question entry in the DNS packet.
+ */
+struct dnslib_question {
+	dnslib_dname_t *qname;  /*!< Question domain name. */
+	uint16_t qtype;         /*!< Question TYPE. */
+	uint16_t qclass;        /*!< Question CLASS. */
+};
 
-//typedef struct dnslib_question dnslib_question_t;
+typedef struct dnslib_question dnslib_question_t;
 
 enum dnslib_packet_prealloc_type {
 	DNSLIB_PACKET_PREALLOC_NONE,
@@ -124,6 +124,103 @@ struct dnslib_packet {
 };
 
 typedef struct dnslib_packet dnslib_packet_t;
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Default sizes for response structure parts and steps for increasing
+ *        them.
+ */
+enum {
+	DEFAULT_ANCOUNT = 6,         /*!< Default count of Answer RRSets. */
+	DEFAULT_NSCOUNT = 8,         /*!< Default count of Authority RRSets. */
+	DEFAULT_ARCOUNT = 28,        /*!< Default count of Additional RRSets. */
+
+	DEFAULT_ANCOUNT_QUERY = 1,   /*!< Default count of Answer RRSets. */
+	DEFAULT_NSCOUNT_QUERY = 0,   /*!< Default count of Authority RRSets. */
+	DEFAULT_ARCOUNT_QUERY = 1,  /*!< Default count of Additional RRSets. */
+	/*!
+	 * \brief Default count of all domain names in response.
+	 *
+	 * Used for compression table.
+	 */
+	DEFAULT_DOMAINS_IN_RESPONSE = 22,
+
+	/*! \brief Default count of temporary RRSets stored in response. */
+	DEFAULT_TMP_RRSETS = 5,
+
+	/*! \brief Default count of temporary RRSets stored in query. */
+	DEFAULT_TMP_RRSETS_QUERY = 2,
+
+	STEP_ANCOUNT = 6, /*!< Step for increasing space for Answer RRSets. */
+	STEP_NSCOUNT = 8, /*!< Step for increasing space for Authority RRSets.*/
+	STEP_ARCOUNT = 8,/*!< Step for increasing space for Additional RRSets.*/
+	STEP_DOMAINS = 10,   /*!< Step for resizing compression table. */
+	STEP_TMP_RRSETS = 5  /*!< Step for increasing temorary RRSets count. */
+};
+
+/*----------------------------------------------------------------------------*/
+#define PREALLOC_RRSETS(count) (count * sizeof(dnslib_rrset_t *))
+
+/*! \brief Sizes for preallocated space in the response structure. */
+enum {
+	/*! \brief Size of the response structure itself. */
+	PREALLOC_PACKET = sizeof(dnslib_packet_t),
+	/*! \brief Space for QNAME dname structure. */
+	PREALLOC_QNAME_DNAME = sizeof(dnslib_dname_t),
+	/*! \brief Space for QNAME name (maximum domain name size). */
+	PREALLOC_QNAME_NAME = 256,
+	/*! \brief Space for QNAME labels (maximum label count). */
+	PREALLOC_QNAME_LABELS = 127,
+	/*! \brief Total space for QNAME. */
+	PREALLOC_QNAME = PREALLOC_QNAME_DNAME
+	                 + PREALLOC_QNAME_NAME
+	                 + PREALLOC_QNAME_LABELS,
+	/*!
+	 * \brief Space for RR owner wire format.
+	 *
+	 * Temporary buffer, used when putting RRSets to the response.
+	 */
+	PREALLOC_RR_OWNER = 256,
+
+//	/*! \brief Space for Answer RRSets. */
+//	PREALLOC_ANSWER = DEFAULT_ANCOUNT * sizeof(dnslib_dname_t *),
+//	/*! \brief Space for Authority RRSets. */
+//	PREALLOC_AUTHORITY = DEFAULT_NSCOUNT * sizeof(dnslib_dname_t *),
+//	/*! \brief Space for Additional RRSets. */
+//	PREALLOC_ADDITIONAL = DEFAULT_ARCOUNT * sizeof(dnslib_dname_t *),
+//	/*! \brief Total size for Answer, Authority and Additional RRSets. */
+//	PREALLOC_RRSETS = PREALLOC_ANSWER
+//	                  + PREALLOC_AUTHORITY
+//	                  + PREALLOC_ADDITIONAL,
+	/*! \brief Space for one part of the compression table (domain names).*/
+	PREALLOC_DOMAINS =
+		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(dnslib_dname_t *),
+	/*! \brief Space for other part of the compression table (offsets). */
+	PREALLOC_OFFSETS =
+		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(size_t),
+	PREALLOC_COMPRESSION = PREALLOC_DOMAINS + PREALLOC_OFFSETS,
+
+//	/*! \brief Space for temporary RRSets. */
+//	PREALLOC_TMP_RRSETS =
+//		DEFAULT_TMP_RRSETS * sizeof(dnslib_rrset_t *),
+
+	PREALLOC_QUERY = PREALLOC_PACKET
+	                 + PREALLOC_QNAME
+	                 + PREALLOC_RRSETS(DEFAULT_ANCOUNT_QUERY)
+	                 + PREALLOC_RRSETS(DEFAULT_NSCOUNT_QUERY)
+	                 + PREALLOC_RRSETS(DEFAULT_ARCOUNT_QUERY)
+	                 + PREALLOC_RRSETS(DEFAULT_TMP_RRSETS_QUERY),
+
+	/*! \brief Total preallocated size for the response. */
+	PREALLOC_RESPONSE = PREALLOC_PACKET
+	                 + PREALLOC_QNAME
+	                 + PREALLOC_RR_OWNER
+	                 + PREALLOC_RRSETS(DEFAULT_ANCOUNT)
+	                 + PREALLOC_RRSETS(DEFAULT_NSCOUNT)
+	                 + PREALLOC_RRSETS(DEFAULT_ARCOUNT)
+	                 + PREALLOC_COMPRESSION
+	                 + PREALLOC_RRSETS(DEFAULT_TMP_RRSETS)
+};
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -188,6 +285,8 @@ uint16_t dnslib_packet_qtype(const dnslib_packet_t *packet);
 uint16_t dnslib_packet_qclass(const dnslib_packet_t *packet);
 
 int dnslib_packet_is_query(const dnslib_packet_t *packet);
+
+const dnslib_packet_t *dnslib_packet_query(const dnslib_packet_t *packet);
 
 /*!
  * \brief Returns number of RRSets in Answer section of the packet.
@@ -284,6 +383,8 @@ int dnslib_packet_contains(const dnslib_packet_t *packet,
  */
 int dnslib_packet_add_tmp_rrset(dnslib_packet_t *response,
                                 dnslib_rrset_t *tmp_rrset);
+
+void dnslib_packet_free_tmp_rrsets(dnslib_packet_t *pkt);
 
 /*!
  * \brief Properly destroys the packet structure.

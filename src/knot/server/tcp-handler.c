@@ -161,12 +161,22 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 	}
 
 	/* Parse query. */
-	dnslib_response_t *resp = dnslib_response_new(qbuf_maxlen);
+//	dnslib_response_t *resp = dnslib_response_new(qbuf_maxlen);
 	size_t resp_len = qbuf_maxlen; // 64K
 
 	/* Parse query. */
 	dnslib_packet_type_t qtype = DNSLIB_QUERY_NORMAL;
-	int res = ns_parse_packet(qbuf, n, resp, &qtype);
+
+	dnslib_packet_t *packet =
+		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
+	if (packet == NULL) {
+		uint16_t pkt_id = dnslib_wire_get_id(qbuf);
+		ns_error_response(pool->ns, pkt_id, DNSLIB_RCODE_SERVFAIL,
+				  qbuf, &resp_len);
+		return KNOT_ENOMEM;
+	}
+
+	int res = ns_parse_packet(qbuf, n, packet, &qtype);
 	if (unlikely(res != KNOT_EOK)) {
 
 		/* Send error response on dnslib RCODE. */
@@ -176,7 +186,8 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 					  qbuf, &resp_len);
 		}
 
-		dnslib_response_free(&resp);
+//		dnslib_response_free(&resp);
+		dnslib_packet_free(&packet);
 		return res;
 	}
 
@@ -184,10 +195,10 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 	ns_xfr_t xfr;
 	switch(qtype) {
 	case DNSLIB_QUERY_NORMAL:
-		res = ns_answer_normal(pool->ns, resp, qbuf, &resp_len);
+		res = ns_answer_normal(pool->ns, packet, qbuf, &resp_len);
 		break;
 	case DNSLIB_QUERY_AXFR:
-		xfr.response = resp;
+		xfr.query = packet;
 		xfr.send = tcp_send;
 		xfr.session = fd;
 		xfr.response_wire = 0;
@@ -206,7 +217,7 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 	debug_net("tcp: got answer of size %zd.\n",
 		  resp_len);
 
-	dnslib_response_free(&resp);
+	dnslib_packet_free(&packet);
 
 	/* Send answer. */
 	if (res == KNOT_EOK) {

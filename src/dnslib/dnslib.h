@@ -20,7 +20,7 @@
 #include "dnslib/nsec3.h"
 #include "dnslib/wire.h"
 #include "dnslib/rdata.h"
-#include "dnslib/response.h"
+//#include "dnslib/response.h"
 #include "dnslib/rrset.h"
 #include "dnslib/tolower.h"
 #include "dnslib/utils.h"

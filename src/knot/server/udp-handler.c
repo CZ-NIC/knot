@@ -18,6 +18,7 @@
 #include "knot/server/server.h"
 #include "dnslib/wire.h"
 #include "dnslib/consts.h"
+#include "dnslib/packet.h"
 
 int udp_master(dthread_t *thread)
 {
@@ -105,28 +106,37 @@ int udp_master(dthread_t *thread)
 
 		debug_net("udp: received %zd bytes.\n", n);
 
-		dnslib_response_t *resp = dnslib_response_new(4 * 1024); // 4K
 		size_t resp_len = sizeof(qbuf);
 
+		//dnslib_response_t *resp = dnslib_response_new(4 * 1024); // 4K
+		dnslib_packet_t *packet =
+			dnslib_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
+		if (packet == NULL) {
+			uint16_t pkt_id = dnslib_wire_get_id(qbuf);
+			ns_error_response(ns, pkt_id, DNSLIB_RCODE_SERVFAIL,
+			                  qbuf, &resp_len);
+			continue;
+		}
+
 		/* Parse query. */
-		res = ns_parse_packet(qbuf, n, resp, &qtype);
+		res = ns_parse_packet(qbuf, n, packet, &qtype);
 		if (unlikely(res != KNOT_EOK)) {
 
 			/* Send error response on dnslib RCODE. */
 			if (res > 0) {
 				uint16_t pkt_id = dnslib_wire_get_id(qbuf);
 				ns_error_response(ns, pkt_id, res,
-						  qbuf, &resp_len);
+				                  qbuf, &resp_len);
 			}
 
-			dnslib_response_free(&resp);
+			dnslib_packet_free(&packet);
 			continue;
 		}
 
 		/* Handle query. */
 		switch(qtype) {
 		case DNSLIB_QUERY_NORMAL:
-			res = ns_answer_normal(ns, resp, qbuf, &resp_len);
+			res = ns_answer_normal(ns, packet, qbuf, &resp_len);
 			break;
 		case DNSLIB_QUERY_AXFR:
 		case DNSLIB_QUERY_IXFR:
@@ -138,10 +148,9 @@ int udp_master(dthread_t *thread)
 			break;
 		}
 
-		debug_net("udp: got answer of size %zd.\n",
-			  resp_len);
+		debug_net("udp: got answer of size %zd.\n", resp_len);
 
-		dnslib_response_free(&resp);
+		dnslib_packet_free(&packet);
 
 		/* Send answer. */
 		if (res == KNOT_EOK) {
@@ -153,13 +162,13 @@ int udp_master(dthread_t *thread)
 
 			// Send datagram
 			res = sendto(sock, qbuf, resp_len,
-				     0, addr.ptr, addr.len);
+			             0, addr.ptr, addr.len);
 
 			// Check result
 			if (res != (int)resp_len) {
 				debug_net("udp: %s: failed: %d - %d.\n",
-					  "socket_sendto()",
-					  res, errno);
+				          "socket_sendto()",
+				          res, errno);
 				continue;
 			}
 
