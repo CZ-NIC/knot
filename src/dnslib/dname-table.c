@@ -129,3 +129,13 @@ void dnslib_dname_table_deep_free(dnslib_dname_table_t **table)
 	free(*table);
 	*table = NULL;
 }
+
+void dnslib_dname_table_tree_inorder_apply(const dnslib_dname_table_t *table,
+            void (*applied_function)(struct dname_table_node *node,
+                                     void *data),
+            void *data)
+{
+	TREE_FORWARD_APPLY(table->tree, dname_table_node, avl,
+	                   applied_function, data);
+}
+

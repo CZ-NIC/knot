@@ -30,7 +30,7 @@ struct dname_table_node {
 };
 
 /*!
- * \brief Tree-related functions.
+ * \brief Tree structure.
  */
 typedef TREE_HEAD(avl, dname_table_node) table_tree_t;
 
@@ -94,6 +94,12 @@ void dnslib_dname_table_free(dnslib_dname_table_t **table);
  * \param table Table to be freed.
  */
 void dnslib_dname_table_deep_free(dnslib_dname_table_t **table);
+
+void dnslib_dname_table_tree_inorder_apply(const dnslib_dname_table_t *table,
+            void (*applied_function)(struct dname_table_node *node,
+                                     void *data),
+            void *data);
+
 
 #endif // _KNOT_DNSLIB_DNAME_TABLE_H_
 

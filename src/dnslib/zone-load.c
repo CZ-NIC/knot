@@ -339,7 +339,6 @@ static dnslib_rrset_t *dnslib_load_rrset(FILE *f, dnslib_dname_t **id_array)
  */
 static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 {
-	uint8_t dname_size = 0;
 	uint8_t flags = 0;
 	dnslib_node_t *node;
 	/* first, owner */
@@ -698,7 +697,7 @@ dnslib_dname_t *read_dname_with_id(FILE *f)
 //}
 
 static dnslib_dname_table_t *create_dname_table_from_array(
-	const dnslib_dname_t **array, uint max_id)
+	dnslib_dname_t **array, uint max_id)
 {
 	if (array == NULL) {
 		/* should I set errno or what ... ? */

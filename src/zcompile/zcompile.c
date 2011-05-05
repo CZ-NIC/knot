@@ -295,7 +295,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				break;
 			}
 
-			dname = dnslib_dname_new_from_str((uint8_t *)wireformat,
+			dname = dnslib_dname_new_from_str((char *)wireformat,
 							  length,
 							  NULL);
 
