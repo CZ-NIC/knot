@@ -63,7 +63,7 @@ int evqueue_poll(evqueue_t *q, const struct timespec *ts,
 int evqueue_read(evqueue_t *q, void *dst, size_t len)
 {
 	if (!q || !dst || len == 0) {
-		return;
+		return -1;
 	}
 
 	return read(q->fds[EVQUEUE_READFD], dst, len);
@@ -72,7 +72,7 @@ int evqueue_read(evqueue_t *q, void *dst, size_t len)
 int evqueue_write(evqueue_t *q, const void *src, size_t len)
 {
 	if (!q || !src || len == 0) {
-		return;
+		return -1;
 	}
 
 	return write(q->fds[EVQUEUE_WRITEFD], src, len);

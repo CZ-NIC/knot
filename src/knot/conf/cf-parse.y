@@ -124,7 +124,7 @@ remote_start: TEXT {
     memset(this_remote, 0, sizeof(conf_iface_t));
     this_remote->name = $1;
     this_remote->address = 0; // No default address (mandatory)
-    this_remote->port = CONFIG_DEFAULT_PORT;
+    this_remote->port = 0; // Port wildcard
     add_tail(&new_config->remotes, &this_remote->n);
     ++new_config->remotes_count;
  }
@@ -171,6 +171,43 @@ zone_acl_start:
  | NOTIFY_OUT {
       this_list = &this_zone->acl.notify_out;
    }
+ ;
+
+zone_acl_item:
+   TEXT {
+      /* Find existing node in remotes. */
+      node* r = 0; conf_iface_t* found = 0;
+      WALK_LIST (r, new_config->remotes) {
+         if (strcmp(((conf_iface_t*)r)->name, $1) == 0) {
+            found = (conf_iface_t*)r;
+            break;
+         }
+      }
+
+      /* Append to list if found. */
+     if (!found) {
+        char buf[256];
+        snprintf(buf, sizeof(buf), "remote '%s' is not defined", $1);
+        cf_error(buf);
+     } else {
+        conf_remote_t *remote = malloc(sizeof(conf_remote_t));
+        if (!remote) {
+           cf_error("out of memory");
+        } else {
+           remote->remote = found;
+           add_tail(this_list, &remote->n);
+        }
+     }
+
+     /* Free text token. */
+     free($1);
+   }
+ ;
+
+zone_acl_list:
+   zone_acl_start
+ | zone_acl_list zone_acl_item ','
+ | zone_acl_list zone_acl_item ';'
  ;
 
 zone_acl:
@@ -243,6 +280,7 @@ zone_start: TEXT {
 zone:
    zone_start '{'
  | zone zone_acl '}'
+ | zone zone_acl_list
  | zone SEMANTIC_CHECKS BOOL ';' { this_zone->enable_checks = $3; }
  | zone FILENAME TEXT ';' { this_zone->file = $3; }
  ;

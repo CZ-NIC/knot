@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "common/sockaddr.h"
 #include "knot/common.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-handler.h"
@@ -120,10 +121,14 @@ static inline int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	}
 
 	/* Receive payload. */
-	n = recvfrom(fd, buf, pktsize, 0, addr->ptr, &addr->len);
+	n = recv(fd, buf, pktsize, 0);
 	if (n <= 0) {
 		return KNOT_ERROR;
 	}
+
+	/* Get peer name. */
+	socklen_t alen = addr->len;
+	getpeername(fd, addr->ptr, &alen);
 
 	return n;
 }
@@ -142,7 +147,7 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 			     uint8_t *qbuf, size_t qbuf_maxlen)
 {
 	sockaddr_t addr;
-	if (socket_initaddr(&addr, pool->io_h->type) != KNOT_EOK) {
+	if (sockaddr_init(&addr, pool->io_h->type) != KNOT_EOK) {
 		log_server_error("Socket type %d is not supported, "
 				 "IPv6 support is probably disabled.\n",
 				 pool->io_h->type);
@@ -187,6 +192,7 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 		xfr.session = fd;
 		xfr.response_wire = 0;
 		xfr.rsize = 0;
+		memcpy(&xfr.from, &addr, sizeof(sockaddr_t));
 		xfr_request(pool->xfr_h, &xfr);
 		debug_net("tcp: enqueued AXFR request size %zd.\n",
 			  resp_len);

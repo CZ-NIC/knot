@@ -12,6 +12,51 @@
 #include "knot/other/debug.h"
 
 /*----------------------------------------------------------------------------*/
+
+/*!
+ * \brief Update ACL list from configuration.
+ *
+ * \param acl Pointer to existing or NULL ACL.
+ * \param acl_list List of remotes from configuration.
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_ENOMEM on failed memory allocation.
+ */
+static int zones_set_acl(acl_t **acl, list* acl_list)
+{
+	if (!acl || !acl_list) {
+		return KNOT_EINVAL;
+	}
+
+	/* Truncate old ACL. */
+	acl_delete(acl);
+
+	/* Create new ACL. */
+	*acl = acl_new(ACL_DENY, 0);
+	if (!*acl) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Load ACL rules. */
+	conf_remote_t *r = 0;
+	WALK_LIST(r, *acl_list) {
+
+		/* Initialize address. */
+		sockaddr_t addr;
+		conf_iface_t *cfg_if = r->remote;
+		int ret = sockaddr_set(&addr, cfg_if->family,
+				       cfg_if->address, cfg_if->port);
+
+		/* Load rule. */
+		if (ret > 0) {
+			acl_create(*acl, &addr, ACL_ACCEPT);
+		}
+	}
+
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Load zone to zone database.
  *
@@ -131,9 +176,21 @@ static int zones_insert_zones(const list *zone_conf,
 				                 " the new database: %s\n",
 				                 knot_strerror(ret));
 			} else {
+				// Find the new zone
+				zone = dnslib_zonedb_find_zone(db_new,
+							       zone_name);
 				++inserted;
 			}
 			// unused return value, if not loaded, just continue
+		}
+
+		// Update ACLs
+		if (zone) {
+			debug_zones("Updating zone ACLs.");
+			zones_set_acl(&zone->acl.xfr_in, &z->acl.xfr_in);
+			zones_set_acl(&zone->acl.xfr_out, &z->acl.xfr_out);
+			zones_set_acl(&zone->acl.notify_in, &z->acl.notify_in);
+			zones_set_acl(&zone->acl.notify_out, &z->acl.notify_out);
 		}
 
 		dnslib_dname_free(&zone_name);

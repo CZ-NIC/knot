@@ -2004,6 +2004,16 @@ DEBUG_NS(
 	debug_ns("Found zone for QNAME %s\n", name_str2);
 	free(name_str2);
 );
+	// Check xfr-out ACL
+	if (acl_match(zone->acl.xfr_out, &xfr->from) == ACL_DENY) {
+		debug_ns("Request for AXFR OUT is not authorized.\n");
+		dnslib_response_set_rcode(xfr->response, DNSLIB_RCODE_REFUSED);
+		return KNOT_EOK;
+	} else {
+		debug_ns("Authorized AXFR OUT request.\n");
+	}
+
+
 	return ns_axfr_from_zone(zone, xfr);
 }
 

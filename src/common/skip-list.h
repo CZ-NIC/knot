@@ -82,6 +82,7 @@ typedef struct skip_list skip_list_t;
  * \brief Creates a new generic skip list.
  *
  * \param compare_keys Function for comparing the keys.
+ * \todo What should compare_keys exactly return?
  *
  * \return Pointer to the newly created skip list if successful. NULL otherwise.
  */
@@ -114,6 +115,8 @@ void skip_destroy_list(skip_list_t **list, void (*destroy_key)(void *),
  *                     to NULL, the skip list will not merge values when
  *                     attempting to insert item with key already present in the
  *                     list.
+ *                     \todo What are the function parameters and what should it
+ *                           return as integer?
  *
  * \retval 0 If successful and the key was not yet present in the list.
  * \retval 1 If the key was already present and the new value was ignored

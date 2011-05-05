@@ -46,6 +46,8 @@ knot_zcompile_SOURCES =			\
 	zcompile/parser-descriptor.c
 
 unittests_SOURCES =				\
+	tests/common/acl_tests.c		\
+	tests/common/acl_tests.h		\
 	tests/common/da_tests.c			\
 	tests/common/da_tests.h			\
 	tests/common/events_tests.c		\
@@ -132,6 +134,10 @@ libknot_la_SOURCES =				\
 	common/evsched.c		\
 	common/errors.h			\
 	common/errors.c			\
+	common/acl.h				\
+	common/acl.c				\
+	common/sockaddr.h				\
+	common/sockaddr.c				\
 	knot/stat/gatherer.c				\
 	knot/stat/stat.c				\
 	knot/stat/gatherer.h				\
