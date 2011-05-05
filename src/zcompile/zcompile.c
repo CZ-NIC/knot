@@ -29,7 +29,8 @@
 #include <netdb.h>
 #include <assert.h>
 
-//#include "common.h"
+#include "common/base32.h"
+#include "common/base32hex.h"
 #include "zcompile/zcompile.h"
 #include "zcompile/parser-util.h"
 #include "zparser.h"
@@ -796,14 +797,13 @@ uint16_t * zparser_conv_b32(const char *b32)
 {
 	uint8_t buffer[B64BUFSIZE];
 	uint16_t *r = NULL;
-	int i;
+	size_t i = B64BUFSIZE;
 
 	if (strcmp(b32, "-") == 0) {
 		return alloc_rdata_init("", 1);
 	}
-	i = my_b32_pton(b32, buffer + 1, B64BUFSIZE - 1);
-	if (i == -1 || i > 255) {
-		fprintf(stderr, "invalid base32 data");
+	if ((base32hex_decode(b32, strlen(b32), (char *)buffer + 1, &i)) == 0) {
+		fprintf(stderr, "invalid base32 data\n");
 	} else {
 		buffer[0] = i; /* store length byte */
 		r = alloc_rdata_init(buffer, i + 1);
