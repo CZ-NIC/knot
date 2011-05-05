@@ -4,12 +4,15 @@
  * \author Jan Kadlec <jan.kadlec@nic.cz>, conversion functions by NLabs,
  *         see LICENSE. b64ntop by ISC.
  */
+#include <config.h>
 
 #include <ctype.h>
 #include <assert.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 
-#include "dnslib.h"
+#include "dnslib/dnslib.h"
+#include "dnslib/dnslib-common.h"
 #include "common/skip-list.h"
 
 /* TODO max length of alg */
@@ -1070,7 +1073,7 @@ int zone_dump_text(dnslib_zone_t *zone, const char *filename)
 		return DNSLIB_EBADARG;
 	}
 
-	fprintf(f, ";Dumped using %s v. %d.%d.%d\n", PROJECT_NAME,
+	fprintf(f, ";Dumped using %s v. %d.%d.%d\n", DNSLIB_NAME,
 	        DNSLIB_VER / 10000,
 		(DNSLIB_VER / 100) % 100,
 		DNSLIB_VER % 100);
