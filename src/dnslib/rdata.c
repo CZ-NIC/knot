@@ -252,7 +252,7 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
 				return DNSLIB_EFEWDATA;
 			}
 
-			items[i].raw_data = (uint8_t *)malloc(item_size);
+			items[i].raw_data = (uint16_t *)malloc(item_size);
 			if (items[i].raw_data == NULL) {
 				free(items);
 				return DNSLIB_ENOMEM;
