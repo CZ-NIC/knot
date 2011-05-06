@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <time.h>
 
+#include "common/crc.h"
 #include "dnslib/dnslib-common.h"
 #include "dnslib/zone-load.h"
 #include "dnslib/zone-dump.h"
@@ -48,6 +49,8 @@ static int timespec_cmp(struct timespec *x, struct timespec *y)
 	return -1;
 }
 
+
+static crc_t dnslib_load_crc;
 /*!
  * \brief Safe wrapper around fread.
  *
@@ -66,6 +69,12 @@ static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
 		fprintf(stderr, "fread: invalid read %d (expected %zu)\n", rc,
 			n);
 	}
+
+/*	if (size * n > 0) {
+		dnslib_load_crc =
+			crc_update(dnslib_load_crc, (unsigned char *)dst,
+		                   size * n);
+	} */
 
 	return rc == n;
 }
@@ -530,6 +539,7 @@ zloader_t *dnslib_zload_open(const char *filename)
 		return NULL;
 	}
 
+
 	/* Open file for binary read. */
 	FILE *f = fopen(filename, "rb");
 	if (unlikely(!f)) {
@@ -538,6 +548,20 @@ zloader_t *dnslib_zload_open(const char *filename)
 		errno = ENOENT; // No such file or directory (POSIX.1)
 		return NULL;
 	}
+
+	/* Initialize CRC value. */
+	dnslib_load_crc = crc_init();
+	fseek(f, 0L, SEEK_END);
+	size_t file_size = ftell(f);
+	fseek(f, 0L, SEEK_SET);
+	printf("size is: %d\n", file_size);
+	/* just a test */
+	unsigned char *tmp = malloc(sizeof(unsigned char) * file_size);
+	fread(tmp, sizeof(unsigned char), file_size, f);
+	dnslib_load_crc = crc_update(dnslib_load_crc, tmp, file_size);
+	getchar();
+
+	fseek(f, 0L, SEEK_SET);
 
 	/* Check magic sequence. */
 	static const uint8_t MAGIC[MAGIC_LENGTH] = MAGIC_BYTES;
@@ -553,7 +577,7 @@ zloader_t *dnslib_zload_open(const char *filename)
 
 	/* Read source file length. */
 	uint32_t sflen = 0;
-	if (fread(&sflen, 1, sizeof(uint32_t), f) != sizeof(uint32_t)) {
+	if (!fread_safe(&sflen, 1, sizeof(uint32_t), f)) {
 		debug_dnslib_zload("dnslib_zload_open: failed to read "
 				   "sfile length\n");
 		fclose(f);
@@ -570,7 +594,7 @@ zloader_t *dnslib_zload_open(const char *filename)
 		errno = ENOMEM; // Not enough space.
 		return NULL;
 	}
-	if (fread(sfile, 1, sflen, f) < sflen) {
+	if (!fread_safe(sfile, 1, sflen, f)) {
 		debug_dnslib_zload("dnslib_zload_open: failed to read %uB "
 				   "source file\n",
 			 sflen);
@@ -925,6 +949,9 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 
 	/* ID array is now useless */
 	free(id_array);
+
+	dnslib_load_crc = crc_finalize(dnslib_load_crc);
+	printf("0x%lx\n", (unsigned long)dnslib_load_crc);
 
 	return zone;
 }

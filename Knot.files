@@ -32,6 +32,8 @@ src/common/evqueue.c
 src/common/evqueue.h
 src/common/errors.h
 src/common/errors.c
+src/common/crc.c
+src/common/crc.h
 src/dnslib/dnslib-common.h
 src/dnslib/dname.h
 src/dnslib/dname.c
