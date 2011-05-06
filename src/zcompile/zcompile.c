@@ -1897,6 +1897,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	/* This is *almost* unnecessary */
 	dnslib_zone_deep_free(&(parser->current_zone), 0);
 
+	dnslib_zone_t *some_zone= dnslib_zload_load(dnslib_zload_open(outfile));
+
 /*	dnslib_zone_t *new_zone = dnslib_zload_load(dnslib_zload_open(outfile));
 	dnslib_zdump_binary(new_zone, "testttt", 0, zonefile);
 	dnslib_zone_deep_free(&new_zone, 0);
