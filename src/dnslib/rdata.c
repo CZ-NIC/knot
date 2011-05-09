@@ -638,10 +638,10 @@ const dnslib_dname_t *dnslib_rdata_dname_target(const dnslib_rdata_t *rdata)
 	return rdata->items[0].dname;
 }
 
-/*----------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------*/
 
 const dnslib_dname_t *dnslib_rdata_get_name(const dnslib_rdata_t *rdata,
-					    uint16_t type)
+                                            uint16_t type)
 {
 	// iterate over the rdata items or act as if we knew where the name is?
 
@@ -657,4 +657,15 @@ const dnslib_dname_t *dnslib_rdata_get_name(const dnslib_rdata_t *rdata,
 	}
 
 	return NULL;
+}
+
+/*---------------------------------------------------------------------------*/
+
+int64_t dnslib_rdata_soa_serial(const dnslib_rdata_t *rdata)
+{
+	if (rdata->count < 3) {
+		return -1;
+	}
+
+	return *((uint32_t *)(rdata->items[2].raw_data + 2));
 }

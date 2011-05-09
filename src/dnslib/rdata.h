@@ -310,6 +310,8 @@ const dnslib_dname_t *dnslib_rdata_dname_target(const dnslib_rdata_t *rdata);
 const dnslib_dname_t *dnslib_rdata_get_name(const dnslib_rdata_t *rdata,
                                             uint16_t type);
 
+int64_t dnslib_rdata_soa_serial(const dnslib_rdata_t *rdata);
+
 #endif /* _KNOT_DNSLIB_RDATA_H */
 
 /*! @} */
