@@ -658,6 +658,13 @@ int dnslib_packet_parse_from_wire(dnslib_packet_t *packet,
 
 /*----------------------------------------------------------------------------*/
 
+uint16_t dnslib_packet_id(const dnslib_packet_t *packet)
+{
+	return packet->header.id;
+}
+
+/*----------------------------------------------------------------------------*/
+
 uint8_t dnslib_packet_opcode(const dnslib_packet_t *packet)
 {
 	return dnslib_wire_flags_get_opcode(packet->header.flags1);
@@ -812,6 +819,8 @@ void dnslib_packet_free_tmp_rrsets(dnslib_packet_t *pkt)
 	for (int i = 0; i < pkt->tmp_rrsets_count; ++i) {
 		// TODO: this is quite ugly, but better than copying whole
 		// function (for reallocating rrset array)
+//		printf("Freeing tmp RRSet on ptr: %p\n",
+//		       (((dnslib_rrset_t **)(pkt->tmp_rrsets))[i]));
 		dnslib_rrset_deep_free(
 			&(((dnslib_rrset_t **)(pkt->tmp_rrsets))[i]), 1, 1);
 	}
