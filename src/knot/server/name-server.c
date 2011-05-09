@@ -2068,6 +2068,15 @@ ns_nameserver_t *ns_create()
 		return NULL;
 	}
 
+	rc = dnslib_response2_init(err);
+	if (rc != DNSLIB_EOK) {
+		log_server_error("Error initializing default error response:"
+		                 " %s.\n", dnslib_strerror(rc));
+		free(ns);
+		dnslib_packet_free(&err);
+		return NULL;
+	}
+
 	dnslib_response2_set_rcode(err, DNSLIB_RCODE_SERVFAIL);
 	ns->err_resp_size = 0;
 
@@ -2316,7 +2325,7 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 	// initialize response packet structure
 	dnslib_packet_t *response = dnslib_packet_new(
 	                               DNSLIB_PACKET_PREALLOC_RESPONSE);
-	if (response == NULL) {
+	if (1/*response == NULL*/) {
 		log_server_warning("Failed to create packet structure.\n");
 		ns_error_response(nameserver, query->header.id,
 		                  DNSLIB_RCODE_SERVFAIL, response_wire, rsize);
