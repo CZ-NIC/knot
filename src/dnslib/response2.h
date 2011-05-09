@@ -29,6 +29,8 @@
 static const short DNSLIB_MAX_RESPONSE_SIZE = 512;
 
 /*----------------------------------------------------------------------------*/
+int dnslib_response2_init(dnslib_packet_t *response);
+
 /*!
  * \brief Initializes response from the given query.
  *

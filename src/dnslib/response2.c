@@ -783,7 +783,51 @@ static void dnslib_response2_edns_to_wire(dnslib_packet_t *resp)
 }
 
 /*----------------------------------------------------------------------------*/
+/*!
+ * \brief Converts the header structure to wire format.
+ *
+ * \note This function also adjusts the position (\a pos) according to
+ *       the size of the converted wire format.
+ *
+ * \param[in] header DNS header structure to convert.
+ * \param[out] pos Position where to put the converted header.
+ * \param[out] size Size of the wire format of the header in bytes.
+ */
+static void dnslib_response2_header_to_wire(const dnslib_header_t *header,
+                                           uint8_t **pos, size_t *size)
+{
+	dnslib_wire_set_id(*pos, header->id);
+	dnslib_wire_set_flags1(*pos, header->flags1);
+	dnslib_wire_set_flags2(*pos, header->flags2);
+	dnslib_wire_set_qdcount(*pos, header->qdcount);
+	dnslib_wire_set_ancount(*pos, header->ancount);
+	dnslib_wire_set_nscount(*pos, header->nscount);
+	dnslib_wire_set_arcount(*pos, header->arcount);
+
+	*pos += DNSLIB_WIRE_HEADER_SIZE;
+	*size += DNSLIB_WIRE_HEADER_SIZE;
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
+/*----------------------------------------------------------------------------*/
+
+int dnslib_response2_init(dnslib_packet_t *response)
+{
+	if (response->max_size < DNSLIB_WIRE_HEADER_SIZE) {
+		return DNSLIB_ESPACE;
+	}
+
+	// set the qr bit to 1
+	dnslib_wire_flags_set_qr(&response->header.flags1);
+
+	uint8_t *pos = response->wireformat;
+	dnslib_response2_header_to_wire(&response->header, &pos,
+	                                &response->size);
+
+	return DNSLIB_EOK;
+}
+
 /*----------------------------------------------------------------------------*/
 
 int dnslib_response2_init_from_query(dnslib_packet_t *response,
