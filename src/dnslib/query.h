@@ -44,6 +44,17 @@ int dnslib_query_dnssec_requested(const dnslib_packet_t *query);
  */
 int dnslib_query_nsid_requested(const dnslib_packet_t *query);
 
+//int dnslib_query_set_qname(dnslib_packet_t *query, const dnslib_dname_t *qname);
+
+//int dnslib_query_set_qtype(dnslib_packet_t *query, uint16_t qtype);
+
+//int dnslib_query_set_qclass(dnslib_packet_t *query, uint16_t qclass);
+
+int dnslib_query_init(dnslib_packet_t *query);
+
+int dnslib_query_set_question(dnslib_packet_t *query,
+                              const dnslib_question_t *question);
+
 #endif /* _KNOT_DNSLIB_QUERY_H_ */
 
 /*! @} */
