@@ -1788,7 +1788,7 @@ static int ns_axfr_send_and_clear(ns_xfr_t *xfr)
 
 	// Send the response
 	debug_ns("Sending response (size %zu)..\n", real_size);
-	debug_ns_hex(xfr->response_wire, real_size);
+	debug_ns_hex((const char *)xfr->response_wire, real_size);
 	int res = xfr->send(xfr->session, xfr->response_wire, real_size);
 	if (res < 0) {
 		debug_ns("Send returned %d\n", res);
@@ -2059,6 +2059,15 @@ ns_nameserver_t *ns_create()
 
 	debug_ns("Created default empty response...\n");
 
+	int rc = dnslib_response2_set_max_size(err, DNSLIB_WIRE_HEADER_SIZE);
+	if (rc != DNSLIB_EOK) {
+		log_server_error("Error creating default error response: %s.\n",
+		                 dnslib_strerror(rc));
+		free(ns);
+		dnslib_packet_free(&err);
+		return NULL;
+	}
+
 	dnslib_response2_set_rcode(err, DNSLIB_RCODE_SERVFAIL);
 	ns->err_resp_size = 0;
 
@@ -2206,7 +2215,8 @@ void ns_error_response(ns_nameserver_t *nameserver, uint16_t query_id,
                        uint8_t rcode, uint8_t *response_wire, size_t *rsize)
 {
 	debug_ns("Error response: \n");
-	debug_ns_hex(nameserver->err_response, nameserver->err_resp_size);
+	debug_ns_hex((const char *)nameserver->err_response,
+	             nameserver->err_resp_size);
 
 	memcpy(response_wire, nameserver->err_response,
 	       nameserver->err_resp_size);
