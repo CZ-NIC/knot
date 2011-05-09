@@ -63,6 +63,8 @@ int axfrin_create_soa_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
 	memcpy(buffer, wire, wire_size);
 	*size = wire_size;
 
+	dnslib_packet_free(&pkt);
+
 	return KNOT_EOK;
 }
 
