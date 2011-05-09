@@ -249,6 +249,8 @@ int dnslib_packet_parse_from_wire(dnslib_packet_t *packet,
                                   const uint8_t *wireformat, size_t size,
                                   int question_only);
 
+uint16_t dnslib_packet_id(const dnslib_packet_t *packet);
+
 /*!
  * \brief Returns the OPCODE of the packet.
  *
