@@ -2325,7 +2325,7 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 	// initialize response packet structure
 	dnslib_packet_t *response = dnslib_packet_new(
 	                               DNSLIB_PACKET_PREALLOC_RESPONSE);
-	if (1/*response == NULL*/) {
+	if (response == NULL) {
 		log_server_warning("Failed to create packet structure.\n");
 		ns_error_response(nameserver, query->header.id,
 		                  DNSLIB_RCODE_SERVFAIL, response_wire, rsize);
@@ -2333,7 +2333,7 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 		return KNOT_EOK;
 	}
 
-	int ret = dnslib_response2_init_from_query(response, query);
+	int ret = dnslib_response2_set_max_size(response, *rsize);
 
 	if (ret != DNSLIB_EOK) {
 		log_server_warning("Failed to init response structure.\n");
@@ -2344,7 +2344,7 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 		return KNOT_EOK;
 	}
 
-	ret = dnslib_response2_set_max_size(response, *rsize);
+	ret = dnslib_response2_init_from_query(response, query);
 
 	if (ret != DNSLIB_EOK) {
 		log_server_warning("Failed to init response structure.\n");
