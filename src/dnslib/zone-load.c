@@ -1,6 +1,7 @@
+#define __BSD_VISIBLE //! \todo Only on BSD-like OS.
+
 #include <config.h>
 #include <assert.h>
-#include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -839,7 +840,7 @@ int dnslib_zload_needs_update(zloader_t *loader)
 	}
 
 	/* Compare the mtime of the source and file. */
-	if (timespec_cmp(&st_bin.st_mtim, &st_src.st_mtim) < 0) {
+	if (timespec_cmp(&st_bin.st_mtime, &st_src.st_mtime) < 0) {
 		return 1;
 	}
 

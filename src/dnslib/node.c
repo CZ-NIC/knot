@@ -1,6 +1,7 @@
 #include <config.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <assert.h>
+#include <stdio.h>
 
 #include "dnslib/dnslib-common.h"
 #include "dnslib/node.h"
