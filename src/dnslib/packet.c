@@ -600,6 +600,7 @@ int dnslib_packet_parse_from_wire(dnslib_packet_t *packet,
 	// TODO: can we just save the pointer, or we have to copy the data??
 	assert(packet->wireformat == NULL);
 	packet->wireformat = wireformat;
+	packet->free_wireformat = 0;
 
 	//uint8_t *pos = wireformat;
 	size_t pos = 0;
@@ -794,6 +795,8 @@ int dnslib_packet_add_tmp_rrset(dnslib_packet_t *packet,
 	}
 
 	packet->tmp_rrsets[packet->tmp_rrsets_count++] = tmp_rrset;
+	debug_dnslib_packet("Current tmp RRSets count: %d\n",
+	                    packet->tmp_rrsets_count);
 
 	return DNSLIB_EOK;
 }
@@ -823,17 +826,19 @@ void dnslib_packet_free(dnslib_packet_t **packet)
 	}
 
 	// free temporary domain names
-	debug_dnslib_packet("Freeing tmp domains...\n");
+	debug_dnslib_packet("Freeing tmp RRSets...\n");
 	dnslib_packet_free_tmp_rrsets(*packet);
 
 	// check if some additional space was allocated for the packet
 	debug_dnslib_packet("Freeing additional allocated space...\n");
 	dnslib_packet_free_allocated_space(*packet);
 
-	// do not free wireformat for now - TODO: change
 	// free the space for wireformat
 //	assert((*packet)->wireformat != NULL);
 //	free((*packet)->wireformat);
+	if ((*packet)->wireformat != NULL && (*packet)->free_wireformat) {
+		free((*packet)->wireformat);
+	}
 
 	debug_dnslib_packet("Freeing packet structure\n");
 	free(*packet);

@@ -2107,6 +2107,8 @@ ns_nameserver_t *ns_create()
 
 	debug_ns("Done..\n");
 
+	dnslib_packet_free(&err);
+
 	if (EDNS_ENABLED) {
 		ns->opt_rr = dnslib_edns_new();
 		if (ns->opt_rr == NULL) {
@@ -2381,8 +2383,8 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 		}
 	}
 
-	//dnslib_response_free(&resp);
 	rcu_read_unlock();
+	dnslib_packet_free(&response);
 
 	debug_ns("Returning response with wire size %zu\n", *rsize);
 	debug_ns_hex((char *)response_wire, *rsize);
