@@ -24,5 +24,6 @@ const error_table_t knot_error_msgs[] = {
 	{KNOT_EPARSEFAIL, "Parser failed."},
 	{KNOT_ENOIPV6, "IPv6 support disabled."},
 	{KNOT_EMALF, "Malformed data."},
+	{KNOT_ESPACE, "Not enough space provided."},
 	{KNOT_ERROR, 0}
 };

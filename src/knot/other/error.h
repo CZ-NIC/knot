@@ -46,6 +46,7 @@ enum knot_error_t {
 	KNOT_EPARSEFAIL, /*!< \brief Parser fail. */
 	KNOT_ENOIPV6, /*!< \brief No IPv6 support. */
 	KNOT_EMALF, /*!< \brief Malformed data. */
+	KNOT_ESPACE, /*!< \brief Not enough space provided. */
 
 	KNOT_ERROR_COUNT = 20
 };
