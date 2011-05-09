@@ -658,6 +658,40 @@ int dnslib_packet_parse_from_wire(dnslib_packet_t *packet,
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_packet_set_max_size(dnslib_packet_t *packet, int max_size)
+{
+	if (packet == NULL || max_size <= 0) {
+		return DNSLIB_EBADARG;
+	}
+
+	if (packet->max_size < max_size) {
+		// reallocate space for the wire format (and copy anything
+		// that might have been there before
+		uint8_t *wire_new = (uint8_t *)malloc(max_size);
+		if (wire_new == NULL) {
+			return DNSLIB_ENOMEM;
+		}
+
+		uint8_t *wire_old = packet->wireformat;
+
+		memcpy(wire_new, packet->wireformat, packet->max_size);
+		packet->wireformat = wire_new;
+
+		if (packet->max_size > 0 && packet->free_wireformat) {
+			free(wire_old);
+		}
+
+		packet->free_wireformat = 1;
+	}
+
+	// set max size
+	packet->max_size = max_size;
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 uint16_t dnslib_packet_id(const dnslib_packet_t *packet)
 {
 	return packet->header.id;
@@ -824,6 +858,66 @@ void dnslib_packet_free_tmp_rrsets(dnslib_packet_t *pkt)
 		dnslib_rrset_deep_free(
 			&(((dnslib_rrset_t **)(pkt->tmp_rrsets))[i]), 1, 1);
 	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_packet_header_to_wire(const dnslib_header_t *header,
+                                  uint8_t **pos, size_t *size)
+{
+	dnslib_wire_set_id(*pos, header->id);
+	dnslib_wire_set_flags1(*pos, header->flags1);
+	dnslib_wire_set_flags2(*pos, header->flags2);
+	dnslib_wire_set_qdcount(*pos, header->qdcount);
+	dnslib_wire_set_ancount(*pos, header->ancount);
+	dnslib_wire_set_nscount(*pos, header->nscount);
+	dnslib_wire_set_arcount(*pos, header->arcount);
+
+	*pos += DNSLIB_WIRE_HEADER_SIZE;
+	*size += DNSLIB_WIRE_HEADER_SIZE;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_packet_edns_to_wire(dnslib_packet_t *packet)
+{
+	packet->size += dnslib_edns_to_wire(&packet->opt_rr,
+	                                  packet->wireformat + packet->size,
+	                                  packet->max_size - packet->size);
+
+	packet->header.arcount += 1;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_packet_to_wire(dnslib_packet_t *packet,
+                          uint8_t **wire, size_t *wire_size)
+{
+	if (packet == NULL || wire == NULL || wire_size == NULL
+	    || *wire != NULL) {
+		return DNSLIB_EBADARG;
+	}
+
+	assert(packet->size <= packet->max_size);
+
+	// if there are no additional RRSets, add EDNS OPT RR
+	if (packet->header.arcount == 0
+	    && packet->opt_rr.version != EDNS_NOT_SUPPORTED) {
+	    dnslib_packet_edns_to_wire(packet);
+	}
+
+	// set ANCOUNT to the packet
+	dnslib_wire_set_ancount(packet->wireformat, packet->header.ancount);
+	// set NSCOUNT to the packet
+	dnslib_wire_set_nscount(packet->wireformat, packet->header.nscount);
+	// set ARCOUNT to the packet
+	dnslib_wire_set_arcount(packet->wireformat, packet->header.arcount);
+
+	//assert(response->size == size);
+	*wire = packet->wireformat;
+	*wire_size = packet->size;
+
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

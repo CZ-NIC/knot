@@ -108,6 +108,7 @@ static dnslib_rrset_t *ns_synth_from_wildcard(
 	debug_ns("Synthetizing RRSet from wildcard...\n");
 
 	dnslib_dname_t *owner = dnslib_dname_copy(qname);
+//	printf("Copied owner ptr: %p\n", owner);
 
 	dnslib_rrset_t *synth_rrset = dnslib_rrset_new(
 			owner, dnslib_rrset_type(wildcard_rrset),
@@ -143,6 +144,7 @@ static dnslib_rrset_t *ns_synth_from_wildcard(
 		rdata = dnslib_rrset_rdata_next(wildcard_rrset, rdata);
 	}
 
+//	printf("Synthetized RRSet pointer: %p\n", synth_rrset);
 	return synth_rrset;
 }
 
@@ -1736,7 +1738,7 @@ static int ns_response_to_wire(dnslib_packet_t *resp, uint8_t *wire,
 	size_t rsize = 0;
 	int ret = 0;
 
-	if ((ret = dnslib_response2_to_wire(resp, &rwire, &rsize))
+	if ((ret = dnslib_packet_to_wire(resp, &rwire, &rsize))
 	     != DNSLIB_EOK) {
 		log_answer_error("Error converting response packet "
 		                 "to wire format (error %d).\n", ret);
@@ -2059,7 +2061,7 @@ ns_nameserver_t *ns_create()
 
 	debug_ns("Created default empty response...\n");
 
-	int rc = dnslib_response2_set_max_size(err, DNSLIB_WIRE_HEADER_SIZE);
+	int rc = dnslib_packet_set_max_size(err, DNSLIB_WIRE_HEADER_SIZE);
 	if (rc != DNSLIB_EOK) {
 		log_server_error("Error creating default error response: %s.\n",
 		                 dnslib_strerror(rc));
@@ -2084,7 +2086,7 @@ ns_nameserver_t *ns_create()
 
 	uint8_t *error_wire = NULL;
 
-	if (dnslib_response2_to_wire(err, &error_wire, &ns->err_resp_size)
+	if (dnslib_packet_to_wire(err, &error_wire, &ns->err_resp_size)
 	    != 0) {
 		log_answer_error("Error while converting "
 		                 "default error response to "
@@ -2335,7 +2337,7 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 		return KNOT_EOK;
 	}
 
-	int ret = dnslib_response2_set_max_size(response, *rsize);
+	int ret = dnslib_packet_set_max_size(response, *rsize);
 
 	if (ret != DNSLIB_EOK) {
 		log_server_warning("Failed to init response structure.\n");
@@ -2424,7 +2426,7 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		return KNOT_EOK;
 	}
 
-	ret = dnslib_response2_set_max_size(response, xfr->rsize);
+	ret = dnslib_packet_set_max_size(response, xfr->rsize);
 
 	if (ret != DNSLIB_EOK) {
 		log_server_warning("Failed to init response structure.\n");

@@ -767,48 +767,6 @@ static int dnslib_response_realloc_rrsets(const dnslib_rrset_t ***rrsets,
 }
 
 /*----------------------------------------------------------------------------*/
-/*!
- * \brief Converts the stored response OPT RR to wire format and adds it to
- *        the response wire format.
- *
- * \param resp Response structure.
- */
-static void dnslib_response2_edns_to_wire(dnslib_packet_t *resp)
-{
-	resp->size += dnslib_edns_to_wire(&resp->opt_rr,
-	                                  resp->wireformat + resp->size,
-	                                  resp->max_size - resp->size);
-
-	resp->header.arcount += 1;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Converts the header structure to wire format.
- *
- * \note This function also adjusts the position (\a pos) according to
- *       the size of the converted wire format.
- *
- * \param[in] header DNS header structure to convert.
- * \param[out] pos Position where to put the converted header.
- * \param[out] size Size of the wire format of the header in bytes.
- */
-static void dnslib_response2_header_to_wire(const dnslib_header_t *header,
-                                           uint8_t **pos, size_t *size)
-{
-	dnslib_wire_set_id(*pos, header->id);
-	dnslib_wire_set_flags1(*pos, header->flags1);
-	dnslib_wire_set_flags2(*pos, header->flags2);
-	dnslib_wire_set_qdcount(*pos, header->qdcount);
-	dnslib_wire_set_ancount(*pos, header->ancount);
-	dnslib_wire_set_nscount(*pos, header->nscount);
-	dnslib_wire_set_arcount(*pos, header->arcount);
-
-	*pos += DNSLIB_WIRE_HEADER_SIZE;
-	*size += DNSLIB_WIRE_HEADER_SIZE;
-}
-
-/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -822,7 +780,7 @@ int dnslib_response2_init(dnslib_packet_t *response)
 	dnslib_wire_flags_set_qr(&response->header.flags1);
 
 	uint8_t *pos = response->wireformat;
-	dnslib_response2_header_to_wire(&response->header, &pos,
+	dnslib_packet_header_to_wire(&response->header, &pos,
 	                                &response->size);
 
 	return DNSLIB_EOK;
@@ -909,44 +867,9 @@ int dnslib_response2_add_opt(dnslib_packet_t *resp,
 
 	// set max size (less is OK)
 	if (override_max_size) {
-		return dnslib_response2_set_max_size(resp,
-		                                     resp->opt_rr.payload);
+		return dnslib_packet_set_max_size(resp, resp->opt_rr.payload);
 		//resp->max_size = resp->opt_rr.payload;
 	}
-
-	return DNSLIB_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int dnslib_response2_set_max_size(dnslib_packet_t *resp, int max_size)
-{
-	if (resp == NULL || max_size <= 0) {
-		return DNSLIB_EBADARG;
-	}
-
-	if (resp->max_size < max_size) {
-		// reallocate space for the wire format (and copy anything
-		// that might have been there before
-		uint8_t *wire_new = (uint8_t *)malloc(max_size);
-		if (wire_new == NULL) {
-			return DNSLIB_ENOMEM;
-		}
-
-		uint8_t *wire_old = resp->wireformat;
-
-		memcpy(wire_new, resp->wireformat, resp->max_size);
-		resp->wireformat = wire_new;
-
-		if (resp->max_size > 0 && resp->free_wireformat) {
-			free(wire_old);
-		}
-
-		resp->free_wireformat = 1;
-	}
-
-	// set max size
-	resp->max_size = max_size;
 
 	return DNSLIB_EOK;
 }
@@ -1050,7 +973,7 @@ int dnslib_response2_add_rrset_additional(dnslib_packet_t *response,
 	// if this is the first additional RRSet, add EDNS OPT RR first
 	if (response->header.arcount == 0
 	    && response->opt_rr.version != EDNS_NOT_SUPPORTED) {
-		dnslib_response2_edns_to_wire(response);
+		dnslib_packet_edns_to_wire(response);
 	}
 
 	if (response->ar_rrsets == response->max_ar_rrsets
@@ -1112,36 +1035,4 @@ int dnslib_response2_add_nsid(dnslib_packet_t *response, const uint8_t *data,
 {
 	return dnslib_edns_add_option(&response->opt_rr,
 	                              EDNS_OPTION_NSID, length, data);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int dnslib_response2_to_wire(dnslib_packet_t *resp,
-                            uint8_t **resp_wire, size_t *resp_size)
-{
-	if (resp == NULL || resp_wire == NULL || resp_size == NULL
-	    || *resp_wire != NULL) {
-		return DNSLIB_EBADARG;
-	}
-
-	assert(resp->size <= resp->max_size);
-
-	// if there are no additional RRSets, add EDNS OPT RR
-	if (resp->header.arcount == 0
-	    && resp->opt_rr.version != EDNS_NOT_SUPPORTED) {
-	    dnslib_response2_edns_to_wire(resp);
-	}
-
-	// set ANCOUNT to the packet
-	dnslib_wire_set_ancount(resp->wireformat, resp->header.ancount);
-	// set NSCOUNT to the packet
-	dnslib_wire_set_nscount(resp->wireformat, resp->header.nscount);
-	// set ARCOUNT to the packet
-	dnslib_wire_set_arcount(resp->wireformat, resp->header.arcount);
-
-	//assert(response->size == size);
-	*resp_wire = resp->wireformat;
-	*resp_size = resp->size;
-
-	return DNSLIB_EOK;
 }
