@@ -249,6 +249,30 @@ int dnslib_packet_parse_from_wire(dnslib_packet_t *packet,
                                   const uint8_t *wireformat, size_t size,
                                   int question_only);
 
+/*!
+ * \brief Sets the maximum size of the packet and allocates space for wire
+ *        format (if needed).
+ *
+ * This function also allocates space for the wireformat of the packet, if
+ * the given max size is larger than the current maximum size of the packet
+ * and copies the current wireformat over to the new space.
+ *
+ * \warning Do not call this function if you are not completely sure that the
+ *          current wire format of the packet fits into the new space.
+ *          It does not update the current size of the wire format, so the
+ *          produced packet may be larger than the given max size.
+ *
+ * \param packet Packet to set the maximum size of.
+ * \param max_size Maximum size of the packet in bytes.
+ *
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_EBADARG
+ * \retval DNSLIB_ENOMEM
+ *
+ * \todo Needs test.
+ */
+int dnslib_packet_set_max_size(dnslib_packet_t *packet, int max_size);
+
 uint16_t dnslib_packet_id(const dnslib_packet_t *packet);
 
 /*!
@@ -388,6 +412,42 @@ int dnslib_packet_add_tmp_rrset(dnslib_packet_t *response,
                                 dnslib_rrset_t *tmp_rrset);
 
 void dnslib_packet_free_tmp_rrsets(dnslib_packet_t *pkt);
+
+/*!
+ * \brief Converts the header structure to wire format.
+ *
+ * \note This function also adjusts the position (\a pos) according to
+ *       the size of the converted wire format.
+ *
+ * \param[in] header DNS header structure to convert.
+ * \param[out] pos Position where to put the converted header.
+ * \param[out] size Size of the wire format of the header in bytes.
+ */
+void dnslib_packet_header_to_wire(const dnslib_header_t *header,
+                                  uint8_t **pos, size_t *size);
+
+/*!
+ * \brief Converts the stored response OPT RR to wire format and adds it to
+ *        the response wire format.
+ *
+ * \param resp Response structure.
+ */
+void dnslib_packet_edns_to_wire(dnslib_packet_t *packet);
+
+/*!
+ * \brief Converts the packet to wire format.
+ *
+ * \param packet Packet to be converted to wire format.
+ * \param wire Here the wire format of the packet will be stored.
+ *             Space for the packet will be allocated. *resp_wire must
+ *             be set to NULL (to avoid leaks).
+ * \param wire_size The size of the packet in wire format will be stored here.
+ *
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_EBADARG
+ */
+int dnslib_packet_to_wire(dnslib_packet_t *packet, uint8_t **wire,
+                          size_t *wire_size);
 
 /*!
  * \brief Properly destroys the packet structure.

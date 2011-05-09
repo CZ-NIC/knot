@@ -84,30 +84,6 @@ int dnslib_response2_add_opt(dnslib_packet_t *resp,
                             int override_max_size);
 
 /*!
- * \brief Sets the maximum size of the response and allocates space for wire
- *        format (if needed).
- *
- * This function also allocates space for the wireformat of the response, if
- * the given max size is larger than the current maximum size of the response
- * and copies the current wireformat over to the new space.
- *
- * \warning Do not call this function if you are not completely sure that the
- *          current wire format of the response fits into the new space.
- *          It does not update the current size of the wire format, so the
- *          produced response may be larger than the given max size.
- *
- * \param resp Response to set the maximum size of.
- * \param max_size Maximum size of the response.
- *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_ENOMEM
- *
- * \todo Needs test.
- */
-int dnslib_response2_set_max_size(dnslib_packet_t *resp, int max_size);
-
-/*!
  * \brief Adds a RRSet to the Answer section of the response.
  *
  * \param response Response to add the RRSet into.
@@ -201,21 +177,6 @@ void dnslib_response2_set_tc(dnslib_packet_t *response);
  */
 int dnslib_response2_add_nsid(dnslib_packet_t *response, const uint8_t *data,
                              uint16_t length);
-
-/*!
- * \brief Converts the response to wire format.
- *
- * \param response Response to be converted to wire format.
- * \param resp_wire Here the wire format of the response will be stored.
- *                  Space for the response will be allocated. *resp_wire must
- *                  be set to NULL (to avoid leaks).
- * \param resp_size The size of the response in wire format will be stored here.
- *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
- */
-int dnslib_response2_to_wire(dnslib_packet_t *response,
-                             uint8_t **resp_wire, size_t *resp_size);
 
 #endif /* _KNOT_DNSLIB_RESPONSE2_H_ */
 
