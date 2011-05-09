@@ -56,10 +56,12 @@ int udp_master(dthread_t *thread)
 #endif
 	if (handler->type == AF_INET) {
 
+#ifdef IP_PMTUDISC_DONT
 		/* Disable fragmentation. */
 		flag = IP_PMTUDISC_DONT;
 		setsockopt(sock, IPPROTO_IP, IP_MTU_DISCOVER, &flag, sizeof(flag));
 		flag = 1;
+#endif
 	}
 
 	/* in case of STAT_COMPILE the following code will declare thread_stat

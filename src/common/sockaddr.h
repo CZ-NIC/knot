@@ -12,7 +12,13 @@
 #ifndef _KNOT_SOCKADDR_H_
 #define _KNOT_SOCKADDR_H_
 
+/* BSD IPv6 */
+#ifndef __POSIX_VISIBLE
+#define __POSIX_VISIBLE = 200112
+#endif
+
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 /*! \brief Universal socket address. */
 typedef struct sockaddr_t {

@@ -223,17 +223,17 @@ libknot_la_LIBADD = @LIBOBJS@
 #   `%'-style pattern rules are a GNU make extension
 
 dnslib/tests/parsed_data.rc: dnslib/tests/files/parsed_data
-	../resource.sh $< >$@
+	../resource.sh dnslib/tests/files/parsed_data >$@
 
 dnslib/tests/parsed_data_queries.rc: dnslib/tests/files/parsed_data_queries
-	../resource.sh $< >$@
+	../resource.sh dnslib/tests/files/parsed_data_queries >$@
 
 dnslib/tests/raw_data_queries.rc: dnslib/tests/files/raw_data_queries
-	../resource.sh $< >$@
+	../resource.sh dnslib/tests/files/raw_data_queries >$@
 
 dnslib/tests/raw_data.rc: dnslib/tests/files/raw_data
-	../resource.sh $< >$@
+	../resource.sh dnslib/tests/files/raw_data >$@
 
 tests/sample_conf.rc: tests/files/sample_conf
-	../resource.sh $< >$@
+	../resource.sh tests/files/sample_conf >$@
 

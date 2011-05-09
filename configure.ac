@@ -34,16 +34,19 @@ AC_ARG_ENABLE([ldns],
 
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lm':
-AC_CHECK_LIB([m], [pow])
-AC_CHECK_LIB([pthread], [pthread_create])
-AC_CHECK_LIB([urcu], [rcu_read_lock])
-AC_CHECK_LIB([rt], [clock_gettime])
-AC_CHECK_LIB([crypto], [OpenSSL_add_all_digests])
-#AC_CHECK_LIB([ldns], [ldns_rr_list_pop_rrset])
+# TODO: check if paths exist before appending
+CFLAGS="$CFLAGS -I/usr/local/include"
+LDFLAGS="$LDFLAGS -L/usr/local/lib"
+AC_SEARCH_LIBS([pow], [m])
+AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])
+AC_SEARCH_LIBS([rcu_read_lock], [urcu], [], [AC_MSG_ERROR([liburcu not found])])
+AC_SEARCH_LIBS([clock_gettime], [rt], [], [AC_MSG_ERROR([librt not found])])
+AC_SEARCH_LIBS([OpenSSL_add_all_digests], [crypto],[], [AC_MSG_ERROR([libcrypto not found])])
+#AC_SEARCH_LIBS([ldns_rr_list_pop_rrset], [ldns], [], [AC_MSG_ERROR([libldns not found])])
 
 # Checks for header files.
 AC_HEADER_RESOLV
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h limits.h malloc.h netdb.h netinet/in.h stdint.h stdlib.h string.h strings.h sys/socket.h sys/time.h syslog.h unistd.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h limits.h malloc.h netdb.h netinet/in.h stdint.h stdlib.h string.h strings.h sys/socket.h sys/time.h syslog.h unistd.h urcu.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
