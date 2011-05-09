@@ -11,6 +11,13 @@
 
 /*----------------------------------------------------------------------------*/
 
+static uint32_t axfrin_serial_difference(uint32_t local, uint32_t remote)
+{
+	return (((int64_t)remote - local) % ((int64_t)1 << 32));
+}
+
+/*----------------------------------------------------------------------------*/
+
 int axfrin_create_soa_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
                             size_t *size)
 {
@@ -73,7 +80,45 @@ int axfrin_create_soa_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
 int axfrin_transfer_needed(const dnslib_zone_t *zone,
                            const dnslib_packet_t *soa_response)
 {
-	return KNOT_ERROR;
+	/*
+	 * Retrieve the local Serial
+	 */
+	const dnslib_rrset_t *soa_rrset =
+		dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
+	if (soa_rrset == NULL) {
+		char *name = dnslib_dname_to_str(dnslib_rrset_owner(soa_rrset));
+		log_answer_warning("SOA RRSet missing in the zone %s!\n", name);
+		free(name);
+		return KNOT_ERROR;
+	}
+
+	int64_t local_serial = dnslib_rdata_soa_serial(
+		dnslib_rrset_rdata(soa_rrset));
+	if (local_serial < 0) {
+		char *name = dnslib_dname_to_str(dnslib_rrset_owner(soa_rrset));
+		log_answer_warning("Malformed data in SOA of zone %s\n", name);
+		free(name);
+		return KNOT_EMALF;	// maybe some other error
+	}
+
+	/*
+	 * Retrieve the remote Serial
+	 */
+	// the SOA should be the first (and only) RRSet in the response
+	soa_rrset = dnslib_packet_answer_rrset(soa_response, 0);
+	if (soa_rrset == NULL
+	    || dnslib_rrset_type(soa_rrset) != DNSLIB_RRTYPE_SOA) {
+		return KNOT_EMALF;
+	}
+
+	int64_t remote_serial = dnslib_rdata_soa_serial(
+		dnslib_rrset_rdata(soa_rrset));
+	if (remote_serial < 0) {
+		return KNOT_EMALF;	// maybe some other error
+	}
+
+	uint32_t diff = axfrin_serial_difference(local_serial, remote_serial);
+	return (diff >= 1 && diff <= (((uint32_t)1 << 31) - 1));
 }
 
 /*----------------------------------------------------------------------------*/
