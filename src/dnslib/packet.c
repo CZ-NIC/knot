@@ -35,6 +35,10 @@ static void dnslib_packet_init_pointers_response(dnslib_packet_t *pkt)
 	pkt->owner_tmp = (uint8_t *)((char *)pkt->question.qname->labels
 	                              + PREALLOC_QNAME_LABELS);
 
+	debug_dnslib_packet("Tmp owner: %p (%zu after QNAME)\n",
+		pkt->owner_tmp,
+		(void *)pkt->owner_tmp - (void *)pkt->question.qname);
+
 	// then answer, authority and additional sections
 	pkt->answer = (const dnslib_rrset_t **)
 	                   ((char *)pkt->owner_tmp + PREALLOC_RR_OWNER);
@@ -112,10 +116,8 @@ static void dnslib_packet_init_pointers_query(dnslib_packet_t *pkt)
 	                                           pkt->question.qname->name
 	                                           + PREALLOC_QNAME_NAME);
 
-
-
-	pkt->owner_tmp = (uint8_t *)((char *)pkt->question.qname->labels
-	                              + PREALLOC_QNAME_LABELS);
+//	pkt->owner_tmp = (uint8_t *)((char *)pkt->question.qname->labels
+//	                              + PREALLOC_QNAME_LABELS);
 
 	// then answer, authority and additional sections
 	pkt->answer = (const dnslib_rrset_t **)
@@ -138,7 +140,7 @@ static void dnslib_packet_init_pointers_query(dnslib_packet_t *pkt)
 	pkt->max_ar_rrsets = DEFAULT_ARCOUNT_QUERY;
 
 	pkt->tmp_rrsets = (const dnslib_rrset_t **)
-	                      (pkt->additional + DEFAULT_ARCOUNT);
+	                      (pkt->additional + DEFAULT_ARCOUNT_QUERY);
 
 	debug_dnslib_packet("Tmp rrsets: %p (%zu after Additional)\n",
 		pkt->tmp_rrsets,
