@@ -109,6 +109,7 @@ struct dnslib_packet {
 	dnslib_opt_rr_t opt_rr;     /*!< OPT RR included in the packet. */
 
 	uint8_t *wireformat;  /*!< Wire format of the packet. */
+	short free_wireformat;
 	size_t size;      /*!< Current wire size of the packet. */
 	size_t max_size;  /*!< Maximum allowed size of the packet. */
 

@@ -933,8 +933,16 @@ int dnslib_response2_set_max_size(dnslib_packet_t *resp, int max_size)
 			return DNSLIB_ENOMEM;
 		}
 
+		uint8_t *wire_old = resp->wireformat;
+
 		memcpy(wire_new, resp->wireformat, resp->max_size);
 		resp->wireformat = wire_new;
+
+		if (resp->max_size > 0 && resp->free_wireformat) {
+			free(wire_old);
+		}
+
+		resp->free_wireformat = 1;
 	}
 
 	// set max size
