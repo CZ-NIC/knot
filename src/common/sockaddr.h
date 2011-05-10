@@ -16,6 +16,7 @@
 
 /*! \brief Universal socket address. */
 typedef struct sockaddr_t {
+	int family; /*!< Address family. */
 	struct sockaddr* ptr; /*!< Pointer to used sockaddr. */
 	socklen_t len;              /*!< Length of used sockaddr. */
 	union {

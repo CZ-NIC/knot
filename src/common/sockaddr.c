@@ -9,7 +9,9 @@
 int sockaddr_init(sockaddr_t *addr, int af)
 {
 	/* Reset pointer. */
+	addr->family = -1;
 	addr->ptr = 0;
+	addr->len = 0;
 
 	/* Initialize address size. */
 	switch(af) {
@@ -26,6 +28,7 @@ int sockaddr_init(sockaddr_t *addr, int af)
 	}
 
 	/* Update pointer. */
+	addr->family = af;
 	return sockaddr_update(addr);
 }
 
@@ -55,6 +58,7 @@ int sockaddr_set(sockaddr_t *dst, int family, const char* addr, int port)
 	}
 
 	/* Initialize. */
+	dst->family = -1;
 	dst->ptr = 0;
 	dst->len = 0;
 	sockaddr_init(dst, family);

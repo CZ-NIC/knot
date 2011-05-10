@@ -103,6 +103,21 @@ static inline const char* acl_name(acl_t *acl) {
 	return acl->name;
 }
 
+/*!
+ * \brief Return ACL rules.
+ *
+ * \param acl Pointer to ACL instance.
+ *
+ * \retval ACL rules skip-list.
+ */
+static inline skip_list_t* acl_rules(acl_t *acl) {
+        if (!acl) {
+                return 0;
+        }
+
+        return acl->rules;
+}
+
 #endif /* _KNOT_ACL_H_ */
 
 /*! @} */
