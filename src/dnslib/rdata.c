@@ -667,7 +667,7 @@ int64_t dnslib_rdata_soa_serial(const dnslib_rdata_t *rdata)
 		return -1;
 	}
 
-	return *((uint32_t *)(rdata->items[2].raw_data + 2));
+	return *((uint32_t *)(rdata->items[2].raw_data + 1));
 }
 
 /*---------------------------------------------------------------------------*/
@@ -678,7 +678,7 @@ uint32_t dnslib_rdata_soa_refresh(const dnslib_rdata_t *rdata)
 		return 0;	/*! \todo Some other error value. */
 	}
 
-	return *((uint32_t *)(rdata->items[3].raw_data + 2));
+	return *((uint32_t *)(rdata->items[3].raw_data + 1));
 }
 
 /*---------------------------------------------------------------------------*/
@@ -689,7 +689,7 @@ uint32_t dnslib_rdata_soa_retry(const dnslib_rdata_t *rdata)
 		return 0;	/*! \todo Some other error value. */
 	}
 
-	return *((uint32_t *)(rdata->items[4].raw_data + 2));
+	return *((uint32_t *)(rdata->items[4].raw_data + 1));
 }
 
 /*---------------------------------------------------------------------------*/
@@ -700,5 +700,5 @@ uint32_t dnslib_rdata_soa_expire(const dnslib_rdata_t *rdata)
 		return 0;	/*! \todo Some other error value. */
 	}
 
-	return *((uint32_t *)(rdata->items[5].raw_data + 2));
+	return *((uint32_t *)(rdata->items[5].raw_data + 1));
 }

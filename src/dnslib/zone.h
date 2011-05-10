@@ -22,6 +22,7 @@
 /*----------------------------------------------------------------------------*/
 
 typedef TREE_HEAD(avl_tree, dnslib_node) avl_tree_t;
+struct event_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -54,11 +55,17 @@ struct dnslib_zone {
 
 	/*! \brief Access control lists. */
 	struct {
-		acl_t *xfr_in;     /*!< ACL for xfr-in.*/
 		acl_t *xfr_out;    /*!< ACL for xfr-out.*/
 		acl_t *notify_in;  /*!< ACL for notify-in.*/
 		acl_t *notify_out; /*!< ACL for notify-out.*/
 	} acl;
+
+	/*! \brief XFR-IN scheduler. */
+	struct {
+		sockaddr_t     master;  /*!< Master server for xfr-in.*/
+		struct event_t *timer;  /*!< Timer for REFRESH/RETRY. */
+		struct event_t *expire; /*!< Timer for REFRESH. */
+	} xfr_in;
 };
 
 typedef struct dnslib_zone dnslib_zone_t;
