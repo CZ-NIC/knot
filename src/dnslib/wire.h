@@ -901,7 +901,7 @@ static inline size_t dnslib_wire_get_pointer(const uint8_t *pos)
 	memcpy(&p, pos, 2);
 	p &= ~DNSLIB_WIRE_PTR;
 
-	uint16_t p2 = dnslib_wire_read_u16(&p);
+        uint16_t p2 = dnslib_wire_read_u16((uint8_t*)&p);
 	return p2;
 }
 
