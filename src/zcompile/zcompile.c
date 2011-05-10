@@ -1899,13 +1899,6 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 //	dnslib_zone_t *some_zone= dnslib_zload_load(dnslib_zload_open(outfile));
 
-/*	dnslib_zone_t *new_zone = dnslib_zload_load(dnslib_zload_open(outfile));
-	dnslib_zdump_binary(new_zone, "testttt", 0, zonefile);
-	dnslib_zone_deep_free(&new_zone, 0);
-	dnslib_zone_t *new_zone2 = dnslib_zload_load(dnslib_zload_open("testttt"));
-	printf("apex: %s\n", dnslib_dname_to_str(new_zone2->apex->owner));
-	dnslib_zone_deep_free(&new_zone2, 0); */
-
 	fclose(yyin);
 
 	fflush(stdout);
