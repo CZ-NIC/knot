@@ -266,7 +266,6 @@ static int err_handler_handle_error(err_handler_t *handler,
 	}
 
 	if (error == ZC_ERR_ALLOC) {
-		return ZC_ERR_UNKNOWN;
 		ERR_ALLOC_FAILED;
 		return ZC_ERR_ALLOC;
 	}
@@ -955,9 +954,8 @@ static int rdata_nsec_to_type_array(const dnslib_rdata_item_t *item,
  * \return Appropriate error code if error was found.
  */
 static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
-				    err_handler_t *handler)
+                                    err_handler_t *handler)
 {
-
 	assert(handler);
 	const dnslib_node_t *nsec3_node = dnslib_node_nsec3_node(node);
 
@@ -1063,9 +1061,6 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 		err_handler_handle_error(handler, node,
 					 ZC_ERR_NSEC3_RDATA_CHAIN);
 	}
-
-	/* TODO first node in the nsec3 tree - is there a way? */
-
 	dnslib_dname_free(&next_dname);
 
 	/* This is probably not sufficient, but again, it is covered in
@@ -1360,7 +1355,8 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 
 			}
 		} else if (nsec3 && (auth || deleg)) { /* nsec3 */
-			int ret = check_nsec3_node_in_zone(zone, node, handler);
+			int ret = check_nsec3_node_in_zone(zone, node,
+			                                   handler);
 			if (ret != DNSLIB_EOK) {
 				free(rrsets);
 				return ret;
@@ -1450,13 +1446,9 @@ void zone_do_sem_checks(dnslib_zone_t *zone, char do_checks,
 			   (void *)&arguments);
 }
 
-/*!< \todo Think of a better way than a global variable */
-static uint node_count = 0;
-
 /*!< \todo remove this variable once sure about crc implementation. */
 static crc_t dnslib_dump_crc;
 
-static size_t tmp_count = 0;
 static inline int fwrite_wrapper(const void *src,
                                  size_t size, size_t n, FILE *fp)
 {
@@ -1470,7 +1462,6 @@ static inline int fwrite_wrapper(const void *src,
 		dnslib_dump_crc =
 			crc_update(dnslib_dump_crc, (unsigned char *)src,
 		                   size * n);
-		tmp_count += size * n;
 	}
 
 //	return rc == n;
@@ -1655,7 +1646,6 @@ static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, void *data)
 static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 {
 	arg_t *args = (arg_t *)data;
-	dnslib_zone_t *zone = (dnslib_zone_t *)args->arg3;
 	FILE *f = (FILE *)args->arg1;
 
 //	node_count++;
@@ -1748,14 +1738,77 @@ static int zone_is_secure(dnslib_zone_t *zone)
 static void log_cyclic_errors_in_zone(err_handler_t *handler,
 				      dnslib_zone_t *zone,
 				      dnslib_node_t *last_node,
+				      const dnslib_node_t *first_nsec3_node,
+				      const dnslib_node_t *last_nsec3_node,
 				      char do_checks)
 {
 	if (do_checks == 3) {
-		/* TODO I can check it points somewhere allright, but
-		 * to be sure it's really the first node I would have to have
-		 * first node of NSEC3 tree as well - impossible without
-		 * receiving it explicitely or going through the whole tree.*/
-		;
+		/* Each NSEC3 node should only contain one RRSET. */
+		assert(last_nsec3_node && first_nsec3_node);
+		const dnslib_rrset_t *nsec3_rrset =
+			dnslib_node_rrset(last_nsec3_node,
+		                              DNSLIB_RRTYPE_NSEC3);
+		if (nsec3_rrset == NULL) {
+			err_handler_handle_error(handler, last_nsec3_node,
+						 ZC_ERR_NSEC3_RDATA_CHAIN);
+			return;
+		}
+
+		/* check that next dname is in the zone */
+		uint8_t *next_dname_decoded = NULL;
+		size_t real_size = 0;
+
+		if (((real_size = base32hex_encode_alloc(((char *)
+			rdata_item_data(&(nsec3_rrset->rdata->items[4]))) + 1,
+			rdata_item_size(&nsec3_rrset->rdata->items[4]) - 1,
+			(char **)&next_dname_decoded)) <= 0) ||
+			(next_dname_decoded == NULL)) {
+			fprintf(stderr, "Could not encode base32 string!\n");
+			err_handler_handle_error(handler, last_nsec3_node,
+						 ZC_ERR_NSEC3_RDATA_CHAIN);
+			return;
+		}
+
+		/* This is why allocate maximum length of decoded string + 1 */
+		memmove(next_dname_decoded + 1, next_dname_decoded, real_size);
+		next_dname_decoded[0] = real_size;
+
+		dnslib_dname_t *next_dname =
+			dnslib_dname_new_from_wire(next_dname_decoded,
+						   real_size + 1, NULL);
+		if (next_dname == NULL) {
+			fprintf(stderr, "Could not allocate dname!\n");
+			err_handler_handle_error(handler, last_nsec3_node,
+						 ZC_ERR_ALLOC);
+			return;
+		}
+
+		free(next_dname_decoded);
+
+		if (dnslib_dname_cat(next_dname,
+			     dnslib_node_owner(dnslib_zone_apex(zone))) ==
+		                NULL) {
+			fprintf(stderr, "Could not concatenate dnames!\n");
+			err_handler_handle_error(handler, last_nsec3_node,
+						 ZC_ERR_NSEC3_RDATA_CHAIN);
+			return;
+		}
+
+		/* Check it points somewhere first. */
+		if (dnslib_zone_find_nsec3_node(zone, next_dname) == NULL) {
+			err_handler_handle_error(handler, last_nsec3_node,
+						 ZC_ERR_NSEC3_RDATA_CHAIN);
+		}
+
+		/* Compare with the actual first NSEC3 node. */
+		if (dnslib_dname_compare(first_nsec3_node->owner,
+		                         next_dname) != 0) {
+			err_handler_handle_error(handler, last_nsec3_node,
+						 ZC_ERR_NSEC3_RDATA_CHAIN);
+		}
+
+		dnslib_dname_free(&next_dname);
+
 	} else if (do_checks == 2 ) {
 		if (last_node == NULL) {
 			err_handler_handle_error(handler, last_node,
@@ -1850,6 +1903,7 @@ static void save_node_from_tree(dnslib_node_t *node, void *data)
 	if (arg->arg2 == NULL) {
 		arg->arg2 = (void *)node;
 	}
+	arg->arg3 = (void *)node;
 }
 
 int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
@@ -1861,8 +1915,26 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 		return DNSLIB_EBADARG;
 	}
 
-	zone->node_count = 0;
 //	skip_list_t *encloser_list = skip_create_list(compare_pointers);
+	arg_t arguments;
+	arguments.arg1 = 0;
+	arguments.arg2 = NULL;
+
+	/* Count number of normal nodes. */
+	dnslib_zone_tree_apply_inorder(zone, save_node_from_tree, &arguments);
+	/* arg1 is now count of normal nodes */
+	uint normal_node_count = (uint)arguments.arg1;
+
+	arguments.arg1 = 0;
+	arguments.arg2 = NULL;
+
+	/* Count number of NSEC3 nodes. */
+	dnslib_zone_nsec3_apply_inorder(zone, save_node_from_tree, &arguments);
+	uint nsec3_node_count = (uint)arguments.arg1;
+	/* arg2 is the first NSEC3 node - used in sem checks. */
+	/* arg3 is the last NSEC3 node - used in sem checks. */
+	const dnslib_node_t *first_nsec3_node = (dnslib_node_t *)arguments.arg2;
+	const dnslib_node_t *last_nsec3_node = (dnslib_node_t *)arguments.arg3;
 
 	if (do_checks && zone_is_secure(zone)) {
 		do_checks += zone_is_secure(zone);
@@ -1883,13 +1955,13 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 							 ZC_ERR_MISSING_SOA);
 			}
 		}
-	}
 
-	dnslib_node_t *last_node = NULL;
-	zone_do_sem_checks(zone, do_checks, handler, &last_node);
+		dnslib_node_t *last_node = NULL;
 
-	if (do_checks) {
-		log_cyclic_errors_in_zone(handler, zone, last_node, do_checks);
+		zone_do_sem_checks(zone, do_checks, handler, &last_node);
+		log_cyclic_errors_in_zone(handler, zone, last_node,
+		                          first_nsec3_node, last_nsec3_node,
+		                          do_checks);
 		err_handler_log_all(handler);
 		free(handler);
 	}
@@ -1913,26 +1985,9 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	/* Notice: End of header,
 	 */
 
-	arg_t arguments;
-	arguments.arg1 = 0;
-	arguments.arg2 = NULL;
-
-	/* Count number of normal nodes. */
-	dnslib_zone_tree_apply_inorder(zone, save_node_from_tree, &arguments);
-	/* arg1 is now count of normal nodes */
-	uint normal_node_count = (uint)arguments.arg1;
-
-	arguments.arg1 = 0;
-
-	/* Count number of NSEC3 nodes. */
-	dnslib_zone_nsec3_apply_inorder(zone, save_node_from_tree, &arguments);
-	uint nsec3_node_count = (uint)arguments.arg1;
-	/* arg2 is the first NSEC3 node - used in sem checks. */
-	const dnslib_node_t *first_nsec3_node = (dnslib_node_t *)arguments.arg2;
-
 	/* Start writing compiled data. */
-	fwrite_wrapper(&normal_node_count, sizeof(node_count), 1, f);
-	fwrite_wrapper(&nsec3_node_count, sizeof(node_count), 1, f);
+	fwrite_wrapper(&normal_node_count, sizeof(normal_node_count), 1, f);
+	fwrite_wrapper(&nsec3_node_count, sizeof(nsec3_node_count), 1, f);
 	fwrite_wrapper(&zone->node_count,
 	       sizeof(zone->node_count), 1, f);
 
@@ -1954,20 +2009,8 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	dnslib_zone_tree_apply_inorder(zone, dnslib_node_dump_binary,
 				       (void *)&arguments);
 
-	uint tmp_count = node_count;
-
-	node_count = 0;
 	dnslib_zone_nsec3_apply_inorder(zone, dnslib_node_dump_binary,
 					(void *)&arguments);
-
-	/* Update counters. */
-
-	debug_dnslib_zdump("written %d normal nodes\n", tmp_count);
-	debug_dnslib_zdump("written %d nsec3 nodes\n", node_count);
-	debug_dnslib_zdump("authorative nodes: %u\n", zone->node_count);
-
-	tmp_count = 0;
-	node_count = 0;
 
 	dnslib_dump_crc = crc_finalize(dnslib_dump_crc);
 	/* Write CRC to separate .crc file. */
