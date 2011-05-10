@@ -312,6 +312,10 @@ const dnslib_dname_t *dnslib_rdata_get_name(const dnslib_rdata_t *rdata,
 
 int64_t dnslib_rdata_soa_serial(const dnslib_rdata_t *rdata);
 
+uint32_t dnslib_rdata_soa_refresh(const dnslib_rdata_t *rdata);
+uint32_t dnslib_rdata_soa_retry(const dnslib_rdata_t *rdata);
+uint32_t dnslib_rdata_soa_expire(const dnslib_rdata_t *rdata);
+
 #endif /* _KNOT_DNSLIB_RDATA_H */
 
 /*! @} */
