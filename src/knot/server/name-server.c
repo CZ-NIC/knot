@@ -2041,6 +2041,7 @@ ns_nameserver_t *ns_create()
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
+        ns->server = 0;
 
 	// Create zone database structure
 	debug_ns("Creating Zone Database structure...\n");
