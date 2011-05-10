@@ -331,11 +331,17 @@ DEBUG_DNSLIB_ZONE(
 		dnslib_node_set_deleg_point(node);
 	}
 
-	// NSEC3 node
-	assert(node->owner);
+	// authorative node?
+	if (!dnslib_node_is_non_auth(node)) {
+		zone->node_count++;
+	}
+
+	// assure that owner has proper node
 	if (node->owner->node == NULL) {
 		node->owner->node = node;
 	}
+
+	// NSEC3 node
 	const dnslib_node_t *prev;
 	int match = dnslib_zone_find_nsec3_for_name(zone, node->owner,
 						    &node->nsec3_node, &prev);

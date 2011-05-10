@@ -70,12 +70,6 @@ static inline int fread_safe(void *dst, size_t size, size_t n, FILE *fp)
 			n);
 	}
 
-/*	if (size * n > 0) {
-		dnslib_load_crc =
-			crc_update(dnslib_load_crc, (unsigned char *)dst,
-		                   size * n);
-	} */
-
 	return rc == n;
 }
 
@@ -354,7 +348,7 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 
 	void *parent_id;
 	void *nsec3_node_id;
-	uint8_t rrset_count;
+	uint16_t rrset_count;
 
 	uint dname_id = 0;
 
@@ -406,11 +400,11 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 
 //	debug_dnslib_zload("id: %p\n", dname_id);
 
-	if (!fread(&parent_id, sizeof(dname_id), 1, f)) {
+	if (!fread_safe(&parent_id, sizeof(dname_id), 1, f)) {
 		return NULL;
 	}
 
-	if (!fread(&flags, sizeof(flags), 1, f)) {
+	if (!fread_safe(&flags, sizeof(flags), 1, f)) {
 		return NULL;
 	}
 
@@ -418,7 +412,7 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 		return NULL;
 	}
 
-	if (!fread(&rrset_count, sizeof(rrset_count), 1, f)) {
+	if (!fread_safe(&rrset_count, sizeof(rrset_count), 1, f)) {
 		return NULL;
 	}
 
@@ -532,13 +526,51 @@ static int dnslib_check_magic(FILE *f, const uint8_t* MAGIC, uint MAGIC_LENGTH)
 	return 1;
 }
 
+static unsigned long calculate_crc(FILE *f)
+{
+	crc_t crc = crc_init();
+	/* Get file size. */
+	fseek(f, 0L, SEEK_END);
+	size_t file_size = ftell(f);
+	fseek(f, 0L, SEEK_SET);
+
+	const size_t chunk_size = 1024;
+	/* read chunks of 1 kB */
+	size_t read_bytes = 0;
+	/* Prealocate chunk */
+	unsigned char *chunk = malloc(sizeof(unsigned char) * chunk_size);
+	CHECK_ALLOC_LOG(chunk, 0);
+	while ((file_size - read_bytes) > chunk_size) {
+		if (!fread_safe(chunk, sizeof(unsigned char), chunk_size, f)) {
+			free(chunk);
+			return 0;
+		}
+		crc = crc_update(crc, chunk,
+		                 sizeof(unsigned char) * chunk_size);
+		read_bytes += chunk_size;
+	}
+
+	/* Read the rest of the file */
+	if (!fread_safe(chunk, sizeof(unsigned char), file_size - read_bytes,
+	                f)) {
+		free(chunk);
+		return 0;
+	}
+
+	crc = crc_update(crc, chunk,
+	                 sizeof(unsigned char) * (file_size - read_bytes));
+	free(chunk);
+
+	fseek(f, 0L, SEEK_SET);
+	return (unsigned long)crc_finalize(crc);
+}
+
 zloader_t *dnslib_zload_open(const char *filename)
 {
 	if (unlikely(!filename)) {
 		errno = ENOENT; // No such file or directory (POSIX.1)
 		return NULL;
 	}
-
 
 	/* Open file for binary read. */
 	FILE *f = fopen(filename, "rb");
@@ -549,19 +581,56 @@ zloader_t *dnslib_zload_open(const char *filename)
 		return NULL;
 	}
 
-	/* Initialize CRC value. */
-	dnslib_load_crc = crc_init();
-	fseek(f, 0L, SEEK_END);
-	size_t file_size = ftell(f);
-	fseek(f, 0L, SEEK_SET);
-	printf("size is: %d\n", file_size);
-	/* just a test */
-	unsigned char *tmp = malloc(sizeof(unsigned char) * file_size);
-	fread(tmp, sizeof(unsigned char), file_size, f);
-	dnslib_load_crc = crc_update(dnslib_load_crc, tmp, file_size);
-	getchar();
+	/* Calculate CRC and compare with filename.crc file */
+	unsigned long crc_calculated = calculate_crc(f);
 
-	fseek(f, 0L, SEEK_SET);
+	/* Read CRC from filename.crc file */
+	char *crc_path =
+		malloc(sizeof(char) * (strlen(filename) + strlen(".crc") + 1));
+	if (unlikely(!crc_path)) {
+		fclose(f);
+		errno = ENOMEM;
+		return NULL;
+	}
+	memset(crc_path, 0,
+	       sizeof(char) * (strlen(filename) + strlen(".crc") + 1));
+
+	memcpy(crc_path, filename, sizeof(char) * strlen(filename));
+
+	crc_path = strcat(crc_path, ".crc");
+	FILE *f_crc = fopen(crc_path, "r");
+	if (unlikely(!f_crc)) {
+		debug_dnslib_zload("dnslib_zload_open: failed to open '%s'\n",
+		                   crc_path);
+		fclose(f);
+		free(crc_path);
+		errno = ENOENT; // No such file or directory (POSIX.1)
+		return NULL;
+	}
+
+	unsigned long crc_from_file = 0;
+	if (fscanf(f_crc, "%lu\n", &crc_from_file) != 1) {
+		debug_dnslib_zload("dnslib_zload_open: could not read "
+		                   "CRC from file '%s'\n",
+		                   crc_path);
+		fclose(f_crc);
+		fclose(f);
+		free(crc_path);
+		errno = EIO; // I/O error.
+		return NULL;
+	}
+	free(crc_path);
+	fclose(f_crc);
+
+	/* Compare calculated and read CRCs. */
+	if (crc_from_file != crc_calculated) {
+		debug_dnslib_zload("dnslib_zload_open: CRC failed for "
+		                   "file '%s'\n",
+		                   filename);
+		fclose(f);
+		errno = DNSLIB_ECRC;
+		return NULL;
+	}
 
 	/* Check magic sequence. */
 	static const uint8_t MAGIC[MAGIC_LENGTH] = MAGIC_BYTES;
@@ -950,8 +1019,6 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	/* ID array is now useless */
 	free(id_array);
 
-	dnslib_load_crc = crc_finalize(dnslib_load_crc);
-	printf("0x%lx\n", (unsigned long)dnslib_load_crc);
 
 	return zone;
 }

@@ -1457,7 +1457,8 @@ static uint node_count = 0;
 static crc_t dnslib_dump_crc;
 
 static size_t tmp_count = 0;
-static inline int fwrite_wrapper(void *src, size_t size, size_t n, FILE *fp)
+static inline int fwrite_wrapper(const void *src,
+                                 size_t size, size_t n, FILE *fp)
 {
 	int rc = fwrite(src, size, n, fp);
 	if (rc != n) {
@@ -1469,10 +1470,8 @@ static inline int fwrite_wrapper(void *src, size_t size, size_t n, FILE *fp)
 		dnslib_dump_crc =
 			crc_update(dnslib_dump_crc, (unsigned char *)src,
 		                   size * n);
+		tmp_count += size * n;
 	}
-
-	tmp_count += size * n;
-	printf("tmp_count: %d\n", tmp_count);
 
 //	return rc == n;
 	return rc;
@@ -1546,8 +1545,6 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 				fwrite_wrapper((uint8_t *)"\1",
 				       sizeof(uint8_t), 1, f);
 			} else {
-//				printf("NOT IN THE ZONE: %s\n",
-//				       dnslib_dname_to_str(rdata->items[i].dname));
 				fwrite_wrapper((uint8_t *)"\0", sizeof(uint8_t),
 				       1, f);
 			}
@@ -1582,40 +1579,28 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 static void dnslib_rrsig_set_dump_binary(dnslib_rrset_t *rrsig, arg_t *data)
 {
 	assert(rrsig->type == DNSLIB_RRTYPE_RRSIG);
+	assert(rrsig->rdata);
 	FILE *f = (FILE *)((arg_t *)data)->arg1;
 	fwrite_wrapper(&rrsig->type, sizeof(rrsig->type), 1, f);
 	fwrite_wrapper(&rrsig->rclass, sizeof(rrsig->rclass), 1, f);
 	fwrite_wrapper(&rrsig->ttl, sizeof(rrsig->ttl), 1, f);
 
-	uint8_t rdata_count = 0;
-
-	fpos_t rrdata_count_pos;
-
-	fgetpos(f, &rrdata_count_pos);
-
-	fwrite_wrapper(&rdata_count, sizeof(rdata_count), 1, f);
-
-	assert(rrsig->rdata);
-
+	uint8_t rdata_count = 1;
+	/* Calculate rrset rdata count. */
 	dnslib_rdata_t *tmp_rdata = rrsig->rdata;
-
-	while (tmp_rdata->next != rrsig->rdata) {
-		dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, data);
+	while(tmp_rdata->next != rrsig->rdata) {
 		tmp_rdata = tmp_rdata->next;
 		rdata_count++;
 	}
-	dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, data);
-	rdata_count++;
-
-	fpos_t tmp_pos;
-
-	fgetpos(f, &tmp_pos);
-
-	fsetpos(f, &rrdata_count_pos);
 
 	fwrite_wrapper(&rdata_count, sizeof(rdata_count), 1, f);
 
-	fsetpos(f, &tmp_pos);
+	tmp_rdata = rrsig->rdata;
+	while (tmp_rdata->next != rrsig->rdata) {
+		dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, data);
+		tmp_rdata = tmp_rdata->next;
+	}
+	dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, data);
 }
 
 /*!
@@ -1632,44 +1617,33 @@ static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, void *data)
 	fwrite_wrapper(&rrset->rclass, sizeof(rrset->rclass), 1, f);
 	fwrite_wrapper(&rrset->ttl, sizeof(rrset->ttl), 1, f);
 
-	uint8_t rdata_count = 0;
-	uint8_t rrsig_count = 0;
+	uint8_t rdata_count = 1;
+	uint8_t has_rrsig = rrset->rrsigs != NULL;
 
-	fpos_t rrdata_count_pos;
-
-	fgetpos(f, &rrdata_count_pos);
+	/* Calculate rrset rdata count. */
+	dnslib_rdata_t *tmp_rdata = rrset->rdata;
+	while(tmp_rdata->next != rrset->rdata) {
+		tmp_rdata = tmp_rdata->next;
+		rdata_count++;
+	}
 
 	fwrite_wrapper(&rdata_count, sizeof(rdata_count), 1, f);
-	fwrite_wrapper(&rrsig_count, sizeof(rrsig_count), 1, f);
+	fwrite_wrapper(&has_rrsig, sizeof(has_rrsig), 1, f);
 
-	dnslib_rdata_t *tmp_rdata = rrset->rdata;
+	tmp_rdata = rrset->rdata;
 
 	while (tmp_rdata->next != rrset->rdata) {
 		dnslib_rdata_dump_binary(tmp_rdata, rrset->type, data);
 		tmp_rdata = tmp_rdata->next;
-		rdata_count++;
 	}
 	dnslib_rdata_dump_binary(tmp_rdata, rrset->type, data);
-	rdata_count++;
 
 	/* This is now obsolete, although I'd rather not use recursion - that
 	 * would probably not work */
 
 	if (rrset->rrsigs != NULL) {
 		dnslib_rrsig_set_dump_binary(rrset->rrsigs, data);
-		rrsig_count = 1;
 	}
-
-	fpos_t tmp_pos;
-
-	fgetpos(f, &tmp_pos);
-
-	fsetpos(f, &rrdata_count_pos);
-
-	fwrite_wrapper(&rdata_count, sizeof(rdata_count), 1, f);
-	fwrite_wrapper(&rrsig_count, sizeof(rrsig_count), 1, f);
-
-	fsetpos(f, &tmp_pos);
 }
 
 /*!
@@ -1684,13 +1658,9 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 	dnslib_zone_t *zone = (dnslib_zone_t *)args->arg3;
 	FILE *f = (FILE *)args->arg1;
 
-	node_count++;
+//	node_count++;
 	/* first write dname */
 	assert(node->owner != NULL);
-
-	if (!dnslib_node_is_non_auth(node)) {
-		zone->node_count++;
-	}
 
 	/* Write owner ID. */
 	fwrite_wrapper(&node->owner->id, sizeof(node->owner->id), 1, f);
@@ -1721,15 +1691,7 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 	/* Now we need (or do we?) count of rrsets to be read
 	 * but that number is yet unknown */
 
-	fpos_t rrset_count_pos;
-
-	fgetpos(f, &rrset_count_pos);
-
-	debug_dnslib_zdump("Position rrset_count: %ld\n", ftell(f));
-
-	uint8_t rrset_count = 0;
-
-	fwrite_wrapper(&rrset_count, sizeof(rrset_count), 1, f);
+	fwrite_wrapper(&node->rrset_count, sizeof(node->rrset_count), 1, f);
 
 	const skip_node_t *skip_node = skip_first(node->rrsets);
 
@@ -1742,26 +1704,12 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 	do {
 		tmp = (dnslib_rrset_t *)skip_node->value;
-		rrset_count++;
 		dnslib_rrset_dump_binary(tmp, data);
 	} while ((skip_node = skip_next(skip_node)) != NULL);
 
-	fpos_t tmp_pos;
-
-	fgetpos(f, &tmp_pos);
-
 	debug_dnslib_zdump("Position after all rrsets: %ld\n", ftell(f));
-
-	fsetpos(f, &rrset_count_pos);
-
 	debug_dnslib_zdump("Writing here: %ld\n", ftell(f));
-
-	fwrite_wrapper(&rrset_count, sizeof(rrset_count), 1, f);
-
-	fsetpos(f, &tmp_pos);
-
 	debug_dnslib_zdump("Function ends with: %ld\n\n", ftell(f));
-
 }
 
 /*!
@@ -1842,7 +1790,7 @@ static void log_cyclic_errors_in_zone(err_handler_t *handler,
 }
 
 /*!
- * \brief Safe wrapper around fwrite_wrapper.
+ * \brief Safe wrapper around fwrite.
  *
  * \param dst Destination pointer.
  * \param size Size of element to be written.
@@ -1852,7 +1800,8 @@ static void log_cyclic_errors_in_zone(err_handler_t *handler,
  * \retval > 0 if succesfull.
  * \retval 0 if failed.
  */
-static inline int fwrite_wrapper_safe(void *src, size_t size, size_t n, FILE *fp)
+static inline int fwrite_wrapper_safe(const void *src,
+                                      size_t size, size_t n, FILE *fp)
 {
 	int rc = fwrite_wrapper(src, size, n, fp);
 	if (rc != n) {
@@ -1892,6 +1841,17 @@ static int dnslib_dump_dname_table(const dnslib_dname_table_t *dname_table,
 	return DNSLIB_EOK;
 }
 
+static void save_node_from_tree(dnslib_node_t *node, void *data)
+{
+	arg_t *arg = (arg_t *)data;
+	/* Increment node count */
+	arg->arg1++;
+	/* Save the first node only */
+	if (arg->arg2 == NULL) {
+		arg->arg2 = (void *)node;
+	}
+}
+
 int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 			int do_checks, const char *sfilename)
 {
@@ -1925,8 +1885,6 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 		}
 	}
 
-	dnslib_dump_crc = crc_init();
-
 	dnslib_node_t *last_node = NULL;
 	zone_do_sem_checks(zone, do_checks, handler, &last_node);
 
@@ -1936,8 +1894,9 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 		free(handler);
 	}
 
+	dnslib_dump_crc = crc_init();
+
 	/* Start writing header - magic bytes. */
-	size_t header_len = MAGIC_LENGTH;
 	static const uint8_t MAGIC[MAGIC_LENGTH] = MAGIC_BYTES;
 	fwrite_wrapper(&MAGIC, sizeof(uint8_t), MAGIC_LENGTH, f);
 
@@ -1947,19 +1906,33 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 		sflen = strlen(sfilename) + 1;
 	}
 	fwrite_wrapper(&sflen, sizeof(uint32_t), 1, f);
-	header_len += sizeof(uint32_t);
 
 	/* Write source file. */
 	fwrite_wrapper(sfilename, sflen, 1, f);
-	header_len += sflen;
 
 	/* Notice: End of header,
-	 * length must be marked for future return.
 	 */
 
+	arg_t arguments;
+	arguments.arg1 = 0;
+	arguments.arg2 = NULL;
+
+	/* Count number of normal nodes. */
+	dnslib_zone_tree_apply_inorder(zone, save_node_from_tree, &arguments);
+	/* arg1 is now count of normal nodes */
+	uint normal_node_count = (uint)arguments.arg1;
+
+	arguments.arg1 = 0;
+
+	/* Count number of NSEC3 nodes. */
+	dnslib_zone_nsec3_apply_inorder(zone, save_node_from_tree, &arguments);
+	uint nsec3_node_count = (uint)arguments.arg1;
+	/* arg2 is the first NSEC3 node - used in sem checks. */
+	const dnslib_node_t *first_nsec3_node = (dnslib_node_t *)arguments.arg2;
+
 	/* Start writing compiled data. */
-	fwrite_wrapper(&node_count, sizeof(node_count), 1, f);
-	fwrite_wrapper(&node_count, sizeof(node_count), 1, f);
+	fwrite_wrapper(&normal_node_count, sizeof(node_count), 1, f);
+	fwrite_wrapper(&nsec3_node_count, sizeof(node_count), 1, f);
 	fwrite_wrapper(&zone->node_count,
 	       sizeof(zone->node_count), 1, f);
 
@@ -1973,7 +1946,6 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 		return DNSLIB_ERROR;
 	}
 
-	arg_t arguments;
 	arguments.arg1 = f;
 //	arguments.arg2 = encloser_list;
 	arguments.arg3 = zone;
@@ -1989,12 +1961,6 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 					(void *)&arguments);
 
 	/* Update counters. */
-	fseek(f, header_len, SEEK_SET);
-	fwrite_wrapper(&tmp_count, sizeof(tmp_count), 1, f);
-	fwrite_wrapper(&node_count, sizeof(node_count), 1, f);
-	fwrite_wrapper(&zone->node_count,
-	       sizeof(zone->node_count),
-	       1, f);
 
 	debug_dnslib_zdump("written %d normal nodes\n", tmp_count);
 	debug_dnslib_zdump("written %d nsec3 nodes\n", node_count);
@@ -2004,7 +1970,30 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	node_count = 0;
 
 	dnslib_dump_crc = crc_finalize(dnslib_dump_crc);
-	printf("0x%lx\n", (unsigned long)dnslib_dump_crc);
+	/* Write CRC to separate .crc file. */
+	char *crc_path =
+		malloc(sizeof(char) * (strlen(filename) + strlen(".crc") + 1));
+	if (unlikely(!crc_path)) {
+		fclose(f);
+		return DNSLIB_ENOMEM;
+	}
+	memset(crc_path, 0,
+	       sizeof(char) * (strlen(filename) + strlen(".crc") + 1));
+	memcpy(crc_path, filename, sizeof(char) * strlen(filename));
+
+	crc_path = strcat(crc_path, ".crc");
+	FILE *f_crc = fopen(crc_path, "w");
+	if (unlikely(!f_crc)) {
+		debug_dnslib_zload("dnslib_zload_open: failed to open '%s'\n",
+		                   crc_path);
+		fclose(f);
+		free(crc_path);
+		return ENOENT;
+	}
+	free(crc_path);
+
+	fprintf(f_crc, "%lu\n", (unsigned long)dnslib_dump_crc);
+	fclose(f_crc);
 
 	fclose(f);
 
