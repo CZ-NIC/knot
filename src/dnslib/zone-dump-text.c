@@ -975,7 +975,7 @@ void node_dump_text(dnslib_node_t *node, void *data)
 	}
 }
 
-int zone_dump_text(const dnslib_zone_t *zone, const char *filename)
+int zone_dump_text(dnslib_zone_t *zone, const char *filename)
 {
 	FILE *f = fopen(filename, "w");
 	if (f == NULL) {

@@ -49,8 +49,6 @@ static int timespec_cmp(struct timespec *x, struct timespec *y)
 	return -1;
 }
 
-
-static crc_t dnslib_load_crc;
 /*!
  * \brief Safe wrapper around fread.
  *
