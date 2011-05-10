@@ -10,8 +10,164 @@
 #include "knot/other/log.h"
 #include "dnslib/zone-load.h"
 #include "knot/other/debug.h"
+#include "knot/server/axfr-in.h"
+#include "knot/server/server.h"
 
 /*----------------------------------------------------------------------------*/
+/*!
+ * \brief Return SOA timer value.
+ *
+ * \param zone Pointer to zone.
+ * \param rr_func RDATA specificator.
+ * \return Timer in miliseconds.
+ */
+static uint32_t zones_soa_timer(dnslib_zone_t *zone,
+				  uint32_t (*rr_func)(const dnslib_rdata_t*))
+{
+	uint32_t ret = 0;
+
+	/* Retrieve SOA RDATA. */
+	const dnslib_rrset_t *soa_rrs = 0;
+	const dnslib_rdata_t *soa_rr = 0;
+	soa_rrs = dnslib_node_rrset(dnslib_zone_apex(zone),
+				    DNSLIB_RRTYPE_SOA);
+	soa_rr = dnslib_rrset_rdata(soa_rrs);
+	ret = rr_func(soa_rr);
+
+	/*! \todo Convert in function? */
+	ret = ntohl(ret);
+
+	/* Convert to miliseconds. */
+	return ret * 1000;
+}
+
+/*!
+ * \brief Return SOA REFRESH timer value.
+ *
+ * \param zone Pointer to zone.
+ * \return REFRESH timer in miliseconds.
+ */
+static uint32_t zones_soa_refresh(dnslib_zone_t *zone)
+{
+	return zones_soa_timer(zone, dnslib_rdata_soa_refresh);
+}
+
+/*!
+ * \brief Return SOA RETRY timer value.
+ *
+ * \param zone Pointer to zone.
+ * \return RETRY timer in miliseconds.
+ */
+static uint32_t zones_soa_retry(dnslib_zone_t *zone)
+{
+	return zones_soa_timer(zone, dnslib_rdata_soa_retry);
+}
+
+/*!
+ * \brief Return SOA EXPIRE timer value.
+ *
+ * \param zone Pointer to zone.
+ * \return EXPIRE timer in miliseconds.
+ */
+static uint32_t zones_soa_expire(dnslib_zone_t *zone)
+{
+	return zones_soa_timer(zone, dnslib_rdata_soa_expire);
+}
+
+/*!
+ * \brief AXFR-IN expire event handler.
+ */
+static int zones_axfrin_expire(event_t *e)
+{
+	debug_zones("axfrin: EXPIRE timer event\n");
+	dnslib_zone_t *zone = (dnslib_zone_t *)e->data;
+
+	/* Cancel pending timers. */
+	if (zone->xfr_in.timer) {
+		evsched_cancel(e->caller, zone->xfr_in.timer);
+		evsched_event_free(e->caller, zone->xfr_in.timer);
+		zone->xfr_in.timer = 0;
+	}
+
+	/* Delete self. */
+	evsched_event_free(e->caller, e);
+	zone->xfr_in.expire = 0;
+
+	/*! \todo Remove zone from database. */
+	return 0;
+}
+
+/*!
+ * \brief AXFR-IN poll event handler.
+ */
+static int zones_axfrin_poll(event_t *e)
+{
+	debug_zones("axfrin: REFRESH or RETRY timer event\n");
+	dnslib_zone_t *zone = (dnslib_zone_t *)e->data;
+
+	/* Get zone dname. */
+	const dnslib_node_t *apex = dnslib_zone_apex(zone);
+	const dnslib_dname_t *dname = dnslib_node_owner(apex);
+
+	/* Prepare buffer for query. */
+	uint8_t qbuf[SOCKET_MTU_SZ];
+	size_t buflen = SOCKET_MTU_SZ;
+
+	/* Create query. */
+	int ret = axfrin_create_soa_query(dname, qbuf, &buflen);
+	if (ret != KNOT_EOK) {
+		/*! \todo What to do if SOA query fails? */
+	} else {
+		/* Send query. */
+		debug_zones("axfrin: sending SOA query\n");
+		sockaddr_t *master = &zone->xfr_in.master;
+		int sock = socket_create(master->family, SOCK_DGRAM);
+		ret = sendto(sock, qbuf, buflen, 0, master->ptr, master->len);
+		socket_close(sock);
+	}
+
+	/* Schedule EXPIRE timer on first attempt. */
+	if (!zone->xfr_in.expire) {
+		uint32_t expire_tmr = zones_soa_expire(zone);
+		zone->xfr_in.expire = evsched_schedule_cb(
+					      e->caller,
+					      zones_axfrin_expire,
+					      zone, expire_tmr);
+		debug_zones("axfrin: scheduling EXPIRE timer after %u secs\n",
+			    expire_tmr / 1000);
+	}
+
+	/* Reschedule as RETRY timer. */
+	/*! \todo Should it reschedule itself until EXPIRE or just once? */
+	evsched_schedule(e->caller, e, zones_soa_retry(zone));
+	debug_zones("axfrin: RETRY after %u secs\n",
+		    zones_soa_retry(zone) / 1000);
+	return ret;
+}
+
+/*!
+ * \brief Update timers related to zone.
+ *
+ */
+void zones_timers_update(dnslib_zone_t *zone, evsched_t *sch)
+{
+	/* Check AXFR-IN master server. */
+	if (zone->xfr_in.master.ptr == 0) {
+		return;
+	}
+
+	/* Schedule REFRESH timer. */
+	uint32_t refresh_tmr = zones_soa_refresh(zone);
+	zone->xfr_in.timer = evsched_schedule_cb(sch, zones_axfrin_poll,
+						       zone, refresh_tmr);
+
+	/* Cancel EXPIRE timer. */
+	if (zone->xfr_in.expire) {
+		evsched_cancel(sch, zone->xfr_in.expire);
+		evsched_event_free(sch, zone->xfr_in.expire);
+		zone->xfr_in.expire = 0;
+	}
+}
 
 /*!
  * \brief Update ACL list from configuration.
@@ -125,17 +281,19 @@ static int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
  * Zones that should be retained are just added from the old database to the
  * new. New zones are loaded.
  *
+ * \param ns Name server instance.
  * \param zone_conf Zone configuration.
  * \param db_old Old zone database.
  * \param db_new New zone database.
  *
  * \return Number of inserted zones.
  */
-static int zones_insert_zones(const list *zone_conf,
+static int zones_insert_zones(ns_nameserver_t *ns,
+			      const list *zone_conf,
                               const dnslib_zonedb_t *db_old,
                               dnslib_zonedb_t *db_new)
 {
-	node *n;
+	node *n = 0;
 	int inserted = 0;
 	// for all zones in the configuration
 	WALK_LIST(n, *zone_conf) {
@@ -187,10 +345,23 @@ static int zones_insert_zones(const list *zone_conf,
 		// Update ACLs
 		if (zone) {
 			debug_zones("Updating zone ACLs.");
-			zones_set_acl(&zone->acl.xfr_in, &z->acl.xfr_in);
 			zones_set_acl(&zone->acl.xfr_out, &z->acl.xfr_out);
 			zones_set_acl(&zone->acl.notify_in, &z->acl.notify_in);
 			zones_set_acl(&zone->acl.notify_out, &z->acl.notify_out);
+
+			// Update master server address
+			sockaddr_init(&zone->xfr_in.master, -1);
+			if (!EMPTY_LIST(z->acl.xfr_in)) {
+				conf_remote_t *r = HEAD(z->acl.xfr_in);
+				conf_iface_t *cfg_if = r->remote;
+				sockaddr_set(&zone->xfr_in.master,
+					     cfg_if->family,
+					     cfg_if->address,
+					     cfg_if->port);
+			}
+
+			// Update events scheduled for zone
+			zones_timers_update(zone, ns->server->sched);
 		}
 
 		dnslib_dname_free(&zone_name);
@@ -267,7 +438,7 @@ int zones_update_db_from_config(const conf_t *conf, ns_nameserver_t *ns,
 	log_server_info("Loading %d zones...\n", conf->zones_count);
 
 	// Insert all required zones to the new zone DB.
-	int inserted = zones_insert_zones(&conf->zones, *db_old, db_new);
+	int inserted = zones_insert_zones(ns, &conf->zones, *db_old, db_new);
 
 	log_server_info("Loaded %d out of %d zones.\n", inserted,
 	                conf->zones_count);

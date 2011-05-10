@@ -30,6 +30,7 @@
 #include "dnslib/packet.h"
 
 struct conf_t;
+struct server_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -44,9 +45,10 @@ typedef struct ns_nameserver {
 	 *        queries.
 	 */
 	dnslib_zonedb_t *zone_db;
-	uint8_t *err_response; /*!< Prepared generic error response. */
-	size_t err_resp_size;  /*!< Size of the prepared error response. */
+        uint8_t *err_response;    /*!< Prepared generic error response. */
+        size_t err_resp_size;     /*!< Size of the prepared error response. */
 	dnslib_opt_rr_t *opt_rr;  /*!< OPT RR with the server's EDNS0 info. */
+        struct server_t *server;  /*!< Pointer to server. */
 } ns_nameserver_t;
 
 /*----------------------------------------------------------------------------*/
