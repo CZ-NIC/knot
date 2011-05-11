@@ -941,8 +941,8 @@ static int rdata_nsec_to_type_array(const dnslib_rdata_item_t *item,
 						    *count);
 				if (tmp == NULL) {
 					ERR_ALLOC_FAILED;
-					free(array);
 					free(bitmap);
+					free(*array);
 					return DNSLIB_ENOMEM;
 				}
 				*array = tmp;
@@ -1025,13 +1025,15 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 		dnslib_node_rrset(nsec3_node, DNSLIB_RRTYPE_NSEC3);
 	assert(nsec3_rrset);
 
+	const dnslib_rrset_t *soa_rrset =
+		dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
+	assert(soa_rrset);
+
 	uint32_t minimum_ttl =
 		dnslib_wire_read_u32((uint8_t *)
 		rdata_item_data(
 		dnslib_rdata_item(
-		dnslib_rrset_rdata(
-		dnslib_node_rrset(
-		dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA)), 6)));
+		dnslib_rrset_rdata(soa_rrset), 6)));
 	/* Are those getters even worth this?
 	 * Now I have no idea what this code does. */
 
