@@ -470,6 +470,7 @@ dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
 	}
 
 	name[i] = 0;
+	*pos += 1;
 
 	dnslib_dname_t *dname = dnslib_dname_alloc();
 
