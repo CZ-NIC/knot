@@ -852,7 +852,7 @@ static int check_rrsig_in_rrset(const dnslib_rrset_t *rrset,
 	assert(tmp_rdata);
 	assert(tmp_rrsig_rdata);
 	int ret = 0;
-	char all_signed = 1;
+	char all_signed = tmp_rdata && tmp_rrsig_rdata;
 	do {
 		if ((ret = check_rrsig_rdata(tmp_rrsig_rdata,
 					     rrset,
@@ -1232,10 +1232,9 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 
 	int ret = 0;
 
-	/* there is no point in checking non_authoritative node */
-	for (int i = 0; (i < rrset_count) && auth; i++) {
+	for (int i = 0; i < rrset_count; i++) {
 		const dnslib_rrset_t *rrset = rrsets[i];
-		if (!deleg &&
+		if (auth && !deleg &&
 		    (ret = check_rrsig_in_rrset(rrset, dnskey_rrset,
 						nsec3)) != 0) {
 /*			log_zone_error("RRSIG %d node %s\n", ret,
