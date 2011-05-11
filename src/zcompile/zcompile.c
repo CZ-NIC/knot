@@ -297,6 +297,8 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 
 			if (dname == NULL) {
 				dbg_rdata("malformed dname!\n");
+				/*! \todo rdata purge */
+				free(temp_rdatas);
 				return KNOT_ZCOMPILE_EBRDATA;
 			}
 			dbg_rdata("%d: created dname: %s\n", i,
@@ -315,6 +317,8 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 
 				if (temp_rdatas[i].raw_data == NULL) {
 					ERR_ALLOC_FAILED;
+					/*! \todo rdata purge */
+					free(temp_rdatas);
 					return KNOT_ZCOMPILE_ENOMEM;
 				}
 
@@ -334,6 +338,8 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			if ((uint8_t *)wireformat + length > (uint8_t *)end) {
 				if (required) {
 					/* Truncated RDATA.  */
+					/*! \todo rdata purge */
+					free(temp_rdatas);
 					dbg_rdata("truncated rdata\n");
 					return KNOT_ZCOMPILE_EBRDATA;
 				} else {
@@ -349,6 +355,8 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 
 			if (temp_rdatas[i].raw_data == NULL) {
 				ERR_ALLOC_FAILED;
+				/*! \todo rdata purge */
+				free(temp_rdatas);
 				return -1;
 			}
 
