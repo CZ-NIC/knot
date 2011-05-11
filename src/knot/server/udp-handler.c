@@ -135,6 +135,21 @@ int udp_master(dthread_t *thread)
 
 		/* Handle query. */
 		switch(qtype) {
+
+		/* Response types. */
+		case DNSLIB_RESPONSE_NORMAL:
+			/*! \todo Handle SOA query response, cancel EXPIRE timer
+			 *        and start AXFR transfer if needed.
+			 *        Reset REFRESH timer on finish.
+			 */
+			break;
+		case DNSLIB_RESPONSE_AXFR:
+		case DNSLIB_RESPONSE_IXFR:
+		case DNSLIB_RESPONSE_NOTIFY:
+			/*! \todo Implement packet handling. */
+			break;
+
+		/* Query types. */
 		case DNSLIB_QUERY_NORMAL:
 			res = ns_answer_normal(ns, packet, qbuf, &resp_len);
 			break;

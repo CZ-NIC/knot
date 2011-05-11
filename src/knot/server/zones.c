@@ -7,6 +7,7 @@
 #include "common/lists.h"
 #include "dnslib/dname.h"
 #include "dnslib/zone.h"
+#include "dnslib/wire.h"
 #include "knot/other/log.h"
 #include "dnslib/zone-load.h"
 #include "knot/other/debug.h"
@@ -89,6 +90,7 @@ static int zones_axfrin_expire(event_t *e)
 	/* Delete self. */
 	evsched_event_free(e->caller, e);
 	zone->xfr_in.expire = 0;
+	zone->xfr_in.next_id = -1;
 
 	/*! \todo Remove zone from database. */
 	return 0;
@@ -112,15 +114,45 @@ static int zones_axfrin_poll(event_t *e)
 
 	/* Create query. */
 	int ret = axfrin_create_soa_query(dname, qbuf, &buflen);
-	if (ret != KNOT_EOK) {
-		/*! \todo What to do if SOA query fails? */
-	} else {
-		/* Send query. */
-		debug_zones("axfrin: sending SOA query\n");
+	if (ret == KNOT_EOK && zone->xfr_in.ifaces) {
+
+		int sock = -1;
+		iface_t *i = 0;
 		sockaddr_t *master = &zone->xfr_in.master;
-		int sock = socket_create(master->family, SOCK_DGRAM);
-		ret = sendto(sock, qbuf, buflen, 0, master->ptr, master->len);
-		socket_close(sock);
+
+		/*! \todo Bind to random port? xfr_master should then use some
+		 *        polling mechanisms to handle incoming events along
+		 *        with polled packets - evqueue should implement this.
+		 */
+
+		/* Lock RCU. */
+		rcu_read_lock();
+
+		/* Find suitable interface. */
+		WALK_LIST(i, **zone->xfr_in.ifaces) {
+			if (i->type[UDP_ID] == master->family) {
+				sock = i->fd[UDP_ID];
+				break;
+			}
+		}
+
+		/* Unlock RCU. */
+		rcu_read_unlock();
+
+		/* Send query. */
+		ret = -1;
+		if (sock > -1) {
+			ret = sendto(sock, qbuf, buflen, 0,
+				     master->ptr, master->len);
+		}
+
+		/* Store ID of the awaited response. */
+		if (ret == buflen) {
+			zone->xfr_in.next_id = dnslib_wire_get_id(qbuf);
+			debug_zones("axfrin: expecting SOA response ID=%d\n",
+				    zone->xfr_in.next_id);
+		}
+
 	}
 
 	/* Schedule EXPIRE timer on first attempt. */
@@ -135,7 +167,6 @@ static int zones_axfrin_poll(event_t *e)
 	}
 
 	/* Reschedule as RETRY timer. */
-	/*! \todo Should it reschedule itself until EXPIRE or just once? */
 	evsched_schedule(e->caller, e, zones_soa_retry(zone));
 	debug_zones("axfrin: RETRY after %u secs\n",
 		    zones_soa_retry(zone) / 1000);
@@ -345,6 +376,9 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 			zones_set_acl(&zone->acl.xfr_out, &z->acl.xfr_out);
 			zones_set_acl(&zone->acl.notify_in, &z->acl.notify_in);
 			zones_set_acl(&zone->acl.notify_out, &z->acl.notify_out);
+
+			// Update available interfaces
+			zone->xfr_in.ifaces = &ns->server->ifaces;
 
 			// Update master server address
 			sockaddr_init(&zone->xfr_in.master, -1);
