@@ -278,8 +278,6 @@ char *rdata_text_to_string(dnslib_rdata_item_t item)
 	uint8_t length = data[0];
 	size_t i;
 
-	/* XXX */
-
 	/* 3 because: opening '"', closing '"', and \0 at the end */
 	char *ret = malloc(sizeof(char) * (length + 3));
 
@@ -295,9 +293,8 @@ char *rdata_text_to_string(dnslib_rdata_item_t item)
 			if (ch == '"' || ch == '\\') {
 				strcat(ret, "\\");
 			}
-				/* XXX for the love of god, how to this better,
+				/* for the love of god, how to this better,
 				   but w/o obscure self-made functions */
-				/* MANUALLY */
 				char tmp_str[2];
 				tmp_str[0] = ch;
 				tmp_str[1] = 0;
@@ -311,13 +308,15 @@ char *rdata_text_to_string(dnslib_rdata_item_t item)
 
 			current_length += sizeof(char);
 
-			if (realloc(ret, current_length) == NULL) {
+			void *tmp = NULL;
+			if ((tmp = realloc(ret, current_length)) == NULL) {
 				ERR_ALLOC_FAILED;
+				free(tmp);
 				return NULL;
 			}
+			ret = tmp;
 
 			strcat(ret, tmp_str);
-			// XXX
 //			buffer_printf(output, "\\%03u", (unsigned) ch);
 		}
 	}
@@ -434,6 +433,7 @@ char *rdata_time_to_string(dnslib_rdata_item_t item)
 	if (strftime(ret, 15, "%Y%m%d%H%M%S", &tm_conv)) {
 		return ret;
 	} else {
+		free(ret);
 		return 0;
 	}
 }
@@ -520,8 +520,10 @@ char *rdata_nsap_to_string(dnslib_rdata_item_t item)
 {
 	char *ret = malloc(sizeof(char) * (rdata_item_size(item) + 3));
 	memcpy(ret, "0x", strlen("0x"));
-	strcat(ret, hex_to_string(rdata_item_data(item),
-				  rdata_item_size(item)));
+	char *converted = hex_to_string(rdata_item_data(item),
+	                                rdata_item_size(item));
+	strcat(ret, converted);
+	free(converted);
 	return ret;
 }
 
@@ -798,7 +800,9 @@ char *rdata_unknown_to_string(dnslib_rdata_item_t item)
 				       strlen("\\# ") + U16_MAX_STR_LEN));
 	snprintf(ret, strlen("\\# ") + U16_MAX_STR_LEN, "%lu",
 		 (unsigned long) size);
-	strcat(ret, hex_to_string(rdata_item_data(item), size));
+	char *converted = hex_to_string(rdata_item_data(item), size);
+	strcat(ret, converted);
+	free(converted);
 	return ret;
 }
 
