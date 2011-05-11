@@ -164,11 +164,6 @@ static inline uint8_t rdata_atom_wireformat_type(uint16_t type, size_t index)
 	return descriptor->wireformat[index];
 }
 
-/*! \note this is untested, called only by parse_unknown data, which is
- * untested as well - probably will not be even needed, when zone is
- * properly formed i.e. by some tool
- */
-
 /*!
  * \brief Converts rdata wireformat to rdata items.
  *
@@ -191,8 +186,8 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 	          (uint8_t *)end - (uint8_t *)wireformat);
 	size_t i;
 	dnslib_rdata_item_t *temp_rdatas =
-		malloc(sizeof(dnslib_rdata_item_t) * MAXRDATALEN);
-	memset(temp_rdatas, 0, sizeof(temp_rdatas));
+		malloc(sizeof(*temp_rdatas) * MAXRDATALEN);
+	memset(temp_rdatas, 0, sizeof(*temp_rdatas) * MAXRDATALEN);
 
 	dnslib_rrtype_descriptor_t *descriptor =
 		dnslib_rrtype_descriptor_by_type(rrtype);
