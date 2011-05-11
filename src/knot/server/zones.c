@@ -34,9 +34,6 @@ static uint32_t zones_soa_timer(dnslib_zone_t *zone,
 	soa_rr = dnslib_rrset_rdata(soa_rrs);
 	ret = rr_func(soa_rr);
 
-	/*! \todo Convert in function? */
-	ret = ntohl(ret);
-
 	/* Convert to miliseconds. */
 	return ret * 1000;
 }
