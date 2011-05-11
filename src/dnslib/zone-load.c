@@ -917,6 +917,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 			loader->filename);
 		cleanup_id_array(id_array, 1,
 				 node_count + nsec3_node_count + 1);
+		dnslib_dname_table_deep_free(&dname_table);
 		return NULL;
 	}
 
@@ -924,6 +925,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	if (zone == NULL) {
 		cleanup_id_array(id_array, 1,
 				 node_count + nsec3_node_count + 1);
+		dnslib_dname_table_deep_free(&dname_table);
 		return NULL;
 	}
 	/* Assign dname table to the new zone. */
@@ -981,8 +983,6 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 				"exiting.\n");
 			dnslib_zone_deep_free(&zone, 1);
 			free(id_array);
-			/* TODO this will leak dnames from id_array that were
-			 * not assigned. */
 			return NULL;
 		}
 
