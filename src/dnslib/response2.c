@@ -818,6 +818,11 @@ int dnslib_response2_init_from_query(dnslib_packet_t *response,
 	dnslib_wire_flags_set_qr(&response->header.flags1);
 	dnslib_wire_set_qr(response->wireformat);
 
+	// set counts to 0
+	response->header.ancount = 0;
+	response->header.nscount = 0;
+	response->header.arcount = 0;
+
 	response->query = query;
 
 	return DNSLIB_EOK;
