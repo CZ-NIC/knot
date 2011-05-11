@@ -252,6 +252,8 @@ int dnslib_packet_parse_from_wire(dnslib_packet_t *packet,
                                   const uint8_t *wireformat, size_t size,
                                   int question_only);
 
+int dnslib_packet_parse_rest(dnslib_packet_t *packet);
+
 /*!
  * \brief Sets the maximum size of the packet and allocates space for wire
  *        format (if needed).

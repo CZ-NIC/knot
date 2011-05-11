@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "knot/server/axfr-in.h"
 
 #include "knot/common.h"
@@ -96,8 +98,21 @@ int axfrin_create_soa_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
 /*----------------------------------------------------------------------------*/
 
 int axfrin_transfer_needed(const dnslib_zone_t *zone,
-                           const dnslib_packet_t *soa_response)
+                           dnslib_packet_t *soa_response)
 {
+	// first, parse the rest of the packet
+	assert(!dnslib_packet_is_query(soa_response));
+	debug_ns("Response - parsed: %zu, total wire size: %zu\n",
+	         soa_response->parsed, soa_response->size);
+	int ret;
+
+	if (soa_response->parsed < soa_response->size) {
+		ret = dnslib_packet_parse_rest(soa_response);
+		if (ret != DNSLIB_EOK) {
+			return ret;
+		}
+	}
+
 	/*
 	 * Retrieve the local Serial
 	 */

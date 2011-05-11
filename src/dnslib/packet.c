@@ -665,6 +665,49 @@ int dnslib_packet_parse_from_wire(dnslib_packet_t *packet,
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_packet_parse_rest(dnslib_packet_t *packet)
+{
+	if (packet->parsed >= packet->size) {
+		return DNSLIB_EOK;
+	}
+
+	size_t pos = packet->parsed;
+	int err;
+
+	debug_dnslib_packet("Parsing Answer RRs...\n");
+	if ((err = dnslib_packet_parse_rrs(packet->wireformat, &pos,
+	   packet->size, packet->header.ancount, &packet->answer,
+	   &packet->an_rrsets, &packet->max_an_rrsets, packet)) != DNSLIB_EOK) {
+		return err;
+	}
+
+	debug_dnslib_packet("Parsing Authority RRs...\n");
+	if ((err = dnslib_packet_parse_rrs(packet->wireformat, &pos,
+	   packet->size, packet->header.nscount, &packet->authority,
+	   &packet->ns_rrsets, &packet->max_ns_rrsets, packet)) != DNSLIB_EOK) {
+		return err;
+	}
+
+	debug_dnslib_packet("Parsing Additional RRs...\n");
+	if ((err = dnslib_packet_parse_rrs(packet->wireformat, &pos,
+	   packet->size, packet->header.arcount, &packet->additional,
+	   &packet->ar_rrsets, &packet->max_ar_rrsets, packet)) != DNSLIB_EOK) {
+		return err;
+	}
+
+	if (pos < packet->size) {
+		// some trailing garbage; ignore, but log
+		debug_dnslib_response("Packet: %zu bytes of trailing garbage "
+		                      "in packet.\n", pos - packet->size);
+	}
+
+	packet->parsed = packet->size;
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_packet_set_max_size(dnslib_packet_t *packet, int max_size)
 {
 	if (packet == NULL || max_size <= 0) {
