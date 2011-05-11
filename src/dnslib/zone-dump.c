@@ -15,22 +15,20 @@
 
 #define ZONECHECKS_VERBOSE
 
-/*! \note For space and speed purposes, dname ID (to be later used in loading)
- * is being stored in dname->node field. Not to be confused with dname's actual
- * node.
- */
-
-/*! \note Contents of dump file:
- * MAGIC(knotxx) NUMBER_OF_NORMAL_NODES NUMBER_OF_NSEC3_NODES
+/*! \note Contents of a dump file:
+ * MAGIC(knotxx) db_filename dname_table
+ * NUMBER_OF_NORMAL_NODES NUMBER_OF_NSEC3_NODES
  * [normal_nodes] [nsec3_nodes]
+ * --------------------------------------------
+ * dname_table is dumped as follows:
+ * NUMBER_OF_DNAMES [dname_wire_length dname_wire label_count dname_labels ID]
  * node has following format:
- * owner_size owner_wire owner_label_size owner_labels owner_id
+ * owner_id
  * node_flags node_rrset_count [node_rrsets]
  * rrset has following format:
  * rrset_type rrset_class rrset_ttl rrset_rdata_count rrset_rrsig_count
  * [rrset_rdata] [rrset_rrsigs]
- * rdata can either contain full dnames (that is with labels but without ID)
- * or dname ID, if dname is in the zone
+ * rdata can contain either dname ID,
  * or raw data stored like this: data_len [data]
  */
 
