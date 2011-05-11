@@ -176,51 +176,66 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
 //	       rdlength, dnslib_rrtype_to_string(desc->type));
 
 	while (parsed < rdlength && i < desc->length) {
+//		printf("Parsed: %zu\n", parsed);
 		item_type = desc->wireformat[i];
 		item_size = 0;
 
 //		printf("Parsing item of type %d\n", item_type);
 
+		size_t pos2;
+
 		switch (item_type) {
 		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
 		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
 		case DNSLIB_RDATA_WF_LITERAL_DNAME:
+//			printf("Next item - domain name, pos: %zu.\n", *pos);
+			pos2 = *pos;
 			dname = dnslib_dname_parse_from_wire(
-				wire, pos, total_size, NULL);
+				wire, &pos2, total_size, NULL);
 			if (dname == NULL) {
 				free(items);
 				return DNSLIB_ERROR;
 			}
 			items[i].dname = dname;
-			*pos += dname->size;
-			parsed += dname->size;
+			//*pos += dname->size;
+			parsed += pos2 - *pos;
+			*pos = pos2;
 			break;
 		case DNSLIB_RDATA_WF_BYTE:
+//			printf("Next item - byte.\n");
 			if (desc->type == DNSLIB_RRTYPE_IPSECKEY && i == 1) {
 				gateway_type = *(wire + *pos);
 			}
 			item_size = 1;
 			break;
 		case DNSLIB_RDATA_WF_SHORT:
+//			printf("Next item - short.\n");
 			item_size = 2;
 			break;
 		case DNSLIB_RDATA_WF_LONG:
+//			printf("Next item - long, pos: %zu.\n", *pos);
 			item_size = 4;
 			break;
 		case DNSLIB_RDATA_WF_TEXT:
+//			printf("Next item - text.\n");
+			// TODO!!!
 			break;
 		case DNSLIB_RDATA_WF_A:
+//			printf("Next item - A.\n");
 			item_size = 4;
 			break;
 		case DNSLIB_RDATA_WF_AAAA:
+//			printf("Next item - AAAA.\n");
 			item_size = 16;
 			break;
 		case DNSLIB_RDATA_WF_BINARY:
+//			printf("Next item - Binary data.\n");
 			// the rest of the RDATA is this item
 			item_size = rdlength - parsed;
 //			printf("Binary item, size: %zu\n", item_size);
 			break;
 		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+//			printf("Next item - Binary with length.\n");
 			item_size = *(wire + *pos);
 			break;
 		case DNSLIB_RDATA_WF_APL:
@@ -239,15 +254,17 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
 				item_size = 16;
 				break;
 			case 3:
+				pos2 = *pos;
 				dname =
 					dnslib_dname_parse_from_wire(
-					           wire, pos, total_size, NULL);
+					         wire, &pos2, total_size, NULL);
 				if (dname == NULL) {
 					return DNSLIB_ERROR;
 				}
 				items[i].dname = dname;
-				*pos += dname->size;
-				parsed += dname->size;
+				//*pos += dname->size;
+				parsed += pos2 - *pos;
+				*pos = pos2;
 				break;
 			default:
 				assert(0);
@@ -255,11 +272,14 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
 
 			break;
 		default:
+//			printf("Next item - unknown.\n");
 			return DNSLIB_EMALF;
 
 		}
 
 		if (item_size != 0) {
+//			printf("Parsed: %zu, item size: %zu\n", parsed,
+//			       item_size);
 			if (parsed + item_size > rdlength) {
 				free(items);
 				return DNSLIB_EFEWDATA;
@@ -270,6 +290,8 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
 				free(items);
 				return DNSLIB_ENOMEM;
 			}
+			// TODO: save size to the RDATA item!!!
+//			printf("Read: %u\n", dnslib_wire_read_u32(wire + *pos));
 			memcpy(items[i].raw_data, wire + *pos, item_size);
 			*pos += item_size;
 			parsed += item_size;
