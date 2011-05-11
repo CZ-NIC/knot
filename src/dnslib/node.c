@@ -292,6 +292,13 @@ int dnslib_node_is_non_auth(const dnslib_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_node_is_auth(const dnslib_node_t *node)
+{
+	return (node->flags == 0);
+}
+
+/*----------------------------------------------------------------------------*/
+
 void dnslib_node_free_rrsets(dnslib_node_t *node, int free_rdata_dnames)
 {
 	const skip_node_t *skip_node =
