@@ -38,7 +38,7 @@
  * \param x First timespec structure to be compared.
  * \param y Second timespec structure to be compared.
  *
- * \retval 0 when times are the some.
+ * \retval 0 when times are the same.
  * \retval 1 when y < x.
  * \retval -1 when x > y.
  */
