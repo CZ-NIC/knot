@@ -17,6 +17,7 @@
 #include "dnslib/nsec3.h"
 #include "common/tree.h"
 #include "common/acl.h"
+#include "common/lists.h"
 #include "dnslib/hash/cuckoo-hash-table.h"
 
 /*----------------------------------------------------------------------------*/
@@ -62,9 +63,11 @@ struct dnslib_zone {
 
 	/*! \brief XFR-IN scheduler. */
 	struct {
+		list          **ifaces; /*!< List of availabel interfaces. */
 		sockaddr_t     master;  /*!< Master server for xfr-in.*/
 		struct event_t *timer;  /*!< Timer for REFRESH/RETRY. */
 		struct event_t *expire; /*!< Timer for REFRESH. */
+		int next_id;            /*!< ID of the next awaited SOA resp.*/
 	} xfr_in;
 };
 

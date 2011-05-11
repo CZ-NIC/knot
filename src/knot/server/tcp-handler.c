@@ -194,6 +194,16 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 	/* Handle query. */
 	ns_xfr_t xfr;
 	switch(qtype) {
+
+	/* Response types. */
+	case DNSLIB_RESPONSE_NORMAL:
+	case DNSLIB_RESPONSE_AXFR:
+	case DNSLIB_RESPONSE_IXFR:
+	case DNSLIB_RESPONSE_NOTIFY:
+		/*! \todo Implement packet handling. */
+		break;
+
+	/* Query types. */
 	case DNSLIB_QUERY_NORMAL:
 		res = ns_answer_normal(pool->ns, packet, qbuf, &resp_len);
 		break;

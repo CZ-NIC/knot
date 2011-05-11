@@ -45,10 +45,10 @@ typedef struct ns_nameserver {
 	 *        queries.
 	 */
 	dnslib_zonedb_t *zone_db;
-        uint8_t *err_response;    /*!< Prepared generic error response. */
-        size_t err_resp_size;     /*!< Size of the prepared error response. */
+	uint8_t *err_response;    /*!< Prepared generic error response. */
+	size_t err_resp_size;     /*!< Size of the prepared error response. */
 	dnslib_opt_rr_t *opt_rr;  /*!< OPT RR with the server's EDNS0 info. */
-        struct server_t *server;  /*!< Pointer to server. */
+	struct server_t *server;  /*!< Pointer to server. */
 } ns_nameserver_t;
 
 /*----------------------------------------------------------------------------*/
@@ -179,6 +179,8 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
  *       the ns_answer_request() function...?
  */
 int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
+
+
 
 /*!
  * \brief Properly destroys the name server structure.

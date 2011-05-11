@@ -67,12 +67,14 @@ int sockaddr_set(sockaddr_t *dst, int family, const char* addr, int port)
 	void *paddr = 0;
 	switch(family) {
 	case AF_INET:
+		dst->addr4.sin_family = family;
 		dst->addr4.sin_port = htons(port);
 		paddr = &dst->addr4.sin_addr;
 		dst->addr4.sin_addr.s_addr = INADDR_ANY;
 		break;
 #ifndef DISABLE_IPV6
 	case AF_INET6:
+		dst->addr6.sin6_family = family;
 		dst->addr6.sin6_port = htons(port);
 		paddr = &dst->addr6.sin6_addr;
 		memcpy(&dst->addr6.sin6_addr,
