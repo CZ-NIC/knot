@@ -266,7 +266,6 @@ static void dnslib_zone_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
  */
 static void dnslib_zone_adjust_rrsets(dnslib_node_t *node, dnslib_zone_t *zone)
 {
-	return;
 	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
 	short count = dnslib_node_rrset_count(node);
 
