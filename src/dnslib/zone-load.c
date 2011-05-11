@@ -820,11 +820,11 @@ static dnslib_dname_t **create_dname_array(FILE *f, uint max_id)
 
 	dnslib_dname_t **array =
 		malloc(sizeof(dnslib_dname_t *) * ( max_id + 1));
-	memset(array, 0, sizeof(dnslib_dname_t *) * (max_id + 1));
 	if (array == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
+	memset(array, 0, sizeof(dnslib_dname_t *) * (max_id + 1));
 
 	for (uint i = 0; i < max_id - 1; i++) {
 		dnslib_dname_t *read_dname = read_dname_with_id(f);
