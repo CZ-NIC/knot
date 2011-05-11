@@ -134,6 +134,7 @@ int udp_master(dthread_t *thread)
 		}
 
 		/* Handle query. */
+		res = KNOT_ERROR;
 		switch(qtype) {
 
 		/* Response types. */
