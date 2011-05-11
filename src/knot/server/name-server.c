@@ -2087,8 +2087,7 @@ ns_nameserver_t *ns_create()
 
 	uint8_t *error_wire = NULL;
 
-	if (dnslib_packet_to_wire(err, &error_wire, &ns->err_resp_size)
-	    != 0) {
+	if (dnslib_packet_to_wire(err, &error_wire, &ns->err_resp_size) != 0) {
 		log_answer_error("Error while converting "
 		                 "default error response to "
 		                 "wire format \n");

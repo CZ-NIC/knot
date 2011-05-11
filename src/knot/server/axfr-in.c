@@ -10,6 +10,8 @@
 #include "knot/other/log.h"
 
 /*----------------------------------------------------------------------------*/
+/* Non-API functions                                                          */
+/*----------------------------------------------------------------------------*/
 
 static int axfrin_create_query(const dnslib_dname_t *qname, uint16_t qtype,
                                uint16_t qclass, uint8_t *buffer, size_t *size)
@@ -65,6 +67,9 @@ static int axfrin_create_query(const dnslib_dname_t *qname, uint16_t qtype,
 	memcpy(buffer, wire, wire_size);
 	*size = wire_size;
 
+	debug_ns("Created query of size %zu.\n", *size);
+	dnslib_packet_dump(pkt);
+
 	dnslib_packet_free(&pkt);
 
 	return KNOT_EOK;
@@ -77,6 +82,8 @@ static uint32_t axfrin_serial_difference(uint32_t local, uint32_t remote)
 	return (((int64_t)remote - local) % ((int64_t)1 << 32));
 }
 
+/*----------------------------------------------------------------------------*/
+/* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
 int axfrin_create_soa_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
