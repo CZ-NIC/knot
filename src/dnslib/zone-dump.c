@@ -326,6 +326,10 @@ static int err_handler_handle_error(err_handler_t *handler,
  */
 static void err_handler_log_all(err_handler_t *handler)
 {
+	if (handler == NULL) {
+		return;
+	}
+
 	for (int i = ZC_ERR_ALLOC; i < ZC_ERR_GLUE_GENERAL_ERROR; i++) {
 		if (handler->errors[-i] > 0) {
 			log_error_from_node(handler, NULL, i);
@@ -935,7 +939,12 @@ static int rdata_nsec_to_type_array(const dnslib_rdata_item_t *item,
 				void *tmp = realloc(*array,
 						    sizeof(uint16_t) *
 						    *count);
-				CHECK_ALLOC_LOG(tmp, DNSLIB_ENOMEM);
+				if (tmp == NULL) {
+					ERR_ALLOC_FAILED;
+					free(array);
+					free(bitmap);
+					return DNSLIB_ENOMEM;
+				}
 				*array = tmp;
 				(*array)[*count - 1] = j + window * 256;
 			}
@@ -1014,7 +1023,6 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 
 	const dnslib_rrset_t *nsec3_rrset =
 		dnslib_node_rrset(nsec3_node, DNSLIB_RRTYPE_NSEC3);
-
 	assert(nsec3_rrset);
 
 	uint32_t minimum_ttl =
