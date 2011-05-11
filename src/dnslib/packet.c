@@ -879,6 +879,43 @@ void dnslib_packet_header_to_wire(const dnslib_header_t *header,
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_packet_question_to_wire(dnslib_packet_t *packet)
+{
+	if (packet->size > DNSLIB_WIRE_HEADER_SIZE) {
+		return DNSLIB_ERROR;
+	}
+
+	// TODO: get rid of the numeric constants
+	size_t qsize = 4 + dnslib_dname_size(packet->question.qname);
+	if (qsize > packet->max_size - DNSLIB_WIRE_HEADER_SIZE) {
+		return DNSLIB_ESPACE;
+	}
+
+	// create the wireformat of Question
+	uint8_t *pos = packet->wireformat + DNSLIB_WIRE_HEADER_SIZE;
+	memcpy(pos, dnslib_dname_name(packet->question.qname),
+	       dnslib_dname_size(packet->question.qname));
+
+	pos += dnslib_dname_size(packet->question.qname);
+	dnslib_wire_write_u16(pos, packet->question.qtype);
+	pos += 2;
+	dnslib_wire_write_u16(pos, packet->question.qclass);
+
+//	int err = 0;
+	// TODO: put the qname into the compression table
+//	// TODO: get rid of the numeric constants
+//	if ((err = dnslib_response_store_dname_pos(&packet->compression,
+//	              packet->question.qname,0, 12, 12)) != DNSLIB_EOK) {
+//		return err;
+//	}
+
+	packet->size += dnslib_dname_size(packet->question.qname) + 4;
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void dnslib_packet_edns_to_wire(dnslib_packet_t *packet)
 {
 	packet->size += dnslib_edns_to_wire(&packet->opt_rr,
@@ -906,6 +943,8 @@ int dnslib_packet_to_wire(dnslib_packet_t *packet,
 	    dnslib_packet_edns_to_wire(packet);
 	}
 
+	// set QDCOUNT (in response it is already set, in query it is needed)
+	dnslib_wire_set_qdcount(packet->wireformat, packet->header.qdcount);
 	// set ANCOUNT to the packet
 	dnslib_wire_set_ancount(packet->wireformat, packet->header.ancount);
 	// set NSCOUNT to the packet
