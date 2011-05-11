@@ -697,6 +697,10 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
 			     const dnslib_rrset_t *rrset,
 			     const dnslib_rrset_t *dnskey_rrset)
 {
+	if (rdata_rrsig == NULL) {
+		return ZC_ERR_RRSIG_NO_RRSIG;
+	}
+
 	if (type_covered_from_rdata(rdata_rrsig) !=
 	    dnslib_rrset_type(rrset)) {
 		/* zoneparser would not let this happen
@@ -848,23 +852,23 @@ static int check_rrsig_in_rrset(const dnslib_rrset_t *rrset,
 	assert(tmp_rdata);
 	assert(tmp_rrsig_rdata);
 	int ret = 0;
+	char all_signed = 1;
 	do {
 		if ((ret = check_rrsig_rdata(tmp_rrsig_rdata,
 					     rrset,
 					     dnskey_rrset)) != 0) {
 			return ret;
 		}
+
+		all_signed = tmp_rdata && tmp_rrsig_rdata;
 	} while (((tmp_rdata = dnslib_rrset_rdata_next(rrset, tmp_rdata))
-		!= NULL) ||
+		!= NULL) &&
 		((tmp_rrsig_rdata =
 			dnslib_rrset_rdata_next(rrsigs, tmp_rrsig_rdata))
 		!= NULL));
 
-	/*!< \todo change because of coverity, test!
-	     (used to be && here and above as well) */
-	if ((tmp_rdata != NULL) ||
-	    (tmp_rrsig_rdata != NULL)) {
-		/* Not all records in rrset are signed */
+	/*!< \todo change because of coverity, test! */
+	if (!all_signed) {
 		return ZC_ERR_RRSIG_NOT_ALL;
 	}
 
@@ -1229,7 +1233,7 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 	int ret = 0;
 
 	/* there is no point in checking non_authoritative node */
-	for (int i = 0; i < rrset_count && auth; i++) {
+	for (int i = 0; (i < rrset_count) && auth; i++) {
 		const dnslib_rrset_t *rrset = rrsets[i];
 		if (!deleg &&
 		    (ret = check_rrsig_in_rrset(rrset, dnskey_rrset,
