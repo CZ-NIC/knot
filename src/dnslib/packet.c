@@ -321,16 +321,16 @@ static dnslib_rdata_t *dnslib_packet_parse_rdata(const uint8_t *wire,
 		return NULL;
 	}
 
-	dnslib_rdata_t *rdata =
-		(dnslib_rdata_t *)malloc(sizeof(dnslib_rdata_t));
+	dnslib_rdata_t *rdata = dnslib_rdata_new();
 	if (rdata == NULL) {
-		ERR_ALLOC_FAILED;
 		return NULL;
 	}
 
 	int rc = dnslib_rdata_from_wire(rdata, wire, pos, total_size, rdlength,
 	                                desc);
 	if (rc != DNSLIB_EOK) {
+		debug_dnslib_packet("rdata_from_wire() returned: %s\n",
+		                    dnslib_strerror(rc));
 		dnslib_rdata_free(&rdata);
 		return NULL;
 	}
@@ -343,13 +343,13 @@ static dnslib_rdata_t *dnslib_packet_parse_rdata(const uint8_t *wire,
 static dnslib_rrset_t *dnslib_packet_parse_rr(const uint8_t *wire, size_t *pos,
                                               size_t size)
 {
-	dnslib_rrset_t *rrset =
-		(dnslib_rrset_t *)malloc(sizeof(dnslib_rrset_t));
-	CHECK_ALLOC_LOG(rrset, NULL);
+//	dnslib_rrset_t *rrset =
+//		(dnslib_rrset_t *)malloc(sizeof(dnslib_rrset_t));
+//	CHECK_ALLOC_LOG(rrset, NULL);
 
-	rrset->owner = dnslib_dname_parse_from_wire(wire, pos, size, NULL);
-	if (rrset->owner == NULL) {
-		free(rrset);
+	dnslib_dname_t *owner = dnslib_dname_parse_from_wire(wire, pos, size,
+	                                                     NULL);
+	if (owner == NULL) {
 		return NULL;
 	}
 
@@ -359,23 +359,36 @@ static dnslib_rrset_t *dnslib_packet_parse_rr(const uint8_t *wire, size_t *pos,
 	if (size - *pos < 10) {
 		debug_dnslib_packet("Malformed RR: Not enough data to parse RR"
 		                    " header.\n");
-		dnslib_dname_free(&rrset->owner);
-		free(rrset);
+		dnslib_dname_free(&owner);
 		return NULL;
 	}
 
-	rrset->type = dnslib_wire_read_u16(wire + *pos);
-	rrset->rclass = dnslib_wire_read_u16(wire + *pos + 2);
-	rrset->ttl = dnslib_wire_read_u32(wire + *pos + 4);
+	debug_dnslib_packet("Reading type from position %zu\n", *pos);
+
+	uint16_t type = dnslib_wire_read_u16(wire + *pos);
+	uint16_t rclass = dnslib_wire_read_u16(wire + *pos + 2);
+	uint32_t ttl = dnslib_wire_read_u32(wire + *pos + 4);
+
+	dnslib_rrset_t *rrset = dnslib_rrset_new(owner, type, rclass, ttl);
+	if (rrset == NULL) {
+		dnslib_dname_free(&owner);
+		return NULL;
+	}
+
 	uint16_t rdlength = dnslib_wire_read_u16(wire + *pos + 8);
+
+	debug_dnslib_packet("Read RR header: type %u, class %u, ttl %u, "
+	                    "rdlength %u\n", rrset->type, rrset->rclass,
+	                    rrset->ttl, rdlength);
 
 	*pos += 10;
 
 	if (size - *pos < rdlength) {
 		debug_dnslib_packet("Malformed RR: Not enough data to parse RR"
 		                    " RDATA.\n");
-		dnslib_dname_free(&rrset->owner);
-		free(rrset);
+		//dnslib_dname_free(&rrset->owner);
+		dnslib_rrset_deep_free(&rrset, 1, 0);
+//		free(rrset);
 		return NULL;
 	}
 
@@ -385,22 +398,25 @@ static dnslib_rrset_t *dnslib_packet_parse_rr(const uint8_t *wire, size_t *pos,
 	                         dnslib_rrtype_descriptor_by_type(rrset->type));
 	if (rdata == NULL) {
 		debug_dnslib_packet("Malformed RR: Could not parse RDATA.\n");
-		dnslib_dname_free(&rrset->owner);
-		free(rrset);
+		//dnslib_dname_free(&rrset->owner);
+		dnslib_rrset_deep_free(&rrset, 1, 0);
+//		free(rrset);
 		return NULL;
 	}
 
 	if (dnslib_rrset_add_rdata(rrset, rdata) != DNSLIB_EOK) {
 		debug_dnslib_packet("Malformed RR: Could not add RDATA to RRSet"
 		                    ".\n");
-		dnslib_dname_free(&rrset->owner);
-		free(rrset);
+		//dnslib_dname_free(&rrset->owner);
+		dnslib_rdata_free(&rdata);
+		dnslib_rrset_deep_free(&rrset, 1, 0);
+//		free(rrset);
 		return NULL;
 	}
 
 	rrset->rrsigs = NULL;
 
-	return NULL;
+	return rrset;
 }
 
 typedef enum {
@@ -600,6 +616,7 @@ int dnslib_packet_parse_from_wire(dnslib_packet_t *packet,
 	// TODO: can we just save the pointer, or we have to copy the data??
 	assert(packet->wireformat == NULL);
 	packet->wireformat = wireformat;
+	packet->size = size;
 	packet->free_wireformat = 0;
 
 	//uint8_t *pos = wireformat;

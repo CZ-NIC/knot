@@ -12,6 +12,7 @@
 #include "dnslib/error.h"
 #include "dnslib/node.h"
 #include "dnslib/utils.h"
+#include "dnslib/debug.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -158,6 +159,11 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
 	uint8_t item_type;
 	size_t parsed = 0;
 
+	if (rdlength == 0) {
+		rdata->items = NULL;
+		return DNSLIB_EOK;
+	}
+
 	dnslib_rdata_item_t *items = (dnslib_rdata_item_t *)malloc(
 	                            desc->length * sizeof(dnslib_rdata_item_t));
 	CHECK_ALLOC_LOG(items, DNSLIB_ENOMEM);
@@ -166,9 +172,14 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
 	uint8_t gateway_type = 0;  // only to handle IPSECKEY record
 	dnslib_dname_t *dname;
 
+//	printf("Parsing RDATA of size %zu of type %s\n",
+//	       rdlength, dnslib_rrtype_to_string(desc->type));
+
 	while (parsed < rdlength && i < desc->length) {
 		item_type = desc->wireformat[i];
 		item_size = 0;
+
+//		printf("Parsing item of type %d\n", item_type);
 
 		switch (item_type) {
 		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
@@ -207,6 +218,7 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
 		case DNSLIB_RDATA_WF_BINARY:
 			// the rest of the RDATA is this item
 			item_size = rdlength - parsed;
+//			printf("Binary item, size: %zu\n", item_size);
 			break;
 		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
 			item_size = *(wire + *pos);
