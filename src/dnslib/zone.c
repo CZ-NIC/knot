@@ -574,6 +574,7 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count)
 	sockaddr_init(&zone->xfr_in.master, -1);
 	zone->xfr_in.timer = 0;
 	zone->xfr_in.expire = 0;
+	zone->xfr_in.ifaces = 0;
 
 	/* Initialize NSEC3 params */
 	zone->nsec3_params.algorithm = 0;
