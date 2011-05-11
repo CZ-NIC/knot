@@ -109,7 +109,7 @@ int axfrin_transfer_needed(const dnslib_zone_t *zone,
 	if (soa_response->parsed < soa_response->size) {
 		ret = dnslib_packet_parse_rest(soa_response);
 		if (ret != DNSLIB_EOK) {
-			return ret;
+			return KNOT_EMALF;
 		}
 	}
 
@@ -151,7 +151,7 @@ int axfrin_transfer_needed(const dnslib_zone_t *zone,
 	}
 
 	uint32_t diff = axfrin_serial_difference(local_serial, remote_serial);
-	return (diff >= 1 && diff <= (((uint32_t)1 << 31) - 1));
+	return (diff >= 1 && diff <= (((uint32_t)1 << 31) - 1)) ? 1 : 0;
 }
 
 /*----------------------------------------------------------------------------*/
