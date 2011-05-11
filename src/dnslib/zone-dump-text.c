@@ -519,8 +519,7 @@ char *rdata_hexlen_to_string(dnslib_rdata_item_t item)
 char *rdata_nsap_to_string(dnslib_rdata_item_t item)
 {
 	char *ret = malloc(sizeof(char) * (rdata_item_size(item) + 3));
-	strcat(ret, "0x");
-	/* TODO maybe assert? */
+	memcpy(ret, "0x", strlen("0x"));
 	strcat(ret, hex_to_string(rdata_item_data(item),
 				  rdata_item_size(item)));
 	return ret;
