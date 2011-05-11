@@ -447,6 +447,7 @@ dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
 
 		if (dnslib_wire_is_pointer(wire + p)) {
 			// pointer.
+//			printf("Pointer.\n");
 			p = dnslib_wire_get_pointer(wire + p);
 			*pos += 2;
 			pointer_used = 1;
@@ -456,6 +457,7 @@ dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
 		} else {
 			// label; first byte is label length
 			uint8_t length = *(wire + p);
+//			printf("Label, length: %u.\n", length);
 			memcpy(name + i, wire + p, length + 1);
 			p += length + 1;
 			i += length + 1;
@@ -470,7 +472,9 @@ dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
 	}
 
 	name[i] = 0;
-	*pos += 1;
+	if (!pointer_used) {
+		*pos += 1;
+	}
 
 	dnslib_dname_t *dname = dnslib_dname_alloc();
 
