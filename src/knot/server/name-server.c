@@ -2158,34 +2158,13 @@ int ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 
 	int ret = 0;
 
-	// 2) parse the query
-//	if ((ret = dnslib_response_parse_query(parsed, query_wire,
-//	                                       qsize)) != 0) {
-//		log_answer_info("Error while parsing packet, "
-//		                "dnslib error '%s'.\n", dnslib_strerror(ret));
-//		//dnslib_response_free(&parsed);
-//		return DNSLIB_RCODE_FORMERR;
-//	}
-
-	// parse the query to the new structure
-//	dnslib_packet_t *packet = dnslib_packet_new(DNSLIB_PACKET_PREALLOC_NONE);
-//	if (packet == NULL) {
-//		log_answer_info("Error while creating packet structure.");
-//		dnslib_response_free(&parsed);
-//		return DNSLIB_RCODE_SERVFAIL;
-//	}
-
 	if ((ret = dnslib_packet_parse_from_wire(packet, query_wire,
-	                                         qsize, 0)) != 0) {
+	                                         qsize, 1)) != 0) {
 		log_answer_info("Error while parsing packet, "
 		                "dnslib error '%s'.\n", dnslib_strerror(ret));
 //		dnslib_response_free(&parsed);
 		return DNSLIB_RCODE_FORMERR;
 	}
-
-//	debug_ns("Packet parsed.\n");
-	//dnslib_response_dump(parsed);
-//	debug_ns("Done\n");
 
 	// 3) determine the query type
 	switch (dnslib_packet_opcode(packet))  {
@@ -2320,6 +2299,19 @@ void ns_error_response(ns_nameserver_t *nameserver, uint16_t query_id,
 int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
                      uint8_t *response_wire, size_t *rsize)
 {
+	// first, parse the rest of the packet
+	assert(dnslib_packet_is_query(query));
+	debug_ns("Query - parsed: %zu, total wire size: %zu\n", query->parsed,
+	         query->size);
+	int ret;
+
+	if (query->parsed < query->size) {
+		ret = dnslib_packet_parse_rest(query);
+		if (ret != DNSLIB_EOK) {
+			return ret;
+		}
+	}
+
 	// get the answer for the query
 	rcu_read_lock();
 	dnslib_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
@@ -2337,7 +2329,7 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 		return KNOT_EOK;
 	}
 
-	int ret = dnslib_packet_set_max_size(response, *rsize);
+	ret = dnslib_packet_set_max_size(response, *rsize);
 
 	if (ret != DNSLIB_EOK) {
 		log_server_warning("Failed to init response structure.\n");
@@ -2401,6 +2393,8 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	if (nameserver == NULL || xfr == NULL) {
 		return KNOT_EINVAL;
 	}
+
+	// no need to parse rest of the packet
 
 	// initialize response packet structure
 	dnslib_packet_t *response = dnslib_packet_new(
