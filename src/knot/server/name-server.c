@@ -2308,7 +2308,11 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 	if (query->parsed < query->size) {
 		ret = dnslib_packet_parse_rest(query);
 		if (ret != DNSLIB_EOK) {
-			return ret;
+			log_server_warning("Failed to parse rest of the query: "
+			                   "%s.\n", dnslib_strerror(ret));
+			ns_error_response(nameserver, query->header.id,
+			           DNSLIB_RCODE_SERVFAIL, response_wire, rsize);
+			return KNOT_EOK;
 		}
 	}
 
