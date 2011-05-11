@@ -426,6 +426,8 @@ void dnslib_packet_free_tmp_rrsets(dnslib_packet_t *pkt);
 void dnslib_packet_header_to_wire(const dnslib_header_t *header,
                                   uint8_t **pos, size_t *size);
 
+int dnslib_packet_question_to_wire(dnslib_packet_t *packet);
+
 /*!
  * \brief Converts the stored response OPT RR to wire format and adds it to
  *        the response wire format.
