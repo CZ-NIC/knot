@@ -290,6 +290,8 @@ static int dnslib_packet_realloc_rrsets(const dnslib_rrset_t ***rrsets,
                                         short *max_count,
                                         short default_max_count, short step)
 {
+	printf("Max count: %d, default max count: %d\n", *max_count,
+	       default_max_count);
 	int free_old = (*max_count) != default_max_count;
 	const dnslib_rrset_t **old = *rrsets;
 
@@ -352,6 +354,12 @@ static dnslib_rrset_t *dnslib_packet_parse_rr(const uint8_t *wire, size_t *pos,
 	if (owner == NULL) {
 		return NULL;
 	}
+
+DEBUG_DNSLIB_PACKET(
+	char *name = dnslib_dname_to_str(owner);
+	debug_dnslib_packet("Parsed name: %s\n", name);
+	free(name);
+);
 
 	//*remaining -= dnslib_dname_size(rrset->owner);
 
@@ -431,6 +439,7 @@ static int dnslib_packet_add_rrset(dnslib_rrset_t *rrset,
                                    const dnslib_rrset_t ***rrsets,
                                    short *rrset_count,
                                    short *max_rrsets,
+                                   short default_rrsets,
                                    const dnslib_packet_t *packet,
                                    dnslib_packet_duplicate_handling_t dupl)
 {
@@ -443,7 +452,7 @@ static int dnslib_packet_add_rrset(dnslib_rrset_t *rrset,
 	debug_dnslib_response("packet_add_rrset()\n");
 
 	if (*rrset_count == *max_rrsets
-	    && dnslib_packet_realloc_rrsets(rrsets, max_rrsets, DEFAULT_ANCOUNT,
+	    && dnslib_packet_realloc_rrsets(rrsets, max_rrsets, default_rrsets,
 	                                    STEP_ANCOUNT) != DNSLIB_EOK) {
 		return DNSLIB_ENOMEM;
 	}
@@ -482,6 +491,7 @@ static int dnslib_packet_parse_rrs(const uint8_t *wire, size_t *pos,
                                    size_t size, uint16_t rr_count,
                                    const dnslib_rrset_t ***rrsets,
                                    short *rrset_count, short *max_rrsets,
+                                   short default_rrsets,
                                    dnslib_packet_t *packet)
 {
 	assert(pos != NULL);
@@ -515,8 +525,8 @@ static int dnslib_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 		}
 
 		err = dnslib_packet_add_rrset(rrset, rrsets, rrset_count,
-		                              max_rrsets, packet,
-		                              DNSLIB_PACKET_DUPL_MERGE);
+		                             max_rrsets, default_rrsets, packet,
+		                             DNSLIB_PACKET_DUPL_MERGE);
 		if (err < 0) {
 			break;
 		} else if (err > 0) {	// merged
@@ -647,21 +657,24 @@ int dnslib_packet_parse_from_wire(dnslib_packet_t *packet,
 	debug_dnslib_packet("Answer RRs...\n");
 	if ((err = dnslib_packet_parse_rrs(wireformat, &pos, size,
 	    packet->header.ancount, &packet->answer, &packet->an_rrsets,
-	    &packet->max_an_rrsets, packet)) != DNSLIB_EOK) {
+	    &packet->max_an_rrsets, (dnslib_packet_is_query(packet))
+	    ? DEFAULT_ANCOUNT_QUERY : DEFAULT_ANCOUNT, packet)) != DNSLIB_EOK) {
 		return err;
 	}
 
 	debug_dnslib_packet("Authority RRs...\n");
 	if ((err = dnslib_packet_parse_rrs(wireformat, &pos, size,
 	    packet->header.nscount, &packet->authority, &packet->ns_rrsets,
-	    &packet->max_ns_rrsets, packet)) != DNSLIB_EOK) {
+	    &packet->max_ns_rrsets, (dnslib_packet_is_query(packet))
+	    ? DEFAULT_NSCOUNT_QUERY : DEFAULT_NSCOUNT, packet)) != DNSLIB_EOK) {
 		return err;
 	}
 
 	debug_dnslib_packet("Additional RRs...\n");
 	if ((err = dnslib_packet_parse_rrs(wireformat, &pos, size,
 	    packet->header.arcount, &packet->additional, &packet->ar_rrsets,
-	    &packet->max_ar_rrsets, packet)) != DNSLIB_EOK) {
+	    &packet->max_ar_rrsets, (dnslib_packet_is_query(packet))
+	    ? DEFAULT_ARCOUNT_QUERY : DEFAULT_ARCOUNT, packet)) != DNSLIB_EOK) {
 		return err;
 	}
 
@@ -694,21 +707,27 @@ int dnslib_packet_parse_rest(dnslib_packet_t *packet)
 	debug_dnslib_packet("Parsing Answer RRs...\n");
 	if ((err = dnslib_packet_parse_rrs(packet->wireformat, &pos,
 	   packet->size, packet->header.ancount, &packet->answer,
-	   &packet->an_rrsets, &packet->max_an_rrsets, packet)) != DNSLIB_EOK) {
+	   &packet->an_rrsets, &packet->max_an_rrsets,
+	   (dnslib_packet_is_query(packet)) ? DEFAULT_ANCOUNT_QUERY
+	    : DEFAULT_ANCOUNT, packet)) != DNSLIB_EOK) {
 		return err;
 	}
 
 	debug_dnslib_packet("Parsing Authority RRs...\n");
 	if ((err = dnslib_packet_parse_rrs(packet->wireformat, &pos,
 	   packet->size, packet->header.nscount, &packet->authority,
-	   &packet->ns_rrsets, &packet->max_ns_rrsets, packet)) != DNSLIB_EOK) {
+	   &packet->ns_rrsets, &packet->max_ns_rrsets,
+	   (dnslib_packet_is_query(packet)) ? DEFAULT_NSCOUNT_QUERY
+	    : DEFAULT_NSCOUNT, packet)) != DNSLIB_EOK) {
 		return err;
 	}
 
 	debug_dnslib_packet("Parsing Additional RRs...\n");
 	if ((err = dnslib_packet_parse_rrs(packet->wireformat, &pos,
 	   packet->size, packet->header.arcount, &packet->additional,
-	   &packet->ar_rrsets, &packet->max_ar_rrsets, packet)) != DNSLIB_EOK) {
+	   &packet->ar_rrsets, &packet->max_ar_rrsets,
+	   (dnslib_packet_is_query(packet)) ? DEFAULT_ARCOUNT_QUERY
+	    : DEFAULT_ARCOUNT, packet)) != DNSLIB_EOK) {
 		return err;
 	}
 
