@@ -209,6 +209,7 @@ void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner,
 	}
 
 	if (free_owner) {
+		//printf("Freeing owner on ptr: %p\n", (*rrset)->owner);
 		dnslib_dname_free(&(*rrset)->owner);
 	}
 
