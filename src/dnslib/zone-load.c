@@ -137,9 +137,6 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
-
-			/* TODO maybe this does not need to be stored this big*/
-
 			uint dname_id = 0;
 			uint8_t has_wildcard = 0;
 			uint8_t in_the_zone = 0;
@@ -342,8 +339,6 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 {
 	uint8_t flags = 0;
 	dnslib_node_t *node;
-	/* first, owner */
-
 	void *parent_id;
 	void *nsec3_node_id;
 	uint16_t rrset_count;
@@ -354,62 +349,15 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 	if (!fread_safe(&dname_id, sizeof(dname_id), 1, f)) {
 		return NULL;
 	}
-/*	uint8_t dname_wire[DNAME_MAX_WIRE_LENGTH];
-	//XXX in respect to remark below, should be dynamic
-	//(malloc happens either way)
-	//but I couldn't make it work - really strange error
-	//when fread() was rewriting other variables
-
-	void *dname_id; //ID, technically it's an integer(32 or 64 bits)
-
-	short label_count = 0;
-	uint8_t *labels = NULL;
-
-	if (!fread_safe(&dname_size, sizeof(dname_size), 1, f)) {
-		return NULL;
-	}
-
-	debug_dnslib_zload("%d\n", dname_size);
-
-	if (!fread_safe(dname_wire, sizeof(uint8_t), dname_size, f)) {
-		return NULL;
-	} */
-
-	/* refactor */
-//	if (!fread_safe(&label_count, sizeof(label_count), 1, f)) {
-//		return NULL;
-//	}
-
-//	labels = malloc(sizeof(uint8_t) * label_count);
-
-//	assert(labels != NULL);
-
-//	if (!fread_safe(labels, sizeof(uint8_t), label_count, f)) {
-//		free(labels);
-//		return NULL;
-//	}
-
-//	/* refactor */
-
-//	if (!fread_safe(&dname_id, sizeof(dname_id), 1, f)) {
-//		free(labels);
-//		return NULL;
-//	}
-
-//	debug_dnslib_zload("id: %p\n", dname_id);
-
 	if (!fread_safe(&parent_id, sizeof(dname_id), 1, f)) {
 		return NULL;
 	}
-
 	if (!fread_safe(&flags, sizeof(flags), 1, f)) {
 		return NULL;
 	}
-
 	if (!fread_safe(&nsec3_node_id, sizeof(nsec3_node_id), 1, f)) {
 		return NULL;
 	}
-
 	if (!fread_safe(&rrset_count, sizeof(rrset_count), 1, f)) {
 		return NULL;
 	}
@@ -426,7 +374,7 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 		return NULL;
 	}
 
-	/* XXX can it be 0, ever? I think not. */
+	/* 0 is reserved ID that can never be assigned */
 	if ((size_t)nsec3_node_id != 0) {
 		node->nsec3_node = id_array[(size_t)nsec3_node_id]->node;
 	} else {
@@ -434,11 +382,9 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 	}
 
 	node->owner = owner;
-
 	node->flags = flags;
 
-	//XXX will have to be set already...canonical order should do it
-
+	/* Set parent ID. */
 	if (parent_id != 0) {
 		node->parent = id_array[(size_t)parent_id]->node;
 		assert(node->parent != NULL);
@@ -446,20 +392,21 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 		node->parent = NULL;
 	}
 
-	dnslib_rrset_t *tmp_rrset;
-
+	dnslib_rrset_t *tmp_rrset = NULL;
 	for (int i = 0; i < rrset_count; i++) {
 		if ((tmp_rrset = dnslib_load_rrset(f, id_array)) == NULL) {
 			dnslib_node_free(&node, 1);
-			//TODO what else to free?
 			fprintf(stderr, "zone: Could not load rrset.\n");
 			return NULL;
 		}
+
+		/* Owner of the rrset - same as of node. */
 		tmp_rrset->owner = node->owner;
 		if (tmp_rrset->rrsigs != NULL) {
 			tmp_rrset->rrsigs->owner = node->owner;
 		}
 		if (dnslib_node_add_rrset(node, tmp_rrset) != 0) {
+			dnslib_rrset_deep_free(&tmp_rrset, 0, 0);
 			fprintf(stderr, "zone: Could not add rrset.\n");
 			return NULL;
 		}
@@ -490,9 +437,7 @@ static void find_and_set_wildcard_child(dnslib_zone_t *zone,
 	}
 
 	dnslib_dname_free(&chopped);
-
 	assert(wildcard_parent); /* it *has* to be there */
-
 	wildcard_parent->wildcard_child = node;
 }
 
@@ -626,7 +571,7 @@ zloader_t *dnslib_zload_open(const char *filename)
 		                   "file '%s'\n",
 		                   filename);
 		fclose(f);
-		errno = DNSLIB_ECRC;
+		errno = EILSEQ; // Should probably inform user that CRC failed
 		return NULL;
 	}
 
