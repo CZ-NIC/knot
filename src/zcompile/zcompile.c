@@ -386,6 +386,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 		/* Trailing garbage.  */
 		dbg_rdata("w: %p e: %p %d\n", wireformat, end, end - wireformat);
 //		region_destroy(temp_region);
+		free(temp_rdatas);
 		return KNOT_ZCOMPILE_EBRDATA;
 	}
 

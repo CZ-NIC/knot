@@ -331,7 +331,7 @@ DEBUG_DNSLIB_ZONE(
 	}
 
 	// authorative node?
-	if (!dnslib_node_is_non_auth(node)) {
+	if (!dnslib_node_is_auth(node)) {
 		zone->node_count++;
 	}
 
