@@ -612,12 +612,16 @@ int dnslib_packet_parse_from_wire(dnslib_packet_t *packet,
 		return err;
 	}
 
+	packet->parsed = pos;
+
 	debug_dnslib_packet("Question...\n");
 	if ((err = dnslib_packet_parse_question(wireformat, &pos, size,
 	                                    &packet->question)) != DNSLIB_EOK) {
 		return err;
 	}
 	packet->header.qdcount = 1;
+
+	packet->parsed = pos;
 
 	if (question_only) {
 		return DNSLIB_EOK;
@@ -649,6 +653,9 @@ int dnslib_packet_parse_from_wire(dnslib_packet_t *packet,
 		debug_dnslib_response("Packet: %zu bytes of trailing garbage "
 		                      "in packet.\n", pos - size);
 	}
+
+	packet->parsed = size;
+
 #ifdef DNSLIB_PACKET_DEBUG
 	dnslib_packet_dump(packet);
 #endif /* DNSLIB_RESPONSE_DEBUG */
