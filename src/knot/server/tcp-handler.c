@@ -193,6 +193,7 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 
 	/* Handle query. */
 	ns_xfr_t xfr;
+	res = KNOT_ERROR;
 	switch(qtype) {
 
 	/* Response types. */
