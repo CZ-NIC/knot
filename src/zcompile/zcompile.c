@@ -94,18 +94,28 @@ static uint16_t rrsig_type_covered(dnslib_rrset_t *rrset)
  * \param head Head of list.
  * \param rrsig RRSet to be added.
  */
-static void rrset_list_add(rrset_list_t **head, dnslib_rrset_t *rrsig)
+static int rrset_list_add(rrset_list_t **head, dnslib_rrset_t *rrsig)
 {
 	if (*head == NULL) {
 		*head = malloc(sizeof(rrset_list_t));
+		if (*head == NULL) {
+			ERR_ALLOC_FAILED;
+			return KNOT_ZCOMPILE_ENOMEM;
+		}
 		(*head)->next = NULL;
 		(*head)->data = rrsig;
 	} else {
 		rrset_list_t *tmp = malloc(sizeof(*tmp));
+		if (tmp == NULL) {
+			ERR_ALLOC_FAILED;
+			return KNOT_ZCOMPILE_ENOMEM;
+		}
 		tmp->next = *head;
 		tmp->data = rrsig;
 		*head = tmp;
 	}
+
+	return KNOT_ZCOMPILE_EOK;
 }
 
 /*!
@@ -158,8 +168,8 @@ static inline int rdata_atom_is_domain(uint16_t type, size_t index)
  */
 static inline uint8_t rdata_atom_wireformat_type(uint16_t type, size_t index)
 {
-	const dnslib_rrtype_descriptor_t *descriptor
-	= dnslib_rrtype_descriptor_by_type(type);
+	const dnslib_rrtype_descriptor_t *descriptor =
+		dnslib_rrtype_descriptor_by_type(type);
 	assert(index < descriptor->length);
 	return descriptor->wireformat[index];
 }
@@ -180,13 +190,16 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 					dnslib_rdata_item_t **items)
 {
 	dbg_rdata("read length: %d\n", data_size);
-//	hex_print(wireformat, data_size);
 	uint16_t const *end = (uint16_t *)((uint8_t *)wireformat + (data_size));
 	dbg_rdata("set end pointer: %p which means length: %d\n", end,
 	          (uint8_t *)end - (uint8_t *)wireformat);
 	size_t i;
 	dnslib_rdata_item_t *temp_rdatas =
 		malloc(sizeof(*temp_rdatas) * MAXRDATALEN);
+	if (temp_rdatas == NULL) {
+		ERR_ALLOC_FAILED;
+		return KNOT_ZCOMPILE_ENOMEM;
+	}
 	memset(temp_rdatas, 0, sizeof(*temp_rdatas) * MAXRDATALEN);
 
 	dnslib_rrtype_descriptor_t *descriptor =
@@ -314,7 +327,6 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				temp_rdatas[i].raw_data =
 					malloc(sizeof(uint16_t) +
 					       sizeof(uint8_t) * dname->size);
-
 				if (temp_rdatas[i].raw_data == NULL) {
 					ERR_ALLOC_FAILED;
 					/*! \todo rdata purge */
@@ -352,7 +364,6 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			          wireformat, length);
 			temp_rdatas[i].raw_data = alloc_rdata_init(wireformat,
 			                                           length);
-
 			if (temp_rdatas[i].raw_data == NULL) {
 				ERR_ALLOC_FAILED;
 				/*! \todo rdata purge */
@@ -490,7 +501,10 @@ uint16_t * zparser_conv_hex(const char *hex, size_t len)
 		/* the length part */
 
 		r = alloc_rdata(len / 2);
-
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			return NULL;
+		}
 		t = (uint8_t *)(r + 1);
 
 		/* Now process octet by octet... */
@@ -530,6 +544,11 @@ uint16_t * zparser_conv_hex_length(const char *hex, size_t len)
 
 		/* the length part */
 		r = alloc_rdata(len / 2 + 1);
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			return NULL;
+		}
+
 		t = (uint8_t *)(r + 1);
 
 		l = t++;
@@ -569,6 +588,10 @@ uint16_t * zparser_conv_time(const char *time)
 	} else {
 		uint32_t l = htonl(mktime_from_utc(&tm));
 		r = alloc_rdata_init(&l, sizeof(l));
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			return NULL;
+		}
 	}
 	return r;
 }
@@ -631,6 +654,11 @@ uint16_t * zparser_conv_services(const char *protostr, char *servicestr)
 	}
 
 	r = alloc_rdata(sizeof(uint8_t) + max_port / 8 + 1);
+	if (r == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+
 	p = (uint8_t *)(r + 1);
 	*p = proto->p_proto;
 	memcpy(p + 1, bitmap, *r);
@@ -650,6 +678,11 @@ uint16_t * zparser_conv_serial(const char *serialstr)
 	} else {
 		serial = htonl(serial);
 		r = alloc_rdata_init(&serial, sizeof(serial));
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			return NULL;
+		}
+
 	}
 	return r;
 }
@@ -668,6 +701,11 @@ uint16_t * zparser_conv_period(const char *periodstr)
 	} else {
 		period = htonl(period);
 		r = alloc_rdata_init(&period, sizeof(period));
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			return NULL;
+		}
+
 	}
 	return r;
 }
@@ -683,6 +721,11 @@ uint16_t * zparser_conv_short(const char *text)
 		fprintf(stderr, "integer value is expected");
 	} else {
 		r = alloc_rdata_init(&value, sizeof(value));
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			return NULL;
+		}
+
 	}
 	return r;
 }
@@ -698,6 +741,11 @@ uint16_t * zparser_conv_byte(const char *text)
 		fprintf(stderr, "integer value is expected");
 	} else {
 		r = alloc_rdata_init(&value, sizeof(value));
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			return NULL;
+		}
+
 	}
 	return r;
 }
@@ -719,7 +767,13 @@ uint16_t * zparser_conv_algorithm(const char *text)
 		}
 	}
 
-	return alloc_rdata_init(&id, sizeof(id));
+	uint16_t *r = alloc_rdata_init(&id, sizeof(id));
+	if (r == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+
+	return r;
 }
 
 uint16_t * zparser_conv_certificate_type(const char *text)
@@ -740,7 +794,13 @@ uint16_t * zparser_conv_certificate_type(const char *text)
 		}
 	}
 
-	return alloc_rdata_init(&id, sizeof(id));
+	uint16_t *r = alloc_rdata_init(&id, sizeof(id));
+	if (r == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+
+	return r;
 }
 
 uint16_t * zparser_conv_a(const char *text)
@@ -752,7 +812,12 @@ uint16_t * zparser_conv_a(const char *text)
 		fprintf(stderr, "invalid IPv4 address '%s'", text);
 	} else {
 		r = alloc_rdata_init(&address, sizeof(address));
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			return NULL;
+		}
 	}
+
 	return r;
 }
 
@@ -765,6 +830,10 @@ uint16_t * zparser_conv_aaaa(const char *text)
 		fprintf(stderr, "invalid IPv6 address '%s'", text);
 	} else {
 		r = alloc_rdata_init(address, sizeof(address));
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			return NULL;
+		}
 	}
 	return r;
 }
@@ -779,6 +848,10 @@ uint16_t * zparser_conv_text(const char *text, size_t len)
 	} else {
 		uint8_t *p;
 		r = alloc_rdata(len + 1);
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			return NULL;
+		}
 		p = (uint8_t *)(r + 1);
 		*p = len;
 		memcpy(p + 1, text, len);
@@ -791,6 +864,10 @@ uint16_t * zparser_conv_dns_name(const uint8_t *name, size_t len)
 	uint16_t *r = NULL;
 	uint8_t *p = NULL;
 	r = alloc_rdata(len);
+	if (r == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
 	p = (uint8_t *)(r + 1);
 	memcpy(p, name, len);
 
@@ -804,13 +881,22 @@ uint16_t * zparser_conv_b32(const char *b32)
 	size_t i = B64BUFSIZE;
 
 	if (strcmp(b32, "-") == 0) {
-		return alloc_rdata_init("", 1);
+		r = alloc_rdata_init("", 1);
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			return NULL;
+		}
+		return r;
 	}
 	if ((base32hex_decode(b32, strlen(b32), (char *)buffer + 1, &i)) == 0) {
 		fprintf(stderr, "invalid base32 data\n");
 	} else {
 		buffer[0] = i; /* store length byte */
 		r = alloc_rdata_init(buffer, i + 1);
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			return NULL;
+		}
 	}
 	return r;
 }
@@ -826,6 +912,10 @@ uint16_t * zparser_conv_b64(const char *b64)
 		fprintf(stderr, "invalid base64 data\n");
 	} else {
 		r = alloc_rdata_init(buffer, i);
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			return NULL;
+		}
 	}
 	return r;
 }
@@ -840,6 +930,10 @@ uint16_t * zparser_conv_rrtype(const char *text)
 	} else {
 		type = htons(type);
 		r = alloc_rdata_init(&type, sizeof(type));
+		if (r == NULL) {
+			ERR_ALLOC_FAILED;
+			return NULL;
+		}
 	}
 	return r;
 }
@@ -859,7 +953,13 @@ uint16_t * zparser_conv_nxt(uint8_t nxtbits[])
 		}
 	}
 
-	return alloc_rdata_init(nxtbits, last);
+	uint16_t *r = alloc_rdata_init(nxtbits, last);
+	if (r == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+
+	return r;
 }
 
 
@@ -912,6 +1012,10 @@ uint16_t * zparser_conv_nsec(uint8_t nsecbits[NSEC_WINDOW_COUNT]
 	}
 
 	r = alloc_rdata(total_size);
+	if (r == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
 	ptr = (uint8_t *)(r + 1);
 
 	/* now walk used and copy it */
@@ -1195,6 +1299,10 @@ uint16_t * zparser_conv_loc(char *str)
 
 	/* Allocate required space... */
 	r = alloc_rdata(16);
+	if (r == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
 	p = (uint32_t *)(r + 1);
 
 	memmove(p, vszhpvp, 4);
@@ -1289,6 +1397,10 @@ uint16_t * zparser_conv_apl_rdata(char *str)
 	rdlength = (sizeof(address_family) + sizeof(prefix) + sizeof(length)
 		    + length);
 	r = alloc_rdata(rdlength);
+	if (r == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
 	t = (uint8_t *)(r + 1);
 
 	memcpy(t, &address_family, sizeof(address_family));
@@ -1527,12 +1639,18 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 	 */
 	dnslib_node_t *last_node = dnslib_node_new(current_rrset->owner,
 						   NULL);
+	CHECK_ALLOC_LOG(last_node, NULL);
 	dnslib_node_t *node = last_node;
 	if (node_add_func(zone, node) != 0) {
 		return NULL;
 	}
 	dnslib_dname_t *chopped =
 		dnslib_dname_left_chop(current_rrset->owner);
+	if (chopped == NULL) {
+		ERR_ALLOC_FAILED;
+		dnslib_node_free(&last_node, 0);
+		return NULL;
+	}
 
 	/* the following is the most common case - no need to
 	 * search the zone */
@@ -1547,7 +1665,7 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 //			       dnslib_dname_to_str(chopped), chopped);
 			dnslib_dname_t *found_dname = NULL;
 			if ((!(found_dname =
-			       dnslib_dname_table_find_dname(parser->dname_table,
+			      dnslib_dname_table_find_dname(parser->dname_table,
 			                                    chopped))) &&
 			    dnslib_dname_table_add_dname(parser->dname_table,
 							 chopped) != 0) {
@@ -1558,15 +1676,26 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 				chopped = found_dname;
 			}
 			tmp_node = dnslib_node_new(chopped, NULL);
+			if (tmp_node == NULL) {
+				ERR_ALLOC_FAILED;
+				/* TODO what to free? */
+				return NULL;
+			}
 			last_node->parent = tmp_node;
 
 			assert(node_get_func(zone, chopped) == NULL);
 			if (node_add_func(zone, tmp_node) != 0) {
+				/* TODO free */
 				return NULL;
 			}
 
 			last_node = tmp_node;
 			chopped = dnslib_dname_left_chop(chopped);
+			if (chopped == NULL) {
+				ERR_ALLOC_FAILED;
+				/* TODO cleanup */
+				return NULL;
+			}
 		}
 
 		last_node->parent = tmp_node;
@@ -1677,7 +1806,6 @@ int process_rr(void)
 	}
 
 	if (current_rrset->type == DNSLIB_RRTYPE_RRSIG) {
-		/*!< \todo Still a leak somewhere. */
 		dnslib_rrset_t *tmp_rrsig =
 			dnslib_rrset_new(current_rrset->owner,
 					     DNSLIB_RRTYPE_RRSIG,
@@ -1749,8 +1877,10 @@ int process_rr(void)
 					 current_rrset->type,
 					 current_rrset->rclass,
 					 current_rrset->ttl);
-
-		assert(rrset != NULL);
+		if (rrset == NULL) {
+			/* tTODO cleanup */
+			return KNOT_ZCOMPILE_ENOMEM;
+		}
 
 		if (dnslib_rrset_add_rdata(rrset, current_rrset->rdata) != 0) {
 			free(rrset);
@@ -1914,8 +2044,9 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	return totalerrors;
 }
 
-static void save_replace_dnames_in_rdata(dnslib_dname_table_t *table,
-					 dnslib_rdata_t *rdata, uint16_t type)
+/* This should be moved to rdata */
+static int save_replace_dnames_in_rdata(dnslib_dname_table_t *table,
+					dnslib_rdata_t *rdata, uint16_t type)
 {
 	assert(rdata && rdata->items);
 	const dnslib_rrtype_descriptor_t *desc =
@@ -1943,17 +2074,23 @@ static void save_replace_dnames_in_rdata(dnslib_dname_table_t *table,
 //				       rdata->items[i].dname->name,
 //				       dnslib_dname_to_str(rdata->items[i].dname));
 				/* Insert dname in the table. */
-				if (dnslib_dname_table_add_dname(table,
-							        searched_dname)
+				int ret = 0;
+				if ((ret = dnslib_dname_table_add_dname(table,
+							        searched_dname))
 				   != 0) {
-					fprintf(stderr, "Could not add name to table!\n");
-					return;
+					fprintf(stderr,
+					        "Could not add name "
+					        "to dname table!\n");
+					return ret;
 				}
 			}
 		}
 	}
+
+	return KNOT_ZCOMPILE_EOK;
 }
 
+/* This should be moved to rrset! */
 int save_dnames_in_table(dnslib_dname_table_t *table,
 			 dnslib_rrset_t *rrset)
 {
@@ -1965,19 +2102,13 @@ int save_dnames_in_table(dnslib_dname_table_t *table,
 	if ((found_dname =
 		dnslib_dname_table_find_dname(table, rrset->owner)) != NULL &&
 		found_dname != rrset->owner) {
-		assert(rrset->owner != found_dname);
-		assert(found_dname->name != rrset->owner->name);
-		assert(found_dname->labels != rrset->owner->labels);
-		assert(rrset->owner != parser->last_node->owner);
 //		printf("freeing %s %s\n"
 //		       "old: %p found: %p found name: %p freed name: %p\n", dnslib_dname_to_str(rrset->owner),
 //		       dnslib_dname_to_str(found_dname), rrset->owner, found_dname, found_dname->name,
 //		       rrset->owner->name);
-		assert(parser->last_node->owner != rrset->owner);
 		dnslib_dname_free(&rrset->owner);
 		/* owner is now a reference from the table */
 		rrset->owner = found_dname;
-		assert(parser->current_rrset->owner == rrset->owner);
 	} else if (found_dname != rrset->owner) {
 		/* Insert the dname in the table. */
 		if (dnslib_dname_table_add_dname(table, rrset->owner) != 0) {

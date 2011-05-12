@@ -83,7 +83,7 @@ struct zparser {
 	dnslib_dname_t *prev_dname; /*!< Previous dname. */
 	dnslib_node_t *default_apex; /*!< Zone default apex. */
 
-	dnslib_dname_table_t *dname_table;
+	dnslib_dname_table_t *dname_table; /*!< Domain name table (AVL tree). */
 
 	dnslib_node_t *last_node; /*!< Last processed node. */
 
