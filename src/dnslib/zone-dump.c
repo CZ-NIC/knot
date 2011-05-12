@@ -220,6 +220,8 @@ static err_handler_t *handler_new(char log_cname, char log_glue,
 /*!
  * \brief Prints error message with node information.
  *
+ * \note If \a node is NULL, only total number of errors is printed.
+ *
  * \param handler Error handler.
  * \param node Node with semantic error in it.
  * \param error Type of error.
@@ -228,7 +230,6 @@ static void log_error_from_node(err_handler_t *handler,
 				const dnslib_node_t *node,
 				uint error)
 {
-	/* TODO not like this */
 	if (node != NULL) {
 		char *name =
 			dnslib_dname_to_str(dnslib_node_owner(node));
@@ -335,9 +336,9 @@ static void err_handler_log_all(err_handler_t *handler)
 	}
 }
 
-/* TODO CHANGE FROM VOID POINTERS */
 /*!
- * \brief
+ * \brief Arguments to be used with tree traversal functions. Uses void pointers
+ *        to be more versatile.
  *
  */
 struct arg {
@@ -350,141 +351,6 @@ struct arg {
 };
 
 typedef struct arg arg_t;
-
-/*!
- * \brief Simple pointer compare, used for skip list ordering.
- *
- * \note We only need ordering for search purposes, therefore it is OK to
- *       compare pointers directly.
- *
- * \param p1 First pointer.
- * \param p2 Second pointer.
- *
- * \retval 0 when pointers are the same.
- * \retval -1 when first pointer is "bigger" than the first.
- * \retval 1 when second pointer is "bigger" than the first.
- */
-//static int compare_pointers(void *p1, void *p2)
-//{
-//	return ((size_t)p1 == (size_t)p2
-//		? 0 : (size_t)p1 < (size_t)p2 ? -1 : 1);
-//}
-
-/*!
- * \brief Saves closest encloser from rdata to given skip list.
- *
- * \param rdata Rdata possibly containing closest encloser.
- * \param zone Zone containing the node.
- * \param pos Position of item in rdata to be searched.
- * \param list Skip list used for storing closest enclosers.
- */
-//static void dnslib_zone_save_encloser_rdata_item(dnslib_rdata_t *rdata,
-//						 dnslib_zone_t *zone, uint pos,
-//						 skip_list_t *list)
-//{
-//	const dnslib_rdata_item_t *dname_item
-//		= dnslib_rdata_item(rdata, pos);
-
-//	if (dname_item != NULL) {
-//		dnslib_dname_t *dname = dname_item->dname;
-//		const dnslib_node_t *n = NULL;
-//		const dnslib_node_t *closest_encloser = NULL;
-//		const dnslib_node_t *prev = NULL;
-
-//		int ret = dnslib_zone_find_dname(zone, dname, &n,
-//						 &closest_encloser, &prev);
-
-////		n = dnslib_zone_find_node(zone, dname);
-
-//		if (ret == DNSLIB_EBADARG || ret == DNSLIB_EBADZONE) {
-//			// TODO: do some cleanup if needed
-//			return;
-//		}
-
-//		assert(ret != DNSLIB_ZONE_NAME_FOUND
-//		       || n == closest_encloser);
-
-//		if (ret != DNSLIB_ZONE_NAME_FOUND
-//		    && (closest_encloser != NULL)) {
-//			debug_dnslib_zdump("Saving closest encloser to RDATA."
-//					   "\n");
-//			// save pointer to the closest encloser
-//			dnslib_rdata_item_t *item =
-//				dnslib_rdata_get_item(rdata, pos);
-//			assert(item->dname != NULL);
-////			assert(item->dname->node == NULL);
-////			skip_insert(list, (void *)item->dname,
-////				    (void *)closest_encloser->owner, NULL);
-//			item->dname->node = closest_encloser->owner->node;
-//		}
-//	}
-//}
-
-/*!
- * \brief Saves closest enclosers from all entries in rrset.
- *
- * \param rrset RRSet to be searched.
- * \param zone Zone containing the rrset.
- * \param list Skip list used for storing closest enclosers.
- */
-//static void dnslib_zone_save_enclosers_rrset(dnslib_rrset_t *rrset,
-//					     dnslib_zone_t *zone,
-//					     skip_list_t *list)
-//{
-//	uint16_t type = dnslib_rrset_type(rrset);
-
-//	dnslib_rrtype_descriptor_t *desc =
-//		dnslib_rrtype_descriptor_by_type(type);
-//	dnslib_rdata_t *rdata_first = dnslib_rrset_get_rdata(rrset);
-//	dnslib_rdata_t *rdata = rdata_first;
-
-//	if (rdata == NULL) {
-//		return;
-//	}
-
-//	while (rdata->next != rdata_first) {
-//		for (int i = 0; i < rdata->count; ++i) {
-//			if (desc->wireformat[i]
-//			    == DNSLIB_RDATA_WF_COMPRESSED_DNAME
-//			    || desc->wireformat[i]
-//			       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
-//			    || desc->wireformat[i]
-//			       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
-//				debug_dnslib_zdump("Adjusting domain name at "
-//				  "position %d of RDATA of record with owner "
-//				  "%s and type %s.\n",
-//				  i, rrset->owner->name,
-//				  dnslib_rrtype_to_string(type));
-
-//				dnslib_zone_save_encloser_rdata_item(rdata,
-//								     zone,
-//								     i,
-//								     list);
-//			}
-//		}
-//		rdata = rdata->next;
-//	}
-
-//	for (int i = 0; i < rdata->count; ++i) {
-//		if (desc->wireformat[i]
-//		    == DNSLIB_RDATA_WF_COMPRESSED_DNAME
-//		    || desc->wireformat[i]
-//		       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
-//		    || desc->wireformat[i]
-//		       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
-//			debug_dnslib_zdump("Adjusting domain name at "
-//			  "position %d of RDATA of record with owner "
-//			  "%s and type %s.\n",
-//			  i, rrset->owner->name,
-//			  dnslib_rrtype_to_string(type));
-
-//				dnslib_zone_save_encloser_rdata_item(rdata,
-//								     zone,
-//								     i,
-//								     list);
-//		}
-//	}
-//}
 
 /*!
  * \brief Semantic check - CNAME cycles. Uses constant value with maximum
@@ -671,6 +537,9 @@ static int dnskey_to_wire(const dnslib_rdata_t *rdata, uint8_t **wire,
 	/* copy the wire octet by octet */
 
 	/* TODO check if we really have that many items */
+	if (rdata->count < 4) {
+		return DNSLIB_ERROR;
+	}
 
 	(*wire)[0] = ((uint8_t *)(dnslib_rdata_item(rdata, 0)->raw_data))[2];
 	(*wire)[1] = ((uint8_t *)(dnslib_rdata_item(rdata, 0)->raw_data))[3];
@@ -777,9 +646,10 @@ static int check_rrsig_rdata(const dnslib_rdata_t *rdata_rrsig,
 		uint8_t *dnskey_wire = NULL;
 		uint dnskey_wire_size = 0;
 
-		if (dnskey_to_wire(tmp_dnskey_rdata, &dnskey_wire,
-				   &dnskey_wire_size) != 0) {
-			return ZC_ERR_ALLOC;
+		int ret = 0;
+		if ((ret = dnskey_to_wire(tmp_dnskey_rdata, &dnskey_wire,
+				   &dnskey_wire_size)) != DNSLIB_EOK) {
+			return ret;
 		}
 
 		uint16_t key_tag_dnskey =
@@ -869,7 +739,6 @@ static int check_rrsig_in_rrset(const dnslib_rrset_t *rrset,
 			dnslib_rrset_rdata_next(rrsigs, tmp_rrsig_rdata))
 		!= NULL));
 
-	/*!< \todo change because of coverity, test! */
 	if (!all_signed) {
 		return ZC_ERR_RRSIG_NOT_ALL;
 	}
@@ -925,6 +794,11 @@ static int rdata_nsec_to_type_array(const dnslib_rdata_item_t *item,
 
 		uint8_t *bitmap =
 			malloc(sizeof(uint8_t) * (bitmap_size));
+		if (bitmap == NULL) {
+			ERR_ALLOC_FAILED;
+			free(*array);
+			return DNSLIB_ENOMEM;
+		}
 
 		memcpy(bitmap, data + i + increment,
 		       bitmap_size);
@@ -992,11 +866,10 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 						 ZC_ERR_NSEC3_NOT_FOUND);
 			}
 
-/* ???			if (nsec3_node == NULL) {
-				return -3;
-			} */
-
-			assert(nsec3_node == NULL); /* TODO error */
+			if (nsec3_node == NULL) {
+				/* Probably should not ever happen */
+				return ZC_ERR_NSEC3_NOT_FOUND;
+			}
 
 			assert(nsec3_previous);
 
@@ -1139,37 +1012,32 @@ static int semantic_checks_plain(dnslib_zone_t *zone,
 	assert(handler);
 	const dnslib_rrset_t *cname_rrset =
 			dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME);
+
 	if (cname_rrset != NULL) {
 		if (check_cname_cycles_in_zone(zone, cname_rrset) !=
 				DNSLIB_EOK) {
 			err_handler_handle_error(handler, node,
 						 ZC_ERR_CNAME_CYCLE);
 		}
-	}
 
-	/* TODO move things below to the if above */
-
-	/* No DNSSEC and yet there is more than one rrset in node */
-	if (cname_rrset && do_checks == 1 &&
-	    dnslib_node_rrset_count(node) != 1) {
-		err_handler_handle_error(handler, node,
-					 ZC_ERR_CNAME_EXTRA_RECORDS);
-	} else if (cname_rrset &&
-		   dnslib_node_rrset_count(node) != 1) {
-		/* With DNSSEC node can contain RRSIG or NSEC */
-		if (!(dnslib_node_rrset(node, DNSLIB_RRTYPE_RRSIG) ||
-		      dnslib_node_rrset(node, DNSLIB_RRTYPE_NSEC))) {
+		/* No DNSSEC and yet there is more than one rrset in node */
+		if (do_checks == 1 &&
+		                dnslib_node_rrset_count(node) != 1) {
 			err_handler_handle_error(handler, node,
-					 ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC);
+			                         ZC_ERR_CNAME_EXTRA_RECORDS);
+		} else if (dnslib_node_rrset_count(node) != 1) {
+			/* With DNSSEC node can contain RRSIG or NSEC */
+			if (!(dnslib_node_rrset(node, DNSLIB_RRTYPE_RRSIG) ||
+			      dnslib_node_rrset(node, DNSLIB_RRTYPE_NSEC))) {
+				err_handler_handle_error(handler, node,
+				ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC);
+			}
 		}
-	}
 
-	/* same thing */
-
-	if (cname_rrset &&
-	    dnslib_rrset_rdata(cname_rrset)->count != 1) {
-		err_handler_handle_error(handler, node,
-					 ZC_ERR_CNAME_MULTIPLE);
+		if (dnslib_rrset_rdata(cname_rrset)->count != 1) {
+			err_handler_handle_error(handler, node,
+			                         ZC_ERR_CNAME_MULTIPLE);
+		}
 	}
 
 	/* check for glue records at zone cuts */
@@ -1459,9 +1327,18 @@ void zone_do_sem_checks(dnslib_zone_t *zone, char do_checks,
 			   (void *)&arguments);
 }
 
-/*!< \todo remove this variable once sure about crc implementation. */
-static crc_t dnslib_dump_crc;
+static crc_t dnslib_dump_crc; /*!< CRC value used in every write operation. */
 
+/*!
+ * \brief Wrapper around fwrite. Used for CRC calculation.
+ *
+ * \param dst Destination pointer.
+ * \param size Size of element to be written.
+ * \param n Number of elements to be written.
+ * \param fp File to write to.
+ *
+ * \return Number or read bytes.
+ */
 static inline int fwrite_wrapper(const void *src,
                                  size_t size, size_t n, FILE *fp)
 {
@@ -1670,11 +1547,10 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 //	printf("ID write: %d (%s)\n", node->owner->id,
 //	       dnslib_dname_to_str(node->owner));
 
-	/* TODO investigate whether this is necessary */
 	if (node->parent != NULL) {
 		fwrite_wrapper(&(node->parent->owner->id), sizeof(uint), 1, f);
 	} else {
-		fwrite_wrapper(&(node->parent), sizeof(void *), 1, f);
+		fwrite_wrapper("\0", sizeof(uint), 1, f);
 	}
 
 	fwrite_wrapper(&(node->flags), sizeof(node->flags), 1, f);
@@ -1855,37 +1731,11 @@ static void log_cyclic_errors_in_zone(err_handler_t *handler,
 	}
 }
 
-/*!
- * \brief Safe wrapper around fwrite.
- *
- * \param dst Destination pointer.
- * \param size Size of element to be written.
- * \param n Number of elements to be written.
- * \param fp File to write to.
- *
- * \retval > 0 if succesfull.
- * \retval 0 if failed.
- */
-static inline int fwrite_wrapper_safe(const void *src,
-                                      size_t size, size_t n, FILE *fp)
-{
-	int rc = fwrite_wrapper(src, size, n, fp);
-	if (rc != n) {
-		fprintf(stderr, "fwrite_wrapper: invalid write %d (expected %zu)\n", rc,
-			n);
-	}
-
-	return rc == n;
-}
-
 /*!< \todo some global variable indicating error! */
 static void dump_dname_with_id(const dnslib_dname_t *dname, FILE *f)
 {
 	fwrite_wrapper(&dname->id, sizeof(dname->id), 1, f);
 	dnslib_dname_dump_binary(dname, f);
-/*	if (!fwrite_wrapper_safe(&dname->id, sizeof(dname->id), 1, f)) {
-		return DNSLIB_ERROR;
-	} */
 }
 
 static void dump_dname_from_tree(struct dname_table_node *node,
@@ -2018,7 +1868,6 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 //	arguments.arg2 = encloser_list;
 	arguments.arg3 = zone;
 
-	/* TODO is there a way how to stop the traversal upon error? */
 	dnslib_zone_tree_apply_inorder(zone, dnslib_node_dump_binary,
 				       (void *)&arguments);
 
