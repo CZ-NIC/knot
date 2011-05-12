@@ -1801,7 +1801,10 @@ int process_rr(void)
 		}
 
 		zone = dnslib_zone_new(parser->origin, 0);
-
+		if (zone == NULL) {
+			fprintf(stderr, "Could not create new zone!\n");
+			return KNOT_ZCOMPILE_ENOMEM;
+		}
 		parser->current_zone = zone;
 	}
 
@@ -1811,6 +1814,9 @@ int process_rr(void)
 					     DNSLIB_RRTYPE_RRSIG,
 					     current_rrset->rclass,
 					     current_rrset->ttl);
+		if (tmp_rrsig == NULL) {
+			return KNOT_ZCOMPILE_ENOMEM;
+		}
 
 		dnslib_rrset_add_rdata(tmp_rrsig, current_rrset->rdata);
 
@@ -1984,8 +1990,15 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	dnslib_dname_t *dname =
 		dnslib_dname_new_from_str(name, strlen(name), NULL);
+	if (dname == NULL) {
+		return KNOT_ZCOMPILE_ENOMEM;
+	}
 
 	dnslib_node_t *origin_node = dnslib_node_new(dname, NULL);
+	if (origin_node == NULL) {
+		dnslib_dname_free(&dname);
+		return KNOT_ZCOMPILE_ENOMEM;
+	}
 
 	//assert(origin_node->next == NULL);
 
