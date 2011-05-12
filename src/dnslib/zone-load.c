@@ -122,6 +122,7 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 	dnslib_rdata_t *rdata;
 
 	rdata = dnslib_rdata_new();
+	CHECK_ALLOC_LOG(rdata, NULL);
 
 	dnslib_rrtype_descriptor_t *desc =
 		dnslib_rrtype_descriptor_by_type(type);
@@ -129,11 +130,15 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 
 	dnslib_rdata_item_t *items =
 		malloc(sizeof(dnslib_rdata_item_t) * desc->length);
+	if (items == NULL) {
+		ERR_ALLOC_FAILED;
+		dnslib_rdata_free(&rdata);
+		return NULL;
+	}
 
 	uint16_t raw_data_length;
 
 	debug_dnslib_zload("Reading %d items\n", desc->length);
-
 	debug_dnslib_zload("current type: %s\n", dnslib_rrtype_to_string(type));
 
 	for (int i = 0; i < desc->length; i++) {
@@ -146,11 +151,13 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 
 			if(!fread_safe(&dname_id, sizeof(void *), 1, f)) {
 				load_rdata_purge(rdata, items, i, type);
+				dnslib_rdata_free(&rdata);
 				return NULL;
 			}
 
 			if(!fread_safe(&in_the_zone, sizeof(uint8_t), 1, f)) {
 				load_rdata_purge(rdata, items, i, type);
+				dnslib_rdata_free(&rdata);
 				return NULL;
 			}
 
@@ -159,6 +166,7 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 			if(!fread_safe(&has_wildcard, sizeof(uint8_t),
 				       1, f)) {
 				load_rdata_purge(rdata, items, i, type);
+				dnslib_rdata_free(&rdata);
 				return NULL;
 			}
 
@@ -167,6 +175,7 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 					       1, f)) {
 					load_rdata_purge(rdata, items,
 							 i, type);
+					dnslib_rdata_free(&rdata);
 					return NULL;
 				}
 				items[i].dname->node =
@@ -183,17 +192,24 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 			if (!fread_safe(&raw_data_length,
 					sizeof(raw_data_length), 1, f)) {
 				load_rdata_purge(rdata, items, i, type);
+				dnslib_rdata_free(&rdata);
 				return NULL;
 			}
 
 			debug_dnslib_zload("read len: %d\n", raw_data_length);
 			items[i].raw_data =
 				malloc(sizeof(uint8_t) * raw_data_length + 2);
+			if (items[i].raw_data == NULL) {
+				load_rdata_purge(rdata, items, i + 1, type);
+				dnslib_rdata_free(&rdata);
+				ERR_ALLOC_FAILED;
+			}
 			*(items[i].raw_data) = raw_data_length;
 
 			if (!fread_safe(items[i].raw_data + 1, sizeof(uint8_t),
 			      raw_data_length, f)) {
 				load_rdata_purge(rdata, items, i + 1, type);
+				dnslib_rdata_free(&rdata);
 				return NULL;
 			}
 		}
@@ -250,14 +266,17 @@ static dnslib_rrset_t *dnslib_load_rrsig(FILE *f, dnslib_dname_t **id_array)
 	}
 
 	rrsig = dnslib_rrset_new(NULL, rrset_type, rrset_class, rrset_ttl);
-
-	dnslib_rdata_t *tmp_rdata;
+	if (rrsig == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
 
 	debug_dnslib_zload("loading %d rdata entries\n", rdata_count);
 
 	for (int i = 0; i < rdata_count; i++) {
-		tmp_rdata = dnslib_load_rdata(DNSLIB_RRTYPE_RRSIG, f,
-					      id_array);
+		dnslib_rdata_t *tmp_rdata =
+			dnslib_load_rdata(DNSLIB_RRTYPE_RRSIG, f,
+					  id_array);
 		if (tmp_rdata) {
 			dnslib_rrset_add_rdata(rrsig, tmp_rdata);
 		} else {
@@ -278,14 +297,13 @@ static dnslib_rrset_t *dnslib_load_rrsig(FILE *f, dnslib_dname_t **id_array)
  */
 static dnslib_rrset_t *dnslib_load_rrset(FILE *f, dnslib_dname_t **id_array)
 {
-	dnslib_rrset_t *rrset;
+	dnslib_rrset_t *rrset = NULL;
 
-	uint16_t rrset_type;
-	uint16_t rrset_class;
-	uint32_t rrset_ttl;
-
-	uint8_t rdata_count;
-	uint8_t rrsig_count;
+	uint16_t rrset_type = 0;
+	uint16_t rrset_class = 0;
+	uint32_t rrset_ttl = 0;
+	uint8_t rdata_count = 0;
+	uint8_t rrsig_count = 0;
 
 	if (!fread_safe(&rrset_type, sizeof(rrset_type), 1, f)) {
 		return NULL;
@@ -304,14 +322,17 @@ static dnslib_rrset_t *dnslib_load_rrset(FILE *f, dnslib_dname_t **id_array)
 	}
 
 	rrset = dnslib_rrset_new(NULL, rrset_type, rrset_class, rrset_ttl);
+	if (rrset == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
 
 	debug_dnslib_zload("RRSet type: %d\n", rrset->type);
 
-	dnslib_rdata_t *tmp_rdata;
-
 	for (int i = 0; i < rdata_count; i++) {
-		tmp_rdata = dnslib_load_rdata(rrset->type, f,
-					      id_array);
+		dnslib_rdata_t *tmp_rdata =
+			dnslib_load_rdata(rrset->type, f,
+					  id_array);
 		if (tmp_rdata) {
 			dnslib_rrset_add_rdata(rrset, tmp_rdata);
 		} else {
