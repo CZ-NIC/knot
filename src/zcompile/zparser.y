@@ -164,7 +164,7 @@ line:	NL
 		}
 
 		assert(parser->current_rrset->owner != NULL);
-		int ret;
+		int ret = 0;
 		if ((ret = process_rr()) != 0) {
 			/* Should it fail? */
 			char *tmp_dname_str =
@@ -173,18 +173,13 @@ line:	NL
 				"owner: %s reason: %s\n", tmp_dname_str,
 				error_to_str(knot_zcompile_error_msgs, ret));
 			free(tmp_dname_str);
-			/* Free rdata, it will not be added and hence cannot be
-			 * freed with rest of the zone */
-			dnslib_rdata_deep_free(&tmp_rdata,
-			                       parser->current_rrset->type,
-					       0);
 
 			/* If the owner is not already in the table, free it. */
-			if (dnslib_dname_table_find_dname(parser->dname_table,
-				parser->current_rrset->owner) == NULL) {
-				dnslib_dname_free(&parser->
-				                  current_rrset->owner);
-			}
+//			if (dnslib_dname_table_find_dname(parser->dname_table,
+//				parser->current_rrset->owner) == NULL) {
+//				dnslib_dname_free(&parser->
+//				                  current_rrset->owner);
+//			} /* This would never happen */
 
 			if (ret == KNOT_ZCOMPILE_EBADSOA) {
 				dnslib_rrset_deep_free(&(parser->current_rrset),
@@ -192,9 +187,17 @@ line:	NL
 				dnslib_zone_deep_free(&(parser->current_zone),
 						      1);
 				YYABORT;
+			} else {
+				/* Free rdata, it will not be added
+				 * and hence cannot be
+				 * freed with rest of the zone. */
+				dnslib_rdata_deep_free(&tmp_rdata,
+				                       parser->
+				                       current_rrset->type,
+				                       0);
 			}
 		}
-		/* In case of adding failure, dnames have to be processed
+		/* In case of adding failure, dnames should ideally be processed
 		 * AFTER they've been added, so that we won't pollute the table
 		 * with freed dnames */
 
@@ -206,7 +209,17 @@ line:	NL
 		 */
 	} else {
 		/* Error occured. This could either be lack of memory, or one
-		 * of the converting function was not able */
+		 * of the converting function was not able to convert. */
+		if (parser->error_occurred == KNOT_ZCOMPILE_ENOMEM) {
+			/* Ran out of memory in converting functions. */
+			fprintf(stderr, "Parser ran out "
+			                "of memory, aborting!\n");
+			dnslib_rrset_deep_free(&(parser->current_rrset),
+					       0, 0);
+			dnslib_zone_deep_free(&(parser->current_zone),
+					      1);
+			YYABORT;
+		}
 	}
 
 	parser->prev_dname = parser->current_rrset->owner;
