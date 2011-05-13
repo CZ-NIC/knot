@@ -68,8 +68,8 @@ dnslib_dname_t *error_domain;
 
 %}
 %union {
-	dnslib_dname_t       *domain; /* \todo */
-	dnslib_dname_t *dname; //XXX used to be const!
+	dnslib_dname_t       *domain;
+	dnslib_dname_t       *dname;
 	struct lex_data      data;
 	uint32_t             ttl;
 	uint16_t             rclass;
@@ -144,36 +144,26 @@ line:	NL
 		    	fprintf(stderr, "Could not add rdata!\n");
 		    }
 
-//printf("Before cat: %s (%p)\n", dnslib_dname_to_str(parser->current_rrset->owner),
-//parser->current_rrset->owner->name);
-
 		if (!dnslib_dname_is_fqdn(parser->current_rrset->owner)) {
 			parser->current_rrset->owner =
 				dnslib_dname_cat(parser->current_rrset->owner,
 						 parser->root_domain);
-			/*!< \todo lost pointer! */
 		}
-
-//printf("before: %p %p\n", parser->current_rrset->owner, parser->current_rrset->owner->name);
-//void *tmp1 = parser->current_rrset->owner;
-//void *tmp2 = parser->current_rrset->owner->name;
-
-//if (tmp1 != parser->current_rrset->owner ||
-//tmp2 != parser->current_rrset->owner->name) {
-//printf("before: %p %p\n", tmp1, tmp2);
-//printf("after: %p %p\n", parser->current_rrset->owner, parser->current_rrset->owner->name);
-//printf("%s\n", dnslib_dname_to_str(parser->current_rrset->owner));
-//}
 
 		if (save_dnames_in_table(parser->dname_table,
 						 parser->current_rrset) != 0) {
-						 /* \todo */
+			/*
+			 * Only reason function above could fail is
+			 * memory shortage. There is no point in continuing.
+			 */
+			dnslib_rrset_deep_free(&(parser->current_rrset),
+					       0, 0);
+			dnslib_zone_deep_free(&(parser->current_zone),
+					      1);
+			YYABORT;
 		}
 
 		assert(parser->current_rrset->owner != NULL);
-//		printf("after cat: %s (%p)\n", dnslib_dname_to_str(parser->current_rrset->owner), parser->current_rrset->owner->name);
-
-//printf("%p\n", parser->current_rrset->owner->labels);
 		int ret;
 		if ((ret = process_rr()) != 0) {
 			/* Should it fail? */
@@ -197,15 +187,13 @@ line:	NL
 			}
 
 			if (ret == KNOT_ZCOMPILE_EBADSOA) {
-				/*!< \todo this will crash! */
-				dnslib_rdata_free(&tmp_rdata);
 				dnslib_rrset_deep_free(&(parser->current_rrset),
-						       1, 1);
+						       0, 0);
 				dnslib_zone_deep_free(&(parser->current_zone),
 						      1);
 				YYABORT;
 			}
-		} else { ;
+		}
 		/* In case of adding failure, dnames have to be processed
 		 * AFTER they've been added, so that we won't pollute the table
 		 * with freed dnames */
@@ -213,21 +201,19 @@ line:	NL
 		/*!< \todo Current implementation might introduce redundant
 		 * dnames to the table (from rdata section, which was processed
 		 * and its dnames added to the table, but then was not acutally
-		 * added to the zone.
+		 * added to the zone. Right now, these names will be stuck in
+		 * the table.
 		 */
-
-		}
+	} else {
+		/* Error occured. This could either be lack of memory, or one
+		 * of the converting function was not able */
 	}
 
-//	printf("Current rrset name: %p (%s)\n", parser->current_rrset->owner->name,
-//	dnslib_dname_to_str(parser->current_rrset->owner));
-//	getchar();
-
-	    parser->prev_dname = parser->current_rrset->owner;
-	    parser->current_rrset->type = 0;
-	    parser->rdata_count = 0;
-	    parser->current_rrset->rdata = NULL;
-	    parser->error_occurred = 0;
+	parser->prev_dname = parser->current_rrset->owner;
+	parser->current_rrset->type = 0;
+	parser->rdata_count = 0;
+	parser->current_rrset->rdata = NULL;
+	parser->error_occurred = 0;
     }
     |	error NL
     ;
@@ -273,8 +259,6 @@ origin_directive:	DOLLAR_ORIGIN sp abs_dname trail
 
 rr:	owner classttl type_and_rdata
     {
-
-//    tady najit jmeno z tabulky ale nepridavat
 	    /* Save the pointer, it might get freed! */
 	    parser->current_rrset->owner = $1;
 //	    printf("new owner assigned: %p\n", $1);
@@ -325,7 +309,6 @@ classttl:	/* empty - fill in the default, def. ttl and IN class */
 dname:	abs_dname
     |	rel_dname
     {
-	    /*! \todo Fix domain_dname() and size */
 	    if ($1 == error_dname) {
 		    $$ = error_domain;
 	    } else if ($1->size + parser->origin->owner->size - 1 >
@@ -336,17 +319,14 @@ dname:	abs_dname
 	    } else {
 		    $$ = dnslib_dname_cat($1,
 					  parser->origin->owner);
-//		printf("leak: %s\n", dnslib_dname_to_str($$));
-//		getchar();
 	    }
     }
     ;
 
 abs_dname:	'.'
     {
-	    /*! \todo Get root domain from db. */
-		//$$ = parser->db->domains->root;
 	    $$ = dnslib_dname_copy(parser->root_domain);
+	    /* TODO how about concatenation now? */
     }
     |	'@'
     {
@@ -355,8 +335,6 @@ abs_dname:	'.'
     |	rel_dname '.'
     {
 	    if ($1 != error_dname) {
-		    /*! \todo What a mysterious function is this? */
-		    /* $$ = dns(parser->db->domains, $1); */
 		    $$ = $1;
 
 	    } else {
@@ -372,7 +350,6 @@ label:	STR
 		    $$ = error_dname;
 	    } else {
 		    $$ = dnslib_dname_new_from_str($1.str, $1.len, NULL);
-	//printf("new: %p %s\n", $$, dnslib_dname_to_str($$));
 	    }
 
 	    free($1.str);
@@ -413,6 +390,13 @@ wire_dname:	wire_abs_dname
 wire_abs_dname:	'.'
     {
 	    char *result = malloc(2 * sizeof(char));
+	    if (result == NULL) {
+	    	dnslib_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0);
+	        dnslib_zone_deep_free(&(parser->current_zone),
+		                      1);
+		YYABORT;
+	    }
 	    result[0] = 0;
 	    result[1] = '\0';
 	    $$.str = result;
@@ -421,6 +405,13 @@ wire_abs_dname:	'.'
     |	wire_rel_dname '.'
     {
 	    char *result = malloc($1.len + 2 * sizeof(char));
+	    if (result == NULL) {
+	    	dnslib_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0);
+	        dnslib_zone_deep_free(&(parser->current_zone),
+		                      1);
+		YYABORT;
+	    }
 	    memcpy(result, $1.str, $1.len);
 	    result[$1.len] = 0;
 	    result[$1.len+1] = '\0';
@@ -435,6 +426,13 @@ wire_abs_dname:	'.'
 wire_label:	STR
     {
 	    char *result = malloc($1.len + sizeof(char));
+	    if (result == NULL) {
+	    	dnslib_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0);
+	        dnslib_zone_deep_free(&(parser->current_zone),
+		                      1);
+		YYABORT;
+	    }
 
 	    if ($1.len > MAXLABELLEN)
 		    zc_error("label exceeds %d character limit", MAXLABELLEN);
@@ -499,6 +497,14 @@ concatenated_str_seq:	STR
     {
 	    $$.len = $1.len + $3.len + 1;
 	    $$.str = malloc($$.len + 1);
+	    if ($$.str == NULL) {
+	    	dnslib_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0);
+	        dnslib_zone_deep_free(&(parser->current_zone),
+		                      1);
+		YYABORT;
+	    }
+
 	    memcpy($$.str, $1.str, $1.len);
 	    memcpy($$.str + $1.len, " ", 1);
 	    memcpy($$.str + $1.len + 1, $3.str, $3.len);
@@ -581,6 +587,14 @@ str_sp_seq:	STR
     |	str_sp_seq sp STR
     {
 	    char *result = malloc($1.len + $3.len + 1);
+	    if (result == NULL) {
+	    	fprintf(stderr, "Parser ran out of memory, aborting!\n");
+	    	dnslib_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0);
+	        dnslib_zone_deep_free(&(parser->current_zone),
+		                      1);
+		YYABORT;
+	    }
 	    memcpy(result, $1.str, $1.len);
 	    memcpy(result + $1.len, $3.str, $3.len);
 	    $$.str = result;
@@ -600,6 +614,14 @@ str_dot_seq:	STR
     |	str_dot_seq '.' STR
     {
 	    char *result = malloc($1.len + $3.len + 1);
+	    if (result == NULL) {
+	    	fprintf(stderr, "Parser ran out of memory, aborting!\n");
+	    	dnslib_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0);
+	        dnslib_zone_deep_free(&(parser->current_zone),
+		                      1);
+		YYABORT;
+	    }
 	    memcpy(result, $1.str, $1.len);
 	    memcpy(result + $1.len, $3.str, $3.len);
 	    $$.str = result;
@@ -623,6 +645,14 @@ dotted_str:	STR
     |	dotted_str '.'
     {
 	    char *result = malloc($1.len + 2);
+	    if (result == NULL) {
+	    	fprintf(stderr, "Parser ran out of memory, aborting!\n");
+	    	dnslib_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0);
+	        dnslib_zone_deep_free(&(parser->current_zone),
+		                      1);
+		YYABORT;
+	    }
 	    memcpy(result, $1.str, $1.len);
 	    result[$1.len] = '.';
 	    $$.str = result;
@@ -634,6 +664,14 @@ dotted_str:	STR
     |	dotted_str '.' STR
     {
 	    char *result = malloc($1.len + $3.len + 2);
+	    if (result == NULL) {
+	    	fprintf(stderr, "Parser ran out of memory, aborting!\n");
+	    	dnslib_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0);
+	        dnslib_zone_deep_free(&(parser->current_zone),
+		                      1);
+		YYABORT;
+	    }
 	    memcpy(result, $1.str, $1.len);
 	    result[$1.len] = '.';
 	    memcpy(result + $1.len + 1, $3.str, $3.len);
@@ -1341,12 +1379,25 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			if(!name) {
 				zc_error_prev_line("IPSECKEY bad gateway"
 						   "dname %s", $7.str);
+				dnslib_rrset_deep_free(&(parser->current_rrset),
+						                          0, 0);
+				dnslib_zone_deep_free(&(parser->current_zone),
+						      1);
+				YYABORT;
 			}
 			if($7.str[strlen($7.str)-1] != '.') {
-			    dnslib_dname_t* tmpd;
-			    tmpd = dnslib_dname_new_from_wire(name->name,
-							      name->size,
-							      NULL);
+			    dnslib_dname_t* tmpd =
+			    	dnslib_dname_new_from_wire(name->name,
+							   name->size,
+							   NULL);
+			    if (tmpd == NULL) {
+			    	zc_error_prev_line("Could not create dname!");
+				dnslib_rrset_deep_free(&(parser->current_rrset),
+				                       0, 0);
+			        dnslib_zone_deep_free(&(parser->current_zone),
+				                      1);
+				YYABORT;
+			    }
 			    name = dnslib_dname_cat(tmpd,
 				    dnslib_node_parent(parser->origin)->owner);
 			}
