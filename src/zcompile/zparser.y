@@ -427,6 +427,7 @@ wire_label:	STR
     {
 	    char *result = malloc($1.len + sizeof(char));
 	    if (result == NULL) {
+	    	ERR_ALLOC_FAILED;
 	    	dnslib_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0);
 	        dnslib_zone_deep_free(&(parser->current_zone),
@@ -458,6 +459,14 @@ wire_rel_dname:	wire_label
 	    /* make dname anyway */
 	    $$.len = $1.len + $3.len;
 	    $$.str = malloc($$.len + sizeof(char));
+	    if ($$.str == NULL) {
+	    	ERR_ALLOC_FAILED;
+	    	dnslib_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0);
+		dnslib_zone_deep_free(&(parser->current_zone),
+		                      1);
+		YYABORT;
+	    }
 	    memcpy($$.str, $1.str, $1.len);
 	    memcpy($$.str + $1.len, $3.str, $3.len);
 	    $$.str[$$.len] = '\0';
@@ -498,6 +507,7 @@ concatenated_str_seq:	STR
 	    $$.len = $1.len + $3.len + 1;
 	    $$.str = malloc($$.len + 1);
 	    if ($$.str == NULL) {
+	    	ERR_ALLOC_FAILED;
 	    	dnslib_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0);
 	        dnslib_zone_deep_free(&(parser->current_zone),
@@ -517,6 +527,14 @@ concatenated_str_seq:	STR
     {
 	    $$.len = $1.len + $3.len + 1;
 	    $$.str = malloc($$.len + 1);
+	    if ($$.str == NULL) {
+	    	ERR_ALLOC_FAILED;
+	    	dnslib_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0);
+	        dnslib_zone_deep_free(&(parser->current_zone),
+		                      1);
+		YYABORT;
+	    }
 	    memcpy($$.str, $1.str, $1.len);
 	    memcpy($$.str + $1.len, ".", 1);
 	    memcpy($$.str + $1.len + 1, $3.str, $3.len);
@@ -812,7 +830,6 @@ type_and_rdata:
     |	STR error NL
     {
 	    zc_error_prev_line("unrecognized RR type '%s'", $1.str);
-
 	    free($1.str);
     }
     ;
@@ -1407,7 +1424,15 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			free($5.str);
 			free($7.str);
 
-			uint8_t* dncpy = malloc(name->size);
+			uint8_t* dncpy = malloc(sizeof(uint8_t) * name->size);
+			if (dncpy == NULL) {
+			    ERR_ALLOC_FAILED;
+			    dnslib_rrset_deep_free(&(parser->current_rrset),
+			                           0, 0);
+			    dnslib_zone_deep_free(&(parser->current_zone),
+			                          1);
+			    YYABORT;
+			}
 			memcpy(dncpy, name->name, name->size);
 			zadd_rdata_wireformat((uint16_t *)dncpy);
 			//dnslib_dname_free(&name);
@@ -1456,35 +1481,47 @@ yywrap(void)
 /*
  * Create the parser.
  */
-zparser_type *
-zparser_create()
+zparser_type *zparser_create()
 {
-	zparser_type *result;
-
-	result = (zparser_type *)malloc(sizeof(zparser_type));
+	zparser_type *result = malloc(sizeof(zparser_type));
 	if (result == NULL) {
+	    ERR_ALLOC_FAILED;
 	    return NULL;
 	}
 
-	result->current_zone = NULL;
-	result->filename = NULL;
-	result->current_zone = NULL;
-	result->origin = NULL;
-	result->prev_dname = NULL;
-	result->default_apex = NULL;
-
 	result->temporary_items = malloc(MAXRDATALEN *
 					  sizeof(dnslib_rdata_item_t));
-
-	result->current_rrset = dnslib_rrset_new(NULL, 0, 0, 0);
-	result->current_rrset->rdata = NULL;
-
-	result->dname_table = dnslib_dname_table_new();
-	if (result->dname_table == NULL) {
+	if (result->temporary_items == NULL) {
+		ERR_ALLOC_FAILED;
+		free(result);
 		return NULL;
 	}
 
-	result->rrsig_orphans = NULL;
+	result->current_rrset = dnslib_rrset_new(NULL, 0, 0, 0);
+	if (result->current_rrset == NULL) {
+		ERR_ALLOC_FAILED;
+		free(result->temporary_items);
+		free(result);
+		return NULL;
+	}
+
+	result->dname_table = dnslib_dname_table_new();
+	if (result->dname_table == NULL) {
+		ERR_ALLOC_FAILED;
+		free(result->temporary_items);
+		free(result->current_rrset);
+		free(result);
+		return NULL;
+	}
+
+	result->root_domain = dnslib_dname_new_from_str(".", 1, NULL);
+	if (result->root_domain == NULL) {
+		ERR_ALLOC_FAILED;
+		free(result->temporary_items);
+		free(result->current_rrset);
+		dnslib_dname_table_free(&result->dname_table);
+		free(result);
+	}
 
 	return result;
 }
@@ -1492,13 +1529,19 @@ zparser_create()
 /*
  * Initialize the parser for a new zone file.
  */
-void
-zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
-	     dnslib_node_t *origin)
+void zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
+                  dnslib_node_t *origin)
 {
 	memset(nxtbits, 0, sizeof(nxtbits));
 	memset(nsecbits, 0, sizeof(nsecbits));
 	nsec_highest_rcode = 0;
+
+	parser->current_zone = NULL;
+	parser->filename = NULL;
+	parser->current_zone = NULL;
+	parser->origin = NULL;
+	parser->prev_dname = NULL;
+	parser->default_apex = NULL;
 
 	parser->default_ttl = ttl;
 	parser->default_class = rclass;
@@ -1514,11 +1557,11 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->rdata_count = 0;
 
 	parser->last_node = origin;
-	parser->root_domain = dnslib_dname_new_from_str(".", 1, NULL);
-
 	parser->node_rrsigs = NULL;
+	parser->rrsig_orphans = NULL;
 
 	parser->current_rrset->rclass = parser->default_class;
+	parser->current_rrset->rdata = NULL;
 }
 
 
@@ -1526,7 +1569,9 @@ void zparser_free()
 {
 	dnslib_dname_free(&(parser->root_domain));
 	free(parser->temporary_items);
-	dnslib_rrset_free(&(parser->current_rrset));
+	if (parser->current_rrset != NULL) {
+		dnslib_rrset_free(&parser->current_rrset);
+	}
 	yylex_destroy();
 	free(parser);
 }

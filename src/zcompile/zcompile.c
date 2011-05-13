@@ -493,16 +493,20 @@ uint16_t * zparser_conv_hex(const char *hex, size_t len)
 	int i;
 
 	if (len % 2 != 0) {
-		fprintf(stderr, "number of hex digits must be a multiple of 2");
+		zc_error_prev_line("number of hex digits "
+		                   "must be a multiple of 2");
+		parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 	} else if (len > MAX_RDLENGTH * 2) {
 		fprintf(stderr, "hex data exceeds maximum rdata length (%d)",
 			MAX_RDLENGTH);
+		parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 	} else {
 		/* the length part */
 
 		r = alloc_rdata(len / 2);
 		if (r == NULL) {
 			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
 			return NULL;
 		}
 		t = (uint8_t *)(r + 1);
@@ -517,6 +521,8 @@ uint16_t * zparser_conv_hex(const char *hex, size_t len)
 					fprintf(stderr,
 						"illegal hex character '%c'",
 						(int) *hex);
+					parser->error_occurred =
+						KNOT_ZCOMPILE_EBRDATA;
 					free(r);
 					return NULL;
 				}
@@ -536,9 +542,12 @@ uint16_t * zparser_conv_hex_length(const char *hex, size_t len)
 	uint8_t *t;
 	int i;
 	if (len % 2 != 0) {
-		fprintf(stderr, "number of hex digits must be a multiple of 2");
+		zc_error_prev_line("number of hex digits must be a "
+		                   "multiple of 2");
+		parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 	} else if (len > 255 * 2) {
-		fprintf(stderr, "hex data exceeds 255 bytes");
+		zc_error_prev_line("hex data exceeds 255 bytes");
+		parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 	} else {
 		uint8_t *l;
 
@@ -546,6 +555,7 @@ uint16_t * zparser_conv_hex_length(const char *hex, size_t len)
 		r = alloc_rdata(len / 2 + 1);
 		if (r == NULL) {
 			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
 			return NULL;
 		}
 
@@ -564,6 +574,8 @@ uint16_t * zparser_conv_hex_length(const char *hex, size_t len)
 					fprintf(stderr,
 						"illegal hex character '%c'",
 						(int) *hex);
+					parser->error_occurred =
+						KNOT_ZCOMPILE_EBRDATA;
 					free(r);
 					return NULL;
 				}
@@ -584,12 +596,14 @@ uint16_t * zparser_conv_time(const char *time)
 
 	/* Try to scan the time... */
 	if (!strptime(time, "%Y%m%d%H%M%S", &tm)) {
-		fprintf(stderr, "date and time is expected");
+		zc_error_prev_line("date and time is expected");
+		parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 	} else {
 		uint32_t l = htonl(mktime_from_utc(&tm));
 		r = alloc_rdata_init(&l, sizeof(l));
 		if (r == NULL) {
 			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
 			return NULL;
 		}
 	}
@@ -618,7 +632,8 @@ uint16_t * zparser_conv_services(const char *protostr, char *servicestr)
 		proto = getprotobynumber(atoi(protostr));
 	}
 	if (!proto) {
-		fprintf(stderr, "unknown protocol '%s'", protostr);
+		zc_error_prev_line("unknown protocol '%s'", protostr);
+		parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 		return NULL;
 	}
 
@@ -639,12 +654,13 @@ uint16_t * zparser_conv_services(const char *protostr, char *servicestr)
 					"unknown service '%s' for"
 					" protocol '%s'",
 					word, protostr);
+				parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 				continue;
 			}
 		}
 
 		if (port < 0 || port > 65535) {
-			fprintf(stderr, "bad port number %d", port);
+			zc_error_prev_line("bad port number %d", port);
 		} else {
 			set_bit(bitmap, port);
 			if (port > max_port) {
@@ -656,6 +672,7 @@ uint16_t * zparser_conv_services(const char *protostr, char *servicestr)
 	r = alloc_rdata(sizeof(uint8_t) + max_port / 8 + 1);
 	if (r == NULL) {
 		ERR_ALLOC_FAILED;
+		parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
 		return NULL;
 	}
 
@@ -674,15 +691,16 @@ uint16_t * zparser_conv_serial(const char *serialstr)
 
 	serial = strtoserial(serialstr, &t);
 	if (*t != '\0') {
-		fprintf(stderr, "serial is expected");
+		zc_error_prev_line("serial is expected");
+		parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 	} else {
 		serial = htonl(serial);
 		r = alloc_rdata_init(&serial, sizeof(serial));
 		if (r == NULL) {
 			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
 			return NULL;
 		}
-
 	}
 	return r;
 }
@@ -697,15 +715,16 @@ uint16_t * zparser_conv_period(const char *periodstr)
 	/* Allocate required space... */
 	period = strtottl(periodstr, &end);
 	if (*end != '\0') {
-		fprintf(stderr, "time period is expected");
+		zc_error_prev_line("time period is expected");
+		parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 	} else {
 		period = htonl(period);
 		r = alloc_rdata_init(&period, sizeof(period));
 		if (r == NULL) {
 			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
 			return NULL;
 		}
-
 	}
 	return r;
 }
@@ -718,14 +737,15 @@ uint16_t * zparser_conv_short(const char *text)
 
 	value = htons((uint16_t) strtol(text, &end, 10));
 	if (*end != '\0') {
-		fprintf(stderr, "integer value is expected");
+		zc_error_prev_line("integer value is expected");
+		parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 	} else {
 		r = alloc_rdata_init(&value, sizeof(value));
 		if (r == NULL) {
 			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
 			return NULL;
 		}
-
 	}
 	return r;
 }
@@ -738,14 +758,15 @@ uint16_t * zparser_conv_byte(const char *text)
 
 	value = (uint8_t) strtol(text, &end, 10);
 	if (*end != '\0') {
-		fprintf(stderr, "integer value is expected");
+		zc_error_prev_line("integer value is expected");
+		parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 	} else {
 		r = alloc_rdata_init(&value, sizeof(value));
 		if (r == NULL) {
 			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
 			return NULL;
 		}
-
 	}
 	return r;
 }
@@ -762,7 +783,8 @@ uint16_t * zparser_conv_algorithm(const char *text)
 		char *end;
 		id = (uint8_t) strtol(text, &end, 10);
 		if (*end != '\0') {
-			fprintf(stderr, "algorithm is expected");
+			zc_error_prev_line("algorithm is expected");
+			parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 			return NULL;
 		}
 	}
@@ -770,6 +792,7 @@ uint16_t * zparser_conv_algorithm(const char *text)
 	uint16_t *r = alloc_rdata_init(&id, sizeof(id));
 	if (r == NULL) {
 		ERR_ALLOC_FAILED;
+		parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
 		return NULL;
 	}
 
@@ -789,7 +812,8 @@ uint16_t * zparser_conv_certificate_type(const char *text)
 		char *end;
 		id = htons((uint16_t) strtol(text, &end, 10));
 		if (*end != '\0') {
-			fprintf(stderr, "certificate type is expected");
+			zc_error_prev_line("certificate type is expected");
+			parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 			return NULL;
 		}
 	}
@@ -797,6 +821,7 @@ uint16_t * zparser_conv_certificate_type(const char *text)
 	uint16_t *r = alloc_rdata_init(&id, sizeof(id));
 	if (r == NULL) {
 		ERR_ALLOC_FAILED;
+		parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
 		return NULL;
 	}
 
@@ -809,11 +834,13 @@ uint16_t * zparser_conv_a(const char *text)
 	uint16_t *r = NULL;
 
 	if (inet_pton(AF_INET, text, &address) != 1) {
-		fprintf(stderr, "invalid IPv4 address '%s'", text);
+		zc_error_prev_line("invalid IPv4 address '%s'", text);
+		parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 	} else {
 		r = alloc_rdata_init(&address, sizeof(address));
 		if (r == NULL) {
 			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
 			return NULL;
 		}
 	}
@@ -827,11 +854,13 @@ uint16_t * zparser_conv_aaaa(const char *text)
 	uint16_t *r = NULL;
 
 	if (inet_pton(AF_INET6, text, address) != 1) {
-		fprintf(stderr, "invalid IPv6 address '%s'", text);
+		zc_error_prev_line("invalid IPv6 address '%s'", text);
+		parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 	} else {
 		r = alloc_rdata_init(address, sizeof(address));
 		if (r == NULL) {
 			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
 			return NULL;
 		}
 	}
@@ -843,13 +872,15 @@ uint16_t * zparser_conv_text(const char *text, size_t len)
 	uint16_t *r = NULL;
 
 	if (len > 255) {
-		fprintf(stderr, "text string is longer than 255 characters,"
+		zc_error_prev_line("text string is longer than 255 characters,"
 			" try splitting it into multiple parts");
+		parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 	} else {
 		uint8_t *p;
 		r = alloc_rdata(len + 1);
 		if (r == NULL) {
 			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
 			return NULL;
 		}
 		p = (uint8_t *)(r + 1);
@@ -866,6 +897,7 @@ uint16_t * zparser_conv_dns_name(const uint8_t *name, size_t len)
 	r = alloc_rdata(len);
 	if (r == NULL) {
 		ERR_ALLOC_FAILED;
+		parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
 		return NULL;
 	}
 	p = (uint8_t *)(r + 1);
@@ -884,17 +916,20 @@ uint16_t * zparser_conv_b32(const char *b32)
 		r = alloc_rdata_init("", 1);
 		if (r == NULL) {
 			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
 			return NULL;
 		}
 		return r;
 	}
 	if ((base32hex_decode(b32, strlen(b32), (char *)buffer + 1, &i)) == 0) {
-		fprintf(stderr, "invalid base32 data\n");
+		zc_error_prev_line("invalid base32 data\n");
+		parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 	} else {
 		buffer[0] = i; /* store length byte */
 		r = alloc_rdata_init(buffer, i + 1);
 		if (r == NULL) {
 			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
 			return NULL;
 		}
 	}
@@ -909,11 +944,13 @@ uint16_t * zparser_conv_b64(const char *b64)
 
 	i = b64_pton(b64, buffer, B64BUFSIZE);
 	if (i == -1) {
-		fprintf(stderr, "invalid base64 data\n");
+		zc_error_prev_line("invalid base64 data\n");
+		parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 	} else {
 		r = alloc_rdata_init(buffer, i);
 		if (r == NULL) {
 			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
 			return NULL;
 		}
 	}
@@ -926,12 +963,14 @@ uint16_t * zparser_conv_rrtype(const char *text)
 	uint16_t type = dnslib_rrtype_from_string(text);
 
 	if (type == 0) {
-		fprintf(stderr, "unrecognized RR type '%s'", text);
+		zc_error_prev_line("unrecognized RR type '%s'", text);
+		parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 	} else {
 		type = htons(type);
 		r = alloc_rdata_init(&type, sizeof(type));
 		if (r == NULL) {
 			ERR_ALLOC_FAILED;
+			parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
 			return NULL;
 		}
 	}
@@ -956,6 +995,7 @@ uint16_t * zparser_conv_nxt(uint8_t nxtbits[])
 	uint16_t *r = alloc_rdata_init(nxtbits, last);
 	if (r == NULL) {
 		ERR_ALLOC_FAILED;
+		parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
 		return NULL;
 	}
 
@@ -1014,6 +1054,7 @@ uint16_t * zparser_conv_nsec(uint8_t nsecbits[NSEC_WINDOW_COUNT]
 	r = alloc_rdata(total_size);
 	if (r == NULL) {
 		ERR_ALLOC_FAILED;
+		parser->error_occurred = KNOT_ZCOMPILE_EBRDATA;
 		return NULL;
 	}
 	ptr = (uint8_t *)(r + 1);
@@ -1039,7 +1080,7 @@ static int parse_int(const char *str,
 {
 	*result = (int) strtol(str, end, 10);
 	if (*result < min || *result > max) {
-		fprintf(stderr, "%s must be within the range [%d .. %d]",
+		zc_error_prev_line("%s must be within the range [%d .. %d]",
 			name,
 			min,
 			max);
@@ -1135,7 +1176,7 @@ uint16_t * zparser_conv_loc(char *str)
 
 		/* Degrees */
 		if (*str == '\0') {
-			fprintf(stderr, "unexpected end of LOC data");
+			zc_error_prev_line("unexpected end of LOC data");
 			return NULL;
 		}
 
@@ -1143,7 +1184,7 @@ uint16_t * zparser_conv_loc(char *str)
 			return NULL;
 		}
 		if (!isspace((int)*str)) {
-			fprintf(stderr, "space expected after degrees");
+			zc_error_prev_line("space expected after degrees");
 			return NULL;
 		}
 		++str;
@@ -1154,7 +1195,7 @@ uint16_t * zparser_conv_loc(char *str)
 				return NULL;
 			}
 			if (!isspace((int)*str)) {
-				fprintf(stderr, "space expected after minutes");
+				zc_error_prev_line("space expected after minutes");
 				return NULL;
 			}
 			++str;
@@ -1174,12 +1215,12 @@ uint16_t * zparser_conv_loc(char *str)
 			}
 
 			if (!isspace((int)*str)) {
-				fprintf(stderr, "space expected after seconds");
+				zc_error_prev_line("space expected after seconds");
 				return NULL;
 			}
 
 			if (sscanf(start, "%lf", &d) != 1) {
-				fprintf(stderr, "error parsing seconds");
+				zc_error_prev_line("error parsing seconds");
 			}
 
 			if (d < 0.0 || d > 60.0) {
@@ -1224,7 +1265,7 @@ uint16_t * zparser_conv_loc(char *str)
 		}
 
 		if (!isspace((int)*str)) {
-			fprintf(stderr, "space expected after"
+			zc_error_prev_line("space expected after"
 				" latitude/longitude");
 			return NULL;
 		}
@@ -1233,12 +1274,12 @@ uint16_t * zparser_conv_loc(char *str)
 
 	/* Altitude */
 	if (*str == '\0') {
-		fprintf(stderr, "unexpected end of LOC data");
+		zc_error_prev_line("unexpected end of LOC data");
 		return NULL;
 	}
 
 	if (!isspace((int)*str)) {
-		fprintf(stderr, "space expected before altitude");
+		zc_error_prev_line("space expected before altitude");
 		return NULL;
 	}
 	++str;
@@ -1264,12 +1305,12 @@ uint16_t * zparser_conv_loc(char *str)
 			return NULL;
 		}
 		if (!isspace((int)*str) && *str != '\0' && *str != 'm') {
-			fprintf(stderr, "altitude fraction must be a number");
+			zc_error_prev_line("altitude fraction must be a number");
 			return NULL;
 		}
 		break;
 	default:
-		fprintf(stderr, "altitude must be expressed in meters");
+		zc_error_prev_line("altitude must be expressed in meters");
 		return NULL;
 	}
 	if (!isspace((int)*str) && *str != '\0') {
@@ -1277,13 +1318,13 @@ uint16_t * zparser_conv_loc(char *str)
 	}
 
 	if (sscanf(start, "%lf", &d) != 1) {
-		fprintf(stderr, "error parsing altitude");
+		zc_error_prev_line("error parsing altitude");
 	}
 
 	alt = (uint32_t)(10000000.0 + d * 100 + 0.5);
 
 	if (!isspace((int)*str) && *str != '\0') {
-		fprintf(stderr, "unexpected character after altitude");
+		zc_error_prev_line("unexpected character after altitude");
 		return NULL;
 	}
 
@@ -1292,7 +1333,7 @@ uint16_t * zparser_conv_loc(char *str)
 		vszhpvp[i] = precsize_aton(str + 1, &str);
 
 		if (!isspace((int)*str) && *str != '\0') {
-			fprintf(stderr, "invalid size or precision");
+			zc_error_prev_line("invalid size or precision");
 			return NULL;
 		}
 	}
@@ -1335,11 +1376,11 @@ uint16_t * zparser_conv_apl_rdata(char *str)
 	long p;
 
 	if (!colon) {
-		fprintf(stderr, "address family separator is missing");
+		zc_error_prev_line("address family separator is missing");
 		return NULL;
 	}
 	if (!slash) {
-		fprintf(stderr, "prefix separator is missing");
+		zc_error_prev_line("prefix separator is missing");
 		return NULL;
 	}
 
@@ -1362,17 +1403,17 @@ uint16_t * zparser_conv_apl_rdata(char *str)
 		length = IP6ADDRLEN;
 		maximum_prefix = length * 8;
 	} else {
-		fprintf(stderr, "invalid address family '%s'", str);
+		zc_error_prev_line("invalid address family '%s'", str);
 		return NULL;
 	}
 
 	rc = inet_pton(af, colon + 1, address);
 	if (rc == 0) {
-		fprintf(stderr, "invalid address '%s'", colon + 1);
+		zc_error_prev_line("invalid address '%s'", colon + 1);
 		return NULL;
 	} else if (rc == -1) {
 		char ebuf[256];
-		fprintf(stderr, "inet_pton failed: %s",
+		zc_error_prev_line("inet_pton failed: %s",
 			strerror_r(errno, ebuf, sizeof(ebuf)));
 		return NULL;
 	}
@@ -1385,11 +1426,11 @@ uint16_t * zparser_conv_apl_rdata(char *str)
 
 	p = strtol(slash + 1, &end, 10);
 	if (p < 0 || p > maximum_prefix) {
-		fprintf(stderr, "prefix not in the range 0 .. %d",
+		zc_error_prev_line("prefix not in the range 0 .. %d",
 			maximum_prefix);
 		return NULL;
 	} else if (*end != '\0') {
-		fprintf(stderr, "invalid prefix '%s'", slash + 1);
+		zc_error_prev_line("invalid prefix '%s'", slash + 1);
 		return NULL;
 	}
 	prefix = (uint8_t) p;
@@ -1434,7 +1475,7 @@ uint32_t zparser_ttl2int(const char *ttlstr, int *error)
 
 	ttl = strtottl(ttlstr, &t);
 	if (*t != 0) {
-		fprintf(stderr, "invalid TTL value: %s", ttlstr);
+		zc_error_prev_line("invalid TTL value: %s", ttlstr);
 		*error = 1;
 	}
 
@@ -1460,7 +1501,7 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 		rd = &parser->temporary_items[parser->rdata_count];
 //		if ((rd->data = (uint8_t *) region_alloc(parser->rr_region,
 //			sizeof(uint8_t) + 65535 * sizeof(uint8_t))) == NULL) {
-//			fprintf(stderr, "Could not allocate memory for TXT RR");
+//			zc_error_prev_line("Could not allocate memory for TXT RR");
 //			return;
 //		}
 		parser->rdata_count++;
@@ -1470,7 +1511,7 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 	}
 
 	if ((size_t)rd->raw_data[0] + (size_t)data[0] > 65535) {
-		fprintf(stderr, "too large rdata element");
+		zc_error_prev_line("too large rdata element");
 		return;
 	}
 
@@ -1508,7 +1549,7 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 	          error_to_str(knot_zcompile_error_msgs, rdata_count),
 	                       rdata_count);
 	if (rdata_count < 0) {
-		fprintf(stderr, "bad unknown RDATA\n");
+		zc_error_prev_line("bad unknown RDATA\n");
 		/*!< \todo leaks */
 		return;
 	}
@@ -1770,7 +1811,7 @@ int process_rr(void)
 //		descriptor, rr->rdata_count, rr->rdatas);
 
 //	if (max_rdlength > MAX_RDLENGTH) {
-//		fprintf(stderr, "maximum rdata length exceeds %d octets",
+//		zc_error_prev_line("maximum rdata length exceeds %d octets",
 //		        MAX_RDLENGTH);
 //		return 0;
 //	}
@@ -1778,7 +1819,7 @@ int process_rr(void)
 	if (current_rrset->type == DNSLIB_RRTYPE_SOA) {
 		if (dnslib_dname_compare(current_rrset->owner,
 					 parser->origin->owner) != 0) {
-			fprintf(stderr, "SOA record has a different "
+			zc_error_prev_line("SOA record has a different "
 				"owner than the one specified "
 				"in config!\n");
 			/* Such SOA cannot even be added, because
@@ -1802,7 +1843,7 @@ int process_rr(void)
 
 		zone = dnslib_zone_new(parser->origin, 0);
 		if (zone == NULL) {
-			fprintf(stderr, "Could not create new zone!\n");
+			zc_error_prev_line("Could not create new zone!\n");
 			return KNOT_ZCOMPILE_ENOMEM;
 		}
 		parser->current_zone = zone;
@@ -1919,20 +1960,20 @@ int process_rr(void)
 //	if(current_rrset->type ==
 //	   DNSLIB_RRTYPE_DNAME &&
 //	   current_rrset->rdata->count > 1) {
-//		fprintf(stderr, "multiple DNAMEs at the same name");
+//		zc_error_prev_line("multiple DNAMEs at the same name");
 //	}
 //	/* \note this actually counts items, not the legth we would need */
 //	if(current_rrset->type ==
 //	   DNSLIB_RRTYPE_CNAME &&
 //	   current_rrset->rdata->count > 1) {
-//		fprintf(stderr, "multiple CNAMEs at the same name");
+//		zc_error_prev_line("multiple CNAMEs at the same name");
 //	/* \note this actually counts items, not the legth we would need */
 //	}
 //	if((current_rrset->type == DNSLIB_RRTYPE_DNAME &&
 //	    dnslib_node_get_rrset(node, TYPE_CNAME)) ||
 //	    (current_rrset->type == DNSLIB_RRTYPE_CNAME &&
 //	    dnslib_node_get_rrset(node, TYPE_DNAME))) {
-//		fprintf(stderr, "DNAME and CNAME at the same name");
+//		zc_error_prev_line("DNAME and CNAME at the same name");
 //	}
 //	/* \note we don't have similar function - maybe
 //       * length of the skip_list
@@ -1940,7 +1981,7 @@ int process_rr(void)
 //	 */
 //	if(domain_find_rrset(rr->owner, zone, TYPE_CNAME) &&
 //		domain_find_non_cname_rrset(rr->owner, zone)) {
-//		fprintf(stderr, "CNAME and other data at the same name");
+//		zc_error_prev_line("CNAME and other data at the same name");
 //	}
 
 	if (vflag > 1 && totalrrs > 0 && (totalrrs % progress == 0)) {
@@ -1983,7 +2024,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	if (!outfile) {
 		fprintf(stderr, "Missing output file for '%s'\n",
 			zonefile);
-		return -1;
+		return KNOT_ZCOMPILE_EINVAL;
 	}
 
 	char ebuf[256];
@@ -2000,10 +2041,6 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		return KNOT_ZCOMPILE_ENOMEM;
 	}
 
-	//assert(origin_node->next == NULL);
-
-	assert(origin_node->parent == NULL);
-
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
 		fprintf(stderr, "Cannot open '%s': %s.",
 			zonefile, strerror_r(errno, ebuf, sizeof(ebuf)));
@@ -2011,6 +2048,10 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	}
 
 	if (yyparse() != 0) {
+		if (parser->dname_table != NULL) {
+			dnslib_dname_table_free(&parser->dname_table);
+		}
+		zparser_free();
 		return KNOT_ZCOMPILE_ESYNT;
 	}
 
@@ -2019,17 +2060,15 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		process_rrsigs_in_node(parser->last_node);
 		rrset_list_delete(&parser->node_rrsigs);
 	}
-
 	debug_zp("zone parsed\n");
 
+//	uint found_orphans = find_rrsets_orphans(parser->current_zone,
+//						 parser->rrsig_orphans);
 
-	uint found_orphans;
-
-	found_orphans = find_rrsets_orphans(parser->current_zone,
-					    parser->rrsig_orphans);
-
+	find_rrsets_orphans(parser->current_zone,
+	                    parser->rrsig_orphans);
 	debug_zp("%u orphans found\n", found_orphans);
-
+	/* List is no longer needed. */
 	rrset_list_delete(&parser->rrsig_orphans);
 
 	dnslib_zone_adjust_dnames(parser->current_zone);
@@ -2044,12 +2083,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	/* This is *almost* unnecessary */
 	dnslib_zone_deep_free(&(parser->current_zone), 0);
 
-//	dnslib_zone_t *some_zone= dnslib_zload_load(dnslib_zload_open(outfile));
-
 	fclose(yyin);
-
 	fflush(stdout);
-
 	totalerrors += parser->errors;
 
 	zparser_free();

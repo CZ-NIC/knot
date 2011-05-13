@@ -111,6 +111,8 @@ typedef struct zparser zparser_type;
 
 extern zparser_type *parser;
 
+extern void zc_error_prev_line(const char *fmt, ...);
+
 /* used in zonec.lex */
 extern FILE *yyin;
 
