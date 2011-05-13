@@ -102,7 +102,6 @@ struct zparser {
 	rrset_list_t *rrsig_orphans;
 
 	dnslib_dname_t *root_domain; /*!< Root domain name. */
-	slab_cache_t *parser_slab; /*!< Slab for parser. */
 	rrset_list_t *node_rrsigs; /*!< List of RRSIGs in current node. */
 
 	int rdata_count; /*!< Count of parsed rdata. */
