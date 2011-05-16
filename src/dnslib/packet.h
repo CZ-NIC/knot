@@ -125,6 +125,8 @@ struct dnslib_packet {
 	short tmp_rrsets_max;    /*!< Allocated space for temporary RRSets. */
 
 	struct dnslib_packet *query; /*!< Associated query. */
+
+	dnslib_packet_prealloc_type_t prealloc_type;
 };
 
 typedef struct dnslib_packet dnslib_packet_t;
