@@ -259,6 +259,7 @@ static int err_handler_handle_error(err_handler_t *handler,
 				    const dnslib_node_t *node,
 				    uint error)
 {
+	assert(handler && node);
 	if ((error != 0) &&
 	    (error > ZC_ERR_GLUE_GENERAL_ERROR)) {
 		return ZC_ERR_UNKNOWN;
@@ -274,7 +275,6 @@ static int err_handler_handle_error(err_handler_t *handler,
 
 	if ((error != 0) &&
 	    (error < ZC_ERR_GENERIC_GENERAL_ERROR)) {
-
 		/* The two errors before SOA were handled */
 		log_error_from_node(handler, node, error);
 
@@ -376,7 +376,6 @@ static int check_cname_cycles_in_zone(dnslib_zone_t *zone,
 
 	const dnslib_dname_t *next_dname =
 		dnslib_rdata_cname_name(tmp_rdata);
-
 	assert(next_dname);
 
 	while (i < MAX_CNAME_CYCLE_DEPTH && next_dname != NULL) {
@@ -385,6 +384,7 @@ static int check_cname_cycles_in_zone(dnslib_zone_t *zone,
 			next_node =
 				dnslib_zone_get_nsec3_node(zone, next_dname);
 		}
+		assert(next_node);
 
 		if (next_node != NULL) {
 			next_rrset = dnslib_node_rrset(next_node,
@@ -392,6 +392,7 @@ static int check_cname_cycles_in_zone(dnslib_zone_t *zone,
 			if (next_rrset != NULL) {
 				next_dname =
 				dnslib_rdata_cname_name(next_rrset->rdata);
+				assert(next_dname);
 			} else {
 				next_node = NULL;
 				next_dname = NULL;
@@ -444,7 +445,7 @@ static int check_dnskey_rdata(const dnslib_rdata_t *rdata)
 {
 	/* check that Zone key bit it set - position 7 in net order */
 	/* FIXME endian */
-	uint16_t mask = 0b0000000100000000;
+	uint16_t mask = 1 << 8;
 
 	uint16_t flags =
 		dnslib_wire_read_u16((uint8_t *)rdata_item_data
@@ -883,7 +884,7 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 			uint8_t flags =
 		((uint8_t *)(previous_rrset->rdata->items[1].raw_data))[2];
 
-			uint8_t opt_out_mask = 0b00000001;
+			uint8_t opt_out_mask = 1;
 
 			if (!(flags & opt_out_mask)) {
 				err_handler_handle_error(handler, node,
