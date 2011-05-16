@@ -655,7 +655,7 @@ int dnslib_packet_parse_from_wire(dnslib_packet_t *packet,
 	// save the wireformat in the packet
 	// TODO: can we just save the pointer, or we have to copy the data??
 	assert(packet->wireformat == NULL);
-	packet->wireformat = wireformat;
+	packet->wireformat = (uint8_t*)wireformat;
 	packet->size = size;
 	packet->free_wireformat = 0;
 
