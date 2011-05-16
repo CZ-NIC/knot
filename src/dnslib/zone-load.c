@@ -230,7 +230,7 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 	if (dnslib_rdata_set_items(rdata, items, desc->length) != 0) {
 		fprintf(stderr, "zoneload: Could not set items "
 			"when loading rdata.\n");
-		load_rdata_purge(rdata, items, i + 1, type);
+		load_rdata_purge(rdata, items, desc->length, type);
 		return NULL;
 	}
 
