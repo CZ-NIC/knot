@@ -286,14 +286,15 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
 				return DNSLIB_EFEWDATA;
 			}
 
-			items[i].raw_data = (uint16_t *)malloc(item_size);
+			items[i].raw_data = (uint16_t *)malloc(item_size + 2);
 			if (items[i].raw_data == NULL) {
 				free(items);
 				return DNSLIB_ENOMEM;
 			}
 			// TODO: save size to the RDATA item!!!
 //			printf("Read: %u\n", dnslib_wire_read_u32(wire + *pos));
-			memcpy(items[i].raw_data, wire + *pos, item_size);
+			memcpy(items[i].raw_data, &item_size, 2);
+			memcpy(items[i].raw_data + 1, wire + *pos, item_size);
 			*pos += item_size;
 			parsed += item_size;
 		}
