@@ -103,8 +103,20 @@ static void load_rdata_purge(dnslib_rdata_t *rdata,
 			     int count,
 			     uint16_t type)
 {
-	dnslib_rdata_set_items(rdata, items, count);
-	dnslib_rdata_deep_free(&rdata, type, 0);
+	/* Free items up to the i-th index. */
+	dnslib_rrtype_descriptor_t *desc =
+		dnslib_rrtype_descriptor_by_type(type);
+	assert(desc);
+	for (int i = 0; i < count; i++) {
+		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+		    desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME ||
+		    desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME) {
+			dnslib_dname_free(&items[i].dname);
+		} else {
+			free(items[i].raw_data);
+		}
+	}
+	dnslib_rdata_free(&rdata);
 	free(items);
 }
 
