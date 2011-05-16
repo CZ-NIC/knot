@@ -384,7 +384,6 @@ static int check_cname_cycles_in_zone(dnslib_zone_t *zone,
 			next_node =
 				dnslib_zone_get_nsec3_node(zone, next_dname);
 		}
-		assert(next_node);
 
 		if (next_node != NULL) {
 			next_rrset = dnslib_node_rrset(next_node,

@@ -1633,7 +1633,7 @@ int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone, dnslib_rrset_t *rrsig)
 
 	if (tmp_rrset->rrsigs != NULL) {
 		dnslib_rrset_merge((void *)&tmp_rrset->rrsigs, (void *)&rrsig);
-		dnslib_rrset_deep_free(&rrsig);
+		dnslib_rrset_free(&rrsig);
 	} else {
 		tmp_rrset->rrsigs = rrsig;
 	}
