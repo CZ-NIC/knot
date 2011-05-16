@@ -568,7 +568,7 @@ static int dnslib_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 		}
 	}
 
-	return err;
+	return (err < 0) ? err : DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
