@@ -302,8 +302,8 @@ static int dnslib_packet_realloc_rrsets(const dnslib_rrset_t ***rrsets,
                                         short *max_count,
                                         short default_max_count, short step)
 {
-	printf("Max count: %d, default max count: %d\n", *max_count,
-	       default_max_count);
+	debug_dnslib_packet("Max count: %d, default max count: %d\n",
+	       *max_count, default_max_count);
 	int free_old = (*max_count) != default_max_count;
 	const dnslib_rrset_t **old = *rrsets;
 
@@ -965,18 +965,20 @@ int dnslib_packet_add_tmp_rrset(dnslib_packet_t *packet,
 void dnslib_packet_free_tmp_rrsets(dnslib_packet_t *pkt)
 {
 	for (int i = 0; i < pkt->tmp_rrsets_count; ++i) {
-		// TODO: this is quite ugly, but better than copying whole
-		// function (for reallocating rrset array)
+DEBUG_DNSLIB_PACKET(
 		char *name = dnslib_dname_to_str(
 			(((dnslib_rrset_t **)(pkt->tmp_rrsets))[i])->owner);
-		printf("Freeing tmp RRSet on ptr: %p (ptr to ptr: %p,"
-		       " type: %s, owner: %s)\n",
+		debug_dnslib_packet("Freeing tmp RRSet on ptr: %p (ptr to ptr:"
+		       " %p, type: %s, owner: %s)\n",
 		       (((dnslib_rrset_t **)(pkt->tmp_rrsets))[i]),
 		       &(((dnslib_rrset_t **)(pkt->tmp_rrsets))[i]),
 		       dnslib_rrtype_to_string(
 		            (((dnslib_rrset_t **)(pkt->tmp_rrsets))[i])->type),
 		       name);
 		free(name);
+)
+		// TODO: this is quite ugly, but better than copying whole
+		// function (for reallocating rrset array)
 		dnslib_rrset_deep_free(
 			&(((dnslib_rrset_t **)(pkt->tmp_rrsets))[i]), 1, 1, 1);
 	}
