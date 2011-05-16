@@ -206,7 +206,7 @@ void dnslib_rrset_free(dnslib_rrset_t **rrset);
  *                          dnslib_rdata_deep_free().)
  */
 void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner,
-                            int free_rdata_dnames);
+                            int free_rdata, int free_rdata_dnames);
 
 /*!
  * \brief Merges two RRSets.

@@ -299,10 +299,10 @@ void dnslib_node_free_rrsets(dnslib_node_t *node, int free_rdata_dnames)
 
 	if (skip_node != NULL) {
 		dnslib_rrset_deep_free((dnslib_rrset_t **)&skip_node->value, 0,
-		                       free_rdata_dnames);
+		                       1, free_rdata_dnames);
 		while ((skip_node = skip_next(skip_node)) != NULL) {
 			dnslib_rrset_deep_free((dnslib_rrset_t **)
-			                        &skip_node->value, 0,
+			                        &skip_node->value, 0, 1,
 			                        free_rdata_dnames);
 		}
 	}
