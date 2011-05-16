@@ -449,8 +449,10 @@ dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
 			// pointer.
 //			printf("Pointer.\n");
 			p = dnslib_wire_get_pointer(wire + p);
-			*pos += 2;
-			pointer_used = 1;
+			if (!pointer_used) {
+				*pos += 2;
+				pointer_used = 1;
+			}
 			if (p >= size) {
 				return NULL;
 			}
