@@ -191,7 +191,7 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 					return NULL;
 				}
 				items[i].dname->node =
-						id_array[dname_id]->node;
+					id_array[dname_id]->node;
 			} else if (!in_the_zone) { /* destroy the node */
 				if (id_array[dname_id]->node != NULL) {
 					dnslib_node_free(&id_array[dname_id]->
@@ -230,6 +230,8 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 	if (dnslib_rdata_set_items(rdata, items, desc->length) != 0) {
 		fprintf(stderr, "zoneload: Could not set items "
 			"when loading rdata.\n");
+		load_rdata_purge(rdata, items, i + 1, type);
+		return NULL;
 	}
 
 	free(items);
@@ -292,7 +294,8 @@ static dnslib_rrset_t *dnslib_load_rrsig(FILE *f, dnslib_dname_t **id_array)
 		if (tmp_rdata) {
 			dnslib_rrset_add_rdata(rrsig, tmp_rdata);
 		} else {
-			dnslib_rrset_deep_free(&rrsig, 0, 1);
+			fprintf(stderr, "Could not load rdata!\n");
+			dnslib_rrset_deep_free(&rrsig, 0, 0);
 			return NULL;
 		}
 	}
@@ -348,7 +351,8 @@ static dnslib_rrset_t *dnslib_load_rrset(FILE *f, dnslib_dname_t **id_array)
 		if (tmp_rdata) {
 			dnslib_rrset_add_rdata(rrset, tmp_rdata);
 		} else {
-			dnslib_rrset_deep_free(&rrset, 0, 1);
+			fprintf(stderr, "Could not load rdata!\n");
+			dnslib_rrset_deep_free(&rrset, 0, 0);
 			return NULL;
 		}
 	}
@@ -357,6 +361,11 @@ static dnslib_rrset_t *dnslib_load_rrset(FILE *f, dnslib_dname_t **id_array)
 
 	if (rrsig_count) {
 		tmp_rrsig = dnslib_load_rrsig(f, id_array);
+		if (tmp_rrsig == NULL) {
+			fprintf(stderr, "Could not load rrsig!\n");
+		}
+		dnslib_rrset_deep_free(&rrset, 0, 0);
+		return NULL;
 	}
 
 	rrset->rrsigs = tmp_rrsig;
@@ -462,7 +471,10 @@ static void find_and_set_wildcard_child(dnslib_zone_t *zone,
 				 dnslib_node_t *node, int nsec3)
 {
 	dnslib_dname_t *chopped = dnslib_dname_left_chop(node->owner);
-	assert(chopped);
+	if (chopped == NULL) {
+		ERR_ALLOC_FAILED;
+		return;
+	}
 	dnslib_node_t *wildcard_parent;
 	if (!nsec3) {
 		wildcard_parent =
@@ -737,37 +749,6 @@ dnslib_dname_t *read_dname_with_id(FILE *f)
 	return ret;
 }
 
-//static dnslib_dname_table_t *create_dname_table(FILE *f, uint max_id)
-//{
-//	if (f == NULL ) {
-//		return NULL;
-//	}
-
-//	if (!fread_safe(&max_id, sizeof(max_id), 1, f)) {
-//		return NULL;
-//	}
-
-//	dnslib_dname_table_t *dname_table = dnslib_dname_table_new();
-//	if (dname_table == NULL) {
-//		return NULL;
-//	}
-
-//	/* Create nodes containing dnames. */
-//	for (uint i = 1; i < max_id; i++) {
-//		dnslib_dname_t *loaded_dname = read_dname_with_id(f);
-//		if (loaded_dname == NULL) {
-//			dnslib_dname_table_deep_free(&dname_table);
-//			return NULL;
-//		}
-//		if (dnslib_dname_table_add_dname(dname_table,
-//		                                 loaded_dname) != DNSLIB_EOK) {
-
-//		}
-//	}
-
-//	return dname_table;
-//}
-
 static dnslib_dname_table_t *create_dname_table_from_array(
 	dnslib_dname_t **array, uint max_id)
 {
@@ -785,6 +766,7 @@ static dnslib_dname_table_t *create_dname_table_from_array(
 	for (uint i = 1; i < max_id; i++) {
 		if (dnslib_dname_table_add_dname(ret,
 						 array[i]) != DNSLIB_EOK) {
+			ERR_ALLOC_FAILED;
 			dnslib_dname_table_deep_free(&ret);
 			return NULL;
 		}
@@ -809,7 +791,6 @@ static dnslib_dname_t **create_dname_array(FILE *f, uint max_id)
 
 	for (uint i = 0; i < max_id - 1; i++) {
 		dnslib_dname_t *read_dname = read_dname_with_id(f);
-//		printf("First dname: %s\n", dnslib_dname_to_str(array[i]));
 		if (read_dname == NULL) {
 			cleanup_id_array(array, 0, i);
 			return NULL;
@@ -827,7 +808,6 @@ static dnslib_dname_t **create_dname_array(FILE *f, uint max_id)
 			cleanup_id_array(array, 0, i);
 			return NULL;
 		}
-//		assert(array[i]->id == i);
 	}
 
 	return array;
@@ -842,13 +822,6 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	FILE *f = loader->fp;
 
 	dnslib_node_t *tmp_node;
-
-	/* Load the dname table. */
-//	const dnslib_dname_table_t *dname_table =
-//		create_dname_table(f, total_dnames);
-//	if (dname_table == NULL) {
-//		return NULL;
-//	}
 
 	uint node_count;
 	uint nsec3_node_count;
@@ -997,7 +970,6 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 
 	/* ID array is now useless */
 	free(id_array);
-
 
 	return zone;
 }
