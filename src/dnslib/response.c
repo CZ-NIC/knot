@@ -1110,7 +1110,7 @@ static void dnslib_response_free_tmp_rrsets(dnslib_response_t *resp)
 		// TODO: this is quite ugly, but better than copying whole
 		// function (for reallocating rrset array)
 		dnslib_rrset_deep_free(
-			&(((dnslib_rrset_t **)(resp->tmp_rrsets))[i]), 1, 1);
+			&(((dnslib_rrset_t **)(resp->tmp_rrsets))[i]), 1, 1, 1);
 	}
 }
 

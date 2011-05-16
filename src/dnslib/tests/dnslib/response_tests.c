@@ -753,7 +753,7 @@ static void free_parsed_response(test_response_t *response)
 		if (response->additional != NULL) {
 			for (int j = 0; j < response->arcount; j++) {
 				dnslib_rrset_deep_free(&(response->
-							 additional[j]), 1, 1);
+				                       additional[j]), 1, 1, 1);
 			}
 
 			free(response->additional);
@@ -762,7 +762,7 @@ static void free_parsed_response(test_response_t *response)
 		if (response->answer != NULL) {
 			for (int j = 0; j < response->ancount; j++) {
 				dnslib_rrset_deep_free(&(response->
-							 answer[j]), 1, 1);
+				                       answer[j]), 1, 1, 1);
 			}
 
 			free(response->answer);
@@ -771,7 +771,7 @@ static void free_parsed_response(test_response_t *response)
 		if (response->authority != NULL) {
 			for (int j = 0; j < response->nscount; j++) {
 				dnslib_rrset_deep_free(&(response->
-							 authority[j]), 1, 1);
+				                       authority[j]), 1, 1, 1);
 			}
 
 			free(response->authority);

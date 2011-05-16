@@ -313,7 +313,7 @@ static dnslib_rrset_t *dnslib_load_rrsig(FILE *f, dnslib_dname_t **id_array)
 		if (tmp_rdata) {
 			dnslib_rrset_add_rdata(rrsig, tmp_rdata);
 		} else {
-			dnslib_rrset_deep_free(&rrsig, 0, 1);
+			dnslib_rrset_deep_free(&rrsig, 0, 1, 1);
 			return NULL;
 		}
 	}
@@ -367,7 +367,7 @@ static dnslib_rrset_t *dnslib_load_rrset(FILE *f, dnslib_dname_t **id_array)
 		if (tmp_rdata) {
 			dnslib_rrset_add_rdata(rrset, tmp_rdata);
 		} else {
-			dnslib_rrset_deep_free(&rrset, 0, 1);
+			dnslib_rrset_deep_free(&rrset, 0, 1, 1);
 			return NULL;
 		}
 	}
