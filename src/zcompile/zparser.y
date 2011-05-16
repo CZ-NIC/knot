@@ -89,7 +89,7 @@ dnslib_dname_t *error_domain;
 %token <type> T_SPF T_NSEC3 T_IPSECKEY T_DHCID T_NSEC3PARAM
 
 /* other tokens */
-%token	       DOLLAR_TTL DOLLAR_ORIGIN NL SP
+%token	       DOLLAR_TTL DOLLAR_ORIGIN NL SP NO_MEM
 %token <data>  STR PREV BITLAB
 %token <ttl>   T_TTL
 %token <rclass> T_RRCLASS
@@ -113,6 +113,10 @@ lines:	/* empty file */
 
 line:	NL
     |	sp NL
+    |	NO_MEM {
+    		zc_error_prev_line("Parser ran out of memory!");
+		YYABORT;
+	}
     |	PREV NL		{}    /* Lines containing only whitespace.  */
     |	ttl_directive
 	{
@@ -126,15 +130,21 @@ line:	NL
     {	/* rr should be fully parsed */
 	if (!parser->error_occurred) {
 		dnslib_rdata_t *tmp_rdata = dnslib_rdata_new();
-
-		assert(tmp_rdata != NULL);
+		if (tmp_rdata == NULL) {
+			ERR_ALLOC_FAILED;
+			dnslib_rrset_deep_free(&(parser->current_rrset),
+					       0, 0);
+			dnslib_zone_deep_free(&(parser->current_zone),
+					      9);
+			YYABORT;
+		}
 
 		if (dnslib_rdata_set_items(tmp_rdata,
 		    parser->temporary_items,
 		    parser->rdata_count) != 0) {
 			dnslib_rdata_free(&tmp_rdata);
-			dnslib_rrset_deep_free(&(parser->current_rrset), 1, 1);
-			dnslib_zone_deep_free(&(parser->current_zone), 1);
+			dnslib_rrset_deep_free(&(parser->current_rrset), 0, 0);
+			dnslib_zone_deep_free(&(parser->current_zone), 0);
 			YYABORT;
 		}
 
@@ -156,17 +166,17 @@ line:	NL
 			 * Only reason function above could fail is
 			 * memory shortage. There is no point in continuing.
 			 */
+			ERR_ALLOC_FAILED;
 			dnslib_rrset_deep_free(&(parser->current_rrset),
 					       0, 0);
 			dnslib_zone_deep_free(&(parser->current_zone),
-					      1);
+					      0);
 			YYABORT;
 		}
 
 		assert(parser->current_rrset->owner != NULL);
 		int ret = 0;
 		if ((ret = process_rr()) != 0) {
-			/* Should it fail? */
 			char *tmp_dname_str =
 			dnslib_dname_to_str(parser->current_rrset->owner);
 			fprintf(stderr, "Error: could not process RRSet\n"
@@ -185,7 +195,7 @@ line:	NL
 				dnslib_rrset_deep_free(&(parser->current_rrset),
 						       0, 0);
 				dnslib_zone_deep_free(&(parser->current_zone),
-						      1);
+						      0);
 				YYABORT;
 			} else {
 				/* Free rdata, it will not be added
@@ -217,7 +227,7 @@ line:	NL
 			dnslib_rrset_deep_free(&(parser->current_rrset),
 					       0, 0);
 			dnslib_zone_deep_free(&(parser->current_zone),
-					      1);
+					      0);
 			YYABORT;
 		}
 	}
@@ -252,6 +262,8 @@ ttl_directive:	DOLLAR_TTL sp STR trail
 	free($3.str);
     }
     ;
+
+
 
 origin_directive:	DOLLAR_ORIGIN sp abs_dname trail
     {
@@ -407,7 +419,7 @@ wire_abs_dname:	'.'
 	    	dnslib_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0);
 	        dnslib_zone_deep_free(&(parser->current_zone),
-		                      1);
+		                      0);
 		YYABORT;
 	    }
 	    result[0] = 0;
@@ -422,7 +434,7 @@ wire_abs_dname:	'.'
 	    	dnslib_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0);
 	        dnslib_zone_deep_free(&(parser->current_zone),
-		                      1);
+		                      0);
 		YYABORT;
 	    }
 	    memcpy(result, $1.str, $1.len);
@@ -444,7 +456,7 @@ wire_label:	STR
 	    	dnslib_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0);
 	        dnslib_zone_deep_free(&(parser->current_zone),
-		                      1);
+		                      0);
 		YYABORT;
 	    }
 
@@ -477,7 +489,7 @@ wire_rel_dname:	wire_label
 	    	dnslib_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0);
 		dnslib_zone_deep_free(&(parser->current_zone),
-		                      1);
+		                      0);
 		YYABORT;
 	    }
 	    memcpy($$.str, $1.str, $1.len);
@@ -524,7 +536,7 @@ concatenated_str_seq:	STR
 	    	dnslib_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0);
 	        dnslib_zone_deep_free(&(parser->current_zone),
-		                      1);
+		                      0);
 		YYABORT;
 	    }
 
@@ -545,7 +557,7 @@ concatenated_str_seq:	STR
 	    	dnslib_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0);
 	        dnslib_zone_deep_free(&(parser->current_zone),
-		                      1);
+		                      0);
 		YYABORT;
 	    }
 	    memcpy($$.str, $1.str, $1.len);
@@ -623,7 +635,7 @@ str_sp_seq:	STR
 	    	dnslib_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0);
 	        dnslib_zone_deep_free(&(parser->current_zone),
-		                      1);
+		                      0);
 		YYABORT;
 	    }
 	    memcpy(result, $1.str, $1.len);
@@ -650,7 +662,7 @@ str_dot_seq:	STR
 	    	dnslib_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0);
 	        dnslib_zone_deep_free(&(parser->current_zone),
-		                      1);
+		                      0);
 		YYABORT;
 	    }
 	    memcpy(result, $1.str, $1.len);
@@ -681,7 +693,7 @@ dotted_str:	STR
 	    	dnslib_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0);
 	        dnslib_zone_deep_free(&(parser->current_zone),
-		                      1);
+		                      0);
 		YYABORT;
 	    }
 	    memcpy(result, $1.str, $1.len);
@@ -700,7 +712,7 @@ dotted_str:	STR
 	    	dnslib_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0);
 	        dnslib_zone_deep_free(&(parser->current_zone),
-		                      1);
+		                      0);
 		YYABORT;
 	    }
 	    memcpy(result, $1.str, $1.len);
@@ -844,6 +856,11 @@ type_and_rdata:
     {
 	    zc_error_prev_line("unrecognized RR type '%s'", $1.str);
 	    free($1.str);
+    }
+    |	NO_MEM
+    {
+    	zc_error_prev_line("parser ran out of memory!");
+    	YYABORT;
     }
     ;
 
@@ -1283,8 +1300,11 @@ rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR
 							 $15.len));*/
 	    dnslib_dname_t *dname =
 		dnslib_dname_new_from_wire((uint8_t *)$15.str, $15.len, NULL);
-
-	    dnslib_dname_cat(dname, parser->root_domain);
+	    if (dname == NULL) {
+	    	parser->error_occurred = KNOT_ZCOMPILE_ENOMEM;
+	    } else {
+	    	dnslib_dname_cat(dname, parser->root_domain);
+	    }
 
 	    zadd_rdata_domain(dname);
 	    /* sig name */
@@ -1412,7 +1432,7 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 				dnslib_rrset_deep_free(&(parser->current_rrset),
 						                          0, 0);
 				dnslib_zone_deep_free(&(parser->current_zone),
-						      1);
+						      0);
 				YYABORT;
 			}
 			if($7.str[strlen($7.str)-1] != '.') {
@@ -1425,7 +1445,7 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 				dnslib_rrset_deep_free(&(parser->current_rrset),
 				                       0, 0);
 			        dnslib_zone_deep_free(&(parser->current_zone),
-				                      1);
+				                      0);
 				YYABORT;
 			    }
 			    name = dnslib_dname_cat(tmpd,
@@ -1443,7 +1463,7 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			    dnslib_rrset_deep_free(&(parser->current_rrset),
 			                           0, 0);
 			    dnslib_zone_deep_free(&(parser->current_zone),
-			                          1);
+			                          0);
 			    YYABORT;
 			}
 			memcpy(dncpy, name->name, name->size);

@@ -416,7 +416,7 @@ static int
 parse_token(int token, char *yytext, enum lexer_state *lexer_state)
 {
 	size_t len;
-	char *str;
+	char *str = NULL;
 
 	if (*lexer_state == EXPECT_OWNER) {
 		*lexer_state = PARSING_OWNER;
@@ -450,9 +450,15 @@ parse_token(int token, char *yytext, enum lexer_state *lexer_state)
 	}
 
 	str = strdup(yytext);
+	if (str == NULL) {
+		/* Out of memory */
+		ERR_ALLOC_FAILED;
+		return NO_MEM;
+	}
 	len = zoctet(str);
 
 	yylval.data.str = str;
+	assert(yylval.data.str != NULL);
 	yylval.data.len = len;
 
 	if (strcmp(yytext, ".") == 0) {
