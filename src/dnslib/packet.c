@@ -19,6 +19,13 @@
 			? DEFAULT_##type##_QUERY  \
 			: DEFAULT_##type)
 
+
+
+typedef enum {
+	DNSLIB_PACKET_DUPL_IGNORE,
+	DNSLIB_PACKET_DUPL_SKIP,
+	DNSLIB_PACKET_DUPL_MERGE
+} dnslib_packet_duplicate_handling_t;
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
@@ -363,6 +370,7 @@ static dnslib_rrset_t *dnslib_packet_parse_rr(const uint8_t *wire, size_t *pos,
 
 	dnslib_dname_t *owner = dnslib_dname_parse_from_wire(wire, pos, size,
 	                                                     NULL);
+	debug_dnslib_packet("Created owner: %p\n", owner);
 	if (owner == NULL) {
 		return NULL;
 	}
@@ -439,12 +447,6 @@ DEBUG_DNSLIB_PACKET(
 	return rrset;
 }
 
-typedef enum {
-	DNSLIB_PACKET_DUPL_IGNORE,
-	DNSLIB_PACKET_DUPL_SKIP,
-	DNSLIB_PACKET_DUPL_MERGE
-} dnslib_packet_duplicate_handling_t;
-
 /*----------------------------------------------------------------------------*/
 
 static int dnslib_packet_add_rrset(dnslib_rrset_t *rrset,
@@ -476,6 +478,8 @@ DEBUG_DNSLIB_PACKET(
 
 	if (dupl == DNSLIB_PACKET_DUPL_SKIP &&
 	    dnslib_packet_contains(packet, rrset, DNSLIB_RRSET_COMPARE_PTR)) {
+		/*! \todo This should also return > 0, as it means that the
+		          RRSet was not used actually. */
 		return DNSLIB_EOK;
 	}
 
@@ -564,6 +568,10 @@ static int dnslib_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 
 		err = dnslib_packet_add_tmp_rrset(packet, rrset);
 		if (err != DNSLIB_EOK) {
+			// remove the last RRSet from the list of RRSets
+			// - just decrement the count
+			--(*rrset_count);
+			dnslib_rrset_deep_free(&rrset, 1, 1, 1);
 			break;
 		}
 	}
@@ -581,13 +589,13 @@ static int dnslib_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 static void dnslib_packet_free_allocated_space(dnslib_packet_t *pkt)
 {
 	/*! @todo These checks are no longer OK. */
-	if (pkt->max_an_rrsets > DEFAULT_ANCOUNT) {
+	if (pkt->max_an_rrsets > DEFAULT_RRSET_COUNT(ANCOUNT, pkt)) {
 		free(pkt->answer);
 	}
-	if (pkt->max_ns_rrsets > DEFAULT_NSCOUNT) {
+	if (pkt->max_ns_rrsets > DEFAULT_RRSET_COUNT(NSCOUNT, pkt)) {
 		free(pkt->authority);
 	}
-	if (pkt->max_ar_rrsets > DEFAULT_ARCOUNT) {
+	if (pkt->max_ar_rrsets > DEFAULT_RRSET_COUNT(ARCOUNT, pkt)) {
 		free(pkt->additional);
 	}
 
@@ -596,7 +604,7 @@ static void dnslib_packet_free_allocated_space(dnslib_packet_t *pkt)
 		free(pkt->compression.offsets);
 	}
 
-	if (pkt->tmp_rrsets_max > DEFAULT_TMP_RRSETS) {
+	if (pkt->tmp_rrsets_max > DEFAULT_RRSET_COUNT(TMP_RRSETS, pkt)) {
 		free(pkt->tmp_rrsets);
 	}
 }
@@ -976,7 +984,7 @@ DEBUG_DNSLIB_PACKET(
 		            (((dnslib_rrset_t **)(pkt->tmp_rrsets))[i])->type),
 		       name);
 		free(name);
-)
+);
 		// TODO: this is quite ugly, but better than copying whole
 		// function (for reallocating rrset array)
 		dnslib_rrset_deep_free(
