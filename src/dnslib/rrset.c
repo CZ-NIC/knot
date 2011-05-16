@@ -194,9 +194,6 @@ void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner,
 		dnslib_rdata_t *next_rdata;
 		tmp_rdata = (*rrset)->rdata;
 
-		printf("tmp_rdata: %p\n", tmp_rdata);
-		printf("tmp_rdata->next: %p\n", tmp_rdata->next);
-
 		while ((tmp_rdata != NULL)
 		       && (tmp_rdata->next != (*rrset)->rdata)
 		       && (tmp_rdata->next != NULL)) {
@@ -204,8 +201,6 @@ void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner,
 			dnslib_rdata_deep_free(&tmp_rdata, (*rrset)->type,
 					       free_rdata_dnames);
 			tmp_rdata = next_rdata;
-			printf("tmp_rdata: %p\n", tmp_rdata);
-			printf("tmp_rdata->next: %p\n", tmp_rdata->next);
 		}
 
 		dnslib_rdata_deep_free(&tmp_rdata, (*rrset)->type,
@@ -219,7 +214,6 @@ void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner,
 	}
 
 	if (free_owner) {
-		//printf("Freeing owner on ptr: %p\n", (*rrset)->owner);
 		dnslib_dname_free(&(*rrset)->owner);
 	}
 

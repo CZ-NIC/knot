@@ -143,22 +143,6 @@ int udp_master(dthread_t *thread)
 			 *        and start AXFR transfer if needed.
 			 *        Reset REFRESH timer on finish.
 			 */
-			printf("Normal response.\n");
-			if (dnslib_packet_qtype(packet) == DNSLIB_RRTYPE_SOA) {
-				const dnslib_zone_t *zone =
-					dnslib_zonedb_find_zone(
-						ns->zone_db,
-						dnslib_packet_qname(packet));
-				if (zone != NULL) {
-					int axfr_need = axfrin_transfer_needed(
-						zone, packet);
-					printf("Axfr needed: %d\n", axfr_need);
-				} else {
-					printf("No zone found.\n");
-				}
-			}
-
-			res = -1;
 			break;
 		case DNSLIB_RESPONSE_AXFR:
 		case DNSLIB_RESPONSE_IXFR:

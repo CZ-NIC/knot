@@ -179,7 +179,6 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 	int res = ns_parse_packet(qbuf, n, packet, &qtype);
 	if (unlikely(res != KNOT_EOK)) {
 
-		printf("Sending back error response.\n");
 		/* Send error response on dnslib RCODE. */
 		if (res > 0) {
 			uint16_t pkt_id = dnslib_wire_get_id(qbuf);
