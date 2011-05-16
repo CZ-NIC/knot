@@ -145,6 +145,7 @@ dnslib_rdata_t *dnslib_rdata_new()
 
 	rdata->items = NULL;
 	rdata->count = 0;
+	rdata->next = NULL;
 
 	return rdata;
 }
@@ -703,6 +704,7 @@ int64_t dnslib_rdata_soa_serial(const dnslib_rdata_t *rdata)
 	}
 
 	// the number is in network byte order, transform it
+	printf("RDATA raw data size: %u\n", *(rdata->items[2].raw_data));
 	return dnslib_wire_read_u32((uint8_t *)(rdata->items[2].raw_data + 1));
 }
 
