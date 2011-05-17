@@ -25,13 +25,13 @@ static int notify_request(const dnslib_rrset_t *rrset,
 	int rc = dnslib_packet_set_max_size(pkt, 512);
 	if (rc != DNSLIB_EOK) {
 		dnslib_packet_free(&pkt);
-		return rc;
+		return KNOT_ERROR;
 	}
 
 	rc = dnslib_query_init(pkt);
 	if (rc != DNSLIB_EOK) {
 		dnslib_packet_free(&pkt);
-		return rc;
+		return KNOT_ERROR;
 	}
 
 	dnslib_question_t question;
@@ -44,7 +44,7 @@ static int notify_request(const dnslib_rrset_t *rrset,
 	rc = dnslib_query_set_question(pkt, &question);
 	if (rc != DNSLIB_EOK) {
 		dnslib_packet_free(&pkt);
-		return rc;
+		return KNOT_ERROR;
 	}
 
 	/*! \todo Set some random ID!! */
@@ -69,7 +69,7 @@ static int notify_request(const dnslib_rrset_t *rrset,
 	rc = dnslib_packet_to_wire(pkt, &wire, &wire_size);
 	if (rc != DNSLIB_EOK) {
 		dnslib_packet_free(&pkt);
-		return rc;
+		return KNOT_ERROR;
 	}
 
 	if (wire_size > *size) {
