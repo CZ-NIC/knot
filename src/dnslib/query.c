@@ -58,7 +58,7 @@ int dnslib_query_set_opcode(dnslib_packet_t *query, uint8_t opcode)
 		return DNSLIB_EBADARG;
 	}
 	// set the OPCODE in the structure
-	dnslib_wire_flags_set_opcode(query->header.flags1, opcode);
+	dnslib_wire_flags_set_opcode(&query->header.flags1, opcode);
 	// set the OPCODE in the wire format
 	dnslib_wire_set_opcode(query->wireformat, opcode);
 
