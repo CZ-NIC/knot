@@ -2397,6 +2397,8 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 
 int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 {
+	debug_ns("ns_answer_axfr()\n");
+
 	if (nameserver == NULL || xfr == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -2415,7 +2417,7 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		return KNOT_EOK;
 	}
 
-	int ret = dnslib_response2_init_from_query(response, xfr->query);
+	int ret = dnslib_packet_set_max_size(response, xfr->rsize);
 
 	if (ret != DNSLIB_EOK) {
 		log_server_warning("Failed to init response structure.\n");
@@ -2427,7 +2429,7 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		return KNOT_EOK;
 	}
 
-	ret = dnslib_packet_set_max_size(response, xfr->rsize);
+	ret = dnslib_response2_init_from_query(response, xfr->query);
 
 	if (ret != DNSLIB_EOK) {
 		log_server_warning("Failed to init response structure.\n");
