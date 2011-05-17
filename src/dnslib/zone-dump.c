@@ -855,8 +855,8 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 		} else {
 			/* Unsecured delegation, check whether it is part of
 			 * opt-out span */
-			const dnslib_node_t *nsec3_previous;
-			const dnslib_node_t *nsec3_node;
+			const dnslib_node_t *nsec3_previous = NULL;
+			const dnslib_node_t *nsec3_node = NULL;
 
 			if (dnslib_zone_find_nsec3_for_name(zone,
 						dnslib_node_owner(node),
@@ -1286,7 +1286,7 @@ static void do_checks_in_tree(dnslib_node_t *node, void *data)
 	char do_checks = *((char *)(args->arg3));
 
 	if (do_checks) {
-		 semantic_checks_plain(zone, node, do_checks, handler);
+		semantic_checks_plain(zone, node, do_checks, handler);
 	}
 
 	if (do_checks > 1) {
