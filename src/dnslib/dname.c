@@ -417,6 +417,9 @@ char *dnslib_dname_to_str(const dnslib_dname_t *dname)
 	}
 
 	name = (char *)malloc(dname->size * sizeof(char));
+	if (name == NULL) {
+		return NULL;
+	}
 
 	uint8_t *w = dname->name;
 	char *ch = name;
