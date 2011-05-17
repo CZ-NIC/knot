@@ -293,7 +293,10 @@ dnslib_dname_t *dnslib_dname_new_from_str(const char *name, uint size,
 		return NULL;
 	}
 
-	dnslib_dname_str_to_wire(name, size, dname);
+	if (dnslib_dname_str_to_wire(name, size, dname) != DNSLIB_EOK) {
+		dnslib_dname_free(&dname);
+		return NULL;
+	}
 	assert(dname->label_count >= 0);
 	debug_dnslib_dname("Created dname with size: %d\n", dname->size);
 	debug_dnslib_dname("Label offsets: ");
