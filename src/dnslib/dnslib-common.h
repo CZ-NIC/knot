@@ -19,7 +19,6 @@
 
 #define DNSLIB_NAME "dnslib" // Project name
 #define DNSLIB_VER  0x000100  // 0xMMIIRR (MAJOR,MINOR,REVISION)
-#include "dnslib/fmalloc.h"
 
 typedef unsigned int uint;
 
@@ -57,7 +56,6 @@ typedef unsigned int uint;
 #define unlikely(x)     __builtin_expect((x),0)
 #endif
 
-#define malloc(x) malloc_with_count(x)
 /*! \todo Refactor theese. We should have an allocator function handling this.*/
 #ifndef ERR_ALLOC_FAILED
 #define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d (%s ver.%x)\n", \
