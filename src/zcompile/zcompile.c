@@ -1674,14 +1674,14 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 					const dnslib_dname_t *owner))
 {
 	dnslib_node_t *tmp_node = NULL;
-	/* \note there are two last_node variables
+	/*!< \note there are two last_node variables
 	 * one is parser->last node (so that we don't have to search for
 	 * node each time), while this variable is used in creating
 	 * chain of dnames
 	 */
 	dnslib_node_t *last_node = dnslib_node_new(current_rrset->owner,
 						   NULL);
-	CHECK_ALLOC_LOG(last_node, NULL);
+	CHECK_ALLOC(last_node, NULL);
 	dnslib_node_t *node = last_node;
 	if (node_add_func(zone, node) != 0) {
 		return NULL;
@@ -1689,8 +1689,7 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 	dnslib_dname_t *chopped =
 		dnslib_dname_left_chop(current_rrset->owner);
 	if (chopped == NULL) {
-		ERR_ALLOC_FAILED;
-		dnslib_node_free(&last_node, 0);
+		/* Do not free the node, it has already been added. */
 		return NULL;
 	}
 
@@ -1711,7 +1710,7 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 			                                    chopped))) &&
 			    dnslib_dname_table_add_dname(parser->dname_table,
 							 chopped) != 0) {
-				/* TODO Cleanup? EVERYWHERE */
+				dnslib_dname_free(&chopped);
 				return NULL;
 			} else if (found_dname != NULL) {
 				dnslib_dname_free(&chopped);
@@ -1719,23 +1718,21 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 			}
 			tmp_node = dnslib_node_new(chopped, NULL);
 			if (tmp_node == NULL) {
-				ERR_ALLOC_FAILED;
-				/* TODO what to free? */
+				dnslib_dname_free(&chopped);
 				return NULL;
 			}
 			last_node->parent = tmp_node;
 
 			assert(node_get_func(zone, chopped) == NULL);
 			if (node_add_func(zone, tmp_node) != 0) {
-				/* TODO free */
+				dnslib_dname_free(&chopped);
 				return NULL;
 			}
 
 			last_node = tmp_node;
 			chopped = dnslib_dname_left_chop(chopped);
 			if (chopped == NULL) {
-				ERR_ALLOC_FAILED;
-				/* TODO cleanup */
+				dnslib_dname_free(&chopped);
 				return NULL;
 			}
 		}
@@ -1844,7 +1841,7 @@ int process_rr(void)
 
 		zone = dnslib_zone_new(parser->origin, 0);
 		if (zone == NULL) {
-			zc_error_prev_line("Could not create new zone!\n");
+			zc_error_prev_line("Could not create new zone!");
 			return KNOT_ZCOMPILE_ENOMEM;
 		}
 		parser->current_zone = zone;
@@ -1860,11 +1857,14 @@ int process_rr(void)
 			return KNOT_ZCOMPILE_ENOMEM;
 		}
 
-		dnslib_rrset_add_rdata(tmp_rrsig, current_rrset->rdata);
+		if (dnslib_rrset_add_rdata(tmp_rrsig,
+		                           current_rrset->rdata) != 0) {
+			return KNOT_ZCOMPILE_EBRDATA;
+		}
 
 		if (parser->last_node &&
 		    dnslib_dname_compare(parser->last_node->owner,
-		    current_rrset->owner) != 0) {
+		                         current_rrset->owner) != 0) {
 			/* RRSIG is first in the node, so we have to create it
 			 * before we return
 			 */
@@ -1881,15 +1881,16 @@ int process_rr(void)
 			}
 		}
 
-		rrset_list_add(&parser->node_rrsigs, tmp_rrsig);
+		if (rrset_list_add(&parser->node_rrsigs, tmp_rrsig) != 0) {
+			return KNOT_ZCOMPILE_ENOMEM;
+		}
 
 		return KNOT_ZCOMPILE_EOK;
 	}
 
 	assert(current_rrset->type != DNSLIB_RRTYPE_RRSIG);
 
-	dnslib_node_t *node;
-
+	dnslib_node_t *node = NULL;
 	/* \note this could probably be much simpler */
 	if (parser->last_node && current_rrset->type != DNSLIB_RRTYPE_SOA &&
 	    dnslib_dname_compare(parser->last_node->owner,
