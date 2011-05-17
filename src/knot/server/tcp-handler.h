@@ -9,6 +9,8 @@
  * the worker threads ("buckets"). Each threads processes it's own
  * set of sockets, and eliminates mutual exclusion problem by doing so.
  *
+ * \todo Improve documentation of TCP pool API and use proper error codes.
+ *
  * \addtogroup server
  * @{
  */
@@ -32,10 +34,11 @@ struct tcp_pool_t;
  *
  * \param pool Associated connection pool.
  * \param fd Associated socket.
+ * \param data Associated data.
  * \param qbuf Buffer for a query wireformat.
  * \param qbuf_maxlen Buffer maximum size.
  */
-typedef int (*tcp_handle_t)(struct tcp_pool_t *pool, int fd,
+typedef int (*tcp_event_f)(struct tcp_pool_t *pool, int fd, void *data,
 			     uint8_t *qbuf, size_t qbuf_maxlen);
 
 /*!
@@ -49,7 +52,7 @@ typedef int (*tcp_handle_t)(struct tcp_pool_t *pool, int fd,
  * \retval New instance on success.
  * \retval NULL on errors.
  */
-struct tcp_pool_t *tcp_pool_new(server_t *server, tcp_handle_t hfunc);
+struct tcp_pool_t *tcp_pool_new(server_t *server, tcp_event_f hfunc);
 
 /*!
  * \brief Delete TCP pool instance.
@@ -62,17 +65,33 @@ void tcp_pool_del(struct tcp_pool_t **pool);
  * \brief Add socket to the TCP pool.
  *
  * \param pool Given TCP pool.
- * \param newsock Socket to be added to the TCP pool.
- * \param events Events to be registered (usually just EPOLLIN).
+ * \param sock Socket to be added to the TCP pool.
+ * \param data Data associated with TCP session.
+ *
  * \retval 0 on success.
  * \retval <0 on error.
  */
-int tcp_pool_add(struct tcp_pool_t* pool, int newsock, uint32_t events);
+int tcp_pool_add(struct tcp_pool_t *pool, int sock, void *data);
 
 /*!
  * \brief Remove socket from a TCP pool.
+ *
+ * \param pool Given TCP pool.
+ * \param sock Socket to be removed from the TCP pool.
+ *
+ * \retval 0 on success.
+ * \retval <0 on error.
  */
-int tcp_pool_remove(struct tcp_pool_t* pool, int socket);
+int tcp_pool_remove(struct tcp_pool_t *pool, int sock);
+
+/*!
+ * \brief Return associated server instance.
+ *
+ * \param pool Given TCP pool.
+ *
+ * \return Associated server instance.
+ */
+server_t* tcp_pool_server(struct tcp_pool_t *pool);
 
 /*!
  * \brief TCP pool main function.

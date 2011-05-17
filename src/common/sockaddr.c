@@ -9,9 +9,8 @@
 int sockaddr_init(sockaddr_t *addr, int af)
 {
 	/* Reset pointer. */
+	memset(addr, 0, sizeof(sockaddr_t));
 	addr->family = -1;
-	addr->ptr = 0;
-	addr->len = 0;
 
 	/* Initialize address size. */
 	switch(af) {

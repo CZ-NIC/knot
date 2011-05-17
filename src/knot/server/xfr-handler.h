@@ -32,7 +32,7 @@ typedef struct xfrhandler_t
 	dt_unit_t     *unit; /*!< \brief Threading unit. */
 	ns_nameserver_t *ns; /*!< \brief Pointer to nameserver.*/
 	evqueue_t        *q; /*!< \brief Shared XFR requests queue.*/
-	struct tcp_pool_t *xfers; /*! \brief TCP client transfers. */
+	struct tcp_pool_t *xfer_pool; /*! \brief TCP client transfers. */
 } xfrhandler_t;
 
 /*!
