@@ -177,12 +177,10 @@ line:	NL
 		assert(parser->current_rrset->owner != NULL);
 		int ret = 0;
 		if ((ret = process_rr()) != 0) {
-			char *tmp_dname_str =
-			dnslib_dname_to_str(parser->current_rrset->owner);
 			fprintf(stderr, "Error: could not process RRSet\n"
-				"owner: %s reason: %s\n", tmp_dname_str,
+				"owner: %s reason: %s\n",
+				parser->current_rrset->owner->name,
 				error_to_str(knot_zcompile_error_msgs, ret));
-			free(tmp_dname_str);
 
 			/* If the owner is not already in the table, free it. */
 //			if (dnslib_dname_table_find_dname(parser->dname_table,
@@ -880,12 +878,11 @@ rdata_a:	dotted_str trail
 rdata_domain_name:	dname trail
     {
 	    /* convert a single dname record */
+		if ($1 != NULL) {
 			if (!dnslib_dname_is_fqdn($1)) {
-
-
 			parser->current_rrset->owner =
 				dnslib_dname_cat($1, parser->root_domain);
-
+			}
 		}
 	    zadd_rdata_domain($1);
     }
