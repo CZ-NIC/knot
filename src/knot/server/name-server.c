@@ -2013,6 +2013,7 @@ DEBUG_NS(
 	if (zone == NULL) {
 		debug_ns("No zone found.\n");
 		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_NOTAUTH);
+		ns_axfr_send_and_clear(xfr);
 		return KNOT_EOK;
 	}
 DEBUG_NS(
@@ -2024,6 +2025,7 @@ DEBUG_NS(
 	if (acl_match(zone->acl.xfr_out, &xfr->addr) == ACL_DENY) {
 		debug_ns("Request for AXFR OUT is not authorized.\n");
 		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_REFUSED);
+		ns_axfr_send_and_clear(xfr);
 		return KNOT_EOK;
 	} else {
 		debug_ns("Authorized AXFR OUT request.\n");
