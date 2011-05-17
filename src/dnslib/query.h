@@ -55,6 +55,8 @@ int dnslib_query_init(dnslib_packet_t *query);
 int dnslib_query_set_question(dnslib_packet_t *query,
                               const dnslib_question_t *question);
 
+int dnslib_query_set_opcode(dnslib_packet_t *query, uint8_t opcode);
+
 #endif /* _KNOT_DNSLIB_QUERY_H_ */
 
 /*! @} */
