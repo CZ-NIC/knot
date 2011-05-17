@@ -163,5 +163,3 @@ src/zcompile/tests/zcompile_tests.c
 src/zcompile/zcompile-error.c
 src/dnslib/dname-table.h
 src/dnslib/dname-table.c
-src/dnslib/fmalloc.c
-src/dnslib/fmalloc.h
