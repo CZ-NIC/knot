@@ -39,7 +39,7 @@ static const uint MAX_CNAME_CYCLE_DEPTH = 15;
  *       so that code does not have to change if new errors are added.
  */
 enum zonechecks_errors {
-	ZC_ERR_ALLOC = -37,
+	ZC_ERR_ALLOC = -40,
 	ZC_ERR_UNKNOWN,
 
 	ZC_ERR_MISSING_SOA,
@@ -79,8 +79,11 @@ enum zonechecks_errors {
 
 	ZC_ERR_CNAME_CYCLE,
 	ZC_ERR_CNAME_EXTRA_RECORDS,
+	ZC_ERR_DNAME_EXTRA_RECORDS,
 	ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC,
+	ZC_ERR_DNAME_EXTRA_RECORDS_DNSSEC,
 	ZC_ERR_CNAME_MULTIPLE,
+	ZC_ERR_DNAME_MULTIPLE,
 
 	ZC_ERR_CNAME_GENERAL_ERROR,
 
@@ -147,10 +150,16 @@ static char *error_messages[(-ZC_ERR_ALLOC) + 1] = {
 	"CNAME: CNAME cycle!\n",
 	[-ZC_ERR_CNAME_EXTRA_RECORDS] =
 	"CNAME: Node with CNAME record has other records!\n",
+	[-ZC_ERR_DNAME_EXTRA_RECORDS] =
+	"DNAME: Node with DNAME record has other records!\n",
 	[-ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC] =
 	"CNAME: Node with CNAME record has other "
 	"records than RRSIG and NSEC/NSEC3!\n",
+	[-ZC_ERR_DNAME_EXTRA_RECORDS_DNSSEC] =
+	"DNAME: Node with DNAME record has other "
+	"records than RRSIG and NSEC/NSEC3!\n",
 	[-ZC_ERR_CNAME_MULTIPLE] = "CNAME: Multiple CNAME records!\n",
+	[-ZC_ERR_DNAME_MULTIPLE] = "DNAME: Multiple DNAME records!\n",
 
 	/* ^
 	   | Important errors (to be logged on first occurence and counted) */
@@ -1011,8 +1020,7 @@ static int semantic_checks_plain(dnslib_zone_t *zone,
 {
 	assert(handler);
 	const dnslib_rrset_t *cname_rrset =
-			dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME);
-
+		dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME);
 	if (cname_rrset != NULL) {
 		if (check_cname_cycles_in_zone(zone, cname_rrset) !=
 				DNSLIB_EOK) {
@@ -1028,7 +1036,8 @@ static int semantic_checks_plain(dnslib_zone_t *zone,
 		} else if (dnslib_node_rrset_count(node) != 1) {
 			/* With DNSSEC node can contain RRSIG or NSEC */
 			if (!(dnslib_node_rrset(node, DNSLIB_RRTYPE_RRSIG) ||
-			      dnslib_node_rrset(node, DNSLIB_RRTYPE_NSEC))) {
+			      dnslib_node_rrset(node, DNSLIB_RRTYPE_NSEC)) ||
+			    dnslib_node_rrset_count(node) > 3) {
 				err_handler_handle_error(handler, node,
 				ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC);
 			}
@@ -1037,6 +1046,30 @@ static int semantic_checks_plain(dnslib_zone_t *zone,
 		if (dnslib_rrset_rdata(cname_rrset)->count != 1) {
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_CNAME_MULTIPLE);
+		}
+	}
+
+	const dnslib_rrset_t *dname_rrset =
+		dnslib_node_rrset(node, DNSLIB_RRTYPE_DNAME);
+	if (dname_rrset != NULL) {
+		/* No DNSSEC and yet there is more than one rrset in node */
+		if (do_checks == 1 &&
+		                dnslib_node_rrset_count(node) != 1) {
+			err_handler_handle_error(handler, node,
+			                         ZC_ERR_DNAME_EXTRA_RECORDS);
+		} else if (dnslib_node_rrset_count(node) != 1) {
+			/* With DNSSEC node can contain RRSIG or NSEC */
+			if (!(dnslib_node_rrset(node, DNSLIB_RRTYPE_RRSIG) ||
+			      dnslib_node_rrset(node, DNSLIB_RRTYPE_NSEC)) ||
+			    dnslib_node_rrset_count(node) > 3) {
+				err_handler_handle_error(handler, node,
+				ZC_ERR_DNAME_EXTRA_RECORDS_DNSSEC);
+			}
+		}
+
+		if (dnslib_rrset_rdata(dname_rrset)->count != 1) {
+			err_handler_handle_error(handler, node,
+			                         ZC_ERR_DNAME_MULTIPLE);
 		}
 	}
 
