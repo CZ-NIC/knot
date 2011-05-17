@@ -17,6 +17,14 @@
 #include "common/evqueue.h"
 
 /*!
+ * \brief XFR request type.
+ */
+typedef enum xfr_reqtype_t {
+	XFR_IN_REQUEST, /*!< XFR-IN request (start transfer). */
+	XFR_OUT_REQUEST /*!< XFR-OUT request (incoming transfer). */
+} xfr_reqtype_t;
+
+/*!
  * \brief XFR handler structure.
  */
 typedef struct xfrhandler_t
@@ -24,6 +32,7 @@ typedef struct xfrhandler_t
 	dt_unit_t     *unit; /*!< \brief Threading unit. */
 	ns_nameserver_t *ns; /*!< \brief Pointer to nameserver.*/
 	evqueue_t        *q; /*!< \brief Shared XFR requests queue.*/
+	struct tcp_pool_t *xfers; /*! \brief TCP client transfers. */
 } xfrhandler_t;
 
 /*!
@@ -102,6 +111,18 @@ static inline int xfr_join(xfrhandler_t *handler) {
 int xfr_request(xfrhandler_t *handler, ns_xfr_t *req);
 
 /*!
+ * \brief Start XFR client transfer.
+ *
+ * \param handler XFR handler instance.
+ * \param req XFR request.
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on NULL handler or request.
+ * \retval KNOT_ERROR on error.
+ */
+int xfr_client_start(xfrhandler_t *handler, ns_xfr_t *req);
+
+/*!
  * \brief XFR master runnable.
  *
  * Processes incoming AXFR/IXFR requests asynchonously.
@@ -113,6 +134,18 @@ int xfr_request(xfrhandler_t *handler, ns_xfr_t *req);
  * \retval KNOT_EINVAL invalid parameters.
  */
 int xfr_master(dthread_t *thread);
+
+/*!
+  * \brief XFR client runnable.
+  *
+  * Processess AXFR/IXFR client sessions.
+  *
+  * \param thread Associated thread from DThreads unit.
+  *
+  * \retval KNOT_EOK on success.
+  * \retval KNOT_EINVAL invalid parameters.
+  */
+int xfr_client(dthread_t *thread);
 
 #endif // _KNOT_XFRHANDLER_H_
 

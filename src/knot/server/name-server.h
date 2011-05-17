@@ -131,14 +131,17 @@ int ns_answer_request(ns_nameserver_t *nameserver,
 /*! \brief Callback for sending one packet back through a TCP connection. */
 typedef int (*axfr_callback_t)(int session, uint8_t *packet, size_t size);
 
+/*! \todo Document me. */
 typedef struct ns_xfr {
-	sockaddr_t from;
+	int type;
+	sockaddr_t addr;
 	dnslib_packet_t *query;
 	dnslib_packet_t *response;
 	axfr_callback_t send;
 	int session;
 	uint8_t *response_wire;
 	size_t rsize;
+	void *data;
 } ns_xfr_t;
 
 /*!
@@ -180,7 +183,23 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
  */
 int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
 
-
+/*!
+ * \brief Processes responses packet.
+ *
+ * \param nameserver Name server structure to provide the needed data.
+ * \param from Address of the response sender.
+ * \param packet Parsed response packet.
+ * \param response_wire Place for the response in wire format.
+ * \param rsize Input: maximum acceptable size of the response. Output: real
+ *              size of the response.
+ *
+ * \retval KNOT_EOK if a valid response was created.
+ * \retval KNOT_EINVAL on invalid parameters or packet.
+ * \retval KNOT_EMALF if an error occured and the response is not valid.
+ */
+int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
+			dnslib_packet_t *packet, uint8_t *response_wire,
+			size_t *rsize);
 
 /*!
  * \brief Properly destroys the name server structure.
