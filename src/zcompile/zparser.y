@@ -129,13 +129,20 @@ line:	NL
     |	rr
     {	/* rr should be fully parsed */
 	if (!parser->error_occurred) {
-		dnslib_rdata_t *tmp_rdata = dnslib_rdata_new();
-		if (tmp_rdata == NULL) {
-			ERR_ALLOC_FAILED;
+		/*!< \todo assign error to error occurred */
+		if (parser->current_rrset->owner == NULL) {
 			dnslib_rrset_deep_free(&(parser->current_rrset),
 					       0, 0);
 			dnslib_zone_deep_free(&(parser->current_zone),
-					      9);
+					      0);
+			YYABORT;
+		}
+		dnslib_rdata_t *tmp_rdata = dnslib_rdata_new();
+		if (tmp_rdata == NULL) {
+			dnslib_rrset_deep_free(&(parser->current_rrset),
+					       0, 0);
+			dnslib_zone_deep_free(&(parser->current_zone),
+					      0);
 			YYABORT;
 		}
 
@@ -155,10 +162,20 @@ line:	NL
 		    }
 
 		if (!dnslib_dname_is_fqdn(parser->current_rrset->owner)) {
-			parser->current_rrset->owner =
+			dnslib_dname_t *tmp_dname =
 				dnslib_dname_cat(parser->current_rrset->owner,
 						 parser->root_domain);
+			if (tmp_dname == NULL) {
+				dnslib_rrset_deep_free(&(parser->current_rrset),
+				                       0, 0);
+				dnslib_zone_deep_free(&(parser->current_zone),
+				                      0);
+				YYABORT;
+			}
+			parser->current_rrset->owner = tmp_dname;
 		}
+
+		assert(parser->current_rrset->owner);
 
 		if (save_dnames_in_table(parser->dname_table,
 						 parser->current_rrset) != 0) {
@@ -166,7 +183,6 @@ line:	NL
 			 * Only reason function above could fail is
 			 * memory shortage. There is no point in continuing.
 			 */
-			ERR_ALLOC_FAILED;
 			dnslib_rrset_deep_free(&(parser->current_rrset),
 					       0, 0);
 			dnslib_zone_deep_free(&(parser->current_zone),
@@ -414,6 +430,7 @@ wire_abs_dname:	'.'
     {
 	    char *result = malloc(2 * sizeof(char));
 	    if (result == NULL) {
+	    	ERR_ALLOC_FAILED;
 	    	dnslib_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0);
 	        dnslib_zone_deep_free(&(parser->current_zone),
@@ -429,6 +446,7 @@ wire_abs_dname:	'.'
     {
 	    char *result = malloc($1.len + 2 * sizeof(char));
 	    if (result == NULL) {
+	    	ERR_ALLOC_FAILED;
 	    	dnslib_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0);
 	        dnslib_zone_deep_free(&(parser->current_zone),
@@ -629,6 +647,7 @@ str_sp_seq:	STR
     {
 	    char *result = malloc($1.len + $3.len + 1);
 	    if (result == NULL) {
+	    	ERR_ALLOC_FAILED;
 	    	fprintf(stderr, "Parser ran out of memory, aborting!\n");
 	    	dnslib_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0);
@@ -656,6 +675,7 @@ str_dot_seq:	STR
     {
 	    char *result = malloc($1.len + $3.len + 1);
 	    if (result == NULL) {
+	    	ERR_ALLOC_FAILED;
 	    	fprintf(stderr, "Parser ran out of memory, aborting!\n");
 	    	dnslib_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0);
@@ -687,6 +707,7 @@ dotted_str:	STR
     {
 	    char *result = malloc($1.len + 2);
 	    if (result == NULL) {
+	    	ERR_ALLOC_FAILED;
 	    	fprintf(stderr, "Parser ran out of memory, aborting!\n");
 	    	dnslib_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0);
@@ -706,6 +727,7 @@ dotted_str:	STR
     {
 	    char *result = malloc($1.len + $3.len + 2);
 	    if (result == NULL) {
+	    	ERR_ALLOC_FAILED;
 	    	fprintf(stderr, "Parser ran out of memory, aborting!\n");
 	    	dnslib_rrset_deep_free(&(parser->current_rrset),
 		                       0, 0);
