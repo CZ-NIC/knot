@@ -11,6 +11,7 @@
 #include <stdlib.h>
 
 #include "common/sockaddr.h"
+#include "common/skip-list.h"
 #include "knot/common.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-handler.h"
@@ -25,16 +26,35 @@ typedef struct tcp_pool_t {
 	int                evcount;    /*!< Epoll events counter */
 	struct epoll_event *events;    /*!< Epoll events backing store. */
 	int                ebs_size;   /*!< Epoll events backing store size. */
+	skip_list_t        *ev_data;   /*!< User data for polled sockets. */
 	pthread_mutex_t    mx;         /*!< Pool synchronisation lock. */
 	server_t           *server;    /*!< Server instance. */
+	tcp_event_f        on_event;   /* TCP event handler. */
 	iohandler_t        *io_h;      /* master I/O handler */
-	tcp_handle_t       handle;     /* TCP event handler. */
 	stat_t             *stat;      /* statistics gatherer */
 } tcp_pool_t;
 
 /*
  * Forward decls.
  */
+
+/*!
+ * \brief Compare function for skip-list.
+ */
+static int tcp_pool_compare(void *k1, void *k2)
+{
+	/* Key = socket filedescriptor. */
+	ssize_t diff = (ssize_t)k1 - (ssize_t)k2;
+	if (diff < 0) {
+		return -1;
+	}
+	if (diff > 0) {
+		return 1;
+	}
+
+	return 0;
+}
+
 /*! \brief Lock TCP pool. */
 static inline int tcp_pool_lock(tcp_pool_t *pool)
 {
@@ -54,10 +74,11 @@ static inline int tcp_pool_unlock(tcp_pool_t *pool)
  *
  * \param pool Associated connection pool.
  * \param fd Associated socket.
+ * \param data Associated data.
  * \param qbuf Buffer for a query wireformat.
  * \param qbuf_maxlen Buffer maximum size.
  */
-static inline int tcp_handle(tcp_pool_t *pool, int fd,
+static inline int tcp_handle(tcp_pool_t *pool, int fd, void *data,
 			     uint8_t *qbuf, size_t qbuf_maxlen)
 {
 	sockaddr_t addr;
@@ -124,12 +145,13 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 				       qbuf, &resp_len);
 		break;
 	case DNSLIB_QUERY_AXFR:
+		memset(&xfr, 0, sizeof(ns_xfr_t));
 		xfr.type = XFR_OUT_REQUEST;
 		xfr.query = packet;
 		xfr.send = tcp_send;
 		xfr.session = fd;
-		xfr.response_wire = 0;
-		xfr.rsize = 0;
+		xfr.wire = 0;
+		xfr.wire_size = 0;
 		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
 		xfr_request(pool->server->xfr_h, &xfr);
 		debug_net("tcp: enqueued AXFR request size %zd.\n",
@@ -222,7 +244,7 @@ int tcp_disconnect(tcp_pool_t *pool, int fd)
  * Public APIs.
  */
 
-tcp_pool_t *tcp_pool_new(server_t *server, tcp_handle_t hfunc)
+tcp_pool_t *tcp_pool_new(server_t *server, tcp_event_f hfunc)
 {
 	// Alloc
 	tcp_pool_t *pool = malloc(sizeof(tcp_pool_t));
@@ -236,7 +258,7 @@ tcp_pool_t *tcp_pool_new(server_t *server, tcp_handle_t hfunc)
 	pool->evcount = 0;
 	pool->ebs_size = 0;
 	pool->server = server;
-	pool->handle = hfunc;
+	pool->on_event = hfunc;
 
 	// Create epoll fd
 	pool->epfd = epoll_create(1);
@@ -258,6 +280,15 @@ tcp_pool_t *tcp_pool_new(server_t *server, tcp_handle_t hfunc)
 		free(pool->events);
 		free(pool);
 		return 0;
+	}
+
+	/* Create skip-list for TCP session data. */
+	pool->ev_data = skip_create_list(tcp_pool_compare);
+	if (!pool->ev_data) {
+		pthread_mutex_destroy(&pool->mx);
+		close(pool->epfd);
+		free(pool->events);
+		free(pool);
 	}
 
 	// Create stat gatherer
@@ -288,12 +319,15 @@ void tcp_pool_del(tcp_pool_t **pool)
 	// Delete stat
 	stat_free((*pool)->stat);
 
+	// Delete session data
+	skip_destroy_list(&(*pool)->ev_data, 0, free);
+
 	// Free
 	free((*pool));
 	*pool = 0;
 }
 
-int tcp_pool_add(tcp_pool_t* pool, int newsock, uint32_t events)
+int tcp_pool_add(tcp_pool_t* pool, int sock, void *data)
 {
 	if (!pool) {
 		return -1;
@@ -303,17 +337,17 @@ int tcp_pool_add(tcp_pool_t* pool, int newsock, uint32_t events)
 	memset(&ev, 0, sizeof(struct epoll_event));
 
 	// All polled events should use non-blocking mode.
-	int old_flag = fcntl(newsock, F_GETFL, 0);
-	if (fcntl(newsock, F_SETFL, old_flag | O_NONBLOCK) == -1) {
+	int old_flag = fcntl(sock, F_GETFL, 0);
+	if (fcntl(sock, F_SETFL, old_flag | O_NONBLOCK) == -1) {
 		log_server_error("Error setting non-blocking mode "
 		                 "on the socket.\n");
 		return -1;
 	}
 
 	// Register to epoll
-	ev.data.fd = newsock;
-	ev.events = events;
-	if (epoll_ctl(pool->epfd, EPOLL_CTL_ADD, newsock, &ev) != 0) {
+	ev.data.fd = sock;
+	ev.events = EPOLLIN;
+	if (epoll_ctl(pool->epfd, EPOLL_CTL_ADD, sock, &ev) != 0) {
 		debug_net("Failed to add socket to "
 			  "event set (%d).\n",
 			  errno);
@@ -323,10 +357,13 @@ int tcp_pool_add(tcp_pool_t* pool, int newsock, uint32_t events)
 	// Increase event count
 	++pool->evcount;
 
+	/* Append data. */
+	skip_insert(pool->ev_data, (void*)((ssize_t)sock), data, 0);
+
 	return 0;
 }
 
-int tcp_pool_remove(tcp_pool_t* pool, int socket)
+int tcp_pool_remove(tcp_pool_t* pool, int sock)
 {
 	if (!pool) {
 		return -1;
@@ -335,14 +372,22 @@ int tcp_pool_remove(tcp_pool_t* pool, int socket)
 	// Compatibility with kernels < 2.6.9, require non-0 ptr.
 	struct epoll_event ev;
 
-	if (epoll_ctl(pool->epfd, EPOLL_CTL_DEL, socket, &ev) != 0) {
+	if (epoll_ctl(pool->epfd, EPOLL_CTL_DEL, sock, &ev) != 0) {
 		debug_net("Failed to remove socket from "
 			  "event set (%d).\n",
 			  errno);
 		return -1;
 	}
 
+	/* Remove data if exist, data will be freed. */
+	skip_remove(pool->ev_data, (void*)((ssize_t)sock), 0, free);
+
 	return 0;
+}
+
+server_t* tcp_pool_server(tcp_pool_t *pool)
+{
+	return pool->server;
 }
 
 int tcp_pool(dthread_t *thread)
@@ -385,7 +430,11 @@ int tcp_pool(dthread_t *thread)
 			if (pool->events[i].events & EPOLLERR) {
 				tcp_disconnect(pool, fd);
 			} else {
-				ret = pool->handle(pool, fd, qbuf, sizeof(qbuf));
+				/* Lookup associated data. */
+				void *d = skip_find(pool->ev_data,
+						    (void*)((size_t)fd));
+				ret = pool->on_event(pool, fd, d,
+						     qbuf, sizeof(qbuf));
 				if (ret != KNOT_EOK) {
 					tcp_disconnect(pool, fd);
 				}
@@ -545,7 +594,7 @@ int tcp_master(dthread_t *thread)
 			          "to pool #%d\n",
 			          incoming, pool_id);
 
-			tcp_pool_add(pool, incoming, EPOLLIN);
+			tcp_pool_add(pool, incoming, 0);
 
 			// Activate pool
 			dt_activate(t);

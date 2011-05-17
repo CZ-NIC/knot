@@ -1775,13 +1775,13 @@ static int ns_axfr_send_and_clear(ns_xfr_t *xfr)
 	assert(xfr != NULL);
 	assert(xfr->query != NULL);
 	assert(xfr->response != NULL);
-	assert(xfr->response_wire != NULL);
+	assert(xfr->wire != NULL);
 	assert(xfr->send != NULL);
 
 	// Transform the packet into wire format
 	debug_ns("Converting response to wire format..\n");
 	size_t real_size;
-	if (ns_response_to_wire(xfr->response, xfr->response_wire, &real_size)
+	if (ns_response_to_wire(xfr->response, xfr->wire, &real_size)
 	    != 0) {
 		return NS_ERR_SERVFAIL;
 //		// send back SERVFAIL (as this is our problem)
@@ -1793,8 +1793,8 @@ static int ns_axfr_send_and_clear(ns_xfr_t *xfr)
 
 	// Send the response
 	debug_ns("Sending response (size %zu)..\n", real_size);
-	debug_ns_hex((const char *)xfr->response_wire, real_size);
-	int res = xfr->send(xfr->session, xfr->response_wire, real_size);
+	debug_ns_hex((const char *)xfr->wire, real_size);
+	int res = xfr->send(xfr->session, xfr->wire, real_size);
 	if (res < 0) {
 		debug_ns("Send returned %d\n", res);
 		return res;
@@ -1921,7 +1921,7 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 	assert(xfr != NULL);
 	assert(xfr->query != NULL);
 	assert(xfr->response != NULL);
-	assert(xfr->response_wire != NULL);
+	assert(xfr->wire != NULL);
 	assert(xfr->send != NULL);
 
 	ns_axfr_params_t params;
@@ -2413,19 +2413,19 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	if (response == NULL) {
 		log_server_warning("Failed to create packet structure.\n");
 		ns_error_response(nameserver, xfr->query->header.id,
-		                  DNSLIB_RCODE_SERVFAIL, xfr->response_wire,
-		                  &xfr->rsize);
+				  DNSLIB_RCODE_SERVFAIL, xfr->wire,
+				  &xfr->wire_size);
 		rcu_read_unlock();
 		return KNOT_EOK;
 	}
 
-	int ret = dnslib_packet_set_max_size(response, xfr->rsize);
+	int ret = dnslib_packet_set_max_size(response, xfr->wire_size);
 
 	if (ret != DNSLIB_EOK) {
 		log_server_warning("Failed to init response structure.\n");
 		ns_error_response(nameserver, xfr->query->header.id,
-		                  DNSLIB_RCODE_SERVFAIL, xfr->response_wire,
-		                  &xfr->rsize);
+				  DNSLIB_RCODE_SERVFAIL, xfr->wire,
+				  &xfr->wire_size);
 		rcu_read_unlock();
 		dnslib_packet_free(&response);
 		return KNOT_EOK;
@@ -2436,8 +2436,8 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	if (ret != DNSLIB_EOK) {
 		log_server_warning("Failed to init response structure.\n");
 		ns_error_response(nameserver, xfr->query->header.id,
-		                  DNSLIB_RCODE_SERVFAIL, xfr->response_wire,
-		                  &xfr->rsize);
+				  DNSLIB_RCODE_SERVFAIL, xfr->wire,
+				  &xfr->wire_size);
 		rcu_read_unlock();
 		dnslib_packet_free(&response);
 		return KNOT_EOK;
@@ -2467,9 +2467,9 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		// now only one type of error (SERVFAIL), later maybe more
 		size_t real_size;
 		ns_error_response(nameserver, xfr->query->header.id,
-		                  DNSLIB_RCODE_SERVFAIL, xfr->response_wire,
+				  DNSLIB_RCODE_SERVFAIL, xfr->wire,
 		                  &real_size);
-		ret = xfr->send(xfr->session, xfr->response_wire, real_size);
+		ret = xfr->send(xfr->session, xfr->wire, real_size);
 	}
 
 	rcu_read_unlock();
@@ -2572,6 +2572,20 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 
 
 	return KNOT_ENOTSUP;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
+{
+	/*! \todo Implement me.
+	 *  - xfr contains partially-built zone or NULL (xfr->data)
+	 *  - incoming packet is in xfr->wire
+	 *  - incoming packet size is in xfr->wire_size
+	 *  - signalize caller, that transfer is finished/error (ret. code?)
+	 */
+	debug_net("ns_process_axfrin: incoming packet\n");
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

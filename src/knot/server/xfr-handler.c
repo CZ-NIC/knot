@@ -26,20 +26,38 @@
  *
  * \param pool Associated connection pool.
  * \param fd Associated socket.
+ * \param data Associated data.
  * \param qbuf Buffer for a query wireformat.
  * \param qbuf_maxlen Buffer maximum size.
  */
-static inline int xfr_client_ev(struct tcp_pool_t *pool, int fd,
+static inline int xfr_client_ev(struct tcp_pool_t *pool, int fd, void *data,
 				uint8_t *qbuf, size_t qbuf_maxlen)
 {
+	/* Check data. */
+	ns_xfr_t *request = (ns_xfr_t *)data;
+	if (!request) {
+		close(fd);
+		return KNOT_EINVAL;
+	}
+
+	/* Read DNS/TCP packet. */
 	int ret = tcp_recv(fd, qbuf, qbuf_maxlen, 0);
 	if (ret <= 0) {
 		close(fd);
+		return KNOT_ERROR;
 	}
 
-	fprintf(stderr, "xfr-in event received %d bytes\n", ret);
+	/* Update xfer state. */
+	request->wire = qbuf;
+	request->wire_size = ret;
 
-	return KNOT_EOK;
+	/* Process incoming packet. */
+	server_t *server = tcp_pool_server(pool);
+	ret = ns_process_axfrin(server->nameserver, request);
+
+	/*! \todo Evaluate, function should respond properly
+	 *        to handle finished transfer. */
+	return ret;
 }
 
 /*
@@ -63,8 +81,8 @@ xfrhandler_t *xfr_create(size_t thrcount, ns_nameserver_t *ns)
 	}
 
 	/* Create TCP pool. */
-	data->xfers = tcp_pool_new(ns->server, xfr_client_ev);
-	if (!data->xfers) {
+	data->xfer_pool = tcp_pool_new(ns->server, xfr_client_ev);
+	if (!data->xfer_pool) {
 		evqueue_free(&data->q);
 		free(data);
 		return 0;
@@ -74,13 +92,13 @@ xfrhandler_t *xfr_create(size_t thrcount, ns_nameserver_t *ns)
 	dt_unit_t *unit = 0;
 	unit = dt_create_coherent(thrcount, &xfr_master, (void*)data);
 	if (!unit) {
-		tcp_pool_del(&data->xfers);
+		tcp_pool_del(&data->xfer_pool);
 		evqueue_free(&data->q);
 		free(data);
 		return 0;
 	}
 	data->unit = unit;
-	dt_repurpose(unit->threads[0], &xfr_client, data->xfers);
+	dt_repurpose(unit->threads[0], &xfr_client, data->xfer_pool);
 
 	return data;
 }
@@ -95,7 +113,7 @@ int xfr_free(xfrhandler_t *handler)
 	evqueue_free(&handler->q);
 
 	/* Delete TCP pool. */
-	tcp_pool_del(&handler->xfers);
+	tcp_pool_del(&handler->xfer_pool);
 
 	/* Delete unit. */
 	dt_delete(&handler->unit);
@@ -137,15 +155,15 @@ int xfr_client_start(xfrhandler_t *handler, ns_xfr_t *req)
 	const dnslib_node_t *apex = dnslib_zone_apex(zone);
 	const dnslib_dname_t *dname = dnslib_node_owner(apex);
 
-	size_t bufsize = req->rsize;
-	ret = axfrin_create_axfr_query(dname, req->response_wire, &bufsize);
+	size_t bufsize = req->wire_size;
+	ret = axfrin_create_axfr_query(dname, req->wire, &bufsize);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	/* Send AXFR query. */
-	fprintf(stderr, "sending %zu bytes AXFR query\n", bufsize);
-	ret = tcp_send(fd, req->response_wire, bufsize);
+	debug_net("axfrin: sending AXFR query (%zu bytes)\n", bufsize);
+	ret = tcp_send(fd, req->wire, bufsize);
 	if (ret != bufsize) {
 		return KNOT_ERROR;
 	}
@@ -153,11 +171,21 @@ int xfr_client_start(xfrhandler_t *handler, ns_xfr_t *req)
 	/* Update XFR request. */
 	req->send = tcp_send;
 	req->session = fd;
+	req->wire = 0; /* Disable shared buffer. */
+	req->wire_size = 0;
+	req->data = 0; /* New zone will be built. */
 
-	/*! \todo Store XFR request for further processing. */
+	/* Store XFR request for further processing. */
+	void *data = malloc(sizeof(ns_xfr_t));
+	if (!data) {
+		close(fd);
+		return KNOT_ENOMEM;
+	}
+
+	memcpy(data, req, sizeof(ns_xfr_t));
 
 	/* Add to pending transfers. */
-	tcp_pool_add(handler->xfers, fd, EPOLLIN);
+	tcp_pool_add(handler->xfer_pool, fd, data);
 	dt_activate(handler->unit->threads[0]);
 
 	return KNOT_EOK;
@@ -206,8 +234,8 @@ int xfr_master(dthread_t *thread)
 
 		/* Update request. */
 		sockaddr_update(&xfr.addr);
-		xfr.response_wire = buf;
-		xfr.rsize = sizeof(buf);
+		xfr.wire = buf;
+		xfr.wire_size = sizeof(buf);
 
 		/* Handle request. */
 		const char *req_type = "";

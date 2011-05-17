@@ -139,8 +139,8 @@ typedef struct ns_xfr {
 	dnslib_packet_t *response;
 	axfr_callback_t send;
 	int session;
-	uint8_t *response_wire;
-	size_t rsize;
+	uint8_t *wire;
+	size_t wire_size;
 	void *data;
 } ns_xfr_t;
 
@@ -200,6 +200,16 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
 int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 			dnslib_packet_t *packet, uint8_t *response_wire,
 			size_t *rsize);
+
+/*!
+ * \brief Processes an AXFR-IN packet.
+ *
+ * \param nameserver Name server structure to provide the data for answering.
+ * \param xfr
+ *
+ * \todo Document me.
+ */
+int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
 
 /*!
  * \brief Properly destroys the name server structure.
