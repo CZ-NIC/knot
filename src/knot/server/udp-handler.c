@@ -139,10 +139,7 @@ int udp_master(dthread_t *thread)
 
 		/* Response types. */
 		case DNSLIB_RESPONSE_NORMAL:
-			/*! \todo Handle SOA query response, cancel EXPIRE timer
-			 *        and start AXFR transfer if needed.
-			 *        Reset REFRESH timer on finish.
-			 */
+			res = ns_process_response(ns, &addr, packet, qbuf, &resp_len);
 			break;
 		case DNSLIB_RESPONSE_AXFR:
 		case DNSLIB_RESPONSE_IXFR:
@@ -169,9 +166,8 @@ int udp_master(dthread_t *thread)
 		dnslib_packet_free(&packet);
 
 		/* Send answer. */
-		if (res == KNOT_EOK) {
+		if (res == KNOT_EOK && resp_len > 0) {
 
-			assert(resp_len > 0);
 			//debug_net("udp: answer wire format (size %zd):\n",
 			//	  resp_len);
 			//debug_net_hex((const char *) outbuf, resp_len);

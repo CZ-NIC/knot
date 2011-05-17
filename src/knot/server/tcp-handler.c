@@ -26,9 +26,9 @@ typedef struct tcp_pool_t {
 	struct epoll_event *events;    /*!< Epoll events backing store. */
 	int                ebs_size;   /*!< Epoll events backing store size. */
 	pthread_mutex_t    mx;         /*!< Pool synchronisation lock. */
-	ns_nameserver_t    *ns;        /* reference to name server */
+	server_t           *server;    /*!< Server instance. */
 	iohandler_t        *io_h;      /* master I/O handler */
-	xfrhandler_t       *xfr_h;     /* XFR handler */
+	tcp_handle_t       handle;     /* TCP event handler. */
 	stat_t             *stat;      /* statistics gatherer */
 } tcp_pool_t;
 
@@ -45,92 +45,6 @@ static inline int tcp_pool_lock(tcp_pool_t *pool)
 static inline int tcp_pool_unlock(tcp_pool_t *pool)
 {
 	return pthread_mutex_unlock(&pool->mx);
-}
-
-/*!
- * \brief Send TCP message.
- *
- * \param fd Associated socket.
- * \param msg Buffer for a query wireformat.
- * \param msglen Buffer maximum size.
- *
- * \retval Number of sent data on success.
- * \retval KNOT_ERROR on error.
- */
-static inline int tcp_send(int fd, uint8_t *msg, size_t msglen)
-{
-
-	/*! \brief TCP corking.
-	 *  \see http://vger.kernel.org/~acme/unbehaved.txt
-	 */
-	int cork = 1;
-	setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
-
-	/* Send message size. */
-	unsigned short pktsize = htons(msglen);
-	int sent = send(fd, &pktsize, sizeof(pktsize), 0);
-	if (sent < 0) {
-		return KNOT_ERROR;
-	}
-
-	/* Send message data. */
-	sent = send(fd, msg, msglen, 0);
-	if (sent < 0) {
-		return KNOT_ERROR;
-	}
-
-	/* Uncork. */
-	cork = 0;
-	setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
-	return sent;
-}
-
-/*!
- * \brief Send TCP message.
- *
- * \param fd Associated socket.
- * \param buf Buffer for incoming bytestream.
- * \param len Buffer maximum size.
- * \param addr Source address.
- *
- * \retval Number of read bytes on success.
- * \retval KNOT_ERROR on error.
- * \retval KNOT_ENOMEM on potential buffer overflow.
- */
-static inline int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
-{
-	/* Receive size. */
-	unsigned short pktsize = 0;
-	int n = recv(fd, &pktsize, sizeof(unsigned short), 0);
-	if (n < 0) {
-		return KNOT_ERROR;
-	}
-
-	pktsize = ntohs(pktsize);
-	debug_net("tcp: incoming packet size on %d: %hu buffer size: %zu\n",
-		  fd, pktsize, len);
-
-	// Check packet size for NULL
-	if (pktsize == 0) {
-		return KNOT_ERROR;
-	}
-
-	// Check packet size
-	if (len < pktsize) {
-		return KNOT_ENOMEM;
-	}
-
-	/* Receive payload. */
-	n = recv(fd, buf, pktsize, 0);
-	if (n <= 0) {
-		return KNOT_ERROR;
-	}
-
-	/* Get peer name. */
-	socklen_t alen = addr->len;
-	getpeername(fd, addr->ptr, &alen);
-
-	return n;
 }
 
 /*!
@@ -171,8 +85,8 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
 	if (packet == NULL) {
 		uint16_t pkt_id = dnslib_wire_get_id(qbuf);
-		ns_error_response(pool->ns, pkt_id, DNSLIB_RCODE_SERVFAIL,
-				  qbuf, &resp_len);
+		ns_error_response(pool->server->nameserver, pkt_id,
+				  DNSLIB_RCODE_SERVFAIL, qbuf, &resp_len);
 		return KNOT_ENOMEM;
 	}
 
@@ -182,7 +96,7 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 		/* Send error response on dnslib RCODE. */
 		if (res > 0) {
 			uint16_t pkt_id = dnslib_wire_get_id(qbuf);
-			ns_error_response(pool->ns, pkt_id, res,
+			ns_error_response(pool->server->nameserver, pkt_id, res,
 					  qbuf, &resp_len);
 		}
 
@@ -206,16 +120,18 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 
 	/* Query types. */
 	case DNSLIB_QUERY_NORMAL:
-		res = ns_answer_normal(pool->ns, packet, qbuf, &resp_len);
+		res = ns_answer_normal(pool->server->nameserver, packet,
+				       qbuf, &resp_len);
 		break;
 	case DNSLIB_QUERY_AXFR:
+		xfr.type = XFR_OUT_REQUEST;
 		xfr.query = packet;
 		xfr.send = tcp_send;
 		xfr.session = fd;
 		xfr.response_wire = 0;
 		xfr.rsize = 0;
-		memcpy(&xfr.from, &addr, sizeof(sockaddr_t));
-		xfr_request(pool->xfr_h, &xfr);
+		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
+		xfr_request(pool->server->xfr_h, &xfr);
 		debug_net("tcp: enqueued AXFR request size %zd.\n",
 			  resp_len);
 		return KNOT_EOK;
@@ -279,15 +195,34 @@ static int tcp_pool_reserve(tcp_pool_t *pool, uint size)
 }
 
 /*!
- * \brief Create new TCP pool.
+ * \brief Disconnect TCP client.
  *
- * Create and initialize new TCP pool with empty set.
+ * \param pool Associated connection pool.
+ * \param fd Associated socket.
  *
- * \param handler Associated I/O handler.
- * \retval New instance on success.
- * \retval NULL on errors.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_ERROR on error.
  */
-static tcp_pool_t *tcp_pool_new(iohandler_t *handler)
+int tcp_disconnect(tcp_pool_t *pool, int fd)
+{
+	if (!pool || fd <= 0) {
+		return KNOT_ERROR;
+	}
+
+	debug_net("tcp: disconnected: %d\n", fd);
+	tcp_pool_lock(pool);
+	int ret = tcp_pool_remove(pool, fd);
+	--pool->evcount;
+	socket_close(fd);
+	tcp_pool_unlock(pool);
+	return ret;
+}
+
+/*
+ * Public APIs.
+ */
+
+tcp_pool_t *tcp_pool_new(server_t *server, tcp_handle_t hfunc)
 {
 	// Alloc
 	tcp_pool_t *pool = malloc(sizeof(tcp_pool_t));
@@ -297,11 +232,11 @@ static tcp_pool_t *tcp_pool_new(iohandler_t *handler)
 
 	// Initialize
 	memset(pool, 0, sizeof(tcp_pool_t));
-	pool->io_h = handler;
-	pool->ns = handler->server->nameserver;
+	pool->io_h = 0;
 	pool->evcount = 0;
 	pool->ebs_size = 0;
-	pool->xfr_h = handler->server->xfr_h;
+	pool->server = server;
+	pool->handle = hfunc;
 
 	// Create epoll fd
 	pool->epfd = epoll_create(1);
@@ -332,8 +267,7 @@ static tcp_pool_t *tcp_pool_new(iohandler_t *handler)
 	return pool;
 }
 
-/*! \brief Delete TCP pool instance. */
-static void tcp_pool_del(tcp_pool_t **pool)
+void tcp_pool_del(tcp_pool_t **pool)
 {
 	// Check
 	if (pool == 0) {
@@ -359,16 +293,7 @@ static void tcp_pool_del(tcp_pool_t **pool)
 	*pool = 0;
 }
 
-/*!
- * \brief Add socket to the TCP pool.
- *
- * \param pool Given TCP pool.
- * \param newsock Socket to be added to the TCP pool.
- * \param events Events to be registered (usually just EPOLLIN).
- * \retval 0 on success.
- * \retval <0 on error.
- */
-static int tcp_pool_add(tcp_pool_t* pool, int newsock, uint32_t events)
+int tcp_pool_add(tcp_pool_t* pool, int newsock, uint32_t events)
 {
 	if (!pool) {
 		return -1;
@@ -395,13 +320,13 @@ static int tcp_pool_add(tcp_pool_t* pool, int newsock, uint32_t events)
 		return -1;
 	}
 
+	// Increase event count
+	++pool->evcount;
+
 	return 0;
 }
 
-/*!
- * \brief Remove socket from a TCP pool.
- */
-static int tcp_pool_remove(tcp_pool_t* pool, int socket)
+int tcp_pool_remove(tcp_pool_t* pool, int socket)
 {
 	if (!pool) {
 		return -1;
@@ -420,41 +345,7 @@ static int tcp_pool_remove(tcp_pool_t* pool, int socket)
 	return 0;
 }
 
-/*!
- * \brief Disconnect TCP client.
- *
- * \param pool Associated connection pool.
- * \param fd Associated socket.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_ERROR on error.
- */
-static inline int tcp_disconnect(tcp_pool_t *pool, int fd)
-{
-	if (!pool || fd <= 0) {
-		return KNOT_ERROR;
-	}
-
-	debug_net("tcp: disconnected: %d\n", fd);
-	tcp_pool_lock(pool);
-	int ret = tcp_pool_remove(pool, fd);
-	--pool->evcount;
-	socket_close(fd);
-	tcp_pool_unlock(pool);
-	return ret;
-}
-
-/*!
- * \brief TCP pool main function.
- *
- * TCP pool receives new connection and organizes them into it's own pool.
- * Handled connections are then polled for events.
- * TCP pooling scales almost linearly with the number of threads.
- *
- * \retval 0 on success.
- * \retval <0 on error.
- */
-static int tcp_pool(dthread_t *thread)
+int tcp_pool(dthread_t *thread)
 {
 	tcp_pool_t *pool = (tcp_pool_t *)thread->data;
 
@@ -468,17 +359,17 @@ static int tcp_pool(dthread_t *thread)
 		// Poll sockets
 		tcp_pool_reserve(pool, pool->evcount * 2);
 		nfds = epoll_wait(pool->epfd, pool->events,
-		                  pool->ebs_size, -1);
+				  pool->ebs_size, -1);
 
 		// Cancellation point
 		if (dt_is_cancelled(thread)) {
 			debug_net("tcp: pool #%d thread is cancelled\n",
-			          pool->epfd);
+				  pool->epfd);
 			break;
 		}
 
 		debug_net("tcp: pool #%d, %d events (%d sockets).\n",
-		          pool->epfd, nfds, pool->evcount);
+			  pool->epfd, nfds, pool->evcount);
 
 		for (int i = 0; i < nfds; ++i) {
 
@@ -487,38 +378,102 @@ static int tcp_pool(dthread_t *thread)
 
 			/* Process. */
 			debug_net("tcp: pool #%d processing fd=%d.\n",
-			          pool->epfd, fd);
+				  pool->epfd, fd);
 
 			/* Handle TCP request. */
 			int ret = KNOT_EOK;
 			if (pool->events[i].events & EPOLLERR) {
 				tcp_disconnect(pool, fd);
 			} else {
-				ret = tcp_handle(pool, fd, qbuf, sizeof(qbuf));
+				ret = pool->handle(pool, fd, qbuf, sizeof(qbuf));
 				if (ret != KNOT_EOK) {
 					tcp_disconnect(pool, fd);
 				}
 			}
 
 			debug_net("tcp: pool #%d finished fd=%d (%d remain).\n",
-			          pool->epfd, fd, pool->evcount);
+				  pool->epfd, fd, pool->evcount);
 		}
 	}
 
 	// If exiting, cleanup
-	if (pool->io_h->state == ServerIdle) {
-		debug_net("tcp: pool #%d is finishing\n", pool->epfd);
-		tcp_pool_del(&pool);
-		return 0;
+	if (pool->io_h) {
+		if (pool->io_h->state == ServerIdle) {
+			debug_net("tcp: pool #%d is finishing\n", pool->epfd);
+			tcp_pool_del(&pool);
+			return 0;
+		}
 	}
 
 	debug_net("tcp: pool #%d going to idle.\n", pool->epfd);
 	return 0;
 }
 
-/*
- * Public APIs.
- */
+int tcp_send(int fd, uint8_t *msg, size_t msglen)
+{
+
+	/*! \brief TCP corking.
+	 *  \see http://vger.kernel.org/~acme/unbehaved.txt
+	 */
+	int cork = 1;
+	setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
+
+	/* Send message size. */
+	unsigned short pktsize = htons(msglen);
+	int sent = send(fd, &pktsize, sizeof(pktsize), 0);
+	if (sent < 0) {
+		return KNOT_ERROR;
+	}
+
+	/* Send message data. */
+	sent = send(fd, msg, msglen, 0);
+	if (sent < 0) {
+		return KNOT_ERROR;
+	}
+
+	/* Uncork. */
+	cork = 0;
+	setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
+	return sent;
+}
+
+int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
+{
+	/* Receive size. */
+	unsigned short pktsize = 0;
+	int n = recv(fd, &pktsize, sizeof(unsigned short), 0);
+	if (n < 0) {
+		return KNOT_ERROR;
+	}
+
+	pktsize = ntohs(pktsize);
+	debug_net("tcp: incoming packet size on %d: %hu buffer size: %zu\n",
+		  fd, pktsize, len);
+
+	// Check packet size for NULL
+	if (pktsize == 0) {
+		return KNOT_ERROR;
+	}
+
+	// Check packet size
+	if (len < pktsize) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Receive payload. */
+	n = recv(fd, buf, pktsize, 0);
+	if (n <= 0) {
+		return KNOT_ERROR;
+	}
+
+	/* Get peer name. */
+	if (addr) {
+		socklen_t alen = addr->len;
+		getpeername(fd, addr->ptr, &alen);
+	}
+
+	return n;
+}
 
 int tcp_master(dthread_t *thread)
 {
@@ -574,7 +529,11 @@ int tcp_master(dthread_t *thread)
 
 			// Allocate new pool if needed
 			if (t->run != &tcp_pool) {
-				dt_repurpose(t, &tcp_pool, tcp_pool_new(handler));
+				tcp_pool_t *pool = tcp_pool_new(handler->server,
+								tcp_handle);
+				dt_repurpose(t, &tcp_pool, pool);
+				pool->io_h = handler;
+
 				debug_dt("dthreads: [%p] repurposed "
 				         "as TCP pool\n", t);
 			}
@@ -586,9 +545,7 @@ int tcp_master(dthread_t *thread)
 			          "to pool #%d\n",
 			          incoming, pool_id);
 
-			if (tcp_pool_add(pool, incoming, EPOLLIN) == 0) {
-				++pool->evcount;
-			}
+			tcp_pool_add(pool, incoming, EPOLLIN);
 
 			// Activate pool
 			dt_activate(t);

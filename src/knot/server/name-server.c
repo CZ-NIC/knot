@@ -7,6 +7,8 @@
 
 #include "knot/common.h"
 #include "knot/server/name-server.h"
+#include "knot/server/axfr-in.h"
+#include "knot/server/server.h"
 #include "knot/stat/stat.h"
 #include "dnslib/dnslib.h"
 #include "dnslib/debug.h"
@@ -15,6 +17,7 @@
 #include "dnslib/packet.h"
 #include "dnslib/response2.h"
 #include "dnslib/query.h"
+#include "dnslib/consts.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -2018,7 +2021,7 @@ DEBUG_NS(
 	free(name_str2);
 );
 	// Check xfr-out ACL
-	if (acl_match(zone->acl.xfr_out, &xfr->from) == ACL_DENY) {
+	if (acl_match(zone->acl.xfr_out, &xfr->addr) == ACL_DENY) {
 		debug_ns("Request for AXFR OUT is not authorized.\n");
 		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_REFUSED);
 		return KNOT_EOK;
@@ -2477,6 +2480,94 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	}
 
 	return KNOT_EOK;
+}
+
+int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
+			dnslib_packet_t *packet, uint8_t *response_wire,
+			size_t *rsize)
+{
+	if (!packet || !rsize) {
+		return KNOT_EINVAL;
+	}
+
+	/*! \todo Handle SOA query response, cancel EXPIRE timer
+	 *        and start AXFR transfer if needed.
+	 *        Reset REFRESH timer on finish.
+	 */
+	if (dnslib_packet_qtype(packet) == DNSLIB_RRTYPE_SOA) {
+
+		/* No response. */
+		*rsize = 0;
+
+		/* Find matching zone and ID. */
+		fprintf(stderr, "received SOA response\n");
+		const dnslib_dname_t *zone_name = dnslib_packet_qname(packet);
+		dnslib_zone_t *zone = dnslib_zonedb_find_zone(
+					nameserver->zone_db,
+					zone_name);
+		if (!zone) {
+			fprintf(stderr, "matching zone not found\n");
+			return KNOT_EINVAL;
+		}
+
+		/* Match ID against awaited. */
+		uint16_t pkt_id = dnslib_packet_id(packet);
+		if ((int)pkt_id != zone->xfr_in.next_id) {
+			fprintf(stderr, "invalid packet id\n");
+			return KNOT_EINVAL;
+		}
+
+		/* Cancel EXPIRE timer. */
+		evsched_t *sched = nameserver->server->sched;
+		event_t *expire_ev = zone->xfr_in.expire;
+		if (expire_ev) {
+			fprintf(stderr, "canceling EXPIRE timer\n");
+			evsched_cancel(sched, expire_ev);
+			evsched_event_free(sched, expire_ev);
+			zone->xfr_in.expire = 0;
+		}
+
+		/* Cancel REFRESH/RETRY timer. */
+		event_t *refresh_ev = zone->xfr_in.timer;
+		if (refresh_ev) {
+			fprintf(stderr, "canceling REFRESH timer\n");
+			evsched_cancel(sched, refresh_ev);
+		}
+
+		/* Check SOA SERIAL. */
+		if (axfrin_transfer_needed(zone, packet) < 1) {
+
+			/* Reinstall REFRESH timer. */
+			uint32_t ref_tmr = 0;
+
+			/* Retrieve SOA RDATA. */
+			const dnslib_rrset_t *soa_rrs = 0;
+			const dnslib_rdata_t *soa_rr = 0;
+			soa_rrs = dnslib_node_rrset(dnslib_zone_apex(zone),
+						    DNSLIB_RRTYPE_SOA);
+			soa_rr = dnslib_rrset_rdata(soa_rrs);
+			ref_tmr = dnslib_rdata_soa_refresh(soa_rr);
+			ref_tmr *= 1000; /* Convert to miliseconds. */
+
+			fprintf(stderr, "reinstalling REFRESH timer (%u ms)\n",
+				ref_tmr);
+
+			evsched_schedule(sched, refresh_ev, ref_tmr);
+			return KNOT_EOK;
+		}
+
+		/* Start AXFR client transfer. */
+		fprintf(stderr, "scheduling XFR client request\n");
+		ns_xfr_t xfr_req;
+		memset(&xfr_req, 0, sizeof(ns_xfr_t));
+		memcpy(&xfr_req.addr, from, sizeof(sockaddr_t));
+		xfr_req.type = XFR_IN_REQUEST;
+		xfr_req.data = zone;
+		return xfr_request(nameserver->server->xfr_h, &xfr_req);
+	}
+
+
+	return KNOT_ENOTSUP;
 }
 
 /*----------------------------------------------------------------------------*/
