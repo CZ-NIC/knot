@@ -1927,7 +1927,6 @@ int process_rr(void)
 					 current_rrset->rclass,
 					 current_rrset->ttl);
 		if (rrset == NULL) {
-			/* tTODO cleanup */
 			return KNOT_ZCOMPILE_ENOMEM;
 		}
 

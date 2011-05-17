@@ -19,7 +19,7 @@ TREE_DEFINE(dname_table_node, avl);
 static int compare_dname_table_nodes(struct dname_table_node *n1,
 				     struct dname_table_node *n2)
 {
-	assert(n1 && n2);
+	assert(n1 && n2 && n1->dname && n2->dname);
 	return (strncmp((char *)n1->dname->name, (char *)n2->dname->name,
 			(n1->dname->size < n2->dname->size) ?
 			(n1->dname->size):(n2->dname->size)));
@@ -63,6 +63,7 @@ dnslib_dname_table_t *dnslib_dname_table_new()
 dnslib_dname_t *dnslib_dname_table_find_dname(const dnslib_dname_table_t *table,
 					      dnslib_dname_t *dname)
 {
+	assert(dname);
 	struct dname_table_node *node = NULL;
 	struct dname_table_node sought;
 	sought.dname = dname;
