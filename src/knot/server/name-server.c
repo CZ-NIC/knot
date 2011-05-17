@@ -2026,6 +2026,7 @@ DEBUG_NS(
 		debug_ns("Request for AXFR OUT is not authorized.\n");
 		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_REFUSED);
 		ns_axfr_send_and_clear(xfr);
+		close(xfr->session);
 		return KNOT_EOK;
 	} else {
 		debug_ns("Authorized AXFR OUT request.\n");
