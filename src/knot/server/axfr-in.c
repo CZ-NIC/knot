@@ -119,7 +119,8 @@ int axfrin_transfer_needed(const dnslib_zone_t *zone,
 	const dnslib_rrset_t *soa_rrset =
 		dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
 	if (soa_rrset == NULL) {
-		char *name = dnslib_dname_to_str(dnslib_rrset_owner(soa_rrset));
+		char *name = dnslib_dname_to_str(dnslib_node_owner(
+				dnslib_zone_apex(zone)));
 		log_answer_warning("SOA RRSet missing in the zone %s!\n", name);
 		free(name);
 		return KNOT_ERROR;
