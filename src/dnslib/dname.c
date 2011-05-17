@@ -496,7 +496,6 @@ dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname)
 	parent->labels = (uint8_t *)malloc(dname->label_count - 1);
 	if (parent->labels == NULL) {
 		ERR_ALLOC_FAILED;
-		free(parent->name);
 		dnslib_dname_free(&parent);
 		return NULL;
 	}
