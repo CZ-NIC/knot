@@ -209,7 +209,7 @@ int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
 	}
 
 	dnslib_rrset_t *rr = NULL;
-	ret = dnslib_packet_parse_next_rr_answer(packet, rr);
+	ret = dnslib_packet_parse_next_rr_answer(packet, &rr);
 
 	if (ret != DNSLIB_EOK) {
 		debug_xfr("Could not parse first Answer RR: %s.\n",
@@ -284,10 +284,10 @@ DEBUG_XFR(
 		// now just dump
 		debug_xfr("\nNext RR:\n\n");
 		dnslib_rrset_dump(rr, 0);
-		dnslib_rrset_deep_free(&rr, 1, 1, 1);
+		dnslib_rrset_deep_free(&rr, 0, 1, 1);
 
 		// parse next RR
-		ret = dnslib_packet_parse_next_rr_answer(packet, rr);
+		ret = dnslib_packet_parse_next_rr_answer(packet, &rr);
 	}
 
 	if (ret < 0) {
@@ -303,8 +303,8 @@ DEBUG_XFR(
 
 	assert(ret != DNSLIB_EOK || rr == NULL);
 	dnslib_packet_free(&packet);
-	dnslib_node_free(&node, 0);
-	dnslib_rrset_deep_free(&rr, 1, 1, 1);
+	//dnslib_node_free(&node, 0);
+//	dnslib_rrset_deep_free(&rr, 1, 1, 1);
 
 	// for now, delete the created zone
 	dnslib_zone_deep_free(zone, 1);
