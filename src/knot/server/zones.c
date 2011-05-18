@@ -113,7 +113,7 @@ static int zones_axfrin_poll(event_t *e)
 	size_t buflen = SOCKET_MTU_SZ;
 
 	/* Create query. */
-	int ret = axfrin_create_soa_query(dname, qbuf, &buflen);
+	int ret = xfrin_create_soa_query(dname, qbuf, &buflen);
 	if (ret == KNOT_EOK && zone->xfr_in.ifaces) {
 
 		int sock = -1;

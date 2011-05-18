@@ -152,7 +152,7 @@ int notify_process_request(dnslib_packet_t *notify,
                            const dnslib_zone_t **zone,
                            uint8_t *buffer, size_t *size)
 {
-	/*! \todo Most of this function is identical to axfrin_transfer_needed()
+	/*! \todo Most of this function is identical to xfrin_transfer_needed()
 	 *        - it will be fine to merge the code somehow.
 	 */
 
