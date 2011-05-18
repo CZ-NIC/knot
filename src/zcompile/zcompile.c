@@ -1713,35 +1713,35 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 				dnslib_dname_free(&chopped);
 				return NULL;
 			} else if (found_dname != NULL) {
-				dnslib_dname_free(&chopped);
 				chopped = found_dname;
 			}
 			tmp_node = dnslib_node_new(chopped, NULL);
 			if (tmp_node == NULL) {
-				dnslib_dname_free(&chopped);
 				return NULL;
 			}
 			last_node->parent = tmp_node;
 
 			assert(node_get_func(zone, chopped) == NULL);
 			if (node_add_func(zone, tmp_node) != 0) {
-				dnslib_dname_free(&chopped);
 				return NULL;
 			}
 
 			last_node = tmp_node;
 			chopped = dnslib_dname_left_chop(chopped);
 			if (chopped == NULL) {
-				dnslib_dname_free(&chopped);
 				return NULL;
 			}
 		}
 
-		last_node->parent = tmp_node;
+		if (dnslib_node_rrset(tmp_node, DNSLIB_RRTYPE_DNAME) == NULL) {
+			last_node->parent = tmp_node;
+		} else {
+			fprintf(stderr, "Error: Trying to add node that "
+			        "would be a child of DNAME node!\n");
+			return NULL;
+		}
 		/* parent is already in the zone */
 	}
-
-	dnslib_dname_free(&chopped);
 
 	return node;
 }
