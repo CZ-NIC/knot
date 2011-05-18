@@ -779,6 +779,14 @@ int dnslib_packet_parse_rest(dnslib_packet_t *packet)
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_packet_parse_next_rr_answer(dnslib_packet_t *packet,
+                                       dnslib_rrset_t *rr)
+{
+	return NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_packet_set_max_size(dnslib_packet_t *packet, int max_size)
 {
 	if (packet == NULL || max_size <= 0) {
