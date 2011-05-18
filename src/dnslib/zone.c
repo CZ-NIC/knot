@@ -617,6 +617,20 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count)
 
 /*----------------------------------------------------------------------------*/
 
+time_t dnslib_zone_version(const dnslib_zone_t *zone)
+{
+	return zone->version;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_zone_set_version(dnslib_zone_t *zone, time_t version)
+{
+	zone->version = version;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 {
 	int ret = 0;
@@ -989,8 +1003,10 @@ void dnslib_zone_adjust_dnames(dnslib_zone_t *zone)
 
 void dnslib_zone_load_nsec3param(dnslib_zone_t *zone)
 {
-	assert(zone);
-	assert(zone->apex);
+	if (zone == NULL || zone->apex == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	const dnslib_rrset_t *rrset = dnslib_node_rrset(zone->apex,
 						      DNSLIB_RRTYPE_NSEC3PARAM);
 
