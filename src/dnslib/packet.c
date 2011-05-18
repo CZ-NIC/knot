@@ -588,7 +588,10 @@ static int dnslib_packet_parse_rrs(const uint8_t *wire, size_t *pos,
  */
 static void dnslib_packet_free_allocated_space(dnslib_packet_t *pkt)
 {
-	/*! @todo These checks are no longer OK. */
+	if (pkt->prealloc_type == DNSLIB_PACKET_PREALLOC_NONE) {
+		dnslib_dname_free(&pkt->question.qname);
+	}
+
 	if (pkt->max_an_rrsets > DEFAULT_RRSET_COUNT(ANCOUNT, pkt)) {
 		free(pkt->answer);
 	}
@@ -780,26 +783,30 @@ int dnslib_packet_parse_rest(dnslib_packet_t *packet)
 /*----------------------------------------------------------------------------*/
 
 int dnslib_packet_parse_next_rr_answer(dnslib_packet_t *packet,
-                                       dnslib_rrset_t *rr)
+                                       dnslib_rrset_t **rr)
 {
 	if (packet == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
-	if (packet->parsed >= packet->size) {
+	if (packet->parsed >= packet->size
+	    || packet->an_rrsets == packet->header.ancount) {
 		return DNSLIB_EOK;
 	}
 
 	size_t pos = packet->parsed;
 
 	debug_dnslib_packet("Parsing next Answer RR...\n");
-	rr = dnslib_packet_parse_rr(packet->wireformat, &pos, packet->size);
-	if (rr == NULL) {
+	*rr = dnslib_packet_parse_rr(packet->wireformat, &pos, packet->size);
+	if (*rr == NULL) {
 		debug_dnslib_packet("Failed to parse RR!\n");
 		return DNSLIB_EMALF;
 	}
 
 	packet->parsed = pos;
+	// increment the number of answer RRSets, though there are no saved
+	// in the packet; it is OK, because packet->answer is NULL
+	++packet->an_rrsets;
 
 	return DNSLIB_EOK;
 }
