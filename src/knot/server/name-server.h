@@ -211,6 +211,22 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
  */
 int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
 
+typedef enum ns_xfr_type_t {
+	NS_XFR_TYPE_AXFR,
+	NS_XFR_TYPE_IXFR
+} ns_xfr_type_t;
+
+/*!
+ * \brief Decides what type of transfer should be used to update the given zone.
+ *
+ * \param nameserver Name server structure that uses the zone.
+ * \param zone Zone to be updated by the transfer.
+ *
+ * \retval
+ */
+ns_xfr_type_t ns_transfer_to_use(ns_nameserver_t *nameserver,
+                                 dnslib_zone_t *zone);
+
 /*!
  * \brief Properly destroys the name server structure.
  *
