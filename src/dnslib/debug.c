@@ -173,12 +173,12 @@ void dnslib_node_dump(dnslib_node_t *node, void *loaded_zone)
 
 	dnslib_rrset_t *tmp = (dnslib_rrset_t *)skip_node->value;
 
-	dnslib_rrset_dump(tmp, loaded_zone);
+	dnslib_rrset_dump(tmp, (int)loaded_zone);
 
 	while ((skip_node = skip_next(skip_node)) != NULL) {
 		tmp = (dnslib_rrset_t *)skip_node->value;
 	//	assert(tmp->owner->node == node);
-		dnslib_rrset_dump(tmp, loaded_zone);
+		dnslib_rrset_dump(tmp, (int)loaded_zone);
 	}
 	//assert(node->owner->node == node);
 	printf("------- NODE --------\n");

@@ -449,6 +449,7 @@ dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
 
 	while (p < size && wire[p] != 0) {
 		labels[l] = i;
+		debug_dnslib_dname("Next label (%d.) position: %zu\n", l, i);
 
 		if (dnslib_wire_is_pointer(wire + p)) {
 			// pointer.
@@ -500,15 +501,15 @@ dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
 	memcpy(dname->name, name, i + 1);
 	dname->size = i + 1;
 
-	dname->labels = (uint8_t *)malloc(l * sizeof(uint8_t));
+	dname->labels = (uint8_t *)malloc((l + 1) * sizeof(uint8_t));
 	if (dname->labels == NULL) {
 		ERR_ALLOC_FAILED;
 		dnslib_dname_free(&dname);
 		return NULL;
 	}
-	memcpy(dname->labels, labels, l);
+	memcpy(dname->labels, labels, l + 1);
 
-	dname->label_count = l - 1;
+	dname->label_count = l;
 
 	dname->node = node;
 
