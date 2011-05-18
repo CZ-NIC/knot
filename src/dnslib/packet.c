@@ -782,7 +782,26 @@ int dnslib_packet_parse_rest(dnslib_packet_t *packet)
 int dnslib_packet_parse_next_rr_answer(dnslib_packet_t *packet,
                                        dnslib_rrset_t *rr)
 {
-	return NULL;
+	if (packet == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
+	if (packet->parsed >= packet->size) {
+		return DNSLIB_EOK;
+	}
+
+	size_t pos = packet->parsed;
+
+	debug_dnslib_packet("Parsing next Answer RR...\n");
+	rr = dnslib_packet_parse_rr(packet->wireformat, &pos, packet->size);
+	if (rr == NULL) {
+		debug_dnslib_packet("Failed to parse RR!\n");
+		return DNSLIB_EMALF;
+	}
+
+	packet->parsed = pos;
+
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
