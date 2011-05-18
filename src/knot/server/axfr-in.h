@@ -63,6 +63,21 @@ int axfrin_transfer_needed(const dnslib_zone_t *zone,
 int axfrin_create_axfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
                              size_t *size);
 
+/*!
+ * \brief Creates normal query for the given zone name and the IXFR type.
+ *
+ * \param zone_name Name of the zone to ask for - the SOA owner.
+ * \param buffer Buffer to fill the message in.
+ * \param size In: available space in the buffer. Out: actual size of the
+ *             message in bytes.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_ESPACE
+ * \retval KNOT_ERROR
+ */
+int axfrin_create_ixfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
+                             size_t *size);
+
 #endif /* _KNOT_AXFR_IN_H_ */
 
 /*! @} */
