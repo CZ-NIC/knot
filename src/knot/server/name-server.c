@@ -5,6 +5,7 @@
 
 #include <urcu.h>
 
+#include "knot/server/socket.h"
 #include "knot/common.h"
 #include "knot/server/name-server.h"
 #include "knot/server/axfr-in.h"
@@ -2026,7 +2027,7 @@ DEBUG_NS(
 		debug_ns("Request for AXFR OUT is not authorized.\n");
 		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_REFUSED);
 		ns_axfr_send_and_clear(xfr);
-		close(xfr->session);
+		socket_close(xfr->session);
 		return KNOT_EOK;
 	} else {
 		debug_ns("Authorized AXFR OUT request.\n");
@@ -2566,7 +2567,7 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 		ns_xfr_t xfr_req;
 		memset(&xfr_req, 0, sizeof(ns_xfr_t));
 		memcpy(&xfr_req.addr, from, sizeof(sockaddr_t));
-		xfr_req.type = XFR_IN_REQUEST;
+		xfr_req.type = NS_XFR_TYPE_AIN;
 		xfr_req.data = zone;
 		return xfr_request(nameserver->server->xfr_h, &xfr_req);
 	}
@@ -2595,7 +2596,7 @@ ns_xfr_type_t ns_transfer_to_use(ns_nameserver_t *nameserver,
                                  dnslib_zone_t *zone)
 {
 	/*! \todo Implement. */
-	return NS_XFR_TYPE_AXFR;
+	return NS_XFR_TYPE_IIN;
 }
 
 /*----------------------------------------------------------------------------*/

@@ -240,13 +240,13 @@ int xfr_master(dthread_t *thread)
 		/* Handle request. */
 		const char *req_type = "";
 		switch(xfr.type) {
-		case XFR_OUT_REQUEST:
+		case NS_XFR_TYPE_AOUT:
 			req_type = "xfr-out";
 			ret = ns_answer_axfr(data->ns, &xfr);
 			debug_net("xfr_master: ns_answer_axfr() returned %d.\n",
 				  ret);
 			break;
-		case XFR_IN_REQUEST:
+		case NS_XFR_TYPE_AIN:
 			req_type = "xfr-in";
 			ret = xfr_client_start(data, &xfr);
 			break;

@@ -17,14 +17,6 @@
 #include "common/evqueue.h"
 
 /*!
- * \brief XFR request type.
- */
-typedef enum xfr_reqtype_t {
-	XFR_IN_REQUEST, /*!< XFR-IN request (start transfer). */
-	XFR_OUT_REQUEST /*!< XFR-OUT request (incoming transfer). */
-} xfr_reqtype_t;
-
-/*!
  * \brief XFR handler structure.
  */
 typedef struct xfrhandler_t
