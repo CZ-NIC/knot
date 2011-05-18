@@ -89,6 +89,21 @@ int xfrin_create_ixfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
  */
 int xfrin_zone_transferred(ns_nameserver_t *nameserver, dnslib_zone_t *zone);
 
+/*!
+ * \brief Processes one incoming packet of AXFR transfer by updating the given
+ *        zone.
+ *
+ * \param pkt Incoming packet in wire format.
+ * \param size Size of the packet in bytes.
+ * \param zone Zone being built. If there is no such zone (i.e. this is the
+ *             first packet, \a *zone may be set to NULL, in which case a new
+ *             zone structure is created).
+ *
+ * \retval KNOT_EOK
+ */
+int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
+                              dnslib_zone_t **zone);
+
 #endif /* _KNOT_XFR_IN_H_ */
 
 /*! @} */
