@@ -1001,7 +1001,7 @@ void dnslib_zone_adjust_dnames(dnslib_zone_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_load_nsec3param(dnslib_zone_t *zone)
+int dnslib_zone_load_nsec3param(dnslib_zone_t *zone)
 {
 	if (zone == NULL || zone->apex == NULL) {
 		return DNSLIB_EBADARG;
@@ -1015,6 +1015,8 @@ void dnslib_zone_load_nsec3param(dnslib_zone_t *zone)
 	} else {
 		memset(&zone->nsec3_params, 0, sizeof(dnslib_nsec3_params_t));
 	}
+
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
