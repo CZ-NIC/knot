@@ -278,13 +278,19 @@ static int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
 		}
 
 		zone = dnslib_zload_load(zl);
-		dnslib_zload_close(zl);
 		if (zone) {
+			// save the timestamp from the zone db file
+			struct stat s;
+			stat(filename, &s);
+			dnslib_zone_set_version(zone, s.st_mtime);
+
 			if (dnslib_zonedb_add_zone(zonedb, zone) != 0){
 				dnslib_zone_deep_free(&zone, 0);
 				zone = 0;
 			}
 		}
+
+		dnslib_zload_close(zl);
 
 		if (!zone) {
 			log_server_error("Failed to load "
@@ -341,20 +347,24 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 		// try to find the zone in the current zone db
 		dnslib_zone_t *zone = dnslib_zonedb_find_zone(db_old,
 		                                              zone_name);
+		int reload = 0;
+
 		if (zone != NULL) {
-			// if found, just insert the zone into the new zone db
-			debug_zones("Found in old database, copying to new.\n");
-			int ret = dnslib_zonedb_add_zone(db_new, zone);
-			if (ret != KNOT_EOK) {
-				log_server_error("Error adding old zone to"
-				                 " the new database: %s\n",
-				                 knot_strerror(ret));
-			} else {
-				++inserted;
+			// if found, check timestamp of the file against the
+			// loaded zone
+			struct stat s;
+			stat(z->file, &s);
+			if (dnslib_zone_version(zone) < s.st_mtime) {
+				// the file is newer, reload!
+				reload = 1;
 			}
 		} else {
-			// if not found, the zone must be loaded
-			debug_zones("Not found in old database, loading...\n");
+			reload = 1;
+		}
+
+		if (reload) {
+			debug_zones("Not found in old database or the loaded"
+			            " version is old, loading...\n");
 			int ret = zones_load_zone(db_new, z->name,
 						  z->file, z->db);
 			if (ret != KNOT_EOK) {
@@ -368,6 +378,17 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 				++inserted;
 			}
 			// unused return value, if not loaded, just continue
+		} else {
+			// just insert the zone into the new zone db
+			debug_zones("Found in old database, copying to new.\n");
+			int ret = dnslib_zonedb_add_zone(db_new, zone);
+			if (ret != KNOT_EOK) {
+				log_server_error("Error adding old zone to"
+				                 " the new database: %s\n",
+				                 knot_strerror(ret));
+			} else {
+				++inserted;
+			}
 		}
 
 		// Update ACLs

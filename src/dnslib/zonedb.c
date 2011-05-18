@@ -70,6 +70,9 @@ dnslib_zonedb_t *dnslib_zonedb_new()
 
 int dnslib_zonedb_add_zone(dnslib_zonedb_t *db, dnslib_zone_t *zone)
 {
+	if (db == NULL || zone == NULL || zone->apex == NULL) {
+		return DNSLIB_EBADARG;
+	}
 DEBUG_DNSLIB_ZONEDB(
 	char *name = dnslib_dname_to_str(zone->apex->owner);
 	debug_dnslib_zonedb("Inserting zone %s into zone db.\n", name);
