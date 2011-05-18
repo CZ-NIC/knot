@@ -2591,6 +2591,15 @@ int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 
 /*----------------------------------------------------------------------------*/
 
+ns_xfr_type_t ns_transfer_to_use(ns_nameserver_t *nameserver,
+                                 dnslib_zone_t *zone)
+{
+	/*! \todo Implement. */
+	return NS_XFR_TYPE_AXFR;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void ns_destroy(ns_nameserver_t **nameserver)
 {
 	synchronize_rcu();
