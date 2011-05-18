@@ -17,7 +17,7 @@
 #include "knot/other/error.h"
 #include "knot/server/socket.h"
 #include "knot/server/tcp-handler.h"
-#include "knot/server/axfr-in.h"
+#include "knot/server/xfr-in.h"
 
 /*!
  * \brief XFR-IN event handler function.
