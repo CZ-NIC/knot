@@ -257,7 +257,7 @@ int dnslib_packet_parse_from_wire(dnslib_packet_t *packet,
 int dnslib_packet_parse_rest(dnslib_packet_t *packet);
 
 int dnslib_packet_parse_next_rr_answer(dnslib_packet_t *packet,
-                                       dnslib_rrset_t *rr);
+                                       dnslib_rrset_t **rr);
 
 /*!
  * \brief Sets the maximum size of the packet and allocates space for wire
