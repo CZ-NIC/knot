@@ -21,6 +21,7 @@
 //#define DT_DEBUG
 //#define NET_DEBUG
 //#define ZONES_DEBUG
+#define XFR_DEBUG
 
 #ifdef SERVER_DEBUG
 #define debug_server(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
@@ -64,6 +65,16 @@
 #define debug_zones(msg...)
 #define debug_zones_hex(data, len)
 #define DEBUG_zones(cmds)
+#endif
+
+#ifdef XFR_DEBUG
+#define debug_xfr(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define debug_xfr_hex(data, len) hex_log(LOG_SERVER, (data), (len))
+#define DEBUG_XFR(cmds) do { cmds } while (0)
+#else
+#define debug_xfr(msg...)
+#define debug_xfr_hex(data, len)
+#define DEBUG_XFR(cmds)
 #endif
 
 #endif /* _KNOT_DEBUG_H_ */
