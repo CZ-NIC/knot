@@ -146,7 +146,7 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd, void *data,
 		break;
 	case DNSLIB_QUERY_AXFR:
 		memset(&xfr, 0, sizeof(ns_xfr_t));
-		xfr.type = XFR_OUT_REQUEST;
+		xfr.type = NS_XFR_TYPE_AOUT;
 		xfr.query = packet;
 		xfr.send = tcp_send;
 		xfr.session = fd;
