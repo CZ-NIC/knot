@@ -1795,7 +1795,7 @@ static int ns_axfr_send_and_clear(ns_xfr_t *xfr)
 	// Send the response
 	debug_ns("Sending response (size %zu)..\n", real_size);
 	debug_ns_hex((const char *)xfr->wire, real_size);
-	int res = xfr->send(xfr->session, xfr->wire, real_size);
+	int res = xfr->send(xfr->session, &xfr->addr, xfr->wire, real_size);
 	if (res < 0) {
 		debug_ns("Send returned %d\n", res);
 		return res;
@@ -2471,7 +2471,7 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		ns_error_response(nameserver, xfr->query->header.id,
 				  DNSLIB_RCODE_SERVFAIL, xfr->wire,
 		                  &real_size);
-		ret = xfr->send(xfr->session, xfr->wire, real_size);
+		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, real_size);
 	}
 
 	rcu_read_unlock();
@@ -2484,6 +2484,19 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		// there was some error but there is not much to do about it
 		return ret;
 	}
+
+	return KNOT_EOK;
+}
+
+int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
+{
+	debug_ns("ns_answer_ixfr()\n");
+
+	if (nameserver == NULL || xfr == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	debug_ns("ns_answer_ixfr(): implement me\n");
 
 	return KNOT_EOK;
 }
@@ -2579,6 +2592,20 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 /*----------------------------------------------------------------------------*/
 
 int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
+{
+	/*! \todo Implement me.
+	 *  - xfr contains partially-built zone or NULL (xfr->data)
+	 *  - incoming packet is in xfr->wire
+	 *  - incoming packet size is in xfr->wire_size
+	 *  - signalize caller, that transfer is finished/error (ret. code?)
+	 */
+	debug_net("ns_process_axfrin: incoming packet\n");
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int ns_process_ixfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 {
 	/*! \todo Implement me.
 	 *  - xfr contains partially-built zone or NULL (xfr->data)

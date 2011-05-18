@@ -39,6 +39,14 @@ typedef struct tcp_pool_t {
  */
 
 /*!
+ * \brief Wrapper for TCP send.
+ */
+static int xfr_send_cb(int fd, sockaddr_t *addr, uint8_t *msg, size_t msglen)
+{
+	return tcp_send(fd, msg, msglen);
+}
+
+/*!
  * \brief Compare function for skip-list.
  */
 static int tcp_pool_compare(void *k1, void *k2)
@@ -148,16 +156,24 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd, void *data,
 		memset(&xfr, 0, sizeof(ns_xfr_t));
 		xfr.type = NS_XFR_TYPE_AOUT;
 		xfr.query = packet;
-		xfr.send = tcp_send;
+		xfr.send = xfr_send_cb;
 		xfr.session = fd;
-		xfr.wire = 0;
-		xfr.wire_size = 0;
 		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
 		xfr_request(pool->server->xfr_h, &xfr);
 		debug_net("tcp: enqueued AXFR request size %zd.\n",
 			  resp_len);
 		return KNOT_EOK;
 	case DNSLIB_QUERY_IXFR:
+		memset(&xfr, 0, sizeof(ns_xfr_t));
+		xfr.type = NS_XFR_TYPE_IOUT;
+		xfr.query = packet;
+		xfr.send = xfr_send_cb;
+		xfr.session = fd;
+		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
+		xfr_request(pool->server->xfr_h, &xfr);
+		debug_net("tcp: enqueued IXFR request size %zd.\n",
+			  resp_len);
+		return KNOT_EOK;
 	case DNSLIB_QUERY_NOTIFY:
 	case DNSLIB_QUERY_UPDATE:
 		break;
