@@ -146,8 +146,8 @@ src/knot/server/udp-handler.c
 src/knot/server/udp-handler.h
 src/knot/server/zones.c
 src/knot/server/zones.h
-src/knot/server/axfr-in.c
-src/knot/server/axfr-in.h
+src/knot/server/xfr-in.c
+src/knot/server/xfr-in.h
 src/knot/server/notify.c
 src/knot/server/notify.h
 src/knot/ctl/process.c

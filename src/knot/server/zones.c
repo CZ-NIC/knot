@@ -11,7 +11,7 @@
 #include "knot/other/log.h"
 #include "dnslib/zone-load.h"
 #include "knot/other/debug.h"
-#include "knot/server/axfr-in.h"
+#include "knot/server/xfr-in.h"
 #include "knot/server/server.h"
 
 /*----------------------------------------------------------------------------*/

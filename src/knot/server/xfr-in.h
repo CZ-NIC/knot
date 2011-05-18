@@ -1,16 +1,16 @@
 /*!
- * \file axfr-in.h
+ * \file xfr-in.h
  *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
- * \brief AXFR client API.
+ * \brief XFR client API.
  *
  * \addtogroup query_processing
  * @{
  */
 
-#ifndef _KNOT_AXFR_IN_H_
-#define _KNOT_AXFR_IN_H_
+#ifndef _KNOT_XFR_IN_H_
+#define _KNOT_XFR_IN_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -31,8 +31,8 @@
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int axfrin_create_soa_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
-                            size_t *size);
+int xfrin_create_soa_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
+                           size_t *size);
 
 /*!
  * \brief Checks if a zone transfer is required by comparing the zone's SOA with
@@ -45,8 +45,8 @@ int axfrin_create_soa_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
  * \retval 1 if the transfer is needed.
  * \retval 0 if the transfer is not needed.
  */
-int axfrin_transfer_needed(const dnslib_zone_t *zone,
-                           dnslib_packet_t *soa_response);
+int xfrin_transfer_needed(const dnslib_zone_t *zone,
+                          dnslib_packet_t *soa_response);
 
 /*!
  * \brief Creates normal query for the given zone name and the AXFR type.
@@ -60,8 +60,8 @@ int axfrin_transfer_needed(const dnslib_zone_t *zone,
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int axfrin_create_axfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
-                             size_t *size);
+int xfrin_create_axfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
+                            size_t *size);
 
 /*!
  * \brief Creates normal query for the given zone name and the IXFR type.
@@ -75,9 +75,9 @@ int axfrin_create_axfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int axfrin_create_ixfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
-                             size_t *size);
+int xfrin_create_ixfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
+                            size_t *size);
 
-#endif /* _KNOT_AXFR_IN_H_ */
+#endif /* _KNOT_XFR_IN_H_ */
 
 /*! @} */

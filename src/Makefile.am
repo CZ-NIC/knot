@@ -213,8 +213,8 @@ libknot_la_SOURCES =				\
 	knot/server/xfr-handler.h			\
 	knot/server/dthreads.h			\
 	knot/server/zones.h				\
-	knot/server/axfr-in.h				\
-	knot/server/axfr-in.c				\
+	knot/server/xfr-in.h				\
+	knot/server/xfr-in.c				\
 	knot/server/server.h
 
 libknot_la_LIBADD = @LIBOBJS@

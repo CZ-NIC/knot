@@ -8,7 +8,7 @@
 #include "knot/server/socket.h"
 #include "knot/common.h"
 #include "knot/server/name-server.h"
-#include "knot/server/axfr-in.h"
+#include "knot/server/xfr-in.h"
 #include "knot/server/server.h"
 #include "knot/stat/stat.h"
 #include "dnslib/dnslib.h"

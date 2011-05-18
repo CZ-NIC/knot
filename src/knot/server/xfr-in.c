@@ -1,6 +1,6 @@
 #include <assert.h>
 
-#include "knot/server/axfr-in.h"
+#include "knot/server/xfr-in.h"
 
 #include "knot/common.h"
 #include "knot/other/error.h"
@@ -15,8 +15,8 @@
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-static int axfrin_create_query(const dnslib_dname_t *qname, uint16_t qtype,
-                               uint16_t qclass, uint8_t *buffer, size_t *size)
+static int xfrin_create_query(const dnslib_dname_t *qname, uint16_t qtype,
+                              uint16_t qclass, uint8_t *buffer, size_t *size)
 {
 	dnslib_packet_t *pkt = dnslib_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
 	CHECK_ALLOC_LOG(pkt, KNOT_ENOMEM);
@@ -79,7 +79,7 @@ static int axfrin_create_query(const dnslib_dname_t *qname, uint16_t qtype,
 
 /*----------------------------------------------------------------------------*/
 
-static uint32_t axfrin_serial_difference(uint32_t local, uint32_t remote)
+static uint32_t xfrin_serial_difference(uint32_t local, uint32_t remote)
 {
 	return (((int64_t)remote - local) % ((int64_t)1 << 32));
 }
@@ -88,17 +88,17 @@ static uint32_t axfrin_serial_difference(uint32_t local, uint32_t remote)
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-int axfrin_create_soa_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
-                            size_t *size)
+int xfrin_create_soa_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
+                           size_t *size)
 {
-	return axfrin_create_query(zone_name, DNSLIB_RRTYPE_SOA,
+	return xfrin_create_query(zone_name, DNSLIB_RRTYPE_SOA,
 	                           DNSLIB_CLASS_IN, buffer, size);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int axfrin_transfer_needed(const dnslib_zone_t *zone,
-                           dnslib_packet_t *soa_response)
+int xfrin_transfer_needed(const dnslib_zone_t *zone,
+                          dnslib_packet_t *soa_response)
 {
 	// first, parse the rest of the packet
 	assert(!dnslib_packet_is_query(soa_response));
@@ -151,24 +151,24 @@ int axfrin_transfer_needed(const dnslib_zone_t *zone,
 		return KNOT_EMALF;	// maybe some other error
 	}
 
-	uint32_t diff = axfrin_serial_difference(local_serial, remote_serial);
+	uint32_t diff = xfrin_serial_difference(local_serial, remote_serial);
 	return (diff >= 1 && diff <= (((uint32_t)1 << 31) - 1)) ? 1 : 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int axfrin_create_axfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
-                             size_t *size)
+int xfrin_create_axfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
+                            size_t *size)
 {
-	return axfrin_create_query(zone_name, DNSLIB_RRTYPE_AXFR,
+	return xfrin_create_query(zone_name, DNSLIB_RRTYPE_AXFR,
 	                           DNSLIB_CLASS_IN, buffer, size);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int axfrin_create_ixfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
-                             size_t *size)
+int xfrin_create_ixfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
+                            size_t *size)
 {
-	return axfrin_create_query(zone_name, DNSLIB_RRTYPE_IXFR,
+	return xfrin_create_query(zone_name, DNSLIB_RRTYPE_IXFR,
 	                           DNSLIB_CLASS_IN, buffer, size);
 }
