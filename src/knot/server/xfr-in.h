@@ -82,7 +82,7 @@ int xfrin_create_ixfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
 /*!
  * \brief Processes the newly created transferred zone.
  *
- * \param namserver Name server to update.
+ * \param nameserver Name server to update.
  * \param zone Zone build from transfer.
  *
  * \retval KNOT_ENOTSUP
