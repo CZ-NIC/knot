@@ -53,10 +53,32 @@ static inline int xfr_client_ev(struct tcp_pool_t *pool, int fd, void *data,
 
 	/* Process incoming packet. */
 	server_t *server = tcp_pool_server(pool);
-	ret = ns_process_axfrin(server->nameserver, request);
+	switch(request->type) {
+	case NS_XFR_TYPE_AIN:
+		ret = ns_process_axfrin(server->nameserver, request);
+		break;
+	case NS_XFR_TYPE_IIN:
+		ret = ns_process_ixfrin(server->nameserver, request);
+		break;
+	default:
+		ret = KNOT_EINVAL;
+		break;
+	}
 
-	/*! \todo Evaluate, function should respond properly
-	 *        to handle finished transfer. */
+	/* Check return code for errors. */
+	if (ret != KNOT_EOK) {
+		socket_close(fd);
+		tcp_pool_remove(pool, fd);
+		return ret;
+	}
+
+	/* Check finished zone. */
+	if (request->zone) {
+		/*! \todo Save finished zone and reload. */
+		/*! \todo Restart REFRESH timer,
+		 *        this should be handled in reload. */
+	}
+
 	return ret;
 }
 
@@ -138,54 +160,82 @@ int xfr_request(xfrhandler_t *handler, ns_xfr_t *req)
 
 int xfr_client_start(xfrhandler_t *handler, ns_xfr_t *req)
 {
-	/*! \todo Check handler, req, req->data */
-
-	/* Connect to remote. */
-	int fd = socket_create(req->addr.family, SOCK_STREAM);
-	if (fd < 0) {
-		return fd;
-	}
-	int ret = connect(fd, req->addr.ptr, req->addr.len);
-	if (ret < 0) {
-		return KNOT_ECONNREFUSED;
+	/* Check handler. */
+	if (!handler || !req) {
+		return KNOT_EINVAL;
 	}
 
-	/* Create AXFR query. */
+	/* Fetch associated zone. */
 	dnslib_zone_t *zone = (dnslib_zone_t *)req->data;
+	if (!zone) {
+		return KNOT_EINVAL;
+	}
 	const dnslib_node_t *apex = dnslib_zone_apex(zone);
 	const dnslib_dname_t *dname = dnslib_node_owner(apex);
 
+	/* Connect to remote. */
+	if (req->session <= 0) {
+		int fd = socket_create(req->addr.family, SOCK_STREAM);
+		if (fd < 0) {
+			return fd;
+		}
+		int ret = connect(fd, req->addr.ptr, req->addr.len);
+		if (ret < 0) {
+			return KNOT_ECONNREFUSED;
+		}
+
+		/* Store new socket descriptor. */
+		req->session = fd;
+	} else {
+		/* Duplicate existing socket descriptor. */
+		req->session = dup(req->session);
+	}
+
+	/* Create XFR query. */
+	int ret = KNOT_ERROR;
 	size_t bufsize = req->wire_size;
-	ret = axfrin_create_axfr_query(dname, req->wire, &bufsize);
+	switch(req->type) {
+	case NS_XFR_TYPE_AIN:
+		ret = axfrin_create_axfr_query(dname, req->wire, &bufsize);
+		break;
+	case NS_XFR_TYPE_IIN:
+		ret = KNOT_ENOTSUP; /*! \todo Implement ixfrin_create_ixfr_query(). */
+		break;
+	default:
+		ret = KNOT_EINVAL;
+		break;
+	}
+
+	/* Handle errors. */
 	if (ret != KNOT_EOK) {
+		socket_close(req->session);
 		return ret;
 	}
 
-	/* Send AXFR query. */
-	debug_net("axfrin: sending AXFR query (%zu bytes)\n", bufsize);
-	ret = tcp_send(fd, req->wire, bufsize);
+	/* Send XFR query. */
+	debug_net("xfr_in: sending XFR query (%zu bytes)\n", bufsize);
+	ret = req->send(req->session, &req->addr, req->wire, bufsize);
 	if (ret != bufsize) {
+		socket_close(req->session);
 		return KNOT_ERROR;
 	}
 
 	/* Update XFR request. */
-	req->send = tcp_send;
-	req->session = fd;
 	req->wire = 0; /* Disable shared buffer. */
 	req->wire_size = 0;
 	req->data = 0; /* New zone will be built. */
+	req->zone = 0;
 
 	/* Store XFR request for further processing. */
 	void *data = malloc(sizeof(ns_xfr_t));
 	if (!data) {
-		close(fd);
+		socket_close(req->session);
 		return KNOT_ENOMEM;
 	}
-
 	memcpy(data, req, sizeof(ns_xfr_t));
 
 	/* Add to pending transfers. */
-	tcp_pool_add(handler->xfer_pool, fd, data);
+	tcp_pool_add(handler->xfer_pool, req->session, data);
 	dt_activate(handler->unit->threads[0]);
 
 	return KNOT_EOK;
@@ -241,13 +291,23 @@ int xfr_master(dthread_t *thread)
 		const char *req_type = "";
 		switch(xfr.type) {
 		case NS_XFR_TYPE_AOUT:
-			req_type = "xfr-out";
+			req_type = "axfr-out";
 			ret = ns_answer_axfr(data->ns, &xfr);
 			debug_net("xfr_master: ns_answer_axfr() returned %d.\n",
 				  ret);
 			break;
+		case NS_XFR_TYPE_IOUT:
+			req_type = "ixfr-out";
+			ret = ns_answer_ixfr(data->ns, &xfr);
+			debug_net("xfr_master: ns_answer_ixfr() returned %d.\n",
+				  ret);
+			break;
 		case NS_XFR_TYPE_AIN:
-			req_type = "xfr-in";
+			req_type = "axfr-in";
+			ret = xfr_client_start(data, &xfr);
+			break;
+		case NS_XFR_TYPE_IIN:
+			req_type = "ixfr-in";
 			ret = xfr_client_start(data, &xfr);
 			break;
 		default:
