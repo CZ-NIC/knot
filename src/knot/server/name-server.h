@@ -52,7 +52,8 @@ typedef struct ns_nameserver {
 } ns_nameserver_t;
 
 /*! \brief Callback for sending one packet back through a TCP connection. */
-typedef int (*axfr_callback_t)(int session, uint8_t *packet, size_t size);
+typedef int (*xfr_callback_t)(int session, sockaddr_t *addr,
+			      uint8_t *packet, size_t size);
 
 /*! \todo Document me. */
 typedef struct ns_xfr {
@@ -60,7 +61,7 @@ typedef struct ns_xfr {
 	sockaddr_t addr;
 	dnslib_packet_t *query;
 	dnslib_packet_t *response;
-	axfr_callback_t send;
+	xfr_callback_t send;
 	int session;
 	uint8_t *wire;
 	size_t wire_size;
@@ -176,8 +177,8 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
  * to the AXFR query and sends each packet using the given callback (\a
  * send_packet).
  *
- * \param namserver Name server structure to provide the data for answering.
- * \param xfr
+ * \param nameserver Name server structure to provide the data for answering.
+ * \param xfr Persistent transfer-specific data.
  *
  * \note Currently only a stub which sends one error response using the given
  *       callback.
@@ -191,6 +192,16 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
  *       the ns_answer_request() function...?
  */
 int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
+
+/*!
+ * \brief Processes an IXFR query.
+ *
+ * \param nameserver Name server structure to provide the data for answering.
+ * \param xfr Persistent transfer-specific data.
+ *
+ * \todo Document properly.
+ */
+int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
 
 /*!
  * \brief Processes responses packet.
@@ -214,11 +225,21 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
  * \brief Processes an AXFR-IN packet.
  *
  * \param nameserver Name server structure to provide the data for answering.
- * \param xfr
+ * \param xfr Persistent transfer-specific data.
  *
  * \todo Document me.
  */
 int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
+
+/*!
+ * \brief Processes an IXFR-IN packet.
+ *
+ * \param nameserver Name server structure to provide the data for answering.
+ * \param xfr Persistent transfer-specific data.
+ *
+ * \todo Document me.
+ */
+int ns_process_ixfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
 
 /*!
  * \brief Decides what type of transfer should be used to update the given zone.
