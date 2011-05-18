@@ -2554,7 +2554,7 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 		}
 
 		/* Check SOA SERIAL. */
-		if (axfrin_transfer_needed(zone, packet) < 1) {
+		if (xfrin_transfer_needed(zone, packet) < 1) {
 
 			/* Reinstall REFRESH timer. */
 			uint32_t ref_tmr = 0;

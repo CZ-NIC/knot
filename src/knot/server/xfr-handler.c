@@ -196,7 +196,7 @@ int xfr_client_start(xfrhandler_t *handler, ns_xfr_t *req)
 	size_t bufsize = req->wire_size;
 	switch(req->type) {
 	case NS_XFR_TYPE_AIN:
-		ret = axfrin_create_axfr_query(dname, req->wire, &bufsize);
+		ret = xfrin_create_axfr_query(dname, req->wire, &bufsize);
 		break;
 	case NS_XFR_TYPE_IIN:
 		ret = KNOT_ENOTSUP; /*! \todo Implement ixfrin_create_ixfr_query(). */
