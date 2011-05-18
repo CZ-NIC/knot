@@ -78,10 +78,10 @@ enum zonechecks_errors {
 	ZC_ERR_NSEC3_GENERAL_ERROR,
 
 	ZC_ERR_CNAME_CYCLE,
+	ZC_ERR_DNAME_CYCLE,
 	ZC_ERR_CNAME_EXTRA_RECORDS,
 	ZC_ERR_DNAME_EXTRA_RECORDS,
 	ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC,
-	ZC_ERR_DNAME_EXTRA_RECORDS_DNSSEC,
 	ZC_ERR_CNAME_MULTIPLE,
 	ZC_ERR_DNAME_MULTIPLE,
 
@@ -148,15 +148,14 @@ static char *error_messages[(-ZC_ERR_ALLOC) + 1] = {
 
 	[-ZC_ERR_CNAME_CYCLE] =
 	"CNAME: CNAME cycle!\n",
+	[-ZC_ERR_DNAME_CYCLE] =
+	"CNAME: DNAME cycle!\n",
 	[-ZC_ERR_CNAME_EXTRA_RECORDS] =
 	"CNAME: Node with CNAME record has other records!\n",
 	[-ZC_ERR_DNAME_EXTRA_RECORDS] =
 	"DNAME: Node with DNAME record has other records!\n",
 	[-ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC] =
 	"CNAME: Node with CNAME record has other "
-	"records than RRSIG and NSEC/NSEC3!\n",
-	[-ZC_ERR_DNAME_EXTRA_RECORDS_DNSSEC] =
-	"DNAME: Node with DNAME record has other "
 	"records than RRSIG and NSEC/NSEC3!\n",
 	[-ZC_ERR_CNAME_MULTIPLE] = "CNAME: Multiple CNAME records!\n",
 	[-ZC_ERR_DNAME_MULTIPLE] = "DNAME: Multiple DNAME records!\n",
@@ -374,8 +373,8 @@ typedef struct arg arg_t;
 static int check_cname_cycles_in_zone(dnslib_zone_t *zone,
 				      const dnslib_rrset_t *rrset)
 {
-	const dnslib_rrset_t *next_rrset = rrset;
 	assert(rrset);
+	const dnslib_rrset_t *next_rrset = rrset;
 	const dnslib_rdata_t *tmp_rdata = dnslib_rrset_rdata(next_rrset);
 	const dnslib_node_t *next_node = NULL;
 
@@ -1052,19 +1051,15 @@ static int semantic_checks_plain(dnslib_zone_t *zone,
 	const dnslib_rrset_t *dname_rrset =
 		dnslib_node_rrset(node, DNSLIB_RRTYPE_DNAME);
 	if (dname_rrset != NULL) {
-		/* No DNSSEC and yet there is more than one rrset in node */
-		if (do_checks == 1 &&
-		                dnslib_node_rrset_count(node) != 1) {
+		if (check_cname_cycles_in_zone(zone, dname_rrset) !=
+				DNSLIB_EOK) {
+			err_handler_handle_error(handler, node,
+						 ZC_ERR_DNAME_CYCLE);
+		}
+
+		if (dnslib_node_rrset(node, DNSLIB_RRTYPE_CNAME)) {
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_DNAME_EXTRA_RECORDS);
-		} else if (dnslib_node_rrset_count(node) != 1) {
-			/* With DNSSEC node can contain RRSIG or NSEC */
-			if (!(dnslib_node_rrset(node, DNSLIB_RRTYPE_RRSIG) ||
-			      dnslib_node_rrset(node, DNSLIB_RRTYPE_NSEC)) ||
-			    dnslib_node_rrset_count(node) > 3) {
-				err_handler_handle_error(handler, node,
-				ZC_ERR_DNAME_EXTRA_RECORDS_DNSSEC);
-			}
 		}
 
 		if (dnslib_rrset_rdata(dname_rrset)->count != 1) {
