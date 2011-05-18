@@ -292,15 +292,19 @@ int xfr_master(dthread_t *thread)
 			req_type = "axfr-out";
 			ret = ns_answer_axfr(data->ns, &xfr);
 			dnslib_packet_free(&xfr.query); /* Free query. */
-			debug_xfr("xfr_master: ns_answer_axfr() returned %d.\n",
-				  ret);
+			debug_xfr("xfr_master: ns_answer_axfr() = %d.\n", ret);
+			if (ret != KNOT_EOK) {
+				socket_close(xfr.session);
+			}
 			break;
 		case NS_XFR_TYPE_IOUT:
 			req_type = "ixfr-out";
 			ret = ns_answer_ixfr(data->ns, &xfr);
 			dnslib_packet_free(&xfr.query); /* Free query. */
-			debug_xfr("xfr_master: ns_answer_ixfr() returned %d.\n",
-				  ret);
+			debug_xfr("xfr_master: ns_answer_ixfr() = %d.\n", ret);
+			if (ret != KNOT_EOK) {
+				socket_close(xfr.session);
+			}
 			break;
 		case NS_XFR_TYPE_AIN:
 			req_type = "axfr-in";
