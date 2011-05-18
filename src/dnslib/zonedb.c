@@ -78,9 +78,12 @@ DEBUG_DNSLIB_ZONEDB(
 	debug_dnslib_zonedb("Inserting zone %s into zone db.\n", name);
 	free(name);
 );
-	dnslib_zone_load_nsec3param(zone);
+	int ret = dnslib_zone_load_nsec3param(zone);
+	if (ret != DNSLIB_EOK) {
+		return ret;
+	}
 
-	int ret = skip_insert(db->zones, zone->apex->owner, zone, NULL);
+	ret = skip_insert(db->zones, zone->apex->owner, zone, NULL);
 	assert(ret == 0 || ret == 1 || ret == -1);
 	return (ret != 0) ? DNSLIB_EZONEIN : DNSLIB_EOK;
 }

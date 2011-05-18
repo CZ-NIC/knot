@@ -287,7 +287,7 @@ void dnslib_zone_adjust_dnames(dnslib_zone_t *zone);
  *
  * \param zone Zone to get the NSEC3PARAM record from.
  */
-void dnslib_zone_load_nsec3param(dnslib_zone_t *zone);
+int dnslib_zone_load_nsec3param(dnslib_zone_t *zone);
 
 /*!
  * \brief Checks if the zone uses NSEC3.
