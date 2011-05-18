@@ -2585,14 +2585,19 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 			return KNOT_EOK;
 		}
 
-		/* Start AXFR client transfer. */
+
+		/* Prepare XFR client transfer. */
 		fprintf(stderr, "scheduling XFR client request\n");
 		ns_xfr_t xfr_req;
 		memset(&xfr_req, 0, sizeof(ns_xfr_t));
 		memcpy(&xfr_req.addr, from, sizeof(sockaddr_t));
-		xfr_req.type = NS_XFR_TYPE_AIN;
 		xfr_req.data = zone;
 		xfr_req.send = ns_send_cb;
+
+		/* Select transfer method. */
+		xfr_req.type = ns_transfer_to_use(nameserver, zone);
+
+		/* Enqueue XFR request. */
 		return xfr_request(nameserver->server->xfr_h, &xfr_req);
 	}
 
@@ -2643,7 +2648,7 @@ ns_xfr_type_t ns_transfer_to_use(ns_nameserver_t *nameserver,
                                  dnslib_zone_t *zone)
 {
 	/*! \todo Implement. */
-	return NS_XFR_TYPE_IIN;
+	return NS_XFR_TYPE_AIN;
 }
 
 /*----------------------------------------------------------------------------*/
