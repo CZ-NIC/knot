@@ -73,6 +73,9 @@ static inline int xfr_client_ev(struct tcp_pool_t *pool, int fd, void *data,
 
 		/* Save finished zone and reload. */
 		xfrin_zone_transferred(server->nameserver, request->zone);
+
+		/* Return error code to make TCP client disconnect. */
+		return KNOT_ERROR;
 	}
 
 	return ret;
@@ -209,7 +212,7 @@ int xfr_client_start(xfrhandler_t *handler, ns_xfr_t *req)
 	}
 
 	/* Send XFR query. */
-	debug_net("xfr_in: sending XFR query (%zu bytes)\n", bufsize);
+	debug_xfr("xfr_in: sending XFR query (%zu bytes)\n", bufsize);
 	ret = req->send(req->session, &req->addr, req->wire, bufsize);
 	if (ret != bufsize) {
 		socket_close(req->session);
@@ -243,7 +246,7 @@ int xfr_master(dthread_t *thread)
 
 	/* Check data. */
 	if (data < 0) {
-		debug_net("xfr_master: no data recevied, finishing.\n");
+		debug_xfr("xfr_master: no data recevied, finishing.\n");
 		return KNOT_EINVAL;
 	}
 
@@ -251,7 +254,7 @@ int xfr_master(dthread_t *thread)
 	uint8_t buf[65535];
 
 	/* Accept requests. */
-	debug_net("xfr_master: thread started.\n");
+	debug_xfr("xfr_master: thread started.\n");
 	for (;;) {
 
 		/* Poll new events. */
@@ -259,13 +262,13 @@ int xfr_master(dthread_t *thread)
 
 		/* Cancellation point. */
 		if (dt_is_cancelled(thread)) {
-			debug_net("xfr_master: finished.\n");
+			debug_xfr("xfr_master: finished.\n");
 			return KNOT_EOK;
 		}
 
 		/* Check poll count. */
 		if (ret <= 0) {
-			debug_net("xfr_master: queue poll returned %d.\n", ret);
+			debug_xfr("xfr_master: queue poll returned %d.\n", ret);
 			return KNOT_ERROR;
 		}
 
@@ -273,7 +276,7 @@ int xfr_master(dthread_t *thread)
 		ns_xfr_t xfr;
 		ret = evqueue_read(data->q, &xfr, sizeof(ns_xfr_t));
 		if (ret != sizeof(ns_xfr_t)) {
-			debug_net("xfr_master: queue read returned %d.\n", ret);
+			debug_xfr("xfr_master: queue read returned %d.\n", ret);
 			return KNOT_ERROR;
 		}
 
@@ -289,15 +292,19 @@ int xfr_master(dthread_t *thread)
 			req_type = "axfr-out";
 			ret = ns_answer_axfr(data->ns, &xfr);
 			dnslib_packet_free(&xfr.query); /* Free query. */
-			debug_net("xfr_master: ns_answer_axfr() returned %d.\n",
-				  ret);
+			debug_xfr("xfr_master: ns_answer_axfr() = %d.\n", ret);
+			if (ret != KNOT_EOK) {
+				socket_close(xfr.session);
+			}
 			break;
 		case NS_XFR_TYPE_IOUT:
 			req_type = "ixfr-out";
 			ret = ns_answer_ixfr(data->ns, &xfr);
 			dnslib_packet_free(&xfr.query); /* Free query. */
-			debug_net("xfr_master: ns_answer_ixfr() returned %d.\n",
-				  ret);
+			debug_xfr("xfr_master: ns_answer_ixfr() = %d.\n", ret);
+			if (ret != KNOT_EOK) {
+				socket_close(xfr.session);
+			}
 			break;
 		case NS_XFR_TYPE_AIN:
 			req_type = "axfr-in";
@@ -320,7 +327,7 @@ int xfr_master(dthread_t *thread)
 
 
 	// Stop whole unit
-	debug_net("xfr_master: finished.\n");
+	debug_xfr("xfr_master: finished.\n");
 	return KNOT_EOK;
 }
 
@@ -330,13 +337,13 @@ int xfr_client(dthread_t *thread)
 
 	/* Check data. */
 	if (data < 0) {
-		debug_net("xfr_client: no data recevied, finishing.\n");
+		debug_xfr("xfr_client: no data recevied, finishing.\n");
 		return KNOT_EINVAL;
 	}
 
 	/* Run TCP pool. */
 	int ret = tcp_pool(thread);
 
-	debug_net("xfr_client: finished.\n");
+	debug_xfr("xfr_client: finished.\n");
 	return ret;
 }
