@@ -11,6 +11,7 @@
 #include "dnslib/error.h"
 #include "knot/other/log.h"
 #include "knot/server/name-server.h"
+#include "dnslib/debug.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -179,4 +180,134 @@ int xfrin_create_ixfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
 int xfrin_zone_transferred(ns_nameserver_t *nameserver, dnslib_zone_t *zone)
 {
 	return KNOT_ENOTSUP;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
+                              dnslib_zone_t **zone)
+{
+	if (pkt == NULL || zone == NULL) {
+		debug_xfr("Wrong parameters supported.\n");
+		return KNOT_EINVAL;
+	}
+
+	dnslib_packet_t *packet =
+			dnslib_packet_new(DNSLIB_PACKET_PREALLOC_NONE);
+	if (packet == NULL) {
+		debug_xfr("Could not create packet structure.\n");
+		return KNOT_ENOMEM;
+	}
+
+	int ret = dnslib_packet_parse_from_wire(packet, pkt, size, 1);
+	if (ret != DNSLIB_EOK) {
+		debug_xfr("Could not parse packet: %s.\n",
+		          dnslib_strerror(ret));
+		dnslib_packet_free(&packet);
+		/*! \todo Cleanup. */
+		return KNOT_EMALF;
+	}
+
+	dnslib_rrset_t *rr = NULL;
+	ret = dnslib_packet_parse_next_rr_answer(packet, rr);
+
+	if (ret != DNSLIB_EOK) {
+		debug_xfr("Could not parse first Answer RR: %s.\n",
+		          dnslib_strerror(ret));
+		dnslib_packet_free(&packet);
+		/*! \todo Cleanup. */
+		return KNOT_EMALF;
+	}
+
+	if (rr == NULL) {
+		debug_xfr("No RRs in the packet.\n");
+		dnslib_packet_free(&packet);
+		/*! \todo Cleanup. */
+		return KNOT_EMALF;
+	}
+
+	dnslib_node_t *node = dnslib_node_new(rr->owner, NULL);
+	if (node == NULL) {
+		dnslib_packet_free(&packet);
+		return KNOT_ENOMEM;
+	}
+
+	if (*zone == NULL) {
+		// create new zone
+		/*! \todo Ensure that the packet is the first one. */
+		if (dnslib_rrset_type(rr) != DNSLIB_RRTYPE_SOA) {
+			debug_xfr("No zone created, but the first RR in Answer"
+			          " is not a SOA RR.\n");
+			dnslib_packet_free(&packet);
+			dnslib_node_free(&node, 0);
+			dnslib_rrset_deep_free(&rr, 1, 1, 1);
+			/*! \todo Cleanup. */
+			return KNOT_EMALF;
+		}
+
+		if (dnslib_dname_compare(dnslib_rrset_owner(rr),
+		                         dnslib_packet_qname(packet)) != 0) {
+DEBUG_XFR(
+			char *rr_owner =
+				dnslib_dname_to_str(dnslib_rrset_owner(rr));
+			char *qname = dnslib_dname_to_str(
+				dnslib_packet_qname(packet));
+
+			debug_xfr("Owner of the first SOA RR (%s) does not "
+			          "match QNAME (%s).\n", rr_owner, qname);
+
+			free(rr_owner);
+			free(qname);
+);
+			/*! \todo Cleanup. */
+			dnslib_packet_free(&packet);
+			dnslib_node_free(&node, 0);
+			dnslib_rrset_deep_free(&rr, 1, 1, 1);
+			return KNOT_EMALF;
+		}
+
+		// the first RR is SOA and its owner and QNAME are the same
+		// create the zone
+		*zone = dnslib_zone_new(node, 0);
+		if (*zone == NULL) {
+			dnslib_packet_free(&packet);
+			dnslib_node_free(&node, 0);
+			dnslib_rrset_deep_free(&rr, 1, 1, 1);
+			/*! \todo Cleanup. */
+			return KNOT_ENOMEM;
+		}
+	}
+
+	while (ret == DNSLIB_EOK && rr != NULL) {
+		// process the parsed RR
+
+		// now just dump
+		debug_xfr("\nNext RR:\n\n");
+		dnslib_rrset_dump(rr, 0);
+		dnslib_rrset_deep_free(&rr, 1, 1, 1);
+
+		// parse next RR
+		ret = dnslib_packet_parse_next_rr_answer(packet, rr);
+	}
+
+	if (ret < 0) {
+		// some error in parsing
+		debug_xfr("Could not parse next RR: %s.\n",
+		          dnslib_strerror(ret));
+		dnslib_packet_free(&packet);
+		dnslib_node_free(&node, 0);
+		dnslib_rrset_deep_free(&rr, 1, 1, 1);
+		/*! \todo Cleanup. */
+		return KNOT_EMALF;
+	}
+
+	assert(ret != DNSLIB_EOK || rr == NULL);
+	dnslib_packet_free(&packet);
+	dnslib_node_free(&node, 0);
+	dnslib_rrset_deep_free(&rr, 1, 1, 1);
+
+	// for now, delete the created zone
+	dnslib_zone_deep_free(zone, 1);
+
+	return (ret == DNSLIB_EOK) ? KNOT_EOK : KNOT_EMALF;
 }
