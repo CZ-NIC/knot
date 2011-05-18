@@ -116,6 +116,7 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd, void *data,
 		uint16_t pkt_id = dnslib_wire_get_id(qbuf);
 		ns_error_response(pool->server->nameserver, pkt_id,
 				  DNSLIB_RCODE_SERVFAIL, qbuf, &resp_len);
+		tcp_send(fd, qbuf, resp_len);
 		return KNOT_ENOMEM;
 	}
 
@@ -155,24 +156,22 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd, void *data,
 	case DNSLIB_QUERY_AXFR:
 		memset(&xfr, 0, sizeof(ns_xfr_t));
 		xfr.type = NS_XFR_TYPE_AOUT;
-		xfr.query = packet;
+		xfr.query = packet; /* Will be freed after processing. */
 		xfr.send = xfr_send_cb;
 		xfr.session = fd;
 		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
 		xfr_request(pool->server->xfr_h, &xfr);
-		debug_net("tcp: enqueued AXFR request size %zd.\n",
-			  resp_len);
+		debug_net("tcp: enqueued AXFR query\n");
 		return KNOT_EOK;
 	case DNSLIB_QUERY_IXFR:
 		memset(&xfr, 0, sizeof(ns_xfr_t));
 		xfr.type = NS_XFR_TYPE_IOUT;
-		xfr.query = packet;
+		xfr.query = packet; /* Will be freed after processing. */
 		xfr.send = xfr_send_cb;
 		xfr.session = fd;
 		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
 		xfr_request(pool->server->xfr_h, &xfr);
-		debug_net("tcp: enqueued IXFR request size %zd.\n",
-			  resp_len);
+		debug_net("tcp: enqueued IXFR query\n");
 		return KNOT_EOK;
 	case DNSLIB_QUERY_NOTIFY:
 	case DNSLIB_QUERY_UPDATE:
@@ -512,13 +511,14 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	}
 
 	pktsize = ntohs(pktsize);
-	debug_net("tcp: incoming packet size on %d: %hu buffer size: %zu\n",
-		  fd, pktsize, len);
 
 	// Check packet size for NULL
 	if (pktsize == 0) {
 		return KNOT_ERROR;
 	}
+
+	debug_net("tcp: incoming packet size on %d: %hu buffer size: %zu\n",
+		  fd, pktsize, len);
 
 	// Check packet size
 	if (len < pktsize) {

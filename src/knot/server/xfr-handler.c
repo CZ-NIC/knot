@@ -36,14 +36,12 @@ static inline int xfr_client_ev(struct tcp_pool_t *pool, int fd, void *data,
 	/* Check data. */
 	ns_xfr_t *request = (ns_xfr_t *)data;
 	if (!request) {
-		close(fd);
 		return KNOT_EINVAL;
 	}
 
 	/* Read DNS/TCP packet. */
 	int ret = tcp_recv(fd, qbuf, qbuf_maxlen, 0);
 	if (ret <= 0) {
-		close(fd);
 		return KNOT_ERROR;
 	}
 
@@ -67,16 +65,14 @@ static inline int xfr_client_ev(struct tcp_pool_t *pool, int fd, void *data,
 
 	/* Check return code for errors. */
 	if (ret != KNOT_EOK) {
-		socket_close(fd);
-		tcp_pool_remove(pool, fd);
 		return ret;
 	}
 
 	/* Check finished zone. */
 	if (request->zone) {
-		/*! \todo Save finished zone and reload. */
-		/*! \todo Restart REFRESH timer,
-		 *        this should be handled in reload. */
+
+		/* Save finished zone and reload. */
+		xfrin_zone_transferred(server->nameserver, request->zone);
 	}
 
 	return ret;
@@ -199,7 +195,7 @@ int xfr_client_start(xfrhandler_t *handler, ns_xfr_t *req)
 		ret = xfrin_create_axfr_query(dname, req->wire, &bufsize);
 		break;
 	case NS_XFR_TYPE_IIN:
-		ret = KNOT_ENOTSUP; /*! \todo Implement ixfrin_create_ixfr_query(). */
+		ret = xfrin_create_ixfr_query(dname, req->wire, &bufsize);
 		break;
 	default:
 		ret = KNOT_EINVAL;
@@ -276,7 +272,6 @@ int xfr_master(dthread_t *thread)
 		/* Read single request. */
 		ns_xfr_t xfr;
 		ret = evqueue_read(data->q, &xfr, sizeof(ns_xfr_t));
-		debug_net("xfr_master: started AXFR request.\n");
 		if (ret != sizeof(ns_xfr_t)) {
 			debug_net("xfr_master: queue read returned %d.\n", ret);
 			return KNOT_ERROR;
@@ -293,12 +288,14 @@ int xfr_master(dthread_t *thread)
 		case NS_XFR_TYPE_AOUT:
 			req_type = "axfr-out";
 			ret = ns_answer_axfr(data->ns, &xfr);
+			dnslib_packet_free(&xfr.query); /* Free query. */
 			debug_net("xfr_master: ns_answer_axfr() returned %d.\n",
 				  ret);
 			break;
 		case NS_XFR_TYPE_IOUT:
 			req_type = "ixfr-out";
 			ret = ns_answer_ixfr(data->ns, &xfr);
+			dnslib_packet_free(&xfr.query); /* Free query. */
 			debug_net("xfr_master: ns_answer_ixfr() returned %d.\n",
 				  ret);
 			break;

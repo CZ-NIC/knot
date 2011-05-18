@@ -2037,6 +2037,16 @@ DEBUG_NS(
 	return ns_axfr_from_zone(zone, xfr);
 }
 
+/*!
+ * \brief Wrapper for TCP send.
+ * \todo Implement generic fd pool properly with callbacks.
+ */
+#include "knot/server/tcp-handler.h"
+static int ns_send_cb(int fd, sockaddr_t *addr, uint8_t *msg, size_t msglen)
+{
+	return tcp_send(fd, msg, msglen);
+}
+
 /*----------------------------------------------------------------------------*/
 /* Public functions                                                           */
 /*----------------------------------------------------------------------------*/
@@ -2582,6 +2592,7 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 		memcpy(&xfr_req.addr, from, sizeof(sockaddr_t));
 		xfr_req.type = NS_XFR_TYPE_AIN;
 		xfr_req.data = zone;
+		xfr_req.send = ns_send_cb;
 		return xfr_request(nameserver->server->xfr_h, &xfr_req);
 	}
 

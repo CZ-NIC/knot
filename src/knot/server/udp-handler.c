@@ -161,12 +161,12 @@ int udp_master(dthread_t *thread)
 			break;
 		}
 
-		debug_net("udp: got answer of size %zd.\n", resp_len);
-
 		dnslib_packet_free(&packet);
 
 		/* Send answer. */
 		if (res == KNOT_EOK && resp_len > 0) {
+
+			debug_net("udp: got answer of size %zd.\n", resp_len);
 
 			//debug_net("udp: answer wire format (size %zd):\n",
 			//	  resp_len);

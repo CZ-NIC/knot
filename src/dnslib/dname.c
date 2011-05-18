@@ -26,20 +26,25 @@ static pthread_key_t dname_ckey;
 static pthread_once_t dname_once = PTHREAD_ONCE_INIT;
 
 /*! \brief Destroy thread dname cache (automatically called). */
-static void dnslib_dname_cache_free()
+static void dnslib_dname_cache_free(void *ptr)
 {
-	slab_cache_t* cache = pthread_getspecific(dname_ckey);
+	slab_cache_t* cache = (slab_cache_t*)ptr;
 	if (cache) {
 		slab_cache_destroy(cache);
 		free(cache);
-        (void) pthread_setspecific(dname_ckey, 0);
 	}
+}
+
+/*! \brief Cleanup for main() TLS. */
+static void dnslib_dname_cache_main_free()
+{
+	dnslib_dname_cache_free(pthread_getspecific(dname_ckey));
 }
 
 static void dnslib_dname_cache_init()
 {
 	(void) pthread_key_create(&dname_ckey, dnslib_dname_cache_free);
-    atexit(dnslib_dname_cache_free); // Main thread cleanup
+	atexit(dnslib_dname_cache_main_free); // Main thread cleanup
 }
 
 /*!
@@ -50,7 +55,7 @@ static void dnslib_dname_cache_init()
 static dnslib_dname_t* dnslib_dname_alloc()
 {
 	/* Initialize dname cache TLS key. */
-	(void) pthread_once(&dname_once, dnslib_dname_cache_init);
+	(void)pthread_once(&dname_once, dnslib_dname_cache_init);
 
 	/* Create cache if not exists. */
 	slab_cache_t* cache = pthread_getspecific(dname_ckey);
@@ -62,7 +67,7 @@ static dnslib_dname_t* dnslib_dname_alloc()
 
 		/* Initialize cache. */
 		slab_cache_init(cache, sizeof(dnslib_dname_t));
-		(void) pthread_setspecific(dname_ckey, cache);
+		(void)pthread_setspecific(dname_ckey, cache);
 	}
 
 	return slab_cache_alloc(cache);
