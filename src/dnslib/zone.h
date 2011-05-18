@@ -12,6 +12,8 @@
 #ifndef _KNOT_DNSLIB_ZONE_H_
 #define _KNOT_DNSLIB_ZONE_H_
 
+#include <time.h>
+
 #include "dnslib/node.h"
 #include "dnslib/dname.h"
 #include "dnslib/nsec3.h"
@@ -69,6 +71,8 @@ struct dnslib_zone {
 		struct event_t *expire; /*!< Timer for REFRESH. */
 		int next_id;            /*!< ID of the next awaited SOA resp.*/
 	} xfr_in;
+
+	time_t version;
 };
 
 typedef struct dnslib_zone dnslib_zone_t;
@@ -83,6 +87,10 @@ typedef struct dnslib_zone dnslib_zone_t;
  * \return The initialized zone structure or NULL if an error occured.
  */
 dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count);
+
+time_t dnslib_zone_version(const dnslib_zone_t *zone);
+
+void dnslib_zone_set_version(dnslib_zone_t *zone, time_t version);
 
 /*!
  * \brief Adds a node to the given zone.
