@@ -18,6 +18,7 @@
 #include "dnslib/dname.h"
 #include "dnslib/zone.h"
 #include "dnslib/packet.h"
+#include "knot/server/name-server.h"
 
 /*!
  * \brief Creates normal query for the given zone name and the SOA type.
@@ -77,6 +78,16 @@ int xfrin_create_axfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
  */
 int xfrin_create_ixfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
                             size_t *size);
+
+/*!
+ * \brief Processes the newly created transferred zone.
+ *
+ * \param namserver Name server to update.
+ * \param zone Zone build from transfer.
+ *
+ * \retval KNOT_ENOTSUP
+ */
+int xfrin_zone_transferred(ns_nameserver_t *nameserver, dnslib_zone_t *zone);
 
 #endif /* _KNOT_XFR_IN_H_ */
 

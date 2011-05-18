@@ -10,6 +10,7 @@
 #include "dnslib/query.h"
 #include "dnslib/error.h"
 #include "knot/other/log.h"
+#include "knot/server/name-server.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -171,4 +172,11 @@ int xfrin_create_ixfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
 {
 	return xfrin_create_query(zone_name, DNSLIB_RRTYPE_IXFR,
 	                           DNSLIB_CLASS_IN, buffer, size);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int xfrin_zone_transferred(ns_nameserver_t *nameserver, dnslib_zone_t *zone)
+{
+	return KNOT_ENOTSUP;
 }
