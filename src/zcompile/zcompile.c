@@ -1697,6 +1697,7 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 	 * search the zone */
 	if (dnslib_dname_compare(parser->origin->owner,
 				 chopped) == 0 ) {
+		dnslib_dname_free(&chopped);
 		node->parent = parser->origin;
 	} else {
 		while ((tmp_node = node_get_func(zone,
@@ -1713,6 +1714,7 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 				dnslib_dname_free(&chopped);
 				return NULL;
 			} else if (found_dname != NULL) {
+				assert(chopped != found_dname);
 				chopped = found_dname;
 			}
 			tmp_node = dnslib_node_new(chopped, NULL);
@@ -1733,6 +1735,9 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 			}
 		}
 
+		dnslib_dname_free(&chopped);
+
+		/* parent is already in the zone */
 		if (dnslib_node_rrset(tmp_node, DNSLIB_RRTYPE_DNAME) == NULL) {
 			last_node->parent = tmp_node;
 		} else {
@@ -1740,7 +1745,6 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 			        "would be a child of DNAME node!\n");
 			return NULL;
 		}
-		/* parent is already in the zone */
 	}
 
 	return node;
