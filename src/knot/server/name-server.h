@@ -51,6 +51,31 @@ typedef struct ns_nameserver {
 	struct server_t *server;  /*!< Pointer to server. */
 } ns_nameserver_t;
 
+/*! \brief Callback for sending one packet back through a TCP connection. */
+typedef int (*axfr_callback_t)(int session, uint8_t *packet, size_t size);
+
+/*! \todo Document me. */
+typedef struct ns_xfr {
+	int type;
+	sockaddr_t addr;
+	dnslib_packet_t *query;
+	dnslib_packet_t *response;
+	axfr_callback_t send;
+	int session;
+	uint8_t *wire;
+	size_t wire_size;
+	void *data;
+	dnslib_zone_t *zone;
+} ns_xfr_t;
+
+/*! \todo Document me. */
+typedef enum ns_xfr_type_t {
+	NS_XFR_TYPE_AIN,  /*!< AXFR-IN request (start transfer). */
+	NS_XFR_TYPE_AOUT, /*!< AXFR-OUT request (incoming transfer). */
+	NS_XFR_TYPE_IIN,  /*!< IXFR-IN request (start transfer). */
+	NS_XFR_TYPE_IOUT  /*!< IXFR-OUT request (incoming transfer). */
+} ns_xfr_type_t;
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Allocates and initializes the name server structure.
@@ -128,22 +153,6 @@ int ns_answer_request(ns_nameserver_t *nameserver,
                       uint8_t *response_wire,
                       size_t *rsize);
 
-/*! \brief Callback for sending one packet back through a TCP connection. */
-typedef int (*axfr_callback_t)(int session, uint8_t *packet, size_t size);
-
-/*! \todo Document me. */
-typedef struct ns_xfr {
-	int type;
-	sockaddr_t addr;
-	dnslib_packet_t *query;
-	dnslib_packet_t *response;
-	axfr_callback_t send;
-	int session;
-	uint8_t *wire;
-	size_t wire_size;
-	void *data;
-} ns_xfr_t;
-
 /*!
  * \brief Creates a response for the given normal query using the data of the
  *        nameserver.
@@ -210,11 +219,6 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
  * \todo Document me.
  */
 int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
-
-typedef enum ns_xfr_type_t {
-	NS_XFR_TYPE_AXFR,
-	NS_XFR_TYPE_IXFR
-} ns_xfr_type_t;
 
 /*!
  * \brief Decides what type of transfer should be used to update the given zone.
