@@ -180,3 +180,21 @@ int xfrin_zone_transferred(ns_nameserver_t *nameserver, dnslib_zone_t *zone)
 {
 	return KNOT_ENOTSUP;
 }
+
+/*----------------------------------------------------------------------------*/
+
+int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
+                              dnslib_zone_t **zone)
+{
+	if (pkt == NULL || zone == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+
+//	if (*zone == NULL) {
+//		// create new zone
+//		/*! \todo Ensure that the packet is the first one. */
+
+//	}
+}
