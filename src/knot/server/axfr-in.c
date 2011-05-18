@@ -163,3 +163,12 @@ int axfrin_create_axfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
 	return axfrin_create_query(zone_name, DNSLIB_RRTYPE_AXFR,
 	                           DNSLIB_CLASS_IN, buffer, size);
 }
+
+/*----------------------------------------------------------------------------*/
+
+int axfrin_create_ixfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
+                             size_t *size)
+{
+	return axfrin_create_query(zone_name, DNSLIB_RRTYPE_IXFR,
+	                           DNSLIB_CLASS_IN, buffer, size);
+}
