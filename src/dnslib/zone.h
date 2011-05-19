@@ -72,10 +72,22 @@ struct dnslib_zone {
 		int next_id;            /*!< ID of the next awaited SOA resp.*/
 	} xfr_in;
 
+	list notify_pending; /*!< List of pending NOTIFY events. */
+
 	time_t version;
 };
 
 typedef struct dnslib_zone dnslib_zone_t;
+
+/*!
+ * \brief Pending NOTIFY event.
+ * \see dnslib_zone_t.notify_pending
+ */
+typedef struct notify_ev_t {
+	node n;
+	int msgid;             /*!< ID of pending NOTIFY. */
+	struct event_t *timer; /*!< Event timer. */
+} notify_ev_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
