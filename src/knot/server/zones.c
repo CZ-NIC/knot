@@ -414,6 +414,10 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 
 			// Update events scheduled for zone
 			zones_timers_update(zone, ns->server->sched);
+
+			/*! \todo Remove list of pending NOTIFYs. */
+
+			/*! \todo Schedule NOTIFY to slaves. */
 		}
 
 		dnslib_dname_free(&zone_name);
