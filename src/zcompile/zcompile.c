@@ -12,11 +12,8 @@
  * @{
  */
 
-
-
 #include <config.h>
 #include <assert.h>
-#include <fcntl.h>
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
@@ -36,6 +33,7 @@
 #include "zparser.h"
 #include "zcompile/zcompile-error.h"
 #include "dnslib/dnslib.h"
+#include "dnslib/utils.h"
 
 //#define DEBUG_UNKNOWN_RDATA
 
@@ -63,18 +61,6 @@
 #else
 #define debug_zp(msg...)
 #endif
-
-
-struct flock* file_lock(short type, short whence)
-{
-	static struct flock ret;
-	ret.l_type = type;
-	ret.l_start = 0;
-	ret.l_whence = whence;
-	ret.l_len = 0;
-	ret.l_pid = getpid();
-	return &ret;
-}
 
 /*!
  * \brief Return data of raw data item.
@@ -1605,7 +1591,7 @@ static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 		return 0;
 	}
 
-	if (fcntl(fd, F_SETLK, file_lock(F_RDLCK, SEEK_SET)) == -1) {
+	if (fcntl(fd, F_SETLK, dnslib_file_lock(F_RDLCK, SEEK_SET)) == -1) {
 		fprintf(stderr, "Could not lock zone file for read!\n");
 		return 0;
 	}
@@ -2080,7 +2066,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		}
 		/* Unlock zone file. */
 		int fd = fileno(yyin);
-		if (fcntl(fd, F_SETLK, file_lock(F_UNLCK, SEEK_SET)) == -1) {
+		if (fcntl(fd, F_SETLK, dnslib_file_lock(F_UNLCK, SEEK_SET)) == -1) {
 			return KNOT_ZCOMPILE_EACCES;
 		}
 		fclose(yyin);
@@ -2090,7 +2076,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	/* Unlock zone file. */
 	int fd = fileno(yyin);
-	if (fcntl(fd, F_SETLK, file_lock(F_UNLCK, SEEK_SET)) == -1) {
+	if (fcntl(fd, F_SETLK, dnslib_file_lock(F_UNLCK, SEEK_SET)) == -1) {
 		fprintf(stderr, "Could not lock zone file for read!\n");
 		return 0;
 	}

@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <fcntl.h>
 
 #include "common/crc.h"
 #include "dnslib/dnslib-common.h"
@@ -14,6 +15,7 @@
 #include "dnslib/zone-dump.h"
 #include "dnslib/dnslib.h"
 #include "dnslib/debug.h"
+#include "dnslib/utils.h"
 
 /*! \note Contents of a dump file:
  * MAGIC(knotxx) db_filename dname_table
@@ -572,6 +574,13 @@ zloader_t *dnslib_zload_open(const char *filename)
 		return NULL;
 	}
 
+	/* Acquire read lock. */
+	int fd = fileno(f);
+	if (fcntl(fd, F_SETLK, dnslib_file_lock(F_RDLCK, SEEK_SET)) == -1) {
+		errno = EBUSY;
+		return NULL;
+	}
+
 	/* Calculate CRC and compare with filename.crc file */
 	unsigned long crc_calculated = calculate_crc(f);
 
@@ -967,6 +976,11 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		assert(nsec3_first->prev == NULL);
 		nsec3_first->prev = last_node;
 	}
+
+	/* Release read lock. */
+	int fd = fileno(f);
+	fcntl(fd, F_SETLK, dnslib_file_lock(F_UNLCK, SEEK_SET));
+	/* No return value chech here on purpose. */
 
 	/* ID array is now useless */
 	free(id_array);

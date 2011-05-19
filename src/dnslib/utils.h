@@ -132,6 +132,16 @@ static inline void dnslib_wire_write_u32(uint8_t *pos, uint32_t data)
  */
 size_t dnslib_quick_rand();
 
+/*!
+ * \brief Helper function for simple locking.
+ *
+ * \param type Type of lock.
+ * \param type Starting position of lock.
+ *
+ * \return Locking structure.
+ */
+struct flock* dnslib_file_lock(short type, short whence);
+
 #endif /* _KNOT_DNSLIB_UTILS_H_ */
 
 /*! @} */

@@ -1,6 +1,8 @@
 #include <config.h>
 #include <string.h>
 #include <pthread.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "dnslib/dnslib-common.h"
 #include "dnslib/utils.h"
@@ -89,3 +91,15 @@ size_t dnslib_quick_rand()
 	(void) pthread_setspecific(_qr_key, (void*)x);
 	return x;
 }
+
+struct flock* dnslib_file_lock(short type, short whence)
+{
+	static struct flock ret;
+	ret.l_type = type;
+	ret.l_start = 0;
+	ret.l_whence = whence;
+	ret.l_len = 0;
+	ret.l_pid = getpid();
+	return &ret;
+}
+
