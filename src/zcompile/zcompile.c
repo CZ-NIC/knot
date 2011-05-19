@@ -64,6 +64,18 @@
 #define debug_zp(msg...)
 #endif
 
+
+struct flock* file_lock(short type, short whence)
+{
+	static struct flock ret;
+	ret.l_type = type;
+	ret.l_start = 0;
+	ret.l_whence = whence;
+	ret.l_len = 0;
+	ret.l_pid = getpid();
+	return &ret;
+}
+
 /*!
  * \brief Return data of raw data item.
  *
@@ -1588,6 +1600,16 @@ static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 		return 0;
 	}
 
+	int fd = fileno(yyin);
+	if (fd == -1) {
+		return 0;
+	}
+
+	if (fcntl(fd, F_SETLK, file_lock(F_RDLCK, SEEK_SET)) == -1) {
+		fprintf(stderr, "Could not lock zone file for read!\n");
+		return 0;
+	}
+
 	zparser_init(filename, ttl, rclass, origin);
 
 	return 1;
@@ -2060,6 +2082,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		return KNOT_ZCOMPILE_ESYNT;
 	}
 
+	printf("zp complete %p\n", parser->current_zone);
+
 	if (parser->node_rrsigs != NULL) {
 		/* assign rrsigs to last node in the zone*/
 		process_rrsigs_in_node(parser->last_node);
@@ -2088,7 +2112,14 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	/* This is *almost* unnecessary */
 	dnslib_zone_deep_free(&(parser->current_zone), 0);
 
+	/* Unlock zone file. */
+	if (fcntl(fd, F_SETLK, file_lock(F_UNCLK, SEEK_SET)) == -1) {
+		fprintf(stderr, "Could not lock zone file for read!\n");
+		return 0;
+	}
+
 	fclose(yyin);
+
 	fflush(stdout);
 	totalerrors += parser->errors;
 
