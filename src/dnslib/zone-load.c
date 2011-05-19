@@ -980,7 +980,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	/* Release read lock. */
 	int fd = fileno(f);
 	fcntl(fd, F_SETLK, dnslib_file_lock(F_UNLCK, SEEK_SET));
-	/* No return value chech here on purpose. */
+	/* No return value check here on purpose. */
 
 	/* ID array is now useless */
 	free(id_array);
