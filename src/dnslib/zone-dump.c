@@ -3,8 +3,8 @@
 #include <stdint.h>
 #include <assert.h>
 #include <netinet/in.h>
-#include <fcntl.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "dnslib/dnslib-common.h"
 #include "dnslib/zone-dump.h"
@@ -14,6 +14,7 @@
 #include "common/base32hex.h"
 #include "common/crc.h"
 #include "dnslib/error.h"
+#include "dnslib/utils.h"
 
 #define ZONECHECKS_VERBOSE
 
@@ -1951,7 +1952,7 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	}
 
 	/* Try to obtain exclusive lock for originally given file. */
-	if (fcntl(fd, F_SETLK, file_lock(F_WRLCK, SEEK_SET)) == -1) {
+	if (fcntl(fd, F_SETLK, dnslib_file_lock(F_WRLCK, SEEK_SET)) == -1) {
 		fprintf(stderr, "Could not lock destination file for write! "
 		        "Use '%s' file instead.\n", new_path);
 		close(fd);
@@ -1967,7 +1968,7 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	}
 
 	/* Release the lock. */
-	if (fcntl(fd, F_SETLK, file_lock(F_UNLCK, SEEK_SET)) == -1) {
+	if (fcntl(fd, F_SETLK, dnslib_file_lock(F_UNLCK, SEEK_SET)) == -1) {
 		fprintf(stderr, "Could not unlock destination file!\n");
 		return DNSLIB_EOK;
 	}
