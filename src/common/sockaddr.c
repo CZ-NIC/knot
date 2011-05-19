@@ -87,3 +87,62 @@ int sockaddr_set(sockaddr_t *dst, int family, const char* addr, int port)
 	/* Convert address. */
 	return inet_pton(family, addr, paddr);
 }
+
+int sockaddr_tostr(sockaddr_t *addr, char *dst, size_t size)
+{
+	if (!addr || !dst || size == 0) {
+		return -1;
+	}
+
+	/* Minimum length. */
+	size_t minlen = INET_ADDRSTRLEN;
+
+	/* Check unsupported IPv6. */
+#ifdef DISABLE_IPV6
+	if (addr->family == AF_INET6) {
+		return -1;
+	}
+#else
+	minlen = INET6_ADDRSTRLEN;
+#endif
+
+	/* Check minimum length. */
+	if (size < minlen) {
+		return -1;
+	}
+
+	/* Convert. */
+	const char *ret = inet_ntop(addr->family, addr->ptr, dst, size);
+	if (ret == 0) {
+		return -1;
+	}
+
+	return 0;
+}
+
+int sockaddr_portnum(sockaddr_t *addr)
+{
+	if (!addr) {
+		return -1;
+	}
+
+	switch(addr->family) {
+
+	/* IPv4 */
+	case AF_INET:
+		return addr->addr4.sin_port;
+		break;
+
+	/* IPv6 */
+#ifndef DISABLE_IPV6
+	case AF_INET6:
+		return addr->addr6.sin6_port;
+		break;
+#endif
+
+	/* N/A */
+	default:
+		return -1;
+		break;
+	}
+}

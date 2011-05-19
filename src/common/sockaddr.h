@@ -27,12 +27,19 @@ typedef struct sockaddr_t {
 	};
 } sockaddr_t;
 
+/*! \brief Maximum address length in string format. */
+#ifdef DISABLE_IPV6
+#define SOCKADDR_STRLEN INET_ADDRSTRLEN
+#else
+#define SOCKADDR_STRLEN INET6_ADDRSTRLEN
+#endif
+
 /*!
  * \brief Initialize address structure.
  *
  * Members ptr and len will be initialized to correct address family.
  *
- * \param addr Socket address structure
+ * \param addr Socket address structure.
  * \param af Requested address family.
  *
  * \retval 0 on success.
@@ -43,19 +50,20 @@ int sockaddr_init(sockaddr_t *addr, int af);
 /*!
  * \brief Update internal pointers according to length.
  *
- * \param addr Socket address structure
+ * \param addr Socket address structure.
  *
  * \retval 0 on success.
  * \retval -1 on invalid size.
  */
 int sockaddr_update(sockaddr_t *addr);
 
-/*! \brief Set address and port.
+/*!
+ * \brief Set address and port.
  *
- * \brief dst Target address structure.
- * \brief family Address family.
- * \brief addr IP address in string format.
- * \brief port Port.
+ * \param dst Target address structure.
+ * \param family Address family.
+ * \param addr IP address in string format.
+ * \param port Port.
  *
  * \retval 0 if addr is not valid address in string format.
  * \retval positive value in case of success.
@@ -63,6 +71,28 @@ int sockaddr_update(sockaddr_t *addr);
  * \see inet_pton(3)
  */
 int sockaddr_set(sockaddr_t *dst, int family, const char* addr, int port);
+
+/*!
+ * \brief Return string representation of socket address.
+ *
+ * \param addr Socket address structure.
+ * \param dst Destination for string representation.
+ * \param size Maximum number of written bytes.
+ *
+ * \retval 0 on success.
+ * \retval -1 on invalid parameters.
+ */
+int sockaddr_tostr(sockaddr_t *addr, char *dst, size_t size);
+
+/*!
+ * \brief Return port number from address.
+ *
+ * \param addr Socket address structure.
+ *
+ * \retval Port number on success.
+ * \retval -1 on errors.
+ */
+int sockaddr_portnum(sockaddr_t *addr);
 
 #endif /* _KNOT_SOCKADDR_H_ */
 

@@ -121,7 +121,7 @@ int udp_master(dthread_t *thread)
 		/* Parse query. */
 		res = ns_parse_packet(qbuf, n, packet, &qtype);
 		if (unlikely(res != KNOT_EOK)) {
-			printf("Sending back error response.\n");
+			debug_net("udp: sending back error response.\n");
 			/* Send error response on dnslib RCODE. */
 			if (res > 0) {
 				uint16_t pkt_id = dnslib_wire_get_id(qbuf);
@@ -156,6 +156,9 @@ int udp_master(dthread_t *thread)
 			/*! \todo Send error, not available on UDP. */
 			break;
 		case DNSLIB_QUERY_NOTIFY:
+			res = ns_answer_notify(ns, packet, &addr,
+					       qbuf, &resp_len);
+			break;
 		case DNSLIB_QUERY_UPDATE:
 			/*! \todo Implement query notify/update. */
 			break;
