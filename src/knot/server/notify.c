@@ -186,6 +186,14 @@ int notify_process_request(dnslib_packet_t *notify,
 		return KNOT_ERROR;	/*! \todo Some other error. */
 	}
 
+	/*! \todo Merge this with ns_answer_notify().
+	 *        According to RFC 1996, slave should
+	 *        behave as if the REFRESH timer has expired
+	 *        i.e. it should send SOA query to the master.
+	 *        No further processing after this comment is needed.
+	 */
+
+
 	// check if the zone needs an update
 	dnslib_rrset_t *soa_rrset = dnslib_node_rrset(dnslib_zone_apex(*zone),
 	                                              DNSLIB_RRTYPE_SOA);
