@@ -171,6 +171,26 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
                      uint8_t *response_wire, size_t *rsize);
 
 /*!
+ * \brief Creates a response for NOTIFY query.
+ *
+ * Valid NOTIFY query expires REFRESH timer for received qname.
+ *
+ * \see RFC1996 for query and response format.
+ *
+ * \param nameserver Name server structure to provide the needed data.
+ * \param query Response structure with parsed query.
+ * \param response_wire Place for the response in wire format.
+ * \param rsize Input: maximum acceptable size of the response. Output: real
+ *              size of the response.
+ *
+ * \retval KNOT_EOK if a valid response was created.
+ * \retval KNOT_EACCES sender is not authorized to request NOTIFY.
+ * \retval KNOT_EMALF if an error occured and the response is not valid.
+ */
+int ns_answer_notify(ns_nameserver_t *nameserver, dnslib_packet_t *query,
+		     sockaddr_t *from, uint8_t *response_wire, size_t *rsize);
+
+/*!
  * \brief Processes an AXFR query.
  *
  * This function sequentially creates DNS packets to be sent as a response

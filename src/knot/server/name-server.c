@@ -2409,6 +2409,68 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 
 /*----------------------------------------------------------------------------*/
 
+int ns_answer_notify(ns_nameserver_t *nameserver, dnslib_packet_t *query,
+		     sockaddr_t *from, uint8_t *response_wire, size_t *rsize)
+{
+	debug_ns("ns_answer_notify()\n");
+
+	/* Find matching zone from qname. */
+	const dnslib_dname_t *zone_name = dnslib_packet_qname(query);
+	dnslib_zone_t *zone = dnslib_zonedb_find_zone(
+				nameserver->zone_db,
+				zone_name);
+	if (!zone) {
+		debug_ns("ns: matching zone not found\n");
+		return KNOT_EINVAL;
+	}
+
+	/* Check ACL for notify-in. */
+	if (from) {
+		if (acl_match(zone->acl.notify_in, from) == ACL_DENY) {
+			/* rfc1996: Ignore request and report incident. */
+			char straddr[SOCKADDR_STRLEN];
+			sockaddr_tostr(from, straddr, sizeof(straddr));
+			log_server_error("Unauthorized NOTIFY request "
+					 "from %s:%d.\n",
+					 straddr, sockaddr_portnum(from));
+			return KNOT_EACCES;
+		} else {
+			debug_ns("ns: Authorized NOTIFY query.\n");
+		}
+	}
+
+	/*! \todo Packet may contain updated RRs. */
+
+	/* Cancel EXPIRE timer. */
+	evsched_t *sched = nameserver->server->sched;
+	event_t *expire_ev = zone->xfr_in.expire;
+	if (expire_ev) {
+		debug_ns("ns: canceling EXPIRE timer\n");
+		evsched_cancel(sched, expire_ev);
+		evsched_event_free(sched, expire_ev);
+		zone->xfr_in.expire = 0;
+	}
+
+	/* Cancel REFRESH/RETRY timer. */
+	event_t *refresh_ev = zone->xfr_in.timer;
+	if (refresh_ev) {
+		debug_ns("ns: canceling REFRESH timer\n");
+		evsched_cancel(sched, refresh_ev);
+
+		/* Set REFRESH timer for now. */
+		evsched_schedule(sched, refresh_ev, 0);
+	}
+
+	/*! \todo Prepare response - copy query and set QR. */
+	/*! \todo It is safe to assume response_wire contains query wire? */
+	dnslib_wire_set_qr(response_wire);
+	*rsize = query->size;
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 {
 	debug_ns("ns_answer_axfr()\n");
