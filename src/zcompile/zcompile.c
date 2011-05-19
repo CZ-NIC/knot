@@ -2078,8 +2078,21 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		if (parser->dname_table != NULL) {
 			dnslib_dname_table_free(&parser->dname_table);
 		}
+		/* Unlock zone file. */
+		int fd = fileno(yyin);
+		if (fcntl(fd, F_SETLK, file_lock(F_UNLCK, SEEK_SET)) == -1) {
+			return KNOT_ZCOMPILE_EACCES;
+		}
+		fclose(yyin);
 		zparser_free();
 		return KNOT_ZCOMPILE_ESYNT;
+	}
+
+	/* Unlock zone file. */
+	int fd = fileno(yyin);
+	if (fcntl(fd, F_SETLK, file_lock(F_UNLCK, SEEK_SET)) == -1) {
+		fprintf(stderr, "Could not lock zone file for read!\n");
+		return 0;
 	}
 
 	printf("zp complete %p\n", parser->current_zone);
@@ -2106,17 +2119,14 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	parser->current_zone->dname_table = parser->dname_table;
 
-	dnslib_zdump_binary(parser->current_zone, outfile, semantic_checks,
-			    zonefile);
+	if (dnslib_zdump_binary(parser->current_zone, outfile, semantic_checks,
+	                       zonefile) != 0) {
+		fprintf(stderr, "Error: could not dump zone!\n");
+	}
 
 	/* This is *almost* unnecessary */
 	dnslib_zone_deep_free(&(parser->current_zone), 0);
 
-	/* Unlock zone file. */
-	if (fcntl(fd, F_SETLK, file_lock(F_UNCLK, SEEK_SET)) == -1) {
-		fprintf(stderr, "Could not lock zone file for read!\n");
-		return 0;
-	}
 
 	fclose(yyin);
 
