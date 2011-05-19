@@ -1589,11 +1589,7 @@ void zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	nsec_highest_rcode = 0;
 
 	parser->current_zone = NULL;
-	parser->filename = NULL;
-	parser->current_zone = NULL;
-	parser->origin = NULL;
 	parser->prev_dname = NULL;
-	parser->default_apex = NULL;
 
 	parser->default_ttl = ttl;
 	parser->default_class = rclass;
