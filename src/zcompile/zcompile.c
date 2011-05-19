@@ -1668,6 +1668,9 @@ int process_rr(void)
 		}
 
 		zone = dnslib_zone_new(parser->origin, 0);
+		if (zone == NULL) {
+			return KNOT_ZCOMPILE_ENOMEM;
+		}
 
 		parser->current_zone = zone;
 	}
