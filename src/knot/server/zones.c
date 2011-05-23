@@ -12,6 +12,7 @@
 #include "dnslib/zone-load.h"
 #include "knot/other/debug.h"
 #include "knot/server/xfr-in.h"
+#include "knot/server/notify.h"
 #include "knot/server/server.h"
 
 /*----------------------------------------------------------------------------*/
@@ -152,7 +153,6 @@ static int zones_axfrin_poll(event_t *e)
 			debug_zones("axfrin: expecting SOA response ID=%d\n",
 				    zone->xfr_in.next_id);
 		}
-
 	}
 
 	/* Schedule EXPIRE timer on first attempt. */
@@ -174,26 +174,144 @@ static int zones_axfrin_poll(event_t *e)
 }
 
 /*!
+ * \brief Send NOTIFY to slave server.
+ */
+static int zones_notify_send(event_t *e)
+{
+	debug_zones("notify: SEND timer event\n");
+	notify_ev_t *ev = (notify_ev_t *)e->data;
+	dnslib_zone_t *zone = ev->zone;
+
+	/* Check number of retries. */
+	if (ev->retries == 0) {
+		evsched_event_free(e->caller, ev->timer);
+		rem_node(&ev->n);
+		free(ev);
+		return KNOT_EMALF;
+	}
+
+	/* Prepare buffer for query. */
+	uint8_t qbuf[SOCKET_MTU_SZ];
+	size_t buflen = SOCKET_MTU_SZ;
+
+	/* Create query. */
+	int ret = notify_create_request(zone, qbuf, &buflen);
+	if (ret == KNOT_EOK && zone->xfr_in.ifaces) {
+
+		/*! \todo Bind to random port? See zones_axfrin_poll(). */
+
+		/* Lock RCU. */
+		rcu_read_lock();
+
+		/* Find suitable interface. */
+		int sock = -1;
+		iface_t *i = 0;
+		WALK_LIST(i, **zone->xfr_in.ifaces) {
+			if (i->type[UDP_ID] == ev->addr.family) {
+				sock = i->fd[UDP_ID];
+				break;
+			}
+		}
+
+		/* Unlock RCU. */
+		rcu_read_unlock();
+
+		/* Send query. */
+		ret = -1;
+		if (sock > -1) {
+			ret = sendto(sock, qbuf, buflen, 0,
+				     ev->addr.ptr, ev->addr.len);
+		}
+
+		/* Store ID of the awaited response. */
+		if (ret == buflen) {
+			ev->msgid = dnslib_wire_get_id(qbuf);
+			debug_zones("notify: sent NOTIFY, expecting "
+				    "response ID=%d\n", ev->msgid);
+		}
+
+	}
+
+	/* Reduce number of available retries. */
+	--ev->retries;
+
+	/*! \todo RFC suggests 60s, but make configurable. */
+	int retry_tmr = 60 * 1000;
+
+	/* Reschedule. */
+	evsched_schedule(e->caller, e, retry_tmr);
+	debug_zones("notify: RETRY after %u secs\n",
+		    retry_tmr / 1000);
+	return ret;
+}
+
+/*!
  * \brief Update timers related to zone.
  *
  */
-void zones_timers_update(dnslib_zone_t *zone, evsched_t *sch)
+void zones_timers_update(dnslib_zone_t *zone, conf_zone_t *conf, evsched_t *sch)
 {
 	/* Check AXFR-IN master server. */
-	if (zone->xfr_in.master.ptr == 0) {
-		return;
+	if (zone->xfr_in.master.ptr) {
+
+		/* Schedule REFRESH timer. */
+		uint32_t refresh_tmr = zones_soa_refresh(zone);
+		zone->xfr_in.timer = evsched_schedule_cb(sch, zones_axfrin_poll,
+							 zone, refresh_tmr);
+
+		/* Cancel EXPIRE timer. */
+		if (zone->xfr_in.expire) {
+			evsched_cancel(sch, zone->xfr_in.expire);
+			evsched_event_free(sch, zone->xfr_in.expire);
+			zone->xfr_in.expire = 0;
+		}
 	}
 
-	/* Schedule REFRESH timer. */
-	uint32_t refresh_tmr = zones_soa_refresh(zone);
-	zone->xfr_in.timer = evsched_schedule_cb(sch, zones_axfrin_poll,
-						       zone, refresh_tmr);
+	/* Remove list of pending NOTIFYs. */
+	node *n = 0, *nxt = 0;
+	WALK_LIST_DELSAFE(n, nxt, zone->notify_pending) {
+		notify_ev_t *ev = (notify_ev_t *)n;
+		rem_node(n);
+		evsched_cancel(sch, ev->timer);
+		evsched_event_free(sch, ev->timer);
+		free(ev);
+	}
 
-	/* Cancel EXPIRE timer. */
-	if (zone->xfr_in.expire) {
-		evsched_cancel(sch, zone->xfr_in.expire);
-		evsched_event_free(sch, zone->xfr_in.expire);
-		zone->xfr_in.expire = 0;
+	/* Schedule NOTIFY to slaves. */
+	conf_remote_t *r = 0;
+	WALK_LIST(r, conf->acl.notify_out) {
+
+		/* Fetch remote. */
+		conf_iface_t *cfg_if = r->remote;
+
+		/* Create request. */
+		notify_ev_t *ev = malloc(sizeof(notify_ev_t));
+		if (!ev) {
+			free(ev);
+			debug_zones("notify: out of memory to create "
+				    "NOTIFY query for %s\n", cfg_if->name);
+			continue;
+		}
+
+		/* Parse server address. */
+		int ret = sockaddr_set(&ev->addr, cfg_if->family,
+				       cfg_if->address,
+				       cfg_if->port);
+		if (ret < 1) {
+			free(ev);
+			debug_zones("notify: NOTIFY slave %s has invalid "
+				    "address\n", cfg_if->name);
+			continue;
+		}
+
+		/* Schedule request. */
+		ev->retries = 5; /*!< \todo Make configurable. */
+		ev->msgid = -1;
+		ev->zone = zone;
+		add_tail(&zone->notify_pending, &ev->n);
+		ev->timer = evsched_schedule_cb(sch, zones_notify_send, ev, 0);
+		debug_zones("notify: scheduled NOTIFY query after %dms to %s\n",
+			    0, cfg_if->name);
 	}
 }
 
@@ -393,7 +511,7 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 
 		// Update ACLs
 		if (zone) {
-			debug_zones("Updating zone ACLs.");
+			debug_zones("Updating zone ACLs.\n");
 			zones_set_acl(&zone->acl.xfr_out, &z->acl.xfr_out);
 			zones_set_acl(&zone->acl.notify_in, &z->acl.notify_in);
 			zones_set_acl(&zone->acl.notify_out, &z->acl.notify_out);
@@ -413,11 +531,7 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 			}
 
 			// Update events scheduled for zone
-			zones_timers_update(zone, ns->server->sched);
-
-			/*! \todo Remove list of pending NOTIFYs. */
-
-			/*! \todo Schedule NOTIFY to slaves. */
+			zones_timers_update(zone, z, ns->server->sched);
 		}
 
 		dnslib_dname_free(&zone_name);

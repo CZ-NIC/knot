@@ -2420,7 +2420,7 @@ int ns_answer_notify(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 				nameserver->zone_db,
 				zone_name);
 	if (!zone) {
-		debug_ns("ns: matching zone not found\n");
+		debug_ns("notify: matching zone not found\n");
 		return KNOT_EINVAL;
 	}
 
@@ -2435,7 +2435,7 @@ int ns_answer_notify(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 					 straddr, sockaddr_portnum(from));
 			return KNOT_EACCES;
 		} else {
-			debug_ns("ns: Authorized NOTIFY query.\n");
+			debug_ns("notify: authorized NOTIFY query.\n");
 		}
 	}
 
@@ -2445,7 +2445,7 @@ int ns_answer_notify(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 	evsched_t *sched = nameserver->server->sched;
 	event_t *expire_ev = zone->xfr_in.expire;
 	if (expire_ev) {
-		debug_ns("ns: canceling EXPIRE timer\n");
+		debug_ns("notify: canceling EXPIRE timer\n");
 		evsched_cancel(sched, expire_ev);
 		evsched_event_free(sched, expire_ev);
 		zone->xfr_in.expire = 0;
@@ -2454,7 +2454,7 @@ int ns_answer_notify(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 	/* Cancel REFRESH/RETRY timer. */
 	event_t *refresh_ev = zone->xfr_in.timer;
 	if (refresh_ev) {
-		debug_ns("ns: canceling REFRESH timer\n");
+		debug_ns("notify: canceling REFRESH timer for XFRIN\n");
 		evsched_cancel(sched, refresh_ev);
 
 		/* Set REFRESH timer for now. */
@@ -2591,20 +2591,17 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 		*rsize = 0;
 
 		/* Find matching zone and ID. */
-		fprintf(stderr, "received SOA response\n");
 		const dnslib_dname_t *zone_name = dnslib_packet_qname(packet);
 		dnslib_zone_t *zone = dnslib_zonedb_find_zone(
 					nameserver->zone_db,
 					zone_name);
 		if (!zone) {
-			fprintf(stderr, "matching zone not found\n");
 			return KNOT_EINVAL;
 		}
 
 		/* Match ID against awaited. */
 		uint16_t pkt_id = dnslib_packet_id(packet);
 		if ((int)pkt_id != zone->xfr_in.next_id) {
-			fprintf(stderr, "invalid packet id\n");
 			return KNOT_EINVAL;
 		}
 
@@ -2612,7 +2609,6 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 		evsched_t *sched = nameserver->server->sched;
 		event_t *expire_ev = zone->xfr_in.expire;
 		if (expire_ev) {
-			fprintf(stderr, "canceling EXPIRE timer\n");
 			evsched_cancel(sched, expire_ev);
 			evsched_event_free(sched, expire_ev);
 			zone->xfr_in.expire = 0;
@@ -2649,7 +2645,6 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 
 
 		/* Prepare XFR client transfer. */
-		fprintf(stderr, "scheduling XFR client request\n");
 		ns_xfr_t xfr_req;
 		memset(&xfr_req, 0, sizeof(ns_xfr_t));
 		memcpy(&xfr_req.addr, from, sizeof(sockaddr_t));
@@ -2665,6 +2660,61 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 
 
 	return KNOT_ENOTSUP;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int ns_process_notify(ns_nameserver_t *nameserver, sockaddr_t *from,
+		      dnslib_packet_t *packet, uint8_t *response_wire,
+		      size_t *rsize)
+{
+	if (!packet || !rsize) {
+		return KNOT_EINVAL;
+	}
+
+	/* Assert no response size. */
+	*rsize = 0;
+
+	/* Find matching zone. */
+	const dnslib_dname_t *zone_name = dnslib_packet_qname(packet);
+	dnslib_zone_t *zone = dnslib_zonedb_find_zone(
+				nameserver->zone_db,
+				zone_name);
+	if (!zone) {
+		return KNOT_EINVAL;
+	}
+
+	/* Match ID against awaited. */
+	uint16_t pkt_id = dnslib_packet_id(packet);
+	notify_ev_t *ev = 0, *match = 0;
+	WALK_LIST(ev, zone->notify_pending) {
+		if ((int)pkt_id == ev->msgid) {
+			match = ev;
+			break;
+		}
+	}
+
+	/* Found waiting NOTIFY query? */
+	if (!match) {
+		debug_ns("notify: no pending NOTIFY query found for ID=%u\n",
+			 pkt_id);
+		return KNOT_EINVAL;
+	}
+
+	/* Cancel RETRY timer, NOTIFY is now finished. */
+	evsched_t *sched = nameserver->server->sched;
+	if (match->timer) {
+		evsched_cancel(sched, match->timer);
+		evsched_event_free(sched, match->timer);
+		match->timer = 0;
+		rem_node(&match->n);
+		free(match);
+	}
+
+	debug_ns("notify: received response for pending NOTIFY query ID=%u\n",
+		 pkt_id);
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
