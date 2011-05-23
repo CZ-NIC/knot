@@ -41,6 +41,7 @@ enum dnslib_zone_retvals {
 typedef enum dnslib_zone_retvals dnslib_zone_retvals_t;
 
 /*----------------------------------------------------------------------------*/
+
 /*!
  * \brief Structure for holding DNS zone.
  *
@@ -72,7 +73,8 @@ struct dnslib_zone {
 		int next_id;            /*!< ID of the next awaited SOA resp.*/
 	} xfr_in;
 
-	list notify_pending; /*!< List of pending NOTIFY events. */
+	/*! \brief List of pending NOTIFY events. */
+	list notify_pending;
 
 	time_t version;
 };
@@ -85,8 +87,11 @@ typedef struct dnslib_zone dnslib_zone_t;
  */
 typedef struct notify_ev_t {
 	node n;
+	int retries;           /*!< Number of retries. */
 	int msgid;             /*!< ID of pending NOTIFY. */
+	sockaddr_t addr;       /*!< Slave server address. */
 	struct event_t *timer; /*!< Event timer. */
+	dnslib_zone_t *zone;   /*!< Associated zone. */
 } notify_ev_t;
 
 /*----------------------------------------------------------------------------*/

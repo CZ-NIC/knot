@@ -139,12 +139,14 @@ int udp_master(dthread_t *thread)
 
 		/* Response types. */
 		case DNSLIB_RESPONSE_NORMAL:
-			res = ns_process_response(ns, &addr, packet, qbuf, &resp_len);
+			res = ns_process_response(ns, &addr, packet,
+						  qbuf, &resp_len);
 			break;
 		case DNSLIB_RESPONSE_AXFR:
 		case DNSLIB_RESPONSE_IXFR:
 		case DNSLIB_RESPONSE_NOTIFY:
-			/*! \todo Implement packet handling. */
+			res = ns_process_notify(ns, &addr, packet,
+						qbuf, &resp_len);
 			break;
 
 		/* Query types. */

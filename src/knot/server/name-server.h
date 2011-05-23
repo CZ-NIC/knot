@@ -224,7 +224,7 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
 int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
 
 /*!
- * \brief Processes responses packet.
+ * \brief Processes normal response packet.
  *
  * \param nameserver Name server structure to provide the needed data.
  * \param from Address of the response sender.
@@ -240,6 +240,24 @@ int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
 int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 			dnslib_packet_t *packet, uint8_t *response_wire,
 			size_t *rsize);
+
+/*!
+ * \brief Processes NOTIFY response packet.
+ *
+ * \param nameserver Name server structure to provide the needed data.
+ * \param from Address of the response sender.
+ * \param packet Parsed response packet.
+ * \param response_wire Place for the response in wire format.
+ * \param rsize Input: maximum acceptable size of the response. Output: real
+ *              size of the response.
+ *
+ * \retval KNOT_EOK if a valid response was created.
+ * \retval KNOT_EINVAL on invalid parameters or packet.
+ * \retval KNOT_EMALF if an error occured and the response is not valid.
+ */
+int ns_process_notify(ns_nameserver_t *nameserver, sockaddr_t *from,
+		      dnslib_packet_t *packet, uint8_t *response_wire,
+		      size_t *rsize);
 
 /*!
  * \brief Processes an AXFR-IN packet.

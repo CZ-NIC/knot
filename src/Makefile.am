@@ -215,6 +215,8 @@ libknot_la_SOURCES =				\
 	knot/server/zones.h				\
 	knot/server/xfr-in.h				\
 	knot/server/xfr-in.c				\
+	knot/server/notify.h				\
+	knot/server/notify.c				\
 	knot/server/server.h
 
 libknot_la_LIBADD = @LIBOBJS@

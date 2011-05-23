@@ -10,6 +10,8 @@
 #include "dnslib/consts.h"
 #include "knot/other/error.h"
 #include "dnslib/zonedb.h"
+#include "dnslib/dnslib-common.h"
+#include "dnslib/error.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -73,8 +75,6 @@ static int notify_request(const dnslib_rrset_t *rrset,
 	}
 
 	if (wire_size > *size) {
-		log_answer_warning("Not enough space provided for the wire "
-		                   "format of the query.\n");
 		dnslib_packet_free(&pkt);
 		return KNOT_ESPACE;
 	}
@@ -82,7 +82,6 @@ static int notify_request(const dnslib_rrset_t *rrset,
 	memcpy(buffer, wire, wire_size);
 	*size = wire_size;
 
-	debug_ns("Created query of size %zu.\n", *size);
 	dnslib_packet_dump(pkt);
 
 	dnslib_packet_free(&pkt);
@@ -105,15 +104,13 @@ int notify_create_response(dnslib_packet_t *request, uint8_t *buffer,
 
 	uint8_t *wire = NULL;
 	size_t wire_size = 0;
-	rc = dnslib_packet_to_wire(response, &wire, &wire_size);
+	int rc = dnslib_packet_to_wire(response, &wire, &wire_size);
 	if (rc != DNSLIB_EOK) {
 		dnslib_packet_free(&response);
 		return rc;
 	}
 
 	if (wire_size > *size) {
-		log_answer_warning("Not enough space provided for the wire "
-		                   "format of the query.\n");
 		dnslib_packet_free(&response);
 		return KNOT_ESPACE;
 	}
@@ -121,7 +118,6 @@ int notify_create_response(dnslib_packet_t *request, uint8_t *buffer,
 	memcpy(buffer, wire, wire_size);
 	*size = wire_size;
 
-	debug_ns("Created query of size %zu.\n", *size);
 	dnslib_packet_dump(response);
 
 	dnslib_packet_free(&response);
@@ -136,7 +132,7 @@ int notify_create_response(dnslib_packet_t *request, uint8_t *buffer,
 int notify_create_request(const dnslib_zone_t *zone, uint8_t *buffer,
                           size_t *size)
 {
-	dnslib_rrset_t *soa_rrset =
+	const dnslib_rrset_t *soa_rrset =
 		dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
 	if (soa_rrset == NULL) {
 		return KNOT_ERROR;
@@ -162,8 +158,8 @@ int notify_process_request(dnslib_packet_t *notify,
 
 	*zone = NULL;
 
-	debug_ns("Notify request - parsed: %zu, total wire size: %zu\n",
-	         notify->parsed, notify->size);
+	//debug_ns("Notify request - parsed: %zu, total wire size: %zu\n",
+	//         notify->parsed, notify->size);
 	int ret;
 
 	if (notify->parsed < notify->size) {
@@ -180,7 +176,7 @@ int notify_process_request(dnslib_packet_t *notify,
 	}
 
 	// find the zone
-	dnslib_dname_t *qname = dnslib_packet_qname(notify);
+	const dnslib_dname_t *qname = dnslib_packet_qname(notify);
 	*zone = dnslib_zonedb_find_zone_for_name(zonedb, qname);
 	if (*zone == NULL) {
 		return KNOT_ERROR;	/*! \todo Some other error. */
@@ -192,60 +188,6 @@ int notify_process_request(dnslib_packet_t *notify,
 	 *        i.e. it should send SOA query to the master.
 	 *        No further processing after this comment is needed.
 	 */
-
-
-	// check if the zone needs an update
-	dnslib_rrset_t *soa_rrset = dnslib_node_rrset(dnslib_zone_apex(*zone),
-	                                              DNSLIB_RRTYPE_SOA);
-	if (soa_rrset == NULL) {
-		char *name = dnslib_dname_to_str(dnslib_rrset_owner(soa_rrset));
-		log_answer_warning("SOA RRSet missing in the zone %s!\n", name);
-		free(name);
-		return KNOT_ERROR;	/*! \todo Some other error. */
-	}
-
-	/*
-	 * Retrieve the local Serial
-	 */
-	const dnslib_rrset_t *soa_rrset =
-		dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
-	if (soa_rrset == NULL) {
-		char *name = dnslib_dname_to_str(dnslib_node_owner(
-				dnslib_zone_apex(zone)));
-		log_answer_warning("SOA RRSet missing in the zone %s!\n", name);
-		free(name);
-		return KNOT_ERROR;
-	}
-
-	int64_t local_serial = dnslib_rdata_soa_serial(
-		dnslib_rrset_rdata(soa_rrset));
-	if (local_serial < 0) {
-		char *name = dnslib_dname_to_str(dnslib_rrset_owner(soa_rrset));
-		log_answer_warning("Malformed data in SOA of zone %s\n", name);
-		free(name);
-		return KNOT_EMALF;	// maybe some other error
-	}
-
-	/*
-	 * Retrieve the remote Serial
-	 */
-	// the SOA should be the first (and only) RRSet in the response
-	soa_rrset = dnslib_packet_answer_rrset(notify, 0);
-	if (soa_rrset == NULL
-	    || dnslib_rrset_type(soa_rrset) != DNSLIB_RRTYPE_SOA) {
-		return KNOT_EMALF;
-	}
-
-	int64_t remote_serial = dnslib_rdata_soa_serial(
-		dnslib_rrset_rdata(soa_rrset));
-	if (remote_serial < 0) {
-		return KNOT_EMALF;	// maybe some other error
-	}
-
-	// if the Serials are identical, no transfer is needed
-	if (local_serial == remote_serial) {
-		*zone = NULL;
-	}
 
 	return KNOT_EOK;
 }
