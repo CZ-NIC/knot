@@ -106,6 +106,9 @@ int main(int argc, char **argv)
 		log_levels_add(LOGT_STDOUT, LOG_ANY, mask);
 	}
 
+	// Initialize pseudorandom number generator
+	srand(time(0));
+
 	// Create server
 	server_t *server = server_create();
 
