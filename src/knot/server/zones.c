@@ -178,7 +178,7 @@ static int zones_axfrin_poll(event_t *e)
  */
 static int zones_notify_send(event_t *e)
 {
-	debug_zones("notify: SEND timer event\n");
+	debug_zones("notify: NOTIFY timer event\n");
 	notify_ev_t *ev = (notify_ev_t *)e->data;
 	dnslib_zone_t *zone = ev->zone;
 
@@ -305,13 +305,16 @@ void zones_timers_update(dnslib_zone_t *zone, conf_zone_t *conf, evsched_t *sch)
 		}
 
 		/* Schedule request. */
+		int tmr_s = 30 + (int)(30.0 * (rand() / (RAND_MAX + 1.0)));
 		ev->retries = 5; /*!< \todo Make configurable. */
 		ev->msgid = -1;
 		ev->zone = zone;
 		add_tail(&zone->notify_pending, &ev->n);
-		ev->timer = evsched_schedule_cb(sch, zones_notify_send, ev, 0);
-		debug_zones("notify: scheduled NOTIFY query after %dms to %s\n",
-			    0, cfg_if->name);
+		ev->timer = evsched_schedule_cb(sch, zones_notify_send, ev,
+						tmr_s * 1000);
+
+		debug_zones("notify: scheduled NOTIFY query after %d s to %s\n",
+			    tmr_s, cfg_if->name);
 	}
 }
 
