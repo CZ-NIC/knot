@@ -116,6 +116,7 @@ int cf_read_mem(char *buf, size_t nbytes) {
 /*! \brief Config error report. */
 void cf_error(const char *msg)
 {
+	fprintf(stderr, "config error\n");
 	log_server_error("Config '%s' - %s on line %d (current token '%s').\n",
 	                 new_config->filename, msg, yylineno, yytext);
 
@@ -406,6 +407,8 @@ conf_t *conf_new(const char* path)
 
 	// Defaults
 	c->zone_checks = 0;
+	c->notify_retries = CONFIG_NOTIFY_RETRIES;
+	c->notify_timeout = CONFIG_NOTIFY_TIMEOUT;
 
 	return c;
 }

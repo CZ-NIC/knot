@@ -178,17 +178,10 @@ static int zones_axfrin_poll(event_t *e)
  */
 static int zones_notify_send(event_t *e)
 {
-	debug_zones("notify: NOTIFY timer event\n");
 	notify_ev_t *ev = (notify_ev_t *)e->data;
 	dnslib_zone_t *zone = ev->zone;
 
-	/* Check number of retries. */
-	if (ev->retries == 0) {
-		evsched_event_free(e->caller, ev->timer);
-		rem_node(&ev->n);
-		free(ev);
-		return KNOT_EMALF;
-	}
+	debug_zones("notify: NOTIFY timer event\n");
 
 	/* Prepare buffer for query. */
 	uint8_t qbuf[SOCKET_MTU_SZ];
@@ -235,8 +228,19 @@ static int zones_notify_send(event_t *e)
 	/* Reduce number of available retries. */
 	--ev->retries;
 
-	/*! \todo RFC suggests 60s, but make configurable. */
-	int retry_tmr = 60 * 1000;
+	/* Check number of retries. */
+	if (ev->retries == 0) {
+		debug_zones("notify: NOTIFY maximum retry time exceeded\n");
+		evsched_event_free(e->caller, ev->timer);
+		rem_node(&ev->n);
+		free(ev);
+		return KNOT_EMALF;
+	}
+
+	/* RFC suggests 60s, but it is configurable. */
+	conf_read_lock();
+	int retry_tmr = conf()->notify_timeout * 1000;
+	conf_read_unlock();
 
 	/* Reschedule. */
 	evsched_schedule(e->caller, e, retry_tmr);
@@ -249,7 +253,7 @@ static int zones_notify_send(event_t *e)
  * \brief Update timers related to zone.
  *
  */
-void zones_timers_update(dnslib_zone_t *zone, conf_zone_t *conf, evsched_t *sch)
+void zones_timers_update(dnslib_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 {
 	/* Check AXFR-IN master server. */
 	if (zone->xfr_in.master.ptr) {
@@ -279,7 +283,8 @@ void zones_timers_update(dnslib_zone_t *zone, conf_zone_t *conf, evsched_t *sch)
 
 	/* Schedule NOTIFY to slaves. */
 	conf_remote_t *r = 0;
-	WALK_LIST(r, conf->acl.notify_out) {
+	conf_read_lock();
+	WALK_LIST(r, cfzone->acl.notify_out) {
 
 		/* Fetch remote. */
 		conf_iface_t *cfg_if = r->remote;
@@ -304,11 +309,13 @@ void zones_timers_update(dnslib_zone_t *zone, conf_zone_t *conf, evsched_t *sch)
 			continue;
 		}
 
-		/* Schedule request. */
-		int tmr_s = 30 + (int)(30.0 * (rand() / (RAND_MAX + 1.0)));
-		ev->retries = 5; /*!< \todo Make configurable. */
+		/* Prepare request. */
+		ev->retries = conf()->notify_retries + 1; /* first + N retries*/
 		ev->msgid = -1;
 		ev->zone = zone;
+
+		/* Schedule request (30 - 60s random delay). */
+		int tmr_s = 30 + (int)(30.0 * (rand() / (RAND_MAX + 1.0)));
 		add_tail(&zone->notify_pending, &ev->n);
 		ev->timer = evsched_schedule_cb(sch, zones_notify_send, ev,
 						tmr_s * 1000);
@@ -316,6 +323,7 @@ void zones_timers_update(dnslib_zone_t *zone, conf_zone_t *conf, evsched_t *sch)
 		debug_zones("notify: scheduled NOTIFY query after %d s to %s\n",
 			    tmr_s, cfg_if->name);
 	}
+	conf_read_unlock();
 }
 
 /*!

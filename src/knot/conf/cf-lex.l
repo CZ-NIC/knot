@@ -58,7 +58,7 @@ BLANK [ \t\n]
 %%
 \#.*\n               /* Ignore comments */;
 {BLANK}+             /* Ignore whitespace */;
-[@{};,]              { return yytext[0]; }
+[-@{};,]              { return yytext[0]; }
 system               return SYSTEM;
 identity             return IDENTITY;
 version              return VERSION;
@@ -69,6 +69,8 @@ remotes              return REMOTES;
 zones                return ZONES;
 file                 return FILENAME;
 semantic-checks      return SEMANTIC_CHECKS;
+notify-retries       return NOTIFY_RETRIES;
+notify-timeout       return NOTIFY_TIMEOUT;
 xfr-in               return XFR_IN;
 xfr-out              return XFR_OUT;
 notify-in            return NOTIFY_IN;

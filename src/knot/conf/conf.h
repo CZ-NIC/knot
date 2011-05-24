@@ -24,6 +24,8 @@
 
 /* Constants. */
 #define CONFIG_DEFAULT_PORT 53
+#define CONFIG_NOTIFY_RETRIES 5  /*!< 5 retries (suggested in RFC1996) */
+#define CONFIG_NOTIFY_TIMEOUT 60 /*!< 60s (suggested in RFC1996) */
 
 /*!
  * \brief Configuration for the interface
@@ -170,6 +172,8 @@ typedef struct conf_t {
 	list zones;       /*!< List of zones. */
 	int zones_count;  /*!< Count of zones. */
 	int zone_checks;  /*!< Semantic checks for parser.*/
+	int notify_retries; /*!< NOTIFY query retries. */
+	int notify_timeout; /*!< Timeout for NOTIFY response in seconds. */
 
 	/*
 	 * Implementation specifics
