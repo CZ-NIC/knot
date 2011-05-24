@@ -87,6 +87,16 @@ zones {
   # Default value: off
   semantic-checks off;
 
+  # NOTIFY response timeout
+  # Possible values: <1,...> (seconds)
+  # Default value: 60
+  notify-timeout: 60;
+
+  # Number of retries for NOTIFY
+  # Possible values: <1,...>
+  # Default value: 5
+  notify-retries: 5;
+
   # Zone entry
   #
   # Format: <zone-name> { file "<path-to-zone-file>"; }

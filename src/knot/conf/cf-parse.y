@@ -46,6 +46,8 @@ static conf_log_map_t *this_logmap = 0;
 
 %token ZONES FILENAME
 %token SEMANTIC_CHECKS
+%token NOTIFY_RETRIES
+%token NOTIFY_TIMEOUT
 %token XFR_IN
 %token XFR_OUT
 %token NOTIFY_IN
@@ -289,6 +291,20 @@ zones:
    ZONES '{'
  | zones zone '}'
  | zones SEMANTIC_CHECKS BOOL ';' { new_config->zone_checks = $3; }
+ | zones NOTIFY_RETRIES NUM ';' {
+       if ($3 < 1) {
+	   cf_error("notify retries must be positive integer");
+       } else {
+	   new_config->notify_retries = $3;
+       }
+   }
+ | zones NOTIFY_TIMEOUT NUM ';' {
+	if ($3 < 1) {
+	   cf_error("notify timeout must be positive integer");
+       } else {
+	   new_config->notify_timeout = $3;
+       }
+   }
  ;
 
 log_prios_start: {
