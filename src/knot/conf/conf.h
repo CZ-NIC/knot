@@ -94,6 +94,8 @@ typedef struct conf_zone_t {
 	char *file;                  /*!< Path to a zone file. */
 	char *db;                    /*!< Path to a database file. */
 	int  enable_checks;          /*!< Semantic checks for parser.*/
+	int notify_retries;          /*!< NOTIFY query retries. */
+	int notify_timeout;          /*!< Timeout for NOTIFY response (s). */
 	struct {
 		list xfr_in;         /*!< Remotes accepted for for xfr-in.*/
 		list xfr_out;        /*!< Remotes accepted for xfr-out.*/

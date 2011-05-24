@@ -81,19 +81,6 @@ struct dnslib_zone {
 
 typedef struct dnslib_zone dnslib_zone_t;
 
-/*!
- * \brief Pending NOTIFY event.
- * \see dnslib_zone_t.notify_pending
- */
-typedef struct notify_ev_t {
-	node n;
-	int retries;           /*!< Number of retries. */
-	int msgid;             /*!< ID of pending NOTIFY. */
-	sockaddr_t addr;       /*!< Slave server address. */
-	struct event_t *timer; /*!< Event timer. */
-	dnslib_zone_t *zone;   /*!< Associated zone. */
-} notify_ev_t;
-
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Creates new DNS zone.

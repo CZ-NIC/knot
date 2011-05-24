@@ -228,6 +228,16 @@ static int conf_process(conf_t *conf)
 			zone->enable_checks = conf->zone_checks;
 		}
 
+		// Default policy for NOTIFY retries
+		if (zone->notify_retries <= 0) {
+			zone->notify_retries = conf->notify_retries;
+		}
+
+		// Default policy for NOTIFY timeout
+		if (zone->notify_timeout <= 0) {
+			zone->notify_timeout = conf->notify_timeout;
+		}
+
 		// Normalize zone filename
 		zone->file = strcpath(zone->file);
 
