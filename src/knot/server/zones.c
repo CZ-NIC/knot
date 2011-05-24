@@ -238,9 +238,7 @@ static int zones_notify_send(event_t *e)
 	}
 
 	/* RFC suggests 60s, but it is configurable. */
-	conf_read_lock();
-	int retry_tmr = conf()->notify_timeout * 1000;
-	conf_read_unlock();
+	int retry_tmr = ev->timeout * 1000;
 
 	/* Reschedule. */
 	evsched_schedule(e->caller, e, retry_tmr);
@@ -310,9 +308,10 @@ void zones_timers_update(dnslib_zone_t *zone, conf_zone_t *cfzone, evsched_t *sc
 		}
 
 		/* Prepare request. */
-		ev->retries = conf()->notify_retries + 1; /* first + N retries*/
+		ev->retries = cfzone->notify_retries + 1; /* first + N retries*/
 		ev->msgid = -1;
 		ev->zone = zone;
+		ev->timeout = cfzone->notify_timeout;
 
 		/* Schedule request (30 - 60s random delay). */
 		int tmr_s = 30 + (int)(30.0 * (rand() / (RAND_MAX + 1.0)));

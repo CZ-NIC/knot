@@ -248,6 +248,8 @@ zone_start: TEXT {
    this_zone = malloc(sizeof(conf_zone_t));
    memset(this_zone, 0, sizeof(conf_zone_t));
    this_zone->enable_checks = -1; // Default policy applies
+   this_zone->notify_timeout = -1; // Default policy applies
+   this_zone->notify_retries = -1; // Default policy applies
    this_zone->name = $1;
 
    // Append mising dot to ensure FQDN
@@ -283,8 +285,22 @@ zone:
    zone_start '{'
  | zone zone_acl '}'
  | zone zone_acl_list
- | zone SEMANTIC_CHECKS BOOL ';' { this_zone->enable_checks = $3; }
  | zone FILENAME TEXT ';' { this_zone->file = $3; }
+ | zone SEMANTIC_CHECKS BOOL ';' { this_zone->enable_checks = $3; }
+ | zone NOTIFY_RETRIES NUM ';' {
+       if ($3 < 1) {
+	   cf_error("notify retries must be positive integer");
+       } else {
+	   this_zone->notify_retries = $3;
+       }
+   }
+ | zone NOTIFY_TIMEOUT NUM ';' {
+	if ($3 < 1) {
+	   cf_error("notify timeout must be positive integer");
+       } else {
+	   this_zone->notify_timeout = $3;
+       }
+   }
  ;
 
 zones:

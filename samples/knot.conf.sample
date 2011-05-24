@@ -111,6 +111,16 @@ zones {
     # Default value: off
     semantic-checks on;
 
+    # NOTIFY response timeout (specific for current zone)
+    # Possible values: <1,...> (seconds)
+    # Default value: 60
+    notify-timeout: 60;
+
+    # Number of retries for NOTIFY (specific for current zone)
+    # Possible values: <1,...>
+    # Default value: 5
+    notify-retries: 5;
+
     # ACL list specification for AXFR/IXFR IN
     xfr-in {
       # Symbolic name for remote
