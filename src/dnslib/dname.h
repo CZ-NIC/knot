@@ -32,7 +32,7 @@ struct dnslib_dname {
 	 */
 	unsigned int size;
 	uint8_t *labels;
-	short label_count;
+	unsigned short label_count;
 	struct dnslib_node *node; /*!< Zone node the domain name belongs to. */
 	unsigned int id; /*!< ID of domain name used in zone dumping. */
 };
