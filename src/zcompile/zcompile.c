@@ -1723,6 +1723,7 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 				return NULL;
 			} else if (found_dname != NULL) {
 				assert(chopped != found_dname);
+				dnslib_dname_free(&chopped);
 				chopped = found_dname;
 			}
 			tmp_node = dnslib_node_new(chopped, NULL);
@@ -1735,6 +1736,14 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 			if (node_add_func(zone, tmp_node) != 0) {
 				return NULL;
 			}
+
+			chopped->node = tmp_node;
+//			printf("Setting following node for chopped dname %p (%s)\n",
+//			       tmp_node, dnslib_dname_to_str(chopped));
+//			getchar();
+
+			assert(tmp_node->owner == chopped);
+			assert(chopped->node == tmp_node);
 
 			last_node = tmp_node;
 			chopped = dnslib_dname_left_chop(chopped);
@@ -2112,6 +2121,12 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	/* This is *almost* unnecessary */
 	dnslib_zone_deep_free(&(parser->current_zone), 0);
+
+	zloader_t *loader = dnslib_zload_open(outfile);
+	dnslib_zone_t *zone1 = dnslib_zload_load(loader);
+//	printf("%s\n", dnslib_dname_to_str(zone1->apex->owner));
+	dnslib_zone_deep_free(&zone1, 0);
+	dnslib_zload_close(loader);
 
 
 	fclose(yyin);

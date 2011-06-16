@@ -185,6 +185,17 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 			}
 
 			if (has_wildcard) {
+				/* We have to free the node, as it
+				 * will be replaced. */
+				if (!in_the_zone &&
+				    (items[i].dname->node != NULL) &&
+				    (items[i].dname->node->owner ==
+				     items[i].dname)) {
+					dnslib_node_free(&items[i].dname->node,
+					                 0);
+				}
+
+				/* Reusing the variable. */
 				if(!fread_safe(&dname_id, sizeof(void *),
 					       1, f)) {
 					load_rdata_purge(rdata, items,
@@ -200,6 +211,7 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 							 node, 0);
 				}
 				/* Also sets node to NULL! */
+				assert(id_array[dname_id]->node == NULL);
 			}
 			assert(items[i].dname);
 		} else {
@@ -296,7 +308,7 @@ static dnslib_rrset_t *dnslib_load_rrsig(FILE *f, dnslib_dname_t **id_array)
 		if (tmp_rdata) {
 			dnslib_rrset_add_rdata(rrsig, tmp_rdata);
 		} else {
-			fprintf(stderr, "Could not load rdata!\n");
+			fprintf(stderr, "Could not load RRSIG rdata!\n");
 			dnslib_rrset_deep_free(&rrsig, 0, 0);
 			return NULL;
 		}
@@ -361,17 +373,23 @@ static dnslib_rrset_t *dnslib_load_rrset(FILE *f, dnslib_dname_t **id_array)
 
 	dnslib_rrset_t *tmp_rrsig = NULL;
 
+	debug_dnslib_zload("Rdata loaded\n");
+
 	if (rrsig_count) {
 		tmp_rrsig = dnslib_load_rrsig(f, id_array);
 		if (tmp_rrsig == NULL) {
 			fprintf(stderr, "Could not load rrsig!\n");
+			dnslib_rrset_deep_free(&rrset, 0, 0);
+			return NULL;
 		}
-		dnslib_rrset_deep_free(&rrset, 0, 0);
-		return NULL;
+
+		debug_dnslib_zload("RRSIG loaded\n");
 	}
 
 	rrset->rrsigs = tmp_rrsig;
 
+	debug_dnslib_zload("RRSet loaded\n");
+	assert(rrset);
 	return rrset;
 }
 
@@ -386,8 +404,8 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 {
 	uint8_t flags = 0;
 	dnslib_node_t *node;
-	void *parent_id;
-	void *nsec3_node_id;
+	uint parent_id = 0;
+	uint nsec3_node_id;
 	uint16_t rrset_count;
 
 	uint dname_id = 0;
@@ -396,9 +414,11 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 	if (!fread_safe(&dname_id, sizeof(dname_id), 1, f)) {
 		return NULL;
 	}
-	if (!fread_safe(&parent_id, sizeof(dname_id), 1, f)) {
+	debug_dnslib_zload("Read dname. id: %u\n", dname_id);
+	if (!fread_safe(&parent_id, sizeof(parent_id), 1, f)) {
 		return NULL;
 	}
+	debug_dnslib_zload("Read par. id: %u\n", parent_id);
 	if (!fread_safe(&flags, sizeof(flags), 1, f)) {
 		return NULL;
 	}
@@ -433,7 +453,7 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 
 	/* Set parent ID. */
 	if (parent_id != 0) {
-		node->parent = id_array[(size_t)parent_id]->node;
+		node->parent = id_array[parent_id]->node;
 		assert(node->parent != NULL);
 	} else {
 		node->parent = NULL;
@@ -442,7 +462,7 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 	dnslib_rrset_t *tmp_rrset = NULL;
 	for (int i = 0; i < rrset_count; i++) {
 		if ((tmp_rrset = dnslib_load_rrset(f, id_array)) == NULL) {
-			dnslib_node_free(&node, 1);
+			dnslib_node_free(&node, 0);
 			fprintf(stderr, "zone: Could not load rrset.\n");
 			return NULL;
 		}
@@ -577,6 +597,7 @@ zloader_t *dnslib_zload_open(const char *filename)
 	/* Acquire read lock. */
 	int fd = fileno(f);
 	if (fcntl(fd, F_SETLK, dnslib_file_lock(F_RDLCK, SEEK_SET)) == -1) {
+		printf("Failed to obtain read lock!.\n");
 		errno = EBUSY;
 		return NULL;
 	}
@@ -625,8 +646,8 @@ zloader_t *dnslib_zload_open(const char *filename)
 	/* Compare calculated and read CRCs. */
 	if (crc_from_file != crc_calculated) {
 		debug_dnslib_zload("dnslib_zload_open: CRC failed for "
-		                   "file '%s'\n",
-		                   filename);
+		                   "file '%s' (%lu %lu)\n",
+		                   filename, crc_from_file, crc_calculated);
 		fclose(f);
 		errno = EILSEQ; // Should probably inform user that CRC failed
 		return NULL;
@@ -769,14 +790,14 @@ static dnslib_dname_table_t *create_dname_table_from_array(
 	assert(array[0] == NULL);
 
 	dnslib_dname_table_t *ret = dnslib_dname_table_new();
-	CHECK_ALLOC_LOG(ret, NULL);
+	CHECK_ALLOC(ret, NULL);
 
 	/* Table will have max_id entries */
 	for (uint i = 1; i < max_id; i++) {
 		if (dnslib_dname_table_add_dname(ret,
 						 array[i]) != DNSLIB_EOK) {
 			ERR_ALLOC_FAILED;
-			dnslib_dname_table_deep_free(&ret);
+			dnslib_dname_table_deep_free(&ret, 0);
 			return NULL;
 		}
 	}
@@ -807,7 +828,6 @@ static dnslib_dname_t **create_dname_array(FILE *f, uint max_id)
 		if (read_dname->id < max_id) {
 			read_dname->node = dnslib_node_new(read_dname, NULL);
 			if (read_dname->node == NULL) {
-				ERR_ALLOC_FAILED;
 				cleanup_id_array(array, 0, i);
 				dnslib_dname_free(&read_dname);
 				return NULL;
@@ -878,17 +898,15 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	if (!apex) {
 		fprintf(stderr, "zone: Could not load apex node (in %s)\n",
 			loader->filename);
-		cleanup_id_array(id_array, 1,
-				 node_count + nsec3_node_count + 1);
-		dnslib_dname_table_deep_free(&dname_table);
+		free(id_array);
+		dnslib_dname_table_deep_free(&dname_table, 0);
 		return NULL;
 	}
 
 	dnslib_zone_t *zone = dnslib_zone_new(apex, auth_node_count);
 	if (zone == NULL) {
-		cleanup_id_array(id_array, 1,
-				 node_count + nsec3_node_count + 1);
-		dnslib_dname_table_deep_free(&dname_table);
+		free(id_array);
+		dnslib_dname_table_deep_free(&dname_table, 0);
 		return NULL;
 	}
 	/* Assign dname table to the new zone. */

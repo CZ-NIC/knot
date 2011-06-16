@@ -92,8 +92,9 @@ void dnslib_dname_table_free(dnslib_dname_table_t **table);
  *        Sets pointer to NULL.
  *
  * \param table Table to be freed.
+ * \param table If > 1 will free all nodes and their RRSets as well.
  */
-void dnslib_dname_table_deep_free(dnslib_dname_table_t **table);
+void dnslib_dname_table_deep_free(dnslib_dname_table_t **table, int free_nodes);
 
 /*!
  * \brief Encapsulation of domain name table tree traversal function.

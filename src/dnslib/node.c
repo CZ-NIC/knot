@@ -122,7 +122,7 @@ dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent)
 
 int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset)
 {
-	if ((skip_insert(node->rrsets, 
+	if ((skip_insert(node->rrsets,
 			 (void *)&rrset->type, (void *)rrset, NULL)) != 0) {
 		return DNSLIB_ERROR;
 	}
@@ -328,6 +328,7 @@ void dnslib_node_free(dnslib_node_t **node, int free_owner)
 	if (free_owner) {
 		dnslib_dname_free(&(*node)->owner);
 	}
+	printf("I am actually freeing: %p\n", *node);
 	free(*node);
 	*node = NULL;
 }

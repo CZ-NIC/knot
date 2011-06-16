@@ -150,6 +150,7 @@ static void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata,
 			//skip_insert(list, (void *)item->dname,
 			//	    (void *)closest_encloser->owner, NULL);
 			item->dname->node = closest_encloser->owner->node;
+			/* Set wildcard flag in the node */
 		}
 	}
 //	const dnslib_rdata_item_t *dname_item
@@ -1189,21 +1190,21 @@ void dnslib_zone_deep_free(dnslib_zone_t **zone, int free_rdata_dnames)
 	/* NSEC3 tree is deleted first as it may contain references to the
 	   normal tree. */
 
-	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
-	                      dnslib_zone_destroy_node_rrsets_from_tree,
-	                      (void *)free_rdata_dnames);
+//	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
+//	                      dnslib_zone_destroy_node_rrsets_from_tree,
+//	                      (void *)free_rdata_dnames);
 
-	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
-	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
+//	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
+//	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
 
-	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
-	                      dnslib_zone_destroy_node_rrsets_from_tree,
-	                      (void *)free_rdata_dnames);
+//	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
+//	                      dnslib_zone_destroy_node_rrsets_from_tree,
+//	                      (void *)free_rdata_dnames);
 
-	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
-	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
+//	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
+//	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
 
-	dnslib_dname_table_deep_free(&(*zone)->dname_table);
+	dnslib_dname_table_deep_free(&(*zone)->dname_table, 1);
 
 	dnslib_zone_free(zone);
 }
