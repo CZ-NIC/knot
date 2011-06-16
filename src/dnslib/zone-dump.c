@@ -1533,7 +1533,8 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 		uint32_t parent_id = node->parent->owner->id;
 		fwrite_wrapper(&parent_id, sizeof(parent_id), 1, f);
 	} else {
-		fwrite_wrapper((uint32_t *)"\0", sizeof(uint32_t), 1, f);
+		uint32_t parent_id = 0;
+		fwrite_wrapper(&parent_id, sizeof(parent_id), 1, f);
 	}
 
 	fwrite_wrapper(&(node->flags), sizeof(node->flags), 1, f);
@@ -1546,7 +1547,8 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 		debug_dnslib_zdump("Written nsec3 node id: %u\n",
 			 node->nsec3_node->owner->id);
 	} else {
-		fwrite_wrapper((uint32_t *)"\0", sizeof(uint32_t), 1, f);
+		uint32_t nsec3_id = 0;
+		fwrite_wrapper(&nsec3_id, sizeof(nsec3_id), 1, f);
 	}
 
 	/* Now we need (or do we?) count of rrsets to be read
@@ -1800,7 +1802,8 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	/* arg1 is now count of normal nodes */
 	uint32_t normal_node_count = *((uint32_t *)arguments.arg1);
 
-	arguments.arg1 = 0;
+	node_count = 0;
+	arguments.arg1 = &node_count;
 	arguments.arg2 = NULL;
 
 	/* Count number of NSEC3 nodes. */

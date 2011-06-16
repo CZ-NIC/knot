@@ -1931,21 +1931,15 @@ static void save_replace_dnames_in_rdata(dnslib_dname_table_t *table,
 			if ((found_dname =
 				dnslib_dname_table_find_dname(table,
 				searched_dname)) != NULL) {
-				/* Delete and replace dname. */
-//				printf("freeing %p %p %s\n", rdata->items[i].dname,
-//				       rdata->items[i].dname->name,
-//				       dnslib_dname_to_str(rdata->items[i].dname));
 				dnslib_dname_free(&rdata->items[i].dname);
 				rdata->items[i].dname = found_dname;
 			} else {
-//				printf("adding in rdata: %p %p %s\n", rdata->items[i].dname,
-//				       rdata->items[i].dname->name,
-//				       dnslib_dname_to_str(rdata->items[i].dname));
-				/* Insert dname in the table. */
 				if (dnslib_dname_table_add_dname(table,
 							        searched_dname)
 				   != 0) {
-					fprintf(stderr, "Could not add name to table!\n");
+					fprintf(stderr,
+					        "Could not add name"
+					        "to table!\n");
 					return;
 				}
 			}
@@ -1968,10 +1962,6 @@ int save_dnames_in_table(dnslib_dname_table_t *table,
 		assert(found_dname->name != rrset->owner->name);
 		assert(found_dname->labels != rrset->owner->labels);
 		assert(rrset->owner != parser->last_node->owner);
-//		printf("freeing %s %s\n"
-//		       "old: %p found: %p found name: %p freed name: %p\n", dnslib_dname_to_str(rrset->owner),
-//		       dnslib_dname_to_str(found_dname), rrset->owner, found_dname, found_dname->name,
-//		       rrset->owner->name);
 		assert(parser->last_node->owner != rrset->owner);
 		dnslib_dname_free(&rrset->owner);
 		/* owner is now a reference from the table */
