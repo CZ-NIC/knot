@@ -1,6 +1,6 @@
 ; File written on Tue Mar  1 10:45:24 2011
 ; dnssec_signzone version 9.7.1-P2
-example.com.		3600	IN SOA	ns.example.com. username.example.com. (
+Example.com.		3600	IN SOA	ns.example.com. username.example.com. (
 					2007120712 ; serial
 					86400      ; refresh (1 day)
 					86400      ; retry (1 day)

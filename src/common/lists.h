@@ -49,6 +49,15 @@ typedef struct list {			/* In fact two overlayed nodes */
 
 #define EMPTY_LIST(list) (!(list).head->next)
 
+/*! \brief Free every node in the list. */
+#define WALK_LIST_FREE(list) \
+	do { \
+	node *n=0,*nxt=0;  \
+	WALK_LIST_DELSAFE(n,nxt,list) { \
+	    free(n); \
+	} \
+	} while(0)
+
 void add_tail(list *, node *);
 void add_head(list *, node *);
 void rem_node(node *);
@@ -56,6 +65,14 @@ void add_tail_list(list *, list *);
 void init_list(list *);
 void insert_node(node *, node *);
 void list_dup(list *dst, list *src, size_t itemsz);
+
+/*!
+ * \brief List item for string lists.
+ */
+typedef struct strnode_t {
+	node n;
+	char *str;
+} strnode_t;
 
 /*! \todo This is broken atm.
 #ifndef _BIRD_LISTS_C_

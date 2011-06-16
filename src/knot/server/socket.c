@@ -174,3 +174,19 @@ int socket_close(int socket)
 	return KNOT_EOK;
 }
 
+int socket_initaddr(sockaddr_t *addr, int af)
+{
+	if (af == PF_INET6) {
+#ifndef DISABLE_IPV6
+		addr->ptr = (struct sockaddr*)&addr->addr6;
+		addr->len = sizeof(struct sockaddr_in6);
+#else
+		return KNOT_ENOTSUP;
+#endif
+	}
+
+	addr->ptr = (struct sockaddr*)&addr->addr4;
+	addr->len = sizeof(struct sockaddr_in);
+	return KNOT_EOK;
+}
+

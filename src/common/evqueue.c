@@ -48,13 +48,24 @@ int evqueue_poll(evqueue_t *q, const sigset_t *sigmask)
 
 	/* Wait for events. */
 	int ret = pselect(q->fds[EVQUEUE_READFD] + 1, &rfds,
-	                  0, 0, 0, sigmask);
+			  0, 0, 0, sigmask);
 	if (ret < 0) {
 //		return knot_map_errno(EINTR, EINVAL, ENOMEM);
 		return -1;
 	}
 
 	return ret;
+}
+
+int evqueue_read(evqueue_t *q, void *dst, size_t len)
+{
+	/* Read data. */
+	return read(q->fds[EVQUEUE_READFD], dst, len);
+}
+
+int evqueue_write(evqueue_t *q, const void *dst, size_t len)
+{
+	return write(q->fds[EVQUEUE_WRITEFD], dst, len);
 }
 
 int evqueue_get(evqueue_t *q, event_t *ev)
@@ -65,7 +76,7 @@ int evqueue_get(evqueue_t *q, event_t *ev)
 	}
 
 	/* Read data. */
-	int ret = read(q->fds[EVQUEUE_READFD], ev, sizeof(event_t));
+	int ret = evqueue_read(q, ev, sizeof(event_t));
 	if (ret != sizeof(event_t)) {
 //		return knot_map_errno(EINVAL, EINTR, EAGAIN);
 		return -1;
@@ -82,7 +93,7 @@ int evqueue_add(evqueue_t *q, const event_t *ev)
 	}
 
 	/* Write data. */
-	int ret = write(q->fds[EVQUEUE_WRITEFD], ev, sizeof(event_t));
+	int ret = evqueue_write(q, ev, sizeof(event_t));
 	if (ret != sizeof(event_t)) {
 //		return knot_map_errno(EINVAL, EINTR, EAGAIN);
 		return -1;

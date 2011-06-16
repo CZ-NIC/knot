@@ -76,12 +76,42 @@ void evqueue_free(evqueue_t **q);
  * in a sigmask.
  *
  * \param q Event queue.
-  * \param sigmask Bitmask of signals to receive.
+  * \param sigmask Bitmask of signals to receive (or NULL).
  *
  * \retval Number of polled events on success.
  * \retval <0 On error or signal interrupt (EINTR, EINVAL, ENOMEM).
  */
 int evqueue_poll(evqueue_t *q, const sigset_t *sigmask);
+
+/*!
+ * \brief Read data from event queue.
+ *
+ * This function is useful for sending custom
+ * events or other data types through the event queue.
+ *
+ * \param q Event queue.
+ * \param dst Destination buffer.
+ * \param len Number of bytes to read.
+ *
+ * \retval 0 on success (EOK).
+ * \retval <0 on error (EINVAL, EINTR, EAGAIN).
+ */
+int evqueue_read(evqueue_t *q, void *dst, size_t len);
+
+/*!
+ * \brief Write data to event queue.
+ *
+ * This function is useful for sending custom
+ * events or other data types through the event queue.
+ *
+ * \param q Event queue.
+ * \param src Source buffer.
+ * \param len Number of bytes to write.
+ *
+ * \retval 0 on success (EOK).
+ * \retval <0 on error (EINVAL, EINTR, EAGAIN).
+ */
+int evqueue_write(evqueue_t *q, const void *dst, size_t len);
 
 /*!
  * \brief Read event from event queue.

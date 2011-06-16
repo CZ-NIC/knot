@@ -36,6 +36,7 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 #define DEFAULT_THR_COUNT 2  /*!< \brief Default thread count. */
 #define DEFAULT_PORT 53531   /*!< \brief Default interface port. */
 #define TCP_BACKLOG_SIZE 5   /*!< \brief TCP listen backlog size. */
+#define XFR_THREADS_COUNT 3  /*!< \brief Number of threads for XFR handler. */
 
 ///*! \brief If defined, zone structures will use hash table for lookup. */
 //#define COMPRESSION_PEDANTIC

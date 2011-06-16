@@ -17,5 +17,7 @@ const error_table_t dnslib_error_msgs[DNSLIB_ERROR_COUNT] = {
 	{DNSLIB_EHASH, "Error in hash table."},
 	{DNSLIB_EZONEIN, "Error inserting zone."},
 	{DNSLIB_ENOZONE, "No such zone found."},
+	{DNSLIB_EDNAMEPTR, "Domain name pointer larger than allowed."},
+	{DNSLIB_EPAYLOAD, "Payload in OPT RR larger than max wire size."},
 	{DNSLIB_ERROR, 0}
 };

@@ -14,6 +14,7 @@
 #include "dnslib/error.h"
 #include "dnslib/debug.h"
 
+
 /*!
  * \brief Default sizes for response structure parts and steps for increasing
  *        them.
@@ -74,7 +75,7 @@ enum {
 		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(dnslib_dname_t *),
 	/*! \brief Space for other part of the compression table (offsets). */
 	PREALLOC_OFFSETS =
-		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(short),
+		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(size_t),
 	/*! \brief Space for temporary RRSets. */
 	PREALLOC_TMP_RRSETS =
 		DEFAULT_TMP_RRSETS * sizeof(dnslib_dname_t *),
@@ -104,7 +105,7 @@ struct dnslib_compr_owner {
 	uint8_t *wire;
 	short size; /*!< Size of the domain name in bytes. */
 	/*! \brief Position of the name relative to the start of the packet. */
-	short pos;
+	size_t pos;
 };
 
 typedef struct dnslib_compr_owner dnslib_compr_owner_t;
@@ -118,13 +119,15 @@ typedef struct dnslib_compr_owner dnslib_compr_owner_t;
  */
 struct dnslib_compr {
 	dnslib_compressed_dnames_t *table;  /*!< Compression table. */
-	short wire_pos;             /*!< Current position in the wire format. */
+	size_t wire_pos;            /*!< Current position in the wire format. */
 	dnslib_compr_owner_t owner; /*!< Information about the current name. */
 };
 
 typedef struct dnslib_compr dnslib_compr_t;
 
 //static int COMPRESS_DNAMES = 1;
+
+static const size_t DNSLIB_RESPONSE_MAX_PTR = 16383;
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -140,7 +143,7 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 	resp->question.qname =
 		(dnslib_dname_t *)((char *)resp + PREALLOC_RESPONSE);
 
-	debug_dnslib_response("QNAME: %p (%zd after start of response)\n",
+	debug_dnslib_response("QNAME: %p (%zu after start of response)\n",
 		resp->question.qname,
 		(void *)resp->question.qname - (void *)resp);
 
@@ -159,13 +162,13 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 	resp->authority = resp->answer + DEFAULT_ANCOUNT;
 	resp->additional = resp->authority + DEFAULT_NSCOUNT;
 
-	debug_dnslib_response("Answer section: %p (%zd after QNAME)\n",
+	debug_dnslib_response("Answer section: %p (%zu after QNAME)\n",
 		resp->answer,
 		(void *)resp->answer - (void *)resp->question.qname);
-	debug_dnslib_response("Authority section: %p (%zd after Answer)\n",
+	debug_dnslib_response("Authority section: %p (%zu after Answer)\n",
 		resp->authority,
 		(void *)resp->authority - (void *)resp->answer);
-	debug_dnslib_response("Additional section: %p (%zd after Authority)\n",
+	debug_dnslib_response("Additional section: %p (%zu after Authority)\n",
 		resp->additional,
 		(void *)resp->additional - (void *)resp->authority);
 
@@ -176,13 +179,13 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 	// then domain names for compression and offsets
 	resp->compression.dnames = (const dnslib_dname_t **)
 	                               (resp->additional + DEFAULT_ARCOUNT);
-	resp->compression.offsets = (short *)
+	resp->compression.offsets = (size_t *)
 		(resp->compression.dnames + DEFAULT_DOMAINS_IN_RESPONSE);
 
-	debug_dnslib_response("Compression dnames: %p (%zd after Additional)\n",
+	debug_dnslib_response("Compression dnames: %p (%zu after Additional)\n",
 		resp->compression.dnames,
 		(void *)resp->compression.dnames - (void *)resp->additional);
-	debug_dnslib_response("Compression offsets: %p (%zd after c. dnames)\n",
+	debug_dnslib_response("Compression offsets: %p (%zu after c. dnames)\n",
 		resp->compression.offsets,
 		(void *)resp->compression.offsets
 		  - (void *)resp->compression.dnames);
@@ -192,13 +195,13 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
 	resp->tmp_rrsets = (const dnslib_rrset_t **)
 		(resp->compression.offsets + DEFAULT_DOMAINS_IN_RESPONSE);
 
-	debug_dnslib_response("Tmp rrsets: %p (%zd after compression offsets)"
+	debug_dnslib_response("Tmp rrsets: %p (%zu after compression offsets)"
 		"\n", resp->tmp_rrsets,
 		(void *)resp->tmp_rrsets - (void *)resp->compression.offsets);
 
 	resp->tmp_rrsets_max = DEFAULT_TMP_RRSETS;
 
-	debug_dnslib_response("End of data: %p (%zd after start of response)\n",
+	debug_dnslib_response("End of data: %p (%zu after start of response)\n",
 		resp->tmp_rrsets + DEFAULT_TMP_RRSETS,
 		(void *)(resp->tmp_rrsets + DEFAULT_TMP_RRSETS)
 		  - (void *)resp);
@@ -222,19 +225,21 @@ static void dnslib_response_init_pointers(dnslib_response_t *resp)
  *
  * \param resp Response structure to initialize.
  * \param opt_rr OPT RR to be put to the response.
+ * \param max_size Maximum size of the wire format of the response.
  *
  * \retval DNSLIB_EOK
  * \retval DNSLIB_ENOMEM
  */
 static int dnslib_response_init(dnslib_response_t *resp,
-                                const dnslib_opt_rr_t *opt_rr)
+                                const dnslib_opt_rr_t *opt_rr,
+                                size_t max_size)
 {
 	memset(resp, 0, PREALLOC_TOTAL);
 
 	if (opt_rr == NULL) {
 		resp->edns_response.version = EDNS_NOT_SUPPORTED;
 		// set default max size of the response
-		resp->max_size = DNSLIB_MAX_RESPONSE_SIZE;
+		resp->max_size = max_size;
 	} else {
 		// copy the OPT RR
 		resp->edns_response.version = opt_rr->version;
@@ -242,8 +247,14 @@ static int dnslib_response_init(dnslib_response_t *resp,
 		resp->edns_response.payload = opt_rr->payload;
 		resp->edns_response.size = opt_rr->size;
 
+		if (max_size > 0 && max_size < opt_rr->payload) {
+			return DNSLIB_EPAYLOAD;
+		}
+
 		resp->max_size = resp->edns_response.payload;
 	}
+
+	debug_dnslib_response("Response max size: %zu\n", resp->max_size);
 
 	// pre-allocate space for wire format of the packet
 	resp->wireformat = (uint8_t *)malloc(resp->max_size);
@@ -323,7 +334,7 @@ static int dnslib_response_parse_header(const uint8_t **pos, size_t *remaining,
  * \param[out] size Size of the wire format of the header in bytes.
  */
 static void dnslib_response_header_to_wire(const dnslib_header_t *header,
-                                           uint8_t **pos, short *size)
+                                           uint8_t **pos, size_t *size)
 {
 	dnslib_packet_set_id(*pos, header->id);
 	dnslib_packet_set_flags1(*pos, header->flags1);
@@ -407,7 +418,7 @@ static int dnslib_response_parse_question(const uint8_t **pos,
  * \param[out] size Size of the wire format of the header in bytes.
  */
 static void dnslib_response_question_to_wire(dnslib_question_t *question,
-                                            uint8_t **pos, short *size)
+                                            uint8_t **pos, size_t *size)
 {
 	debug_dnslib_response("Copying QNAME, size %d\n",
 	                      question->qname->size);
@@ -470,12 +481,12 @@ static int dnslib_response_parse_client_edns(const uint8_t **pos,
 static int dnslib_response_realloc_compr(dnslib_compressed_dnames_t *table)
 {
 	int free_old = table->max != DEFAULT_DOMAINS_IN_RESPONSE;
-	short *old_offsets = table->offsets;
+	size_t *old_offsets = table->offsets;
 	const dnslib_dname_t **old_dnames = table->dnames;
 
 	short new_max_count = table->max + STEP_DOMAINS;
 
-	short *new_offsets = (short *)malloc(new_max_count * sizeof(short));
+	size_t *new_offsets = (size_t *)malloc(new_max_count * sizeof(size_t));
 	CHECK_ALLOC_LOG(new_offsets, -1);
 
 	const dnslib_dname_t **new_dnames = (const dnslib_dname_t **)malloc(
@@ -486,7 +497,7 @@ static int dnslib_response_realloc_compr(dnslib_compressed_dnames_t *table)
 		return DNSLIB_ENOMEM;
 	}
 
-	memcpy(new_offsets, table->offsets, table->max * sizeof(short));
+	memcpy(new_offsets, table->offsets, table->max * sizeof(size_t));
 	memcpy(new_dnames, table->dnames,
 	       table->max * sizeof(dnslib_dname_t *));
 
@@ -514,12 +525,13 @@ static int dnslib_response_realloc_compr(dnslib_compressed_dnames_t *table)
  * \param pos Position of the domain name in the packet's wire format.
  */
 static void dnslib_response_compr_save(dnslib_compressed_dnames_t *table,
-                                       const dnslib_dname_t *dname, short pos)
+                                       const dnslib_dname_t *dname, size_t pos)
 {
 	assert(table->count < table->max);
 
 	for (int i = 0; i < table->count; ++i) {
 		if (table->dnames[i] == dname) {
+			debug_dnslib_response("Already present, skipping..\n");
 			return;
 		}
 	}
@@ -550,8 +562,8 @@ static void dnslib_response_compr_save(dnslib_compressed_dnames_t *table,
  */
 static int dnslib_response_store_dname_pos(dnslib_compressed_dnames_t *table,
                                            const dnslib_dname_t *dname,
-                                           int not_matched, short pos,
-                                           short unmatched_offset)
+                                           int not_matched, size_t pos,
+                                           size_t unmatched_offset)
 {
 DEBUG_DNSLIB_RESPONSE(
 	char *name = dnslib_dname_to_str(dname);
@@ -560,6 +572,12 @@ DEBUG_DNSLIB_RESPONSE(
 	                      ", pointer: %p\n", name, not_matched, pos, dname);
 	free(name);
 );
+	if (pos > DNSLIB_RESPONSE_MAX_PTR) {
+		debug_dnslib_response("Pointer larger than it can be, not"
+		                      " saving\n");
+		return DNSLIB_EDNAMEPTR;
+	}
+
 	if (table->count == table->max &&
 	    dnslib_response_realloc_compr(table) != 0) {
 		return DNSLIB_ENOMEM;
@@ -586,7 +604,7 @@ DEBUG_DNSLIB_RESPONSE(
 	 * priority than the best possible compression.
 	 */
 	const dnslib_dname_t *to_save = dname;
-	short parent_pos = pos;
+	size_t parent_pos = pos;
 	int i = 0;
 
 	while (to_save != NULL) {
@@ -604,9 +622,11 @@ DEBUG_DNSLIB_RESPONSE(
 
 		if (table->count == table->max &&
 		    dnslib_response_realloc_compr(table) != 0) {
+			debug_dnslib_response("Unable to realloc.\n");
 			return DNSLIB_ENOMEM;
 		}
 
+//		debug_dnslib_response("Saving..\n");
 		dnslib_response_compr_save(table, to_save, parent_pos);
 
 		to_save = (to_save->node != NULL
@@ -629,13 +649,15 @@ DEBUG_DNSLIB_RESPONSE(
  *
  * \param table Compression table to search in.
  * \param dname Domain name to search for.
+ * \param compr_cs Set to <> 0 if dname compression should use case sensitive
+ *                 comparation. Set to 0 otherwise.
  *
  * \return Offset of \a dname stored in the compression table or -1 if the name
  *         was not found in the table.
  */
-static short dnslib_response_find_dname_pos(
+static size_t dnslib_response_find_dname_pos(
                const dnslib_compressed_dnames_t *table,
-               const dnslib_dname_t *dname)
+               const dnslib_dname_t *dname, int compr_cs)
 {
 	for (int i = 0; i < table->count; ++i) {
 		debug_dnslib_response("Comparing dnames %p and %p\n",
@@ -648,13 +670,16 @@ DEBUG_DNSLIB_RESPONSE(
 		free(name);
 );
 		//if (table->dnames[i] == dname) {
-		if (dnslib_dname_compare(table->dnames[i], dname) == 0) {
+		int ret = (compr_cs)
+		           ? dnslib_dname_compare_cs(table->dnames[i], dname)
+		           : dnslib_dname_compare(table->dnames[i], dname);
+		if (ret == 0) {
 			debug_dnslib_response("Found offset: %d\n",
 			                      table->offsets[i]);
 			return table->offsets[i];
 		}
 	}
-	return -1;
+	return 0;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -675,8 +700,8 @@ DEBUG_DNSLIB_RESPONSE(
  *         DNSLIB_ESPACE if it did not fit.
  */
 static int dnslib_response_put_dname_ptr(const dnslib_dname_t *dname,
-                                         int not_matched, short offset,
-                                         uint8_t *wire, short max)
+                                         int not_matched, size_t offset,
+                                         uint8_t *wire, size_t max)
 {
 	// put the not matched labels
 	short size = dnslib_dname_size_part(dname, not_matched);
@@ -699,18 +724,20 @@ static int dnslib_response_put_dname_ptr(const dnslib_dname_t *dname,
  *              names in the packet.
  * \param dname_wire Place where to put the wire format of the name.
  * \param max Maximum available size of the place for the wire format.
+ * \param compr_cs Set to <> 0 if dname compression should use case sensitive
+ *                 comparation. Set to 0 otherwise.
  *
  * \return Size of the domain name's wire format or DNSLIB_ESPACE if it did not
  *         fit into the provided space.
  */
 static int dnslib_response_compress_dname(const dnslib_dname_t *dname,
-	dnslib_compr_t *compr, uint8_t *dname_wire, short max)
+	dnslib_compr_t *compr, uint8_t *dname_wire, size_t max, int compr_cs)
 {
 	int size = 0;
 	/*!
 	 * \todo Compress!!
 	 *
-	 * if pos < 0, do not store the position!
+	 * if pos == 0, do not store the position!
 	 */
 
 	// try to find the name or one of its ancestors in the compr. table
@@ -721,7 +748,7 @@ static int dnslib_response_compress_dname(const dnslib_dname_t *dname,
 #else
 	const dnslib_dname_t *to_find = dname;
 #endif
-	short offset = -1;
+	size_t offset = 0;
 	int not_matched = 0;
 
 	while (to_find != NULL && dnslib_dname_label_count(to_find) != 0) {
@@ -732,14 +759,15 @@ DEBUG_DNSLIB_RESPONSE(
 		                      not_matched);
 		free(name);
 );
-		offset = dnslib_response_find_dname_pos(compr->table, to_find);
-		if (offset < 0) {
+		offset = dnslib_response_find_dname_pos(compr->table, to_find,
+		                                        compr_cs);
+		if (offset == 0) {
 			++not_matched;
 		} else {
 			break;
 		}
 #ifdef COMPRESSION_PEDANTIC
-		if (to_find->node == NULL
+		if (compr_cs || to_find->node == NULL
 		    || to_find->node->owner != to_find
 		    || to_find->node->parent == NULL) {
 			if (!copied) {
@@ -754,7 +782,8 @@ DEBUG_DNSLIB_RESPONSE(
 			to_find = to_find->node->parent->owner;
 		}
 #else
-		if (to_find->node == NULL
+		// if case-sensitive comparation, we cannot just take the parent
+		if (compr_cs || to_find->node == NULL
 		    || to_find->node->owner != to_find
 		    || to_find->node->parent == NULL) {
 			break;
@@ -772,7 +801,7 @@ DEBUG_DNSLIB_RESPONSE(
 	}
 #endif
 
-	if (offset >= 0) {  // found such dname somewhere in the packet
+	if (offset > 0) {  // found such dname somewhere in the packet
 		debug_dnslib_response("Found name in the compression table.\n");
 		assert(offset >= DNSLIB_PACKET_HEADER_SIZE);
 		size = dnslib_response_put_dname_ptr(dname, not_matched, offset,
@@ -811,6 +840,8 @@ DEBUG_DNSLIB_RESPONSE(
  * \param[in] compr Information about compressed domain names in the packet.
  * \param[out] rrset_wire Place to put the wire format of the RR into.
  * \param[in] max_size Size of space available for the wire format.
+ * \param[in] compr_cs Set to <> 0 if dname compression should use case
+ *                     sensitive comparation. Set to 0 otherwise.
  *
  * \return Size of the RR's wire format or DNSLIB_ESPACE if it did not fit into
  *         the provided space.
@@ -818,22 +849,27 @@ DEBUG_DNSLIB_RESPONSE(
 static int dnslib_response_rr_to_wire(const dnslib_rrset_t *rrset,
                                       const dnslib_rdata_t *rdata,
                                       dnslib_compr_t *compr,
-                                      uint8_t **rrset_wire, short max_size)
+                                      uint8_t **rrset_wire, size_t max_size,
+                                      int compr_cs)
 {
 	int size = 0;
 
-	if (size + ((compr->owner.pos < 0) ? compr->owner.size : 2) + 10
+	if (size + ((compr->owner.pos == 0) ? compr->owner.size : 2) + 10
 	    > max_size) {
 		return DNSLIB_ESPACE;
 	}
 
+	debug_dnslib_response("Owner position: %zu\n", compr->owner.pos);
+
 	// put owner if needed (already compressed)
-	if (compr->owner.pos < 0) {
+	if (compr->owner.pos == 0) {
 		memcpy(*rrset_wire, compr->owner.wire, compr->owner.size);
 		compr->owner.pos = compr->wire_pos;
 		*rrset_wire += compr->owner.size;
 		size += compr->owner.size;
 	} else {
+		debug_dnslib_response("Putting pointer: %zu\n",
+		                      compr->owner.pos);
 		dnslib_packet_put_pointer(*rrset_wire, compr->owner.pos);
 		*rrset_wire += 2;
 		size += 2;
@@ -877,7 +913,7 @@ static int dnslib_response_rr_to_wire(const dnslib_rrset_t *rrset,
 		case DNSLIB_RDATA_WF_COMPRESSED_DNAME: {
 			int ret = dnslib_response_compress_dname(
 				dnslib_rdata_item(rdata, i)->dname,
-				compr, *rrset_wire, max_size - size);
+				compr, *rrset_wire, max_size - size, compr_cs);
 
 			if (ret < 0) {
 				return DNSLIB_ESPACE;
@@ -966,15 +1002,18 @@ static int dnslib_response_rr_to_wire(const dnslib_rrset_t *rrset,
  * \param wire_pos Current position in the wire format of the whole packet.
  * \param owner_tmp Wire format of the RRSet's owner, possibly compressed.
  * \param compr Information about compressed domain names in the packet.
+ * \param compr_cs Set to <> 0 if dname compression should use case sensitive
+ *                 comparation. Set to 0 otherwise.
  *
  * \return Size of the RRSet's wire format or DNSLIB_ESPACE if it did not fit
  *         into the provided space.
  */
 static int dnslib_response_rrset_to_wire(const dnslib_rrset_t *rrset,
-                                         uint8_t **pos, short *size,
-                                         short max_size, short wire_pos,
+                                         uint8_t **pos, size_t *size,
+                                         size_t max_size, size_t wire_pos,
                                          uint8_t *owner_tmp,
-                                         dnslib_compressed_dnames_t *compr)
+                                         dnslib_compressed_dnames_t *compr,
+                                         int compr_cs)
 {
 DEBUG_DNSLIB_RESPONSE(
 	char *name = dnslib_dname_to_str(rrset->owner);
@@ -1005,13 +1044,14 @@ DEBUG_DNSLIB_RESPONSE(
 	//compr_info.new_entries = 0;
 	compr_info.table = compr;
 	compr_info.wire_pos = wire_pos;
-	compr_info.owner.pos = -1;
+	compr_info.owner.pos = 0;
 	compr_info.owner.wire = owner_tmp;
 	compr_info.owner.size =
 		dnslib_response_compress_dname(rrset->owner, &compr_info,
-		                               owner_tmp, max_size);
+		                               owner_tmp, max_size, compr_cs);
 
-	debug_dnslib_response("    Owner size: %d\n", compr_info.owner.size);
+	debug_dnslib_response("    Owner size: %d, position: %zu\n",
+	                      compr_info.owner.size, compr_info.owner.pos);
 	if (compr_info.owner.size < 0) {
 		return DNSLIB_ESPACE;
 	}
@@ -1022,7 +1062,8 @@ DEBUG_DNSLIB_RESPONSE(
 	const dnslib_rdata_t *rdata = rrset->rdata;
 	do {
 		int ret = dnslib_response_rr_to_wire(rrset, rdata, &compr_info,
-		                                    pos, max_size - rrset_size);
+		                                     pos, max_size - rrset_size,
+		                                     compr_cs);
 
 		assert(ret != 0);
 
@@ -1196,14 +1237,18 @@ static int dnslib_response_realloc_rrsets(const dnslib_rrset_t ***rrsets,
  * \param rrset RRSet to add.
  * \param tc Set to <> 0 if omitting the RRSet should cause the TC bit to be
  *           set in the response.
+ * \param compr_cs Set to <> 0 if dname compression should use case sensitive
+ *                 comparation. Set to 0 otherwise.
  *
  * \return Count of RRs added to the response or DNSLIB_ESPACE if the RRSet did
  *         not fit in the available space.
  */
 static int dnslib_response_try_add_rrset(const dnslib_rrset_t **rrsets,
                                         short *rrset_count,
-                                        dnslib_response_t *resp, short max_size,
-                                        const dnslib_rrset_t *rrset, int tc)
+                                        dnslib_response_t *resp,
+                                        size_t max_size,
+                                        const dnslib_rrset_t *rrset, int tc,
+                                        int compr_cs)
 {
 	//short size = dnslib_response_rrset_size(rrset, &resp->compression);
 
@@ -1215,10 +1260,10 @@ DEBUG_DNSLIB_RESPONSE(
 );
 
 	uint8_t *pos = resp->wireformat + resp->size;
-	short size = 0;
+	size_t size = 0;
 	int rrs = dnslib_response_rrset_to_wire(rrset, &pos, &size, max_size,
 	                                        resp->size, resp->owner_tmp,
-	                                        &resp->compression);
+	                                        &resp->compression, compr_cs);
 
 	if (rrs >= 0) {
 		rrsets[(*rrset_count)++] = rrset;
@@ -1298,12 +1343,116 @@ dnslib_response_t *dnslib_response_new_empty(const dnslib_opt_rr_t *opt_rr)
 	dnslib_response_t *resp = (dnslib_response_t *)malloc(PREALLOC_TOTAL);
 	CHECK_ALLOC_LOG(resp, NULL);
 
-	if (dnslib_response_init(resp, opt_rr) != 0) {
+	if (dnslib_response_init(resp, opt_rr, DNSLIB_MAX_RESPONSE_SIZE) != 0) {
 		free(resp);
 		return NULL;
 	}
 
 	return resp;
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnslib_response_t *dnslib_response_new(size_t max_wire_size)
+{
+	dnslib_response_t *resp = (dnslib_response_t *)malloc(PREALLOC_TOTAL);
+	CHECK_ALLOC_LOG(resp, NULL);
+
+	if (dnslib_response_init(resp, NULL, max_wire_size) != 0) {
+		free(resp);
+		return NULL;
+	}
+
+	return resp;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_response_clear(dnslib_response_t *resp, int clear_question)
+{
+	resp->size = (clear_question) ? DNSLIB_PACKET_HEADER_SIZE
+	              : DNSLIB_PACKET_HEADER_SIZE + 4
+	                + dnslib_dname_size(resp->question.qname);
+	resp->an_rrsets = 0;
+	resp->ns_rrsets = 0;
+	resp->ar_rrsets = 0;
+	resp->compression.count = 0;
+	dnslib_response_free_tmp_rrsets(resp);
+	resp->tmp_rrsets_count = 0;
+	resp->header.ancount = 0;
+	resp->header.nscount = 0;
+	resp->header.arcount = 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_response_add_opt(dnslib_response_t *resp,
+                            const dnslib_opt_rr_t *opt_rr,
+                            int override_max_size)
+{
+	if (resp == NULL || opt_rr == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
+	// copy the OPT RR
+	resp->edns_response.version = opt_rr->version;
+	resp->edns_response.ext_rcode = opt_rr->ext_rcode;
+	resp->edns_response.payload = opt_rr->payload;
+	resp->edns_response.size = opt_rr->size;
+
+	// if max size is set, it means there is some reason to be that way,
+	// so we can't just set it to higher value
+
+	if (override_max_size && resp->max_size > 0
+	    && resp->max_size < opt_rr->payload) {
+		return DNSLIB_EPAYLOAD;
+	}
+
+//	if (resp->max_size < resp->edns_response.payload) {
+//		// reallocate space for the wire format (and copy anything
+//		// that might have been there before
+//		uint8_t *wire_new = (uint8_t *)malloc(
+//		                      resp->edns_response.payload);
+//		if (wire_new == NULL) {
+//			return DNSLIB_ENOMEM;
+//		}
+
+//		memcpy(wire_new, resp->wireformat, resp->max_size);
+//		resp->wireformat = wire_new;
+//	}
+
+	// set max size (less is OK)
+	if (override_max_size) {
+		resp->max_size = resp->edns_response.payload;
+	}
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_response_set_max_size(dnslib_response_t *resp, int max_size)
+{
+	if (resp == NULL || max_size <= 0) {
+		return DNSLIB_EBADARG;
+	}
+
+	if (resp->max_size < max_size) {
+		// reallocate space for the wire format (and copy anything
+		// that might have been there before
+		uint8_t *wire_new = (uint8_t *)malloc(max_size);
+		if (wire_new == NULL) {
+			return DNSLIB_ENOMEM;
+		}
+
+		memcpy(wire_new, resp->wireformat, resp->max_size);
+		resp->wireformat = wire_new;
+	}
+
+	// set max size
+	resp->max_size = max_size;
+
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1322,7 +1471,7 @@ int dnslib_response_parse_query(dnslib_response_t *resp,
 	size_t remaining = query_size;
 
 	uint8_t *resp_pos = resp->wireformat;
-	short size = 0;
+	size_t size = 0;
 
 	// header parsing is maybe useless, we may just copy the wire format
 	if ((err = dnslib_response_parse_header(
@@ -1394,6 +1543,13 @@ int dnslib_response_parse_query(dnslib_response_t *resp,
 
 /*----------------------------------------------------------------------------*/
 
+uint8_t dnslib_response_opcode(const dnslib_response_t *response)
+{
+	return dnslib_packet_flags_get_opcode(response->header.flags1);
+}
+
+/*----------------------------------------------------------------------------*/
+
 const dnslib_dname_t *dnslib_response_qname(const dnslib_response_t *response)
 {
 	return response->question.qname;
@@ -1417,8 +1573,12 @@ uint16_t dnslib_response_qclass(const dnslib_response_t *response)
 
 int dnslib_response_add_rrset_answer(dnslib_response_t *response,
                                      const dnslib_rrset_t *rrset, int tc,
-                                     int check_duplicates)
+                                     int check_duplicates, int compr_cs)
 {
+	if (response == NULL || rrset == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	debug_dnslib_response("add_rrset_answer()\n");
 	assert(response->header.arcount == 0);
 	assert(response->header.nscount == 0);
@@ -1435,13 +1595,15 @@ int dnslib_response_add_rrset_answer(dnslib_response_t *response,
 	}
 
 	debug_dnslib_response("Trying to add RRSet to Answer section.\n");
+	debug_dnslib_response("RRset: %p\n", rrset);
+	debug_dnslib_response("Owner: %p\n", rrset->owner);
 
 	int rrs = dnslib_response_try_add_rrset(response->answer,
 	                                        &response->an_rrsets, response,
 	                                        response->max_size
 	                                        - response->size
 	                                        - response->edns_response.size,
-	                                        rrset, tc);
+	                                        rrset, tc, compr_cs);
 
 	if (rrs >= 0) {
 		response->header.ancount += rrs;
@@ -1455,8 +1617,12 @@ int dnslib_response_add_rrset_answer(dnslib_response_t *response,
 
 int dnslib_response_add_rrset_authority(dnslib_response_t *response,
                                         const dnslib_rrset_t *rrset, int tc,
-                                        int check_duplicates)
+                                        int check_duplicates, int compr_cs)
 {
+	if (response == NULL || rrset == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	assert(response->header.arcount == 0);
 
 	if (response->ns_rrsets == response->max_ns_rrsets
@@ -1477,7 +1643,7 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
 	                                        response->max_size
 	                                        - response->size
 	                                        - response->edns_response.size,
-	                                        rrset, tc);
+	                                        rrset, tc, compr_cs);
 
 	if (rrs >= 0) {
 		response->header.nscount += rrs;
@@ -1491,8 +1657,12 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
 
 int dnslib_response_add_rrset_additional(dnslib_response_t *response,
                                          const dnslib_rrset_t *rrset, int tc,
-                                         int check_duplicates)
+                                         int check_duplicates, int compr_cs)
 {
+	if (response == NULL || rrset == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	// if this is the first additional RRSet, add EDNS OPT RR first
 	if (response->header.arcount == 0
 	    && response->edns_response.version != EDNS_NOT_SUPPORTED) {
@@ -1515,7 +1685,8 @@ int dnslib_response_add_rrset_additional(dnslib_response_t *response,
 	int rrs = dnslib_response_try_add_rrset(response->additional,
 	                                        &response->ar_rrsets, response,
 	                                        response->max_size
-	                                         - response->size, rrset, tc);
+	                                        - response->size, rrset, tc,
+	                                        compr_cs);
 
 	if (rrs >= 0) {
 		response->header.arcount += rrs;

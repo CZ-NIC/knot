@@ -286,7 +286,7 @@ dnslib_dname_t *dnslib_dname_replace_suffix(const dnslib_dname_t *dname,
 void dnslib_dname_free(dnslib_dname_t **dname);
 
 /*!
- * \brief Compares two domain names.
+ * \brief Compares two domain names (case insensitive).
  *
  * \param d1 First domain name.
  * \param d2 Second domain name.
@@ -296,6 +296,18 @@ void dnslib_dname_free(dnslib_dname_t **dname);
  * \retval 0 if the domain names are identical.
  */
 int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2);
+
+/*!
+ * \brief Compares two domain names (case sensitive).
+ *
+ * \param d1 First domain name.
+ * \param d2 Second domain name.
+ *
+ * \retval < 0 if \a d1 goes before \a d2 in canonical order.
+ * \retval > 0 if \a d1 goes after \a d2 in canonical order.
+ * \retval 0 if the domain names are identical.
+ */
+int dnslib_dname_compare_cs(const dnslib_dname_t *d1, const dnslib_dname_t *d2);
 
 /*!
  * \brief Concatenates two domain names.

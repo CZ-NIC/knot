@@ -165,6 +165,12 @@ static void zone_free(conf_zone_t *zone)
 		return;
 	}
 
+	/* Free ACL lists. */
+	WALK_LIST_FREE(zone->acl.xfr_in);
+	WALK_LIST_FREE(zone->acl.xfr_out);
+	WALK_LIST_FREE(zone->acl.notify_in);
+	WALK_LIST_FREE(zone->acl.notify_out);
+
 	free(zone->name);
 	free(zone->file);
 	free(zone->db);
@@ -396,6 +402,7 @@ conf_t *conf_new(const char* path)
 	init_list(&c->ifaces);
 	init_list(&c->zones);
 	init_list(&c->hooks);
+	init_list(&c->remotes);
 
 	// Defaults
 	c->zone_checks = 0;
@@ -493,6 +500,13 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	}
 	conf->logs_count = 0;
 	init_list(&conf->logs);
+
+	// Free remotes
+	WALK_LIST_DELSAFE(n, nxt, conf->remotes) {
+		iface_free((conf_iface_t*)n);
+	}
+	conf->remotes_count = 0;
+	init_list(&conf->remotes);
 
 	// Free zones
 	WALK_LIST_DELSAFE(n, nxt, conf->zones) {

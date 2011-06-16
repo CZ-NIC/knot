@@ -189,8 +189,15 @@ static int dnslib_dname_str_to_wire(const char *name, uint size,
 
 /*----------------------------------------------------------------------------*/
 
+static inline int dnslib_dname_tolower(uint8_t c, int cs)
+{
+	return (cs) ? c : dnslib_tolower(c);
+}
+
+/*----------------------------------------------------------------------------*/
+
 static int dnslib_dname_compare_labels(const uint8_t *label1,
-                                       const uint8_t *label2)
+                                       const uint8_t *label2, int cs)
 {
 	const uint8_t *pos1 = label1;
 	const uint8_t *pos2 = label2;
@@ -199,28 +206,17 @@ static int dnslib_dname_compare_labels(const uint8_t *label1,
 	int i = 0;
 
 	while (i < label_length
-	       && dnslib_tolower(*(++pos1)) == dnslib_tolower(*(++pos2))) {
+	       && dnslib_dname_tolower(*(++pos1), cs)
+	          == dnslib_dname_tolower(*(++pos2), cs)) {
 		++i;
 	}
 
 	if (i < label_length) {  // difference in some octet
-		return (dnslib_tolower(*pos1) - dnslib_tolower(*pos2));
-//		if (tolower(*pos1) < tolower(*pos2)) {
-//			return -1;
-//		} else {
-//			assert(tolower(*pos1) > tolower(*pos2));
-//			return 1;
-//		}
+		return (dnslib_dname_tolower(*pos1, cs)
+		        - dnslib_dname_tolower(*pos2, cs));
 	}
 
 	return (label1[0] - label2[0]);
-//	if (label1[0] < label2[0]) {  // one label shorter
-//		return -1;
-//	} else if (label1[0] > label2[0]) {
-//		return 1;
-//	}
-
-//	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -255,6 +251,69 @@ static int dnslib_dname_find_labels(dnslib_dname_t *dname, int alloc)
 
 	memcpy(dname->labels, labels, label_count);
 	dname->label_count = label_count;
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int dnslib_dname_cmp(const dnslib_dname_t *d1, const dnslib_dname_t *d2,
+                            int cs)
+{
+DEBUG_DNSLIB_DNAME(
+	char *name1 = dnslib_dname_to_str(d1);
+	char *name2 = dnslib_dname_to_str(d2);
+
+	debug_dnslib_dname("Comparing dnames %s and %s\n",
+	                   name1, name2);
+
+	for (int i = 0; i < strlen(name1); ++i) {
+		name1[i] = dnslib_tolower(name1[i]);
+	}
+	for (int i = 0; i < strlen(name2); ++i) {
+		name2[i] = dnslib_tolower(name2[i]);
+	}
+
+	debug_dnslib_dname("After to lower: %s and %s\n",
+	                   name1, name2);
+
+	free(name1);
+	free(name2);
+);
+
+	if (!cs && d1 == d2) {
+		return 0;
+	}
+
+	int l1 = d1->label_count;
+	int l2 = d2->label_count;
+	debug_dnslib_dname("Label counts: %d and %d\n", l1, l2);
+	assert(l1 >= 0);
+	assert(l2 >= 0);
+
+	// compare labels from last to first
+	while (l1 > 0 && l2 > 0) {
+		debug_dnslib_dname("Comparing labels %d and %d\n",
+				   l1 - 1, l2 - 1);
+		debug_dnslib_dname(" at offsets: %d and %d\n",
+				   d1->labels[l1 - 1], d2->labels[l2 - 1]);
+		int res = dnslib_dname_compare_labels(
+		                   &d1->name[d1->labels[--l1]],
+		                   &d2->name[d2->labels[--l2]],
+		                   cs);
+		if (res != 0) {
+			return res;
+		} // otherwise the labels are identical, continue with previous
+	}
+
+	// if all labels matched, the shorter name is first
+	if (l1 == 0 && l2 > 0) {
+		return -1;
+	}
+
+	if (l1 > 0 && l2 == 0) {
+		return 1;
+	}
 
 	return 0;
 }
@@ -579,7 +638,8 @@ DEBUG_DNSLIB_DNAME(
 				   sub->labels[l1 - 1], domain->labels[l2 - 1]);
 		// if some labels do not match
 		if (dnslib_dname_compare_labels(&sub->name[sub->labels[--l1]],
-		                    &domain->name[domain->labels[--l2]]) != 0) {
+		                    &domain->name[domain->labels[--l2]], 0)
+		    != 0) {
 			return 0;  // sub is not a subdomain of domain
 		} // otherwise the labels are identical, continue with previous
 	}
@@ -604,16 +664,6 @@ int dnslib_dname_is_wildcard(const dnslib_dname_t *dname)
 int dnslib_dname_matched_labels(const dnslib_dname_t *dname1,
                                 const dnslib_dname_t *dname2)
 {
-	// jump to the last label and store addresses of labels
-	// on the way there
-	// TODO: consider storing label offsets in the domain name structure
-//	const uint8_t *labels1[DNSLIB_MAX_DNAME_LABELS];
-//	const uint8_t *labels2[DNSLIB_MAX_DNAME_LABELS];
-//	int l1 = 0;
-//	int l2 = 0;
-
-//	dnslib_dname_find_labels(dname1, labels1, &l1);
-//	dnslib_dname_find_labels(dname2, labels2, &l2);
 	int l1 = dname1->label_count;
 	int l2 = dname2->label_count;
 
@@ -622,7 +672,7 @@ int dnslib_dname_matched_labels(const dnslib_dname_t *dname1,
 	while (l1 > 0 && l2 > 0) {
 		int res = dnslib_dname_compare_labels(
 		               &dname1->name[dname1->labels[--l1]],
-		               &dname2->name[dname2->labels[--l2]]);
+		               &dname2->name[dname2->labels[--l2]], 0);
 		if (res == 0) {
 			++matched;
 		} else  {
@@ -731,72 +781,14 @@ void dnslib_dname_free(dnslib_dname_t **dname)
 
 int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2)
 {
-DEBUG_DNSLIB_DNAME(
-	char *name1 = dnslib_dname_to_str(d1);
-	char *name2 = dnslib_dname_to_str(d2);
+	return dnslib_dname_cmp(d1, d2, 0);
+}
 
-	debug_dnslib_dname("Comparing dnames %s and %s\n",
-	                   name1, name2);
+/*----------------------------------------------------------------------------*/
 
-	for (int i = 0; i < strlen(name1); ++i) {
-		name1[i] = dnslib_tolower(name1[i]);
-	}
-	for (int i = 0; i < strlen(name2); ++i) {
-		name2[i] = dnslib_tolower(name2[i]);
-	}
-
-	debug_dnslib_dname("After to lower: %s and %s\n",
-	                   name1, name2);
-
-	free(name1);
-	free(name2);
-);
-
-	if (d1 == d2) {
-		return 0;
-	}
-
-	// jump to the last label and store addresses of labels
-	// on the way there
-	// TODO: consider storing label offsets in the domain name structure
-//	const uint8_t *labels1[DNSLIB_MAX_DNAME_LABELS];
-//	const uint8_t *labels2[DNSLIB_MAX_DNAME_LABELS];
-//	int l1 = 0;
-//	int l2 = 0;
-
-//	dnslib_dname_find_labels(d1, labels1, &l1);
-//	dnslib_dname_find_labels(d2, labels2, &l2);
-
-	int l1 = d1->label_count;
-	int l2 = d2->label_count;
-	debug_dnslib_dname("Label counts: %d and %d\n", l1, l2);
-	assert(l1 >= 0);
-	assert(l2 >= 0);
-
-	// compare labels from last to first
-	while (l1 > 0 && l2 > 0) {
-		debug_dnslib_dname("Comparing labels %d and %d\n",
-				   l1 - 1, l2 - 1);
-		debug_dnslib_dname(" at offsets: %d and %d\n",
-				   d1->labels[l1 - 1], d2->labels[l2 - 1]);
-		int res = dnslib_dname_compare_labels(
-		                   &d1->name[d1->labels[--l1]],
-		                   &d2->name[d2->labels[--l2]]);
-		if (res != 0) {
-			return res;
-		} // otherwise the labels are identical, continue with previous
-	}
-
-	// if all labels matched, the shorter name is first
-	if (l1 == 0 && l2 > 0) {
-		return -1;
-	}
-
-	if (l1 > 0 && l2 == 0) {
-		return 1;
-	}
-
-	return 0;
+int dnslib_dname_compare_cs(const dnslib_dname_t *d1, const dnslib_dname_t *d2)
+{
+	return dnslib_dname_cmp(d1, d2, 1);
 }
 
 /*----------------------------------------------------------------------------*/

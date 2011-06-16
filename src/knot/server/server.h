@@ -23,6 +23,7 @@
 
 #include "knot/common.h"
 #include "knot/server/name-server.h"
+#include "knot/server/xfr-handler.h"
 #include "knot/server/socket.h"
 #include "knot/server/dthreads.h"
 #include "dnslib/zonedb.h"
@@ -44,6 +45,7 @@ typedef struct iohandler_t {
 	dt_unit_t          *unit;   /*!< Threading unit */
 	struct iface_t     *iface;  /*!< Reference to associated interface. */
 	struct server_t    *server; /*!< Reference to server */
+	void               *data;   /*!< Persistent data for I/O handler. */
 
 } iohandler_t;
 
@@ -87,6 +89,9 @@ typedef struct server_t {
 
 	/*! \brief Reference to the name server structure. */
 	ns_nameserver_t *nameserver;
+
+	/*! \brief XFR handler. */
+	xfrhandler_t *xfr_h;
 
 	/*! \brief I/O handlers list. */
 	list handlers;

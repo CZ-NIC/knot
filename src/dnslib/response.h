@@ -40,7 +40,7 @@ static const short DNSLIB_MAX_RESPONSE_SIZE = 512;
  */
 struct dnslib_compressed_dnames {
 	const dnslib_dname_t **dnames;  /*!< Domain names present in packet. */
-	short *offsets;           /*!< Offsets of domain names in the packet. */
+	size_t *offsets;          /*!< Offsets of domain names in the packet. */
 	short count;              /*!< Count of items in the previous arrays. */
 	short max;                /*!< Capacity of the structure (allocated). */
 };
@@ -117,8 +117,8 @@ struct dnslib_response {
 	dnslib_opt_rr_t edns_response;  /*!< EDNS data provided by the server.*/
 
 	uint8_t *wireformat;  /*!< Wire format of the response. */
-	short size;      /*!< Current wire size of the response. */
-	short max_size;  /*!< Maximum allowed size of the response. */
+	size_t size;      /*!< Current wire size of the response. */
+	size_t max_size;  /*!< Maximum allowed size of the response. */
 
 	/*! \brief Information needed for compressing domain names in packet. */
 	dnslib_compressed_dnames_t compression;
@@ -141,6 +141,71 @@ typedef struct dnslib_response dnslib_response_t;
 dnslib_response_t *dnslib_response_new_empty(const dnslib_opt_rr_t *opt_rr);
 
 /*!
+ * \brief Creates new empty response structure.
+ *
+ * \param max_wire_size Maximum size of the wire format of the response.
+ *
+ * \return New empty response structure or NULL if an error occured.
+ */
+dnslib_response_t *dnslib_response_new(size_t max_wire_size);
+
+/*!
+ * \brief Clears the response structure for reuse.
+ *
+ * After call to this function, the response will be in the same state as if
+ * dnslib_response_new() was called. The maximum wire size is retained.
+ *
+ * \param response Response structure to clear.
+ */
+void dnslib_response_clear(dnslib_response_t *resp, int clear_question);
+
+/*!
+ * \brief Sets the OPT RR of the response.
+ *
+ * This function also allocates space for the wireformat of the response, if
+ * the payload in the OPT RR is larger than the current maximum size of the
+ * response and copies the current wireformat over to the new space.
+ *
+ * \note The contents of the OPT RR are copied.
+ *
+ * \param resp Response to set the OPT RR to.
+ * \param opt_rr OPT RR to set.
+ *
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_EBADARG
+ * \retval DNSLIB_ENOMEM
+ *
+ * \todo Needs test.
+ */
+int dnslib_response_add_opt(dnslib_response_t *resp,
+                            const dnslib_opt_rr_t *opt_rr,
+                            int override_max_size);
+
+/*!
+ * \brief Sets the maximum size of the response and allocates space for wire
+ *        format (if needed).
+ *
+ * This function also allocates space for the wireformat of the response, if
+ * the given max size is larger than the current maximum size of the response
+ * and copies the current wireformat over to the new space.
+ *
+ * \warning Do not call this function if you are not completely sure that the
+ *          current wire format of the response fits into the new space.
+ *          It does not update the current size of the wire format, so the
+ *          produced response may be larger than the given max size.
+ *
+ * \param resp Response to set the maximum size of.
+ * \param max_size Maximum size of the response.
+ *
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_EBADARG
+ * \retval DNSLIB_ENOMEM
+ *
+ * \todo Needs test.
+ */
+int dnslib_response_set_max_size(dnslib_response_t *resp, int max_size);
+
+/*!
  * \brief Parses the given query and saves important information into the
  *        response structure.
  *
@@ -160,9 +225,18 @@ int dnslib_response_parse_query(dnslib_response_t *response,
                                 const uint8_t *query_wire, size_t query_size);
 
 /*!
+ * \brief Returns the OPCODE of the query.
+ *
+ * \param response Response (with parsed query) to get the OPCODE from.
+ *
+ * \return OPCODE stored in the response.
+ */
+uint8_t dnslib_response_opcode(const dnslib_response_t *response);
+
+/*!
  * \brief Returns the QNAME from the response.
  *
- * \param response Response to get the QNAME from.
+ * \param response Response (with parsed query) to get the QNAME from.
  *
  * \return QNAME stored in the response.
  */
@@ -171,7 +245,7 @@ const dnslib_dname_t *dnslib_response_qname(const dnslib_response_t *response);
 /*!
  * \brief Returns the QTYPE from the response.
  *
- * \param response Response to get the QTYPE from.
+ * \param response Responsee (with parsed query) to get the QTYPE from.
  *
  * \return QTYPE stored in the response.
  */
@@ -180,7 +254,7 @@ uint16_t dnslib_response_qtype(const dnslib_response_t *response);
 /*!
  * \brief Returns the QCLASS from the response.
  *
- * \param response Response to get the QCLASS from.
+ * \param response Responsee (with parsed query) to get the QCLASS from.
  *
  * \return QCLASS stored in the response.
  */
@@ -195,6 +269,8 @@ uint16_t dnslib_response_qclass(const dnslib_response_t *response);
  *           Otherwise set to 0.
  * \param check_duplicates Set to <> 0 if the RRSet should not be added to the
  *                         response in case it is already there.
+ * \param compr_cs Set to <> 0 if dname compression should use case sensitive
+ *                 comparation. Set to 0 otherwise.
  *
  * \retval DNSLIB_EOK if successful, or the RRSet was already in the answer.
  * \retval DNSLIB_ENOMEM
@@ -202,7 +278,7 @@ uint16_t dnslib_response_qclass(const dnslib_response_t *response);
  */
 int dnslib_response_add_rrset_answer(dnslib_response_t *response,
                                      const dnslib_rrset_t *rrset, int tc,
-                                     int check_duplicates);
+                                     int check_duplicates, int compr_cs);
 
 /*!
  * \brief Adds a RRSet to the Authority section of the response.
@@ -213,6 +289,8 @@ int dnslib_response_add_rrset_answer(dnslib_response_t *response,
  *           Otherwise set to 0.
  * \param check_duplicates Set to <> 0 if the RRSet should not be added to the
  *                         response in case it is already there.
+ * \param compr_cs Set to <> 0 if dname compression should use case sensitive
+ *                 comparation. Set to 0 otherwise.
  *
  * \retval DNSLIB_EOK if successful, or the RRSet was already in the answer.
  * \retval DNSLIB_ENOMEM
@@ -220,7 +298,7 @@ int dnslib_response_add_rrset_answer(dnslib_response_t *response,
  */
 int dnslib_response_add_rrset_authority(dnslib_response_t *response,
                                         const dnslib_rrset_t *rrset, int tc,
-                                        int check_duplicates);
+                                        int check_duplicates, int compr_cs);
 
 /*!
  * \brief Adds a RRSet to the Additional section of the response.
@@ -231,6 +309,8 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
  *           Otherwise set to 0.
  * \param check_duplicates Set to <> 0 if the RRSet should not be added to the
  *                         response in case it is already there.
+ * \param compr_cs Set to <> 0 if dname compression should use case sensitive
+ *                 comparation. Set to 0 otherwise.
  *
  * \retval DNSLIB_EOK if successful, or the RRSet was already in the answer.
  * \retval DNSLIB_ENOMEM
@@ -238,7 +318,7 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
  */
 int dnslib_response_add_rrset_additional(dnslib_response_t *response,
                                          const dnslib_rrset_t *rrset, int tc,
-                                         int check_duplicates);
+                                         int check_duplicates, int compr_cs);
 
 /*!
  * \brief Sets the RCODE of the response.
