@@ -12,6 +12,7 @@
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
+#include "knot/server/xfr-handler.h"
 #include "knot/server/name-server.h"
 #include "knot/stat/stat.h"
 #include "dnslib/zonedb.h"
@@ -264,8 +265,8 @@ static int server_bind_handlers(server_t *server)
 	/* Estimate number of threads/manager. */
 	int thr_count = dt_optimal_size();
 	int tcp_unit_size = (thr_count >> 1);
-	if (tcp_unit_size < 2) {
-		tcp_unit_size = 2;
+	if (tcp_unit_size < 3) {
+		tcp_unit_size = 3;
 	}
 
 	/* Lock config. */
@@ -339,6 +340,14 @@ server_t *server_create()
 	debug_server("Initializing OpenSSL...\n");
 	OpenSSL_add_all_digests();
 
+	// Create XFR handler
+	server->xfr_h = xfr_create(XFR_THREADS_COUNT, server->nameserver);
+	if (!server->xfr_h) {
+		ns_destroy(&server->nameserver);
+		free(server);
+		return NULL;
+	}
+
 	debug_server("Done.\n");
 	return server;
 }
@@ -359,6 +368,7 @@ iohandler_t *server_create_handler(server_t *server, int fd, dt_unit_t *unit)
 	handler->server = server;
 	handler->unit = unit;
 	handler->iface = 0;
+	handler->data = 0;
 
 	// Update unit data object
 	for (int i = 0; i < unit->size; ++i) {
@@ -438,6 +448,9 @@ int server_start(server_t *server)
 
 	debug_server("Starting handlers...\n");
 
+	/* Start XFR handler. */
+	xfr_start(server->xfr_h);
+
 	/* Lock configuration. */
 	conf_read_lock();
 
@@ -472,7 +485,7 @@ int server_wait(server_t *server)
 	/* Lock RCU. */
 	rcu_read_lock();
 
-	// Wait for dispatchers to finish
+	// Wait for handlers to finish
 	int ret = 0;
 	iohandler_t *h = 0, *nxt = 0;
 	WALK_LIST_DELSAFE(h, nxt, server->handlers) {
@@ -497,6 +510,10 @@ int server_wait(server_t *server)
 
 	/* Unlock RCU. */
 	rcu_read_unlock();
+
+	/* Wait for XFR master. */
+	xfr_stop(server->xfr_h);
+	xfr_join(server->xfr_h);
 
 	return ret;
 }
@@ -538,6 +555,9 @@ void server_destroy(server_t **server)
 		}
 		free((*server)->ifaces);
 	}
+
+	// Free XFR master
+	xfr_free((*server)->xfr_h);
 
 	stat_static_gath_free();
 	ns_destroy(&(*server)->nameserver);

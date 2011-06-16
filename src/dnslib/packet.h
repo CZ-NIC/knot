@@ -882,7 +882,7 @@ enum dnslib_packet_pointer_consts {
  * \param ptr Relative position of the item to which the pointer should point in
  *            the wire format of the packet.
  */
-static inline void dnslib_packet_put_pointer(uint8_t *pos, short ptr)
+static inline void dnslib_packet_put_pointer(uint8_t *pos, size_t ptr)
 {
 	uint16_t p = ptr;
 	dnslib_wire_write_u16(pos, p);

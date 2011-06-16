@@ -261,7 +261,13 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 				printf("Compiling '%s'...\n",
 				       zone->name);
 			}
-			if ((rc = system(cmd)) < 0) {
+			rc = system(cmd);
+			if (rc != 0) {
+				printf("error: Compilation failed "
+				       "with return code %d.\n",
+				       rc);
+			}
+			if (rc < 0) {
 				rc = 1;
 			}
 			free(cmd);

@@ -118,6 +118,7 @@ libknot_la_SOURCES =				\
 	knot/stat/gatherer.h				\
 	knot/stat/stat.h				\
 	dnslib/edns.c                           \
+	dnslib/dnslib-error.c			\
 	dnslib/utils.c				\
 	dnslib/rrset.c				\
 	dnslib/dname.c				\
@@ -176,11 +177,13 @@ libknot_la_SOURCES =				\
 	knot/server/server.c				\
 	knot/server/udp-handler.c			\
 	knot/server/tcp-handler.c			\
+	knot/server/xfr-handler.c			\
 	knot/server/zones.c				\
 	knot/server/socket.h				\
 	knot/server/name-server.h			\
 	knot/server/udp-handler.h			\
 	knot/server/tcp-handler.h			\
+	knot/server/xfr-handler.h			\
 	knot/server/dthreads.h			\
 	knot/server/zones.h				\
 	knot/server/server.h

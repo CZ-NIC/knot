@@ -64,10 +64,15 @@ identity             return IDENTITY;
 version              return VERSION;
 storage              return STORAGE;
 key                  return KEY;
+remotes              return REMOTES;
 
 zones                return ZONES;
 file                 return FILENAME;
 semantic-checks      return SEMANTIC_CHECKS;
+xfr-in               return XFR_IN;
+xfr-out              return XFR_OUT;
+notify-in            return NOTIFY_IN;
+notify-out           return NOTIFY_OUT;
 
 interfaces           return INTERFACES;
 address              return ADDRESS;

@@ -171,7 +171,7 @@ int main(int argc, char **argv)
 		int rc = pid_write(pidfile);
 		if (rc < 0) {
 			log_server_warning("Failed to create "
-					   "PID file '%s'.", pidfile);
+					   "PID file '%s'.\n", pidfile);
 		}
 
 		// Change directory if daemonized

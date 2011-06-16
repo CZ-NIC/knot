@@ -27,6 +27,20 @@ typedef enum dnslib_opcode {
 	DNSLIB_OPCODE_OFFSET = 14
 } dnslib_opcode_t;
 
+/*!
+ * \brief Query types (internal use only).
+ *
+ * This type encompasses the different query types distinguished by both the
+ * OPCODE and the QTYPE.
+ */
+typedef enum dnslib_query {
+	DNSLIB_QUERY_NORMAL,  /*!< Normal query. */
+	DNSLIB_QUERY_AXFR,    /*!< Request for AXFR transfer. */
+	DNSLIB_QUERY_IXFR,    /*!< Request for IXFR transfer. */
+	DNSLIB_QUERY_NOTIFY,  /*!< NOTIFY query. */
+	DNSLIB_QUERY_UPDATE   /*!< Dynamic update. */
+} dnslib_query_t;
+
 /*
  * RCODEs
  */

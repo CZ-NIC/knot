@@ -15,6 +15,7 @@
 #include "knot/server/name-server.h"
 #include "knot/stat/stat.h"
 #include "knot/server/server.h"
+#include "dnslib/packet.h"
 
 int udp_master(dthread_t *thread)
 {
@@ -29,8 +30,17 @@ int udp_master(dthread_t *thread)
 	}
 
 
+	sockaddr_t addr;
+	if (socket_initaddr(&addr, handler->type) != KNOT_EOK) {
+		log_server_error("Socket type %d is not supported, "
+				 "IPv6 support is probably disabled.\n",
+				 handler->type);
+		return KNOT_ENOTSUP;
+	}
+
 	/* Set socket options. */
 	int flag = 1;
+#ifndef DISABLE_IPV6
 	if (handler->type == AF_INET6) {
 		/* Disable dual-stack for performance reasons. */
 		setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag));
@@ -40,6 +50,7 @@ int udp_master(dthread_t *thread)
 		setsockopt(fd, IPPROTO_IPV6, IPV6_MTU, &flag, sizeof(flag));
 		flag = 1; */
 	}
+#endif
 	if (handler->type == AF_INET) {
 
 		/* Disable fragmentation. */
@@ -48,65 +59,34 @@ int udp_master(dthread_t *thread)
 		flag = 1;
 	}
 
-	/*!
-	 * \todo Use custom allocator.
-	 *       Although this is much cheaper,
-	 *       16kB worth of buffers *may* pose a problem.
-	 */
-	uint8_t inbuf[SOCKET_MTU_SZ];
-	uint8_t outbuf[SOCKET_MTU_SZ];
-	struct sockaddr* addr = 0;
-	socklen_t addrlen = 0;
-
-	struct sockaddr_in faddr4;
-	if (handler->type == AF_INET) {
-		addr = (struct sockaddr*)&faddr4;
-		addrlen = sizeof(faddr4);
-	}
-
-#ifndef DISABLE_IPV6
-	struct sockaddr_in6 faddr6;
-	if (handler->type == AF_INET6) {
-		addr = (struct sockaddr*)&faddr6;
-		addrlen = sizeof(faddr6);
-	}
-#endif
-
-	/*
-	 * Check addr len.
-	 */
-	if (!addr) {
-		debug_net("udp: received invalid socket type %d,"
-			  "AF_INET (%d) or AF_INET6 (%d) expected.\n",
-			  handler->type, AF_INET, AF_INET6);
-		return KNOT_EINVAL;
-	}
-
 	/* in case of STAT_COMPILE the following code will declare thread_stat
 	 * variable in following fashion: stat_t *thread_stat;
 	 */
 
-	stat_t *thread_stat;
+	stat_t *thread_stat = 0;
 	STAT_INIT(thread_stat); //XXX new stat instance every time.
 	stat_set_protocol(thread_stat, stat_UDP);
 
 	// Loop until all data is read
 	debug_net("udp: thread started (worker %p).\n", thread);
+	int res = 0;
 	ssize_t n = 0;
+	uint8_t qbuf[SOCKET_MTU_SZ];
+	dnslib_query_t qtype = DNSLIB_QUERY_NORMAL;
 	while (n >= 0) {
 
-		n = recvfrom(sock, inbuf, SOCKET_MTU_SZ, 0,
-		             addr, &addrlen);
+		n = recvfrom(sock, qbuf, sizeof(qbuf), 0,
+			       addr.ptr, &addr.len);
 
-		// Cancellation point
+		/* Cancellation point. */
 		if (dt_is_cancelled(thread)) {
 			break;
 		}
 
-		// faddr has to be read immediately.
-		stat_get_first(thread_stat, addr);
+		/* faddr has to be read immediately. */
+		stat_get_first(thread_stat, addr.ptr);
 
-		// Error and interrupt handling
+		/* Error and interrupt handling. */
 		if (unlikely(n <= 0)) {
 			if (errno != EINTR && errno != 0) {
 				debug_net("udp: recvfrom() failed: %d\n",
@@ -121,29 +101,60 @@ int udp_master(dthread_t *thread)
 			}
 		}
 
-		// Answer request
 		debug_net("udp: received %zd bytes.\n", n);
-		size_t answer_size = SOCKET_MTU_SZ;
-		int res = ns_answer_request(ns, inbuf, n, outbuf,
-					    &answer_size);
+
+		dnslib_response_t *resp = dnslib_response_new(4 * 1024); // 4K
+		size_t resp_len = sizeof(qbuf);
+
+		/* Parse query. */
+		res = ns_parse_query(qbuf, n, resp, &qtype);
+		if (unlikely(res != KNOT_EOK)) {
+
+			/* Send error response on dnslib RCODE. */
+			if (res > 0) {
+				uint16_t pkt_id = dnslib_packet_get_id(qbuf);
+				ns_error_response(ns, pkt_id, res,
+						  qbuf, &resp_len);
+			}
+
+			dnslib_response_free(&resp);
+			continue;
+		}
+
+		/* Handle query. */
+		switch(qtype) {
+		case DNSLIB_QUERY_NORMAL:
+			res = ns_answer_normal(ns, resp, qbuf, &resp_len);
+			break;
+		case DNSLIB_QUERY_AXFR:
+		case DNSLIB_QUERY_IXFR:
+			/*! \todo Send error, not available on UDP. */
+			break;
+		case DNSLIB_QUERY_NOTIFY:
+		case DNSLIB_QUERY_UPDATE:
+			/*! \todo Implement query notify/update. */
+			break;
+		}
 
 		debug_net("udp: got answer of size %zd.\n",
-			  answer_size);
+			  resp_len);
 
-		// Send answer
-		if (res == 0) {
+		dnslib_response_free(&resp);
 
-			assert(answer_size > 0);
-			debug_net("udp: answer wire format (size %zd):\n",
-				  (unsigned) answer_size);
-			debug_net_hex((const char *) outbuf, answer_size);
+		/* Send answer. */
+		if (res == KNOT_EOK) {
+
+			assert(resp_len > 0);
+			//debug_net("udp: answer wire format (size %zd):\n",
+			//	  resp_len);
+			//debug_net_hex((const char *) outbuf, resp_len);
 
 			// Send datagram
-			res = sendto(sock, outbuf, answer_size,
-			             0, addr, addrlen);
+			res = sendto(sock, qbuf, resp_len,
+				     0, addr.ptr, addr.len);
 
 			// Check result
-			if (res != (int)answer_size) {
+			if (res != (int)resp_len) {
 				debug_net("udp: %s: failed: %d - %d.\n",
 					  "socket_sendto()",
 					  res, errno);

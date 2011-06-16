@@ -36,7 +36,7 @@ src/dnslib/dname.h
 src/dnslib/dname.c
 src/dnslib/rrset.h
 src/dnslib/rrset.c
-src/dnslib/error.c
+src/dnslib/dnslib-error.c
 src/dnslib/error.h
 src/dnslib/rdata.h
 src/dnslib/rdata.c
@@ -128,6 +128,8 @@ src/knot/server/socket.c
 src/knot/server/socket.h
 src/knot/server/tcp-handler.c
 src/knot/server/tcp-handler.h
+src/knot/server/xfr-handler.c
+src/knot/server/xfr-handler.h
 src/knot/server/udp-handler.c
 src/knot/server/udp-handler.h
 src/knot/server/zones.c

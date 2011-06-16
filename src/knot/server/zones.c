@@ -17,6 +17,7 @@
  *
  * \param zonedb Zone database to load the zone into.
  * \param zone_name Zone name (owner of the apex node).
+ * \param source Path to zone file source.
  * \param filename Path to requested compiled zone file.
  *
  * \retval KNOT_EOK
@@ -24,7 +25,7 @@
  * \retval KNOT_EZONEINVAL
  */
 static int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
-                           const char *filename)
+			   const char *source, const char *filename)
 {
 	dnslib_zone_t *zone = NULL;
 
@@ -32,7 +33,7 @@ static int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
 	if (filename) {
 		debug_server("Parsing zone database '%s'\n", filename);
 		zloader_t *zl = dnslib_zload_open(filename);
-		if (!zl && errno == EILSEQ) {
+		if (!zl) {
 			log_server_error("Compiled db '%s' is too old, "
 			                 " please recompile.\n",
 			                 filename);
@@ -40,7 +41,8 @@ static int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
 		}
 
 		// Check if the db is up-to-date
-		if (dnslib_zload_needs_update(zl)) {
+		int src_changed = strcmp(source, zl->source) != 0;
+		if (src_changed || dnslib_zload_needs_update(zl)) {
 			log_server_warning("Database for zone '%s' is not "
 			                   "up-to-date. Please recompile.\n",
 			                   zone_name);
@@ -122,7 +124,8 @@ static int zones_insert_zones(const list *zone_conf,
 		} else {
 			// if not found, the zone must be loaded
 			debug_zones("Not found in old database, loading...\n");
-			int ret = zones_load_zone(db_new, z->name, z->db);
+			int ret = zones_load_zone(db_new, z->name,
+						  z->file, z->db);
 			if (ret != KNOT_EOK) {
 				log_server_error("Error loading new zone to"
 				                 " the new database: %s\n",

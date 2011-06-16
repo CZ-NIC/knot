@@ -39,6 +39,43 @@ system {
 
 }
 
+# Section 'interfaces' contains definitions of listening interfaces.
+interfaces {
+
+  # Interface entry
+  #
+  # Format 1: <name> { address <address>; [port <port>;] }
+  ipv4 {                # <name> is an arbitrary symbolic name
+    address 127.0.0.1;  # <address> may be ither IPv4 or IPv6 address
+    port 53531;         # port is optional (default: 53)
+  }
+
+  # Format 2: <name> { address <address>@<port>; }
+  shortipv4 {
+    address 127.0.0.1@1234;
+  }
+
+}
+
+# Section 'remotes' contains symbolic names for remote servers.
+# Syntax for 'remotes' is the same as for 'interfaces'.
+remotes {
+
+  # Remote entry
+  #
+  # Format 1: <name> { address <address>; [port <port>;] }
+  server0 {             # <name> is an arbitrary symbolic name
+    address 127.0.0.1;  # <address> may be ither IPv4 or IPv6 address
+    port 53531;         # port is optional (default: 53)
+  }
+
+  # Format 2: <name> { address <address>@<port>; }
+  server1 {
+    address 127.0.0.1@1234;
+  }
+
+}
+
 # Section 'zones' contains information about zones to be served.
 zones {
 
@@ -63,25 +100,25 @@ zones {
     # Possible values: on|off
     # Default value: off
     semantic-checks on;
+
+    # ACL list specification for AXFR/IXFR IN
+    xfr-in {
+      # Symbolic name for remote
+      server1;
+    }
+
+    # Alternative shorter ACL list specification
+    xfr-in server0, server1;
+
+    # ACL list specification for AXFR/IXFR OUT
+    xfr-out server0;
+
+    # ACL list specification for NOTIFY IN
+    notify-in server0;
+
+    # ACL list specification for NOTIFY OUT
+    notify-out server0;
   }
-}
-
-# Section 'interfaces' contains definitions of listening interfaces.
-interfaces {
-
-  # Interface entry
-  #
-  # Format 1: <name> { address <address>; [port <port>;] }
-  ipv4 {                # <name> is an arbitrary symbolic name
-    address 127.0.0.1;  # <address> may be ither IPv4 or IPv6 address
-    port 53531;         # port is optional (default: 53)
-  }
-
-  # Format 2: <name> { address <address>@<port>; }
-  shortipv4 {
-    address 127.0.0.1@1234;
-  }
-
 }
 
 # Section 'log' configures logging of server messages.
