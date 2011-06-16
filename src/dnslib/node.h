@@ -32,7 +32,7 @@ struct dnslib_node {
 	/*! \brief Type-ordered list of RRSets belonging to this node. */
 	skip_list_t *rrsets;
 
-	short rrset_count; /*!< Number of RRSets stored in the node. */
+	unsigned short rrset_count; /*!< Number of RRSets stored in the node. */
 
 	/*! \brief Wildcard node being the direct descendant of this node. */
 	struct dnslib_node *wildcard_child;
