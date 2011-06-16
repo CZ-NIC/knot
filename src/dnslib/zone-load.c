@@ -368,7 +368,6 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 	if (!fread_safe(&rrset_count, sizeof(rrset_count), 1, f)) {
 		return NULL;
 	}
-
 	dnslib_dname_t *owner = id_array[dname_id];
 
 	debug_dnslib_zload("Node owned by: %s\n", dnslib_dname_to_str(owner));
@@ -380,22 +379,19 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 		fprintf(stderr, "zone: Could not create node.\n");
 		return NULL;
 	}
-
 	/* XXX can it be 0, ever? I think not. */
-	if ((size_t)nsec3_node_id != 0) {
-		node->nsec3_node = id_array[(size_t)nsec3_node_id]->node;
+	if (nsec3_node_id != 0) {
+		node->nsec3_node = id_array[nsec3_node_id]->node;
 	} else {
 		node->nsec3_node = NULL;
 	}
-
 	node->owner = owner;
-
 	node->flags = flags;
 
 	//XXX will have to be set already...canonical order should do it
 
 	if (parent_id != 0) {
-		node->parent = id_array[(size_t)parent_id]->node;
+		node->parent = id_array[parent_id]->node;
 		assert(node->parent != NULL);
 	} else {
 		node->parent = NULL;
@@ -712,6 +708,9 @@ dnslib_dname_t *read_dname_with_id(FILE *f)
 		free(ret);
 		return NULL;
 	}
+
+	debug_dnslib_zload("loaded: %s (id: %d)\n", dnslib_dname_to_str(ret),
+	                   ret->id);
 
 	return ret;
 }
