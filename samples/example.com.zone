@@ -17,7 +17,6 @@ ns            A     10.0.0.2              ; ip address for "ns.example.com". Sin
 www           CNAME ns                    ; "www.example.com" is an alias for "ns.example.com"
 wwwtest	CNAME www                   ; "wwwtest.example.com" is another alias for "www.example.com"
 mail          A     10.0.0.3              ; ip address for "mail.example.com", any MX record host must be
-sub	NS	ns.sub.example.com.	; delegation
 ns.sub	A	10.1.0.1	; glue
 
 a	A	10.0.0.4
