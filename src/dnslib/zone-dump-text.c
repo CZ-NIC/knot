@@ -4,13 +4,17 @@
  * \author Jan Kadlec <jan.kadlec@nic.cz>, conversion functions by NLabs,
  *         see LICENSE. b64ntop by ISC.
  */
+#include <config.h>
 
 #include <ctype.h>
 #include <assert.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 
-#include "dnslib.h"
+#include "dnslib/dnslib.h"
+#include "dnslib/dnslib-common.h"
 #include "common/skip-list.h"
+#include "common/base32hex.h"
 
 /* TODO max length of alg */
 
@@ -23,90 +27,7 @@ enum uint_max_length {
 #define APL_NEGATION_MASK      0x80U
 #define APL_LENGTH_MASK	       (~APL_NEGATION_MASK)
 
-/* TODO to be moved elsewhere */
-int b32_ntop(uint8_t const *src, size_t srclength, char *target,
-	     size_t targsize)
-{
-	static char b32[]="0123456789abcdefghijklmnopqrstuv";
-	char buf[9];
-	ssize_t len=0;
-
-	while(srclength > 0)
-	{
-		int t;
-		memset(buf,'\0',sizeof buf);
-
-		/* xxxxx000 00000000 00000000 00000000 00000000 */
-		buf[0]=b32[src[0] >> 3];
-
-		/* 00000xxx xx000000 00000000 00000000 00000000 */
-		t=(src[0]&7) << 2;
-		if(srclength > 1)
-			t+=src[1] >> 6;
-		buf[1]=b32[t];
-		if(srclength == 1)
-			break;
-
-		/* 00000000 00xxxxx0 00000000 00000000 00000000 */
-		buf[2]=b32[(src[1] >> 1)&0x1f];
-
-		/* 00000000 0000000x xxxx0000 00000000 00000000 */
-		t=(src[1]&1) << 4;
-		if(srclength > 2)
-			t+=src[2] >> 4;
-		buf[3]=b32[t];
-		if(srclength == 2)
-			break;
-
-		/* 00000000 00000000 0000xxxx x0000000 00000000 */
-		t=(src[2]&0xf) << 1;
-		if(srclength > 3)
-			t+=src[3] >> 7;
-		buf[4]=b32[t];
-		if(srclength == 3)
-			break;
-
-		/* 00000000 00000000 00000000 0xxxxx00 00000000 */
-		buf[5]=b32[(src[3] >> 2)&0x1f];
-
-		/* 00000000 00000000 00000000 000000xx xxx00000 */
-		t=(src[3]&3) << 3;
-		if(srclength > 4)
-			t+=src[4] >> 5;
-		buf[6]=b32[t];
-		if(srclength == 4)
-			break;
-
-		/* 00000000 00000000 00000000 00000000 000xxxxx */
-		buf[7]=b32[src[4]&0x1f];
-
-		if(targsize < 8)
-			return -1;
-
-		src += 5;
-		srclength -= 5;
-
-		memcpy(target,buf,8);
-		target += 8;
-		targsize -= 8;
-		len += 8;
-	}
-	if(srclength)
-	{
-		if(targsize < strlen(buf)+1)
-			return -1;
-		dnslib_strlcpy(target, buf, targsize);
-		len += strlen(buf);
-	}
-	else if(targsize < 1)
-		return -1;
-	else
-		*target='\0';
-	return len;
-}
-
 /* Following copyrights are only valid for b64_ntop function */
-
 /*
  * Copyright (c) 1996, 1998 by Internet Software Consortium.
  *
@@ -214,9 +135,9 @@ static const char Pad64 = '=';
    end of the data is performed using the '=' character.
 
    Since all base64 input is an integral number of octets, only the
-         -------------------------------------------------                       
+         -------------------------------------------------
    following cases can arise:
-   
+
        (1) the final quantum of encoding input is an integral
            multiple of 24 bits; here, the final unit of encoded
 	   output will be an integral multiple of 4 characters
@@ -258,14 +179,14 @@ int b64_ntop(uint8_t const *src, size_t srclength, char *target,
 		target[datalength++] = Base64[output[2]];
 		target[datalength++] = Base64[output[3]];
 	}
-    
+
 	/* Now we worry about padding. */
 	if (0 != srclength) {
 		/* Get what's left. */
 		input[0] = input[1] = input[2] = '\0';
 		for (i = 0; i < srclength; i++)
 			input[i] = *src++;
-	
+
 		output[0] = input[0] >> 2;
 		output[1] = ((input[0] & 0x03) << 4) + (input[1] >> 4);
 		output[2] = ((input[1] & 0x0f) << 2) + (input[2] >> 6);
@@ -322,7 +243,7 @@ dnslib_lookup_table_t dnslib_dns_algorithms[] = {
 	{ 0, NULL }
 };
 
-int get_bit(uint8_t bits[], size_t index)
+static int get_bit(uint8_t bits[], size_t index)
 {
 	/*
 	 * The bits are counted from left to right, so bit #0 is the
@@ -336,7 +257,7 @@ static inline uint8_t * rdata_item_data(dnslib_rdata_item_t item)
 	return (uint8_t *)(item.raw_data + 1);
 }
 
-static inline uint8_t rdata_item_size(dnslib_rdata_item_t item)
+static inline uint16_t rdata_item_size(dnslib_rdata_item_t item)
 {
 	return item.raw_data[0];
 }
@@ -527,10 +448,11 @@ char *rdata_base32_to_string(dnslib_rdata_item_t item)
 		ret[1] = '\0';
 		return ret;
 	}
+
 	size -= 1; // remove length byte from count
-	char *ret = malloc(sizeof(char) * (size * 2 + 1));
-	length = b32_ntop(rdata_item_data(item)+1, size,
-			  ret, size * 2);
+	char *ret = NULL;
+	length = base32hex_encode_alloc((char *)rdata_item_data(item) + 1,
+	                                size, &ret);
 	if (length > 0) {
 		return ret;
 	} else {
@@ -543,10 +465,9 @@ char *rdata_base64_to_string(dnslib_rdata_item_t item)
 {
 	int length;
 	size_t size = rdata_item_size(item);
-	/* XXX check with the originals !!! */
 	char *ret = malloc((sizeof(char) * 2 * size) + 1 * sizeof(char));
 	length = b64_ntop(rdata_item_data(item), size,
-			  ret, size * 2);
+			  ret, (sizeof(char)) * (size * 2 + 1));
 	if (length > 0) {
 		return ret;
 	} else {
@@ -559,7 +480,7 @@ char *hex_to_string(const uint8_t *data, size_t size)
 {
 	static const char hexdigits[] = {
 		'0', '1', '2', '3', '4', '5', '6', '7',
-		'8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
+		'8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
 	};
 	size_t i;
 
@@ -571,9 +492,7 @@ char *hex_to_string(const uint8_t *data, size_t size)
 		ret[i + 1] = hexdigits [octet & 0x0f];
 	}
 
-	/* TODO triple check */
-
-	ret[--i] = '\0';
+	ret[i] = '\0';
 
 	return ret;
 }
@@ -592,8 +511,8 @@ char *rdata_hexlen_to_string(dnslib_rdata_item_t item)
 		ret[1] = '\0';
 		return ret;
 	} else {
-		return hex_to_string(rdata_item_data(item)+1,
-		                     rdata_item_size(item)-1);
+		return hex_to_string(rdata_item_data(item) + 1,
+		                     rdata_item_size(item) - 1);
 	}
 }
 
@@ -814,29 +733,22 @@ char *rdata_nsec_to_string(dnslib_rdata_item_t item)
 
 	uint8_t *data = rdata_item_data(item);
 
-	int increment = 1;
+	int increment = 0;
 
-	for (int i = 1; i < rdata_item_size(item); i += increment) {
+	for (int i = 0; i < rdata_item_size(item); i += increment) {
+		increment = 0;
 		uint8_t window = data[i];
-		/* TODO probably wrong set in parser, should
-		 *be 0 in most of the cases.
-		 */
-		window = 0;
-		uint8_t bitmap_size = data[i+1];
-		uint8_t *bitmap =
-			malloc(sizeof(uint8_t) * (bitmap_size >
-			                          rdata_item_size(item) ?
-						  bitmap_size :
-						  rdata_item_size(item)));
+		increment++;
 
-		memset(bitmap, 0,
-		       sizeof(uint8_t) *  bitmap_size > rdata_item_size(item) ?
-		       bitmap_size :
-		       rdata_item_size(item));
+		uint8_t bitmap_size = data[i + increment];
+		increment++;
 
-		memcpy(bitmap, data + i + 1, rdata_item_size(item) - (i + 1));
+		uint8_t *bitmap = malloc(sizeof(uint8_t) * bitmap_size);
 
-		increment += bitmap_size + 3;
+		memcpy(bitmap, data + i + increment,
+		       bitmap_size);
+
+		increment += bitmap_size;
 
 		for (int j = 0; j < bitmap_size * 8; j++) {
 			if (get_bit(bitmap, j)) {
@@ -1070,7 +982,7 @@ int zone_dump_text(dnslib_zone_t *zone, const char *filename)
 		return DNSLIB_EBADARG;
 	}
 
-	fprintf(f, ";Dumped using %s v. %d.%d.%d\n", PROJECT_NAME,
+	fprintf(f, ";Dumped using %s v. %d.%d.%d\n", DNSLIB_NAME,
 	        DNSLIB_VER / 10000,
 		(DNSLIB_VER / 100) % 100,
 		DNSLIB_VER % 100);
@@ -1079,6 +991,7 @@ int zone_dump_text(dnslib_zone_t *zone, const char *filename)
 	param.f = f;
 	param.origin = zone->apex->owner;
 	dnslib_zone_tree_apply_inorder(zone, node_dump_text, &param);
+	dnslib_zone_nsec3_apply_inorder(zone, node_dump_text, &param);
 	fclose(f);
 
 	return DNSLIB_EOK;

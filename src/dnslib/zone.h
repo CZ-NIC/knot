@@ -17,6 +17,7 @@
 #include "dnslib/node.h"
 #include "dnslib/dname.h"
 #include "dnslib/nsec3.h"
+#include "dnslib/dname-table.h"
 #include "common/tree.h"
 #include "common/acl.h"
 #include "common/lists.h"
@@ -77,6 +78,8 @@ struct dnslib_zone {
 	list notify_pending;
 
 	time_t version;
+
+	dnslib_dname_table_t *dname_table;
 };
 
 typedef struct dnslib_zone dnslib_zone_t;

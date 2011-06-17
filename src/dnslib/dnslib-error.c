@@ -19,5 +19,6 @@ const error_table_t dnslib_error_msgs[DNSLIB_ERROR_COUNT] = {
 	{DNSLIB_ENOZONE, "No such zone found."},
 	{DNSLIB_EDNAMEPTR, "Domain name pointer larger than allowed."},
 	{DNSLIB_EPAYLOAD, "Payload in OPT RR larger than max wire size."},
+	{DNSLIB_ECRC, "CRC check failed."},
 	{DNSLIB_ERROR, 0}
 };
