@@ -1,3 +1,5 @@
+#include <sys/socket.h>
+
 #include "tests/common/acl_tests.h"
 #include "common/sockaddr.h"
 #include "common/acl.h"

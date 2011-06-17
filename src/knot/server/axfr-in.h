@@ -19,6 +19,7 @@
 #include "dnslib/zone.h"
 #include "dnslib/packet.h"
 
+
 int axfrin_create_soa_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
                             size_t *size);
 
