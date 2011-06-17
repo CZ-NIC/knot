@@ -458,10 +458,12 @@ parse_token(int token, char *yytext, enum lexer_state *lexer_state)
 	if (strcmp(yytext, ".") == 0) {
 		free(str);
 		yylval.data.str=".";
-	}
-	else if (strcmp(yytext, "@") == 0) {
+	} else if (strcmp(yytext, "@") == 0) {
 		free(str);
 		yylval.data.str="@";
+	} else if (strcmp(yytext, "\\#") == 0) {
+		free(str);
+		yylval.data.str="\\#";
 	}
 
 	LEXOUT(("%d[%s] ", token, yytext));

@@ -12,6 +12,8 @@
  * @{
  */
 
+
+
 #include <config.h>
 #include <assert.h>
 #include <fcntl.h>
@@ -27,12 +29,25 @@
 #include <netdb.h>
 #include <assert.h>
 
-//#include "common.h"
+#include "common/base32.h"
+#include "common/base32hex.h"
 #include "zcompile/zcompile.h"
 #include "zcompile/parser-util.h"
 #include "zparser.h"
 #include "zcompile/zcompile-error.h"
 #include "dnslib/dnslib.h"
+
+//#define DEBUG_UNKNOWN_RDATA
+
+#ifdef DEBUG_UNKNOWN_RDATA
+#define dbg_rdata(msg...) fprintf(stderr, msg)
+#define DBG_RDATA(cmds) do { cmds } while (0)
+#else
+#define dbg_rdata(msg...)
+#define DBG_RDATA(cmds)
+#endif
+
+
 
 #define IP6ADDRLEN	(128/8)
 #define	NS_INT16SZ	2
@@ -48,12 +63,6 @@
 #else
 #define debug_zp(msg...)
 #endif
-
-/* Eliminate compiler warning with unused parameters. */
-#define UNUSED(param) (param) = (param)
-
-#define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d\n", \
-				  __FILE__, __LINE__)
 
 /*!
  * \brief Return data of raw data item.
@@ -175,7 +184,11 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 					const uint16_t data_size,
 					dnslib_rdata_item_t **items)
 {
-	uint16_t const *end = wireformat + data_size;
+	dbg_rdata("read length: %d\n", data_size);
+//	hex_print(wireformat, data_size);
+	uint16_t const *end = (uint16_t *)((uint8_t *)wireformat + (data_size));
+	dbg_rdata("set end pointer: %p which means length: %d\n", end,
+	          (uint8_t *)end - (uint8_t *)wireformat);
 	size_t i;
 	dnslib_rdata_item_t *temp_rdatas =
 		malloc(sizeof(dnslib_rdata_item_t) * MAXRDATALEN);
@@ -186,11 +199,15 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 
 	assert(descriptor->length <= MAXRDATALEN);
 
+	dbg_rdata("will be parsing %d items, total size: %d\n",
+	          descriptor->length, data_size);
+
 	for (i = 0; i < descriptor->length; ++i) {
 		int is_domain = 0;
 		int is_normalized = 0;
 		int is_wirestore = 0;
 		size_t length = 0;
+		length = 0;
 		int required = descriptor->length;
 
 		switch (rdata_atom_wireformat_type(rrtype, i)) {
@@ -216,9 +233,11 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
 			/* Length is stored in the first byte.  */
 			length = 1;
-			if (wireformat + length <= end) {
+			if ((uint8_t *)wireformat + length <= (uint8_t *)end) {
 			//	length += wireformat[length - 1];
-				length += wireformat[0];
+				length += *((uint8_t *)wireformat);
+				dbg_rdata("%d: set new length: %d\n", i,
+				          length);
 			}
 			/*if (buffer_position(packet) + length <= end) {
 			length += buffer_current(packet)[length - 1];
@@ -232,14 +251,17 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			break;
 		case DNSLIB_RDATA_WF_BINARY:
 			/* Remaining RDATA is binary.  */
-			length = end - wireformat;
+			dbg_rdata("%d: guessing length from pointers: %p %p\n",
+			          i,
+			          wireformat, end);
+			length = (uint8_t *)end - (uint8_t *)wireformat;
 //			length = end - buffer_position(packet);
 			break;
 		case DNSLIB_RDATA_WF_APL:
 			length = (sizeof(uint16_t)    /* address family */
 				  + sizeof(uint8_t)   /* prefix */
 				  + sizeof(uint8_t)); /* length */
-			if (wireformat + length <= end) {
+			if ((uint8_t *)wireformat + length <= (uint8_t *)end) {
 				/* Mask out negation bit.  */
 				length += (wireformat[length - 1]
 					   & APL_LENGTH_MASK);
@@ -274,14 +296,16 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				break;
 			}
 
-			char *tmp_dname_str = malloc(sizeof(char) * length);
-
-			memcpy(tmp_dname_str, wireformat, length);
-
-			dname = dnslib_dname_new_from_str(tmp_dname_str,
-							  strlen(tmp_dname_str),
+			dname = dnslib_dname_new_from_str((char *)wireformat,
+							  length,
 							  NULL);
-			free(tmp_dname_str);
+
+			if (dname == NULL) {
+				dbg_rdata("malformed dname!\n");
+				return KNOT_ZCOMPILE_EBRDATA;
+			}
+			dbg_rdata("%d: created dname: %s\n", i,
+			          dnslib_dname_to_str(dname));
 
 			if (is_wirestore) {
 				/*temp_rdatas[i].raw_data =
@@ -309,25 +333,32 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			}
 
 		} else {
-			if (wireformat + length > end) {
+			dbg_rdata("%d :length: %d %d %p %p\n", i, length,
+			          end - wireformat,
+			          wireformat, end);
+			if ((uint8_t *)wireformat + length > (uint8_t *)end) {
 				if (required) {
 					/* Truncated RDATA.  */
+					dbg_rdata("truncated rdata\n");
 					return KNOT_ZCOMPILE_EBRDATA;
 				} else {
 					break;
 				}
 			}
 
-			temp_rdatas[i].raw_data =
-				malloc(sizeof(uint16_t) + sizeof(uint16_t));
+			assert(wireformat <= end); /*!< \todo remove! */
+			dbg_rdata("calling init with: %p and length : %d\n",
+			          wireformat, length);
+			temp_rdatas[i].raw_data = alloc_rdata_init(wireformat,
+			                                           length);
 
 			if (temp_rdatas[i].raw_data == NULL) {
 				ERR_ALLOC_FAILED;
 				return -1;
 			}
 
-			temp_rdatas[i].raw_data[0] = length;
-			memcpy(temp_rdatas[i].raw_data + 1, wireformat, length);
+//			temp_rdatas[i].raw_data[0] = length;
+//			memcpy(temp_rdatas[i].raw_data + 1, wireformat, length);
 
 /*			temp_rdatas[i].data = (uint16_t *) region_alloc(
 				region, sizeof(uint16_t) + length);
@@ -335,11 +366,22 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				buffer_read(packet,
 					    temp_rdatas[i].data + 1, length); */
 		}
-		wireformat += length;
+		dbg_rdata("%d: adding length: %d (remaining: %d)\n", i, length,
+		          (uint8_t *)end - ((uint8_t *)wireformat + length));
+//		hex_print(temp_rdatas[i].raw_data + 1, length);
+		wireformat = (uint16_t *)((uint8_t *)wireformat + length);
+//		wireformat = wireformat + length;
+		dbg_rdata("wire: %p\n", wireformat);
+		dbg_rdata("remaining now: %d\n",
+		          end - wireformat);
+
 	}
+
+	dbg_rdata("%p %p\n", wireformat, (uint8_t *)wireformat);
 
 	if (wireformat < end) {
 		/* Trailing garbage.  */
+		dbg_rdata("w: %p e: %p %d\n", wireformat, end, end - wireformat);
 //		region_destroy(temp_region);
 		return KNOT_ZCOMPILE_EBRDATA;
 	}
@@ -414,9 +456,12 @@ static uint16_t * alloc_rdata(size_t size)
 	return result;
 }
 
-uint16_t * alloc_rdata_init(const void *data, size_t size)
+uint16_t *alloc_rdata_init(const void *data, size_t size)
 {
 	uint16_t *result = malloc(sizeof(uint16_t) + size);
+	if (result == NULL) {
+		return NULL;
+	}
 	*result = size;
 	memcpy(result + 1, data, size);
 	return result;
@@ -462,6 +507,7 @@ uint16_t * zparser_conv_hex(const char *hex, size_t len)
 			++t;
 		}
 	}
+
 	return r;
 }
 
@@ -751,14 +797,13 @@ uint16_t * zparser_conv_b32(const char *b32)
 {
 	uint8_t buffer[B64BUFSIZE];
 	uint16_t *r = NULL;
-	int i;
+	size_t i = B64BUFSIZE;
 
 	if (strcmp(b32, "-") == 0) {
 		return alloc_rdata_init("", 1);
 	}
-	i = my_b32_pton(b32, buffer + 1, B64BUFSIZE - 1);
-	if (i == -1 || i > 255) {
-		fprintf(stderr, "invalid base32 data");
+	if ((base32hex_decode(b32, strlen(b32), (char *)buffer + 1, &i)) == 0) {
+		fprintf(stderr, "invalid base32 data\n");
 	} else {
 		buffer[0] = i; /* store length byte */
 		r = alloc_rdata_init(buffer, i + 1);
@@ -774,7 +819,7 @@ uint16_t * zparser_conv_b64(const char *b64)
 
 	i = b64_pton(b64, buffer, B64BUFSIZE);
 	if (i == -1) {
-		fprintf(stderr, "invalid base64 data");
+		fprintf(stderr, "invalid base64 data\n");
 	} else {
 		r = alloc_rdata_init(buffer, i);
 	}
@@ -1326,6 +1371,7 @@ void zadd_rdata_domain(dnslib_dname_t *dname)
 
 void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 {
+	dbg_rdata("parsing unknown rdata for type: %d\n", type);
 //	buffer_type packet;
 	uint16_t size;
 	ssize_t rdata_count;
@@ -1339,10 +1385,15 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 	}
 
 //	buffer_create_from(&packet, wireformat + 1, *wireformat);
-	rdata_count = rdata_wireformat_to_rdata_atoms(wireformat, type,
+	rdata_count = rdata_wireformat_to_rdata_atoms(wireformat + 1, type,
 						      size, &items);
-	if (rdata_count == -1) {
-		fprintf(stderr, "bad unknown RDATA");
+//	dbg_rdata("got %d items\n", rdata_count);
+	dbg_rdata("wf to items returned error: %s (%d)\n",
+	          error_to_str(knot_zcompile_error_msgs, rdata_count),
+	                       rdata_count);
+	if (rdata_count < 0) {
+		fprintf(stderr, "bad unknown RDATA\n");
+		/*!< \todo leaks */
 		return;
 	}
 
@@ -1354,8 +1405,9 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
 			zadd_rdata_wireformat((uint16_t *)items[i].raw_data);
 		}
 	}
-
 	free(items);
+	/* Free wireformat */
+	free(wireformat);
 }
 
 /*
@@ -1447,6 +1499,7 @@ int find_rrset_for_rrsig_in_node(dnslib_node_t *node, dnslib_rrset_t *rrsig)
 
 	if (tmp_rrset->rrsigs != NULL) {
 		dnslib_rrset_merge((void *)&tmp_rrset->rrsigs, (void *)&rrsig);
+		dnslib_rrset_free(&rrsig);
 	} else {
 		tmp_rrset->rrsigs = rrsig;
 	}
@@ -1485,6 +1538,21 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 	} else {
 		while ((tmp_node = node_get_func(zone,
 				    chopped)) == NULL) {
+			/* Adding new dname to zone - add to table as well. */
+//			printf("adding new dname (created from parent)%s %p\n",
+//			       dnslib_dname_to_str(chopped), chopped);
+			dnslib_dname_t *found_dname = NULL;
+			if ((!(found_dname =
+			       dnslib_dname_table_find_dname(parser->dname_table,
+			                                    chopped))) &&
+			    dnslib_dname_table_add_dname(parser->dname_table,
+							 chopped) != 0) {
+				/* TODO Cleanup? EVERYWHERE */
+				return NULL;
+			} else if (found_dname != NULL) {
+				dnslib_dname_free(&chopped);
+				chopped = found_dname;
+			}
 			tmp_node = dnslib_node_new(chopped, NULL);
 			last_node->parent = tmp_node;
 
@@ -1493,8 +1561,6 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 				return NULL;
 			}
 
-			chopped->node = (dnslib_node_t *)parser->id;
-			parser->id++;
 			last_node = tmp_node;
 			chopped = dnslib_dname_left_chop(chopped);
 		}
@@ -1526,8 +1592,10 @@ int process_rr(void)
 	dnslib_zone_t *zone = parser->current_zone;
 	dnslib_rrset_t *current_rrset = parser->current_rrset;
 	dnslib_rrset_t *rrset;
-	dnslib_rrtype_descriptor_t *descriptor
-	= dnslib_rrtype_descriptor_by_type(current_rrset->type);
+	dnslib_rrtype_descriptor_t *descriptor =
+		dnslib_rrtype_descriptor_by_type(current_rrset->type);
+
+//	printf("%s\n", dnslib_dname_to_str(parser->current_rrset->owner));
 
 	assert(current_rrset->rdata->count == descriptor->length);
 
@@ -1600,11 +1668,15 @@ int process_rr(void)
 		}
 
 		zone = dnslib_zone_new(parser->origin, 0);
+		if (zone == NULL) {
+			return KNOT_ZCOMPILE_ENOMEM;
+		}
 
 		parser->current_zone = zone;
 	}
 
 	if (current_rrset->type == DNSLIB_RRTYPE_RRSIG) {
+		/*!< \todo Still a leak somewhere. */
 		dnslib_rrset_t *tmp_rrsig =
 			dnslib_rrset_new(current_rrset->owner,
 					     DNSLIB_RRTYPE_RRSIG,
@@ -1621,14 +1693,13 @@ int process_rr(void)
 			 */
 			if (parser->node_rrsigs != NULL) {
 				process_rrsigs_in_node(parser->last_node);
-
 				rrset_list_delete(&parser->node_rrsigs);
 			}
 
 			if ((parser->last_node = create_node(zone,
 						   current_rrset, node_add_func,
 						   node_get_func)) == NULL) {
-				free(tmp_rrsig);
+				dnslib_rrset_free(&tmp_rrsig);
 				return KNOT_ZCOMPILE_EBADNODE;
 			}
 		}
@@ -1656,7 +1727,6 @@ int process_rr(void)
 		rrset_list_delete(&parser->node_rrsigs);
 
 		/* new node */
-		/* not a new node !!! */
 		node = node_get_func(zone, current_rrset->owner);
 	}
 
@@ -1670,28 +1740,8 @@ int process_rr(void)
 					node_get_func)) == NULL) {
 			return KNOT_ZCOMPILE_EBADNODE;
 		}
-	} else {
-		/* TODO I bet this can be simplified a lot */
-		if (current_rrset->owner != node->owner) {
-			if (parser->last_node &&
-			    parser->last_node->owner != current_rrset->owner &&
-			    dnslib_dname_compare(parser->last_node->owner,
-						 current_rrset->owner) != 0 &&
-			    node->rrset_count > 0) {
-				/* This last case in if is weird - it should
-				 * never happen, but it does, occasionally */
-				/* and if it does, it is sign of a leak smwh */
-				dnslib_dname_free(&(current_rrset->owner));
-			}
-			current_rrset->owner = node->owner;
-		}
-		assert(current_rrset->owner == node->owner);
 	}
 
-	if (node->owner->node == NULL) {
-		node->owner->node = (dnslib_node_t *)parser->id;
-		parser->id++;
-	}
 	rrset = dnslib_node_get_rrset(node, current_rrset->type);
 	if (!rrset) {
 		rrset = dnslib_rrset_new(current_rrset->owner,
@@ -1791,7 +1841,7 @@ static uint find_rrsets_orphans(dnslib_zone_t *zone, rrset_list_t
  *
  */
 int zone_read(const char *name, const char *zonefile, const char *outfile,
-              int semantic_checks)
+	      int semantic_checks)
 {
 	if (!outfile) {
 		fprintf(stderr, "Missing output file for '%s'\n",
@@ -1801,13 +1851,10 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	char ebuf[256];
 
-	dnslib_dname_t *dname;
+	dnslib_dname_t *dname =
+		dnslib_dname_new_from_str(name, strlen(name), NULL);
 
-	dname = dnslib_dname_new_from_str(name, strlen(name), NULL);
-
-	dnslib_node_t *origin_node;
-
-	origin_node = dnslib_node_new(dname, NULL);
+	dnslib_node_t *origin_node = dnslib_node_new(dname, NULL);
 
 	//assert(origin_node->next == NULL);
 
@@ -1831,6 +1878,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	debug_zp("zone parsed\n");
 
+
 	uint found_orphans;
 
 	found_orphans = find_rrsets_orphans(parser->current_zone,
@@ -1844,11 +1892,15 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	debug_zp("rdata adjusted\n");
 
+	parser->current_zone->dname_table = parser->dname_table;
+
 	dnslib_zdump_binary(parser->current_zone, outfile, semantic_checks,
-	                    zonefile);
+			    zonefile);
 
 	/* This is *almost* unnecessary */
-	dnslib_zone_deep_free(&(parser->current_zone), 1);
+	dnslib_zone_deep_free(&(parser->current_zone), 0);
+
+//	dnslib_zone_t *some_zone= dnslib_zload_load(dnslib_zload_open(outfile));
 
 	fclose(yyin);
 
@@ -1859,6 +1911,82 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	zparser_free();
 
 	return totalerrors;
+}
+
+static void save_replace_dnames_in_rdata(dnslib_dname_table_t *table,
+					 dnslib_rdata_t *rdata, uint16_t type)
+{
+	assert(rdata && rdata->items);
+	const dnslib_rrtype_descriptor_t *desc =
+		dnslib_rrtype_descriptor_by_type(type);
+	assert(desc);
+
+	for (int i = 0; i < rdata->count; i++) {
+		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+		    desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
+		    desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME) {
+			/* See if dname is not in the table already. */
+			dnslib_dname_t *found_dname = NULL;
+			dnslib_dname_t *searched_dname = rdata->items[i].dname;
+			if ((found_dname =
+				dnslib_dname_table_find_dname(table,
+				searched_dname)) != NULL) {
+				dnslib_dname_free(&rdata->items[i].dname);
+				rdata->items[i].dname = found_dname;
+			} else {
+				if (dnslib_dname_table_add_dname(table,
+							        searched_dname)
+				   != 0) {
+					fprintf(stderr,
+					        "Could not add name"
+					        "to table!\n");
+					return;
+				}
+			}
+		}
+	}
+}
+
+int save_dnames_in_table(dnslib_dname_table_t *table,
+			 dnslib_rrset_t *rrset)
+{
+	if (rrset == NULL) {
+		return KNOT_ZCOMPILE_EINVAL;
+	}
+	/* Check and possibly delete the owner first */
+	dnslib_dname_t *found_dname = NULL;
+	if ((found_dname =
+		dnslib_dname_table_find_dname(table, rrset->owner)) != NULL &&
+		found_dname != rrset->owner) {
+		assert(rrset->owner != found_dname);
+		assert(found_dname->name != rrset->owner->name);
+		assert(found_dname->labels != rrset->owner->labels);
+		assert(rrset->owner != parser->last_node->owner);
+		assert(parser->last_node->owner != rrset->owner);
+		dnslib_dname_free(&rrset->owner);
+		/* owner is now a reference from the table */
+		rrset->owner = found_dname;
+		assert(parser->current_rrset->owner == rrset->owner);
+	} else if (found_dname != rrset->owner) {
+		/* Insert the dname in the table. */
+		if (dnslib_dname_table_add_dname(table, rrset->owner) != 0) {
+			return KNOT_ZCOMPILE_ENOMEM;
+		}
+	}
+
+	dnslib_rdata_t *tmp_rdata = dnslib_rrset_get_rdata(rrset);
+
+	while (tmp_rdata->next != dnslib_rrset_rdata(rrset)) {
+		save_replace_dnames_in_rdata(table, tmp_rdata,
+					     dnslib_rrset_type(rrset));
+	}
+
+	save_replace_dnames_in_rdata(table, tmp_rdata,
+				     dnslib_rrset_type(rrset));
+
+	assert(rrset->owner != NULL);
+
+	return KNOT_ZCOMPILE_EOK;
 }
 
 /*! @} */
