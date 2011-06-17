@@ -10,6 +10,7 @@
 #include "dnslib/debug.h"
 #include "common/skip-list.h"
 #include "common/base32hex.h"
+#include "common/crc.h"
 #include "dnslib/error.h"
 
 #define ZONECHECKS_VERBOSE
@@ -32,92 +33,6 @@
  * or dname ID, if dname is in the zone
  * or raw data stored like this: data_len [data]
  */
-
-/* TODO to be moved elsewhere */
-int b32_ntop(uint8_t const *src, size_t srclength, char *target,
-	     size_t targsize)
-{
-	static char b32[]="0123456789abcdefghijklmnopqrstuv";
-	char buf[9];
-	ssize_t len=0;
-
-	while(srclength > 0)
-	{
-		int t;
-		memset(buf,'\0',sizeof buf);
-
-		/* xxxxx000 00000000 00000000 00000000 00000000 */
-		buf[0]=b32[src[0] >> 3];
-
-		/* 00000xxx xx000000 00000000 00000000 00000000 */
-		t=(src[0]&7) << 2;
-		if(srclength > 1)
-			t+=src[1] >> 6;
-		buf[1]=b32[t];
-		if(srclength == 1)
-			break;
-
-		/* 00000000 00xxxxx0 00000000 00000000 00000000 */
-		buf[2]=b32[(src[1] >> 1)&0x1f];
-
-		/* 00000000 0000000x xxxx0000 00000000 00000000 */
-		t=(src[1]&1) << 4;
-		if(srclength > 2)
-			t+=src[2] >> 4;
-		buf[3]=b32[t];
-		if(srclength == 2)
-			break;
-
-		/* 00000000 00000000 0000xxxx x0000000 00000000 */
-		t=(src[2]&0xf) << 1;
-		if(srclength > 3)
-			t+=src[3] >> 7;
-		buf[4]=b32[t];
-		if(srclength == 3)
-			break;
-
-		/* 00000000 00000000 00000000 0xxxxx00 00000000 */
-		buf[5]=b32[(src[3] >> 2)&0x1f];
-
-		/* 00000000 00000000 00000000 000000xx xxx00000 */
-		t=(src[3]&3) << 3;
-		if(srclength > 4)
-			t+=src[4] >> 5;
-		buf[6]=b32[t];
-		if(srclength == 4)
-			break;
-
-		/* 00000000 00000000 00000000 00000000 000xxxxx */
-		buf[7]=b32[src[4]&0x1f];
-
-		if(targsize < 8) {
-			printf("ou\n");
-			return -1;
-		}
-
-		src += 5;
-		srclength -= 5;
-
-		memcpy(target,buf,8);
-		target += 8;
-		targsize -= 8;
-		len += 8;
-	}
-	if(srclength)
-	{
-		if(targsize < strlen(buf)+1) {
-			printf("ou");
-			return -1;
-		}
-		dnslib_strlcpy(target, buf, targsize);
-		len += strlen(buf);
-	}
-	else if(targsize < 1)
-		return -1;
-	else
-		*target='\0';
-	return len;
-}
 
 static const uint MAX_CNAME_CYCLE_DEPTH = 15;
 
@@ -351,7 +266,6 @@ static int err_handler_handle_error(err_handler_t *handler,
 	}
 
 	if (error == ZC_ERR_ALLOC) {
-		return ZC_ERR_UNKNOWN;
 		ERR_ALLOC_FAILED;
 		return ZC_ERR_ALLOC;
 	}
@@ -419,9 +333,9 @@ static void err_handler_log_all(err_handler_t *handler)
 	}
 }
 
-/* TODO CHANGE FROM VOID POINTERS */
 /*!
- * \brief
+ * \brief General argument structure, used to pass multiple
+ *        agruments to tree functions.
  *
  */
 struct arg {
@@ -434,140 +348,6 @@ struct arg {
 };
 
 typedef struct arg arg_t;
-
-/*!
- * \brief Simple pointer compare, used for skip list ordering.
- *
- * \note We only need ordering for search purposes, therefore it is OK to
- *       compare pointers directly.
- *
- * \param p1 First pointer.
- * \param p2 Second pointer.
- *
- * \retval 0 when pointers are the same.
- * \retval -1 when first pointer is "bigger" than the first.
- * \retval 1 when second pointer is "bigger" than the first.
- */
-static int compare_pointers(void *p1, void *p2)
-{
-	return ((size_t)p1 == (size_t)p2
-		? 0 : (size_t)p1 < (size_t)p2 ? -1 : 1);
-}
-
-/*!
- * \brief Saves closest encloser from rdata to given skip list.
- *
- * \param rdata Rdata possibly containing closest encloser.
- * \param zone Zone containing the node.
- * \param pos Position of item in rdata to be searched.
- * \param list Skip list used for storing closest enclosers.
- */
-static void dnslib_zone_save_encloser_rdata_item(dnslib_rdata_t *rdata,
-						 dnslib_zone_t *zone, uint pos,
-						 skip_list_t *list)
-{
-	const dnslib_rdata_item_t *dname_item
-		= dnslib_rdata_item(rdata, pos);
-
-	if (dname_item != NULL) {
-		dnslib_dname_t *dname = dname_item->dname;
-		const dnslib_node_t *n = NULL;
-		const dnslib_node_t *closest_encloser = NULL;
-		const dnslib_node_t *prev = NULL;
-
-		int ret = dnslib_zone_find_dname(zone, dname, &n,
-		                                 &closest_encloser, &prev);
-
-//		n = dnslib_zone_find_node(zone, dname);
-
-		if (ret == DNSLIB_EBADARG || ret == DNSLIB_EBADZONE) {
-			// TODO: do some cleanup if needed
-			return;
-		}
-
-		assert(ret != DNSLIB_ZONE_NAME_FOUND
-		       || n == closest_encloser);
-
-		if (ret != DNSLIB_ZONE_NAME_FOUND
-		    && (closest_encloser != NULL)) {
-			debug_dnslib_zdump("Saving closest encloser to RDATA."
-					   "\n");
-			// save pointer to the closest encloser
-			dnslib_rdata_item_t *item =
-				dnslib_rdata_get_item(rdata, pos);
-			assert(item->dname != NULL);
-			assert(item->dname->node == NULL);
-			skip_insert(list, (void *)item->dname,
-				    (void *)closest_encloser->owner, NULL);
-		}
-	}
-}
-
-/*!
- * \brief Saves closest enclosers from all entries in rrset.
- *
- * \param rrset RRSet to be searched.
- * \param zone Zone containing the rrset.
- * \param list Skip list used for storing closest enclosers.
- */
-static void dnslib_zone_save_enclosers_rrset(dnslib_rrset_t *rrset,
-					     dnslib_zone_t *zone,
-					     skip_list_t *list)
-{
-	uint16_t type = dnslib_rrset_type(rrset);
-
-	dnslib_rrtype_descriptor_t *desc =
-		dnslib_rrtype_descriptor_by_type(type);
-	dnslib_rdata_t *rdata_first = dnslib_rrset_get_rdata(rrset);
-	dnslib_rdata_t *rdata = rdata_first;
-
-	if (rdata == NULL) {
-		return;
-	}
-
-	while (rdata->next != rdata_first) {
-		for (int i = 0; i < rdata->count; ++i) {
-			if (desc->wireformat[i]
-			    == DNSLIB_RDATA_WF_COMPRESSED_DNAME
-			    || desc->wireformat[i]
-			       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
-			    || desc->wireformat[i]
-			       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
-				debug_dnslib_zdump("Adjusting domain name at "
-				  "position %d of RDATA of record with owner "
-				  "%s and type %s.\n",
-				  i, rrset->owner->name,
-				  dnslib_rrtype_to_string(type));
-
-				dnslib_zone_save_encloser_rdata_item(rdata,
-								     zone,
-								     i,
-								     list);
-			}
-		}
-		rdata = rdata->next;
-	}
-
-	for (int i = 0; i < rdata->count; ++i) {
-		if (desc->wireformat[i]
-		    == DNSLIB_RDATA_WF_COMPRESSED_DNAME
-		    || desc->wireformat[i]
-		       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
-		    || desc->wireformat[i]
-		       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
-			debug_dnslib_zdump("Adjusting domain name at "
-			  "position %d of RDATA of record with owner "
-			  "%s and type %s.\n",
-			  i, rrset->owner->name,
-			  dnslib_rrtype_to_string(type));
-
-				dnslib_zone_save_encloser_rdata_item(rdata,
-								     zone,
-								     i,
-								     list);
-		}
-	}
-}
 
 /*!
  * \brief Semantic check - CNAME cycles. Uses constant value with maximum
@@ -962,7 +742,7 @@ static int check_rrsig_in_rrset(const dnslib_rrset_t *rrset,
  *
  * \return int Bit on given index.
  */
-int get_bit(uint8_t *bits, size_t index)
+static int get_bit(uint8_t *bits, size_t index)
 {
 	/*
 	 * The bits are counted from left to right, so bit #0 is the
@@ -1039,9 +819,8 @@ static int rdata_nsec_to_type_array(const dnslib_rdata_item_t *item,
  * \return Appropriate error code if error was found.
  */
 static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
-				    err_handler_t *handler)
+                                    err_handler_t *handler)
 {
-
 	assert(handler);
 	const dnslib_node_t *nsec3_node = dnslib_node_nsec3_node(node);
 
@@ -1104,7 +883,8 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 		dnslib_rrset_rdata(
 		dnslib_node_rrset(
 		dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA)), 6)));
-	/* are those getters even worth this? */
+	/* Are those getters even worth this?
+	 * Now I have no idea what this code does. */
 
 	if (dnslib_rrset_ttl(nsec3_rrset) != minimum_ttl) {
 			err_handler_handle_error(handler, node,
@@ -1112,39 +892,25 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 	}
 
 	/* check that next dname is in the zone */
+	uint8_t *next_dname_decoded = NULL;
+	size_t real_size = 0;
 
-	/* TODO should look nicer :) */
-
-	size_t next_dname_decoded_size =
-		rdata_item_size(dnslib_rdata_item(nsec3_rrset->rdata, 4));
-
-	/* Maximum length of decoded string + 1 */
-	size_t alloc_size = (next_dname_decoded_size - 1) * 2 + 2;
-
-	uint8_t *next_dname_decoded = malloc(sizeof(uint8_t) * alloc_size);
-
-	CHECK_ALLOC_LOG(next_dname_decoded, DNSLIB_ENOMEM);
-
-	memset(next_dname_decoded, 0, alloc_size);
-
-	size_t real_size;
-
-	if ((real_size = b32_ntop(((uint8_t *)
+	if (((real_size = base32hex_encode_alloc(((char *)
 		rdata_item_data(&(nsec3_rrset->rdata->items[4]))) + 1,
-		next_dname_decoded_size - 1,
-		(char *)next_dname_decoded + 1,
-		alloc_size)) <= 0) {
-		fprintf(stderr, "Could not decode base32 string!\n");
+		rdata_item_size(&nsec3_rrset->rdata->items[4]) - 1,
+		(char **)&next_dname_decoded)) <= 0) ||
+		(next_dname_decoded == NULL)) {
+		fprintf(stderr, "Could not encode base32 string!\n");
 		return DNSLIB_ERROR;
 	}
 
 	/* This is why we allocate maximum length of decoded string + 1 */
+	memmove(next_dname_decoded + 1, next_dname_decoded, real_size);
 	next_dname_decoded[0] = real_size;
 
 	dnslib_dname_t *next_dname =
 		dnslib_dname_new_from_wire(next_dname_decoded,
 					   real_size + 1, NULL);
-
 	CHECK_ALLOC_LOG(next_dname, DNSLIB_ENOMEM);
 
 	free(next_dname_decoded);
@@ -1160,9 +926,6 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 		err_handler_handle_error(handler, node,
 					 ZC_ERR_NSEC3_RDATA_CHAIN);
 	}
-
-	/* TODO first node in the nsec3 tree - is there a way? */
-
 	dnslib_dname_free(&next_dname);
 
 	/* This is probably not sufficient, but again, it is covered in
@@ -1457,7 +1220,8 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 
 			}
 		} else if (nsec3 && (auth || deleg)) { /* nsec3 */
-			int ret = check_nsec3_node_in_zone(zone, node, handler);
+			int ret = check_nsec3_node_in_zone(zone, node,
+			                                   handler);
 			if (ret != DNSLIB_EOK) {
 				free(rrsets);
 				return ret;
@@ -1476,7 +1240,7 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
  * \param node Node to be searched.
  * \param data Arguments.
  */
-static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
+static void do_checks_in_tree(dnslib_node_t *node, void *data)
 {
 	assert(data != NULL);
 	arg_t *args = (arg_t *)data;
@@ -1491,12 +1255,12 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
 	assert(zone);
 
 
-	for (int i = 0; i < count; ++i) {
+/*	for (int i = 0; i < count; ++i) {
 		assert(rrsets[i] != NULL);
 		dnslib_zone_save_enclosers_rrset(rrsets[i],
 						 zone,
 						 (skip_list_t *)args->arg2);
-	}
+	} */
 
 	dnslib_node_t *first_node = (dnslib_node_t *)args->arg4;
 	dnslib_node_t **last_node = (dnslib_node_t **)args->arg5;
@@ -1527,25 +1291,47 @@ static void dnslib_zone_save_enclosers_in_tree(dnslib_node_t *node, void *data)
  * \param handler Semantic error handler.
  * \param last_node Last checked node, which is part of NSEC(3) chain.
  */
-void zone_save_enclosers_sem_check(dnslib_zone_t *zone, skip_list_t *list,
-				   char do_checks, err_handler_t *handler,
-				   dnslib_node_t **last_node)
+void zone_do_sem_checks(dnslib_zone_t *zone, char do_checks,
+                        err_handler_t *handler,
+                        dnslib_node_t **last_node)
 {
+	if (!do_checks) {
+		return;
+	}
+
 	arg_t arguments;
 	arguments.arg1 = zone;
-	arguments.arg2 = list;
 	arguments.arg3 = &do_checks;
 	arguments.arg4 = NULL;
 	arguments.arg5 = last_node;
 	arguments.arg6 = handler;
 
 	dnslib_zone_tree_apply_inorder(zone,
-			   dnslib_zone_save_enclosers_in_tree,
+			   do_checks_in_tree,
 			   (void *)&arguments);
 }
 
-/* TODO Think of a better way than a global variable */
-static uint node_count = 0;
+/*!< \todo remove this variable once sure about crc implementation. */
+static crc_t dnslib_dump_crc;
+
+static inline int fwrite_wrapper(const void *src,
+                                 size_t size, size_t n, FILE *fp)
+{
+	int rc = fwrite(src, size, n, fp);
+	if (rc != n) {
+		fprintf(stderr, "fwrite: invalid write %d (expected %zu)\n", rc,
+			n);
+	}
+
+	if (size * n > 0) {
+		dnslib_dump_crc =
+			crc_update(dnslib_dump_crc, (unsigned char *)src,
+		                   size * n);
+	}
+
+//	return rc == n;
+	return rc;
+}
 
 /*!
  * \brief Dumps dname labels in binary format to given file.
@@ -1553,11 +1339,12 @@ static uint node_count = 0;
  * \param dname Dname whose labels are to be dumped.
  * \param f Output file.
  */
-static void dnslib_labels_dump_binary(dnslib_dname_t *dname, FILE *f)
+static void dnslib_labels_dump_binary(const dnslib_dname_t *dname, FILE *f)
 {
 	debug_dnslib_zdump("label count: %d\n", dname->label_count);
-	fwrite(&(dname->label_count), sizeof(dname->label_count), 1, f);
-	fwrite(dname->labels, sizeof(uint8_t), dname->label_count, f);
+	uint16_t label_count = dname->label_count;
+	fwrite_wrapper(&label_count, sizeof(label_count), 1, f);
+	fwrite_wrapper(dname->labels, sizeof(uint8_t), dname->label_count, f);
 }
 
 /*!
@@ -1566,25 +1353,13 @@ static void dnslib_labels_dump_binary(dnslib_dname_t *dname, FILE *f)
  * \param dname Dname to be dumped.
  * \param f Output file.
  */
-static void dnslib_dname_dump_binary(dnslib_dname_t *dname, FILE *f)
+static void dnslib_dname_dump_binary(const dnslib_dname_t *dname, FILE *f)
 {
-	fwrite(&(dname->size), sizeof(uint8_t), 1, f);
-	fwrite(dname->name, sizeof(uint8_t), dname->size, f);
+	uint32_t dname_size = dname->size;
+	fwrite_wrapper(&dname_size, sizeof(dname_size), 1, f);
+	fwrite_wrapper(dname->name, sizeof(uint8_t), dname->size, f);
 	debug_dnslib_zdump("dname size: %d\n", dname->size);
 	dnslib_labels_dump_binary(dname, f);
-}
-
-/*!
- * \brief Finds wildcard for dname in list of closest enclosers.
- *
- * \param dname Dname to find wildcard for.
- * \param list Skip list of closest enclosers.
- * \return Found wildcard or NULL.
- */
-static dnslib_dname_t *dnslib_find_wildcard(dnslib_dname_t *dname,
-					    skip_list_t *list)
-{
-	return (dnslib_dname_t *)skip_find(list, (void *)dname);
 }
 
 /*!
@@ -1598,12 +1373,9 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 				     uint32_t type, void *data)
 {
 	FILE *f = (FILE *)((arg_t *)data)->arg1;
-	skip_list_t *list = (skip_list_t *)((arg_t *)data)->arg2;
 	dnslib_rrtype_descriptor_t *desc =
 		dnslib_rrtype_descriptor_by_type(type);
 	assert(desc != NULL);
-
-	debug_dnslib_zdump("dumping type: %s\n", dnslib_rrtype_to_string(type));
 
 	for (int i = 0; i < desc->length; i++) {
 		if (&(rdata->items[i]) == NULL) {
@@ -1618,43 +1390,44 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 			assert(rdata->items[i].dname != NULL);
 			dnslib_dname_t *wildcard = NULL;
 
-			if (rdata->items[i].dname->node == NULL) {
-				wildcard = dnslib_find_wildcard(
-					rdata->items[i].dname, list);
-DEBUG_DNSLIB_ZDUMP(
-				char *name = dnslib_dname_to_str(
-						  rdata->items[i].dname);
-				debug_dnslib_zdump("Not in the zone: %s\n",
-				       name);
-				free(name);
-);
+			if (rdata->items[i].dname->node != NULL) {
+				wildcard = rdata->items[i].dname->node->owner;
+			}
+			/* Write ID. */
+			assert(rdata->items[i].dname->id != 0);
 
-				fwrite((uint8_t *)"\0", sizeof(uint8_t), 1, f);
-				dnslib_dname_dump_binary(rdata->items[i].dname,
-							 f);
-				if (wildcard) {
-					fwrite((uint8_t *)"\1",
-					       sizeof(uint8_t), 1, f);
-					fwrite(&wildcard->node,
-					       sizeof(void *), 1, f);
-				} else {
-					fwrite((uint8_t *)"\0", sizeof(uint8_t),
-					       1, f);
-				}
+			uint32_t id = rdata->items[i].dname->id;
+			fwrite_wrapper(&id,
+			       sizeof(id), 1, f);
+
+			/* Write in the zone bit */
+			if (rdata->items[i].dname->node != NULL) {
+				fwrite_wrapper((uint8_t *)"\1",
+				       sizeof(uint8_t), 1, f);
 			} else {
-				debug_dnslib_zdump("In the zone\n");
-				fwrite((uint8_t *)"\1", sizeof(uint8_t), 1, f);
-				fwrite(&(rdata->items[i].dname->node),
-				       sizeof(void *), 1, f);
+				fwrite_wrapper((uint8_t *)"\0", sizeof(uint8_t),
+				       1, f);
+			}
+
+			if (wildcard) {
+				fwrite_wrapper((uint8_t *)"\1",
+				       sizeof(uint8_t), 1, f);
+				uint32_t wildcard_id = wildcard->id;
+				fwrite_wrapper(&wildcard_id,
+				       sizeof(wildcard_id), 1, f);
+			} else {
+				fwrite_wrapper((uint8_t *)"\0", sizeof(uint8_t),
+				       1, f);
 			}
 
 		} else {
 			assert(rdata->items[i].raw_data != NULL);
-			fwrite(rdata->items[i].raw_data, sizeof(uint8_t),
+			fwrite_wrapper(rdata->items[i].raw_data,
+			               sizeof(uint8_t),
 			       rdata->items[i].raw_data[0] + 2, f);
 
 			debug_dnslib_zdump("Written %d long raw data\n",
-				 rdata->items[i].raw_data[0]);
+					   rdata->items[i].raw_data[0]);
 		}
 	}
 }
@@ -1668,40 +1441,28 @@ DEBUG_DNSLIB_ZDUMP(
 static void dnslib_rrsig_set_dump_binary(dnslib_rrset_t *rrsig, arg_t *data)
 {
 	assert(rrsig->type == DNSLIB_RRTYPE_RRSIG);
-	FILE *f = (FILE *)((arg_t *)data)->arg1;
-	fwrite(&rrsig->type, sizeof(rrsig->type), 1, f);
-	fwrite(&rrsig->rclass, sizeof(rrsig->rclass), 1, f);
-	fwrite(&rrsig->ttl, sizeof(rrsig->ttl), 1, f);
-
-	uint8_t rdata_count = 0;
-
-	fpos_t rrdata_count_pos;
-
-	fgetpos(f, &rrdata_count_pos);
-
-	fwrite(&rdata_count, sizeof(rdata_count), 1, f);
-
 	assert(rrsig->rdata);
+	FILE *f = (FILE *)((arg_t *)data)->arg1;
+	fwrite_wrapper(&rrsig->type, sizeof(rrsig->type), 1, f);
+	fwrite_wrapper(&rrsig->rclass, sizeof(rrsig->rclass), 1, f);
+	fwrite_wrapper(&rrsig->ttl, sizeof(rrsig->ttl), 1, f);
 
+	uint8_t rdata_count = 1;
+	/* Calculate rrset rdata count. */
 	dnslib_rdata_t *tmp_rdata = rrsig->rdata;
-
-	while (tmp_rdata->next != rrsig->rdata) {
-		dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, data);
+	while(tmp_rdata->next != rrsig->rdata) {
 		tmp_rdata = tmp_rdata->next;
 		rdata_count++;
 	}
+
+	fwrite_wrapper(&rdata_count, sizeof(rdata_count), 1, f);
+
+	tmp_rdata = rrsig->rdata;
+	while (tmp_rdata->next != rrsig->rdata) {
+		dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, data);
+		tmp_rdata = tmp_rdata->next;
+	}
 	dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, data);
-	rdata_count++;
-
-	fpos_t tmp_pos;
-
-	fgetpos(f, &tmp_pos);
-
-	fsetpos(f, &rrdata_count_pos);
-
-	fwrite(&rdata_count, sizeof(rdata_count), 1, f);
-
-	fsetpos(f, &tmp_pos);
 }
 
 /*!
@@ -1714,48 +1475,37 @@ static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, void *data)
 {
 	FILE *f = (FILE *)((arg_t *)data)->arg1;
 
-	fwrite(&rrset->type, sizeof(rrset->type), 1, f);
-	fwrite(&rrset->rclass, sizeof(rrset->rclass), 1, f);
-	fwrite(&rrset->ttl, sizeof(rrset->ttl), 1, f);
+	fwrite_wrapper(&rrset->type, sizeof(rrset->type), 1, f);
+	fwrite_wrapper(&rrset->rclass, sizeof(rrset->rclass), 1, f);
+	fwrite_wrapper(&rrset->ttl, sizeof(rrset->ttl), 1, f);
 
-	uint8_t rdata_count = 0;
-	uint8_t rrsig_count = 0;
+	uint8_t rdata_count = 1;
+	uint8_t has_rrsig = rrset->rrsigs != NULL;
 
-	fpos_t rrdata_count_pos;
-
-	fgetpos(f, &rrdata_count_pos);
-
-	fwrite(&rdata_count, sizeof(rdata_count), 1, f);
-	fwrite(&rrsig_count, sizeof(rrsig_count), 1, f);
-
+	/* Calculate rrset rdata count. */
 	dnslib_rdata_t *tmp_rdata = rrset->rdata;
+	while(tmp_rdata->next != rrset->rdata) {
+		tmp_rdata = tmp_rdata->next;
+		rdata_count++;
+	}
+
+	fwrite_wrapper(&rdata_count, sizeof(rdata_count), 1, f);
+	fwrite_wrapper(&has_rrsig, sizeof(has_rrsig), 1, f);
+
+	tmp_rdata = rrset->rdata;
 
 	while (tmp_rdata->next != rrset->rdata) {
 		dnslib_rdata_dump_binary(tmp_rdata, rrset->type, data);
 		tmp_rdata = tmp_rdata->next;
-		rdata_count++;
 	}
 	dnslib_rdata_dump_binary(tmp_rdata, rrset->type, data);
-	rdata_count++;
 
 	/* This is now obsolete, although I'd rather not use recursion - that
 	 * would probably not work */
 
 	if (rrset->rrsigs != NULL) {
 		dnslib_rrsig_set_dump_binary(rrset->rrsigs, data);
-		rrsig_count = 1;
 	}
-
-	fpos_t tmp_pos;
-
-	fgetpos(f, &tmp_pos);
-
-	fsetpos(f, &rrdata_count_pos);
-
-	fwrite(&rdata_count, sizeof(rdata_count), 1, f);
-	fwrite(&rrsig_count, sizeof(rrsig_count), 1, f);
-
-	fsetpos(f, &tmp_pos);
 }
 
 /*!
@@ -1767,59 +1517,45 @@ static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, void *data)
 static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 {
 	arg_t *args = (arg_t *)data;
-
-	dnslib_zone_t *zone = (dnslib_zone_t *)args->arg3;
-
 	FILE *f = (FILE *)args->arg1;
 
-
-	node_count++;
+//	node_count++;
 	/* first write dname */
 	assert(node->owner != NULL);
 
-	if (!dnslib_node_is_non_auth(node)) {
-		zone->node_count++;
-	}
+	/* Write owner ID. */
+	uint32_t owner_id = node->owner->id;
+	fwrite_wrapper(&owner_id, sizeof(owner_id), 1, f);
+//	printf("ID write: %d (%s)\n", node->owner->id,
+//	       dnslib_dname_to_str(node->owner));
 
-	dnslib_dname_dump_binary(node->owner, f);
-
-	fwrite(&(node->owner->node), sizeof(void *), 1, f);
-
-	debug_dnslib_zdump("Written id: %p\n", node->owner->node);
-
-	/* TODO investigate whether this is necessary */
 	if (node->parent != NULL) {
-		fwrite(&(node->parent->owner->node), sizeof(void *), 1, f);
+		uint32_t parent_id = node->parent->owner->id;
+		fwrite_wrapper(&parent_id, sizeof(parent_id), 1, f);
 	} else {
-		fwrite(&(node->parent), sizeof(void *), 1, f);
+		uint32_t parent_id = 0;
+		fwrite_wrapper(&parent_id, sizeof(parent_id), 1, f);
 	}
 
-	fwrite(&(node->flags), sizeof(node->flags), 1, f);
+	fwrite_wrapper(&(node->flags), sizeof(node->flags), 1, f);
 
 	debug_dnslib_zdump("Written flags: %u\n", node->flags);
 
 	if (node->nsec3_node != NULL) {
-		fwrite(&node->nsec3_node->owner->node, sizeof(void *), 1, f);
-		debug_dnslib_zdump("Written nsec3 node id: %p\n",
-			 node->nsec3_node->owner->node);
+		uint32_t nsec3_id = node->nsec3_node->owner->id;
+		fwrite_wrapper(&nsec3_id, sizeof(nsec3_id), 1, f);
+		debug_dnslib_zdump("Written nsec3 node id: %u\n",
+			 node->nsec3_node->owner->id);
 	} else {
-		fwrite(&node->nsec3_node, sizeof(void *), 1, f);
-		debug_dnslib_zdump("Written nsec3 node id: %p\n",
-			 node->nsec3_node);
+		uint32_t nsec3_id = 0;
+		fwrite_wrapper(&nsec3_id, sizeof(nsec3_id), 1, f);
 	}
 
 	/* Now we need (or do we?) count of rrsets to be read
 	 * but that number is yet unknown */
 
-	fpos_t rrset_count_pos;
-
-	fgetpos(f, &rrset_count_pos);
-
-	debug_dnslib_zdump("Position rrset_count: %ld\n", ftell(f));
-
-	uint8_t rrset_count = 0;
-
-	fwrite(&rrset_count, sizeof(rrset_count), 1, f);
+	uint16_t rrset_count = node->rrset_count;
+	fwrite_wrapper(&rrset_count, sizeof(rrset_count), 1, f);
 
 	const skip_node_t *skip_node = skip_first(node->rrsets);
 
@@ -1832,26 +1568,12 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 	do {
 		tmp = (dnslib_rrset_t *)skip_node->value;
-		rrset_count++;
 		dnslib_rrset_dump_binary(tmp, data);
 	} while ((skip_node = skip_next(skip_node)) != NULL);
 
-	fpos_t tmp_pos;
-
-	fgetpos(f, &tmp_pos);
-
 	debug_dnslib_zdump("Position after all rrsets: %ld\n", ftell(f));
-
-	fsetpos(f, &rrset_count_pos);
-
 	debug_dnslib_zdump("Writing here: %ld\n", ftell(f));
-
-	fwrite(&rrset_count, sizeof(rrset_count), 1, f);
-
-	fsetpos(f, &tmp_pos);
-
 	debug_dnslib_zdump("Function ends with: %ld\n\n", ftell(f));
-
 }
 
 /*!
@@ -1890,14 +1612,77 @@ static int zone_is_secure(dnslib_zone_t *zone)
 static void log_cyclic_errors_in_zone(err_handler_t *handler,
 				      dnslib_zone_t *zone,
 				      dnslib_node_t *last_node,
+				      const dnslib_node_t *first_nsec3_node,
+				      const dnslib_node_t *last_nsec3_node,
 				      char do_checks)
 {
 	if (do_checks == 3) {
-		/* TODO I can check it points somewhere allright, but
-		 * to be sure it's really the first node I would have to have
-		 * first node of NSEC3 tree as well - impossible without
-		 * receiving it explicitely or going through the whole tree.*/
-		;
+		/* Each NSEC3 node should only contain one RRSET. */
+		assert(last_nsec3_node && first_nsec3_node);
+		const dnslib_rrset_t *nsec3_rrset =
+			dnslib_node_rrset(last_nsec3_node,
+		                              DNSLIB_RRTYPE_NSEC3);
+		if (nsec3_rrset == NULL) {
+			err_handler_handle_error(handler, last_nsec3_node,
+						 ZC_ERR_NSEC3_RDATA_CHAIN);
+			return;
+		}
+
+		/* check that next dname is in the zone */
+		uint8_t *next_dname_decoded = NULL;
+		size_t real_size = 0;
+
+		if (((real_size = base32hex_encode_alloc(((char *)
+			rdata_item_data(&(nsec3_rrset->rdata->items[4]))) + 1,
+			rdata_item_size(&nsec3_rrset->rdata->items[4]) - 1,
+			(char **)&next_dname_decoded)) <= 0) ||
+			(next_dname_decoded == NULL)) {
+			fprintf(stderr, "Could not encode base32 string!\n");
+			err_handler_handle_error(handler, last_nsec3_node,
+						 ZC_ERR_NSEC3_RDATA_CHAIN);
+			return;
+		}
+
+		/* This is why allocate maximum length of decoded string + 1 */
+		memmove(next_dname_decoded + 1, next_dname_decoded, real_size);
+		next_dname_decoded[0] = real_size;
+
+		dnslib_dname_t *next_dname =
+			dnslib_dname_new_from_wire(next_dname_decoded,
+						   real_size + 1, NULL);
+		if (next_dname == NULL) {
+			fprintf(stderr, "Could not allocate dname!\n");
+			err_handler_handle_error(handler, last_nsec3_node,
+						 ZC_ERR_ALLOC);
+			return;
+		}
+
+		free(next_dname_decoded);
+
+		if (dnslib_dname_cat(next_dname,
+			     dnslib_node_owner(dnslib_zone_apex(zone))) ==
+		                NULL) {
+			fprintf(stderr, "Could not concatenate dnames!\n");
+			err_handler_handle_error(handler, last_nsec3_node,
+						 ZC_ERR_NSEC3_RDATA_CHAIN);
+			return;
+		}
+
+		/* Check it points somewhere first. */
+		if (dnslib_zone_find_nsec3_node(zone, next_dname) == NULL) {
+			err_handler_handle_error(handler, last_nsec3_node,
+						 ZC_ERR_NSEC3_RDATA_CHAIN);
+		}
+
+		/* Compare with the actual first NSEC3 node. */
+		if (dnslib_dname_compare(first_nsec3_node->owner,
+		                         next_dname) != 0) {
+			err_handler_handle_error(handler, last_nsec3_node,
+						 ZC_ERR_NSEC3_RDATA_CHAIN);
+		}
+
+		dnslib_dname_free(&next_dname);
+
 	} else if (do_checks == 2 ) {
 		if (last_node == NULL) {
 			err_handler_handle_error(handler, last_node,
@@ -1931,20 +1716,103 @@ static void log_cyclic_errors_in_zone(err_handler_t *handler,
 	}
 }
 
+/*!
+ * \brief Safe wrapper around fwrite.
+ *
+ * \param dst Destination pointer.
+ * \param size Size of element to be written.
+ * \param n Number of elements to be written.
+ * \param fp File to write to.
+ *
+ * \retval > 0 if succesfull.
+ * \retval 0 if failed.
+ */
+static inline int fwrite_wrapper_safe(const void *src,
+                                      size_t size, size_t n, FILE *fp)
+{
+	int rc = fwrite_wrapper(src, size, n, fp);
+	if (rc != n) {
+		fprintf(stderr, "fwrite_wrapper: invalid write %d (expected %zu)\n", rc,
+			n);
+	}
+
+	return rc == n;
+}
+
+/*!< \todo some global variable indicating error! */
+static void dump_dname_with_id(const dnslib_dname_t *dname, FILE *f)
+{
+	uint32_t id = dname->id;
+	fwrite_wrapper(&id, sizeof(id), 1, f);
+	dnslib_dname_dump_binary(dname, f);
+/*	if (!fwrite_wrapper_safe(&dname->id, sizeof(dname->id), 1, f)) {
+		return DNSLIB_ERROR;
+	} */
+}
+
+static void dump_dname_from_tree(struct dname_table_node *node,
+				 void *data)
+{
+	FILE *f = (FILE *)data;
+	dump_dname_with_id(node->dname, f);
+}
+
+static int dnslib_dump_dname_table(const dnslib_dname_table_t *dname_table,
+				   FILE *f)
+{
+	/* Go through the tree and dump each dname along with its ID. */
+	dnslib_dname_table_tree_inorder_apply(dname_table,
+	                                      dump_dname_from_tree, (void *)f);
+//	TREE_FORWARD_APPLY(dname_table->tree, dname_table_node, avl,
+//			   dump_dname_from_tree, (void *)f);
+
+	return DNSLIB_EOK;
+}
+
+static void save_node_from_tree(dnslib_node_t *node, void *data)
+{
+	arg_t *arg = (arg_t *)data;
+	/* Increment node count */
+	(*((uint32_t *)(arg->arg1)))++;
+	/* Save the first node only */
+	if (arg->arg2 == NULL) {
+		arg->arg2 = (void *)node;
+	}
+	arg->arg3 = (void *)node;
+}
+
 int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 			int do_checks, const char *sfilename)
 {
 	FILE *f;
-
 	f = fopen(filename, "wb");
-
 	if (f == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
-	zone->node_count = 0;
+//	skip_list_t *encloser_list = skip_create_list(compare_pointers);
+	arg_t arguments;
+	/* Memory to be derefenced in the save_node_from_tree function. */
+	uint32_t node_count = 0;
+	arguments.arg1 = &node_count;
+	arguments.arg2 = NULL;
 
-	skip_list_t *encloser_list = skip_create_list(compare_pointers);
+	/* Count number of normal nodes. */
+	dnslib_zone_tree_apply_inorder(zone, save_node_from_tree, &arguments);
+	/* arg1 is now count of normal nodes */
+	uint32_t normal_node_count = *((uint32_t *)arguments.arg1);
+
+	node_count = 0;
+	arguments.arg1 = &node_count;
+	arguments.arg2 = NULL;
+
+	/* Count number of NSEC3 nodes. */
+	dnslib_zone_nsec3_apply_inorder(zone, save_node_from_tree, &arguments);
+	uint32_t nsec3_node_count = *((uint32_t *)arguments.arg1);
+	/* arg2 is the first NSEC3 node - used in sem checks. */
+	/* arg3 is the last NSEC3 node - used in sem checks. */
+	const dnslib_node_t *first_nsec3_node = (dnslib_node_t *)arguments.arg2;
+	const dnslib_node_t *last_nsec3_node = (dnslib_node_t *)arguments.arg3;
 
 	if (do_checks && zone_is_secure(zone)) {
 		do_checks += zone_is_secure(zone);
@@ -1965,77 +1833,90 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 							 ZC_ERR_MISSING_SOA);
 			}
 		}
-	}
 
-	dnslib_node_t *last_node = NULL;
+		dnslib_node_t *last_node = NULL;
 
-	zone_save_enclosers_sem_check(zone, encloser_list, do_checks, handler,
-				      &last_node);
-
-	if (do_checks) {
-		log_cyclic_errors_in_zone(handler, zone, last_node, do_checks);
+		zone_do_sem_checks(zone, do_checks, handler, &last_node);
+		log_cyclic_errors_in_zone(handler, zone, last_node,
+		                          first_nsec3_node, last_nsec3_node,
+		                          do_checks);
 		err_handler_log_all(handler);
 		free(handler);
 	}
 
+	dnslib_dump_crc = crc_init();
+
 	/* Start writing header - magic bytes. */
-	size_t header_len = MAGIC_LENGTH;
 	static const uint8_t MAGIC[MAGIC_LENGTH] = MAGIC_BYTES;
-	fwrite(&MAGIC, sizeof(uint8_t), MAGIC_LENGTH, f);
+	fwrite_wrapper(&MAGIC, sizeof(uint8_t), MAGIC_LENGTH, f);
 
 	/* Write source file length. */
 	uint32_t sflen = 0;
 	if (sfilename) {
 		sflen = strlen(sfilename) + 1;
 	}
-	fwrite(&sflen, sizeof(uint32_t), 1, f);
-	header_len += sizeof(uint32_t);
+	fwrite_wrapper(&sflen, sizeof(uint32_t), 1, f);
 
 	/* Write source file. */
-	fwrite(sfilename, sflen, 1, f);
-	header_len += sflen;
+	fwrite_wrapper(sfilename, sflen, 1, f);
 
 	/* Notice: End of header,
-	 * length must be marked for future return.
 	 */
 
 	/* Start writing compiled data. */
-	fwrite(&node_count, sizeof(node_count), 1, f);
-	fwrite(&node_count, sizeof(node_count), 1, f);
-	fwrite(&zone->node_count,
-	       sizeof(zone->node_count),
-	       1, f);
+	fwrite_wrapper(&normal_node_count, sizeof(normal_node_count), 1, f);
+	fwrite_wrapper(&nsec3_node_count, sizeof(nsec3_node_count), 1, f);
+	uint32_t auth_node_count = zone->node_count;
+	fwrite_wrapper(&auth_node_count,
+	       sizeof(auth_node_count), 1, f);
 
-	arg_t arguments;
+	/* Write total number of dnames */
+	assert(zone->dname_table);
+	uint32_t total_dnames = zone->dname_table->id_counter;
+	fwrite_wrapper(&total_dnames,
+	       sizeof(total_dnames), 1, f);
 
+	/* Write dname table. */
+	if (dnslib_dump_dname_table(zone->dname_table, f) != DNSLIB_EOK) {
+		return DNSLIB_ERROR;
+	}
 
 	arguments.arg1 = f;
-	arguments.arg2 = encloser_list;
+//	arguments.arg2 = encloser_list;
 	arguments.arg3 = zone;
 
 	/* TODO is there a way how to stop the traversal upon error? */
 	dnslib_zone_tree_apply_inorder(zone, dnslib_node_dump_binary,
 				       (void *)&arguments);
 
-	uint tmp_count = node_count;
-
-	node_count = 0;
 	dnslib_zone_nsec3_apply_inorder(zone, dnslib_node_dump_binary,
 					(void *)&arguments);
 
-	/* Update counters. */
-	fseek(f, header_len, SEEK_SET);
-	fwrite(&tmp_count, sizeof(tmp_count), 1, f);
-	fwrite(&node_count, sizeof(node_count), 1, f);
-	fwrite(&zone->node_count,
-	       sizeof(zone->node_count),
-	       1, f);
+	dnslib_dump_crc = crc_finalize(dnslib_dump_crc);
+	/* Write CRC to separate .crc file. */
+	char *crc_path =
+		malloc(sizeof(char) * (strlen(filename) + strlen(".crc") + 1));
+	if (unlikely(!crc_path)) {
+		fclose(f);
+		return DNSLIB_ENOMEM;
+	}
+	memset(crc_path, 0,
+	       sizeof(char) * (strlen(filename) + strlen(".crc") + 1));
+	memcpy(crc_path, filename, sizeof(char) * strlen(filename));
 
-	debug_dnslib_zdump("written %d normal nodes\n", tmp_count);
+	crc_path = strcat(crc_path, ".crc");
+	FILE *f_crc = fopen(crc_path, "w");
+	if (unlikely(!f_crc)) {
+		debug_dnslib_zload("dnslib_zload_open: failed to open '%s'\n",
+		                   crc_path);
+		fclose(f);
+		free(crc_path);
+		return ENOENT;
+	}
+	free(crc_path);
 
-	debug_dnslib_zdump("written %d nsec3 nodes\n", node_count);
-
-	debug_dnslib_zdump("authorative nodes: %u\n", zone->node_count);
+	fprintf(f_crc, "%lu\n", (unsigned long)dnslib_dump_crc);
+	fclose(f_crc);
 
 	fclose(f);
 

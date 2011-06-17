@@ -65,7 +65,7 @@ int notify_create_request(const dnslib_zone_t *zone, uint8_t *buffer,
  * \retval KNOT_ERROR
  */
 int notify_process_request(dnslib_packet_t *notify,
-                           const dnslib_zonedb_t *zonedb,
+                           dnslib_zonedb_t *zonedb,
                            const dnslib_zone_t **zone,
                            uint8_t *buffer, size_t *size);
 

@@ -33,8 +33,9 @@ struct dnslib_dname {
 	 */
 	unsigned int size;
 	uint8_t *labels;
-	short label_count;
+	unsigned short label_count;
 	struct dnslib_node *node; /*!< Zone node the domain name belongs to. */
+	unsigned int id; /*!< ID of domain name used in zone dumping. */
 };
 
 typedef struct dnslib_dname dnslib_dname_t;
@@ -326,6 +327,10 @@ int dnslib_dname_compare_cs(const dnslib_dname_t *d1, const dnslib_dname_t *d2);
  *         the operation is not valid (e.g. \a d1 is a FQDN).
  */
 dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2);
+
+void dnslib_dname_set_id(dnslib_dname_t *dname, unsigned int id);
+
+unsigned int dnslib_dname_get_id(const dnslib_dname_t *dname);
 
 #endif /* _KNOT_DNSLIB_DNAME_H_ */
 

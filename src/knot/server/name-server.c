@@ -167,6 +167,11 @@ static dnslib_rrset_t *ns_synth_from_wildcard(
 static void ns_check_wildcard(const dnslib_dname_t *name, dnslib_packet_t *resp,
                               const dnslib_rrset_t **rrset)
 {
+	assert(name != NULL);
+	assert(resp != NULL);
+	assert(rrset != NULL);
+	assert(*rrset != NULL);
+
 	if (dnslib_dname_is_wildcard((*rrset)->owner)) {
 		dnslib_rrset_t *synth_rrset =
 			ns_synth_from_wildcard(*rrset, name);
@@ -361,6 +366,11 @@ DEBUG_NS(
 		while (i < dnslib_node_rrset_count(node)) {
 			assert(rrsets[i] != NULL);
 			rrset = dnslib_rrset_rrsigs(rrsets[i]);
+
+			if (rrset == NULL) {
+				++i;
+				continue;
+			}
 
 			ns_check_wildcard(name, resp, &rrset);
 			ret = dnslib_response2_add_rrset_answer(resp, rrset, 1,
@@ -1949,6 +1959,15 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 	                                        1);
 	if (ret != DNSLIB_EOK) {
 		// something is really wrong
+		return KNOT_ERROR;
+	}
+
+	// add the SOA's RRSIG
+	const dnslib_rrset_t *rrset = dnslib_rrset_rrsigs(soa_rrset);
+	if (rrset != NULL
+	    && (ret = dnslib_response2_add_rrset_answer(xfr->response, rrset,
+	                                              0, 0, 1)) != DNSLIB_EOK) {
+		// something is really wrong, these should definitely fit in
 		return KNOT_ERROR;
 	}
 

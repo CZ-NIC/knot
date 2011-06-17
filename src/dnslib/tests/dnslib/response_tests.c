@@ -1157,12 +1157,12 @@ static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 				(rdata->items[i].raw_data + 1),
 				ldns_rdf_data(ldns_rr_rdf(rr, i)),
 				rdata->items[i].raw_data[0]) != 0) {
-				hex_print((char *)
-					  (rdata->items[i].raw_data + 1),
-					  rdata->items[i].raw_data[0]);
-				hex_print((char *)
-					  ldns_rdf_data(ldns_rr_rdf(rr, i)),
-					  rdata->items[i].raw_data[0]);
+//				hex_print((char *)
+//					  (rdata->items[i].raw_data + 1),
+//					  rdata->items[i].raw_data[0]);
+//				hex_print((char *)
+//					  ldns_rdf_data(ldns_rr_rdf(rr, i)),
+//					  rdata->items[i].raw_data[0]);
 				diag("Raw data wires in rdata differ in item "
 				     "%d", i);
 

@@ -62,48 +62,48 @@ int inet_pton(int af, const char *src, void *dst)
 	/* NOTREACHED */
 }
 
-int my_b32_pton(const char *src, uint8_t *target, size_t tsize)
-{
-	char ch;
-	size_t p = 0;
+//int my_b32_pton(const char *src, uint8_t *target, size_t tsize)
+//{
+//	char ch;
+//	size_t p = 0;
 
-	memset(target, '\0', tsize);
-	while ((ch = *src++)) {
-		uint8_t d;
-		size_t b;
-		size_t n;
+//	memset(target, '\0', tsize);
+//	while ((ch = *src++)) {
+//		uint8_t d;
+//		size_t b;
+//		size_t n;
 
-		if (p + 5 >= tsize * 8) {
-			return -1;
-		}
+//		if (p + 5 >= tsize * 8) {
+//			return -1;
+//		}
 
-		if (isspace(ch)) {
-			continue;
-		}
+//		if (isspace(ch)) {
+//			continue;
+//		}
 
-		if (ch >= '0' && ch <= '9') {
-			d = ch - '0';
-		} else if (ch >= 'A' && ch <= 'V') {
-			d = ch - 'A' + 10;
-		} else if (ch >= 'a' && ch <= 'v') {
-			d = ch - 'a' + 10;
-		} else {
-			return -1;
-		}
+//		if (ch >= '0' && ch <= '9') {
+//			d = ch - '0';
+//		} else if (ch >= 'A' && ch <= 'V') {
+//			d = ch - 'A' + 10;
+//		} else if (ch >= 'a' && ch <= 'v') {
+//			d = ch - 'a' + 10;
+//		} else {
+//			return -1;
+//		}
 
-		b = 7 - p % 8;
-		n = p / 8;
+//		b = 7 - p % 8;
+//		n = p / 8;
 
-		if (b >= 4) {
-			target[n] |= d << (b - 4);
-		} else {
-			target[n] |= d >> (4 - b);
-			target[n+1] |= d << (b + 4);
-		}
-		p += 5;
-	}
-	return (p + 7) / 8;
-}
+//		if (b >= 4) {
+//			target[n] |= d << (b - 4);
+//		} else {
+//			target[n] |= d >> (4 - b);
+//			target[n+1] |= d << (b + 4);
+//		}
+//		p += 5;
+//	}
+//	return (p + 7) / 8;
+//}
 
 
 #define Assert(Cond) if (!(Cond)) abort()
