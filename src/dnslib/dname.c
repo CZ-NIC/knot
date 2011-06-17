@@ -330,6 +330,7 @@ dnslib_dname_t *dnslib_dname_new()
 	dname->node = NULL;
 	dname->labels = NULL;
 	dname->label_count = -1;
+	dname->id = 0;
 
 	return dname;
 }
@@ -343,7 +344,8 @@ dnslib_dname_t *dnslib_dname_new_from_str(const char *name, uint size,
 		return NULL;
 	}
 
-	dnslib_dname_t *dname = dnslib_dname_alloc();
+//	dnslib_dname_t *dname = dnslib_dname_alloc();
+	dnslib_dname_t *dname = dnslib_dname_new();
 
 	if (dname == NULL) {
 		ERR_ALLOC_FAILED;
@@ -366,6 +368,7 @@ dnslib_dname_t *dnslib_dname_new_from_str(const char *name, uint size,
 	assert(dname->name != NULL);
 
 	dname->node = node;
+	dname->id = 0;
 
 	return dname;
 }
@@ -424,6 +427,7 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 	assert(dname->label_count >= 0);
 
 	dname->node = node;
+	dname->id = 0;
 
 	return dname;
 }
@@ -433,7 +437,6 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 int dnslib_dname_from_wire(const uint8_t *name, uint size,
                            struct dnslib_node *node, dnslib_dname_t *target)
 {
-	/* Change by JK, was target != NULL, which made no sense to me */
 	if (name == NULL || target == NULL) {
 		return DNSLIB_EBADARG;
 	}
@@ -441,6 +444,7 @@ int dnslib_dname_from_wire(const uint8_t *name, uint size,
 	memcpy(target->name, name, size);
 	target->size = size;
 	target->node = node;
+	target->id = 0;
 
 	return dnslib_dname_find_labels(target, 0);
 }
@@ -773,7 +777,7 @@ void dnslib_dname_free(dnslib_dname_t **dname)
 		free((*dname)->labels);
 	}
 
-	slab_free(*dname);
+//	slab_free(*dname);
 	*dname = NULL;
 }
 
@@ -845,4 +849,18 @@ dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2)
 	assert(d1->label_count >= 0);
 
 	return d1;
+}
+
+void dnslib_dname_set_id(dnslib_dname_t *dname, unsigned int id)
+{
+	dname->id = id;
+}
+
+unsigned int dnslib_dname_get_id(const dnslib_dname_t *dname)
+{
+	if (dname != NULL) {
+		return dname->id;
+	} else {
+		return 0; /* 0 should never be used and is reserved for err. */
+	}
 }

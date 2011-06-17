@@ -22,6 +22,8 @@
 #include "dnslib/node.h"
 #include "dnslib/rdata.h"
 #include "dnslib/zone.h"
+#include "dnslib/dname-table.h"
+#include "dnslib/dname-table.h"
 #include "common/slab/slab.h"
 
 #define MAXRDATALEN	64	/*!< Maximum number of RDATA items. */
@@ -54,6 +56,8 @@ struct lex_data {
 
 #define DEFAULT_TTL 3600
 
+int yylex_destroy();
+
 /*! \todo Implement ZoneDB. */
 typedef void namedb_type;
 
@@ -79,6 +83,8 @@ struct zparser {
 	dnslib_dname_t *prev_dname; /*!< Previous dname. */
 	dnslib_node_t *default_apex; /*!< Zone default apex. */
 
+	dnslib_dname_table_t *dname_table;
+
 	dnslib_node_t *last_node; /*!< Last processed node. */
 
 	char *dname_str; /*!< Temporary dname. */
@@ -86,8 +92,6 @@ struct zparser {
 	int error_occurred; /*!< Error occured flag */
 	unsigned int errors; /*!< Number of errors. */
 	unsigned int line; /*!< Current line */
-
-	size_t id; /*!< Current dname ID */
 
 	dnslib_rrset_t *current_rrset; /*!< Current RRSet. */
 	dnslib_rdata_item_t *temporary_items; /*!< Temporary rdata items. */
@@ -430,6 +434,9 @@ void zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
  *
  */
 void zparser_free();
+
+int save_dnames_in_table(dnslib_dname_table_t *table,
+                         dnslib_rrset_t *rrset);
 
 #endif /* _KNOT_ZONEPARSER_H_ */
 

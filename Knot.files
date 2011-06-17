@@ -3,6 +3,7 @@ Makefile.am
 Doxy.page.h
 Doxyfile
 Doxyfile.devel
+configure.ac
 src/Makefile.am
 src/common/slab/malloc.c
 src/common/slab/malloc.h
@@ -31,6 +32,8 @@ src/common/evqueue.c
 src/common/evqueue.h
 src/common/errors.h
 src/common/errors.c
+src/common/crc.c
+src/common/crc.h
 src/dnslib/dnslib-common.h
 src/dnslib/dname.h
 src/dnslib/dname.c
@@ -97,6 +100,7 @@ src/dnslib/tests/unittests_dnslib.c
 src/zcompile/parser-descriptor.h
 src/zcompile/parser-descriptor.c
 src/zcompile/parser-util.h
+src/zcompile/parser-util.c
 src/zcompile/zcompile.c
 src/zcompile/zcompile.h
 src/zcompile/zparser.y
@@ -159,3 +163,5 @@ tests/querytcp.c
 src/zcompile/tests/unittests_zp_main.c
 src/zcompile/tests/zcompile_tests.c
 src/zcompile/zcompile-error.c
+src/dnslib/dname-table.h
+src/dnslib/dname-table.c
