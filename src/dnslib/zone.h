@@ -55,6 +55,10 @@ struct dnslib_zone {
 	avl_tree_t *tree;          /*!< AVL tree for holding zone nodes. */
 	avl_tree_t *nsec3_nodes;   /*!< AVL tree for holding NSEC3 nodes. */
 	ck_hash_table_t *table;     /*!< Hash table for holding zone nodes. */
+
+	/*!
+	 * \todo Unify the use of this field - authoritative nodes vs. all.
+	 */
 	uint node_count;
 	dnslib_nsec3_params_t nsec3_params;
 
@@ -132,6 +136,8 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node);
  * \retval DNSLIB_EBADZONE
  */
 int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node);
+
+int dnslib_zone_create_and_fill_hash_table(dnslib_zone_t *zone);
 
 /*!
  * \brief Tries to find a node with the specified name in the zone.
