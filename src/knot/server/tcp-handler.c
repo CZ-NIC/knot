@@ -5,10 +5,11 @@
 #include <netinet/tcp.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <sys/epoll.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <ev.h>
 
 #include "common/sockaddr.h"
 #include "knot/common.h"
@@ -19,33 +20,18 @@
 #include "knot/stat/stat.h"
 #include "dnslib/wire.h"
 
-/*! \brief TCP connection pool. */
-typedef struct tcp_pool_t {
-	int                epfd;       /*!< Epoll socket. */
-	int                evcount;    /*!< Epoll events counter */
-	struct epoll_event *events;    /*!< Epoll events backing store. */
-	int                ebs_size;   /*!< Epoll events backing store size. */
-	pthread_mutex_t    mx;         /*!< Pool synchronisation lock. */
+/*! \brief TCP connection. */
+typedef struct tcp_io_t {
+	ev_io io;
 	ns_nameserver_t    *ns;        /* reference to name server */
 	iohandler_t        *io_h;      /* master I/O handler */
 	xfrhandler_t       *xfr_h;     /* XFR handler */
 	stat_t             *stat;      /* statistics gatherer */
-} tcp_pool_t;
+} tcp_io_t;
 
 /*
  * Forward decls.
  */
-/*! \brief Lock TCP pool. */
-static inline int tcp_pool_lock(tcp_pool_t *pool)
-{
-	return pthread_mutex_lock(&pool->mx);
-}
-
-/*! \brief Unlock TCP pool. */
-static inline int tcp_pool_unlock(tcp_pool_t *pool)
-{
-	return pthread_mutex_unlock(&pool->mx);
-}
 
 /*!
  * \brief Send TCP message.
@@ -137,6 +123,7 @@ static inline int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	return n;
 }
 
+#if 0
 /*!
  * \brief TCP event handler function.
  *
@@ -237,38 +224,6 @@ static inline int tcp_handle(tcp_pool_t *pool, int fd,
 	}
 
 	return res;
-}
-
-/*!
- * \brief Reserve backing store for a given number of sockets.
- *
- * \param pool Given TCP pool instance.
- * \param size Minimum requested backing store size.
- * \retval 0 on success.
- * \retval <0 on error.
- */
-static int tcp_pool_reserve(tcp_pool_t *pool, uint size)
-{
-	if (pool->ebs_size >= size) {
-		return 0;
-	}
-
-	// Alloc new events
-	struct epoll_event *new_events =
-	                malloc(size * sizeof(struct epoll_event));
-
-	if (new_events == 0) {
-		return -1;
-	}
-
-	// Free and replace old events backing-store
-	if (pool->events != 0) {
-		free(pool->events);
-	}
-
-	pool->ebs_size = size;
-	pool->events = new_events;
-	return 0;
 }
 
 /*!
@@ -508,6 +463,12 @@ static int tcp_pool(dthread_t *thread)
 	debug_net("tcp: pool #%d going to idle.\n", pool->epfd);
 	return 0;
 }
+#endif
+
+static void tcp_accept(EV_P_ ev_io *w, int revents)
+{
+	tcp_io_t *tcp_w = (tcp_io_t *)w;
+}
 
 /*
  * Public APIs.
@@ -528,17 +489,18 @@ int tcp_master(dthread_t *thread)
 	debug_dt("dthreads: [%p] is TCP master, state: %d\n",
 	         thread, thread->state);
 
-	/*
-	 * Create N pools of TCP connections.
-	 * Each pool is responsible for its own
-	 * set of clients.
-	 *
-	 * Pool instance is deallocated by their assigned thread.
-	 */
-	int pool_id = -1;
+	/* Create event loop. */
+	struct ev_loop *loop = ev_default_loop(0);
 
-	// Accept clients
+	/* Watch bound socket for incoming connections. */
+	tcp_io_t tcp_w;
+	ev_io_init((ev_io *)&tcp_w, tcp_accept, master_sock, EV_READ);
+	ev_io_start(loop, (ev_io *)&tcp_w);
+
+	/* Accept clients. */
 	debug_net("tcp: running 1 master with %d pools\n", unit->size - 1);
+
+
 	for (;;) {
 
 		// Cancellation point
@@ -548,6 +510,10 @@ int tcp_master(dthread_t *thread)
 			return KNOT_EOK;
 		}
 
+		/*! \bug Implement cancellation point somehow. */
+		ev_loop(loop, 0);
+	}
+#if 0
 		// Accept on master socket
 		int incoming = accept(master_sock, 0, 0);
 
@@ -589,7 +555,7 @@ int tcp_master(dthread_t *thread)
 			dt_unit_unlock(unit);
 		}
 	}
-
+#endif
 
 	// Stop whole unit
 	debug_net("tcp: stopping (%d master, %d pools)\n", 1, unit->size - 1);

@@ -1,6 +1,7 @@
 #include <pthread.h>
 #include <sched.h>
 #include <sys/select.h>
+#include <signal.h>
 
 #include "tests/knot/dthreads_tests.h"
 #include "knot/server/dthreads.h"

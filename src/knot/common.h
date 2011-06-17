@@ -20,7 +20,10 @@
  * Common types and constants.
  */
 
+#ifndef UINT_DEFINED
 typedef unsigned int uint; /*!< \brief Unsigned. */
+#define UINT_DEFINED
+#endif
 
 #define PROJECT_NAME PACKAGE /*!< \brief Project name. */
 #define PROJECT_VER  0x000100  /*!< \brief  0xMMIIRR (MAJOR,MINOR,REVISION). */
