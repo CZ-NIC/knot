@@ -709,7 +709,7 @@ uint8_t dnslib_dname_label_size(const dnslib_dname_t *dname, int i)
 //	       dname->labels[i + 1] - dname->labels[i]);
 
 	assert(i >= 0);
-	assert(i + 1 == dname->label_count
+	assert(dname->size == 1 || i + 1 == dname->label_count
 	       || dname->labels[i + 1] - dname->labels[i] - 1
 	          == dname->name[dname->labels[i]]);
 	return dname->name[dname->labels[i]];
