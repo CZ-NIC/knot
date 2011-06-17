@@ -594,6 +594,36 @@ static int dnslib_zone_find_in_tree(const dnslib_zone_t *zone,
 }
 
 /*----------------------------------------------------------------------------*/
+
+static void dnslib_zone_node_to_hash(dnslib_node_t *node, void *data)
+{
+	assert(node != NULL && node->owner != NULL && data != NULL);
+
+	dnslib_zone_t *zone = (dnslib_zone_t *)data;
+	/*
+	 * By the original approach, only authoritative nodes and delegation
+	 * points should be added to the hash table, but currently, all nodes
+	 * are being added when the zone is created (don't know why actually:),
+	 * so we will do no distinction here neither.
+	 */
+
+#ifdef USE_HASH_TABLE
+DEBUG_DNSLIB_ZONE(
+	char *name = dnslib_dname_to_str(node->owner);
+	debug_dnslib_zone("Adding node with owner %s to hash table.\n", name);
+	free(name);
+);
+	//assert(zone->table != NULL);
+	// add the node also to the hash table if authoritative, or deleg. point
+	if (zone->table != NULL
+	    && ck_insert_item(zone->table, (const char *)node->owner->name,
+	                      node->owner->size, (void *)node) != 0) {
+		debug_dnslib_zone("Error inserting node into hash table!\n");
+	}
+#endif
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -711,6 +741,11 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 	TREE_INSERT(zone->tree, dnslib_node, avl, node);
 
 #ifdef USE_HASH_TABLE
+DEBUG_DNSLIB_ZONE(
+	char *name = dnslib_dname_to_str(node->owner);
+	debug_dnslib_zone("Adding node with owner %s to hash table.\n", name);
+	free(name);
+);
 	//assert(zone->table != NULL);
 	// add the node also to the hash table if authoritative, or deleg. point
 	if (zone->table != NULL
@@ -720,6 +755,7 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
 		return DNSLIB_EHASH;
 	}
 #endif
+
 	return DNSLIB_EOK;
 }
 
@@ -735,6 +771,50 @@ int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node)
 	// how to know if this is successfull??
 	TREE_INSERT(zone->nsec3_nodes, dnslib_node, avl, node);
 
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_zone_create_and_fill_hash_table(dnslib_zone_t *zone)
+{
+	if (zone == NULL || zone->apex == NULL || zone->apex->owner == NULL) {
+		return DNSLIB_EBADARG;
+	}
+	/*
+	 * 1) Create hash table.
+	 */
+#ifdef USE_HASH_TABLE
+	if (zone->node_count > 0) {
+		zone->table = ck_create_table(zone->node_count);
+		if (zone->table == NULL) {
+			return DNSLIB_ENOMEM;
+		}
+
+		// insert the apex into the hash table
+		if (ck_insert_item(zone->table,
+		                   (const char *)zone->apex->owner->name,
+		                   zone->apex->owner->size,
+		                   (void *)zone->apex) != 0) {
+			return DNSLIB_EHASH;
+		}
+	} else {
+		zone->table = NULL;
+		return DNSLIB_EOK;	// OK?
+	}
+
+	/*
+	 * 2) Fill in the hash table.
+	 *
+	 * In this point, the nodes in the zone must be adjusted, so that only
+	 * relevant nodes (authoritative and delegation points are inserted.
+	 *
+	 * TODO: how to know if this was successful??
+	 */
+	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl,
+	                   dnslib_zone_node_to_hash, zone);
+
+#endif
 	return DNSLIB_EOK;
 }
 
