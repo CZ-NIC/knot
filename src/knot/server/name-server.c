@@ -2753,7 +2753,24 @@ int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	                                    (dnslib_zone_t **)(&xfr->data));
 
 	if (ret > 0) { // transfer finished
+		debug_ns("ns_process_axfrin: AXFR finished, zone created.\n");
+		/*
+		 * Adjust zone so that node count is set properly and nodes are
+		 * marked authoritative / delegation point.
+		 */
 		xfr->zone = (dnslib_zone_t *)xfr->data;
+
+		debug_ns("ns_process_axfrin: adjusting zone.\n");
+		dnslib_zone_adjust_dnames(xfr->zone);
+
+		/* Create and fill hash table */
+		debug_ns("ns_process_axfrin: filling hash table.\n");
+		int rc = dnslib_zone_create_and_fill_hash_table(xfr->zone);
+		if (rc != DNSLIB_EOK) {
+			return KNOT_ERROR;	// TODO: change error code
+		}
+
+		dnslib_zone_dump(xfr->zone, 0);
 		return KNOT_EOK;
 	} else {
 		return ret;
