@@ -1542,7 +1542,7 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 			                                    chopped))) &&
 			    dnslib_dname_table_add_dname(parser->dname_table,
 							 chopped) != 0) {
-				dnslib_dname_free(chopped);
+				dnslib_dname_free(&chopped);
 				return NULL;
 			} else if (found_dname != NULL) {
 				dnslib_dname_free(&chopped);
