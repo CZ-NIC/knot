@@ -1437,7 +1437,7 @@ static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 }
 
 void set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
-	    uint16_t index)
+	                uint16_t index)
 {
 	/*
 	 * The bits are counted from left to right, so bit #0 is the
@@ -1449,7 +1449,8 @@ void set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
 	bits[window][bit / 8] |= (1 << (7 - bit % 8));
 }
 
-int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone, dnslib_rrset_t *rrsig)
+static int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone,
+                                        dnslib_rrset_t *rrsig)
 {
 	assert(rrsig != NULL);
 	assert(rrsig->rdata->items[0].raw_data);
@@ -1483,7 +1484,8 @@ int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone, dnslib_rrset_t *rrsig)
 	return KNOT_ZCOMPILE_EOK;
 }
 
-int find_rrset_for_rrsig_in_node(dnslib_node_t *node, dnslib_rrset_t *rrsig)
+static int find_rrset_for_rrsig_in_node(dnslib_node_t *node,
+                                        dnslib_rrset_t *rrsig)
 {
 	assert(rrsig != NULL);
 	assert(rrsig->rdata->items[0].raw_data);
@@ -1573,7 +1575,7 @@ static dnslib_node_t *create_node(dnslib_zone_t *zone,
 	return node;
 }
 
-void process_rrsigs_in_node(dnslib_node_t *node)
+static void process_rrsigs_in_node(dnslib_node_t *node)
 {
 	rrset_list_t *tmp = parser->node_rrsigs;
 	while (tmp != NULL) {
