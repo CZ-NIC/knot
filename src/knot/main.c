@@ -76,7 +76,7 @@ int main(int argc, char **argv)
 			       PROJECT_VER >> 16 & 0x000000ff,
 			       PROJECT_VER >> 8 & 0x000000ff,
 			       PROJECT_VER >> 0 & 0x000000ff);
-			return 1;
+			return 0;
 		case 'h':
 		case '?':
 		default:
