@@ -333,9 +333,9 @@ DEBUG_DNSLIB_ZONE(
 	}
 
 	// authorative node?
-	if (!dnslib_node_is_non_auth(node)) {
+//	if (!dnslib_node_is_non_auth(node)) {
 		zone->node_count++;
-	}
+//	}
 
 	// assure that owner has proper node
 	if (node->owner->node == NULL) {

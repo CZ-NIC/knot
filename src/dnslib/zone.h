@@ -137,6 +137,13 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node);
  */
 int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node);
 
+/*!
+ * \warning Always call dnslib_zone_adjust_dnames() prior to calling this
+ *          function. Otherwise the node count would not be set.
+ *
+ * \note Currently, all nodes (even non-authoritative) are inserted into the
+ *       hash table.
+ */
 int dnslib_zone_create_and_fill_hash_table(dnslib_zone_t *zone);
 
 /*!
@@ -202,7 +209,7 @@ int dnslib_zone_find_dname(const dnslib_zone_t *zone,
  *
  * \param zone Zone to search for the name.
  * \param name Domain name to find the previous domain name of.
- *
+ *dnslib_zone_adjust_dnames
  * \return Previous node in canonical order, or NULL if some parameter is wrong.
  */
 const dnslib_node_t *dnslib_zone_find_previous(const dnslib_zone_t *zone,
