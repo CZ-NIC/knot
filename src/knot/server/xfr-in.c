@@ -226,11 +226,15 @@ int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
 		return KNOT_EMALF;
 	}
 
-	dnslib_node_t *node = dnslib_node_new(rr->owner, NULL);
-	if (node == NULL) {
-		dnslib_packet_free(&packet);
-		return KNOT_ENOMEM;
-	}
+//	dnslib_node_t *node = dnslib_node_new(rr->owner, NULL);
+//	if (node == NULL) {
+//		dnslib_packet_free(&packet);
+//		return KNOT_ENOMEM;
+//	}
+
+//	dnslib_rrset_t *cur_rrset = NULL;
+
+	dnslib_node_t *node = NULL;
 
 	if (*zone == NULL) {
 		// create new zone
@@ -266,6 +270,13 @@ DEBUG_XFR(
 			return KNOT_EMALF;
 		}
 
+		node = dnslib_node_new(rr->owner, NULL);
+		if (node == NULL) {
+			dnslib_packet_free(&packet);
+			dnslib_rrset_deep_free(&rr, 1, 1, 1);
+			return KNOT_ENOMEM;
+		}
+
 		// the first RR is SOA and its owner and QNAME are the same
 		// create the zone
 		*zone = dnslib_zone_new(node, 0);
@@ -276,6 +287,19 @@ DEBUG_XFR(
 			/*! \todo Cleanup. */
 			return KNOT_ENOMEM;
 		}
+
+		// add the RRSet to the node
+		ret = dnslib_node_add_rrset(node, rr, 0);
+		if (ret != DNSLIB_EOK) {
+			dnslib_packet_free(&packet);
+			dnslib_node_free(&node, 0);
+			dnslib_rrset_deep_free(&rr, 1, 1, 1);
+			/*! \todo Cleanup. */
+			return KNOT_ERROR;
+		}
+
+		// take next RR
+		ret = dnslib_packet_parse_next_rr_answer(packet, &rr);
 	}
 
 	while (ret == DNSLIB_EOK && rr != NULL) {
@@ -284,7 +308,52 @@ DEBUG_XFR(
 		// now just dump
 		debug_xfr("\nNext RR:\n\n");
 		dnslib_rrset_dump(rr, 0);
-		dnslib_rrset_deep_free(&rr, 0, 1, 1);
+		//dnslib_rrset_deep_free(&rr, 0, 1, 1);
+
+		if (node == NULL
+		    && (node = dnslib_zone_get_node(*zone, rr->owner))
+		        == NULL
+		    && (node = dnslib_node_new(rr->owner, NULL)) == NULL) {
+			dnslib_packet_free(&packet);
+			dnslib_rrset_deep_free(&rr, 1, 1, 1);
+			return KNOT_ENOMEM;
+		}
+
+		assert(node != NULL);
+DEBUG_XFR(
+		char *name = dnslib_dname_to_str(rr->owner);
+		char *name2 = dnslib_dname_to_str(node->owner);
+		debug_xfr("RR owner: %s, node owner: %s\n", name, name2);
+		free(name);
+		free(name2);
+);
+//		assert(dnslib_dname_compare(rr->owner, node->owner) == 0);
+
+		if (dnslib_dname_compare(rr->owner, node->owner) == 0) {
+			dnslib_dname_t *old_owner = rr->owner;
+			rr->owner = node->owner;
+			dnslib_dname_free(&old_owner);
+		} else {
+			dnslib_zone_add_node(*zone, node);
+			node = dnslib_node_new(rr->owner, NULL);
+			if (node == NULL) {
+				dnslib_packet_free(&packet);
+				dnslib_rrset_deep_free(&rr, 1, 1, 1);
+				return KNOT_ENOMEM;
+			}
+		}
+
+		assert(node->owner == rr->owner);
+
+		ret = dnslib_node_add_rrset(node, rr, 1);
+		if (ret != DNSLIB_EOK) {
+			dnslib_packet_free(&packet);
+			dnslib_rrset_deep_free(&rr, 1, 1, 1);
+			/*! \todo What to do with the node?? */
+			return KNOT_ERROR;
+		}
+
+		rr = NULL;
 
 		// parse next RR
 		ret = dnslib_packet_parse_next_rr_answer(packet, &rr);
@@ -307,7 +376,7 @@ DEBUG_XFR(
 //	dnslib_rrset_deep_free(&rr, 1, 1, 1);
 
 	// for now, delete the created zone
-	dnslib_zone_deep_free(zone, 1);
+	//dnslib_zone_deep_free(zone, 1);
 
 	return (ret == DNSLIB_EOK) ? KNOT_EOK : KNOT_EMALF;
 }
