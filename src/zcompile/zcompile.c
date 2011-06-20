@@ -1510,7 +1510,8 @@ int find_rrset_for_rrsig_in_node(dnslib_node_t *node, dnslib_rrset_t *rrsig)
 	return KNOT_ZCOMPILE_EOK;
 }
 
-dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
+static dnslib_node_t *create_node(dnslib_zone_t *zone,
+	dnslib_rrset_t *current_rrset,
 	int (*node_add_func)(dnslib_zone_t *zone, dnslib_node_t *node),
 	dnslib_node_t *(*node_get_func)(const dnslib_zone_t *zone,
 					const dnslib_dname_t *owner))
@@ -1538,10 +1539,10 @@ dnslib_node_t *create_node(dnslib_zone_t *zone, dnslib_rrset_t *current_rrset,
 //			       dnslib_dname_to_str(chopped), chopped);
 			dnslib_dname_t *found_dname = NULL;
 			if ((!(found_dname =
-			       dnslib_dname_table_find_dname(parser->dname_table,
+			      dnslib_dname_table_find_dname(parser->dname_table,
 			                                    chopped))) &&
-			    dnslib_dname_table_add_dname(parser->dname_table,
-							 chopped) != 0) {
+			      dnslib_dname_table_add_dname(parser->dname_table,
+			                                   chopped) != 0) {
 				dnslib_dname_free(&chopped);
 				return NULL;
 			} else if (found_dname != NULL) {
