@@ -410,7 +410,7 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 		if (tmp_rrset->rrsigs != NULL) {
 			tmp_rrset->rrsigs->owner = node->owner;
 		}
-		if (dnslib_node_add_rrset(node, tmp_rrset) != 0) {
+		if (dnslib_node_add_rrset(node, tmp_rrset, 0) != 0) {
 			fprintf(stderr, "zone: Could not add rrset.\n");
 			return NULL;
 		}

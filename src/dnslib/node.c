@@ -120,14 +120,19 @@ dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent)
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset)
+int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset,
+                          int merge)
 {
-	if ((skip_insert(node->rrsets, 
-			 (void *)&rrset->type, (void *)rrset, NULL)) != 0) {
+	int ret;
+	if ((ret = (skip_insert(node->rrsets,
+	                        (void *)&rrset->type, (void *)rrset,
+	                        (merge) ? dnslib_rrset_merge : NULL))) < 0) {
 		return DNSLIB_ERROR;
 	}
 
-	++node->rrset_count;
+	if (ret == 0) {
+		++node->rrset_count;
+	}
 
 	return DNSLIB_EOK;
 }

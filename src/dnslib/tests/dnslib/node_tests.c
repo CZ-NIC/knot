@@ -75,7 +75,7 @@ static int test_node_add_rrset()
 		tmp = dnslib_node_new(&test_nodes[i].owner,
 				      test_nodes[i].parent);
 		rrset = &rrsets[i];
-		if (dnslib_node_add_rrset(tmp, rrset) != 0) {
+		if (dnslib_node_add_rrset(tmp, rrset, 0) != 0) {
 			errors++;
 			diag("Failed to insert rrset into node");
 		}
@@ -137,7 +137,7 @@ static int test_node_get_rrset()
 				      test_nodes[i].parent);
 		nodes[i] = tmp;
 		for (int j = 0; j < RRSETS; j++) {
-			dnslib_node_add_rrset(tmp, &rrsets[j]);
+			dnslib_node_add_rrset(tmp, &rrsets[j], 0);
 		}
 	}
 
@@ -169,7 +169,7 @@ static int test_node_get_parent()
 				      test_nodes[i].parent);
 		nodes[i] = tmp;
 		rrset = &rrsets[i];
-		dnslib_node_add_rrset(tmp, rrset);
+		dnslib_node_add_rrset(tmp, rrset, 0);
 	}
 
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
@@ -195,7 +195,7 @@ static int test_node_sorting()
 
 	for (int i = 0; i < RRSETS && !errors; i++) {
 		rrset = &rrsets[i];
-		dnslib_node_add_rrset(tmp, rrset);
+		dnslib_node_add_rrset(tmp, rrset, 0);
 	}
 
 	const skip_node_t *node = skip_first(tmp->rrsets);
