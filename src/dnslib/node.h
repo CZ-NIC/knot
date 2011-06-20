@@ -89,7 +89,8 @@ dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent);
  * \retval DNSLIB_EOK on success.
  * \retval DNSLIB_ERROR if the RRSet could not be inserted.
  */
-int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset);
+int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset,
+                          int merge);
 
 /*!
  * \brief Returns the RRSet of the given type from the node.

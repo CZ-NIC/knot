@@ -1756,7 +1756,7 @@ int process_rr(void)
 			return KNOT_ZCOMPILE_EBRDATA;
 		}
 
-		if (dnslib_node_add_rrset(node, rrset) != 0) {
+		if (dnslib_node_add_rrset(node, rrset, 0) != 0) {
 			free(rrset);
 			return KNOT_ZCOMPILE_EBRDATA;
 		}
