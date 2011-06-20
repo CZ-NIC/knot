@@ -100,6 +100,8 @@ int xfrin_zone_transferred(ns_nameserver_t *nameserver, dnslib_zone_t *zone);
  *             zone structure is created).
  *
  * \retval KNOT_EOK
+ *
+ * \todo node->parent is not set in this function!
  */
 int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
                               dnslib_zone_t **zone);
