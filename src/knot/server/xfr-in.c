@@ -226,15 +226,8 @@ int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
 		return KNOT_EMALF;
 	}
 
-//	dnslib_node_t *node = dnslib_node_new(rr->owner, NULL);
-//	if (node == NULL) {
-//		dnslib_packet_free(&packet);
-//		return KNOT_ENOMEM;
-//	}
-
-//	dnslib_rrset_t *cur_rrset = NULL;
-
 	dnslib_node_t *node = NULL;
+	int in_zone = 0;
 
 	if (*zone == NULL) {
 		// create new zone
@@ -288,6 +281,8 @@ DEBUG_XFR(
 			return KNOT_ENOMEM;
 		}
 
+		in_zone = 1;
+		assert(node->owner == rr->owner);
 		// add the RRSet to the node
 		ret = dnslib_node_add_rrset(node, rr, 0);
 		if (ret != DNSLIB_EOK) {
@@ -308,43 +303,82 @@ DEBUG_XFR(
 		// now just dump
 		debug_xfr("\nNext RR:\n\n");
 		dnslib_rrset_dump(rr, 0);
-		//dnslib_rrset_deep_free(&rr, 0, 1, 1);
 
-		if (node == NULL
-		    && (node = dnslib_zone_get_node(*zone, rr->owner))
-		        == NULL
-		    && (node = dnslib_node_new(rr->owner, NULL)) == NULL) {
-			dnslib_packet_free(&packet);
-			dnslib_rrset_deep_free(&rr, 1, 1, 1);
-			return KNOT_ENOMEM;
+		if (node != NULL
+		    && dnslib_dname_compare(rr->owner, node->owner) != 0) {
+			if (!in_zone) {
+				// the node is not in the zone and the RR has
+				// other owner, so a new node must be created
+				// insert the old node to the zone
+	DEBUG_XFR(
+				char *name = dnslib_dname_to_str(node->owner);
+				debug_xfr("Inserting node %s to the zone.\n",
+				          name);
+				free(name);
+	);
+				ret = dnslib_zone_add_node(*zone, node);
+				if (ret != DNSLIB_EOK) {
+					dnslib_packet_free(&packet);
+					dnslib_node_free(&node, 1);
+					dnslib_rrset_deep_free(&rr, 1, 1, 1);
+					return KNOT_ERROR;	/*! \todo Other error */
+				}
+			}
+
+			node = NULL;
 		}
 
-		assert(node != NULL);
-DEBUG_XFR(
-		char *name = dnslib_dname_to_str(rr->owner);
-		char *name2 = dnslib_dname_to_str(node->owner);
-		debug_xfr("RR owner: %s, node owner: %s\n", name, name2);
-		free(name);
-		free(name2);
-);
-//		assert(dnslib_dname_compare(rr->owner, node->owner) == 0);
+		if (dnslib_rrset_type(rr) == DNSLIB_RRTYPE_SOA) {
+			// this must be the last SOA, do not do anything more
+			// discard the RR
+			assert((*zone)->apex != NULL);
+			assert(dnslib_node_rrset((*zone)->apex,
+			                         DNSLIB_RRTYPE_SOA) != NULL);
+			debug_xfr("Found last SOA, transfer finished.\n");
+			return 1;
+		}
 
-		if (dnslib_dname_compare(rr->owner, node->owner) == 0) {
-			dnslib_dname_t *old_owner = rr->owner;
-			rr->owner = node->owner;
-			dnslib_dname_free(&old_owner);
-		} else {
-			dnslib_zone_add_node(*zone, node);
+		if (node == NULL
+		   && (node = dnslib_zone_get_node(*zone, rr->owner)) != NULL) {
+			// the node for this RR was found in the zone
+			debug_xfr("Found node for the record in zone.\n");
+			in_zone = 1;
+		}
+
+		if (node == NULL) {
+			// a new node for the RR is required but it is not
+			// in the zone
 			node = dnslib_node_new(rr->owner, NULL);
 			if (node == NULL) {
 				dnslib_packet_free(&packet);
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
 				return KNOT_ENOMEM;
 			}
+			in_zone = 0;
+			debug_xfr("Created new node for the record.\n");
+		} else if (node->owner != rr->owner) {
+DEBUG_XFR(
+			char *name = dnslib_dname_to_str(node->owner);
+			char *name2 = dnslib_dname_to_str(rr->owner);
+			debug_xfr("Replacing record's owner %s with node's "
+			          "owner %s.\n", name2, name);
+			free(name);
+			free(name2);
+);
+			dnslib_dname_free(&rr->owner);
+			rr->owner = node->owner;
 		}
 
+		assert(node != NULL);
 		assert(node->owner == rr->owner);
-
+DEBUG_XFR(
+		char *name = dnslib_dname_to_str(node->owner);
+		char *name2 = dnslib_dname_to_str(rr->owner);
+		debug_xfr("Inserting record with owner %s to node with owner "
+			  "%s.\n", name2, name);
+		free(name);
+		free(name2);
+);
 		ret = dnslib_node_add_rrset(node, rr, 1);
 		if (ret != DNSLIB_EOK) {
 			dnslib_packet_free(&packet);
@@ -359,6 +393,8 @@ DEBUG_XFR(
 		ret = dnslib_packet_parse_next_rr_answer(packet, &rr);
 	}
 
+	assert(ret != DNSLIB_EOK || rr == NULL);
+
 	if (ret < 0) {
 		// some error in parsing
 		debug_xfr("Could not parse next RR: %s.\n",
@@ -370,13 +406,22 @@ DEBUG_XFR(
 		return KNOT_EMALF;
 	}
 
-	assert(ret != DNSLIB_EOK || rr == NULL);
-	dnslib_packet_free(&packet);
-	//dnslib_node_free(&node, 0);
-//	dnslib_rrset_deep_free(&rr, 1, 1, 1);
+	assert(ret == DNSLIB_EOK);
+	assert(rr == NULL);
 
-	// for now, delete the created zone
-	//dnslib_zone_deep_free(zone, 1);
+	// if the last node is not yet in the zone, insert
+	if (!in_zone) {
+		assert(node != NULL);
+		ret = dnslib_zone_add_node(*zone, node);
+		if (ret != DNSLIB_EOK) {
+			dnslib_packet_free(&packet);
+			dnslib_node_free(&node, 1);
+			return KNOT_ERROR;	/*! \todo Other error */
+		}
+	}
+
+	dnslib_packet_free(&packet);
+	debug_xfr("Processed one AXFR packet successfully.\n");
 
 	return (ret == DNSLIB_EOK) ? KNOT_EOK : KNOT_EMALF;
 }
