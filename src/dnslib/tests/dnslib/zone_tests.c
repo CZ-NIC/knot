@@ -111,8 +111,8 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 			return 0;
 		}
 
-		if ((res = ((nsec3) ? dnslib_zone_add_nsec3_node(zone, node)
-		                   : dnslib_zone_add_node(zone, node))) != 0) {
+		if ((res = ((nsec3) ? dnslib_zone_add_nsec3_node(zone, node, 0)
+		                   : dnslib_zone_add_node(zone, node, 0))) != 0) {
 			diag("zone: Failed to insert node into zone (returned"
 			     " %d).", res);
 			dnslib_node_free(&node, 0);
@@ -131,8 +131,8 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 			return 0;
 		}
 
-		if ((res = ((nsec3) ? dnslib_zone_add_nsec3_node(zone, node)
-			: dnslib_zone_add_node(zone, node))) !=
+		if ((res = ((nsec3) ? dnslib_zone_add_nsec3_node(zone, node, 0)
+			: dnslib_zone_add_node(zone, node, 0))) !=
 		                DNSLIB_EBADZONE) {
 			diag("zone: Inserting wrong node did not result in"
 			     "proper return value (%d instead of %d).", res,
@@ -153,8 +153,8 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 		return 0;
 	}
 
-	if ((res = ((nsec3) ? dnslib_zone_add_nsec3_node(NULL, node)
-		: dnslib_zone_add_node(NULL, node))) != DNSLIB_EBADARG) {
+	if ((res = ((nsec3) ? dnslib_zone_add_nsec3_node(NULL, node, 0)
+		: dnslib_zone_add_node(NULL, node, 0))) != DNSLIB_EBADARG) {
 		diag("zone: Inserting node to NULL zone did not result in"
 		     "proper return value (%d instead of %d)", res,
 		     DNSLIB_EBADARG);
@@ -166,8 +166,8 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 	//note("NULL node");
 	note("Inserting NULL node...\n");
 
-	if ((res = ((nsec3) ? dnslib_zone_add_nsec3_node(zone, NULL)
-		: dnslib_zone_add_node(zone, NULL))) != DNSLIB_EBADARG) {
+	if ((res = ((nsec3) ? dnslib_zone_add_nsec3_node(zone, NULL, 0)
+		: dnslib_zone_add_node(zone, NULL, 0))) != DNSLIB_EBADARG) {
 		diag("zone: Inserting NULL node to zone did not result in"
 		     "proper return value (%d instead of %d)", res,
 		     DNSLIB_EBADARG);
@@ -185,7 +185,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 
 		//note("Apex again");
 
-		if ((res = dnslib_zone_add_node(zone, node)) !=
+		if ((res = dnslib_zone_add_node(zone, node, 0)) !=
 		                DNSLIB_EBADZONE) {
 			diag("zone: Inserting zone apex again did not result in"
 			     "proper return value (%d instead of -2)",

@@ -316,7 +316,7 @@ DEBUG_XFR(
 				          name);
 				free(name);
 	);
-				ret = dnslib_zone_add_node(*zone, node);
+				ret = dnslib_zone_add_node(*zone, node, 1);
 				if (ret != DNSLIB_EOK) {
 					dnslib_packet_free(&packet);
 					dnslib_node_free(&node, 1);
@@ -412,7 +412,7 @@ DEBUG_XFR(
 	// if the last node is not yet in the zone, insert
 	if (!in_zone) {
 		assert(node != NULL);
-		ret = dnslib_zone_add_node(*zone, node);
+		ret = dnslib_zone_add_node(*zone, node, 1);
 		if (ret != DNSLIB_EOK) {
 			dnslib_packet_free(&packet);
 			dnslib_node_free(&node, 1);

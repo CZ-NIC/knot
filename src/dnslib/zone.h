@@ -118,7 +118,8 @@ void dnslib_zone_set_version(dnslib_zone_t *zone, time_t version);
  * \retval DNSLIB_EBADZONE
  * \retval DNSLIB_EHASH
  */
-int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node);
+int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
+                         int create_parents);
 
 /*!
  * \brief Adds a node holding NSEC3 records to the given zone.
@@ -135,7 +136,8 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node);
  * \retval DNSLIB_EBADARG
  * \retval DNSLIB_EBADZONE
  */
-int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node);
+int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node,
+                               int create_parents);
 
 /*!
  * \warning Always call dnslib_zone_adjust_dnames() prior to calling this

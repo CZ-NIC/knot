@@ -63,6 +63,10 @@ dnslib_dname_table_t *dnslib_dname_table_new()
 dnslib_dname_t *dnslib_dname_table_find_dname(const dnslib_dname_table_t *table,
 					      dnslib_dname_t *dname)
 {
+	if (table == NULL || dname == NULL) {
+		return NULL;
+	}
+
 	struct dname_table_node *node = NULL;
 	struct dname_table_node sought;
 	sought.dname = dname;

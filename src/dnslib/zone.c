@@ -654,7 +654,14 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count)
 		return NULL;
 	}
 
-	zone->dname_table = NULL;
+	zone->dname_table = dnslib_dname_table_new();
+	if (zone->dname_table == NULL) {
+		ERR_ALLOC_FAILED;
+		free(zone->nsec3_nodes);
+		free(zone->tree);
+		free(zone);
+		return NULL;
+	}
 
 	zone->node_count = node_count;
 
@@ -729,7 +736,8 @@ void dnslib_zone_set_version(dnslib_zone_t *zone, time_t version)
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node)
+int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
+                         int create_parents)
 {
 	int ret = 0;
 	if ((ret = dnslib_zone_check_node(zone, node)) != 0) {
@@ -756,12 +764,86 @@ DEBUG_DNSLIB_ZONE(
 	}
 #endif
 
+	if (!create_parents) {
+		return DNSLIB_EOK;
+	}
+
+	debug_dnslib_zone("Creating parents of the node.\n");
+
+	dnslib_dname_t *chopped =
+		dnslib_dname_left_chop(node->owner);
+	if (dnslib_dname_compare(zone->apex->owner, chopped) == 0) {
+		debug_dnslib_zone("Zone apex is the parent.\n");
+		node->parent = zone->apex;
+	} else {
+		dnslib_node_t *next_node;
+		while ((next_node
+		      = dnslib_zone_get_node(zone, chopped)) == NULL) {
+			/* Adding new dname to zone + add to table. */
+			dnslib_dname_t *found_dname = NULL;
+			int ret;
+			debug_dnslib_zone("Inserting domain name to table.\n");
+			if ((!(found_dname =
+			      dnslib_dname_table_find_dname(zone->dname_table,
+			                                    chopped))) &&
+			      (ret = dnslib_dname_table_add_dname(
+			           zone->dname_table, chopped)) != DNSLIB_EOK) {
+				debug_dnslib_zone("Error adding dname to the "
+				                  "dname table.\n");
+				dnslib_dname_free(&chopped);
+				return ret;
+			} else if (found_dname != NULL) {
+				debug_dnslib_zone("dname already in table.\n");
+				dnslib_dname_free(&chopped);
+				chopped = found_dname;
+			}
+			debug_dnslib_zone("Creating new node.\n");
+			next_node = dnslib_node_new(chopped, NULL);
+			if (next_node == NULL) {
+				dnslib_dname_free(&chopped);
+				return DNSLIB_ENOMEM;
+			}
+			node->parent = next_node;
+
+			assert(dnslib_zone_find_node(zone, chopped) == NULL);
+			assert(next_node->owner == chopped);
+
+			debug_dnslib_zone("Inserting new node to tree.\n");
+			TREE_INSERT(zone->tree, dnslib_node, avl, next_node);
+
+#ifdef USE_HASH_TABLE
+DEBUG_DNSLIB_ZONE(
+			char *name = dnslib_dname_to_str(next_node->owner);
+			debug_dnslib_zone("Adding new node with owner %s to "
+			                  "hash table.\n", name);
+			free(name);
+);
+
+			if (zone->table != NULL
+			    && ck_insert_item(zone->table,
+			      (const char *)next_node->owner->name,
+			      next_node->owner->size, (void *)next_node) != 0) {
+				debug_dnslib_zone("Error inserting node into "
+				                  "hash table!\n");
+				dnslib_dname_free(&chopped);
+				return DNSLIB_EHASH;
+			}
+#endif
+			debug_dnslib_zone("Next parent.\n");
+			node =  next_node;
+			chopped = dnslib_dname_left_chop(chopped);
+		}
+		debug_dnslib_zone("Created all parents.\n");
+	}
+	dnslib_dname_free(&chopped);
+
 	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node)
+int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node,
+                               int create_parents)
 {
 	int ret = 0;
 	if ((ret = dnslib_zone_check_node(zone, node)) != 0) {
