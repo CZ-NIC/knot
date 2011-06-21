@@ -81,6 +81,21 @@ int dnslib_dname_table_add_dname(dnslib_dname_table_t *table,
 				 dnslib_dname_t *dname);
 
 /*!
+ * \brief Adds domain name to domain name table and checks for duplicates.
+ *
+ * \param table Domain name table to be added to.
+ * \param dname Domain name to be added.
+ *
+ * \note This function encapsulates dname in a structure and saves it to a tree.
+ * \note If a duplicate is found, \a dname is replaced by the name from table.
+ *
+ * \retval DNSLIB_EOK on success.
+ * \retval DNSLIB_ENOMEM when memory runs out.
+ */
+int dnslib_dname_table_add_dname2(dnslib_dname_table_t *table,
+                                  dnslib_dname_t **dname);
+
+/*!
  * \brief Frees dname table without its nodes. Sets pointer to NULL.
  *
  * \param table Table to be freed.
