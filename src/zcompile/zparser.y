@@ -166,7 +166,7 @@ line:	NL
 //printf("%s\n", dnslib_dname_to_str(parser->current_rrset->owner));
 //}
 
-		if (save_dnames_in_table(parser->dname_table,
+		if (save_dnames_in_table(parser->current_zone->dname_table,
 						 parser->current_rrset) != 0) {
 						 /* \todo */
 		}
@@ -191,7 +191,9 @@ line:	NL
 					       0);
 
 			/* If the owner is not already in the table, free it. */
-			if (dnslib_dname_table_find_dname(parser->dname_table,
+			if (dnslib_dname_table_find_dname(parser->
+			                                  current_zone->
+			                                  dname_table,
 				parser->current_rrset->owner) == NULL) {
 				dnslib_dname_free(&parser->
 				                  current_rrset->owner);
@@ -1429,11 +1431,6 @@ zparser_create()
 	result->current_rrset = dnslib_rrset_new(NULL, 0, 0, 0);
 	result->current_rrset->rdata = NULL;
 
-	result->dname_table = dnslib_dname_table_new();
-	if (result->dname_table == NULL) {
-		return NULL;
-	}
-
 	result->rrsig_orphans = NULL;
 
 	return result;
@@ -1465,6 +1462,11 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 
 	parser->last_node = origin;
 	parser->root_domain = dnslib_dname_new_from_str(".", 1, NULL);
+
+	/* Create zone */
+	parser->current_zone = dnslib_zone_new(origin, 0);
+	dnslib_dname_table_add_dname(parser->current_zone->dname_table,
+	                             origin->owner);
 
 	parser->node_rrsigs = NULL;
 

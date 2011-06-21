@@ -1512,63 +1512,16 @@ int find_rrset_for_rrsig_in_node(dnslib_node_t *node, dnslib_rrset_t *rrsig)
 
 static dnslib_node_t *create_node(dnslib_zone_t *zone,
 	dnslib_rrset_t *current_rrset,
-	int (*node_add_func)(dnslib_zone_t *zone, dnslib_node_t *node, int),
+	int (*node_add_func)(dnslib_zone_t *zone, dnslib_node_t *node,
+	                     int create_parents),
 	dnslib_node_t *(*node_get_func)(const dnslib_zone_t *zone,
 					const dnslib_dname_t *owner))
 {
-	dnslib_node_t *tmp_node = NULL;
-	dnslib_node_t *last_node = dnslib_node_new(current_rrset->owner,
-						   NULL);
-	dnslib_node_t *node = last_node;
-	if (node_add_func(zone, node, 0) != 0) {
+	dnslib_node_t *node =
+		dnslib_node_new(current_rrset->owner, NULL);
+	if (node_add_func(zone, node, 1) != 0) {
 		return NULL;
 	}
-	dnslib_dname_t *chopped =
-		dnslib_dname_left_chop(current_rrset->owner);
-
-	/* the following is the most common case - no need to
-	 * search the zone */
-	if (dnslib_dname_compare(parser->origin->owner,
-				 chopped) == 0 ) {
-		node->parent = parser->origin;
-	} else {
-		while ((tmp_node = node_get_func(zone,
-				    chopped)) == NULL) {
-			/* Adding new dname to zone - add to table as well. */
-//			printf("adding new dname (created from parent)%s %p\n",
-//			       dnslib_dname_to_str(chopped), chopped);
-			dnslib_dname_t *found_dname = NULL;
-			if ((!(found_dname =
-			      dnslib_dname_table_find_dname(parser->dname_table,
-			                                    chopped))) &&
-			      dnslib_dname_table_add_dname(parser->dname_table,
-			                                   chopped) != 0) {
-				dnslib_dname_free(&chopped);
-				return NULL;
-			} else if (found_dname != NULL) {
-				dnslib_dname_free(&chopped);
-				chopped = found_dname;
-			}
-			tmp_node = dnslib_node_new(chopped, NULL);
-			if (tmp_node == NULL) {
-				return NULL;
-			}
-			last_node->parent = tmp_node;
-
-			assert(node_get_func(zone, chopped) == NULL);
-			if (node_add_func(zone, tmp_node, 0) != 0) {
-				return NULL;
-			}
-
-			last_node = tmp_node;
-			chopped = dnslib_dname_left_chop(chopped);
-		}
-
-		/* parent is already in the zone */
-		last_node->parent = tmp_node;
-	}
-
-	dnslib_dname_free(&chopped);
 
 	return node;
 }
@@ -1651,27 +1604,6 @@ int process_rr(void)
 			 * it would not be in the zone apex. */
 			return KNOT_ZCOMPILE_EBADSOA;
 		}
-	}
-
-	/* Do we have the zone already? */
-	if (!zone) {
-		assert(parser->origin);
-
-		if (dnslib_dname_compare(parser->origin->owner,
-					 current_rrset->owner) == 0 &&
-		    parser->origin->owner != current_rrset->owner) {
-			/* if SOA, it has been checked above */
-
-			dnslib_dname_free(&parser->origin->owner);
-			parser->origin->owner = current_rrset->owner;
-		}
-
-		zone = dnslib_zone_new(parser->origin, 0);
-		if (zone == NULL) {
-			return KNOT_ZCOMPILE_ENOMEM;
-		}
-
-		parser->current_zone = zone;
 	}
 
 	if (current_rrset->type == DNSLIB_RRTYPE_RRSIG) {
@@ -1890,8 +1822,6 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	dnslib_zone_adjust_dnames(parser->current_zone);
 
 	debug_zp("rdata adjusted\n");
-
-	parser->current_zone->dname_table = parser->dname_table;
 
 	dnslib_zdump_binary(parser->current_zone, outfile, semantic_checks,
 			    zonefile);
