@@ -681,8 +681,7 @@ static int dnslib_zone_dnames_from_node_to_table(dnslib_zone_t *zone,
 					                  ".\n");
 					rc = dnslib_dname_table_add_dname2(
 					    zone->dname_table,
-					    (dnslib_dname_t **)
-					      dnslib_rdata_get_item(rdata, j));
+					&dnslib_rdata_get_item(rdata, j)->dname);
 					if (rc != DNSLIB_EOK) {
 						debug_dnslib_zone("Error: %s\n",
 						  dnslib_strerror(rc));
@@ -793,7 +792,7 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count)
 #endif
 
 	// insert names from the apex to the domain table
-
+	dnslib_zone_dnames_from_node_to_table(zone, apex);
 
 	return zone;
 }
