@@ -1487,6 +1487,7 @@ int find_rrset_for_rrsig_in_node(dnslib_node_t *node, dnslib_rrset_t *rrsig)
 {
 	assert(rrsig != NULL);
 	assert(rrsig->rdata->items[0].raw_data);
+	assert(node);
 
 	assert(dnslib_dname_compare(rrsig->owner, node->owner) == 0);
 
@@ -1801,7 +1802,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		return KNOT_ZCOMPILE_ESYNT;
 	}
 
-	if (parser->node_rrsigs != NULL) {
+	if (parser->last_node && parser->node_rrsigs != NULL) {
 		/* assign rrsigs to last node in the zone*/
 		process_rrsigs_in_node(parser->last_node);
 		rrset_list_delete(&parser->node_rrsigs);
@@ -1887,11 +1888,11 @@ int save_dnames_in_table(dnslib_dname_table_t *table,
 	if ((found_dname =
 		dnslib_dname_table_find_dname(table, rrset->owner)) != NULL &&
 		found_dname != rrset->owner) {
-		assert(rrset->owner != found_dname);
-		assert(found_dname->name != rrset->owner->name);
-		assert(found_dname->labels != rrset->owner->labels);
-		assert(rrset->owner != parser->last_node->owner);
-		assert(parser->last_node->owner != rrset->owner);
+//		assert(rrset->owner != found_dname);
+//		assert(found_dname->name != rrset->owner->name);
+//		assert(found_dname->labels != rrset->owner->labels);
+//		assert(rrset->owner != parser->last_node->owner);
+//		assert(parser->last_node->owner != rrset->owner);
 		dnslib_dname_free(&rrset->owner);
 		/* owner is now a reference from the table */
 		rrset->owner = found_dname;
