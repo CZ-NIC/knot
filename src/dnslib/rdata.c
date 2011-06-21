@@ -323,6 +323,13 @@ int dnslib_rdata_set_item(dnslib_rdata_t *rdata, uint pos,
 
 /*----------------------------------------------------------------------------*/
 
+unsigned int dnslib_rdata_item_count(const dnslib_rdata_t *rdata)
+{
+	return rdata->count;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
 			   const dnslib_rdata_item_t *items, uint count)
 {

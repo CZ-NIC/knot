@@ -144,6 +144,8 @@ int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
                            const dnslib_rdata_item_t *items,
                            unsigned int count);
 
+unsigned int dnslib_rdata_item_count(const dnslib_rdata_t *rdata);
+
 /*!
  * \brief Returns the RDATA item on position \a pos.
  *
