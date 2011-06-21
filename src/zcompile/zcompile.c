@@ -1512,7 +1512,7 @@ int find_rrset_for_rrsig_in_node(dnslib_node_t *node, dnslib_rrset_t *rrsig)
 
 static dnslib_node_t *create_node(dnslib_zone_t *zone,
 	dnslib_rrset_t *current_rrset,
-	int (*node_add_func)(dnslib_zone_t *zone, dnslib_node_t *node),
+	int (*node_add_func)(dnslib_zone_t *zone, dnslib_node_t *node, int),
 	dnslib_node_t *(*node_get_func)(const dnslib_zone_t *zone,
 					const dnslib_dname_t *owner))
 {
@@ -1520,7 +1520,7 @@ static dnslib_node_t *create_node(dnslib_zone_t *zone,
 	dnslib_node_t *last_node = dnslib_node_new(current_rrset->owner,
 						   NULL);
 	dnslib_node_t *node = last_node;
-	if (node_add_func(zone, node) != 0) {
+	if (node_add_func(zone, node, 0) != 0) {
 		return NULL;
 	}
 	dnslib_dname_t *chopped =
@@ -1556,7 +1556,7 @@ static dnslib_node_t *create_node(dnslib_zone_t *zone,
 			last_node->parent = tmp_node;
 
 			assert(node_get_func(zone, chopped) == NULL);
-			if (node_add_func(zone, tmp_node) != 0) {
+			if (node_add_func(zone, tmp_node, 0) != 0) {
 				return NULL;
 			}
 
@@ -1600,9 +1600,9 @@ int process_rr(void)
 
 	assert(dnslib_dname_is_fqdn(current_rrset->owner));
 
-	int (*node_add_func)(dnslib_zone_t *zone, dnslib_node_t *node);
-	dnslib_node_t *(*node_get_func)(const dnslib_zone_t *zone,
-					const dnslib_dname_t *owner);
+	int (*node_add_func)(dnslib_zone_t *, dnslib_node_t *, int);
+	dnslib_node_t *(*node_get_func)(const dnslib_zone_t *,
+					const dnslib_dname_t *);
 
 
 	/* If we have RRSIG of NSEC3 type first node will have
