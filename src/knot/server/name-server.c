@@ -20,6 +20,8 @@
 #include "dnslib/response2.h"
 #include "dnslib/query.h"
 #include "dnslib/consts.h"
+#include "dnslib/zone-dump-text.h"
+#include "dnslib/zone-dump.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -2739,6 +2741,175 @@ int ns_process_notify(ns_nameserver_t *nameserver, sockaddr_t *from,
 
 /*----------------------------------------------------------------------------*/
 
+static int ns_find_zone_for_xfr(ns_xfr_t *xfr, const char **zonefile,
+                                const char **zonedb)
+{
+	// find the zone file name and zone db file name for the zone
+	conf_t *cnf = conf();
+	node *n = NULL;
+	WALK_LIST(n, cnf->zones) {
+		conf_zone_t *zone_conf = (conf_zone_t *)n;
+		dnslib_dname_t *zone_name = dnslib_dname_new_from_str(
+			zone_conf->name, strlen(zone_conf->name), NULL);
+		if (zone_name == NULL) {
+			return KNOT_ENOMEM;
+		}
+
+		int r = dnslib_dname_compare(zone_name, xfr->zone->apex->owner);
+		dnslib_dname_free(&zone_name);
+
+		if (r == 0) {
+			// found the right zone
+			*zonefile = zone_conf->file;
+			*zonedb = zone_conf->db;
+			return KNOT_EOK;
+		}
+	}
+
+	char *name = dnslib_dname_to_str(xfr->zone->apex->owner);
+	log_server_error("No zone found for the zone received by transfer "
+	                 "(%s).\n", name);
+	free(name);
+
+	return KNOT_ENOENT;	/*! \todo OK error code? */
+}
+
+/*----------------------------------------------------------------------------*/
+
+static char *ns_find_free_filename(const char *old_name)
+{
+	// find zone name not present on the disk
+	int free_name = 0;
+	size_t name_size = strlen(old_name);
+
+	char *new_name = malloc(name_size + 3);
+	if (new_name == NULL) {
+		return NULL;
+	}
+	memcpy(new_name, old_name, name_size);
+	new_name[name_size] = '.';
+	new_name[name_size + 2] = 0;
+
+	debug_ns("Finding free name for the zone file.\n");
+	int c = 48;
+	FILE *file;
+	while (!free_name && c < 58) {
+		new_name[name_size + 1] = c;
+		debug_ns("Trying file name %s\n", new_name);
+		if ((file = fopen(new_name, "r")) != NULL) {
+			fclose(file);
+			++c;
+		} else {
+			free_name = 1;
+		}
+	}
+
+	if (free_name) {
+		return new_name;
+	} else {
+		free(new_name);
+		return NULL;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int ns_dump_xfr_zone_text(ns_xfr_t *xfr, const char *zonefile)
+{
+	assert(xfr != NULL && xfr->zone != NULL && zonefile != NULL);
+
+	char *new_zonefile = ns_find_free_filename(zonefile);
+
+	if (new_zonefile == NULL) {
+		log_server_error("Failed to find free filename for temporary "
+		                 "storage of the zone text file.\n");
+		return KNOT_ERROR;	/*! \todo New error code? */
+	}
+
+	int rc = zone_dump_text(xfr->zone, new_zonefile);
+
+	if (rc != DNSLIB_EOK) {
+		log_server_error("Failed to save the zone to text zone file %s."
+		                 "\n", new_zonefile);
+		free(new_zonefile);
+		return KNOT_ERROR;
+	}
+
+	// if successful, replace the old file with the new one
+	// TODO
+
+	free(new_zonefile);
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int ns_dump_xfr_zone_binary(ns_xfr_t *xfr, const char *zonedb,
+                                   const char *zonefile)
+{
+	assert(xfr != NULL && xfr->zone != NULL && zonedb != NULL);
+
+	char *new_zonedb = ns_find_free_filename(zonedb);
+
+	if (new_zonedb == NULL) {
+		log_server_error("Failed to find free filename for temporary "
+		                 "storage of the zone binary file.\n");
+		return KNOT_ERROR;	/*! \todo New error code? */
+	}
+
+	int rc = dnslib_zdump_binary(xfr->zone, new_zonedb, 0, zonefile);
+
+	if (rc != DNSLIB_EOK) {
+		log_server_error("Failed to save the zone to binary zone db %s."
+		                 "\n", new_zonedb);
+		free(new_zonedb);
+		return KNOT_ERROR;
+	}
+
+	// if successful, replace the old file with the new one
+	// TODO
+
+	free(new_zonedb);
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int ns_save_zone(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
+{
+	assert(nameserver != NULL && xfr != NULL && xfr->zone != NULL
+	       && xfr->zone->apex != NULL);
+
+	const char *zonefile = NULL;
+	const char *zonedb = NULL;
+
+	int ret = ns_find_zone_for_xfr(xfr, &zonefile, &zonedb);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	assert(zonefile != NULL && zonedb != NULL);
+
+	// dump the zone into text zone file
+	ret = ns_dump_xfr_zone_text(xfr, zonefile);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	// dump the zone into binary db file
+	ret = ns_dump_xfr_zone_binary(xfr, zonedb, zonefile);
+
+	return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int ns_switch_zone(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
+{
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 {
 	/*! \todo Implement me.
@@ -2771,6 +2942,21 @@ int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		}
 
 		dnslib_zone_dump(xfr->zone, 0);
+
+		// save the zone to the disk
+		rc = ns_save_zone(nameserver, xfr);
+		if (rc != KNOT_EOK) {
+			dnslib_zone_deep_free(&xfr->zone, 1);
+			return rc;
+		}
+
+		// change the zone served by the nameserver to the new one
+		rc = ns_switch_zone(nameserver, xfr);
+		if (rc != KNOT_EOK) {
+			// WTF?? what to do?
+			return rc;
+		}
+
 		return KNOT_EOK;
 	} else {
 		return ret;
