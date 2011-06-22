@@ -646,7 +646,7 @@ static int dnslib_zone_dnames_from_rdata_to_table(dnslib_zone_t *zone,
 			rc = dnslib_dname_table_add_dname2(
 			    zone->dname_table,
 			&dnslib_rdata_get_item(rdata, j)->dname);
-			if (rc != DNSLIB_EOK) {
+			if (rc < 0) {
 				debug_dnslib_zone("Error: %s\n",
 				  dnslib_strerror(rc));
 				return rc;
@@ -668,7 +668,7 @@ static int dnslib_zone_dnames_from_rrset_to_table(dnslib_zone_t *zone,
 
 	if (replace_owner) {
 		// discard the old owner and replace it with the new
-		dnslib_dname_free(&rrset->owner);
+		//dnslib_dname_free(&rrset->owner);
 		rrset->owner = owner;
 	}
 
@@ -699,6 +699,10 @@ static int dnslib_zone_dnames_from_rrset_to_table(dnslib_zone_t *zone,
 static int dnslib_zone_dnames_from_node_to_table(dnslib_zone_t *zone,
                                                  dnslib_node_t *node)
 {
+	/*
+	 * Assuming that all the RRSets have the same owner as the node.
+	 */
+
 	// insert owner
 	char *name = dnslib_dname_to_str(node->owner);
 	debug_dnslib_zone("Node owner before inserting to dname table: %p.\n",
@@ -711,6 +715,7 @@ static int dnslib_zone_dnames_from_node_to_table(dnslib_zone_t *zone,
 		debug_dnslib_zone("Failed to add dname to dname table.\n");
 		return rc;
 	}
+	int replace_owner = (rc > 0);
 	debug_dnslib_zone("Node owner after inserting to dname table: %p.\n",
 	                  node->owner);
 	name = dnslib_dname_to_str(node->owner);
@@ -722,7 +727,7 @@ static int dnslib_zone_dnames_from_node_to_table(dnslib_zone_t *zone,
 	// for each RRSet
 	for (int i = 0; i < dnslib_node_rrset_count(node); ++i) {
 		rc = dnslib_zone_dnames_from_rrset_to_table(zone, rrsets[i],
-		                                      rc > 0,
+		                                      replace_owner,
 		                                      node->owner);
 		if (rc != DNSLIB_EOK) {
 			return rc;
@@ -972,8 +977,6 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 	assert(*node != NULL);
 
 	// add all domain names from the RRSet to domain name table
-	// this will - among other things - replace RRSet owner with node's
-	// owner
 	int rc;
 
 	rc = dnslib_node_add_rrset(*node, rrset,
@@ -983,8 +986,7 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 	}
 
 	rc = dnslib_zone_dnames_from_rrset_to_table(zone, rrset,
-	                                         rrset->owner != (*node)->owner,
-	                                         (*node)->owner);
+	                                            0, (*node)->owner);
 	if (rc != DNSLIB_EOK) {
 		debug_dnslib_zone("Error saving domain names from RRSet to the"
 		                  " domain name table.\n The zone may be in "
@@ -993,6 +995,13 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 		// may be domain names in it that are not inserted into the
 		// domain table
 		return rc;
+	}
+
+	// replace RRSet's owner with the node's owner (that is already in the
+	// table)
+	if (rrset->owner != (*node)->owner) {
+		dnslib_dname_free(&rrset->owner);
+		rrset->owner = (*node)->owner;
 	}
 
 	return DNSLIB_EOK;
