@@ -41,6 +41,12 @@ enum dnslib_zone_retvals {
 
 typedef enum dnslib_zone_retvals dnslib_zone_retvals_t;
 
+typedef enum  {
+	DNSLIB_ZONE_DUPL_RRSET_MERGE,
+	DNSLIB_ZONE_DUPL_RRSET_REPLACE,
+	DNSLIB_ZONE_DUPL_RRSET_SKIP
+} dnslib_zone_dupl_rrset_handling_t;
+
 /*----------------------------------------------------------------------------*/
 
 /*!
@@ -110,6 +116,9 @@ void dnslib_zone_set_version(dnslib_zone_t *zone, time_t version);
  * the zone's apex. It thus also forbids adding node with the same name as the
  * zone apex.
  *
+ * \warning This function may destroy domain names saved in the node, that
+ *          are already present in the zone.
+ *
  * \param zone Zone to add the node into.
  * \param node Node to add into the zone.
  *
@@ -120,6 +129,31 @@ void dnslib_zone_set_version(dnslib_zone_t *zone, time_t version);
  */
 int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
                          int create_parents);
+
+/*!
+ * \brief Adds a RRSet to the given zone.
+ *
+ * Checks if the RRSet belongs to the zone, i.e. if its owner is a subdomain of
+ * the zone's apex. The RRSet is inserted only if the node is given, or if
+ * a node where the RRSet should belong is found in the zone.
+ *
+ * \warning The function does not check if the node is already inserted in the
+ *          zone, just assumes that it is.
+ * \warning This function may destroy domain names saved in the RRSet, that
+ *          are already present in the zone.
+ *
+ * \param zone Zone to add the node into.
+ * \param rrset RRSet to add into the zone.
+ * \param node Node the RRSet should be inserted into. (Should be a node of the
+ *             given zone.) If set to NULL, the function will find proper node.
+ *
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_EBADARG
+ * \retval DNSLIB_EBADZONE
+ */
+int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
+                          dnslib_node_t *node,
+                          dnslib_zone_dupl_rrset_handling_t dupl);
 
 /*!
  * \brief Adds a node holding NSEC3 records to the given zone.
