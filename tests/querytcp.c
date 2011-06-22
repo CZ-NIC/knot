@@ -268,8 +268,9 @@ void register_response(struct queries *q, int timeout, char *note)
 			printf("recv timeout id=%d %lld usec\n", id, timediff(&current, &q->sent));
 	} else {
 		counterror++;
-		if (verbose)
-			printf("recv error id=%d errno=%d at %s\n", id, ERROROFFSET - timeout, note);
+		if (verbose) {
+			printf("recv error id=%d errno=%d at %s (%s)\n", id, ERROROFFSET - timeout, note, strerror(errno));
+		}
 	}
 #ifdef DEBUG
     printf("%ld.%03ld no=%d fd=%d %d %s\n", q->sent.tv_sec, q->sent.tv_usec/1000, q->no, q->fd, timeout, note);
@@ -310,6 +311,7 @@ void output()
 
 void tcp_close(struct queries *q)
 {
+
 #ifdef DEBUG
 printf("tcp_close no=%d fd=%d\n", q->no, q->fd);
 #endif
@@ -327,7 +329,7 @@ void tcp_send(struct queries *q)
 {
 	int len;
 
-	len = send(q->fd, &q->send, q->sendlen, 0);
+	len = send(q->fd, &q->send, q->sendlen, MSG_NOSIGNAL);
 #ifdef DEBUG
 printf("tcp_send no=%d fd=%d %d:%d:%d\n", q->no, q->fd, len, q->wpos, q->sendlen);
 #endif
