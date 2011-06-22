@@ -51,8 +51,7 @@ int evqueue_poll(evqueue_t *q, const struct timespec *ts,
 	FD_SET(q->fds[EVQUEUE_READFD], &rfds);
 
 	/* Wait for events. */
-	int ret = pselect(q->fds[EVQUEUE_READFD] + 1, &rfds,
-			  0, 0, ts, sigmask);
+	int ret = pselect(q->fds[EVQUEUE_READFD] + 1, &rfds, 0, 0, ts, sigmask);
 	if (ret < 0) {
 		return -1;
 	}
