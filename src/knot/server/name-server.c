@@ -1957,6 +1957,15 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 		return KNOT_ERROR;
 	}
 
+	// add the SOA's RRSIG
+	const dnslib_rrset_t *rrset = dnslib_rrset_rrsigs(soa_rrset);
+	if (rrset != NULL
+	    && (ret = dnslib_response2_add_rrset_answer(xfr->response, rrset,
+	                                              0, 0, 1)) != DNSLIB_EOK) {
+		// something is really wrong, these should definitely fit in
+		return KNOT_ERROR;
+	}
+
 	dnslib_zone_tree_apply_inorder(zone, ns_axfr_from_node, &params);
 
 	if (params.ret != KNOT_EOK) {
@@ -2020,7 +2029,8 @@ DEBUG_NS(
 	if (zone == NULL) {
 		debug_ns("No zone found.\n");
 		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_NOTAUTH);
-		return KNOT_EOK;
+
+		return ns_axfr_send_and_clear(xfr);
 	}
 DEBUG_NS(
 	char *name_str2 = dnslib_dname_to_str(zone->apex->owner);

@@ -3,6 +3,8 @@
 #include <stdlib.h>
 
 #include "zcompile/zcompile.h"
+#include "zcompile/zcompile-error.h"
+#include "common/errors.h"
 #include "config.h"
 
 #define PROJECT_NAME PACKAGE // Project name
@@ -15,6 +17,7 @@ static void help(int argc, char **argv)
 	printf("Parameters:\n"
 	       " -o <outfile> Override output file.\n"
 	       " -v           Verbose mode - additional runtime information.\n"
+	       " -s           Enable semantic checks.\n"
 	       " -V           Print version of the server.\n"
 	       " -h           Print help and usage.\n");
 }
@@ -42,7 +45,7 @@ int main(int argc, char **argv)
 			       PROJECT_VER >> 16 & 0x000000ff,
 			       PROJECT_VER >> 8 & 0x000000ff,
 			       PROJECT_VER >> 0 & 0x000000ff);
-			return 1;
+			return 0;
 		case 's':
 			semantic_checks = 1;
 			break;
@@ -82,10 +85,11 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	int errors = zone_read(origin, zonefile, outfile, semantic_checks);
+	int error = zone_read(origin, zonefile, outfile, semantic_checks);
 
-	printf("Finished.\n");
+	printf("Finished with error: %s.\n",
+	       error_to_str(knot_zcompile_error_msgs, error));
 	//log_close();
 
-	return errors ? 1 : 0;
+	return error ? 1 : 0;
 }

@@ -34,15 +34,15 @@ CLEANFILES =					\
 knotc_SOURCES =					\
 	knot/ctl/knotc_main.c
 
-knot_zcompile_SOURCES =			\
-	zcompile/zcompile_main.c            \
+knot_zcompile_SOURCES =				\
+	zcompile/zcompile_main.c		\
 	zcompile/zcompile-error.c		\
-	zcompile/parser-util.h		\
+	zcompile/parser-util.h			\
 	zcompile/parser-descriptor.h		\
 	zcompile/zparser.y			\
 	zcompile/zlexer.l			\
 	zcompile/zcompile.c			\
-	zcompile/parser-util.c		\
+	zcompile/parser-util.c			\
 	zcompile/parser-descriptor.c
 
 unittests_SOURCES =				\
@@ -83,14 +83,14 @@ unittests_dnslib_SOURCES =			\
 	dnslib/tests/dnslib/zonedb_tests.h	\
 	dnslib/tests/unittests_dnslib.c
 
-unittests_zcompile_SOURCES =		\
-	zcompile/parser-util.h		\
+unittests_zcompile_SOURCES =			\
+	zcompile/parser-util.h			\
 	zcompile/parser-descriptor.h		\
 	zcompile/zcompile-error.c		\
 	zcompile/zparser.y			\
 	zcompile/zlexer.l			\
 	zcompile/zcompile.c			\
-	zcompile/parser-util.c		\
+	zcompile/parser-util.c			\
 	zcompile/parser-descriptor.c		\
 	zcompile/tests/unittests_zp_main.c
 
@@ -106,41 +106,43 @@ knotd_SOURCES =					\
 
 noinst_LTLIBRARIES = libknot.la
 libknot_la_SOURCES =				\
-	common/slab/slab.c				\
-	common/slab/malloc.c				\
-	common/slab/slab.h			        \
-	common/slab/malloc.h				\
+	common/slab/slab.c			\
+	common/slab/malloc.c			\
+	common/slab/slab.h			\
+	common/slab/malloc.h			\
 	common/libtap/tap.c			\
 	common/libtap/tap.h			\
 	common/tap_unit.h			\
-	common/lists.c	            		\
+	common/lists.c				\
 	common/base32.c				\
-	common/lists.h	            		\
+	common/lists.h				\
 	common/base32.h				\
 	common/print.c				\
 	common/print.h				\
 	common/dynamic-array.c			\
-	common/skip-list.c				\
-	common/base32hex.c				\
-	common/skip-list.h				\
+	common/skip-list.c			\
+	common/base32hex.c			\
+	common/skip-list.h			\
 	common/dynamic-array.h			\
 	common/tree.h				\
-	common/base32hex.h				\
-	common/evqueue.h		\
-	common/evqueue.c		\
 	common/evsched.h		\
 	common/evsched.c		\
-	common/errors.h			\
-	common/errors.c			\
 	common/acl.h				\
 	common/acl.c				\
 	common/sockaddr.h				\
 	common/sockaddr.c				\
-	knot/stat/gatherer.c				\
-	knot/stat/stat.c				\
-	knot/stat/gatherer.h				\
-	knot/stat/stat.h				\
-	dnslib/edns.c                           \
+	common/base32hex.h			\
+	common/evqueue.h			\
+	common/evqueue.c			\
+	common/errors.h				\
+	common/errors.c				\
+	common/crc.h				\
+	common/crc.c				\
+	knot/stat/gatherer.c			\
+	knot/stat/stat.c			\
+	knot/stat/gatherer.h			\
+	knot/stat/stat.h			\
+	dnslib/edns.c				\
 	dnslib/dnslib-error.c			\
 	dnslib/utils.c				\
 	dnslib/rrset.c				\
@@ -154,15 +156,17 @@ libknot_la_SOURCES =				\
 	dnslib/zone-load.c			\
 	dnslib/debug.c				\
 	dnslib/zone-dump.c			\
+	dnslib/zone-dump-text.c			\
 	dnslib/rdata.c				\
 	dnslib/descriptor.c			\
 	dnslib/nsec3.c				\
-	dnslib/hash/hash-functions.c			\
+	dnslib/dname-table.c			\
+	dnslib/hash/hash-functions.c		\
 	dnslib/hash/cuckoo-hash-table.c		\
-	dnslib/hash/universal-system.c			\
-	dnslib/hash/universal-system.h			\
+	dnslib/hash/universal-system.c		\
+	dnslib/hash/universal-system.h		\
 	dnslib/hash/cuckoo-hash-table.h		\
-	dnslib/hash/hash-functions.h			\
+	dnslib/hash/hash-functions.h		\
 	dnslib/zonedb.h				\
 	dnslib/consts.h				\
 	dnslib/node.h				\
@@ -184,20 +188,21 @@ libknot_la_SOURCES =				\
 	dnslib/wire.h				\
 	dnslib/debug.h				\
 	dnslib/nsec3.h				\
+	dnslib/dname-table.h			\
 	knot/common.h				\
-	knot/other/log.c				\
-	knot/other/log.h				\
+	knot/other/log.c			\
+	knot/other/log.h			\
 	knot/other/debug.h			\
 	knot/other/error.h			\
 	knot/other/error.c			\
-	knot/conf/cf-parse.y                         \
-	knot/conf/cf-lex.l                           \
-	knot/conf/conf.c                             \
-	knot/conf/logconf.c                          \
-	knot/conf/logconf.h                          \
-	knot/conf/conf.h                             \
-	knot/ctl/process.c				\
-	knot/ctl/process.h		                \
+	knot/conf/cf-parse.y			\
+	knot/conf/cf-lex.l			\
+	knot/conf/conf.c			\
+	knot/conf/logconf.c			\
+	knot/conf/logconf.h			\
+	knot/conf/conf.h			\
+	knot/ctl/process.c			\
+	knot/ctl/process.h			\
 	knot/server/dthreads.c			\
 	knot/server/socket.c				\
 	knot/server/name-server.c			\
