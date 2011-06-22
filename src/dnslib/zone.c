@@ -625,6 +625,76 @@ DEBUG_DNSLIB_ZONE(
 
 /*----------------------------------------------------------------------------*/
 
+static int dnslib_zone_dnames_from_rdata_to_table(dnslib_zone_t *zone,
+                                                  dnslib_rdata_t *rdata,
+                                                  dnslib_rrtype_descriptor_t *d)
+{
+	unsigned int count = dnslib_rdata_item_count(rdata);
+	int rc = 0;
+	assert(count <= d->length);
+	// for each RDATA item
+	for (unsigned int j = 0; j < count; ++j) {
+		if (d->wireformat[j]
+		    == DNSLIB_RDATA_WF_COMPRESSED_DNAME
+		    || d->wireformat[j]
+		       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
+		    || d->wireformat[j]
+		       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
+			debug_dnslib_zone("Saving dname from "
+					  "rdata to dname table"
+					  ".\n");
+			rc = dnslib_dname_table_add_dname2(
+			    zone->dname_table,
+			&dnslib_rdata_get_item(rdata, j)->dname);
+			if (rc != DNSLIB_EOK) {
+				debug_dnslib_zone("Error: %s\n",
+				  dnslib_strerror(rc));
+				return rc;
+			}
+		}
+	}
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int dnslib_zone_dnames_from_rrset_to_table(dnslib_zone_t *zone,
+                                                  dnslib_rrset_t *rrset,
+                                                  dnslib_dname_t *owner)
+{
+	assert(zone != NULL && rrset != NULL && owner != NULL);
+
+	if (rrset->owner != owner) {
+		// discard the old owner and replace it with the new
+		dnslib_dname_free(&rrset->owner);
+		rrset->owner = owner;
+	}
+
+	dnslib_rrtype_descriptor_t *desc = dnslib_rrtype_descriptor_by_type(
+		dnslib_rrset_type(rrset));
+	if (desc == NULL) {
+		// not recognized RR type, ignore
+		debug_dnslib_zone("RRSet type not recognized.\n");
+		return DNSLIB_EOK;
+	}
+	// for each RDATA in RRSet
+	dnslib_rdata_t *rdata = dnslib_rrset_get_rdata(rrset);
+	while (rdata != NULL) {
+		int rc = dnslib_zone_dnames_from_rdata_to_table(zone, rdata,
+		                                                desc);
+		if (rc != DNSLIB_EOK) {
+			return rc;
+		}
+
+		rdata = dnslib_rrset_rdata_get_next(rrset, rdata);
+	}
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 static int dnslib_zone_dnames_from_node_to_table(dnslib_zone_t *zone,
                                                  dnslib_node_t *node)
 {
@@ -634,7 +704,6 @@ static int dnslib_zone_dnames_from_node_to_table(dnslib_zone_t *zone,
 	                  node->owner);
 	debug_dnslib_zone("Node owner before inserting to dname table: %s.\n",
 	                  name);
-	dnslib_dname_t *old_dname = node->owner;
 	int rc = dnslib_dname_table_add_dname2(zone->dname_table, &node->owner);
 	if (rc != DNSLIB_EOK) {
 		debug_dnslib_zone("Failed to add dname to dname table.\n");
@@ -647,49 +716,13 @@ static int dnslib_zone_dnames_from_node_to_table(dnslib_zone_t *zone,
 	                  name);
 	free(name);
 
-	dnslib_rrtype_descriptor_t *desc;
-
 	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
 	// for each RRSet
 	for (int i = 0; i < dnslib_node_rrset_count(node); ++i) {
-		if (old_dname != node->owner) {
-			rrsets[i]->owner = node->owner;
-		}
-
-		desc = dnslib_rrtype_descriptor_by_type(
-			dnslib_rrset_type(rrsets[i]));
-		if (desc == NULL) {
-			// not recognized RR type
-			debug_dnslib_zone("RRSet type not recognized.\n");
-			continue;
-		}
-		// for each RDATA in RRSet
-		const dnslib_rdata_t *rdata = dnslib_rrset_rdata(rrsets[i]);
-		while (rdata != NULL) {
-			unsigned int count = dnslib_rdata_item_count(rdata);
-			assert(count <= desc->length);
-			// for each RDATA item
-			for (unsigned int j = 0; j < count; ++j) {
-				if (desc->wireformat[j]
-				    == DNSLIB_RDATA_WF_COMPRESSED_DNAME
-				    || desc->wireformat[j]
-				       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
-				    || desc->wireformat[j]
-				       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
-					debug_dnslib_zone("Saving dname from "
-					                  "rdata to dname table"
-					                  ".\n");
-					rc = dnslib_dname_table_add_dname2(
-					    zone->dname_table,
-					&dnslib_rdata_get_item(rdata, j)->dname);
-					if (rc != DNSLIB_EOK) {
-						debug_dnslib_zone("Error: %s\n",
-						  dnslib_strerror(rc));
-						return rc;
-					}
-				}
-			}
-			rdata = dnslib_rrset_rdata_next(rrsets[i], rdata);
+		rc = dnslib_zone_dnames_from_rrset_to_table(zone, rrsets[i],
+		                                            node->owner);
+		if (rc != DNSLIB_EOK) {
+			return rc;
 		}
 	}
 
@@ -816,6 +849,10 @@ void dnslib_zone_set_version(dnslib_zone_t *zone, time_t version)
 int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
                          int create_parents)
 {
+	if (zone == NULL || node == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	int ret = 0;
 	if ((ret = dnslib_zone_check_node(zone, node)) != 0) {
 		return ret;
@@ -860,23 +897,6 @@ DEBUG_DNSLIB_ZONE(
 		while ((next_node
 		      = dnslib_zone_get_node(zone, chopped)) == NULL) {
 			/* Adding new dname to zone + add to table. */
-//			dnslib_dname_t *found_dname = NULL;
-//			int ret;
-//			debug_dnslib_zone("Inserting domain name to table.\n");
-//			if ((!(found_dname =
-//			      dnslib_dname_table_find_dname(zone->dname_table,
-//			                                    chopped))) &&
-//			      (ret = dnslib_dname_table_add_dname(
-//			           zone->dname_table, chopped)) != DNSLIB_EOK) {
-//				debug_dnslib_zone("Error adding dname to the "
-//				                  "dname table.\n");
-//				dnslib_dname_free(&chopped);
-//				return ret;
-//			} else if (found_dname != NULL) {
-//				debug_dnslib_zone("dname already in table.\n");
-//				dnslib_dname_free(&chopped);
-//				chopped = found_dname;
-//			}
 			debug_dnslib_zone("Creating new node.\n");
 			next_node = dnslib_node_new(chopped, NULL);
 			if (next_node == NULL) {
@@ -917,6 +937,56 @@ DEBUG_DNSLIB_ZONE(
 		debug_dnslib_zone("Created all parents.\n");
 	}
 	dnslib_dname_free(&chopped);
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
+                          dnslib_node_t *node,
+                          dnslib_zone_dupl_rrset_handling_t dupl)
+{
+	if (zone == NULL || rrset == NULL || zone->apex == NULL
+	    || zone->apex->owner == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
+	// check if the RRSet belongs to the zone
+	if (!dnslib_dname_is_subdomain(dnslib_rrset_owner(rrset),
+	                               zone->apex->owner)) {
+		return DNSLIB_EBADZONE;
+	}
+
+	if (node == NULL
+	    && (node = dnslib_zone_get_node(zone, dnslib_rrset_owner(rrset)))
+	        == NULL) {
+		return DNSLIB_ENONODE;
+	}
+
+	assert(node != NULL);
+
+	// add all domain names from the RRSet to domain name table
+	// this will - among other things - replace RRSet owner with node's
+	// owner
+	int rc;
+
+	rc = dnslib_node_add_rrset(node, rrset,
+	                           dupl == DNSLIB_ZONE_DUPL_RRSET_MERGE);
+	if (rc != DNSLIB_EOK) {
+		return rc;
+	}
+
+	rc = dnslib_zone_dnames_from_rrset_to_table(zone, rrset, node->owner);
+	if (rc != DNSLIB_EOK) {
+		debug_dnslib_zone("Error saving domain names from RRSet to the"
+		                  " domain name table.\n The zone may be in "
+		                  "an inconsistent state.\n");
+		// WARNING: the zone is not in consistent state now - there
+		// may be domain names in it that are not inserted into the
+		// domain table
+		return rc;
+	}
 
 	return DNSLIB_EOK;
 }
