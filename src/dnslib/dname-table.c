@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <string.h>
-#include <malloc.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 #include "dnslib/dname-table.h"
 #include "dnslib/error.h"
