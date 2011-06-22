@@ -165,6 +165,9 @@ const dnslib_rdata_t *dnslib_rrset_rdata_next(const dnslib_rrset_t *rrset,
  */
 dnslib_rdata_t *dnslib_rrset_get_rdata(dnslib_rrset_t *rrset);
 
+dnslib_rdata_t *dnslib_rrset_rdata_get_next(dnslib_rrset_t *rrset,
+                                            dnslib_rdata_t *rdata);
+
 /*!
  * \brief Returns the set of RRSIGs covering the given RRSet.
  *
