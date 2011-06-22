@@ -15,6 +15,7 @@
 #include "dnslib/node.h"
 #include "dnslib/dname.h"
 #include "dnslib/nsec3.h"
+#include "dnslib/dname-table.h"
 #include "common/tree.h"
 #include "common/acl.h"
 #include "dnslib/hash/cuckoo-hash-table.h"
@@ -59,6 +60,8 @@ struct dnslib_zone {
 		acl_t *notify_in;  /*!< ACL for notify-in.*/
 		acl_t *notify_out; /*!< ACL for notify-out.*/
 	} acl;
+	
+	dnslib_dname_table_t *dname_table;
 };
 
 typedef struct dnslib_zone dnslib_zone_t;

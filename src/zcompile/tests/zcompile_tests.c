@@ -242,8 +242,8 @@ int compare_zones(dnslib_zone_t *zone, ldns_rr_list *ldns_list, char verbose)
 								 0)));
 
 		if (tmp_rrset == NULL &&
-		    ldns_rr_get_type(ldns_rr_list_rr(ldns_rrset, 0)) !=
-		    DNSLIB_RRTYPE_RRSIG) {
+		    (uint)(ldns_rr_get_type(ldns_rr_list_rr(ldns_rrset, 0))) !=
+		    (uint)DNSLIB_RRTYPE_RRSIG) {
 			diag("Could not find rrset");
 			if (!verbose) {
 				return 1;
@@ -251,8 +251,9 @@ int compare_zones(dnslib_zone_t *zone, ldns_rr_list *ldns_list, char verbose)
 			ldns_rr_list_print(stdout, ldns_rrset);
 			diag("%s", dnslib_dname_to_str(node->owner));
 			return 1;
-		} else if (ldns_rr_get_type(ldns_rr_list_rr(ldns_rrset, 0)) ==
-			   DNSLIB_RRTYPE_RRSIG) {
+		} else if ((uint)(ldns_rr_get_type(ldns_rr_list_rr(ldns_rrset,
+		                                                  0))) ==
+			   (uint)DNSLIB_RRTYPE_RRSIG) {
 			dnslib_rrset_t *rrsigs = NULL;
 			/* read type covered from ldns rrset */
 			for (int i = 0; i < ldns_rrset->_rr_count; i++) {

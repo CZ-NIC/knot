@@ -1,6 +1,7 @@
 #include <config.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 
 #include "dnslib/dnslib-common.h"
 #include "dnslib/zone.h"
@@ -92,7 +93,8 @@ static void dnslib_zone_destroy_node_owner_from_tree(dnslib_node_t *node,
                                                      void *data)
 {
 	UNUSED(data);
-	dnslib_node_free(&node, 1);
+	/*!< \todo change completely! */
+	dnslib_node_free(&node, 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -116,30 +118,74 @@ static void dnslib_zone_adjust_rdata_item(dnslib_rdata_t *rdata,
                                           dnslib_zone_t *zone, int pos)
 {
 	const dnslib_rdata_item_t *dname_item
-		= dnslib_rdata_item(rdata, pos);
+			= dnslib_rdata_item(rdata, pos);
 
 	if (dname_item != NULL) {
 		dnslib_dname_t *dname = dname_item->dname;
 		const dnslib_node_t *n = NULL;
+		const dnslib_node_t *closest_encloser = NULL;
+		const dnslib_node_t *prev = NULL;
 
-		n = dnslib_zone_find_node(zone, dname);
+		int ret = dnslib_zone_find_dname(zone, dname, &n,
+		                                 &closest_encloser, &prev);
 
-		if (n == NULL) {
+		//		n = dnslib_zone_find_node(zone, dname);
+
+		if (ret == DNSLIB_EBADARG || ret == DNSLIB_EBADZONE) {
+			// TODO: do some cleanup if needed
 			return;
 		}
 
-		if (n->owner == dname_item->dname) {
-			return;
-		}
-		debug_dnslib_zone("Replacing dname %s by reference to "
-		  "dname %s in zone.\n", dname->name, n->owner->name);
+		assert(ret != DNSLIB_ZONE_NAME_FOUND
+		       || n == closest_encloser);
 
-		/*!< \note This will not delete duplicated dnames.
-			   Has to be removed as soon as possible !!! */
-//		dnslib_rdata_item_set_dname(rdata, pos, n->owner);
-		dname->node = n->owner->node;
-//		dnslib_dname_free(&dname);
+		if (ret != DNSLIB_ZONE_NAME_FOUND
+		                && (closest_encloser != NULL)) {
+			debug_dnslib_zdump("Saving closest encloser to RDATA."
+			                   "\n");
+			// save pointer to the closest encloser
+			dnslib_rdata_item_t *item =
+					dnslib_rdata_get_item(rdata, pos);
+			assert(item->dname != NULL);
+			//assert(item->dname->node == NULL);
+			//skip_insert(list, (void *)item->dname,
+			//	    (void *)closest_encloser->owner, NULL);
+			item->dname->node = closest_encloser->owner->node;
+		}
 	}
+//	const dnslib_rdata_item_t *dname_item
+//		= dnslib_rdata_item(rdata, pos);
+
+//	if (dname_item != NULL) {
+//		dnslib_dname_t *dname = dname_item->dname;
+//		const dnslib_node_t *n = NULL;
+//		int ret = dnslib_zone_find_dname(zone, dname, &n,
+//						 &closest_encloser, &prev);
+
+//		n = dnslib_zone_find_node(zone, dname);
+
+//		if (ret == DNSLIB_EBADARG || ret == DNSLIB_EBADZONE) {
+//			// TODO: do some cleanup if needed
+//			return;
+//		}
+//		n = dnslib_zone_find_node(zone, dname);
+
+//		if (n == NULL) {
+//			return;
+//		}
+
+//		if (n->owner == dname_item->dname) {
+//			return;
+//		}
+//		debug_dnslib_zone("Replacing dname %s by reference to "
+//		  "dname %s in zone.\n", dname->name, n->owner->name);
+
+//		/*!< \note This will not delete duplicated dnames.
+//			   Has to be removed as soon as possible !!! */
+////		dnslib_rdata_item_set_dname(rdata, pos, n->owner);
+//		dname->node = n->owner->node;
+////		dnslib_dname_free(&dname);
+//	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -221,6 +267,7 @@ static void dnslib_zone_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
  */
 static void dnslib_zone_adjust_rrsets(dnslib_node_t *node, dnslib_zone_t *zone)
 {
+	return;
 	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
 	short count = dnslib_node_rrset_count(node);
 
@@ -234,6 +281,8 @@ static void dnslib_zone_adjust_rrsets(dnslib_node_t *node, dnslib_zone_t *zone)
 			dnslib_zone_adjust_rdata_in_rrset(rrsigs, zone);
 		}
 	}
+
+	free(rrsets);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -283,8 +332,17 @@ DEBUG_DNSLIB_ZONE(
 		dnslib_node_set_deleg_point(node);
 	}
 
+	// authorative node?
+	if (!dnslib_node_is_non_auth(node)) {
+		zone->node_count++;
+	}
+
+	// assure that owner has proper node
+	if (node->owner->node == NULL) {
+		node->owner->node = node;
+	}
+
 	// NSEC3 node
-	assert(node->owner);
 	const dnslib_node_t *prev;
 	int match = dnslib_zone_find_nsec3_for_name(zone, node->owner,
 						    &node->nsec3_node, &prev);
@@ -333,6 +391,8 @@ DEBUG_DNSLIB_ZONE(
 			dnslib_zone_adjust_rdata_in_rrset(rrsigs, zone);
 		}
 	}
+
+	free(rrsets);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -563,6 +623,8 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count)
 		free(zone);
 		return NULL;
 	}
+
+	zone->dname_table = NULL;
 	zone->node_count = node_count;
 
 	/* Initialize ACLs. */
@@ -590,6 +652,7 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count)
 		if (zone->table == NULL) {
 			free(zone->tree);
 			free(zone->nsec3_nodes);
+			free(zone->dname_table);
 			free(zone);
 			return NULL;
 		}
@@ -1151,6 +1214,8 @@ void dnslib_zone_deep_free(dnslib_zone_t **zone, int free_rdata_dnames)
 
 	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
 	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
+
+	dnslib_dname_table_deep_free(&(*zone)->dname_table);
 
 	dnslib_zone_free(zone);
 }
