@@ -127,6 +127,7 @@ int dnslib_dname_table_add_dname2(dnslib_dname_table_t *table,
 		free(name);
 		dnslib_dname_free(dname);
 		*dname = found_dname;
+		return 1;
 	}
 
 	printf("Done.\n");

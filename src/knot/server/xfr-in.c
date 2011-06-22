@@ -265,6 +265,7 @@ DEBUG_XFR(
 
 		node = dnslib_node_new(rr->owner, NULL);
 		if (node == NULL) {
+			debug_xfr("Failed to create new node.\n");
 			dnslib_packet_free(&packet);
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
 			return KNOT_ENOMEM;
@@ -274,6 +275,7 @@ DEBUG_XFR(
 		// create the zone
 		*zone = dnslib_zone_new(node, 0);
 		if (*zone == NULL) {
+			debug_xfr("Failed to create new zone.\n");
 			dnslib_packet_free(&packet);
 			dnslib_node_free(&node, 0);
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
@@ -284,8 +286,12 @@ DEBUG_XFR(
 		in_zone = 1;
 		assert(node->owner == rr->owner);
 		// add the RRSet to the node
-		ret = dnslib_node_add_rrset(node, rr, 0);
+		//ret = dnslib_node_add_rrset(node, rr, 0);
+		ret = dnslib_zone_add_rrset(*zone, rr, &node,
+		                            DNSLIB_ZONE_DUPL_RRSET_MERGE);
 		if (ret != DNSLIB_EOK) {
+			debug_xfr("Failed to add RRSet to zone node: %s.\n",
+			          dnslib_strerror(ret));
 			dnslib_packet_free(&packet);
 			dnslib_node_free(&node, 0);
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
@@ -300,7 +306,6 @@ DEBUG_XFR(
 	while (ret == DNSLIB_EOK && rr != NULL) {
 		// process the parsed RR
 
-		// now just dump
 		debug_xfr("\nNext RR:\n\n");
 		dnslib_rrset_dump(rr, 0);
 
@@ -339,7 +344,8 @@ DEBUG_XFR(
 		}
 
 		if (node == NULL
-		   && (node = dnslib_zone_get_node(*zone, rr->owner)) != NULL) {
+		    && (node = dnslib_zone_get_node(
+				   *zone, dnslib_rrset_owner(rr))) != NULL) {
 			// the node for this RR was found in the zone
 			debug_xfr("Found node for the record in zone.\n");
 			in_zone = 1;
@@ -356,7 +362,7 @@ DEBUG_XFR(
 			}
 			in_zone = 0;
 			debug_xfr("Created new node for the record.\n");
-		} else if (node->owner != rr->owner) {
+		}/* else if (node->owner != rr->owner) {
 DEBUG_XFR(
 			char *name = dnslib_dname_to_str(node->owner);
 			char *name2 = dnslib_dname_to_str(rr->owner);
@@ -367,10 +373,10 @@ DEBUG_XFR(
 );
 			dnslib_dname_free(&rr->owner);
 			rr->owner = node->owner;
-		}
+		}*/
 
 		assert(node != NULL);
-		assert(node->owner == rr->owner);
+//		assert(node->owner == rr->owner);
 DEBUG_XFR(
 		char *name = dnslib_dname_to_str(node->owner);
 		char *name2 = dnslib_dname_to_str(rr->owner);
@@ -379,7 +385,12 @@ DEBUG_XFR(
 		free(name);
 		free(name2);
 );
-		ret = dnslib_node_add_rrset(node, rr, 1);
+		if (in_zone) {
+			ret = dnslib_zone_add_rrset(*zone, rr, &node,
+			                          DNSLIB_ZONE_DUPL_RRSET_MERGE);
+		} else {
+			ret = dnslib_node_add_rrset(node, rr, 1);
+		}
 		if (ret != DNSLIB_EOK) {
 			dnslib_packet_free(&packet);
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);

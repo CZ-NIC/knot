@@ -145,14 +145,15 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
  * \param zone Zone to add the node into.
  * \param rrset RRSet to add into the zone.
  * \param node Node the RRSet should be inserted into. (Should be a node of the
- *             given zone.) If set to NULL, the function will find proper node.
+ *             given zone.) If set to NULL, the function will find proper node
+ *             and set it to this parameter.
  *
  * \retval DNSLIB_EOK
  * \retval DNSLIB_EBADARG
  * \retval DNSLIB_EBADZONE
  */
 int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
-                          dnslib_node_t *node,
+                          dnslib_node_t **node,
                           dnslib_zone_dupl_rrset_handling_t dupl);
 
 /*!
