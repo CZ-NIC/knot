@@ -129,6 +129,18 @@ dnslib_rdata_t *dnslib_rrset_get_rdata(dnslib_rrset_t *rrset)
 
 /*----------------------------------------------------------------------------*/
 
+dnslib_rdata_t *dnslib_rrset_rdata_get_next(dnslib_rrset_t *rrset,
+                                            dnslib_rdata_t *rdata)
+{
+	if (rdata->next == rrset->rdata) {
+		return NULL;
+	} else {
+		return rdata->next;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 const dnslib_rrset_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset)
 {
 	if (rrset == NULL) {
