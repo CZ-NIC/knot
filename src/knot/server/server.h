@@ -47,6 +47,7 @@ typedef struct iohandler_t {
 	struct iface_t     *iface;  /*!< Reference to associated interface. */
 	struct server_t    *server; /*!< Reference to server */
 	void               *data;   /*!< Persistent data for I/O handler. */
+	void (*interrupt)(struct iohandler_t *h); /*!< Interrupt handler. */
 
 } iohandler_t;
 

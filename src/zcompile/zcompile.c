@@ -51,10 +51,14 @@
 #endif
 
 /* Eliminate compiler warning with unused parameters. */
+#ifndef UNUSED
 #define UNUSED(param) (param) = (param)
+#endif
 
+#ifndef ERR_ALLOC_FAILED
 #define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d\n", \
 				  __FILE__, __LINE__)
+#endif
 
 /*!
  * \brief Return data of raw data item.
@@ -1216,8 +1220,9 @@ uint16_t * zparser_conv_apl_rdata(char *str)
 		return NULL;
 	} else if (rc == -1) {
 		char ebuf[256];
+		strerror_r(errno, ebuf, sizeof(ebuf));
 		fprintf(stderr, "inet_pton failed: %s",
-			strerror_r(errno, ebuf, sizeof(ebuf)));
+			ebuf);
 		return NULL;
 	}
 
@@ -1815,8 +1820,9 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	assert(origin_node->parent == NULL);
 
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
+		strerror_r(errno, ebuf, sizeof(ebuf));
 		fprintf(stderr, "Cannot open '%s': %s.",
-			zonefile, strerror_r(errno, ebuf, sizeof(ebuf)));
+			zonefile, ebuf);
 		return KNOT_ZCOMPILE_EZONEINVAL;
 	}
 
