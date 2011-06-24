@@ -1855,10 +1855,10 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	/* This is *almost* unnecessary */
 //	dnslib_zone_deep_free(&(parser->current_zone), 0);
 
-	dnslib_zone_t *some_zone= dnslib_zload_load(dnslib_zload_open(outfile));
+//	dnslib_zone_t *some_zone= dnslib_zload_load(dnslib_zload_open(outfile));
 
-	printf("apex of new zone: %s\n",
-	       dnslib_dname_to_str(some_zone->apex->owner));
+//	printf("apex of new zone: %s\n",
+//	       dnslib_dname_to_str(some_zone->apex->owner));
 
 	fclose(yyin);
 
