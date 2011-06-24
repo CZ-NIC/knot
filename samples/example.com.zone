@@ -2,8 +2,8 @@ $TTL 1h                  ; The default expiration time of a resource record with
 $ORIGIN example.com.
 @  IN  SOA  ns.example.com. username.example.com. (
               2007120712 ; serial number of this zone file
-              1d         ; slave refresh (1 day)
-              1d         ; slave retry time in case of a problem (1 day)
+              10         ; slave refresh (1 day)
+              30         ; slave retry time in case of a problem (1 day)
               4w         ; slave expiration time (4 weeks)
               1h         ; minimum caching time in case of failed lookups (1 hour)
               )
