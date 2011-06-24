@@ -1504,12 +1504,12 @@ int find_rrset_for_rrsig_in_node(dnslib_zone_t *zone,
 
 	if (tmp_rrset->rrsigs != NULL) {
 		dnslib_zone_add_rrset(zone, rrsig, &node,
-		                      DNSLIB_ZONE_DUPL_RRSET_MERGE);
+		                      DNSLIB_RRSET_DUPL_MERGE);
 //		dnslib_rrset_merge((void *)&tmp_rrset->rrsigs, (void *)&rrsig);
 		dnslib_rrset_free(&rrsig);
 	} else {
 		dnslib_zone_add_rrset(zone, rrsig, &node,
-		                      DNSLIB_ZONE_DUPL_RRSET_REPLACE);
+		                      DNSLIB_RRSET_DUPL_REPLACE);
 		tmp_rrset->rrsigs = rrsig;
 	}
 
@@ -1705,7 +1705,7 @@ int process_rr(void)
 		/* I chose skip, but there should not really be
 		 * any rrset to skip */
 		if (dnslib_zone_add_rrset(parser->current_zone, rrset, &node,
-		                   DNSLIB_ZONE_DUPL_RRSET_SKIP) != 0) {
+		                   DNSLIB_RRSET_DUPL_SKIP) != 0) {
 			free(rrset);
 			return KNOT_ZCOMPILE_EBRDATA;
 		}
@@ -1719,7 +1719,7 @@ int process_rr(void)
 
 		if (dnslib_zone_add_rrset(parser->current_zone, current_rrset,
 		                          &node,
-		                   DNSLIB_ZONE_DUPL_RRSET_MERGE) != 0) {
+		                   DNSLIB_RRSET_DUPL_MERGE) != 0) {
 			free(rrset);
 			return KNOT_ZCOMPILE_EBRDATA;
 		}

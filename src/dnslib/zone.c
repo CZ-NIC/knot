@@ -960,7 +960,7 @@ DEBUG_DNSLIB_ZONE(
 
 int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
                           dnslib_node_t **node,
-                          dnslib_zone_dupl_rrset_handling_t dupl)
+                          dnslib_rrset_dupl_handling_t dupl)
 {
 	if (zone == NULL || rrset == NULL || zone->apex == NULL
 	    || zone->apex->owner == NULL || node == NULL) {
@@ -988,7 +988,7 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 
 	/*! \todo REMOVE RRSET */
 	rc = dnslib_node_add_rrset(*node, rrset,
-	                           dupl == DNSLIB_ZONE_DUPL_RRSET_MERGE);
+	                           dupl == DNSLIB_RRSET_DUPL_MERGE);
 	if (rc != DNSLIB_EOK) {
 		return rc;
 	}
@@ -1018,7 +1018,8 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 /*----------------------------------------------------------------------------*/
 
 int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
-                           dnslib_rrset_t *rrset)
+                           dnslib_rrset_t *rrset,
+                           dnslib_rrset_dupl_handling_t dupl)
 {
 	if (zone == NULL || rrsigs == NULL || rrset == NULL
 	    || zone->apex == NULL || zone->apex->owner == NULL) {
@@ -1043,7 +1044,7 @@ int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
 	// add all domain names from the RRSet to domain name table
 	int rc;
 
-	rc = dnslib_rrset_set_rrsigs(rrset, rrsigs);
+	rc = dnslib_rrset_add_rrsigs(rrset, rrsigs, dupl);
 	if (rc != DNSLIB_EOK) {
 		debug_dnslib_dname("Failed to add RRSIGs to RRSet.\n");
 		return rc;
@@ -1102,7 +1103,7 @@ int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node,
 
 int dnslib_zone_add_nsec3_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
                                 dnslib_node_t **node, int create_parents,
-                                dnslib_zone_dupl_rrset_handling_t dupl)
+                                dnslib_rrset_dupl_handling_t dupl)
 {
 	if (zone == NULL || rrset == NULL || zone->apex == NULL
 	    || zone->apex->owner == NULL || node == NULL) {
@@ -1130,7 +1131,7 @@ int dnslib_zone_add_nsec3_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 
 	/*! \todo REMOVE RRSET */
 	rc = dnslib_node_add_rrset(*node, rrset,
-	                           dupl == DNSLIB_ZONE_DUPL_RRSET_MERGE);
+	                           dupl == DNSLIB_RRSET_DUPL_MERGE);
 	if (rc != DNSLIB_EOK) {
 		return rc;
 	}
