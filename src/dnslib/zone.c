@@ -1018,7 +1018,7 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 /*----------------------------------------------------------------------------*/
 
 int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
-                           dnslib_rrset_t *rrset,
+                           dnslib_rrset_t **rrset,
                            dnslib_rrset_dupl_handling_t dupl)
 {
 	if (zone == NULL || rrsigs == NULL || rrset == NULL
@@ -1027,31 +1027,61 @@ int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
 	}
 
 	// check if the RRSet belongs to the zone
-	if (dnslib_dname_compare(dnslib_rrset_owner(rrset), zone->apex->owner)
-	    != 0
-	    && !dnslib_dname_is_subdomain(dnslib_rrset_owner(rrset),
+	if (*rrset != NULL
+	    && dnslib_dname_compare(dnslib_rrset_owner(*rrset),
+	                            zone->apex->owner) != 0
+	    && !dnslib_dname_is_subdomain(dnslib_rrset_owner(*rrset),
 	                                  zone->apex->owner)) {
 		return DNSLIB_EBADZONE;
 	}
 
 	// check if the RRSIGs belong to the RRSet
-	if (dnslib_dname_compare(dnslib_rrset_owner(rrsigs),
-	                         dnslib_rrset_owner(rrset)) != 0
-	    || dnslib_rrset_rrsigs(rrset) != NULL) {
+	if (*rrset != NULL
+	    && (dnslib_dname_compare(dnslib_rrset_owner(rrsigs),
+	                             dnslib_rrset_owner(*rrset)) != 0)) {
 		return DNSLIB_EBADARG;
 	}
+
+	// if no RRSet given, try to find the right RRSet
+	if (*rrset == NULL) {
+		dnslib_node_t *node = NULL;
+		// find proper node
+		if ((node = dnslib_zone_get_node(
+		                 zone, dnslib_rrset_owner(rrsigs))) == NULL) {
+			debug_dnslib_zone("Failed to find node for RRSIGs.\n");
+			return DNSLIB_EBADARG;  /*! \todo Other error code? */
+		}
+
+		assert(node != NULL);
+
+		// find the RRSet in the node
+		// take only the first RDATA from the RRSIGs
+		debug_dnslib_zone("Finding RRSet for type %s\n",
+		                  dnslib_rrtype_to_string(
+		                      dnslib_rdata_rrsig_type_covered(
+		                      dnslib_rrset_rdata(rrsigs))));
+		*rrset = dnslib_node_get_rrset(
+		             node, dnslib_rdata_rrsig_type_covered(
+		                      dnslib_rrset_rdata(rrsigs)));
+		if (*rrset == NULL) {
+			debug_dnslib_zone("Failed to find RRSet for RRSIGs.\n");
+			return DNSLIB_EBADARG;  /*! \todo Other error code? */
+		}
+	}
+
+	assert(*rrset != NULL);
 
 	// add all domain names from the RRSet to domain name table
 	int rc;
 
-	rc = dnslib_rrset_add_rrsigs(rrset, rrsigs, dupl);
+	rc = dnslib_rrset_add_rrsigs(*rrset, rrsigs, dupl);
 	if (rc != DNSLIB_EOK) {
 		debug_dnslib_dname("Failed to add RRSIGs to RRSet.\n");
 		return rc;
 	}
 
 	rc = dnslib_zone_dnames_from_rrset_to_table(zone, rrsigs,
-	                                            0, rrset->owner);
+	                                            0, (*rrset)->owner);
 	if (rc != DNSLIB_EOK) {
 		debug_dnslib_zone("Error saving domain names from RRSIGs to the"
 		                  " domain name table.\n The zone may be in "
@@ -1064,9 +1094,9 @@ int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
 
 	// replace RRSet's owner with the node's owner (that is already in the
 	// table)
-	if (rrset->owner != rrsigs->owner) {
+	if ((*rrset)->owner != rrsigs->owner) {
 		dnslib_dname_free(&rrsigs->owner);
-		rrsigs->owner = rrset->owner;
+		rrsigs->owner = (*rrset)->owner;
 	}
 
 	return DNSLIB_EOK;
