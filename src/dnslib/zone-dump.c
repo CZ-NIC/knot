@@ -1377,6 +1377,8 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 		dnslib_rrtype_descriptor_by_type(type);
 	assert(desc != NULL);
 
+	debug_dnslib_zdump("Dumping type: %d\n", type);
+
 	for (int i = 0; i < desc->length; i++) {
 		if (&(rdata->items[i]) == NULL) {
 			debug_dnslib_zdump("Item n. %d is not set!\n", i);
@@ -1394,6 +1396,8 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 				wildcard = rdata->items[i].dname->node->owner;
 			}
 			/* Write ID. */
+			debug_dnslib_zload("%s (%p)\n",
+			         dnslib_dname_to_str(rdata->items[i].dname));
 			assert(rdata->items[i].dname->id != 0);
 
 			uint32_t id = rdata->items[i].dname->id;
@@ -1440,6 +1444,8 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
  */
 static void dnslib_rrsig_set_dump_binary(dnslib_rrset_t *rrsig, arg_t *data)
 {
+	debug_dnslib_zdump("Dumping rrset \\w owner: %s\n",
+	                   dnslib_dname_to_str(rrsig->owner));
 	assert(rrsig->type == DNSLIB_RRTYPE_RRSIG);
 	assert(rrsig->rdata);
 	FILE *f = (FILE *)((arg_t *)data)->arg1;
@@ -1524,6 +1530,9 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 	assert(node->owner != NULL);
 
 	/* Write owner ID. */
+	debug_dnslib_zdump("Dumping node owned by %s\n",
+	                   dnslib_dname_to_str(node->owner));
+	assert(node->owner->id != 0);
 	uint32_t owner_id = node->owner->id;
 	fwrite_wrapper(&owner_id, sizeof(owner_id), 1, f);
 //	printf("ID write: %d (%s)\n", node->owner->id,

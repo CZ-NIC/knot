@@ -166,11 +166,6 @@ line:	NL
 //printf("%s\n", dnslib_dname_to_str(parser->current_rrset->owner));
 //}
 
-		if (save_dnames_in_table(parser->current_zone->dname_table,
-						 parser->current_rrset) != 0) {
-						 /* \todo */
-		}
-
 		assert(parser->current_rrset->owner != NULL);
 //		printf("after cat: %s (%p)\n", dnslib_dname_to_str(parser->current_rrset->owner), parser->current_rrset->owner->name);
 
@@ -189,15 +184,6 @@ line:	NL
 			dnslib_rdata_deep_free(&tmp_rdata,
 			                       parser->current_rrset->type,
 					       0);
-
-			/* If the owner is not already in the table, free it. */
-			if (dnslib_dname_table_find_dname(parser->
-			                                  current_zone->
-			                                  dname_table,
-				parser->current_rrset->owner) == NULL) {
-				dnslib_dname_free(&parser->
-				                  current_rrset->owner);
-			}
 
 			if (ret == KNOT_ZCOMPILE_EBADSOA) {
 				/*!< \todo this will crash! */
@@ -226,7 +212,6 @@ line:	NL
 //	dnslib_dname_to_str(parser->current_rrset->owner));
 //	getchar();
 
-	    parser->prev_dname = parser->current_rrset->owner;
 	    parser->current_rrset->type = 0;
 	    parser->rdata_count = 0;
 	    parser->current_rrset->rdata = NULL;
@@ -287,14 +272,16 @@ rr:	owner classttl type_and_rdata
 
 owner:	dname sp
     {
-//	printf("Totally new dname: %p\n", $1);
-	    parser->prev_dname = $1;
+	printf("Totally new dname: %p\n", $1);
+	    parser->prev_dname = dnslib_dname_copy($1);
+	    printf("Made a copy:%");
 	    $$ = $1;
     }
     |	PREV
     {
-//	    printf("Name from prev_dname!: %p\n", parser->prev_dname);
-	    $$ = parser->prev_dname;
+	    printf("Name from prev_dname!: %p %s\n", parser->prev_dname,
+	    dnslib_dname_to_str(parser->prev_dname));
+	    $$ = dnslib_dname_copy(parser->prev_dname);
     }
     ;
 
@@ -1451,7 +1438,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->default_class = rclass;
 
 	parser->origin = origin;
-	parser->prev_dname = parser->origin->owner;
+	parser->prev_dname = dnslib_dname_copy(parser->origin->owner);
 
 	parser->default_apex = origin;
 	parser->error_occurred = 0;
@@ -1465,8 +1452,6 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 
 	/* Create zone */
 	parser->current_zone = dnslib_zone_new(origin, 0);
-	dnslib_dname_table_add_dname(parser->current_zone->dname_table,
-	                             origin->owner);
 
 	parser->node_rrsigs = NULL;
 

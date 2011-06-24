@@ -370,6 +370,7 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 	}
 	dnslib_dname_t *owner = id_array[dname_id];
 
+	debug_dnslib_zload("Node owner id: %d\n", dname_id);
 	debug_dnslib_zload("Node owned by: %s\n", dnslib_dname_to_str(owner));
 	debug_dnslib_zload("Number of RRSets in a node: %d\n", rrset_count);
 
@@ -751,6 +752,7 @@ static dnslib_dname_table_t *create_dname_table_from_array(
 {
 	if (array == NULL) {
 		/* should I set errno or what ... ? */
+		debug_dnslib_zload("No array passed\n");
 		return NULL;
 	}
 
@@ -761,8 +763,12 @@ static dnslib_dname_table_t *create_dname_table_from_array(
 
 	/* Table will have max_id entries */
 	for (uint i = 1; i < max_id; i++) {
+		printf("%d\n", i);
+		assert(array[i]);
 		if (dnslib_dname_table_add_dname(ret,
 						 array[i]) != DNSLIB_EOK) {
+			debug_dnslib_zload("Could not add: %s\n",
+			                   dnslib_dname_to_str(array[i]));
 			dnslib_dname_table_deep_free(&ret);
 			return NULL;
 		}
