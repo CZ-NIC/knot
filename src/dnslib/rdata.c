@@ -756,5 +756,5 @@ uint16_t dnslib_rdata_rrsig_type_covered(const dnslib_rdata_t *rdata)
 		return 0;
 	}
 
-	return dnslib_wire_read_u16(rdata->items[0].raw_data + 1);
+	return dnslib_wire_read_u16((uint8_t *)(rdata->items[0].raw_data + 1));
 }
