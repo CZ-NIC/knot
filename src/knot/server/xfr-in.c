@@ -391,8 +391,33 @@ DEBUG_XFR(
 		free(name2);
 );
 		if (in_zone) {
-			ret = dnslib_zone_add_rrset(*zone, rr, &node,
-			                          DNSLIB_RRSET_DUPL_MERGE);
+			switch (dnslib_rrset_type(rr)) {
+			case DNSLIB_RRTYPE_NSEC3:
+				debug_xfr("Inserting NSEC3 RRSet into zone.\n");
+				ret = dnslib_zone_add_nsec3_rrset(*zone, rr,
+				             &node, 0, DNSLIB_RRSET_DUPL_MERGE);
+				break;
+			case DNSLIB_RRTYPE_RRSIG:
+				debug_xfr("Inserting RRSIG RRSet into zone.\n");
+				dnslib_rrset_t *tmp_rrset = NULL;
+				ret = dnslib_zone_add_rrsigs(*zone, rr,
+				           &tmp_rrset, DNSLIB_RRSET_DUPL_MERGE);
+DEBUG_XFR(
+				char *name = dnslib_dname_to_str(
+						dnslib_rrset_owner(tmp_rrset));
+				debug_xfr("RRSIGs inserted to RRSet %s, %s\n",
+				          name, dnslib_rrtype_to_string(
+				                 dnslib_rrset_type(tmp_rrset)));
+				free(name);
+);
+				break;
+			default:
+				ret = dnslib_zone_add_rrset(*zone, rr, &node,
+				                       DNSLIB_RRSET_DUPL_MERGE);
+			}
+			if (ret != DNSLIB_EOK) {
+				return ret;
+			}
 		} else {
 			assert(0);
 			ret = dnslib_node_add_rrset(node, rr, 1);
