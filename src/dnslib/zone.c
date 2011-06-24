@@ -883,12 +883,18 @@ DEBUG_DNSLIB_ZONE(
 	    && ck_insert_item(zone->table, (const char *)node->owner->name,
 	                      node->owner->size, (void *)node) != 0) {
 		debug_dnslib_zone("Error inserting node into hash table!\n");
+		/*! \todo Remove the node from the tree. */
 		return DNSLIB_EHASH;
 	}
 #endif
 	assert(dnslib_zone_find_node(zone, node->owner));
 
-	dnslib_zone_dnames_from_node_to_table(zone, node);
+	ret = dnslib_zone_dnames_from_node_to_table(zone, node);
+	if (ret != DNSLIB_EOK) {
+		/*! \todo Remove the node from the tree and hash table. */
+		debug_dnslib_zone("Failed to add dnames into table.\n");
+		return ret;
+	}
 
 	if (!create_parents) {
 		return DNSLIB_EOK;
@@ -980,6 +986,7 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 	// add all domain names from the RRSet to domain name table
 	int rc;
 
+	/*! \todo REMOVE RRSET */
 	rc = dnslib_node_add_rrset(*node, rrset,
 	                           dupl == DNSLIB_ZONE_DUPL_RRSET_MERGE);
 	if (rc != DNSLIB_EOK) {
@@ -1013,14 +1020,83 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node,
                                int create_parents)
 {
+	if (zone == NULL || node == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	int ret = 0;
 	if ((ret = dnslib_zone_check_node(zone, node)) != 0) {
 		return ret;
 	}
 
-	dnslib_zone_dnames_from_node_to_table(zone, node);
 	// how to know if this is successfull??
 	TREE_INSERT(zone->nsec3_nodes, dnslib_node, avl, node);
+
+	ret = dnslib_zone_dnames_from_node_to_table(zone, node);
+	if (ret != DNSLIB_EOK) {
+		/*! \todo Remove the node from the tree. */
+		debug_dnslib_zone("Failed to add dnames into table.\n");
+		return ret;
+	}
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_zone_add_nsec3_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
+                                dnslib_node_t **node, int create_parents,
+                                dnslib_zone_dupl_rrset_handling_t dupl)
+{
+	if (zone == NULL || rrset == NULL || zone->apex == NULL
+	    || zone->apex->owner == NULL || node == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
+	// check if the RRSet belongs to the zone
+	if (dnslib_dname_compare(dnslib_rrset_owner(rrset), zone->apex->owner)
+	    != 0
+	    && !dnslib_dname_is_subdomain(dnslib_rrset_owner(rrset),
+	                                  zone->apex->owner)) {
+		return DNSLIB_EBADZONE;
+	}
+
+	if ((*node) == NULL
+	    && (*node = dnslib_zone_get_nsec3_node(
+	                      zone, dnslib_rrset_owner(rrset))) == NULL) {
+		return DNSLIB_ENONODE;
+	}
+
+	assert(*node != NULL);
+
+	// add all domain names from the RRSet to domain name table
+	int rc;
+
+	/*! \todo REMOVE RRSET */
+	rc = dnslib_node_add_rrset(*node, rrset,
+	                           dupl == DNSLIB_ZONE_DUPL_RRSET_MERGE);
+	if (rc != DNSLIB_EOK) {
+		return rc;
+	}
+
+	rc = dnslib_zone_dnames_from_rrset_to_table(zone, rrset,
+	                                            0, (*node)->owner);
+	if (rc != DNSLIB_EOK) {
+		debug_dnslib_zone("Error saving domain names from RRSet to the"
+		                  " domain name table.\n The zone may be in "
+		                  "an inconsistent state.\n");
+		// WARNING: the zone is not in consistent state now - there
+		// may be domain names in it that are not inserted into the
+		// domain table
+		return rc;
+	}
+
+	// replace RRSet's owner with the node's owner (that is already in the
+	// table)
+	if (rrset->owner != (*node)->owner) {
+		dnslib_dname_free(&rrset->owner);
+		rrset->owner = (*node)->owner;
+	}
 
 	return DNSLIB_EOK;
 }
