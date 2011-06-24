@@ -174,6 +174,10 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node,
                                int create_parents);
 
+int dnslib_zone_add_nsec3_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
+                                dnslib_node_t **node, int create_parents,
+                                dnslib_zone_dupl_rrset_handling_t dupl);
+
 /*!
  * \warning Always call dnslib_zone_adjust_dnames() prior to calling this
  *          function. Otherwise the node count would not be set.
