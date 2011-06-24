@@ -71,6 +71,36 @@ int dnslib_rrset_set_rrsigs(dnslib_rrset_t *rrset, dnslib_rrset_t *rrsigs)
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_rrset_add_rrsigs(dnslib_rrset_t *rrset, dnslib_rrset_t *rrsigs,
+                            dnslib_rrset_dupl_handling_t dupl)
+{
+	if (rrset == NULL || rrsigs == NULL
+	    || dnslib_dname_compare(rrset->owner, rrsigs->owner) != 0) {
+		return DNSLIB_EBADARG;
+	}
+
+	int rc;
+	if (rrset->rrsigs != NULL) {
+		if (dupl == DNSLIB_RRSET_DUPL_MERGE) {
+			rc = dnslib_rrset_merge((void **)&rrset->rrsigs,
+			                        (void **)&rrsigs);
+			if (rc != DNSLIB_EOK) {
+				return rc;
+			}
+		} else if (dupl == DNSLIB_RRSET_DUPL_SKIP) {
+			return DNSLIB_EOK;
+		} else if (dupl == DNSLIB_RRSET_DUPL_REPLACE) {
+			rrset->rrsigs = rrsigs;
+		}
+	} else {
+		rrset->rrsigs = rrsigs;
+	}
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 const dnslib_dname_t *dnslib_rrset_owner(const dnslib_rrset_t *rrset)
 {
 	return rrset->owner;

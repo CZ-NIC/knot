@@ -54,6 +54,12 @@ typedef enum {
 	DNSLIB_RRSET_COMPARE_WHOLE
 } dnslib_rrset_compare_type_t;
 
+typedef enum  {
+	DNSLIB_RRSET_DUPL_MERGE,
+	DNSLIB_RRSET_DUPL_REPLACE,
+	DNSLIB_RRSET_DUPL_SKIP
+} dnslib_rrset_dupl_handling_t;
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Creates a new RRSet with the given properties.
@@ -94,6 +100,9 @@ int dnslib_rrset_add_rdata(dnslib_rrset_t *rrset, dnslib_rdata_t *rdata);
  * \retval DNSLIB_EBADARG
  */
 int dnslib_rrset_set_rrsigs(dnslib_rrset_t *rrset, dnslib_rrset_t *rrsigs);
+
+int dnslib_rrset_add_rrsigs(dnslib_rrset_t *rrset, dnslib_rrset_t *rrsigs,
+                            dnslib_rrset_dupl_handling_t dupl);
 
 /*!
  * \brief Returns the Owner of the RRSet.
