@@ -1017,6 +1017,62 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
+                           dnslib_rrset_t *rrset)
+{
+	if (zone == NULL || rrsigs == NULL || rrset == NULL
+	    || zone->apex == NULL || zone->apex->owner == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
+	// check if the RRSet belongs to the zone
+	if (dnslib_dname_compare(dnslib_rrset_owner(rrset), zone->apex->owner)
+	    != 0
+	    && !dnslib_dname_is_subdomain(dnslib_rrset_owner(rrset),
+	                                  zone->apex->owner)) {
+		return DNSLIB_EBADZONE;
+	}
+
+	// check if the RRSIGs belong to the RRSet
+	if (dnslib_dname_compare(dnslib_rrset_owner(rrsigs),
+	                         dnslib_rrset_owner(rrset)) != 0
+	    || dnslib_rrset_rrsigs(rrset) != NULL) {
+		return DNSLIB_EBADARG;
+	}
+
+	// add all domain names from the RRSet to domain name table
+	int rc;
+
+	rc = dnslib_rrset_set_rrsigs(rrset, rrsigs);
+	if (rc != DNSLIB_EOK) {
+		debug_dnslib_dname("Failed to add RRSIGs to RRSet.\n");
+		return rc;
+	}
+
+	rc = dnslib_zone_dnames_from_rrset_to_table(zone, rrsigs,
+	                                            0, rrset->owner);
+	if (rc != DNSLIB_EOK) {
+		debug_dnslib_zone("Error saving domain names from RRSIGs to the"
+		                  " domain name table.\n The zone may be in "
+		                  "an inconsistent state.\n");
+		// WARNING: the zone is not in consistent state now - there
+		// may be domain names in it that are not inserted into the
+		// domain table
+		return rc;
+	}
+
+	// replace RRSet's owner with the node's owner (that is already in the
+	// table)
+	if (rrset->owner != rrsigs->owner) {
+		dnslib_dname_free(&rrsigs->owner);
+		rrsigs->owner = rrset->owner;
+	}
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node,
                                int create_parents)
 {
