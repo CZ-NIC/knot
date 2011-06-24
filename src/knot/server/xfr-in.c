@@ -344,9 +344,41 @@ DEBUG_XFR(
 			return 1;
 		}
 
-		if (node == NULL
-		    && (node = dnslib_zone_get_node(
-				   *zone, dnslib_rrset_owner(rr))) != NULL) {
+		if (dnslib_rrset_type(rr) == DNSLIB_RRTYPE_RRSIG) {
+			// RRSIGs require special handling, as there are no
+			// nodes for them
+			dnslib_rrset_t *tmp_rrset = NULL;
+			ret = dnslib_zone_add_rrsigs(*zone, rr, &tmp_rrset,
+			                       &node, DNSLIB_RRSET_DUPL_MERGE);
+			if (ret != DNSLIB_EOK) {
+				return KNOT_ERROR;  /*! \todo Other error code. */
+			}
+
+			// parse next RR
+			ret = dnslib_packet_parse_next_rr_answer(packet, &rr);
+
+			continue;
+		}
+
+		dnslib_node_t *(*get_node)(const dnslib_zone_t *,
+		                           const dnslib_dname_t *) = NULL;
+		int (*add_node)(dnslib_zone_t *, dnslib_node_t *, int) = NULL;
+		int (*add_rrset)(dnslib_zone_t *, dnslib_rrset_t *,
+		                  dnslib_node_t **, dnslib_rrset_dupl_handling_t)
+		                 = NULL;
+
+		if (dnslib_rrset_type(rr) == DNSLIB_RRTYPE_NSEC3) {
+			get_node = dnslib_zone_get_nsec3_node;
+			add_node = dnslib_zone_add_nsec3_node;
+			add_rrset = dnslib_zone_add_nsec3_rrset;
+		} else {
+			get_node = dnslib_zone_get_node;
+			add_node = dnslib_zone_add_node;
+			add_rrset = dnslib_zone_add_rrset;
+		}
+
+		if (node == NULL && (node = get_node(
+		                     *zone, dnslib_rrset_owner(rr))) != NULL) {
 			// the node for this RR was found in the zone
 			debug_xfr("Found node for the record in zone.\n");
 			in_zone = 1;
@@ -364,10 +396,26 @@ DEBUG_XFR(
 			debug_xfr("Created new node for the record.\n");
 
 			// insert the node into the zone
-			in_zone = 1;
-			dnslib_zone_add_node(*zone, node, 1);
+			ret = dnslib_node_add_rrset(node, rr, 1);
+			if (ret != DNSLIB_EOK) {
+				return KNOT_ERROR;
+			}
+			ret = add_node(*zone, node, 1);
+			if (ret != DNSLIB_EOK) {
+				return KNOT_ERROR;
+			}
 
-		}/* else if (node->owner != rr->owner) {
+			in_zone = 1;
+		} else {
+			assert(in_zone);
+
+			ret = dnslib_zone_add_rrset(*zone, rr, &node,
+			                            DNSLIB_RRSET_DUPL_MERGE);
+			if (ret != DNSLIB_EOK) {
+				return KNOT_ERROR;
+			}
+		}
+			/* else if (node->owner != rr->owner) {
 DEBUG_XFR(
 			char *name = dnslib_dname_to_str(node->owner);
 			char *name2 = dnslib_dname_to_str(rr->owner);
@@ -381,7 +429,12 @@ DEBUG_XFR(
 		}*/
 
 		assert(node != NULL);
+		assert(rr != NULL);
+		assert(node->owner != NULL);
+		assert(rr->owner != NULL);
 //		assert(node->owner == rr->owner);
+		debug_xfr("Node owner: %p\n", node->owner);
+		debug_xfr("RRSet owner: %p\n", rr->owner);
 DEBUG_XFR(
 		char *name = dnslib_dname_to_str(node->owner);
 		char *name2 = dnslib_dname_to_str(rr->owner);
@@ -391,33 +444,35 @@ DEBUG_XFR(
 		free(name2);
 );
 		if (in_zone) {
-			switch (dnslib_rrset_type(rr)) {
-			case DNSLIB_RRTYPE_NSEC3:
-				debug_xfr("Inserting NSEC3 RRSet into zone.\n");
-				ret = dnslib_zone_add_nsec3_rrset(*zone, rr,
-				             &node, 0, DNSLIB_RRSET_DUPL_MERGE);
-				break;
-			case DNSLIB_RRTYPE_RRSIG:
-				debug_xfr("Inserting RRSIG RRSet into zone.\n");
-				dnslib_rrset_t *tmp_rrset = NULL;
-				ret = dnslib_zone_add_rrsigs(*zone, rr,
-				           &tmp_rrset, DNSLIB_RRSET_DUPL_MERGE);
-DEBUG_XFR(
-				char *name = dnslib_dname_to_str(
-						dnslib_rrset_owner(tmp_rrset));
-				debug_xfr("RRSIGs inserted to RRSet %s, %s\n",
-				          name, dnslib_rrtype_to_string(
-				                 dnslib_rrset_type(tmp_rrset)));
-				free(name);
-);
-				break;
-			default:
-				ret = dnslib_zone_add_rrset(*zone, rr, &node,
-				                       DNSLIB_RRSET_DUPL_MERGE);
-			}
-			if (ret != DNSLIB_EOK) {
-				return ret;
-			}
+//			switch (dnslib_rrset_type(rr)) {
+//			case DNSLIB_RRTYPE_NSEC3:
+//				debug_xfr("Inserting NSEC3 RRSet into zone.\n");
+//				ret = dnslib_zone_add_nsec3_rrset(*zone, rr,
+//				             &node, DNSLIB_RRSET_DUPL_MERGE);
+//				break;
+//			case DNSLIB_RRTYPE_RRSIG:
+//				assert(0);
+//				debug_xfr("Inserting RRSIG RRSet into zone.\n");
+//				dnslib_rrset_t *tmp_rrset = NULL;
+//				ret = dnslib_zone_add_rrsigs(*zone, rr,
+//				           &tmp_rrset, DNSLIB_RRSET_DUPL_MERGE);
+//DEBUG_XFR(
+//				char *name = dnslib_dname_to_str(
+//						dnslib_rrset_owner(tmp_rrset));
+//				debug_xfr("RRSIGs inserted to RRSet %s, %s\n",
+//				          name, dnslib_rrtype_to_string(
+//				                 dnslib_rrset_type(tmp_rrset)));
+//				free(name);
+//);
+//				break;
+//			default:
+
+//			}
+//			ret = add_rrset(*zone, rr, &node,
+//			                DNSLIB_RRSET_DUPL_MERGE);
+//			if (ret != DNSLIB_EOK) {
+//				return KNOT_ERROR;
+//			}
 		} else {
 			assert(0);
 			ret = dnslib_node_add_rrset(node, rr, 1);
