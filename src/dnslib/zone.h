@@ -41,12 +41,6 @@ enum dnslib_zone_retvals {
 
 typedef enum dnslib_zone_retvals dnslib_zone_retvals_t;
 
-typedef enum  {
-	DNSLIB_ZONE_DUPL_RRSET_MERGE,
-	DNSLIB_ZONE_DUPL_RRSET_REPLACE,
-	DNSLIB_ZONE_DUPL_RRSET_SKIP
-} dnslib_zone_dupl_rrset_handling_t;
-
 /*----------------------------------------------------------------------------*/
 
 /*!
@@ -154,10 +148,11 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
  */
 int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
                           dnslib_node_t **node,
-                          dnslib_zone_dupl_rrset_handling_t dupl);
+                          dnslib_rrset_dupl_handling_t dupl);
 
 int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
-                           dnslib_rrset_t *rrset);
+                           dnslib_rrset_t *rrset,
+                           dnslib_rrset_dupl_handling_t dupl);
 
 /*!
  * \brief Adds a node holding NSEC3 records to the given zone.
@@ -179,7 +174,7 @@ int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node,
 
 int dnslib_zone_add_nsec3_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
                                 dnslib_node_t **node, int create_parents,
-                                dnslib_zone_dupl_rrset_handling_t dupl);
+                                dnslib_rrset_dupl_handling_t dupl);
 
 /*!
  * \warning Always call dnslib_zone_adjust_dnames() prior to calling this

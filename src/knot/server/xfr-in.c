@@ -288,7 +288,7 @@ DEBUG_XFR(
 		// add the RRSet to the node
 		//ret = dnslib_node_add_rrset(node, rr, 0);
 		ret = dnslib_zone_add_rrset(*zone, rr, &node,
-		                            DNSLIB_ZONE_DUPL_RRSET_MERGE);
+		                            DNSLIB_RRSET_DUPL_MERGE);
 		if (ret != DNSLIB_EOK) {
 			debug_xfr("Failed to add RRSet to zone node: %s.\n",
 			          dnslib_strerror(ret));
@@ -387,7 +387,7 @@ DEBUG_XFR(
 );
 		if (in_zone) {
 			ret = dnslib_zone_add_rrset(*zone, rr, &node,
-			                          DNSLIB_ZONE_DUPL_RRSET_MERGE);
+			                          DNSLIB_RRSET_DUPL_MERGE);
 		} else {
 			ret = dnslib_node_add_rrset(node, rr, 1);
 		}
