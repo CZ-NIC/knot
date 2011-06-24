@@ -312,6 +312,7 @@ DEBUG_XFR(
 		if (node != NULL
 		    && dnslib_dname_compare(rr->owner, node->owner) != 0) {
 			if (!in_zone) {
+				assert(0);
 				// the node is not in the zone and the RR has
 				// other owner, so a new node must be created
 				// insert the old node to the zone
@@ -360,8 +361,12 @@ DEBUG_XFR(
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
 				return KNOT_ENOMEM;
 			}
-			in_zone = 0;
 			debug_xfr("Created new node for the record.\n");
+
+			// insert the node into the zone
+			in_zone = 1;
+			dnslib_zone_add_node(*zone, node, 1);
+
 		}/* else if (node->owner != rr->owner) {
 DEBUG_XFR(
 			char *name = dnslib_dname_to_str(node->owner);
@@ -389,6 +394,7 @@ DEBUG_XFR(
 			ret = dnslib_zone_add_rrset(*zone, rr, &node,
 			                          DNSLIB_RRSET_DUPL_MERGE);
 		} else {
+			assert(0);
 			ret = dnslib_node_add_rrset(node, rr, 1);
 		}
 		if (ret != DNSLIB_EOK) {
