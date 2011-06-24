@@ -274,7 +274,6 @@ owner:	dname sp
     {
 	printf("Totally new dname: %p\n", $1);
 	    parser->prev_dname = dnslib_dname_copy($1);
-	    printf("Made a copy:%");
 	    $$ = $1;
     }
     |	PREV
