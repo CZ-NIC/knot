@@ -244,13 +244,13 @@ ttl_directive:	DOLLAR_TTL sp STR trail
 
 origin_directive:	DOLLAR_ORIGIN sp abs_dname trail
     {
-	    dnslib_node_t *origin_node = dnslib_node_new(dnslib_dname_cat($3,
+/*	    dnslib_node_t *origin_node = dnslib_node_new(dnslib_dname_cat($3,
 							 parser->root_domain),
 							 NULL);
 	if (parser->origin != NULL) {
 		dnslib_node_free(&parser->origin, 1);
 	}
-	    parser->origin = origin_node;
+	    parser->origin = origin_node; */
     }
     |	DOLLAR_ORIGIN sp rel_dname trail
     {
@@ -272,7 +272,9 @@ rr:	owner classttl type_and_rdata
 
 owner:	dname sp
     {
-	printf("Totally new dname: %p\n", $1);
+	printf("Totally new dname: %p %s\n", $1,
+	dnslib_dname_to_str($1));
+	dnslib_dname_free(&parser->prev_dname);
 	    parser->prev_dname = dnslib_dname_copy($1);
 	    $$ = $1;
     }
