@@ -150,6 +150,8 @@ src/knot/server/udp-handler.c
 src/knot/server/udp-handler.h
 src/knot/server/zones.c
 src/knot/server/zones.h
+src/knot/server/journal.c
+src/knot/server/journal.h
 src/knot/server/xfr-in.c
 src/knot/server/xfr-in.h
 src/knot/server/notify.c

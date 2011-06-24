@@ -204,6 +204,7 @@ libknot_la_SOURCES =				\
 	knot/ctl/process.c			\
 	knot/ctl/process.h			\
 	knot/server/dthreads.c			\
+	knot/server/journal.c			\
 	knot/server/socket.c				\
 	knot/server/name-server.c			\
 	knot/server/server.c				\
@@ -217,6 +218,7 @@ libknot_la_SOURCES =				\
 	knot/server/tcp-handler.h			\
 	knot/server/xfr-handler.h			\
 	knot/server/dthreads.h			\
+	knot/server/journal.h			\
 	knot/server/zones.h				\
 	knot/server/xfr-in.h				\
 	knot/server/xfr-in.c				\
