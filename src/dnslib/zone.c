@@ -671,6 +671,7 @@ static int dnslib_zone_dnames_from_rrset_to_table(dnslib_zone_t *zone,
 		//dnslib_dname_free(&rrset->owner);
 		rrset->owner = owner;
 	}
+	debug_dnslib_zone("RRSet owner: %p\n", rrset->owner);
 
 	dnslib_rrtype_descriptor_t *desc = dnslib_rrtype_descriptor_by_type(
 		dnslib_rrset_type(rrset));
@@ -1018,10 +1019,10 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 /*----------------------------------------------------------------------------*/
 
 int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
-                           dnslib_rrset_t **rrset,
+                           dnslib_rrset_t **rrset, dnslib_node_t **node,
                            dnslib_rrset_dupl_handling_t dupl)
 {
-	if (zone == NULL || rrsigs == NULL || rrset == NULL
+	if (zone == NULL || rrsigs == NULL || rrset == NULL || node == NULL
 	    || zone->apex == NULL || zone->apex->owner == NULL) {
 		return DNSLIB_EBADARG;
 	}
@@ -1044,15 +1045,16 @@ int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
 
 	// if no RRSet given, try to find the right RRSet
 	if (*rrset == NULL) {
-		dnslib_node_t *node = NULL;
+		// even no node given
 		// find proper node
-		if ((node = dnslib_zone_get_node(
-		                 zone, dnslib_rrset_owner(rrsigs))) == NULL) {
+		if (*node == NULL
+		    && (*node = dnslib_zone_get_node(
+				   zone, dnslib_rrset_owner(rrsigs))) == NULL) {
 			debug_dnslib_zone("Failed to find node for RRSIGs.\n");
 			return DNSLIB_EBADARG;  /*! \todo Other error code? */
 		}
 
-		assert(node != NULL);
+		assert(*node != NULL);
 
 		// find the RRSet in the node
 		// take only the first RDATA from the RRSIGs
@@ -1061,7 +1063,7 @@ int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
 		                      dnslib_rdata_rrsig_type_covered(
 		                      dnslib_rrset_rdata(rrsigs))));
 		*rrset = dnslib_node_get_rrset(
-		             node, dnslib_rdata_rrsig_type_covered(
+		             *node, dnslib_rdata_rrsig_type_covered(
 		                      dnslib_rrset_rdata(rrsigs)));
 		if (*rrset == NULL) {
 			debug_dnslib_zone("Failed to find RRSet for RRSIGs.\n");
@@ -1132,7 +1134,7 @@ int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node,
 /*----------------------------------------------------------------------------*/
 
 int dnslib_zone_add_nsec3_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
-                                dnslib_node_t **node, int create_parents,
+                                dnslib_node_t **node,
                                 dnslib_rrset_dupl_handling_t dupl)
 {
 	if (zone == NULL || rrset == NULL || zone->apex == NULL

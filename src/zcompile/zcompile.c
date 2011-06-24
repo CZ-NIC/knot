@@ -1503,7 +1503,7 @@ int find_rrset_for_rrsig_in_node(dnslib_zone_t *zone,
 	/*!< \todo inserting RRSIGs to zone!!! */
 
 	if (tmp_rrset->rrsigs != NULL) {
-		dnslib_zone_add_rrsigs(zone, rrsig, &tmp_rrset,
+		dnslib_zone_add_rrsigs(zone, rrsig, &tmp_rrset, &node,
 		                       DNSLIB_RRSET_DUPL_MERGE);
 //		dnslib_rrset_merge((void *)&tmp_rrset->rrsigs, (void *)&rrsig);
 		dnslib_rrset_free(&rrsig);

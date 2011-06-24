@@ -151,7 +151,7 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
                           dnslib_rrset_dupl_handling_t dupl);
 
 int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
-                           dnslib_rrset_t **rrset,
+                           dnslib_rrset_t **rrset, dnslib_node_t **node,
                            dnslib_rrset_dupl_handling_t dupl);
 
 /*!
@@ -173,7 +173,7 @@ int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node,
                                int create_parents);
 
 int dnslib_zone_add_nsec3_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
-                                dnslib_node_t **node, int create_parents,
+                                dnslib_node_t **node,
                                 dnslib_rrset_dupl_handling_t dupl);
 
 /*!
