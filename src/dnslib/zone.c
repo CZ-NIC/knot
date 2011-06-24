@@ -385,11 +385,11 @@ DEBUG_DNSLIB_ZONE(
 
 	for (int r = 0; r < count; ++r) {
 		assert(rrsets[r] != NULL);
-		assert(dnslib_rrset_type(rrsets[r]) == DNSLIB_RRTYPE_NSEC3);
-		dnslib_rrset_t *rrsigs = rrsets[r]->rrsigs;
-		if (rrsigs != NULL) {
-			dnslib_zone_adjust_rdata_in_rrset(rrsigs, zone);
-		}
+//		assert(dnslib_rrset_type(rrsets[r]) == DNSLIB_RRTYPE_NSEC3);
+//		dnslib_rrset_t *rrsigs = rrsets[r]->rrsigs;
+//		if (rrsigs != NULL) {
+//			dnslib_zone_adjust_rdata_in_rrset(rrsigs, zone);
+//		}
 	}
 
 	free(rrsets);
@@ -743,6 +743,7 @@ static int dnslib_zone_dnames_from_node_to_table(dnslib_zone_t *zone,
 
 dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count)
 {
+	printf("Creating new zone!\n");
 	if (apex == NULL) {
 		return NULL;
 	}
@@ -1017,6 +1018,7 @@ int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node,
 		return ret;
 	}
 
+	dnslib_zone_dnames_from_node_to_table(zone, node);
 	// how to know if this is successfull??
 	TREE_INSERT(zone->nsec3_nodes, dnslib_node, avl, node);
 
