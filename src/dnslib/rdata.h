@@ -318,6 +318,8 @@ uint32_t dnslib_rdata_soa_refresh(const dnslib_rdata_t *rdata);
 uint32_t dnslib_rdata_soa_retry(const dnslib_rdata_t *rdata);
 uint32_t dnslib_rdata_soa_expire(const dnslib_rdata_t *rdata);
 
+uint16_t dnslib_rdata_rrsig_type_covered(const dnslib_rdata_t *rdata);
+
 #endif /* _KNOT_DNSLIB_RDATA_H */
 
 /*! @} */
