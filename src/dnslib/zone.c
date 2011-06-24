@@ -1047,8 +1047,15 @@ int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
 	if (*rrset == NULL) {
 		// even no node given
 		// find proper node
+		dnslib_node_t *(*get_node)(const dnslib_zone_t *,
+		                           const dnslib_dname_t *)
+		    = (dnslib_rdata_rrsig_type_covered(
+		            dnslib_rrset_rdata(rrsigs)) == DNSLIB_RRTYPE_NSEC3)
+		       ? dnslib_zone_get_nsec3_node
+		       : dnslib_zone_get_node;
+
 		if (*node == NULL
-		    && (*node = dnslib_zone_get_node(
+		    && (*node = get_node(
 				   zone, dnslib_rrset_owner(rrsigs))) == NULL) {
 			debug_dnslib_zone("Failed to find node for RRSIGs.\n");
 			return DNSLIB_EBADARG;  /*! \todo Other error code? */
