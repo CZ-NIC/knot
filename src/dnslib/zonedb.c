@@ -56,6 +56,9 @@ static int dnslib_zonedb_replace_zone_in_list(void **list_item, void **new_zone)
 	assert(new_zone != NULL);
 	assert(*new_zone != NULL);
 
+	debug_dnslib_zonedb("Replacing list item %p with new zone %p\n",
+	                    *list_item, *new_zone);
+
 	*list_item = *new_zone;
 
 	return 0;
@@ -133,9 +136,11 @@ dnslib_zone_t *dnslib_zonedb_replace_zone(dnslib_zonedb_t *db,
 {
 	dnslib_zone_t *z = dnslib_zonedb_find_zone(db,
 		dnslib_node_owner(dnslib_zone_apex(zone)));
-	if (zone == NULL) {
+	if (z == NULL) {
 		return NULL;
 	}
+
+	debug_dnslib_zonedb("Old zone: %p\n", z);
 
 	int ret = skip_insert(db->zones,
 	           (void *)dnslib_node_owner(dnslib_zone_apex(zone)),

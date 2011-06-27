@@ -269,6 +269,8 @@ int ns_process_notify(ns_nameserver_t *nameserver, sockaddr_t *from,
  */
 int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
 
+int ns_switch_zone(ns_nameserver_t *nameserver, dnslib_zone_t *zone);
+
 /*!
  * \brief Processes an IXFR-IN packet.
  *

@@ -2917,27 +2917,6 @@ static int ns_save_zone(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_switch_zone(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
-{
-	dnslib_zone_t *zone = dnslib_zonedb_replace_zone(nameserver->zone_db,
-	                                                 xfr->zone);
-	if (zone == NULL) {
-		char *name = dnslib_dname_to_str(
-				dnslib_node_owner(dnslib_zone_apex(xfr->zone)));
-		log_server_warning("Failed to replace zone %s\n", name);
-		free(name);
-	}
-
-	// wait for readers to finish
-	synchronize_rcu();
-	// destroy the old zone
-	dnslib_zone_deep_free(&zone, 1);
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
 int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 {
 	/*! \todo Implement me.
@@ -2977,18 +2956,31 @@ int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 			dnslib_zone_deep_free(&xfr->zone, 1);
 			return rc;
 		}
-
-		// change the zone served by the nameserver to the new one
-		rc = ns_switch_zone(nameserver, xfr);
-		if (rc != KNOT_EOK) {
-			// WTF?? what to do?
-			return rc;
-		}
-
 		return KNOT_EOK;
 	} else {
 		return ret;
 	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+int ns_switch_zone(ns_nameserver_t *nameserver, dnslib_zone_t *zone)
+{
+	dnslib_zone_t *old = dnslib_zonedb_replace_zone(nameserver->zone_db,
+	                                                zone);
+	if (old == NULL) {
+		char *name = dnslib_dname_to_str(
+				dnslib_node_owner(dnslib_zone_apex(zone)));
+		log_server_warning("Failed to replace zone %s\n", name);
+		free(name);
+	}
+
+	// wait for readers to finish
+	synchronize_rcu();
+	// destroy the old zone
+	dnslib_zone_deep_free(&old, 1);
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
