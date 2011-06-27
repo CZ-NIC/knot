@@ -273,7 +273,7 @@ DEBUG_XFR(
 
 		// the first RR is SOA and its owner and QNAME are the same
 		// create the zone
-		*zone = dnslib_zone_new(node, 0);
+		*zone = dnslib_zone_new(node, 0, 1);
 		if (*zone == NULL) {
 			debug_xfr("Failed to create new zone.\n");
 			dnslib_packet_free(&packet);
@@ -288,7 +288,7 @@ DEBUG_XFR(
 		// add the RRSet to the node
 		//ret = dnslib_node_add_rrset(node, rr, 0);
 		ret = dnslib_zone_add_rrset(*zone, rr, &node,
-		                            DNSLIB_RRSET_DUPL_MERGE);
+		                            DNSLIB_RRSET_DUPL_MERGE, 1);
 		if (ret != DNSLIB_EOK) {
 			debug_xfr("Failed to add RRSet to zone node: %s.\n",
 			          dnslib_strerror(ret));
@@ -322,7 +322,7 @@ DEBUG_XFR(
 				          name);
 				free(name);
 	);
-				ret = dnslib_zone_add_node(*zone, node, 1);
+				ret = dnslib_zone_add_node(*zone, node, 1, 1);
 				if (ret != DNSLIB_EOK) {
 					dnslib_packet_free(&packet);
 					dnslib_node_free(&node, 1);
@@ -349,7 +349,7 @@ DEBUG_XFR(
 			// nodes for them
 			dnslib_rrset_t *tmp_rrset = NULL;
 			ret = dnslib_zone_add_rrsigs(*zone, rr, &tmp_rrset,
-			                       &node, DNSLIB_RRSET_DUPL_MERGE);
+			                     &node, DNSLIB_RRSET_DUPL_MERGE, 1);
 			if (ret != DNSLIB_EOK) {
 				return KNOT_ERROR;  /*! \todo Other error code. */
 			}
@@ -362,9 +362,11 @@ DEBUG_XFR(
 
 		dnslib_node_t *(*get_node)(const dnslib_zone_t *,
 		                           const dnslib_dname_t *) = NULL;
-		int (*add_node)(dnslib_zone_t *, dnslib_node_t *, int) = NULL;
+		int (*add_node)(dnslib_zone_t *, dnslib_node_t *, int, int)
+		      = NULL;
 		int (*add_rrset)(dnslib_zone_t *, dnslib_rrset_t *,
-		                  dnslib_node_t **, dnslib_rrset_dupl_handling_t)
+		                  dnslib_node_t **,
+		                  dnslib_rrset_dupl_handling_t, int)
 		                 = NULL;
 
 		if (dnslib_rrset_type(rr) == DNSLIB_RRTYPE_NSEC3) {
@@ -400,7 +402,7 @@ DEBUG_XFR(
 			if (ret != DNSLIB_EOK) {
 				return KNOT_ERROR;
 			}
-			ret = add_node(*zone, node, 1);
+			ret = add_node(*zone, node, 1, 1);
 			if (ret != DNSLIB_EOK) {
 				return KNOT_ERROR;
 			}
@@ -410,7 +412,7 @@ DEBUG_XFR(
 			assert(in_zone);
 
 			ret = dnslib_zone_add_rrset(*zone, rr, &node,
-			                            DNSLIB_RRSET_DUPL_MERGE);
+			                            DNSLIB_RRSET_DUPL_MERGE, 1);
 			if (ret != DNSLIB_EOK) {
 				return KNOT_ERROR;
 			}
@@ -509,7 +511,7 @@ DEBUG_XFR(
 	// if the last node is not yet in the zone, insert
 	if (!in_zone) {
 		assert(node != NULL);
-		ret = dnslib_zone_add_node(*zone, node, 1);
+		ret = dnslib_zone_add_node(*zone, node, 1, 1);
 		if (ret != DNSLIB_EOK) {
 			dnslib_packet_free(&packet);
 			dnslib_node_free(&node, 1);

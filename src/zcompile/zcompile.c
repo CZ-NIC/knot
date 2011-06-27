@@ -1504,12 +1504,12 @@ int find_rrset_for_rrsig_in_node(dnslib_zone_t *zone,
 
 	if (tmp_rrset->rrsigs != NULL) {
 		dnslib_zone_add_rrsigs(zone, rrsig, &tmp_rrset, &node,
-		                       DNSLIB_RRSET_DUPL_MERGE);
+		                       DNSLIB_RRSET_DUPL_MERGE, 1);
 //		dnslib_rrset_merge((void *)&tmp_rrset->rrsigs, (void *)&rrsig);
 		dnslib_rrset_free(&rrsig);
 	} else {
 		dnslib_zone_add_rrset(zone, rrsig, &node,
-		                      DNSLIB_RRSET_DUPL_REPLACE);
+		                      DNSLIB_RRSET_DUPL_REPLACE, 1);
 		tmp_rrset->rrsigs = rrsig;
 	}
 
@@ -1522,13 +1522,13 @@ int find_rrset_for_rrsig_in_node(dnslib_zone_t *zone,
 static dnslib_node_t *create_node(dnslib_zone_t *zone,
 	dnslib_rrset_t *current_rrset,
 	int (*node_add_func)(dnslib_zone_t *zone, dnslib_node_t *node,
-	                     int create_parents),
+	                     int create_parents, int),
 	dnslib_node_t *(*node_get_func)(const dnslib_zone_t *zone,
 					const dnslib_dname_t *owner))
 {
 	dnslib_node_t *node =
 		dnslib_node_new(current_rrset->owner, NULL);
-	if (node_add_func(zone, node, 1) != 0) {
+	if (node_add_func(zone, node, 1, 1) != 0) {
 		return NULL;
 	}
 
@@ -1565,7 +1565,7 @@ int process_rr(void)
 
 	assert(dnslib_dname_is_fqdn(current_rrset->owner));
 
-	int (*node_add_func)(dnslib_zone_t *, dnslib_node_t *, int);
+	int (*node_add_func)(dnslib_zone_t *, dnslib_node_t *, int, int);
 	dnslib_node_t *(*node_get_func)(const dnslib_zone_t *,
 					const dnslib_dname_t *);
 
@@ -1705,7 +1705,7 @@ int process_rr(void)
 		/* I chose skip, but there should not really be
 		 * any rrset to skip */
 		if (dnslib_zone_add_rrset(parser->current_zone, rrset, &node,
-		                   DNSLIB_RRSET_DUPL_SKIP) != 0) {
+		                   DNSLIB_RRSET_DUPL_SKIP, 1) != 0) {
 			free(rrset);
 			return KNOT_ZCOMPILE_EBRDATA;
 		}
@@ -1719,7 +1719,7 @@ int process_rr(void)
 
 		if (dnslib_zone_add_rrset(parser->current_zone, current_rrset,
 		                          &node,
-		                   DNSLIB_RRSET_DUPL_MERGE) != 0) {
+		                   DNSLIB_RRSET_DUPL_MERGE, 1) != 0) {
 			free(rrset);
 			return KNOT_ZCOMPILE_EBRDATA;
 		}
