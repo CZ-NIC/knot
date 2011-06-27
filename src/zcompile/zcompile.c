@@ -1475,9 +1475,11 @@ int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone, dnslib_rrset_t *rrsig)
 	}
 
 	if (tmp_rrset->rrsigs != NULL) {
-		dnslib_rrset_merge((void *)&tmp_rrset->rrsigs, (void *)&rrsig);
+		dnslib_zone_add_rrsigs(zone, rrsig, &tmp_rrset, &tmp_node,
+		                       DNSLIB_RRSET_DUPL_MERGE, 1);
 	} else {
-		tmp_rrset->rrsigs = rrsig;
+		dnslib_zone_add_rrsigs(zone, rrsig, &tmp_rrset, &tmp_node,
+		                       DNSLIB_RRSET_DUPL_SKIP, 1);
 	}
 
 	return KNOT_ZCOMPILE_EOK;
@@ -1500,16 +1502,23 @@ int find_rrset_for_rrsig_in_node(dnslib_zone_t *zone,
 		return KNOT_ZCOMPILE_EINVAL;
 	}
 
-	/*!< \todo inserting RRSIGs to zone!!! */
-
 	if (tmp_rrset->rrsigs != NULL) {
 		dnslib_zone_add_rrsigs(zone, rrsig, &tmp_rrset, &node,
+<<<<<<< HEAD
 		                       DNSLIB_RRSET_DUPL_MERGE, 1);
 //		dnslib_rrset_merge((void *)&tmp_rrset->rrsigs, (void *)&rrsig);
 		dnslib_rrset_free(&rrsig);
 	} else {
 		dnslib_zone_add_rrset(zone, rrsig, &node,
 		                      DNSLIB_RRSET_DUPL_REPLACE, 1);
+=======
+		                       DNSLIB_RRSET_DUPL_MERGE);
+		dnslib_rrset_free(&rrsig);
+	} else {
+
+		dnslib_zone_add_rrsigs(zone, rrsig, &tmp_rrset, &node,
+		                       DNSLIB_RRSET_DUPL_SKIP);
+>>>>>>> 56bc8d4949b9ba5fccaaa31216735acba44daa00
 		tmp_rrset->rrsigs = rrsig;
 	}
 
@@ -1853,12 +1862,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 			    zonefile);
 
 	/* This is *almost* unnecessary */
-//	dnslib_zone_deep_free(&(parser->current_zone), 0);
-
-	dnslib_zone_t *some_zone= dnslib_zload_load(dnslib_zload_open(outfile));
-
-	printf("apex of new zone: %s\n",
-	       dnslib_dname_to_str(some_zone->apex->owner));
+	dnslib_zone_deep_free(&(parser->current_zone), 0);
 
 	fclose(yyin);
 
