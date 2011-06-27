@@ -1504,13 +1504,19 @@ int find_rrset_for_rrsig_in_node(dnslib_zone_t *zone,
 	}
 
 	if (tmp_rrset->rrsigs != NULL) {
-		dnslib_zone_add_rrsigs(zone, rrsig, &tmp_rrset, &node,
-		                       DNSLIB_RRSET_DUPL_MERGE, 1);
+		if (dnslib_zone_add_rrsigs(zone, rrsig, &tmp_rrset, &node,
+		                           DNSLIB_RRSET_DUPL_MERGE, 1) != 0) {
+			return KNOT_ZCOMPILE_EINVAL;
+		}
 		dnslib_rrset_free(&rrsig);
 	} else {
-		dnslib_zone_add_rrset(zone, rrsig, &node,
-		                      DNSLIB_RRSET_DUPL_SKIP, 1);
+		if (dnslib_zone_add_rrsigs(zone, rrsig, &tmp_rrset, &node,
+		                           DNSLIB_RRSET_DUPL_SKIP, 1) != 0) {
+			return KNOT_ZCOMPILE_EINVAL;
+		}
 	}
+
+	assert(tmp_rrset->rrsigs != NULL);
 
 	debug_zp("setting rrsigs for rrset %s\n",
 		 dnslib_dname_to_str(rrsig->owner));
@@ -1853,6 +1859,10 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	/* This is *almost* unnecessary */
 	dnslib_zone_deep_free(&(parser->current_zone), 0);
+
+//	dnslib_zone_t *zone = dnslib_zload_load(dnslib_zload_open(outfile));
+//	printf("apex: %s\n", zone->apex->owner->name);
+
 
 	fclose(yyin);
 
