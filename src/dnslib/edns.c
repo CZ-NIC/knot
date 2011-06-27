@@ -133,17 +133,20 @@ int dnslib_edns_new_from_rr(dnslib_opt_rr_t *opt_rr,
 	debug_dnslib_edns("Parsing payload.\n");
 	opt_rr->payload = dnslib_rrset_class(rrset);
 
-	uint32_t ttl = dnslib_rrset_ttl(rrset);
+	// the TTL has switched bytes
+	uint32_t ttl;
+	debug_dnslib_edns("TTL: %u\n", dnslib_rrset_ttl(rrset));
+	dnslib_wire_write_u32((uint8_t *)&ttl, dnslib_rrset_ttl(rrset));
 	// first byte of TTL is extended RCODE
-	debug_dnslib_edns("Parsing extended RCODE.\n");
+	debug_dnslib_edns("TTL: %u\n", ttl);
 	memcpy(&opt_rr->ext_rcode, &ttl, 1);
+	debug_dnslib_edns("Parsed extended RCODE: %u.\n", opt_rr->ext_rcode);
 	// second is the version
-	debug_dnslib_edns("Parsing version.\n");
 	memcpy(&opt_rr->version, (const uint8_t *)(&ttl) + 1, 1);
+	debug_dnslib_edns("Parsed version: %u.\n", opt_rr->version);
 	// third and fourth are flags
-	debug_dnslib_edns("Parsing flags.\n");
-	memcpy(&opt_rr->flags, (const uint8_t *)(&ttl) + 2,
-	       2);
+	opt_rr->flags = dnslib_wire_read_u16((const uint8_t *)(&ttl) + 2);
+	debug_dnslib_edns("Parsed flags: %u.\n", opt_rr->flags);
 	// size of the header, options are counted elsewhere
 	opt_rr->size = 11;
 
