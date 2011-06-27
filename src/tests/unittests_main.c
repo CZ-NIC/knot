@@ -9,6 +9,7 @@
 #include "tests/common/da_tests.h"
 #include "tests/common/acl_tests.h"
 #include "tests/knot/dthreads_tests.h"
+#include "tests/knot/journal_tests.h"
 #include "tests/knot/server_tests.h"
 #include "tests/knot/conf_tests.h"
 
@@ -21,6 +22,7 @@ int main(int argc, char *argv[])
 	// Build test set
 	unit_api *tests[] = {
 		/* Core data structures. */
+		&journal_tests_api,  //! Journal unit
 		&slab_tests_api,     //! SLAB allocator unit
 		&skiplist_tests_api, //! Skip list unit
 		&dthreads_tests_api, //! DThreads testing unit
