@@ -98,7 +98,7 @@ int dnslib_dname_table_add_dname(dnslib_dname_table_t *table,
 	node->avl.avl_right = NULL;
 
 	node->dname->id = table->id_counter++;
-	printf("Inserted dname got id %d\n", node->dname->id);
+//	printf("Inserted dname got id %d\n", node->dname->id);
 	assert(node->dname->id != 0);
 
 	TREE_INSERT(table->tree, dname_table_node, avl, node);
@@ -111,27 +111,27 @@ int dnslib_dname_table_add_dname2(dnslib_dname_table_t *table,
 	dnslib_dname_t *found_dname = NULL;
 	int ret;
 
-	char *name = dnslib_dname_to_str(*dname);
-	printf("Inserting name %s to dname table.\n", name);
-	free(name);
+//	char *name = dnslib_dname_to_str(*dname);
+//	printf("Inserting name %s to dname table.\n", name);
+//	free(name);
 
 	if ((!(found_dname =
 	      dnslib_dname_table_find_dname(table ,*dname))) &&
 	      (ret = dnslib_dname_table_add_dname(table, *dname))
 	      != DNSLIB_EOK) {
-		printf("Error!\n");
+//		printf("Error!\n");
 		return ret;
 	} else if (found_dname != NULL && found_dname != *dname) {
 		/*! \todo Remove the check for equality. */
-		name = dnslib_dname_to_str(found_dname);
-		printf("Already there: %s (%p)\n", name, found_dname);
-		free(name);
+//		name = dnslib_dname_to_str(found_dname);
+//		printf("Already there: %s (%p)\n", name, found_dname);
+//		free(name);
 		dnslib_dname_free(dname);
 		*dname = found_dname;
 		return 1;
 	}
 
-	printf("Done.\n");
+//	printf("Done.\n");
 
 	return DNSLIB_EOK;
 }
