@@ -44,6 +44,8 @@ int dnslib_query_dnssec_requested(const dnslib_packet_t *query);
  */
 int dnslib_query_nsid_requested(const dnslib_packet_t *query);
 
+int dnslib_query_edns_supported(const dnslib_packet_t *query);
+
 //int dnslib_query_set_qname(dnslib_packet_t *query, const dnslib_dname_t *qname);
 
 //int dnslib_query_set_qtype(dnslib_packet_t *query, uint16_t qtype);
