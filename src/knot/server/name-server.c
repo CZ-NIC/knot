@@ -2355,6 +2355,11 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 		}
 	}
 
+	debug_ns("Query - parsed: %zu, total wire size: %zu\n", query->parsed,
+	         query->size);
+	debug_ns("Opt RR: version: %d, payload: %d\n", query->opt_rr.version,
+		 query->opt_rr.payload);
+
 	// get the answer for the query
 	rcu_read_lock();
 	dnslib_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
@@ -2394,11 +2399,16 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 		return KNOT_EOK;
 	}
 
+	debug_ns("EDNS supported in query: %d\n",
+	         dnslib_query_edns_supported(query));
+
 	// set the OPT RR to the response
-	ret = dnslib_response2_add_opt(response, nameserver->opt_rr, 0);
-	if (ret != DNSLIB_EOK) {
-		log_server_notice("Failed to set OPT RR to the response: %s\n",
-		                  dnslib_strerror(ret));
+	if (dnslib_query_edns_supported(query)) {
+		ret = dnslib_response2_add_opt(response, nameserver->opt_rr, 0);
+		if (ret != DNSLIB_EOK) {
+			log_server_notice("Failed to set OPT RR to the response"
+			                  ": %s\n",dnslib_strerror(ret));
+		}
 	}
 
 	ret = ns_answer(zonedb, response);
