@@ -12,8 +12,9 @@
 #include <stdlib.h>
 #include "dnslib/dname.h"
 #include "knot/conf/conf.h"
+#include "libknot_la-cf-parse.h" /* Automake generated header. */
 
-extern int yylex (void);
+extern int yylex (YYSTYPE *lvalp, void *scanner);
 extern void cf_error(const char *msg);
 extern conf_t *new_config;
 static conf_iface_t *this_iface = 0;
@@ -25,6 +26,8 @@ static conf_log_map_t *this_logmap = 0;
 //#define YYERROR_VERBOSE 1
 
 %}
+
+%pure-parser
 
 %locations
 

@@ -20,6 +20,7 @@
 
 /* Imported symbols. */
 #define yylex cf_lex
+#define cf_lval (*yylval)
 extern void cf_error(const char *msg);
 extern int (*cf_read_hook)(char *buf, size_t nbytes);
 
@@ -30,19 +31,21 @@ extern int (*cf_read_hook)(char *buf, size_t nbytes);
 void __attribute__ ((destructor)) yy_deinit()
 {
 	/* Pop the buffer stack, destroying each element. */
-	while (YY_CURRENT_BUFFER) {
-		yy_delete_buffer(YY_CURRENT_BUFFER);
-		YY_CURRENT_BUFFER_LVALUE = NULL;
-		yypop_buffer_state();
-	}
+//	while (YY_CURRENT_BUFFER) {
+//		yy_delete_buffer(YY_CURRENT_BUFFER);
+//		YY_CURRENT_BUFFER_LVALUE = NULL;
+//		yypop_buffer_state();
+//	}
 
 	/* Destroy the stack itself. */
-	yyfree(yy_buffer_stack);
-	yy_buffer_stack = NULL;
+//	yyfree(yy_buffer_stack);
+//	yy_buffer_stack = NULL;
 }
 
 %}
 
+%option reentrant
+%option bison-bridge
 %option noyywrap
 %option noinput
 %option nounput
