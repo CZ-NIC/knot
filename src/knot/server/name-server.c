@@ -220,6 +220,10 @@ static int ns_add_rrsigs(const dnslib_rrset_t *rrset, dnslib_packet_t *resp,
 	assert(resp != NULL);
 	assert(add_rrset_to_resp != NULL);
 
+	debug_ns("DNSSEC requested: %d\n",
+	         dnslib_query_dnssec_requested(dnslib_packet_query(resp)));
+	debug_ns("RRSIGS: %p\n", dnslib_rrset_rrsigs(rrset));
+
 	if (DNSSEC_ENABLED
 	    && dnslib_query_dnssec_requested(dnslib_packet_query(resp))
 	    && (rrsigs = dnslib_rrset_rrsigs(rrset)) != NULL) {
@@ -2915,6 +2919,20 @@ static int ns_save_zone(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 
 static int ns_switch_zone(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 {
+	dnslib_zone_t *zone = dnslib_zonedb_replace_zone(nameserver->zone_db,
+	                                                 xfr->zone);
+	if (zone == NULL) {
+		char *name = dnslib_dname_to_str(
+				dnslib_node_owner(dnslib_zone_apex(xfr->zone)));
+		log_server_warning("Failed to replace zone %s\n", name);
+		free(name);
+	}
+
+	// wait for readers to finish
+	synchronize_rcu();
+	// destroy the old zone
+	dnslib_zone_deep_free(&zone, 1);
+
 	return KNOT_EOK;
 }
 
