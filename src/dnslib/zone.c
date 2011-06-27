@@ -735,6 +735,8 @@ static int dnslib_zone_dnames_from_node_to_table(dnslib_zone_t *zone,
 		}
 	}
 
+	free(rrsets);
+
 	return DNSLIB_EOK;
 }
 
