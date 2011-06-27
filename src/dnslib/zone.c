@@ -922,6 +922,11 @@ DEBUG_DNSLIB_ZONE(
 			dnslib_zone_dnames_from_node_to_table(zone, next_node);
 			node->parent = next_node;
 
+			if (next_node->owner != chopped) {
+				/* Node owner was in RDATA */
+				chopped = next_node->owner;
+			}
+
 			assert(dnslib_zone_find_node(zone, chopped) == NULL);
 			assert(next_node->owner == chopped);
 
