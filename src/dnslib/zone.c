@@ -710,6 +710,7 @@ static int dnslib_zone_dnames_from_node_to_table(dnslib_zone_t *zone,
 	                  node->owner);
 	debug_dnslib_zone("Node owner before inserting to dname table: %s.\n",
 	                  name);
+	free(name);
 	//dnslib_dname_t *old_owner = node->owner;
 	int rc = dnslib_dname_table_add_dname2(zone->dname_table, &node->owner);
 	if (rc < 0) {

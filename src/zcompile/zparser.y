@@ -272,16 +272,16 @@ rr:	owner classttl type_and_rdata
 
 owner:	dname sp
     {
-	printf("Totally new dname: %p %s\n", $1,
-	dnslib_dname_to_str($1));
+//	printf("Totally new dname: %p %s\n", $1,
+//	dnslib_dname_to_str($1));
 	dnslib_dname_free(&parser->prev_dname);
 	    parser->prev_dname = dnslib_dname_copy($1);
 	    $$ = $1;
     }
     |	PREV
     {
-	    printf("Name from prev_dname!: %p %s\n", parser->prev_dname,
-	    dnslib_dname_to_str(parser->prev_dname));
+//	    printf("Name from prev_dname!: %p %s\n", parser->prev_dname,
+//	    dnslib_dname_to_str(parser->prev_dname));
 	    $$ = dnslib_dname_copy(parser->prev_dname);
     }
     ;
