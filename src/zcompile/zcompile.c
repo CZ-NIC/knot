@@ -1477,6 +1477,7 @@ int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone, dnslib_rrset_t *rrsig)
 	if (tmp_rrset->rrsigs != NULL) {
 		dnslib_zone_add_rrsigs(zone, rrsig, &tmp_rrset, &tmp_node,
 		                       DNSLIB_RRSET_DUPL_MERGE, 1);
+		dnslib_rrset_free(&rrsig);
 	} else {
 		dnslib_zone_add_rrsigs(zone, rrsig, &tmp_rrset, &tmp_node,
 		                       DNSLIB_RRSET_DUPL_SKIP, 1);
@@ -1508,7 +1509,7 @@ int find_rrset_for_rrsig_in_node(dnslib_zone_t *zone,
 		dnslib_rrset_free(&rrsig);
 	} else {
 		dnslib_zone_add_rrset(zone, rrsig, &node,
-		                      DNSLIB_RRSET_DUPL_REPLACE, 1);
+		                      DNSLIB_RRSET_DUPL_SKIP, 1);
 	}
 
 	debug_zp("setting rrsigs for rrset %s\n",
