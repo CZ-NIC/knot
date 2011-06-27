@@ -1452,7 +1452,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->root_domain = dnslib_dname_new_from_str(".", 1, NULL);
 
 	/* Create zone */
-	parser->current_zone = dnslib_zone_new(origin, 0);
+	parser->current_zone = dnslib_zone_new(origin, 0, 1);
 
 	parser->node_rrsigs = NULL;
 
