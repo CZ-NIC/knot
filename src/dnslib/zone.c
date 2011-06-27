@@ -748,7 +748,7 @@ static int dnslib_zone_dnames_from_node_to_table(dnslib_zone_t *zone,
 dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
                                int use_domain_table)
 {
-	printf("Creating new zone!\n");
+	debug_dnslib_zone("Creating new zone!\n");
 	if (apex == NULL) {
 		return NULL;
 	}

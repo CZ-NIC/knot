@@ -763,7 +763,7 @@ static dnslib_dname_table_t *create_dname_table_from_array(
 
 	/* Table will have max_id entries */
 	for (uint i = 1; i < max_id; i++) {
-		printf("%d\n", i);
+		debug_dnslib_zload("%d\n", i);
 		assert(array[i]);
 		if (dnslib_dname_table_add_dname(ret,
 						 array[i]) != DNSLIB_EOK) {
