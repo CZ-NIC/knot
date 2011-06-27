@@ -15,14 +15,17 @@
 #include <stdint.h>
 
 /* File structure
- * uint16_t max_entries
- * <max_entries + 1> * journal_entry_t
+ * uint16_t max_nodes
+ * uint16_t qhead
+ * uint16_t qtail
+ * <max_nodes + 1> * journal_entry_t
  * <data>
  */
 
 typedef enum journal_flag_t {
 	JOURNAL_NULL  = 0 << 0, /*!< Invalid journal entry. */
-	JOURNAL_VALID = 1 << 0  /*!< Valid journal entry. */
+	JOURNAL_FREE  = 1 << 0, /*!< Free journal entry. */
+	JOURNAL_VALID = 1 << 1  /*!< Valid journal entry. */
 } journal_flag_t;
 
 /*! 12 bytes. */
@@ -40,16 +43,16 @@ typedef struct journal_t
 {
 	FILE *fp;
 	uint16_t max_nodes; /*!< Number of nodes. */
-	uint16_t n_next; /*! \todo Temporary index to next free node. */
+	uint16_t qhead;     /*!< Node queue head. */
+	uint16_t qtail;     /*!< Node queue tail. */
 	journal_node_t free; /*!< Free segment. */
 	journal_node_t nodes[]; /*!< Array of nodes. */
-	/* Implement nodes as queue? */
 } journal_t;
 
 #define JOURNAL_NCOUNT 512 /*!< Default node count. */
 
-/*!  max_entries */
-#define JOURNAL_HSIZE (sizeof(uint16_t))
+/*!  max_entries, qhead, qtail */
+#define JOURNAL_HSIZE (sizeof(uint16_t)*3)
 
 /*! \todo Document functions. */
 

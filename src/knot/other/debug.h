@@ -19,6 +19,7 @@
 #define NS_DEBUG
 //#define SERVER_DEBUG
 //#define DT_DEBUG
+//#define JOURNAL_DEBUG
 //#define NET_DEBUG
 //#define ZONES_DEBUG
 #define XFR_DEBUG
@@ -45,6 +46,12 @@
 #else
 #define debug_dt(msg...)
 #define debug_dt_hex(data, len)
+#endif
+
+#ifdef JOURNAL_DEBUG
+#define debug_journal(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#else
+#define debug_journal(msg...)
 #endif
 
 #ifdef NS_DEBUG

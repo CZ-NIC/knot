@@ -60,6 +60,8 @@ unittests_SOURCES =				\
 	tests/knot/conf_tests.h			\
 	tests/knot/dthreads_tests.c		\
 	tests/knot/dthreads_tests.h		\
+	tests/knot/journal_tests.c		\
+	tests/knot/journal_tests.h		\
 	tests/knot/server_tests.c		\
 	tests/knot/server_tests.h		\
 	tests/unittests_main.c
