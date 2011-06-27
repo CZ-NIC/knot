@@ -48,6 +48,20 @@ DEBUG_DNSLIB_ZONEDB(
 }
 
 /*----------------------------------------------------------------------------*/
+
+static int dnslib_zonedb_replace_zone_in_list(void **list_item, void **new_zone)
+{
+	assert(list_item != NULL);
+	assert(*list_item != NULL);
+	assert(new_zone != NULL);
+	assert(*new_zone != NULL);
+
+	*list_item = *new_zone;
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -110,6 +124,25 @@ int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name,
 	}
 
 	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnslib_zone_t *dnslib_zonedb_replace_zone(dnslib_zonedb_t *db,
+                                          dnslib_zone_t *zone)
+{
+	dnslib_zone_t *z = dnslib_zonedb_find_zone(db,
+		dnslib_node_owner(dnslib_zone_apex(zone)));
+	if (zone == NULL) {
+		return NULL;
+	}
+
+	int ret = skip_insert(db->zones,
+	           (void *)dnslib_node_owner(dnslib_zone_apex(zone)),
+	           (void *)zone, dnslib_zonedb_replace_zone_in_list);
+	assert(ret == 2);
+
+	return z;
 }
 
 /*----------------------------------------------------------------------------*/
