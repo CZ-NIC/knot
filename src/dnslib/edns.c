@@ -122,6 +122,52 @@ int dnslib_edns_new_from_wire(dnslib_opt_rr_t *opt_rr, const uint8_t *wire,
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_edns_new_from_rr(dnslib_opt_rr_t *opt_rr,
+                            const dnslib_rrset_t *rrset)
+{
+	if (opt_rr == NULL || rrset == NULL
+	    || dnslib_rrset_type(rrset) != DNSLIB_RRTYPE_OPT) {
+		return DNSLIB_EBADARG;
+	}
+
+	opt_rr->payload = dnslib_rrset_class(rrset);
+
+	uint32_t ttl = dnslib_rrset_ttl(rrset);
+	// first byte of TTL is extended RCODE
+	memcpy(&opt_rr->ext_rcode, &ttl, 1);
+	// second is the version
+	memcpy(&opt_rr->version, (const uint8_t *)(&ttl) + 1, 1);
+	// third and fourth are flags
+	memcpy(&opt_rr->flags, (const uint8_t *)(&ttl) + 2,
+	       2);
+	// size of the header, options are counted elsewhere
+	opt_rr->size = 11;
+
+	int rc = 0;
+	const dnslib_rdata_t *rdata = dnslib_rrset_rdata(rrset);
+	while (rdata != NULL) {
+		assert(*dnslib_rdata_item(rdata, 0)->raw_data == 2);
+		assert(*dnslib_rdata_item(rdata, 1)->raw_data == 2);
+		assert(*dnslib_rdata_item(rdata, 2)->raw_data
+		       == *(dnslib_rdata_item(rdata, 1)->raw_data + 1));
+		rc = dnslib_edns_add_option(opt_rr,
+			*(dnslib_rdata_item(rdata, 0)->raw_data + 1),
+			*(dnslib_rdata_item(rdata, 1)->raw_data + 1),
+			(const uint8_t *)(dnslib_rdata_item(rdata, 2)->raw_data
+			                  + 1));
+
+		if (rc != DNSLIB_EOK) {
+			return rc;
+		}
+
+		rdata = dnslib_rrset_rdata_next(rrset, rdata);
+	}
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 uint16_t dnslib_edns_get_payload(const dnslib_opt_rr_t *opt_rr)
 {
 	return opt_rr->payload;
@@ -130,7 +176,7 @@ uint16_t dnslib_edns_get_payload(const dnslib_opt_rr_t *opt_rr)
 /*----------------------------------------------------------------------------*/
 
 void dnslib_edns_set_payload(dnslib_opt_rr_t *opt_rr,
-                                           uint16_t payload)
+                             uint16_t payload)
 {
 	opt_rr->payload = payload;
 }
