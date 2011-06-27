@@ -544,6 +544,8 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 			zones_timers_update(zone, z, ns->server->sched);
 		}
 
+		dnslib_zone_dump(zone);
+
 		dnslib_dname_free(&zone_name);
 	}
 	return inserted;

@@ -179,6 +179,7 @@ int xfrin_create_ixfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
 
 int xfrin_zone_transferred(ns_nameserver_t *nameserver, dnslib_zone_t *zone)
 {
+	//return ns_switch_zone(nameserver, zone);
 	return KNOT_ENOTSUP;
 }
 
