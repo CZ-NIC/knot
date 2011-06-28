@@ -2,6 +2,7 @@
 
 #include "tests/knot/journal_tests.h"
 #include "knot/server/journal.h"
+#include "knot/other/error.h"
 
 static int journal_tests_count(int argc, char *argv[]);
 static int journal_tests_run(int argc, char *argv[]);
@@ -41,12 +42,12 @@ static int journal_tests_count(int argc, char *argv[])
 static int journal_tests_run(int argc, char *argv[])
 {
 	/* Test 1: Create journal. */
-	const int jsize = 512;
+	const int jsize = 256;
 	char jfn_buf[] = "/tmp/journal.XXXXXX";
 	mkstemp(jfn_buf);
 	const char *jfilename = jfn_buf;
 	int ret = journal_create(jfilename, jsize);
-	ok(ret == 0, "journal: create journal '%s'", jfilename);
+	ok(ret == KNOT_EOK, "journal: create journal '%s'", jfilename);
 
 	/* Test 2: Open journal. */
 	journal_t *j = journal_open(jfilename);
@@ -55,12 +56,12 @@ static int journal_tests_run(int argc, char *argv[])
 	/* Test 3: Write entry to log. */
 	const char *sample = "deadbeef";
 	ret = journal_write(j, 0x0a, sample, strlen(sample));
-	ok(ret > 0, "journal: write");
+	ok(ret == KNOT_EOK, "journal: write");
 
 	/* Test 4: Read entry from log. */
 	char tmpbuf[64] = {'\0'};
 	ret = journal_read(j, 0x0a, tmpbuf);
-	ok(ret > 0, "journal: read entry");
+	ok(ret == KNOT_EOK, "journal: read entry");
 
 	/* Test 5: Compare read data. */
 	ret = strncmp(sample, tmpbuf, strlen(sample));
@@ -70,16 +71,17 @@ static int journal_tests_run(int argc, char *argv[])
 	int chk_key = 0;
 	char chk_buf[64] = {'\0'};
 	ret = 0;
-	for (int i = 0; i < jsize * 2; ++i) {
+	const int itcount = jsize * 3;
+	for (int i = 0; i < itcount; ++i) {
 		int key = rand() % 65535;
 		randstr(tmpbuf, sizeof(tmpbuf));
-		if (journal_write(j, key, tmpbuf, sizeof(tmpbuf)) <= 0) {
+		if (journal_write(j, key, tmpbuf, sizeof(tmpbuf)) != KNOT_EOK) {
 			ret = -1;
 			break;
 		}
 
 		/* Store some key on the end. */
-		if (i == (jsize * 2) - jsize/5) {
+		if (i == itcount - jsize/5) {
 			chk_key = key;
 			memcpy(chk_buf, tmpbuf, sizeof(chk_buf));
 		}
