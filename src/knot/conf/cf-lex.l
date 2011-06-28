@@ -19,7 +19,6 @@
 #include "libknot_la-cf-parse.h" /* Automake generated header. */
 
 /* Imported symbols. */
-#define yylex cf_lex
 #define cf_lval (*yylval)
 extern void cf_error(const char *msg);
 extern int (*cf_read_hook)(char *buf, size_t nbytes);
@@ -51,6 +50,8 @@ void __attribute__ ((destructor)) yy_deinit()
 %option nounput
 %option noreject
 %option yylineno
+%option prefix = "cf_"
+%option outfile = "lex.yy.c"
 
 ALPHA [a-zA-Z_]
 DIGIT [0-9]

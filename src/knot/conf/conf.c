@@ -335,11 +335,13 @@ static int conf_fparser(conf_t *conf)
 
 	// Parse config
 	_parser_res = KNOT_EOK;
+	new_config->filename = conf->filename;
 	cf_read_hook = cf_read_file;
-	void *scanner;
-	yylex_init(&scanner);
-	yyset_in(_parser_src, scanner);
+	void *scanner = NULL;
+	cf_lex_init(&scanner);
+//	yyset_in(_parser_src, scanner);
 	cf_parse(scanner);
+	cf_lex_destroy(scanner);
 	ret = _parser_res;
 	fclose((FILE*)_parser_src);
 	_parser_src = 0;
@@ -376,7 +378,10 @@ static int conf_strparser(conf_t *conf, const char *src)
 	cf_read_hook = cf_read_mem;
 	char *oldfn = new_config->filename;
 	new_config->filename = "(stdin)";
-	cf_parse();
+	void *scanner = NULL;
+	cf_lex_init(&scanner);
+	cf_parse(scanner);
+	cf_lex_destroy(scanner);
 	new_config->filename = oldfn;
 	ret = _parser_res;
 	_parser_src = 0;

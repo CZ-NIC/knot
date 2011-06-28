@@ -67,6 +67,8 @@ unittests_dnslib_SOURCES =			\
 	dnslib/tests/unittests_dnslib.c
 
 unittests_zcompile_SOURCES =			\
+	tests/knot/conf_tests.c			\
+	tests/unittests_main.c			\
 	zcompile/parser-util.h			\
 	zcompile/parser-descriptor.h		\
 	zcompile/zcompile-error.c		\
