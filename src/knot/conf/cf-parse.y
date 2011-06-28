@@ -14,7 +14,7 @@
 #include "knot/conf/conf.h"
 #include "libknot_la-cf-parse.h" /* Automake generated header. */
 
-extern int yylex (YYSTYPE *lvalp, void *scanner);
+extern int cf_lex (YYSTYPE *lvalp, void *scanner);
 extern void cf_error(const char *msg, void *scanner);
 extern conf_t *new_config;
 static conf_iface_t *this_iface = 0;
@@ -277,7 +277,7 @@ zone_start: TEXT {
      init_list(&this_zone->acl.xfr_out);
      init_list(&this_zone->acl.notify_in);
      init_list(&this_zone->acl.notify_out);
-   }  
+   }
  }
  ;
 
