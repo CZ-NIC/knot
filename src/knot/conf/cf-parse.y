@@ -15,7 +15,7 @@
 #include "libknot_la-cf-parse.h" /* Automake generated header. */
 
 extern int yylex (YYSTYPE *lvalp, void *scanner);
-extern void cf_error(const char *msg);
+extern void cf_error(const char *msg, void *scanner);
 extern conf_t *new_config;
 static conf_iface_t *this_iface = 0;
 static conf_iface_t *this_remote = 0;
@@ -28,8 +28,9 @@ static conf_log_map_t *this_logmap = 0;
 %}
 
 %pure-parser
+%parse-param{void *scanner}
+%lex-param{void *scanner}
 
-%locations
 
 %union {
     char *t;
@@ -191,11 +192,11 @@ zone_acl_item:
      if (!found) {
         char buf[256];
         snprintf(buf, sizeof(buf), "remote '%s' is not defined", $1);
-        cf_error(buf);
+//        cf_error(buf);
      } else {
         conf_remote_t *remote = malloc(sizeof(conf_remote_t));
         if (!remote) {
-           cf_error("out of memory");
+//           cf_error("out of memory");
         } else {
            remote->remote = found;
            add_tail(this_list, &remote->n);
@@ -229,11 +230,11 @@ zone_acl:
       if (!found) {
 	 char buf[256];
 	 snprintf(buf, sizeof(buf), "remote '%s' is not defined", $2);
-	 cf_error(buf);
+//	 cf_error(buf);
       } else {
 	 conf_remote_t *remote = malloc(sizeof(conf_remote_t));
 	 if (!remote) {
-	    cf_error("out of memory");
+//	    cf_error("out of memory");
 	 } else {
 	    remote->remote = found;
 	    add_tail(this_list, &remote->n);
@@ -265,7 +266,7 @@ zone_start: TEXT {
    if (dn == 0) {
      free(this_zone->name);
      free(this_zone);
-     cf_error("invalid zone origin");
+//     cf_error("invalid zone origin");
    } else {
      dnslib_dname_free(&dn);
      add_tail(&new_config->zones, &this_zone->n);
