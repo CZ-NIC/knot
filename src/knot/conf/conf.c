@@ -50,8 +50,8 @@ static int rmkdir(char *path, int mode)
 }
 
 /* Prototypes for cf-parse.y */
-extern char* yytext;
-extern int yylineno;
+//extern char* yytext;
+//extern int yylineno;
 extern int cf_parse();
 
 /*
@@ -116,10 +116,10 @@ int cf_read_mem(char *buf, size_t nbytes) {
 /*! \brief Config error report. */
 void cf_error(const char *msg)
 {
-	log_server_error("Config '%s' - %s on line %d (current token '%s').\n",
-	                 new_config->filename, msg, yylineno, yytext);
+//	log_server_error("Config '%s' - %s on line %d (current token '%s').\n",
+//	                 new_config->filename, msg, yylineno, yytext);
 
-	_parser_res = KNOT_EPARSEFAIL;
+//	_parser_res = KNOT_EPARSEFAIL;
 }
 
 /*
@@ -336,7 +336,10 @@ static int conf_fparser(conf_t *conf)
 	// Parse config
 	_parser_res = KNOT_EOK;
 	cf_read_hook = cf_read_file;
-	cf_parse();
+	void *scanner;
+	yylex_init(&scanner);
+	yyset_in(_parser_src, scanner);
+	cf_parse(scanner);
 	ret = _parser_res;
 	fclose((FILE*)_parser_src);
 	_parser_src = 0;
