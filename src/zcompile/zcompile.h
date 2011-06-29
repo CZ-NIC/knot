@@ -113,13 +113,6 @@ typedef struct zparser zparser_type;
 extern zparser_type *parser;
 
 /* used in zonec.lex */
-extern FILE *yyin;
-
-int yyparse(void);
-
-int yylex(void);
-
-void yyrestart(FILE *);
 
 /*!
  * \brief Does all the processing of RR - saves to zone, assigns RRSIGs etc.

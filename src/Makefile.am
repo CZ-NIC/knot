@@ -5,7 +5,7 @@ sbin_PROGRAMS = knotd
 
 # $(YACC) will generate header file
 AM_CFLAGS = -Wall
-AM_YFLAGS = -d
+AM_YFLAGS = -d -pcf_
 libknot_la_YFLAGS = -pcf_ -d
 libknot_la_LFLAGS = # TODO: reentrant parser, prefix
 

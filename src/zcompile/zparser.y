@@ -47,7 +47,7 @@ static uint8_t nsecbits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE];
 /* hold the highest rcode seen in a NSEC rdata , BUG #106 */
 uint16_t nsec_highest_rcode;
 
-void yyerror(const char *message);
+//void yyerror(const char *message);
 
 /* helper functions */
 void zc_error(const char *fmt, ...);
@@ -76,6 +76,10 @@ dnslib_dname_t *error_domain;
 	uint16_t             type;
 	uint16_t             *unknown;
 }
+
+%pure-parser
+%parse-param {void *scanner}
+%lex-param {void *scanner}
 
 /*
  * Tokens to represent the known RR types of DNS.

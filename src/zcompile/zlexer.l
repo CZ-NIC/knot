@@ -32,6 +32,8 @@
 extern void zc_error(const char *fmt, ...);
 extern void zc_warning(const char *fmt, ...);
 
+#define scanner yyscanner
+
 void strip_string(char *str)
 {
 	char *start = str;
@@ -94,52 +96,23 @@ enum lexer_state {
 	PARSING_RDATA
 };
 
-static int parse_token(int token, char *yytext, enum lexer_state *lexer_state);
-
 static YY_BUFFER_STATE include_stack[MAXINCLUDES];
 static zparser_type zparser_stack[MAXINCLUDES];
 static int include_stack_ptr = 0;
 
-/*
- * Saves the file specific variables on the include stack.
- */
-static void
-push_parser_state(FILE *input)
-{
-	zparser_stack[include_stack_ptr].filename = parser->filename;
-	zparser_stack[include_stack_ptr].line = parser->line;
-	zparser_stack[include_stack_ptr].origin = parser->origin;
-	include_stack[include_stack_ptr] = YY_CURRENT_BUFFER;
-	yy_switch_to_buffer(yy_create_buffer(input, YY_BUF_SIZE));
-	++include_stack_ptr;
-}
-
-/*
- * Restores the file specific variables from the include stack.
- */
-static void
-pop_parser_state(void)
-{
-	--include_stack_ptr;
-	parser->filename = zparser_stack[include_stack_ptr].filename;
-	parser->line = zparser_stack[include_stack_ptr].line;
-	parser->origin = zparser_stack[include_stack_ptr].origin;
-	yy_delete_buffer(YY_CURRENT_BUFFER);
-	yy_switch_to_buffer(include_stack[include_stack_ptr]);
-}
-
-#ifndef yy_set_bol /* compat definition, for flex 2.4.6 */
-#define yy_set_bol(at_bol) \
+//#ifndef yy_set_bol compat definition, for flex 2.4.6
+/*#define yy_set_bol(at_bol) \
 { \
 	if (!yy_current_buffer ) \
 		yy_current_buffer = yy_create_buffer( yyin, YY_BUF_SIZE ); \
 	yy_current_buffer->yy_ch_buf[0] = ((at_bol)?'\n':' '); \
 }
-#endif
+#endif */
 
 %}
 
 %option nounput
+%option reentrant bison-bridge
 
 SPACE   [ \t]
 LETTER  [a-zA-Z]
@@ -233,7 +206,7 @@ ANY     [^\"\n\\]|\\.
 		} else {
 			/* Initialize parser for include file.  */
 			char *filename = strdup(yytext);
-			push_parser_state(input); /* Destroys yytext.  */
+//			push_parser_state(input); /* Destroys yytext.  */
 			parser->filename = filename;
 			parser->line = 1;
 			parser->origin = origin;
@@ -249,21 +222,21 @@ ANY     [^\"\n\\]|\\.
 		yyterminate();
 	} else {
 		fclose(yyin);
-		pop_parser_state();
+//		pop_parser_state(); XXX
 	}
 }
 ^{DOLLAR}{LETTER}+	{ zc_warning("Unknown directive: %s", yytext); }
 {DOT}	{
 	LEXOUT((". "));
-	return parse_token('.', yytext, &lexer_state);
+	return parse_token(scanner, '.', yytext, &lexer_state);
 }
 @	{
 	LEXOUT(("@ "));
-	return parse_token('@', yytext, &lexer_state);
+	return parse_token(scanner, '@', yytext, &lexer_state);
 }
 \\#	{
 	LEXOUT(("\\# "));
-	return parse_token(URR, yytext, &lexer_state);
+	return parse_token(scanner, URR, yytext, &lexer_state);
 }
 {NEWLINE}	{
 	++parser->line;
@@ -318,7 +291,7 @@ ANY     [^\"\n\\]|\\.
 <bitlabel>\]		{
 	BEGIN(INITIAL);
 	yytext[yyleng - 1] = '\0';
-	return parse_token(BITLAB, yytext, &lexer_state);
+	return parse_token(scanner, BITLAB, yytext, &lexer_state);
 }
 
 	/* Quoted strings.  Strip leading and ending quotes.  */
@@ -333,12 +306,12 @@ ANY     [^\"\n\\]|\\.
 	LEXOUT(("\" "));
 	BEGIN(INITIAL);
 	yytext[yyleng - 1] = '\0';
-	return parse_token(STR, yytext, &lexer_state);
+	return parse_token(scanner, STR, yytext, &lexer_state);
 }
 
 ({ZONESTR}|\\.|\\\n)+ {
 	/* Any allowed word.  */
-	return parse_token(STR, yytext, &lexer_state);
+	return parse_token(scanner, STR, yytext, &lexer_state);
 }
 . {
 	zc_error("unknown character '%c' (\\%03d) seen - is this a zonefile?",
@@ -412,11 +385,14 @@ zoctet(char *text)
 	return p - text;
 }
 
-static int
-parse_token(int token, char *yytext, enum lexer_state *lexer_state)
+int
+parse_token(void *scanner, int token, char *in_str,
+            enum lexer_state *lexer_state)
 {
-	size_t len;
-	char *str;
+	size_t len = 0;
+	char *str = NULL;
+
+	struct yyguts_t *yyg = (struct yyguts_t *)scanner;
 
 	if (*lexer_state == EXPECT_OWNER) {
 		*lexer_state = PARSING_OWNER;
@@ -426,46 +402,46 @@ parse_token(int token, char *yytext, enum lexer_state *lexer_state)
 		uint16_t rrclass;
 
 		/* type */
-		token = rrtype_to_token(yytext, &yylval.type);
+		token = rrtype_to_token(in_str, &yylval->type);
 		if (token != 0) {
 			*lexer_state = PARSING_RDATA;
-			LEXOUT(("%d[%s] ", token, yytext));
+			LEXOUT(("%d[%s] ", token, in_str));
 			return token;
 		}
 
 		/* class */
-		rrclass = parser_rrclass_from_string(yytext);
+		rrclass = parser_rrclass_from_string(in_str);
 		if (rrclass != 0) {
-			yylval.rclass = rrclass;
+			yylval->rclass = rrclass;
 			LEXOUT(("CLASS "));
 			return T_RRCLASS;
 		}
 
 		/* ttl */
-		yylval.ttl = strtottl(yytext, &t);
+		yylval->ttl = strtottl(in_str, &t);
 		if (*t == '\0') {
 			LEXOUT(("TTL "));
 			return T_TTL;
 		}
 	}
 
-	str = strdup(yytext);
+	str = strdup(in_str);
 	len = zoctet(str);
 
-	yylval.data.str = str;
-	yylval.data.len = len;
+	yylval->data.str = str;
+	yylval->data.len = len;
 
-	if (strcmp(yytext, ".") == 0) {
+	if (strcmp(str, ".") == 0) {
 		free(str);
-		yylval.data.str=".";
-	} else if (strcmp(yytext, "@") == 0) {
+		yylval->data.str=".";
+	} else if (strcmp(str, "@") == 0) {
 		free(str);
-		yylval.data.str="@";
-	} else if (strcmp(yytext, "\\#") == 0) {
+		yylval->data.str="@";
+	} else if (strcmp(str, "\\#") == 0) {
 		free(str);
-		yylval.data.str="\\#";
+		yylval->data.str="\\#";
 	}
 
-	LEXOUT(("%d[%s] ", token, yytext));
+	LEXOUT(("%d[%s] ", token, yyget_text(yytext)));
 	return token;
 }
