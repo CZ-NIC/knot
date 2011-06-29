@@ -1421,14 +1421,21 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
  *
  */
 static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
-	  dnslib_node_t *origin)
+	  dnslib_node_t *origin, void *scanner)
 {
 	/* Open the zone file... */
 	if (strcmp(filename, "-") == 0) {
-		yyin = stdin;
+		yyset_in(stdin, scanner);
 		filename = "<stdin>";
-	} else if (!(yyin = fopen(filename, "r"))) {
-		return 0;
+	} else {
+		FILE *f = fopen(filename, "r");
+		if (f == NULL) {
+			return 0;
+		}
+		yyset_in(f, scanner);
+		if (yyget_in(scanner) == NULL) {
+			return 0;
+		}
 	}
 
 	zparser_init(filename, ttl, rclass, origin);
@@ -1861,13 +1868,20 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	assert(origin_node->parent == NULL);
 
-	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
+	void *scanner = NULL;
+	yylex_init(&scanner);
+	if (scanner == NULL) {
+		return KNOT_ZCOMPILE_ENOMEM;
+	}
+
+	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node, scanner)) {
 		fprintf(stderr, "Cannot open '%s': %s.",
 			zonefile, strerror_r(errno, ebuf, sizeof(ebuf)));
 		return KNOT_ZCOMPILE_EZONEINVAL;
 	}
 
-	if (yyparse() != 0) {
+
+	if (yyparse(scanner) != 0) {
 		return KNOT_ZCOMPILE_ESYNT;
 	}
 
@@ -1897,13 +1911,15 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	dnslib_zdump_binary(parser->current_zone, outfile, semantic_checks,
 			    zonefile);
+	zone_dump_text(parser->current_zone, "megamega");
 
 	/* This is *almost* unnecessary */
 	dnslib_zone_deep_free(&(parser->current_zone), 0);
 
 //	dnslib_zone_t *some_zone= dnslib_zload_load(dnslib_zload_open(outfile));
 
-	fclose(yyin);
+//	fclose(yyin);
+
 
 	fflush(stdout);
 
