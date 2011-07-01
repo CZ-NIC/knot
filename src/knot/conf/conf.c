@@ -50,76 +50,26 @@ static int rmkdir(char *path, int mode)
 }
 
 /* Prototypes for cf-parse.y */
-//extern char* yytext;
-//extern int yylineno;
-extern int cf_parse();
+extern int cf_parse(void *scanner);
+extern int cf_get_lineno(void *scanner);
+extern char *cf_get_text(void *scanner);
+extern int cf_lex_init(void *scanner);
+extern void cf_set_in(FILE *f, void *scanner);
+extern void cf_lex_destroy(void *scanner);
+extern void switch_input(const char *str, void *scanner);
 
-/*
- * Parser instance globals.
- * \todo: Use pure reentrant parser to get rid of the globals.
- */
 conf_t *new_config = 0; /*!< \brief Currently parsed config. */
 static volatile int _parser_res = 0; /*!< \brief Parser result. */
-static void *_parser_src = 0; /*!< \brief Parser data source. */
-static ssize_t _parser_remaining = -1; /*!< \brief Parser remaining bytes. */
 static pthread_mutex_t _parser_lock = PTHREAD_MUTEX_INITIALIZER;
-int (*cf_read_hook)(char *buf, size_t nbytes) = 0;
-
-/*!
- * \brief Config file read hook.
- *
- * Wrapper for fread().
- *
- * \retval number of read bytes on success.
- * \retval <0 on error.
- */
-int cf_read_file(char *buf, size_t nbytes) {
-	if (_parser_src == 0) {
-		return -1;
-	}
-
-	// Read a maximum of nbytes
-	return fread(buf, 1, nbytes, (FILE*)_parser_src);
-}
-
-/*!
- * \brief Config file read hook (from memory).
- * \retval number of read bytes on success.
- * \retval <0 on error.
- */
-int cf_read_mem(char *buf, size_t nbytes) {
-	if (_parser_src == 0 || _parser_remaining < 0) {
-		return -1;
-	}
-
-	// Assert remaining bytes
-	if ((size_t)_parser_remaining < nbytes) {
-		nbytes = (size_t)_parser_remaining;
-	}
-
-	// Check remaining
-	if (nbytes == 0) {
-		return 0;
-	}
-
-	// Read a maximum of nbytes
-	void* dst = memcpy(buf, (const char*)_parser_src, nbytes);
-	if (dst != 0) {
-		_parser_remaining -= nbytes;
-		_parser_src = (char*)_parser_src + nbytes;
-		return nbytes;
-	}
-
-	return -1;
-}
 
 /*! \brief Config error report. */
-void cf_error(const char *msg)
+void cf_error(const char *msg, void *scanner)
 {
-//	log_server_error("Config '%s' - %s on line %d (current token '%s').\n",
-//	                 new_config->filename, msg, yylineno, yytext);
+	log_server_error("Config '%s' - %s on line %d (current token '%s').\n",
+	                 new_config->filename, msg, cf_get_lineno(scanner),
+	                 (char *)cf_get_text(scanner));
 
-//	_parser_res = KNOT_EPARSEFAIL;
+	_parser_res = KNOT_EPARSEFAIL;
 }
 
 /*
@@ -326,9 +276,8 @@ static int conf_fparser(conf_t *conf)
 	// {
 	// Hook new configuration
 	new_config = conf;
-	_parser_src = fopen(conf->filename, "r");
-	_parser_remaining = -1;
-	if (_parser_src == 0) {
+	FILE *f = fopen(conf->filename, "r");
+	if (f == 0) {
 		pthread_mutex_unlock(&_parser_lock);
 		return KNOT_ENOENT;
 	}
@@ -336,15 +285,13 @@ static int conf_fparser(conf_t *conf)
 	// Parse config
 	_parser_res = KNOT_EOK;
 	new_config->filename = conf->filename;
-	cf_read_hook = cf_read_file;
 	void *scanner = NULL;
 	cf_lex_init(&scanner);
-//	yyset_in(_parser_src, scanner);
+	cf_set_in(f, scanner);
 	cf_parse(scanner);
 	cf_lex_destroy(scanner);
 	ret = _parser_res;
-	fclose((FILE*)_parser_src);
-	_parser_src = 0;
+	fclose(f);
 	// }
 	pthread_mutex_unlock(&_parser_lock);
 	return ret;
@@ -364,28 +311,22 @@ static int conf_strparser(conf_t *conf, const char *src)
 	// {
 	// Hook new configuration
 	new_config = conf;
-	_parser_src = (char*)src;
-	_parser_remaining = strlen(src);
-	if (_parser_src == 0) {
-		_parser_src = 0;
-		_parser_remaining = -1;
+	if (src == 0) {
 		pthread_mutex_unlock(&_parser_lock);
 		return KNOT_ENOENT;
 	}
 
 	// Parse config
 	_parser_res = KNOT_EOK;
-	cf_read_hook = cf_read_mem;
 	char *oldfn = new_config->filename;
 	new_config->filename = "(stdin)";
 	void *scanner = NULL;
 	cf_lex_init(&scanner);
+	switch_input(src, scanner);
 	cf_parse(scanner);
 	cf_lex_destroy(scanner);
 	new_config->filename = oldfn;
 	ret = _parser_res;
-	_parser_src = 0;
-	_parser_remaining = -1;
 	// }
 	pthread_mutex_unlock(&_parser_lock);
 	return ret;
