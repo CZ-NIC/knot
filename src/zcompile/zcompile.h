@@ -56,7 +56,11 @@ struct lex_data {
 
 #define DEFAULT_TTL 3600
 
-int yylex_destroy();
+int yylex_destroy(void *scanner);
+int zp_parse(void *scanner);
+void zp_set_in(FILE *f, void *scanner);
+int zp_lex_init(void **scanner);
+int zp_lex_destroy(void *scanner);
 
 /*! \todo Implement ZoneDB. */
 typedef void namedb_type;

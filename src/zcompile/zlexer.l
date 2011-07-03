@@ -32,8 +32,6 @@
 extern void zc_error(const char *fmt, ...);
 extern void zc_warning(const char *fmt, ...);
 
-#define scanner yyscanner
-
 void strip_string(char *str)
 {
 	char *start = str;
@@ -83,6 +81,9 @@ extern uint32_t strtottl(const char *nptr, const char **endptr);
 #define YY_NO_UNPUT
 #define MAXINCLUDES 10
 
+#define scanner yyscanner
+extern int zp_lex(YYSTYPE *lvalp, void *scanner);
+
 #if 0
 #define LEXOUT(s)  printf s /* used ONLY when debugging */
 #else
@@ -100,19 +101,28 @@ static YY_BUFFER_STATE include_stack[MAXINCLUDES];
 static zparser_type zparser_stack[MAXINCLUDES];
 static int include_stack_ptr = 0;
 
-//#ifndef yy_set_bol compat definition, for flex 2.4.6
-/*#define yy_set_bol(at_bol) \
+static void pop_parser_state(void *scanner);
+static void push_parser_state(FILE *input, void *scanner);
+static int parse_token(void *scanner, int token, char *in_str,
+                       enum lexer_state *lexer_state);
+
+
+/*!< \todo does not compile */
+#ifndef yy_set_bol // compat definition, for flex 2.4.6
+#define yy_set_bol(at_bol) \
 { \
 	if (!yy_current_buffer ) \
 		yy_current_buffer = yy_create_buffer( yyin, YY_BUF_SIZE ); \
 	yy_current_buffer->yy_ch_buf[0] = ((at_bol)?'\n':' '); \
 }
-#endif */
+#endif
 
 %}
 
 %option nounput
 %option reentrant bison-bridge
+%option prefix = "zp_"
+%option outfile = "lex.yy.c"
 
 SPACE   [ \t]
 LETTER  [a-zA-Z]
@@ -152,7 +162,7 @@ ANY     [^\"\n\\]|\\.
 <incl>.+ 		{
 	char *tmp;
 	/*! \todo pointer to origin. */
-	void *origin = 0;
+	void *origin = parser->origin;
 	/* domain_type *origin = parser->origin; */
 	int error_occurred = parser->error_occurred;
 
@@ -206,7 +216,7 @@ ANY     [^\"\n\\]|\\.
 		} else {
 			/* Initialize parser for include file.  */
 			char *filename = strdup(yytext);
-//			push_parser_state(input); /* Destroys yytext.  */
+			push_parser_state(input, scanner); /* Destroys yytext.  */
 			parser->filename = filename;
 			parser->line = 1;
 			parser->origin = origin;
@@ -222,7 +232,7 @@ ANY     [^\"\n\\]|\\.
 		yyterminate();
 	} else {
 		fclose(yyin);
-//		pop_parser_state(); XXX
+		pop_parser_state(scanner);
 	}
 }
 ^{DOLLAR}{LETTER}+	{ zc_warning("Unknown directive: %s", yytext); }
@@ -385,9 +395,8 @@ zoctet(char *text)
 	return p - text;
 }
 
-int
-parse_token(void *scanner, int token, char *in_str,
-            enum lexer_state *lexer_state)
+static int parse_token(void *scanner, int token, char *in_str,
+                       enum lexer_state *lexer_state)
 {
 	size_t len = 0;
 	char *str = NULL;
@@ -442,6 +451,35 @@ parse_token(void *scanner, int token, char *in_str,
 		yylval->data.str="\\#";
 	}
 
-	LEXOUT(("%d[%s] ", token, yyget_text(yytext)));
+	LEXOUT(("%d[%s] ", token, in_str));
 	return token;
+}
+
+/*
+ * Saves the file specific variables on the include stack.
+ */
+static void push_parser_state(FILE *input, void *scanner)
+{
+	struct yyguts_t *yyg = (struct yyguts_t *)scanner;
+	zparser_stack[include_stack_ptr].filename = parser->filename;
+	zparser_stack[include_stack_ptr].line = parser->line;
+	zparser_stack[include_stack_ptr].origin = parser->origin;
+	include_stack[include_stack_ptr] = YY_CURRENT_BUFFER;
+	yy_switch_to_buffer(yy_create_buffer(input, YY_BUF_SIZE, scanner),
+	                    scanner);
+	++include_stack_ptr;
+}
+
+/*
+ * Restores the file specific variables from the include stack.
+ */
+void pop_parser_state(void *scanner)
+{
+	struct yyguts_t *yyg = (struct yyguts_t *)scanner;
+	--include_stack_ptr;
+	parser->filename = zparser_stack[include_stack_ptr].filename;
+	parser->line = zparser_stack[include_stack_ptr].line;
+	parser->origin = zparser_stack[include_stack_ptr].origin;
+	yy_delete_buffer(YY_CURRENT_BUFFER, scanner);
+	yy_switch_to_buffer(include_stack[include_stack_ptr], scanner);
 }

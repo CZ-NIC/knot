@@ -5,7 +5,7 @@ sbin_PROGRAMS = knotd
 
 # $(YACC) will generate header file
 AM_CFLAGS = -Wall
-AM_YFLAGS = -d -pcf_
+AM_YFLAGS = -d
 libknot_la_YFLAGS = -pcf_ -d
 libknot_la_LFLAGS = # TODO: reentrant parser, prefix
 
@@ -67,8 +67,6 @@ unittests_dnslib_SOURCES =			\
 	dnslib/tests/unittests_dnslib.c
 
 unittests_zcompile_SOURCES =			\
-	tests/knot/conf_tests.c			\
-	tests/unittests_main.c			\
 	zcompile/parser-util.h			\
 	zcompile/parser-descriptor.h		\
 	zcompile/zcompile-error.c		\

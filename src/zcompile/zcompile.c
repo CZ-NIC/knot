@@ -427,9 +427,7 @@ dnslib_lookup_table_t dns_certificate_types[] = {
 
 /* Imported from lexer. */
 extern int hexdigit_to_int(char ch);
-
-
-
+extern FILE *zp_get_in(void *scanner);
 
 /* Some global flags... */
 static int vflag = 0;
@@ -1425,15 +1423,15 @@ static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 {
 	/* Open the zone file... */
 	if (strcmp(filename, "-") == 0) {
-		yyset_in(stdin, scanner);
+		zp_set_in(stdin, scanner);
 		filename = "<stdin>";
 	} else {
 		FILE *f = fopen(filename, "r");
 		if (f == NULL) {
 			return 0;
 		}
-		yyset_in(f, scanner);
-		if (yyget_in(scanner) == NULL) {
+		zp_set_in(f, scanner);
+		if (zp_get_in(scanner) == 0) {
 			return 0;
 		}
 	}
@@ -1869,7 +1867,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	assert(origin_node->parent == NULL);
 
 	void *scanner = NULL;
-	yylex_init(&scanner);
+	zp_lex_init(&scanner);
 	if (scanner == NULL) {
 		return KNOT_ZCOMPILE_ENOMEM;
 	}
@@ -1881,9 +1879,13 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	}
 
 
-	if (yyparse(scanner) != 0) {
+	if (zp_parse(scanner) != 0) {
 		return KNOT_ZCOMPILE_ESYNT;
 	}
+
+	FILE *in_file = (FILE *)zp_get_in(scanner);
+	fclose(in_file);
+	zp_lex_destroy(scanner);
 
 	if (parser->node_rrsigs != NULL) {
 		/* assign rrsigs to last node in the zone*/
@@ -1893,11 +1895,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	debug_zp("zone parsed\n");
 
-
-	uint found_orphans;
-
-	found_orphans = find_rrsets_orphans(parser->current_zone,
-					    parser->rrsig_orphans);
+	find_rrsets_orphans(parser->current_zone,
+	                    parser->rrsig_orphans);
 
 	debug_zp("%u orphans found\n", found_orphans);
 
@@ -1911,20 +1910,14 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	dnslib_zdump_binary(parser->current_zone, outfile, semantic_checks,
 			    zonefile);
-	zone_dump_text(parser->current_zone, "megamega");
 
 	/* This is *almost* unnecessary */
 	dnslib_zone_deep_free(&(parser->current_zone), 0);
 
 //	dnslib_zone_t *some_zone= dnslib_zload_load(dnslib_zload_open(outfile));
 
-//	fclose(yyin);
-
-
 	fflush(stdout);
-
 	totalerrors += parser->errors;
-
 	zparser_free();
 
 	return totalerrors;
