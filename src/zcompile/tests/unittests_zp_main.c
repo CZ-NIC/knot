@@ -6,7 +6,7 @@
 #include "zcompile_tests.c"
 
 // Run all loaded units
-int zp__main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	// Open log
 	//log_init(LOG_UPTO(LOG_ERR), LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING));
