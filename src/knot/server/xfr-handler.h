@@ -12,6 +12,8 @@
 #ifndef _KNOT_XFRHANDLER_H_
 #define _KNOT_XFRHANDLER_H_
 
+#include <ev.h>
+
 #include "knot/server/dthreads.h"
 #include "knot/server/name-server.h"
 #include "common/evqueue.h"
@@ -21,10 +23,10 @@
  */
 typedef struct xfrhandler_t
 {
-	dt_unit_t     *unit; /*!< \brief Threading unit. */
-	ns_nameserver_t *ns; /*!< \brief Pointer to nameserver.*/
-	evqueue_t        *q; /*!< \brief Shared XFR requests queue.*/
-	struct tcp_pool_t *xfer_pool; /*! \brief TCP client transfers. */
+	dt_unit_t     *unit;  /*!< \brief Threading unit. */
+	ns_nameserver_t *ns;  /*!< \brief Pointer to nameserver.*/
+	evqueue_t        *q;  /*!< \brief Shared XFR requests queue.*/
+	struct ev_loop *loop; /*!< \brief Event loop. */
 } xfrhandler_t;
 
 /*!
