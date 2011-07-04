@@ -19,7 +19,7 @@ unit_api journal_tests_api = {
 /*
  *  Unit implementation.
  */
-static const int JOURNAL_TEST_COUNT = 8;
+static const int JOURNAL_TEST_COUNT = 9;
 
 /*! \brief Generate random string with given length. */
 static int randstr(char* dst, size_t len)
@@ -41,33 +41,37 @@ static int journal_tests_count(int argc, char *argv[])
 /*! API: run tests. */
 static int journal_tests_run(int argc, char *argv[])
 {
-	/* Test 1: Create journal. */
+	/* Test 1: Create tmpfile. */
 	const int jsize = 256;
 	char jfn_buf[] = "/tmp/journal.XXXXXX";
-	mkstemp(jfn_buf);
+	int tmp_fd = mkstemp(jfn_buf);
+	ok(tmp_fd >= 0, "journal: create temporary file");
+	skip(tmp_fd < 0, JOURNAL_TEST_COUNT - 1);
+
+	/* Test 2: Create journal. */
 	const char *jfilename = jfn_buf;
 	int ret = journal_create(jfilename, jsize);
 	ok(ret == KNOT_EOK, "journal: create journal '%s'", jfilename);
 
-	/* Test 2: Open journal. */
+	/* Test 3: Open journal. */
 	journal_t *j = journal_open(jfilename);
 	ok(j != 0, "journal: open");
 
-	/* Test 3: Write entry to log. */
+	/* Test 4: Write entry to log. */
 	const char *sample = "deadbeef";
 	ret = journal_write(j, 0x0a, sample, strlen(sample));
 	ok(ret == KNOT_EOK, "journal: write");
 
-	/* Test 4: Read entry from log. */
+	/* Test 5: Read entry from log. */
 	char tmpbuf[64] = {'\0'};
 	ret = journal_read(j, 0x0a, tmpbuf);
 	ok(ret == KNOT_EOK, "journal: read entry");
 
-	/* Test 5: Compare read data. */
+	/* Test 6: Compare read data. */
 	ret = strncmp(sample, tmpbuf, strlen(sample));
 	ok(ret == 0, "journal: read data integrity check");
 
-	/* Test 6: Write random data. */
+	/* Test 7: Write random data. */
 	int chk_key = 0;
 	char chk_buf[64] = {'\0'};
 	ret = 0;
@@ -88,13 +92,13 @@ static int journal_tests_run(int argc, char *argv[])
 	}
 	ok(ret == 0, "journal: sustained looped writes");
 
-	/* Test 7: Check data integrity. */
+	/* Test 8: Check data integrity. */
 	memset(tmpbuf, 0, sizeof(tmpbuf));
 	journal_read(j, chk_key, tmpbuf);
 	ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
 	ok(ret == 0, "journal: read data integrity check");
 
-	/* Test 8: Reopen log and re-read value. */
+	/* Test 9: Reopen log and re-read value. */
 	memset(tmpbuf, 0, sizeof(tmpbuf));
 	journal_close(j);
 	j = journal_open(jfilename);
@@ -105,8 +109,13 @@ static int journal_tests_run(int argc, char *argv[])
 	/* Close journal. */
 	journal_close(j);
 
+	/* Close temporary file fd. */
+	close(tmp_fd);
+
 	/* Delete journal. */
 	unlink(jfilename);
+
+	endskip;
 
 	return 0;
 }
