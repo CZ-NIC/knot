@@ -1,6 +1,5 @@
 #include <config.h>
 #include <assert.h>
-#include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,6 +33,35 @@ static int timespec_cmp(struct timespec *x, struct timespec *y)
 	if (diff == 0) {
 		diff = x->tv_nsec - y->tv_nsec;
 	}
+
+	/* X and Y are equal. */
+	if (diff == 0) {
+		return 0;
+	}
+
+	/* X is newer. */
+	if (diff > 0) {
+		return 1;
+	}
+
+	/* Y is newer. */
+	return -1;
+}
+
+/*!
+ * \brief Compares two time_t values.
+ *
+ * \param x First time_t value to be compared.
+ * \param y Second time_t value to be compared.
+ *
+ * \retval 0 when times are the some.
+ * \retval 1 when y < x.
+ * \retval -1 when x > y.
+ */
+static int timet_cmp(time_t x, time_t y)
+{
+	/* Calculate difference in the scale of seconds. */
+	long diff = x - y;
 
 	/* X and Y are equal. */
 	if (diff == 0) {
@@ -999,7 +1027,8 @@ int dnslib_zload_needs_update(zloader_t *loader)
 	}
 
 	/* Compare the mtime of the source and file. */
-	if (timespec_cmp(&st_bin.st_mtim, &st_src.st_mtim) < 0) {
+	/*! \todo Inspect types on Linux. */
+	if (timet_cmp(st_bin.st_mtime, st_src.st_mtime) < 0) {
 		return 1;
 	}
 

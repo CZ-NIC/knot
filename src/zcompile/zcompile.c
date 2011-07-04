@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
 #include <netdb.h>
 #include <assert.h>
 
@@ -1260,8 +1261,9 @@ uint16_t * zparser_conv_apl_rdata(char *str)
 		return NULL;
 	} else if (rc == -1) {
 		char ebuf[256];
+		strerror_r(errno, ebuf, sizeof(ebuf));
 		fprintf(stderr, "inet_pton failed: %s",
-			strerror_r(errno, ebuf, sizeof(ebuf)));
+			ebuf);
 		return NULL;
 	}
 
@@ -1862,8 +1864,9 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	assert(origin_node->parent == NULL);
 
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
+		strerror_r(errno, ebuf, sizeof(ebuf));
 		fprintf(stderr, "Cannot open '%s': %s.",
-			zonefile, strerror_r(errno, ebuf, sizeof(ebuf)));
+			zonefile, ebuf);
 		return KNOT_ZCOMPILE_EZONEINVAL;
 	}
 

@@ -5,7 +5,6 @@
 #include <netinet/tcp.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <sys/epoll.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -96,7 +95,7 @@ int xfr_master(dthread_t *thread)
 	for (;;) {
 
 		/* Poll new events. */
-		int ret = evqueue_poll(data->q, 0);
+		int ret = evqueue_poll(data->q, 0, 0);
 
 		/* Cancellation point. */
 		if (dt_is_cancelled(thread)) {
@@ -120,6 +119,7 @@ int xfr_master(dthread_t *thread)
 		}
 
 		/* Update request. */
+		sockaddr_update(&xfr.from);
 		xfr.response_wire = buf;
 		xfr.rsize = sizeof(buf);
 

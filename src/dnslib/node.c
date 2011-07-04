@@ -1,6 +1,7 @@
 #include <config.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <assert.h>
+#include <stdio.h>
 
 #include "dnslib/dnslib-common.h"
 #include "dnslib/node.h"
@@ -301,15 +302,15 @@ int dnslib_node_is_auth(const dnslib_node_t *node)
 
 void dnslib_node_free_rrsets(dnslib_node_t *node, int free_rdata_dnames)
 {
-	const skip_node_t *skip_node =
-		skip_first(node->rrsets);
+	skip_node_t *skip_node =
+		(skip_node_t *)skip_first(node->rrsets);
 
 	if (skip_node != NULL) {
-		dnslib_rrset_deep_free((dnslib_rrset_t **)&skip_node->value, 0,
+		dnslib_rrset_deep_free((dnslib_rrset_t **)(&skip_node->value), 0,
 		                       free_rdata_dnames);
 		while ((skip_node = skip_next(skip_node)) != NULL) {
 			dnslib_rrset_deep_free((dnslib_rrset_t **)
-			                        &skip_node->value, 0,
+						(&skip_node->value), 0,
 			                        free_rdata_dnames);
 		}
 	}

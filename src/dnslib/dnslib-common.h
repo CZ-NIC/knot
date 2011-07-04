@@ -20,7 +20,10 @@
 #define DNSLIB_NAME "dnslib" // Project name
 #define DNSLIB_VER  0x000100  // 0xMMIIRR (MAJOR,MINOR,REVISION)
 
-typedef unsigned int uint;
+#ifndef UINT_DEFINED
+typedef unsigned int uint; /*!< \brief Unsigned. */
+#define UINT_DEFINED
+#endif
 
 /*! \brief If defined, zone structures will use hash table for lookup. */
 #define USE_HASH_TABLE

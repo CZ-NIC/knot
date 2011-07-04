@@ -47,6 +47,14 @@ struct dnslib_rrset {
 typedef struct dnslib_rrset dnslib_rrset_t;
 
 /*----------------------------------------------------------------------------*/
+
+typedef enum {
+	DNSLIB_RRSET_COMPARE_PTR,
+	DNSLIB_RRSET_COMPARE_HEADER,
+	DNSLIB_RRSET_COMPARE_WHOLE
+} dnslib_rrset_compare_type_t;
+
+/*----------------------------------------------------------------------------*/
 /*!
  * \brief Creates a new RRSet with the given properties.
  *
@@ -166,6 +174,10 @@ dnslib_rdata_t *dnslib_rrset_get_rdata(dnslib_rrset_t *rrset);
  *         if no rrset was provided (\a rrset is NULL).
  */
 const dnslib_rrset_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset);
+
+int dnslib_rrset_compare(const dnslib_rrset_t *r1,
+                         const dnslib_rrset_t *r2,
+                         dnslib_rrset_compare_type_t cmp);
 
 /*!
  * \brief Destroys the RRSet structure.

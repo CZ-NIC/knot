@@ -8,7 +8,7 @@
 #include "dnslib/edns_tests.h"
 #include "dnslib/node_tests.h"
 #include "dnslib/rdata_tests.h"
-#include "dnslib/response_tests.h"
+//#include "dnslib/response_tests.h"
 #include "dnslib/rrset_tests.h"
 #include "dnslib/zone_tests.h"
 #include "dnslib/zonedb_tests.h"
@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 		&edns_tests_api,     //! DNS library (EDNS0) unit
 		&node_tests_api,     //! DNS library (node) unit
 		&rdata_tests_api,    //! DNS library (rdata) unit
-		&response_tests_api, //! DNS library (response) unit
+//		&response_tests_api, //! DNS library (response) unit
 		&rrset_tests_api,    //! DNS library (rrset) unit
 		&zone_tests_api,     //! DNS library (zone) unit
 		&zonedb_tests_api,   //! DNS library (zonedb) unit

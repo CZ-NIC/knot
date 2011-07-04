@@ -14,8 +14,10 @@
 #define _KNOT_DNSLIB_RDATA_H_
 
 #include <stdint.h>
+#include <string.h>
 
 #include "dnslib/dname.h"
+#include "dnslib/descriptor.h"
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -85,6 +87,26 @@ typedef struct dnslib_rdata dnslib_rdata_t;
  * \return Pointer to the new RDATA structure or NULL if an error occured.
  */
 dnslib_rdata_t *dnslib_rdata_new();
+
+/*!
+ * \brief Parses RDATA from the given data in wire format.
+ *
+ * \param rdata RDATA to fill.
+ * \param wire Wire format of the whole data in which the RDATA are present.
+ * \param pos Position in \a wire where to start parsing.
+ * \param total_size Size of the whole data.
+ * \param rdlength Size of the RDATA to parse in bytes.
+ * \param desc RR type descriptor for the RDATA type.
+ *
+ * \retval DNSLIB_ENOMEM
+ * \retval DNSLIB_EFEWDATA
+ * \retval DNSLIB_EMALF
+ * \retval DNSLIB_ERROR
+ * \retval DNSLIB_EOK
+ */
+int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
+                           size_t *pos, size_t total_size, size_t rdlength,
+                           const dnslib_rrtype_descriptor_t *desc);
 
 /*!
  * \brief Sets the RDATA item on position \a pos.
@@ -287,6 +309,8 @@ const dnslib_dname_t *dnslib_rdata_dname_target(const dnslib_rdata_t *rdata);
  */
 const dnslib_dname_t *dnslib_rdata_get_name(const dnslib_rdata_t *rdata,
                                             uint16_t type);
+
+int64_t dnslib_rdata_soa_serial(const dnslib_rdata_t *rdata);
 
 #endif /* _KNOT_DNSLIB_RDATA_H */
 

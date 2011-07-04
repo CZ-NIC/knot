@@ -625,8 +625,13 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count)
 	}
 
 	zone->dname_table = NULL;
-
 	zone->node_count = node_count;
+
+	/* Initialize ACLs. */
+	zone->acl.xfr_in = 0;
+	zone->acl.xfr_out = 0;
+	zone->acl.notify_in = 0;
+	zone->acl.notify_out = 0;
 
 	/* Initialize NSEC3 params */
 	zone->nsec3_params.algorithm = 0;
@@ -1169,6 +1174,11 @@ void dnslib_zone_free(dnslib_zone_t **zone)
 #endif
 
 	dnslib_nsec3_params_free(&(*zone)->nsec3_params);
+
+	acl_delete(&(*zone)->acl.xfr_in);
+	acl_delete(&(*zone)->acl.xfr_out);
+	acl_delete(&(*zone)->acl.notify_in);
+	acl_delete(&(*zone)->acl.notify_out);
 
 	free(*zone);
 	*zone = NULL;

@@ -22,6 +22,47 @@
 #include "knot/conf/conf.h"
 #include "knot/server/zones.h"
 
+/*! \brief Event scheduler loop. */
+static int evsched_run(dthread_t *thread)
+{
+	iohandler_t *sched_h = (iohandler_t *)thread->data;
+	evsched_t *s = (evsched_t*)sched_h->data;
+	if (!s) {
+		return KNOT_EINVAL;
+	}
+
+	/* Run event loop. */
+	event_t *ev = 0;
+	while((ev = evsched_next(s))) {
+
+		/* Error. */
+		if (!ev) {
+			return KNOT_ERROR;
+		}
+
+		/* Process termination event. */
+		if (ev->type == EVSCHED_TERM) {
+			evsched_event_free(s, ev);
+			break;
+		}
+
+		/* Process event. */
+		if (ev->type == EVSCHED_CB && ev->cb) {
+			ev->caller = s;
+			ev->cb(ev);
+		} else {
+			evsched_event_free(s, ev);
+		}
+
+		/* Check for thread cancellation. */
+		if (dt_is_cancelled(thread)) {
+			break;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
 /*! \brief List item for generic pointers. */
 typedef struct pnode_t {
 	struct node *next, *prev; /* Keep the ordering for lib/lists.h */
@@ -78,8 +119,9 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	/* Create UDP socket. */
 	int sock = socket_create(cfg_if->family, SOCK_DGRAM);
 	if (sock <= 0) {
+		strerror_r(errno, errbuf, sizeof(errbuf));
 		log_server_error("Could not create UDP socket: %s.\n",
-				 strerror_r(errno, errbuf, sizeof(errbuf)));
+				 errbuf);
 		return sock;
 	}
 	if (socket_bind(sock, cfg_if->family,
@@ -94,13 +136,13 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	new_if->fd[UDP_ID] = sock;
 	new_if->type[UDP_ID] = cfg_if->family;
 
-	/* Set socket options. */
+	/* Set socket options - voluntary. */
 	if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &snd_opt, sizeof(snd_opt)) < 0) {
-		log_server_warning("Failed to configure socket "
-		                   "write buffers.\n");
+	//	log_server_warning("Failed to configure socket "
+	//	                   "write buffers.\n");
 	}
 	if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
-		log_server_warning("Failed to configure socket read buffers.\n");
+	//	log_server_warning("Failed to configure socket read buffers.\n");
 	}
 
 	/* Create TCP socket. */
@@ -108,8 +150,9 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	sock = socket_create(cfg_if->family, SOCK_STREAM);
 	if (sock <= 0) {
 		socket_close(new_if->fd[UDP_ID]);
+		strerror_r(errno, errbuf, sizeof(errbuf));
 		log_server_error("Could not create TCP socket: %s.\n",
-		                 strerror_r(errno, errbuf, sizeof(errbuf)));
+				 errbuf);
 		return sock;
 	}
 
@@ -330,6 +373,13 @@ server_t *server_create()
 	server->ifaces = malloc(sizeof(list));
 	init_list(server->ifaces);
 
+	// Create event scheduler
+	debug_server("Creating event scheduler...\n");
+	server->sched = evsched_new();
+	dt_unit_t *unit = dt_create_coherent(1, evsched_run, 0);
+	iohandler_t *h = server_create_handler(server, -1, unit);
+	h->data = server->sched;
+
 	// Create name server
 	debug_server("Creating Name Server structure...\n");
 	server->nameserver = ns_create();
@@ -369,6 +419,7 @@ iohandler_t *server_create_handler(server_t *server, int fd, dt_unit_t *unit)
 	handler->unit = unit;
 	handler->iface = 0;
 	handler->data = 0;
+	handler->interrupt = 0;
 
 	// Update unit data object
 	for (int i = 0; i < unit->size; ++i) {
@@ -413,8 +464,10 @@ int server_remove_handler(server_t *server, iohandler_t *h)
 	}
 
 	// Close socket
-	socket_close(h->fd);
-	h->fd = -1;
+	if (h->fd >= 0) {
+		socket_close(h->fd);
+		h->fd = -1;
+	}
 
 	// Update interface
 	if (h->iface) {
@@ -520,6 +573,9 @@ int server_wait(server_t *server)
 
 void server_stop(server_t *server)
 {
+	/* Send termination event. */
+	evsched_schedule_term(server->sched, 0);
+
 	/* Lock RCU. */
 	rcu_read_lock();
 
@@ -530,6 +586,11 @@ void server_stop(server_t *server)
 	WALK_LIST(h, server->handlers) {
 		h->state = ServerIdle;
 		dt_stop(h->unit);
+
+		// Call interrupt handler
+		if (h->interrupt) {
+			h->interrupt(h);
+		}
 	}
 
 	/* Unlock RCU. */
@@ -558,6 +619,9 @@ void server_destroy(server_t **server)
 
 	// Free XFR master
 	xfr_free((*server)->xfr_h);
+
+	// Delete event scheduler
+	evsched_delete(&(*server)->sched);
 
 	stat_static_gath_free();
 	ns_destroy(&(*server)->nameserver);
