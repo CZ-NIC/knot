@@ -440,8 +440,8 @@ uint16_t type_covered_from_rdata(const dnslib_rdata_t *rdata)
 static int check_dnskey_rdata(const dnslib_rdata_t *rdata)
 {
 	/* check that Zone key bit it set - position 7 in net order */
-	/* FIXME endian */
-	uint16_t mask = 0b0000000100000000;
+	/*! \todo FIXME: endian? */
+	uint16_t mask = 1 << 7; //0b0000000100000000;
 
 	uint16_t flags =
 		dnslib_wire_read_u16((uint8_t *)rdata_item_data
@@ -862,7 +862,8 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 			uint8_t flags =
 		((uint8_t *)(previous_rrset->rdata->items[1].raw_data))[2];
 
-			uint8_t opt_out_mask = 0b00000001;
+			/*! \todo FIXME: check this. */
+			uint8_t opt_out_mask = 1 << 0; //0b00000001;
 
 			if (!(flags & opt_out_mask)) {
 				err_handler_handle_error(handler, node,

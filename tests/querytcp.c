@@ -140,6 +140,7 @@ static struct timeval start, send_finished;;
 static fd_set fdset0r, fdset0w;
 static int nfds;
 static struct sockaddr_storage remote;
+static int remote_len = 0;
 static int finished = 0;
 static timediff_t Timeout = 10*1000000LL;
 unsigned short counter = 0;
@@ -190,7 +191,7 @@ struct queries *Queries;
 
 /* input */
 char *ServerName = "127.0.0.1";
-char *ServerPort = "domain";
+char *ServerPort = "53";
 int family = PF_UNSPEC;
 char *datafile = NULL;
 int TimeLimit = 20;
@@ -267,8 +268,9 @@ void register_response(struct queries *q, int timeout, char *note)
 			printf("recv timeout id=%d %lld usec\n", id, timediff(&current, &q->sent));
 	} else {
 		counterror++;
-		if (verbose)
-			printf("recv error id=%d errno=%d at %s\n", id, ERROROFFSET - timeout, note);
+		if (verbose) {
+			printf("recv error id=%d errno=%d at %s (%s)\n", id, ERROROFFSET - timeout, note, strerror(errno));
+		}
 	}
 #ifdef DEBUG
     printf("%ld.%03ld no=%d fd=%d %d %s\n", q->sent.tv_sec, q->sent.tv_usec/1000, q->no, q->fd, timeout, note);
@@ -309,6 +311,7 @@ void output()
 
 void tcp_close(struct queries *q)
 {
+
 #ifdef DEBUG
 printf("tcp_close no=%d fd=%d\n", q->no, q->fd);
 #endif
@@ -326,7 +329,7 @@ void tcp_send(struct queries *q)
 {
 	int len;
 
-	len = send(q->fd, &q->send, q->sendlen, 0);
+	len = send(q->fd, &q->send, q->sendlen, MSG_NOSIGNAL);
 #ifdef DEBUG
 printf("tcp_send no=%d fd=%d %d:%d:%d\n", q->no, q->fd, len, q->wpos, q->sendlen);
 #endif
@@ -510,15 +513,11 @@ void send_query(struct queries *q)
 	if (q->fd > 0)
 		err(1, "q->fd > 0 but ignored\n");
 
-#ifdef NOINET6
-    size_t ss_len = sizeof(struct sockaddr_in);
-#else
-    size_t ss_len = sizeof(struct sockaddr_in6);
-#endif
-	if ((q->fd = socket(remote.ss_family, SOCK_STREAM, 0)) < 0
-		|| (tmp = fcntl(q->fd, F_GETFL, 0)) == -1
-	    || fcntl(q->fd, F_SETFL, O_NONBLOCK | tmp) == -1
-        || (connect(q->fd, (struct sockaddr *)&remote, ss_len) < 0 && errno != EINPROGRESS)) {
+	q->fd = socket(remote.ss_family, SOCK_STREAM, 0);
+	tmp = fcntl(q->fd, F_GETFL, 0);
+	fcntl(q->fd, F_SETFL, O_NONBLOCK | tmp);
+	int conn_ret = connect(q->fd, (struct sockaddr *)&remote, remote_len);
+	if(conn_ret < 0 && errno != EINPROGRESS) {
 		register_response(q, ERROROFFSET - errno, "send_query:socket+fcntl+connect");
 		tcp_close(q);
 		return;
@@ -649,10 +648,23 @@ void query()
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = family;
 	hints.ai_socktype = SOCK_STREAM;
-	error = getaddrinfo(ServerName, ServerPort, &hints, &res0);
+	printf("resolving: %s:%s\n", ServerName, ServerPort);
+	error = getaddrinfo(ServerName, 0, &hints, &res0);
 	if (error) {
 		errx(1, "%s", gai_strerror(error));
 	}
+
+	/* Update server port. */
+	int port = atoi(ServerPort);
+	if (res0->ai_family == AF_INET6) {
+		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6*)res0->ai_addr;
+		ipv6->sin6_port = htons(port);
+	} else {
+		struct sockaddr_in *ipv4 = (struct sockaddr_in*)res0->ai_addr;
+		ipv4->sin_port = htons(port);
+	}
+
+	remote_len = res0->ai_addrlen;
 	memcpy(&remote, res0->ai_addr, res0->ai_addrlen);
 	memset(&countrcode, 0, sizeof(countrcode));
 

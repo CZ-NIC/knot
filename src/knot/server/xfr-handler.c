@@ -5,7 +5,6 @@
 #include <netinet/tcp.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <sys/epoll.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,6 +18,7 @@
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-in.h"
 
+#if 0
 /*!
  * \brief XFR-IN event handler function.
  *
@@ -80,6 +80,7 @@ static inline int xfr_client_ev(struct tcp_pool_t *pool, int fd, void *data,
 
 	return ret;
 }
+#endif
 
 /*
  * Public APIs.
@@ -101,6 +102,7 @@ xfrhandler_t *xfr_create(size_t thrcount, ns_nameserver_t *ns)
 		return 0;
 	}
 
+#if 0
 	/* Create TCP pool. */
 	data->xfer_pool = tcp_pool_new(ns->server, xfr_client_ev);
 	if (!data->xfer_pool) {
@@ -108,18 +110,24 @@ xfrhandler_t *xfr_create(size_t thrcount, ns_nameserver_t *ns)
 		free(data);
 		return 0;
 	}
+#endif
 
 	/* Create threading unit. */
 	dt_unit_t *unit = 0;
 	unit = dt_create_coherent(thrcount, &xfr_master, (void*)data);
 	if (!unit) {
+#if 0
 		tcp_pool_del(&data->xfer_pool);
+#endif
 		evqueue_free(&data->q);
 		free(data);
 		return 0;
 	}
 	data->unit = unit;
+#if 0
 	dt_repurpose(unit->threads[0], &xfr_client, data->xfer_pool);
+#endif
+
 
 	return data;
 }
@@ -133,8 +141,10 @@ int xfr_free(xfrhandler_t *handler)
 	/* Remove handler data. */
 	evqueue_free(&handler->q);
 
+#if 0
 	/* Delete TCP pool. */
 	tcp_pool_del(&handler->xfer_pool);
+#endif
 
 	/* Delete unit. */
 	dt_delete(&handler->unit);
@@ -234,8 +244,10 @@ int xfr_client_start(xfrhandler_t *handler, ns_xfr_t *req)
 	memcpy(data, req, sizeof(ns_xfr_t));
 
 	/* Add to pending transfers. */
+#if 0
 	tcp_pool_add(handler->xfer_pool, req->session, data);
 	dt_activate(handler->unit->threads[0]);
+#endif
 
 	return KNOT_EOK;
 }
@@ -340,9 +352,12 @@ int xfr_client(dthread_t *thread)
 		debug_xfr("xfr_client: no data recevied, finishing.\n");
 		return KNOT_EINVAL;
 	}
-
+#if 0
 	/* Run TCP pool. */
 	int ret = tcp_pool(thread);
+#else
+	int ret = 0;
+#endif
 
 	debug_xfr("xfr_client: finished.\n");
 	return ret;

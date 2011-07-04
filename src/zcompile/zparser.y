@@ -1479,7 +1479,7 @@ void zparser_free()
 	dnslib_dname_free(&(parser->root_domain));
 	free(parser->temporary_items);
 	dnslib_rrset_free(&(parser->current_rrset));
-	yylex_destroy();
+	//yylex_destroy();
 	free(parser);
 }
 
