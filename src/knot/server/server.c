@@ -339,8 +339,8 @@ static int server_bind_handlers(server_t *server)
 
 		/* Create TCP handlers. */
 		if (!iface->handler[TCP_ID]) {
-			unit = dt_create(tcp_unit_size);
-			dt_repurpose(unit->threads[0], &tcp_master, 0);
+			unit = dt_create(tcp_unit_size); /*! \todo Multithreaded TCP. */
+			tcp_loop_unit(unit);
 			h = server_create_handler(server, iface->fd[TCP_ID], unit);
 			h->type = iface->type[TCP_ID];
 			h->iface = iface;
