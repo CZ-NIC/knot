@@ -13,6 +13,7 @@
 #define _KNOT_DNSLIB_DNAME_H_
 
 #include <stdint.h>
+#include <string.h>
 
 struct dnslib_node;
 
@@ -91,6 +92,10 @@ dnslib_dname_t *dnslib_dname_new_from_str(const char *name, unsigned int size,
 dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name,
                                            unsigned int size,
                                            struct dnslib_node *node);
+
+dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
+                                             size_t *pos, size_t size,
+                                             struct dnslib_node *node);
 
 /*!
  * \brief Initializes domain name by the name given in wire format.

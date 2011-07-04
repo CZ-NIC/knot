@@ -9,6 +9,9 @@
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 
+/* Define to 1 if you have the <ev.h> header file. */
+#undef HAVE_EV_H
+
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
 
@@ -27,23 +30,8 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
-/* Define to 1 if you have the `crypto' library (-lcrypto). */
-#undef HAVE_LIBCRYPTO
-
 /* Define to 1 if you have the `ldns' library (-lldns). */
 #undef HAVE_LIBLDNS
-
-/* Define to 1 if you have the `m' library (-lm). */
-#undef HAVE_LIBM
-
-/* Define to 1 if you have the `pthread' library (-lpthread). */
-#undef HAVE_LIBPTHREAD
-
-/* Define to 1 if you have the `rt' library (-lrt). */
-#undef HAVE_LIBRT
-
-/* Define to 1 if you have the `urcu' library (-lurcu). */
-#undef HAVE_LIBURCU
 
 /* Define to 1 if you have the <limits.h> header file. */
 #undef HAVE_LIMITS_H
@@ -143,6 +131,9 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
+
+/* Define to 1 if you have the <urcu.h> header file. */
+#undef HAVE_URCU_H
 
 /* Define to 1 if you have the `vfork' function. */
 #undef HAVE_VFORK

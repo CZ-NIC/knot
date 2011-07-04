@@ -9,12 +9,15 @@
 #include <assert.h>
 #include <errno.h>
 
+#include "common/sockaddr.h"
 #include "knot/common.h"
 #include "knot/other/error.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/name-server.h"
 #include "knot/stat/stat.h"
 #include "knot/server/server.h"
+#include "dnslib/wire.h"
+#include "dnslib/consts.h"
 #include "dnslib/packet.h"
 
 int udp_master(dthread_t *thread)
@@ -31,7 +34,7 @@ int udp_master(dthread_t *thread)
 
 
 	sockaddr_t addr;
-	if (socket_initaddr(&addr, handler->type) != KNOT_EOK) {
+	if (sockaddr_init(&addr, handler->type) != KNOT_EOK) {
 		log_server_error("Socket type %d is not supported, "
 				 "IPv6 support is probably disabled.\n",
 				 handler->type);
@@ -53,10 +56,12 @@ int udp_master(dthread_t *thread)
 #endif
 	if (handler->type == AF_INET) {
 
+#ifdef IP_PMTUDISC_DONT
 		/* Disable fragmentation. */
 		flag = IP_PMTUDISC_DONT;
 		setsockopt(sock, IPPROTO_IP, IP_MTU_DISCOVER, &flag, sizeof(flag));
 		flag = 1;
+#endif
 	}
 
 	/* in case of STAT_COMPILE the following code will declare thread_stat
@@ -72,7 +77,7 @@ int udp_master(dthread_t *thread)
 	int res = 0;
 	ssize_t n = 0;
 	uint8_t qbuf[SOCKET_MTU_SZ];
-	dnslib_query_t qtype = DNSLIB_QUERY_NORMAL;
+	dnslib_packet_type_t qtype = DNSLIB_QUERY_NORMAL;
 	while (n >= 0) {
 
 		n = recvfrom(sock, qbuf, sizeof(qbuf), 0,
@@ -103,28 +108,37 @@ int udp_master(dthread_t *thread)
 
 		debug_net("udp: received %zd bytes.\n", n);
 
-		dnslib_response_t *resp = dnslib_response_new(4 * 1024); // 4K
 		size_t resp_len = sizeof(qbuf);
 
+		//dnslib_response_t *resp = dnslib_response_new(4 * 1024); // 4K
+		dnslib_packet_t *packet =
+			dnslib_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
+		if (packet == NULL) {
+			uint16_t pkt_id = dnslib_wire_get_id(qbuf);
+			ns_error_response(ns, pkt_id, DNSLIB_RCODE_SERVFAIL,
+			                  qbuf, &resp_len);
+			continue;
+		}
+
 		/* Parse query. */
-		res = ns_parse_query(qbuf, n, resp, &qtype);
+		res = ns_parse_packet(qbuf, n, packet, &qtype);
 		if (unlikely(res != KNOT_EOK)) {
 
 			/* Send error response on dnslib RCODE. */
 			if (res > 0) {
-				uint16_t pkt_id = dnslib_packet_get_id(qbuf);
+				uint16_t pkt_id = dnslib_wire_get_id(qbuf);
 				ns_error_response(ns, pkt_id, res,
-						  qbuf, &resp_len);
+				                  qbuf, &resp_len);
 			}
 
-			dnslib_response_free(&resp);
+			dnslib_packet_free(&packet);
 			continue;
 		}
 
 		/* Handle query. */
 		switch(qtype) {
 		case DNSLIB_QUERY_NORMAL:
-			res = ns_answer_normal(ns, resp, qbuf, &resp_len);
+			res = ns_answer_normal(ns, packet, qbuf, &resp_len);
 			break;
 		case DNSLIB_QUERY_AXFR:
 		case DNSLIB_QUERY_IXFR:
@@ -136,10 +150,9 @@ int udp_master(dthread_t *thread)
 			break;
 		}
 
-		debug_net("udp: got answer of size %zd.\n",
-			  resp_len);
+		debug_net("udp: got answer of size %zd.\n", resp_len);
 
-		dnslib_response_free(&resp);
+		dnslib_packet_free(&packet);
 
 		/* Send answer. */
 		if (res == KNOT_EOK) {
@@ -151,13 +164,13 @@ int udp_master(dthread_t *thread)
 
 			// Send datagram
 			res = sendto(sock, qbuf, resp_len,
-				     0, addr.ptr, addr.len);
+			             0, addr.ptr, addr.len);
 
 			// Check result
 			if (res != (int)resp_len) {
 				debug_net("udp: %s: failed: %d - %d.\n",
-					  "socket_sendto()",
-					  res, errno);
+				          "socket_sendto()",
+				          res, errno);
 				continue;
 			}
 

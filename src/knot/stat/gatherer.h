@@ -53,17 +53,17 @@ struct gatherer {
 	/*  double mean_latency;
 	    double udp_mean_latency;
 	    double tcp_mean_latency;
-	    uint udp_latency;
-	    uint tcp_latency; */
+	    unsigned udp_latency;
+	    unsigned tcp_latency; */
 
-	uint udp_queries; /*!< Total number of UDP queries for SLEEP_TIME. */
-	uint tcp_queries; /*!< Total number of TCP queries for SLEEP_TIME. */
+	unsigned udp_queries; /*!< Total number of UDP queries for SLEEP_TIME. */
+	unsigned tcp_queries; /*!< Total number of TCP queries for SLEEP_TIME. */
 	/*!
 	 * \brief this variable should be much bigger, preferably sparse array
 	 *        with 2**32 elements (for IPv4). It is an array with query
 	 *        query frequencies.
 	 */
-	uint freq_array[FREQ_BUFFER_SIZE];
+	unsigned freq_array[FREQ_BUFFER_SIZE];
 	/*!
 	 * \brief Used for backward mapping.
 	 */
