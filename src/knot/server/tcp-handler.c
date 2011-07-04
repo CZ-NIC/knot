@@ -21,18 +21,58 @@
 #include "knot/stat/stat.h"
 #include "dnslib/wire.h"
 
-/*! \brief TCP connection. */
+/*! \brief TCP watcher. */
 typedef struct tcp_io_t {
 	ev_io io;
-	ns_nameserver_t  *ns;    /*!< Name server */
-	iohandler_t      *io_h;  /*!< Master I/O handler. */
-	xfrhandler_t     *xfr_h; /*!< XFR handler. */
-	stat_t           *stat;  /*!< Statistics gatherer */
+	struct ev_loop   *loop;   /*!< Associated event loop. */
+	server_t         *server; /*!< Name server */
+	iohandler_t      *io_h;   /*!< Master I/O handler. */
+	stat_t           *stat;   /*!< Statistics gatherer */
+	unsigned         data;    /*!< Watcher-related data. */
 } tcp_io_t;
 
 /*
  * Forward decls.
  */
+
+/*! \brief Wrapper for TCP send. */
+static int xfr_send_cb(int session, sockaddr_t *addr, uint8_t *msg, size_t msglen)
+{
+	UNUSED(addr);
+	return tcp_send(session, msg, msglen);
+}
+
+/*! \brief Create new TCP connection watcher. */
+static inline tcp_io_t* tcp_conn_new(struct ev_loop *loop, int fd, tcp_cb_t cb)
+{
+	tcp_io_t *w = malloc(sizeof(tcp_io_t));
+	if (w) {
+		/* Omit invalid filedescriptors. */
+		w->io.fd = -1;
+		if (fd >= 0) {
+			ev_io_init((ev_io *)w, cb, fd, EV_READ);
+			ev_io_start(loop, (ev_io *)w);
+		}
+
+		w->data = 0;
+		w->loop = loop;
+	}
+
+	return w;
+}
+
+/*! \brief Delete a TCP connection watcher. */
+static inline void tcp_conn_free(struct ev_loop *loop, tcp_io_t *w)
+{
+	ev_io_stop(loop, (ev_io *)w);
+	close(((ev_io *)w)->fd);
+	free(w);
+}
+
+/*! \brief Noop event handler. */
+static void tcp_noop(struct ev_loop *loop, ev_io *w, int revents)
+{
+}
 
 /*!
  * \brief TCP event handler function.
@@ -45,6 +85,8 @@ typedef struct tcp_io_t {
 static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 {
 	tcp_io_t *tcp_w = (tcp_io_t *)w;
+	ns_nameserver_t *ns = tcp_w->server->nameserver;
+	xfrhandler_t *xfr_h = tcp_w->server->xfr_h;
 
 	/* Check address type. */
 	sockaddr_t addr;
@@ -52,7 +94,6 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 		log_server_error("Socket type %d is not supported, "
 				 "IPv6 support is probably disabled.\n",
 				 tcp_w->io_h->type);
-//!		return KNOT_ENOTSUP;
 		return;
 	}
 
@@ -61,10 +102,8 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 	size_t qbuf_maxlen = sizeof(qbuf);
 	int n = tcp_recv(w->fd, qbuf, qbuf_maxlen, &addr);
 	if (n <= 0) {
-//!		return KNOT_ERROR;
 		debug_net("tcp: client disconnected\n");
-		ev_io_stop(loop, w);
-		free(tcp_w);
+		tcp_conn_free(loop, tcp_w);
 		return;
 	}
 
@@ -79,9 +118,8 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
 	if (packet == NULL) {
 		uint16_t pkt_id = dnslib_wire_get_id(qbuf);
-		ns_error_response(tcp_w->ns, pkt_id, DNSLIB_RCODE_SERVFAIL,
+		ns_error_response(ns, pkt_id, DNSLIB_RCODE_SERVFAIL,
 				  qbuf, &resp_len);
-//!		return KNOT_ENOMEM;
 		return;
 	}
 
@@ -91,13 +129,12 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 		/* Send error response on dnslib RCODE. */
 		if (res > 0) {
 			uint16_t pkt_id = dnslib_wire_get_id(qbuf);
-			ns_error_response(tcp_w->ns, pkt_id, res,
+			ns_error_response(ns, pkt_id, res,
 					  qbuf, &resp_len);
 		}
 
 //		dnslib_response_free(&resp);
 		dnslib_packet_free(&packet);
-//!		return res;
 		return;
 	}
 
@@ -116,31 +153,29 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 
 	/* Query types. */
 	case DNSLIB_QUERY_NORMAL:
-		res = ns_answer_normal(tcp_w->ns, packet, qbuf, &resp_len);
+		res = ns_answer_normal(ns, packet, qbuf, &resp_len);
 		break;
 	case DNSLIB_QUERY_AXFR:
 		xfr.query = packet;
-		xfr.send = tcp_send;
+		xfr.send = xfr_send_cb;
 		xfr.session = w->fd;
 		xfr.wire = 0;
 		xfr.wire_size = 0;
 		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
-		xfr_request(tcp_w->xfr_h, &xfr);
+		xfr_request(xfr_h, &xfr);
 		debug_net("tcp: enqueued AXFR query\n");
-//!		return KNOT_EOK;
 		return;
 	case DNSLIB_QUERY_IXFR:
 		memset(&xfr, 0, sizeof(ns_xfr_t));
 		xfr.type = NS_XFR_TYPE_IOUT;
 		xfr.query = packet; /* Will be freed after processing. */
-		xfr.send = tcp_send;
+		xfr.send = xfr_send_cb;
 		xfr.session = w->fd;
 		xfr.wire = 0;
 		xfr.wire_size = 0;
 		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
-		xfr_request(tcp_w->xfr_h, &xfr);
+		xfr_request(xfr_h, &xfr);
 		debug_net("tcp: enqueued IXFR query\n");
-//!		return KNOT_EOK;
 		return;
 	case DNSLIB_QUERY_NOTIFY:
 	case DNSLIB_QUERY_UPDATE:
@@ -165,7 +200,6 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 		}
 	}
 
-//!	return res;
 	return;
 }
 
@@ -184,29 +218,142 @@ static void tcp_accept(struct ev_loop *loop, ev_io *w, int revents)
 					 "(%d).\n", errno);
 		}
 	} else {
-		/*! \todo Store references to pending connections! */
-		tcp_io_t *conn = malloc(sizeof(tcp_io_t));
-		conn->ns = tcp_w->ns;
-		conn->stat = tcp_w->stat;
-		conn->xfr_h = tcp_w->xfr_h;
-		conn->io_h = tcp_w->io_h;
-
-		/* Register connection. */
-		ev_io_init((ev_io *)conn, tcp_handle, incoming, EV_READ);
-		ev_io_start(loop, (ev_io *)conn);
+		/*! \todo Improve allocation performance. */
+		tcp_io_t *conn = tcp_conn_new(loop, incoming, tcp_handle);
+		if (conn) {
+			conn->server = tcp_w->server;
+			conn->stat = tcp_w->stat;
+			conn->io_h = tcp_w->io_h;
+		}
 	}
 }
 
 static void tcp_interrupt(iohandler_t *h)
 {
-	/*! \todo Using default loop is sub-optimal solution. */
-	ev_io *w = (ev_io *)h->data;
-	struct ev_loop *loop = ev_default_loop(0);
+	/* For each thread in unit. */
+	for (unsigned i = 0; i < h->unit->size; ++i) {
+		tcp_io_t *w = (tcp_io_t *)(h->unit->threads[i]->data);
 
-	/* Stop master socket watcher. */
-	ev_io_stop(loop, w);
-	ev_unloop(loop, EVUNLOOP_ALL);
+		/* Only if watcher exists and isn't I/O handler. */
+		if (w && (void*)w != (void*)h) {
+			/* Stop master socket watcher. */
+			if (w->io.fd >= 0) {
+				ev_io_stop(w->loop, (ev_io *)w);
+			}
+
+			/* Break loop. */
+			ev_unloop(w->loop, EVUNLOOP_ALL);
+		}
+	}
 }
+
+static void tcp_loop_install(dthread_t *thread, int fd, tcp_cb_t cb)
+{
+	iohandler_t *handler = (iohandler_t *)thread->data;
+
+	/* Install interrupt handler. */
+	handler->interrupt = tcp_interrupt;
+
+	/* Create event loop. */
+	/*! \todo Maybe check for EVFLAG_NOSIGMASK support? */
+	struct ev_loop *loop = ev_loop_new(EVBACKEND_ALL);
+
+	/* Watch bound socket if exists. */
+	tcp_io_t *w = tcp_conn_new(loop, fd, cb);
+	if (w) {
+		w->io_h = handler;
+		w->server = handler->server;
+		w->stat = 0; //!< \todo Implement stat.
+	}
+
+	/* Reinstall as thread-specific data. */
+	thread->data = w;
+}
+
+static void tcp_loop_uninstall(dthread_t *thread)
+{
+	tcp_io_t *w = (tcp_io_t *)thread->data;
+
+	/* Free watcher if exists. */
+	if (w) {
+		ev_loop_destroy(w->loop);
+		free(w);
+	}
+
+	/* Invalidate thread data. */
+	thread->data = 0;
+}
+
+/*! \brief Switch event loop in threading unit in RR fashion
+ *         and accept connection in it.
+ */
+static void tcp_accept_rr(struct ev_loop *loop, ev_io *w, int revents)
+{
+	tcp_io_t *tcp_w = (tcp_io_t *)w;
+
+	/* Select next loop thread. */
+	dt_unit_t *unit = tcp_w->io_h->unit;
+	dthread_t *thr = unit->threads[tcp_w->data];
+
+	/* Select loop from selected thread. */
+	tcp_io_t *thr_w = (tcp_io_t *)thr->data;
+	if (thr_w) {
+		loop = thr_w->loop;
+	}
+
+	/* Move to next thread in unit. */
+	tcp_w->data = get_next_rr(tcp_w->data, unit->size);
+
+	/* Accept incoming connection in target loop. */
+	tcp_accept(loop, w, revents);
+}
+
+static int tcp_loop_run(dthread_t *thread)
+{
+	debug_dt("dthreads: [%p] running TCP loop, state: %d\n",
+		 thread, thread->state);
+
+	/* Fetch loop. */
+	tcp_io_t *w = (tcp_io_t *)thread->data;
+
+	/* Accept clients. */
+	debug_net("tcp: loop started, backend = 0x%x\n", ev_backend(w->loop));
+	for (;;) {
+
+		/* Cancellation point. */
+		if (dt_is_cancelled(thread)) {
+			break;
+		}
+
+		/* Run event loop for accepting connections. */
+		ev_loop(w->loop, 0);
+	}
+
+	/* Stop whole unit. */
+	debug_net("tcp: loop finished\n");
+
+	return KNOT_EOK;
+}
+
+int tcp_loop_master_rr(dthread_t *thread)
+{
+	iohandler_t *handler = (iohandler_t *)thread->data;
+
+	/* Check socket. */
+	if (handler->fd < 0) {
+		debug_net("tcp_master: null socket recevied, finishing.\n");
+		return KNOT_EINVAL;
+	}
+
+	debug_net("tcp_master: threading unit master with %d workers\n",
+		  thread->unit->size - 1);
+
+	return tcp_loop(thread, handler->fd, tcp_accept_rr);
+}
+
+/*
+ * Public APIs.
+ */
 
 int tcp_send(int fd, uint8_t *msg, size_t msglen)
 {
@@ -275,65 +422,63 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	return n;
 }
 
-int tcp_master(dthread_t *thread)
+int tcp_loop(dthread_t *thread, int fd, tcp_cb_t cb)
 {
-	dt_unit_t *unit = thread->unit;
+	/* Install event loop. */
+	tcp_loop_install(thread, fd, cb);
+
+	/* Run event loop. */
+	int ret = tcp_loop_run(thread);
+
+	/* Uninstall event loop. */
+	tcp_loop_uninstall(thread);
+
+	return ret;
+}
+
+int tcp_loop_master(dthread_t *thread)
+{
 	iohandler_t *handler = (iohandler_t *)thread->data;
 
-	int master_sock = handler->fd;
-
 	/* Check socket. */
-	if (master_sock < 0) {
+	if (handler->fd < 0) {
 		debug_net("tcp_master: null socket recevied, finishing.\n");
 		return KNOT_EINVAL;
 	}
 
-	debug_dt("dthreads: [%p] is TCP master, state: %d\n",
-	         thread, thread->state);
+	debug_net("tcp_master: created with %d workers\n",
+		  thread->unit->size - 1);
 
-	/* Trim other threads. */
-	/*! \todo Multithreaded event-loop handling. */
-	if (unit->size > 1) {
-		dt_resize(unit, 1);
+	int dupfd = dup(handler->fd);
+	int ret = tcp_loop(thread, dupfd, tcp_accept);
+	close(dupfd);
+
+	return ret;
+}
+
+int tcp_loop_worker(dthread_t *thread)
+{
+	return tcp_loop(thread, -1, tcp_noop);
+}
+
+int tcp_loop_unit(dt_unit_t *unit)
+{
+	if (unit->size < 1) {
+		return KNOT_EINVAL;
 	}
 
-	/* Create event loop. */
-	struct ev_loop *loop = ev_default_loop(0);
+	/*! \todo Implement working master+worker threads. */
+	/* Repurpose first thread as master (unit controller). */
+	//dt_repurpose(unit->threads[0], tcp_loop_master_rr, 0);
 
-	/* Install interrupt handler. */
-	handler->interrupt = tcp_interrupt;
+	/* Repurpose remaining threads as workers. */
+	//for (unsigned i = 1; i < unit->size; ++i) {
+	//	dt_repurpose(unit->threads[i], tcp_loop_worker, 0);
+	//}
 
-	/* Watch bound socket for incoming connections. */
-	tcp_io_t *tcp_w = malloc(sizeof(tcp_io_t));
-	tcp_w->io_h = handler;
-	tcp_w->ns = handler->server->nameserver;
-	tcp_w->stat = 0; //!< \todo Implement stat.
-	tcp_w->xfr_h = handler->server->xfr_h;
-
-	ev_io_init((ev_io *)tcp_w, tcp_accept, master_sock, EV_READ);
-	ev_io_start(loop, (ev_io *)tcp_w);
-	handler->data = tcp_w;
-
-	/* Accept clients. */
-	debug_net("tcp: running 1 master with %d pools\n", unit->size - 1);
-	for (;;) {
-
-		// Cancellation point
-		if (dt_is_cancelled(thread)) {
-			debug_net("tcp: stopping (%d master, %d pools)\n",
-				  1, unit->size - 1);
-			return KNOT_EOK;
-		}
-
-		/*! \bug Implement cancellation point somehow. */
-		ev_loop(loop, 0);
+	for (unsigned i = 0; i < 1; ++i) {
+		dt_repurpose(unit->threads[i], tcp_loop_master, 0);
 	}
-
-	// Stop whole unit
-	debug_net("tcp: stopping (%d master, %d pools)\n", 1, unit->size - 1);
-	handler->data = 0;
-	free(tcp_w);
-
 
 	return KNOT_EOK;
 }
