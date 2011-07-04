@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/wait.h>
 
 #include "knot/common.h"
 #include "knot/other/error.h"
@@ -262,6 +263,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 				       zone->name);
 			}
 			rc = system(cmd);
+			rc = WEXITSTATUS(rc);
 			if (rc != 0) {
 				printf("error: Compilation failed "
 				       "with return code %d.\n",
