@@ -178,6 +178,8 @@ src/tests/knot/dthreads_tests.c
 src/tests/knot/dthreads_tests.h
 src/tests/knot/conf_tests.c
 src/tests/knot/conf_tests.h
+src/tests/knot/journal_tests.c
+src/tests/knot/journal_tests.h
 src/tests/knot/server_tests.c
 src/tests/knot/server_tests.h
 src/tests/unittests_main.c
