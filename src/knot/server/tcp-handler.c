@@ -156,11 +156,11 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 		res = ns_answer_normal(ns, packet, qbuf, &resp_len);
 		break;
 	case DNSLIB_QUERY_AXFR:
+		memset(&xfr, 0, sizeof(ns_xfr_t));
+		xfr.type = NS_XFR_TYPE_AOUT;
 		xfr.query = packet;
 		xfr.send = xfr_send_cb;
 		xfr.session = w->fd;
-		xfr.wire = 0;
-		xfr.wire_size = 0;
 		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
 		xfr_request(xfr_h, &xfr);
 		debug_net("tcp: enqueued AXFR query\n");
@@ -171,8 +171,6 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 		xfr.query = packet; /* Will be freed after processing. */
 		xfr.send = xfr_send_cb;
 		xfr.session = w->fd;
-		xfr.wire = 0;
-		xfr.wire_size = 0;
 		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
 		xfr_request(xfr_h, &xfr);
 		debug_net("tcp: enqueued IXFR query\n");
