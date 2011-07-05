@@ -112,7 +112,7 @@ xfrhandler_t *xfr_create(size_t thrcount, ns_nameserver_t *ns)
 	}
 
 	/* Create TCP loop. */
-	data->loop = ev_loop_new(EVBACKEND_ALL);
+	data->loop = ev_loop_new(0);
 	if (!data->loop) {
 		evqueue_free(&data->q);
 		free(data);
