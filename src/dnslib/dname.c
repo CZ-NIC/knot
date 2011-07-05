@@ -55,23 +55,24 @@ static void dnslib_dname_cache_init()
 static dnslib_dname_t* dnslib_dname_alloc()
 {
 	return malloc(sizeof(dnslib_dname_t));
-//	/* Initialize dname cache TLS key. */
-//	(void)pthread_once(&dname_once, dnslib_dname_cache_init);
 
-//	/* Create cache if not exists. */
-//	slab_cache_t* cache = pthread_getspecific(dname_ckey);
-//	if (unlikely(!cache)) {
-//		cache = malloc(sizeof(slab_cache_t));
-//		if (!cache) {
-//			return 0;
-//		}
+	/* Initialize dname cache TLS key. */
+	(void)pthread_once(&dname_once, dnslib_dname_cache_init);
 
-//		/* Initialize cache. */
-//		slab_cache_init(cache, sizeof(dnslib_dname_t));
-//		(void)pthread_setspecific(dname_ckey, cache);
-//	}
+	/* Create cache if not exists. */
+	slab_cache_t* cache = pthread_getspecific(dname_ckey);
+	if (unlikely(!cache)) {
+		cache = malloc(sizeof(slab_cache_t));
+		if (!cache) {
+			return 0;
+		}
 
-//	return slab_cache_alloc(cache);
+		/* Initialize cache. */
+		slab_cache_init(cache, sizeof(dnslib_dname_t));
+		(void)pthread_setspecific(dname_ckey, cache);
+	}
+
+	return slab_cache_alloc(cache);
 }
 
 /*----------------------------------------------------------------------------*/
