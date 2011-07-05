@@ -317,6 +317,7 @@ DEBUG_XFR(
 		if (node != NULL
 		    && dnslib_dname_compare(rr->owner, node->owner) != 0) {
 			if (!in_zone) {
+				// this should not happen
 				assert(0);
 				// the node is not in the zone and the RR has
 				// other owner, so a new node must be created
@@ -348,7 +349,7 @@ DEBUG_XFR(
 			assert(dnslib_node_rrset((*zone)->apex,
 			                         DNSLIB_RRTYPE_SOA) != NULL);
 			debug_xfr("Found last SOA, transfer finished.\n");
-			dnslib_rrset_free(&rr);
+			dnslib_rrset_deep_free(&rr, 1, 1, 1);
 			dnslib_packet_free(&packet);
 			return 1;
 		}
@@ -368,7 +369,11 @@ DEBUG_XFR(
 			} else if (ret == 1) {
 				dnslib_rrset_deep_free(&rr, 1, 0, 0);
 			} else if (ret == 2) {
+				// should not happen
+				assert(0);
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
+			} else {
+				assert(tmp_rrset->rrsigs == rr);
 			}
 
 			// parse next RR
@@ -424,8 +429,11 @@ DEBUG_XFR(
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
 				return KNOT_ERROR;
 			} else if (ret > 0) {
+				// should not happen, this is new node
+				assert(0);
 				dnslib_rrset_deep_free(&rr, 1, 0, 0);
 			}
+
 			ret = add_node(*zone, node, 1, 1);
 			if (ret != DNSLIB_EOK) {
 				debug_xfr("Failed to add node to zone.\n");
@@ -449,6 +457,7 @@ DEBUG_XFR(
 				// merged, free the RRSet
 				dnslib_rrset_deep_free(&rr, 1, 0, 0);
 			}
+
 		}
 			/* else if (node->owner != rr->owner) {
 DEBUG_XFR(
