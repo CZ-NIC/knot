@@ -13,6 +13,9 @@
 #include "knot/server/name-server.h"
 #include "dnslib/debug.h"
 
+static const size_t XFRIN_CHANGESET_COUNT = 5;
+static const size_t XFRIN_CHANGESET_COUNT_STEP = 5;
+
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
@@ -492,4 +495,251 @@ DEBUG_XFR(
 	debug_xfr("Processed one AXFR packet successfully.\n");
 
 	return (ret == DNSLIB_EOK) ? KNOT_EOK : KNOT_EMALF;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_parse_first_rr(dnslib_packet_t **packet, const uint8_t *pkt,
+                                size_t size, dnslib_rrset_t **rr)
+{
+	*packet = dnslib_packet_new(DNSLIB_PACKET_PREALLOC_NONE);
+	if (packet == NULL) {
+		debug_xfr("Could not create packet structure.\n");
+		return KNOT_ENOMEM;
+	}
+
+	int ret = dnslib_packet_parse_from_wire(*packet, pkt, size, 1);
+	if (ret != DNSLIB_EOK) {
+		debug_xfr("Could not parse packet: %s.\n",
+		          dnslib_strerror(ret));
+		dnslib_packet_free(packet);
+		return KNOT_EMALF;
+	}
+
+	ret = dnslib_packet_parse_next_rr_answer(*packet, rr);
+
+	if (ret != DNSLIB_EOK) {
+		debug_xfr("Could not parse first Answer RR: %s.\n",
+		          dnslib_strerror(ret));
+		dnslib_packet_free(packet);
+		return KNOT_EMALF;
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_allocate_changesets(xfrin_changesets_t **changesets)
+{
+	// create new changesets
+	*changesets = (xfrin_changesets_t *)(
+			malloc(sizeof(xfrin_changesets_t)));
+
+	if (*changesets == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	(*changesets)->sets = (xfrin_changeset_t *)(
+			calloc(XFRIN_CHANGESET_COUNT,
+			       sizeof(xfrin_changeset_t)));
+	if ((*changesets)->sets == NULL) {
+		free(*changesets);
+		*changesets = NULL;
+		return KNOT_ENOMEM;
+	}
+
+	(*changesets)->count = XFRIN_CHANGESET_COUNT;
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void xfrin_free_changesets(xfrin_changesets_t **changesets)
+{
+	/*! \todo Implement */
+	*changesets = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_changeset_check_count(dnslib_rrset_t ***rrsets, size_t count,
+                                       size_t *allocated)
+{
+	return KNOT_ENOTSUP;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_changeset_add_rrset(dnslib_rrset_t ***rrsets,
+                                     size_t *count, size_t *allocated,
+                                     dnslib_rrset_t *rrset)
+{
+	int ret = xfrin_changeset_check_count(rrsets, *count, allocated);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	return KNOT_ENOTSUP;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_changesets_check_size(xfrin_changesets_t *changesets, int i)
+{
+	if (i == changesets->count) {
+		xfrin_changeset_t *sets = (xfrin_changeset_t *)calloc(
+			changesets->count + XFRIN_CHANGESET_COUNT_STEP,
+			sizeof(xfrin_changeset_t));
+		if (sets == NULL) {
+			return KNOT_ENOMEM;
+		}
+
+		memcpy(sets, changesets->sets, changesets->count);
+		changesets->count += XFRIN_CHANGESET_COUNT_STEP;
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
+                              xfrin_changesets_t **changesets)
+{
+	if (pkt == NULL || changesets == NULL) {
+		debug_xfr("Wrong parameters supported.\n");
+		return KNOT_EINVAL;
+	}
+
+	dnslib_packet_t *packet = NULL;
+	dnslib_rrset_t *soa1 = NULL;
+	dnslib_rrset_t *soa2 = NULL;
+	dnslib_rrset_t *rr = NULL;
+
+	int ret;
+
+	if ((ret = xfrin_parse_first_rr(&packet, pkt, size, &soa1))
+	     != KNOT_EOK) {
+		return ret;
+	}
+
+	assert(packet != NULL);
+
+	if (soa1 == NULL) {
+		debug_xfr("No RRs in the packet.\n");
+		dnslib_packet_free(&packet);
+		/*! \todo Some other action??? */
+		return KNOT_EMALF;
+	}
+
+	assert(soa1 != NULL);
+
+	if (*changesets == NULL
+	    && (ret = xfrin_allocate_changesets(changesets)) != KNOT_EOK) {
+		dnslib_packet_free(&packet);
+		return ret;
+	}
+
+	/*! \todo Do some checking about what is the first and second SOA. */
+
+	if (dnslib_rrset_type(soa1) != DNSLIB_RRTYPE_SOA) {
+		debug_xfr("First RR is not a SOA RR!\n");
+		dnslib_packet_free(&packet);
+		return KNOT_EMALF;
+	}
+
+	// we may drop this SOA, not needed right now; parse the next one
+	ret = dnslib_packet_parse_next_rr_answer(packet, &rr);
+
+	int i = 0;
+
+	while (ret == DNSLIB_EOK && rr != NULL) {
+		if (dnslib_rrset_type(rr) != DNSLIB_RRTYPE_SOA) {
+			debug_xfr("Next RR is not a SOA RR as it should be!\n");
+			goto malformed;
+		}
+
+		if (dnslib_rdata_soa_serial(dnslib_rrset_rdata(rr))
+		    == dnslib_rdata_soa_serial(dnslib_rrset_rdata(soa1))) {
+			soa2 = rr;
+			break;
+		}
+
+		if ((ret = xfrin_changesets_check_size(*changesets, i))
+		     != KNOT_EOK) {
+			return ret;
+		}
+
+		// save the origin SOA of the remove part
+		(*changesets)->sets[i].soa_from = rr;
+
+		ret = dnslib_packet_parse_next_rr_answer(packet, &rr);
+		while (ret == DNSLIB_EOK && rr != NULL) {
+			if (dnslib_rrset_type(rr) == DNSLIB_RRTYPE_SOA) {
+				break;
+			}
+
+			assert(dnslib_rrset_type(rr) != DNSLIB_RRTYPE_SOA);
+			if ((ret = xfrin_changeset_add_rrset(
+			             &((*changesets)->sets[i].add),
+			             &((*changesets)->sets[i].add_count),
+			             &((*changesets)->sets[i].add_allocated),
+			             rr))
+			     != KNOT_EOK) {
+				goto malformed;
+			}
+		}
+
+		/*! \todo Replace by check. */
+		assert(rr != NULL
+		       && dnslib_rrset_type(rr) == DNSLIB_RRTYPE_SOA);
+
+		// save the origin SOA of the add part
+		(*changesets)->sets[i].soa_to = rr;
+
+		ret = dnslib_packet_parse_next_rr_answer(packet, &rr);
+		while (ret == DNSLIB_EOK && rr != NULL) {
+			if (dnslib_rrset_type(rr) == DNSLIB_RRTYPE_SOA) {
+				break;
+			}
+
+			assert(dnslib_rrset_type(rr) != DNSLIB_RRTYPE_SOA);
+			if ((ret = xfrin_changeset_add_rrset(
+			             &((*changesets)->sets[i].remove),
+			             &((*changesets)->sets[i].remove_count),
+			             &((*changesets)->sets[i].remove_allocated),
+			             rr))
+			     != KNOT_EOK) {
+				goto malformed;
+			}
+		}
+
+		/*! \todo Replace by check. */
+		assert(rr != NULL
+		       && dnslib_rrset_type(rr) == DNSLIB_RRTYPE_SOA);
+
+		// next chunk, continue the whole loop
+		++i;
+	}
+
+	if (ret != DNSLIB_EOK) {
+		debug_xfr("Could not parse next Answer RR: %s.\n",
+		          dnslib_strerror(ret));
+		goto malformed;
+	}
+
+	/*! \todo Replace by checks? */
+	assert(soa2 != NULL);
+	assert(dnslib_rrset_type(soa2) == DNSLIB_RRTYPE_SOA);
+	assert(dnslib_rdata_soa_serial(dnslib_rrset_rdata(soa1))
+	       == dnslib_rdata_soa_serial(dnslib_rrset_rdata(soa2)));
+
+	return KNOT_EOK;
+
+malformed:
+	xfrin_free_changesets(changesets);
+	dnslib_packet_free(&packet);
+	return KNOT_EMALF;
 }

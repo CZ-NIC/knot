@@ -3015,13 +3015,23 @@ DEBUG_NS(
 int ns_process_ixfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 {
 	/*! \todo Implement me.
-	 *  - xfr contains partially-built zone or NULL (xfr->data)
+	 *  - xfr contains partially-built IXFR journal entry or NULL
+	 *    (xfr->data)
 	 *  - incoming packet is in xfr->wire
 	 *  - incoming packet size is in xfr->wire_size
 	 *  - signalize caller, that transfer is finished/error (ret. code?)
 	 */
-	debug_ns("ns_process_axfrin: incoming packet\n");
-	return KNOT_EOK;
+	debug_ns("ns_process_ixfrin: incoming packet\n");
+
+	int ret = xfrin_process_ixfr_packet(xfr->wire, xfr->wire_size,
+	                                   (xfrin_changesets_t **)(&xfr->data));
+
+	if (ret > 0) { // transfer finished
+		debug_ns("ns_process_ixfrin: IXFR finished\n");
+		return KNOT_EOK;
+	} else {
+		return ret;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
