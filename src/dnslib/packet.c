@@ -239,7 +239,7 @@ static int dnslib_packet_parse_header(const uint8_t *wire, size_t *pos,
  */
 static int dnslib_packet_parse_question(const uint8_t *wire, size_t *pos,
                                         size_t size,
-                                        dnslib_question_t *question)
+                                        dnslib_question_t *question, int alloc)
 {
 	assert(pos != NULL);
 	assert(wire != NULL);
@@ -266,9 +266,10 @@ static int dnslib_packet_parse_question(const uint8_t *wire, size_t *pos,
 
 	debug_dnslib_response("Parsing dname starting on position %zu and "
 	                      "%zu bytes long.\n", *pos, i - *pos + 1);
-	if (question->qname == NULL) {
-		question->qname = dnslib_dname_new_from_wire(wire + *pos,
-		                                            i - *pos + 1, NULL);
+	debug_dnslib_response("Alloc: %d\n", alloc);
+	if (alloc) {
+		question->qname = dnslib_dname_new_from_wire(
+				wire + *pos, i - *pos + 1, NULL);
 		if (question->qname == NULL) {
 			return DNSLIB_ENOMEM;
 		}
@@ -592,7 +593,9 @@ static int dnslib_packet_parse_rrs(const uint8_t *wire, size_t *pos,
  */
 static void dnslib_packet_free_allocated_space(dnslib_packet_t *pkt)
 {
+	debug_dnslib_packet("Freeing additional space in packet.\n");
 	if (pkt->prealloc_type == DNSLIB_PACKET_PREALLOC_NONE) {
+		debug_dnslib_packet("Freeing QNAME.\n");
 		dnslib_dname_free(&pkt->question.qname);
 	}
 
@@ -749,9 +752,12 @@ int dnslib_packet_parse_from_wire(dnslib_packet_t *packet,
 
 	packet->parsed = pos;
 
-	debug_dnslib_packet("Question...\n");
+	debug_dnslib_packet("Question (prealloc type: %d)...\n",
+	                    packet->prealloc_type);
 	if ((err = dnslib_packet_parse_question(wireformat, &pos, size,
-	                                    &packet->question)) != DNSLIB_EOK) {
+	                   &packet->question,
+	                   packet->prealloc_type == DNSLIB_PACKET_PREALLOC_NONE)
+	           ) != DNSLIB_EOK) {
 		return err;
 	}
 	packet->header.qdcount = 1;
