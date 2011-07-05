@@ -140,6 +140,8 @@ dnslib_zone_t *dnslib_zonedb_replace_zone(dnslib_zonedb_t *db,
 		return NULL;
 	}
 
+	debug_dnslib_zonedb("Found zone: %p\n", z);
+
 	int ret = skip_remove(db->zones,
 	                      (void *)dnslib_node_owner(dnslib_zone_apex(zone)),
 	                      NULL, NULL);
@@ -147,11 +149,14 @@ dnslib_zone_t *dnslib_zonedb_replace_zone(dnslib_zonedb_t *db,
 		return NULL;
 	}
 
+	debug_dnslib_zonedb("Removed zone, return value: %d\n", ret);
 	debug_dnslib_zonedb("Old zone: %p\n", z);
 
 	ret = skip_insert(db->zones,
 	                  (void *)dnslib_node_owner(dnslib_zone_apex(zone)),
 	                  (void *)zone, NULL);
+
+	debug_dnslib_zonedb("Inserted zone, return value: %d\n", ret);
 
 	if (ret != 0) {
 		// return the removed zone back
@@ -235,6 +240,23 @@ void dnslib_zonedb_deep_free(dnslib_zonedb_t **db)
 
 	const skip_node_t *zn = skip_first((*db)->zones);
 	dnslib_zone_t *zone = NULL;
+
+DEBUG_DNSLIB_ZONEDB(
+	int i = 1;
+	char *name = NULL;
+	while (zn != NULL) {
+		debug_dnslib_zonedb("%d. zone: %p, key: %p\n", i, zn->value,
+		                    zn->key);
+		assert(zn->key == ((dnslib_zone_t *)zn->value)->apex->owner);
+		name = dnslib_dname_to_str((dnslib_dname_t *)zn->key);
+		debug_dnslib_zonedb("    zone name: %s\n", name);
+		free(name);
+
+		zn = skip_next(zn);
+	}
+
+	zn = skip_first((*db)->zones);
+);
 
 	while (zn != NULL) {
 		zone = (dnslib_zone_t *)zn->value;

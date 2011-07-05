@@ -1778,6 +1778,13 @@ void dnslib_zone_deep_free(dnslib_zone_t **zone, int free_rdata_dnames)
 	if (zone == NULL || *zone == NULL) {
 		return;
 	}
+
+DEBUG_DNSLIB_ZONE(
+	char *name = dnslib_dname_to_str((*zone)->apex->owner);
+	debug_dnslib_zone("Destroying zone %p, name: %s.\n", *zone, name);
+	free(name);
+);
+
 #ifdef USE_HASH_TABLE
 	if ((*zone)->table != NULL) {
 		ck_destroy_table(&(*zone)->table, NULL, 0);

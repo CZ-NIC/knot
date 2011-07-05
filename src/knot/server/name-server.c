@@ -2949,11 +2949,14 @@ int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		}
 
 		dnslib_zone_dump(xfr->zone, 0);
+		debug_ns("AXFR finished. Saving to zone file.\n");
 
 		// save the zone to the disk
 		rc = ns_save_zone(nameserver, xfr);
 		if (rc != KNOT_EOK) {
+			debug_ns("Freeing created zone: %p.\n", xfr->zone);
 			dnslib_zone_deep_free(&xfr->zone, 1);
+			debug_ns("%p.\n", xfr->zone);
 			return rc;
 		}
 		return KNOT_EOK;
@@ -2966,8 +2969,10 @@ int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 
 int ns_switch_zone(ns_nameserver_t *nameserver, dnslib_zone_t *zone)
 {
+	debug_ns("Replacing zone by new one: %p\n", zone);
 	dnslib_zone_t *old = dnslib_zonedb_replace_zone(nameserver->zone_db,
 	                                                zone);
+	debug_ns("Old zone: %p\n", old);
 	if (old == NULL) {
 		char *name = dnslib_dname_to_str(
 				dnslib_node_owner(dnslib_zone_apex(zone)));
@@ -2976,9 +2981,30 @@ int ns_switch_zone(ns_nameserver_t *nameserver, dnslib_zone_t *zone)
 	}
 
 	// wait for readers to finish
+	debug_ns("Waiting for readers to finish...\n");
 	synchronize_rcu();
 	// destroy the old zone
+	debug_ns("Freeing old zone: %p\n", old);
 	dnslib_zone_deep_free(&old, 1);
+
+DEBUG_NS(
+	debug_ns("Zone db contents:\n");
+
+	const skip_node_t *zn = skip_first(nameserver->zone_db->zones);
+
+	int i = 1;
+	char *name = NULL;
+	while (zn != NULL) {
+		debug_ns("%d. zone: %p, key: %p\n", i, zn->value,
+		                    zn->key);
+		assert(zn->key == ((dnslib_zone_t *)zn->value)->apex->owner);
+		name = dnslib_dname_to_str((dnslib_dname_t *)zn->key);
+		debug_ns("    zone name: %s\n", name);
+		free(name);
+
+		zn = skip_next(zn);
+	}
+);
 
 	return KNOT_EOK;
 }
