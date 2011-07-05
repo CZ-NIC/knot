@@ -7,14 +7,23 @@
 
 int dnslib_query_dnssec_requested(const dnslib_packet_t *query)
 {
-	return dnslib_edns_do(&query->opt_rr);
+	return ((dnslib_edns_get_version(&query->opt_rr) != EDNS_NOT_SUPPORTED)
+	        && dnslib_edns_do(&query->opt_rr));
 }
 
 /*----------------------------------------------------------------------------*/
 
 int dnslib_query_nsid_requested(const dnslib_packet_t *query)
 {
-	return dnslib_edns_has_option(&query->opt_rr, EDNS_OPTION_NSID);
+	return ((dnslib_edns_get_version(&query->opt_rr) != EDNS_NOT_SUPPORTED)
+	        && dnslib_edns_has_option(&query->opt_rr, EDNS_OPTION_NSID));
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_query_edns_supported(const dnslib_packet_t *query)
+{
+	return (dnslib_edns_get_version(&query->opt_rr) != EDNS_NOT_SUPPORTED);
 }
 
 /*----------------------------------------------------------------------------*/
