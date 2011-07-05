@@ -76,7 +76,7 @@ int log_init()
 	emask |= LOG_MASK(LOG_DEBUG);
 
 	ret = log_setup(0);
-	log_levels_set(LOGT_SYSLOG, LOG_ANY, imask|emask);
+	log_levels_set(LOGT_SYSLOG, LOG_ANY, emask);
 	log_levels_set(LOGT_STDERR, LOG_ANY, emask);
 	log_levels_set(LOGT_STDOUT, LOG_ANY, imask);
 

@@ -60,6 +60,8 @@ unittests_SOURCES =				\
 	tests/knot/conf_tests.h			\
 	tests/knot/dthreads_tests.c		\
 	tests/knot/dthreads_tests.h		\
+	tests/knot/journal_tests.c		\
+	tests/knot/journal_tests.h		\
 	tests/knot/server_tests.c		\
 	tests/knot/server_tests.h		\
 	tests/unittests_main.c
@@ -130,8 +132,6 @@ libknot_la_SOURCES =				\
 	common/evqueue.c		\
 	common/evsched.h		\
 	common/evsched.c		\
-	common/errors.h			\
-	common/errors.c			\
 	common/acl.h				\
 	common/acl.c				\
 	common/sockaddr.h				\
@@ -143,6 +143,8 @@ libknot_la_SOURCES =				\
 	knot/stat/gatherer.h				\
 	knot/stat/stat.h				\
 	dnslib/edns.c                           \
+	common/errors.h				\
+	common/errors.c				\
 	dnslib/dnslib-error.c			\
 	dnslib/utils.c				\
 	dnslib/rrset.c				\
@@ -204,6 +206,7 @@ libknot_la_SOURCES =				\
 	knot/ctl/process.c			\
 	knot/ctl/process.h			\
 	knot/server/dthreads.c			\
+	knot/server/journal.c			\
 	knot/server/socket.c				\
 	knot/server/name-server.c			\
 	knot/server/server.c				\
@@ -217,11 +220,13 @@ libknot_la_SOURCES =				\
 	knot/server/tcp-handler.h			\
 	knot/server/xfr-handler.h			\
 	knot/server/dthreads.h			\
+	knot/server/journal.h			\
+	knot/server/zones.h				\
+	knot/server/notify.h				\
+	knot/server/notify.c				\
 	knot/server/zones.h				\
 	knot/server/xfr-in.h				\
 	knot/server/xfr-in.c				\
-	knot/server/notify.h				\
-	knot/server/notify.c				\
 	knot/server/server.h
 
 libknot_la_LIBADD = @LIBOBJS@
@@ -230,17 +235,17 @@ libknot_la_LIBADD = @LIBOBJS@
 #   `%'-style pattern rules are a GNU make extension
 
 dnslib/tests/parsed_data.rc: dnslib/tests/files/parsed_data
-	../resource.sh $< >$@
+	../resource.sh dnslib/tests/files/parsed_data >$@
 
 dnslib/tests/parsed_data_queries.rc: dnslib/tests/files/parsed_data_queries
-	../resource.sh $< >$@
+	../resource.sh dnslib/tests/files/parsed_data_queries >$@
 
 dnslib/tests/raw_data_queries.rc: dnslib/tests/files/raw_data_queries
-	../resource.sh $< >$@
+	../resource.sh dnslib/tests/files/raw_data_queries >$@
 
 dnslib/tests/raw_data.rc: dnslib/tests/files/raw_data
-	../resource.sh $< >$@
+	../resource.sh dnslib/tests/files/raw_data >$@
 
 tests/sample_conf.rc: tests/files/sample_conf
-	../resource.sh $< >$@
+	../resource.sh tests/files/sample_conf >$@
 

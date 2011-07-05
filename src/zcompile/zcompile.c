@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
 #include <netdb.h>
 #include <assert.h>
 
@@ -56,7 +57,7 @@
 #define APL_NEGATION_MASK      0x80U
 #define APL_LENGTH_MASK	       (~APL_NEGATION_MASK)
 
-#define ZP_DEBUG
+//#define ZP_DEBUG
 
 #ifdef ZP_DEBUG
 #define debug_zp(msg...) fprintf(stderr, msg)
@@ -1260,8 +1261,9 @@ uint16_t * zparser_conv_apl_rdata(char *str)
 		return NULL;
 	} else if (rc == -1) {
 		char ebuf[256];
+		strerror_r(errno, ebuf, sizeof(ebuf));
 		fprintf(stderr, "inet_pton failed: %s",
-			strerror_r(errno, ebuf, sizeof(ebuf)));
+			ebuf);
 		return NULL;
 	}
 
@@ -1437,7 +1439,7 @@ static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 }
 
 void set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
-	    uint16_t index)
+	                uint16_t index)
 {
 	/*
 	 * The bits are counted from left to right, so bit #0 is the
@@ -1449,7 +1451,8 @@ void set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
 	bits[window][bit / 8] |= (1 << (7 - bit % 8));
 }
 
-int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone, dnslib_rrset_t *rrsig)
+static int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone,
+                                        dnslib_rrset_t *rrsig)
 {
 	assert(rrsig != NULL);
 	assert(rrsig->rdata->items[0].raw_data);
@@ -1486,7 +1489,7 @@ int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone, dnslib_rrset_t *rrsig)
 	return KNOT_ZCOMPILE_EOK;
 }
 
-int find_rrset_for_rrsig_in_node(dnslib_zone_t *zone,
+static int find_rrset_for_rrsig_in_node(dnslib_zone_t *zone,
                                  dnslib_node_t *node,
                                  dnslib_rrset_t *rrsig)
 {
@@ -1539,7 +1542,7 @@ static dnslib_node_t *create_node(dnslib_zone_t *zone,
 	return node;
 }
 
-void process_rrsigs_in_node(dnslib_zone_t *zone,
+static void process_rrsigs_in_node(dnslib_zone_t *zone,
                             dnslib_node_t *node)
 {
 	rrset_list_t *tmp = parser->node_rrsigs;
@@ -1819,8 +1822,9 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	assert(origin_node->parent == NULL);
 
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
+		strerror_r(errno, ebuf, sizeof(ebuf));
 		fprintf(stderr, "Cannot open '%s': %s.",
-			zonefile, strerror_r(errno, ebuf, sizeof(ebuf)));
+			zonefile, ebuf);
 		return KNOT_ZCOMPILE_EZONEINVAL;
 	}
 

@@ -74,16 +74,6 @@ static inline int dt_update_thread(dthread_t *thread, int state)
 }
 
 /*!
- * \brief Thread entrypoint interrupt handler.
- *
- * Threads shouldn't use global interrupt handler, so this no-op function
- * is provided.
- */
-static void thread_ep_intr(int s)
-{
-}
-
-/*!
  * \brief Thread entrypoint function.
  *
  * When a thread is created and started, it immediately enters this function.
@@ -108,12 +98,13 @@ static void *thread_ep(void *data)
 		return 0;
 	}
 
-	// Register service and signal handler
-	struct sigaction sa;
-	sa.sa_handler = thread_ep_intr;
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = 0;
-	sigaction(SIGALRM, &sa, 0);
+	// Ignore specific signals (except SIGALRM)
+	sigset_t ignset;
+	sigemptyset(&ignset);
+	sigaddset(&ignset, SIGINT);
+	sigaddset(&ignset, SIGTERM);
+	sigaddset(&ignset, SIGHUP);
+	pthread_sigmask(SIG_IGN, &ignset, 0);
 
 	debug_dt("dthreads: [%p] entered ep\n", thread);
 
@@ -169,6 +160,7 @@ static void *thread_ep(void *data)
 
 			// Wait for notification from unit
 			debug_dt("dthreads: [%p] going idle\n", thread);
+			/*! \todo Check return value. */
 			pthread_cond_wait(&unit->_notify, &unit->_notify_mx);
 			pthread_mutex_unlock(&unit->_notify_mx);
 			debug_dt("dthreads: [%p] resumed from idle\n", thread);

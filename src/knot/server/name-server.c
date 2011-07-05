@@ -570,11 +570,12 @@ static void ns_put_authority_ns(const dnslib_zone_t *zone,
 {
 	const dnslib_rrset_t *ns_rrset =
 		dnslib_node_rrset(zone->apex, DNSLIB_RRTYPE_NS);
-	assert(ns_rrset != NULL);
 
-	dnslib_response2_add_rrset_authority(resp, ns_rrset, 0, 1, 0);
-	ns_add_rrsigs(ns_rrset, resp, zone->apex->owner,
-	              dnslib_response2_add_rrset_authority, 1);
+	if (ns_rrset != NULL) {
+		dnslib_response2_add_rrset_authority(resp, ns_rrset, 0, 1, 0);
+		ns_add_rrsigs(ns_rrset, resp, zone->apex->owner,
+	                  dnslib_response2_add_rrset_authority, 1);
+	}
 }
 
 /*----------------------------------------------------------------------------*/

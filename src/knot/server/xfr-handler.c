@@ -5,7 +5,6 @@
 #include <netinet/tcp.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <sys/epoll.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,44 +18,55 @@
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-in.h"
 
+/*! \brief XFR event wrapper for libev. */
+struct xfr_io_t
+{
+	ev_io io;
+	xfrhandler_t *h;
+	ns_xfr_t data;
+};
+
 /*!
  * \brief XFR-IN event handler function.
  *
  * Handle single XFR client event.
  *
- * \param pool Associated connection pool.
- * \param fd Associated socket.
- * \param data Associated data.
- * \param qbuf Buffer for a query wireformat.
- * \param qbuf_maxlen Buffer maximum size.
+ * \param loop Associated event pool.
+ * \param w Associated socket watcher.
+ * \param revents Returned events.
  */
-static inline int xfr_client_ev(struct tcp_pool_t *pool, int fd, void *data,
-				uint8_t *qbuf, size_t qbuf_maxlen)
+static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 {
 	/* Check data. */
-	ns_xfr_t *request = (ns_xfr_t *)data;
+	struct xfr_io_t* xfr_w = (struct xfr_io_t *)w;
+	ns_xfr_t *request = &xfr_w->data;
 	if (!request) {
-		return KNOT_EINVAL;
+		return;
 	}
 
+	/* Buffer for answering. */
+	uint8_t buf[65535];
+
 	/* Read DNS/TCP packet. */
-	int ret = tcp_recv(fd, qbuf, qbuf_maxlen, 0);
+	int ret = tcp_recv(w->fd, buf, sizeof(buf), 0);
 	if (ret <= 0) {
-		return KNOT_ERROR;
+		ev_io_stop(loop, (ev_io *)w);
+		close(((ev_io *)w)->fd);
+		free(xfr_w);
+		return;
 	}
 
 	/* Update xfer state. */
-	request->wire = qbuf;
+	request->wire = buf;
 	request->wire_size = ret;
 
 	/* Process incoming packet. */
-	server_t *server = tcp_pool_server(pool);
-	switch(request->type) {
+		switch(request->type) {
 	case NS_XFR_TYPE_AIN:
-		ret = ns_process_axfrin(server->nameserver, request);
+		ret = ns_process_axfrin(xfr_w->h->ns, request);
 		break;
 	case NS_XFR_TYPE_IIN:
-		ret = ns_process_ixfrin(server->nameserver, request);
+		ret = ns_process_ixfrin(xfr_w->h->ns, request);
 		break;
 	default:
 		ret = KNOT_EINVAL;
@@ -65,20 +75,20 @@ static inline int xfr_client_ev(struct tcp_pool_t *pool, int fd, void *data,
 
 	/* Check return code for errors. */
 	if (ret != KNOT_EOK) {
-		return ret;
+		return;
 	}
 
 	/* Check finished zone. */
 	if (request->zone) {
 
 		/* Save finished zone and reload. */
-		xfrin_zone_transferred(server->nameserver, request->zone);
+		xfrin_zone_transferred(xfr_w->h->ns, request->zone);
 
 		/* Return error code to make TCP client disconnect. */
-		return KNOT_ERROR;
+		return;
 	}
 
-	return ret;
+	return;
 }
 
 /*
@@ -101,9 +111,9 @@ xfrhandler_t *xfr_create(size_t thrcount, ns_nameserver_t *ns)
 		return 0;
 	}
 
-	/* Create TCP pool. */
-	data->xfer_pool = tcp_pool_new(ns->server, xfr_client_ev);
-	if (!data->xfer_pool) {
+	/* Create TCP loop. */
+	data->loop = ev_loop_new(0);
+	if (!data->loop) {
 		evqueue_free(&data->q);
 		free(data);
 		return 0;
@@ -113,13 +123,14 @@ xfrhandler_t *xfr_create(size_t thrcount, ns_nameserver_t *ns)
 	dt_unit_t *unit = 0;
 	unit = dt_create_coherent(thrcount, &xfr_master, (void*)data);
 	if (!unit) {
-		tcp_pool_del(&data->xfer_pool);
+		ev_loop_destroy(data->loop);
 		evqueue_free(&data->q);
 		free(data);
 		return 0;
 	}
 	data->unit = unit;
-	dt_repurpose(unit->threads[0], &xfr_client, data->xfer_pool);
+
+	dt_repurpose(unit->threads[0], &xfr_client, data->loop);
 
 	return data;
 }
@@ -133,8 +144,8 @@ int xfr_free(xfrhandler_t *handler)
 	/* Remove handler data. */
 	evqueue_free(&handler->q);
 
-	/* Delete TCP pool. */
-	tcp_pool_del(&handler->xfer_pool);
+	/* Delete TCP loop. */
+	ev_loop_destroy(handler->loop);
 
 	/* Delete unit. */
 	dt_delete(&handler->unit);
@@ -226,16 +237,17 @@ int xfr_client_start(xfrhandler_t *handler, ns_xfr_t *req)
 	req->zone = 0;
 
 	/* Store XFR request for further processing. */
-	void *data = malloc(sizeof(ns_xfr_t));
-	if (!data) {
+	struct xfr_io_t *w = malloc(sizeof(struct xfr_io_t));
+	if (!w) {
 		socket_close(req->session);
 		return KNOT_ENOMEM;
 	}
-	memcpy(data, req, sizeof(ns_xfr_t));
+	w->h = handler;
+	memcpy(&w->data, req, sizeof(ns_xfr_t));
 
 	/* Add to pending transfers. */
-	tcp_pool_add(handler->xfer_pool, req->session, data);
-	dt_activate(handler->unit->threads[0]);
+	ev_io_init((ev_io *)w, xfr_client_ev, req->session, EV_READ);
+	ev_io_start(handler->loop, (ev_io *)w);
 
 	return KNOT_EOK;
 }
@@ -341,8 +353,8 @@ int xfr_client(dthread_t *thread)
 		return KNOT_EINVAL;
 	}
 
-	/* Run TCP pool. */
-	int ret = tcp_pool(thread);
+	/* Run TCP loop. */
+	int ret = tcp_loop(thread, -1, 0);
 
 	debug_xfr("xfr_client: finished.\n");
 	return ret;
