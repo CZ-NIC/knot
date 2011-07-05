@@ -14,7 +14,9 @@
 #include "dnslib/debug.h"
 
 static const size_t XFRIN_CHANGESET_COUNT = 5;
-static const size_t XFRIN_CHANGESET_COUNT_STEP = 5;
+static const size_t XFRIN_CHANGESET_STEP = 5;
+static const size_t XFRIN_CHANGESET_RRSET_COUNT = 5;
+static const size_t XFRIN_CHANGESET_RRSET_STEP = 5;
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -567,7 +569,24 @@ static void xfrin_free_changesets(xfrin_changesets_t **changesets)
 static int xfrin_changeset_check_count(dnslib_rrset_t ***rrsets, size_t count,
                                        size_t *allocated)
 {
-	return KNOT_ENOTSUP;
+	// this should also do for the initial case (*rrsets == NULL)
+	if (count == *allocated) {
+		dnslib_rrset_t **rrsets_new = (dnslib_rrset_t **)calloc(
+			*allocated + XFRIN_CHANGESET_RRSET_STEP,
+			sizeof(dnslib_rrset_t *));
+		if (rrsets_new == NULL) {
+			return KNOT_ENOMEM;
+		}
+
+		memcpy(rrsets_new, *rrsets, count);
+
+		dnslib_rrset_t **rrsets_old = *rrsets;
+		*rrsets = rrsets_new;
+		*allocated += XFRIN_CHANGESET_RRSET_STEP;
+		free(rrsets_old);
+	}
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -581,23 +600,28 @@ static int xfrin_changeset_add_rrset(dnslib_rrset_t ***rrsets,
 		return ret;
 	}
 
+	(*rrsets)[(*count)++] = rrset;
+
 	return KNOT_ENOTSUP;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_changesets_check_size(xfrin_changesets_t *changesets, int i)
+static int xfrin_changesets_check_size(xfrin_changesets_t *changesets)
 {
-	if (i == changesets->count) {
+	if (changesets->allocated == changesets->count) {
 		xfrin_changeset_t *sets = (xfrin_changeset_t *)calloc(
-			changesets->count + XFRIN_CHANGESET_COUNT_STEP,
+			changesets->allocated + XFRIN_CHANGESET_STEP,
 			sizeof(xfrin_changeset_t));
 		if (sets == NULL) {
 			return KNOT_ENOMEM;
 		}
 
 		memcpy(sets, changesets->sets, changesets->count);
-		changesets->count += XFRIN_CHANGESET_COUNT_STEP;
+		xfrin_changeset_t *old_sets = changesets->sets;
+		changesets->sets = sets;
+		changesets->count += XFRIN_CHANGESET_STEP;
+		free(old_sets);
 	}
 
 	return KNOT_EOK;
@@ -653,6 +677,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 	// we may drop this SOA, not needed right now; parse the next one
 	ret = dnslib_packet_parse_next_rr_answer(packet, &rr);
 
+	/*! \todo replace by (*changesets)->count */
 	int i = 0;
 
 	while (ret == DNSLIB_EOK && rr != NULL) {
@@ -667,7 +692,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 			break;
 		}
 
-		if ((ret = xfrin_changesets_check_size(*changesets, i))
+		if ((ret = xfrin_changesets_check_size(*changesets))
 		     != KNOT_EOK) {
 			return ret;
 		}
