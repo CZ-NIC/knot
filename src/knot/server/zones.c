@@ -14,6 +14,7 @@
 #include "knot/server/xfr-in.h"
 #include "knot/server/notify.h"
 #include "knot/server/server.h"
+#include "dnslib/debug.h"
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -544,7 +545,7 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 			zones_timers_update(zone, z, ns->server->sched);
 		}
 
-		dnslib_zone_dump(zone);
+		dnslib_zone_dump(zone, 1);
 
 		dnslib_dname_free(&zone_name);
 	}
