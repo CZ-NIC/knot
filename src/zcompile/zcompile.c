@@ -1518,9 +1518,6 @@ int find_rrset_for_rrsig_in_node(dnslib_zone_t *zone,
 
 	assert(tmp_rrset->rrsigs != NULL);
 
-	debug_zp("setting rrsigs for rrset %s\n",
-		 dnslib_dname_to_str(rrsig->owner));
-
 	return KNOT_ZCOMPILE_EOK;
 }
 
