@@ -132,9 +132,10 @@ int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset,
 
 	if (ret == 0) {
 		++node->rrset_count;
+		return DNSLIB_EOK;
+	} else {
+		return 1;
 	}
-
-	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

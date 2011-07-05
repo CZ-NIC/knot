@@ -948,6 +948,7 @@ DEBUG_DNSLIB_ZONE(
 			node->parent = next_node;
 
 			if (next_node->owner != chopped) {
+				assert(0);
 				/* Node owner was in RDATA */
 				chopped = next_node->owner;
 			}
@@ -1021,9 +1022,11 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 	/*! \todo REMOVE RRSET */
 	rc = dnslib_node_add_rrset(*node, rrset,
 	                           dupl == DNSLIB_RRSET_DUPL_MERGE);
-	if (rc != DNSLIB_EOK) {
+	if (rc < 0) {
 		return rc;
 	}
+
+	int ret = rc;
 
 	if (use_domain_table) {
 		rc = dnslib_zone_dnames_from_rrset_to_table(zone, rrset,
@@ -1048,7 +1051,7 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 		rrset->owner = (*node)->owner;
 	}
 
-	return DNSLIB_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1118,11 +1121,15 @@ int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
 
 	// add all domain names from the RRSet to domain name table
 	int rc;
+	int ret = DNSLIB_EOK;
 
 	rc = dnslib_rrset_add_rrsigs(*rrset, rrsigs, dupl);
-	if (rc != DNSLIB_EOK) {
+	if (rc < 0) {
 		debug_dnslib_dname("Failed to add RRSIGs to RRSet.\n");
 		return rc;
+	} else if (rc > 1) {
+		assert(dupl == DNSLIB_RRSET_DUPL_MERGE);
+		ret = 1;
 	}
 
 	if (use_domain_table) {
@@ -1147,7 +1154,7 @@ int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
 		rrsigs->owner = (*rrset)->owner;
 	}
 
-	return DNSLIB_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1213,9 +1220,11 @@ int dnslib_zone_add_nsec3_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 	/*! \todo REMOVE RRSET */
 	rc = dnslib_node_add_rrset(*node, rrset,
 	                           dupl == DNSLIB_RRSET_DUPL_MERGE);
-	if (rc != DNSLIB_EOK) {
+	if (rc < 0) {
 		return rc;
 	}
+
+	int ret = rc;
 
 	if (use_domain_table) {
 		rc = dnslib_zone_dnames_from_rrset_to_table(zone, rrset,
@@ -1240,7 +1249,7 @@ int dnslib_zone_add_nsec3_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 		rrset->owner = (*node)->owner;
 	}
 
-	return DNSLIB_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
