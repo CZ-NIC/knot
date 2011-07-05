@@ -1505,13 +1505,13 @@ int find_rrset_for_rrsig_in_node(dnslib_zone_t *zone,
 
 	if (tmp_rrset->rrsigs != NULL) {
 		if (dnslib_zone_add_rrsigs(zone, rrsig, &tmp_rrset, &node,
-		                           DNSLIB_RRSET_DUPL_MERGE, 1) != 0) {
+		                           DNSLIB_RRSET_DUPL_MERGE, 1) < 0) {
 			return KNOT_ZCOMPILE_EINVAL;
 		}
 		dnslib_rrset_free(&rrsig);
 	} else {
 		if (dnslib_zone_add_rrsigs(zone, rrsig, &tmp_rrset, &node,
-		                           DNSLIB_RRSET_DUPL_SKIP, 1) != 0) {
+		                           DNSLIB_RRSET_DUPL_SKIP, 1) < 0) {
 			return KNOT_ZCOMPILE_EINVAL;
 		}
 	}

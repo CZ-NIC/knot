@@ -86,14 +86,22 @@ int dnslib_rrset_add_rrsigs(dnslib_rrset_t *rrset, dnslib_rrset_t *rrsigs,
 			                        (void **)&rrsigs);
 			if (rc != DNSLIB_EOK) {
 				return rc;
+			} else {
+				return 1;
 			}
 		} else if (dupl == DNSLIB_RRSET_DUPL_SKIP) {
-			return DNSLIB_EOK;
+			return 2;
 		} else if (dupl == DNSLIB_RRSET_DUPL_REPLACE) {
 			rrset->rrsigs = rrsigs;
+			// replace the owner with the RRSet owner?
+			dnslib_dname_free(&rrsigs->owner);
+			rrsigs->owner = rrset->owner;
 		}
 	} else {
 		rrset->rrsigs = rrsigs;
+		// replace the owner with the RRSet owner?
+		dnslib_dname_free(&rrsigs->owner);
+		rrsigs->owner = rrset->owner;
 	}
 
 	return DNSLIB_EOK;

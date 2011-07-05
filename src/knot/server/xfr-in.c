@@ -179,8 +179,9 @@ int xfrin_create_ixfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
 
 int xfrin_zone_transferred(ns_nameserver_t *nameserver, dnslib_zone_t *zone)
 {
-	//return ns_switch_zone(nameserver, zone);
-	return KNOT_ENOTSUP;
+	debug_xfr("Switching zone in nameserver.\n");
+	return ns_switch_zone(nameserver, zone);
+	//return KNOT_ENOTSUP;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -342,6 +343,8 @@ DEBUG_XFR(
 			assert(dnslib_node_rrset((*zone)->apex,
 			                         DNSLIB_RRTYPE_SOA) != NULL);
 			debug_xfr("Found last SOA, transfer finished.\n");
+			dnslib_rrset_free(&rr);
+			dnslib_packet_free(&packet);
 			return 1;
 		}
 
@@ -351,8 +354,15 @@ DEBUG_XFR(
 			dnslib_rrset_t *tmp_rrset = NULL;
 			ret = dnslib_zone_add_rrsigs(*zone, rr, &tmp_rrset,
 			                     &node, DNSLIB_RRSET_DUPL_MERGE, 1);
-			if (ret != DNSLIB_EOK) {
+			if (ret < 0) {
+				dnslib_packet_free(&packet);
+				dnslib_node_free(&node, 1); // ???
+				dnslib_rrset_deep_free(&rr, 1, 1, 1);
 				return KNOT_ERROR;  /*! \todo Other error code. */
+			} else if (ret == 1) {
+				dnslib_rrset_deep_free(&rr, 1, 0, 0);
+			} else if (ret == 2) {
+				dnslib_rrset_deep_free(&rr, 1, 1, 1);
 			}
 
 			// parse next RR
@@ -365,19 +375,19 @@ DEBUG_XFR(
 		                           const dnslib_dname_t *) = NULL;
 		int (*add_node)(dnslib_zone_t *, dnslib_node_t *, int, int)
 		      = NULL;
-		int (*add_rrset)(dnslib_zone_t *, dnslib_rrset_t *,
-		                  dnslib_node_t **,
-		                  dnslib_rrset_dupl_handling_t, int)
-		                 = NULL;
+//		int (*add_rrset)(dnslib_zone_t *, dnslib_rrset_t *,
+//		                  dnslib_node_t **,
+//		                  dnslib_rrset_dupl_handling_t, int)
+//		                 = NULL;
 
 		if (dnslib_rrset_type(rr) == DNSLIB_RRTYPE_NSEC3) {
 			get_node = dnslib_zone_get_nsec3_node;
 			add_node = dnslib_zone_add_nsec3_node;
-			add_rrset = dnslib_zone_add_nsec3_rrset;
+			//add_rrset = dnslib_zone_add_nsec3_rrset;
 		} else {
 			get_node = dnslib_zone_get_node;
 			add_node = dnslib_zone_add_node;
-			add_rrset = dnslib_zone_add_rrset;
+			//add_rrset = dnslib_zone_add_rrset;
 		}
 
 		if (node == NULL && (node = get_node(
@@ -400,11 +410,19 @@ DEBUG_XFR(
 
 			// insert the node into the zone
 			ret = dnslib_node_add_rrset(node, rr, 1);
-			if (ret != DNSLIB_EOK) {
+			if (ret < 0) {
+				dnslib_packet_free(&packet);
+				dnslib_node_free(&node, 1); // ???
+				dnslib_rrset_deep_free(&rr, 1, 1, 1);
 				return KNOT_ERROR;
+			} else if (ret > 0) {
+				dnslib_rrset_deep_free(&rr, 1, 0, 0);
 			}
 			ret = add_node(*zone, node, 1, 1);
 			if (ret != DNSLIB_EOK) {
+				dnslib_packet_free(&packet);
+				dnslib_node_free(&node, 1); // ???
+				dnslib_rrset_deep_free(&rr, 1, 1, 1);
 				return KNOT_ERROR;
 			}
 
@@ -445,6 +463,14 @@ DEBUG_XFR(
 			  "%s.\n", name2, name);
 		free(name);
 		free(name2);
+
+		if (ret != DNSLIB_EOK) {
+			assert(0);
+//			dnslib_packet_free(&packet);
+//			dnslib_rrset_deep_free(&rr, 1, 1, 1);
+//			/*! \todo What to do with the node?? */
+//			return KNOT_ERROR;
+		}
 );
 		if (in_zone) {
 //			switch (dnslib_rrset_type(rr)) {
@@ -479,12 +505,14 @@ DEBUG_XFR(
 		} else {
 			assert(0);
 			ret = dnslib_node_add_rrset(node, rr, 1);
-		}
-		if (ret != DNSLIB_EOK) {
-			dnslib_packet_free(&packet);
-			dnslib_rrset_deep_free(&rr, 1, 1, 1);
-			/*! \todo What to do with the node?? */
-			return KNOT_ERROR;
+			if (ret < 0) {
+				dnslib_packet_free(&packet);
+				dnslib_rrset_deep_free(&rr, 1, 1, 1);
+				/*! \todo What to do with the node?? */
+				return KNOT_ERROR;
+			} else if (ret > 0) {
+				dnslib_rrset_deep_free(&rr, 1, 0, 0);
+			}
 		}
 
 		rr = NULL;
