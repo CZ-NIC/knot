@@ -291,7 +291,7 @@ DEBUG_XFR(
 		//ret = dnslib_node_add_rrset(node, rr, 0);
 		ret = dnslib_zone_add_rrset(*zone, rr, &node,
 		                            DNSLIB_RRSET_DUPL_MERGE, 1);
-		if (ret != DNSLIB_EOK) {
+		if (ret < 0) {
 			debug_xfr("Failed to add RRSet to zone node: %s.\n",
 			          dnslib_strerror(ret));
 			dnslib_packet_free(&packet);
@@ -299,6 +299,9 @@ DEBUG_XFR(
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
 			/*! \todo Cleanup. */
 			return KNOT_ERROR;
+		} else if (ret > 0) {
+			// merged, free the RRSet
+			dnslib_rrset_deep_free(&rr, 1, 0, 0);
 		}
 
 		// take next RR
@@ -326,6 +329,8 @@ DEBUG_XFR(
 	);
 				ret = dnslib_zone_add_node(*zone, node, 1, 1);
 				if (ret != DNSLIB_EOK) {
+					debug_xfr("Failed to add node into "
+					          "zone.\n");
 					dnslib_packet_free(&packet);
 					dnslib_node_free(&node, 1);
 					dnslib_rrset_deep_free(&rr, 1, 1, 1);
@@ -355,6 +360,7 @@ DEBUG_XFR(
 			ret = dnslib_zone_add_rrsigs(*zone, rr, &tmp_rrset,
 			                     &node, DNSLIB_RRSET_DUPL_MERGE, 1);
 			if (ret < 0) {
+				debug_xfr("Failed to add RRSIGs.\n");
 				dnslib_packet_free(&packet);
 				dnslib_node_free(&node, 1); // ???
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
@@ -402,6 +408,7 @@ DEBUG_XFR(
 			// in the zone
 			node = dnslib_node_new(rr->owner, NULL);
 			if (node == NULL) {
+				debug_xfr("Failed to create new node.\n");
 				dnslib_packet_free(&packet);
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
 				return KNOT_ENOMEM;
@@ -411,6 +418,7 @@ DEBUG_XFR(
 			// insert the node into the zone
 			ret = dnslib_node_add_rrset(node, rr, 1);
 			if (ret < 0) {
+				debug_xfr("Failed to add RRSet to node.\n");
 				dnslib_packet_free(&packet);
 				dnslib_node_free(&node, 1); // ???
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
@@ -420,6 +428,7 @@ DEBUG_XFR(
 			}
 			ret = add_node(*zone, node, 1, 1);
 			if (ret != DNSLIB_EOK) {
+				debug_xfr("Failed to add node to zone.\n");
 				dnslib_packet_free(&packet);
 				dnslib_node_free(&node, 1); // ???
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
@@ -432,8 +441,13 @@ DEBUG_XFR(
 
 			ret = dnslib_zone_add_rrset(*zone, rr, &node,
 			                            DNSLIB_RRSET_DUPL_MERGE, 1);
-			if (ret != DNSLIB_EOK) {
+			if (ret < 0) {
+				debug_xfr("Failed to add RRSet to zone: %s.\n",
+				          dnslib_strerror(ret));
 				return KNOT_ERROR;
+			} else if (ret > 0) {
+				// merged, free the RRSet
+				dnslib_rrset_deep_free(&rr, 1, 0, 0);
 			}
 		}
 			/* else if (node->owner != rr->owner) {
@@ -449,30 +463,30 @@ DEBUG_XFR(
 			rr->owner = node->owner;
 		}*/
 
-		assert(node != NULL);
-		assert(rr != NULL);
-		assert(node->owner != NULL);
-		assert(rr->owner != NULL);
-//		assert(node->owner == rr->owner);
-		debug_xfr("Node owner: %p\n", node->owner);
-		debug_xfr("RRSet owner: %p\n", rr->owner);
-DEBUG_XFR(
-		char *name = dnslib_dname_to_str(node->owner);
-		char *name2 = dnslib_dname_to_str(rr->owner);
-		debug_xfr("Inserting record with owner %s to node with owner "
-			  "%s.\n", name2, name);
-		free(name);
-		free(name2);
+//		assert(node != NULL);
+//		assert(rr != NULL);
+//		assert(node->owner != NULL);
+//		assert(rr->owner != NULL);
+////		assert(node->owner == rr->owner);
+//		debug_xfr("Node owner: %p\n", node->owner);
+//		debug_xfr("RRSet owner: %p\n", rr->owner);
+//DEBUG_XFR(
+//		char *name = dnslib_dname_to_str(node->owner);
+//		char *name2 = dnslib_dname_to_str(rr->owner);
+//		debug_xfr("Inserting record with owner %s to node with owner "
+//			  "%s.\n", name2, name);
+//		free(name);
+//		free(name2);
 
-		if (ret != DNSLIB_EOK) {
-			assert(0);
-//			dnslib_packet_free(&packet);
-//			dnslib_rrset_deep_free(&rr, 1, 1, 1);
-//			/*! \todo What to do with the node?? */
-//			return KNOT_ERROR;
-		}
-);
-		if (in_zone) {
+//		if (ret != DNSLIB_EOK) {
+//			assert(0);
+////			dnslib_packet_free(&packet);
+////			dnslib_rrset_deep_free(&rr, 1, 1, 1);
+////			/*! \todo What to do with the node?? */
+////			return KNOT_ERROR;
+//		}
+//);
+//		if (in_zone) {
 //			switch (dnslib_rrset_type(rr)) {
 //			case DNSLIB_RRTYPE_NSEC3:
 //				debug_xfr("Inserting NSEC3 RRSet into zone.\n");
@@ -502,18 +516,19 @@ DEBUG_XFR(
 //			if (ret != DNSLIB_EOK) {
 //				return KNOT_ERROR;
 //			}
-		} else {
-			assert(0);
-			ret = dnslib_node_add_rrset(node, rr, 1);
-			if (ret < 0) {
-				dnslib_packet_free(&packet);
-				dnslib_rrset_deep_free(&rr, 1, 1, 1);
-				/*! \todo What to do with the node?? */
-				return KNOT_ERROR;
-			} else if (ret > 0) {
-				dnslib_rrset_deep_free(&rr, 1, 0, 0);
-			}
-		}
+//		} else {
+//			assert(0);
+//			ret = dnslib_node_add_rrset(node, rr, 1);
+//			if (ret < 0) {
+//				debug_xfr("Failed to add RRSet to node.\n");
+//				dnslib_packet_free(&packet);
+//				dnslib_rrset_deep_free(&rr, 1, 1, 1);
+//				/*! \todo What to do with the node?? */
+//				return KNOT_ERROR;
+//			} else if (ret > 0) {
+//				dnslib_rrset_deep_free(&rr, 1, 0, 0);
+//			}
+//		}
 
 		rr = NULL;
 
@@ -542,6 +557,7 @@ DEBUG_XFR(
 		assert(node != NULL);
 		ret = dnslib_zone_add_node(*zone, node, 1, 1);
 		if (ret != DNSLIB_EOK) {
+			debug_xfr("Failed to add last node into zone.\n");
 			dnslib_packet_free(&packet);
 			dnslib_node_free(&node, 1);
 			return KNOT_ERROR;	/*! \todo Other error */
