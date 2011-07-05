@@ -72,6 +72,7 @@ file                 return FILENAME;
 semantic-checks      return SEMANTIC_CHECKS;
 notify-retries       return NOTIFY_RETRIES;
 notify-timeout       return NOTIFY_TIMEOUT;
+ixfr-fslimit         return IXFR_FSLIMIT;
 xfr-in               return XFR_IN;
 xfr-out              return XFR_OUT;
 notify-in            return NOTIFY_IN;
