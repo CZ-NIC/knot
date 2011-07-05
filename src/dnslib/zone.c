@@ -1127,7 +1127,7 @@ int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
 	if (rc < 0) {
 		debug_dnslib_dname("Failed to add RRSIGs to RRSet.\n");
 		return rc;
-	} else if (rc > 1) {
+	} else if (rc > 0) {
 		assert(dupl == DNSLIB_RRSET_DUPL_MERGE);
 		ret = 1;
 	}
@@ -1149,9 +1149,9 @@ int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
 
 	// replace RRSet's owner with the node's owner (that is already in the
 	// table)
-	if ((*rrset)->owner != rrsigs->owner) {
+	if ((*rrset)->owner != (*rrset)->rrsigs->owner) {
 		dnslib_dname_free(&rrsigs->owner);
-		rrsigs->owner = (*rrset)->owner;
+		(*rrset)->rrsigs->owner = (*rrset)->owner;
 	}
 
 	return ret;
