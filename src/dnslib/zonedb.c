@@ -49,20 +49,20 @@ DEBUG_DNSLIB_ZONEDB(
 
 /*----------------------------------------------------------------------------*/
 
-static int dnslib_zonedb_replace_zone_in_list(void **list_item, void **new_zone)
-{
-	assert(list_item != NULL);
-	assert(*list_item != NULL);
-	assert(new_zone != NULL);
-	assert(*new_zone != NULL);
+//static int dnslib_zonedb_replace_zone_in_list(void **list_item, void **new_zone)
+//{
+//	assert(list_item != NULL);
+//	assert(*list_item != NULL);
+//	assert(new_zone != NULL);
+//	assert(*new_zone != NULL);
 
-	debug_dnslib_zonedb("Replacing list item %p with new zone %p\n",
-	                    *list_item, *new_zone);
+//	debug_dnslib_zonedb("Replacing list item %p with new zone %p\n",
+//	                    *list_item, *new_zone);
 
-	*list_item = *new_zone;
+//	*list_item = *new_zone;
 
-	return 0;
-}
+//	return 0;
+//}
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
@@ -140,12 +140,28 @@ dnslib_zone_t *dnslib_zonedb_replace_zone(dnslib_zonedb_t *db,
 		return NULL;
 	}
 
+	int ret = skip_remove(db->zones,
+	                      (void *)dnslib_node_owner(dnslib_zone_apex(zone)),
+	                      NULL, NULL);
+	if (ret != 0) {
+		return NULL;
+	}
+
 	debug_dnslib_zonedb("Old zone: %p\n", z);
 
-	int ret = skip_insert(db->zones,
-	           (void *)dnslib_node_owner(dnslib_zone_apex(zone)),
-	           (void *)zone, dnslib_zonedb_replace_zone_in_list);
-	assert(ret == 2);
+	ret = skip_insert(db->zones,
+	                  (void *)dnslib_node_owner(dnslib_zone_apex(zone)),
+	                  (void *)zone, NULL);
+
+	if (ret != 0) {
+		// return the removed zone back
+		skip_insert(db->zones,
+		            (void *)dnslib_node_owner(dnslib_zone_apex(z)),
+		            (void *)z, NULL);
+		/*! \todo There may be problems and the zone may remain
+		          removed. */
+		return NULL;
+	}
 
 	return z;
 }
@@ -163,6 +179,10 @@ dnslib_zone_t *dnslib_zonedb_find_zone(const dnslib_zonedb_t *db,
 const dnslib_zone_t *dnslib_zonedb_find_zone_for_name(dnslib_zonedb_t *db,
                                                     const dnslib_dname_t *dname)
 {
+	if (db == NULL || dname == NULL) {
+		return NULL;
+	}
+
 	dnslib_zone_t *zone = skip_find_less_or_equal(db->zones, (void *)dname);
 
 DEBUG_DNSLIB_ZONEDB(
