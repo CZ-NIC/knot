@@ -41,12 +41,6 @@ enum dnslib_zone_retvals {
 
 typedef enum dnslib_zone_retvals dnslib_zone_retvals_t;
 
-typedef enum  {
-	DNSLIB_ZONE_DUPL_RRSET_MERGE,
-	DNSLIB_ZONE_DUPL_RRSET_REPLACE,
-	DNSLIB_ZONE_DUPL_RRSET_SKIP
-} dnslib_zone_dupl_rrset_handling_t;
-
 /*----------------------------------------------------------------------------*/
 
 /*!
@@ -103,7 +97,8 @@ typedef struct dnslib_zone dnslib_zone_t;
  *
  * \return The initialized zone structure or NULL if an error occured.
  */
-dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count);
+dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
+                               int use_domain_table);
 
 time_t dnslib_zone_version(const dnslib_zone_t *zone);
 
@@ -128,7 +123,7 @@ void dnslib_zone_set_version(dnslib_zone_t *zone, time_t version);
  * \retval DNSLIB_EHASH
  */
 int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
-                         int create_parents);
+                         int create_parents, int use_domain_table);
 
 /*!
  * \brief Adds a RRSet to the given zone.
@@ -154,7 +149,13 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
  */
 int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
                           dnslib_node_t **node,
-                          dnslib_zone_dupl_rrset_handling_t dupl);
+                          dnslib_rrset_dupl_handling_t dupl,
+                          int use_domain_table);
+
+int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
+                           dnslib_rrset_t **rrset, dnslib_node_t **node,
+                           dnslib_rrset_dupl_handling_t dupl,
+                           int use_domain_table);
 
 /*!
  * \brief Adds a node holding NSEC3 records to the given zone.
@@ -172,7 +173,12 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
  * \retval DNSLIB_EBADZONE
  */
 int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node,
-                               int create_parents);
+                               int create_parents, int use_domain_table);
+
+int dnslib_zone_add_nsec3_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
+                                dnslib_node_t **node,
+                                dnslib_rrset_dupl_handling_t dupl,
+                                int use_domain_table);
 
 /*!
  * \warning Always call dnslib_zone_adjust_dnames() prior to calling this

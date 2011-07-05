@@ -398,6 +398,7 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 	}
 	dnslib_dname_t *owner = id_array[dname_id];
 
+	debug_dnslib_zload("Node owner id: %d\n", dname_id);
 	debug_dnslib_zload("Node owned by: %s\n", dnslib_dname_to_str(owner));
 	debug_dnslib_zload("Number of RRSets in a node: %d\n", rrset_count);
 
@@ -438,7 +439,7 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 		if (tmp_rrset->rrsigs != NULL) {
 			tmp_rrset->rrsigs->owner = node->owner;
 		}
-		if (dnslib_node_add_rrset(node, tmp_rrset, 0) != 0) {
+		if (dnslib_node_add_rrset(node, tmp_rrset, 0) < 0) {
 			fprintf(stderr, "zone: Could not add rrset.\n");
 			return NULL;
 		}
@@ -779,6 +780,7 @@ static dnslib_dname_table_t *create_dname_table_from_array(
 {
 	if (array == NULL) {
 		/* should I set errno or what ... ? */
+		debug_dnslib_zload("No array passed\n");
 		return NULL;
 	}
 
@@ -789,8 +791,11 @@ static dnslib_dname_table_t *create_dname_table_from_array(
 
 	/* Table will have max_id entries */
 	for (uint i = 1; i < max_id; i++) {
+		assert(array[i]);
 		if (dnslib_dname_table_add_dname(ret,
 						 array[i]) != DNSLIB_EOK) {
+			debug_dnslib_zload("Could not add: %s\n",
+			                   dnslib_dname_to_str(array[i]));
 			dnslib_dname_table_deep_free(&ret);
 			return NULL;
 		}
@@ -907,7 +912,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		return NULL;
 	}
 
-	dnslib_zone_t *zone = dnslib_zone_new(apex, auth_node_count);
+	dnslib_zone_t *zone = dnslib_zone_new(apex, auth_node_count, 0);
 	if (zone == NULL) {
 		cleanup_id_array(id_array, 1,
 				 node_count + nsec3_node_count + 1);
@@ -926,7 +931,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		tmp_node = dnslib_load_node(f, id_array);
 
 		if (tmp_node != NULL) {
-			if (dnslib_zone_add_node(zone, tmp_node, 0) != 0) {
+			if (dnslib_zone_add_node(zone, tmp_node, 0, 0) != 0) {
 				fprintf(stderr, "!! cannot add node\n");
 				continue;
 			}
@@ -963,7 +968,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 
 		assert(nsec3_first != NULL);
 
-		if (dnslib_zone_add_nsec3_node(zone, nsec3_first, 0) != 0) {
+		if (dnslib_zone_add_nsec3_node(zone, nsec3_first, 0, 0) != 0) {
 			fprintf(stderr, "!! cannot add first nsec3 node, "
 				"exiting.\n");
 			dnslib_zone_deep_free(&zone, 1);
@@ -982,7 +987,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		tmp_node = dnslib_load_node(f, id_array);
 
 		if (tmp_node != NULL) {
-			if (dnslib_zone_add_nsec3_node(zone, tmp_node, 0) != 0) {
+			if (dnslib_zone_add_nsec3_node(zone, tmp_node, 0, 0) != 0) {
 				fprintf(stderr, "!! cannot add nsec3 node\n");
 				continue;
 			}

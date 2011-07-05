@@ -133,9 +133,10 @@ int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset,
 
 	if (ret == 0) {
 		++node->rrset_count;
+		return DNSLIB_EOK;
+	} else {
+		return 1;
 	}
-
-	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -307,7 +308,7 @@ int dnslib_node_is_auth(const dnslib_node_t *node)
 
 void dnslib_node_free_rrsets(dnslib_node_t *node, int free_rdata_dnames)
 {
-	skip_node_t *skip_node =
+	const skip_node_t *skip_node =
 		(skip_node_t *)skip_first(node->rrsets);
 
 	if (skip_node != NULL) {
