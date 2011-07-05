@@ -254,7 +254,7 @@ static void tcp_loop_install(dthread_t *thread, int fd, tcp_cb_t cb)
 
 	/* Create event loop. */
 	/*! \todo Maybe check for EVFLAG_NOSIGMASK support? */
-	struct ev_loop *loop = ev_loop_new(EVBACKEND_ALL);
+	struct ev_loop *loop = ev_loop_new(0);
 
 	/* Watch bound socket if exists. */
 	tcp_io_t *w = tcp_conn_new(loop, fd, cb);
