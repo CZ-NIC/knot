@@ -1023,6 +1023,7 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 	rc = dnslib_node_add_rrset(*node, rrset,
 	                           dupl == DNSLIB_RRSET_DUPL_MERGE);
 	if (rc < 0) {
+		debug_dnslib_zone("Failed to add RRSet to node.\n");
 		return rc;
 	}
 
@@ -1046,11 +1047,12 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 	// replace RRSet's owner with the node's owner (that is already in the
 	// table)
 	/*! \todo Do even if domain table is not used?? */
-	if (rrset->owner != (*node)->owner) {
+	if (ret == DNSLIB_EOK && rrset->owner != (*node)->owner) {
 		dnslib_dname_free(&rrset->owner);
 		rrset->owner = (*node)->owner;
 	}
 
+	debug_dnslib_zone("Everything went fine.\n");
 	return ret;
 }
 
