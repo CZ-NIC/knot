@@ -220,6 +220,10 @@ static int ns_add_rrsigs(const dnslib_rrset_t *rrset, dnslib_packet_t *resp,
 	assert(resp != NULL);
 	assert(add_rrset_to_resp != NULL);
 
+	debug_ns("DNSSEC requested: %d\n",
+	         dnslib_query_dnssec_requested(dnslib_packet_query(resp)));
+	debug_ns("RRSIGS: %p\n", dnslib_rrset_rrsigs(rrset));
+
 	if (DNSSEC_ENABLED
 	    && dnslib_query_dnssec_requested(dnslib_packet_query(resp))
 	    && (rrsigs = dnslib_rrset_rrsigs(rrset)) != NULL) {
@@ -2356,6 +2360,11 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 		}
 	}
 
+	debug_ns("Query - parsed: %zu, total wire size: %zu\n", query->parsed,
+	         query->size);
+	debug_ns("Opt RR: version: %d, payload: %d\n", query->opt_rr.version,
+		 query->opt_rr.payload);
+
 	// get the answer for the query
 	rcu_read_lock();
 	dnslib_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
@@ -2395,11 +2404,16 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 		return KNOT_EOK;
 	}
 
+	debug_ns("EDNS supported in query: %d\n",
+	         dnslib_query_edns_supported(query));
+
 	// set the OPT RR to the response
-	ret = dnslib_response2_add_opt(response, nameserver->opt_rr, 0);
-	if (ret != DNSLIB_EOK) {
-		log_server_notice("Failed to set OPT RR to the response: %s\n",
-		                  dnslib_strerror(ret));
+	if (dnslib_query_edns_supported(query)) {
+		ret = dnslib_response2_add_opt(response, nameserver->opt_rr, 0);
+		if (ret != DNSLIB_EOK) {
+			log_server_notice("Failed to set OPT RR to the response"
+			                  ": %s\n",dnslib_strerror(ret));
+		}
 	}
 
 	ret = ns_answer(zonedb, response);
@@ -2904,13 +2918,6 @@ static int ns_save_zone(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_switch_zone(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
-{
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
 int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 {
 	/*! \todo Implement me.
@@ -2943,21 +2950,16 @@ int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		}
 
 		dnslib_zone_dump(xfr->zone, 0);
+		debug_ns("AXFR finished. Saving to zone file.\n");
 
 		// save the zone to the disk
 		rc = ns_save_zone(nameserver, xfr);
 		if (rc != KNOT_EOK) {
+			debug_ns("Freeing created zone: %p.\n", xfr->zone);
 			dnslib_zone_deep_free(&xfr->zone, 1);
+			debug_ns("%p.\n", xfr->zone);
 			return rc;
 		}
-
-		// change the zone served by the nameserver to the new one
-		rc = ns_switch_zone(nameserver, xfr);
-		if (rc != KNOT_EOK) {
-			// WTF?? what to do?
-			return rc;
-		}
-
 		return KNOT_EOK;
 	} else {
 		return ret;
@@ -2966,16 +2968,70 @@ int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 
 /*----------------------------------------------------------------------------*/
 
+int ns_switch_zone(ns_nameserver_t *nameserver, dnslib_zone_t *zone)
+{
+	debug_ns("Replacing zone by new one: %p\n", zone);
+	dnslib_zone_t *old = dnslib_zonedb_replace_zone(nameserver->zone_db,
+	                                                zone);
+	debug_ns("Old zone: %p\n", old);
+	if (old == NULL) {
+		char *name = dnslib_dname_to_str(
+				dnslib_node_owner(dnslib_zone_apex(zone)));
+		log_server_warning("Failed to replace zone %s\n", name);
+		free(name);
+	}
+
+	// wait for readers to finish
+	debug_ns("Waiting for readers to finish...\n");
+	synchronize_rcu();
+	// destroy the old zone
+	debug_ns("Freeing old zone: %p\n", old);
+	dnslib_zone_deep_free(&old, 1);
+
+DEBUG_NS(
+	debug_ns("Zone db contents:\n");
+
+	const skip_node_t *zn = skip_first(nameserver->zone_db->zones);
+
+	int i = 1;
+	char *name = NULL;
+	while (zn != NULL) {
+		debug_ns("%d. zone: %p, key: %p\n", i, zn->value,
+		                    zn->key);
+		assert(zn->key == ((dnslib_zone_t *)zn->value)->apex->owner);
+		name = dnslib_dname_to_str((dnslib_dname_t *)zn->key);
+		debug_ns("    zone name: %s\n", name);
+		free(name);
+
+		zn = skip_next(zn);
+	}
+);
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int ns_process_ixfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 {
 	/*! \todo Implement me.
-	 *  - xfr contains partially-built zone or NULL (xfr->data)
+	 *  - xfr contains partially-built IXFR journal entry or NULL
+	 *    (xfr->data)
 	 *  - incoming packet is in xfr->wire
 	 *  - incoming packet size is in xfr->wire_size
 	 *  - signalize caller, that transfer is finished/error (ret. code?)
 	 */
-	debug_ns("ns_process_axfrin: incoming packet\n");
-	return KNOT_EOK;
+	debug_ns("ns_process_ixfrin: incoming packet\n");
+
+	int ret = xfrin_process_ixfr_packet(xfr->wire, xfr->wire_size,
+	                                   (xfrin_changesets_t **)(&xfr->data));
+
+	if (ret > 0) { // transfer finished
+		debug_ns("ns_process_ixfrin: IXFR finished\n");
+		return KNOT_EOK;
+	} else {
+		return ret;
+	}
 }
 
 /*----------------------------------------------------------------------------*/

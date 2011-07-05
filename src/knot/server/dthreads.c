@@ -160,7 +160,8 @@ static void *thread_ep(void *data)
 
 			// Wait for notification from unit
 			debug_dt("dthreads: [%p] going idle\n", thread);
-			int ret = pthread_cond_wait(&unit->_notify, &unit->_notify_mx);
+			/*! \todo Check return value. */
+			pthread_cond_wait(&unit->_notify, &unit->_notify_mx);
 			pthread_mutex_unlock(&unit->_notify_mx);
 			debug_dt("dthreads: [%p] resumed from idle\n", thread);
 		} else {

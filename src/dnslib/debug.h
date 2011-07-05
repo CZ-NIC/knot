@@ -73,7 +73,7 @@ void dnslib_zone_dump(dnslib_zone_t *zone, char loaded_zone);
 /*
  * Debug macros
  */
-#define DNSLIB_ZONE_DEBUG
+//#define DNSLIB_ZONE_DEBUG
 //#define DNSLIB_RESPONSE_DEBUG
 //#define DNSLIB_ZONEDB_DEBUG
 //#define DNSLIB_DNAME_DEBUG
