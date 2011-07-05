@@ -114,7 +114,7 @@ static int journal_tests_run(int argc, char *argv[])
 	close(tmp_fd);
 
 	/* Delete journal. */
-	unlink(jfilename);
+	remove(jfilename);
 
 	endskip;
 

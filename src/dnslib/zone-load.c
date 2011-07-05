@@ -15,40 +15,6 @@
 #include "dnslib/debug.h"
 
 /*!
- * \brief Compares two timespec structures.
- *
- * \param x First timespec structure to be compared.
- * \param y Second timespec structure to be compared.
- *
- * \retval 0 when times are the some.
- * \retval 1 when y < x.
- * \retval -1 when x > y.
- */
-static int timespec_cmp(struct timespec *x, struct timespec *y)
-{
-	/* Calculate difference in the scale of seconds. */
-	long diff = x->tv_sec - y->tv_sec;
-
-	/* If it is equal, need to measure nanosecs. */
-	if (diff == 0) {
-		diff = x->tv_nsec - y->tv_nsec;
-	}
-
-	/* X and Y are equal. */
-	if (diff == 0) {
-		return 0;
-	}
-
-	/* X is newer. */
-	if (diff > 0) {
-		return 1;
-	}
-
-	/* Y is newer. */
-	return -1;
-}
-
-/*!
  * \brief Compares two time_t values.
  *
  * \param x First time_t value to be compared.
