@@ -747,3 +747,14 @@ uint32_t dnslib_rdata_soa_expire(const dnslib_rdata_t *rdata)
 	// the number is in network byte order, transform it
 	return dnslib_wire_read_u32((uint8_t *)(rdata->items[5].raw_data + 1));
 }
+
+/*---------------------------------------------------------------------------*/
+
+uint16_t dnslib_rdata_rrsig_type_covered(const dnslib_rdata_t *rdata)
+{
+	if (rdata->count < 1) {
+		return 0;
+	}
+
+	return dnslib_wire_read_u16((uint8_t *)(rdata->items[0].raw_data + 1));
+}

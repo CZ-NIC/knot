@@ -75,7 +75,7 @@ static int test_node_add_rrset()
 		tmp = dnslib_node_new(&test_nodes[i].owner,
 				      test_nodes[i].parent);
 		rrset = &rrsets[i];
-		if (dnslib_node_add_rrset(tmp, rrset, 0) != 0) {
+		if (dnslib_node_add_rrset(tmp, rrset, 0) < 0) {
 			errors++;
 			diag("Failed to insert rrset into node");
 		}

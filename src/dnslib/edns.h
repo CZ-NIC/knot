@@ -15,6 +15,7 @@
 #include <stdint.h>
 
 #include "dnslib/utils.h"
+#include "dnslib/rrset.h"
 
 /*----------------------------------------------------------------------------*/
 /*! \brief Structure representing one OPT RR Option. */
@@ -89,6 +90,9 @@ dnslib_opt_rr_t *dnslib_edns_new();
  */
 int dnslib_edns_new_from_wire(dnslib_opt_rr_t *opt_rr, const uint8_t *wire,
                               size_t max_size);
+
+int dnslib_edns_new_from_rr(dnslib_opt_rr_t *opt_rr,
+                            const dnslib_rrset_t *rrset);
 
 /*!
  * \brief Returns the UDP payload stored in the OPT RR.

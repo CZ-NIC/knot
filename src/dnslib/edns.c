@@ -122,6 +122,64 @@ int dnslib_edns_new_from_wire(dnslib_opt_rr_t *opt_rr, const uint8_t *wire,
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_edns_new_from_rr(dnslib_opt_rr_t *opt_rr,
+                            const dnslib_rrset_t *rrset)
+{
+	if (opt_rr == NULL || rrset == NULL
+	    || dnslib_rrset_type(rrset) != DNSLIB_RRTYPE_OPT) {
+		return DNSLIB_EBADARG;
+	}
+
+	debug_dnslib_edns("Parsing payload.\n");
+	opt_rr->payload = dnslib_rrset_class(rrset);
+
+	// the TTL has switched bytes
+	uint32_t ttl;
+	debug_dnslib_edns("TTL: %u\n", dnslib_rrset_ttl(rrset));
+	dnslib_wire_write_u32((uint8_t *)&ttl, dnslib_rrset_ttl(rrset));
+	// first byte of TTL is extended RCODE
+	debug_dnslib_edns("TTL: %u\n", ttl);
+	memcpy(&opt_rr->ext_rcode, &ttl, 1);
+	debug_dnslib_edns("Parsed extended RCODE: %u.\n", opt_rr->ext_rcode);
+	// second is the version
+	memcpy(&opt_rr->version, (const uint8_t *)(&ttl) + 1, 1);
+	debug_dnslib_edns("Parsed version: %u.\n", opt_rr->version);
+	// third and fourth are flags
+	opt_rr->flags = dnslib_wire_read_u16((const uint8_t *)(&ttl) + 2);
+	debug_dnslib_edns("Parsed flags: %u.\n", opt_rr->flags);
+	// size of the header, options are counted elsewhere
+	opt_rr->size = 11;
+
+	int rc = 0;
+	debug_dnslib_edns("Parsing options.\n");
+	const dnslib_rdata_t *rdata = dnslib_rrset_rdata(rrset);
+	while (rdata != NULL) {
+		debug_dnslib_edns("Parsing next option.\n");
+		assert(dnslib_rdata_item(rdata, 0) != NULL
+		       && *dnslib_rdata_item(rdata, 0)->raw_data == 2);
+		assert(dnslib_rdata_item(rdata, 1) != NULL
+		       && *dnslib_rdata_item(rdata, 1)->raw_data == 2);
+		assert(dnslib_rdata_item(rdata, 2) != NULL
+		       && *dnslib_rdata_item(rdata, 2)->raw_data
+		          == *(dnslib_rdata_item(rdata, 1)->raw_data + 1));
+		rc = dnslib_edns_add_option(opt_rr,
+			*(dnslib_rdata_item(rdata, 0)->raw_data + 1),
+			*(dnslib_rdata_item(rdata, 1)->raw_data + 1),
+			(const uint8_t *)(dnslib_rdata_item(rdata, 2)->raw_data
+			                  + 1));
+
+		if (rc != DNSLIB_EOK) {
+			return rc;
+		}
+
+		rdata = dnslib_rrset_rdata_next(rrset, rdata);
+	}
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 uint16_t dnslib_edns_get_payload(const dnslib_opt_rr_t *opt_rr)
 {
 	return opt_rr->payload;
@@ -130,7 +188,7 @@ uint16_t dnslib_edns_get_payload(const dnslib_opt_rr_t *opt_rr)
 /*----------------------------------------------------------------------------*/
 
 void dnslib_edns_set_payload(dnslib_opt_rr_t *opt_rr,
-                                           uint16_t payload)
+                             uint16_t payload)
 {
 	opt_rr->payload = payload;
 }
@@ -202,6 +260,11 @@ int dnslib_edns_add_option(dnslib_opt_rr_t *opt_rr, uint16_t code,
 		opt_rr->options = options_new;
 		opt_rr->options_max += DNSLIB_EDNS_OPTION_STEP;
 	}
+
+	debug_dnslib_edns("Adding option.\n");
+	debug_dnslib_edns("Code: %u.\n", code);
+	debug_dnslib_edns("Length: %u.\n", length);
+	debug_dnslib_edns("Data: %p.\n", data);
 
 	opt_rr->options[opt_rr->option_count].data = (uint8_t *)malloc(length);
 	CHECK_ALLOC_LOG(opt_rr->options[opt_rr->option_count].data, DNSLIB_ENOMEM);

@@ -54,6 +54,8 @@ static void dnslib_dname_cache_init()
  */
 static dnslib_dname_t* dnslib_dname_alloc()
 {
+	return malloc(sizeof(dnslib_dname_t));
+
 	/* Initialize dname cache TLS key. */
 	(void)pthread_once(&dname_once, dnslib_dname_cache_init);
 
@@ -866,6 +868,7 @@ void dnslib_dname_free(dnslib_dname_t **dname)
 	}
 
 //	slab_free(*dname);
+	free(*dname);
 	*dname = NULL;
 }
 
