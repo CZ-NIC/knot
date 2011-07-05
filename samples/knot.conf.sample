@@ -97,6 +97,13 @@ zones {
   # Default value: 5
   notify-retries: 5;
 
+  # File size limit for IXFR journal
+  # Possible values: <-1,...>
+  # Default value: -1 (infinite)
+  # It is also possible to suffix with unit size [k/M/G]
+  # f.e. 1k, 100M, 2G
+  ixfr-fslimit: -1;
+
   # Zone entry
   #
   # Format: <zone-name> { file "<path-to-zone-file>"; }
