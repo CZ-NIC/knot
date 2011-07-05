@@ -69,6 +69,8 @@ typedef struct journal_t
 	uint16_t max_nodes;     /*!< Number of nodes. */
 	uint16_t qhead;         /*!< Node queue head. */
 	uint16_t qtail;         /*!< Node queue tail. */
+	size_t fsize;           /*!< Journal file size. */
+	size_t fslimit;         /*!< File size limit. */
 	journal_node_t free;    /*!< Free segment. */
 	journal_node_t nodes[]; /*!< Array of nodes. */
 } journal_t;
@@ -95,11 +97,12 @@ int journal_create(const char *fn, uint16_t max_nodes);
  * \brief Open journal file for read/write.
  *
  * \param fn Journal file name.
+ * \param fslimit File size limit (-1 for no limit).
  *
  * \retval new journal instance if successful.
  * \retval NULL on error.
  */
-journal_t* journal_open(const char *fn);
+journal_t* journal_open(const char *fn, int fslimit);
 
 /*!
  * \brief Fetch entry node for given identifier.
