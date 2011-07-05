@@ -20,6 +20,23 @@
 #include "dnslib/packet.h"
 #include "knot/server/name-server.h"
 
+typedef struct {
+	dnslib_rrset_t *soa_from;
+	dnslib_rrset_t **remove;
+	size_t remove_count;
+	size_t remove_allocated;
+	dnslib_rrset_t *soa_to;
+	dnslib_rrset_t **add;
+	size_t add_count;
+	size_t add_allocated;
+} xfrin_changeset_t;
+
+typedef struct {
+	xfrin_changeset_t *sets;
+	size_t count;
+	size_t allocated;
+} xfrin_changesets_t;
+
 /*!
  * \brief Creates normal query for the given zone name and the SOA type.
  *
@@ -105,6 +122,9 @@ int xfrin_zone_transferred(ns_nameserver_t *nameserver, dnslib_zone_t *zone);
  */
 int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
                               dnslib_zone_t **zone);
+
+int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
+                              xfrin_changesets_t **changesets);
 
 #endif /* _KNOT_XFR_IN_H_ */
 
