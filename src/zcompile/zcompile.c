@@ -56,7 +56,7 @@
 #define APL_NEGATION_MASK      0x80U
 #define APL_LENGTH_MASK	       (~APL_NEGATION_MASK)
 
-//#define ZP_DEBUG
+#define ZP_DEBUG
 
 #ifdef ZP_DEBUG
 #define debug_zp(msg...) fprintf(stderr, msg)
@@ -1710,7 +1710,7 @@ int process_rr(void)
 		/* I chose skip, but there should not really be
 		 * any rrset to skip */
 		if (dnslib_zone_add_rrset(parser->current_zone, rrset, &node,
-		                   DNSLIB_RRSET_DUPL_SKIP, 1) != 0) {
+		                   DNSLIB_RRSET_DUPL_SKIP, 1) < 0) {
 			free(rrset);
 			return KNOT_ZCOMPILE_EBRDATA;
 		}
@@ -1724,7 +1724,7 @@ int process_rr(void)
 
 		if (dnslib_zone_add_rrset(parser->current_zone, current_rrset,
 		                          &node,
-		                   DNSLIB_RRSET_DUPL_MERGE, 1) != 0) {
+		                   DNSLIB_RRSET_DUPL_MERGE, 1) < 0) {
 			free(rrset);
 			return KNOT_ZCOMPILE_EBRDATA;
 		}
