@@ -42,7 +42,8 @@ static int journal_tests_count(int argc, char *argv[])
 static int journal_tests_run(int argc, char *argv[])
 {
 	/* Test 1: Create tmpfile. */
-	const int jsize = 256;
+	const int fsize = 8092;
+	const int jsize = 512;
 	char jfn_buf[] = "/tmp/journal.XXXXXX";
 	int tmp_fd = mkstemp(jfn_buf);
 	ok(tmp_fd >= 0, "journal: create temporary file");
@@ -54,7 +55,7 @@ static int journal_tests_run(int argc, char *argv[])
 	ok(ret == KNOT_EOK, "journal: create journal '%s'", jfilename);
 
 	/* Test 3: Open journal. */
-	journal_t *j = journal_open(jfilename);
+	journal_t *j = journal_open(jfilename, fsize);
 	ok(j != 0, "journal: open");
 
 	/* Test 4: Write entry to log. */
@@ -85,7 +86,7 @@ static int journal_tests_run(int argc, char *argv[])
 		}
 
 		/* Store some key on the end. */
-		if (i == itcount - jsize/5) {
+		if (i == itcount - 2) {
 			chk_key = key;
 			memcpy(chk_buf, tmpbuf, sizeof(chk_buf));
 		}
@@ -101,7 +102,7 @@ static int journal_tests_run(int argc, char *argv[])
 	/* Test 9: Reopen log and re-read value. */
 	memset(tmpbuf, 0, sizeof(tmpbuf));
 	journal_close(j);
-	j = journal_open(jfilename);
+	j = journal_open(jfilename, fsize);
 	journal_read(j, chk_key, tmpbuf);
 	ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
 	ok(ret == 0, "journal: read data integrity check after close/open");
