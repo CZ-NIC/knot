@@ -1,10 +1,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include "knot/other/error.h"
 #include "knot/other/debug.h"
 #include "journal.h"
+
+/*! \brief Infinite file size limit. */
+#define FSLIMIT_INF (~((size_t)0))
 
 static inline int sfread(void *dst, size_t len, FILE *fp)
 {
@@ -79,11 +84,17 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	return KNOT_EOK;
 }
 
-journal_t* journal_open(const char *fn)
+journal_t* journal_open(const char *fn, int fslimit)
 {
 	/*! \todo Memory mapping may be faster than stdio? */
 
 	/*! \todo Lock file. */
+
+	/* Check file. */
+	struct stat st;
+	if (stat(fn, &st) < 0) {
+		return 0;
+	}
 
 	/* Open journal file for r/w. */
 	FILE *fp = fopen(fn, "r+");
@@ -139,6 +150,14 @@ journal_t* journal_open(const char *fn)
 		fclose(fp);
 		free(j);
 		return 0;
+	}
+
+	/* Set file size. */
+	j->fsize = st.st_size;
+	if (fslimit < 0) {
+		j->fslimit = FSLIMIT_INF;
+	} else {
+		j->fslimit = (size_t)fslimit;
 	}
 
 	/*! \todo Some file checksum, check node integrity. */
@@ -202,18 +221,39 @@ int journal_write(journal_t *journal, int id, const char *src, size_t size)
 	/* Find next free node. */
 	uint16_t jnext = (journal->qtail + 1) % journal->max_nodes;
 
-	debug_journal("journal: writing id=%d, node=%u, next=%u\n",
-		      id, journal->qtail, jnext);
+	debug_journal("journal: will write id=%d, node=%u, size=%zu, fsize=%zu\n",
+		      id, journal->qtail, size, journal->fsize);
+
+	/* Calculate remaining bytes to reach file size limit. */
+	size_t fs_remaining = journal->fslimit - journal->fsize;
 
 	/* Increase free segment if on the end of file. */
 	journal_node_t *n = journal->nodes + journal->qtail;
-	if (journal->free.len < size) {
+	if (journal->free.pos + journal->free.len == journal->fsize) {
 
-		/* Increase on the end of node queue / uninitialized. */
-		if (journal->qtail > jnext || n->flags == JOURNAL_NULL) {
-			debug_journal("journal: growing by +%zu, pos=%u\n",
-				      size - journal->free.len, journal->free.pos);
-			journal->free.len = size;
+		debug_journal("journal: * is last node\n");
+
+		/* Grow journal file until the size limit. */
+		if(journal->free.len < size && size <= fs_remaining) {
+			size_t diff = size - journal->free.len;
+			debug_journal("journal: * growing by +%zu, pos=%u, new fsize=%zu\n",
+				      diff, journal->free.pos,
+				      journal->fsize + diff);
+			journal->fsize += diff; /* Appending increases file size. */
+			journal->free.len += diff;
+
+		}
+
+		/*  Rewind if resize is needed, but the limit is reached. */
+		if(journal->free.len < size && size > fs_remaining) {
+			journal_node_t *head = journal->nodes + journal->qhead;
+			journal->fsize = journal->free.pos;
+			journal->free.pos = head->pos;
+			journal->free.len = 0;
+			debug_journal("journal: * fslimit reached, rewinding to %u\n",
+				      head->pos);
+			debug_journal("journal: * file size trimmed to %zu\n",
+				      journal->fsize);
 		}
 	}
 
@@ -230,7 +270,7 @@ int journal_write(journal_t *journal, int id, const char *src, size_t size)
 			return KNOT_ERROR;
 		}
 
-		debug_journal("journal: evicted node=%u, growing by +%u\n",
+		debug_journal("journal: * evicted node=%u, growing by +%u\n",
 			      journal->qhead, head->len);
 
 		/* Write back query state. */
@@ -254,7 +294,7 @@ int journal_write(journal_t *journal, int id, const char *src, size_t size)
 	n->len = size;
 	n->flags = JOURNAL_FREE;
 	if (!sfwrite(n, node_len, journal->fp)) {
-		debug_journal("journal: failed to writeback node=%d to %u\n",
+		debug_journal("journal: failed to writeback node=%d to %ld\n",
 			      n->id, jn_fpos);
 		return KNOT_ERROR;
 	}
@@ -272,23 +312,26 @@ int journal_write(journal_t *journal, int id, const char *src, size_t size)
 		return KNOT_ERROR;
 	}
 
-	debug_journal("journal: written node=%u, data=<%u, %u>\n",
-		      journal->qtail, n->pos, n->pos + n->len);
+	/* Handle free segment on node rotation. */
+	if (journal->qtail > jnext && journal->fslimit == FSLIMIT_INF) {
+		/* Trim free space. */
+		journal->fsize -= journal->free.len;
+		debug_journal("journal: * trimmed filesize to %zu\n",
+			      journal->fsize);
 
-	/* Trim free space on the last node. */
-	if (journal->qtail > jnext) {
-		debug_journal("journal: trimming free space, next=%u\n",
-			      jnext);
-		journal_node_t *next = journal->nodes + jnext;
-		journal->free.pos = next->pos;
+		/* Rewind free segment. */
+		journal_node_t *n = journal->nodes + jnext;
+		journal->free.pos = n->pos;
 		journal->free.len = 0;
+
 	} else {
 		/* Mark used space. */
 		journal->free.pos += size;
 		journal->free.len -= size;
-		debug_journal("journal: free segment <%u, %u>\n",
-			journal->free.pos, journal->free.pos + journal->free.len);
 	}
+	debug_journal("journal: finished node=%u, data=<%u, %u> free=<%u, %u>\n",
+		      journal->qtail, n->pos, n->pos + n->len,
+		      journal->free.pos, journal->free.pos + journal->free.len);
 
 	/* Node write successful. */
 	journal->qtail = jnext;
