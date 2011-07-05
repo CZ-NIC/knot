@@ -1671,6 +1671,7 @@ int dnslib_response_add_rrset_additional(dnslib_response_t *response,
 
 	// if this is the first additional RRSet, add EDNS OPT RR first
 	if (response->header.arcount == 0
+	    && response->edns_query.version != EDNS_NOT_SUPPORTED
 	    && response->edns_response.version != EDNS_NOT_SUPPORTED) {
 		dnslib_response_edns_to_wire(response);
 	}
@@ -1837,6 +1838,7 @@ int dnslib_response_to_wire(dnslib_response_t *resp,
 
 	// if there are no additional RRSets, add EDNS OPT RR
 	if (resp->header.arcount == 0
+	    && resp->edns_query.version != EDNS_NOT_SUPPORTED
 	    && resp->edns_response.version != EDNS_NOT_SUPPORTED) {
 	    dnslib_response_edns_to_wire(resp);
 	}

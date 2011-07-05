@@ -48,6 +48,7 @@ static conf_log_map_t *this_logmap = 0;
 %token SEMANTIC_CHECKS
 %token NOTIFY_RETRIES
 %token NOTIFY_TIMEOUT
+%token IXFR_FSLIMIT
 %token XFR_IN
 %token XFR_OUT
 %token NOTIFY_IN
@@ -250,6 +251,7 @@ zone_start: TEXT {
    this_zone->enable_checks = -1; // Default policy applies
    this_zone->notify_timeout = -1; // Default policy applies
    this_zone->notify_retries = -1; // Default policy applies
+   this_zone->ixfr_fslimit = -1; // Default policy applies
    this_zone->name = $1;
 
    // Append mising dot to ensure FQDN
@@ -287,6 +289,10 @@ zone:
  | zone zone_acl_list
  | zone FILENAME TEXT ';' { this_zone->file = $3; }
  | zone SEMANTIC_CHECKS BOOL ';' { this_zone->enable_checks = $3; }
+ | zone IXFR_FSLIMIT NUM ';' { this_zone->ixfr_fslimit = $3; }
+ | zone IXFR_FSLIMIT NUM 'k' ';' { this_zone->ixfr_fslimit = $3 * 1024; } // kB
+ | zone IXFR_FSLIMIT NUM 'M' ';' { this_zone->ixfr_fslimit = $3 * 1048576; } // MB
+ | zone IXFR_FSLIMIT NUM 'G' ';' { this_zone->ixfr_fslimit = $3 * 1073741824; } // GB
  | zone NOTIFY_RETRIES NUM ';' {
        if ($3 < 1) {
 	   cf_error("notify retries must be positive integer");

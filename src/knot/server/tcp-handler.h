@@ -20,90 +20,14 @@
 
 #include <stdint.h>
 
+#include <ev.h>
+
 #include "knot/server/socket.h"
 #include "knot/server/server.h"
 #include "knot/server/dthreads.h"
 
-/*! \brief TCP pool structure. */
-struct tcp_pool_t;
-
-/*!
- * \brief TCP event handler function prototype.
- *
- * Handle single TCP event.
- *
- * \param pool Associated connection pool.
- * \param fd Associated socket.
- * \param data Associated data.
- * \param qbuf Buffer for a query wireformat.
- * \param qbuf_maxlen Buffer maximum size.
- */
-typedef int (*tcp_event_f)(struct tcp_pool_t *pool, int fd, void *data,
-			     uint8_t *qbuf, size_t qbuf_maxlen);
-
-/*!
- * \brief Create new TCP pool.
- *
- * Create and initialize new TCP pool with empty set.
- *
- * \param server Server instance.
- * \param hfunc TCP event handler.
- *
- * \retval New instance on success.
- * \retval NULL on errors.
- */
-struct tcp_pool_t *tcp_pool_new(server_t *server, tcp_event_f hfunc);
-
-/*!
- * \brief Delete TCP pool instance.
- *
- * \param pool Pointer to pool instance.
- */
-void tcp_pool_del(struct tcp_pool_t **pool);
-
-/*!
- * \brief Add socket to the TCP pool.
- *
- * \param pool Given TCP pool.
- * \param sock Socket to be added to the TCP pool.
- * \param data Data associated with TCP session.
- *
- * \retval 0 on success.
- * \retval <0 on error.
- */
-int tcp_pool_add(struct tcp_pool_t *pool, int sock, void *data);
-
-/*!
- * \brief Remove socket from a TCP pool.
- *
- * \param pool Given TCP pool.
- * \param sock Socket to be removed from the TCP pool.
- *
- * \retval 0 on success.
- * \retval <0 on error.
- */
-int tcp_pool_remove(struct tcp_pool_t *pool, int sock);
-
-/*!
- * \brief Return associated server instance.
- *
- * \param pool Given TCP pool.
- *
- * \return Associated server instance.
- */
-server_t* tcp_pool_server(struct tcp_pool_t *pool);
-
-/*!
- * \brief TCP pool main function.
- *
- * TCP pool receives new connection and organizes them into it's own pool.
- * Handled connections are then polled for events.
- * TCP pooling scales almost linearly with the number of threads.
- *
- * \retval 0 on success.
- * \retval <0 on error.
- */
-int tcp_pool(dthread_t *thread);
+/*! \brief TCP event callback. */
+typedef void (*tcp_cb_t)(struct ev_loop *, ev_io*, int);
 
 /*!
  * \brief Send TCP message.
@@ -132,18 +56,50 @@ int tcp_send(int fd, uint8_t *msg, size_t msglen);
 int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr);
 
 /*!
- * \brief TCP master socket runnable.
+ * \brief Generic TCP event loop.
  *
- * Accepts new TCP connections and distributes them among the rest
- * of the threads in unit, which are repurposed as a TCP connection pools.
- * New pools are initialized ad-hoc, function implements a cancellation point.
+ * Run TCP handler event loop.
+ *
+ * \param thread Associated thread from DThreads unit.
+ * \param fd First descriptor to be watched (or -1).
+ * \param cb Callback on fd event.
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL invalid parameters.
+ */
+int tcp_loop(dthread_t *thread, int fd, tcp_cb_t cb);
+
+/*!
+ * \brief TCP event loop for accepting connections.
  *
  * \param thread Associated thread from DThreads unit.
  *
  * \retval KNOT_EOK on success.
  * \retval KNOT_EINVAL invalid parameters.
  */
-int tcp_master(dthread_t *thread);
+int tcp_loop_master(dthread_t *thread);
+
+/*!
+ * \brief TCP event loop for processing requests.
+ *
+ * \param thread Associated thread from DThreads unit.
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL invalid parameters.
+ */
+int tcp_loop_worker(dthread_t *thread);
+
+/*!
+ * \brief Create TCP event handler from threading unit.
+ *
+ * Set-up threading unit for processing TCP requests.
+ *
+ * \param thread Associated thread from DThreads unit.
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL invalid parameters.
+ */
+int tcp_loop_unit(dt_unit_t *unit);
 
 #endif // _KNOT_TCPHANDLER_H_
 

@@ -897,11 +897,12 @@ static inline int dnslib_wire_is_pointer(const uint8_t *pos)
 
 static inline size_t dnslib_wire_get_pointer(const uint8_t *pos)
 {
+	/*! \todo memcpy() is not needed, may be directly assigned. */
 	uint16_t p = 0;
 	memcpy(&p, pos, 2);
 	p &= ~DNSLIB_WIRE_PTR;
 
-        uint16_t p2 = dnslib_wire_read_u16((uint8_t*)&p);
+	uint16_t p2 = dnslib_wire_read_u16((uint8_t *)&p);
 	return p2;
 }
 
