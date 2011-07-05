@@ -54,23 +54,24 @@ static void dnslib_dname_cache_init()
  */
 static dnslib_dname_t* dnslib_dname_alloc()
 {
-	/* Initialize dname cache TLS key. */
-	(void)pthread_once(&dname_once, dnslib_dname_cache_init);
+	return malloc(sizeof(dnslib_dname_t));
+//	/* Initialize dname cache TLS key. */
+//	(void)pthread_once(&dname_once, dnslib_dname_cache_init);
 
-	/* Create cache if not exists. */
-	slab_cache_t* cache = pthread_getspecific(dname_ckey);
-	if (unlikely(!cache)) {
-		cache = malloc(sizeof(slab_cache_t));
-		if (!cache) {
-			return 0;
-		}
+//	/* Create cache if not exists. */
+//	slab_cache_t* cache = pthread_getspecific(dname_ckey);
+//	if (unlikely(!cache)) {
+//		cache = malloc(sizeof(slab_cache_t));
+//		if (!cache) {
+//			return 0;
+//		}
 
-		/* Initialize cache. */
-		slab_cache_init(cache, sizeof(dnslib_dname_t));
-		(void)pthread_setspecific(dname_ckey, cache);
-	}
+//		/* Initialize cache. */
+//		slab_cache_init(cache, sizeof(dnslib_dname_t));
+//		(void)pthread_setspecific(dname_ckey, cache);
+//	}
 
-	return slab_cache_alloc(cache);
+//	return slab_cache_alloc(cache);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -866,6 +867,7 @@ void dnslib_dname_free(dnslib_dname_t **dname)
 	}
 
 //	slab_free(*dname);
+	free(*dname);
 	*dname = NULL;
 }
 
