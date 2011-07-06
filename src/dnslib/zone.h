@@ -19,8 +19,6 @@
 #include "dnslib/nsec3.h"
 #include "dnslib/dname-table.h"
 #include "common/tree.h"
-#include "common/acl.h"
-#include "common/lists.h"
 #include "dnslib/hash/cuckoo-hash-table.h"
 
 /*----------------------------------------------------------------------------*/

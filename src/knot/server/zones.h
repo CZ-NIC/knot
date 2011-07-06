@@ -13,9 +13,11 @@
 #define _KNOT_ZONES_H_
 
 #include "common/lists.h"
+#include "common/acl.h"
 #include "knot/server/name-server.h"
 #include "dnslib/zonedb.h"
 #include "knot/conf/conf.h"
+#include "knot/server/journal.h"
 
 /*!
  * \brief Zone-related data.
@@ -38,6 +40,9 @@ typedef struct zonedata_t
 
 	/*! \brief List of pending NOTIFY events. */
 	list notify_pending;
+
+	/*! \brief Zone IXFR history. */
+	journal_t *ixfr_db;
 } zonedata_t;
 
 /*!
