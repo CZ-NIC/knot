@@ -30,13 +30,16 @@ static int zonedata_destroy(dnslib_zone_t *zone)
 	acl_delete(&zd->notify_in);
 	acl_delete(&zd->notify_out);
 
+	/* Close IXFR db. */
+	journal_close(zd->ixfr_db);
+
 	free(zd);
 
 	return KNOT_EOK;
 }
 
 /*! \brief Zone data constructor function. */
-static int zonedata_init(dnslib_zone_t *zone)
+static int zonedata_init(conf_zone_t *cfg, dnslib_zone_t *zone)
 {
 	zonedata_t *zd = malloc(sizeof(zonedata_t));
 	if (!zd) {
@@ -57,6 +60,13 @@ static int zonedata_init(dnslib_zone_t *zone)
 
 	/* Initialize NOTIFY. */
 	init_list(&zd->notify_pending);
+
+	/* Initialize IXFR database. */
+	zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit);
+	if (!zd->ixfr_db) {
+		journal_create(cfg->ixfr_db, JOURNAL_NCOUNT);
+		zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit);
+	}
 
 	/* Set and install destructor. */
 	zone->data = zd;
@@ -581,7 +591,7 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 				++inserted;
 
 				/* Initialize zone-related data. */
-				zonedata_init(zone);
+				zonedata_init(z, zone);
 
 			}
 			// unused return value, if not loaded, just continue
