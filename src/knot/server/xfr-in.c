@@ -758,6 +758,89 @@ static int xfrin_changeset_add_soa(xfrin_changeset_t *changeset,
 
 /*----------------------------------------------------------------------------*/
 
+static int xfr_changesets_from_binary(xfrin_changesets_t *chgsets)
+{
+	/*
+	 * Parses changesets from the binary format stored in chgsets->data
+	 * into the changeset_t structures.
+	 */
+	/*! \todo Implement. */
+
+	return KNOT_ENOTSUP;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfr_changesets_to_binary(xfrin_changesets_t *chgsets)
+{
+	assert(chgsets != NULL);
+	assert(chgsets->allocated >= chgsets->count);
+
+	/*
+	 * Converts changesets to the binary format stored in chgsets->data
+	 * from the changeset_t structures.
+	 */
+	/*! \todo Implement. */
+
+	int ret;
+
+	for (int i = 0; i < chgsets->count; ++i) {
+		xfrin_changeset_t *ch = &chgsets->sets[i];
+
+		// 1) origin SOA
+		ret = xfrin_changeset_rrset_to_binary(&ch->data, &ch->size,
+		                                &ch->allocated, ch->soa_from);
+		if (ret != KNOT_EOK) {
+			free(ch->data);
+			ch->data = NULL;
+			return ret;
+		}
+
+		int j;
+
+		// 2) remove RRsets
+		assert(ch->remove_allocated >= ch->remove_count);
+		for (j = 0; j < ch->remove_count; ++j) {
+			ret = xfrin_changeset_rrset_to_binary(&ch->data,
+			                                      &ch->size,
+			                                      &ch->allocated,
+			                                      ch->remove[j]);
+			if (ret != KNOT_EOK) {
+				free(ch->data);
+				ch->data = NULL;
+				return ret;
+			}
+		}
+
+		// 3) new SOA
+		ret = xfrin_changeset_rrset_to_binary(&ch->data, &ch->size,
+		                                &ch->allocated, ch->soa_to);
+		if (ret != KNOT_EOK) {
+			free(ch->data);
+			ch->data = NULL;
+			return ret;
+		}
+
+		// 4) add RRsets
+		assert(ch->add_allocated >= ch->add_count);
+		for (j = 0; j < ch->add_count; ++j) {
+			ret = xfrin_changeset_rrset_to_binary(&ch->data,
+			                                      &ch->size,
+			                                      &ch->allocated,
+			                                      ch->add[j]);
+			if (ret != KNOT_EOK) {
+				free(ch->data);
+				ch->data = NULL;
+				return ret;
+			}
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void xfrin_free_changesets(xfrin_changesets_t **changesets)
 {
 	if (changesets == NULL || *changesets == NULL) {
