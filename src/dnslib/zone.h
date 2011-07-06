@@ -61,29 +61,11 @@ struct dnslib_zone {
 	 */
 	uint node_count;
 	dnslib_nsec3_params_t nsec3_params;
-
-	/*! \brief Access control lists. */
-	struct {
-		acl_t *xfr_out;    /*!< ACL for xfr-out.*/
-		acl_t *notify_in;  /*!< ACL for notify-in.*/
-		acl_t *notify_out; /*!< ACL for notify-out.*/
-	} acl;
-
-	/*! \brief XFR-IN scheduler. */
-	struct {
-		list          **ifaces; /*!< List of availabel interfaces. */
-		sockaddr_t     master;  /*!< Master server for xfr-in.*/
-		struct event_t *timer;  /*!< Timer for REFRESH/RETRY. */
-		struct event_t *expire; /*!< Timer for REFRESH. */
-		int next_id;            /*!< ID of the next awaited SOA resp.*/
-	} xfr_in;
-
-	/*! \brief List of pending NOTIFY events. */
-	list notify_pending;
-
 	time_t version;
-
 	dnslib_dname_table_t *dname_table;
+
+	void *data; /*!< Pointer to generic zone-related data. */
+	int (*dtor)(struct dnslib_zone *); /*!< Data destructor. */
 };
 
 typedef struct dnslib_zone dnslib_zone_t;
