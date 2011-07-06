@@ -17,6 +17,8 @@ static const size_t XFRIN_CHANGESET_COUNT = 5;
 static const size_t XFRIN_CHANGESET_STEP = 5;
 static const size_t XFRIN_CHANGESET_RRSET_COUNT = 5;
 static const size_t XFRIN_CHANGESET_RRSET_STEP = 5;
+static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
+static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -532,28 +534,43 @@ static int xfrin_parse_first_rr(dnslib_packet_t **packet, const uint8_t *pkt,
 
 /*----------------------------------------------------------------------------*/
 
+static int xfrin_changesets_check_size(xfrin_changesets_t *changesets)
+{
+	if (changesets->allocated == changesets->count) {
+		xfrin_changeset_t *sets = (xfrin_changeset_t *)calloc(
+			changesets->allocated + XFRIN_CHANGESET_STEP,
+			sizeof(xfrin_changeset_t));
+		if (sets == NULL) {
+			return KNOT_ENOMEM;
+		}
+
+		memcpy(sets, changesets->sets, changesets->count);
+		xfrin_changeset_t *old_sets = changesets->sets;
+		changesets->sets = sets;
+		changesets->count += XFRIN_CHANGESET_STEP;
+		free(old_sets);
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 static int xfrin_allocate_changesets(xfrin_changesets_t **changesets)
 {
 	// create new changesets
 	*changesets = (xfrin_changesets_t *)(
-			malloc(sizeof(xfrin_changesets_t)));
+			calloc(1, sizeof(xfrin_changesets_t)));
 
 	if (*changesets == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	(*changesets)->sets = (xfrin_changeset_t *)(
-			calloc(XFRIN_CHANGESET_COUNT,
-			       sizeof(xfrin_changeset_t)));
-	if ((*changesets)->sets == NULL) {
-		free(*changesets);
-		*changesets = NULL;
-		return KNOT_ENOMEM;
-	}
+	assert((*changesets)->allocated == 0);
+	assert((*changesets)->count == 0);
+	assert((*changesets)->sets = NULL);
 
-	(*changesets)->count = XFRIN_CHANGESET_COUNT;
-
-	return KNOT_EOK;
+	return xfrin_changesets_check_size(*changesets);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -602,28 +619,148 @@ static int xfrin_changeset_add_rrset(dnslib_rrset_t ***rrsets,
 
 	(*rrsets)[(*count)++] = rrset;
 
-	return KNOT_ENOTSUP;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_changesets_check_size(xfrin_changesets_t *changesets)
+static void xfrin_changeset_remove_last_rrset(dnslib_rrset_t **rrsets,
+                                              size_t *count)
 {
-	if (changesets->allocated == changesets->count) {
-		xfrin_changeset_t *sets = (xfrin_changeset_t *)calloc(
-			changesets->allocated + XFRIN_CHANGESET_STEP,
-			sizeof(xfrin_changeset_t));
-		if (sets == NULL) {
+	rrsets[--(*count)] = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_check_binary_size(uint8_t **data, size_t *allocated,
+                                   size_t required)
+{
+	if (required > *allocated) {
+		size_t new_size = *allocated;
+		while (new_size <= required) {
+			new_size += XFRIN_CHANGESET_BINARY_STEP;
+		}
+		uint8_t *new_data = (uint8_t *)malloc(new_size);
+		if (new_data == NULL) {
 			return KNOT_ENOMEM;
 		}
 
-		memcpy(sets, changesets->sets, changesets->count);
-		xfrin_changeset_t *old_sets = changesets->sets;
-		changesets->sets = sets;
-		changesets->count += XFRIN_CHANGESET_STEP;
-		free(old_sets);
+		memcpy(new_data, *data, *allocated);
+		uint8_t *old_data = *data;
+		*data = new_data;
+		*allocated = new_size;
+		free(old_data);
 	}
 
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_changeset_rrset_to_binary(uint8_t **data, size_t *size,
+                                           size_t *allocated,
+                                           dnslib_rrset_t *rrset)
+{
+	assert(data != NULL);
+	assert(size != NULL);
+	assert(allocated != NULL);
+
+	/*
+	 * In *data, there is the whole changeset in the binary format,
+	 * the actual RRSet will be just appended to it
+	 */
+
+	uint8_t *binary = NULL;
+	size_t actual_size = 0;
+
+	/*! \todo Call function for serializing RRSet. */
+
+	int ret = xfrin_check_binary_size(data, allocated, *size + actual_size);
+	if (ret != KNOT_EOK) {
+		free(binary);
+		return ret;
+	}
+
+	memcpy(*data + *size, binary, actual_size);
+	*size += actual_size;
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+typedef enum {
+	XFRIN_CHANGESET_ADD,
+	XFRIN_CHANGESET_REMOVE
+} xfrin_changeset_part_t;
+
+static int xfrin_changeset_append_rrset(xfrin_changeset_t *changeset,
+                                        dnslib_rrset_t *rrset,
+                                        xfrin_changeset_part_t part)
+{
+	dnslib_rrset_t ***rrsets = NULL;
+	size_t *count = NULL;
+	size_t *allocated = NULL;
+
+	switch (part) {
+	case XFRIN_CHANGESET_ADD:
+		rrsets = &changeset->add;
+		count = &changeset->add_count;
+		allocated = &changeset->add_allocated;
+		break;
+	case XFRIN_CHANGESET_REMOVE:
+		rrsets = &changeset->remove;
+		count = &changeset->remove_count;
+		allocated = &changeset->remove_allocated;
+		break;
+	default:
+		assert(0);
+	}
+
+	assert(rrsets != NULL);
+	assert(count != NULL);
+	assert(allocated != NULL);
+
+	int ret = xfrin_changeset_add_rrset(rrsets, count, allocated, rrset);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = xfrin_changeset_rrset_to_binary(&changeset->data,
+	                                      &changeset->size,
+	                                      &changeset->allocated, rrset);
+	if (ret != KNOT_EOK) {
+		xfrin_changeset_remove_last_rrset(*rrsets, count);
+	}
+
+	return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_changeset_add_soa(xfrin_changeset_t *changeset,
+                                   dnslib_rrset_t *soa,
+                                   xfrin_changeset_part_t part)
+{
+	dnslib_rrset_t **rrset = NULL;
+	uint32_t *serial = NULL;
+
+	switch (part) {
+	case XFRIN_CHANGESET_ADD:
+		changeset->soa_to = soa;
+		changeset->serial_to = dnslib_rdata_soa_serial(
+				dnslib_rrset_rdata(soa));
+		break;
+	case XFRIN_CHANGESET_REMOVE:
+		changeset->soa_from = soa;
+		changeset->serial_from = dnslib_rdata_soa_serial(
+				dnslib_rrset_rdata(soa));
+		break;
+	default:
+		assert(0);
+	}
+
+	/*! \todo Remove return value? */
 	return KNOT_EOK;
 }
 
@@ -683,7 +820,8 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 	while (ret == DNSLIB_EOK && rr != NULL) {
 		if (dnslib_rrset_type(rr) != DNSLIB_RRTYPE_SOA) {
 			debug_xfr("Next RR is not a SOA RR as it should be!\n");
-			goto malformed;
+			ret = KNOT_EMALF;
+			goto cleanup;
 		}
 
 		if (dnslib_rdata_soa_serial(dnslib_rrset_rdata(rr))
@@ -694,11 +832,17 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 
 		if ((ret = xfrin_changesets_check_size(*changesets))
 		     != KNOT_EOK) {
-			return ret;
+			dnslib_rrset_deep_free(&rr, 1, 1, 1);
+			goto cleanup;
 		}
 
 		// save the origin SOA of the remove part
-		(*changesets)->sets[i].soa_from = rr;
+		ret = xfrin_changeset_add_soa(&(*changesets)->sets[i], rr,
+		                              XFRIN_CHANGESET_REMOVE);
+		if (ret != KNOT_EOK) {
+			dnslib_rrset_deep_free(&rr, 1, 1, 1);
+			goto cleanup;
+		}
 
 		ret = dnslib_packet_parse_next_rr_answer(packet, &rr);
 		while (ret == DNSLIB_EOK && rr != NULL) {
@@ -707,13 +851,11 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 			}
 
 			assert(dnslib_rrset_type(rr) != DNSLIB_RRTYPE_SOA);
-			if ((ret = xfrin_changeset_add_rrset(
-			             &((*changesets)->sets[i].add),
-			             &((*changesets)->sets[i].add_count),
-			             &((*changesets)->sets[i].add_allocated),
-			             rr))
-			     != KNOT_EOK) {
-				goto malformed;
+			if ((ret = xfrin_changeset_append_rrset(
+			             &(*changesets)->sets[i], rr,
+			             XFRIN_CHANGESET_ADD)) != KNOT_EOK) {
+				dnslib_rrset_deep_free(&rr, 1, 1, 1);
+				goto cleanup;
 			}
 		}
 
@@ -722,7 +864,12 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 		       && dnslib_rrset_type(rr) == DNSLIB_RRTYPE_SOA);
 
 		// save the origin SOA of the add part
-		(*changesets)->sets[i].soa_to = rr;
+		ret = xfrin_changeset_add_soa(&(*changesets)->sets[i], rr,
+		                              XFRIN_CHANGESET_ADD);
+		if (ret != KNOT_EOK) {
+			dnslib_rrset_deep_free(&rr, 1, 1, 1);
+			goto cleanup;
+		}
 
 		ret = dnslib_packet_parse_next_rr_answer(packet, &rr);
 		while (ret == DNSLIB_EOK && rr != NULL) {
@@ -731,13 +878,11 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 			}
 
 			assert(dnslib_rrset_type(rr) != DNSLIB_RRTYPE_SOA);
-			if ((ret = xfrin_changeset_add_rrset(
-			             &((*changesets)->sets[i].remove),
-			             &((*changesets)->sets[i].remove_count),
-			             &((*changesets)->sets[i].remove_allocated),
-			             rr))
-			     != KNOT_EOK) {
-				goto malformed;
+			if ((ret = xfrin_changeset_append_rrset(
+			             &(*changesets)->sets[i], rr,
+			             XFRIN_CHANGESET_REMOVE)) != KNOT_EOK) {
+				dnslib_rrset_deep_free(&rr, 1, 1, 1);
+				goto cleanup;
 			}
 		}
 
@@ -752,7 +897,8 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 	if (ret != DNSLIB_EOK) {
 		debug_xfr("Could not parse next Answer RR: %s.\n",
 		          dnslib_strerror(ret));
-		goto malformed;
+		ret = KNOT_EMALF;
+		goto cleanup;
 	}
 
 	/*! \todo Replace by checks? */
@@ -761,10 +907,12 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 	assert(dnslib_rdata_soa_serial(dnslib_rrset_rdata(soa1))
 	       == dnslib_rdata_soa_serial(dnslib_rrset_rdata(soa2)));
 
+	dnslib_rrset_deep_free(&soa2, 1, 1, 1);
+
 	return KNOT_EOK;
 
-malformed:
+cleanup:
 	xfrin_free_changesets(changesets);
 	dnslib_packet_free(&packet);
-	return KNOT_EMALF;
+	return ret;
 }
