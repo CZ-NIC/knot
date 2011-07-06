@@ -23,10 +23,12 @@
  */
 typedef struct xfrhandler_t
 {
-	dt_unit_t     *unit;  /*!< \brief Threading unit. */
-	ns_nameserver_t *ns;  /*!< \brief Pointer to nameserver.*/
-	evqueue_t        *q;  /*!< \brief Shared XFR requests queue.*/
-	struct ev_loop *loop; /*!< \brief Event loop. */
+	dt_unit_t      *unit; /*!< \brief Threading unit. */
+	ns_nameserver_t  *ns; /*!< \brief Pointer to nameserver.*/
+	evqueue_t         *q; /*!< \brief Shared XFR requests queue.*/
+	evqueue_t    *bridge; /*!< \brief Thread-safe bridge to ev_loop. */
+	struct ev_loop *loop; /*!< \brief XFR clients event loop. */
+	void (*interrupt)(struct xfrhandler_t *h); /*!< Interrupt handler. */
 } xfrhandler_t;
 
 /*!
@@ -103,18 +105,6 @@ static inline int xfr_join(xfrhandler_t *handler) {
  * \retval KNOT_ERROR on error.
  */
 int xfr_request(xfrhandler_t *handler, ns_xfr_t *req);
-
-/*!
- * \brief Start XFR client transfer.
- *
- * \param handler XFR handler instance.
- * \param req XFR request.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on NULL handler or request.
- * \retval KNOT_ERROR on error.
- */
-int xfr_client_start(xfrhandler_t *handler, ns_xfr_t *req);
 
 /*!
  * \brief XFR master runnable.
