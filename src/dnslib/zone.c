@@ -787,22 +787,11 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 		zone->dname_table = NULL;
 	}
 
+	/* Initialize data. */
+	zone->data = 0;
+	zone->dtor = 0;
+
 	zone->node_count = node_count;
-
-	/* Initialize ACLs. */
-	zone->acl.xfr_out = 0;
-	zone->acl.notify_in = 0;
-	zone->acl.notify_out = 0;
-
-	/* Initialize XFR-IN. */
-	sockaddr_init(&zone->xfr_in.master, -1);
-	zone->xfr_in.timer = 0;
-	zone->xfr_in.expire = 0;
-	zone->xfr_in.ifaces = 0;
-	zone->xfr_in.next_id = -1;
-
-	/* Initialize NOTIFY. */
-	init_list(&zone->notify_pending);
 
 	/* Initialize NSEC3 params */
 	zone->nsec3_params.algorithm = 0;
@@ -1763,9 +1752,10 @@ void dnslib_zone_free(dnslib_zone_t **zone)
 
 	dnslib_nsec3_params_free(&(*zone)->nsec3_params);
 
-	acl_delete(&(*zone)->acl.xfr_out);
-	acl_delete(&(*zone)->acl.notify_in);
-	acl_delete(&(*zone)->acl.notify_out);
+	/* Call zone destructor if exists. */
+	if ((*zone)->dtor) {
+		(*zone)->dtor(*zone);
+	}
 
 	free(*zone);
 	*zone = NULL;
