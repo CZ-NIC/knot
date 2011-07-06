@@ -575,14 +575,6 @@ static int xfrin_allocate_changesets(xfrin_changesets_t **changesets)
 
 /*----------------------------------------------------------------------------*/
 
-static void xfrin_free_changesets(xfrin_changesets_t **changesets)
-{
-	/*! \todo Implement */
-	*changesets = NULL;
-}
-
-/*----------------------------------------------------------------------------*/
-
 static int xfrin_changeset_check_count(dnslib_rrset_t ***rrsets, size_t count,
                                        size_t *allocated)
 {
@@ -766,6 +758,14 @@ static int xfrin_changeset_add_soa(xfrin_changeset_t *changeset,
 
 /*----------------------------------------------------------------------------*/
 
+void xfrin_free_changesets(xfrin_changesets_t **changesets)
+{
+	/*! \todo Implement */
+	*changesets = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
                               xfrin_changesets_t **changesets)
 {
@@ -915,4 +915,21 @@ cleanup:
 	xfrin_free_changesets(changesets);
 	dnslib_packet_free(&packet);
 	return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int xfrin_store_changesets(dnslib_zone_t *zone, const xfrin_changesets_t *src)
+{
+	/*! \todo Implement. */
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int xfr_load_changesets(dnslib_zone_t *zone, xfrin_changesets_t *dst,
+                        int64_t from, int64_t to)
+{
+	/*! \todo Implement. */
+	return KNOT_EOK;
 }

@@ -144,6 +144,8 @@ int xfrin_zone_transferred(ns_nameserver_t *nameserver, dnslib_zone_t *zone);
 int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
                               dnslib_zone_t **zone);
 
+void xfrin_free_changesets(xfrin_changesets_t **changesets);
+
 int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
                               xfrin_changesets_t **changesets);
 
@@ -181,7 +183,7 @@ int xfrin_store_changesets(dnslib_zone_t *zone, const xfrin_changesets_t *src);
  * \retval KNOT_ERANGE when changeset history cannot be reconstructed.
  */
 int xfr_load_changesets(dnslib_zone_t *zone, xfrin_changesets_t *dst,
-			int64_t from, int64_t to);
+                        int64_t from, int64_t to);
 
 #endif /* _KNOT_XFR_IN_H_ */
 
