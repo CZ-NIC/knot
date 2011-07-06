@@ -2654,7 +2654,7 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 		/* Cancel REFRESH/RETRY timer. */
 		event_t *refresh_ev = zone->xfr_in.timer;
 		if (refresh_ev) {
-			fprintf(stderr, "canceling REFRESH timer\n");
+			debug_ns("zone: canceling REFRESH timer\n");
 			evsched_cancel(sched, refresh_ev);
 		}
 
@@ -2673,7 +2673,7 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 			ref_tmr = dnslib_rdata_soa_refresh(soa_rr);
 			ref_tmr *= 1000; /* Convert to miliseconds. */
 
-			fprintf(stderr, "reinstalling REFRESH timer (%u ms)\n",
+			debug_ns("zone: reinstalling REFRESH timer (%u ms)\n",
 				ref_tmr);
 
 			evsched_schedule(sched, refresh_ev, ref_tmr);
