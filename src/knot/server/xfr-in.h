@@ -24,17 +24,33 @@
  *        all data and pointers have to be changeset-exclusive,
  *        or more advanced structure serialization scheme has to be
  *        implemented.
+ *
+ * \todo Preallocation of space for changeset.
  */
 typedef struct {
 	dnslib_rrset_t *soa_from;
 	dnslib_rrset_t **remove;
 	size_t remove_count;
 	size_t remove_allocated;
+
 	dnslib_rrset_t *soa_to;
 	dnslib_rrset_t **add;
 	size_t add_count;
 	size_t add_allocated;
+
+	uint8_t *data;
+	size_t size;
+	size_t allocated;
+	uint32_t serial_from;
+	uint32_t serial_to;
 } xfrin_changeset_t;
+
+//typedef struct {
+//	uint8_t *data;
+//	size_t size;
+//	uint32_t serial_from;
+//	uint32_t serial_to;
+//} xfrin_changeset_t;
 
 typedef struct {
 	xfrin_changeset_t *sets;
