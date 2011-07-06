@@ -84,6 +84,9 @@ static void tcp_noop(struct ev_loop *loop, ev_io *w, int revents)
  */
 static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 {
+	debug_net("tcp: handling TCP event in thread %p.\n",
+		  (void*)pthread_self());
+
 	tcp_io_t *tcp_w = (tcp_io_t *)w;
 	ns_nameserver_t *ns = tcp_w->server->nameserver;
 	xfrhandler_t *xfr_h = tcp_w->server->xfr_h;
@@ -346,7 +349,11 @@ int tcp_loop_master_rr(dthread_t *thread)
 	debug_net("tcp_master: threading unit master with %d workers\n",
 		  thread->unit->size - 1);
 
-	return tcp_loop(thread, handler->fd, tcp_accept_rr);
+	int dupfd = dup(handler->fd);
+	int ret = tcp_loop(thread, dupfd, tcp_accept_rr);
+	close(dupfd);
+
+	return ret;
 }
 
 /*
@@ -397,8 +404,8 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 		return KNOT_ERROR;
 	}
 
-	debug_net("tcp: incoming packet size on %d: %hu buffer size: %zu\n",
-		  fd, pktsize, len);
+	debug_net("tcp: incoming packet size=%hu on fd=%d\n",
+		  pktsize, fd);
 
 	// Check packet size
 	if (len < pktsize) {
@@ -416,6 +423,9 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 		socklen_t alen = addr->len;
 		getpeername(fd, addr->ptr, &alen);
 	}
+
+	debug_net("tcp: received packet size=%hu on fd=%d\n",
+		  pktsize, fd);
 
 	return n;
 }
