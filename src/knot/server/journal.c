@@ -21,6 +21,12 @@ static inline int sfwrite(const void *src, size_t len, FILE *fp)
 	return fwrite(src, len, 1, fp) == 1;
 }
 
+/*! \brief Equality compare function. */
+static inline int journal_cmp_eq(uint64_t k1, uint64_t k2)
+{
+	return k1 - k2;
+}
+
 int journal_create(const char *fn, uint16_t max_nodes)
 {
 	/* Create journal file. */
@@ -167,13 +173,19 @@ journal_t* journal_open(const char *fn, int fslimit)
 	return j;
 }
 
-int journal_fetch(journal_t *journal, int id, const journal_node_t** dst)
+int journal_fetch(journal_t *journal, uint64_t id,
+		  journal_cmp_t cf, journal_node_t** dst)
 {
+	/* Check compare function. */
+	if (!cf) {
+		cf = journal_cmp_eq;
+	}
+
 	/*! \todo Organize journal descriptors in btree? */
 	/*! \todo Or store pointer to last fetch for sequential lookup? */
 	for(uint16_t i = 0; i != journal->max_nodes; ++i) {
 
-		if (journal->nodes[i].id == id) {
+		if (cf(journal->nodes[i].id, id) == 0) {
 			*dst = journal->nodes + i;
 			return KNOT_EOK;
 		}
@@ -182,10 +194,10 @@ int journal_fetch(journal_t *journal, int id, const journal_node_t** dst)
 	return KNOT_ENOENT;
 }
 
-int journal_read(journal_t *journal, int id, char *dst)
+int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst)
 {
-	const journal_node_t *n = 0;
-	if(journal_fetch(journal, id, &n) != 0) {
+	journal_node_t *n = 0;
+	if(journal_fetch(journal, id, cf, &n) != 0) {
 		debug_journal("journal: failed to fetch node with id=%d\n",
 			      id);
 		return KNOT_ENOENT;
@@ -212,7 +224,7 @@ int journal_read(journal_t *journal, int id, char *dst)
 	return KNOT_EOK;
 }
 
-int journal_write(journal_t *journal, int id, const char *src, size_t size)
+int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 {
 	/*! \todo Find key with already existing identifier? */
 
@@ -221,7 +233,7 @@ int journal_write(journal_t *journal, int id, const char *src, size_t size)
 	/* Find next free node. */
 	uint16_t jnext = (journal->qtail + 1) % journal->max_nodes;
 
-	debug_journal("journal: will write id=%d, node=%u, size=%zu, fsize=%zu\n",
+	debug_journal("journal: will write id=%zu, node=%u, size=%zu, fsize=%zu\n",
 		      id, journal->qtail, size, journal->fsize);
 
 	/* Calculate remaining bytes to reach file size limit. */

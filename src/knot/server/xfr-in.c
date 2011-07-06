@@ -11,6 +11,7 @@
 #include "dnslib/error.h"
 #include "knot/other/log.h"
 #include "knot/server/name-server.h"
+#include "knot/server/zones.h"
 #include "dnslib/debug.h"
 
 static const size_t XFRIN_CHANGESET_COUNT = 5;
@@ -91,6 +92,65 @@ static int xfrin_create_query(const dnslib_dname_t *qname, uint16_t qtype,
 static uint32_t xfrin_serial_difference(uint32_t local, uint32_t remote)
 {
 	return (((int64_t)remote - local) % ((int64_t)1 << 32));
+}
+
+/*----------------------------------------------------------------------------*/
+
+/*! \brief Return 'serial_from' part of the key. */
+static inline uint32_t ixfrdb_key_from(uint64_t k)
+{
+	/*      64    32       0
+	 * key = [TO   |   FROM]
+	 * Need: Least significant 32 bits.
+	 */
+	return (uint32_t)(k & ((uint64_t)0x00000000ffffffff));
+}
+
+/*----------------------------------------------------------------------------*/
+
+/*! \brief Return 'serial_to' part of the key. */
+static inline uint32_t ixfrdb_key_to(uint64_t k)
+{
+	/*      64    32       0
+	 * key = [TO   |   FROM]
+	 * Need: Most significant 32 bits.
+	 */
+	return (uint32_t)(k >> (uint64_t)32);
+}
+
+/*----------------------------------------------------------------------------*/
+
+/*! \brief Compare function to match entries with target serial. */
+static inline int ixfrdb_key_to_cmp(uint64_t k, uint64_t to)
+{
+	/*      64    32       0
+	 * key = [TO   |   FROM]
+	 * Need: Most significant 32 bits.
+	 */
+	return ((uint64_t)ixfrdb_key_to(k)) - to;
+}
+
+/*----------------------------------------------------------------------------*/
+
+/*! \brief Compare function to match entries with starting serial. */
+static inline int ixfrdb_key_from_cmp(uint64_t k, uint64_t from)
+{
+	/*      64    32       0
+	 * key = [TO   |   FROM]
+	 * Need: Least significant 32 bits.
+	 */
+	return ((uint64_t)ixfrdb_key_from(k)) - from;
+}
+
+/*----------------------------------------------------------------------------*/
+
+/*! \brief Make key for journal from serials. */
+static inline uint64_t ixfrdb_key_make(uint32_t from, uint32_t to)
+{
+	/*      64    32       0
+	 * key = [TO   |   FROM]
+	 */
+	return (((uint64_t)to) << ((uint64_t)32)) | ((uint64_t)from);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1035,15 +1095,89 @@ cleanup:
 
 int xfrin_store_changesets(dnslib_zone_t *zone, const xfrin_changesets_t *src)
 {
-	/*! \todo Implement. */
+	if (!zone || !src) {
+		return KNOT_EINVAL;
+	}
+	if (!zone->data) {
+		return KNOT_EINVAL;
+	}
+
+	/* Fetch zone-specific data. */
+	zonedata_t *zd = (zonedata_t *)zone->data;
+	if (!zd->ixfr_db) {
+		return KNOT_EINVAL;
+	}
+
+	/* Begin writing to journal. */
+	for (unsigned i = 0; i < src->count; ++i) {
+
+		/* Make key from serials. */
+		xfrin_changeset_t* chs = src->sets + i;
+		uint64_t k = ixfrdb_key_make(chs->serial_from, chs->serial_to);
+
+		/* Write entry. */
+		/*! \todo Check result, sync to zonefile may be needed. */
+		journal_write(zd->ixfr_db, k, (const char*)chs->data, chs->size);
+	}
+
+
 	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
 int xfr_load_changesets(dnslib_zone_t *zone, xfrin_changesets_t *dst,
-                        int64_t from, int64_t to)
+			uint32_t from, uint32_t to)
 {
-	/*! \todo Implement. */
+	if (!zone || !dst) {
+		return KNOT_EINVAL;
+	}
+	if (!zone->data) {
+		return KNOT_EINVAL;
+	}
+
+	/* Fetch zone-specific data. */
+	zonedata_t *zd = (zonedata_t *)zone->data;
+	if (!zd->ixfr_db) {
+		return KNOT_EINVAL;
+	}
+
+	/* Read entries from starting serial until finished. */
+	int ret = 0, i = 0;
+	while(from < to) {
+
+		/* Attempt to find oldest record (from). */
+		journal_node_t *n = 0;
+		ret = journal_fetch(zd->ixfr_db, from, ixfrdb_key_from_cmp, &n);
+		if (ret == KNOT_EOK) {
+			/*! \todo Realloc changesets if needed. */
+			xfrin_changeset_t *chs = dst->sets + i;
+			chs->serial_from = from;
+			chs->serial_to = ixfrdb_key_to(n->id);
+			chs->data = malloc(n->len);
+			/*! \todo Check malloc. */
+			journal_read(zd->ixfr_db, n->id, 0, (char*)chs->data);
+
+			/* Set new begining to entry end. */
+			from = chs->serial_to;
+
+			/* Next changeset. */
+			++i;
+		} else {
+			break;
+		}
+	}
+
+	/* Couldn't find requested history. */
+	if (from < to) {
+		/*! \todo Cleanup or leave partial history in changesets? */
+		return KNOT_ERANGE;
+	}
+
+	/*! Changeset is newer than 'serial_to', what to do? */
+	if (from > to) {
+	}
+
+	/* History reconstructed. */
 	return KNOT_EOK;
 }

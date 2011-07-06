@@ -29,6 +29,15 @@
 #include <stdint.h>
 
 /*!
+ * \brief Entry identifier compare function.
+ *
+ * \retval -n if k1 < k2
+ * \retval +n if k1 > k2
+ * \retval  0 if k1 == k2
+ */
+typedef int (*journal_cmp_t)(uint64_t k1, uint64_t k2);
+
+/*!
  * \brief Journal entry flags.
  */
 typedef enum journal_flag_t {
@@ -46,7 +55,7 @@ typedef enum journal_flag_t {
  */
 typedef struct journal_node_t
 {
-	uint16_t id;    /*!< Node ID. */
+	uint64_t id;    /*!< Node ID. */
 	uint16_t flags; /*!< Node flags. */
 	uint32_t pos;   /*!< Position in journal file. */
 	uint32_t len;   /*!< Entry data length. */
@@ -109,18 +118,21 @@ journal_t* journal_open(const char *fn, int fslimit);
  *
  * \param journal Associated journal.
  * \param id Entry identifier.
+ * \param cf Compare function (NULL for equality).
  * \param dst Destination for journal entry.
  *
  * \retval KNOT_EOK if successful.
  * \retval KNOT_ENOENT if not found.
  */
-int journal_fetch(journal_t *journal, int id, const journal_node_t** dst);
+int journal_fetch(journal_t *journal, uint64_t id,
+		  journal_cmp_t cf, journal_node_t** dst);
 
 /*!
  * \brief Read journal entry data.
  *
  * \param journal Associated journal.
  * \param id Entry identifier.
+ * \param cf Compare function (NULL for equality).
  * \param dst Pointer to destination memory.
  *
  * \retval KNOT_EOK if successful.
@@ -128,7 +140,7 @@ int journal_fetch(journal_t *journal, int id, const journal_node_t** dst);
  * \retval KNOT_EINVAL if the entry is invalid.
  * \retval KNOT_ERROR on I/O error.
  */
-int journal_read(journal_t *journal, int id, char *dst);
+int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst);
 
 /*!
  * \brief Write journal entry data.
@@ -140,7 +152,7 @@ int journal_read(journal_t *journal, int id, char *dst);
  * \retval KNOT_EOK if successful.
  * \retval KNOT_ERROR on I/O error.
  */
-int journal_write(journal_t *journal, int id, const char *src, size_t size);
+int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size);
 
 /*!
  * \brief Close journal file.
