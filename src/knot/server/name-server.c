@@ -3012,6 +3012,14 @@ DEBUG_NS(
 
 /*----------------------------------------------------------------------------*/
 
+int ns_apply_ixfr_changes(dnslib_zone_t *zone, xfrin_changesets_t *chgsets)
+{
+	/*! \todo Apply changes to the zone when they are parsed. */
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int ns_process_ixfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 {
 	/*! \todo Implement me.
@@ -3028,7 +3036,43 @@ int ns_process_ixfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 
 	if (ret > 0) { // transfer finished
 		debug_ns("ns_process_ixfrin: IXFR finished\n");
-		return KNOT_EOK;
+
+		xfrin_changesets_t *chgsets = (xfrin_changesets_t *)xfr->data;
+		if (chgsets == NULL || chgsets->count == 0) {
+			// nothing to be done??
+			return KNOT_EOK;
+		}
+
+		// find zone associated with the changesets
+		dnslib_zone_t *zone = dnslib_zonedb_find_zone(
+		                 nameserver->zone_db,
+		                 dnslib_rrset_owner(chgsets->sets[0].soa_from));
+		if (zone == NULL) {
+			debug_ns("No zone found for incoming IXFR!\n");
+			xfrin_free_changesets(
+				(xfrin_changesets_t **)(&xfr->data));
+			return KNOT_ENOENT;  /*! \todo Other error code? */
+		}
+
+		ret = xfrin_store_changesets(zone, chgsets);
+		if (ret != KNOT_EOK) {
+			debug_ns("Failed to save changesets to journal.\n");
+			xfrin_free_changesets(
+				(xfrin_changesets_t **)(&xfr->data));
+			return ret;
+		}
+
+		ret = ns_apply_ixfr_changes(zone, chgsets);
+		if (ret != KNOT_EOK) {
+			debug_ns("Failed to apply changes to the zone.");
+			// left the changes to be applied later..?
+			// they are already stored
+		}
+
+		// we may free the changesets, they are stored and maybe applied
+		xfrin_free_changesets((xfrin_changesets_t **)(&xfr->data));
+
+		return ret;
 	} else {
 		return ret;
 	}
