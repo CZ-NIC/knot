@@ -78,7 +78,7 @@ typedef struct journal_t
 /*
  * Journal defaults and constants.
  */
-#define JOURNAL_NCOUNT 512 /*!< Default node count. */
+#define JOURNAL_NCOUNT 1024 /*!< Default node count. */
 #define JOURNAL_HSIZE (sizeof(uint16_t) * 3) /*!< max_entries, qhead, qtail */
 
 /*!
@@ -147,7 +147,8 @@ int journal_write(journal_t *journal, int id, const char *src, size_t size);
  *
  * \param journal Associated journal.
  *
- * \retval KNOT_EOK
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameter.
  */
 int journal_close(journal_t *journal);
 
