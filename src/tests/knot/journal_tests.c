@@ -65,7 +65,7 @@ static int journal_tests_run(int argc, char *argv[])
 
 	/* Test 5: Read entry from log. */
 	char tmpbuf[64] = {'\0'};
-	ret = journal_read(j, 0x0a, tmpbuf);
+	ret = journal_read(j, 0x0a, 0, tmpbuf);
 	ok(ret == KNOT_EOK, "journal: read entry");
 
 	/* Test 6: Compare read data. */
@@ -95,7 +95,7 @@ static int journal_tests_run(int argc, char *argv[])
 
 	/* Test 8: Check data integrity. */
 	memset(tmpbuf, 0, sizeof(tmpbuf));
-	journal_read(j, chk_key, tmpbuf);
+	journal_read(j, chk_key, 0, tmpbuf);
 	ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
 	ok(ret == 0, "journal: read data integrity check");
 
@@ -103,7 +103,7 @@ static int journal_tests_run(int argc, char *argv[])
 	memset(tmpbuf, 0, sizeof(tmpbuf));
 	journal_close(j);
 	j = journal_open(jfilename, fsize);
-	journal_read(j, chk_key, tmpbuf);
+	journal_read(j, chk_key, 0, tmpbuf);
 	ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
 	ok(ret == 0, "journal: read data integrity check after close/open");
 

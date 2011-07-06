@@ -64,8 +64,7 @@ static int zonedata_init(conf_zone_t *cfg, dnslib_zone_t *zone)
 	/* Initialize IXFR database. */
 	zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit);
 	if (!zd->ixfr_db) {
-		journal_create(cfg->ixfr_db, JOURNAL_NCOUNT);
-		zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit);
+
 	}
 
 	/* Set and install destructor. */
