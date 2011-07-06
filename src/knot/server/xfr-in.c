@@ -760,7 +760,38 @@ static int xfrin_changeset_add_soa(xfrin_changeset_t *changeset,
 
 void xfrin_free_changesets(xfrin_changesets_t **changesets)
 {
-	/*! \todo Implement */
+	if (changesets == NULL || *changesets == NULL) {
+		return;
+	}
+
+	assert((*changesets)->allocated >= (*changesets)->count);
+
+	for (int i = 0; i < (*changesets)->count; ++i) {
+		xfrin_changeset_t *ch = &(*changesets)->sets[i];
+
+		assert(ch->add_allocated >= ch->add_count);
+		assert(ch->remove_allocated >= ch->remove_count);
+		assert(ch->allocated >= ch->size);
+
+		int j;
+		for (j = 0; i < ch->add_count; ++j) {
+			dnslib_rrset_deep_free(&ch->add[j], 1, 1, 1);
+		}
+		free(ch->add);
+
+		for (j = 0; i < ch->remove_count; ++j) {
+			dnslib_rrset_deep_free(&ch->add[j], 1, 1, 1);
+		}
+		free(ch->remove);
+
+		dnslib_rrset_deep_free(&ch->soa_from, 1, 1, 1);
+		dnslib_rrset_deep_free(&ch->soa_to, 1, 1, 1);
+
+		free(ch->data);
+	}
+
+	free((*changesets)->sets);
+	free(*changesets);
 	*changesets = NULL;
 }
 
