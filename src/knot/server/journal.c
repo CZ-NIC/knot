@@ -365,6 +365,11 @@ int journal_write(journal_t *journal, int id, const char *src, size_t size)
 
 int journal_close(journal_t *journal)
 {
+	/* Check journal. */
+	if (!journal) {
+		return KNOT_EINVAL;
+	}
+
 	/* Close file. */
 	fclose(journal->fp);
 

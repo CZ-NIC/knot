@@ -93,6 +93,7 @@ typedef struct conf_zone_t {
 	enum dnslib_rr_class cls;    /*!< Zone class (IN or CH). */
 	char *file;                  /*!< Path to a zone file. */
 	char *db;                    /*!< Path to a database file. */
+	char *ixfr_db;               /*!< Path to a IXFR database file. */
 	int  enable_checks;          /*!< Semantic checks for parser.*/
 	int notify_retries;          /*!< NOTIFY query retries. */
 	int notify_timeout;          /*!< Timeout for NOTIFY response (s). */

@@ -28,6 +28,7 @@
 //#include "dnslib/response.h"
 #include "dnslib/consts.h"
 #include "dnslib/packet.h"
+#include "common/sockaddr.h"
 
 struct conf_t;
 struct server_t;
