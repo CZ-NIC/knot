@@ -17,6 +17,54 @@
 #include "dnslib/debug.h"
 
 /*----------------------------------------------------------------------------*/
+
+/*! \brief Zone data destructor function. */
+static int zonedata_destroy(dnslib_zone_t *zone)
+{
+	zonedata_t *zd = (zonedata_t *)zone->data;
+	if (!zd) {
+		return KNOT_EINVAL;
+	}
+
+	acl_delete(&zd->xfr_out);
+	acl_delete(&zd->notify_in);
+	acl_delete(&zd->notify_out);
+
+	free(zd);
+
+	return KNOT_EOK;
+}
+
+/*! \brief Zone data constructor function. */
+static int zonedata_init(dnslib_zone_t *zone)
+{
+	zonedata_t *zd = malloc(sizeof(zonedata_t));
+	if (!zd) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Initialize ACLs. */
+	zd->xfr_out = 0;
+	zd->notify_in = 0;
+	zd->notify_out = 0;
+
+	/* Initialize XFR-IN. */
+	sockaddr_init(&zd->xfr_in.master, -1);
+	zd->xfr_in.timer = 0;
+	zd->xfr_in.expire = 0;
+	zd->xfr_in.ifaces = 0;
+	zd->xfr_in.next_id = -1;
+
+	/* Initialize NOTIFY. */
+	init_list(&zd->notify_pending);
+
+	/* Set and install destructor. */
+	zone->data = zd;
+	zone->dtor = zonedata_destroy;
+
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Return SOA timer value.
  *
@@ -81,18 +129,25 @@ static int zones_axfrin_expire(event_t *e)
 {
 	debug_zones("axfrin: EXPIRE timer event\n");
 	dnslib_zone_t *zone = (dnslib_zone_t *)e->data;
+	if (!zone) {
+		return KNOT_EINVAL;
+	}
+	if (!zone->data) {
+		return KNOT_EINVAL;
+	}
 
 	/* Cancel pending timers. */
-	if (zone->xfr_in.timer) {
-		evsched_cancel(e->caller, zone->xfr_in.timer);
-		evsched_event_free(e->caller, zone->xfr_in.timer);
-		zone->xfr_in.timer = 0;
+	zonedata_t *zd = (zonedata_t *)zone->data;
+	if (zd->xfr_in.timer) {
+		evsched_cancel(e->caller, zd->xfr_in.timer);
+		evsched_event_free(e->caller, zd->xfr_in.timer);
+		zd->xfr_in.timer = 0;
 	}
 
 	/* Delete self. */
 	evsched_event_free(e->caller, e);
-	zone->xfr_in.expire = 0;
-	zone->xfr_in.next_id = -1;
+	zd->xfr_in.expire = 0;
+	zd->xfr_in.next_id = -1;
 
 	/*! \todo Remove zone from database. */
 	return 0;
@@ -105,6 +160,15 @@ static int zones_axfrin_poll(event_t *e)
 {
 	debug_zones("axfrin: REFRESH or RETRY timer event\n");
 	dnslib_zone_t *zone = (dnslib_zone_t *)e->data;
+	if (!zone) {
+		return KNOT_EINVAL;
+	}
+	if (!zone->data) {
+		return KNOT_EINVAL;
+	}
+
+	/* Cancel pending timers. */
+	zonedata_t *zd = (zonedata_t *)zone->data;
 
 	/* Get zone dname. */
 	const dnslib_node_t *apex = dnslib_zone_apex(zone);
@@ -116,11 +180,11 @@ static int zones_axfrin_poll(event_t *e)
 
 	/* Create query. */
 	int ret = xfrin_create_soa_query(dname, qbuf, &buflen);
-	if (ret == KNOT_EOK && zone->xfr_in.ifaces) {
+	if (ret == KNOT_EOK && zd->xfr_in.ifaces) {
 
 		int sock = -1;
 		iface_t *i = 0;
-		sockaddr_t *master = &zone->xfr_in.master;
+		sockaddr_t *master = &zd->xfr_in.master;
 
 		/*! \todo Bind to random port? xfr_master should then use some
 		 *        polling mechanisms to handle incoming events along
@@ -131,7 +195,7 @@ static int zones_axfrin_poll(event_t *e)
 		rcu_read_lock();
 
 		/* Find suitable interface. */
-		WALK_LIST(i, **zone->xfr_in.ifaces) {
+		WALK_LIST(i, **zd->xfr_in.ifaces) {
 			if (i->type[UDP_ID] == master->family) {
 				sock = i->fd[UDP_ID];
 				break;
@@ -150,16 +214,16 @@ static int zones_axfrin_poll(event_t *e)
 
 		/* Store ID of the awaited response. */
 		if (ret == buflen) {
-			zone->xfr_in.next_id = dnslib_wire_get_id(qbuf);
+			zd->xfr_in.next_id = dnslib_wire_get_id(qbuf);
 			debug_zones("axfrin: expecting SOA response ID=%d\n",
-				    zone->xfr_in.next_id);
+				    zd->xfr_in.next_id);
 		}
 	}
 
 	/* Schedule EXPIRE timer on first attempt. */
-	if (!zone->xfr_in.expire) {
+	if (!zd->xfr_in.expire) {
 		uint32_t expire_tmr = zones_soa_expire(zone);
-		zone->xfr_in.expire = evsched_schedule_cb(
+		zd->xfr_in.expire = evsched_schedule_cb(
 					      e->caller,
 					      zones_axfrin_expire,
 					      zone, expire_tmr);
@@ -181,6 +245,12 @@ static int zones_notify_send(event_t *e)
 {
 	notify_ev_t *ev = (notify_ev_t *)e->data;
 	dnslib_zone_t *zone = ev->zone;
+	if (!zone) {
+		return KNOT_EINVAL;
+	}
+	if (!zone->data) {
+		return KNOT_EINVAL;
+	}
 
 	debug_zones("notify: NOTIFY timer event\n");
 
@@ -189,8 +259,9 @@ static int zones_notify_send(event_t *e)
 	size_t buflen = SOCKET_MTU_SZ;
 
 	/* Create query. */
+	zonedata_t *zd = (zonedata_t *)zone->data;
 	int ret = notify_create_request(zone, qbuf, &buflen);
-	if (ret == KNOT_EOK && zone->xfr_in.ifaces) {
+	if (ret == KNOT_EOK && zd->xfr_in.ifaces) {
 
 		/*! \todo Bind to random port? See zones_axfrin_poll(). */
 
@@ -200,7 +271,7 @@ static int zones_notify_send(event_t *e)
 		/* Find suitable interface. */
 		int sock = -1;
 		iface_t *i = 0;
-		WALK_LIST(i, **zone->xfr_in.ifaces) {
+		WALK_LIST(i, **zd->xfr_in.ifaces) {
 			if (i->type[UDP_ID] == ev->addr.family) {
 				sock = i->fd[UDP_ID];
 				break;
@@ -254,25 +325,28 @@ static int zones_notify_send(event_t *e)
  */
 void zones_timers_update(dnslib_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 {
+	/* Fetch zone data. */
+	zonedata_t *zd = (zonedata_t *)zone->data;
+
 	/* Check AXFR-IN master server. */
-	if (zone->xfr_in.master.ptr) {
+	if (zd->xfr_in.master.ptr) {
 
 		/* Schedule REFRESH timer. */
 		uint32_t refresh_tmr = zones_soa_refresh(zone);
-		zone->xfr_in.timer = evsched_schedule_cb(sch, zones_axfrin_poll,
+		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_axfrin_poll,
 							 zone, refresh_tmr);
 
 		/* Cancel EXPIRE timer. */
-		if (zone->xfr_in.expire) {
-			evsched_cancel(sch, zone->xfr_in.expire);
-			evsched_event_free(sch, zone->xfr_in.expire);
-			zone->xfr_in.expire = 0;
+		if (zd->xfr_in.expire) {
+			evsched_cancel(sch, zd->xfr_in.expire);
+			evsched_event_free(sch, zd->xfr_in.expire);
+			zd->xfr_in.expire = 0;
 		}
 	}
 
 	/* Remove list of pending NOTIFYs. */
 	node *n = 0, *nxt = 0;
-	WALK_LIST_DELSAFE(n, nxt, zone->notify_pending) {
+	WALK_LIST_DELSAFE(n, nxt, zd->notify_pending) {
 		notify_ev_t *ev = (notify_ev_t *)n;
 		rem_node(n);
 		evsched_cancel(sch, ev->timer);
@@ -316,7 +390,7 @@ void zones_timers_update(dnslib_zone_t *zone, conf_zone_t *cfzone, evsched_t *sc
 
 		/* Schedule request (30 - 60s random delay). */
 		int tmr_s = 30 + (int)(30.0 * (rand() / (RAND_MAX + 1.0)));
-		add_tail(&zone->notify_pending, &ev->n);
+		add_tail(&zd->notify_pending, &ev->n);
 		ev->timer = evsched_schedule_cb(sch, zones_notify_send, ev,
 						tmr_s * 1000);
 
@@ -505,6 +579,10 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 				zone = dnslib_zonedb_find_zone(db_new,
 							       zone_name);
 				++inserted;
+
+				/* Initialize zone-related data. */
+				zonedata_init(zone);
+
 			}
 			// unused return value, if not loaded, just continue
 		} else {
@@ -522,20 +600,22 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 
 		// Update ACLs
 		if (zone) {
+			zonedata_t *zd = (zonedata_t *)zone->data;
+
 			debug_zones("Updating zone ACLs.\n");
-			zones_set_acl(&zone->acl.xfr_out, &z->acl.xfr_out);
-			zones_set_acl(&zone->acl.notify_in, &z->acl.notify_in);
-			zones_set_acl(&zone->acl.notify_out, &z->acl.notify_out);
+			zones_set_acl(&zd->xfr_out, &z->acl.xfr_out);
+			zones_set_acl(&zd->notify_in, &z->acl.notify_in);
+			zones_set_acl(&zd->notify_out, &z->acl.notify_out);
 
 			// Update available interfaces
-			zone->xfr_in.ifaces = &ns->server->ifaces;
+			zd->xfr_in.ifaces = &ns->server->ifaces;
 
 			// Update master server address
-			sockaddr_init(&zone->xfr_in.master, -1);
+			sockaddr_init(&zd->xfr_in.master, -1);
 			if (!EMPTY_LIST(z->acl.xfr_in)) {
 				conf_remote_t *r = HEAD(z->acl.xfr_in);
 				conf_iface_t *cfg_if = r->remote;
-				sockaddr_set(&zone->xfr_in.master,
+				sockaddr_set(&zd->xfr_in.master,
 					     cfg_if->family,
 					     cfg_if->address,
 					     cfg_if->port);

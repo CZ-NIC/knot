@@ -2044,13 +2044,23 @@ DEBUG_NS(
 		ns_axfr_send_and_clear(xfr);
 		return KNOT_EOK;
 	}
+
 DEBUG_NS(
 	char *name_str2 = dnslib_dname_to_str(zone->apex->owner);
 	debug_ns("Found zone for QNAME %s\n", name_str2);
 	free(name_str2);
 );
+	/* Check zone data. */
+	zonedata_t *zd = (zonedata_t *)zone->data;
+	if (zd == NULL) {
+		debug_ns("Invalid zone data.\n");
+		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_NOTAUTH);
+		ns_axfr_send_and_clear(xfr);
+		return KNOT_EOK;
+	}
+
 	// Check xfr-out ACL
-	if (acl_match(zone->acl.xfr_out, &xfr->addr) == ACL_DENY) {
+	if (acl_match(zd->xfr_out, &xfr->addr) == ACL_DENY) {
 		debug_ns("Request for AXFR OUT is not authorized.\n");
 		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_REFUSED);
 		ns_axfr_send_and_clear(xfr);
@@ -2460,10 +2470,15 @@ int ns_answer_notify(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 		debug_ns("notify: matching zone not found\n");
 		return KNOT_EINVAL;
 	}
+	if (!zone->data) {
+		debug_ns("notify: invalid zone data\n");
+		return KNOT_EINVAL;
+	}
 
 	/* Check ACL for notify-in. */
+	zonedata_t *zd = (zonedata_t *)zone->data;
 	if (from) {
-		if (acl_match(zone->acl.notify_in, from) == ACL_DENY) {
+		if (acl_match(zd->notify_in, from) == ACL_DENY) {
 			/* rfc1996: Ignore request and report incident. */
 			char straddr[SOCKADDR_STRLEN];
 			sockaddr_tostr(from, straddr, sizeof(straddr));
@@ -2480,16 +2495,16 @@ int ns_answer_notify(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 
 	/* Cancel EXPIRE timer. */
 	evsched_t *sched = nameserver->server->sched;
-	event_t *expire_ev = zone->xfr_in.expire;
+	event_t *expire_ev = zd->xfr_in.expire;
 	if (expire_ev) {
 		debug_ns("notify: canceling EXPIRE timer\n");
 		evsched_cancel(sched, expire_ev);
 		evsched_event_free(sched, expire_ev);
-		zone->xfr_in.expire = 0;
+		zd->xfr_in.expire = 0;
 	}
 
 	/* Cancel REFRESH/RETRY timer. */
-	event_t *refresh_ev = zone->xfr_in.timer;
+	event_t *refresh_ev = zd->xfr_in.timer;
 	if (refresh_ev) {
 		debug_ns("notify: canceling REFRESH timer for XFRIN\n");
 		evsched_cancel(sched, refresh_ev);
@@ -2635,24 +2650,28 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 		if (!zone) {
 			return KNOT_EINVAL;
 		}
+		if (!zone->data) {
+			return KNOT_EINVAL;
+		}
 
 		/* Match ID against awaited. */
+		zonedata_t *zd = (zonedata_t *)zone->data;
 		uint16_t pkt_id = dnslib_packet_id(packet);
-		if ((int)pkt_id != zone->xfr_in.next_id) {
+		if ((int)pkt_id != zd->xfr_in.next_id) {
 			return KNOT_EINVAL;
 		}
 
 		/* Cancel EXPIRE timer. */
 		evsched_t *sched = nameserver->server->sched;
-		event_t *expire_ev = zone->xfr_in.expire;
+		event_t *expire_ev = zd->xfr_in.expire;
 		if (expire_ev) {
 			evsched_cancel(sched, expire_ev);
 			evsched_event_free(sched, expire_ev);
-			zone->xfr_in.expire = 0;
+			zd->xfr_in.expire = 0;
 		}
 
 		/* Cancel REFRESH/RETRY timer. */
-		event_t *refresh_ev = zone->xfr_in.timer;
+		event_t *refresh_ev = zd->xfr_in.timer;
 		if (refresh_ev) {
 			debug_ns("zone: canceling REFRESH timer\n");
 			evsched_cancel(sched, refresh_ev);
@@ -2720,11 +2739,15 @@ int ns_process_notify(ns_nameserver_t *nameserver, sockaddr_t *from,
 	if (!zone) {
 		return KNOT_EINVAL;
 	}
+	if (!zone->data) {
+		return KNOT_EINVAL;
+	}
 
 	/* Match ID against awaited. */
+	zonedata_t *zd = (zonedata_t *)zone->data;
 	uint16_t pkt_id = dnslib_packet_id(packet);
 	notify_ev_t *ev = 0, *match = 0;
-	WALK_LIST(ev, zone->notify_pending) {
+	WALK_LIST(ev, zd->notify_pending) {
 		if ((int)pkt_id == ev->msgid) {
 			match = ev;
 			break;

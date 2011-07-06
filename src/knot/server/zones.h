@@ -18,6 +18,29 @@
 #include "knot/conf/conf.h"
 
 /*!
+ * \brief Zone-related data.
+ */
+typedef struct zonedata_t
+{
+	/*! \brief Access control lists. */
+	acl_t *xfr_out;    /*!< ACL for xfr-out.*/
+	acl_t *notify_in;  /*!< ACL for notify-in.*/
+	acl_t *notify_out; /*!< ACL for notify-out.*/
+
+	/*! \brief XFR-IN scheduler. */
+	struct {
+		list          **ifaces; /*!< List of availabel interfaces. */
+		sockaddr_t     master;  /*!< Master server for xfr-in.*/
+		struct event_t *timer;  /*!< Timer for REFRESH/RETRY. */
+		struct event_t *expire; /*!< Timer for REFRESH. */
+		int next_id;            /*!< ID of the next awaited SOA resp.*/
+	} xfr_in;
+
+	/*! \brief List of pending NOTIFY events. */
+	list notify_pending;
+} zonedata_t;
+
+/*!
  * \brief Update zone database according to configuration.
  *
  * Creates a new database, copies references those zones from the old database
