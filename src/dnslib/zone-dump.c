@@ -1527,7 +1527,7 @@ static void dnslib_rrsig_set_dump_binary(dnslib_rrset_t *rrsig, arg_t *data,
  * \param rrset RRSSet to be dumped.
  * \param data Arguments to be propagated.
  */
-static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, void *data,
+static void dnslib_rrset_dump_binary(const dnslib_rrset_t *rrset, void *data,
                                      int use_ids)
 {
 	FILE *f = (FILE *)((arg_t *)data)->arg1;
