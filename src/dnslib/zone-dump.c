@@ -1312,11 +1312,15 @@ void zone_do_sem_checks(dnslib_zone_t *zone, char do_checks,
 			   (void *)&arguments);
 }
 
-/*!< \todo remove this variable once sure about crc implementation. */
-static crc_t dnslib_dump_crc;
+static crc_t dnslib_dump_crc; /*!< \brief Global CRC variable. */
+/*!
+ * \brief Stream used in serialization - rdata, dname and rrset dump.
+ */
+static uint8_t *dnslib_dump_stream = NULL;
+static uint dnslib_dump_stream_size = 0;
 
-static inline int fwrite_wrapper(const void *src,
-                                 size_t size, size_t n, FILE *fp)
+static inline int fwrite_to_file_crc(const void *src,
+                                     size_t size, size_t n, FILE *fp)
 {
 	int rc = fwrite(src, size, n, fp);
 	if (rc != n) {
@@ -1332,7 +1336,32 @@ static inline int fwrite_wrapper(const void *src,
 
 //	return rc == n;
 	return rc;
+
 }
+
+static inline int fwrite_to_stream(const void *src,
+                                   size_t size, size_t n, FILE *fp)
+{
+	/* Resize the stream */
+	void *tmp = realloc(dnslib_dump_stream,
+		(dnslib_dump_stream_size + (size * n)) * sizeof(uint8_t));
+	if (tmp != NULL) {
+		dnslib_dump_stream = tmp;
+		dnslib_dump_stream_size += (size * n) * sizeof(uint8_t);
+		memcpy(dnslib_dump_stream + dnslib_dump_stream_size, src,
+		       size * n);
+		return DNSLIB_EOK;
+	} else {
+		free(dnslib_dump_stream);
+		dnslib_dump_stream = NULL;
+		dnslib_dump_stream_size = 0;
+		return DNSLIB_ENOMEM;
+	}
+
+}
+
+static int (*fwrite_wrapper)(const void *src,
+                             size_t size, size_t n, FILE *fp);
 
 /*!
  * \brief Dumps dname labels in binary format to given file.
@@ -1800,6 +1829,8 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 		return DNSLIB_EBADARG;
 	}
 
+	fwrite_wrapper = fwrite_to_file_crc;
+
 //	skip_list_t *encloser_list = skip_create_list(compare_pointers);
 	arg_t arguments;
 	/* Memory to be derefenced in the save_node_from_tree function. */
@@ -1929,6 +1960,42 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	fclose(f_crc);
 
 	fclose(f);
+
+	return DNSLIB_EOK;
+}
+
+int dnslib_zdump_rrset_serialize(dnslib_rrset_t *rrset, uint8_t **stream,
+                                 uint *size)
+{
+	/*!< \todo LOCK? might not be thread safe. Probably isn't! */
+	fwrite_wrapper = fwrite_to_stream;
+	if (stream != NULL || *stream != NULL || rrset == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
+	assert(dnslib_dump_stream == NULL);
+	assert(dnslib_dump_stream_size == 0);
+
+	dnslib_rrset_dump_binary(rrset, 0);
+	if (dnslib_dump_stream == NULL) {
+		return DNSLIB_ENOMEM;
+	}
+
+	/* Make a copy of stream. */
+	*stream = malloc(sizeof(uint8_t) * dnslib_dump_stream_size);
+	if (*stream == NULL) {
+		free(dnslib_dump_stream);
+		dnslib_dump_stream = NULL;
+		dnslib_dump_stream_size = 0;
+		return DNSLIB_ENOMEM;
+	}
+
+	memcpy(*stream, dnslib_dump_stream, dnslib_dump_stream_size);
+	*size = dnslib_dump_stream_size;
+
+	free(dnslib_dump_stream);
+	dnslib_dump_stream = NULL;
+	dnslib_dump_stream_size = 0;
 
 	return DNSLIB_EOK;
 }
