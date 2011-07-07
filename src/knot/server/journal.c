@@ -90,7 +90,7 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	return KNOT_EOK;
 }
 
-journal_t* journal_open(const char *fn, int fslimit)
+journal_t* journal_open(const char *fn, int fslimit, uint16_t bflags)
 {
 	/*! \todo Memory mapping may be faster than stdio? */
 
@@ -129,6 +129,7 @@ journal_t* journal_open(const char *fn, int fslimit)
 	j->qhead = j->qtail = 0;
 	j->fp = fp;
 	j->max_nodes = max_nodes;
+	j->bflags = bflags;
 
 	/* Load node queue state. */
 	if (!sfread(&j->qhead, sizeof(uint16_t), fp)) {
@@ -274,9 +275,14 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 
 		/* Evict least recent node if not empty. */
 		journal_node_t *head = journal->nodes + journal->qhead;
-		head->flags = JOURNAL_FREE;
+
+		/* Check if it has been synced to disk. */
+		if (head->flags & JOURNAL_DIRTY) {
+			return KNOT_EAGAIN;
+		}
 
 		/* Write back evicted node. */
+		head->flags = JOURNAL_FREE;
 		fseek(journal->fp, JOURNAL_HSIZE + (journal->qhead + 1) * node_len, SEEK_SET);
 		if (!sfwrite(head, node_len, journal->fp)) {
 			return KNOT_ERROR;
@@ -297,19 +303,12 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 		journal->free.len += head->len;
 	}
 
-	/* Calculate node position in permanent storage. */
-	long jn_fpos = JOURNAL_HSIZE + (journal->qtail + 1) * node_len;
-
 	/* Invalidate node and write back. */
 	n->id = id;
 	n->pos = journal->free.pos;
 	n->len = size;
 	n->flags = JOURNAL_FREE;
-	if (!sfwrite(n, node_len, journal->fp)) {
-		debug_journal("journal: failed to writeback node=%d to %ld\n",
-			      n->id, jn_fpos);
-		return KNOT_ERROR;
-	}
+	journal_update(journal, n);
 
 	/* Write data to permanent storage. */
 	fseek(journal->fp, n->pos, SEEK_SET);
@@ -318,11 +317,8 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 	}
 
 	/* Mark node as valid and write back. */
-	n->flags = JOURNAL_VALID;
-	fseek(journal->fp, jn_fpos, SEEK_SET);
-	if (!sfwrite(n, node_len, journal->fp)) {
-		return KNOT_ERROR;
-	}
+	n->flags = JOURNAL_VALID | journal->bflags;
+	journal_update(journal, n);
 
 	/* Handle free segment on node rotation. */
 	if (journal->qtail > jnext && journal->fslimit == FSLIMIT_INF) {
@@ -371,6 +367,48 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 
 	debug_journal("journal: write finished, nqueue=<%u, %u>\n",
 		      journal->qhead, journal->qtail);
+
+	return KNOT_EOK;
+}
+
+int journal_walk(journal_t *journal, journal_apply_t apply)
+{
+	int ret = KNOT_EOK;
+	size_t i = journal->qhead;
+	for(; i != journal->qtail; i = (i + 1) % journal->max_nodes) {
+		/* Apply function. */
+		ret = apply(journal, journal->nodes + i);
+	}
+
+	return KNOT_EOK;
+}
+
+int journal_update(journal_t *journal, journal_node_t *n)
+{
+	if (!journal || !n) {
+		return KNOT_EINVAL;
+	}
+
+	/* Calculate node offset. */
+	const size_t node_len = sizeof(journal_node_t);
+	size_t i = n - journal->nodes;
+	if (i > journal->max_nodes) {
+		return KNOT_EINVAL;
+	}
+
+	/* Calculate node position in permanent storage. */
+	long jn_fpos = JOURNAL_HSIZE + (i + 1) * node_len;
+
+	debug_journal("journal: syncing journal node=%zu at %ld\n",
+		      i, jn_fpos);
+
+	/* Write back. */
+	fseek(journal->fp, jn_fpos, SEEK_SET);
+	if (!sfwrite(n, node_len, journal->fp)) {
+		debug_journal("journal: failed to writeback node=%d to %ld\n",
+			      n->id, jn_fpos);
+		return KNOT_ERROR;
+	}
 
 	return KNOT_EOK;
 }

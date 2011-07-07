@@ -55,7 +55,7 @@ static int journal_tests_run(int argc, char *argv[])
 	ok(ret == KNOT_EOK, "journal: create journal '%s'", jfilename);
 
 	/* Test 3: Open journal. */
-	journal_t *j = journal_open(jfilename, fsize);
+	journal_t *j = journal_open(jfilename, fsize, 0);
 	ok(j != 0, "journal: open");
 
 	/* Test 4: Write entry to log. */
@@ -102,7 +102,7 @@ static int journal_tests_run(int argc, char *argv[])
 	/* Test 9: Reopen log and re-read value. */
 	memset(tmpbuf, 0, sizeof(tmpbuf));
 	journal_close(j);
-	j = journal_open(jfilename, fsize);
+	j = journal_open(jfilename, fsize, 0);
 	journal_read(j, chk_key, 0, tmpbuf);
 	ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
 	ok(ret == 0, "journal: read data integrity check after close/open");

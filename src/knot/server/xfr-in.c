@@ -2,6 +2,7 @@
 
 #include "knot/server/xfr-in.h"
 
+#include "common/evsched.h"
 #include "knot/common.h"
 #include "knot/other/error.h"
 #include "dnslib/packet.h"
@@ -604,6 +605,7 @@ static int xfrin_changesets_check_size(xfrin_changesets_t *changesets)
 			return KNOT_ENOMEM;
 		}
 
+		/*! \todo realloc() may be more effective. */
 		memcpy(sets, changesets->sets, changesets->count);
 		xfrin_changeset_t *old_sets = changesets->sets;
 		changesets->sets = sets;
@@ -1116,11 +1118,45 @@ int xfrin_store_changesets(dnslib_zone_t *zone, const xfrin_changesets_t *src)
 		uint64_t k = ixfrdb_key_make(chs->serial_from, chs->serial_to);
 
 		/* Write entry. */
-		/*! \todo Check result, sync to zonefile may be needed. */
-		journal_write(zd->ixfr_db, k, (const char*)chs->data, chs->size);
+		int ret = journal_write(zd->ixfr_db, k, (const char*)chs->data,
+					chs->size);
+
+		/* Check for errors. */
+		while (ret != KNOT_EOK) {
+			/* Sync to zonefile may be needed. */
+			if (ret == KNOT_EAGAIN) {
+
+				/* Expire sync timer. */
+				event_t *tmr = zd->ixfr_dbsync;
+
+				/*! \todo Fetch pointer to scheduler,
+				 *	  maybe event should carry it?
+				 */
+				/*
+				if (tmr) {
+					debug_ns("xfrin_store_changesets: "
+						 "requesting IXFR db sync\n");
+					evsched_cancel(sched, tmr);
+
+					/ * Set timer for now. * /
+					evsched_schedule(sched, tmr, 0);
+				}
+				*/
+
+				/*! \todo Wait until synced. */
+
+				/* Attempt to write again. */
+				ret = journal_write(zd->ixfr_db, k,
+						    (const char*)chs->data,
+						    chs->size);
+			} else {
+				/* Other errors. */
+				return ret;
+			}
+		}
 	}
 
-
+	/* Written changesets to journal. */
 	return KNOT_EOK;
 }
 
@@ -1143,26 +1179,38 @@ int xfr_load_changesets(dnslib_zone_t *zone, xfrin_changesets_t *dst,
 	}
 
 	/* Read entries from starting serial until finished. */
-	int ret = 0, i = 0;
+	int ret = KNOT_EOK;
 	while(from < to) {
 
 		/* Attempt to find oldest record (from). */
 		journal_node_t *n = 0;
 		ret = journal_fetch(zd->ixfr_db, from, ixfrdb_key_from_cmp, &n);
 		if (ret == KNOT_EOK) {
-			/*! \todo Realloc changesets if needed. */
-			xfrin_changeset_t *chs = dst->sets + i;
+
+			/* Check changesets size if needed. */
+			++dst->count;
+			xfrin_changesets_check_size(dst);
+
+			/* Initialize changeset. */
+			xfrin_changeset_t *chs = dst->sets + (dst->count - 1);
 			chs->serial_from = from;
 			chs->serial_to = ixfrdb_key_to(n->id);
 			chs->data = malloc(n->len);
-			/*! \todo Check malloc. */
-			journal_read(zd->ixfr_db, n->id, 0, (char*)chs->data);
+			if (!chs->data) {
+				--dst->count;
+				return KNOT_ENOMEM;
+			}
+
+			/* Read journal entry. */
+			ret = journal_read(zd->ixfr_db, n->id,
+					   0, (char*)chs->data);
+			if (ret != KNOT_EOK) {
+				--dst->count;
+				return KNOT_ERROR;
+			}
 
 			/* Set new begining to entry end. */
 			from = chs->serial_to;
-
-			/* Next changeset. */
-			++i;
 		} else {
 			break;
 		}
@@ -1174,8 +1222,11 @@ int xfr_load_changesets(dnslib_zone_t *zone, xfrin_changesets_t *dst,
 		return KNOT_ERANGE;
 	}
 
-	/*! Changeset is newer than 'serial_to', what to do? */
+	/*! \todo Changeset is newer than 'serial_to'. This shouldn't happen. */
 	if (from > to) {
+		debug_xfr("xfr_load_changesets: serial_from is newer than "
+			  "serial_to, invalid data in journal\n");
+		return KNOT_EINVAL;
 	}
 
 	/* History reconstructed. */

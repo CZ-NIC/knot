@@ -19,6 +19,9 @@
 #include "knot/conf/conf.h"
 #include "knot/server/journal.h"
 
+/* Constants. */
+#define IXFR_DBSYNC_TIMEOUT (60*1000) /*!< Database sync timeout = 60s. */
+
 /*!
  * \brief Zone-related data.
  */
@@ -43,6 +46,8 @@ typedef struct zonedata_t
 
 	/*! \brief Zone IXFR history. */
 	journal_t *ixfr_db;
+	struct event_t *ixfr_dbsync;   /*!< Syncing IXFR db to zonefile. */
+	uint32_t zonefile_serial;
 } zonedata_t;
 
 /*!
