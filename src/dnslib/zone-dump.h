@@ -51,7 +51,7 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
  * \retval DNSLIB_ENOMEM on memory error.
  */
 int dnslib_zdump_rrset_serialize(const dnslib_rrset_t *rrset, uint8_t **stream,
-                                 uint *size);
+                                 int *size);
 
 #endif /* _DNSLIB_ZONEDUMP_H_ */
 
