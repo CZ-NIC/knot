@@ -1317,7 +1317,7 @@ static crc_t dnslib_dump_crc; /*!< \brief Global CRC variable. */
  * \brief Stream used in serialization - rdata, dname and rrset dump.
  */
 static uint8_t *dnslib_dump_stream = NULL;
-static uint dnslib_dump_stream_size = 0;
+static int dnslib_dump_stream_size = 0;
 
 static inline int fwrite_to_file_crc(const void *src,
                                      size_t size, size_t n, FILE *fp)
@@ -1392,6 +1392,17 @@ static void dnslib_dname_dump_binary(const dnslib_dname_t *dname, FILE *f)
 	dnslib_labels_dump_binary(dname, f);
 }
 
+/*!< \todo some global variable indicating error! */
+static void dump_dname_with_id(const dnslib_dname_t *dname, FILE *f)
+{
+	uint32_t id = dname->id;
+	fwrite_wrapper(&id, sizeof(id), 1, f);
+	dnslib_dname_dump_binary(dname, f);
+/*	if (!fwrite_wrapper_safe(&dname->id, sizeof(dname->id), 1, f)) {
+		return DNSLIB_ERROR;
+	} */
+}
+
 /*!
  * \brief Dumps given rdata in binary format to given file.
  *
@@ -1437,8 +1448,8 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 				       sizeof(id), 1, f);
 			} else {
 				assert(rdata->items[i].dname->id != 0);
-				dnslib_dname_dump_binary(rdata->items[i].dname,
-				                         f);
+				dump_dname_with_id(rdata->items[i].dname,
+				                   f);
 			}
 
 			/* Write in the zone bit */
@@ -1450,7 +1461,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 				       1, f);
 			}
 
-			if (wildcard) {
+			if (use_ids && wildcard) {
 				fwrite_wrapper((uint8_t *)"\1",
 				       sizeof(uint8_t), 1, f);
 				uint32_t wildcard_id = wildcard->id;
@@ -1522,7 +1533,7 @@ static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, void *data,
 	FILE *f = (FILE *)((arg_t *)data)->arg1;
 
 	if (!use_ids) {
-		dnslib_dname_dump_binary(rrset->owner, f);
+		dump_dname_with_id(rrset->owner, f);
 	}
 
 	fwrite_wrapper(&rrset->type, sizeof(rrset->type), 1, f);
@@ -1792,17 +1803,6 @@ static inline int fwrite_wrapper_safe(const void *src,
 	return rc == n;
 }
 
-/*!< \todo some global variable indicating error! */
-static void dump_dname_with_id(const dnslib_dname_t *dname, FILE *f)
-{
-	uint32_t id = dname->id;
-	fwrite_wrapper(&id, sizeof(id), 1, f);
-	dnslib_dname_dump_binary(dname, f);
-/*	if (!fwrite_wrapper_safe(&dname->id, sizeof(dname->id), 1, f)) {
-		return DNSLIB_ERROR;
-	} */
-}
-
 static void dump_dname_from_tree(struct dname_table_node *node,
 				 void *data)
 {
@@ -1979,7 +1979,7 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 }
 
 int dnslib_zdump_rrset_serialize(const dnslib_rrset_t *rrset, uint8_t **stream,
-                                 uint *size)
+                                 int *size)
 {
 	/*!< \todo LOCK? might not be thread safe. Probably isn't! */
 	fwrite_wrapper = fwrite_to_stream;

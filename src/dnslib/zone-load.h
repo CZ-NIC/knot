@@ -65,6 +65,8 @@ int dnslib_zload_needs_update(zloader_t *loader);
  */
 void dnslib_zload_close(zloader_t *loader);
 
+dnslib_rrset_t *dnslib_zload_rrset_deserialize(uint8_t *stream, uint size);
+
 #endif /* _KNOT_ZONELOAD_H_ */
 
 /*! @} */
