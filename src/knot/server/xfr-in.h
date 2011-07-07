@@ -20,6 +20,44 @@
 #include "dnslib/packet.h"
 #include "knot/server/name-server.h"
 
+/*! \todo Changeset must be serializable/deserializable, so
+ *        all data and pointers have to be changeset-exclusive,
+ *        or more advanced structure serialization scheme has to be
+ *        implemented.
+ *
+ * \todo Preallocation of space for changeset.
+ */
+typedef struct {
+	dnslib_rrset_t *soa_from;
+	dnslib_rrset_t **remove;
+	size_t remove_count;
+	size_t remove_allocated;
+
+	dnslib_rrset_t *soa_to;
+	dnslib_rrset_t **add;
+	size_t add_count;
+	size_t add_allocated;
+
+	uint8_t *data;
+	size_t size;
+	size_t allocated;
+	uint32_t serial_from;
+	uint32_t serial_to;
+} xfrin_changeset_t;
+
+//typedef struct {
+//	uint8_t *data;
+//	size_t size;
+//	uint32_t serial_from;
+//	uint32_t serial_to;
+//} xfrin_changeset_t;
+
+typedef struct {
+	xfrin_changeset_t *sets;
+	size_t count;
+	size_t allocated;
+} xfrin_changesets_t;
+
 /*!
  * \brief Creates normal query for the given zone name and the SOA type.
  *
@@ -105,6 +143,47 @@ int xfrin_zone_transferred(ns_nameserver_t *nameserver, dnslib_zone_t *zone);
  */
 int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
                               dnslib_zone_t **zone);
+
+void xfrin_free_changesets(xfrin_changesets_t **changesets);
+
+int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
+                              xfrin_changesets_t **changesets);
+
+/*!
+ * \brief Store changesets in journal.
+ *
+ * Changesets will be stored on a permanent storage.
+ * Journal may be compacted, resulting in flattening changeset history.
+ *
+ * \param zone Zone associated with the changeset.
+ * \param src Changesets.
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_EAGAIN if journal needs to be synced with zonefile first.
+ */
+int xfrin_store_changesets(dnslib_zone_t *zone, const xfrin_changesets_t *src);
+
+/*!
+ * \brief Load changesets from journal.
+ *
+ * Changesets will be stored on a permanent storage.
+ * Journal may be compacted, resulting in flattening changeset history.
+ *
+ * In case of KNOT_ERANGE error, whole zone content should be sent instead,
+ * as the changeset history cannot be recovered.
+ *
+ * \param zone Zone containing a changeset journal.
+ * \param dst Container to be loaded.
+ * \param from Starting SOA serial (oldest).
+ * \param to Ending SOA serial (newest).
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_ERANGE when changeset history cannot be reconstructed.
+ */
+int xfr_load_changesets(dnslib_zone_t *zone, xfrin_changesets_t *dst,
+			uint32_t from, uint32_t to);
 
 #endif /* _KNOT_XFR_IN_H_ */
 

@@ -2044,13 +2044,23 @@ DEBUG_NS(
 		ns_axfr_send_and_clear(xfr);
 		return KNOT_EOK;
 	}
+
 DEBUG_NS(
 	char *name_str2 = dnslib_dname_to_str(zone->apex->owner);
 	debug_ns("Found zone for QNAME %s\n", name_str2);
 	free(name_str2);
 );
+	/* Check zone data. */
+	zonedata_t *zd = (zonedata_t *)zone->data;
+	if (zd == NULL) {
+		debug_ns("Invalid zone data.\n");
+		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_NOTAUTH);
+		ns_axfr_send_and_clear(xfr);
+		return KNOT_EOK;
+	}
+
 	// Check xfr-out ACL
-	if (acl_match(zone->acl.xfr_out, &xfr->addr) == ACL_DENY) {
+	if (acl_match(zd->xfr_out, &xfr->addr) == ACL_DENY) {
 		debug_ns("Request for AXFR OUT is not authorized.\n");
 		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_REFUSED);
 		ns_axfr_send_and_clear(xfr);
@@ -2460,10 +2470,15 @@ int ns_answer_notify(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 		debug_ns("notify: matching zone not found\n");
 		return KNOT_EINVAL;
 	}
+	if (!zone->data) {
+		debug_ns("notify: invalid zone data\n");
+		return KNOT_EINVAL;
+	}
 
 	/* Check ACL for notify-in. */
+	zonedata_t *zd = (zonedata_t *)zone->data;
 	if (from) {
-		if (acl_match(zone->acl.notify_in, from) == ACL_DENY) {
+		if (acl_match(zd->notify_in, from) == ACL_DENY) {
 			/* rfc1996: Ignore request and report incident. */
 			char straddr[SOCKADDR_STRLEN];
 			sockaddr_tostr(from, straddr, sizeof(straddr));
@@ -2480,16 +2495,16 @@ int ns_answer_notify(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 
 	/* Cancel EXPIRE timer. */
 	evsched_t *sched = nameserver->server->sched;
-	event_t *expire_ev = zone->xfr_in.expire;
+	event_t *expire_ev = zd->xfr_in.expire;
 	if (expire_ev) {
 		debug_ns("notify: canceling EXPIRE timer\n");
 		evsched_cancel(sched, expire_ev);
 		evsched_event_free(sched, expire_ev);
-		zone->xfr_in.expire = 0;
+		zd->xfr_in.expire = 0;
 	}
 
 	/* Cancel REFRESH/RETRY timer. */
-	event_t *refresh_ev = zone->xfr_in.timer;
+	event_t *refresh_ev = zd->xfr_in.timer;
 	if (refresh_ev) {
 		debug_ns("notify: canceling REFRESH timer for XFRIN\n");
 		evsched_cancel(sched, refresh_ev);
@@ -2635,26 +2650,30 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 		if (!zone) {
 			return KNOT_EINVAL;
 		}
+		if (!zone->data) {
+			return KNOT_EINVAL;
+		}
 
 		/* Match ID against awaited. */
+		zonedata_t *zd = (zonedata_t *)zone->data;
 		uint16_t pkt_id = dnslib_packet_id(packet);
-		if ((int)pkt_id != zone->xfr_in.next_id) {
+		if ((int)pkt_id != zd->xfr_in.next_id) {
 			return KNOT_EINVAL;
 		}
 
 		/* Cancel EXPIRE timer. */
 		evsched_t *sched = nameserver->server->sched;
-		event_t *expire_ev = zone->xfr_in.expire;
+		event_t *expire_ev = zd->xfr_in.expire;
 		if (expire_ev) {
 			evsched_cancel(sched, expire_ev);
 			evsched_event_free(sched, expire_ev);
-			zone->xfr_in.expire = 0;
+			zd->xfr_in.expire = 0;
 		}
 
 		/* Cancel REFRESH/RETRY timer. */
-		event_t *refresh_ev = zone->xfr_in.timer;
+		event_t *refresh_ev = zd->xfr_in.timer;
 		if (refresh_ev) {
-			fprintf(stderr, "canceling REFRESH timer\n");
+			debug_ns("zone: canceling REFRESH timer\n");
 			evsched_cancel(sched, refresh_ev);
 		}
 
@@ -2673,7 +2692,7 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 			ref_tmr = dnslib_rdata_soa_refresh(soa_rr);
 			ref_tmr *= 1000; /* Convert to miliseconds. */
 
-			fprintf(stderr, "reinstalling REFRESH timer (%u ms)\n",
+			debug_ns("zone: reinstalling REFRESH timer (%u ms)\n",
 				ref_tmr);
 
 			evsched_schedule(sched, refresh_ev, ref_tmr);
@@ -2720,11 +2739,15 @@ int ns_process_notify(ns_nameserver_t *nameserver, sockaddr_t *from,
 	if (!zone) {
 		return KNOT_EINVAL;
 	}
+	if (!zone->data) {
+		return KNOT_EINVAL;
+	}
 
 	/* Match ID against awaited. */
+	zonedata_t *zd = (zonedata_t *)zone->data;
 	uint16_t pkt_id = dnslib_packet_id(packet);
 	notify_ev_t *ev = 0, *match = 0;
-	WALK_LIST(ev, zone->notify_pending) {
+	WALK_LIST(ev, zd->notify_pending) {
 		if ((int)pkt_id == ev->msgid) {
 			match = ev;
 			break;
@@ -3012,16 +3035,70 @@ DEBUG_NS(
 
 /*----------------------------------------------------------------------------*/
 
+int ns_apply_ixfr_changes(dnslib_zone_t *zone, xfrin_changesets_t *chgsets)
+{
+	/*! \todo Apply changes to the zone when they are parsed. */
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int ns_process_ixfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 {
 	/*! \todo Implement me.
-	 *  - xfr contains partially-built zone or NULL (xfr->data)
+	 *  - xfr contains partially-built IXFR journal entry or NULL
+	 *    (xfr->data)
 	 *  - incoming packet is in xfr->wire
 	 *  - incoming packet size is in xfr->wire_size
 	 *  - signalize caller, that transfer is finished/error (ret. code?)
 	 */
-	debug_ns("ns_process_axfrin: incoming packet\n");
-	return KNOT_EOK;
+	debug_ns("ns_process_ixfrin: incoming packet\n");
+
+	int ret = xfrin_process_ixfr_packet(xfr->wire, xfr->wire_size,
+	                                   (xfrin_changesets_t **)(&xfr->data));
+
+	if (ret > 0) { // transfer finished
+		debug_ns("ns_process_ixfrin: IXFR finished\n");
+
+		xfrin_changesets_t *chgsets = (xfrin_changesets_t *)xfr->data;
+		if (chgsets == NULL || chgsets->count == 0) {
+			// nothing to be done??
+			return KNOT_EOK;
+		}
+
+		// find zone associated with the changesets
+		dnslib_zone_t *zone = dnslib_zonedb_find_zone(
+		                 nameserver->zone_db,
+		                 dnslib_rrset_owner(chgsets->sets[0].soa_from));
+		if (zone == NULL) {
+			debug_ns("No zone found for incoming IXFR!\n");
+			xfrin_free_changesets(
+				(xfrin_changesets_t **)(&xfr->data));
+			return KNOT_ENOENT;  /*! \todo Other error code? */
+		}
+
+		ret = xfrin_store_changesets(zone, chgsets);
+		if (ret != KNOT_EOK) {
+			debug_ns("Failed to save changesets to journal.\n");
+			xfrin_free_changesets(
+				(xfrin_changesets_t **)(&xfr->data));
+			return ret;
+		}
+
+		ret = ns_apply_ixfr_changes(zone, chgsets);
+		if (ret != KNOT_EOK) {
+			debug_ns("Failed to apply changes to the zone.");
+			// left the changes to be applied later..?
+			// they are already stored
+		}
+
+		// we may free the changesets, they are stored and maybe applied
+		xfrin_free_changesets((xfrin_changesets_t **)(&xfr->data));
+
+		return ret;
+	} else {
+		return ret;
+	}
 }
 
 /*----------------------------------------------------------------------------*/

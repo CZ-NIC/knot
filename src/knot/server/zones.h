@@ -13,9 +13,37 @@
 #define _KNOT_ZONES_H_
 
 #include "common/lists.h"
+#include "common/acl.h"
 #include "knot/server/name-server.h"
 #include "dnslib/zonedb.h"
 #include "knot/conf/conf.h"
+#include "knot/server/journal.h"
+
+/*!
+ * \brief Zone-related data.
+ */
+typedef struct zonedata_t
+{
+	/*! \brief Access control lists. */
+	acl_t *xfr_out;    /*!< ACL for xfr-out.*/
+	acl_t *notify_in;  /*!< ACL for notify-in.*/
+	acl_t *notify_out; /*!< ACL for notify-out.*/
+
+	/*! \brief XFR-IN scheduler. */
+	struct {
+		list          **ifaces; /*!< List of availabel interfaces. */
+		sockaddr_t     master;  /*!< Master server for xfr-in.*/
+		struct event_t *timer;  /*!< Timer for REFRESH/RETRY. */
+		struct event_t *expire; /*!< Timer for REFRESH. */
+		int next_id;            /*!< ID of the next awaited SOA resp.*/
+	} xfr_in;
+
+	/*! \brief List of pending NOTIFY events. */
+	list notify_pending;
+
+	/*! \brief Zone IXFR history. */
+	journal_t *ixfr_db;
+} zonedata_t;
 
 /*!
  * \brief Update zone database according to configuration.

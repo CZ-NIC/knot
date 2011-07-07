@@ -18,6 +18,8 @@
 #include "dnslib/zone.h"
 #include "dnslib/packet.h"
 #include "dnslib/zonedb.h"
+#include "common/lists.h"
+#include "common/sockaddr.h"
 
 /*!
  * \brief Pending NOTIFY event.
