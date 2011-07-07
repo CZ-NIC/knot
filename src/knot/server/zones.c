@@ -62,10 +62,23 @@ static int zonedata_init(conf_zone_t *cfg, dnslib_zone_t *zone)
 	init_list(&zd->notify_pending);
 
 	/* Initialize IXFR database. */
-	zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit);
+	zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit,
+				   JOURNAL_DIRTY);
 	if (!zd->ixfr_db) {
-
+		journal_create(cfg->ixfr_db, JOURNAL_NCOUNT);
+		zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit,
+					   JOURNAL_DIRTY);
 	}
+
+	/* Initialize IXFR database syncing event. */
+	zd->ixfr_dbsync = 0;
+
+	/* Set zonefile SOA serial. */
+	const dnslib_rrset_t *soa_rrs = 0;
+	const dnslib_rdata_t *soa_rr = 0;
+	soa_rrs = dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
+	soa_rr = dnslib_rrset_rdata(soa_rrs);
+	zd->zonefile_serial = (uint32_t)dnslib_rdata_soa_serial(soa_rr);
 
 	/* Set and install destructor. */
 	zone->data = zd;
@@ -328,6 +341,60 @@ static int zones_notify_send(event_t *e)
 	return ret;
 }
 
+/*! \brief Function for marking nodes as synced and updated. */
+static int zones_ixfrdb_sync_apply(journal_t *j, journal_node_t *n)
+{
+	/* Check for dirty bit (not synced to permanent storage). */
+	if (n->flags & JOURNAL_DIRTY) {
+
+		/* Remove dirty bit. */
+		n->flags = n->flags & ~JOURNAL_DIRTY;
+
+		/* Sync. */
+		journal_update(j, n);
+	}
+
+	return KNOT_EOK;
+}
+
+/*!
+ * \brief Sync IXFR changesets to zonefile.
+ */
+static int zones_ixfrdb_sync(event_t *e)
+{
+	debug_zones("ixfr_db: SYNC timer event\n");
+	dnslib_zone_t *zone = (dnslib_zone_t *)e->data;
+	if (!zone) {
+		return KNOT_EINVAL;
+	}
+	if (!zone->data) {
+		return KNOT_EINVAL;
+	}
+
+	/* Fetch zone data. */
+	zonedata_t *zd = (zonedata_t *)zone->data;
+
+	/* Latest zone serial. */
+	const dnslib_rrset_t *soa_rrs = 0;
+	const dnslib_rdata_t *soa_rr = 0;
+	soa_rrs = dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
+	soa_rr = dnslib_rrset_rdata(soa_rrs);
+	uint32_t serial_to = (uint32_t)dnslib_rdata_soa_serial(soa_rr);
+
+	/* Check for difference against zonefile serial. */
+	if (zd->zonefile_serial != serial_to) {
+		/*! \todo Save zone to zonefile. */
+
+		/* Update journal entries. */
+		journal_walk(zd->ixfr_db, zones_ixfrdb_sync_apply);
+
+		/* Update zone file serial. */
+		zd->zonefile_serial = serial_to;
+	}
+
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Update timers related to zone.
  *
@@ -405,6 +472,12 @@ void zones_timers_update(dnslib_zone_t *zone, conf_zone_t *cfzone, evsched_t *sc
 
 		debug_zones("notify: scheduled NOTIFY query after %d s to %s\n",
 			    tmr_s, cfg_if->name);
+	}
+
+	/* Schedule IXFR database syncing. */
+	if (!zd->ixfr_dbsync) {
+		zd->ixfr_dbsync = evsched_schedule_cb(sch, zones_ixfrdb_sync,
+						      zone, IXFR_DBSYNC_TIMEOUT);
 	}
 	conf_read_unlock();
 }
