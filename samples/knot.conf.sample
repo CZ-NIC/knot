@@ -97,12 +97,19 @@ zones {
   # Default value: 5
   notify-retries: 5;
 
+  # Timeout for syncing changes from zone database to zonefile
+  # Possible values: <1..INT_MAX> (seconds)
+  # Default value: 1h (1 hour)
+  # It is also possible to suffix with unit size [s/m/h/d]
+  # f.e. 1s = 1 day, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
+  zonefile-sync: 1h;
+
   # File size limit for IXFR journal
-  # Possible values: <-1,...>
-  # Default value: -1 (infinite)
+  # Possible values: <1..INT_MAX>
+  # Default value: N/A (infinite)
   # It is also possible to suffix with unit size [k/M/G]
   # f.e. 1k, 100M, 2G
-  ixfr-fslimit: -1;
+  ixfr-fslimit: 4G;
 
   # Zone entry
   #
@@ -127,6 +134,13 @@ zones {
     # Possible values: <1,...>
     # Default value: 5
     notify-retries: 5;
+
+    # Timeout for syncing changes from zone database to zonefile
+    # Possible values: <1..INT_MAX> (seconds)
+    # Default value: inherited from zones.zonefile-sync
+    # It is also possible to suffix with unit size [s/m/h/d]
+    # f.e. 1s = 1 day, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
+    zonefile-sync: 1h;
 
     # ACL list specification for AXFR/IXFR IN
     xfr-in {
