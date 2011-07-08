@@ -600,6 +600,56 @@ static int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Apply changesets to zone from journal.
+ *
+ * \param zone Specified zone.
+ *
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_EOK on unspecified error.
+ */
+static int zones_journal_apply(dnslib_zone_t *zone)
+{
+	/* Fetch zone. */
+	if (!zone) {
+		return KNOT_EINVAL;
+	}
+	if (!zone->data) {
+		return KNOT_EINVAL;
+	}
+
+	/* Fetch zone data. */
+	zonedata_t *zd = (zonedata_t *)zone->data;
+
+	/* Fetch SOA serial. */
+	const dnslib_rrset_t *soa_rrs = 0;
+	const dnslib_rdata_t *soa_rr = 0;
+	soa_rrs = dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
+	soa_rr = dnslib_rrset_rdata(soa_rrs);
+	uint32_t serial = (uint32_t)dnslib_rdata_soa_serial(soa_rr);
+
+	/* Load all pending changesets. */
+	debug_zones("update_zone: loading all changesets from %u\n", serial);
+	xfrin_changesets_t* chsets = malloc(sizeof(xfrin_changesets_t));
+	memset(chsets, 0, sizeof(xfrin_changesets_t));
+	int ret = xfr_load_changesets(zone, chsets, serial, serial - 1);
+	if (ret == KNOT_EOK || ret == KNOT_ERANGE) {
+
+		/* Apply changesets. */
+		debug_zones("update_zone: applying %u changesets\n",
+			    chsets->count);
+		xfrin_apply_changesets(zone, chsets);
+
+	} else {
+		debug_zones("update_zone: failed to load changesets\n");
+	}
+
+	/* Free changesets and return. */
+	xfrin_free_changesets(&chsets);
+	return ret;
+}
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Fill the new database with zones.
@@ -687,19 +737,23 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 			}
 		}
 
-		// Update ACLs
+		/* Update zone data. */
 		if (zone) {
 			zonedata_t *zd = (zonedata_t *)zone->data;
 
+			/* Apply changesets from journal. */
+			zones_journal_apply(zone);
+
+			/* Update ACLs. */
 			debug_zones("Updating zone ACLs.\n");
 			zones_set_acl(&zd->xfr_out, &z->acl.xfr_out);
 			zones_set_acl(&zd->notify_in, &z->acl.notify_in);
 			zones_set_acl(&zd->notify_out, &z->acl.notify_out);
 
-			// Update available interfaces
+			/* Update available interfaces. */
 			zd->xfr_in.ifaces = &ns->server->ifaces;
 
-			// Update master server address
+			/* Update master server address. */
 			sockaddr_init(&zd->xfr_in.master, -1);
 			if (!EMPTY_LIST(z->acl.xfr_in)) {
 				conf_remote_t *r = HEAD(z->acl.xfr_in);
@@ -710,7 +764,7 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 					     cfg_if->port);
 			}
 
-			// Update events scheduled for zone
+			/* Update events scheduled for zone. */
 			zones_timers_update(zone, z, ns->server->sched);
 		}
 
@@ -757,6 +811,7 @@ static int zones_remove_zones(const list *zone_conf, dnslib_zonedb_t *db_old)
 	}
 	return KNOT_EOK;
 }
+
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
