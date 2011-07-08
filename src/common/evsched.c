@@ -170,6 +170,7 @@ int evsched_schedule(evsched_t *s, event_t *ev, int dt)
 	}
 
 	/* Append to list. */
+	ev->parent = s;
 	if (prev) {
 		insert_node(&ev->n, prev);
 	} else {

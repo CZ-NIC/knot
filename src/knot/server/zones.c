@@ -165,13 +165,13 @@ static int zones_axfrin_expire(event_t *e)
 	/* Cancel pending timers. */
 	zonedata_t *zd = (zonedata_t *)zone->data;
 	if (zd->xfr_in.timer) {
-		evsched_cancel(e->caller, zd->xfr_in.timer);
-		evsched_event_free(e->caller, zd->xfr_in.timer);
+		evsched_cancel(e->parent, zd->xfr_in.timer);
+		evsched_event_free(e->parent, zd->xfr_in.timer);
 		zd->xfr_in.timer = 0;
 	}
 
 	/* Delete self. */
-	evsched_event_free(e->caller, e);
+	evsched_event_free(e->parent, e);
 	zd->xfr_in.expire = 0;
 	zd->xfr_in.next_id = -1;
 
@@ -250,7 +250,7 @@ static int zones_axfrin_poll(event_t *e)
 	if (!zd->xfr_in.expire) {
 		uint32_t expire_tmr = zones_soa_expire(zone);
 		zd->xfr_in.expire = evsched_schedule_cb(
-					      e->caller,
+					      e->parent,
 					      zones_axfrin_expire,
 					      zone, expire_tmr);
 		debug_zones("axfrin: scheduling EXPIRE timer after %u secs\n",
@@ -258,7 +258,7 @@ static int zones_axfrin_poll(event_t *e)
 	}
 
 	/* Reschedule as RETRY timer. */
-	evsched_schedule(e->caller, e, zones_soa_retry(zone));
+	evsched_schedule(e->parent, e, zones_soa_retry(zone));
 	debug_zones("axfrin: RETRY after %u secs\n",
 		    zones_soa_retry(zone) / 1000);
 	return ret;
@@ -329,7 +329,7 @@ static int zones_notify_send(event_t *e)
 	/* Check number of retries. */
 	if (ev->retries == 0) {
 		debug_zones("notify: NOTIFY maximum retry time exceeded\n");
-		evsched_event_free(e->caller, ev->timer);
+		evsched_event_free(e->parent, ev->timer);
 		rem_node(&ev->n);
 		free(ev);
 		return KNOT_EMALF;
@@ -339,7 +339,7 @@ static int zones_notify_send(event_t *e)
 	int retry_tmr = ev->timeout * 1000;
 
 	/* Reschedule. */
-	evsched_schedule(e->caller, e, retry_tmr);
+	evsched_schedule(e->parent, e, retry_tmr);
 	debug_zones("notify: RETRY after %u secs\n",
 		    retry_tmr / 1000);
 	return ret;
@@ -362,9 +362,9 @@ static int zones_ixfrdb_sync_apply(journal_t *j, journal_node_t *n)
 }
 
 /*!
- * \brief Sync IXFR changesets to zonefile.
+ * \brief Sync chagnes in zone to zonefile.
  */
-static int zones_ixfrdb_sync(event_t *e)
+static int zones_zonefile_sync(event_t *e)
 {
 	debug_zones("ixfr_db: SYNC timer event\n");
 	dnslib_zone_t *zone = (dnslib_zone_t *)e->data;
@@ -389,9 +389,11 @@ static int zones_ixfrdb_sync(event_t *e)
 	if (zd->zonefile_serial != serial_to) {
 
 		/* Save zone to zonefile. */
+		conf_read_lock();
 		debug_zones("ixfr_db: syncing '%s' to '%s' (SOA serial %u)\n",
 			   zd->conf->name, zd->conf->file, serial_to);
 		zone_dump_text(zone, zd->conf->file);
+		conf_read_unlock();
 
 		/* Update journal entries. */
 		debug_zones("ixfr_db: unmarking all dirty nodes in journal\n");
@@ -403,6 +405,11 @@ static int zones_ixfrdb_sync(event_t *e)
 	} else {
 		debug_zones("ixfr_db: nothing to sync\n");
 	}
+
+	/* Reschedule. */
+	conf_read_lock();
+	evsched_schedule(e->parent, e, zd->conf->dbsync_timeout * 1000);
+	conf_read_unlock();
 
 	return KNOT_EOK;
 }
@@ -487,9 +494,13 @@ void zones_timers_update(dnslib_zone_t *zone, conf_zone_t *cfzone, evsched_t *sc
 	}
 
 	/* Schedule IXFR database syncing. */
+	int sync_timeout = cfzone->dbsync_timeout * 1000; /* Convert to ms. */
 	if (!zd->ixfr_dbsync) {
-		zd->ixfr_dbsync = evsched_schedule_cb(sch, zones_ixfrdb_sync,
-						      zone, IXFR_DBSYNC_TIMEOUT);
+		zd->ixfr_dbsync = evsched_schedule_cb(sch, zones_zonefile_sync,
+						      zone, sync_timeout);
+	} else {
+		evsched_cancel(sch, zd->ixfr_dbsync);
+		evsched_schedule(sch, zd->ixfr_dbsync, sync_timeout);
 	}
 	conf_read_unlock();
 }
