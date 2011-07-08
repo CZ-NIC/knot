@@ -27,6 +27,9 @@
  */
 typedef struct zonedata_t
 {
+	/*! \brief Shortcut to zone config entry. */
+	conf_zone_t *conf;
+
 	/*! \brief Access control lists. */
 	acl_t *xfr_out;    /*!< ACL for xfr-out.*/
 	acl_t *notify_in;  /*!< ACL for notify-in.*/
