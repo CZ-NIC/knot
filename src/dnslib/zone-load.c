@@ -67,13 +67,13 @@ static inline int fread_safe_from_file(void *dst,
 }
 
 static uint8_t *dnslib_zload_stream = NULL;
-static int dnslib_zload_stream_remaining = 0;
-static int dnslib_zload_stream_size = 0;
+static size_t dnslib_zload_stream_remaining = 0;
+static size_t dnslib_zload_stream_size = 0;
 
 static inline int read_from_stream(void *dst,
                                    size_t size, size_t n, FILE *fp)
 {
-	if (dnslib_zload_stream_remaining - (size * n) < 0) {
+	if (dnslib_zload_stream_remaining < (size * n)) {
 		return 0;
 	}
 
@@ -1056,7 +1056,7 @@ void dnslib_zload_close(zloader_t *loader)
 	free(loader);
 }
 
-dnslib_rrset_t *dnslib_zload_rrset_deserialize(uint8_t *stream, int *size)
+dnslib_rrset_t *dnslib_zload_rrset_deserialize(uint8_t *stream, size_t *size)
 {
 	if (stream == NULL || size == 0) {
 		return NULL;
