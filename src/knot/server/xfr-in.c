@@ -1239,7 +1239,10 @@ int xfrin_store_changesets(dnslib_zone_t *zone, const xfrin_changesets_t *src)
 
 				/* Synchronize. */
 				debug_zones("ixfr_db: forcing zonefile SYNC\n");
-				zones_zonefile_sync(zone);
+				ret = zones_zonefile_sync(zone);
+				if (ret != KNOT_EOK) {
+					continue;
+				}
 
 				/* Reschedule sync timer. */
 				if (tmr) {
@@ -1303,7 +1306,12 @@ int xfr_load_changesets(dnslib_zone_t *zone, xfrin_changesets_t *dst,
 
 		/* Check changesets size if needed. */
 		++dst->count;
-		xfrin_changesets_check_size(dst);
+		ret = xfrin_changesets_check_size(dst);
+		if (ret != KNOT_EOK) {
+			debug_zones("ixfr_db: failed to check changesets size\n");
+			--dst->count;
+			return ret;
+		}
 
 		/* Initialize changeset. */
 		xfrin_changeset_t *chs = dst->sets + (dst->count - 1);
@@ -1319,6 +1327,7 @@ int xfr_load_changesets(dnslib_zone_t *zone, xfrin_changesets_t *dst,
 		ret = journal_read(zd->ixfr_db, n->id,
 				   0, (char*)chs->data);
 		if (ret != KNOT_EOK) {
+			debug_zones("ixfr_db: failed to read data from journal\n");
 			--dst->count;
 			return KNOT_ERROR;
 		}
@@ -1331,7 +1340,11 @@ int xfr_load_changesets(dnslib_zone_t *zone, xfrin_changesets_t *dst,
 	}
 
 	/* Unpack binary data. */
-	xfrin_changesets_from_binary(dst);
+	ret = xfrin_changesets_from_binary(dst);
+	if (ret != KNOT_EOK) {
+		debug_zones("ixfr_db: failed to unpack changesets from binary\n");
+		return ret;
+	}
 
 	/* Check for complete history. */
 	if (to != found_to) {
