@@ -95,6 +95,9 @@ int evqueue_get(evqueue_t *q, event_t *ev)
 		return -1;
 	}
 
+	/* Set parent. */
+	ev->parent = q;
+
 	return 0;
 }
 
