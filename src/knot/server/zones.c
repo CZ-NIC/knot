@@ -1,20 +1,21 @@
 #include <sys/stat.h>
 
-#include "knot/server/zones.h"
-#include "knot/other/error.h"
-#include "knot/conf/conf.h"
-#include "dnslib/zonedb.h"
 #include "common/lists.h"
+#include "dnslib/debug.h"
 #include "dnslib/dname.h"
-#include "dnslib/zone.h"
 #include "dnslib/wire.h"
-#include "knot/other/log.h"
+#include "dnslib/zone-dump-text.h"
 #include "dnslib/zone-load.h"
+#include "dnslib/zone.h"
+#include "dnslib/zonedb.h"
+#include "knot/conf/conf.h"
 #include "knot/other/debug.h"
-#include "knot/server/xfr-in.h"
+#include "knot/other/error.h"
+#include "knot/other/log.h"
 #include "knot/server/notify.h"
 #include "knot/server/server.h"
-#include "dnslib/debug.h"
+#include "knot/server/xfr-in.h"
+#include "knot/server/zones.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -45,6 +46,9 @@ static int zonedata_init(conf_zone_t *cfg, dnslib_zone_t *zone)
 	if (!zd) {
 		return KNOT_ENOMEM;
 	}
+
+	/* Link to config. */
+	zd->conf = cfg;
 
 	/* Initialize ACLs. */
 	zd->xfr_out = 0;
@@ -383,13 +387,21 @@ static int zones_ixfrdb_sync(event_t *e)
 
 	/* Check for difference against zonefile serial. */
 	if (zd->zonefile_serial != serial_to) {
-		/*! \todo Save zone to zonefile. */
+
+		/* Save zone to zonefile. */
+		debug_zones("ixfr_db: syncing '%s' to '%s' (SOA serial %u)\n",
+			   zd->conf->name, zd->conf->file, serial_to);
+		zone_dump_text(zone, zd->conf->file);
 
 		/* Update journal entries. */
+		debug_zones("ixfr_db: unmarking all dirty nodes in journal\n");
 		journal_walk(zd->ixfr_db, zones_ixfrdb_sync_apply);
 
 		/* Update zone file serial. */
+		debug_zones("ixfr_db: new zonefile serial is %u\n", serial_to);
 		zd->zonefile_serial = serial_to;
+	} else {
+		debug_zones("ixfr_db: nothing to sync\n");
 	}
 
 	return KNOT_EOK;
