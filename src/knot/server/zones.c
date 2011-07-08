@@ -615,12 +615,6 @@ static int zones_journal_apply(dnslib_zone_t *zone)
 	if (!zone) {
 		return KNOT_EINVAL;
 	}
-	if (!zone->data) {
-		return KNOT_EINVAL;
-	}
-
-	/* Fetch zone data. */
-	zonedata_t *zd = (zonedata_t *)zone->data;
 
 	/* Fetch SOA serial. */
 	const dnslib_rrset_t *soa_rrs = 0;
