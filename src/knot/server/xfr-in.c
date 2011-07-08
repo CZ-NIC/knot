@@ -1271,7 +1271,7 @@ int xfr_load_changesets(dnslib_zone_t *zone, xfrin_changesets_t *dst,
 	uint32_t found_to = from;
 	journal_node_t *n = 0;
 	int ret = journal_fetch(zd->ixfr_db, from, ixfrdb_key_from_cmp, &n);
-	while(n != 0 && n != journal_tail(zd->ixfr_db)) {
+	while(n != 0 && n != journal_end(zd->ixfr_db)) {
 
 		/* Check for history end. */
 		if (to == found_to) {
@@ -1308,7 +1308,7 @@ int xfr_load_changesets(dnslib_zone_t *zone, xfrin_changesets_t *dst,
 	}
 
 	/* Unpack binary data. */
-	xfr_changesets_from_binary(dst);
+	xfrin_changesets_from_binary(dst);
 
 	/* Check for complete history. */
 	if (to != found_to) {
@@ -1319,7 +1319,7 @@ int xfr_load_changesets(dnslib_zone_t *zone, xfrin_changesets_t *dst,
 	return KNOT_EOK;
 }
 
-int xfrin_apply_changeset(dnslib_zone_t *zone, xfrin_changeset_t *chgset)
+int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 {
 	/*
 	 * Applies one changeset to the zone. Checks if the changeset may be
