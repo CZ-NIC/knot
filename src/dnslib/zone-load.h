@@ -71,13 +71,17 @@ void dnslib_zload_close(zloader_t *loader);
  * \param stream Stream containing serialized RRSet.
  * \param size Size of stream. This variable will contain remaining length of
  *        stream, once the function has ended.
+ * \param rrset Place for created RRSet.
  *
  * \note If RRSet contains RRSIGs, their owners are not copies, but only links
  *       to the owner of RRSet. All RDATA dnames are copied.
  *
- * \return Loaded RRSet on success, NULL otherwise.
+ * \retval DNSLIB_EOK on success.
+ * \retval DNSLIB_EBADAG on wrong arguments.
+ * \retval DNSLIB_EMALF when stream is malformed.
  */
-dnslib_rrset_t *dnslib_zload_rrset_deserialize(uint8_t *stream, size_t *size);
+int dnslib_zload_rrset_deserialize(dnslib_rrset_t **rrset,
+                                   uint8_t *stream, size_t *size);
 
 #endif /* _KNOT_ZONELOAD_H_ */
 
