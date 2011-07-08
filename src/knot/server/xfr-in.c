@@ -906,7 +906,7 @@ static int xfrin_changesets_from_binary(xfrin_changesets_t *chgsets)
 				}
 			}
 
-			rrset = dnslib_zload_rrset_deserialize(&rrset,
+			ret = dnslib_zload_rrset_deserialize(&rrset,
 					chgsets->sets[i].data + parsed, &size);
 			if (ret != DNSLIB_EOK) {
 				return KNOT_EMALF;
