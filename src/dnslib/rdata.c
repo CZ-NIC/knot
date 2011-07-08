@@ -700,7 +700,6 @@ const dnslib_dname_t *dnslib_rdata_get_name(const dnslib_rdata_t *rdata,
 }
 
 /*---------------------------------------------------------------------------*/
-/*! \todo Why int64_t when using dnslib_wire_read_u32() ? */
 int64_t dnslib_rdata_soa_serial(const dnslib_rdata_t *rdata)
 {
 	if (rdata->count < 3) {
