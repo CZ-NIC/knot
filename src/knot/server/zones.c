@@ -911,7 +911,7 @@ int zones_zonefile_sync(dnslib_zone_t *zone)
 	if (serial_ret < 0) {
 		return KNOT_EINVAL;
 	}
-	uint32_t serial = (uint32_t)serial_ret;
+	uint32_t serial_to = (uint32_t)serial_ret;
 
 	/* Check for difference against zonefile serial. */
 	if (zd->zonefile_serial != serial_to) {
