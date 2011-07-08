@@ -77,7 +77,7 @@ void dnslib_zload_close(zloader_t *loader);
  *
  * \return Loaded RRSet on success, NULL otherwise.
  */
-dnslib_rrset_t *dnslib_zload_rrset_deserialize(uint8_t *stream, int *size);
+dnslib_rrset_t *dnslib_zload_rrset_deserialize(uint8_t *stream, size_t *size);
 
 #endif /* _KNOT_ZONELOAD_H_ */
 
