@@ -30,6 +30,9 @@ typedef struct zonedata_t
 	/*! \brief Shortcut to zone config entry. */
 	conf_zone_t *conf;
 
+	/*! \brief Zone data lock for exclusive access. */
+	pthread_mutex_t lock;
+
 	/*! \brief Access control lists. */
 	acl_t *xfr_out;    /*!< ACL for xfr-out.*/
 	acl_t *notify_in;  /*!< ACL for notify-in.*/
@@ -77,6 +80,22 @@ typedef struct zonedata_t
  */
 int zones_update_db_from_config(const conf_t *conf, ns_nameserver_t *ns,
                                dnslib_zonedb_t **db_old);
+
+/*!
+ * \brief Sync zone data back to text zonefile.
+ *
+ * In case when SOA serial of the zonefile differs from the SOA serial of the
+ * loaded zone, zonefile needs to be updated.
+ *
+ * \note Current implementation rewrites the zone file.
+ *
+ * \param zone Evaluated zone.
+ *
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_EINVAL on invalid parameter.
+ * \retval KNOT_ERROR on unspecified error during processing.
+ */
+int zones_zonefile_sync(dnslib_zone_t *zone);
 
 #endif // _KNOT_ZONES_H_
 
