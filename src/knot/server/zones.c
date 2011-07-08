@@ -743,6 +743,9 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 		if (zone) {
 			zonedata_t *zd = (zonedata_t *)zone->data;
 
+			/* Update refs. */
+			zd->conf = z;
+
 			/* Apply changesets from journal. */
 			zones_journal_apply(zone);
 
