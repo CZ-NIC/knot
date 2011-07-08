@@ -1135,24 +1135,33 @@ int xfrin_store_changesets(dnslib_zone_t *zone, const xfrin_changesets_t *src)
 			/* Sync to zonefile may be needed. */
 			if (ret == KNOT_EAGAIN) {
 
-				/* Expire sync timer. */
+				/* Cancel sync timer. */
 				event_t *tmr = zd->ixfr_dbsync;
-
-				/*! \todo Fetch pointer to scheduler,
-				 *	  maybe event should carry it?
-				 */
-				/*
 				if (tmr) {
-					debug_ns("xfrin_store_changesets: "
-						 "requesting IXFR db sync\n");
-					evsched_cancel(sched, tmr);
-
-					/ * Set timer for now. * /
-					evsched_schedule(sched, tmr, 0);
+					debug_zones("ixfr_db: cancelling SYNC "
+						    "timer\n");
+					evsched_cancel(tmr->parent, tmr);
 				}
-				*/
 
-				/*! \todo Wait until synced. */
+				/* Synchronize. */
+				debug_zones("ixfr_db: forcing zonefile SYNC\n");
+				zones_zonefile_sync(zone);
+
+				/* Reschedule sync timer. */
+				if (tmr) {
+					/* Fetch sync timeout. */
+					conf_read_lock();
+					int timeout = zd->conf->dbsync_timeout;
+					timeout *= 1000; /* Convert to ms. */
+					conf_read_unlock();
+
+					/* Reschedule. */
+					debug_zones("ixfr_db: resuming SYNC "
+						    "timer\n");
+					evsched_schedule(tmr->parent, tmr,
+							 timeout);
+
+				}
 
 				/* Attempt to write again. */
 				ret = journal_write(zd->ixfr_db, k,

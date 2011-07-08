@@ -45,7 +45,7 @@ typedef struct event_t {
 	struct timeval tv; /*!< Event scheduled time. */
 	void *data;        /*!< Usable data ptr. */
 	event_cb_t cb;     /*!< Event callback. */
-	void *caller;      /*!< Pointer to caller. */
+	void *parent;      /*!< Pointer to parent (evqueue, scheduler...) */
 } event_t;
 
 /*!

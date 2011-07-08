@@ -37,6 +37,7 @@ static conf_log_map_t *this_logmap = 0;
 %token END INVALID_TOKEN
 %token <t> TEXT
 %token <i> NUM
+%token <i> INTERVAL
 %token <i> BOOL
 
 %token SYSTEM IDENTITY VERSION STORAGE KEY
@@ -48,6 +49,7 @@ static conf_log_map_t *this_logmap = 0;
 %token SEMANTIC_CHECKS
 %token NOTIFY_RETRIES
 %token NOTIFY_TIMEOUT
+%token DBSYNC_TIMEOUT
 %token IXFR_FSLIMIT
 %token XFR_IN
 %token XFR_OUT
@@ -252,6 +254,7 @@ zone_start: TEXT {
    this_zone->notify_timeout = -1; // Default policy applies
    this_zone->notify_retries = -1; // Default policy applies
    this_zone->ixfr_fslimit = -1; // Default policy applies
+   this_zone->dbsync_timeout = -1; // Default policy applies
    this_zone->name = $1;
 
    // Append mising dot to ensure FQDN
@@ -289,6 +292,8 @@ zone:
  | zone zone_acl_list
  | zone FILENAME TEXT ';' { this_zone->file = $3; }
  | zone SEMANTIC_CHECKS BOOL ';' { this_zone->enable_checks = $3; }
+ | zone DBSYNC_TIMEOUT NUM ';' { this_zone->dbsync_timeout = $3; }
+ | zone DBSYNC_TIMEOUT INTERVAL ';' { this_zone->dbsync_timeout = $3; }
  | zone IXFR_FSLIMIT NUM ';' { this_zone->ixfr_fslimit = $3; }
  | zone IXFR_FSLIMIT NUM 'k' ';' { this_zone->ixfr_fslimit = $3 * 1024; } // kB
  | zone IXFR_FSLIMIT NUM 'M' ';' { this_zone->ixfr_fslimit = $3 * 1048576; } // MB
@@ -327,6 +332,14 @@ zones:
 	   new_config->notify_timeout = $3;
        }
    }
+ | zones DBSYNC_TIMEOUT NUM ';' {
+	if ($3 < 1) {
+	   cf_error("zonefile sync timeout must be positive integer");
+       } else {
+	   new_config->dbsync_timeout = $3;
+       }
+ }
+ | zones DBSYNC_TIMEOUT INTERVAL ';' { new_config->dbsync_timeout = $3; }
  ;
 
 log_prios_start: {
