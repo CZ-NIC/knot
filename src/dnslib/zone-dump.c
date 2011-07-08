@@ -1317,7 +1317,7 @@ static crc_t dnslib_dump_crc; /*!< \brief Global CRC variable. */
  * \brief Stream used in serialization - rdata, dname and rrset dump.
  */
 static uint8_t *dnslib_dump_stream = NULL;
-static int dnslib_dump_stream_size = 0;
+static size_t dnslib_dump_stream_size = 0;
 
 static inline int fwrite_to_file_crc(const void *src,
                                      size_t size, size_t n, FILE *fp)
@@ -1979,7 +1979,7 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 }
 
 int dnslib_zdump_rrset_serialize(const dnslib_rrset_t *rrset, uint8_t **stream,
-                                 int *size)
+                                 size_t *size)
 {
 	/*!< \todo LOCK? might not be thread safe. Probably isn't! */
 	fwrite_wrapper = fwrite_to_stream;
