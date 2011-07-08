@@ -1069,7 +1069,10 @@ dnslib_rrset_t *dnslib_zload_rrset_deserialize(uint8_t *stream, int *size)
 
 	dnslib_rrset_t *ret = dnslib_load_rrset(NULL, NULL, 0);
 
-	*size = dnslib_zload_stream_size - dnslib_zload_stream_remaining;
+//	printf("dnslib_zload_stream_size: %d, dnslib_zload_stream_remaning: %d\n",
+//	       dnslib_zload_stream_size, dnslib_zload_stream_remaining);
+
+	*size = dnslib_zload_stream_remaining;
 
 	dnslib_zload_stream = NULL;
 	dnslib_zload_stream_remaining = 0;
