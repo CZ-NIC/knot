@@ -27,6 +27,9 @@ static int zonedata_destroy(dnslib_zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
+	/* Destroy mutex. */
+	pthread_mutex_destroy(&zd->lock);
+
 	acl_delete(&zd->xfr_out);
 	acl_delete(&zd->notify_in);
 	acl_delete(&zd->notify_out);
@@ -49,6 +52,9 @@ static int zonedata_init(conf_zone_t *cfg, dnslib_zone_t *zone)
 
 	/* Link to config. */
 	zd->conf = cfg;
+
+	/* Initialize mutex. */
+	pthread_mutex_init(&zd->lock, 0);
 
 	/* Initialize ACLs. */
 	zd->xfr_out = 0;
@@ -364,9 +370,11 @@ static int zones_ixfrdb_sync_apply(journal_t *j, journal_node_t *n)
 /*!
  * \brief Sync chagnes in zone to zonefile.
  */
-static int zones_zonefile_sync(event_t *e)
+static int zones_zonefile_sync_ev(event_t *e)
 {
 	debug_zones("ixfr_db: SYNC timer event\n");
+
+	/* Fetch zone. */
 	dnslib_zone_t *zone = (dnslib_zone_t *)e->data;
 	if (!zone) {
 		return KNOT_EINVAL;
@@ -378,40 +386,15 @@ static int zones_zonefile_sync(event_t *e)
 	/* Fetch zone data. */
 	zonedata_t *zd = (zonedata_t *)zone->data;
 
-	/* Latest zone serial. */
-	const dnslib_rrset_t *soa_rrs = 0;
-	const dnslib_rdata_t *soa_rr = 0;
-	soa_rrs = dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
-	soa_rr = dnslib_rrset_rdata(soa_rrs);
-	uint32_t serial_to = (uint32_t)dnslib_rdata_soa_serial(soa_rr);
-
-	/* Check for difference against zonefile serial. */
-	if (zd->zonefile_serial != serial_to) {
-
-		/* Save zone to zonefile. */
-		conf_read_lock();
-		debug_zones("ixfr_db: syncing '%s' to '%s' (SOA serial %u)\n",
-			   zd->conf->name, zd->conf->file, serial_to);
-		zone_dump_text(zone, zd->conf->file);
-		conf_read_unlock();
-
-		/* Update journal entries. */
-		debug_zones("ixfr_db: unmarking all dirty nodes in journal\n");
-		journal_walk(zd->ixfr_db, zones_ixfrdb_sync_apply);
-
-		/* Update zone file serial. */
-		debug_zones("ixfr_db: new zonefile serial is %u\n", serial_to);
-		zd->zonefile_serial = serial_to;
-	} else {
-		debug_zones("ixfr_db: nothing to sync\n");
-	}
+	/* Execute zonefile sync. */
+	int ret =  zones_zonefile_sync(zone);
 
 	/* Reschedule. */
 	conf_read_lock();
 	evsched_schedule(e->parent, e, zd->conf->dbsync_timeout * 1000);
 	conf_read_unlock();
 
-	return KNOT_EOK;
+	return ret;
 }
 
 /*!
@@ -496,7 +479,8 @@ void zones_timers_update(dnslib_zone_t *zone, conf_zone_t *cfzone, evsched_t *sc
 	/* Schedule IXFR database syncing. */
 	int sync_timeout = cfzone->dbsync_timeout * 1000; /* Convert to ms. */
 	if (!zd->ixfr_dbsync) {
-		zd->ixfr_dbsync = evsched_schedule_cb(sch, zones_zonefile_sync,
+		zd->ixfr_dbsync = evsched_schedule_cb(sch,
+						      zones_zonefile_sync_ev,
 						      zone, sync_timeout);
 	} else {
 		evsched_cancel(sch, zd->ixfr_dbsync);
@@ -839,6 +823,55 @@ int zones_update_db_from_config(const conf_t *conf, ns_nameserver_t *ns,
 
 	debug_zones("Old database is empty (%p): %s\n", (*db_old)->zones,
 	            skip_is_empty((*db_old)->zones) ? "yes" : "no");
+
+	return KNOT_EOK;
+}
+
+int zones_zonefile_sync(dnslib_zone_t *zone)
+{
+	if (!zone) {
+		return KNOT_EINVAL;
+	}
+	if (!zone->data) {
+		return KNOT_EINVAL;
+	}
+
+	/* Fetch zone data. */
+	zonedata_t *zd = (zonedata_t *)zone->data;
+
+	/* Lock zone data. */
+	pthread_mutex_lock(&zd->lock);
+
+	/* Latest zone serial. */
+	const dnslib_rrset_t *soa_rrs = 0;
+	const dnslib_rdata_t *soa_rr = 0;
+	soa_rrs = dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
+	soa_rr = dnslib_rrset_rdata(soa_rrs);
+	uint32_t serial_to = (uint32_t)dnslib_rdata_soa_serial(soa_rr);
+
+	/* Check for difference against zonefile serial. */
+	if (zd->zonefile_serial != serial_to) {
+
+		/* Save zone to zonefile. */
+		conf_read_lock();
+		debug_zones("ixfr_db: syncing '%s' to '%s' (SOA serial %u)\n",
+			   zd->conf->name, zd->conf->file, serial_to);
+		zone_dump_text(zone, zd->conf->file);
+		conf_read_unlock();
+
+		/* Update journal entries. */
+		debug_zones("ixfr_db: unmarking all dirty nodes in journal\n");
+		journal_walk(zd->ixfr_db, zones_ixfrdb_sync_apply);
+
+		/* Update zone file serial. */
+		debug_zones("ixfr_db: new zonefile serial is %u\n", serial_to);
+		zd->zonefile_serial = serial_to;
+	} else {
+		debug_zones("ixfr_db: nothing to sync\n");
+	}
+
+	/* Unlock zone data. */
+	pthread_mutex_unlock(&zd->lock);
 
 	return KNOT_EOK;
 }
