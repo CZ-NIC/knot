@@ -83,16 +83,20 @@ static int zonedata_init(conf_zone_t *cfg, dnslib_zone_t *zone)
 	/* Initialize IXFR database syncing event. */
 	zd->ixfr_dbsync = 0;
 
+	/* Set and install destructor. */
+	zone->data = zd;
+	zone->dtor = zonedata_destroy;
+
 	/* Set zonefile SOA serial. */
 	const dnslib_rrset_t *soa_rrs = 0;
 	const dnslib_rdata_t *soa_rr = 0;
 	soa_rrs = dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
 	soa_rr = dnslib_rrset_rdata(soa_rrs);
-	zd->zonefile_serial = (uint32_t)dnslib_rdata_soa_serial(soa_rr);
-
-	/* Set and install destructor. */
-	zone->data = zd;
-	zone->dtor = zonedata_destroy;
+	int64_t serial = dnslib_rdata_soa_serial(soa_rr);
+	zd->zonefile_serial = (uint32_t)serial;
+	if (serial < 0) {
+		return KNOT_EINVAL;
+	}
 
 	return KNOT_EOK;
 }
@@ -621,7 +625,11 @@ static int zones_journal_apply(dnslib_zone_t *zone)
 	const dnslib_rdata_t *soa_rr = 0;
 	soa_rrs = dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
 	soa_rr = dnslib_rrset_rdata(soa_rrs);
-	uint32_t serial = (uint32_t)dnslib_rdata_soa_serial(soa_rr);
+	int64_t serial_ret = dnslib_rdata_soa_serial(soa_rr);
+	if (serial_ret < 0) {
+		return KNOT_EINVAL;
+	}
+	uint32_t serial = (uint32_t)serial_ret;
 
 	/* Load all pending changesets. */
 	debug_zones("update_zone: loading all changesets from %u\n", serial);
@@ -896,7 +904,11 @@ int zones_zonefile_sync(dnslib_zone_t *zone)
 	const dnslib_rdata_t *soa_rr = 0;
 	soa_rrs = dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
 	soa_rr = dnslib_rrset_rdata(soa_rrs);
-	uint32_t serial_to = (uint32_t)dnslib_rdata_soa_serial(soa_rr);
+	int64_t serial_ret = dnslib_rdata_soa_serial(soa_rr);
+	if (serial_ret < 0) {
+		return KNOT_EINVAL;
+	}
+	uint32_t serial = (uint32_t)serial_ret;
 
 	/* Check for difference against zonefile serial. */
 	if (zd->zonefile_serial != serial_to) {
