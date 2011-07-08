@@ -1197,54 +1197,51 @@ int xfr_load_changesets(dnslib_zone_t *zone, xfrin_changesets_t *dst,
 	}
 
 	/* Read entries from starting serial until finished. */
-	int ret = KNOT_EOK;
-	while(from < to) {
+	uint32_t found_to = from;
+	journal_node_t *n = 0;
+	int ret = journal_fetch(zd->ixfr_db, from, ixfrdb_key_from_cmp, &n);
+	while(n != 0 && n != journal_tail(zd->ixfr_db)) {
 
-		/* Attempt to find oldest record (from). */
-		journal_node_t *n = 0;
-		ret = journal_fetch(zd->ixfr_db, from, ixfrdb_key_from_cmp, &n);
-		if (ret == KNOT_EOK) {
-
-			/* Check changesets size if needed. */
-			++dst->count;
-			xfrin_changesets_check_size(dst);
-
-			/* Initialize changeset. */
-			xfrin_changeset_t *chs = dst->sets + (dst->count - 1);
-			chs->serial_from = from;
-			chs->serial_to = ixfrdb_key_to(n->id);
-			chs->data = malloc(n->len);
-			if (!chs->data) {
-				--dst->count;
-				return KNOT_ENOMEM;
-			}
-
-			/* Read journal entry. */
-			ret = journal_read(zd->ixfr_db, n->id,
-					   0, (char*)chs->data);
-			if (ret != KNOT_EOK) {
-				--dst->count;
-				return KNOT_ERROR;
-			}
-
-			/* Set new begining to entry end. */
-			from = chs->serial_to;
-		} else {
+		/* Check for history end. */
+		if (to == found_to) {
 			break;
 		}
+
+		/* Check changesets size if needed. */
+		++dst->count;
+		xfrin_changesets_check_size(dst);
+
+		/* Initialize changeset. */
+		xfrin_changeset_t *chs = dst->sets + (dst->count - 1);
+		chs->serial_from = ixfrdb_key_from(n->id);
+		chs->serial_to = ixfrdb_key_to(n->id);
+		chs->data = malloc(n->len);
+		if (!chs->data) {
+			--dst->count;
+			return KNOT_ENOMEM;
+		}
+
+		/* Read journal entry. */
+		ret = journal_read(zd->ixfr_db, n->id,
+				   0, (char*)chs->data);
+		if (ret != KNOT_EOK) {
+			--dst->count;
+			return KNOT_ERROR;
+		}
+
+		/* Next node. */
+		found_to = chs->serial_to;
+		++n;
+
+		/*! \todo Check consistency. */
 	}
 
-	/* Couldn't find requested history. */
-	if (from < to) {
-		/*! \todo Cleanup or leave partial history in changesets? */
+	/* Unpack binary data. */
+	xfr_changesets_from_binary(dst);
+
+	/* Check for complete history. */
+	if (to != found_to) {
 		return KNOT_ERANGE;
-	}
-
-	/*! \todo Changeset is newer than 'serial_to'. This shouldn't happen. */
-	if (from > to) {
-		debug_xfr("xfr_load_changesets: serial_from is newer than "
-			  "serial_to, invalid data in journal\n");
-		return KNOT_EINVAL;
 	}
 
 	/* History reconstructed. */
