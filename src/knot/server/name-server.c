@@ -2023,6 +2023,23 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 
 /*----------------------------------------------------------------------------*/
 
+static int ns_ixfr_from_zone(const dnslib_zone_t *zone, ns_xfr_t *xfr)
+{
+	// 1) check if zone corresponds to the XFR QNAME/SOA
+
+	// 2) retrieve origin serial and target serial
+
+	// 3) load changesets from journal
+
+	// 4) just put the changesets into the response while they fit in
+
+	// 5) when they do not fit, send the packet and continue with another
+
+	return KNOT_ENOTSUP;
+}
+
+/*----------------------------------------------------------------------------*/
+
 static int ns_axfr(const dnslib_zonedb_t *zonedb, ns_xfr_t *xfr)
 {
 	const dnslib_dname_t *qname = dnslib_packet_qname(xfr->response);
@@ -2061,13 +2078,14 @@ DEBUG_NS(
 
 	// Check xfr-out ACL
 	if (acl_match(zd->xfr_out, &xfr->addr) == ACL_DENY) {
-		debug_ns("Request for AXFR OUT is not authorized.\n");
+		debug_ns("Request for IXFR OUT is not authorized.\n");
 		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_REFUSED);
+		/*! \todo Probably rename the function. */
 		ns_axfr_send_and_clear(xfr);
 		socket_close(xfr->session);
 		return KNOT_EOK;
 	} else {
-		debug_ns("Authorized AXFR OUT request.\n");
+		debug_ns("Authorized IXFR OUT request.\n");
 	}
 
 
@@ -2078,8 +2096,14 @@ DEBUG_NS(
 
 static int ns_ixfr(const dnslib_zonedb_t *zonedb, ns_xfr_t *xfr)
 {
+	// 1) check if XFR QNAME and SOA correspond
+	// 2) do all the stuff as in AXFR (finding zone, ACL)
+	// 3) call ns_ixfr_from_zone();
+
 	return KNOT_ENOTSUP;
 }
+
+/*----------------------------------------------------------------------------*/
 
 /*!
  * \brief Wrapper for TCP send.
