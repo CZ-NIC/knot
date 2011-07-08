@@ -174,7 +174,7 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
  * \retval NULL if empty.
  */
 static inline journal_node_t *journal_head(journal_t *journal) {
-	return journal->qhead;
+	return journal->nodes + journal->qhead;
 }
 
 /*!
@@ -186,7 +186,7 @@ static inline journal_node_t *journal_head(journal_t *journal) {
  * \retval NULL if empty.
  */
 static inline journal_node_t *journal_end(journal_t *journal) {
-	return journal->qtail;
+	return journal->nodes +  journal->qtail;
 }
 
 /*!
