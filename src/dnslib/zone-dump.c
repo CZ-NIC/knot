@@ -1312,11 +1312,15 @@ void zone_do_sem_checks(dnslib_zone_t *zone, char do_checks,
 			   (void *)&arguments);
 }
 
-/*!< \todo remove this variable once sure about crc implementation. */
-static crc_t dnslib_dump_crc;
+static crc_t dnslib_dump_crc; /*!< \brief Global CRC variable. */
+/*!
+ * \brief Stream used in serialization - rdata, dname and rrset dump.
+ */
+static uint8_t *dnslib_dump_stream = NULL;
+static int dnslib_dump_stream_size = 0;
 
-static inline int fwrite_wrapper(const void *src,
-                                 size_t size, size_t n, FILE *fp)
+static inline int fwrite_to_file_crc(const void *src,
+                                     size_t size, size_t n, FILE *fp)
 {
 	int rc = fwrite(src, size, n, fp);
 	if (rc != n) {
@@ -1332,7 +1336,32 @@ static inline int fwrite_wrapper(const void *src,
 
 //	return rc == n;
 	return rc;
+
 }
+
+static inline int fwrite_to_stream(const void *src,
+                                   size_t size, size_t n, FILE *fp)
+{
+	/* Resize the stream */
+	void *tmp = realloc(dnslib_dump_stream,
+		(dnslib_dump_stream_size + (size * n)) * sizeof(uint8_t));
+	if (tmp != NULL) {
+		dnslib_dump_stream = tmp;
+		memcpy(dnslib_dump_stream + dnslib_dump_stream_size, src,
+		       size * n);
+		dnslib_dump_stream_size += (size * n) * sizeof(uint8_t);
+		return DNSLIB_EOK;
+	} else {
+		free(dnslib_dump_stream);
+		dnslib_dump_stream = NULL;
+		dnslib_dump_stream_size = 0;
+		return DNSLIB_ENOMEM;
+	}
+
+}
+
+static int (*fwrite_wrapper)(const void *src,
+                             size_t size, size_t n, FILE *fp);
 
 /*!
  * \brief Dumps dname labels in binary format to given file.
@@ -1363,6 +1392,17 @@ static void dnslib_dname_dump_binary(const dnslib_dname_t *dname, FILE *f)
 	dnslib_labels_dump_binary(dname, f);
 }
 
+/*!< \todo some global variable indicating error! */
+static void dump_dname_with_id(const dnslib_dname_t *dname, FILE *f)
+{
+	uint32_t id = dname->id;
+	fwrite_wrapper(&id, sizeof(id), 1, f);
+	dnslib_dname_dump_binary(dname, f);
+/*	if (!fwrite_wrapper_safe(&dname->id, sizeof(dname->id), 1, f)) {
+		return DNSLIB_ERROR;
+	} */
+}
+
 /*!
  * \brief Dumps given rdata in binary format to given file.
  *
@@ -1371,7 +1411,7 @@ static void dnslib_dname_dump_binary(const dnslib_dname_t *dname, FILE *f)
  * \param data Arguments to be propagated.
  */
 static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
-				     uint32_t type, void *data)
+				     uint32_t type, void *data, int use_ids)
 {
 	FILE *f = (FILE *)((arg_t *)data)->arg1;
 	dnslib_rrtype_descriptor_t *desc =
@@ -1396,14 +1436,21 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 			if (rdata->items[i].dname->node != NULL) {
 				wildcard = rdata->items[i].dname->node->owner;
 			}
-			/* Write ID. */
-			debug_dnslib_zload("%s (%p)\n",
-			         dnslib_dname_to_str(rdata->items[i].dname));
-			assert(rdata->items[i].dname->id != 0);
 
-			uint32_t id = rdata->items[i].dname->id;
-			fwrite_wrapper(&id,
-			       sizeof(id), 1, f);
+			if (use_ids) {
+				/* Write ID. */
+				debug_dnslib_zload("%s (%p)\n",
+				    dnslib_dname_to_str(rdata->items[i].dname));
+				assert(rdata->items[i].dname->id != 0);
+
+				uint32_t id = rdata->items[i].dname->id;
+				fwrite_wrapper(&id,
+				       sizeof(id), 1, f);
+			} else {
+				assert(rdata->items[i].dname->id != 0);
+				dump_dname_with_id(rdata->items[i].dname,
+				                   f);
+			}
 
 			/* Write in the zone bit */
 			if (rdata->items[i].dname->node != NULL) {
@@ -1414,7 +1461,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 				       1, f);
 			}
 
-			if (wildcard) {
+			if (use_ids && wildcard) {
 				fwrite_wrapper((uint8_t *)"\1",
 				       sizeof(uint8_t), 1, f);
 				uint32_t wildcard_id = wildcard->id;
@@ -1443,7 +1490,8 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
  * \param rrsig RRSIG to be dumped.
  * \param data Arguments to be propagated.
  */
-static void dnslib_rrsig_set_dump_binary(dnslib_rrset_t *rrsig, arg_t *data)
+static void dnslib_rrsig_set_dump_binary(dnslib_rrset_t *rrsig, arg_t *data,
+                                         int use_ids)
 {
 	debug_dnslib_zdump("Dumping rrset \\w owner: %s\n",
 	                   dnslib_dname_to_str(rrsig->owner));
@@ -1466,10 +1514,11 @@ static void dnslib_rrsig_set_dump_binary(dnslib_rrset_t *rrsig, arg_t *data)
 
 	tmp_rdata = rrsig->rdata;
 	while (tmp_rdata->next != rrsig->rdata) {
-		dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, data);
+		dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, data,
+		                         use_ids);
 		tmp_rdata = tmp_rdata->next;
 	}
-	dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, data);
+	dnslib_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, data, use_ids);
 }
 
 /*!
@@ -1478,9 +1527,14 @@ static void dnslib_rrsig_set_dump_binary(dnslib_rrset_t *rrsig, arg_t *data)
  * \param rrset RRSSet to be dumped.
  * \param data Arguments to be propagated.
  */
-static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, void *data)
+static void dnslib_rrset_dump_binary(const dnslib_rrset_t *rrset, void *data,
+                                     int use_ids)
 {
 	FILE *f = (FILE *)((arg_t *)data)->arg1;
+
+	if (!use_ids) {
+		dump_dname_with_id(rrset->owner, f);
+	}
 
 	fwrite_wrapper(&rrset->type, sizeof(rrset->type), 1, f);
 	fwrite_wrapper(&rrset->rclass, sizeof(rrset->rclass), 1, f);
@@ -1502,16 +1556,16 @@ static void dnslib_rrset_dump_binary(dnslib_rrset_t *rrset, void *data)
 	tmp_rdata = rrset->rdata;
 
 	while (tmp_rdata->next != rrset->rdata) {
-		dnslib_rdata_dump_binary(tmp_rdata, rrset->type, data);
+		dnslib_rdata_dump_binary(tmp_rdata, rrset->type, data, use_ids);
 		tmp_rdata = tmp_rdata->next;
 	}
-	dnslib_rdata_dump_binary(tmp_rdata, rrset->type, data);
+	dnslib_rdata_dump_binary(tmp_rdata, rrset->type, data, use_ids);
 
 	/* This is now obsolete, although I'd rather not use recursion - that
 	 * would probably not work */
 
 	if (rrset->rrsigs != NULL) {
-		dnslib_rrsig_set_dump_binary(rrset->rrsigs, data);
+		dnslib_rrsig_set_dump_binary(rrset->rrsigs, data, use_ids);
 	}
 }
 
@@ -1578,7 +1632,7 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 	do {
 		tmp = (dnslib_rrset_t *)skip_node->value;
-		dnslib_rrset_dump_binary(tmp, data);
+		dnslib_rrset_dump_binary(tmp, data, 1);
 	} while ((skip_node = skip_next(skip_node)) != NULL);
 
 	debug_dnslib_zdump("Position after all rrsets: %ld\n", ftell(f));
@@ -1749,17 +1803,6 @@ static inline int fwrite_wrapper_safe(const void *src,
 	return rc == n;
 }
 
-/*!< \todo some global variable indicating error! */
-static void dump_dname_with_id(const dnslib_dname_t *dname, FILE *f)
-{
-	uint32_t id = dname->id;
-	fwrite_wrapper(&id, sizeof(id), 1, f);
-	dnslib_dname_dump_binary(dname, f);
-/*	if (!fwrite_wrapper_safe(&dname->id, sizeof(dname->id), 1, f)) {
-		return DNSLIB_ERROR;
-	} */
-}
-
 static void dump_dname_from_tree(struct dname_table_node *node,
 				 void *data)
 {
@@ -1799,6 +1842,8 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	if (f == NULL) {
 		return DNSLIB_EBADARG;
 	}
+
+	fwrite_wrapper = fwrite_to_file_crc;
 
 //	skip_list_t *encloser_list = skip_create_list(compare_pointers);
 	arg_t arguments;
@@ -1929,6 +1974,44 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	fclose(f_crc);
 
 	fclose(f);
+
+	return DNSLIB_EOK;
+}
+
+int dnslib_zdump_rrset_serialize(const dnslib_rrset_t *rrset, uint8_t **stream,
+                                 int *size)
+{
+	/*!< \todo LOCK? might not be thread safe. Probably isn't! */
+	fwrite_wrapper = fwrite_to_stream;
+	if (*stream != NULL || rrset == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
+	assert(dnslib_dump_stream == NULL);
+	assert(dnslib_dump_stream_size == 0);
+
+	arg_t arguments;
+	arguments.arg1 = NULL;
+	dnslib_rrset_dump_binary(rrset, &arguments, 0);
+	if (dnslib_dump_stream == NULL) {
+		return DNSLIB_ENOMEM;
+	}
+
+	/* Make a copy of stream. */
+	*stream = malloc(sizeof(uint8_t) * dnslib_dump_stream_size);
+	if (*stream == NULL) {
+		free(dnslib_dump_stream);
+		dnslib_dump_stream = NULL;
+		dnslib_dump_stream_size = 0;
+		return DNSLIB_ENOMEM;
+	}
+
+	memcpy(*stream, dnslib_dump_stream, dnslib_dump_stream_size);
+	*size = dnslib_dump_stream_size;
+
+	free(dnslib_dump_stream);
+	dnslib_dump_stream = NULL;
+	dnslib_dump_stream_size = 0;
 
 	return DNSLIB_EOK;
 }
