@@ -864,6 +864,14 @@ static int xfrin_changesets_from_binary(xfrin_changesets_t *chgsets)
 			if (soa == 0) {
 				assert(dnslib_rrset_type(rrset)
 				       == DNSLIB_RRTYPE_SOA);
+
+				/* in this special case (changesets loaded
+				 * from journal) the SOA serial should already
+				 * be set, check it.
+				 */
+				assert(chgsets->sets[i].serial_from
+				       == dnslib_rdata_soa_serial(
+				              dnslib_rrset_rdata(rrset)));
 				xfrin_changeset_add_soa(
 					&chgsets->sets[i].soa_from,
 					&chgsets->sets[i].serial_from, rrset);
@@ -874,6 +882,13 @@ static int xfrin_changesets_from_binary(xfrin_changesets_t *chgsets)
 			if (soa == 1) {
 				if (dnslib_rrset_type(rrset)
 				    == DNSLIB_RRTYPE_SOA) {
+					/* in this special case (changesets
+					 * loaded from journal) the SOA serial
+					 * should already be set, check it.
+					 */
+					assert(chgsets->sets[i].serial_from
+					       == dnslib_rdata_soa_serial(
+					            dnslib_rrset_rdata(rrset)));
 					xfrin_changeset_add_soa(
 						&chgsets->sets[i].soa_to,
 						&chgsets->sets[i].serial_to,
