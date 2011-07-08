@@ -48,7 +48,6 @@ static int evsched_run(dthread_t *thread)
 
 		/* Process event. */
 		if (ev->type == EVSCHED_CB && ev->cb) {
-			ev->caller = s;
 			ev->cb(ev);
 		} else {
 			evsched_event_free(s, ev);

@@ -224,6 +224,11 @@ static int conf_process(conf_t *conf)
 	WALK_LIST (n, conf->zones) {
 		conf_zone_t *zone = (conf_zone_t*)n;
 
+		// Default policy for dbsync timeout
+		if (zone->dbsync_timeout < 0) {
+			zone->dbsync_timeout = conf->dbsync_timeout;
+		}
+
 		// Default policy for semantic checks
 		if (zone->enable_checks < 0) {
 			zone->enable_checks = conf->zone_checks;
@@ -433,6 +438,7 @@ conf_t *conf_new(const char* path)
 	c->zone_checks = 0;
 	c->notify_retries = CONFIG_NOTIFY_RETRIES;
 	c->notify_timeout = CONFIG_NOTIFY_TIMEOUT;
+	c->dbsync_timeout = CONFIG_DBSYNC_TIMEOUT;
 
 	return c;
 }
