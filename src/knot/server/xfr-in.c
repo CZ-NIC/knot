@@ -1128,20 +1128,15 @@ int xfrin_store_changesets(dnslib_zone_t *zone, const xfrin_changesets_t *src)
 
 				/* Expire sync timer. */
 				event_t *tmr = zd->ixfr_dbsync;
-
-				/*! \todo Fetch pointer to scheduler,
-				 *	  maybe event should carry it?
-				 */
-				/*
 				if (tmr) {
+					evsched_t *sched = (evsched_t*)tmr->parent;
 					debug_ns("xfrin_store_changesets: "
 						 "requesting IXFR db sync\n");
 					evsched_cancel(sched, tmr);
 
-					/ * Set timer for now. * /
+					/* Set timer for now. */
 					evsched_schedule(sched, tmr, 0);
 				}
-				*/
 
 				/*! \todo Wait until synced. */
 

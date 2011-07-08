@@ -26,6 +26,7 @@
 #define CONFIG_DEFAULT_PORT 53
 #define CONFIG_NOTIFY_RETRIES 5  /*!< 5 retries (suggested in RFC1996) */
 #define CONFIG_NOTIFY_TIMEOUT 60 /*!< 60s (suggested in RFC1996) */
+#define CONFIG_DBSYNC_TIMEOUT (60*60) /*!< 1 hour. */
 
 /*!
  * \brief Configuration for the interface
@@ -89,20 +90,21 @@ typedef struct conf_key_t {
  */
 typedef struct conf_zone_t {
 	node n;
-	char *name;                  /*!< Zone name. */
-	enum dnslib_rr_class cls;    /*!< Zone class (IN or CH). */
-	char *file;                  /*!< Path to a zone file. */
-	char *db;                    /*!< Path to a database file. */
-	char *ixfr_db;               /*!< Path to a IXFR database file. */
-	int  enable_checks;          /*!< Semantic checks for parser.*/
-	int notify_retries;          /*!< NOTIFY query retries. */
-	int notify_timeout;          /*!< Timeout for NOTIFY response (s). */
-	int ixfr_fslimit;            /*!< File size limit for IXFR journal. */
+	char *name;               /*!< Zone name. */
+	enum dnslib_rr_class cls; /*!< Zone class (IN or CH). */
+	char *file;               /*!< Path to a zone file. */
+	char *db;                 /*!< Path to a database file. */
+	char *ixfr_db;            /*!< Path to a IXFR database file. */
+	int ixfr_fslimit;         /*!< File size limit for IXFR journal. */
+	int dbsync_timeout;       /*!< Interval between syncing to zonefile.*/
+	int enable_checks;        /*!< Semantic checks for parser.*/
+	int notify_retries;       /*!< NOTIFY query retries. */
+	int notify_timeout;       /*!< Timeout for NOTIFY response (s). */
 	struct {
-		list xfr_in;         /*!< Remotes accepted for for xfr-in.*/
-		list xfr_out;        /*!< Remotes accepted for xfr-out.*/
-		list notify_in;      /*!< Remotes accepted for notify-in.*/
-		list notify_out;     /*!< Remotes accepted for notify-out.*/
+		list xfr_in;      /*!< Remotes accepted for for xfr-in.*/
+		list xfr_out;     /*!< Remotes accepted for xfr-out.*/
+		list notify_in;   /*!< Remotes accepted for notify-in.*/
+		list notify_out;  /*!< Remotes accepted for notify-out.*/
 	} acl;
 } conf_zone_t;
 
@@ -178,6 +180,7 @@ typedef struct conf_t {
 	int zone_checks;  /*!< Semantic checks for parser.*/
 	int notify_retries; /*!< NOTIFY query retries. */
 	int notify_timeout; /*!< Timeout for NOTIFY response in seconds. */
+	int dbsync_timeout; /*!< Default interval between syncing to zonefile.*/
 
 	/*
 	 * Implementation specifics
