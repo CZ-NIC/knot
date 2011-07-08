@@ -166,6 +166,30 @@ int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst);
 int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size);
 
 /*!
+ * \brief Return least recent node (journal head).
+ *
+ * \param journal Associated journal.
+ *
+ * \retval node if successful.
+ * \retval NULL if empty.
+ */
+static inline journal_node_t *journal_head(journal_t *journal) {
+	return journal->qhead;
+}
+
+/*!
+ * \brief Return node after most recent node (journal tail).
+ *
+ * \param journal Associated journal.
+ *
+ * \retval node if successful.
+ * \retval NULL if empty.
+ */
+static inline journal_node_t *journal_end(journal_t *journal) {
+	return journal->qtail;
+}
+
+/*!
  * \brief Apply function to each node.
  *
  * \param journal Associated journal.
