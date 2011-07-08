@@ -852,8 +852,11 @@ static int xfrin_changesets_from_binary(xfrin_changesets_t *chgsets)
 	int ret = 0;
 
 	for (int i = 0; i < chgsets->count; ++i) {
-		rrset = dnslib_zload_rrset_deserialize(
-				chgsets->sets[i].data + parsed, &size);
+		ret = dnslib_zload_rrset_deserialize(&rrset,
+			chgsets->sets[i].data + parsed, &size);
+		if (ret != DNSLIB_EOK) {
+			return KNOT_EMALF;
+		}
 
 		while (rrset != NULL) {
 			parsed += size;
@@ -903,8 +906,11 @@ static int xfrin_changesets_from_binary(xfrin_changesets_t *chgsets)
 				}
 			}
 
-			rrset = dnslib_zload_rrset_deserialize(
+			rrset = dnslib_zload_rrset_deserialize(&rrset,
 					chgsets->sets[i].data + parsed, &size);
+			if (ret != DNSLIB_EOK) {
+				return KNOT_EMALF;
+			}
 		}
 	}
 
@@ -928,6 +934,8 @@ static int xfrin_changesets_to_binary(xfrin_changesets_t *chgsets)
 
 	for (int i = 0; i < chgsets->count; ++i) {
 		xfrin_changeset_t *ch = &chgsets->sets[i];
+		assert(ch->data == NULL);
+		assert(ch->size == 0);
 
 		// 1) origin SOA
 		ret = xfrin_changeset_rrset_to_binary(&ch->data, &ch->size,
@@ -1308,7 +1316,7 @@ int xfr_load_changesets(dnslib_zone_t *zone, xfrin_changesets_t *dst,
 	}
 
 	/* Unpack binary data. */
-	xfr_changesets_from_binary(dst);
+	xfrin_changesets_from_binary(dst);
 
 	/* Check for complete history. */
 	if (to != found_to) {
