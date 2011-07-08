@@ -2074,6 +2074,13 @@ DEBUG_NS(
 	return ns_axfr_from_zone(zone, xfr);
 }
 
+/*----------------------------------------------------------------------------*/
+
+static int ns_ixfr(const dnslib_zonedb_t *zonedb, ns_xfr_t *xfr)
+{
+	return KNOT_ENOTSUP;
+}
+
 /*!
  * \brief Wrapper for TCP send.
  * \todo Implement generic fd pool properly with callbacks.
@@ -2532,16 +2539,18 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	}
 
 	// no need to parse rest of the packet
+	/*! \todo Parse rest of packet because of EDNS. */
 
 	// initialize response packet structure
 	dnslib_packet_t *response = dnslib_packet_new(
 	                               DNSLIB_PACKET_PREALLOC_RESPONSE);
 	if (response == NULL) {
 		log_server_warning("Failed to create packet structure.\n");
+		/*! \todo xfr->wire is not NULL, will fail on assert! */
 		ns_error_response(nameserver, xfr->query->header.id,
 				  DNSLIB_RCODE_SERVFAIL, xfr->wire,
 				  &xfr->wire_size);
-		rcu_read_unlock();
+		/*! \todo Hm, maybe send the packet? ;-) */
 		return KNOT_EOK;
 	}
 
@@ -2549,11 +2558,12 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 
 	if (ret != DNSLIB_EOK) {
 		log_server_warning("Failed to init response structure.\n");
+		/*! \todo xfr->wire is not NULL, will fail on assert! */
 		ns_error_response(nameserver, xfr->query->header.id,
 				  DNSLIB_RCODE_SERVFAIL, xfr->wire,
 				  &xfr->wire_size);
-		rcu_read_unlock();
 		dnslib_packet_free(&response);
+		/*! \todo Hm, maybe send the packet? ;-) */
 		return KNOT_EOK;
 	}
 
@@ -2561,17 +2571,19 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 
 	if (ret != DNSLIB_EOK) {
 		log_server_warning("Failed to init response structure.\n");
+		/*! \todo xfr->wire is not NULL, will fail on assert! */
 		ns_error_response(nameserver, xfr->query->header.id,
 				  DNSLIB_RCODE_SERVFAIL, xfr->wire,
 				  &xfr->wire_size);
-		rcu_read_unlock();
 		dnslib_packet_free(&response);
+		/*! \todo Hm, maybe send the packet? ;-) */
 		return KNOT_EOK;
 	}
 
 	xfr->response = response;
 
 	// set the OPT RR to the response
+	/*! \todo Only if client supports it! */
 	ret = dnslib_response2_add_opt(xfr->response, nameserver->opt_rr, 0);
 	if (ret != DNSLIB_EOK) {
 		log_server_notice("Failed to set OPT RR to the response: %s\n",
@@ -2592,6 +2604,7 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		debug_ns("AXFR failed, sending SERVFAIL.\n");
 		// now only one type of error (SERVFAIL), later maybe more
 		size_t real_size;
+		/*! \todo xfr->wire is not NULL, will fail on assert! */
 		ns_error_response(nameserver, xfr->query->header.id,
 				  DNSLIB_RCODE_SERVFAIL, xfr->wire,
 		                  &real_size);
@@ -2612,6 +2625,8 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	return KNOT_EOK;
 }
 
+/*----------------------------------------------------------------------------*/
+
 int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 {
 	debug_ns("ns_answer_ixfr()\n");
@@ -2621,6 +2636,122 @@ int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	}
 
 	debug_ns("ns_answer_ixfr(): implement me\n");
+
+	// initialize response packet structure
+	dnslib_packet_t *response = dnslib_packet_new(
+	                               DNSLIB_PACKET_PREALLOC_RESPONSE);
+	if (response == NULL) {
+		log_server_warning("Failed to create packet structure.\n");
+		/*! \todo xfr->wire is not NULL, will fail on assert! */
+		ns_error_response(nameserver, xfr->query->header.id,
+		                  DNSLIB_RCODE_SERVFAIL, xfr->wire,
+		                  &xfr->wire_size);
+		/*! \todo Hm, maybe send the packet? ;-) */
+		return KNOT_EOK;
+	}
+
+	int ret = dnslib_packet_set_max_size(response, xfr->wire_size);
+
+	if (ret != DNSLIB_EOK) {
+		log_server_warning("Failed to init response structure.\n");
+		/*! \todo xfr->wire is not NULL, will fail on assert! */
+		ns_error_response(nameserver, xfr->query->header.id,
+		                  DNSLIB_RCODE_SERVFAIL, xfr->wire,
+		                  &xfr->wire_size);
+		/*! \todo Hm, maybe send the packet? ;-) */
+		dnslib_packet_free(&response);
+		return KNOT_EOK;
+	}
+
+	/*! \todo If TCP is used, more packets may be sent.
+	 *        If UDP is used, only one packet may be sent.
+	 */
+
+	ret = dnslib_response2_init_from_query(response, xfr->query);
+
+	if (ret != DNSLIB_EOK) {
+		log_server_warning("Failed to init response structure.\n");
+		/*! \todo xfr->wire is not NULL, will fail on assert! */
+		ns_error_response(nameserver, xfr->query->header.id,
+		                  DNSLIB_RCODE_SERVFAIL, xfr->wire,
+		                  &xfr->wire_size);
+		/*! \todo Hm, maybe send the packet? ;-) */
+		dnslib_packet_free(&response);
+		return KNOT_EOK;
+	}
+
+	// parse rest of the packet (we need the Authority record)
+	ret = dnslib_packet_parse_rest(xfr->query);
+	if (ret != DNSLIB_EOK) {
+		debug_ns("Failed to parse rest of the packet.\n");
+
+		/*! \todo Extract this to some function. */
+		dnslib_response2_set_rcode(response, DNSLIB_RCODE_FORMERR);
+		uint8_t *wire = NULL;
+		size_t size = 0;
+		ret = dnslib_packet_to_wire(response, &wire, &size);
+		if (ret != DNSLIB_EOK) {
+			ns_error_response(nameserver, xfr->query->header.id,
+			                  DNSLIB_RCODE_FORMERR, wire,
+			                  &size);
+		}
+
+		ret = xfr->send(xfr->session, &xfr->addr, wire, size);
+
+		dnslib_packet_free(&response);
+		return ret;
+	}
+
+	xfr->response = response;
+
+	// set the OPT RR to the response
+	if (dnslib_query_edns_supported(xfr->query)) {
+		ret = dnslib_response2_add_opt(xfr->response,
+		                               nameserver->opt_rr, 0);
+		if (ret != DNSLIB_EOK) {
+			log_server_notice("Failed to set OPT RR to the response"
+			                  ": %s\n", dnslib_strerror(ret));
+		}
+	}
+
+	// Get pointer to the zone database
+	rcu_read_lock();
+	dnslib_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
+
+	ret = ns_ixfr(zonedb, xfr);
+
+	/*! \todo Somehow distinguish when it makes sense to send the SERVFAIL
+	 *        and when it does not. E.g. if there was problem in sending
+	 *        packet, it will probably fail when sending the SERVFAIL also.
+	 */
+	if (ret != KNOT_EOK) {
+		debug_ns("IXFR failed, sending SERVFAIL.\n");
+		// now only one type of error (SERVFAIL), later maybe more
+
+		/*! \todo Extract this to some function. */
+		dnslib_response2_set_rcode(response, DNSLIB_RCODE_FORMERR);
+		uint8_t *wire = NULL;
+		size_t size = 0;
+		ret = dnslib_packet_to_wire(response, &wire, &size);
+		if (ret != DNSLIB_EOK) {
+			ns_error_response(nameserver, xfr->query->header.id,
+			                  DNSLIB_RCODE_FORMERR, wire,
+			                  &size);
+		}
+
+		ret = xfr->send(xfr->session, &xfr->addr, wire, size);
+	}
+
+	rcu_read_unlock();
+
+	dnslib_packet_free(&xfr->response);
+
+	if (ret < 0) {
+		log_server_error("Error while sending AXFR: %s\n",
+		                 knot_strerror(ret));
+		// there was some error but there is not much to do about it
+		return ret;
+	}
 
 	return KNOT_EOK;
 }
