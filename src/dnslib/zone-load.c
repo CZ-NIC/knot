@@ -1056,7 +1056,7 @@ void dnslib_zload_close(zloader_t *loader)
 	free(loader);
 }
 
-dnslib_rrset_t *dnslib_zload_rrset_deserialize(uint8_t *stream, uint size)
+dnslib_rrset_t *dnslib_zload_rrset_deserialize(uint8_t *stream, int *size)
 {
 	if (stream == NULL || size == 0) {
 		return NULL;
@@ -1065,9 +1065,15 @@ dnslib_rrset_t *dnslib_zload_rrset_deserialize(uint8_t *stream, uint size)
 	fread_wrapper = read_from_stream;
 
 	dnslib_zload_stream = stream;
-	dnslib_zload_stream_remaining = dnslib_zload_stream_size = size;
+	dnslib_zload_stream_remaining = dnslib_zload_stream_size = *size;
 
 	dnslib_rrset_t *ret = dnslib_load_rrset(NULL, NULL, 0);
+
+	*size = dnslib_zload_stream_size - dnslib_zload_stream_remaining;
+
+	dnslib_zload_stream = NULL;
+	dnslib_zload_stream_remaining = 0;
+	dnslib_zload_stream_size = 0;
 
 	return ret;
 }
