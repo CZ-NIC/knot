@@ -617,6 +617,8 @@ zloader_t *dnslib_zload_open(const char *filename)
 		return NULL;
 	}
 
+	fread_wrapper = fread_safe_from_file;
+
 	/* Open file for binary read. */
 	FILE *f = fopen(filename, "rb");
 	if (unlikely(!f)) {
