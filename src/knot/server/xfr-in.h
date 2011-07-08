@@ -185,7 +185,12 @@ int xfrin_store_changesets(dnslib_zone_t *zone, const xfrin_changesets_t *src);
 int xfr_load_changesets(dnslib_zone_t *zone, xfrin_changesets_t *dst,
 			uint32_t from, uint32_t to);
 
-int xfrin_apply_changeset(dnslib_zone_t *zone, xfrin_changeset_t *chgset);
+
+/*!
+ * \brief Apply changesets to zone.
+ * \todo Document me.
+ */
+int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets);
 
 #endif /* _KNOT_XFR_IN_H_ */
 
