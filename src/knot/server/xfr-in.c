@@ -14,6 +14,7 @@
 #include "knot/server/name-server.h"
 #include "knot/server/zones.h"
 #include "dnslib/debug.h"
+#include "dnslib/zone-dump.h"
 
 static const size_t XFRIN_CHANGESET_COUNT = 5;
 static const size_t XFRIN_CHANGESET_STEP = 5;
@@ -725,11 +726,13 @@ static int xfrin_changeset_rrset_to_binary(uint8_t **data, size_t *size,
 	 */
 
 	uint8_t *binary = NULL;
-	size_t actual_size = 0;
+	int actual_size = 0;
+	int ret = dnslib_zdump_rrset_serialize(rrset, &binary, &actual_size);
+	if (ret != DNSLIB_EOK) {
+		return KNOT_ERROR;  /*! \todo Other code? */
+	}
 
-	/*! \todo Call function for serializing RRSet. */
-
-	int ret = xfrin_check_binary_size(data, allocated, *size + actual_size);
+	ret = xfrin_check_binary_size(data, allocated, *size + actual_size);
 	if (ret != KNOT_EOK) {
 		free(binary);
 		return ret;
@@ -737,6 +740,7 @@ static int xfrin_changeset_rrset_to_binary(uint8_t **data, size_t *size,
 
 	memcpy(*data + *size, binary, actual_size);
 	*size += actual_size;
+	free(binary);
 
 	return KNOT_EOK;
 }
@@ -796,8 +800,13 @@ static int xfrin_changeset_add_soa(xfrin_changeset_t *changeset,
                                    dnslib_rrset_t *soa,
                                    xfrin_changeset_part_t part)
 {
-	dnslib_rrset_t **rrset = NULL;
-	uint32_t *serial = NULL;
+	// store to binary format
+	int ret = xfrin_changeset_rrset_to_binary(&changeset->data,
+	                                      &changeset->size,
+	                                      &changeset->allocated, soa);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	switch (part) {
 	case XFRIN_CHANGESET_ADD:
@@ -820,7 +829,7 @@ static int xfrin_changeset_add_soa(xfrin_changeset_t *changeset,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfr_changesets_from_binary(xfrin_changesets_t *chgsets)
+static int xfrin_changesets_from_binary(xfrin_changesets_t *chgsets)
 {
 	/*
 	 * Parses changesets from the binary format stored in chgsets->data
@@ -833,7 +842,7 @@ static int xfr_changesets_from_binary(xfrin_changesets_t *chgsets)
 
 /*----------------------------------------------------------------------------*/
 
-static int xfr_changesets_to_binary(xfrin_changesets_t *chgsets)
+static int xfrin_changesets_to_binary(xfrin_changesets_t *chgsets)
 {
 	assert(chgsets != NULL);
 	assert(chgsets->allocated >= chgsets->count);
