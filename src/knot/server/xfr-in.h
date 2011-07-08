@@ -144,8 +144,28 @@ int xfrin_zone_transferred(ns_nameserver_t *nameserver, dnslib_zone_t *zone);
 int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
                               dnslib_zone_t **zone);
 
+/*!
+ * \brief Destroys the whole changesets structure.
+ *
+ * Frees all RRSets present in the changesets and all their data. Also frees
+ * the changesets structure and sets the parameter to NULL.
+ *
+ * \param changesets Changesets to destroy.
+ */
 void xfrin_free_changesets(xfrin_changesets_t **changesets);
 
+/*!
+ * \brief Parses IXFR reply packet and fills in the changesets structure.
+ *
+ * \param pkt Packet containing the IXFR reply in wire format.
+ * \param size Size of the packet in bytes.
+ * \param changesets Changesets to be filled in.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_EINVAL
+ * \retval KNOT_EMALF
+ * \retval KNOT_ENOMEM
+ */
 int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
                               xfrin_changesets_t **changesets);
 
@@ -185,10 +205,17 @@ int xfrin_store_changesets(dnslib_zone_t *zone, const xfrin_changesets_t *src);
 int xfr_load_changesets(dnslib_zone_t *zone, xfrin_changesets_t *dst,
 			uint32_t from, uint32_t to);
 
-
 /*!
  * \brief Apply changesets to zone.
- * \todo Document me.
+ *
+ * Applies a list of XFR-style changesets to the given zone. Also checks if the
+ * changesets are applicable (i.e. zone is right and has the right serial).
+ *
+ * \param zone Zone to which the changesets should be applied.
+ * \param chsets Changesets to be applied to the zone.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_EINVAL
  */
 int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets);
 
