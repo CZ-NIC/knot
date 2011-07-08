@@ -15,6 +15,7 @@
 #include "knot/server/zones.h"
 #include "dnslib/debug.h"
 #include "dnslib/zone-dump.h"
+#include "dnslib/zone-load.h"
 
 static const size_t XFRIN_CHANGESET_COUNT = 5;
 static const size_t XFRIN_CHANGESET_STEP = 5;
@@ -726,7 +727,7 @@ static int xfrin_changeset_rrset_to_binary(uint8_t **data, size_t *size,
 	 */
 
 	uint8_t *binary = NULL;
-	int actual_size = 0;
+	size_t actual_size = 0;
 	int ret = dnslib_zdump_rrset_serialize(rrset, &binary, &actual_size);
 	if (ret != DNSLIB_EOK) {
 		return KNOT_ERROR;  /*! \todo Other code? */
@@ -752,9 +753,9 @@ typedef enum {
 	XFRIN_CHANGESET_REMOVE
 } xfrin_changeset_part_t;
 
-static int xfrin_changeset_append_rrset(xfrin_changeset_t *changeset,
-                                        dnslib_rrset_t *rrset,
-                                        xfrin_changeset_part_t part)
+static int xfrin_changeset_add_and_convert_rrset(xfrin_changeset_t *changeset,
+                                                 dnslib_rrset_t *rrset,
+                                                 xfrin_changeset_part_t part)
 {
 	dnslib_rrset_t ***rrsets = NULL;
 	size_t *count = NULL;
@@ -796,9 +797,18 @@ static int xfrin_changeset_append_rrset(xfrin_changeset_t *changeset,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_changeset_add_soa(xfrin_changeset_t *changeset,
-                                   dnslib_rrset_t *soa,
-                                   xfrin_changeset_part_t part)
+static void xfrin_changeset_add_soa(dnslib_rrset_t **chg_soa,
+                                    uint32_t *chg_serial, dnslib_rrset_t *soa)
+{
+	*chg_soa = soa;
+	*chg_serial = dnslib_rdata_soa_serial(dnslib_rrset_rdata(soa));
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_changeset_add_and_convert_soa(xfrin_changeset_t *changeset,
+                                               dnslib_rrset_t *soa,
+                                               xfrin_changeset_part_t part)
 {
 	// store to binary format
 	int ret = xfrin_changeset_rrset_to_binary(&changeset->data,
@@ -810,14 +820,12 @@ static int xfrin_changeset_add_soa(xfrin_changeset_t *changeset,
 
 	switch (part) {
 	case XFRIN_CHANGESET_ADD:
-		changeset->soa_to = soa;
-		changeset->serial_to = dnslib_rdata_soa_serial(
-				dnslib_rrset_rdata(soa));
+		xfrin_changeset_add_soa(&changeset->soa_to,
+		                        &changeset->serial_to, soa);
 		break;
 	case XFRIN_CHANGESET_REMOVE:
-		changeset->soa_from = soa;
-		changeset->serial_from = dnslib_rdata_soa_serial(
-				dnslib_rrset_rdata(soa));
+		xfrin_changeset_add_soa(&changeset->soa_from,
+		                        &changeset->serial_from, soa);
 		break;
 	default:
 		assert(0);
@@ -831,11 +839,74 @@ static int xfrin_changeset_add_soa(xfrin_changeset_t *changeset,
 
 static int xfrin_changesets_from_binary(xfrin_changesets_t *chgsets)
 {
+	assert(chgsets != NULL);
+	assert(chgsets->allocated >= chgsets->count);
 	/*
 	 * Parses changesets from the binary format stored in chgsets->data
 	 * into the changeset_t structures.
 	 */
-	/*! \todo Implement. */
+	size_t size = 0;
+	size_t parsed = 0;
+	dnslib_rrset_t *rrset;
+	int soa = 0;
+	int ret = 0;
+
+	for (int i = 0; i < chgsets->count; ++i) {
+		rrset = dnslib_zload_rrset_deserialize(
+				chgsets->sets[i].data + parsed, &size);
+
+		while (rrset != NULL) {
+			parsed += size;
+
+			if (soa == 0) {
+				assert(dnslib_rrset_type(rrset)
+				       == DNSLIB_RRTYPE_SOA);
+				xfrin_changeset_add_soa(
+					&chgsets->sets[i].soa_from,
+					&chgsets->sets[i].serial_from, rrset);
+				++soa;
+				continue;
+			}
+
+			if (soa == 1) {
+				if (dnslib_rrset_type(rrset)
+				    == DNSLIB_RRTYPE_SOA) {
+					xfrin_changeset_add_soa(
+						&chgsets->sets[i].soa_to,
+						&chgsets->sets[i].serial_to,
+						rrset);
+					++soa;
+				} else {
+					ret = xfrin_changeset_add_rrset(
+						&chgsets->sets[i].remove,
+						&chgsets->sets[i].remove_count,
+						&chgsets->sets[i]
+						    .remove_allocated,
+						rrset);
+					if (ret != KNOT_EOK) {
+						return ret;
+					}
+				}
+			} else {
+				if (dnslib_rrset_type(rrset)
+				    == DNSLIB_RRTYPE_SOA) {
+					return KNOT_EMALF;
+				} else {
+					ret = xfrin_changeset_add_rrset(
+						&chgsets->sets[i].add,
+						&chgsets->sets[i].add_count,
+						&chgsets->sets[i].add_allocated,
+						rrset);
+					if (ret != KNOT_EOK) {
+						return ret;
+					}
+				}
+			}
+
+			rrset = dnslib_zload_rrset_deserialize(
+					chgsets->sets[i].data + parsed, &size);
+		}
+	}
 
 	return KNOT_ENOTSUP;
 }
@@ -1022,8 +1093,8 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 		}
 
 		// save the origin SOA of the remove part
-		ret = xfrin_changeset_add_soa(&(*changesets)->sets[i], rr,
-		                              XFRIN_CHANGESET_REMOVE);
+		ret = xfrin_changeset_add_and_convert_soa(
+			&(*changesets)->sets[i], rr, XFRIN_CHANGESET_REMOVE);
 		if (ret != KNOT_EOK) {
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
 			goto cleanup;
@@ -1036,7 +1107,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 			}
 
 			assert(dnslib_rrset_type(rr) != DNSLIB_RRTYPE_SOA);
-			if ((ret = xfrin_changeset_append_rrset(
+			if ((ret = xfrin_changeset_add_and_convert_rrset(
 			             &(*changesets)->sets[i], rr,
 			             XFRIN_CHANGESET_ADD)) != KNOT_EOK) {
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
@@ -1049,8 +1120,8 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 		       && dnslib_rrset_type(rr) == DNSLIB_RRTYPE_SOA);
 
 		// save the origin SOA of the add part
-		ret = xfrin_changeset_add_soa(&(*changesets)->sets[i], rr,
-		                              XFRIN_CHANGESET_ADD);
+		ret = xfrin_changeset_add_and_convert_soa(
+			&(*changesets)->sets[i], rr, XFRIN_CHANGESET_ADD);
 		if (ret != KNOT_EOK) {
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
 			goto cleanup;
@@ -1063,7 +1134,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 			}
 
 			assert(dnslib_rrset_type(rr) != DNSLIB_RRTYPE_SOA);
-			if ((ret = xfrin_changeset_append_rrset(
+			if ((ret = xfrin_changeset_add_and_convert_rrset(
 			             &(*changesets)->sets[i], rr,
 			             XFRIN_CHANGESET_REMOVE)) != KNOT_EOK) {
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
@@ -1246,4 +1317,16 @@ int xfr_load_changesets(dnslib_zone_t *zone, xfrin_changesets_t *dst,
 
 	/* History reconstructed. */
 	return KNOT_EOK;
+}
+
+int xfrin_apply_changeset(dnslib_zone_t *zone, xfrin_changeset_t *chgset)
+{
+	/*
+	 * Applies one changeset to the zone. Checks if the changeset may be
+	 * applied (i.e. the origin SOA (soa_from) has the same serial as
+	 * SOA in the zone apex.
+	 */
+
+	/*! \todo Implement. */
+	return KNOT_ENOTSUP;
 }
