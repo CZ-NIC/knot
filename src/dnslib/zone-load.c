@@ -67,13 +67,13 @@ static inline int fread_safe_from_file(void *dst,
 }
 
 static uint8_t *dnslib_zload_stream = NULL;
-static int dnslib_zload_stream_remaining = 0;
-static int dnslib_zload_stream_size = 0;
+static size_t dnslib_zload_stream_remaining = 0;
+static size_t dnslib_zload_stream_size = 0;
 
 static inline int read_from_stream(void *dst,
                                    size_t size, size_t n, FILE *fp)
 {
-	if (dnslib_zload_stream_remaining - (size * n) < 0) {
+	if (dnslib_zload_stream_remaining < (size * n)) {
 		return 0;
 	}
 
@@ -617,6 +617,8 @@ zloader_t *dnslib_zload_open(const char *filename)
 		return NULL;
 	}
 
+	fread_wrapper = fread_safe_from_file;
+
 	/* Open file for binary read. */
 	FILE *f = fopen(filename, "rb");
 	if (unlikely(!f)) {
@@ -1056,7 +1058,7 @@ void dnslib_zload_close(zloader_t *loader)
 	free(loader);
 }
 
-dnslib_rrset_t *dnslib_zload_rrset_deserialize(uint8_t *stream, uint size)
+dnslib_rrset_t *dnslib_zload_rrset_deserialize(uint8_t *stream, size_t *size)
 {
 	if (stream == NULL || size == 0) {
 		return NULL;
@@ -1065,9 +1067,18 @@ dnslib_rrset_t *dnslib_zload_rrset_deserialize(uint8_t *stream, uint size)
 	fread_wrapper = read_from_stream;
 
 	dnslib_zload_stream = stream;
-	dnslib_zload_stream_remaining = dnslib_zload_stream_size = size;
+	dnslib_zload_stream_remaining = dnslib_zload_stream_size = *size;
 
 	dnslib_rrset_t *ret = dnslib_load_rrset(NULL, NULL, 0);
+
+//	printf("dnslib_zload_stream_size: %d, dnslib_zload_stream_remaning: %d\n",
+//	       dnslib_zload_stream_size, dnslib_zload_stream_remaining);
+
+	*size = dnslib_zload_stream_remaining;
+
+	dnslib_zload_stream = NULL;
+	dnslib_zload_stream_remaining = 0;
+	dnslib_zload_stream_size = 0;
 
 	return ret;
 }
