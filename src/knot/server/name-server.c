@@ -2023,19 +2023,58 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 
 /*----------------------------------------------------------------------------*/
 
+static int ns_ixfr_put_changeset(ns_xfr_t *xfr, const xfrin_changeset_t *chgset)
+{
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 static int ns_ixfr_from_zone(const dnslib_zone_t *zone, ns_xfr_t *xfr)
 {
-	// 1) check if zone corresponds to the XFR QNAME/SOA
+	assert(zone != NULL);
+	assert(xfr != NULL);
+	assert(xfr->query != NULL);
+	assert(xfr->response != NULL);
+	assert(dnslib_packet_additional_rrset_count(xfr->query) > 0);
 
-	// 2) retrieve origin serial and target serial
+	// retrieve origin (xfr) serial and target (zone) serial
+	uint32_t zone_serial = dnslib_rdata_soa_serial(dnslib_rrset_rdata(
+		dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA)));
+	uint32_t xfr_serial = dnslib_rdata_soa_serial(dnslib_rrset_rdata(
+			dnslib_packet_authority_rrset(xfr->query, 0)));
 
 	// 3) load changesets from journal
+	xfrin_changesets_t *chgsets = (xfrin_changesets_t *)
+	                               calloc(1, sizeof(xfrin_changesets_t));
+	int res = xfr_load_changesets(zone, chgsets, xfr_serial, zone_serial);
+	if (res != KNOT_EOK) {
+		debug_ns("IXFR query cannot be answered: %s.\n",
+		         knot_strerror(res));
+		/*! \todo Probably send back AXFR instead. */
+		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_SERVFAIL);
+		/*! \todo Probably rename the function. */
+		ns_axfr_send_and_clear(xfr);
+		socket_close(xfr->session);  /*! \todo Remove for UDP. */
+		return KNOT_EOK;
+	}
 
 	// 4) just put the changesets into the response while they fit in
+	for (int i = 0; i < chgsets->count; ++i) {
+		res = ns_ixfr_put_changeset(xfr, &chgsets->sets[i]);
+		if (res != KNOT_EOK) {
+			debug_ns("IXFR query cannot be answered: %s.\n",
+				 knot_strerror(res));
+			dnslib_response2_set_rcode(xfr->response,
+			                           DNSLIB_RCODE_SERVFAIL);
+			/*! \todo Probably rename the function. */
+			ns_axfr_send_and_clear(xfr);
+			socket_close(xfr->session);  /*! \todo Remove for UDP.*/
+			return KNOT_EOK;
+		}
+	}
 
-	// 5) when they do not fit, send the packet and continue with another
-
-	return KNOT_ENOTSUP;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
