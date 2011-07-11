@@ -2071,21 +2071,22 @@ DEBUG_NS(
 	zonedata_t *zd = (zonedata_t *)zone->data;
 	if (zd == NULL) {
 		debug_ns("Invalid zone data.\n");
-		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_NOTAUTH);
+		dnslib_response2_set_rcode(xfr->response,
+		                           DNSLIB_RCODE_SERVFAIL);
 		ns_axfr_send_and_clear(xfr);
 		return KNOT_EOK;
 	}
 
 	// Check xfr-out ACL
 	if (acl_match(zd->xfr_out, &xfr->addr) == ACL_DENY) {
-		debug_ns("Request for IXFR OUT is not authorized.\n");
+		debug_ns("Request for AXFR OUT is not authorized.\n");
 		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_REFUSED);
 		/*! \todo Probably rename the function. */
 		ns_axfr_send_and_clear(xfr);
 		socket_close(xfr->session);
 		return KNOT_EOK;
 	} else {
-		debug_ns("Authorized IXFR OUT request.\n");
+		debug_ns("Authorized AXFR OUT request.\n");
 	}
 
 
@@ -2096,11 +2097,89 @@ DEBUG_NS(
 
 static int ns_ixfr(const dnslib_zonedb_t *zonedb, ns_xfr_t *xfr)
 {
-	// 1) check if XFR QNAME and SOA correspond
-	// 2) do all the stuff as in AXFR (finding zone, ACL)
-	// 3) call ns_ixfr_from_zone();
+	assert(zonedb != NULL);
+	assert(xfr != NULL);
+	assert(xfr->query != NULL);
+	assert(xfr->response != NULL);
+	assert(dnslib_packet_qtype(xfr->response) == DNSLIB_RRTYPE_IXFR);
 
-	return KNOT_ENOTSUP;
+	// check if there is the required authority record
+	if ((dnslib_packet_authority_rrset_count(xfr->query) <= 0)) {
+		// malformed packet
+		debug_ns("IXFR query does not contain authority record.\n");
+		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_FORMERR);
+		/*! \todo Probably rename the function. */
+		ns_axfr_send_and_clear(xfr);
+		socket_close(xfr->session);
+		return KNOT_EOK;
+	}
+
+	const dnslib_rrset_t *soa = dnslib_packet_authority_rrset(xfr->query,
+	                                                          0);
+	const dnslib_dname_t *qname = dnslib_packet_qname(xfr->response);
+
+	// check if XFR QNAME and SOA correspond
+	if (dnslib_packet_qtype(xfr->query) != DNSLIB_RRTYPE_SOA
+	    || dnslib_rrset_type(soa) != DNSLIB_RRTYPE_SOA
+	    || dnslib_dname_compare(qname, dnslib_rrset_owner(soa)) != 0) {
+		// malformed packet
+		debug_ns("IXFR query is malformed.\n");
+		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_FORMERR);
+		/*! \todo Probably rename the function. */
+		ns_axfr_send_and_clear(xfr);
+		socket_close(xfr->session);  /*! \todo Remove for UDP. */
+		return KNOT_EOK;
+	}
+
+	// find zone
+DEBUG_NS(
+	char *name_str = dnslib_dname_to_str(qname);
+	debug_ns("Trying to find zone with name %s\n", name_str);
+	free(name_str);
+);
+	// find zone in which to search for the name
+	dnslib_zone_t *zone = dnslib_zonedb_find_zone(zonedb, qname);
+
+	// if no zone found, return NotAuth
+	if (zone == NULL) {
+		debug_ns("No zone found.\n");
+		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_NOTAUTH);
+		ns_axfr_send_and_clear(xfr);
+		socket_close(xfr->session);  /*! \todo Remove for UDP. */
+		return KNOT_EOK;
+	}
+
+DEBUG_NS(
+	char *name_str = dnslib_dname_to_str(zone->apex->owner);
+	debug_ns("Found zone for QNAME %s\n", name_str);
+	free(name_str);
+);
+
+	/* Check zone data. */
+	zonedata_t *zd = (zonedata_t *)zone->data;
+	if (zd == NULL) {
+		debug_ns("Invalid zone data.\n");
+		dnslib_response2_set_rcode(xfr->response,
+		                           DNSLIB_RCODE_SERVFAIL);
+		ns_axfr_send_and_clear(xfr);
+		socket_close(xfr->session);  /*! \todo Remove for UDP. */
+		return KNOT_EOK;
+	}
+
+	// Check xfr-out ACL
+	if (acl_match(zd->xfr_out, &xfr->addr) == ACL_DENY) {
+		debug_ns("Request for IXFR OUT is not authorized.\n");
+		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_REFUSED);
+		/*! \todo Probably rename the function. */
+		ns_axfr_send_and_clear(xfr);
+		socket_close(xfr->session);  /*! \todo Remove for UDP. */
+		return KNOT_EOK;
+	} else {
+		debug_ns("Authorized IXFR OUT request.\n");
+	}
+
+	// 3) call ns_ixfr_from_zone();
+	return ns_ixfr_from_zone(zone, xfr);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2716,8 +2795,7 @@ int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		ret = dnslib_packet_to_wire(response, &wire, &size);
 		if (ret != DNSLIB_EOK) {
 			ns_error_response(nameserver, xfr->query->header.id,
-			                  DNSLIB_RCODE_FORMERR, wire,
-			                  &size);
+			                  DNSLIB_RCODE_FORMERR, wire, &size);
 		}
 
 		ret = xfr->send(xfr->session, &xfr->addr, wire, size);
@@ -2753,14 +2831,13 @@ int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		// now only one type of error (SERVFAIL), later maybe more
 
 		/*! \todo Extract this to some function. */
-		dnslib_response2_set_rcode(response, DNSLIB_RCODE_FORMERR);
+		dnslib_response2_set_rcode(response, DNSLIB_RCODE_SERVFAIL);
 		uint8_t *wire = NULL;
 		size_t size = 0;
 		ret = dnslib_packet_to_wire(response, &wire, &size);
 		if (ret != DNSLIB_EOK) {
 			ns_error_response(nameserver, xfr->query->header.id,
-			                  DNSLIB_RCODE_FORMERR, wire,
-			                  &size);
+			                  DNSLIB_RCODE_SERVFAIL, wire, &size);
 		}
 
 		ret = xfr->send(xfr->session, &xfr->addr, wire, size);
@@ -2771,7 +2848,7 @@ int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	dnslib_packet_free(&xfr->response);
 
 	if (ret < 0) {
-		log_server_error("Error while sending AXFR: %s\n",
+		log_server_error("Error while sending IXFR: %s\n",
 		                 knot_strerror(ret));
 		// there was some error but there is not much to do about it
 		return ret;
