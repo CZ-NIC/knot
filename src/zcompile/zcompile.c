@@ -1825,10 +1825,14 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		strerror_r(errno, ebuf, sizeof(ebuf));
 		fprintf(stderr, "Cannot open '%s': %s.",
 			zonefile, ebuf);
+		fclose(yyin);
+		zparser_free();
 		return KNOT_ZCOMPILE_EZONEINVAL;
 	}
 
 	if (yyparse() != 0) {
+		fclose(yyin);
+		zparser_free();
 		return KNOT_ZCOMPILE_ESYNT;
 	}
 
@@ -1840,6 +1844,16 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	}
 
 	debug_zp("zone parsed\n");
+
+	if (!(parser->current_zone &&
+	      dnslib_node_rrset(parser->current_zone->apex,
+	                        DNSLIB_RRTYPE_SOA))) {
+		fprintf(stderr, "Zone file does not contain SOA record!\n");
+		dnslib_zone_deep_free(&parser->current_zone, 0);
+		fclose(yyin);
+		zparser_free();
+		return KNOT_ZCOMPILE_EZONEINVAL;
+	}
 
 
 	uint found_orphans;
