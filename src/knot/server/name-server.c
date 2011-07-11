@@ -2025,6 +2025,7 @@ static int ns_axfr_from_zone(dnslib_zone_t *zone, ns_xfr_t *xfr)
 
 static int ns_ixfr_put_changeset(ns_xfr_t *xfr, const xfrin_changeset_t *chgset)
 {
+	// 1) put origin SOA
 	return KNOT_EOK;
 }
 
@@ -2038,9 +2039,11 @@ static int ns_ixfr_from_zone(const dnslib_zone_t *zone, ns_xfr_t *xfr)
 	assert(xfr->response != NULL);
 	assert(dnslib_packet_additional_rrset_count(xfr->query) > 0);
 
+	const dnslib_rrset_t *zone_soa =
+		dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
 	// retrieve origin (xfr) serial and target (zone) serial
-	uint32_t zone_serial = dnslib_rdata_soa_serial(dnslib_rrset_rdata(
-		dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA)));
+	uint32_t zone_serial = dnslib_rdata_soa_serial(
+	                             dnslib_rrset_rdata(zone_soa));
 	uint32_t xfr_serial = dnslib_rdata_soa_serial(dnslib_rrset_rdata(
 			dnslib_packet_authority_rrset(xfr->query, 0)));
 
@@ -2059,7 +2062,21 @@ static int ns_ixfr_from_zone(const dnslib_zone_t *zone, ns_xfr_t *xfr)
 		return KNOT_EOK;
 	}
 
-	// 4) just put the changesets into the response while they fit in
+	// 4) put the zone SOA as the first Answer RR
+	res = dnslib_response2_add_rrset_answer(xfr->response, zone_soa, 1, 0,
+	                                        0);
+	if (res != DNSLIB_EOK) {
+		debug_ns("IXFR query cannot be answered: %s.\n",
+			 knot_strerror(res));
+		dnslib_response2_set_rcode(xfr->response,
+		                           DNSLIB_RCODE_SERVFAIL);
+		/*! \todo Probably rename the function. */
+		ns_axfr_send_and_clear(xfr);
+		socket_close(xfr->session);  /*! \todo Remove for UDP.*/
+		return KNOT_EOK;
+	}
+
+	// 5) put the changesets into the response while they fit in
 	for (int i = 0; i < chgsets->count; ++i) {
 		res = ns_ixfr_put_changeset(xfr, &chgsets->sets[i]);
 		if (res != KNOT_EOK) {
@@ -2074,6 +2091,27 @@ static int ns_ixfr_from_zone(const dnslib_zone_t *zone, ns_xfr_t *xfr)
 		}
 	}
 
+	// 6) put the zone SOA as the last Answer RR
+	res = dnslib_response2_add_rrset_answer(xfr->response, zone_soa, 1, 0,
+	                                        0);
+	if (res == DNSLIB_ESPACE) {
+		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_NOERROR);
+		/*! \todo Probably rename the function. */
+		ns_axfr_send_and_clear(xfr);
+
+		res = dnslib_response2_add_rrset_answer(xfr->response, zone_soa,
+		                                        1, 0, 0);
+	}
+
+	if (res != DNSLIB_EOK) {
+		dnslib_response2_set_rcode(xfr->response,
+		                           DNSLIB_RCODE_SERVFAIL);
+	}
+
+	/*! \todo Probably rename the function. */
+	ns_axfr_send_and_clear(xfr);
+
+	socket_close(xfr->session);  /*! \todo Remove for UDP.*/
 	return KNOT_EOK;
 }
 
