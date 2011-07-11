@@ -1277,7 +1277,7 @@ int xfrin_store_changesets(dnslib_zone_t *zone, const xfrin_changesets_t *src)
 
 /*----------------------------------------------------------------------------*/
 
-int xfr_load_changesets(dnslib_zone_t *zone, xfrin_changesets_t *dst,
+int xfr_load_changesets(const dnslib_zone_t *zone, xfrin_changesets_t *dst,
 			uint32_t from, uint32_t to)
 {
 	if (!zone || !dst) {
