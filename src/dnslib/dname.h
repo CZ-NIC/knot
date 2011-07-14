@@ -181,6 +181,8 @@ uint8_t dnslib_dname_size_part(const dnslib_dname_t *dname, int labels);
  */
 const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname);
 
+void dnslib_dname_set_node(dnslib_dname_t *dname, struct dnslib_node *node);
+
 /*!
  * \brief Checks if the given domain name is a fully-qualified domain name.
  *
