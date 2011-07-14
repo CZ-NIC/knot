@@ -67,8 +67,9 @@ int dnslib_zone_tree_insert(dnslib_zone_tree_t *tree, dnslib_node_t *node);
  * \retval DNSLIB_EBADARG
  * \retval DNSLIB_ENOMEM
  */
-const dnslib_node_t *dnslib_zone_tree_find(dnslib_zone_tree_t *tree,
-                                           const dnslib_dname_t *owner);
+int dnslib_zone_tree_find(dnslib_zone_tree_t *tree,
+                          const dnslib_dname_t *owner,
+                          const dnslib_node_t **found);
 
 /*!
  * \brief Finds node with the given owner in the zone tree.
@@ -83,8 +84,9 @@ const dnslib_node_t *dnslib_zone_tree_find(dnslib_zone_tree_t *tree,
  * \retval DNSLIB_EBADARG
  * \retval DNSLIB_ENOMEM
  */
-dnslib_node_t *dnslib_zone_tree_get(dnslib_zone_tree_t *tree,
-                                    const dnslib_dname_t *owner);
+int dnslib_zone_tree_get(dnslib_zone_tree_t *tree,
+                         const dnslib_dname_t *owner,
+                         dnslib_node_t **found);
 
 /*!
  * \brief Tries to find the given domain name in the zone tree and returns the
@@ -142,11 +144,13 @@ int dnslib_zone_tree_get_less_or_equal(dnslib_zone_tree_t *tree,
  *
  * \param tree Zone tree to remove the node from.
  * \param owner Owner of the node to find.
+ * \param removed The removed node.
  *
  * \retval The removed node.
  */
-dnslib_node_t *dnslib_zone_tree_remove(dnslib_zone_tree_t *tree,
-                                       const dnslib_dname_t *owner);
+int dnslib_zone_tree_remove(dnslib_zone_tree_t *tree,
+                            const dnslib_dname_t *owner,
+                            dnslib_node_t **removed);
 
 /*!
  * \brief Applies the given function to each node in the zone.
@@ -161,11 +165,14 @@ dnslib_node_t *dnslib_zone_tree_remove(dnslib_zone_tree_t *tree,
  * \param tree Zone tree to apply the function to.
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
+ *
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_EBADARG
  */
-void dnslib_zone_tree_forward_apply_inorder(dnslib_zone_tree_t *tree,
-                                            void (*function)(
-                                            dnslib_node_t *node, void *data),
-                                            void *data);
+int dnslib_zone_tree_forward_apply_inorder(dnslib_zone_tree_t *tree,
+                                           void (*function)(
+                                           dnslib_node_t *node, void *data),
+                                           void *data);
 
 /*!
  * \brief Applies the given function to each node in the zone.
@@ -179,11 +186,14 @@ void dnslib_zone_tree_forward_apply_inorder(dnslib_zone_tree_t *tree,
  * \param tree Zone tree to apply the function to.
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
+ *
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_EBADARG
  */
-void dnslib_zone_tree_forward_apply_postorder(dnslib_zone_tree_t *tree,
-                                              void (*function)(
-                                              dnslib_node_t *node, void *data),
-                                              void *data);
+int dnslib_zone_tree_forward_apply_postorder(dnslib_zone_tree_t *tree,
+                                             void (*function)(
+                                             dnslib_node_t *node, void *data),
+                                             void *data);
 
 /*!
  * \brief Applies the given function to each node in the zone.
@@ -198,11 +208,14 @@ void dnslib_zone_tree_forward_apply_postorder(dnslib_zone_tree_t *tree,
  * \param tree Zone tree to apply the function to.
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
+ *
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_EBADARG
  */
-void dnslib_zone_tree_reverse_apply_inorder(dnslib_zone_tree_t *tree,
-                                            void (*function)(
-                                            dnslib_node_t *node, void *data),
-                                            void *data);
+int dnslib_zone_tree_reverse_apply_inorder(dnslib_zone_tree_t *tree,
+                                           void (*function)(
+                                           dnslib_node_t *node, void *data),
+                                           void *data);
 
 /*----------------------------------------------------------------------------*/
 

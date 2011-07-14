@@ -176,6 +176,21 @@ void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent);
 const dnslib_node_t *dnslib_node_previous(const dnslib_node_t *node);
 
 /*!
+ * \brief Returns the previous authoritative node or delegation point in
+ *        canonical order or the first node in zone.
+ *
+ * \note This function is identical to dnslib_node_previous() except that it
+ *       returns non-const node.
+ *
+ * \param node Node to get the previous node of.
+ *
+ * \return Previous authoritative node or delegation point in canonical order or
+ *         the first node in zone if \a node is the last node in zone.
+ * \retval NULL if previous node is not set.
+ */
+dnslib_node_t *dnslib_node_get_previous(const dnslib_node_t *node);
+
+/*!
  * \brief Sets the previous node of the given node.
  *
  * \param node Node to set the previous node to.

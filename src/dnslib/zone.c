@@ -753,7 +753,7 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 		return NULL;
 	}
 
-	dnslib_zone_t *zone = (dnslib_zone_t *)malloc(sizeof(dnslib_zone_t));
+	dnslib_zone_t *zone = (dnslib_zone_t *)calloc(1, sizeof(dnslib_zone_t));
 	if (zone == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -763,25 +763,31 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 	zone->tree = malloc(sizeof(avl_tree_t));
 	if (zone->tree == NULL) {
 		ERR_ALLOC_FAILED;
-		free(zone);
-		return NULL;
+		goto cleanup;
 	}
 	zone->nsec3_nodes = malloc(sizeof(avl_tree_t));
 	if (zone->nsec3_nodes == NULL) {
 		ERR_ALLOC_FAILED;
-		free(zone->tree);
-		free(zone);
-		return NULL;
+		goto cleanup;
+	}
+
+	zone->nodes = malloc(sizeof(dnslib_zone_tree_t));
+	if (zone->tree == NULL) {
+		ERR_ALLOC_FAILED;
+		goto cleanup;
+	}
+
+	zone->nsec3_nodes2 = malloc(sizeof(dnslib_zone_tree_t));
+	if (zone->tree == NULL) {
+		ERR_ALLOC_FAILED;
+		goto cleanup;
 	}
 
 	if (use_domain_table) {
 		zone->dname_table = dnslib_dname_table_new();
 		if (zone->dname_table == NULL) {
 			ERR_ALLOC_FAILED;
-			free(zone->nsec3_nodes);
-			free(zone->tree);
-			free(zone);
-			return NULL;
+			goto cleanup;
 		}
 	} else {
 		zone->dname_table = NULL;
@@ -803,28 +809,31 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 	TREE_INIT(zone->tree, dnslib_node_compare);
 	TREE_INIT(zone->nsec3_nodes, dnslib_node_compare);
 
+	if (dnslib_zone_tree_init(zone->nodes) != DNSLIB_EOK
+	    || dnslib_zone_tree_init(zone->nsec3_nodes2) != DNSLIB_EOK) {
+		goto cleanup;
+		return NULL;
+	}
+
 	// how to know if this is successfull??
 	TREE_INSERT(zone->tree, dnslib_node, avl, apex);
+
+	if (dnslib_zone_tree_insert(zone->nodes, apex) != DNSLIB_EOK) {
+		goto cleanup;
+	}
 
 #ifdef USE_HASH_TABLE
 	if (zone->node_count > 0) {
 		zone->table = ck_create_table(zone->node_count);
 		if (zone->table == NULL) {
-			free(zone->tree);
-			free(zone->nsec3_nodes);
-			free(zone->dname_table);
-			free(zone);
-			return NULL;
+			goto cleanup;
 		}
 
 		// insert the apex into the hash table
 		if (ck_insert_item(zone->table, (const char *)apex->owner->name,
 		                   apex->owner->size, (void *)apex) != 0) {
 			ck_destroy_table(&zone->table, NULL, 0);
-			free(zone->tree);
-			free(zone->nsec3_nodes);
-			free(zone);
-			return NULL;
+			goto cleanup;
 		}
 	} else {
 		zone->table = NULL;
@@ -836,14 +845,20 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 		int rc = dnslib_zone_dnames_from_node_to_table(zone, apex);
 		if (rc != DNSLIB_EOK) {
 			ck_destroy_table(&zone->table, NULL, 0);
-			free(zone->tree);
-			free(zone->nsec3_nodes);
-			free(zone);
-			return NULL;
+			goto cleanup;
 		}
 	}
 
 	return zone;
+
+cleanup:
+	free(zone->dname_table);
+	free(zone->tree);
+	free(zone->nsec3_nodes);
+	free(zone->nodes);
+	free(zone->nsec3_nodes2);
+	free(zone);
+	return NULL;
 }
 
 /*----------------------------------------------------------------------------*/
