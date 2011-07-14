@@ -97,7 +97,7 @@ static int compare_rrset_types(void *key1, void *key2)
 
 dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent)
 {
-	dnslib_node_t *ret = malloc(sizeof(dnslib_node_t));
+	dnslib_node_t *ret = (dnslib_node_t *)calloc(1, sizeof(dnslib_node_t));
 	if (ret == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -105,12 +105,7 @@ dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent)
 
 	ret->owner = owner;
 	ret->parent = parent;
-	ret->prev = NULL;
-	ret->nsec3_node = NULL;
 	ret->rrsets = skip_create_list(compare_rrset_types);
-	ret->rrset_count = 0;
-	ret->wildcard_child = NULL;
-	ret->flags = 0;
 
 	ret->avl.avl_left = NULL;
 	ret->avl.avl_right = NULL;
@@ -238,6 +233,7 @@ dnslib_node_t *dnslib_node_get_previous(const dnslib_node_t *node)
 void dnslib_node_set_previous(dnslib_node_t *node, dnslib_node_t *prev)
 {
 	node->prev = prev;
+	prev->next = node;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -252,11 +248,19 @@ const dnslib_node_t *dnslib_node_nsec3_node(const dnslib_node_t *node)
 void dnslib_node_set_nsec3_node(dnslib_node_t *node, dnslib_node_t *nsec3_node)
 {
 	node->nsec3_node = nsec3_node;
+	nsec3_node->nsec3_referer = node;
 }
 
 /*----------------------------------------------------------------------------*/
 
 const dnslib_dname_t *dnslib_node_owner(const dnslib_node_t *node)
+{
+	return node->owner;
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnslib_dname_t *dnslib_node_get_owner(const dnslib_node_t *node)
 {
 	return node->owner;
 }

@@ -338,17 +338,22 @@ DEBUG_DNSLIB_ZONE(
 //	}
 
 	// assure that owner has proper node
-	if (node->owner->node == NULL) {
+	if (dnslib_dname_node(dnslib_node_owner(node)) == NULL) {
+		dnslib_dname_set_node(dnslib_node_get_owner(node), node);
 		node->owner->node = node;
 	}
 
 	// NSEC3 node
 	const dnslib_node_t *prev;
-	int match = dnslib_zone_find_nsec3_for_name(zone, node->owner,
-						    &node->nsec3_node, &prev);
+	const dnslib_node_t *nsec3;
+	int match = dnslib_zone_find_nsec3_for_name(zone,
+	                                            dnslib_node_owner(node),
+	                                            &nsec3, &prev);
 	if (match != DNSLIB_ZONE_NAME_FOUND) {
-		node->nsec3_node = NULL;
+		nsec3 = NULL;
 	}
+
+	dnslib_node_set_nsec3_node(node, (dnslib_node_t *)nsec3);
 
 	debug_dnslib_zone("Set flags to the node: \n");
 	debug_dnslib_zone("Delegation point: %s\n",
