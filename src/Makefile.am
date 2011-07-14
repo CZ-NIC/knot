@@ -186,6 +186,8 @@ libknot_la_SOURCES =				\
 	dnslib/debug.c				\
 	dnslib/zone-dump.c			\
 	dnslib/zone-dump-text.c			\
+	dnslib/zone-tree.c			\
+	dnslib/zone-tree.h			\
 	dnslib/rdata.c				\
 	dnslib/descriptor.c			\
 	dnslib/nsec3.c				\
