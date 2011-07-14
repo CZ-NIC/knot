@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "dnslib/zone-tree.h"
 #include "dnslib/node.h"
@@ -105,6 +106,10 @@ static int dnslib_zone_tree_copy_node(dnslib_zone_tree_node_t *from,
 static void dnslib_zone_tree_free_node(dnslib_zone_tree_node_t *node,
                                        int free_data, int free_owner)
 {
+	if (node == NULL) {
+		return;
+	}
+
 	if (node->avl.avl_left != NULL) {
 		dnslib_zone_tree_free_node(node->avl.avl_left, free_data,
 		                           free_owner);
@@ -151,6 +156,9 @@ int dnslib_zone_tree_insert(dnslib_zone_tree_t *tree, dnslib_node_t *node)
 	}
 
 	znode->node = node;
+	znode->avl.avl_left = NULL;
+	znode->avl.avl_right = NULL;
+	znode->avl.avl_height = 0;
 
 	/*! \todo How to know if this was successful? */
 	TREE_INSERT(tree, dnslib_zone_tree_node, avl, znode);
@@ -202,7 +210,10 @@ int dnslib_zone_tree_get(dnslib_zone_tree_t *tree, const dnslib_dname_t *owner,
 	dnslib_node_free(&tmp_data, 0);
 	free(tmp);
 
-	*found = n->node;
+	if (n != NULL) {
+		*found = n->node;
+	}
+
 	return DNSLIB_EOK;
 }
 
@@ -404,6 +415,9 @@ int dnslib_zone_tree_copy(dnslib_zone_tree_t *from, dnslib_zone_tree_t *to)
 
 void dnslib_zone_tree_free(dnslib_zone_tree_t **tree)
 {
+	if (tree == NULL || *tree == NULL) {
+		return;
+	}
 	dnslib_zone_tree_free_node((*tree)->th_root, 0, 0);
 	free(*tree);
 	*tree = NULL;
@@ -413,6 +427,9 @@ void dnslib_zone_tree_free(dnslib_zone_tree_t **tree)
 
 void dnslib_zone_tree_deep_free(dnslib_zone_tree_t **tree, int free_owners)
 {
+	if (tree == NULL || *tree == NULL) {
+		return;
+	}
 	dnslib_zone_tree_free_node((*tree)->th_root, 1, free_owners);
 	free(*tree);
 	*tree = NULL;
