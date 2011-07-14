@@ -666,6 +666,7 @@ static int dnslib_zone_dnames_from_rdata_to_table(dnslib_zone_t *zone,
 		}
 	}
 
+	debug_dnslib_zone("RDATA OK.\n");
 	return DNSLIB_EOK;
 }
 
@@ -704,6 +705,7 @@ static int dnslib_zone_dnames_from_rrset_to_table(dnslib_zone_t *zone,
 		rdata = dnslib_rrset_rdata_get_next(rrset, rdata);
 	}
 
+	debug_dnslib_zone("RRSet OK.\n");
 	return DNSLIB_EOK;
 }
 
@@ -740,6 +742,7 @@ static int dnslib_zone_dnames_from_node_to_table(dnslib_zone_t *zone,
 	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
 	// for each RRSet
 	for (int i = 0; i < dnslib_node_rrset_count(node); ++i) {
+		debug_dnslib_zone("Inserting RRSets from node to table.\n");
 		rc = dnslib_zone_dnames_from_rrset_to_table(zone, rrsets[i],
 		                                      replace_owner,
 		                                      node->owner);
@@ -750,6 +753,7 @@ static int dnslib_zone_dnames_from_node_to_table(dnslib_zone_t *zone,
 
 	free(rrsets);
 
+	debug_dnslib_zone("Node OK\n");
 	return DNSLIB_EOK;
 }
 
@@ -1061,6 +1065,7 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 	int ret = rc;
 
 	if (use_domain_table) {
+		debug_dnslib_zone("Saving RRSet to table.\n");
 		rc = dnslib_zone_dnames_from_rrset_to_table(zone, rrset,
 		                                            0, (*node)->owner);
 		if (rc != DNSLIB_EOK) {
@@ -1083,7 +1088,7 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 		rrset->owner = (*node)->owner;
 	}
 
-	debug_dnslib_zone("Everything went fine.\n");
+	debug_dnslib_zone("RRSet OK.\n");
 	return ret;
 }
 
@@ -1166,6 +1171,7 @@ int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
 	}
 
 	if (use_domain_table) {
+		debug_dnslib_zone("Saving RRSIG RRSet to table.\n");
 		rc = dnslib_zone_dnames_from_rrset_to_table(zone, rrsigs,
 		                                            0, (*rrset)->owner);
 		if (rc != DNSLIB_EOK) {
@@ -1187,6 +1193,7 @@ int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
 		(*rrset)->rrsigs->owner = (*rrset)->owner;
 	}
 
+	debug_dnslib_zone("RRSIGs OK\n");
 	return ret;
 }
 
@@ -1260,6 +1267,7 @@ int dnslib_zone_add_nsec3_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 	int ret = rc;
 
 	if (use_domain_table) {
+		debug_dnslib_zone("Saving NSEC3 RRSet to table.\n");
 		rc = dnslib_zone_dnames_from_rrset_to_table(zone, rrset,
 		                                            0, (*node)->owner);
 		if (rc != DNSLIB_EOK) {
@@ -1282,6 +1290,7 @@ int dnslib_zone_add_nsec3_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 		rrset->owner = (*node)->owner;
 	}
 
+	debug_dnslib_zone("NSEC3 OK\n");
 	return ret;
 }
 
@@ -1870,7 +1879,9 @@ DEBUG_DNSLIB_ZONE(
 
 	// free the zone tree, but only the structure
 	// (nodes are already destroyed)
+	debug_dnslib_zone("Destroying zone tree.\n");
 	dnslib_zone_tree_free(&(*zone)->nodes);
+	debug_dnslib_zone("Destroying NSEC3 zone tree.\n");
 	dnslib_zone_tree_free(&(*zone)->nsec3_nodes2);
 
 	dnslib_dname_table_deep_free(&(*zone)->dname_table);
