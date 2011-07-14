@@ -1,3 +1,6 @@
+#include <assert.h>
+#include <stdlib.h>
+
 #include "dnslib/zone-tree.h"
 #include "dnslib/node.h"
 #include "dnslib/error.h"
@@ -10,16 +13,55 @@
 TREE_DEFINE(dnslib_zone_tree_node, avl);
 
 /*----------------------------------------------------------------------------*/
+
+typedef struct {
+	void (*func)(dnslib_node_t *, void *);
+	void *data;
+} dnslib_zone_tree_func_t;
+
+/*----------------------------------------------------------------------------*/
+
+//static void dnslib_zone_create_func(void (*func)(dnslib_node_t *, void *),
+//                                    void *data)
+//{
+
+//}
+
+/*----------------------------------------------------------------------------*/
+
+static void dnslib_zone_tree_apply(dnslib_zone_tree_node_t *node,
+                                   void *data)
+{
+	if (node == NULL || data == NULL) {
+		return;
+	}
+
+	dnslib_zone_tree_func_t *f = (dnslib_zone_tree_func_t *)data;
+	f->func(node->node, f->data);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int dnslib_zone_tree_node_compare(dnslib_zone_tree_node_t *node1,
+                                         dnslib_zone_tree_node_t *node2)
+{
+	assert(node1 != NULL);
+	assert(node2 != NULL);
+
+	return dnslib_node_compare(node1->node, node2->node);
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_tree_init(dnslib_zone_tree_t *tree)
+int dnslib_zone_tree_init(dnslib_zone_tree_t *tree)
 {
 	if (tree == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
-	TREE_INIT(tree, dnslib_node_compare);
+	TREE_INIT(tree, dnslib_zone_tree_node_compare);
 	return DNSLIB_EOK;
 }
 
@@ -27,7 +69,7 @@ void dnslib_zone_tree_init(dnslib_zone_tree_t *tree)
 
 int dnslib_zone_tree_insert(dnslib_zone_tree_t *tree, dnslib_node_t *node)
 {
-	if (tree == NULL || node = NULL) {
+	if (tree == NULL || node == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
@@ -75,7 +117,8 @@ int dnslib_zone_tree_get(dnslib_zone_tree_t *tree, const dnslib_dname_t *owner,
 	}
 
 	// create dummy data node to use for lookup
-	dnslib_node_t *tmp_data = dnslib_node_new(owner, NULL);
+	dnslib_node_t *tmp_data = dnslib_node_new(
+	                              (dnslib_dname_t *)owner, NULL);
 	if (tmp_data == NULL) {
 		free(tmp);
 		return DNSLIB_ENOMEM;
@@ -88,7 +131,7 @@ int dnslib_zone_tree_get(dnslib_zone_tree_t *tree, const dnslib_dname_t *owner,
 	dnslib_node_free(&tmp_data, 0);
 	free(tmp);
 
-	*found = n;
+	*found = n->node;
 	return DNSLIB_EOK;
 }
 
@@ -115,7 +158,8 @@ int dnslib_zone_tree_get_less_or_equal(dnslib_zone_tree_t *tree,
                                        dnslib_node_t **found,
                                        dnslib_node_t **previous)
 {
-	if (tree == NULL || owner == NULL || found == NULL || prev == NULL) {
+	if (tree == NULL || owner == NULL || found == NULL
+	    || previous == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
@@ -129,7 +173,8 @@ int dnslib_zone_tree_get_less_or_equal(dnslib_zone_tree_t *tree,
 	}
 
 	// create dummy data node to use for lookup
-	dnslib_node_t *tmp_data = dnslib_node_new(owner, NULL);
+	dnslib_node_t *tmp_data = dnslib_node_new(
+	                              (dnslib_dname_t *)owner, NULL);
 	if (tmp_data == NULL) {
 		free(tmp);
 		return DNSLIB_ENOMEM;
@@ -142,7 +187,7 @@ int dnslib_zone_tree_get_less_or_equal(dnslib_zone_tree_t *tree,
 	dnslib_node_free(&tmp_data, 0);
 	free(tmp);
 
-	*found = (exact_match) ? f : NULL;
+	*found = (exact_match) ? f->node : NULL;
 
 	if (prev == NULL) {
 		// either the returned node is the root of the tree, or it is
@@ -150,12 +195,12 @@ int dnslib_zone_tree_get_less_or_equal(dnslib_zone_tree_t *tree,
 		// set the previous node of the found node
 		assert(exact_match);
 		assert(f != NULL);
-		*previous = dnslib_node_previous(f->node);
+		*previous = dnslib_node_get_previous(f->node);
 	} else {
 		// otherwise check if the previous node is not an empty
 		// non-terminal
 		*previous = (dnslib_node_rrset_count(prev->node) == 0)
-		            ? dnslib_node_previous(prev->node)
+		            ? dnslib_node_get_previous(prev->node)
 		            : prev->node;
 	}
 
@@ -164,8 +209,9 @@ int dnslib_zone_tree_get_less_or_equal(dnslib_zone_tree_t *tree,
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_node_t *dnslib_zone_tree_remove(dnslib_zone_tree_t *tree,
-                                       const dnslib_dname_t *owner)
+int dnslib_zone_tree_remove(dnslib_zone_tree_t *tree,
+                            const dnslib_dname_t *owner,
+                            dnslib_node_t **removed)
 {
 	if (tree == NULL || owner == NULL) {
 		return DNSLIB_EBADARG;
@@ -179,7 +225,8 @@ dnslib_node_t *dnslib_zone_tree_remove(dnslib_zone_tree_t *tree,
 	}
 
 	// create dummy data node to use for lookup
-	dnslib_node_t *tmp_data = dnslib_node_new(owner, NULL);
+	dnslib_node_t *tmp_data = dnslib_node_new(
+	                              (dnslib_dname_t *)owner, NULL);
 	if (tmp_data == NULL) {
 		free(tmp);
 		return DNSLIB_ENOMEM;
@@ -191,56 +238,80 @@ dnslib_node_t *dnslib_zone_tree_remove(dnslib_zone_tree_t *tree,
 	                                       tmp);
 
 	/*! \todo How to know if this was successful? */
-	TREE_REMOVE(tree, dnslib_zone_node, avl, tmp);
+	TREE_REMOVE(tree, dnslib_zone_tree_node, avl, tmp);
 
 	dnslib_node_free(&tmp_data, 0);
 	free(tmp);
 
-	dnslib_node_t *ret = n->node;
+	*removed = n->node;
 	free(n);
-	return ret;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_tree_forward_apply_inorder(dnslib_zone_tree_t *tree,
-                                            void (*function)(
-                                            dnslib_node_t *node, void *data),
-                                            void *data)
+int dnslib_zone_tree_forward_apply_inorder(dnslib_zone_tree_t *tree,
+                                           void (*function)(
+                                               dnslib_node_t *node,
+                                               void *data),
+                                           void *data)
 {
 	if (tree == NULL || function == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
-	TREE_FORWARD_APPLY(tree, dnslib_zone_tree_node, avl, function, data);
+	dnslib_zone_tree_func_t f;
+	f.func = function;
+	f.data = data;
+
+	TREE_FORWARD_APPLY(tree, dnslib_zone_tree_node, avl,
+			   dnslib_zone_tree_apply, &f);
+
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_tree_forward_apply_postorder(dnslib_zone_tree_t *tree,
-                                              void (*function)(
-                                              dnslib_node_t *node, void *data),
-                                              void *data)
+int dnslib_zone_tree_forward_apply_postorder(dnslib_zone_tree_t *tree,
+                                             void (*function)(
+                                                 dnslib_node_t *node,
+                                                 void *data),
+                                             void *data)
 {
 	if (tree == NULL || function == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
-	TREE_POST_ORDER_APPLY(tree, dnslib_zone_tree_node, avl, function, data);
+	dnslib_zone_tree_func_t f;
+	f.func = function;
+	f.data = data;
+
+	TREE_POST_ORDER_APPLY(tree, dnslib_zone_tree_node, avl,
+	                      dnslib_zone_tree_apply, &f);
+
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_tree_reverse_apply_inorder(dnslib_zone_tree_t *tree,
-                                            void (*function)(
-                                            dnslib_node_t *node, void *data),
-                                            void *data)
+int dnslib_zone_tree_reverse_apply_inorder(dnslib_zone_tree_t *tree,
+                                           void (*function)(
+                                               dnslib_node_t *node,
+                                               void *data),
+                                           void *data)
 {
 	if (tree == NULL || function == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
-	TREE_REVERSE_APPLY(tree, dnslib_zone_tree_node, avl, function, data);
+	dnslib_zone_tree_func_t f;
+	f.func = function;
+	f.data = data;
+
+	TREE_REVERSE_APPLY(tree, dnslib_zone_tree_node, avl,
+	                   dnslib_zone_tree_apply, &f);
+
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
