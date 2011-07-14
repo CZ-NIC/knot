@@ -217,6 +217,21 @@ int dnslib_zone_tree_reverse_apply_inorder(dnslib_zone_tree_t *tree,
                                            dnslib_node_t *node, void *data),
                                            void *data);
 
+/*!
+ * \brief Copies the whole zone tree structure (but not the data contained
+ *        within).
+ *
+ * \warning This function does not check if the target zone tree is empty,
+ *          it just replaces the root pointer.
+ *
+ * \param from Original zone tree.
+ * \param to Zone tree to copy the original one into.
+ *
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_ENOMEM
+ */
+int dnslib_zone_tree_copy(dnslib_zone_tree_t *from, dnslib_zone_tree_t *to);
+
 /*----------------------------------------------------------------------------*/
 
 #endif // _KNOT_DNSLIB_ZONE_TREE_H_
