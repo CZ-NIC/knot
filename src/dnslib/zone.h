@@ -314,6 +314,8 @@ int dnslib_zone_find_nsec3_for_name(const dnslib_zone_t *zone,
  */
 const dnslib_node_t *dnslib_zone_apex(const dnslib_zone_t *zone);
 
+dnslib_node_t *dnslib_zone_get_apex(const dnslib_zone_t *zone);
+
 /*!
  * \brief Optimizes zone by replacing domain names in RDATA with references to
  *        domain names present in zone (as node owners).

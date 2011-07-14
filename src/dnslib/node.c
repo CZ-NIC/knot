@@ -233,7 +233,9 @@ dnslib_node_t *dnslib_node_get_previous(const dnslib_node_t *node)
 void dnslib_node_set_previous(dnslib_node_t *node, dnslib_node_t *prev)
 {
 	node->prev = prev;
-	prev->next = node;
+	if (prev != NULL) {
+		prev->next = node;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -248,7 +250,9 @@ const dnslib_node_t *dnslib_node_nsec3_node(const dnslib_node_t *node)
 void dnslib_node_set_nsec3_node(dnslib_node_t *node, dnslib_node_t *nsec3_node)
 {
 	node->nsec3_node = nsec3_node;
-	nsec3_node->nsec3_referer = node;
+	if (nsec3_node != NULL) {
+		nsec3_node->nsec3_referer = node;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
