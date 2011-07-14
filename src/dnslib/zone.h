@@ -21,6 +21,8 @@
 #include "common/tree.h"
 #include "dnslib/hash/cuckoo-hash-table.h"
 
+#include "dnslib/zone-tree.h"
+
 /*----------------------------------------------------------------------------*/
 
 typedef TREE_HEAD(avl_tree, dnslib_node) avl_tree_t;
@@ -53,6 +55,9 @@ struct dnslib_zone {
 	avl_tree_t *tree;          /*!< AVL tree for holding zone nodes. */
 	avl_tree_t *nsec3_nodes;   /*!< AVL tree for holding NSEC3 nodes. */
 	ck_hash_table_t *table;     /*!< Hash table for holding zone nodes. */
+
+	dnslib_zone_tree_t *nodes;
+	dnslib_zone_tree_t *nsec3_nodes2;
 
 	/*!
 	 * \todo Unify the use of this field - authoritative nodes vs. all.
