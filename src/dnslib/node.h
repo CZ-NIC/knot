@@ -46,6 +46,8 @@ struct dnslib_node {
 	 */
 	struct dnslib_node *prev;
 
+	struct dnslib_node *next;
+
 	/*!
 	 * \brief NSEC3 node corresponding to this node.
 	 *
@@ -53,6 +55,8 @@ struct dnslib_node {
 	 * node prepended as a single label to the zone name.
 	 */
 	const struct dnslib_node *nsec3_node;
+
+	const struct dnslib_node *nsec3_referer;
 
 	/*!
 	 * \brief Various flags.
@@ -226,6 +230,8 @@ void dnslib_node_set_nsec3_node(dnslib_node_t *node, dnslib_node_t *nsec3_node);
  * \return Owner of the given node.
  */
 const dnslib_dname_t *dnslib_node_owner(const dnslib_node_t *node);
+
+dnslib_dname_t *dnslib_node_get_owner(const dnslib_node_t *node);
 
 /*!
  * \brief Returns the wildcard child of the node.
