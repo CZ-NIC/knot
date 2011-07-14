@@ -232,6 +232,22 @@ int dnslib_zone_tree_reverse_apply_inorder(dnslib_zone_tree_t *tree,
  */
 int dnslib_zone_tree_copy(dnslib_zone_tree_t *from, dnslib_zone_tree_t *to);
 
+/*!
+ * \brief Destroys the zone tree, not touching the saved data.
+ *
+ * \param tree Zone tree to be destroyed.
+ */
+void dnslib_zone_tree_free(dnslib_zone_tree_t **tree);
+
+/*!
+ * \brief Destroys the zone tree, together with the saved data.
+ *
+ * \param tree Zone tree to be destroyed.
+ * \param free_owners Set to <> 0 if owners of the nodes should be destroyed
+ *                    as well. Set to 0 otherwise.
+ */
+void dnslib_zone_tree_deep_free(dnslib_zone_tree_t **tree, int free_owners);
+
 /*----------------------------------------------------------------------------*/
 
 #endif // _KNOT_DNSLIB_ZONE_TREE_H_
