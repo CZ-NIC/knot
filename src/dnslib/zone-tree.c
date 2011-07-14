@@ -315,3 +315,67 @@ int dnslib_zone_tree_reverse_apply_inorder(dnslib_zone_tree_t *tree,
 }
 
 /*----------------------------------------------------------------------------*/
+
+static void dnslib_zone_tree_delete_subtree(dnslib_zone_tree_node_t *root)
+{
+	if (root == NULL) {
+		return;
+	}
+
+	dnslib_zone_tree_delete_subtree(root->avl.avl_left);
+	dnslib_zone_tree_delete_subtree(root->avl.avl_right);
+	free(root);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int dnslib_zone_tree_copy_node(dnslib_zone_tree_node_t *from,
+                                      dnslib_zone_tree_node_t **to)
+{
+	if (from == NULL) {
+		*to = NULL;
+		return DNSLIB_EOK;
+	}
+
+	*to = (dnslib_zone_tree_node_t *)
+	      malloc(sizeof(dnslib_zone_tree_node_t));
+	if (*to == NULL) {
+		return DNSLIB_ENOMEM;
+	}
+
+	(*to)->node = from->node;
+	(*to)->avl.avl_height = from->avl.avl_height;
+
+	int ret = dnslib_zone_tree_copy_node(from->avl.avl_left,
+	                                     &(*to)->avl.avl_left);
+	if (ret != DNSLIB_EOK) {
+		return ret;
+	}
+
+	ret = dnslib_zone_tree_copy_node(from->avl.avl_right,
+	                                 &(*to)->avl.avl_right);
+	if (ret != DNSLIB_EOK) {
+		dnslib_zone_tree_delete_subtree((*to)->avl.avl_left);
+		(*to)->avl.avl_left = NULL;
+		return ret;
+	}
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_zone_tree_copy(dnslib_zone_tree_t *from, dnslib_zone_tree_t *to)
+{
+	/*
+	 * This function will copy the tree by hand, so that the nodes
+	 * do not have to be inserted the normal way. It should be substantially
+	 * faster.
+	 */
+
+	to->th_cmp = from->th_cmp;
+
+	return dnslib_zone_tree_copy_node(from->th_root, &to->th_root);
+}
+
+/*----------------------------------------------------------------------------*/
