@@ -84,6 +84,8 @@ src/dnslib/zone-load.c
 src/dnslib/zone-load.h
 src/dnslib/zone-dump-text.h
 src/dnslib/zone-dump-text.c
+src/dnslib/zone-tree.h
+src/dnslib/zone-tree.c
 src/dnslib/hash/cuckoo-hash-table.c
 src/dnslib/hash/cuckoo-hash-table.h
 src/dnslib/hash/hash-functions.c
