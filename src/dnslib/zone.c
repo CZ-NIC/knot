@@ -1624,6 +1624,13 @@ const dnslib_node_t *dnslib_zone_apex(const dnslib_zone_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
+dnslib_node_t *dnslib_zone_get_apex(const dnslib_zone_t *zone)
+{
+	return zone->apex;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void dnslib_zone_adjust_dnames(dnslib_zone_t *zone)
 {
 	// load NSEC3PARAM (needed on adjusting function)

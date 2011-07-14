@@ -1605,11 +1605,12 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 	debug_dnslib_zdump("Written flags: %u\n", node->flags);
 
-	if (node->nsec3_node != NULL) {
-		uint32_t nsec3_id = node->nsec3_node->owner->id;
+	if (dnslib_node_nsec3_node(node) != NULL) {
+		uint32_t nsec3_id =
+			dnslib_node_owner(dnslib_node_nsec3_node(node))->id;
 		fwrite_wrapper(&nsec3_id, sizeof(nsec3_id), 1, f);
 		debug_dnslib_zdump("Written nsec3 node id: %u\n",
-			 node->nsec3_node->owner->id);
+			 dnslib_node_owner(dnslib_node_nsec3_node(node))->id);
 	} else {
 		uint32_t nsec3_id = 0;
 		fwrite_wrapper(&nsec3_id, sizeof(nsec3_id), 1, f);
