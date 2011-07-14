@@ -15,7 +15,12 @@ TREE_DEFINE(dnslib_zone_tree_node, avl);
 
 void dnslib_zone_tree_init(dnslib_zone_tree_t *tree)
 {
+	if (tree == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	TREE_INIT(tree, dnslib_node_compare);
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
