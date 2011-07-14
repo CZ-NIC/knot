@@ -477,9 +477,11 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 	}
 	/* XXX can it be 0, ever? I think not. */
 	if (nsec3_node_id != 0) {
-		node->nsec3_node = id_array[nsec3_node_id]->node;
+		dnslib_node_set_nsec3_node(node, id_array[nsec3_node_id]->node);
+//		node->nsec3_node = id_array[nsec3_node_id]->node;
 	} else {
-		node->nsec3_node = NULL;
+		dnslib_node_set_nsec3_node(node, NULL);
+//		node->nsec3_node = NULL;
 	}
 	node->owner = owner;
 	node->flags = flags;
@@ -927,7 +929,8 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	/* Assign dname table to the new zone. */
 	zone->dname_table = dname_table;
 
-	apex->prev = NULL;
+//	apex->prev = NULL;
+	dnslib_node_set_previous(apex, NULL);
 
 	dnslib_node_t *last_node;
 
@@ -947,7 +950,8 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 							    0);
 			}
 
-			tmp_node->prev = last_node;
+			dnslib_node_set_previous(tmp_node, last_node);
+//			tmp_node->prev = last_node;
 
 			if (skip_first(tmp_node->rrsets) != NULL &&
 			    (dnslib_node_is_deleg_point(tmp_node) ||
@@ -961,9 +965,10 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		}
 	}
 
-	assert(zone->apex->prev == NULL);
+	assert(dnslib_node_previous(dnslib_zone_apex(zone)) == NULL);
 
-	zone->apex->prev = last_node;
+	dnslib_node_set_previous(dnslib_zone_get_apex(zone), last_node);
+//	zone->apex->prev = last_node;
 
 	debug_dnslib_zload("loading %u nsec3 nodes\n", nsec3_node_count);
 
@@ -984,7 +989,8 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 			return NULL;
 		}
 
-		nsec3_first->prev = NULL;
+		dnslib_node_set_previous(nsec3_first, NULL);
+//		nsec3_first->prev = NULL;
 
 		last_node = nsec3_first;
 	}
@@ -998,7 +1004,8 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 				continue;
 			}
 
-			tmp_node->prev = last_node;
+			dnslib_node_set_previous(tmp_node, last_node);
+//			tmp_node->prev = last_node;
 
 			last_node = tmp_node;
 		} else {
@@ -1008,8 +1015,9 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	}
 
 	if (nsec3_node_count) {
-		assert(nsec3_first->prev == NULL);
-		nsec3_first->prev = last_node;
+		assert(dnslib_node_previous(nsec3_first) == NULL);
+		dnslib_node_set_previous(nsec3_first, last_node);
+//		nsec3_first->prev = last_node;
 	}
 
 	/* ID array is now useless */
