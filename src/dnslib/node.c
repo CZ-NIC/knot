@@ -355,9 +355,19 @@ void dnslib_node_free(dnslib_node_t **node, int free_owner)
 	if ((*node)->prev && (*node)->prev->next == (*node)) {
 		(*node)->prev->next = (*node)->next;
 	}
+
+	if ((*node)->next && (*node)->next->prev == (*node)) {
+		(*node)->next->prev = (*node)->prev;
+	}
+
 	if ((*node)->nsec3_node
 	    && (*node)->nsec3_node->nsec3_referer == (*node)) {
 		(*node)->nsec3_node->nsec3_referer = NULL;
+	}
+
+	if ((*node)->nsec3_referer
+	    && (*node)->nsec3_referer->nsec3_node == (*node)) {
+		(*node)->nsec3_referer->nsec3_node = NULL;
 	}
 
 	free(*node);
