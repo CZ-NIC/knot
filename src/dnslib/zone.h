@@ -25,7 +25,7 @@
 
 /*----------------------------------------------------------------------------*/
 
-typedef TREE_HEAD(avl_tree, dnslib_node) avl_tree_t;
+//typedef TREE_HEAD(avl_tree, dnslib_node) avl_tree_t;
 struct event_t;
 
 /*----------------------------------------------------------------------------*/
