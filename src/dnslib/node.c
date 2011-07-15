@@ -107,9 +107,9 @@ dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent)
 	ret->parent = parent;
 	ret->rrsets = skip_create_list(compare_rrset_types);
 
-	ret->avl.avl_left = NULL;
-	ret->avl.avl_right = NULL;
-	ret->avl.avl_height = 0;
+//	ret->avl.avl_left = NULL;
+//	ret->avl.avl_right = NULL;
+//	ret->avl.avl_height = 0;
 
 	return ret;
 }
