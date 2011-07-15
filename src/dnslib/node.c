@@ -282,6 +282,7 @@ void dnslib_node_set_wildcard_child(dnslib_node_t *node,
                                     dnslib_node_t *wildcard_child)
 {
 	node->wildcard_child = wildcard_child;
+	assert(wildcard_child->parent == node);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -352,6 +353,8 @@ void dnslib_node_free(dnslib_node_t **node, int free_owner)
 	}
 
 	// check nodes referencing this node and fix the references
+
+	// previous node
 	if ((*node)->prev && (*node)->prev->next == (*node)) {
 		(*node)->prev->next = (*node)->next;
 	}
@@ -360,6 +363,7 @@ void dnslib_node_free(dnslib_node_t **node, int free_owner)
 		(*node)->next->prev = (*node)->prev;
 	}
 
+	// NSEC3 node
 	if ((*node)->nsec3_node
 	    && (*node)->nsec3_node->nsec3_referer == (*node)) {
 		(*node)->nsec3_node->nsec3_referer = NULL;
@@ -368,6 +372,11 @@ void dnslib_node_free(dnslib_node_t **node, int free_owner)
 	if ((*node)->nsec3_referer
 	    && (*node)->nsec3_referer->nsec3_node == (*node)) {
 		(*node)->nsec3_referer->nsec3_node = NULL;
+	}
+
+	// wildcard child node
+	if ((*node)->parent && (*node)->parent->wildcard_child == (*node)) {
+		(*node)->parent->wildcard_child = NULL;
 	}
 
 	free(*node);
