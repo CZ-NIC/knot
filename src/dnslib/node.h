@@ -68,7 +68,7 @@ struct dnslib_node {
 	uint8_t flags;
 
 	/*! \brief Structure for connecting this node to an AVL tree. */
-	TREE_ENTRY(dnslib_node) avl;
+//	TREE_ENTRY(dnslib_node) avl;
 };
 
 typedef struct dnslib_node dnslib_node_t;
