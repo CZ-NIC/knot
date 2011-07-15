@@ -350,6 +350,16 @@ void dnslib_node_free(dnslib_node_t **node, int free_owner)
 	if (free_owner) {
 		dnslib_dname_free(&(*node)->owner);
 	}
+
+	// check nodes referencing this node and fix the references
+	if ((*node)->prev && (*node)->prev->next == (*node)) {
+		(*node)->prev->next = (*node)->next;
+	}
+	if ((*node)->nsec3_node
+	    && (*node)->nsec3_node->nsec3_referer == (*node)) {
+		(*node)->nsec3_node->nsec3_referer = NULL;
+	}
+
 	free(*node);
 	*node = NULL;
 }

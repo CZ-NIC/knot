@@ -54,9 +54,9 @@ struct dnslib_node {
 	 * Such NSEC3 node has owner in form of the hashed domain name of this
 	 * node prepended as a single label to the zone name.
 	 */
-	const struct dnslib_node *nsec3_node;
+	struct dnslib_node *nsec3_node;
 
-	const struct dnslib_node *nsec3_referer;
+	struct dnslib_node *nsec3_referer;
 
 	/*!
 	 * \brief Various flags.
