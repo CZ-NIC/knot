@@ -1838,6 +1838,90 @@ int dnslib_zone_nsec3_apply_inorder_reverse(dnslib_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_zone_shallow_copy(const dnslib_zone_t *from, dnslib_zone_t **to)
+{
+	if (from == NULL || to == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
+	int ret = DNSLIB_EOK;
+
+	dnslib_zone_t *zone = (dnslib_zone_t *)calloc(1, sizeof(dnslib_zone_t));
+	if (zone == NULL) {
+		ERR_ALLOC_FAILED;
+		return DNSLIB_ENOMEM;
+	}
+
+	zone->apex = from->apex;
+
+	zone->nodes = malloc(sizeof(dnslib_zone_tree_t));
+	if (zone->nodes == NULL) {
+		ERR_ALLOC_FAILED;
+		ret = DNSLIB_ENOMEM;
+		goto cleanup;
+	}
+
+	zone->nsec3_nodes2 = malloc(sizeof(dnslib_zone_tree_t));
+	if (zone->nsec3_nodes2 == NULL) {
+		ERR_ALLOC_FAILED;
+		ret = DNSLIB_ENOMEM;
+		goto cleanup;
+	}
+
+	if (from->dname_table != NULL) {
+		/*! \todo Shallow copy of dname table. */
+		zone->dname_table = dnslib_dname_table_new();
+		if (zone->dname_table == NULL) {
+			ERR_ALLOC_FAILED;
+			ret = DNSLIB_ENOMEM;
+			goto cleanup;
+		}
+		if ((ret = dnslib_dname_table_copy(from->dname_table,
+		                            zone->dname_table)) != DNSLIB_EOK) {
+			goto cleanup;
+		}
+	} else {
+		zone->dname_table = NULL;
+	}
+
+	/* Initialize data. */
+	zone->data = from->data;
+	zone->dtor = from->dtor;
+
+	zone->node_count = from->node_count;
+
+	/* Initialize NSEC3 params */
+	memcpy(&zone->nsec3_params, &from->nsec3_params,
+	       sizeof(dnslib_nsec3_params_t));
+
+	if ((ret = dnslib_zone_tree_copy(from->nodes, zone->nodes))
+	    != DNSLIB_EOK
+	    || (ret = dnslib_zone_tree_copy(from->nsec3_nodes2,
+	                                   zone->nsec3_nodes2)) != DNSLIB_EOK) {
+		goto cleanup;
+	}
+
+#ifdef USE_HASH_TABLE
+	ret = ck_copy_table(from->table, &zone->table);
+	if (ret != 0) {
+		ret = DNSLIB_ERROR;
+		goto cleanup;
+	}
+#endif
+
+	*to = zone;
+	return DNSLIB_EOK;
+
+cleanup:
+	free(zone->dname_table);
+	free(zone->nodes);
+	free(zone->nsec3_nodes2);
+	free(zone);
+	return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void dnslib_zone_free(dnslib_zone_t **zone)
 {
 	if (zone == NULL || *zone == NULL) {
