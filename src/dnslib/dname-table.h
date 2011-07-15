@@ -95,6 +95,9 @@ int dnslib_dname_table_add_dname(dnslib_dname_table_t *table,
 int dnslib_dname_table_add_dname2(dnslib_dname_table_t *table,
                                   dnslib_dname_t **dname);
 
+int dnslib_dname_table_copy(dnslib_dname_table_t *from,
+                            dnslib_dname_table_t *to);
+
 /*!
  * \brief Frees dname table without its nodes. Sets pointer to NULL.
  *
