@@ -472,6 +472,22 @@ int dnslib_zone_nsec3_apply_inorder_reverse(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data);
 
+/*!
+ * \brief Creates a shallow copy of the zone (no stored data are copied).
+ *
+ * This function creates a new zone structure in \a to, creates new trees for
+ * regular nodes and for NSEC3 nodes, creates new hash table and a new domain
+ * table. It also fills these structures with the exact same data as the
+ * original zone is - no copying of stored data is done, just pointers are
+ * copied.
+ *
+ * \param from Original zone.
+ * \param to Copy of the zone.
+ *
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_EBADARG
+ * \retval DNSLIB_ENOMEM
+ */
 int dnslib_zone_shallow_copy(const dnslib_zone_t *from, dnslib_zone_t **to);
 
 /*!
