@@ -42,6 +42,50 @@ static void delete_dname_table_node(struct dname_table_node *node, void *data)
 	free(node);
 }
 
+static void dnslib_dname_table_delete_subtree(struct dname_table_node *root)
+{
+	if (root == NULL) {
+		return;
+	}
+
+	dnslib_dname_table_delete_subtree(root->avl.avl_left);
+	dnslib_dname_table_delete_subtree(root->avl.avl_right);
+	free(root);
+}
+
+static int dnslib_dname_table_copy_node(const struct dname_table_node *from,
+                                        struct dname_table_node **to)
+{
+	if (from == NULL) {
+		return DNSLIB_EOK;
+	}
+
+	*to = (struct dname_table_node *)
+	      malloc(sizeof(struct dname_table_node));
+	if (*to == NULL) {
+		return DNSLIB_ENOMEM;
+	}
+
+	(*to)->dname = from->dname;
+	(*to)->avl.avl_height = from->avl.avl_height;
+
+	int ret = dnslib_dname_table_copy_node(from->avl.avl_left,
+	                                       &(*to)->avl.avl_left);
+	if (ret != DNSLIB_EOK) {
+		return ret;
+	}
+
+	ret = dnslib_dname_table_copy_node(from->avl.avl_right,
+	                                   &(*to)->avl.avl_right);
+	if (ret != DNSLIB_EOK) {
+		dnslib_dname_table_delete_subtree((*to)->avl.avl_left);
+		(*to)->avl.avl_left = NULL;
+		return ret;
+	}
+
+	return DNSLIB_EOK;
+}
+
 dnslib_dname_table_t *dnslib_dname_table_new()
 {
 	dnslib_dname_table_t *ret = malloc(sizeof(dnslib_dname_table_t));
@@ -139,6 +183,25 @@ int dnslib_dname_table_add_dname2(dnslib_dname_table_t *table,
 //	printf("Done.\n");
 
 	return DNSLIB_EOK;
+}
+
+int dnslib_dname_table_copy(dnslib_dname_table_t *from,
+                            dnslib_dname_table_t *to)
+{
+	to->id_counter = from->id_counter;
+
+	if (to->tree == NULL) {
+		to->tree = malloc(sizeof(table_tree_t));
+		if (to->tree == NULL) {
+			ERR_ALLOC_FAILED;
+			return DNSLIB_ENOMEM;
+		}
+
+		TREE_INIT(to->tree, compare_dname_table_nodes);
+	}
+
+	return dnslib_dname_table_copy_node(from->tree->th_root,
+	                                    &to->tree->th_root);
 }
 
 void dnslib_dname_table_free(dnslib_dname_table_t **table)
