@@ -110,15 +110,9 @@ static void dnslib_zone_tree_free_node(dnslib_zone_tree_node_t *node,
 		return;
 	}
 
-	if (node->avl.avl_left != NULL) {
-		dnslib_zone_tree_free_node(node->avl.avl_left, free_data,
-		                           free_owner);
-	}
+	dnslib_zone_tree_free_node(node->avl.avl_left, free_data, free_owner);
 
-	if (node->avl.avl_right != NULL) {
-		dnslib_zone_tree_free_node(node->avl.avl_right, free_data,
-		                           free_owner);
-	}
+	dnslib_zone_tree_free_node(node->avl.avl_right, free_data, free_owner);
 
 	if (free_data) {
 		dnslib_node_free(&node->node, free_owner);
