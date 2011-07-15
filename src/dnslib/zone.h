@@ -52,8 +52,8 @@ typedef enum dnslib_zone_retvals dnslib_zone_retvals_t;
  */
 struct dnslib_zone {
 	dnslib_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
-	avl_tree_t *tree;          /*!< AVL tree for holding zone nodes. */
-	avl_tree_t *nsec3_nodes;   /*!< AVL tree for holding NSEC3 nodes. */
+//	avl_tree_t *tree;          /*!< AVL tree for holding zone nodes. */
+//	avl_tree_t *nsec3_nodes;   /*!< AVL tree for holding NSEC3 nodes. */
 	ck_hash_table_t *table;     /*!< Hash table for holding zone nodes. */
 
 	dnslib_zone_tree_t *nodes;
@@ -322,7 +322,7 @@ dnslib_node_t *dnslib_zone_get_apex(const dnslib_zone_t *zone);
  *
  * \param zone Zone to adjust domain names in.
  */
-void dnslib_zone_adjust_dnames(dnslib_zone_t *zone);
+int dnslib_zone_adjust_dnames(dnslib_zone_t *zone);
 
 /*!
  * \brief Parses the NSEC3PARAM record stored in the zone.
@@ -379,7 +379,7 @@ const dnslib_nsec3_params_t *dnslib_zone_nsec3params(const dnslib_zone_t *zone);
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-void dnslib_zone_tree_apply_postorder(dnslib_zone_t *zone,
+int dnslib_zone_tree_apply_postorder(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data);
 
@@ -397,7 +397,7 @@ void dnslib_zone_tree_apply_postorder(dnslib_zone_t *zone,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-void dnslib_zone_tree_apply_inorder(dnslib_zone_t *zone,
+int dnslib_zone_tree_apply_inorder(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data);
 
@@ -415,7 +415,7 @@ void dnslib_zone_tree_apply_inorder(dnslib_zone_t *zone,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-void dnslib_zone_tree_apply_inorder_reverse(dnslib_zone_t *zone,
+int dnslib_zone_tree_apply_inorder_reverse(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data);
 
@@ -430,7 +430,7 @@ void dnslib_zone_tree_apply_inorder_reverse(dnslib_zone_t *zone,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-void dnslib_zone_nsec3_apply_postorder(dnslib_zone_t *zone,
+int dnslib_zone_nsec3_apply_postorder(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data);
 
@@ -449,7 +449,7 @@ void dnslib_zone_nsec3_apply_postorder(dnslib_zone_t *zone,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-void dnslib_zone_nsec3_apply_inorder(dnslib_zone_t *zone,
+int dnslib_zone_nsec3_apply_inorder(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data);
 
@@ -468,7 +468,7 @@ void dnslib_zone_nsec3_apply_inorder(dnslib_zone_t *zone,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-void dnslib_zone_nsec3_apply_inorder_reverse(dnslib_zone_t *zone,
+int dnslib_zone_nsec3_apply_inorder_reverse(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data);
 
