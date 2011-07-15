@@ -571,19 +571,10 @@ static int dnslib_zone_find_in_tree(const dnslib_zone_t *zone,
 	assert(previous != NULL);
 
 	dnslib_node_t *found = NULL, *prev = NULL;
-	dnslib_node_t *found2 = NULL, *prev2 = NULL;
+//	dnslib_node_t *found2 = NULL, *prev2 = NULL;
 
-	// create dummy node to use for lookup
-	dnslib_node_t *tmp = dnslib_node_new((dnslib_dname_t *)name, NULL);
-	int exact_match = TREE_FIND_LESS_EQUAL(
-	                  zone->tree, dnslib_node, avl, tmp, &found, &prev);
-	int exact_match2 = dnslib_zone_tree_get_less_or_equal(zone->nodes,
-	                         name, &found2, &prev2);
-	dnslib_node_free(&tmp, 0);
-
-	assert(exact_match2 == exact_match);
-	assert(found2 == found);
-	assert(prev2 == prev);
+	int exact_match = dnslib_zone_tree_get_less_or_equal(zone->nodes,
+	                         name, &found, &prev);
 
 	*node = found;
 
@@ -776,25 +767,25 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 	}
 
 	zone->apex = apex;
-	zone->tree = malloc(sizeof(avl_tree_t));
-	if (zone->tree == NULL) {
-		ERR_ALLOC_FAILED;
-		goto cleanup;
-	}
-	zone->nsec3_nodes = malloc(sizeof(avl_tree_t));
-	if (zone->nsec3_nodes == NULL) {
-		ERR_ALLOC_FAILED;
-		goto cleanup;
-	}
+//	zone->tree = malloc(sizeof(avl_tree_t));
+//	if (zone->tree == NULL) {
+//		ERR_ALLOC_FAILED;
+//		goto cleanup;
+//	}
+//	zone->nsec3_nodes = malloc(sizeof(avl_tree_t));
+//	if (zone->nsec3_nodes == NULL) {
+//		ERR_ALLOC_FAILED;
+//		goto cleanup;
+//	}
 
 	zone->nodes = malloc(sizeof(dnslib_zone_tree_t));
-	if (zone->tree == NULL) {
+	if (zone->nodes == NULL) {
 		ERR_ALLOC_FAILED;
 		goto cleanup;
 	}
 
 	zone->nsec3_nodes2 = malloc(sizeof(dnslib_zone_tree_t));
-	if (zone->tree == NULL) {
+	if (zone->nsec3_nodes2 == NULL) {
 		ERR_ALLOC_FAILED;
 		goto cleanup;
 	}
@@ -822,17 +813,16 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 	zone->nsec3_params.salt_length = 0;
 	zone->nsec3_params.salt = NULL;
 
-	TREE_INIT(zone->tree, dnslib_node_compare);
-	TREE_INIT(zone->nsec3_nodes, dnslib_node_compare);
+//	TREE_INIT(zone->tree, dnslib_node_compare);
+//	TREE_INIT(zone->nsec3_nodes, dnslib_node_compare);
 
 	if (dnslib_zone_tree_init(zone->nodes) != DNSLIB_EOK
 	    || dnslib_zone_tree_init(zone->nsec3_nodes2) != DNSLIB_EOK) {
 		goto cleanup;
-		return NULL;
 	}
 
 	// how to know if this is successfull??
-	TREE_INSERT(zone->tree, dnslib_node, avl, apex);
+//	TREE_INSERT(zone->tree, dnslib_node, avl, apex);
 
 	if (dnslib_zone_tree_insert(zone->nodes, apex) != DNSLIB_EOK) {
 		debug_dnslib_zone("Failed to insert apex to the zone tree.\n");
@@ -870,8 +860,8 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 
 cleanup:
 	free(zone->dname_table);
-	free(zone->tree);
-	free(zone->nsec3_nodes);
+//	free(zone->tree);
+//	free(zone->nsec3_nodes);
 	free(zone->nodes);
 	free(zone->nsec3_nodes2);
 	free(zone);
@@ -908,7 +898,7 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
 
 	// add the node to the tree
 	// how to know if this is successfull??
-	TREE_INSERT(zone->tree, dnslib_node, avl, node);
+//	TREE_INSERT(zone->tree, dnslib_node, avl, node);
 
 	ret = dnslib_zone_tree_insert(zone->nodes, node);
 	if (ret != DNSLIB_EOK) {
@@ -983,8 +973,8 @@ DEBUG_DNSLIB_ZONE(
 			assert(dnslib_zone_find_node(zone, chopped) == NULL);
 			assert(next_node->owner == chopped);
 
-			debug_dnslib_zone("Inserting new node to tree.\n");
-			TREE_INSERT(zone->tree, dnslib_node, avl, next_node);
+			debug_dnslib_zone("Inserting new node to zone tree.\n");
+//			TREE_INSERT(zone->tree, dnslib_node, avl, next_node);
 
 			ret = dnslib_zone_tree_insert(zone->nodes, next_node);
 			if (ret != DNSLIB_EOK) {
@@ -1212,7 +1202,8 @@ int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node,
 	}
 
 	// how to know if this is successfull??
-	TREE_INSERT(zone->nsec3_nodes, dnslib_node, avl, node);
+//	TREE_INSERT(zone->nsec3_nodes, dnslib_node, avl, node);
+	dnslib_zone_tree_insert(zone->nsec3_nodes2, node);
 
 	if (use_domain_table) {
 		ret = dnslib_zone_dnames_from_node_to_table(zone, node);
@@ -1331,9 +1322,15 @@ int dnslib_zone_create_and_fill_hash_table(dnslib_zone_t *zone)
 	 *
 	 * TODO: how to know if this was successful??
 	 */
-	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl,
-	                   dnslib_zone_node_to_hash, zone);
+//	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl,
+//	                   dnslib_zone_node_to_hash, zone);
 	/*! \todo Replace by zone tree. */
+	int ret = dnslib_zone_tree_forward_apply_inorder(zone->nodes,
+	                                        dnslib_zone_node_to_hash, zone);
+	if (ret != DNSLIB_EOK) {
+		debug_dnslib_zone("Failed to insert nodes to hash table.\n");
+		return ret;
+	}
 
 #endif
 	return DNSLIB_EOK;
@@ -1349,16 +1346,15 @@ dnslib_node_t *dnslib_zone_get_node(const dnslib_zone_t *zone,
 	}
 
 	// create dummy node to use for lookup
-	dnslib_node_t *tmp = dnslib_node_new((dnslib_dname_t *)name, NULL);
-	dnslib_node_t *n = TREE_FIND(zone->tree, dnslib_node, avl, tmp);
-	dnslib_node_free(&tmp, 0);
+//	dnslib_node_t *tmp = dnslib_node_new((dnslib_dname_t *)name, NULL);
+//	dnslib_node_t *n = TREE_FIND(zone->tree, dnslib_node, avl, tmp);
+//	dnslib_node_free(&tmp, 0);
 
-	dnslib_node_t *n2;
-	int ret = dnslib_zone_tree_get(zone->nodes, name, &n2);
+	dnslib_node_t *n;
+	int ret = dnslib_zone_tree_get(zone->nodes, name, &n);
 	if (ret != DNSLIB_EOK) {
 		debug_dnslib_zone("Failed to find name in the zone tree.\n");
-	} else {
-		assert(n2 == n);
+		return NULL;
 	}
 
 	return n;
@@ -1374,9 +1370,17 @@ dnslib_node_t *dnslib_zone_get_nsec3_node(const dnslib_zone_t *zone,
 	}
 
 	// create dummy node to use for lookup
-	dnslib_node_t *tmp = dnslib_node_new((dnslib_dname_t *)name, NULL);
-	dnslib_node_t *n = TREE_FIND(zone->nsec3_nodes, dnslib_node, avl, tmp);
-	dnslib_node_free(&tmp, 0);
+//	dnslib_node_t *tmp = dnslib_node_new((dnslib_dname_t *)name, NULL);
+//	dnslib_node_t *n = TREE_FIND(zone->nsec3_nodes, dnslib_node, avl, tmp);
+//	dnslib_node_free(&tmp, 0);
+	dnslib_node_t *n;
+	int ret = dnslib_zone_tree_get(zone->nsec3_nodes2, name, &n);
+
+	if (ret != DNSLIB_EOK) {
+		debug_dnslib_zone("Failed to find NSEC3 name in the zone tree."
+		                  "\n");
+		return NULL;
+	}
 
 	return n;
 }
@@ -1609,13 +1613,15 @@ DEBUG_DNSLIB_ZONE(
 	free(n);
 );
 
-	dnslib_node_t *found = NULL, *prev = NULL;
+	const dnslib_node_t *found = NULL, *prev = NULL;
 
 	// create dummy node to use for lookup
-	dnslib_node_t *tmp = dnslib_node_new(nsec3_name, NULL);
-	int exact_match = TREE_FIND_LESS_EQUAL(zone->nsec3_nodes, dnslib_node, \
-			   avl, tmp, &found, &prev);
-	dnslib_node_free(&tmp, 1);
+//	dnslib_node_t *tmp = dnslib_node_new(nsec3_name, NULL);
+//	int exact_match = TREE_FIND_LESS_EQUAL(zone->nsec3_nodes, dnslib_node, \
+//			   avl, tmp, &found, &prev);
+//	dnslib_node_free(&tmp, 1);
+	int exact_match = dnslib_zone_tree_find_less_or_equal(
+		zone->nsec3_nodes2, name, &found, &prev);
 
 DEBUG_DNSLIB_ZONE(
 	if (found) {
@@ -1671,17 +1677,28 @@ dnslib_node_t *dnslib_zone_get_apex(const dnslib_zone_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_adjust_dnames(dnslib_zone_t *zone)
+int dnslib_zone_adjust_dnames(dnslib_zone_t *zone)
 {
 	// load NSEC3PARAM (needed on adjusting function)
 	dnslib_zone_load_nsec3param(zone);
 
 	/*! \todo Replace by zone tree. */
-	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl,
-	                   dnslib_zone_adjust_node_in_tree, zone);
+//	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl,
+//	                   dnslib_zone_adjust_node_in_tree, zone);
 
-	TREE_FORWARD_APPLY(zone->nsec3_nodes, dnslib_node, avl,
-	                   dnslib_zone_adjust_nsec3_node_in_tree, zone);
+//	TREE_FORWARD_APPLY(zone->nsec3_nodes, dnslib_node, avl,
+//	                   dnslib_zone_adjust_nsec3_node_in_tree, zone);
+
+	int ret = dnslib_zone_tree_forward_apply_inorder(zone->nodes,
+	                                 dnslib_zone_adjust_node_in_tree, zone);
+	if (ret != DNSLIB_EOK) {
+		return ret;
+	}
+
+	ret = dnslib_zone_tree_forward_apply_inorder(zone->nsec3_nodes2,
+	                           dnslib_zone_adjust_nsec3_node_in_tree, zone);
+
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1724,87 +1741,99 @@ const dnslib_nsec3_params_t *dnslib_zone_nsec3params(const dnslib_zone_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_tree_apply_postorder(dnslib_zone_t *zone,
+int dnslib_zone_tree_apply_postorder(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data)
 {
 	if (zone == NULL) {
-		return;
+		return DNSLIB_EBADARG;
 	}
 
 	/*! \todo Replace by zone tree. */
-	TREE_POST_ORDER_APPLY(zone->tree, dnslib_node, avl, function, data);
+//	TREE_POST_ORDER_APPLY(zone->tree, dnslib_node, avl, function, data);
+	return dnslib_zone_tree_forward_apply_postorder(zone->nodes, function,
+	                                                data);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_tree_apply_inorder(dnslib_zone_t *zone,
+int dnslib_zone_tree_apply_inorder(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data)
 {
 	if (zone == NULL) {
-		return;
+		return DNSLIB_EBADARG;
 	}
 
 	/*! \todo Replace by zone tree. */
-	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl, function, data);
+//	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl, function, data);
+	return dnslib_zone_tree_forward_apply_inorder(zone->nodes, function,
+	                                              data);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_tree_apply_inorder_reverse(dnslib_zone_t *zone,
+int dnslib_zone_tree_apply_inorder_reverse(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data)
 {
 	if (zone == NULL) {
-		return;
+		return DNSLIB_EBADARG;
 	}
 
 	/*! \todo Replace by zone tree. */
-	TREE_REVERSE_APPLY(zone->tree, dnslib_node, avl, function, data);
+//	TREE_REVERSE_APPLY(zone->tree, dnslib_node, avl, function, data);
+	return dnslib_zone_tree_reverse_apply_inorder(zone->nodes, function,
+	                                              data);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_nsec3_apply_postorder(dnslib_zone_t *zone,
+int dnslib_zone_nsec3_apply_postorder(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data)
 {
 	if (zone == NULL) {
-		return;
+		return DNSLIB_EBADARG;
 	}
 
 	/*! \todo Replace by zone tree. */
-	TREE_POST_ORDER_APPLY(zone->nsec3_nodes, dnslib_node, avl, function,
-	                      data);
+//	TREE_POST_ORDER_APPLY(zone->nsec3_nodes, dnslib_node, avl, function,
+//	                      data);
+	return dnslib_zone_tree_forward_apply_postorder(zone->nsec3_nodes2,
+	                                                function, data);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_nsec3_apply_inorder(dnslib_zone_t *zone,
+int dnslib_zone_nsec3_apply_inorder(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data)
 {
 	if (zone == NULL) {
-		return;
+		return DNSLIB_EBADARG;
 	}
 
 	/*! \todo Replace by zone tree. */
-	TREE_FORWARD_APPLY(zone->nsec3_nodes, dnslib_node, avl, function, data);
+//	TREE_FORWARD_APPLY(zone->nsec3_nodes, dnslib_node, avl, function, data);
+	return dnslib_zone_tree_forward_apply_inorder(zone->nsec3_nodes2,
+	                                              function, data);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_nsec3_apply_inorder_reverse(dnslib_zone_t *zone,
+int dnslib_zone_nsec3_apply_inorder_reverse(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data)
 {
 	if (zone == NULL) {
-		return;
+		return DNSLIB_EBADARG;
 	}
 
 	/*! \todo Replace by zone tree. */
-	TREE_REVERSE_APPLY(zone->nsec3_nodes, dnslib_node, avl, function, data);
+//	TREE_REVERSE_APPLY(zone->nsec3_nodes, dnslib_node, avl, function, data);
+	return dnslib_zone_tree_reverse_apply_inorder(zone->nsec3_nodes2,
+	                                              function, data);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1815,8 +1844,8 @@ void dnslib_zone_free(dnslib_zone_t **zone)
 		return;
 	}
 
-	free((*zone)->tree);
-	free((*zone)->nsec3_nodes);
+//	free((*zone)->tree);
+//	free((*zone)->nsec3_nodes);
 
 	// free the zone tree, but only the structure
 	dnslib_zone_tree_free(&(*zone)->nodes);
@@ -1863,19 +1892,31 @@ DEBUG_DNSLIB_ZONE(
 	/* NSEC3 tree is deleted first as it may contain references to the
 	   normal tree. */
 
-	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
-	                      dnslib_zone_destroy_node_rrsets_from_tree,
-			      /*(void *)((intptr_t)free_rdata_dnames)*/0);
+	dnslib_zone_tree_forward_apply_postorder((*zone)->nsec3_nodes2,
+	                          dnslib_zone_destroy_node_rrsets_from_tree, 0);
 
-	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
-	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
+	dnslib_zone_tree_forward_apply_postorder((*zone)->nsec3_nodes2,
+	                           dnslib_zone_destroy_node_owner_from_tree, 0);
 
-	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
-	                      dnslib_zone_destroy_node_rrsets_from_tree,
-			      /*(void *)((intptr_t)free_rdata_dnames)*/0);
+	dnslib_zone_tree_forward_apply_postorder((*zone)->nodes,
+	                          dnslib_zone_destroy_node_rrsets_from_tree, 0);
 
-	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
-	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
+	dnslib_zone_tree_forward_apply_postorder((*zone)->nodes,
+	                           dnslib_zone_destroy_node_owner_from_tree, 0);
+
+//	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
+//	                      dnslib_zone_destroy_node_rrsets_from_tree,
+//			      /*(void *)((intptr_t)free_rdata_dnames)*/0);
+
+//	TREE_POST_ORDER_APPLY((*zone)->nsec3_nodes, dnslib_node, avl,
+//	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
+
+//	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
+//	                      dnslib_zone_destroy_node_rrsets_from_tree,
+//			      /*(void *)((intptr_t)free_rdata_dnames)*/0);
+
+//	TREE_POST_ORDER_APPLY((*zone)->tree, dnslib_node, avl,
+//	                      dnslib_zone_destroy_node_owner_from_tree, NULL);
 
 	// free the zone tree, but only the structure
 	// (nodes are already destroyed)
