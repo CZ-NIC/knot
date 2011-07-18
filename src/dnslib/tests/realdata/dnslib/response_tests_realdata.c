@@ -9,7 +9,6 @@
 #include "dnslib/rdata.h"
 #include "dnslib/rrset.h"
 #include "dnslib/dname.h"
-#include "dnslib/packet.h"
 #include "dnslib/descriptor.h"
 #include "dnslib/edns.h"
 #include "common/lists.h"
@@ -119,7 +118,7 @@ extern dnslib_rrset_t *rrset_from_test_rrset(test_rrset_t *test_rrset);
 
 static int test_response_add_rrset(int (*add_func)
 				   (dnslib_response_t *,
-				   const dnslib_rrset_t *, int, int),
+				   const dnslib_rrset_t *, int, int, int),
 				   list rrset_list,
                                    uint array_id)
 {
@@ -163,7 +162,7 @@ static int test_response_add_rrset(int (*add_func)
 		if (dnslib_dname_compare(rrset->owner,
 		                         dnslib_dname_new_from_str(".", 1,
 		                                                   NULL)) != 0) {
-			if (add_func(resp, rrset, 0, 0) != 0) {
+			if (add_func(resp, rrset, 0, 0, 0) != 0) {
 				diag("Could not add RRSet to response!\n");
 				return 0;
 			}
@@ -795,7 +794,8 @@ static int test_response_to_wire(list response_list,
 		for (int j = 0; j < test_response->ancount; j++) {
 			if (&(test_response->answer[j])) {
 				if (dnslib_response_add_rrset_answer(resp,
-					rrset_from_test_rrset(test_response->answer[j]), 0, 0) != 0) {
+					rrset_from_test_rrset(test_response->answer[j]),
+							0, 0, 0) != 0) {
 					diag("Could not add answer rrset");
 					diag("owner: %s type: %d",
 					test_response->answer[j]->owner->str,
@@ -812,7 +812,7 @@ static int test_response_to_wire(list response_list,
 			if (&(test_response->authority[j])) {
 				if (dnslib_response_add_rrset_authority(resp,
 					rrset_from_test_rrset(test_response->authority[j]),
-					0, 0) != 0) {
+					0, 0, 0) != 0) {
 					diag("Could not add authority rrset");
 					return 0;
 				}
@@ -830,7 +830,7 @@ static int test_response_to_wire(list response_list,
 				}
 				if (dnslib_response_add_rrset_additional(resp,
 					rrset_from_test_rrset(test_response->additional[j]),
-					0, 0) != 0) {
+					0, 0, 0) != 0) {
 					diag("Could not add additional rrset");
 					return 0;
 				}

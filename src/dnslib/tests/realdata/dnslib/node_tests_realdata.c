@@ -110,7 +110,7 @@ static int test_node_add_rrset(list *rrset_list)
 		tmp = dnslib_node_new(owner,
 		                      NULL);
 
-		if (dnslib_node_add_rrset(tmp, rrset) != 0) {
+		if (dnslib_node_add_rrset(tmp, rrset, 0) != 0) {
 			errors++;
 			diag("Failed to insert rrset into node");
 		}

@@ -1,7 +1,7 @@
 #include <assert.h>
 
-#include "dnslib/tests/dnslib/zone_tests.h"
-#include "dnslib/tests/dnslib_tests_loader.h"
+#include "dnslib/tests/realdata/dnslib/zone_tests_realdata.h"
+#include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
 #include "dnslib/dnslib-common.h"
 #include "dnslib/zone.h"
 #include "dnslib/error.h"
@@ -35,7 +35,7 @@ static dnslib_node_t *node_from_test_node(const test_node_t *test_node)
 		test_rrset_t *test_rrset = (test_rrset_t *)n;
 		dnslib_rrset_t *rrset = rrset_from_test_rrset(test_rrset);
 		assert(rrset);
-		assert(dnslib_node_add_rrset(new_node, rrset) == 0);
+		assert(dnslib_node_add_rrset(new_node, rrset, 0) == 0);
 	}
 
 	return new_node;
@@ -54,7 +54,7 @@ static int test_zone_create(list node_list)
 		dnslib_node_t *node = node_from_test_node(test_node);
 		assert(node);
 
-		dnslib_zone_t *zone = dnslib_zone_new(node, 0);
+		dnslib_zone_t *zone = dnslib_zone_new(node, 0, 0);
 		if (zone == NULL) {
 			diag("Could not create zone with owner: %s\n",
 			     test_node->owner->str);

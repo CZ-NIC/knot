@@ -1,6 +1,6 @@
 ACLOCAL_AMFLAGS = -I ../m4
 bin_PROGRAMS = knotc
-libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-dnslib
+libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-dnslib-realdata unittests-dnslib
 sbin_PROGRAMS = knotd
 
 # $(YACC) will generate header file
@@ -65,6 +65,19 @@ unittests_SOURCES =				\
 	tests/knot/server_tests.c		\
 	tests/knot/server_tests.h		\
 	tests/unittests_main.c
+
+unittests_dnslib_realdata_SOURCES =			\
+	dnslib/tests/realdata/dnslib/dname_tests_realdata.c	\
+	dnslib/tests/realdata/dnslib/edns_tests_realdata.c	\
+	dnslib/tests/realdata/dnslib/node_tests_realdata.c	\
+	dnslib/tests/realdata/dnslib/rdata_tests_realdata.c	\
+	dnslib/tests/realdata/dnslib/response_tests_realdata.c	\
+	dnslib/tests/realdata/dnslib/rrset_tests_realdata.c	\
+	dnslib/tests/realdata/dnslib/zone_tests_realdata.c	\
+	dnslib/tests/realdata/dnslib/zonedb_tests_realdata.c	\
+	dnslib/tests/realdata/dnslib_tests_loader_realdata.h	\
+	dnslib/tests/realdata/dnslib_tests_loader_realdata.c	\
+	dnslib/tests/realdata/unittests_dnslib_realdata.c
 
 unittests_dnslib_SOURCES =			\
 	dnslib/tests/dnslib/cuckoo_tests.c	\
