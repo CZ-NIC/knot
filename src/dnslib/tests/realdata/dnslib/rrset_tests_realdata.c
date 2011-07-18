@@ -212,7 +212,7 @@ static int test_rrset_create(const list rrset_list)
 		                         test_rrset->ttl);
 		assert(rrset);
 		errors += check_rrset(rrset, test_rrset, 0, 0, 0);
-		dnslib_rrset_deep_free(&rrset, 1, 0);
+		dnslib_rrset_deep_free(&rrset, 1, 0, 0);
 	}
 
 	return (errors == 0);
@@ -237,7 +237,7 @@ static int test_rrset_add_rdata(list rrset_list)
 		dnslib_rrset_add_rdata(rrset, tmp_rrset->rdata);
 		errors += check_rrset(rrset, test_rrset, 1, 1, 1);
 		dnslib_rrset_free(&tmp_rrset);
-		dnslib_rrset_deep_free(&rrset, 1, 1);
+		dnslib_rrset_deep_free(&rrset, 1, 1, 0);
 
 	}
 	return (errors == 0);

@@ -1,7 +1,7 @@
 #include <malloc.h>
 #include <assert.h>
 
-#include "dnslib/tests/dnslib_tests_loader.h"
+#include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
 #include "dnslib/descriptor.h"
 
 #include "dnslib/tests/parsed_data.rc"
