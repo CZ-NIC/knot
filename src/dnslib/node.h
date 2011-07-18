@@ -64,11 +64,12 @@ struct dnslib_node {
 	 * Currently only two:
 	 *   0x01 - node is a delegation point
 	 *   0x02 - node is non-authoritative (under a delegation point)
+	 *   0x80 - node is old and will be removed (during update)
+	 *   0x40 - node is new, should not be used while zone is old
 	 */
 	uint8_t flags;
 
-	/*! \brief Structure for connecting this node to an AVL tree. */
-//	TREE_ENTRY(dnslib_node) avl;
+	struct dnslib_node *new_node;
 };
 
 typedef struct dnslib_node dnslib_node_t;
@@ -251,6 +252,11 @@ const dnslib_node_t *dnslib_node_wildcard_child(const dnslib_node_t *node);
 void dnslib_node_set_wildcard_child(dnslib_node_t *node,
                                     dnslib_node_t *wildcard_child);
 
+const dnslib_node_t *dnslib_node_new_node(const dnslib_node_t *node);
+
+void dnslib_node_set_new_node(dnslib_node_t *node,
+                              dnslib_node_t *new_node);
+
 /*!
  * \brief Mark the node as a delegation point.
  *
@@ -321,6 +327,8 @@ void dnslib_node_free(dnslib_node_t **node, int free_owner);
  * \retval > 0 if \a node1 goes after \a node2.
  */
 int dnslib_node_compare(dnslib_node_t *node1, dnslib_node_t *node2);
+
+int dnslib_node_deep_copy(const dnslib_node_t *from, dnslib_node_t **to);
 
 #endif /* _KNOT_DNSLIB_NODE_H_ */
 
