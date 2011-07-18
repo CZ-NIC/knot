@@ -57,7 +57,7 @@ struct dnslib_zone {
 	ck_hash_table_t *table;     /*!< Hash table for holding zone nodes. */
 
 	dnslib_zone_tree_t *nodes;
-	dnslib_zone_tree_t *nsec3_nodes2;
+	dnslib_zone_tree_t *nsec3_nodes;
 
 	/*!
 	 * \todo Unify the use of this field - authoritative nodes vs. all.
