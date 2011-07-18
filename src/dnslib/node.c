@@ -16,7 +16,11 @@ enum {
 	/*! \brief Node is a delegation point (i.e. marking a zone cut). */
 	DNSLIB_NODE_FLAGS_DELEG = (uint8_t)0x01,
 	/*! \brief Node is not authoritative (i.e. below a zone cut). */
-	DNSLIB_NODE_FLAGS_NONAUTH = (uint8_t)0x02
+	DNSLIB_NODE_FLAGS_NONAUTH = (uint8_t)0x02,
+	/*! \brief Node is old and will be removed (during update). */
+	DNSLIB_NODE_FLAGS_OLD = (uint8_t)0x80,
+	/*! \brief Node is new and should not be used while zoen is old. */
+	DNSLIB_NODE_FLAGS_NEW = (uint8_t)0x40
 };
 
 /*----------------------------------------------------------------------------*/
@@ -69,6 +73,54 @@ static inline uint8_t dnslib_node_flags_get_nonauth(uint8_t flags)
 static inline void dnslib_node_flags_set_nonauth(uint8_t *flags)
 {
 	*flags |= DNSLIB_NODE_FLAGS_NONAUTH;
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Returns the old node flag
+ *
+ * \param flags Flags to retrieve the flag from.
+ *
+ * \return A byte with only the old node flag set if it was set in \a flags.
+ */
+static inline uint8_t dnslib_node_flags_get_old(uint8_t flags)
+{
+	return flags & DNSLIB_NODE_FLAGS_OLD;
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Sets the old node flag.
+ *
+ * \param flags Flags to set the flag in.
+ */
+static inline void dnslib_node_flags_set_new(uint8_t *flags)
+{
+	*flags |= DNSLIB_NODE_FLAGS_NEW;
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Returns the new node flag
+ *
+ * \param flags Flags to retrieve the flag from.
+ *
+ * \return A byte with only the new node flag set if it was set in \a flags.
+ */
+static inline uint8_t dnslib_node_flags_get_new(uint8_t flags)
+{
+	return flags & DNSLIB_NODE_FLAGS_NEW;
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Sets the new node flag.
+ *
+ * \param flags Flags to set the flag in.
+ */
+static inline void dnslib_node_flags_set_old(uint8_t *flags)
+{
+	*flags |= DNSLIB_NODE_FLAGS_OLD;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -287,6 +339,21 @@ void dnslib_node_set_wildcard_child(dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
+const dnslib_node_t *dnslib_node_new_node(const dnslib_node_t *node)
+{
+	return node->new_node;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_node_set_new_node(dnslib_node_t *node,
+                              dnslib_node_t *new_node)
+{
+	node->new_node = new_node;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void dnslib_node_set_deleg_point(dnslib_node_t *node)
 {
 	dnslib_node_flags_set_deleg(&node->flags);
@@ -388,4 +455,39 @@ void dnslib_node_free(dnslib_node_t **node, int free_owner)
 int dnslib_node_compare(dnslib_node_t *node1, dnslib_node_t *node2)
 {
 	return dnslib_dname_compare(node1->owner, node2->owner);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_node_deep_copy(const dnslib_node_t *from, dnslib_node_t **to)
+{
+	// create new node
+	*to = dnslib_node_new(from->owner, from->parent);
+	if (*to == NULL) {
+		return DNSLIB_ENOMEM;
+	}
+
+	// copy flags
+	(*to)->flags = from->flags;
+
+	// copy references
+	(*to)->parent = from->parent;
+	(*to)->nsec3_node = from->nsec3_node;
+	(*to)->nsec3_referer = from->nsec3_referer;
+	(*to)->wildcard_child = from->wildcard_child;
+	(*to)->prev = from->prev;
+	(*to)->next = from->next;
+
+	// copy RRSets
+	// copy the skip list with the old references
+	(*to)->rrsets = skip_copy_list(from->rrsets);
+	if ((*to)->rrsets == NULL) {
+		free(*to);
+		*to = NULL;
+		return DNSLIB_ENOMEM;
+	}
+
+	(*to)->rrset_count = from->rrset_count;
+
+	return DNSLIB_EOK;
 }
