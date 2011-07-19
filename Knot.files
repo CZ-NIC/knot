@@ -82,6 +82,8 @@ src/dnslib/zone-dump.c
 src/dnslib/zone-dump.h
 src/dnslib/zone-load.c
 src/dnslib/zone-load.h
+src/dnslib/zone-contents.c
+src/dnslib/zone-contents.h
 src/dnslib/zone-dump-text.h
 src/dnslib/zone-dump-text.c
 src/dnslib/zone-tree.h

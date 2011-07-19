@@ -135,7 +135,7 @@ static inline void dnslib_node_flags_clear_new(uint8_t *flags)
 
 static inline void dnslib_node_flags_clear_old(uint8_t *flags)
 {
-	*flags &= ~DNSLIB_NODE_FLAGS_old;
+	*flags &= ~DNSLIB_NODE_FLAGS_OLD;
 }
 
 /*----------------------------------------------------------------------------*/

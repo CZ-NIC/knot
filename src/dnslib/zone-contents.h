@@ -1,18 +1,18 @@
 /*!
- * \file zone.h
+ * \file zone-contents.h
  *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
- * \brief Zone structure and API for manipulating it.
+ * \brief Zone contents structure and API for manipulating it.
  *
  * \addtogroup dnslib
  * @{
  */
 
-#ifndef _KNOT_DNSLIB_ZONE_H_
-#define _KNOT_DNSLIB_ZONE_H_
+#ifndef _KNOT_DNSLIB_ZONE_CONTENTS_H_
+#define _KNOT_DNSLIB_ZONE_CONTENTS_H_
 
-#include <time.h>
+//#include <time.h>
 
 #include "dnslib/node.h"
 #include "dnslib/dname.h"
@@ -23,73 +23,44 @@
 
 #include "dnslib/zone-tree.h"
 
-#include "dnslib/zone-contents.h"
+/*----------------------------------------------------------------------------*/
+
+typedef struct dnslib_zone_contents {
+	dnslib_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
+
+	ck_hash_table_t *table;     /*!< Hash table for holding zone nodes. */
+	dnslib_zone_tree_t *nodes;
+	dnslib_zone_tree_t *nsec3_nodes;
+
+	/*!
+	 * \todo Unify the use of this field - authoritative nodes vs. all.
+	 */
+	uint node_count;
+
+	dnslib_dname_table_t *dname_table;
+
+	dnslib_nsec3_params_t nsec3_params;
+
+	time_t version;
+
+	/*! \brief Generation of the zone during update. May be only 0 or 1. */
+	short generation;
+} dnslib_zone_contents_t;
 
 /*----------------------------------------------------------------------------*/
 
-//typedef TREE_HEAD(avl_tree, dnslib_node) avl_tree_t;
-//struct event_t;
+dnslib_zone_contents_t *dnslib_zone_contents_new(dnslib_node_t *apex,
+                                                 uint node_count,
+                                                 int use_domain_table);
 
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Return values for search functions.
- *
- * Used in dnslib_zone_find_dname() and dnslib_zone_find_dname_hash().
- */
-enum dnslib_zone_retvals {
-	DNSLIB_ZONE_NAME_FOUND = 1,
-	DNSLIB_ZONE_NAME_NOT_FOUND = 0
-};
+time_t dnslib_zone_contents_version(const dnslib_zone_contents_t *contents);
 
-typedef enum dnslib_zone_retvals dnslib_zone_retvals_t;
+void dnslib_zone_contents_set_version(dnslib_zone_contents_t *contents,
+                                      time_t version);
 
-/*----------------------------------------------------------------------------*/
+short dnslib_zone_contents_generation(const dnslib_zone_contents_t *contents);
 
-/*!
- * \brief Structure for holding DNS zone.
- *
- * \warning Make sure not to insert the same nodes using both the normal and
- *          NSEC3 functions. Although this will be successfull, it will produce
- *          double-free errors when destroying the zone.
- */
-struct dnslib_zone {
-	dnslib_dname_t *name;
-
-	dnslib_zone_contents_t *contents;
-
-	void *data; /*!< Pointer to generic zone-related data. */
-	int (*dtor)(struct dnslib_zone *); /*!< Data destructor. */
-};
-
-typedef struct dnslib_zone dnslib_zone_t;
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Creates new DNS zone.
- *
- * \param apex Node representing the zone apex.
- * \param node_count Number of authorative nodes in the zone.
- *
- * \return The initialized zone structure or NULL if an error occured.
- */
-dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
-                               int use_domain_table);
-
-const dnslib_zone_contents_t *dnslib_zone_get_contents(
-	const dnslib_zone_t *zone);
-
-
-/*----------------------------------------------------------------------------*/
-/* Zone contents functions. TODO: remove                                      */
-/*----------------------------------------------------------------------------*/
-
-time_t dnslib_zone_version(const dnslib_zone_t *zone);
-
-void dnslib_zone_set_version(dnslib_zone_t *zone, time_t version);
-
-short dnslib_zone_generation(const dnslib_zone_t *zone);
-
-void dnslib_zone_switch_generation(dnslib_zone_t *zone);
+void dnslib_zone_contents_switch_generation(dnslib_zone_contents_t *contents);
 
 /*!
  * \brief Adds a node to the given zone.
@@ -109,8 +80,9 @@ void dnslib_zone_switch_generation(dnslib_zone_t *zone);
  * \retval DNSLIB_EBADZONE
  * \retval DNSLIB_EHASH
  */
-int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
-                         int create_parents, int use_domain_table);
+int dnslib_zone_contents_add_node(dnslib_zone_contents_t *contents,
+                                  dnslib_node_t *node,
+                                  int create_parents, int use_domain_table);
 
 /*!
  * \brief Adds a RRSet to the given zone.
@@ -134,12 +106,14 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
  * \retval DNSLIB_EBADARG
  * \retval DNSLIB_EBADZONE
  */
-int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
+int dnslib_zone_contents_add_rrset(dnslib_zone_contents_t *contents,
+                          dnslib_rrset_t *rrset,
                           dnslib_node_t **node,
                           dnslib_rrset_dupl_handling_t dupl,
                           int use_domain_table);
 
-int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
+int dnslib_zone_contents_add_rrsigs(dnslib_zone_contents_t *contents,
+                           dnslib_rrset_t *rrsigs,
                            dnslib_rrset_t **rrset, dnslib_node_t **node,
                            dnslib_rrset_dupl_handling_t dupl,
                            int use_domain_table);
@@ -159,13 +133,15 @@ int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
  * \retval DNSLIB_EBADARG
  * \retval DNSLIB_EBADZONE
  */
-int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node,
-                               int create_parents, int use_domain_table);
+int dnslib_zone_contents_add_nsec3_node(dnslib_zone_contents_t *contents,
+                                        dnslib_node_t *node, int create_parents,
+                                        int use_domain_table);
 
-int dnslib_zone_add_nsec3_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
-                                dnslib_node_t **node,
-                                dnslib_rrset_dupl_handling_t dupl,
-                                int use_domain_table);
+int dnslib_zone_contents_add_nsec3_rrset(dnslib_zone_contents_t *contents,
+                                         dnslib_rrset_t *rrset,
+                                         dnslib_node_t **node,
+                                         dnslib_rrset_dupl_handling_t dupl,
+                                         int use_domain_table);
 
 /*!
  * \warning Always call dnslib_zone_adjust_dnames() prior to calling this
@@ -174,7 +150,8 @@ int dnslib_zone_add_nsec3_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
  * \note Currently, all nodes (even non-authoritative) are inserted into the
  *       hash table.
  */
-int dnslib_zone_create_and_fill_hash_table(dnslib_zone_t *zone);
+int dnslib_zone_contents_create_and_fill_hash_table(
+	dnslib_zone_contents_t *contents);
 
 /*!
  * \brief Tries to find a node with the specified name in the zone.
@@ -184,8 +161,8 @@ int dnslib_zone_create_and_fill_hash_table(dnslib_zone_t *zone);
  *
  * \return Corresponding node if found, NULL otherwise.
  */
-dnslib_node_t *dnslib_zone_get_node(const dnslib_zone_t *zone,
-                                    const dnslib_dname_t *name);
+dnslib_node_t *dnslib_zone_contents_get_node(
+	const dnslib_zone_contents_t *contents, const dnslib_dname_t *name);
 
 /*!
  * \brief Tries to find a node with the specified name among the NSEC3 nodes
@@ -196,13 +173,13 @@ dnslib_node_t *dnslib_zone_get_node(const dnslib_zone_t *zone,
  *
  * \return Corresponding node if found, NULL otherwise.
  */
-dnslib_node_t *dnslib_zone_get_nsec3_node(const dnslib_zone_t *zone,
-                                          const dnslib_dname_t *name);
+dnslib_node_t *dnslib_zone_contents_get_nsec3_node(
+	const dnslib_zone_contents_t *contents, const dnslib_dname_t *name);
 
 /*!
  * \brief Tries to find a node with the specified name in the zone.
  *
- * \note This function is identical to dnslib_zone_get_node(), only it returns
+ * \note This function is identical to dnslib_zone_contents_get_node(), only it returns
  *       constant reference.
  *
  * \param zone Zone where the name should be searched for.
@@ -210,8 +187,8 @@ dnslib_node_t *dnslib_zone_get_nsec3_node(const dnslib_zone_t *zone,
  *
  * \return Corresponding node if found, NULL otherwise.
  */
-const dnslib_node_t *dnslib_zone_find_node(const dnslib_zone_t *zone,
-                                           const dnslib_dname_t *name);
+const dnslib_node_t *dnslib_zone_contents_find_node(
+	const dnslib_zone_contents_t *contents, const dnslib_dname_t *name);
 
 /*!
  * \brief Tries to find domain name in the given zone using AVL tree.
@@ -228,7 +205,7 @@ const dnslib_node_t *dnslib_zone_find_node(const dnslib_zone_t *zone,
  * \retval DNSLIB_EBADARG
  * \retval DNSLIB_EBADZONE
  */
-int dnslib_zone_find_dname(const dnslib_zone_t *zone,
+int dnslib_zone_contents_find_dname(const dnslib_zone_contents_t *contents,
                            const dnslib_dname_t *name,
                            const dnslib_node_t **node,
                            const dnslib_node_t **closest_encloser,
@@ -239,11 +216,11 @@ int dnslib_zone_find_dname(const dnslib_zone_t *zone,
  *
  * \param zone Zone to search for the name.
  * \param name Domain name to find the previous domain name of.
- *dnslib_zone_adjust_dnames
+ *dnslib_zone_contents_adjust_dnames
  * \return Previous node in canonical order, or NULL if some parameter is wrong.
  */
-const dnslib_node_t *dnslib_zone_find_previous(const dnslib_zone_t *zone,
-                                               const dnslib_dname_t *name);
+const dnslib_node_t *dnslib_zone_contents_find_previous(
+	const dnslib_zone_contents_t *contents, const dnslib_dname_t *name);
 
 #ifdef USE_HASH_TABLE
 /*!
@@ -261,7 +238,7 @@ const dnslib_node_t *dnslib_zone_find_previous(const dnslib_zone_t *zone,
  * \retval DNSLIB_EBADARG
  * \retval DNSLIB_EBADZONE
  */
-int dnslib_zone_find_dname_hash(const dnslib_zone_t *zone,
+int dnslib_zone_contents_find_dname_hash(const dnslib_zone_contents_t *contents,
                                 const dnslib_dname_t *name,
                                 const dnslib_node_t **node,
                                 const dnslib_node_t **closest_encloser);
@@ -271,7 +248,7 @@ int dnslib_zone_find_dname_hash(const dnslib_zone_t *zone,
  * \brief Tries to find a node with the specified name among the NSEC3 nodes
  *        of the zone.
  *
- * \note This function is identical to dnslib_zone_get_nsec3_node(), only it
+ * \note This function is identical to dnslib_zone_contents_get_nsec3_node(), only it
  *       returns constant reference.
  *
  * \param zone Zone where the name should be searched for.
@@ -279,8 +256,8 @@ int dnslib_zone_find_dname_hash(const dnslib_zone_t *zone,
  *
  * \return Corresponding node if found, NULL otherwise.
  */
-const dnslib_node_t *dnslib_zone_find_nsec3_node(const dnslib_zone_t *zone,
-                                                 const dnslib_dname_t *name);
+const dnslib_node_t *dnslib_zone_contents_find_nsec3_node(
+	const dnslib_zone_contents_t *contents, const dnslib_dname_t *name);
 
 /*!
  * \brief Finds NSEC3 node and previous NSEC3 node in canonical order,
@@ -303,7 +280,8 @@ const dnslib_node_t *dnslib_zone_find_nsec3_node(const dnslib_zone_t *zone,
  * \retval DNSLIB_ECRYPTO
  * \retval DNSLIB_ERROR
  */
-int dnslib_zone_find_nsec3_for_name(const dnslib_zone_t *zone,
+int dnslib_zone_contents_find_nsec3_for_name(
+                                    const dnslib_zone_contents_t *contents,
                                     const dnslib_dname_t *name,
                                     const dnslib_node_t **nsec3_node,
                                     const dnslib_node_t **nsec3_previous);
@@ -314,11 +292,14 @@ int dnslib_zone_find_nsec3_for_name(const dnslib_zone_t *zone,
  *
  * \return Zone apex node.
  */
-const dnslib_node_t *dnslib_zone_apex(const dnslib_zone_t *zone);
+const dnslib_node_t *dnslib_zone_contents_apex(
+	const dnslib_zone_contents_t *contents);
 
-dnslib_node_t *dnslib_zone_get_apex(const dnslib_zone_t *zone);
+dnslib_node_t *dnslib_zone_contents_get_apex(
+	const dnslib_zone_contents_t *contents);
 
-dnslib_dname_t *dnslib_zone_name(const dnslib_zone_t *zone);
+//dnslib_dname_t *dnslib_zone_contents_name(
+//	const dnslib_zone_contents_t *contents);
 
 /*!
  * \brief Optimizes zone by replacing domain names in RDATA with references to
@@ -326,7 +307,7 @@ dnslib_dname_t *dnslib_zone_name(const dnslib_zone_t *zone);
  *
  * \param zone Zone to adjust domain names in.
  */
-int dnslib_zone_adjust_dnames(dnslib_zone_t *zone);
+int dnslib_zone_contents_adjust_dnames(dnslib_zone_contents_t *contents);
 
 /*!
  * \brief Parses the NSEC3PARAM record stored in the zone.
@@ -341,7 +322,7 @@ int dnslib_zone_adjust_dnames(dnslib_zone_t *zone);
  *
  * \param zone Zone to get the NSEC3PARAM record from.
  */
-int dnslib_zone_load_nsec3param(dnslib_zone_t *zone);
+int dnslib_zone_contents_load_nsec3param(dnslib_zone_contents_t *contents);
 
 /*!
  * \brief Checks if the zone uses NSEC3.
@@ -354,24 +335,25 @@ int dnslib_zone_load_nsec3param(dnslib_zone_t *zone);
  * \retval <> 0 if the zone uses NSEC3.
  * \retval 0 if it does not.
  *
- * \see dnslib_zone_load_nsec3param()
+ * \see dnslib_zone_contents_load_nsec3param()
  */
-int dnslib_zone_nsec3_enabled(const dnslib_zone_t *zone);
+int dnslib_zone_contents_nsec3_enabled(const dnslib_zone_contents_t *contents);
 
 /*!
  * \brief Returns the parsed NSEC3PARAM record of the zone.
  *
  * \note You must parse the NSEC3PARAM record prior to calling this function
- *       (dnslib_zone_load_nsec3param()).
+ *       (dnslib_zone_contents_load_nsec3param()).
  *
  * \param zone Zone to get the NSEC3PARAM record from.
  *
  * \return Parsed NSEC3PARAM from the zone or NULL if the zone does not use
  *         NSEC3 or the record was not parsed before.
  *
- * \see dnslib_zone_load_nsec3param()
+ * \see dnslib_zone_contents_load_nsec3param()
  */
-const dnslib_nsec3_params_t *dnslib_zone_nsec3params(const dnslib_zone_t *zone);
+const dnslib_nsec3_params_t *dnslib_zone_contents_nsec3params(
+	const dnslib_zone_contents_t *contents);
 
 /*!
  * \brief Applies the given function to each regular node in the zone.
@@ -383,7 +365,7 @@ const dnslib_nsec3_params_t *dnslib_zone_nsec3params(const dnslib_zone_t *zone);
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-int dnslib_zone_tree_apply_postorder(dnslib_zone_t *zone,
+int dnslib_zone_contents_tree_apply_postorder(dnslib_zone_contents_t *contents,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data);
 
@@ -401,7 +383,7 @@ int dnslib_zone_tree_apply_postorder(dnslib_zone_t *zone,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-int dnslib_zone_tree_apply_inorder(dnslib_zone_t *zone,
+int dnslib_zone_contents_tree_apply_inorder(dnslib_zone_contents_t *contents,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data);
 
@@ -419,9 +401,9 @@ int dnslib_zone_tree_apply_inorder(dnslib_zone_t *zone,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-int dnslib_zone_tree_apply_inorder_reverse(dnslib_zone_t *zone,
-                              void (*function)(dnslib_node_t *node, void *data),
-                              void *data);
+int dnslib_zone_contents_tree_apply_inorder_reverse(
+	dnslib_zone_contents_t *contents,
+	void (*function)(dnslib_node_t *node, void *data), void *data);
 
 /*!
  * \brief Applies the given function to each NSEC3 node in the zone.
@@ -434,7 +416,7 @@ int dnslib_zone_tree_apply_inorder_reverse(dnslib_zone_t *zone,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-int dnslib_zone_nsec3_apply_postorder(dnslib_zone_t *zone,
+int dnslib_zone_contents_nsec3_apply_postorder(dnslib_zone_contents_t *contents,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data);
 
@@ -453,7 +435,7 @@ int dnslib_zone_nsec3_apply_postorder(dnslib_zone_t *zone,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-int dnslib_zone_nsec3_apply_inorder(dnslib_zone_t *zone,
+int dnslib_zone_contents_nsec3_apply_inorder(dnslib_zone_contents_t *contents,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data);
 
@@ -472,9 +454,9 @@ int dnslib_zone_nsec3_apply_inorder(dnslib_zone_t *zone,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-int dnslib_zone_nsec3_apply_inorder_reverse(dnslib_zone_t *zone,
-                              void (*function)(dnslib_node_t *node, void *data),
-                              void *data);
+int dnslib_zone_contents_nsec3_apply_inorder_reverse(
+	dnslib_zone_contents_t *contents,
+	void (*function)(dnslib_node_t *node, void *data), void *data);
 
 /*!
  * \brief Creates a shallow copy of the zone (no stored data are copied).
@@ -492,35 +474,12 @@ int dnslib_zone_nsec3_apply_inorder_reverse(dnslib_zone_t *zone,
  * \retval DNSLIB_EBADARG
  * \retval DNSLIB_ENOMEM
  */
-int dnslib_zone_shallow_copy(const dnslib_zone_t *from,
-                             dnslib_zone_contents_t **to);
+int dnslib_zone_contents_shallow_copy(const dnslib_zone_contents_t *from,
+                                      dnslib_zone_contents_t **to);
 
-/*----------------------------------------------------------------------------*/
-/*----------------------------------------------------------------------------*/
+void dnslib_zone_contents_free(dnslib_zone_contents_t **contents);
 
-dnslib_zone_contents_t *dnslib_zone_switch_contents(dnslib_zone_t *zone,
-                                          dnslib_zone_contents_t *new_contents);
-
-/*!
- * \brief Correctly deallocates the zone structure, without deleting its nodes.
- *
- * Also sets the given pointer to NULL.
- *
- * \param zone Zone to be freed.
- */
-void dnslib_zone_free(dnslib_zone_t **zone);
-
-/*!
- * \brief Correctly deallocates the zone structure and all nodes within.
- *
- * Also sets the given pointer to NULL.
- *
- * \param zone Zone to be freed.
- * \param free_rdata_dnames Set to <> 0 if you want to delete ALL domain names
- *                          present in RDATA. Set to 0 otherwise. (See
- *                          dnslib_rdata_deep_free().)
- */
-void dnslib_zone_deep_free(dnslib_zone_t **zone, int free_rdata_dnames);
+void dnslib_zone_contents_deep_free(dnslib_zone_contents_t **contents);
 
 #endif
 
