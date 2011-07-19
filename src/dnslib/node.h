@@ -293,6 +293,18 @@ int dnslib_node_is_non_auth(const dnslib_node_t *node);
 
 int dnslib_node_is_auth(const dnslib_node_t *node);
 
+int dnslib_node_is_new(const dnslib_node_t *node);
+
+int dnslib_node_is_old(const dnslib_node_t *node);
+
+void dnslib_node_set_new(dnslib_node_t *node);
+
+void dnslib_node_set_old(dnslib_node_t *node);
+
+void dnslib_node_clear_new(dnslib_node_t *node);
+
+void dnslib_node_clear_old(dnslib_node_t *node);
+
 /*!
  * \brief Destroys the RRSets within the node structure.
  *

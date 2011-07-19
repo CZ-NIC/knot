@@ -125,6 +125,20 @@ static inline void dnslib_node_flags_set_old(uint8_t *flags)
 }
 
 /*----------------------------------------------------------------------------*/
+
+static inline void dnslib_node_flags_clear_new(uint8_t *flags)
+{
+	*flags &= ~DNSLIB_NODE_FLAGS_NEW;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static inline void dnslib_node_flags_clear_old(uint8_t *flags)
+{
+	*flags &= ~DNSLIB_NODE_FLAGS_old;
+}
+
+/*----------------------------------------------------------------------------*/
 /*!
  * \brief Compares the two keys as RR types.
  *
@@ -386,6 +400,48 @@ int dnslib_node_is_non_auth(const dnslib_node_t *node)
 int dnslib_node_is_auth(const dnslib_node_t *node)
 {
 	return (node->flags == 0);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_node_is_new(const dnslib_node_t *node)
+{
+	return dnslib_node_flags_get_new(node->flags);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_node_is_old(const dnslib_node_t *node)
+{
+	return dnslib_node_flags_get_old(node->flags);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_node_set_new(dnslib_node_t *node)
+{
+	dnslib_node_flags_set_new(&node->flags);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_node_set_old(dnslib_node_t *node)
+{
+	dnslib_node_flags_set_old(&node->flags);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_node_clear_new(dnslib_node_t *node)
+{
+	dnslib_node_flags_clear_new(&node->flags);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_node_clear_old(dnslib_node_t *node)
+{
+	dnslib_node_flags_clear_old(&node->flags);
 }
 
 /*----------------------------------------------------------------------------*/
