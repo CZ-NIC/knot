@@ -509,6 +509,9 @@ int dnslib_zone_nsec3_apply_inorder_reverse(dnslib_zone_t *zone,
 int dnslib_zone_shallow_copy(const dnslib_zone_t *from,
                              dnslib_zone_contents_t **to);
 
+dnslib_zone_contents_t *dnslib_zone_switch_contents(dnslib_zone_t *zone,
+                                          dnslib_zone_contents_t *new_contents);
+
 /*!
  * \brief Correctly deallocates the zone structure, without deleting its nodes.
  *

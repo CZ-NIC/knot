@@ -3,6 +3,8 @@
 #include <assert.h>
 #include <string.h>
 
+#include <urcu.h>
+
 #include "dnslib/dnslib-common.h"
 #include "dnslib/zone.h"
 #include "dnslib/node.h"
@@ -1957,6 +1959,16 @@ cleanup:
 	free(contents->dname_table);
 	free(contents);
 	return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnslib_zone_contents_t *dnslib_zone_switch_contents(dnslib_zone_t *zone,
+                                           dnslib_zone_contents_t *new_contents)
+{
+	dnslib_zone_contents_t *old_contents =
+		rcu_xchg_pointer(&zone->contents, new_contents);
+	return old_contents;
 }
 
 /*----------------------------------------------------------------------------*/
