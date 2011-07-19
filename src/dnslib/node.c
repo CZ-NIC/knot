@@ -9,6 +9,7 @@
 #include "dnslib/error.h"
 #include "common/skip-list.h"
 #include "common/tree.h"
+#include "dnslib/debug.h"
 
 /*----------------------------------------------------------------------------*/
 /*! \brief Flags used to mark nodes with some property. */
