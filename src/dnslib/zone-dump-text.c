@@ -989,7 +989,7 @@ int zone_dump_text(dnslib_zone_t *zone, const char *filename)
 
 	struct dump_param param;
 	param.f = f;
-	param.origin = zone->apex->owner;
+	param.origin = zone->contents->apex->owner;
 	dnslib_zone_tree_apply_inorder(zone, node_dump_text, &param);
 	dnslib_zone_nsec3_apply_inorder(zone, node_dump_text, &param);
 	fclose(f);

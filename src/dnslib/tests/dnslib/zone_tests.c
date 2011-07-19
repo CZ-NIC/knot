@@ -81,7 +81,7 @@ static int test_zone_create(dnslib_zone_t **zone)
 		return 0;
 	}
 
-	if ((*zone)->apex != node) {
+	if ((*zone)->contents->apex != node) {
 		diag("zone: Zone apex not set right.");
 		dnslib_node_free(&node, 1);
 		return 0;

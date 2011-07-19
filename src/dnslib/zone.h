@@ -43,6 +43,30 @@ typedef enum dnslib_zone_retvals dnslib_zone_retvals_t;
 
 /*----------------------------------------------------------------------------*/
 
+typedef struct dnslib_zone_contents {
+	dnslib_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
+
+	ck_hash_table_t *table;     /*!< Hash table for holding zone nodes. */
+	dnslib_zone_tree_t *nodes;
+	dnslib_zone_tree_t *nsec3_nodes;
+
+	/*!
+	 * \todo Unify the use of this field - authoritative nodes vs. all.
+	 */
+	uint node_count;
+
+	dnslib_dname_table_t *dname_table;
+
+	dnslib_nsec3_params_t nsec3_params;
+
+	time_t version;
+
+	/*! \brief Generation of the zone during update. May be only 0 or 1. */
+	short generation;
+} dnslib_zone_contents_t;
+
+/*----------------------------------------------------------------------------*/
+
 /*!
  * \brief Structure for holding DNS zone.
  *
@@ -51,21 +75,9 @@ typedef enum dnslib_zone_retvals dnslib_zone_retvals_t;
  *          double-free errors when destroying the zone.
  */
 struct dnslib_zone {
-	dnslib_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
-//	avl_tree_t *tree;          /*!< AVL tree for holding zone nodes. */
-//	avl_tree_t *nsec3_nodes;   /*!< AVL tree for holding NSEC3 nodes. */
-	ck_hash_table_t *table;     /*!< Hash table for holding zone nodes. */
+	dnslib_dname_t *name;
 
-	dnslib_zone_tree_t *nodes;
-	dnslib_zone_tree_t *nsec3_nodes;
-
-	/*!
-	 * \todo Unify the use of this field - authoritative nodes vs. all.
-	 */
-	uint node_count;
-	dnslib_nsec3_params_t nsec3_params;
-	time_t version;
-	dnslib_dname_table_t *dname_table;
+	dnslib_zone_contents_t *contents;
 
 	void *data; /*!< Pointer to generic zone-related data. */
 	int (*dtor)(struct dnslib_zone *); /*!< Data destructor. */
@@ -88,6 +100,10 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 time_t dnslib_zone_version(const dnslib_zone_t *zone);
 
 void dnslib_zone_set_version(dnslib_zone_t *zone, time_t version);
+
+short dnslib_zone_generation(const dnslib_zone_t *zone);
+
+void dnslib_zone_switch_generation(dnslib_zone_t *zone);
 
 /*!
  * \brief Adds a node to the given zone.
@@ -316,6 +332,8 @@ const dnslib_node_t *dnslib_zone_apex(const dnslib_zone_t *zone);
 
 dnslib_node_t *dnslib_zone_get_apex(const dnslib_zone_t *zone);
 
+dnslib_dname_t *dnslib_zone_name(const dnslib_zone_t *zone);
+
 /*!
  * \brief Optimizes zone by replacing domain names in RDATA with references to
  *        domain names present in zone (as node owners).
@@ -488,7 +506,8 @@ int dnslib_zone_nsec3_apply_inorder_reverse(dnslib_zone_t *zone,
  * \retval DNSLIB_EBADARG
  * \retval DNSLIB_ENOMEM
  */
-int dnslib_zone_shallow_copy(const dnslib_zone_t *from, dnslib_zone_t **to);
+int dnslib_zone_shallow_copy(const dnslib_zone_t *from,
+                             dnslib_zone_contents_t **to);
 
 /*!
  * \brief Correctly deallocates the zone structure, without deleting its nodes.

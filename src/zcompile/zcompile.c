@@ -1593,7 +1593,8 @@ int process_rr(void)
 	}
 
 	if ((current_rrset->type == DNSLIB_RRTYPE_SOA) && (zone != NULL)) {
-		if (dnslib_node_rrset(zone->apex, DNSLIB_RRTYPE_SOA) != NULL) {
+		if (dnslib_node_rrset(dnslib_zone_apex(zone),
+		                      DNSLIB_RRTYPE_SOA) != NULL) {
 			return KNOT_ZCOMPILE_ESOA;
 		}
 	}
