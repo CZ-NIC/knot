@@ -83,6 +83,18 @@ static int test_dname_table_adding()
 	dnslib_dname_table_t *table = dnslib_dname_table_new();
 	CHECK_ALLOC(table, 0);
 
+	/* Add NULL */
+	if (dnslib_dname_table_add_dname(table, NULL) != DNSLIB_EBADARG) {
+		diag("Adding NULL dname did not result in an error!");
+		errors++;
+	}
+
+	/* Add to NULL table*/
+	if (dnslib_dname_table_add_dname(NULL, NULL) != DNSLIB_EBADARG) {
+		diag("Adding to NULL table did not result in an error!");
+		errors++;
+	}
+
 	/* Add valid dnames. */
 	for (int i = 0; i < DNAME_TABLE_DNAME_COUNT; i++) {
 		dnslib_dname_t *dname =
@@ -179,6 +191,12 @@ static int test_dname_table_adding()
 		diag("First two dnames in table are not identical!");
 		errors++;
 	}
+
+	/* Delete table, wipe out array. */
+	dnslib_dname_table_deep_free(&table);
+	memset(arg.array, 0,
+	       sizeof(dnslib_dname_t *) * DNAME_TABLE_DNAME_COUNT * 2);
+	arg.count = 0;
 
 	dnslib_dname_table_deep_free(&table);
 	return (errors == 0);
