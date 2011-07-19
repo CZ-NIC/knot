@@ -727,6 +727,7 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 	}
 
 	// save the zone name
+	debug_dnslib_zone("Copying zone name.\n");
 	zone->name = dnslib_dname_copy(dnslib_node_owner(apex));
 	if (zone->name == NULL) {
 		ERR_ALLOC_FAILED;
@@ -734,6 +735,7 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 		return NULL;
 	}
 
+	debug_dnslib_zone("Creating zone contents.\n");
 	dnslib_zone_contents_t *contents = (dnslib_zone_contents_t *)
 	                              calloc(1, sizeof(dnslib_zone_contents_t));
 	if (contents == NULL) {
@@ -755,12 +757,14 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 //		goto cleanup;
 //	}
 
+	debug_dnslib_zone("Creating tree for normal nodes.\n");
 	contents->nodes = malloc(sizeof(dnslib_zone_tree_t));
 	if (contents->nodes == NULL) {
 		ERR_ALLOC_FAILED;
 		goto cleanup;
 	}
 
+	debug_dnslib_zone("Creating tree for NSEC3 nodes.\n");
 	contents->nsec3_nodes = malloc(sizeof(dnslib_zone_tree_t));
 	if (contents->nsec3_nodes == NULL) {
 		ERR_ALLOC_FAILED;
@@ -768,6 +772,7 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 	}
 
 	if (use_domain_table) {
+		debug_dnslib_zone("Creating domain name table.\n");
 		contents->dname_table = dnslib_dname_table_new();
 		if (contents->dname_table == NULL) {
 			ERR_ALLOC_FAILED;
@@ -777,6 +782,7 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 		contents->dname_table = NULL;
 	}
 
+	debug_dnslib_zone("Initializing zone data.\n");
 	/* Initialize data. */
 	zone->data = 0;
 	zone->dtor = 0;
@@ -784,6 +790,7 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 	contents->node_count = node_count;
 
 	/* Initialize NSEC3 params */
+	debug_dnslib_zone("Initializing NSEC3 parameters.\n");
 	contents->nsec3_params.algorithm = 0;
 	contents->nsec3_params.flags = 0;
 	contents->nsec3_params.iterations = 0;
@@ -793,6 +800,7 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 //	TREE_INIT(zone->tree, dnslib_node_compare);
 //	TREE_INIT(zone->nsec3_nodes, dnslib_node_compare);
 
+	debug_dnslib_zone("Initializing zone trees.\n");
 	if (dnslib_zone_tree_init(contents->nodes) != DNSLIB_EOK
 	    || dnslib_zone_tree_init(contents->nsec3_nodes) != DNSLIB_EOK) {
 		goto cleanup;
@@ -801,19 +809,22 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 	// how to know if this is successfull??
 //	TREE_INSERT(zone->tree, dnslib_node, avl, apex);
 
+	debug_dnslib_zone("Inserting apex into the zone tree.\n");
 	if (dnslib_zone_tree_insert(contents->nodes, apex) != DNSLIB_EOK) {
 		debug_dnslib_zone("Failed to insert apex to the zone tree.\n");
 		goto cleanup;
 	}
 
 #ifdef USE_HASH_TABLE
-	if (zone->contents->node_count > 0) {
+	if (contents->node_count > 0) {
+		debug_dnslib_zone("Creating hash table.\n");
 		contents->table = ck_create_table(contents->node_count);
 		if (contents->table == NULL) {
 			goto cleanup;
 		}
 
 		// insert the apex into the hash table
+		debug_dnslib_zone("Inserting apex into the hash table.\n");
 		if (ck_insert_item(contents->table,
 		                   (const char *)dnslib_dname_name(
 		                                       dnslib_node_owner(apex)),
@@ -829,6 +840,7 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 
 	// insert names from the apex to the domain table
 	if (use_domain_table) {
+		debug_dnslib_zone("Inserting names from apex to table.\n");
 		int rc = dnslib_zone_dnames_from_node_to_table(
 		             contents->dname_table, apex);
 		if (rc != DNSLIB_EOK) {
@@ -837,11 +849,13 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 		}
 	}
 
+	debug_dnslib_zone("Saving zone contents.\n");
 	zone->contents = contents;
 
 	return zone;
 
 cleanup:
+	debug_dnslib_zone("Cleaning up.\n");
 	free(contents->dname_table);
 	free(contents->nodes);
 	free(contents->nsec3_nodes);
@@ -1953,7 +1967,9 @@ void dnslib_zone_free(dnslib_zone_t **zone)
 		return;
 	}
 
-	if ((*zone)->contents->generation != 0) {
+	debug_dnslib_zone("zone_free().\n");
+
+	if ((*zone)->contents && (*zone)->contents->generation != 0) {
 		// zone is in the middle of an update, report
 		debug_dnslib_zone("Destroying zone that is in the middle of an "
 		                  "update.\n");
@@ -1982,6 +1998,8 @@ void dnslib_zone_free(dnslib_zone_t **zone)
 	free((*zone)->contents);
 	free(*zone);
 	*zone = NULL;
+
+	debug_dnslib_zone("Done.\n");
 }
 
 /*----------------------------------------------------------------------------*/
