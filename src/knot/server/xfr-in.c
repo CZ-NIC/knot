@@ -1355,24 +1355,167 @@ int xfr_load_changesets(const dnslib_zone_t *zone, xfrin_changesets_t *dst,
 	return KNOT_EOK;
 }
 
+/*----------------------------------------------------------------------------*/
+/* Applying changesets to zone                                                */
+/*----------------------------------------------------------------------------*/
+
 typedef struct {
+	dnslib_rrset_t **old_rrsets;
+	int old_rrsets_count;
+	int old_rrsets_allocated;
 	dnslib_rrset_t **new_rrsets;
-	int rrsets_count;
-	int rrsets_allocated;
+	int new_rrsets_count;
+	int new_rrsets_allocated;
 	dnslib_node_t **old_nodes;
-	int nodes_count;
-	int nodes_allocated;
+	int old_nodes_count;
+	int old_nodes_allocated;
+	dnslib_node_t **new_nodes;
+	int new_nodes_count;
+	int new_nodes_allocated;
+	dnslib_dname_t *new_dnames;
+	int new_dnames_count;
+	int new_dnames_allocated;
 } xfrin_changes_t;
+
+/*----------------------------------------------------------------------------*/
+
+static void xfrin_changes_free(xfrin_changes_t **changes)
+{
+	free((*changes)->old_nodes);
+	free((*changes)->old_rrsets);
+	free((*changes)->new_dnames);
+	free((*changes)->new_rrsets);
+	free((*changes)->new_nodes);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_changes_check_rrsets(dnslib_rrset_t ***rrsets,
+                                      int *count, int *allocated)
+{
+	int new_count = 0;
+	if (*count == *allocated) {
+		new_count = *allocated * 2;
+	}
+
+	dnslib_rrset_t **rrsets_new =
+		(dnslib_rrset_t **)calloc(new_count, sizeof(dnslib_rrset_t *));
+	if (rrsets_new == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	memcpy(rrsets_new, *rrsets, *count);
+	*rrsets = rrsets_new;
+	*allocated = new_count;
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_changes_check_nodes(dnslib_node_t ***nodes,
+                                     int *count, int *allocated)
+{
+	int new_count = 0;
+	if (*count == *allocated) {
+		new_count = *allocated * 2;
+	}
+
+	dnslib_node_t **nodes_new =
+		(dnslib_node_t **)calloc(new_count, sizeof(dnslib_node_t *));
+	if (nodes_new == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	memcpy(nodes_new, *nodes, *count);
+	*nodes = nodes_new;
+	*allocated = new_count;
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_changes_check_dnames(dnslib_dname_t ***dnames,
+                                      int *count, int *allocated)
+{
+	int new_count = 0;
+	if (*count == *allocated) {
+		new_count = *allocated * 2;
+	}
+
+	dnslib_dname_t **dnames_new =
+		(dnslib_dname_t **)calloc(new_count, sizeof(dnslib_dname_t *));
+	if (dnames_new == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	memcpy(dnames_new, *dnames, *count);
+	*dnames = dnames_new;
+	*allocated = new_count;
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void xfrin_zone_contents_free(dnslib_zone_contents_t **contents)
+{
+	if ((*contents)->table != NULL) {
+		ck_destroy_table(&(*contents)->table, NULL, 0);
+	}
+
+	// free the zone tree, but only the structure
+	// (nodes are already destroyed)
+	debug_dnslib_zone("Destroying zone tree.\n");
+	dnslib_zone_tree_free(&(*contents)->nodes);
+	debug_dnslib_zone("Destroying NSEC3 zone tree.\n");
+	dnslib_zone_tree_free(&(*contents)->nsec3_nodes);
+
+	dnslib_nsec3_params_free(&(*contents)->nsec3_params);
+
+	dnslib_dname_table_free(&(*contents)->dname_table);
+}
+
+/*----------------------------------------------------------------------------*/
 
 static void xfrin_rollback_update(dnslib_zone_contents_t *contents,
                                   xfrin_changes_t *changes)
 {
+	/*
+	 * This function is called only when no references were actually set to
+	 * the new nodes, just the new nodes reference other.
+	 * We thus do not need to fix any references, just from the old nodes
+	 * to the new ones.
+	 */
+
 	// discard new nodes, but do not remove RRSets from them
+	for (int i = 0; i < changes->new_nodes_count; ++i) {
+		dnslib_node_free(&changes->new_nodes[i], 0);
+	}
+
+	// set references from old nodes to new nodes to NULL and remove the
+	// old flag
+	for (int i = 0; i < changes->old_nodes_count; ++i) {
+		dnslib_node_set_new_node(changes->old_nodes[i], NULL);
+		dnslib_node_clear_old(changes->old_nodes[i]);
+	}
 
 	// discard new RRSets
+	for (int i = 0; i < changes->old_rrsets_count; ++i) {
+		dnslib_rrset_deep_free(&changes->new_rrsets[i], 0, 1, 0);
+	}
+
+	// discard new dnames
+	for (int i = 0; i < changes->new_dnames_count; ++i) {
+		dnslib_dname_free(&changes->new_dnames[i]);
+	}
 
 	// destroy the shallow copy of zone
+	xfrin_zone_contents_free(&contents);
 }
+
+/*----------------------------------------------------------------------------*/
 
 static int xfrin_apply_changeset(dnslib_zone_contents_t *contents,
                                  xfrin_changes_t *changes,
@@ -1381,20 +1524,40 @@ static int xfrin_apply_changeset(dnslib_zone_contents_t *contents,
 	return KNOT_ENOTSUP;
 }
 
+/*----------------------------------------------------------------------------*/
+
 static int xfrin_finalize_contents(dnslib_zone_contents_t *contents)
 {
 	return KNOT_ENOTSUP;
 }
 
+/*----------------------------------------------------------------------------*/
+
 static int xfrin_fix_references(dnslib_zone_contents_t *contents)
 {
+	/*! \todo This function must not fail!! */
 	return KNOT_ENOTSUP;
 }
 
+/*----------------------------------------------------------------------------*/
+
 static void xfrin_cleanup_update(xfrin_changes_t *changes)
 {
+	// free old nodes but do not destroy their RRSets, nor domain names
+	for (int i = 0; i < changes->old_nodes_count; ++i) {
+		dnslib_node_free(&changes->old_nodes[i], 0);
+	}
 
+	// free old RRSets, but do not destroy dnames in them
+	for (int i = 0; i < changes->old_rrsets_count; ++i) {
+		dnslib_rrset_deep_free(&changes->old_rrsets[i], 0, 1, 0);
+	}
+
+	// do not care about domain names, they will be destroyed thanks to
+	// reference counting
 }
+
+/*----------------------------------------------------------------------------*/
 
 int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 {
@@ -1482,16 +1645,11 @@ int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 	/*
 	 * From now on, the new contents of the zone are being used.
 	 * References to nodes may be updated in the meantime. However, we must
-	 * Traverse the zone and fix all references.
+	 * traverse the zone and fix all references that were not.
 	 */
+	/*! \todo This operation must not fail!!! .*/
 	ret = xfrin_fix_references(contents_copy);
-	if (ret != KNOT_EOK) {
-		debug_xfr("Failed to fix references in the zone!!!\n");
-		// is this of any use??
-		dnslib_zone_switch_contents(zone, old_contents);
-		xfrin_rollback_update(contents_copy, &changes);
-		return ret;
-	}
+	assert(ret == KNOT_EOK);
 
 	/*
 	 * Wait until all readers finish reading
@@ -1501,6 +1659,7 @@ int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 	/*
 	 * Delete all old and unused data.
 	 */
+	xfrin_zone_contents_free(&old_contents);
 	xfrin_cleanup_update(&changes);
 
 	return KNOT_EOK;
