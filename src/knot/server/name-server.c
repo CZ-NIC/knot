@@ -569,12 +569,13 @@ static void ns_put_authority_ns(const dnslib_zone_t *zone,
                                 dnslib_packet_t *resp)
 {
 	const dnslib_rrset_t *ns_rrset =
-		dnslib_node_rrset(zone->apex, DNSLIB_RRTYPE_NS);
+		dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_NS);
 
 	if (ns_rrset != NULL) {
 		dnslib_response2_add_rrset_authority(resp, ns_rrset, 0, 1, 0);
-		ns_add_rrsigs(ns_rrset, resp, zone->apex->owner,
-	                  dnslib_response2_add_rrset_authority, 1);
+		ns_add_rrsigs(ns_rrset, resp, dnslib_node_owner(
+		              dnslib_zone_apex(zone)),
+	                      dnslib_response2_add_rrset_authority, 1);
 	}
 }
 
@@ -589,11 +590,12 @@ static void ns_put_authority_soa(const dnslib_zone_t *zone,
                                  dnslib_packet_t *resp)
 {
 	const dnslib_rrset_t *soa_rrset =
-		dnslib_node_rrset(zone->apex, DNSLIB_RRTYPE_SOA);
+		dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
 	assert(soa_rrset != NULL);
 
 	dnslib_response2_add_rrset_authority(resp, soa_rrset, 0, 0, 0);
-	ns_add_rrsigs(soa_rrset, resp, zone->apex->owner,
+	ns_add_rrsigs(soa_rrset, resp,
+	              dnslib_node_owner(dnslib_zone_apex(zone)),
 	              dnslib_response2_add_rrset_authority, 1);
 }
 
@@ -959,7 +961,7 @@ static int ns_put_nsec_nxdomain(const dnslib_dname_t *qname,
 				    wildcard) > 0) {
 		debug_ns("Previous node: %s\n",
 		    dnslib_dname_to_str(dnslib_node_owner(prev_new)));
-		assert(prev_new != zone->apex);
+		assert(prev_new != dnslib_zone_apex(zone));
 		prev_new = dnslib_node_previous(prev_new);
 	}
 	assert(dnslib_dname_compare(dnslib_node_owner(prev_new),
@@ -1682,7 +1684,7 @@ DEBUG_NS(
 	// or NS records in Answer section
 	if (DNSSEC_ENABLED
 	    && dnslib_query_dnssec_requested(dnslib_packet_query(resp))
-	    && node == zone->apex
+	    && node == dnslib_zone_apex(zone)
 	    && (qtype == DNSLIB_RRTYPE_SOA || qtype == DNSLIB_RRTYPE_NS)) {
 		ns_add_dnskey(node, resp);
 	}
@@ -3140,7 +3142,8 @@ static int ns_find_zone_for_xfr(ns_xfr_t *xfr, const char **zonefile,
 			return KNOT_ENOMEM;
 		}
 
-		int r = dnslib_dname_compare(zone_name, xfr->zone->apex->owner);
+		int r = dnslib_dname_compare(zone_name,
+		                             dnslib_zone_name(xfr->zone));
 		dnslib_dname_free(&zone_name);
 
 		if (r == 0) {
@@ -3151,7 +3154,8 @@ static int ns_find_zone_for_xfr(ns_xfr_t *xfr, const char **zonefile,
 		}
 	}
 
-	char *name = dnslib_dname_to_str(xfr->zone->apex->owner);
+	char *name = dnslib_dname_to_str(dnslib_node_owner(
+	                 dnslib_zone_apex(xfr->zone)));
 	log_server_error("No zone found for the zone received by transfer "
 	                 "(%s).\n", name);
 	free(name);
@@ -3263,7 +3267,7 @@ static int ns_dump_xfr_zone_binary(ns_xfr_t *xfr, const char *zonedb,
 static int ns_save_zone(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 {
 	assert(nameserver != NULL && xfr != NULL && xfr->zone != NULL
-	       && xfr->zone->apex != NULL);
+	       && dnslib_zone_apex(xfr->zone) != NULL);
 
 	const char *zonefile = NULL;
 	const char *zonedb = NULL;

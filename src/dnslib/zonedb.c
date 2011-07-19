@@ -87,7 +87,8 @@ dnslib_zonedb_t *dnslib_zonedb_new()
 
 int dnslib_zonedb_add_zone(dnslib_zonedb_t *db, dnslib_zone_t *zone)
 {
-	if (db == NULL || zone == NULL || zone->apex == NULL) {
+	if (db == NULL || zone == NULL || zone->contents == NULL
+	    || zone->contents->apex == NULL) {
 		return DNSLIB_EBADARG;
 	}
 DEBUG_DNSLIB_ZONEDB(
@@ -100,7 +101,7 @@ DEBUG_DNSLIB_ZONEDB(
 		return ret;
 	}
 
-	ret = skip_insert(db->zones, zone->apex->owner, zone, NULL);
+	ret = skip_insert(db->zones, zone->contents->apex->owner, zone, NULL);
 	assert(ret == 0 || ret == 1 || ret == -1);
 	return (ret != 0) ? DNSLIB_EZONEIN : DNSLIB_EOK;
 }
@@ -196,8 +197,8 @@ DEBUG_DNSLIB_ZONEDB(
 	free(name);
 );
 	if (zone != NULL
-	    && dnslib_dname_compare(zone->apex->owner, dname) != 0
-	    && !dnslib_dname_is_subdomain(dname, zone->apex->owner)) {
+	    && dnslib_dname_compare(zone->contents->apex->owner, dname) != 0
+	    && !dnslib_dname_is_subdomain(dname, zone->contents->apex->owner)) {
 		zone = NULL;
 	}
 

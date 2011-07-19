@@ -927,7 +927,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		return NULL;
 	}
 	/* Assign dname table to the new zone. */
-	zone->dname_table = dname_table;
+	zone->contents->dname_table = dname_table;
 
 //	apex->prev = NULL;
 	dnslib_node_set_previous(apex, NULL);

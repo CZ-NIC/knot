@@ -1922,18 +1922,19 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	/* Start writing compiled data. */
 	fwrite_wrapper(&normal_node_count, sizeof(normal_node_count), 1, f);
 	fwrite_wrapper(&nsec3_node_count, sizeof(nsec3_node_count), 1, f);
-	uint32_t auth_node_count = zone->node_count;
+	uint32_t auth_node_count = zone->contents->node_count;
 	fwrite_wrapper(&auth_node_count,
 	       sizeof(auth_node_count), 1, f);
 
 	/* Write total number of dnames */
-	assert(zone->dname_table);
-	uint32_t total_dnames = zone->dname_table->id_counter;
+	assert(zone->contents->dname_table);
+	uint32_t total_dnames = zone->contents->dname_table->id_counter;
 	fwrite_wrapper(&total_dnames,
 	       sizeof(total_dnames), 1, f);
 
 	/* Write dname table. */
-	if (dnslib_dump_dname_table(zone->dname_table, f) != DNSLIB_EOK) {
+	if (dnslib_dump_dname_table(zone->contents->dname_table, f)
+	    != DNSLIB_EOK) {
 		return DNSLIB_ERROR;
 	}
 

@@ -415,8 +415,8 @@ DEBUG_XFR(
 		if (dnslib_rrset_type(rr) == DNSLIB_RRTYPE_SOA) {
 			// this must be the last SOA, do not do anything more
 			// discard the RR
-			assert((*zone)->apex != NULL);
-			assert(dnslib_node_rrset((*zone)->apex,
+			assert(dnslib_zone_apex((*zone)) != NULL);
+			assert(dnslib_node_rrset(dnslib_zone_apex((*zone)),
 			                         DNSLIB_RRTYPE_SOA) != NULL);
 			debug_xfr("Found last SOA, transfer finished.\n");
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
@@ -1355,6 +1355,29 @@ int xfr_load_changesets(const dnslib_zone_t *zone, xfrin_changesets_t *dst,
 	return KNOT_EOK;
 }
 
+typedef struct {
+	dnslib_rrset_t **rrsets;
+	int count;
+	int allocated;
+} xfrin_rrsets_t;
+
+static void xfrin_rollback_update(dnslib_zone_contents_t *contents,
+                                  xfrin_rrsets_t *rrsets)
+{
+	// discard new nodes, but do not remove RRSets from them
+
+	// discard new RRSets
+
+	// destroy the shallow copy of zone
+}
+
+static int xfrin_apply_changeset(dnslib_zone_contents_t *contents,
+                                 xfrin_rrsets_t *rrsets,
+                                 xfrin_changeset_t *chset)
+{
+	return KNOT_ENOTSUP;
+}
+
 int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 {
 	/*
@@ -1365,4 +1388,54 @@ int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 
 	/*! \todo Implement. */
 	return KNOT_ENOTSUP;
+
+	/*
+	 * Ensure that the zone generation is set to 0.
+	 */
+	if (dnslib_zone_generation(zone) != 0) {
+		// this would mean that a previous update was not completed
+		// abort
+		debug_dnslib_zone("Trying to apply changesets to zone that is "
+		                  "being updated. Aborting.\n");
+		return KNOT_EAGAIN;
+	}
+
+	/*
+	 * Create a shallow copy of the zone, so that the structures may be
+	 * updated.
+	 */
+	dnslib_zone_contents_t *contents_copy = NULL;
+	int ret = dnslib_zone_shallow_copy(zone, &contents_copy);
+	if (ret != DNSLIB_EOK) {
+		debug_xfr("Failed to create shallow copy of zone: %s\n",
+		          knot_strerror(ret));
+		return ret;
+	}
+
+	/*
+	 * Now, apply one changeset after another until all are applied.
+	 * In case of error, we must remove all data created by the update, i.e.
+	 *   - new nodes,
+	 *   - new RRSets,
+	 * and remove the references to the new nodes from old nodes.
+	 */
+	xfrin_rrsets_t new_rrsets;
+	new_rrsets.rrsets = NULL;
+	new_rrsets.count = 0;
+	new_rrsets.allocated = 0;
+
+	for (int i = 0; i < chsets->count; ++i) {
+		if ((ret = xfrin_apply_changeset(contents_copy, &new_rrsets,
+		                               &chsets->sets[i])) != KNOT_EOK) {
+			xfrin_rollback_update(contents_copy, &new_rrsets);
+			debug_xfr("Failed to apply changesets to zone: %s\n",
+			          knot_strerror(ret));
+			return ret;
+		}
+	}
+
+	/*
+	 * When all changesets are applied, set generation 1 to the copy of
+	 * the zone
+	 */
 }
