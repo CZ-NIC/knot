@@ -1356,13 +1356,16 @@ int xfr_load_changesets(const dnslib_zone_t *zone, xfrin_changesets_t *dst,
 }
 
 typedef struct {
-	dnslib_rrset_t **rrsets;
-	int count;
-	int allocated;
-} xfrin_rrsets_t;
+	dnslib_rrset_t **new_rrsets;
+	int rrsets_count;
+	int rrsets_allocated;
+	dnslib_node_t **old_nodes;
+	int nodes_count;
+	int nodes_allocated;
+} xfrin_changes_t;
 
 static void xfrin_rollback_update(dnslib_zone_contents_t *contents,
-                                  xfrin_rrsets_t *rrsets)
+                                  xfrin_changes_t *changes)
 {
 	// discard new nodes, but do not remove RRSets from them
 
@@ -1372,10 +1375,25 @@ static void xfrin_rollback_update(dnslib_zone_contents_t *contents,
 }
 
 static int xfrin_apply_changeset(dnslib_zone_contents_t *contents,
-                                 xfrin_rrsets_t *rrsets,
+                                 xfrin_changes_t *changes,
                                  xfrin_changeset_t *chset)
 {
 	return KNOT_ENOTSUP;
+}
+
+static int xfrin_finalize_contents(dnslib_zone_contents_t *contents)
+{
+	return KNOT_ENOTSUP;
+}
+
+static int xfrin_fix_references(dnslib_zone_contents_t *contents)
+{
+	return KNOT_ENOTSUP;
+}
+
+static void xfrin_cleanup_update(xfrin_changes_t *changes)
+{
+
 }
 
 int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
@@ -1419,15 +1437,18 @@ int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 	 *   - new RRSets,
 	 * and remove the references to the new nodes from old nodes.
 	 */
-	xfrin_rrsets_t new_rrsets;
-	new_rrsets.rrsets = NULL;
-	new_rrsets.count = 0;
-	new_rrsets.allocated = 0;
+	xfrin_changes_t changes;
+	changes.new_rrsets = NULL;
+	changes.rrsets_count = 0;
+	changes.rrsets_allocated = 0;
+	changes.old_nodes = NULL;
+	changes.nodes_allocated = 0;
+	changes.nodes_count = 0;
 
 	for (int i = 0; i < chsets->count; ++i) {
-		if ((ret = xfrin_apply_changeset(contents_copy, &new_rrsets,
+		if ((ret = xfrin_apply_changeset(contents_copy, &changes,
 		                               &chsets->sets[i])) != KNOT_EOK) {
-			xfrin_rollback_update(contents_copy, &new_rrsets);
+			xfrin_rollback_update(contents_copy, &changes);
 			debug_xfr("Failed to apply changesets to zone: %s\n",
 			          knot_strerror(ret));
 			return ret;
@@ -1438,4 +1459,49 @@ int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 	 * When all changesets are applied, set generation 1 to the copy of
 	 * the zone
 	 */
+	/*! \todo Some API for this??? */
+	contents_copy->generation = 1;
+
+	/*
+	 * Finalize the zone contents.
+	 */
+	ret = xfrin_finalize_contents(contents_copy);
+	if (ret != KNOT_EOK) {
+		xfrin_rollback_update(contents_copy, &changes);
+		debug_xfr("Failed to finalize new zone contents: %s\n",
+		          knot_strerror(ret));
+		return ret;
+	}
+
+	/*
+	 * Switch the zone contents
+	 */
+	dnslib_zone_contents_t *old_contents =
+		dnslib_zone_switch_contents(zone, contents_copy);
+
+	/*
+	 * From now on, the new contents of the zone are being used.
+	 * References to nodes may be updated in the meantime. However, we must
+	 * Traverse the zone and fix all references.
+	 */
+	ret = xfrin_fix_references(contents_copy);
+	if (ret != KNOT_EOK) {
+		debug_xfr("Failed to fix references in the zone!!!\n");
+		// is this of any use??
+		dnslib_zone_switch_contents(zone, old_contents);
+		xfrin_rollback_update(contents_copy, &changes);
+		return ret;
+	}
+
+	/*
+	 * Wait until all readers finish reading
+	 */
+	synchronize_rcu();
+
+	/*
+	 * Delete all old and unused data.
+	 */
+	xfrin_cleanup_update(&changes);
+
+	return KNOT_EOK;
 }
