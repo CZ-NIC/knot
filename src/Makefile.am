@@ -84,6 +84,8 @@ unittests_dnslib_SOURCES =			\
 	dnslib/tests/dnslib/cuckoo_tests.h	\
 	dnslib/tests/dnslib/dname_tests.c	\
 	dnslib/tests/dnslib/dname_tests.h	\
+	dnslib/tests/dnslib/dname_table_tests.h	\
+	dnslib/tests/dnslib/dname_table_tests.c	\
 	dnslib/tests/dnslib/edns_tests.c	\
 	dnslib/tests/dnslib/edns_tests.h	\
 	dnslib/tests/dnslib/node_tests.c	\
