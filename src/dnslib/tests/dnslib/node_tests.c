@@ -34,7 +34,7 @@ static dnslib_dname_t test_dnames[TEST_NODES] = {
 
 static struct test_node	test_nodes[TEST_NODES] = {
 	{{(uint8_t *)"\3com", 4}, (dnslib_node_t *)NULL},
-	{{(uint8_t *)"\3www\7example\3com", 17}, (dnslib_node_t *)0xBADDCAFE}
+	{{(uint8_t *)"\3www\7example\3com", 17}, (dnslib_node_t *)NULL}
 };
 
 static dnslib_rrset_t rrsets[RRSETS] = {
@@ -238,7 +238,7 @@ static int test_node_delete()
 
 static int test_node_set_parent()
 {
-	dnslib_node_t *tmp_parent = (dnslib_node_t *)0xABCDEF;
+	dnslib_node_t *tmp_parent = dnslib_node_new(NULL, NULL);
 	int errors = 0;
 
 	dnslib_node_t *tmp_node;
@@ -255,6 +255,7 @@ static int test_node_set_parent()
 		}
 		dnslib_node_free(&tmp_node, 0);
 	}
+	dnslib_node_free(&tmp_parent, 0);
 	return (errors == 0);
 }
 

@@ -48,6 +48,10 @@ static int dnslib_zone_tree_node_compare(dnslib_zone_tree_node_t *node1,
 {
 	assert(node1 != NULL);
 	assert(node2 != NULL);
+	assert(node1->node != NULL);
+	assert(node2->node != NULL);
+	assert(dnslib_node_owner(node1->node) != NULL);
+	assert(dnslib_node_owner(node2->node) != NULL);
 
 	return dnslib_node_compare(node1->node, node2->node);
 }

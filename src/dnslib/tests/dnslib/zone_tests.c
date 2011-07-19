@@ -375,6 +375,7 @@ static void tmp_compare_function(dnslib_node_t *node, void *data)
 	} else if (!compare_ok) {
 		diag("Traversal function has partially set values right");
 	}
+	node->parent = NULL;
 	node_index++;
 }
 
