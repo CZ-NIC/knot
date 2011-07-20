@@ -1363,6 +1363,7 @@ typedef struct {
 	dnslib_rrset_t **old_rrsets;
 	int old_rrsets_count;
 	int old_rrsets_allocated;
+	dnslib_rdata_t *old_rdata;
 	dnslib_rrset_t **new_rrsets;
 	int new_rrsets_count;
 	int new_rrsets_allocated;
@@ -1517,6 +1518,234 @@ static void xfrin_rollback_update(dnslib_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
+static dnslib_rdata_t *xfrin_remove_rdata(dnslib_rrset_t *from,
+                                          dnslib_rrset_t *what)
+{
+	dnslib_rdata_t *old = NULL;
+	dnslib_rdata_t *old_actual = NULL;
+
+	const dnslib_rdata_t *rdata = dnslib_rrset_rdata(what);
+
+	while (rdata != NULL) {
+		old_actual = dnslib_rrset_remove_rdata(from, rdata);
+		if (old_actual != NULL) {
+			old_actual->next = old;
+			old = old_actual;
+		}
+		rdata = dnslib_rrset_rdata_next(what, rdata);
+	}
+
+	return old;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_apply_remove(dnslib_zone_contents_t *contents,
+                              xfrin_changeset_t *chset,
+                              xfrin_changes_t *changes)
+{
+	/*
+	 * Iterate over removed RRSets, copy appropriate nodes and remove
+	 * the rrsets from them. By default, the RRSet should be copied so that
+	 * RDATA may be removed from it.
+	 */
+	int ret = 0;
+	dnslib_node_t *node = NULL;
+	dnslib_rrset_t *rrset = NULL;
+
+	for (int i = 0; i < chset->remove_count; ++i) {
+		// check if the old node is not the one we should use
+		if (!node || dnslib_rrset_owner(chset->remove[i])
+			     != dnslib_node_owner(node)) {
+			node = dnslib_zone_contents_get_node(contents,
+			                  dnslib_rrset_owner(chset->remove[i]));
+			if (node == NULL) {
+				debug_xfr("Node not found for RR to be removed"
+				          "!\n");
+				continue;
+			}
+		}
+
+		// create a copy of the node if not already created
+		dnslib_node_t *new_node = dnslib_node_get_new_node(node);
+		if (new_node == NULL) {
+			ret = dnslib_node_deep_copy(node, &new_node);
+			if (ret != DNSLIB_EOK) {
+				debug_xfr("Failed to create node copy.\n");
+				return KNOT_ENOMEM;
+			}
+
+			// save the copy of the node
+			ret = xfrin_changes_check_nodes(&changes->new_nodes,
+			                          &changes->new_nodes_count,
+			                         &changes->new_nodes_allocated);
+			if (ret != KNOT_EOK) {
+				debug_xfr("Failed to add new node to list.\n");
+				dnslib_node_free(&new_node, 0, 0);
+				return ret;
+			}
+
+			dnslib_node_set_new_node(node, new_node);
+		}
+
+		assert(new_node != NULL);
+
+		// now we have the copy of the node, so lets get the right RRSet
+		// check if we do not already have it
+		if (!rrset
+		    || dnslib_dname_compare(dnslib_rrset_owner(rrset),
+		                            dnslib_node_owner(node)) != 0
+		    || dnslib_rrset_type(rrset)
+		       != dnslib_rrset_type(chset->remove[i])) {
+			dnslib_rrset_t *old = dnslib_node_remove_rrset(
+				new_node, dnslib_rrset_type(old));
+			// create new RRSet by copying the old one
+			ret = dnslib_rrset_copy(old, &rrset);
+			if (ret != DNSLIB_EOK) {
+				debug_xfr("Failed to create RRSet copy.\n");
+				return KNOT_ENOMEM;
+			}
+
+			// add the RRSet to the list of new RRSets
+			ret = xfrin_changes_check_rrsets(&changes->new_rrsets,
+			                        &changes->new_rrsets_count,
+			                        &changes->new_rrsets_allocated);
+			if (ret != KNOT_EOK) {
+				debug_xfr("Failed to add new RRSet to list.\n");
+				dnslib_rrset_free(&rrset);
+				return ret;
+			}
+
+			// add the old RRSet to the list of old RRSets
+			ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
+			                        &changes->old_rrsets_count,
+			                        &changes->old_rrsets_allocated);
+			if (ret != KNOT_EOK) {
+				debug_xfr("Failed to add old RRSet to list.\n");
+				return ret;
+			}
+
+			// replace the RRSet in the node copy by the new one
+			ret = dnslib_node_add_rrset(new_node, rrset, 0);
+			if (ret != DNSLIB_EOK) {
+				debug_xfr("Failed to add RRSet copy to node\n");
+				return KNOT_ERROR;
+			}
+		}
+
+		if (rrset == NULL) {
+			debug_xfr("RRSet not found for RR to be removed.\n");
+			continue;
+		}
+
+DEBUG_XFR(
+		char *name = dnslib_dname_to_str(dnslib_rrset_owner(rrset));
+		debug_xfr("Updating RRSet with owner %s, type %s\n", name,
+		          dnslib_rrtype_to_string(dnslib_rrset_type(rrset)));
+		free(name);
+);
+
+		dnslib_rdata_t *rdata = xfrin_remove_rdata(rrset,
+		                                           chset->remove[i]);
+		if (rdata == NULL) {
+			debug_xfr("Failed to remove RDATA from RRSet: %s.\n",
+			          dnslib_strerror(ret));
+			continue;
+		}
+
+		// connect the RDATA to the list of old RDATA
+		rdata->next = changes->old_rdata;
+		changes->old_rdata = rdata;
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_apply_add(dnslib_zone_contents_t *contents,
+                           xfrin_changeset_t *chset,
+                           xfrin_changes_t *changes)
+{
+//	// iterate over removed RRSets, copy appropriate nodes and remove
+//	// the rrsets from them
+//	int ret = 0;
+//	dnslib_node_t *node = NULL;
+//	dnslib_rrset_t *rrset = NULL;
+
+//	for (int i = 0; i < chset->add_count; ++i) {
+//		// check if the old node is not the one we should use
+//		if (!node || dnslib_rrset_owner(chset->add[i])
+//			     != dnslib_node_owner(node)) {
+//			node = dnslib_zone_contents_get_node(contents,
+//			                  dnslib_rrset_owner(chset->add[i]));
+//			if (node == NULL) {
+//				debug_xfr("Node not found for RR to be removed"
+//				          "!\n");
+//				continue;
+//			}
+//		}
+
+//		// create a copy of the node if not already created
+//		dnslib_node_t *new_node = dnslib_node_get_new_node(node);
+//		if (new_node == NULL) {
+//			ret = dnslib_node_deep_copy(node, &new_node);
+//			if (ret != DNSLIB_EOK) {
+//				debug_xfr("Failed to create node copy.\n");
+//				return KNOT_ENOMEM;
+//			}
+//			dnslib_node_set_new_node(node, new_node);
+//		}
+
+//		assert(new_node != NULL);
+
+//		// now we have the copy of the node, so lets get the right RRSet
+//		// check if we do not already have it
+//		if (!rrset
+//		    || dnslib_dname_compare(dnslib_rrset_owner(rrset),
+//		                            dnslib_node_owner(node)) != 0
+//		    || dnslib_rrset_type(rrset)
+//		       != dnslib_rrset_type(chset->add[i])) {
+//			rrset = dnslib_node_get_rrset(new_node,
+//		                           dnslib_rrset_type(chset->add[i]));
+//		}
+
+//		if (rrset == NULL) {
+//			debug_xfr("RRSet not found for RR to be removed.\n");
+//			continue;
+//		}
+
+//DEBUG_XFR(
+//		char *name = dnslib_dname_to_str(dnslib_rrset_owner(rrset));
+//		debug_xfr("Updating RRSet with owner %s, type %s\n", name,
+//		          dnslib_rrtype_to_string(dnslib_rrset_type(rrset)));
+//		free(name);
+//);
+
+//		ret = dnslib_rrset_add_rdata(rrset,
+//		                             dnslib_rrset_rdata(chset->add[i]));
+//		if (ret != DNSLIB_EOK) {
+//			debug_xfr("Failed to add RDATA into existing RRSet.\n");
+//			return KNOT_ERROR;
+//		}
+//		dnslib_rdata_t *rdata = dnslib_rrset_remove_rdata(rrset,
+//		                          dnslib_rrset_rdata(chset->remove[i]));
+//		if (rdata == NULL) {
+//			debug_xfr("Failed to remove RDATA from RRSet: %s.\n",
+//			          dnslib_strerror(ret));
+//			continue;
+//		}
+
+//		// connect the RDATA to the list of old RDATA
+//		rdata->next = changes->old_rdata;
+//		changes->old_rdata = rdata;
+//	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 static int xfrin_apply_changeset(dnslib_zone_contents_t *contents,
                                  xfrin_changes_t *changes,
                                  xfrin_changeset_t *chset)
@@ -1530,11 +1759,10 @@ static int xfrin_apply_changeset(dnslib_zone_contents_t *contents,
 		return KNOT_ERROR;
 	}
 
-	// iterate over removed RRSets, copy appropriate nodes and remove
-	// the rrsets from them
-	for (int i = 0; i < chset->remove_count; ++i) {
-		// find node where the RRSet should be located
-
+	int ret = xfrin_apply_remove(contents, chset, changes);
+	if (ret != KNOT_EOK) {
+		/*! \todo Cleanup!!! */
+		return ret;
 	}
 
 	return KNOT_ENOTSUP;
@@ -1602,7 +1830,9 @@ int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 	 * updated.
 	 */
 	dnslib_zone_contents_t *contents_copy = NULL;
-	int ret = dnslib_zone_shallow_copy(zone, &contents_copy);
+	dnslib_zone_contents_t *old_contents = dnslib_zone_get_contents(zone);
+	int ret = dnslib_zone_contents_shallow_copy(old_contents,
+	                                            &contents_copy);
 	if (ret != DNSLIB_EOK) {
 		debug_xfr("Failed to create shallow copy of zone: %s\n",
 		          knot_strerror(ret));
@@ -1655,8 +1885,9 @@ int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 	/*
 	 * Switch the zone contents
 	 */
-	dnslib_zone_contents_t *old_contents =
+	dnslib_zone_contents_t *old =
 		dnslib_zone_switch_contents(zone, contents_copy);
+	assert(old == old_contents);
 
 	/*
 	 * From now on, the new contents of the zone are being used.
