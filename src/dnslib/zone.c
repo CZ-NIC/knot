@@ -193,9 +193,25 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_zone_contents_t *dnslib_zone_get_contents(
+dnslib_zone_contents_t *dnslib_zone_get_contents(
 	const dnslib_zone_t *zone)
 {
+	if (zone == NULL) {
+		return NULL;
+	}
+
+	return rcu_dereference(zone->contents);
+}
+
+/*----------------------------------------------------------------------------*/
+
+const dnslib_zone_contents_t *dnslib_zone_contents(
+	const dnslib_zone_t *zone)
+{
+	if (zone == NULL) {
+		return NULL;
+	}
+
 	return rcu_dereference(zone->contents);
 }
 
@@ -203,6 +219,10 @@ const dnslib_zone_contents_t *dnslib_zone_get_contents(
 
 time_t dnslib_zone_version(const dnslib_zone_t *zone)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_version(zone->contents);
 //	return zone->contents->version;
 }
@@ -211,6 +231,10 @@ time_t dnslib_zone_version(const dnslib_zone_t *zone)
 
 void dnslib_zone_set_version(dnslib_zone_t *zone, time_t version)
 {
+	if (zone == NULL) {
+		return;
+	}
+
 	dnslib_zone_contents_set_version(zone->contents, version);
 //	zone->contents->version = version;
 }
@@ -219,6 +243,10 @@ void dnslib_zone_set_version(dnslib_zone_t *zone, time_t version)
 
 short dnslib_zone_generation(const dnslib_zone_t *zone)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_generation(zone->contents);
 //	return zone->contents->generation;
 }
@@ -227,6 +255,10 @@ short dnslib_zone_generation(const dnslib_zone_t *zone)
 
 void dnslib_zone_switch_generation(dnslib_zone_t *zone)
 {
+	if (zone == NULL) {
+		return;
+	}
+
 	dnslib_zone_contents_switch_generation(zone->contents);
 //	zone->contents->generation = 1 - zone->contents->generation;
 }
@@ -236,6 +268,10 @@ void dnslib_zone_switch_generation(dnslib_zone_t *zone)
 int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
                          int create_parents, int use_domain_table)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_add_node(zone->contents, node,
 	                                     create_parents, use_domain_table);
 //	if (zone == NULL || node == NULL || zone->contents == NULL) {
@@ -370,6 +406,10 @@ int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
                           dnslib_rrset_dupl_handling_t dupl,
                           int use_domain_table)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_add_rrset(zone->contents, rrset, node, dupl,
 	                                      use_domain_table);
 
@@ -443,6 +483,10 @@ int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
                            dnslib_rrset_dupl_handling_t dupl,
                            int use_domain_table)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_add_rrsigs(zone->contents, rrsigs, rrset,
 	                                      node, dupl, use_domain_table);
 
@@ -550,6 +594,10 @@ int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
 int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node,
                                int create_parents, int use_domain_table)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_add_nsec3_node(zone->contents, node,
 	                                           create_parents,
 	                                           use_domain_table);
@@ -586,6 +634,10 @@ int dnslib_zone_add_nsec3_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
                                 dnslib_rrset_dupl_handling_t dupl,
                                 int use_domain_table)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_add_nsec3_rrset(zone->contents, rrset, node,
 	                                            dupl,
 	                                            use_domain_table);
@@ -656,6 +708,10 @@ int dnslib_zone_add_nsec3_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
 
 int dnslib_zone_create_and_fill_hash_table(dnslib_zone_t *zone)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_create_and_fill_hash_table(zone->contents);
 
 //	if (zone == NULL || zone->contents == NULL
@@ -713,6 +769,10 @@ int dnslib_zone_create_and_fill_hash_table(dnslib_zone_t *zone)
 dnslib_node_t *dnslib_zone_get_node(const dnslib_zone_t *zone,
                                     const dnslib_dname_t *name)
 {
+	if (zone == NULL) {
+		return NULL;
+	}
+
 	return dnslib_zone_contents_get_node(zone->contents, name);
 
 //	if (zone == NULL || name == NULL || zone->contents == NULL) {
@@ -739,6 +799,10 @@ dnslib_node_t *dnslib_zone_get_node(const dnslib_zone_t *zone,
 dnslib_node_t *dnslib_zone_get_nsec3_node(const dnslib_zone_t *zone,
                                           const dnslib_dname_t *name)
 {
+	if (zone == NULL) {
+		return NULL;
+	}
+
 	return dnslib_zone_contents_get_nsec3_node(zone->contents, name);
 
 //	if (zone == NULL || name == NULL || zone->contents == NULL) {
@@ -766,6 +830,10 @@ dnslib_node_t *dnslib_zone_get_nsec3_node(const dnslib_zone_t *zone,
 const dnslib_node_t *dnslib_zone_find_node(const dnslib_zone_t *zone,
                                            const dnslib_dname_t *name)
 {
+	if (zone == NULL) {
+		return NULL;
+	}
+
 	return dnslib_zone_contents_find_node(zone->contents, name);
 //	return dnslib_zone_get_node(zone, name);
 }
@@ -778,6 +846,10 @@ int dnslib_zone_find_dname(const dnslib_zone_t *zone,
                            const dnslib_node_t **closest_encloser,
                            const dnslib_node_t **previous)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_find_dname(zone->contents, name, node,
 	                                       closest_encloser, previous);
 
@@ -866,6 +938,10 @@ int dnslib_zone_find_dname(const dnslib_zone_t *zone,
 const dnslib_node_t *dnslib_zone_find_previous(const dnslib_zone_t *zone,
                                                const dnslib_dname_t *name)
 {
+	if (zone == NULL) {
+		return NULL;
+	}
+
 	return dnslib_zone_contents_find_previous(zone->contents, name);
 
 //	if (zone == NULL || name == NULL || zone->contents == NULL) {
@@ -887,6 +963,10 @@ int dnslib_zone_find_dname_hash(const dnslib_zone_t *zone,
                                 const dnslib_node_t **node,
                                 const dnslib_node_t **closest_encloser)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_find_dname_hash(zone->contents, name, node,
 	                                            closest_encloser);
 
@@ -973,6 +1053,10 @@ int dnslib_zone_find_dname_hash(const dnslib_zone_t *zone,
 const dnslib_node_t *dnslib_zone_find_nsec3_node(const dnslib_zone_t *zone,
                                                  const dnslib_dname_t *name)
 {
+	if (zone == NULL) {
+		return NULL;
+	}
+
 	return dnslib_zone_contents_find_nsec3_node(zone->contents, name);
 //	return dnslib_zone_get_nsec3_node(zone, name);
 }
@@ -984,6 +1068,10 @@ int dnslib_zone_find_nsec3_for_name(const dnslib_zone_t *zone,
                                     const dnslib_node_t **nsec3_node,
                                     const dnslib_node_t **nsec3_previous)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_find_nsec3_for_name(zone->contents, name,
 	                                            nsec3_node, nsec3_previous);
 
@@ -1054,6 +1142,10 @@ int dnslib_zone_find_nsec3_for_name(const dnslib_zone_t *zone,
 
 const dnslib_node_t *dnslib_zone_apex(const dnslib_zone_t *zone)
 {
+	if (zone == NULL) {
+		return NULL;
+	}
+
 	return dnslib_zone_contents_apex(zone->contents);
 
 //	if (zone == NULL || zone->contents == NULL) {
@@ -1067,6 +1159,10 @@ const dnslib_node_t *dnslib_zone_apex(const dnslib_zone_t *zone)
 
 dnslib_node_t *dnslib_zone_get_apex(const dnslib_zone_t *zone)
 {
+	if (zone == NULL) {
+		return NULL;
+	}
+
 	return dnslib_zone_contents_get_apex(zone->contents);
 
 //	if (zone == NULL || zone->contents == NULL) {
@@ -1091,6 +1187,10 @@ dnslib_dname_t *dnslib_zone_name(const dnslib_zone_t *zone)
 
 int dnslib_zone_adjust_dnames(dnslib_zone_t *zone)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_adjust_dnames(zone->contents);
 
 //	if (zone == NULL || zone->contents == NULL) {
@@ -1124,6 +1224,10 @@ int dnslib_zone_adjust_dnames(dnslib_zone_t *zone)
 
 int dnslib_zone_load_nsec3param(dnslib_zone_t *zone)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_load_nsec3param(zone->contents);
 
 //	if (zone == NULL || zone->contents == NULL
@@ -1149,6 +1253,10 @@ int dnslib_zone_load_nsec3param(dnslib_zone_t *zone)
 
 int dnslib_zone_nsec3_enabled(const dnslib_zone_t *zone)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_nsec3_enabled(zone->contents);
 
 //	if (zone == NULL || zone->contents == NULL) {
@@ -1162,6 +1270,10 @@ int dnslib_zone_nsec3_enabled(const dnslib_zone_t *zone)
 
 const dnslib_nsec3_params_t *dnslib_zone_nsec3params(const dnslib_zone_t *zone)
 {
+	if (zone == NULL) {
+		return NULL;
+	}
+
 	return dnslib_zone_contents_nsec3params(zone->contents);
 
 //	if (zone == NULL || zone->contents == NULL) {
@@ -1181,6 +1293,10 @@ int dnslib_zone_tree_apply_postorder(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_tree_apply_postorder(zone->contents,
 	                                                 function, data);
 
@@ -1198,6 +1314,10 @@ int dnslib_zone_tree_apply_inorder(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_tree_apply_inorder(zone->contents,
 	                                               function, data);
 
@@ -1215,6 +1335,10 @@ int dnslib_zone_tree_apply_inorder_reverse(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_tree_apply_inorder_reverse(zone->contents,
 	                                                       function, data);
 
@@ -1232,6 +1356,10 @@ int dnslib_zone_nsec3_apply_postorder(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_nsec3_apply_postorder(zone->contents,
 	                                                  function, data);
 
@@ -1249,6 +1377,10 @@ int dnslib_zone_nsec3_apply_inorder(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_nsec3_apply_inorder(zone->contents,
 	                                                function, data);
 
@@ -1266,6 +1398,10 @@ int dnslib_zone_nsec3_apply_inorder_reverse(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data)
 {
+	if (zone == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_nsec3_apply_inorder_reverse(zone->contents,
 	                                                        function, data);
 
@@ -1282,6 +1418,10 @@ int dnslib_zone_nsec3_apply_inorder_reverse(dnslib_zone_t *zone,
 int dnslib_zone_shallow_copy(const dnslib_zone_t *from,
                              dnslib_zone_contents_t **to)
 {
+	if (from == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_zone_contents_shallow_copy(from->contents, to);
 
 //	if (from == NULL || to == NULL || from->contents == NULL) {
@@ -1366,6 +1506,10 @@ int dnslib_zone_shallow_copy(const dnslib_zone_t *from,
 dnslib_zone_contents_t *dnslib_zone_switch_contents(dnslib_zone_t *zone,
                                            dnslib_zone_contents_t *new_contents)
 {
+	if (zone == NULL) {
+		return NULL;
+	}
+
 	dnslib_zone_contents_t *old_contents =
 		rcu_xchg_pointer(&zone->contents, new_contents);
 	return old_contents;

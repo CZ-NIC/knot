@@ -75,7 +75,10 @@ typedef struct dnslib_zone dnslib_zone_t;
 dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
                                int use_domain_table);
 
-const dnslib_zone_contents_t *dnslib_zone_get_contents(
+dnslib_zone_contents_t *dnslib_zone_get_contents(
+	const dnslib_zone_t *zone);
+
+const dnslib_zone_contents_t *dnslib_zone_contents(
 	const dnslib_zone_t *zone);
 
 
