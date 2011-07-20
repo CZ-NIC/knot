@@ -684,9 +684,8 @@ static int dnslib_zone_contents_dnames_from_node_to_table(
 	// for each RRSet
 	for (int i = 0; i < dnslib_node_rrset_count(node); ++i) {
 		debug_dnslib_zone("Inserting RRSets from node to table.\n");
-		rc = dnslib_zone_contents_dnames_from_rrset_to_table(table, rrsets[i],
-		                                      replace_owner,
-		                                      node->owner);
+		rc = dnslib_zone_contents_dnames_from_rrset_to_table(table,
+			rrsets[i], replace_owner, node->owner);
 		if (rc != DNSLIB_EOK) {
 			return rc;
 		}
@@ -816,7 +815,8 @@ time_t dnslib_zone_contents_version(const dnslib_zone_contents_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_contents_set_version(dnslib_zone_contents_t *zone, time_t version)
+void dnslib_zone_contents_set_version(dnslib_zone_contents_t *zone,
+                                      time_t version)
 {
 	zone->version = version;
 }
@@ -837,8 +837,9 @@ void dnslib_zone_contents_switch_generation(dnslib_zone_contents_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_add_node(dnslib_zone_contents_t *zone, dnslib_node_t *node,
-                         int create_parents, int use_domain_table)
+int dnslib_zone_contents_add_node(dnslib_zone_contents_t *zone,
+                                  dnslib_node_t *node, int create_parents,
+                                  int use_domain_table)
 {
 	if (zone == NULL || node == NULL) {
 		return DNSLIB_EBADARG;
@@ -878,7 +879,7 @@ DEBUG_DNSLIB_ZONE(
 		ret = dnslib_zone_contents_dnames_from_node_to_table(
 		          zone->dname_table, node);
 		if (ret != DNSLIB_EOK) {
-			/*! \todo Remove the node from the tree and hash table. */
+			/*! \todo Remove node from the tree and hash table.*/
 			debug_dnslib_zone("Failed to add dnames into table.\n");
 			return ret;
 		}
@@ -907,7 +908,8 @@ DEBUG_DNSLIB_ZONE(
 				return DNSLIB_ENOMEM;
 			}
 			if (use_domain_table) {
-				ret = dnslib_zone_contents_dnames_from_node_to_table(
+				ret =
+				 dnslib_zone_contents_dnames_from_node_to_table(
 					zone->dname_table, next_node);
 				if (ret != DNSLIB_EOK) {
 					return ret;
@@ -921,7 +923,8 @@ DEBUG_DNSLIB_ZONE(
 				chopped = next_node->owner;
 			}
 
-			assert(dnslib_zone_contents_find_node(zone, chopped) == NULL);
+			assert(dnslib_zone_contents_find_node(zone, chopped)
+			       == NULL);
 			assert(next_node->owner == chopped);
 
 			debug_dnslib_zone("Inserting new node to zone tree.\n");
@@ -967,10 +970,10 @@ DEBUG_DNSLIB_ZONE(
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_add_rrset(dnslib_zone_contents_t *zone, dnslib_rrset_t *rrset,
-                          dnslib_node_t **node,
-                          dnslib_rrset_dupl_handling_t dupl,
-                          int use_domain_table)
+int dnslib_zone_contents_add_rrset(dnslib_zone_contents_t *zone,
+                                   dnslib_rrset_t *rrset, dnslib_node_t **node,
+                                   dnslib_rrset_dupl_handling_t dupl,
+                                   int use_domain_table)
 {
 	if (zone == NULL || rrset == NULL || zone->apex == NULL
 	    || zone->apex->owner == NULL || node == NULL) {
@@ -986,8 +989,8 @@ int dnslib_zone_contents_add_rrset(dnslib_zone_contents_t *zone, dnslib_rrset_t 
 	}
 
 	if ((*node) == NULL
-	    && (*node = dnslib_zone_contents_get_node(zone, dnslib_rrset_owner(rrset)))
-	        == NULL) {
+	    && (*node = dnslib_zone_contents_get_node(zone,
+	                            dnslib_rrset_owner(rrset))) == NULL) {
 		return DNSLIB_ENONODE;
 	}
 
@@ -1036,10 +1039,12 @@ int dnslib_zone_contents_add_rrset(dnslib_zone_contents_t *zone, dnslib_rrset_t 
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_add_rrsigs(dnslib_zone_contents_t *zone, dnslib_rrset_t *rrsigs,
-                           dnslib_rrset_t **rrset, dnslib_node_t **node,
-                           dnslib_rrset_dupl_handling_t dupl,
-                           int use_domain_table)
+int dnslib_zone_contents_add_rrsigs(dnslib_zone_contents_t *zone,
+                                    dnslib_rrset_t *rrsigs,
+                                    dnslib_rrset_t **rrset,
+                                    dnslib_node_t **node,
+                                    dnslib_rrset_dupl_handling_t dupl,
+                                    int use_domain_table)
 {
 	if (zone == NULL || rrsigs == NULL || rrset == NULL || node == NULL
 	    || zone->apex == NULL || zone->apex->owner == NULL) {
@@ -1141,8 +1146,9 @@ int dnslib_zone_contents_add_rrsigs(dnslib_zone_contents_t *zone, dnslib_rrset_t
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_add_nsec3_node(dnslib_zone_contents_t *zone, dnslib_node_t *node,
-                               int create_parents, int use_domain_table)
+int dnslib_zone_contents_add_nsec3_node(dnslib_zone_contents_t *zone,
+                                        dnslib_node_t *node, int create_parents,
+                                        int use_domain_table)
 {
 	if (zone == NULL || node == NULL) {
 		return DNSLIB_EBADARG;
@@ -1172,10 +1178,11 @@ int dnslib_zone_contents_add_nsec3_node(dnslib_zone_contents_t *zone, dnslib_nod
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_add_nsec3_rrset(dnslib_zone_contents_t *zone, dnslib_rrset_t *rrset,
-                                dnslib_node_t **node,
-                                dnslib_rrset_dupl_handling_t dupl,
-                                int use_domain_table)
+int dnslib_zone_contents_add_nsec3_rrset(dnslib_zone_contents_t *zone,
+                                         dnslib_rrset_t *rrset,
+                                         dnslib_node_t **node,
+                                         dnslib_rrset_dupl_handling_t dupl,
+                                         int use_domain_table)
 {
 	if (zone == NULL || rrset == NULL || zone->apex == NULL
 	    || zone->apex->owner == NULL || node == NULL) {
@@ -1240,7 +1247,8 @@ int dnslib_zone_contents_add_nsec3_rrset(dnslib_zone_contents_t *zone, dnslib_rr
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_create_and_fill_hash_table(dnslib_zone_contents_t *zone)
+int dnslib_zone_contents_create_and_fill_hash_table(
+	dnslib_zone_contents_t *zone)
 {
 	if (zone == NULL || zone->apex == NULL || zone->apex->owner == NULL) {
 		return DNSLIB_EBADARG;
@@ -1279,7 +1287,7 @@ int dnslib_zone_contents_create_and_fill_hash_table(dnslib_zone_contents_t *zone
 //	                   dnslib_zone_node_to_hash, zone);
 	/*! \todo Replace by zone tree. */
 	int ret = dnslib_zone_tree_forward_apply_inorder(zone->nodes,
-	                                        dnslib_zone_contents_node_to_hash, zone);
+	                               dnslib_zone_contents_node_to_hash, zone);
 	if (ret != DNSLIB_EOK) {
 		debug_dnslib_zone("Failed to insert nodes to hash table.\n");
 		return ret;
@@ -1315,8 +1323,8 @@ dnslib_node_t *dnslib_zone_contents_get_node(const dnslib_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_node_t *dnslib_zone_contents_get_nsec3_node(const dnslib_zone_contents_t *zone,
-					  const dnslib_dname_t *name)
+dnslib_node_t *dnslib_zone_contents_get_nsec3_node(
+	const dnslib_zone_contents_t *zone, const dnslib_dname_t *name)
 {
 	if (zone == NULL || name == NULL) {
 		return NULL;
@@ -1340,8 +1348,8 @@ dnslib_node_t *dnslib_zone_contents_get_nsec3_node(const dnslib_zone_contents_t 
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_zone_contents_find_node(const dnslib_zone_contents_t *zone,
-					   const dnslib_dname_t *name)
+const dnslib_node_t *dnslib_zone_contents_find_node(
+	const dnslib_zone_contents_t *zone,const dnslib_dname_t *name)
 {
 	return dnslib_zone_contents_get_node(zone, name);
 }
@@ -1381,7 +1389,8 @@ DEBUG_DNSLIB_ZONE(
 		return DNSLIB_EBADZONE;
 	}
 
-	int exact_match = dnslib_zone_contents_find_in_tree(zone, name, node, previous);
+	int exact_match = dnslib_zone_contents_find_in_tree(zone, name, node,
+	                                                    previous);
 
 DEBUG_DNSLIB_ZONE(
 	char *name_str = (*node) ? dnslib_dname_to_str((*node)->owner)
@@ -1435,8 +1444,8 @@ DEBUG_DNSLIB_ZONE(
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_zone_contents_find_previous(const dnslib_zone_contents_t *zone,
-                                               const dnslib_dname_t *name)
+const dnslib_node_t *dnslib_zone_contents_find_previous(
+	const dnslib_zone_contents_t *zone, const dnslib_dname_t *name)
 {
 	if (zone == NULL || name == NULL) {
 		return NULL;
@@ -1537,8 +1546,8 @@ DEBUG_DNSLIB_ZONE(
 #endif
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_zone_contents_find_nsec3_node(const dnslib_zone_contents_t *zone,
-                                                 const dnslib_dname_t *name)
+const dnslib_node_t *dnslib_zone_contents_find_nsec3_node(
+	const dnslib_zone_contents_t *zone, const dnslib_dname_t *name)
 {
 	return dnslib_zone_contents_get_nsec3_node(zone, name);
 }
@@ -1614,7 +1623,8 @@ DEBUG_DNSLIB_ZONE(
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_zone_contents_apex(const dnslib_zone_contents_t *zone)
+const dnslib_node_t *dnslib_zone_contents_apex(
+	const dnslib_zone_contents_t *zone)
 {
 	if (zone == NULL) {
 		return NULL;
@@ -1664,7 +1674,7 @@ int dnslib_zone_contents_adjust_dnames(dnslib_zone_contents_t *zone)
 //	                   dnslib_zone_adjust_nsec3_node_in_tree, zone);
 
 	int ret = dnslib_zone_tree_forward_apply_inorder(zone->nodes,
-	                                 dnslib_zone_contents_adjust_node_in_tree, zone);
+	                        dnslib_zone_contents_adjust_node_in_tree, zone);
 	if (ret != DNSLIB_EOK) {
 		return ret;
 	}
@@ -1709,7 +1719,8 @@ int dnslib_zone_contents_nsec3_enabled(const dnslib_zone_contents_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_nsec3_params_t *dnslib_zone_contents_nsec3params(const dnslib_zone_contents_t *zone)
+const dnslib_nsec3_params_t *dnslib_zone_contents_nsec3params(
+	const dnslib_zone_contents_t *zone)
 {
 	if (zone == NULL) {
 		return NULL;
@@ -1752,9 +1763,9 @@ int dnslib_zone_contents_tree_apply_inorder(dnslib_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_tree_apply_inorder_reverse(dnslib_zone_contents_t *zone,
-                              void (*function)(dnslib_node_t *node, void *data),
-                              void *data)
+int dnslib_zone_contents_tree_apply_inorder_reverse(
+	dnslib_zone_contents_t *zone,
+	void (*function)(dnslib_node_t *node, void *data), void *data)
 {
 	if (zone == NULL) {
 		return DNSLIB_EBADARG;
@@ -1796,9 +1807,9 @@ int dnslib_zone_contents_nsec3_apply_inorder(dnslib_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_nsec3_apply_inorder_reverse(dnslib_zone_contents_t *zone,
-                              void (*function)(dnslib_node_t *node, void *data),
-                              void *data)
+int dnslib_zone_contents_nsec3_apply_inorder_reverse(
+	dnslib_zone_contents_t *zone,
+	void (*function)(dnslib_node_t *node, void *data), void *data)
 {
 	if (zone == NULL) {
 		return DNSLIB_EBADARG;
