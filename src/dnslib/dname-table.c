@@ -112,6 +112,10 @@ int dnslib_dname_table_add_dname2(dnslib_dname_table_t *table,
 	dnslib_dname_t *found_dname = NULL;
 	int ret;
 
+	if (table == NULL || dname == NULL || *dname == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 //	char *name = dnslib_dname_to_str(*dname);
 //	printf("Inserting name %s to dname table.\n", name);
 //	free(name);
