@@ -218,6 +218,28 @@ int dnslib_zone_tree_reverse_apply_inorder(dnslib_zone_tree_t *tree,
                                            void *data);
 
 /*!
+ * \brief Applies the given function to each node in the zone.
+ *
+ * This function uses post-order depth-first reverse traversal, i.e. the
+ * function is first recursively applied to right subtree, then to the
+ * left subtree and then to the root.
+ *
+ * \note This implies that the zone is stored in a binary tree. Is there a way
+ *       to make this traversal independent on the underlying structure?
+ *
+ * \param tree Zone tree to apply the function to.
+ * \param function Function to be applied to each node of the zone.
+ * \param data Arbitrary data to be passed to the function.
+ *
+ * \retval DNSLIB_EOK
+ * \retval DNSLIB_EBADARG
+ */
+int dnslib_zone_tree_reverse_apply_postorder(dnslib_zone_tree_t *tree,
+                                             void (*function)(
+                                             dnslib_node_t *node, void *data),
+                                             void *data);
+
+/*!
  * \brief Copies the whole zone tree structure (but not the data contained
  *        within).
  *

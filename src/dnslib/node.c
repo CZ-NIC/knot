@@ -467,7 +467,7 @@ void dnslib_node_free_rrsets(dnslib_node_t *node, int free_rdata_dnames)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_node_free(dnslib_node_t **node, int free_owner)
+void dnslib_node_free(dnslib_node_t **node, int free_owner, int fix_refs)
 {
 	debug_dnslib_node("Freeing node.\n");
 	if ((*node)->rrsets != NULL) {
@@ -481,34 +481,37 @@ void dnslib_node_free(dnslib_node_t **node, int free_owner)
 
 	// check nodes referencing this node and fix the references
 
-	// previous node
-	debug_dnslib_node("Checking previous.\n");
-	if ((*node)->prev && (*node)->prev->next == (*node)) {
-		(*node)->prev->next = (*node)->next;
-	}
+	if (fix_refs) {
+		// previous node
+		debug_dnslib_node("Checking previous.\n");
+		if ((*node)->prev && (*node)->prev->next == (*node)) {
+			(*node)->prev->next = (*node)->next;
+		}
 
-	debug_dnslib_node("Checking next.\n");
-	if ((*node)->next && (*node)->next->prev == (*node)) {
-		(*node)->next->prev = (*node)->prev;
-	}
+		debug_dnslib_node("Checking next.\n");
+		if ((*node)->next && (*node)->next->prev == (*node)) {
+			(*node)->next->prev = (*node)->prev;
+		}
 
-	// NSEC3 node
-	debug_dnslib_node("Checking NSEC3.\n");
-	if ((*node)->nsec3_node
-	    && (*node)->nsec3_node->nsec3_referer == (*node)) {
-		(*node)->nsec3_node->nsec3_referer = NULL;
-	}
+		// NSEC3 node
+		debug_dnslib_node("Checking NSEC3.\n");
+		if ((*node)->nsec3_node
+		    && (*node)->nsec3_node->nsec3_referer == (*node)) {
+			(*node)->nsec3_node->nsec3_referer = NULL;
+		}
 
-	debug_dnslib_node("Checking NSEC3 ref.\n");
-	if ((*node)->nsec3_referer
-	    && (*node)->nsec3_referer->nsec3_node == (*node)) {
-		(*node)->nsec3_referer->nsec3_node = NULL;
-	}
+		debug_dnslib_node("Checking NSEC3 ref.\n");
+		if ((*node)->nsec3_referer
+		    && (*node)->nsec3_referer->nsec3_node == (*node)) {
+			(*node)->nsec3_referer->nsec3_node = NULL;
+		}
 
-	// wildcard child node
-	debug_dnslib_node("Checking parent's wildcard child.\n");
-	if ((*node)->parent && (*node)->parent->wildcard_child == (*node)) {
-		(*node)->parent->wildcard_child = NULL;
+		// wildcard child node
+		debug_dnslib_node("Checking parent's wildcard child.\n");
+		if ((*node)->parent
+		    && (*node)->parent->wildcard_child == (*node)) {
+			(*node)->parent->wildcard_child = NULL;
+		}
 	}
 
 	free(*node);

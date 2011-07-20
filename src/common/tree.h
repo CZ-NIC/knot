@@ -212,7 +212,18 @@
 	TREE_POST_ORDER_APPLY_ALL_##node##_##field(self->field.avl_right, function, data);			\
 	function(self, data);										\
       }													\
-  }
+  }													\
+													\
+  void TREE_REVERSE_APPLY_POST_ALL_##node##_##field								\
+    (struct node *self, void (*function)(struct node *node, void *data), void *data)			\
+  {													\
+    if (self)												\
+      {													\
+        TREE_REVERSE_APPLY_POST_ALL_##node##_##field(self->field.avl_right, function, data);			\
+        TREE_REVERSE_APPLY_POST_ALL_##node##_##field(self->field.avl_left, function, data);			\
+        function(self, data);										\
+      }													\
+}
 
 #define TREE_INSERT(head, node, field, elm)						\
   ((head)->th_root= TREE_INSERT_##node##_##field((head)->th_root, (elm), (head)->th_cmp))
@@ -237,6 +248,9 @@
 
 #define TREE_POST_ORDER_APPLY(head, node, field, function, data)	\
   TREE_POST_ORDER_APPLY_ALL_##node##_##field((head)->th_root, function, data)
+
+#define TREE_REVERSE_APPLY_POST(head, node, field, function, data)	\
+  TREE_REVERSE_APPLY_POST_ALL_##node##_##field((head)->th_root, function, data)
 
 #define TREE_INIT(head, cmp) do {		\
     (head)->th_root= 0;				\

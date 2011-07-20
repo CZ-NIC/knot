@@ -60,7 +60,7 @@ static int test_node_create()
 			errors++;
 			diag("Failed to create node structure");
 		}
-		dnslib_node_free(&tmp, 0);
+		dnslib_node_free(&tmp, 0, 0);
 	}
 	return (errors == 0);
 }
@@ -118,7 +118,7 @@ static int test_node_add_rrset()
 			diag("Values in found rrset are wrong");
 		}
 
-		dnslib_node_free(&tmp, 0);
+		dnslib_node_free(&tmp, 0, 0);
 	}
 
 	return (errors == 0);
@@ -150,7 +150,7 @@ static int test_node_get_rrset()
 				diag("Failed to get proper rrset from node");
 			}
 		}
-		dnslib_node_free(&nodes[i], 0);
+		dnslib_node_free(&nodes[i], 0, 0);
 	}
 
 	return (errors == 0);
@@ -178,7 +178,7 @@ static int test_node_get_parent()
 			errors++;
 			diag("Failed to get proper parent from node");
 		}
-		dnslib_node_free(&nodes[i], 0);
+		dnslib_node_free(&nodes[i], 0, 0);
 	}
 	return (errors == 0);
 }
@@ -214,7 +214,7 @@ static int test_node_sorting()
 		last = *((uint16_t *)node->key);
 	}
 
-	dnslib_node_free(&tmp, 0);
+	dnslib_node_free(&tmp, 0, 0);
 	return (errors == 0);
 }
 
@@ -228,7 +228,7 @@ static int test_node_delete()
 		tmp_node = dnslib_node_new(&test_nodes[i].owner,
 				      test_nodes[i].parent);
 
-		dnslib_node_free(&tmp_node, 0);
+		dnslib_node_free(&tmp_node, 0, 0);
 
 		errors += (tmp_node != NULL);
 	}
@@ -253,9 +253,9 @@ static int test_node_set_parent()
 			diag("Parent node is wrongly set.");
 			errors++;
 		}
-		dnslib_node_free(&tmp_node, 0);
+		dnslib_node_free(&tmp_node, 0, 0);
 	}
-	dnslib_node_free(&tmp_parent, 0);
+	dnslib_node_free(&tmp_parent, 0, 0);
 	return (errors == 0);
 }
 
@@ -273,7 +273,7 @@ static int test_node_free_rrsets()
 
 		errors += (tmp_node->rrsets != NULL);
 
-		dnslib_node_free(&tmp_node, 0);
+		dnslib_node_free(&tmp_node, 0, 0);
 	}
 	return (errors == 0);
 }
