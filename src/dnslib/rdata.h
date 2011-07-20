@@ -247,8 +247,8 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, unsigned int type,
 /*!
  * \brief Compares two RDATAs of the same type.
  *
- * \note This function will probably be useless, no ordering will be needed
- *       for our purposes.
+ * \note Compares domain names normally (dname_compare()), i.e.
+ *       case-insensitive.
  *
  * \param r1 First RDATA.
  * \param r2 Second RDATA.
@@ -257,8 +257,6 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, unsigned int type,
  * \retval 0 if RDATAs are equal.
  * \retval < 0 if \a r1 goes before \a r2 in canonical order.
  * \retval > 0 if \a r1 goes after \a r2 in canonical order.
- *
- * \todo Domain names in certain types should be converted to lowercase.
  */
 int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
                          const uint8_t *format);

@@ -630,24 +630,31 @@ int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
 	int cmp = 0;
 
 	for (int i = 0; i < count; ++i) {
-		const uint8_t *data1, *data2;
-		int size1, size2;
+//		const uint8_t *data1, *data2;
+//		int size1, size2;
 
 		if (format[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 		    format[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		    format[i] == DNSLIB_RDATA_WF_LITERAL_DNAME) {
-			data1 = dnslib_dname_name(r1->items[i].dname);
-			data2 = dnslib_dname_name(r2->items[i].dname);
-			size1 = dnslib_dname_size(r2->items[i].dname);
-			size2 = dnslib_dname_size(r2->items[i].dname);
+			cmp = dnslib_dname_compare(r1->items[i].dname,
+			                           r2->items[i].dname);
+//			data1 = dnslib_dname_name(r1->items[i].dname);
+//			data2 = dnslib_dname_name(r2->items[i].dname);
+//			size1 = dnslib_dname_size(r2->items[i].dname);
+//			size2 = dnslib_dname_size(r2->items[i].dname);
 		} else {
-			data1 = (uint8_t *)(r1->items[i].raw_data + 1);
-			data2 = (uint8_t *)(r2->items[i].raw_data + 1);
-			size1 = r1->items[i].raw_data[0];
-			size2 = r1->items[i].raw_data[0];
+			cmp = dnslib_rdata_compare_binary(
+				(uint8_t *)(r1->items[i].raw_data + 1),
+				(uint8_t *)(r2->items[i].raw_data + 1),
+				r1->items[i].raw_data[0],
+				r1->items[i].raw_data[0]);
+//			data1 = (uint8_t *)(r1->items[i].raw_data + 1);
+//			data2 = (uint8_t *)(r2->items[i].raw_data + 1);
+//			size1 = r1->items[i].raw_data[0];
+//			size2 = r1->items[i].raw_data[0];
 		}
 
-		cmp = dnslib_rdata_compare_binary(data1, data2, size1, size2);
+//		cmp =
 
 		if (cmp != 0) {
 			return cmp;
