@@ -10,6 +10,36 @@
 #include "dnslib/error.h"
 
 /*----------------------------------------------------------------------------*/
+/* Non-API functions                                                          */
+/*----------------------------------------------------------------------------*/
+
+static void dnslib_rrset_disconnect_rdata(dnslib_rrset_t *rrset,
+                                    dnslib_rdata_t *prev, dnslib_rdata_t *rdata)
+{
+	if (prev == NULL) {
+		// find the previous RDATA in the series, as its pointer must
+		// be changed
+		dnslib_rdata_t *prev = rdata->next;
+		while (prev->next != rdata) {
+			prev = prev->next;
+		}
+	}
+
+	assert(prev);
+	assert(prev->next == rdata);
+
+	prev->next = rdata->next;
+
+	if (rrset->rdata == rdata) {
+		if (rdata->next == rdata) {
+			rrset->rdata = NULL;
+		} else {
+			rrset->rdata = rdata->next;
+		}
+	}
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -56,6 +86,37 @@ int dnslib_rrset_add_rdata(dnslib_rrset_t *rrset, dnslib_rdata_t *rdata)
 		tmp->next = rdata;
 	}
 	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnslib_rdata_t *dnslib_rrset_remove_rdata(dnslib_rrset_t *rrset,
+                                          const dnslib_rdata_t *rdata)
+{
+	if (rrset == NULL || rdata == NULL) {
+		return NULL;
+	}
+
+	dnslib_rdata_t *prev = NULL;
+	dnslib_rdata_t *rr = rrset->rdata;
+	dnslib_rrtype_descriptor_t *desc =
+		dnslib_rrtype_descriptor_by_type(rrset->type);
+
+	if (desc == NULL) {
+		return NULL;
+	}
+
+	while (rr != NULL) {
+		/*! \todo maybe the dnames should be compared case-insensitive*/
+		if (dnslib_rdata_compare(rr, rdata, desc->wireformat) == 0) {
+			dnslib_rrset_disconnect_rdata(rrset, prev, rr);
+			return rr;
+		}
+		prev = rr;
+		rr = dnslib_rrset_rdata_get_next(rrset, rr);
+	}
+
+	return NULL;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -205,12 +266,19 @@ int dnslib_rrset_compare(const dnslib_rrset_t *r1,
 			return 0;
 		}
 
-		/*! @todo Implement RDATA comparation */
 		res = res && (dnslib_rdata_compare(r1->rdata, r2->rdata,
 		                                  desc->wireformat) == 0);
 	}
 
 	return res;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_rrset_copy(const dnslib_rrset_t *from, dnslib_rrset_t **to)
+{
+	/*! \todo Implement (shallow copy). */
+	return DNSLIB_ERROR;
 }
 
 /*----------------------------------------------------------------------------*/
