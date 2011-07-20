@@ -262,7 +262,85 @@ static int test_dname_table_adding()
 	return (errors == 0);
 }
 
-static const int DNSLIB_DNAME_TABLE_TEST_COUNT = 6;
+static int test_dname_table_find()
+{
+	int errors = 0;
+	dnslib_dname_table_t *table = dnslib_dname_table_new();
+	assert(table);
+
+	if (dnslib_dname_table_find_dname(table, NULL) != NULL) {
+		diag("Dname table did not return NULL when searching NULL!");
+		errors++;
+	}
+
+	if (dnslib_dname_table_find_dname(NULL, NULL) != NULL) {
+		diag("Passing NULL instead of dname table did not "
+		     "return NULL!");
+		errors++;
+	}
+
+	/* Add all dnames but the last one. */
+	for (int i = 0; i < DNAME_TABLE_DNAME_COUNT - 1; i++) {
+		dnslib_dname_t *dname =
+			dname_from_test_dname_str(&DNAME_TABLE_DNAMES[i]);
+		if (!dname) {
+			diag("Could not create dname from test dname!");
+			errors++;
+			continue;
+		}
+		if (dnslib_dname_table_add_dname(table, dname) != DNSLIB_EOK) {
+			diag("Could not add dname! (%s)",
+			     DNAME_TABLE_DNAMES[i].str);
+			errors++;
+		}
+	}
+
+	/* Search for added dnames. */
+	for (int i = 0; i < DNAME_TABLE_DNAME_COUNT - 1; i++) {
+		dnslib_dname_t *dname =
+			dname_from_test_dname_str(&DNAME_TABLE_DNAMES[i]);
+		if (!dname) {
+			diag("Could not create dname from test dname!");
+			errors++;
+			continue;
+		}
+
+		dnslib_dname_t *found_dname =
+			dnslib_dname_table_find_dname(table, dname);
+
+		if (found_dname == NULL) {
+			diag("Dname table did not return "
+			     "dname when it should!");
+			errors++;
+			continue;
+		}
+
+		if (dnslib_dname_compare(found_dname, dname) != 0) {
+			diag("Returned dname did not match!");
+			errors++;
+			continue;
+		}
+	}
+
+	/* Search for last dname, it should return NULL. */
+	dnslib_dname_t *dname =
+		dname_from_test_dname_str(
+			&DNAME_TABLE_DNAMES[DNAME_TABLE_DNAME_COUNT]);
+	assert(dname);
+
+	if (dnslib_dname_table_find_dname(table, dname) != NULL) {
+		diag("Dname table returned dname when it "
+		     "should not be there!");
+		errors++;
+	}
+
+	dnslib_dname_free(&dname);
+	dnslib_dname_table_deep_free(&table);
+
+	return (errors == 0);
+}
+
+static const int DNSLIB_DNAME_TABLE_TEST_COUNT = 3;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -286,9 +364,12 @@ static int dnslib_dname_table_tests_run(int argc, char *argv[])
 	ok((res = test_dname_table_new()), "dname table: new");
 	final_res *= res;
 
-	skip(!res, 6);
+	skip(!res, 2);
 
 	ok((res = test_dname_table_adding()), "dname table: adding");
+	final_res *= res;
+
+	ok((res = test_dname_table_find()), "dname table: searching");
 	final_res *= res;
 
 	endskip;
