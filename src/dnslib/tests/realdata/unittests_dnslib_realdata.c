@@ -13,6 +13,7 @@
 #include "dnslib/rrset_tests_realdata.h"
 //#include "dnslib/zone_tests_realdata.h"
 #include "dnslib/zonedb_tests_realdata.h"
+#include "dnslib/packet_tests_realdata.h"
 
 #include "common/lists.h"
 // Run all loaded units
@@ -41,6 +42,7 @@ int main(int argc, char *argv[])
 		&rrset_tests_api,    //! DNS library (rrset) unit
 //		&zone_tests_api,     //! DNS library (zone) unit
 //		&zonedb_tests_api,   //! DNS library (zonedb) unit
+		&packet_tests_api,
 		NULL
 	};
 
