@@ -220,6 +220,18 @@ dnslib_rrset_t *dnslib_node_get_rrset(dnslib_node_t *node, uint16_t type)
 
 /*----------------------------------------------------------------------------*/
 
+dnslib_rrset_t *dnslib_node_remove_rrset(dnslib_node_t *node, uint16_t type)
+{
+	dnslib_rrset_t *rrset =
+		(dnslib_rrset_t *)skip_find(node->rrsets, (void *)&type);
+	if (rrset != NULL) {
+		skip_remove(node->rrsets, (void *)&type, NULL, NULL);
+	}
+	return rrset;
+}
+
+/*----------------------------------------------------------------------------*/
+
 short dnslib_node_rrset_count(const dnslib_node_t *node)
 {
 	return node->rrset_count;
@@ -355,6 +367,13 @@ void dnslib_node_set_wildcard_child(dnslib_node_t *node,
 /*----------------------------------------------------------------------------*/
 
 const dnslib_node_t *dnslib_node_new_node(const dnslib_node_t *node)
+{
+	return node->new_node;
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnslib_node_t *dnslib_node_get_new_node(const dnslib_node_t *node)
 {
 	return node->new_node;
 }

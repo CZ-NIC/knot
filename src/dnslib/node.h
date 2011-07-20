@@ -120,6 +120,8 @@ const dnslib_rrset_t *dnslib_node_rrset(const dnslib_node_t *node,
  */
 dnslib_rrset_t *dnslib_node_get_rrset(dnslib_node_t *node, uint16_t type);
 
+dnslib_rrset_t *dnslib_node_remove_rrset(dnslib_node_t *node, uint16_t type);
+
 /*!
  * \brief Returns number of RRSets in the node.
  *
@@ -253,6 +255,8 @@ void dnslib_node_set_wildcard_child(dnslib_node_t *node,
                                     dnslib_node_t *wildcard_child);
 
 const dnslib_node_t *dnslib_node_new_node(const dnslib_node_t *node);
+
+dnslib_node_t *dnslib_node_get_new_node(const dnslib_node_t *node);
 
 void dnslib_node_set_new_node(dnslib_node_t *node,
                               dnslib_node_t *new_node);
