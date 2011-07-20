@@ -78,7 +78,7 @@ static void dnslib_zone_contents_destroy_node_owner_from_tree(
 {
 	UNUSED(data);
 	/*!< \todo change completely! */
-	dnslib_node_free(&node, 0);
+	dnslib_node_free(&node, 0, 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1933,19 +1933,19 @@ void dnslib_zone_contents_deep_free(dnslib_zone_contents_t **contents)
 		/* NSEC3 tree is deleted first as it may contain references to
 		   the normal tree. */
 
-		dnslib_zone_tree_forward_apply_postorder(
+		dnslib_zone_tree_reverse_apply_postorder(
 			(*contents)->nsec3_nodes,
 			dnslib_zone_contents_destroy_node_rrsets_from_tree, 0);
 
-		dnslib_zone_tree_forward_apply_postorder(
+		dnslib_zone_tree_reverse_apply_postorder(
 			(*contents)->nsec3_nodes,
 			dnslib_zone_contents_destroy_node_owner_from_tree, 0);
 
-		dnslib_zone_tree_forward_apply_postorder(
+		dnslib_zone_tree_reverse_apply_postorder(
 			(*contents)->nodes,
 			dnslib_zone_contents_destroy_node_rrsets_from_tree, 0);
 
-		dnslib_zone_tree_forward_apply_postorder(
+		dnslib_zone_tree_reverse_apply_postorder(
 			(*contents)->nodes,
 			dnslib_zone_contents_destroy_node_owner_from_tree, 0);
 

@@ -119,7 +119,7 @@ static void dnslib_zone_tree_free_node(dnslib_zone_tree_node_t *node,
 	dnslib_zone_tree_free_node(node->avl.avl_right, free_data, free_owner);
 
 	if (free_data) {
-		dnslib_node_free(&node->node, free_owner);
+		dnslib_node_free(&node->node, free_owner, 0);
 	}
 
 	free(node);
@@ -205,7 +205,7 @@ int dnslib_zone_tree_get(dnslib_zone_tree_t *tree, const dnslib_dname_t *owner,
 	dnslib_zone_tree_node_t *n = TREE_FIND(tree, dnslib_zone_tree_node, avl,
 	                                       tmp);
 
-	dnslib_node_free(&tmp_data, 0);
+	dnslib_node_free(&tmp_data, 0, 0);
 	free(tmp);
 
 	if (n != NULL) {
@@ -264,7 +264,7 @@ int dnslib_zone_tree_get_less_or_equal(dnslib_zone_tree_t *tree,
 	int exact_match = TREE_FIND_LESS_EQUAL(
 	                  tree, dnslib_zone_tree_node, avl, tmp, &f, &prev);
 
-	dnslib_node_free(&tmp_data, 0);
+	dnslib_node_free(&tmp_data, 0, 0);
 	free(tmp);
 
 	*found = (exact_match) ? f->node : NULL;
@@ -320,7 +320,7 @@ int dnslib_zone_tree_remove(dnslib_zone_tree_t *tree,
 	/*! \todo How to know if this was successful? */
 	TREE_REMOVE(tree, dnslib_zone_tree_node, avl, tmp);
 
-	dnslib_node_free(&tmp_data, 0);
+	dnslib_node_free(&tmp_data, 0, 0);
 	free(tmp);
 
 	*removed = n->node;
@@ -390,6 +390,28 @@ int dnslib_zone_tree_reverse_apply_inorder(dnslib_zone_tree_t *tree,
 
 	TREE_REVERSE_APPLY(tree, dnslib_zone_tree_node, avl,
 	                   dnslib_zone_tree_apply, &f);
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_zone_tree_reverse_apply_postorder(dnslib_zone_tree_t *tree,
+                                             void (*function)(
+                                                 dnslib_node_t *node,
+                                                 void *data),
+                                             void *data)
+{
+	if (tree == NULL || function == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
+	dnslib_zone_tree_func_t f;
+	f.func = function;
+	f.data = data;
+
+	TREE_REVERSE_APPLY_POST(tree, dnslib_zone_tree_node, avl,
+	                        dnslib_zone_tree_apply, &f);
 
 	return DNSLIB_EOK;
 }

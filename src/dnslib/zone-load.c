@@ -259,7 +259,7 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 			} else if (use_ids && !in_the_zone) { /* destroy the node */
 				if (id_array[dname_id]->node != NULL) {
 					dnslib_node_free(&id_array[dname_id]->
-							 node, 0);
+							 node, 0, 0);
 				}
 				/* Also sets node to NULL! */
 			}
@@ -499,7 +499,7 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 
 	for (int i = 0; i < rrset_count; i++) {
 		if ((tmp_rrset = dnslib_load_rrset(f, id_array, 1)) == NULL) {
-			dnslib_node_free(&node, 1);
+			dnslib_node_free(&node, 1, 0);
 			//TODO what else to free?
 			fprintf(stderr, "zone: Could not load rrset.\n");
 			return NULL;

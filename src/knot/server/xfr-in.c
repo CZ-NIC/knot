@@ -308,7 +308,7 @@ int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
 			debug_xfr("No zone created, but the first RR in Answer"
 			          " is not a SOA RR.\n");
 			dnslib_packet_free(&packet);
-			dnslib_node_free(&node, 0);
+			dnslib_node_free(&node, 0, 0);
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
 			/*! \todo Cleanup. */
 			return KNOT_EMALF;
@@ -330,7 +330,7 @@ DEBUG_XFR(
 );
 			/*! \todo Cleanup. */
 			dnslib_packet_free(&packet);
-			dnslib_node_free(&node, 0);
+			dnslib_node_free(&node, 0, 0);
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
 			return KNOT_EMALF;
 		}
@@ -349,7 +349,7 @@ DEBUG_XFR(
 		if (*zone == NULL) {
 			debug_xfr("Failed to create new zone.\n");
 			dnslib_packet_free(&packet);
-			dnslib_node_free(&node, 0);
+			dnslib_node_free(&node, 0, 0);
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
 			/*! \todo Cleanup. */
 			return KNOT_ENOMEM;
@@ -365,7 +365,7 @@ DEBUG_XFR(
 			debug_xfr("Failed to add RRSet to zone node: %s.\n",
 			          dnslib_strerror(ret));
 			dnslib_packet_free(&packet);
-			dnslib_node_free(&node, 0);
+			dnslib_node_free(&node, 0, 0);
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
 			/*! \todo Cleanup. */
 			return KNOT_ERROR;
@@ -433,7 +433,7 @@ DEBUG_XFR(
 			if (ret < 0) {
 				debug_xfr("Failed to add RRSIGs.\n");
 				dnslib_packet_free(&packet);
-				dnslib_node_free(&node, 1); // ???
+				dnslib_node_free(&node, 1, 0); // ???
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
 				return KNOT_ERROR;  /*! \todo Other error code. */
 			} else if (ret == 1) {
@@ -489,7 +489,7 @@ DEBUG_XFR(
 			if (ret < 0) {
 				debug_xfr("Failed to add RRSet to node.\n");
 				dnslib_packet_free(&packet);
-				dnslib_node_free(&node, 1); // ???
+				dnslib_node_free(&node, 1, 0); // ???
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
 				return KNOT_ERROR;
 			} else if (ret > 0) {
@@ -502,7 +502,7 @@ DEBUG_XFR(
 			if (ret != DNSLIB_EOK) {
 				debug_xfr("Failed to add node to zone.\n");
 				dnslib_packet_free(&packet);
-				dnslib_node_free(&node, 1); // ???
+				dnslib_node_free(&node, 1, 0); // ???
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
 				return KNOT_ERROR;
 			}
@@ -537,7 +537,7 @@ DEBUG_XFR(
 		debug_xfr("Could not parse next RR: %s.\n",
 		          dnslib_strerror(ret));
 		dnslib_packet_free(&packet);
-		dnslib_node_free(&node, 0);
+		dnslib_node_free(&node, 0, 0);
 		dnslib_rrset_deep_free(&rr, 1, 1, 1);
 		/*! \todo Cleanup. */
 		return KNOT_EMALF;
@@ -553,7 +553,7 @@ DEBUG_XFR(
 		if (ret != DNSLIB_EOK) {
 			debug_xfr("Failed to add last node into zone.\n");
 			dnslib_packet_free(&packet);
-			dnslib_node_free(&node, 1);
+			dnslib_node_free(&node, 1, 0);
 			return KNOT_ERROR;	/*! \todo Other error */
 		}
 	}
@@ -1372,7 +1372,7 @@ typedef struct {
 	dnslib_node_t **new_nodes;
 	int new_nodes_count;
 	int new_nodes_allocated;
-	dnslib_dname_t *new_dnames;
+	dnslib_dname_t **new_dnames;
 	int new_dnames_count;
 	int new_dnames_allocated;
 } xfrin_changes_t;
@@ -1491,7 +1491,7 @@ static void xfrin_rollback_update(dnslib_zone_contents_t *contents,
 
 	// discard new nodes, but do not remove RRSets from them
 	for (int i = 0; i < changes->new_nodes_count; ++i) {
-		dnslib_node_free(&changes->new_nodes[i], 0);
+		dnslib_node_free(&changes->new_nodes[i], 0, 0);
 	}
 
 	// set references from old nodes to new nodes to NULL and remove the
@@ -1521,6 +1521,22 @@ static int xfrin_apply_changeset(dnslib_zone_contents_t *contents,
                                  xfrin_changes_t *changes,
                                  xfrin_changeset_t *chset)
 {
+	// check if serial matches
+	const dnslib_rrset_t *soa = dnslib_node_rrset(contents->apex,
+	                                        DNSLIB_RRTYPE_SOA);
+	if (soa == NULL || dnslib_rdata_soa_serial(dnslib_rrset_rdata(soa))
+	                   != chset->serial_from) {
+		debug_xfr("SOA serials do not match!!\n");
+		return KNOT_ERROR;
+	}
+
+	// iterate over removed RRSets, copy appropriate nodes and remove
+	// the rrsets from them
+	for (int i = 0; i < chset->remove_count; ++i) {
+		// find node where the RRSet should be located
+
+	}
+
 	return KNOT_ENOTSUP;
 }
 
@@ -1545,7 +1561,7 @@ static void xfrin_cleanup_update(xfrin_changes_t *changes)
 {
 	// free old nodes but do not destroy their RRSets, nor domain names
 	for (int i = 0; i < changes->old_nodes_count; ++i) {
-		dnslib_node_free(&changes->old_nodes[i], 0);
+		dnslib_node_free(&changes->old_nodes[i], 0, 0);
 	}
 
 	// free old RRSets, but do not destroy dnames in them
@@ -1602,11 +1618,11 @@ int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 	 */
 	xfrin_changes_t changes;
 	changes.new_rrsets = NULL;
-	changes.rrsets_count = 0;
-	changes.rrsets_allocated = 0;
+	changes.new_rrsets_count = 0;
+	changes.new_rrsets_allocated = 0;
 	changes.old_nodes = NULL;
-	changes.nodes_allocated = 0;
-	changes.nodes_count = 0;
+	changes.old_nodes_allocated = 0;
+	changes.old_nodes_count = 0;
 
 	for (int i = 0; i < chsets->count; ++i) {
 		if ((ret = xfrin_apply_changeset(contents_copy, &changes,

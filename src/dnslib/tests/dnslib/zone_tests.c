@@ -77,13 +77,13 @@ static int test_zone_create(dnslib_zone_t **zone)
 
 	if ((*zone) == NULL) {
 		diag("zone: Failed to create zone.");
-		dnslib_node_free(&node, 1);
+		dnslib_node_free(&node, 1, 0);
 		return 0;
 	}
 
 	if ((*zone)->contents->apex != node) {
 		diag("zone: Zone apex not set right.");
-		dnslib_node_free(&node, 1);
+		dnslib_node_free(&node, 1, 0);
 		return 0;
 	}
 
@@ -115,7 +115,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 		                   : dnslib_zone_add_node(zone, node, 0, 1))) != 0) {
 			diag("zone: Failed to insert node into zone (returned"
 			     " %d).", res);
-			dnslib_node_free(&node, 0);
+			dnslib_node_free(&node, 0, 0);
 			++errors;
 		}
 		/* TODO check values in the node as well */
@@ -139,7 +139,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 			     DNSLIB_EBADZONE);
 			++errors;
 		}
-		dnslib_node_free(&node, 0);
+		dnslib_node_free(&node, 0, 0);
 	}
 
 	//note("NULL zone");
@@ -161,7 +161,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 		++errors;
 	}
 
-	dnslib_node_free(&node, 0);
+	dnslib_node_free(&node, 0, 0);
 
 	//note("NULL node");
 	note("Inserting NULL node...\n");
@@ -193,7 +193,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 			++errors;
 		}
 
-		dnslib_node_free(&node, 0);
+		dnslib_node_free(&node, 0, 0);
 	}
 
 	// check if all nodes are inserted
@@ -342,7 +342,7 @@ static void test_zone_destroy_node_from_tree(dnslib_node_t *node,
                                              void *data)
 {
 	UNUSED(data);
-	dnslib_node_free(&node, 0);
+	dnslib_node_free(&node, 0, 0);
 }
 
 /* explained below */

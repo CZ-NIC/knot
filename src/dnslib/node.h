@@ -325,7 +325,7 @@ void dnslib_node_free_rrsets(dnslib_node_t *node, int free_rdata_dnames);
  * \param free_owner Set to 0 if you do not want the owner domain name to be
  *                   destroyed also. Set to <> 0 otherwise.
  */
-void dnslib_node_free(dnslib_node_t **node, int free_owner);
+void dnslib_node_free(dnslib_node_t **node, int free_owner, int fix_refs);
 
 /*!
  * \brief Compares two nodes according to their owner.
