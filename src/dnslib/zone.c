@@ -948,7 +948,6 @@ DEBUG_DNSLIB_ZONE(
 			node->parent = next_node;
 
 			if (next_node->owner != chopped) {
-				assert(0);
 				/* Node owner was in RDATA */
 				chopped = next_node->owner;
 			}
