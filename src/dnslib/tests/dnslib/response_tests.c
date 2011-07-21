@@ -1092,7 +1092,7 @@ static int test_response_parse_query(test_response_t **responses,
 
 #ifdef TEST_WITH_LDNS
 /* count1 == count2 */
-static int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
+int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
 {
 	int i = 0;
 	while (i < count &&
@@ -1106,7 +1106,7 @@ static int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
  * Comparison is done through comparing wireformats.
  * Returns 0 if rdata are the same, 1 otherwise
  */
-static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
+int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 			    uint16_t type)
 {
 	dnslib_rrtype_descriptor_t *desc =
@@ -1174,7 +1174,7 @@ static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 	return 0;
 }
 
-static int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
+int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
 				      ldns_rr *rr, char check_rdata)
 {
 	/* We should have only one rrset from ldns, although it is
@@ -1271,7 +1271,7 @@ static int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
 	return 0;
 }
 
-static int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
+int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
 					ldns_rr_list *rrlist, int count)
 {
 	int errors = 0;
@@ -1309,7 +1309,7 @@ static int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
  * different.
  * TODO well, call it "check" then
  */
-static int compare_response_w_ldns_packet(dnslib_response_t *response,
+int compare_response_w_ldns_packet(dnslib_response_t *response,
 					  ldns_pkt *packet)
 {
 	if (response->header.id != ldns_pkt_id(packet)) {
