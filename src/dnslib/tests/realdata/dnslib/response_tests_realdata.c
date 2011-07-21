@@ -58,14 +58,6 @@ static int mem_read(void *dst, size_t n, const char **src,
  *  Unit implementation.
  */
 
-/* Parsed raw packet*/
-struct test_raw_packet {
-	uint size;
-	uint8_t *data;
-};
-
-typedef struct test_raw_packet test_raw_packet_t;
-
 enum { DNAME_MAX_WIRE_LENGTH = 256 };
 
 static int load_raw_packets(test_raw_packet_t ***raw_packets, uint32_t *count,
