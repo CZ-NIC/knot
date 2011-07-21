@@ -13,15 +13,19 @@ LDADD = libknot.la @LIBOBJS@
 
 BUILT_SOURCES =					\
 	dnslib/tests/parsed_data.rc		\
+	dnslib/tests/realdata/parsed_data.rc	\
 	dnslib/tests/raw_data_queries.rc	\
 	dnslib/tests/raw_data.rc		\
+	dnslib/tests/realdata/raw_data.rc	\
 	dnslib/tests/parsed_data_queries.rc     \
 	tests/sample_conf.rc
 
 CLEANFILES =					\
 	dnslib/tests/parsed_data.rc		\
+	dnslib/tests/realdata/parsed_data.rc	\
 	dnslib/tests/raw_data_queries.rc	\
 	dnslib/tests/raw_data.rc		\
+	dnslib/tests/realdata/raw_data.rc	\
 	dnslib/tests/parsed_data_queries.rc     \
 	tests/sample_conf.rc                    \
 	zparser.h				\
@@ -258,6 +262,9 @@ libknot_la_LIBADD = @LIBOBJS@
 dnslib/tests/parsed_data.rc: dnslib/tests/files/parsed_data
 	../resource.sh dnslib/tests/files/parsed_data >$@
 
+dnslib/tests/realdata/parsed_data.rc: dnslib/tests/realdata/files/parsed_data
+	../resource.sh dnslib/tests/realdata/files/parsed_data >$@
+
 dnslib/tests/parsed_data_queries.rc: dnslib/tests/files/parsed_data_queries
 	../resource.sh dnslib/tests/files/parsed_data_queries >$@
 
@@ -266,6 +273,9 @@ dnslib/tests/raw_data_queries.rc: dnslib/tests/files/raw_data_queries
 
 dnslib/tests/raw_data.rc: dnslib/tests/files/raw_data
 	../resource.sh dnslib/tests/files/raw_data >$@
+
+dnslib/tests/realdata/raw_data.rc: dnslib/tests/realdata/files/raw_data
+	../resource.sh dnslib/tests/realdata/files/raw_data >$@
 
 tests/sample_conf.rc: tests/files/sample_conf
 	../resource.sh tests/files/sample_conf >$@
