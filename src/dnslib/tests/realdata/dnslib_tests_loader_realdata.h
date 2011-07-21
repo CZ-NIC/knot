@@ -9,12 +9,13 @@
 
 
 /* Parsed raw packet*/
-//struct test_raw_packet {
-//	uint size;
-//	uint8_t *data;
-//};
+struct test_raw_packet {
+	struct node *next, *prev;
+	uint size;
+	uint8_t *data;
+};
 
-/*typedef struct test_raw_packet test_raw_packet_t*/;
+typedef struct test_raw_packet test_raw_packet_t;
 
 /* Test type definitions */
 
@@ -140,7 +141,10 @@ struct test_data {
 	list node_list;
 	list rrset_list;
 	list response_list;
+	list query_list;
 	list item_list;
+	list raw_response_list;
+	list raw_query_list;
 
 	avl_tree_test_t *node_tree;
 };

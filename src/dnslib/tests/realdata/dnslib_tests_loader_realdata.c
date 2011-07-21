@@ -4,7 +4,8 @@
 #include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
 #include "dnslib/descriptor.h"
 
-#include "dnslib/tests/parsed_data.rc"
+#include "dnslib/tests/realdata/parsed_data.rc"
+#include "dnslib/tests/realdata/raw_data.rc"
 TREE_DEFINE(test_node, avl);
 
 /* Virtual I/O over memory. */
@@ -22,6 +23,52 @@ static int mem_read(void *dst, size_t n, const char **src,
 	*remaining -= n;
 //	printf("remaining %u\n", *remaining);
 	return 1;
+}
+
+static int load_raw_packets(test_data_t *data, uint32_t *count,
+			    const char *src, unsigned src_size)
+{
+	uint16_t tmp_size = 0;
+
+	/* Packets are stored like this: [size][packet_data]+ */
+
+	if(!mem_read(count, sizeof(uint32_t), &src, &src_size)) {
+		return -1;
+	}
+
+	for (int i = 0; i < *count; i++) {
+		if(!mem_read(&tmp_size, sizeof(uint16_t), &src, &src_size)) {
+			return -1;
+		}
+
+		test_raw_packet_t *packet = malloc(sizeof(test_raw_packet_t));
+
+
+		packet->size = tmp_size;
+		packet->data = malloc(sizeof(uint8_t) * (tmp_size));
+		if(!mem_read(packet->data,
+			     sizeof(uint8_t) * tmp_size, &src, &src_size)) {
+			return -1;
+		}
+		add_tail(&data->raw_response_list, (void *)packet);
+	}
+
+	return 0;
+}
+
+static void free_raw_packets(test_raw_packet_t ***raw_packets, uint32_t *count)
+{
+	if (*raw_packets != NULL) {
+		for (int i = 0; i < *count; i++) {
+			if ((*raw_packets)[i] != NULL) {
+				if ((*raw_packets)[i]->data != NULL) {
+					free((*raw_packets)[i]->data);
+				}
+				free((*raw_packets)[i]);
+			}
+		}
+		free(*raw_packets);
+	}
 }
 
 /* Returns size of type where avalailable */
@@ -1050,6 +1097,7 @@ static int init_data(test_data_t *data)
 	init_list(&data->rdata_list);
 	init_list(&data->rrset_list);
 	init_list(&data->item_list);
+	init_list(&data->raw_response_list);
 
 	data->node_tree = malloc(sizeof(avl_tree_test_t));
 	CHECK_ALLOC_LOG(data->node_tree, 0);
@@ -1062,7 +1110,8 @@ static int init_data(test_data_t *data)
 static void print_stats(test_data_t *data)
 {
 	uint resp_count = 0, dname_count = 0, edns_count = 0, node_count = 0,
-	     rdata_count = 0, rrset_count = 0, item_count = 0;
+	     rdata_count = 0, rrset_count = 0, item_count = 0,
+	     raw_response_count = 0;
 
 	node *n = NULL; /* Will not be used */
 
@@ -1071,12 +1120,12 @@ static void print_stats(test_data_t *data)
 	}
 
 	WALK_LIST(n, data->rrset_list) {
-		node *tmp = NULL;
-		assert(((test_rrset_t *)n)->owner);
-		WALK_LIST(tmp, ((test_rrset_t *)n)->rdata_list) {
-			test_rdata_t *rdata = (test_rdata_t *)tmp;
-			assert(rdata->type == ((test_rrset_t *)n)->type);
-		}
+//		node *tmp = NULL;
+//		assert(((test_rrset_t *)n)->owner);
+//		WALK_LIST(tmp, ((test_rrset_t *)n)->rdata_list) {
+//			test_rdata_t *rdata = (test_rdata_t *)tmp;
+//			assert(rdata->type == ((test_rrset_t *)n)->type);
+//		}
 		rrset_count++;
 	}
 
@@ -1096,8 +1145,13 @@ static void print_stats(test_data_t *data)
 		item_count++;
 	}
 
-	printf("Loaded: Responses: %d RRSets: %d RDATAs: %d Dnames: %d Nodes: %d Items: %d\n", resp_count, rrset_count,
-	       rdata_count, dname_count, node_count, item_count);
+	WALK_LIST(n, data->raw_response_list) {
+		raw_response_count++;
+	}
+
+	printf("Loaded: Responses: %d RRSets: %d RDATAs: %d Dnames: %d Nodes: %d Items: %d Raw_responses: %d\n", resp_count, rrset_count,
+	       rdata_count, dname_count, node_count, item_count,
+	       raw_response_count);
 }
 
 static void save_node_to_list(test_node_t *n, void *p)
@@ -1146,7 +1200,19 @@ test_data_t *create_test_data_from_dump()
 		return NULL;
 	}
 
-	uint response_count;
+	uint32_t raw_packet_count = 0;
+
+	test_raw_packet_t **raw_packets = NULL;
+
+	if (load_raw_packets(ret, &raw_packet_count, raw_data_rc,
+	                     raw_data_rc_size) != 0) {
+		fprintf(stderr, "Could not load raw_data, quitting");
+		/* TODO walk the lists*/
+		free(ret);
+		return NULL;
+	}
+
+	uint32_t response_count = 0;
 
 	if (load_parsed_responses(ret, &response_count, parsed_data_rc,
 	                          parsed_data_rc_size) != 0) {
