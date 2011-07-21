@@ -7,6 +7,9 @@
 #include "dnslib/packet.h"
 /* *test_t structures */
 #include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
+#ifdef TEST_WITH_LDNS
+#include "ldns/packet.h"
+#endif
 
 static int packet_tests_count(int argc, char *argv[]);
 static int packet_tests_run(int argc, char *argv[]);
@@ -27,5 +30,6 @@ static int packet_tests_count(int argc, char *argv[])
 
 static int packet_tests_run(int argc, char *argv[])
 {
+	const test_data_t *data = data_for_dnslib_tests;
 }
 
