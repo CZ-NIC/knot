@@ -5,6 +5,7 @@
 #include "packet_tests_realdata.h"
 #include "dnslib/error.h"
 #include "dnslib/packet.h"
+#include "dnslib/response2.h"
 /* *test_t structures */
 #include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
 #ifdef TEST_WITH_LDNS
@@ -31,131 +32,163 @@ extern int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
 					ldns_rr_list *rrlist, int count);
 
 static int check_packet_w_ldns_packet(dnslib_packet_t *packet,
-                                      ldns_pkt *ldns_packet)
+                                      ldns_pkt *ldns_packet,
+                                      int check_header,
+                                      int check_question,
+                                      int check_body,
+                                      int check_edns)
 {
-	if (packet->header.id != ldns_pkt_id(ldns_packet)) {
-		diag("response ID does not match");
-		return 1;
+	int errors = 0;
+	if (check_header) {
+//	dnslib_packet_dump(packet);
+		if (packet->header.id != ldns_pkt_id(ldns_packet)) {
+			diag("response ID does not match");
+			errors++;
+		}
+
+		/* qdcount is always 1 in dnslib's case */
+
+		/* TODO check flags1 and flags2 - no API for that,
+		 * write my own */
+
+		if (dnslib_packet_answer_rrset_count(packet) !=
+		                ldns_pkt_ancount(ldns_packet)) {
+			diag("Answer RRSet count wrongly converted");
+			errors++;
+		}
+
+		if ((dnslib_packet_authority_rrset_count(packet)) !=
+		                ldns_pkt_nscount(ldns_packet)) {
+			diag("Authority RRSet count wrongly converted.\n"
+			     "got %d should be %d",
+			     dnslib_packet_authority_rrset_count(packet),
+			     ldns_pkt_nscount(ldns_packet));
+			errors++;
+		}
+
+		/* - 1 because ldns does not include OPT_RR to additional "
+		 "section */
+		int minus = (packet->opt_rr.version == 0) ? 1 : 0;
+
+		if ((dnslib_packet_additional_rrset_count(packet) - minus) !=
+		                ldns_pkt_arcount(ldns_packet)) {
+			diag("Additional RRSet count wrongly converted.\n"
+			     "got %d should be %d",
+			     dnslib_packet_additional_rrset_count(packet) -
+			     minus,
+			     ldns_pkt_arcount(ldns_packet));
+			errors++;
+		}
+
+		if (errors) {
+			return errors;
+		}
 	}
-
-	/* qdcount is always 1 in dnslib's case */
-
-	/* TODO check flags1 and flags2 - no API for that, write my own*/
-
-	if (dnslib_packet_answer_rrset_count(packet) !=
-	    ldns_pkt_ancount(ldns_packet)) {
-		diag("Answer RRSet count wrongly converted");
-		return 1;
-	}
-
-	if (dnslib_packet_authority_rrset_count(packet) !=
-	    ldns_pkt_nscount(ldns_packet)) {
-		diag("Authority RRSet count wrongly converted");
-		return 1;
-	}
-
-	if (dnslib_packet_additional_rrset_count(packet) !=
-	    ldns_pkt_arcount(ldns_packet)) {
-		diag("Additional RRSet count wrongly converted");
-		return 1;
-	}
-
 	/* Header checked */
 
 	/* Question section */
 
 	int ret = 0;
+	if (check_question) {
+		dnslib_rrset_t *question_rrset =
+		                dnslib_rrset_new(packet->
+		                                 question.qname,
+		                                 packet->
+		                                 question.qtype,
+		                                 packet->
+		                                 question.qclass,
+		                                 3600);
 
-	dnslib_rrset_t *question_rrset = dnslib_rrset_new(packet->
-							  question.qname,
-							  packet->
-							  question.qtype,
-							  packet->
-							  question.qclass,
-							  3600);
-
-	if ((ret = compare_rrset_w_ldns_rr(question_rrset,
+		if ((ret = compare_rrset_w_ldns_rr(question_rrset,
 			ldns_rr_list_rr(ldns_pkt_question(ldns_packet),
-					0), 0)) != 0) {
-		diag("Question rrsets wrongly converted");
-		return 1;
+			0), 0)) != 0) {
+			diag("Question rrsets wrongly converted");
+			errors++;
+		}
+		dnslib_rrset_free(&question_rrset);
 	}
 
-	dnslib_rrset_free(&question_rrset);
+	if (check_body) {
 
-	/* other RRSets */
+		/* other RRSets */
 
-	if ((ret = compare_rrsets_w_ldns_rrlist(packet->answer,
-					 ldns_pkt_answer(ldns_packet),
-					 packet->header.ancount)) != 0) {
-		diag("Answer rrsets wrongly converted");
-		return 1;
-	}
-
-
-
-	if ((ret = compare_rrsets_w_ldns_rrlist(packet->authority,
-					 ldns_pkt_authority(ldns_packet),
-					 packet->header.nscount)) != 0) {
-		diag("Authority rrsets wrongly converted - %d", ret);
-		return 1;
-	}
-
-	/* We don't want to test OPT RR, which is the last rrset
-	 * in the additional section */
-
-	if ((ret = compare_rrsets_w_ldns_rrlist(packet->additional,
-					 ldns_pkt_additional(ldns_packet),
-					 packet->header.arcount - 1)) != 0) {
-		diag("Additional rrsets wrongly converted");
-		return 1;
-	}
-
-	/* OPT RR */
-
-	if (ldns_pkt_edns(ldns_packet)) {
-		/* if (packet->edns_packet == NULL) {
-			diag("ldns has edns section, dnslib has not");
-			return 1;
-		} */
-
-		dnslib_opt_rr_t *opt = &(packet->edns_packet);
-
-		if (ldns_pkt_edns_udp_size(ldns_packet) !=
-		    dnslib_edns_get_payload(opt)) {
-			diag("Payloads in EDNS are different");
-			return 1;
+		if ((ret =
+		     compare_rrsets_w_ldns_rrlist(packet->answer,
+		                         ldns_pkt_answer(ldns_packet),
+		                         packet->header.ancount)) != 0) {
+			diag("Answer rrsets wrongly converted");
+			errors++;
 		}
 
-		if (ldns_pkt_edns_version(ldns_packet) !=
-		    dnslib_edns_get_version(opt)) {
-			diag("Versions in EDNS are different");
-			return 1;
+
+
+		if ((ret = compare_rrsets_w_ldns_rrlist(packet->authority,
+		                             ldns_pkt_authority(ldns_packet),
+		                             packet->header.nscount)) != 0) {
+			diag("Authority rrsets wrongly converted - %d", ret);
+			errors++;
 		}
 
-		if (ldns_pkt_edns_extended_rcode(ldns_packet) !=
-		    dnslib_edns_get_ext_rcode(opt)) {
-			diag("Extended rcodes in EDNS are different");
-			return 1;
+		/* We don't want to test OPT RR, which is the last rrset
+		 * in the additional section */
+
+		if ((ret = compare_rrsets_w_ldns_rrlist(packet->additional,
+		                           ldns_pkt_additional(ldns_packet),
+		                           packet->header.arcount - 1)) != 0) {
+			diag("Additional rrsets wrongly converted");
+			errors++;
 		}
 
-		/* TODO parse flags do bit, z value ... */
 	}
 
-	return 0;
+	if (check_edns) {
+
+		/* OPT RR */
+
+		if (ldns_pkt_edns(ldns_packet)) {
+			/* if (packet->edns_packet == NULL) {
+   diag("ldns has edns section, dnslib has not");
+   return 1;
+  } */
+
+			dnslib_opt_rr_t *opt = &(packet->opt_rr);
+
+			if (ldns_pkt_edns_udp_size(ldns_packet) !=
+			                dnslib_edns_get_payload(opt)) {
+				diag("Payloads in EDNS are different");
+				errors++;
+			}
+
+			if (ldns_pkt_edns_version(ldns_packet) !=
+			                dnslib_edns_get_version(opt)) {
+				diag("Versions in EDNS are different");
+				errors++;
+			}
+
+			if (ldns_pkt_edns_extended_rcode(ldns_packet) !=
+			                dnslib_edns_get_ext_rcode(opt)) {
+				diag("Extended rcodes in EDNS are different");
+				errors++;
+			}
+
+			/* TODO parse flags do bit, z value ... */
+		}
+	}
+
+	return errors;
 }
 #endif
 
+extern dnslib_rrset_t *rrset_from_test_rrset(const test_rrset_t *test_rrset);
+extern dnslib_dname_t *dname_from_test_dname(const test_dname_t *test_dname);
 static dnslib_packet_t *packet_from_test_response(test_response_t *test_packet)
 {
-	parsed_opt = NULL;
-
 	dnslib_rrset_t *parsed_opt = NULL;
 
 	for (int j = 0; j < test_packet->arcount; j++) {
 		if (test_packet->additional[j]->type ==
 		    DNSLIB_RRTYPE_OPT) {
-			parsed_opt =
+		parsed_opt =
 				rrset_from_test_rrset(
 					test_packet->additional[j]);
 			assert(parsed_opt);
@@ -164,57 +197,47 @@ static dnslib_packet_t *packet_from_test_response(test_response_t *test_packet)
 
 	dnslib_opt_rr_t *opt_rr = opt_rrset_to_opt_rr(parsed_opt);
 
-	resp = dnslib_packet_empty(opt_rr);
+	dnslib_packet_t *packet =
+		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
 
-	if (opt_rr != NULL) {
-		dnslib_edns_free(&opt_rr);
-	}
+	packet->opt_rr = *opt_rr;
 
-	resp->header.id = test_packet->id;
-	resp->header.qdcount = test_packet->qdcount;
+	packet->header.id = test_packet->id;
+	packet->header.qdcount = test_packet->qdcount;
 
-	assert(test_packet->qname);
+	packet->question.qname = dname_from_test_dname(test_packet->qname);
+	packet->size += test_packet->qname->size;
+	packet->question.qtype = test_packet->qtype;
+	packet->question.qclass = test_packet->qclass;
 
-	resp->question.qname = test_packet->qname;
-	resp->size += test_packet->qname->size;
-	resp->question.qtype = test_packet->qtype;
-	resp->question.qclass = test_packet->qclass;
+	packet->size += 4;
 
-	resp->size += 4;
+	assert(packet->answer == NULL);
+	packet->answer =
+		malloc(sizeof(dnslib_rrset_t *) * test_packet->ancount);
+	assert(packet->answer);
 
 	for (int j = 0; j < test_packet->ancount; j++) {
 		if (&(test_packet->answer[j])) {
-			if (dnslib_response_add_rrset_answer(resp,
-			    test_packet->answer[j], 0, 0, 0) != 0) {
-				char *tmp_dname =
-				dnslib_dname_to_str(test_packet->
-						    answer[j]->owner);
-				diag("Could not add answer rrset");
-				diag("owner: %s type: %d",
-				     tmp_dname,
-				     test_packet->answer[j]->type);
-				free(tmp_dname);
-				return 0;
-			}
+			packet->answer[packet->an_rrsets++] =
+			  rrset_from_test_rrset(test_packet->answer[j]);
 		}
 	}
 
-
-	assert(resp->header.ancount == test_packet->ancount);
+	packet->authority =
+		malloc(sizeof(dnslib_rrset_t *) * test_packet->nscount);
+	assert(packet->answer);
 
 	for (int j = 0; j < test_packet->nscount; j++) {
 		if (&(test_packet->authority[j])) {
-			if (dnslib_response_add_rrset_authority(resp,
-				test_packet->authority[j],
-				0, 0, 0) != 0) {
-				diag("Could not add authority rrset");
-				return 0;
-			}
+			packet->authority[packet->ns_rrsets++] =
+			  rrset_from_test_rrset(test_packet->authority[j]);
 		}
 	}
 
-
-	assert(resp->header.nscount == test_packet->nscount);
+	packet->authority =
+		malloc(sizeof(dnslib_rrset_t *) * test_packet->arcount);
+	assert(packet->answer);
 
 	for (int j = 0; j < test_packet->arcount; j++) {
 		if (&(test_packet->additional[j])) {
@@ -222,117 +245,145 @@ static dnslib_packet_t *packet_from_test_response(test_response_t *test_packet)
 			    DNSLIB_RRTYPE_OPT) {
 				continue;
 			}
-			if (dnslib_response_add_rrset_additional(resp,
-				test_packet->additional[j],
-				0, 0, 0) != 0) {
-				diag("Could not add additional rrset");
-				return 0;
-			}
+			packet->additional[packet->ar_rrsets++] =
+			  rrset_from_test_rrset(test_packet->additional[j]);
 		}
 	}
 
-	/* Response is created */
-
-//		assert(resp->header.arcount == responses[i]->arcount);
-
-	uint8_t *dnslib_wire = NULL;
-
-	size_t dnslib_wire_size;
-
-	assert(resp->question.qname);
-
-	if (dnslib_response_to_wire(resp, &dnslib_wire,
-				    &dnslib_wire_size) != 0) {
-		diag("Could not convert dnslib response to wire\n");
-		dnslib_response_free(&resp);
-		return 0;
-	}
+	return packet;
 }
 
-static int test_packet_parse_from_wire(list raw_response_list,
-                                       list parsed_response_list)
+static int test_packet_parse_from_wire(list raw_response_list)
 {
 	int errors = 0;
-	assert(responses);
-
-	dnslib_response_t *resp;
 
 	dnslib_opt_rr_t *opt_rr = NULL;
-
 	dnslib_rrset_t *parsed_opt = NULL;
 
+	uint8_t *dnslib_wire = NULL;
+	size_t dnslib_wire_size;
 
-		/* Response is created */
-
-//		assert(resp->header.arcount == responses[i]->arcount);
-
-		uint8_t *dnslib_wire = NULL;
-
-		size_t dnslib_wire_size;
-
-		assert(resp->question.qname);
-
-		if (dnslib_response_to_wire(resp, &dnslib_wire,
-					    &dnslib_wire_size) != 0) {
-			diag("Could not convert dnslib response to wire\n");
-			dnslib_response_free(&resp);
-			return 0;
+	node *n = NULL;
+	WALK_LIST(n ,raw_response_list) {
+		test_raw_packet_t *raw_packet = (test_raw_packet_t *)n;
+		dnslib_packet_t *packet =
+			dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+		if (dnslib_packet_parse_from_wire(packet, raw_packet->data,
+		                                  raw_packet->size, 0) !=
+		    DNSLIB_EOK) {
+			diag("Warning: could not parse wire! "
+			     "(might be caused be malformed dump)");
+			continue;
 		}
 
-#ifndef TEST_WITH_LDNS
+		ldns_pkt *ldns_packet = NULL;
 
-		/* TODO investigate - was showing far more errors than expected*/
-
-		diag("Not implemented without usage of ldns");
-
-		return 0;
-
-/*
-
-		note("Comparing wires directly - might not be sufficient"
-		     "Test with LDNS, if possible");
-
-		uint tmp_places = compare_wires(dnslib_wire, raw_data[i]->data,
-						dnslib_wire_size);
-
-
-		if (tmp_places) {
-			diag("Wires did not match - differ in %d places",
-			     tmp_places);
-			errors++;
-		} */
-
-#endif
-
-#ifdef TEST_WITH_LDNS
-
-		ldns_pkt *packet = NULL;
-
-		if (ldns_wire2pkt(&packet, raw_data[i]->data,
-				  raw_data[i]->size) != LDNS_STATUS_OK) {
+		if (ldns_wire2pkt(&ldns_packet, raw_packet->data,
+				  raw_packet->size) != LDNS_STATUS_OK) {
 			diag("Could not parse wire using ldns");
 			diag("%s",
-			     ldns_get_errorstr_by_id(ldns_wire2pkt(&packet,
+			     ldns_get_errorstr_by_id(ldns_wire2pkt(&ldns_packet,
 							dnslib_wire,
 							dnslib_wire_size)));
 			return 0;
 		}
 
-		if (compare_response_w_ldns_packet(resp, packet) != 0) {
+		if (check_packet_w_ldns_packet(packet, ldns_packet, 1,
+		                               1, 1, 1) != 0) {
 			diag("Wrongly created wire");
-			return 0;
+			errors++;
 		}
 
-		ldns_pkt_free(packet);
-#endif
-
-	dnslib_response_free(&resp);
+		ldns_pkt_free(ldns_packet);
+		dnslib_packet_free(&packet);
 	}
 
 	return (errors == 0);
 }
 
-static const uint DNSLIB_PACKET_TEST_COUNT = 14;
+static int test_packet_to_wire(list raw_response_list)
+{
+	int errors = 0;
+	/*!< \todo test queries too! */
+//	/* We'll need data from both lists. */
+//	test_packet_t **test_packets = NULL;
+//	uint test_packet_count = 0;
+//	node *n = NULL;
+//	WALK_LIST(n, response_list) {
+//		test_packet_count++;
+//	}
+
+//	test_packets =
+//		malloc(sizeof(test_packet_t *) * test_packet_count);
+//	assert(test_packets);
+//	int i = 0;
+//	WALK_LIST(n, response_list) {
+//		test_packets[i++] = (test_response_t *)n;
+//	}
+
+//	test_raw_packet_t **test_packets = NULL;
+//	uint test_packet_count = 0;
+//	n = NULL;
+//	WALK_LIST(n, raw_response_list) {
+//		test_packet_count++;
+//	}
+
+//	test_packets =
+//		malloc(sizeof(test_raw_packet_t *) * test_packet_count);
+//	assert(test_packets);
+//	i = 0;
+//	WALK_LIST(n, raw_response_list) {
+//		test_packets[i++] = (test_raw_packet_t *)n;
+//	}
+
+//	assert(test_response_count == test_packet_count);
+	node *n = NULL;
+	WALK_LIST(n, raw_response_list) {
+		/* Create packet from raw response. */
+		dnslib_packet_t *packet =
+			dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+		assert(packet);
+		test_raw_packet_t *raw_packet = (test_raw_packet_t *)n;
+		if (dnslib_packet_parse_from_wire(packet, raw_packet->data,
+		                                  raw_packet->size, 0) !=
+		    DNSLIB_EOK) {
+			diag("Warning: could not parse wire! "
+			     "(might be caused be malformed dump)");
+			continue;
+		}
+		/* Use this packet to create wire */
+		uint8_t *wire = NULL;
+		size_t size = 0;
+		if (dnslib_packet_to_wire(packet, &wire ,&size) != DNSLIB_EOK) {
+			diag("Could not convert packet to wire");
+		}
+		/* Create ldns packet from created wire */
+		ldns_pkt *ldns_packet = NULL;
+
+		if (ldns_wire2pkt(&ldns_packet, wire,
+		                  size) != LDNS_STATUS_OK) {
+			diag("Could not parse wire using ldns");
+			/*!< \todo get rid of this */
+			diag("%s",
+			     ldns_get_errorstr_by_id(ldns_wire2pkt(&ldns_packet,
+			                             wire,
+			                             size)));
+			return 0;
+		}
+
+		if (check_packet_w_ldns_packet(packet, ldns_packet, 1, 1, 1,
+		                               1) != 0) {
+			diag("Packet wrongly converted to wire!");
+			errors++;
+		}
+		dnslib_packet_free(&packet);
+		ldns_pkt_free(ldns_packet);
+	}
+
+	return (errors == 0);
+}
+
+static const uint DNSLIB_PACKET_TEST_COUNT = 2;
 
 static int packet_tests_count(int argc, char *argv[])
 {
@@ -342,5 +393,13 @@ static int packet_tests_count(int argc, char *argv[])
 static int packet_tests_run(int argc, char *argv[])
 {
 	const test_data_t *data = data_for_dnslib_tests;
+
+	int res = 0;
+	ok(res = test_packet_parse_from_wire(data->raw_response_list), "packet: from wire");
+	skip(!res, 1);
+	ok(test_packet_to_wire(data->raw_response_list), "packet: to wire");
+	endskip;
+
+	return 1;
 }
 

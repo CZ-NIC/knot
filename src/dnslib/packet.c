@@ -1144,7 +1144,7 @@ int dnslib_packet_to_wire(dnslib_packet_t *packet,
 		return DNSLIB_EBADARG;
 	}
 
-	assert(packet->size <= packet->max_size);
+//	assert(packet->size <= packet->max_size);
 
 	// if there are no additional RRSets, add EDNS OPT RR
 	if (packet->header.arcount == 0
