@@ -275,6 +275,8 @@ dnslib_node_t *dnslib_node_get_new_node(const dnslib_node_t *node);
 void dnslib_node_set_new_node(dnslib_node_t *node,
                               dnslib_node_t *new_node);
 
+void dnslib_node_update_refs(dnslib_node_t *node);
+
 /*!
  * \brief Mark the node as a delegation point.
  *

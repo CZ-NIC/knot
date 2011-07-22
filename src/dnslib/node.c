@@ -383,6 +383,47 @@ void dnslib_node_set_new_node(dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
+void dnslib_node_update_refs(dnslib_node_t *node)
+{
+	// reference to previous node
+	if (node->prev && dnslib_node_is_old(node->prev)) {
+		assert(node->prev->new_node != NULL);
+		node->prev = node->prev->new_node;
+	}
+
+	// reference to next node
+	if (node->next && dnslib_node_is_old(node->next)) {
+		assert(node->next->new_node != NULL);
+		node->next = node->next->new_node;
+	}
+
+	// reference to parent
+	if (node->parent && dnslib_node_is_old(node->parent)) {
+		assert(node->parent->new_node != NULL);
+		node->parent = node->parent->new_node;
+	}
+
+	// reference to wildcard child
+	if (node->wildcard_child && dnslib_node_is_old(node->wildcard_child)) {
+		assert(node->wildcard_child->new_node != NULL);
+		node->wildcard_child = node->wildcard_child->new_node;
+	}
+
+	// reference to NSEC3 node
+	if (node->nsec3_node && dnslib_node_is_old(node->nsec3_node)) {
+		assert(node->nsec3_node->new_node != NULL);
+		node->nsec3_node = node->nsec3_node->new_node;
+	}
+
+	// reference to NSEC3 referrer
+	if (node->nsec3_referer && dnslib_node_is_old(node->nsec3_referer)) {
+		assert(node->nsec3_referer->new_node != NULL);
+		node->nsec3_referer = node->nsec3_referer->new_node;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 void dnslib_node_set_deleg_point(dnslib_node_t *node)
 {
 	dnslib_node_flags_set_deleg(&node->flags);

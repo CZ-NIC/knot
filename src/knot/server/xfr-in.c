@@ -2005,8 +2005,12 @@ static int xfrin_apply_changeset(dnslib_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_finalize_contents(dnslib_zone_contents_t *contents)
+static int xfrin_finalize_contents(dnslib_zone_contents_t *contents,
+                                   xfrin_changes_t *changes)
 {
+	// don't know what should have been done here, except for one thing:
+	// walk through the zone and remove empty nodes (save them in the
+	// old nodes list). But only those having no children!!!
 	return KNOT_ENOTSUP;
 }
 
@@ -2014,7 +2018,23 @@ static int xfrin_finalize_contents(dnslib_zone_contents_t *contents)
 
 static void xfrin_fix_refs_in_node(dnslib_zone_tree_node_t *tnode, void *data)
 {
+	assert(tnode != NULL);
+	assert(data != NULL);
 
+	xfrin_changes_t *changes = (xfrin_changes_t *)data;
+
+	// 1) Fix the reference to the node to the new one if there is some
+	dnslib_node_t *node = tnode->node;
+
+	dnslib_node_t *new_node = dnslib_node_new_node(old_node);
+	if (new_node != NULL) {
+		assert(dnslib_node_rrset_count(new_node) > 0);
+		node = new_node;
+		tnode->node = new_node;
+	}
+
+	// 2) fix references from the node remaining in the zone
+	dnslib_node_update_refs(node);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2133,7 +2153,7 @@ int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 	/*
 	 * Finalize the zone contents.
 	 */
-	ret = xfrin_finalize_contents(contents_copy);
+	ret = xfrin_finalize_contents(contents_copy, changes);
 	if (ret != KNOT_EOK) {
 		xfrin_rollback_update(contents_copy, &changes);
 		debug_xfr("Failed to finalize new zone contents: %s\n",
