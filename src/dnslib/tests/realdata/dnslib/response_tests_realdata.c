@@ -390,7 +390,7 @@ int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
  * Comparison is done through comparing wireformats.
  * Returns 0 if rdata are the same, 1 otherwise
  */
-static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
+int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 			    uint16_t type)
 {
 	dnslib_rrtype_descriptor_t *desc =
@@ -441,12 +441,12 @@ static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 				(rdata->items[i].raw_data + 1),
 				ldns_rdf_data(ldns_rr_rdf(rr, i)),
 				rdata->items[i].raw_data[0]) != 0) {
-				hex_print((char *)
-					  (rdata->items[i].raw_data + 1),
-					  rdata->items[i].raw_data[0]);
-				hex_print((char *)
-					  ldns_rdf_data(ldns_rr_rdf(rr, i)),
-					  rdata->items[i].raw_data[0]);
+//				hex_print((char *)
+//					  (rdata->items[i].raw_data + 1),
+//					  rdata->items[i].raw_data[0]);
+//				hex_print((char *)
+//					  ldns_rdf_data(ldns_rr_rdf(rr, i)),
+//					  rdata->items[i].raw_data[0]);
 				diag("Raw data wires in rdata differ in item "
 				     "%d", i);
 
@@ -458,11 +458,13 @@ static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 	return 0;
 }
 
-static int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
+int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
 				      ldns_rr *rr, char check_rdata)
 {
 	/* We should have only one rrset from ldns, although it is
 	 * represented as rr_list ... */
+
+	int errors = 0;
 
 	assert(rr);
 	assert(rrset);
@@ -477,32 +479,32 @@ static int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
 		diag("%s", tmp_dname);
 		diag("%s", ldns_rdf_data(ldns_rr_owner(rr)));
 		free(tmp_dname);
-		return 1;
+		errors++;
 	}
 
 	if (compare_wires_simple(rrset->owner->name,
 				 ldns_rdf_data(ldns_rr_owner(rr)),
 				 rrset->owner->size) != 0) {
 		diag("RRSet owner wireformats differ");
-		return 1;
+		errors++;
 	}
 
 	if (rrset->type != ldns_rr_get_type(rr)) {
 		diag("RRset types differ");
 		diag("Dnslib type: %d Ldns type: %d", rrset->type,
 		     ldns_rr_get_type(rr));
-		return 1;
+		errors++;
 	}
 
 	if (rrset->rclass != ldns_rr_get_class(rr)) {
 		diag("RRset classes differ");
-		return 1;
+		errors++;
 	}
 
 	if (rrset->ttl != ldns_rr_ttl(rr)) {
 		diag("RRset TTLs differ");
 		diag("dnslib: %d ldns: %d", rrset->ttl, ldns_rr_ttl(rr));
-		return 1;
+		errors++;
 	}
 
 	/* compare rdatas */
@@ -548,14 +550,14 @@ static int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
 	if (check_rdata) {
 		if (compare_rr_rdata(rrset->rdata, rr, rrset->type) != 0) {
 			diag("Rdata differ");
-			return 1;
+			errors++;
 		}
 	}
 
-	return 0;
+	return errors;
 }
 
-static int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
+int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
 					ldns_rr_list *rrlist, int count)
 {
 	int errors = 0;
