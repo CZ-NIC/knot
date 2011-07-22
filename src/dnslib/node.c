@@ -546,13 +546,10 @@ int dnslib_node_compare(dnslib_node_t *node1, dnslib_node_t *node2)
 int dnslib_node_deep_copy(const dnslib_node_t *from, dnslib_node_t **to)
 {
 	// create new node
-	*to = dnslib_node_new(from->owner, from->parent);
+	*to = dnslib_node_new(from->owner, from->parent, from->flags);
 	if (*to == NULL) {
 		return DNSLIB_ENOMEM;
 	}
-
-	// copy flags
-	(*to)->flags = from->flags;
 
 	// copy references
 	(*to)->parent = from->parent;
