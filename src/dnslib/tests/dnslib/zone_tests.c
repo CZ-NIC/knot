@@ -147,7 +147,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 	note("Inserting into NULL zone...\n");
 
 	dnslib_node_t *node = dnslib_node_new(&test_nodes_good[0].owner,
-	                                      test_nodes_good[0].parent);
+	                                      test_nodes_good[0].parent, 0);
 	if (node == NULL) {
 		diag("zone: Could not create node.");
 		return 0;

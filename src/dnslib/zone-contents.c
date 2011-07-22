@@ -516,7 +516,7 @@ static int dnslib_zone_contents_find_in_tree(dnslib_zone_tree_t *tree,
                                              dnslib_node_t **node,
                                              dnslib_node_t **previous)
 {
-	assert(zone != NULL);
+	assert(tree != NULL);
 	assert(name != NULL);
 	assert(node != NULL);
 	assert(previous != NULL);
@@ -535,12 +535,12 @@ static int dnslib_zone_contents_find_in_tree(dnslib_zone_tree_t *tree,
 		// set the previous node of the found node
 		assert(exact_match);
 		assert(found != NULL);
-		*previous = dnslib_node_previous(found);
+		*previous = dnslib_node_get_previous(found);
 	} else {
 		// otherwise check if the previous node is not an empty
 		// non-terminal
 		*previous = (dnslib_node_rrset_count(prev) == 0)
-		            ? dnslib_node_previous(prev)
+		            ? dnslib_node_get_previous(prev)
 		            : prev;
 	}
 
@@ -1410,8 +1410,12 @@ DEBUG_DNSLIB_ZONE(
 		return DNSLIB_EBADZONE;
 	}
 
-	int exact_match = dnslib_zone_contents_find_in_tree(zone, name, node,
-	                                                    previous);
+	dnslib_node_t *found = NULL, *prev = NULL;
+
+	int exact_match = dnslib_zone_contents_find_in_tree(zone->nodes, name,
+	                                                    &found, &prev);
+	*node = found;
+	*previous = prev;
 
 DEBUG_DNSLIB_ZONE(
 	char *name_str = (*node) ? dnslib_dname_to_str((*node)->owner)
@@ -1472,7 +1476,7 @@ dnslib_node_t *dnslib_zone_contents_get_previous(
 		return NULL;
 	}
 
-	const dnslib_node_t *found = NULL, *prev = NULL;
+	dnslib_node_t *found = NULL, *prev = NULL;
 
 	(void)dnslib_zone_contents_find_in_tree(zone->nodes, name, &found,
 	                                        &prev);
@@ -1498,10 +1502,10 @@ dnslib_node_t *dnslib_zone_contents_get_previous_nsec3(
 		return NULL;
 	}
 
-	const dnslib_node_t *found = NULL, *prev = NULL;
+	dnslib_node_t *found = NULL, *prev = NULL;
 
 	(void)dnslib_zone_contents_find_in_tree(zone->nsec3_nodes, name, &found,
-	                                        prev);
+	                                        &prev);
 	assert(prev != NULL);
 
 	return prev;
