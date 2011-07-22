@@ -467,6 +467,12 @@ int dnslib_zone_contents_nsec3_apply_inorder_reverse(
 	dnslib_zone_contents_t *contents,
 	void (*function)(dnslib_node_t *node, void *data), void *data);
 
+dnslib_zone_tree_t *dnslib_zone_contents_get_nodes(
+		dnslib_zone_contents_t *contents);
+
+dnslib_zone_tree_t *dnslib_zone_contents_get_nsec3_nodes(
+		dnslib_zone_contents_t *contents);
+
 /*!
  * \brief Creates a shallow copy of the zone (no stored data are copied).
  *

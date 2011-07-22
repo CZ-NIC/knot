@@ -2012,10 +2012,34 @@ static int xfrin_finalize_contents(dnslib_zone_contents_t *contents)
 
 /*----------------------------------------------------------------------------*/
 
+static void xfrin_fix_refs_in_node(dnslib_zone_tree_node_t *tnode, void *data)
+{
+
+}
+
+/*----------------------------------------------------------------------------*/
+
 static int xfrin_fix_references(dnslib_zone_contents_t *contents)
 {
 	/*! \todo This function must not fail!! */
-	return KNOT_ENOTSUP;
+
+	/*
+	 * Now the contents are already switched, and we should update all
+	 * references not updated yet, so that the old contents may be removed.
+	 *
+	 * Walk through the zone tree, so that each node will be checked
+	 * and updated.
+	 */
+	dnslib_zone_tree_t *tree = dnslib_zone_contents_get_nodes(contents);
+	dnslib_zone_tree_forward_apply_inorder(tree, xfrin_fix_refs_in_node,
+	                                       NULL);
+
+	tree = dnslib_zone_contents_get_nsec3_nodes(contents);
+	dnslib_zone_tree_forward_apply_inorder(tree, xfrin_fix_refs_in_node,
+	                                       NULL);
+
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
