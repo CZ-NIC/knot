@@ -335,7 +335,7 @@ DEBUG_XFR(
 			return KNOT_EMALF;
 		}
 
-		node = dnslib_node_new(rr->owner, NULL);
+		node = dnslib_node_new(rr->owner, NULL, 0);
 		if (node == NULL) {
 			debug_xfr("Failed to create new node.\n");
 			dnslib_packet_free(&packet);
@@ -475,7 +475,7 @@ DEBUG_XFR(
 		if (node == NULL) {
 			// a new node for the RR is required but it is not
 			// in the zone
-			node = dnslib_node_new(rr->owner, NULL);
+			node = dnslib_node_new(rr->owner, NULL, 0);
 			if (node == NULL) {
 				debug_xfr("Failed to create new node.\n");
 				dnslib_packet_free(&packet);
@@ -1684,6 +1684,45 @@ static dnslib_node_t *xfrin_add_new_node(dnslib_zone_contents_t *contents,
 {
 	/*! \todo Implement. */
 	return NULL;
+
+	dnslib_node_t *node = dnslib_node_new(dnslib_rrset_get_owner(rrset),
+	                                      NULL, DNSLIB_NODE_FLAGS_NEW);
+	if (node == NULL) {
+		debug_xfr("Failed to create a new node.\n");
+		return NULL;
+	}
+
+	int ret = 0;
+
+	// insert the node into zone structures and create parents if
+	// necessary
+	if (dnslib_rrset_type(rrset) == DNSLIB_RRTYPE_NSEC3) {
+		ret = dnslib_zone_contents_add_nsec3_node(contents, node, 1, 1);
+	} else {
+		ret = dnslib_zone_contents_add_node(contents, node, 1,
+		                                    DNSLIB_NODE_FLAGS_NEW, 1);
+	}
+	if (ret != DNSLIB_EOK) {
+		debug_xfr("Failed to add new node to zone contents.\n");
+		return NULL;
+	}
+
+	// find previous node and connect the new one to it
+	dnslib_node_t *prev = NULL;
+	if (dnslib_rrset_type(rrset) == DNSLIB_RRTYPE_NSEC3) {
+		prev = dnslib_zone_contents_get_previous_nsec3(contents,
+		                                     dnslib_rrset_owner(rrset));
+	} else {
+		prev = dnslib_zone_contents_get_previous(contents,
+		                                     dnslib_rrset_owner(rrset));
+	}
+
+	// fix prev and next pointers
+	if (prev != NULL) {
+		dnslib_node_set_previous(node, prev);
+	}
+
+	return node;
 }
 
 /*----------------------------------------------------------------------------*/

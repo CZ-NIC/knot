@@ -832,7 +832,7 @@ static dnslib_dname_t **create_dname_array(FILE *f, uint max_id)
 			return NULL;
 		}
 		if (read_dname->id < max_id) {
-			read_dname->node = dnslib_node_new(read_dname, NULL);
+			read_dname->node = dnslib_node_new(read_dname, NULL, 0);
 			if (read_dname->node == NULL) {
 				ERR_ALLOC_FAILED;
 				cleanup_id_array(array, 0, i);

@@ -1532,7 +1532,7 @@ static dnslib_node_t *create_node(dnslib_zone_t *zone,
 					const dnslib_dname_t *owner))
 {
 	dnslib_node_t *node =
-		dnslib_node_new(current_rrset->owner, NULL);
+		dnslib_node_new(current_rrset->owner, NULL, 0);
 	if (node_add_func(zone, node, 1, 1) != 0) {
 		return NULL;
 	}
@@ -1816,7 +1816,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	dnslib_dname_t *dname =
 		dnslib_dname_new_from_str(name, strlen(name), NULL);
 
-	dnslib_node_t *origin_node = dnslib_node_new(dname, NULL);
+	dnslib_node_t *origin_node = dnslib_node_new(dname, NULL, 0);
 
 	//assert(origin_node->next == NULL);
 

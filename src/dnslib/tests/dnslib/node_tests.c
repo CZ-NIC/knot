@@ -52,7 +52,7 @@ static int test_node_create()
 	int errors = 0;
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
 		tmp = dnslib_node_new(&test_nodes[i].owner,
-				      test_nodes[i].parent);
+				      test_nodes[i].parent, 0);
 		if (tmp == NULL ||
 		    tmp->owner != &test_nodes[i].owner ||
 		    tmp->parent != test_nodes[i].parent ||
@@ -73,7 +73,7 @@ static int test_node_add_rrset()
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
 		/* create node from test_node structure */
 		tmp = dnslib_node_new(&test_nodes[i].owner,
-				      test_nodes[i].parent);
+				      test_nodes[i].parent, 0);
 		rrset = &rrsets[i];
 		if (dnslib_node_add_rrset(tmp, rrset, 0) < 0) {
 			errors++;
@@ -134,7 +134,7 @@ static int test_node_get_rrset()
 
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
 		tmp = dnslib_node_new(&test_nodes[i].owner,
-				      test_nodes[i].parent);
+				      test_nodes[i].parent, 0);
 		nodes[i] = tmp;
 		for (int j = 0; j < RRSETS; j++) {
 			dnslib_node_add_rrset(tmp, &rrsets[j], 0);
@@ -166,7 +166,7 @@ static int test_node_get_parent()
 
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
 		tmp = dnslib_node_new(&test_nodes[i].owner,
-				      test_nodes[i].parent);
+				      test_nodes[i].parent, 0);
 		nodes[i] = tmp;
 		rrset = &rrsets[i];
 		dnslib_node_add_rrset(tmp, rrset, 0);
@@ -189,7 +189,7 @@ static int test_node_sorting()
 	dnslib_rrset_t *rrset;
 	int errors = 0;
 
-	tmp = dnslib_node_new(&test_nodes[0].owner, test_nodes[0].parent);
+	tmp = dnslib_node_new(&test_nodes[0].owner, test_nodes[0].parent, 0);
 
 	/* Will add rrsets to node. */
 
@@ -226,7 +226,7 @@ static int test_node_delete()
 
 	for (int i = 0; i < TEST_NODES; i++) {
 		tmp_node = dnslib_node_new(&test_nodes[i].owner,
-				      test_nodes[i].parent);
+				      test_nodes[i].parent, 0);
 
 		dnslib_node_free(&tmp_node, 0, 0);
 
@@ -238,14 +238,14 @@ static int test_node_delete()
 
 static int test_node_set_parent()
 {
-	dnslib_node_t *tmp_parent = dnslib_node_new(NULL, NULL);
+	dnslib_node_t *tmp_parent = dnslib_node_new(NULL, NULL, 0);
 	int errors = 0;
 
 	dnslib_node_t *tmp_node;
 
 	for (int i = 0; i < TEST_NODES; i++) {
 		tmp_node = dnslib_node_new(&test_nodes[i].owner,
-				      test_nodes[i].parent);
+				      test_nodes[i].parent, 0);
 
 		dnslib_node_set_parent(tmp_node, tmp_parent);
 
@@ -267,7 +267,7 @@ static int test_node_free_rrsets()
 
 	for (int i = 0; i < TEST_NODES; i++) {
 		tmp_node = dnslib_node_new(&test_nodes[i].owner,
-				      test_nodes[i].parent);
+				      test_nodes[i].parent, 0);
 
 		dnslib_node_free_rrsets(tmp_node, 0);
 

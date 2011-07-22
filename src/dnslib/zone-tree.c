@@ -195,7 +195,7 @@ int dnslib_zone_tree_get(dnslib_zone_tree_t *tree, const dnslib_dname_t *owner,
 
 	// create dummy data node to use for lookup
 	dnslib_node_t *tmp_data = dnslib_node_new(
-	                              (dnslib_dname_t *)owner, NULL);
+	                              (dnslib_dname_t *)owner, NULL, 0);
 	if (tmp_data == NULL) {
 		free(tmp);
 		return DNSLIB_ENOMEM;
@@ -254,7 +254,7 @@ int dnslib_zone_tree_get_less_or_equal(dnslib_zone_tree_t *tree,
 
 	// create dummy data node to use for lookup
 	dnslib_node_t *tmp_data = dnslib_node_new(
-	                              (dnslib_dname_t *)owner, NULL);
+	                              (dnslib_dname_t *)owner, NULL, 0);
 	if (tmp_data == NULL) {
 		free(tmp);
 		return DNSLIB_ENOMEM;
@@ -306,7 +306,7 @@ int dnslib_zone_tree_remove(dnslib_zone_tree_t *tree,
 
 	// create dummy data node to use for lookup
 	dnslib_node_t *tmp_data = dnslib_node_new(
-	                              (dnslib_dname_t *)owner, NULL);
+	                              (dnslib_dname_t *)owner, NULL, 0);
 	if (tmp_data == NULL) {
 		free(tmp);
 		return DNSLIB_ENOMEM;

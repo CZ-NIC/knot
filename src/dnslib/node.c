@@ -12,19 +12,6 @@
 #include "dnslib/debug.h"
 
 /*----------------------------------------------------------------------------*/
-/*! \brief Flags used to mark nodes with some property. */
-enum {
-	/*! \brief Node is a delegation point (i.e. marking a zone cut). */
-	DNSLIB_NODE_FLAGS_DELEG = (uint8_t)0x01,
-	/*! \brief Node is not authoritative (i.e. below a zone cut). */
-	DNSLIB_NODE_FLAGS_NONAUTH = (uint8_t)0x02,
-	/*! \brief Node is old and will be removed (during update). */
-	DNSLIB_NODE_FLAGS_OLD = (uint8_t)0x80,
-	/*! \brief Node is new and should not be used while zoen is old. */
-	DNSLIB_NODE_FLAGS_NEW = (uint8_t)0x40
-};
-
-/*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 /*!
@@ -162,7 +149,8 @@ static int compare_rrset_types(void *key1, void *key2)
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent)
+dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent,
+                               uint8_t flags)
 {
 	dnslib_node_t *ret = (dnslib_node_t *)calloc(1, sizeof(dnslib_node_t));
 	if (ret == NULL) {
@@ -173,6 +161,7 @@ dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent)
 	ret->owner = owner;
 	ret->parent = parent;
 	ret->rrsets = skip_create_list(compare_rrset_types);
+	ret->flags = flags;
 
 //	ret->avl.avl_left = NULL;
 //	ret->avl.avl_right = NULL;
@@ -313,6 +302,12 @@ void dnslib_node_set_previous(dnslib_node_t *node, dnslib_node_t *prev)
 {
 	node->prev = prev;
 	if (prev != NULL) {
+		// set the prev pointer of the next node to the given node
+		if (prev->next != NULL) {
+			assert(prev->next->prev == prev);
+			prev->next->prev = node;
+		}
+		node->next = prev->next;
 		prev->next = node;
 	}
 }
