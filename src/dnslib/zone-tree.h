@@ -171,7 +171,8 @@ int dnslib_zone_tree_remove(dnslib_zone_tree_t *tree,
  */
 int dnslib_zone_tree_forward_apply_inorder(dnslib_zone_tree_t *tree,
                                            void (*function)(
-                                           dnslib_node_t *node, void *data),
+                                                  dnslib_zone_tree_node_t *node,
+                                                  void *data),
                                            void *data);
 
 /*!
@@ -192,7 +193,8 @@ int dnslib_zone_tree_forward_apply_inorder(dnslib_zone_tree_t *tree,
  */
 int dnslib_zone_tree_forward_apply_postorder(dnslib_zone_tree_t *tree,
                                              void (*function)(
-                                             dnslib_node_t *node, void *data),
+                                                  dnslib_zone_tree_node_t *node,
+                                                  void *data),
                                              void *data);
 
 /*!
@@ -214,7 +216,8 @@ int dnslib_zone_tree_forward_apply_postorder(dnslib_zone_tree_t *tree,
  */
 int dnslib_zone_tree_reverse_apply_inorder(dnslib_zone_tree_t *tree,
                                            void (*function)(
-                                           dnslib_node_t *node, void *data),
+                                                  dnslib_zone_tree_node_t *node,
+                                                  void *data),
                                            void *data);
 
 /*!
@@ -236,7 +239,8 @@ int dnslib_zone_tree_reverse_apply_inorder(dnslib_zone_tree_t *tree,
  */
 int dnslib_zone_tree_reverse_apply_postorder(dnslib_zone_tree_t *tree,
                                              void (*function)(
-                                             dnslib_node_t *node, void *data),
+                                                  dnslib_zone_tree_node_t *node,
+                                                  void *data),
                                              void *data);
 
 /*!

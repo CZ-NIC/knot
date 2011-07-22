@@ -15,34 +15,6 @@ TREE_DEFINE(dnslib_zone_tree_node, avl);
 
 /*----------------------------------------------------------------------------*/
 
-typedef struct {
-	void (*func)(dnslib_node_t *, void *);
-	void *data;
-} dnslib_zone_tree_func_t;
-
-/*----------------------------------------------------------------------------*/
-
-//static void dnslib_zone_create_func(void (*func)(dnslib_node_t *, void *),
-//                                    void *data)
-//{
-
-//}
-
-/*----------------------------------------------------------------------------*/
-
-static void dnslib_zone_tree_apply(dnslib_zone_tree_node_t *node,
-                                   void *data)
-{
-	if (node == NULL || data == NULL) {
-		return;
-	}
-
-	dnslib_zone_tree_func_t *f = (dnslib_zone_tree_func_t *)data;
-	f->func(node->node, f->data);
-}
-
-/*----------------------------------------------------------------------------*/
-
 static int dnslib_zone_tree_node_compare(dnslib_zone_tree_node_t *node1,
                                          dnslib_zone_tree_node_t *node2)
 {
@@ -332,7 +304,7 @@ int dnslib_zone_tree_remove(dnslib_zone_tree_t *tree,
 
 int dnslib_zone_tree_forward_apply_inorder(dnslib_zone_tree_t *tree,
                                            void (*function)(
-                                               dnslib_node_t *node,
+                                               dnslib_zone_tree_node_t *node,
                                                void *data),
                                            void *data)
 {
@@ -340,12 +312,8 @@ int dnslib_zone_tree_forward_apply_inorder(dnslib_zone_tree_t *tree,
 		return DNSLIB_EBADARG;
 	}
 
-	dnslib_zone_tree_func_t f;
-	f.func = function;
-	f.data = data;
-
 	TREE_FORWARD_APPLY(tree, dnslib_zone_tree_node, avl,
-			   dnslib_zone_tree_apply, &f);
+	                   function, data);
 
 	return DNSLIB_EOK;
 }
@@ -354,7 +322,7 @@ int dnslib_zone_tree_forward_apply_inorder(dnslib_zone_tree_t *tree,
 
 int dnslib_zone_tree_forward_apply_postorder(dnslib_zone_tree_t *tree,
                                              void (*function)(
-                                                 dnslib_node_t *node,
+                                                 dnslib_zone_tree_node_t *node,
                                                  void *data),
                                              void *data)
 {
@@ -362,12 +330,8 @@ int dnslib_zone_tree_forward_apply_postorder(dnslib_zone_tree_t *tree,
 		return DNSLIB_EBADARG;
 	}
 
-	dnslib_zone_tree_func_t f;
-	f.func = function;
-	f.data = data;
-
 	TREE_POST_ORDER_APPLY(tree, dnslib_zone_tree_node, avl,
-	                      dnslib_zone_tree_apply, &f);
+	                      function, data);
 
 	return DNSLIB_EOK;
 }
@@ -376,7 +340,7 @@ int dnslib_zone_tree_forward_apply_postorder(dnslib_zone_tree_t *tree,
 
 int dnslib_zone_tree_reverse_apply_inorder(dnslib_zone_tree_t *tree,
                                            void (*function)(
-                                               dnslib_node_t *node,
+                                               dnslib_zone_tree_node_t *node,
                                                void *data),
                                            void *data)
 {
@@ -384,12 +348,8 @@ int dnslib_zone_tree_reverse_apply_inorder(dnslib_zone_tree_t *tree,
 		return DNSLIB_EBADARG;
 	}
 
-	dnslib_zone_tree_func_t f;
-	f.func = function;
-	f.data = data;
-
 	TREE_REVERSE_APPLY(tree, dnslib_zone_tree_node, avl,
-	                   dnslib_zone_tree_apply, &f);
+	                   function, data);
 
 	return DNSLIB_EOK;
 }
@@ -398,7 +358,7 @@ int dnslib_zone_tree_reverse_apply_inorder(dnslib_zone_tree_t *tree,
 
 int dnslib_zone_tree_reverse_apply_postorder(dnslib_zone_tree_t *tree,
                                              void (*function)(
-                                                 dnslib_node_t *node,
+                                                 dnslib_zone_tree_node_t *node,
                                                  void *data),
                                              void *data)
 {
@@ -406,12 +366,8 @@ int dnslib_zone_tree_reverse_apply_postorder(dnslib_zone_tree_t *tree,
 		return DNSLIB_EBADARG;
 	}
 
-	dnslib_zone_tree_func_t f;
-	f.func = function;
-	f.data = data;
-
 	TREE_REVERSE_APPLY_POST(tree, dnslib_zone_tree_node, avl,
-	                        dnslib_zone_tree_apply, &f);
+	                        function, data);
 
 	return DNSLIB_EOK;
 }

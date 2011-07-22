@@ -8,6 +8,27 @@
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
+
+typedef struct {
+	void (*func)(dnslib_node_t *, void *);
+	void *data;
+} dnslib_zone_tree_func_t;
+
+/*----------------------------------------------------------------------------*/
+
+static void dnslib_zone_tree_apply(dnslib_zone_tree_node_t *node,
+                                   void *data)
+{
+	if (node == NULL || data == NULL) {
+		return;
+	}
+
+	dnslib_zone_tree_func_t *f = (dnslib_zone_tree_func_t *)data;
+	f->func(node->node, f->data);
+}
+
+/*----------------------------------------------------------------------------*/
+
 /*!
  * \brief Checks if the given node can be inserted into the given zone.
  *
@@ -58,10 +79,13 @@ DEBUG_DNSLIB_ZONE(
  * \param data Unused parameter.
  */
 static void dnslib_zone_contents_destroy_node_rrsets_from_tree(
-	dnslib_node_t *node, void *data)
+	dnslib_zone_tree_node_t *tnode, void *data)
 {
+	assert(tnode != NULL);
+	assert(tnode->node != NULL);
+
 	int free_rdata_dnames = (int)((intptr_t)data);
-	dnslib_node_free_rrsets(node, free_rdata_dnames);
+	dnslib_node_free_rrsets(tnode->node, free_rdata_dnames);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -74,11 +98,14 @@ static void dnslib_zone_contents_destroy_node_rrsets_from_tree(
  * \param data Unused parameter.
  */
 static void dnslib_zone_contents_destroy_node_owner_from_tree(
-	dnslib_node_t *node, void *data)
+	dnslib_zone_tree_node_t *tnode, void *data)
 {
+	assert(tnode != NULL);
+	assert(tnode->node != NULL);
+
 	UNUSED(data);
 	/*!< \todo change completely! */
-	dnslib_node_free(&node, 0, 0);
+	dnslib_node_free(&tnode->node, 0, 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -360,10 +387,14 @@ DEBUG_DNSLIB_ZONE(
  * \param node Zone node to adjust.
  * \param data Zone the node belongs to.
  */
-static void dnslib_zone_contents_adjust_node_in_tree(dnslib_node_t *node,
-                                                     void *data)
+static void dnslib_zone_contents_adjust_node_in_tree(
+		dnslib_zone_tree_node_t *tnode, void *data)
 {
 	assert(data != NULL);
+	assert(tnode != NULL);
+	assert(tnode->node != NULL);
+
+	dnslib_node_t *node = tnode->node;
 	dnslib_zone_contents_t *zone = (dnslib_zone_contents_t *)data;
 
 	dnslib_zone_contents_adjust_node(node, zone);
@@ -379,10 +410,14 @@ static void dnslib_zone_contents_adjust_node_in_tree(dnslib_node_t *node,
  * \param node Zone node to adjust.
  * \param data Zone the node belongs to.
  */
-static void dnslib_zone_contents_adjust_nsec3_node_in_tree(dnslib_node_t *node,
-                                                           void *data)
+static void dnslib_zone_contents_adjust_nsec3_node_in_tree(
+		dnslib_zone_tree_node_t *tnode, void *data)
 {
 	assert(data != NULL);
+	assert(tnode != NULL);
+	assert(tnode->node != NULL);
+
+	dnslib_node_t *node = tnode->node;
 	dnslib_zone_contents_t *zone = (dnslib_zone_contents_t *)data;
 
 	dnslib_zone_contents_adjust_nsec3_node(node, zone);
@@ -549,9 +584,13 @@ static int dnslib_zone_contents_find_in_tree(dnslib_zone_tree_t *tree,
 
 /*----------------------------------------------------------------------------*/
 
-static void dnslib_zone_contents_node_to_hash(dnslib_node_t *node, void *data)
+static void dnslib_zone_contents_node_to_hash(dnslib_zone_tree_node_t *tnode,
+                                              void *data)
 {
-	assert(node != NULL && node->owner != NULL && data != NULL);
+	assert(tnode != NULL && tnode->node != NULL
+	       && tnode->node->owner != NULL && data != NULL);
+
+	dnslib_node_t *node = tnode->node;
 
 	dnslib_zone_contents_t *zone = (dnslib_zone_contents_t *)data;
 	/*
@@ -1304,8 +1343,6 @@ int dnslib_zone_contents_create_and_fill_hash_table(
 	 *
 	 * TODO: how to know if this was successful??
 	 */
-//	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl,
-//	                   dnslib_zone_node_to_hash, zone);
 	/*! \todo Replace by zone tree. */
 	int ret = dnslib_zone_tree_forward_apply_inorder(zone->nodes,
 	                               dnslib_zone_contents_node_to_hash, zone);
@@ -1726,13 +1763,6 @@ int dnslib_zone_contents_adjust_dnames(dnslib_zone_contents_t *zone)
 	// load NSEC3PARAM (needed on adjusting function)
 	dnslib_zone_contents_load_nsec3param(zone);
 
-	/*! \todo Replace by zone tree. */
-//	TREE_FORWARD_APPLY(zone->tree, dnslib_node, avl,
-//	                   dnslib_zone_adjust_node_in_tree, zone);
-
-//	TREE_FORWARD_APPLY(zone->nsec3_nodes, dnslib_node, avl,
-//	                   dnslib_zone_adjust_nsec3_node_in_tree, zone);
-
 	int ret = dnslib_zone_tree_forward_apply_inorder(zone->nodes,
 	                        dnslib_zone_contents_adjust_node_in_tree, zone);
 	if (ret != DNSLIB_EOK) {
@@ -1803,8 +1833,12 @@ int dnslib_zone_contents_tree_apply_postorder(dnslib_zone_contents_t *zone,
 		return DNSLIB_EBADARG;
 	}
 
+	dnslib_zone_tree_func_t f;
+	f.func = function;
+	f.data = data;
+
 	return dnslib_zone_tree_forward_apply_postorder(zone->nodes,
-	                                                function, data);
+	                                            dnslib_zone_tree_apply, &f);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1817,8 +1851,12 @@ int dnslib_zone_contents_tree_apply_inorder(dnslib_zone_contents_t *zone,
 		return DNSLIB_EBADARG;
 	}
 
+	dnslib_zone_tree_func_t f;
+	f.func = function;
+	f.data = data;
+
 	return dnslib_zone_tree_forward_apply_inorder(zone->nodes,
-	                                              function, data);
+	                                            dnslib_zone_tree_apply, &f);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1831,8 +1869,12 @@ int dnslib_zone_contents_tree_apply_inorder_reverse(
 		return DNSLIB_EBADARG;
 	}
 
+	dnslib_zone_tree_func_t f;
+	f.func = function;
+	f.data = data;
+
 	return dnslib_zone_tree_reverse_apply_inorder(zone->nodes,
-	                                              function, data);
+	                                          dnslib_zone_tree_apply, &f);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1845,8 +1887,12 @@ int dnslib_zone_contents_nsec3_apply_postorder(dnslib_zone_contents_t *zone,
 		return DNSLIB_EBADARG;
 	}
 
+	dnslib_zone_tree_func_t f;
+	f.func = function;
+	f.data = data;
+
 	return dnslib_zone_tree_forward_apply_postorder(
-			zone->nsec3_nodes, function, data);
+			zone->nsec3_nodes, dnslib_zone_tree_apply, &f);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1859,10 +1905,12 @@ int dnslib_zone_contents_nsec3_apply_inorder(dnslib_zone_contents_t *zone,
 		return DNSLIB_EBADARG;
 	}
 
-	/*! \todo Replace by zone tree. */
-//	TREE_FORWARD_APPLY(zone->nsec3_nodes, dnslib_node, avl, function, data);
+	dnslib_zone_tree_func_t f;
+	f.func = function;
+	f.data = data;
+
 	return dnslib_zone_tree_forward_apply_inorder(
-			zone->nsec3_nodes, function, data);
+			zone->nsec3_nodes, dnslib_zone_tree_apply, &f);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1875,8 +1923,28 @@ int dnslib_zone_contents_nsec3_apply_inorder_reverse(
 		return DNSLIB_EBADARG;
 	}
 
+	dnslib_zone_tree_func_t f;
+	f.func = function;
+	f.data = data;
+
 	return dnslib_zone_tree_reverse_apply_inorder(
-			zone->nsec3_nodes, function, data);
+			zone->nsec3_nodes, dnslib_zone_tree_apply, &f);
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnslib_zone_tree_t *dnslib_zone_contents_get_nodes(
+		dnslib_zone_contents_t *contents)
+{
+	return contents->nodes;
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnslib_zone_tree_t *dnslib_zone_contents_get_nsec3_nodes(
+		dnslib_zone_contents_t *contents)
+{
+	return contents->nodes;
 }
 
 /*----------------------------------------------------------------------------*/
