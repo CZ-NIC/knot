@@ -102,6 +102,8 @@ unittests_dnslib_SOURCES =			\
 	dnslib/tests/dnslib/rdata_tests.h	\
 	dnslib/tests/dnslib/rrset_tests.c	\
 	dnslib/tests/dnslib/rrset_tests.h	\
+	dnslib/tests/dnslib/response2_tests.h	\
+	dnslib/tests/dnslib/response2_tests.c	\
 	dnslib/tests/dnslib/zone_tests.c	\
 	dnslib/tests/dnslib/zone_tests.h	\
 	dnslib/tests/dnslib/zonedb_tests.c	\

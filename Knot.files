@@ -214,3 +214,5 @@ src/dnslib/tests/dnslib/packet_tests.c
 src/dnslib/tests/dnslib/packet_tests.h
 src/dnslib/tests/realdata/dnslib/packet_tests_realdata.c
 src/dnslib/tests/realdata/dnslib/packet_tests_realdata.h
+src/dnslib/tests/dnslib/response2_tests.c
+src/dnslib/tests/dnslib/response2_tests.h
