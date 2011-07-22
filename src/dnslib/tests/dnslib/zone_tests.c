@@ -67,7 +67,7 @@ static int test_zone_create(dnslib_zone_t **zone)
 //	assert(dname);
 
 	dnslib_node_t *node = dnslib_node_new(&test_apex.owner,
-	                                      test_apex.parent);
+	                                      test_apex.parent, 0);
 	if (node == NULL) {
 		diag("zone: Could not create zone apex.");
 		return 0;
@@ -105,7 +105,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 
 	for (int i = 0; i < TEST_NODES_GOOD; ++i) {
 		dnslib_node_t *node = dnslib_node_new(&test_nodes_good[i].owner,
-		                                     test_nodes_good[i].parent);
+		                                     test_nodes_good[i].parent, 0);
 		if (node == NULL) {
 			diag("zone: Could not create node.");
 			return 0;
@@ -125,7 +125,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 
 	for (int i = 0; i < TEST_NODES_BAD; ++i) {
 		dnslib_node_t *node = dnslib_node_new(&test_nodes_bad[i].owner,
-		                                    test_nodes_bad[i].parent);
+		                                    test_nodes_bad[i].parent, 0);
 		if (node == NULL) {
 			diag("zone: Could not create node.");
 			return 0;
@@ -177,7 +177,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 	if (!nsec3) {
 		//note("Inserting Apex again...\n");
 
-		node = dnslib_node_new(&test_apex.owner, test_apex.parent);
+		node = dnslib_node_new(&test_apex.owner, test_apex.parent, 0);
 		if (node == NULL) {
 			diag("zone: Could not create node.");
 			return 0;

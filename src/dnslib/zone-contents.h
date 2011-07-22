@@ -81,8 +81,8 @@ void dnslib_zone_contents_switch_generation(dnslib_zone_contents_t *contents);
  * \retval DNSLIB_EHASH
  */
 int dnslib_zone_contents_add_node(dnslib_zone_contents_t *contents,
-                                  dnslib_node_t *node,
-                                  int create_parents, int use_domain_table);
+                                  dnslib_node_t *node, int create_parents,
+                                  uint8_t flags, int use_domain_table);
 
 /*!
  * \brief Adds a RRSet to the given zone.
@@ -220,6 +220,15 @@ int dnslib_zone_contents_find_dname(const dnslib_zone_contents_t *contents,
  * \return Previous node in canonical order, or NULL if some parameter is wrong.
  */
 const dnslib_node_t *dnslib_zone_contents_find_previous(
+	const dnslib_zone_contents_t *contents, const dnslib_dname_t *name);
+
+dnslib_node_t *dnslib_zone_contents_get_previous(
+	const dnslib_zone_contents_t *contents, const dnslib_dname_t *name);
+
+const dnslib_node_t *dnslib_zone_contents_find_previous_nsec3(
+	const dnslib_zone_contents_t *contents, const dnslib_dname_t *name);
+
+dnslib_node_t *dnslib_zone_contents_get_previous_nsec3(
 	const dnslib_zone_contents_t *contents, const dnslib_dname_t *name);
 
 #ifdef USE_HASH_TABLE

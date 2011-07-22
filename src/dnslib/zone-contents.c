@@ -511,10 +511,10 @@ DEBUG_DNSLIB_ZONE(
  * \retval 0 if the domain name was not found. \a node may hold any (or none)
  *           node. \a previous is set properly.
  */
-static int dnslib_zone_contents_find_in_tree(const dnslib_zone_contents_t *zone,
+static int dnslib_zone_contents_find_in_tree(dnslib_zone_tree_t *tree,
                                              const dnslib_dname_t *name,
-                                             const dnslib_node_t **node,
-                                             const dnslib_node_t **previous)
+                                             dnslib_node_t **node,
+                                             dnslib_node_t **previous)
 {
 	assert(zone != NULL);
 	assert(name != NULL);
@@ -525,7 +525,7 @@ static int dnslib_zone_contents_find_in_tree(const dnslib_zone_contents_t *zone,
 //	dnslib_node_t *found2 = NULL, *prev2 = NULL;
 
 	int exact_match = dnslib_zone_tree_get_less_or_equal(
-	                         zone->nodes, name, &found, &prev);
+	                         tree, name, &found, &prev);
 
 	*node = found;
 
@@ -839,7 +839,7 @@ void dnslib_zone_contents_switch_generation(dnslib_zone_contents_t *zone)
 
 int dnslib_zone_contents_add_node(dnslib_zone_contents_t *zone,
                                   dnslib_node_t *node, int create_parents,
-                                  int use_domain_table)
+                                  uint8_t flags, int use_domain_table)
 {
 	if (zone == NULL || node == NULL) {
 		return DNSLIB_EBADARG;
@@ -902,7 +902,7 @@ DEBUG_DNSLIB_ZONE(
 		      = dnslib_zone_contents_get_node(zone, chopped)) == NULL) {
 			/* Adding new dname to zone + add to table. */
 			debug_dnslib_zone("Creating new node.\n");
-			next_node = dnslib_node_new(chopped, NULL);
+			next_node = dnslib_node_new(chopped, NULL, flags);
 			if (next_node == NULL) {
 				dnslib_dname_free(&chopped);
 				return DNSLIB_ENOMEM;
@@ -915,7 +915,6 @@ DEBUG_DNSLIB_ZONE(
 					return ret;
 				}
 			}
-			node->parent = next_node;
 
 			if (next_node->owner != chopped) {
 				assert(0);
@@ -935,6 +934,7 @@ DEBUG_DNSLIB_ZONE(
 			if (ret != DNSLIB_EOK) {
 				debug_dnslib_zone("Failed to insert new node "
 				                  "to zone tree.\n");
+				/*! \todo Delete the node?? */
 				dnslib_dname_free(&chopped);
 				return ret;
 			}
@@ -953,14 +953,29 @@ DEBUG_DNSLIB_ZONE(
 			      next_node->owner->size, (void *)next_node) != 0) {
 				debug_dnslib_zone("Error inserting node into "
 				                  "hash table!\n");
+				/*! \todo Delete the node?? */
 				dnslib_dname_free(&chopped);
 				return DNSLIB_EHASH;
 			}
+
+			// set parent
+			node->parent = next_node;
+
+			// check if the node is not wildcard child of the parent
+			if (dnslib_dname_is_wildcard(
+					dnslib_node_owner(node))) {
+				dnslib_node_set_wildcard_child(next_node, node);
+			}
 #endif
 			debug_dnslib_zone("Next parent.\n");
-			node =  next_node;
+			node = next_node;
 			chopped = dnslib_dname_left_chop(chopped);
 		}
+		// set the found parent (in the zone) as the parent of the last
+		// inserted node
+		assert(node->parent == NULL);
+		node->parent = next_node;
+
 		debug_dnslib_zone("Created all parents.\n");
 	}
 	dnslib_dname_free(&chopped);
@@ -1172,6 +1187,12 @@ int dnslib_zone_contents_add_nsec3_node(dnslib_zone_contents_t *zone,
 			return ret;
 		}
 	}
+
+	// no parents to be created, the only parent is the zone apex
+	// set the apex as the parent of the node
+	node->parent = zone->apex;
+
+	// cannot be wildcard child, so nothing to be done
 
 	return DNSLIB_EOK;
 }
@@ -1444,7 +1465,7 @@ DEBUG_DNSLIB_ZONE(
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_zone_contents_find_previous(
+dnslib_node_t *dnslib_zone_contents_get_previous(
 	const dnslib_zone_contents_t *zone, const dnslib_dname_t *name)
 {
 	if (zone == NULL || name == NULL) {
@@ -1453,10 +1474,45 @@ const dnslib_node_t *dnslib_zone_contents_find_previous(
 
 	const dnslib_node_t *found = NULL, *prev = NULL;
 
-	(void)dnslib_zone_contents_find_in_tree(zone, name, &found, &prev);
+	(void)dnslib_zone_contents_find_in_tree(zone->nodes, name, &found,
+	                                        &prev);
 	assert(prev != NULL);
 
 	return prev;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const dnslib_node_t *dnslib_zone_contents_find_previous(
+	const dnslib_zone_contents_t *zone, const dnslib_dname_t *name)
+{
+	return dnslib_zone_contents_get_previous(zone, name);
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnslib_node_t *dnslib_zone_contents_get_previous_nsec3(
+	const dnslib_zone_contents_t *zone, const dnslib_dname_t *name)
+{
+	if (zone == NULL || name == NULL) {
+		return NULL;
+	}
+
+	const dnslib_node_t *found = NULL, *prev = NULL;
+
+	(void)dnslib_zone_contents_find_in_tree(zone->nsec3_nodes, name, &found,
+	                                        prev);
+	assert(prev != NULL);
+
+	return prev;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const dnslib_node_t *dnslib_zone_contents_find_previous_nsec3(
+	const dnslib_zone_contents_t *zone, const dnslib_dname_t *name)
+{
+	return dnslib_zone_contents_get_previous(zone, name);
 }
 
 /*----------------------------------------------------------------------------*/

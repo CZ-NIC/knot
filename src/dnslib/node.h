@@ -75,6 +75,19 @@ struct dnslib_node {
 typedef struct dnslib_node dnslib_node_t;
 
 /*----------------------------------------------------------------------------*/
+/*! \brief Flags used to mark nodes with some property. */
+typedef enum {
+	/*! \brief Node is a delegation point (i.e. marking a zone cut). */
+	DNSLIB_NODE_FLAGS_DELEG = (uint8_t)0x01,
+	/*! \brief Node is not authoritative (i.e. below a zone cut). */
+	DNSLIB_NODE_FLAGS_NONAUTH = (uint8_t)0x02,
+	/*! \brief Node is old and will be removed (during update). */
+	DNSLIB_NODE_FLAGS_OLD = (uint8_t)0x80,
+	/*! \brief Node is new and should not be used while zoen is old. */
+	DNSLIB_NODE_FLAGS_NEW = (uint8_t)0x40
+} dnslib_node_flags_t;
+
+/*----------------------------------------------------------------------------*/
 /*!
  * \brief Creates and initializes new node structure.
  *
@@ -83,7 +96,8 @@ typedef struct dnslib_node dnslib_node_t;
  *
  * \return Newly created node or NULL if an error occured.
  */
-dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent);
+dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent,
+                               uint8_t flags);
 
 /*!
  * \brief Adds an RRSet to the node.
