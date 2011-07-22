@@ -943,8 +943,6 @@ static int xfrin_changesets_to_binary(xfrin_changesets_t *chgsets)
 	 * Converts changesets to the binary format stored in chgsets->data
 	 * from the changeset_t structures.
 	 */
-	/*! \todo Implement. */
-
 	int ret;
 
 	for (int i = 0; i < chgsets->count; ++i) {
@@ -1930,10 +1928,50 @@ static void xfrin_clean_changes_after_fail(xfrin_changes_t *changes)
 
 /*----------------------------------------------------------------------------*/
 
-//static int xfrin_apply_replace_soa()
-//{
+static int xfrin_apply_replace_soa(dnslib_zone_contents_t *contents,
+                                   xfrin_changes_t *changes,
+                                   xfrin_changeset_t *chset)
+{
+	dnslib_node_t *node = dnslib_zone_contents_get_apex(contents);
+	assert(node != NULL);
 
-//}
+	int ret = 0;
+
+	// create a copy of the node if not already created
+	if (!dnslib_node_is_new(node)) {
+		ret = xfrin_get_node_copy(&node, changes);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	assert(dnslib_node_is_new(node));
+
+	// remove the SOA RRSet from the apex
+	dnslib_rrset_t *rrset = dnslib_node_remove_rrset(node,
+	                                                 DNSLIB_RRTYPE_SOA);
+	assert(rrset != NULL);
+
+	// add the old RRSet to the list of old RRSets
+	ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
+	                                 &changes->old_rrsets_count,
+	                                 &changes->old_rrsets_allocated);
+	if (ret != KNOT_EOK) {
+		debug_xfr("Failed to add old RRSet to list.\n");
+		return ret;
+	}
+
+	changes->old_rrsets[changes->old_rrsets_count++] = rrset;
+
+	// and just insert the new SOA RRSet to the node
+	ret = dnslib_node_add_rrset(node, chset->soa_to, 0);
+	if (ret != DNSLIB_EOK) {
+		debug_xfr("Failed to add RRSet to node.\n");
+		return KNOT_ERROR;
+	}
+
+	return KNOT_EOK;
+}
 
 /*----------------------------------------------------------------------------*/
 
@@ -1962,7 +2000,7 @@ static int xfrin_apply_changeset(dnslib_zone_contents_t *contents,
 		return ret;
 	}
 
-	return KNOT_ENOTSUP;
+	return xfrin_apply_replace_soa(contents, changes, chset);
 }
 
 /*----------------------------------------------------------------------------*/
