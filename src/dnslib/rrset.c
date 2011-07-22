@@ -172,6 +172,13 @@ const dnslib_dname_t *dnslib_rrset_owner(const dnslib_rrset_t *rrset)
 
 /*----------------------------------------------------------------------------*/
 
+dnslib_dname_t *dnslib_rrset_get_owner(const dnslib_rrset_t *rrset)
+{
+	return rrset->owner;
+}
+
+/*----------------------------------------------------------------------------*/
+
 uint16_t dnslib_rrset_type(const dnslib_rrset_t *rrset)
 {
 	return rrset->type;
