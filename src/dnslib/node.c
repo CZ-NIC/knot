@@ -627,6 +627,7 @@ int dnslib_node_deep_copy(const dnslib_node_t *from, dnslib_node_t **to)
 	(*to)->wildcard_child = from->wildcard_child;
 	(*to)->prev = from->prev;
 	(*to)->next = from->next;
+	(*to)->children = from->children;
 
 	// copy RRSets
 	// copy the skip list with the old references
