@@ -2196,18 +2196,17 @@ static int xfrin_fix_references(dnslib_zone_contents_t *contents)
 
 static void xfrin_cleanup_update(xfrin_changes_t *changes)
 {
-	// free old nodes but do not destroy their RRSets, nor domain names
+	// free old nodes but do not destroy their RRSets
+	// remove owners also, because of reference counting
 	for (int i = 0; i < changes->old_nodes_count; ++i) {
-		dnslib_node_free(&changes->old_nodes[i], 0, 0);
+		dnslib_node_free(&changes->old_nodes[i], 1, 0);
 	}
 
-	// free old RRSets, but do not destroy dnames in them
+	// free old RRSets, and destroy also domain names in them
+	// because of reference counting
 	for (int i = 0; i < changes->old_rrsets_count; ++i) {
-		dnslib_rrset_deep_free(&changes->old_rrsets[i], 0, 1, 0);
+		dnslib_rrset_deep_free(&changes->old_rrsets[i], 0, 1, 1);
 	}
-
-	// do not care about domain names, they will be destroyed thanks to
-	// reference counting
 }
 
 /*----------------------------------------------------------------------------*/
