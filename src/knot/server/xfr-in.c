@@ -1583,13 +1583,24 @@ static int xfrin_get_node_copy(dnslib_node_t **node, xfrin_changes_t *changes)
 			&changes->new_nodes_count,
 			&changes->new_nodes_allocated);
 		if (ret != KNOT_EOK) {
-			debug_xfr("Failed to add new node to "
-				  "list.\n");
+			debug_xfr("Failed to add new node to list.\n");
+			dnslib_node_free(&new_node, 0, 0);
+			return ret;
+		}
+
+		// save the old node to list of old nodes
+		ret = xfrin_changes_check_nodes(
+			&changes->old_nodes,
+			&changes->old_nodes_count,
+			&changes->old_nodes_allocated);
+		if (ret != KNOT_EOK) {
+			debug_xfr("Failed to add old node to list.\n");
 			dnslib_node_free(&new_node, 0, 0);
 			return ret;
 		}
 
 		changes->new_nodes[changes->new_nodes_count++] = new_node;
+		changes->old_nodes[changes->old_nodes_count++] = *node;
 
 		dnslib_node_set_new(new_node);
 		dnslib_node_set_new_node(*node, new_node);
@@ -2005,47 +2016,56 @@ static int xfrin_apply_changeset(dnslib_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
-typedef struct xfrin_node_check_data {
-	dnslib_zone_contents_t *contents;
-	xfrin_changes_t *changes;
-} xfrin_node_check_data_t;
-
-/*----------------------------------------------------------------------------*/
-
 static void xfrin_check_node_in_tree(dnslib_zone_tree_node_t *tnode, void *data)
 {
 	assert(tnode != NULL);
 	assert(data != NULL);
-	
-	xfrin_node_check_data_t *d = (xfrin_node_check_data_t *)data;
-	
 	assert(tnode->node != NULL);
-	dnslib_node_t *node = tnode->node;
-	int ret;
 	
+	UNUSED(data);
+	
+	if (dnslib_node_new_node(tnode->node) == NULL) {
+		// no RRSets were removed from this node, thus it cannot be
+		// empty
+		assert(dnslib_node_rrset_count(tnode->node) > 0);
+		return;
+	}
+	
+	dnslib_node_t *node = dnslib_node_get_new_node(tnode->node);
+	
+	debug_xfr("Children of old node: %u, children of new node: %u.\n",
+	         dnslib_node_children(node), dnslib_node_children(tnode->node));
+
 	// check if the node is empty and has no children
+	// to be sure, check also the count of children of the old node
 	if (dnslib_node_rrset_count(node) == 0
-	    && dnslib_node_children(node) == 0) {
-		ret = xfrin_changes_check_nodes(&d->changes->old_nodes,
-		                              &d->changes->old_nodes_count,
-		                              &d->changes->old_nodes_allocated);
-		if (ret != KNOT_EOK) {
-			debug_xfr("Failed to save old node.\n");
-			return;
+	    && dnslib_node_children(node) == 0
+	    && dnslib_node_children(tnode->node) == 0) {
+		// in this case the new node copy can be deleted right away
+		// (a rollback can no longer be performed)
+		
+		// set the new node of the old node to NULL
+		dnslib_node_set_new_node(tnode->node, NULL);
+		
+		// if the parent has a new copy, decrease the number of
+		// children of that copy
+		if (dnslib_node_new_node(dnslib_node_parent(node))) {
+			/*! \todo Replace by some API. */
+			--node->parent->new_node->children;
 		}
 		
-		d->changes->old_nodes[d->changes->old_nodes_count++] = node;
+		// delete the new node copy
+		dnslib_node_free(&node, 1, 0);
 		
-		// remove parent pointer so that the parent's children count
-		// will be decreased
-		dnslib_node_set_parent(node, NULL);
+		// leave the old node in the old node list, we will delete
+		// it later
 	}
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_remove_nodes(dnslib_zone_contents_t *contents,
-                              xfrin_changes_t *changes)
+static int xfrin_finalize_remove_nodes(dnslib_zone_contents_t *contents,
+                                       xfrin_changes_t *changes)
 {
 	assert(contents != NULL);
 	assert(changes != NULL);
@@ -2055,19 +2075,28 @@ static int xfrin_remove_nodes(dnslib_zone_contents_t *contents,
 	for (int i = 0; i < changes->old_nodes_count; ++i) {
 		node = changes->old_nodes[i];
 		
-		if (dnslib_node_rrset(node, DNSLIB_RRTYPE_NSEC3) != NULL) {
-			removed = dnslib_zone_contents_remove_nsec3_node(
-				contents, node);
-		} else {
-			removed = dnslib_zone_contents_remove_node(contents, 
-			                                           node);
-		}
-		if (removed == NULL) {
-			debug_xfr("Failed to remove node from zone!!\n");
-			return KNOT_ENOENT;
-		}
+		// if the node is marked as old and has no new node copy
+		// remove it from the zone structure but do not delete it
+		// that may be done only after the grace period
+		if (dnslib_node_is_old(node) 
+		    && dnslib_node_new_node(node) == NULL) {
 		
-		assert(removed == node);
+			if (dnslib_node_rrset(node, DNSLIB_RRTYPE_NSEC3) 
+			    != NULL) {
+				removed = 
+					dnslib_zone_contents_remove_nsec3_node(
+						contents, node);
+			} else {
+				removed = dnslib_zone_contents_remove_node(
+					contents, node);
+			}
+			if (removed == NULL) {
+				debug_xfr("Failed to remove node from zone!\n");
+				return KNOT_ENOENT;
+			}
+			
+			assert(removed == node);
+		}
 	}
 	return KNOT_EOK;
 }
@@ -2096,16 +2125,12 @@ static int xfrin_finalize_contents(dnslib_zone_contents_t *contents,
 	dnslib_zone_tree_t *t = dnslib_zone_contents_get_nodes(contents);
 	assert(t != NULL);
 	
-	xfrin_node_check_data_t data;
-	data.contents = contents;
-	data.changes = changes;
-	
 	// walk through the zone and select nodes to be removed
 	dnslib_zone_tree_reverse_apply_postorder(t, xfrin_check_node_in_tree, 
-	                                         &data);
+	                                         NULL);
 	
 	// remove the nodes one by one
-	return xfrin_remove_nodes(contents, changes);
+	return xfrin_finalize_remove_nodes(contents, changes);
 }
 
 /*----------------------------------------------------------------------------*/
