@@ -489,10 +489,10 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 	//XXX will have to be set already...canonical order should do it
 
 	if (parent_id != 0) {
-		node->parent = id_array[parent_id]->node;
-		assert(node->parent != NULL);
+		dnslib_node_set_parent(node, id_array[parent_id]->node);
+		assert(dnslib_node_parent(node) != NULL);
 	} else {
-		node->parent = NULL;
+		dnslib_node_set_parent(node, NULL);
 	}
 
 	dnslib_rrset_t *tmp_rrset;

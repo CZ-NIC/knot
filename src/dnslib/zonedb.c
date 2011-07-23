@@ -140,6 +140,8 @@ dnslib_zone_t *dnslib_zonedb_replace_zone(dnslib_zonedb_t *db,
 	if (z == NULL) {
 		return NULL;
 	}
+	
+	/*! \todo The replace should be atomic!!! */
 
 	debug_dnslib_zonedb("Found zone: %p\n", z);
 

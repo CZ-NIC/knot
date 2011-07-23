@@ -1593,8 +1593,9 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 //	printf("ID write: %d (%s)\n", node->owner->id,
 //	       dnslib_dname_to_str(node->owner));
 
-	if (node->parent != NULL) {
-		uint32_t parent_id = node->parent->owner->id;
+	if (dnslib_node_parent(node) != NULL) {
+		uint32_t parent_id = dnslib_dname_id(
+				dnslib_node_owner(dnslib_node_parent(node)));
 		fwrite_wrapper(&parent_id, sizeof(parent_id), 1, f);
 	} else {
 		uint32_t parent_id = 0;
