@@ -70,6 +70,8 @@ struct dnslib_node {
 	uint8_t flags;
 
 	struct dnslib_node *new_node;
+	
+	unsigned int children;
 };
 
 typedef struct dnslib_node dnslib_node_t;

@@ -159,13 +159,11 @@ dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent,
 	}
 
 	ret->owner = owner;
-	ret->parent = parent;
+	dnslib_node_set_parent(ret, parent);
 	ret->rrsets = skip_create_list(compare_rrset_types);
 	ret->flags = flags;
-
-//	ret->avl.avl_left = NULL;
-//	ret->avl.avl_right = NULL;
-//	ret->avl.avl_height = 0;
+	
+	assert(ret->children == 0);
 
 	return ret;
 }
@@ -277,9 +275,21 @@ const dnslib_node_t *dnslib_node_parent(const dnslib_node_t *node)
 	return node->parent;
 }
 
+/*----------------------------------------------------------------------------*/
+
 void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent)
 {
+	// decrease number of children of previous parent
+	if (node->parent != NULL) {
+		--parent->children;
+	}
+	// set the parent
 	node->parent = parent;
+	
+	// increase the count of children of the new parent
+	if (parent != NULL) {
+		++parent->children;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -400,6 +410,9 @@ void dnslib_node_update_refs(dnslib_node_t *node)
 	// reference to parent
 	if (node->parent && dnslib_node_is_old(node->parent)) {
 		assert(node->parent->new_node != NULL);
+		// do not use the API function to set parent, so that children count 
+		// is not changed
+		//dnslib_node_set_parent(node, node->parent->new_node);
 		node->parent = node->parent->new_node;
 	}
 
@@ -567,6 +580,11 @@ void dnslib_node_free(dnslib_node_t **node, int free_owner, int fix_refs)
 		    && (*node)->parent->wildcard_child == (*node)) {
 			(*node)->parent->wildcard_child = NULL;
 		}
+		
+		// fix parent's children count
+		if ((*node)->parent) {
+			--(*node)->parent->children;
+		}
 	}
 
 	free(*node);
@@ -593,6 +611,9 @@ int dnslib_node_deep_copy(const dnslib_node_t *from, dnslib_node_t **to)
 	}
 
 	// copy references
+	
+	// do not use the API function to set parent, so that children count 
+	// is not changed
 	(*to)->parent = from->parent;
 	(*to)->nsec3_node = from->nsec3_node;
 	(*to)->nsec3_referer = from->nsec3_referer;
