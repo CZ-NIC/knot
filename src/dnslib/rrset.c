@@ -253,6 +253,17 @@ const dnslib_rrset_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset)
 
 /*----------------------------------------------------------------------------*/
 
+dnslib_rrset_t *dnslib_rrset_get_rrsigs(dnslib_rrset_t *rrset)
+{
+	if (rrset == NULL) {
+		return NULL;
+	} else {
+		return rrset->rrsigs;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_rrset_compare(const dnslib_rrset_t *r1,
                          const dnslib_rrset_t *r2,
                          dnslib_rrset_compare_type_t cmp)
