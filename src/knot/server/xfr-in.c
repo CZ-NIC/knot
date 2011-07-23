@@ -2005,13 +2005,107 @@ static int xfrin_apply_changeset(dnslib_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
+typedef struct xfrin_node_check_data {
+	dnslib_zone_contents_t *contents;
+	xfrin_changes_t *changes;
+} xfrin_node_check_data_t;
+
+/*----------------------------------------------------------------------------*/
+
+static void xfrin_check_node_in_tree(dnslib_zone_tree_node_t *tnode, void *data)
+{
+	assert(tnode != NULL);
+	assert(data != NULL);
+	
+	xfrin_node_check_data_t *d = (xfrin_node_check_data_t *)data;
+	
+	assert(tnode->node != NULL);
+	dnslib_node_t *node = tnode->node;
+	int ret;
+	
+	// check if the node is empty and has no children
+	if (dnslib_node_rrset_count(node) == 0
+	    && dnslib_node_children(node) == 0) {
+		ret = xfrin_changes_check_nodes(&d->changes->old_nodes,
+		                              &d->changes->old_nodes_count,
+		                              &d->changes->old_nodes_allocated);
+		if (ret != KNOT_EOK) {
+			debug_xfr("Failed to save old node.\n");
+			return;
+		}
+		
+		d->changes->old_nodes[d->changes->old_nodes_count++] = node;
+		
+		// remove parent pointer so that the parent's children count
+		// will be decreased
+		dnslib_node_set_parent(node, NULL);
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_remove_nodes(dnslib_zone_contents_t *contents,
+                              xfrin_changes_t *changes)
+{
+	assert(contents != NULL);
+	assert(changes != NULL);
+	
+	dnslib_node_t *removed, *node;
+	
+	for (int i = 0; i < changes->old_nodes_count; ++i) {
+		node = changes->old_nodes[i];
+		
+		if (dnslib_node_rrset(node, DNSLIB_RRTYPE_NSEC3) != NULL) {
+			removed = dnslib_zone_contents_remove_nsec3_node(
+				contents, node);
+		} else {
+			removed = dnslib_zone_contents_remove_node(contents, 
+			                                           node);
+		}
+		if (removed == NULL) {
+			debug_xfr("Failed to remove node from zone!!\n");
+			return KNOT_ENOENT;
+		}
+		
+		assert(removed == node);
+	}
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 static int xfrin_finalize_contents(dnslib_zone_contents_t *contents,
                                    xfrin_changes_t *changes)
 {
 	// don't know what should have been done here, except for one thing:
 	// walk through the zone and remove empty nodes (save them in the
 	// old nodes list). But only those having no children!!!
-	return KNOT_ENOTSUP;
+	
+	/*
+	 * Walk through the zone and remove empty nodes.
+	 * We must walk backwards, so that children are processed before
+	 * their parents. This will allow to remove chain of parent-children
+	 * nodes.
+	 * We cannot remove the nodes right away as it would modify the very
+	 * structure used for walking through the zone. Just put the nodes
+	 * to the list of old nodes to be removed.
+	 * We must also decrease the node's parent's children count now
+	 * and not when deleting the node, so that the chain of parent-child
+	 * nodes may be removed.
+	 */
+	dnslib_zone_tree_t *t = dnslib_zone_contents_get_nodes(contents);
+	assert(t != NULL);
+	
+	xfrin_node_check_data_t data;
+	data.contents = contents;
+	data.changes = changes;
+	
+	// walk through the zone and select nodes to be removed
+	dnslib_zone_tree_reverse_apply_postorder(t, xfrin_check_node_in_tree, 
+	                                         &data);
+	
+	// remove the nodes one by one
+	return xfrin_remove_nodes(contents, changes);
 }
 
 /*----------------------------------------------------------------------------*/
