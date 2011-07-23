@@ -292,22 +292,25 @@ DEBUG_DNSLIB_ZONE(
 	dnslib_zone_contents_adjust_rrsets(node, zone);
 
 DEBUG_DNSLIB_ZONE(
-	if (node->parent) {
-		char *name = dnslib_dname_to_str(node->parent->owner);
+	if (dnslib_node_parent(node)) {
+		char *name = dnslib_dname_to_str(dnslib_node_owner(
+				dnslib_node_parent(node)));
 		debug_dnslib_zone("Parent: %s\n", name);
 		debug_dnslib_zone("Parent is delegation point: %s\n",
-		       dnslib_node_is_deleg_point(node->parent) ? "yes" : "no");
+		       dnslib_node_is_deleg_point(dnslib_node_parent(node)) 
+		       ? "yes" : "no");
 		debug_dnslib_zone("Parent is non-authoritative: %s\n",
-		       dnslib_node_is_non_auth(node->parent) ? "yes" : "no");
+		       dnslib_node_is_non_auth(dnslib_node_parent(node)) 
+		       ? "yes" : "no");
 		free(name);
 	} else {
 		debug_dnslib_zone("No parent!\n");
 	}
 );
 	// delegation point / non-authoritative node
-	if (node->parent
-	    && (dnslib_node_is_deleg_point(node->parent)
-		|| dnslib_node_is_non_auth(node->parent))) {
+	if (dnslib_node_parent(node)
+	    && (dnslib_node_is_deleg_point(dnslib_node_parent(node))
+		|| dnslib_node_is_non_auth(dnslib_node_parent(node)))) {
 		dnslib_node_set_non_auth(node);
 	} else if (dnslib_node_rrset(node, DNSLIB_RRTYPE_NS) != NULL
 		   && node != zone->apex) {
@@ -322,7 +325,7 @@ DEBUG_DNSLIB_ZONE(
 	// assure that owner has proper node
 	if (dnslib_dname_node(dnslib_node_owner(node)) == NULL) {
 		dnslib_dname_set_node(dnslib_node_get_owner(node), node);
-		node->owner->node = node;
+		dnslib_dname_set_node(dnslib_node_get_owner(node), node);
 	}
 
 	// NSEC3 node
@@ -931,10 +934,10 @@ DEBUG_DNSLIB_ZONE(
 	debug_dnslib_zone("Creating parents of the node.\n");
 
 	dnslib_dname_t *chopped =
-		dnslib_dname_left_chop(node->owner);
-	if (dnslib_dname_compare(zone->apex->owner, chopped) == 0) {
+		dnslib_dname_left_chop(dnslib_node_owner(node));
+	if (dnslib_dname_compare(dnslib_node_owner(zone->apex), chopped) == 0) {
 		debug_dnslib_zone("Zone apex is the parent.\n");
-		node->parent = zone->apex;
+		dnslib_node_set_parent(node, zone->apex);
 	} else {
 		dnslib_node_t *next_node;
 		while ((next_node
@@ -963,7 +966,7 @@ DEBUG_DNSLIB_ZONE(
 
 			assert(dnslib_zone_contents_find_node(zone, chopped)
 			       == NULL);
-			assert(next_node->owner == chopped);
+			assert(dnslib_node_owner(next_node) == chopped);
 
 			debug_dnslib_zone("Inserting new node to zone tree.\n");
 //			TREE_INSERT(zone->tree, dnslib_node, avl, next_node);
@@ -980,7 +983,8 @@ DEBUG_DNSLIB_ZONE(
 
 #ifdef USE_HASH_TABLE
 DEBUG_DNSLIB_ZONE(
-			char *name = dnslib_dname_to_str(next_node->owner);
+			char *name = dnslib_dname_to_str(
+					dnslib_node_owner(next_node));
 			debug_dnslib_zone("Adding new node with owner %s to "
 			                  "hash table.\n", name);
 			free(name);
@@ -988,8 +992,10 @@ DEBUG_DNSLIB_ZONE(
 
 			if (zone->table != NULL
 			    && ck_insert_item(zone->table,
-			      (const char *)next_node->owner->name,
-			      next_node->owner->size, (void *)next_node) != 0) {
+			      (const char *)dnslib_dname_name(
+			                    dnslib_node_owner(next_node)),
+			      dnslib_dname_size(dnslib_node_owner(next_node)),
+			      (void *)next_node) != 0) {
 				debug_dnslib_zone("Error inserting node into "
 				                  "hash table!\n");
 				/*! \todo Delete the node?? */
@@ -998,7 +1004,7 @@ DEBUG_DNSLIB_ZONE(
 			}
 
 			// set parent
-			node->parent = next_node;
+			dnslib_node_set_parent(node, next_node);
 
 			// check if the node is not wildcard child of the parent
 			if (dnslib_dname_is_wildcard(
@@ -1012,8 +1018,8 @@ DEBUG_DNSLIB_ZONE(
 		}
 		// set the found parent (in the zone) as the parent of the last
 		// inserted node
-		assert(node->parent == NULL);
-		node->parent = next_node;
+		assert(dnslib_node_parent(node) == NULL);
+		dnslib_node_set_parent(node, next_node);
 
 		debug_dnslib_zone("Created all parents.\n");
 	}
@@ -1229,7 +1235,7 @@ int dnslib_zone_contents_add_nsec3_node(dnslib_zone_contents_t *zone,
 
 	// no parents to be created, the only parent is the zone apex
 	// set the apex as the parent of the node
-	node->parent = zone->apex;
+	dnslib_node_set_parent(node, zone->apex);
 
 	// cannot be wildcard child, so nothing to be done
 
@@ -1484,15 +1490,16 @@ DEBUG_DNSLIB_ZONE(
 
 	if (!exact_match) {
 		int matched_labels = dnslib_dname_matched_labels(
-				(*closest_encloser)->owner, name);
-		while (matched_labels
-		       < dnslib_dname_label_count((*closest_encloser)->owner)) {
-			(*closest_encloser) = (*closest_encloser)->parent;
+				dnslib_node_owner((*closest_encloser)), name);
+		while (matched_labels < dnslib_dname_label_count(
+				dnslib_node_owner((*closest_encloser)))) {
+			(*closest_encloser) = 
+				dnslib_node_parent((*closest_encloser));
 			assert(*closest_encloser);
 		}
 	}
 DEBUG_DNSLIB_ZONE(
-	char *n = dnslib_dname_to_str((*closest_encloser)->owner);
+	char *n = dnslib_dname_to_str(dnslib_node_owner((*closest_encloser)));
 	debug_dnslib_zone("Closest encloser: %s\n", n);
 	free(n);
 );

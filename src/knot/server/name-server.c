@@ -1254,8 +1254,8 @@ static inline int ns_referral(const dnslib_node_t *node,
 	debug_ns("Referral response.\n");
 
 	while (!dnslib_node_is_deleg_point(node)) {
-		assert(node->parent != NULL);
-		node = node->parent;
+		assert(dnslib_node_parent(node) != NULL);
+		node = dnslib_node_parent(node);
 	}
 
 	const dnslib_rrset_t *rrset = dnslib_node_rrset(node, DNSLIB_RRTYPE_NS);
