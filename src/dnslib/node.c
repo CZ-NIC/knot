@@ -294,6 +294,13 @@ void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent)
 
 /*----------------------------------------------------------------------------*/
 
+unsigned int dnslib_node_children(const dnslib_node_t *node)
+{
+	return node->children;
+}
+
+/*----------------------------------------------------------------------------*/
+
 const dnslib_node_t *dnslib_node_previous(const dnslib_node_t *node)
 {
 	return node->prev;

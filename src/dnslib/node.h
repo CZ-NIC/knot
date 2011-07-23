@@ -186,6 +186,8 @@ const dnslib_node_t *dnslib_node_parent(const dnslib_node_t *node);
  */
 void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent);
 
+unsigned int dnslib_node_children(const dnslib_node_t *node);
+
 /*!
  * \brief Returns the previous authoritative node or delegation point in
  *        canonical order or the first node in zone.
