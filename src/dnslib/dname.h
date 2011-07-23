@@ -162,6 +162,8 @@ const uint8_t *dnslib_dname_name(const dnslib_dname_t *dname);
  */
 unsigned int dnslib_dname_size(const dnslib_dname_t *dname);
 
+unsigned int dnslib_dname_id(const dnslib_dname_t *dname);
+
 /*!
  * \brief Returns size of a part of domain name.
  *
