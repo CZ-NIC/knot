@@ -1544,7 +1544,7 @@ static void xfrin_rollback_update(dnslib_zone_contents_t *contents,
 /*----------------------------------------------------------------------------*/
 
 static dnslib_rdata_t *xfrin_remove_rdata(dnslib_rrset_t *from,
-                                          dnslib_rrset_t *what)
+                                          const dnslib_rrset_t *what)
 {
 	dnslib_rdata_t *old = NULL;
 	dnslib_rdata_t *old_actual = NULL;
@@ -1612,7 +1612,7 @@ static int xfrin_get_node_copy(dnslib_node_t **node, xfrin_changes_t *changes)
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_copy_old_rrset(dnslib_node_t *node, dnslib_rrset_t *old,
+static int xfrin_copy_old_rrset(dnslib_rrset_t *old,
                                 dnslib_rrset_t **copy, xfrin_changes_t *changes)
 {
 	// create new RRSet by copying the old one
@@ -1645,12 +1645,12 @@ static int xfrin_copy_old_rrset(dnslib_node_t *node, dnslib_rrset_t *old,
 
 	changes->old_rrsets[changes->old_rrsets_count++] = old;
 
-	// replace the RRSet in the node copy by the new one
-	ret = dnslib_node_add_rrset(node, *copy, 0);
-	if (ret != DNSLIB_EOK) {
-		debug_xfr("Failed to add RRSet copy to node\n");
-		return KNOT_ERROR;
-	}
+//	// replace the RRSet in the node copy by the new one
+//	ret = dnslib_node_add_rrset(node, *copy, 0);
+//	if (ret != DNSLIB_EOK) {
+//		debug_xfr("Failed to add RRSet copy to node\n");
+//		return KNOT_ERROR;
+//	}
 
 	return KNOT_EOK;
 }
@@ -1667,7 +1667,227 @@ static int xfrin_copy_rrset(dnslib_node_t *node, dnslib_rr_type_t type,
 		return 1;
 	}
 
-	return xfrin_copy_old_rrset(node, old, rrset, changes);
+	int ret = xfrin_copy_old_rrset(old, rrset, changes);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	
+	// replace the RRSet in the node copy by the new one
+	ret = dnslib_node_add_rrset(node, *rrset, 0);
+	if (ret != DNSLIB_EOK) {
+		debug_xfr("Failed to add RRSet copy to node\n");
+		return KNOT_ERROR;
+	}
+	
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
+                                     const dnslib_rrset_t *remove,
+                                     dnslib_node_t *node,
+                                     dnslib_rrset_t **rrset)
+{
+	assert(changes != NULL);
+	assert(remove != NULL);
+	assert(node != NULL);
+	assert(rrset != NULL);
+	assert(dnslib_rrset_type(remove) == DNSLIB_RRTYPE_RRSIG);
+	
+	/*! \todo These optimalizations may be useless as there may be only
+	 *        one RRSet of each type and owner in the changeset.
+	 */
+	
+	int ret;
+
+	if (!*rrset
+	    || dnslib_dname_compare(dnslib_rrset_owner(*rrset),
+	                            dnslib_node_owner(node)) != 0
+	    || dnslib_rrset_type(*rrset) != dnslib_rdata_rrsig_type_covered(
+	                  dnslib_rrset_rdata(remove))) {
+		// find RRSet based on the Type Covered
+		dnslib_rr_type_t type = dnslib_rdata_rrsig_type_covered(
+			dnslib_rrset_rdata(remove));
+		
+		// copy the rrset
+		ret = xfrin_copy_rrset(node, type, rrset, changes);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	} else {
+		// we should have the right RRSIG RRSet in *rrset
+		assert(dnslib_rrset_type(*rrset) 
+		       != dnslib_rdata_rrsig_type_covered(
+		                 dnslib_rrset_rdata(remove)));
+		// this RRSet should be the already copied RRSet so we may
+		// update it right away
+	}
+	
+	// get the old rrsigs
+	dnslib_rrset_t *old = dnslib_rrset_get_rrsigs(*rrset);
+	if (old == NULL) {
+		return 1;
+	}
+	
+	// copy the RRSIGs
+	/*! \todo This may be done unnecessarily more times. */
+	dnslib_rrset_t *rrsigs;
+	ret = xfrin_copy_old_rrset(old, &rrsigs, changes);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	
+	// set the RRSIGs to the new RRSet copy
+	if (dnslib_rrset_set_rrsigs(*rrset, rrsigs) != DNSLIB_EOK) {
+		return KNOT_ERROR;
+	}
+	
+	
+
+	// now in '*rrset' we have a copy of the RRSet which holds the RRSIGs 
+	// and in 'rrsigs' we have the copy of the RRSIGs
+	
+	dnslib_rdata_t *rdata = xfrin_remove_rdata(rrsigs, remove);
+	if (rdata == NULL) {
+		debug_xfr("Failed to remove RDATA from RRSet: %s.\n",
+			  dnslib_strerror(ret));
+		return 1;
+	}
+	
+	// if the RRSet is empty, remove from node and add to old RRSets
+	// check if there is no RRSIGs; if there are, leave the RRSet
+	// there; it may be eventually removed when the RRSIGs are removed
+	if (dnslib_rrset_rdata(rrsigs) == NULL) {
+		// remove the RRSIGs from the RRSet
+		dnslib_rrset_set_rrsigs(*rrset, NULL);
+		
+		ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
+		                                 &changes->old_rrsets_count,
+		                                &changes->old_rrsets_allocated);
+		if (ret != KNOT_EOK) {
+			debug_xfr("Failed to add empty RRSet to the "
+			          "list of old RRSets.");
+			// delete the RRSet right away
+			dnslib_rrset_free(&rrsigs);
+			return ret;
+		}
+	
+		changes->old_rrsets[changes->old_rrsets_count++] = rrsigs;
+		
+		// now check if the RRSet is not totally empty
+		if (dnslib_rrset_rdata(*rrset) == NULL) {
+			assert(dnslib_rrset_rrsigs(*rrset) == NULL);
+			
+			// remove the whole RRSet from the node
+			dnslib_rrset_t *tmp = dnslib_node_remove_rrset(node,
+			                             dnslib_rrset_type(*rrset));
+			assert(tmp == *rrset);
+			
+			ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
+			                        &changes->old_rrsets_count,
+			                        &changes->old_rrsets_allocated);
+			if (ret != KNOT_EOK) {
+				debug_xfr("Failed to add empty RRSet to the "
+					  "list of old RRSets.");
+				// delete the RRSet right away
+				dnslib_rrset_free(rrset);
+				return ret;
+			}
+		
+			changes->old_rrsets[changes->old_rrsets_count++] = 
+				*rrset;
+		}
+	}
+	
+	// connect the RDATA to the list of old RDATA
+	rdata->next = changes->old_rdata;
+	changes->old_rdata = rdata;
+	
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_apply_remove_normal(xfrin_changes_t *changes,
+                                     const dnslib_rrset_t *remove,
+                                     dnslib_node_t *node,
+                                     dnslib_rrset_t **rrset)
+{
+	assert(changes != NULL);
+	assert(remove != NULL);
+	assert(node != NULL);
+	assert(rrset != NULL);
+	
+	int ret;
+	
+	// now we have the copy of the node, so lets get the right RRSet
+	// check if we do not already have it
+	if (!*rrset
+	    || dnslib_dname_compare(dnslib_rrset_owner(*rrset),
+	                            dnslib_node_owner(node)) != 0
+	    || dnslib_rrset_type(*rrset)
+	       != dnslib_rrset_type(remove)) {
+		/*!
+		 * \todo This may happen also with already 
+		 *       copied RRSet. In that case it would be
+		 *       an unnecesary overhead but will 
+		 *       probably not cause problems. TEST!!
+		 */
+		ret = xfrin_copy_rrset(node,
+			dnslib_rrset_type(remove), rrset, changes);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+	
+	if (*rrset == NULL) {
+		debug_xfr("RRSet not found for RR to be removed.\n");
+		return 1;
+	}
+	
+DEBUG_XFR(
+	char *name = dnslib_dname_to_str(dnslib_rrset_owner(*rrset));
+	debug_xfr("Updating RRSet with owner %s, type %s\n", name,
+		  dnslib_rrtype_to_string(dnslib_rrset_type(*rrset)));
+	free(name);
+);
+
+	dnslib_rdata_t *rdata = xfrin_remove_rdata(*rrset, remove);
+	if (rdata == NULL) {
+		debug_xfr("Failed to remove RDATA from RRSet: %s.\n",
+			  dnslib_strerror(ret));
+		return 1;
+	}
+	
+	// if the RRSet is empty, remove from node and add to old RRSets
+	// check if there is no RRSIGs; if there are, leave the RRSet
+	// there; it may be eventually removed when the RRSIGs are removed
+	if (dnslib_rrset_rdata(*rrset) == NULL
+	    && dnslib_rrset_rrsigs(*rrset) == NULL) {
+		
+		dnslib_rrset_t *tmp = dnslib_node_remove_rrset(node,
+		                                     dnslib_rrset_type(*rrset));
+		assert(tmp == *rrset);
+		ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
+		                                 &changes->old_rrsets_count,
+		                                &changes->old_rrsets_allocated);
+		if (ret != KNOT_EOK) {
+			debug_xfr("Failed to add empty RRSet to the "
+			          "list of old RRSets.");
+			// delete the RRSet right away
+			dnslib_rrset_free(rrset);
+			return ret;
+		}
+	
+		changes->old_rrsets[changes->old_rrsets_count++] = *rrset;
+	}
+	
+	// connect the RDATA to the list of old RDATA
+	rdata->next = changes->old_rdata;
+	changes->old_rdata = rdata;
+	
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1708,72 +1928,86 @@ static int xfrin_apply_remove(dnslib_zone_contents_t *contents,
 
 		assert(node != NULL);
 		assert(dnslib_node_is_new(node));
+		
+		if (dnslib_rrset_type(chset->remove[i]) 
+		    == DNSLIB_RRTYPE_RRSIG) {
+			ret = xfrin_apply_remove_rrsigs(changes,
+			                                chset->remove[i],
+			                                node, &rrset);
+		} else {
+			ret = xfrin_apply_remove_normal(changes,
+			                                chset->remove[i],
+			                                node, &rrset);
+		}
+		
+		if (ret > 0) {
+			continue;
+		} else if (ret != KNOT_EOK) {
+			return ret;
+		}
 
+/*----------------------------------------------------------------------------*/
+/* REMOVE                                                                     */
+/*----------------------------------------------------------------------------*/
+		
 		// now we have the copy of the node, so lets get the right RRSet
 		// check if we do not already have it
-		if (!rrset
-		    || dnslib_dname_compare(dnslib_rrset_owner(rrset),
-		                            dnslib_node_owner(node)) != 0
-		    || dnslib_rrset_type(rrset)
-		       != dnslib_rrset_type(chset->remove[i])) {
-			/*!
-			 * \todo This may happen also with already copied RRSet.
-			 *       In that case it would be an unnecesary overhead
-			 *       but will probably not cause problems. TEST!!
-			 */
-			ret = xfrin_copy_rrset(node,
-				dnslib_rrset_type(chset->remove[i]), &rrset,
-				changes);
-			if (ret > 0) {
-				continue;
-			} else if (ret != KNOT_EOK) {
-				return ret;
-			}
-		}
+//		if (!rrset
+//		    || dnslib_dname_compare(dnslib_rrset_owner(rrset),
+//		                            dnslib_node_owner(node)) != 0
+//		    || dnslib_rrset_type(rrset)
+//		       != dnslib_rrset_type(chset->remove[i])
+//		    || (dnslib_rrset_type(rrset) == DNSLIB_RRTYPE_RRSIG
+//		        && dnslib_rdata_rrsig_type_covered(
+//		                  dnslib_rrset_rdata(rrset))
+//		           != dnslib_rdata_rrsig_type_covered(
+//		                  dnslib_rrset_rdata(chset->remove[i])))) {
+			
+//		}
 
-		if (rrset == NULL) {
-			debug_xfr("RRSet not found for RR to be removed.\n");
-			continue;
-		}
+//		if (rrset == NULL) {
+//			debug_xfr("RRSet not found for RR to be removed.\n");
+//			continue;
+//		}
 
-DEBUG_XFR(
-		char *name = dnslib_dname_to_str(dnslib_rrset_owner(rrset));
-		debug_xfr("Updating RRSet with owner %s, type %s\n", name,
-		          dnslib_rrtype_to_string(dnslib_rrset_type(rrset)));
-		free(name);
-);
+//DEBUG_XFR(
+//		char *name = dnslib_dname_to_str(dnslib_rrset_owner(rrset));
+//		debug_xfr("Updating RRSet with owner %s, type %s\n", name,
+//		          dnslib_rrtype_to_string(dnslib_rrset_type(rrset)));
+//		free(name);
+//);
 
-		dnslib_rdata_t *rdata = xfrin_remove_rdata(rrset,
-		                                           chset->remove[i]);
-		if (rdata == NULL) {
-			debug_xfr("Failed to remove RDATA from RRSet: %s.\n",
-			          dnslib_strerror(ret));
-			continue;
-		}
+//		dnslib_rdata_t *rdata = xfrin_remove_rdata(rrset,
+//		                                           chset->remove[i]);
+//		if (rdata == NULL) {
+//			debug_xfr("Failed to remove RDATA from RRSet: %s.\n",
+//			          dnslib_strerror(ret));
+//			continue;
+//		}
 
-		// if the RRSet is empty, remove from node and add to old RRSets
-		if (dnslib_rrset_rdata(rrset) == NULL) {
-			dnslib_rrset_t *tmp = dnslib_node_remove_rrset(node,
-			                              dnslib_rrset_type(rrset));
-			assert(tmp == rrset);
-			ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
-			                        &changes->old_rrsets_count,
-			                        &changes->old_rrsets_allocated);
-			if (ret != KNOT_EOK) {
-				debug_xfr("Failed to add empty RRSet to the "
-				          "list of old RRSets.");
-				// delete the RRSet right away
-				dnslib_rrset_free(&rrset);
-				return ret;
-			}
+//		// if the RRSet is empty, remove from node and add to old RRSets
+//		if (dnslib_rrset_rdata(rrset) == NULL) {
+//			dnslib_rrset_t *tmp = dnslib_node_remove_rrset(node,
+//			                              dnslib_rrset_type(rrset));
+//			assert(tmp == rrset);
+//			ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
+//			                        &changes->old_rrsets_count,
+//			                        &changes->old_rrsets_allocated);
+//			if (ret != KNOT_EOK) {
+//				debug_xfr("Failed to add empty RRSet to the "
+//				          "list of old RRSets.");
+//				// delete the RRSet right away
+//				dnslib_rrset_free(&rrset);
+//				return ret;
+//			}
 
-			changes->old_rrsets[changes->old_rrsets_count++]
-				= rrset;
-		}
+//			changes->old_rrsets[changes->old_rrsets_count++]
+//				= rrset;
+//		}
 
-		// connect the RDATA to the list of old RDATA
-		rdata->next = changes->old_rdata;
-		changes->old_rdata = rdata;
+//		// connect the RDATA to the list of old RDATA
+//		rdata->next = changes->old_rdata;
+//		changes->old_rdata = rdata;
 	}
 
 	return KNOT_EOK;
@@ -1895,7 +2129,7 @@ DEBUG_XFR(
 			  dnslib_rrtype_to_string(dnslib_rrset_type(rrset)));
 		free(name);
 );
-		ret = xfrin_copy_old_rrset(node, old, &rrset, changes);
+		ret = xfrin_copy_old_rrset(old, &rrset, changes);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
