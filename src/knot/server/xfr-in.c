@@ -2022,7 +2022,7 @@ static void xfrin_check_node_in_tree(dnslib_zone_tree_node_t *tnode, void *data)
 	assert(data != NULL);
 	assert(tnode->node != NULL);
 	
-	UNUSED(data);
+	xfrin_changes_t *changes = (xfrin_changes_t *)data;
 	
 	if (dnslib_node_new_node(tnode->node) == NULL) {
 		// no RRSets were removed from this node, thus it cannot be
@@ -2041,9 +2041,12 @@ static void xfrin_check_node_in_tree(dnslib_zone_tree_node_t *tnode, void *data)
 	if (dnslib_node_rrset_count(node) == 0
 	    && dnslib_node_children(node) == 0
 	    && dnslib_node_children(tnode->node) == 0) {
-		// in this case the new node copy can be deleted right away
-		// (a rollback can no longer be performed)
-		
+		// in this case the new node copy should be removed
+		// but it cannot be deleted because if a rollback happens,
+		// the node must be in the new nodes list
+		// just add it to the old nodes list so that it is deleted
+		// after successful update
+
 		// set the new node of the old node to NULL
 		dnslib_node_set_new_node(tnode->node, NULL);
 		
@@ -2054,8 +2057,16 @@ static void xfrin_check_node_in_tree(dnslib_zone_tree_node_t *tnode, void *data)
 			--node->parent->new_node->children;
 		}
 		
-		// delete the new node copy
-		dnslib_node_free(&node, 1, 0);
+		// put the new node to te list of old nodes
+		if (xfrin_changes_check_nodes(&changes->old_nodes,
+		                              &changes->old_nodes_count,
+		                              &changes->old_nodes_allocated) 
+			!= KNOT_EOK) {
+			/*! \todo Notify about the error!!! */
+			return;
+		}
+		
+		changes->old_nodes[changes->old_nodes_count++] = node;
 		
 		// leave the old node in the old node list, we will delete
 		// it later
@@ -2127,7 +2138,7 @@ static int xfrin_finalize_contents(dnslib_zone_contents_t *contents,
 	
 	// walk through the zone and select nodes to be removed
 	dnslib_zone_tree_reverse_apply_postorder(t, xfrin_check_node_in_tree, 
-	                                         NULL);
+	                                         (void *)changes);
 	
 	// remove the nodes one by one
 	return xfrin_finalize_remove_nodes(contents, changes);
