@@ -1313,6 +1313,56 @@ int dnslib_zone_contents_add_nsec3_rrset(dnslib_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
+dnslib_node_t *dnslib_zone_contents_remove_node(
+	dnslib_zone_contents_t *contents, const dnslib_node_t *node)
+{
+	if (contents == NULL || node == NULL) {
+		return NULL;
+	}
+	
+	const dnslib_dname_t *owner = dnslib_node_owner(node);
+	
+	// 1) remove the node from hash table
+	int ret = ck_remove_item(contents->table, 
+	               (const char *)dnslib_dname_name(owner),
+	               dnslib_dname_size(owner), NULL, 0);
+	if (ret != 0) {
+		return NULL;
+	}
+	
+	// 2) remove the node from the zone tree
+	dnslib_node_t *n = NULL;
+	ret = dnslib_zone_tree_remove(contents->nodes, owner, &n);
+	if (ret != DNSLIB_EOK) {
+		return NULL;
+	}
+	
+	return n;
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnslib_node_t *dnslib_zone_contents_remove_nsec3_node(
+	dnslib_zone_contents_t *contents, const dnslib_node_t *node)
+{
+	if (contents == NULL || node == NULL) {
+		return NULL;
+	}
+	
+	const dnslib_dname_t *owner = dnslib_node_owner(node);
+	dnslib_node_t *n = NULL;
+	
+	// remove the node from the zone tree
+	int ret = dnslib_zone_tree_remove(contents->nsec3_nodes, owner, &n);
+	if (ret != DNSLIB_EOK) {
+		return NULL;
+	}
+	
+	return n;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_zone_contents_create_and_fill_hash_table(
 	dnslib_zone_contents_t *zone)
 {
