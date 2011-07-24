@@ -405,7 +405,8 @@ DEBUG_XFR(
 //					dnslib_packet_free(&packet);
 //					dnslib_node_free(&node, 1);
 //					dnslib_rrset_deep_free(&rr, 1, 1, 1);
-//					return KNOT_ERROR;	/*! \todo Other error */
+//					/*! \todo Other error */
+//					return KNOT_ERROR;	
 //				}
 			}
 
@@ -1718,7 +1719,7 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 	} else {
 		// we should have the right RRSIG RRSet in *rrset
 		assert(dnslib_rrset_type(*rrset) 
-		       != dnslib_rdata_rrsig_type_covered(
+		       == dnslib_rdata_rrsig_type_covered(
 		                 dnslib_rrset_rdata(remove)));
 		// this RRSet should be the already copied RRSet so we may
 		// update it right away
@@ -2062,6 +2063,170 @@ static dnslib_node_t *xfrin_add_new_node(dnslib_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
+static int xfrin_apply_add_normal(xfrin_changes_t *changes,
+                                  dnslib_rrset_t *add,
+                                  dnslib_node_t *node,
+                                  dnslib_rrset_t **rrset)
+{
+	assert(changes != NULL);
+	assert(remove != NULL);
+	assert(node != NULL);
+	assert(rrset != NULL);
+	
+	int ret;
+	
+	if (!*rrset
+	    || dnslib_dname_compare(dnslib_rrset_owner(*rrset),
+	                            dnslib_node_owner(node)) != 0
+	    || dnslib_rrset_type(*rrset)
+	       != dnslib_rrset_type(add)) {
+		*rrset = dnslib_node_remove_rrset(node, dnslib_rrset_type(add));
+	}
+
+	if (*rrset == NULL) {
+		debug_xfr("RRSet to be added not found in zone.\n");
+		// add the RRSet from the changeset to the node
+		/*! \todo What about domain names?? Shouldn't we use the
+		 *        zone-contents' version of this function??
+		 */
+		ret = dnslib_node_add_rrset(node, add, 0);
+		if (ret != DNSLIB_EOK) {
+			debug_xfr("Failed to add RRSet to node.\n");
+			return KNOT_ERROR;
+		}
+		return KNOT_EOK; // done, continue
+	}
+
+	dnslib_rrset_t *old = *rrset;
+
+DEBUG_XFR(
+	char *name = dnslib_dname_to_str(dnslib_rrset_owner(*rrset));
+	debug_xfr("Found RRSet with owner %s, type %s\n", name,
+	          dnslib_rrtype_to_string(dnslib_rrset_type(*rrset)));
+	free(name);
+);
+	ret = xfrin_copy_old_rrset(old, rrset, changes);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// merge the changeset RRSet to the copy
+	/* What if the update fails?
+	 * The changesets will be destroyed - that will destroy 'add',
+	 * and the copied RRSet will be destroyed because it is in the new
+	 * rrsets list.
+	 *
+	 * If the update is successfull, the old RRSet will be destroyed,
+	 * but the one from the changeset will be not!!
+	 *
+	 * TODO: add the 'add' rrset to list of old RRSets?
+	 */
+	ret = dnslib_rrset_merge((void **)rrset, (void **)&add);
+	if (ret != DNSLIB_EOK) {
+		debug_xfr("Failed to merge changeset RRSet to copy.\n");
+		return KNOT_ERROR;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_apply_add_rrsig(xfrin_changes_t *changes,
+                                  dnslib_rrset_t *add,
+                                  dnslib_node_t *node,
+                                  dnslib_rrset_t **rrset)
+{
+	assert(changes != NULL);
+	assert(remove != NULL);
+	assert(node != NULL);
+	assert(rrset != NULL);
+	assert(dnslib_rrset_type(add) == DNSLIB_RRTYPE_RRSIG);
+	
+	int ret;
+	
+	dnslib_rr_type_t type = dnslib_rdata_rrsig_type_covered(
+	                                               dnslib_rrset_rdata(add));
+	
+	if (!*rrset
+	    || dnslib_dname_compare(dnslib_rrset_owner(*rrset),
+	                            dnslib_node_owner(node)) != 0
+	    || dnslib_rrset_type(*rrset) != dnslib_rdata_rrsig_type_covered(
+	                                             dnslib_rrset_rdata(add))) {
+		// copy the rrset
+		ret = xfrin_copy_rrset(node, type, rrset, changes);
+		if (ret < 0) {
+			return ret;
+		}
+	} else {
+		// we should have the right RRSIG RRSet in *rrset
+		assert(dnslib_rrset_type(*rrset) == type);
+		// this RRSet should be the already copied RRSet so we may
+		// update it right away
+	}
+
+	if (*rrset == NULL) {
+		debug_xfr("RRSet to be added not found in zone.\n");
+		
+		// create a new RRSet to add the RRSIGs into
+		*rrset = dnslib_rrset_new(dnslib_node_get_owner(node), type,
+		                          dnslib_rrset_class(add), 
+		                          dnslib_rrset_ttl(add));
+		if (*rrset == NULL) {
+			debug_xfr("Failed to create new RRSet for RRSIGs.\n");
+			return KNOT_ENOMEM;
+		}
+		
+		// add the RRSet from the changeset to the node
+		ret = dnslib_node_add_rrset(node, *rrset, 0);
+		if (ret != DNSLIB_EOK) {
+			debug_xfr("Failed to add RRSet to node.\n");
+			return KNOT_ERROR;
+		}
+	}
+
+DEBUG_XFR(
+		char *name = dnslib_dname_to_str(dnslib_rrset_owner(*rrset));
+		debug_xfr("Found RRSet with owner %s, type %s\n", name,
+			  dnslib_rrtype_to_string(dnslib_rrset_type(*rrset)));
+		free(name);
+);
+
+	if (dnslib_rrset_rrsigs(*rrset) == NULL) {
+		ret = dnslib_rrset_set_rrsigs(*rrset, add);
+		if (ret != DNSLIB_EOK) {
+			debug_xfr("Failed to add RRSIGs to the RRSet.\n");
+			return KNOT_ERROR;
+		}
+		
+		return KNOT_EOK;
+	} else {
+		dnslib_rrset_t *old = dnslib_rrset_get_rrsigs(*rrset);
+		assert(old != NULL);
+		dnslib_rrset_t *rrsig;
+		
+		ret = xfrin_copy_old_rrset(old, &rrsig, changes);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		
+		// replace the old RRSIGs with the new ones
+		dnslib_rrset_set_rrsigs(*rrset, rrsig);
+	
+		// merge the changeset RRSet to the copy
+		/* What if the update fails?
+		 * 
+		 */
+		ret = dnslib_rrset_merge((void **)&rrsig, (void **)&add);
+		if (ret != DNSLIB_EOK) {
+			debug_xfr("Failed to merge changeset RRSet to copy.\n");
+			return KNOT_ERROR;
+		}
+	}
+	
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 static int xfrin_apply_add(dnslib_zone_contents_t *contents,
                            xfrin_changeset_t *chset,
                            xfrin_changes_t *changes)
@@ -2100,46 +2265,17 @@ static int xfrin_apply_add(dnslib_zone_contents_t *contents,
 
 		assert(node != NULL);
 		assert(dnslib_node_is_new(node));
-
-		if (!rrset
-		    || dnslib_dname_compare(dnslib_rrset_owner(rrset),
-		                            dnslib_node_owner(node)) != 0
-		    || dnslib_rrset_type(rrset)
-		       != dnslib_rrset_type(chset->remove[i])) {
-			rrset = dnslib_node_remove_rrset(
-				node, dnslib_rrset_type(chset->add[i]));
+		
+		if (dnslib_rrset_type(chset->add[i]) == DNSLIB_RRTYPE_RRSIG) {
+			ret = xfrin_apply_add_rrsig(changes, chset->add[i],
+			                            node, &rrset);
+		} else {
+			ret = xfrin_apply_add_normal(changes, chset->add[i],
+			                             node, &rrset);
 		}
-
-		if (rrset == NULL) {
-			debug_xfr("RRSet to be added not found in zone.\n");
-			// add the RRSet from the changeset to the node
-			ret = dnslib_node_add_rrset(node, chset->add[i], 0);
-			if (ret != DNSLIB_EOK) {
-				debug_xfr("Failed to add RRSet to node.\n");
-				return KNOT_ERROR;
-			}
-			continue; // done, continue
-		}
-
-		dnslib_rrset_t *old = rrset;
-
-DEBUG_XFR(
-		char *name = dnslib_dname_to_str(dnslib_rrset_owner(rrset));
-		debug_xfr("Found RRSet with owner %s, type %s\n", name,
-			  dnslib_rrtype_to_string(dnslib_rrset_type(rrset)));
-		free(name);
-);
-		ret = xfrin_copy_old_rrset(old, &rrset, changes);
+		
 		if (ret != KNOT_EOK) {
 			return ret;
-		}
-
-		// merge the changeset RRSet to the copy
-		ret = dnslib_rrset_merge((void **)&rrset,
-		                         (void **)&chset->add[i]);
-		if (ret != DNSLIB_EOK) {
-			debug_xfr("Failed to merge changeset RRSet to copy.\n");
-			return KNOT_ERROR;
 		}
 	}
 
