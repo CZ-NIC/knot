@@ -542,7 +542,7 @@ static void find_and_set_wildcard_child(dnslib_zone_t *zone,
 
 	assert(wildcard_parent); /* it *has* to be there */
 
-	wildcard_parent->wildcard_child = node;
+	dnslib_node_set_wildcard_child(wildcard_parent, node);
 }
 
 /*!
