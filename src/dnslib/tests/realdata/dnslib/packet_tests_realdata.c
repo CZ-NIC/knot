@@ -181,7 +181,7 @@ static int check_packet_w_ldns_packet(dnslib_packet_t *packet,
 
 extern dnslib_rrset_t *rrset_from_test_rrset(const test_rrset_t *test_rrset);
 extern dnslib_dname_t *dname_from_test_dname(const test_dname_t *test_dname);
-static dnslib_packet_t *packet_from_test_response(test_response_t *test_packet)
+dnslib_packet_t *packet_from_test_response(test_response_t *test_packet)
 {
 	dnslib_rrset_t *parsed_opt = NULL;
 
@@ -395,7 +395,8 @@ static int packet_tests_run(int argc, char *argv[])
 	const test_data_t *data = data_for_dnslib_tests;
 
 	int res = 0;
-	ok(res = test_packet_parse_from_wire(data->raw_response_list), "packet: from wire");
+	ok(res = test_packet_parse_from_wire(data->raw_response_list),
+	   "packet: from wire");
 	skip(!res, 1);
 	ok(test_packet_to_wire(data->raw_response_list), "packet: to wire");
 	endskip;
