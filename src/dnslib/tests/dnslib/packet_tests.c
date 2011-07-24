@@ -396,7 +396,7 @@ static int packet_tests_run(int argc, char *argv[])
 {
 	int res = 0;
 	ok(res = test_packet_new(), "packet: new");
-	skip(!res, 6);
+	skip(!res, 20);
 	ok(test_packet_parse_rest(), "packet: parse rest");
 	ok(test_packet_parse_from_wire(), "packet: parse from wire");
 	ok(test_packet_parse_next_rr_answer(), "packet: parse next rr answer");
