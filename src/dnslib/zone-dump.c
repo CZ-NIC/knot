@@ -1805,11 +1805,11 @@ static inline int fwrite_wrapper_safe(const void *src,
 	return rc == n;
 }
 
-static void dump_dname_from_tree(struct dname_table_node *node,
+static void dump_dname_from_tree(dnslib_dname_t *dname,
 				 void *data)
 {
 	FILE *f = (FILE *)data;
-	dump_dname_with_id(node->dname, f);
+	dump_dname_with_id(dname, f);
 }
 
 static int dnslib_dump_dname_table(const dnslib_dname_table_t *dname_table,

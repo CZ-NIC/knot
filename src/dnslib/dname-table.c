@@ -9,6 +9,20 @@
 /*!< Tree functions. */
 TREE_DEFINE(dname_table_node, avl);
 
+struct dnslib_dname_table_fnc_data {
+	void (*func)(dnslib_dname_t *dname, void *data);
+	void *data;
+};
+
+static void dnslib_dname_table_apply(struct dname_table_node *node, void *data)
+{
+	assert(data != NULL);
+	assert(node != NULL);
+	struct dnslib_dname_table_fnc_data *d =
+			(struct dnslib_dname_table_fnc_data *)data;
+	d->func(node->dname, d->data);
+}
+
 /*!
  * \brief Comparison function to be used with tree.
  *
@@ -231,11 +245,15 @@ void dnslib_dname_table_deep_free(dnslib_dname_table_t **table)
 }
 
 void dnslib_dname_table_tree_inorder_apply(const dnslib_dname_table_t *table,
-            void (*applied_function)(struct dname_table_node *node,
+            void (*applied_function)(dnslib_dname_t *node,
                                      void *data),
             void *data)
 {
+	struct dnslib_dname_table_fnc_data d;
+	d.data = data;
+	d.func = applied_function;
+
 	TREE_FORWARD_APPLY(table->tree, dname_table_node, avl,
-	                   applied_function, data);
+	                   dnslib_dname_table_apply, &d);
 }
 

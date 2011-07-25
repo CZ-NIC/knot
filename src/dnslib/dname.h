@@ -183,6 +183,8 @@ uint8_t dnslib_dname_size_part(const dnslib_dname_t *dname, int labels);
  */
 const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname);
 
+struct dnslib_node *dnslib_dname_get_node(dnslib_dname_t *dname);
+
 void dnslib_dname_set_node(dnslib_dname_t *dname, struct dnslib_node *node);
 
 /*!

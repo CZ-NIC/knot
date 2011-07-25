@@ -627,6 +627,13 @@ const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname)
 
 /*----------------------------------------------------------------------------*/
 
+struct dnslib_node *dnslib_dname_get_node(dnslib_dname_t *dname)
+{
+	return dname->node;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void dnslib_dname_set_node(dnslib_dname_t *dname, dnslib_node_t *node)
 {
 	dname->node = node;

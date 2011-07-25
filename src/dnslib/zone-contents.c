@@ -2014,6 +2014,23 @@ dnslib_zone_tree_t *dnslib_zone_contents_get_nsec3_nodes(
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_zone_contents_dname_table_apply(dnslib_zone_contents_t *contents,
+                                           void (*function)(dnslib_dname_t *,
+                                                            void *),
+                                           void *data)
+{
+	if (contents == NULL || function == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
+	dnslib_dname_table_tree_inorder_apply(contents->dname_table,
+	                                      function, data);
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_zone_contents_shallow_copy(const dnslib_zone_contents_t *from,
                              dnslib_zone_contents_t **to)
 {
