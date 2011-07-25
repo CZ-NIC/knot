@@ -84,7 +84,7 @@ static int test_dname_create()
 	if (dname == NULL
 	    || dnslib_dname_name(dname) != NULL
 	    || dnslib_dname_size(dname) != 0
-	    || dnslib_dname_node(dname) != NULL) {
+	    || dnslib_dname_node(dname, 0) != NULL) {
 		diag("New domain name not initialized properly!");
 		return 0;
 	}
@@ -144,10 +144,10 @@ static int check_domain_name(const dnslib_dname_t *dname,
 	}
 
 	if (check_node) {
-		if (dnslib_dname_node(dname) != NODE_ADDRESS) {
+		if (dnslib_dname_node(dname, 0) != NODE_ADDRESS) {
 			diag("Node pointer in the created domain name is wrong:"
 			     "%p (should be %p)",
-			     dnslib_dname_node(dname), NODE_ADDRESS);
+			     dnslib_dname_node(dname, 0), NODE_ADDRESS);
 			++errors;
 		}
 	}
@@ -690,7 +690,7 @@ static int test_dname_node(dnslib_dname_t **dnames_fqdn,
 
 	for (int i = 0; i < TEST_DOMAINS_OK; i++) {
 		const dnslib_node_t *tmp_node;
-		if ((tmp_node = dnslib_dname_node(dnames_fqdn[i])) !=
+		if ((tmp_node = dnslib_dname_node(dnames_fqdn[i], 0)) !=
 		    NODE_ADDRESS) {
 			diag("Got bad node value from structure: "
 			     "%p, should be: %p",
@@ -701,7 +701,7 @@ static int test_dname_node(dnslib_dname_t **dnames_fqdn,
 
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
 		const dnslib_node_t *tmp_node;
-		if ((tmp_node = dnslib_dname_node(dnames_non_fqdn[i])) !=
+		if ((tmp_node = dnslib_dname_node(dnames_non_fqdn[i], 0)) !=
 		    NODE_ADDRESS) {
 			diag("Got bad node value from structure: "
 			     "%s, should be: %s",

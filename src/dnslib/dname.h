@@ -181,9 +181,11 @@ uint8_t dnslib_dname_size_part(const dnslib_dname_t *dname, int labels);
  *
  * \return Zone node the domain name belongs to or NULL if none.
  */
-const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname);
+const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname,
+                                            int check_version);
 
-struct dnslib_node *dnslib_dname_get_node(dnslib_dname_t *dname);
+struct dnslib_node *dnslib_dname_get_node(dnslib_dname_t *dname,
+                                          int check_version);
 
 void dnslib_dname_set_node(dnslib_dname_t *dname, struct dnslib_node *node);
 

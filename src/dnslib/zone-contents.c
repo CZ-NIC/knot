@@ -323,7 +323,7 @@ DEBUG_DNSLIB_ZONE(
 //	}
 
 	// assure that owner has proper node
-	if (dnslib_dname_node(dnslib_node_owner(node)) == NULL) {
+	if (dnslib_dname_node(dnslib_node_owner(node), 0) == NULL) {
 		dnslib_dname_set_node(dnslib_node_get_owner(node), node);
 		dnslib_dname_set_node(dnslib_node_get_owner(node), node);
 	}

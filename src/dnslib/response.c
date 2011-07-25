@@ -635,10 +635,10 @@ DEBUG_DNSLIB_RESPONSE(
 //		debug_dnslib_response("Saving..\n");
 		dnslib_response_compr_save(table, to_save, parent_pos);
 
-		to_save = (dnslib_dname_node(to_save) != NULL
-		      && dnslib_node_parent(dnslib_dname_node(to_save), 1)
+		to_save = (dnslib_dname_node(to_save, 1) != NULL
+		      && dnslib_node_parent(dnslib_dname_node(to_save, 1), 1)
 		         != NULL) ? dnslib_node_owner(dnslib_node_parent(
-		                      dnslib_dname_node(to_save), 1))
+		                      dnslib_dname_node(to_save, 1), 1))
 		                  : NULL;
 
 		debug_dnslib_response("i: %d\n", i);
@@ -791,18 +791,22 @@ DEBUG_DNSLIB_RESPONSE(
 		}
 #else
 		// if case-sensitive comparation, we cannot just take the parent
-		if (compr_cs || dnslib_dname_node(to_find) == NULL
-		    || dnslib_node_owner(dnslib_dname_node(to_find)) != to_find
-		    || dnslib_node_parent(dnslib_dname_node(to_find), 1)
+		if (compr_cs || dnslib_dname_node(to_find, 1) == NULL
+		    || dnslib_node_owner(dnslib_dname_node(to_find, 1))
+		       != to_find
+		    || dnslib_node_parent(dnslib_dname_node(to_find, 1), 1)
 		       == NULL) {
 			break;
 		} else {
 			assert(dnslib_dname_node(to_find) != 
-			       dnslib_node_parent(dnslib_dname_node(to_find), 1));
+			       dnslib_node_parent(dnslib_dname_node(to_find, 1),
+			                          1));
 			assert(to_find != dnslib_node_owner(
-			       dnslib_node_parent(dnslib_dname_node(to_find), 1)));
+			       dnslib_node_parent(dnslib_dname_node(to_find, 1),
+			                          1)));
 			to_find = dnslib_node_owner(
-				dnslib_node_parent(dnslib_dname_node(to_find), 1));
+				dnslib_node_parent(dnslib_dname_node(to_find,
+				                   1), 1));
 		}
 #endif
 	}

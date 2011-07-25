@@ -464,6 +464,33 @@ void dnslib_node_set_wildcard_child(dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
+const dnslib_node_t *dnslib_node_current(const dnslib_node_t *node)
+{
+	return dnslib_node_get_current(node);
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnslib_node_t *dnslib_node_get_current(dnslib_node_t *node)
+{
+	if (node == NULL || node->zone == NULL
+	    || dnslib_zone_contents(node->zone) == NULL) {
+		return node;
+	}
+
+	short ver = dnslib_node_zone_generation(node);
+
+	if (ver == 0 && dnslib_node_is_new(node)) {
+		return NULL;
+	} else if (ver != 0 && dnslib_node_is_old(node)) {
+		assert(node->new_node != NULL);
+		return node->new_node;
+	}
+	return node;
+}
+
+/*----------------------------------------------------------------------------*/
+
 const dnslib_node_t *dnslib_node_new_node(const dnslib_node_t *node)
 {
 	return node->new_node;

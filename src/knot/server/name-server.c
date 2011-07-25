@@ -292,7 +292,7 @@ DEBUG_NS(
 		const dnslib_dname_t *cname = dnslib_rdata_cname_name(
 				dnslib_rrset_rdata(rrset));
 		// change the node to the node of that name
-		(*node) = dnslib_dname_node(cname);
+		(*node) = dnslib_dname_node(cname, 1);
 //		// it is not an old node and if yes, skip it
 //		if (dnslib_node_is_old(*node)) {
 //			*node = dnslib_node_new_node(*node);
@@ -452,7 +452,7 @@ static void ns_put_additional_for_rrset(dnslib_packet_t *resp,
 		dname = dnslib_rdata_get_name(rdata,
 		                              dnslib_rrset_type(rrset));
 		assert(dname != NULL);
-		node = dnslib_dname_node(dname);
+		node = dnslib_dname_node(dname, 1);
 //		// check if the node is not old and if yes, take the new one
 //		if (dnslib_node_is_old(node)) {
 //			node = dnslib_node_new_node(node);
