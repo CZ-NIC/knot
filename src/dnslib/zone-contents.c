@@ -757,6 +757,7 @@ dnslib_zone_contents_t *dnslib_zone_contents_new(dnslib_node_t *apex,
 
 	contents->apex = apex;
 	contents->zone = zone;
+	dnslib_node_set_zone(apex, zone);
 
 	debug_dnslib_zone("Creating tree for normal nodes.\n");
 	contents->nodes = malloc(sizeof(dnslib_zone_tree_t));

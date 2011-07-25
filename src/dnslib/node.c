@@ -459,7 +459,7 @@ void dnslib_node_set_wildcard_child(dnslib_node_t *node,
                                     dnslib_node_t *wildcard_child)
 {
 	node->wildcard_child = wildcard_child;
-	assert(wildcard_child->parent == node);
+//	assert(wildcard_child->parent == node);
 }
 
 /*----------------------------------------------------------------------------*/
