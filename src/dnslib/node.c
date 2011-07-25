@@ -148,6 +148,16 @@ static int compare_rrset_types(void *key1, void *key2)
 }
 
 /*----------------------------------------------------------------------------*/
+
+static short dnslib_node_zone_generation(const dnslib_node_t *node)
+{
+	assert(node->zone != NULL);
+	dnslib_zone_contents_t *cont = rcu_dereference(node->zone->contents);
+	assert(cont != NULL);
+	return cont->generation;
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -276,12 +286,12 @@ const dnslib_node_t *dnslib_node_parent(const dnslib_node_t *node,
                                         int check_version)
 {
 	assert(!check_version 
-	       || (node->version != NULL && *node->version != NULL));
+	       || (node->zone != NULL && node->zone->contents != NULL));
 	
 	dnslib_node_t *parent = node->parent;
 	
 	if (check_version) {
-		int ver = rcu_dereference(*node->version);
+		short ver = dnslib_node_zone_generation(node);
 	
 		assert(ver != 0 || parent == NULL 
 		       || !dnslib_node_is_new(parent));
@@ -334,12 +344,12 @@ dnslib_node_t *dnslib_node_get_previous(const dnslib_node_t *node,
                                         int check_version)
 {
 	assert(!check_version 
-	       || (node->version != NULL && *node->version != NULL));
+	       || (node->zone != NULL && node->zone->contents != NULL));
 	
 	dnslib_node_t *prev = node->prev;
 	
 	if (check_version && prev != NULL) {
-		int ver = rcu_dereference(*node->version);
+		short ver = dnslib_node_zone_generation(node);
 		
 		if (ver == 0) {  // we want old node
 			while (dnslib_node_is_new(prev)) {
@@ -382,18 +392,17 @@ void dnslib_node_set_previous(dnslib_node_t *node, dnslib_node_t *prev)
 const dnslib_node_t *dnslib_node_nsec3_node(const dnslib_node_t *node, 
                                             int check_version)
 {
-	int ver = rcu_dereference(*node->version);
-	
 	dnslib_node_t *nsec3_node = node->nsec3_node;
 	if (nsec3_node == NULL) {
 		return NULL;
 	}
 	
-	assert(!check_version 
-	       || ver != 0 || !dnslib_node_is_new(nsec3_node));
-	
-	if (check_version && ver != 0 && dnslib_node_is_old(nsec3_node)) {
-		nsec3_node = nsec3_node->new_node;
+	if (check_version) {
+		short ver = dnslib_node_zone_generation(node);
+		assert(ver != 0 || !dnslib_node_is_new(nsec3_node));
+		if (ver != 0 && dnslib_node_is_old(nsec3_node)) {
+			nsec3_node = nsec3_node->new_node;
+		}
 	}
 	
 	return nsec3_node;
@@ -428,11 +437,11 @@ dnslib_dname_t *dnslib_node_get_owner(const dnslib_node_t *node)
 const dnslib_node_t *dnslib_node_wildcard_child(const dnslib_node_t *node, 
                                                 int check_version)
 {
-	int ver = rcu_dereference(*node->version);
-	
 	dnslib_node_t *w = node->wildcard_child;
 	
 	if (check_version && w != 0) {
+		short ver = dnslib_node_zone_generation(node);
+
 		if (ver == 0 && dnslib_node_is_new(w)) {
 			return NULL;
 		} else if (ver != 0 && dnslib_node_is_old(w)) {
@@ -473,6 +482,13 @@ void dnslib_node_set_new_node(dnslib_node_t *node,
                               dnslib_node_t *new_node)
 {
 	node->new_node = new_node;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_node_set_zone(dnslib_node_t *node, dnslib_zone_t *zone)
+{
+	node->zone = zone;
 }
 
 /*----------------------------------------------------------------------------*/
