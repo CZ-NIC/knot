@@ -181,6 +181,27 @@ int check_packet_w_ldns_packet(dnslib_packet_t *packet,
 
 extern dnslib_rrset_t *rrset_from_test_rrset(const test_rrset_t *test_rrset);
 extern dnslib_dname_t *dname_from_test_dname(const test_dname_t *test_dname);
+
+/* Converts dnslib_rrset_t to dnslib_opt_rr */
+static dnslib_opt_rr_t *opt_rrset_to_opt_rr(dnslib_rrset_t *rrset)
+{
+	if (rrset == NULL) {
+		return NULL;
+	}
+
+	dnslib_opt_rr_t *opt_rr = dnslib_edns_new();
+
+	assert(opt_rr);
+
+	dnslib_edns_set_payload(opt_rr, rrset->rclass);
+
+	dnslib_edns_set_ext_rcode(opt_rr, rrset->ttl);
+
+	/* TODO rdata? mostly empty, I guess, but should be done */
+
+	return opt_rr;
+}
+
 dnslib_packet_t *packet_from_test_response(test_response_t *test_packet)
 {
 	dnslib_rrset_t *parsed_opt = NULL;

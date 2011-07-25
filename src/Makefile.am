@@ -76,6 +76,7 @@ unittests_dnslib_realdata_SOURCES =			\
 	dnslib/tests/realdata/dnslib/node_tests_realdata.c	\
 	dnslib/tests/realdata/dnslib/rdata_tests_realdata.c	\
 	dnslib/tests/realdata/dnslib/response_tests_realdata.c	\
+	dnslib/tests/realdata/dnslib/response2_tests_realdata.c	\
 	dnslib/tests/realdata/dnslib/rrset_tests_realdata.c	\
 	dnslib/tests/realdata/dnslib/zone_tests_realdata.c	\
 	dnslib/tests/realdata/dnslib/zonedb_tests_realdata.c	\
