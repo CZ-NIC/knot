@@ -641,6 +641,13 @@ void dnslib_dname_set_node(dnslib_dname_t *dname, dnslib_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
+void dnslib_dname_update_node(dnslib_dname_t *dname)
+{
+	dnslib_node_update_ref(&dname->node);
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_dname_is_fqdn(const dnslib_dname_t *dname)
 {
 	return (dname->name[dname->size - 1] == '\0');

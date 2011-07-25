@@ -187,6 +187,8 @@ struct dnslib_node *dnslib_dname_get_node(dnslib_dname_t *dname);
 
 void dnslib_dname_set_node(dnslib_dname_t *dname, struct dnslib_node *node);
 
+void dnslib_dname_update_node(dnslib_dname_t *dname);
+
 /*!
  * \brief Checks if the given domain name is a fully-qualified domain name.
  *

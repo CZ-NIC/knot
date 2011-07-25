@@ -299,6 +299,8 @@ void dnslib_node_set_new_node(dnslib_node_t *node,
 
 void dnslib_node_set_zone(dnslib_node_t *node, struct dnslib_zone *zone);
 
+void dnslib_node_update_ref(dnslib_node_t **ref);
+
 void dnslib_node_update_refs(dnslib_node_t *node);
 
 /*!
