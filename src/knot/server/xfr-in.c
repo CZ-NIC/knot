@@ -2482,10 +2482,7 @@ static void xfrin_fix_refs_in_node(dnslib_zone_tree_node_t *tnode, void *data)
 static void xfrin_fix_dname_refs(dnslib_dname_t *dname, void *data)
 {
 	UNUSED(data);
-	if (dnslib_node_is_old(dnslib_dname_node(dname))) {
-		dnslib_dname_set_node(dname, dnslib_node_get_new_node(
-		                      dnslib_dname_get_node(dname)));
-	}
+	dnslib_dname_update_node(dname);
 }
 
 /*----------------------------------------------------------------------------*/

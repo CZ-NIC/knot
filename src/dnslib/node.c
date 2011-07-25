@@ -493,46 +493,61 @@ void dnslib_node_set_zone(dnslib_node_t *node, dnslib_zone_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
+void dnslib_node_update_ref(dnslib_node_t **ref)
+{
+	if (*ref != NULL && dnslib_node_is_old(*ref)) {
+		*ref = (*ref)->new_node;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 void dnslib_node_update_refs(dnslib_node_t *node)
 {
 	// reference to previous node
-	if (node->prev && dnslib_node_is_old(node->prev)) {
-		assert(node->prev->new_node != NULL);
-		node->prev = node->prev->new_node;
-	}
+	dnslib_node_update_ref(&node->prev);
+//	if (node->prev && dnslib_node_is_old(node->prev)) {
+//		assert(node->prev->new_node != NULL);
+//		node->prev = node->prev->new_node;
+//	}
 
 	// reference to next node
-	if (node->next && dnslib_node_is_old(node->next)) {
-		assert(node->next->new_node != NULL);
-		node->next = node->next->new_node;
-	}
+	dnslib_node_update_ref(&node->next);
+//	if (node->next && dnslib_node_is_old(node->next)) {
+//		assert(node->next->new_node != NULL);
+//		node->next = node->next->new_node;
+//	}
 
 	// reference to parent
-	if (node->parent && dnslib_node_is_old(node->parent)) {
-		assert(node->parent->new_node != NULL);
-		// do not use the API function to set parent, so that children count 
-		// is not changed
-		//dnslib_node_set_parent(node, node->parent->new_node);
-		node->parent = node->parent->new_node;
-	}
+//	if (node->parent && dnslib_node_is_old(node->parent)) {
+//		assert(node->parent->new_node != NULL);
+//		// do not use the API function to set parent, so that children count
+//		// is not changed
+//		//dnslib_node_set_parent(node, node->parent->new_node);
+//		node->parent = node->parent->new_node;
+//	}
+	dnslib_node_update_ref(&node->parent);
 
 	// reference to wildcard child
-	if (node->wildcard_child && dnslib_node_is_old(node->wildcard_child)) {
-		assert(node->wildcard_child->new_node != NULL);
-		node->wildcard_child = node->wildcard_child->new_node;
-	}
+	dnslib_node_update_ref(&node->wildcard_child);
+//	if (node->wildcard_child && dnslib_node_is_old(node->wildcard_child)) {
+//		assert(node->wildcard_child->new_node != NULL);
+//		node->wildcard_child = node->wildcard_child->new_node;
+//	}
 
 	// reference to NSEC3 node
-	if (node->nsec3_node && dnslib_node_is_old(node->nsec3_node)) {
-		assert(node->nsec3_node->new_node != NULL);
-		node->nsec3_node = node->nsec3_node->new_node;
-	}
+	dnslib_node_update_ref(&node->nsec3_node);
+//	if (node->nsec3_node && dnslib_node_is_old(node->nsec3_node)) {
+//		assert(node->nsec3_node->new_node != NULL);
+//		node->nsec3_node = node->nsec3_node->new_node;
+//	}
 
 	// reference to NSEC3 referrer
-	if (node->nsec3_referer && dnslib_node_is_old(node->nsec3_referer)) {
-		assert(node->nsec3_referer->new_node != NULL);
-		node->nsec3_referer = node->nsec3_referer->new_node;
-	}
+	dnslib_node_update_ref(&node->nsec3_referer);
+//	if (node->nsec3_referer && dnslib_node_is_old(node->nsec3_referer)) {
+//		assert(node->nsec3_referer->new_node != NULL);
+//		node->nsec3_referer = node->nsec3_referer->new_node;
+//	}
 }
 
 /*----------------------------------------------------------------------------*/
