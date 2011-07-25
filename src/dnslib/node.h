@@ -290,6 +290,10 @@ const dnslib_node_t *dnslib_node_wildcard_child(const dnslib_node_t *node,
 void dnslib_node_set_wildcard_child(dnslib_node_t *node,
                                     dnslib_node_t *wildcard_child);
 
+const dnslib_node_t *dnslib_node_current(const dnslib_node_t *node);
+
+dnslib_node_t *dnslib_node_get_current(dnslib_node_t *node);
+
 const dnslib_node_t *dnslib_node_new_node(const dnslib_node_t *node);
 
 dnslib_node_t *dnslib_node_get_new_node(const dnslib_node_t *node);
