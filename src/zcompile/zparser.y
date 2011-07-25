@@ -1339,7 +1339,7 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 							      name->size,
 							      NULL);
 			    name = dnslib_dname_cat(tmpd,
-				    dnslib_node_parent(parser->origin)->owner);
+				    dnslib_node_parent(parser->origin, 0)->owner);
 			}
 
 			free($1.str);

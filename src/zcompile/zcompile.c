@@ -1820,7 +1820,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	//assert(origin_node->next == NULL);
 
-	assert(dnslib_node_parent(origin_node) == NULL);
+	assert(dnslib_node_parent(origin_node, 0) == NULL);
 
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
 		strerror_r(errno, ebuf, sizeof(ebuf));

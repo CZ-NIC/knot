@@ -462,7 +462,7 @@ static void ns_put_additional_for_rrset(dnslib_packet_t *resp,
 			// the stored node should be the closest encloser
 			assert(dnslib_dname_is_subdomain(dname, node->owner));
 			// try the wildcard child, if any
-			node = dnslib_node_wildcard_child(node);
+			node = dnslib_node_wildcard_child(node, 1);
 //			// this should not be old node!!
 //			assert(!dnslib_node_is_old(node));
 		}
@@ -765,10 +765,10 @@ DEBUG_NS(
 	 */
 	const dnslib_node_t *nsec3_node = NULL;
 	const dnslib_dname_t *next_closer = NULL;
-	while ((nsec3_node = dnslib_node_nsec3_node((*closest_encloser)))
+	while ((nsec3_node = dnslib_node_nsec3_node((*closest_encloser), 1))
 	       == NULL) {
 		next_closer = dnslib_node_owner((*closest_encloser));
-		*closest_encloser = dnslib_node_parent(*closest_encloser);
+		*closest_encloser = dnslib_node_parent(*closest_encloser, 1);
 		assert(*closest_encloser != NULL);
 	}
 	
@@ -917,7 +917,7 @@ static void ns_put_nsec_nsec3_nodata(const dnslib_node_t *node,
 		return;
 	}
 
-	const dnslib_node_t *nsec3_node = dnslib_node_nsec3_node(node);
+	const dnslib_node_t *nsec3_node = dnslib_node_nsec3_node(node, 1);
 	const dnslib_rrset_t *rrset = NULL;
 	if ((rrset = dnslib_node_rrset(node, DNSLIB_RRTYPE_NSEC)) != NULL
 	    || (nsec3_node != NULL && (rrset =
@@ -994,7 +994,7 @@ static int ns_put_nsec_nxdomain(const dnslib_dname_t *qname,
 		debug_ns("Previous node: %s\n",
 		    dnslib_dname_to_str(dnslib_node_owner(prev_new)));
 		assert(prev_new != dnslib_zone_apex(zone));
-		prev_new = dnslib_node_previous(prev_new);
+		prev_new = dnslib_node_previous(prev_new, 1);
 	}
 	assert(dnslib_dname_compare(dnslib_node_owner(prev_new),
 	                            wildcard) < 0);
@@ -1211,7 +1211,7 @@ static int ns_put_nsec_nsec3_wildcard_nodata(const dnslib_node_t *node,
 
 			const dnslib_node_t *nsec3_node;
 			if (ret == 0
-			    && (nsec3_node = dnslib_node_nsec3_node(node))
+			    && (nsec3_node = dnslib_node_nsec3_node(node, 1))
 			        != NULL) {
 				ns_put_nsec3_from_node(nsec3_node, resp);
 			}
@@ -1286,8 +1286,8 @@ static inline int ns_referral(const dnslib_node_t *node,
 	debug_ns("Referral response.\n");
 
 	while (!dnslib_node_is_deleg_point(node)) {
-		assert(dnslib_node_parent(node) != NULL);
-		node = dnslib_node_parent(node);
+		assert(dnslib_node_parent(node, 1) != NULL);
+		node = dnslib_node_parent(node, 1);
 	}
 
 	const dnslib_rrset_t *rrset = dnslib_node_rrset(node, DNSLIB_RRTYPE_NS);
@@ -1316,7 +1316,7 @@ static inline int ns_referral(const dnslib_node_t *node,
 		} else {
 			// no DS, add NSEC3
 			const dnslib_node_t *nsec3_node =
-				dnslib_node_nsec3_node(node);
+				dnslib_node_nsec3_node(node, 1);
 			debug_ns("There is no DS, putting NSEC3s...\n");
 			if (nsec3_node != NULL) {
 				debug_ns("Putting NSEC3s from the node.\n");
@@ -1379,7 +1379,7 @@ static int ns_answer_from_node(const dnslib_node_t *node,
 			// node is an empty non-terminal => NSEC for NXDOMAIN
 			//assert(dnslib_node_rrset_count(closest_encloser) > 0);
 			ret = ns_put_nsec_nsec3_nxdomain(zone,
-				dnslib_node_previous(node), closest_encloser,
+				dnslib_node_previous(node, 1), closest_encloser,
 				qname, resp);
 		} else {
 			ns_put_nsec_nsec3_nodata(node, resp);
@@ -1640,7 +1640,7 @@ have_node:
 		}
 		// else check for a wildcard child
 		const dnslib_node_t *wildcard_node =
-			dnslib_node_wildcard_child(closest_encloser);
+			dnslib_node_wildcard_child(closest_encloser, 1);
 
 		if (wildcard_node == NULL) {
 			debug_ns("No wildcard node. (cname: %d)\n",

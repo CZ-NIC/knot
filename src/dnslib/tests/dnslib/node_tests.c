@@ -174,7 +174,7 @@ static int test_node_get_parent()
 
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
 		rrset = &rrsets[i];
-		if (dnslib_node_parent(nodes[i]) != test_nodes[i].parent) {
+		if (dnslib_node_parent(nodes[i], 0) != test_nodes[i].parent) {
 			errors++;
 			diag("Failed to get proper parent from node");
 		}
