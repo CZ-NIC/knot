@@ -270,9 +270,28 @@ const dnslib_rrset_t **dnslib_node_rrsets(const dnslib_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_node_parent(const dnslib_node_t *node)
+const dnslib_node_t *dnslib_node_parent(const dnslib_node_t *node, 
+                                        int check_version)
 {
-	return node->parent;
+	assert(!check_version 
+	       || (node->version != NULL && *node->version != NULL));
+	
+	dnslib_node_t *parent = node->parent;
+	
+	if (check_version) {
+		int ver = rcu_dereference(*node->version);
+	
+		assert(ver != 0 || parent == NULL 
+		       || !dnslib_node_is_new(parent));
+		
+		if (ver != 0 && parent != NULL) {
+			// we want the new node
+			assert(node->parent->new_node != NULL);
+			parent = parent->new_node;
+		}
+	}
+	
+	return parent;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -301,16 +320,43 @@ unsigned int dnslib_node_children(const dnslib_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_node_previous(const dnslib_node_t *node)
+const dnslib_node_t *dnslib_node_previous(const dnslib_node_t *node, 
+                                          int check_version)
 {
-	return node->prev;
+	return dnslib_node_get_previous(node, check_version);
 }
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_node_t *dnslib_node_get_previous(const dnslib_node_t *node)
+dnslib_node_t *dnslib_node_get_previous(const dnslib_node_t *node, 
+                                        int check_version)
 {
-	return node->prev;
+	assert(!check_version 
+	       || (node->version != NULL && *node->version != NULL));
+	
+	dnslib_node_t *prev = node->prev;
+	
+	if (check_version && prev != NULL) {
+		int ver = rcu_dereference(*node->version);
+		
+		if (ver == 0) {  // we want old node
+			while (dnslib_node_is_new(prev)) {
+				prev = prev->prev;
+			}
+			assert(!dnslib_node_is_new(prev));
+		} else {  // we want new node
+			while (dnslib_node_is_old(prev)) {
+				if (prev->new_node) {
+					prev = prev->new_node;
+				} else {
+					prev = prev;
+				}
+			}
+			assert(dnslib_node_is_new(prev));
+		}
+	}
+	
+	return prev;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -331,9 +377,24 @@ void dnslib_node_set_previous(dnslib_node_t *node, dnslib_node_t *prev)
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_node_nsec3_node(const dnslib_node_t *node)
+const dnslib_node_t *dnslib_node_nsec3_node(const dnslib_node_t *node, 
+                                            int check_version)
 {
-	return node->nsec3_node;
+	int ver = rcu_dereference(*node->version);
+	
+	dnslib_node_t *nsec3_node = node->nsec3_node;
+	if (nsec3_node == NULL) {
+		return NULL;
+	}
+	
+	assert(!check_version 
+	       || ver != 0 || !dnslib_node_is_new(nsec3_node));
+	
+	if (check_version && ver != 0 && dnslib_node_is_old(nsec3_node)) {
+		nsec3_node = nsec3_node->new_node;
+	}
+	
+	return nsec3_node;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -362,9 +423,23 @@ dnslib_dname_t *dnslib_node_get_owner(const dnslib_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_node_wildcard_child(const dnslib_node_t *node)
+const dnslib_node_t *dnslib_node_wildcard_child(const dnslib_node_t *node, 
+                                                int check_version)
 {
-	return node->wildcard_child;
+	int ver = rcu_dereference(*node->version);
+	
+	dnslib_node_t *w = node->wildcard_child;
+	
+	if (check_version && w != 0) {
+		if (ver == 0 && dnslib_node_is_new(w)) {
+			return NULL;
+		} else if (ver != 0 && dnslib_node_is_old(w)) {
+			assert(w->new_node != NULL);
+			w = w->new_node;
+		}
+	}
+	
+	return w;
 }
 
 /*----------------------------------------------------------------------------*/
