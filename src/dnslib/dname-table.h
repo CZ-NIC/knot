@@ -131,7 +131,7 @@ void dnslib_dname_table_deep_free(dnslib_dname_table_t **table);
  * \param data Data to be passed to processing function.
  */
 void dnslib_dname_table_tree_inorder_apply(const dnslib_dname_table_t *table,
-            void (*applied_function)(struct dname_table_node *node,
+            void (*applied_function)(dnslib_dname_t *dname,
                                      void *data),
             void *data);
 
