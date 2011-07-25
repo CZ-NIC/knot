@@ -292,15 +292,15 @@ DEBUG_DNSLIB_ZONE(
 	dnslib_zone_contents_adjust_rrsets(node, zone);
 
 DEBUG_DNSLIB_ZONE(
-	if (dnslib_node_parent(node)) {
+	if (dnslib_node_parent(node, 1)) {
 		char *name = dnslib_dname_to_str(dnslib_node_owner(
-				dnslib_node_parent(node)));
+				dnslib_node_parent(node, 1)));
 		debug_dnslib_zone("Parent: %s\n", name);
 		debug_dnslib_zone("Parent is delegation point: %s\n",
-		       dnslib_node_is_deleg_point(dnslib_node_parent(node)) 
+		       dnslib_node_is_deleg_point(dnslib_node_parent(node, 1))
 		       ? "yes" : "no");
 		debug_dnslib_zone("Parent is non-authoritative: %s\n",
-		       dnslib_node_is_non_auth(dnslib_node_parent(node)) 
+		       dnslib_node_is_non_auth(dnslib_node_parent(node, 1))
 		       ? "yes" : "no");
 		free(name);
 	} else {
@@ -308,9 +308,9 @@ DEBUG_DNSLIB_ZONE(
 	}
 );
 	// delegation point / non-authoritative node
-	if (dnslib_node_parent(node)
-	    && (dnslib_node_is_deleg_point(dnslib_node_parent(node))
-		|| dnslib_node_is_non_auth(dnslib_node_parent(node)))) {
+	if (dnslib_node_parent(node, 1)
+	    && (dnslib_node_is_deleg_point(dnslib_node_parent(node, 1))
+		|| dnslib_node_is_non_auth(dnslib_node_parent(node, 1)))) {
 		dnslib_node_set_non_auth(node);
 	} else if (dnslib_node_rrset(node, DNSLIB_RRTYPE_NS) != NULL
 		   && node != zone->apex) {
@@ -573,12 +573,12 @@ static int dnslib_zone_contents_find_in_tree(dnslib_zone_tree_t *tree,
 		// set the previous node of the found node
 		assert(exact_match);
 		assert(found != NULL);
-		*previous = dnslib_node_get_previous(found);
+		*previous = dnslib_node_get_previous(found, 1);
 	} else {
 		// otherwise check if the previous node is not an empty
 		// non-terminal
 		*previous = (dnslib_node_rrset_count(prev) == 0)
-		            ? dnslib_node_get_previous(prev)
+		            ? dnslib_node_get_previous(prev, 1)
 		            : prev;
 	}
 
@@ -1018,7 +1018,7 @@ DEBUG_DNSLIB_ZONE(
 		}
 		// set the found parent (in the zone) as the parent of the last
 		// inserted node
-		assert(dnslib_node_parent(node) == NULL);
+		assert(dnslib_node_parent(node, 1) == NULL);
 		dnslib_node_set_parent(node, next_node);
 
 		debug_dnslib_zone("Created all parents.\n");
@@ -1544,7 +1544,7 @@ DEBUG_DNSLIB_ZONE(
 		while (matched_labels < dnslib_dname_label_count(
 				dnslib_node_owner((*closest_encloser)))) {
 			(*closest_encloser) = 
-				dnslib_node_parent((*closest_encloser));
+				dnslib_node_parent((*closest_encloser), 1);
 			assert(*closest_encloser);
 		}
 	}
@@ -1763,7 +1763,7 @@ DEBUG_DNSLIB_ZONE(
 		// set the previous node of the found node
 		assert(exact_match);
 		assert(*nsec3_node != NULL);
-		*nsec3_previous = dnslib_node_previous(*nsec3_node);
+		*nsec3_previous = dnslib_node_previous(*nsec3_node, 1);
 	} else {
 		*nsec3_previous = prev;
 	}

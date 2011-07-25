@@ -2362,7 +2362,7 @@ static void xfrin_check_node_in_tree(dnslib_zone_tree_node_t *tnode, void *data)
 		
 		// if the parent has a new copy, decrease the number of
 		// children of that copy
-		if (dnslib_node_new_node(dnslib_node_parent(node))) {
+		if (dnslib_node_new_node(dnslib_node_parent(node, 0))) {
 			/*! \todo Replace by some API. */
 			--node->parent->new_node->children;
 		}

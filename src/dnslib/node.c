@@ -3,6 +3,8 @@
 #include <assert.h>
 #include <stdio.h>
 
+#include <urcu.h>
+
 #include "dnslib/dnslib-common.h"
 #include "dnslib/node.h"
 #include "dnslib/rrset.h"

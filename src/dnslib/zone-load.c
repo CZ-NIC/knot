@@ -490,7 +490,7 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 
 	if (parent_id != 0) {
 		dnslib_node_set_parent(node, id_array[parent_id]->node);
-		assert(dnslib_node_parent(node) != NULL);
+		assert(dnslib_node_parent(node, 0) != NULL);
 	} else {
 		dnslib_node_set_parent(node, NULL);
 	}
@@ -965,7 +965,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		}
 	}
 
-	assert(dnslib_node_previous(dnslib_zone_apex(zone)) == NULL);
+	assert(dnslib_node_previous(dnslib_zone_apex(zone), 0) == NULL);
 
 	dnslib_node_set_previous(dnslib_zone_get_apex(zone), last_node);
 //	zone->apex->prev = last_node;
@@ -1015,7 +1015,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	}
 
 	if (nsec3_node_count) {
-		assert(dnslib_node_previous(nsec3_first) == NULL);
+		assert(dnslib_node_previous(nsec3_first, 0) == NULL);
 		dnslib_node_set_previous(nsec3_first, last_node);
 //		nsec3_first->prev = last_node;
 	}

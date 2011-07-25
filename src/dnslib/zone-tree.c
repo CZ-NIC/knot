@@ -247,12 +247,12 @@ int dnslib_zone_tree_get_less_or_equal(dnslib_zone_tree_t *tree,
 		// set the previous node of the found node
 		assert(exact_match);
 		assert(f != NULL);
-		*previous = dnslib_node_get_previous(f->node);
+		*previous = dnslib_node_get_previous(f->node, 1);
 	} else {
 		// otherwise check if the previous node is not an empty
 		// non-terminal
 		*previous = (dnslib_node_rrset_count(prev->node) == 0)
-		            ? dnslib_node_get_previous(prev->node)
+		            ? dnslib_node_get_previous(prev->node, 1)
 		            : prev->node;
 	}
 

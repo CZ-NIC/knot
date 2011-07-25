@@ -822,7 +822,7 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
                                     err_handler_t *handler)
 {
 	assert(handler);
-	const dnslib_node_t *nsec3_node = dnslib_node_nsec3_node(node);
+	const dnslib_node_t *nsec3_node = dnslib_node_nsec3_node(node, 0);
 
 	if (nsec3_node == NULL) {
 		/* I know it's probably not what RFCs say, but it will have to
@@ -1593,9 +1593,9 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 //	printf("ID write: %d (%s)\n", node->owner->id,
 //	       dnslib_dname_to_str(node->owner));
 
-	if (dnslib_node_parent(node) != NULL) {
+	if (dnslib_node_parent(node, 0) != NULL) {
 		uint32_t parent_id = dnslib_dname_id(
-				dnslib_node_owner(dnslib_node_parent(node)));
+				dnslib_node_owner(dnslib_node_parent(node, 0)));
 		fwrite_wrapper(&parent_id, sizeof(parent_id), 1, f);
 	} else {
 		uint32_t parent_id = 0;
@@ -1606,12 +1606,12 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 	debug_dnslib_zdump("Written flags: %u\n", node->flags);
 
-	if (dnslib_node_nsec3_node(node) != NULL) {
+	if (dnslib_node_nsec3_node(node, 0) != NULL) {
 		uint32_t nsec3_id =
-			dnslib_node_owner(dnslib_node_nsec3_node(node))->id;
+			dnslib_node_owner(dnslib_node_nsec3_node(node, 0))->id;
 		fwrite_wrapper(&nsec3_id, sizeof(nsec3_id), 1, f);
 		debug_dnslib_zdump("Written nsec3 node id: %u\n",
-			 dnslib_node_owner(dnslib_node_nsec3_node(node))->id);
+			 dnslib_node_owner(dnslib_node_nsec3_node(node, 0))->id);
 	} else {
 		uint32_t nsec3_id = 0;
 		fwrite_wrapper(&nsec3_id, sizeof(nsec3_id), 1, f);
