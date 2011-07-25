@@ -283,11 +283,16 @@ static int test_packet_parse_from_wire(list raw_response_list)
 		test_raw_packet_t *raw_packet = (test_raw_packet_t *)n;
 		dnslib_packet_t *packet =
 			dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
-		if (dnslib_packet_parse_from_wire(packet, raw_packet->data,
-		                                  raw_packet->size, 0) !=
+		int ret = 0;
+		if ((ret =
+		     dnslib_packet_parse_from_wire(packet, raw_packet->data,
+		                                   raw_packet->size, 0)) !=
 		    DNSLIB_EOK) {
 			diag("Warning: could not parse wire! "
-			     "(might be caused be malformed dump)");
+			     "(might be caused by malformed dump) - "
+			     "dnslib error: %s", dnslib_strerror(ret));
+//			hex_print(raw_packet->data,
+//			          raw_packet->size);
 			continue;
 		}
 

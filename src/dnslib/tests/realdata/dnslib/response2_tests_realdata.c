@@ -101,13 +101,18 @@ static int test_response_add_generic(int (*func)(dnslib_packet_t *,
 		dnslib_packet_t *response =
 			dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
 		assert(response);
+		dnslib_packet_set_max_size(response,
+		                           DNSLIB_PACKET_PREALLOC_RESPONSE * 100);
+		assert(dnslib_response2_init(response) == DNSLIB_EOK);
 
 		dnslib_rrset_t *rrset =
 			rrset_from_test_rrset((test_rrset_t *)n);
 		assert(rrset);
 
-		if (func(response, rrset, 0, 1, 0) != DNSLIB_EOK) {
-			diag("Could not add RRSet to response!");
+		int ret = 0;
+		if ((ret = func(response, rrset, 0, 1, 0)) != DNSLIB_EOK) {
+			diag("Could not add RRSet to response! Returned: %d",
+			     ret);
 			diag("(owner: %s type %s)",
 			     ((test_rrset_t *)n)->owner->str,
 			     dnslib_rrtype_to_string((
