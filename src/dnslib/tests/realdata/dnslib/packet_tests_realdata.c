@@ -278,12 +278,6 @@ static int test_packet_parse_from_wire(list raw_response_list)
 {
 	int errors = 0;
 
-	dnslib_opt_rr_t *opt_rr = NULL;
-	dnslib_rrset_t *parsed_opt = NULL;
-
-	uint8_t *dnslib_wire = NULL;
-	size_t dnslib_wire_size;
-
 	node *n = NULL;
 	WALK_LIST(n ,raw_response_list) {
 		test_raw_packet_t *raw_packet = (test_raw_packet_t *)n;
@@ -304,8 +298,8 @@ static int test_packet_parse_from_wire(list raw_response_list)
 			diag("Could not parse wire using ldns");
 			diag("%s",
 			     ldns_get_errorstr_by_id(ldns_wire2pkt(&ldns_packet,
-							dnslib_wire,
-							dnslib_wire_size)));
+							raw_packet->data,
+							raw_packet->size)));
 			return 0;
 		}
 

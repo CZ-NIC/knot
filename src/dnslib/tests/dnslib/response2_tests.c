@@ -70,6 +70,7 @@ static int test_response_init_query()
 		lived = 1;
 		dnslib_packet_t *response =
 			dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+		dnslib_response2_init(response);
 		lived = 0;
 		if (dnslib_response2_init_from_query(response, NULL) !=
 		    DNSLIB_EBADARG) {
@@ -95,13 +96,26 @@ static int test_response_init_query()
 	return (errors == 0);
 }
 
+static int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
+{
+	int i = 0;
+	while (i < count &&
+	       wire1[i] == wire2[i]) {
+		i++;
+	}
+	return (!(count == i));
+}
+
+
 static int test_response_clear()
 {
 	int errors = 0;
 	int lived = 0;
 	lives_ok({
 		dnslib_response2_clear(NULL, 1);
+		lived = 1;
 	}, "response2: clear NULL tests");
+	errors += lived != 1;
 
 	/*
 	 * Create new response, convert to wire, then add something, clear
@@ -109,7 +123,8 @@ static int test_response_clear()
 	 */
 
 	dnslib_packet_t *response =
-		dnslib_response_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+	assert(dnslib_response2_init(response) == DNSLIB_EOK);
 
 	uint8_t *original_wire = NULL;
 	size_t original_size = 0;
@@ -126,7 +141,7 @@ static int test_response_clear()
 	response->question.qclass = DNSLIB_CLASS_CH;
 
 	uint8_t *question_changed_wire = NULL;
-	uint8_t question_changed_size = 0;
+	size_t question_changed_size = 0;
 	assert(dnslib_packet_to_wire(response,
 	                             &question_changed_wire,
 	                             &question_changed_size) ==
@@ -342,7 +357,7 @@ static int test_response_add_nsid()
 	assert(response);
 
 	uint8_t *nsid = (uint8_t *)"knotDNS";
-	uint16_t nsid_size = length((char *)nsid);
+	uint16_t nsid_size = strlen((char *)nsid);
 	lives_ok({
 		if (dnslib_response2_add_nsid(NULL,
 		                              NULL, 1) != DNSLIB_EBADARG) {
@@ -395,5 +410,11 @@ static int dnslib_response2_tests_count(int argc, char *argv[])
  */
 static int dnslib_response2_tests_run(int argc, char *argv[])
 {
-
+	ok(test_response_init(), "response: init");
+	ok(test_response_init_query(), "response: init from query");
+//	ok(test_response_clear(), "response: clear");
+	ok(test_response_add_opt(), "response: add opt");
+	test_response_add_rrset();
+	ok(test_response_add_nsid(), "response: add nsid");
+	return 1;
 }

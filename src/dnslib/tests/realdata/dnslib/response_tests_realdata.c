@@ -317,37 +317,37 @@ static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
 	return (errors == 0);
 }
 
-static int test_response_parse_query(list response_list,
-				     test_raw_packet_t **raw_queries,
-				     uint count)
-{
-	assert(raw_queries);
+//static int test_response_parse_query(list response_list,
+//				     test_raw_packet_t **raw_queries,
+//				     uint count)
+//{
+//	assert(raw_queries);
 
-	int errors = 0;
-	dnslib_response_t *resp = NULL;
-	node *n = NULL;
-	int i = 0;
-	WALK_LIST(n, response_list) {
-		assert(i < count);
-		test_response_t *test_response = (test_response_t *)n;
-		resp = dnslib_response_new_empty(NULL);
-		assert(resp);
+//	int errors = 0;
+//	dnslib_response_t *resp = NULL;
+//	node *n = NULL;
+//	int i = 0;
+//	WALK_LIST(n, response_list) {
+//		assert(i < count);
+//		test_response_t *test_response = (test_response_t *)n;
+//		resp = dnslib_response_new_empty(NULL);
+//		assert(resp);
 
-//		hex_print(raw_queries[i]->data, raw_queries[i]->size);
+////		hex_print(raw_queries[i]->data, raw_queries[i]->size);
 
-		if (dnslib_response_parse_query(resp,
-						raw_queries[i]->data,
-						raw_queries[i]->size) != 0) {
-			diag("Could not parse query\n");
-			errors++;
-		}
-		errors += !check_response(resp, test_response, 1, 1, 0, 0, 0);
-		dnslib_response_free(&resp);
-		i++;
-	}
+//		if (dnslib_response_parse_query(resp,
+//						raw_queries[i]->data,
+//						raw_queries[i]->size) != 0) {
+//			diag("Could not parse query\n");
+//			errors++;
+//		}
+//		errors += !check_response(resp, test_response, 1, 1, 0, 0, 0);
+//		dnslib_response_free(&resp);
+//		i++;
+//	}
 
-	return (errors == 0);
-}
+//	return (errors == 0);
+//}
 
 #ifndef TEST_WITH_LDNS
 /*! \note disabled */
@@ -913,8 +913,6 @@ int dnslib_response_tests_count(int argc, char *argv[])
 
 int dnslib_response_tests_run(int argc, char *argv[])
 {
-	int ret;
-
 	test_data_t *data = data_for_dnslib_tests;
 
 	ok(test_response_add_rrset_answer(data->rrset_list),
