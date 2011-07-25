@@ -29,23 +29,6 @@ unit_api response2_tests_api = {
 	&dnslib_response2_tests_run     //! Run scheduled tests
 };
 
-//static int test_response_init(list packet_list)
-//{
-//	int errors = 0;
-//	node *n = NULL;
-//	WALK_LIST(n, packet_list) {
-//		dnslib_packet_t *packet =
-//			packet_from_test_packet((test_packet_t *)n);
-//		dnslib_response2_t *resp = dnslib_response2_init(packet);
-//		if (resp == NULL) {
-//			diag("Could not init response from packet!");
-//			errors++;
-//		}
-//	}
-
-//	return (errors == 0);
-//}
-
 static int test_response_init()
 {
 	int errors = 0;

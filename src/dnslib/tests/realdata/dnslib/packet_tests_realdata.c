@@ -31,7 +31,7 @@ extern int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
 extern int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
 					ldns_rr_list *rrlist, int count);
 
-static int check_packet_w_ldns_packet(dnslib_packet_t *packet,
+int check_packet_w_ldns_packet(dnslib_packet_t *packet,
                                       ldns_pkt *ldns_packet,
                                       int check_header,
                                       int check_question,
