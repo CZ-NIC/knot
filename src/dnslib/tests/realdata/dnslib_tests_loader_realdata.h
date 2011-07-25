@@ -106,6 +106,7 @@ typedef struct test_rrset test_rrset_t;
 struct test_response {
 	struct node *next, *prev;
 	/* This is basically same thing as actual response structure */
+	uint16_t query;
 	test_dname_t *qname;
 	uint16_t qclass;
 	uint16_t qtype;
@@ -141,10 +142,13 @@ struct test_data {
 	list node_list;
 	list rrset_list;
 	list response_list;
-	list query_list;
-	list item_list;
 	list raw_response_list;
+	list query_list;
 	list raw_query_list;
+	list item_list;
+	/* responses and queries together */
+	list packet_list;
+	list raw_packet_list;
 
 	avl_tree_test_t *node_tree;
 };
