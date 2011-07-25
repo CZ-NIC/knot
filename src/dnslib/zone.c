@@ -49,7 +49,7 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 
 	debug_dnslib_zone("Creating zone contents.\n");
 	zone->contents = dnslib_zone_contents_new(apex, node_count,
-	                                          use_domain_table);
+	                                          use_domain_table, zone);
 	if (zone->contents == NULL) {
 		dnslib_dname_free(&zone->name);
 		free(zone);

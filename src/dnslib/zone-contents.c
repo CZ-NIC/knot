@@ -745,7 +745,8 @@ static int dnslib_zone_contents_dnames_from_node_to_table(
 
 dnslib_zone_contents_t *dnslib_zone_contents_new(dnslib_node_t *apex,
                                                  uint node_count,
-                                                 int use_domain_table)
+                                                 int use_domain_table,
+                                                 struct dnslib_zone *zone)
 {
 	dnslib_zone_contents_t *contents = (dnslib_zone_contents_t *)
 	                              calloc(1, sizeof(dnslib_zone_contents_t));
@@ -755,6 +756,7 @@ dnslib_zone_contents_t *dnslib_zone_contents_new(dnslib_node_t *apex,
 	}
 
 	contents->apex = apex;
+	contents->zone = zone;
 
 	debug_dnslib_zone("Creating tree for normal nodes.\n");
 	contents->nodes = malloc(sizeof(dnslib_zone_tree_t));
@@ -927,6 +929,8 @@ DEBUG_DNSLIB_ZONE(
 		}
 	}
 
+	dnslib_node_set_zone(node, zone->zone);
+
 	if (!create_parents) {
 		return DNSLIB_EOK;
 	}
@@ -1005,6 +1009,9 @@ DEBUG_DNSLIB_ZONE(
 
 			// set parent
 			dnslib_node_set_parent(node, next_node);
+
+			// set zone
+			dnslib_node_set_zone(next_node, zone->zone);
 
 			// check if the node is not wildcard child of the parent
 			if (dnslib_dname_is_wildcard(
