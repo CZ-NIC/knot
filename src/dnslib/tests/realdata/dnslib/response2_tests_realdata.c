@@ -17,7 +17,7 @@ static int response2_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
-unit_api response2_api = {
+unit_api response2_tests_api = {
 	"Packet",     //! Unit name
 	&response2_tests_count,  //! Count scheduled tests
 	&response2_tests_run     //! Run scheduled tests
@@ -38,6 +38,8 @@ extern int check_packet_w_ldns_packet(dnslib_packet_t *packet,
                                       int check_body,
                                       int check_edns);
 #endif
+
+extern dnslib_packet_t *packet_from_test_response(test_response_t *response);
 
 static int test_response_init_from_query(list query_list)
 {
@@ -84,6 +86,8 @@ static int test_response_init_from_query(list query_list)
 //	}
 //	return (errors == 0);
 //}
+
+extern dnslib_rrset_t *rrset_from_test_rrset(test_rrset_t *test_rrset);
 
 static int test_response_add_generic(int (*func)(dnslib_packet_t *,
                                                  const dnslib_rrset_t *,

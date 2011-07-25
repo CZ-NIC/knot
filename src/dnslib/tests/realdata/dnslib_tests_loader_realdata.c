@@ -56,21 +56,6 @@ static int load_raw_packets(test_data_t *data, uint32_t *count,
 	return 0;
 }
 
-static void free_raw_packets(test_raw_packet_t ***raw_packets, uint32_t *count)
-{
-	if (*raw_packets != NULL) {
-		for (int i = 0; i < *count; i++) {
-			if ((*raw_packets)[i] != NULL) {
-				if ((*raw_packets)[i]->data != NULL) {
-					free((*raw_packets)[i]->data);
-				}
-				free((*raw_packets)[i]);
-			}
-		}
-		free(*raw_packets);
-	}
-}
-
 /* Returns size of type where avalailable */
 size_t wireformat_size_load(uint wire_type)
 {
@@ -413,7 +398,7 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 				    items[i].raw_data) + 3,
 				    sizeof(uint8_t) * (raw_data_length),
 				    src, src_size)) {
-					diag("Wrong read 3!");
+					fprintf(stderr, "Wrong read!\n");
 					return NULL;
 				}
 
@@ -489,7 +474,7 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 				if (!mem_read(items[i].raw_data + 1,
 					      size_fr_desc,
 					      src, src_size)) {
-					diag("Wrong read 4!");
+					fprintf(stderr, "Wrong read\n!");
 					return NULL;
 				}
 
@@ -617,7 +602,8 @@ static test_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 		tmp_rdata = load_response_rdata(rrset->type, src, src_size);
 
 		if (tmp_rdata == NULL) {
-			diag("Could not load rrset rdata - type: %d",
+			fprintf(stderr,
+			        "Could not load rrset rdata - type: %d",
 			     rrset->type);
 			free(rrset);
 			return NULL;
@@ -1163,7 +1149,7 @@ static void save_node_to_list(test_node_t *n, void *p)
 
 static void del_node(test_node_t *n, void *p)
 {
-	test_data_t *data = (test_data_t *)p;
+//	test_data_t *data = (test_data_t *)p;
 	free(n);
 }
 
@@ -1201,8 +1187,6 @@ test_data_t *create_test_data_from_dump()
 	}
 
 	uint32_t raw_packet_count = 0;
-
-	test_raw_packet_t **raw_packets = NULL;
 
 	if (load_raw_packets(ret, &raw_packet_count, raw_data_rc,
 	                     raw_data_rc_size) != 0) {
