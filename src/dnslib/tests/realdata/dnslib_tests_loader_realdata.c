@@ -63,7 +63,13 @@ static int load_raw_packets(test_data_t *data, uint32_t *count,
 			add_tail(&data->raw_response_list, (void *)packet);
 		}
 
-		add_tail(&data->raw_packet_list, (void *)packet);
+		test_raw_packet_t *new_packet =
+			malloc(sizeof(test_raw_packet_t));
+		assert(new_packet);
+		new_packet->data = packet->data;
+		new_packet->size = packet->size;
+
+		add_tail(&data->raw_packet_list, (void *)new_packet);
 	}
 
 	return 0;
@@ -1068,8 +1074,12 @@ static int load_parsed_responses(test_data_t *data, uint32_t *count,
 			add_tail(&data->response_list, (node *)tmp_response);
 		}
 
+		/* Create new node */
+		test_response_t *resp = malloc(sizeof(test_response_t));
+		assert(resp);
+		memcpy(resp, tmp_response, sizeof(test_response_t));
 		add_tail(&data->packet_list,
-		         (node *)tmp_response);
+		         (node *)resp);
 	}
 
 	return 0;
@@ -1183,12 +1193,12 @@ static void print_stats(test_data_t *data)
 		raw_packet_count++;
 	}
 
-
-
-
-	printf("Loaded: Responses: %d RRSets: %d RDATAs: %d Dnames: %d Nodes: %d Items: %d Raw_responses: %d\n", resp_count, rrset_count,
+	printf("Loaded: Responses: %d RRSets: %d RDATAs: %d Dnames: %d "
+	       "Nodes: %d Items: %d Raw_responses: %d Queries: %d \n"
+	       "Raw_queries; %d Total packets: %d Total_raw_packets: %d\n", resp_count, rrset_count,
 	       rdata_count, dname_count, node_count, item_count,
-	       raw_response_count);
+	       raw_response_count, query_count, raw_query_count, packet_count,
+	       raw_packet_count);
 }
 
 static void save_node_to_list(test_node_t *n, void *p)
