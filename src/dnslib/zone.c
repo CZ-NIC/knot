@@ -272,6 +272,8 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
 		return DNSLIB_EBADARG;
 	}
 
+	dnslib_node_set_zone(node, zone);
+
 	return dnslib_zone_contents_add_node(zone->contents, node,
 	                                     create_parents, 0,
 	                                     use_domain_table);

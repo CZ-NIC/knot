@@ -18,6 +18,8 @@
 #include "dnslib/rrset.h"
 #include "common/tree.h"
 
+struct dnslib_zone;
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure representing one node in a domain name tree, i.e. one domain
@@ -74,13 +76,15 @@ struct dnslib_node {
 	unsigned int children;
 	
 	/*!
-	 * \brief Version to be used.
+	 * \brief Generation of node to be used.
 	 *
 	 * If set to 0, the old node will be used. Otherwise new nodes will
 	 * be used. This applies when getting some referenced node.
 	 
 	 */
-	int **version;
+//	short **generation;
+
+	struct dnslib_zone *zone;
 };
 
 typedef struct dnslib_node dnslib_node_t;
@@ -292,6 +296,8 @@ dnslib_node_t *dnslib_node_get_new_node(const dnslib_node_t *node);
 
 void dnslib_node_set_new_node(dnslib_node_t *node,
                               dnslib_node_t *new_node);
+
+void dnslib_node_set_zone(dnslib_node_t *node, struct dnslib_zone *zone);
 
 void dnslib_node_update_refs(dnslib_node_t *node);
 
