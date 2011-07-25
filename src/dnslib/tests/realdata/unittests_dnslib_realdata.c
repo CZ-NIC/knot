@@ -9,7 +9,7 @@
 //#include "dnslib/edns_tests.h"
 #include "dnslib/node_tests_realdata.h"
 #include "dnslib/rdata_tests_realdata.h"
-#include "dnslib/response_tests_realdata.h"
+//#include "dnslib/response_tests_realdata.h"
 #include "dnslib/response2_tests_realdata.h"
 #include "dnslib/rrset_tests_realdata.h"
 //#include "dnslib/zone_tests_realdata.h"
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 		&node_tests_api,     //! DNS library (node) unit
 		&rdata_tests_api,    //! DNS library (rdata) unit
 		&packet_tests_api,
-		&response_tests_api, //! DNS library (response) unit
+//		&response_tests_api, //! DNS library (response) unit
 		&response2_tests_api, //! DNS library (response) unit
 		&rrset_tests_api,    //! DNS library (rrset) unit
 //		&zone_tests_api,     //! DNS library (zone) unit
