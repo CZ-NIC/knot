@@ -18,7 +18,7 @@ static int packet_tests_run(int argc, char *argv[]);
 /*! Exported unit API.
  */
 unit_api packet_tests_api = {
-	"Packet",     //! Unit name
+	"DNS library - packet",     //! Unit name
 	&packet_tests_count,  //! Count scheduled tests
 	&packet_tests_run     //! Run scheduled tests
 };
