@@ -2152,7 +2152,7 @@ DEBUG_XFR(
 		dnslib_rrset_set_rrsigs(*rrset, rrsig);
 	
 		// merge the changeset RRSet to the copy
-		/* What if the update fails?
+		/*! \todo What if the update fails?
 		 * 
 		 */
 		ret = dnslib_rrset_merge((void **)&rrsig, (void **)&add);

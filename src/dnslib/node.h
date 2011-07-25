@@ -72,6 +72,15 @@ struct dnslib_node {
 	struct dnslib_node *new_node;
 	
 	unsigned int children;
+	
+	/*!
+	 * \brief Version to be used.
+	 *
+	 * If set to 0, the old node will be used. Otherwise new nodes will
+	 * be used. This applies when getting some referenced node.
+	 
+	 */
+	int **version;
 };
 
 typedef struct dnslib_node dnslib_node_t;
@@ -176,7 +185,8 @@ const dnslib_rrset_t **dnslib_node_rrsets(const dnslib_node_t *node);
  * \return Parent node of the given node or NULL if no parent has been set (e.g.
  *         node in a zone apex has no parent).
  */
-const dnslib_node_t *dnslib_node_parent(const dnslib_node_t *node);
+const dnslib_node_t *dnslib_node_parent(const dnslib_node_t *node, 
+                                        int check_version);
 
 /*!
  * \brief Sets the parent of the node.
@@ -198,7 +208,8 @@ unsigned int dnslib_node_children(const dnslib_node_t *node);
  *         the first node in zone if \a node is the last node in zone.
  * \retval NULL if previous node is not set.
  */
-const dnslib_node_t *dnslib_node_previous(const dnslib_node_t *node);
+const dnslib_node_t *dnslib_node_previous(const dnslib_node_t *node, 
+                                          int check_version);
 
 /*!
  * \brief Returns the previous authoritative node or delegation point in
@@ -213,7 +224,8 @@ const dnslib_node_t *dnslib_node_previous(const dnslib_node_t *node);
  *         the first node in zone if \a node is the last node in zone.
  * \retval NULL if previous node is not set.
  */
-dnslib_node_t *dnslib_node_get_previous(const dnslib_node_t *node);
+dnslib_node_t *dnslib_node_get_previous(const dnslib_node_t *node, 
+                                        int check_version);
 
 /*!
  * \brief Sets the previous node of the given node.
@@ -233,7 +245,8 @@ void dnslib_node_set_previous(dnslib_node_t *node, dnslib_node_t *prev);
  *         and the name of the zone \a node belongs to).
  * \retval NULL if the NSEC3 node is not set.
  */
-const dnslib_node_t *dnslib_node_nsec3_node(const dnslib_node_t *node);
+const dnslib_node_t *dnslib_node_nsec3_node(const dnslib_node_t *node, 
+                                            int check_version);
 
 /*!
  * \brief Sets the corresponding NSEC3 node of the given node.
@@ -261,7 +274,8 @@ dnslib_dname_t *dnslib_node_get_owner(const dnslib_node_t *node);
  *
  * \return Wildcard child of the given node or NULL if it has none.
  */
-const dnslib_node_t *dnslib_node_wildcard_child(const dnslib_node_t *node);
+const dnslib_node_t *dnslib_node_wildcard_child(const dnslib_node_t *node, 
+                                                int check_version);
 
 /*!
  * \brief Sets the wildcard child of the node.

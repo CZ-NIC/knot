@@ -293,6 +293,10 @@ DEBUG_NS(
 				dnslib_rrset_rdata(rrset));
 		// change the node to the node of that name
 		(*node) = dnslib_dname_node(cname);
+//		// it is not an old node and if yes, skip it
+//		if (dnslib_node_is_old(*node)) {
+//			*node = dnslib_node_new_node(*node);
+//		}
 
 		// save the new name which should be used for replacing wildcard
 		*qname = cname;
@@ -449,12 +453,18 @@ static void ns_put_additional_for_rrset(dnslib_packet_t *resp,
 		                              dnslib_rrset_type(rrset));
 		assert(dname != NULL);
 		node = dnslib_dname_node(dname);
+//		// check if the node is not old and if yes, take the new one
+//		if (dnslib_node_is_old(node)) {
+//			node = dnslib_node_new_node(node);
+//		}
 
 		if (node != NULL && node->owner != dname) {
 			// the stored node should be the closest encloser
 			assert(dnslib_dname_is_subdomain(dname, node->owner));
 			// try the wildcard child, if any
 			node = dnslib_node_wildcard_child(node);
+//			// this should not be old node!!
+//			assert(!dnslib_node_is_old(node));
 		}
 
 		const dnslib_rrset_t *rrset_add;
@@ -686,6 +696,12 @@ static int ns_put_covering_nsec3(const dnslib_zone_t *zone,
 		// run-time collision => SERVFAIL
 		return NS_ERR_SERVFAIL;
 	}
+	
+//	// check if the prev node is not old and if yes, take the new one
+//	if (dnslib_node_is_old(prev)) {
+//		prev = dnslib_node_new_node(prev);
+//		assert(prev != NULL);
+//	}
 
 DEBUG_NS(
 	char *name = dnslib_dname_to_str(prev->owner);
@@ -755,6 +771,22 @@ DEBUG_NS(
 		*closest_encloser = dnslib_node_parent(*closest_encloser);
 		assert(*closest_encloser != NULL);
 	}
+	
+//	// check if the closest encloser is not an old node
+//	if (dnslib_node_is_old(*closest_encloser)) {
+//		*closest_encloser = dnslib_node_new_node(*closest_encloser);
+//		if (*closest_encloser == NULL) {
+//			return KNOT_ENOENT;
+//		}
+//	}
+	
+//	// check if the NSEC3 node is not an old node
+//	if (dnslib_node_is_old(nsec3_node)) {
+//		nsec3_node = dnslib_node_new_node(nsec3_node);
+//		if (nsec3_node == NULL) {
+//			return KNOT_ENOENT;
+//		}
+//	}
 
 	assert(nsec3_node != NULL);
 
