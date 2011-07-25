@@ -6,6 +6,7 @@
 #include "dnslib/tests/dnslib/response2_tests.h"
 #include "common/lists.h"
 #include "dnslib/dnslib-common.h"
+#include "dnslib/error.h"
 #include "dnslib/response2.h"
 #include "dnslib/rdata.h"
 #include "dnslib/rrset.h"
@@ -248,7 +249,7 @@ static int test_response_add_opt()
 	return (errors == 0);
 }
 
-static int test_response_add_generic(int (func*)(dnslib_packet_t *,
+static int test_response_add_generic(int (*func)(dnslib_packet_t *,
                                                  const dnslib_rrset_t *,
                                                  int, int, int))
 {
@@ -288,7 +289,7 @@ static int test_response_add_generic(int (func*)(dnslib_packet_t *,
 			errors++;
 		}
 		lived = 1;
-		dnslib_rrset_deep_free(&rrset, 1, 0, 0,);
+		dnslib_rrset_deep_free(&rrset, 1, 0, 0);
 		dnslib_packet_free(&response);
 	}, "response2: rrset adding NULL tests");
 	errors += lived != 1;
@@ -349,9 +350,9 @@ static int test_response_add_nsid()
 			     "did not return DNSLIB_EBADARG");
 			errors++;
 		}
-		lives = 1;
+		lived = 1;
 
-		lives = 0;
+		lived = 0;
 		if (dnslib_response2_add_nsid(NULL, nsid,
 		                              nsid_size) != DNSLIB_EBADARG) {
 			diag("Calling response add nsid with NULL response "
@@ -359,7 +360,7 @@ static int test_response_add_nsid()
 			errors++;
 		}
 		lived = 1;
-		lives = 0;
+		lived = 0;
 		if (dnslib_response2_add_nsid(response, nsid,
 		                              0) != DNSLIB_EBADARG) {
 			diag("Calling response add nsid with zero size "

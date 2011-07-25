@@ -12,15 +12,15 @@
 #include "ldns/packet.h"
 #endif
 
-static int packet_tests_count(int argc, char *argv[]);
-static int packet_tests_run(int argc, char *argv[]);
+static int response2_tests_count(int argc, char *argv[]);
+static int response2_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
-unit_api packet_tests_api = {
+unit_api response2_api = {
 	"Packet",     //! Unit name
-	&packet_tests_count,  //! Count scheduled tests
-	&packet_tests_run     //! Run scheduled tests
+	&response2_tests_count,  //! Count scheduled tests
+	&response2_tests_run     //! Run scheduled tests
 };
 
 #ifdef TEST_WITH_LDNS
@@ -41,6 +41,8 @@ extern int check_packet_w_ldns_packet(dnslib_packet_t *packet,
 
 static int test_response_init_from_query(list query_list)
 {
+	diag("query loading not yet done!");
+	return 0;
 	int errors = 0;
 	node *n = NULL;
 	WALK_LIST(n, query_list) {
@@ -48,7 +50,7 @@ static int test_response_init_from_query(list query_list)
 			dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
 		assert(response);
 		dnslib_packet_t *query =
-			packet_from_test_packet((test_packet_t *)n);
+			packet_from_test_response((test_response_t *)n);
 		assert(query);
 		if (dnslib_response2_init_from_query(response,
 		                                     query) != DNSLIB_EOK) {
@@ -83,7 +85,7 @@ static int test_response_init_from_query(list query_list)
 //	return (errors == 0);
 //}
 
-static int test_response_add_generic(int (func*)(dnslib_packet_t *,
+static int test_response_add_generic(int (*func)(dnslib_packet_t *,
                                                  const dnslib_rrset_t *,
                                                  int, int, int),
                                      list rrset_list)
@@ -128,23 +130,20 @@ static void test_response_add_rrset(list rrset_list)
 	   "response: add additional rrset");
 }
 
-static const uint DNSLIB_PACKET_TEST_COUNT = 2;
+static const uint DNSLIB_RESPONSE2_TEST_COUNT = 4;
 
-static int packet_tests_count(int argc, char *argv[])
+static int response2_tests_count(int argc, char *argv[])
 {
-	return DNSLIB_PACKET_TEST_COUNT;
+	return DNSLIB_RESPONSE2_TEST_COUNT;
 }
 
-static int packet_tests_run(int argc, char *argv[])
+static int response2_tests_run(int argc, char *argv[])
 {
 	const test_data_t *data = data_for_dnslib_tests;
 
-	int res = 0;
-	ok(res = test_packet_parse_from_wire(data->raw_response_list),
-	   "packet: from wire");
-	skip(!res, 1);
-	ok(test_packet_to_wire(data->raw_response_list), "packet: to wire");
-	endskip;
-
+//	int res = 0;
+	ok(test_response_init_from_query(data->query_list),
+	   "response: init from query");
+	test_response_add_rrset(data->rrset_list);
 	return 1;
 }
