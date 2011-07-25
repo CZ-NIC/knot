@@ -18,7 +18,7 @@ static int response2_tests_run(int argc, char *argv[]);
 /*! Exported unit API.
  */
 unit_api response2_tests_api = {
-	"Packet",     //! Unit name
+	"DNS library - response2",     //! Unit name
 	&response2_tests_count,  //! Count scheduled tests
 	&response2_tests_run     //! Run scheduled tests
 };
