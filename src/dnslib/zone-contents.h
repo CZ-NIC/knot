@@ -23,6 +23,8 @@
 
 #include "dnslib/zone-tree.h"
 
+struct dnslib_zone;
+
 /*----------------------------------------------------------------------------*/
 
 typedef struct dnslib_zone_contents {
@@ -45,13 +47,16 @@ typedef struct dnslib_zone_contents {
 
 	/*! \brief Generation of the zone during update. May be only 0 or 1. */
 	short generation;
+
+	struct dnslib_zone *zone;
 } dnslib_zone_contents_t;
 
 /*----------------------------------------------------------------------------*/
 
 dnslib_zone_contents_t *dnslib_zone_contents_new(dnslib_node_t *apex,
                                                  uint node_count,
-                                                 int use_domain_table);
+                                                 int use_domain_table,
+                                                 struct dnslib_zone *zone);
 
 time_t dnslib_zone_contents_version(const dnslib_zone_contents_t *contents);
 
