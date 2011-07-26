@@ -43,8 +43,6 @@ extern dnslib_packet_t *packet_from_test_response(test_response_t *response);
 
 static int test_response_init_from_query(list query_list)
 {
-	diag("query loading not yet done!");
-	return 0;
 	int errors = 0;
 	node *n = NULL;
 	WALK_LIST(n, query_list) {
@@ -54,6 +52,7 @@ static int test_response_init_from_query(list query_list)
 		dnslib_packet_t *query =
 			packet_from_test_response((test_response_t *)n);
 		assert(query);
+		dnslib_packet_set_max_size(response, 1024 * 10);
 		if (dnslib_response2_init_from_query(response,
 		                                     query) != DNSLIB_EOK) {
 			diag("Could not init response from query!");

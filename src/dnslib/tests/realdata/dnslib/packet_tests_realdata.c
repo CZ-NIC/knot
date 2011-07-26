@@ -190,7 +190,6 @@ static dnslib_opt_rr_t *opt_rrset_to_opt_rr(dnslib_rrset_t *rrset)
 	}
 
 	dnslib_opt_rr_t *opt_rr = dnslib_edns_new();
-
 	assert(opt_rr);
 
 	dnslib_edns_set_payload(opt_rr, rrset->rclass);
@@ -209,19 +208,31 @@ dnslib_packet_t *packet_from_test_response(test_response_t *test_packet)
 	for (int j = 0; j < test_packet->arcount; j++) {
 		if (test_packet->additional[j]->type ==
 		    DNSLIB_RRTYPE_OPT) {
-		parsed_opt =
+			parsed_opt =
 				rrset_from_test_rrset(
-					test_packet->additional[j]);
+				test_packet->additional[j]);
 			assert(parsed_opt);
+			break;
 		}
 	}
 
-	dnslib_opt_rr_t *opt_rr = opt_rrset_to_opt_rr(parsed_opt);
+	dnslib_opt_rr_t *opt_rr = NULL;
+	if (parsed_opt != NULL) {
+		opt_rr =
+			opt_rrset_to_opt_rr(parsed_opt);
+		assert(opt_rr);
+	} else {
+		opt_rr = NULL;
+	}
 
 	dnslib_packet_t *packet =
 		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+	assert(packet);
+	dnslib_packet_set_max_size(packet, 1024 * 10);
 
-	packet->opt_rr = *opt_rr;
+	if (opt_rr != NULL) {
+		packet->opt_rr = *opt_rr;
+	}
 
 	packet->header.id = test_packet->id;
 	packet->header.qdcount = test_packet->qdcount;
@@ -233,7 +244,6 @@ dnslib_packet_t *packet_from_test_response(test_response_t *test_packet)
 
 	packet->size += 4;
 
-	assert(packet->answer == NULL);
 	packet->answer =
 		malloc(sizeof(dnslib_rrset_t *) * test_packet->ancount);
 	assert(packet->answer);
@@ -415,10 +425,10 @@ static int packet_tests_run(int argc, char *argv[])
 	const test_data_t *data = data_for_dnslib_tests;
 
 	int res = 0;
-	ok(res = test_packet_parse_from_wire(data->raw_response_list),
+	ok(res = test_packet_parse_from_wire(data->raw_packet_list),
 	   "packet: from wire");
 	skip(!res, 1);
-	ok(test_packet_to_wire(data->raw_response_list), "packet: to wire");
+	ok(test_packet_to_wire(data->raw_packet_list), "packet: to wire");
 	endskip;
 
 	return 1;
