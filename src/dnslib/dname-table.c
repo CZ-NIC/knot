@@ -68,6 +68,8 @@ static int dnslib_dname_table_copy_node(const struct dname_table_node *from,
 
 	(*to)->dname = from->dname;
 	(*to)->avl.avl_height = from->avl.avl_height;
+	(*to)->avl.avl_left = NULL;
+	(*to)->avl.avl_right = NULL;
 
 	int ret = dnslib_dname_table_copy_node(from->avl.avl_left,
 	                                       &(*to)->avl.avl_left);

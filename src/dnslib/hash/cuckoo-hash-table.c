@@ -1257,10 +1257,14 @@ void ck_dump_table(const ck_hash_table_t *table)
 		debug_ck("Table %d:\n", t + 1);
 
 		for (i = 0; i < hashsize(table->table_size_exp); i++) {
-			debug_ck("Hash: %u, Key: %.*s, Value: %p.\n", i,
-			         (int)(table->tables[t])[i]->key_length,
-			         (table->tables[t])[i]->key,
-			         (table->tables[t])[i]->value);
+			if ((table->tables[t])[i] != NULL) {
+				debug_ck("Hash: %u, Key: %.*s, Value: %p.\n", i,
+				         (int)(table->tables[t])[i]->key_length,
+				         (table->tables[t])[i]->key,
+				         (table->tables[t])[i]->value);
+			} else {
+				debug_ck("Hash: %u, NO ITEM.\n", i);
+			}
 		}
 	}
 
