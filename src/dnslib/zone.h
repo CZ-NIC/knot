@@ -120,35 +120,6 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
                          int create_parents, int use_domain_table);
 
 /*!
- * \brief Adds a RRSet to the given zone.
- *
- * Checks if the RRSet belongs to the zone, i.e. if its owner is a subdomain of
- * the zone's apex. The RRSet is inserted only if the node is given, or if
- * a node where the RRSet should belong is found in the zone.
- *
- * \warning The function does not check if the node is already inserted in the
- *          zone, just assumes that it is.
- * \warning This function may destroy domain names saved in the RRSet, that
- *          are already present in the zone.
- *
- * \param zone Zone to add the node into.
- * \param rrset RRSet to add into the zone.
- * \param node Node the RRSet should be inserted into. (Should be a node of the
- *             given zone.) If set to NULL, the function will find proper node
- *             and set it to this parameter.
- *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_EBADZONE
- *
- * \todo Replace usages of this function by its zone-contents version.
- */
-int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
-                          dnslib_node_t **node,
-                          dnslib_rrset_dupl_handling_t dupl,
-                          int use_domain_table);
-
-/*!
  * \todo Replace usages of this function by its zone-contents version.
  */
 int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
