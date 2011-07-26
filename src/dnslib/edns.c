@@ -182,6 +182,7 @@ int dnslib_edns_new_from_rr(dnslib_opt_rr_t *opt_rr,
 
 uint16_t dnslib_edns_get_payload(const dnslib_opt_rr_t *opt_rr)
 {
+	assert(opt_rr != NULL);
 	return opt_rr->payload;
 }
 
@@ -190,6 +191,7 @@ uint16_t dnslib_edns_get_payload(const dnslib_opt_rr_t *opt_rr)
 void dnslib_edns_set_payload(dnslib_opt_rr_t *opt_rr,
                              uint16_t payload)
 {
+	assert(opt_rr != NULL);
 	opt_rr->payload = payload;
 }
 
@@ -203,8 +205,9 @@ uint8_t dnslib_edns_get_ext_rcode(const dnslib_opt_rr_t *opt_rr)
 /*----------------------------------------------------------------------------*/
 
 void dnslib_edns_set_ext_rcode(dnslib_opt_rr_t *opt_rr,
-                                             uint8_t ext_rcode)
+                               uint8_t ext_rcode)
 {
+	assert(opt_rr != NULL);
 	opt_rr->ext_rcode = ext_rcode;
 }
 
@@ -212,6 +215,7 @@ void dnslib_edns_set_ext_rcode(dnslib_opt_rr_t *opt_rr,
 
 uint8_t dnslib_edns_get_version(const dnslib_opt_rr_t *opt_rr)
 {
+	assert(opt_rr != NULL);
 	return opt_rr->version;
 }
 
@@ -220,6 +224,7 @@ uint8_t dnslib_edns_get_version(const dnslib_opt_rr_t *opt_rr)
 void dnslib_edns_set_version(dnslib_opt_rr_t *opt_rr,
                                            uint8_t version)
 {
+	assert(opt_rr != NULL);
 	opt_rr->version = version;
 }
 
@@ -227,6 +232,7 @@ void dnslib_edns_set_version(dnslib_opt_rr_t *opt_rr,
 
 uint16_t dnslib_edns_get_flags(const dnslib_opt_rr_t *opt_rr)
 {
+	assert(opt_rr != NULL);
 	return opt_rr->flags;
 }
 
@@ -234,6 +240,10 @@ uint16_t dnslib_edns_get_flags(const dnslib_opt_rr_t *opt_rr)
 
 int dnslib_edns_do(const dnslib_opt_rr_t *opt_rr)
 {
+	if (opt_rr == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	debug_dnslib_edns("Flags: %u\n", opt_rr->flags);
 	return (opt_rr->flags & DNSLIB_EDNS_DO_MASK);
 }
@@ -242,6 +252,10 @@ int dnslib_edns_do(const dnslib_opt_rr_t *opt_rr)
 
 void dnslib_edns_set_do(dnslib_opt_rr_t *opt_rr)
 {
+	if (opt_rr == NULL) {
+		return;
+	}
+
 	opt_rr->flags |= DNSLIB_EDNS_DO_MASK;
 }
 
@@ -250,6 +264,10 @@ void dnslib_edns_set_do(dnslib_opt_rr_t *opt_rr)
 int dnslib_edns_add_option(dnslib_opt_rr_t *opt_rr, uint16_t code,
                            uint16_t length, const uint8_t *data)
 {
+	if (opt_rr == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	if (opt_rr->option_count == opt_rr->options_max) {
 		dnslib_opt_option_t *options_new =
 			(dnslib_opt_option_t *)calloc(
@@ -283,6 +301,10 @@ int dnslib_edns_add_option(dnslib_opt_rr_t *opt_rr, uint16_t code,
 
 int dnslib_edns_has_option(const dnslib_opt_rr_t *opt_rr, uint16_t code)
 {
+	if (opt_rr == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	int i = 0;
 	while (i < opt_rr->option_count && opt_rr->options[i].code != code) {
 		++i;
@@ -298,6 +320,10 @@ int dnslib_edns_has_option(const dnslib_opt_rr_t *opt_rr, uint16_t code)
 short dnslib_edns_to_wire(const dnslib_opt_rr_t *opt_rr, uint8_t *wire,
                           size_t max_size)
 {
+	if (opt_rr == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	assert(DNSLIB_EDNS_MIN_SIZE <= max_size);
 
 	if (max_size < opt_rr->size) {
@@ -340,6 +366,10 @@ short dnslib_edns_to_wire(const dnslib_opt_rr_t *opt_rr, uint8_t *wire,
 
 short dnslib_edns_size(dnslib_opt_rr_t *opt_rr)
 {
+	if (opt_rr == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return opt_rr->size;
 }
 

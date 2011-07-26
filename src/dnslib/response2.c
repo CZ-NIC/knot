@@ -772,6 +772,10 @@ static int dnslib_response_realloc_rrsets(const dnslib_rrset_t ***rrsets,
 
 int dnslib_response2_init(dnslib_packet_t *response)
 {
+	if (response == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	if (response->max_size < DNSLIB_WIRE_HEADER_SIZE) {
 		return DNSLIB_ESPACE;
 	}
@@ -791,6 +795,10 @@ int dnslib_response2_init(dnslib_packet_t *response)
 int dnslib_response2_init_from_query(dnslib_packet_t *response,
                                     dnslib_packet_t *query)
 {
+	if (response == NULL || query == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	// copy the header from the query
 	memcpy(&response->header, &query->header, sizeof(dnslib_header_t));
 
@@ -832,6 +840,10 @@ int dnslib_response2_init_from_query(dnslib_packet_t *response,
 
 void dnslib_response2_clear(dnslib_packet_t *resp, int clear_question)
 {
+	if (resp == NULL) {
+		return;
+	}
+
 	resp->size = (clear_question) ? DNSLIB_WIRE_HEADER_SIZE
 	              : DNSLIB_WIRE_HEADER_SIZE + 4
 	                + dnslib_dname_size(resp->question.qname);
@@ -975,10 +987,13 @@ int dnslib_response2_add_rrset_additional(dnslib_packet_t *response,
 		return DNSLIB_EBADARG;
 	}
 
+	int ret;
+
 	// if this is the first additional RRSet, add EDNS OPT RR first
 	if (response->header.arcount == 0
-	    && response->opt_rr.version != EDNS_NOT_SUPPORTED) {
-		dnslib_packet_edns_to_wire(response);
+	    && response->opt_rr.version != EDNS_NOT_SUPPORTED
+	    && (ret = dnslib_packet_edns_to_wire(response)) != DNSLIB_EOK) {
+		return ret;
 	}
 
 	if (response->ar_rrsets == response->max_ar_rrsets
@@ -1013,6 +1028,10 @@ int dnslib_response2_add_rrset_additional(dnslib_packet_t *response,
 
 void dnslib_response2_set_rcode(dnslib_packet_t *response, short rcode)
 {
+	if (response == NULL) {
+		return;
+	}
+
 	dnslib_wire_flags_set_rcode(&response->header.flags2, rcode);
 	dnslib_wire_set_rcode(response->wireformat, rcode);
 }
@@ -1021,6 +1040,10 @@ void dnslib_response2_set_rcode(dnslib_packet_t *response, short rcode)
 
 void dnslib_response2_set_aa(dnslib_packet_t *response)
 {
+	if (response == NULL) {
+		return;
+	}
+
 	dnslib_wire_flags_set_aa(&response->header.flags1);
 	dnslib_wire_set_aa(response->wireformat);
 }
@@ -1029,6 +1052,10 @@ void dnslib_response2_set_aa(dnslib_packet_t *response)
 
 void dnslib_response2_set_tc(dnslib_packet_t *response)
 {
+	if (response == NULL) {
+		return;
+	}
+
 	dnslib_wire_flags_set_tc(&response->header.flags1);
 	dnslib_wire_set_tc(response->wireformat);
 }
@@ -1038,6 +1065,10 @@ void dnslib_response2_set_tc(dnslib_packet_t *response)
 int dnslib_response2_add_nsid(dnslib_packet_t *response, const uint8_t *data,
                              uint16_t length)
 {
+	if (response == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return dnslib_edns_add_option(&response->opt_rr,
 	                              EDNS_OPTION_NSID, length, data);
 }
