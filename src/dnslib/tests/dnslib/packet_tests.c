@@ -286,10 +286,6 @@ static int test_packet_header_to_wire()
 		lived = 0;
 		dnslib_packet_header_to_wire(&packet->header, NULL, &size);
 		lived = 1;
-		uint8_t *wire = 0xabcdef;
-		lived = 0;
-		dnslib_packet_header_to_wire(&packet->header, &wire, &size);
-		lived = 1;
 	}, "packet: header to wire NULL tests");
 	errors += lived != 1;
 
