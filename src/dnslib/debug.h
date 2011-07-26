@@ -33,7 +33,8 @@
  * \param loaded_zone Set to <> 0 if the RDATA is part of a zone loaded into
  *                    the server. Set to 0 otherwise.
  */
-void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type, char loaded_zone);
+void dnslib_rdata_dump(const dnslib_rdata_t *rdata, uint32_t type,
+                       char loaded_zone);
 
 /*!
  * \brief Dumps RRSet.
@@ -45,7 +46,7 @@ void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type, char loaded_zone);
  * \param loaded_zone Set to <> 0 if the RRSet is part of a zone loaded into
  *                    the server. Set to 0 otherwise.
  */
-void dnslib_rrset_dump(dnslib_rrset_t *rrset, char loaded_zone);
+void dnslib_rrset_dump(const dnslib_rrset_t *rrset, char loaded_zone);
 
 /*!
  * \brief Dumps zone node.
@@ -57,7 +58,7 @@ void dnslib_rrset_dump(dnslib_rrset_t *rrset, char loaded_zone);
  * \param loaded_zone Set to <> 0 if the node is part of a zone loaded into
  *                    the server. Set to 0 otherwise.
  */
-void dnslib_node_dump(dnslib_node_t *node, void *loaded_zone);
+void dnslib_node_dump(const dnslib_node_t *node, void *loaded_zone);
 
 /*!
  * \brief Dumps the whole zone.
@@ -68,7 +69,7 @@ void dnslib_node_dump(dnslib_node_t *node, void *loaded_zone);
  * \param loaded_zone Set to <> 0 if the node is part of a zone loaded into
  *                    the server. Set to 0 otherwise.
  */
-void dnslib_zone_dump(dnslib_zone_t *zone, char loaded_zone);
+void dnslib_zone_dump(const dnslib_zone_t *zone, char loaded_zone);
 
 /*
  * Debug macros
@@ -78,7 +79,7 @@ void dnslib_zone_dump(dnslib_zone_t *zone, char loaded_zone);
 //#define DNSLIB_ZONEDB_DEBUG
 //#define DNSLIB_DNAME_DEBUG
 //#define DNSLIB_RESPONSE_DEBUG
-//define DNSLIB_PACKET_DEBUG
+#define DNSLIB_PACKET_DEBUG
 //#define DNSLIB_EDNS_DEBUG
 //#define DNSLIB_RRSET_DEBUG
 //#define DNSLIB_NSEC3_DEBUG

@@ -9,9 +9,10 @@
 #include "dnslib/dnslib.h"
 #include "common/print.h"
 
-void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type, char loaded_zone)
+void dnslib_rdata_dump(const dnslib_rdata_t *rdata, uint32_t type,
+                       char loaded_zone)
 {
-#if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_RDATA_DEBUG)
+#if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_RDATA_DEBUG) || defined(DNSLIB_PACKET_DEBUG)
 	printf("      ------- RDATA -------\n");
 	if (rdata == NULL) {
 		printf("      There are no rdata in this RRset!\n");
@@ -59,9 +60,9 @@ void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type, char loaded_zone)
 #endif
 }
 
-void dnslib_rrset_dump(dnslib_rrset_t *rrset, char loaded_zone)
+void dnslib_rrset_dump(const dnslib_rrset_t *rrset, char loaded_zone)
 {
-#if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_RRSET_DEBUG)
+#if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_RRSET_DEBUG) || defined(DNSLIB_PACKET_DEBUG)
 	printf("  ------- RRSET -------\n");
 	printf("  %p\n", rrset);
         char *name = dnslib_dname_to_str(rrset->owner);
@@ -97,7 +98,7 @@ void dnslib_rrset_dump(dnslib_rrset_t *rrset, char loaded_zone)
 #endif
 }
 
-void dnslib_node_dump(dnslib_node_t *node, void *loaded_zone)
+void dnslib_node_dump(const dnslib_node_t *node, void *loaded_zone)
 {
 #if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_NODE_DEBUG)
 	//char loaded_zone = *((char*) data);
@@ -185,7 +186,7 @@ void dnslib_node_dump(dnslib_node_t *node, void *loaded_zone)
 #endif
 }
 
-void dnslib_zone_dump(dnslib_zone_t *zone, char loaded_zone)
+void dnslib_zone_dump(const dnslib_zone_t *zone, char loaded_zone)
 {
 #if defined(DNSLIB_ZONE_DEBUG)
 	printf("------- ZONE --------\n");
