@@ -144,21 +144,6 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
-                           dnslib_rrset_t **rrset, dnslib_node_t **node,
-                           dnslib_rrset_dupl_handling_t dupl,
-                           int use_domain_table)
-{
-	if (zone == NULL) {
-		return DNSLIB_EBADARG;
-	}
-
-	return dnslib_zone_contents_add_rrsigs(zone->contents, rrsigs, rrset,
-	                                      node, dupl, use_domain_table);
-}
-
-/*----------------------------------------------------------------------------*/
-
 int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node,
                                int create_parents, int use_domain_table)
 {
@@ -169,22 +154,6 @@ int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node,
 	return dnslib_zone_contents_add_nsec3_node(zone->contents, node,
 	                                           create_parents, 0,
 	                                           use_domain_table);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int dnslib_zone_add_nsec3_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
-                                dnslib_node_t **node,
-                                dnslib_rrset_dupl_handling_t dupl,
-                                int use_domain_table)
-{
-	if (zone == NULL) {
-		return DNSLIB_EBADARG;
-	}
-
-	return dnslib_zone_contents_add_nsec3_rrset(zone->contents, rrset, node,
-	                                            dupl,
-	                                            use_domain_table);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -244,17 +213,6 @@ const dnslib_node_t *dnslib_zone_apex(const dnslib_zone_t *zone)
 	}
 
 	return dnslib_zone_contents_apex(zone->contents);
-}
-
-/*----------------------------------------------------------------------------*/
-
-dnslib_node_t *dnslib_zone_get_apex(const dnslib_zone_t *zone)
-{
-	if (zone == NULL) {
-		return NULL;
-	}
-
-	return dnslib_zone_contents_get_apex(zone->contents);
 }
 
 /*----------------------------------------------------------------------------*/

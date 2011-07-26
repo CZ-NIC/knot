@@ -114,18 +114,10 @@ void dnslib_zone_set_data(dnslib_zone_t *zone, void *data);
  * \retval DNSLIB_EBADZONE
  * \retval DNSLIB_EHASH
  *
- * \todo Replace usages of this function by its zone-contents version.
+ * \todo Replace tests of this function by tests of its zone-contents version.
  */
 int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
                          int create_parents, int use_domain_table);
-
-/*!
- * \todo Replace usages of this function by its zone-contents version.
- */
-int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
-                           dnslib_rrset_t **rrset, dnslib_node_t **node,
-                           dnslib_rrset_dupl_handling_t dupl,
-                           int use_domain_table);
 
 /*!
  * \brief Adds a node holding NSEC3 records to the given zone.
@@ -142,18 +134,10 @@ int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
  * \retval DNSLIB_EBADARG
  * \retval DNSLIB_EBADZONE
  *
- * \todo Replace usages of this function by its zone-contents version.
+ * \todo Replace tests of this function by tests of its zone-contents version.
  */
 int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node,
                                int create_parents, int use_domain_table);
-
-/*!
- * \todo Replace usages of this function by its zone-contents version.
- */
-int dnslib_zone_add_nsec3_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
-                                dnslib_node_t **node,
-                                dnslib_rrset_dupl_handling_t dupl,
-                                int use_domain_table);
 
 /*!
  * \brief Tries to find a node with the specified name in the zone.
@@ -163,7 +147,7 @@ int dnslib_zone_add_nsec3_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
  *
  * \return Corresponding node if found, NULL otherwise.
  *
- * \todo Replace usages of this function by its zone-contents version.
+ * \todo Replace tests of this function by tests of its zone-contents version.
  */
 dnslib_node_t *dnslib_zone_get_node(const dnslib_zone_t *zone,
                                     const dnslib_dname_t *name);
@@ -177,7 +161,7 @@ dnslib_node_t *dnslib_zone_get_node(const dnslib_zone_t *zone,
  *
  * \return Corresponding node if found, NULL otherwise.
  *
- * \todo Replace usages of this function by its zone-contents version.
+ * \todo Replace tests of this function by tests of its zone-contents version.
  */
 dnslib_node_t *dnslib_zone_get_nsec3_node(const dnslib_zone_t *zone,
                                           const dnslib_dname_t *name);
@@ -193,7 +177,7 @@ dnslib_node_t *dnslib_zone_get_nsec3_node(const dnslib_zone_t *zone,
  *
  * \return Corresponding node if found, NULL otherwise.
  *
- * \todo Replace usages of this function by its zone-contents version.
+ * \todo Replace tests of this function by tests of its zone-contents version.
  */
 const dnslib_node_t *dnslib_zone_find_node(const dnslib_zone_t *zone,
                                            const dnslib_dname_t *name);
@@ -210,7 +194,7 @@ const dnslib_node_t *dnslib_zone_find_node(const dnslib_zone_t *zone,
  *
  * \return Corresponding node if found, NULL otherwise.
  *
- * \todo Replace usages of this function by its zone-contents version.
+ * \todo Replace tests of this function by tests of its zone-contents version.
  */
 const dnslib_node_t *dnslib_zone_find_nsec3_node(const dnslib_zone_t *zone,
                                                  const dnslib_dname_t *name);
@@ -222,14 +206,9 @@ const dnslib_node_t *dnslib_zone_find_nsec3_node(const dnslib_zone_t *zone,
  *
  * \return Zone apex node.
  *
- * \todo Replace usages of this function by its zone-contents version.
+ * \todo Replace tests of this function by tests of its zone-contents version.
  */
 const dnslib_node_t *dnslib_zone_apex(const dnslib_zone_t *zone);
-
-/*!
- * \todo Replace usages of this function by its zone-contents version.
- */
-dnslib_node_t *dnslib_zone_get_apex(const dnslib_zone_t *zone);
 
 /*!
  * \brief Applies the given function to each regular node in the zone.
@@ -241,7 +220,7 @@ dnslib_node_t *dnslib_zone_get_apex(const dnslib_zone_t *zone);
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  *
- * \todo Replace usages of this function by its zone-contents version.
+ * \todo Replace tests of this function by tests of its zone-contents version.
  */
 int dnslib_zone_tree_apply_postorder(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
@@ -261,7 +240,7 @@ int dnslib_zone_tree_apply_postorder(dnslib_zone_t *zone,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  *
- * \todo Replace usages of this function by its zone-contents version.
+ * \todo Replace tests of this function by tests of its zone-contents version.
  */
 int dnslib_zone_tree_apply_inorder(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
@@ -281,7 +260,7 @@ int dnslib_zone_tree_apply_inorder(dnslib_zone_t *zone,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  *
- * \todo Replace usages of this function by its zone-contents version.
+ * \todo Replace tests of this function by tests of its zone-contents version.
  */
 int dnslib_zone_tree_apply_inorder_reverse(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
@@ -298,7 +277,7 @@ int dnslib_zone_tree_apply_inorder_reverse(dnslib_zone_t *zone,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  *
- * \todo Replace usages of this function by its zone-contents version.
+ * \todo Replace tests of this function by tests of its zone-contents version.
  */
 int dnslib_zone_nsec3_apply_postorder(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
@@ -319,7 +298,7 @@ int dnslib_zone_nsec3_apply_postorder(dnslib_zone_t *zone,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  *
- * \todo Replace usages of this function by its zone-contents version.
+ * \todo Replace tests of this function by tests of its zone-contents version.
  */
 int dnslib_zone_nsec3_apply_inorder(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
@@ -340,12 +319,13 @@ int dnslib_zone_nsec3_apply_inorder(dnslib_zone_t *zone,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  *
- * \todo Replace usages of this function by its zone-contents version.
+ * \todo Replace tests of this function by tests of its zone-contents version.
  */
 int dnslib_zone_nsec3_apply_inorder_reverse(dnslib_zone_t *zone,
                               void (*function)(dnslib_node_t *node, void *data),
                               void *data);
 
+/*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
 
