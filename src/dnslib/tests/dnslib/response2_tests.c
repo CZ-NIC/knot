@@ -99,7 +99,7 @@ static int test_response_init_query()
 	return (errors == 0);
 }
 
-static int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
+int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
 {
 	int i = 0;
 	while (i < count &&

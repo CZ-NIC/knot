@@ -40,7 +40,8 @@ int check_packet_w_ldns_packet(dnslib_packet_t *packet,
 {
 	int errors = 0;
 	if (check_header) {
-//	dnslib_packet_dump(packet);
+	dnslib_packet_dump(packet);
+	getchar();
 		if (packet->header.id != ldns_pkt_id(ldns_packet)) {
 			diag("response ID does not match");
 			errors++;
