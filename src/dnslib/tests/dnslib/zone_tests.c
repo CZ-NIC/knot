@@ -672,6 +672,12 @@ static int test_zone_shallow_copy()
 		for (uint t = 0; t < from->table->table_count; ++t) {
 			for (i = 0; i <
 			     hashsize(from->table->table_size_exp); i++) {
+				if (from->table->tables[t][i] == NULL) {
+					if (to->table->tables[t][i] != NULL) {
+						diag("hash table item error");
+					}
+					continue;
+				}
 				if ((from->table->tables[t])[i]->key_length !=
 				    (to->table->tables[t])[i]->key_length) {
 					diag("hash table key lengths error!");
@@ -719,7 +725,7 @@ static int test_zone_shallow_copy()
 	}
 #endif
 
-	dnslib_zone_deep_free(&from, 1);
+	dnslib_zone_free(&from);
 	dnslib_zone_free(&to);
 	return (errors == 0);
 

@@ -220,3 +220,5 @@ src/dnslib/tests/dnslib/response2_tests.c
 src/dnslib/tests/dnslib/response2_tests.h
 src/dnslib/tests/realdata/dnslib/response2_tests_realdata.c
 src/dnslib/tests/realdata/dnslib/response2_tests_realdata.h
+src/dnslib/tests/dnslib/query_tests.c
+src/dnslib/tests/dnslib/query_tests.h
