@@ -169,7 +169,7 @@ int xfrin_create_soa_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_transfer_needed(const dnslib_zone_t *zone,
+int xfrin_transfer_needed(const dnslib_zone_contents_t *zone,
                           dnslib_packet_t *soa_response)
 {
 	// first, parse the rest of the packet
@@ -189,10 +189,11 @@ int xfrin_transfer_needed(const dnslib_zone_t *zone,
 	 * Retrieve the local Serial
 	 */
 	const dnslib_rrset_t *soa_rrset =
-		dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
+		dnslib_node_rrset(dnslib_zone_contents_apex(zone),
+		                  DNSLIB_RRTYPE_SOA);
 	if (soa_rrset == NULL) {
 		char *name = dnslib_dname_to_str(dnslib_node_owner(
-				dnslib_zone_apex(zone)));
+				dnslib_zone_contents_apex(zone)));
 		log_answer_warning("SOA RRSet missing in the zone %s!\n", name);
 		free(name);
 		return KNOT_ERROR;
@@ -247,7 +248,8 @@ int xfrin_create_ixfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_zone_transferred(ns_nameserver_t *nameserver, dnslib_zone_t *zone)
+int xfrin_zone_transferred(ns_nameserver_t *nameserver,
+                           dnslib_zone_contents_t *zone)
 {
 	debug_xfr("Switching zone in nameserver.\n");
 	return ns_switch_zone(nameserver, zone);
@@ -257,7 +259,7 @@ int xfrin_zone_transferred(ns_nameserver_t *nameserver, dnslib_zone_t *zone)
 /*----------------------------------------------------------------------------*/
 
 int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
-                              dnslib_zone_t **zone)
+                              dnslib_zone_contents_t **zone)
 {
 	if (pkt == NULL || zone == NULL) {
 		debug_xfr("Wrong parameters supported.\n");
@@ -345,7 +347,8 @@ DEBUG_XFR(
 
 		// the first RR is SOA and its owner and QNAME are the same
 		// create the zone
-		*zone = dnslib_zone_new(node, 0, 1);
+		/*! \todo Set the zone pointer to the contents. */
+		*zone = dnslib_zone_contents_new(node, 0, 1, NULL);
 		if (*zone == NULL) {
 			debug_xfr("Failed to create new zone.\n");
 			dnslib_packet_free(&packet);
@@ -359,8 +362,8 @@ DEBUG_XFR(
 		assert(node->owner == rr->owner);
 		// add the RRSet to the node
 		//ret = dnslib_node_add_rrset(node, rr, 0);
-		ret = dnslib_zone_add_rrset(*zone, rr, &node,
-		                            DNSLIB_RRSET_DUPL_MERGE, 1);
+		ret = dnslib_zone_contents_add_rrset(*zone, rr, &node,
+		                                    DNSLIB_RRSET_DUPL_MERGE, 1);
 		if (ret < 0) {
 			debug_xfr("Failed to add RRSet to zone node: %s.\n",
 			          dnslib_strerror(ret));
@@ -416,8 +419,9 @@ DEBUG_XFR(
 		if (dnslib_rrset_type(rr) == DNSLIB_RRTYPE_SOA) {
 			// this must be the last SOA, do not do anything more
 			// discard the RR
-			assert(dnslib_zone_apex((*zone)) != NULL);
-			assert(dnslib_node_rrset(dnslib_zone_apex((*zone)),
+			assert(dnslib_zone_contents_apex((*zone)) != NULL);
+			assert(dnslib_node_rrset(dnslib_zone_contents_apex(
+			                            (*zone)),
 			                         DNSLIB_RRTYPE_SOA) != NULL);
 			debug_xfr("Found last SOA, transfer finished.\n");
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
@@ -429,8 +433,8 @@ DEBUG_XFR(
 			// RRSIGs require special handling, as there are no
 			// nodes for them
 			dnslib_rrset_t *tmp_rrset = NULL;
-			ret = dnslib_zone_add_rrsigs(*zone, rr, &tmp_rrset,
-			                     &node, DNSLIB_RRSET_DUPL_MERGE, 1);
+			ret = dnslib_zone_contents_add_rrsigs(*zone, rr,
+			         &tmp_rrset, &node, DNSLIB_RRSET_DUPL_MERGE, 1);
 			if (ret < 0) {
 				debug_xfr("Failed to add RRSIGs.\n");
 				dnslib_packet_free(&packet);
@@ -453,17 +457,18 @@ DEBUG_XFR(
 			continue;
 		}
 
-		dnslib_node_t *(*get_node)(const dnslib_zone_t *,
+		dnslib_node_t *(*get_node)(const dnslib_zone_contents_t *,
 		                           const dnslib_dname_t *) = NULL;
-		int (*add_node)(dnslib_zone_t *, dnslib_node_t *, int, int)
+		int (*add_node)(dnslib_zone_contents_t *, dnslib_node_t *, int,
+		                uint8_t, int)
 		      = NULL;
 
 		if (dnslib_rrset_type(rr) == DNSLIB_RRTYPE_NSEC3) {
-			get_node = dnslib_zone_get_nsec3_node;
-			add_node = dnslib_zone_add_nsec3_node;
+			get_node = dnslib_zone_contents_get_nsec3_node;
+			add_node = dnslib_zone_contents_add_nsec3_node;
 		} else {
-			get_node = dnslib_zone_get_node;
-			add_node = dnslib_zone_add_node;
+			get_node = dnslib_zone_contents_get_node;
+			add_node = dnslib_zone_contents_add_node;
 		}
 
 		if (node == NULL && (node = get_node(
@@ -499,7 +504,7 @@ DEBUG_XFR(
 //				dnslib_rrset_deep_free(&rr, 1, 0, 0);
 			}
 
-			ret = add_node(*zone, node, 1, 1);
+			ret = add_node(*zone, node, 1, 0, 1);
 			if (ret != DNSLIB_EOK) {
 				debug_xfr("Failed to add node to zone.\n");
 				dnslib_packet_free(&packet);
@@ -512,7 +517,7 @@ DEBUG_XFR(
 		} else {
 			assert(in_zone);
 
-			ret = dnslib_zone_add_rrset(*zone, rr, &node,
+			ret = dnslib_zone_contents_add_rrset(*zone, rr, &node,
 			                            DNSLIB_RRSET_DUPL_MERGE, 1);
 			if (ret < 0) {
 				debug_xfr("Failed to add RRSet to zone: %s.\n",
@@ -550,7 +555,7 @@ DEBUG_XFR(
 	// if the last node is not yet in the zone, insert
 	if (!in_zone) {
 		assert(node != NULL);
-		ret = dnslib_zone_add_node(*zone, node, 1, 1);
+		ret = dnslib_zone_contents_add_node(*zone, node, 1, 0, 1);
 		if (ret != DNSLIB_EOK) {
 			debug_xfr("Failed to add last node into zone.\n");
 			dnslib_packet_free(&packet);
@@ -1277,7 +1282,7 @@ int xfrin_store_changesets(dnslib_zone_t *zone, const xfrin_changesets_t *src)
 /*----------------------------------------------------------------------------*/
 
 int xfr_load_changesets(const dnslib_zone_t *zone, xfrin_changesets_t *dst,
-			uint32_t from, uint32_t to)
+                        uint32_t from, uint32_t to)
 {
 	if (!zone || !dst) {
 		return KNOT_EINVAL;
@@ -1287,7 +1292,7 @@ int xfr_load_changesets(const dnslib_zone_t *zone, xfrin_changesets_t *dst,
 	}
 
 	/* Fetch zone-specific data. */
-	zonedata_t *zd = (zonedata_t *)zone->data;
+	zonedata_t *zd = (zonedata_t *)dnslib_zone_data(zone);
 	if (!zd->ixfr_db) {
 		return KNOT_EINVAL;
 	}
@@ -1973,7 +1978,8 @@ static dnslib_node_t *xfrin_add_new_node(dnslib_zone_contents_t *contents,
 	// insert the node into zone structures and create parents if
 	// necessary
 	if (dnslib_rrset_type(rrset) == DNSLIB_RRTYPE_NSEC3) {
-		ret = dnslib_zone_contents_add_nsec3_node(contents, node, 1, 1);
+		ret = dnslib_zone_contents_add_nsec3_node(contents, node, 1, 0,
+		                                          1);
 	} else {
 		ret = dnslib_zone_contents_add_node(contents, node, 1,
 		                                    DNSLIB_NODE_FLAGS_NEW, 1);
@@ -2541,10 +2547,12 @@ int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 	/*! \todo Implement. */
 	return KNOT_ENOTSUP;
 
+	dnslib_zone_contents_t *old_contents = dnslib_zone_get_contents(zone);
+
 	/*
 	 * Ensure that the zone generation is set to 0.
 	 */
-	if (dnslib_zone_generation(zone) != 0) {
+	if (dnslib_zone_contents_generation(old_contents) != 0) {
 		// this would mean that a previous update was not completed
 		// abort
 		debug_dnslib_zone("Trying to apply changesets to zone that is "
@@ -2557,7 +2565,7 @@ int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 	 * updated.
 	 */
 	dnslib_zone_contents_t *contents_copy = NULL;
-	dnslib_zone_contents_t *old_contents = dnslib_zone_get_contents(zone);
+
 	int ret = dnslib_zone_contents_shallow_copy(old_contents,
 	                                            &contents_copy);
 	if (ret != DNSLIB_EOK) {

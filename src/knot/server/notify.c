@@ -129,11 +129,11 @@ int notify_create_response(dnslib_packet_t *request, uint8_t *buffer,
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-int notify_create_request(const dnslib_zone_t *zone, uint8_t *buffer,
+int notify_create_request(const dnslib_zone_contents_t *zone, uint8_t *buffer,
                           size_t *size)
 {
-	const dnslib_rrset_t *soa_rrset =
-		dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
+	const dnslib_rrset_t *soa_rrset = dnslib_node_rrset(
+		            dnslib_zone_contents_apex(zone), DNSLIB_RRTYPE_SOA);
 	if (soa_rrset == NULL) {
 		return KNOT_ERROR;
 	}
@@ -145,7 +145,7 @@ int notify_create_request(const dnslib_zone_t *zone, uint8_t *buffer,
 
 int notify_process_request(dnslib_packet_t *notify,
                            dnslib_zonedb_t *zonedb,
-                           const dnslib_zone_t **zone,
+                           const dnslib_zone_contents_t **zone,
                            uint8_t *buffer, size_t *size)
 {
 	/*! \todo Most of this function is identical to xfrin_transfer_needed()
@@ -177,7 +177,12 @@ int notify_process_request(dnslib_packet_t *notify,
 
 	// find the zone
 	const dnslib_dname_t *qname = dnslib_packet_qname(notify);
-	*zone = dnslib_zonedb_find_zone_for_name(zonedb, qname);
+	const dnslib_zone_t *z = dnslib_zonedb_find_zone_for_name(zonedb, qname);
+	if (z == NULL) {
+		return KNOT_ERROR;	/*! \todo Some other error. */
+	}
+
+	*zone = dnslib_zone_contents(z);
 	if (*zone == NULL) {
 		return KNOT_ERROR;	/*! \todo Some other error. */
 	}
@@ -194,7 +199,8 @@ int notify_process_request(dnslib_packet_t *notify,
 
 /*----------------------------------------------------------------------------*/
 
-int notify_process_response(const dnslib_zone_t *zone, dnslib_packet_t *notify)
+int notify_process_response(const dnslib_zone_contents_t *zone,
+                            dnslib_packet_t *notify)
 {
 	return KNOT_ENOTSUP;
 }

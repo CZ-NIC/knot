@@ -67,7 +67,7 @@ typedef struct ns_xfr {
 	uint8_t *wire;
 	size_t wire_size;
 	void *data;
-	dnslib_zone_t *zone;
+	dnslib_zone_contents_t *zone;
 } ns_xfr_t;
 
 /*! \todo Document me. */
@@ -270,7 +270,7 @@ int ns_process_notify(ns_nameserver_t *nameserver, sockaddr_t *from,
  */
 int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
 
-int ns_switch_zone(ns_nameserver_t *nameserver, dnslib_zone_t *zone);
+int ns_switch_zone(ns_nameserver_t *nameserver, dnslib_zone_contents_t *zone);
 
 /*!
  * \brief Processes an IXFR-IN packet.
@@ -291,7 +291,7 @@ int ns_process_ixfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
  * \retval
  */
 ns_xfr_type_t ns_transfer_to_use(ns_nameserver_t *nameserver,
-                                 dnslib_zone_t *zone);
+                                 const dnslib_zone_contents_t *zone);
 
 /*!
  * \brief Properly destroys the name server structure.

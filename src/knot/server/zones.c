@@ -90,7 +90,10 @@ static int zonedata_init(conf_zone_t *cfg, dnslib_zone_t *zone)
 	/* Set zonefile SOA serial. */
 	const dnslib_rrset_t *soa_rrs = 0;
 	const dnslib_rdata_t *soa_rr = 0;
-	soa_rrs = dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
+	/*! \todo Checks for NULL!!! */
+	const dnslib_zone_contents_t *contents = dnslib_zone_contents(zone);
+	soa_rrs = dnslib_node_rrset(dnslib_zone_contents_apex(contents),
+	                            DNSLIB_RRTYPE_SOA);
 	soa_rr = dnslib_rrset_rdata(soa_rrs);
 	int64_t serial = dnslib_rdata_soa_serial(soa_rr);
 	zd->zonefile_serial = (uint32_t)serial;
@@ -109,15 +112,16 @@ static int zonedata_init(conf_zone_t *cfg, dnslib_zone_t *zone)
  * \return Timer in miliseconds.
  */
 static uint32_t zones_soa_timer(dnslib_zone_t *zone,
-				  uint32_t (*rr_func)(const dnslib_rdata_t*))
+                                uint32_t (*rr_func)(const dnslib_rdata_t*))
 {
 	uint32_t ret = 0;
 
 	/* Retrieve SOA RDATA. */
 	const dnslib_rrset_t *soa_rrs = 0;
 	const dnslib_rdata_t *soa_rr = 0;
-	soa_rrs = dnslib_node_rrset(dnslib_zone_apex(zone),
-				    DNSLIB_RRTYPE_SOA);
+	soa_rrs = dnslib_node_rrset(dnslib_zone_contents_apex(
+	                                dnslib_zone_contents((zone))),
+	                            DNSLIB_RRTYPE_SOA);
 	soa_rr = dnslib_rrset_rdata(soa_rrs);
 	ret = rr_func(soa_rr);
 
@@ -204,10 +208,11 @@ static int zones_axfrin_poll(event_t *e)
 	}
 
 	/* Cancel pending timers. */
-	zonedata_t *zd = (zonedata_t *)zone->data;
+	zonedata_t *zd = (zonedata_t *)dnslib_zone_data(zone);
 
 	/* Get zone dname. */
-	const dnslib_node_t *apex = dnslib_zone_apex(zone);
+	const dnslib_node_t *apex = dnslib_zone_contents_apex(
+			dnslib_zone_contents(zone));
 	const dnslib_dname_t *dname = dnslib_node_owner(apex);
 
 	/* Prepare buffer for query. */
@@ -284,7 +289,7 @@ static int zones_notify_send(event_t *e)
 	if (!zone) {
 		return KNOT_EINVAL;
 	}
-	if (!zone->data) {
+	if (!dnslib_zone_data(zone)) {
 		return KNOT_EINVAL;
 	}
 
@@ -295,8 +300,9 @@ static int zones_notify_send(event_t *e)
 	size_t buflen = SOCKET_MTU_SZ;
 
 	/* Create query. */
-	zonedata_t *zd = (zonedata_t *)zone->data;
-	int ret = notify_create_request(zone, qbuf, &buflen);
+	zonedata_t *zd = (zonedata_t *)dnslib_zone_data(zone);
+	int ret = notify_create_request(dnslib_zone_contents(zone), qbuf,
+	                                &buflen);
 	if (ret == KNOT_EOK && zd->xfr_in.ifaces) {
 
 		/*! \todo Bind to random port? See zones_axfrin_poll(). */
@@ -620,10 +626,13 @@ static int zones_journal_apply(dnslib_zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
+	dnslib_zone_contents_t *contents = dnslib_zone_get_contents(zone);
+
 	/* Fetch SOA serial. */
 	const dnslib_rrset_t *soa_rrs = 0;
 	const dnslib_rdata_t *soa_rr = 0;
-	soa_rrs = dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
+	soa_rrs = dnslib_node_rrset(dnslib_zone_contents_apex(contents),
+	                            DNSLIB_RRTYPE_SOA);
 	soa_rr = dnslib_rrset_rdata(soa_rrs);
 	int64_t serial_ret = dnslib_rdata_soa_serial(soa_rr);
 	if (serial_ret < 0) {
@@ -671,6 +680,8 @@ static int zones_insert_zones(ns_nameserver_t *ns,
                               const dnslib_zonedb_t *db_old,
                               dnslib_zonedb_t *db_new)
 {
+	/*! \todo Change to zone contents. */
+
 	node *n = 0;
 	int inserted = 0;
 	// for all zones in the configuration
@@ -710,7 +721,7 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 			debug_zones("Not found in old database or the loaded"
 			            " version is old, loading...\n");
 			int ret = zones_load_zone(db_new, z->name,
-						  z->file, z->db);
+			                          z->file, z->db);
 			if (ret != KNOT_EOK) {
 				log_server_error("Error loading new zone to"
 				                 " the new database: %s\n",
@@ -718,7 +729,7 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 			} else {
 				// Find the new zone
 				zone = dnslib_zonedb_find_zone(db_new,
-							       zone_name);
+				                               zone_name);
 				++inserted;
 
 				/* Initialize zone-related data. */
@@ -741,7 +752,7 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 
 		/* Update zone data. */
 		if (zone) {
-			zonedata_t *zd = (zonedata_t *)zone->data;
+			zonedata_t *zd = (zonedata_t *)dnslib_zone_data(zone);
 
 			/* Update refs. */
 			zd->conf = z;
@@ -773,7 +784,7 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 			zones_timers_update(zone, z, ns->server->sched);
 		}
 
-		dnslib_zone_dump(zone, 1);
+		dnslib_zone_contents_dump(dnslib_zone_get_contents(zone), 1);
 
 		dnslib_dname_free(&zone_name);
 	}
@@ -902,10 +913,13 @@ int zones_zonefile_sync(dnslib_zone_t *zone)
 	/* Lock zone data. */
 	pthread_mutex_lock(&zd->lock);
 
+	dnslib_zone_contents_t *contents = dnslib_zone_get_contents(zone);
+
 	/* Latest zone serial. */
 	const dnslib_rrset_t *soa_rrs = 0;
 	const dnslib_rdata_t *soa_rr = 0;
-	soa_rrs = dnslib_node_rrset(dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA);
+	soa_rrs = dnslib_node_rrset(dnslib_zone_contents_apex(contents),
+	                            DNSLIB_RRTYPE_SOA);
 	soa_rr = dnslib_rrset_rdata(soa_rrs);
 	int64_t serial_ret = dnslib_rdata_soa_serial(soa_rr);
 	if (serial_ret < 0) {
@@ -920,7 +934,7 @@ int zones_zonefile_sync(dnslib_zone_t *zone)
 		conf_read_lock();
 		debug_zones("ixfr_db: syncing '%s' to '%s' (SOA serial %u)\n",
 			   zd->conf->name, zd->conf->file, serial_to);
-		zone_dump_text(zone, zd->conf->file);
+		zone_dump_text(contents, zd->conf->file);
 		conf_read_unlock();
 
 		/* Update journal entries. */

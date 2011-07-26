@@ -359,7 +359,7 @@ typedef struct arg arg_t;
  * \retval DNSLIB_EOK when there is no cycle.
  * \retval ZC_ERR_CNAME_CYCLE when cycle is present.
  */
-static int check_cname_cycles_in_zone(dnslib_zone_t *zone,
+static int check_cname_cycles_in_zone(dnslib_zone_contents_t *zone,
 				      const dnslib_rrset_t *rrset)
 {
 	const dnslib_rrset_t *next_rrset = rrset;
@@ -377,10 +377,10 @@ static int check_cname_cycles_in_zone(dnslib_zone_t *zone,
 	assert(next_dname);
 
 	while (i < MAX_CNAME_CYCLE_DEPTH && next_dname != NULL) {
-		next_node = dnslib_zone_get_node(zone, next_dname);
+		next_node = dnslib_zone_contents_get_node(zone, next_dname);
 		if (next_node == NULL) {
 			next_node =
-				dnslib_zone_get_nsec3_node(zone, next_dname);
+				dnslib_zone_contents_get_nsec3_node(zone, next_dname);
 		}
 
 		if (next_node != NULL) {
@@ -818,7 +818,7 @@ static int rdata_nsec_to_type_array(const dnslib_rdata_item_t *item,
  *
  * \return Appropriate error code if error was found.
  */
-static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
+static int check_nsec3_node_in_zone(dnslib_zone_contents_t *zone, dnslib_node_t *node,
                                     err_handler_t *handler)
 {
 	assert(handler);
@@ -836,7 +836,7 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 			const dnslib_node_t *nsec3_previous;
 			const dnslib_node_t *nsec3_node;
 
-			if (dnslib_zone_find_nsec3_for_name(zone,
+			if (dnslib_zone_contents_find_nsec3_for_name(zone,
 						dnslib_node_owner(node),
 						&nsec3_node,
 						&nsec3_previous) != 0) {
@@ -883,7 +883,7 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 		dnslib_rdata_item(
 		dnslib_rrset_rdata(
 		dnslib_node_rrset(
-		dnslib_zone_apex(zone), DNSLIB_RRTYPE_SOA)), 6)));
+		dnslib_zone_contents_apex(zone), DNSLIB_RRTYPE_SOA)), 6)));
 	/* Are those getters even worth this?
 	 * Now I have no idea what this code does. */
 
@@ -917,13 +917,13 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
 	free(next_dname_decoded);
 
 	if (dnslib_dname_cat(next_dname,
-		     dnslib_node_owner(dnslib_zone_apex(zone))) == NULL) {
+		     dnslib_node_owner(dnslib_zone_contents_apex(zone))) == NULL) {
 		fprintf(stderr, "Could not concatenate dnames!\n");
 		return DNSLIB_ERROR;
 
 	}
 
-	if (dnslib_zone_find_nsec3_node(zone, next_dname) == NULL) {
+	if (dnslib_zone_contents_find_nsec3_node(zone, next_dname) == NULL) {
 		err_handler_handle_error(handler, node,
 					 ZC_ERR_NSEC3_RDATA_CHAIN);
 	}
@@ -983,7 +983,7 @@ static int check_nsec3_node_in_zone(dnslib_zone_t *zone, dnslib_node_t *node,
  *
  * \return Appropriate error code if error was found.
  */
-static int semantic_checks_plain(dnslib_zone_t *zone,
+static int semantic_checks_plain(dnslib_zone_contents_t *zone,
 				 dnslib_node_t *node,
 				 char do_checks,
 				 err_handler_t *handler)
@@ -1038,10 +1038,10 @@ static int semantic_checks_plain(dnslib_zone_t *zone,
 		assert(ns_dname);
 
 		const dnslib_node_t *glue_node =
-				dnslib_zone_find_node(zone, ns_dname);
+				dnslib_zone_contents_find_node(zone, ns_dname);
 
 		if (dnslib_dname_is_subdomain(ns_dname,
-			      dnslib_node_owner(dnslib_zone_apex(zone)))) {
+			      dnslib_node_owner(dnslib_zone_contents_apex(zone)))) {
 			if (glue_node == NULL) {
 				err_handler_handle_error(handler, node,
 							 ZC_ERR_GLUE_NODE);
@@ -1073,7 +1073,7 @@ static int semantic_checks_plain(dnslib_zone_t *zone,
  *
  * \return Appropriate error code if error was found.
  */
-static int semantic_checks_dnssec(dnslib_zone_t *zone,
+static int semantic_checks_dnssec(dnslib_zone_contents_t *zone,
 				  dnslib_node_t *node,
 				  dnslib_node_t *first_node,
 				  dnslib_node_t **last_node,
@@ -1087,7 +1087,7 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 	uint rrset_count = dnslib_node_rrset_count(node);
 	const dnslib_rrset_t **rrsets = dnslib_node_rrsets(node);
 	const dnslib_rrset_t *dnskey_rrset =
-		dnslib_node_rrset(dnslib_zone_apex(zone),
+		dnslib_node_rrset(dnslib_zone_contents_apex(zone),
 				  DNSLIB_RRTYPE_DNSKEY);
 
 	int ret = 0;
@@ -1203,7 +1203,7 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 
 				assert(next_domain);
 
-				if (dnslib_zone_find_node(zone, next_domain) ==
+				if (dnslib_zone_contents_find_node(zone, next_domain) ==
 				    NULL) {
 					err_handler_handle_error(handler,
 						node,
@@ -1213,7 +1213,7 @@ static int semantic_checks_dnssec(dnslib_zone_t *zone,
 				}
 
 				if (dnslib_dname_compare(next_domain,
-				    dnslib_node_owner(dnslib_zone_apex(zone)))
+				    dnslib_node_owner(dnslib_zone_contents_apex(zone)))
 					== 0) {
 					/* saving the last node */
 					*last_node = node;
@@ -1251,7 +1251,7 @@ static void do_checks_in_tree(dnslib_node_t *node, void *data)
 
 	assert(count == 0 || rrsets != NULL);
 
-	dnslib_zone_t *zone = (dnslib_zone_t *)args->arg1;
+	dnslib_zone_contents_t *zone = (dnslib_zone_contents_t *)args->arg1;
 
 	assert(zone);
 
@@ -1292,7 +1292,7 @@ static void do_checks_in_tree(dnslib_node_t *node, void *data)
  * \param handler Semantic error handler.
  * \param last_node Last checked node, which is part of NSEC(3) chain.
  */
-void zone_do_sem_checks(dnslib_zone_t *zone, char do_checks,
+void zone_do_sem_checks(dnslib_zone_contents_t *zone, char do_checks,
                         err_handler_t *handler,
                         dnslib_node_t **last_node)
 {
@@ -1307,7 +1307,7 @@ void zone_do_sem_checks(dnslib_zone_t *zone, char do_checks,
 	arguments.arg5 = last_node;
 	arguments.arg6 = handler;
 
-	dnslib_zone_tree_apply_inorder(zone,
+	dnslib_zone_contents_tree_apply_inorder(zone,
 			   do_checks_in_tree,
 			   (void *)&arguments);
 }
@@ -1651,13 +1651,13 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
  * \retval 2 if zone uses NSEC3
  * \retval 1 if zone uses NSEC
  */
-static int zone_is_secure(dnslib_zone_t *zone)
+static int zone_is_secure(dnslib_zone_contents_t *zone)
 {
-	if (dnslib_node_rrset(dnslib_zone_apex(zone),
+	if (dnslib_node_rrset(dnslib_zone_contents_apex(zone),
 			      DNSLIB_RRTYPE_DNSKEY) == NULL) {
 		return 0;
 	} else {
-		if (dnslib_node_rrset(dnslib_zone_apex(zone),
+		if (dnslib_node_rrset(dnslib_zone_contents_apex(zone),
 				      DNSLIB_RRTYPE_NSEC3PARAM) != NULL) {
 			return 2;
 		} else {
@@ -1676,7 +1676,7 @@ static int zone_is_secure(dnslib_zone_t *zone)
  * \param do_checks Level of semantic checks.
  */
 static void log_cyclic_errors_in_zone(err_handler_t *handler,
-				      dnslib_zone_t *zone,
+				      dnslib_zone_contents_t *zone,
 				      dnslib_node_t *last_node,
 				      const dnslib_node_t *first_nsec3_node,
 				      const dnslib_node_t *last_nsec3_node,
@@ -1726,7 +1726,7 @@ static void log_cyclic_errors_in_zone(err_handler_t *handler,
 		free(next_dname_decoded);
 
 		if (dnslib_dname_cat(next_dname,
-			     dnslib_node_owner(dnslib_zone_apex(zone))) ==
+			     dnslib_node_owner(dnslib_zone_contents_apex(zone))) ==
 		                NULL) {
 			fprintf(stderr, "Could not concatenate dnames!\n");
 			err_handler_handle_error(handler, last_nsec3_node,
@@ -1735,7 +1735,7 @@ static void log_cyclic_errors_in_zone(err_handler_t *handler,
 		}
 
 		/* Check it points somewhere first. */
-		if (dnslib_zone_find_nsec3_node(zone, next_dname) == NULL) {
+		if (dnslib_zone_contents_find_nsec3_node(zone, next_dname) == NULL) {
 			err_handler_handle_error(handler, last_nsec3_node,
 						 ZC_ERR_NSEC3_RDATA_CHAIN);
 		}
@@ -1771,7 +1771,7 @@ static void log_cyclic_errors_in_zone(err_handler_t *handler,
 			assert(next_dname);
 
 			const dnslib_dname_t *apex_dname =
-				dnslib_node_owner(dnslib_zone_apex(zone));
+				dnslib_node_owner(dnslib_zone_contents_apex(zone));
 			assert(apex_dname);
 
 			if (dnslib_dname_compare(next_dname, apex_dname) !=0) {
@@ -1836,7 +1836,7 @@ static void save_node_from_tree(dnslib_node_t *node, void *data)
 	arg->arg3 = (void *)node;
 }
 
-int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
+int dnslib_zdump_binary(dnslib_zone_contents_t *zone, const char *filename,
 			int do_checks, const char *sfilename)
 {
 	FILE *f;
@@ -1855,7 +1855,7 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	arguments.arg2 = NULL;
 
 	/* Count number of normal nodes. */
-	dnslib_zone_tree_apply_inorder(zone, save_node_from_tree, &arguments);
+	dnslib_zone_contents_tree_apply_inorder(zone, save_node_from_tree, &arguments);
 	/* arg1 is now count of normal nodes */
 	uint32_t normal_node_count = *((uint32_t *)arguments.arg1);
 
@@ -1864,7 +1864,7 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	arguments.arg2 = NULL;
 
 	/* Count number of NSEC3 nodes. */
-	dnslib_zone_nsec3_apply_inorder(zone, save_node_from_tree, &arguments);
+	dnslib_zone_contents_nsec3_apply_inorder(zone, save_node_from_tree, &arguments);
 	uint32_t nsec3_node_count = *((uint32_t *)arguments.arg1);
 	/* arg2 is the first NSEC3 node - used in sem checks. */
 	/* arg3 is the last NSEC3 node - used in sem checks. */
@@ -1883,10 +1883,10 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 			/* disable checks and we can continue */
 			do_checks = 0;
 		} else { /* Do check for SOA right now */
-			if (dnslib_node_rrset(dnslib_zone_apex(zone),
+			if (dnslib_node_rrset(dnslib_zone_contents_apex(zone),
 					      DNSLIB_RRTYPE_SOA) == NULL) {
 				err_handler_handle_error(handler,
-							 dnslib_zone_apex(zone),
+							 dnslib_zone_contents_apex(zone),
 							 ZC_ERR_MISSING_SOA);
 			}
 		}
@@ -1923,18 +1923,18 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	/* Start writing compiled data. */
 	fwrite_wrapper(&normal_node_count, sizeof(normal_node_count), 1, f);
 	fwrite_wrapper(&nsec3_node_count, sizeof(nsec3_node_count), 1, f);
-	uint32_t auth_node_count = zone->contents->node_count;
+	uint32_t auth_node_count = zone->node_count;
 	fwrite_wrapper(&auth_node_count,
 	       sizeof(auth_node_count), 1, f);
 
 	/* Write total number of dnames */
-	assert(zone->contents->dname_table);
-	uint32_t total_dnames = zone->contents->dname_table->id_counter;
+	assert(zone->dname_table);
+	uint32_t total_dnames = zone->dname_table->id_counter;
 	fwrite_wrapper(&total_dnames,
 	       sizeof(total_dnames), 1, f);
 
 	/* Write dname table. */
-	if (dnslib_dump_dname_table(zone->contents->dname_table, f)
+	if (dnslib_dump_dname_table(zone->dname_table, f)
 	    != DNSLIB_EOK) {
 		return DNSLIB_ERROR;
 	}
@@ -1944,10 +1944,10 @@ int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
 	arguments.arg3 = zone;
 
 	/* TODO is there a way how to stop the traversal upon error? */
-	dnslib_zone_tree_apply_inorder(zone, dnslib_node_dump_binary,
+	dnslib_zone_contents_tree_apply_inorder(zone, dnslib_node_dump_binary,
 				       (void *)&arguments);
 
-	dnslib_zone_nsec3_apply_inorder(zone, dnslib_node_dump_binary,
+	dnslib_zone_contents_nsec3_apply_inorder(zone, dnslib_node_dump_binary,
 					(void *)&arguments);
 
 	dnslib_dump_crc = crc_finalize(dnslib_dump_crc);

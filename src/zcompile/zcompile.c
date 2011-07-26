@@ -1852,12 +1852,12 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	rrset_list_delete(&parser->rrsig_orphans);
 
-	dnslib_zone_adjust_dnames(parser->current_zone);
+	dnslib_zone_contents_adjust_dnames(dnslib_zone_get_contents(parser->current_zone));
 
 	debug_zp("rdata adjusted\n");
 
-	dnslib_zdump_binary(parser->current_zone, outfile, semantic_checks,
-			    zonefile);
+	dnslib_zdump_binary(dnslib_zone_get_contents(parser->current_zone),
+	                    outfile, semantic_checks, zonefile);
 
 	/* This is *almost* unnecessary */
 	dnslib_zone_deep_free(&(parser->current_zone), 0);

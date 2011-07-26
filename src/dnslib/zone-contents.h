@@ -43,8 +43,6 @@ typedef struct dnslib_zone_contents {
 
 	dnslib_nsec3_params_t nsec3_params;
 
-	time_t version;
-
 	/*! \brief Generation of the zone during update. May be only 0 or 1. */
 	short generation;
 
@@ -140,7 +138,7 @@ int dnslib_zone_contents_add_rrsigs(dnslib_zone_contents_t *contents,
  */
 int dnslib_zone_contents_add_nsec3_node(dnslib_zone_contents_t *contents,
                                         dnslib_node_t *node, int create_parents,
-                                        int use_domain_table);
+                                        uint8_t flags, int use_domain_table);
 
 int dnslib_zone_contents_add_nsec3_rrset(dnslib_zone_contents_t *contents,
                                          dnslib_rrset_t *rrset,

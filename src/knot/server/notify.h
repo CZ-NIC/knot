@@ -47,7 +47,7 @@ typedef struct notify_ev_t {
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int notify_create_request(const dnslib_zone_t *zone, uint8_t *buffer,
+int notify_create_request(const dnslib_zone_contents_t *zone, uint8_t *buffer,
                           size_t *size);
 
 /*!
@@ -68,10 +68,11 @@ int notify_create_request(const dnslib_zone_t *zone, uint8_t *buffer,
  */
 int notify_process_request(dnslib_packet_t *notify,
                            dnslib_zonedb_t *zonedb,
-                           const dnslib_zone_t **zone,
+                           const dnslib_zone_contents_t **zone,
                            uint8_t *buffer, size_t *size);
 
-int notify_process_response(const dnslib_zone_t *zone, dnslib_packet_t *notify);
+int notify_process_response(const dnslib_zone_contents_t *zone,
+                            dnslib_packet_t *notify);
 
 #endif /* _KNOT_NOTIFY_H_ */
 

@@ -35,8 +35,8 @@ enum {
  * \retval DNSLIB_EOK on success.
  * \retval DNSLIB_EBADARG if the file cannot be opened for writing.
  */
-int dnslib_zdump_binary(dnslib_zone_t *zone, const char *filename,
-			int do_checks, const char *sfilename);
+int dnslib_zdump_binary(dnslib_zone_contents_t *zone, const char *filename,
+                        int do_checks, const char *sfilename);
 
 /*!
  * \brief Serializes RRSet into binary stream. Expects NULL pointer, memory

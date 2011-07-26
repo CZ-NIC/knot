@@ -185,18 +185,18 @@ void dnslib_node_dump(dnslib_node_t *node, void *loaded_zone)
 #endif
 }
 
-void dnslib_zone_dump(dnslib_zone_t *zone, char loaded_zone)
+void dnslib_zone_contents_dump(dnslib_zone_contents_t *zone, char loaded_zone)
 {
 #if defined(DNSLIB_ZONE_DEBUG)
 	printf("------- ZONE --------\n");
 
-	dnslib_zone_tree_apply_inorder(zone, dnslib_node_dump, (void *)&loaded_zone);
+	dnslib_zone_contents_tree_apply_inorder(zone, dnslib_node_dump, (void *)&loaded_zone);
 
 	printf("------- ZONE --------\n");
 	
 	printf("------- NSEC 3 tree -\n");
 
-	dnslib_zone_nsec3_apply_inorder(zone, dnslib_node_dump, (void *)&loaded_zone);
+	dnslib_zone_contents_nsec3_apply_inorder(zone, dnslib_node_dump, (void *)&loaded_zone);
 
 	printf("------- NSEC 3 tree -\n");
 #endif
