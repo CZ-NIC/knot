@@ -1202,46 +1202,47 @@ static void dnslib_packet_dump_rrsets(const dnslib_rrset_t **rrsets,
                                       int count)
 {
 	for (int i = 0; i < count; ++i) {
-		debug_dnslib_packet("  RRSet %d:\n", i + 1);
-		char *name = dnslib_dname_to_str(rrsets[i]->owner);
-		debug_dnslib_packet("    Owner: %s\n", name);
-		free(name);
-		debug_dnslib_packet("    Type: %s\n",
-		                      dnslib_rrtype_to_string(rrsets[i]->type));
-		debug_dnslib_packet("    Class: %s\n",
-		                   dnslib_rrclass_to_string(rrsets[i]->rclass));
-		debug_dnslib_packet("    TTL: %d\n", rrsets[i]->ttl);
-		debug_dnslib_packet("    RDATA: ");
+		dnslib_rrset_dump(rrsets[i], 0);
+//		debug_dnslib_packet("  RRSet %d:\n", i + 1);
+//		char *name = dnslib_dname_to_str(rrsets[i]->owner);
+//		debug_dnslib_packet("    Owner: %s\n", name);
+//		free(name);
+//		debug_dnslib_packet("    Type: %s\n",
+//		                      dnslib_rrtype_to_string(rrsets[i]->type));
+//		debug_dnslib_packet("    Class: %s\n",
+//		                   dnslib_rrclass_to_string(rrsets[i]->rclass));
+//		debug_dnslib_packet("    TTL: %d\n", rrsets[i]->ttl);
+//		debug_dnslib_packet("    RDATA: ");
 
-		dnslib_rrtype_descriptor_t *desc =
-			dnslib_rrtype_descriptor_by_type(rrsets[i]->type);
+//		dnslib_rrtype_descriptor_t *desc =
+//			dnslib_rrtype_descriptor_by_type(rrsets[i]->type);
 
-		const dnslib_rdata_t *rdata = dnslib_rrset_rdata(rrsets[i]);
-		while (rdata != NULL) {
-			for (int j = 0; j < rdata->count; ++j) {
-				switch (desc->wireformat[j]) {
-				case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
-				case DNSLIB_RDATA_WF_LITERAL_DNAME:
-				case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
-					name = dnslib_dname_to_str(
-						rdata->items[j].dname);
-					debug_dnslib_packet("%s \n",name);
-					free(name);
-					break;
-				case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
-					debug_dnslib_packet_hex(
-					    (char *)rdata->items[j].raw_data,
-					    rdata->items[j].raw_data[0]);
-					break;
-				default:
-					debug_dnslib_packet_hex(
-					   (char *)&rdata->items[j].raw_data[1],
-					   rdata->items[j].raw_data[0]);
-					break;
-				}
-			}
-			rdata = dnslib_rrset_rdata_next(rrsets[i], rdata);
-		}
+//		const dnslib_rdata_t *rdata = dnslib_rrset_rdata(rrsets[i]);
+//		while (rdata != NULL) {
+//			for (int j = 0; j < rdata->count; ++j) {
+//				switch (desc->wireformat[j]) {
+//				case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
+//				case DNSLIB_RDATA_WF_LITERAL_DNAME:
+//				case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
+//					name = dnslib_dname_to_str(
+//						rdata->items[j].dname);
+//					debug_dnslib_packet("%s \n",name);
+//					free(name);
+//					break;
+//				case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+//					debug_dnslib_packet_hex(
+//					    (char *)rdata->items[j].raw_data,
+//					    rdata->items[j].raw_data[0]);
+//					break;
+//				default:
+//					debug_dnslib_packet_hex(
+//					   (char *)&rdata->items[j].raw_data[1],
+//					   rdata->items[j].raw_data[0]);
+//					break;
+//				}
+//			}
+//			rdata = dnslib_rrset_rdata_next(rrsets[i], rdata);
+//		}
 	}
 }
 #endif
