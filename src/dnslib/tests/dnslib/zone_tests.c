@@ -470,23 +470,23 @@ static int test_zone_traversals(dnslib_zone_t *zone)
 	return 1;
 }
 
-static int test_zone_shallow_copy()
-{
-	int errors = 0;
-	int lived = 0;
-	dnslib_dname_t *apex_dname =
-		dnslib_dname_new_from_str("");
-	assert(apex_dname);
-	lives_ok({
-		if (dnslib_zone_shallow_copy(NULL, NULL) != DNSLIB_EBADARG) {
-			diag("Calling zone_shallow_copy with NULL "
-			     "arguments did not return DNSLIB_EBADARG!");
-			errors++;
-		}
+//static int test_zone_shallow_copy()
+//{
+//	int errors = 0;
+//	int lived = 0;
+//	dnslib_dname_t *apex_dname =
+//		dnslib_dname_new_from_str("");
+//	assert(apex_dname);
+//	lives_ok({
+//		if (dnslib_zone_shallow_copy(NULL, NULL) != DNSLIB_EBADARG) {
+//			diag("Calling zone_shallow_copy with NULL "
+//			     "arguments did not return DNSLIB_EBADARG!");
+//			errors++;
+//		}
 
-		dnslib_zone_t *zone = dnslib_zone_new()
-	}, "zone: shallow copy NULL tests");
-}
+//		dnslib_zone_t *zone = dnslib_zone_new()
+//	}, "zone: shallow copy NULL tests");
+//}
 
 static int test_zone_free(dnslib_zone_t **zone)
 {

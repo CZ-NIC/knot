@@ -51,13 +51,13 @@ int check_packet_w_ldns_packet(dnslib_packet_t *packet,
 		/* TODO check flags1 and flags2 - no API for that,
 		 * write my own */
 
-		if (dnslib_packet_answer_rrset_count(packet) !=
+		if (packet->header.ancount !=
 		                ldns_pkt_ancount(ldns_packet)) {
 			diag("Answer RRSet count wrongly converted");
 			errors++;
 		}
 
-		if ((dnslib_packet_authority_rrset_count(packet)) !=
+		if (packet->header.nscount !=
 		                ldns_pkt_nscount(ldns_packet)) {
 			diag("Authority RRSet count wrongly converted.\n"
 			     "got %d should be %d",
@@ -70,7 +70,7 @@ int check_packet_w_ldns_packet(dnslib_packet_t *packet,
 		 "section */
 		int minus = (packet->opt_rr.version == 0) ? 1 : 0;
 
-		if ((dnslib_packet_additional_rrset_count(packet) - minus) !=
+		if ((packet->header.arcount - minus) !=
 		                ldns_pkt_arcount(ldns_packet)) {
 			diag("Additional RRSet count wrongly converted.\n"
 			     "got %d should be %d",
@@ -115,7 +115,7 @@ int check_packet_w_ldns_packet(dnslib_packet_t *packet,
 		if ((ret =
 		     compare_rrsets_w_ldns_rrlist(packet->answer,
 		                         ldns_pkt_answer(ldns_packet),
-		                         packet->header.ancount)) != 0) {
+                        dnslib_packet_answer_rrset_count(packet))) != 0) {
 			diag("Answer rrsets wrongly converted");
 			errors++;
 		}
@@ -124,7 +124,7 @@ int check_packet_w_ldns_packet(dnslib_packet_t *packet,
 
 		if ((ret = compare_rrsets_w_ldns_rrlist(packet->authority,
 		                             ldns_pkt_authority(ldns_packet),
-		                             packet->header.nscount)) != 0) {
+			dnslib_packet_authority_rrset_count(packet))) != 0) {
 			diag("Authority rrsets wrongly converted - %d", ret);
 			errors++;
 		}
@@ -134,7 +134,7 @@ int check_packet_w_ldns_packet(dnslib_packet_t *packet,
 
 		if ((ret = compare_rrsets_w_ldns_rrlist(packet->additional,
 		                           ldns_pkt_additional(ldns_packet),
-		                           packet->header.arcount - 1)) != 0) {
+			dnslib_packet_additional_rrset_count(packet) - 1)) != 0) {
 			diag("Additional rrsets wrongly converted");
 			errors++;
 		}
@@ -320,7 +320,7 @@ static int test_packet_parse_from_wire(list raw_response_list)
 
 		if (check_packet_w_ldns_packet(packet, ldns_packet, 1,
 		                               1, 1, 1) != 0) {
-			diag("Wrongly created wire");
+			diag("Wrongly created packet");
 			errors++;
 		}
 
