@@ -144,21 +144,6 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_add_rrset(dnslib_zone_t *zone, dnslib_rrset_t *rrset,
-                          dnslib_node_t **node,
-                          dnslib_rrset_dupl_handling_t dupl,
-                          int use_domain_table)
-{
-	if (zone == NULL) {
-		return DNSLIB_EBADARG;
-	}
-
-	return dnslib_zone_contents_add_rrset(zone->contents, rrset, node, dupl,
-	                                      use_domain_table);
-}
-
-/*----------------------------------------------------------------------------*/
-
 int dnslib_zone_add_rrsigs(dnslib_zone_t *zone, dnslib_rrset_t *rrsigs,
                            dnslib_rrset_t **rrset, dnslib_node_t **node,
                            dnslib_rrset_dupl_handling_t dupl,
