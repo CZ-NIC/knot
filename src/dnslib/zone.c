@@ -1901,10 +1901,12 @@ int dnslib_zone_shallow_copy(const dnslib_zone_t *from, dnslib_zone_t **to)
 	}
 
 #ifdef USE_HASH_TABLE
-	ret = ck_copy_table(from->table, &zone->table);
-	if (ret != 0) {
-		ret = DNSLIB_ERROR;
-		goto cleanup;
+	if (from->table != NULL) {
+		ret = ck_copy_table(from->table, &zone->table);
+		if (ret != 0) {
+			ret = DNSLIB_ERROR;
+			goto cleanup;
+		}
 	}
 #endif
 
