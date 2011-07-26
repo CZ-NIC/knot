@@ -430,7 +430,8 @@ void dnslib_packet_free_tmp_rrsets(dnslib_packet_t *pkt);
  *       the size of the converted wire format.
  *
  * \param[in] header DNS header structure to convert.
- * \param[out] pos Position where to put the converted header.
+ * \param[out] pos Position where to put the converted header. The space has
+ *                 to be allocated before calling this function.
  * \param[out] size Size of the wire format of the header in bytes.
  */
 void dnslib_packet_header_to_wire(const dnslib_header_t *header,
@@ -444,7 +445,7 @@ int dnslib_packet_question_to_wire(dnslib_packet_t *packet);
  *
  * \param resp Response structure.
  */
-void dnslib_packet_edns_to_wire(dnslib_packet_t *packet);
+int dnslib_packet_edns_to_wire(dnslib_packet_t *packet);
 
 /*!
  * \brief Converts the packet to wire format.
