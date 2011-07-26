@@ -853,21 +853,6 @@ cleanup:
 
 /*----------------------------------------------------------------------------*/
 
-time_t dnslib_zone_contents_version(const dnslib_zone_contents_t *zone)
-{
-	return zone->version;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void dnslib_zone_contents_set_version(dnslib_zone_contents_t *zone,
-                                      time_t version)
-{
-	zone->version = version;
-}
-
-/*----------------------------------------------------------------------------*/
-
 short dnslib_zone_contents_generation(const dnslib_zone_contents_t *zone)
 {
 	return zone->generation;
@@ -1216,8 +1201,11 @@ int dnslib_zone_contents_add_rrsigs(dnslib_zone_contents_t *zone,
 
 int dnslib_zone_contents_add_nsec3_node(dnslib_zone_contents_t *zone,
                                         dnslib_node_t *node, int create_parents,
-                                        int use_domain_table)
+                                        uint8_t flags, int use_domain_table)
 {
+	UNUSED(create_parents);
+	UNUSED(flags);
+
 	if (zone == NULL || node == NULL) {
 		return DNSLIB_EBADARG;
 	}

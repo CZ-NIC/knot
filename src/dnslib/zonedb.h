@@ -69,8 +69,8 @@ int dnslib_zonedb_add_zone(dnslib_zonedb_t *db, dnslib_zone_t *zone);
 int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name,
                               int destroy_zone);
 
-dnslib_zone_t *dnslib_zonedb_replace_zone(dnslib_zonedb_t *db,
-                                          dnslib_zone_t *zone);
+//dnslib_zone_t *dnslib_zonedb_replace_zone(dnslib_zonedb_t *db,
+//                                          dnslib_zone_t *zone);
 
 /*!
  * \brief Finds zone exactly matching the given zone name.
@@ -83,6 +83,7 @@ dnslib_zone_t *dnslib_zonedb_replace_zone(dnslib_zonedb_t *db,
  */
 dnslib_zone_t *dnslib_zonedb_find_zone(const dnslib_zonedb_t *db,
                                        const dnslib_dname_t *zone_name);
+
 
 /*!
  * \brief Finds zone the given domain name should belong to.

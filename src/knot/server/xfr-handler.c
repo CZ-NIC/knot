@@ -129,12 +129,12 @@ static void xfr_client_start(struct ev_loop *loop, ev_io *w, int revents)
 	}
 
 	/* Fetch associated zone. */
-	dnslib_zone_t *zone = (dnslib_zone_t *)req->data;
+	dnslib_zone_contents_t *zone = (dnslib_zone_contents_t *)req->data;
 	if (!zone) {
 		return;
 		//return KNOT_EINVAL;
 	}
-	const dnslib_node_t *apex = dnslib_zone_apex(zone);
+	const dnslib_node_t *apex = dnslib_zone_contents_apex(zone);
 	const dnslib_dname_t *dname = dnslib_node_owner(apex);
 
 	/* Connect to remote. */

@@ -84,7 +84,7 @@ int xfrin_create_soa_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
  * \retval 1 if the transfer is needed.
  * \retval 0 if the transfer is not needed.
  */
-int xfrin_transfer_needed(const dnslib_zone_t *zone,
+int xfrin_transfer_needed(const dnslib_zone_contents_t *zone,
                           dnslib_packet_t *soa_response);
 
 /*!
@@ -125,7 +125,8 @@ int xfrin_create_ixfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
  *
  * \retval KNOT_ENOTSUP
  */
-int xfrin_zone_transferred(ns_nameserver_t *nameserver, dnslib_zone_t *zone);
+int xfrin_zone_transferred(ns_nameserver_t *nameserver,
+                           dnslib_zone_contents_t *zone);
 
 /*!
  * \brief Processes one incoming packet of AXFR transfer by updating the given
@@ -142,7 +143,7 @@ int xfrin_zone_transferred(ns_nameserver_t *nameserver, dnslib_zone_t *zone);
  * \todo Refactor!!!
  */
 int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
-                              dnslib_zone_t **zone);
+                              dnslib_zone_contents_t **zone);
 
 /*!
  * \brief Destroys the whole changesets structure.
