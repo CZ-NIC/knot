@@ -524,7 +524,7 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
  * \param node Node to be used.
  * \param nsec3 Is NSEC3 node.
  */
-static void find_and_set_wildcard_child(dnslib_zone_t *zone,
+static void find_and_set_wildcard_child(dnslib_zone_contents_t *zone,
 				 dnslib_node_t *node, int nsec3)
 {
 	dnslib_dname_t *chopped = dnslib_dname_left_chop(node->owner);
@@ -532,10 +532,10 @@ static void find_and_set_wildcard_child(dnslib_zone_t *zone,
 	dnslib_node_t *wildcard_parent;
 	if (!nsec3) {
 		wildcard_parent =
-			dnslib_zone_get_node(zone, chopped);
+			dnslib_zone_contents_get_node(zone, chopped);
 	} else {
 		wildcard_parent =
-			dnslib_zone_get_nsec3_node(zone, chopped);
+			dnslib_zone_contents_get_nsec3_node(zone, chopped);
 	}
 
 	dnslib_dname_free(&chopped);
@@ -926,8 +926,11 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 				 node_count + nsec3_node_count + 1);
 		return NULL;
 	}
+
+	dnslib_zone_contents_t *contents = dnslib_zone_get_contents(zone);
+
 	/* Assign dname table to the new zone. */
-	zone->contents->dname_table = dname_table;
+	contents->dname_table = dname_table;
 
 //	apex->prev = NULL;
 	dnslib_node_set_previous(apex, NULL);
@@ -940,14 +943,14 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		tmp_node = dnslib_load_node(f, id_array);
 
 		if (tmp_node != NULL) {
-			if (dnslib_zone_add_node(zone, tmp_node, 0, 0) != 0) {
+			if (dnslib_zone_contents_add_node(contents, tmp_node,
+			                                  0, 0, 0) != 0) {
 				fprintf(stderr, "!! cannot add node\n");
 				continue;
 			}
 			if (dnslib_dname_is_wildcard(tmp_node->owner)) {
-				find_and_set_wildcard_child(zone,
-							    tmp_node,
-							    0);
+				find_and_set_wildcard_child(contents,
+				                            tmp_node, 0);
 			}
 
 			dnslib_node_set_previous(tmp_node, last_node);
@@ -965,10 +968,11 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		}
 	}
 
-	assert(dnslib_node_previous(dnslib_zone_apex(zone), 0) == NULL);
+	assert(dnslib_node_previous(dnslib_zone_contents_apex(contents), 0)
+	       == NULL);
 
-	dnslib_node_set_previous(dnslib_zone_get_apex(zone), last_node);
-//	zone->apex->prev = last_node;
+	dnslib_node_set_previous(dnslib_zone_contents_get_apex(contents),
+	                         last_node);
 
 	debug_dnslib_zload("loading %u nsec3 nodes\n", nsec3_node_count);
 
@@ -979,7 +983,8 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 
 		assert(nsec3_first != NULL);
 
-		if (dnslib_zone_add_nsec3_node(zone, nsec3_first, 0, 0) != 0) {
+		if (dnslib_zone_contents_add_nsec3_node(contents, nsec3_first, 0, 0, 0)
+		    != 0) {
 			fprintf(stderr, "!! cannot add first nsec3 node, "
 				"exiting.\n");
 			dnslib_zone_deep_free(&zone, 1);
@@ -999,7 +1004,8 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		tmp_node = dnslib_load_node(f, id_array);
 
 		if (tmp_node != NULL) {
-			if (dnslib_zone_add_nsec3_node(zone, tmp_node, 0, 0) != 0) {
+			if (dnslib_zone_contents_add_nsec3_node(contents,
+			    tmp_node, 0, 0, 0) != 0) {
 				fprintf(stderr, "!! cannot add nsec3 node\n");
 				continue;
 			}
