@@ -1826,9 +1826,6 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	assert(dnslib_node_parent(origin_node, 0) == NULL);
 
-	dnslib_zone_contents_t *contents =
-			dnslib_zone_get_contents(parser->current_zone);
-
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
 		strerror_r(errno, ebuf, sizeof(ebuf));
 		fprintf(stderr, "Cannot open '%s': %s.",
@@ -1839,6 +1836,9 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	if (yyparse() != 0) {
 		return KNOT_ZCOMPILE_ESYNT;
 	}
+	
+	dnslib_zone_contents_t *contents =
+			dnslib_zone_get_contents(parser->current_zone);
 
 	if (parser->last_node && parser->node_rrsigs != NULL) {
 		/* assign rrsigs to last node in the zone*/
