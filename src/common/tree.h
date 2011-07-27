@@ -145,9 +145,14 @@
       *found = self;											\
       return 1;												\
     }													\
-    if (compare(elm, self) < 0)										\
-      return TREE_FIND_LESS_EQUAL_##node##_##field(self->field.avl_left, elm, compare, found, prev);			\
-    else {												\
+    if (compare(elm, self) < 0) {										\
+      int ret = TREE_FIND_LESS_EQUAL_##node##_##field(self->field.avl_left, elm, compare, found, prev);	\
+      if (ret == 0 && *prev == NULL) {									\
+        *prev = self;											\
+        ret = -1;											\
+      }													\
+      return ret;											\
+    } else {												\
       *found = self;											\
       *prev = self;											\
       return TREE_FIND_LESS_EQUAL_##node##_##field(self->field.avl_right, elm, compare, found, prev);			\

@@ -565,22 +565,25 @@ static int dnslib_zone_contents_find_in_tree(dnslib_zone_tree_t *tree,
 	int exact_match = dnslib_zone_tree_get_less_or_equal(
 	                         tree, name, &found, &prev);
 
+	assert(prev != NULL);
+	assert(exact_match >= 0);
 	*node = found;
+	*previous = prev;
 
-	if (prev == NULL) {
-		// either the returned node is the root of the tree, or it is
-		// the leftmost node in the tree; in both cases node was found
-		// set the previous node of the found node
-		assert(exact_match);
-		assert(found != NULL);
-		*previous = dnslib_node_get_previous(found, 1);
-	} else {
-		// otherwise check if the previous node is not an empty
-		// non-terminal
-		*previous = (dnslib_node_rrset_count(prev) == 0)
-		            ? dnslib_node_get_previous(prev, 1)
-		            : prev;
-	}
+//	if (prev == NULL) {
+//		// either the returned node is the root of the tree, or it is
+//		// the leftmost node in the tree; in both cases node was found
+//		// set the previous node of the found node
+//		assert(exact_match);
+//		assert(found != NULL);
+//		*previous = dnslib_node_get_previous(found, 1);
+//	} else {
+//		// otherwise check if the previous node is not an empty
+//		// non-terminal
+//		*previous = (dnslib_node_rrset_count(prev) == 0)
+//		            ? dnslib_node_get_previous(prev, 1)
+//		            : prev;
+//	}
 
 	return exact_match;
 }
@@ -1506,6 +1509,7 @@ DEBUG_DNSLIB_ZONE(
 
 	int exact_match = dnslib_zone_contents_find_in_tree(zone->nodes, name,
 	                                                    &found, &prev);
+	assert(exact_match >= 0);
 	*node = found;
 	*previous = prev;
 
@@ -1571,8 +1575,9 @@ dnslib_node_t *dnslib_zone_contents_get_previous(
 
 	dnslib_node_t *found = NULL, *prev = NULL;
 
-	(void)dnslib_zone_contents_find_in_tree(zone->nodes, name, &found,
-	                                        &prev);
+	int exact_match = dnslib_zone_contents_find_in_tree(zone->nodes, name,
+	                                                    &found, &prev);
+	assert(exact_match >= 0);
 	assert(prev != NULL);
 
 	return prev;
@@ -1597,8 +1602,9 @@ dnslib_node_t *dnslib_zone_contents_get_previous_nsec3(
 
 	dnslib_node_t *found = NULL, *prev = NULL;
 
-	(void)dnslib_zone_contents_find_in_tree(zone->nsec3_nodes, name, &found,
-	                                        &prev);
+	int exact_match = dnslib_zone_contents_find_in_tree(zone->nsec3_nodes,
+	                                                   name, &found, &prev);
+	assert(exact_match >= 0);
 	assert(prev != NULL);
 
 	return prev;
@@ -1735,6 +1741,7 @@ DEBUG_DNSLIB_ZONE(
 	// create dummy node to use for lookup
 	int exact_match = dnslib_zone_tree_find_less_or_equal(
 		zone->nsec3_nodes, nsec3_name, &found, &prev);
+	assert(exact_match >= 0);
 
 	dnslib_dname_free(&nsec3_name);
 
