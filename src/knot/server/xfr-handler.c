@@ -437,10 +437,10 @@ int xfr_client(dthread_t *thread)
 	ev_io_init((ev_io *)&bridge, xfr_bridge_ev,
 		   evqueue_pollfd(data->cq), EV_READ);
 	ev_io_start(data->loop, (ev_io *)&bridge);
-	debug_net("xfr_client: bridge to libev initiated\n");
+	debug_xfr("xfr_client: bridge to libev initiated\n");
 
 	/* Accept requests. */
-	debug_net("xfr_client: loop started\n");
+	debug_xfr("xfr_client: loop started\n");
 
 	/* Cancellation point. */
 	if (dt_is_cancelled(thread)) {
