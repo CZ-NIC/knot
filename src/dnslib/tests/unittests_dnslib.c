@@ -12,6 +12,7 @@
 #include "dnslib/rrset_tests.h"
 #include "dnslib/zone_tests.h"
 #include "dnslib/dname_table_tests.h"
+#include "dnslib/nsec3_tests.h"
 #include "dnslib/packet_tests.h"
 #include "dnslib/query_tests.h"
 #include "dnslib/zonedb_tests.h"
@@ -34,6 +35,7 @@ int main(int argc, char *argv[])
 		&response2_tests_api, //! DNS library (response) unit
 		&rrset_tests_api,    //! DNS library (rrset) unit
 		&dname_table_tests_api,
+		&nsec3_tests_api,
 		&packet_tests_api,
 		&query_tests_api,
 		&zonedb_tests_api,   //! DNS library (zonedb) unit
