@@ -79,7 +79,7 @@ void dnslib_zone_dump(const dnslib_zone_t *zone, char loaded_zone);
 //#define DNSLIB_ZONEDB_DEBUG
 //#define DNSLIB_DNAME_DEBUG
 //#define DNSLIB_RESPONSE_DEBUG
-#define DNSLIB_PACKET_DEBUG
+//#define DNSLIB_PACKET_DEBUG
 //#define DNSLIB_EDNS_DEBUG
 //#define DNSLIB_RRSET_DEBUG
 //#define DNSLIB_NSEC3_DEBUG

@@ -70,12 +70,20 @@ static int test_query_set_question()
 		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
 	assert(query);
 	assert(dnslib_packet_set_max_size(query, 1024 * 10) == DNSLIB_EOK);
+	dnslib_query_init(query);
 
 	dnslib_rrset_t *rrset =
 		dnslib_rrset_new(dnslib_dname_new_from_str("a.ns.cz.",
 	                                                   strlen("a.ns.cz."),
-	                                                   NULL));
+	                                                   NULL),
+	                         DNSLIB_RRTYPE_A, DNSLIB_CLASS_IN, 3600);
 	assert(rrset);
+
+	dnslib_question_t *question = malloc(sizeof(dnslib_question_t));
+	assert(question);
+	question->qname = rrset->owner;
+	question->qtype = rrset->type;
+	question->qclass = rrset->rclass;
 
 	lives_ok({
 		if (dnslib_query_set_question(NULL, NULL) != DNSLIB_EBADARG) {
@@ -90,7 +98,7 @@ static int test_query_set_question()
 		}
 		lived = 1;
 		lived = 0;
-		if (dnslib_query_set_question(NULL, rrset) != DNSLIB_EBADARG) {
+		if (dnslib_query_set_question(NULL, question) != DNSLIB_EBADARG) {
 			diag("Calling query_set_question with NULL");
 			errors++;
 		}
@@ -98,30 +106,33 @@ static int test_query_set_question()
 	}, "query: set question NULL tests");
 	errors += lived != 1;
 
-	if (dnslib_query_set_question(query, rrset) != DNSLIB_EOK) {
+	if (dnslib_query_set_question(query, question) != DNSLIB_EOK) {
 		diag("Calling query_set_question with valid arguments ");
 		errors++;
 	}
 
 	if (query->question.qname != rrset->owner) {
-		diag("");
+		diag("Qname was not set right!");
 		errors++;
 	}
 
 	if (query->question.qtype != rrset->type) {
-		diag("");
+		diag("Qtype was not set right!");
 		errors++;
 	}
 
 	if (query->question.qclass != rrset->rclass) {
-		diag("");
+		diag("Qclass was not set right!");
 		errors++;
 	}
 
 	if (query->header.qdcount != 1) {
-		diag("");
+		diag("Qdcount was not set right!");
 		errors++;
 	}
+
+	dnslib_packet_free(&query);
+	dnslib_rrset_deep_free(&rrset, 1, 0, 0);
 
 	return (errors == 0);
 }
