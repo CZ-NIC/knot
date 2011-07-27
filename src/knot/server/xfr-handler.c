@@ -91,6 +91,63 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 	return;
 }
 
+/*!
+ * \brief TCP loop to event queue bridge event.
+ *
+ * Read single request from event queue and move it to the TCP loop.
+ *
+ * \param loop Associated event pool.
+ * \param w Associated socket watcher.
+ * \param revents Returned events.
+ */
+static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
+{
+	/* Check data. */
+	struct xfr_io_t* xfr_w = (struct xfr_io_t *)w;
+	xfrhandler_t *handler = xfr_w->h;
+	if (!handler) {
+		return;
+	}
+
+	/* Poll new events. */
+	int ret = evqueue_poll(handler->cq, 0, 0);
+
+	/* Check poll count. */
+	if (ret <= 0) {
+		debug_xfr("xfr_bridge_ev: poll returned %d.\n", ret);
+		return;
+	}
+
+	/* Read single request. */
+	struct xfr_io_t *req = malloc(sizeof(struct xfr_io_t));
+	if (!req) {
+		log_server_error("xfr_bridge_ev: not enough memory.\n");
+		return;
+	}
+
+	req->data.session = -1;
+	ret = evqueue_read(handler->cq, req, sizeof(struct xfr_io_t));
+	if (ret != sizeof(struct xfr_io_t)) {
+		debug_xfr("xfr_bridge_ev: queue read returned %d.\n", ret);
+	}
+
+	/* Check session descriptor. */
+	if (req->data.session < 0) {
+		debug_xfr("xfr_bridge_ev: quitting\n");
+		ev_io_stop(loop, w);
+		ev_unloop(loop, EVUNLOOP_ALL);
+
+		/* Stop threading unit. */
+		dt_stop(handler->unit);
+		free(req);
+		return;
+	}
+
+	/* Move to TCP queue. */
+	ev_io_init((ev_io *)req, xfr_client_ev, req->data.session, EV_READ);
+	ev_io_start(loop, (ev_io *)req);
+}
+
 /*
  * Public APIs.
  */
@@ -111,10 +168,19 @@ xfrhandler_t *xfr_create(size_t thrcount, ns_nameserver_t *ns)
 		return 0;
 	}
 
-	/* Create TCP loop. */
+	/* Create client requests queue. */
+	data->cq = evqueue_new();
+	if (!data->cq) {
+		evqueue_free(&data->q);
+		free(data);
+		return 0;
+	}
+
+	/* Create event loop. */
 	data->loop = ev_loop_new(0);
 	if (!data->loop) {
 		evqueue_free(&data->q);
+		evqueue_free(&data->cq);
 		free(data);
 		return 0;
 	}
@@ -123,14 +189,15 @@ xfrhandler_t *xfr_create(size_t thrcount, ns_nameserver_t *ns)
 	dt_unit_t *unit = 0;
 	unit = dt_create_coherent(thrcount, &xfr_master, (void*)data);
 	if (!unit) {
-		ev_loop_destroy(data->loop);
 		evqueue_free(&data->q);
+		evqueue_free(&data->cq);
+		ev_loop_destroy(data->loop);
 		free(data);
 		return 0;
 	}
 	data->unit = unit;
 
-	dt_repurpose(unit->threads[0], &xfr_client, data->loop);
+	dt_repurpose(unit->threads[0], &xfr_client, data);
 
 	return data;
 }
@@ -144,12 +211,26 @@ int xfr_free(xfrhandler_t *handler)
 	/* Remove handler data. */
 	evqueue_free(&handler->q);
 
-	/* Delete TCP loop. */
+	/* Remove client requests queue. */
+	evqueue_free(&handler->cq);
+
+	/* Free event loop. */
 	ev_loop_destroy(handler->loop);
 
 	/* Delete unit. */
 	dt_delete(&handler->unit);
 	free(handler);
+
+	return KNOT_EOK;
+}
+
+int xfr_stop(xfrhandler_t *handler)
+{
+	/* Break loop. */
+	struct xfr_io_t brk;
+	memset(&brk, 0, sizeof(struct xfr_io_t));
+	brk.data.session = -1;
+	evqueue_write(handler->cq, &brk, sizeof(struct xfr_io_t));
 
 	return KNOT_EOK;
 }
@@ -237,17 +318,13 @@ int xfr_client_start(xfrhandler_t *handler, ns_xfr_t *req)
 	req->zone = 0;
 
 	/* Store XFR request for further processing. */
-	struct xfr_io_t *w = malloc(sizeof(struct xfr_io_t));
-	if (!w) {
-		socket_close(req->session);
-		return KNOT_ENOMEM;
-	}
-	w->h = handler;
-	memcpy(&w->data, req, sizeof(ns_xfr_t));
+	struct xfr_io_t w;
+	memset(&w, 0, sizeof(struct xfr_io_t));
+	w.h = handler;
+	memcpy(&w.data, req, sizeof(ns_xfr_t));
 
 	/* Add to pending transfers. */
-	ev_io_init((ev_io *)w, xfr_client_ev, req->session, EV_READ);
-	ev_io_start(handler->loop, (ev_io *)w);
+	evqueue_write(handler->cq, &w, sizeof(struct xfr_io_t));
 
 	return KNOT_EOK;
 }
@@ -349,13 +426,32 @@ int xfr_client(dthread_t *thread)
 
 	/* Check data. */
 	if (data < 0) {
-		debug_xfr("xfr_client: no data recevied, finishing.\n");
+		debug_xfr("xfr_client: no data received, finishing.\n");
 		return KNOT_EINVAL;
 	}
 
-	/* Run TCP loop. */
-	int ret = tcp_loop(thread, -1, 0);
+	/* Bridge evqueue pollfd to event loop. */
+	struct xfr_io_t bridge;
+	memset(&bridge, 0, sizeof(struct xfr_io_t));
+	bridge.h = data;
+	ev_io_init((ev_io *)&bridge, xfr_bridge_ev,
+		   evqueue_pollfd(data->cq), EV_READ);
+	ev_io_start(data->loop, (ev_io *)&bridge);
+	debug_net("xfr_client: bridge to libev initiated\n");
+
+	/* Accept requests. */
+	debug_net("xfr_client: loop started\n");
+
+	/* Cancellation point. */
+	if (dt_is_cancelled(thread)) {
+		debug_xfr("xfr_client: finished.\n");
+		return KNOT_EOK;
+	}
+
+	/* Run event loop. */
+	ev_loop(data->loop, 0);
 
 	debug_xfr("xfr_client: finished.\n");
-	return ret;
+
+	return KNOT_EOK;
 }

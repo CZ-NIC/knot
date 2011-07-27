@@ -104,7 +104,7 @@ static void *thread_ep(void *data)
 	sigaddset(&ignset, SIGINT);
 	sigaddset(&ignset, SIGTERM);
 	sigaddset(&ignset, SIGHUP);
-	pthread_sigmask(SIG_IGN, &ignset, 0);
+	pthread_sigmask(SIG_BLOCK, &ignset, 0);
 
 	debug_dt("dthreads: [%p] entered ep\n", thread);
 

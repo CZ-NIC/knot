@@ -32,7 +32,7 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	debug_journal("journal: creating header\n");
 	if (!sfwrite(&max_nodes, sizeof(uint16_t), fp)) {
 		fclose(fp);
-		unlink(fn);
+		remove(fn);
 		return KNOT_ERROR;
 	}
 
@@ -40,12 +40,12 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	uint16_t zval = 0;
 	if (!sfwrite(&zval, sizeof(uint16_t), fp)) {
 		fclose(fp);
-		unlink(fn);
+		remove(fn);
 		return KNOT_ERROR;
 	}
 	if (!sfwrite(&zval, sizeof(uint16_t), fp)) {
 		fclose(fp);
-		unlink(fn);
+		remove(fn);
 		return KNOT_ERROR;
 	}
 
@@ -59,7 +59,7 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	jn.len = 0;
 	if (!sfwrite(&jn, sizeof(journal_node_t), fp)) {
 		fclose(fp);
-		unlink(fn);
+		remove(fn);
 		return KNOT_ERROR;
 	}
 
@@ -69,7 +69,7 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	for(uint16_t i = 0; i < max_nodes; ++i) {
 		if (!sfwrite(&jn, sizeof(journal_node_t), fp)) {
 			fclose(fp);
-			unlink(fn);
+			remove(fn);
 			return KNOT_ERROR;
 		}
 	}

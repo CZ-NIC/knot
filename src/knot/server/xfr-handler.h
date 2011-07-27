@@ -26,6 +26,7 @@ typedef struct xfrhandler_t
 	dt_unit_t     *unit;  /*!< \brief Threading unit. */
 	ns_nameserver_t *ns;  /*!< \brief Pointer to nameserver.*/
 	evqueue_t        *q;  /*!< \brief Shared XFR requests queue.*/
+	evqueue_t       *cq;  /*!< \brief XFR client requests queue.*/
 	struct ev_loop *loop; /*!< \brief Event loop. */
 } xfrhandler_t;
 
@@ -76,9 +77,7 @@ static inline int xfr_start(xfrhandler_t *handler) {
  * \retval KNOT_EOK on success.
  * \retval KNOT_ERROR on error.
  */
-static inline int xfr_stop(xfrhandler_t *handler) {
-	return dt_stop(handler->unit);
-}
+int xfr_stop(xfrhandler_t *handler);
 
 /*!
  * \brief Wait for XFR handler to finish.
