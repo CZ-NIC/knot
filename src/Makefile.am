@@ -93,6 +93,8 @@ unittests_dnslib_SOURCES =			\
 	dnslib/tests/dnslib/dname_tests.h	\
 	dnslib/tests/dnslib/dname_table_tests.h	\
 	dnslib/tests/dnslib/dname_table_tests.c	\
+	dnslib/tests/dnslib/nsec3_tests.h	\
+	dnslib/tests/dnslib/nsec3_tests.c	\
 	dnslib/tests/dnslib/packet_tests.h	\
 	dnslib/tests/dnslib/packet_tests.c	\
 	dnslib/tests/dnslib/query_tests.h	\
