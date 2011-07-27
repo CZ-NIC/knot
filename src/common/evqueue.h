@@ -99,6 +99,15 @@ void evqueue_free(evqueue_t **q);
 int evqueue_poll(evqueue_t *q, const struct timespec *ts, const sigset_t *sigmask);
 
 /*!
+ * \brief Return filedescriptor for polling new events in queue.
+ *
+ * \return Filedescriptor for polling new events.
+ */
+static inline int evqueue_pollfd(evqueue_t *q) {
+	return q->fds[EVQUEUE_READFD];
+}
+
+/*!
  * \brief Read data from event queue.
  *
  * This function is useful for sending custom
