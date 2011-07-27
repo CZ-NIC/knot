@@ -1233,6 +1233,9 @@ int dnslib_zone_contents_add_nsec3_node(dnslib_zone_contents_t *zone,
 	// set the apex as the parent of the node
 	dnslib_node_set_parent(node, zone->apex);
 
+	// set the zone to the node
+	dnslib_node_set_zone(node, zone->zone);
+
 	// cannot be wildcard child, so nothing to be done
 
 	return DNSLIB_EOK;
@@ -1731,7 +1734,9 @@ DEBUG_DNSLIB_ZONE(
 
 	// create dummy node to use for lookup
 	int exact_match = dnslib_zone_tree_find_less_or_equal(
-		zone->nsec3_nodes, name, &found, &prev);
+		zone->nsec3_nodes, nsec3_name, &found, &prev);
+
+	dnslib_dname_free(&nsec3_name);
 
 DEBUG_DNSLIB_ZONE(
 	if (found) {

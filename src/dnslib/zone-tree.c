@@ -242,6 +242,16 @@ int dnslib_zone_tree_get_less_or_equal(dnslib_zone_tree_t *tree,
 	*found = (exact_match) ? f->node : NULL;
 
 	if (prev == NULL) {
+//		printf("Searched for owner %s in zone tree.\n",
+//		       dnslib_dname_to_str(owner));
+//		printf("Exact match: %d\n", exact_match);
+//		printf("Found node: %p: %s.\n", f, (f)
+//		    ? dnslib_dname_to_str(dnslib_node_owner(f->node))
+//		    : "none");
+//		printf("Previous node: %p: %s.\n", prev, (prev)
+//		       ? dnslib_dname_to_str(dnslib_node_owner(prev->node))
+//		       : "none");
+
 		// either the returned node is the root of the tree, or it is
 		// the leftmost node in the tree; in both cases node was found
 		// set the previous node of the found node
