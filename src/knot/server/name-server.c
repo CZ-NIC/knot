@@ -1757,7 +1757,7 @@ DEBUG_NS(
 		return KNOT_EOK;
 	}
 DEBUG_NS(
-	char *name_str2 = dnslib_dname_to_str(zone->apex->owner);
+	char *name_str2 = dnslib_dname_to_str(zone->contents->apex->owner);
 	debug_ns("Found zone for QNAME %s\n", name_str2);
 	free(name_str2);
 );
@@ -3423,7 +3423,7 @@ DEBUG_NS(
 	while (zn != NULL) {
 		debug_ns("%d. zone: %p, key: %p\n", i, zn->value,
 		                    zn->key);
-		assert(zn->key == ((dnslib_zone_t *)zn->value)->apex->owner);
+		assert(zn->key == ((dnslib_zone_t *)zn->value)->contents->apex->owner);
 		name = dnslib_dname_to_str((dnslib_dname_t *)zn->key);
 		debug_ns("    zone name: %s\n", name);
 		free(name);

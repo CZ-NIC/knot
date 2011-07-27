@@ -580,6 +580,9 @@ static int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
 		}
 
 		zone = dnslib_zload_load(zl);
+
+		dnslib_zone_contents_dump(zone->contents, 1);
+
 		if (zone) {
 			// save the timestamp from the zone db file
 			struct stat s;
