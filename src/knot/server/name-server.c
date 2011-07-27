@@ -691,6 +691,7 @@ static int ns_put_covering_nsec3(const dnslib_zone_contents_t *zone,
 	const dnslib_node_t *prev, *node;
 	int match = dnslib_zone_contents_find_nsec3_for_name(zone, name,
 	                                                     &node, &prev);
+	assert(match >= 0);
 
 	if (match == DNSLIB_ZONE_NAME_FOUND){
 		// run-time collision => SERVFAIL

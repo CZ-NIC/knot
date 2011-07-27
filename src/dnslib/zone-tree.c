@@ -239,32 +239,46 @@ int dnslib_zone_tree_get_less_or_equal(dnslib_zone_tree_t *tree,
 	dnslib_node_free(&tmp_data, 0, 0);
 	free(tmp);
 
-	*found = (exact_match) ? f->node : NULL;
+	*found = (exact_match > 0) ? f->node : NULL;
 
-	if (prev == NULL) {
-//		printf("Searched for owner %s in zone tree.\n",
-//		       dnslib_dname_to_str(owner));
-//		printf("Exact match: %d\n", exact_match);
-//		printf("Found node: %p: %s.\n", f, (f)
-//		    ? dnslib_dname_to_str(dnslib_node_owner(f->node))
-//		    : "none");
-//		printf("Previous node: %p: %s.\n", prev, (prev)
-//		       ? dnslib_dname_to_str(dnslib_node_owner(prev->node))
-//		       : "none");
+	if (exact_match < 0) {
+		// previous is not really previous but should be the leftmost
+		// node in the tree; take it's previous
+		assert(prev != NULL);
+		*previous = dnslib_node_get_previous(prev->node, 1);
+		exact_match = 0;
+	} else if (prev == NULL) {
+		if (!exact_match) {
+			printf("Searched for owner %s in zone tree.\n",
+			       dnslib_dname_to_str(owner));
+			printf("Exact match: %d\n", exact_match);
+			printf("Found node: %p: %s.\n", f, (f)
+			    ? dnslib_dname_to_str(dnslib_node_owner(f->node))
+			    : "none");
+			printf("Previous node: %p: %s.\n", prev, (prev)
+			       ? dnslib_dname_to_str(dnslib_node_owner(prev->node))
+			       : "none");
+		}
 
-		// either the returned node is the root of the tree, or it is
-		// the leftmost node in the tree; in both cases node was found
-		// set the previous node of the found node
-		assert(exact_match);
+		// either the returned node is the root of the tree, or
+		// it is the leftmost node in the tree; in both cases
+		// node was found set the previous node of the found
+		// node
+		assert(exact_match > 0);
 		assert(f != NULL);
 		*previous = dnslib_node_get_previous(f->node, 1);
 	} else {
 		// otherwise check if the previous node is not an empty
 		// non-terminal
+		/*! \todo Here we assume that the 'prev' pointer always points
+		 *        to an empty non-terminal.
+		 */
 		*previous = (dnslib_node_rrset_count(prev->node) == 0)
 		            ? dnslib_node_get_previous(prev->node, 1)
 		            : prev->node;
 	}
+
+	assert(exact_match >= 0);
 
 	return exact_match;
 }
