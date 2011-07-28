@@ -558,37 +558,28 @@ static int ck_hash_item(ck_hash_table_t *table, ck_hash_table_item_t **to_hash,
 
 /*----------------------------------------------------------------------------*/
 
-//static void ck_rollback_rehash(ck_hash_table_t *table)
-//{
-//	// set old generation in tables
-//	for (int i = 0; i < hashsize(table->table_size_exp); ++i) {
-//		// no need for locking - timestamp is not used in lookup
-//		// and two paralel insertions (and thus rehashings) are
-//		// impossible
-//		for (uint t = TABLE_FIRST;
-//		     t <= TABLE_LAST(table->table_count); ++t) {
-//			if (table->tables[t][i] != NULL) {
-//				SET_GENERATION(&table->tables[t][i]->timestamp,
-//				               table->generation);
-//			}
-//		}
-//	}
+static void ck_rollback_rehash(ck_hash_table_t *table)
+{
+	// set old generation in tables
+	for (int i = 0; i < hashsize(table->table_size_exp); ++i) {
+		// no need for locking - timestamp is not used in lookup
+		// and two paralel insertions (and thus rehashings) are
+		// impossible
+		for (uint t = 0; t < table->table_count; ++t) {
+			if (table->tables[t][i] != NULL) {
+				SET_GENERATION(&table->tables[t][i]->timestamp,
+				               table->generation);
+			}
+		}
+	}
 
-//	// set old generation in stash
-////	for (int i = 0; i < STASH_SIZE; ++i) {
-////		if (((ck_hash_table_item_t **)(da_get_items(&table->stash)))[i]
-////		     != NULL) {
-////			SET_GENERATION(&((ck_hash_table_item_t **)
-////			           (da_get_items(&table->stash)))[i]->timestamp,
-////			           table->generation);
-////		}
-////	}
-//	ck_stash_item_t *item = table->stash2;
-//	while (item != NULL) {
-//		assert(item->item != NULL);
-//		SET_GENERATION(&item->item->timestamp, table->generation);
-//	}
-//}
+	// set old generation in stash
+	ck_stash_item_t *item = table->stash;
+	while (item != NULL) {
+		assert(item->item != NULL);
+		SET_GENERATION(&item->item->timestamp, table->generation);
+	}
+}
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -1072,7 +1063,11 @@ int ck_rehash(ck_hash_table_t *table)
 						item->next = table->stash;
 						table->stash = item;
 					} else {
-						ck_add_to_stash(table, free);
+						if (ck_add_to_stash(table, free)
+						    != 0) {
+							ck_rollback_rehash(
+								table);
+						}
 					}
 
 					free = NULL;
