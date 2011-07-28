@@ -2,16 +2,16 @@
 #include <assert.h>
 
 #include "dnslib/tests/dnslib/cuckoo_tests.h"
-#include "dnslib/hash/cuckoo-hash-table.h"
 
 #define CT_TEST_REHASH
+
+#include "dnslib/hash/cuckoo-hash-table.h"
 
 //#define CK_TEST_DEBUG
 //#define CK_TEST_LOOKUP
 //#define CK_TEST_OUTPUT
 //#define CK_TEST_REMOVE
 //#define CK_TEST_COMPARE
-#define CT_TEST_REHASH
 
 #ifdef CK_TEST_DEBUG
 #define CK_TEST_LOOKUP
@@ -134,6 +134,11 @@ static int test_cuckoo_lookup(ck_hash_table_t *table,
 			}
 		}
 	}
+
+	if (errors > 0) {
+		diag("Not found %d of %d items.\n", errors, items->count);
+	}
+
 	return errors == 0;
 }
 
@@ -191,10 +196,10 @@ static int test_cuckoo_modify(ck_hash_table_t *table, test_cuckoo_items *items)
 
 /*----------------------------------------------------------------------------*/
 
-//static int test_cuckoo_rehash(ck_hash_table *table)
-//{
-//	return (ck_rehash(table) == 0);
-//}
+static int test_cuckoo_rehash(ck_hash_table_t *table)
+{
+	return (ck_rehash(table) == 0);
+}
 
 /*----------------------------------------------------------------------------*/
 
@@ -311,11 +316,11 @@ static int cuckoo_tests_run(int argc, char *argv[])
 	   "cuckoo hashing: lookup after modify");
 
 	// Test 8: rehash
-	//ok(test_cuckoo_rehash(table), "cuckoo hashing: rehash");
+	ok(test_cuckoo_rehash(table), "cuckoo hashing: rehash");
 
 	// Test 9: lookup 4
-//	ok(test_cuckoo_lookup(table, items),
-//	   "cuckoo hashing: lookup after rehash");
+	ok(test_cuckoo_lookup(table, items),
+	   "cuckoo hashing: lookup after rehash");
 
 	endskip;
 

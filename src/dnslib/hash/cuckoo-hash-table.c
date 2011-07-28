@@ -611,7 +611,7 @@ int ck_add_to_stash(ck_hash_table_t *table, ck_hash_table_item_t *item)
 
 	new_item->item = item;
 	new_item->next = table->stash;
-	rcu_set_pointer(&table->stash, new_item);
+	table->stash = new_item;
 
 	debug_ck_hash("First item in stash (now inserted): key: %.*s (size %zu)"
 	              ", value: %p\n", (int)table->stash->item->key_length,
@@ -670,18 +670,8 @@ ck_hash_table_t *ck_create_table(uint items)
 		                             * sizeof(ck_hash_table_item_t *));
 	}
 
-	// create stash (replace by (generic) variable-length array)
-//	if (da_initialize(&table->stash, STASH_SIZE,
-//	                  sizeof(ck_hash_table_item_t *)) != 0) {
-//		for (uint t = TABLE_FIRST;
-//		     t <= TABLE_LAST(table->table_count); ++t) {
-//			free(table->tables[t]);
-//		}
-//		free(table);
-//		return NULL;
-//	}
-
 	table->stash = NULL;
+	table->hashed = NULL;
 
 	// initialize rehash/insert mutex
 	pthread_mutex_init(&table->mtx_table, NULL);
@@ -811,32 +801,6 @@ int ck_insert_item(ck_hash_table_t *table, const char *key,
 			debug_ck_hash("Could not add item to stash!!\n");
 			assert(0);
 		}
-
-//		debug_ck_hash("Item with key %.*s inserted into buffer.\n",
-//		              STASH_ITEMS(&table->stash)
-//		                [da_get_count(&table->stash)]->key_length,
-//		              STASH_ITEMS(&table->stash)
-//		                [da_get_count(&table->stash)]->key);
-
-		// loop occured, the item is already at its new place in the
-		// buffer, so just increment the index and check if rehash is
-		// not needed
-//		da_occupy(&table->stash, 1);
-
-		// if only one place left, rehash (this place is used in
-		// rehashing)
-//		if (da_try_reserve(&table->stash, 2) != 0) {
-//			debug_ck_hash("Rehash...\n");
-//			int res = ck_rehash(table);
-//			if (res != 0) {
-//				debug_ck_hash("Rehashing not successful, "
-//				              "rehash flag: %hu\n",
-//				              IS_REHASHING(table->generation));
-//				assert(0);
-//			}
-//			pthread_mutex_unlock(&table->mtx_table);
-//			return res;
-//		}
 	}
 
 	pthread_mutex_unlock(&table->mtx_table);
@@ -965,7 +929,7 @@ int ck_copy_table(const ck_hash_table_t *from, ck_hash_table_t **to)
 		           * sizeof(ck_hash_table_item_t *));
 	}
 
-	(*to)->stash2 = NULL;
+	(*to)->stash = NULL;
 
 	// initialize rehash/insert mutex
 	pthread_mutex_init(&(*to)->mtx_table, NULL);
@@ -975,6 +939,149 @@ int ck_copy_table(const ck_hash_table_t *from, ck_hash_table_t **to)
 	SET_GENERATION1(&(*to)->generation);
 
 	us_initialize(&(*to)->hash_system);
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int ck_rehash(ck_hash_table_t *table)
+{
+	debug_ck_rehash("Rehashing items in table.\n");
+	SET_REHASHING_ON(&table->generation);
+
+	ck_stash_item_t *free_stash_items = NULL;
+
+	do {
+		// 1) Rehash items from stash
+		ck_stash_item_t *item = table->stash;
+		ck_stash_item_t **item_place = &table->stash;
+		// terminate when at the end; this way the newly added items
+		// (added to the beginning) will be properly ignored
+		while (item != NULL) {
+			// put the hashed item to the prepared space
+			table->hashed = item->item;
+			item->item = NULL;
+			// we may use the place in the stash item as the free
+			// place for rehashing
+			if (ck_hash_item(table, &table->hashed, &item->item,
+			             NEXT_GENERATION(table->generation)) != 0) {
+				// the free place was used
+				assert(item->item != NULL);
+				// we may leave the item there (in the stash)
+				assert(EQUAL_GENERATIONS(item->item->timestamp,
+				                         table->generation));
+				assert(item->item == table->hashed);
+
+				item_place = &item->next;
+				item = item->next;
+			} else {
+				// the free place should be free
+				assert(item->item == NULL);
+				// and the item should be hashed too
+				assert(table->hashed == NULL);
+
+				// fix the pointer from the previous hash item
+				*item_place = item->next;
+				// and do not change the item place pointer
+
+				// put the stash item into list of free stash
+				// items
+				item->next = free_stash_items;
+				free_stash_items = item;
+
+				item = *item_place;
+			}
+		}
+
+		// 2) Rehash items from tables
+
+		// in case of failure, save the item in a temp variable
+		// which will be put to the stash
+		ck_hash_table_item_t *free = NULL;
+		ck_hash_table_item_t *old = table->hashed;
+
+		for (uint t = 0; t < table->table_count; ++t) {
+			uint rehashed = 0;
+
+			while (rehashed < hashsize(table->table_size_exp)) {
+
+				// if item's generation is the new generation,
+				// skip
+				if (table->tables[t][rehashed] == NULL
+				    || !(EQUAL_GENERATIONS(
+				          table->tables[t][rehashed]->timestamp,
+				          table->generation))) {
+					debug_ck_rehash("Skipping item.\n");
+					++rehashed;
+					continue;
+				}
+
+				debug_ck_rehash("Rehashing item with hash %u, "
+				  "key (length %u): %.*s, generation: %hu, "
+				  "table generation: %hu.\n", rehashed,
+				  table->tables[t][rehashed]->key_length,
+				  (int)(table->tables[t][rehashed]->key_length),
+				  table->tables[t][rehashed]->key,
+				  GET_GENERATION(
+					table->tables[t][rehashed]->timestamp),
+				  GET_GENERATION(table->generation));
+
+				// otherwise copy the item for rehashing
+				ck_put_item(&old,
+				            table->tables[t][rehashed]);
+				// clear the place so that this item will not
+				// get rehashed again
+				ck_clear_item(&table->tables[t][rehashed]);
+
+				debug_ck_rehash("Table generation: %hu, next "
+				            "generation: %hu.\n",
+				            GET_GENERATION(table->generation),
+				            NEXT_GENERATION(table->generation));
+
+				if (ck_hash_item(table, &old, &free,
+				     NEXT_GENERATION(table->generation)) != 0) {
+					// loop occured
+					debug_ck_hash("Hashing entered a loop."
+						      "\n");
+					debug_ck_rehash("Item with key %.*s "
+					  "inserted into the free slot.\n");
+
+					assert(old == free);
+
+					// put the item into the stash, but
+					// try the free stash items first
+					if (free_stash_items != NULL) {
+						// take first
+						ck_stash_item_t *item =
+							free_stash_items;
+						free_stash_items = item->next;
+
+						item->item = free;
+						item->next = table->stash;
+						table->stash = item;
+					} else {
+						ck_add_to_stash(table, free);
+					}
+
+					free = NULL;
+					old = NULL;
+				}
+				++rehashed;
+			}
+		}
+
+	} while (false /*! \todo Add proper condition!! */);
+
+	SET_REHASHING_OFF(&table->generation);
+
+
+	while (free_stash_items != NULL) {
+		ck_stash_item_t *item = free_stash_items;
+		free_stash_items = item->next;
+		assert(item->item == NULL);
+		free(item);
+	}
 
 	return 0;
 }
