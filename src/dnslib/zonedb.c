@@ -92,7 +92,7 @@ int dnslib_zonedb_add_zone(dnslib_zonedb_t *db, dnslib_zone_t *zone)
 		return DNSLIB_EBADARG;
 	}
 DEBUG_DNSLIB_ZONEDB(
-	char *name = dnslib_dname_to_str(zone->apex->owner);
+	char *name = dnslib_dname_to_str(zone->name);
 	debug_dnslib_zonedb("Inserting zone %s into zone db.\n", name);
 	free(name);
 );
@@ -102,7 +102,7 @@ DEBUG_DNSLIB_ZONEDB(
 		return ret;
 	}
 
-	ret = skip_insert(db->zones, zone->contents->apex->owner, zone, NULL);
+	ret = skip_insert(db->zones, zone->name, zone, NULL);
 	assert(ret == 0 || ret == 1 || ret == -1);
 	return (ret != 0) ? DNSLIB_EZONEIN : DNSLIB_EOK;
 }

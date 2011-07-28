@@ -247,7 +247,7 @@ static void dnslib_zone_contents_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
 static void dnslib_zone_contents_adjust_rrsets(dnslib_node_t *node,
                                                dnslib_zone_contents_t *zone)
 {
-	return;
+	//return;
 	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
 	short count = dnslib_node_rrset_count(node);
 
@@ -255,9 +255,11 @@ static void dnslib_zone_contents_adjust_rrsets(dnslib_node_t *node,
 
 	for (int r = 0; r < count; ++r) {
 		assert(rrsets[r] != NULL);
+		debug_dnslib_zone("Adjusting next RRSet.\n");
 		dnslib_zone_contents_adjust_rdata_in_rrset(rrsets[r], zone);
 		dnslib_rrset_t *rrsigs = rrsets[r]->rrsigs;
 		if (rrsigs != NULL) {
+			debug_dnslib_zone("Adjusting next RRSIGs.\n");
 			dnslib_zone_contents_adjust_rdata_in_rrset(rrsigs,
 			                                           zone);
 		}
@@ -1014,7 +1016,7 @@ DEBUG_DNSLIB_ZONE(
 		}
 		// set the found parent (in the zone) as the parent of the last
 		// inserted node
-		assert(dnslib_node_parent(node, 1) == NULL);
+		assert(dnslib_node_parent(node, 0) == NULL);
 		dnslib_node_set_parent(node, next_node);
 
 		debug_dnslib_zone("Created all parents.\n");
