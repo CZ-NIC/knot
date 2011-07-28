@@ -417,6 +417,10 @@ skip_list_t *skip_copy_list(const skip_list_t *list)
 
 		// create new node
 		skip_node_t *n = skip_make_node(list->level, x->key, x->value);
+		if (n == NULL) {
+			skip_destroy_list(&ss, NULL, NULL);
+			return NULL;
+		}
 		// set forward pointers from the previous node
 		for (int i = 0; i <= list->level; ++i) {
 			if (prev->forward[i] == x) {

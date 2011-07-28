@@ -916,7 +916,7 @@ void rrset_dump_text(dnslib_rrset_t *rrset, FILE *f)
 
 struct dump_param {
 	FILE *f;
-	dnslib_dname_t *origin;
+	const dnslib_dname_t *origin;
 };
 
 void apex_node_dump_text(dnslib_node_t *node, FILE *f)
@@ -949,7 +949,7 @@ void node_dump_text(dnslib_node_t *node, void *data)
 	struct dump_param *param;
 	param = (struct dump_param *)data;
 	FILE *f = param->f;
-	dnslib_dname_t *origin = param->origin;
+	const dnslib_dname_t *origin = param->origin;
 
 	/* pointers should do in this case */
 	if (node->owner == origin) {
@@ -975,7 +975,7 @@ void node_dump_text(dnslib_node_t *node, void *data)
 	}
 }
 
-int zone_dump_text(dnslib_zone_t *zone, const char *filename)
+int zone_dump_text(dnslib_zone_contents_t *zone, const char *filename)
 {
 	FILE *f = fopen(filename, "w");
 	if (f == NULL) {
@@ -989,9 +989,10 @@ int zone_dump_text(dnslib_zone_t *zone, const char *filename)
 
 	struct dump_param param;
 	param.f = f;
-	param.origin = zone->apex->owner;
-	dnslib_zone_tree_apply_inorder(zone, node_dump_text, &param);
-	dnslib_zone_nsec3_apply_inorder(zone, node_dump_text, &param);
+	assert(zone->apex != NULL && zone->apex->owner != NULL);
+	param.origin = dnslib_node_owner(dnslib_zone_contents_apex(zone));
+	dnslib_zone_contents_tree_apply_inorder(zone, node_dump_text, &param);
+	dnslib_zone_contents_nsec3_apply_inorder(zone, node_dump_text, &param);
 	fclose(f);
 
 	return DNSLIB_EOK;

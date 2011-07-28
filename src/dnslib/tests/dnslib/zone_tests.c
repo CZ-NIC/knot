@@ -67,7 +67,7 @@ static int test_zone_create(dnslib_zone_t **zone)
 //	assert(dname);
 
 	dnslib_node_t *node = dnslib_node_new(&test_apex.owner,
-	                                      test_apex.parent);
+	                                      test_apex.parent, 0);
 	if (node == NULL) {
 		diag("zone: Could not create zone apex.");
 		return 0;
@@ -77,13 +77,13 @@ static int test_zone_create(dnslib_zone_t **zone)
 
 	if ((*zone) == NULL) {
 		diag("zone: Failed to create zone.");
-		dnslib_node_free(&node, 1);
+		dnslib_node_free(&node, 1, 0);
 		return 0;
 	}
 
-	if ((*zone)->apex != node) {
+	if ((*zone)->contents->apex != node) {
 		diag("zone: Zone apex not set right.");
-		dnslib_node_free(&node, 1);
+		dnslib_node_free(&node, 1, 0);
 		return 0;
 	}
 
@@ -105,7 +105,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 
 	for (int i = 0; i < TEST_NODES_GOOD; ++i) {
 		dnslib_node_t *node = dnslib_node_new(&test_nodes_good[i].owner,
-		                                     test_nodes_good[i].parent);
+		                                     test_nodes_good[i].parent, 0);
 		if (node == NULL) {
 			diag("zone: Could not create node.");
 			return 0;
@@ -115,7 +115,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 		                   : dnslib_zone_add_node(zone, node, 0, 1))) != 0) {
 			diag("zone: Failed to insert node into zone (returned"
 			     " %d).", res);
-			dnslib_node_free(&node, 0);
+			dnslib_node_free(&node, 0, 0);
 			++errors;
 		}
 		/* TODO check values in the node as well */
@@ -125,7 +125,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 
 	for (int i = 0; i < TEST_NODES_BAD; ++i) {
 		dnslib_node_t *node = dnslib_node_new(&test_nodes_bad[i].owner,
-		                                    test_nodes_bad[i].parent);
+		                                    test_nodes_bad[i].parent, 0);
 		if (node == NULL) {
 			diag("zone: Could not create node.");
 			return 0;
@@ -139,7 +139,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 			     DNSLIB_EBADZONE);
 			++errors;
 		}
-		dnslib_node_free(&node, 0);
+		dnslib_node_free(&node, 0, 0);
 	}
 
 	//note("NULL zone");
@@ -147,7 +147,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 	note("Inserting into NULL zone...\n");
 
 	dnslib_node_t *node = dnslib_node_new(&test_nodes_good[0].owner,
-	                                      test_nodes_good[0].parent);
+	                                      test_nodes_good[0].parent, 0);
 	if (node == NULL) {
 		diag("zone: Could not create node.");
 		return 0;
@@ -161,7 +161,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 		++errors;
 	}
 
-	dnslib_node_free(&node, 0);
+	dnslib_node_free(&node, 0, 0);
 
 	//note("NULL node");
 	note("Inserting NULL node...\n");
@@ -177,7 +177,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 	if (!nsec3) {
 		//note("Inserting Apex again...\n");
 
-		node = dnslib_node_new(&test_apex.owner, test_apex.parent);
+		node = dnslib_node_new(&test_apex.owner, test_apex.parent, 0);
 		if (node == NULL) {
 			diag("zone: Could not create node.");
 			return 0;
@@ -193,7 +193,7 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 			++errors;
 		}
 
-		dnslib_node_free(&node, 0);
+		dnslib_node_free(&node, 0, 0);
 	}
 
 	// check if all nodes are inserted
@@ -342,7 +342,7 @@ static void test_zone_destroy_node_from_tree(dnslib_node_t *node,
                                              void *data)
 {
 	UNUSED(data);
-	dnslib_node_free(&node, 0);
+	dnslib_node_free(&node, 0, 0);
 }
 
 /* explained below */
@@ -375,6 +375,7 @@ static void tmp_compare_function(dnslib_node_t *node, void *data)
 	} else if (!compare_ok) {
 		diag("Traversal function has partially set values right");
 	}
+	node->parent = NULL;
 	node_index++;
 }
 
@@ -385,7 +386,7 @@ static int test_zone_tree_apply(dnslib_zone_t *zone,
 	assert(node_index == 0);
 	assert(compare_ok == 1);
 
-	void (*traversal_func)(dnslib_zone_t *zone,
+	int (*traversal_func)(dnslib_zone_t *zone,
 	                       void (*function)(dnslib_node_t *node,
 	                                        void *data),
 	                       void *data);

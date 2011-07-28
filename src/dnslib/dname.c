@@ -604,6 +604,13 @@ uint dnslib_dname_size(const dnslib_dname_t *dname)
 
 /*----------------------------------------------------------------------------*/
 
+unsigned int dnslib_dname_id(const dnslib_dname_t *dname)
+{
+	return dname->id;
+}
+
+/*----------------------------------------------------------------------------*/
+
 uint8_t dnslib_dname_size_part(const dnslib_dname_t *dname, int labels)
 {
 	assert(labels < dname->label_count);
@@ -613,9 +620,41 @@ uint8_t dnslib_dname_size_part(const dnslib_dname_t *dname, int labels)
 
 /*----------------------------------------------------------------------------*/
 
-const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname)
+const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname,
+                                            int check_version)
+
 {
-	return dname->node;
+	if (check_version) {
+		return dnslib_node_current(dname->node);
+	} else {
+		return dname->node;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+struct dnslib_node *dnslib_dname_get_node(dnslib_dname_t *dname,
+                                          int check_version)
+{
+	if (check_version) {
+		return dnslib_node_get_current(dname->node);
+	} else {
+		return dname->node;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_dname_set_node(dnslib_dname_t *dname, dnslib_node_t *node)
+{
+	dname->node = node;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_dname_update_node(dnslib_dname_t *dname)
+{
+	dnslib_node_update_ref(&dname->node);
 }
 
 /*----------------------------------------------------------------------------*/

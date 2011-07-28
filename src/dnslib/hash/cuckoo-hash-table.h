@@ -261,6 +261,8 @@ int ck_update_item(const ck_hash_table_t *table, const char *key, size_t length,
 int ck_remove_item(const ck_hash_table_t *table, const char *key, size_t length,
                    void (*dtor_value)(void *value), int delete_key);
 
+int ck_copy_table(const ck_hash_table_t *from, ck_hash_table_t **to);
+
 #ifdef CT_TEST_REHASH
 /*----------------------------------------------------------------------------*/
 

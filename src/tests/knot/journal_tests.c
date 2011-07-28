@@ -42,7 +42,8 @@ static int journal_tests_count(int argc, char *argv[])
 static int journal_tests_run(int argc, char *argv[])
 {
 	/* Test 1: Create tmpfile. */
-	const int jsize = 256;
+	const int fsize = 8092;
+	const int jsize = 512;
 	char jfn_buf[] = "/tmp/journal.XXXXXX";
 	int tmp_fd = mkstemp(jfn_buf);
 	ok(tmp_fd >= 0, "journal: create temporary file");
@@ -54,7 +55,7 @@ static int journal_tests_run(int argc, char *argv[])
 	ok(ret == KNOT_EOK, "journal: create journal '%s'", jfilename);
 
 	/* Test 3: Open journal. */
-	journal_t *j = journal_open(jfilename);
+	journal_t *j = journal_open(jfilename, fsize, 0);
 	ok(j != 0, "journal: open");
 
 	/* Test 4: Write entry to log. */
@@ -64,7 +65,7 @@ static int journal_tests_run(int argc, char *argv[])
 
 	/* Test 5: Read entry from log. */
 	char tmpbuf[64] = {'\0'};
-	ret = journal_read(j, 0x0a, tmpbuf);
+	ret = journal_read(j, 0x0a, 0, tmpbuf);
 	ok(ret == KNOT_EOK, "journal: read entry");
 
 	/* Test 6: Compare read data. */
@@ -85,7 +86,7 @@ static int journal_tests_run(int argc, char *argv[])
 		}
 
 		/* Store some key on the end. */
-		if (i == itcount - jsize/5) {
+		if (i == itcount - 2) {
 			chk_key = key;
 			memcpy(chk_buf, tmpbuf, sizeof(chk_buf));
 		}
@@ -94,15 +95,15 @@ static int journal_tests_run(int argc, char *argv[])
 
 	/* Test 8: Check data integrity. */
 	memset(tmpbuf, 0, sizeof(tmpbuf));
-	journal_read(j, chk_key, tmpbuf);
+	journal_read(j, chk_key, 0, tmpbuf);
 	ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
 	ok(ret == 0, "journal: read data integrity check");
 
 	/* Test 9: Reopen log and re-read value. */
 	memset(tmpbuf, 0, sizeof(tmpbuf));
 	journal_close(j);
-	j = journal_open(jfilename);
-	journal_read(j, chk_key, tmpbuf);
+	j = journal_open(jfilename, fsize, 0);
+	journal_read(j, chk_key, 0, tmpbuf);
 	ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
 	ok(ret == 0, "journal: read data integrity check after close/open");
 
@@ -113,7 +114,7 @@ static int journal_tests_run(int argc, char *argv[])
 	close(tmp_fd);
 
 	/* Delete journal. */
-	unlink(jfilename);
+	remove(jfilename);
 
 	endskip;
 

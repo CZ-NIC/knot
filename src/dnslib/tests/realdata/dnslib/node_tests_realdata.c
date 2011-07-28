@@ -68,7 +68,7 @@ static int test_node_create(const list *node_list)
 			return 0;
 		}
 		tmp = dnslib_node_new(owner,
-		                      (dnslib_node_t *)tmp_node->parent);
+				      (dnslib_node_t *)tmp_node->parent, 0);
 		if (tmp == NULL ||
 		    (strncmp((char *)tmp->owner->name,
 		             (char *)tmp_node->owner->wire,
@@ -78,7 +78,7 @@ static int test_node_create(const list *node_list)
 			errors++;
 			diag("Failed to create node structure");
 		}
-		dnslib_node_free(&tmp, 0);
+		dnslib_node_free(&tmp, 0, 0);
 	}
 
 	return (errors == 0);
@@ -107,8 +107,7 @@ static int test_node_add_rrset(list *rrset_list)
 			return 0;
 		}
 
-		tmp = dnslib_node_new(owner,
-		                      NULL);
+		tmp = dnslib_node_new(owner, NULL, 0);
 
 		if (dnslib_node_add_rrset(tmp, rrset, 0) != 0) {
 			errors++;
@@ -153,7 +152,7 @@ static int test_node_add_rrset(list *rrset_list)
 			diag("Values in found rrset are wrong");
 		}
 
-		dnslib_node_free(&tmp, 1);
+		dnslib_node_free(&tmp, 1, 0);
 	}
 
 	return (errors == 0);

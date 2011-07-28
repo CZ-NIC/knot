@@ -46,7 +46,7 @@ typedef enum journal_flag_t {
  */
 typedef struct journal_node_t
 {
-	uint16_t id;    /*!< Node ID. */
+	uint64_t id;    /*!< Node ID. */
 	uint16_t flags; /*!< Node flags. */
 	uint32_t pos;   /*!< Position in journal file. */
 	uint32_t len;   /*!< Entry data length. */
@@ -69,14 +69,34 @@ typedef struct journal_t
 	uint16_t max_nodes;     /*!< Number of nodes. */
 	uint16_t qhead;         /*!< Node queue head. */
 	uint16_t qtail;         /*!< Node queue tail. */
+	uint16_t bflags;        /*!< Initial flags for each written node. */
+	size_t fsize;           /*!< Journal file size. */
+	size_t fslimit;         /*!< File size limit. */
 	journal_node_t free;    /*!< Free segment. */
 	journal_node_t nodes[]; /*!< Array of nodes. */
 } journal_t;
 
+/*!
+ * \brief Entry identifier compare function.
+ *
+ * \retval -n if k1 < k2
+ * \retval +n if k1 > k2
+ * \retval  0 if k1 == k2
+ */
+typedef int (*journal_cmp_t)(uint64_t k1, uint64_t k2);
+
+/*!
+ * \brief Function prototype for journal_walk() function.
+ *
+ * \param j Associated journal.
+ * \param n Pointer to target node.
+ */
+typedef int (*journal_apply_t)(journal_t *j, journal_node_t *n);
+
 /*
  * Journal defaults and constants.
  */
-#define JOURNAL_NCOUNT 512 /*!< Default node count. */
+#define JOURNAL_NCOUNT 1024 /*!< Default node count. */
 #define JOURNAL_HSIZE (sizeof(uint16_t) * 3) /*!< max_entries, qhead, qtail */
 
 /*!
@@ -95,29 +115,34 @@ int journal_create(const char *fn, uint16_t max_nodes);
  * \brief Open journal file for read/write.
  *
  * \param fn Journal file name.
+ * \param fslimit File size limit (-1 for no limit).
+ * \param bflags Initial flags for each written node.
  *
  * \retval new journal instance if successful.
  * \retval NULL on error.
  */
-journal_t* journal_open(const char *fn);
+journal_t* journal_open(const char *fn, int fslimit, uint16_t bflags);
 
 /*!
  * \brief Fetch entry node for given identifier.
  *
  * \param journal Associated journal.
  * \param id Entry identifier.
+ * \param cf Compare function (NULL for equality).
  * \param dst Destination for journal entry.
  *
  * \retval KNOT_EOK if successful.
  * \retval KNOT_ENOENT if not found.
  */
-int journal_fetch(journal_t *journal, int id, const journal_node_t** dst);
+int journal_fetch(journal_t *journal, uint64_t id,
+		  journal_cmp_t cf, journal_node_t** dst);
 
 /*!
  * \brief Read journal entry data.
  *
  * \param journal Associated journal.
  * \param id Entry identifier.
+ * \param cf Compare function (NULL for equality).
  * \param dst Pointer to destination memory.
  *
  * \retval KNOT_EOK if successful.
@@ -125,7 +150,7 @@ int journal_fetch(journal_t *journal, int id, const journal_node_t** dst);
  * \retval KNOT_EINVAL if the entry is invalid.
  * \retval KNOT_ERROR on I/O error.
  */
-int journal_read(journal_t *journal, int id, char *dst);
+int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst);
 
 /*!
  * \brief Write journal entry data.
@@ -135,16 +160,66 @@ int journal_read(journal_t *journal, int id, char *dst);
  * \param src Pointer to source data.
  *
  * \retval KNOT_EOK if successful.
+ * \retval KNOT_EAGAIN if no free node is available, need to remove dirty nodes.
  * \retval KNOT_ERROR on I/O error.
  */
-int journal_write(journal_t *journal, int id, const char *src, size_t size);
+int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size);
+
+/*!
+ * \brief Return least recent node (journal head).
+ *
+ * \param journal Associated journal.
+ *
+ * \retval node if successful.
+ * \retval NULL if empty.
+ */
+static inline journal_node_t *journal_head(journal_t *journal) {
+	return journal->nodes + journal->qhead;
+}
+
+/*!
+ * \brief Return node after most recent node (journal tail).
+ *
+ * \param journal Associated journal.
+ *
+ * \retval node if successful.
+ * \retval NULL if empty.
+ */
+static inline journal_node_t *journal_end(journal_t *journal) {
+	return journal->nodes +  journal->qtail;
+}
+
+/*!
+ * \brief Apply function to each node.
+ *
+ * \param journal Associated journal.
+ * \param apply Function to apply to each node.
+ *
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_EINVAL on invalid parameters.
+ */
+int journal_walk(journal_t *journal, journal_apply_t apply);
+
+/*!
+ * \brief Sync node state to permanent storage.
+ *
+ * \note May be used for journal_walk().
+ *
+ * \param journal Associated journal.
+ * \param n Pointer to node (must belong to associated journal).
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ */
+int journal_update(journal_t *journal, journal_node_t *n);
 
 /*!
  * \brief Close journal file.
  *
  * \param journal Associated journal.
  *
- * \retval KNOT_EOK
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameter.
  */
 int journal_close(journal_t *journal);
 

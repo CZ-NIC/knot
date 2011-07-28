@@ -26,6 +26,13 @@ struct xfr_io_t
 	ns_xfr_t data;
 };
 
+/*! \brief Interrupt libev ev_loop execution. */
+static void xfr_interrupt(xfrhandler_t *h)
+{
+	/* Break loop. */
+	evqueue_write(h->cq, "", 1);
+}
+
 /*!
  * \brief XFR-IN event handler function.
  *
@@ -50,6 +57,8 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 	/* Read DNS/TCP packet. */
 	int ret = tcp_recv(w->fd, buf, sizeof(buf), 0);
 	if (ret <= 0) {
+		debug_xfr("xfr_client_ev: closing socket %d\n",
+			  ((ev_io *)w)->fd);
 		ev_io_stop(loop, (ev_io *)w);
 		close(((ev_io *)w)->fd);
 		free(xfr_w);
@@ -61,7 +70,7 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 	request->wire_size = ret;
 
 	/* Process incoming packet. */
-		switch(request->type) {
+	switch(request->type) {
 	case NS_XFR_TYPE_AIN:
 		ret = ns_process_axfrin(xfr_w->h->ns, request);
 		break;
@@ -85,6 +94,9 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 		xfrin_zone_transferred(xfr_w->h->ns, request->zone);
 
 		/* Return error code to make TCP client disconnect. */
+		ev_io_stop(loop, (ev_io *)w);
+		close(((ev_io *)w)->fd);
+		free(xfr_w);
 		return;
 	}
 
@@ -94,7 +106,7 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 /*!
  * \brief TCP loop to event queue bridge event.
  *
- * Read single request from event queue and move it to the TCP loop.
+ * Read single request from event queue and execute it.
  *
  * \param loop Associated event pool.
  * \param w Associated socket watcher.
@@ -105,47 +117,98 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
 	/* Check data. */
 	struct xfr_io_t* xfr_w = (struct xfr_io_t *)w;
 	xfrhandler_t *handler = xfr_w->h;
-	if (!handler) {
+	ns_xfr_t *req = &xfr_w->data;
+	if (!handler || !req) {
 		return;
 	}
 
-	/* Poll new events. */
-	int ret = evqueue_poll(handler->cq, 0, 0);
-
-	/* Check poll count. */
-	if (ret <= 0) {
-		debug_xfr("xfr_bridge_ev: poll returned %d.\n", ret);
-		return;
-	}
-
-	/* Read single request. */
-	struct xfr_io_t *req = malloc(sizeof(struct xfr_io_t));
-	if (!req) {
-		log_server_error("xfr_bridge_ev: not enough memory.\n");
-		return;
-	}
-
-	req->data.session = -1;
-	ret = evqueue_read(handler->cq, req, sizeof(struct xfr_io_t));
-	if (ret != sizeof(struct xfr_io_t)) {
+	/* Read event. */
+	int ret = evqueue_read(handler->cq, req, sizeof(ns_xfr_t));
+	if (ret != sizeof(ns_xfr_t)) {
 		debug_xfr("xfr_bridge_ev: queue read returned %d.\n", ret);
-	}
-
-	/* Check session descriptor. */
-	if (req->data.session < 0) {
-		debug_xfr("xfr_bridge_ev: quitting\n");
 		ev_io_stop(loop, w);
 		ev_unloop(loop, EVUNLOOP_ALL);
-
-		/* Stop threading unit. */
 		dt_stop(handler->unit);
-		free(req);
 		return;
 	}
 
-	/* Move to TCP queue. */
-	ev_io_init((ev_io *)req, xfr_client_ev, req->data.session, EV_READ);
-	ev_io_start(loop, (ev_io *)req);
+	/* Fetch associated zone. */
+	dnslib_zone_contents_t *zone = (dnslib_zone_contents_t *)req->data;
+	if (!zone) {
+		return;
+	}
+	const dnslib_node_t *apex = dnslib_zone_contents_apex(zone);
+	const dnslib_dname_t *dname = dnslib_node_owner(apex);
+
+	/* Connect to remote. */
+	if (req->session <= 0) {
+		int fd = socket_create(req->addr.family, SOCK_STREAM);
+		if (fd < 0) {
+			return;
+		}
+		ret = connect(fd, req->addr.ptr, req->addr.len);
+		if (ret < 0) {
+			return;
+		}
+
+		/* Store new socket descriptor. */
+		req->session = fd;
+	} else {
+		/* Duplicate existing socket descriptor. */
+		req->session = dup(req->session);
+	}
+
+	/* Create XFR query. */
+	ret = KNOT_ERROR;
+	size_t bufsize = req->wire_size;
+	switch(req->type) {
+	case NS_XFR_TYPE_AIN:
+		ret = xfrin_create_axfr_query(dname, req->wire, &bufsize);
+		break;
+	case NS_XFR_TYPE_IIN:
+		ret = xfrin_create_ixfr_query(dname, req->wire, &bufsize);
+		break;
+	default:
+		ret = KNOT_EINVAL;
+		break;
+	}
+
+	/* Handle errors. */
+	if (ret != KNOT_EOK) {
+		debug_xfr("xfr_in: failed to create XFR query type %d\n",
+			  req->type);
+		socket_close(req->session);
+		return;
+	}
+
+	/* Send XFR query. */
+	debug_xfr("xfr_in: sending XFR query (%zu bytes)\n", bufsize);
+	ret = req->send(req->session, &req->addr, req->wire, bufsize);
+	if (ret != bufsize) {
+		debug_xfr("xfr_in: failed to send XFR query type %d\n",
+			  req->type);
+		socket_close(req->session);
+		return;
+	}
+
+	/* Update XFR request. */
+	req->wire = 0; /* Disable shared buffer. */
+	req->wire_size = 0;
+	req->data = 0; /* New zone will be built. */
+	req->zone = 0;
+
+	/* Store XFR request for further processing. */
+	struct xfr_io_t *cl_w = malloc(sizeof(struct xfr_io_t));
+	if (!cl_w) {
+		socket_close(req->session);
+		return;
+	}
+	cl_w->h = xfr_w->h;
+	memcpy(&cl_w->data, req, sizeof(ns_xfr_t));
+
+	/* Add to pending transfers. */
+	ev_io_init((ev_io *)cl_w, xfr_client_ev, req->session, EV_READ);
+	ev_io_start(loop, (ev_io *)cl_w);
 }
 
 /*
@@ -160,6 +223,8 @@ xfrhandler_t *xfr_create(size_t thrcount, ns_nameserver_t *ns)
 		return 0;
 	}
 	data->ns = ns;
+	data->interrupt = 0;
+	data->loop = 0;
 
 	/* Create event queue. */
 	data->q = evqueue_new();
@@ -197,7 +262,8 @@ xfrhandler_t *xfr_create(size_t thrcount, ns_nameserver_t *ns)
 	}
 	data->unit = unit;
 
-	dt_repurpose(unit->threads[0], &xfr_client, data);
+	/* Repurpose first thread as xfr_client. */
+	dt_repurpose(unit->threads[0], &xfr_client, (void*)data);
 
 	return data;
 }
@@ -249,92 +315,12 @@ int xfr_request(xfrhandler_t *handler, ns_xfr_t *req)
 	return KNOT_EOK;
 }
 
-int xfr_client_start(xfrhandler_t *handler, ns_xfr_t *req)
-{
-	/* Check handler. */
-	if (!handler || !req) {
-		return KNOT_EINVAL;
-	}
-
-	/* Fetch associated zone. */
-	dnslib_zone_t *zone = (dnslib_zone_t *)req->data;
-	if (!zone) {
-		return KNOT_EINVAL;
-	}
-	const dnslib_node_t *apex = dnslib_zone_apex(zone);
-	const dnslib_dname_t *dname = dnslib_node_owner(apex);
-
-	/* Connect to remote. */
-	if (req->session <= 0) {
-		int fd = socket_create(req->addr.family, SOCK_STREAM);
-		if (fd < 0) {
-			return fd;
-		}
-		int ret = connect(fd, req->addr.ptr, req->addr.len);
-		if (ret < 0) {
-			return KNOT_ECONNREFUSED;
-		}
-
-		/* Store new socket descriptor. */
-		req->session = fd;
-	} else {
-		/* Duplicate existing socket descriptor. */
-		req->session = dup(req->session);
-	}
-
-	/* Create XFR query. */
-	int ret = KNOT_ERROR;
-	size_t bufsize = req->wire_size;
-	switch(req->type) {
-	case NS_XFR_TYPE_AIN:
-		ret = xfrin_create_axfr_query(dname, req->wire, &bufsize);
-		break;
-	case NS_XFR_TYPE_IIN:
-		ret = xfrin_create_ixfr_query(dname, req->wire, &bufsize);
-		break;
-	default:
-		ret = KNOT_EINVAL;
-		break;
-	}
-
-	/* Handle errors. */
-	if (ret != KNOT_EOK) {
-		socket_close(req->session);
-		return ret;
-	}
-
-	/* Send XFR query. */
-	debug_xfr("xfr_in: sending XFR query (%zu bytes)\n", bufsize);
-	ret = req->send(req->session, &req->addr, req->wire, bufsize);
-	if (ret != bufsize) {
-		socket_close(req->session);
-		return KNOT_ERROR;
-	}
-
-	/* Update XFR request. */
-	req->wire = 0; /* Disable shared buffer. */
-	req->wire_size = 0;
-	req->data = 0; /* New zone will be built. */
-	req->zone = 0;
-
-	/* Store XFR request for further processing. */
-	struct xfr_io_t w;
-	memset(&w, 0, sizeof(struct xfr_io_t));
-	w.h = handler;
-	memcpy(&w.data, req, sizeof(ns_xfr_t));
-
-	/* Add to pending transfers. */
-	evqueue_write(handler->cq, &w, sizeof(struct xfr_io_t));
-
-	return KNOT_EOK;
-}
-
 int xfr_master(dthread_t *thread)
 {
-	xfrhandler_t *data = (xfrhandler_t *)thread->data;
+	xfrhandler_t *xfrh = (xfrhandler_t *)thread->data;
 
 	/* Check data. */
-	if (data < 0) {
+	if (xfrh < 0) {
 		debug_xfr("xfr_master: no data recevied, finishing.\n");
 		return KNOT_EINVAL;
 	}
@@ -347,7 +333,7 @@ int xfr_master(dthread_t *thread)
 	for (;;) {
 
 		/* Poll new events. */
-		int ret = evqueue_poll(data->q, 0, 0);
+		int ret = evqueue_poll(xfrh->q, 0, 0);
 
 		/* Cancellation point. */
 		if (dt_is_cancelled(thread)) {
@@ -363,7 +349,7 @@ int xfr_master(dthread_t *thread)
 
 		/* Read single request. */
 		ns_xfr_t xfr;
-		ret = evqueue_read(data->q, &xfr, sizeof(ns_xfr_t));
+		ret = evqueue_read(xfrh->q, &xfr, sizeof(ns_xfr_t));
 		if (ret != sizeof(ns_xfr_t)) {
 			debug_xfr("xfr_master: queue read returned %d.\n", ret);
 			return KNOT_ERROR;
@@ -379,7 +365,7 @@ int xfr_master(dthread_t *thread)
 		switch(xfr.type) {
 		case NS_XFR_TYPE_AOUT:
 			req_type = "axfr-out";
-			ret = ns_answer_axfr(data->ns, &xfr);
+			ret = ns_answer_axfr(xfrh->ns, &xfr);
 			dnslib_packet_free(&xfr.query); /* Free query. */
 			debug_xfr("xfr_master: ns_answer_axfr() = %d.\n", ret);
 			if (ret != KNOT_EOK) {
@@ -388,7 +374,7 @@ int xfr_master(dthread_t *thread)
 			break;
 		case NS_XFR_TYPE_IOUT:
 			req_type = "ixfr-out";
-			ret = ns_answer_ixfr(data->ns, &xfr);
+			ret = ns_answer_ixfr(xfrh->ns, &xfr);
 			dnslib_packet_free(&xfr.query); /* Free query. */
 			debug_xfr("xfr_master: ns_answer_ixfr() = %d.\n", ret);
 			if (ret != KNOT_EOK) {
@@ -397,11 +383,13 @@ int xfr_master(dthread_t *thread)
 			break;
 		case NS_XFR_TYPE_AIN:
 			req_type = "axfr-in";
-			ret = xfr_client_start(data, &xfr);
+			evqueue_write(xfrh->cq, &xfr, sizeof(ns_xfr_t));
+			ret = KNOT_EOK;
 			break;
 		case NS_XFR_TYPE_IIN:
 			req_type = "ixfr-in";
-			ret = xfr_client_start(data, &xfr);
+			evqueue_write(xfrh->cq, &xfr, sizeof(ns_xfr_t));
+			ret = KNOT_EOK;
 			break;
 		default:
 			break;
@@ -430,13 +418,16 @@ int xfr_client(dthread_t *thread)
 		return KNOT_EINVAL;
 	}
 
+	/* Install interrupt handler. */
+	data->interrupt = &xfr_interrupt;
+
 	/* Bridge evqueue pollfd to event loop. */
-	struct xfr_io_t bridge;
-	memset(&bridge, 0, sizeof(struct xfr_io_t));
-	bridge.h = data;
-	ev_io_init((ev_io *)&bridge, xfr_bridge_ev,
+	struct xfr_io_t* bridge = malloc(sizeof(struct xfr_io_t));
+	memset(bridge, 0, sizeof(struct xfr_io_t));
+	bridge->h = data;
+	ev_io_init((ev_io *)bridge, xfr_bridge_ev,
 		   evqueue_pollfd(data->cq), EV_READ);
-	ev_io_start(data->loop, (ev_io *)&bridge);
+	ev_io_start(data->loop, (ev_io *)bridge);
 	debug_xfr("xfr_client: bridge to libev initiated\n");
 
 	/* Accept requests. */
@@ -450,6 +441,10 @@ int xfr_client(dthread_t *thread)
 
 	/* Run event loop. */
 	ev_loop(data->loop, 0);
+	data->interrupt = 0;
+
+	/* Destroy pollfd watcher. */
+	free(bridge);
 
 	debug_xfr("xfr_client: finished.\n");
 
