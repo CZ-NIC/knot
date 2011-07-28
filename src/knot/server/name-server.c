@@ -3422,9 +3422,8 @@ DEBUG_NS(
 	int i = 1;
 	char *name = NULL;
 	while (zn != NULL) {
-		debug_ns("%d. zone: %p, key: %p\n", i, zn->value,
-		                    zn->key);
-		assert(zn->key == ((dnslib_zone_t *)zn->value)->contents->apex->owner);
+		debug_ns("%d. zone: %p, key: %p\n", i, zn->value, zn->key);
+		assert(zn->key == ((dnslib_zone_t *)zn->value)->name);
 		name = dnslib_dname_to_str((dnslib_dname_t *)zn->key);
 		debug_ns("    zone name: %s\n", name);
 		free(name);
