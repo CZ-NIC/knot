@@ -226,8 +226,8 @@ static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
 		if (!test_zone_check_node(n, &test_nodes_good[i])) {
 			diag("zone: Node does not match: owner: %s (should be "
 			     "%s), parent: %p (should be %p)",
-			     node->owner->name, test_nodes_good[i].owner.name,
-			     node->parent, test_nodes_good[i].parent);
+			     n->owner->name, test_nodes_good[i].owner.name,
+			     n->parent, test_nodes_good[i].parent);
 			++errors;
 		}
 		//++nodes;

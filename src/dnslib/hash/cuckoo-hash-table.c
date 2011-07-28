@@ -899,7 +899,7 @@ int ck_copy_table(const ck_hash_table_t *from, ck_hash_table_t **to)
 	(*to)->table_count = from->table_count;
 	assert((*to)->table_size_exp <= 32);
 
-	debug_ck("Creating hash table for %u items.\n", items);
+	debug_ck("Creating hash table for %u items.\n", from->table_count);
 	debug_ck("Exponent: %u, number of tables: %u\n ",
 		 (*to)->table_size_exp, (*to)->table_count);
 	debug_ck("Table size: %u items, each %zu bytes, total %zu bytes\n",
@@ -954,11 +954,20 @@ int ck_rehash(ck_hash_table_t *table)
 
 	do {
 		// 1) Rehash items from stash
+		debug_ck_rehash("Rehashing items from stash.\n");
 		ck_stash_item_t *item = table->stash;
 		ck_stash_item_t **item_place = &table->stash;
 		// terminate when at the end; this way the newly added items
 		// (added to the beginning) will be properly ignored
 		while (item != NULL) {
+			debug_ck_rehash("Rehashing item with "
+			  "key (length %u): %.*s, generation: %hu, "
+			  "table generation: %hu.\n", item->item->key_length,
+			  (int)item->item->key_length, item->item->key,
+			  GET_GENERATION(
+				item->item->timestamp),
+			  GET_GENERATION(table->generation));
+
 			// put the hashed item to the prepared space
 			table->hashed = item->item;
 			item->item = NULL;
@@ -970,8 +979,8 @@ int ck_rehash(ck_hash_table_t *table)
 				assert(item->item != NULL);
 				// we may leave the item there (in the stash)
 				assert(EQUAL_GENERATIONS(item->item->timestamp,
-				                         table->generation));
-				assert(item->item == table->hashed);
+				           NEXT_GENERATION(table->generation)));
+				//assert(item->item == table->hashed);
 
 				item_place = &item->next;
 				item = item->next;
@@ -979,7 +988,7 @@ int ck_rehash(ck_hash_table_t *table)
 				// the free place should be free
 				assert(item->item == NULL);
 				// and the item should be hashed too
-				assert(table->hashed == NULL);
+//				assert(table->hashed == NULL);
 
 				// fix the pointer from the previous hash item
 				*item_place = item->next;
@@ -1003,6 +1012,8 @@ int ck_rehash(ck_hash_table_t *table)
 
 		for (uint t = 0; t < table->table_count; ++t) {
 			uint rehashed = 0;
+
+			debug_ck_rehash("Rehashing table %d.\n", t);
 
 			while (rehashed < hashsize(table->table_size_exp)) {
 
@@ -1028,8 +1039,7 @@ int ck_rehash(ck_hash_table_t *table)
 				  GET_GENERATION(table->generation));
 
 				// otherwise copy the item for rehashing
-				ck_put_item(&old,
-				            table->tables[t][rehashed]);
+				ck_put_item(&old, table->tables[t][rehashed]);
 				// clear the place so that this item will not
 				// get rehashed again
 				ck_clear_item(&table->tables[t][rehashed]);
@@ -1045,9 +1055,10 @@ int ck_rehash(ck_hash_table_t *table)
 					debug_ck_hash("Hashing entered a loop."
 						      "\n");
 					debug_ck_rehash("Item with key %.*s "
-					  "inserted into the free slot.\n");
+					  "inserted into the free slot.\n",
+					  free->key_length, free->key);
 
-					assert(old == free);
+					//assert(old == free);
 
 					// put the item into the stash, but
 					// try the free stash items first
@@ -1070,6 +1081,18 @@ int ck_rehash(ck_hash_table_t *table)
 				++rehashed;
 			}
 		}
+
+		debug_ck_rehash("Old table generation: %u\n",
+		                GET_GENERATION(table->generation));
+		// rehashing completed, switch generation of the table
+		SET_NEXT_GENERATION(&table->generation);
+		debug_ck_rehash("New table generation: %u\n",
+		                GET_GENERATION(table->generation));
+		// generate new hash functions for the old generation
+		debug_ck_rehash("Generating coeficients for generation: %u\n",
+		                NEXT_GENERATION(table->generation));
+		us_next(&table->hash_system,
+		        NEXT_GENERATION(table->generation));
 
 	} while (false /*! \todo Add proper condition!! */);
 
@@ -1333,7 +1356,7 @@ int ck_rehash(ck_hash_table_t *table)
 void ck_dump_table(const ck_hash_table_t *table)
 {
 #ifdef CUCKOO_DEBUG
-	uint i;
+	uint i = 0;
 	debug_ck("----------------------------------------------\n");
 	debug_ck("Hash table dump:\n\n");
 	debug_ck("Size of each table: %u\n\n", hashsize(table->table_size_exp));
@@ -1359,7 +1382,7 @@ void ck_dump_table(const ck_hash_table_t *table)
 //		         ((ck_hash_table_item_t **)
 //		             da_get_items(&table->stash))[i]->value);
 //	}
-	ck_stash_item_t *item = table->stash2;
+	ck_stash_item_t *item = table->stash;
 	while (item != NULL) {
 		debug_ck("Hash: %u, Key: %.*s, Value: %p.\n", i,
 			 (int)item->item->key_length, item->item->key,
