@@ -49,7 +49,7 @@ static int compare_dname_table_nodes(struct dname_table_node *n1,
 static void delete_dname_table_node(struct dname_table_node *node, void *data)
 {
 	if (data) {
-		dnslib_dname_free(&node->dname);
+		dnslib_dname_release(node->dname);
 	}
 
 	/*!< \todo it would be nice to set pointers to NULL. */
@@ -160,6 +160,9 @@ int dnslib_dname_table_add_dname(dnslib_dname_table_t *table,
 //	printf("Inserted dname got id %d\n", node->dname->id);
 	assert(node->dname->id != 0);
 
+	/* Increase reference counter. */
+	dnslib_dname_retain(dname);
+
 	TREE_INSERT(table->tree, dname_table_node, avl, node);
 	return DNSLIB_EOK;
 }
@@ -189,7 +192,9 @@ int dnslib_dname_table_add_dname2(dnslib_dname_table_t *table,
 //		name = dnslib_dname_to_str(found_dname);
 //		printf("Already there: %s (%p)\n", name, found_dname);
 //		free(name);
-		dnslib_dname_free(dname);
+
+		/*! \todo Release or free? We didn't retain it, so why release? */
+		dnslib_dname_release(*dname);
 		*dname = found_dname;
 		return 1;
 	}

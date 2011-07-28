@@ -14,6 +14,10 @@
 #include "dnslib/utils.h"
 #include "dnslib/wire.h"
 
+/*! \todo dnames allocated from TLS cache will be discarded after thread
+ *        termination. This shouldn't happpen.
+ */
+#if 0
 /*
  * Memory cache.
  */
@@ -46,6 +50,7 @@ static void dnslib_dname_cache_init()
 	(void) pthread_key_create(&dname_ckey, dnslib_dname_cache_free);
 	atexit(dnslib_dname_cache_main_free); // Main thread cleanup
 }
+#endif
 
 /*!
  * \brief Allocate item from thread cache.
@@ -56,6 +61,10 @@ static dnslib_dname_t* dnslib_dname_alloc()
 {
 	return malloc(sizeof(dnslib_dname_t));
 
+	/*! \todo dnames allocated from TLS cache will be discarded after thread
+	 *        termination. This shouldn't happpen.
+	 */
+#if 0
 	/* Initialize dname cache TLS key. */
 	(void)pthread_once(&dname_once, dnslib_dname_cache_init);
 
@@ -73,6 +82,7 @@ static dnslib_dname_t* dnslib_dname_alloc()
 	}
 
 	return slab_cache_alloc(cache);
+#endif
 }
 
 /*----------------------------------------------------------------------------*/
@@ -326,6 +336,13 @@ DEBUG_DNSLIB_DNAME(
 	return 0;
 }
 
+/*! \brief Destructor for reference counter. */
+static void dnslib_dname_dtor(struct ref_t *p)
+{
+	dnslib_dname_t *dname = (dnslib_dname_t *)p;
+	dnslib_dname_free(&dname);
+}
+
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
@@ -339,6 +356,12 @@ dnslib_dname_t *dnslib_dname_new()
 	dname->labels = NULL;
 	dname->label_count = -1;
 	dname->id = 0;
+
+	/* Initialize reference counting. */
+	ref_init(&dname->ref, dnslib_dname_dtor);
+
+	/* Set reference counter to 1, caller should release it after use. */
+	dnslib_dname_retain(dname);
 
 	return dname;
 }
@@ -411,7 +434,7 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 		return NULL;
 	}
 
-	dnslib_dname_t *dname = dnslib_dname_alloc();
+	dnslib_dname_t *dname = dnslib_dname_new();
 
 	if (dname == NULL) {
 		ERR_ALLOC_FAILED;
@@ -490,7 +513,7 @@ dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
 		*pos += 1;
 	}
 
-	dnslib_dname_t *dname = dnslib_dname_alloc();
+	dnslib_dname_t *dname = dnslib_dname_new();
 
 	if (dname == NULL) {
 		ERR_ALLOC_FAILED;

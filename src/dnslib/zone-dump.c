@@ -909,6 +909,7 @@ static int check_nsec3_node_in_zone(dnslib_zone_contents_t *zone, dnslib_node_t 
 	memmove(next_dname_decoded + 1, next_dname_decoded, real_size);
 	next_dname_decoded[0] = real_size;
 
+	/* Local allocation, will be discarded. */
 	dnslib_dname_t *next_dname =
 		dnslib_dname_new_from_wire(next_dname_decoded,
 					   real_size + 1, NULL);
@@ -927,6 +928,8 @@ static int check_nsec3_node_in_zone(dnslib_zone_contents_t *zone, dnslib_node_t 
 		err_handler_handle_error(handler, node,
 					 ZC_ERR_NSEC3_RDATA_CHAIN);
 	}
+
+	/* Directly discard. */
 	dnslib_dname_free(&next_dname);
 
 	/* This is probably not sufficient, but again, it is covered in
@@ -1713,6 +1716,7 @@ static void log_cyclic_errors_in_zone(err_handler_t *handler,
 		memmove(next_dname_decoded + 1, next_dname_decoded, real_size);
 		next_dname_decoded[0] = real_size;
 
+		/* Local allocation, will be discarded. */
 		dnslib_dname_t *next_dname =
 			dnslib_dname_new_from_wire(next_dname_decoded,
 						   real_size + 1, NULL);
@@ -1725,6 +1729,7 @@ static void log_cyclic_errors_in_zone(err_handler_t *handler,
 
 		free(next_dname_decoded);
 
+		/*! \todo Free result and dname! */
 		if (dnslib_dname_cat(next_dname,
 			     dnslib_node_owner(dnslib_zone_contents_apex(zone))) ==
 		                NULL) {
@@ -1747,6 +1752,7 @@ static void log_cyclic_errors_in_zone(err_handler_t *handler,
 						 ZC_ERR_NSEC3_RDATA_CHAIN);
 		}
 
+		/* Directly discard. */
 		dnslib_dname_free(&next_dname);
 
 	} else if (do_checks == 2 ) {

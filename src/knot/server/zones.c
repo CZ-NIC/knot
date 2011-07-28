@@ -210,17 +210,12 @@ static int zones_axfrin_poll(event_t *e)
 	/* Cancel pending timers. */
 	zonedata_t *zd = (zonedata_t *)dnslib_zone_data(zone);
 
-	/* Get zone dname. */
-	const dnslib_node_t *apex = dnslib_zone_contents_apex(
-			dnslib_zone_contents(zone));
-	const dnslib_dname_t *dname = dnslib_node_owner(apex);
-
 	/* Prepare buffer for query. */
 	uint8_t qbuf[SOCKET_MTU_SZ];
 	size_t buflen = SOCKET_MTU_SZ;
 
 	/* Create query. */
-	int ret = xfrin_create_soa_query(dname, qbuf, &buflen);
+	int ret = xfrin_create_soa_query(dnslib_zone_contents(zone), qbuf, &buflen);
 	if (ret == KNOT_EOK && zd->xfr_in.ifaces) {
 
 		int sock = -1;
@@ -690,7 +685,9 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 	// for all zones in the configuration
 	WALK_LIST(n, *zone_conf) {
 		conf_zone_t *z = (conf_zone_t *)n;
-		// convert the zone name into a domain name
+
+		/* Convert the zone name into a domain name. */
+		/* Local allocation, will be discarded. */
 		dnslib_dname_t *zone_name = dnslib_dname_new_from_str(z->name,
 		                                         strlen(z->name), NULL);
 		if (zone_name == NULL) {
@@ -789,6 +786,7 @@ static int zones_insert_zones(ns_nameserver_t *ns,
 
 		dnslib_zone_contents_dump(dnslib_zone_get_contents(zone), 1);
 
+		/* Directly discard zone. */
 		dnslib_dname_free(&zone_name);
 	}
 	return inserted;
@@ -813,7 +811,9 @@ static int zones_remove_zones(const list *zone_conf, dnslib_zonedb_t *db_old)
 	// for all zones in the configuration
 	WALK_LIST(n, *zone_conf) {
 		conf_zone_t *z = (conf_zone_t *)n;
-		// convert the zone name into a domain name
+
+		/* Convert the zone name into a domain name. */
+		/* Local allocation, will be discarded. */
 		dnslib_dname_t *zone_name = dnslib_dname_new_from_str(z->name,
 		                                         strlen(z->name), NULL);
 		if (zone_name == NULL) {
@@ -826,6 +826,7 @@ static int zones_remove_zones(const list *zone_conf, dnslib_zonedb_t *db_old)
 		// remove the zone from the old zone db, but do not delete it
 		dnslib_zonedb_remove_zone(db_old, zone_name, 0);
 
+		/* Directly discard. */
 		dnslib_dname_free(&zone_name);
 	}
 	return KNOT_EOK;
