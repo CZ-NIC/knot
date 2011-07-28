@@ -213,11 +213,11 @@ static uint get_table_exp_and_count(uint items, uint *table_count)
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Clears the given item by assigning a NULL pointer to it (using RCU).
+ * \brief Clears the given item by assigning a NULL pointer to it.
  */
 static inline void ck_clear_item(ck_hash_table_item_t **item)
 {
-	rcu_set_pointer(item, NULL);
+	*item = NULL;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -237,24 +237,24 @@ static void ck_fill_item(const char *key, size_t key_length, void *value,
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Swaps two hash table items (using RCU).
+ * \brief Swaps two hash table items.
  */
 static inline void ck_swap_items(ck_hash_table_item_t **item1,
                                  ck_hash_table_item_t **item2)
 {
-	// Is this OK? Shouldn't I use some tmp var for saving the value?
-	ck_hash_table_item_t *tmp = rcu_xchg_pointer(item1, *item2);
-	rcu_set_pointer(item2, tmp);
+	ck_hash_table_item_t *tmp = *item1;
+	*item1 = *item2;
+	*item2 = tmp;
 }
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Sets the \a item pointer to the \a to pointer (using RCU).
+ * \brief Sets the \a item pointer to the \a to pointer.
  */
 static inline void ck_put_item(ck_hash_table_item_t **to,
                                ck_hash_table_item_t *item)
 {
-	rcu_set_pointer(to, item);
+	*to = item;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -342,7 +342,7 @@ static inline void ck_next_table(uint *table, uint table_count)
 static ck_hash_table_item_t **ck_find_in_stash(const ck_hash_table_t *table,
                                                const char *key, uint length)
 {
-	ck_stash_item_t *item = table->stash2;
+	ck_stash_item_t *item = table->stash;
 	while (item != NULL) {
 		debug_ck("Comparing item in stash (key: %.*s (size %zu))"
 		         "with searched item (key %.*s (size %u)).\n",
@@ -355,28 +355,6 @@ static ck_hash_table_item_t **ck_find_in_stash(const ck_hash_table_t *table,
 	}
 
 	return NULL;
-
-//	//assert(table->stash_i == da_get_count(&table->stash));
-//	uint stash_i = da_get_count(&table->stash);
-//	debug_ck("Items in stash: %u\n", stash_i);
-//	uint i = 0;
-//	while (i < stash_i
-//	       && (((ck_hash_table_item_t **)(da_get_items(&table->stash)))[i]
-//		   != NULL)
-//	       && ck_items_match(((ck_hash_table_item_t **)
-//	                           (da_get_items(&table->stash)))[i],
-//				 key, length)) {
-//		++i;
-//	}
-
-//	if (i >= stash_i) {
-//		return NULL;
-//	}
-
-//	assert(strncmp(((ck_hash_table_item_t **)
-//	             (da_get_items(&table->stash)))[i]->key, key, length) == 0);
-
-//	return &((ck_hash_table_item_t **)(da_get_items(&table->stash)))[i];
 }
 
 /*----------------------------------------------------------------------------*/
@@ -632,13 +610,13 @@ int ck_add_to_stash(ck_hash_table_t *table, ck_hash_table_item_t *item)
 	}
 
 	new_item->item = item;
-	new_item->next = table->stash2;
-	rcu_set_pointer(&table->stash2, new_item);
+	new_item->next = table->stash;
+	rcu_set_pointer(&table->stash, new_item);
 
 	debug_ck_hash("First item in stash (now inserted): key: %.*s (size %zu)"
-	              ", value: %p\n", (int)table->stash2->item->key_length,
-	              table->stash2->item->key, table->stash2->item->key_length,
-	              table->stash2->item->value);
+	              ", value: %p\n", (int)table->stash->item->key_length,
+	              table->stash->item->key, table->stash->item->key_length,
+	              table->stash->item->value);
 	return 0;
 }
 
@@ -703,7 +681,7 @@ ck_hash_table_t *ck_create_table(uint items)
 //		return NULL;
 //	}
 
-	table->stash2 = NULL;
+	table->stash = NULL;
 
 	// initialize rehash/insert mutex
 	pthread_mutex_init(&table->mtx_table, NULL);
@@ -756,10 +734,10 @@ void ck_destroy_table(ck_hash_table_t **table, void (*dtor_value)(void *value),
 //		}
 //		free((void *)stash[i]);
 //	}
-	ck_stash_item_t *item = (*table)->stash2;
+	ck_stash_item_t *item = (*table)->stash;
 	while (item != NULL) {
 		// disconnect the item
-		(*table)->stash2 = item->next;
+		(*table)->stash = item->next;
 		assert(item->item != NULL);
 
 		if (dtor_value) {
@@ -771,7 +749,7 @@ void ck_destroy_table(ck_hash_table_t **table, void (*dtor_value)(void *value),
 
 		free((void *)item->item);
 		free(item);
-		item = (*table)->stash2;
+		item = (*table)->stash;
 	}
 
 	// deallocate tables
