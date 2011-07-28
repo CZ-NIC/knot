@@ -87,7 +87,8 @@ dnslib_zonedb_t *dnslib_zonedb_new()
 
 int dnslib_zonedb_add_zone(dnslib_zonedb_t *db, dnslib_zone_t *zone)
 {
-	if (db == NULL || zone == NULL || zone->apex == NULL) {
+	if (db == NULL || zone == NULL || zone->contents == NULL
+	    || zone->contents->apex == NULL) {
 		return DNSLIB_EBADARG;
 	}
 DEBUG_DNSLIB_ZONEDB(
@@ -95,12 +96,13 @@ DEBUG_DNSLIB_ZONEDB(
 	debug_dnslib_zonedb("Inserting zone %s into zone db.\n", name);
 	free(name);
 );
-	int ret = dnslib_zone_load_nsec3param(zone);
+	int ret = dnslib_zone_contents_load_nsec3param(
+			dnslib_zone_get_contents(zone));
 	if (ret != DNSLIB_EOK) {
 		return ret;
 	}
 
-	ret = skip_insert(db->zones, zone->apex->owner, zone, NULL);
+	ret = skip_insert(db->zones, zone->contents->apex->owner, zone, NULL);
 	assert(ret == 0 || ret == 1 || ret == -1);
 	return (ret != 0) ? DNSLIB_EZONEIN : DNSLIB_EOK;
 }
@@ -131,45 +133,47 @@ int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name,
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_zone_t *dnslib_zonedb_replace_zone(dnslib_zonedb_t *db,
-                                          dnslib_zone_t *zone)
-{
-	dnslib_zone_t *z = dnslib_zonedb_find_zone(db,
-		dnslib_node_owner(dnslib_zone_apex(zone)));
-	if (z == NULL) {
-		return NULL;
-	}
+//dnslib_zone_t *dnslib_zonedb_replace_zone(dnslib_zonedb_t *db,
+//                                          dnslib_zone_t *zone)
+//{
+//	dnslib_zone_t *z = dnslib_zonedb_find_zone(db,
+//		dnslib_node_owner(dnslib_zone_apex(zone)));
+//	if (z == NULL) {
+//		return NULL;
+//	}
+	
+//	/*! \todo The replace should be atomic!!! */
 
-	debug_dnslib_zonedb("Found zone: %p\n", z);
+//	debug_dnslib_zonedb("Found zone: %p\n", z);
 
-	int ret = skip_remove(db->zones,
-	                      (void *)dnslib_node_owner(dnslib_zone_apex(zone)),
-	                      NULL, NULL);
-	if (ret != 0) {
-		return NULL;
-	}
+//	int ret = skip_remove(db->zones,
+//	                      (void *)dnslib_node_owner(dnslib_zone_apex(zone)),
+//	                      NULL, NULL);
+//	if (ret != 0) {
+//		return NULL;
+//	}
 
-	debug_dnslib_zonedb("Removed zone, return value: %d\n", ret);
-	debug_dnslib_zonedb("Old zone: %p\n", z);
+//	debug_dnslib_zonedb("Removed zone, return value: %d\n", ret);
+//	debug_dnslib_zonedb("Old zone: %p\n", z);
 
-	ret = skip_insert(db->zones,
-	                  (void *)dnslib_node_owner(dnslib_zone_apex(zone)),
-	                  (void *)zone, NULL);
+//	ret = skip_insert(db->zones,
+//	                  (void *)dnslib_node_owner(dnslib_zone_apex(zone)),
+//	                  (void *)zone, NULL);
 
-	debug_dnslib_zonedb("Inserted zone, return value: %d\n", ret);
+//	debug_dnslib_zonedb("Inserted zone, return value: %d\n", ret);
 
-	if (ret != 0) {
-		// return the removed zone back
-		skip_insert(db->zones,
-		            (void *)dnslib_node_owner(dnslib_zone_apex(z)),
-		            (void *)z, NULL);
-		/*! \todo There may be problems and the zone may remain
-		          removed. */
-		return NULL;
-	}
+//	if (ret != 0) {
+//		// return the removed zone back
+//		skip_insert(db->zones,
+//		            (void *)dnslib_node_owner(dnslib_zone_apex(z)),
+//		            (void *)z, NULL);
+//		/*! \todo There may be problems and the zone may remain
+//		          removed. */
+//		return NULL;
+//	}
 
-	return z;
-}
+//	return z;
+//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -196,8 +200,8 @@ DEBUG_DNSLIB_ZONEDB(
 	free(name);
 );
 	if (zone != NULL
-	    && dnslib_dname_compare(zone->apex->owner, dname) != 0
-	    && !dnslib_dname_is_subdomain(dname, zone->apex->owner)) {
+	    && dnslib_dname_compare(zone->contents->apex->owner, dname) != 0
+	    && !dnslib_dname_is_subdomain(dname, zone->contents->apex->owner)) {
 		zone = NULL;
 	}
 

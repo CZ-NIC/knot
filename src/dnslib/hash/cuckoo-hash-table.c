@@ -937,6 +937,71 @@ int ck_remove_item(const ck_hash_table_t *table, const char *key, size_t length,
 }
 
 /*----------------------------------------------------------------------------*/
+
+int ck_copy_table(const ck_hash_table_t *from, ck_hash_table_t **to)
+{
+	if (from == NULL || to == NULL) {
+		return -1;
+	}
+
+	*to = (ck_hash_table_t *)malloc(sizeof(ck_hash_table_t));
+
+	if (*to == NULL) {
+		ERR_ALLOC_FAILED;
+		return -2;
+	}
+
+	// determine ideal size of one table in powers of 2 and save the
+	// exponent
+	(*to)->table_size_exp = from->table_size_exp;
+	(*to)->table_count = from->table_count;
+	assert((*to)->table_size_exp <= 32);
+
+	debug_ck("Creating hash table for %u items.\n", items);
+	debug_ck("Exponent: %u, number of tables: %u\n ",
+		 (*to)->table_size_exp, (*to)->table_count);
+	debug_ck("Table size: %u items, each %zu bytes, total %zu bytes\n",
+	         hashsize((*to)->table_size_exp),
+	         sizeof(ck_hash_table_item_t *),
+	         hashsize((*to)->table_size_exp)
+	           * sizeof(ck_hash_table_item_t *));
+
+	// create tables
+	for (uint t = 0; t < (*to)->table_count; ++t) {
+		debug_ck("Creating table %u...\n", t);
+		(*to)->tables[t] = (ck_hash_table_item_t **)malloc(
+		                        hashsize((*to)->table_size_exp)
+		                        * sizeof(ck_hash_table_item_t *));
+		if ((*to)->tables[t] == NULL) {
+			ERR_ALLOC_FAILED;
+			for (uint i = 0; i < t; ++i) {
+				free((*to)->tables[i]);
+			}
+			free(*to);
+			return -2;
+		}
+
+		// copy the table
+		memcpy((*to)->tables[t], from->tables[t],
+		       hashsize((*to)->table_size_exp)
+		           * sizeof(ck_hash_table_item_t *));
+	}
+
+	(*to)->stash2 = NULL;
+
+	// initialize rehash/insert mutex
+	pthread_mutex_init(&(*to)->mtx_table, NULL);
+
+	// set the generation to 1 and initialize the universal system
+	CLEAR_FLAGS(&(*to)->generation);
+	SET_GENERATION1(&(*to)->generation);
+
+	us_initialize(&(*to)->hash_system);
+
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
 /*!
  * \brief Rehashes the whole table.
  *

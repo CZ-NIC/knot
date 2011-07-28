@@ -168,11 +168,14 @@ libknot_la_SOURCES =				\
 	dnslib/response2.c			\
 	dnslib/response.c			\
 	dnslib/zone.c				\
+	dnslib/zone-contents.c			\
 	dnslib/zonedb.c				\
 	dnslib/zone-load.c			\
 	dnslib/debug.c				\
 	dnslib/zone-dump.c			\
 	dnslib/zone-dump-text.c			\
+	dnslib/zone-tree.c			\
+	dnslib/zone-tree.h			\
 	dnslib/rdata.c				\
 	dnslib/descriptor.c			\
 	dnslib/nsec3.c				\
@@ -188,6 +191,7 @@ libknot_la_SOURCES =				\
 	dnslib/node.h				\
 	dnslib/edns.h				\
 	dnslib/zone.h				\
+	dnslib/zone-contents.h			\
 	dnslib/rdata.h				\
 	dnslib/descriptor.h			\
 	dnslib/dnslib.h				\

@@ -29,7 +29,7 @@ static dnslib_node_t *node_from_test_node(const test_node_t *test_node)
 {
 	dnslib_dname_t *owner = dname_from_test_dname(test_node->owner);
 	/* TODO parent? */
-	dnslib_node_t *new_node = dnslib_node_new(owner, NULL);
+	dnslib_node_t *new_node = dnslib_node_new(owner, NULL, 0);
 	node *n = NULL;
 	WALK_LIST(n, test_node->rrset_list) {
 		test_rrset_t *test_rrset = (test_rrset_t *)n;
@@ -61,7 +61,7 @@ static int test_zone_create(list node_list)
 			errors++;
 		}
 		dnslib_node_free_rrsets(node, 1);
-		dnslib_node_free(&node, 0);
+		dnslib_node_free(&node, 0, 0);
 	}
 
 	return (errors == 0);

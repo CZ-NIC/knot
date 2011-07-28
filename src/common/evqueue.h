@@ -45,7 +45,7 @@ typedef struct event_t {
 	struct timeval tv; /*!< Event scheduled time. */
 	void *data;        /*!< Usable data ptr. */
 	event_cb_t cb;     /*!< Event callback. */
-	void *caller;      /*!< Pointer to caller. */
+	void *parent;      /*!< Pointer to parent (evqueue, scheduler...) */
 } event_t;
 
 /*!
@@ -99,9 +99,12 @@ void evqueue_free(evqueue_t **q);
 int evqueue_poll(evqueue_t *q, const struct timespec *ts, const sigset_t *sigmask);
 
 /*!
- * \brief Return filedescriptor for polling new events in queue.
+ * \brief Return evqueue pollable fd.
  *
- * \return Filedescriptor for polling new events.
+ * \param q Event queue.
+ *
+ * \retval File descriptor available for polling.
+ * \retval -1 On error.
  */
 static inline int evqueue_pollfd(evqueue_t *q) {
 	return q->fds[EVQUEUE_READFD];

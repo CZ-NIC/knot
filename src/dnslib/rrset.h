@@ -90,6 +90,9 @@ dnslib_rrset_t *dnslib_rrset_new(dnslib_dname_t *owner, uint16_t type,
  */
 int dnslib_rrset_add_rdata(dnslib_rrset_t *rrset, dnslib_rdata_t *rdata);
 
+dnslib_rdata_t * dnslib_rrset_remove_rdata(dnslib_rrset_t *rrset,
+                                           const dnslib_rdata_t *rdata);
+
 /*!
  * \brief Adds RRSIG signatures to this RRSet.
  *
@@ -112,6 +115,8 @@ int dnslib_rrset_add_rrsigs(dnslib_rrset_t *rrset, dnslib_rrset_t *rrsigs,
  * \return Owner of the given RRSet.
  */
 const dnslib_dname_t *dnslib_rrset_owner(const dnslib_rrset_t *rrset);
+
+dnslib_dname_t *dnslib_rrset_get_owner(const dnslib_rrset_t *rrset);
 
 /*!
  * \brief Returns the TYPE of the RRSet.
@@ -187,9 +192,13 @@ dnslib_rdata_t *dnslib_rrset_rdata_get_next(dnslib_rrset_t *rrset,
  */
 const dnslib_rrset_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset);
 
+dnslib_rrset_t *dnslib_rrset_get_rrsigs(dnslib_rrset_t *rrset);
+
 int dnslib_rrset_compare(const dnslib_rrset_t *r1,
                          const dnslib_rrset_t *r2,
                          dnslib_rrset_compare_type_t cmp);
+
+int dnslib_rrset_copy(const dnslib_rrset_t *from, dnslib_rrset_t **to);
 
 /*!
  * \brief Destroys the RRSet structure.

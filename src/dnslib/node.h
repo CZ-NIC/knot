@@ -18,6 +18,8 @@
 #include "dnslib/rrset.h"
 #include "common/tree.h"
 
+struct dnslib_zone;
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure representing one node in a domain name tree, i.e. one domain
@@ -46,13 +48,17 @@ struct dnslib_node {
 	 */
 	struct dnslib_node *prev;
 
+	struct dnslib_node *next;
+
 	/*!
 	 * \brief NSEC3 node corresponding to this node.
 	 *
 	 * Such NSEC3 node has owner in form of the hashed domain name of this
 	 * node prepended as a single label to the zone name.
 	 */
-	const struct dnslib_node *nsec3_node;
+	struct dnslib_node *nsec3_node;
+
+	struct dnslib_node *nsec3_referer;
 
 	/*!
 	 * \brief Various flags.
@@ -60,14 +66,41 @@ struct dnslib_node {
 	 * Currently only two:
 	 *   0x01 - node is a delegation point
 	 *   0x02 - node is non-authoritative (under a delegation point)
+	 *   0x80 - node is old and will be removed (during update)
+	 *   0x40 - node is new, should not be used while zone is old
 	 */
 	uint8_t flags;
 
-	/*! \brief Structure for connecting this node to an AVL tree. */
-	TREE_ENTRY(dnslib_node) avl;
+	struct dnslib_node *new_node;
+	
+	unsigned int children;
+	
+	/*!
+	 * \brief Generation of node to be used.
+	 *
+	 * If set to 0, the old node will be used. Otherwise new nodes will
+	 * be used. This applies when getting some referenced node.
+	 
+	 */
+//	short **generation;
+
+	struct dnslib_zone *zone;
 };
 
 typedef struct dnslib_node dnslib_node_t;
+
+/*----------------------------------------------------------------------------*/
+/*! \brief Flags used to mark nodes with some property. */
+typedef enum {
+	/*! \brief Node is a delegation point (i.e. marking a zone cut). */
+	DNSLIB_NODE_FLAGS_DELEG = (uint8_t)0x01,
+	/*! \brief Node is not authoritative (i.e. below a zone cut). */
+	DNSLIB_NODE_FLAGS_NONAUTH = (uint8_t)0x02,
+	/*! \brief Node is old and will be removed (during update). */
+	DNSLIB_NODE_FLAGS_OLD = (uint8_t)0x80,
+	/*! \brief Node is new and should not be used while zoen is old. */
+	DNSLIB_NODE_FLAGS_NEW = (uint8_t)0x40
+} dnslib_node_flags_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -75,10 +108,14 @@ typedef struct dnslib_node dnslib_node_t;
  *
  * \param owner Owner of the created node.
  * \param parent Parent of the created node.
+ * \param flags Document me.
+ *
+ * \todo Document missing parameters.
  *
  * \return Newly created node or NULL if an error occured.
  */
-dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent);
+dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent,
+                               uint8_t flags);
 
 /*!
  * \brief Adds an RRSet to the node.
@@ -114,6 +151,8 @@ const dnslib_rrset_t *dnslib_node_rrset(const dnslib_node_t *node,
  *         RRSet exists in this node.
  */
 dnslib_rrset_t *dnslib_node_get_rrset(dnslib_node_t *node, uint16_t type);
+
+dnslib_rrset_t *dnslib_node_remove_rrset(dnslib_node_t *node, uint16_t type);
 
 /*!
  * \brief Returns number of RRSets in the node.
@@ -153,7 +192,8 @@ const dnslib_rrset_t **dnslib_node_rrsets(const dnslib_node_t *node);
  * \return Parent node of the given node or NULL if no parent has been set (e.g.
  *         node in a zone apex has no parent).
  */
-const dnslib_node_t *dnslib_node_parent(const dnslib_node_t *node);
+const dnslib_node_t *dnslib_node_parent(const dnslib_node_t *node, 
+                                        int check_version);
 
 /*!
  * \brief Sets the parent of the node.
@@ -162,6 +202,8 @@ const dnslib_node_t *dnslib_node_parent(const dnslib_node_t *node);
  * \param parent Parent to set to the node.
  */
 void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent);
+
+unsigned int dnslib_node_children(const dnslib_node_t *node);
 
 /*!
  * \brief Returns the previous authoritative node or delegation point in
@@ -173,7 +215,24 @@ void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent);
  *         the first node in zone if \a node is the last node in zone.
  * \retval NULL if previous node is not set.
  */
-const dnslib_node_t *dnslib_node_previous(const dnslib_node_t *node);
+const dnslib_node_t *dnslib_node_previous(const dnslib_node_t *node, 
+                                          int check_version);
+
+/*!
+ * \brief Returns the previous authoritative node or delegation point in
+ *        canonical order or the first node in zone.
+ *
+ * \note This function is identical to dnslib_node_previous() except that it
+ *       returns non-const node.
+ *
+ * \param node Node to get the previous node of.
+ *
+ * \return Previous authoritative node or delegation point in canonical order or
+ *         the first node in zone if \a node is the last node in zone.
+ * \retval NULL if previous node is not set.
+ */
+dnslib_node_t *dnslib_node_get_previous(const dnslib_node_t *node, 
+                                        int check_version);
 
 /*!
  * \brief Sets the previous node of the given node.
@@ -193,7 +252,8 @@ void dnslib_node_set_previous(dnslib_node_t *node, dnslib_node_t *prev);
  *         and the name of the zone \a node belongs to).
  * \retval NULL if the NSEC3 node is not set.
  */
-const dnslib_node_t *dnslib_node_nsec3_node(const dnslib_node_t *node);
+const dnslib_node_t *dnslib_node_nsec3_node(const dnslib_node_t *node, 
+                                            int check_version);
 
 /*!
  * \brief Sets the corresponding NSEC3 node of the given node.
@@ -212,6 +272,8 @@ void dnslib_node_set_nsec3_node(dnslib_node_t *node, dnslib_node_t *nsec3_node);
  */
 const dnslib_dname_t *dnslib_node_owner(const dnslib_node_t *node);
 
+dnslib_dname_t *dnslib_node_get_owner(const dnslib_node_t *node);
+
 /*!
  * \brief Returns the wildcard child of the node.
  *
@@ -219,7 +281,8 @@ const dnslib_dname_t *dnslib_node_owner(const dnslib_node_t *node);
  *
  * \return Wildcard child of the given node or NULL if it has none.
  */
-const dnslib_node_t *dnslib_node_wildcard_child(const dnslib_node_t *node);
+const dnslib_node_t *dnslib_node_wildcard_child(const dnslib_node_t *node, 
+                                                int check_version);
 
 /*!
  * \brief Sets the wildcard child of the node.
@@ -229,6 +292,23 @@ const dnslib_node_t *dnslib_node_wildcard_child(const dnslib_node_t *node);
  */
 void dnslib_node_set_wildcard_child(dnslib_node_t *node,
                                     dnslib_node_t *wildcard_child);
+
+const dnslib_node_t *dnslib_node_current(const dnslib_node_t *node);
+
+dnslib_node_t *dnslib_node_get_current(dnslib_node_t *node);
+
+const dnslib_node_t *dnslib_node_new_node(const dnslib_node_t *node);
+
+dnslib_node_t *dnslib_node_get_new_node(const dnslib_node_t *node);
+
+void dnslib_node_set_new_node(dnslib_node_t *node,
+                              dnslib_node_t *new_node);
+
+void dnslib_node_set_zone(dnslib_node_t *node, struct dnslib_zone *zone);
+
+void dnslib_node_update_ref(dnslib_node_t **ref);
+
+void dnslib_node_update_refs(dnslib_node_t *node);
 
 /*!
  * \brief Mark the node as a delegation point.
@@ -266,6 +346,18 @@ int dnslib_node_is_non_auth(const dnslib_node_t *node);
 
 int dnslib_node_is_auth(const dnslib_node_t *node);
 
+int dnslib_node_is_new(const dnslib_node_t *node);
+
+int dnslib_node_is_old(const dnslib_node_t *node);
+
+void dnslib_node_set_new(dnslib_node_t *node);
+
+void dnslib_node_set_old(dnslib_node_t *node);
+
+void dnslib_node_clear_new(dnslib_node_t *node);
+
+void dnslib_node_clear_old(dnslib_node_t *node);
+
 /*!
  * \brief Destroys the RRSets within the node structure.
  *
@@ -285,8 +377,11 @@ void dnslib_node_free_rrsets(dnslib_node_t *node, int free_rdata_dnames);
  * \param node Node to be destroyed.
  * \param free_owner Set to 0 if you do not want the owner domain name to be
  *                   destroyed also. Set to <> 0 otherwise.
+ * \param fix_refs
+ *
+ * \todo Document missing parameters.
  */
-void dnslib_node_free(dnslib_node_t **node, int free_owner);
+void dnslib_node_free(dnslib_node_t **node, int free_owner, int fix_refs);
 
 /*!
  * \brief Compares two nodes according to their owner.
@@ -300,6 +395,8 @@ void dnslib_node_free(dnslib_node_t **node, int free_owner);
  * \retval > 0 if \a node1 goes after \a node2.
  */
 int dnslib_node_compare(dnslib_node_t *node1, dnslib_node_t *node2);
+
+int dnslib_node_deep_copy(const dnslib_node_t *from, dnslib_node_t **to);
 
 #endif /* _KNOT_DNSLIB_NODE_H_ */
 

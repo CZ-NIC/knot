@@ -162,6 +162,8 @@ const uint8_t *dnslib_dname_name(const dnslib_dname_t *dname);
  */
 unsigned int dnslib_dname_size(const dnslib_dname_t *dname);
 
+unsigned int dnslib_dname_id(const dnslib_dname_t *dname);
+
 /*!
  * \brief Returns size of a part of domain name.
  *
@@ -179,7 +181,15 @@ uint8_t dnslib_dname_size_part(const dnslib_dname_t *dname, int labels);
  *
  * \return Zone node the domain name belongs to or NULL if none.
  */
-const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname);
+const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname,
+                                            int check_version);
+
+struct dnslib_node *dnslib_dname_get_node(dnslib_dname_t *dname,
+                                          int check_version);
+
+void dnslib_dname_set_node(dnslib_dname_t *dname, struct dnslib_node *node);
+
+void dnslib_dname_update_node(dnslib_dname_t *dname);
 
 /*!
  * \brief Checks if the given domain name is a fully-qualified domain name.

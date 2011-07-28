@@ -48,7 +48,6 @@ static int evsched_run(dthread_t *thread)
 
 		/* Process event. */
 		if (ev->type == EVSCHED_CB && ev->cb) {
-			ev->caller = s;
 			ev->cb(ev);
 		} else {
 			evsched_event_free(s, ev);
@@ -312,6 +311,9 @@ static int server_bind_handlers(server_t *server)
 		tcp_unit_size = 3;
 	}
 
+	/*! \bug Bug prevents multithreading with libev-based TCP. */
+	tcp_unit_size = 1;
+
 	/* Lock config. */
 	conf_read_lock();
 
@@ -567,6 +569,13 @@ int server_wait(server_t *server)
 
 	/* Wait for XFR master. */
 	xfr_stop(server->xfr_h);
+
+	/* Interrupt XFR handler execution. */
+	if (server->xfr_h->interrupt) {
+		server->xfr_h->interrupt(server->xfr_h);
+	}
+
+	/* Join threading unit. */
 	xfr_join(server->xfr_h);
 
 	return ret;
@@ -580,7 +589,7 @@ void server_stop(server_t *server)
 	/* Lock RCU. */
 	rcu_read_lock();
 
-	// Notify servers to stop
+	/* Notify servers to stop. */
 	log_server_info("Stopping server...\n");
 	server->state &= ~ServerRunning;
 	iohandler_t *h = 0;
@@ -588,7 +597,7 @@ void server_stop(server_t *server)
 		h->state = ServerIdle;
 		dt_stop(h->unit);
 
-		// Call interrupt handler
+		/* Call interrupt handler. */
 		if (h->interrupt) {
 			h->interrupt(h);
 		}

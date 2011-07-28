@@ -34,7 +34,7 @@ static dnslib_dname_t test_dnames[TEST_NODES] = {
 
 static struct test_node	test_nodes[TEST_NODES] = {
 	{{(uint8_t *)"\3com", 4}, (dnslib_node_t *)NULL},
-	{{(uint8_t *)"\3www\7example\3com", 17}, (dnslib_node_t *)0xBADDCAFE}
+	{{(uint8_t *)"\3www\7example\3com", 17}, (dnslib_node_t *)NULL}
 };
 
 static dnslib_rrset_t rrsets[RRSETS] = {
@@ -52,7 +52,7 @@ static int test_node_create()
 	int errors = 0;
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
 		tmp = dnslib_node_new(&test_nodes[i].owner,
-				      test_nodes[i].parent);
+				      test_nodes[i].parent, 0);
 		if (tmp == NULL ||
 		    tmp->owner != &test_nodes[i].owner ||
 		    tmp->parent != test_nodes[i].parent ||
@@ -60,7 +60,7 @@ static int test_node_create()
 			errors++;
 			diag("Failed to create node structure");
 		}
-		dnslib_node_free(&tmp, 0);
+		dnslib_node_free(&tmp, 0, 0);
 	}
 	return (errors == 0);
 }
@@ -73,7 +73,7 @@ static int test_node_add_rrset()
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
 		/* create node from test_node structure */
 		tmp = dnslib_node_new(&test_nodes[i].owner,
-				      test_nodes[i].parent);
+				      test_nodes[i].parent, 0);
 		rrset = &rrsets[i];
 		if (dnslib_node_add_rrset(tmp, rrset, 0) < 0) {
 			errors++;
@@ -118,7 +118,7 @@ static int test_node_add_rrset()
 			diag("Values in found rrset are wrong");
 		}
 
-		dnslib_node_free(&tmp, 0);
+		dnslib_node_free(&tmp, 0, 0);
 	}
 
 	return (errors == 0);
@@ -134,7 +134,7 @@ static int test_node_get_rrset()
 
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
 		tmp = dnslib_node_new(&test_nodes[i].owner,
-				      test_nodes[i].parent);
+				      test_nodes[i].parent, 0);
 		nodes[i] = tmp;
 		for (int j = 0; j < RRSETS; j++) {
 			dnslib_node_add_rrset(tmp, &rrsets[j], 0);
@@ -150,7 +150,7 @@ static int test_node_get_rrset()
 				diag("Failed to get proper rrset from node");
 			}
 		}
-		dnslib_node_free(&nodes[i], 0);
+		dnslib_node_free(&nodes[i], 0, 0);
 	}
 
 	return (errors == 0);
@@ -166,7 +166,7 @@ static int test_node_get_parent()
 
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
 		tmp = dnslib_node_new(&test_nodes[i].owner,
-				      test_nodes[i].parent);
+				      test_nodes[i].parent, 0);
 		nodes[i] = tmp;
 		rrset = &rrsets[i];
 		dnslib_node_add_rrset(tmp, rrset, 0);
@@ -174,11 +174,11 @@ static int test_node_get_parent()
 
 	for (int i = 0; i < TEST_NODES && !errors; i++) {
 		rrset = &rrsets[i];
-		if (dnslib_node_parent(nodes[i]) != test_nodes[i].parent) {
+		if (dnslib_node_parent(nodes[i], 0) != test_nodes[i].parent) {
 			errors++;
 			diag("Failed to get proper parent from node");
 		}
-		dnslib_node_free(&nodes[i], 0);
+		dnslib_node_free(&nodes[i], 0, 0);
 	}
 	return (errors == 0);
 }
@@ -189,7 +189,7 @@ static int test_node_sorting()
 	dnslib_rrset_t *rrset;
 	int errors = 0;
 
-	tmp = dnslib_node_new(&test_nodes[0].owner, test_nodes[0].parent);
+	tmp = dnslib_node_new(&test_nodes[0].owner, test_nodes[0].parent, 0);
 
 	/* Will add rrsets to node. */
 
@@ -214,7 +214,7 @@ static int test_node_sorting()
 		last = *((uint16_t *)node->key);
 	}
 
-	dnslib_node_free(&tmp, 0);
+	dnslib_node_free(&tmp, 0, 0);
 	return (errors == 0);
 }
 
@@ -226,9 +226,9 @@ static int test_node_delete()
 
 	for (int i = 0; i < TEST_NODES; i++) {
 		tmp_node = dnslib_node_new(&test_nodes[i].owner,
-				      test_nodes[i].parent);
+				      test_nodes[i].parent, 0);
 
-		dnslib_node_free(&tmp_node, 0);
+		dnslib_node_free(&tmp_node, 0, 0);
 
 		errors += (tmp_node != NULL);
 	}
@@ -238,14 +238,14 @@ static int test_node_delete()
 
 static int test_node_set_parent()
 {
-	dnslib_node_t *tmp_parent = (dnslib_node_t *)0xABCDEF;
+	dnslib_node_t *tmp_parent = dnslib_node_new(NULL, NULL, 0);
 	int errors = 0;
 
 	dnslib_node_t *tmp_node;
 
 	for (int i = 0; i < TEST_NODES; i++) {
 		tmp_node = dnslib_node_new(&test_nodes[i].owner,
-				      test_nodes[i].parent);
+				      test_nodes[i].parent, 0);
 
 		dnslib_node_set_parent(tmp_node, tmp_parent);
 
@@ -253,8 +253,9 @@ static int test_node_set_parent()
 			diag("Parent node is wrongly set.");
 			errors++;
 		}
-		dnslib_node_free(&tmp_node, 0);
+		dnslib_node_free(&tmp_node, 0, 0);
 	}
+	dnslib_node_free(&tmp_parent, 0, 0);
 	return (errors == 0);
 }
 
@@ -266,13 +267,13 @@ static int test_node_free_rrsets()
 
 	for (int i = 0; i < TEST_NODES; i++) {
 		tmp_node = dnslib_node_new(&test_nodes[i].owner,
-				      test_nodes[i].parent);
+				      test_nodes[i].parent, 0);
 
 		dnslib_node_free_rrsets(tmp_node, 0);
 
 		errors += (tmp_node->rrsets != NULL);
 
-		dnslib_node_free(&tmp_node, 0);
+		dnslib_node_free(&tmp_node, 0, 0);
 	}
 	return (errors == 0);
 }

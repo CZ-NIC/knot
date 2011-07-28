@@ -175,6 +175,7 @@ static void zone_free(conf_zone_t *zone)
 	free(zone->name);
 	free(zone->file);
 	free(zone->db);
+	free(zone->ixfr_db);
 	free(zone);
 }
 
@@ -223,6 +224,11 @@ static int conf_process(conf_t *conf)
 	WALK_LIST (n, conf->zones) {
 		conf_zone_t *zone = (conf_zone_t*)n;
 
+		// Default policy for dbsync timeout
+		if (zone->dbsync_timeout < 0) {
+			zone->dbsync_timeout = conf->dbsync_timeout;
+		}
+
 		// Default policy for semantic checks
 		if (zone->enable_checks < 0) {
 			zone->enable_checks = conf->zone_checks;
@@ -253,6 +259,19 @@ static int conf_process(conf_t *conf)
 		strcat(dest, zone->name);
 		strcat(dest, "db");
 		zone->db = dest;
+
+		// Create IXFR db filename
+		stor_len = strlen(conf->storage);
+		size = stor_len + strlen(zone->name) + 9; // diff.db/,\0
+		dest = malloc(size);
+		strcpy(dest, conf->storage);
+		if (conf->storage[stor_len - 1] != '/') {
+			strcat(dest, "/");
+		}
+
+		strcat(dest, zone->name);
+		strcat(dest, "diff.db");
+		zone->ixfr_db = dest;
 	}
 
 	return 0;
@@ -419,6 +438,7 @@ conf_t *conf_new(const char* path)
 	c->zone_checks = 0;
 	c->notify_retries = CONFIG_NOTIFY_RETRIES;
 	c->notify_timeout = CONFIG_NOTIFY_TIMEOUT;
+	c->dbsync_timeout = CONFIG_DBSYNC_TIMEOUT;
 
 	return c;
 }

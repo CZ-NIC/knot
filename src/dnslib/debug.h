@@ -68,7 +68,7 @@ void dnslib_node_dump(dnslib_node_t *node, void *loaded_zone);
  * \param loaded_zone Set to <> 0 if the node is part of a zone loaded into
  *                    the server. Set to 0 otherwise.
  */
-void dnslib_zone_dump(dnslib_zone_t *zone, char loaded_zone);
+void dnslib_zone_contents_dump(dnslib_zone_contents_t *zone, char loaded_zone);
 
 /*
  * Debug macros
@@ -77,6 +77,7 @@ void dnslib_zone_dump(dnslib_zone_t *zone, char loaded_zone);
 //#define DNSLIB_RESPONSE_DEBUG
 //#define DNSLIB_ZONEDB_DEBUG
 //#define DNSLIB_DNAME_DEBUG
+//#define DNSLIB_NODE_DEBUG
 //#define DNSLIB_RESPONSE_DEBUG
 //#define DNSLIB_PACKET_DEBUG
 //#define DNSLIB_EDNS_DEBUG
@@ -95,6 +96,16 @@ void dnslib_zone_dump(dnslib_zone_t *zone, char loaded_zone);
 #define debug_dnslib_dname(msg...)
 #define debug_dnslib_dname_hex(data, len)
 #define DEBUG_DNSLIB_DNAME(cmds)
+#endif
+
+#ifdef DNSLIB_NODE_DEBUG
+#define debug_dnslib_node(msg...) fprintf(stderr, msg)
+#define debug_dnslib_node_hex(data, len) hex_print((data), (len))
+#define DEBUG_DNSLIB_node(cmds) do { cmds } while (0)
+#else
+#define debug_dnslib_node(msg...)
+#define debug_dnslib_node_hex(data, len)
+#define DEBUG_DNSLIB_NODE(cmds)
 #endif
 
 #ifdef DNSLIB_ZONE_DEBUG
