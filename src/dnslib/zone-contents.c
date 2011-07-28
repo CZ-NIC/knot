@@ -567,7 +567,7 @@ static int dnslib_zone_contents_find_in_tree(dnslib_zone_tree_t *tree,
 	int exact_match = dnslib_zone_tree_get_less_or_equal(
 	                         tree, name, &found, &prev);
 
-	assert(prev != NULL);
+//	assert(prev != NULL);
 	assert(exact_match >= 0);
 	*node = found;
 	*previous = prev;
