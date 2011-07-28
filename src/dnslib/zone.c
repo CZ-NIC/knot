@@ -51,7 +51,7 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 	zone->contents = dnslib_zone_contents_new(apex, node_count,
 	                                          use_domain_table, zone);
 	if (zone->contents == NULL) {
-		dnslib_dname_free(&zone->name);
+		dnslib_dname_release(zone->name);
 		free(zone);
 		return NULL;
 	}
@@ -331,7 +331,7 @@ void dnslib_zone_free(dnslib_zone_t **zone)
 		                  "update.\n");
 	}
 
-	dnslib_dname_free(&(*zone)->name);
+	dnslib_dname_release((*zone)->name);
 
 	/* Call zone data destructor if exists. */
 	if ((*zone)->dtor) {
@@ -365,7 +365,7 @@ DEBUG_DNSLIB_ZONE(
 	free(name);
 );
 
-	dnslib_dname_free(&(*zone)->name);
+	dnslib_dname_release((*zone)->name);
 
 	/* Call zone data destructor if exists. */
 	if ((*zone)->dtor) {

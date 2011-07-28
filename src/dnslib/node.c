@@ -699,7 +699,7 @@ void dnslib_node_free(dnslib_node_t **node, int free_owner, int fix_refs)
 	}
 	if (free_owner) {
 		debug_dnslib_node("Freeing owner.\n");
-		dnslib_dname_free(&(*node)->owner);
+		dnslib_dname_release((*node)->owner);
 	}
 
 	// check nodes referencing this node and fix the references

@@ -28,7 +28,7 @@ static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_create_query(const dnslib_dname_t *qname, uint16_t qtype,
+static int xfrin_create_query(const dnslib_zone_contents_t *zone, uint16_t qtype,
                               uint16_t qclass, uint8_t *buffer, size_t *size)
 {
 	dnslib_packet_t *pkt = dnslib_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
@@ -48,6 +48,12 @@ static int xfrin_create_query(const dnslib_dname_t *qname, uint16_t qtype,
 	}
 
 	dnslib_question_t question;
+
+	const dnslib_node_t *apex = dnslib_zone_contents_apex(zone);
+	dnslib_dname_t *qname = dnslib_node_get_owner(apex);
+
+	/*! \todo What happens if apex is freed before we lock? */
+	dnslib_dname_retain(qname);
 
 	// this is ugly!!
 	question.qname = (dnslib_dname_t *)qname;
@@ -86,6 +92,9 @@ static int xfrin_create_query(const dnslib_dname_t *qname, uint16_t qtype,
 	dnslib_packet_dump(pkt);
 
 	dnslib_packet_free(&pkt);
+
+	/* Release qname. */
+	dnslib_dname_release(qname);
 
 	return KNOT_EOK;
 }
@@ -160,10 +169,10 @@ static inline uint64_t ixfrdb_key_make(uint32_t from, uint32_t to)
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_soa_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
+int xfrin_create_soa_query(const dnslib_zone_contents_t *zone, uint8_t *buffer,
                            size_t *size)
 {
-	return xfrin_create_query(zone_name, DNSLIB_RRTYPE_SOA,
+	return xfrin_create_query(zone, DNSLIB_RRTYPE_SOA,
 	                           DNSLIB_CLASS_IN, buffer, size);
 }
 
@@ -230,19 +239,19 @@ int xfrin_transfer_needed(const dnslib_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_axfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
+int xfrin_create_axfr_query(const dnslib_zone_contents_t *zone, uint8_t *buffer,
                             size_t *size)
 {
-	return xfrin_create_query(zone_name, DNSLIB_RRTYPE_AXFR,
+	return xfrin_create_query(zone, DNSLIB_RRTYPE_AXFR,
 	                           DNSLIB_CLASS_IN, buffer, size);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_ixfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
+int xfrin_create_ixfr_query(const dnslib_zone_contents_t *zone, uint8_t *buffer,
                             size_t *size)
 {
-	return xfrin_create_query(zone_name, DNSLIB_RRTYPE_IXFR,
+	return xfrin_create_query(zone, DNSLIB_RRTYPE_IXFR,
 	                           DNSLIB_CLASS_IN, buffer, size);
 }
 
@@ -259,7 +268,7 @@ int xfrin_zone_transferred(ns_nameserver_t *nameserver,
 /*----------------------------------------------------------------------------*/
 
 int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
-                              dnslib_zone_contents_t **zone)
+			      dnslib_zone_contents_t **zone)
 {
 	if (pkt == NULL || zone == NULL) {
 		debug_xfr("Wrong parameters supported.\n");
@@ -1540,7 +1549,7 @@ static void xfrin_rollback_update(dnslib_zone_contents_t *contents,
 
 	// discard new dnames
 	for (int i = 0; i < changes->new_dnames_count; ++i) {
-		dnslib_dname_free(&changes->new_dnames[i]);
+		dnslib_dname_release(changes->new_dnames[i]);
 	}
 
 	// destroy the shallow copy of zone

@@ -264,7 +264,7 @@ zone_start: TEXT {
      strcat(this_zone->name, ".");
    }
 
-   // Check domain name
+   /* Check domain name. */
    dnslib_dname_t *dn = dnslib_dname_new_from_str(this_zone->name,
                                                   nlen + 1,
                                                   0);
@@ -273,6 +273,7 @@ zone_start: TEXT {
      free(this_zone);
      cf_error("invalid zone origin");
    } else {
+     /* Directly discard dname, won't be needed. */
      dnslib_dname_free(&dn);
      add_tail(&new_config->zones, &this_zone->n);
      ++new_config->zones_count;

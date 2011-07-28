@@ -345,7 +345,7 @@ void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner,
 	}
 
 	if (free_owner) {
-		dnslib_dname_free(&(*rrset)->owner);
+		dnslib_dname_release((*rrset)->owner);
 	}
 
 	free(*rrset);

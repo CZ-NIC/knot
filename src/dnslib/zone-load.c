@@ -130,7 +130,7 @@ static dnslib_dname_t *read_dname_with_id(FILE *f)
 	/* Read ID. */
 	uint32_t dname_id = 0;
 	if (!fread_wrapper(&dname_id, sizeof(dname_id), 1, f)) {
-		dnslib_dname_free(&ret);
+		dnslib_dname_release(ret);
 		return NULL;
 	}
 
@@ -139,7 +139,7 @@ static dnslib_dname_t *read_dname_with_id(FILE *f)
 	/* Read size of dname. */
 	uint32_t dname_size = 0;
 	if (!fread_wrapper(&dname_size, sizeof(dname_size), 1, f)) {
-		dnslib_dname_free(&ret);
+		dnslib_dname_release(ret);
 		return NULL;
 	}
 	ret->size = dname_size;
@@ -150,19 +150,19 @@ static dnslib_dname_t *read_dname_with_id(FILE *f)
 	ret->name = malloc(sizeof(uint8_t) * ret->size);
 	if (ret->name == NULL) {
 		ERR_ALLOC_FAILED;
-		dnslib_dname_free(&ret);
+		dnslib_dname_release(ret);
 		return NULL;
 	}
 
 	if (!fread_wrapper(ret->name, sizeof(uint8_t), ret->size, f)) {
-		dnslib_dname_free(&ret);
+		dnslib_dname_release(ret);
 		return NULL;
 	}
 
 	/* Read labels. */
 	uint16_t label_count = 0;
 	if (!fread_wrapper(&label_count, sizeof(label_count), 1, f)) {
-		dnslib_dname_free(&ret);
+		dnslib_dname_release(ret);
 		return NULL;
 	}
 
@@ -171,7 +171,7 @@ static dnslib_dname_t *read_dname_with_id(FILE *f)
 	ret->labels = malloc(sizeof(uint8_t) * ret->label_count);
 	if (ret->labels == NULL) {
 		ERR_ALLOC_FAILED;
-		dnslib_dname_free(&ret);
+		dnslib_dname_release(ret);
 		return NULL;
 	}
 
@@ -538,6 +538,7 @@ static void find_and_set_wildcard_child(dnslib_zone_contents_t *zone,
 			dnslib_zone_contents_get_nsec3_node(zone, chopped);
 	}
 
+	/* Directly discard. */
 	dnslib_dname_free(&chopped);
 
 	assert(wildcard_parent); /* it *has* to be there */
@@ -744,7 +745,7 @@ static void cleanup_id_array(dnslib_dname_t **id_array,
 			     const uint from, const uint to)
 {
 	for (uint i = from; i < to; i++) {
-		dnslib_dname_free(&(id_array[i]));
+		dnslib_dname_release(id_array[i]);
 	}
 
 	free(id_array);
@@ -831,11 +832,14 @@ static dnslib_dname_t **create_dname_array(FILE *f, uint max_id)
 			cleanup_id_array(array, 0, i);
 			return NULL;
 		}
+
 		if (read_dname->id < max_id) {
 			read_dname->node = dnslib_node_new(read_dname, NULL, 0);
 			if (read_dname->node == NULL) {
 				ERR_ALLOC_FAILED;
 				cleanup_id_array(array, 0, i);
+
+				/* Directly discard. */
 				dnslib_dname_free(&read_dname);
 				return NULL;
 			}
@@ -844,6 +848,7 @@ static dnslib_dname_t **create_dname_array(FILE *f, uint max_id)
 			cleanup_id_array(array, 0, i);
 			return NULL;
 		}
+
 //		assert(array[i]->id == i);
 	}
 
@@ -1027,6 +1032,10 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	}
 
 	/* ID array is now useless */
+	for (uint i = 1; i < total_dnames; i++) {
+		/* Added to table, may discard now. */
+		dnslib_dname_release(id_array[i]);
+	}
 	free(id_array);
 
 

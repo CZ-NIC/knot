@@ -442,7 +442,7 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
 		    || desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME ) {
 			if (((*rdata)->items[i].dname != NULL) &&
 			    free_all_dnames) {
-				dnslib_dname_free(&(*rdata)->items[i].dname);
+				dnslib_dname_release((*rdata)->items[i].dname);
 			}
 		} else {
 			free((*rdata)->items[i].raw_data);

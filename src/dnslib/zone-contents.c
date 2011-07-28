@@ -507,6 +507,7 @@ DEBUG_DNSLIB_ZONE(
 
 	debug_dnslib_zone("Base32-encoded hash: %s\n", name_b32);
 
+	/* Will be returned to caller, make sure it is released after use. */
 	*nsec3_name = dnslib_dname_new_from_str(name_b32, size, NULL);
 
 	free(name_b32);
@@ -523,7 +524,7 @@ DEBUG_DNSLIB_ZONE(
 	if (ret == NULL) {
 		debug_dnslib_zone("Error while creating NSEC3 domain name for "
 		                  "hashed name.\n");
-		dnslib_dname_free(nsec3_name);
+		dnslib_dname_release(*nsec3_name);
 		return DNSLIB_ERROR;
 	}
 
@@ -939,6 +940,7 @@ DEBUG_DNSLIB_ZONE(
 			debug_dnslib_zone("Creating new node.\n");
 			next_node = dnslib_node_new(chopped, NULL, flags);
 			if (next_node == NULL) {
+				/* Directly discard. */
 				dnslib_dname_free(&chopped);
 				return DNSLIB_ENOMEM;
 			}
@@ -970,6 +972,7 @@ DEBUG_DNSLIB_ZONE(
 				debug_dnslib_zone("Failed to insert new node "
 				                  "to zone tree.\n");
 				/*! \todo Delete the node?? */
+				/* Directly discard. */
 				dnslib_dname_free(&chopped);
 				return ret;
 			}
@@ -992,6 +995,7 @@ DEBUG_DNSLIB_ZONE(
 				debug_dnslib_zone("Error inserting node into "
 				                  "hash table!\n");
 				/*! \todo Delete the node?? */
+				/* Directly discard. */
 				dnslib_dname_free(&chopped);
 				return DNSLIB_EHASH;
 			}
@@ -1019,6 +1023,8 @@ DEBUG_DNSLIB_ZONE(
 
 		debug_dnslib_zone("Created all parents.\n");
 	}
+
+	/* Directly discard. */
 	dnslib_dname_free(&chopped);
 
 	return DNSLIB_EOK;
@@ -1085,7 +1091,7 @@ int dnslib_zone_contents_add_rrset(dnslib_zone_contents_t *zone,
 	// table)
 	/*! \todo Do even if domain table is not used?? */
 	if (ret == DNSLIB_EOK && rrset->owner != (*node)->owner) {
-		dnslib_dname_free(&rrset->owner);
+		dnslib_dname_release(rrset->owner);
 		rrset->owner = (*node)->owner;
 	}
 
@@ -1192,7 +1198,7 @@ int dnslib_zone_contents_add_rrsigs(dnslib_zone_contents_t *zone,
 	// replace RRSet's owner with the node's owner (that is already in the
 	// table)
 	if ((*rrset)->owner != (*rrset)->rrsigs->owner) {
-		dnslib_dname_free(&rrsigs->owner);
+		dnslib_dname_release(rrsigs->owner);
 		(*rrset)->rrsigs->owner = (*rrset)->owner;
 	}
 
@@ -1305,7 +1311,7 @@ int dnslib_zone_contents_add_nsec3_rrset(dnslib_zone_contents_t *zone,
 	// table)
 	/*! \todo Do even if domain table is not used? */
 	if (rrset->owner != (*node)->owner) {
-		dnslib_dname_free(&rrset->owner);
+		dnslib_dname_release(rrset->owner);
 		rrset->owner = (*node)->owner;
 	}
 
@@ -1671,6 +1677,7 @@ DEBUG_DNSLIB_ZONE(
 
 	// chop leftmost labels until some node is found
 	// copy the name for chopping
+	/* Local allocation, will be discarded. */
 	dnslib_dname_t *name_copy = dnslib_dname_copy(name);
 DEBUG_DNSLIB_ZONE(
 	char *n = dnslib_dname_to_str(name_copy);
@@ -1695,6 +1702,7 @@ DEBUG_DNSLIB_ZONE(
 		                    name_copy->size);
 	}
 
+	/* Directly discard. */
 	dnslib_dname_free(&name_copy);
 
 	assert(item != NULL);
@@ -1743,7 +1751,7 @@ DEBUG_DNSLIB_ZONE(
 		zone->nsec3_nodes, nsec3_name, &found, &prev);
 	assert(exact_match >= 0);
 
-	dnslib_dname_free(&nsec3_name);
+	dnslib_dname_release(nsec3_name);
 
 DEBUG_DNSLIB_ZONE(
 	if (found) {
