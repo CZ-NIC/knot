@@ -922,57 +922,57 @@ struct dump_param {
 void apex_node_dump_text(dnslib_node_t *node, FILE *f)
 {
 	int tmp = DNSLIB_RRTYPE_SOA;
-	dnslib_rrset_t *tmp_rrset =
-		(dnslib_rrset_t *)skip_find(node->rrsets,
-		                            &tmp);
-	rrset_dump_text(tmp_rrset, f);
+//	dnslib_rrset_t *tmp_rrset =
+//		(dnslib_rrset_t *)skip_find(node->rrsets,
+//		                            &tmp);
+//	rrset_dump_text(tmp_rrset, f);
 
-	const skip_node_t *skip_node =
-		skip_first(node->rrsets);
+//	const skip_node_t *skip_node =
+//		skip_first(node->rrsets);
 
-	tmp_rrset = (dnslib_rrset_t *)skip_node->value;
+//	tmp_rrset = (dnslib_rrset_t *)skip_node->value;
 
-	if (tmp_rrset->type != DNSLIB_RRTYPE_SOA) {
-		rrset_dump_text(tmp_rrset, f);
-	}
+//	if (tmp_rrset->type != DNSLIB_RRTYPE_SOA) {
+//		rrset_dump_text(tmp_rrset, f);
+//	}
 
-	while ((skip_node = skip_next(skip_node)) != NULL) {
-		tmp_rrset = (dnslib_rrset_t *)skip_node->value;
-		if (tmp_rrset->type != DNSLIB_RRTYPE_SOA) {
-			rrset_dump_text(tmp_rrset, f);
-		}
-	}
+//	while ((skip_node = skip_next(skip_node)) != NULL) {
+//		tmp_rrset = (dnslib_rrset_t *)skip_node->value;
+//		if (tmp_rrset->type != DNSLIB_RRTYPE_SOA) {
+//			rrset_dump_text(tmp_rrset, f);
+//		}
+//	}
 }
 
 void node_dump_text(dnslib_node_t *node, void *data)
 {
-	struct dump_param *param;
-	param = (struct dump_param *)data;
-	FILE *f = param->f;
-	const dnslib_dname_t *origin = param->origin;
+//	struct dump_param *param;
+//	param = (struct dump_param *)data;
+//	FILE *f = param->f;
+//	const dnslib_dname_t *origin = param->origin;
 
-	/* pointers should do in this case */
-	if (node->owner == origin) {
-		apex_node_dump_text(node, f);
-		return;
-	}
+//	/* pointers should do in this case */
+//	if (node->owner == origin) {
+//		apex_node_dump_text(node, f);
+//		return;
+//	}
 
-	const skip_node_t *skip_node =
-		skip_first(node->rrsets);
+//	const skip_node_t *skip_node =
+//		skip_first(node->rrsets);
 
-	/* empty nodes should not be dumped */
-	if (skip_node == NULL) {
-		return;
-	}
+//	/* empty nodes should not be dumped */
+//	if (skip_node == NULL) {
+//		return;
+//	}
 
-	dnslib_rrset_t *tmp = (dnslib_rrset_t *)skip_node->value;
+//	dnslib_rrset_t *tmp = (dnslib_rrset_t *)skip_node->value;
 
-	rrset_dump_text(tmp, f);
+//	rrset_dump_text(tmp, f);
 
-	while ((skip_node = skip_next(skip_node)) != NULL) {
-		tmp = (dnslib_rrset_t *)skip_node->value;
-		rrset_dump_text(tmp, f);
-	}
+//	while ((skip_node = skip_next(skip_node)) != NULL) {
+//		tmp = (dnslib_rrset_t *)skip_node->value;
+//		rrset_dump_text(tmp, f);
+//	}
 }
 
 int zone_dump_text(dnslib_zone_contents_t *zone, const char *filename)

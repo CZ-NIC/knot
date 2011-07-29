@@ -956,7 +956,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 			dnslib_node_set_previous(tmp_node, last_node);
 //			tmp_node->prev = last_node;
 
-			if (skip_first(tmp_node->rrsets) != NULL &&
+			if (tmp_node->rrset_count &&
 			    (dnslib_node_is_deleg_point(tmp_node) ||
 			    !dnslib_node_is_non_auth(tmp_node))) {
 				last_node = tmp_node;

@@ -17,6 +17,7 @@
 #include "common/skip-list.h"
 #include "dnslib/rrset.h"
 #include "common/tree.h"
+#include "common/general-tree.h"
 
 struct dnslib_zone;
 
@@ -32,7 +33,7 @@ struct dnslib_node {
 	struct dnslib_node *parent; /*!< Parent node in the name hierarchy. */
 
 	/*! \brief Type-ordered list of RRSets belonging to this node. */
-	skip_list_t *rrsets;
+	general_tree_t *rrset_tree;
 
 	unsigned short rrset_count; /*!< Number of RRSets stored in the node. */
 
