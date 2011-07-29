@@ -141,10 +141,12 @@ static inline void dnslib_node_flags_clear_old(uint8_t *flags)
  * \retval < 0 if \a key1 is lower than \a key2.
  * \retval > 0 if \a key1 is higher than \a key2.
  */
-static int compare_rrset_types(void *key1, void *key2)
+static int compare_rrset_types(void *rr1, void *rr2)
 {
-	return (*((uint16_t *)key1) == *((uint16_t *)key2) ?
-	        0 : *((uint16_t *)key1) < *((uint16_t *)key2) ? -1 : 1);
+	dnslib_rrset_t *rrset1 = (dnslib_rrset_t *)rr1;
+	dnslib_rrset_t *rrset2 = (dnslib_rrset_t *)rr2;
+	return ((rrset1->type > rrset2->type) ? 1 :
+	        (rrset1->type == rrset2->type) ? 0 : -1);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -172,7 +174,7 @@ dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent,
 
 	ret->owner = owner;
 	dnslib_node_set_parent(ret, parent);
-	ret->rrsets = skip_create_list(compare_rrset_types);
+	ret->rrset_tree = gen_tree_new(compare_rrset_types, dnslib_rrset_merge);
 	ret->flags = flags;
 	
 	assert(ret->children == 0);
@@ -186,9 +188,8 @@ int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset,
                           int merge)
 {
 	int ret;
-	if ((ret = (skip_insert(node->rrsets,
-	                        (void *)&rrset->type, (void *)rrset,
-	                        (merge) ? dnslib_rrset_merge : NULL))) < 0) {
+	/*!< \todo MISSING MERGE OPTION */
+	if ((ret = (gen_tree_add(node->rrset_tree, rrset))) != 0) {
 		return DNSLIB_ERROR;
 	}
 
@@ -206,25 +207,31 @@ const dnslib_rrset_t *dnslib_node_rrset(const dnslib_node_t *node,
                                         uint16_t type)
 {
 	assert(node != NULL);
-	assert(node->rrsets != NULL);
-	return (const dnslib_rrset_t *)skip_find(node->rrsets, (void *)&type);
+	assert(node->rrset_tree != NULL);
+	dnslib_rrset_t rrset;
+	rrset.type = type;
+	return (const dnslib_rrset_t *)gen_tree_find(node->rrset_tree, &rrset);
 }
 
 /*----------------------------------------------------------------------------*/
 
 dnslib_rrset_t *dnslib_node_get_rrset(dnslib_node_t *node, uint16_t type)
 {
-	return (dnslib_rrset_t *)skip_find(node->rrsets, (void *)&type);
+	dnslib_rrset_t rrset;
+	rrset.type = type;
+	return (dnslib_rrset_t *)gen_tree_find(node->rrset_tree, &rrset);
 }
 
 /*----------------------------------------------------------------------------*/
 
 dnslib_rrset_t *dnslib_node_remove_rrset(dnslib_node_t *node, uint16_t type)
 {
+	dnslib_rrset_t dummy_rrset;
+	dummy_rrset.type = type;
 	dnslib_rrset_t *rrset =
-		(dnslib_rrset_t *)skip_find(node->rrsets, (void *)&type);
+		(dnslib_rrset_t *)gen_tree_find(node->rrset_tree, &dummy_rrset);
 	if (rrset != NULL) {
-		skip_remove(node->rrsets, (void *)&type, NULL, NULL);
+		gen_tree_remove(node->rrset_tree, rrset);
 	}
 	return rrset;
 }
@@ -238,20 +245,30 @@ short dnslib_node_rrset_count(const dnslib_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
+struct dnslib_node_save_rrset_arg {
+	dnslib_rrset_t **array;
+	size_t count;
+};
+
+void save_rrset_to_array(void *node, void *data)
+{
+	dnslib_rrset_t *rrset = (dnslib_rrset_t *)node;
+	struct dnslib_node_save_rrset_arg *args =
+		(struct dnslib_node_save_rrset_arg *)data;
+	args->array[args->count++] = rrset;
+}
+
 dnslib_rrset_t **dnslib_node_get_rrsets(const dnslib_node_t *node)
 {
 	dnslib_rrset_t **rrsets = (dnslib_rrset_t **)malloc(
 		node->rrset_count * sizeof(dnslib_rrset_t *));
 	CHECK_ALLOC_LOG(rrsets, NULL);
+	struct dnslib_node_save_rrset_arg args;
+	args.array = rrsets;
+	args.count = 0;
 
-	const skip_node_t *sn = skip_first(node->rrsets);
-	int i = 0;
-	while (sn != NULL) {
-		assert(i < node->rrset_count);
-		rrsets[i] = (dnslib_rrset_t *)sn->value;
-		sn = skip_next(sn);
-		++i;
-	}
+	gen_tree_apply_inorder(node->rrset_tree, save_rrset_to_array,
+	                       &args);
 
 	//printf("Returning %d RRSets.\n", i);
 
@@ -262,22 +279,20 @@ dnslib_rrset_t **dnslib_node_get_rrsets(const dnslib_node_t *node)
 
 const dnslib_rrset_t **dnslib_node_rrsets(const dnslib_node_t *node)
 {
-	const dnslib_rrset_t **rrsets = (const dnslib_rrset_t **)malloc(
+	dnslib_rrset_t **rrsets = (dnslib_rrset_t **)malloc(
 		node->rrset_count * sizeof(dnslib_rrset_t *));
-	CHECK_ALLOC_LOG(rrsets, NULL);
+		CHECK_ALLOC_LOG(rrsets, NULL);
+		struct dnslib_node_save_rrset_arg args;
+		args.array = rrsets;
+		args.count = 0;
 
-	const skip_node_t *sn = skip_first(node->rrsets);
-	int i = 0;
-	while (sn != NULL) {
-		assert(i < node->rrset_count);
-		rrsets[i] = (const dnslib_rrset_t *)sn->value;
-		sn = skip_next(sn);
-		++i;
-	}
+		gen_tree_apply_inorder(node->rrset_tree, save_rrset_to_array,
+		                       &args);
 
-	//printf("Returning %d RRSets.\n", i);
+		//printf("Returning %d RRSets.\n", i);
 
-	return rrsets;
+		return (const dnslib_rrset_t **)rrsets;
+
 }
 
 /*----------------------------------------------------------------------------*/
@@ -671,81 +686,81 @@ void dnslib_node_clear_old(dnslib_node_t *node)
 
 void dnslib_node_free_rrsets(dnslib_node_t *node, int free_rdata_dnames)
 {
-	const skip_node_t *skip_node =
-		(skip_node_t *)skip_first(node->rrsets);
+//	const skip_node_t *skip_node =
+//		(skip_node_t *)skip_first(node->rrsets);
 
-	if (skip_node != NULL) {
-		dnslib_rrset_deep_free((dnslib_rrset_t **)(&skip_node->value), 0,
-				       1, free_rdata_dnames);
-		while ((skip_node = skip_next(skip_node)) != NULL) {
-			dnslib_rrset_deep_free((dnslib_rrset_t **)
-						(&skip_node->value), 0,
-						1, free_rdata_dnames);
-		}
-	}
+//	if (skip_node != NULL) {
+//		dnslib_rrset_deep_free((dnslib_rrset_t **)(&skip_node->value), 0,
+//				       1, free_rdata_dnames);
+//		while ((skip_node = skip_next(skip_node)) != NULL) {
+//			dnslib_rrset_deep_free((dnslib_rrset_t **)
+//						(&skip_node->value), 0,
+//						1, free_rdata_dnames);
+//		}
+//	}
 
-	skip_destroy_list(&node->rrsets, NULL, NULL);
-	node->rrsets = NULL;
+//	skip_destroy_list(&node->rrsets, NULL, NULL);
+//	node->rrsets = NULL;
 }
 
 /*----------------------------------------------------------------------------*/
 
 void dnslib_node_free(dnslib_node_t **node, int free_owner, int fix_refs)
 {
-	debug_dnslib_node("Freeing node.\n");
-	if ((*node)->rrsets != NULL) {
-		debug_dnslib_node("Freeing RRSets.\n");
-		skip_destroy_list(&(*node)->rrsets, NULL, NULL);
-	}
-	if (free_owner) {
-		debug_dnslib_node("Freeing owner.\n");
-		dnslib_dname_free(&(*node)->owner);
-	}
+//	debug_dnslib_node("Freeing node.\n");
+//	if ((*node)->rrsets != NULL) {
+//		debug_dnslib_node("Freeing RRSets.\n");
+//		skip_destroy_list(&(*node)->rrsets, NULL, NULL);
+//	}
+//	if (free_owner) {
+//		debug_dnslib_node("Freeing owner.\n");
+//		dnslib_dname_free(&(*node)->owner);
+//	}
 
-	// check nodes referencing this node and fix the references
+//	// check nodes referencing this node and fix the references
 
-	if (fix_refs) {
-		// previous node
-		debug_dnslib_node("Checking previous.\n");
-		if ((*node)->prev && (*node)->prev->next == (*node)) {
-			(*node)->prev->next = (*node)->next;
-		}
+//	if (fix_refs) {
+//		// previous node
+//		debug_dnslib_node("Checking previous.\n");
+//		if ((*node)->prev && (*node)->prev->next == (*node)) {
+//			(*node)->prev->next = (*node)->next;
+//		}
 
-		debug_dnslib_node("Checking next.\n");
-		if ((*node)->next && (*node)->next->prev == (*node)) {
-			(*node)->next->prev = (*node)->prev;
-		}
+//		debug_dnslib_node("Checking next.\n");
+//		if ((*node)->next && (*node)->next->prev == (*node)) {
+//			(*node)->next->prev = (*node)->prev;
+//		}
 
-		// NSEC3 node
-		debug_dnslib_node("Checking NSEC3.\n");
-		if ((*node)->nsec3_node
-		    && (*node)->nsec3_node->nsec3_referer == (*node)) {
-			(*node)->nsec3_node->nsec3_referer = NULL;
-		}
+//		// NSEC3 node
+//		debug_dnslib_node("Checking NSEC3.\n");
+//		if ((*node)->nsec3_node
+//		    && (*node)->nsec3_node->nsec3_referer == (*node)) {
+//			(*node)->nsec3_node->nsec3_referer = NULL;
+//		}
 
-		debug_dnslib_node("Checking NSEC3 ref.\n");
-		if ((*node)->nsec3_referer
-		    && (*node)->nsec3_referer->nsec3_node == (*node)) {
-			(*node)->nsec3_referer->nsec3_node = NULL;
-		}
+//		debug_dnslib_node("Checking NSEC3 ref.\n");
+//		if ((*node)->nsec3_referer
+//		    && (*node)->nsec3_referer->nsec3_node == (*node)) {
+//			(*node)->nsec3_referer->nsec3_node = NULL;
+//		}
 
-		// wildcard child node
-		debug_dnslib_node("Checking parent's wildcard child.\n");
-		if ((*node)->parent
-		    && (*node)->parent->wildcard_child == (*node)) {
-			(*node)->parent->wildcard_child = NULL;
-		}
+//		// wildcard child node
+//		debug_dnslib_node("Checking parent's wildcard child.\n");
+//		if ((*node)->parent
+//		    && (*node)->parent->wildcard_child == (*node)) {
+//			(*node)->parent->wildcard_child = NULL;
+//		}
 		
-		// fix parent's children count
-		if ((*node)->parent) {
-			--(*node)->parent->children;
-		}
-	}
+//		// fix parent's children count
+//		if ((*node)->parent) {
+//			--(*node)->parent->children;
+//		}
+//	}
 
-	free(*node);
-	*node = NULL;
+//	free(*node);
+//	*node = NULL;
 
-	debug_dnslib_node("Done.\n");
+//	debug_dnslib_node("Done.\n");
 }
 
 /*----------------------------------------------------------------------------*/
@@ -779,12 +794,12 @@ int dnslib_node_deep_copy(const dnslib_node_t *from, dnslib_node_t **to)
 
 	// copy RRSets
 	// copy the skip list with the old references
-	(*to)->rrsets = skip_copy_list(from->rrsets);
-	if ((*to)->rrsets == NULL) {
-		free(*to);
-		*to = NULL;
-		return DNSLIB_ENOMEM;
-	}
+//	(*to)->rrsets = skip_copy_list(from->rrsets);
+//	if ((*to)->rrsets == NULL) {
+//		free(*to);
+//		*to = NULL;
+//		return DNSLIB_ENOMEM;
+//	}
 
 	(*to)->rrset_count = from->rrset_count;
 

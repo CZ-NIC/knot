@@ -74,7 +74,7 @@ static int test_node_create(const list *node_list)
 		             (char *)tmp_node->owner->wire,
 		             tmp->owner->size) != 0) ||
 		    tmp->parent != (dnslib_node_t *)tmp_node->parent ||
-		    tmp->rrsets == NULL) {
+		    tmp->rrset_tree == NULL) {
 			errors++;
 			diag("Failed to create node structure");
 		}

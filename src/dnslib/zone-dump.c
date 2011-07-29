@@ -1623,19 +1623,19 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 	uint16_t rrset_count = node->rrset_count;
 	fwrite_wrapper(&rrset_count, sizeof(rrset_count), 1, f);
 
-	const skip_node_t *skip_node = skip_first(node->rrsets);
+//	const skip_node_t *skip_node = skip_first(node->rrsets);
 
-	if (skip_node == NULL) {
-		/* we can return, count is set to 0 */
-		return;
-	}
+//	if (skip_node == NULL) {
+//		/* we can return, count is set to 0 */
+//		return;
+//	}
 
-	dnslib_rrset_t *tmp;
+//	dnslib_rrset_t *tmp;
 
-	do {
-		tmp = (dnslib_rrset_t *)skip_node->value;
-		dnslib_rrset_dump_binary(tmp, data, 1);
-	} while ((skip_node = skip_next(skip_node)) != NULL);
+//	do {
+//		tmp = (dnslib_rrset_t *)skip_node->value;
+//		dnslib_rrset_dump_binary(tmp, data, 1);
+//	} while ((skip_node = skip_next(skip_node)) != NULL);
 
 	debug_dnslib_zdump("Position after all rrsets: %ld\n", ftell(f));
 	debug_dnslib_zdump("Writing here: %ld\n", ftell(f));
