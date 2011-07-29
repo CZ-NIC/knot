@@ -138,6 +138,8 @@ libknot_la_SOURCES =				\
 	common/skip-list.c			\
 	common/base32hex.c			\
 	common/skip-list.h			\
+	common/general-tree.h			\
+	common/general-tree.c			\
 	common/dynamic-array.h			\
 	common/tree.h				\
 	common/base32hex.h				\
