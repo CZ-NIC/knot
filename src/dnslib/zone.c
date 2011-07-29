@@ -131,7 +131,7 @@ void dnslib_zone_set_data(dnslib_zone_t *zone, void *data)
 int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
                          int create_parents, int use_domain_table)
 {
-	if (zone == NULL) {
+	if (zone == NULL || node == NULL) {
 		return DNSLIB_EBADARG;
 	}
 

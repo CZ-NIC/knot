@@ -14,6 +14,12 @@ typedef struct {
 	void *data;
 } dnslib_zone_tree_func_t;
 
+typedef struct {
+	dnslib_node_t *first_node;
+	dnslib_zone_contents_t *zone;
+	dnslib_node_t *previous_node;
+} dnslib_zone_adjust_arg_t;
+
 /*----------------------------------------------------------------------------*/
 
 static void dnslib_zone_tree_apply(dnslib_zone_tree_node_t *node,
@@ -108,6 +114,28 @@ static void dnslib_zone_contents_destroy_node_owner_from_tree(
 	dnslib_node_free(&tnode->node, 0, 0);
 }
 
+/*!
+ * \brief Finds and sets wildcard child for given node's owner.
+ *
+ * \param zone Current zone.
+ * \param node Node to be used.
+ */
+static void find_and_set_wildcard_child(dnslib_zone_contents_t *zone,
+				 dnslib_node_t *node)
+{
+	dnslib_dname_t *chopped = dnslib_dname_left_chop(node->owner);
+	assert(chopped);
+	dnslib_node_t *wildcard_parent;
+	wildcard_parent =
+		dnslib_zone_contents_get_node(zone, chopped);
+
+	dnslib_dname_free(&chopped);
+
+	assert(wildcard_parent); /* it *has* to be there */
+
+	dnslib_node_set_wildcard_child(wildcard_parent, node);
+}
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Adjusts one RDATA item by replacing domain name by one present in the
@@ -126,7 +154,9 @@ static void dnslib_zone_contents_destroy_node_owner_from_tree(
  * \param pos Position of the RDATA item in the RDATA.
  */
 static void dnslib_zone_contents_adjust_rdata_item(dnslib_rdata_t *rdata,
-                                          dnslib_zone_contents_t *zone, int pos)
+                                          dnslib_zone_contents_t *zone,
+                                          dnslib_node_t *node,
+                                          int pos)
 {
 	const dnslib_rdata_item_t *dname_item
 			= dnslib_rdata_item(rdata, pos);
@@ -136,6 +166,10 @@ static void dnslib_zone_contents_adjust_rdata_item(dnslib_rdata_t *rdata,
 		const dnslib_node_t *n = NULL;
 		const dnslib_node_t *closest_encloser = NULL;
 		const dnslib_node_t *prev = NULL;
+
+		if (dnslib_dname_is_wildcard(dname)) {
+			find_and_set_wildcard_child(zone, node);
+		}
 
 		int ret = dnslib_zone_contents_find_dname(zone, dname, &n,
 		                                      &closest_encloser, &prev);
@@ -158,7 +192,7 @@ static void dnslib_zone_contents_adjust_rdata_item(dnslib_rdata_t *rdata,
 			dnslib_rdata_item_t *item =
 					dnslib_rdata_get_item(rdata, pos);
 			assert(item->dname != NULL);
-			//assert(item->dname->node == NULL);
+			assert(item->dname->node == NULL);
 			//skip_insert(list, (void *)item->dname,
 			//	    (void *)closest_encloser->owner, NULL);
 			item->dname->node = closest_encloser->owner->node;
@@ -179,7 +213,8 @@ static void dnslib_zone_contents_adjust_rdata_item(dnslib_rdata_t *rdata,
  * \param zone Zone to which the RRSet belongs.
  */
 static void dnslib_zone_contents_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
-                                                   dnslib_zone_contents_t *zone)
+                                                   dnslib_zone_contents_t *zone,
+                                                   dnslib_node_t *node)
 {
 	uint16_t type = dnslib_rrset_type(rrset);
 
@@ -208,7 +243,9 @@ static void dnslib_zone_contents_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
 				  dnslib_rrtype_to_string(type));
 
 				dnslib_zone_contents_adjust_rdata_item(rdata,
-				                                       zone, i);
+				                                       zone,
+				                                       node,
+				                                       i);
 			}
 		}
 		rdata = rdata->next;
@@ -227,7 +264,8 @@ static void dnslib_zone_contents_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
 			  i, rrset->owner->name,
 			  dnslib_rrtype_to_string(type));
 
-			dnslib_zone_contents_adjust_rdata_item(rdata, zone, i);
+			dnslib_zone_contents_adjust_rdata_item(rdata, zone,
+			                                       node, i);
 		}
 	}
 
@@ -247,7 +285,7 @@ static void dnslib_zone_contents_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
 static void dnslib_zone_contents_adjust_rrsets(dnslib_node_t *node,
                                                dnslib_zone_contents_t *zone)
 {
-	return;
+	//return;
 	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
 	short count = dnslib_node_rrset_count(node);
 
@@ -255,11 +293,15 @@ static void dnslib_zone_contents_adjust_rrsets(dnslib_node_t *node,
 
 	for (int r = 0; r < count; ++r) {
 		assert(rrsets[r] != NULL);
-		dnslib_zone_contents_adjust_rdata_in_rrset(rrsets[r], zone);
+		debug_dnslib_zone("Adjusting next RRSet.\n");
+		dnslib_zone_contents_adjust_rdata_in_rrset(rrsets[r], zone,
+		                                           node);
 		dnslib_rrset_t *rrsigs = rrsets[r]->rrsigs;
 		if (rrsigs != NULL) {
+			debug_dnslib_zone("Adjusting next RRSIGs.\n");
 			dnslib_zone_contents_adjust_rdata_in_rrset(rrsigs,
-			                                           zone);
+			                                           zone,
+			                                           node);
 		}
 	}
 
@@ -397,8 +439,14 @@ static void dnslib_zone_contents_adjust_node_in_tree(
 	assert(tnode != NULL);
 	assert(tnode->node != NULL);
 
+	dnslib_zone_adjust_arg_t *args = (dnslib_zone_adjust_arg_t *)data;
 	dnslib_node_t *node = tnode->node;
-	dnslib_zone_contents_t *zone = (dnslib_zone_contents_t *)data;
+	dnslib_node_set_previous(node, args->previous_node);
+	args->previous_node = node;
+	if (args->first_node == NULL) {
+		args->first_node = node;
+	}
+	dnslib_zone_contents_t *zone = args->zone;
 
 	dnslib_zone_contents_adjust_node(node, zone);
 }
@@ -420,10 +468,17 @@ static void dnslib_zone_contents_adjust_nsec3_node_in_tree(
 	assert(tnode != NULL);
 	assert(tnode->node != NULL);
 
+	dnslib_zone_adjust_arg_t *args = (dnslib_zone_adjust_arg_t *)data;
 	dnslib_node_t *node = tnode->node;
-	dnslib_zone_contents_t *zone = (dnslib_zone_contents_t *)data;
+	dnslib_node_set_previous(node, args->previous_node);
+	args->previous_node = node;
+	if (args->first_node == NULL) {
+		args->first_node = node;
+	}
 
-	dnslib_zone_contents_adjust_nsec3_node(node, zone);
+	/* Not needed anymore. */
+//	dnslib_zone_contents_t *zone = args->zone;
+//	dnslib_zone_contents_adjust_nsec3_node(node, zone, 1);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -566,7 +621,7 @@ static int dnslib_zone_contents_find_in_tree(dnslib_zone_tree_t *tree,
 	int exact_match = dnslib_zone_tree_get_less_or_equal(
 	                         tree, name, &found, &prev);
 
-	assert(prev != NULL);
+//	assert(prev != NULL);
 	assert(exact_match >= 0);
 	*node = found;
 	*previous = prev;
@@ -954,7 +1009,6 @@ DEBUG_DNSLIB_ZONE(
 			}
 
 			if (next_node->owner != chopped) {
-				assert(0);
 				/* Node owner was in RDATA */
 				chopped = next_node->owner;
 			}
@@ -1018,7 +1072,7 @@ DEBUG_DNSLIB_ZONE(
 		}
 		// set the found parent (in the zone) as the parent of the last
 		// inserted node
-		assert(dnslib_node_parent(node, 1) == NULL);
+		assert(dnslib_node_parent(node, 0) == NULL);
 		dnslib_node_set_parent(node, next_node);
 
 		debug_dnslib_zone("Created all parents.\n");
@@ -1327,24 +1381,24 @@ dnslib_node_t *dnslib_zone_contents_remove_node(
 	if (contents == NULL || node == NULL) {
 		return NULL;
 	}
-	
+
 	const dnslib_dname_t *owner = dnslib_node_owner(node);
-	
+
 	// 1) remove the node from hash table
-	int ret = ck_remove_item(contents->table, 
+	int ret = ck_remove_item(contents->table,
 	               (const char *)dnslib_dname_name(owner),
 	               dnslib_dname_size(owner), NULL, 0);
 	if (ret != 0) {
 		return NULL;
 	}
-	
+
 	// 2) remove the node from the zone tree
 	dnslib_node_t *n = NULL;
 	ret = dnslib_zone_tree_remove(contents->nodes, owner, &n);
 	if (ret != DNSLIB_EOK) {
 		return NULL;
 	}
-	
+
 	return n;
 }
 
@@ -1356,16 +1410,16 @@ dnslib_node_t *dnslib_zone_contents_remove_nsec3_node(
 	if (contents == NULL || node == NULL) {
 		return NULL;
 	}
-	
+
 	const dnslib_dname_t *owner = dnslib_node_owner(node);
 	dnslib_node_t *n = NULL;
-	
+
 	// remove the node from the zone tree
 	int ret = dnslib_zone_tree_remove(contents->nsec3_nodes, owner, &n);
 	if (ret != DNSLIB_EOK) {
 		return NULL;
 	}
-	
+
 	return n;
 }
 
@@ -1552,7 +1606,7 @@ DEBUG_DNSLIB_ZONE(
 				dnslib_node_owner((*closest_encloser)), name);
 		while (matched_labels < dnslib_dname_label_count(
 				dnslib_node_owner((*closest_encloser)))) {
-			(*closest_encloser) = 
+			(*closest_encloser) =
 				dnslib_node_parent((*closest_encloser), 1);
 			assert(*closest_encloser);
 		}
@@ -1836,15 +1890,33 @@ int dnslib_zone_contents_adjust_dnames(dnslib_zone_contents_t *zone)
 	// load NSEC3PARAM (needed on adjusting function)
 	dnslib_zone_contents_load_nsec3param(zone);
 
+	dnslib_zone_adjust_arg_t adjust_arg;
+	adjust_arg.zone = zone;
+	adjust_arg.first_node = NULL;
+	adjust_arg.previous_node = NULL;
+
 	int ret = dnslib_zone_tree_forward_apply_inorder(zone->nodes,
-	                        dnslib_zone_contents_adjust_node_in_tree, zone);
+	                        dnslib_zone_contents_adjust_node_in_tree,
+	                        &adjust_arg);
 	if (ret != DNSLIB_EOK) {
 		return ret;
 	}
 
+	assert(zone->apex == adjust_arg.first_node);
+	dnslib_node_set_previous(zone->apex, adjust_arg.previous_node);
+
+	adjust_arg.first_node = NULL;
+	adjust_arg.previous_node = NULL;
+
 	ret = dnslib_zone_tree_forward_apply_inorder(
 	              zone->nsec3_nodes,
-	              dnslib_zone_contents_adjust_nsec3_node_in_tree, zone);
+	              dnslib_zone_contents_adjust_nsec3_node_in_tree,
+	                        &adjust_arg);
+
+	if (adjust_arg.first_node) {
+		dnslib_node_set_previous(adjust_arg.first_node,
+		                         adjust_arg.previous_node);
+	}
 
 	return ret;
 }

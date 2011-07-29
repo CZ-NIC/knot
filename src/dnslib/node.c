@@ -285,12 +285,12 @@ const dnslib_rrset_t **dnslib_node_rrsets(const dnslib_node_t *node)
 const dnslib_node_t *dnslib_node_parent(const dnslib_node_t *node, 
                                         int check_version)
 {
-	assert(!check_version 
-	       || (node->zone != NULL && node->zone->contents != NULL));
+//	assert(!check_version
+//	       || (node->zone != NULL && node->zone->contents != NULL));
 	
 	dnslib_node_t *parent = node->parent;
 	
-	if (check_version) {
+	if (check_version && node->zone != NULL) {
 		short ver = dnslib_node_zone_generation(node);
 	
 		assert(ver != 0 || parent == NULL 
