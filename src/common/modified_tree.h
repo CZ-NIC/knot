@@ -227,6 +227,19 @@
 	function(self, data);										\
       }													\
   }													\
+												\
+void MOD_TREE_DESTROY_ALL_##node##_##field							\
+  (struct node *self, void (*function)(struct node *node, void *data), void(*dest)(struct node *node), void *data)			\
+{													\
+  if (self)												\
+    {													\
+      MOD_TREE_POST_ORDER_APPLY_ALL_##node##_##field(self->field.avl_left, function, data);			\
+      MOD_TREE_POST_ORDER_APPLY_ALL_##node##_##field(self->field.avl_right, function, data);			\
+      if (function != NULL)											\
+        function(self->data, data);										\
+      dest(self);											\
+    }													\
+}													\
 													\
   void MOD_TREE_REVERSE_APPLY_POST_ALL_##node##_##field								\
     (struct node *self, void (*function)(struct node *node, void *data), void *data)			\
@@ -262,6 +275,9 @@
 
 #define MOD_TREE_POST_ORDER_APPLY(head, node, field, function, data)	\
   MOD_TREE_POST_ORDER_APPLY_ALL_##node##_##field((head)->th_root, function, data)
+
+#define MOD_TREE_DESTROY(head, node, field, function, dest, data)	\
+  MOD_TREE_DESTROY_ALL_##node##_##field((head)->th_root, function, dest, data)
 
 #define MOD_TREE_REVERSE_APPLY_POST(head, node, field, function, data)	\
   MOD_TREE_REVERSE_APPLY_POST_ALL_##node##_##field((head)->th_root, function, data)

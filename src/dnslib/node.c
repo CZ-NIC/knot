@@ -723,81 +723,73 @@ void dnslib_node_clear_old(dnslib_node_t *node)
 
 void dnslib_node_free_rrsets(dnslib_node_t *node, int free_rdata_dnames)
 {
-//	const skip_node_t *skip_node =
-//		(skip_node_t *)skip_first(node->rrsets);
+	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
+	for (int i = 0; i < node->rrset_count; i++) {
+		dnslib_rrset_deep_free(&(rrsets[i]), 0, 1, free_rdata_dnames);
+	}
 
-//	if (skip_node != NULL) {
-//		dnslib_rrset_deep_free((dnslib_rrset_t **)(&skip_node->value), 0,
-//				       1, free_rdata_dnames);
-//		while ((skip_node = skip_next(skip_node)) != NULL) {
-//			dnslib_rrset_deep_free((dnslib_rrset_t **)
-//						(&skip_node->value), 0,
-//						1, free_rdata_dnames);
-//		}
-//	}
-
-//	skip_destroy_list(&node->rrsets, NULL, NULL);
-//	node->rrsets = NULL;
+	gen_tree_destroy(&node->rrset_tree, NULL, NULL);
+	assert(node->rrset_tree == NULL);
 }
 
 /*----------------------------------------------------------------------------*/
 
 void dnslib_node_free(dnslib_node_t **node, int free_owner, int fix_refs)
 {
-//	debug_dnslib_node("Freeing node.\n");
-//	if ((*node)->rrsets != NULL) {
-//		debug_dnslib_node("Freeing RRSets.\n");
-//		skip_destroy_list(&(*node)->rrsets, NULL, NULL);
-//	}
-//	if (free_owner) {
-//		debug_dnslib_node("Freeing owner.\n");
-//		dnslib_dname_free(&(*node)->owner);
-//	}
+	debug_dnslib_node("Freeing node.\n");
+	if ((*node)->rrset_tree != NULL) {
+		debug_dnslib_node("Freeing RRSets.\n");
+		gen_tree_destroy(&(*node)->rrset_tree, NULL, NULL);
+	}
+	if (free_owner) {
+		debug_dnslib_node("Freeing owner.\n");
+		dnslib_dname_free(&(*node)->owner);
+	}
 
-//	// check nodes referencing this node and fix the references
+	// check nodes referencing this node and fix the references
 
-//	if (fix_refs) {
-//		// previous node
-//		debug_dnslib_node("Checking previous.\n");
-//		if ((*node)->prev && (*node)->prev->next == (*node)) {
-//			(*node)->prev->next = (*node)->next;
-//		}
+	if (fix_refs) {
+		// previous node
+		debug_dnslib_node("Checking previous.\n");
+		if ((*node)->prev && (*node)->prev->next == (*node)) {
+			(*node)->prev->next = (*node)->next;
+		}
 
-//		debug_dnslib_node("Checking next.\n");
-//		if ((*node)->next && (*node)->next->prev == (*node)) {
-//			(*node)->next->prev = (*node)->prev;
-//		}
+		debug_dnslib_node("Checking next.\n");
+		if ((*node)->next && (*node)->next->prev == (*node)) {
+			(*node)->next->prev = (*node)->prev;
+		}
 
-//		// NSEC3 node
-//		debug_dnslib_node("Checking NSEC3.\n");
-//		if ((*node)->nsec3_node
-//		    && (*node)->nsec3_node->nsec3_referer == (*node)) {
-//			(*node)->nsec3_node->nsec3_referer = NULL;
-//		}
+		// NSEC3 node
+		debug_dnslib_node("Checking NSEC3.\n");
+		if ((*node)->nsec3_node
+		    && (*node)->nsec3_node->nsec3_referer == (*node)) {
+			(*node)->nsec3_node->nsec3_referer = NULL;
+		}
 
-//		debug_dnslib_node("Checking NSEC3 ref.\n");
-//		if ((*node)->nsec3_referer
-//		    && (*node)->nsec3_referer->nsec3_node == (*node)) {
-//			(*node)->nsec3_referer->nsec3_node = NULL;
-//		}
+		debug_dnslib_node("Checking NSEC3 ref.\n");
+		if ((*node)->nsec3_referer
+		    && (*node)->nsec3_referer->nsec3_node == (*node)) {
+			(*node)->nsec3_referer->nsec3_node = NULL;
+		}
 
-//		// wildcard child node
-//		debug_dnslib_node("Checking parent's wildcard child.\n");
-//		if ((*node)->parent
-//		    && (*node)->parent->wildcard_child == (*node)) {
-//			(*node)->parent->wildcard_child = NULL;
-//		}
+		// wildcard child node
+		debug_dnslib_node("Checking parent's wildcard child.\n");
+		if ((*node)->parent
+		    && (*node)->parent->wildcard_child == (*node)) {
+			(*node)->parent->wildcard_child = NULL;
+		}
 		
-//		// fix parent's children count
-//		if ((*node)->parent) {
-//			--(*node)->parent->children;
-//		}
-//	}
+		// fix parent's children count
+		if ((*node)->parent) {
+			--(*node)->parent->children;
+		}
+	}
 
-//	free(*node);
-//	*node = NULL;
+	free(*node);
+	*node = NULL;
 
-//	debug_dnslib_node("Done.\n");
+	debug_dnslib_node("Done.\n");
 }
 
 /*----------------------------------------------------------------------------*/

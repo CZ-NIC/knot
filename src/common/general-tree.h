@@ -44,6 +44,10 @@ void gen_tree_apply_inorder(general_tree_t *tree,
                             void *data);
 
 void gen_tree_destroy(general_tree_t **tree,
-                      void (*dest_func)(void *node, void *data));
+                      void (*dest_func)(void *node, void *data), void *data);
+
+int gen_tree_find_less_or_equal(general_tree_t *tree,
+                                void *what,
+                                void **found);
 
 #endif // _KNOT_COMMON_GENERAL_TREE_H_
