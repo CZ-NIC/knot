@@ -8,20 +8,20 @@ typedef MOD_TREE_HEAD(tree, general_tree_node) general_avl_tree_t;
 /* Define tree with void * nodes */
 struct general_tree_node {
 	MOD_TREE_ENTRY(general_tree_node) avl;
-	int (*cmp_func)(void *n1,
-	                void *n2);
-	int (*mrg_func)(void **n1,
-	                void **n2);
-	void (*app_func)(void *n,
-	                 void *data);
+//	int (*cmp_func)(void *n1,
+//	                void *n2);
+//	int (*mrg_func)(void **n1,
+//	                void **n2);
+//	void (*app_func)(void *n,
+//	                 void *data);
 	void *data;
 };
 
 struct general_tree {
-	int (*cmp_func)(void *n1,
-	                void *n2);
-	int (*mrg_func)(void **n1,
-	                void **n2);
+//	int (*cmp_func)(void *n1,
+//	                void *n2);
+//	int (*mrg_func)(void **n1,
+//	                void **n2);
 	general_avl_tree_t *tree;
 };
 
