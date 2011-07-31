@@ -15,7 +15,7 @@
 #ifndef _KNOT_DNSLIB_ZONEDB_H_
 #define _KNOT_DNSLIB_ZONEDB_H_
 
-#include "common/skip-list.h"
+#include "common/general-tree.h"
 #include "dnslib/zone.h"
 #include "dnslib/node.h"
 #include "dnslib/dname.h"
@@ -24,7 +24,7 @@
  * \brief Zone database structure. Contains all zones managed by the server.
  */
 struct dnslib_zonedb {
-	skip_list_t *zones; /*!< Skip-list of zones. */
+	general_tree_t *zone_tree; /*!< AVL tree of zones. */
 };
 
 typedef struct dnslib_zonedb dnslib_zonedb_t;

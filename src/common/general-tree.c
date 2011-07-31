@@ -98,11 +98,34 @@ void *gen_tree_find(general_tree_t *tree,
 	}
 }
 
+int gen_tree_find_less_or_equal(general_tree_t *tree,
+                                void *what,
+                                void **found)
+{
+	struct general_tree_node *f, *prev;
+	struct general_tree_node tree_node;
+	tree_node.data = what;
+	int exact_match =
+		MOD_TREE_FIND_LESS_EQUAL(tree->tree, general_tree_node, avl,
+	                                 &tree_node, &f, &prev);
+	*found = (exact_match > 0) ? f->data : NULL;
+	return exact_match;
+}
+
 void gen_tree_apply_inorder(general_tree_t *tree,
                             void (*app_func)
                             (void *node, void *data), void *data)
 {
 	MOD_TREE_FORWARD_APPLY(tree->tree, general_tree_node, avl,
 	                   app_func, data);
+}
+
+void gen_tree_destroy(general_tree_t **tree,
+                      void (*dest_func)(void *node, void *data), void *data)
+{
+	MOD_TREE_DESTROY((*tree)->tree, general_tree_node, avl, dest_func,
+	                 gen_rem_func, data);
+	free(*tree);
+	*tree = NULL;
 }
 
