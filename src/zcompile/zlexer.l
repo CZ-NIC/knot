@@ -211,10 +211,13 @@ ANY     [^\"\n\\]|\\.
 			/*! \todo dnslib_dname_new_from_wire() (dname.h)
 			 *        which dnslib_node to pass as node?
 			 */
-			const dnslib_dname_t *dname;
+			dnslib_dname_t *dname;
 			dname = dnslib_dname_new_from_wire((uint8_t*)tmp + 1,
 							   strlen(tmp + 1),
 							   NULL);
+			/*! \todo implement refcounting correctly. */
+			ref_init(&dname->ref, 0); /* disable dtor */
+			ref_retain(&dname->ref);
 			if (!dname) {
 				zc_error("incorrect include origin '%s'",
 					 tmp + 1);

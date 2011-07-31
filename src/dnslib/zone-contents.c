@@ -723,8 +723,7 @@ static int dnslib_zone_contents_dnames_from_rrset_to_table(
 
 	if (replace_owner) {
 		// discard the old owner and replace it with the new
-		//dnslib_dname_free(&rrset->owner);
-		rrset->owner = owner;
+		dnslib_rrset_set_owner(rrset, owner);
 	}
 	debug_dnslib_zone("RRSet owner: %p\n", rrset->owner);
 
@@ -1004,6 +1003,8 @@ DEBUG_DNSLIB_ZONE(
 				 dnslib_zone_contents_dnames_from_node_to_table(
 					zone->dname_table, next_node);
 				if (ret != DNSLIB_EOK) {
+					/*! \todo Will next_node leak? */
+					dnslib_dname_release(chopped);
 					return ret;
 				}
 			}
@@ -1027,7 +1028,7 @@ DEBUG_DNSLIB_ZONE(
 				                  "to zone tree.\n");
 				/*! \todo Delete the node?? */
 				/* Directly discard. */
-				dnslib_dname_free(&chopped);
+				dnslib_dname_release(chopped);
 				return ret;
 			}
 
@@ -1050,7 +1051,7 @@ DEBUG_DNSLIB_ZONE(
 				                  "hash table!\n");
 				/*! \todo Delete the node?? */
 				/* Directly discard. */
-				dnslib_dname_free(&chopped);
+				dnslib_dname_release(chopped);
 				return DNSLIB_EHASH;
 			}
 
@@ -1068,7 +1069,14 @@ DEBUG_DNSLIB_ZONE(
 #endif
 			debug_dnslib_zone("Next parent.\n");
 			node = next_node;
+			dnslib_dname_t *chopped_last = chopped;
 			chopped = dnslib_dname_left_chop(chopped);
+
+			/* Release last chop, reference is already stored
+			 * in next_node.
+			 */
+			dnslib_dname_release(chopped_last);
+
 		}
 		// set the found parent (in the zone) as the parent of the last
 		// inserted node
@@ -1079,7 +1087,8 @@ DEBUG_DNSLIB_ZONE(
 	}
 
 	/* Directly discard. */
-	dnslib_dname_free(&chopped);
+	/*! \todo This may be double-release. */
+	dnslib_dname_release(chopped);
 
 	return DNSLIB_EOK;
 }
@@ -1145,8 +1154,7 @@ int dnslib_zone_contents_add_rrset(dnslib_zone_contents_t *zone,
 	// table)
 	/*! \todo Do even if domain table is not used?? */
 	if (ret == DNSLIB_EOK && rrset->owner != (*node)->owner) {
-		dnslib_dname_release(rrset->owner);
-		rrset->owner = (*node)->owner;
+		dnslib_rrset_set_owner(rrset, (*node)->owner);
 	}
 
 	debug_dnslib_zone("RRSet OK.\n");
@@ -1252,8 +1260,7 @@ int dnslib_zone_contents_add_rrsigs(dnslib_zone_contents_t *zone,
 	// replace RRSet's owner with the node's owner (that is already in the
 	// table)
 	if ((*rrset)->owner != (*rrset)->rrsigs->owner) {
-		dnslib_dname_release(rrsigs->owner);
-		(*rrset)->rrsigs->owner = (*rrset)->owner;
+		dnslib_rrset_set_owner((*rrset)->rrsigs, (*rrset)->owner);
 	}
 
 	debug_dnslib_zone("RRSIGs OK\n");
@@ -1365,8 +1372,7 @@ int dnslib_zone_contents_add_nsec3_rrset(dnslib_zone_contents_t *zone,
 	// table)
 	/*! \todo Do even if domain table is not used? */
 	if (rrset->owner != (*node)->owner) {
-		dnslib_dname_release(rrset->owner);
-		rrset->owner = (*node)->owner;
+		dnslib_rrset_set_owner(rrset, (*node)->owner);
 	}
 
 	debug_dnslib_zone("NSEC3 OK\n");
@@ -2238,7 +2244,8 @@ void dnslib_zone_contents_deep_free(dnslib_zone_contents_t **contents)
 
 		dnslib_zone_tree_reverse_apply_postorder(
 			(*contents)->nsec3_nodes,
-			dnslib_zone_contents_destroy_node_rrsets_from_tree, 0);
+			dnslib_zone_contents_destroy_node_rrsets_from_tree,
+			(void*)1);
 
 		dnslib_zone_tree_reverse_apply_postorder(
 			(*contents)->nsec3_nodes,
@@ -2246,7 +2253,8 @@ void dnslib_zone_contents_deep_free(dnslib_zone_contents_t **contents)
 
 		dnslib_zone_tree_reverse_apply_postorder(
 			(*contents)->nodes,
-			dnslib_zone_contents_destroy_node_rrsets_from_tree, 0);
+			dnslib_zone_contents_destroy_node_rrsets_from_tree,
+			(void*)1);
 
 		dnslib_zone_tree_reverse_apply_postorder(
 			(*contents)->nodes,

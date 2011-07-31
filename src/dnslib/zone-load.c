@@ -117,8 +117,25 @@ static void load_rdata_purge(dnslib_rdata_t *rdata,
 			     int count,
 			     uint16_t type)
 {
+	/* Increase refcount manually, as the set_items() doesn't see the dname
+	 * type and thus is unable to increment refcounter.
+	 */
+	unsigned i = 0;
+	switch(type) {
+	case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
+	case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
+	case DNSLIB_RDATA_WF_LITERAL_DNAME:
+		for (i = 0; i < count; ++i) {
+			dnslib_dname_retain(items[i].dname);
+		}
+		break;
+	default:
+		break;
+	}
+
+	/* Copy items to rdata and free the temporary rdata. */
 	dnslib_rdata_set_items(rdata, items, count);
-	dnslib_rdata_deep_free(&rdata, type, 0);
+	dnslib_rdata_deep_free(&rdata, type, 1);
 	free(items);
 }
 
@@ -230,6 +247,9 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 					load_rdata_purge(rdata, items, i, type);
 					return NULL;
 				}
+
+				/* Store reference do dname. */
+				dnslib_dname_retain(id_array[dname_id]);
 				items[i].dname = id_array[dname_id];
 			} else {
 				items[i].dname = read_dname_with_id(f);
@@ -284,6 +304,7 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 		}
 	}
 
+	/* Each item has refcount already incremented for saving in rdata. */
 	if (dnslib_rdata_set_items(rdata, items, desc->length) != 0) {
 		fprintf(stderr, "zoneload: Could not set items "
 			"when loading rdata.\n");
@@ -398,6 +419,12 @@ static dnslib_rrset_t *dnslib_load_rrset(FILE *f, dnslib_dname_t **id_array,
 
 	rrset = dnslib_rrset_new(owner, rrset_type, rrset_class, rrset_ttl);
 
+	if (!use_ids) {
+		/* Directly release if allocated locally. */
+		dnslib_dname_release(owner);
+		owner = 0;
+	}
+
 	debug_dnslib_zload("RRSet type: %d\n", rrset->type);
 
 	dnslib_rdata_t *tmp_rdata;
@@ -418,11 +445,11 @@ static dnslib_rrset_t *dnslib_load_rrset(FILE *f, dnslib_dname_t **id_array,
 	if (rrsig_count) {
 		tmp_rrsig = dnslib_load_rrsig(f, id_array, use_ids);
 		if (!use_ids) {
-			tmp_rrsig->owner = rrset->owner;
+			dnslib_rrset_set_owner(tmp_rrsig, rrset->owner);
 		}
 	}
 
-	rrset->rrsigs = tmp_rrsig;
+	dnslib_rrset_set_rrsigs(rrset, tmp_rrsig);
 
 	return rrset;
 }
@@ -483,7 +510,9 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 		dnslib_node_set_nsec3_node(node, NULL);
 //		node->nsec3_node = NULL;
 	}
-	node->owner = owner;
+
+	/* Retain new owner while releasing replaced owner. */
+	dnslib_node_set_owner(node, owner);
 	node->flags = flags;
 
 	//XXX will have to be set already...canonical order should do it
@@ -504,9 +533,10 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 			fprintf(stderr, "zone: Could not load rrset.\n");
 			return NULL;
 		}
-		tmp_rrset->owner = node->owner;
+		/* Retain new owner while releasing replaced owner. */
+		dnslib_rrset_set_owner(tmp_rrset, node->owner);
 		if (tmp_rrset->rrsigs != NULL) {
-			tmp_rrset->rrsigs->owner = node->owner;
+			dnslib_rrset_set_owner(tmp_rrset->rrsigs, node->owner);
 		}
 		if (dnslib_node_add_rrset(node, tmp_rrset, 0) < 0) {
 			fprintf(stderr, "zone: Could not add rrset.\n");
@@ -834,17 +864,24 @@ static dnslib_dname_t **create_dname_array(FILE *f, uint max_id)
 		}
 
 		if (read_dname->id < max_id) {
+
+			/* Create new node from dname. */
 			read_dname->node = dnslib_node_new(read_dname, NULL, 0);
+
 			if (read_dname->node == NULL) {
 				ERR_ALLOC_FAILED;
-				cleanup_id_array(array, 0, i);
 
-				/* Directly discard. */
-				dnslib_dname_free(&read_dname);
+				/* Release read dname. */
+				dnslib_dname_release(read_dname);
+				cleanup_id_array(array, 0, i);
 				return NULL;
 			}
+
+			/* Store reference to dname in array. */
 			array[read_dname->id] = read_dname;
 		} else {
+			/* Release read dname. */
+			dnslib_dname_release(read_dname);
 			cleanup_id_array(array, 0, i);
 			return NULL;
 		}

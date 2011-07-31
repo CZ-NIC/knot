@@ -373,6 +373,14 @@ static inline void dnslib_dname_retain(dnslib_dname_t *dname) {
 	}
 }
 
+/*
+#define dnslib_dname_retain(d) \
+	dnslib_dname_retain_((d));\
+	if ((d))\
+	fprintf(stderr, "dname_retain: %s() at %s:%d, %p refcount=%zu\n",\
+	__func__, __FILE__, __LINE__, d, (d)->ref.count)
+*/
+
 /*!
  * \brief Decrement reference counter for dname.
  *
@@ -383,6 +391,13 @@ static inline void dnslib_dname_release(dnslib_dname_t *dname) {
 		ref_release(&dname->ref);
 	}
 }
+/*
+#define dnslib_dname_release(d) \
+	if ((d))\
+	fprintf(stderr, "dname_release: %s() at %s:%d, %p refcount=%zu\n",\
+	__func__, __FILE__, __LINE__, d, (d)->ref.count-1);\
+	dnslib_dname_release_((d))
+*/
 
 #endif /* _KNOT_DNSLIB_DNAME_H_ */
 

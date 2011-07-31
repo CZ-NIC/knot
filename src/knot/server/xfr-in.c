@@ -52,7 +52,7 @@ static int xfrin_create_query(const dnslib_zone_contents_t *zone, uint16_t qtype
 	const dnslib_node_t *apex = dnslib_zone_contents_apex(zone);
 	dnslib_dname_t *qname = dnslib_node_get_owner(apex);
 
-	/*! \todo What happens if apex is freed before we lock? */
+	/* Retain qname until the question is freed. */
 	dnslib_dname_retain(qname);
 
 	// this is ugly!!
@@ -62,6 +62,7 @@ static int xfrin_create_query(const dnslib_zone_contents_t *zone, uint16_t qtype
 
 	rc = dnslib_query_set_question(pkt, &question);
 	if (rc != DNSLIB_EOK) {
+		dnslib_dname_release(question.qname);
 		dnslib_packet_free(&pkt);
 		return KNOT_ERROR;
 	}
@@ -74,6 +75,7 @@ static int xfrin_create_query(const dnslib_zone_contents_t *zone, uint16_t qtype
 	size_t wire_size = 0;
 	rc = dnslib_packet_to_wire(pkt, &wire, &wire_size);
 	if (rc != DNSLIB_EOK) {
+		dnslib_dname_release(question.qname);
 		dnslib_packet_free(&pkt);
 		return KNOT_ERROR;
 	}
@@ -94,7 +96,7 @@ static int xfrin_create_query(const dnslib_zone_contents_t *zone, uint16_t qtype
 	dnslib_packet_free(&pkt);
 
 	/* Release qname. */
-	dnslib_dname_release(qname);
+	dnslib_dname_release(question.qname);
 
 	return KNOT_EOK;
 }

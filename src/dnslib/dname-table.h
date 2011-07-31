@@ -55,6 +55,9 @@ dnslib_dname_table_t *dnslib_dname_table_new();
 /*!
  * \brief Finds name in the domain name table.
  *
+ * \note Reference count to dname will be incremented, caller is responsible
+ *       for releasing it.
+ *
  * \param table Domain name table to be searched.
  * \param dname Dname to be searched.
  *
