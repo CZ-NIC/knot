@@ -369,12 +369,18 @@ int dnslib_rrset_merge(void **r1, void **r2)
 	// add all RDATAs from rrset2 to rrset1 (i.e. concatenate linked lists)
 
 	// no RDATA in RRSet 1
+	assert(rrset1 && rrset2);
 	if (rrset1->rdata == NULL) {
 		rrset1->rdata = rrset2->rdata;
 		return DNSLIB_EOK;
 	}
 
 	dnslib_rdata_t *tmp_rdata = rrset1->rdata;
+
+	if (!tmp_rdata) {
+		printf("smth is weird!\n");
+		return DNSLIB_EOK;
+	}
 
 	while (tmp_rdata->next != rrset1->rdata) {
 		tmp_rdata = tmp_rdata->next;

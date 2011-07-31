@@ -12,6 +12,8 @@ struct general_tree_node {
 	                void *n2);
 	int (*mrg_func)(void **n1,
 	                void **n2);
+	void (*app_func)(void *n,
+	                 void *data);
 	void *data;
 };
 

@@ -158,8 +158,11 @@ static void dnslib_zone_contents_adjust_rdata_item(dnslib_rdata_t *rdata,
                                           dnslib_node_t *node,
                                           int pos)
 {
+	return;
 	const dnslib_rdata_item_t *dname_item
 			= dnslib_rdata_item(rdata, pos);
+
+	assert(dname_item);
 
 	if (dname_item != NULL) {
 		dnslib_dname_t *dname = dname_item->dname;
@@ -220,6 +223,7 @@ static void dnslib_zone_contents_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
 
 	dnslib_rrtype_descriptor_t *desc =
 		dnslib_rrtype_descriptor_by_type(type);
+	assert(desc);
 
 	dnslib_rdata_t *rdata_first = dnslib_rrset_get_rdata(rrset);
 	dnslib_rdata_t *rdata = rdata_first;
@@ -1875,6 +1879,7 @@ dnslib_node_t *dnslib_zone_contents_get_apex(const dnslib_zone_contents_t *zone)
 
 int dnslib_zone_contents_adjust_dnames(dnslib_zone_contents_t *zone)
 {
+	return;
 	if (zone == NULL) {
 		return DNSLIB_EBADARG;
 	}

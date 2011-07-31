@@ -1853,6 +1853,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	debug_zp("zone parsed\n");
 
+	dnslib_zone_contents_dump(dnslib_zone_get_contents(parser->current_zone));
+
 	if (!(parser->current_zone &&
 	      dnslib_node_rrset(parser->current_zone->contents->apex,
 	                        DNSLIB_RRTYPE_SOA))) {
