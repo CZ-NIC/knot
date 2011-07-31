@@ -63,6 +63,7 @@ static int events_tests_run(int argc, char *argv[])
 	// 5. Sending event
 	event_t ev, rev;
 	memset(&ev, 0, sizeof(event_t));
+	memset(&rev, 0, sizeof(event_t));
 	ev.type = 0xfa11;
 	ev.data = (void*)0xceed;
 	ret = evqueue_add(q, &ev);
@@ -72,12 +73,15 @@ static int events_tests_run(int argc, char *argv[])
 	struct timespec ts;
 	ts.tv_sec = 0;
 	ts.tv_nsec = 100 * 1000 * 1000; // 100ms
-	ret = evqueue_poll(q, &ts, 0);
+	ret = evqueue_poll(q, 0, 0);
 	ok(ret > 0, "evqueue: polling queue for events");
 
 	// 7. Compare received event
 	ret = evqueue_get(q, &rev);
-	ret = memcmp(&ev, &rev, sizeof(event_t));
+	/* Compare useful data, as event owner was changed in evqueue_get(). */
+	if (ev.type == rev.type && ev.data == rev.data) {
+		ret = 0;
+	}
 	ok(ret == 0, "evqueue: received event matches sent");
 
 	// 8. Invalid parameters
