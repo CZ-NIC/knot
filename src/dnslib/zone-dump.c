@@ -1625,6 +1625,12 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 
 //	const skip_node_t *skip_node = skip_first(node->rrsets);
 
+	const dnslib_rrset_t **node_rrsets = dnslib_node_rrsets(node);
+	for (int i = 0; i < rrset_count; i++)
+	{
+		dnslib_rrset_dump_binary(node_rrsets[i], data, 1);
+	}
+
 //	if (skip_node == NULL) {
 //		/* we can return, count is set to 0 */
 //		return;
@@ -1636,6 +1642,8 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 //		tmp = (dnslib_rrset_t *)skip_node->value;
 //		dnslib_rrset_dump_binary(tmp, data, 1);
 //	} while ((skip_node = skip_next(skip_node)) != NULL);
+
+	free(node_rrsets);
 
 	debug_dnslib_zdump("Position after all rrsets: %ld\n", ftell(f));
 	debug_dnslib_zdump("Writing here: %ld\n", ftell(f));

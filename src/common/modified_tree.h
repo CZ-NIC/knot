@@ -117,13 +117,13 @@
   {													\
     if (!self)												\
       return elm;											\
-    int cmp = compare(elm, self);									\
+    int cmp = compare(elm->data, self->data);									\
     if (cmp < 0)											\
       self->field.avl_left= MOD_TREE_INSERT_##node##_##field(self->field.avl_left, elm, compare, merge);	\
     else if (cmp > 0)											\
       self->field.avl_right= MOD_TREE_INSERT_##node##_##field(self->field.avl_right, elm, compare, merge);	\
     else if (merge)											\
-      merge(&elm, &self);										\
+      merge(&(elm->data), &(self->data));										\
     else												\
       self->field.avl_right= MOD_TREE_INSERT_##node##_##field(self->field.avl_right, elm, compare, merge);	\
     return MOD_TREE_BALANCE_##node##_##field(self);								\
@@ -136,9 +136,9 @@
       return 0;												\
     if (!self)												\
       return 0;												\
-    if (compare(elm, self) == 0)									\
+    if (compare(elm->data, self->data) == 0)									\
       return self;											\
-    if (compare(elm, self) < 0)										\
+    if (compare(elm->data, self->data) < 0)										\
       return MOD_TREE_FIND_##node##_##field(self->field.avl_left, elm, compare);				\
     else												\
       return MOD_TREE_FIND_##node##_##field(self->field.avl_right, elm, compare);				\
@@ -149,11 +149,11 @@
   {													\
     if (!self)												\
       return 0;												\
-    if (compare(elm, self) == 0) {									\
+    if (compare(elm->data, self->data) == 0) {									\
       *found = self;											\
       return 1;												\
     }													\
-    if (compare(elm, self) < 0) {										\
+    if (compare(elm->data, self->data) < 0) {										\
       int ret = MOD_TREE_FIND_LESS_EQUAL_##node##_##field(self->field.avl_left, elm, compare, found, prev);	\
       if (ret == 0 && *prev == NULL) {									\
         *prev = self;											\
@@ -180,7 +180,7 @@
   {													\
     if (!self) return 0;										\
 													\
-    if (compare(elm, self) == 0)									\
+    if (compare(elm->data, self->data) == 0)									\
       {													\
 	struct node *tmp= MOD_TREE_MOVE_RIGHT_##node##_##field(self->field.avl_left, self->field.avl_right);			\
 	self->field.avl_left= 0;									\
@@ -188,7 +188,7 @@
 	del(self);											\
 	return tmp;											\
       }													\
-    if (compare(elm, self) < 0)										\
+    if (compare(elm->data, self->data) < 0)										\
       self->field.avl_left= MOD_TREE_REMOVE_##node##_##field(self->field.avl_left, elm, compare, del);	\
     else												\
       self->field.avl_right= MOD_TREE_REMOVE_##node##_##field(self->field.avl_right, elm, compare, del);	\

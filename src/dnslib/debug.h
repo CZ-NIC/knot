@@ -84,7 +84,7 @@ void dnslib_zone_contents_dump(dnslib_zone_contents_t *zone, char loaded_zone);
 #define DNSLIB_RRSET_DEBUG
 //#define DNSLIB_NSEC3_DEBUG
 //#define DNSLIB_ZDUMP_DEBUG
-//#define DNSLIB_ZLOAD_DEBUG
+#define DNSLIB_ZLOAD_DEBUG
 //#define CUCKOO_DEBUG
 //#define CUCKOO_DEBUG_HASH
 
