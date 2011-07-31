@@ -123,7 +123,7 @@
     else if (cmp > 0)											\
       self->field.avl_right= MOD_TREE_INSERT_##node##_##field(self->field.avl_right, elm, compare, merge);	\
     else if (merge)											\
-      merge(&elm, &self); 										\
+      merge(&elm, &self);										\
     else												\
       self->field.avl_right= MOD_TREE_INSERT_##node##_##field(self->field.avl_right, elm, compare, merge);	\
     return MOD_TREE_BALANCE_##node##_##field(self);								\
@@ -132,6 +132,8 @@
   struct node *MOD_TREE_FIND_##node##_##field								\
     (struct node *self, struct node *elm, int (*compare)(struct node *lhs, struct node *rhs))		\
   {													\
+    if (!compare)											\
+      return 0;												\
     if (!self)												\
       return 0;												\
     if (compare(elm, self) == 0)									\
@@ -199,7 +201,7 @@
     if (self)												\
       {													\
 	MOD_TREE_FORWARD_APPLY_ALL_##node##_##field(self->field.avl_left, function, data);			\
-	function(self, data);										\
+	function(self->data, data);										\
 	MOD_TREE_FORWARD_APPLY_ALL_##node##_##field(self->field.avl_right, function, data);			\
       }													\
   }													\
