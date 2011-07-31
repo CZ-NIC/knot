@@ -120,8 +120,10 @@ static dnslib_rrset_t *ns_synth_from_wildcard(
 			dnslib_rrset_class(wildcard_rrset),
 			dnslib_rrset_ttl(wildcard_rrset));
 
+	/* Release owner, as it's retained in rrset. */
+	dnslib_dname_release(owner);
+
 	if (synth_rrset == NULL) {
-		dnslib_dname_release(owner);
 		return NULL;
 	}
 
@@ -1425,8 +1427,10 @@ static dnslib_rrset_t *ns_cname_from_dname(const dnslib_rrset_t *dname_rrset,
 	dnslib_rrset_t *cname_rrset = dnslib_rrset_new(
 		owner, DNSLIB_RRTYPE_CNAME, DNSLIB_CLASS_IN, SYNTH_CNAME_TTL);
 
+	/* Release owner, as it's retained in rrset. */
+	dnslib_dname_release(owner);
+
 	if (cname_rrset == NULL) {
-		dnslib_dname_release(owner);
 		return NULL;
 	}
 

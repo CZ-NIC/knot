@@ -201,6 +201,7 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
 			//*pos += dname->size;
 			parsed += pos2 - *pos;
 			*pos = pos2;
+			dname = 0;
 			break;
 		case DNSLIB_RDATA_WF_BYTE:
 //			printf("Next item - byte.\n");
@@ -266,6 +267,7 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
 				//*pos += dname->size;
 				parsed += pos2 - *pos;
 				*pos = pos2;
+				dname = 0;
 				break;
 			default:
 				assert(0);
@@ -317,6 +319,11 @@ int dnslib_rdata_set_item(dnslib_rdata_t *rdata, uint pos,
 	if (pos >= rdata->count) {
 		return DNSLIB_EBADARG;
 	}
+
+	/*! \todo As in set_items() we should increment refcounter for dnames,
+	 *        but we don't know the item type.
+	 */
+
 	rdata->items[pos] = item; // this should copy the union; or use memcpy?
 	return DNSLIB_EOK;
 }
@@ -347,6 +354,10 @@ int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
 
 	memcpy(rdata->items, items, count * sizeof(dnslib_rdata_item_t));
 	rdata->count = count;
+
+	/*! \todo Cannot determine items type, so the dname
+	 *        refcounters should be increased in caller.
+	 */
 
 	return DNSLIB_EOK;
 }
@@ -383,6 +394,9 @@ int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, uint pos,
 	if (pos >= rdata->count) {
 		return DNSLIB_EBADARG;
 	}
+
+	/* Retain dname. */
+	dnslib_dname_retain(dname);
 
 	rdata->items[pos].dname = dname;
 
@@ -440,9 +454,17 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME
 		    || desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
 		    || desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME ) {
-			if (((*rdata)->items[i].dname != NULL) &&
-			    free_all_dnames) {
-				dnslib_dname_release((*rdata)->items[i].dname);
+			if (((*rdata)->items[i].dname != NULL)) {
+				/*! \todo This is hack to prevent memory errors,
+				 *        as the rdata_set_items() cannot determine
+				 *        items type and so cannot increment
+				 *        reference count in case of dname type.
+				 *        Free would then release dnames that
+				 *        aren't referenced by the rdata.
+				 */
+				if (free_all_dnames) {
+					dnslib_dname_release((*rdata)->items[i].dname);
+				}
 			}
 		} else {
 			free((*rdata)->items[i].raw_data);

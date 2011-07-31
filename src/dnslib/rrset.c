@@ -54,6 +54,9 @@ dnslib_rrset_t *dnslib_rrset_new(dnslib_dname_t *owner, uint16_t type,
 
 	ret->rdata = NULL;
 
+	/* Retain reference to owner. */
+	dnslib_dname_retain(owner);
+
 	ret->owner = owner;
 	ret->type = type;
 	ret->rclass = rclass;
@@ -175,6 +178,18 @@ const dnslib_dname_t *dnslib_rrset_owner(const dnslib_rrset_t *rrset)
 dnslib_dname_t *dnslib_rrset_get_owner(const dnslib_rrset_t *rrset)
 {
 	return rrset->owner;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_rrset_set_owner(dnslib_rrset_t *rrset, dnslib_dname_t* owner)
+{
+	if (rrset) {
+		/* Retain new owner and release old owner. */
+		dnslib_dname_retain(owner);
+		dnslib_dname_release(rrset->owner);
+		rrset->owner = owner;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -307,6 +322,9 @@ void dnslib_rrset_free(dnslib_rrset_t **rrset)
 		return;
 	}
 
+	/*! \todo Shouldn't we always release owner reference? */
+	dnslib_dname_release((*rrset)->owner);
+
 	free(*rrset);
 	*rrset = NULL;
 }
@@ -344,9 +362,10 @@ void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner,
 		                       free_rdata_dnames);
 	}
 
-	if (free_owner) {
+	/*! \todo Release owner every time? */
+	//if (free_owner) {
 		dnslib_dname_release((*rrset)->owner);
-	}
+	//}
 
 	free(*rrset);
 	*rrset = NULL;

@@ -170,6 +170,8 @@ dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent,
 		return NULL;
 	}
 
+	/* Store reference to owner. */
+	dnslib_dname_retain(owner);
 	ret->owner = owner;
 	dnslib_node_set_parent(ret, parent);
 	ret->rrsets = skip_create_list(compare_rrset_types);
@@ -430,6 +432,18 @@ const dnslib_dname_t *dnslib_node_owner(const dnslib_node_t *node)
 dnslib_dname_t *dnslib_node_get_owner(const dnslib_node_t *node)
 {
 	return node->owner;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_node_set_owner(dnslib_node_t *node, dnslib_dname_t* owner)
+{
+	if (node) {
+		/* Retain new owner and release old owner. */
+		dnslib_dname_retain(owner);
+		dnslib_dname_release(node->owner);
+		node->owner = owner;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -697,10 +711,12 @@ void dnslib_node_free(dnslib_node_t **node, int free_owner, int fix_refs)
 		debug_dnslib_node("Freeing RRSets.\n");
 		skip_destroy_list(&(*node)->rrsets, NULL, NULL);
 	}
-	if (free_owner) {
-		debug_dnslib_node("Freeing owner.\n");
+
+	/*! \todo Always release owner? */
+	//if (free_owner) {
+		debug_dnslib_node("Releasing owner.\n");
 		dnslib_dname_release((*node)->owner);
-	}
+	//}
 
 	// check nodes referencing this node and fix the references
 

@@ -363,6 +363,9 @@ label:	STR
 		    $$ = error_dname;
 	    } else {
 		    $$ = dnslib_dname_new_from_str($1.str, $1.len, NULL);
+		    /*! \todo implement refcounting correctly. */
+		    //ref_init(&$$->ref, 0); /* disable dtor */
+		    //ref_retain(&dname->ref);
 	//printf("new: %p %s\n", $$, dnslib_dname_to_str($$));
 	    }
 
@@ -1206,6 +1209,9 @@ rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR
 							 $15.len));*/
 	    dnslib_dname_t *dname =
 		dnslib_dname_new_from_wire((uint8_t *)$15.str, $15.len, NULL);
+	    /*! \todo implement refcounting correctly. */
+	    ref_init(&dname->ref, 0); /* disable dtor */
+	    ref_retain(&dname->ref);
 
 	    dnslib_dname_cat(dname, parser->root_domain);
 
@@ -1233,6 +1239,10 @@ rdata_nsec:	wire_dname nsec_seq
 
 	    dnslib_dname_t *dname =
 		dnslib_dname_new_from_wire((uint8_t *)$1.str, $1.len, NULL);
+	    /*! \todo implement refcounting correctly. */
+	    ref_init(&dname->ref, 0); /* disable dtor */
+	    ref_retain(&dname->ref);
+
 	    free($1.str);
 
 	    dnslib_dname_cat(dname, parser->root_domain);
@@ -1305,7 +1315,7 @@ rdata_dnskey:	STR sp STR sp STR sp str_sp_seq trail
 
 rdata_ipsec_base: STR sp STR sp STR sp dotted_str
     {
-	    const dnslib_dname_t* name = 0;
+	    dnslib_dname_t* name = 0;
 	    zadd_rdata_wireformat(zparser_conv_byte($1.str)); /* precedence */
 	    zadd_rdata_wireformat(zparser_conv_byte($3.str));
 	    /* gateway type */
@@ -1328,6 +1338,9 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			name = dnslib_dname_new_from_wire((uint8_t*)$7.str + 1,
 							  strlen($7.str + 1),
 							  NULL);
+			/*! \todo implement refcounting correctly. */
+			ref_init(&name->ref, 0); /* disable dtor */
+			ref_retain(&name->ref);
 
 			if(!name) {
 				zc_error_prev_line("IPSECKEY bad gateway"
@@ -1338,8 +1351,14 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			    tmpd = dnslib_dname_new_from_wire(name->name,
 							      name->size,
 							      NULL);
+			    /*! \todo implement refcounting correctly. */
+			    ref_init(&tmpd->ref, 0); /* disable dtor */
+			    ref_retain(&tmpd->ref);
 			    name = dnslib_dname_cat(tmpd,
 				    dnslib_node_parent(parser->origin, 0)->owner);
+			    /*! \todo implement refcounting correctly. */
+			    ref_init(&name->ref, 0); /* disable dtor */
+			    ref_retain(&name->ref);
 			}
 
 			free($1.str);
@@ -1450,6 +1469,9 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 
 	parser->last_node = origin;
 	parser->root_domain = dnslib_dname_new_from_str(".", 1, NULL);
+	/*! \todo implement refcounting correctly. */
+	ref_init(&parser->root_domain->ref, 0); /* disable dtor */
+	ref_retain(&parser->root_domain->ref);
 
 	/* Create zone */
 	parser->current_zone = dnslib_zone_new(origin, 0, 1);
