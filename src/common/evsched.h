@@ -77,8 +77,8 @@ typedef struct {
 	pthread_cond_t notify;   /*!< Event queue notification. */
 	list calendar;           /*!< Event calendar. */
 	struct {
-		slab_cache_t alloc;      /*!< Events SLAB cache. */
-		pthread_spinlock_t lock; /*!< Events cache spin lock. */
+		slab_cache_t alloc;   /*!< Events SLAB cache. */
+		pthread_mutex_t lock; /*!< Events cache spin lock. */
 	} cache;
 } evsched_t;
 
@@ -139,7 +139,7 @@ event_t* evsched_next(evsched_t *s);
  * \retval 0 on success.
  * \retval <0 on error.
  */
-int evsched_schedule(evsched_t *s, event_t *ev, int dt);
+int evsched_schedule(evsched_t *s, event_t *ev, uint32_t dt);
 
 /*!
  * \brief Schedule callback event.
@@ -154,7 +154,7 @@ int evsched_schedule(evsched_t *s, event_t *ev, int dt);
  * \retval Event instance on success.
  * \retval NULL on error.
  */
-event_t* evsched_schedule_cb(evsched_t *s, event_cb_t cb, void *data, int dt);
+event_t* evsched_schedule_cb(evsched_t *s, event_cb_t cb, void *data, uint32_t dt);
 
 /*!
  * \brief Schedule termination event.
@@ -167,7 +167,7 @@ event_t* evsched_schedule_cb(evsched_t *s, event_cb_t cb, void *data, int dt);
  * \retval Event instance on success.
  * \retval NULL on error.
  */
-event_t* evsched_schedule_term(evsched_t *s, int dt);
+event_t* evsched_schedule_term(evsched_t *s, uint32_t dt);
 
 /*!
  * \brief Cancel a scheduled event.
