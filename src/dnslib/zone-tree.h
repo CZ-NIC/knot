@@ -256,7 +256,8 @@ int dnslib_zone_tree_reverse_apply_postorder(dnslib_zone_tree_t *tree,
  * \retval DNSLIB_EOK
  * \retval DNSLIB_ENOMEM
  */
-int dnslib_zone_tree_copy(dnslib_zone_tree_t *from, dnslib_zone_tree_t *to);
+int dnslib_zone_tree_shallow_copy(dnslib_zone_tree_t *from, 
+                                  dnslib_zone_tree_t *to);
 
 /*!
  * \brief Destroys the zone tree, not touching the saved data.

@@ -27,7 +27,6 @@ struct dnslib_node;
  * \todo Consider restricting to FQDN only (see dnslib_dname_new_from_str()).
  */
 struct dnslib_dname {
-	ref_t ref;     /*!< Reference counting. */
 	uint8_t *name;	/*!< Wire format of the domain name. */
 	/*!
 	 * \brief Size of the domain name in octets.
@@ -38,6 +37,7 @@ struct dnslib_dname {
 	unsigned short label_count;
 	struct dnslib_node *node; /*!< Zone node the domain name belongs to. */
 	unsigned int id; /*!< ID of domain name used in zone dumping. */
+	ref_t ref;     /*!< Reference counting. */
 };
 
 typedef struct dnslib_dname dnslib_dname_t;
@@ -143,7 +143,7 @@ int dnslib_dname_from_wire(const uint8_t *name, unsigned int size,
  *
  * \return New domain name which is an exact copy of \a dname.
  */
-dnslib_dname_t *dnslib_dname_copy(const dnslib_dname_t *dname);
+dnslib_dname_t *dnslib_dname_deep_copy(const dnslib_dname_t *dname);
 
 /*!
  * \brief Converts the given domain name to string representation.

@@ -1588,7 +1588,7 @@ static int xfrin_get_node_copy(dnslib_node_t **node, xfrin_changes_t *changes)
 		dnslib_node_get_new_node(*node);
 	if (new_node == NULL) {
 		debug_xfr("Creating copy of node.\n");
-		int ret = dnslib_node_deep_copy(*node, &new_node);
+		int ret = dnslib_node_shallow_copy(*node, &new_node);
 		if (ret != DNSLIB_EOK) {
 			debug_xfr("Failed to create node copy.\n");
 			return KNOT_ENOMEM;
@@ -1636,7 +1636,7 @@ static int xfrin_copy_old_rrset(dnslib_rrset_t *old,
                                 dnslib_rrset_t **copy, xfrin_changes_t *changes)
 {
 	// create new RRSet by copying the old one
-	int ret = dnslib_rrset_copy(old, copy);
+	int ret = dnslib_rrset_shallow_copy(old, copy);
 	if (ret != DNSLIB_EOK) {
 		debug_xfr("Failed to create RRSet copy.\n");
 		return KNOT_ENOMEM;

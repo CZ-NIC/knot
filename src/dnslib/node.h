@@ -411,7 +411,7 @@ void dnslib_node_free(dnslib_node_t **node, int free_owner, int fix_refs);
  */
 int dnslib_node_compare(dnslib_node_t *node1, dnslib_node_t *node2);
 
-int dnslib_node_deep_copy(const dnslib_node_t *from, dnslib_node_t **to);
+int dnslib_node_shallow_copy(const dnslib_node_t *from, dnslib_node_t **to);
 
 #endif /* _KNOT_DNSLIB_NODE_H_ */
 

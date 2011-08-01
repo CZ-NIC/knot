@@ -398,7 +398,8 @@ int dnslib_zone_tree_reverse_apply_postorder(dnslib_zone_tree_t *tree,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_tree_copy(dnslib_zone_tree_t *from, dnslib_zone_tree_t *to)
+int dnslib_zone_tree_shallow_copy(dnslib_zone_tree_t *from, 
+                                  dnslib_zone_tree_t *to)
 {
 	/*
 	 * This function will copy the tree by hand, so that the nodes

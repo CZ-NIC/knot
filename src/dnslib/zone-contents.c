@@ -1738,7 +1738,7 @@ DEBUG_DNSLIB_ZONE(
 	// chop leftmost labels until some node is found
 	// copy the name for chopping
 	/* Local allocation, will be discarded. */
-	dnslib_dname_t *name_copy = dnslib_dname_copy(name);
+	dnslib_dname_t *name_copy = dnslib_dname_deep_copy(name);
 DEBUG_DNSLIB_ZONE(
 	char *n = dnslib_dname_to_str(name_copy);
 	debug_dnslib_zone("Finding closest encloser..\nStarting with: %s\n", n);
@@ -2156,7 +2156,7 @@ int dnslib_zone_contents_shallow_copy(const dnslib_zone_contents_t *from,
 			ret = DNSLIB_ENOMEM;
 			goto cleanup;
 		}
-		if ((ret = dnslib_dname_table_copy(from->dname_table,
+		if ((ret = dnslib_dname_table_shallow_copy(from->dname_table,
 		                        contents->dname_table)) != DNSLIB_EOK) {
 			goto cleanup;
 		}
@@ -2171,9 +2171,9 @@ int dnslib_zone_contents_shallow_copy(const dnslib_zone_contents_t *from,
 	memcpy(&contents->nsec3_params, &from->nsec3_params,
 	       sizeof(dnslib_nsec3_params_t));
 
-	if ((ret = dnslib_zone_tree_copy(from->nodes,
+	if ((ret = dnslib_zone_tree_shallow_copy(from->nodes,
 	                                 contents->nodes)) != DNSLIB_EOK
-	    || (ret = dnslib_zone_tree_copy(from->nsec3_nodes,
+	    || (ret = dnslib_zone_tree_shallow_copy(from->nsec3_nodes,
 	                                contents->nsec3_nodes)) != DNSLIB_EOK) {
 		goto cleanup;
 	}

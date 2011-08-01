@@ -275,14 +275,14 @@ owner:	dname sp
 //	printf("Totally new dname: %p %s\n", $1,
 //	dnslib_dname_to_str($1));
 	dnslib_dname_free(&parser->prev_dname);
-	    parser->prev_dname = dnslib_dname_copy($1);
+	    parser->prev_dname = dnslib_dname_deep_copy($1);
 	    $$ = $1;
     }
     |	PREV
     {
 //	    printf("Name from prev_dname!: %p %s\n", parser->prev_dname,
 //	    dnslib_dname_to_str(parser->prev_dname));
-	    $$ = dnslib_dname_copy(parser->prev_dname);
+	    $$ = dnslib_dname_deep_copy(parser->prev_dname);
     }
     ;
 
@@ -337,7 +337,7 @@ abs_dname:	'.'
     {
 	    /*! \todo Get root domain from db. */
 		//$$ = parser->db->domains->root;
-	    $$ = dnslib_dname_copy(parser->root_domain);
+	    $$ = dnslib_dname_deep_copy(parser->root_domain);
     }
     |	'@'
     {
@@ -1458,7 +1458,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->default_class = rclass;
 
 	parser->origin = origin;
-	parser->prev_dname = dnslib_dname_copy(parser->origin->owner);
+	parser->prev_dname = dnslib_dname_deep_copy(parser->origin->owner);
 
 	parser->default_apex = origin;
 	parser->error_occurred = 0;

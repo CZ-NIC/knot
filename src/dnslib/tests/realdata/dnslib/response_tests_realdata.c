@@ -919,8 +919,6 @@ int dnslib_response_tests_count(int argc, char *argv[])
 
 int dnslib_response_tests_run(int argc, char *argv[])
 {
-	int ret;
-
 	test_data_t *data = data_for_dnslib_tests;
 
 	ok(test_response_add_rrset_answer(data->rrset_list),
