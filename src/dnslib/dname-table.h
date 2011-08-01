@@ -81,6 +81,34 @@ int dnslib_dname_table_add_dname(dnslib_dname_table_t *table,
 				 dnslib_dname_t *dname);
 
 /*!
+ * \brief Adds domain name to domain name table and checks for duplicates.
+ *
+ * \param table Domain name table to be added to.
+ * \param dname Domain name to be added.
+ *
+ * \note This function encapsulates dname in a structure and saves it to a tree.
+ * \note If a duplicate is found, \a dname is replaced by the name from table.
+ *
+ * \retval DNSLIB_EOK on success.
+ * \retval DNSLIB_ENOMEM when memory runs out.
+ */
+int dnslib_dname_table_add_dname2(dnslib_dname_table_t *table,
+                                  dnslib_dname_t **dname);
+
+/*!
+ * \brief Creates a shallow copy of the domain name table.
+ *
+ * Expects an existing dnslib_dname_table_t structure to be passed via \a to,
+ * and fills it with the same data (domain names) as the original. Actual
+ * tree nodes are created, but domain names are not copied (just referenced).
+ *
+ * \param from Original domain name table.
+ * \param to Copy of the domain name table.
+ */
+int dnslib_dname_table_copy(dnslib_dname_table_t *from,
+                            dnslib_dname_table_t *to);
+
+/*!
  * \brief Frees dname table without its nodes. Sets pointer to NULL.
  *
  * \param table Table to be freed.
@@ -103,7 +131,7 @@ void dnslib_dname_table_deep_free(dnslib_dname_table_t **table);
  * \param data Data to be passed to processing function.
  */
 void dnslib_dname_table_tree_inorder_apply(const dnslib_dname_table_t *table,
-            void (*applied_function)(struct dname_table_node *node,
+            void (*applied_function)(dnslib_dname_t *dname,
                                      void *data),
             void *data);
 

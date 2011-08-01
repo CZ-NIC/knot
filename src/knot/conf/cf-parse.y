@@ -40,6 +40,7 @@ static conf_log_map_t *this_logmap = 0;
 %token END INVALID_TOKEN
 %token <t> TEXT
 %token <i> NUM
+%token <i> INTERVAL
 %token <i> BOOL
 
 %token SYSTEM IDENTITY VERSION STORAGE KEY
@@ -49,6 +50,10 @@ static conf_log_map_t *this_logmap = 0;
 
 %token ZONES FILENAME
 %token SEMANTIC_CHECKS
+%token NOTIFY_RETRIES
+%token NOTIFY_TIMEOUT
+%token DBSYNC_TIMEOUT
+%token IXFR_FSLIMIT
 %token XFR_IN
 %token XFR_OUT
 %token NOTIFY_IN
@@ -127,7 +132,7 @@ remote_start: TEXT {
     memset(this_remote, 0, sizeof(conf_iface_t));
     this_remote->name = $1;
     this_remote->address = 0; // No default address (mandatory)
-    this_remote->port = CONFIG_DEFAULT_PORT;
+    this_remote->port = 0; // Port wildcard
     add_tail(&new_config->remotes, &this_remote->n);
     ++new_config->remotes_count;
  }
@@ -249,6 +254,10 @@ zone_start: TEXT {
    this_zone = malloc(sizeof(conf_zone_t));
    memset(this_zone, 0, sizeof(conf_zone_t));
    this_zone->enable_checks = -1; // Default policy applies
+   this_zone->notify_timeout = -1; // Default policy applies
+   this_zone->notify_retries = -1; // Default policy applies
+   this_zone->ixfr_fslimit = -1; // Default policy applies
+   this_zone->dbsync_timeout = -1; // Default policy applies
    this_zone->name = $1;
 
    // Append mising dot to ensure FQDN
@@ -284,14 +293,56 @@ zone:
    zone_start '{'
  | zone zone_acl '}'
  | zone zone_acl_list
- | zone SEMANTIC_CHECKS BOOL ';' { this_zone->enable_checks = $3; }
  | zone FILENAME TEXT ';' { this_zone->file = $3; }
+ | zone SEMANTIC_CHECKS BOOL ';' { this_zone->enable_checks = $3; }
+ | zone DBSYNC_TIMEOUT NUM ';' { this_zone->dbsync_timeout = $3; }
+ | zone DBSYNC_TIMEOUT INTERVAL ';' { this_zone->dbsync_timeout = $3; }
+ | zone IXFR_FSLIMIT NUM ';' { this_zone->ixfr_fslimit = $3; }
+ | zone IXFR_FSLIMIT NUM 'k' ';' { this_zone->ixfr_fslimit = $3 * 1024; } // kB
+ | zone IXFR_FSLIMIT NUM 'M' ';' { this_zone->ixfr_fslimit = $3 * 1048576; } // MB
+ | zone IXFR_FSLIMIT NUM 'G' ';' { this_zone->ixfr_fslimit = $3 * 1073741824; } // GB
+ | zone NOTIFY_RETRIES NUM ';' {
+       if ($3 < 1) {
+	   cf_error("notify retries must be positive integer", scanner);
+       } else {
+	   this_zone->notify_retries = $3;
+       }
+   }
+ | zone NOTIFY_TIMEOUT NUM ';' {
+	if ($3 < 1) {
+	   cf_error("notify timeout must be positive integer", scanner);
+       } else {
+	   this_zone->notify_timeout = $3;
+       }
+   }
  ;
 
 zones:
    ZONES '{'
  | zones zone '}'
  | zones SEMANTIC_CHECKS BOOL ';' { new_config->zone_checks = $3; }
+ | zones NOTIFY_RETRIES NUM ';' {
+       if ($3 < 1) {
+	   cf_error("notify retries must be positive integer", scanner);
+       } else {
+	   new_config->notify_retries = $3;
+       }
+   }
+ | zones NOTIFY_TIMEOUT NUM ';' {
+	if ($3 < 1) {
+	   cf_error("notify timeout must be positive integer", scanner);
+       } else {
+	   new_config->notify_timeout = $3;
+       }
+   }
+ | zones DBSYNC_TIMEOUT NUM ';' {
+	if ($3 < 1) {
+	   cf_error("zonefile sync timeout must be positive integer", scanner);
+       } else {
+	   new_config->dbsync_timeout = $3;
+       }
+ }
+ | zones DBSYNC_TIMEOUT INTERVAL ';' { new_config->dbsync_timeout = $3; }
  ;
 
 log_prios_start: {

@@ -1,6 +1,7 @@
 #include <pthread.h>
 #include <sched.h>
 #include <sys/select.h>
+#include <signal.h>
 
 #include "tests/knot/dthreads_tests.h"
 #include "knot/server/dthreads.h"
@@ -229,9 +230,21 @@ static int dt_tests_count(int argc, char *argv[])
 	return DT_TEST_COUNT;
 }
 
+// Signal handler
+static void interrupt_handle(int s)
+{
+}
+
 /*! API: run tests. */
 static int dt_tests_run(int argc, char *argv[])
 {
+	// Register service and signal handler
+	struct sigaction sa;
+	sa.sa_handler = interrupt_handle;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
+	sigaction(SIGALRM, &sa, NULL); // Interrupt
+
 	/* Initialize */
 	srand(time(NULL));
 	struct timeval tv;

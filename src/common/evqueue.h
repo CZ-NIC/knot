@@ -14,6 +14,7 @@
 
 #include <pthread.h>
 #include <signal.h> // sigset_t
+#include <time.h>
 
 //#include "knot/common.h"
 #include "common/lists.h"
@@ -22,16 +23,29 @@ struct event_t;
 
 /*!
  * \brief Event callback.
+ *
+ * Pointer to whole event structure is passed to the callback.
+ * Callback should return 0 on success and negative integer on error.
+ *
+ * Example callback:
+ * \code
+ * int print_callback(event_t *t) {
+ *    return printf("Callback: %s\n", t->data);
+ * }
+ * \endcode
  */
-typedef int (*eventcb_t)(struct event_t *);
+typedef int (*event_cb_t)(struct event_t *);
 
 /*!
  * \brief Event structure.
  */
 typedef struct event_t {
-	int code;     /*!< Event code. */
-	void *data;   /*!< Usable data ptr. */
-	eventcb_t cb; /*!< Event callback. */
+	node n;            /*!< Node for event queue. */
+	int type;          /*!< Event type. */
+	struct timeval tv; /*!< Event scheduled time. */
+	void *data;        /*!< Usable data ptr. */
+	event_cb_t cb;     /*!< Event callback. */
+	void *parent;      /*!< Pointer to parent (evqueue, scheduler...) */
 } event_t;
 
 /*!
@@ -76,12 +90,25 @@ void evqueue_free(evqueue_t **q);
  * in a sigmask.
  *
  * \param q Event queue.
-  * \param sigmask Bitmask of signals to receive (or NULL).
+ * \param ts Timeout (or NULL for infinite).
+ * \param sigmask Bitmask of signals to receive (or NULL).
  *
  * \retval Number of polled events on success.
- * \retval <0 On error or signal interrupt (EINTR, EINVAL, ENOMEM).
+ * \retval -1 On error or signal interrupt.
  */
-int evqueue_poll(evqueue_t *q, const sigset_t *sigmask);
+int evqueue_poll(evqueue_t *q, const struct timespec *ts, const sigset_t *sigmask);
+
+/*!
+ * \brief Return evqueue pollable fd.
+ *
+ * \param q Event queue.
+ *
+ * \retval File descriptor available for polling.
+ * \retval -1 On error.
+ */
+static inline int evqueue_pollfd(evqueue_t *q) {
+	return q->fds[EVQUEUE_READFD];
+}
 
 /*!
  * \brief Read data from event queue.
@@ -93,8 +120,8 @@ int evqueue_poll(evqueue_t *q, const sigset_t *sigmask);
  * \param dst Destination buffer.
  * \param len Number of bytes to read.
  *
- * \retval 0 on success (EOK).
- * \retval <0 on error (EINVAL, EINTR, EAGAIN).
+ * \retval Number of read bytes on success.
+ * \retval -1 on error, \see read(2).
  */
 int evqueue_read(evqueue_t *q, void *dst, size_t len);
 
@@ -108,10 +135,10 @@ int evqueue_read(evqueue_t *q, void *dst, size_t len);
  * \param src Source buffer.
  * \param len Number of bytes to write.
  *
- * \retval 0 on success (EOK).
- * \retval <0 on error (EINVAL, EINTR, EAGAIN).
+ * \retval Number of written bytes on success.
+ * \retval -1 on error, \see write(2).
  */
-int evqueue_write(evqueue_t *q, const void *dst, size_t len);
+int evqueue_write(evqueue_t *q, const void *src, size_t len);
 
 /*!
  * \brief Read event from event queue.
@@ -119,8 +146,8 @@ int evqueue_write(evqueue_t *q, const void *dst, size_t len);
  * \param q Event queue.
  * \param ev Event structure for writing.
  *
- * \retval 0 on success (EOK).
- * \retval <0 on error (EINVAL, EINTR, EAGAIN).
+ * \retval 0 on success.
+ * \retval -1 on error.
  */
 int evqueue_get(evqueue_t *q, event_t *ev);
 
@@ -130,8 +157,8 @@ int evqueue_get(evqueue_t *q, event_t *ev);
  * \param q Event queue.
  * \param ev Event structure to read.
  *
- * \retval 0 on success (EOK).
- * \retval <0 on error (EINVAL, EINTR, EAGAIN).
+ * \retval 0 on success.
+ * \retval -1 on error.
  */
 int evqueue_add(evqueue_t *q, const event_t *ev);
 

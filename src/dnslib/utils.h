@@ -88,7 +88,7 @@ static inline uint16_t dnslib_wire_read_u16(const uint8_t *pos)
  *
  * \return The 4 bytes read, in inverse endian.
  */
-static inline uint16_t dnslib_wire_read_u32(const uint8_t *pos)
+static inline uint32_t dnslib_wire_read_u32(const uint8_t *pos)
 {
 	return (pos[0] << 24) | (pos[1] << 16) | (pos[2] << 8) | pos[3];
 }

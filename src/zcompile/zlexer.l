@@ -139,6 +139,7 @@ ANY     [^\"\n\\]|\\.
 %%
 	static int paren_open = 0;
 	static enum lexer_state lexer_state = EXPECT_OWNER;
+
 {SPACE}*{COMMENT}.*	/* ignore */
 ^{DOLLAR}TTL            { lexer_state = PARSING_RDATA; return DOLLAR_TTL; }
 ^{DOLLAR}ORIGIN         { lexer_state = PARSING_RDATA; return DOLLAR_ORIGIN; }
@@ -229,7 +230,14 @@ ANY     [^\"\n\\]|\\.
 <INITIAL><<EOF>>	{
 	yy_set_bol(1); /* Set beginning of line, so "^" rules match.  */
 	if (include_stack_ptr == 0) {
-		yyterminate();
+	// from: http://stackoverflow.com/questions/1756275/bison-end-of-file
+		static int once = 0;
+		once++;
+		if (once > 1) {
+			yyterminate();
+		} else {
+			return NL;
+		}
 	} else {
 		fclose(yyin);
 		pop_parser_state(scanner);

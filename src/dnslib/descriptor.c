@@ -552,7 +552,7 @@ uint16_t dnslib_rrclass_from_string(const char *name)
 	return (uint16_t) rrclass;
 }
 
-size_t dnslib_wireformat_size(uint wire_type)
+size_t dnslib_wireformat_size(unsigned int wire_type)
 {
 	switch(wire_type) {
 		case DNSLIB_RDATA_WF_BYTE:

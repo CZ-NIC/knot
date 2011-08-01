@@ -20,24 +20,12 @@
 
 /* POSIX only. */
 #include <sys/socket.h>
-#include <netinet/in.h>
+#include "common/sockaddr.h"
 
 /*! \brief Socket-related constants. */
 enum {
 	SOCKET_MTU_SZ = 8192,  /*!< \todo Determine UDP MTU size. */
 } socket_const_t;
-
-/*! \brief Universal socket address. */
-typedef struct sockaddr_t {
-	struct sockaddr* ptr; /*!< Pointer to used sockaddr. */
-	socklen_t len;              /*!< Length of used sockaddr. */
-	union {
-		struct sockaddr_in addr4; /*!< IPv4 sockaddr. */
-#ifndef DISABLE_IPV6
-		struct sockaddr_in6 addr6; /*!< IPv6 sockaddr. */
-#endif
-	};
-} sockaddr_t;
 
 /*!
  * \brief Create socket.
@@ -110,19 +98,6 @@ int socket_listen(int fd, int backlog_size);
  * \retval KNOT_EINVAL invalid parameters.
  */
 int socket_close(int fd);
-
-/*!
- * \brief Initialize sockaddr structure.
- *
- * Members ptr and len will be initialized to correct address family.
- *
- * \param addr Socket address structure
- * \param af Requested address family.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_ENOTSUP on unsupported address family (probaly INET6).
- */
-int socket_initaddr(sockaddr_t *addr, int af);
 
 
 #endif // _KNOT_SOCKET_H_

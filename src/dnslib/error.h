@@ -29,14 +29,15 @@ enum dnslib_error {
 	DNSLIB_EHASH,           /*!< Error in hash table. */
 	DNSLIB_EZONEIN,         /*!< Error inserting zone. */
 	DNSLIB_ENOZONE,         /*!< No such zone found. */
+	DNSLIB_ENONODE,         /*!< No such node in zone found. */
 	DNSLIB_EDNAMEPTR,       /*!< Domain name pointer larger than allowed. */
 	DNSLIB_EPAYLOAD,        /*!< Payload in OPT RR larger than max wire size. */
 	DNSLIB_ECRC,            /*!< Wrong dump CRC. */
-	DNSLIB_ERROR_COUNT = 17
+	DNSLIB_ERROR_COUNT = 18
 };
 
 /*! \brief Table linking error messages to error codes. */
-const error_table_t dnslib_error_msgs[DNSLIB_ERROR_COUNT];
+extern const error_table_t dnslib_error_msgs[DNSLIB_ERROR_COUNT];
 
 /*!
  * \brief Returns error message for the given error code.

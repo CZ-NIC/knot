@@ -106,7 +106,6 @@ static skip_node_t *skip_make_node(int level, void *key, void *value)
 		free(sn);
 		return NULL;
 	}
-
 	sn->key = key;
 	sn->value = value;
 	return sn;
@@ -348,6 +347,10 @@ int skip_remove(skip_list_t *list, void *key, void (*destroy_key)(void *),
 
 int skip_is_empty(const skip_list_t *list)
 {
+	if (!list) {
+		return 1;
+	}
+
 	return (list->head->forward[0] == NULL);
 }
 
@@ -355,6 +358,10 @@ int skip_is_empty(const skip_list_t *list)
 
 const skip_node_t *skip_first(const skip_list_t *list)
 {
+	if (!list) {
+		return NULL;
+	}
+
 	return list->head->forward[0];
 }
 
@@ -410,6 +417,10 @@ skip_list_t *skip_copy_list(const skip_list_t *list)
 
 		// create new node
 		skip_node_t *n = skip_make_node(list->level, x->key, x->value);
+		if (n == NULL) {
+			skip_destroy_list(&ss, NULL, NULL);
+			return NULL;
+		}
 		// set forward pointers from the previous node
 		for (int i = 0; i <= list->level; ++i) {
 			if (prev->forward[i] == x) {

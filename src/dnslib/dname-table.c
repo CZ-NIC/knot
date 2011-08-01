@@ -1,12 +1,27 @@
 #include <assert.h>
 #include <string.h>
-#include <malloc.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 #include "dnslib/dname-table.h"
 #include "dnslib/error.h"
 
 /*!< Tree functions. */
 TREE_DEFINE(dname_table_node, avl);
+
+struct dnslib_dname_table_fnc_data {
+	void (*func)(dnslib_dname_t *dname, void *data);
+	void *data;
+};
+
+static void dnslib_dname_table_apply(struct dname_table_node *node, void *data)
+{
+	assert(data != NULL);
+	assert(node != NULL);
+	struct dnslib_dname_table_fnc_data *d =
+			(struct dnslib_dname_table_fnc_data *)data;
+	d->func(node->dname, d->data);
+}
 
 /*!
  * \brief Comparison function to be used with tree.
@@ -41,6 +56,50 @@ static void delete_dname_table_node(struct dname_table_node *node, void *data)
 	free(node);
 }
 
+static void dnslib_dname_table_delete_subtree(struct dname_table_node *root)
+{
+	if (root == NULL) {
+		return;
+	}
+
+	dnslib_dname_table_delete_subtree(root->avl.avl_left);
+	dnslib_dname_table_delete_subtree(root->avl.avl_right);
+	free(root);
+}
+
+static int dnslib_dname_table_copy_node(const struct dname_table_node *from,
+                                        struct dname_table_node **to)
+{
+	if (from == NULL) {
+		return DNSLIB_EOK;
+	}
+
+	*to = (struct dname_table_node *)
+	      malloc(sizeof(struct dname_table_node));
+	if (*to == NULL) {
+		return DNSLIB_ENOMEM;
+	}
+
+	(*to)->dname = from->dname;
+	(*to)->avl.avl_height = from->avl.avl_height;
+
+	int ret = dnslib_dname_table_copy_node(from->avl.avl_left,
+	                                       &(*to)->avl.avl_left);
+	if (ret != DNSLIB_EOK) {
+		return ret;
+	}
+
+	ret = dnslib_dname_table_copy_node(from->avl.avl_right,
+	                                   &(*to)->avl.avl_right);
+	if (ret != DNSLIB_EOK) {
+		dnslib_dname_table_delete_subtree((*to)->avl.avl_left);
+		(*to)->avl.avl_left = NULL;
+		return ret;
+	}
+
+	return DNSLIB_EOK;
+}
+
 dnslib_dname_table_t *dnslib_dname_table_new()
 {
 	dnslib_dname_table_t *ret = malloc(sizeof(dnslib_dname_table_t));
@@ -63,6 +122,10 @@ dnslib_dname_table_t *dnslib_dname_table_new()
 dnslib_dname_t *dnslib_dname_table_find_dname(const dnslib_dname_table_t *table,
 					      dnslib_dname_t *dname)
 {
+	if (table == NULL || dname == NULL) {
+		return NULL;
+	}
+
 	struct dname_table_node *node = NULL;
 	struct dname_table_node sought;
 	sought.dname = dname;
@@ -94,10 +157,65 @@ int dnslib_dname_table_add_dname(dnslib_dname_table_t *table,
 	node->avl.avl_right = NULL;
 
 	node->dname->id = table->id_counter++;
+//	printf("Inserted dname got id %d\n", node->dname->id);
 	assert(node->dname->id != 0);
 
 	TREE_INSERT(table->tree, dname_table_node, avl, node);
 	return DNSLIB_EOK;
+}
+
+int dnslib_dname_table_add_dname2(dnslib_dname_table_t *table,
+                                  dnslib_dname_t **dname)
+{
+	dnslib_dname_t *found_dname = NULL;
+	int ret;
+
+	if (table == NULL || dname == NULL || *dname == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
+//	char *name = dnslib_dname_to_str(*dname);
+//	printf("Inserting name %s to dname table.\n", name);
+//	free(name);
+
+	if ((!(found_dname =
+	      dnslib_dname_table_find_dname(table ,*dname))) &&
+	      (ret = dnslib_dname_table_add_dname(table, *dname))
+	      != DNSLIB_EOK) {
+//		printf("Error!\n");
+		return ret;
+	} else if (found_dname != NULL && found_dname != *dname) {
+		/*! \todo Remove the check for equality. */
+//		name = dnslib_dname_to_str(found_dname);
+//		printf("Already there: %s (%p)\n", name, found_dname);
+//		free(name);
+		dnslib_dname_free(dname);
+		*dname = found_dname;
+		return 1;
+	}
+
+//	printf("Done.\n");
+
+	return DNSLIB_EOK;
+}
+
+int dnslib_dname_table_copy(dnslib_dname_table_t *from,
+                            dnslib_dname_table_t *to)
+{
+	to->id_counter = from->id_counter;
+
+	if (to->tree == NULL) {
+		to->tree = malloc(sizeof(table_tree_t));
+		if (to->tree == NULL) {
+			ERR_ALLOC_FAILED;
+			return DNSLIB_ENOMEM;
+		}
+
+		TREE_INIT(to->tree, compare_dname_table_nodes);
+	}
+
+	return dnslib_dname_table_copy_node(from->tree->th_root,
+	                                    &to->tree->th_root);
 }
 
 void dnslib_dname_table_free(dnslib_dname_table_t **table)
@@ -131,11 +249,15 @@ void dnslib_dname_table_deep_free(dnslib_dname_table_t **table)
 }
 
 void dnslib_dname_table_tree_inorder_apply(const dnslib_dname_table_t *table,
-            void (*applied_function)(struct dname_table_node *node,
+            void (*applied_function)(dnslib_dname_t *node,
                                      void *data),
             void *data)
 {
+	struct dnslib_dname_table_fnc_data d;
+	d.data = data;
+	d.func = applied_function;
+
 	TREE_FORWARD_APPLY(table->tree, dname_table_node, avl,
-	                   applied_function, data);
+	                   dnslib_dname_table_apply, &d);
 }
 

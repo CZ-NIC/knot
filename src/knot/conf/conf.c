@@ -65,6 +65,7 @@ static pthread_mutex_t _parser_lock = PTHREAD_MUTEX_INITIALIZER;
 /*! \brief Config error report. */
 void cf_error(const char *msg, void *scanner)
 {
+	fprintf(stderr, "config error\n");
 	log_server_error("Config '%s' - %s on line %d (current token '%s').\n",
 	                 new_config->filename, msg, cf_get_lineno(scanner),
 	                 (char *)cf_get_text(scanner));
@@ -124,6 +125,7 @@ static void zone_free(conf_zone_t *zone)
 	free(zone->name);
 	free(zone->file);
 	free(zone->db);
+	free(zone->ixfr_db);
 	free(zone);
 }
 
@@ -172,9 +174,24 @@ static int conf_process(conf_t *conf)
 	WALK_LIST (n, conf->zones) {
 		conf_zone_t *zone = (conf_zone_t*)n;
 
+		// Default policy for dbsync timeout
+		if (zone->dbsync_timeout < 0) {
+			zone->dbsync_timeout = conf->dbsync_timeout;
+		}
+
 		// Default policy for semantic checks
 		if (zone->enable_checks < 0) {
 			zone->enable_checks = conf->zone_checks;
+		}
+
+		// Default policy for NOTIFY retries
+		if (zone->notify_retries <= 0) {
+			zone->notify_retries = conf->notify_retries;
+		}
+
+		// Default policy for NOTIFY timeout
+		if (zone->notify_timeout <= 0) {
+			zone->notify_timeout = conf->notify_timeout;
 		}
 
 		// Normalize zone filename
@@ -192,6 +209,19 @@ static int conf_process(conf_t *conf)
 		strcat(dest, zone->name);
 		strcat(dest, "db");
 		zone->db = dest;
+
+		// Create IXFR db filename
+		stor_len = strlen(conf->storage);
+		size = stor_len + strlen(zone->name) + 9; // diff.db/,\0
+		dest = malloc(size);
+		strcpy(dest, conf->storage);
+		if (conf->storage[stor_len - 1] != '/') {
+			strcat(dest, "/");
+		}
+
+		strcat(dest, zone->name);
+		strcat(dest, "diff.db");
+		zone->ixfr_db = dest;
 	}
 
 	return 0;
@@ -355,6 +385,9 @@ conf_t *conf_new(const char* path)
 
 	// Defaults
 	c->zone_checks = 0;
+	c->notify_retries = CONFIG_NOTIFY_RETRIES;
+	c->notify_timeout = CONFIG_NOTIFY_TIMEOUT;
+	c->dbsync_timeout = CONFIG_DBSYNC_TIMEOUT;
 
 	return c;
 }

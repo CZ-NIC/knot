@@ -789,7 +789,7 @@ static int test_rrset_deep_free()
 
 		dnslib_rrset_add_rdata(tmp_rrset, test_rrsets[i].rdata);
 
-		dnslib_rrset_deep_free(&tmp_rrset, 1, 0);
+		dnslib_rrset_deep_free(&tmp_rrset, 1, 1, 0);
 
 		errors += (tmp_rrset != NULL);
 	}

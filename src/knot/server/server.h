@@ -27,6 +27,7 @@
 #include "knot/server/socket.h"
 #include "knot/server/dthreads.h"
 #include "dnslib/zonedb.h"
+#include "common/evsched.h"
 #include "common/lists.h"
 
 /* Forwad declarations. */
@@ -46,6 +47,7 @@ typedef struct iohandler_t {
 	struct iface_t     *iface;  /*!< Reference to associated interface. */
 	struct server_t    *server; /*!< Reference to server */
 	void               *data;   /*!< Persistent data for I/O handler. */
+	void (*interrupt)(struct iohandler_t *h); /*!< Interrupt handler. */
 
 } iohandler_t;
 
@@ -92,6 +94,9 @@ typedef struct server_t {
 
 	/*! \brief XFR handler. */
 	xfrhandler_t *xfr_h;
+
+	/*! \brief Event scheduler. */
+	evsched_t *sched;
 
 	/*! \brief I/O handlers list. */
 	list handlers;

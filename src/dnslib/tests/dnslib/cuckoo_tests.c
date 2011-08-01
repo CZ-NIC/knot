@@ -2,16 +2,14 @@
 #include <assert.h>
 
 #include "dnslib/tests/dnslib/cuckoo_tests.h"
-#include "dnslib/hash/cuckoo-hash-table.h"
 
-#define CT_TEST_REHASH
+#include "dnslib/hash/cuckoo-hash-table.h"
 
 //#define CK_TEST_DEBUG
 //#define CK_TEST_LOOKUP
 //#define CK_TEST_OUTPUT
 //#define CK_TEST_REMOVE
 //#define CK_TEST_COMPARE
-#define CT_TEST_REHASH
 
 #ifdef CK_TEST_DEBUG
 #define CK_TEST_LOOKUP
@@ -39,7 +37,7 @@ unit_api cuckoo_tests_api = {
  * Unit implementation
  */
 static const int CUCKOO_TESTS_COUNT = 7;
-static const int CUCKOO_MAX_ITEMS = 100;
+static const int CUCKOO_MAX_ITEMS = 1000;
 static const int CUCKOO_TEST_MAX_KEY_SIZE = 10;
 
 typedef struct test_cuckoo_items {
@@ -134,6 +132,11 @@ static int test_cuckoo_lookup(ck_hash_table_t *table,
 			}
 		}
 	}
+
+	if (errors > 0) {
+		diag("Not found %d of %d items.\n", errors, items->count);
+	}
+
 	return errors == 0;
 }
 
@@ -191,10 +194,10 @@ static int test_cuckoo_modify(ck_hash_table_t *table, test_cuckoo_items *items)
 
 /*----------------------------------------------------------------------------*/
 
-//static int test_cuckoo_rehash(ck_hash_table *table)
-//{
-//	return (ck_rehash(table) == 0);
-//}
+static int test_cuckoo_rehash(ck_hash_table_t *table)
+{
+	return (ck_rehash(table) == 0);
+}
 
 /*----------------------------------------------------------------------------*/
 
@@ -311,11 +314,11 @@ static int cuckoo_tests_run(int argc, char *argv[])
 	   "cuckoo hashing: lookup after modify");
 
 	// Test 8: rehash
-	//ok(test_cuckoo_rehash(table), "cuckoo hashing: rehash");
+	ok(test_cuckoo_rehash(table), "cuckoo hashing: rehash");
 
 	// Test 9: lookup 4
-//	ok(test_cuckoo_lookup(table, items),
-//	   "cuckoo hashing: lookup after rehash");
+	ok(test_cuckoo_lookup(table, items),
+	   "cuckoo hashing: lookup after rehash");
 
 	endskip;
 
@@ -536,7 +539,6 @@ static int cuckoo_tests_run(int argc, char *argv[])
 
 ///*----------------------------------------------------------------------------*/
 
-//#ifdef CT_TEST_REHASH
 //int ct_rehash_during_read( ck_hash_table *table )
 //{
 //	pthread_t thread;
@@ -577,7 +579,6 @@ static int cuckoo_tests_run(int argc, char *argv[])
 
 //	return (int)ret;
 //}
-//#endif
 
 ///*----------------------------------------------------------------------------*/
 
@@ -671,11 +672,9 @@ static int cuckoo_tests_run(int argc, char *argv[])
 //			printf("\nDone. Result: %d\n\n", res);
 //		}
 
-//#ifdef CT_TEST_REHASH
 //		printf("Testing rehash during read...\n\n");
 //		res = ct_rehash_during_read(table);
 //		printf("\nDone. Result: %d\n\n", res);
-//#endif
 
 //		ck_destroy_table(&table, ct_destroy_items, 1);
 //		fclose(file);

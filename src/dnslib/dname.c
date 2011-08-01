@@ -12,6 +12,7 @@
 #include "dnslib/tolower.h"
 #include "dnslib/debug.h"
 #include "dnslib/utils.h"
+#include "dnslib/wire.h"
 
 /*
  * Memory cache.
@@ -25,20 +26,25 @@ static pthread_key_t dname_ckey;
 static pthread_once_t dname_once = PTHREAD_ONCE_INIT;
 
 /*! \brief Destroy thread dname cache (automatically called). */
-static void dnslib_dname_cache_free()
+static void dnslib_dname_cache_free(void *ptr)
 {
-	slab_cache_t* cache = pthread_getspecific(dname_ckey);
+	slab_cache_t* cache = (slab_cache_t*)ptr;
 	if (cache) {
 		slab_cache_destroy(cache);
 		free(cache);
-        (void) pthread_setspecific(dname_ckey, 0);
 	}
+}
+
+/*! \brief Cleanup for main() TLS. */
+static void dnslib_dname_cache_main_free()
+{
+	dnslib_dname_cache_free(pthread_getspecific(dname_ckey));
 }
 
 static void dnslib_dname_cache_init()
 {
 	(void) pthread_key_create(&dname_ckey, dnslib_dname_cache_free);
-    atexit(dnslib_dname_cache_free); // Main thread cleanup
+	atexit(dnslib_dname_cache_main_free); // Main thread cleanup
 }
 
 /*!
@@ -48,8 +54,10 @@ static void dnslib_dname_cache_init()
  */
 static dnslib_dname_t* dnslib_dname_alloc()
 {
+	return malloc(sizeof(dnslib_dname_t));
+
 	/* Initialize dname cache TLS key. */
-	(void) pthread_once(&dname_once, dnslib_dname_cache_init);
+	(void)pthread_once(&dname_once, dnslib_dname_cache_init);
 
 	/* Create cache if not exists. */
 	slab_cache_t* cache = pthread_getspecific(dname_ckey);
@@ -61,7 +69,7 @@ static dnslib_dname_t* dnslib_dname_alloc()
 
 		/* Initialize cache. */
 		slab_cache_init(cache, sizeof(dnslib_dname_t));
-		(void) pthread_setspecific(dname_ckey, cache);
+		(void)pthread_setspecific(dname_ckey, cache);
 	}
 
 	return slab_cache_alloc(cache);
@@ -434,6 +442,88 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 
 /*----------------------------------------------------------------------------*/
 
+dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
+                                             size_t *pos, size_t size,
+                                             dnslib_node_t *node)
+{
+	uint8_t name[DNSLIB_MAX_DNAME_LENGTH];
+	uint8_t labels[DNSLIB_MAX_DNAME_LABELS];
+
+	short l = 0;
+	size_t i = 0, p = *pos;
+	int pointer_used = 0;
+
+	while (p < size && wire[p] != 0) {
+		labels[l] = i;
+		debug_dnslib_dname("Next label (%d.) position: %zu\n", l, i);
+
+		if (dnslib_wire_is_pointer(wire + p)) {
+			// pointer.
+//			printf("Pointer.\n");
+			p = dnslib_wire_get_pointer(wire + p);
+			if (!pointer_used) {
+				*pos += 2;
+				pointer_used = 1;
+			}
+			if (p >= size) {
+				return NULL;
+			}
+		} else {
+			// label; first byte is label length
+			uint8_t length = *(wire + p);
+//			printf("Label, length: %u.\n", length);
+			memcpy(name + i, wire + p, length + 1);
+			p += length + 1;
+			i += length + 1;
+			if (!pointer_used) {
+				*pos += length + 1;
+			}
+			++l;
+		}
+	}
+	if (p >= size) {
+		return NULL;
+	}
+
+	name[i] = 0;
+	if (!pointer_used) {
+		*pos += 1;
+	}
+
+	dnslib_dname_t *dname = dnslib_dname_alloc();
+
+	if (dname == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+
+	dname->name = (uint8_t *)malloc((i + 1) * sizeof(uint8_t));
+	if (dname->name == NULL) {
+		ERR_ALLOC_FAILED;
+		dnslib_dname_free(&dname);
+		return NULL;
+	}
+
+	memcpy(dname->name, name, i + 1);
+	dname->size = i + 1;
+
+	dname->labels = (uint8_t *)malloc((l + 1) * sizeof(uint8_t));
+	if (dname->labels == NULL) {
+		ERR_ALLOC_FAILED;
+		dnslib_dname_free(&dname);
+		return NULL;
+	}
+	memcpy(dname->labels, labels, l + 1);
+
+	dname->label_count = l;
+
+	dname->node = node;
+
+	return dname;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_dname_from_wire(const uint8_t *name, uint size,
                            struct dnslib_node *node, dnslib_dname_t *target)
 {
@@ -514,6 +604,13 @@ uint dnslib_dname_size(const dnslib_dname_t *dname)
 
 /*----------------------------------------------------------------------------*/
 
+unsigned int dnslib_dname_id(const dnslib_dname_t *dname)
+{
+	return dname->id;
+}
+
+/*----------------------------------------------------------------------------*/
+
 uint8_t dnslib_dname_size_part(const dnslib_dname_t *dname, int labels)
 {
 	assert(labels < dname->label_count);
@@ -523,9 +620,41 @@ uint8_t dnslib_dname_size_part(const dnslib_dname_t *dname, int labels)
 
 /*----------------------------------------------------------------------------*/
 
-const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname)
+const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname,
+                                            int check_version)
+
 {
-	return dname->node;
+	if (check_version) {
+		return dnslib_node_current(dname->node);
+	} else {
+		return dname->node;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+struct dnslib_node *dnslib_dname_get_node(dnslib_dname_t *dname,
+                                          int check_version)
+{
+	if (check_version) {
+		return dnslib_node_get_current(dname->node);
+	} else {
+		return dname->node;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_dname_set_node(dnslib_dname_t *dname, dnslib_node_t *node)
+{
+	dname->node = node;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_dname_update_node(dnslib_dname_t *dname)
+{
+	dnslib_node_update_ref(&dname->node);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -778,6 +907,7 @@ void dnslib_dname_free(dnslib_dname_t **dname)
 	}
 
 //	slab_free(*dname);
+	free(*dname);
 	*dname = NULL;
 }
 

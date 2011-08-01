@@ -140,7 +140,8 @@ line:	NL
 		    parser->temporary_items,
 		    parser->rdata_count) != 0) {
 			dnslib_rdata_free(&tmp_rdata);
-			dnslib_rrset_deep_free(&(parser->current_rrset), 1, 1);
+			dnslib_rrset_deep_free(&(parser->current_rrset), 1, 1,
+			                       1);
 			dnslib_zone_deep_free(&(parser->current_zone), 1);
 			YYABORT;
 		}
@@ -172,11 +173,6 @@ line:	NL
 //printf("%s\n", dnslib_dname_to_str(parser->current_rrset->owner));
 //}
 
-		if (save_dnames_in_table(parser->dname_table,
-						 parser->current_rrset) != 0) {
-						 /* \todo */
-		}
-
 		assert(parser->current_rrset->owner != NULL);
 //		printf("after cat: %s (%p)\n", dnslib_dname_to_str(parser->current_rrset->owner), parser->current_rrset->owner->name);
 
@@ -196,18 +192,11 @@ line:	NL
 			                       parser->current_rrset->type,
 					       0);
 
-			/* If the owner is not already in the table, free it. */
-			if (dnslib_dname_table_find_dname(parser->dname_table,
-				parser->current_rrset->owner) == NULL) {
-				dnslib_dname_free(&parser->
-				                  current_rrset->owner);
-			}
-
 			if (ret == KNOT_ZCOMPILE_EBADSOA) {
 				/*!< \todo this will crash! */
 				dnslib_rdata_free(&tmp_rdata);
 				dnslib_rrset_deep_free(&(parser->current_rrset),
-						       1, 1);
+						       1, 1, 1);
 				dnslib_zone_deep_free(&(parser->current_zone),
 						      1);
 				YYABORT;
@@ -230,7 +219,6 @@ line:	NL
 //	dnslib_dname_to_str(parser->current_rrset->owner));
 //	getchar();
 
-	    parser->prev_dname = parser->current_rrset->owner;
 	    parser->current_rrset->type = 0;
 	    parser->rdata_count = 0;
 	    parser->current_rrset->rdata = NULL;
@@ -263,13 +251,13 @@ ttl_directive:	DOLLAR_TTL sp STR trail
 
 origin_directive:	DOLLAR_ORIGIN sp abs_dname trail
     {
-	    dnslib_node_t *origin_node = dnslib_node_new(dnslib_dname_cat($3,
+/*	    dnslib_node_t *origin_node = dnslib_node_new(dnslib_dname_cat($3,
 							 parser->root_domain),
 							 NULL);
 	if (parser->origin != NULL) {
 		dnslib_node_free(&parser->origin, 1);
 	}
-	    parser->origin = origin_node;
+	    parser->origin = origin_node; */
     }
     |	DOLLAR_ORIGIN sp rel_dname trail
     {
@@ -291,14 +279,17 @@ rr:	owner classttl type_and_rdata
 
 owner:	dname sp
     {
-//	printf("Totally new dname: %p\n", $1);
-	    parser->prev_dname = $1;
+//	printf("Totally new dname: %p %s\n", $1,
+//	dnslib_dname_to_str($1));
+	dnslib_dname_free(&parser->prev_dname);
+	    parser->prev_dname = dnslib_dname_copy($1);
 	    $$ = $1;
     }
     |	PREV
     {
-//	    printf("Name from prev_dname!: %p\n", parser->prev_dname);
-	    $$ = parser->prev_dname;
+//	    printf("Name from prev_dname!: %p %s\n", parser->prev_dname,
+//	    dnslib_dname_to_str(parser->prev_dname));
+	    $$ = dnslib_dname_copy(parser->prev_dname);
     }
     ;
 
@@ -1355,7 +1346,7 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 							      name->size,
 							      NULL);
 			    name = dnslib_dname_cat(tmpd,
-				    dnslib_node_parent(parser->origin)->owner);
+				    dnslib_node_parent(parser->origin, 0)->owner);
 			}
 
 			free($1.str);
@@ -1433,11 +1424,6 @@ zparser_create()
 	result->current_rrset = dnslib_rrset_new(NULL, 0, 0, 0);
 	result->current_rrset->rdata = NULL;
 
-	result->dname_table = dnslib_dname_table_new();
-	if (result->dname_table == NULL) {
-		return NULL;
-	}
-
 	result->rrsig_orphans = NULL;
 
 	return result;
@@ -1458,7 +1444,7 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->default_class = rclass;
 
 	parser->origin = origin;
-	parser->prev_dname = parser->origin->owner;
+	parser->prev_dname = dnslib_dname_copy(parser->origin->owner);
 
 	parser->default_apex = origin;
 	parser->error_occurred = 0;
@@ -1469,6 +1455,9 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 
 	parser->last_node = origin;
 	parser->root_domain = dnslib_dname_new_from_str(".", 1, NULL);
+
+	/* Create zone */
+	parser->current_zone = dnslib_zone_new(origin, 0, 1);
 
 	parser->node_rrsigs = NULL;
 
@@ -1481,6 +1470,7 @@ void zparser_free()
 	dnslib_dname_free(&(parser->root_domain));
 	free(parser->temporary_items);
 	dnslib_rrset_free(&(parser->current_rrset));
+	dnslib_dname_free(&(parser->prev_dname));
 	free(parser);
 }
 

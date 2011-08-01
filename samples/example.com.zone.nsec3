@@ -2,9 +2,9 @@
 ; dnssec_signzone version 9.7.1-P2
 Example.com.		3600	IN SOA	ns.example.com. username.example.com. (
 					2007120712 ; serial
-					86400      ; refresh (1 day)
-					86400      ; retry (1 day)
-					2419200    ; expire (4 weeks)
+					15      ; refresh
+					15      ; retry (1 day)
+					30    ; expire (4 weeks)
 					3600       ; minimum (1 hour)
 					)
 			3600	RRSIG	SOA 8 2 3600 20110331084524 (

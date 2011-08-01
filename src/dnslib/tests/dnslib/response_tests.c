@@ -8,7 +8,7 @@
 #include "dnslib/rdata.h"
 #include "dnslib/rrset.h"
 #include "dnslib/dname.h"
-#include "dnslib/packet.h"
+#include "dnslib/wire.h"
 #include "dnslib/descriptor.h"
 #include "dnslib/edns.h"
 
@@ -753,7 +753,7 @@ static void free_parsed_response(test_response_t *response)
 		if (response->additional != NULL) {
 			for (int j = 0; j < response->arcount; j++) {
 				dnslib_rrset_deep_free(&(response->
-							 additional[j]), 1, 1);
+				                       additional[j]), 1, 1, 1);
 			}
 
 			free(response->additional);
@@ -762,7 +762,7 @@ static void free_parsed_response(test_response_t *response)
 		if (response->answer != NULL) {
 			for (int j = 0; j < response->ancount; j++) {
 				dnslib_rrset_deep_free(&(response->
-							 answer[j]), 1, 1);
+				                       answer[j]), 1, 1, 1);
 			}
 
 			free(response->answer);
@@ -771,7 +771,7 @@ static void free_parsed_response(test_response_t *response)
 		if (response->authority != NULL) {
 			for (int j = 0; j < response->nscount; j++) {
 				dnslib_rrset_deep_free(&(response->
-							 authority[j]), 1, 1);
+				                       authority[j]), 1, 1, 1);
 			}
 
 			free(response->authority);
@@ -1748,7 +1748,7 @@ static int test_response_set_rcode(dnslib_response_t **responses)
 	short rcode = 0xA;
 	for (int i = 0; i < RESPONSE_COUNT; i++) {
 		dnslib_response_set_rcode(responses[i], rcode);
-		if (dnslib_packet_flags_get_rcode(responses[i]->
+		if (dnslib_wire_flags_get_rcode(responses[i]->
 						  header.flags2) != rcode) {
 			diag("Set wrong rcode.");
 			errors++;
@@ -1764,9 +1764,9 @@ static int test_response_set_aa(dnslib_response_t **responses)
 		dnslib_response_set_aa(responses[i]);
 		/* TODO this returns 4 - shouldn't it return 1?
 		It would work, yes, but some checks might be neccessary */
-		if (!dnslib_packet_flags_get_aa(responses[i]->header.flags1)) {
+		if (!dnslib_wire_flags_get_aa(responses[i]->header.flags1)) {
 			diag("%d",
-			     dnslib_packet_flags_get_aa(responses[i]->
+			     dnslib_wire_flags_get_aa(responses[i]->
 							header.flags1));
 			diag("Set wrong aa bit.");
 			errors++;
