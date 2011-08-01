@@ -274,6 +274,7 @@ int dnslib_rrset_compare(const dnslib_rrset_t *r1,
 
 	int res = ((r1->rclass == r2->rclass)
 	           && (r1->type == r2->type)
+	           && (r1->ttl == r2->ttl)
 	           && dnslib_dname_compare(r1->owner, r2->owner) == 0);
 
 	if (cmp == DNSLIB_RRSET_COMPARE_WHOLE && res) {
