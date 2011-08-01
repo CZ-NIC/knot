@@ -25,7 +25,7 @@ struct xfr_io_t
 {
 	ev_io io;
 	xfrhandler_t *h;
-	ns_xfr_t data;
+	dnslib_ns_xfr_t data;
 };
 
 /*! \brief Interrupt libev ev_loop execution. */
@@ -48,7 +48,7 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 {
 	/* Check data. */
 	struct xfr_io_t* xfr_w = (struct xfr_io_t *)w;
-	ns_xfr_t *request = &xfr_w->data;
+	dnslib_ns_xfr_t *request = &xfr_w->data;
 	if (!request) {
 		return;
 	}
@@ -74,10 +74,10 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 	/* Process incoming packet. */
 	switch(request->type) {
 	case NS_XFR_TYPE_AIN:
-		ret = ns_process_axfrin(xfr_w->h->ns, request);
+		ret = dnslib_ns_process_axfrin(xfr_w->h->ns, request);
 		break;
 	case NS_XFR_TYPE_IIN:
-		ret = ns_process_ixfrin(xfr_w->h->ns, request);
+		ret = dnslib_ns_process_ixfrin(xfr_w->h->ns, request);
 		break;
 	default:
 		ret = KNOT_EINVAL;
@@ -119,14 +119,14 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
 	/* Check data. */
 	struct xfr_io_t* xfr_w = (struct xfr_io_t *)w;
 	xfrhandler_t *handler = xfr_w->h;
-	ns_xfr_t *req = &xfr_w->data;
+	dnslib_ns_xfr_t *req = &xfr_w->data;
 	if (!handler || !req) {
 		return;
 	}
 
 	/* Read event. */
-	int ret = evqueue_read(handler->cq, req, sizeof(ns_xfr_t));
-	if (ret != sizeof(ns_xfr_t)) {
+	int ret = evqueue_read(handler->cq, req, sizeof(dnslib_ns_xfr_t));
+	if (ret != sizeof(dnslib_ns_xfr_t)) {
 		debug_xfr("xfr_bridge_ev: queue read returned %d.\n", ret);
 		ev_io_stop(loop, w);
 		ev_unloop(loop, EVUNLOOP_ALL);
@@ -211,7 +211,7 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
 		return;
 	}
 	cl_w->h = xfr_w->h;
-	memcpy(&cl_w->data, req, sizeof(ns_xfr_t));
+	memcpy(&cl_w->data, req, sizeof(dnslib_ns_xfr_t));
 
 	/* Add to pending transfers. */
 	ev_io_init((ev_io *)cl_w, xfr_client_ev, req->session, EV_READ);
@@ -222,7 +222,7 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
  * Public APIs.
  */
 
-xfrhandler_t *xfr_create(size_t thrcount, ns_nameserver_t *ns)
+xfrhandler_t *xfr_create(size_t thrcount, dnslib_nameserver_t *ns)
 {
 	/* Create XFR handler data. */
 	xfrhandler_t *data = malloc(sizeof(xfrhandler_t));
@@ -308,13 +308,13 @@ int xfr_stop(xfrhandler_t *handler)
 	return KNOT_EOK;
 }
 
-int xfr_request(xfrhandler_t *handler, ns_xfr_t *req)
+int xfr_request(xfrhandler_t *handler, dnslib_ns_xfr_t *req)
 {
 	if (!handler || !req) {
 		return KNOT_EINVAL;
 	}
 
-	int ret = evqueue_write(handler->q, req, sizeof(ns_xfr_t));
+	int ret = evqueue_write(handler->q, req, sizeof(dnslib_ns_xfr_t));
 	if (ret < 0) {
 		return KNOT_ERROR;
 	}
@@ -355,9 +355,9 @@ int xfr_master(dthread_t *thread)
 		}
 
 		/* Read single request. */
-		ns_xfr_t xfr;
-		ret = evqueue_read(xfrh->q, &xfr, sizeof(ns_xfr_t));
-		if (ret != sizeof(ns_xfr_t)) {
+		dnslib_ns_xfr_t xfr;
+		ret = evqueue_read(xfrh->q, &xfr, sizeof(dnslib_ns_xfr_t));
+		if (ret != sizeof(dnslib_ns_xfr_t)) {
 			debug_xfr("xfr_master: queue read returned %d.\n", ret);
 			return KNOT_ERROR;
 		}
@@ -372,7 +372,7 @@ int xfr_master(dthread_t *thread)
 		switch(xfr.type) {
 		case NS_XFR_TYPE_AOUT:
 			req_type = "axfr-out";
-			ret = ns_answer_axfr(xfrh->ns, &xfr);
+			ret = dnslib_ns_answer_axfr(xfrh->ns, &xfr);
 			dnslib_packet_free(&xfr.query); /* Free query. */
 			debug_xfr("xfr_master: ns_answer_axfr() = %d.\n", ret);
 			if (ret != KNOT_EOK) {
@@ -381,7 +381,7 @@ int xfr_master(dthread_t *thread)
 			break;
 		case NS_XFR_TYPE_IOUT:
 			req_type = "ixfr-out";
-			ret = ns_answer_ixfr(xfrh->ns, &xfr);
+			ret = dnslib_ns_answer_ixfr(xfrh->ns, &xfr);
 			dnslib_packet_free(&xfr.query); /* Free query. */
 			debug_xfr("xfr_master: ns_answer_ixfr() = %d.\n", ret);
 			if (ret != KNOT_EOK) {
@@ -390,12 +390,12 @@ int xfr_master(dthread_t *thread)
 			break;
 		case NS_XFR_TYPE_AIN:
 			req_type = "axfr-in";
-			evqueue_write(xfrh->cq, &xfr, sizeof(ns_xfr_t));
+			evqueue_write(xfrh->cq, &xfr, sizeof(dnslib_ns_xfr_t));
 			ret = KNOT_EOK;
 			break;
 		case NS_XFR_TYPE_IIN:
 			req_type = "ixfr-in";
-			evqueue_write(xfrh->cq, &xfr, sizeof(ns_xfr_t));
+			evqueue_write(xfrh->cq, &xfr, sizeof(dnslib_ns_xfr_t));
 			ret = KNOT_EOK;
 			break;
 		default:

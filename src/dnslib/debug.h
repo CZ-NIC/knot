@@ -87,6 +87,17 @@ void dnslib_zone_contents_dump(dnslib_zone_contents_t *zone, char loaded_zone);
 //#define DNSLIB_ZLOAD_DEBUG
 //#define CUCKOO_DEBUG
 //#define CUCKOO_DEBUG_HASH
+#define DNSLIB_NS_DEBUG
+
+#ifdef DNSLIB_NS_DEBUG
+#define debug_dnslib_ns(msg...) fprintf(stderr, msg)
+#define debug_dnslib_ns_hex(data, len) hex_print((data), (len))
+#define DEBUG_DNSLIB_NS(cmds) do { cmds } while (0)
+#else
+#define debug_dnslib_ns(msg...)
+#define debug_dnslib_ns_hex(data, len)
+#define DEBUG_DNSLIB_NS(cmds)
+#endif
 
 #ifdef DNSLIB_DNAME_DEBUG
 #define debug_dnslib_dname(msg...) fprintf(stderr, msg)

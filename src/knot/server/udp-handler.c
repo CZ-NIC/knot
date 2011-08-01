@@ -23,7 +23,7 @@
 int udp_master(dthread_t *thread)
 {
 	iohandler_t *handler = (iohandler_t *)thread->data;
-	ns_nameserver_t *ns = handler->server->nameserver;
+	dnslib_nameserver_t *ns = handler->server->nameserver;
 	int sock = handler->fd;
 
 	/* Check socket. */
@@ -115,19 +115,19 @@ int udp_master(dthread_t *thread)
 			dnslib_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
 		if (packet == NULL) {
 			uint16_t pkt_id = dnslib_wire_get_id(qbuf);
-			ns_error_response(ns, pkt_id, DNSLIB_RCODE_SERVFAIL,
+			dnslib_ns_error_response(ns, pkt_id, DNSLIB_RCODE_SERVFAIL,
 			                  qbuf, &resp_len);
 			continue;
 		}
 
 		/* Parse query. */
-		res = ns_parse_packet(qbuf, n, packet, &qtype);
+		res = dnslib_ns_parse_packet(qbuf, n, packet, &qtype);
 		if (unlikely(res != KNOT_EOK)) {
 			debug_net("udp: sending back error response.\n");
 			/* Send error response on dnslib RCODE. */
 			if (res > 0) {
 				uint16_t pkt_id = dnslib_wire_get_id(qbuf);
-				ns_error_response(ns, pkt_id, res,
+				dnslib_ns_error_response(ns, pkt_id, res,
 				                  qbuf, &resp_len);
 			}
 
@@ -141,26 +141,26 @@ int udp_master(dthread_t *thread)
 
 		/* Response types. */
 		case DNSLIB_RESPONSE_NORMAL:
-			res = ns_process_response(ns, &addr, packet,
+			res = dnslib_ns_process_response(ns, &addr, packet,
 						  qbuf, &resp_len);
 			break;
 		case DNSLIB_RESPONSE_AXFR:
 		case DNSLIB_RESPONSE_IXFR:
 		case DNSLIB_RESPONSE_NOTIFY:
-			res = ns_process_notify(ns, &addr, packet,
+			res = dnslib_ns_process_notify(ns, &addr, packet,
 						qbuf, &resp_len);
 			break;
 
 		/* Query types. */
 		case DNSLIB_QUERY_NORMAL:
-			res = ns_answer_normal(ns, packet, qbuf, &resp_len);
+			res = dnslib_ns_answer_normal(ns, packet, qbuf, &resp_len);
 			break;
 		case DNSLIB_QUERY_AXFR:
 		case DNSLIB_QUERY_IXFR:
 			/*! \todo Send error, not available on UDP. */
 			break;
 		case DNSLIB_QUERY_NOTIFY:
-			res = ns_answer_notify(ns, packet, &addr,
+			res = dnslib_ns_answer_notify(ns, packet, &addr,
 					       qbuf, &resp_len);
 			break;
 		case DNSLIB_QUERY_UPDATE:

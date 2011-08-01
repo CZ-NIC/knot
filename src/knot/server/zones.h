@@ -78,7 +78,7 @@ typedef struct zonedata_t
  * \retval KNOT_EINVAL
  * \retval KNOT_ERROR
  */
-int zones_update_db_from_config(const conf_t *conf, ns_nameserver_t *ns,
+int zones_update_db_from_config(const conf_t *conf, dnslib_nameserver_t *ns,
                                dnslib_zonedb_t **db_old);
 
 /*!

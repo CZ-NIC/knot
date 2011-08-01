@@ -259,11 +259,11 @@ int xfrin_create_ixfr_query(const dnslib_zone_contents_t *zone, uint8_t *buffer,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_zone_transferred(ns_nameserver_t *nameserver,
+int xfrin_zone_transferred(dnslib_nameserver_t *nameserver,
                            dnslib_zone_contents_t *zone)
 {
 	debug_xfr("Switching zone in nameserver.\n");
-	return ns_switch_zone(nameserver, zone);
+	return dnslib_ns_switch_zone(nameserver, zone);
 	//return KNOT_ENOTSUP;
 }
 

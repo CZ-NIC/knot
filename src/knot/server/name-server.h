@@ -40,7 +40,7 @@ struct server_t;
  *
  * Currently only holds pointer to the zone database for answering queries.
  */
-typedef struct ns_nameserver {
+typedef struct dnslib_nameserver {
 	/*!
 	 * \brief Pointer to the zone database structure used for answering
 	 *        queries.
@@ -50,14 +50,14 @@ typedef struct ns_nameserver {
 	size_t err_resp_size;     /*!< Size of the prepared error response. */
 	dnslib_opt_rr_t *opt_rr;  /*!< OPT RR with the server's EDNS0 info. */
 	struct server_t *server;  /*!< Pointer to server. */
-} ns_nameserver_t;
+} dnslib_nameserver_t;
 
 /*! \brief Callback for sending one packet back through a TCP connection. */
 typedef int (*xfr_callback_t)(int session, sockaddr_t *addr,
 			      uint8_t *packet, size_t size);
 
 /*! \todo Document me. */
-typedef struct ns_xfr {
+typedef struct dnslib_ns_xfr {
 	int type;
 	sockaddr_t addr;
 	dnslib_packet_t *query;
@@ -68,15 +68,15 @@ typedef struct ns_xfr {
 	size_t wire_size;
 	void *data;
 	dnslib_zone_contents_t *zone;
-} ns_xfr_t;
+} dnslib_ns_xfr_t;
 
 /*! \todo Document me. */
-typedef enum ns_xfr_type_t {
+typedef enum dnslib_ns_xfr_type_t {
 	NS_XFR_TYPE_AIN,  /*!< AXFR-IN request (start transfer). */
 	NS_XFR_TYPE_AOUT, /*!< AXFR-OUT request (incoming transfer). */
 	NS_XFR_TYPE_IIN,  /*!< IXFR-IN request (start transfer). */
 	NS_XFR_TYPE_IOUT  /*!< IXFR-OUT request (incoming transfer). */
-} ns_xfr_type_t;
+} dnslib_ns_xfr_type_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -84,7 +84,7 @@ typedef enum ns_xfr_type_t {
  *
  * \return Pointer to the name server structure.
  */
-ns_nameserver_t *ns_create();
+dnslib_nameserver_t *dnslib_ns_create();
 
 /*!
  * \brief Parses the given query into the response structure and recognizes
@@ -114,7 +114,7 @@ ns_nameserver_t *ns_create();
  *                              ns_error_response() with \a rcode set to this
  *                              value to get proper error response.
  */
-int ns_parse_packet(const uint8_t *query_wire, size_t qsize,
+int dnslib_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
                     dnslib_packet_t *packet, dnslib_packet_type_t *type);
 
 /*!
@@ -130,7 +130,7 @@ int ns_parse_packet(const uint8_t *query_wire, size_t qsize,
  * \param response_wire Place for wire format of the response.
  * \param rsize Size of the error response will be stored here.
  */
-void ns_error_response(ns_nameserver_t *nameserver, uint16_t query_id,
+void dnslib_ns_error_response(dnslib_nameserver_t *nameserver, uint16_t query_id,
                        uint8_t rcode, uint8_t *response_wire, size_t *rsize);
 
 /*!
@@ -149,7 +149,7 @@ void ns_error_response(ns_nameserver_t *nameserver, uint16_t query_id,
  *
  * \todo Truncation of the packet.
  */
-int ns_answer_request(ns_nameserver_t *nameserver,
+int dnslib_ns_answer_request(dnslib_nameserver_t *nameserver,
                       const uint8_t *query_wire,
                       size_t qsize,
                       uint8_t *response_wire,
@@ -168,7 +168,7 @@ int ns_answer_request(ns_nameserver_t *nameserver,
  * \retval KNOT_EOK if a valid response was created.
  * \retval KNOT_EMALF if an error occured and the response is not valid.
  */
-int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
+int dnslib_ns_answer_normal(dnslib_nameserver_t *nameserver, dnslib_packet_t *query,
                      uint8_t *response_wire, size_t *rsize);
 
 /*!
@@ -188,7 +188,7 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
  * \retval KNOT_EACCES sender is not authorized to request NOTIFY.
  * \retval KNOT_EMALF if an error occured and the response is not valid.
  */
-int ns_answer_notify(ns_nameserver_t *nameserver, dnslib_packet_t *query,
+int dnslib_ns_answer_notify(dnslib_nameserver_t *nameserver, dnslib_packet_t *query,
 		     sockaddr_t *from, uint8_t *response_wire, size_t *rsize);
 
 /*!
@@ -212,7 +212,7 @@ int ns_answer_notify(ns_nameserver_t *nameserver, dnslib_packet_t *query,
  * \todo Maybe the place for the wire format should be passed in as in
  *       the ns_answer_request() function...?
  */
-int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
+int dnslib_ns_answer_axfr(dnslib_nameserver_t *nameserver, dnslib_ns_xfr_t *xfr);
 
 /*!
  * \brief Processes an IXFR query.
@@ -222,7 +222,7 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
  *
  * \todo Document properly.
  */
-int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
+int dnslib_ns_answer_ixfr(dnslib_nameserver_t *nameserver, dnslib_ns_xfr_t *xfr);
 
 /*!
  * \brief Processes normal response packet.
@@ -238,7 +238,7 @@ int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
  * \retval KNOT_EINVAL on invalid parameters or packet.
  * \retval KNOT_EMALF if an error occured and the response is not valid.
  */
-int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
+int dnslib_ns_process_response(dnslib_nameserver_t *nameserver, sockaddr_t *from,
 			dnslib_packet_t *packet, uint8_t *response_wire,
 			size_t *rsize);
 
@@ -256,7 +256,7 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
  * \retval KNOT_EINVAL on invalid parameters or packet.
  * \retval KNOT_EMALF if an error occured and the response is not valid.
  */
-int ns_process_notify(ns_nameserver_t *nameserver, sockaddr_t *from,
+int dnslib_ns_process_notify(dnslib_nameserver_t *nameserver, sockaddr_t *from,
 		      dnslib_packet_t *packet, uint8_t *response_wire,
 		      size_t *rsize);
 
@@ -268,9 +268,9 @@ int ns_process_notify(ns_nameserver_t *nameserver, sockaddr_t *from,
  *
  * \todo Document me.
  */
-int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
+int dnslib_ns_process_axfrin(dnslib_nameserver_t *nameserver, dnslib_ns_xfr_t *xfr);
 
-int ns_switch_zone(ns_nameserver_t *nameserver, dnslib_zone_contents_t *zone);
+int dnslib_ns_switch_zone(dnslib_nameserver_t *nameserver, dnslib_zone_contents_t *zone);
 
 /*!
  * \brief Processes an IXFR-IN packet.
@@ -280,7 +280,7 @@ int ns_switch_zone(ns_nameserver_t *nameserver, dnslib_zone_contents_t *zone);
  *
  * \todo Document me.
  */
-int ns_process_ixfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
+int dnslib_ns_process_ixfrin(dnslib_nameserver_t *nameserver, dnslib_ns_xfr_t *xfr);
 
 /*!
  * \brief Decides what type of transfer should be used to update the given zone.
@@ -290,7 +290,7 @@ int ns_process_ixfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr);
  *
  * \retval
  */
-ns_xfr_type_t ns_transfer_to_use(ns_nameserver_t *nameserver,
+dnslib_ns_xfr_type_t dnslib_ns_transfer_to_use(dnslib_nameserver_t *nameserver,
                                  const dnslib_zone_contents_t *zone);
 
 /*!
@@ -298,7 +298,7 @@ ns_xfr_type_t ns_transfer_to_use(ns_nameserver_t *nameserver,
  *
  * \param nameserver Nameserver to destroy.
  */
-void ns_destroy(ns_nameserver_t **nameserver);
+void dnslib_ns_destroy(dnslib_nameserver_t **nameserver);
 
 /*!
  * \brief Name server config hook.
@@ -312,7 +312,7 @@ void ns_destroy(ns_nameserver_t **nameserver);
  * \retval KNOT_EINVAL
  * \retval KNOT_ERROR
  */
-int ns_conf_hook(const struct conf_t *conf, void *data);
+int dnslib_ns_conf_hook(const struct conf_t *conf, void *data);
 
 
 #endif /* _KNOT_NAME_SERVER_H_ */
