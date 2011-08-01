@@ -186,7 +186,7 @@ DEBUG_DNSLIB_RESPONSE(
 	size_t parent_pos = pos;
 	int i = 0;
 
-	while (to_save != NULL) {
+	while (to_save != NULL && i < dnslib_dname_label_count(dname)) {
 		if (i == not_matched) {
 			parent_pos = unmatched_offset;
 		}
