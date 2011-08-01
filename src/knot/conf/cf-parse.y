@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include "dnslib/dname.h"
 #include "knot/conf/conf.h"
-#include "libknot_la-cf-parse.h" /* Automake generated header. */
+#include "libknotd_la-cf-parse.h" /* Automake generated header. */
 
 extern int cf_lex (YYSTYPE *lvalp, void *scanner);
 extern void cf_error(const char *msg, void *scanner);
