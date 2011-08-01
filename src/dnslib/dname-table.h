@@ -55,6 +55,9 @@ dnslib_dname_table_t *dnslib_dname_table_new();
 /*!
  * \brief Finds name in the domain name table.
  *
+ * \note Reference count to dname will be incremented, caller is responsible
+ *       for releasing it.
+ *
  * \param table Domain name table to be searched.
  * \param dname Dname to be searched.
  *
@@ -105,8 +108,8 @@ int dnslib_dname_table_add_dname2(dnslib_dname_table_t *table,
  * \param from Original domain name table.
  * \param to Copy of the domain name table.
  */
-int dnslib_dname_table_copy(dnslib_dname_table_t *from,
-                            dnslib_dname_table_t *to);
+int dnslib_dname_table_shallow_copy(dnslib_dname_table_t *from,
+                                    dnslib_dname_table_t *to);
 
 /*!
  * \brief Frees dname table without its nodes. Sets pointer to NULL.

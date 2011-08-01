@@ -117,8 +117,25 @@ static void load_rdata_purge(dnslib_rdata_t *rdata,
 			     int count,
 			     uint16_t type)
 {
+	/* Increase refcount manually, as the set_items() doesn't see the dname
+	 * type and thus is unable to increment refcounter.
+	 */
+	unsigned i = 0;
+	switch(type) {
+	case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
+	case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
+	case DNSLIB_RDATA_WF_LITERAL_DNAME:
+		for (i = 0; i < count; ++i) {
+			dnslib_dname_retain(items[i].dname);
+		}
+		break;
+	default:
+		break;
+	}
+
+	/* Copy items to rdata and free the temporary rdata. */
 	dnslib_rdata_set_items(rdata, items, count);
-	dnslib_rdata_deep_free(&rdata, type, 0);
+	dnslib_rdata_deep_free(&rdata, type, 1);
 	free(items);
 }
 
@@ -130,7 +147,7 @@ static dnslib_dname_t *read_dname_with_id(FILE *f)
 	/* Read ID. */
 	uint32_t dname_id = 0;
 	if (!fread_wrapper(&dname_id, sizeof(dname_id), 1, f)) {
-		dnslib_dname_free(&ret);
+		dnslib_dname_release(ret);
 		return NULL;
 	}
 
@@ -139,7 +156,7 @@ static dnslib_dname_t *read_dname_with_id(FILE *f)
 	/* Read size of dname. */
 	uint32_t dname_size = 0;
 	if (!fread_wrapper(&dname_size, sizeof(dname_size), 1, f)) {
-		dnslib_dname_free(&ret);
+		dnslib_dname_release(ret);
 		return NULL;
 	}
 	ret->size = dname_size;
@@ -150,19 +167,19 @@ static dnslib_dname_t *read_dname_with_id(FILE *f)
 	ret->name = malloc(sizeof(uint8_t) * ret->size);
 	if (ret->name == NULL) {
 		ERR_ALLOC_FAILED;
-		dnslib_dname_free(&ret);
+		dnslib_dname_release(ret);
 		return NULL;
 	}
 
 	if (!fread_wrapper(ret->name, sizeof(uint8_t), ret->size, f)) {
-		dnslib_dname_free(&ret);
+		dnslib_dname_release(ret);
 		return NULL;
 	}
 
 	/* Read labels. */
 	uint16_t label_count = 0;
 	if (!fread_wrapper(&label_count, sizeof(label_count), 1, f)) {
-		dnslib_dname_free(&ret);
+		dnslib_dname_release(ret);
 		return NULL;
 	}
 
@@ -171,7 +188,7 @@ static dnslib_dname_t *read_dname_with_id(FILE *f)
 	ret->labels = malloc(sizeof(uint8_t) * ret->label_count);
 	if (ret->labels == NULL) {
 		ERR_ALLOC_FAILED;
-		dnslib_dname_free(&ret);
+		dnslib_dname_release(ret);
 		return NULL;
 	}
 
@@ -230,6 +247,9 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 					load_rdata_purge(rdata, items, i, type);
 					return NULL;
 				}
+
+				/* Store reference do dname. */
+				dnslib_dname_retain(id_array[dname_id]);
 				items[i].dname = id_array[dname_id];
 			} else {
 				items[i].dname = read_dname_with_id(f);
@@ -284,6 +304,7 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 		}
 	}
 
+	/* Each item has refcount already incremented for saving in rdata. */
 	if (dnslib_rdata_set_items(rdata, items, desc->length) != 0) {
 		fprintf(stderr, "zoneload: Could not set items "
 			"when loading rdata.\n");
@@ -398,6 +419,12 @@ static dnslib_rrset_t *dnslib_load_rrset(FILE *f, dnslib_dname_t **id_array,
 
 	rrset = dnslib_rrset_new(owner, rrset_type, rrset_class, rrset_ttl);
 
+	if (!use_ids) {
+		/* Directly release if allocated locally. */
+		dnslib_dname_release(owner);
+		owner = 0;
+	}
+
 	debug_dnslib_zload("RRSet type: %d\n", rrset->type);
 
 	dnslib_rdata_t *tmp_rdata;
@@ -418,11 +445,11 @@ static dnslib_rrset_t *dnslib_load_rrset(FILE *f, dnslib_dname_t **id_array,
 	if (rrsig_count) {
 		tmp_rrsig = dnslib_load_rrsig(f, id_array, use_ids);
 		if (!use_ids) {
-			tmp_rrsig->owner = rrset->owner;
+			dnslib_rrset_set_owner(tmp_rrsig, rrset->owner);
 		}
 	}
 
-	rrset->rrsigs = tmp_rrsig;
+	dnslib_rrset_set_rrsigs(rrset, tmp_rrsig);
 
 	return rrset;
 }
@@ -483,7 +510,9 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 		dnslib_node_set_nsec3_node(node, NULL);
 //		node->nsec3_node = NULL;
 	}
-	node->owner = owner;
+
+	/* Retain new owner while releasing replaced owner. */
+	dnslib_node_set_owner(node, owner);
 	node->flags = flags;
 
 	//XXX will have to be set already...canonical order should do it
@@ -504,9 +533,10 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 			fprintf(stderr, "zone: Could not load rrset.\n");
 			return NULL;
 		}
-		tmp_rrset->owner = node->owner;
+		/* Retain new owner while releasing replaced owner. */
+		dnslib_rrset_set_owner(tmp_rrset, node->owner);
 		if (tmp_rrset->rrsigs != NULL) {
-			tmp_rrset->rrsigs->owner = node->owner;
+			dnslib_rrset_set_owner(tmp_rrset->rrsigs, node->owner);
 		}
 		if (dnslib_node_add_rrset(node, tmp_rrset, 0) < 0) {
 			fprintf(stderr, "zone: Could not add rrset.\n");
@@ -538,6 +568,7 @@ static void find_and_set_wildcard_child(dnslib_zone_contents_t *zone,
 			dnslib_zone_contents_get_nsec3_node(zone, chopped);
 	}
 
+	/* Directly discard. */
 	dnslib_dname_free(&chopped);
 
 	assert(wildcard_parent); /* it *has* to be there */
@@ -744,7 +775,7 @@ static void cleanup_id_array(dnslib_dname_t **id_array,
 			     const uint from, const uint to)
 {
 	for (uint i = from; i < to; i++) {
-		dnslib_dname_free(&(id_array[i]));
+		dnslib_dname_release(id_array[i]);
 	}
 
 	free(id_array);
@@ -831,19 +862,30 @@ static dnslib_dname_t **create_dname_array(FILE *f, uint max_id)
 			cleanup_id_array(array, 0, i);
 			return NULL;
 		}
+
 		if (read_dname->id < max_id) {
+
+			/* Create new node from dname. */
 			read_dname->node = dnslib_node_new(read_dname, NULL, 0);
+
 			if (read_dname->node == NULL) {
 				ERR_ALLOC_FAILED;
+
+				/* Release read dname. */
+				dnslib_dname_release(read_dname);
 				cleanup_id_array(array, 0, i);
-				dnslib_dname_free(&read_dname);
 				return NULL;
 			}
+
+			/* Store reference to dname in array. */
 			array[read_dname->id] = read_dname;
 		} else {
+			/* Release read dname. */
+			dnslib_dname_release(read_dname);
 			cleanup_id_array(array, 0, i);
 			return NULL;
 		}
+
 //		assert(array[i]->id == i);
 	}
 
@@ -1027,6 +1069,10 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	}
 
 	/* ID array is now useless */
+	for (uint i = 1; i < total_dnames; i++) {
+		/* Added to table, may discard now. */
+		dnslib_dname_release(id_array[i]);
+	}
 	free(id_array);
 
 

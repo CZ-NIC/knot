@@ -153,6 +153,8 @@ libknot_la_SOURCES =				\
 	common/sockaddr.c				\
 	common/crc.h				\
 	common/crc.c				\
+	common/ref.h				\
+	common/ref.c				\
 	knot/stat/gatherer.c				\
 	knot/stat/stat.c				\
 	knot/stat/gatherer.h				\

@@ -106,6 +106,8 @@ typedef enum {
 /*!
  * \brief Creates and initializes new node structure.
  *
+ * \todo Owner reference counter will be increased.
+ *
  * \param owner Owner of the created node.
  * \param parent Parent of the created node.
  * \param flags Document me.
@@ -272,7 +274,20 @@ void dnslib_node_set_nsec3_node(dnslib_node_t *node, dnslib_node_t *nsec3_node);
  */
 const dnslib_dname_t *dnslib_node_owner(const dnslib_node_t *node);
 
+/*!
+ * \todo Document me.
+ */
 dnslib_dname_t *dnslib_node_get_owner(const dnslib_node_t *node);
+
+/*!
+ * \brief Set node owner to specified dname.
+ *
+ * Previous owner will be replaced if exist.
+ *
+ * \param node Specified node.
+ * \param owner New owner dname.
+ */
+void dnslib_node_set_owner(dnslib_node_t *node, dnslib_dname_t* owner);
 
 /*!
  * \brief Returns the wildcard child of the node.
@@ -396,7 +411,7 @@ void dnslib_node_free(dnslib_node_t **node, int free_owner, int fix_refs);
  */
 int dnslib_node_compare(dnslib_node_t *node1, dnslib_node_t *node2);
 
-int dnslib_node_deep_copy(const dnslib_node_t *from, dnslib_node_t **to);
+int dnslib_node_shallow_copy(const dnslib_node_t *from, dnslib_node_t **to);
 
 #endif /* _KNOT_DNSLIB_NODE_H_ */
 

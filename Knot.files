@@ -40,6 +40,8 @@ src/common/sockaddr.h
 src/common/sockaddr.c
 src/common/crc.c
 src/common/crc.h
+src/common/ref.c
+src/common/ref.h
 src/dnslib/dnslib-common.h
 src/dnslib/dname.h
 src/dnslib/dname.c

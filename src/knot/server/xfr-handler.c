@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include <errno.h>
 
+#include <urcu.h>
+
 #include "knot/common.h"
 #include "knot/server/xfr-handler.h"
 #include "knot/server/name-server.h"
@@ -133,12 +135,10 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
 	}
 
 	/* Fetch associated zone. */
-	dnslib_zone_contents_t *zone = (dnslib_zone_contents_t *)req->data;
+	dnslib_zone_t *zone = (dnslib_zone_t *)req->data;
 	if (!zone) {
 		return;
 	}
-	const dnslib_node_t *apex = dnslib_zone_contents_apex(zone);
-	const dnslib_dname_t *dname = dnslib_node_owner(apex);
 
 	/* Connect to remote. */
 	if (req->session <= 0) {
@@ -158,20 +158,27 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
 		req->session = dup(req->session);
 	}
 
+	/* Fetch zone contents. */
+	rcu_read_lock();
+	const dnslib_zone_contents_t *contents = dnslib_zone_contents(zone);
+
 	/* Create XFR query. */
 	ret = KNOT_ERROR;
 	size_t bufsize = req->wire_size;
 	switch(req->type) {
 	case NS_XFR_TYPE_AIN:
-		ret = xfrin_create_axfr_query(dname, req->wire, &bufsize);
+		ret = xfrin_create_axfr_query(contents, req->wire, &bufsize);
 		break;
 	case NS_XFR_TYPE_IIN:
-		ret = xfrin_create_ixfr_query(dname, req->wire, &bufsize);
+		ret = xfrin_create_ixfr_query(contents, req->wire, &bufsize);
 		break;
 	default:
 		ret = KNOT_EINVAL;
 		break;
 	}
+
+	/* Unlock zone contents. */
+	rcu_read_unlock();
 
 	/* Handle errors. */
 	if (ret != KNOT_EOK) {
@@ -403,7 +410,7 @@ int xfr_master(dthread_t *thread)
 	}
 
 
-	// Stop whole unit
+	/* Stop whole unit. */
 	debug_xfr("xfr_master: finished.\n");
 	return KNOT_EOK;
 }

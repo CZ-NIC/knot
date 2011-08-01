@@ -49,7 +49,7 @@ static int compare_dname_table_nodes(struct dname_table_node *n1,
 static void delete_dname_table_node(struct dname_table_node *node, void *data)
 {
 	if (data) {
-		dnslib_dname_free(&node->dname);
+		dnslib_dname_release(node->dname);
 	}
 
 	/*!< \todo it would be nice to set pointers to NULL. */
@@ -81,6 +81,7 @@ static int dnslib_dname_table_copy_node(const struct dname_table_node *from,
 	}
 
 	(*to)->dname = from->dname;
+	dnslib_dname_retain((*to)->dname);
 	(*to)->avl.avl_height = from->avl.avl_height;
 
 	int ret = dnslib_dname_table_copy_node(from->avl.avl_left,
@@ -135,6 +136,9 @@ dnslib_dname_t *dnslib_dname_table_find_dname(const dnslib_dname_table_t *table,
 	if (node == NULL) {
 		return NULL;
 	} else {
+		/* Increase reference counter. */
+		dnslib_dname_retain(node->dname);
+
 		return node->dname;
 	}
 }
@@ -160,6 +164,9 @@ int dnslib_dname_table_add_dname(dnslib_dname_table_t *table,
 //	printf("Inserted dname got id %d\n", node->dname->id);
 	assert(node->dname->id != 0);
 
+	/* Increase reference counter. */
+	dnslib_dname_retain(dname);
+
 	TREE_INSERT(table->tree, dname_table_node, avl, node);
 	return DNSLIB_EOK;
 }
@@ -168,7 +175,6 @@ int dnslib_dname_table_add_dname2(dnslib_dname_table_t *table,
                                   dnslib_dname_t **dname)
 {
 	dnslib_dname_t *found_dname = NULL;
-	int ret;
 
 	if (table == NULL || dname == NULL || *dname == NULL) {
 		return DNSLIB_EBADARG;
@@ -178,20 +184,31 @@ int dnslib_dname_table_add_dname2(dnslib_dname_table_t *table,
 //	printf("Inserting name %s to dname table.\n", name);
 //	free(name);
 
-	if ((!(found_dname =
-	      dnslib_dname_table_find_dname(table ,*dname))) &&
-	      (ret = dnslib_dname_table_add_dname(table, *dname))
-	      != DNSLIB_EOK) {
-//		printf("Error!\n");
-		return ret;
-	} else if (found_dname != NULL && found_dname != *dname) {
+	/* Fetch dname, need to release it later. */
+	found_dname = dnslib_dname_table_find_dname(table ,*dname);
+
+	if (!found_dname) {
+		/* Store reference in table. */
+		return dnslib_dname_table_add_dname(table, *dname);
+	} else {
 		/*! \todo Remove the check for equality. */
-//		name = dnslib_dname_to_str(found_dname);
-//		printf("Already there: %s (%p)\n", name, found_dname);
-//		free(name);
-		dnslib_dname_free(dname);
-		*dname = found_dname;
-		return 1;
+		if (found_dname != *dname) {
+			//name = dnslib_dname_to_str(found_dname);
+			//printf("Already there: %s (%p)\n", name, found_dname);
+			//free(name);
+
+			/* Replace dname with found. */
+			dnslib_dname_release(*dname);
+			*dname = found_dname;
+			return 1; /*! \todo Error code? */
+
+		} else {
+
+			/* If the dname is already in the table, there is already
+			 * a reference to it.
+			 */
+			dnslib_dname_release(found_dname);
+		}
 	}
 
 //	printf("Done.\n");
@@ -199,8 +216,8 @@ int dnslib_dname_table_add_dname2(dnslib_dname_table_t *table,
 	return DNSLIB_EOK;
 }
 
-int dnslib_dname_table_copy(dnslib_dname_table_t *from,
-                            dnslib_dname_table_t *to)
+int dnslib_dname_table_shallow_copy(dnslib_dname_table_t *from,
+                                    dnslib_dname_table_t *to)
 {
 	to->id_counter = from->id_counter;
 

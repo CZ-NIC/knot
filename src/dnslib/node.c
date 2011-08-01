@@ -170,6 +170,8 @@ dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent,
 		return NULL;
 	}
 
+	/* Store reference to owner. */
+	dnslib_dname_retain(owner);
 	ret->owner = owner;
 	dnslib_node_set_parent(ret, parent);
 	ret->rrsets = skip_create_list(compare_rrset_types);
@@ -430,6 +432,18 @@ const dnslib_dname_t *dnslib_node_owner(const dnslib_node_t *node)
 dnslib_dname_t *dnslib_node_get_owner(const dnslib_node_t *node)
 {
 	return node->owner;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void dnslib_node_set_owner(dnslib_node_t *node, dnslib_dname_t* owner)
+{
+	if (node) {
+		/* Retain new owner and release old owner. */
+		dnslib_dname_retain(owner);
+		dnslib_dname_release(node->owner);
+		node->owner = owner;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -697,10 +711,12 @@ void dnslib_node_free(dnslib_node_t **node, int free_owner, int fix_refs)
 		debug_dnslib_node("Freeing RRSets.\n");
 		skip_destroy_list(&(*node)->rrsets, NULL, NULL);
 	}
-	if (free_owner) {
-		debug_dnslib_node("Freeing owner.\n");
-		dnslib_dname_free(&(*node)->owner);
-	}
+
+	/*! \todo Always release owner? */
+	//if (free_owner) {
+		debug_dnslib_node("Releasing owner.\n");
+		dnslib_dname_release((*node)->owner);
+	//}
 
 	// check nodes referencing this node and fix the references
 
@@ -757,7 +773,7 @@ int dnslib_node_compare(dnslib_node_t *node1, dnslib_node_t *node2)
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_node_deep_copy(const dnslib_node_t *from, dnslib_node_t **to)
+int dnslib_node_shallow_copy(const dnslib_node_t *from, dnslib_node_t **to)
 {
 	// create new node
 	*to = dnslib_node_new(from->owner, from->parent, from->flags);
@@ -765,17 +781,10 @@ int dnslib_node_deep_copy(const dnslib_node_t *from, dnslib_node_t **to)
 		return DNSLIB_ENOMEM;
 	}
 
-	// copy references
-	
+	// copy references	
 	// do not use the API function to set parent, so that children count 
 	// is not changed
-	(*to)->parent = from->parent;
-	(*to)->nsec3_node = from->nsec3_node;
-	(*to)->nsec3_referer = from->nsec3_referer;
-	(*to)->wildcard_child = from->wildcard_child;
-	(*to)->prev = from->prev;
-	(*to)->next = from->next;
-	(*to)->children = from->children;
+	memcpy(*to, from, sizeof(dnslib_node_t));
 
 	// copy RRSets
 	// copy the skip list with the old references
@@ -785,8 +794,6 @@ int dnslib_node_deep_copy(const dnslib_node_t *from, dnslib_node_t **to)
 		*to = NULL;
 		return DNSLIB_ENOMEM;
 	}
-
-	(*to)->rrset_count = from->rrset_count;
 
 	return DNSLIB_EOK;
 }

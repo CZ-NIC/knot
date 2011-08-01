@@ -98,16 +98,6 @@ const dnslib_zone_t *dnslib_zonedb_find_zone_for_name(dnslib_zonedb_t *db,
                                                    const dnslib_dname_t *dname);
 
 /*!
- * \brief Copies the zone database structure (but not the zones within).
- *
- * \param db Zone database to copy.
- *
- * \return A new zone database structure containing the same zones as \a db or
- *         NULL if an error occured.
- */
-dnslib_zonedb_t *dnslib_zonedb_copy(const dnslib_zonedb_t *db);
-
-/*!
  * \brief Destroys and deallocates the zone database structure (but not the
  *        zones within).
  *

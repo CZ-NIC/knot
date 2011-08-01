@@ -300,6 +300,9 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			dname = dnslib_dname_new_from_str((char *)wireformat,
 							  length,
 							  NULL);
+			/*! \todo implement refcounting correctly. */
+			ref_init(&dname->ref, 0); /* disable dtor */
+			ref_retain(&dname->ref);
 
 			if (dname == NULL) {
 				dbg_rdata("malformed dname!\n");
@@ -1824,6 +1827,9 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	dnslib_dname_t *dname =
 		dnslib_dname_new_from_str(name, strlen(name), NULL);
+	/*! \todo implement refcounting correctly. */
+	ref_init(&dname->ref, 0); /* disable dtor */
+	ref_retain(&dname->ref);
 
 	dnslib_node_t *origin_node = dnslib_node_new(dname, NULL, 0);
 

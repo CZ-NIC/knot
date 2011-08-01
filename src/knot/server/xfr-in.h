@@ -61,7 +61,7 @@ typedef struct {
 /*!
  * \brief Creates normal query for the given zone name and the SOA type.
  *
- * \param zone_name Name of the zone to ask for - the SOA owner.
+ * \param zone Zone to ask for - the SOA owner.
  * \param buffer Buffer to fill the message in.
  * \param size In: available space in the buffer. Out: actual size of the
  *             message in bytes.
@@ -70,7 +70,7 @@ typedef struct {
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int xfrin_create_soa_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
+int xfrin_create_soa_query(const dnslib_zone_contents_t *zone, uint8_t *buffer,
                            size_t *size);
 
 /*!
@@ -90,7 +90,7 @@ int xfrin_transfer_needed(const dnslib_zone_contents_t *zone,
 /*!
  * \brief Creates normal query for the given zone name and the AXFR type.
  *
- * \param zone_name Name of the zone to ask for - the SOA owner.
+ * \param zone Zone to ask for - the SOA owner.
  * \param buffer Buffer to fill the message in.
  * \param size In: available space in the buffer. Out: actual size of the
  *             message in bytes.
@@ -99,13 +99,13 @@ int xfrin_transfer_needed(const dnslib_zone_contents_t *zone,
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int xfrin_create_axfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
+int xfrin_create_axfr_query(const dnslib_zone_contents_t *zone, uint8_t *buffer,
                             size_t *size);
 
 /*!
  * \brief Creates normal query for the given zone name and the IXFR type.
  *
- * \param zone_name Name of the zone to ask for - the SOA owner.
+ * \param zone Zone to ask for - the SOA owner.
  * \param buffer Buffer to fill the message in.
  * \param size In: available space in the buffer. Out: actual size of the
  *             message in bytes.
@@ -114,7 +114,7 @@ int xfrin_create_axfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int xfrin_create_ixfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
+int xfrin_create_ixfr_query(const dnslib_zone_contents_t *zone, uint8_t *buffer,
                             size_t *size);
 
 /*!
@@ -143,7 +143,7 @@ int xfrin_zone_transferred(ns_nameserver_t *nameserver,
  * \todo Refactor!!!
  */
 int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
-                              dnslib_zone_contents_t **zone);
+			      dnslib_zone_contents_t **zone);
 
 /*!
  * \brief Destroys the whole changesets structure.
