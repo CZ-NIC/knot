@@ -134,7 +134,7 @@ int dnslib_dname_from_wire(const uint8_t *name, unsigned int size,
                            struct dnslib_node *node, dnslib_dname_t *target);
 
 /*!
- * \brief Copies the given domain name.
+ * \brief Duplicates the given domain name.
  *
  * \note Copied dname referense count is reset to 1, caller is responsible
  *       for releasing it after use.
@@ -142,8 +142,6 @@ int dnslib_dname_from_wire(const uint8_t *name, unsigned int size,
  * \param dname Domain name to be copied.
  *
  * \return New domain name which is an exact copy of \a dname.
- *
- * \todo Deep/shallow copying.
  */
 dnslib_dname_t *dnslib_dname_copy(const dnslib_dname_t *dname);
 
