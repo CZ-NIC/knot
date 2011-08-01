@@ -3050,6 +3050,13 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 			return KNOT_EINVAL;
 		}
 
+		/* Match against ACL to verify. */
+		if (acl_match(zd->xfr_in.acl, from) == ACL_DENY) {
+			debug_ns("Unauthorized SOA response, will not start "
+				 "XFR.\n");
+			return KNOT_EINVAL;
+		}
+
 		/* Cancel EXPIRE timer. */
 		evsched_t *sched = nameserver->server->sched;
 		event_t *expire_ev = zd->xfr_in.expire;
