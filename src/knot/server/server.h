@@ -90,7 +90,7 @@ typedef struct server_t {
 	volatile unsigned state;
 
 	/*! \brief Reference to the name server structure. */
-	ns_nameserver_t *nameserver;
+	dnslib_nameserver_t *nameserver;
 
 	/*! \brief XFR handler. */
 	xfrhandler_t *xfr_h;

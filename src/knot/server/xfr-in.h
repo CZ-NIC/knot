@@ -125,7 +125,7 @@ int xfrin_create_ixfr_query(const dnslib_zone_contents_t *zone, uint8_t *buffer,
  *
  * \retval KNOT_ENOTSUP
  */
-int xfrin_zone_transferred(ns_nameserver_t *nameserver,
+int xfrin_zone_transferred(dnslib_nameserver_t *nameserver,
                            dnslib_zone_contents_t *zone);
 
 /*!

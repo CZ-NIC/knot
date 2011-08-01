@@ -24,7 +24,7 @@
 typedef struct xfrhandler_t
 {
 	dt_unit_t     *unit;  /*!< \brief Threading unit. */
-	ns_nameserver_t *ns;  /*!< \brief Pointer to nameserver.*/
+	dnslib_nameserver_t *ns;  /*!< \brief Pointer to nameserver.*/
 	evqueue_t        *q;  /*!< \brief Shared XFR requests queue.*/
 	evqueue_t       *cq;  /*!< \brief XFR client requests queue.*/
 	struct ev_loop *loop; /*!< \brief Event loop. */
@@ -43,7 +43,7 @@ typedef struct xfrhandler_t
  * \retval New handler on success.
  * \retval NULL on error.
  */
-xfrhandler_t *xfr_create(size_t thrcount, ns_nameserver_t *ns);
+xfrhandler_t *xfr_create(size_t thrcount, dnslib_nameserver_t *ns);
 
 /*!
  * \brief Delete XFR handler.
@@ -102,7 +102,7 @@ static inline int xfr_join(xfrhandler_t *handler) {
  * \retval KNOT_EINVAL on NULL handler or request.
  * \retval KNOT_ERROR on error.
  */
-int xfr_request(xfrhandler_t *handler, ns_xfr_t *req);
+int xfr_request(xfrhandler_t *handler, dnslib_ns_xfr_t *req);
 
 /*!
  * \brief XFR master runnable.

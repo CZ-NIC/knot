@@ -674,7 +674,7 @@ static int zones_journal_apply(dnslib_zone_t *zone)
  *
  * \return Number of inserted zones.
  */
-static int zones_insert_zones(ns_nameserver_t *ns,
+static int zones_insert_zones(dnslib_nameserver_t *ns,
 			      const list *zone_conf,
                               const dnslib_zonedb_t *db_old,
                               dnslib_zonedb_t *db_new)
@@ -838,7 +838,7 @@ static int zones_remove_zones(const list *zone_conf, dnslib_zonedb_t *db_old)
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-int zones_update_db_from_config(const conf_t *conf, ns_nameserver_t *ns,
+int zones_update_db_from_config(const conf_t *conf, dnslib_nameserver_t *ns,
                                dnslib_zonedb_t **db_old)
 {
 	// Check parameters

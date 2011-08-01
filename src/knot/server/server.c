@@ -384,7 +384,7 @@ server_t *server_create()
 
 	// Create name server
 	debug_server("Creating Name Server structure...\n");
-	server->nameserver = ns_create();
+	server->nameserver = dnslib_ns_create();
 	if (server->nameserver == NULL) {
 		free(server);
 		return NULL;
@@ -396,7 +396,7 @@ server_t *server_create()
 	// Create XFR handler
 	server->xfr_h = xfr_create(XFR_THREADS_COUNT, server->nameserver);
 	if (!server->xfr_h) {
-		ns_destroy(&server->nameserver);
+		dnslib_ns_destroy(&server->nameserver);
 		free(server);
 		return NULL;
 	}
@@ -634,7 +634,7 @@ void server_destroy(server_t **server)
 	evsched_delete(&(*server)->sched);
 
 	stat_static_gath_free();
-	ns_destroy(&(*server)->nameserver);
+	dnslib_ns_destroy(&(*server)->nameserver);
 
 	free(*server);
 

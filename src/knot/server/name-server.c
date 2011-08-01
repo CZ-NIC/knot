@@ -5,17 +5,19 @@
 
 #include <urcu.h>
 
-#include "knot/server/socket.h"
-#include "knot/common.h"
+//#include "knot/server/socket.h"
+//#include "knot/common.h"
+
 #include "knot/server/name-server.h"
 #include "knot/server/notify.h"
 #include "knot/server/xfr-in.h"
 #include "knot/server/server.h"
 #include "knot/stat/stat.h"
-#include "dnslib/dnslib.h"
-#include "dnslib/debug.h"
 #include "knot/other/error.h"
 #include "knot/server/zones.h"
+
+#include "dnslib/dnslib.h"
+#include "dnslib/debug.h"
 #include "dnslib/packet.h"
 #include "dnslib/response2.h"
 #include "dnslib/query.h"
@@ -1799,7 +1801,7 @@ static int ns_response_to_wire(dnslib_packet_t *resp, uint8_t *wire,
 
 	if ((ret = dnslib_packet_to_wire(resp, &rwire, &rsize))
 	     != DNSLIB_EOK) {
-		log_answer_error("Error converting response packet "
+		debug_dnslib_ns("Error converting response packet "
 		                 "to wire format (error %d).\n", ret);
 		return NS_ERR_SERVFAIL;
 	}
@@ -1820,13 +1822,13 @@ static int ns_response_to_wire(dnslib_packet_t *resp, uint8_t *wire,
 /*----------------------------------------------------------------------------*/
 
 typedef struct ns_axfr_params {
-	ns_xfr_t *xfr;
+	dnslib_ns_xfr_t *xfr;
 	int ret;
 } ns_axfr_params_t;
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_axfr_send_and_clear(ns_xfr_t *xfr)
+static int ns_axfr_send_and_clear(dnslib_ns_xfr_t *xfr)
 {
 	assert(xfr != NULL);
 	assert(xfr->query != NULL);
@@ -1855,7 +1857,7 @@ static int ns_axfr_send_and_clear(ns_xfr_t *xfr)
 		debug_ns("Send returned %d\n", res);
 		return res;
 	} else if (res != real_size) {
-		log_server_warning("AXFR did not send right amount of bytes."
+		debug_dnslib_ns("AXFR did not send right amount of bytes."
 		                   " Transfer size: %zu, sent: %d\n",
 		                   real_size, res);
 	}
@@ -1972,7 +1974,7 @@ rrsigs:
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_axfr_from_zone(dnslib_zone_contents_t *zone, ns_xfr_t *xfr)
+static int ns_axfr_from_zone(dnslib_zone_contents_t *zone, dnslib_ns_xfr_t *xfr)
 {
 	assert(xfr != NULL);
 	assert(xfr->query != NULL);
@@ -2062,7 +2064,7 @@ static int ns_axfr_from_zone(dnslib_zone_contents_t *zone, ns_xfr_t *xfr)
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_ixfr_put_rrset(ns_xfr_t *xfr, const dnslib_rrset_t *rrset)
+static int ns_ixfr_put_rrset(dnslib_ns_xfr_t *xfr, const dnslib_rrset_t *rrset)
 {
 	int res = dnslib_response2_add_rrset_answer(xfr->response, rrset,
 	                                            0, 0, 0);
@@ -2092,7 +2094,7 @@ static int ns_ixfr_put_rrset(ns_xfr_t *xfr, const dnslib_rrset_t *rrset)
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_ixfr_put_changeset(ns_xfr_t *xfr, const xfrin_changeset_t *chgset)
+static int ns_ixfr_put_changeset(dnslib_ns_xfr_t *xfr, const xfrin_changeset_t *chgset)
 {
 	// 1) put origin SOA
 	int res = ns_ixfr_put_rrset(xfr, chgset->soa_from);
@@ -2127,7 +2129,7 @@ static int ns_ixfr_put_changeset(ns_xfr_t *xfr, const xfrin_changeset_t *chgset)
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_ixfr_from_zone(const dnslib_zone_t *zone, ns_xfr_t *xfr)
+static int ns_ixfr_from_zone(const dnslib_zone_t *zone, dnslib_ns_xfr_t *xfr)
 {
 	assert(zone != NULL);
 	assert(xfr != NULL);
@@ -2196,7 +2198,7 @@ static int ns_ixfr_from_zone(const dnslib_zone_t *zone, ns_xfr_t *xfr)
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_axfr(const dnslib_zonedb_t *zonedb, ns_xfr_t *xfr)
+static int ns_axfr(const dnslib_zonedb_t *zonedb, dnslib_ns_xfr_t *xfr)
 {
 	const dnslib_dname_t *qname = dnslib_packet_qname(xfr->response);
 
@@ -2253,7 +2255,7 @@ DEBUG_NS(
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_ixfr(const dnslib_zonedb_t *zonedb, ns_xfr_t *xfr)
+static int ns_ixfr(const dnslib_zonedb_t *zonedb, dnslib_ns_xfr_t *xfr)
 {
 	assert(zonedb != NULL);
 	assert(xfr != NULL);
@@ -2356,9 +2358,9 @@ static int ns_send_cb(int fd, sockaddr_t *addr, uint8_t *msg, size_t msglen)
 /* Public functions                                                           */
 /*----------------------------------------------------------------------------*/
 
-ns_nameserver_t *ns_create()
+dnslib_nameserver_t *dnslib_ns_create()
 {
-	ns_nameserver_t *ns = malloc(sizeof(ns_nameserver_t));
+	dnslib_nameserver_t *ns = malloc(sizeof(dnslib_nameserver_t));
 	if (ns == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -2386,7 +2388,7 @@ ns_nameserver_t *ns_create()
 
 	int rc = dnslib_packet_set_max_size(err, DNSLIB_WIRE_HEADER_SIZE);
 	if (rc != DNSLIB_EOK) {
-		log_server_error("Error creating default error response: %s.\n",
+		debug_dnslib_ns("Error creating default error response: %s.\n",
 		                 dnslib_strerror(rc));
 		free(ns);
 		dnslib_packet_free(&err);
@@ -2395,7 +2397,7 @@ ns_nameserver_t *ns_create()
 
 	rc = dnslib_response2_init(err);
 	if (rc != DNSLIB_EOK) {
-		log_server_error("Error initializing default error response:"
+		debug_dnslib_ns("Error initializing default error response:"
 		                 " %s.\n", dnslib_strerror(rc));
 		free(ns);
 		dnslib_packet_free(&err);
@@ -2410,7 +2412,7 @@ ns_nameserver_t *ns_create()
 	uint8_t *error_wire = NULL;
 
 	if (dnslib_packet_to_wire(err, &error_wire, &ns->err_resp_size) != 0) {
-		log_answer_error("Error while converting "
+		debug_dnslib_ns("Error while converting "
 		                 "default error response to "
 		                 "wire format \n");
 		dnslib_packet_free(&err);
@@ -2420,7 +2422,7 @@ ns_nameserver_t *ns_create()
 
 	ns->err_response = (uint8_t *)malloc(ns->err_resp_size);
 	if (ns->err_response == NULL) {
-		log_answer_error("Error while converting default "
+		debug_dnslib_ns("Error while converting default "
 		                 "error response to wire format \n");
 		dnslib_packet_free(&err);
 		free(ns);
@@ -2436,7 +2438,7 @@ ns_nameserver_t *ns_create()
 	if (EDNS_ENABLED) {
 		ns->opt_rr = dnslib_edns_new();
 		if (ns->opt_rr == NULL) {
-			log_answer_error("Error while preparing OPT RR of the"
+			debug_dnslib_ns("Error while preparing OPT RR of the"
 			                 " server.\n");
 			dnslib_packet_free(&err);
 			free(ns);
@@ -2459,11 +2461,11 @@ ns_nameserver_t *ns_create()
 
 /*----------------------------------------------------------------------------*/
 
-int ns_parse_packet(const uint8_t *query_wire, size_t qsize,
+int dnslib_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
                     dnslib_packet_t *packet, dnslib_packet_type_t *type)
 {
 	if (packet == NULL || query_wire == NULL || type == NULL) {
-		log_answer_error("Missing parameter to query parsing.\n");
+		debug_dnslib_ns("Missing parameter to query parsing.\n");
 		return KNOT_EINVAL;
 	}
 
@@ -2482,7 +2484,7 @@ int ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 
 	if ((ret = dnslib_packet_parse_from_wire(packet, query_wire,
 	                                         qsize, 1)) != 0) {
-		log_answer_info("Error while parsing packet, "
+		debug_dnslib_ns("Error while parsing packet, "
 		                "dnslib error '%s'.\n", dnslib_strerror(ret));
 //		dnslib_response_free(&parsed);
 		return DNSLIB_RCODE_FORMERR;
@@ -2525,7 +2527,7 @@ int ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 
 /*----------------------------------------------------------------------------*/
 
-void ns_error_response(ns_nameserver_t *nameserver, uint16_t query_id,
+void dnslib_ns_error_response(dnslib_nameserver_t *nameserver, uint16_t query_id,
                        uint8_t rcode, uint8_t *response_wire, size_t *rsize)
 {
 	debug_ns("Error response: \n");
@@ -2618,7 +2620,7 @@ void ns_error_response(ns_nameserver_t *nameserver, uint16_t query_id,
 
 /*----------------------------------------------------------------------------*/
 
-int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
+int dnslib_ns_answer_normal(dnslib_nameserver_t *nameserver, dnslib_packet_t *query,
                      uint8_t *response_wire, size_t *rsize)
 {
 	// first, parse the rest of the packet
@@ -2630,9 +2632,9 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 	if (query->parsed < query->size) {
 		ret = dnslib_packet_parse_rest(query);
 		if (ret != DNSLIB_EOK) {
-			log_server_warning("Failed to parse rest of the query: "
+			debug_dnslib_ns("Failed to parse rest of the query: "
 			                   "%s.\n", dnslib_strerror(ret));
-			ns_error_response(nameserver, query->header.id,
+			dnslib_ns_error_response(nameserver, query->header.id,
 			           DNSLIB_RCODE_SERVFAIL, response_wire, rsize);
 			return KNOT_EOK;
 		}
@@ -2653,8 +2655,8 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 	dnslib_packet_t *response = dnslib_packet_new(
 	                               DNSLIB_PACKET_PREALLOC_RESPONSE);
 	if (response == NULL) {
-		log_server_warning("Failed to create packet structure.\n");
-		ns_error_response(nameserver, query->header.id,
+		debug_dnslib_ns("Failed to create packet structure.\n");
+		dnslib_ns_error_response(nameserver, query->header.id,
 		                  DNSLIB_RCODE_SERVFAIL, response_wire, rsize);
 		rcu_read_unlock();
 		return KNOT_EOK;
@@ -2663,8 +2665,8 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 	ret = dnslib_packet_set_max_size(response, *rsize);
 
 	if (ret != DNSLIB_EOK) {
-		log_server_warning("Failed to init response structure.\n");
-		ns_error_response(nameserver, query->header.id,
+		debug_dnslib_ns("Failed to init response structure.\n");
+		dnslib_ns_error_response(nameserver, query->header.id,
 		                  DNSLIB_RCODE_SERVFAIL, response_wire, rsize);
 		rcu_read_unlock();
 		dnslib_packet_free(&response);
@@ -2674,8 +2676,8 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 	ret = dnslib_response2_init_from_query(response, query);
 
 	if (ret != DNSLIB_EOK) {
-		log_server_warning("Failed to init response structure.\n");
-		ns_error_response(nameserver, query->header.id,
+		debug_dnslib_ns("Failed to init response structure.\n");
+		dnslib_ns_error_response(nameserver, query->header.id,
 		                  DNSLIB_RCODE_SERVFAIL, response_wire, rsize);
 		rcu_read_unlock();
 		dnslib_packet_free(&response);
@@ -2689,7 +2691,7 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 	if (dnslib_query_edns_supported(query)) {
 		ret = dnslib_response2_add_opt(response, nameserver->opt_rr, 0);
 		if (ret != DNSLIB_EOK) {
-			log_server_notice("Failed to set OPT RR to the response"
+			debug_dnslib_ns("Failed to set OPT RR to the response"
 			                  ": %s\n",dnslib_strerror(ret));
 		}
 	}
@@ -2697,7 +2699,7 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 	ret = ns_answer(zonedb, response);
 	if (ret != 0) {
 		// now only one type of error (SERVFAIL), later maybe more
-		ns_error_response(nameserver, query->header.id,
+		dnslib_ns_error_response(nameserver, query->header.id,
 		                  DNSLIB_RCODE_SERVFAIL, response_wire, rsize);
 	} else {
 		debug_ns("Created response packet.\n");
@@ -2707,7 +2709,7 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 		// 4) Transform the packet into wire format
 		if (ns_response_to_wire(response, response_wire, rsize) != 0) {
 			// send back SERVFAIL (as this is our problem)
-			ns_error_response(nameserver, query->header.id,
+			dnslib_ns_error_response(nameserver, query->header.id,
 			                  DNSLIB_RCODE_SERVFAIL, response_wire,
 			                  rsize);
 		}
@@ -2724,7 +2726,7 @@ int ns_answer_normal(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 
 /*----------------------------------------------------------------------------*/
 
-int ns_answer_notify(ns_nameserver_t *nameserver, dnslib_packet_t *query,
+int dnslib_ns_answer_notify(dnslib_nameserver_t *nameserver, dnslib_packet_t *query,
                      sockaddr_t *from, uint8_t *response_wire, size_t *rsize)
 {
 	debug_ns("ns_answer_notify()\n");
@@ -2749,7 +2751,7 @@ int ns_answer_notify(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 			/* rfc1996: Ignore request and report incident. */
 			char straddr[SOCKADDR_STRLEN];
 			sockaddr_tostr(from, straddr, sizeof(straddr));
-			log_server_error("Unauthorized NOTIFY request "
+			debug_dnslib_ns("Unauthorized NOTIFY request "
 			                 "from %s:%d.\n",
 			                 straddr, sockaddr_portnum(from));
 			return KNOT_EACCES;
@@ -2790,7 +2792,7 @@ int ns_answer_notify(ns_nameserver_t *nameserver, dnslib_packet_t *query,
 
 /*----------------------------------------------------------------------------*/
 
-int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
+int dnslib_ns_answer_axfr(dnslib_nameserver_t *nameserver, dnslib_ns_xfr_t *xfr)
 {
 	debug_ns("ns_answer_axfr()\n");
 
@@ -2805,9 +2807,9 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	dnslib_packet_t *response = dnslib_packet_new(
 	                               DNSLIB_PACKET_PREALLOC_RESPONSE);
 	if (response == NULL) {
-		log_server_warning("Failed to create packet structure.\n");
+		debug_dnslib_ns("Failed to create packet structure.\n");
 		/*! \todo xfr->wire is not NULL, will fail on assert! */
-		ns_error_response(nameserver, xfr->query->header.id,
+		dnslib_ns_error_response(nameserver, xfr->query->header.id,
 				  DNSLIB_RCODE_SERVFAIL, xfr->wire,
 				  &xfr->wire_size);
 		/*! \todo Hm, maybe send the packet? ;-) */
@@ -2817,9 +2819,9 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	int ret = dnslib_packet_set_max_size(response, xfr->wire_size);
 
 	if (ret != DNSLIB_EOK) {
-		log_server_warning("Failed to init response structure.\n");
+		debug_dnslib_ns("Failed to init response structure.\n");
 		/*! \todo xfr->wire is not NULL, will fail on assert! */
-		ns_error_response(nameserver, xfr->query->header.id,
+		dnslib_ns_error_response(nameserver, xfr->query->header.id,
 				  DNSLIB_RCODE_SERVFAIL, xfr->wire,
 				  &xfr->wire_size);
 		dnslib_packet_free(&response);
@@ -2830,9 +2832,9 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	ret = dnslib_response2_init_from_query(response, xfr->query);
 
 	if (ret != DNSLIB_EOK) {
-		log_server_warning("Failed to init response structure.\n");
+		debug_dnslib_ns("Failed to init response structure.\n");
 		/*! \todo xfr->wire is not NULL, will fail on assert! */
-		ns_error_response(nameserver, xfr->query->header.id,
+		dnslib_ns_error_response(nameserver, xfr->query->header.id,
 				  DNSLIB_RCODE_SERVFAIL, xfr->wire,
 				  &xfr->wire_size);
 		dnslib_packet_free(&response);
@@ -2846,7 +2848,7 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	/*! \todo Only if client supports it! */
 	ret = dnslib_response2_add_opt(xfr->response, nameserver->opt_rr, 0);
 	if (ret != DNSLIB_EOK) {
-		log_server_notice("Failed to set OPT RR to the response: %s\n",
+		debug_dnslib_ns("Failed to set OPT RR to the response: %s\n",
 		                  dnslib_strerror(ret));
 	}
 
@@ -2865,7 +2867,7 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		// now only one type of error (SERVFAIL), later maybe more
 		size_t real_size;
 		/*! \todo xfr->wire is not NULL, will fail on assert! */
-		ns_error_response(nameserver, xfr->query->header.id,
+		dnslib_ns_error_response(nameserver, xfr->query->header.id,
 				  DNSLIB_RCODE_SERVFAIL, xfr->wire,
 		                  &real_size);
 		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire, real_size);
@@ -2876,7 +2878,7 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	dnslib_packet_free(&xfr->response);
 
 	if (ret < 0) {
-		log_server_error("Error while sending AXFR: %s\n",
+		debug_dnslib_ns("Error while sending AXFR: %s\n",
 		                 knot_strerror(ret));
 		// there was some error but there is not much to do about it
 		return ret;
@@ -2887,7 +2889,7 @@ int ns_answer_axfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 
 /*----------------------------------------------------------------------------*/
 
-int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
+int dnslib_ns_answer_ixfr(dnslib_nameserver_t *nameserver, dnslib_ns_xfr_t *xfr)
 {
 	debug_ns("ns_answer_ixfr()\n");
 
@@ -2901,9 +2903,9 @@ int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	dnslib_packet_t *response = dnslib_packet_new(
 	                               DNSLIB_PACKET_PREALLOC_RESPONSE);
 	if (response == NULL) {
-		log_server_warning("Failed to create packet structure.\n");
+		debug_dnslib_ns("Failed to create packet structure.\n");
 		/*! \todo xfr->wire is not NULL, will fail on assert! */
-		ns_error_response(nameserver, xfr->query->header.id,
+		dnslib_ns_error_response(nameserver, xfr->query->header.id,
 		                  DNSLIB_RCODE_SERVFAIL, xfr->wire,
 		                  &xfr->wire_size);
 		/*! \todo Hm, maybe send the packet? ;-) */
@@ -2913,9 +2915,9 @@ int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	int ret = dnslib_packet_set_max_size(response, xfr->wire_size);
 
 	if (ret != DNSLIB_EOK) {
-		log_server_warning("Failed to init response structure.\n");
+		debug_dnslib_ns("Failed to init response structure.\n");
 		/*! \todo xfr->wire is not NULL, will fail on assert! */
-		ns_error_response(nameserver, xfr->query->header.id,
+		dnslib_ns_error_response(nameserver, xfr->query->header.id,
 		                  DNSLIB_RCODE_SERVFAIL, xfr->wire,
 		                  &xfr->wire_size);
 		/*! \todo Hm, maybe send the packet? ;-) */
@@ -2930,9 +2932,9 @@ int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	ret = dnslib_response2_init_from_query(response, xfr->query);
 
 	if (ret != DNSLIB_EOK) {
-		log_server_warning("Failed to init response structure.\n");
+		debug_dnslib_ns("Failed to init response structure.\n");
 		/*! \todo xfr->wire is not NULL, will fail on assert! */
-		ns_error_response(nameserver, xfr->query->header.id,
+		dnslib_ns_error_response(nameserver, xfr->query->header.id,
 		                  DNSLIB_RCODE_SERVFAIL, xfr->wire,
 		                  &xfr->wire_size);
 		/*! \todo Hm, maybe send the packet? ;-) */
@@ -2951,7 +2953,7 @@ int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		size_t size = 0;
 		ret = dnslib_packet_to_wire(response, &wire, &size);
 		if (ret != DNSLIB_EOK) {
-			ns_error_response(nameserver, xfr->query->header.id,
+			dnslib_ns_error_response(nameserver, xfr->query->header.id,
 			                  DNSLIB_RCODE_FORMERR, wire, &size);
 		}
 
@@ -2968,7 +2970,7 @@ int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		ret = dnslib_response2_add_opt(xfr->response,
 		                               nameserver->opt_rr, 0);
 		if (ret != DNSLIB_EOK) {
-			log_server_notice("Failed to set OPT RR to the response"
+			debug_dnslib_ns("Failed to set OPT RR to the response"
 			                  ": %s\n", dnslib_strerror(ret));
 		}
 	}
@@ -2993,7 +2995,7 @@ int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 		size_t size = 0;
 		ret = dnslib_packet_to_wire(response, &wire, &size);
 		if (ret != DNSLIB_EOK) {
-			ns_error_response(nameserver, xfr->query->header.id,
+			dnslib_ns_error_response(nameserver, xfr->query->header.id,
 			                  DNSLIB_RCODE_SERVFAIL, wire, &size);
 		}
 
@@ -3005,7 +3007,7 @@ int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	dnslib_packet_free(&xfr->response);
 
 	if (ret < 0) {
-		log_server_error("Error while sending IXFR: %s\n",
+		debug_dnslib_ns("Error while sending IXFR: %s\n",
 		                 knot_strerror(ret));
 		// there was some error but there is not much to do about it
 		return ret;
@@ -3014,7 +3016,7 @@ int ns_answer_ixfr(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	return KNOT_EOK;
 }
 
-int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
+int dnslib_ns_process_response(dnslib_nameserver_t *nameserver, sockaddr_t *from,
                         dnslib_packet_t *packet, uint8_t *response_wire,
                         size_t *rsize)
 {
@@ -3096,14 +3098,14 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 		}
 
 		/* Prepare XFR client transfer. */
-		ns_xfr_t xfr_req;
-		memset(&xfr_req, 0, sizeof(ns_xfr_t));
+		dnslib_ns_xfr_t xfr_req;
+		memset(&xfr_req, 0, sizeof(dnslib_ns_xfr_t));
 		memcpy(&xfr_req.addr, from, sizeof(sockaddr_t));
 		xfr_req.data = (void *)zone;
 		xfr_req.send = ns_send_cb;
 
 		/* Select transfer method. */
-		xfr_req.type = ns_transfer_to_use(nameserver, contents);
+		xfr_req.type = dnslib_ns_transfer_to_use(nameserver, contents);
 
 		/* Unlock zone contents. */
 		rcu_read_unlock();
@@ -3118,7 +3120,7 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 
 /*----------------------------------------------------------------------------*/
 
-int ns_process_notify(ns_nameserver_t *nameserver, sockaddr_t *from,
+int dnslib_ns_process_notify(dnslib_nameserver_t *nameserver, sockaddr_t *from,
                       dnslib_packet_t *packet, uint8_t *response_wire,
                       size_t *rsize)
 {
@@ -3176,7 +3178,7 @@ int ns_process_notify(ns_nameserver_t *nameserver, sockaddr_t *from,
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_find_zone_for_xfr(ns_xfr_t *xfr, const char **zonefile,
+static int ns_find_zone_for_xfr(dnslib_ns_xfr_t *xfr, const char **zonefile,
                                 const char **zonedb)
 {
 	// find the zone file name and zone db file name for the zone
@@ -3206,7 +3208,7 @@ static int ns_find_zone_for_xfr(ns_xfr_t *xfr, const char **zonefile,
 
 	char *name = dnslib_dname_to_str(dnslib_node_owner(
 	                 dnslib_zone_contents_apex(xfr->zone)));
-	log_server_error("No zone found for the zone received by transfer "
+	debug_dnslib_ns("No zone found for the zone received by transfer "
 	                 "(%s).\n", name);
 	free(name);
 
@@ -3253,14 +3255,14 @@ static char *ns_find_free_filename(const char *old_name)
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_dump_xfr_zone_text(ns_xfr_t *xfr, const char *zonefile)
+static int ns_dump_xfr_zone_text(dnslib_ns_xfr_t *xfr, const char *zonefile)
 {
 	assert(xfr != NULL && xfr->zone != NULL && zonefile != NULL);
 
 	char *new_zonefile = ns_find_free_filename(zonefile);
 
 	if (new_zonefile == NULL) {
-		log_server_error("Failed to find free filename for temporary "
+		debug_dnslib_ns("Failed to find free filename for temporary "
 		                 "storage of the zone text file.\n");
 		return KNOT_ERROR;	/*! \todo New error code? */
 	}
@@ -3268,7 +3270,7 @@ static int ns_dump_xfr_zone_text(ns_xfr_t *xfr, const char *zonefile)
 	int rc = zone_dump_text(xfr->zone, new_zonefile);
 
 	if (rc != DNSLIB_EOK) {
-		log_server_error("Failed to save the zone to text zone file %s."
+		debug_dnslib_ns("Failed to save the zone to text zone file %s."
 		                 "\n", new_zonefile);
 		free(new_zonefile);
 		return KNOT_ERROR;
@@ -3283,7 +3285,7 @@ static int ns_dump_xfr_zone_text(ns_xfr_t *xfr, const char *zonefile)
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_dump_xfr_zone_binary(ns_xfr_t *xfr, const char *zonedb,
+static int ns_dump_xfr_zone_binary(dnslib_ns_xfr_t *xfr, const char *zonedb,
                                    const char *zonefile)
 {
 	assert(xfr != NULL && xfr->zone != NULL && zonedb != NULL);
@@ -3291,7 +3293,7 @@ static int ns_dump_xfr_zone_binary(ns_xfr_t *xfr, const char *zonedb,
 	char *new_zonedb = ns_find_free_filename(zonedb);
 
 	if (new_zonedb == NULL) {
-		log_server_error("Failed to find free filename for temporary "
+		debug_dnslib_ns("Failed to find free filename for temporary "
 		                 "storage of the zone binary file.\n");
 		return KNOT_ERROR;	/*! \todo New error code? */
 	}
@@ -3299,7 +3301,7 @@ static int ns_dump_xfr_zone_binary(ns_xfr_t *xfr, const char *zonedb,
 	int rc = dnslib_zdump_binary(xfr->zone, new_zonedb, 0, zonefile);
 
 	if (rc != DNSLIB_EOK) {
-		log_server_error("Failed to save the zone to binary zone db %s."
+		debug_dnslib_ns("Failed to save the zone to binary zone db %s."
 		                 "\n", new_zonedb);
 		free(new_zonedb);
 		return KNOT_ERROR;
@@ -3314,7 +3316,7 @@ static int ns_dump_xfr_zone_binary(ns_xfr_t *xfr, const char *zonedb,
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_save_zone(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
+static int ns_save_zone(dnslib_nameserver_t *nameserver, dnslib_ns_xfr_t *xfr)
 {
 	assert(nameserver != NULL && xfr != NULL && xfr->zone != NULL
 	       && dnslib_zone_contents_apex(xfr->zone) != NULL);
@@ -3342,7 +3344,7 @@ static int ns_save_zone(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 
 /*----------------------------------------------------------------------------*/
 
-int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
+int dnslib_ns_process_axfrin(dnslib_nameserver_t *nameserver, dnslib_ns_xfr_t *xfr)
 {
 	/*! \todo Implement me.
 	 *  - xfr contains partially-built zone or NULL (xfr->data)
@@ -3393,7 +3395,7 @@ int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 
 /*----------------------------------------------------------------------------*/
 
-int ns_switch_zone(ns_nameserver_t *nameserver, dnslib_zone_contents_t *zone)
+int dnslib_ns_switch_zone(dnslib_nameserver_t *nameserver, dnslib_zone_contents_t *zone)
 {
 	debug_ns("Replacing zone by new one: %p\n", zone);
 
@@ -3403,7 +3405,7 @@ int ns_switch_zone(ns_nameserver_t *nameserver, dnslib_zone_contents_t *zone)
 	if (z == NULL) {
 		char *name = dnslib_dname_to_str(dnslib_node_owner(
 				dnslib_zone_contents_apex(zone)));
-		log_server_warning("Failed to replace zone %s, old zone "
+		debug_dnslib_ns("Failed to replace zone %s, old zone "
 		                   "not found\n", name);
 		free(name);
 	}
@@ -3416,7 +3418,7 @@ int ns_switch_zone(ns_nameserver_t *nameserver, dnslib_zone_contents_t *zone)
 //	if (old == NULL) {
 //		char *name = dnslib_dname_to_str(
 //				dnslib_node_owner(dnslib_zone_apex(zone)));
-//		log_server_warning("Failed to replace zone %s\n", name);
+//		debug_dnslib_ns("Failed to replace zone %s\n", name);
 //		free(name);
 //	}
 
@@ -3450,7 +3452,7 @@ DEBUG_NS(
 
 /*----------------------------------------------------------------------------*/
 
-int ns_apply_ixfr_changes(dnslib_zone_t *zone, xfrin_changesets_t *chgsets)
+int dnslib_ns_apply_ixfr_changes(dnslib_zone_t *zone, xfrin_changesets_t *chgsets)
 {
 	/*! \todo Apply changes to the zone when they are parsed. */
 	return KNOT_EOK;
@@ -3458,7 +3460,7 @@ int ns_apply_ixfr_changes(dnslib_zone_t *zone, xfrin_changesets_t *chgsets)
 
 /*----------------------------------------------------------------------------*/
 
-int ns_process_ixfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
+int dnslib_ns_process_ixfrin(dnslib_nameserver_t *nameserver, dnslib_ns_xfr_t *xfr)
 {
 	/*! \todo Implement me.
 	 *  - xfr contains partially-built IXFR journal entry or NULL
@@ -3500,7 +3502,7 @@ int ns_process_ixfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 			return ret;
 		}
 
-		ret = ns_apply_ixfr_changes(zone, chgsets);
+		ret = dnslib_ns_apply_ixfr_changes(zone, chgsets);
 		if (ret != KNOT_EOK) {
 			debug_ns("Failed to apply changes to the zone.");
 			// left the changes to be applied later..?
@@ -3518,7 +3520,7 @@ int ns_process_ixfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 
 /*----------------------------------------------------------------------------*/
 
-ns_xfr_type_t ns_transfer_to_use(ns_nameserver_t *nameserver,
+dnslib_ns_xfr_type_t dnslib_ns_transfer_to_use(dnslib_nameserver_t *nameserver,
                                  const dnslib_zone_contents_t *zone)
 {
 	/*! \todo Implement. */
@@ -3527,7 +3529,7 @@ ns_xfr_type_t ns_transfer_to_use(ns_nameserver_t *nameserver,
 
 /*----------------------------------------------------------------------------*/
 
-void ns_destroy(ns_nameserver_t **nameserver)
+void dnslib_ns_destroy(dnslib_nameserver_t **nameserver)
 {
 	synchronize_rcu();
 
@@ -3545,9 +3547,9 @@ void ns_destroy(ns_nameserver_t **nameserver)
 
 /*----------------------------------------------------------------------------*/
 
-int ns_conf_hook(const struct conf_t *conf, void *data)
+int dnslib_ns_conf_hook(const struct conf_t *conf, void *data)
 {
-	ns_nameserver_t *ns = (ns_nameserver_t *)data;
+	dnslib_nameserver_t *ns = (dnslib_nameserver_t *)data;
 	debug_ns("Event: reconfiguring name server.\n");
 
 	dnslib_zonedb_t *old_db = 0;
