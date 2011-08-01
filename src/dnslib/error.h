@@ -19,6 +19,9 @@ enum dnslib_error {
 	DNSLIB_EOK = 0,         /*!< OK */
 	DNSLIB_ERROR = -10000,  /*!< General dnslib error. */
 	DNSLIB_ENOMEM,          /*!< Not enough memory. */
+	DNSLIB_ENOTSUP,         /*!< Operation not supported. */
+	DNSLIB_EAGAIN,          /*!< OS lacked necessary resources. */
+	DNSLIB_ERANGE,          /*!< Value is out of range. */
 	DNSLIB_EBADARG,         /*!< Wrong argument supported. */
 	DNSLIB_EFEWDATA,        /*!< Not enough data to parse. */
 	DNSLIB_ESPACE,          /*!< Not enough space provided. */
