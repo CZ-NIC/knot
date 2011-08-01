@@ -686,10 +686,44 @@ static int xfrin_changeset_add_rrset(dnslib_rrset_t ***rrsets,
 
 /*----------------------------------------------------------------------------*/
 
-static void xfrin_changeset_remove_last_rrset(dnslib_rrset_t **rrsets,
-                                              size_t *count)
+static int xfrin_changeset_rrsets_match(const dnslib_rrset_t *rrset1,
+                                        const dnslib_rrset_t *rrset2)
 {
-	rrsets[--(*count)] = NULL;
+	return dnslib_rrset_compare(rrset1, rrset2, DNSLIB_RRSET_COMPARE_HEADER)
+	       && (dnslib_rrset_type(rrset1) != DNSLIB_RRTYPE_RRSIG
+	           || dnslib_rdata_rrsig_type_covered(
+	                    dnslib_rrset_rdata(rrset1))
+	              == dnslib_rdata_rrsig_type_covered(
+	                    dnslib_rrset_rdata(rrset2)));
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_changeset_add_rr(dnslib_rrset_t ***rrsets,
+                                  size_t *count, size_t *allocated,
+                                  dnslib_rrset_t *rr)
+{
+	// try to find the RRSet in the list of RRSets
+	int i = 0;
+
+	while (i < *count && !xfrin_changeset_rrsets_match((*rrsets)[i], rr)) {
+		++i;
+	}
+
+	if (i < *count) {
+		// found RRSet to merge the new one into
+		if (dnslib_rrset_merge((void **)&(*rrsets)[i],
+		                       (void **)&rr) != DNSLIB_EOK) {
+			return KNOT_ERROR;
+		}
+
+		// remove the RR
+		dnslib_rrset_deep_free(&rr, 1, 1, 1);
+
+		return KNOT_EOK;
+	} else {
+		return xfrin_changeset_add_rrset(rrsets, count, allocated, rr);
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -759,9 +793,9 @@ typedef enum {
 	XFRIN_CHANGESET_REMOVE
 } xfrin_changeset_part_t;
 
-static int xfrin_changeset_add_and_convert_rrset(xfrin_changeset_t *changeset,
-                                                 dnslib_rrset_t *rrset,
-                                                 xfrin_changeset_part_t part)
+static int xfrin_changeset_add_new_rr(xfrin_changeset_t *changeset,
+                                      dnslib_rrset_t *rrset,
+                                      xfrin_changeset_part_t part)
 {
 	dnslib_rrset_t ***rrsets = NULL;
 	size_t *count = NULL;
@@ -786,16 +820,9 @@ static int xfrin_changeset_add_and_convert_rrset(xfrin_changeset_t *changeset,
 	assert(count != NULL);
 	assert(allocated != NULL);
 
-	int ret = xfrin_changeset_add_rrset(rrsets, count, allocated, rrset);
+	int ret = xfrin_changeset_add_rr(rrsets, count, allocated, rrset);
 	if (ret != KNOT_EOK) {
 		return ret;
-	}
-
-	ret = xfrin_changeset_rrset_to_binary(&changeset->data,
-	                                      &changeset->size,
-	                                      &changeset->allocated, rrset);
-	if (ret != KNOT_EOK) {
-		xfrin_changeset_remove_last_rrset(*rrsets, count);
 	}
 
 	return ret;
@@ -817,12 +844,12 @@ static int xfrin_changeset_add_and_convert_soa(xfrin_changeset_t *changeset,
                                                xfrin_changeset_part_t part)
 {
 	// store to binary format
-	int ret = xfrin_changeset_rrset_to_binary(&changeset->data,
-	                                      &changeset->size,
-	                                      &changeset->allocated, soa);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+//	int ret = xfrin_changeset_rrset_to_binary(&changeset->data,
+//	                                      &changeset->size,
+//	                                      &changeset->allocated, soa);
+//	if (ret != KNOT_EOK) {
+//		return ret;
+//	}
 
 	switch (part) {
 	case XFRIN_CHANGESET_ADD:
@@ -1134,9 +1161,9 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 			}
 
 			assert(dnslib_rrset_type(rr) != DNSLIB_RRTYPE_SOA);
-			if ((ret = xfrin_changeset_add_and_convert_rrset(
+			if ((ret = xfrin_changeset_add_new_rr(
 			             &(*changesets)->sets[i], rr,
-			             XFRIN_CHANGESET_ADD)) != KNOT_EOK) {
+			             XFRIN_CHANGESET_REMOVE)) != KNOT_EOK) {
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
 				goto cleanup;
 			}
@@ -1161,9 +1188,9 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 			}
 
 			assert(dnslib_rrset_type(rr) != DNSLIB_RRTYPE_SOA);
-			if ((ret = xfrin_changeset_add_and_convert_rrset(
+			if ((ret = xfrin_changeset_add_new_rr(
 			             &(*changesets)->sets[i], rr,
-			             XFRIN_CHANGESET_REMOVE)) != KNOT_EOK) {
+			             XFRIN_CHANGESET_ADD)) != KNOT_EOK) {
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
 				goto cleanup;
 			}
@@ -1192,7 +1219,14 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 
 	dnslib_rrset_deep_free(&soa2, 1, 1, 1);
 
-	return KNOT_EOK;
+	// everything is ready, convert the changesets
+	if ((ret = xfrin_changesets_to_binary(*changesets)) != KNOT_EOK) {
+		// free the changesets
+		debug_xfr("Failed to convert changesets to binary format.\n");
+		xfrin_free_changesets(changesets);
+	}
+
+	return ret;
 
 cleanup:
 	xfrin_free_changesets(changesets);
@@ -1404,9 +1438,9 @@ typedef struct {
 	 * Not actually used right now!!
 	 * All dnames are in the RRSets or RDATA.
 	 */
-	dnslib_dname_t **new_dnames;
-	int new_dnames_count;
-	int new_dnames_allocated;
+//	dnslib_dname_t **new_dnames;
+//	int new_dnames_count;
+//	int new_dnames_allocated;
 } xfrin_changes_t;
 
 /*----------------------------------------------------------------------------*/
@@ -1415,7 +1449,7 @@ static void xfrin_changes_free(xfrin_changes_t **changes)
 {
 	free((*changes)->old_nodes);
 	free((*changes)->old_rrsets);
-	free((*changes)->new_dnames);
+//	free((*changes)->new_dnames);
 	free((*changes)->new_rrsets);
 	free((*changes)->new_nodes);
 }
@@ -1468,26 +1502,26 @@ static int xfrin_changes_check_nodes(dnslib_node_t ***nodes,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_changes_check_dnames(dnslib_dname_t ***dnames,
-                                      int *count, int *allocated)
-{
-	int new_count = 0;
-	if (*count == *allocated) {
-		new_count = *allocated * 2;
-	}
+//static int xfrin_changes_check_dnames(dnslib_dname_t ***dnames,
+//                                      int *count, int *allocated)
+//{
+//	int new_count = 0;
+//	if (*count == *allocated) {
+//		new_count = *allocated * 2;
+//	}
 
-	dnslib_dname_t **dnames_new =
-		(dnslib_dname_t **)calloc(new_count, sizeof(dnslib_dname_t *));
-	if (dnames_new == NULL) {
-		return KNOT_ENOMEM;
-	}
+//	dnslib_dname_t **dnames_new =
+//		(dnslib_dname_t **)calloc(new_count, sizeof(dnslib_dname_t *));
+//	if (dnames_new == NULL) {
+//		return KNOT_ENOMEM;
+//	}
 
-	memcpy(dnames_new, *dnames, *count);
-	*dnames = dnames_new;
-	*allocated = new_count;
+//	memcpy(dnames_new, *dnames, *count);
+//	*dnames = dnames_new;
+//	*allocated = new_count;
 
-	return KNOT_EOK;
-}
+//	return KNOT_EOK;
+//}
 
 /*----------------------------------------------------------------------------*/
 
@@ -1538,10 +1572,10 @@ static void xfrin_rollback_update(dnslib_zone_contents_t *contents,
 		dnslib_rrset_deep_free(&changes->new_rrsets[i], 0, 1, 0);
 	}
 
-	// discard new dnames
-	for (int i = 0; i < changes->new_dnames_count; ++i) {
-		dnslib_dname_free(&changes->new_dnames[i]);
-	}
+//	// discard new dnames
+//	for (int i = 0; i < changes->new_dnames_count; ++i) {
+//		dnslib_dname_free(&changes->new_dnames[i]);
+//	}
 
 	// destroy the shallow copy of zone
 	xfrin_zone_contents_free(&contents);
