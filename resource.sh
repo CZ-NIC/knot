@@ -19,7 +19,7 @@ header="${1%.*}_rc"
 header=`basename ${header}`
 
 # Get file size and dump content
-size=`stat -f "%z" ${1} 2>/dev/null`
+size=`wc -c ${1} | awk '{print $1}' 2>/dev/null`
 dump=`${hd} "${fmt}" ${1} 2>/dev/null`
 
 # Format file size variable

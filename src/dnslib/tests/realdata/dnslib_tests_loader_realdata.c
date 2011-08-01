@@ -1,6 +1,8 @@
-#include <malloc.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <assert.h>
 
+#include "common/libtap/tap.h"
 #include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
 #include "dnslib/descriptor.h"
 
