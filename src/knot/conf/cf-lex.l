@@ -16,7 +16,7 @@
 #include "common/sockaddr.h"
 #include "knot/conf/conf.h"
 #include "knot/other/log.h"
-#include "libknot_la-cf-parse.h" /* Automake generated header. */
+#include "libknotd_la-cf-parse.h" /* Automake generated header. */
 
 /* Imported symbols. */
 #define cf_lval (*yylval)

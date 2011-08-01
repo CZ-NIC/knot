@@ -1,5 +1,5 @@
 #include <config.h>
-#include "knot/common.h"
+//#include "knot/common.h"
 #include "common/libtap/tap_unit.h"
 
 // Units to test
@@ -17,7 +17,7 @@
 int main(int argc, char *argv[])
 {
 	// Open log
-	log_init(LOG_UPTO(LOG_ERR), LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING));
+//	log_init(LOG_UPTO(LOG_ERR), LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING));
 
 	// Build test set
 	unit_api *tests[] = {
@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 		++id;
 	}
 
-	log_close();
+//	log_close();
 
 	// Evaluate
 	return exit_status();
