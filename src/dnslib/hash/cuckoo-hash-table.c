@@ -748,17 +748,6 @@ void ck_destroy_table(ck_hash_table_t **table, void (*dtor_value)(void *value),
 	(*table) = NULL;
 }
 
-/*----------------------------------------------------------------------------*/
-#ifdef CT_TEST_REHASH
-//int ck_rehash(ck_hash_table_t *table);
-
-/*----------------------------------------------------------------------------*/
-#else
-//static int ck_rehash(ck_hash_table_t *table);
-
-/*----------------------------------------------------------------------------*/
-#endif
-
 int ck_insert_item(ck_hash_table_t *table, const char *key,
                    size_t length, void *value)
 {

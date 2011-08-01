@@ -3,8 +3,6 @@
 
 #include "dnslib/tests/dnslib/cuckoo_tests.h"
 
-#define CT_TEST_REHASH
-
 #include "dnslib/hash/cuckoo-hash-table.h"
 
 //#define CK_TEST_DEBUG
@@ -541,7 +539,6 @@ static int cuckoo_tests_run(int argc, char *argv[])
 
 ///*----------------------------------------------------------------------------*/
 
-//#ifdef CT_TEST_REHASH
 //int ct_rehash_during_read( ck_hash_table *table )
 //{
 //	pthread_t thread;
@@ -582,7 +579,6 @@ static int cuckoo_tests_run(int argc, char *argv[])
 
 //	return (int)ret;
 //}
-//#endif
 
 ///*----------------------------------------------------------------------------*/
 
@@ -676,11 +672,9 @@ static int cuckoo_tests_run(int argc, char *argv[])
 //			printf("\nDone. Result: %d\n\n", res);
 //		}
 
-//#ifdef CT_TEST_REHASH
 //		printf("Testing rehash during read...\n\n");
 //		res = ct_rehash_during_read(table);
 //		printf("\nDone. Result: %d\n\n", res);
-//#endif
 
 //		ck_destroy_table(&table, ct_destroy_items, 1);
 //		fclose(file);
