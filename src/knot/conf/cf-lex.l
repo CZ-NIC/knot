@@ -12,8 +12,8 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <arpa/inet.h>
 
+#include "common/sockaddr.h"
 #include "knot/conf/conf.h"
 #include "knot/other/log.h"
 #include "libknot_la-cf-parse.h" /* Automake generated header. */
@@ -51,7 +51,7 @@ BLANK [ \t\n]
 %%
 \#.*\n               /* Ignore comments */;
 {BLANK}+             /* Ignore whitespace */;
-[@{};,]              { return yytext[0]; }
+[-@{};,]              { return yytext[0]; }
 system               return SYSTEM;
 identity             return IDENTITY;
 version              return VERSION;
@@ -62,6 +62,10 @@ remotes              return REMOTES;
 zones                return ZONES;
 file                 return FILENAME;
 semantic-checks      return SEMANTIC_CHECKS;
+notify-retries       return NOTIFY_RETRIES;
+notify-timeout       return NOTIFY_TIMEOUT;
+zonefile-sync        return DBSYNC_TIMEOUT;
+ixfr-fslimit         return IXFR_FSLIMIT;
 xfr-in               return XFR_IN;
 xfr-out              return XFR_OUT;
 notify-in            return NOTIFY_IN;
@@ -92,6 +96,27 @@ on|off {
     cf_lval.i = 1;
   }
   return BOOL;
+}
+
+{DIGIT}+[smhd] {
+  size_t mpos = strlen(yytext) - 1;
+  char multiplier = yytext[mpos];
+  cf_lval.i = atoi(yytext);
+  if (cf_lval.i < 1) {
+	  cf_error("interval must be a positive integer");
+	  return END;
+  }
+
+  /* Handle multiplier. */
+  switch(multiplier) {
+  case 'm': cf_lval.i *= 60; break; /* minutes */
+  case 'h': cf_lval.i *= 60*60; break; /* hours */
+  case 'd': cf_lval.i *= 24*60*60; break; /* days */
+  case 's': /* seconds */
+  default: break;
+  }
+
+  return INTERVAL;
 }
 
 {DIGIT}+ {

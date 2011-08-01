@@ -173,30 +173,30 @@ void dnslib_node_dump(dnslib_node_t *node, void *loaded_zone)
 
 	dnslib_rrset_t *tmp = (dnslib_rrset_t *)skip_node->value;
 
-	dnslib_rrset_dump(tmp, loaded_zone);
+	dnslib_rrset_dump(tmp, (int)loaded_zone);
 
 	while ((skip_node = skip_next(skip_node)) != NULL) {
 		tmp = (dnslib_rrset_t *)skip_node->value;
 	//	assert(tmp->owner->node == node);
-		dnslib_rrset_dump(tmp, loaded_zone);
+		dnslib_rrset_dump(tmp, (int)loaded_zone);
 	}
 	//assert(node->owner->node == node);
 	printf("------- NODE --------\n");
 #endif
 }
 
-void dnslib_zone_dump(dnslib_zone_t *zone, char loaded_zone)
+void dnslib_zone_contents_dump(dnslib_zone_contents_t *zone, char loaded_zone)
 {
 #if defined(DNSLIB_ZONE_DEBUG)
 	printf("------- ZONE --------\n");
 
-	dnslib_zone_tree_apply_inorder(zone, dnslib_node_dump, (void *)&loaded_zone);
+	dnslib_zone_contents_tree_apply_inorder(zone, dnslib_node_dump, (void *)&loaded_zone);
 
 	printf("------- ZONE --------\n");
 	
 	printf("------- NSEC 3 tree -\n");
 
-	dnslib_zone_nsec3_apply_inorder(zone, dnslib_node_dump, (void *)&loaded_zone);
+	dnslib_zone_contents_nsec3_apply_inorder(zone, dnslib_node_dump, (void *)&loaded_zone);
 
 	printf("------- NSEC 3 tree -\n");
 #endif

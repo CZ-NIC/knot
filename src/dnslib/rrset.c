@@ -1,12 +1,43 @@
 #include <config.h>
 #include <stdint.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <assert.h>
+#include <stdio.h>
 
 #include "dnslib/dnslib-common.h"
 #include "dnslib/rrset.h"
 #include "dnslib/descriptor.h"
 #include "dnslib/error.h"
+
+/*----------------------------------------------------------------------------*/
+/* Non-API functions                                                          */
+/*----------------------------------------------------------------------------*/
+
+static void dnslib_rrset_disconnect_rdata(dnslib_rrset_t *rrset,
+                                    dnslib_rdata_t *prev, dnslib_rdata_t *rdata)
+{
+	if (prev == NULL) {
+		// find the previous RDATA in the series, as its pointer must
+		// be changed
+		dnslib_rdata_t *prev = rdata->next;
+		while (prev->next != rdata) {
+			prev = prev->next;
+		}
+	}
+
+	assert(prev);
+	assert(prev->next == rdata);
+
+	prev->next = rdata->next;
+
+	if (rrset->rdata == rdata) {
+		if (rdata->next == rdata) {
+			rrset->rdata = NULL;
+		} else {
+			rrset->rdata = rdata->next;
+		}
+	}
+}
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
@@ -59,6 +90,37 @@ int dnslib_rrset_add_rdata(dnslib_rrset_t *rrset, dnslib_rdata_t *rdata)
 
 /*----------------------------------------------------------------------------*/
 
+dnslib_rdata_t *dnslib_rrset_remove_rdata(dnslib_rrset_t *rrset,
+                                          const dnslib_rdata_t *rdata)
+{
+	if (rrset == NULL || rdata == NULL) {
+		return NULL;
+	}
+
+	dnslib_rdata_t *prev = NULL;
+	dnslib_rdata_t *rr = rrset->rdata;
+	dnslib_rrtype_descriptor_t *desc =
+		dnslib_rrtype_descriptor_by_type(rrset->type);
+
+	if (desc == NULL) {
+		return NULL;
+	}
+
+	while (rr != NULL) {
+		/*! \todo maybe the dnames should be compared case-insensitive*/
+		if (dnslib_rdata_compare(rr, rdata, desc->wireformat) == 0) {
+			dnslib_rrset_disconnect_rdata(rrset, prev, rr);
+			return rr;
+		}
+		prev = rr;
+		rr = dnslib_rrset_rdata_get_next(rrset, rr);
+	}
+
+	return NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int dnslib_rrset_set_rrsigs(dnslib_rrset_t *rrset, dnslib_rrset_t *rrsigs)
 {
 	if (rrset == NULL || rrsigs == NULL) {
@@ -71,7 +133,46 @@ int dnslib_rrset_set_rrsigs(dnslib_rrset_t *rrset, dnslib_rrset_t *rrsigs)
 
 /*----------------------------------------------------------------------------*/
 
+int dnslib_rrset_add_rrsigs(dnslib_rrset_t *rrset, dnslib_rrset_t *rrsigs,
+                            dnslib_rrset_dupl_handling_t dupl)
+{
+	if (rrset == NULL || rrsigs == NULL
+	    || dnslib_dname_compare(rrset->owner, rrsigs->owner) != 0) {
+		return DNSLIB_EBADARG;
+	}
+
+	int rc;
+	if (rrset->rrsigs != NULL) {
+		if (dupl == DNSLIB_RRSET_DUPL_MERGE) {
+			rc = dnslib_rrset_merge((void **)&rrset->rrsigs,
+			                        (void **)&rrsigs);
+			if (rc != DNSLIB_EOK) {
+				return rc;
+			} else {
+				return 1;
+			}
+		} else if (dupl == DNSLIB_RRSET_DUPL_SKIP) {
+			return 2;
+		} else if (dupl == DNSLIB_RRSET_DUPL_REPLACE) {
+			rrset->rrsigs = rrsigs;
+		}
+	} else {
+		rrset->rrsigs = rrsigs;
+	}
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 const dnslib_dname_t *dnslib_rrset_owner(const dnslib_rrset_t *rrset)
+{
+	return rrset->owner;
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnslib_dname_t *dnslib_rrset_get_owner(const dnslib_rrset_t *rrset)
 {
 	return rrset->owner;
 }
@@ -129,6 +230,18 @@ dnslib_rdata_t *dnslib_rrset_get_rdata(dnslib_rrset_t *rrset)
 
 /*----------------------------------------------------------------------------*/
 
+dnslib_rdata_t *dnslib_rrset_rdata_get_next(dnslib_rrset_t *rrset,
+                                            dnslib_rdata_t *rdata)
+{
+	if (rdata->next == rrset->rdata) {
+		return NULL;
+	} else {
+		return rdata->next;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
 const dnslib_rrset_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset)
 {
 	if (rrset == NULL) {
@@ -136,6 +249,55 @@ const dnslib_rrset_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset)
 	} else {
 		return rrset->rrsigs;
 	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+dnslib_rrset_t *dnslib_rrset_get_rrsigs(dnslib_rrset_t *rrset)
+{
+	if (rrset == NULL) {
+		return NULL;
+	} else {
+		return rrset->rrsigs;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_rrset_compare(const dnslib_rrset_t *r1,
+                         const dnslib_rrset_t *r2,
+                         dnslib_rrset_compare_type_t cmp)
+{
+	if (cmp == DNSLIB_RRSET_COMPARE_PTR) {
+		return (r1 == r2);
+	}
+
+	int res = ((r1->rclass == r2->rclass)
+	           && (r1->type == r2->type)
+	           && (r1->ttl == r2->ttl)
+	           && dnslib_dname_compare(r1->owner, r2->owner) == 0);
+
+	if (cmp == DNSLIB_RRSET_COMPARE_WHOLE && res) {
+		dnslib_rrtype_descriptor_t *desc =
+			dnslib_rrtype_descriptor_by_type(r1->type);
+
+		if (desc == NULL) {
+			return 0;
+		}
+
+		res = res && (dnslib_rdata_compare(r1->rdata, r2->rdata,
+		                                  desc->wireformat) == 0);
+	}
+
+	return res;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_rrset_copy(const dnslib_rrset_t *from, dnslib_rrset_t **to)
+{
+	/*! \todo Implement (shallow copy). */
+	return DNSLIB_ERROR;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -153,29 +315,34 @@ void dnslib_rrset_free(dnslib_rrset_t **rrset)
 /*----------------------------------------------------------------------------*/
 
 void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner,
-                            int free_rdata_dnames)
+                            int free_rdata, int free_rdata_dnames)
 {
 	if (rrset == NULL || *rrset == NULL) {
 		return;
 	}
 
-	dnslib_rdata_t *tmp_rdata;
-	dnslib_rdata_t *next_rdata;
-	tmp_rdata = (*rrset)->rdata;
+	if (free_rdata) {
+		dnslib_rdata_t *tmp_rdata;
+		dnslib_rdata_t *next_rdata;
+		tmp_rdata = (*rrset)->rdata;
 
-	while ((tmp_rdata != NULL) && (tmp_rdata->next != (*rrset)->rdata) &&
-		(tmp_rdata->next != NULL)) {
-		next_rdata = tmp_rdata->next;
+		while ((tmp_rdata != NULL)
+		       && (tmp_rdata->next != (*rrset)->rdata)
+		       && (tmp_rdata->next != NULL)) {
+			next_rdata = tmp_rdata->next;
+			dnslib_rdata_deep_free(&tmp_rdata, (*rrset)->type,
+					       free_rdata_dnames);
+			tmp_rdata = next_rdata;
+		}
+
 		dnslib_rdata_deep_free(&tmp_rdata, (*rrset)->type,
 		                       free_rdata_dnames);
-		tmp_rdata = next_rdata;
 	}
-
-	dnslib_rdata_deep_free(&tmp_rdata, (*rrset)->type, free_rdata_dnames);
 
 	// RRSIGs should have the same owner as this RRSet, so do not delete it
 	if ((*rrset)->rrsigs != NULL) {
-		dnslib_rrset_deep_free(&(*rrset)->rrsigs, 0, free_rdata_dnames);
+		dnslib_rrset_deep_free(&(*rrset)->rrsigs, 0, 1,
+		                       free_rdata_dnames);
 	}
 
 	if (free_owner) {

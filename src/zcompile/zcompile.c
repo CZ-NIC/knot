@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
 #include <netdb.h>
 #include <assert.h>
 
@@ -1258,8 +1259,9 @@ uint16_t * zparser_conv_apl_rdata(char *str)
 		return NULL;
 	} else if (rc == -1) {
 		char ebuf[256];
+		strerror_r(errno, ebuf, sizeof(ebuf));
 		fprintf(stderr, "inet_pton failed: %s",
-			strerror_r(errno, ebuf, sizeof(ebuf)));
+			ebuf);
 		return NULL;
 	}
 
@@ -1454,7 +1456,7 @@ void set_bitnsec(uint8_t bits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE],
 	bits[window][bit / 8] |= (1 << (7 - bit % 8));
 }
 
-static int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone,
+static int find_rrset_for_rrsig_in_zone(dnslib_zone_contents_t *zone,
                                         dnslib_rrset_t *rrsig)
 {
 	assert(rrsig != NULL);
@@ -1463,9 +1465,9 @@ static int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone,
 	dnslib_node_t *tmp_node = NULL;
 
 	if (rrsig->type != DNSLIB_RRTYPE_NSEC3) {
-		tmp_node = dnslib_zone_get_node(zone, rrsig->owner);
+		tmp_node = dnslib_zone_contents_get_node(zone, rrsig->owner);
 	} else {
-		tmp_node = dnslib_zone_get_nsec3_node(zone,
+		tmp_node = dnslib_zone_contents_get_nsec3_node(zone,
 						      rrsig->owner);
 	}
 
@@ -1481,19 +1483,24 @@ static int find_rrset_for_rrsig_in_zone(dnslib_zone_t *zone,
 	}
 
 	if (tmp_rrset->rrsigs != NULL) {
-		dnslib_rrset_merge((void *)&tmp_rrset->rrsigs, (void *)&rrsig);
+		dnslib_zone_contents_add_rrsigs(zone, rrsig, &tmp_rrset, &tmp_node,
+		                       DNSLIB_RRSET_DUPL_MERGE, 1);
+		dnslib_rrset_free(&rrsig);
 	} else {
-		tmp_rrset->rrsigs = rrsig;
+		dnslib_zone_contents_add_rrsigs(zone, rrsig, &tmp_rrset, &tmp_node,
+		                       DNSLIB_RRSET_DUPL_SKIP, 1);
 	}
 
 	return KNOT_ZCOMPILE_EOK;
 }
 
-static int find_rrset_for_rrsig_in_node(dnslib_node_t *node,
-                                        dnslib_rrset_t *rrsig)
+static int find_rrset_for_rrsig_in_node(dnslib_zone_contents_t *zone,
+                                 dnslib_node_t *node,
+                                 dnslib_rrset_t *rrsig)
 {
 	assert(rrsig != NULL);
 	assert(rrsig->rdata->items[0].raw_data);
+	assert(node);
 
 	assert(dnslib_dname_compare(rrsig->owner, node->owner) == 0);
 
@@ -1505,86 +1512,47 @@ static int find_rrset_for_rrsig_in_node(dnslib_node_t *node,
 	}
 
 	if (tmp_rrset->rrsigs != NULL) {
-		dnslib_rrset_merge((void *)&tmp_rrset->rrsigs, (void *)&rrsig);
+		if (dnslib_zone_contents_add_rrsigs(zone, rrsig, &tmp_rrset, &node,
+		                           DNSLIB_RRSET_DUPL_MERGE, 1) < 0) {
+			return KNOT_ZCOMPILE_EINVAL;
+		}
 		dnslib_rrset_free(&rrsig);
 	} else {
-		tmp_rrset->rrsigs = rrsig;
+		if (dnslib_zone_contents_add_rrsigs(zone, rrsig, &tmp_rrset, &node,
+		                           DNSLIB_RRSET_DUPL_SKIP, 1) < 0) {
+			return KNOT_ZCOMPILE_EINVAL;
+		}
 	}
 
-	debug_zp("setting rrsigs for rrset %s\n",
-		 dnslib_dname_to_str(rrsig->owner));
+	assert(tmp_rrset->rrsigs != NULL);
 
 	return KNOT_ZCOMPILE_EOK;
 }
 
-static dnslib_node_t *create_node(dnslib_zone_t *zone,
+static dnslib_node_t *create_node(dnslib_zone_contents_t *zone,
 	dnslib_rrset_t *current_rrset,
-	int (*node_add_func)(dnslib_zone_t *zone, dnslib_node_t *node),
-	dnslib_node_t *(*node_get_func)(const dnslib_zone_t *zone,
+	int (*node_add_func)(dnslib_zone_contents_t *zone, dnslib_node_t *node,
+	                     int create_parents, uint8_t, int),
+	dnslib_node_t *(*node_get_func)(const dnslib_zone_contents_t *zone,
 					const dnslib_dname_t *owner))
 {
-	dnslib_node_t *tmp_node = NULL;
-	dnslib_node_t *last_node = dnslib_node_new(current_rrset->owner,
-						   NULL);
-	dnslib_node_t *node = last_node;
-	if (node_add_func(zone, node) != 0) {
+	dnslib_node_t *node =
+		dnslib_node_new(current_rrset->owner, NULL, 0);
+	if (node_add_func(zone, node, 1, 0, 1) != 0) {
 		return NULL;
 	}
-	dnslib_dname_t *chopped =
-		dnslib_dname_left_chop(current_rrset->owner);
 
-	/* the following is the most common case - no need to
-	 * search the zone */
-	if (dnslib_dname_compare(parser->origin->owner,
-				 chopped) == 0 ) {
-		node->parent = parser->origin;
-	} else {
-		while ((tmp_node = node_get_func(zone,
-				    chopped)) == NULL) {
-			/* Adding new dname to zone - add to table as well. */
-//			printf("adding new dname (created from parent)%s %p\n",
-//			       dnslib_dname_to_str(chopped), chopped);
-			dnslib_dname_t *found_dname = NULL;
-			if ((!(found_dname =
-			      dnslib_dname_table_find_dname(parser->dname_table,
-			                                    chopped))) &&
-			      dnslib_dname_table_add_dname(parser->dname_table,
-			                                   chopped) != 0) {
-				dnslib_dname_free(&chopped);
-				return NULL;
-			} else if (found_dname != NULL) {
-				dnslib_dname_free(&chopped);
-				chopped = found_dname;
-			}
-			tmp_node = dnslib_node_new(chopped, NULL);
-			if (tmp_node == NULL) {
-				return NULL;
-			}
-			last_node->parent = tmp_node;
-
-			assert(node_get_func(zone, chopped) == NULL);
-			if (node_add_func(zone, tmp_node) != 0) {
-				return NULL;
-			}
-
-			last_node = tmp_node;
-			chopped = dnslib_dname_left_chop(chopped);
-		}
-
-		/* parent is already in the zone */
-		last_node->parent = tmp_node;
-	}
-
-	dnslib_dname_free(&chopped);
+	current_rrset->owner = node->owner;
 
 	return node;
 }
 
-static void process_rrsigs_in_node(dnslib_node_t *node)
+static void process_rrsigs_in_node(dnslib_zone_contents_t *zone,
+                            dnslib_node_t *node)
 {
 	rrset_list_t *tmp = parser->node_rrsigs;
 	while (tmp != NULL) {
-		if (find_rrset_for_rrsig_in_node(node,
+		if (find_rrset_for_rrsig_in_node(zone, node,
 						 tmp->data) != 0) {
 			rrset_list_add(&parser->rrsig_orphans,
 				       tmp->data);
@@ -1596,6 +1564,9 @@ static void process_rrsigs_in_node(dnslib_node_t *node)
 int process_rr(void)
 {
 	dnslib_zone_t *zone = parser->current_zone;
+	assert(zone != NULL);
+	dnslib_zone_contents_t *contents = dnslib_zone_get_contents(zone);
+	assert(contents != NULL);
 	dnslib_rrset_t *current_rrset = parser->current_rrset;
 	dnslib_rrset_t *rrset;
 	dnslib_rrtype_descriptor_t *descriptor =
@@ -1607,9 +1578,10 @@ int process_rr(void)
 
 	assert(dnslib_dname_is_fqdn(current_rrset->owner));
 
-	int (*node_add_func)(dnslib_zone_t *zone, dnslib_node_t *node);
-	dnslib_node_t *(*node_get_func)(const dnslib_zone_t *zone,
-					const dnslib_dname_t *owner);
+	int (*node_add_func)(dnslib_zone_contents_t *, dnslib_node_t *, int,
+	                     uint8_t, int);
+	dnslib_node_t *(*node_get_func)(const dnslib_zone_contents_t *,
+	                                const dnslib_dname_t *);
 
 
 	/* If we have RRSIG of NSEC3 type first node will have
@@ -1622,15 +1594,16 @@ int process_rr(void)
 
 	if (current_rrset->type != DNSLIB_RRTYPE_NSEC3 &&
 	    type_covered != DNSLIB_RRTYPE_NSEC3) {
-		node_add_func = &dnslib_zone_add_node;
-		node_get_func = &dnslib_zone_get_node;
+		node_add_func = &dnslib_zone_contents_add_node;
+		node_get_func = &dnslib_zone_contents_get_node;
 	} else {
-		node_add_func = &dnslib_zone_add_nsec3_node;
-		node_get_func = &dnslib_zone_get_nsec3_node;
+		node_add_func = &dnslib_zone_contents_add_nsec3_node;
+		node_get_func = &dnslib_zone_contents_get_nsec3_node;
 	}
 
 	if ((current_rrset->type == DNSLIB_RRTYPE_SOA) && (zone != NULL)) {
-		if (dnslib_node_rrset(zone->apex, DNSLIB_RRTYPE_SOA) != NULL) {
+		if (dnslib_node_rrset(dnslib_zone_contents_apex(contents),
+		                      DNSLIB_RRTYPE_SOA) != NULL) {
 			return KNOT_ZCOMPILE_ESOA;
 		}
 	}
@@ -1660,27 +1633,6 @@ int process_rr(void)
 		}
 	}
 
-	/* Do we have the zone already? */
-	if (!zone) {
-		assert(parser->origin);
-
-		if (dnslib_dname_compare(parser->origin->owner,
-					 current_rrset->owner) == 0 &&
-		    parser->origin->owner != current_rrset->owner) {
-			/* if SOA, it has been checked above */
-
-			dnslib_dname_free(&parser->origin->owner);
-			parser->origin->owner = current_rrset->owner;
-		}
-
-		zone = dnslib_zone_new(parser->origin, 0);
-		if (zone == NULL) {
-			return KNOT_ZCOMPILE_ENOMEM;
-		}
-
-		parser->current_zone = zone;
-	}
-
 	if (current_rrset->type == DNSLIB_RRTYPE_RRSIG) {
 		/*!< \todo Still a leak somewhere. */
 		dnslib_rrset_t *tmp_rrsig =
@@ -1698,11 +1650,12 @@ int process_rr(void)
 			 * before we return
 			 */
 			if (parser->node_rrsigs != NULL) {
-				process_rrsigs_in_node(parser->last_node);
+				process_rrsigs_in_node(contents,
+				                       parser->last_node);
 				rrset_list_delete(&parser->node_rrsigs);
 			}
 
-			if ((parser->last_node = create_node(zone,
+			if ((parser->last_node = create_node(contents,
 						   current_rrset, node_add_func,
 						   node_get_func)) == NULL) {
 				dnslib_rrset_free(&tmp_rrsig);
@@ -1727,21 +1680,23 @@ int process_rr(void)
 		node = parser->last_node;
 	} else {
 		if (parser->last_node && parser->node_rrsigs) {
-			process_rrsigs_in_node(parser->last_node);
+			process_rrsigs_in_node(contents,
+			                       parser->last_node);
 		}
 
 		rrset_list_delete(&parser->node_rrsigs);
 
 		/* new node */
-		node = node_get_func(zone, current_rrset->owner);
+		node = node_get_func(contents, current_rrset->owner);
 	}
 
 	if (node == NULL) {
 		if (parser->last_node && parser->node_rrsigs) {
-			process_rrsigs_in_node(parser->last_node);
+			process_rrsigs_in_node(contents,
+			                       parser->last_node);
 		}
 
-		if ((node = create_node(zone, current_rrset,
+		if ((node = create_node(contents, current_rrset,
 					node_add_func,
 					node_get_func)) == NULL) {
 			return KNOT_ZCOMPILE_EBADNODE;
@@ -1762,7 +1717,10 @@ int process_rr(void)
 			return KNOT_ZCOMPILE_EBRDATA;
 		}
 
-		if (dnslib_node_add_rrset(node, rrset) != 0) {
+		/* I chose skip, but there should not really be
+		 * any rrset to skip */
+		if (dnslib_zone_contents_add_rrset(contents, rrset, &node,
+		                   DNSLIB_RRSET_DUPL_SKIP, 1) < 0) {
 			free(rrset);
 			return KNOT_ZCOMPILE_EBRDATA;
 		}
@@ -1774,7 +1732,14 @@ int process_rr(void)
 				"TTL does not match the TTL of the RRset");
 		}
 
-		dnslib_rrset_merge((void *)&rrset, (void *)&current_rrset);
+		if (dnslib_zone_contents_add_rrset(contents, current_rrset,
+		                          &node,
+		                   DNSLIB_RRSET_DUPL_MERGE, 1) < 0) {
+			free(rrset);
+			return KNOT_ZCOMPILE_EBRDATA;
+		}
+
+//		dnslib_rrset_merge((void *)&rrset, (void *)&current_rrset);
 
 		/* TODO Search for possible duplicates... */
 	}
@@ -1823,7 +1788,7 @@ int process_rr(void)
 	return KNOT_ZCOMPILE_EOK;
 }
 
-static uint find_rrsets_orphans(dnslib_zone_t *zone, rrset_list_t
+static uint find_rrsets_orphans(dnslib_zone_contents_t *zone, rrset_list_t
 				*head)
 {
 	uint found_rrsets = 0;
@@ -1860,11 +1825,11 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	dnslib_dname_t *dname =
 		dnslib_dname_new_from_str(name, strlen(name), NULL);
 
-	dnslib_node_t *origin_node = dnslib_node_new(dname, NULL);
+	dnslib_node_t *origin_node = dnslib_node_new(dname, NULL, 0);
 
 	//assert(origin_node->next == NULL);
 
-	assert(origin_node->parent == NULL);
+	assert(dnslib_node_parent(origin_node, 0) == NULL);
 
 	void *scanner = NULL;
 	zp_lex_init(&scanner);
@@ -1874,47 +1839,64 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node, scanner)) {
 		fprintf(stderr, "Cannot open '%s': %s.",
-			zonefile, strerror_r(errno, ebuf, sizeof(ebuf)));
+			zonefile, ebuf);
+		zparser_free();
 		return KNOT_ZCOMPILE_EZONEINVAL;
 	}
-
 
 	if (zp_parse(scanner) != 0) {
 		return KNOT_ZCOMPILE_ESYNT;
 	}
+	
+	dnslib_zone_contents_t *contents =
+			dnslib_zone_get_contents(parser->current_zone);
 
 	FILE *in_file = (FILE *)zp_get_in(scanner);
 	fclose(in_file);
 	zp_lex_destroy(scanner);
 
-	if (parser->node_rrsigs != NULL) {
+	if (parser->last_node && parser->node_rrsigs != NULL) {
 		/* assign rrsigs to last node in the zone*/
-		process_rrsigs_in_node(parser->last_node);
+		process_rrsigs_in_node(contents,
+		                       parser->last_node);
 		rrset_list_delete(&parser->node_rrsigs);
 	}
 
 	debug_zp("zone parsed\n");
 
-	find_rrsets_orphans(parser->current_zone,
+	find_rrsets_orphans(parser->current_zone->contents,
 	                    parser->rrsig_orphans);
+	if (!(parser->current_zone &&
+	      dnslib_node_rrset(parser->current_zone->contents->apex,
+	                        DNSLIB_RRTYPE_SOA))) {
+		fprintf(stderr, "Zone file does not contain SOA record!\n");
+		dnslib_zone_deep_free(&parser->current_zone, 0);
+		zparser_free();
+		return KNOT_ZCOMPILE_EZONEINVAL;
+	}
+
+
+	uint found_orphans;
+	found_orphans = find_rrsets_orphans(contents,
+					    parser->rrsig_orphans);
 
 	debug_zp("%u orphans found\n", found_orphans);
 
 	rrset_list_delete(&parser->rrsig_orphans);
 
-	dnslib_zone_adjust_dnames(parser->current_zone);
+	dnslib_zone_contents_adjust_dnames(contents);
 
 	debug_zp("rdata adjusted\n");
 
-	parser->current_zone->dname_table = parser->dname_table;
-
-	dnslib_zdump_binary(parser->current_zone, outfile, semantic_checks,
-			    zonefile);
+	dnslib_zdump_binary(contents,
+	                    outfile, semantic_checks, zonefile);
 
 	/* This is *almost* unnecessary */
 	dnslib_zone_deep_free(&(parser->current_zone), 0);
 
-//	dnslib_zone_t *some_zone= dnslib_zload_load(dnslib_zload_open(outfile));
+//	dnslib_zone_t *zone = dnslib_zload_load(dnslib_zload_open(outfile));
+//	printf("apex: %s\n", zone->apex->owner->name);
+
 
 	fflush(stdout);
 	totalerrors += parser->errors;
@@ -1923,80 +1905,80 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	return totalerrors;
 }
 
-static void save_replace_dnames_in_rdata(dnslib_dname_table_t *table,
-					 dnslib_rdata_t *rdata, uint16_t type)
-{
-	assert(rdata && rdata->items);
-	const dnslib_rrtype_descriptor_t *desc =
-		dnslib_rrtype_descriptor_by_type(type);
-	assert(desc);
+//static void save_replace_dnames_in_rdata(dnslib_dname_table_t *table,
+//					 dnslib_rdata_t *rdata, uint16_t type)
+//{
+//	assert(rdata && rdata->items);
+//	const dnslib_rrtype_descriptor_t *desc =
+//		dnslib_rrtype_descriptor_by_type(type);
+//	assert(desc);
 
-	for (int i = 0; i < rdata->count; i++) {
-		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
-		    desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
-		    desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME) {
-			/* See if dname is not in the table already. */
-			dnslib_dname_t *found_dname = NULL;
-			dnslib_dname_t *searched_dname = rdata->items[i].dname;
-			if ((found_dname =
-				dnslib_dname_table_find_dname(table,
-				searched_dname)) != NULL) {
-				dnslib_dname_free(&rdata->items[i].dname);
-				rdata->items[i].dname = found_dname;
-			} else {
-				if (dnslib_dname_table_add_dname(table,
-							        searched_dname)
-				   != 0) {
-					fprintf(stderr,
-					        "Could not add name"
-					        "to table!\n");
-					return;
-				}
-			}
-		}
-	}
-}
+//	for (int i = 0; i < rdata->count; i++) {
+//		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+//		    desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
+//		    desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME) {
+//			/* See if dname is not in the table already. */
+//			dnslib_dname_t *found_dname = NULL;
+//			dnslib_dname_t *searched_dname = rdata->items[i].dname;
+//			if ((found_dname =
+//				dnslib_dname_table_find_dname(table,
+//				searched_dname)) != NULL) {
+//				dnslib_dname_free(&rdata->items[i].dname);
+//				rdata->items[i].dname = found_dname;
+//			} else {
+//				if (dnslib_dname_table_add_dname(table,
+//							        searched_dname)
+//				   != 0) {
+//					fprintf(stderr,
+//					        "Could not add name"
+//					        "to table!\n");
+//					return;
+//				}
+//			}
+//		}
+//	}
+//}
 
-int save_dnames_in_table(dnslib_dname_table_t *table,
-			 dnslib_rrset_t *rrset)
-{
-	if (rrset == NULL) {
-		return KNOT_ZCOMPILE_EINVAL;
-	}
-	/* Check and possibly delete the owner first */
-	dnslib_dname_t *found_dname = NULL;
-	if ((found_dname =
-		dnslib_dname_table_find_dname(table, rrset->owner)) != NULL &&
-		found_dname != rrset->owner) {
-		assert(rrset->owner != found_dname);
-		assert(found_dname->name != rrset->owner->name);
-		assert(found_dname->labels != rrset->owner->labels);
-		assert(rrset->owner != parser->last_node->owner);
-		assert(parser->last_node->owner != rrset->owner);
-		dnslib_dname_free(&rrset->owner);
-		/* owner is now a reference from the table */
-		rrset->owner = found_dname;
-		assert(parser->current_rrset->owner == rrset->owner);
-	} else if (found_dname != rrset->owner) {
-		/* Insert the dname in the table. */
-		if (dnslib_dname_table_add_dname(table, rrset->owner) != 0) {
-			return KNOT_ZCOMPILE_ENOMEM;
-		}
-	}
+//int save_dnames_in_table(dnslib_dname_table_t *table,
+//			 dnslib_rrset_t *rrset)
+//{
+//	if (rrset == NULL) {
+//		return KNOT_ZCOMPILE_EINVAL;
+//	}
+//	/* Check and possibly delete the owner first */
+//	dnslib_dname_t *found_dname = NULL;
+//	if ((found_dname =
+//		dnslib_dname_table_find_dname(table, rrset->owner)) != NULL &&
+//		found_dname != rrset->owner) {
+////		assert(rrset->owner != found_dname);
+////		assert(found_dname->name != rrset->owner->name);
+////		assert(found_dname->labels != rrset->owner->labels);
+////		assert(rrset->owner != parser->last_node->owner);
+////		assert(parser->last_node->owner != rrset->owner);
+//		dnslib_dname_free(&rrset->owner);
+//		/* owner is now a reference from the table */
+//		rrset->owner = found_dname;
+//		assert(parser->current_rrset->owner == rrset->owner);
+//	} else if (found_dname != rrset->owner) {
+//		/* Insert the dname in the table. */
+//		if (dnslib_dname_table_add_dname(table, rrset->owner) != 0) {
+//			return KNOT_ZCOMPILE_ENOMEM;
+//		}
+//	}
 
-	dnslib_rdata_t *tmp_rdata = dnslib_rrset_get_rdata(rrset);
+//	dnslib_rdata_t *tmp_rdata = dnslib_rrset_get_rdata(rrset);
 
-	while (tmp_rdata->next != dnslib_rrset_rdata(rrset)) {
-		save_replace_dnames_in_rdata(table, tmp_rdata,
-					     dnslib_rrset_type(rrset));
-	}
+//	while (tmp_rdata->next != dnslib_rrset_rdata(rrset)) {
+//		save_replace_dnames_in_rdata(table, tmp_rdata,
+//					     dnslib_rrset_type(rrset));
+//	}
 
-	save_replace_dnames_in_rdata(table, tmp_rdata,
-				     dnslib_rrset_type(rrset));
+//	save_replace_dnames_in_rdata(table, tmp_rdata,
+//				     dnslib_rrset_type(rrset));
 
-	assert(rrset->owner != NULL);
+//	assert(rrset->owner != NULL);
 
-	return KNOT_ZCOMPILE_EOK;
-}
+//	return KNOT_ZCOMPILE_EOK;
+//}
 
 /*! @} */

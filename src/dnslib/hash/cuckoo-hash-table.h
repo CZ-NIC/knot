@@ -112,7 +112,10 @@ struct ck_hash_table {
 	ck_hash_table_item_t **tables[MAX_TABLES]; /*!< Array of hash tables. */
 
 	//da_array_t stash; /*!< Stash implemented as a dynamic array. */
-	ck_stash_item_t *stash2;
+	ck_stash_item_t *stash;
+
+	/*! \brief Temporary storage for item being hashed. */
+	ck_hash_table_item_t *hashed;
 
 	/*! \brief Mutex for avoiding multiple insertions / rehashes at once. */
 	pthread_mutex_t mtx_table;
@@ -261,11 +264,12 @@ int ck_update_item(const ck_hash_table_t *table, const char *key, size_t length,
 int ck_remove_item(const ck_hash_table_t *table, const char *key, size_t length,
                    void (*dtor_value)(void *value), int delete_key);
 
-#ifdef CT_TEST_REHASH
+int ck_copy_table(const ck_hash_table_t *from, ck_hash_table_t **to);
+
 /*----------------------------------------------------------------------------*/
 
-//int ck_rehash(ck_hash_table_t *table);
-#endif
+int ck_rehash(ck_hash_table_t *table);
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Dumps the whole hash table to the standard output.

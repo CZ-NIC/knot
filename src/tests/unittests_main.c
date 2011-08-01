@@ -5,8 +5,11 @@
 // Units to test
 #include "tests/common/slab_tests.h"
 #include "tests/common/skiplist_tests.h"
+#include "tests/common/events_tests.h"
 #include "tests/common/da_tests.h"
+#include "tests/common/acl_tests.h"
 #include "tests/knot/dthreads_tests.h"
+#include "tests/knot/journal_tests.h"
 #include "tests/knot/server_tests.h"
 #include "tests/knot/conf_tests.h"
 
@@ -14,15 +17,19 @@
 int main(int argc, char *argv[])
 {
 	// Open log
-	log_init(LOG_UPTO(LOG_ERR), LOG_MASK(LOG_ERR) | LOG_MASK(LOG_WARNING));
+	log_init();
+	log_levels_set(LOGT_SYSLOG, LOG_ANY, 0);
 
 	// Build test set
 	unit_api *tests[] = {
 		/* Core data structures. */
+		&journal_tests_api,  //! Journal unit
 		&slab_tests_api,     //! SLAB allocator unit
 		&skiplist_tests_api, //! Skip list unit
 		&dthreads_tests_api, //! DThreads testing unit
+		&events_tests_api,   //! Events testing unit
 		&da_tests_api,       //! Dynamic array unit
+		&acl_tests_api,      //! ACLs
 
 		/* Server parts. */
 		&conf_tests_api,     //! Configuration parser tests

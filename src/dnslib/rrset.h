@@ -47,6 +47,20 @@ struct dnslib_rrset {
 typedef struct dnslib_rrset dnslib_rrset_t;
 
 /*----------------------------------------------------------------------------*/
+
+typedef enum {
+	DNSLIB_RRSET_COMPARE_PTR,
+	DNSLIB_RRSET_COMPARE_HEADER,
+	DNSLIB_RRSET_COMPARE_WHOLE
+} dnslib_rrset_compare_type_t;
+
+typedef enum  {
+	DNSLIB_RRSET_DUPL_MERGE,
+	DNSLIB_RRSET_DUPL_REPLACE,
+	DNSLIB_RRSET_DUPL_SKIP
+} dnslib_rrset_dupl_handling_t;
+
+/*----------------------------------------------------------------------------*/
 /*!
  * \brief Creates a new RRSet with the given properties.
  *
@@ -76,6 +90,9 @@ dnslib_rrset_t *dnslib_rrset_new(dnslib_dname_t *owner, uint16_t type,
  */
 int dnslib_rrset_add_rdata(dnslib_rrset_t *rrset, dnslib_rdata_t *rdata);
 
+dnslib_rdata_t * dnslib_rrset_remove_rdata(dnslib_rrset_t *rrset,
+                                           const dnslib_rdata_t *rdata);
+
 /*!
  * \brief Adds RRSIG signatures to this RRSet.
  *
@@ -87,6 +104,9 @@ int dnslib_rrset_add_rdata(dnslib_rrset_t *rrset, dnslib_rdata_t *rdata);
  */
 int dnslib_rrset_set_rrsigs(dnslib_rrset_t *rrset, dnslib_rrset_t *rrsigs);
 
+int dnslib_rrset_add_rrsigs(dnslib_rrset_t *rrset, dnslib_rrset_t *rrsigs,
+                            dnslib_rrset_dupl_handling_t dupl);
+
 /*!
  * \brief Returns the Owner of the RRSet.
  *
@@ -95,6 +115,8 @@ int dnslib_rrset_set_rrsigs(dnslib_rrset_t *rrset, dnslib_rrset_t *rrsigs);
  * \return Owner of the given RRSet.
  */
 const dnslib_dname_t *dnslib_rrset_owner(const dnslib_rrset_t *rrset);
+
+dnslib_dname_t *dnslib_rrset_get_owner(const dnslib_rrset_t *rrset);
 
 /*!
  * \brief Returns the TYPE of the RRSet.
@@ -157,6 +179,9 @@ const dnslib_rdata_t *dnslib_rrset_rdata_next(const dnslib_rrset_t *rrset,
  */
 dnslib_rdata_t *dnslib_rrset_get_rdata(dnslib_rrset_t *rrset);
 
+dnslib_rdata_t *dnslib_rrset_rdata_get_next(dnslib_rrset_t *rrset,
+                                            dnslib_rdata_t *rdata);
+
 /*!
  * \brief Returns the set of RRSIGs covering the given RRSet.
  *
@@ -166,6 +191,14 @@ dnslib_rdata_t *dnslib_rrset_get_rdata(dnslib_rrset_t *rrset);
  *         if no rrset was provided (\a rrset is NULL).
  */
 const dnslib_rrset_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset);
+
+dnslib_rrset_t *dnslib_rrset_get_rrsigs(dnslib_rrset_t *rrset);
+
+int dnslib_rrset_compare(const dnslib_rrset_t *r1,
+                         const dnslib_rrset_t *r2,
+                         dnslib_rrset_compare_type_t cmp);
+
+int dnslib_rrset_copy(const dnslib_rrset_t *from, dnslib_rrset_t **to);
 
 /*!
  * \brief Destroys the RRSet structure.
@@ -189,12 +222,13 @@ void dnslib_rrset_free(dnslib_rrset_t **rrset);
  * \param rrset RRset to be destroyed.
  * \param free_owner Set to 0 if you do not want the owner domain name to be
  *                   destroyed also. Set to <> 0 otherwise.
+ * \param free_rdata ***\todo DOCUMENT ME***
  * \param free_rdata_dnames Set to <> 0 if you want to delete ALL domain names
  *                          present in RDATA. Set to 0 otherwise. (See
  *                          dnslib_rdata_deep_free().)
  */
 void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner,
-                            int free_rdata_dnames);
+                            int free_rdata, int free_rdata_dnames);
 
 /*!
  * \brief Merges two RRSets.

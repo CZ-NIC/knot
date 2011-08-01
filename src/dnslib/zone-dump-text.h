@@ -24,7 +24,7 @@
  * \retval DNSLIB_EOK on success.
  * \retval DNSLIB_EBADARG if the specified file is not valid for writing.
  */
-int zone_dump_text(dnslib_zone_t *zone, const char *filename);
+int zone_dump_text(dnslib_zone_contents_t *zone, const char *filename);
 
 #endif // _KNOT_DNSLIB_ZONE_DUMP_TEXT_H_
 

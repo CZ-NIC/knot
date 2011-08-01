@@ -11,6 +11,8 @@
 #include "dnslib/dname.h"
 #include "dnslib/error.h"
 #include "dnslib/node.h"
+#include "dnslib/utils.h"
+#include "dnslib/debug.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -143,8 +145,168 @@ dnslib_rdata_t *dnslib_rdata_new()
 
 	rdata->items = NULL;
 	rdata->count = 0;
+	rdata->next = NULL;
 
 	return rdata;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
+                           size_t *pos, size_t total_size, size_t rdlength,
+                           const dnslib_rrtype_descriptor_t *desc)
+{
+	int i = 0;
+	uint8_t item_type;
+	size_t parsed = 0;
+
+	if (rdlength == 0) {
+		rdata->items = NULL;
+		return DNSLIB_EOK;
+	}
+
+	dnslib_rdata_item_t *items = (dnslib_rdata_item_t *)malloc(
+	                            desc->length * sizeof(dnslib_rdata_item_t));
+	CHECK_ALLOC_LOG(items, DNSLIB_ENOMEM);
+
+	size_t item_size;
+	uint8_t gateway_type = 0;  // only to handle IPSECKEY record
+	dnslib_dname_t *dname;
+
+//	printf("Parsing RDATA of size %zu of type %s\n",
+//	       rdlength, dnslib_rrtype_to_string(desc->type));
+
+	while (parsed < rdlength && i < desc->length) {
+//		printf("Parsed: %zu\n", parsed);
+		item_type = desc->wireformat[i];
+		item_size = 0;
+
+//		printf("Parsing item of type %d\n", item_type);
+
+		size_t pos2;
+
+		switch (item_type) {
+		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
+		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
+		case DNSLIB_RDATA_WF_LITERAL_DNAME:
+//			printf("Next item - domain name, pos: %zu.\n", *pos);
+			pos2 = *pos;
+			dname = dnslib_dname_parse_from_wire(
+				wire, &pos2, total_size, NULL);
+			if (dname == NULL) {
+				free(items);
+				return DNSLIB_ERROR;
+			}
+			items[i].dname = dname;
+			//*pos += dname->size;
+			parsed += pos2 - *pos;
+			*pos = pos2;
+			break;
+		case DNSLIB_RDATA_WF_BYTE:
+//			printf("Next item - byte.\n");
+			if (desc->type == DNSLIB_RRTYPE_IPSECKEY && i == 1) {
+				gateway_type = *(wire + *pos);
+			}
+			item_size = 1;
+			break;
+		case DNSLIB_RDATA_WF_SHORT:
+//			printf("Next item - short.\n");
+			item_size = 2;
+			break;
+		case DNSLIB_RDATA_WF_LONG:
+//			printf("Next item - long, pos: %zu.\n", *pos);
+			item_size = 4;
+			break;
+		case DNSLIB_RDATA_WF_TEXT:
+//			printf("Next item - text.\n");
+			// TODO!!!
+			break;
+		case DNSLIB_RDATA_WF_A:
+//			printf("Next item - A.\n");
+			item_size = 4;
+			break;
+		case DNSLIB_RDATA_WF_AAAA:
+//			printf("Next item - AAAA.\n");
+			item_size = 16;
+			break;
+		case DNSLIB_RDATA_WF_BINARY:
+//			printf("Next item - Binary data.\n");
+			// the rest of the RDATA is this item
+			item_size = rdlength - parsed;
+//			printf("Binary item, size: %zu\n", item_size);
+			break;
+		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+//			printf("Next item - Binary with length.\n");
+			item_size = *(wire + *pos);
+			break;
+		case DNSLIB_RDATA_WF_APL:
+			// WTF? what to do with this??
+			break;
+		case DNSLIB_RDATA_WF_IPSECGATEWAY:
+			// determine size based on the 'gateway type' field
+			switch (gateway_type) {
+			case 0:
+				item_size = 0;
+				break;
+			case 1:
+				item_size = 4;
+				break;
+			case 2:
+				item_size = 16;
+				break;
+			case 3:
+				pos2 = *pos;
+				dname =
+					dnslib_dname_parse_from_wire(
+					         wire, &pos2, total_size, NULL);
+				if (dname == NULL) {
+					return DNSLIB_ERROR;
+				}
+				items[i].dname = dname;
+				//*pos += dname->size;
+				parsed += pos2 - *pos;
+				*pos = pos2;
+				break;
+			default:
+				assert(0);
+			}
+
+			break;
+		default:
+//			printf("Next item - unknown.\n");
+			return DNSLIB_EMALF;
+
+		}
+
+		if (item_size != 0) {
+//			printf("Parsed: %zu, item size: %zu\n", parsed,
+//			       item_size);
+			if (parsed + item_size > rdlength) {
+				free(items);
+				return DNSLIB_EFEWDATA;
+			}
+
+			items[i].raw_data = (uint16_t *)malloc(item_size + 2);
+			if (items[i].raw_data == NULL) {
+				free(items);
+				return DNSLIB_ENOMEM;
+			}
+			// TODO: save size to the RDATA item!!!
+//			printf("Read: %u\n", dnslib_wire_read_u32(wire + *pos));
+			memcpy(items[i].raw_data, &item_size, 2);
+			memcpy(items[i].raw_data + 1, wire + *pos, item_size);
+			*pos += item_size;
+			parsed += item_size;
+		}
+
+		++i;
+	}
+
+	// all items are parsed, insert into the RDATA
+	int rc;
+	rc = dnslib_rdata_set_items(rdata, items, i);
+	free(items);
+	return rc;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -157,6 +319,13 @@ int dnslib_rdata_set_item(dnslib_rdata_t *rdata, uint pos,
 	}
 	rdata->items[pos] = item; // this should copy the union; or use memcpy?
 	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+unsigned int dnslib_rdata_item_count(const dnslib_rdata_t *rdata)
+{
+	return rdata->count;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -461,24 +630,31 @@ int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
 	int cmp = 0;
 
 	for (int i = 0; i < count; ++i) {
-		const uint8_t *data1, *data2;
-		int size1, size2;
+//		const uint8_t *data1, *data2;
+//		int size1, size2;
 
 		if (format[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 		    format[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		    format[i] == DNSLIB_RDATA_WF_LITERAL_DNAME) {
-			data1 = dnslib_dname_name(r1->items[i].dname);
-			data2 = dnslib_dname_name(r2->items[i].dname);
-			size1 = dnslib_dname_size(r2->items[i].dname);
-			size2 = dnslib_dname_size(r2->items[i].dname);
+			cmp = dnslib_dname_compare(r1->items[i].dname,
+			                           r2->items[i].dname);
+//			data1 = dnslib_dname_name(r1->items[i].dname);
+//			data2 = dnslib_dname_name(r2->items[i].dname);
+//			size1 = dnslib_dname_size(r2->items[i].dname);
+//			size2 = dnslib_dname_size(r2->items[i].dname);
 		} else {
-			data1 = (uint8_t *)(r1->items[i].raw_data + 1);
-			data2 = (uint8_t *)(r2->items[i].raw_data + 1);
-			size1 = r1->items[i].raw_data[0];
-			size2 = r1->items[i].raw_data[0];
+			cmp = dnslib_rdata_compare_binary(
+				(uint8_t *)(r1->items[i].raw_data + 1),
+				(uint8_t *)(r2->items[i].raw_data + 1),
+				r1->items[i].raw_data[0],
+				r1->items[i].raw_data[0]);
+//			data1 = (uint8_t *)(r1->items[i].raw_data + 1);
+//			data2 = (uint8_t *)(r2->items[i].raw_data + 1);
+//			size1 = r1->items[i].raw_data[0];
+//			size2 = r1->items[i].raw_data[0];
 		}
 
-		cmp = dnslib_rdata_compare_binary(data1, data2, size1, size2);
+//		cmp =
 
 		if (cmp != 0) {
 			return cmp;
@@ -509,10 +685,10 @@ const dnslib_dname_t *dnslib_rdata_dname_target(const dnslib_rdata_t *rdata)
 	return rdata->items[0].dname;
 }
 
-/*----------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------*/
 
 const dnslib_dname_t *dnslib_rdata_get_name(const dnslib_rdata_t *rdata,
-					    uint16_t type)
+                                            uint16_t type)
 {
 	// iterate over the rdata items or act as if we knew where the name is?
 
@@ -528,4 +704,62 @@ const dnslib_dname_t *dnslib_rdata_get_name(const dnslib_rdata_t *rdata,
 	}
 
 	return NULL;
+}
+
+/*---------------------------------------------------------------------------*/
+int64_t dnslib_rdata_soa_serial(const dnslib_rdata_t *rdata)
+{
+	if (rdata->count < 3) {
+		return -1;
+	}
+
+	// the number is in network byte order, transform it
+	return dnslib_wire_read_u32((uint8_t *)(rdata->items[2].raw_data + 1));
+}
+
+/*---------------------------------------------------------------------------*/
+
+uint32_t dnslib_rdata_soa_refresh(const dnslib_rdata_t *rdata)
+{
+	if (rdata->count < 4) {
+		return 0;	/*! \todo Some other error value. */
+	}
+
+	// the number is in network byte order, transform it
+	return dnslib_wire_read_u32((uint8_t *)(rdata->items[3].raw_data + 1));
+}
+
+/*---------------------------------------------------------------------------*/
+
+uint32_t dnslib_rdata_soa_retry(const dnslib_rdata_t *rdata)
+{
+	if (rdata->count < 5) {
+		return 0;	/*! \todo Some other error value. */
+	}
+
+	// the number is in network byte order, transform it
+	return dnslib_wire_read_u32((uint8_t *)(rdata->items[4].raw_data + 1));
+}
+
+/*---------------------------------------------------------------------------*/
+
+uint32_t dnslib_rdata_soa_expire(const dnslib_rdata_t *rdata)
+{
+	if (rdata->count < 6) {
+		return 0;	/*! \todo Some other error value. */
+	}
+
+	// the number is in network byte order, transform it
+	return dnslib_wire_read_u32((uint8_t *)(rdata->items[5].raw_data + 1));
+}
+
+/*---------------------------------------------------------------------------*/
+
+uint16_t dnslib_rdata_rrsig_type_covered(const dnslib_rdata_t *rdata)
+{
+	if (rdata->count < 1) {
+		return 0;
+	}
+
+	return dnslib_wire_read_u16((uint8_t *)(rdata->items[0].raw_data + 1));
 }
