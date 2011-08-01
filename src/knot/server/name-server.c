@@ -82,12 +82,10 @@ static const dnslib_zone_t *ns_get_zone_for_qname(dnslib_zonedb_t *zdb,
 	 * records are only present in a parent zone.
 	 */
 	if (qtype == DNSLIB_RRTYPE_DS) {
-		/*
-		 * TODO: optimize!!!
-		 *  1) do not copy the name!
-		 */
+		/*! \todo Optimize, do not deep copy dname. */
 		dnslib_dname_t *name = dnslib_dname_left_chop(qname);
 		zone = dnslib_zonedb_find_zone_for_name(zdb, name);
+		/* Directly discard. */
 		dnslib_dname_free(&name);
 	} else {
 		zone = dnslib_zonedb_find_zone_for_name(zdb, qname);
@@ -114,7 +112,7 @@ static dnslib_rrset_t *ns_synth_from_wildcard(
 {
 	debug_ns("Synthetizing RRSet from wildcard...\n");
 
-	dnslib_dname_t *owner = dnslib_dname_copy(qname);
+	dnslib_dname_t *owner = dnslib_dname_deep_copy(qname);
 //	printf("Copied owner ptr: %p\n", owner);
 
 	dnslib_rrset_t *synth_rrset = dnslib_rrset_new(
@@ -122,8 +120,10 @@ static dnslib_rrset_t *ns_synth_from_wildcard(
 			dnslib_rrset_class(wildcard_rrset),
 			dnslib_rrset_ttl(wildcard_rrset));
 
+	/* Release owner, as it's retained in rrset. */
+	dnslib_dname_release(owner);
+
 	if (synth_rrset == NULL) {
-		dnslib_dname_free(&owner);
 		return NULL;
 	}
 
@@ -136,7 +136,7 @@ static dnslib_rrset_t *ns_synth_from_wildcard(
 		// we could use the RDATA from the wildcard rrset
 		// but there is no way to distinguish it when deleting
 		// temporary RRSets
-		dnslib_rdata_t *rdata_copy = dnslib_rdata_copy(rdata,
+		dnslib_rdata_t *rdata_copy = dnslib_rdata_deep_copy(rdata,
 		                                dnslib_rrset_type(synth_rrset));
 		if (rdata_copy == NULL) {
 			dnslib_rrset_deep_free(&synth_rrset, 1, 1, 0);
@@ -634,7 +634,7 @@ static dnslib_dname_t *ns_next_closer(const dnslib_dname_t *closest_encloser,
 	       == ce_labels);
 
 	// chop some labels from the qname
-	dnslib_dname_t *next_closer = dnslib_dname_copy(name);
+	dnslib_dname_t *next_closer = dnslib_dname_deep_copy(name);
 	if (next_closer == NULL) {
 		return NULL;
 	}
@@ -812,7 +812,7 @@ DEBUG_NS(
 		ret = ns_put_covering_nsec3(zone, next_closer, resp);
 
 		// the cast is ugly, but no better way around it
-		dnslib_dname_free((dnslib_dname_t **)&next_closer);
+		dnslib_dname_release((dnslib_dname_t *)next_closer);
 	} else {
 		ret = ns_put_covering_nsec3(zone, next_closer, resp);
 	}
@@ -838,6 +838,7 @@ static dnslib_dname_t *ns_wildcard_child_name(const dnslib_dname_t *name)
 	}
 
 	if (dnslib_dname_cat(wildcard, name) == NULL) {
+		/* Directly discard dname. */
 		dnslib_dname_free(&wildcard);
 		return NULL;
 	}
@@ -879,6 +880,8 @@ static int ns_put_nsec3_no_wildcard_child(const dnslib_zone_contents_t *zone,
 		ret = NS_ERR_SERVFAIL;
 	} else {
 		ret = ns_put_covering_nsec3(zone, wildcard, resp);
+
+		/* Directly discard wildcard. */
 		dnslib_dname_free(&wildcard);
 	}
 
@@ -991,6 +994,7 @@ static int ns_put_nsec_nxdomain(const dnslib_dname_t *qname,
 	debug_ns("Previous node: %s\n",
 	    dnslib_dname_to_str(dnslib_node_owner(prev_new)));
 
+	/* Directly discard dname. */
 	dnslib_dname_free(&wildcard);
 
 	if (prev_new != previous) {
@@ -1123,8 +1127,9 @@ DEBUG_NS(
 );
 	int ret = ns_put_covering_nsec3(zone, next_closer, resp);
 
-	// the cast is ugly, but no better way around it
-	dnslib_dname_free(&next_closer);
+
+	/* Duplicate from ns_next_close(), safe to discard. */
+	dnslib_dname_release(next_closer);
 
 	return ret;
 }
@@ -1414,7 +1419,7 @@ static dnslib_rrset_t *ns_cname_from_dname(const dnslib_rrset_t *dname_rrset,
 
 	// create new CNAME RRSet
 
-	dnslib_dname_t *owner = dnslib_dname_copy(qname);
+	dnslib_dname_t *owner = dnslib_dname_deep_copy(qname);
 	if (owner == NULL) {
 		return NULL;
 	}
@@ -1422,8 +1427,10 @@ static dnslib_rrset_t *ns_cname_from_dname(const dnslib_rrset_t *dname_rrset,
 	dnslib_rrset_t *cname_rrset = dnslib_rrset_new(
 		owner, DNSLIB_RRTYPE_CNAME, DNSLIB_CLASS_IN, SYNTH_CNAME_TTL);
 
+	/* Release owner, as it's retained in rrset. */
+	dnslib_dname_release(owner);
+
 	if (cname_rrset == NULL) {
-		dnslib_dname_free(&owner);
 		return NULL;
 	}
 
@@ -3059,7 +3066,8 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 			evsched_cancel(sched, refresh_ev);
 		}
 
-		// get zone contents
+		/* Get zone contents. */
+		rcu_read_lock();
 		const dnslib_zone_contents_t *contents =
 				dnslib_zone_contents(zone);
 
@@ -3083,19 +3091,22 @@ int ns_process_response(ns_nameserver_t *nameserver, sockaddr_t *from,
 				ref_tmr);
 
 			evsched_schedule(sched, refresh_ev, ref_tmr);
+			rcu_read_unlock();
 			return KNOT_EOK;
 		}
-
 
 		/* Prepare XFR client transfer. */
 		ns_xfr_t xfr_req;
 		memset(&xfr_req, 0, sizeof(ns_xfr_t));
 		memcpy(&xfr_req.addr, from, sizeof(sockaddr_t));
-		xfr_req.data = (void *)contents;
+		xfr_req.data = (void *)zone;
 		xfr_req.send = ns_send_cb;
 
 		/* Select transfer method. */
 		xfr_req.type = ns_transfer_to_use(nameserver, contents);
+
+		/* Unlock zone contents. */
+		rcu_read_unlock();
 
 		/* Enqueue XFR request. */
 		return xfr_request(nameserver->server->xfr_h, &xfr_req);
@@ -3181,6 +3192,8 @@ static int ns_find_zone_for_xfr(ns_xfr_t *xfr, const char **zonefile,
 
 		int r = dnslib_dname_compare(zone_name, dnslib_node_owner(
 		                         dnslib_zone_contents_apex(xfr->zone)));
+
+		/* Directly discard dname, won't be needed. */
 		dnslib_dname_free(&zone_name);
 
 		if (r == 0) {
@@ -3340,7 +3353,7 @@ int ns_process_axfrin(ns_nameserver_t *nameserver, ns_xfr_t *xfr)
 	debug_ns("ns_process_axfrin: incoming packet\n");
 
 	int ret = xfrin_process_axfr_packet(xfr->wire, xfr->wire_size,
-	                               (dnslib_zone_contents_t **)(&xfr->data));
+				       (dnslib_zone_contents_t **)(&xfr->data));
 
 	if (ret > 0) { // transfer finished
 		debug_ns("ns_process_axfrin: AXFR finished, zone created.\n");

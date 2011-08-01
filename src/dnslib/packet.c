@@ -388,7 +388,7 @@ DEBUG_DNSLIB_PACKET(
 	if (size - *pos < 10) {
 		debug_dnslib_packet("Malformed RR: Not enough data to parse RR"
 		                    " header.\n");
-		dnslib_dname_free(&owner);
+		dnslib_dname_release(owner);
 		return NULL;
 	}
 
@@ -399,8 +399,12 @@ DEBUG_DNSLIB_PACKET(
 	uint32_t ttl = dnslib_wire_read_u32(wire + *pos + 4);
 
 	dnslib_rrset_t *rrset = dnslib_rrset_new(owner, type, rclass, ttl);
+
+	/* Owner is either referenced in rrset or rrset creation failed. */
+	dnslib_dname_release(owner);
+
+	/* Check rrset allocation. */
 	if (rrset == NULL) {
-		dnslib_dname_free(&owner);
 		return NULL;
 	}
 
@@ -415,7 +419,6 @@ DEBUG_DNSLIB_PACKET(
 	if (size - *pos < rdlength) {
 		debug_dnslib_packet("Malformed RR: Not enough data to parse RR"
 		                    " RDATA.\n");
-		//dnslib_dname_free(&rrset->owner);
 		dnslib_rrset_deep_free(&rrset, 1, 1, 0);
 //		free(rrset);
 		return NULL;
@@ -433,7 +436,6 @@ DEBUG_DNSLIB_PACKET(
 	                         dnslib_rrtype_descriptor_by_type(rrset->type));
 	if (rdata == NULL) {
 		debug_dnslib_packet("Malformed RR: Could not parse RDATA.\n");
-		//dnslib_dname_free(&rrset->owner);
 		dnslib_rrset_deep_free(&rrset, 1, 1, 0);
 //		free(rrset);
 		return NULL;
@@ -442,7 +444,6 @@ DEBUG_DNSLIB_PACKET(
 	if (dnslib_rrset_add_rdata(rrset, rdata) != DNSLIB_EOK) {
 		debug_dnslib_packet("Malformed RR: Could not add RDATA to RRSet"
 		                    ".\n");
-		//dnslib_dname_free(&rrset->owner);
 		dnslib_rdata_free(&rdata);
 		dnslib_rrset_deep_free(&rrset, 1, 1, 0);
 //		free(rrset);
@@ -596,7 +597,7 @@ static void dnslib_packet_free_allocated_space(dnslib_packet_t *pkt)
 	debug_dnslib_packet("Freeing additional space in packet.\n");
 	if (pkt->prealloc_type == DNSLIB_PACKET_PREALLOC_NONE) {
 		debug_dnslib_packet("Freeing QNAME.\n");
-		dnslib_dname_free(&pkt->question.qname);
+		dnslib_dname_release(pkt->question.qname);
 	}
 
 	if (pkt->max_an_rrsets > DEFAULT_RRSET_COUNT(ANCOUNT, pkt)) {

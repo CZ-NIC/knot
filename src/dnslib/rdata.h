@@ -213,7 +213,8 @@ int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, unsigned int pos,
  *
  * \return Copy of \a rdata.
  */
-dnslib_rdata_t *dnslib_rdata_copy(const dnslib_rdata_t *rdata, uint16_t type);
+dnslib_rdata_t *dnslib_rdata_deep_copy(const dnslib_rdata_t *rdata, 
+                                       uint16_t type);
 
 /*!
  * \brief Destroys the RDATA structure without deleting RDATA items.

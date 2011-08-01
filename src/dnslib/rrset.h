@@ -116,7 +116,20 @@ int dnslib_rrset_add_rrsigs(dnslib_rrset_t *rrset, dnslib_rrset_t *rrsigs,
  */
 const dnslib_dname_t *dnslib_rrset_owner(const dnslib_rrset_t *rrset);
 
+/*!
+ * \todo Document me.
+ */
 dnslib_dname_t *dnslib_rrset_get_owner(const dnslib_rrset_t *rrset);
+
+/*!
+ * \brief Set rrset owner to specified dname.
+ *
+ * Previous owner will be replaced if exist.
+ *
+ * \param rrset Specified RRSet.
+ * \param owner New owner dname.
+ */
+void dnslib_rrset_set_owner(dnslib_rrset_t *rrset, dnslib_dname_t* owner);
 
 /*!
  * \brief Returns the TYPE of the RRSet.
@@ -198,7 +211,7 @@ int dnslib_rrset_compare(const dnslib_rrset_t *r1,
                          const dnslib_rrset_t *r2,
                          dnslib_rrset_compare_type_t cmp);
 
-int dnslib_rrset_copy(const dnslib_rrset_t *from, dnslib_rrset_t **to);
+int dnslib_rrset_shallow_copy(const dnslib_rrset_t *from, dnslib_rrset_t **to);
 
 /*!
  * \brief Destroys the RRSet structure.

@@ -562,6 +562,7 @@ DEBUG_DNSLIB_ZONE(
 
 	debug_dnslib_zone("Base32-encoded hash: %s\n", name_b32);
 
+	/* Will be returned to caller, make sure it is released after use. */
 	*nsec3_name = dnslib_dname_new_from_str(name_b32, size, NULL);
 
 	free(name_b32);
@@ -578,7 +579,7 @@ DEBUG_DNSLIB_ZONE(
 	if (ret == NULL) {
 		debug_dnslib_zone("Error while creating NSEC3 domain name for "
 		                  "hashed name.\n");
-		dnslib_dname_free(nsec3_name);
+		dnslib_dname_release(*nsec3_name);
 		return DNSLIB_ERROR;
 	}
 
@@ -722,8 +723,7 @@ static int dnslib_zone_contents_dnames_from_rrset_to_table(
 
 	if (replace_owner) {
 		// discard the old owner and replace it with the new
-		//dnslib_dname_free(&rrset->owner);
-		rrset->owner = owner;
+		dnslib_rrset_set_owner(rrset, owner);
 	}
 	debug_dnslib_zone("RRSet owner: %p\n", rrset->owner);
 
@@ -994,6 +994,7 @@ DEBUG_DNSLIB_ZONE(
 			debug_dnslib_zone("Creating new node.\n");
 			next_node = dnslib_node_new(chopped, NULL, flags);
 			if (next_node == NULL) {
+				/* Directly discard. */
 				dnslib_dname_free(&chopped);
 				return DNSLIB_ENOMEM;
 			}
@@ -1002,6 +1003,8 @@ DEBUG_DNSLIB_ZONE(
 				 dnslib_zone_contents_dnames_from_node_to_table(
 					zone->dname_table, next_node);
 				if (ret != DNSLIB_EOK) {
+					/*! \todo Will next_node leak? */
+					dnslib_dname_release(chopped);
 					return ret;
 				}
 			}
@@ -1024,7 +1027,8 @@ DEBUG_DNSLIB_ZONE(
 				debug_dnslib_zone("Failed to insert new node "
 				                  "to zone tree.\n");
 				/*! \todo Delete the node?? */
-				dnslib_dname_free(&chopped);
+				/* Directly discard. */
+				dnslib_dname_release(chopped);
 				return ret;
 			}
 
@@ -1046,7 +1050,8 @@ DEBUG_DNSLIB_ZONE(
 				debug_dnslib_zone("Error inserting node into "
 				                  "hash table!\n");
 				/*! \todo Delete the node?? */
-				dnslib_dname_free(&chopped);
+				/* Directly discard. */
+				dnslib_dname_release(chopped);
 				return DNSLIB_EHASH;
 			}
 
@@ -1064,7 +1069,14 @@ DEBUG_DNSLIB_ZONE(
 #endif
 			debug_dnslib_zone("Next parent.\n");
 			node = next_node;
+			dnslib_dname_t *chopped_last = chopped;
 			chopped = dnslib_dname_left_chop(chopped);
+
+			/* Release last chop, reference is already stored
+			 * in next_node.
+			 */
+			dnslib_dname_release(chopped_last);
+
 		}
 		// set the found parent (in the zone) as the parent of the last
 		// inserted node
@@ -1073,7 +1085,10 @@ DEBUG_DNSLIB_ZONE(
 
 		debug_dnslib_zone("Created all parents.\n");
 	}
-	dnslib_dname_free(&chopped);
+
+	/* Directly discard. */
+	/*! \todo This may be double-release. */
+	dnslib_dname_release(chopped);
 
 	return DNSLIB_EOK;
 }
@@ -1139,8 +1154,7 @@ int dnslib_zone_contents_add_rrset(dnslib_zone_contents_t *zone,
 	// table)
 	/*! \todo Do even if domain table is not used?? */
 	if (ret == DNSLIB_EOK && rrset->owner != (*node)->owner) {
-		dnslib_dname_free(&rrset->owner);
-		rrset->owner = (*node)->owner;
+		dnslib_rrset_set_owner(rrset, (*node)->owner);
 	}
 
 	debug_dnslib_zone("RRSet OK.\n");
@@ -1246,8 +1260,7 @@ int dnslib_zone_contents_add_rrsigs(dnslib_zone_contents_t *zone,
 	// replace RRSet's owner with the node's owner (that is already in the
 	// table)
 	if ((*rrset)->owner != (*rrset)->rrsigs->owner) {
-		dnslib_dname_free(&rrsigs->owner);
-		(*rrset)->rrsigs->owner = (*rrset)->owner;
+		dnslib_rrset_set_owner((*rrset)->rrsigs, (*rrset)->owner);
 	}
 
 	debug_dnslib_zone("RRSIGs OK\n");
@@ -1359,8 +1372,7 @@ int dnslib_zone_contents_add_nsec3_rrset(dnslib_zone_contents_t *zone,
 	// table)
 	/*! \todo Do even if domain table is not used? */
 	if (rrset->owner != (*node)->owner) {
-		dnslib_dname_free(&rrset->owner);
-		rrset->owner = (*node)->owner;
+		dnslib_rrset_set_owner(rrset, (*node)->owner);
 	}
 
 	debug_dnslib_zone("NSEC3 OK\n");
@@ -1725,7 +1737,8 @@ DEBUG_DNSLIB_ZONE(
 
 	// chop leftmost labels until some node is found
 	// copy the name for chopping
-	dnslib_dname_t *name_copy = dnslib_dname_copy(name);
+	/* Local allocation, will be discarded. */
+	dnslib_dname_t *name_copy = dnslib_dname_deep_copy(name);
 DEBUG_DNSLIB_ZONE(
 	char *n = dnslib_dname_to_str(name_copy);
 	debug_dnslib_zone("Finding closest encloser..\nStarting with: %s\n", n);
@@ -1749,6 +1762,7 @@ DEBUG_DNSLIB_ZONE(
 		                    name_copy->size);
 	}
 
+	/* Directly discard. */
 	dnslib_dname_free(&name_copy);
 
 	assert(item != NULL);
@@ -1797,7 +1811,7 @@ DEBUG_DNSLIB_ZONE(
 		zone->nsec3_nodes, nsec3_name, &found, &prev);
 	assert(exact_match >= 0);
 
-	dnslib_dname_free(&nsec3_name);
+	dnslib_dname_release(nsec3_name);
 
 DEBUG_DNSLIB_ZONE(
 	if (found) {
@@ -2142,7 +2156,7 @@ int dnslib_zone_contents_shallow_copy(const dnslib_zone_contents_t *from,
 			ret = DNSLIB_ENOMEM;
 			goto cleanup;
 		}
-		if ((ret = dnslib_dname_table_copy(from->dname_table,
+		if ((ret = dnslib_dname_table_shallow_copy(from->dname_table,
 		                        contents->dname_table)) != DNSLIB_EOK) {
 			goto cleanup;
 		}
@@ -2157,9 +2171,9 @@ int dnslib_zone_contents_shallow_copy(const dnslib_zone_contents_t *from,
 	memcpy(&contents->nsec3_params, &from->nsec3_params,
 	       sizeof(dnslib_nsec3_params_t));
 
-	if ((ret = dnslib_zone_tree_copy(from->nodes,
+	if ((ret = dnslib_zone_tree_shallow_copy(from->nodes,
 	                                 contents->nodes)) != DNSLIB_EOK
-	    || (ret = dnslib_zone_tree_copy(from->nsec3_nodes,
+	    || (ret = dnslib_zone_tree_shallow_copy(from->nsec3_nodes,
 	                                contents->nsec3_nodes)) != DNSLIB_EOK) {
 		goto cleanup;
 	}
@@ -2230,7 +2244,8 @@ void dnslib_zone_contents_deep_free(dnslib_zone_contents_t **contents)
 
 		dnslib_zone_tree_reverse_apply_postorder(
 			(*contents)->nsec3_nodes,
-			dnslib_zone_contents_destroy_node_rrsets_from_tree, 0);
+			dnslib_zone_contents_destroy_node_rrsets_from_tree,
+			(void*)1);
 
 		dnslib_zone_tree_reverse_apply_postorder(
 			(*contents)->nsec3_nodes,
@@ -2238,7 +2253,8 @@ void dnslib_zone_contents_deep_free(dnslib_zone_contents_t **contents)
 
 		dnslib_zone_tree_reverse_apply_postorder(
 			(*contents)->nodes,
-			dnslib_zone_contents_destroy_node_rrsets_from_tree, 0);
+			dnslib_zone_contents_destroy_node_rrsets_from_tree,
+			(void*)1);
 
 		dnslib_zone_tree_reverse_apply_postorder(
 			(*contents)->nodes,

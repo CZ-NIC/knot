@@ -14,6 +14,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include "common/ref.h"
 
 struct dnslib_node;
 
@@ -36,6 +37,7 @@ struct dnslib_dname {
 	unsigned short label_count;
 	struct dnslib_node *node; /*!< Zone node the domain name belongs to. */
 	unsigned int id; /*!< ID of domain name used in zone dumping. */
+	ref_t ref;     /*!< Reference counting. */
 };
 
 typedef struct dnslib_dname dnslib_dname_t;
@@ -44,6 +46,9 @@ typedef struct dnslib_dname dnslib_dname_t;
 
 /*!
  * \brief Creates empty dname structure (no name, no owner node).
+ *
+ * \note Newly created dname is referenced, caller is responsible for releasing
+ *       it after use.
  *
  * \return Newly allocated and initialized dname structure.
  *
@@ -57,6 +62,9 @@ dnslib_dname_t *dnslib_dname_new();
  *
  * The resulting domain name is stored in wire format, but it may not end with
  * root label (0).
+ *
+ * \note Newly created dname is referenced, caller is responsible for releasing
+ *       it after use.
  *
  * \param name Domain name in presentation format (labels separated by dots).
  * \param size Size of the domain name (count of characters with all dots).
@@ -74,6 +82,8 @@ dnslib_dname_t *dnslib_dname_new_from_str(const char *name, unsigned int size,
  *
  * \note The name is copied into the structure.
  * \note If the given name is not a FQDN, the result will be neither.
+ * \note Newly created dname is referenced, caller is responsible for releasing
+ *       it after use.
  *
  * \param name Domain name in wire format.
  * \param size Size of the domain name in octets.
@@ -124,13 +134,16 @@ int dnslib_dname_from_wire(const uint8_t *name, unsigned int size,
                            struct dnslib_node *node, dnslib_dname_t *target);
 
 /*!
- * \brief Copies the given domain name.
+ * \brief Duplicates the given domain name.
+ *
+ * \note Copied dname referense count is reset to 1, caller is responsible
+ *       for releasing it after use.
  *
  * \param dname Domain name to be copied.
  *
  * \return New domain name which is an exact copy of \a dname.
  */
-dnslib_dname_t *dnslib_dname_copy(const dnslib_dname_t *dname);
+dnslib_dname_t *dnslib_dname_deep_copy(const dnslib_dname_t *dname);
 
 /*!
  * \brief Converts the given domain name to string representation.
@@ -203,6 +216,9 @@ int dnslib_dname_is_fqdn(const dnslib_dname_t *dname);
 
 /*!
  * \brief Creates new domain name by removing leftmost label from \a dname.
+ *
+ * \note Newly created dname reference count is set to 1, caller is responsible
+ *        for releasing it after use.
  *
  * \param dname Domain name to remove the first label from.
  *
@@ -341,6 +357,45 @@ dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2);
 void dnslib_dname_set_id(dnslib_dname_t *dname, unsigned int id);
 
 unsigned int dnslib_dname_get_id(const dnslib_dname_t *dname);
+
+/*!
+ * \brief Increment reference counter for dname.
+ *
+ * Function makes shallow copy (reference).
+ *
+ * \param dname Referenced dname.
+ */
+static inline void dnslib_dname_retain(dnslib_dname_t *dname) {
+	if (dname) {
+		ref_retain(&dname->ref);
+	}
+}
+
+/*
+#define dnslib_dname_retain(d) \
+	dnslib_dname_retain_((d));\
+	if ((d))\
+	fprintf(stderr, "dname_retain: %s() at %s:%d, %p refcount=%zu\n",\
+	__func__, __FILE__, __LINE__, d, (d)->ref.count)
+*/
+
+/*!
+ * \brief Decrement reference counter for dname.
+ *
+ * \param dname Referenced dname.
+ */
+static inline void dnslib_dname_release(dnslib_dname_t *dname) {
+	if (dname) {
+		ref_release(&dname->ref);
+	}
+}
+/*
+#define dnslib_dname_release(d) \
+	if ((d))\
+	fprintf(stderr, "dname_release: %s() at %s:%d, %p refcount=%zu\n",\
+	__func__, __FILE__, __LINE__, d, (d)->ref.count-1);\
+	dnslib_dname_release_((d))
+*/
 
 #endif /* _KNOT_DNSLIB_DNAME_H_ */
 

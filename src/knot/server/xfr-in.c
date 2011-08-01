@@ -28,7 +28,7 @@ static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_create_query(const dnslib_dname_t *qname, uint16_t qtype,
+static int xfrin_create_query(const dnslib_zone_contents_t *zone, uint16_t qtype,
                               uint16_t qclass, uint8_t *buffer, size_t *size)
 {
 	dnslib_packet_t *pkt = dnslib_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
@@ -49,6 +49,12 @@ static int xfrin_create_query(const dnslib_dname_t *qname, uint16_t qtype,
 
 	dnslib_question_t question;
 
+	const dnslib_node_t *apex = dnslib_zone_contents_apex(zone);
+	dnslib_dname_t *qname = dnslib_node_get_owner(apex);
+
+	/* Retain qname until the question is freed. */
+	dnslib_dname_retain(qname);
+
 	// this is ugly!!
 	question.qname = (dnslib_dname_t *)qname;
 	question.qtype = qtype;
@@ -56,6 +62,7 @@ static int xfrin_create_query(const dnslib_dname_t *qname, uint16_t qtype,
 
 	rc = dnslib_query_set_question(pkt, &question);
 	if (rc != DNSLIB_EOK) {
+		dnslib_dname_release(question.qname);
 		dnslib_packet_free(&pkt);
 		return KNOT_ERROR;
 	}
@@ -68,6 +75,7 @@ static int xfrin_create_query(const dnslib_dname_t *qname, uint16_t qtype,
 	size_t wire_size = 0;
 	rc = dnslib_packet_to_wire(pkt, &wire, &wire_size);
 	if (rc != DNSLIB_EOK) {
+		dnslib_dname_release(question.qname);
 		dnslib_packet_free(&pkt);
 		return KNOT_ERROR;
 	}
@@ -86,6 +94,9 @@ static int xfrin_create_query(const dnslib_dname_t *qname, uint16_t qtype,
 	dnslib_packet_dump(pkt);
 
 	dnslib_packet_free(&pkt);
+
+	/* Release qname. */
+	dnslib_dname_release(question.qname);
 
 	return KNOT_EOK;
 }
@@ -160,10 +171,10 @@ static inline uint64_t ixfrdb_key_make(uint32_t from, uint32_t to)
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_soa_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
+int xfrin_create_soa_query(const dnslib_zone_contents_t *zone, uint8_t *buffer,
                            size_t *size)
 {
-	return xfrin_create_query(zone_name, DNSLIB_RRTYPE_SOA,
+	return xfrin_create_query(zone, DNSLIB_RRTYPE_SOA,
 	                           DNSLIB_CLASS_IN, buffer, size);
 }
 
@@ -230,19 +241,19 @@ int xfrin_transfer_needed(const dnslib_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_axfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
+int xfrin_create_axfr_query(const dnslib_zone_contents_t *zone, uint8_t *buffer,
                             size_t *size)
 {
-	return xfrin_create_query(zone_name, DNSLIB_RRTYPE_AXFR,
+	return xfrin_create_query(zone, DNSLIB_RRTYPE_AXFR,
 	                           DNSLIB_CLASS_IN, buffer, size);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_ixfr_query(const dnslib_dname_t *zone_name, uint8_t *buffer,
+int xfrin_create_ixfr_query(const dnslib_zone_contents_t *zone, uint8_t *buffer,
                             size_t *size)
 {
-	return xfrin_create_query(zone_name, DNSLIB_RRTYPE_IXFR,
+	return xfrin_create_query(zone, DNSLIB_RRTYPE_IXFR,
 	                           DNSLIB_CLASS_IN, buffer, size);
 }
 
@@ -259,7 +270,7 @@ int xfrin_zone_transferred(ns_nameserver_t *nameserver,
 /*----------------------------------------------------------------------------*/
 
 int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
-                              dnslib_zone_contents_t **zone)
+			      dnslib_zone_contents_t **zone)
 {
 	if (pkt == NULL || zone == NULL) {
 		debug_xfr("Wrong parameters supported.\n");
@@ -1572,11 +1583,6 @@ static void xfrin_rollback_update(dnslib_zone_contents_t *contents,
 		dnslib_rrset_deep_free(&changes->new_rrsets[i], 0, 1, 0);
 	}
 
-//	// discard new dnames
-//	for (int i = 0; i < changes->new_dnames_count; ++i) {
-//		dnslib_dname_free(&changes->new_dnames[i]);
-//	}
-
 	// destroy the shallow copy of zone
 	xfrin_zone_contents_free(&contents);
 }
@@ -1611,7 +1617,7 @@ static int xfrin_get_node_copy(dnslib_node_t **node, xfrin_changes_t *changes)
 		dnslib_node_get_new_node(*node);
 	if (new_node == NULL) {
 		debug_xfr("Creating copy of node.\n");
-		int ret = dnslib_node_deep_copy(*node, &new_node);
+		int ret = dnslib_node_shallow_copy(*node, &new_node);
 		if (ret != DNSLIB_EOK) {
 			debug_xfr("Failed to create node copy.\n");
 			return KNOT_ENOMEM;
@@ -1659,7 +1665,7 @@ static int xfrin_copy_old_rrset(dnslib_rrset_t *old,
                                 dnslib_rrset_t **copy, xfrin_changes_t *changes)
 {
 	// create new RRSet by copying the old one
-	int ret = dnslib_rrset_copy(old, copy);
+	int ret = dnslib_rrset_shallow_copy(old, copy);
 	if (ret != DNSLIB_EOK) {
 		debug_xfr("Failed to create RRSet copy.\n");
 		return KNOT_ENOMEM;
