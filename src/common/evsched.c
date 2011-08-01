@@ -6,7 +6,7 @@
 /*!
  * \brief Set event timer to T (now) + dt miliseconds.
  */
-static void evsched_settimer(event_t *e, int dt)
+static void evsched_settimer(event_t *e, uint32_t dt)
 {
 	if (!e) {
 		return;
@@ -41,7 +41,7 @@ evsched_t *evsched_new()
 	/* Initialize event calendar. */
 	pthread_mutex_init(&s->mx, 0);
 	pthread_cond_init(&s->notify, 0);
-	pthread_spin_init(&s->cache.lock, PTHREAD_PROCESS_PRIVATE);
+	pthread_mutex_init(&s->cache.lock, 0);
 	slab_cache_init(&s->cache.alloc, sizeof(event_t));
 	init_list(&s->calendar);
 	return s;
@@ -66,6 +66,7 @@ void evsched_delete(evsched_t **s)
 
 	/* Free allocator. */
 	slab_cache_destroy(&(*s)->cache.alloc);
+	pthread_mutex_destroy(&(*s)->cache.lock);
 
 	/* Free scheduler. */
 	free(*s);
@@ -79,9 +80,9 @@ event_t *evsched_event_new(evsched_t *s, int type)
 	}
 
 	/* Allocate. */
-	pthread_spin_lock(&s->cache.lock);
+	pthread_mutex_lock(&s->cache.lock);
 	event_t *e = slab_cache_alloc(&s->cache.alloc);
-	pthread_spin_unlock(&s->cache.lock);
+	pthread_mutex_unlock(&s->cache.lock);
 
 	/* Initialize. */
 	memset(e, 0, sizeof(event_t));
@@ -95,9 +96,9 @@ void evsched_event_free(evsched_t *s, event_t *ev)
 		return;
 	}
 
-	pthread_spin_lock(&s->cache.lock);
+	pthread_mutex_lock(&s->cache.lock);
 	slab_free(ev);
-	pthread_spin_unlock(&s->cache.lock);
+	pthread_mutex_unlock(&s->cache.lock);
 }
 
 event_t* evsched_next(evsched_t *s)
@@ -146,7 +147,7 @@ event_t* evsched_next(evsched_t *s)
 
 }
 
-int evsched_schedule(evsched_t *s, event_t *ev, int dt)
+int evsched_schedule(evsched_t *s, event_t *ev, uint32_t dt)
 {
 	if (!s || !ev || dt < 0) {
 		return -1;
@@ -185,7 +186,7 @@ int evsched_schedule(evsched_t *s, event_t *ev, int dt)
 	return 0;
 }
 
-event_t* evsched_schedule_cb(evsched_t *s, event_cb_t cb, void *data, int dt)
+event_t* evsched_schedule_cb(evsched_t *s, event_cb_t cb, void *data, uint32_t dt)
 {
 	if (!s) {
 		return 0;
@@ -208,7 +209,7 @@ event_t* evsched_schedule_cb(evsched_t *s, event_cb_t cb, void *data, int dt)
 	return e;
 }
 
-event_t* evsched_schedule_term(evsched_t *s, int dt)
+event_t* evsched_schedule_term(evsched_t *s, uint32_t dt)
 {
 	if (!s) {
 		return 0;

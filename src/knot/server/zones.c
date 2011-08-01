@@ -423,6 +423,7 @@ void zones_timers_update(dnslib_zone_t *zone, conf_zone_t *cfzone, evsched_t *sc
 		uint32_t refresh_tmr = zones_soa_refresh(zone);
 		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_axfrin_poll,
 							 zone, refresh_tmr);
+		debug_zones("notify: REFRESH set to %u\n", refresh_tmr);
 
 		/* Cancel EXPIRE timer. */
 		if (zd->xfr_in.expire) {
