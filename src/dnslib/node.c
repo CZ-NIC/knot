@@ -773,7 +773,7 @@ int dnslib_node_compare(dnslib_node_t *node1, dnslib_node_t *node2)
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_node_deep_copy(const dnslib_node_t *from, dnslib_node_t **to)
+int dnslib_node_shallow_copy(const dnslib_node_t *from, dnslib_node_t **to)
 {
 	// create new node
 	*to = dnslib_node_new(from->owner, from->parent, from->flags);
@@ -781,17 +781,10 @@ int dnslib_node_deep_copy(const dnslib_node_t *from, dnslib_node_t **to)
 		return DNSLIB_ENOMEM;
 	}
 
-	// copy references
-	
+	// copy references	
 	// do not use the API function to set parent, so that children count 
 	// is not changed
-	(*to)->parent = from->parent;
-	(*to)->nsec3_node = from->nsec3_node;
-	(*to)->nsec3_referer = from->nsec3_referer;
-	(*to)->wildcard_child = from->wildcard_child;
-	(*to)->prev = from->prev;
-	(*to)->next = from->next;
-	(*to)->children = from->children;
+	memcpy(*to, from, sizeof(dnslib_node_t));
 
 	// copy RRSets
 	// copy the skip list with the old references
@@ -801,8 +794,6 @@ int dnslib_node_deep_copy(const dnslib_node_t *from, dnslib_node_t **to)
 		*to = NULL;
 		return DNSLIB_ENOMEM;
 	}
-
-	(*to)->rrset_count = from->rrset_count;
 
 	return DNSLIB_EOK;
 }

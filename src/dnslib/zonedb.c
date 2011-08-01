@@ -210,23 +210,6 @@ DEBUG_DNSLIB_ZONEDB(
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_zonedb_t *dnslib_zonedb_copy(const dnslib_zonedb_t *db)
-{
-	dnslib_zonedb_t *db_new =
-		(dnslib_zonedb_t *)malloc(sizeof(dnslib_zonedb_t));
-	CHECK_ALLOC_LOG(db_new, NULL);
-
-	db_new->zones = skip_copy_list(db->zones);
-	if (db_new->zones == NULL) {
-		free(db_new);
-		return NULL;
-	}
-
-	return db_new;
-}
-
-/*----------------------------------------------------------------------------*/
-
 void dnslib_zonedb_free(dnslib_zonedb_t **db)
 {
 	skip_destroy_list(&(*db)->zones, NULL, NULL);

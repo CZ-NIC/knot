@@ -108,8 +108,8 @@ int dnslib_dname_table_add_dname2(dnslib_dname_table_t *table,
  * \param from Original domain name table.
  * \param to Copy of the domain name table.
  */
-int dnslib_dname_table_copy(dnslib_dname_table_t *from,
-                            dnslib_dname_table_t *to);
+int dnslib_dname_table_shallow_copy(dnslib_dname_table_t *from,
+                                    dnslib_dname_table_t *to);
 
 /*!
  * \brief Frees dname table without its nodes. Sets pointer to NULL.

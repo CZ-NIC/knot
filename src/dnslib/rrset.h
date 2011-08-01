@@ -211,7 +211,7 @@ int dnslib_rrset_compare(const dnslib_rrset_t *r1,
                          const dnslib_rrset_t *r2,
                          dnslib_rrset_compare_type_t cmp);
 
-int dnslib_rrset_copy(const dnslib_rrset_t *from, dnslib_rrset_t **to);
+int dnslib_rrset_shallow_copy(const dnslib_rrset_t *from, dnslib_rrset_t **to);
 
 /*!
  * \brief Destroys the RRSet structure.

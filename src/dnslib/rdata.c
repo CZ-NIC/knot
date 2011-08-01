@@ -600,7 +600,8 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_rdata_t *dnslib_rdata_copy(const dnslib_rdata_t *rdata, uint16_t type)
+dnslib_rdata_t *dnslib_rdata_deep_copy(const dnslib_rdata_t *rdata, 
+                                       uint16_t type)
 {
 	dnslib_rdata_t *copy = dnslib_rdata_new();
 	CHECK_ALLOC_LOG(copy, NULL);
@@ -625,7 +626,7 @@ dnslib_rdata_t *dnslib_rdata_copy(const dnslib_rdata_t *rdata, uint16_t type)
 		    || d->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
 		    || d->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME) {
 			copy->items[i].dname =
-				dnslib_dname_copy(rdata->items[i].dname);
+				dnslib_dname_deep_copy(rdata->items[i].dname);
 		} else {
 			copy->items[i].raw_data = (uint16_t *)malloc(
 					rdata->items[i].raw_data[0] + 2);

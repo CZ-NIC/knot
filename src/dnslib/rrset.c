@@ -308,10 +308,14 @@ int dnslib_rrset_compare(const dnslib_rrset_t *r1,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_rrset_copy(const dnslib_rrset_t *from, dnslib_rrset_t **to)
+int dnslib_rrset_shallow_copy(const dnslib_rrset_t *from, dnslib_rrset_t **to)
 {
-	/*! \todo Implement (shallow copy). */
-	return DNSLIB_ERROR;
+	*to = (dnslib_rrset_t *)malloc(sizeof(dnslib_rrset_t));
+	CHECK_ALLOC_LOG(*to, DNSLIB_ENOMEM);
+	
+	memcpy(*to, from, sizeof(dnslib_rrset_t));
+	
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

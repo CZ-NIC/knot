@@ -112,7 +112,7 @@ static dnslib_rrset_t *ns_synth_from_wildcard(
 {
 	debug_ns("Synthetizing RRSet from wildcard...\n");
 
-	dnslib_dname_t *owner = dnslib_dname_copy(qname);
+	dnslib_dname_t *owner = dnslib_dname_deep_copy(qname);
 //	printf("Copied owner ptr: %p\n", owner);
 
 	dnslib_rrset_t *synth_rrset = dnslib_rrset_new(
@@ -136,7 +136,7 @@ static dnslib_rrset_t *ns_synth_from_wildcard(
 		// we could use the RDATA from the wildcard rrset
 		// but there is no way to distinguish it when deleting
 		// temporary RRSets
-		dnslib_rdata_t *rdata_copy = dnslib_rdata_copy(rdata,
+		dnslib_rdata_t *rdata_copy = dnslib_rdata_deep_copy(rdata,
 		                                dnslib_rrset_type(synth_rrset));
 		if (rdata_copy == NULL) {
 			dnslib_rrset_deep_free(&synth_rrset, 1, 1, 0);
@@ -634,7 +634,7 @@ static dnslib_dname_t *ns_next_closer(const dnslib_dname_t *closest_encloser,
 	       == ce_labels);
 
 	// chop some labels from the qname
-	dnslib_dname_t *next_closer = dnslib_dname_copy(name);
+	dnslib_dname_t *next_closer = dnslib_dname_deep_copy(name);
 	if (next_closer == NULL) {
 		return NULL;
 	}
@@ -1419,7 +1419,7 @@ static dnslib_rrset_t *ns_cname_from_dname(const dnslib_rrset_t *dname_rrset,
 
 	// create new CNAME RRSet
 
-	dnslib_dname_t *owner = dnslib_dname_copy(qname);
+	dnslib_dname_t *owner = dnslib_dname_deep_copy(qname);
 	if (owner == NULL) {
 		return NULL;
 	}

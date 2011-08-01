@@ -216,8 +216,8 @@ int dnslib_dname_table_add_dname2(dnslib_dname_table_t *table,
 	return DNSLIB_EOK;
 }
 
-int dnslib_dname_table_copy(dnslib_dname_table_t *from,
-                            dnslib_dname_table_t *to)
+int dnslib_dname_table_shallow_copy(dnslib_dname_table_t *from,
+                                    dnslib_dname_table_t *to)
 {
 	to->id_counter = from->id_counter;
 

@@ -40,7 +40,7 @@ dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
 
 	// save the zone name
 	debug_dnslib_zone("Copying zone name.\n");
-	zone->name = dnslib_dname_copy(dnslib_node_owner(apex));
+	zone->name = dnslib_dname_deep_copy(dnslib_node_owner(apex));
 	if (zone->name == NULL) {
 		ERR_ALLOC_FAILED;
 		free(zone);
