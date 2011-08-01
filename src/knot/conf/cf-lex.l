@@ -19,36 +19,28 @@
 #include "libknot_la-cf-parse.h" /* Automake generated header. */
 
 /* Imported symbols. */
-#define yylex cf_lex
+#define cf_lval (*yylval)
 extern void cf_error(const char *msg);
 extern int (*cf_read_hook)(char *buf, size_t nbytes);
-
-#define YY_INPUT(buf,result,max) result = cf_read_hook(buf, max);
-
-/*! \warning Free yy buffers until reentrant parser is made. */
-void __attribute__ ((destructor)) yy_deinit()
+void switch_input(const char *str, void *scanner)
 {
-#ifdef YY_CURRENT_BUFFER_LVALUE
-	/* Pop the buffer stack, destroying each element. */
-	while (YY_CURRENT_BUFFER) {
-		yy_delete_buffer(YY_CURRENT_BUFFER);
-		YY_CURRENT_BUFFER_LVALUE = NULL;
-		yypop_buffer_state();
-	}
-
-	/* Destroy the stack itself. */
-	yyfree(yy_buffer_stack);
-	yy_buffer_stack = NULL;
-#endif
+	yy_scan_string(str, scanner);
 }
+
+//#define YY_INPUT(buf,result,max) result = cf_read_hook(buf, max);
+#define YY_NO_UNPUT
 
 %}
 
+%option reentrant
+%option bison-bridge
 %option noyywrap
 %option noinput
 %option nounput
 %option noreject
 %option yylineno
+%option prefix = "cf_"
+%option outfile = "lex.yy.c"
 
 ALPHA [a-zA-Z_]
 DIGIT [0-9]

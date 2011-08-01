@@ -27,6 +27,7 @@
 #include "zcompile/zcompile.h"
 #include "zcompile/parser-descriptor.h"
 #include "zcompile/zcompile-error.h"
+#include "zparser.h"
 
 /* these need to be global, otherwise they cannot be used inside yacc */
 zparser_type *parser;
@@ -34,7 +35,7 @@ zparser_type *parser;
 #ifdef __cplusplus
 extern "C"
 #endif /* __cplusplus */
-int yywrap(void);
+int zp_wrap(void);
 
 /* this hold the nxt bits */
 static uint8_t nxtbits[16];
@@ -47,7 +48,8 @@ static uint8_t nsecbits[NSEC_WINDOW_COUNT][NSEC_WINDOW_BITS_SIZE];
 /* hold the highest rcode seen in a NSEC rdata , BUG #106 */
 uint16_t nsec_highest_rcode;
 
-void yyerror(const char *message);
+void zp_error(void *scanner, const char *message);
+int zp_lex(YYSTYPE *lvalp, void *scanner);
 
 /* helper functions */
 void zc_error(const char *fmt, ...);
@@ -76,6 +78,11 @@ dnslib_dname_t *error_domain;
 	uint16_t             type;
 	uint16_t             *unknown;
 }
+
+%pure-parser
+%parse-param {void *scanner}
+%lex-param {void *scanner}
+%name-prefix = "zp_"
 
 /*
  * Tokens to represent the known RR types of DNS.
@@ -1386,9 +1393,7 @@ rdata_unknown:	URR sp STR sp str_sp_seq trail
     ;
 %%
 
-/* ??? */
-int
-yywrap(void)
+int zp_wrap(void)
 {
 	return 1;
 }
@@ -1465,13 +1470,12 @@ void zparser_free()
 	dnslib_dname_free(&(parser->root_domain));
 	free(parser->temporary_items);
 	dnslib_rrset_free(&(parser->current_rrset));
-	dnslib_dname_free(&parser->prev_dname);
-	yylex_destroy();
+	dnslib_dname_free(&(parser->prev_dname));
 	free(parser);
 }
 
 void
-yyerror(const char *message)
+yyerror(void *scanner, const char *message)
 {
 	zc_error("%s", message);
 }
