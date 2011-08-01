@@ -6,10 +6,8 @@ sbin_PROGRAMS = knotd
 # $(YACC) will generate header file
 AM_CFLAGS = -Wall
 AM_YFLAGS = -d
-libknot_la_YFLAGS = -pcf_ -d
-libknot_la_LFLAGS = # TODO: reentrant parser, prefix
-
-LDADD = libknot.la @LIBOBJS@
+libknotd_la_YFLAGS = -pcf_ -d
+libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
 
 BUILT_SOURCES =					\
 	dnslib/tests/parsed_data.rc		\
@@ -113,14 +111,15 @@ nodist_unittests_SOURCES =			\
 	dnslib/tests/parsed_data.rc		\
 	dnslib/tests/raw_data_queries.rc	\
 	dnslib/tests/raw_data.rc		\
-	dnslib/tests/parsed_data_queries.rc     \
+	dnslib/tests/parsed_data_queries.rc	\
 	tests/sample_conf.rc
 
 knotd_SOURCES =					\
 	knot/main.c
 
-noinst_LTLIBRARIES = libknot.la
-libknot_la_SOURCES =				\
+noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la
+
+libknots_la_SOURCES =				\
 	common/slab/slab.c			\
 	common/slab/malloc.c			\
 	common/slab/slab.h			\
@@ -142,7 +141,7 @@ libknot_la_SOURCES =				\
 	common/general-tree.c			\
 	common/dynamic-array.h			\
 	common/tree.h				\
-	common/base32hex.h				\
+	common/base32hex.h			\
 	common/evqueue.h		\
 	common/evqueue.c		\
 	common/evsched.h		\
@@ -155,20 +154,61 @@ libknot_la_SOURCES =				\
 	common/crc.c				\
 	common/ref.h				\
 	common/ref.c				\
+	common/errors.h				\
+	common/errors.c
+
+libknotd_la_SOURCES =				\
 	knot/stat/gatherer.c				\
 	knot/stat/stat.c				\
 	knot/stat/gatherer.h				\
 	knot/stat/stat.h				\
-	dnslib/edns.c                           \
-	common/errors.h				\
-	common/errors.c				\
+	knot/common.h				\
+	knot/other/log.c			\
+	knot/other/log.h			\
+	knot/other/debug.h			\
+	knot/other/error.h			\
+	knot/other/error.c			\
+	knot/conf/cf-parse.y			\
+	knot/conf/cf-lex.l			\
+	knot/conf/conf.c			\
+	knot/conf/logconf.c			\
+	knot/conf/logconf.h			\
+	knot/conf/conf.h			\
+	knot/ctl/process.c			\
+	knot/ctl/process.h			\
+	knot/server/dthreads.c			\
+	knot/server/journal.c			\
+	knot/server/socket.c				\
+	knot/server/name-server.c			\
+	knot/server/server.c				\
+	knot/server/udp-handler.c			\
+	knot/server/tcp-handler.c			\
+	knot/server/xfr-handler.c			\
+	knot/server/zones.c				\
+	knot/server/socket.h				\
+	knot/server/name-server.h			\
+	knot/server/udp-handler.h			\
+	knot/server/tcp-handler.h			\
+	knot/server/xfr-handler.h			\
+	knot/server/dthreads.h			\
+	knot/server/journal.h			\
+	knot/server/zones.h				\
+	knot/server/notify.h				\
+	knot/server/notify.c				\
+	knot/server/zones.h				\
+	knot/server/xfr-in.h				\
+	knot/server/xfr-in.c				\
+	knot/server/server.h
+	
+libknot_la_SOURCES =				\
+	dnslib/edns.c				\
 	dnslib/dnslib-error.c			\
 	dnslib/utils.c				\
 	dnslib/rrset.c				\
 	dnslib/dname.c				\
 	dnslib/node.c				\
-	dnslib/packet.c			\
-	dnslib/query.c			\
+	dnslib/packet.c				\
+	dnslib/query.c				\
 	dnslib/response2.c			\
 	dnslib/response.c			\
 	dnslib/zone.c				\
@@ -213,46 +253,19 @@ libknot_la_SOURCES =				\
 	dnslib/wire.h				\
 	dnslib/debug.h				\
 	dnslib/nsec3.h				\
-	dnslib/dname-table.h			\
-	knot/common.h				\
-	knot/other/log.c			\
-	knot/other/log.h			\
-	knot/other/debug.h			\
-	knot/other/error.h			\
-	knot/other/error.c			\
-	knot/conf/cf-parse.y			\
-	knot/conf/cf-lex.l			\
-	knot/conf/conf.c			\
-	knot/conf/logconf.c			\
-	knot/conf/logconf.h			\
-	knot/conf/conf.h			\
-	knot/ctl/process.c			\
-	knot/ctl/process.h			\
-	knot/server/dthreads.c			\
-	knot/server/journal.c			\
-	knot/server/socket.c				\
-	knot/server/name-server.c			\
-	knot/server/server.c				\
-	knot/server/udp-handler.c			\
-	knot/server/tcp-handler.c			\
-	knot/server/xfr-handler.c			\
-	knot/server/zones.c				\
-	knot/server/socket.h				\
-	knot/server/name-server.h			\
-	knot/server/udp-handler.h			\
-	knot/server/tcp-handler.h			\
-	knot/server/xfr-handler.h			\
-	knot/server/dthreads.h			\
-	knot/server/journal.h			\
-	knot/server/zones.h				\
-	knot/server/notify.h				\
-	knot/server/notify.c				\
-	knot/server/zones.h				\
-	knot/server/xfr-in.h				\
-	knot/server/xfr-in.c				\
-	knot/server/server.h
+	dnslib/dname-table.h
 
-libknot_la_LIBADD = @LIBOBJS@
+
+libknot_la_LIBADD = libknots.la @LIBOBJS@
+libknotd_la_LIBADD = libknot.la libknots.la @LIBOBJS@
+libknots_la_LIBADD = @LIBOBJS@
+knotd_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
+knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
+knot_zcompile_LDADD = libknots.la libknot.la @LIBOBJS@
+unittests_LDADD = libknotd.la libknots.la @LIBOBJS@
+unittests_zcompile_LDADD = libknot.la libknots.la @LIBOBJS@
+unittests_dnslib_LDADD = libknot.la libknots.la @LIBOBJS@
+unittests_dnslib_realdata_LDADD = libknot.la libknots.la @LIBOBJS@
 
 # automake complains on % rules:
 #   `%'-style pattern rules are a GNU make extension
