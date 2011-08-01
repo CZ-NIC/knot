@@ -428,9 +428,7 @@ dnslib_lookup_table_t dns_certificate_types[] = {
 
 /* Imported from lexer. */
 extern int hexdigit_to_int(char ch);
-
-
-
+extern FILE *zp_get_in(void *scanner);
 
 /* Some global flags... */
 static int vflag = 0;
@@ -1423,14 +1421,21 @@ void parse_unknown_rdata(uint16_t type, uint16_t *wireformat)
  *
  */
 static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
-	  dnslib_node_t *origin)
+	  dnslib_node_t *origin, void *scanner)
 {
 	/* Open the zone file... */
 	if (strcmp(filename, "-") == 0) {
-		yyin = stdin;
+		zp_set_in(stdin, scanner);
 		filename = "<stdin>";
-	} else if (!(yyin = fopen(filename, "r"))) {
-		return 0;
+	} else {
+		FILE *f = fopen(filename, "r");
+		if (f == NULL) {
+			return 0;
+		}
+		zp_set_in(f, scanner);
+		if (zp_get_in(scanner) == 0) {
+			return 0;
+		}
 	}
 
 	zparser_init(filename, ttl, rclass, origin);
@@ -1826,23 +1831,29 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	assert(dnslib_node_parent(origin_node, 0) == NULL);
 
-	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node)) {
-		strerror_r(errno, ebuf, sizeof(ebuf));
+	void *scanner = NULL;
+	zp_lex_init(&scanner);
+	if (scanner == NULL) {
+		return KNOT_ZCOMPILE_ENOMEM;
+	}
+
+	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node, scanner)) {
 		fprintf(stderr, "Cannot open '%s': %s.",
 			zonefile, ebuf);
-		fclose(yyin);
 		zparser_free();
 		return KNOT_ZCOMPILE_EZONEINVAL;
 	}
 
-	if (yyparse() != 0) {
-		fclose(yyin);
-		zparser_free();
+	if (zp_parse(scanner) != 0) {
 		return KNOT_ZCOMPILE_ESYNT;
 	}
 	
 	dnslib_zone_contents_t *contents =
 			dnslib_zone_get_contents(parser->current_zone);
+
+	FILE *in_file = (FILE *)zp_get_in(scanner);
+	fclose(in_file);
+	zp_lex_destroy(scanner);
 
 	if (parser->last_node && parser->node_rrsigs != NULL) {
 		/* assign rrsigs to last node in the zone*/
@@ -1853,19 +1864,19 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	debug_zp("zone parsed\n");
 
+	find_rrsets_orphans(parser->current_zone->contents,
+	                    parser->rrsig_orphans);
 	if (!(parser->current_zone &&
 	      dnslib_node_rrset(parser->current_zone->contents->apex,
 	                        DNSLIB_RRTYPE_SOA))) {
 		fprintf(stderr, "Zone file does not contain SOA record!\n");
 		dnslib_zone_deep_free(&parser->current_zone, 0);
-		fclose(yyin);
 		zparser_free();
 		return KNOT_ZCOMPILE_EZONEINVAL;
 	}
 
 
 	uint found_orphans;
-
 	found_orphans = find_rrsets_orphans(contents,
 					    parser->rrsig_orphans);
 
@@ -1887,12 +1898,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 //	printf("apex: %s\n", zone->apex->owner->name);
 
 
-	fclose(yyin);
-
 	fflush(stdout);
-
 	totalerrors += parser->errors;
-
 	zparser_free();
 
 	return totalerrors;

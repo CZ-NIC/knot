@@ -56,7 +56,11 @@ struct lex_data {
 
 #define DEFAULT_TTL 3600
 
-int yylex_destroy();
+int yylex_destroy(void *scanner);
+int zp_parse(void *scanner);
+void zp_set_in(FILE *f, void *scanner);
+int zp_lex_init(void **scanner);
+int zp_lex_destroy(void *scanner);
 
 /*! \todo Implement ZoneDB. */
 typedef void namedb_type;
@@ -111,13 +115,6 @@ typedef struct zparser zparser_type;
 extern zparser_type *parser;
 
 /* used in zonec.lex */
-extern FILE *yyin;
-
-int yyparse(void);
-
-int yylex(void);
-
-void yyrestart(FILE *);
 
 /*!
  * \brief Does all the processing of RR - saves to zone, assigns RRSIGs etc.

@@ -12,9 +12,10 @@
 #include <stdlib.h>
 #include "dnslib/dname.h"
 #include "knot/conf/conf.h"
+#include "libknot_la-cf-parse.h" /* Automake generated header. */
 
-extern int yylex (void);
-extern void cf_error(const char *msg);
+extern int cf_lex (YYSTYPE *lvalp, void *scanner);
+extern void cf_error(const char *msg, void *scanner);
 extern conf_t *new_config;
 static conf_iface_t *this_iface = 0;
 static conf_iface_t *this_remote = 0;
@@ -26,7 +27,9 @@ static conf_log_map_t *this_logmap = 0;
 
 %}
 
-%locations
+%pure-parser
+%parse-param{void *scanner}
+%lex-param{void *scanner}
 
 %union {
     char *t;
@@ -193,11 +196,11 @@ zone_acl_item:
      if (!found) {
         char buf[256];
         snprintf(buf, sizeof(buf), "remote '%s' is not defined", $1);
-        cf_error(buf);
+        cf_error(buf, scanner);
      } else {
         conf_remote_t *remote = malloc(sizeof(conf_remote_t));
         if (!remote) {
-           cf_error("out of memory");
+           cf_error("out of memory", scanner);
         } else {
            remote->remote = found;
            add_tail(this_list, &remote->n);
@@ -231,11 +234,11 @@ zone_acl:
       if (!found) {
 	 char buf[256];
 	 snprintf(buf, sizeof(buf), "remote '%s' is not defined", $2);
-	 cf_error(buf);
+	 cf_error(buf, scanner);
       } else {
 	 conf_remote_t *remote = malloc(sizeof(conf_remote_t));
 	 if (!remote) {
-	    cf_error("out of memory");
+	    cf_error("out of memory", scanner);
 	 } else {
 	    remote->remote = found;
 	    add_tail(this_list, &remote->n);
@@ -271,7 +274,7 @@ zone_start: TEXT {
    if (dn == 0) {
      free(this_zone->name);
      free(this_zone);
-     cf_error("invalid zone origin");
+     cf_error("invalid zone origin", scanner);
    } else {
      dnslib_dname_free(&dn);
      add_tail(&new_config->zones, &this_zone->n);
@@ -282,7 +285,7 @@ zone_start: TEXT {
      init_list(&this_zone->acl.xfr_out);
      init_list(&this_zone->acl.notify_in);
      init_list(&this_zone->acl.notify_out);
-   }  
+   }
  }
  ;
 
@@ -300,14 +303,14 @@ zone:
  | zone IXFR_FSLIMIT NUM 'G' ';' { this_zone->ixfr_fslimit = $3 * 1073741824; } // GB
  | zone NOTIFY_RETRIES NUM ';' {
        if ($3 < 1) {
-	   cf_error("notify retries must be positive integer");
+	   cf_error("notify retries must be positive integer", scanner);
        } else {
 	   this_zone->notify_retries = $3;
        }
    }
  | zone NOTIFY_TIMEOUT NUM ';' {
 	if ($3 < 1) {
-	   cf_error("notify timeout must be positive integer");
+	   cf_error("notify timeout must be positive integer", scanner);
        } else {
 	   this_zone->notify_timeout = $3;
        }
@@ -320,21 +323,21 @@ zones:
  | zones SEMANTIC_CHECKS BOOL ';' { new_config->zone_checks = $3; }
  | zones NOTIFY_RETRIES NUM ';' {
        if ($3 < 1) {
-	   cf_error("notify retries must be positive integer");
+	   cf_error("notify retries must be positive integer", scanner);
        } else {
 	   new_config->notify_retries = $3;
        }
    }
  | zones NOTIFY_TIMEOUT NUM ';' {
 	if ($3 < 1) {
-	   cf_error("notify timeout must be positive integer");
+	   cf_error("notify timeout must be positive integer", scanner);
        } else {
 	   new_config->notify_timeout = $3;
        }
    }
  | zones DBSYNC_TIMEOUT NUM ';' {
 	if ($3 < 1) {
-	   cf_error("zonefile sync timeout must be positive integer");
+	   cf_error("zonefile sync timeout must be positive integer", scanner);
        } else {
 	   new_config->dbsync_timeout = $3;
        }
