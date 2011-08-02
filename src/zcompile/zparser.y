@@ -371,8 +371,8 @@ label:	STR
 	    } else {
 		    $$ = knot_dname_new_from_str($1.str, $1.len, NULL);
 		    /*! \todo implement refcounting correctly. */
-		    //ref_init(&$$->ref, 0); /* disable dtor */
-		    //ref_retain(&dname->ref);
+		    ref_init(&$$->ref, 0); /* disable dtor */
+		    ref_retain(&$$->ref);
 	//printf("new: %p %s\n", $$, knot_dname_to_str($$));
 	    }
 
