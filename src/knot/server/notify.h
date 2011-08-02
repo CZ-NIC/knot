@@ -52,17 +52,20 @@ int notify_create_request(const dnslib_zone_contents_t *zone, uint8_t *buffer,
                           size_t *size);
 
 /*!
- * \brief Processes normal response packet.
+ * \brief Creates a response for NOTIFY query.
+ *
+ * Valid NOTIFY query expires REFRESH timer for received qname.
+ *
+ * \see RFC1996 for query and response format.
  *
  * \param nameserver Name server structure to provide the needed data.
- * \param from Address of the response sender.
- * \param packet Parsed response packet.
+ * \param query Response structure with parsed query.
  * \param response_wire Place for the response in wire format.
  * \param rsize Input: maximum acceptable size of the response. Output: real
  *              size of the response.
  *
  * \retval KNOT_EOK if a valid response was created.
- * \retval KNOT_EINVAL on invalid parameters or packet.
+ * \retval KNOT_EACCES sender is not authorized to request NOTIFY.
  * \retval KNOT_EMALF if an error occured and the response is not valid.
  */
 /*!
