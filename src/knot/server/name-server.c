@@ -2882,7 +2882,7 @@ int dnslib_ns_process_ixfrin(dnslib_nameserver_t *nameserver,
 		                 dnslib_rrset_owner(chgsets->sets[0].soa_from));
 		if (zone == NULL) {
 			debug_dnslib_ns("No zone found for incoming IXFR!\n");
-			xfrin_free_changesets(
+			dnslib_free_changesets(
 				(dnslib_changesets_t **)(&xfr->data));
 			return DNSLIB_ENOZONE;  /*! \todo Other error code? */
 		}
