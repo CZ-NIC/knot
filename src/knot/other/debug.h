@@ -16,14 +16,14 @@
 #include "common/print.h"
 
 //#define SM_DEBUG
-//#define NS_DEBUG
+#define NS_DEBUG
 //#define SERVER_DEBUG
 //#define DT_DEBUG
 //#define JOURNAL_DEBUG
 //#define NET_DEBUG
-//#define ZONES_DEBUG
-//#define XFR_DEBUG
-//#define NOTIFY_DEBUG
+#define ZONES_DEBUG
+#define XFR_DEBUG
+#define NOTIFY_DEBUG
 
 #ifdef NOTIFY_DEBUG
 #define debug_notify(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
