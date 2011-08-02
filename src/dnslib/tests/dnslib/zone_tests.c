@@ -30,27 +30,27 @@ struct zone_test_node {
 };
 
 static struct zone_test_node test_apex =
-{{(uint8_t *)"\3com\0", 5, (uint8_t *)"\x0", 1}, (knot_node_t *)NULL};
+{{{}, (uint8_t *)"\3com\0", 5, (uint8_t *)"\x0", 1}, (knot_node_t *)NULL};
 
 static struct zone_test_node test_nodes_bad[TEST_NODES_BAD] = {
-	{{(uint8_t *)"\5other\6domain\0", 14, (uint8_t *)"\x0\x6", 2},
+	{{{},(uint8_t *)"\5other\6domain\0", 14, (uint8_t *)"\x0\x6", 2},
 	 (knot_node_t *)NULL}
 };
 
 static struct zone_test_node test_nodes_good[TEST_NODES_GOOD] = {
-	{{(uint8_t *)"\7example\3com\0", 13, (uint8_t *)"\x0\x8", 2},
+	{{{}, (uint8_t *)"\7example\3com\0", 13, (uint8_t *)"\x0\x8", 2},
 	 (knot_node_t *)NULL},
-	{{(uint8_t *)"\3www\7example\3com\0", 17, (uint8_t *)"\x0\x4\xC", 3},
+	{{{}, (uint8_t *)"\3www\7example\3com\0", 17, (uint8_t *)"\x0\x4\xC", 3},
 	 (knot_node_t *)NULL},
-	{{(uint8_t *)"\7another\6domain\3com\0", 20, (uint8_t *)"\x0\x8\xF", 3},
+	{{{}, (uint8_t *)"\7another\6domain\3com\0", 20, (uint8_t *)"\x0\x8\xF", 3},
 	 (knot_node_t *)NULL},
-	{{(uint8_t *)"\5mail1\7example\3com\0", 19, (uint8_t *)"\x0\x6\xE", 3},
+	{{{}, (uint8_t *)"\5mail1\7example\3com\0", 19, (uint8_t *)"\x0\x6\xE", 3},
 	 (knot_node_t *)NULL},
-	{{(uint8_t *)"\5mail2\7example\3com\0", 19, (uint8_t *)"\x0\x6\xE", 3},
+	{{{}, (uint8_t *)"\5mail2\7example\3com\0", 19, (uint8_t *)"\x0\x6\xE", 3},
 	 (knot_node_t *)NULL},
-	{{(uint8_t *)"\3smb\7example\3com\0", 17, (uint8_t *)"\x0\x4\xC", 3},
+	{{{}, (uint8_t *)"\3smb\7example\3com\0", 17, (uint8_t *)"\x0\x4\xC", 3},
 	 (knot_node_t *)NULL},
-	{{(uint8_t *)"\4smtp\7example\3com\0", 18, (uint8_t *)"\x0\x5\xD", 3},
+	{{{}, (uint8_t *)"\4smtp\7example\3com\0", 18, (uint8_t *)"\x0\x5\xD", 3},
 	 (knot_node_t *)NULL},
 };
 
