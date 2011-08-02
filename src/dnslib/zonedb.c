@@ -79,6 +79,8 @@ knot_zonedb_t *knot_zonedb_new()
 		free(db);
 		return NULL;
 	}
+	
+	db->zone_count = 0;
 
 	return db;
 }
