@@ -20,6 +20,7 @@
 #include "dnslib/zonedb.h"
 #include "common/lists.h"
 #include "common/sockaddr.h"
+#include "knot/server/name-server.h"
 
 /*!
  * \brief Pending NOTIFY event.
@@ -51,6 +52,20 @@ int notify_create_request(const dnslib_zone_contents_t *zone, uint8_t *buffer,
                           size_t *size);
 
 /*!
+ * \brief Processes normal response packet.
+ *
+ * \param nameserver Name server structure to provide the needed data.
+ * \param from Address of the response sender.
+ * \param packet Parsed response packet.
+ * \param response_wire Place for the response in wire format.
+ * \param rsize Input: maximum acceptable size of the response. Output: real
+ *              size of the response.
+ *
+ * \retval KNOT_EOK if a valid response was created.
+ * \retval KNOT_EINVAL on invalid parameters or packet.
+ * \retval KNOT_EMALF if an error occured and the response is not valid.
+ */
+/*!
  * \brief Evaluates incoming NOTIFY request and produces a reply.
  *
  * \param notify (Partially) parsed packet with the NOTIFY request.
@@ -66,13 +81,29 @@ int notify_create_request(const dnslib_zone_contents_t *zone, uint8_t *buffer,
  * \retval KNOT_EMALF
  * \retval KNOT_ERROR
  */
-int notify_process_request(dnslib_packet_t *notify,
-                           dnslib_zonedb_t *zonedb,
-                           const dnslib_zone_contents_t **zone,
+int notify_process_request(const dnslib_nameserver_t *nameserver,
+                           dnslib_packet_t *notify,
+                           sockaddr_t *from,
                            uint8_t *buffer, size_t *size);
 
-int notify_process_response(const dnslib_zone_contents_t *zone,
-                            dnslib_packet_t *notify);
+/*!
+ * \brief Processes NOTIFY response packet.
+ *
+ * \param nameserver Name server structure to provide the needed data.
+ * \param from Address of the response sender.
+ * \param packet Parsed response packet.
+ * \param response_wire Place for the response in wire format.
+ * \param rsize Input: maximum acceptable size of the response. Output: real
+ *              size of the response.
+ *
+ * \retval KNOT_EOK if a valid response was created.
+ * \retval KNOT_EINVAL on invalid parameters or packet.
+ * \retval KNOT_EMALF if an error occured and the response is not valid.
+ */
+int notify_process_response(const dnslib_nameserver_t *nameserver,
+                            dnslib_packet_t *notify,
+                            sockaddr_t *from,
+                            uint8_t *buffer, size_t *size);
 
 #endif /* _KNOT_NOTIFY_H_ */
 

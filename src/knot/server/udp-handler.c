@@ -19,6 +19,8 @@
 #include "dnslib/wire.h"
 #include "dnslib/consts.h"
 #include "dnslib/packet.h"
+#include "knot/server/zones.h"
+#include "knot/server/notify.h"
 
 int udp_master(dthread_t *thread)
 {
@@ -141,27 +143,36 @@ int udp_master(dthread_t *thread)
 
 		/* Response types. */
 		case DNSLIB_RESPONSE_NORMAL:
-			res = dnslib_ns_process_response(ns, &addr, packet,
-						  qbuf, &resp_len);
+			res = zones_process_response(ns, &addr, packet,
+			                             qbuf, &resp_len);
+//			res = dnslib_ns_process_response();
 			break;
 		case DNSLIB_RESPONSE_AXFR:
 		case DNSLIB_RESPONSE_IXFR:
 		case DNSLIB_RESPONSE_NOTIFY:
-			res = dnslib_ns_process_notify(ns, &addr, packet,
-						qbuf, &resp_len);
+			res = notify_process_response(ns, packet, &addr,
+			                              qbuf, &resp_len);
 			break;
 
 		/* Query types. */
 		case DNSLIB_QUERY_NORMAL:
-			res = dnslib_ns_answer_normal(ns, packet, qbuf, &resp_len);
+			res = dnslib_ns_answer_normal(ns, packet, qbuf, 
+			                              &resp_len);
 			break;
 		case DNSLIB_QUERY_AXFR:
 		case DNSLIB_QUERY_IXFR:
 			/*! \todo Send error, not available on UDP. */
 			break;
 		case DNSLIB_QUERY_NOTIFY:
-			res = dnslib_ns_answer_notify(ns, packet, &addr,
-					       qbuf, &resp_len);
+			rcu_read_lock();
+//			const dnslib_zone_t *zone = NULL;
+//			res = dnslib_ns_answer_notify(ns, packet, qbuf, 
+//			                              &resp_len, &zone);
+			res = notify_process_request(ns, packet, &addr,
+			                             qbuf, &resp_len);
+//			if (res == DNSLIB_EOK) {
+//				res = zones_notify_schedule(zone, &addr);
+//			}
 			break;
 		case DNSLIB_QUERY_UPDATE:
 			/*! \todo Implement query notify/update. */
