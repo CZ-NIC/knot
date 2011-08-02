@@ -921,7 +921,6 @@ struct dump_param {
 
 void apex_node_dump_text(dnslib_node_t *node, FILE *f)
 {
-	int tmp = DNSLIB_RRTYPE_SOA;
 //	dnslib_rrset_t *tmp_rrset =
 //		(dnslib_rrset_t *)skip_find(node->rrsets,
 //		                            &tmp);

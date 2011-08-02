@@ -1439,7 +1439,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 
 			if (use_ids) {
 				/* Write ID. */
-				debug_dnslib_zload("%s (%p)\n",
+				debug_dnslib_zload("%s \n",
 				    dnslib_dname_to_str(rdata->items[i].dname));
 				assert(rdata->items[i].dname->id != 0);
 

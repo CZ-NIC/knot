@@ -183,7 +183,7 @@ int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name,
 dnslib_zone_t *dnslib_zonedb_find_zone(const dnslib_zonedb_t *db,
                                        const dnslib_dname_t *zone_name)
 {
-	dnslib_zone_t dummy_zone;
+	dnslib_zone_t const dummy_zone;
 	dummy_zone.name = zone_name;
 	return (dnslib_zone_t *)gen_tree_find(db->zone_tree, &dummy_zone);
 }
@@ -197,7 +197,7 @@ const dnslib_zone_t *dnslib_zonedb_find_zone_for_name(dnslib_zonedb_t *db,
 		return NULL;
 	}
 
-	dnslib_zone_t dummy_zone;
+	dnslib_zone_t const dummy_zone;
 	dummy_zone.name = dname;
 	void *found = NULL;
 	int exact_match = gen_tree_find_less_or_equal(db->zone_tree,
@@ -267,7 +267,7 @@ void dnslib_zonedb_deep_free(dnslib_zonedb_t **db)
 	dnslib_zone_t *zone = NULL;
 
 
-DEBUG_DNSLIB_ZONEDB(
+//DEBUG_DNSLIB_ZONEDB(
 //	int i = 1;
 //	char *name = NULL;
 //	while (zn != NULL) {

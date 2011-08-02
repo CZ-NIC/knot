@@ -1,36 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <assert.h>
 #include "common/general-tree.h"
 #include "common/errors.h"
 
 MOD_TREE_DEFINE(general_tree_node, avl);
-
-//static int gen_cmp_func(struct general_tree_node *n1,
-//                        struct general_tree_node *n2)
-//{
-//	void *data1 = n1->data;
-//	void *data2 = n2->data;
-//	assert(n1->cmp_func == n2->cmp_func);
-//	assert(n1->cmp_func);
-//	return n1->cmp_func(data1, data2);
-//}
-
-//static int gen_mrg_func(struct general_tree_node **n1,
-//                        struct general_tree_node **n2)
-//{
-//	void *data1 = (*n1)->data;
-//	void *data2 = (*n2)->data;
-//	assert((*n1)->mrg_func == (*n2)->mrg_func);
-//	return (*n1)->mrg_func(&data1, &data2);
-//}
-
-//static void gen_app_func(struct general_tree_node *n1, void *data)
-//{
-//	void *data_from_node = n1->data;
-//	assert(n1->app_func);
-//	n1->app_func(data_from_node, data);
-//}
 
 static void gen_rem_func(struct general_tree_node *n1)
 {
