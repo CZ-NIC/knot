@@ -58,14 +58,6 @@ static int mem_read(void *dst, size_t n, const char **src,
  *  Unit implementation.
  */
 
-/* Parsed raw packet*/
-struct test_raw_packet {
-	uint size;
-	uint8_t *data;
-};
-
-typedef struct test_raw_packet test_raw_packet_t;
-
 enum { DNAME_MAX_WIRE_LENGTH = 256 };
 
 static int load_raw_packets(test_raw_packet_t ***raw_packets, uint32_t *count,
@@ -198,164 +190,164 @@ static dnslib_dname_t *dname_from_test_dname(const test_dname_t *test_dname)
 	                                  NULL);
 }
 
-static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
-			  int check_header, int check_question,
-			  int check_answer, int check_additional,
-			  int check_authority)
-{
-	int errors = 0; /* TODO maybe use it everywhere, or not use it at all */
+//static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
+//			  int check_header, int check_question,
+//			  int check_answer, int check_additional,
+//			  int check_authority)
+//{
+//	int errors = 0; /* TODO maybe use it everywhere, or not use it at all */
 
-	if (check_question) {
-		/* again, in case of dnames, pointer would probably suffice */
-		if (dnslib_dname_compare(resp->question.qname,
-		                dname_from_test_dname(test_resp->qname)) != 0) {
-			char *tmp_dname;
-			tmp_dname = dnslib_dname_to_str(resp->question.qname);
-			diag("Qname in response is wrong:\
-			      should be: %s is: %s\n",
-			     tmp_dname, test_resp->qname->str);
-			free(tmp_dname);
-			return 0;
-		}
-
-		if (resp->question.qtype != test_resp->qtype) {
-			diag("Qtype value is wrong: is %u should be %u\n",
-			     resp->question.qtype, test_resp->qtype);
-			return 0;
-		}
-		if (resp->question.qclass != test_resp->qclass) {
-			diag("Qclass value is wrong: is %u should be %u\n",
-			     resp->question.qclass, test_resp->qclass);
-			return 0;
-		}
-	}
-
-	if (check_header) {
-		/* Disabled, since these check make no sense
-		 * if we have parsed the query, flags are now set to
-		 * the ones response should have */
-
-		/*
-		if (resp->header.flags1 != test_resp->flags1) {
-			diag("Flags1 value is wrong: is %u should be %u\n",
-			     resp->header.flags1, test_resp->flags1);
-			//return 0;
-		}
-		if (resp->header.flags2 != test_resp->flags2) {
-			diag("Flags2 value is wrong: is %u should be %u\n",
-			     resp->header.flags2, test_resp->flags2);
-			return 0;
-		}
-		*/
-
-		if (resp->header.qdcount != test_resp->qdcount) {
-			diag("Qdcount value is wrong: is %u should be %u\n",
-			     resp->header.qdcount, test_resp->qdcount);
-			return 0;
-		}
-		if (resp->header.ancount != test_resp->ancount) {
-			diag("Ancount value is wrong: is %u should be %u\n",
-			     resp->header.ancount, test_resp->ancount);
-			return 0;
-		}
-		if (resp->header.nscount != test_resp->nscount) {
-			diag("Nscount value is wrong: is %u should be %u\n",
-			     resp->header.nscount, test_resp->nscount);
-			return 0;
-		}
-		if (resp->header.arcount != test_resp->arcount) {
-			diag("Arcount value is different: is %u should be %u\n",
-			     resp->header.arcount, test_resp->arcount);
+//	if (check_question) {
+//		/* again, in case of dnames, pointer would probably suffice */
+//		if (dnslib_dname_compare(resp->question.qname,
+//		                dname_from_test_dname(test_resp->qname)) != 0) {
+//			char *tmp_dname;
+//			tmp_dname = dnslib_dname_to_str(resp->question.qname);
+//			diag("Qname in response is wrong: "
+//			      "should be: %s is: %s\n",
+//			     tmp_dname, test_resp->qname->str);
+//			free(tmp_dname);
 //			return 0;
-		}
-	}
+//		}
 
-	if (check_question) {
-		/* Currently just one question RRSET allowed */
-		if (dnslib_dname_compare(resp->question.qname,
-		    dname_from_test_dname(test_resp->qname)) != 0) {
-			diag("Qname is wrongly set");
-			errors++;
-		}
-
-		if (resp->question.qtype != test_resp->qtype) {
-			diag("Qtype is wrongly set");
-			errors++;
-		}
-
-		if (resp->question.qclass != test_resp->qclass) {
-			diag("Qclass is wrongly set");
-			errors++;
-		}
-
-	}
-
-	/* Following code is not used anywhere currently. */
-
-//	if (check_authority) {
-//		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
-//			if (resp->authority[i] != (test_resp->authority[i])) {
-//				diag("Authority rrset #%d is wrongly set.\n",
-//				     i);
-//				errors++;
-//			}
+//		if (resp->question.qtype != test_resp->qtype) {
+//			diag("Qtype value is wrong: is %u should be %u\n",
+//			     resp->question.qtype, test_resp->qtype);
+//			return 0;
+//		}
+//		if (resp->question.qclass != test_resp->qclass) {
+//			diag("Qclass value is wrong: is %u should be %u\n",
+//			     resp->question.qclass, test_resp->qclass);
+//			return 0;
 //		}
 //	}
 
-//	if (check_answer) {
-//		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
-//			if (resp->authority[i] != (test_resp->authority[i])) {
-//				diag("Authority rrset #%d is wrongly set.\n",
-//				     i);
-//				errors++;
-//			}
+//	if (check_header) {
+//		/* Disabled, since these check make no sense
+//		 * if we have parsed the query, flags are now set to
+//		 * the ones response should have */
+
+//		/*
+//		if (resp->header.flags1 != test_resp->flags1) {
+//			diag("Flags1 value is wrong: is %u should be %u\n",
+//			     resp->header.flags1, test_resp->flags1);
+//			//return 0;
+//		}
+//		if (resp->header.flags2 != test_resp->flags2) {
+//			diag("Flags2 value is wrong: is %u should be %u\n",
+//			     resp->header.flags2, test_resp->flags2);
+//			return 0;
+//		}
+//		*/
+
+//		if (resp->header.qdcount != test_resp->qdcount) {
+//			diag("Qdcount value is wrong: is %u should be %u\n",
+//			     resp->header.qdcount, test_resp->qdcount);
+//			return 0;
+//		}
+//		if (resp->header.ancount != test_resp->ancount) {
+//			diag("Ancount value is wrong: is %u should be %u\n",
+//			     resp->header.ancount, test_resp->ancount);
+//			return 0;
+//		}
+//		if (resp->header.nscount != test_resp->nscount) {
+//			diag("Nscount value is wrong: is %u should be %u\n",
+//			     resp->header.nscount, test_resp->nscount);
+//			return 0;
+//		}
+//		if (resp->header.arcount != test_resp->arcount) {
+//			diag("Arcount value is different: is %u should be %u\n",
+//			     resp->header.arcount, test_resp->arcount);
+////			return 0;
 //		}
 //	}
 
-//	if (check_additional) {
-//		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
-//			if (resp->authority[i] != (test_resp->authority[i])) {
-//				diag("Authority rrset #%d is wrongly set.\n",
-//				     i);
-//				errors++;
-//			}
+//	if (check_question) {
+//		/* Currently just one question RRSET allowed */
+//		if (dnslib_dname_compare(resp->question.qname,
+//		    dname_from_test_dname(test_resp->qname)) != 0) {
+//			diag("Qname is wrongly set");
+//			errors++;
 //		}
+
+//		if (resp->question.qtype != test_resp->qtype) {
+//			diag("Qtype is wrongly set");
+//			errors++;
+//		}
+
+//		if (resp->question.qclass != test_resp->qclass) {
+//			diag("Qclass is wrongly set");
+//			errors++;
+//		}
+
 //	}
 
-	return (errors == 0);
-}
+//	/* Following code is not used anywhere currently. */
 
-static int test_response_parse_query(list response_list,
-				     test_raw_packet_t **raw_queries,
-				     uint count)
-{
-	assert(raw_queries);
+////	if (check_authority) {
+////		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
+////			if (resp->authority[i] != (test_resp->authority[i])) {
+////				diag("Authority rrset #%d is wrongly set.\n",
+////				     i);
+////				errors++;
+////			}
+////		}
+////	}
 
-	int errors = 0;
-	dnslib_response_t *resp = NULL;
-	node *n = NULL;
-	int i = 0;
-	WALK_LIST(n, response_list) {
-		assert(i < count);
-		test_response_t *test_response = (test_response_t *)n;
-		resp = dnslib_response_new_empty(NULL);
-		assert(resp);
+////	if (check_answer) {
+////		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
+////			if (resp->authority[i] != (test_resp->authority[i])) {
+////				diag("Authority rrset #%d is wrongly set.\n",
+////				     i);
+////				errors++;
+////			}
+////		}
+////	}
 
-//		hex_print(raw_queries[i]->data, raw_queries[i]->size);
+////	if (check_additional) {
+////		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
+////			if (resp->authority[i] != (test_resp->authority[i])) {
+////				diag("Authority rrset #%d is wrongly set.\n",
+////				     i);
+////				errors++;
+////			}
+////		}
+////	}
 
-		if (dnslib_response_parse_query(resp,
-						raw_queries[i]->data,
-						raw_queries[i]->size) != 0) {
-			diag("Could not parse query\n");
-			errors++;
-		}
-		errors += !check_response(resp, test_response, 1, 1, 0, 0, 0);
-		dnslib_response_free(&resp);
-		i++;
-	}
+//	return (errors == 0);
+//}
 
-	return (errors == 0);
-}
+//static int test_response_parse_query(list response_list,
+//				     test_raw_packet_t **raw_queries,
+//				     uint count)
+//{
+//	assert(raw_queries);
+
+//	int errors = 0;
+//	dnslib_response_t *resp = NULL;
+//	node *n = NULL;
+//	int i = 0;
+//	WALK_LIST(n, response_list) {
+//		assert(i < count);
+//		test_response_t *test_response = (test_response_t *)n;
+//		resp = dnslib_response_new_empty(NULL);
+//		assert(resp);
+
+////		hex_print(raw_queries[i]->data, raw_queries[i]->size);
+
+//		if (dnslib_response_parse_query(resp,
+//						raw_queries[i]->data,
+//						raw_queries[i]->size) != 0) {
+//			diag("Could not parse query\n");
+//			errors++;
+//		}
+//		errors += !check_response(resp, test_response, 1, 1, 0, 0, 0);
+//		dnslib_response_free(&resp);
+//		i++;
+//	}
+
+//	return (errors == 0);
+//}
 
 #ifndef TEST_WITH_LDNS
 /*! \note disabled */
@@ -398,7 +390,7 @@ int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
  * Comparison is done through comparing wireformats.
  * Returns 0 if rdata are the same, 1 otherwise
  */
-static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
+int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 			    uint16_t type)
 {
 	dnslib_rrtype_descriptor_t *desc =
@@ -449,12 +441,12 @@ static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 				(rdata->items[i].raw_data + 1),
 				ldns_rdf_data(ldns_rr_rdf(rr, i)),
 				rdata->items[i].raw_data[0]) != 0) {
-				hex_print((char *)
-					  (rdata->items[i].raw_data + 1),
-					  rdata->items[i].raw_data[0]);
-				hex_print((char *)
-					  ldns_rdf_data(ldns_rr_rdf(rr, i)),
-					  rdata->items[i].raw_data[0]);
+//				hex_print((char *)
+//					  (rdata->items[i].raw_data + 1),
+//					  rdata->items[i].raw_data[0]);
+//				hex_print((char *)
+//					  ldns_rdf_data(ldns_rr_rdf(rr, i)),
+//					  rdata->items[i].raw_data[0]);
 				diag("Raw data wires in rdata differ in item "
 				     "%d", i);
 
@@ -466,11 +458,13 @@ static int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 	return 0;
 }
 
-static int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
+int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
 				      ldns_rr *rr, char check_rdata)
 {
 	/* We should have only one rrset from ldns, although it is
 	 * represented as rr_list ... */
+
+	int errors = 0;
 
 	assert(rr);
 	assert(rrset);
@@ -485,32 +479,32 @@ static int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
 		diag("%s", tmp_dname);
 		diag("%s", ldns_rdf_data(ldns_rr_owner(rr)));
 		free(tmp_dname);
-		return 1;
+		errors++;
 	}
 
 	if (compare_wires_simple(rrset->owner->name,
 				 ldns_rdf_data(ldns_rr_owner(rr)),
 				 rrset->owner->size) != 0) {
 		diag("RRSet owner wireformats differ");
-		return 1;
+		errors++;
 	}
 
 	if (rrset->type != ldns_rr_get_type(rr)) {
 		diag("RRset types differ");
 		diag("Dnslib type: %d Ldns type: %d", rrset->type,
 		     ldns_rr_get_type(rr));
-		return 1;
+		errors++;
 	}
 
 	if (rrset->rclass != ldns_rr_get_class(rr)) {
 		diag("RRset classes differ");
-		return 1;
+		errors++;
 	}
 
 	if (rrset->ttl != ldns_rr_ttl(rr)) {
 		diag("RRset TTLs differ");
 		diag("dnslib: %d ldns: %d", rrset->ttl, ldns_rr_ttl(rr));
-		return 1;
+		errors++;
 	}
 
 	/* compare rdatas */
@@ -556,14 +550,14 @@ static int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
 	if (check_rdata) {
 		if (compare_rr_rdata(rrset->rdata, rr, rrset->type) != 0) {
 			diag("Rdata differ");
-			return 1;
+			errors++;
 		}
 	}
 
-	return 0;
+	return errors;
 }
 
-static int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
+int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
 					ldns_rr_list *rrlist, int count)
 {
 	int errors = 0;

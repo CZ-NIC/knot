@@ -84,6 +84,16 @@ evqueue_t *evqueue_new();
 void evqueue_free(evqueue_t **q);
 
 /*!
+ * \brief Return evqueue pollable fd.
+ *
+ * \param q Event queue.
+ *
+ * \retval File descriptor available for polling.
+ * \retval -1 On error.
+ */
+int evqueue_pollfd(evqueue_t *q);
+
+/*!
  * \brief Poll for new events.
  *
  * Unblocked signals during polling are specified

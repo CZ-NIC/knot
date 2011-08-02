@@ -53,6 +53,21 @@ int dnslib_zdump_binary(dnslib_zone_contents_t *zone, const char *filename,
 int dnslib_zdump_rrset_serialize(const dnslib_rrset_t *rrset, uint8_t **stream,
                                  size_t *size);
 
+/*!
+ * \brief Serializes RRSet into binary stream. Expects NULL pointer, memory
+ *        is handled inside function.
+ *
+ * \param rrset RRSet to be serialized.
+ * \param stream Stream containing serialized RRSet.
+ * \param size Length of created stream.
+ *
+ * \retval DNSLIB_EOK on success.
+ * \retval DNSLIB_EBADARG if wrong arguments are supplied.
+ * \retval DNSLIB_ENOMEM on memory error.
+ */
+int dnslib_zdump_rrset_serialize(const dnslib_rrset_t *rrset, uint8_t **stream,
+                                 size_t *size);
+
 #endif /* _DNSLIB_ZONEDUMP_H_ */
 
 /*! @} */
