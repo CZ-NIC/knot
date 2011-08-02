@@ -815,6 +815,10 @@ int dnslib_packet_parse_from_wire(dnslib_packet_t *packet,
 
 int dnslib_packet_parse_rest(dnslib_packet_t *packet)
 {
+	if (packet == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	if (packet->parsed >= packet->size) {
 		return DNSLIB_EOK;
 	}
@@ -829,7 +833,7 @@ int dnslib_packet_parse_rest(dnslib_packet_t *packet)
 int dnslib_packet_parse_next_rr_answer(dnslib_packet_t *packet,
                                        dnslib_rrset_t **rr)
 {
-	if (packet == NULL) {
+	if (packet == NULL || rr == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
@@ -893,6 +897,7 @@ int dnslib_packet_set_max_size(dnslib_packet_t *packet, int max_size)
 
 uint16_t dnslib_packet_id(const dnslib_packet_t *packet)
 {
+	assert(packet != NULL);
 	return packet->header.id;
 }
 
@@ -900,6 +905,7 @@ uint16_t dnslib_packet_id(const dnslib_packet_t *packet)
 
 uint8_t dnslib_packet_opcode(const dnslib_packet_t *packet)
 {
+	assert(packet != NULL);
 	return dnslib_wire_flags_get_opcode(packet->header.flags1);
 }
 
@@ -907,6 +913,10 @@ uint8_t dnslib_packet_opcode(const dnslib_packet_t *packet)
 
 const dnslib_dname_t *dnslib_packet_qname(const dnslib_packet_t *packet)
 {
+	if (packet == NULL) {
+		return NULL;
+	}
+
 	return packet->question.qname;
 }
 
@@ -914,6 +924,7 @@ const dnslib_dname_t *dnslib_packet_qname(const dnslib_packet_t *packet)
 
 uint16_t dnslib_packet_qtype(const dnslib_packet_t *packet)
 {
+	assert(packet != NULL);
 	return packet->question.qtype;
 }
 
@@ -921,6 +932,7 @@ uint16_t dnslib_packet_qtype(const dnslib_packet_t *packet)
 
 uint16_t dnslib_packet_qclass(const dnslib_packet_t *packet)
 {
+	assert(packet != NULL);
 	return packet->question.qclass;
 }
 
@@ -928,6 +940,10 @@ uint16_t dnslib_packet_qclass(const dnslib_packet_t *packet)
 
 int dnslib_packet_is_query(const dnslib_packet_t *packet)
 {
+	if (packet == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return (dnslib_wire_flags_get_qr(packet->header.flags1) == 0);
 }
 
@@ -935,6 +951,10 @@ int dnslib_packet_is_query(const dnslib_packet_t *packet)
 
 const dnslib_packet_t *dnslib_packet_query(const dnslib_packet_t *packet)
 {
+	if (packet == NULL) {
+		return NULL;
+	}
+
 	return packet->query;
 }
 
@@ -942,6 +962,10 @@ const dnslib_packet_t *dnslib_packet_query(const dnslib_packet_t *packet)
 
 short dnslib_packet_answer_rrset_count(const dnslib_packet_t *packet)
 {
+	if (packet == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return packet->an_rrsets;
 }
 
@@ -949,6 +973,10 @@ short dnslib_packet_answer_rrset_count(const dnslib_packet_t *packet)
 
 short dnslib_packet_authority_rrset_count(const dnslib_packet_t *packet)
 {
+	if (packet == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return packet->ns_rrsets;
 }
 
@@ -956,6 +984,10 @@ short dnslib_packet_authority_rrset_count(const dnslib_packet_t *packet)
 
 short dnslib_packet_additional_rrset_count(const dnslib_packet_t *packet)
 {
+	if (packet == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	return packet->ar_rrsets;
 }
 
@@ -964,7 +996,7 @@ short dnslib_packet_additional_rrset_count(const dnslib_packet_t *packet)
 const dnslib_rrset_t *dnslib_packet_answer_rrset(
 	const dnslib_packet_t *packet, short pos)
 {
-	if (pos > packet->an_rrsets) {
+	if (packet == NULL || pos > packet->an_rrsets) {
 		return NULL;
 	}
 
@@ -976,7 +1008,7 @@ const dnslib_rrset_t *dnslib_packet_answer_rrset(
 const dnslib_rrset_t *dnslib_packet_authority_rrset(
 	dnslib_packet_t *packet, short pos)
 {
-	if (pos > packet->ns_rrsets) {
+	if (packet == NULL || pos > packet->ns_rrsets) {
 		return NULL;
 	}
 
@@ -988,7 +1020,7 @@ const dnslib_rrset_t *dnslib_packet_authority_rrset(
 const dnslib_rrset_t *dnslib_packet_additional_rrset(
 	dnslib_packet_t *packet, short pos)
 {
-	if (pos > packet->ar_rrsets) {
+	if (packet == NULL || pos > packet->ar_rrsets) {
 		return NULL;
 	}
 
@@ -1001,6 +1033,10 @@ int dnslib_packet_contains(const dnslib_packet_t *packet,
                            const dnslib_rrset_t *rrset,
                            dnslib_rrset_compare_type_t cmp)
 {
+	if (packet == NULL || rrset == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	for (int i = 0; i < packet->header.ancount; ++i) {
 		if (dnslib_rrset_compare(packet->answer[i], rrset, cmp)) {
 			return 1;
@@ -1027,6 +1063,10 @@ int dnslib_packet_contains(const dnslib_packet_t *packet,
 int dnslib_packet_add_tmp_rrset(dnslib_packet_t *packet,
                                 dnslib_rrset_t *tmp_rrset)
 {
+	if (packet == NULL || tmp_rrset == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	if (packet->tmp_rrsets_count == packet->tmp_rrsets_max
 	    && dnslib_packet_realloc_rrsets(&packet->tmp_rrsets,
 			&packet->tmp_rrsets_max,
@@ -1050,6 +1090,10 @@ int dnslib_packet_add_tmp_rrset(dnslib_packet_t *packet,
  */
 void dnslib_packet_free_tmp_rrsets(dnslib_packet_t *pkt)
 {
+	if (pkt == NULL) {
+		return;
+	}
+
 	for (int i = 0; i < pkt->tmp_rrsets_count; ++i) {
 DEBUG_DNSLIB_PACKET(
 		char *name = dnslib_dname_to_str(
@@ -1075,6 +1119,10 @@ DEBUG_DNSLIB_PACKET(
 void dnslib_packet_header_to_wire(const dnslib_header_t *header,
                                   uint8_t **pos, size_t *size)
 {
+	if (header == NULL || pos == NULL || *pos == NULL || size == NULL) {
+		return;
+	}
+
 	dnslib_wire_set_id(*pos, header->id);
 	dnslib_wire_set_flags1(*pos, header->flags1);
 	dnslib_wire_set_flags2(*pos, header->flags2);
@@ -1091,6 +1139,10 @@ void dnslib_packet_header_to_wire(const dnslib_header_t *header,
 
 int dnslib_packet_question_to_wire(dnslib_packet_t *packet)
 {
+	if (packet == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	if (packet->size > DNSLIB_WIRE_HEADER_SIZE) {
 		return DNSLIB_ERROR;
 	}
@@ -1126,13 +1178,19 @@ int dnslib_packet_question_to_wire(dnslib_packet_t *packet)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_packet_edns_to_wire(dnslib_packet_t *packet)
+int dnslib_packet_edns_to_wire(dnslib_packet_t *packet)
 {
+	if (packet == NULL) {
+		return DNSLIB_EBADARG;
+	}
+
 	packet->size += dnslib_edns_to_wire(&packet->opt_rr,
 	                                  packet->wireformat + packet->size,
 	                                  packet->max_size - packet->size);
 
 	packet->header.arcount += 1;
+
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1202,47 +1260,10 @@ void dnslib_packet_free(dnslib_packet_t **packet)
 static void dnslib_packet_dump_rrsets(const dnslib_rrset_t **rrsets,
                                       int count)
 {
+	assert(rrsets != NULL && *rrsets != NULL);
+
 	for (int i = 0; i < count; ++i) {
-		debug_dnslib_packet("  RRSet %d:\n", i + 1);
-		char *name = dnslib_dname_to_str(rrsets[i]->owner);
-		debug_dnslib_packet("    Owner: %s\n", name);
-		free(name);
-		debug_dnslib_packet("    Type: %s\n",
-		                      dnslib_rrtype_to_string(rrsets[i]->type));
-		debug_dnslib_packet("    Class: %s\n",
-		                   dnslib_rrclass_to_string(rrsets[i]->rclass));
-		debug_dnslib_packet("    TTL: %d\n", rrsets[i]->ttl);
-		debug_dnslib_packet("    RDATA: ");
-
-		dnslib_rrtype_descriptor_t *desc =
-			dnslib_rrtype_descriptor_by_type(rrsets[i]->type);
-
-		const dnslib_rdata_t *rdata = dnslib_rrset_rdata(rrsets[i]);
-		while (rdata != NULL) {
-			for (int j = 0; j < rdata->count; ++j) {
-				switch (desc->wireformat[j]) {
-				case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
-				case DNSLIB_RDATA_WF_LITERAL_DNAME:
-				case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
-					name = dnslib_dname_to_str(
-						rdata->items[j].dname);
-					debug_dnslib_packet("%s \n",name);
-					free(name);
-					break;
-				case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
-					debug_dnslib_packet_hex(
-					    (char *)rdata->items[j].raw_data,
-					    rdata->items[j].raw_data[0]);
-					break;
-				default:
-					debug_dnslib_packet_hex(
-					   (char *)&rdata->items[j].raw_data[1],
-					   rdata->items[j].raw_data[0]);
-					break;
-				}
-			}
-			rdata = dnslib_rrset_rdata_next(rrsets[i], rdata);
-		}
+		dnslib_rrset_dump(rrsets[i], 0);
 	}
 }
 #endif
@@ -1250,6 +1271,10 @@ static void dnslib_packet_dump_rrsets(const dnslib_rrset_t **rrsets,
 
 void dnslib_packet_dump(const dnslib_packet_t *packet)
 {
+	if (packet == NULL) {
+		return;
+	}
+
 #ifdef DNSLIB_PACKET_DEBUG
 	debug_dnslib_packet("DNS packet:\n-----------------------------\n");
 

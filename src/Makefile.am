@@ -11,15 +11,19 @@ libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
 
 BUILT_SOURCES =					\
 	dnslib/tests/parsed_data.rc		\
+	dnslib/tests/realdata/parsed_data.rc	\
 	dnslib/tests/raw_data_queries.rc	\
 	dnslib/tests/raw_data.rc		\
+	dnslib/tests/realdata/raw_data.rc	\
 	dnslib/tests/parsed_data_queries.rc     \
 	tests/sample_conf.rc
 
 CLEANFILES =					\
 	dnslib/tests/parsed_data.rc		\
+	dnslib/tests/realdata/parsed_data.rc	\
 	dnslib/tests/raw_data_queries.rc	\
 	dnslib/tests/raw_data.rc		\
+	dnslib/tests/realdata/raw_data.rc	\
 	dnslib/tests/parsed_data_queries.rc     \
 	tests/sample_conf.rc                    \
 	zparser.h				\
@@ -70,9 +74,12 @@ unittests_dnslib_realdata_SOURCES =			\
 	dnslib/tests/realdata/dnslib/node_tests_realdata.c	\
 	dnslib/tests/realdata/dnslib/rdata_tests_realdata.c	\
 	dnslib/tests/realdata/dnslib/response_tests_realdata.c	\
+	dnslib/tests/realdata/dnslib/response2_tests_realdata.c	\
 	dnslib/tests/realdata/dnslib/rrset_tests_realdata.c	\
 	dnslib/tests/realdata/dnslib/zone_tests_realdata.c	\
 	dnslib/tests/realdata/dnslib/zonedb_tests_realdata.c	\
+	dnslib/tests/realdata/dnslib/packet_tests_realdata.h	\
+	dnslib/tests/realdata/dnslib/packet_tests_realdata.c	\
 	dnslib/tests/realdata/dnslib_tests_loader_realdata.h	\
 	dnslib/tests/realdata/dnslib_tests_loader_realdata.c	\
 	dnslib/tests/realdata/unittests_dnslib_realdata.c
@@ -82,6 +89,14 @@ unittests_dnslib_SOURCES =			\
 	dnslib/tests/dnslib/cuckoo_tests.h	\
 	dnslib/tests/dnslib/dname_tests.c	\
 	dnslib/tests/dnslib/dname_tests.h	\
+	dnslib/tests/dnslib/dname_table_tests.h	\
+	dnslib/tests/dnslib/dname_table_tests.c	\
+	dnslib/tests/dnslib/nsec3_tests.h	\
+	dnslib/tests/dnslib/nsec3_tests.c	\
+	dnslib/tests/dnslib/packet_tests.h	\
+	dnslib/tests/dnslib/packet_tests.c	\
+	dnslib/tests/dnslib/query_tests.h	\
+	dnslib/tests/dnslib/query_tests.c	\
 	dnslib/tests/dnslib/edns_tests.c	\
 	dnslib/tests/dnslib/edns_tests.h	\
 	dnslib/tests/dnslib/node_tests.c	\
@@ -90,6 +105,8 @@ unittests_dnslib_SOURCES =			\
 	dnslib/tests/dnslib/rdata_tests.h	\
 	dnslib/tests/dnslib/rrset_tests.c	\
 	dnslib/tests/dnslib/rrset_tests.h	\
+	dnslib/tests/dnslib/response2_tests.h	\
+	dnslib/tests/dnslib/response2_tests.c	\
 	dnslib/tests/dnslib/zone_tests.c	\
 	dnslib/tests/dnslib/zone_tests.h	\
 	dnslib/tests/dnslib/zonedb_tests.c	\
@@ -273,6 +290,9 @@ unittests_dnslib_realdata_LDADD = libknot.la libknots.la @LIBOBJS@
 dnslib/tests/parsed_data.rc: dnslib/tests/files/parsed_data
 	../resource.sh dnslib/tests/files/parsed_data >$@
 
+dnslib/tests/realdata/parsed_data.rc: dnslib/tests/realdata/files/parsed_data
+	../resource.sh dnslib/tests/realdata/files/parsed_data >$@
+
 dnslib/tests/parsed_data_queries.rc: dnslib/tests/files/parsed_data_queries
 	../resource.sh dnslib/tests/files/parsed_data_queries >$@
 
@@ -281,6 +301,9 @@ dnslib/tests/raw_data_queries.rc: dnslib/tests/files/raw_data_queries
 
 dnslib/tests/raw_data.rc: dnslib/tests/files/raw_data
 	../resource.sh dnslib/tests/files/raw_data >$@
+
+dnslib/tests/realdata/raw_data.rc: dnslib/tests/realdata/files/raw_data
+	../resource.sh dnslib/tests/realdata/files/raw_data >$@
 
 tests/sample_conf.rc: tests/files/sample_conf
 	../resource.sh tests/files/sample_conf >$@
