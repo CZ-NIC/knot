@@ -42,7 +42,7 @@ AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not foun
 AC_SEARCH_LIBS([rcu_read_lock], [urcu], [], [AC_MSG_ERROR([liburcu not found])])
 #AC_SEARCH_LIBS([clock_gettime], [rt], [], [AC_MSG_ERROR([librt not found])])
 AC_SEARCH_LIBS([OpenSSL_add_all_digests], [crypto],[], [AC_MSG_ERROR([libcrypto not found])])
-AC_SEARCH_LIBS([ev_run], [ev],[], [AC_MSG_ERROR([libev not found])])
+AC_SEARCH_LIBS([ev_loop_new], [ev],[], [AC_MSG_ERROR([libev not found])])
 #AC_SEARCH_LIBS([ldns_rr_list_pop_rrset], [ldns], [], [AC_MSG_ERROR([libldns not found])])
 
 # Checks for header files.
