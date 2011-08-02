@@ -51,7 +51,7 @@ test_edns_t test_edns_data[TEST_EDNS] = {
 };
 
 enum edns_mask {
-	DNSLIB_EDNS_DO_MASK = (uint16_t)0x8000
+	KNOT_EDNS_DO_MASK = (uint16_t)0x8000
 };
 
 /* Creates actual knot_opt_rr_t variable from test_edns_t variable */
@@ -186,7 +186,7 @@ static int test_edns_do(const knot_opt_rr_t *edns,
 			test_edns_t *test_edns)
 {
 	if (knot_edns_do(edns) !=
-	    (test_edns->flags & DNSLIB_EDNS_DO_MASK)) {
+	    (test_edns->flags & KNOT_EDNS_DO_MASK)) {
 		return 0;
 	} else {
 		return 1;
@@ -507,14 +507,14 @@ static int test_edns_has_option()
 	return 1;
 }
 
-static const int DNSLIB_EDNS_TESTS_COUNT = 12;
+static const int KNOT_EDNS_TESTS_COUNT = 12;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
 static int knot_edns_tests_count(int argc, char *argv[])
 {
-	return DNSLIB_EDNS_TESTS_COUNT;
+	return KNOT_EDNS_TESTS_COUNT;
 }
 
 /*! Run all scheduled tests for given parameters.

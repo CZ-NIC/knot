@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_DNSLIB_ZONEDUMP_H_
-#define _KNOT_DNSLIB_ZONEDUMP_H_
+#ifndef _KNOTDKNOT_ZONEDUMP_H_
+#define _KNOTDKNOT_ZONEDUMP_H_
 
 #include "dnslib/zone.h"
 
@@ -32,8 +32,8 @@ enum {
  * \param do_checks Set to 1 to enable checking the zone for semantic errors.
  * \param sfilename Source filename of the text zone file.
  *
- * \retval DNSLIB_EOK on success.
- * \retval DNSLIB_EBADARG if the file cannot be opened for writing.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EBADARG if the file cannot be opened for writing.
  */
 int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
                         int do_checks, const char *sfilename);
@@ -46,9 +46,9 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
  * \param stream Stream containing serialized RRSet.
  * \param size Length of created stream.
  *
- * \retval DNSLIB_EOK on success.
- * \retval DNSLIB_EBADARG if wrong arguments are supplied.
- * \retval DNSLIB_ENOMEM on memory error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EBADARG if wrong arguments are supplied.
+ * \retval KNOT_ENOMEM on memory error.
  */
 int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
                                  size_t *size);
@@ -61,13 +61,13 @@ int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
  * \param stream Stream containing serialized RRSet.
  * \param size Length of created stream.
  *
- * \retval DNSLIB_EOK on success.
- * \retval DNSLIB_EBADARG if wrong arguments are supplied.
- * \retval DNSLIB_ENOMEM on memory error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EBADARG if wrong arguments are supplied.
+ * \retval KNOT_ENOMEM on memory error.
  */
 int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
                                  size_t *size);
 
-#endif /* _DNSLIB_ZONEDUMP_H_ */
+#endif /* _KNOT_ZONEDUMP_H_ */
 
 /*! @} */

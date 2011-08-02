@@ -206,7 +206,7 @@ knot_packet_t *packet_from_test_response(test_response_t *test_packet)
 
 	for (int j = 0; j < test_packet->arcount; j++) {
 		if (test_packet->additional[j]->type ==
-		    DNSLIB_RRTYPE_OPT) {
+		    KNOT_RRTYPE_OPT) {
 			parsed_opt =
 				rrset_from_test_rrset(
 				test_packet->additional[j]);
@@ -225,7 +225,7 @@ knot_packet_t *packet_from_test_response(test_response_t *test_packet)
 	}
 
 	knot_packet_t *packet =
-		knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+		knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 	assert(packet);
 	knot_packet_set_max_size(packet, 1024 * 10);
 
@@ -272,7 +272,7 @@ knot_packet_t *packet_from_test_response(test_response_t *test_packet)
 	for (int j = 0; j < test_packet->arcount; j++) {
 		if (&(test_packet->additional[j])) {
 			if (test_packet->additional[j]->type ==
-			    DNSLIB_RRTYPE_OPT) {
+			    KNOT_RRTYPE_OPT) {
 				continue;
 			}
 			packet->additional[packet->ar_rrsets++] =
@@ -292,12 +292,12 @@ static int test_packet_parse_from_wire(list raw_response_list)
 	WALK_LIST(n ,raw_response_list) {
 		test_raw_packet_t *raw_packet = (test_raw_packet_t *)n;
 		knot_packet_t *packet =
-			knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+			knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 		int ret = 0;
 		if ((ret =
 		     knot_packet_parse_from_wire(packet, raw_packet->data,
 		                                   raw_packet->size, 0)) !=
-		    DNSLIB_EOK) {
+		    KNOT_EOK) {
 			diag("Warning: could not parse wire! "
 			     "(might be caused by malformed dump) - "
 			     "dnslib error: %s", knot_strerror2(ret));
@@ -377,12 +377,12 @@ static int test_packet_to_wire(list raw_response_list)
 	WALK_LIST(n, raw_response_list) {
 		/* Create packet from raw response. */
 		knot_packet_t *packet =
-			knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+			knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 		assert(packet);
 		test_raw_packet_t *raw_packet = (test_raw_packet_t *)n;
 		if (knot_packet_parse_from_wire(packet, raw_packet->data,
 		                                  raw_packet->size, 0) !=
-		    DNSLIB_EOK) {
+		    KNOT_EOK) {
 			diag("Warning: could not parse wire! "
 			     "(might be caused be malformed dump)");
 			continue;
@@ -390,7 +390,7 @@ static int test_packet_to_wire(list raw_response_list)
 		/* Use this packet to create wire */
 		uint8_t *wire = NULL;
 		size_t size = 0;
-		if (knot_packet_to_wire(packet, &wire ,&size) != DNSLIB_EOK) {
+		if (knot_packet_to_wire(packet, &wire ,&size) != KNOT_EOK) {
 			diag("Could not convert packet to wire");
 		}
 		/* Create ldns packet from created wire */
@@ -424,11 +424,11 @@ static int test_packet_to_wire(list raw_response_list)
 #endif
 }
 
-static const uint DNSLIB_PACKET_TEST_COUNT = 2;
+static const uint KNOT_PACKET_TEST_COUNT = 2;
 
 static int packet_tests_count(int argc, char *argv[])
 {
-	return DNSLIB_PACKET_TEST_COUNT;
+	return KNOT_PACKET_TEST_COUNT;
 }
 
 static int packet_tests_run(int argc, char *argv[])

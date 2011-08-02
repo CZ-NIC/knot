@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_DNSLIB_EDNS_H_
-#define _KNOT_DNSLIB_EDNS_H_
+#ifndef _KNOTDKNOT_EDNS_H_
+#define _KNOTDKNOT_EDNS_H_
 
 #include <stdint.h>
 
@@ -83,10 +83,10 @@ knot_opt_rr_t *knot_edns_new();
  *                 than acutal size of the OPT RR).
  *
  * \return Size of the parserd OPT RR in bytes if successful (always > 0).
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_EFEWDATA
- * \retval DNSLIB_EMALF
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EBADARG
+ * \retval KNOT_EFEWDATA
+ * \retval KNOT_EMALF
+ * \retval KNOT_ENOMEM
  */
 int knot_edns_new_from_wire(knot_opt_rr_t *opt_rr, const uint8_t *wire,
                               size_t max_size);
@@ -207,8 +207,8 @@ void knot_edns_set_do(knot_opt_rr_t *opt_rr);
  * \param length Option data length in bytes.
  * \param data Option data.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EOK
+ * \retval KNOT_ENOMEM
  */
 int knot_edns_add_option(knot_opt_rr_t *opt_rr, uint16_t code,
                            uint16_t length, const uint8_t *data);
@@ -232,7 +232,7 @@ int knot_edns_has_option(const knot_opt_rr_t *opt_rr, uint16_t code);
  * \param max_size Maximum space available for the wire format in bytes.
  *
  * \return Size of the wire format in bytes if successful.
- * \retval DNSLIB_ESPACE
+ * \retval KNOT_ESPACE
  */
 short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
                           size_t max_size);
@@ -253,6 +253,6 @@ short knot_edns_size(knot_opt_rr_t *opt_rr);
  */
 void knot_edns_free(knot_opt_rr_t **opt_rr);
 
-#endif /* _KNOT_DNSLIB_EDNS_H_ */
+#endif /* _KNOTDKNOT_EDNS_H_ */
 
 /*! @} */

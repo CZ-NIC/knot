@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_DEBUG_H_
-#define _KNOT_DEBUG_H_
+#ifndef _KNOTDDEBUG_H_
+#define _KNOTDDEBUG_H_
 
 #include "knot/other/log.h"
 #include "common/print.h"
@@ -93,6 +93,6 @@
 #define DEBUG_XFR(cmds)
 #endif
 
-#endif /* _KNOT_DEBUG_H_ */
+#endif /* _KNOTDDEBUG_H_ */
 
 /*! @} */

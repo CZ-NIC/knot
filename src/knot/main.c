@@ -151,7 +151,7 @@ int main(int argc, char **argv)
 
 	// Open configuration
 	log_server_info("Parsing configuration '%s' ...\n", config_fn);
-	if (conf_open(config_fn) != KNOT_EOK) {
+	if (conf_open(config_fn) != KNOTDEOK) {
 
 		log_server_error("Failed to parse configuration file '%s'.\n",
 				 config_fn);
@@ -177,7 +177,7 @@ int main(int argc, char **argv)
 	// Run server
 	int res = 0;
 	log_server_info("Starting server...\n");
-	if ((res = server_start(server)) == KNOT_EOK) {
+	if ((res = server_start(server)) == KNOTDEOK) {
 
 		// Save PID
 		int rc = pid_write(pidfile);
@@ -227,11 +227,11 @@ int main(int argc, char **argv)
 				sig_req_reload = 0;
 				int cf_ret = cf_ret = conf_open(config_fn);
 				switch (cf_ret) {
-				case KNOT_EOK:
+				case KNOTDEOK:
 					log_server_info("Configuration "
 							"reloaded.\n");
 					break;
-				case KNOT_ENOENT:
+				case KNOTDENOENT:
 					log_server_error("Configuration "
 							 "file '%s' "
 							 "not found.\n",
@@ -257,7 +257,7 @@ int main(int argc, char **argv)
 			}
 		}
 
-		if ((res = server_wait(server)) != KNOT_EOK) {
+		if ((res = server_wait(server)) != KNOTDEOK) {
 			log_server_error("An error occured while "
 					 "waiting for server to finish.\n");
 		} else {

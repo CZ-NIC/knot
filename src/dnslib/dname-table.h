@@ -10,8 +10,8 @@
  * @{
  */
 
-#ifndef _KNOT_DNSLIB_DNAME_TABLE_H_
-#define _KNOT_DNSLIB_DNAME_TABLE_H_
+#ifndef _KNOTDKNOT_DNAME_TABLE_H_
+#define _KNOTDKNOT_DNAME_TABLE_H_
 
 #include <config.h>
 
@@ -77,8 +77,8 @@ knot_dname_t *knot_dname_table_find_dname(const knot_dname_table_t *table,
  *
  * \note This function encapsulates dname in a structure and saves it to a tree.
  *
- * \retval DNSLIB_EOK on success.
- * \retval DNSLIB_ENOMEM when memory runs out.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_ENOMEM when memory runs out.
  */
 int knot_dname_table_add_dname(knot_dname_table_t *table,
 				 knot_dname_t *dname);
@@ -92,8 +92,8 @@ int knot_dname_table_add_dname(knot_dname_table_t *table,
  * \note This function encapsulates dname in a structure and saves it to a tree.
  * \note If a duplicate is found, \a dname is replaced by the name from table.
  *
- * \retval DNSLIB_EOK on success.
- * \retval DNSLIB_ENOMEM when memory runs out.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_ENOMEM when memory runs out.
  */
 int knot_dname_table_add_dname2(knot_dname_table_t *table,
                                   knot_dname_t **dname);
@@ -139,7 +139,7 @@ void knot_dname_table_tree_inorder_apply(const knot_dname_table_t *table,
             void *data);
 
 
-#endif // _KNOT_DNSLIB_DNAME_TABLE_H_
+#endif // _KNOTDKNOT_DNAME_TABLE_H_
 
 /*! @} */
 

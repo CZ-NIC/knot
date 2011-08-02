@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_DNSLIB_RRSET_H_
-#define _KNOT_DNSLIB_RRSET_H_
+#ifndef _KNOTDKNOT_RRSET_H_
+#define _KNOTDKNOT_RRSET_H_
 
 #include <stdint.h>
 
@@ -49,15 +49,15 @@ typedef struct knot_rrset knot_rrset_t;
 /*----------------------------------------------------------------------------*/
 
 typedef enum {
-	DNSLIB_RRSET_COMPARE_PTR,
-	DNSLIB_RRSET_COMPARE_HEADER,
-	DNSLIB_RRSET_COMPARE_WHOLE
+	KNOT_RRSET_COMPARE_PTR,
+	KNOT_RRSET_COMPARE_HEADER,
+	KNOT_RRSET_COMPARE_WHOLE
 } knot_rrset_compare_type_t;
 
 typedef enum  {
-	DNSLIB_RRSET_DUPL_MERGE,
-	DNSLIB_RRSET_DUPL_REPLACE,
-	DNSLIB_RRSET_DUPL_SKIP
+	KNOT_RRSET_DUPL_MERGE,
+	KNOT_RRSET_DUPL_REPLACE,
+	KNOT_RRSET_DUPL_SKIP
 } knot_rrset_dupl_handling_t;
 
 /*----------------------------------------------------------------------------*/
@@ -83,8 +83,8 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
  * \param rrset RRSet to add the RDATA to.
  * \param rdata RDATA to add to the RRSet.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
  *
  * \todo Provide some function for comparing RDATAs.
  */
@@ -99,8 +99,8 @@ knot_rdata_t * knot_rrset_remove_rdata(knot_rrset_t *rrset,
  * \param rrset RRSet to add the signatures into.
  * \param rrsigs Set of RRSIGs covering this RRSet.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
  */
 int knot_rrset_set_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs);
 
@@ -256,12 +256,12 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
  * \param r1 Pointer to RRSet to be merged into.
  * \param r2 Poitner to RRSet to be merged.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG if the RRSets could not be merged, because their
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG if the RRSets could not be merged, because their
  *         Owner, Type, Class or TTL does not match.
  */
 int knot_rrset_merge(void **r1, void **r2);
 
-#endif /* _KNOT_DNSLIB_RRSET_H_ */
+#endif /* _KNOTDKNOT_RRSET_H_ */
 
 /*! @} */

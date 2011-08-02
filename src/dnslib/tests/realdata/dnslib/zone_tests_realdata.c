@@ -110,10 +110,10 @@ static int test_zone_create(list node_list)
 
 //		if ((res = ((nsec3) ? knot_zone_add_nsec3_node(zone, node)
 //			: knot_zone_add_node(zone, node))) !=
-//		                DNSLIB_EBADZONE) {
+//		                KNOT_EBADZONE) {
 //			diag("zone: Inserting wrong node did not result in"
 //			     "proper return value (%d instead of %d).", res,
-//			     DNSLIB_EBADZONE);
+//			     KNOT_EBADZONE);
 //			++errors;
 //		}
 //		knot_node_free(&node, 0);
@@ -261,14 +261,14 @@ static int test_zone_create(list node_list)
 //	return (errors == 0);
 //}
 
-static const int DNSLIB_ZONE_TEST_COUNT = 1;
+static const int KNOT_ZONE_TEST_COUNT = 1;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
 static int knot_zone_tests_count(int argc, char *argv[])
 {
-	return DNSLIB_ZONE_TEST_COUNT;
+	return KNOT_ZONE_TEST_COUNT;
 }
 
 /*! Run all scheduled tests for given parameters.

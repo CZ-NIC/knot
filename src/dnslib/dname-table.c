@@ -71,13 +71,13 @@ static int knot_dname_table_copy_node(const struct dname_table_node *from,
                                         struct dname_table_node **to)
 {
 	if (from == NULL) {
-		return DNSLIB_EOK;
+		return KNOT_EOK;
 	}
 
 	*to = (struct dname_table_node *)
 	      malloc(sizeof(struct dname_table_node));
 	if (*to == NULL) {
-		return DNSLIB_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	(*to)->dname = from->dname;
@@ -86,19 +86,19 @@ static int knot_dname_table_copy_node(const struct dname_table_node *from,
 
 	int ret = knot_dname_table_copy_node(from->avl.avl_left,
 	                                       &(*to)->avl.avl_left);
-	if (ret != DNSLIB_EOK) {
+	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	ret = knot_dname_table_copy_node(from->avl.avl_right,
 	                                   &(*to)->avl.avl_right);
-	if (ret != DNSLIB_EOK) {
+	if (ret != KNOT_EOK) {
 		knot_dname_table_delete_subtree((*to)->avl.avl_left);
 		(*to)->avl.avl_left = NULL;
 		return ret;
 	}
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 knot_dname_table_t *knot_dname_table_new()
@@ -147,13 +147,13 @@ int knot_dname_table_add_dname(knot_dname_table_t *table,
 				 knot_dname_t *dname)
 {
 	if (dname == NULL || table == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	/* Node for insertion has to be created */
 	struct dname_table_node *node =
 		malloc(sizeof(struct dname_table_node));
-	CHECK_ALLOC_LOG(node, DNSLIB_ENOMEM);
+	CHECK_ALLOC_LOG(node, KNOT_ENOMEM);
 
 	node->dname = dname;
 	node->avl.avl_height = 0;
@@ -168,7 +168,7 @@ int knot_dname_table_add_dname(knot_dname_table_t *table,
 	knot_dname_retain(dname);
 
 	TREE_INSERT(table->tree, dname_table_node, avl, node);
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 int knot_dname_table_add_dname2(knot_dname_table_t *table,
@@ -177,7 +177,7 @@ int knot_dname_table_add_dname2(knot_dname_table_t *table,
 	knot_dname_t *found_dname = NULL;
 
 	if (table == NULL || dname == NULL || *dname == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 //	char *name = knot_dname_to_str(*dname);
@@ -213,7 +213,7 @@ int knot_dname_table_add_dname2(knot_dname_table_t *table,
 
 //	printf("Done.\n");
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 int knot_dname_table_shallow_copy(knot_dname_table_t *from,
@@ -225,7 +225,7 @@ int knot_dname_table_shallow_copy(knot_dname_table_t *from,
 		to->tree = malloc(sizeof(table_tree_t));
 		if (to->tree == NULL) {
 			ERR_ALLOC_FAILED;
-			return DNSLIB_ENOMEM;
+			return KNOT_ENOMEM;
 		}
 
 		TREE_INIT(to->tree, compare_dname_table_nodes);

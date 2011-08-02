@@ -192,7 +192,7 @@ line:	NL
 			                       parser->current_rrset->type,
 					       0);
 
-			if (ret == KNOT_ZCOMPILE_EBADSOA) {
+			if (ret == KNOTDZCOMPILE_EBADSOA) {
 				/*!< \todo this will crash! */
 				knot_rdata_free(&tmp_rdata);
 				knot_rrset_deep_free(&(parser->current_rrset),

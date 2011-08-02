@@ -79,9 +79,9 @@ knot_rrset_t *rrset_from_test_rrset(const test_rrset_t *test_rrset)
 		}
 //		diag("Rdata type: %s\n", knot_rrtype_to_string(test_rrset->type));
 		for (int i = 0; i < desc->length; i++) {
-			if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
-			    desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME ||
-			    desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME) {
+			if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
+			    desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME ||
+			    desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME) {
 //				diag("%p\n", test_rdata->items[i].raw_data);
 				assert(test_rdata->items[i].type == TEST_ITEM_DNAME);
 				rdata->items[i].dname =
@@ -171,9 +171,9 @@ int check_rrset(const knot_rrset_t *rrset,
 		WALK_LIST(n, test_rrset->rdata_list) {
 			test_rdata_t *test_rdata = (test_rdata_t *)n;
 			for (int i = 0; i < desc->length; i++) {
-				if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
-				    desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
-				    desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME) {
+				if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
+				    desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
+				    desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME) {
 					errors += check_domain_name(tmp_rdata->items[i].dname,
 					                            test_rdata->items[i].dname);
 				} else {
@@ -243,14 +243,14 @@ static int test_rrset_add_rdata(list rrset_list)
 	return (errors == 0);
 }
 
-static const int DNSLIB_RRSET_TEST_COUNT = 2;
+static const int KNOT_RRSET_TEST_COUNT = 2;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
 static int knot_rrset_tests_count(int argc, char *argv[])
 {
-	return DNSLIB_RRSET_TEST_COUNT;
+	return KNOT_RRSET_TEST_COUNT;
 }
 
 /*! Run all scheduled tests for given parameters.

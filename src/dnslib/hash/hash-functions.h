@@ -13,8 +13,8 @@
  * @{
  */
 
-#ifndef _KNOT_HASH_FUNCTIONS_H_
-#define _KNOT_HASH_FUNCTIONS_H_
+#ifndef _KNOTDHASH_FUNCTIONS_H_
+#define _KNOTDHASH_FUNCTIONS_H_
 
 typedef  unsigned long int  u4;   /* unsigned 4-byte type */
 typedef  unsigned     char  u1;   /* unsigned 1-byte type */
@@ -96,6 +96,6 @@ unsigned long djb_hash(const unsigned char *key, int size);
  */
 unsigned long elf_hash(const unsigned char *key, int size);
 
-#endif /* _KNOT_HASH_FUNCTIONS_H_ */
+#endif /* _KNOTDHASH_FUNCTIONS_H_ */
 
 /*! @} */

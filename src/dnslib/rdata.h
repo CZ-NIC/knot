@@ -10,8 +10,8 @@
  * @{
  */
 
-#ifndef _KNOT_DNSLIB_RDATA_H_
-#define _KNOT_DNSLIB_RDATA_H_
+#ifndef _KNOTDKNOT_RDATA_H_
+#define _KNOTDKNOT_RDATA_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -98,11 +98,11 @@ knot_rdata_t *knot_rdata_new();
  * \param rdlength Size of the RDATA to parse in bytes.
  * \param desc RR type descriptor for the RDATA type.
  *
- * \retval DNSLIB_ENOMEM
- * \retval DNSLIB_EFEWDATA
- * \retval DNSLIB_EMALF
- * \retval DNSLIB_ERROR
- * \retval DNSLIB_EOK
+ * \retval KNOT_ENOMEM
+ * \retval KNOT_EFEWDATA
+ * \retval KNOT_EMALF
+ * \retval KNOT_ERROR
+ * \retval KNOT_EOK
  */
 int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
                            size_t *pos, size_t total_size, size_t rdlength,
@@ -115,8 +115,8 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
  * \param pos Position of the RDATA item to be set.
  * \param item RDATA item value to be set.
  *
- * \retval DNSLIB_EOK if successful.
- * \retval DNSLIB_EBADARG if \a pos is not a valid position.
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_EBADARG if \a pos is not a valid position.
  *
  * \todo Use the union or a pointer to it as parameter? IMHO there is always
  *       only one pointer that is copied, so it doesn't matter.
@@ -137,8 +137,8 @@ int knot_rdata_set_item(knot_rdata_t *rdata, unsigned int pos,
  * \param count Count of RDATA items to be stored.
  *
  * \retval 0 if successful.
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EBADARG
+ * \retval KNOT_ENOMEM
  */
 int knot_rdata_set_items(knot_rdata_t *rdata,
                            const knot_rdata_item_t *items,
@@ -186,8 +186,8 @@ const knot_rdata_item_t *knot_rdata_item(const knot_rdata_t *rdata,
  * \param pos Position of the RDATA item to set.
  * \param dname Domain name to set to the item.
  *
- * \retval DNSLIB_EOK if successful.
- * \retval DNSLIB_EBADARG
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_EBADARG
  */
 int knot_rdata_item_set_dname(knot_rdata_t *rdata, unsigned int pos,
                                 knot_dname_t *dname);
@@ -199,8 +199,8 @@ int knot_rdata_item_set_dname(knot_rdata_t *rdata, unsigned int pos,
  * \param pos Position of the RDATA item to set.
  * \param raw_data Raw data to set to the item.
  *
- * \retval DNSLIB_EOK if successful.
- * \retval DNSLIB_EBADARG
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_EBADARG
  */
 int knot_rdata_item_set_raw_data(knot_rdata_t *rdata, unsigned int pos,
                                    uint16_t *raw_data);
@@ -293,10 +293,10 @@ const knot_dname_t *knot_rdata_dname_target(const knot_rdata_t *rdata);
  * \brief Retrieves the domain name from RDATA of given type.
  *
  * Supported types:
- * - DNSLIB_RRTYPE_NS
- * - DNSLIB_RRTYPE_MX
- * - DNSLIB_RRTYPE_SRV
- * - DNSLIB_RRTYPE_CNAME
+ * - KNOT_RRTYPE_NS
+ * - KNOT_RRTYPE_MX
+ * - KNOT_RRTYPE_SRV
+ * - KNOT_RRTYPE_CNAME
  *
  * \note This is only convenience function. It does not (and cannot) check if
  *       the given RDATA is of the right type, so it always returns the RDATA
@@ -319,6 +319,6 @@ uint32_t knot_rdata_soa_expire(const knot_rdata_t *rdata);
 
 uint16_t knot_rdata_rrsig_type_covered(const knot_rdata_t *rdata);
 
-#endif /* _KNOT_DNSLIB_RDATA_H */
+#endif /* _KNOTDKNOT_RDATA_H */
 
 /*! @} */

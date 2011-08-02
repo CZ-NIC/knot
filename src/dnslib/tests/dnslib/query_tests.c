@@ -22,11 +22,11 @@ unit_api query_tests_api = {
 	&query_tests_run     //! Run scheduled tests
 };
 
-static const uint DNSLIB_QUERY_TEST_COUNT = 1;
+static const uint KNOT_QUERY_TEST_COUNT = 1;
 
 static int query_tests_count(int argc, char *argv[])
 {
-	return DNSLIB_QUERY_TEST_COUNT;
+	return KNOT_QUERY_TEST_COUNT;
 }
 
 static int test_query_init()
@@ -34,22 +34,22 @@ static int test_query_init()
 	int errors = 0;
 	int lived = 0;
 	knot_packet_t *query =
-		knot_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
+		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	assert(query);
 	lives_ok({
-		if (knot_query_init(NULL) != DNSLIB_EBADARG) {
+		if (knot_query_init(NULL) != KNOT_EBADARG) {
 			diag("Calling query_init with NULL query did "
-			     "not return DNSLIB_EBADARG!");
+			     "not return KNOT_EBADARG!");
 			errors++;
 		}
 		lived = 1;
 	}, "query: init NULL tests");
 	errors += lived != 1;
 
-	assert(knot_packet_set_max_size(query, 1024 * 10) == DNSLIB_EOK);
-	if (knot_query_init(query) != DNSLIB_EOK) {
+	assert(knot_packet_set_max_size(query, 1024 * 10) == KNOT_EOK);
+	if (knot_query_init(query) != KNOT_EOK) {
 		diag("Calling query_init with valid query did not return "
-		     "DNSLIB_EOK!");
+		     "KNOT_EOK!");
 		errors++;
 	}
 
@@ -67,16 +67,16 @@ static int test_query_set_question()
 	int lived = 0;
 
 	knot_packet_t *query =
-		knot_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
+		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	assert(query);
-	assert(knot_packet_set_max_size(query, 1024 * 10) == DNSLIB_EOK);
+	assert(knot_packet_set_max_size(query, 1024 * 10) == KNOT_EOK);
 	knot_query_init(query);
 
 	knot_rrset_t *rrset =
 		knot_rrset_new(knot_dname_new_from_str("a.ns.cz.",
 	                                                   strlen("a.ns.cz."),
 	                                                   NULL),
-	                         DNSLIB_RRTYPE_A, DNSLIB_CLASS_IN, 3600);
+	                         KNOT_RRTYPE_A, KNOT_CLASS_IN, 3600);
 	assert(rrset);
 
 	knot_question_t *question = malloc(sizeof(knot_question_t));
@@ -86,19 +86,19 @@ static int test_query_set_question()
 	question->qclass = rrset->rclass;
 
 	lives_ok({
-		if (knot_query_set_question(NULL, NULL) != DNSLIB_EBADARG) {
+		if (knot_query_set_question(NULL, NULL) != KNOT_EBADARG) {
 			diag("Calling query_set_question with NULL");
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
-		if (knot_query_set_question(query, NULL) != DNSLIB_EBADARG) {
+		if (knot_query_set_question(query, NULL) != KNOT_EBADARG) {
 			diag("Calling query_set_question with NULL");
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
-		if (knot_query_set_question(NULL, question) != DNSLIB_EBADARG) {
+		if (knot_query_set_question(NULL, question) != KNOT_EBADARG) {
 			diag("Calling query_set_question with NULL");
 			errors++;
 		}
@@ -106,7 +106,7 @@ static int test_query_set_question()
 	}, "query: set question NULL tests");
 	errors += lived != 1;
 
-	if (knot_query_set_question(query, question) != DNSLIB_EOK) {
+	if (knot_query_set_question(query, question) != KNOT_EOK) {
 		diag("Calling query_set_question with valid arguments ");
 		errors++;
 	}

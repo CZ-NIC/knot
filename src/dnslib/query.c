@@ -36,7 +36,7 @@ int knot_query_init(knot_packet_t *query)
 	uint8_t *pos = query->wireformat;
 	knot_packet_header_to_wire(&query->header, &pos, &query->size);
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -45,7 +45,7 @@ int knot_query_set_question(knot_packet_t *query,
                               const knot_question_t *question)
 {
 	if (query == NULL || question == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	query->question.qname = question->qname;
@@ -56,7 +56,7 @@ int knot_query_set_question(knot_packet_t *query,
 	// convert the Question to wire format right away
 	knot_packet_question_to_wire(query);
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -64,12 +64,12 @@ int knot_query_set_question(knot_packet_t *query,
 int knot_query_set_opcode(knot_packet_t *query, uint8_t opcode)
 {
 	if (query == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 	// set the OPCODE in the structure
 	knot_wire_flags_set_opcode(&query->header.flags1, opcode);
 	// set the OPCODE in the wire format
 	knot_wire_set_opcode(query->wireformat, opcode);
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }

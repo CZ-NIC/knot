@@ -162,12 +162,12 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 
 	if (rdlength == 0) {
 		rdata->items = NULL;
-		return DNSLIB_EOK;
+		return KNOT_EOK;
 	}
 
 	knot_rdata_item_t *items = (knot_rdata_item_t *)malloc(
 	                            desc->length * sizeof(knot_rdata_item_t));
-	CHECK_ALLOC_LOG(items, DNSLIB_ENOMEM);
+	CHECK_ALLOC_LOG(items, KNOT_ENOMEM);
 
 	size_t item_size;
 	uint8_t gateway_type = 0;  // only to handle IPSECKEY record
@@ -186,16 +186,16 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 		size_t pos2;
 
 		switch (item_type) {
-		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
-		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
-		case DNSLIB_RDATA_WF_LITERAL_DNAME:
+		case KNOT_RDATA_WF_COMPRESSED_DNAME:
+		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
+		case KNOT_RDATA_WF_LITERAL_DNAME:
 //			printf("Next item - domain name, pos: %zu.\n", *pos);
 			pos2 = *pos;
 			dname = knot_dname_parse_from_wire(
 				wire, &pos2, total_size, NULL);
 			if (dname == NULL) {
 				free(items);
-				return DNSLIB_ERROR;
+				return KNOT_ERROR;
 			}
 			items[i].dname = dname;
 			//*pos += dname->size;
@@ -203,47 +203,47 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 			*pos = pos2;
 			dname = 0;
 			break;
-		case DNSLIB_RDATA_WF_BYTE:
+		case KNOT_RDATA_WF_BYTE:
 //			printf("Next item - byte.\n");
-			if (desc->type == DNSLIB_RRTYPE_IPSECKEY && i == 1) {
+			if (desc->type == KNOT_RRTYPE_IPSECKEY && i == 1) {
 				gateway_type = *(wire + *pos);
 			}
 			item_size = 1;
 			break;
-		case DNSLIB_RDATA_WF_SHORT:
+		case KNOT_RDATA_WF_SHORT:
 //			printf("Next item - short.\n");
 			item_size = 2;
 			break;
-		case DNSLIB_RDATA_WF_LONG:
+		case KNOT_RDATA_WF_LONG:
 //			printf("Next item - long, pos: %zu.\n", *pos);
 			item_size = 4;
 			break;
-		case DNSLIB_RDATA_WF_TEXT:
+		case KNOT_RDATA_WF_TEXT:
 //			printf("Next item - text.\n");
 			// TODO!!!
 			break;
-		case DNSLIB_RDATA_WF_A:
+		case KNOT_RDATA_WF_A:
 //			printf("Next item - A.\n");
 			item_size = 4;
 			break;
-		case DNSLIB_RDATA_WF_AAAA:
+		case KNOT_RDATA_WF_AAAA:
 //			printf("Next item - AAAA.\n");
 			item_size = 16;
 			break;
-		case DNSLIB_RDATA_WF_BINARY:
+		case KNOT_RDATA_WF_BINARY:
 //			printf("Next item - Binary data.\n");
 			// the rest of the RDATA is this item
 			item_size = rdlength - parsed;
 //			printf("Binary item, size: %zu\n", item_size);
 			break;
-		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+		case KNOT_RDATA_WF_BINARYWITHLENGTH:
 //			printf("Next item - Binary with length.\n");
 			item_size = *(wire + *pos);
 			break;
-		case DNSLIB_RDATA_WF_APL:
+		case KNOT_RDATA_WF_APL:
 			// WTF? what to do with this??
 			break;
-		case DNSLIB_RDATA_WF_IPSECGATEWAY:
+		case KNOT_RDATA_WF_IPSECGATEWAY:
 			// determine size based on the 'gateway type' field
 			switch (gateway_type) {
 			case 0:
@@ -261,7 +261,7 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 					knot_dname_parse_from_wire(
 					         wire, &pos2, total_size, NULL);
 				if (dname == NULL) {
-					return DNSLIB_ERROR;
+					return KNOT_ERROR;
 				}
 				items[i].dname = dname;
 				//*pos += dname->size;
@@ -276,7 +276,7 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 			break;
 		default:
 //			printf("Next item - unknown.\n");
-			return DNSLIB_EMALF;
+			return KNOT_EMALF;
 
 		}
 
@@ -285,13 +285,13 @@ int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
 //			       item_size);
 			if (parsed + item_size > rdlength) {
 				free(items);
-				return DNSLIB_EFEWDATA;
+				return KNOT_EFEWDATA;
 			}
 
 			items[i].raw_data = (uint16_t *)malloc(item_size + 2);
 			if (items[i].raw_data == NULL) {
 				free(items);
-				return DNSLIB_ENOMEM;
+				return KNOT_ENOMEM;
 			}
 			// TODO: save size to the RDATA item!!!
 //			printf("Read: %u\n", knot_wire_read_u32(wire + *pos));
@@ -317,7 +317,7 @@ int knot_rdata_set_item(knot_rdata_t *rdata, uint pos,
 			  knot_rdata_item_t item)
 {
 	if (pos >= rdata->count) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	/*! \todo As in set_items() we should increment refcounter for dnames,
@@ -325,7 +325,7 @@ int knot_rdata_set_item(knot_rdata_t *rdata, uint pos,
 	 */
 
 	rdata->items[pos] = item; // this should copy the union; or use memcpy?
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -342,14 +342,14 @@ int knot_rdata_set_items(knot_rdata_t *rdata,
 {
 	if (rdata == NULL || items == NULL || count == 0 ||
 	    rdata->items != NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	assert(rdata->count == 0);
 	if ((rdata->items = (knot_rdata_item_t *)malloc(
 			     count * sizeof(knot_rdata_item_t))) == NULL) {
 		ERR_ALLOC_FAILED;
-		return DNSLIB_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	memcpy(rdata->items, items, count * sizeof(knot_rdata_item_t));
@@ -359,7 +359,7 @@ int knot_rdata_set_items(knot_rdata_t *rdata,
 	 *        refcounters should be increased in caller.
 	 */
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -392,7 +392,7 @@ int knot_rdata_item_set_dname(knot_rdata_t *rdata, uint pos,
 				knot_dname_t *dname)
 {
 	if (pos >= rdata->count) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	/* Retain dname. */
@@ -400,7 +400,7 @@ int knot_rdata_item_set_dname(knot_rdata_t *rdata, uint pos,
 
 	rdata->items[pos].dname = dname;
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -409,12 +409,12 @@ int knot_rdata_item_set_raw_data(knot_rdata_t *rdata, uint pos,
 				   uint16_t *raw_data)
 {
 	if (pos >= rdata->count) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	rdata->items[pos].raw_data = raw_data;
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -451,9 +451,9 @@ void knot_rdata_deep_free(knot_rdata_t **rdata, uint type,
 		if (&((*rdata)->items[i]) == NULL) {
 			continue;
 		}
-		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME
-		    || desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
-		    || desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME ) {
+		if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME
+		    || desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
+		    || desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME ) {
 			if (((*rdata)->items[i].dname != NULL)) {
 				/*! \todo This is hack to prevent memory errors,
 				 *        as the rdata_set_items() cannot determine
@@ -487,33 +487,33 @@ void knot_rdata_deep_free(knot_rdata_t **rdata, uint type,
 
 //	for (int i = 0; i < rdata->count; ++i) {
 //		switch (format[i]) {
-//		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
-//		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
-//		case DNSLIB_RDATA_WF_LITERAL_DNAME:
+//		case KNOT_RDATA_WF_COMPRESSED_DNAME:
+//		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
+//		case KNOT_RDATA_WF_LITERAL_DNAME:
 //			size += knot_dname_size(rdata->items[i].dname);
 //			break;
-//		case DNSLIB_RDATA_WF_BYTE:
+//		case KNOT_RDATA_WF_BYTE:
 //			size += 1;
 //			break;
-//		case DNSLIB_RDATA_WF_SHORT:
+//		case KNOT_RDATA_WF_SHORT:
 //			size += 2;
 //			break;
-//		case DNSLIB_RDATA_WF_LONG:
+//		case KNOT_RDATA_WF_LONG:
 //			size += 4;
 //			break;
-//		case DNSLIB_RDATA_WF_A:
+//		case KNOT_RDATA_WF_A:
 //			size += 4;
 //			break;
-//		case DNSLIB_RDATA_WF_AAAA:
+//		case KNOT_RDATA_WF_AAAA:
 //			size += 16;
 //			break;
-//		case DNSLIB_RDATA_WF_BINARY:
-//		case DNSLIB_RDATA_WF_APL:            // saved as binary
-//		case DNSLIB_RDATA_WF_IPSECGATEWAY:   // saved as binary
+//		case KNOT_RDATA_WF_BINARY:
+//		case KNOT_RDATA_WF_APL:            // saved as binary
+//		case KNOT_RDATA_WF_IPSECGATEWAY:   // saved as binary
 //			size += rdata->items[i].raw_data[0];
 //			break;
-//		case DNSLIB_RDATA_WF_TEXT:
-//		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+//		case KNOT_RDATA_WF_TEXT:
+//		case KNOT_RDATA_WF_BINARYWITHLENGTH:
 //			size += rdata->items[i].raw_data[0] + 1;
 //			break;
 //		default:
@@ -529,47 +529,47 @@ void knot_rdata_deep_free(knot_rdata_t **rdata, uint type,
 //                         uint8_t *buffer, uint buf_size)
 //{
 //	uint copied = 0;
-//	uint8_t tmp[DNSLIB_MAX_RDATA_WIRE_SIZE];
+//	uint8_t tmp[KNOT_MAX_RDATA_WIRE_SIZE];
 //	uint8_t *to = tmp;
 
 //	for (int i = 0; i < rdata->count; ++i) {
-//		assert(copied < DNSLIB_MAX_RDATA_WIRE_SIZE);
+//		assert(copied < KNOT_MAX_RDATA_WIRE_SIZE);
 
 //		const uint8_t *from = (uint8_t *)rdata->items[i].raw_data;
 //		uint size = 0;
 
 //		switch (format[i]) {
-//		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
-//		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
-//		case DNSLIB_RDATA_WF_LITERAL_DNAME:
+//		case KNOT_RDATA_WF_COMPRESSED_DNAME:
+//		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
+//		case KNOT_RDATA_WF_LITERAL_DNAME:
 //			size = knot_dname_size(rdata->items[i].dname);
 //			from = knot_dname_name(rdata->items[i].dname);
 
 //			break;
-//		case DNSLIB_RDATA_WF_BYTE:
+//		case KNOT_RDATA_WF_BYTE:
 //			size = 1;
 //			break;
-//		case DNSLIB_RDATA_WF_SHORT:
+//		case KNOT_RDATA_WF_SHORT:
 //			size = 2;
 //			break;
-//		case DNSLIB_RDATA_WF_LONG:
+//		case KNOT_RDATA_WF_LONG:
 //			size = 4;
 //			break;
-//		case DNSLIB_RDATA_WF_A:
+//		case KNOT_RDATA_WF_A:
 //			size = 4;
 //			break;
-//		case DNSLIB_RDATA_WF_AAAA:
+//		case KNOT_RDATA_WF_AAAA:
 //			size = 16;
 //			break;
-//		case DNSLIB_RDATA_WF_TEXT:
-//		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+//		case KNOT_RDATA_WF_TEXT:
+//		case KNOT_RDATA_WF_BINARYWITHLENGTH:
 //			// size stored in the first two bytes, but in little
 //			// endian and we need only the lower byte from it
 //			*to = *from; // lower byte is the first in little endian
 //			to += 1;
-//		case DNSLIB_RDATA_WF_BINARY:
-//		case DNSLIB_RDATA_WF_APL:            // saved as binary
-//		case DNSLIB_RDATA_WF_IPSECGATEWAY:   // saved as binary
+//		case KNOT_RDATA_WF_BINARY:
+//		case KNOT_RDATA_WF_APL:            // saved as binary
+//		case KNOT_RDATA_WF_IPSECGATEWAY:   // saved as binary
 //			// size stored in the first two bytes, those bytes
 //			// must not be copied
 //			size = rdata->items[i].raw_data[0];
@@ -580,7 +580,7 @@ void knot_rdata_deep_free(knot_rdata_t **rdata, uint type,
 //		}
 
 //		assert(size != 0);
-//		assert(copied + size < DNSLIB_MAX_RDATA_WIRE_SIZE);
+//		assert(copied + size < KNOT_MAX_RDATA_WIRE_SIZE);
 
 //		memcpy(to, from, size);
 //		to += size;
@@ -622,9 +622,9 @@ knot_rdata_t *knot_rdata_deep_copy(const knot_rdata_t *rdata,
 
 	// copy all items one by one
 	for (int i = 0; i < copy->count; ++i) {
-		if (d->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME
-		    || d->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
-		    || d->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME) {
+		if (d->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME
+		    || d->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
+		    || d->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME) {
 			copy->items[i].dname =
 				knot_dname_deep_copy(rdata->items[i].dname);
 		} else {
@@ -656,9 +656,9 @@ int knot_rdata_compare(const knot_rdata_t *r1, const knot_rdata_t *r2,
 //		const uint8_t *data1, *data2;
 //		int size1, size2;
 
-		if (format[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
-		    format[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
-		    format[i] == DNSLIB_RDATA_WF_LITERAL_DNAME) {
+		if (format[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
+		    format[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
+		    format[i] == KNOT_RDATA_WF_LITERAL_DNAME) {
 			cmp = knot_dname_compare(r1->items[i].dname,
 			                           r2->items[i].dname);
 //			data1 = knot_dname_name(r1->items[i].dname);
@@ -716,13 +716,13 @@ const knot_dname_t *knot_rdata_get_name(const knot_rdata_t *rdata,
 	// iterate over the rdata items or act as if we knew where the name is?
 
 	switch (type) {
-	case DNSLIB_RRTYPE_NS:
+	case KNOT_RRTYPE_NS:
 		return knot_rdata_ns_name(rdata);
-	case DNSLIB_RRTYPE_MX:
+	case KNOT_RRTYPE_MX:
 		return knot_rdata_mx_name(rdata);
-	case DNSLIB_RRTYPE_SRV:
+	case KNOT_RRTYPE_SRV:
 		return knot_rdata_srv_name(rdata);
-	case DNSLIB_RRTYPE_CNAME:
+	case KNOT_RRTYPE_CNAME:
 		return knot_rdata_cname_name(rdata);
 	}
 

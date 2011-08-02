@@ -10,8 +10,8 @@
  * @{
  */
 
-#ifndef _KNOT_DNSLIB_NODE_H_
-#define _KNOT_DNSLIB_NODE_H_
+#ifndef _KNOTDKNOT_NODE_H_
+#define _KNOTDKNOT_NODE_H_
 
 #include "dnslib/dname.h"
 #include "common/skip-list.h"
@@ -94,13 +94,13 @@ typedef struct knot_node knot_node_t;
 /*! \brief Flags used to mark nodes with some property. */
 typedef enum {
 	/*! \brief Node is a delegation point (i.e. marking a zone cut). */
-	DNSLIB_NODE_FLAGS_DELEG = (uint8_t)0x01,
+	KNOT_NODE_FLAGS_DELEG = (uint8_t)0x01,
 	/*! \brief Node is not authoritative (i.e. below a zone cut). */
-	DNSLIB_NODE_FLAGS_NONAUTH = (uint8_t)0x02,
+	KNOT_NODE_FLAGS_NONAUTH = (uint8_t)0x02,
 	/*! \brief Node is old and will be removed (during update). */
-	DNSLIB_NODE_FLAGS_OLD = (uint8_t)0x80,
+	KNOT_NODE_FLAGS_OLD = (uint8_t)0x80,
 	/*! \brief Node is new and should not be used while zoen is old. */
-	DNSLIB_NODE_FLAGS_NEW = (uint8_t)0x40
+	KNOT_NODE_FLAGS_NEW = (uint8_t)0x40
 } knot_node_flags_t;
 
 /*----------------------------------------------------------------------------*/
@@ -126,8 +126,8 @@ knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
  * \param node Node to add the RRSet to.
  * \param rrset RRSet to add.
  *
- * \retval DNSLIB_EOK on success.
- * \retval DNSLIB_ERROR if the RRSet could not be inserted.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_ERROR if the RRSet could not be inserted.
  */
 int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
                           int merge);
@@ -414,6 +414,6 @@ int knot_node_compare(knot_node_t *node1, knot_node_t *node2);
 
 int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to);
 
-#endif /* _KNOT_DNSLIB_NODE_H_ */
+#endif /* _KNOTDKNOT_NODE_H_ */
 
 /*! @} */

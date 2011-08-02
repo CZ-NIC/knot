@@ -12,8 +12,8 @@
  * @{
  */
 
-#ifndef _KNOT_DNSLIB_ZONEDB_H_
-#define _KNOT_DNSLIB_ZONEDB_H_
+#ifndef _KNOTDKNOT_ZONEDB_H_
+#define _KNOTDKNOT_ZONEDB_H_
 
 #include "common/general-tree.h"
 #include "dnslib/zone.h"
@@ -46,8 +46,8 @@ knot_zonedb_t *knot_zonedb_new();
  * \param db Zone database to store the zone.
  * \param zone Parsed zone.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EZONEIN
+ * \retval KNOT_EOK
+ * \retval KNOT_EZONEIN
  */
 int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone);
 
@@ -64,8 +64,8 @@ int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone);
  *                     zone after removing from zone database. Set to 0
  *                     otherwise.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_ENOZONE
+ * \retval KNOT_EOK
+ * \retval KNOT_ENOZONE
  */
 int knot_zonedb_remove_zone(knot_zonedb_t *db, knot_dname_t *zone_name,
                               int destroy_zone);
@@ -122,6 +122,6 @@ void knot_zonedb_deep_free(knot_zonedb_t **db);
 
 /*----------------------------------------------------------------------------*/
 
-#endif /* _KNOT_DNSLIB_ZONEDB_H_ */
+#endif /* _KNOTDKNOT_ZONEDB_H_ */
 
 /*! @} */

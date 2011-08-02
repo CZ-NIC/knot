@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_SOCKADDR_H_
-#define _KNOT_SOCKADDR_H_
+#ifndef _KNOTDSOCKADDR_H_
+#define _KNOTDSOCKADDR_H_
 
 /* BSD IPv6 */
 #ifndef __POSIX_VISIBLE
@@ -100,6 +100,6 @@ int sockaddr_tostr(sockaddr_t *addr, char *dst, size_t size);
  */
 int sockaddr_portnum(sockaddr_t *addr);
 
-#endif /* _KNOT_SOCKADDR_H_ */
+#endif /* _KNOTDSOCKADDR_H_ */
 
 /*! @} */

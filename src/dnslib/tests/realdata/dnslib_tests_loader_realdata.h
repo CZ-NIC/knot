@@ -1,5 +1,5 @@
-#ifndef DNSLIB_TESTS_LOADER_H
-#define DNSLIB_TESTS_LOADER_H
+#ifndef KNOT_TESTS_LOADER_H
+#define KNOT_TESTS_LOADER_H
 
 #include <stdint.h>
 
@@ -160,4 +160,4 @@ test_data_t *create_test_data_from_dump();
 
 test_data_t *data_for_knot_tests;
 
-#endif // DNSLIB_TESTS_LOADER_H
+#endif // KNOT_TESTS_LOADER_H

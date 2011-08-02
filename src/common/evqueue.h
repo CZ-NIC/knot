@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_COMMON_EVQUEUE_H_
-#define _KNOT_COMMON_EVQUEUE_H_
+#ifndef _KNOTDCOMMON_EVQUEUE_H_
+#define _KNOTDCOMMON_EVQUEUE_H_
 
 #include <pthread.h>
 #include <signal.h> // sigset_t
@@ -179,6 +179,6 @@ static inline void evqueue_set(evqueue_t *q) {
 	s_evqueue = q;
 }
 
-#endif /* _KNOT_COMMON_EVQUEUE_H_ */
+#endif /* _KNOTDCOMMON_EVQUEUE_H_ */
 
 /*! @} */

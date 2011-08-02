@@ -51,9 +51,9 @@ static int check_rdata(const knot_rdata_t *rdata,
 		uint size = 0;
 
 		switch (desc->wireformat[i]) {
-		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
-		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
-		case DNSLIB_RDATA_WF_LITERAL_DNAME:
+		case KNOT_RDATA_WF_COMPRESSED_DNAME:
+		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
+		case KNOT_RDATA_WF_LITERAL_DNAME:
 			size = knot_dname_size(knot_rdata_item(
 						 rdata, i)->dname);
 			if (check_domain_name(rdata->items[i].dname,
@@ -237,14 +237,14 @@ static int test_rdata_get_item(list rdata_list)
 //	int errors = 0;
 
 //	// generate some random data
-//	uint8_t data[DNSLIB_MAX_RDATA_WIRE_SIZE];
-//	generate_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE);
+//	uint8_t data[KNOT_MAX_RDATA_WIRE_SIZE];
+//	generate_rdata(data, KNOT_MAX_RDATA_WIRE_SIZE);
 
-//	for (int i = 0; i <= DNSLIB_RRTYPE_LAST; ++i) {
+//	for (int i = 0; i <= KNOT_RRTYPE_LAST; ++i) {
 //		rdata = knot_rdata_new();
 
 //		int size =
-//		fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i, rdata);
+//		fill_rdata(data, KNOT_MAX_RDATA_WIRE_SIZE, i, rdata);
 
 //		if (size < 0) {
 //			++errors;
@@ -264,11 +264,11 @@ static int test_rdata_get_item(list rdata_list)
 
 //		for (int x = 0; x < desc->length; x++) {
 //			if (desc->wireformat[x] ==
-//			    DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
+//			    KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
 //			    desc->wireformat[x] ==
-//			    DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+//			    KNOT_RDATA_WF_COMPRESSED_DNAME ||
 //			    desc->wireformat[x] ==
-//			    DNSLIB_RDATA_WF_LITERAL_DNAME) {
+//			    KNOT_RDATA_WF_LITERAL_DNAME) {
 //				knot_dname_free(&(rdata->items[x].dname));
 //			}
 //		}
@@ -282,14 +282,14 @@ static int test_rdata_get_item(list rdata_list)
 
 /*----------------------------------------------------------------------------*/
 
-static const int DNSLIB_RDATA_TEST_COUNT = 2;
+static const int KNOT_RDATA_TEST_COUNT = 2;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
 static int knot_rdata_tests_count(int argc, char *argv[])
 {
-	return DNSLIB_RDATA_TEST_COUNT;
+	return KNOT_RDATA_TEST_COUNT;
 }
 
 /*! Run all scheduled tests for given parameters.

@@ -81,19 +81,19 @@ static int load_raw_packets(test_data_t *data, uint32_t *count,
 size_t wireformat_size_load(uint wire_type)
 {
 	switch(wire_type) {
-		case DNSLIB_RDATA_WF_BYTE:
+		case KNOT_RDATA_WF_BYTE:
 			return 1;
 			break;
-		case DNSLIB_RDATA_WF_SHORT:
+		case KNOT_RDATA_WF_SHORT:
 			return 2;
 			break;
-		case DNSLIB_RDATA_WF_LONG:
+		case KNOT_RDATA_WF_LONG:
 			return 4;
 			break;
-		case DNSLIB_RDATA_WF_A:
+		case KNOT_RDATA_WF_A:
 			return 4;
 			break;
-		case DNSLIB_RDATA_WF_AAAA:
+		case KNOT_RDATA_WF_AAAA:
 			return 16;
 			break;
 		default: /* unknown size */
@@ -348,9 +348,9 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 	 */
 	/* TODO the are more types with no length for sure ... */
 
-	if (type != DNSLIB_RRTYPE_A &&
-	    type != DNSLIB_RRTYPE_NS &&
-	    type != DNSLIB_RRTYPE_AAAA) {
+	if (type != KNOT_RRTYPE_A &&
+	    type != KNOT_RRTYPE_NS &&
+	    type != KNOT_RRTYPE_AAAA) {
 		if (!mem_read(&total_raw_data_length,
 		     sizeof(total_raw_data_length), src, src_size)) {
 			free(rdata);
@@ -369,9 +369,9 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 	 * in the dump - of minor importance, however
 	 */
 	for (i = 0; i < desc->length; i++) {
-		if ((desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
-		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
-		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME)) {
+		if ((desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
+		desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
+		desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME)) {
 			unsigned tmp_remaining = *src_size;
 			items[i].dname = load_test_dname(src, src_size);
 
@@ -395,7 +395,7 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 			total_read += tmp_remaining - *src_size;
 		} else {
 			if (desc->wireformat[i] ==
-			    DNSLIB_RDATA_WF_BINARYWITHLENGTH) {
+			    KNOT_RDATA_WF_BINARYWITHLENGTH) {
 				if (!mem_read(&raw_data_length,
 				     sizeof(raw_data_length), src, src_size)) {
 					return NULL;
@@ -451,7 +451,7 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 									*/
 					if ((i != desc->length - 1) &&
 					    desc->wireformat[i] !=
-					    DNSLIB_RDATA_WF_TEXT ) {
+					    KNOT_RDATA_WF_TEXT ) {
 						fprintf(stderr,
 						        "I dont know how "
 						"to parse this type: %d\n",
@@ -462,7 +462,7 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 						total_raw_data_length -
 						total_read;
 						if (desc->wireformat[i] ==
-						DNSLIB_RDATA_WF_TEXT) {
+						KNOT_RDATA_WF_TEXT) {
 							break;
 						}
 
@@ -512,7 +512,7 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 					  items[i].raw_data[0]); */
 
 				if (desc->zoneformat[i] ==
-				    DNSLIB_RDATA_ZF_ALGORITHM) {
+				    KNOT_RDATA_ZF_ALGORITHM) {
 					hex_print((char *)items[i].raw_data,
 						  items[i].raw_data[0] + 2);
 				} else {
@@ -821,9 +821,9 @@ static void test_dname_free(test_dname_t **dname)
 
 static int wire_is_dname(uint type)
 {
-	return (type == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
-	        type == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
-	        type == DNSLIB_RDATA_WF_LITERAL_DNAME);
+	return (type == KNOT_RDATA_WF_COMPRESSED_DNAME ||
+	        type == KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
+	        type == KNOT_RDATA_WF_LITERAL_DNAME);
 }
 
 static void test_rdata_free(test_rdata_t **rdata)
@@ -915,9 +915,9 @@ static void get_and_save_data_from_rdata(test_rdata_t *rdata,
 	}
 
 	for(int i = 0; i < rdata->count; i++) {
-		if ((desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
-		    desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
-		    desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME)) {
+		if ((desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
+		    desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
+		    desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME)) {
 			add_tail(&data->dname_list,
 			         (node *)rdata->items[i].dname);
 			test_item_t *temp_item = malloc(sizeof(test_item_t));

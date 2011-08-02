@@ -9,15 +9,15 @@
  * @{
  */
 
-#ifndef _KNOT_DNSLIB_NSEC3_H_
-#define _KNOT_DNSLIB_NSEC3_H_
+#ifndef _KNOTDKNOT_NSEC3_H_
+#define _KNOTDKNOT_NSEC3_H_
 
 #include <stdint.h>
 #include <string.h>
 
 #include "dnslib/rrset.h"
 
-#define DNSLIB_NSEC3_SHA_USE_EVP 0
+#define KNOT_NSEC3_SHA_USE_EVP 0
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -40,7 +40,7 @@ typedef struct knot_nsec3_params knot_nsec3_params_t;
  * \param params NSEC3PARAM structure to initialize.
  * \param nsec3param The NSEC3PARAM RRset.
  *
- * \retval DNSLIB_EOK on success (always).
+ * \retval KNOT_EOK on success (always).
  */
 int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
                                   const knot_rrset_t *nsec3param);
@@ -55,10 +55,10 @@ int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
  * \param[out] digest Result will be store here.
  * \param[out] digest_size Size of the result in octets will be stored here.
  *
- * \retval DNSLIB_EOK if successful.
- * \retval DNSLIB_ENOMEM
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_ECRYPTO
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_ENOMEM
+ * \retval KNOT_EBADARG
+ * \retval KNOT_ECRYPTO
  */
 int knot_nsec3_sha1(const knot_nsec3_params_t *params, const uint8_t *data,
                       size_t size, uint8_t **digest, size_t *digest_size);
@@ -72,6 +72,6 @@ void knot_nsec3_params_free(knot_nsec3_params_t *params);
 
 /*----------------------------------------------------------------------------*/
 
-#endif /* _KNOT_DNSLIB_NSEC3_H_ */
+#endif /* _KNOTDKNOT_NSEC3_H_ */
 
 /*! @} */

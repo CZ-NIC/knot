@@ -71,7 +71,7 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
 int knot_rrset_add_rdata(knot_rrset_t *rrset, knot_rdata_t *rdata)
 {
 	if (rrset == NULL || rdata == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	if (rrset->rdata == NULL) {
@@ -88,7 +88,7 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset, knot_rdata_t *rdata)
 		rdata->next = tmp->next;
 		tmp->next = rdata;
 	}
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -127,11 +127,11 @@ knot_rdata_t *knot_rrset_remove_rdata(knot_rrset_t *rrset,
 int knot_rrset_set_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs)
 {
 	if (rrset == NULL || rrsigs == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	rrset->rrsigs = rrsigs;
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -141,29 +141,29 @@ int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
 {
 	if (rrset == NULL || rrsigs == NULL
 	    || knot_dname_compare(rrset->owner, rrsigs->owner) != 0) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	int rc;
 	if (rrset->rrsigs != NULL) {
-		if (dupl == DNSLIB_RRSET_DUPL_MERGE) {
+		if (dupl == KNOT_RRSET_DUPL_MERGE) {
 			rc = knot_rrset_merge((void **)&rrset->rrsigs,
 			                        (void **)&rrsigs);
-			if (rc != DNSLIB_EOK) {
+			if (rc != KNOT_EOK) {
 				return rc;
 			} else {
 				return 1;
 			}
-		} else if (dupl == DNSLIB_RRSET_DUPL_SKIP) {
+		} else if (dupl == KNOT_RRSET_DUPL_SKIP) {
 			return 2;
-		} else if (dupl == DNSLIB_RRSET_DUPL_REPLACE) {
+		} else if (dupl == KNOT_RRSET_DUPL_REPLACE) {
 			rrset->rrsigs = rrsigs;
 		}
 	} else {
 		rrset->rrsigs = rrsigs;
 	}
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -283,7 +283,7 @@ int knot_rrset_compare(const knot_rrset_t *r1,
                          const knot_rrset_t *r2,
                          knot_rrset_compare_type_t cmp)
 {
-	if (cmp == DNSLIB_RRSET_COMPARE_PTR) {
+	if (cmp == KNOT_RRSET_COMPARE_PTR) {
 		return (r1 == r2);
 	}
 
@@ -292,7 +292,7 @@ int knot_rrset_compare(const knot_rrset_t *r1,
 	           && (r1->ttl == r2->ttl)
 	           && knot_dname_compare(r1->owner, r2->owner) == 0);
 
-	if (cmp == DNSLIB_RRSET_COMPARE_WHOLE && res) {
+	if (cmp == KNOT_RRSET_COMPARE_WHOLE && res) {
 		knot_rrtype_descriptor_t *desc =
 			knot_rrtype_descriptor_by_type(r1->type);
 
@@ -312,11 +312,11 @@ int knot_rrset_compare(const knot_rrset_t *r1,
 int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to)
 {
 	*to = (knot_rrset_t *)malloc(sizeof(knot_rrset_t));
-	CHECK_ALLOC_LOG(*to, DNSLIB_ENOMEM);
+	CHECK_ALLOC_LOG(*to, KNOT_ENOMEM);
 	
 	memcpy(*to, from, sizeof(knot_rrset_t));
 	
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -387,7 +387,7 @@ int knot_rrset_merge(void **r1, void **r2)
 	    || rrset1->rclass != rrset2->rclass
 	    || rrset1->type != rrset2->type
 	    || rrset1->ttl != rrset2->ttl) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	// add all RDATAs from rrset2 to rrset1 (i.e. concatenate linked lists)
@@ -396,13 +396,13 @@ int knot_rrset_merge(void **r1, void **r2)
 	assert(rrset1 && rrset2);
 	if (rrset1->rdata == NULL) {
 		rrset1->rdata = rrset2->rdata;
-		return DNSLIB_EOK;
+		return KNOT_EOK;
 	}
 
 	knot_rdata_t *tmp_rdata = rrset1->rdata;
 
 	if (!tmp_rdata) {
-		return DNSLIB_EOK;
+		return KNOT_EOK;
 	}
 
 	while (tmp_rdata->next != rrset1->rdata) {
@@ -419,5 +419,5 @@ int knot_rrset_merge(void **r1, void **r2)
 
 	tmp_rdata->next = rrset1->rdata;
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }

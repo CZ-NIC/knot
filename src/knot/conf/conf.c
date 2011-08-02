@@ -70,7 +70,7 @@ void cf_error(const char *msg, void *scanner)
 	                 new_config->filename, msg, cf_get_lineno(scanner),
 	                 (char *)cf_get_text(scanner));
 
-	_parser_res = KNOT_EPARSEFAIL;
+	_parser_res = KNOTDEPARSEFAIL;
 }
 
 /*
@@ -298,10 +298,10 @@ void __attribute__ ((destructor)) conf_deinit()
 static int conf_fparser(conf_t *conf)
 {
 	if (!conf->filename) {
-		return KNOT_EINVAL;
+		return KNOTDEINVAL;
 	}
 
-	int ret = KNOT_EOK;
+	int ret = KNOTDEOK;
 	pthread_mutex_lock(&_parser_lock);
 	// {
 	// Hook new configuration
@@ -309,11 +309,11 @@ static int conf_fparser(conf_t *conf)
 	FILE *f = fopen(conf->filename, "r");
 	if (f == 0) {
 		pthread_mutex_unlock(&_parser_lock);
-		return KNOT_ENOENT;
+		return KNOTDENOENT;
 	}
 
 	// Parse config
-	_parser_res = KNOT_EOK;
+	_parser_res = KNOTDEOK;
 	new_config->filename = conf->filename;
 	void *scanner = NULL;
 	cf_lex_init(&scanner);
@@ -333,21 +333,21 @@ static int conf_fparser(conf_t *conf)
 static int conf_strparser(conf_t *conf, const char *src)
 {
 	if (!src) {
-		return KNOT_EINVAL;
+		return KNOTDEINVAL;
 	}
 
-	int ret = KNOT_EOK;
+	int ret = KNOTDEOK;
 	pthread_mutex_lock(&_parser_lock);
 	// {
 	// Hook new configuration
 	new_config = conf;
 	if (src == 0) {
 		pthread_mutex_unlock(&_parser_lock);
-		return KNOT_ENOENT;
+		return KNOTDENOENT;
 	}
 
 	// Parse config
-	_parser_res = KNOT_EOK;
+	_parser_res = KNOTDEOK;
 	char *oldfn = new_config->filename;
 	new_config->filename = "(stdin)";
 	void *scanner = NULL;
@@ -397,7 +397,7 @@ int conf_add_hook(conf_t * conf, int sections,
 {
 	conf_hook_t *hook = malloc(sizeof(conf_hook_t));
 	if (!hook) {
-		return KNOT_ENOMEM;
+		return KNOTDENOMEM;
 	}
 
 	hook->sections = sections;
@@ -406,7 +406,7 @@ int conf_add_hook(conf_t * conf, int sections,
 	add_tail(&conf->hooks, &hook->n);
 	++conf->hooks_count;
 
-	return KNOT_EOK;
+	return KNOTDEOK;
 }
 
 int conf_parse(conf_t *conf)
@@ -421,10 +421,10 @@ int conf_parse(conf_t *conf)
 	conf_update_hooks(conf);
 
 	if (ret < 0) {
-		return KNOT_EPARSEFAIL;
+		return KNOTDEPARSEFAIL;
 	}
 
-	return KNOT_EOK;
+	return KNOTDEOK;
 }
 
 int conf_parse_str(conf_t *conf, const char* src)
@@ -439,10 +439,10 @@ int conf_parse_str(conf_t *conf, const char* src)
 	conf_update_hooks(conf);
 
 	if (ret < 0) {
-		return KNOT_EPARSEFAIL;
+		return KNOTDEPARSEFAIL;
 	}
 
-	return KNOT_EOK;
+	return KNOTDEOK;
 }
 
 void conf_truncate(conf_t *conf, int unload_hooks)
@@ -564,13 +564,13 @@ int conf_open(const char* path)
 {
 	/* Check path. */
 	if (!path) {
-		return KNOT_EINVAL;
+		return KNOTDEINVAL;
 	}
 
 	/* Check if exists. */
 	struct stat st;
 	if (stat(path, &st) != 0) {
-		return KNOT_ENOENT;
+		return KNOTDENOENT;
 	}
 
 	/* Create new config. */
@@ -578,7 +578,7 @@ int conf_open(const char* path)
 
 	/* Parse config. */
 	int ret = conf_fparser(nconf);
-	if (ret != KNOT_EOK) {
+	if (ret != KNOTDEOK) {
 		conf_free(nconf);
 		return ret;
 	}
@@ -610,7 +610,7 @@ int conf_open(const char* path)
 	/* Update hooks. */
 	conf_update_hooks(nconf);
 
-	return KNOT_EOK;
+	return KNOTDEOK;
 }
 
 char* strcdup(const char *s1, const char *s2)

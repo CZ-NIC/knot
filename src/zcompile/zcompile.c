@@ -144,9 +144,9 @@ static inline int rdata_atom_is_domain(uint16_t type, size_t index)
 	= knot_rrtype_descriptor_by_type(type);
 	return (index < descriptor->length
 		&& (descriptor->wireformat[index] ==
-		DNSLIB_RDATA_WF_COMPRESSED_DNAME  ||
+		KNOT_RDATA_WF_COMPRESSED_DNAME  ||
 		descriptor->wireformat[index] ==
-		DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME));
+		KNOT_RDATA_WF_UNCOMPRESSED_DNAME));
 }
 
 /*!
@@ -212,26 +212,26 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 		int required = descriptor->length;
 
 		switch (rdata_atom_wireformat_type(rrtype, i)) {
-		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
-		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
+		case KNOT_RDATA_WF_COMPRESSED_DNAME:
+		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
 			is_domain = 1;
 			is_normalized = 1;
 			break;
-		case DNSLIB_RDATA_WF_LITERAL_DNAME:
+		case KNOT_RDATA_WF_LITERAL_DNAME:
 			is_domain = 1;
 			is_wirestore = 1;
 			break;
-		case DNSLIB_RDATA_WF_BYTE:
+		case KNOT_RDATA_WF_BYTE:
 			length = sizeof(uint8_t);
 			break;
-		case DNSLIB_RDATA_WF_SHORT:
+		case KNOT_RDATA_WF_SHORT:
 			length = sizeof(uint16_t);
 			break;
-		case DNSLIB_RDATA_WF_LONG:
+		case KNOT_RDATA_WF_LONG:
 			length = sizeof(uint32_t);
 			break;
-		case DNSLIB_RDATA_WF_TEXT:
-		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+		case KNOT_RDATA_WF_TEXT:
+		case KNOT_RDATA_WF_BINARYWITHLENGTH:
 			/* Length is stored in the first byte.  */
 			length = 1;
 			if ((uint8_t *)wireformat + length <= (uint8_t *)end) {
@@ -244,13 +244,13 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			length += buffer_current(packet)[length - 1];
 			}*/
 			break;
-		case DNSLIB_RDATA_WF_A:
+		case KNOT_RDATA_WF_A:
 			length = sizeof(in_addr_t);
 			break;
-		case DNSLIB_RDATA_WF_AAAA:
+		case KNOT_RDATA_WF_AAAA:
 			length = IP6ADDRLEN;
 			break;
-		case DNSLIB_RDATA_WF_BINARY:
+		case KNOT_RDATA_WF_BINARY:
 			/* Remaining RDATA is binary.  */
 			dbg_rdata("%d: guessing length from pointers: %p %p\n",
 			          i,
@@ -258,7 +258,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 			length = (uint8_t *)end - (uint8_t *)wireformat;
 //			length = end - buffer_position(packet);
 			break;
-		case DNSLIB_RDATA_WF_APL:
+		case KNOT_RDATA_WF_APL:
 			length = (sizeof(uint16_t)    /* address family */
 				  + sizeof(uint8_t)   /* prefix */
 				  + sizeof(uint8_t)); /* length */
@@ -268,7 +268,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 					   & APL_LENGTH_MASK);
 			}
 			break;
-		case DNSLIB_RDATA_WF_IPSECGATEWAY:
+		case KNOT_RDATA_WF_IPSECGATEWAY:
 			switch (rdata_atom_data(temp_rdatas[1])[0]) {
 			/* gateway type */
 			default:
@@ -306,7 +306,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 
 			if (dname == NULL) {
 				dbg_rdata("malformed dname!\n");
-				return KNOT_ZCOMPILE_EBRDATA;
+				return KNOTDZCOMPILE_EBRDATA;
 			}
 			dbg_rdata("%d: created dname: %s\n", i,
 			          knot_dname_to_str(dname));
@@ -324,7 +324,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 
 				if (temp_rdatas[i].raw_data == NULL) {
 					ERR_ALLOC_FAILED;
-					return KNOT_ZCOMPILE_ENOMEM;
+					return KNOTDZCOMPILE_ENOMEM;
 				}
 
 				temp_rdatas[i].raw_data[0] = dname->size;
@@ -344,7 +344,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 				if (required) {
 					/* Truncated RDATA.  */
 					dbg_rdata("truncated rdata\n");
-					return KNOT_ZCOMPILE_EBRDATA;
+					return KNOTDZCOMPILE_EBRDATA;
 				} else {
 					break;
 				}
@@ -387,7 +387,7 @@ static ssize_t rdata_wireformat_to_rdata_atoms(const uint16_t *wireformat,
 		/* Trailing garbage.  */
 		dbg_rdata("w: %p e: %p %d\n", wireformat, end, end - wireformat);
 //		region_destroy(temp_region);
-		return KNOT_ZCOMPILE_EBRDATA;
+		return KNOTDZCOMPILE_EBRDATA;
 	}
 
 	*items = temp_rdatas;
@@ -1467,7 +1467,7 @@ static int find_rrset_for_rrsig_in_zone(knot_zone_contents_t *zone,
 
 	knot_node_t *tmp_node = NULL;
 
-	if (rrsig->type != DNSLIB_RRTYPE_NSEC3) {
+	if (rrsig->type != KNOT_RRTYPE_NSEC3) {
 		tmp_node = knot_zone_contents_get_node(zone, rrsig->owner);
 	} else {
 		tmp_node = knot_zone_contents_get_nsec3_node(zone,
@@ -1475,26 +1475,26 @@ static int find_rrset_for_rrsig_in_zone(knot_zone_contents_t *zone,
 	}
 
 	if (tmp_node == NULL) {
-		return KNOT_ZCOMPILE_EINVAL;
+		return KNOTDZCOMPILE_EINVAL;
 	}
 
 	knot_rrset_t *tmp_rrset =
 		knot_node_get_rrset(tmp_node, rrsig->type);
 
 	if (tmp_rrset == NULL) {
-		return KNOT_ZCOMPILE_EINVAL;
+		return KNOTDZCOMPILE_EINVAL;
 	}
 
 	if (tmp_rrset->rrsigs != NULL) {
 		knot_zone_contents_add_rrsigs(zone, rrsig, &tmp_rrset, &tmp_node,
-		                       DNSLIB_RRSET_DUPL_MERGE, 1);
+		                       KNOT_RRSET_DUPL_MERGE, 1);
 		knot_rrset_free(&rrsig);
 	} else {
 		knot_zone_contents_add_rrsigs(zone, rrsig, &tmp_rrset, &tmp_node,
-		                       DNSLIB_RRSET_DUPL_SKIP, 1);
+		                       KNOT_RRSET_DUPL_SKIP, 1);
 	}
 
-	return KNOT_ZCOMPILE_EOK;
+	return KNOTDZCOMPILE_EOK;
 }
 
 static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
@@ -1511,25 +1511,25 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 		knot_node_get_rrset(node, rrsig_type_covered(rrsig));
 
 	if (tmp_rrset == NULL) {
-		return KNOT_ZCOMPILE_EINVAL;
+		return KNOTDZCOMPILE_EINVAL;
 	}
 
 	if (tmp_rrset->rrsigs != NULL) {
 		if (knot_zone_contents_add_rrsigs(zone, rrsig, &tmp_rrset, &node,
-		                           DNSLIB_RRSET_DUPL_MERGE, 1) < 0) {
-			return KNOT_ZCOMPILE_EINVAL;
+		                           KNOT_RRSET_DUPL_MERGE, 1) < 0) {
+			return KNOTDZCOMPILE_EINVAL;
 		}
 		knot_rrset_free(&rrsig);
 	} else {
 		if (knot_zone_contents_add_rrsigs(zone, rrsig, &tmp_rrset, &node,
-		                           DNSLIB_RRSET_DUPL_SKIP, 1) < 0) {
-			return KNOT_ZCOMPILE_EINVAL;
+		                           KNOT_RRSET_DUPL_SKIP, 1) < 0) {
+			return KNOTDZCOMPILE_EINVAL;
 		}
 	}
 
 	assert(tmp_rrset->rrsigs != NULL);
 
-	return KNOT_ZCOMPILE_EOK;
+	return KNOTDZCOMPILE_EOK;
 }
 
 static knot_node_t *create_node(knot_zone_contents_t *zone,
@@ -1591,12 +1591,12 @@ int process_rr(void)
 	 * to be created in NSEC3 part of the zone */
 
 	uint16_t type_covered = 0;
-	if (current_rrset->type == DNSLIB_RRTYPE_RRSIG) {
+	if (current_rrset->type == KNOT_RRTYPE_RRSIG) {
 		type_covered = rrsig_type_covered(current_rrset);
 	}
 
-	if (current_rrset->type != DNSLIB_RRTYPE_NSEC3 &&
-	    type_covered != DNSLIB_RRTYPE_NSEC3) {
+	if (current_rrset->type != KNOT_RRTYPE_NSEC3 &&
+	    type_covered != KNOT_RRTYPE_NSEC3) {
 		node_add_func = &knot_zone_contents_add_node;
 		node_get_func = &knot_zone_contents_get_node;
 	} else {
@@ -1604,10 +1604,10 @@ int process_rr(void)
 		node_get_func = &knot_zone_contents_get_nsec3_node;
 	}
 
-	if ((current_rrset->type == DNSLIB_RRTYPE_SOA) && (zone != NULL)) {
+	if ((current_rrset->type == KNOT_RRTYPE_SOA) && (zone != NULL)) {
 		if (knot_node_rrset(knot_zone_contents_apex(contents),
-		                      DNSLIB_RRTYPE_SOA) != NULL) {
-			return KNOT_ZCOMPILE_ESOA;
+		                      KNOT_RRTYPE_SOA) != NULL) {
+			return KNOTDZCOMPILE_ESOA;
 		}
 	}
 
@@ -1624,7 +1624,7 @@ int process_rr(void)
 //		return 0;
 //	}
 
-	if (current_rrset->type == DNSLIB_RRTYPE_SOA) {
+	if (current_rrset->type == KNOT_RRTYPE_SOA) {
 		if (knot_dname_compare(current_rrset->owner,
 					 parser->origin->owner) != 0) {
 			fprintf(stderr, "SOA record has a different "
@@ -1632,15 +1632,15 @@ int process_rr(void)
 				"in config!\n");
 			/* Such SOA cannot even be added, because
 			 * it would not be in the zone apex. */
-			return KNOT_ZCOMPILE_EBADSOA;
+			return KNOTDZCOMPILE_EBADSOA;
 		}
 	}
 
-	if (current_rrset->type == DNSLIB_RRTYPE_RRSIG) {
+	if (current_rrset->type == KNOT_RRTYPE_RRSIG) {
 		/*!< \todo Still a leak somewhere. */
 		knot_rrset_t *tmp_rrsig =
 			knot_rrset_new(current_rrset->owner,
-					     DNSLIB_RRTYPE_RRSIG,
+					     KNOT_RRTYPE_RRSIG,
 					     current_rrset->rclass,
 					     current_rrset->ttl);
 
@@ -1662,21 +1662,21 @@ int process_rr(void)
 						   current_rrset, node_add_func,
 						   node_get_func)) == NULL) {
 				knot_rrset_free(&tmp_rrsig);
-				return KNOT_ZCOMPILE_EBADNODE;
+				return KNOTDZCOMPILE_EBADNODE;
 			}
 		}
 
 		rrset_list_add(&parser->node_rrsigs, tmp_rrsig);
 
-		return KNOT_ZCOMPILE_EOK;
+		return KNOTDZCOMPILE_EOK;
 	}
 
-	assert(current_rrset->type != DNSLIB_RRTYPE_RRSIG);
+	assert(current_rrset->type != KNOT_RRTYPE_RRSIG);
 
 	knot_node_t *node;
 
 	/* \note this could probably be much simpler */
-	if (parser->last_node && current_rrset->type != DNSLIB_RRTYPE_SOA &&
+	if (parser->last_node && current_rrset->type != KNOT_RRTYPE_SOA &&
 	    knot_dname_compare(parser->last_node->owner,
 				 current_rrset->owner) ==
 	    0) {
@@ -1702,7 +1702,7 @@ int process_rr(void)
 		if ((node = create_node(contents, current_rrset,
 					node_add_func,
 					node_get_func)) == NULL) {
-			return KNOT_ZCOMPILE_EBADNODE;
+			return KNOTDZCOMPILE_EBADNODE;
 		}
 	}
 
@@ -1717,19 +1717,19 @@ int process_rr(void)
 
 		if (knot_rrset_add_rdata(rrset, current_rrset->rdata) != 0) {
 			free(rrset);
-			return KNOT_ZCOMPILE_EBRDATA;
+			return KNOTDZCOMPILE_EBRDATA;
 		}
 
 		/* I chose skip, but there should not really be
 		 * any rrset to skip */
 		if (knot_zone_contents_add_rrset(contents, rrset, &node,
-		                   DNSLIB_RRSET_DUPL_SKIP, 1) < 0) {
+		                   KNOT_RRSET_DUPL_SKIP, 1) < 0) {
 			free(rrset);
-			return KNOT_ZCOMPILE_EBRDATA;
+			return KNOTDZCOMPILE_EBRDATA;
 		}
 	} else {
 		if (current_rrset->type !=
-				DNSLIB_RRTYPE_RRSIG && rrset->ttl !=
+				KNOT_RRTYPE_RRSIG && rrset->ttl !=
 				current_rrset->ttl) {
 			fprintf(stderr,
 				"TTL does not match the TTL of the RRset");
@@ -1737,9 +1737,9 @@ int process_rr(void)
 
 		if (knot_zone_contents_add_rrset(contents, current_rrset,
 		                          &node,
-		                   DNSLIB_RRSET_DUPL_MERGE, 1) < 0) {
+		                   KNOT_RRSET_DUPL_MERGE, 1) < 0) {
 			free(rrset);
-			return KNOT_ZCOMPILE_EBRDATA;
+			return KNOTDZCOMPILE_EBRDATA;
 		}
 
 //		knot_rrset_merge((void *)&rrset, (void *)&current_rrset);
@@ -1754,20 +1754,20 @@ int process_rr(void)
  */
 
 //	if(current_rrset->type ==
-//	   DNSLIB_RRTYPE_DNAME &&
+//	   KNOT_RRTYPE_DNAME &&
 //	   current_rrset->rdata->count > 1) {
 //		fprintf(stderr, "multiple DNAMEs at the same name");
 //	}
 //	/* \note this actually counts items, not the legth we would need */
 //	if(current_rrset->type ==
-//	   DNSLIB_RRTYPE_CNAME &&
+//	   KNOT_RRTYPE_CNAME &&
 //	   current_rrset->rdata->count > 1) {
 //		fprintf(stderr, "multiple CNAMEs at the same name");
 //	/* \note this actually counts items, not the legth we would need */
 //	}
-//	if((current_rrset->type == DNSLIB_RRTYPE_DNAME &&
+//	if((current_rrset->type == KNOT_RRTYPE_DNAME &&
 //	    knot_node_get_rrset(node, TYPE_CNAME)) ||
-//	    (current_rrset->type == DNSLIB_RRTYPE_CNAME &&
+//	    (current_rrset->type == KNOT_RRTYPE_CNAME &&
 //	    knot_node_get_rrset(node, TYPE_DNAME))) {
 //		fprintf(stderr, "DNAME and CNAME at the same name");
 //	}
@@ -1788,7 +1788,7 @@ int process_rr(void)
 
 	++totalrrs;
 
-	return KNOT_ZCOMPILE_EOK;
+	return KNOTDZCOMPILE_EOK;
 }
 
 static uint find_rrsets_orphans(knot_zone_contents_t *zone, rrset_list_t
@@ -1840,18 +1840,18 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	void *scanner = NULL;
 	zp_lex_init(&scanner);
 	if (scanner == NULL) {
-		return KNOT_ZCOMPILE_ENOMEM;
+		return KNOTDZCOMPILE_ENOMEM;
 	}
 
-	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node, scanner)) {
+	if (!zone_open(zonefile, 3600, KNOT_CLASS_IN, origin_node, scanner)) {
 		fprintf(stderr, "Cannot open '%s'\n",
 			zonefile);
 		zparser_free();
-		return KNOT_ZCOMPILE_EZONEINVAL;
+		return KNOTDZCOMPILE_EZONEINVAL;
 	}
 
 	if (zp_parse(scanner) != 0) {
-		return KNOT_ZCOMPILE_ESYNT;
+		return KNOTDZCOMPILE_ESYNT;
 	}
 	
 	knot_zone_contents_t *contents =
@@ -1875,11 +1875,11 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	if (!(parser->current_zone &&
 	      knot_node_rrset(parser->current_zone->contents->apex,
-	                        DNSLIB_RRTYPE_SOA))) {
+	                        KNOT_RRTYPE_SOA))) {
 		fprintf(stderr, "Zone file does not contain SOA record!\n");
 		knot_zone_deep_free(&parser->current_zone, 0);
 		zparser_free();
-		return KNOT_ZCOMPILE_EZONEINVAL;
+		return KNOTDZCOMPILE_EZONEINVAL;
 	}
 
 	uint found_orphans;
@@ -1920,9 +1920,9 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 //	assert(desc);
 
 //	for (int i = 0; i < rdata->count; i++) {
-//		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
-//		    desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
-//		    desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME) {
+//		if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
+//		    desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
+//		    desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME) {
 //			/* See if dname is not in the table already. */
 //			knot_dname_t *found_dname = NULL;
 //			knot_dname_t *searched_dname = rdata->items[i].dname;
@@ -1949,7 +1949,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 //			 knot_rrset_t *rrset)
 //{
 //	if (rrset == NULL) {
-//		return KNOT_ZCOMPILE_EINVAL;
+//		return KNOTDZCOMPILE_EINVAL;
 //	}
 //	/* Check and possibly delete the owner first */
 //	knot_dname_t *found_dname = NULL;
@@ -1968,7 +1968,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 //	} else if (found_dname != rrset->owner) {
 //		/* Insert the dname in the table. */
 //		if (knot_dname_table_add_dname(table, rrset->owner) != 0) {
-//			return KNOT_ZCOMPILE_ENOMEM;
+//			return KNOTDZCOMPILE_ENOMEM;
 //		}
 //	}
 
@@ -1984,7 +1984,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 //	assert(rrset->owner != NULL);
 
-//	return KNOT_ZCOMPILE_EOK;
+//	return KNOTDZCOMPILE_EOK;
 //}
 
 /*! @} */

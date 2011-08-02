@@ -13,18 +13,18 @@
 #define DEFAULT_RRCOUNT(type) DEFAULT_##type##COUNT
 
 #define DEFAULT_RRSET_COUNT(type, packet) \
-	((packet->prealloc_type == DNSLIB_PACKET_PREALLOC_NONE)  \
+	((packet->prealloc_type == KNOT_PACKET_PREALLOC_NONE)  \
 		? 0  \
-		: (packet->prealloc_type == DNSLIB_PACKET_PREALLOC_QUERY)  \
+		: (packet->prealloc_type == KNOT_PACKET_PREALLOC_QUERY)  \
 			? DEFAULT_##type##_QUERY  \
 			: DEFAULT_##type)
 
 
 
 typedef enum {
-	DNSLIB_PACKET_DUPL_IGNORE,
-	DNSLIB_PACKET_DUPL_SKIP,
-	DNSLIB_PACKET_DUPL_MERGE
+	KNOT_PACKET_DUPL_IGNORE,
+	KNOT_PACKET_DUPL_SKIP,
+	KNOT_PACKET_DUPL_MERGE
 } knot_packet_duplicate_handling_t;
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -189,8 +189,8 @@ static void knot_packet_init_pointers_query(knot_packet_t *pkt)
  * \param[in,out] remaining Remaining size of the wire format.
  * \param[out] header Header structure to fill in.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EFEWDATA
+ * \retval KNOT_EOK
+ * \retval KNOT_EFEWDATA
  */
 static int knot_packet_parse_header(const uint8_t *wire, size_t *pos,
                                       size_t size, knot_header_t *header)
@@ -199,9 +199,9 @@ static int knot_packet_parse_header(const uint8_t *wire, size_t *pos,
 	assert(pos != NULL);
 	assert(header != NULL);
 
-	if (size - *pos < DNSLIB_WIRE_HEADER_SIZE) {
+	if (size - *pos < KNOT_WIRE_HEADER_SIZE) {
 		debug_knot_response("Not enough data to parse header.\n");
-		return DNSLIB_EFEWDATA;
+		return KNOT_EFEWDATA;
 	}
 
 	header->id = knot_wire_get_id(wire);
@@ -217,9 +217,9 @@ static int knot_packet_parse_header(const uint8_t *wire, size_t *pos,
 	header->nscount = knot_wire_get_nscount(wire);
 	header->arcount = knot_wire_get_arcount(wire);
 
-	*pos += DNSLIB_WIRE_HEADER_SIZE;
+	*pos += KNOT_WIRE_HEADER_SIZE;
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -233,9 +233,9 @@ static int knot_packet_parse_header(const uint8_t *wire, size_t *pos,
  * \param[in,out] remaining Remaining size of the wire format.
  * \param[out] question DNS Question structure to be filled.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EFEWDATA
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EOK
+ * \retval KNOT_EFEWDATA
+ * \retval KNOT_ENOMEM
  */
 static int knot_packet_parse_question(const uint8_t *wire, size_t *pos,
                                         size_t size,
@@ -245,9 +245,9 @@ static int knot_packet_parse_question(const uint8_t *wire, size_t *pos,
 	assert(wire != NULL);
 	assert(question != NULL);
 
-	if (size - *pos < DNSLIB_WIRE_QUESTION_MIN_SIZE) {
+	if (size - *pos < KNOT_WIRE_QUESTION_MIN_SIZE) {
 		debug_knot_response("Not enough data to parse question.\n");
-		return DNSLIB_EFEWDATA;  // malformed
+		return KNOT_EFEWDATA;  // malformed
 	}
 
 	debug_knot_response("Parsing Question starting on position %zu.\n",
@@ -261,7 +261,7 @@ static int knot_packet_parse_question(const uint8_t *wire, size_t *pos,
 
 	if (size - i - 1 < 4) {
 		debug_knot_response("Not enough data to parse question.\n");
-		return DNSLIB_EFEWDATA;  // no 0 found or not enough data left
+		return KNOT_EFEWDATA;  // no 0 found or not enough data left
 	}
 
 	debug_knot_response("Parsing dname starting on position %zu and "
@@ -271,13 +271,13 @@ static int knot_packet_parse_question(const uint8_t *wire, size_t *pos,
 		question->qname = knot_dname_new_from_wire(
 				wire + *pos, i - *pos + 1, NULL);
 		if (question->qname == NULL) {
-			return DNSLIB_ENOMEM;
+			return KNOT_ENOMEM;
 		}
 	} else {
 		int res = knot_dname_from_wire(wire + *pos, i - *pos + 1,
 	                                         NULL, question->qname);
-		if (res != DNSLIB_EOK) {
-			assert(res != DNSLIB_EBADARG);
+		if (res != KNOT_EOK) {
+			assert(res != KNOT_EBADARG);
 			return res;
 		}
 	}
@@ -290,7 +290,7 @@ static int knot_packet_parse_question(const uint8_t *wire, size_t *pos,
 
 	*pos += 4;
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -303,8 +303,8 @@ static int knot_packet_parse_question(const uint8_t *wire, size_t *pos,
  *        the response structure was initialized.
  * \param step How much the space should be increased.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EOK
+ * \retval KNOT_ENOMEM
  */
 static int knot_packet_realloc_rrsets(const knot_rrset_t ***rrsets,
                                         short *max_count,
@@ -318,7 +318,7 @@ static int knot_packet_realloc_rrsets(const knot_rrset_t ***rrsets,
 	short new_max_count = *max_count + step;
 	const knot_rrset_t **new_rrsets = (const knot_rrset_t **)malloc(
 		new_max_count * sizeof(knot_rrset_t *));
-	CHECK_ALLOC_LOG(new_rrsets, DNSLIB_ENOMEM);
+	CHECK_ALLOC_LOG(new_rrsets, KNOT_ENOMEM);
 
 	memcpy(new_rrsets, *rrsets, (*max_count) * sizeof(knot_rrset_t *));
 
@@ -329,7 +329,7 @@ static int knot_packet_realloc_rrsets(const knot_rrset_t ***rrsets,
 		free(old);
 	}
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -350,7 +350,7 @@ static knot_rdata_t *knot_packet_parse_rdata(const uint8_t *wire,
 
 	int rc = knot_rdata_from_wire(rdata, wire, pos, total_size, rdlength,
 	                                desc);
-	if (rc != DNSLIB_EOK) {
+	if (rc != KNOT_EOK) {
 		debug_knot_packet("rdata_from_wire() returned: %s\n",
 		                    knot_strerror2(rc));
 		knot_rdata_free(&rdata);
@@ -376,7 +376,7 @@ static knot_rrset_t *knot_packet_parse_rr(const uint8_t *wire, size_t *pos,
 		return NULL;
 	}
 
-DEBUG_DNSLIB_PACKET(
+DEBUG_KNOT_PACKET(
 	char *name = knot_dname_to_str(owner);
 	debug_knot_packet("Parsed name: %s\n", name);
 	free(name);
@@ -441,7 +441,7 @@ DEBUG_DNSLIB_PACKET(
 		return NULL;
 	}
 
-	if (knot_rrset_add_rdata(rrset, rdata) != DNSLIB_EOK) {
+	if (knot_rrset_add_rdata(rrset, rdata) != KNOT_EOK) {
 		debug_knot_packet("Malformed RR: Could not add RDATA to RRSet"
 		                    ".\n");
 		knot_rdata_free(&rdata);
@@ -469,7 +469,7 @@ static int knot_packet_add_rrset(knot_rrset_t *rrset,
 	assert(rrset_count != NULL);
 	assert(max_rrsets != NULL);
 
-DEBUG_DNSLIB_PACKET(
+DEBUG_KNOT_PACKET(
 	char *name = knot_dname_to_str(rrset->owner);
 	debug_knot_packet("packet_add_rrset(), owner: %s, type: %s\n",
 	                    name, knot_rrtype_to_string(rrset->type));
@@ -478,22 +478,22 @@ DEBUG_DNSLIB_PACKET(
 
 	if (*rrset_count == *max_rrsets
 	    && knot_packet_realloc_rrsets(rrsets, max_rrsets, default_rrsets,
-	                                    STEP_ANCOUNT) != DNSLIB_EOK) {
-		return DNSLIB_ENOMEM;
+	                                    STEP_ANCOUNT) != KNOT_EOK) {
+		return KNOT_ENOMEM;
 	}
 
-	if (dupl == DNSLIB_PACKET_DUPL_SKIP &&
-	    knot_packet_contains(packet, rrset, DNSLIB_RRSET_COMPARE_PTR)) {
+	if (dupl == KNOT_PACKET_DUPL_SKIP &&
+	    knot_packet_contains(packet, rrset, KNOT_RRSET_COMPARE_PTR)) {
 		/*! \todo This should also return > 0, as it means that the
 		          RRSet was not used actually. */
-		return DNSLIB_EOK;
+		return KNOT_EOK;
 	}
 
-	if (dupl == DNSLIB_PACKET_DUPL_MERGE) {
+	if (dupl == KNOT_PACKET_DUPL_MERGE) {
 		// try to find the RRSet in this array of RRSets
 		for (int i = 0; i < *rrset_count; ++i) {
 
-DEBUG_DNSLIB_PACKET(
+DEBUG_KNOT_PACKET(
 			char *name = knot_dname_to_str((*rrsets)[i]->owner);
 			debug_knot_packet("Comparing to RRSet: owner: %s, "
 			                    "type: %s\n", name,
@@ -503,12 +503,12 @@ DEBUG_DNSLIB_PACKET(
 );
 
 			if (knot_rrset_compare((*rrsets)[i], rrset,
-			                         DNSLIB_RRSET_COMPARE_HEADER)) {
+			                         KNOT_RRSET_COMPARE_HEADER)) {
 				//const knot_rrset_t *r = (*rrsets)
 				/*! \todo Test this!!! */
 				int rc = knot_rrset_merge(
 				    (void **)((*rrsets) + i), (void **)&rrset);
-				if (rc != DNSLIB_EOK) {
+				if (rc != KNOT_EOK) {
 					return rc;
 				}
 				return 1;
@@ -519,7 +519,7 @@ DEBUG_DNSLIB_PACKET(
 	(*rrsets)[*rrset_count] = rrset;
 	++(*rrset_count);
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -550,20 +550,20 @@ static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 	 * We must parse all RRs separately and try to add them to already
 	 * parsed RRSets.
 	 */
-	int err = DNSLIB_EOK;
+	int err = KNOT_EOK;
 	knot_rrset_t *rrset = NULL;
 
 	for (int i = 0; i < rr_count; ++i) {
 		rrset = knot_packet_parse_rr(wire, pos, size);
 		if (rrset == NULL) {
 			debug_knot_packet("Failed to parse RR!\n");
-			err = DNSLIB_EMALF;
+			err = KNOT_EMALF;
 			break;
 		}
 
 		err = knot_packet_add_rrset(rrset, rrsets, rrset_count,
 		                             max_rrsets, default_rrsets, packet,
-		                             DNSLIB_PACKET_DUPL_MERGE);
+		                             KNOT_PACKET_DUPL_MERGE);
 		if (err < 0) {
 			break;
 		} else if (err > 0) {	// merged
@@ -573,7 +573,7 @@ static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 		}
 
 		err = knot_packet_add_tmp_rrset(packet, rrset);
-		if (err != DNSLIB_EOK) {
+		if (err != KNOT_EOK) {
 			// remove the last RRSet from the list of RRSets
 			// - just decrement the count
 			--(*rrset_count);
@@ -582,7 +582,7 @@ static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 		}
 	}
 
-	return (err < 0) ? err : DNSLIB_EOK;
+	return (err < 0) ? err : KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -595,7 +595,7 @@ static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 static void knot_packet_free_allocated_space(knot_packet_t *pkt)
 {
 	debug_knot_packet("Freeing additional space in packet.\n");
-	if (pkt->prealloc_type == DNSLIB_PACKET_PREALLOC_NONE) {
+	if (pkt->prealloc_type == KNOT_PACKET_PREALLOC_NONE) {
 		debug_knot_packet("Freeing QNAME.\n");
 		knot_dname_release(pkt->question.qname);
 	}
@@ -637,7 +637,7 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
 	   packet->size, packet->header.ancount, &packet->answer,
 	   &packet->an_rrsets, &packet->max_an_rrsets,
-	   DEFAULT_RRSET_COUNT(ANCOUNT, packet), packet)) != DNSLIB_EOK) {
+	   DEFAULT_RRSET_COUNT(ANCOUNT, packet), packet)) != KNOT_EOK) {
 		return err;
 	}
 
@@ -645,7 +645,7 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
 	   packet->size, packet->header.nscount, &packet->authority,
 	   &packet->ns_rrsets, &packet->max_ns_rrsets,
-	   DEFAULT_RRSET_COUNT(NSCOUNT, packet), packet)) != DNSLIB_EOK) {
+	   DEFAULT_RRSET_COUNT(NSCOUNT, packet), packet)) != KNOT_EOK) {
 		return err;
 	}
 
@@ -653,7 +653,7 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
 	   packet->size, packet->header.arcount, &packet->additional,
 	   &packet->ar_rrsets, &packet->max_ar_rrsets,
-	   DEFAULT_RRSET_COUNT(ARCOUNT, packet), packet)) != DNSLIB_EOK) {
+	   DEFAULT_RRSET_COUNT(ARCOUNT, packet), packet)) != KNOT_EOK) {
 		return err;
 	}
 
@@ -661,11 +661,11 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 
 	for (int i = 0; i < packet->header.arcount; ++i) {
 		if (knot_rrset_type(packet->additional[i])
-		    == DNSLIB_RRTYPE_OPT) {
+		    == KNOT_RRTYPE_OPT) {
 			debug_knot_packet("Found OPT RR, filling.\n");
 			err = knot_edns_new_from_rr(&packet->opt_rr,
 			                              packet->additional[i]);
-			if (err != DNSLIB_EOK) {
+			if (err != KNOT_EOK) {
 				return err;
 			}
 			break;
@@ -680,7 +680,7 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet,
 
 	packet->parsed = packet->size;
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -694,14 +694,14 @@ knot_packet_t *knot_packet_new(knot_packet_prealloc_type_t prealloc)
 	size_t size = 0;
 
 	switch (prealloc) {
-	case DNSLIB_PACKET_PREALLOC_NONE:
+	case KNOT_PACKET_PREALLOC_NONE:
 		size = sizeof(knot_packet_t);
 		break;
-	case DNSLIB_PACKET_PREALLOC_QUERY:
+	case KNOT_PACKET_PREALLOC_QUERY:
 		size = PREALLOC_QUERY;
 		init_pointers = knot_packet_init_pointers_query;
 		break;
-	case DNSLIB_PACKET_PREALLOC_RESPONSE:
+	case KNOT_PACKET_PREALLOC_RESPONSE:
 		size = PREALLOC_RESPONSE;
 		init_pointers = knot_packet_init_pointers_response;
 		break;
@@ -729,7 +729,7 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
                                   int question_only)
 {
 	if (packet == NULL || wireformat == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	int err;
@@ -747,7 +747,7 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 
 	debug_knot_packet("Parsing wire format of packet.\nHeader...\n");
 	if ((err = knot_packet_parse_header(wireformat, &pos, size,
-	                                      &packet->header)) != DNSLIB_EOK) {
+	                                      &packet->header)) != KNOT_EOK) {
 		return err;
 	}
 
@@ -757,8 +757,8 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 	                    packet->prealloc_type);
 	if ((err = knot_packet_parse_question(wireformat, &pos, size,
 	                   &packet->question,
-	                   packet->prealloc_type == DNSLIB_PACKET_PREALLOC_NONE)
-	           ) != DNSLIB_EOK) {
+	                   packet->prealloc_type == KNOT_PACKET_PREALLOC_NONE)
+	           ) != KNOT_EOK) {
 		return err;
 	}
 	packet->header.qdcount = 1;
@@ -766,7 +766,7 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 	packet->parsed = pos;
 
 	if (question_only) {
-		return DNSLIB_EOK;
+		return KNOT_EOK;
 	}
 
 	/*! \todo Replace by call to parse_rest()? */
@@ -776,7 +776,7 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 //	if ((err = knot_packet_parse_rrs(wireformat, &pos, size,
 //	    packet->header.ancount, &packet->answer, &packet->an_rrsets,
 //	    &packet->max_an_rrsets, DEFAULT_RRSET_COUNT(ANCOUNT, packet),
-//	    packet)) != DNSLIB_EOK) {
+//	    packet)) != KNOT_EOK) {
 //		return err;
 //	}
 
@@ -784,7 +784,7 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 //	if ((err = knot_packet_parse_rrs(wireformat, &pos, size,
 //	    packet->header.nscount, &packet->authority, &packet->ns_rrsets,
 //	    &packet->max_ns_rrsets, DEFAULT_RRSET_COUNT(NSCOUNT, packet),
-//	    packet)) != DNSLIB_EOK) {
+//	    packet)) != KNOT_EOK) {
 //		return err;
 //	}
 
@@ -792,7 +792,7 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 //	if ((err = knot_packet_parse_rrs(wireformat, &pos, size,
 //	    packet->header.arcount, &packet->additional, &packet->ar_rrsets,
 //	    &packet->max_ar_rrsets, DEFAULT_RRSET_COUNT(ARCOUNT, packet),
-//	    packet)) != DNSLIB_EOK) {
+//	    packet)) != KNOT_EOK) {
 //		return err;
 //	}
 
@@ -804,9 +804,9 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 
 //	packet->parsed = size;
 
-#ifdef DNSLIB_PACKET_DEBUG
+#ifdef KNOT_PACKET_DEBUG
 	knot_packet_dump(packet);
-#endif /* DNSLIB_RESPONSE_DEBUG */
+#endif /* KNOT_RESPONSE_DEBUG */
 
 	return err;
 }
@@ -816,11 +816,11 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 int knot_packet_parse_rest(knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	if (packet->parsed >= packet->size) {
-		return DNSLIB_EOK;
+		return KNOT_EOK;
 	}
 
 	size_t pos = packet->parsed;
@@ -834,12 +834,12 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
                                        knot_rrset_t **rr)
 {
 	if (packet == NULL || rr == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	if (packet->parsed >= packet->size
 	    || packet->an_rrsets == packet->header.ancount) {
-		return DNSLIB_EOK;
+		return KNOT_EOK;
 	}
 
 	size_t pos = packet->parsed;
@@ -848,7 +848,7 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 	*rr = knot_packet_parse_rr(packet->wireformat, &pos, packet->size);
 	if (*rr == NULL) {
 		debug_knot_packet("Failed to parse RR!\n");
-		return DNSLIB_EMALF;
+		return KNOT_EMALF;
 	}
 
 	packet->parsed = pos;
@@ -856,7 +856,7 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 	// in the packet; it is OK, because packet->answer is NULL
 	++packet->an_rrsets;
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -864,7 +864,7 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 int knot_packet_set_max_size(knot_packet_t *packet, int max_size)
 {
 	if (packet == NULL || max_size <= 0) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	if (packet->max_size < max_size) {
@@ -872,7 +872,7 @@ int knot_packet_set_max_size(knot_packet_t *packet, int max_size)
 		// that might have been there before
 		uint8_t *wire_new = (uint8_t *)malloc(max_size);
 		if (wire_new == NULL) {
-			return DNSLIB_ENOMEM;
+			return KNOT_ENOMEM;
 		}
 
 		uint8_t *wire_old = packet->wireformat;
@@ -890,7 +890,7 @@ int knot_packet_set_max_size(knot_packet_t *packet, int max_size)
 	// set max size
 	packet->max_size = max_size;
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -941,7 +941,7 @@ uint16_t knot_packet_qclass(const knot_packet_t *packet)
 int knot_packet_is_query(const knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	return (knot_wire_flags_get_qr(packet->header.flags1) == 0);
@@ -963,7 +963,7 @@ const knot_packet_t *knot_packet_query(const knot_packet_t *packet)
 short knot_packet_answer_rrset_count(const knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	return packet->an_rrsets;
@@ -974,7 +974,7 @@ short knot_packet_answer_rrset_count(const knot_packet_t *packet)
 short knot_packet_authority_rrset_count(const knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	return packet->ns_rrsets;
@@ -985,7 +985,7 @@ short knot_packet_authority_rrset_count(const knot_packet_t *packet)
 short knot_packet_additional_rrset_count(const knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	return packet->ar_rrsets;
@@ -1034,7 +1034,7 @@ int knot_packet_contains(const knot_packet_t *packet,
                            knot_rrset_compare_type_t cmp)
 {
 	if (packet == NULL || rrset == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	for (int i = 0; i < packet->header.ancount; ++i) {
@@ -1064,22 +1064,22 @@ int knot_packet_add_tmp_rrset(knot_packet_t *packet,
                                 knot_rrset_t *tmp_rrset)
 {
 	if (packet == NULL || tmp_rrset == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	if (packet->tmp_rrsets_count == packet->tmp_rrsets_max
 	    && knot_packet_realloc_rrsets(&packet->tmp_rrsets,
 			&packet->tmp_rrsets_max,
 			DEFAULT_RRSET_COUNT(TMP_RRSETS, packet),
-			STEP_TMP_RRSETS) != DNSLIB_EOK) {
-		return DNSLIB_ENOMEM;
+			STEP_TMP_RRSETS) != KNOT_EOK) {
+		return KNOT_ENOMEM;
 	}
 
 	packet->tmp_rrsets[packet->tmp_rrsets_count++] = tmp_rrset;
 	debug_knot_packet("Current tmp RRSets count: %d, max count: %d\n",
 	                    packet->tmp_rrsets_count, packet->tmp_rrsets_max);
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1095,7 +1095,7 @@ void knot_packet_free_tmp_rrsets(knot_packet_t *pkt)
 	}
 
 	for (int i = 0; i < pkt->tmp_rrsets_count; ++i) {
-DEBUG_DNSLIB_PACKET(
+DEBUG_KNOT_PACKET(
 		char *name = knot_dname_to_str(
 			(((knot_rrset_t **)(pkt->tmp_rrsets))[i])->owner);
 		debug_knot_packet("Freeing tmp RRSet on ptr: %p (ptr to ptr:"
@@ -1131,8 +1131,8 @@ void knot_packet_header_to_wire(const knot_header_t *header,
 	knot_wire_set_nscount(*pos, header->nscount);
 	knot_wire_set_arcount(*pos, header->arcount);
 
-	*pos += DNSLIB_WIRE_HEADER_SIZE;
-	*size += DNSLIB_WIRE_HEADER_SIZE;
+	*pos += KNOT_WIRE_HEADER_SIZE;
+	*size += KNOT_WIRE_HEADER_SIZE;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1140,21 +1140,21 @@ void knot_packet_header_to_wire(const knot_header_t *header,
 int knot_packet_question_to_wire(knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
-	if (packet->size > DNSLIB_WIRE_HEADER_SIZE) {
-		return DNSLIB_ERROR;
+	if (packet->size > KNOT_WIRE_HEADER_SIZE) {
+		return KNOT_ERROR;
 	}
 
 	// TODO: get rid of the numeric constants
 	size_t qsize = 4 + knot_dname_size(packet->question.qname);
-	if (qsize > packet->max_size - DNSLIB_WIRE_HEADER_SIZE) {
-		return DNSLIB_ESPACE;
+	if (qsize > packet->max_size - KNOT_WIRE_HEADER_SIZE) {
+		return KNOT_ESPACE;
 	}
 
 	// create the wireformat of Question
-	uint8_t *pos = packet->wireformat + DNSLIB_WIRE_HEADER_SIZE;
+	uint8_t *pos = packet->wireformat + KNOT_WIRE_HEADER_SIZE;
 	memcpy(pos, knot_dname_name(packet->question.qname),
 	       knot_dname_size(packet->question.qname));
 
@@ -1167,13 +1167,13 @@ int knot_packet_question_to_wire(knot_packet_t *packet)
 	// TODO: put the qname into the compression table
 //	// TODO: get rid of the numeric constants
 //	if ((err = knot_response_store_dname_pos(&packet->compression,
-//	              packet->question.qname,0, 12, 12)) != DNSLIB_EOK) {
+//	              packet->question.qname,0, 12, 12)) != KNOT_EOK) {
 //		return err;
 //	}
 
 	packet->size += knot_dname_size(packet->question.qname) + 4;
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1181,7 +1181,7 @@ int knot_packet_question_to_wire(knot_packet_t *packet)
 int knot_packet_edns_to_wire(knot_packet_t *packet)
 {
 	if (packet == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	packet->size += knot_edns_to_wire(&packet->opt_rr,
@@ -1190,7 +1190,7 @@ int knot_packet_edns_to_wire(knot_packet_t *packet)
 
 	packet->header.arcount += 1;
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1200,7 +1200,7 @@ int knot_packet_to_wire(knot_packet_t *packet,
 {
 	if (packet == NULL || wire == NULL || wire_size == NULL
 	    || *wire != NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	assert(packet->size <= packet->max_size);
@@ -1224,7 +1224,7 @@ int knot_packet_to_wire(knot_packet_t *packet,
 	*wire = packet->wireformat;
 	*wire_size = packet->size;
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1256,7 +1256,7 @@ void knot_packet_free(knot_packet_t **packet)
 }
 
 /*----------------------------------------------------------------------------*/
-#ifdef DNSLIB_PACKET_DEBUG
+#ifdef KNOT_PACKET_DEBUG
 static void knot_packet_dump_rrsets(const knot_rrset_t **rrsets,
                                       int count)
 {
@@ -1275,7 +1275,7 @@ void knot_packet_dump(const knot_packet_t *packet)
 		return;
 	}
 
-#ifdef DNSLIB_PACKET_DEBUG
+#ifdef KNOT_PACKET_DEBUG
 	debug_knot_packet("DNS packet:\n-----------------------------\n");
 
 	debug_knot_packet("\nHeader:\n");

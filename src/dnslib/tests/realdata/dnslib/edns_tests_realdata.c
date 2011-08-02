@@ -152,7 +152,7 @@ unit_api edns_tests_api = {
 //			test_edns_t *test_edns)
 //{
 //	if (knot_edns_do(edns) !=
-//	    (test_edns->flags & DNSLIB_EDNS_DO_MASK)) {
+//	    (test_edns->flags & KNOT_EDNS_DO_MASK)) {
 //		return 0;
 //	} else {
 //		return 1;
@@ -474,14 +474,14 @@ unit_api edns_tests_api = {
 //	return 1;
 //}
 
-static const int DNSLIB_EDNS_TESTS_COUNT = 0;
+static const int KNOT_EDNS_TESTS_COUNT = 0;
 
 ///*! This helper routine should report number of
 // *  scheduled tests for given parameters.
 // */
 static int knot_edns_tests_count(int argc, char *argv[])
 {
-	return DNSLIB_EDNS_TESTS_COUNT;
+	return KNOT_EDNS_TESTS_COUNT;
 }
 
 ///*! Run all scheduled tests for given parameters.

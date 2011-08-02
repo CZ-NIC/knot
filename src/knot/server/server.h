@@ -18,8 +18,8 @@
  * @{
  */
 
-#ifndef _KNOT_SERVER_H_
-#define _KNOT_SERVER_H_
+#ifndef _KNOTDSERVER_H_
+#define _KNOTDSERVER_H_
 
 #include "knot/common.h"
 #include "dnslib/name-server.h"
@@ -137,8 +137,8 @@ iohandler_t *server_create_handler(server_t *server, int fd, dt_unit_t *unit);
  * \param server Server structure to be used for operation.
  * \param ref I/O handler instance.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on invalid parameters.
  */
 int server_remove_handler(server_t *server, iohandler_t *ref);
 
@@ -147,8 +147,8 @@ int server_remove_handler(server_t *server, iohandler_t *ref);
  *
  * \param server Server structure to be used for operation.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on invalid parameters.
  *
  * \todo When a module for configuration is added, the filename parameter will
  *       be removed.
@@ -184,13 +184,13 @@ void server_destroy(server_t **server);
  *
  * Routine for dynamic server reconfiguration.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_ENOTRUNNING if the server is not running.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ERROR unspecified error.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDENOTRUNNING if the server is not running.
+ * \retval KNOTDEINVAL on invalid parameters.
+ * \retval KNOTDERROR unspecified error.
  */
 int server_conf_hook(const struct conf_t *conf, void *data);
 
-#endif // _KNOT_SERVER_H_
+#endif // _KNOTDSERVER_H_
 
 /*! @} */

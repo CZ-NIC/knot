@@ -21,8 +21,8 @@
  * @{
  */
 
-#ifndef _KNOT_DTHREADS_H_
-#define _KNOT_DTHREADS_H_
+#ifndef _KNOTDDTHREADS_H_
+#define _KNOTDDTHREADS_H_
 
 #include <pthread.h>
 
@@ -141,9 +141,9 @@ void dt_delete(dt_unit_t **unit);
  * \param unit Unit to be resized.
  * \param size New unit size.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ENOMEM out of memory error.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on invalid parameters.
+ * \retval KNOTDENOMEM out of memory error.
  */
 int dt_resize(dt_unit_t *unit, int size);
 
@@ -152,8 +152,8 @@ int dt_resize(dt_unit_t *unit, int size);
  *
  * \param unit Unit to be started.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters (unit is null).
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on invalid parameters (unit is null).
  */
 int dt_start(dt_unit_t *unit);
 
@@ -162,8 +162,8 @@ int dt_start(dt_unit_t *unit);
  *
  * \param thread Target thread instance.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on invalid parameters.
  */
 int dt_start_id(dthread_t *thread);
 
@@ -177,9 +177,9 @@ int dt_start_id(dthread_t *thread);
  * \param thread Target thread instance.
  * \param signum Signal code.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ERROR unspecified error.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on invalid parameters.
+ * \retval KNOTDERROR unspecified error.
  */
 int dt_signalize(dthread_t *thread, int signum);
 
@@ -188,8 +188,8 @@ int dt_signalize(dthread_t *thread, int signum);
  *
  * \param unit Unit to be joined.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on invalid parameters.
  */
 int dt_join(dt_unit_t *unit);
 
@@ -200,8 +200,8 @@ int dt_join(dt_unit_t *unit);
  *
  * \param thread Target thread instance.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on invalid parameters.
  */
 int dt_stop_id(dthread_t *thread);
 
@@ -212,8 +212,8 @@ int dt_stop_id(dthread_t *thread);
  *
  * \param unit Unit to be stopped.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on invalid parameters.
  */
 int dt_stop(dt_unit_t *unit);
 
@@ -223,8 +223,8 @@ int dt_stop(dt_unit_t *unit);
  * \param thread Target thread instance.
  * \param prio Requested priority (positive integer, default is 0).
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on invalid parameters.
  */
 int dt_setprio(dthread_t *thread, int prio);
 
@@ -235,9 +235,9 @@ int dt_setprio(dthread_t *thread, int prio);
  * \param runnable  Runnable function for target thread.
  * \param data      Data passed to target thread.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ENOTSUP operation not supported.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on invalid parameters.
+ * \retval KNOTDENOTSUP operation not supported.
  */
 int dt_repurpose(dthread_t *thread, runnable_t runnable, void *data);
 
@@ -252,9 +252,9 @@ int dt_repurpose(dthread_t *thread, runnable_t runnable, void *data);
  *
  * \param thread Target thread instance.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ENOTSUP operation not supported.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on invalid parameters.
+ * \retval KNOTDENOTSUP operation not supported.
  */
 int dt_activate(dthread_t *thread);
 
@@ -269,8 +269,8 @@ int dt_activate(dthread_t *thread);
  *
  * \param thread Target thread instance.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on invalid parameters.
  */
 int dt_cancel(dthread_t *thread);
 
@@ -279,8 +279,8 @@ int dt_cancel(dthread_t *thread);
  *
  * \param unit Target unit instance.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on invalid parameters.
  */
 int dt_compact(dt_unit_t *unit);
 
@@ -312,10 +312,10 @@ int dt_is_cancelled(dthread_t *thread);
  *
  * \param unit Target unit instance.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_EAGAIN lack of resources to lock unit, try again.
- * \retval KNOT_ERROR unspecified error.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on invalid parameters.
+ * \retval KNOTDEAGAIN lack of resources to lock unit, try again.
+ * \retval KNOTDERROR unspecified error.
  */
 int dt_unit_lock(dt_unit_t *unit);
 
@@ -326,13 +326,13 @@ int dt_unit_lock(dt_unit_t *unit);
  *
  * \param unit Target unit instance.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_EAGAIN lack of resources to unlock unit, try again.
- * \retval KNOT_ERROR unspecified error.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on invalid parameters.
+ * \retval KNOTDEAGAIN lack of resources to unlock unit, try again.
+ * \retval KNOTDERROR unspecified error.
  */
 int dt_unit_unlock(dt_unit_t *unit);
 
-#endif // _KNOT_DTHREADS_H_
+#endif // _KNOTDDTHREADS_H_
 
 /*! @} */

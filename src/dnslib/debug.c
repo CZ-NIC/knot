@@ -11,7 +11,7 @@
 
 void knot_rdata_dump(knot_rdata_t *rdata, uint32_t type, char loaded_zone)
 {
-#if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_RDATA_DEBUG)
+#if defined(KNOT_ZONE_DEBUG) || defined(KNOT_RDATA_DEBUG)
 	printf("      ------- RDATA -------\n");
 	if (rdata == NULL) {
 		printf("      There are no rdata in this RRset!\n");
@@ -23,9 +23,9 @@ void knot_rdata_dump(knot_rdata_t *rdata, uint32_t type, char loaded_zone)
 	char *name;
 
 	for (int i = 0; i < rdata->count; i++) {
-		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
-		    desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
-		    desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME ) {
+		if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
+		    desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
+		    desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME ) {
 			assert(rdata->items[i].dname != NULL);
 			name = knot_dname_to_str(rdata->items[i].dname);
 			printf("      DNAME: %d: %s\n",
@@ -61,7 +61,7 @@ void knot_rdata_dump(knot_rdata_t *rdata, uint32_t type, char loaded_zone)
 
 void knot_rrset_dump(knot_rrset_t *rrset, char loaded_zone)
 {
-#if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_RRSET_DEBUG)
+#if defined(KNOT_ZONE_DEBUG) || defined(KNOT_RRSET_DEBUG)
 	printf("  ------- RRSET -------\n");
 	printf("  %p\n", rrset);
         char *name = knot_dname_to_str(rrset->owner);
@@ -99,7 +99,7 @@ void knot_rrset_dump(knot_rrset_t *rrset, char loaded_zone)
 
 void knot_node_dump(knot_node_t *node, void *loaded_zone)
 {
-#if defined(DNSLIB_ZONE_DEBUG) || defined(DNSLIB_NODE_DEBUG)
+#if defined(KNOT_ZONE_DEBUG) || defined(KNOT_NODE_DEBUG)
 	//char loaded_zone = *((char*) data);
 	char *name;
 
@@ -174,7 +174,7 @@ void knot_node_dump(knot_node_t *node, void *loaded_zone)
 
 void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone)
 {
-#if defined(DNSLIB_ZONE_DEBUG)
+#if defined(KNOT_ZONE_DEBUG)
 	printf("------- ZONE --------\n");
 
 	knot_zone_contents_tree_apply_inorder(zone, knot_node_dump, (void *)&loaded_zone);

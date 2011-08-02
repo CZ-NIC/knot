@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_LOGCONF_H_
-#define _KNOT_LOGCONF_H_
+#ifndef _KNOTDLOGCONF_H_
+#define _KNOTDLOGCONF_H_
 
 struct conf_t;
 
@@ -19,12 +19,12 @@ struct conf_t;
  *
  * \see syslog.h
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ENOMEM out of memory error.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on invalid parameters.
+ * \retval KNOTDENOMEM out of memory error.
  */
 int log_conf_hook(const struct conf_t *conf, void *data);
 
-#endif /* _KNOT_LOGCONF_H_ */
+#endif /* _KNOTDLOGCONF_H_ */
 
 /*! @} */

@@ -13,8 +13,8 @@
  * @{
  */
 
-#ifndef _KNOT_UDPHANDLER_H_
-#define _KNOT_UDPHANDLER_H_
+#ifndef _KNOTDUDPHANDLER_H_
+#define _KNOTDUDPHANDLER_H_
 
 #include "knot/server/socket.h"
 #include "knot/server/server.h"
@@ -29,8 +29,8 @@
  *
  * \param thread Associated thread from DThreads unit.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL invalid parameters.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL invalid parameters.
  */
 int udp_master(dthread_t *thread);
 
