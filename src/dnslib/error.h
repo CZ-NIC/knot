@@ -15,7 +15,7 @@
 #include "common/errors.h"
 
 /*! \brief Error codes used in the dnslib library. */
-enum dnslib_error {
+enum knot_error {
 	DNSLIB_EOK = 0,         /*!< OK */
 	DNSLIB_ERROR = -10000,  /*!< General dnslib error. */
 	DNSLIB_ENOMEM,          /*!< Not enough memory. */
@@ -40,7 +40,7 @@ enum dnslib_error {
 };
 
 /*! \brief Table linking error messages to error codes. */
-extern const error_table_t dnslib_error_msgs[DNSLIB_ERROR_COUNT];
+extern const error_table_t knot_error_msgs2[DNSLIB_ERROR_COUNT];
 
 /*!
  * \brief Returns error message for the given error code.
@@ -49,9 +49,9 @@ extern const error_table_t dnslib_error_msgs[DNSLIB_ERROR_COUNT];
  *
  * \return String containing the error message.
  */
-static inline const char *dnslib_strerror(int code)
+static inline const char *knot_strerror2(int code)
 {
-	return error_to_str((const error_table_t*)dnslib_error_msgs, code);
+	return error_to_str((const error_table_t*)knot_error_msgs2, code);
 }
 
 #endif /* _KNOT_DNSLIB_ERROR_H_ */

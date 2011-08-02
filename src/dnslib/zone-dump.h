@@ -35,7 +35,7 @@ enum {
  * \retval DNSLIB_EOK on success.
  * \retval DNSLIB_EBADARG if the file cannot be opened for writing.
  */
-int dnslib_zdump_binary(dnslib_zone_contents_t *zone, const char *filename,
+int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
                         int do_checks, const char *sfilename);
 
 /*!
@@ -50,7 +50,7 @@ int dnslib_zdump_binary(dnslib_zone_contents_t *zone, const char *filename,
  * \retval DNSLIB_EBADARG if wrong arguments are supplied.
  * \retval DNSLIB_ENOMEM on memory error.
  */
-int dnslib_zdump_rrset_serialize(const dnslib_rrset_t *rrset, uint8_t **stream,
+int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
                                  size_t *size);
 
 /*!
@@ -65,7 +65,7 @@ int dnslib_zdump_rrset_serialize(const dnslib_rrset_t *rrset, uint8_t **stream,
  * \retval DNSLIB_EBADARG if wrong arguments are supplied.
  * \retval DNSLIB_ENOMEM on memory error.
  */
-int dnslib_zdump_rrset_serialize(const dnslib_rrset_t *rrset, uint8_t **stream,
+int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
                                  size_t *size);
 
 #endif /* _DNSLIB_ZONEDUMP_H_ */

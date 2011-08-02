@@ -25,15 +25,15 @@
 #include "dnslib/tests/raw_data_queries.rc"
 #include "dnslib/tests/raw_data.rc"
 
-static int dnslib_response_tests_count(int argc, char *argv[]);
-static int dnslib_response_tests_run(int argc, char *argv[]);
+static int knot_response_tests_count(int argc, char *argv[]);
+static int knot_response_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
 unit_api response_tests_api = {
 	"DNS library - response",      //! Unit name
-	&dnslib_response_tests_count,  //! Count scheduled tests
-	&dnslib_response_tests_run     //! Run scheduled tests
+	&knot_response_tests_count,  //! Count scheduled tests
+	&knot_response_tests_run     //! Run scheduled tests
 };
 
 /*
@@ -59,7 +59,7 @@ static int mem_read(void *dst, size_t n, const char **src,
 
 struct test_response {
 	/* This is basically same thing as actual response structure */
-	dnslib_dname_t *qname;
+	knot_dname_t *qname;
 	uint16_t qclass;
 	uint16_t qtype;
 	uint16_t id;
@@ -72,9 +72,9 @@ struct test_response {
 
 	/* Arrays of rrsets */
 
-	dnslib_rrset_t **answer;
-	dnslib_rrset_t **authority;
-	dnslib_rrset_t **additional;
+	knot_rrset_t **answer;
+	knot_rrset_t **authority;
+	knot_rrset_t **additional;
 
 	short size;
 
@@ -105,7 +105,7 @@ enum {
 	RESPONSE_COUNT = 1,
 };
 
-static dnslib_dname_t DNAMES[DNAMES_COUNT] =
+static knot_dname_t DNAMES[DNAMES_COUNT] =
 	{ {(uint8_t *)"\7example\3com", 13,
 	   (uint8_t *)"\x0\x8", 2, NULL}, //0's at the end are added
 	  {(uint8_t *)"\2ns\7example\3com", 16,
@@ -113,16 +113,16 @@ static dnslib_dname_t DNAMES[DNAMES_COUNT] =
 
 static uint8_t address_w_length[6] = {5, 0, 192, 168, 1, 1};
 
-static dnslib_rdata_item_t ITEMS[ITEMS_COUNT] =
+static knot_rdata_item_t ITEMS[ITEMS_COUNT] =
 	{ {.dname = &DNAMES[1]},
 	  {.raw_data = (uint16_t *)address_w_length } };
 
-static dnslib_rdata_t RDATA[RDATA_COUNT] = { {&ITEMS[0], 1, &RDATA[0]} };
+static knot_rdata_t RDATA[RDATA_COUNT] = { {&ITEMS[0], 1, &RDATA[0]} };
 
-static dnslib_rrset_t TMP =
+static knot_rrset_t TMP =
 	{ &DNAMES[0], DNSLIB_RRTYPE_NS, 1, 3600, &RDATA[0], NULL };
 
-static dnslib_rrset_t *RESPONSE_RRSETS[RRSETS_COUNT] =
+static knot_rrset_t *RESPONSE_RRSETS[RRSETS_COUNT] =
 	{ &TMP };
 
 static test_response_t RESPONSES[RESPONSE_COUNT] =
@@ -165,7 +165,7 @@ size_t wireformat_size(uint wire_type)
 //        [10] = 128
 //};
 
-//size_t wireformat_size_n(uint16_t type, dnslib_rdata_item_t *items,
+//size_t wireformat_size_n(uint16_t type, knot_rdata_item_t *items,
 //			 uint n)
 //{
 //	if (type == DNSLIB_RRTYPE_RRSIG) {
@@ -187,7 +187,7 @@ size_t wireformat_size(uint wire_type)
 //        }
 
 //#ifdef RESP_TEST_DEBUG
-//	diag("Unknown type: %s", dnslib_rrtype_to_string(type));
+//	diag("Unknown type: %s", knot_rrtype_to_string(type));
 //#endif
 
 //	/* unknown */
@@ -241,11 +241,11 @@ void free_raw_packets(test_raw_packet_t ***raw_packets, uint32_t *count)
 	}
 }
 
-static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
+static knot_rdata_t *load_response_rdata(uint16_t type, const char **src,
 					   unsigned *src_size)
 {
 #ifdef RESP_TEST_DEBUG
-	diag("reading rdata for type: %s", dnslib_rrtype_to_string(type));
+	diag("reading rdata for type: %s", knot_rrtype_to_string(type));
 #endif
 	/*
 	 * Binary format of rdata is as following:
@@ -253,16 +253,16 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 	 * Dname items are read label by label
 	 */
 
-	dnslib_rdata_t *rdata;
+	knot_rdata_t *rdata;
 
-	rdata = dnslib_rdata_new();
+	rdata = knot_rdata_new();
 
-	dnslib_rrtype_descriptor_t *desc =
-		dnslib_rrtype_descriptor_by_type(type);
+	knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type(type);
 	assert(desc != NULL);
 
-	dnslib_rdata_item_t *items =
-		malloc(sizeof(dnslib_rdata_item_t) * desc->length);
+	knot_rdata_item_t *items =
+		malloc(sizeof(knot_rdata_item_t) * desc->length);
 
 	uint16_t total_raw_data_length;
 	uint8_t raw_data_length;
@@ -277,7 +277,7 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 	    type != DNSLIB_RRTYPE_AAAA) {
 		if (!mem_read(&total_raw_data_length,
 		     sizeof(total_raw_data_length), src, src_size)) {
-			dnslib_rdata_free(&rdata);
+			knot_rdata_free(&rdata);
 			free(items);
 			return NULL;
 		}
@@ -299,7 +299,7 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 			items[i].dname = NULL;
 			uint8_t label_size = 0;
 			uint8_t *label_wire = NULL;
-			dnslib_dname_t *partial_dname = NULL;
+			knot_dname_t *partial_dname = NULL;
 
 			do { /* there is break at the end either way ... */
 				if (!mem_read(&label_size,
@@ -312,16 +312,16 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 				total_read++;
 
 				if (label_size == 0) {
-					dnslib_dname_t *root_dname =
-						dnslib_dname_new_from_str(".",
+					knot_dname_t *root_dname =
+						knot_dname_new_from_str(".",
 									  1,
 									  NULL);
 					assert(items[i].dname != NULL);
 
-					dnslib_dname_cat(items[i].dname,
+					knot_dname_cat(items[i].dname,
 							 root_dname);
 
-					dnslib_dname_free(&root_dname);
+					knot_dname_free(&root_dname);
 					break;
 				}
 
@@ -343,31 +343,31 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 				}
 
 				partial_dname =
-					dnslib_dname_new_from_wire(label_wire,
+					knot_dname_new_from_wire(label_wire,
 							   label_size + 1,
 							   NULL);
 
 				if (items[i].dname == NULL) {
 					items[i].dname =
-					dnslib_dname_new_from_wire(label_wire,
+					knot_dname_new_from_wire(label_wire,
 							   label_size + 1,
 							   NULL);
 					assert(items[i].dname);
 				} else {
-					dnslib_dname_cat(items[i].dname,
+					knot_dname_cat(items[i].dname,
 							 partial_dname);
 				}
 
 				free(label_wire);
 
-				dnslib_dname_free(&partial_dname);
+				knot_dname_free(&partial_dname);
 			} while (label_size != 0);
 
-			assert(dnslib_dname_is_fqdn(items[i].dname));
+			assert(knot_dname_is_fqdn(items[i].dname));
 #ifdef RESP_TEST_DEBUG
 			{
 				char tmp_dname =
-					dnslib_dname_to_str(items[i].dname);
+					knot_dname_to_str(items[i].dname);
 				diag("loaded dname by labels: %s", tmp_dname);
 				free(tmp_dname);
 			}
@@ -442,7 +442,7 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 						     " for type: %s"
 						     " and index: %d",
 						     size_fr_desc,
-					    dnslib_rrtype_to_string(type),
+					    knot_rrtype_to_string(type),
 						    i);
 #endif
 						}
@@ -483,7 +483,7 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 		}
 	}
 
-	if (dnslib_rdata_set_items(rdata, items, i) != 0) {
+	if (knot_rdata_set_items(rdata, items, i) != 0) {
 		diag("Error: could not set items\n");
 		return NULL;
 	}
@@ -493,10 +493,10 @@ static dnslib_rdata_t *load_response_rdata(uint16_t type, const char **src,
 	return rdata;
 }
 
-static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
+static knot_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 					   char is_question)
 {
-	dnslib_rrset_t *rrset;
+	knot_rrset_t *rrset;
 	uint16_t rrset_type;
 	uint16_t rrset_class;
 	uint32_t rrset_ttl;
@@ -525,8 +525,8 @@ static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 		return NULL;
 	}
 
-	dnslib_dname_t *owner =
-		dnslib_dname_new_from_wire(dname_wire,
+	knot_dname_t *owner =
+		knot_dname_new_from_wire(dname_wire,
 					   dname_size,
 					   NULL);
 
@@ -534,7 +534,7 @@ static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 
 #ifdef RESP_TEST_DEBUG
 	{
-		char *tmp_dname = dnslib_dname_to_str(owner);
+		char *tmp_dname = knot_dname_to_str(owner);
 		diag("Got owner: %s", tmp_dname);
 		free(tmp_dname);
 	}
@@ -557,12 +557,12 @@ static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 		rrset_ttl = 0;
 	}
 
-	rrset = dnslib_rrset_new(owner, rrset_type, rrset_class, rrset_ttl);
+	rrset = knot_rrset_new(owner, rrset_type, rrset_class, rrset_ttl);
 
 	/* Question rrsets have no rdata */
 
 	if (!is_question) {
-		dnslib_rdata_t *tmp_rdata;
+		knot_rdata_t *tmp_rdata;
 
 		tmp_rdata = load_response_rdata(rrset->type, src, src_size);
 
@@ -573,7 +573,7 @@ static dnslib_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 			return NULL;
 		}
 
-		dnslib_rrset_add_rdata(rrset, tmp_rdata);
+		knot_rrset_add_rdata(rrset, tmp_rdata);
 	}
 
 	return rrset;
@@ -638,9 +638,9 @@ static test_response_t *load_parsed_response(const char **src,
 	diag("arcount: %d\n", resp->arcount);
 #endif
 
-	dnslib_rrset_t **question_rrsets;
+	knot_rrset_t **question_rrsets;
 
-	question_rrsets = malloc(sizeof(dnslib_rrset_t *) * resp->qdcount);
+	question_rrsets = malloc(sizeof(knot_rrset_t *) * resp->qdcount);
 
 	for (int i = 0; i < resp->qdcount; i++) {
 		question_rrsets[i] = load_response_rrset(src, src_size, 1);
@@ -648,7 +648,7 @@ static test_response_t *load_parsed_response(const char **src,
 			diag("Could not load question rrsets");
 
 			for (int j = 0; j < i; j++) {
-				dnslib_rrset_free(&(question_rrsets[i]));
+				knot_rrset_free(&(question_rrsets[i]));
 			}
 			free(question_rrsets);
 			free(resp);
@@ -663,18 +663,18 @@ static test_response_t *load_parsed_response(const char **src,
 	resp->qclass = question_rrsets[0]->rclass;
 
 	for (int i = 0; i < resp->qdcount; i++) {
-		dnslib_rrset_free(&(question_rrsets[i]));
+		knot_rrset_free(&(question_rrsets[i]));
 	}
 
 	free(question_rrsets);
 
-	dnslib_rrset_t *tmp_rrset = NULL;
+	knot_rrset_t *tmp_rrset = NULL;
 
 	uint rrsig_count = 0;
 
 	if (resp->ancount > 0) {
 		resp->answer =
-			malloc(sizeof(dnslib_rrset_t *) * resp->ancount);
+			malloc(sizeof(knot_rrset_t *) * resp->ancount);
 	} else {
 		resp->answer = NULL;
 	}
@@ -694,7 +694,7 @@ static test_response_t *load_parsed_response(const char **src,
 
 	if (resp->nscount > 0) {
 		resp->authority =
-			malloc(sizeof(dnslib_rrset_t *) * resp->nscount);
+			malloc(sizeof(knot_rrset_t *) * resp->nscount);
 	} else {
 		resp->authority = NULL;
 	}
@@ -715,7 +715,7 @@ static test_response_t *load_parsed_response(const char **src,
 
 	if (resp->arcount > 0) {
 		resp->additional =
-			malloc(sizeof(dnslib_rrset_t *) * resp->arcount);
+			malloc(sizeof(knot_rrset_t *) * resp->arcount);
 	} else {
 		resp->additional = NULL;
 	}
@@ -747,12 +747,12 @@ static void free_parsed_response(test_response_t *response)
 	if (response != NULL) {
 
 		if (response->qname != NULL) {
-			dnslib_dname_free(&(response->qname));
+			knot_dname_free(&(response->qname));
 		}
 
 		if (response->additional != NULL) {
 			for (int j = 0; j < response->arcount; j++) {
-				dnslib_rrset_deep_free(&(response->
+				knot_rrset_deep_free(&(response->
 				                       additional[j]), 1, 1, 1);
 			}
 
@@ -761,7 +761,7 @@ static void free_parsed_response(test_response_t *response)
 
 		if (response->answer != NULL) {
 			for (int j = 0; j < response->ancount; j++) {
-				dnslib_rrset_deep_free(&(response->
+				knot_rrset_deep_free(&(response->
 				                       answer[j]), 1, 1, 1);
 			}
 
@@ -770,7 +770,7 @@ static void free_parsed_response(test_response_t *response)
 
 		if (response->authority != NULL) {
 			for (int j = 0; j < response->nscount; j++) {
-				dnslib_rrset_deep_free(&(response->
+				knot_rrset_deep_free(&(response->
 				                       authority[j]), 1, 1, 1);
 			}
 
@@ -820,39 +820,39 @@ void free_parsed_responses(test_response_t ***responses, uint32_t *count)
 }
 
 /* \note just checking the pointers probably would suffice */
-static int compare_rrsets(const dnslib_rrset_t *rrset1,
-			  const dnslib_rrset_t *rrset2)
+static int compare_rrsets(const knot_rrset_t *rrset1,
+			  const knot_rrset_t *rrset2)
 {
 	assert(rrset1);
 	assert(rrset2);
 
-	dnslib_rrtype_descriptor_t *desc =
-		dnslib_rrtype_descriptor_by_type(rrset1->type);
+	knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type(rrset1->type);
 
-	return (!(dnslib_dname_compare(rrset1->owner, rrset2->owner) == 0 &&
+	return (!(knot_dname_compare(rrset1->owner, rrset2->owner) == 0 &&
 		rrset1->type == rrset2->type &&
 		rrset1->rclass == rrset2->rclass &&
 		rrset1->ttl == rrset2->ttl &&
-		dnslib_rdata_compare(rrset1->rdata, rrset2->rdata,
+		knot_rdata_compare(rrset1->rdata, rrset2->rdata,
 				     desc->wireformat) == 0));
 }
 
 static int test_response_new_empty()
 {
-	dnslib_response_t *resp = dnslib_response_new_empty(NULL);
+	knot_response_t *resp = knot_response_new_empty(NULL);
 
 	if (resp != NULL) {
-		dnslib_response_free(&resp);
+		knot_response_free(&resp);
 		return 1;
 	} else {
-		dnslib_response_free(&resp);
+		knot_response_free(&resp);
 		return 0;
 	}
 }
 
 static int test_response_add_rrset(int (*add_func)
-				   (dnslib_response_t *,
-				   const dnslib_rrset_t *, int, int, int),
+				   (knot_response_t *,
+				   const knot_rrset_t *, int, int, int),
 				   int array_id)
 {
 	/*
@@ -861,10 +861,10 @@ static int test_response_add_rrset(int (*add_func)
 	 */
 	int errors = 0;
 
-	dnslib_response_t *resp = dnslib_response_new_empty(NULL);
+	knot_response_t *resp = knot_response_new_empty(NULL);
 	assert(resp);
 
-	const dnslib_rrset_t **array;
+	const knot_rrset_t **array;
 
 	switch (array_id) {
 		case 1: {
@@ -880,7 +880,7 @@ static int test_response_add_rrset(int (*add_func)
 			break;
 		}
 		default: {
-			dnslib_response_free(&resp);
+			knot_response_free(&resp);
 			return 0;
 		}
 	} /* switch */
@@ -890,29 +890,29 @@ static int test_response_add_rrset(int (*add_func)
 		errors += compare_rrsets(array[i], RESPONSE_RRSETS[i]);
 	}
 
-	dnslib_response_free(&resp);
+	knot_response_free(&resp);
 
 	return (errors == 0);
 }
 
 static int test_response_add_rrset_answer()
 {
-	return test_response_add_rrset(&dnslib_response_add_rrset_answer,
+	return test_response_add_rrset(&knot_response_add_rrset_answer,
 				       1);
 }
 
 static int test_response_add_rrset_authority()
 {
-	return test_response_add_rrset(&dnslib_response_add_rrset_authority,
+	return test_response_add_rrset(&knot_response_add_rrset_authority,
 				       2);
 }
 static int test_response_add_rrset_additional()
 {
-	return test_response_add_rrset(&dnslib_response_add_rrset_additional,
+	return test_response_add_rrset(&knot_response_add_rrset_additional,
 				       3);
 }
 
-static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
+static int check_response(knot_response_t *resp, test_response_t *test_resp,
 			  int check_header, int check_question,
 			  int check_answer, int check_additional,
 			  int check_authority)
@@ -921,11 +921,11 @@ static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
 
 	if (check_question) {
 		/* again, in case of dnames, pointer would probably suffice */
-		if (dnslib_dname_compare(resp->question.qname,
+		if (knot_dname_compare(resp->question.qname,
 					     test_resp->qname) != 0) {
 			char *tmp_dname1, *tmp_dname2;
-			tmp_dname1 = dnslib_dname_to_str(test_resp->qname);
-			tmp_dname2 = dnslib_dname_to_str(resp->question.qname);
+			tmp_dname1 = knot_dname_to_str(test_resp->qname);
+			tmp_dname2 = knot_dname_to_str(resp->question.qname);
 			diag("Qname in response is wrong:\
 			      should be: %s is: %s\n",
 			     tmp_dname1, tmp_dname2);
@@ -988,7 +988,7 @@ static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
 
 	if (check_question) {
 		/* Currently just one question RRSET allowed */
-		if (dnslib_dname_compare(resp->question.qname,
+		if (knot_dname_compare(resp->question.qname,
 					test_resp->qname) != 0) {
 			diag("Qname is wrongly set");
 			errors++;
@@ -1047,20 +1047,20 @@ static int test_response_parse_query(test_response_t **responses,
 	assert(raw_queries);
 
 	int errors = 0;
-	dnslib_response_t *resp = NULL;
+	knot_response_t *resp = NULL;
 	for (int i = 0; (i < count) && !errors; i++) {
-		resp = dnslib_response_new_empty(NULL);
+		resp = knot_response_new_empty(NULL);
 		assert(resp);
 
 //		hex_print(raw_queries[i]->data, raw_queries[i]->size);
 
-		if (dnslib_response_parse_query(resp,
+		if (knot_response_parse_query(resp,
 						raw_queries[i]->data,
 						raw_queries[i]->size) != 0) {
 			errors++;
 		}
 		errors += !check_response(resp, responses[i], 1, 1, 0, 0, 0);
-		dnslib_response_free(&resp);
+		knot_response_free(&resp);
 	}
 
 	return (errors == 0);
@@ -1106,11 +1106,11 @@ int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
  * Comparison is done through comparing wireformats.
  * Returns 0 if rdata are the same, 1 otherwise
  */
-int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
+int compare_rr_rdata(knot_rdata_t *rdata, ldns_rr *rr,
 			    uint16_t type)
 {
-	dnslib_rrtype_descriptor_t *desc =
-		dnslib_rrtype_descriptor_by_type(type);
+	knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type(type);
 	for (int i = 0; i < rdata->count; i++) {
 		/* check for ldns "descriptors" as well */
 
@@ -1174,7 +1174,7 @@ int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr,
 	return 0;
 }
 
-int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
+int compare_rrset_w_ldns_rr(const knot_rrset_t *rrset,
 				      ldns_rr *rr, char check_rdata)
 {
 	/* We should have only one rrset from ldns, although it is
@@ -1186,7 +1186,7 @@ int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
 	/* compare headers */
 
 	if (rrset->owner->size != ldns_rdf_size(ldns_rr_owner(rr))) {
-		char *tmp_dname = dnslib_dname_to_str(rrset->owner);
+		char *tmp_dname = knot_dname_to_str(rrset->owner);
 		diag("RRSet owner names differ in length");
 		diag("ldns: %d, dnslib: %d", ldns_rdf_size(ldns_rr_owner(rr)),
 		     rrset->owner->size);
@@ -1225,7 +1225,7 @@ int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
 
 	/* commented code for multiple rdata */
 
-//	dnslib_rdata_t *tmp_rdata = rrset->rdata;
+//	knot_rdata_t *tmp_rdata = rrset->rdata;
 
 //	int i = 0;
 
@@ -1271,7 +1271,7 @@ int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
 	return 0;
 }
 
-int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
+int compare_rrsets_w_ldns_rrlist(const knot_rrset_t **rrsets,
 					ldns_rr_list *rrlist, int count)
 {
 	int errors = 0;
@@ -1309,7 +1309,7 @@ int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
  * different.
  * TODO well, call it "check" then
  */
-int compare_response_w_ldns_packet(dnslib_response_t *response,
+int compare_response_w_ldns_packet(knot_response_t *response,
 					  ldns_pkt *packet)
 {
 	if (response->header.id != ldns_pkt_id(packet)) {
@@ -1321,19 +1321,19 @@ int compare_response_w_ldns_packet(dnslib_response_t *response,
 
 	/* TODO check flags1 and flags2 - no API for that, write my own*/
 
-	if (dnslib_response_answer_rrset_count(response) !=
+	if (knot_response_answer_rrset_count(response) !=
 	    ldns_pkt_ancount(packet)) {
 		diag("Answer RRSet count wrongly converted");
 		return 1;
 	}
 
-	if (dnslib_response_authority_rrset_count(response) !=
+	if (knot_response_authority_rrset_count(response) !=
 	    ldns_pkt_nscount(packet)) {
 		diag("Authority RRSet count wrongly converted");
 		return 1;
 	}
 
-	if (dnslib_response_additional_rrset_count(response) !=
+	if (knot_response_additional_rrset_count(response) !=
 	    ldns_pkt_arcount(packet)) {
 		diag("Additional RRSet count wrongly converted");
 		return 1;
@@ -1345,7 +1345,7 @@ int compare_response_w_ldns_packet(dnslib_response_t *response,
 
 	int ret = 0;
 
-	dnslib_rrset_t *question_rrset = dnslib_rrset_new(response->
+	knot_rrset_t *question_rrset = knot_rrset_new(response->
 							  question.qname,
 							  response->
 							  question.qtype,
@@ -1360,7 +1360,7 @@ int compare_response_w_ldns_packet(dnslib_response_t *response,
 		return 1;
 	}
 
-	dnslib_rrset_free(&question_rrset);
+	knot_rrset_free(&question_rrset);
 
 	/* other RRSets */
 
@@ -1398,22 +1398,22 @@ int compare_response_w_ldns_packet(dnslib_response_t *response,
 			return 1;
 		} */
 
-		dnslib_opt_rr_t *opt = &(response->edns_response);
+		knot_opt_rr_t *opt = &(response->edns_response);
 
 		if (ldns_pkt_edns_udp_size(packet) !=
-		    dnslib_edns_get_payload(opt)) {
+		    knot_edns_get_payload(opt)) {
 			diag("Payloads in EDNS are different");
 			return 1;
 		}
 
 		if (ldns_pkt_edns_version(packet) !=
-		    dnslib_edns_get_version(opt)) {
+		    knot_edns_get_version(opt)) {
 			diag("Versions in EDNS are different");
 			return 1;
 		}
 
 		if (ldns_pkt_edns_extended_rcode(packet) !=
-		    dnslib_edns_get_ext_rcode(opt)) {
+		    knot_edns_get_ext_rcode(opt)) {
 			diag("Extended rcodes in EDNS are different");
 			return 1;
 		}
@@ -1426,20 +1426,20 @@ int compare_response_w_ldns_packet(dnslib_response_t *response,
 
 #endif
 
-/* Converts dnslib_rrset_t to dnslib_opt_rr */
-static dnslib_opt_rr_t *opt_rrset_to_opt_rr(dnslib_rrset_t *rrset)
+/* Converts knot_rrset_t to knot_opt_rr */
+static knot_opt_rr_t *opt_rrset_to_opt_rr(knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
 		return NULL;
 	}
 
-	dnslib_opt_rr_t *opt_rr = dnslib_edns_new();
+	knot_opt_rr_t *opt_rr = knot_edns_new();
 
 	assert(opt_rr);
 
-	dnslib_edns_set_payload(opt_rr, rrset->rclass);
+	knot_edns_set_payload(opt_rr, rrset->rclass);
 
-	dnslib_edns_set_ext_rcode(opt_rr, rrset->ttl);
+	knot_edns_set_ext_rcode(opt_rr, rrset->ttl);
 
 	/* TODO rdata? mostly empty, I guess, but should be done */
 
@@ -1459,13 +1459,13 @@ static int test_response_to_wire(test_response_t **responses,
 
 	assert(responses);
 
-	dnslib_response_t *resp;
+	knot_response_t *resp;
 
-	dnslib_opt_rr_t *opt_rr = NULL;
+	knot_opt_rr_t *opt_rr = NULL;
 
-	dnslib_rrset_t *parsed_opt = NULL;
+	knot_rrset_t *parsed_opt = NULL;
 
-	/* This cycle creates actual dnslib_response_t's from parsed ones */
+	/* This cycle creates actual knot_response_t's from parsed ones */
 	for (int i = 0; i < count; i++) {
 		if (responses[i] == NULL) {
 			continue;
@@ -1482,10 +1482,10 @@ static int test_response_to_wire(test_response_t **responses,
 
 		opt_rr = opt_rrset_to_opt_rr(parsed_opt);
 
-		resp = dnslib_response_new_empty(opt_rr);
+		resp = knot_response_new_empty(opt_rr);
 
 		if (opt_rr != NULL) {
-			dnslib_edns_free(&opt_rr);
+			knot_edns_free(&opt_rr);
 		}
 
 		resp->header.id = responses[i]->id;
@@ -1502,10 +1502,10 @@ static int test_response_to_wire(test_response_t **responses,
 
 		for (int j = 0; j < responses[i]->ancount; j++) {
 			if (&(responses[i]->answer[j])) {
-				if (dnslib_response_add_rrset_answer(resp,
+				if (knot_response_add_rrset_answer(resp,
 				    responses[i]->answer[j], 0, 0, 0) != 0) {
 					char *tmp_dname =
-					dnslib_dname_to_str(responses[i]->
+					knot_dname_to_str(responses[i]->
 							    answer[j]->owner);
 					diag("Could not add answer rrset");
 					diag("owner: %s type: %d",
@@ -1522,7 +1522,7 @@ static int test_response_to_wire(test_response_t **responses,
 
 		for (int j = 0; j < responses[i]->nscount; j++) {
 			if (&(responses[i]->authority[j])) {
-				if (dnslib_response_add_rrset_authority(resp,
+				if (knot_response_add_rrset_authority(resp,
 					responses[i]->authority[j],
 					0, 0, 0) != 0) {
 					diag("Could not add authority rrset");
@@ -1540,7 +1540,7 @@ static int test_response_to_wire(test_response_t **responses,
 				    DNSLIB_RRTYPE_OPT) {
 					continue;
 				}
-				if (dnslib_response_add_rrset_additional(resp,
+				if (knot_response_add_rrset_additional(resp,
 					responses[i]->additional[j],
 					0, 0, 0) != 0) {
 					diag("Could not add additional rrset");
@@ -1553,16 +1553,16 @@ static int test_response_to_wire(test_response_t **responses,
 
 //		assert(resp->header.arcount == responses[i]->arcount);
 
-		uint8_t *dnslib_wire = NULL;
+		uint8_t *knot_wire = NULL;
 
-		size_t dnslib_wire_size;
+		size_t knot_wire_size;
 
 		assert(resp->question.qname);
 
-		if (dnslib_response_to_wire(resp, &dnslib_wire,
-					    &dnslib_wire_size) != 0) {
+		if (knot_response_to_wire(resp, &knot_wire,
+					    &knot_wire_size) != 0) {
 			diag("Could not convert dnslib response to wire\n");
-			dnslib_response_free(&resp);
+			knot_response_free(&resp);
 			return 0;
 		}
 
@@ -1579,8 +1579,8 @@ static int test_response_to_wire(test_response_t **responses,
 		note("Comparing wires directly - might not be sufficient"
 		     "Test with LDNS, if possible");
 
-		uint tmp_places = compare_wires(dnslib_wire, raw_data[i]->data,
-						dnslib_wire_size);
+		uint tmp_places = compare_wires(knot_wire, raw_data[i]->data,
+						knot_wire_size);
 
 
 		if (tmp_places) {
@@ -1600,8 +1600,8 @@ static int test_response_to_wire(test_response_t **responses,
 			diag("Could not parse wire using ldns");
 			diag("%s",
 			     ldns_get_errorstr_by_id(ldns_wire2pkt(&packet,
-							dnslib_wire,
-							dnslib_wire_size)));
+							knot_wire,
+							knot_wire_size)));
 			return 0;
 		}
 
@@ -1613,7 +1613,7 @@ static int test_response_to_wire(test_response_t **responses,
 		ldns_pkt_free(packet);
 #endif
 
-	dnslib_response_free(&resp);
+	knot_response_free(&resp);
 	}
 
 	return (errors == 0);
@@ -1621,19 +1621,19 @@ static int test_response_to_wire(test_response_t **responses,
 
 static int test_response_free()
 {
-	dnslib_response_t *resp = dnslib_response_new_empty(NULL);
+	knot_response_t *resp = knot_response_new_empty(NULL);
 	assert(resp);
 
-	dnslib_response_free(&resp);
+	knot_response_free(&resp);
 
 	return (resp == NULL);
 }
 
-static int test_response_qname(dnslib_response_t **responses)
+static int test_response_qname(knot_response_t **responses)
 {
 	int errors = 0;
 	for (int i = 0; i < RESPONSE_COUNT; i++) {
-		if (dnslib_dname_compare(dnslib_response_qname(responses[i]),
+		if (knot_dname_compare(knot_response_qname(responses[i]),
 					 RESPONSES[i].qname) != 0) {
 			diag("Got wrong qname value from response");
 			errors++;
@@ -1643,11 +1643,11 @@ static int test_response_qname(dnslib_response_t **responses)
 	return errors;
 }
 
-static int test_response_qtype(dnslib_response_t **responses)
+static int test_response_qtype(knot_response_t **responses)
 {
 	int errors = 0;
 	for (int i = 0; i < RESPONSE_COUNT; i++) {
-		if (dnslib_response_qtype(responses[i]) !=
+		if (knot_response_qtype(responses[i]) !=
 					 RESPONSES[i].qtype) {
 			diag("Got wrong qtype value from response");
 			errors++;
@@ -1657,11 +1657,11 @@ static int test_response_qtype(dnslib_response_t **responses)
 	return errors;
 }
 
-static int test_response_qclass(dnslib_response_t **responses)
+static int test_response_qclass(knot_response_t **responses)
 {
 	int errors = 0;
 	for (int i = 0; i < RESPONSE_COUNT; i++) {
-		if (dnslib_response_qclass(responses[i]) !=
+		if (knot_response_qclass(responses[i]) !=
 					 RESPONSES[i].qclass) {
 			diag("Got wrong qclass value from response");
 			errors++;
@@ -1675,11 +1675,11 @@ static int test_response_getters(uint type)
 {
 	int errors = 0;
 
-	dnslib_response_t *responses[RESPONSE_COUNT];
+	knot_response_t *responses[RESPONSE_COUNT];
 
 	for (int i = 0; (i < RESPONSE_COUNT); i++) {
 
-		responses[i] = dnslib_response_new_empty(NULL);
+		responses[i] = knot_response_new_empty(NULL);
 
 		responses[i]->header.id = RESPONSES[i].id;
 		//flags1?
@@ -1692,23 +1692,23 @@ static int test_response_getters(uint type)
 		responses[i]->question.qtype = RESPONSES[i].qtype;
 		responses[i]->question.qclass = RESPONSES[i].qclass;
 
-		dnslib_response_t *tmp_resp = responses[i];
+		knot_response_t *tmp_resp = responses[i];
 
 		for (int j = 0; j < RESPONSES[i].ancount; j++) {
 			if (&(RESPONSES[i].answer[j])) {
-				dnslib_response_add_rrset_answer(tmp_resp,
+				knot_response_add_rrset_answer(tmp_resp,
 					RESPONSES[i].answer[j], 0, 0, 0);
 			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			if (&(RESPONSES[i].additional[j])) {
-				dnslib_response_add_rrset_additional(tmp_resp,
+				knot_response_add_rrset_additional(tmp_resp,
 					RESPONSES[i].additional[j], 0, 0, 0);
 			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			if (&(RESPONSES[i].authority[j])) {
-				dnslib_response_add_rrset_authority(tmp_resp,
+				knot_response_add_rrset_authority(tmp_resp,
 					 RESPONSES[i].authority[j], 0, 0, 0);
 			}
 		}
@@ -1736,19 +1736,19 @@ static int test_response_getters(uint type)
 	} /* switch */
 
 	for (int i = 0; (i < RESPONSE_COUNT); i++) {
-		dnslib_response_free(&responses[i]);
+		knot_response_free(&responses[i]);
 	}
 
 	return (errors == 0);
 }
 
-static int test_response_set_rcode(dnslib_response_t **responses)
+static int test_response_set_rcode(knot_response_t **responses)
 {
 	int errors = 0;
 	short rcode = 0xA;
 	for (int i = 0; i < RESPONSE_COUNT; i++) {
-		dnslib_response_set_rcode(responses[i], rcode);
-		if (dnslib_wire_flags_get_rcode(responses[i]->
+		knot_response_set_rcode(responses[i], rcode);
+		if (knot_wire_flags_get_rcode(responses[i]->
 						  header.flags2) != rcode) {
 			diag("Set wrong rcode.");
 			errors++;
@@ -1757,16 +1757,16 @@ static int test_response_set_rcode(dnslib_response_t **responses)
 	return errors;
 }
 
-static int test_response_set_aa(dnslib_response_t **responses)
+static int test_response_set_aa(knot_response_t **responses)
 {
 	int errors = 0;
 	for (int i = 0; i < RESPONSE_COUNT; i++) {
-		dnslib_response_set_aa(responses[i]);
+		knot_response_set_aa(responses[i]);
 		/* TODO this returns 4 - shouldn't it return 1?
 		It would work, yes, but some checks might be neccessary */
-		if (!dnslib_wire_flags_get_aa(responses[i]->header.flags1)) {
+		if (!knot_wire_flags_get_aa(responses[i]->header.flags1)) {
 			diag("%d",
-			     dnslib_wire_flags_get_aa(responses[i]->
+			     knot_wire_flags_get_aa(responses[i]->
 							header.flags1));
 			diag("Set wrong aa bit.");
 			errors++;
@@ -1779,11 +1779,11 @@ static int test_response_setters(uint type)
 {
 	int errors = 0;
 
-	dnslib_response_t *responses[RESPONSE_COUNT];
+	knot_response_t *responses[RESPONSE_COUNT];
 
 	for (int i = 0; (i < RESPONSE_COUNT); i++) {
 
-		responses[i] = dnslib_response_new_empty(NULL);
+		responses[i] = knot_response_new_empty(NULL);
 
 		responses[i]->header.id = RESPONSES[i].id;
 		//flags1?
@@ -1796,23 +1796,23 @@ static int test_response_setters(uint type)
 		responses[i]->question.qtype = RESPONSES[i].qtype;
 		responses[i]->question.qclass = RESPONSES[i].qclass;
 
-		dnslib_response_t *tmp_resp = responses[i];
+		knot_response_t *tmp_resp = responses[i];
 
 		for (int j = 0; j < RESPONSES[i].ancount; j++) {
 			if (&(RESPONSES[i].answer[j])) {
-				dnslib_response_add_rrset_answer(tmp_resp,
+				knot_response_add_rrset_answer(tmp_resp,
 					(RESPONSES[i].answer[j]), 0, 0, 0);
 			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			if (&(RESPONSES[i].additional[j])) {
-				dnslib_response_add_rrset_additional(tmp_resp,
+				knot_response_add_rrset_additional(tmp_resp,
 					(RESPONSES[i].additional[j]), 0, 0, 0);
 			}
 		}
 		for (int j = 0; j < RESPONSES[i].arcount; j++) {
 			if (&(RESPONSES[i].authority[j])) {
-				dnslib_response_add_rrset_authority(tmp_resp,
+				knot_response_add_rrset_authority(tmp_resp,
 					(RESPONSES[i].authority[j]), 0, 0, 0);
 			}
 		}
@@ -1836,7 +1836,7 @@ static int test_response_setters(uint type)
 	} /* switch */
 
 	for (int i = 0; (i < RESPONSE_COUNT); i++) {
-		dnslib_response_free(&responses[i]);
+		knot_response_free(&responses[i]);
 	}
 
 	return (errors == 0);
@@ -1847,14 +1847,14 @@ static const int DNSLIB_RESPONSE_TEST_COUNT = 12;
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
-static int dnslib_response_tests_count(int argc, char *argv[])
+static int knot_response_tests_count(int argc, char *argv[])
 {
 	return DNSLIB_RESPONSE_TEST_COUNT;
 }
 
 /*! Run all scheduled tests for given parameters.
  */
-static int dnslib_response_tests_run(int argc, char *argv[])
+static int knot_response_tests_run(int argc, char *argv[])
 {
 	int ret;
 

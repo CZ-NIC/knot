@@ -5,25 +5,25 @@
 #include "dnslib/dnslib-common.h"
 #include "dnslib/edns.h"
 
-static int dnslib_edns_tests_count(int argc, char *argv[]);
-static int dnslib_edns_tests_run(int argc, char *argv[]);
+static int knot_edns_tests_count(int argc, char *argv[]);
+static int knot_edns_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
 unit_api edns_tests_api = {
 	"DNS library - EDNS",      //! Unit name
-	&dnslib_edns_tests_count,  //! Count scheduled tests
-	&dnslib_edns_tests_run     //! Run scheduled tests
+	&knot_edns_tests_count,  //! Count scheduled tests
+	&knot_edns_tests_run     //! Run scheduled tests
 };
 
 /*
  *  Unit implementation.
  */
 
-///* Creates actual dnslib_opt_rr_t variable from test_edns_t variable */
-//static dnslib_opt_rr_t *opt_rr_from_test_edns(test_edns_t *test_edns)
+///* Creates actual knot_opt_rr_t variable from test_edns_t variable */
+//static knot_opt_rr_t *opt_rr_from_test_edns(test_edns_t *test_edns)
 //{
-//	dnslib_opt_rr_t *ret = dnslib_edns_new();
+//	knot_opt_rr_t *ret = knot_edns_new();
 
 //	CHECK_ALLOC_LOG(ret, NULL);
 
@@ -33,10 +33,10 @@ unit_api edns_tests_api = {
 //	ret->version = test_edns->version;
 
 //	for (int i = 0; i < test_edns->option_count; i++) {
-//		if (dnslib_edns_add_option(ret, test_edns->options[i].code,
+//		if (knot_edns_add_option(ret, test_edns->options[i].code,
 //					   test_edns->options[i].length,
 //					   test_edns->options[i].data) != 0) {
-//			dnslib_edns_free(&ret);
+//			knot_edns_free(&ret);
 //			return NULL;
 //		}
 //	}
@@ -58,7 +58,7 @@ unit_api edns_tests_api = {
 //	return 0;
 //}
 
-//static int check_edns(const dnslib_opt_rr_t *edns,
+//static int check_edns(const knot_opt_rr_t *edns,
 //		      const test_edns_t *test_edns)
 //{
 //	if (edns->option_count != test_edns->option_count) {
@@ -104,10 +104,10 @@ unit_api edns_tests_api = {
 //	return 0;
 //}
 
-//static int test_edns_get_payload(const dnslib_opt_rr_t *edns,
+//static int test_edns_get_payload(const knot_opt_rr_t *edns,
 //				 test_edns_t *test_edns)
 //{
-//	if (dnslib_edns_get_payload(edns) !=
+//	if (knot_edns_get_payload(edns) !=
 //	    test_edns->payload) {
 //		return 0;
 //	} else {
@@ -115,10 +115,10 @@ unit_api edns_tests_api = {
 //	}
 //}
 
-//static int test_edns_get_ext_rcode(const dnslib_opt_rr_t *edns,
+//static int test_edns_get_ext_rcode(const knot_opt_rr_t *edns,
 //				   test_edns_t *test_edns)
 //{
-//	if (dnslib_edns_get_ext_rcode(edns) !=
+//	if (knot_edns_get_ext_rcode(edns) !=
 //	    test_edns->ext_rcode) {
 //		return 0;
 //	} else {
@@ -126,10 +126,10 @@ unit_api edns_tests_api = {
 //	}
 //}
 
-//static int test_edns_get_flags(const dnslib_opt_rr_t *edns,
+//static int test_edns_get_flags(const knot_opt_rr_t *edns,
 //			       test_edns_t *test_edns)
 //{
-//	if (dnslib_edns_get_flags(edns) !=
+//	if (knot_edns_get_flags(edns) !=
 //	    test_edns->flags) {
 //		return 0;
 //	} else {
@@ -137,10 +137,10 @@ unit_api edns_tests_api = {
 //	}
 //}
 
-//static int test_edns_get_version(const dnslib_opt_rr_t *edns,
+//static int test_edns_get_version(const knot_opt_rr_t *edns,
 //				 test_edns_t *test_edns)
 //{
-//	if (dnslib_edns_get_version(edns) !=
+//	if (knot_edns_get_version(edns) !=
 //	    test_edns->version) {
 //		return 0;
 //	} else {
@@ -148,10 +148,10 @@ unit_api edns_tests_api = {
 //	}
 //}
 
-//static int test_edns_do(const dnslib_opt_rr_t *edns,
+//static int test_edns_do(const knot_opt_rr_t *edns,
 //			test_edns_t *test_edns)
 //{
-//	if (dnslib_edns_do(edns) !=
+//	if (knot_edns_do(edns) !=
 //	    (test_edns->flags & DNSLIB_EDNS_DO_MASK)) {
 //		return 0;
 //	} else {
@@ -159,10 +159,10 @@ unit_api edns_tests_api = {
 //	}
 //}
 
-//static int test_edns_size(dnslib_opt_rr_t *edns, test_edns_t *test_edns)
+//static int test_edns_size(knot_opt_rr_t *edns, test_edns_t *test_edns)
 //{
 //	diag("%d %d\n", edns->size, test_edns->size);
-//	if (dnslib_edns_size(edns) !=
+//	if (knot_edns_size(edns) !=
 //	    test_edns->size) {
 //		return 0;
 //	} else {
@@ -170,10 +170,10 @@ unit_api edns_tests_api = {
 //	}
 //}
 
-//static int test_edns_set_payload(dnslib_opt_rr_t *edns,
+//static int test_edns_set_payload(knot_opt_rr_t *edns,
 //				 test_edns_t *test_edns)
 //{
-//	dnslib_edns_set_payload(edns, test_edns->payload);
+//	knot_edns_set_payload(edns, test_edns->payload);
 
 //	if (edns->payload !=
 //	    test_edns->payload) {
@@ -183,10 +183,10 @@ unit_api edns_tests_api = {
 //	}
 //}
 
-//static int test_edns_set_ext_rcode(dnslib_opt_rr_t *edns,
+//static int test_edns_set_ext_rcode(knot_opt_rr_t *edns,
 //				   test_edns_t *test_edns)
 //{
-//	dnslib_edns_set_ext_rcode(edns, test_edns->ext_rcode);
+//	knot_edns_set_ext_rcode(edns, test_edns->ext_rcode);
 //	if (edns->ext_rcode !=
 //	    test_edns->ext_rcode) {
 //		return 0;
@@ -195,10 +195,10 @@ unit_api edns_tests_api = {
 //	}
 //}
 
-//static int test_edns_set_version(dnslib_opt_rr_t *edns,
+//static int test_edns_set_version(knot_opt_rr_t *edns,
 //				 test_edns_t *test_edns)
 //{
-//	dnslib_edns_set_version(edns,
+//	knot_edns_set_version(edns,
 //				test_edns->version);
 
 //	if (edns->version !=
@@ -209,11 +209,11 @@ unit_api edns_tests_api = {
 //	}
 //}
 
-//static int test_edns_set_do(dnslib_opt_rr_t *edns)
+//static int test_edns_set_do(knot_opt_rr_t *edns)
 //{
-//	dnslib_edns_set_do(edns);
+//	knot_edns_set_do(edns);
 
-//	if (!dnslib_edns_do(edns)) {
+//	if (!knot_edns_do(edns)) {
 //		return 0;
 //	} else {
 //		return 1;
@@ -224,7 +224,7 @@ unit_api edns_tests_api = {
 //{
 //	int errors = 0;
 //	for (int i = 0; i < TEST_EDNS; i++) {
-//		dnslib_opt_rr_t *edns =
+//		knot_opt_rr_t *edns =
 //			opt_rr_from_test_edns(&(test_edns_data[i]));
 //		if (edns == NULL) {
 //			ERR_ALLOC_FAILED;
@@ -280,7 +280,7 @@ unit_api edns_tests_api = {
 //			errors++;
 //		} /* switch */
 
-//		dnslib_edns_free(&edns);
+//		knot_edns_free(&edns);
 //	}
 
 //	return (errors == 0);
@@ -290,7 +290,7 @@ unit_api edns_tests_api = {
 //{
 //	int errors = 0;
 //	for (int i = 0; i < TEST_EDNS; i++) {
-//		dnslib_opt_rr_t *edns =
+//		knot_opt_rr_t *edns =
 //			opt_rr_from_test_edns(&(test_edns_data[i]));
 //		if (edns == NULL) {
 //			ERR_ALLOC_FAILED;
@@ -330,7 +330,7 @@ unit_api edns_tests_api = {
 //			errors++;
 //		} /* switch */
 
-//		dnslib_edns_free(&edns);
+//		knot_edns_free(&edns);
 //	}
 
 //	return (errors == 0);
@@ -343,7 +343,7 @@ unit_api edns_tests_api = {
 //	 */
 //	for (int i = 0; i < TEST_EDNS; i++) {
 //		/* Creates instance from test_edns_t. */
-//		dnslib_opt_rr_t *edns =
+//		knot_opt_rr_t *edns =
 //			opt_rr_from_test_edns(&(test_edns_data[i]));
 //		if (edns == NULL) {
 //			ERR_ALLOC_FAILED;
@@ -355,21 +355,21 @@ unit_api edns_tests_api = {
 //		CHECK_ALLOC_LOG(wire, 0);
 
 //		/* Converts EDNS to wire. */
-//		short wire_size = dnslib_edns_to_wire(edns, wire, 100);
+//		short wire_size = knot_edns_to_wire(edns, wire, 100);
 
 //		if (wire_size == -1) {
 //			diag("Could not create EDNS wire");
 //			return 0;
 //		}
 
-//		dnslib_opt_rr_t *edns_from_wire = dnslib_edns_new();
+//		knot_opt_rr_t *edns_from_wire = knot_edns_new();
 //		if (edns == NULL) {
 //			return 0;
 //		}
 
 //		/* TODO use some constant */
 //		/* Creates new EDNS from wire */
-//		if (dnslib_edns_new_from_wire(edns_from_wire,
+//		if (knot_edns_new_from_wire(edns_from_wire,
 //					      wire,
 //					      100) <= 0) {
 //			diag("Could not create from wire");
@@ -384,8 +384,8 @@ unit_api edns_tests_api = {
 //		}
 
 //		free(wire);
-//		dnslib_edns_free(&edns_from_wire);
-//		dnslib_edns_free(&edns);
+//		knot_edns_free(&edns_from_wire);
+//		knot_edns_free(&edns);
 //	}
 //	return 1;
 //}
@@ -396,7 +396,7 @@ unit_api edns_tests_api = {
 //	 * Create empty EDNS and add options one by one, testing their presence.
 //	 */
 //	for (int i = 0; i < TEST_EDNS; i++) {
-//		dnslib_opt_rr_t *edns = dnslib_edns_new();
+//		knot_opt_rr_t *edns = knot_edns_new();
 //		assert(edns->option_count == 0);
 
 //		if (edns == NULL) {
@@ -405,7 +405,7 @@ unit_api edns_tests_api = {
 //		}
 
 //		for (int j = 0; j < test_edns_data[i].option_count; j++) {
-//			if (dnslib_edns_add_option(edns,
+//			if (knot_edns_add_option(edns,
 //					   test_edns_data[i].options[j].code,
 //					   test_edns_data[i].options[j].length,
 //					   test_edns_data[i].options[j].
@@ -434,7 +434,7 @@ unit_api edns_tests_api = {
 //				return 0;
 //			}
 //		}
-//		dnslib_edns_free(&edns);
+//		knot_edns_free(&edns);
 //	}
 //	return 1;
 //}
@@ -445,7 +445,7 @@ unit_api edns_tests_api = {
 //	 * Create empty EDNS and add options one by one, testing their presence
 //	 */
 //	for (int i = 0; i < TEST_EDNS; i++) {
-//		dnslib_opt_rr_t *edns = dnslib_edns_new();
+//		knot_opt_rr_t *edns = knot_edns_new();
 //		assert(edns->option_count == 0);
 
 //		if (edns == NULL) {
@@ -454,7 +454,7 @@ unit_api edns_tests_api = {
 //		}
 
 //		for (int j = 0; j < test_edns_data[i].option_count; j++) {
-//			if (dnslib_edns_add_option(edns,
+//			if (knot_edns_add_option(edns,
 //					   test_edns_data[i].options[j].code,
 //					   test_edns_data[i].options[j].length,
 //					   test_edns_data[i].options[j].
@@ -463,13 +463,13 @@ unit_api edns_tests_api = {
 //				return 0;
 //			}
 
-//			if (dnslib_edns_has_option(edns,
+//			if (knot_edns_has_option(edns,
 //				   test_edns_data[i].options[j].code) != 1) {
 //				diag("Option not found!");
 //				return 0;
 //			}
 //		}
-//		dnslib_edns_free(&edns);
+//		knot_edns_free(&edns);
 //	}
 //	return 1;
 //}
@@ -479,14 +479,14 @@ static const int DNSLIB_EDNS_TESTS_COUNT = 0;
 ///*! This helper routine should report number of
 // *  scheduled tests for given parameters.
 // */
-static int dnslib_edns_tests_count(int argc, char *argv[])
+static int knot_edns_tests_count(int argc, char *argv[])
 {
 	return DNSLIB_EDNS_TESTS_COUNT;
 }
 
 ///*! Run all scheduled tests for given parameters.
 // */
-static int dnslib_edns_tests_run(int argc, char *argv[])
+static int knot_edns_tests_run(int argc, char *argv[])
 {
 //	int res = 0;
 	int res_final = 1;

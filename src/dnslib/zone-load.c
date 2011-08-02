@@ -66,22 +66,22 @@ static inline int fread_safe_from_file(void *dst,
 	return rc == n;
 }
 
-static uint8_t *dnslib_zload_stream = NULL;
-static size_t dnslib_zload_stream_remaining = 0;
-static size_t dnslib_zload_stream_size = 0;
+static uint8_t *knot_zload_stream = NULL;
+static size_t knot_zload_stream_remaining = 0;
+static size_t knot_zload_stream_size = 0;
 
 static inline int read_from_stream(void *dst,
                                    size_t size, size_t n, FILE *fp)
 {
-	if (dnslib_zload_stream_remaining < (size * n)) {
+	if (knot_zload_stream_remaining < (size * n)) {
 		return 0;
 	}
 
 	memcpy(dst,
-	       dnslib_zload_stream +
-	       (dnslib_zload_stream_size - dnslib_zload_stream_remaining),
+	       knot_zload_stream +
+	       (knot_zload_stream_size - knot_zload_stream_remaining),
 	       size * n);
-	dnslib_zload_stream_remaining -= size * n;
+	knot_zload_stream_remaining -= size * n;
 
 	return 1;
 }
@@ -112,8 +112,8 @@ enum { DNAME_MAX_WIRE_LENGTH = 256 };
  * \param count Current count of rdata items.
  * \param type RRSet type.
  */
-static void load_rdata_purge(dnslib_rdata_t *rdata,
-			     dnslib_rdata_item_t *items,
+static void load_rdata_purge(knot_rdata_t *rdata,
+			     knot_rdata_item_t *items,
 			     int count,
 			     uint16_t type)
 {
@@ -126,7 +126,7 @@ static void load_rdata_purge(dnslib_rdata_t *rdata,
 	case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
 	case DNSLIB_RDATA_WF_LITERAL_DNAME:
 		for (i = 0; i < count; ++i) {
-			dnslib_dname_retain(items[i].dname);
+			knot_dname_retain(items[i].dname);
 		}
 		break;
 	default:
@@ -134,20 +134,20 @@ static void load_rdata_purge(dnslib_rdata_t *rdata,
 	}
 
 	/* Copy items to rdata and free the temporary rdata. */
-	dnslib_rdata_set_items(rdata, items, count);
-	dnslib_rdata_deep_free(&rdata, type, 1);
+	knot_rdata_set_items(rdata, items, count);
+	knot_rdata_deep_free(&rdata, type, 1);
 	free(items);
 }
 
-static dnslib_dname_t *read_dname_with_id(FILE *f)
+static knot_dname_t *read_dname_with_id(FILE *f)
 {
-	dnslib_dname_t *ret = dnslib_dname_new();
+	knot_dname_t *ret = knot_dname_new();
 	CHECK_ALLOC_LOG(ret, NULL);
 
 	/* Read ID. */
 	uint32_t dname_id = 0;
 	if (!fread_wrapper(&dname_id, sizeof(dname_id), 1, f)) {
-		dnslib_dname_release(ret);
+		knot_dname_release(ret);
 		return NULL;
 	}
 
@@ -156,7 +156,7 @@ static dnslib_dname_t *read_dname_with_id(FILE *f)
 	/* Read size of dname. */
 	uint32_t dname_size = 0;
 	if (!fread_wrapper(&dname_size, sizeof(dname_size), 1, f)) {
-		dnslib_dname_release(ret);
+		knot_dname_release(ret);
 		return NULL;
 	}
 	ret->size = dname_size;
@@ -167,19 +167,19 @@ static dnslib_dname_t *read_dname_with_id(FILE *f)
 	ret->name = malloc(sizeof(uint8_t) * ret->size);
 	if (ret->name == NULL) {
 		ERR_ALLOC_FAILED;
-		dnslib_dname_release(ret);
+		knot_dname_release(ret);
 		return NULL;
 	}
 
 	if (!fread_wrapper(ret->name, sizeof(uint8_t), ret->size, f)) {
-		dnslib_dname_release(ret);
+		knot_dname_release(ret);
 		return NULL;
 	}
 
 	/* Read labels. */
 	uint16_t label_count = 0;
 	if (!fread_wrapper(&label_count, sizeof(label_count), 1, f)) {
-		dnslib_dname_release(ret);
+		knot_dname_release(ret);
 		return NULL;
 	}
 
@@ -188,7 +188,7 @@ static dnslib_dname_t *read_dname_with_id(FILE *f)
 	ret->labels = malloc(sizeof(uint8_t) * ret->label_count);
 	if (ret->labels == NULL) {
 		ERR_ALLOC_FAILED;
-		dnslib_dname_release(ret);
+		knot_dname_release(ret);
 		return NULL;
 	}
 
@@ -198,7 +198,7 @@ static dnslib_dname_t *read_dname_with_id(FILE *f)
 		return NULL;
 	}
 
-	debug_dnslib_zload("loaded: %s (id: %d)\n", dnslib_dname_to_str(ret),
+	debug_knot_zload("loaded: %s (id: %d)\n", knot_dname_to_str(ret),
 	                   ret->id);
 
 	return ret;
@@ -212,24 +212,24 @@ static dnslib_dname_t *read_dname_with_id(FILE *f)
  *
  * \return Pointer to read and created rdata on success, NULL otherwise.
  */
-static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
-                                         dnslib_dname_t **id_array,
+static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
+                                         knot_dname_t **id_array,
                                          int use_ids)
 {
-	dnslib_rdata_t *rdata = dnslib_rdata_new();
+	knot_rdata_t *rdata = knot_rdata_new();
 
-	dnslib_rrtype_descriptor_t *desc =
-		dnslib_rrtype_descriptor_by_type(type);
+	knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type(type);
 	assert(desc != NULL);
 
-	dnslib_rdata_item_t *items =
-		malloc(sizeof(dnslib_rdata_item_t) * desc->length);
+	knot_rdata_item_t *items =
+		malloc(sizeof(knot_rdata_item_t) * desc->length);
 
 	uint16_t raw_data_length;
 
-	debug_dnslib_zload("Reading %d items\n", desc->length);
+	debug_knot_zload("Reading %d items\n", desc->length);
 
-	debug_dnslib_zload("current type: %s\n", dnslib_rrtype_to_string(type));
+	debug_knot_zload("current type: %s\n", knot_rrtype_to_string(type));
 
 	for (int i = 0; i < desc->length; i++) {
 		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
@@ -249,7 +249,7 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 				}
 
 				/* Store reference do dname. */
-				dnslib_dname_retain(id_array[dname_id]);
+				knot_dname_retain(id_array[dname_id]);
 				items[i].dname = id_array[dname_id];
 			} else {
 				items[i].dname = read_dname_with_id(f);
@@ -278,10 +278,10 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 						id_array[dname_id]->node;
 			} else if (use_ids && !in_the_zone) { /* destroy the node */
 				if (id_array[dname_id]->node != NULL) {
-					dnslib_node_free(&id_array[dname_id]->
+					knot_node_free(&id_array[dname_id]->
 							 node, 0, 0);
 //					printf("%p %s\n", id_array[dname_id]->node,
-	//				       dnslib_dname_to_str(id_array[dname_id]));
+	//				       knot_dname_to_str(id_array[dname_id]));
 		//			getchar();
 				}
 				/* Also sets node to NULL! */
@@ -294,7 +294,7 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 				return NULL;
 			}
 
-			debug_dnslib_zload("read len: %d\n", raw_data_length);
+			debug_knot_zload("read len: %d\n", raw_data_length);
 			items[i].raw_data =
 				malloc(sizeof(uint8_t) * raw_data_length + 2);
 			*(items[i].raw_data) = raw_data_length;
@@ -308,7 +308,7 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 	}
 
 	/* Each item has refcount already incremented for saving in rdata. */
-	if (dnslib_rdata_set_items(rdata, items, desc->length) != 0) {
+	if (knot_rdata_set_items(rdata, items, desc->length) != 0) {
 		fprintf(stderr, "zoneload: Could not set items "
 			"when loading rdata.\n");
 	}
@@ -325,10 +325,10 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
  *
  * \return pointer to created and read RRSIG on success, NULL otherwise.
  */
-static dnslib_rrset_t *dnslib_load_rrsig(FILE *f, dnslib_dname_t **id_array,
+static knot_rrset_t *knot_load_rrsig(FILE *f, knot_dname_t **id_array,
                                          int use_ids)
 {
-	dnslib_rrset_t *rrsig;
+	knot_rrset_t *rrsig;
 
 	uint16_t rrset_type;
 	uint16_t rrset_class;
@@ -344,34 +344,34 @@ static dnslib_rrset_t *dnslib_load_rrsig(FILE *f, dnslib_dname_t **id_array,
 		fprintf(stderr, "!! Error: rrsig has wrong type\n");
 		return NULL;
 	}
-	debug_dnslib_zload("rrset type: %d\n", rrset_type);
+	debug_knot_zload("rrset type: %d\n", rrset_type);
 	if (!fread_wrapper(&rrset_class, sizeof(rrset_class), 1, f)) {
 		return NULL;
 	}
-	debug_dnslib_zload("rrset class %d\n", rrset_class);
+	debug_knot_zload("rrset class %d\n", rrset_class);
 
 	if (!fread_wrapper(&rrset_ttl, sizeof(rrset_ttl), 1, f)) {
 		return NULL;
 	}
-	debug_dnslib_zload("rrset ttl %d\n", rrset_ttl);
+	debug_knot_zload("rrset ttl %d\n", rrset_ttl);
 
 	if (!fread_wrapper(&rdata_count, sizeof(rdata_count), 1, f)) {
 		return NULL;
 	}
 
-	rrsig = dnslib_rrset_new(NULL, rrset_type, rrset_class, rrset_ttl);
+	rrsig = knot_rrset_new(NULL, rrset_type, rrset_class, rrset_ttl);
 
-	dnslib_rdata_t *tmp_rdata;
+	knot_rdata_t *tmp_rdata;
 
-	debug_dnslib_zload("loading %d rdata entries\n", rdata_count);
+	debug_knot_zload("loading %d rdata entries\n", rdata_count);
 
 	for (int i = 0; i < rdata_count; i++) {
-		tmp_rdata = dnslib_load_rdata(DNSLIB_RRTYPE_RRSIG, f,
+		tmp_rdata = knot_load_rdata(DNSLIB_RRTYPE_RRSIG, f,
 					      id_array, use_ids);
 		if (tmp_rdata) {
-			dnslib_rrset_add_rdata(rrsig, tmp_rdata);
+			knot_rrset_add_rdata(rrsig, tmp_rdata);
 		} else {
-			dnslib_rrset_deep_free(&rrsig, 0, 1, 1);
+			knot_rrset_deep_free(&rrsig, 0, 1, 1);
 			return NULL;
 		}
 	}
@@ -386,10 +386,10 @@ static dnslib_rrset_t *dnslib_load_rrsig(FILE *f, dnslib_dname_t **id_array,
  *
  * \return pointer to created and read RRSet on success, NULL otherwise.
  */
-static dnslib_rrset_t *dnslib_load_rrset(FILE *f, dnslib_dname_t **id_array,
+static knot_rrset_t *knot_load_rrset(FILE *f, knot_dname_t **id_array,
                                          int use_ids)
 {
-	dnslib_rrset_t *rrset;
+	knot_rrset_t *rrset;
 
 	uint16_t rrset_type;
 	uint16_t rrset_class;
@@ -398,7 +398,7 @@ static dnslib_rrset_t *dnslib_load_rrset(FILE *f, dnslib_dname_t **id_array,
 	uint8_t rdata_count;
 	uint8_t rrsig_count;
 
-	dnslib_dname_t *owner = NULL;
+	knot_dname_t *owner = NULL;
 
 	if (!use_ids) {
 		owner = read_dname_with_id(f);
@@ -420,39 +420,39 @@ static dnslib_rrset_t *dnslib_load_rrset(FILE *f, dnslib_dname_t **id_array,
 		return NULL;
 	}
 
-	rrset = dnslib_rrset_new(owner, rrset_type, rrset_class, rrset_ttl);
+	rrset = knot_rrset_new(owner, rrset_type, rrset_class, rrset_ttl);
 
 	if (!use_ids) {
 		/* Directly release if allocated locally. */
-		dnslib_dname_release(owner);
+		knot_dname_release(owner);
 		owner = 0;
 	}
 
-	debug_dnslib_zload("RRSet type: %d\n", rrset->type);
+	debug_knot_zload("RRSet type: %d\n", rrset->type);
 
-	dnslib_rdata_t *tmp_rdata;
+	knot_rdata_t *tmp_rdata;
 
 	for (int i = 0; i < rdata_count; i++) {
-		tmp_rdata = dnslib_load_rdata(rrset->type, f,
+		tmp_rdata = knot_load_rdata(rrset->type, f,
 					      id_array, use_ids);
 		if (tmp_rdata) {
-			dnslib_rrset_add_rdata(rrset, tmp_rdata);
+			knot_rrset_add_rdata(rrset, tmp_rdata);
 		} else {
-			dnslib_rrset_deep_free(&rrset, 0, 1, 1);
+			knot_rrset_deep_free(&rrset, 0, 1, 1);
 			return NULL;
 		}
 	}
 
-	dnslib_rrset_t *tmp_rrsig = NULL;
+	knot_rrset_t *tmp_rrsig = NULL;
 
 	if (rrsig_count) {
-		tmp_rrsig = dnslib_load_rrsig(f, id_array, use_ids);
+		tmp_rrsig = knot_load_rrsig(f, id_array, use_ids);
 		if (!use_ids) {
-			dnslib_rrset_set_owner(tmp_rrsig, rrset->owner);
+			knot_rrset_set_owner(tmp_rrsig, rrset->owner);
 		}
 	}
 
-	dnslib_rrset_set_rrsigs(rrset, tmp_rrsig);
+	knot_rrset_set_rrsigs(rrset, tmp_rrsig);
 
 	return rrset;
 }
@@ -464,10 +464,10 @@ static dnslib_rrset_t *dnslib_load_rrset(FILE *f, dnslib_dname_t **id_array,
  *
  * \return Pointer to created and read node on success, NULL otherwise.
  */
-static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
+static knot_node_t *knot_load_node(FILE *f, knot_dname_t **id_array)
 {
 	uint8_t flags = 0;
-	dnslib_node_t *node = NULL;
+	knot_node_t *node = NULL;
 	uint32_t parent_id = 0;
 	uint32_t nsec3_node_id = 0;
 	uint16_t rrset_count = 0;
@@ -493,11 +493,11 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 	if (!fread_wrapper(&rrset_count, sizeof(rrset_count), 1, f)) {
 		return NULL;
 	}
-	dnslib_dname_t *owner = id_array[dname_id];
+	knot_dname_t *owner = id_array[dname_id];
 
-	debug_dnslib_zload("Node owner id: %d\n", dname_id);
-	debug_dnslib_zload("Node owned by: %s\n", dnslib_dname_to_str(owner));
-	debug_dnslib_zload("Number of RRSets in a node: %d\n", rrset_count);
+	debug_knot_zload("Node owner id: %d\n", dname_id);
+	debug_knot_zload("Node owned by: %s\n", knot_dname_to_str(owner));
+	debug_knot_zload("Number of RRSets in a node: %d\n", rrset_count);
 
 	node = owner->node;
 
@@ -507,41 +507,41 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
 	}
 	/* XXX can it be 0, ever? I think not. */
 	if (nsec3_node_id != 0) {
-		dnslib_node_set_nsec3_node(node, id_array[nsec3_node_id]->node);
+		knot_node_set_nsec3_node(node, id_array[nsec3_node_id]->node);
 //		node->nsec3_node = id_array[nsec3_node_id]->node;
 	} else {
-		dnslib_node_set_nsec3_node(node, NULL);
+		knot_node_set_nsec3_node(node, NULL);
 //		node->nsec3_node = NULL;
 	}
 
 	/* Retain new owner while releasing replaced owner. */
-	dnslib_node_set_owner(node, owner);
+	knot_node_set_owner(node, owner);
 	node->flags = flags;
 
 	//XXX will have to be set already...canonical order should do it
 
 	if (parent_id != 0) {
-		dnslib_node_set_parent(node, id_array[parent_id]->node);
-		assert(dnslib_node_parent(node, 0) != NULL);
+		knot_node_set_parent(node, id_array[parent_id]->node);
+		assert(knot_node_parent(node, 0) != NULL);
 	} else {
-		dnslib_node_set_parent(node, NULL);
+		knot_node_set_parent(node, NULL);
 	}
 
-	dnslib_rrset_t *tmp_rrset;
+	knot_rrset_t *tmp_rrset;
 
 	for (int i = 0; i < rrset_count; i++) {
-		if ((tmp_rrset = dnslib_load_rrset(f, id_array, 1)) == NULL) {
-			dnslib_node_free(&node, 1, 0);
+		if ((tmp_rrset = knot_load_rrset(f, id_array, 1)) == NULL) {
+			knot_node_free(&node, 1, 0);
 			//TODO what else to free?
 			fprintf(stderr, "zone: Could not load rrset.\n");
 			return NULL;
 		}
 		/* Retain new owner while releasing replaced owner. */
-		dnslib_rrset_set_owner(tmp_rrset, node->owner);
+		knot_rrset_set_owner(tmp_rrset, node->owner);
 		if (tmp_rrset->rrsigs != NULL) {
-			dnslib_rrset_set_owner(tmp_rrset->rrsigs, node->owner);
+			knot_rrset_set_owner(tmp_rrset->rrsigs, node->owner);
 		}
-		if (dnslib_node_add_rrset(node, tmp_rrset, 0) < 0) {
+		if (knot_node_add_rrset(node, tmp_rrset, 0) < 0) {
 			fprintf(stderr, "zone: Could not add rrset.\n");
 			return NULL;
 		}
@@ -557,26 +557,26 @@ static dnslib_node_t *dnslib_load_node(FILE *f, dnslib_dname_t **id_array)
  * \param node Node to be used.
  * \param nsec3 Is NSEC3 node.
  */
-static void find_and_set_wildcard_child(dnslib_zone_contents_t *zone,
-				 dnslib_node_t *node, int nsec3)
+static void find_and_set_wildcard_child(knot_zone_contents_t *zone,
+				 knot_node_t *node, int nsec3)
 {
-	dnslib_dname_t *chopped = dnslib_dname_left_chop(node->owner);
+	knot_dname_t *chopped = knot_dname_left_chop(node->owner);
 	assert(chopped);
-	dnslib_node_t *wildcard_parent;
+	knot_node_t *wildcard_parent;
 	if (!nsec3) {
 		wildcard_parent =
-			dnslib_zone_contents_get_node(zone, chopped);
+			knot_zone_contents_get_node(zone, chopped);
 	} else {
 		wildcard_parent =
-			dnslib_zone_contents_get_nsec3_node(zone, chopped);
+			knot_zone_contents_get_nsec3_node(zone, chopped);
 	}
 
 	/* Directly discard. */
-	dnslib_dname_free(&chopped);
+	knot_dname_free(&chopped);
 
 	assert(wildcard_parent); /* it *has* to be there */
 
-	dnslib_node_set_wildcard_child(wildcard_parent, node);
+	knot_node_set_wildcard_child(wildcard_parent, node);
 }
 
 /*!
@@ -590,7 +590,7 @@ static void find_and_set_wildcard_child(dnslib_zone_contents_t *zone,
  * \retval 1 if magic is the same.
  * \retval 0 otherwise.
  */
-static int dnslib_check_magic(FILE *f, const uint8_t* MAGIC, uint MAGIC_LENGTH)
+static int knot_check_magic(FILE *f, const uint8_t* MAGIC, uint MAGIC_LENGTH)
 {
 	uint8_t tmp_magic[MAGIC_LENGTH];
 
@@ -646,7 +646,7 @@ static unsigned long calculate_crc(FILE *f)
 	return (unsigned long)crc_finalize(crc);
 }
 
-zloader_t *dnslib_zload_open(const char *filename)
+zloader_t *knot_zload_open(const char *filename)
 {
 	if (unlikely(!filename)) {
 		errno = ENOENT; // No such file or directory (POSIX.1)
@@ -658,7 +658,7 @@ zloader_t *dnslib_zload_open(const char *filename)
 	/* Open file for binary read. */
 	FILE *f = fopen(filename, "rb");
 	if (unlikely(!f)) {
-		debug_dnslib_zload("dnslib_zload_open: failed to open '%s'\n",
+		debug_knot_zload("knot_zload_open: failed to open '%s'\n",
 				   filename);
 		errno = ENOENT; // No such file or directory (POSIX.1)
 		return NULL;
@@ -683,7 +683,7 @@ zloader_t *dnslib_zload_open(const char *filename)
 	crc_path = strcat(crc_path, ".crc");
 	FILE *f_crc = fopen(crc_path, "r");
 	if (unlikely(!f_crc)) {
-		debug_dnslib_zload("dnslib_zload_open: failed to open '%s'\n",
+		debug_knot_zload("knot_zload_open: failed to open '%s'\n",
 		                   crc_path);
 		fclose(f);
 		free(crc_path);
@@ -693,7 +693,7 @@ zloader_t *dnslib_zload_open(const char *filename)
 
 	unsigned long crc_from_file = 0;
 	if (fscanf(f_crc, "%lu\n", &crc_from_file) != 1) {
-		debug_dnslib_zload("dnslib_zload_open: could not read "
+		debug_knot_zload("knot_zload_open: could not read "
 		                   "CRC from file '%s'\n",
 		                   crc_path);
 		fclose(f_crc);
@@ -707,7 +707,7 @@ zloader_t *dnslib_zload_open(const char *filename)
 
 	/* Compare calculated and read CRCs. */
 	if (crc_from_file != crc_calculated) {
-		debug_dnslib_zload("dnslib_zload_open: CRC failed for "
+		debug_knot_zload("knot_zload_open: CRC failed for "
 		                   "file '%s'\n",
 		                   filename);
 		fclose(f);
@@ -717,9 +717,9 @@ zloader_t *dnslib_zload_open(const char *filename)
 
 	/* Check magic sequence. */
 	static const uint8_t MAGIC[MAGIC_LENGTH] = MAGIC_BYTES;
-	if (!dnslib_check_magic(f, MAGIC, MAGIC_LENGTH)) {
+	if (!knot_check_magic(f, MAGIC, MAGIC_LENGTH)) {
 		fclose(f);
-		debug_dnslib_zload("dnslib_zload_open: magic bytes "
+		debug_knot_zload("knot_zload_open: magic bytes "
 				   "in don't match '%*s' "
 			 "(%s)\n",
 			 (int)MAGIC_LENGTH, (const char*)MAGIC, filename);
@@ -730,7 +730,7 @@ zloader_t *dnslib_zload_open(const char *filename)
 	/* Read source file length. */
 	uint32_t sflen = 0;
 	if (!fread_wrapper(&sflen, 1, sizeof(uint32_t), f)) {
-		debug_dnslib_zload("dnslib_zload_open: failed to read "
+		debug_knot_zload("knot_zload_open: failed to read "
 				   "sfile length\n");
 		fclose(f);
 		errno = EIO; // I/O error.
@@ -740,14 +740,14 @@ zloader_t *dnslib_zload_open(const char *filename)
 	/* Read source file. */
 	char *sfile = malloc(sflen);
 	if (!sfile) {
-		debug_dnslib_zload("dnslib_zload_open: invalid sfile "
+		debug_knot_zload("knot_zload_open: invalid sfile "
 				   "length %u\n", sflen);
 		fclose(f);
 		errno = ENOMEM; // Not enough space.
 		return NULL;
 	}
 	if (!fread_wrapper(sfile, 1, sflen, f)) {
-		debug_dnslib_zload("dnslib_zload_open: failed to read %uB "
+		debug_knot_zload("knot_zload_open: failed to read %uB "
 				   "source file\n",
 			 sflen);
 		free(sfile);
@@ -765,7 +765,7 @@ zloader_t *dnslib_zload_open(const char *filename)
 		return NULL;
 	}
 
-	debug_dnslib_zload("dnslib_zload_open: opened '%s' as fp %p "
+	debug_knot_zload("knot_zload_open: opened '%s' as fp %p "
 			   "(source is '%s')\n",
 		 filename, f, sfile);
 	zl->filename = strdup(filename);
@@ -774,17 +774,17 @@ zloader_t *dnslib_zload_open(const char *filename)
 	return zl;
 }
 
-static void cleanup_id_array(dnslib_dname_t **id_array,
+static void cleanup_id_array(knot_dname_t **id_array,
 			     const uint from, const uint to)
 {
 	for (uint i = from; i < to; i++) {
-		dnslib_dname_release(id_array[i]);
+		knot_dname_release(id_array[i]);
 	}
 
 	free(id_array);
 }
 
-//static dnslib_dname_table_t *create_dname_table(FILE *f, uint max_id)
+//static knot_dname_table_t *create_dname_table(FILE *f, uint max_id)
 //{
 //	if (f == NULL ) {
 //		return NULL;
@@ -794,19 +794,19 @@ static void cleanup_id_array(dnslib_dname_t **id_array,
 //		return NULL;
 //	}
 
-//	dnslib_dname_table_t *dname_table = dnslib_dname_table_new();
+//	knot_dname_table_t *dname_table = knot_dname_table_new();
 //	if (dname_table == NULL) {
 //		return NULL;
 //	}
 
 //	/* Create nodes containing dnames. */
 //	for (uint i = 1; i < max_id; i++) {
-//		dnslib_dname_t *loaded_dname = read_dname_with_id(f);
+//		knot_dname_t *loaded_dname = read_dname_with_id(f);
 //		if (loaded_dname == NULL) {
-//			dnslib_dname_table_deep_free(&dname_table);
+//			knot_dname_table_deep_free(&dname_table);
 //			return NULL;
 //		}
-//		if (dnslib_dname_table_add_dname(dname_table,
+//		if (knot_dname_table_add_dname(dname_table,
 //		                                 loaded_dname) != DNSLIB_EOK) {
 
 //		}
@@ -815,28 +815,28 @@ static void cleanup_id_array(dnslib_dname_t **id_array,
 //	return dname_table;
 //}
 
-static dnslib_dname_table_t *create_dname_table_from_array(
-	dnslib_dname_t **array, uint max_id)
+static knot_dname_table_t *create_dname_table_from_array(
+	knot_dname_t **array, uint max_id)
 {
 	if (array == NULL) {
 		/* should I set errno or what ... ? */
-		debug_dnslib_zload("No array passed\n");
+		debug_knot_zload("No array passed\n");
 		return NULL;
 	}
 
 	assert(array[0] == NULL);
 
-	dnslib_dname_table_t *ret = dnslib_dname_table_new();
+	knot_dname_table_t *ret = knot_dname_table_new();
 	CHECK_ALLOC_LOG(ret, NULL);
 
 	/* Table will have max_id entries */
 	for (uint i = 1; i < max_id; i++) {
 		assert(array[i]);
-		if (dnslib_dname_table_add_dname(ret,
+		if (knot_dname_table_add_dname(ret,
 						 array[i]) != DNSLIB_EOK) {
-			debug_dnslib_zload("Could not add: %s\n",
-			                   dnslib_dname_to_str(array[i]));
-			dnslib_dname_table_deep_free(&ret);
+			debug_knot_zload("Could not add: %s\n",
+			                   knot_dname_to_str(array[i]));
+			knot_dname_table_deep_free(&ret);
 			return NULL;
 		}
 	}
@@ -844,23 +844,23 @@ static dnslib_dname_table_t *create_dname_table_from_array(
 	return ret;
 }
 
-static dnslib_dname_t **create_dname_array(FILE *f, uint max_id)
+static knot_dname_t **create_dname_array(FILE *f, uint max_id)
 {
 	if (f == NULL) {
 		return NULL;
 	}
 
-	dnslib_dname_t **array =
-		malloc(sizeof(dnslib_dname_t *) * ( max_id + 1));
-	memset(array, 0, sizeof(dnslib_dname_t *) * (max_id + 1));
+	knot_dname_t **array =
+		malloc(sizeof(knot_dname_t *) * ( max_id + 1));
+	memset(array, 0, sizeof(knot_dname_t *) * (max_id + 1));
 	if (array == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
 
 	for (uint i = 0; i < max_id - 1; i++) {
-		dnslib_dname_t *read_dname = read_dname_with_id(f);
-//		printf("First dname: %s\n", dnslib_dname_to_str(array[i]));
+		knot_dname_t *read_dname = read_dname_with_id(f);
+//		printf("First dname: %s\n", knot_dname_to_str(array[i]));
 		if (read_dname == NULL) {
 			cleanup_id_array(array, 0, i);
 			return NULL;
@@ -869,13 +869,13 @@ static dnslib_dname_t **create_dname_array(FILE *f, uint max_id)
 		if (read_dname->id < max_id) {
 
 			/* Create new node from dname. */
-			read_dname->node = dnslib_node_new(read_dname, NULL, 0);
+			read_dname->node = knot_node_new(read_dname, NULL, 0);
 
 			if (read_dname->node == NULL) {
 				ERR_ALLOC_FAILED;
 
 				/* Release read dname. */
-				dnslib_dname_release(read_dname);
+				knot_dname_release(read_dname);
 				cleanup_id_array(array, 0, i);
 				return NULL;
 			}
@@ -884,7 +884,7 @@ static dnslib_dname_t **create_dname_array(FILE *f, uint max_id)
 			array[read_dname->id] = read_dname;
 		} else {
 			/* Release read dname. */
-			dnslib_dname_release(read_dname);
+			knot_dname_release(read_dname);
 			cleanup_id_array(array, 0, i);
 			return NULL;
 		}
@@ -895,7 +895,7 @@ static dnslib_dname_t **create_dname_array(FILE *f, uint max_id)
 	return array;
 }
 
-dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
+knot_zone_t *knot_zload_load(zloader_t *loader)
 {
 	if (!loader) {
 		return NULL;
@@ -905,10 +905,10 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 
 	FILE *f = loader->fp;
 
-	dnslib_node_t *tmp_node;
+	knot_node_t *tmp_node;
 
 	/* Load the dname table. */
-//	const dnslib_dname_table_t *dname_table =
+//	const knot_dname_table_t *dname_table =
 //		create_dname_table(f, total_dnames);
 //	if (dname_table == NULL) {
 //		return NULL;
@@ -929,9 +929,9 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	      sizeof(auth_node_count), 1, f)) {
 		return NULL;
 	}
-	debug_dnslib_zload("authoritative nodes: %u\n", auth_node_count);
+	debug_knot_zload("authoritative nodes: %u\n", auth_node_count);
 
-	debug_dnslib_zload("loading %u nodes\n", node_count);
+	debug_knot_zload("loading %u nodes\n", node_count);
 
 	uint32_t total_dnames = 0;
 	/* First, read number of dnames in dname table. */
@@ -939,15 +939,15 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		return NULL;
 	}
 
-	debug_dnslib_zload("total dname count: %d\n", total_dnames);
+	debug_knot_zload("total dname count: %d\n", total_dnames);
 
 	/* Create id array. */
-	dnslib_dname_t **id_array = create_dname_array(f, total_dnames);
+	knot_dname_t **id_array = create_dname_array(f, total_dnames);
 	if (id_array == NULL) {
 		return NULL;
 	}
 
-	dnslib_dname_table_t *dname_table =
+	knot_dname_table_t *dname_table =
 		create_dname_table_from_array(id_array, total_dnames);
 	if (dname_table == NULL) {
 		ERR_ALLOC_FAILED;
@@ -955,7 +955,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		return NULL;
 	}
 
-	dnslib_node_t *apex = dnslib_load_node(f, id_array);
+	knot_node_t *apex = knot_load_node(f, id_array);
 
 	if (!apex) {
 		fprintf(stderr, "zone: Could not load apex node (in %s)\n",
@@ -965,45 +965,45 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		return NULL;
 	}
 
-	dnslib_zone_t *zone = dnslib_zone_new(apex, auth_node_count, 0);
+	knot_zone_t *zone = knot_zone_new(apex, auth_node_count, 0);
 	if (zone == NULL) {
 		cleanup_id_array(id_array, 1,
 				 node_count + nsec3_node_count + 1);
 		return NULL;
 	}
 
-	dnslib_zone_contents_t *contents = dnslib_zone_get_contents(zone);
+	knot_zone_contents_t *contents = knot_zone_get_contents(zone);
 
 	/* Assign dname table to the new zone. */
 	contents->dname_table = dname_table;
 
 //	apex->prev = NULL;
-	dnslib_node_set_previous(apex, NULL);
+	knot_node_set_previous(apex, NULL);
 
-	dnslib_node_t *last_node;
+	knot_node_t *last_node;
 
 	last_node = apex;
 
 	for (uint i = 1; i < node_count; i++) {
-		tmp_node = dnslib_load_node(f, id_array);
+		tmp_node = knot_load_node(f, id_array);
 
 		if (tmp_node != NULL) {
-			if (dnslib_zone_contents_add_node(contents, tmp_node,
+			if (knot_zone_contents_add_node(contents, tmp_node,
 			                                  0, 0, 0) != 0) {
 				fprintf(stderr, "!! cannot add node\n");
 				continue;
 			}
-			if (dnslib_dname_is_wildcard(tmp_node->owner)) {
+			if (knot_dname_is_wildcard(tmp_node->owner)) {
 				find_and_set_wildcard_child(contents,
 				                            tmp_node, 0);
 			}
 
-			dnslib_node_set_previous(tmp_node, last_node);
+			knot_node_set_previous(tmp_node, last_node);
 //			tmp_node->prev = last_node;
 
 			if (tmp_node->rrset_count &&
-			    (dnslib_node_is_deleg_point(tmp_node) ||
-			    !dnslib_node_is_non_auth(tmp_node))) {
+			    (knot_node_is_deleg_point(tmp_node) ||
+			    !knot_node_is_non_auth(tmp_node))) {
 				last_node = tmp_node;
 			}
 
@@ -1013,49 +1013,49 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 		}
 	}
 
-	assert(dnslib_node_previous(dnslib_zone_contents_apex(contents), 0)
+	assert(knot_node_previous(knot_zone_contents_apex(contents), 0)
 	       == NULL);
 
-	dnslib_node_set_previous(dnslib_zone_contents_get_apex(contents),
+	knot_node_set_previous(knot_zone_contents_get_apex(contents),
 	                         last_node);
 
-	debug_dnslib_zload("loading %u nsec3 nodes\n", nsec3_node_count);
+	debug_knot_zload("loading %u nsec3 nodes\n", nsec3_node_count);
 
-	dnslib_node_t *nsec3_first = NULL;
+	knot_node_t *nsec3_first = NULL;
 
 	if (nsec3_node_count > 0) {
-		nsec3_first = dnslib_load_node(f, id_array);
+		nsec3_first = knot_load_node(f, id_array);
 
 		assert(nsec3_first != NULL);
 
-		if (dnslib_zone_contents_add_nsec3_node(contents, nsec3_first, 0, 0, 0)
+		if (knot_zone_contents_add_nsec3_node(contents, nsec3_first, 0, 0, 0)
 		    != 0) {
 			fprintf(stderr, "!! cannot add first nsec3 node, "
 				"exiting.\n");
-			dnslib_zone_deep_free(&zone, 1);
+			knot_zone_deep_free(&zone, 1);
 			free(id_array);
 			/* TODO this will leak dnames from id_array that were
 			 * not assigned. */
 			return NULL;
 		}
 
-		dnslib_node_set_previous(nsec3_first, NULL);
+		knot_node_set_previous(nsec3_first, NULL);
 //		nsec3_first->prev = NULL;
 
 		last_node = nsec3_first;
 	}
 
 	for (uint i = 1; i < nsec3_node_count; i++) {
-		tmp_node = dnslib_load_node(f, id_array);
+		tmp_node = knot_load_node(f, id_array);
 
 		if (tmp_node != NULL) {
-			if (dnslib_zone_contents_add_nsec3_node(contents,
+			if (knot_zone_contents_add_nsec3_node(contents,
 			    tmp_node, 0, 0, 0) != 0) {
 				fprintf(stderr, "!! cannot add nsec3 node\n");
 				continue;
 			}
 
-			dnslib_node_set_previous(tmp_node, last_node);
+			knot_node_set_previous(tmp_node, last_node);
 //			tmp_node->prev = last_node;
 
 			last_node = tmp_node;
@@ -1066,15 +1066,15 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	}
 
 	if (nsec3_node_count) {
-		assert(dnslib_node_previous(nsec3_first, 0) == NULL);
-		dnslib_node_set_previous(nsec3_first, last_node);
+		assert(knot_node_previous(nsec3_first, 0) == NULL);
+		knot_node_set_previous(nsec3_first, last_node);
 //		nsec3_first->prev = last_node;
 	}
 
 	/* ID array is now useless */
 	for (uint i = 1; i < total_dnames; i++) {
 		/* Added to table, may discard now. */
-		dnslib_dname_release(id_array[i]);
+		knot_dname_release(id_array[i]);
 	}
 	free(id_array);
 
@@ -1082,7 +1082,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 	return zone;
 }
 
-int dnslib_zload_needs_update(zloader_t *loader)
+int knot_zload_needs_update(zloader_t *loader)
 {
 	if (!loader) {
 		return 1;
@@ -1109,7 +1109,7 @@ int dnslib_zload_needs_update(zloader_t *loader)
 	return 0;
 }
 
-void dnslib_zload_close(zloader_t *loader)
+void knot_zload_close(zloader_t *loader)
 {
 	if (!loader) {
 		return;
@@ -1121,7 +1121,7 @@ void dnslib_zload_close(zloader_t *loader)
 	free(loader);
 }
 
-int dnslib_zload_rrset_deserialize(dnslib_rrset_t **rrset,
+int knot_zload_rrset_deserialize(knot_rrset_t **rrset,
                                    uint8_t *stream, size_t *size)
 {
 	if (stream == NULL || size == 0 || *rrset != NULL) {
@@ -1130,27 +1130,27 @@ int dnslib_zload_rrset_deserialize(dnslib_rrset_t **rrset,
 
 	fread_wrapper = read_from_stream;
 
-	dnslib_zload_stream = stream;
-	dnslib_zload_stream_remaining = dnslib_zload_stream_size = *size;
+	knot_zload_stream = stream;
+	knot_zload_stream_remaining = knot_zload_stream_size = *size;
 
-	dnslib_rrset_t *ret = dnslib_load_rrset(NULL, NULL, 0);
+	knot_rrset_t *ret = knot_load_rrset(NULL, NULL, 0);
 
 	if (ret == NULL) {
-		dnslib_zload_stream = NULL;
-		dnslib_zload_stream_remaining = 0;
-		dnslib_zload_stream_size = 0;
+		knot_zload_stream = NULL;
+		knot_zload_stream_remaining = 0;
+		knot_zload_stream_size = 0;
 		return DNSLIB_EMALF;
 	}
 
-//	printf("dnslib_zload_stream_size: %d, dnslib_zload_stream_remaning: %d\n",
-//	       dnslib_zload_stream_size, dnslib_zload_stream_remaining);
+//	printf("knot_zload_stream_size: %d, knot_zload_stream_remaning: %d\n",
+//	       knot_zload_stream_size, knot_zload_stream_remaining);
 
-	*size = dnslib_zload_stream_remaining;
+	*size = knot_zload_stream_remaining;
 	*rrset = ret;
 
-	dnslib_zload_stream = NULL;
-	dnslib_zload_stream_remaining = 0;
-	dnslib_zload_stream_size = 0;
+	knot_zload_stream = NULL;
+	knot_zload_stream_remaining = 0;
+	knot_zload_stream_size = 0;
 
 	return DNSLIB_EOK;
 }

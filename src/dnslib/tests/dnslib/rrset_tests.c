@@ -10,15 +10,15 @@
 #include "dnslib/node.h"
 #include "dnslib/debug.h"
 
-static int dnslib_rrset_tests_count(int argc, char *argv[]);
-static int dnslib_rrset_tests_run(int argc, char *argv[]);
+static int knot_rrset_tests_count(int argc, char *argv[]);
+static int knot_rrset_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
 unit_api rrset_tests_api = {
 	"DNS library - rrset",        //! Unit name
-	&dnslib_rrset_tests_count,  //! Count scheduled tests
-	&dnslib_rrset_tests_run     //! Run scheduled tests
+	&knot_rrset_tests_count,  //! Count scheduled tests
+	&knot_rrset_tests_run     //! Run scheduled tests
 };
 
 /*----------------------------------------------------------------------------*/
@@ -26,7 +26,7 @@ unit_api rrset_tests_api = {
  *  Unit implementation.
  */
 
-static dnslib_node_t *NODE_ADDRESS = (dnslib_node_t *)0xDEADBEEF;
+static knot_node_t *NODE_ADDRESS = (knot_node_t *)0xDEADBEEF;
 
 enum { TEST_RRSETS = 6 , TEST_RRSIGS = 6};
 
@@ -46,8 +46,8 @@ struct test_rrset {
 	uint16_t type;
 	uint16_t rclass;
 	uint32_t  ttl;
-	dnslib_rdata_t *rdata;
-	const dnslib_rrset_t *rrsigs;
+	knot_rdata_t *rdata;
+	const knot_rrset_t *rrsigs;
 };
 
 /* this has to changed */
@@ -63,7 +63,7 @@ enum {
 
 enum { TEST_DOMAINS_OK = 8 };
 
-static dnslib_dname_t RR_DNAMES[RR_DNAMES_COUNT] =
+static knot_dname_t RR_DNAMES[RR_DNAMES_COUNT] =
 	{ {(uint8_t *)"\7example\3com", 13, NULL}, //0's at the end are added
 	  {(uint8_t *)"\3ns1\7example\3com", 17, NULL},
 	  {(uint8_t *)"\3ns2\7example\3com", 17, NULL} };
@@ -71,14 +71,14 @@ static dnslib_dname_t RR_DNAMES[RR_DNAMES_COUNT] =
 /*                         192.168.1.1 */
 static uint8_t address[4] = {0xc0, 0xa8, 0x01, 0x01};
 
-static dnslib_rdata_item_t RR_ITEMS[RR_ITEMS_COUNT] =
+static knot_rdata_item_t RR_ITEMS[RR_ITEMS_COUNT] =
 	{ {.dname = &RR_DNAMES[1]},
 	  {.dname = &RR_DNAMES[2]},
           {.raw_data = (uint16_t *)address} };
 
 /*! \warning Do not change the order. */
 /* TODO this does not work as expected */
-static dnslib_rdata_t RR_RDATA[RR_RDATA_COUNT] =
+static knot_rdata_t RR_RDATA[RR_RDATA_COUNT] =
 	{ {&RR_ITEMS[0], 1, &RR_RDATA[0]}, /* first ns */
 	  {&RR_ITEMS[1], 1, &RR_RDATA[1]}, /* second ns */
 	  {&RR_ITEMS[0], 1, &RR_RDATA[3]}, /* both in cyclic list */
@@ -139,7 +139,7 @@ static void generate_rdata(uint8_t *data, int size)
 }
 
 static int fill_rdata_r(uint8_t *data, int max_size, uint16_t rrtype,
-		      dnslib_rdata_t *rdata)
+		      knot_rdata_t *rdata)
 {
 	assert(rdata != NULL);
 	assert(data != NULL);
@@ -151,18 +151,18 @@ static int fill_rdata_r(uint8_t *data, int max_size, uint16_t rrtype,
 
 //	note("Filling RRType %u", rrtype);
 
-	dnslib_rrtype_descriptor_t *desc =
-	dnslib_rrtype_descriptor_by_type(rrtype);
+	knot_rrtype_descriptor_t *desc =
+	knot_rrtype_descriptor_by_type(rrtype);
 
 	uint item_count = desc->length;
-	dnslib_rdata_item_t *items =
-	(dnslib_rdata_item_t *)malloc(item_count
-				      * sizeof(dnslib_rdata_item_t));
+	knot_rdata_item_t *items =
+	(knot_rdata_item_t *)malloc(item_count
+				      * sizeof(knot_rdata_item_t));
 
 	for (int i = 0; i < item_count; ++i) {
 		uint size = 0;
 		int domain = 0;
-		dnslib_dname_t *dname = NULL;
+		knot_dname_t *dname = NULL;
 		int binary = 0;
 		int stored_size = 0;
 
@@ -170,21 +170,21 @@ static int fill_rdata_r(uint8_t *data, int max_size, uint16_t rrtype,
 		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
 		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
 		case DNSLIB_RDATA_WF_LITERAL_DNAME:
-			dname = dnslib_dname_new_from_wire(
+			dname = knot_dname_new_from_wire(
 					(uint8_t *)test_domains_ok[0].wire,
 					test_domains_ok[0].size, NULL);
 			assert(dname != NULL);
 //			note("Created domain name: %s",
-//				dnslib_dname_name(dname));
+//				knot_dname_name(dname));
 //			note("Domain name ptr: %p", dname);
 			domain = 1;
-			size = dnslib_dname_size(dname);
+			size = knot_dname_size(dname);
 //			note("Size of created domain name: %u", size);
 			assert(size < DNSLIB_MAX_RDATA_ITEM_SIZE);
 			// store size of the domain name
 			*(pos++) = size;
 			// copy the domain name
-			memcpy(pos, dnslib_dname_name(dname), size);
+			memcpy(pos, knot_dname_name(dname), size);
 			pos += size;
 			break;
 		default:
@@ -196,7 +196,7 @@ static int fill_rdata_r(uint8_t *data, int max_size, uint16_t rrtype,
 			// Rewrite the actual 2 bytes in the data array
 			// with length.
 			// (this is a bit ugly, but does the work ;-)
-			dnslib_wire_write_u16(pos, size);
+			knot_wire_write_u16(pos, size);
 			//*pos = size;
 		}
 
@@ -206,7 +206,7 @@ static int fill_rdata_r(uint8_t *data, int max_size, uint16_t rrtype,
 
 		if (domain) {
 			items[i].dname = dname;
-			wire_size += dnslib_dname_size(dname);
+			wire_size += knot_dname_size(dname);
 /*			note("Saved domain name ptr on index %d: %p",
 			      i, items[i].dname); */
 		} else {
@@ -221,9 +221,9 @@ static int fill_rdata_r(uint8_t *data, int max_size, uint16_t rrtype,
 		}
 	}
 
-	int res = dnslib_rdata_set_items(rdata, items, item_count);
+	int res = knot_rdata_set_items(rdata, items, item_count);
 	if (res != 0) {
-		diag("dnslib_rdata_set_items() returned %d.", res);
+		diag("knot_rdata_set_items() returned %d.", res);
 		free(items);
 		return -1;
 	} else {
@@ -235,7 +235,7 @@ static int fill_rdata_r(uint8_t *data, int max_size, uint16_t rrtype,
 /* fills test_rrsets with random rdata when empty */
 static void create_rdata()
 {
-	dnslib_rdata_t *r;
+	knot_rdata_t *r;
 
 	uint8_t *data =
 		malloc(sizeof(uint8_t) * DNSLIB_MAX_RDATA_WIRE_SIZE);
@@ -244,7 +244,7 @@ static void create_rdata()
 
 	for (int i = 0; i < TEST_RRSETS; i++) {
 		if (test_rrsets[i].rdata == NULL) {
-			r = dnslib_rdata_new();
+			r = knot_rdata_new();
 
 			/* from rdata tests */
 			generate_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE);
@@ -261,7 +261,7 @@ static void create_rdata()
 	free(data);
 }
 
-static int check_rrset(const dnslib_rrset_t *rrset, int i,
+static int check_rrset(const knot_rrset_t *rrset, int i,
                        int check_rdata, int check_items,
 		       int check_rrsigs)
 {
@@ -273,7 +273,7 @@ static int check_rrset(const dnslib_rrset_t *rrset, int i,
 		return 1;
 	}
 
-	char *owner = dnslib_dname_to_str(rrset->owner);
+	char *owner = knot_dname_to_str(rrset->owner);
 	if (strcmp(owner, test_rrsets[i].owner) != 0) {
 		diag("OWNER domain name wrong: '%s' (should be '%s')",
 		     owner, test_rrsets[i].owner);
@@ -301,7 +301,7 @@ static int check_rrset(const dnslib_rrset_t *rrset, int i,
 
 	if (check_rdata) {
 		/* TODO use rdata_compare */
-		dnslib_rdata_t *rdata = rrset->rdata;
+		knot_rdata_t *rdata = rrset->rdata;
 
 		if (rdata == NULL) {
 			diag("There are no RDATAs in the RRSet");
@@ -323,9 +323,9 @@ static int check_rrset(const dnslib_rrset_t *rrset, int i,
 	}
 
 	if (check_items) {
-		dnslib_rrtype_descriptor_t *desc =
-			dnslib_rrtype_descriptor_by_type(rrset->type);
-		if (dnslib_rdata_compare(rrset->rdata,
+		knot_rrtype_descriptor_t *desc =
+			knot_rrtype_descriptor_by_type(rrset->type);
+		if (knot_rdata_compare(rrset->rdata,
 			                 test_rrsets[i].rdata,
 					 desc->wireformat) != 0) {
 			diag("Rdata items do not match.");
@@ -344,9 +344,9 @@ static int check_rrset(const dnslib_rrset_t *rrset, int i,
 
 	if (check_rrsigs) {
 
-		const dnslib_rrset_t *rrsigs;
+		const knot_rrset_t *rrsigs;
 
-		rrsigs = dnslib_rrset_rrsigs(rrset);
+		rrsigs = knot_rrset_rrsigs(rrset);
 		if (strcmp((const char *)rrsigs->rdata->items[0].raw_data,
 		                signature_strings[i])) {
 			diag("Signatures are not equal"
@@ -365,7 +365,7 @@ static int test_rrset_create()
 	int errors = 0;
 
 	for (int i = 0; i < TEST_RRSETS; ++i) {
-		dnslib_dname_t *owner = dnslib_dname_new_from_str(
+		knot_dname_t *owner = knot_dname_new_from_str(
 		                            test_rrsets[i].owner,
 		                            strlen(test_rrsets[i].owner),
 		                            NODE_ADDRESS);
@@ -373,15 +373,15 @@ static int test_rrset_create()
 			diag("Error creating owner domain name!");
 			return 0;
 		}
-		dnslib_rrset_t *rrset = dnslib_rrset_new(owner,
+		knot_rrset_t *rrset = knot_rrset_new(owner,
 		                                         test_rrsets[i].type,
 		                                         test_rrsets[i].rclass,
 		                                         test_rrsets[i].ttl);
 
 		errors += check_rrset(rrset, i, 0, 0, 0);
 
-		dnslib_rrset_free(&rrset);
-		dnslib_dname_free(&owner);
+		knot_rrset_free(&rrset);
+		knot_dname_free(&owner);
 	}
 
 	//diag("Total errors: %d", errors);
@@ -400,7 +400,7 @@ static int test_rrset_add_rdata()
 	/* rdata add */
 	int errors = 0;
 	for (int i = 0; i < TEST_RRSETS; i++) {
-		dnslib_dname_t *owner = dnslib_dname_new_from_str(
+		knot_dname_t *owner = knot_dname_new_from_str(
 		                            test_rrsets[i].owner,
 		                            strlen(test_rrsets[i].owner),
 		                            NODE_ADDRESS);
@@ -409,17 +409,17 @@ static int test_rrset_add_rdata()
 			return 0;
 		}
 
-		dnslib_rrset_t *rrset = dnslib_rrset_new(owner,
+		knot_rrset_t *rrset = knot_rrset_new(owner,
 		                                         test_rrsets[i].type,
 		                                         test_rrsets[i].rclass,
 		                                         test_rrsets[i].ttl);
 
-		dnslib_rrset_add_rdata(rrset, test_rrsets[i].rdata);
+		knot_rrset_add_rdata(rrset, test_rrsets[i].rdata);
 
 		errors += check_rrset(rrset, i, 1, 0, 0);
 
-		dnslib_rrset_free(&rrset);
-		dnslib_dname_free(&owner);
+		knot_rrset_free(&rrset);
+		knot_dname_free(&owner);
 	}
 
 	/* test whether adding works properly = keeps order of added elements */
@@ -429,11 +429,11 @@ static int test_rrset_add_rdata()
 	 * may change.
 	 */
 
-	dnslib_rrset_t *rrset = dnslib_rrset_new(NULL, 0, 0, 0);
+	knot_rrset_t *rrset = knot_rrset_new(NULL, 0, 0, 0);
 
-	dnslib_rdata_t *r;
+	knot_rdata_t *r;
 
-	dnslib_rdata_item_t *item;
+	knot_rdata_item_t *item;
 
 	static const char *test_strings[10] =
 	    { "-2", "9", "2", "10", "1", "5", "8", "4", "6", "7" };
@@ -441,16 +441,16 @@ static int test_rrset_add_rdata()
 	/* add items */
 
 	for (int i = 0; i < 10; i++) {
-		r = dnslib_rdata_new();
-		item = malloc(sizeof(dnslib_rdata_item_t));
+		r = knot_rdata_new();
+		item = malloc(sizeof(knot_rdata_item_t));
 		item->raw_data = (uint16_t *)test_strings[i];
 		//following statement creates a copy
-		dnslib_rdata_set_items(r, item, 1);
-		dnslib_rrset_add_rdata(rrset, r);
+		knot_rdata_set_items(r, item, 1);
+		knot_rrset_add_rdata(rrset, r);
 		free(item);
 	}
 
-	dnslib_rdata_t *tmp = rrset->rdata;
+	knot_rdata_t *tmp = rrset->rdata;
 
 	/* check if order has been kept */
 
@@ -468,17 +468,17 @@ static int test_rrset_add_rdata()
 
 	tmp = rrset->rdata;
 
-	dnslib_rdata_t *next;
+	knot_rdata_t *next;
 
 	while (tmp->next != rrset->rdata) {
 		next = tmp->next;
-		dnslib_rdata_free(&tmp);
+		knot_rdata_free(&tmp);
 		tmp = next;
 	}
 
-	dnslib_rdata_free(&tmp);
+	knot_rdata_free(&tmp);
 
-	dnslib_rrset_free(&rrset);
+	knot_rrset_free(&rrset);
 
 	return (errors == 0);
 }
@@ -487,103 +487,103 @@ static int test_rrset_rrsigs()
 {
 	int errors = 0;
 
-	dnslib_rdata_item_t *item;
+	knot_rdata_item_t *item;
 
-	dnslib_rdata_t *tmp;
+	knot_rdata_t *tmp;
 
-	dnslib_dname_t *owner;
+	knot_dname_t *owner;
 
-	dnslib_rrset_t *rrset;
+	knot_rrset_t *rrset;
 
 	/* Gets rrsigs and checks, if signatures are the same */
 
 	for (int i = 0; i < TEST_RRSETS; i++) {
-		owner = dnslib_dname_new_from_str(test_rrsets[i].owner,
+		owner = knot_dname_new_from_str(test_rrsets[i].owner,
 		strlen(test_rrsets[i].owner), NODE_ADDRESS);
 		if (owner == NULL) {
 			diag("Error creating owner domain name!");
 			return 0;
 		}
 
-		rrset = dnslib_rrset_new(owner, test_rrsets[i].type,
+		rrset = knot_rrset_new(owner, test_rrsets[i].type,
 		test_rrsets[i].rclass, test_rrsets[i].ttl);
 
-		dnslib_rrset_add_rdata(rrset, test_rrsets[i].rdata);
+		knot_rrset_add_rdata(rrset, test_rrsets[i].rdata);
 
 		//owners are the same
 
 		assert(TEST_RRSETS == TEST_RRSIGS);
 
-		dnslib_rrset_t *rrsig = dnslib_rrset_new(owner,
+		knot_rrset_t *rrsig = knot_rrset_new(owner,
 		                                         test_rrsigs[i].type,
 		                                         test_rrsigs[i].rclass,
 		                                         test_rrsigs[i].ttl);
 
-		tmp = dnslib_rdata_new();
-		item = malloc(sizeof(dnslib_rdata_item_t));
+		tmp = knot_rdata_new();
+		item = malloc(sizeof(knot_rdata_item_t));
 		/* signature is just a string,
 		 * should be sufficient for testing */
 		item->raw_data = (uint16_t *)signature_strings[i];
-		dnslib_rdata_set_items(tmp, item, 1);
-		dnslib_rrset_add_rdata(rrsig, tmp);
+		knot_rdata_set_items(tmp, item, 1);
+		knot_rrset_add_rdata(rrsig, tmp);
 
-		if (dnslib_rrset_set_rrsigs(rrset, rrsig)
+		if (knot_rrset_set_rrsigs(rrset, rrsig)
 		      != 0) {
 			diag("Could not set rrsig");
 			errors++;
 		}
 		errors += check_rrset(rrset, i, 0, 0, 1);
-		dnslib_dname_free(&owner);
-		dnslib_rrset_free(&rrset);
+		knot_dname_free(&owner);
+		knot_rrset_free(&rrset);
 		free(item);
-		dnslib_rdata_free(&tmp);
-		dnslib_rrset_free(&rrsig);
+		knot_rdata_free(&tmp);
+		knot_rrset_free(&rrsig);
 	}
 	return (errors == 0);
 }
 
 static int test_rrset_merge()
 {
-	dnslib_rrset_t *merger1;
-	dnslib_rrset_t *merger2;
-	dnslib_dname_t *owner1;
-	dnslib_dname_t *owner2;
+	knot_rrset_t *merger1;
+	knot_rrset_t *merger2;
+	knot_dname_t *owner1;
+	knot_dname_t *owner2;
 
 	int r;
 
-	owner1 = dnslib_dname_new_from_str(test_rrsets[3].owner,
+	owner1 = knot_dname_new_from_str(test_rrsets[3].owner,
 					   strlen(test_rrsets[3].owner), NULL);
-	merger1 = dnslib_rrset_new(owner1, test_rrsets[3].type,
+	merger1 = knot_rrset_new(owner1, test_rrsets[3].type,
 	                           test_rrsets[3].rclass,
 				   test_rrsets[3].ttl);
 
-	dnslib_rrset_add_rdata(merger1, test_rrsets[3].rdata);
+	knot_rrset_add_rdata(merger1, test_rrsets[3].rdata);
 
-	owner2 = dnslib_dname_new_from_str(test_rrsets[4].owner,
+	owner2 = knot_dname_new_from_str(test_rrsets[4].owner,
 					   strlen(test_rrsets[4].owner), NULL);
-	merger2 = dnslib_rrset_new(owner2, test_rrsets[4].type,
+	merger2 = knot_rrset_new(owner2, test_rrsets[4].type,
 	                           test_rrsets[4].rclass,
 				   test_rrsets[4].ttl);
 
-	dnslib_rrset_add_rdata(merger2, test_rrsets[4].rdata);
+	knot_rrset_add_rdata(merger2, test_rrsets[4].rdata);
 
-//	dnslib_rrset_dump(merger1, 1);
+//	knot_rrset_dump(merger1, 1);
 
 	int ret = 0;
-	if ((ret = dnslib_rrset_merge((void **)&merger1,
+	if ((ret = knot_rrset_merge((void **)&merger1,
 	                              (void **)&merger2)) != 0) {
 		diag("Could not merge rrsets. (reason %d)", ret);
 		return 0;
 	}
 
-//	dnslib_rrset_dump(merger1, 1);
+//	knot_rrset_dump(merger1, 1);
 
 	r = check_rrset(merger1, 5, 1, 1, 0);
 
-	dnslib_dname_free(&owner1);
-	dnslib_dname_free(&owner2);
-	dnslib_rrset_free(&merger1);
-	dnslib_rrset_free(&merger2);
+	knot_dname_free(&owner1);
+	knot_dname_free(&owner2);
+	knot_rrset_free(&merger1);
+	knot_rrset_free(&merger2);
 
 	if (r) {
 		diag("Merged rdata are wrongly set.");
@@ -593,12 +593,12 @@ static int test_rrset_merge()
 	return 1;
 }
 
-static int test_rrset_owner(dnslib_rrset_t **rrsets)
+static int test_rrset_owner(knot_rrset_t **rrsets)
 {
 	int errors = 0;
 	for (int i = 0; i < TEST_RRSETS; i++) {
 		char *dname_str =
-			dnslib_dname_to_str(dnslib_rrset_owner(rrsets[i]));
+			knot_dname_to_str(knot_rrset_owner(rrsets[i]));
 		if (strcmp(dname_str, test_rrsets[i].owner)) {
 			diag("Got wrong value for owner from rrset.");
 			errors++;
@@ -608,11 +608,11 @@ static int test_rrset_owner(dnslib_rrset_t **rrsets)
 	return errors;
 }
 
-static int test_rrset_type(dnslib_rrset_t **rrsets)
+static int test_rrset_type(knot_rrset_t **rrsets)
 {
 	int errors = 0;
 	for (int i = 0; i < TEST_RRSETS; i++) {
-		if (dnslib_rrset_type(rrsets[i]) != test_rrsets[i].type) {
+		if (knot_rrset_type(rrsets[i]) != test_rrsets[i].type) {
 			errors++;
 			diag("Got wrong value for type from rrset.");
 		}
@@ -620,11 +620,11 @@ static int test_rrset_type(dnslib_rrset_t **rrsets)
 	return errors;
 }
 
-static int test_rrset_class(dnslib_rrset_t **rrsets)
+static int test_rrset_class(knot_rrset_t **rrsets)
 {
 	int errors = 0;
 	for (int i = 0; i < TEST_RRSETS; i++) {
-		if (dnslib_rrset_class(rrsets[i]) != test_rrsets[i].rclass) {
+		if (knot_rrset_class(rrsets[i]) != test_rrsets[i].rclass) {
 			errors++;
 			diag("Got wrong value for class from rrset.");
 		}
@@ -633,11 +633,11 @@ static int test_rrset_class(dnslib_rrset_t **rrsets)
 	return errors;
 }
 
-static int test_rrset_ttl(dnslib_rrset_t **rrsets)
+static int test_rrset_ttl(knot_rrset_t **rrsets)
 {
 	int errors = 0;
 	for (int i = 0; i < TEST_RRSETS; i++) {
-		if (dnslib_rrset_ttl(rrsets[i]) != test_rrsets[i].ttl) {
+		if (knot_rrset_ttl(rrsets[i]) != test_rrsets[i].ttl) {
 			errors++;
 			diag("Got wrong value for ttl from rrset.");
 		}
@@ -645,21 +645,21 @@ static int test_rrset_ttl(dnslib_rrset_t **rrsets)
 	return errors;
 }
 
-static int test_rrset_ret_rdata(dnslib_rrset_t **rrsets)
+static int test_rrset_ret_rdata(knot_rrset_t **rrsets)
 {
 	int errors = 0;
 
-	dnslib_rrtype_descriptor_t *desc;
+	knot_rrtype_descriptor_t *desc;
 
 	for (int i = 0; i < TEST_RRSETS; i++) {
 
-		desc = dnslib_rrtype_descriptor_by_type(rrsets[i]->type);
+		desc = knot_rrtype_descriptor_by_type(rrsets[i]->type);
 		assert(desc);
 
-//		dnslib_rdata_dump(test_rrsets[i].rdata, 1);
-	//	dnslib_rdata_dump(rrsets[i]->rdata, 1);
+//		knot_rdata_dump(test_rrsets[i].rdata, 1);
+	//	knot_rdata_dump(rrsets[i]->rdata, 1);
 
-		if (dnslib_rdata_compare(dnslib_rrset_rdata(rrsets[i]),
+		if (knot_rdata_compare(knot_rrset_rdata(rrsets[i]),
 			                 test_rrsets[i].rdata,
 					 desc->wireformat)) {
 			errors++;
@@ -669,16 +669,16 @@ static int test_rrset_ret_rdata(dnslib_rrset_t **rrsets)
 	return errors;
 }
 
-static int test_rrset_get_rdata(dnslib_rrset_t **rrsets)
+static int test_rrset_get_rdata(knot_rrset_t **rrsets)
 {
 	int errors = 0;
 
-	dnslib_rrtype_descriptor_t *desc;
+	knot_rrtype_descriptor_t *desc;
 
 	for (int i = 0; i < TEST_RRSETS; i++) {
-		desc = dnslib_rrtype_descriptor_by_type(rrsets[i]->type);
+		desc = knot_rrtype_descriptor_by_type(rrsets[i]->type);
 		assert(desc);
-		if (dnslib_rdata_compare(dnslib_rrset_get_rdata(rrsets[i]),
+		if (knot_rdata_compare(knot_rrset_get_rdata(rrsets[i]),
 			                 test_rrsets[i].rdata,
 					 desc->wireformat)) {
 			errors++;
@@ -688,13 +688,13 @@ static int test_rrset_get_rdata(dnslib_rrset_t **rrsets)
 	return errors;
 }
 
-static int test_rrset_ret_rrsigs(dnslib_rrset_t **rrsets)
+static int test_rrset_ret_rrsigs(knot_rrset_t **rrsets)
 {
 	int errors = 0;
 
 	for (int i = 0; i < TEST_RRSETS; i++) {
 		/* TODO should I test the insides of structure as well? */
-		if (dnslib_rrset_rrsigs(rrsets[i]) != test_rrsets[i].rrsigs) {
+		if (knot_rrset_rrsigs(rrsets[i]) != test_rrsets[i].rrsigs) {
 			errors++;
 			diag("Got wrong value for rrsigs from rrset.");
 		}
@@ -706,10 +706,10 @@ static int test_rrset_getters(uint type)
 {
 	int errors = 0;
 
-	dnslib_rrset_t *rrsets[TEST_RRSETS];
+	knot_rrset_t *rrsets[TEST_RRSETS];
 
 	for (int i = 0; i < TEST_RRSETS; i++) {
-		dnslib_dname_t *owner = dnslib_dname_new_from_str(
+		knot_dname_t *owner = knot_dname_new_from_str(
 		                            test_rrsets[i].owner,
 		                            strlen(test_rrsets[i].owner),
 		                            NODE_ADDRESS);
@@ -717,12 +717,12 @@ static int test_rrset_getters(uint type)
 			diag("Error creating owner domain name!");
 			return 0;
 		}
-		rrsets[i] = dnslib_rrset_new(owner,
+		rrsets[i] = knot_rrset_new(owner,
 		                             test_rrsets[i].type,
 		                             test_rrsets[i].rclass,
 		                             test_rrsets[i].ttl);
 
-		dnslib_rrset_add_rdata(rrsets[i], test_rrsets[i].rdata);
+		knot_rrset_add_rdata(rrsets[i], test_rrsets[i].rdata);
 	}
 
 	switch (type) {
@@ -757,8 +757,8 @@ static int test_rrset_getters(uint type)
 	} /* switch */
 
 	for (int i = 0; i < TEST_RRSETS; i++) {
-		dnslib_dname_free(&rrsets[i]->owner);
-		dnslib_rrset_free(&rrsets[i]);
+		knot_dname_free(&rrsets[i]->owner);
+		knot_rrset_free(&rrsets[i]);
 	}
 
 
@@ -770,10 +770,10 @@ static int test_rrset_deep_free()
 	/*!< \warning Cannot be run when some rdata are on stack! */
 	int errors = 0;
 
-	dnslib_rrset_t  *tmp_rrset;
-	dnslib_dname_t *owner;
+	knot_rrset_t  *tmp_rrset;
+	knot_dname_t *owner;
 	for (int i = 0; i < TEST_RRSETS; i++) {
-		owner = dnslib_dname_new_from_str(
+		owner = knot_dname_new_from_str(
 		                            test_rrsets[i].owner,
 		                            strlen(test_rrsets[i].owner),
 		                            NODE_ADDRESS);
@@ -782,14 +782,14 @@ static int test_rrset_deep_free()
 			return 0;
 		}
 
-		tmp_rrset = dnslib_rrset_new(owner,
+		tmp_rrset = knot_rrset_new(owner,
 		                             test_rrsets[i].type,
 		                             test_rrsets[i].rclass,
 		                             test_rrsets[i].ttl);
 
-		dnslib_rrset_add_rdata(tmp_rrset, test_rrsets[i].rdata);
+		knot_rrset_add_rdata(tmp_rrset, test_rrsets[i].rdata);
 
-		dnslib_rrset_deep_free(&tmp_rrset, 1, 1, 0);
+		knot_rrset_deep_free(&tmp_rrset, 1, 1, 0);
 
 		errors += (tmp_rrset != NULL);
 	}
@@ -804,20 +804,20 @@ static const int DNSLIB_RRSET_TEST_COUNT = 13;
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
-static int dnslib_rrset_tests_count(int argc, char *argv[])
+static int knot_rrset_tests_count(int argc, char *argv[])
 {
 	return DNSLIB_RRSET_TEST_COUNT;
 }
 
 /*! Run all scheduled tests for given parameters.
  */
-static int dnslib_rrset_tests_run(int argc, char *argv[])
+static int knot_rrset_tests_run(int argc, char *argv[])
 {
 	int res = 0,
 	    res_final = 1;
 
 /*	for (int i = 0; i < 4; i++) {
-		dnslib_rdata_dump(&RR_RDATA[i], 2, 1);
+		knot_rdata_dump(&RR_RDATA[i], 2, 1);
 		printf("%p %p\n", &RR_RDATA[i], (&RR_RDATA)[i]->next);
 	} */
 

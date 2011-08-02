@@ -33,7 +33,7 @@
  * \param loaded_zone Set to <> 0 if the RDATA is part of a zone loaded into
  *                    the server. Set to 0 otherwise.
  */
-void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type, char loaded_zone);
+void knot_rdata_dump(knot_rdata_t *rdata, uint32_t type, char loaded_zone);
 
 /*!
  * \brief Dumps RRSet.
@@ -45,7 +45,7 @@ void dnslib_rdata_dump(dnslib_rdata_t *rdata, uint32_t type, char loaded_zone);
  * \param loaded_zone Set to <> 0 if the RRSet is part of a zone loaded into
  *                    the server. Set to 0 otherwise.
  */
-void dnslib_rrset_dump(dnslib_rrset_t *rrset, char loaded_zone);
+void knot_rrset_dump(knot_rrset_t *rrset, char loaded_zone);
 
 /*!
  * \brief Dumps zone node.
@@ -57,7 +57,7 @@ void dnslib_rrset_dump(dnslib_rrset_t *rrset, char loaded_zone);
  * \param loaded_zone Set to <> 0 if the node is part of a zone loaded into
  *                    the server. Set to 0 otherwise.
  */
-void dnslib_node_dump(dnslib_node_t *node, void *loaded_zone);
+void knot_node_dump(knot_node_t *node, void *loaded_zone);
 
 /*!
  * \brief Dumps the whole zone.
@@ -68,7 +68,7 @@ void dnslib_node_dump(dnslib_node_t *node, void *loaded_zone);
  * \param loaded_zone Set to <> 0 if the node is part of a zone loaded into
  *                    the server. Set to 0 otherwise.
  */
-void dnslib_zone_contents_dump(dnslib_zone_contents_t *zone, char loaded_zone);
+void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 
 /*
  * Debug macros
@@ -91,111 +91,111 @@ void dnslib_zone_contents_dump(dnslib_zone_contents_t *zone, char loaded_zone);
 //#define DNSLIB_XFR_DEBUG
 
 #ifdef DNSLIB_XFR_DEBUG
-#define debug_dnslib_xfr(msg...) fprintf(stderr, msg)
-#define debug_dnslib_xfr_hex(data, len) hex_print((data), (len))
+#define debug_knot_xfr(msg...) fprintf(stderr, msg)
+#define debug_knot_xfr_hex(data, len) hex_print((data), (len))
 #define DEBUG_DNSLIB_NS(cmds) do { cmds } while (0)
 #else
-#define debug_dnslib_xfr(msg...)
-#define debug_dnslib_xfr_hex(data, len)
+#define debug_knot_xfr(msg...)
+#define debug_knot_xfr_hex(data, len)
 #define DEBUG_DNSLIB_XFR(cmds)
 #endif
 
 #ifdef DNSLIB_NS_DEBUG
-#define debug_dnslib_ns(msg...) fprintf(stderr, msg)
-#define debug_dnslib_ns_hex(data, len) hex_print((data), (len))
+#define debug_knot_ns(msg...) fprintf(stderr, msg)
+#define debug_knot_ns_hex(data, len) hex_print((data), (len))
 #define DEBUG_DNSLIB_NS(cmds) do { cmds } while (0)
 #else
-#define debug_dnslib_ns(msg...)
-#define debug_dnslib_ns_hex(data, len)
+#define debug_knot_ns(msg...)
+#define debug_knot_ns_hex(data, len)
 #define DEBUG_DNSLIB_NS(cmds)
 #endif
 
 #ifdef DNSLIB_DNAME_DEBUG
-#define debug_dnslib_dname(msg...) fprintf(stderr, msg)
-#define debug_dnslib_dname_hex(data, len) hex_print((data), (len))
+#define debug_knot_dname(msg...) fprintf(stderr, msg)
+#define debug_knot_dname_hex(data, len) hex_print((data), (len))
 #define DEBUG_DNSLIB_DNAME(cmds) do { cmds } while (0)
 #else
-#define debug_dnslib_dname(msg...)
-#define debug_dnslib_dname_hex(data, len)
+#define debug_knot_dname(msg...)
+#define debug_knot_dname_hex(data, len)
 #define DEBUG_DNSLIB_DNAME(cmds)
 #endif
 
 #ifdef DNSLIB_NODE_DEBUG
-#define debug_dnslib_node(msg...) fprintf(stderr, msg)
-#define debug_dnslib_node_hex(data, len) hex_print((data), (len))
+#define debug_knot_node(msg...) fprintf(stderr, msg)
+#define debug_knot_node_hex(data, len) hex_print((data), (len))
 #define DEBUG_DNSLIB_node(cmds) do { cmds } while (0)
 #else
-#define debug_dnslib_node(msg...)
-#define debug_dnslib_node_hex(data, len)
+#define debug_knot_node(msg...)
+#define debug_knot_node_hex(data, len)
 #define DEBUG_DNSLIB_NODE(cmds)
 #endif
 
 #ifdef DNSLIB_ZONE_DEBUG
-#define debug_dnslib_zone(msg...) fprintf(stderr, msg)
-#define debug_dnslib_zone_hex(data, len) hex_print((data), (len))
+#define debug_knot_zone(msg...) fprintf(stderr, msg)
+#define debug_knot_zone_hex(data, len) hex_print((data), (len))
 #define DEBUG_DNSLIB_ZONE(cmds) do { cmds } while (0)
 #else
-#define debug_dnslib_zone(msg...)
-#define debug_dnslib_zone_hex(data, len)
+#define debug_knot_zone(msg...)
+#define debug_knot_zone_hex(data, len)
 #define DEBUG_DNSLIB_ZONE(cmds)
 #endif
 
 #ifdef DNSLIB_ZONEDB_DEBUG
-#define debug_dnslib_zonedb(msg...) fprintf(stderr, msg)
+#define debug_knot_zonedb(msg...) fprintf(stderr, msg)
 #define DEBUG_DNSLIB_ZONEDB(cmds) do { cmds } while (0)
 #else
-#define debug_dnslib_zonedb(msg...)
+#define debug_knot_zonedb(msg...)
 #define DEBUG_DNSLIB_ZONEDB(cmds)
 #endif
 
 #ifdef DNSLIB_RESPONSE_DEBUG
-#define debug_dnslib_response(msg...) fprintf(stderr, msg)
-#define debug_dnslib_response_hex(data, len) hex_print((data), (len))
+#define debug_knot_response(msg...) fprintf(stderr, msg)
+#define debug_knot_response_hex(data, len) hex_print((data), (len))
 #define DEBUG_DNSLIB_RESPONSE(cmds) do { cmds } while (0)
 #else
-#define debug_dnslib_response(msg...)
-#define debug_dnslib_response_hex(data, len)
+#define debug_knot_response(msg...)
+#define debug_knot_response_hex(data, len)
 #define DEBUG_DNSLIB_RESPONSE(cmds)
 #endif
 
 #ifdef DNSLIB_PACKET_DEBUG
-#define debug_dnslib_packet(msg...) fprintf(stderr, msg)
-#define debug_dnslib_packet_hex(data, len) hex_print((data), (len))
+#define debug_knot_packet(msg...) fprintf(stderr, msg)
+#define debug_knot_packet_hex(data, len) hex_print((data), (len))
 #define DEBUG_DNSLIB_PACKET(cmds) do { cmds } while (0)
 #else
-#define debug_dnslib_packet(msg...)
-#define debug_dnslib_packet_hex(data, len)
+#define debug_knot_packet(msg...)
+#define debug_knot_packet_hex(data, len)
 #define DEBUG_DNSLIB_PACKET(cmds)
 #endif
 
 #ifdef DNSLIB_EDNS_DEBUG
-#define debug_dnslib_edns(msg...) fprintf(stderr, msg)
+#define debug_knot_edns(msg...) fprintf(stderr, msg)
 #else
-#define debug_dnslib_edns(msg...)
+#define debug_knot_edns(msg...)
 #endif
 
 #ifdef DNSLIB_NSEC3_DEBUG
-#define debug_dnslib_nsec3(msg...) fprintf(stderr, msg)
-#define debug_dnslib_nsec3_hex(data, len) hex_print((data), (len))
+#define debug_knot_nsec3(msg...) fprintf(stderr, msg)
+#define debug_knot_nsec3_hex(data, len) hex_print((data), (len))
 #define DEBUG_DNSLIB_NSEC3(cmds) do { cmds } while (0)
 #else
-#define debug_dnslib_nsec3(msg...)
-#define debug_dnslib_nsec3_hex(data, len)
+#define debug_knot_nsec3(msg...)
+#define debug_knot_nsec3_hex(data, len)
 #define DEBUG_DNSLIB_NSEC3(cmds)
 #endif
 
 #ifdef DNSLIB_ZDUMP_DEBUG
-#define debug_dnslib_zdump(msg...) fprintf(stderr, msg)
+#define debug_knot_zdump(msg...) fprintf(stderr, msg)
 #define DEBUG_DNSLIB_ZDUMP(cmds) do { cmds } while (0)
 #else
-#define debug_dnslib_zdump(msg...)
+#define debug_knot_zdump(msg...)
 #define DEBUG_DNSLIB_ZDUMP(cmds)
 #endif
 
 #ifdef DNSLIB_ZLOAD_DEBUG
-#define debug_dnslib_zload(msg...) fprintf(stderr, msg)
+#define debug_knot_zload(msg...) fprintf(stderr, msg)
 #else
-#define debug_dnslib_zload(msg...)
+#define debug_knot_zload(msg...)
 #endif
 
 #ifdef CUCKOO_DEBUG
@@ -215,12 +215,12 @@ void dnslib_zone_contents_dump(dnslib_zone_contents_t *zone, char loaded_zone);
 #endif
 
 #ifdef DNSLIB_XFR_DEBUG
-#define debug_dnslib_xfr(msg...) fprintf(stderr, msg)
-#define debug_dnslib_xfr_hex(data, len) hex_print((data), (len))
+#define debug_knot_xfr(msg...) fprintf(stderr, msg)
+#define debug_knot_xfr_hex(data, len) hex_print((data), (len))
 #define DEBUG_DNSLIB_XFR(cmds) do { cmds } while (0)
 #else
-#define debug_dnslib_xfr(msg...)
-#define debug_dnslib_xfr_hex(data, len)
+#define debug_knot_xfr(msg...)
+#define debug_knot_xfr_hex(data, len)
 #define DEBUG_DNSLIB_XFR(cmds)
 #endif
 

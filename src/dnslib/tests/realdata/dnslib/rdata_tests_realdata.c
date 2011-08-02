@@ -9,22 +9,22 @@
 #include "dnslib/utils.h"
 #include "dnslib/error.h"
 
-static int dnslib_rdata_tests_count(int argc, char *argv[]);
-static int dnslib_rdata_tests_run(int argc, char *argv[]);
+static int knot_rdata_tests_count(int argc, char *argv[]);
+static int knot_rdata_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
 unit_api rdata_tests_api = {
 	"DNS library - rdata",        //! Unit name
-	&dnslib_rdata_tests_count,  //! Count scheduled tests
-	&dnslib_rdata_tests_run     //! Run scheduled tests
+	&knot_rdata_tests_count,  //! Count scheduled tests
+	&knot_rdata_tests_run     //! Run scheduled tests
 };
 
 /*
  *  Unit implementation.
  */
 
-extern int check_domain_name(const dnslib_dname_t *dname,
+extern int check_domain_name(const knot_dname_t *dname,
                              const test_dname_t *test_dname);
 
 extern int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count);
@@ -35,7 +35,7 @@ extern int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count);
  * \return Number of errors encountered. Error is either if some RDATA item
  *         is not set (i.e. NULL) or if it has other than the expected value.
  */
-static int check_rdata(const dnslib_rdata_t *rdata,
+static int check_rdata(const knot_rdata_t *rdata,
                        const test_rdata_t *test_rdata)
 {
 	assert(rdata != NULL);
@@ -43,8 +43,8 @@ static int check_rdata(const dnslib_rdata_t *rdata,
 
 	int errors = 0;
 
-	dnslib_rrtype_descriptor_t *desc =
-	dnslib_rrtype_descriptor_by_type(test_rdata->type);
+	knot_rrtype_descriptor_t *desc =
+	knot_rrtype_descriptor_by_type(test_rdata->type);
 	//note("check_rdata(), RRType: %u", rrtype);
 
 	for (int i = 0; i < desc->length; ++i) {
@@ -54,7 +54,7 @@ static int check_rdata(const dnslib_rdata_t *rdata,
 		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
 		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
 		case DNSLIB_RDATA_WF_LITERAL_DNAME:
-			size = dnslib_dname_size(dnslib_rdata_item(
+			size = knot_dname_size(knot_rdata_item(
 						 rdata, i)->dname);
 			if (check_domain_name(rdata->items[i].dname,
 			               test_rdata->items[i].dname) != 0) {
@@ -80,10 +80,10 @@ static int check_rdata(const dnslib_rdata_t *rdata,
 	return errors;
 }
 
-extern dnslib_dname_t *dname_from_test_dname(test_dname_t *test_dname);
+extern knot_dname_t *dname_from_test_dname(test_dname_t *test_dname);
 
 ///*!
-// * \brief Tests dnslib_rdata_set_item().
+// * \brief Tests knot_rdata_set_item().
 // *
 // * \retval > 0 on success.
 // * \retval 0 otherwise.
@@ -92,14 +92,14 @@ extern dnslib_dname_t *dname_from_test_dname(test_dname_t *test_dname);
 //{
 //	node *n = NULL;
 //	WALK_LIST(n, rdata_list) {
-//		dnslib_rdata_t *rdata = dnslib_rdata_new();
+//		knot_rdata_t *rdata = knot_rdata_new();
 //		assert(rdata);
 //		test_rdata_t *test_rdata = (test_rdata_t *)n;
 
-//		dnslib_rrtype_descriptor_t *desc =
-//			dnslib_rrtype_descriptor_by_type(test_rdata->type);
+//		knot_rrtype_descriptor_t *desc =
+//			knot_rrtype_descriptor_by_type(test_rdata->type);
 //		for (int i = 0; i < test_rdata->count; i++) {
-//			dnslib_rdata_item_t item;
+//			knot_rdata_item_t item;
 //			if (test_rdata->items[i].type == TEST_ITEM_DNAME) {
 //				item.dname =
 //				dname_from_test_dname(
@@ -107,7 +107,7 @@ extern dnslib_dname_t *dname_from_test_dname(test_dname_t *test_dname);
 //			} else {
 //				item.raw_data = test_rdata->items[i].raw_data;
 //			}
-//			if (dnslib_rdata_set_item(rdata, i, item) != 0) {
+//			if (knot_rdata_set_item(rdata, i, item) != 0) {
 //				diag("Could not set item, rdata count: %d",
 //				     rdata->count);
 //				return 0;
@@ -122,11 +122,11 @@ extern dnslib_dname_t *dname_from_test_dname(test_dname_t *test_dname);
 //	return 1;
 //}
 
-static dnslib_rdata_item_t *items_from_test_items(test_item_t *test_items,
+static knot_rdata_item_t *items_from_test_items(test_item_t *test_items,
                                                   size_t count)
 {
-	dnslib_rdata_item_t *items =
-		malloc(sizeof(dnslib_rdata_item_t) * count);
+	knot_rdata_item_t *items =
+		malloc(sizeof(knot_rdata_item_t) * count);
 	assert(items);
 	for (int i = 0; i < count; i++) {
 		if (test_items[i].type == TEST_ITEM_DNAME) {
@@ -145,16 +145,16 @@ static int test_rdata_set_items(list rdata_list)
 	int errors = 0;
 
 	// check error return values
-	dnslib_rdata_t *rdata = dnslib_rdata_new();
+	knot_rdata_t *rdata = knot_rdata_new();
 	assert(rdata);
 
 	node *n = NULL;
 	WALK_LIST(n, rdata_list) {
 		test_rdata_t *test_rdata = (test_rdata_t *)n;
-		dnslib_rdata_t *rdata = dnslib_rdata_new();
+		knot_rdata_t *rdata = knot_rdata_new();
 
 		/* create dnslib items from tests items. */
-		dnslib_rdata_item_t *items =
+		knot_rdata_item_t *items =
 			items_from_test_items(test_rdata->items,
 			test_rdata->count);
 
@@ -162,18 +162,18 @@ static int test_rdata_set_items(list rdata_list)
 		assert(test_rdata->count > 0);
 		assert(rdata->items == NULL);
 
-		if (dnslib_rdata_set_items(rdata, items,
+		if (knot_rdata_set_items(rdata, items,
 		                           test_rdata->count) != 0) {
 				diag("Could not set items!");
 				errors++;
 		}
 
 		if (check_rdata(rdata, test_rdata) != 0) {
-			diag("Wrong rdata after dnslib_rdata_set_items!");
+			diag("Wrong rdata after knot_rdata_set_items!");
 			errors++;
 		}
 
-		dnslib_rdata_free(&rdata);
+		knot_rdata_free(&rdata);
 	}
 
 	return (errors == 0);
@@ -181,7 +181,7 @@ static int test_rdata_set_items(list rdata_list)
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Tests dnslib_rdata_get_item().
+ * \brief Tests knot_rdata_get_item().
  *
  * \retval > 0 on success.
  * \retval 0 otherwise.
@@ -191,18 +191,18 @@ static int test_rdata_get_item(list rdata_list)
 	node *n = NULL;
 	WALK_LIST(n, rdata_list) {
 		test_rdata_t *test_rdata = (test_rdata_t *)n;
-		dnslib_rdata_t *rdata = dnslib_rdata_new();
+		knot_rdata_t *rdata = knot_rdata_new();
 		assert(rdata);
-		dnslib_rdata_item_t *items =
+		knot_rdata_item_t *items =
 			items_from_test_items(test_rdata->items,
 		                              test_rdata->count);
-		assert(dnslib_rdata_set_items(rdata, items,
+		assert(knot_rdata_set_items(rdata, items,
 		                              test_rdata->count) == 0);
-		dnslib_rdata_item_t *new_items =
-			malloc(sizeof(dnslib_rdata_item_t) * test_rdata->count);
+		knot_rdata_item_t *new_items =
+			malloc(sizeof(knot_rdata_item_t) * test_rdata->count);
 		for (int i = 0; i < test_rdata->count; i++) {
-			dnslib_rdata_item_t *item =
-				dnslib_rdata_get_item(rdata, i);
+			knot_rdata_item_t *item =
+				knot_rdata_get_item(rdata, i);
 			if (item == NULL) {
 				diag("Could not get item");
 				return 0;
@@ -210,12 +210,12 @@ static int test_rdata_get_item(list rdata_list)
 			new_items[i] = *item;
 		}
 
-		dnslib_rdata_free(&rdata);
+		knot_rdata_free(&rdata);
 		free(items);
 
-		dnslib_rdata_t *new_rdata = dnslib_rdata_new();
+		knot_rdata_t *new_rdata = knot_rdata_new();
 		assert(new_rdata);
-		assert(dnslib_rdata_set_items(new_rdata,
+		assert(knot_rdata_set_items(new_rdata,
 		                              new_items,
 		                              test_rdata->count) == 0);
 
@@ -224,7 +224,7 @@ static int test_rdata_get_item(list rdata_list)
 			return 0;
 		}
 
-		dnslib_rdata_free(&new_rdata);
+		knot_rdata_free(&new_rdata);
 		free(new_items);
 	}
 
@@ -233,7 +233,7 @@ static int test_rdata_get_item(list rdata_list)
 
 //static int test_rdata_wire_size()
 //{
-//	dnslib_rdata_t *rdata;
+//	knot_rdata_t *rdata;
 //	int errors = 0;
 
 //	// generate some random data
@@ -241,7 +241,7 @@ static int test_rdata_get_item(list rdata_list)
 //	generate_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE);
 
 //	for (int i = 0; i <= DNSLIB_RRTYPE_LAST; ++i) {
-//		rdata = dnslib_rdata_new();
+//		rdata = knot_rdata_new();
 
 //		int size =
 //		fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i, rdata);
@@ -249,8 +249,8 @@ static int test_rdata_get_item(list rdata_list)
 //		if (size < 0) {
 //			++errors;
 //		} else {
-//			int counted_size = dnslib_rdata_wire_size(rdata,
-//			    dnslib_rrtype_descriptor_by_type(i)->wireformat);
+//			int counted_size = knot_rdata_wire_size(rdata,
+//			    knot_rrtype_descriptor_by_type(i)->wireformat);
 //			if (size != counted_size) {
 //				diag("Wrong wire size computed (type %d):"
 //				     " %d (should be %d)",
@@ -259,8 +259,8 @@ static int test_rdata_get_item(list rdata_list)
 //			}
 //		}
 
-//		dnslib_rrtype_descriptor_t *desc =
-//		    dnslib_rrtype_descriptor_by_type(i);
+//		knot_rrtype_descriptor_t *desc =
+//		    knot_rrtype_descriptor_by_type(i);
 
 //		for (int x = 0; x < desc->length; x++) {
 //			if (desc->wireformat[x] ==
@@ -269,10 +269,10 @@ static int test_rdata_get_item(list rdata_list)
 //			    DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 //			    desc->wireformat[x] ==
 //			    DNSLIB_RDATA_WF_LITERAL_DNAME) {
-//				dnslib_dname_free(&(rdata->items[x].dname));
+//				knot_dname_free(&(rdata->items[x].dname));
 //			}
 //		}
-//		dnslib_rdata_free(&rdata);
+//		knot_rdata_free(&rdata);
 //	}
 
 //	return (errors == 0);
@@ -287,16 +287,16 @@ static const int DNSLIB_RDATA_TEST_COUNT = 2;
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
-static int dnslib_rdata_tests_count(int argc, char *argv[])
+static int knot_rdata_tests_count(int argc, char *argv[])
 {
 	return DNSLIB_RDATA_TEST_COUNT;
 }
 
 /*! Run all scheduled tests for given parameters.
  */
-static int dnslib_rdata_tests_run(int argc, char *argv[])
+static int knot_rdata_tests_run(int argc, char *argv[])
 {
-	test_data_t *data = data_for_dnslib_tests;
+	test_data_t *data = data_for_knot_tests;
 	int res = 0,
 	    res_final = 1;
 

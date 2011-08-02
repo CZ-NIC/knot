@@ -33,7 +33,7 @@
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int xfrin_create_soa_query(const dnslib_zone_contents_t *zone, uint8_t *buffer,
+int xfrin_create_soa_query(const knot_zone_contents_t *zone, uint8_t *buffer,
                            size_t *size);
 
 /*!
@@ -47,8 +47,8 @@ int xfrin_create_soa_query(const dnslib_zone_contents_t *zone, uint8_t *buffer,
  * \retval 1 if the transfer is needed.
  * \retval 0 if the transfer is not needed.
  */
-int xfrin_transfer_needed(const dnslib_zone_contents_t *zone,
-                          dnslib_packet_t *soa_response);
+int xfrin_transfer_needed(const knot_zone_contents_t *zone,
+                          knot_packet_t *soa_response);
 
 /*!
  * \brief Creates normal query for the given zone name and the AXFR type.
@@ -62,7 +62,7 @@ int xfrin_transfer_needed(const dnslib_zone_contents_t *zone,
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int xfrin_create_axfr_query(const dnslib_zone_contents_t *zone, uint8_t *buffer,
+int xfrin_create_axfr_query(const knot_zone_contents_t *zone, uint8_t *buffer,
                             size_t *size);
 
 /*!
@@ -77,7 +77,7 @@ int xfrin_create_axfr_query(const dnslib_zone_contents_t *zone, uint8_t *buffer,
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int xfrin_create_ixfr_query(const dnslib_zone_contents_t *zone, uint8_t *buffer,
+int xfrin_create_ixfr_query(const knot_zone_contents_t *zone, uint8_t *buffer,
                             size_t *size);
 
 /*!
@@ -88,8 +88,8 @@ int xfrin_create_ixfr_query(const dnslib_zone_contents_t *zone, uint8_t *buffer,
  *
  * \retval KNOT_ENOTSUP
  */
-int xfrin_zone_transferred(dnslib_nameserver_t *nameserver,
-                           dnslib_zone_contents_t *zone);
+int xfrin_zone_transferred(knot_nameserver_t *nameserver,
+                           knot_zone_contents_t *zone);
 
 /*!
  * \brief Processes one incoming packet of AXFR transfer by updating the given
@@ -106,7 +106,7 @@ int xfrin_zone_transferred(dnslib_nameserver_t *nameserver,
  * \todo Refactor!!!
  */
 int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
-                              dnslib_zone_contents_t **zone);
+                              knot_zone_contents_t **zone);
 
 /*!
  * \brief Destroys the whole changesets structure.
@@ -116,7 +116,7 @@ int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
  *
  * \param changesets Changesets to destroy.
  */
-void xfrin_free_changesets(dnslib_changesets_t **changesets);
+void xfrin_free_changesets(knot_changesets_t **changesets);
 
 /*!
  * \brief Parses IXFR reply packet and fills in the changesets structure.
@@ -131,10 +131,10 @@ void xfrin_free_changesets(dnslib_changesets_t **changesets);
  * \retval KNOT_ENOMEM
  */
 int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
-                              dnslib_changesets_t **changesets);
+                              knot_changesets_t **changesets);
 
-int xfrin_apply_changesets_to_zone(dnslib_zone_t *zone, 
-                                   dnslib_changesets_t *chsets);
+int xfrin_apply_changesets_to_zone(knot_zone_t *zone, 
+                                   knot_changesets_t *chsets);
 
 #endif /* _KNOT_XFR_IN_H_ */
 

@@ -19,21 +19,21 @@
 
 /*----------------------------------------------------------------------------*/
 /*! \brief Structure representing one OPT RR Option. */
-struct dnslib_opt_option {
+struct knot_opt_option {
 	uint16_t code;
 	uint16_t length;
 	uint8_t *data;
 };
 
 /*! \brief Structure representing one OPT RR Option. */
-typedef struct dnslib_opt_option dnslib_opt_option_t;
+typedef struct knot_opt_option knot_opt_option_t;
 
 /*!
  * \brief Structure for holding EDNS parameters.
  *
  * \todo NSID
  */
-struct dnslib_opt_rr {
+struct knot_opt_rr {
 	uint16_t payload;    /*!< UDP payload. */
 	uint8_t ext_rcode;   /*!< Extended RCODE. */
 
@@ -45,24 +45,24 @@ struct dnslib_opt_rr {
 	uint8_t version;
 
 	uint16_t flags;                /*!< EDNS flags. */
-	dnslib_opt_option_t *options;  /*!< EDNS options. */
+	knot_opt_option_t *options;  /*!< EDNS options. */
 	short option_count;         /*!< Count of EDNS options in this OPT RR.*/
 	short options_max;          /*!< Maximum count of options. */
 	short size;             /*!< Total size of the OPT RR in wire format. */
 };
 
 /*! \brief Structure for holding EDNS parameters. */
-typedef struct dnslib_opt_rr dnslib_opt_rr_t;
+typedef struct knot_opt_rr knot_opt_rr_t;
 
 /*----------------------------------------------------------------------------*/
 /*! \brief Constants for supported versions of EDNS. */
-enum dnslib_edns_versions {
+enum knot_edns_versions {
 	EDNS_VERSION_0 = (uint8_t)0,       /*!< EDNS version 0. */
 	EDNS_NOT_SUPPORTED = (uint8_t)255  /*!< EDNS not supported. */
 };
 
 /*! \brief Constants for EDNS option codes. */
-enum dnslib_edns_option_codes {
+enum knot_edns_option_codes {
 	EDNS_OPTION_NSID = (uint16_t)3 /*!< NSID option code. */
 };
 
@@ -70,9 +70,9 @@ enum dnslib_edns_option_codes {
 /*!
  * \brief Creates new empty OPT RR structure for holding EDNS parameters.
  *
- * \return New empty dnslib_opt_rr_t structure, or NULL if not successful.
+ * \return New empty knot_opt_rr_t structure, or NULL if not successful.
  */
-dnslib_opt_rr_t *dnslib_edns_new();
+knot_opt_rr_t *knot_edns_new();
 
 /*!
  * \brief Initializes OPT RR structure from given OPT RR in wire format.
@@ -88,11 +88,11 @@ dnslib_opt_rr_t *dnslib_edns_new();
  * \retval DNSLIB_EMALF
  * \retval DNSLIB_ENOMEM
  */
-int dnslib_edns_new_from_wire(dnslib_opt_rr_t *opt_rr, const uint8_t *wire,
+int knot_edns_new_from_wire(knot_opt_rr_t *opt_rr, const uint8_t *wire,
                               size_t max_size);
 
-int dnslib_edns_new_from_rr(dnslib_opt_rr_t *opt_rr,
-                            const dnslib_rrset_t *rrset);
+int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
+                            const knot_rrset_t *rrset);
 
 /*!
  * \brief Returns the UDP payload stored in the OPT RR.
@@ -105,7 +105,7 @@ int dnslib_edns_new_from_rr(dnslib_opt_rr_t *opt_rr,
  *
  * \return UDP payload in bytes.
  */
-uint16_t dnslib_edns_get_payload(const dnslib_opt_rr_t *opt_rr);
+uint16_t knot_edns_get_payload(const knot_opt_rr_t *opt_rr);
 
 /*!
  * \brief Sets the UDP payload field in the OPT RR.
@@ -117,7 +117,7 @@ uint16_t dnslib_edns_get_payload(const dnslib_opt_rr_t *opt_rr);
  * \param opt_rr OPT RR structure to set the payload to.
  * \param payload UDP payload in bytes.
  */
-void dnslib_edns_set_payload(dnslib_opt_rr_t *opt_rr, uint16_t payload);
+void knot_edns_set_payload(knot_opt_rr_t *opt_rr, uint16_t payload);
 
 /*!
  * \brief Returns the Extended RCODE stored in the OPT RR.
@@ -130,7 +130,7 @@ void dnslib_edns_set_payload(dnslib_opt_rr_t *opt_rr, uint16_t payload);
  *
  * \return Extended RCODE.
  */
-uint8_t dnslib_edns_get_ext_rcode(const dnslib_opt_rr_t *opt_rr);
+uint8_t knot_edns_get_ext_rcode(const knot_opt_rr_t *opt_rr);
 
 /*!
  * \brief Sets the Extended RCODE field in the OPT RR.
@@ -142,7 +142,7 @@ uint8_t dnslib_edns_get_ext_rcode(const dnslib_opt_rr_t *opt_rr);
  * \param opt_rr OPT RR structure to set the Extended RCODE to.
  * \param ext_rcode Extended RCODE to set.
  */
-void dnslib_edns_set_ext_rcode(dnslib_opt_rr_t *opt_rr, uint8_t ext_rcode);
+void knot_edns_set_ext_rcode(knot_opt_rr_t *opt_rr, uint8_t ext_rcode);
 
 /*!
  * \brief Returns the EDNS version stored in the OPT RR.
@@ -155,7 +155,7 @@ void dnslib_edns_set_ext_rcode(dnslib_opt_rr_t *opt_rr, uint8_t ext_rcode);
  *
  * \return EDNS version.
  */
-uint8_t dnslib_edns_get_version(const dnslib_opt_rr_t *opt_rr);
+uint8_t knot_edns_get_version(const knot_opt_rr_t *opt_rr);
 
 /*!
  * \brief Sets the EDNS version field in the OPT RR.
@@ -167,7 +167,7 @@ uint8_t dnslib_edns_get_version(const dnslib_opt_rr_t *opt_rr);
  * \param opt_rr OPT RR structure to set the EDNS version to.
  * \param version EDNS version to set.
  */
-void dnslib_edns_set_version(dnslib_opt_rr_t *opt_rr, uint8_t version);
+void knot_edns_set_version(knot_opt_rr_t *opt_rr, uint8_t version);
 
 /*!
  * \brief Returns the flags stored in the OPT RR.
@@ -180,7 +180,7 @@ void dnslib_edns_set_version(dnslib_opt_rr_t *opt_rr, uint8_t version);
  *
  * \return EDNS flags.
  */
-uint16_t dnslib_edns_get_flags(const dnslib_opt_rr_t *opt_rr);
+uint16_t knot_edns_get_flags(const knot_opt_rr_t *opt_rr);
 
 /*!
  * \brief Returns the state of the DO bit in the OPT RR flags.
@@ -190,14 +190,14 @@ uint16_t dnslib_edns_get_flags(const dnslib_opt_rr_t *opt_rr);
  * \return <> 0 if the DO bit is set.
  * \return 0 if the DO bit is not set.
  */
-int dnslib_edns_do(const dnslib_opt_rr_t *opt_rr);
+int knot_edns_do(const knot_opt_rr_t *opt_rr);
 
 /*!
  * \brief Sets the DO bit in the OPT RR.
  *
  * \param opt_rr OPT RR structure to set the DO bit in.
  */
-void dnslib_edns_set_do(dnslib_opt_rr_t *opt_rr);
+void knot_edns_set_do(knot_opt_rr_t *opt_rr);
 
 /*!
  * \brief Adds EDNS Option to the OPT RR.
@@ -210,7 +210,7 @@ void dnslib_edns_set_do(dnslib_opt_rr_t *opt_rr);
  * \retval DNSLIB_EOK
  * \retval DNSLIB_ENOMEM
  */
-int dnslib_edns_add_option(dnslib_opt_rr_t *opt_rr, uint16_t code,
+int knot_edns_add_option(knot_opt_rr_t *opt_rr, uint16_t code,
                            uint16_t length, const uint8_t *data);
 
 /*!
@@ -222,7 +222,7 @@ int dnslib_edns_add_option(dnslib_opt_rr_t *opt_rr, uint16_t code,
  * \retval <> 0 if the OPT RR contains Option with Option code \a code.
  * \retval 0 otherwise.
  */
-int dnslib_edns_has_option(const dnslib_opt_rr_t *opt_rr, uint16_t code);
+int knot_edns_has_option(const knot_opt_rr_t *opt_rr, uint16_t code);
 
 /*!
  * \brief Converts the given OPT RR into wire format.
@@ -234,7 +234,7 @@ int dnslib_edns_has_option(const dnslib_opt_rr_t *opt_rr, uint16_t code);
  * \return Size of the wire format in bytes if successful.
  * \retval DNSLIB_ESPACE
  */
-short dnslib_edns_to_wire(const dnslib_opt_rr_t *opt_rr, uint8_t *wire,
+short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
                           size_t max_size);
 
 /*!
@@ -244,14 +244,14 @@ short dnslib_edns_to_wire(const dnslib_opt_rr_t *opt_rr, uint8_t *wire,
  *
  * \return Size of the OPT RR in bytes.
  */
-short dnslib_edns_size(dnslib_opt_rr_t *opt_rr);
+short knot_edns_size(knot_opt_rr_t *opt_rr);
 
 /*!
  * \brief Properly destroys the OPT RR structure.
  *
  * \note Also sets the given pointer to NULL.
  */
-void dnslib_edns_free(dnslib_opt_rr_t **opt_rr);
+void knot_edns_free(knot_opt_rr_t **opt_rr);
 
 #endif /* _KNOT_DNSLIB_EDNS_H_ */
 

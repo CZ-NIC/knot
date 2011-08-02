@@ -10,26 +10,26 @@
 /*----------------------------------------------------------------------------*/
 
 typedef struct {
-	void (*func)(dnslib_node_t *, void *);
+	void (*func)(knot_node_t *, void *);
 	void *data;
-} dnslib_zone_tree_func_t;
+} knot_zone_tree_func_t;
 
 typedef struct {
-	dnslib_node_t *first_node;
-	dnslib_zone_contents_t *zone;
-	dnslib_node_t *previous_node;
-} dnslib_zone_adjust_arg_t;
+	knot_node_t *first_node;
+	knot_zone_contents_t *zone;
+	knot_node_t *previous_node;
+} knot_zone_adjust_arg_t;
 
 /*----------------------------------------------------------------------------*/
 
-static void dnslib_zone_tree_apply(dnslib_zone_tree_node_t *node,
+static void knot_zone_tree_apply(knot_zone_tree_node_t *node,
                                    void *data)
 {
 	if (node == NULL || data == NULL) {
 		return;
 	}
 
-	dnslib_zone_tree_func_t *f = (dnslib_zone_tree_func_t *)data;
+	knot_zone_tree_func_t *f = (knot_zone_tree_func_t *)data;
 	f->func(node->node, f->data);
 }
 
@@ -49,8 +49,8 @@ static void dnslib_zone_tree_apply(dnslib_zone_tree_node_t *node,
  * \retval DNSLIB_EBADARG if either of the arguments is NULL.
  * \retval DNSLIB_EBADZONE if the node does not belong to the zone.
  */
-static int dnslib_zone_contents_check_node(
-	const dnslib_zone_contents_t *contents, const dnslib_node_t *node)
+static int knot_zone_contents_check_node(
+	const knot_zone_contents_t *contents, const knot_node_t *node)
 {
 	if (contents == NULL || node == NULL) {
 		return DNSLIB_EBADARG;
@@ -59,12 +59,12 @@ static int dnslib_zone_contents_check_node(
 	// assert or just check??
 	assert(contents->apex != NULL);
 
-	if (!dnslib_dname_is_subdomain(node->owner,
-	                               dnslib_node_owner(contents->apex))) {
+	if (!knot_dname_is_subdomain(node->owner,
+	                               knot_node_owner(contents->apex))) {
 DEBUG_DNSLIB_ZONE(
-		char *node_owner = dnslib_dname_to_str(dnslib_node_owner(node));
-		char *apex_owner = dnslib_dname_to_str(contents->apex->owner);
-		debug_dnslib_zone("zone: Trying to insert foreign node to a "
+		char *node_owner = knot_dname_to_str(knot_node_owner(node));
+		char *apex_owner = knot_dname_to_str(contents->apex->owner);
+		debug_knot_zone("zone: Trying to insert foreign node to a "
 				  "zone. Node owner: %s, zone apex: %s\n",
 				  node_owner, apex_owner);
 		free(node_owner);
@@ -84,14 +84,14 @@ DEBUG_DNSLIB_ZONE(
  * \param node Node to destroy RRSets from.
  * \param data Unused parameter.
  */
-static void dnslib_zone_contents_destroy_node_rrsets_from_tree(
-	dnslib_zone_tree_node_t *tnode, void *data)
+static void knot_zone_contents_destroy_node_rrsets_from_tree(
+	knot_zone_tree_node_t *tnode, void *data)
 {
 	assert(tnode != NULL);
 	assert(tnode->node != NULL);
 
 	int free_rdata_dnames = (int)((intptr_t)data);
-	dnslib_node_free_rrsets(tnode->node, free_rdata_dnames);
+	knot_node_free_rrsets(tnode->node, free_rdata_dnames);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -103,15 +103,15 @@ static void dnslib_zone_contents_destroy_node_rrsets_from_tree(
  * \param node Node to destroy the owner of.
  * \param data Unused parameter.
  */
-static void dnslib_zone_contents_destroy_node_owner_from_tree(
-	dnslib_zone_tree_node_t *tnode, void *data)
+static void knot_zone_contents_destroy_node_owner_from_tree(
+	knot_zone_tree_node_t *tnode, void *data)
 {
 	assert(tnode != NULL);
 	assert(tnode->node != NULL);
 
 	UNUSED(data);
 	/*!< \todo change completely! */
-	dnslib_node_free(&tnode->node, 0, 0);
+	knot_node_free(&tnode->node, 0, 0);
 }
 
 /*!
@@ -120,20 +120,20 @@ static void dnslib_zone_contents_destroy_node_owner_from_tree(
  * \param zone Current zone.
  * \param node Node to be used.
  */
-static void find_and_set_wildcard_child(dnslib_zone_contents_t *zone,
-				 dnslib_node_t *node)
+static void find_and_set_wildcard_child(knot_zone_contents_t *zone,
+				 knot_node_t *node)
 {
-	dnslib_dname_t *chopped = dnslib_dname_left_chop(node->owner);
+	knot_dname_t *chopped = knot_dname_left_chop(node->owner);
 	assert(chopped);
-	dnslib_node_t *wildcard_parent;
+	knot_node_t *wildcard_parent;
 	wildcard_parent =
-		dnslib_zone_contents_get_node(zone, chopped);
+		knot_zone_contents_get_node(zone, chopped);
 
-	dnslib_dname_free(&chopped);
+	knot_dname_free(&chopped);
 
 	assert(wildcard_parent); /* it *has* to be there */
 
-	dnslib_node_set_wildcard_child(wildcard_parent, node);
+	knot_node_set_wildcard_child(wildcard_parent, node);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -153,31 +153,31 @@ static void find_and_set_wildcard_child(dnslib_zone_contents_t *zone,
  * \param zone Zone to which the RDATA belongs.
  * \param pos Position of the RDATA item in the RDATA.
  */
-static void dnslib_zone_contents_adjust_rdata_item(dnslib_rdata_t *rdata,
-                                          dnslib_zone_contents_t *zone,
-                                          dnslib_node_t *node,
+static void knot_zone_contents_adjust_rdata_item(knot_rdata_t *rdata,
+                                          knot_zone_contents_t *zone,
+                                          knot_node_t *node,
                                           int pos)
 {
 	return;
-	const dnslib_rdata_item_t *dname_item
-			= dnslib_rdata_item(rdata, pos);
+	const knot_rdata_item_t *dname_item
+			= knot_rdata_item(rdata, pos);
 
 	assert(dname_item);
 
 	if (dname_item != NULL) {
-		dnslib_dname_t *dname = dname_item->dname;
-		const dnslib_node_t *n = NULL;
-		const dnslib_node_t *closest_encloser = NULL;
-		const dnslib_node_t *prev = NULL;
+		knot_dname_t *dname = dname_item->dname;
+		const knot_node_t *n = NULL;
+		const knot_node_t *closest_encloser = NULL;
+		const knot_node_t *prev = NULL;
 
-		if (dnslib_dname_is_wildcard(dname)) {
+		if (knot_dname_is_wildcard(dname)) {
 			find_and_set_wildcard_child(zone, node);
 		}
 
-		int ret = dnslib_zone_contents_find_dname(zone, dname, &n,
+		int ret = knot_zone_contents_find_dname(zone, dname, &n,
 		                                      &closest_encloser, &prev);
 
-		//		n = dnslib_zone_find_node(zone, dname);
+		//		n = knot_zone_find_node(zone, dname);
 
 		if (ret == DNSLIB_EBADARG || ret == DNSLIB_EBADZONE) {
 			// TODO: do some cleanup if needed
@@ -189,11 +189,11 @@ static void dnslib_zone_contents_adjust_rdata_item(dnslib_rdata_t *rdata,
 
 		if (ret != DNSLIB_ZONE_NAME_FOUND
 		                && (closest_encloser != NULL)) {
-			debug_dnslib_zdump("Saving closest encloser to RDATA."
+			debug_knot_zdump("Saving closest encloser to RDATA."
 			                   "\n");
 			// save pointer to the closest encloser
-			dnslib_rdata_item_t *item =
-					dnslib_rdata_get_item(rdata, pos);
+			knot_rdata_item_t *item =
+					knot_rdata_get_item(rdata, pos);
 			assert(item->dname != NULL);
 			assert(item->dname->node == NULL);
 			//skip_insert(list, (void *)item->dname,
@@ -210,23 +210,23 @@ static void dnslib_zone_contents_adjust_rdata_item(dnslib_rdata_t *rdata,
  *
  * This function selects the RDATA items containing a domain name (according to
  * RR type descriptor of the RRSet's type and adjusts the item using
- * dnslib_zone_adjust_rdata_item().
+ * knot_zone_adjust_rdata_item().
  *
  * \param rrset RRSet to adjust RDATA in.
  * \param zone Zone to which the RRSet belongs.
  */
-static void dnslib_zone_contents_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
-                                                   dnslib_zone_contents_t *zone,
-                                                   dnslib_node_t *node)
+static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
+                                                   knot_zone_contents_t *zone,
+                                                   knot_node_t *node)
 {
-	uint16_t type = dnslib_rrset_type(rrset);
+	uint16_t type = knot_rrset_type(rrset);
 
-	dnslib_rrtype_descriptor_t *desc =
-		dnslib_rrtype_descriptor_by_type(type);
+	knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type(type);
 	assert(desc);
 
-	dnslib_rdata_t *rdata_first = dnslib_rrset_get_rdata(rrset);
-	dnslib_rdata_t *rdata = rdata_first;
+	knot_rdata_t *rdata_first = knot_rrset_get_rdata(rrset);
+	knot_rdata_t *rdata = rdata_first;
 
 	if (rdata == NULL) {
 		return;
@@ -240,13 +240,13 @@ static void dnslib_zone_contents_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
 			       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
 			    || desc->wireformat[i]
 			       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
-				debug_dnslib_zone("Adjusting domain name at "
+				debug_knot_zone("Adjusting domain name at "
 				  "position %d of RDATA of record with owner "
 				  "%s and type %s.\n",
 				  i, rrset->owner->name,
-				  dnslib_rrtype_to_string(type));
+				  knot_rrtype_to_string(type));
 
-				dnslib_zone_contents_adjust_rdata_item(rdata,
+				knot_zone_contents_adjust_rdata_item(rdata,
 				                                       zone,
 				                                       node,
 				                                       i);
@@ -262,13 +262,13 @@ static void dnslib_zone_contents_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
 		       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
 		    || desc->wireformat[i]
 		       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
-			debug_dnslib_zone("Adjusting domain name at "
+			debug_knot_zone("Adjusting domain name at "
 			  "position %d of RDATA of record with owner "
 			  "%s and type %s.\n",
 			  i, rrset->owner->name,
-			  dnslib_rrtype_to_string(type));
+			  knot_rrtype_to_string(type));
 
-			dnslib_zone_contents_adjust_rdata_item(rdata, zone,
+			knot_zone_contents_adjust_rdata_item(rdata, zone,
 			                                       node, i);
 		}
 	}
@@ -280,30 +280,30 @@ static void dnslib_zone_contents_adjust_rdata_in_rrset(dnslib_rrset_t *rrset,
  * \brief Adjusts all RRSets in the given node by replacing domain names in
  *        RDATA by ones present in the zone.
  *
- * This function just calls dnslib_zone_adjust_rdata_in_rrset() for all RRSets
+ * This function just calls knot_zone_adjust_rdata_in_rrset() for all RRSets
  * in the node (including all RRSIG RRSets).
  *
  * \param node Zone node to adjust the RRSets in.
  * \param zone Zone to which the node belongs.
  */
-static void dnslib_zone_contents_adjust_rrsets(dnslib_node_t *node,
-                                               dnslib_zone_contents_t *zone)
+static void knot_zone_contents_adjust_rrsets(knot_node_t *node,
+                                               knot_zone_contents_t *zone)
 {
 	//return;
-	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
-	short count = dnslib_node_rrset_count(node);
+	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
+	short count = knot_node_rrset_count(node);
 
 	assert(count == 0 || rrsets != NULL);
 
 	for (int r = 0; r < count; ++r) {
 		assert(rrsets[r] != NULL);
-		debug_dnslib_zone("Adjusting next RRSet.\n");
-		dnslib_zone_contents_adjust_rdata_in_rrset(rrsets[r], zone,
+		debug_knot_zone("Adjusting next RRSet.\n");
+		knot_zone_contents_adjust_rdata_in_rrset(rrsets[r], zone,
 		                                           node);
-		dnslib_rrset_t *rrsigs = rrsets[r]->rrsigs;
+		knot_rrset_t *rrsigs = rrsets[r]->rrsigs;
 		if (rrsigs != NULL) {
-			debug_dnslib_zone("Adjusting next RRSIGs.\n");
-			dnslib_zone_contents_adjust_rdata_in_rrset(rrsigs,
+			debug_knot_zone("Adjusting next RRSIGs.\n");
+			knot_zone_contents_adjust_rdata_in_rrset(rrsigs,
 			                                           zone,
 			                                           node);
 		}
@@ -316,7 +316,7 @@ static void dnslib_zone_contents_adjust_rrsets(dnslib_node_t *node,
 /*!
  * \brief Adjusts zone node for faster query processing.
  *
- * - Adjusts RRSets in the node (see dnslib_zone_adjust_rrsets()).
+ * - Adjusts RRSets in the node (see knot_zone_adjust_rrsets()).
  * - Marks the node as delegation point or non-authoritative (below a zone cut)
  *   if applicable.
  * - Stores reference to corresponding NSEC3 node if applicable.
@@ -324,73 +324,73 @@ static void dnslib_zone_contents_adjust_rrsets(dnslib_node_t *node,
  * \param node Zone node to adjust.
  * \param zone Zone the node belongs to.
  */
-static void dnslib_zone_contents_adjust_node(dnslib_node_t *node,
-                                             dnslib_zone_contents_t *zone)
+static void knot_zone_contents_adjust_node(knot_node_t *node,
+                                             knot_zone_contents_t *zone)
 {
 
 DEBUG_DNSLIB_ZONE(
-	char *name = dnslib_dname_to_str(node->owner);
-	debug_dnslib_zone("----- Adjusting node %s -----\n", name);
+	char *name = knot_dname_to_str(node->owner);
+	debug_knot_zone("----- Adjusting node %s -----\n", name);
 	free(name);
 );
 
 	// adjust domain names in RDATA
-	dnslib_zone_contents_adjust_rrsets(node, zone);
+	knot_zone_contents_adjust_rrsets(node, zone);
 
 DEBUG_DNSLIB_ZONE(
-	if (dnslib_node_parent(node, 1)) {
-		char *name = dnslib_dname_to_str(dnslib_node_owner(
-				dnslib_node_parent(node, 1)));
-		debug_dnslib_zone("Parent: %s\n", name);
-		debug_dnslib_zone("Parent is delegation point: %s\n",
-		       dnslib_node_is_deleg_point(dnslib_node_parent(node, 1))
+	if (knot_node_parent(node, 1)) {
+		char *name = knot_dname_to_str(knot_node_owner(
+				knot_node_parent(node, 1)));
+		debug_knot_zone("Parent: %s\n", name);
+		debug_knot_zone("Parent is delegation point: %s\n",
+		       knot_node_is_deleg_point(knot_node_parent(node, 1))
 		       ? "yes" : "no");
-		debug_dnslib_zone("Parent is non-authoritative: %s\n",
-		       dnslib_node_is_non_auth(dnslib_node_parent(node, 1))
+		debug_knot_zone("Parent is non-authoritative: %s\n",
+		       knot_node_is_non_auth(knot_node_parent(node, 1))
 		       ? "yes" : "no");
 		free(name);
 	} else {
-		debug_dnslib_zone("No parent!\n");
+		debug_knot_zone("No parent!\n");
 	}
 );
 	// delegation point / non-authoritative node
-	if (dnslib_node_parent(node, 1)
-	    && (dnslib_node_is_deleg_point(dnslib_node_parent(node, 1))
-		|| dnslib_node_is_non_auth(dnslib_node_parent(node, 1)))) {
-		dnslib_node_set_non_auth(node);
-	} else if (dnslib_node_rrset(node, DNSLIB_RRTYPE_NS) != NULL
+	if (knot_node_parent(node, 1)
+	    && (knot_node_is_deleg_point(knot_node_parent(node, 1))
+		|| knot_node_is_non_auth(knot_node_parent(node, 1)))) {
+		knot_node_set_non_auth(node);
+	} else if (knot_node_rrset(node, DNSLIB_RRTYPE_NS) != NULL
 		   && node != zone->apex) {
-		dnslib_node_set_deleg_point(node);
+		knot_node_set_deleg_point(node);
 	}
 
 	// authorative node?
-//	if (!dnslib_node_is_non_auth(node)) {
+//	if (!knot_node_is_non_auth(node)) {
 		zone->node_count++;
 //	}
 
 	// assure that owner has proper node
-	if (dnslib_dname_node(dnslib_node_owner(node), 0) == NULL) {
-		dnslib_dname_set_node(dnslib_node_get_owner(node), node);
-		dnslib_dname_set_node(dnslib_node_get_owner(node), node);
+	if (knot_dname_node(knot_node_owner(node), 0) == NULL) {
+		knot_dname_set_node(knot_node_get_owner(node), node);
+		knot_dname_set_node(knot_node_get_owner(node), node);
 	}
 
 	// NSEC3 node
-	const dnslib_node_t *prev;
-	const dnslib_node_t *nsec3;
-	int match = dnslib_zone_contents_find_nsec3_for_name(zone,
-	                                                dnslib_node_owner(node),
+	const knot_node_t *prev;
+	const knot_node_t *nsec3;
+	int match = knot_zone_contents_find_nsec3_for_name(zone,
+	                                                knot_node_owner(node),
 	                                                &nsec3, &prev);
 	if (match != DNSLIB_ZONE_NAME_FOUND) {
 		nsec3 = NULL;
 	}
 
-	dnslib_node_set_nsec3_node(node, (dnslib_node_t *)nsec3);
+	knot_node_set_nsec3_node(node, (knot_node_t *)nsec3);
 
-	debug_dnslib_zone("Set flags to the node: \n");
-	debug_dnslib_zone("Delegation point: %s\n",
-	       dnslib_node_is_deleg_point(node) ? "yes" : "no");
-	debug_dnslib_zone("Non-authoritative: %s\n",
-	       dnslib_node_is_non_auth(node) ? "yes" : "no");
+	debug_knot_zone("Set flags to the node: \n");
+	debug_knot_zone("Delegation point: %s\n",
+	       knot_node_is_deleg_point(node) ? "yes" : "no");
+	debug_knot_zone("Non-authoritative: %s\n",
+	       knot_node_is_non_auth(node) ? "yes" : "no");
 }
 
 /*----------------------------------------------------------------------------*/
@@ -398,24 +398,24 @@ DEBUG_DNSLIB_ZONE(
  * \brief Adjusts a NSEC3 node for faster query processing.
  *
  * This function just adjusts all RRSets in the node, similarly as the
- * dnslib_zone_adjust_rrsets() function.
+ * knot_zone_adjust_rrsets() function.
  *
  * \param node Zone node to adjust.
  * \param zone Zone the node belongs to.
  */
-static void dnslib_zone_contents_adjust_nsec3_node(dnslib_node_t *node,
-                                                   dnslib_zone_contents_t *zone)
+static void knot_zone_contents_adjust_nsec3_node(knot_node_t *node,
+                                                   knot_zone_contents_t *zone)
 {
 
 DEBUG_DNSLIB_ZONE(
-	char *name = dnslib_dname_to_str(node->owner);
-	debug_dnslib_zone("----- Adjusting node %s -----\n", name);
+	char *name = knot_dname_to_str(node->owner);
+	debug_knot_zone("----- Adjusting node %s -----\n", name);
 	free(name);
 );
 
 	// adjust domain names in RDATA
-	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
-	short count = dnslib_node_rrset_count(node);
+	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
+	short count = knot_node_rrset_count(node);
 
 	assert(count == 0 || rrsets != NULL);
 
@@ -430,59 +430,59 @@ DEBUG_DNSLIB_ZONE(
 /*!
  * \brief Adjusts zone node for faster query processing.
  *
- * This function is just a wrapper over dnslib_zone_adjust_node() to be used
+ * This function is just a wrapper over knot_zone_adjust_node() to be used
  * in tree-traversing functions.
  *
  * \param node Zone node to adjust.
  * \param data Zone the node belongs to.
  */
-static void dnslib_zone_contents_adjust_node_in_tree(
-		dnslib_zone_tree_node_t *tnode, void *data)
+static void knot_zone_contents_adjust_node_in_tree(
+		knot_zone_tree_node_t *tnode, void *data)
 {
 	assert(data != NULL);
 	assert(tnode != NULL);
 	assert(tnode->node != NULL);
 
-	dnslib_zone_adjust_arg_t *args = (dnslib_zone_adjust_arg_t *)data;
-	dnslib_node_t *node = tnode->node;
-	dnslib_node_set_previous(node, args->previous_node);
+	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
+	knot_node_t *node = tnode->node;
+	knot_node_set_previous(node, args->previous_node);
 	args->previous_node = node;
 	if (args->first_node == NULL) {
 		args->first_node = node;
 	}
-	dnslib_zone_contents_t *zone = args->zone;
+	knot_zone_contents_t *zone = args->zone;
 
-	dnslib_zone_contents_adjust_node(node, zone);
+	knot_zone_contents_adjust_node(node, zone);
 }
 
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Adjusts NSEC3 node for faster query processing.
  *
- * This function is just a wrapper over dnslib_zone_adjust_nsec3_node() to be
+ * This function is just a wrapper over knot_zone_adjust_nsec3_node() to be
  * used in tree-traversing functions.
  *
  * \param node Zone node to adjust.
  * \param data Zone the node belongs to.
  */
-static void dnslib_zone_contents_adjust_nsec3_node_in_tree(
-		dnslib_zone_tree_node_t *tnode, void *data)
+static void knot_zone_contents_adjust_nsec3_node_in_tree(
+		knot_zone_tree_node_t *tnode, void *data)
 {
 	assert(data != NULL);
 	assert(tnode != NULL);
 	assert(tnode->node != NULL);
 
-	dnslib_zone_adjust_arg_t *args = (dnslib_zone_adjust_arg_t *)data;
-	dnslib_node_t *node = tnode->node;
-	dnslib_node_set_previous(node, args->previous_node);
+	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
+	knot_node_t *node = tnode->node;
+	knot_node_set_previous(node, args->previous_node);
 	args->previous_node = node;
 	if (args->first_node == NULL) {
 		args->first_node = node;
 	}
 
 	/* Not needed anymore. */
-//	dnslib_zone_contents_t *zone = args->zone;
-//	dnslib_zone_contents_adjust_nsec3_node(node, zone, 1);
+//	knot_zone_contents_t *zone = args->zone;
+//	knot_zone_contents_adjust_nsec3_node(node, zone, 1);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -490,7 +490,7 @@ static void dnslib_zone_contents_adjust_nsec3_node_in_tree(
  * \brief Creates a NSEC3 hashed name for the given domain name.
  *
  * \note The zone's NSEC3PARAM record must be parsed prior to calling this
- *       function (see dnslib_zone_load_nsec3param()).
+ *       function (see knot_zone_load_nsec3param()).
  *
  * \param zone Zone from which to take the NSEC3 parameters.
  * \param name Domain name to hash.
@@ -502,21 +502,21 @@ static void dnslib_zone_contents_adjust_nsec3_node_in_tree(
  * \retval DNSLIB_ERROR if an error occured while creating a new domain name
  *                      from the hash or concatenating it with the zone name.
  */
-static int dnslib_zone_contents_nsec3_name(const dnslib_zone_contents_t *zone,
-                                           const dnslib_dname_t *name,
-                                           dnslib_dname_t **nsec3_name)
+static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
+                                           const knot_dname_t *name,
+                                           knot_dname_t **nsec3_name)
 {
 	assert(nsec3_name != NULL);
 
 	*nsec3_name = NULL;
 
-	const dnslib_nsec3_params_t *nsec3_params =
-		dnslib_zone_contents_nsec3params(zone);
+	const knot_nsec3_params_t *nsec3_params =
+		knot_zone_contents_nsec3params(zone);
 
 	if (nsec3_params == NULL) {
 DEBUG_DNSLIB_ZONE(
-		char *n = dnslib_dname_to_str(zone->apex->owner);
-		debug_dnslib_zone("No NSEC3PARAM for zone %s.\n", n);
+		char *n = knot_dname_to_str(zone->apex->owner);
+		debug_knot_zone("No NSEC3PARAM for zone %s.\n", n);
 		free(n);
 );
 		return DNSLIB_ENSEC3PAR;
@@ -526,33 +526,33 @@ DEBUG_DNSLIB_ZONE(
 	size_t hash_size = 0;
 
 DEBUG_DNSLIB_ZONE(
-	char *n = dnslib_dname_to_str(name);
-	debug_dnslib_zone("Hashing name %s.\n", n);
+	char *n = knot_dname_to_str(name);
+	debug_knot_zone("Hashing name %s.\n", n);
 	free(n);
 );
 
-	int res = dnslib_nsec3_sha1(nsec3_params, dnslib_dname_name(name),
-	                            dnslib_dname_size(name), &hashed_name,
+	int res = knot_nsec3_sha1(nsec3_params, knot_dname_name(name),
+	                            knot_dname_size(name), &hashed_name,
 	                            &hash_size);
 
 	if (res != 0) {
-		char *n = dnslib_dname_to_str(name);
-		debug_dnslib_zone("Error while hashing name %s.\n", n);
+		char *n = knot_dname_to_str(name);
+		debug_knot_zone("Error while hashing name %s.\n", n);
 		free(n);
 		return DNSLIB_ECRYPTO;
 	}
 
-	debug_dnslib_zone("Hash: ");
-	debug_dnslib_zone_hex((char *)hashed_name, hash_size);
-	debug_dnslib_zone("\n");
+	debug_knot_zone("Hash: ");
+	debug_knot_zone_hex((char *)hashed_name, hash_size);
+	debug_knot_zone("\n");
 
 	char *name_b32 = NULL;
 	size_t size = base32hex_encode_alloc((char *)hashed_name, hash_size,
 	                                     &name_b32);
 
 	if (size == 0) {
-		char *n = dnslib_dname_to_str(name);
-		debug_dnslib_zone("Error while encoding hashed name %s to "
+		char *n = knot_dname_to_str(name);
+		debug_knot_zone("Error while encoding hashed name %s to "
 		                  "base32.\n", n);
 		free(n);
 		if (name_b32 != NULL) {
@@ -564,26 +564,26 @@ DEBUG_DNSLIB_ZONE(
 	assert(name_b32 != NULL);
 	free(hashed_name);
 
-	debug_dnslib_zone("Base32-encoded hash: %s\n", name_b32);
+	debug_knot_zone("Base32-encoded hash: %s\n", name_b32);
 
 	/* Will be returned to caller, make sure it is released after use. */
-	*nsec3_name = dnslib_dname_new_from_str(name_b32, size, NULL);
+	*nsec3_name = knot_dname_new_from_str(name_b32, size, NULL);
 
 	free(name_b32);
 
 	if (*nsec3_name == NULL) {
-		debug_dnslib_zone("Error while creating domain name for hashed"
+		debug_knot_zone("Error while creating domain name for hashed"
 		                  " name.\n");
 		return DNSLIB_ERROR;
 	}
 
 	assert(zone->apex->owner != NULL);
-	dnslib_dname_t *ret = dnslib_dname_cat(*nsec3_name, zone->apex->owner);
+	knot_dname_t *ret = knot_dname_cat(*nsec3_name, zone->apex->owner);
 
 	if (ret == NULL) {
-		debug_dnslib_zone("Error while creating NSEC3 domain name for "
+		debug_knot_zone("Error while creating NSEC3 domain name for "
 		                  "hashed name.\n");
-		dnslib_dname_release(*nsec3_name);
+		knot_dname_release(*nsec3_name);
 		return DNSLIB_ERROR;
 	}
 
@@ -609,20 +609,20 @@ DEBUG_DNSLIB_ZONE(
  * \retval 0 if the domain name was not found. \a node may hold any (or none)
  *           node. \a previous is set properly.
  */
-static int dnslib_zone_contents_find_in_tree(dnslib_zone_tree_t *tree,
-                                             const dnslib_dname_t *name,
-                                             dnslib_node_t **node,
-                                             dnslib_node_t **previous)
+static int knot_zone_contents_find_in_tree(knot_zone_tree_t *tree,
+                                             const knot_dname_t *name,
+                                             knot_node_t **node,
+                                             knot_node_t **previous)
 {
 	assert(tree != NULL);
 	assert(name != NULL);
 	assert(node != NULL);
 	assert(previous != NULL);
 
-	dnslib_node_t *found = NULL, *prev = NULL;
-//	dnslib_node_t *found2 = NULL, *prev2 = NULL;
+	knot_node_t *found = NULL, *prev = NULL;
+//	knot_node_t *found2 = NULL, *prev2 = NULL;
 
-	int exact_match = dnslib_zone_tree_get_less_or_equal(
+	int exact_match = knot_zone_tree_get_less_or_equal(
 	                         tree, name, &found, &prev);
 
 //	assert(prev != NULL);
@@ -636,12 +636,12 @@ static int dnslib_zone_contents_find_in_tree(dnslib_zone_tree_t *tree,
 //		// set the previous node of the found node
 //		assert(exact_match);
 //		assert(found != NULL);
-//		*previous = dnslib_node_get_previous(found, 1);
+//		*previous = knot_node_get_previous(found, 1);
 //	} else {
 //		// otherwise check if the previous node is not an empty
 //		// non-terminal
-//		*previous = (dnslib_node_rrset_count(prev) == 0)
-//		            ? dnslib_node_get_previous(prev, 1)
+//		*previous = (knot_node_rrset_count(prev) == 0)
+//		            ? knot_node_get_previous(prev, 1)
 //		            : prev;
 //	}
 
@@ -650,15 +650,15 @@ static int dnslib_zone_contents_find_in_tree(dnslib_zone_tree_t *tree,
 
 /*----------------------------------------------------------------------------*/
 
-static void dnslib_zone_contents_node_to_hash(dnslib_zone_tree_node_t *tnode,
+static void knot_zone_contents_node_to_hash(knot_zone_tree_node_t *tnode,
                                               void *data)
 {
 	assert(tnode != NULL && tnode->node != NULL
 	       && tnode->node->owner != NULL && data != NULL);
 
-	dnslib_node_t *node = tnode->node;
+	knot_node_t *node = tnode->node;
 
-	dnslib_zone_contents_t *zone = (dnslib_zone_contents_t *)data;
+	knot_zone_contents_t *zone = (knot_zone_contents_t *)data;
 	/*
 	 * By the original approach, only authoritative nodes and delegation
 	 * points should be added to the hash table, but currently, all nodes
@@ -668,8 +668,8 @@ static void dnslib_zone_contents_node_to_hash(dnslib_zone_tree_node_t *tnode,
 
 #ifdef USE_HASH_TABLE
 DEBUG_DNSLIB_ZONE(
-	char *name = dnslib_dname_to_str(node->owner);
-	debug_dnslib_zone("Adding node with owner %s to hash table.\n", name);
+	char *name = knot_dname_to_str(node->owner);
+	debug_knot_zone("Adding node with owner %s to hash table.\n", name);
 	free(name);
 );
 	//assert(zone->table != NULL);
@@ -678,18 +678,18 @@ DEBUG_DNSLIB_ZONE(
 	    && ck_insert_item(zone->table,
 	                      (const char *)node->owner->name,
 	                      node->owner->size, (void *)node) != 0) {
-		debug_dnslib_zone("Error inserting node into hash table!\n");
+		debug_knot_zone("Error inserting node into hash table!\n");
 	}
 #endif
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int dnslib_zone_contents_dnames_from_rdata_to_table(
-	dnslib_dname_table_t *table, dnslib_rdata_t *rdata,
-	dnslib_rrtype_descriptor_t *d)
+static int knot_zone_contents_dnames_from_rdata_to_table(
+	knot_dname_table_t *table, knot_rdata_t *rdata,
+	knot_rrtype_descriptor_t *d)
 {
-	unsigned int count = dnslib_rdata_item_count(rdata);
+	unsigned int count = knot_rdata_item_count(rdata);
 	int rc = 0;
 	assert(count <= d->length);
 	// for each RDATA item
@@ -700,95 +700,95 @@ static int dnslib_zone_contents_dnames_from_rdata_to_table(
 		       == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
 		    || d->wireformat[j]
 		       == DNSLIB_RDATA_WF_LITERAL_DNAME) {
-			debug_dnslib_zone("Saving dname from "
+			debug_knot_zone("Saving dname from "
 					  "rdata to dname table"
 					  ".\n");
-			rc = dnslib_dname_table_add_dname2(table,
-			&dnslib_rdata_get_item(rdata, j)->dname);
+			rc = knot_dname_table_add_dname2(table,
+			&knot_rdata_get_item(rdata, j)->dname);
 			if (rc < 0) {
-				debug_dnslib_zone("Error: %s\n",
-				  dnslib_strerror(rc));
+				debug_knot_zone("Error: %s\n",
+				  knot_strerror2(rc));
 				return rc;
 			}
 		}
 	}
 
-	debug_dnslib_zone("RDATA OK.\n");
+	debug_knot_zone("RDATA OK.\n");
 	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int dnslib_zone_contents_dnames_from_rrset_to_table(
-	dnslib_dname_table_t *table, dnslib_rrset_t *rrset, int replace_owner,
-	dnslib_dname_t *owner)
+static int knot_zone_contents_dnames_from_rrset_to_table(
+	knot_dname_table_t *table, knot_rrset_t *rrset, int replace_owner,
+	knot_dname_t *owner)
 {
 	assert(table != NULL && rrset != NULL && owner != NULL);
 
 	if (replace_owner) {
 		// discard the old owner and replace it with the new
-		dnslib_rrset_set_owner(rrset, owner);
+		knot_rrset_set_owner(rrset, owner);
 	}
-	debug_dnslib_zone("RRSet owner: %p\n", rrset->owner);
+	debug_knot_zone("RRSet owner: %p\n", rrset->owner);
 
-	dnslib_rrtype_descriptor_t *desc = dnslib_rrtype_descriptor_by_type(
-		dnslib_rrset_type(rrset));
+	knot_rrtype_descriptor_t *desc = knot_rrtype_descriptor_by_type(
+		knot_rrset_type(rrset));
 	if (desc == NULL) {
 		// not recognized RR type, ignore
-		debug_dnslib_zone("RRSet type not recognized.\n");
+		debug_knot_zone("RRSet type not recognized.\n");
 		return DNSLIB_EOK;
 	}
 	// for each RDATA in RRSet
-	dnslib_rdata_t *rdata = dnslib_rrset_get_rdata(rrset);
+	knot_rdata_t *rdata = knot_rrset_get_rdata(rrset);
 	while (rdata != NULL) {
-		int rc = dnslib_zone_contents_dnames_from_rdata_to_table(table,
+		int rc = knot_zone_contents_dnames_from_rdata_to_table(table,
 		                                                   rdata, desc);
 		if (rc != DNSLIB_EOK) {
 			return rc;
 		}
 
-		rdata = dnslib_rrset_rdata_get_next(rrset, rdata);
+		rdata = knot_rrset_rdata_get_next(rrset, rdata);
 	}
 
-	debug_dnslib_zone("RRSet OK.\n");
+	debug_knot_zone("RRSet OK.\n");
 	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int dnslib_zone_contents_dnames_from_node_to_table(
-	dnslib_dname_table_t *table, dnslib_node_t *node)
+static int knot_zone_contents_dnames_from_node_to_table(
+	knot_dname_table_t *table, knot_node_t *node)
 {
 	/*
 	 * Assuming that all the RRSets have the same owner as the node.
 	 */
 
 	// insert owner
-	char *name = dnslib_dname_to_str(node->owner);
-	debug_dnslib_zone("Node owner before inserting to dname table: %p.\n",
+	char *name = knot_dname_to_str(node->owner);
+	debug_knot_zone("Node owner before inserting to dname table: %p.\n",
 	                  node->owner);
-	debug_dnslib_zone("Node owner before inserting to dname table: %s.\n",
+	debug_knot_zone("Node owner before inserting to dname table: %s.\n",
 	                  name);
 	free(name);
-	//dnslib_dname_t *old_owner = node->owner;
-	int rc = dnslib_dname_table_add_dname2(table, &node->owner);
+	//knot_dname_t *old_owner = node->owner;
+	int rc = knot_dname_table_add_dname2(table, &node->owner);
 	if (rc < 0) {
-		debug_dnslib_zone("Failed to add dname to dname table.\n");
+		debug_knot_zone("Failed to add dname to dname table.\n");
 		return rc;
 	}
 	int replace_owner = (rc > 0);
-	debug_dnslib_zone("Node owner after inserting to dname table: %p.\n",
+	debug_knot_zone("Node owner after inserting to dname table: %p.\n",
 	                  node->owner);
-	name = dnslib_dname_to_str(node->owner);
-	debug_dnslib_zone("Node owner after inserting to dname table: %s.\n",
+	name = knot_dname_to_str(node->owner);
+	debug_knot_zone("Node owner after inserting to dname table: %s.\n",
 	                  name);
 	free(name);
 
-	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
+	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
 	// for each RRSet
-	for (int i = 0; i < dnslib_node_rrset_count(node); ++i) {
-		debug_dnslib_zone("Inserting RRSets from node to table.\n");
-		rc = dnslib_zone_contents_dnames_from_rrset_to_table(table,
+	for (int i = 0; i < knot_node_rrset_count(node); ++i) {
+		debug_knot_zone("Inserting RRSets from node to table.\n");
+		rc = knot_zone_contents_dnames_from_rrset_to_table(table,
 			rrsets[i], replace_owner, node->owner);
 		if (rc != DNSLIB_EOK) {
 			return rc;
@@ -797,7 +797,7 @@ static int dnslib_zone_contents_dnames_from_node_to_table(
 
 	free(rrsets);
 
-	debug_dnslib_zone("Node OK\n");
+	debug_knot_zone("Node OK\n");
 	return DNSLIB_EOK;
 }
 
@@ -805,13 +805,13 @@ static int dnslib_zone_contents_dnames_from_node_to_table(
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-dnslib_zone_contents_t *dnslib_zone_contents_new(dnslib_node_t *apex,
+knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
                                                  uint node_count,
                                                  int use_domain_table,
-                                                 struct dnslib_zone *zone)
+                                                 struct knot_zone *zone)
 {
-	dnslib_zone_contents_t *contents = (dnslib_zone_contents_t *)
-	                              calloc(1, sizeof(dnslib_zone_contents_t));
+	knot_zone_contents_t *contents = (knot_zone_contents_t *)
+	                              calloc(1, sizeof(knot_zone_contents_t));
 	if (contents == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -819,25 +819,25 @@ dnslib_zone_contents_t *dnslib_zone_contents_new(dnslib_node_t *apex,
 
 	contents->apex = apex;
 	contents->zone = zone;
-	dnslib_node_set_zone(apex, zone);
+	knot_node_set_zone(apex, zone);
 
-	debug_dnslib_zone("Creating tree for normal nodes.\n");
-	contents->nodes = malloc(sizeof(dnslib_zone_tree_t));
+	debug_knot_zone("Creating tree for normal nodes.\n");
+	contents->nodes = malloc(sizeof(knot_zone_tree_t));
 	if (contents->nodes == NULL) {
 		ERR_ALLOC_FAILED;
 		goto cleanup;
 	}
 
-	debug_dnslib_zone("Creating tree for NSEC3 nodes.\n");
-	contents->nsec3_nodes = malloc(sizeof(dnslib_zone_tree_t));
+	debug_knot_zone("Creating tree for NSEC3 nodes.\n");
+	contents->nsec3_nodes = malloc(sizeof(knot_zone_tree_t));
 	if (contents->nsec3_nodes == NULL) {
 		ERR_ALLOC_FAILED;
 		goto cleanup;
 	}
 
 	if (use_domain_table) {
-		debug_dnslib_zone("Creating domain name table.\n");
-		contents->dname_table = dnslib_dname_table_new();
+		debug_knot_zone("Creating domain name table.\n");
+		contents->dname_table = knot_dname_table_new();
 		if (contents->dname_table == NULL) {
 			ERR_ALLOC_FAILED;
 			goto cleanup;
@@ -849,39 +849,39 @@ dnslib_zone_contents_t *dnslib_zone_contents_new(dnslib_node_t *apex,
 	contents->node_count = node_count;
 
 	/* Initialize NSEC3 params */
-	debug_dnslib_zone("Initializing NSEC3 parameters.\n");
+	debug_knot_zone("Initializing NSEC3 parameters.\n");
 	contents->nsec3_params.algorithm = 0;
 	contents->nsec3_params.flags = 0;
 	contents->nsec3_params.iterations = 0;
 	contents->nsec3_params.salt_length = 0;
 	contents->nsec3_params.salt = NULL;
 
-	debug_dnslib_zone("Initializing zone trees.\n");
-	if (dnslib_zone_tree_init(contents->nodes) != DNSLIB_EOK
-	    || dnslib_zone_tree_init(contents->nsec3_nodes) != DNSLIB_EOK) {
+	debug_knot_zone("Initializing zone trees.\n");
+	if (knot_zone_tree_init(contents->nodes) != DNSLIB_EOK
+	    || knot_zone_tree_init(contents->nsec3_nodes) != DNSLIB_EOK) {
 		goto cleanup;
 	}
 
-	debug_dnslib_zone("Inserting apex into the zone tree.\n");
-	if (dnslib_zone_tree_insert(contents->nodes, apex) != DNSLIB_EOK) {
-		debug_dnslib_zone("Failed to insert apex to the zone tree.\n");
+	debug_knot_zone("Inserting apex into the zone tree.\n");
+	if (knot_zone_tree_insert(contents->nodes, apex) != DNSLIB_EOK) {
+		debug_knot_zone("Failed to insert apex to the zone tree.\n");
 		goto cleanup;
 	}
 
 #ifdef USE_HASH_TABLE
 	if (contents->node_count > 0) {
-		debug_dnslib_zone("Creating hash table.\n");
+		debug_knot_zone("Creating hash table.\n");
 		contents->table = ck_create_table(contents->node_count);
 		if (contents->table == NULL) {
 			goto cleanup;
 		}
 
 		// insert the apex into the hash table
-		debug_dnslib_zone("Inserting apex into the hash table.\n");
+		debug_knot_zone("Inserting apex into the hash table.\n");
 		if (ck_insert_item(contents->table,
-		                   (const char *)dnslib_dname_name(
-		                                       dnslib_node_owner(apex)),
-		                   dnslib_dname_size(dnslib_node_owner(apex)),
+		                   (const char *)knot_dname_name(
+		                                       knot_node_owner(apex)),
+		                   knot_dname_size(knot_node_owner(apex)),
 		                   (void *)apex) != 0) {
 			ck_destroy_table(&contents->table, NULL, 0);
 			goto cleanup;
@@ -893,8 +893,8 @@ dnslib_zone_contents_t *dnslib_zone_contents_new(dnslib_node_t *apex,
 
 	// insert names from the apex to the domain table
 	if (use_domain_table) {
-		debug_dnslib_zone("Inserting names from apex to table.\n");
-		int rc = dnslib_zone_contents_dnames_from_node_to_table(
+		debug_knot_zone("Inserting names from apex to table.\n");
+		int rc = knot_zone_contents_dnames_from_node_to_table(
 		             contents->dname_table, apex);
 		if (rc != DNSLIB_EOK) {
 			ck_destroy_table(&contents->table, NULL, 0);
@@ -905,7 +905,7 @@ dnslib_zone_contents_t *dnslib_zone_contents_new(dnslib_node_t *apex,
 	return contents;
 
 cleanup:
-	debug_dnslib_zone("Cleaning up.\n");
+	debug_knot_zone("Cleaning up.\n");
 	free(contents->dname_table);
 	free(contents->nodes);
 	free(contents->nsec3_nodes);
@@ -915,22 +915,22 @@ cleanup:
 
 /*----------------------------------------------------------------------------*/
 
-short dnslib_zone_contents_generation(const dnslib_zone_contents_t *zone)
+short knot_zone_contents_generation(const knot_zone_contents_t *zone)
 {
 	return zone->generation;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_contents_switch_generation(dnslib_zone_contents_t *zone)
+void knot_zone_contents_switch_generation(knot_zone_contents_t *zone)
 {
 	zone->generation = 1 - zone->generation;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_add_node(dnslib_zone_contents_t *zone,
-                                  dnslib_node_t *node, int create_parents,
+int knot_zone_contents_add_node(knot_zone_contents_t *zone,
+                                  knot_node_t *node, int create_parents,
                                   uint8_t flags, int use_domain_table)
 {
 	if (zone == NULL || node == NULL) {
@@ -938,20 +938,20 @@ int dnslib_zone_contents_add_node(dnslib_zone_contents_t *zone,
 	}
 
 	int ret = 0;
-	if ((ret = dnslib_zone_contents_check_node(zone, node)) != 0) {
+	if ((ret = knot_zone_contents_check_node(zone, node)) != 0) {
 		return ret;
 	}
 
-	ret = dnslib_zone_tree_insert(zone->nodes, node);
+	ret = knot_zone_tree_insert(zone->nodes, node);
 	if (ret != DNSLIB_EOK) {
-		debug_dnslib_zone("Failed to insert node into zone tree.\n");
+		debug_knot_zone("Failed to insert node into zone tree.\n");
 		return ret;
 	}
 
 #ifdef USE_HASH_TABLE
 DEBUG_DNSLIB_ZONE(
-	char *name = dnslib_dname_to_str(node->owner);
-	debug_dnslib_zone("Adding node with owner %s to hash table.\n", name);
+	char *name = knot_dname_to_str(node->owner);
+	debug_knot_zone("Adding node with owner %s to hash table.\n", name);
 	free(name);
 );
 	//assert(zone->table != NULL);
@@ -960,55 +960,55 @@ DEBUG_DNSLIB_ZONE(
 	    && ck_insert_item(zone->table,
 	                      (const char *)node->owner->name,
 	                      node->owner->size, (void *)node) != 0) {
-		debug_dnslib_zone("Error inserting node into hash table!\n");
+		debug_knot_zone("Error inserting node into hash table!\n");
 		/*! \todo Remove the node from the tree. */
 		return DNSLIB_EHASH;
 	}
 #endif
-	assert(dnslib_zone_contents_find_node(zone, node->owner));
+	assert(knot_zone_contents_find_node(zone, node->owner));
 
 	if (use_domain_table) {
-		ret = dnslib_zone_contents_dnames_from_node_to_table(
+		ret = knot_zone_contents_dnames_from_node_to_table(
 		          zone->dname_table, node);
 		if (ret != DNSLIB_EOK) {
 			/*! \todo Remove node from the tree and hash table.*/
-			debug_dnslib_zone("Failed to add dnames into table.\n");
+			debug_knot_zone("Failed to add dnames into table.\n");
 			return ret;
 		}
 	}
 
-	dnslib_node_set_zone(node, zone->zone);
+	knot_node_set_zone(node, zone->zone);
 
 	if (!create_parents) {
 		return DNSLIB_EOK;
 	}
 
-	debug_dnslib_zone("Creating parents of the node.\n");
+	debug_knot_zone("Creating parents of the node.\n");
 
-	dnslib_dname_t *chopped =
-		dnslib_dname_left_chop(dnslib_node_owner(node));
-	if (dnslib_dname_compare(dnslib_node_owner(zone->apex), chopped) == 0) {
-		debug_dnslib_zone("Zone apex is the parent.\n");
-		dnslib_node_set_parent(node, zone->apex);
+	knot_dname_t *chopped =
+		knot_dname_left_chop(knot_node_owner(node));
+	if (knot_dname_compare(knot_node_owner(zone->apex), chopped) == 0) {
+		debug_knot_zone("Zone apex is the parent.\n");
+		knot_node_set_parent(node, zone->apex);
 	} else {
-		dnslib_node_t *next_node;
+		knot_node_t *next_node;
 		while ((next_node
-		      = dnslib_zone_contents_get_node(zone, chopped)) == NULL) {
+		      = knot_zone_contents_get_node(zone, chopped)) == NULL) {
 			/* Adding new dname to zone + add to table. */
-			debug_dnslib_zone("Creating new node.\n");
-			next_node = dnslib_node_new(chopped, NULL, flags);
+			debug_knot_zone("Creating new node.\n");
+			next_node = knot_node_new(chopped, NULL, flags);
 			if (next_node == NULL) {
 				/* Directly discard. */
-				dnslib_dname_free(&chopped);
+				knot_dname_free(&chopped);
 				return DNSLIB_ENOMEM;
 			}
 			if (use_domain_table) {
 				ret =
-				 dnslib_zone_contents_dnames_from_node_to_table(
+				 knot_zone_contents_dnames_from_node_to_table(
 					zone->dname_table, next_node);
 				if (ret != DNSLIB_EOK) {
 					/*! \todo Will next_node leak? */
-					dnslib_dname_release(chopped);
+					knot_dname_release(chopped);
 					return ret;
 				}
 			}
@@ -1018,90 +1018,90 @@ DEBUG_DNSLIB_ZONE(
 				chopped = next_node->owner;
 			}
 
-			assert(dnslib_zone_contents_find_node(zone, chopped)
+			assert(knot_zone_contents_find_node(zone, chopped)
 			       == NULL);
-			assert(dnslib_node_owner(next_node) == chopped);
+			assert(knot_node_owner(next_node) == chopped);
 
-			debug_dnslib_zone("Inserting new node to zone tree.\n");
-//			TREE_INSERT(zone->tree, dnslib_node, avl, next_node);
+			debug_knot_zone("Inserting new node to zone tree.\n");
+//			TREE_INSERT(zone->tree, knot_node, avl, next_node);
 
-			ret = dnslib_zone_tree_insert(zone->nodes,
+			ret = knot_zone_tree_insert(zone->nodes,
 			                              next_node);
 			if (ret != DNSLIB_EOK) {
-				debug_dnslib_zone("Failed to insert new node "
+				debug_knot_zone("Failed to insert new node "
 				                  "to zone tree.\n");
 				/*! \todo Delete the node?? */
 				/* Directly discard. */
-				dnslib_dname_release(chopped);
+				knot_dname_release(chopped);
 				return ret;
 			}
 
 #ifdef USE_HASH_TABLE
 DEBUG_DNSLIB_ZONE(
-			char *name = dnslib_dname_to_str(
-					dnslib_node_owner(next_node));
-			debug_dnslib_zone("Adding new node with owner %s to "
+			char *name = knot_dname_to_str(
+					knot_node_owner(next_node));
+			debug_knot_zone("Adding new node with owner %s to "
 			                  "hash table.\n", name);
 			free(name);
 );
 
 			if (zone->table != NULL
 			    && ck_insert_item(zone->table,
-			      (const char *)dnslib_dname_name(
-			                    dnslib_node_owner(next_node)),
-			      dnslib_dname_size(dnslib_node_owner(next_node)),
+			      (const char *)knot_dname_name(
+			                    knot_node_owner(next_node)),
+			      knot_dname_size(knot_node_owner(next_node)),
 			      (void *)next_node) != 0) {
-				debug_dnslib_zone("Error inserting node into "
+				debug_knot_zone("Error inserting node into "
 				                  "hash table!\n");
 				/*! \todo Delete the node?? */
 				/* Directly discard. */
-				dnslib_dname_release(chopped);
+				knot_dname_release(chopped);
 				return DNSLIB_EHASH;
 			}
 
 			// set parent
-			dnslib_node_set_parent(node, next_node);
+			knot_node_set_parent(node, next_node);
 
 			// set zone
-			dnslib_node_set_zone(next_node, zone->zone);
+			knot_node_set_zone(next_node, zone->zone);
 
 			// check if the node is not wildcard child of the parent
-			if (dnslib_dname_is_wildcard(
-					dnslib_node_owner(node))) {
-				dnslib_node_set_wildcard_child(next_node, node);
+			if (knot_dname_is_wildcard(
+					knot_node_owner(node))) {
+				knot_node_set_wildcard_child(next_node, node);
 			}
 #endif
-			debug_dnslib_zone("Next parent.\n");
+			debug_knot_zone("Next parent.\n");
 			node = next_node;
-			dnslib_dname_t *chopped_last = chopped;
-			chopped = dnslib_dname_left_chop(chopped);
+			knot_dname_t *chopped_last = chopped;
+			chopped = knot_dname_left_chop(chopped);
 
 			/* Release last chop, reference is already stored
 			 * in next_node.
 			 */
-			dnslib_dname_release(chopped_last);
+			knot_dname_release(chopped_last);
 
 		}
 		// set the found parent (in the zone) as the parent of the last
 		// inserted node
-		assert(dnslib_node_parent(node, 0) == NULL);
-		dnslib_node_set_parent(node, next_node);
+		assert(knot_node_parent(node, 0) == NULL);
+		knot_node_set_parent(node, next_node);
 
-		debug_dnslib_zone("Created all parents.\n");
+		debug_knot_zone("Created all parents.\n");
 	}
 
 	/* Directly discard. */
 	/*! \todo This may be double-release. */
-	dnslib_dname_release(chopped);
+	knot_dname_release(chopped);
 
 	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_add_rrset(dnslib_zone_contents_t *zone,
-                                   dnslib_rrset_t *rrset, dnslib_node_t **node,
-                                   dnslib_rrset_dupl_handling_t dupl,
+int knot_zone_contents_add_rrset(knot_zone_contents_t *zone,
+                                   knot_rrset_t *rrset, knot_node_t **node,
+                                   knot_rrset_dupl_handling_t dupl,
                                    int use_domain_table)
 {
 	if (zone == NULL || rrset == NULL || zone->apex == NULL
@@ -1110,16 +1110,16 @@ int dnslib_zone_contents_add_rrset(dnslib_zone_contents_t *zone,
 	}
 
 	// check if the RRSet belongs to the zone
-	if (dnslib_dname_compare(dnslib_rrset_owner(rrset),
+	if (knot_dname_compare(knot_rrset_owner(rrset),
 	                         zone->apex->owner) != 0
-	    && !dnslib_dname_is_subdomain(dnslib_rrset_owner(rrset),
+	    && !knot_dname_is_subdomain(knot_rrset_owner(rrset),
 	                                  zone->apex->owner)) {
 		return DNSLIB_EBADZONE;
 	}
 
 	if ((*node) == NULL
-	    && (*node = dnslib_zone_contents_get_node(zone,
-	                            dnslib_rrset_owner(rrset))) == NULL) {
+	    && (*node = knot_zone_contents_get_node(zone,
+	                            knot_rrset_owner(rrset))) == NULL) {
 		return DNSLIB_ENONODE;
 	}
 
@@ -1129,21 +1129,21 @@ int dnslib_zone_contents_add_rrset(dnslib_zone_contents_t *zone,
 	int rc;
 
 	/*! \todo REMOVE RRSET */
-	rc = dnslib_node_add_rrset(*node, rrset,
+	rc = knot_node_add_rrset(*node, rrset,
 	                           dupl == DNSLIB_RRSET_DUPL_MERGE);
 	if (rc < 0) {
-		debug_dnslib_zone("Failed to add RRSet to node.\n");
+		debug_knot_zone("Failed to add RRSet to node.\n");
 		return rc;
 	}
 
 	int ret = rc;
 
 	if (use_domain_table) {
-		debug_dnslib_zone("Saving RRSet to table.\n");
-		rc = dnslib_zone_contents_dnames_from_rrset_to_table(
+		debug_knot_zone("Saving RRSet to table.\n");
+		rc = knot_zone_contents_dnames_from_rrset_to_table(
 		         zone->dname_table, rrset, 0, (*node)->owner);
 		if (rc != DNSLIB_EOK) {
-			debug_dnslib_zone("Error saving domain names from "
+			debug_knot_zone("Error saving domain names from "
 					  "RRSIGs to the domain name table.\n "
 					  "The zone may be in an inconsistent "
 					  "state.\n");
@@ -1158,20 +1158,20 @@ int dnslib_zone_contents_add_rrset(dnslib_zone_contents_t *zone,
 	// table)
 	/*! \todo Do even if domain table is not used?? */
 	if (ret == DNSLIB_EOK && rrset->owner != (*node)->owner) {
-		dnslib_rrset_set_owner(rrset, (*node)->owner);
+		knot_rrset_set_owner(rrset, (*node)->owner);
 	}
 
-	debug_dnslib_zone("RRSet OK.\n");
+	debug_knot_zone("RRSet OK.\n");
 	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_add_rrsigs(dnslib_zone_contents_t *zone,
-                                    dnslib_rrset_t *rrsigs,
-                                    dnslib_rrset_t **rrset,
-                                    dnslib_node_t **node,
-                                    dnslib_rrset_dupl_handling_t dupl,
+int knot_zone_contents_add_rrsigs(knot_zone_contents_t *zone,
+                                    knot_rrset_t *rrsigs,
+                                    knot_rrset_t **rrset,
+                                    knot_node_t **node,
+                                    knot_rrset_dupl_handling_t dupl,
                                     int use_domain_table)
 {
 	if (zone == NULL || rrsigs == NULL || rrset == NULL || node == NULL
@@ -1181,17 +1181,17 @@ int dnslib_zone_contents_add_rrsigs(dnslib_zone_contents_t *zone,
 
 	// check if the RRSet belongs to the zone
 	if (*rrset != NULL
-	    && dnslib_dname_compare(dnslib_rrset_owner(*rrset),
+	    && knot_dname_compare(knot_rrset_owner(*rrset),
 	                            zone->apex->owner) != 0
-	    && !dnslib_dname_is_subdomain(dnslib_rrset_owner(*rrset),
+	    && !knot_dname_is_subdomain(knot_rrset_owner(*rrset),
 	                                  zone->apex->owner)) {
 		return DNSLIB_EBADZONE;
 	}
 
 	// check if the RRSIGs belong to the RRSet
 	if (*rrset != NULL
-	    && (dnslib_dname_compare(dnslib_rrset_owner(rrsigs),
-	                             dnslib_rrset_owner(*rrset)) != 0)) {
+	    && (knot_dname_compare(knot_rrset_owner(rrsigs),
+	                             knot_rrset_owner(*rrset)) != 0)) {
 		return DNSLIB_EBADARG;
 	}
 
@@ -1199,17 +1199,17 @@ int dnslib_zone_contents_add_rrsigs(dnslib_zone_contents_t *zone,
 	if (*rrset == NULL) {
 		// even no node given
 		// find proper node
-		dnslib_node_t *(*get_node)(const dnslib_zone_contents_t *,
-		                           const dnslib_dname_t *)
-		    = (dnslib_rdata_rrsig_type_covered(
-		            dnslib_rrset_rdata(rrsigs)) == DNSLIB_RRTYPE_NSEC3)
-		       ? dnslib_zone_contents_get_nsec3_node
-		       : dnslib_zone_contents_get_node;
+		knot_node_t *(*get_node)(const knot_zone_contents_t *,
+		                           const knot_dname_t *)
+		    = (knot_rdata_rrsig_type_covered(
+		            knot_rrset_rdata(rrsigs)) == DNSLIB_RRTYPE_NSEC3)
+		       ? knot_zone_contents_get_nsec3_node
+		       : knot_zone_contents_get_node;
 
 		if (*node == NULL
 		    && (*node = get_node(
-		                   zone, dnslib_rrset_owner(rrsigs))) == NULL) {
-			debug_dnslib_zone("Failed to find node for RRSIGs.\n");
+		                   zone, knot_rrset_owner(rrsigs))) == NULL) {
+			debug_knot_zone("Failed to find node for RRSIGs.\n");
 			return DNSLIB_EBADARG;  /*! \todo Other error code? */
 		}
 
@@ -1217,15 +1217,15 @@ int dnslib_zone_contents_add_rrsigs(dnslib_zone_contents_t *zone,
 
 		// find the RRSet in the node
 		// take only the first RDATA from the RRSIGs
-		debug_dnslib_zone("Finding RRSet for type %s\n",
-		                  dnslib_rrtype_to_string(
-		                      dnslib_rdata_rrsig_type_covered(
-		                      dnslib_rrset_rdata(rrsigs))));
-		*rrset = dnslib_node_get_rrset(
-		             *node, dnslib_rdata_rrsig_type_covered(
-		                      dnslib_rrset_rdata(rrsigs)));
+		debug_knot_zone("Finding RRSet for type %s\n",
+		                  knot_rrtype_to_string(
+		                      knot_rdata_rrsig_type_covered(
+		                      knot_rrset_rdata(rrsigs))));
+		*rrset = knot_node_get_rrset(
+		             *node, knot_rdata_rrsig_type_covered(
+		                      knot_rrset_rdata(rrsigs)));
 		if (*rrset == NULL) {
-			debug_dnslib_zone("Failed to find RRSet for RRSIGs.\n");
+			debug_knot_zone("Failed to find RRSet for RRSIGs.\n");
 			return DNSLIB_EBADARG;  /*! \todo Other error code? */
 		}
 	}
@@ -1236,9 +1236,9 @@ int dnslib_zone_contents_add_rrsigs(dnslib_zone_contents_t *zone,
 	int rc;
 	int ret = DNSLIB_EOK;
 
-	rc = dnslib_rrset_add_rrsigs(*rrset, rrsigs, dupl);
+	rc = knot_rrset_add_rrsigs(*rrset, rrsigs, dupl);
 	if (rc < 0) {
-		debug_dnslib_dname("Failed to add RRSIGs to RRSet.\n");
+		debug_knot_dname("Failed to add RRSIGs to RRSet.\n");
 		return rc;
 	} else if (rc > 0) {
 		assert(dupl == DNSLIB_RRSET_DUPL_MERGE);
@@ -1246,11 +1246,11 @@ int dnslib_zone_contents_add_rrsigs(dnslib_zone_contents_t *zone,
 	}
 
 	if (use_domain_table) {
-		debug_dnslib_zone("Saving RRSIG RRSet to table.\n");
-		rc = dnslib_zone_contents_dnames_from_rrset_to_table(
+		debug_knot_zone("Saving RRSIG RRSet to table.\n");
+		rc = knot_zone_contents_dnames_from_rrset_to_table(
 		       zone->dname_table, rrsigs, 0, (*rrset)->owner);
 		if (rc != DNSLIB_EOK) {
-			debug_dnslib_zone("Error saving domain names from "
+			debug_knot_zone("Error saving domain names from "
 					  "RRSIGs to the domain name table.\n "
 					  "The zone may be in an inconsistent "
 					  "state.\n");
@@ -1264,17 +1264,17 @@ int dnslib_zone_contents_add_rrsigs(dnslib_zone_contents_t *zone,
 	// replace RRSet's owner with the node's owner (that is already in the
 	// table)
 	if ((*rrset)->owner != (*rrset)->rrsigs->owner) {
-		dnslib_rrset_set_owner((*rrset)->rrsigs, (*rrset)->owner);
+		knot_rrset_set_owner((*rrset)->rrsigs, (*rrset)->owner);
 	}
 
-	debug_dnslib_zone("RRSIGs OK\n");
+	debug_knot_zone("RRSIGs OK\n");
 	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_add_nsec3_node(dnslib_zone_contents_t *zone,
-                                        dnslib_node_t *node, int create_parents,
+int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
+                                        knot_node_t *node, int create_parents,
                                         uint8_t flags, int use_domain_table)
 {
 	UNUSED(create_parents);
@@ -1285,30 +1285,30 @@ int dnslib_zone_contents_add_nsec3_node(dnslib_zone_contents_t *zone,
 	}
 
 	int ret = 0;
-	if ((ret = dnslib_zone_contents_check_node(zone, node)) != 0) {
+	if ((ret = knot_zone_contents_check_node(zone, node)) != 0) {
 		return ret;
 	}
 
 	// how to know if this is successfull??
-//	TREE_INSERT(zone->nsec3_nodes, dnslib_node, avl, node);
-	dnslib_zone_tree_insert(zone->nsec3_nodes, node);
+//	TREE_INSERT(zone->nsec3_nodes, knot_node, avl, node);
+	knot_zone_tree_insert(zone->nsec3_nodes, node);
 
 	if (use_domain_table) {
-		ret = dnslib_zone_contents_dnames_from_node_to_table(
+		ret = knot_zone_contents_dnames_from_node_to_table(
 		           zone->dname_table, node);
 		if (ret != DNSLIB_EOK) {
 			/*! \todo Remove the node from the tree. */
-			debug_dnslib_zone("Failed to add dnames into table.\n");
+			debug_knot_zone("Failed to add dnames into table.\n");
 			return ret;
 		}
 	}
 
 	// no parents to be created, the only parent is the zone apex
 	// set the apex as the parent of the node
-	dnslib_node_set_parent(node, zone->apex);
+	knot_node_set_parent(node, zone->apex);
 
 	// set the zone to the node
-	dnslib_node_set_zone(node, zone->zone);
+	knot_node_set_zone(node, zone->zone);
 
 	// cannot be wildcard child, so nothing to be done
 
@@ -1317,10 +1317,10 @@ int dnslib_zone_contents_add_nsec3_node(dnslib_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_add_nsec3_rrset(dnslib_zone_contents_t *zone,
-                                         dnslib_rrset_t *rrset,
-                                         dnslib_node_t **node,
-                                         dnslib_rrset_dupl_handling_t dupl,
+int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *zone,
+                                         knot_rrset_t *rrset,
+                                         knot_node_t **node,
+                                         knot_rrset_dupl_handling_t dupl,
                                          int use_domain_table)
 {
 	if (zone == NULL || rrset == NULL || zone->apex == NULL
@@ -1329,16 +1329,16 @@ int dnslib_zone_contents_add_nsec3_rrset(dnslib_zone_contents_t *zone,
 	}
 
 	// check if the RRSet belongs to the zone
-	if (dnslib_dname_compare(dnslib_rrset_owner(rrset),
+	if (knot_dname_compare(knot_rrset_owner(rrset),
 	                         zone->apex->owner) != 0
-	    && !dnslib_dname_is_subdomain(dnslib_rrset_owner(rrset),
+	    && !knot_dname_is_subdomain(knot_rrset_owner(rrset),
 	                                  zone->apex->owner)) {
 		return DNSLIB_EBADZONE;
 	}
 
 	if ((*node) == NULL
-	    && (*node = dnslib_zone_contents_get_nsec3_node(
-	                      zone, dnslib_rrset_owner(rrset))) == NULL) {
+	    && (*node = knot_zone_contents_get_nsec3_node(
+	                      zone, knot_rrset_owner(rrset))) == NULL) {
 		return DNSLIB_ENONODE;
 	}
 
@@ -1348,7 +1348,7 @@ int dnslib_zone_contents_add_nsec3_rrset(dnslib_zone_contents_t *zone,
 	int rc;
 
 	/*! \todo REMOVE RRSET */
-	rc = dnslib_node_add_rrset(*node, rrset,
+	rc = knot_node_add_rrset(*node, rrset,
 	                           dupl == DNSLIB_RRSET_DUPL_MERGE);
 	if (rc < 0) {
 		return rc;
@@ -1357,11 +1357,11 @@ int dnslib_zone_contents_add_nsec3_rrset(dnslib_zone_contents_t *zone,
 	int ret = rc;
 
 	if (use_domain_table) {
-		debug_dnslib_zone("Saving NSEC3 RRSet to table.\n");
-		rc = dnslib_zone_contents_dnames_from_rrset_to_table(
+		debug_knot_zone("Saving NSEC3 RRSet to table.\n");
+		rc = knot_zone_contents_dnames_from_rrset_to_table(
 		         zone->dname_table, rrset, 0, (*node)->owner);
 		if (rc != DNSLIB_EOK) {
-			debug_dnslib_zone("Error saving domain names from "
+			debug_knot_zone("Error saving domain names from "
 					  "RRSIGs to the domain name table.\n "
 					  "The zone may be in an inconsistent "
 					  "state.\n");
@@ -1376,35 +1376,35 @@ int dnslib_zone_contents_add_nsec3_rrset(dnslib_zone_contents_t *zone,
 	// table)
 	/*! \todo Do even if domain table is not used? */
 	if (rrset->owner != (*node)->owner) {
-		dnslib_rrset_set_owner(rrset, (*node)->owner);
+		knot_rrset_set_owner(rrset, (*node)->owner);
 	}
 
-	debug_dnslib_zone("NSEC3 OK\n");
+	debug_knot_zone("NSEC3 OK\n");
 	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_node_t *dnslib_zone_contents_remove_node(
-	dnslib_zone_contents_t *contents, const dnslib_node_t *node)
+knot_node_t *knot_zone_contents_remove_node(
+	knot_zone_contents_t *contents, const knot_node_t *node)
 {
 	if (contents == NULL || node == NULL) {
 		return NULL;
 	}
 
-	const dnslib_dname_t *owner = dnslib_node_owner(node);
+	const knot_dname_t *owner = knot_node_owner(node);
 
 	// 1) remove the node from hash table
 	int ret = ck_remove_item(contents->table,
-	               (const char *)dnslib_dname_name(owner),
-	               dnslib_dname_size(owner), NULL, 0);
+	               (const char *)knot_dname_name(owner),
+	               knot_dname_size(owner), NULL, 0);
 	if (ret != 0) {
 		return NULL;
 	}
 
 	// 2) remove the node from the zone tree
-	dnslib_node_t *n = NULL;
-	ret = dnslib_zone_tree_remove(contents->nodes, owner, &n);
+	knot_node_t *n = NULL;
+	ret = knot_zone_tree_remove(contents->nodes, owner, &n);
 	if (ret != DNSLIB_EOK) {
 		return NULL;
 	}
@@ -1414,18 +1414,18 @@ dnslib_node_t *dnslib_zone_contents_remove_node(
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_node_t *dnslib_zone_contents_remove_nsec3_node(
-	dnslib_zone_contents_t *contents, const dnslib_node_t *node)
+knot_node_t *knot_zone_contents_remove_nsec3_node(
+	knot_zone_contents_t *contents, const knot_node_t *node)
 {
 	if (contents == NULL || node == NULL) {
 		return NULL;
 	}
 
-	const dnslib_dname_t *owner = dnslib_node_owner(node);
-	dnslib_node_t *n = NULL;
+	const knot_dname_t *owner = knot_node_owner(node);
+	knot_node_t *n = NULL;
 
 	// remove the node from the zone tree
-	int ret = dnslib_zone_tree_remove(contents->nsec3_nodes, owner, &n);
+	int ret = knot_zone_tree_remove(contents->nsec3_nodes, owner, &n);
 	if (ret != DNSLIB_EOK) {
 		return NULL;
 	}
@@ -1435,8 +1435,8 @@ dnslib_node_t *dnslib_zone_contents_remove_nsec3_node(
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_create_and_fill_hash_table(
-	dnslib_zone_contents_t *zone)
+int knot_zone_contents_create_and_fill_hash_table(
+	knot_zone_contents_t *zone)
 {
 	if (zone == NULL || zone->apex == NULL || zone->apex->owner == NULL) {
 		return DNSLIB_EBADARG;
@@ -1472,10 +1472,10 @@ int dnslib_zone_contents_create_and_fill_hash_table(
 	 * TODO: how to know if this was successful??
 	 */
 	/*! \todo Replace by zone tree. */
-	int ret = dnslib_zone_tree_forward_apply_inorder(zone->nodes,
-	                               dnslib_zone_contents_node_to_hash, zone);
+	int ret = knot_zone_tree_forward_apply_inorder(zone->nodes,
+	                               knot_zone_contents_node_to_hash, zone);
 	if (ret != DNSLIB_EOK) {
-		debug_dnslib_zone("Failed to insert nodes to hash table.\n");
+		debug_knot_zone("Failed to insert nodes to hash table.\n");
 		return ret;
 	}
 
@@ -1485,22 +1485,22 @@ int dnslib_zone_contents_create_and_fill_hash_table(
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_node_t *dnslib_zone_contents_get_node(const dnslib_zone_contents_t *zone,
-				    const dnslib_dname_t *name)
+knot_node_t *knot_zone_contents_get_node(const knot_zone_contents_t *zone,
+				    const knot_dname_t *name)
 {
 	if (zone == NULL || name == NULL) {
 		return NULL;
 	}
 
 	// create dummy node to use for lookup
-//	dnslib_node_t *tmp = dnslib_node_new((dnslib_dname_t *)name, NULL);
-//	dnslib_node_t *n = TREE_FIND(zone->tree, dnslib_node, avl, tmp);
-//	dnslib_node_free(&tmp, 0);
+//	knot_node_t *tmp = knot_node_new((knot_dname_t *)name, NULL);
+//	knot_node_t *n = TREE_FIND(zone->tree, knot_node, avl, tmp);
+//	knot_node_free(&tmp, 0);
 
-	dnslib_node_t *n;
-	int ret = dnslib_zone_tree_get(zone->nodes, name, &n);
+	knot_node_t *n;
+	int ret = knot_zone_tree_get(zone->nodes, name, &n);
 	if (ret != DNSLIB_EOK) {
-		debug_dnslib_zone("Failed to find name in the zone tree.\n");
+		debug_knot_zone("Failed to find name in the zone tree.\n");
 		return NULL;
 	}
 
@@ -1509,22 +1509,22 @@ dnslib_node_t *dnslib_zone_contents_get_node(const dnslib_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_node_t *dnslib_zone_contents_get_nsec3_node(
-	const dnslib_zone_contents_t *zone, const dnslib_dname_t *name)
+knot_node_t *knot_zone_contents_get_nsec3_node(
+	const knot_zone_contents_t *zone, const knot_dname_t *name)
 {
 	if (zone == NULL || name == NULL) {
 		return NULL;
 	}
 
 	// create dummy node to use for lookup
-//	dnslib_node_t *tmp = dnslib_node_new((dnslib_dname_t *)name, NULL);
-//	dnslib_node_t *n = TREE_FIND(zone->nsec3_nodes, dnslib_node, avl, tmp);
-//	dnslib_node_free(&tmp, 0);
-	dnslib_node_t *n;
-	int ret = dnslib_zone_tree_get(zone->nsec3_nodes, name, &n);
+//	knot_node_t *tmp = knot_node_new((knot_dname_t *)name, NULL);
+//	knot_node_t *n = TREE_FIND(zone->nsec3_nodes, knot_node, avl, tmp);
+//	knot_node_free(&tmp, 0);
+	knot_node_t *n;
+	int ret = knot_zone_tree_get(zone->nsec3_nodes, name, &n);
 
 	if (ret != DNSLIB_EOK) {
-		debug_dnslib_zone("Failed to find NSEC3 name in the zone tree."
+		debug_knot_zone("Failed to find NSEC3 name in the zone tree."
 		                  "\n");
 		return NULL;
 	}
@@ -1534,19 +1534,19 @@ dnslib_node_t *dnslib_zone_contents_get_nsec3_node(
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_zone_contents_find_node(
-	const dnslib_zone_contents_t *zone,const dnslib_dname_t *name)
+const knot_node_t *knot_zone_contents_find_node(
+	const knot_zone_contents_t *zone,const knot_dname_t *name)
 {
-	return dnslib_zone_contents_get_node(zone, name);
+	return knot_zone_contents_get_node(zone, name);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_find_dname(const dnslib_zone_contents_t *zone,
-                           const dnslib_dname_t *name,
-                           const dnslib_node_t **node,
-                           const dnslib_node_t **closest_encloser,
-                           const dnslib_node_t **previous)
+int knot_zone_contents_find_dname(const knot_zone_contents_t *zone,
+                           const knot_dname_t *name,
+                           const knot_node_t **node,
+                           const knot_node_t **closest_encloser,
+                           const knot_node_t **previous)
 {
 	if (zone == NULL || name == NULL || node == NULL
 	    || closest_encloser == NULL || previous == NULL
@@ -1555,41 +1555,41 @@ int dnslib_zone_contents_find_dname(const dnslib_zone_contents_t *zone,
 	}
 
 DEBUG_DNSLIB_ZONE(
-	char *name_str = dnslib_dname_to_str(name);
-	char *zone_str = dnslib_dname_to_str(zone->apex->owner);
-	debug_dnslib_zone("Searching for name %s in zone %s...\n",
+	char *name_str = knot_dname_to_str(name);
+	char *zone_str = knot_dname_to_str(zone->apex->owner);
+	debug_knot_zone("Searching for name %s in zone %s...\n",
 	                  name_str, zone_str);
 	free(name_str);
 	free(zone_str);
 );
 
-	if (dnslib_dname_compare(name, zone->apex->owner) == 0) {
+	if (knot_dname_compare(name, zone->apex->owner) == 0) {
 		*node = zone->apex;
 		*closest_encloser = *node;
 		return DNSLIB_ZONE_NAME_FOUND;
 	}
 
-	if (!dnslib_dname_is_subdomain(name, zone->apex->owner)) {
+	if (!knot_dname_is_subdomain(name, zone->apex->owner)) {
 		*node = NULL;
 		*closest_encloser = NULL;
 		return DNSLIB_EBADZONE;
 	}
 
-	dnslib_node_t *found = NULL, *prev = NULL;
+	knot_node_t *found = NULL, *prev = NULL;
 
-	int exact_match = dnslib_zone_contents_find_in_tree(zone->nodes, name,
+	int exact_match = knot_zone_contents_find_in_tree(zone->nodes, name,
 	                                                    &found, &prev);
 	assert(exact_match >= 0);
 	*node = found;
 	*previous = prev;
 
 DEBUG_DNSLIB_ZONE(
-	char *name_str = (*node) ? dnslib_dname_to_str((*node)->owner)
+	char *name_str = (*node) ? knot_dname_to_str((*node)->owner)
 	                         : "(nil)";
 	char *name_str2 = (*previous != NULL)
-	                  ? dnslib_dname_to_str((*previous)->owner)
+	                  ? knot_dname_to_str((*previous)->owner)
 	                  : "(nil)";
-	debug_dnslib_zone("Search function returned %d, node %s and prev: %s\n",
+	debug_knot_zone("Search function returned %d, node %s and prev: %s\n",
 			  exact_match, name_str, name_str2);
 
 	if (*node) {
@@ -1612,22 +1612,22 @@ DEBUG_DNSLIB_ZONE(
 	//       in node
 
 	if (!exact_match) {
-		int matched_labels = dnslib_dname_matched_labels(
-				dnslib_node_owner((*closest_encloser)), name);
-		while (matched_labels < dnslib_dname_label_count(
-				dnslib_node_owner((*closest_encloser)))) {
+		int matched_labels = knot_dname_matched_labels(
+				knot_node_owner((*closest_encloser)), name);
+		while (matched_labels < knot_dname_label_count(
+				knot_node_owner((*closest_encloser)))) {
 			(*closest_encloser) =
-				dnslib_node_parent((*closest_encloser), 1);
+				knot_node_parent((*closest_encloser), 1);
 			assert(*closest_encloser);
 		}
 	}
 DEBUG_DNSLIB_ZONE(
-	char *n = dnslib_dname_to_str(dnslib_node_owner((*closest_encloser)));
-	debug_dnslib_zone("Closest encloser: %s\n", n);
+	char *n = knot_dname_to_str(knot_node_owner((*closest_encloser)));
+	debug_knot_zone("Closest encloser: %s\n", n);
 	free(n);
 );
 
-	debug_dnslib_zone("find_dname() returning %d\n", exact_match);
+	debug_knot_zone("find_dname() returning %d\n", exact_match);
 
 	return (exact_match)
 	       ? DNSLIB_ZONE_NAME_FOUND
@@ -1636,16 +1636,16 @@ DEBUG_DNSLIB_ZONE(
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_node_t *dnslib_zone_contents_get_previous(
-	const dnslib_zone_contents_t *zone, const dnslib_dname_t *name)
+knot_node_t *knot_zone_contents_get_previous(
+	const knot_zone_contents_t *zone, const knot_dname_t *name)
 {
 	if (zone == NULL || name == NULL) {
 		return NULL;
 	}
 
-	dnslib_node_t *found = NULL, *prev = NULL;
+	knot_node_t *found = NULL, *prev = NULL;
 
-	int exact_match = dnslib_zone_contents_find_in_tree(zone->nodes, name,
+	int exact_match = knot_zone_contents_find_in_tree(zone->nodes, name,
 	                                                    &found, &prev);
 	assert(exact_match >= 0);
 	assert(prev != NULL);
@@ -1655,24 +1655,24 @@ dnslib_node_t *dnslib_zone_contents_get_previous(
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_zone_contents_find_previous(
-	const dnslib_zone_contents_t *zone, const dnslib_dname_t *name)
+const knot_node_t *knot_zone_contents_find_previous(
+	const knot_zone_contents_t *zone, const knot_dname_t *name)
 {
-	return dnslib_zone_contents_get_previous(zone, name);
+	return knot_zone_contents_get_previous(zone, name);
 }
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_node_t *dnslib_zone_contents_get_previous_nsec3(
-	const dnslib_zone_contents_t *zone, const dnslib_dname_t *name)
+knot_node_t *knot_zone_contents_get_previous_nsec3(
+	const knot_zone_contents_t *zone, const knot_dname_t *name)
 {
 	if (zone == NULL || name == NULL) {
 		return NULL;
 	}
 
-	dnslib_node_t *found = NULL, *prev = NULL;
+	knot_node_t *found = NULL, *prev = NULL;
 
-	int exact_match = dnslib_zone_contents_find_in_tree(zone->nsec3_nodes,
+	int exact_match = knot_zone_contents_find_in_tree(zone->nsec3_nodes,
 	                                                   name, &found, &prev);
 	assert(exact_match >= 0);
 	assert(prev != NULL);
@@ -1682,18 +1682,18 @@ dnslib_node_t *dnslib_zone_contents_get_previous_nsec3(
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_zone_contents_find_previous_nsec3(
-	const dnslib_zone_contents_t *zone, const dnslib_dname_t *name)
+const knot_node_t *knot_zone_contents_find_previous_nsec3(
+	const knot_zone_contents_t *zone, const knot_dname_t *name)
 {
-	return dnslib_zone_contents_get_previous(zone, name);
+	return knot_zone_contents_get_previous(zone, name);
 }
 
 /*----------------------------------------------------------------------------*/
 #ifdef USE_HASH_TABLE
-int dnslib_zone_contents_find_dname_hash(const dnslib_zone_contents_t *zone,
-                                const dnslib_dname_t *name,
-                                const dnslib_node_t **node,
-                                const dnslib_node_t **closest_encloser)
+int knot_zone_contents_find_dname_hash(const knot_zone_contents_t *zone,
+                                const knot_dname_t *name,
+                                const knot_node_t **node,
+                                const knot_node_t **closest_encloser)
 {
 	if (zone == NULL || name == NULL || node == NULL
 	    || closest_encloser == NULL) {
@@ -1701,21 +1701,21 @@ int dnslib_zone_contents_find_dname_hash(const dnslib_zone_contents_t *zone,
 	}
 
 DEBUG_DNSLIB_ZONE(
-	char *name_str = dnslib_dname_to_str(name);
-	char *zone_str = dnslib_dname_to_str(zone->apex->owner);
-	debug_dnslib_zone("Searching for name %s in zone %s...\n",
+	char *name_str = knot_dname_to_str(name);
+	char *zone_str = knot_dname_to_str(zone->apex->owner);
+	debug_knot_zone("Searching for name %s in zone %s...\n",
 	                  name_str, zone_str);
 	free(name_str);
 	free(zone_str);
 );
 
-	if (dnslib_dname_compare(name, zone->apex->owner) == 0) {
+	if (knot_dname_compare(name, zone->apex->owner) == 0) {
 		*node = zone->apex;
 		*closest_encloser = *node;
 		return DNSLIB_ZONE_NAME_FOUND;
 	}
 
-	if (!dnslib_dname_is_subdomain(name, zone->apex->owner)) {
+	if (!knot_dname_is_subdomain(name, zone->apex->owner)) {
 		*node = NULL;
 		*closest_encloser = NULL;
 		return DNSLIB_EBADZONE;
@@ -1726,12 +1726,12 @@ DEBUG_DNSLIB_ZONE(
 	                                               name->size);
 
 	if (item != NULL) {
-		*node = (const dnslib_node_t *)item->value;
+		*node = (const knot_node_t *)item->value;
 		*closest_encloser = *node;
 
-		debug_dnslib_zone("Found node in hash table: %p (owner %p, "
+		debug_knot_zone("Found node in hash table: %p (owner %p, "
 		                  "labels: %d)\n", *node, (*node)->owner,
-		                  dnslib_dname_label_count((*node)->owner));
+		                  knot_dname_label_count((*node)->owner));
 		assert(*node != NULL);
 		assert(*closest_encloser != NULL);
 		return DNSLIB_ZONE_NAME_FOUND;
@@ -1742,18 +1742,18 @@ DEBUG_DNSLIB_ZONE(
 	// chop leftmost labels until some node is found
 	// copy the name for chopping
 	/* Local allocation, will be discarded. */
-	dnslib_dname_t *name_copy = dnslib_dname_deep_copy(name);
+	knot_dname_t *name_copy = knot_dname_deep_copy(name);
 DEBUG_DNSLIB_ZONE(
-	char *n = dnslib_dname_to_str(name_copy);
-	debug_dnslib_zone("Finding closest encloser..\nStarting with: %s\n", n);
+	char *n = knot_dname_to_str(name_copy);
+	debug_knot_zone("Finding closest encloser..\nStarting with: %s\n", n);
 	free(n);
 );
 
 	while (item == NULL) {
-		dnslib_dname_left_chop_no_copy(name_copy);
+		knot_dname_left_chop_no_copy(name_copy);
 DEBUG_DNSLIB_ZONE(
-		char *n = dnslib_dname_to_str(name_copy);
-		debug_dnslib_zone("Chopped leftmost label: %s (%.*s, size %u)"
+		char *n = knot_dname_to_str(name_copy);
+		debug_knot_zone("Chopped leftmost label: %s (%.*s, size %u)"
 		                  "\n", n, name_copy->size, name_copy->name,
 		                  name_copy->size);
 		free(n);
@@ -1767,72 +1767,72 @@ DEBUG_DNSLIB_ZONE(
 	}
 
 	/* Directly discard. */
-	dnslib_dname_free(&name_copy);
+	knot_dname_free(&name_copy);
 
 	assert(item != NULL);
-	*closest_encloser = (const dnslib_node_t *)item->value;
+	*closest_encloser = (const knot_node_t *)item->value;
 
 	return DNSLIB_ZONE_NAME_NOT_FOUND;
 }
 #endif
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_zone_contents_find_nsec3_node(
-	const dnslib_zone_contents_t *zone, const dnslib_dname_t *name)
+const knot_node_t *knot_zone_contents_find_nsec3_node(
+	const knot_zone_contents_t *zone, const knot_dname_t *name)
 {
-	return dnslib_zone_contents_get_nsec3_node(zone, name);
+	return knot_zone_contents_get_nsec3_node(zone, name);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_find_nsec3_for_name(const dnslib_zone_contents_t *zone,
-                                    const dnslib_dname_t *name,
-                                    const dnslib_node_t **nsec3_node,
-                                    const dnslib_node_t **nsec3_previous)
+int knot_zone_contents_find_nsec3_for_name(const knot_zone_contents_t *zone,
+                                    const knot_dname_t *name,
+                                    const knot_node_t **nsec3_node,
+                                    const knot_node_t **nsec3_previous)
 {
 	if (zone == NULL || name == NULL
 	    || nsec3_node == NULL || nsec3_previous == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
-	dnslib_dname_t *nsec3_name = NULL;
-	int ret = dnslib_zone_contents_nsec3_name(zone, name, &nsec3_name);
+	knot_dname_t *nsec3_name = NULL;
+	int ret = knot_zone_contents_nsec3_name(zone, name, &nsec3_name);
 
 	if (ret != DNSLIB_EOK) {
 		return ret;
 	}
 
 DEBUG_DNSLIB_ZONE(
-	char *n = dnslib_dname_to_str(nsec3_name);
-	debug_dnslib_zone("NSEC3 node name: %s.\n", n);
+	char *n = knot_dname_to_str(nsec3_name);
+	debug_knot_zone("NSEC3 node name: %s.\n", n);
 	free(n);
 );
 
-	const dnslib_node_t *found = NULL, *prev = NULL;
+	const knot_node_t *found = NULL, *prev = NULL;
 
 	// create dummy node to use for lookup
-	int exact_match = dnslib_zone_tree_find_less_or_equal(
+	int exact_match = knot_zone_tree_find_less_or_equal(
 		zone->nsec3_nodes, nsec3_name, &found, &prev);
 	assert(exact_match >= 0);
 
-	dnslib_dname_release(nsec3_name);
+	knot_dname_release(nsec3_name);
 
 DEBUG_DNSLIB_ZONE(
 	if (found) {
-		char *n = dnslib_dname_to_str(found->owner);
-		debug_dnslib_zone("Found NSEC3 node: %s.\n", n);
+		char *n = knot_dname_to_str(found->owner);
+		debug_knot_zone("Found NSEC3 node: %s.\n", n);
 		free(n);
 	} else {
-		debug_dnslib_zone("Found no NSEC3 node.\n");
+		debug_knot_zone("Found no NSEC3 node.\n");
 	}
 
 	if (prev) {
 		assert(prev->owner);
-		char *n = dnslib_dname_to_str(prev->owner);
-		debug_dnslib_zone("Found previous NSEC3 node: %s.\n", n);
+		char *n = knot_dname_to_str(prev->owner);
+		debug_knot_zone("Found previous NSEC3 node: %s.\n", n);
 		free(n);
 	} else {
-		debug_dnslib_zone("Found no previous NSEC3 node.\n");
+		debug_knot_zone("Found no previous NSEC3 node.\n");
 	}
 );
 	*nsec3_node = found;
@@ -1843,12 +1843,12 @@ DEBUG_DNSLIB_ZONE(
 		// set the previous node of the found node
 		assert(exact_match);
 		assert(*nsec3_node != NULL);
-		*nsec3_previous = dnslib_node_previous(*nsec3_node, 1);
+		*nsec3_previous = knot_node_previous(*nsec3_node, 1);
 	} else {
 		*nsec3_previous = prev;
 	}
 
-	debug_dnslib_zone("find_nsec3_for_name() returning %d\n", exact_match);
+	debug_knot_zone("find_nsec3_for_name() returning %d\n", exact_match);
 
 	return (exact_match)
 	       ? DNSLIB_ZONE_NAME_FOUND
@@ -1857,8 +1857,8 @@ DEBUG_DNSLIB_ZONE(
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_zone_contents_apex(
-	const dnslib_zone_contents_t *zone)
+const knot_node_t *knot_zone_contents_apex(
+	const knot_zone_contents_t *zone)
 {
 	if (zone == NULL) {
 		return NULL;
@@ -1869,7 +1869,7 @@ const dnslib_node_t *dnslib_zone_contents_apex(
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_node_t *dnslib_zone_contents_get_apex(const dnslib_zone_contents_t *zone)
+knot_node_t *knot_zone_contents_get_apex(const knot_zone_contents_t *zone)
 {
 	if (zone == NULL) {
 		return NULL;
@@ -1880,7 +1880,7 @@ dnslib_node_t *dnslib_zone_contents_get_apex(const dnslib_zone_contents_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-//dnslib_dname_t *dnslib_zone_contents_name(const dnslib_zone_contents_t *zone)
+//knot_dname_t *knot_zone_contents_name(const knot_zone_contents_t *zone)
 //{
 //	if (zone == NULL) {
 //		return NULL;
@@ -1891,40 +1891,40 @@ dnslib_node_t *dnslib_zone_contents_get_apex(const dnslib_zone_contents_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_adjust_dnames(dnslib_zone_contents_t *zone)
+int knot_zone_contents_adjust_dnames(knot_zone_contents_t *zone)
 {
 	if (zone == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
 	// load NSEC3PARAM (needed on adjusting function)
-	dnslib_zone_contents_load_nsec3param(zone);
+	knot_zone_contents_load_nsec3param(zone);
 
-	dnslib_zone_adjust_arg_t adjust_arg;
+	knot_zone_adjust_arg_t adjust_arg;
 	adjust_arg.zone = zone;
 	adjust_arg.first_node = NULL;
 	adjust_arg.previous_node = NULL;
 
-	int ret = dnslib_zone_tree_forward_apply_inorder(zone->nodes,
-	                        dnslib_zone_contents_adjust_node_in_tree,
+	int ret = knot_zone_tree_forward_apply_inorder(zone->nodes,
+	                        knot_zone_contents_adjust_node_in_tree,
 	                        &adjust_arg);
 	if (ret != DNSLIB_EOK) {
 		return ret;
 	}
 
 	assert(zone->apex == adjust_arg.first_node);
-	dnslib_node_set_previous(zone->apex, adjust_arg.previous_node);
+	knot_node_set_previous(zone->apex, adjust_arg.previous_node);
 
 	adjust_arg.first_node = NULL;
 	adjust_arg.previous_node = NULL;
 
-	ret = dnslib_zone_tree_forward_apply_inorder(
+	ret = knot_zone_tree_forward_apply_inorder(
 	              zone->nsec3_nodes,
-	              dnslib_zone_contents_adjust_nsec3_node_in_tree,
+	              knot_zone_contents_adjust_nsec3_node_in_tree,
 	                        &adjust_arg);
 
 	if (adjust_arg.first_node) {
-		dnslib_node_set_previous(adjust_arg.first_node,
+		knot_node_set_previous(adjust_arg.first_node,
 		                         adjust_arg.previous_node);
 	}
 
@@ -1933,19 +1933,19 @@ int dnslib_zone_contents_adjust_dnames(dnslib_zone_contents_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_load_nsec3param(dnslib_zone_contents_t *zone)
+int knot_zone_contents_load_nsec3param(knot_zone_contents_t *zone)
 {
 	if (zone == NULL || zone->apex == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
-	const dnslib_rrset_t *rrset = dnslib_node_rrset(zone->apex,
+	const knot_rrset_t *rrset = knot_node_rrset(zone->apex,
 						      DNSLIB_RRTYPE_NSEC3PARAM);
 
 	if (rrset != NULL) {
-		dnslib_nsec3_params_from_wire(&zone->nsec3_params, rrset);
+		knot_nsec3_params_from_wire(&zone->nsec3_params, rrset);
 	} else {
-		memset(&zone->nsec3_params, 0, sizeof(dnslib_nsec3_params_t));
+		memset(&zone->nsec3_params, 0, sizeof(knot_nsec3_params_t));
 	}
 
 	return DNSLIB_EOK;
@@ -1953,7 +1953,7 @@ int dnslib_zone_contents_load_nsec3param(dnslib_zone_contents_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_nsec3_enabled(const dnslib_zone_contents_t *zone)
+int knot_zone_contents_nsec3_enabled(const knot_zone_contents_t *zone)
 {
 	if (zone == NULL) {
 		return DNSLIB_EBADARG;
@@ -1964,14 +1964,14 @@ int dnslib_zone_contents_nsec3_enabled(const dnslib_zone_contents_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_nsec3_params_t *dnslib_zone_contents_nsec3params(
-	const dnslib_zone_contents_t *zone)
+const knot_nsec3_params_t *knot_zone_contents_nsec3params(
+	const knot_zone_contents_t *zone)
 {
 	if (zone == NULL) {
 		return NULL;
 	}
 
-	if (dnslib_zone_contents_nsec3_enabled(zone)) {
+	if (knot_zone_contents_nsec3_enabled(zone)) {
 		return &zone->nsec3_params;
 	} else {
 		return NULL;
@@ -1980,132 +1980,132 @@ const dnslib_nsec3_params_t *dnslib_zone_contents_nsec3params(
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_tree_apply_postorder(dnslib_zone_contents_t *zone,
-                              void (*function)(dnslib_node_t *node, void *data),
+int knot_zone_contents_tree_apply_postorder(knot_zone_contents_t *zone,
+                              void (*function)(knot_node_t *node, void *data),
                               void *data)
 {
 	if (zone == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
-	dnslib_zone_tree_func_t f;
+	knot_zone_tree_func_t f;
 	f.func = function;
 	f.data = data;
 
-	return dnslib_zone_tree_forward_apply_postorder(zone->nodes,
-	                                            dnslib_zone_tree_apply, &f);
+	return knot_zone_tree_forward_apply_postorder(zone->nodes,
+	                                            knot_zone_tree_apply, &f);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_tree_apply_inorder(dnslib_zone_contents_t *zone,
-                              void (*function)(dnslib_node_t *node, void *data),
+int knot_zone_contents_tree_apply_inorder(knot_zone_contents_t *zone,
+                              void (*function)(knot_node_t *node, void *data),
                               void *data)
 {
 	if (zone == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
-	dnslib_zone_tree_func_t f;
+	knot_zone_tree_func_t f;
 	f.func = function;
 	f.data = data;
 
-	return dnslib_zone_tree_forward_apply_inorder(zone->nodes,
-	                                            dnslib_zone_tree_apply, &f);
+	return knot_zone_tree_forward_apply_inorder(zone->nodes,
+	                                            knot_zone_tree_apply, &f);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_tree_apply_inorder_reverse(
-	dnslib_zone_contents_t *zone,
-	void (*function)(dnslib_node_t *node, void *data), void *data)
+int knot_zone_contents_tree_apply_inorder_reverse(
+	knot_zone_contents_t *zone,
+	void (*function)(knot_node_t *node, void *data), void *data)
 {
 	if (zone == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
-	dnslib_zone_tree_func_t f;
+	knot_zone_tree_func_t f;
 	f.func = function;
 	f.data = data;
 
-	return dnslib_zone_tree_reverse_apply_inorder(zone->nodes,
-	                                          dnslib_zone_tree_apply, &f);
+	return knot_zone_tree_reverse_apply_inorder(zone->nodes,
+	                                          knot_zone_tree_apply, &f);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_nsec3_apply_postorder(dnslib_zone_contents_t *zone,
-                              void (*function)(dnslib_node_t *node, void *data),
+int knot_zone_contents_nsec3_apply_postorder(knot_zone_contents_t *zone,
+                              void (*function)(knot_node_t *node, void *data),
                               void *data)
 {
 	if (zone == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
-	dnslib_zone_tree_func_t f;
+	knot_zone_tree_func_t f;
 	f.func = function;
 	f.data = data;
 
-	return dnslib_zone_tree_forward_apply_postorder(
-			zone->nsec3_nodes, dnslib_zone_tree_apply, &f);
+	return knot_zone_tree_forward_apply_postorder(
+			zone->nsec3_nodes, knot_zone_tree_apply, &f);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_nsec3_apply_inorder(dnslib_zone_contents_t *zone,
-                              void (*function)(dnslib_node_t *node, void *data),
+int knot_zone_contents_nsec3_apply_inorder(knot_zone_contents_t *zone,
+                              void (*function)(knot_node_t *node, void *data),
                               void *data)
 {
 	if (zone == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
-	dnslib_zone_tree_func_t f;
+	knot_zone_tree_func_t f;
 	f.func = function;
 	f.data = data;
 
-	return dnslib_zone_tree_forward_apply_inorder(
-			zone->nsec3_nodes, dnslib_zone_tree_apply, &f);
+	return knot_zone_tree_forward_apply_inorder(
+			zone->nsec3_nodes, knot_zone_tree_apply, &f);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_nsec3_apply_inorder_reverse(
-	dnslib_zone_contents_t *zone,
-	void (*function)(dnslib_node_t *node, void *data), void *data)
+int knot_zone_contents_nsec3_apply_inorder_reverse(
+	knot_zone_contents_t *zone,
+	void (*function)(knot_node_t *node, void *data), void *data)
 {
 	if (zone == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
-	dnslib_zone_tree_func_t f;
+	knot_zone_tree_func_t f;
 	f.func = function;
 	f.data = data;
 
-	return dnslib_zone_tree_reverse_apply_inorder(
-			zone->nsec3_nodes, dnslib_zone_tree_apply, &f);
+	return knot_zone_tree_reverse_apply_inorder(
+			zone->nsec3_nodes, knot_zone_tree_apply, &f);
 }
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_zone_tree_t *dnslib_zone_contents_get_nodes(
-		dnslib_zone_contents_t *contents)
+knot_zone_tree_t *knot_zone_contents_get_nodes(
+		knot_zone_contents_t *contents)
 {
 	return contents->nodes;
 }
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_zone_tree_t *dnslib_zone_contents_get_nsec3_nodes(
-		dnslib_zone_contents_t *contents)
+knot_zone_tree_t *knot_zone_contents_get_nsec3_nodes(
+		knot_zone_contents_t *contents)
 {
 	return contents->nodes;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_dname_table_apply(dnslib_zone_contents_t *contents,
-                                           void (*function)(dnslib_dname_t *,
+int knot_zone_contents_dname_table_apply(knot_zone_contents_t *contents,
+                                           void (*function)(knot_dname_t *,
                                                             void *),
                                            void *data)
 {
@@ -2113,7 +2113,7 @@ int dnslib_zone_contents_dname_table_apply(dnslib_zone_contents_t *contents,
 		return DNSLIB_EBADARG;
 	}
 
-	dnslib_dname_table_tree_inorder_apply(contents->dname_table,
+	knot_dname_table_tree_inorder_apply(contents->dname_table,
 	                                      function, data);
 
 	return DNSLIB_EOK;
@@ -2121,8 +2121,8 @@ int dnslib_zone_contents_dname_table_apply(dnslib_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zone_contents_shallow_copy(const dnslib_zone_contents_t *from,
-                             dnslib_zone_contents_t **to)
+int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
+                             knot_zone_contents_t **to)
 {
 	if (from == NULL || to == NULL) {
 		return DNSLIB_EBADARG;
@@ -2130,8 +2130,8 @@ int dnslib_zone_contents_shallow_copy(const dnslib_zone_contents_t *from,
 
 	int ret = DNSLIB_EOK;
 
-	dnslib_zone_contents_t *contents = (dnslib_zone_contents_t *)calloc(
-	                                     1, sizeof(dnslib_zone_contents_t));
+	knot_zone_contents_t *contents = (knot_zone_contents_t *)calloc(
+	                                     1, sizeof(knot_zone_contents_t));
 	if (contents == NULL) {
 		ERR_ALLOC_FAILED;
 		return DNSLIB_ENOMEM;
@@ -2139,14 +2139,14 @@ int dnslib_zone_contents_shallow_copy(const dnslib_zone_contents_t *from,
 
 	contents->apex = from->apex;
 
-	contents->nodes = malloc(sizeof(dnslib_zone_tree_t));
+	contents->nodes = malloc(sizeof(knot_zone_tree_t));
 	if (contents->nodes == NULL) {
 		ERR_ALLOC_FAILED;
 		ret = DNSLIB_ENOMEM;
 		goto cleanup;
 	}
 
-	contents->nsec3_nodes = malloc(sizeof(dnslib_zone_tree_t));
+	contents->nsec3_nodes = malloc(sizeof(knot_zone_tree_t));
 	if (contents->nsec3_nodes == NULL) {
 		ERR_ALLOC_FAILED;
 		ret = DNSLIB_ENOMEM;
@@ -2154,13 +2154,13 @@ int dnslib_zone_contents_shallow_copy(const dnslib_zone_contents_t *from,
 	}
 
 	if (from->dname_table != NULL) {
-		contents->dname_table = dnslib_dname_table_new();
+		contents->dname_table = knot_dname_table_new();
 		if (contents->dname_table == NULL) {
 			ERR_ALLOC_FAILED;
 			ret = DNSLIB_ENOMEM;
 			goto cleanup;
 		}
-		if ((ret = dnslib_dname_table_shallow_copy(from->dname_table,
+		if ((ret = knot_dname_table_shallow_copy(from->dname_table,
 		                        contents->dname_table)) != DNSLIB_EOK) {
 			goto cleanup;
 		}
@@ -2173,11 +2173,11 @@ int dnslib_zone_contents_shallow_copy(const dnslib_zone_contents_t *from,
 
 	/* Initialize NSEC3 params */
 	memcpy(&contents->nsec3_params, &from->nsec3_params,
-	       sizeof(dnslib_nsec3_params_t));
+	       sizeof(knot_nsec3_params_t));
 
-	if ((ret = dnslib_zone_tree_shallow_copy(from->nodes,
+	if ((ret = knot_zone_tree_shallow_copy(from->nodes,
 	                                 contents->nodes)) != DNSLIB_EOK
-	    || (ret = dnslib_zone_tree_shallow_copy(from->nsec3_nodes,
+	    || (ret = knot_zone_tree_shallow_copy(from->nsec3_nodes,
 	                                contents->nsec3_nodes)) != DNSLIB_EOK) {
 		goto cleanup;
 	}
@@ -2196,8 +2196,8 @@ int dnslib_zone_contents_shallow_copy(const dnslib_zone_contents_t *from,
 	return DNSLIB_EOK;
 
 cleanup:
-	dnslib_zone_tree_free(&contents->nodes);
-	dnslib_zone_tree_free(&contents->nsec3_nodes);
+	knot_zone_tree_free(&contents->nodes);
+	knot_zone_tree_free(&contents->nsec3_nodes);
 	free(contents->dname_table);
 	free(contents);
 	return ret;
@@ -2205,22 +2205,22 @@ cleanup:
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_contents_free(dnslib_zone_contents_t **contents)
+void knot_zone_contents_free(knot_zone_contents_t **contents)
 {
 	if (contents == NULL || *contents == NULL) {
 		return;
 	}
 
 	// free the zone tree, but only the structure
-	dnslib_zone_tree_free(&(*contents)->nodes);
-	dnslib_zone_tree_free(&(*contents)->nsec3_nodes);
+	knot_zone_tree_free(&(*contents)->nodes);
+	knot_zone_tree_free(&(*contents)->nsec3_nodes);
 
 #ifdef USE_HASH_TABLE
 	if ((*contents)->table != NULL) {
 		ck_destroy_table(&(*contents)->table, NULL, 0);
 	}
 #endif
-	dnslib_nsec3_params_free(&(*contents)->nsec3_params);
+	knot_nsec3_params_free(&(*contents)->nsec3_params);
 
 	free(*contents);
 	*contents = NULL;
@@ -2228,7 +2228,7 @@ void dnslib_zone_contents_free(dnslib_zone_contents_t **contents)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zone_contents_deep_free(dnslib_zone_contents_t **contents)
+void knot_zone_contents_deep_free(knot_zone_contents_t **contents)
 {
 	if (contents == NULL || *contents == NULL) {
 		return;
@@ -2246,34 +2246,34 @@ void dnslib_zone_contents_deep_free(dnslib_zone_contents_t **contents)
 		/* NSEC3 tree is deleted first as it may contain references to
 		   the normal tree. */
 
-		dnslib_zone_tree_reverse_apply_postorder(
+		knot_zone_tree_reverse_apply_postorder(
 			(*contents)->nsec3_nodes,
-			dnslib_zone_contents_destroy_node_rrsets_from_tree,
+			knot_zone_contents_destroy_node_rrsets_from_tree,
 			(void*)1);
 
-		dnslib_zone_tree_reverse_apply_postorder(
+		knot_zone_tree_reverse_apply_postorder(
 			(*contents)->nsec3_nodes,
-			dnslib_zone_contents_destroy_node_owner_from_tree, 0);
+			knot_zone_contents_destroy_node_owner_from_tree, 0);
 
-		dnslib_zone_tree_reverse_apply_postorder(
+		knot_zone_tree_reverse_apply_postorder(
 			(*contents)->nodes,
-			dnslib_zone_contents_destroy_node_rrsets_from_tree,
+			knot_zone_contents_destroy_node_rrsets_from_tree,
 			(void*)1);
 
-		dnslib_zone_tree_reverse_apply_postorder(
+		knot_zone_tree_reverse_apply_postorder(
 			(*contents)->nodes,
-			dnslib_zone_contents_destroy_node_owner_from_tree, 0);
+			knot_zone_contents_destroy_node_owner_from_tree, 0);
 
 		// free the zone tree, but only the structure
 		// (nodes are already destroyed)
-		debug_dnslib_zone("Destroying zone tree.\n");
-		dnslib_zone_tree_free(&(*contents)->nodes);
-		debug_dnslib_zone("Destroying NSEC3 zone tree.\n");
-		dnslib_zone_tree_free(&(*contents)->nsec3_nodes);
+		debug_knot_zone("Destroying zone tree.\n");
+		knot_zone_tree_free(&(*contents)->nodes);
+		debug_knot_zone("Destroying NSEC3 zone tree.\n");
+		knot_zone_tree_free(&(*contents)->nsec3_nodes);
 
-		dnslib_nsec3_params_free(&(*contents)->nsec3_params);
+		knot_nsec3_params_free(&(*contents)->nsec3_params);
 
-		dnslib_dname_table_deep_free(&(*contents)->dname_table);
+		knot_dname_table_deep_free(&(*contents)->dname_table);
 	}
 
 	free((*contents));

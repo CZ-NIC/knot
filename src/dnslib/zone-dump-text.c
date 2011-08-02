@@ -211,7 +211,7 @@ int b64_ntop(uint8_t const *src, size_t srclength, char *target,
 }
 
 /* Taken from RFC 4398, section 2.1.  */
-dnslib_lookup_table_t dnslib_dns_certificate_types[] = {
+knot_lookup_table_t knot_dns_certificate_types[] = {
 /*	0		Reserved */
 	{ 1, "PKIX" },	/* X.509 as per PKIX */
 	{ 2, "SPKI" },	/* SPKI cert */
@@ -231,7 +231,7 @@ dnslib_lookup_table_t dnslib_dns_certificate_types[] = {
 };
 
 /* Taken from RFC 2535, section 7.  */
-dnslib_lookup_table_t dnslib_dns_algorithms[] = {
+knot_lookup_table_t knot_dns_algorithms[] = {
 	{ 1, "RSAMD5" },	/* RFC 2537 */
 	{ 2, "DH" },		/* RFC 2539 */
 	{ 3, "DSA" },		/* RFC 2536 */
@@ -252,27 +252,27 @@ static int get_bit(uint8_t bits[], size_t index)
 	return bits[index / 8] & (1 << (7 - index % 8));
 }
 
-static inline uint8_t * rdata_item_data(dnslib_rdata_item_t item)
+static inline uint8_t * rdata_item_data(knot_rdata_item_t item)
 {
 	return (uint8_t *)(item.raw_data + 1);
 }
 
-static inline uint16_t rdata_item_size(dnslib_rdata_item_t item)
+static inline uint16_t rdata_item_size(knot_rdata_item_t item)
 {
 	return item.raw_data[0];
 }
 
-char *rdata_dname_to_string(dnslib_rdata_item_t item)
+char *rdata_dname_to_string(knot_rdata_item_t item)
 {
-	return dnslib_dname_to_str(item.dname);
+	return knot_dname_to_str(item.dname);
 }
 
-char *rdata_dns_name_to_string(dnslib_rdata_item_t item)
+char *rdata_dns_name_to_string(knot_rdata_item_t item)
 {
-	return dnslib_dname_to_str(item.dname);
+	return knot_dname_to_str(item.dname);
 }
 
-char *rdata_text_to_string(dnslib_rdata_item_t item)
+char *rdata_text_to_string(knot_rdata_item_t item)
 {
 	const uint8_t *data = (const uint8_t *) item.raw_data + 1;
 	uint8_t length = data[0];
@@ -326,7 +326,7 @@ char *rdata_text_to_string(dnslib_rdata_item_t item)
 	return ret;
 }
 
-char *rdata_byte_to_string(dnslib_rdata_item_t item)
+char *rdata_byte_to_string(knot_rdata_item_t item)
 {
 	assert(item.raw_data[0] == 1);
 	uint8_t data = item.raw_data[1];
@@ -335,9 +335,9 @@ char *rdata_byte_to_string(dnslib_rdata_item_t item)
 	return ret;
 }
 
-char *rdata_short_to_string(dnslib_rdata_item_t item)
+char *rdata_short_to_string(knot_rdata_item_t item)
 {
-	uint16_t data = dnslib_wire_read_u16(rdata_item_data(item));
+	uint16_t data = knot_wire_read_u16(rdata_item_data(item));
 	char *ret = malloc(sizeof(char) * U16_MAX_STR_LEN);
 	snprintf(ret, U16_MAX_STR_LEN, "%u", data);
 	/* XXX Use proper macros - see response tests*/
@@ -345,16 +345,16 @@ char *rdata_short_to_string(dnslib_rdata_item_t item)
 	return ret;
 }
 
-char *rdata_long_to_string(dnslib_rdata_item_t item)
+char *rdata_long_to_string(knot_rdata_item_t item)
 {
-	uint32_t data = dnslib_wire_read_u32(rdata_item_data(item));
+	uint32_t data = knot_wire_read_u32(rdata_item_data(item));
 	char *ret = malloc(sizeof(char) * U32_MAX_STR_LEN);
 	/* u should be enough */
 	snprintf(ret, U32_MAX_STR_LEN, "%u", data);
 	return ret;
 }
 
-char *rdata_a_to_string(dnslib_rdata_item_t item)
+char *rdata_a_to_string(knot_rdata_item_t item)
 {
 	/* 200 seems like a little too much */
 	char *ret = malloc(sizeof(char) * 200);
@@ -365,7 +365,7 @@ char *rdata_a_to_string(dnslib_rdata_item_t item)
 	}
 }
 
-char *rdata_aaaa_to_string(dnslib_rdata_item_t item)
+char *rdata_aaaa_to_string(knot_rdata_item_t item)
 {
 	char *ret = malloc(sizeof(char) * 200);
 	if (inet_ntop(AF_INET6, rdata_item_data(item), ret, 200)) {
@@ -375,21 +375,21 @@ char *rdata_aaaa_to_string(dnslib_rdata_item_t item)
 	}
 }
 
-char *rdata_rrtype_to_string(dnslib_rdata_item_t item)
+char *rdata_rrtype_to_string(knot_rdata_item_t item)
 {
-	uint16_t type = dnslib_wire_read_u16(rdata_item_data(item));
-	const char *tmp = dnslib_rrtype_to_string(type);
+	uint16_t type = knot_wire_read_u16(rdata_item_data(item));
+	const char *tmp = knot_rrtype_to_string(type);
 	char *ret = malloc(sizeof(char) * MAX_RR_TYPE_LEN);
 	strncpy(ret, tmp, MAX_RR_TYPE_LEN);
 	return ret;
 }
 
-char *rdata_algorithm_to_string(dnslib_rdata_item_t item)
+char *rdata_algorithm_to_string(knot_rdata_item_t item)
 {
 	uint8_t id = *rdata_item_data(item);
 	char *ret = malloc(sizeof(char) * MAX_RR_TYPE_LEN);
-	dnslib_lookup_table_t *alg
-		= dnslib_lookup_by_id(dnslib_dns_algorithms, id);
+	knot_lookup_table_t *alg
+		= knot_lookup_by_id(knot_dns_algorithms, id);
 	if (alg) {
 		strncpy(ret, alg->name, MAX_RR_TYPE_LEN);
 	} else {
@@ -399,12 +399,12 @@ char *rdata_algorithm_to_string(dnslib_rdata_item_t item)
 	return ret;
 }
 
-char *rdata_certificate_type_to_string(dnslib_rdata_item_t item)
+char *rdata_certificate_type_to_string(knot_rdata_item_t item)
 {
-	uint16_t id = dnslib_wire_read_u16(rdata_item_data(item));
+	uint16_t id = knot_wire_read_u16(rdata_item_data(item));
 	char *ret = malloc(sizeof(char) * MAX_RR_TYPE_LEN);
-	dnslib_lookup_table_t *type
-		= dnslib_lookup_by_id(dnslib_dns_certificate_types, id);
+	knot_lookup_table_t *type
+		= knot_lookup_by_id(knot_dns_certificate_types, id);
 	if (type) {
 		strncpy(ret, type->name, MAX_RR_TYPE_LEN);
 	} else {
@@ -414,18 +414,18 @@ char *rdata_certificate_type_to_string(dnslib_rdata_item_t item)
 	return ret;
 }
 
-char *rdata_period_to_string(dnslib_rdata_item_t item)
+char *rdata_period_to_string(knot_rdata_item_t item)
 {
 	/* uint32 but read 16 XXX */
-	uint32_t period = dnslib_wire_read_u32(rdata_item_data(item));
+	uint32_t period = knot_wire_read_u32(rdata_item_data(item));
 	char *ret = malloc(sizeof(char) * U32_MAX_STR_LEN);
 	snprintf(ret, U32_MAX_STR_LEN, "%u", period);
 	return ret;
 }
 
-char *rdata_time_to_string(dnslib_rdata_item_t item)
+char *rdata_time_to_string(knot_rdata_item_t item)
 {
-	time_t time = (time_t) dnslib_wire_read_u32(rdata_item_data(item));
+	time_t time = (time_t) knot_wire_read_u32(rdata_item_data(item));
 	struct tm tm_conv;
 	if (gmtime_r(&time, &tm_conv) == 0) {
 		return 0;
@@ -438,7 +438,7 @@ char *rdata_time_to_string(dnslib_rdata_item_t item)
 	}
 }
 
-char *rdata_base32_to_string(dnslib_rdata_item_t item)
+char *rdata_base32_to_string(knot_rdata_item_t item)
 {
 	int length;
 	size_t size = rdata_item_size(item);
@@ -461,7 +461,7 @@ char *rdata_base32_to_string(dnslib_rdata_item_t item)
 	}
 }
 
-char *rdata_base64_to_string(dnslib_rdata_item_t item)
+char *rdata_base64_to_string(knot_rdata_item_t item)
 {
 	int length;
 	size_t size = rdata_item_size(item);
@@ -497,12 +497,12 @@ char *hex_to_string(const uint8_t *data, size_t size)
 	return ret;
 }
 
-char *rdata_hex_to_string(dnslib_rdata_item_t item)
+char *rdata_hex_to_string(knot_rdata_item_t item)
 {
 	return hex_to_string(rdata_item_data(item), rdata_item_size(item));
 }
 
-char *rdata_hexlen_to_string(dnslib_rdata_item_t item)
+char *rdata_hexlen_to_string(knot_rdata_item_t item)
 {
 	if(rdata_item_size(item) <= 1) {
 		// NSEC3 salt hex can be empty
@@ -516,7 +516,7 @@ char *rdata_hexlen_to_string(dnslib_rdata_item_t item)
 	}
 }
 
-char *rdata_nsap_to_string(dnslib_rdata_item_t item)
+char *rdata_nsap_to_string(knot_rdata_item_t item)
 {
 	char *ret = malloc(sizeof(char) * (rdata_item_size(item) + 3));
 	strcat(ret, "0x");
@@ -526,10 +526,10 @@ char *rdata_nsap_to_string(dnslib_rdata_item_t item)
 	return ret;
 }
 
-char *rdata_apl_to_string(dnslib_rdata_item_t item)
+char *rdata_apl_to_string(knot_rdata_item_t item)
 {
 	uint8_t *data = rdata_item_data(item);
-	uint16_t address_family = dnslib_wire_read_u16(data);
+	uint16_t address_family = knot_wire_read_u16(data);
 	uint8_t prefix = data[2];
 	uint8_t length = data[3];
 	int negated = length & APL_NEGATION_MASK;
@@ -606,7 +606,7 @@ char *rdata_apl_to_string(dnslib_rdata_item_t item)
 
 }
 
-char *rdata_services_to_string(dnslib_rdata_item_t item)
+char *rdata_services_to_string(knot_rdata_item_t item)
 {
 	uint8_t *data = rdata_item_data(item);
 	uint8_t protocol_number = data[0];
@@ -677,7 +677,7 @@ char *rdata_services_to_string(dnslib_rdata_item_t item)
 	*/
 }
 
-char *rdata_ipsecgateway_to_string(dnslib_rdata_item_t item)
+char *rdata_ipsecgateway_to_string(knot_rdata_item_t item)
 {
 	return NULL;
 	/*
@@ -702,7 +702,7 @@ char *rdata_ipsecgateway_to_string(dnslib_rdata_item_t item)
 	*/
 }
 
-char *rdata_nxt_to_string(dnslib_rdata_item_t item)
+char *rdata_nxt_to_string(knot_rdata_item_t item)
 {
 	size_t i;
 	uint8_t *bitmap = rdata_item_data(item);
@@ -714,7 +714,7 @@ char *rdata_nxt_to_string(dnslib_rdata_item_t item)
 
 	for (i = 0; i < bitmap_size * 8; ++i) {
 		if (get_bit(bitmap, i)) {
-			strcat(ret, dnslib_rrtype_to_string(i));
+			strcat(ret, knot_rrtype_to_string(i));
 				strcat(ret, " ");
 		}
 	}
@@ -723,7 +723,7 @@ char *rdata_nxt_to_string(dnslib_rdata_item_t item)
 }
 
 
-char *rdata_nsec_to_string(dnslib_rdata_item_t item)
+char *rdata_nsec_to_string(knot_rdata_item_t item)
 {
 //	int insert_space = 0;
 
@@ -753,7 +753,7 @@ char *rdata_nsec_to_string(dnslib_rdata_item_t item)
 		for (int j = 0; j < bitmap_size * 8; j++) {
 			if (get_bit(bitmap, j)) {
 				strcat(ret,
-				       dnslib_rrtype_to_string(j +
+				       knot_rrtype_to_string(j +
 							       window * 256));
 				strcat(ret, " ");
 			}
@@ -791,7 +791,7 @@ char *rdata_nsec_to_string(dnslib_rdata_item_t item)
 	return 1; */
 }
 
-char *rdata_unknown_to_string(dnslib_rdata_item_t item)
+char *rdata_unknown_to_string(knot_rdata_item_t item)
 {
  	uint16_t size = rdata_item_size(item);
 	char *ret =
@@ -803,12 +803,12 @@ char *rdata_unknown_to_string(dnslib_rdata_item_t item)
 	return ret;
 }
 
-char *rdata_loc_to_string(dnslib_rdata_item_t item)
+char *rdata_loc_to_string(knot_rdata_item_t item)
 {
 	return rdata_unknown_to_string(item);
 }
 
-typedef char * (*item_to_string_t)(dnslib_rdata_item_t);
+typedef char * (*item_to_string_t)(knot_rdata_item_t);
 
 static item_to_string_t item_to_string_table[DNSLIB_RDATA_ZF_UNKNOWN + 1] = {
 	rdata_dname_to_string,
@@ -838,20 +838,20 @@ static item_to_string_t item_to_string_table[DNSLIB_RDATA_ZF_UNKNOWN + 1] = {
 	rdata_unknown_to_string
 };
 
-char *rdata_item_to_string(dnslib_rdata_zoneformat_t type,
-                           dnslib_rdata_item_t item)
+char *rdata_item_to_string(knot_rdata_zoneformat_t type,
+                           knot_rdata_item_t item)
 {
 	return item_to_string_table[type](item);
 }
 
-/*void dnslib_zone_tree_apply_inorder(dnslib_zone_t *zone,
-                              void (*function)(dnslib_node_t *node, void *data),
+/*void knot_zone_tree_apply_inorder(knot_zone_t *zone,
+                              void (*function)(knot_node_t *node, void *data),
                               void *data); */
 
-void rdata_dump_text(dnslib_rdata_t *rdata, uint16_t type, FILE *f)
+void rdata_dump_text(knot_rdata_t *rdata, uint16_t type, FILE *f)
 {
-	dnslib_rrtype_descriptor_t *desc =
-		dnslib_rrtype_descriptor_by_type(type);
+	knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type(type);
 	char *item_str = NULL;
 	for (int i = 0; i < desc->length; i++) {
 		item_str = rdata_item_to_string(desc->zoneformat[i],
@@ -871,20 +871,20 @@ void rdata_dump_text(dnslib_rdata_t *rdata, uint16_t type, FILE *f)
 	fprintf(f, "\n");
 }
 
-void dump_rrset_header(const dnslib_rrset_t *rrset, FILE *f)
+void dump_rrset_header(const knot_rrset_t *rrset, FILE *f)
 {
-	char *name = dnslib_dname_to_str(rrset->owner);
+	char *name = knot_dname_to_str(rrset->owner);
 	fprintf(f, "%-20s ",  name);
 	free(name);
 	fprintf(f, "%-5u ", rrset->ttl);
-	fprintf(f, "%-2s ", dnslib_rrclass_to_string(rrset->rclass));
-	fprintf(f, "%-5s ",  dnslib_rrtype_to_string(rrset->type));
+	fprintf(f, "%-2s ", knot_rrclass_to_string(rrset->rclass));
+	fprintf(f, "%-5s ",  knot_rrtype_to_string(rrset->type));
 }
 
-void rrsig_set_dump_text(dnslib_rrset_t *rrsig, FILE *f)
+void rrsig_set_dump_text(knot_rrset_t *rrsig, FILE *f)
 {
 	dump_rrset_header(rrsig, f);
-	dnslib_rdata_t *tmp = rrsig->rdata;
+	knot_rdata_t *tmp = rrsig->rdata;
 
 	while (tmp->next != rrsig->rdata) {
 		rdata_dump_text(tmp, DNSLIB_RRTYPE_RRSIG, f);
@@ -896,10 +896,10 @@ void rrsig_set_dump_text(dnslib_rrset_t *rrsig, FILE *f)
 }
 
 
-void rrset_dump_text(const dnslib_rrset_t *rrset, FILE *f)
+void rrset_dump_text(const knot_rrset_t *rrset, FILE *f)
 {
 	dump_rrset_header(rrset, f);
-	dnslib_rdata_t *tmp = rrset->rdata;
+	knot_rdata_t *tmp = rrset->rdata;
 
 	while (tmp->next != rrset->rdata) {
 		rdata_dump_text(tmp, rrset->type, f);
@@ -908,7 +908,7 @@ void rrset_dump_text(const dnslib_rrset_t *rrset, FILE *f)
 	}
 
 	rdata_dump_text(tmp, rrset->type, f);
-	dnslib_rrset_t *rrsig_set = rrset->rrsigs;
+	knot_rrset_t *rrsig_set = rrset->rrsigs;
 	if (rrsig_set != NULL) {
 		rrsig_set_dump_text(rrsig_set, f);
 	}
@@ -916,21 +916,21 @@ void rrset_dump_text(const dnslib_rrset_t *rrset, FILE *f)
 
 struct dump_param {
 	FILE *f;
-	const dnslib_dname_t *origin;
+	const knot_dname_t *origin;
 };
 
-void apex_node_dump_text(dnslib_node_t *node, FILE *f)
+void apex_node_dump_text(knot_node_t *node, FILE *f)
 {
-	dnslib_rrset_t dummy_rrset;
+	knot_rrset_t dummy_rrset;
 	dummy_rrset.type = DNSLIB_RRTYPE_SOA;
-	dnslib_rrset_t *tmp_rrset =
-		(dnslib_rrset_t *)gen_tree_find(node->rrset_tree,
+	knot_rrset_t *tmp_rrset =
+		(knot_rrset_t *)gen_tree_find(node->rrset_tree,
 		                                &dummy_rrset);
 	assert(tmp_rrset);
 	rrset_dump_text(tmp_rrset, f);
 
-	const dnslib_rrset_t **rrsets =
-		dnslib_node_rrsets(node);
+	const knot_rrset_t **rrsets =
+		knot_node_rrsets(node);
 
 	for (int i = 0; i < node->rrset_count; i++) {
 		if (rrsets[i]->type != DNSLIB_RRTYPE_SOA) {
@@ -941,12 +941,12 @@ void apex_node_dump_text(dnslib_node_t *node, FILE *f)
 	free(rrsets);
 }
 
-void node_dump_text(dnslib_node_t *node, void *data)
+void node_dump_text(knot_node_t *node, void *data)
 {
 	struct dump_param *param;
 	param = (struct dump_param *)data;
 	FILE *f = param->f;
-	const dnslib_dname_t *origin = param->origin;
+	const knot_dname_t *origin = param->origin;
 
 	/* pointers should do in this case */
 	if (node->owner == origin) {
@@ -954,8 +954,8 @@ void node_dump_text(dnslib_node_t *node, void *data)
 		return;
 	}
 
-	const dnslib_rrset_t **rrsets =
-		dnslib_node_rrsets(node);
+	const knot_rrset_t **rrsets =
+		knot_node_rrsets(node);
 
 	for (int i = 0; i < node->rrset_count; i++) {
 			rrset_dump_text(rrsets[i], f);
@@ -964,7 +964,7 @@ void node_dump_text(dnslib_node_t *node, void *data)
 	free(rrsets);
 }
 
-int zone_dump_text(dnslib_zone_contents_t *zone, const char *filename)
+int zone_dump_text(knot_zone_contents_t *zone, const char *filename)
 {
 	FILE *f = fopen(filename, "w");
 	if (f == NULL) {
@@ -979,9 +979,9 @@ int zone_dump_text(dnslib_zone_contents_t *zone, const char *filename)
 	struct dump_param param;
 	param.f = f;
 	assert(zone->apex != NULL && zone->apex->owner != NULL);
-	param.origin = dnslib_node_owner(dnslib_zone_contents_apex(zone));
-	dnslib_zone_contents_tree_apply_inorder(zone, node_dump_text, &param);
-	dnslib_zone_contents_nsec3_apply_inorder(zone, node_dump_text, &param);
+	param.origin = knot_node_owner(knot_zone_contents_apex(zone));
+	knot_zone_contents_tree_apply_inorder(zone, node_dump_text, &param);
+	knot_zone_contents_nsec3_apply_inorder(zone, node_dump_text, &param);
 	fclose(f);
 
 	return DNSLIB_EOK;

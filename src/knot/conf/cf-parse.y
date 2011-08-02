@@ -268,7 +268,7 @@ zone_start: TEXT {
    }
 
    /* Check domain name. */
-   dnslib_dname_t *dn = dnslib_dname_new_from_str(this_zone->name,
+   knot_dname_t *dn = knot_dname_new_from_str(this_zone->name,
                                                   nlen + 1,
                                                   0);
    if (dn == 0) {
@@ -277,7 +277,7 @@ zone_start: TEXT {
      cf_error("invalid zone origin", scanner);
    } else {
      /* Directly discard dname, won't be needed. */
-     dnslib_dname_free(&dn);
+     knot_dname_free(&dn);
      add_tail(&new_config->zones, &this_zone->n);
      ++new_config->zones_count;
 

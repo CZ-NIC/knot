@@ -3,8 +3,8 @@
  *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
- * Contains unit tests for RDATA (dnslib_rdata_t) and RDATA item
- * (dnslib_rdata_item_t) structures.
+ * Contains unit tests for RDATA (knot_rdata_t) and RDATA item
+ * (knot_rdata_item_t) structures.
  *
  * Contains tests for:
  * - creating empty RDATA structure with or without reserved space.
@@ -23,7 +23,7 @@
  *       RDATA).
  *
  * \todo It will be fine to test all possible output values of all functions,
- *       e.g. test whether dnslib_rdata_get_item() returns NULL when passed an
+ *       e.g. test whether knot_rdata_get_item() returns NULL when passed an
  *       illegal position, etc.
  */
 #ifndef _KNOT_RDATA_TESTS_H_

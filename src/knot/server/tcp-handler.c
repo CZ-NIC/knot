@@ -89,7 +89,7 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 		  (void*)pthread_self());
 
 	tcp_io_t *tcp_w = (tcp_io_t *)w;
-	dnslib_nameserver_t *ns = tcp_w->server->nameserver;
+	knot_nameserver_t *ns = tcp_w->server->nameserver;
 	xfrhandler_t *xfr_h = tcp_w->server->xfr_h;
 
 	/* Check address type. */
@@ -112,38 +112,38 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 	}
 
 	/* Parse query. */
-//	dnslib_response_t *resp = dnslib_response_new(qbuf_maxlen);
+//	knot_response_t *resp = knot_response_new(qbuf_maxlen);
 	size_t resp_len = qbuf_maxlen; // 64K
 
 	/* Parse query. */
-	dnslib_packet_type_t qtype = DNSLIB_QUERY_NORMAL;
+	knot_packet_type_t qtype = DNSLIB_QUERY_NORMAL;
 
-	dnslib_packet_t *packet =
-		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
+	knot_packet_t *packet =
+		knot_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
 	if (packet == NULL) {
-		uint16_t pkt_id = dnslib_wire_get_id(qbuf);
-		dnslib_ns_error_response(ns, pkt_id, DNSLIB_RCODE_SERVFAIL,
+		uint16_t pkt_id = knot_wire_get_id(qbuf);
+		knot_ns_error_response(ns, pkt_id, DNSLIB_RCODE_SERVFAIL,
 				  qbuf, &resp_len);
 		return;
 	}
 
-	int res = dnslib_ns_parse_packet(qbuf, n, packet, &qtype);
+	int res = knot_ns_parse_packet(qbuf, n, packet, &qtype);
 	if (unlikely(res != KNOT_EOK)) {
 
 		/* Send error response on dnslib RCODE. */
 		if (res > 0) {
-			uint16_t pkt_id = dnslib_wire_get_id(qbuf);
-			dnslib_ns_error_response(ns, pkt_id, res,
+			uint16_t pkt_id = knot_wire_get_id(qbuf);
+			knot_ns_error_response(ns, pkt_id, res,
 					  qbuf, &resp_len);
 		}
 
-//		dnslib_response_free(&resp);
-		dnslib_packet_free(&packet);
+//		knot_response_free(&resp);
+		knot_packet_free(&packet);
 		return;
 	}
 
 	/* Handle query. */
-	dnslib_ns_xfr_t xfr;
+	knot_ns_xfr_t xfr;
 	res = KNOT_ERROR;
 	switch(qtype) {
 
@@ -157,10 +157,10 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 
 	/* Query types. */
 	case DNSLIB_QUERY_NORMAL:
-		res = dnslib_ns_answer_normal(ns, packet, qbuf, &resp_len);
+		res = knot_ns_answer_normal(ns, packet, qbuf, &resp_len);
 		break;
 	case DNSLIB_QUERY_AXFR:
-		memset(&xfr, 0, sizeof(dnslib_ns_xfr_t));
+		memset(&xfr, 0, sizeof(knot_ns_xfr_t));
 		xfr.type = XFR_TYPE_AOUT;
 		xfr.query = packet;
 		xfr.send = xfr_send_cb;
@@ -170,7 +170,7 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 		debug_net("tcp: enqueued AXFR query\n");
 		return;
 	case DNSLIB_QUERY_IXFR:
-		memset(&xfr, 0, sizeof(dnslib_ns_xfr_t));
+		memset(&xfr, 0, sizeof(knot_ns_xfr_t));
 		xfr.type = XFR_TYPE_IOUT;
 		xfr.query = packet; /* Will be freed after processing. */
 		xfr.send = xfr_send_cb;
@@ -187,7 +187,7 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 	debug_net("tcp: got answer of size %zd.\n",
 		  resp_len);
 
-	dnslib_packet_free(&packet);
+	knot_packet_free(&packet);
 
 	/* Send answer. */
 	if (res == KNOT_EOK) {

@@ -5,15 +5,15 @@
 #include "dnslib/dname.h"
 #include "dnslib/node.h"
 
-static int dnslib_dname_tests_count(int argc, char *argv[]);
-static int dnslib_dname_tests_run(int argc, char *argv[]);
+static int knot_dname_tests_count(int argc, char *argv[]);
+static int knot_dname_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
 unit_api dname_tests_api = {
 	"DNS library - dname",        //! Unit name
-	&dnslib_dname_tests_count,  //! Count scheduled tests
-	&dnslib_dname_tests_run     //! Run scheduled tests
+	&knot_dname_tests_count,  //! Count scheduled tests
+	&knot_dname_tests_run     //! Run scheduled tests
 };
 
 /*
@@ -27,7 +27,7 @@ enum { TEST_DOMAINS_BAD = 3 };
 
 enum { TEST_DOMAINS_NON_FQDN = 6 };
 
-static dnslib_node_t *NODE_ADDRESS = (dnslib_node_t *)0xDEADBEEF;
+static knot_node_t *NODE_ADDRESS = (knot_node_t *)0xDEADBEEF;
 
 struct test_domain {
 	char *str;
@@ -80,15 +80,15 @@ static const struct test_domain
 
 static int test_dname_create()
 {
-	dnslib_dname_t *dname = dnslib_dname_new();
+	knot_dname_t *dname = knot_dname_new();
 	if (dname == NULL
-	    || dnslib_dname_name(dname) != NULL
-	    || dnslib_dname_size(dname) != 0
-	    || dnslib_dname_node(dname, 0) != NULL) {
+	    || knot_dname_name(dname) != NULL
+	    || knot_dname_size(dname) != 0
+	    || knot_dname_node(dname, 0) != NULL) {
 		diag("New domain name not initialized properly!");
 		return 0;
 	}
-	dnslib_dname_free(&dname);
+	knot_dname_free(&dname);
 	if (dname != NULL) {
 		diag("Pointer to the structure not set to"
 		     "NULL when deallocating!");
@@ -103,7 +103,7 @@ static int test_dname_delete()
 	return 0;
 }
 
-static int check_domain_name(const dnslib_dname_t *dname,
+static int check_domain_name(const knot_dname_t *dname,
                              const struct test_domain *test_domains, int i,
                              int check_node)
 {
@@ -115,18 +115,18 @@ static int check_domain_name(const dnslib_dname_t *dname,
 	}
 
 	// check size
-	if (dnslib_dname_size(dname) != test_domains[i].size) {
+	if (knot_dname_size(dname) != test_domains[i].size) {
 		diag("Bad size of the created domain name: %u (should be %u).",
-		     dnslib_dname_size(dname), test_domains[i].size);
+		     knot_dname_size(dname), test_domains[i].size);
 		++errors;
 	}
 	// check wire format
-	uint size = dnslib_dname_size(dname);
-	if (strncmp((char *)dnslib_dname_name(dname), 
+	uint size = knot_dname_size(dname);
+	if (strncmp((char *)knot_dname_name(dname), 
 		    test_domains[i].wire, size) != 0) {
 		diag("The wire format of the created domain name is wrong:"
 		     " '%.*s' (should be '%.*s').", 
-		     size, dnslib_dname_name(dname),
+		     size, knot_dname_name(dname),
 		     size, test_domains[i].wire);
 		++errors;
 	}
@@ -144,10 +144,10 @@ static int check_domain_name(const dnslib_dname_t *dname,
 	}
 
 	if (check_node) {
-		if (dnslib_dname_node(dname, 0) != NODE_ADDRESS) {
+		if (knot_dname_node(dname, 0) != NODE_ADDRESS) {
 			diag("Node pointer in the created domain name is wrong:"
 			     "%p (should be %p)",
-			     dnslib_dname_node(dname, 0), NODE_ADDRESS);
+			     knot_dname_node(dname, 0), NODE_ADDRESS);
 			++errors;
 		}
 	}
@@ -158,14 +158,14 @@ static int check_domain_name(const dnslib_dname_t *dname,
 static int test_dname_create_from_str()
 {
 	int errors = 0;
-	dnslib_dname_t *dname = NULL;
+	knot_dname_t *dname = NULL;
 
 	for (int i = 0; i < TEST_DOMAINS_OK && errors == 0; ++i) {
 		//note("testing domain: %s", test_domains_ok[i].str);
-		dname = dnslib_dname_new_from_str(test_domains_ok[i].str,
+		dname = knot_dname_new_from_str(test_domains_ok[i].str,
 		          strlen(test_domains_ok[i].str), NODE_ADDRESS);
 		errors += check_domain_name(dname, test_domains_ok, i, 1);
-		dnslib_dname_free(&dname);
+		knot_dname_free(&dname);
 	}
 
 	return (errors == 0);
@@ -174,14 +174,14 @@ static int test_dname_create_from_str()
 static int test_dname_create_from_str_non_fqdn()
 {
 	int errors = 0;
-	dnslib_dname_t *dname = NULL;
+	knot_dname_t *dname = NULL;
 
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; ++i) {
 		//note("testing domain: %s", test_domains_non_fqdn[i].str);
-		dname = dnslib_dname_new_from_str(test_domains_non_fqdn[i].str,
+		dname = knot_dname_new_from_str(test_domains_non_fqdn[i].str,
 		          strlen(test_domains_non_fqdn[i].str), NULL);
 		errors += check_domain_name(dname, test_domains_non_fqdn, i, 0);
-		dnslib_dname_free(&dname);
+		knot_dname_free(&dname);
 	}
 
 	return (errors == 0);
@@ -196,42 +196,42 @@ static int test_dname_cat()
 	 * where the third dname is a concatenation of the first two dnames.
 	 */
 
-	dnslib_dname_t *d1, *d2, *d3;
+	knot_dname_t *d1, *d2, *d3;
 
-	d1 = dnslib_dname_new_from_str(test_domains_non_fqdn[0].str,
+	d1 = knot_dname_new_from_str(test_domains_non_fqdn[0].str,
 	                            strlen(test_domains_non_fqdn[0].str), NULL);
-	d2 = dnslib_dname_new_from_str(test_domains_non_fqdn[1].str,
+	d2 = knot_dname_new_from_str(test_domains_non_fqdn[1].str,
 	                            strlen(test_domains_non_fqdn[1].str), NULL);
-	d3 = dnslib_dname_new_from_str(test_domains_non_fqdn[2].str,
+	d3 = knot_dname_new_from_str(test_domains_non_fqdn[2].str,
 	                            strlen(test_domains_non_fqdn[2].str), NULL);
 
-	dnslib_dname_cat(d1, d2);
-	dnslib_dname_cat(d1, d3);
+	knot_dname_cat(d1, d2);
+	knot_dname_cat(d1, d3);
 
 	errors += check_domain_name(d1, test_domains_non_fqdn, 3, 0);
 
-	dnslib_dname_free(&d1);
-	dnslib_dname_free(&d2);
-	dnslib_dname_free(&d3);
+	knot_dname_free(&d1);
+	knot_dname_free(&d2);
+	knot_dname_free(&d3);
 
 	/*
 	 * Same thing as above, only different case.
 	 */
 
-	d1 = dnslib_dname_new_from_str(test_domains_non_fqdn[4].str,
+	d1 = knot_dname_new_from_str(test_domains_non_fqdn[4].str,
 	                               strlen(test_domains_non_fqdn[4].str),
 	                               NODE_ADDRESS);
 
-	d2 = dnslib_dname_new_from_str(test_domains_ok[4].str,
+	d2 = knot_dname_new_from_str(test_domains_ok[4].str,
 	                               strlen(test_domains_ok[4].str),
 	                               NODE_ADDRESS);
 
-	dnslib_dname_cat(d1, d2);
+	knot_dname_cat(d1, d2);
 
 	errors += check_domain_name(d1, test_domains_ok, 1, 1);
 
-	dnslib_dname_free(&d1);
-	dnslib_dname_free(&d2);
+	knot_dname_free(&d1);
+	knot_dname_free(&d2);
 
 	return (errors == 0);
 }
@@ -244,31 +244,31 @@ static int test_dname_left_chop()
 
 	/* TODO this would maybe deserver separate structure */
 
-	dnslib_dname_t *d1;
+	knot_dname_t *d1;
 
-	d1 = dnslib_dname_new_from_str(test_domains_ok[1].str,
+	d1 = knot_dname_new_from_str(test_domains_ok[1].str,
 	                               strlen(test_domains_ok[1].str),
 	                               NODE_ADDRESS);
 
-	dnslib_dname_t *chopped;
+	knot_dname_t *chopped;
 
-	chopped = dnslib_dname_left_chop(d1);
+	chopped = knot_dname_left_chop(d1);
 
 	errors += check_domain_name(chopped, test_domains_ok, 4, 0);
 
-	dnslib_dname_free(&d1);
-	dnslib_dname_free(&chopped);
+	knot_dname_free(&d1);
+	knot_dname_free(&chopped);
 
-	d1 = dnslib_dname_new_from_str(test_domains_non_fqdn[3].str,
+	d1 = knot_dname_new_from_str(test_domains_non_fqdn[3].str,
 	                               strlen(test_domains_non_fqdn[3].str),
 	                               NODE_ADDRESS);
 
-	chopped = dnslib_dname_left_chop(d1);
+	chopped = knot_dname_left_chop(d1);
 
 	errors += check_domain_name(chopped, test_domains_non_fqdn, 5, 0);
 
-	dnslib_dname_free(&d1);
-	dnslib_dname_free(&chopped);
+	knot_dname_free(&d1);
+	knot_dname_free(&chopped);
 
 	return (errors == 0);
 }
@@ -276,16 +276,16 @@ static int test_dname_left_chop()
 static int test_dname_create_from_wire()
 {
 	int errors = 0;
-	dnslib_dname_t *dname = NULL;
+	knot_dname_t *dname = NULL;
 
 	for (int i = 0; i < TEST_DOMAINS_OK && errors == 0; ++i) {
 		assert(strlen(test_domains_ok[i].wire) + 1 == 
 		       test_domains_ok[i].size);
-		dname = dnslib_dname_new_from_wire(
+		dname = knot_dname_new_from_wire(
 		            (uint8_t *)test_domains_ok[i].wire,
 		            test_domains_ok[i].size, NODE_ADDRESS);
 		errors += check_domain_name(dname, test_domains_ok, i, 1);
-		dnslib_dname_free(&dname);
+		knot_dname_free(&dname);
 	}
 
 	return (errors == 0);
@@ -300,13 +300,13 @@ static int test_dname_to_str()
 	 * with entries in test_domains structure.
 	 */
 
-	dnslib_dname_t *dname = NULL;
+	knot_dname_t *dname = NULL;
 
 	for (int i = 0; i < TEST_DOMAINS_OK && errors == 0; ++i) {
-		dname = dnslib_dname_new_from_wire(
+		dname = knot_dname_new_from_wire(
 		            (uint8_t *)test_domains_ok[i].wire,
 		            test_domains_ok[i].size, NODE_ADDRESS);
-		char *name_str = dnslib_dname_to_str(dname);
+		char *name_str = knot_dname_to_str(dname);
 		if (strcmp(name_str, test_domains_ok[i].str) != 0) {
 			diag("Presentation format of domain name wrong:"
 			     " %s (should be %s)",
@@ -314,7 +314,7 @@ static int test_dname_to_str()
 			++errors;
 		}
 		free(name_str);
-		dnslib_dname_free(&dname);
+		knot_dname_free(&dname);
 	}
 
 	return (errors == 0);
@@ -323,7 +323,7 @@ static int test_dname_to_str()
 /* called by lives_ok */
 static int test_faulty_data()
 {
-	dnslib_dname_t *dname = NULL;
+	knot_dname_t *dname = NULL;
 
 	/*
 	 * This takes dnames from test_domains_bad array, which contains
@@ -333,22 +333,22 @@ static int test_faulty_data()
 	for (int i = 0; i < TEST_DOMAINS_BAD; i++) {
 
 		if (test_domains_bad[i].str != NULL) {
-			dname = dnslib_dname_new_from_str(
+			dname = knot_dname_new_from_str(
 			            test_domains_bad[i].str,
 			            strlen(test_domains_bad[i].str),
 			            NODE_ADDRESS);
 		} else {
-			dname = dnslib_dname_new_from_str(
+			dname = knot_dname_new_from_str(
 			    test_domains_bad[i].str, 0, NODE_ADDRESS);
 		}
 
-		dnslib_dname_free(&dname);
+		knot_dname_free(&dname);
 
-		dname = dnslib_dname_new_from_wire(
+		dname = knot_dname_new_from_wire(
 		            (uint8_t *)test_domains_bad[i].wire,
 		            test_domains_bad[i].size, NODE_ADDRESS);
 
-		dnslib_dname_free(&dname);
+		knot_dname_free(&dname);
 	}
 
 	return 1; //did it get here? success
@@ -356,73 +356,73 @@ static int test_faulty_data()
 
 static int test_dname_compare()
 {
-	dnslib_dname_t *dnames[TEST_DOMAINS_OK];
+	knot_dname_t *dnames[TEST_DOMAINS_OK];
 
 	/* This uses particular dnames from TEST_DOMAINS_OK array */
 
 	for (int i = 0; i < TEST_DOMAINS_OK; ++i) {
-		dnames[i] = dnslib_dname_new_from_wire(
+		dnames[i] = knot_dname_new_from_wire(
 		                (uint8_t *)test_domains_ok[i].wire,
 		                test_domains_ok[i].size, NODE_ADDRESS);
 	}
 
 	int errors = 0;
 	/* abc < some */
-	if (dnslib_dname_compare(dnames[0], dnames[1]) >= 0) {
+	if (knot_dname_compare(dnames[0], dnames[1]) >= 0) {
 		diag("Dname comparison error");
 		errors++;
         }
 
 	/* abc.test.domain.com. < foo.bar.net. */
-	if (dnslib_dname_compare(dnames[0], dnames[6]) >= 0) {
+	if (knot_dname_compare(dnames[0], dnames[6]) >= 0) {
 		diag("Dname comparison error");
 		errors++;
 	}
 
         /* foo.bar.net. < . */
-	if (dnslib_dname_compare(dnames[5], dnames[0]) >= 0) {
+	if (knot_dname_compare(dnames[5], dnames[0]) >= 0) {
 		diag("Dname comparison error");
 		errors++;
 	}
 
         /* bar.net. < foo.bar.net. */
-	if (dnslib_dname_compare(dnames[7], dnames[6]) >= 0) {
+	if (knot_dname_compare(dnames[7], dnames[6]) >= 0) {
 		diag("Dname comparison error");
 		errors++;
 	}
 
         /* some == some */
-	if (dnslib_dname_compare(dnames[1], dnames[3]) != 0) {
+	if (knot_dname_compare(dnames[1], dnames[3]) != 0) {
 		diag("Dname comparison error");
 		errors++;
 	}
 
         /*xyz > some */
-	if (dnslib_dname_compare(dnames[2], dnames[1]) <= 0) {
+	if (knot_dname_compare(dnames[2], dnames[1]) <= 0) {
 		diag("Dname comparison error");
 		errors++;
 	}
 
         /*foo.bar.net. > xyz.test.domain.com. */
-	if (dnslib_dname_compare(dnames[6], dnames[3]) <= 0) {
+	if (knot_dname_compare(dnames[6], dnames[3]) <= 0) {
 		diag("Dname comparison error");
 		errors++;
 	}
 
 //        /* xyz.test.domain.com. > . */
-//	if (dnslib_dname_compare(dnames[3], dnames[5]) <= 0) {
+//	if (knot_dname_compare(dnames[3], dnames[5]) <= 0) {
 //		diag("Dname comparison error");
 //		errors++;
 //	}
 
         /* bar.net. < foo.bar.net. */
-	if (dnslib_dname_compare(dnames[6], dnames[7]) <= 0) {
+	if (knot_dname_compare(dnames[6], dnames[7]) <= 0) {
 		diag("Dname comparison error");
 		errors++;
 	}
 
         for (int i = 0; i < TEST_DOMAINS_OK; i++) {
-		dnslib_dname_free(&dnames[i]);
+		knot_dname_free(&dnames[i]);
 	}
 
 	return (errors == 0);
@@ -432,25 +432,25 @@ static int test_dname_is_fqdn()
 {
 	int errors = 0;
 
-	dnslib_dname_t *dname;
+	knot_dname_t *dname;
 
 	/* All dnames in TEST_DOMAINS_OK are fqdn */
 
 	for (int i = 0; i < TEST_DOMAINS_OK && !errors; ++i) {
-		dname = dnslib_dname_new_from_wire(
+		dname = knot_dname_new_from_wire(
 		                (uint8_t *)test_domains_ok[i].wire,
 		                test_domains_ok[i].size, NODE_ADDRESS);
-		errors += !dnslib_dname_is_fqdn(dname);
-		dnslib_dname_free(&dname);
+		errors += !knot_dname_is_fqdn(dname);
+		knot_dname_free(&dname);
 	}
 
 	/* None of the following dnames should be fqdn */
 
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN && !errors; ++i) {
-		dname = dnslib_dname_new_from_str(test_domains_non_fqdn[i].str,
+		dname = knot_dname_new_from_str(test_domains_non_fqdn[i].str,
 		          strlen(test_domains_non_fqdn[i].str), NULL);
-		errors += dnslib_dname_is_fqdn(dname);
-		dnslib_dname_free(&dname);
+		errors += knot_dname_is_fqdn(dname);
+		knot_dname_free(&dname);
 	}
 
 	return (errors == 0);
@@ -460,31 +460,31 @@ static int test_dname_is_subdomain()
 {
 	int errors = 0;
 
-	dnslib_dname_t *dnames_fqdn[TEST_DOMAINS_OK];
-	dnslib_dname_t *dnames_non_fqdn[TEST_DOMAINS_NON_FQDN];
+	knot_dname_t *dnames_fqdn[TEST_DOMAINS_OK];
+	knot_dname_t *dnames_non_fqdn[TEST_DOMAINS_NON_FQDN];
 
 	for (int i = 0; i < TEST_DOMAINS_OK; ++i) {
-		dnames_fqdn[i] = dnslib_dname_new_from_wire(
+		dnames_fqdn[i] = knot_dname_new_from_wire(
 		                (uint8_t *)test_domains_ok[i].wire,
 		                test_domains_ok[i].size, NULL);
 		assert(dnames_fqdn[i] != NULL);
 	}
 
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; ++i) {
-		dnames_non_fqdn[i] = dnslib_dname_new_from_wire(
+		dnames_non_fqdn[i] = knot_dname_new_from_wire(
 		                (uint8_t *)test_domains_non_fqdn[i].wire,
 		                test_domains_non_fqdn[i].size, NULL);
 		assert(dnames_non_fqdn[i] != NULL);
 	}
 
 	// fqdn names 0 - 3 should be subdomains of name 4
-	dnslib_dname_t *parent = dnames_fqdn[4];
+	knot_dname_t *parent = dnames_fqdn[4];
 	for (int i = 0; i < 3; ++i) {
-		if (!dnslib_dname_is_subdomain(dnames_fqdn[i], parent)) {
+		if (!knot_dname_is_subdomain(dnames_fqdn[i], parent)) {
 			diag("(fqdn 1-%d) "
 			     "Name %s was not considered subdomain of %s", i,
-			     dnslib_dname_name(dnames_fqdn[i]),
-			     dnslib_dname_name(parent));
+			     knot_dname_name(dnames_fqdn[i]),
+			     knot_dname_name(parent));
 			++errors;
 		}
 	}
@@ -492,98 +492,98 @@ static int test_dname_is_subdomain()
 	// fqdn names 0 - 4 should be subdomains of name 5 (root)
 	parent = dnames_fqdn[5];
 	for (int i = 0; i < 4; ++i) {
-		if (!dnslib_dname_is_subdomain(dnames_fqdn[i], parent)) {
+		if (!knot_dname_is_subdomain(dnames_fqdn[i], parent)) {
 			diag("(fqdn 2-%d) "
 			     "Name %s was not considered subdomain of %s", i,
-			     dnslib_dname_name(dnames_fqdn[i]),
-			     dnslib_dname_name(parent));
+			     knot_dname_name(dnames_fqdn[i]),
+			     knot_dname_name(parent));
 			++errors;
 		}
 	}
 
 	// non-fqdn names 3 and 5 should be subdomains of non-fqdn name 2
 	parent = dnames_non_fqdn[2];
-	if (!dnslib_dname_is_subdomain(dnames_non_fqdn[3], parent)) {
+	if (!knot_dname_is_subdomain(dnames_non_fqdn[3], parent)) {
 		diag("(non-fqdn 1) "
 		     "Name %.*s was not considered subdomain of %.*s",
-		     dnslib_dname_size(dnames_non_fqdn[3]),
-		     dnslib_dname_name(dnames_non_fqdn[3]),
-		     dnslib_dname_size(parent),
-		     dnslib_dname_name(parent));
+		     knot_dname_size(dnames_non_fqdn[3]),
+		     knot_dname_name(dnames_non_fqdn[3]),
+		     knot_dname_size(parent),
+		     knot_dname_name(parent));
 		++errors;
 	}
-	if (!dnslib_dname_is_subdomain(dnames_non_fqdn[5], parent)) {
+	if (!knot_dname_is_subdomain(dnames_non_fqdn[5], parent)) {
 		diag("(non-fqdn 2) "
 		     "Name %.*s was not considered subdomain of %.*s",
-		     dnslib_dname_size(dnames_non_fqdn[5]),
-		     dnslib_dname_name(dnames_non_fqdn[5]),
-		     dnslib_dname_size(parent),
-		     dnslib_dname_name(parent));
+		     knot_dname_size(dnames_non_fqdn[5]),
+		     knot_dname_name(dnames_non_fqdn[5]),
+		     knot_dname_size(parent),
+		     knot_dname_name(parent));
 		++errors;
 	}
 
 	// non-fqdn name 3 should be subdomain of non-fqdn name 5
 	parent = dnames_non_fqdn[5];
-	if (!dnslib_dname_is_subdomain(dnames_non_fqdn[3], parent)) {
+	if (!knot_dname_is_subdomain(dnames_non_fqdn[3], parent)) {
 		diag("(non-fqdn 3) "
 		     "Name %.*s was not considered subdomain of %.*s",
-		     dnslib_dname_size(dnames_non_fqdn[3]),
-		     dnslib_dname_name(dnames_non_fqdn[3]),
-		     dnslib_dname_size(parent),
-		     dnslib_dname_name(parent));
+		     knot_dname_size(dnames_non_fqdn[3]),
+		     knot_dname_name(dnames_non_fqdn[3]),
+		     knot_dname_size(parent),
+		     knot_dname_name(parent));
 		++errors;
 	}
 
 	// identical names should not be considered subdomains
-	if (dnslib_dname_is_subdomain(dnames_fqdn[0], dnames_fqdn[0])) {
+	if (knot_dname_is_subdomain(dnames_fqdn[0], dnames_fqdn[0])) {
 		diag("(identical names) "
 		     "Name %s was considered subdomain of itself",
-		     dnslib_dname_name(dnames_fqdn[0]));
+		     knot_dname_name(dnames_fqdn[0]));
 		++errors;
 	}
-	if (dnslib_dname_is_subdomain(dnames_fqdn[1], dnames_fqdn[3])) {
+	if (knot_dname_is_subdomain(dnames_fqdn[1], dnames_fqdn[3])) {
 		diag("(identical names) "
 		     "Name %s was considered subdomain of %s",
-		     dnslib_dname_name(dnames_fqdn[1]),
-		     dnslib_dname_name(dnames_fqdn[3]));
+		     knot_dname_name(dnames_fqdn[1]),
+		     knot_dname_name(dnames_fqdn[3]));
 		++errors;
 	}
 
 	// fqdn name should not be considered subdomain of non-fqdn name
-	if (dnslib_dname_is_subdomain(dnames_fqdn[1], dnames_non_fqdn[2])) {
+	if (knot_dname_is_subdomain(dnames_fqdn[1], dnames_non_fqdn[2])) {
 		diag("(fqdn subdomain of non-fqdn) "
 		     "Name %s was considered subdomain of %.*s",
-		     dnslib_dname_name(dnames_fqdn[1]),
-		     dnslib_dname_size(dnames_non_fqdn[2]),
-		     dnslib_dname_name(dnames_non_fqdn[2]));
+		     knot_dname_name(dnames_fqdn[1]),
+		     knot_dname_size(dnames_non_fqdn[2]),
+		     knot_dname_name(dnames_non_fqdn[2]));
 		++errors;
 	}
 
 	// non-fqdn name should not be considered subdomain of fqdn name
-	if (dnslib_dname_is_subdomain(dnames_fqdn[1], dnames_non_fqdn[2])) {
+	if (knot_dname_is_subdomain(dnames_fqdn[1], dnames_non_fqdn[2])) {
 		diag("(non-fqdn subdomain of fqdn) "
 		     "Name %s was considered subdomain of %.*s",
-		     dnslib_dname_name(dnames_fqdn[1]),
-		     dnslib_dname_size(dnames_non_fqdn[2]),
-		     dnslib_dname_name(dnames_non_fqdn[2]));
+		     knot_dname_name(dnames_fqdn[1]),
+		     knot_dname_size(dnames_non_fqdn[2]),
+		     knot_dname_name(dnames_non_fqdn[2]));
 		++errors;
 	}
 
 	// parent name should not be considered subdomain of its subdomain
-	if (dnslib_dname_is_subdomain(dnames_fqdn[4], dnames_fqdn[0])) {
+	if (knot_dname_is_subdomain(dnames_fqdn[4], dnames_fqdn[0])) {
 		diag("(ancestor subdomain of name) "
 		     "Name %s was considered subdomain of %s",
-		     dnslib_dname_name(dnames_fqdn[4]),
-		     dnslib_dname_name(dnames_fqdn[0]));
+		     knot_dname_name(dnames_fqdn[4]),
+		     knot_dname_name(dnames_fqdn[0]));
 		++errors;
 	}
 
 	for (int i = 0; i < TEST_DOMAINS_OK; ++i) {
-		dnslib_dname_free(&dnames_fqdn[i]);
+		knot_dname_free(&dnames_fqdn[i]);
 	}
 
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; ++i) {
-		dnslib_dname_free(&dnames_non_fqdn[i]);
+		knot_dname_free(&dnames_non_fqdn[i]);
 	}
 
 	return (errors == 0);
@@ -608,8 +608,8 @@ static int check_wires(const uint8_t *wire1, uint size1,
 }
 
 /* \note not to be run separately */
-static int test_dname_name(dnslib_dname_t **dnames_fqdn,
-                           dnslib_dname_t **dnames_non_fqdn)
+static int test_dname_name(knot_dname_t **dnames_fqdn,
+                           knot_dname_t **dnames_non_fqdn)
 {
 	assert(dnames_fqdn);
 	assert(dnames_non_fqdn);
@@ -618,7 +618,7 @@ static int test_dname_name(dnslib_dname_t **dnames_fqdn,
 
 	for (int i = 0; i < TEST_DOMAINS_OK; i++) {
 		const uint8_t *tmp_name;
-		tmp_name = dnslib_dname_name(dnames_fqdn[i]);
+		tmp_name = knot_dname_name(dnames_fqdn[i]);
 		if (!check_wires(tmp_name, dnames_fqdn[i]->size,
 			        (uint8_t *)test_domains_ok[i].wire,
 				test_domains_ok[i].size)) {
@@ -631,7 +631,7 @@ static int test_dname_name(dnslib_dname_t **dnames_fqdn,
 
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
 		const uint8_t *tmp_name;
-		tmp_name = dnslib_dname_name(dnames_non_fqdn[i]);
+		tmp_name = knot_dname_name(dnames_non_fqdn[i]);
 		if (!check_wires(tmp_name, dnames_non_fqdn[i]->size,
 			        (uint8_t *)test_domains_non_fqdn[i].wire,
 				test_domains_non_fqdn[i].size)) {
@@ -646,8 +646,8 @@ static int test_dname_name(dnslib_dname_t **dnames_fqdn,
 }
 
 /* \note not to be run separately */
-static int test_dname_size(dnslib_dname_t **dnames_fqdn,
-                           dnslib_dname_t **dnames_non_fqdn)
+static int test_dname_size(knot_dname_t **dnames_fqdn,
+                           knot_dname_t **dnames_non_fqdn)
 {
 	assert(dnames_fqdn);
 	assert(dnames_non_fqdn);
@@ -656,7 +656,7 @@ static int test_dname_size(dnslib_dname_t **dnames_fqdn,
 
 	for (int i = 0; i < TEST_DOMAINS_OK; i++) {
 		uint8_t tmp_size;
-		if ((tmp_size = dnslib_dname_size(dnames_fqdn[i])) !=
+		if ((tmp_size = knot_dname_size(dnames_fqdn[i])) !=
 		    test_domains_ok[i].size) {
 			diag("Got bad size value from structure: "
 			     "%u, should be: %u",
@@ -667,7 +667,7 @@ static int test_dname_size(dnslib_dname_t **dnames_fqdn,
 
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
 		uint8_t tmp_size;
-		if ((tmp_size = dnslib_dname_size(dnames_non_fqdn[i])) !=
+		if ((tmp_size = knot_dname_size(dnames_non_fqdn[i])) !=
 		    test_domains_non_fqdn[i].size) {
 			diag("Got bad size value from structure: "
 			     "%u, should be: %u",
@@ -680,8 +680,8 @@ static int test_dname_size(dnslib_dname_t **dnames_fqdn,
 }
 
 /* \note not to be run separately */
-static int test_dname_node(dnslib_dname_t **dnames_fqdn,
-                           dnslib_dname_t **dnames_non_fqdn)
+static int test_dname_node(knot_dname_t **dnames_fqdn,
+                           knot_dname_t **dnames_non_fqdn)
 {
 	assert(dnames_fqdn);
 	assert(dnames_non_fqdn);
@@ -689,8 +689,8 @@ static int test_dname_node(dnslib_dname_t **dnames_fqdn,
 	int errors = 0;
 
 	for (int i = 0; i < TEST_DOMAINS_OK; i++) {
-		const dnslib_node_t *tmp_node;
-		if ((tmp_node = dnslib_dname_node(dnames_fqdn[i], 0)) !=
+		const knot_node_t *tmp_node;
+		if ((tmp_node = knot_dname_node(dnames_fqdn[i], 0)) !=
 		    NODE_ADDRESS) {
 			diag("Got bad node value from structure: "
 			     "%p, should be: %p",
@@ -700,8 +700,8 @@ static int test_dname_node(dnslib_dname_t **dnames_fqdn,
 	}
 
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
-		const dnslib_node_t *tmp_node;
-		if ((tmp_node = dnslib_dname_node(dnames_non_fqdn[i], 0)) !=
+		const knot_node_t *tmp_node;
+		if ((tmp_node = knot_dname_node(dnames_non_fqdn[i], 0)) !=
 		    NODE_ADDRESS) {
 			diag("Got bad node value from structure: "
 			     "%s, should be: %s",
@@ -717,18 +717,18 @@ static int test_dname_getters(uint type)
 {
 	int errors = 0;
 
-	dnslib_dname_t *dnames_fqdn[TEST_DOMAINS_OK];
-	dnslib_dname_t *dnames_non_fqdn[TEST_DOMAINS_NON_FQDN];
+	knot_dname_t *dnames_fqdn[TEST_DOMAINS_OK];
+	knot_dname_t *dnames_non_fqdn[TEST_DOMAINS_NON_FQDN];
 
 	for (int i = 0; i < TEST_DOMAINS_OK; i++) {
-		dnames_fqdn[i] = dnslib_dname_new_from_wire(
+		dnames_fqdn[i] = knot_dname_new_from_wire(
 		                (uint8_t *)test_domains_ok[i].wire,
 		                test_domains_ok[i].size, NODE_ADDRESS);
 		assert(dnames_fqdn[i] != NULL);
 	}
 
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
-		dnames_non_fqdn[i] = dnslib_dname_new_from_wire(
+		dnames_non_fqdn[i] = knot_dname_new_from_wire(
 		                (uint8_t *)test_domains_non_fqdn[i].wire,
 		                test_domains_non_fqdn[i].size, NODE_ADDRESS);
 		assert(dnames_non_fqdn[i] != NULL);
@@ -752,11 +752,11 @@ static int test_dname_getters(uint type)
 	} /* switch */
 
 	for (int i = 0; i < TEST_DOMAINS_OK; i++) {
-		dnslib_dname_free(&dnames_fqdn[i]);
+		knot_dname_free(&dnames_fqdn[i]);
 	}
 
 	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
-		dnslib_dname_free(&dnames_non_fqdn[i]);
+		knot_dname_free(&dnames_non_fqdn[i]);
 	}
 	
 	return (errors == 0);
@@ -767,14 +767,14 @@ static const int DNSLIB_DNAME_TEST_COUNT = 15;
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
-static int dnslib_dname_tests_count(int argc, char *argv[])
+static int knot_dname_tests_count(int argc, char *argv[])
 {
 	return DNSLIB_DNAME_TEST_COUNT;
 }
 
 /*! Run all scheduled tests for given parameters.
  */
-static int dnslib_dname_tests_run(int argc, char *argv[])
+static int knot_dname_tests_run(int argc, char *argv[])
 {
 	int res = 0,
 	    res_str = 0,

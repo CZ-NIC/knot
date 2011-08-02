@@ -306,7 +306,7 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 
 #ifdef RESP_TEST_DEBUG
 	fprintf(stderr, "reading rdata for type: %s\n",
-	        dnslib_rrtype_to_string(type));
+	        knot_rrtype_to_string(type));
 #endif
 	/*
 	 * Binary format of rdata is as following:
@@ -322,8 +322,8 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 	rdata->items = NULL;
 	rdata->type = 0;
 
-	dnslib_rrtype_descriptor_t *desc =
-		dnslib_rrtype_descriptor_by_type(type);
+	knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type(type);
 	assert(desc != NULL);
 
 	rdata->type = type;
@@ -386,7 +386,7 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 			}
 
 //			diag("Created DNAME %p item: %d %s %s\n",
-//			     items[i].dname, i, dnslib_rrtype_to_string(type),
+//			     items[i].dname, i, knot_rrtype_to_string(type),
 //			     items[i].dname->str);
 
 			rdata->count++;
@@ -471,7 +471,7 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 //						     " for type: %s"
 //						     " and index: %d\n",
 //						     size_fr_desc,
-//					    dnslib_rrtype_to_string(type),
+//					    knot_rrtype_to_string(type),
 //						    i);
 						}
 				}
@@ -480,7 +480,7 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 				malloc(sizeof(uint8_t) * size_fr_desc + 2);
 
 //				diag("creating raw_data for item %d type %s %p\n",
-//				     i, dnslib_rrtype_to_string(type),
+//				     i, knot_rrtype_to_string(type),
 //				     items[i].raw_data);
 
 				if (items[i].raw_data == NULL) {
@@ -524,7 +524,7 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 		}
 	}
 
-/*	if (dnslib_rdata_set_items(rdata, items, i) != 0) {
+/*	if (knot_rdata_set_items(rdata, items, i) != 0) {
 		diag("Error: could not set items\n");
 		return NULL;
 	} */
@@ -608,7 +608,7 @@ static test_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 		rrset_ttl = 0;
 	}
 
-//	rrset = dnslib_rrset_new(owner, rrset_type, rrset_class, rrset_ttl);
+//	rrset = knot_rrset_new(owner, rrset_type, rrset_class, rrset_ttl);
 
 	rrset->owner = owner;
 	rrset->type = rrset_type;
@@ -729,7 +729,7 @@ static test_response_t *load_parsed_response(const char **src,
 	resp->question = NULL;
 
 /*	for (int i = 0; i < resp->qdcount; i++) {
-		dnslib_rrset_free(&(question_rrsets[i]));
+		knot_rrset_free(&(question_rrsets[i]));
 	} */
 
 	free(question_rrsets);
@@ -831,8 +831,8 @@ static void test_rdata_free(test_rdata_t **rdata)
 	assert(rdata != NULL && *rdata != NULL);
 
 	/* Free all the items */
-	const dnslib_rrtype_descriptor_t *desc =
-		dnslib_rrtype_descriptor_by_type((*rdata)->type);
+	const knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type((*rdata)->type);
 
 	for (int i = 0; i < (*rdata)->count; i++) {
 		if ((wire_is_dname(desc->wireformat[i])) &&
@@ -906,8 +906,8 @@ static void get_and_save_data_from_rdata(test_rdata_t *rdata,
                                          test_data_t *data, uint16_t type)
 {
 	/* We only want to extract dnames */
-	const dnslib_rrtype_descriptor_t *desc =
-		dnslib_rrtype_descriptor_by_type(type);
+	const knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type(type);
 
 	if (rdata->count == 0) {
 //		diag("Rdata count not set!\n");
@@ -938,8 +938,8 @@ static void get_and_save_data_from_rdata(test_rdata_t *rdata,
 static void get_and_save_data_from_rrset(const test_rrset_t *rrset,
                                          test_data_t *data)
 {
-//	dnslib_rrtype_descriptor_t *desc =
-//		dnslib_rrtype_descriptor_by_type(rrset->type);
+//	knot_rrtype_descriptor_t *desc =
+//		knot_rrtype_descriptor_by_type(rrset->type);
 	/* RDATA are in a list. */
 	node *n = NULL;
 	int i = 0;

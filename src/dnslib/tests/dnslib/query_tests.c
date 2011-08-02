@@ -33,11 +33,11 @@ static int test_query_init()
 {
 	int errors = 0;
 	int lived = 0;
-	dnslib_packet_t *query =
-		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
+	knot_packet_t *query =
+		knot_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
 	assert(query);
 	lives_ok({
-		if (dnslib_query_init(NULL) != DNSLIB_EBADARG) {
+		if (knot_query_init(NULL) != DNSLIB_EBADARG) {
 			diag("Calling query_init with NULL query did "
 			     "not return DNSLIB_EBADARG!");
 			errors++;
@@ -46,14 +46,14 @@ static int test_query_init()
 	}, "query: init NULL tests");
 	errors += lived != 1;
 
-	assert(dnslib_packet_set_max_size(query, 1024 * 10) == DNSLIB_EOK);
-	if (dnslib_query_init(query) != DNSLIB_EOK) {
+	assert(knot_packet_set_max_size(query, 1024 * 10) == DNSLIB_EOK);
+	if (knot_query_init(query) != DNSLIB_EOK) {
 		diag("Calling query_init with valid query did not return "
 		     "DNSLIB_EOK!");
 		errors++;
 	}
 
-	if (!dnslib_packet_is_query(query)) {
+	if (!knot_packet_is_query(query)) {
 		diag("QR flag was not set!");
 		errors++;
 	}
@@ -66,39 +66,39 @@ static int test_query_set_question()
 	int errors = 0;
 	int lived = 0;
 
-	dnslib_packet_t *query =
-		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
+	knot_packet_t *query =
+		knot_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
 	assert(query);
-	assert(dnslib_packet_set_max_size(query, 1024 * 10) == DNSLIB_EOK);
-	dnslib_query_init(query);
+	assert(knot_packet_set_max_size(query, 1024 * 10) == DNSLIB_EOK);
+	knot_query_init(query);
 
-	dnslib_rrset_t *rrset =
-		dnslib_rrset_new(dnslib_dname_new_from_str("a.ns.cz.",
+	knot_rrset_t *rrset =
+		knot_rrset_new(knot_dname_new_from_str("a.ns.cz.",
 	                                                   strlen("a.ns.cz."),
 	                                                   NULL),
 	                         DNSLIB_RRTYPE_A, DNSLIB_CLASS_IN, 3600);
 	assert(rrset);
 
-	dnslib_question_t *question = malloc(sizeof(dnslib_question_t));
+	knot_question_t *question = malloc(sizeof(knot_question_t));
 	assert(question);
 	question->qname = rrset->owner;
 	question->qtype = rrset->type;
 	question->qclass = rrset->rclass;
 
 	lives_ok({
-		if (dnslib_query_set_question(NULL, NULL) != DNSLIB_EBADARG) {
+		if (knot_query_set_question(NULL, NULL) != DNSLIB_EBADARG) {
 			diag("Calling query_set_question with NULL");
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
-		if (dnslib_query_set_question(query, NULL) != DNSLIB_EBADARG) {
+		if (knot_query_set_question(query, NULL) != DNSLIB_EBADARG) {
 			diag("Calling query_set_question with NULL");
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
-		if (dnslib_query_set_question(NULL, question) != DNSLIB_EBADARG) {
+		if (knot_query_set_question(NULL, question) != DNSLIB_EBADARG) {
 			diag("Calling query_set_question with NULL");
 			errors++;
 		}
@@ -106,7 +106,7 @@ static int test_query_set_question()
 	}, "query: set question NULL tests");
 	errors += lived != 1;
 
-	if (dnslib_query_set_question(query, question) != DNSLIB_EOK) {
+	if (knot_query_set_question(query, question) != DNSLIB_EOK) {
 		diag("Calling query_set_question with valid arguments ");
 		errors++;
 	}
@@ -131,8 +131,8 @@ static int test_query_set_question()
 		errors++;
 	}
 
-	dnslib_packet_free(&query);
-	dnslib_rrset_deep_free(&rrset, 1, 0, 0);
+	knot_packet_free(&query);
+	knot_rrset_deep_free(&rrset, 1, 0, 0);
 
 	return (errors == 0);
 }

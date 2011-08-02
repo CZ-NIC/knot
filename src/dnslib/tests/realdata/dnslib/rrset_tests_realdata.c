@@ -11,15 +11,15 @@
 #include "dnslib/node.h"
 #include "dnslib/debug.h"
 
-static int dnslib_rrset_tests_count(int argc, char *argv[]);
-static int dnslib_rrset_tests_run(int argc, char *argv[]);
+static int knot_rrset_tests_count(int argc, char *argv[]);
+static int knot_rrset_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
 unit_api rrset_tests_api = {
 	"DNS library - rrset",        //! Unit name
-	&dnslib_rrset_tests_count,  //! Count scheduled tests
-	&dnslib_rrset_tests_run     //! Run scheduled tests
+	&knot_rrset_tests_count,  //! Count scheduled tests
+	&knot_rrset_tests_run     //! Run scheduled tests
 };
 
 /*----------------------------------------------------------------------------*/
@@ -39,45 +39,45 @@ static int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
 }
 
 
-dnslib_rrset_t *rrset_from_test_rrset(const test_rrset_t *test_rrset)
+knot_rrset_t *rrset_from_test_rrset(const test_rrset_t *test_rrset)
 {
 //	diag("owner: %s\n", test_rrset->owner->str);
-	dnslib_dname_t *owner =
-		dnslib_dname_new_from_wire(test_rrset->owner->wire,
+	knot_dname_t *owner =
+		knot_dname_new_from_wire(test_rrset->owner->wire,
 	                                   test_rrset->owner->size, NULL);
 
-//	diag("Created owner: %s (%p) from %p\n", dnslib_dname_to_str(owner),
+//	diag("Created owner: %s (%p) from %p\n", knot_dname_to_str(owner),
 //	     owner, test_rrset->owner);
 
 	if (!owner) {
 		return NULL;
 	}
 
-	dnslib_rrset_t *ret = dnslib_rrset_new(owner, test_rrset->type,
+	knot_rrset_t *ret = knot_rrset_new(owner, test_rrset->type,
 	                                       test_rrset->rclass,
 	                                       test_rrset->ttl);
 
 	/* Add rdata to rrset. */
-	dnslib_rdata_t *rdata = dnslib_rdata_new();
+	knot_rdata_t *rdata = knot_rdata_new();
 
-	dnslib_rrtype_descriptor_t *desc =
-		dnslib_rrtype_descriptor_by_type(test_rrset->type);
+	knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type(test_rrset->type);
 
 	node *n = NULL;
 	WALK_LIST(n, test_rrset->rdata_list) {
 		test_rdata_t *test_rdata = (test_rdata_t *)n;
 		if (test_rdata->count != desc->length) {
 			diag("Malformed RRSet data!");
-			dnslib_rdata_free(&rdata);
+			knot_rdata_free(&rdata);
 			return ret;
 		}
 		assert(test_rdata->type == test_rrset->type);
 		/* Add items to the actual rdata. */
-		rdata->items = malloc(sizeof(dnslib_rdata_item_t) * desc->length);
+		rdata->items = malloc(sizeof(knot_rdata_item_t) * desc->length);
 		if (rdata->items == NULL) {
 			return NULL;
 		}
-//		diag("Rdata type: %s\n", dnslib_rrtype_to_string(test_rrset->type));
+//		diag("Rdata type: %s\n", knot_rrtype_to_string(test_rrset->type));
 		for (int i = 0; i < desc->length; i++) {
 			if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 			    desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME ||
@@ -85,7 +85,7 @@ dnslib_rrset_t *rrset_from_test_rrset(const test_rrset_t *test_rrset)
 //				diag("%p\n", test_rdata->items[i].raw_data);
 				assert(test_rdata->items[i].type == TEST_ITEM_DNAME);
 				rdata->items[i].dname =
-					dnslib_dname_new_from_wire(test_rdata->items[i].dname->wire,
+					knot_dname_new_from_wire(test_rdata->items[i].dname->wire,
 				                                   test_rdata->items[i].dname->size,
 				                                   NULL);
 			} else {
@@ -104,9 +104,9 @@ dnslib_rrset_t *rrset_from_test_rrset(const test_rrset_t *test_rrset)
 	return ret;
 }
 
-extern int check_domain_name(dnslib_dname_t *dname, test_dname_t *test_dname);
+extern int check_domain_name(knot_dname_t *dname, test_dname_t *test_dname);
 
-int check_rrset(const dnslib_rrset_t *rrset,
+int check_rrset(const knot_rrset_t *rrset,
                 const test_rrset_t *test_rrset,
                 int check_rdata, int check_items,
                 int check_rrsigs)
@@ -141,7 +141,7 @@ int check_rrset(const dnslib_rrset_t *rrset,
 
 	if (check_rdata) {
 		/* TODO use rdata_compare */
-		dnslib_rdata_t *rdata = rrset->rdata;
+		knot_rdata_t *rdata = rrset->rdata;
 
 		if (rdata == NULL) {
 			diag("There are no RDATAs in the RRSet");
@@ -164,10 +164,10 @@ int check_rrset(const dnslib_rrset_t *rrset,
 
 	/* Iterate rrset rdata list and compare items. */
 	if (check_items && rrset->rdata != NULL) {
-		dnslib_rrtype_descriptor_t *desc =
-			dnslib_rrtype_descriptor_by_type(rrset->type);
+		knot_rrtype_descriptor_t *desc =
+			knot_rrtype_descriptor_by_type(rrset->type);
 		node *n = NULL;
-		dnslib_rdata_t *tmp_rdata = rrset->rdata;
+		knot_rdata_t *tmp_rdata = rrset->rdata;
 		WALK_LIST(n, test_rrset->rdata_list) {
 			test_rdata_t *test_rdata = (test_rdata_t *)n;
 			for (int i = 0; i < desc->length; i++) {
@@ -194,7 +194,7 @@ int check_rrset(const dnslib_rrset_t *rrset,
 	return errors;
 }
 
-extern dnslib_dname_t *dname_from_test_dname(test_dname_t *test_dname);
+extern knot_dname_t *dname_from_test_dname(test_dname_t *test_dname);
 
 static int test_rrset_create(const list rrset_list)
 {
@@ -204,15 +204,15 @@ static int test_rrset_create(const list rrset_list)
 	node *n = NULL;
 	WALK_LIST(n, rrset_list) {
 		test_rrset_t *test_rrset = (test_rrset_t *)n;
-		dnslib_rrset_t *rrset =
-			dnslib_rrset_new(dname_from_test_dname
+		knot_rrset_t *rrset =
+			knot_rrset_new(dname_from_test_dname
 			                 (test_rrset->owner),
 		                         test_rrset->type,
 		                         test_rrset->rclass,
 		                         test_rrset->ttl);
 		assert(rrset);
 		errors += check_rrset(rrset, test_rrset, 0, 0, 0);
-		dnslib_rrset_deep_free(&rrset, 1, 0, 0);
+		knot_rrset_deep_free(&rrset, 1, 0, 0);
 	}
 
 	return (errors == 0);
@@ -224,20 +224,20 @@ static int test_rrset_add_rdata(list rrset_list)
 	node *n = NULL;
 	WALK_LIST(n, rrset_list) {
 		test_rrset_t *test_rrset = (test_rrset_t *)n;
-		dnslib_rrset_t *tmp_rrset = rrset_from_test_rrset(test_rrset);
+		knot_rrset_t *tmp_rrset = rrset_from_test_rrset(test_rrset);
 		/* TODO use all the rdata */
 		assert(tmp_rrset->rdata->next = tmp_rrset->rdata);
-		dnslib_rrset_t *rrset =
-			dnslib_rrset_new(dname_from_test_dname
+		knot_rrset_t *rrset =
+			knot_rrset_new(dname_from_test_dname
 			                 (test_rrset->owner),
 		                         test_rrset->type,
 		                         test_rrset->rclass,
 		                         test_rrset->ttl);
 		assert(rrset);
-		dnslib_rrset_add_rdata(rrset, tmp_rrset->rdata);
+		knot_rrset_add_rdata(rrset, tmp_rrset->rdata);
 		errors += check_rrset(rrset, test_rrset, 1, 1, 1);
-		dnslib_rrset_free(&tmp_rrset);
-		dnslib_rrset_deep_free(&rrset, 1, 1, 0);
+		knot_rrset_free(&tmp_rrset);
+		knot_rrset_deep_free(&rrset, 1, 1, 0);
 
 	}
 	return (errors == 0);
@@ -248,16 +248,16 @@ static const int DNSLIB_RRSET_TEST_COUNT = 2;
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
-static int dnslib_rrset_tests_count(int argc, char *argv[])
+static int knot_rrset_tests_count(int argc, char *argv[])
 {
 	return DNSLIB_RRSET_TEST_COUNT;
 }
 
 /*! Run all scheduled tests for given parameters.
  */
-static int dnslib_rrset_tests_run(int argc, char *argv[])
+static int knot_rrset_tests_run(int argc, char *argv[])
 {
-	test_data_t *data = data_for_dnslib_tests;
+	test_data_t *data = data_for_knot_tests;
 
 	int res = 0,
 	    res_final = 1;

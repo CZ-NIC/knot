@@ -20,7 +20,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-enum dnslib_mxrdtln {
+enum knot_mxrdtln {
 	/*! \brief Maximum items in RDATA wireformat. */
 	DNSLIB_MAX_RDATA_ITEMS = 64,
 	/*! \brief Maximum size of one item in RDATA wireformat. */
@@ -30,7 +30,7 @@ enum dnslib_mxrdtln {
 	DNSLIB_MAX_RDATA_ITEMS * DNSLIB_MAX_RDATA_ITEM_SIZE
 };
 
-typedef enum dnslib_mxrdtln dnslib_mxrdtln_t;
+typedef enum knot_mxrdtln knot_mxrdtln_t;
 //#define MAXRDATALEN 64
 
 /* 64 is in NSD. Seems a little too much, but I'd say it's not a real issue. */
@@ -38,7 +38,7 @@ typedef enum dnslib_mxrdtln dnslib_mxrdtln_t;
 /*!
  * \brief Resource record class codes.
  */
-enum dnslib_rr_class {
+enum knot_rr_class {
 	DNSLIB_CLASS_IN = 1,
 	DNSLIB_CLASS_CS,
 	DNSLIB_CLASS_CH,
@@ -47,13 +47,13 @@ enum dnslib_rr_class {
 	DNSLIB_CLASS_ANY = 255
 };
 
-typedef enum dnslib_rr_class dnslib_rr_class_t;
+typedef enum knot_rr_class knot_rr_class_t;
 
 /*!
  * \brief Resource record type constants.
  * \todo Not all indices can be used for indexing.
  */
-enum dnslib_rr_type {
+enum knot_rr_type {
 	DNSLIB_RRTYPE_UNKNOWN, /*!< 0 - an unknown type */
 	DNSLIB_RRTYPE_A, /*!< 1 - a host address */
 	DNSLIB_RRTYPE_NS, /*!< 2 - an authoritative name server */
@@ -138,10 +138,10 @@ enum dnslib_rr_type {
 	DNSLIB_RRTYPE_LAST = DNSLIB_RRTYPE_NSEC3PARAM
 };
 
-typedef enum dnslib_rr_type dnslib_rr_type_t;
+typedef enum knot_rr_type knot_rr_type_t;
 
 /*! \brief Constants characterising the wire format of RDATA items. */
-enum dnslib_rdata_wireformat {
+enum knot_rdata_wireformat {
 	/*!
 	 * \brief Possibly compressed domain name.
 	 */	
@@ -164,7 +164,7 @@ enum dnslib_rdata_wireformat {
 };
 
 /*! \brief Constants characterising the format of RDATA items in zone file. */
-enum dnslib_rdata_zoneformat
+enum knot_rdata_zoneformat
 {
 	DNSLIB_RDATA_ZF_DNAME,		/* Domain name.  */
 	DNSLIB_RDATA_ZF_LITERAL_DNAME,	/* DNS name (not lowercased domain name).  */
@@ -194,13 +194,13 @@ enum dnslib_rdata_zoneformat
 };
 
 /*! \brief Constants characterising the wire format of RDATA items. */
-typedef enum dnslib_rdata_zoneformat dnslib_rdata_zoneformat_t;
+typedef enum knot_rdata_zoneformat knot_rdata_zoneformat_t;
 
 /*! \brief Enum containing wireformat codes. */
-typedef enum dnslib_rdatawireformat dnslib_rdata_wireformat_t;
+typedef enum knot_rdatawireformat knot_rdata_wireformat_t;
 
 /*! \brief Structure holding RR descriptor. */
-struct dnslib_rrtype_descriptor {
+struct knot_rrtype_descriptor {
 	uint16_t type;          /*!< RR type */
 	const char *name;       /*!< Textual name.  */
 	uint8_t length;         /*!< Maximum number of RDATA items.  */
@@ -215,7 +215,7 @@ struct dnslib_rrtype_descriptor {
 };
 
 /*! \brief Structure holding RR descriptor. */
-typedef struct dnslib_rrtype_descriptor dnslib_rrtype_descriptor_t;
+typedef struct knot_rrtype_descriptor knot_rrtype_descriptor_t;
 
 /*!
  * \brief Gets RR descriptor for given RR type.
@@ -227,7 +227,7 @@ typedef struct dnslib_rrtype_descriptor dnslib_rrtype_descriptor_t;
  *
  * \todo Change return value to const.
  */
-dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_type(uint16_t type);
+knot_rrtype_descriptor_t *knot_rrtype_descriptor_by_type(uint16_t type);
 
 /*!
  * \brief Gets RR descriptor for given RR name.
@@ -239,7 +239,7 @@ dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_type(uint16_t type);
  *
  * \todo Change return value to const.
  */
-dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_name(const char *name);
+knot_rrtype_descriptor_t *knot_rrtype_descriptor_by_name(const char *name);
 
 /*!
  * \brief Converts numeric type representation to mnemonic string.
@@ -248,7 +248,7 @@ dnslib_rrtype_descriptor_t *dnslib_rrtype_descriptor_by_name(const char *name);
  *
  * \return Mnemonic string if found, str(TYPE[rrtype]) otherwise.
  */
-const char *dnslib_rrtype_to_string(uint16_t rrtype);
+const char *knot_rrtype_to_string(uint16_t rrtype);
 
 /*!
  * \brief Converts mnemonic string representation of a type to numeric one.
@@ -257,7 +257,7 @@ const char *dnslib_rrtype_to_string(uint16_t rrtype);
  *
  * \return Correct code if found, 0 otherwise.
  */
-uint16_t dnslib_rrtype_from_string(const char *name);
+uint16_t knot_rrtype_from_string(const char *name);
 
 /*!
  * \brief Converts numeric class representation to string one.
@@ -267,7 +267,7 @@ uint16_t dnslib_rrtype_from_string(const char *name);
  * \return String represenation of class if found,
  *         str(CLASS[rrclass]) otherwise.
  */
-const char *dnslib_rrclass_to_string(uint16_t rrclass);
+const char *knot_rrclass_to_string(uint16_t rrclass);
 
 /*!
  * \brief Converts string representation of a class to numeric one.
@@ -276,7 +276,7 @@ const char *dnslib_rrclass_to_string(uint16_t rrclass);
  *
  * \return Correct code if found, 0 otherwise.
  */
-uint16_t dnslib_rrclass_from_string(const char *name);
+uint16_t knot_rrclass_from_string(const char *name);
 
 /*!
  * \brief Returns size of wireformat type in bytes.
@@ -286,7 +286,7 @@ uint16_t dnslib_rrclass_from_string(const char *name);
  * \retval Size of given type on success.
  * \retval 0 on unknown type or type that has no length.
  */
-size_t dnslib_wireformat_size(unsigned int wire_type);
+size_t knot_wireformat_size(unsigned int wire_type);
 
 #endif /* _KNOT_DNSLIB_DESCRIPTOR_H_ */
 

@@ -7,7 +7,7 @@
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,
+knot_lookup_table_t *knot_lookup_by_name(knot_lookup_table_t *table,
                                              const char *name)
 {
 	while (table->name != NULL) {
@@ -22,7 +22,7 @@ dnslib_lookup_table_t *dnslib_lookup_by_name(dnslib_lookup_table_t *table,
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_lookup_table_t *dnslib_lookup_by_id(dnslib_lookup_table_t *table,
+knot_lookup_table_t *knot_lookup_by_id(knot_lookup_table_t *table,
                                            int id)
 {
 	while (table->name != NULL) {
@@ -37,7 +37,7 @@ dnslib_lookup_table_t *dnslib_lookup_by_id(dnslib_lookup_table_t *table,
 
 /*----------------------------------------------------------------------------*/
 
-size_t dnslib_strlcpy(char *dst, const char *src, size_t size)
+size_t knot_strlcpy(char *dst, const char *src, size_t size)
 {
 	char *d = dst;
 	const char *s = src;
@@ -75,7 +75,7 @@ static void _qr_init()
 	(void) pthread_setspecific(_qr_key, (void*)time(0));
 }
 
-size_t dnslib_quick_rand()
+size_t knot_quick_rand()
 {
 	(void) pthread_once(&_qr_once, _qr_init);
 	size_t x = (size_t)pthread_getspecific(_qr_key);

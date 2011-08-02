@@ -20,9 +20,9 @@
 // Run all loaded units
 int main(int argc, char *argv[])
 {
-	data_for_dnslib_tests = create_test_data_from_dump();
+	data_for_knot_tests = create_test_data_from_dump();
 
-	if (data_for_dnslib_tests == NULL) {
+	if (data_for_knot_tests == NULL) {
 		diag("Data could not be loaded!");
 		return 0;
 	}

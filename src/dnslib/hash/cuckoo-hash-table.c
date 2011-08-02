@@ -325,7 +325,7 @@ static inline uint ck_items_match(const ck_hash_table_item_t *item,
 static inline void ck_next_table(uint *table, uint table_count)
 {
 	uint next;
-	while ((*table) == (next = dnslib_quick_rand() % table_count)) {}
+	while ((*table) == (next = knot_quick_rand() % table_count)) {}
 	*table = next;
 }
 

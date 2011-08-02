@@ -28,8 +28,8 @@
  * represented as an array of octets, and domain name (\a dname) as domain names
  * require special treatment within some RDATA (e.g. compressing in packets).
  */
-union dnslib_rdata_item {
-	dnslib_dname_t *dname; /*!< RDATA item represented as a domain name. */
+union knot_rdata_item {
+	knot_dname_t *dname; /*!< RDATA item represented as a domain name. */
 
 	/*!
 	 * \brief RDATA item represented as raw array of octets.
@@ -47,14 +47,14 @@ union dnslib_rdata_item {
 	uint16_t *raw_data;
 };
 
-typedef union dnslib_rdata_item dnslib_rdata_item_t;
+typedef union knot_rdata_item knot_rdata_item_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief RDATA structure.
  *
  * Each RDATA may be logically divided into items, each of possible different
- * type (see dnslib_rdata_item). This structure stores an array of such items.
+ * type (see knot_rdata_item). This structure stores an array of such items.
  * It is not dynamic, so any RDATA structure may hold either 0 or one specified
  * number of items which cannot be changed later. However, the number of items
  * may be different for each RDATA structure. The number of items should be
@@ -72,13 +72,13 @@ typedef union dnslib_rdata_item dnslib_rdata_item_t;
  *       this.
  * \todo Add some function for freeing particular item? Or a non-const getter?
  */
-struct dnslib_rdata {
-	dnslib_rdata_item_t *items; /*!< RDATA items comprising this RDATA. */
+struct knot_rdata {
+	knot_rdata_item_t *items; /*!< RDATA items comprising this RDATA. */
 	unsigned int count; /*! < Count of RDATA items in this RDATA. */
-	struct dnslib_rdata *next; /*!< Next RDATA item in a linked list. */
+	struct knot_rdata *next; /*!< Next RDATA item in a linked list. */
 };
 
-typedef struct dnslib_rdata dnslib_rdata_t;
+typedef struct knot_rdata knot_rdata_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -86,7 +86,7 @@ typedef struct dnslib_rdata dnslib_rdata_t;
  *
  * \return Pointer to the new RDATA structure or NULL if an error occured.
  */
-dnslib_rdata_t *dnslib_rdata_new();
+knot_rdata_t *knot_rdata_new();
 
 /*!
  * \brief Parses RDATA from the given data in wire format.
@@ -104,9 +104,9 @@ dnslib_rdata_t *dnslib_rdata_new();
  * \retval DNSLIB_ERROR
  * \retval DNSLIB_EOK
  */
-int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
+int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
                            size_t *pos, size_t total_size, size_t rdlength,
-                           const dnslib_rrtype_descriptor_t *desc);
+                           const knot_rrtype_descriptor_t *desc);
 
 /*!
  * \brief Sets the RDATA item on position \a pos.
@@ -121,8 +121,8 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
  * \todo Use the union or a pointer to it as parameter? IMHO there is always
  *       only one pointer that is copied, so it doesn't matter.
  */
-int dnslib_rdata_set_item(dnslib_rdata_t *rdata, unsigned int pos,
-                          dnslib_rdata_item_t item);
+int knot_rdata_set_item(knot_rdata_t *rdata, unsigned int pos,
+                          knot_rdata_item_t item);
 
 /*!
  * \brief Sets all RDATA items within the given RDATA structure.
@@ -140,11 +140,11 @@ int dnslib_rdata_set_item(dnslib_rdata_t *rdata, unsigned int pos,
  * \retval DNSLIB_EBADARG
  * \retval DNSLIB_ENOMEM
  */
-int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
-                           const dnslib_rdata_item_t *items,
+int knot_rdata_set_items(knot_rdata_t *rdata,
+                           const knot_rdata_item_t *items,
                            unsigned int count);
 
-unsigned int dnslib_rdata_item_count(const dnslib_rdata_t *rdata);
+unsigned int knot_rdata_item_count(const knot_rdata_t *rdata);
 
 /*!
  * \brief Returns the RDATA item on position \a pos.
@@ -158,7 +158,7 @@ unsigned int dnslib_rdata_item_count(const dnslib_rdata_t *rdata);
  * \return The RDATA item on position \a pos, or NULL if such position does not
  *         exist within the given RDATA structure.
  */
-dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
+knot_rdata_item_t *knot_rdata_get_item(const knot_rdata_t *rdata,
                                            unsigned int pos);
 
 /*!
@@ -166,7 +166,7 @@ dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
  *
  * \note Although returning union would be OK (no overhead), we need to be able
  *       to distinguish errors (in this case by returning NULL).
- * \note This function is identical to dnslib_rdata_get_item(), only it returns
+ * \note This function is identical to knot_rdata_get_item(), only it returns
  *       constant data.
  *
  * \param rdata RDATA structure to get the item from.
@@ -175,7 +175,7 @@ dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
  * \return The RDATA item on position \a pos, or NULL if such position does not
  *         exist within the given RDATA structure.
  */
-const dnslib_rdata_item_t *dnslib_rdata_item(const dnslib_rdata_t *rdata,
+const knot_rdata_item_t *knot_rdata_item(const knot_rdata_t *rdata,
                                              unsigned int pos);
 
 /*!
@@ -189,8 +189,8 @@ const dnslib_rdata_item_t *dnslib_rdata_item(const dnslib_rdata_t *rdata,
  * \retval DNSLIB_EOK if successful.
  * \retval DNSLIB_EBADARG
  */
-int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, unsigned int pos,
-                                dnslib_dname_t *dname);
+int knot_rdata_item_set_dname(knot_rdata_t *rdata, unsigned int pos,
+                                knot_dname_t *dname);
 
 /*!
  * \brief Sets the given raw data as a value of RDATA item on position \a pos.
@@ -202,7 +202,7 @@ int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, unsigned int pos,
  * \retval DNSLIB_EOK if successful.
  * \retval DNSLIB_EBADARG
  */
-int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, unsigned int pos,
+int knot_rdata_item_set_raw_data(knot_rdata_t *rdata, unsigned int pos,
                                    uint16_t *raw_data);
 
 /*!
@@ -213,7 +213,7 @@ int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, unsigned int pos,
  *
  * \return Copy of \a rdata.
  */
-dnslib_rdata_t *dnslib_rdata_deep_copy(const dnslib_rdata_t *rdata, 
+knot_rdata_t *knot_rdata_deep_copy(const knot_rdata_t *rdata, 
                                        uint16_t type);
 
 /*!
@@ -223,7 +223,7 @@ dnslib_rdata_t *dnslib_rdata_deep_copy(const dnslib_rdata_t *rdata,
  *
  * \param rdata RDATA structure to be destroyed.
  */
-void dnslib_rdata_free(dnslib_rdata_t **rdata);
+void knot_rdata_free(knot_rdata_t **rdata);
 
 /*!
  * \brief Destroys the RDATA structure and all its RDATA items.
@@ -242,7 +242,7 @@ void dnslib_rdata_free(dnslib_rdata_t **rdata);
  * \param free_all_dnames Set to <> 0 if you want to delete ALL domain names
  *                        from the RDATA. Set to 0 otherwise.
  */
-void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, unsigned int type,
+void knot_rdata_deep_free(knot_rdata_t **rdata, unsigned int type,
                             int free_all_dnames);
 
 /*!
@@ -259,7 +259,7 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, unsigned int type,
  * \retval < 0 if \a r1 goes before \a r2 in canonical order.
  * \retval > 0 if \a r1 goes after \a r2 in canonical order.
  */
-int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
+int knot_rdata_compare(const knot_rdata_t *r1, const knot_rdata_t *r2,
                          const uint8_t *format);
 
 /*!
@@ -273,7 +273,7 @@ int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
  *
  * \return Canonical name stored in \a rdata or NULL if \a rdata has no items.
  */
-const dnslib_dname_t *dnslib_rdata_cname_name(const dnslib_rdata_t *rdata);
+const knot_dname_t *knot_rdata_cname_name(const knot_rdata_t *rdata);
 
 /*!
  * \brief Retrieves the domain name from DNAME RDATA.
@@ -287,7 +287,7 @@ const dnslib_dname_t *dnslib_rdata_cname_name(const dnslib_rdata_t *rdata);
  * \return Target domain name stored in \a rdata or NULL if \a rdata has no
  *         items.
  */
-const dnslib_dname_t *dnslib_rdata_dname_target(const dnslib_rdata_t *rdata);
+const knot_dname_t *knot_rdata_dname_target(const knot_rdata_t *rdata);
 
 /*!
  * \brief Retrieves the domain name from RDATA of given type.
@@ -308,16 +308,16 @@ const dnslib_dname_t *dnslib_rdata_dname_target(const dnslib_rdata_t *rdata);
  * \return Domain name stored in \a rdata or NULL if \a rdata has not enough
  *         items.
  */
-const dnslib_dname_t *dnslib_rdata_get_name(const dnslib_rdata_t *rdata,
+const knot_dname_t *knot_rdata_get_name(const knot_rdata_t *rdata,
                                             uint16_t type);
 
-int64_t dnslib_rdata_soa_serial(const dnslib_rdata_t *rdata);
+int64_t knot_rdata_soa_serial(const knot_rdata_t *rdata);
 
-uint32_t dnslib_rdata_soa_refresh(const dnslib_rdata_t *rdata);
-uint32_t dnslib_rdata_soa_retry(const dnslib_rdata_t *rdata);
-uint32_t dnslib_rdata_soa_expire(const dnslib_rdata_t *rdata);
+uint32_t knot_rdata_soa_refresh(const knot_rdata_t *rdata);
+uint32_t knot_rdata_soa_retry(const knot_rdata_t *rdata);
+uint32_t knot_rdata_soa_expire(const knot_rdata_t *rdata);
 
-uint16_t dnslib_rdata_rrsig_type_covered(const dnslib_rdata_t *rdata);
+uint16_t knot_rdata_rrsig_type_covered(const knot_rdata_t *rdata);
 
 #endif /* _KNOT_DNSLIB_RDATA_H */
 

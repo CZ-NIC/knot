@@ -23,12 +23,12 @@
 /*!
  * \brief Zone database structure. Contains all zones managed by the server.
  */
-struct dnslib_zonedb {
+struct knot_zonedb {
 	general_tree_t *zone_tree; /*!< AVL tree of zones. */
 	size_t zone_count;
 };
 
-typedef struct dnslib_zonedb dnslib_zonedb_t;
+typedef struct knot_zonedb knot_zonedb_t;
 
 /*----------------------------------------------------------------------------*/
 
@@ -38,7 +38,7 @@ typedef struct dnslib_zonedb dnslib_zonedb_t;
  * \return Pointer to the created zone database structure or NULL if an error
  *         occured.
  */
-dnslib_zonedb_t *dnslib_zonedb_new();
+knot_zonedb_t *knot_zonedb_new();
 
 /*!
  * \brief Adds new zone to the database.
@@ -49,14 +49,14 @@ dnslib_zonedb_t *dnslib_zonedb_new();
  * \retval DNSLIB_EOK
  * \retval DNSLIB_EZONEIN
  */
-int dnslib_zonedb_add_zone(dnslib_zonedb_t *db, dnslib_zone_t *zone);
+int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone);
 
 /*!
  * \brief Removes the given zone from the database if it exists.
  *
- * \note Assumes that the zone was adjusted using dnslib_zone_adjust_dnames().
+ * \note Assumes that the zone was adjusted using knot_zone_adjust_dnames().
  *       If it was not, it may leak some memory due to checks used in
- *       dnslib_rdata_deep_free().
+ *       knot_rdata_deep_free().
  *
  * \param db Zone database to remove from.
  * \param zone_name Name of the zone to be removed.
@@ -67,11 +67,11 @@ int dnslib_zonedb_add_zone(dnslib_zonedb_t *db, dnslib_zone_t *zone);
  * \retval DNSLIB_EOK
  * \retval DNSLIB_ENOZONE
  */
-int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name,
+int knot_zonedb_remove_zone(knot_zonedb_t *db, knot_dname_t *zone_name,
                               int destroy_zone);
 
-//dnslib_zone_t *dnslib_zonedb_replace_zone(dnslib_zonedb_t *db,
-//                                          dnslib_zone_t *zone);
+//knot_zone_t *knot_zonedb_replace_zone(knot_zonedb_t *db,
+//                                          knot_zone_t *zone);
 
 /*!
  * \brief Finds zone exactly matching the given zone name.
@@ -82,8 +82,8 @@ int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name,
  * \return Zone with \a zone_name being the owner of the zone apex or NULL if
  *         not found.
  */
-dnslib_zone_t *dnslib_zonedb_find_zone(const dnslib_zonedb_t *db,
-                                       const dnslib_dname_t *zone_name);
+knot_zone_t *knot_zonedb_find_zone(const knot_zonedb_t *db,
+                                       const knot_dname_t *zone_name);
 
 
 /*!
@@ -95,11 +95,11 @@ dnslib_zone_t *dnslib_zonedb_find_zone(const dnslib_zonedb_t *db,
  * \retval Zone in which the domain name should be present or NULL if no such
  *         zone is found.
  */
-const dnslib_zone_t *dnslib_zonedb_find_zone_for_name(dnslib_zonedb_t *db,
-                                                   const dnslib_dname_t *dname);
+const knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
+                                                   const knot_dname_t *dname);
 
-size_t dnslib_zonedb_zone_count(const dnslib_zonedb_t *db);
-dnslib_zone_t **dnslib_zonedb_zones(const dnslib_zonedb_t *db);
+size_t knot_zonedb_zone_count(const knot_zonedb_t *db);
+knot_zone_t **knot_zonedb_zones(const knot_zonedb_t *db);
 
 /*!
  * \brief Destroys and deallocates the zone database structure (but not the
@@ -107,18 +107,18 @@ dnslib_zone_t **dnslib_zonedb_zones(const dnslib_zonedb_t *db);
  *
  * \param db Zone database to be destroyed.
  */
-void dnslib_zonedb_free(dnslib_zonedb_t **db);
+void knot_zonedb_free(knot_zonedb_t **db);
 
 /*!
  * \brief Destroys and deallocates the whole zone database including the zones.
  *
- * \note Assumes that the zone was adjusted using dnslib_zone_adjust_dnames().
+ * \note Assumes that the zone was adjusted using knot_zone_adjust_dnames().
  *       If it was not, it may leak some memory due to checks used in
- *       dnslib_rdata_deep_free().
+ *       knot_rdata_deep_free().
  *
  * \param db Zone database to be destroyed.
  */
-void dnslib_zonedb_deep_free(dnslib_zonedb_t **db);
+void knot_zonedb_deep_free(knot_zonedb_t **db);
 
 /*----------------------------------------------------------------------------*/
 

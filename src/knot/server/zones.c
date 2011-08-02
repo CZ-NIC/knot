@@ -27,7 +27,7 @@ static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
 /*----------------------------------------------------------------------------*/
 
 /*! \brief Zone data destructor function. */
-static int zonedata_destroy(dnslib_zone_t *zone)
+static int zonedata_destroy(knot_zone_t *zone)
 {
 	zonedata_t *zd = (zonedata_t *)zone->data;
 	if (!zd) {
@@ -50,7 +50,7 @@ static int zonedata_destroy(dnslib_zone_t *zone)
 }
 
 /*! \brief Zone data constructor function. */
-static int zonedata_init(conf_zone_t *cfg, dnslib_zone_t *zone)
+static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 {
 	zonedata_t *zd = malloc(sizeof(zonedata_t));
 	if (!zd) {
@@ -95,14 +95,14 @@ static int zonedata_init(conf_zone_t *cfg, dnslib_zone_t *zone)
 	zone->dtor = zonedata_destroy;
 
 	/* Set zonefile SOA serial. */
-	const dnslib_rrset_t *soa_rrs = 0;
-	const dnslib_rdata_t *soa_rr = 0;
+	const knot_rrset_t *soa_rrs = 0;
+	const knot_rdata_t *soa_rr = 0;
 	/*! \todo Checks for NULL!!! */
-	const dnslib_zone_contents_t *contents = dnslib_zone_contents(zone);
-	soa_rrs = dnslib_node_rrset(dnslib_zone_contents_apex(contents),
+	const knot_zone_contents_t *contents = knot_zone_contents(zone);
+	soa_rrs = knot_node_rrset(knot_zone_contents_apex(contents),
 	                            DNSLIB_RRTYPE_SOA);
-	soa_rr = dnslib_rrset_rdata(soa_rrs);
-	int64_t serial = dnslib_rdata_soa_serial(soa_rr);
+	soa_rr = knot_rrset_rdata(soa_rrs);
+	int64_t serial = knot_rdata_soa_serial(soa_rr);
 	zd->zonefile_serial = (uint32_t)serial;
 	if (serial < 0) {
 		return KNOT_EINVAL;
@@ -118,18 +118,18 @@ static int zonedata_init(conf_zone_t *cfg, dnslib_zone_t *zone)
  * \param rr_func RDATA specificator.
  * \return Timer in miliseconds.
  */
-static uint32_t zones_soa_timer(dnslib_zone_t *zone,
-                                uint32_t (*rr_func)(const dnslib_rdata_t*))
+static uint32_t zones_soa_timer(knot_zone_t *zone,
+                                uint32_t (*rr_func)(const knot_rdata_t*))
 {
 	uint32_t ret = 0;
 
 	/* Retrieve SOA RDATA. */
-	const dnslib_rrset_t *soa_rrs = 0;
-	const dnslib_rdata_t *soa_rr = 0;
-	soa_rrs = dnslib_node_rrset(dnslib_zone_contents_apex(
-	                                dnslib_zone_contents((zone))),
+	const knot_rrset_t *soa_rrs = 0;
+	const knot_rdata_t *soa_rr = 0;
+	soa_rrs = knot_node_rrset(knot_zone_contents_apex(
+	                                knot_zone_contents((zone))),
 	                            DNSLIB_RRTYPE_SOA);
-	soa_rr = dnslib_rrset_rdata(soa_rrs);
+	soa_rr = knot_rrset_rdata(soa_rrs);
 	ret = rr_func(soa_rr);
 
 	/* Convert to miliseconds. */
@@ -142,9 +142,9 @@ static uint32_t zones_soa_timer(dnslib_zone_t *zone,
  * \param zone Pointer to zone.
  * \return REFRESH timer in miliseconds.
  */
-static uint32_t zones_soa_refresh(dnslib_zone_t *zone)
+static uint32_t zones_soa_refresh(knot_zone_t *zone)
 {
-	return zones_soa_timer(zone, dnslib_rdata_soa_refresh);
+	return zones_soa_timer(zone, knot_rdata_soa_refresh);
 }
 
 /*!
@@ -153,9 +153,9 @@ static uint32_t zones_soa_refresh(dnslib_zone_t *zone)
  * \param zone Pointer to zone.
  * \return RETRY timer in miliseconds.
  */
-static uint32_t zones_soa_retry(dnslib_zone_t *zone)
+static uint32_t zones_soa_retry(knot_zone_t *zone)
 {
-	return zones_soa_timer(zone, dnslib_rdata_soa_retry);
+	return zones_soa_timer(zone, knot_rdata_soa_retry);
 }
 
 /*!
@@ -164,9 +164,9 @@ static uint32_t zones_soa_retry(dnslib_zone_t *zone)
  * \param zone Pointer to zone.
  * \return EXPIRE timer in miliseconds.
  */
-static uint32_t zones_soa_expire(dnslib_zone_t *zone)
+static uint32_t zones_soa_expire(knot_zone_t *zone)
 {
-	return zones_soa_timer(zone, dnslib_rdata_soa_expire);
+	return zones_soa_timer(zone, knot_rdata_soa_expire);
 }
 
 /*!
@@ -175,7 +175,7 @@ static uint32_t zones_soa_expire(dnslib_zone_t *zone)
 static int zones_axfrin_expire(event_t *e)
 {
 	debug_zones("axfrin: EXPIRE timer event\n");
-	dnslib_zone_t *zone = (dnslib_zone_t *)e->data;
+	knot_zone_t *zone = (knot_zone_t *)e->data;
 	if (!zone) {
 		return KNOT_EINVAL;
 	}
@@ -206,7 +206,7 @@ static int zones_axfrin_expire(event_t *e)
 static int zones_axfrin_poll(event_t *e)
 {
 	debug_zones("axfrin: REFRESH or RETRY timer event\n");
-	dnslib_zone_t *zone = (dnslib_zone_t *)e->data;
+	knot_zone_t *zone = (knot_zone_t *)e->data;
 	if (!zone) {
 		return KNOT_EINVAL;
 	}
@@ -215,14 +215,14 @@ static int zones_axfrin_poll(event_t *e)
 	}
 
 	/* Cancel pending timers. */
-	zonedata_t *zd = (zonedata_t *)dnslib_zone_data(zone);
+	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 
 	/* Prepare buffer for query. */
 	uint8_t qbuf[SOCKET_MTU_SZ];
 	size_t buflen = SOCKET_MTU_SZ;
 
 	/* Create query. */
-	int ret = xfrin_create_soa_query(dnslib_zone_contents(zone), qbuf, &buflen);
+	int ret = xfrin_create_soa_query(knot_zone_contents(zone), qbuf, &buflen);
 	if (ret == KNOT_EOK && zd->xfr_in.ifaces) {
 
 		int sock = -1;
@@ -257,7 +257,7 @@ static int zones_axfrin_poll(event_t *e)
 
 		/* Store ID of the awaited response. */
 		if (ret == buflen) {
-			zd->xfr_in.next_id = dnslib_wire_get_id(qbuf);
+			zd->xfr_in.next_id = knot_wire_get_id(qbuf);
 			debug_zones("axfrin: expecting SOA response ID=%d\n",
 				    zd->xfr_in.next_id);
 		}
@@ -287,11 +287,11 @@ static int zones_axfrin_poll(event_t *e)
 static int zones_notify_send(event_t *e)
 {
 	notify_ev_t *ev = (notify_ev_t *)e->data;
-	dnslib_zone_t *zone = ev->zone;
+	knot_zone_t *zone = ev->zone;
 	if (!zone) {
 		return KNOT_EINVAL;
 	}
-	if (!dnslib_zone_data(zone)) {
+	if (!knot_zone_data(zone)) {
 		return KNOT_EINVAL;
 	}
 
@@ -302,8 +302,8 @@ static int zones_notify_send(event_t *e)
 	size_t buflen = SOCKET_MTU_SZ;
 
 	/* Create query. */
-	zonedata_t *zd = (zonedata_t *)dnslib_zone_data(zone);
-	int ret = notify_create_request(dnslib_zone_contents(zone), qbuf,
+	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+	int ret = notify_create_request(knot_zone_contents(zone), qbuf,
 	                                &buflen);
 	if (ret == KNOT_EOK && zd->xfr_in.ifaces) {
 
@@ -334,7 +334,7 @@ static int zones_notify_send(event_t *e)
 
 		/* Store ID of the awaited response. */
 		if (ret == buflen) {
-			ev->msgid = dnslib_wire_get_id(qbuf);
+			ev->msgid = knot_wire_get_id(qbuf);
 			debug_zones("notify: sent NOTIFY, expecting "
 				    "response ID=%d\n", ev->msgid);
 		}
@@ -387,7 +387,7 @@ static int zones_zonefile_sync_ev(event_t *e)
 	debug_zones("ixfr_db: SYNC timer event\n");
 
 	/* Fetch zone. */
-	dnslib_zone_t *zone = (dnslib_zone_t *)e->data;
+	knot_zone_t *zone = (knot_zone_t *)e->data;
 	if (!zone) {
 		return KNOT_EINVAL;
 	}
@@ -413,7 +413,7 @@ static int zones_zonefile_sync_ev(event_t *e)
  * \brief Update timers related to zone.
  *
  */
-void zones_timers_update(dnslib_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
+void zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 {
 	/* Fetch zone data. */
 	zonedata_t *zd = (zonedata_t *)zone->data;
@@ -558,15 +558,15 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
  * \retval KNOT_EINVAL
  * \retval KNOT_EZONEINVAL
  */
-static int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
+static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 			   const char *source, const char *filename)
 {
-	dnslib_zone_t *zone = NULL;
+	knot_zone_t *zone = NULL;
 
 	// Check path
 	if (filename) {
 		debug_server("Parsing zone database '%s'\n", filename);
-		zloader_t *zl = dnslib_zload_open(filename);
+		zloader_t *zl = knot_zload_open(filename);
 		if (!zl) {
 			log_server_error("Compiled db '%s' is too old, "
 			                 " please recompile.\n",
@@ -576,29 +576,29 @@ static int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
 
 		// Check if the db is up-to-date
 		int src_changed = strcmp(source, zl->source) != 0;
-		if (src_changed || dnslib_zload_needs_update(zl)) {
+		if (src_changed || knot_zload_needs_update(zl)) {
 			log_server_warning("Database for zone '%s' is not "
 			                   "up-to-date. Please recompile.\n",
 			                   zone_name);
 		}
 
-		zone = dnslib_zload_load(zl);
+		zone = knot_zload_load(zl);
 
-		dnslib_zone_contents_dump(zone->contents, 1);
+		knot_zone_contents_dump(zone->contents, 1);
 
 		if (zone) {
 			// save the timestamp from the zone db file
 			struct stat s;
 			stat(filename, &s);
-			dnslib_zone_set_version(zone, s.st_mtime);
+			knot_zone_set_version(zone, s.st_mtime);
 
-			if (dnslib_zonedb_add_zone(zonedb, zone) != 0){
-				dnslib_zone_deep_free(&zone, 0);
+			if (knot_zonedb_add_zone(zonedb, zone) != 0){
+				knot_zone_deep_free(&zone, 0);
 				zone = 0;
 			}
 		}
 
-		dnslib_zload_close(zl);
+		knot_zload_close(zl);
 
 		if (!zone) {
 			log_server_error("Failed to load "
@@ -611,7 +611,7 @@ static int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
 		return KNOT_EINVAL;
 	}
 
-//	dnslib_zone_dump(zone, 1);
+//	knot_zone_dump(zone, 1);
 
 	return KNOT_EOK;
 }
@@ -677,7 +677,7 @@ static inline uint64_t ixfrdb_key_make(uint32_t from, uint32_t to)
 
 /*----------------------------------------------------------------------------*/
 
-static int zones_changesets_from_binary(dnslib_changesets_t *chgsets)
+static int zones_changesets_from_binary(knot_changesets_t *chgsets)
 {
 	assert(chgsets != NULL);
 	assert(chgsets->allocated >= chgsets->count);
@@ -687,12 +687,12 @@ static int zones_changesets_from_binary(dnslib_changesets_t *chgsets)
 	 */
 	size_t size = 0;
 	size_t parsed = 0;
-	dnslib_rrset_t *rrset;
+	knot_rrset_t *rrset;
 	int soa = 0;
 	int ret = 0;
 
 	for (int i = 0; i < chgsets->count; ++i) {
-		ret = dnslib_zload_rrset_deserialize(&rrset,
+		ret = knot_zload_rrset_deserialize(&rrset,
 			chgsets->sets[i].data + parsed, &size);
 		if (ret != DNSLIB_EOK) {
 			return DNSLIB_EMALF;
@@ -702,7 +702,7 @@ static int zones_changesets_from_binary(dnslib_changesets_t *chgsets)
 			parsed += size;
 
 			if (soa == 0) {
-				assert(dnslib_rrset_type(rrset)
+				assert(knot_rrset_type(rrset)
 				       == DNSLIB_RRTYPE_SOA);
 
 				/* in this special case (changesets loaded
@@ -710,9 +710,9 @@ static int zones_changesets_from_binary(dnslib_changesets_t *chgsets)
 				 * be set, check it.
 				 */
 				assert(chgsets->sets[i].serial_from
-				       == dnslib_rdata_soa_serial(
-				              dnslib_rrset_rdata(rrset)));
-				dnslib_changeset_store_soa(
+				       == knot_rdata_soa_serial(
+				              knot_rrset_rdata(rrset)));
+				knot_changeset_store_soa(
 					&chgsets->sets[i].soa_from,
 					&chgsets->sets[i].serial_from, rrset);
 				++soa;
@@ -720,22 +720,22 @@ static int zones_changesets_from_binary(dnslib_changesets_t *chgsets)
 			}
 
 			if (soa == 1) {
-				if (dnslib_rrset_type(rrset)
+				if (knot_rrset_type(rrset)
 				    == DNSLIB_RRTYPE_SOA) {
 					/* in this special case (changesets
 					 * loaded from journal) the SOA serial
 					 * should already be set, check it.
 					 */
 					assert(chgsets->sets[i].serial_from
-					       == dnslib_rdata_soa_serial(
-					            dnslib_rrset_rdata(rrset)));
-					dnslib_changeset_store_soa(
+					       == knot_rdata_soa_serial(
+					            knot_rrset_rdata(rrset)));
+					knot_changeset_store_soa(
 						&chgsets->sets[i].soa_to,
 						&chgsets->sets[i].serial_to,
 						rrset);
 					++soa;
 				} else {
-					ret = dnslib_changeset_add_rrset(
+					ret = knot_changeset_add_rrset(
 						&chgsets->sets[i].remove,
 						&chgsets->sets[i].remove_count,
 						&chgsets->sets[i]
@@ -746,11 +746,11 @@ static int zones_changesets_from_binary(dnslib_changesets_t *chgsets)
 					}
 				}
 			} else {
-				if (dnslib_rrset_type(rrset)
+				if (knot_rrset_type(rrset)
 				    == DNSLIB_RRTYPE_SOA) {
 					return DNSLIB_EMALF;
 				} else {
-					ret = dnslib_changeset_add_rrset(
+					ret = knot_changeset_add_rrset(
 						&chgsets->sets[i].add,
 						&chgsets->sets[i].add_count,
 						&chgsets->sets[i].add_allocated,
@@ -761,7 +761,7 @@ static int zones_changesets_from_binary(dnslib_changesets_t *chgsets)
 				}
 			}
 
-			ret = dnslib_zload_rrset_deserialize(&rrset,
+			ret = knot_zload_rrset_deserialize(&rrset,
 					chgsets->sets[i].data + parsed, &size);
 			if (ret != DNSLIB_EOK) {
 				return DNSLIB_EMALF;
@@ -774,8 +774,8 @@ static int zones_changesets_from_binary(dnslib_changesets_t *chgsets)
 
 /*----------------------------------------------------------------------------*/
 
-static int zones_load_changesets(const dnslib_zone_t *zone, 
-                                 dnslib_changesets_t *dst,
+static int zones_load_changesets(const knot_zone_t *zone, 
+                                 knot_changesets_t *dst,
                                  uint32_t from, uint32_t to)
 {
 	if (!zone || !dst) {
@@ -786,7 +786,7 @@ static int zones_load_changesets(const dnslib_zone_t *zone,
 	}
 
 	/* Fetch zone-specific data. */
-	zonedata_t *zd = (zonedata_t *)dnslib_zone_data(zone);
+	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	if (!zd->ixfr_db) {
 		return DNSLIB_EBADARG;
 	}
@@ -804,15 +804,15 @@ static int zones_load_changesets(const dnslib_zone_t *zone,
 
 		/* Check changesets size if needed. */
 		++dst->count;
-		ret = dnslib_changesets_check_size(dst);
+		ret = knot_changesets_check_size(dst);
 		if (ret != DNSLIB_EOK) {
-			debug_dnslib_xfr("ixfr_db: failed to check changesets size\n");
+			debug_knot_xfr("ixfr_db: failed to check changesets size\n");
 			--dst->count;
 			return ret;
 		}
 
 		/* Initialize changeset. */
-		dnslib_changeset_t *chs = dst->sets + (dst->count - 1);
+		knot_changeset_t *chs = dst->sets + (dst->count - 1);
 		chs->serial_from = ixfrdb_key_from(n->id);
 		chs->serial_to = ixfrdb_key_to(n->id);
 		chs->data = malloc(n->len);
@@ -825,7 +825,7 @@ static int zones_load_changesets(const dnslib_zone_t *zone,
 		ret = journal_read(zd->ixfr_db, n->id,
 				   0, (char*)chs->data);
 		if (ret != KNOT_EOK) {
-			debug_dnslib_xfr("ixfr_db: failed to read data from journal\n");
+			debug_knot_xfr("ixfr_db: failed to read data from journal\n");
 			--dst->count;
 			return DNSLIB_ERROR;
 		}
@@ -840,7 +840,7 @@ static int zones_load_changesets(const dnslib_zone_t *zone,
 	/* Unpack binary data. */
 	ret = zones_changesets_from_binary(dst);
 	if (ret != DNSLIB_EOK) {
-		debug_dnslib_xfr("ixfr_db: failed to unpack changesets from binary\n");
+		debug_knot_xfr("ixfr_db: failed to unpack changesets from binary\n");
 		return ret;
 	}
 
@@ -864,22 +864,22 @@ static int zones_load_changesets(const dnslib_zone_t *zone,
  * \retval KNOT_EINVAL on invalid parameters.
  * \retval KNOT_EOK on unspecified error.
  */
-static int zones_journal_apply(dnslib_zone_t *zone)
+static int zones_journal_apply(knot_zone_t *zone)
 {
 	/* Fetch zone. */
 	if (!zone) {
 		return KNOT_EINVAL;
 	}
 
-	dnslib_zone_contents_t *contents = dnslib_zone_get_contents(zone);
+	knot_zone_contents_t *contents = knot_zone_get_contents(zone);
 
 	/* Fetch SOA serial. */
-	const dnslib_rrset_t *soa_rrs = 0;
-	const dnslib_rdata_t *soa_rr = 0;
-	soa_rrs = dnslib_node_rrset(dnslib_zone_contents_apex(contents),
+	const knot_rrset_t *soa_rrs = 0;
+	const knot_rdata_t *soa_rr = 0;
+	soa_rrs = knot_node_rrset(knot_zone_contents_apex(contents),
 	                            DNSLIB_RRTYPE_SOA);
-	soa_rr = dnslib_rrset_rdata(soa_rrs);
-	int64_t serial_ret = dnslib_rdata_soa_serial(soa_rr);
+	soa_rr = knot_rrset_rdata(soa_rrs);
+	int64_t serial_ret = knot_rdata_soa_serial(soa_rr);
 	if (serial_ret < 0) {
 		return KNOT_EINVAL;
 	}
@@ -887,8 +887,8 @@ static int zones_journal_apply(dnslib_zone_t *zone)
 
 	/* Load all pending changesets. */
 	debug_zones("update_zone: loading all changesets from %u\n", serial);
-	dnslib_changesets_t* chsets = malloc(sizeof(dnslib_changesets_t));
-	memset(chsets, 0, sizeof(dnslib_changesets_t));
+	knot_changesets_t* chsets = malloc(sizeof(knot_changesets_t));
+	memset(chsets, 0, sizeof(knot_changesets_t));
 	int ret = zones_load_changesets(zone, chsets, serial, serial - 1);
 	if (ret == KNOT_EOK || ret == KNOT_ERANGE) {
 
@@ -902,7 +902,7 @@ static int zones_journal_apply(dnslib_zone_t *zone)
 	}
 
 	/* Free changesets and return. */
-	dnslib_free_changesets(&chsets);
+	knot_free_changesets(&chsets);
 	return ret;
 }
 
@@ -920,10 +920,10 @@ static int zones_journal_apply(dnslib_zone_t *zone)
  *
  * \return Number of inserted zones.
  */
-static int zones_insert_zones(dnslib_nameserver_t *ns,
+static int zones_insert_zones(knot_nameserver_t *ns,
 			      const list *zone_conf,
-                              const dnslib_zonedb_t *db_old,
-                              dnslib_zonedb_t *db_new)
+                              const knot_zonedb_t *db_old,
+                              knot_zonedb_t *db_new)
 {
 	/*! \todo Change to zone contents. */
 
@@ -935,7 +935,7 @@ static int zones_insert_zones(dnslib_nameserver_t *ns,
 
 		/* Convert the zone name into a domain name. */
 		/* Local allocation, will be discarded. */
-		dnslib_dname_t *zone_name = dnslib_dname_new_from_str(z->name,
+		knot_dname_t *zone_name = knot_dname_new_from_str(z->name,
 		                                         strlen(z->name), NULL);
 		if (zone_name == NULL) {
 			log_server_error("Error creating domain name from zone"
@@ -947,7 +947,7 @@ static int zones_insert_zones(dnslib_nameserver_t *ns,
 		            z->name);
 
 		// try to find the zone in the current zone db
-		dnslib_zone_t *zone = dnslib_zonedb_find_zone(db_old,
+		knot_zone_t *zone = knot_zonedb_find_zone(db_old,
 		                                              zone_name);
 		int reload = 0;
 
@@ -956,7 +956,7 @@ static int zones_insert_zones(dnslib_nameserver_t *ns,
 			// loaded zone
 			struct stat s;
 			stat(z->file, &s);
-			if (dnslib_zone_version(zone) < s.st_mtime) {
+			if (knot_zone_version(zone) < s.st_mtime) {
 				// the file is newer, reload!
 				reload = 1;
 			}
@@ -975,7 +975,7 @@ static int zones_insert_zones(dnslib_nameserver_t *ns,
 				                 knot_strerror(ret));
 			} else {
 				// Find the new zone
-				zone = dnslib_zonedb_find_zone(db_new,
+				zone = knot_zonedb_find_zone(db_new,
 				                               zone_name);
 				++inserted;
 
@@ -987,7 +987,7 @@ static int zones_insert_zones(dnslib_nameserver_t *ns,
 		} else {
 			// just insert the zone into the new zone db
 			debug_zones("Found in old database, copying to new.\n");
-			int ret = dnslib_zonedb_add_zone(db_new, zone);
+			int ret = knot_zonedb_add_zone(db_new, zone);
 			if (ret != KNOT_EOK) {
 				log_server_error("Error adding old zone to"
 				                 " the new database: %s\n",
@@ -999,7 +999,7 @@ static int zones_insert_zones(dnslib_nameserver_t *ns,
 
 		/* Update zone data. */
 		if (zone) {
-			zonedata_t *zd = (zonedata_t *)dnslib_zone_data(zone);
+			zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 
 			/* Update refs. */
 			zd->conf = z;
@@ -1036,10 +1036,10 @@ static int zones_insert_zones(dnslib_nameserver_t *ns,
 			zones_timers_update(zone, z, ns->server->sched);
 		}
 
-		dnslib_zone_contents_dump(dnslib_zone_get_contents(zone), 1);
+		knot_zone_contents_dump(knot_zone_get_contents(zone), 1);
 
 		/* Directly discard zone. */
-		dnslib_dname_free(&zone_name);
+		knot_dname_free(&zone_name);
 	}
 	return inserted;
 }
@@ -1057,7 +1057,7 @@ static int zones_insert_zones(dnslib_nameserver_t *ns,
  * \retval KNOT_EOK
  * \retval KNOT_ERROR
  */
-static int zones_remove_zones(const list *zone_conf, dnslib_zonedb_t *db_old)
+static int zones_remove_zones(const list *zone_conf, knot_zonedb_t *db_old)
 {
 	node *n;
 	// for all zones in the configuration
@@ -1066,7 +1066,7 @@ static int zones_remove_zones(const list *zone_conf, dnslib_zonedb_t *db_old)
 
 		/* Convert the zone name into a domain name. */
 		/* Local allocation, will be discarded. */
-		dnslib_dname_t *zone_name = dnslib_dname_new_from_str(z->name,
+		knot_dname_t *zone_name = knot_dname_new_from_str(z->name,
 		                                         strlen(z->name), NULL);
 		if (zone_name == NULL) {
 			log_server_error("Error creating domain name from zone"
@@ -1076,10 +1076,10 @@ static int zones_remove_zones(const list *zone_conf, dnslib_zonedb_t *db_old)
 		debug_zones("Removing zone %s from the old database.\n",
 		            z->name);
 		// remove the zone from the old zone db, but do not delete it
-		dnslib_zonedb_remove_zone(db_old, zone_name, 0);
+		knot_zonedb_remove_zone(db_old, zone_name, 0);
 
 		/* Directly discard. */
-		dnslib_dname_free(&zone_name);
+		knot_dname_free(&zone_name);
 	}
 	return KNOT_EOK;
 }
@@ -1088,8 +1088,8 @@ static int zones_remove_zones(const list *zone_conf, dnslib_zonedb_t *db_old)
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-int zones_update_db_from_config(const conf_t *conf, dnslib_nameserver_t *ns,
-                               dnslib_zonedb_t **db_old)
+int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
+                               knot_zonedb_t **db_old)
 {
 	// Check parameters
 	if (conf == NULL || ns == NULL) {
@@ -1108,7 +1108,7 @@ int zones_update_db_from_config(const conf_t *conf, dnslib_nameserver_t *ns,
 	}
 
 	// Create new zone DB
-	dnslib_zonedb_t *db_new = dnslib_zonedb_new();
+	knot_zonedb_t *db_new = knot_zonedb_new();
 	if (db_new == NULL) {
 		return KNOT_ERROR;
 	}
@@ -1153,7 +1153,7 @@ int zones_update_db_from_config(const conf_t *conf, dnslib_nameserver_t *ns,
 	return KNOT_EOK;
 }
 
-int zones_zonefile_sync(dnslib_zone_t *zone)
+int zones_zonefile_sync(knot_zone_t *zone)
 {
 	if (!zone) {
 		return KNOT_EINVAL;
@@ -1168,15 +1168,15 @@ int zones_zonefile_sync(dnslib_zone_t *zone)
 	/* Lock zone data. */
 	pthread_mutex_lock(&zd->lock);
 
-	dnslib_zone_contents_t *contents = dnslib_zone_get_contents(zone);
+	knot_zone_contents_t *contents = knot_zone_get_contents(zone);
 
 	/* Latest zone serial. */
-	const dnslib_rrset_t *soa_rrs = 0;
-	const dnslib_rdata_t *soa_rr = 0;
-	soa_rrs = dnslib_node_rrset(dnslib_zone_contents_apex(contents),
+	const knot_rrset_t *soa_rrs = 0;
+	const knot_rdata_t *soa_rr = 0;
+	soa_rrs = knot_node_rrset(knot_zone_contents_apex(contents),
 	                            DNSLIB_RRTYPE_SOA);
-	soa_rr = dnslib_rrset_rdata(soa_rrs);
-	int64_t serial_ret = dnslib_rdata_soa_serial(soa_rr);
+	soa_rr = knot_rrset_rdata(soa_rrs);
+	int64_t serial_ret = knot_rdata_soa_serial(soa_rr);
 	if (serial_ret < 0) {
 		return KNOT_EINVAL;
 	}
@@ -1211,7 +1211,7 @@ int zones_zonefile_sync(dnslib_zone_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-int zones_xfr_check_zone(dnslib_ns_xfr_t *xfr, dnslib_rcode_t *rcode)
+int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 {
 	if (xfr == NULL || xfr->zone == NULL || rcode == NULL) {
 		*rcode = DNSLIB_RCODE_SERVFAIL;
@@ -1251,9 +1251,9 @@ static int zones_send_cb(int fd, sockaddr_t *addr, uint8_t *msg, size_t msglen)
 
 /*----------------------------------------------------------------------------*/
 
-int zones_process_response(dnslib_nameserver_t *nameserver, 
+int zones_process_response(knot_nameserver_t *nameserver, 
                            sockaddr_t *from,
-                           dnslib_packet_t *packet, uint8_t *response_wire,
+                           knot_packet_t *packet, uint8_t *response_wire,
                            size_t *rsize)
 {
 	if (!packet || !rsize || nameserver == NULL || from == NULL ||
@@ -1265,27 +1265,27 @@ int zones_process_response(dnslib_nameserver_t *nameserver,
 	 *        and start AXFR transfer if needed.
 	 *        Reset REFRESH timer on finish.
 	 */
-	if (dnslib_packet_qtype(packet) == DNSLIB_RRTYPE_SOA) {
+	if (knot_packet_qtype(packet) == DNSLIB_RRTYPE_SOA) {
 
 		/* No response. */
 		*rsize = 0;
 
 		/* Find matching zone and ID. */
-		const dnslib_dname_t *zone_name = dnslib_packet_qname(packet);
+		const knot_dname_t *zone_name = knot_packet_qname(packet);
 		/*! \todo Change the access to the zone db. */
-		dnslib_zone_t *zone = dnslib_zonedb_find_zone(
+		knot_zone_t *zone = knot_zonedb_find_zone(
 		                        nameserver->zone_db,
 		                        zone_name);
 		if (!zone) {
 			return KNOT_EINVAL;
 		}
-		if (!dnslib_zone_data(zone)) {
+		if (!knot_zone_data(zone)) {
 			return KNOT_EINVAL;
 		}
 
 		/* Match ID against awaited. */
-		zonedata_t *zd = (zonedata_t *)dnslib_zone_data(zone);
-		uint16_t pkt_id = dnslib_packet_id(packet);
+		zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+		uint16_t pkt_id = knot_packet_id(packet);
 		if ((int)pkt_id != zd->xfr_in.next_id) {
 			return KNOT_ERROR;
 		}
@@ -1308,8 +1308,8 @@ int zones_process_response(dnslib_nameserver_t *nameserver,
 
 		/* Get zone contents. */
 		rcu_read_lock();
-		const dnslib_zone_contents_t *contents =
-				dnslib_zone_contents(zone);
+		const knot_zone_contents_t *contents =
+				knot_zone_contents(zone);
 
 		/* Check SOA SERIAL. */
 		if (xfrin_transfer_needed(contents, packet) < 1) {
@@ -1318,13 +1318,13 @@ int zones_process_response(dnslib_nameserver_t *nameserver,
 			uint32_t ref_tmr = 0;
 
 			/* Retrieve SOA RDATA. */
-			const dnslib_rrset_t *soa_rrs = 0;
-			const dnslib_rdata_t *soa_rr = 0;
-			soa_rrs = dnslib_node_rrset(
-			             dnslib_zone_contents_apex(contents),
+			const knot_rrset_t *soa_rrs = 0;
+			const knot_rdata_t *soa_rr = 0;
+			soa_rrs = knot_node_rrset(
+			             knot_zone_contents_apex(contents),
 			             DNSLIB_RRTYPE_SOA);
-			soa_rr = dnslib_rrset_rdata(soa_rrs);
-			ref_tmr = dnslib_rdata_soa_refresh(soa_rr);
+			soa_rr = knot_rrset_rdata(soa_rrs);
+			ref_tmr = knot_rdata_soa_refresh(soa_rr);
 			ref_tmr *= 1000; /* Convert to miliseconds. */
 
 			debug_zones("zone: reinstalling REFRESH timer (%u ms)\n",
@@ -1336,8 +1336,8 @@ int zones_process_response(dnslib_nameserver_t *nameserver,
 		}
 
 		/* Prepare XFR client transfer. */
-		dnslib_ns_xfr_t xfr_req;
-		memset(&xfr_req, 0, sizeof(dnslib_ns_xfr_t));
+		knot_ns_xfr_t xfr_req;
+		memset(&xfr_req, 0, sizeof(knot_ns_xfr_t));
 		memcpy(&xfr_req.addr, from, sizeof(sockaddr_t));
 		xfr_req.data = (void *)zone;
 		xfr_req.send = zones_send_cb;
@@ -1358,7 +1358,7 @@ int zones_process_response(dnslib_nameserver_t *nameserver,
 
 /*----------------------------------------------------------------------------*/
 
-xfr_type_t zones_transfer_to_use(const dnslib_zone_contents_t *zone)
+xfr_type_t zones_transfer_to_use(const knot_zone_contents_t *zone)
 {
 	/*! \todo Implement. */
 	return XFR_TYPE_AIN;
@@ -1366,7 +1366,7 @@ xfr_type_t zones_transfer_to_use(const dnslib_zone_contents_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-static int zones_find_zone_for_xfr(const dnslib_zone_contents_t *zone, 
+static int zones_find_zone_for_xfr(const knot_zone_contents_t *zone, 
                                    const char **zonefile, const char **zonedb)
 {
 	// find the zone file name and zone db file name for the zone
@@ -1374,17 +1374,17 @@ static int zones_find_zone_for_xfr(const dnslib_zone_contents_t *zone,
 	node *n = NULL;
 	WALK_LIST(n, cnf->zones) {
 		conf_zone_t *zone_conf = (conf_zone_t *)n;
-		dnslib_dname_t *zone_name = dnslib_dname_new_from_str(
+		knot_dname_t *zone_name = knot_dname_new_from_str(
 			zone_conf->name, strlen(zone_conf->name), NULL);
 		if (zone_name == NULL) {
 			return KNOT_ENOMEM;
 		}
 
-		int r = dnslib_dname_compare(zone_name, dnslib_node_owner(
-		                              dnslib_zone_contents_apex(zone)));
+		int r = knot_dname_compare(zone_name, knot_node_owner(
+		                              knot_zone_contents_apex(zone)));
 
 		/* Directly discard dname, won't be needed. */
-		dnslib_dname_free(&zone_name);
+		knot_dname_free(&zone_name);
 
 		if (r == 0) {
 			// found the right zone
@@ -1394,8 +1394,8 @@ static int zones_find_zone_for_xfr(const dnslib_zone_contents_t *zone,
 		}
 	}
 
-	char *name = dnslib_dname_to_str(dnslib_node_owner(
-	                 dnslib_zone_contents_apex(zone)));
+	char *name = knot_dname_to_str(knot_node_owner(
+	                 knot_zone_contents_apex(zone)));
 	debug_zones("No zone found for the zone received by transfer "
 	                 "(%s).\n", name);
 	free(name);
@@ -1419,12 +1419,12 @@ static char *zones_find_free_filename(const char *old_name)
 	new_name[name_size] = '.';
 	new_name[name_size + 2] = 0;
 
-	debug_dnslib_ns("Finding free name for the zone file.\n");
+	debug_knot_ns("Finding free name for the zone file.\n");
 	int c = 48;
 	FILE *file;
 	while (!free_name && c < 58) {
 		new_name[name_size + 1] = c;
-		debug_dnslib_ns("Trying file name %s\n", new_name);
+		debug_knot_ns("Trying file name %s\n", new_name);
 		if ((file = fopen(new_name, "r")) != NULL) {
 			fclose(file);
 			++c;
@@ -1443,7 +1443,7 @@ static char *zones_find_free_filename(const char *old_name)
 
 /*----------------------------------------------------------------------------*/
 
-static int zones_dump_xfr_zone_text(dnslib_zone_contents_t *zone, 
+static int zones_dump_xfr_zone_text(knot_zone_contents_t *zone, 
                                     const char *zonefile)
 {
 	assert(zone != NULL && zonefile != NULL);
@@ -1473,7 +1473,7 @@ static int zones_dump_xfr_zone_text(dnslib_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_dump_xfr_zone_binary(dnslib_zone_contents_t *zone, 
+static int ns_dump_xfr_zone_binary(knot_zone_contents_t *zone, 
                                    const char *zonedb,
                                    const char *zonefile)
 {
@@ -1487,7 +1487,7 @@ static int ns_dump_xfr_zone_binary(dnslib_zone_contents_t *zone,
 		return KNOT_ERROR;	/*! \todo New error code? */
 	}
 
-	int rc = dnslib_zdump_binary(zone, new_zonedb, 0, zonefile);
+	int rc = knot_zdump_binary(zone, new_zonedb, 0, zonefile);
 
 	if (rc != DNSLIB_EOK) {
 		debug_zones("Failed to save the zone to binary zone db %s."
@@ -1504,14 +1504,14 @@ static int ns_dump_xfr_zone_binary(dnslib_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-int zones_save_zone(const dnslib_ns_xfr_t *xfr)
+int zones_save_zone(const knot_ns_xfr_t *xfr)
 {
 	if (xfr == NULL || xfr->data == NULL) {
 		return KNOT_EINVAL;
 	}
 	
-	dnslib_zone_contents_t *zone = 
-		(dnslib_zone_contents_t *)xfr->data;
+	knot_zone_contents_t *zone = 
+		(knot_zone_contents_t *)xfr->data;
 	
 	const char *zonefile = NULL;
 	const char *zonedb = NULL;
@@ -1541,10 +1541,10 @@ int zones_save_zone(const dnslib_ns_xfr_t *xfr)
 
 int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 {
-	dnslib_nameserver_t *ns = (dnslib_nameserver_t *)data;
+	knot_nameserver_t *ns = (knot_nameserver_t *)data;
 	debug_zones("Event: reconfiguring name server.\n");
 
-	dnslib_zonedb_t *old_db = 0;
+	knot_zonedb_t *old_db = 0;
 
 	int ret = zones_update_db_from_config(conf, ns, &old_db);
 	if (ret != KNOT_EOK) {
@@ -1557,7 +1557,7 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	            old_db);
 
 	// Delete all deprecated zones and delete the old database.
-	dnslib_zonedb_deep_free(&old_db);
+	knot_zonedb_deep_free(&old_db);
 
 	return KNOT_EOK;
 }
@@ -1591,7 +1591,7 @@ static int zones_check_binary_size(uint8_t **data, size_t *allocated,
 
 static int zones_changeset_rrset_to_binary(uint8_t **data, size_t *size,
                                            size_t *allocated,
-                                           dnslib_rrset_t *rrset)
+                                           knot_rrset_t *rrset)
 {
 	assert(data != NULL);
 	assert(size != NULL);
@@ -1604,7 +1604,7 @@ static int zones_changeset_rrset_to_binary(uint8_t **data, size_t *size,
 
 	uint8_t *binary = NULL;
 	size_t actual_size = 0;
-	int ret = dnslib_zdump_rrset_serialize(rrset, &binary, &actual_size);
+	int ret = knot_zdump_rrset_serialize(rrset, &binary, &actual_size);
 	if (ret != DNSLIB_EOK) {
 		return DNSLIB_ERROR;  /*! \todo Other code? */
 	}
@@ -1624,7 +1624,7 @@ static int zones_changeset_rrset_to_binary(uint8_t **data, size_t *size,
 
 /*----------------------------------------------------------------------------*/
 
-static int zones_changesets_to_binary(dnslib_changesets_t *chgsets)
+static int zones_changesets_to_binary(knot_changesets_t *chgsets)
 {
 	assert(chgsets != NULL);
 	assert(chgsets->allocated >= chgsets->count);
@@ -1636,7 +1636,7 @@ static int zones_changesets_to_binary(dnslib_changesets_t *chgsets)
 	int ret;
 
 	for (int i = 0; i < chgsets->count; ++i) {
-		dnslib_changeset_t *ch = &chgsets->sets[i];
+		knot_changeset_t *ch = &chgsets->sets[i];
 		assert(ch->data == NULL);
 		assert(ch->size == 0);
 
@@ -1694,14 +1694,14 @@ static int zones_changesets_to_binary(dnslib_changesets_t *chgsets)
 
 /*----------------------------------------------------------------------------*/
 
-int zones_store_changesets(dnslib_ns_xfr_t *xfr)
+int zones_store_changesets(knot_ns_xfr_t *xfr)
 {
 	if (xfr == NULL || xfr->data == NULL || xfr->zone == NULL) {
 		return KNOT_EINVAL;
 	}
 	
-	dnslib_zone_t *zone = xfr->zone;
-	dnslib_changesets_t *src = (dnslib_changesets_t *)xfr->data;
+	knot_zone_t *zone = xfr->zone;
+	knot_changesets_t *src = (knot_changesets_t *)xfr->data;
 	
 	/*! \todo Convert to binary format. */
 	
@@ -1720,7 +1720,7 @@ int zones_store_changesets(dnslib_ns_xfr_t *xfr)
 	for (unsigned i = 0; i < src->count; ++i) {
 
 		/* Make key from serials. */
-		dnslib_changeset_t* chs = src->sets + i;
+		knot_changeset_t* chs = src->sets + i;
 		uint64_t k = ixfrdb_key_make(chs->serial_from, chs->serial_to);
 
 		/* Write entry. */
@@ -1736,13 +1736,13 @@ int zones_store_changesets(dnslib_ns_xfr_t *xfr)
 				/* Cancel sync timer. */
 				event_t *tmr = zd->ixfr_dbsync;
 				if (tmr) {
-					debug_dnslib_xfr("ixfr_db: cancelling SYNC "
+					debug_knot_xfr("ixfr_db: cancelling SYNC "
 							 "timer\n");
 					evsched_cancel(tmr->parent, tmr);
 				}
 
 				/* Synchronize. */
-				debug_dnslib_xfr("ixfr_db: forcing zonefile SYNC\n");
+				debug_knot_xfr("ixfr_db: forcing zonefile SYNC\n");
 				ret = zones_zonefile_sync(zone);
 				if (ret != KNOT_EOK) {
 					continue;
@@ -1757,7 +1757,7 @@ int zones_store_changesets(dnslib_ns_xfr_t *xfr)
 					conf_read_unlock();
 
 					/* Reschedule. */
-					debug_dnslib_xfr("ixfr_db: resuming SYNC "
+					debug_knot_xfr("ixfr_db: resuming SYNC "
 							 "timer\n");
 					evsched_schedule(tmr->parent, tmr,
 							 timeout);
@@ -1781,26 +1781,26 @@ int zones_store_changesets(dnslib_ns_xfr_t *xfr)
 
 /*----------------------------------------------------------------------------*/
 
-int zones_xfr_load_changesets(dnslib_ns_xfr_t *xfr) 
+int zones_xfr_load_changesets(knot_ns_xfr_t *xfr) 
 {
 	if (xfr == NULL || xfr->data == NULL || xfr->zone == NULL) {
 		return KNOT_EINVAL;
 	}
 	
-	const dnslib_zone_t *zone = xfr->zone;
-	const dnslib_zone_contents_t *contents = dnslib_zone_contents(zone);
+	const knot_zone_t *zone = xfr->zone;
+	const knot_zone_contents_t *contents = knot_zone_contents(zone);
 	
-	dnslib_changesets_t *chgsets = (dnslib_changesets_t *)
-	                               calloc(1, sizeof(dnslib_changesets_t));
+	knot_changesets_t *chgsets = (knot_changesets_t *)
+	                               calloc(1, sizeof(knot_changesets_t));
 	
-	const dnslib_rrset_t *zone_soa =
-		dnslib_node_rrset(dnslib_zone_contents_apex(contents),
+	const knot_rrset_t *zone_soa =
+		knot_node_rrset(knot_zone_contents_apex(contents),
 		                  DNSLIB_RRTYPE_SOA);
 	// retrieve origin (xfr) serial and target (zone) serial
-	uint32_t zone_serial = dnslib_rdata_soa_serial(
-	                             dnslib_rrset_rdata(zone_soa));
-	uint32_t xfr_serial = dnslib_rdata_soa_serial(dnslib_rrset_rdata(
-			dnslib_packet_authority_rrset(xfr->query, 0)));
+	uint32_t zone_serial = knot_rdata_soa_serial(
+	                             knot_rrset_rdata(zone_soa));
+	uint32_t xfr_serial = knot_rdata_soa_serial(knot_rrset_rdata(
+			knot_packet_authority_rrset(xfr->query, 0)));
 	
 	int ret = zones_load_changesets(zone, chgsets, xfr_serial, zone_serial);
 	if (ret != KNOT_EOK) {
@@ -1813,12 +1813,12 @@ int zones_xfr_load_changesets(dnslib_ns_xfr_t *xfr)
 
 /*----------------------------------------------------------------------------*/
 
-int zones_apply_changesets(dnslib_ns_xfr_t *xfr) 
+int zones_apply_changesets(knot_ns_xfr_t *xfr) 
 {
 	if (xfr == NULL || xfr->zone == NULL || xfr->data == NULL) {
 		return KNOT_EINVAL;
 	}
 	
 	return xfrin_apply_changesets_to_zone(xfr->zone, 
-	                                      (dnslib_changesets_t *)xfr->data);
+	                                      (knot_changesets_t *)xfr->data);
 }

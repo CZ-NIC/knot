@@ -29,7 +29,7 @@
 static const short DNSLIB_MAX_RESPONSE_SIZE = 512;
 
 /*----------------------------------------------------------------------------*/
-int dnslib_response2_init(dnslib_packet_t *response);
+int knot_response2_init(knot_packet_t *response);
 
 /*!
  * \brief Initializes response from the given query.
@@ -46,20 +46,20 @@ int dnslib_response2_init(dnslib_packet_t *response);
  *
  * \retval DNSLIB_EOK
  */
-int dnslib_response2_init_from_query(dnslib_packet_t *response,
-                                    dnslib_packet_t *query);
+int knot_response2_init_from_query(knot_packet_t *response,
+                                    knot_packet_t *query);
 
 /*!
  * \brief Clears the response structure for reuse.
  *
  * After call to this function, the response will be in the same state as if
- * dnslib_response_new() was called. The maximum wire size is retained.
+ * knot_response_new() was called. The maximum wire size is retained.
  *
  * \param response Response structure to clear.
  *
  * \todo Replace the use of this function with something else maybe?
  */
-void dnslib_response2_clear(dnslib_packet_t *resp, int clear_question);
+void knot_response2_clear(knot_packet_t *resp, int clear_question);
 
 /*!
  * \brief Sets the OPT RR of the response.
@@ -79,8 +79,8 @@ void dnslib_response2_clear(dnslib_packet_t *resp, int clear_question);
  *
  * \todo Needs test.
  */
-int dnslib_response2_add_opt(dnslib_packet_t *resp,
-                            const dnslib_opt_rr_t *opt_rr,
+int knot_response2_add_opt(knot_packet_t *resp,
+                            const knot_opt_rr_t *opt_rr,
                             int override_max_size);
 
 /*!
@@ -99,8 +99,8 @@ int dnslib_response2_add_opt(dnslib_packet_t *resp,
  * \retval DNSLIB_ENOMEM
  * \retval DNSLIB_ESPACE
  */
-int dnslib_response2_add_rrset_answer(dnslib_packet_t *response,
-                                     const dnslib_rrset_t *rrset, int tc,
+int knot_response2_add_rrset_answer(knot_packet_t *response,
+                                     const knot_rrset_t *rrset, int tc,
                                      int check_duplicates, int compr_cs);
 
 /*!
@@ -119,8 +119,8 @@ int dnslib_response2_add_rrset_answer(dnslib_packet_t *response,
  * \retval DNSLIB_ENOMEM
  * \retval DNSLIB_ESPACE
  */
-int dnslib_response2_add_rrset_authority(dnslib_packet_t *response,
-                                        const dnslib_rrset_t *rrset, int tc,
+int knot_response2_add_rrset_authority(knot_packet_t *response,
+                                        const knot_rrset_t *rrset, int tc,
                                         int check_duplicates, int compr_cs);
 
 /*!
@@ -139,8 +139,8 @@ int dnslib_response2_add_rrset_authority(dnslib_packet_t *response,
  * \retval DNSLIB_ENOMEM
  * \retval DNSLIB_ESPACE
  */
-int dnslib_response2_add_rrset_additional(dnslib_packet_t *response,
-                                         const dnslib_rrset_t *rrset, int tc,
+int knot_response2_add_rrset_additional(knot_packet_t *response,
+                                         const knot_rrset_t *rrset, int tc,
                                          int check_duplicates, int compr_cs);
 
 /*!
@@ -149,21 +149,21 @@ int dnslib_response2_add_rrset_additional(dnslib_packet_t *response,
  * \param response Response to set the RCODE in.
  * \param rcode RCODE to set.
  */
-void dnslib_response2_set_rcode(dnslib_packet_t *response, short rcode);
+void knot_response2_set_rcode(knot_packet_t *response, short rcode);
 
 /*!
  * \brief Sets the AA bit of the response to 1.
  *
  * \param response Response in which the AA bit should be set.
  */
-void dnslib_response2_set_aa(dnslib_packet_t *response);
+void knot_response2_set_aa(knot_packet_t *response);
 
 /*!
  * \brief Sets the TC bit of the response to 1.
  *
  * \param response Response in which the TC bit should be set.
  */
-void dnslib_response2_set_tc(dnslib_packet_t *response);
+void knot_response2_set_tc(knot_packet_t *response);
 
 /*!
  * \brief Adds NSID option to the response.
@@ -175,7 +175,7 @@ void dnslib_response2_set_tc(dnslib_packet_t *response);
  * \retval DNSLIB_EOK
  * \retval DNSLIB_ENOMEM
  */
-int dnslib_response2_add_nsid(dnslib_packet_t *response, const uint8_t *data,
+int knot_response2_add_nsid(knot_packet_t *response, const uint8_t *data,
                              uint16_t length);
 
 #endif /* _KNOT_DNSLIB_RESPONSE2_H_ */

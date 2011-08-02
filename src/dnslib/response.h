@@ -31,14 +31,14 @@
  *
  * \todo Consider using some better lookup structure, such as skip-list.
  */
-struct dnslib_compressed_dnames {
-	const dnslib_dname_t **dnames;  /*!< Domain names present in packet. */
+struct knot_compressed_dnames {
+	const knot_dname_t **dnames;  /*!< Domain names present in packet. */
 	size_t *offsets;          /*!< Offsets of domain names in the packet. */
 	short count;              /*!< Count of items in the previous arrays. */
 	short max;                /*!< Capacity of the structure (allocated). */
 };
 
-typedef struct dnslib_compressed_dnames dnslib_compressed_dnames_t;
+typedef struct knot_compressed_dnames knot_compressed_dnames_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -46,9 +46,9 @@ typedef struct dnslib_compressed_dnames dnslib_compressed_dnames_t;
  *
  * \note Currently @a ancount, @a nscount and @a arcount hold the number of
  *       RRSets of corresponding type in the response structure. Real RR
- *       counts are counted in dnslib_response_to_wire() on-the-fly.
+ *       counts are counted in knot_response_to_wire() on-the-fly.
  */
-struct dnslib_header {
+struct knot_header {
 	uint16_t id;      /*!< ID stored in host byte order. */
 	uint8_t flags1;   /*!< First octet of header flags. */
 	uint8_t flags2;   /*!< Second octet of header flags. */
@@ -58,18 +58,18 @@ struct dnslib_header {
 	uint16_t arcount; /*!< Number of Additional RRs, in host byte order. */
 };
 
-typedef struct dnslib_header dnslib_header_t;
+typedef struct knot_header knot_header_t;
 
 /*!
  * \brief Structure representing one Question entry in the DNS packet.
  */
-struct dnslib_question {
-	dnslib_dname_t *qname;  /*!< Question domain name. */
+struct knot_question {
+	knot_dname_t *qname;  /*!< Question domain name. */
 	uint16_t qtype;         /*!< Question TYPE. */
 	uint16_t qclass;        /*!< Question CLASS. */
 };
 
-typedef struct dnslib_question dnslib_question_t;
+typedef struct knot_question knot_question_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -81,22 +81,22 @@ typedef struct dnslib_question dnslib_question_t;
  *       preallocated space after the structure with default sizes. If the
  *       space is not enough, more space is allocated dynamically.
  */
-struct dnslib_response {
+struct knot_response {
 	/*! \brief DNS header. IDs and flags are copied from query. */
-	dnslib_header_t header;
+	knot_header_t header;
 
 	/*!
 	 * \brief Question section. Copied from query.
 	 *
 	 * \note Only one Question is supported!
 	 */
-	dnslib_question_t question;
+	knot_question_t question;
 
 	uint8_t *owner_tmp;  /*!< Allocated space for RRSet owner wire format.*/
 
-	const dnslib_rrset_t **answer;      /*!< Answer RRSets. */
-	const dnslib_rrset_t **authority;   /*!< Authority RRSets. */
-	const dnslib_rrset_t **additional;  /*!< Additional RRSets. */
+	const knot_rrset_t **answer;      /*!< Answer RRSets. */
+	const knot_rrset_t **authority;   /*!< Authority RRSets. */
+	const knot_rrset_t **additional;  /*!< Additional RRSets. */
 
 	short an_rrsets;     /*!< Count of Answer RRSets in the response. */
 	short ns_rrsets;     /*!< Count of Authority RRSets in the response. */
@@ -106,22 +106,22 @@ struct dnslib_response {
 	short max_ns_rrsets; /*!< Allocated space for Authority RRsets. */
 	short max_ar_rrsets; /*!< Allocated space for Additional RRsets. */
 
-	dnslib_opt_rr_t edns_query;     /*!< EDNS data parsed from query. */
-	dnslib_opt_rr_t edns_response;  /*!< EDNS data provided by the server.*/
+	knot_opt_rr_t edns_query;     /*!< EDNS data parsed from query. */
+	knot_opt_rr_t edns_response;  /*!< EDNS data provided by the server.*/
 
 	uint8_t *wireformat;  /*!< Wire format of the response. */
 	size_t size;      /*!< Current wire size of the response. */
 	size_t max_size;  /*!< Maximum allowed size of the response. */
 
 	/*! \brief Information needed for compressing domain names in packet. */
-	dnslib_compressed_dnames_t compression;
+	knot_compressed_dnames_t compression;
 
-	const dnslib_rrset_t **tmp_rrsets; /*!< Synthetized RRSets. */
+	const knot_rrset_t **tmp_rrsets; /*!< Synthetized RRSets. */
 	short tmp_rrsets_count;  /*!< Count of synthetized RRSets. */
 	short tmp_rrsets_max;    /*!< Allocated space for synthetized RRSets. */
 };
 
-typedef struct dnslib_response dnslib_response_t;
+typedef struct knot_response knot_response_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -131,7 +131,7 @@ typedef struct dnslib_response dnslib_response_t;
  *
  * \return New empty response structure or NULL if an error occured.
  */
-dnslib_response_t *dnslib_response_new_empty(const dnslib_opt_rr_t *opt_rr);
+knot_response_t *knot_response_new_empty(const knot_opt_rr_t *opt_rr);
 
 /*!
  * \brief Creates new empty response structure.
@@ -140,17 +140,17 @@ dnslib_response_t *dnslib_response_new_empty(const dnslib_opt_rr_t *opt_rr);
  *
  * \return New empty response structure or NULL if an error occured.
  */
-dnslib_response_t *dnslib_response_new(size_t max_wire_size);
+knot_response_t *knot_response_new(size_t max_wire_size);
 
 /*!
  * \brief Clears the response structure for reuse.
  *
  * After call to this function, the response will be in the same state as if
- * dnslib_response_new() was called. The maximum wire size is retained.
+ * knot_response_new() was called. The maximum wire size is retained.
  *
  * \param response Response structure to clear.
  */
-void dnslib_response_clear(dnslib_response_t *resp, int clear_question);
+void knot_response_clear(knot_response_t *resp, int clear_question);
 
 /*!
  * \brief Sets the OPT RR of the response.
@@ -170,8 +170,8 @@ void dnslib_response_clear(dnslib_response_t *resp, int clear_question);
  *
  * \todo Needs test.
  */
-int dnslib_response_add_opt(dnslib_response_t *resp,
-                            const dnslib_opt_rr_t *opt_rr,
+int knot_response_add_opt(knot_response_t *resp,
+                            const knot_opt_rr_t *opt_rr,
                             int override_max_size);
 
 /*!
@@ -196,7 +196,7 @@ int dnslib_response_add_opt(dnslib_response_t *resp,
  *
  * \todo Needs test.
  */
-int dnslib_response_set_max_size(dnslib_response_t *resp, int max_size);
+int knot_response_set_max_size(knot_response_t *resp, int max_size);
 
 /*!
  * \brief Parses the given query and saves important information into the
@@ -214,7 +214,7 @@ int dnslib_response_set_max_size(dnslib_response_t *resp, int max_size);
  * \retval DNSLIB_EFEWDATA
  * \retval DNSLIB_ENOMEM
  */
-int dnslib_response_parse_query(dnslib_response_t *response,
+int knot_response_parse_query(knot_response_t *response,
                                 const uint8_t *query_wire, size_t query_size);
 
 /*!
@@ -224,7 +224,7 @@ int dnslib_response_parse_query(dnslib_response_t *response,
  *
  * \return OPCODE stored in the response.
  */
-uint8_t dnslib_response_opcode(const dnslib_response_t *response);
+uint8_t knot_response_opcode(const knot_response_t *response);
 
 /*!
  * \brief Returns the QNAME from the response.
@@ -233,7 +233,7 @@ uint8_t dnslib_response_opcode(const dnslib_response_t *response);
  *
  * \return QNAME stored in the response.
  */
-const dnslib_dname_t *dnslib_response_qname(const dnslib_response_t *response);
+const knot_dname_t *knot_response_qname(const knot_response_t *response);
 
 /*!
  * \brief Returns the QTYPE from the response.
@@ -242,7 +242,7 @@ const dnslib_dname_t *dnslib_response_qname(const dnslib_response_t *response);
  *
  * \return QTYPE stored in the response.
  */
-uint16_t dnslib_response_qtype(const dnslib_response_t *response);
+uint16_t knot_response_qtype(const knot_response_t *response);
 
 /*!
  * \brief Returns the QCLASS from the response.
@@ -251,7 +251,7 @@ uint16_t dnslib_response_qtype(const dnslib_response_t *response);
  *
  * \return QCLASS stored in the response.
  */
-uint16_t dnslib_response_qclass(const dnslib_response_t *response);
+uint16_t knot_response_qclass(const knot_response_t *response);
 
 /*!
  * \brief Adds a RRSet to the Answer section of the response.
@@ -269,8 +269,8 @@ uint16_t dnslib_response_qclass(const dnslib_response_t *response);
  * \retval DNSLIB_ENOMEM
  * \retval DNSLIB_ESPACE
  */
-int dnslib_response_add_rrset_answer(dnslib_response_t *response,
-                                     const dnslib_rrset_t *rrset, int tc,
+int knot_response_add_rrset_answer(knot_response_t *response,
+                                     const knot_rrset_t *rrset, int tc,
                                      int check_duplicates, int compr_cs);
 
 /*!
@@ -289,8 +289,8 @@ int dnslib_response_add_rrset_answer(dnslib_response_t *response,
  * \retval DNSLIB_ENOMEM
  * \retval DNSLIB_ESPACE
  */
-int dnslib_response_add_rrset_authority(dnslib_response_t *response,
-                                        const dnslib_rrset_t *rrset, int tc,
+int knot_response_add_rrset_authority(knot_response_t *response,
+                                        const knot_rrset_t *rrset, int tc,
                                         int check_duplicates, int compr_cs);
 
 /*!
@@ -309,8 +309,8 @@ int dnslib_response_add_rrset_authority(dnslib_response_t *response,
  * \retval DNSLIB_ENOMEM
  * \retval DNSLIB_ESPACE
  */
-int dnslib_response_add_rrset_additional(dnslib_response_t *response,
-                                         const dnslib_rrset_t *rrset, int tc,
+int knot_response_add_rrset_additional(knot_response_t *response,
+                                         const knot_rrset_t *rrset, int tc,
                                          int check_duplicates, int compr_cs);
 
 /*!
@@ -319,21 +319,21 @@ int dnslib_response_add_rrset_additional(dnslib_response_t *response,
  * \param response Response to set the RCODE in.
  * \param rcode RCODE to set.
  */
-void dnslib_response_set_rcode(dnslib_response_t *response, short rcode);
+void knot_response_set_rcode(knot_response_t *response, short rcode);
 
 /*!
  * \brief Sets the AA bit of the response to 1.
  *
  * \param response Response in which the AA bit should be set.
  */
-void dnslib_response_set_aa(dnslib_response_t *response);
+void knot_response_set_aa(knot_response_t *response);
 
 /*!
  * \brief Sets the TC bit of the response to 1.
  *
  * \param response Response in which the TC bit should be set.
  */
-void dnslib_response_set_tc(dnslib_response_t *response);
+void knot_response_set_tc(knot_response_t *response);
 
 /*!
  * \brief Adds RRSet to the list of temporary RRSets.
@@ -346,29 +346,29 @@ void dnslib_response_set_tc(dnslib_response_t *response);
  * \retval DNSLIB_EOK
  * \retval DNSLIB_ENOMEM
  */
-int dnslib_response_add_tmp_rrset(dnslib_response_t *response,
-                                  dnslib_rrset_t *tmp_rrset);
+int knot_response_add_tmp_rrset(knot_response_t *response,
+                                  knot_rrset_t *tmp_rrset);
 
 /*!
  * \brief Returns number of RRSets in Answer section of the response.
  *
  * \param response Response to get the Answer RRSet count from.
  */
-short dnslib_response_answer_rrset_count(const dnslib_response_t *response);
+short knot_response_answer_rrset_count(const knot_response_t *response);
 
 /*!
  * \brief Returns number of RRSets in Authority section of the response.
  *
  * \param response Response to get the Authority RRSet count from.
  */
-short dnslib_response_authority_rrset_count(const dnslib_response_t *response);
+short knot_response_authority_rrset_count(const knot_response_t *response);
 
 /*!
  * \brief Returns number of RRSets in Additional section of the response.
  *
  * \param response Response to get the Additional RRSet count from.
  */
-short dnslib_response_additional_rrset_count(const dnslib_response_t *response);
+short knot_response_additional_rrset_count(const knot_response_t *response);
 
 /*!
  * \brief Returns the requested Answer RRset.
@@ -380,8 +380,8 @@ short dnslib_response_additional_rrset_count(const dnslib_response_t *response);
  * \return The RRSet on position \a pos in the Answer section of \a response
  *         or NULL if there is no such RRSet.
  */
-const dnslib_rrset_t *dnslib_response_answer_rrset(
-	const dnslib_response_t *response, short pos);
+const knot_rrset_t *knot_response_answer_rrset(
+	const knot_response_t *response, short pos);
 
 /*!
  * \brief Returns the requested Authority RRset.
@@ -393,8 +393,8 @@ const dnslib_rrset_t *dnslib_response_answer_rrset(
  * \return The RRSet on position \a pos in the Authority section of \a response
  *         or NULL if there is no such RRSet.
  */
-const dnslib_rrset_t *dnslib_response_authority_rrset(
-	dnslib_response_t *response, short pos);
+const knot_rrset_t *knot_response_authority_rrset(
+	knot_response_t *response, short pos);
 
 /*!
  * \brief Returns the requested Additional RRset.
@@ -406,8 +406,8 @@ const dnslib_rrset_t *dnslib_response_authority_rrset(
  * \return The RRSet on position \a pos in the Additional section of \a response
  *         or NULL if there is no such RRSet.
  */
-const dnslib_rrset_t *dnslib_response_additional_rrset(
-	dnslib_response_t *response, short pos);
+const knot_rrset_t *knot_response_additional_rrset(
+	knot_response_t *response, short pos);
 
 /*!
  * \brief Checks if DNSSEC was requested in the query (i.e. the DO bit was set).
@@ -418,7 +418,7 @@ const dnslib_rrset_t *dnslib_response_additional_rrset(
  *         parsed.
  * \retval > 0 if DO bit was set in the query.
  */
-int dnslib_response_dnssec_requested(const dnslib_response_t *response);
+int knot_response_dnssec_requested(const knot_response_t *response);
 
 /*!
  * \brief Checks if NSID was requested in the query (i.e. the NSID option was
@@ -430,7 +430,7 @@ int dnslib_response_dnssec_requested(const dnslib_response_t *response);
  *         not yet parsed.
  * \retval > 0 if the NSID option was present in the query.
  */
-int dnslib_response_nsid_requested(const dnslib_response_t *response);
+int knot_response_nsid_requested(const knot_response_t *response);
 
 /*!
  * \brief Adds NSID option to the response.
@@ -442,7 +442,7 @@ int dnslib_response_nsid_requested(const dnslib_response_t *response);
  * \retval DNSLIB_EOK
  * \retval DNSLIB_ENOMEM
  */
-int dnslib_response_add_nsid(dnslib_response_t *response, const uint8_t *data,
+int knot_response_add_nsid(knot_response_t *response, const uint8_t *data,
                              uint16_t length);
 
 /*!
@@ -457,7 +457,7 @@ int dnslib_response_add_nsid(dnslib_response_t *response, const uint8_t *data,
  * \retval DNSLIB_EOK
  * \retval DNSLIB_EBADARG
  */
-int dnslib_response_to_wire(dnslib_response_t *response,
+int knot_response_to_wire(knot_response_t *response,
                             uint8_t **resp_wire, size_t *resp_size);
 
 /*!
@@ -465,7 +465,7 @@ int dnslib_response_to_wire(dnslib_response_t *response,
  *
  * \param response Response to be destroyed.
  */
-void dnslib_response_free(dnslib_response_t **response);
+void knot_response_free(knot_response_t **response);
 
 /*!
  * \brief Dumps the whole response in human-readable form.
@@ -474,7 +474,7 @@ void dnslib_response_free(dnslib_response_t **response);
  *
  * \param resp Response to dump.
  */
-void dnslib_response_dump(const dnslib_response_t *resp);
+void knot_response_dump(const knot_response_t *resp);
 
 #endif /* _KNOT_DNSLIB_RESPONSE_H_ */
 
