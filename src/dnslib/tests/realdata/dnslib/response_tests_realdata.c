@@ -190,132 +190,132 @@ static dnslib_dname_t *dname_from_test_dname(const test_dname_t *test_dname)
 	                                  NULL);
 }
 
-static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
-			  int check_header, int check_question,
-			  int check_answer, int check_additional,
-			  int check_authority)
-{
-	int errors = 0; /* TODO maybe use it everywhere, or not use it at all */
+//static int check_response(dnslib_response_t *resp, test_response_t *test_resp,
+//			  int check_header, int check_question,
+//			  int check_answer, int check_additional,
+//			  int check_authority)
+//{
+//	int errors = 0; /* TODO maybe use it everywhere, or not use it at all */
 
-	if (check_question) {
-		/* again, in case of dnames, pointer would probably suffice */
-		if (dnslib_dname_compare(resp->question.qname,
-		                dname_from_test_dname(test_resp->qname)) != 0) {
-			char *tmp_dname;
-			tmp_dname = dnslib_dname_to_str(resp->question.qname);
-			diag("Qname in response is wrong:\
-			      should be: %s is: %s\n",
-			     tmp_dname, test_resp->qname->str);
-			free(tmp_dname);
-			return 0;
-		}
-
-		if (resp->question.qtype != test_resp->qtype) {
-			diag("Qtype value is wrong: is %u should be %u\n",
-			     resp->question.qtype, test_resp->qtype);
-			return 0;
-		}
-		if (resp->question.qclass != test_resp->qclass) {
-			diag("Qclass value is wrong: is %u should be %u\n",
-			     resp->question.qclass, test_resp->qclass);
-			return 0;
-		}
-	}
-
-	if (check_header) {
-		/* Disabled, since these check make no sense
-		 * if we have parsed the query, flags are now set to
-		 * the ones response should have */
-
-		/*
-		if (resp->header.flags1 != test_resp->flags1) {
-			diag("Flags1 value is wrong: is %u should be %u\n",
-			     resp->header.flags1, test_resp->flags1);
-			//return 0;
-		}
-		if (resp->header.flags2 != test_resp->flags2) {
-			diag("Flags2 value is wrong: is %u should be %u\n",
-			     resp->header.flags2, test_resp->flags2);
-			return 0;
-		}
-		*/
-
-		if (resp->header.qdcount != test_resp->qdcount) {
-			diag("Qdcount value is wrong: is %u should be %u\n",
-			     resp->header.qdcount, test_resp->qdcount);
-			return 0;
-		}
-		if (resp->header.ancount != test_resp->ancount) {
-			diag("Ancount value is wrong: is %u should be %u\n",
-			     resp->header.ancount, test_resp->ancount);
-			return 0;
-		}
-		if (resp->header.nscount != test_resp->nscount) {
-			diag("Nscount value is wrong: is %u should be %u\n",
-			     resp->header.nscount, test_resp->nscount);
-			return 0;
-		}
-		if (resp->header.arcount != test_resp->arcount) {
-			diag("Arcount value is different: is %u should be %u\n",
-			     resp->header.arcount, test_resp->arcount);
+//	if (check_question) {
+//		/* again, in case of dnames, pointer would probably suffice */
+//		if (dnslib_dname_compare(resp->question.qname,
+//		                dname_from_test_dname(test_resp->qname)) != 0) {
+//			char *tmp_dname;
+//			tmp_dname = dnslib_dname_to_str(resp->question.qname);
+//			diag("Qname in response is wrong: "
+//			      "should be: %s is: %s\n",
+//			     tmp_dname, test_resp->qname->str);
+//			free(tmp_dname);
 //			return 0;
-		}
-	}
+//		}
 
-	if (check_question) {
-		/* Currently just one question RRSET allowed */
-		if (dnslib_dname_compare(resp->question.qname,
-		    dname_from_test_dname(test_resp->qname)) != 0) {
-			diag("Qname is wrongly set");
-			errors++;
-		}
-
-		if (resp->question.qtype != test_resp->qtype) {
-			diag("Qtype is wrongly set");
-			errors++;
-		}
-
-		if (resp->question.qclass != test_resp->qclass) {
-			diag("Qclass is wrongly set");
-			errors++;
-		}
-
-	}
-
-	/* Following code is not used anywhere currently. */
-
-//	if (check_authority) {
-//		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
-//			if (resp->authority[i] != (test_resp->authority[i])) {
-//				diag("Authority rrset #%d is wrongly set.\n",
-//				     i);
-//				errors++;
-//			}
+//		if (resp->question.qtype != test_resp->qtype) {
+//			diag("Qtype value is wrong: is %u should be %u\n",
+//			     resp->question.qtype, test_resp->qtype);
+//			return 0;
+//		}
+//		if (resp->question.qclass != test_resp->qclass) {
+//			diag("Qclass value is wrong: is %u should be %u\n",
+//			     resp->question.qclass, test_resp->qclass);
+//			return 0;
 //		}
 //	}
 
-//	if (check_answer) {
-//		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
-//			if (resp->authority[i] != (test_resp->authority[i])) {
-//				diag("Authority rrset #%d is wrongly set.\n",
-//				     i);
-//				errors++;
-//			}
+//	if (check_header) {
+//		/* Disabled, since these check make no sense
+//		 * if we have parsed the query, flags are now set to
+//		 * the ones response should have */
+
+//		/*
+//		if (resp->header.flags1 != test_resp->flags1) {
+//			diag("Flags1 value is wrong: is %u should be %u\n",
+//			     resp->header.flags1, test_resp->flags1);
+//			//return 0;
+//		}
+//		if (resp->header.flags2 != test_resp->flags2) {
+//			diag("Flags2 value is wrong: is %u should be %u\n",
+//			     resp->header.flags2, test_resp->flags2);
+//			return 0;
+//		}
+//		*/
+
+//		if (resp->header.qdcount != test_resp->qdcount) {
+//			diag("Qdcount value is wrong: is %u should be %u\n",
+//			     resp->header.qdcount, test_resp->qdcount);
+//			return 0;
+//		}
+//		if (resp->header.ancount != test_resp->ancount) {
+//			diag("Ancount value is wrong: is %u should be %u\n",
+//			     resp->header.ancount, test_resp->ancount);
+//			return 0;
+//		}
+//		if (resp->header.nscount != test_resp->nscount) {
+//			diag("Nscount value is wrong: is %u should be %u\n",
+//			     resp->header.nscount, test_resp->nscount);
+//			return 0;
+//		}
+//		if (resp->header.arcount != test_resp->arcount) {
+//			diag("Arcount value is different: is %u should be %u\n",
+//			     resp->header.arcount, test_resp->arcount);
+////			return 0;
 //		}
 //	}
 
-//	if (check_additional) {
-//		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
-//			if (resp->authority[i] != (test_resp->authority[i])) {
-//				diag("Authority rrset #%d is wrongly set.\n",
-//				     i);
-//				errors++;
-//			}
+//	if (check_question) {
+//		/* Currently just one question RRSET allowed */
+//		if (dnslib_dname_compare(resp->question.qname,
+//		    dname_from_test_dname(test_resp->qname)) != 0) {
+//			diag("Qname is wrongly set");
+//			errors++;
 //		}
+
+//		if (resp->question.qtype != test_resp->qtype) {
+//			diag("Qtype is wrongly set");
+//			errors++;
+//		}
+
+//		if (resp->question.qclass != test_resp->qclass) {
+//			diag("Qclass is wrongly set");
+//			errors++;
+//		}
+
 //	}
 
-	return (errors == 0);
-}
+//	/* Following code is not used anywhere currently. */
+
+////	if (check_authority) {
+////		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
+////			if (resp->authority[i] != (test_resp->authority[i])) {
+////				diag("Authority rrset #%d is wrongly set.\n",
+////				     i);
+////				errors++;
+////			}
+////		}
+////	}
+
+////	if (check_answer) {
+////		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
+////			if (resp->authority[i] != (test_resp->authority[i])) {
+////				diag("Authority rrset #%d is wrongly set.\n",
+////				     i);
+////				errors++;
+////			}
+////		}
+////	}
+
+////	if (check_additional) {
+////		for (int i = 0; (i < resp->header.arcount) && !errors; i++) {
+////			if (resp->authority[i] != (test_resp->authority[i])) {
+////				diag("Authority rrset #%d is wrongly set.\n",
+////				     i);
+////				errors++;
+////			}
+////		}
+////	}
+
+//	return (errors == 0);
+//}
 
 //static int test_response_parse_query(list response_list,
 //				     test_raw_packet_t **raw_queries,

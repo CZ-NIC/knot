@@ -1132,7 +1132,7 @@ static int init_data(test_data_t *data)
 
 static void print_stats(test_data_t *data)
 {
-	uint resp_count = 0, dname_count = 0, edns_count = 0, node_count = 0,
+	uint resp_count = 0, dname_count = 0, node_count = 0,
 	     rdata_count = 0, rrset_count = 0, item_count = 0, query_count = 0,
 	     raw_query_count = 0, response_count = 0, packet_count = 0,
 	     raw_packet_count = 0, raw_response_count = 0;

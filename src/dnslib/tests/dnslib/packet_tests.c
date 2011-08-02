@@ -119,7 +119,7 @@ static int test_packet_parse_next_rr_answer()
 			errors++;
 		}
 		tmp = 1;
-		dnslib_rrset_t *rrset = 0xaaaa;
+		dnslib_rrset_t *rrset = (dnslib_rrset_t *)0xaaaa;
 		tmp = 0;
 		if (dnslib_packet_parse_next_rr_answer(packet,
 		                                       &rrset) !=
@@ -364,7 +364,7 @@ static int test_packet_to_wire()
 			errors++;
 		}
 		lived = 1;
-		uint8_t *wire = 0xabcdef;
+		uint8_t *wire = (uint8_t *)0xabcdef;
 		lived = 0;
 		if (dnslib_packet_to_wire(packet, &wire, &size) !=
 		    DNSLIB_EBADARG) {
