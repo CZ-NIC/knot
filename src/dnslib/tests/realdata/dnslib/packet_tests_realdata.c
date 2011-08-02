@@ -285,6 +285,7 @@ dnslib_packet_t *packet_from_test_response(test_response_t *test_packet)
 
 static int test_packet_parse_from_wire(list raw_response_list)
 {
+#ifdef TEST_WITH_LDNS
 	int errors = 0;
 
 	node *n = NULL;
@@ -328,10 +329,16 @@ static int test_packet_parse_from_wire(list raw_response_list)
 	}
 
 	return (errors == 0);
+#endif
+#ifndef TEST_WITH_LDNS
+	diag("Enable ldns to test this feature");
+	return 0;
+#endif
 }
 
 static int test_packet_to_wire(list raw_response_list)
 {
+#ifdef TEST_WITH_LDNS
 	int errors = 0;
 	/*!< \todo test queries too! */
 //	/* We'll need data from both lists. */
@@ -410,6 +417,11 @@ static int test_packet_to_wire(list raw_response_list)
 	}
 
 	return (errors == 0);
+#endif
+#ifndef TEST_WITH_LDNS
+	diag("Enable ldns to test this feature!");
+	return 0;
+#endif
 }
 
 static const uint DNSLIB_PACKET_TEST_COUNT = 2;
