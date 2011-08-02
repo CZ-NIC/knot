@@ -14,11 +14,11 @@
 #include "knot/other/log.h"
 #include "knot/server/notify.h"
 #include "knot/server/server.h"
-#include "knot/server/xfr-in.h"
+#include "dnslib/xfr-in.h"
 #include "knot/server/zones.h"
 #include "dnslib/error.h"
 #include "dnslib/zone-dump.h"
-#include "knot/server/name-server.h"
+#include "dnslib/name-server.h"
 #include "dnslib/changesets.h"
 
 static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;

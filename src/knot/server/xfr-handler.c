@@ -14,11 +14,11 @@
 
 #include "knot/common.h"
 #include "knot/server/xfr-handler.h"
-#include "knot/server/name-server.h"
+#include "dnslib/name-server.h"
 #include "knot/other/error.h"
 #include "knot/server/socket.h"
 #include "knot/server/tcp-handler.h"
-#include "knot/server/xfr-in.h"
+#include "dnslib/xfr-in.h"
 #include "knot/server/zones.h"
 #include "dnslib/error.h"
 

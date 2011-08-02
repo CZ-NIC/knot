@@ -5,8 +5,8 @@
 
 #include <urcu.h>
 
-#include "knot/server/name-server.h"
-#include "knot/server/xfr-in.h"
+#include "dnslib/name-server.h"
+#include "dnslib/xfr-in.h"
 
 #include "dnslib/error.h"
 #include "dnslib/dnslib.h"

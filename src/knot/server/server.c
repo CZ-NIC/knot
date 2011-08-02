@@ -13,7 +13,7 @@
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-handler.h"
-#include "knot/server/name-server.h"
+#include "dnslib/name-server.h"
 #include "knot/stat/stat.h"
 #include "dnslib/zonedb.h"
 #include "dnslib/zone-load.h"
