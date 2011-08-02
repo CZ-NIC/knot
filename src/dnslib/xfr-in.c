@@ -278,7 +278,7 @@ int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
 
 	if (ret != KNOT_EOK) {
 		debug_knot_xfr("Could not parse first Answer RR: %s.\n",
-		          knot_strerror(ret));
+			  knot_strerror2(ret));
 		knot_packet_free(&packet);
 		/*! \todo Cleanup. */
 		return KNOT_EMALF;
@@ -1236,7 +1236,7 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 	knot_rdata_t *rdata = xfrin_remove_rdata(rrsigs, remove);
 	if (rdata == NULL) {
 		debug_knot_xfr("Failed to remove RDATA from RRSet: %s.\n",
-			  knot_strerror(ret));
+			  knot_strerror2(ret));
 		return 1;
 	}
 	
@@ -1341,7 +1341,7 @@ DEBUG_KNOT_XFR(
 	knot_rdata_t *rdata = xfrin_remove_rdata(*rrset, remove);
 	if (rdata == NULL) {
 		debug_knot_xfr("Failed to remove RDATA from RRSet: %s.\n",
-			  knot_strerror(ret));
+			  knot_strerror2(ret));
 		return 1;
 	}
 	
