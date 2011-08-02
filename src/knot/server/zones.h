@@ -107,11 +107,33 @@ int zones_zonefile_sync(dnslib_zone_t *zone);
 
 int zones_xfr_check_zone(dnslib_ns_xfr_t *xfr, dnslib_rcode_t *rcode);
 
+/*!
+ * \brief Processes normal response packet.
+ *
+ * \param nameserver Name server structure to provide the needed data.
+ * \param from Address of the response sender.
+ * \param packet Parsed response packet.
+ * \param response_wire Place for the response in wire format.
+ * \param rsize Input: maximum acceptable size of the response. Output: real
+ *              size of the response.
+ *
+ * \retval KNOT_EOK if a valid response was created.
+ * \retval KNOT_EINVAL on invalid parameters or packet.
+ * \retval KNOT_EMALF if an error occured and the response is not valid.
+ */
 int zones_process_response(dnslib_nameserver_t *nameserver, 
                            sockaddr_t *from,
                            dnslib_packet_t *packet, uint8_t *response_wire,
                            size_t *rsize);
 
+/*!
+ * \brief Decides what type of transfer should be used to update the given zone.
+ *
+ * \param nameserver Name server structure that uses the zone.
+ * \param zone Zone to be updated by the transfer.
+ *
+ * \retval
+ */
 xfr_type_t zones_transfer_to_use(const dnslib_zone_contents_t *zone);
 
 int zones_save_zone(const dnslib_ns_xfr_t *xfr);

@@ -128,28 +128,6 @@ void dnslib_ns_error_response(dnslib_nameserver_t *nameserver, uint16_t query_id
                        uint8_t rcode, uint8_t *response_wire, size_t *rsize);
 
 /*!
- * \brief Creates a response for the given query using the data of the name
- *        server.
- *
- * \param nameserver Name server structure to provide the needed data.
- * \param query_wire Query in a wire format.
- * \param qsize Size of the query in octets.
- * \param response_wire Place for the response in wire format.
- * \param rsize Input: maximum acceptable size of the response. Output: real
- *              size of the response.
- *
- * \retval KNOT_EOK if a valid response was created.
- * \retval KNOT_EMALF if an error occured and the response is not valid.
- *
- * \todo Truncation of the packet.
- */
-int dnslib_ns_answer_request(dnslib_nameserver_t *nameserver,
-                      const uint8_t *query_wire,
-                      size_t qsize,
-                      uint8_t *response_wire,
-                      size_t *rsize);
-
-/*!
  * \brief Creates a response for the given normal query using the data of the
  *        nameserver.
  *
@@ -164,27 +142,6 @@ int dnslib_ns_answer_request(dnslib_nameserver_t *nameserver,
  */
 int dnslib_ns_answer_normal(dnslib_nameserver_t *nameserver, dnslib_packet_t *query,
                      uint8_t *response_wire, size_t *rsize);
-
-/*!
- * \brief Creates a response for NOTIFY query.
- *
- * Valid NOTIFY query expires REFRESH timer for received qname.
- *
- * \see RFC1996 for query and response format.
- *
- * \param nameserver Name server structure to provide the needed data.
- * \param query Response structure with parsed query.
- * \param response_wire Place for the response in wire format.
- * \param rsize Input: maximum acceptable size of the response. Output: real
- *              size of the response.
- *
- * \retval KNOT_EOK if a valid response was created.
- * \retval KNOT_EACCES sender is not authorized to request NOTIFY.
- * \retval KNOT_EMALF if an error occured and the response is not valid.
- */
-//int dnslib_ns_answer_notify(dnslib_nameserver_t *nameserver, 
-//                            dnslib_packet_t *query, uint8_t *response_wire,
-//                            size_t *rsize, const dnslib_zone_t **zone);
 
 int dnslib_ns_init_xfr(dnslib_nameserver_t *nameserver, dnslib_ns_xfr_t *xfr);
 
@@ -223,16 +180,6 @@ int dnslib_ns_answer_axfr(dnslib_nameserver_t *nameserver, dnslib_ns_xfr_t *xfr)
  */
 int dnslib_ns_answer_ixfr(dnslib_nameserver_t *nameserver, dnslib_ns_xfr_t *xfr);
 
-
-//int dnslib_ns_process_response(dnslib_nameserver_t *nameserver, sockaddr_t *from,
-//			dnslib_packet_t *packet, uint8_t *response_wire,
-//			size_t *rsize);
-
-
-//int dnslib_ns_process_notify(dnslib_nameserver_t *nameserver, sockaddr_t *from,
-//		      dnslib_packet_t *packet, uint8_t *response_wire,
-//		      size_t *rsize);
-
 /*!
  * \brief Processes an AXFR-IN packet.
  *
@@ -259,36 +206,11 @@ int dnslib_ns_process_ixfrin(dnslib_nameserver_t *nameserver,
                              dnslib_ns_xfr_t *xfr);
 
 /*!
- * \brief Decides what type of transfer should be used to update the given zone.
- *
- * \param nameserver Name server structure that uses the zone.
- * \param zone Zone to be updated by the transfer.
- *
- * \retval
- */
-/*xfr_type_t dnslib_ns_transfer_to_use(dnslib_nameserver_t *nameserver,
-                                     const dnslib_zone_contents_t *zone);*/
-
-/*!
  * \brief Properly destroys the name server structure.
  *
  * \param nameserver Nameserver to destroy.
  */
 void dnslib_ns_destroy(dnslib_nameserver_t **nameserver);
-
-/*!
- * \brief Name server config hook.
- *
- * Routine for dynamic name server reconfiguration.
- *
- * \param conf Current configuration.
- * \param data Instance of the nameserver structure to update.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL
- * \retval KNOT_ERROR
- */
-//int dnslib_ns_conf_hook(const struct conf_t *conf, void *data);
 
 
 #endif /* _KNOT_NAME_SERVER_H_ */
