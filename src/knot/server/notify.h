@@ -20,7 +20,7 @@
 #include "dnslib/zonedb.h"
 #include "common/lists.h"
 #include "common/sockaddr.h"
-#include "knot/server/name-server.h"
+#include "dnslib/name-server.h"
 
 /*!
  * \brief Pending NOTIFY event.

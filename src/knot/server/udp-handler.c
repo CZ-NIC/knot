@@ -13,7 +13,7 @@
 #include "knot/common.h"
 #include "knot/other/error.h"
 #include "knot/server/udp-handler.h"
-#include "knot/server/name-server.h"
+#include "dnslib/name-server.h"
 #include "knot/stat/stat.h"
 #include "knot/server/server.h"
 #include "dnslib/wire.h"

@@ -92,6 +92,10 @@ src/dnslib/zone-dump-text.h
 src/dnslib/zone-dump-text.c
 src/dnslib/zone-tree.h
 src/dnslib/zone-tree.c
+src/dnslib/xfr-in.h
+src/dnslib/xfr-in.c
+src/dnslib/name-server.c
+src/dnslib/name-server.h
 src/dnslib/hash/cuckoo-hash-table.c
 src/dnslib/hash/cuckoo-hash-table.h
 src/dnslib/hash/hash-functions.c
@@ -163,8 +167,6 @@ src/knot/stat/stat.c
 src/knot/stat/stat-common.h
 src/knot/server/dthreads.c
 src/knot/server/dthreads.h
-src/knot/server/name-server.c
-src/knot/server/name-server.h
 src/knot/server/server.c
 src/knot/server/server.h
 src/knot/server/socket.c
@@ -179,8 +181,6 @@ src/knot/server/zones.c
 src/knot/server/zones.h
 src/knot/server/journal.c
 src/knot/server/journal.h
-src/knot/server/xfr-in.c
-src/knot/server/xfr-in.h
 src/knot/server/notify.c
 src/knot/server/notify.h
 src/knot/ctl/process.c

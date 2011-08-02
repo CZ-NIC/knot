@@ -22,7 +22,7 @@
 #define _KNOT_SERVER_H_
 
 #include "knot/common.h"
-#include "knot/server/name-server.h"
+#include "dnslib/name-server.h"
 #include "knot/server/xfr-handler.h"
 #include "knot/server/socket.h"
 #include "knot/server/dthreads.h"

@@ -18,7 +18,7 @@
 #include "dnslib/dname.h"
 #include "dnslib/zone.h"
 #include "dnslib/packet.h"
-#include "knot/server/name-server.h"
+#include "dnslib/name-server.h"
 #include "dnslib/changesets.h"
 
 /*!

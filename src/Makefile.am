@@ -197,14 +197,12 @@ libknotd_la_SOURCES =				\
 	knot/server/dthreads.c			\
 	knot/server/journal.c			\
 	knot/server/socket.c				\
-	knot/server/name-server.c			\
 	knot/server/server.c				\
 	knot/server/udp-handler.c			\
 	knot/server/tcp-handler.c			\
 	knot/server/xfr-handler.c			\
 	knot/server/zones.c				\
 	knot/server/socket.h				\
-	knot/server/name-server.h			\
 	knot/server/udp-handler.h			\
 	knot/server/tcp-handler.h			\
 	knot/server/xfr-handler.h			\
@@ -214,8 +212,6 @@ libknotd_la_SOURCES =				\
 	knot/server/notify.h				\
 	knot/server/notify.c				\
 	knot/server/zones.h				\
-	knot/server/xfr-in.h				\
-	knot/server/xfr-in.c				\
 	knot/server/server.h
 	
 libknot_la_SOURCES =				\
@@ -273,6 +269,10 @@ libknot_la_SOURCES =				\
 	dnslib/nsec3.h				\
 	dnslib/changesets.h			\
 	dnslib/changesets.c			\
+	dnslib/xfr-in.h				\
+	dnslib/xfr-in.c				\
+	dnslib/name-server.h			\
+	dnslib/name-server.c			\
 	dnslib/dname-table.h
 
 

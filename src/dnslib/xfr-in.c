@@ -1,9 +1,9 @@
 #include <assert.h>
 #include <urcu.h>
 
-#include "knot/server/xfr-in.h"
+#include "dnslib/xfr-in.h"
 
-#include "knot/server/name-server.h"
+#include "dnslib/name-server.h"
 #include "dnslib/debug.h"
 #include "dnslib/zone-dump.h"
 #include "dnslib/zone-load.h"
