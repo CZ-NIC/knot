@@ -230,3 +230,4 @@ src/dnslib/tests/dnslib/query_tests.c
 src/dnslib/tests/dnslib/query_tests.h
 src/dnslib/tests/dnslib/nsec3_tests.c
 src/dnslib/tests/dnslib/nsec3_tests.h
+src/common/modified_tree.h

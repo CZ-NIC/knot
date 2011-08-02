@@ -1442,7 +1442,7 @@ static void dnslib_rdata_dump_binary(dnslib_rdata_t *rdata,
 
 			if (use_ids) {
 				/* Write ID. */
-				debug_dnslib_zload("%s (%p)\n",
+				debug_dnslib_zload("%s \n",
 				    dnslib_dname_to_str(rdata->items[i].dname));
 				assert(rdata->items[i].dname->id != 0);
 
@@ -1626,19 +1626,27 @@ static void dnslib_node_dump_binary(dnslib_node_t *node, void *data)
 	uint16_t rrset_count = node->rrset_count;
 	fwrite_wrapper(&rrset_count, sizeof(rrset_count), 1, f);
 
-	const skip_node_t *skip_node = skip_first(node->rrsets);
+//	const skip_node_t *skip_node = skip_first(node->rrsets);
 
-	if (skip_node == NULL) {
-		/* we can return, count is set to 0 */
-		return;
+	const dnslib_rrset_t **node_rrsets = dnslib_node_rrsets(node);
+	for (int i = 0; i < rrset_count; i++)
+	{
+		dnslib_rrset_dump_binary(node_rrsets[i], data, 1);
 	}
 
-	dnslib_rrset_t *tmp;
+//	if (skip_node == NULL) {
+//		/* we can return, count is set to 0 */
+//		return;
+//	}
 
-	do {
-		tmp = (dnslib_rrset_t *)skip_node->value;
-		dnslib_rrset_dump_binary(tmp, data, 1);
-	} while ((skip_node = skip_next(skip_node)) != NULL);
+//	dnslib_rrset_t *tmp;
+
+//	do {
+//		tmp = (dnslib_rrset_t *)skip_node->value;
+//		dnslib_rrset_dump_binary(tmp, data, 1);
+//	} while ((skip_node = skip_next(skip_node)) != NULL);
+
+	free(node_rrsets);
 
 	debug_dnslib_zdump("Position after all rrsets: %ld\n", ftell(f));
 	debug_dnslib_zdump("Writing here: %ld\n", ftell(f));

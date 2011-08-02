@@ -159,6 +159,7 @@ libknots_la_SOURCES =				\
 	common/dynamic-array.h			\
 	common/tree.h				\
 	common/base32hex.h			\
+	common/modified-tree.h			\
 	common/evqueue.h		\
 	common/evqueue.c		\
 	common/evsched.h		\

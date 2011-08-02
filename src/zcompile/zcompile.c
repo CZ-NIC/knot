@@ -1872,6 +1872,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	find_rrsets_orphans(parser->current_zone->contents,
 	                    parser->rrsig_orphans);
+
 	if (!(parser->current_zone &&
 	      dnslib_node_rrset(parser->current_zone->contents->apex,
 	                        DNSLIB_RRTYPE_SOA))) {
@@ -1880,7 +1881,6 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		zparser_free();
 		return KNOT_ZCOMPILE_EZONEINVAL;
 	}
-
 
 	uint found_orphans;
 	found_orphans = find_rrsets_orphans(contents,
@@ -1901,8 +1901,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	dnslib_zone_deep_free(&(parser->current_zone), 0);
 
 //	dnslib_zone_t *zone = dnslib_zload_load(dnslib_zload_open(outfile));
-//	printf("apex: %s\n", zone->apex->owner->name);
-
+//	assert(zone);
+//	printf("apex: %s\n", zone->contents->apex->owner->name);
 
 	fflush(stdout);
 	totalerrors += parser->errors;
