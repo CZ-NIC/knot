@@ -37,11 +37,6 @@ void evqueue_free(evqueue_t **q)
 	free(eq);
 }
 
-int evqueue_pollfd(evqueue_t *q)
-{
-	return q->fds[EVQUEUE_READFD];
-}
-
 int evqueue_poll(evqueue_t *q, const struct timespec *ts,
 		 const sigset_t *sigmask)
 {
