@@ -69,11 +69,11 @@ struct test_dname_table_arg {
 	uint count;
 };
 
-static void save_dname_to_array(struct dname_table_node *node, void *data)
+static void save_dname_to_array(dnslib_dname_t *node, void *data)
 {
 	assert(data);
 	struct test_dname_table_arg *arg = (struct test_dname_table_arg *)data;
-	arg->array[arg->count] = node->dname;
+	arg->array[arg->count] = node;
 	arg->count++;
 }
 
