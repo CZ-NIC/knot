@@ -2,14 +2,6 @@
 #include <urcu.h>
 
 #include "knot/server/xfr-in.h"
-//#include "knot/common.h"
-//#include "knot/other/log.h"
-
-//#include "knot/other/error.h" /*! \todo Journal needs to be dnslib/common. */
-
-//#include "knot/server/zones.h" /*! \todo Needs zonedata_t from zones.h */
-
-#include "common/evsched.h"
 
 #include "knot/server/name-server.h"
 #include "dnslib/debug.h"
