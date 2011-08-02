@@ -5,7 +5,7 @@
 #include <netinet/in.h>
 
 #include "dnslib/dnslib-common.h"
-#include "dnslib/zone-dump.h"
+#include "knot/zone/zone-dump.h"
 #include "dnslib/dnslib.h"
 #include "dnslib/debug.h"
 #include "common/skip-list.h"
