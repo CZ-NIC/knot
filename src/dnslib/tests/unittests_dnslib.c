@@ -8,9 +8,13 @@
 #include "dnslib/edns_tests.h"
 #include "dnslib/node_tests.h"
 #include "dnslib/rdata_tests.h"
-//#include "dnslib/response_tests.h"
+#include "dnslib/response2_tests.h"
 #include "dnslib/rrset_tests.h"
 #include "dnslib/zone_tests.h"
+#include "dnslib/dname_table_tests.h"
+#include "dnslib/nsec3_tests.h"
+#include "dnslib/packet_tests.h"
+#include "dnslib/query_tests.h"
 #include "dnslib/zonedb_tests.h"
 
 // Run all loaded units
@@ -26,12 +30,16 @@ int main(int argc, char *argv[])
 		&cuckoo_tests_api,   //! Cuckoo hashing unit
 		&dname_tests_api,    //! DNS library (dname) unit
 		&edns_tests_api,     //! DNS library (EDNS0) unit
-		&node_tests_api,     //! DNS library (node) unit
+//		&node_tests_api,     //! DNS library (node) unit
 		&rdata_tests_api,    //! DNS library (rdata) unit
-//		&response_tests_api, //! DNS library (response) unit
+		&response2_tests_api, //! DNS library (response) unit
 		&rrset_tests_api,    //! DNS library (rrset) unit
-		&zone_tests_api,     //! DNS library (zone) unit
+		&dname_table_tests_api,
+		&nsec3_tests_api,
+		&packet_tests_api,
+		&query_tests_api,
 		&zonedb_tests_api,   //! DNS library (zonedb) unit
+		&zone_tests_api,     //! DNS library (zone) unit
 		NULL
 	};
 

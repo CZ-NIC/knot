@@ -367,8 +367,10 @@ int tcp_send(int fd, uint8_t *msg, size_t msglen)
 	/*! \brief TCP corking.
 	 *  \see http://vger.kernel.org/~acme/unbehaved.txt
 	 */
+#ifdef TCP_CORK
 	int cork = 1;
 	setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
+#endif§
 
 	/* Send message size. */
 	unsigned short pktsize = htons(msglen);
@@ -383,9 +385,11 @@ int tcp_send(int fd, uint8_t *msg, size_t msglen)
 		return KNOT_ERROR;
 	}
 
+#ifdef TCP_CORK
 	/* Uncork. */
 	cork = 0;
 	setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
+#endif
 	return sent;
 }
 

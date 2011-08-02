@@ -41,6 +41,7 @@ typedef struct zonedata_t
 	/*! \brief XFR-IN scheduler. */
 	struct {
 		list          **ifaces; /*!< List of availabel interfaces. */
+		acl_t         *acl;     /*!< ACL for xfr-in.*/
 		sockaddr_t     master;  /*!< Master server for xfr-in.*/
 		struct event_t *timer;  /*!< Timer for REFRESH/RETRY. */
 		struct event_t *expire; /*!< Timer for REFRESH. */

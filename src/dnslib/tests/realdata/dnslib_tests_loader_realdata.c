@@ -1,10 +1,13 @@
-#include <malloc.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <assert.h>
 
+#include "common/libtap/tap.h"
 #include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
 #include "dnslib/descriptor.h"
 
-#include "dnslib/tests/parsed_data.rc"
+#include "dnslib/tests/realdata/parsed_data.rc"
+#include "dnslib/tests/realdata/raw_data.rc"
 TREE_DEFINE(test_node, avl);
 
 /* Virtual I/O over memory. */
@@ -22,6 +25,56 @@ static int mem_read(void *dst, size_t n, const char **src,
 	*remaining -= n;
 //	printf("remaining %u\n", *remaining);
 	return 1;
+}
+
+static int load_raw_packets(test_data_t *data, uint32_t *count,
+			    const char *src, unsigned src_size)
+{
+
+	uint16_t tmp_size = 0;
+
+	/* Packets are stored like this: [size][packet_data]+ */
+
+	if(!mem_read(count, sizeof(uint32_t), &src, &src_size)) {
+		return -1;
+	}
+
+	for (int i = 0; i < *count; i++) {
+		uint16_t query = 0;
+		if (!mem_read(&query, sizeof(query), &src, &src_size)) {
+			return -1;
+		}
+
+		if(!mem_read(&tmp_size, sizeof(uint16_t), &src, &src_size)) {
+			return -1;
+		}
+
+		test_raw_packet_t *packet = malloc(sizeof(test_raw_packet_t));
+
+
+		packet->size = tmp_size;
+		packet->data = malloc(sizeof(uint8_t) * (tmp_size));
+		if(!mem_read(packet->data,
+			     sizeof(uint8_t) * tmp_size, &src, &src_size)) {
+			return -1;
+		}
+
+		if (query) {
+			add_tail(&data->raw_query_list, (void *)packet);
+		} else {
+			add_tail(&data->raw_response_list, (void *)packet);
+		}
+
+		test_raw_packet_t *new_packet =
+			malloc(sizeof(test_raw_packet_t));
+		assert(new_packet);
+		new_packet->data = packet->data;
+		new_packet->size = packet->size;
+
+		add_tail(&data->raw_packet_list, (void *)new_packet);
+	}
+
+	return 0;
 }
 
 /* Returns size of type where avalailable */
@@ -366,7 +419,7 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 				    items[i].raw_data) + 3,
 				    sizeof(uint8_t) * (raw_data_length),
 				    src, src_size)) {
-					diag("Wrong read 3!");
+					fprintf(stderr, "Wrong read!\n");
 					return NULL;
 				}
 
@@ -442,7 +495,7 @@ static test_rdata_t *load_response_rdata(uint16_t type,
 				if (!mem_read(items[i].raw_data + 1,
 					      size_fr_desc,
 					      src, src_size)) {
-					diag("Wrong read 4!");
+					fprintf(stderr, "Wrong read\n!");
 					return NULL;
 				}
 
@@ -570,7 +623,8 @@ static test_rrset_t *load_response_rrset(const char **src, unsigned *src_size,
 		tmp_rdata = load_response_rdata(rrset->type, src, src_size);
 
 		if (tmp_rdata == NULL) {
-			diag("Could not load rrset rdata - type: %d",
+			fprintf(stderr,
+			        "Could not load rrset rdata - type: %d",
 			     rrset->type);
 			free(rrset);
 			return NULL;
@@ -642,6 +696,11 @@ static test_response_t *load_parsed_response(const char **src,
 #ifdef RESP_TEST_DEBUG
 	fprintf(stderr, "arcount: %d\n", resp->arcount);
 #endif
+
+	if (!mem_read(&resp->query, sizeof(resp->query), src, src_size)) {
+		free(resp);
+		return NULL;
+	}
 
 	test_rrset_t **question_rrsets;
 
@@ -993,7 +1052,6 @@ static void get_and_save_data_from_response(const test_response_t *response,
 static int load_parsed_responses(test_data_t *data, uint32_t *count,
 				 const char* src, unsigned src_size)
 {
-
 	if (!mem_read(count, sizeof(*count), &src, &src_size)) {
 		fprintf(stderr, "Wrong read\n");
 		return -1;
@@ -1012,8 +1070,18 @@ static int load_parsed_responses(test_data_t *data, uint32_t *count,
 			return -1;
 		}
 
-		add_tail(&data->response_list,
-		         (node *)tmp_response);
+		if (tmp_response->query) {
+			add_tail(&data->query_list, (node *)tmp_response);
+		} else {
+			add_tail(&data->response_list, (node *)tmp_response);
+		}
+
+		/* Create new node */
+		test_response_t *resp = malloc(sizeof(test_response_t));
+		assert(resp);
+		memcpy(resp, tmp_response, sizeof(test_response_t));
+		add_tail(&data->packet_list,
+		         (node *)resp);
 	}
 
 	return 0;
@@ -1050,6 +1118,11 @@ static int init_data(test_data_t *data)
 	init_list(&data->rdata_list);
 	init_list(&data->rrset_list);
 	init_list(&data->item_list);
+	init_list(&data->raw_response_list);
+	init_list(&data->raw_query_list);
+	init_list(&data->raw_packet_list);
+	init_list(&data->query_list);
+	init_list(&data->packet_list);
 
 	data->node_tree = malloc(sizeof(avl_tree_test_t));
 	CHECK_ALLOC_LOG(data->node_tree, 0);
@@ -1061,8 +1134,10 @@ static int init_data(test_data_t *data)
 
 static void print_stats(test_data_t *data)
 {
-	uint resp_count = 0, dname_count = 0, edns_count = 0, node_count = 0,
-	     rdata_count = 0, rrset_count = 0, item_count = 0;
+	uint resp_count = 0, dname_count = 0, node_count = 0,
+	     rdata_count = 0, rrset_count = 0, item_count = 0, query_count = 0,
+	     raw_query_count = 0, response_count = 0, packet_count = 0,
+	     raw_packet_count = 0, raw_response_count = 0;
 
 	node *n = NULL; /* Will not be used */
 
@@ -1071,12 +1146,12 @@ static void print_stats(test_data_t *data)
 	}
 
 	WALK_LIST(n, data->rrset_list) {
-		node *tmp = NULL;
-		assert(((test_rrset_t *)n)->owner);
-		WALK_LIST(tmp, ((test_rrset_t *)n)->rdata_list) {
-			test_rdata_t *rdata = (test_rdata_t *)tmp;
-			assert(rdata->type == ((test_rrset_t *)n)->type);
-		}
+//		node *tmp = NULL;
+//		assert(((test_rrset_t *)n)->owner);
+//		WALK_LIST(tmp, ((test_rrset_t *)n)->rdata_list) {
+//			test_rdata_t *rdata = (test_rdata_t *)tmp;
+//			assert(rdata->type == ((test_rrset_t *)n)->type);
+//		}
 		rrset_count++;
 	}
 
@@ -1096,8 +1171,36 @@ static void print_stats(test_data_t *data)
 		item_count++;
 	}
 
-	printf("Loaded: Responses: %d RRSets: %d RDATAs: %d Dnames: %d Nodes: %d Items: %d\n", resp_count, rrset_count,
-	       rdata_count, dname_count, node_count, item_count);
+	WALK_LIST(n, data->raw_response_list) {
+		raw_response_count++;
+	}
+
+	WALK_LIST(n, data->query_list) {
+		query_count++;
+	}
+
+	WALK_LIST(n, data->response_list) {
+		response_count++;
+	}
+
+	WALK_LIST(n, data->raw_query_list) {
+		raw_query_count++;
+	}
+
+	WALK_LIST(n, data->packet_list) {
+		packet_count++;
+	}
+
+	WALK_LIST(n, data->raw_packet_list) {
+		raw_packet_count++;
+	}
+
+	printf("Loaded: Responses: %d RRSets: %d RDATAs: %d Dnames: %d "
+	       "Nodes: %d Items: %d Raw_responses: %d Queries: %d \n"
+	       "Raw_queries; %d Total packets: %d Total_raw_packets: %d\n", resp_count, rrset_count,
+	       rdata_count, dname_count, node_count, item_count,
+	       raw_response_count, query_count, raw_query_count, packet_count,
+	       raw_packet_count);
 }
 
 static void save_node_to_list(test_node_t *n, void *p)
@@ -1109,7 +1212,7 @@ static void save_node_to_list(test_node_t *n, void *p)
 
 static void del_node(test_node_t *n, void *p)
 {
-	test_data_t *data = (test_data_t *)p;
+//	test_data_t *data = (test_data_t *)p;
 	free(n);
 }
 
@@ -1146,7 +1249,17 @@ test_data_t *create_test_data_from_dump()
 		return NULL;
 	}
 
-	uint response_count;
+	uint32_t raw_packet_count = 0;
+
+	if (load_raw_packets(ret, &raw_packet_count, raw_data_rc,
+	                     raw_data_rc_size) != 0) {
+		fprintf(stderr, "Could not load raw_data, quitting");
+		/* TODO walk the lists*/
+		free(ret);
+		return NULL;
+	}
+
+	uint32_t response_count = 0;
 
 	if (load_parsed_responses(ret, &response_count, parsed_data_rc,
 	                          parsed_data_rc_size) != 0) {

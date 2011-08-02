@@ -766,6 +766,7 @@ static int zones_insert_zones(dnslib_nameserver_t *ns,
 
 			/* Update ACLs. */
 			debug_zones("Updating zone ACLs.\n");
+			zones_set_acl(&zd->xfr_in.acl, &z->acl.xfr_in);
 			zones_set_acl(&zd->xfr_out, &z->acl.xfr_out);
 			zones_set_acl(&zd->notify_in, &z->acl.notify_in);
 			zones_set_acl(&zd->notify_out, &z->acl.notify_out);
@@ -782,6 +783,10 @@ static int zones_insert_zones(dnslib_nameserver_t *ns,
 					     cfg_if->family,
 					     cfg_if->address,
 					     cfg_if->port);
+
+				debug_zones("Using %s:%d as zone XFR master.\n",
+					    cfg_if->address,
+					    cfg_if->port);
 			}
 
 			/* Update events scheduled for zone. */
