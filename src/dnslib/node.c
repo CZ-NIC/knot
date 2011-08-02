@@ -306,11 +306,14 @@ knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
 
 const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 {
+//	printf("RRset count: %d\n", node->rrset_count);
 	if (node->rrset_count == 0) {
 		return NULL;
 	}
+	
 	knot_rrset_t **rrsets = (knot_rrset_t **)malloc(
 		node->rrset_count * sizeof(knot_rrset_t *));
+//	printf("RRsets pointer: %p\n", rrsets);
 	CHECK_ALLOC_LOG(rrsets, NULL);
 	struct knot_node_save_rrset_arg args;
 	args.array = rrsets;
@@ -330,6 +333,7 @@ const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 
 	//printf("Returning %d RRSets.\n", i);
 
+//	printf("RRsets pointer: %p\n", rrsets);
 	return (const knot_rrset_t **)rrsets;
 
 }

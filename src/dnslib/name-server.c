@@ -1877,11 +1877,21 @@ static void ns_axfr_from_node(knot_node_t *node, void *data)
 
 	if (params->ret != KNOT_EOK) {
 		// just skip (will be called on next node with the same params
-		debug_knot_ns("Params contain error, skipping node...\n");
+		debug_knot_ns("Params contain error: %s, skipping node...\n",
+		              knot_strerror2(params->ret));
 		return;
 	}
 
 	debug_knot_ns("Params OK, answering AXFR from node %p.\n", node);
+DEBUG_KNOT_NS(
+	char *name = knot_dname_to_str(knot_node_owner(node));
+	debug_knot_ns("Node ownerr: %s\n", name);
+	free(name);
+);
+
+	if (knot_node_rrset_count(node) == 0) {
+		return;
+	}
 
 	const knot_rrset_t **rrsets = knot_node_rrsets(node);
 	if (rrsets == NULL) {
@@ -2820,7 +2830,8 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 	knot_zone_contents_deep_free(&old);
 
 DEBUG_KNOT_NS(
-	debug_knot_ns("Zone db contents:\n");
+	debug_knot_ns("Zone db contents: (zone count: %zu)\n", 
+	              nameserver->zone_db->zone_count);
 
 	knot_zone_t **zones = knot_zonedb_zones(nameserver->zone_db);
 	for (int i = 0; i < knot_zonedb_zone_count
