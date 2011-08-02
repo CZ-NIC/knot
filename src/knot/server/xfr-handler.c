@@ -19,6 +19,8 @@
 #include "knot/server/socket.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-in.h"
+#include "knot/server/zones.h"
+#include "dnslib/error.h"
 
 /*! \brief XFR event wrapper for libev. */
 struct xfr_io_t
@@ -73,10 +75,10 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 
 	/* Process incoming packet. */
 	switch(request->type) {
-	case NS_XFR_TYPE_AIN:
+	case XFR_TYPE_AIN:
 		ret = dnslib_ns_process_axfrin(xfr_w->h->ns, request);
 		break;
-	case NS_XFR_TYPE_IIN:
+	case XFR_TYPE_IIN:
 		ret = dnslib_ns_process_ixfrin(xfr_w->h->ns, request);
 		break;
 	default:
@@ -85,15 +87,37 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 	}
 
 	/* Check return code for errors. */
-	if (ret != KNOT_EOK) {
+	if (ret < 0) {
+		/*! \todo Log error. */
 		return;
 	}
 
 	/* Check finished zone. */
-	if (request->zone) {
+	if (ret > 0) {
 
+		switch(request->type) {
+		case XFR_TYPE_AIN:
+			ret = zones_save_zone(request);
+			if (ret != KNOT_EOK) {
+				/*! \todo Log error. */
+				return;
+			}
+			ret = dnslib_ns_switch_zone(xfr_w->h->ns, request);
+			if (ret != KNOT_EOK) {
+				/*! \todo Log error. */
+				return;
+			}
+			break;
+		case XFR_TYPE_IIN:
+			/*! \todo save changesets */
+			/*! \todo udpate zone?? */
+			break;
+		default:
+			ret = KNOT_EINVAL;
+			break;
+		}
 		/* Save finished zone and reload. */
-		xfrin_zone_transferred(xfr_w->h->ns, request->zone);
+//		xfrin_zone_transferred(xfr_w->h->ns, request->zone);
 
 		/* Return error code to make TCP client disconnect. */
 		ev_io_stop(loop, (ev_io *)w);
@@ -166,10 +190,10 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
 	ret = KNOT_ERROR;
 	size_t bufsize = req->wire_size;
 	switch(req->type) {
-	case NS_XFR_TYPE_AIN:
+	case XFR_TYPE_AIN:
 		ret = xfrin_create_axfr_query(contents, req->wire, &bufsize);
 		break;
-	case NS_XFR_TYPE_IIN:
+	case XFR_TYPE_IIN:
 		ret = xfrin_create_ixfr_query(contents, req->wire, &bufsize);
 		break;
 	default:
@@ -369,18 +393,53 @@ int xfr_master(dthread_t *thread)
 
 		/* Handle request. */
 		const char *req_type = "";
+		dnslib_rcode_t rcode;
+		
+		rcu_read_lock();
+		
 		switch(xfr.type) {
-		case NS_XFR_TYPE_AOUT:
+		case XFR_TYPE_AOUT:
 			req_type = "axfr-out";
+			
+			ret = dnslib_ns_init_xfr(xfrh->ns, &xfr);
+			if (ret != DNSLIB_EOK) {
+				debug_xfr("xfr_master: failed to init XFR: %s\n",
+				          dnslib_strerror(ret));
+				socket_close(xfr.session);
+			}
+			
+			ret = zones_xfr_check_zone(&xfr, &rcode);
+			if (ret != KNOT_EOK) {
+				dnslib_ns_xfr_send_error(&xfr, rcode);
+				socket_close(xfr.session);
+			}			
+			
 			ret = dnslib_ns_answer_axfr(xfrh->ns, &xfr);
 			dnslib_packet_free(&xfr.query); /* Free query. */
 			debug_xfr("xfr_master: ns_answer_axfr() = %d.\n", ret);
 			if (ret != KNOT_EOK) {
 				socket_close(xfr.session);
 			}
+			
+			rcu_read_unlock();
 			break;
-		case NS_XFR_TYPE_IOUT:
+		case XFR_TYPE_IOUT:
 			req_type = "ixfr-out";
+			
+			ret = dnslib_ns_init_xfr(xfrh->ns, &xfr);
+			if (ret != DNSLIB_EOK) {
+				debug_xfr("xfr_master: failed to init XFR: %s\n",
+				          dnslib_strerror(ret));
+				socket_close(xfr.session);
+			}
+			
+			ret = zones_xfr_check_zone(&xfr, &rcode);
+			if (ret != KNOT_EOK) {
+				dnslib_ns_xfr_send_error(&xfr, rcode);
+				socket_close(xfr.session);
+			}
+			
+			/*! \todo Init XFR, check zone, answer. */
 			ret = dnslib_ns_answer_ixfr(xfrh->ns, &xfr);
 			dnslib_packet_free(&xfr.query); /* Free query. */
 			debug_xfr("xfr_master: ns_answer_ixfr() = %d.\n", ret);
@@ -388,12 +447,12 @@ int xfr_master(dthread_t *thread)
 				socket_close(xfr.session);
 			}
 			break;
-		case NS_XFR_TYPE_AIN:
+		case XFR_TYPE_AIN:
 			req_type = "axfr-in";
 			evqueue_write(xfrh->cq, &xfr, sizeof(dnslib_ns_xfr_t));
 			ret = KNOT_EOK;
 			break;
-		case NS_XFR_TYPE_IIN:
+		case XFR_TYPE_IIN:
 			req_type = "ixfr-in";
 			evqueue_write(xfrh->cq, &xfr, sizeof(dnslib_ns_xfr_t));
 			ret = KNOT_EOK;

@@ -16,6 +16,9 @@
 #include "knot/server/server.h"
 #include "knot/server/xfr-in.h"
 #include "knot/server/zones.h"
+#include "dnslib/error.h"
+#include "dnslib/zone-dump.h"
+#include "knot/server/name-server.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -955,6 +958,359 @@ int zones_zonefile_sync(dnslib_zone_t *zone)
 
 	/* Unlock zone data. */
 	pthread_mutex_unlock(&zd->lock);
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zones_xfr_check_zone(dnslib_ns_xfr_t *xfr, dnslib_rcode_t *rcode)
+{
+	if (xfr == NULL || xfr->zone == NULL || rcode == NULL) {
+		*rcode = DNSLIB_RCODE_SERVFAIL;
+		return KNOT_EINVAL;
+	}
+	
+	/* Check zone data. */
+	zonedata_t *zd = (zonedata_t *)xfr->zone->data;
+	if (zd == NULL) {
+		debug_zones("Invalid zone data.\n");
+		*rcode = DNSLIB_RCODE_SERVFAIL;
+		return KNOT_ERROR;
+	}
+
+	// Check xfr-out ACL
+	if (acl_match(zd->xfr_out, &xfr->addr) == ACL_DENY) {
+		debug_zones("Request for AXFR OUT is not authorized.\n");
+		*rcode = DNSLIB_RCODE_REFUSED;
+		return KNOT_ERROR;
+	} else {
+		debug_zones("Authorized AXFR OUT request.\n");
+	}
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+/*!
+ * \brief Wrapper for TCP send.
+ * \todo Implement generic fd pool properly with callbacks.
+ */
+#include "knot/server/tcp-handler.h"
+static int zones_send_cb(int fd, sockaddr_t *addr, uint8_t *msg, size_t msglen)
+{
+	return tcp_send(fd, msg, msglen);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zones_process_response(dnslib_nameserver_t *nameserver, 
+                           sockaddr_t *from,
+                           dnslib_packet_t *packet, uint8_t *response_wire,
+                           size_t *rsize)
+{
+	if (!packet || !rsize || nameserver == NULL || from == NULL ||
+	    response_wire == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/*! \todo Handle SOA query response, cancel EXPIRE timer
+	 *        and start AXFR transfer if needed.
+	 *        Reset REFRESH timer on finish.
+	 */
+	if (dnslib_packet_qtype(packet) == DNSLIB_RRTYPE_SOA) {
+
+		/* No response. */
+		*rsize = 0;
+
+		/* Find matching zone and ID. */
+		const dnslib_dname_t *zone_name = dnslib_packet_qname(packet);
+		/*! \todo Change the access to the zone db. */
+		dnslib_zone_t *zone = dnslib_zonedb_find_zone(
+		                        nameserver->zone_db,
+		                        zone_name);
+		if (!zone) {
+			return KNOT_EINVAL;
+		}
+		if (!dnslib_zone_data(zone)) {
+			return KNOT_EINVAL;
+		}
+
+		/* Match ID against awaited. */
+		zonedata_t *zd = (zonedata_t *)dnslib_zone_data(zone);
+		uint16_t pkt_id = dnslib_packet_id(packet);
+		if ((int)pkt_id != zd->xfr_in.next_id) {
+			return KNOT_ERROR;
+		}
+
+		/* Cancel EXPIRE timer. */
+		evsched_t *sched = nameserver->server->sched;
+		event_t *expire_ev = zd->xfr_in.expire;
+		if (expire_ev) {
+			evsched_cancel(sched, expire_ev);
+			evsched_event_free(sched, expire_ev);
+			zd->xfr_in.expire = 0;
+		}
+
+		/* Cancel REFRESH/RETRY timer. */
+		event_t *refresh_ev = zd->xfr_in.timer;
+		if (refresh_ev) {
+			debug_zones("zone: canceling REFRESH timer\n");
+			evsched_cancel(sched, refresh_ev);
+		}
+
+		/* Get zone contents. */
+		rcu_read_lock();
+		const dnslib_zone_contents_t *contents =
+				dnslib_zone_contents(zone);
+
+		/* Check SOA SERIAL. */
+		if (xfrin_transfer_needed(contents, packet) < 1) {
+
+			/* Reinstall REFRESH timer. */
+			uint32_t ref_tmr = 0;
+
+			/* Retrieve SOA RDATA. */
+			const dnslib_rrset_t *soa_rrs = 0;
+			const dnslib_rdata_t *soa_rr = 0;
+			soa_rrs = dnslib_node_rrset(
+			             dnslib_zone_contents_apex(contents),
+			             DNSLIB_RRTYPE_SOA);
+			soa_rr = dnslib_rrset_rdata(soa_rrs);
+			ref_tmr = dnslib_rdata_soa_refresh(soa_rr);
+			ref_tmr *= 1000; /* Convert to miliseconds. */
+
+			debug_zones("zone: reinstalling REFRESH timer (%u ms)\n",
+				ref_tmr);
+
+			evsched_schedule(sched, refresh_ev, ref_tmr);
+			rcu_read_unlock();
+			return KNOT_EOK;
+		}
+
+		/* Prepare XFR client transfer. */
+		dnslib_ns_xfr_t xfr_req;
+		memset(&xfr_req, 0, sizeof(dnslib_ns_xfr_t));
+		memcpy(&xfr_req.addr, from, sizeof(sockaddr_t));
+		xfr_req.data = (void *)zone;
+		xfr_req.send = zones_send_cb;
+
+		/* Select transfer method. */
+		xfr_req.type = zones_transfer_to_use(contents);
+
+		/* Unlock zone contents. */
+		rcu_read_unlock();
+
+		/* Enqueue XFR request. */
+		return xfr_request(nameserver->server->xfr_h, &xfr_req);
+	}
+
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+xfr_type_t zones_transfer_to_use(const dnslib_zone_contents_t *zone)
+{
+	/*! \todo Implement. */
+	return XFR_TYPE_AIN;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int zones_find_zone_for_xfr(const dnslib_zone_contents_t *zone, 
+                                   const char **zonefile, const char **zonedb)
+{
+	// find the zone file name and zone db file name for the zone
+	conf_t *cnf = conf();
+	node *n = NULL;
+	WALK_LIST(n, cnf->zones) {
+		conf_zone_t *zone_conf = (conf_zone_t *)n;
+		dnslib_dname_t *zone_name = dnslib_dname_new_from_str(
+			zone_conf->name, strlen(zone_conf->name), NULL);
+		if (zone_name == NULL) {
+			return KNOT_ENOMEM;
+		}
+
+		int r = dnslib_dname_compare(zone_name, dnslib_node_owner(
+		                              dnslib_zone_contents_apex(zone)));
+
+		/* Directly discard dname, won't be needed. */
+		dnslib_dname_free(&zone_name);
+
+		if (r == 0) {
+			// found the right zone
+			*zonefile = zone_conf->file;
+			*zonedb = zone_conf->db;
+			return KNOT_EOK;
+		}
+	}
+
+	char *name = dnslib_dname_to_str(dnslib_node_owner(
+	                 dnslib_zone_contents_apex(zone)));
+	debug_zones("No zone found for the zone received by transfer "
+	                 "(%s).\n", name);
+	free(name);
+
+	return KNOT_ENOENT;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static char *zones_find_free_filename(const char *old_name)
+{
+	// find zone name not present on the disk
+	int free_name = 0;
+	size_t name_size = strlen(old_name);
+
+	char *new_name = malloc(name_size + 3);
+	if (new_name == NULL) {
+		return NULL;
+	}
+	memcpy(new_name, old_name, name_size);
+	new_name[name_size] = '.';
+	new_name[name_size + 2] = 0;
+
+	debug_dnslib_ns("Finding free name for the zone file.\n");
+	int c = 48;
+	FILE *file;
+	while (!free_name && c < 58) {
+		new_name[name_size + 1] = c;
+		debug_dnslib_ns("Trying file name %s\n", new_name);
+		if ((file = fopen(new_name, "r")) != NULL) {
+			fclose(file);
+			++c;
+		} else {
+			free_name = 1;
+		}
+	}
+
+	if (free_name) {
+		return new_name;
+	} else {
+		free(new_name);
+		return NULL;
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int zones_dump_xfr_zone_text(dnslib_zone_contents_t *zone, 
+                                    const char *zonefile)
+{
+	assert(zone != NULL && zonefile != NULL);
+
+	char *new_zonefile = zones_find_free_filename(zonefile);
+
+	if (new_zonefile == NULL) {
+		debug_zones("Failed to find free filename for temporary "
+		                 "storage of the zone text file.\n");
+		return KNOT_ERROR;	/*! \todo New error code? */
+	}
+
+	int rc = zone_dump_text(zone, new_zonefile);
+
+	if (rc != KNOT_EOK) {
+		debug_zones("Failed to save the zone to text zone file %s."
+		                 "\n", new_zonefile);
+		free(new_zonefile);
+		return KNOT_ERROR;
+	}
+
+	/*! \todo if successful, replace the old file with the new one */
+
+	free(new_zonefile);
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int ns_dump_xfr_zone_binary(dnslib_zone_contents_t *zone, 
+                                   const char *zonedb,
+                                   const char *zonefile)
+{
+	assert(zone != NULL && zonedb != NULL);
+
+	char *new_zonedb = zones_find_free_filename(zonedb);
+
+	if (new_zonedb == NULL) {
+		debug_zones("Failed to find free filename for temporary "
+		                 "storage of the zone binary file.\n");
+		return KNOT_ERROR;	/*! \todo New error code? */
+	}
+
+	int rc = dnslib_zdump_binary(zone, new_zonedb, 0, zonefile);
+
+	if (rc != DNSLIB_EOK) {
+		debug_zones("Failed to save the zone to binary zone db %s."
+		                 "\n", new_zonedb);
+		free(new_zonedb);
+		return KNOT_ERROR;
+	}
+
+	/*! \todo if successful, replace the old file with the new one */
+
+	free(new_zonedb);
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zones_save_zone(const dnslib_ns_xfr_t *xfr)
+{
+	if (xfr == NULL || xfr->data == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	dnslib_zone_contents_t *zone = 
+		(dnslib_zone_contents_t *)xfr->data;
+	
+	const char *zonefile = NULL;
+	const char *zonedb = NULL;
+	
+	int ret = zones_find_zone_for_xfr(zone, &zonefile, &zonedb);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	
+	assert(zonefile != NULL && zonedb != NULL);
+	
+	// dump the zone into text zone file
+	ret = zones_dump_xfr_zone_text(zone, zonefile);
+	if (ret != KNOT_EOK) {
+		return KNOT_ERROR;
+	}
+	// dump the zone into binary db file
+	ret = ns_dump_xfr_zone_binary(zone, zonedb, zonefile);
+	if (ret != KNOT_EOK) {
+		return KNOT_ERROR;
+	}
+	
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zones_ns_conf_hook(const struct conf_t *conf, void *data)
+{
+	dnslib_nameserver_t *ns = (dnslib_nameserver_t *)data;
+	debug_zones("Event: reconfiguring name server.\n");
+
+	dnslib_zonedb_t *old_db = 0;
+
+	int ret = zones_update_db_from_config(conf, ns, &old_db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	// Wait until all readers finish with reading the zones.
+	synchronize_rcu();
+
+	debug_zones("Nameserver's zone db: %p, old db: %p\n", ns->zone_db,
+	            old_db);
+
+	// Delete all deprecated zones and delete the old database.
+	dnslib_zonedb_deep_free(&old_db);
 
 	return KNOT_EOK;
 }

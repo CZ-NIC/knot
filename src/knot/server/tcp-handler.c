@@ -20,6 +20,7 @@
 #include "knot/other/error.h"
 #include "knot/stat/stat.h"
 #include "dnslib/wire.h"
+#include "knot/server/zones.h"
 
 /*! \brief TCP watcher. */
 typedef struct tcp_io_t {
@@ -160,7 +161,7 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 		break;
 	case DNSLIB_QUERY_AXFR:
 		memset(&xfr, 0, sizeof(dnslib_ns_xfr_t));
-		xfr.type = NS_XFR_TYPE_AOUT;
+		xfr.type = XFR_TYPE_AOUT;
 		xfr.query = packet;
 		xfr.send = xfr_send_cb;
 		xfr.session = w->fd;
@@ -170,7 +171,7 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 		return;
 	case DNSLIB_QUERY_IXFR:
 		memset(&xfr, 0, sizeof(dnslib_ns_xfr_t));
-		xfr.type = NS_XFR_TYPE_IOUT;
+		xfr.type = XFR_TYPE_IOUT;
 		xfr.query = packet; /* Will be freed after processing. */
 		xfr.send = xfr_send_cb;
 		xfr.session = w->fd;

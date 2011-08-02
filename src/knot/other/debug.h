@@ -23,6 +23,15 @@
 //#define NET_DEBUG
 //#define ZONES_DEBUG
 //#define XFR_DEBUG
+//#define NOTIFY_DEBUG
+
+#ifdef NOTIFY_DEBUG
+#define debug_notify(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define debug_notify_hex(data, len) hex_log(LOG_SERVER, (data), (len))
+#else
+#define debug_notify(msg...)
+#define debug_notify_hex(data, len)
+#endif
 
 #ifdef SERVER_DEBUG
 #define debug_server(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)

@@ -56,6 +56,14 @@ typedef struct zonedata_t
 	uint32_t zonefile_serial;
 } zonedata_t;
 
+/*! \todo Document me. */
+typedef enum xfr_type_t {
+	XFR_TYPE_AIN,  /*!< AXFR-IN request (start transfer). */
+	XFR_TYPE_AOUT, /*!< AXFR-OUT request (incoming transfer). */
+	XFR_TYPE_IIN,  /*!< IXFR-IN request (start transfer). */
+	XFR_TYPE_IOUT  /*!< IXFR-OUT request (incoming transfer). */
+} xfr_type_t;
+
 /*!
  * \brief Update zone database according to configuration.
  *
@@ -96,6 +104,31 @@ int zones_update_db_from_config(const conf_t *conf, dnslib_nameserver_t *ns,
  * \retval KNOT_ERROR on unspecified error during processing.
  */
 int zones_zonefile_sync(dnslib_zone_t *zone);
+
+int zones_xfr_check_zone(dnslib_ns_xfr_t *xfr, dnslib_rcode_t *rcode);
+
+int zones_process_response(dnslib_nameserver_t *nameserver, 
+                           sockaddr_t *from,
+                           dnslib_packet_t *packet, uint8_t *response_wire,
+                           size_t *rsize);
+
+xfr_type_t zones_transfer_to_use(const dnslib_zone_contents_t *zone);
+
+int zones_save_zone(const dnslib_ns_xfr_t *xfr);
+
+/*!
+ * \brief Name server config hook.
+ *
+ * Routine for dynamic name server reconfiguration.
+ *
+ * \param conf Current configuration.
+ * \param data Instance of the nameserver structure to update.
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL
+ * \retval KNOT_ERROR
+ */
+int zones_ns_conf_hook(const struct conf_t *conf, void *data);
 
 #endif // _KNOT_ZONES_H_
 
