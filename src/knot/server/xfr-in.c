@@ -1,29 +1,25 @@
 #include <assert.h>
 
 #include "knot/server/xfr-in.h"
+//#include "knot/common.h"
+//#include "knot/other/log.h"
+
+//#include "knot/other/error.h" /*! \todo Journal needs to be dnslib/common. */
+
+#include "knot/server/zones.h" /*! \todo Needs zonedata_t from zones.h */
 
 #include "common/evsched.h"
-#include "knot/common.h"
-#include "knot/other/error.h"
+
+#include "knot/server/name-server.h"
+#include "dnslib/debug.h"
+#include "dnslib/zone-dump.h"
+#include "dnslib/zone-load.h"
 #include "dnslib/packet.h"
 #include "dnslib/dname.h"
 #include "dnslib/zone.h"
 #include "dnslib/query.h"
 #include "dnslib/error.h"
-#include "knot/other/log.h"
-#include "knot/server/name-server.h"
-#include "knot/server/zones.h"
-#include "dnslib/debug.h"
-#include "dnslib/zone-dump.h"
-#include "dnslib/zone-load.h"
-
-static const size_t XFRIN_CHANGESET_COUNT = 5;
-static const size_t XFRIN_CHANGESET_STEP = 5;
-static const size_t XFRIN_CHANGESET_RRSET_COUNT = 5;
-static const size_t XFRIN_CHANGESET_RRSET_STEP = 5;
-static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
-static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
-
+#include "dnslib/changesets.h"
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
@@ -32,19 +28,19 @@ static int xfrin_create_query(const dnslib_zone_contents_t *zone, uint16_t qtype
                               uint16_t qclass, uint8_t *buffer, size_t *size)
 {
 	dnslib_packet_t *pkt = dnslib_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
-	CHECK_ALLOC_LOG(pkt, KNOT_ENOMEM);
+	CHECK_ALLOC_LOG(pkt, DNSLIB_ENOMEM);
 
 	/*! \todo Get rid of the numeric constant. */
 	int rc = dnslib_packet_set_max_size(pkt, 512);
 	if (rc != DNSLIB_EOK) {
 		dnslib_packet_free(&pkt);
-		return KNOT_ERROR;
+		return DNSLIB_ERROR;
 	}
 
 	rc = dnslib_query_init(pkt);
 	if (rc != DNSLIB_EOK) {
 		dnslib_packet_free(&pkt);
-		return KNOT_ERROR;
+		return DNSLIB_ERROR;
 	}
 
 	dnslib_question_t question;
@@ -64,7 +60,7 @@ static int xfrin_create_query(const dnslib_zone_contents_t *zone, uint16_t qtype
 	if (rc != DNSLIB_EOK) {
 		dnslib_dname_release(question.qname);
 		dnslib_packet_free(&pkt);
-		return KNOT_ERROR;
+		return DNSLIB_ERROR;
 	}
 
 	/*! \todo Set some random ID!! */
@@ -77,20 +73,20 @@ static int xfrin_create_query(const dnslib_zone_contents_t *zone, uint16_t qtype
 	if (rc != DNSLIB_EOK) {
 		dnslib_dname_release(question.qname);
 		dnslib_packet_free(&pkt);
-		return KNOT_ERROR;
+		return DNSLIB_ERROR;
 	}
 
 	if (wire_size > *size) {
 		log_answer_warning("Not enough space provided for the wire "
 		                   "format of the query.\n");
 		dnslib_packet_free(&pkt);
-		return KNOT_ESPACE;
+		return DNSLIB_ESPACE;
 	}
 
 	memcpy(buffer, wire, wire_size);
 	*size = wire_size;
 
-	debug_ns("Created query of size %zu.\n", *size);
+	debug_dnslib_xfr("Created query of size %zu.\n", *size);
 	dnslib_packet_dump(pkt);
 
 	dnslib_packet_free(&pkt);
@@ -98,7 +94,7 @@ static int xfrin_create_query(const dnslib_zone_contents_t *zone, uint16_t qtype
 	/* Release qname. */
 	dnslib_dname_release(question.qname);
 
-	return KNOT_EOK;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -110,62 +106,62 @@ static uint32_t xfrin_serial_difference(uint32_t local, uint32_t remote)
 
 /*----------------------------------------------------------------------------*/
 
-/*! \brief Return 'serial_from' part of the key. */
-static inline uint32_t ixfrdb_key_from(uint64_t k)
-{
-	/*      64    32       0
-	 * key = [TO   |   FROM]
-	 * Need: Least significant 32 bits.
-	 */
-	return (uint32_t)(k & ((uint64_t)0x00000000ffffffff));
-}
+///*! \brief Return 'serial_from' part of the key. */
+//static inline uint32_t ixfrdb_key_from(uint64_t k)
+//{
+//	/*      64    32       0
+//	 * key = [TO   |   FROM]
+//	 * Need: Least significant 32 bits.
+//	 */
+//	return (uint32_t)(k & ((uint64_t)0x00000000ffffffff));
+//}
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-/*! \brief Return 'serial_to' part of the key. */
-static inline uint32_t ixfrdb_key_to(uint64_t k)
-{
-	/*      64    32       0
-	 * key = [TO   |   FROM]
-	 * Need: Most significant 32 bits.
-	 */
-	return (uint32_t)(k >> (uint64_t)32);
-}
+///*! \brief Return 'serial_to' part of the key. */
+//static inline uint32_t ixfrdb_key_to(uint64_t k)
+//{
+//	/*      64    32       0
+//	 * key = [TO   |   FROM]
+//	 * Need: Most significant 32 bits.
+//	 */
+//	return (uint32_t)(k >> (uint64_t)32);
+//}
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-/*! \brief Compare function to match entries with target serial. */
-static inline int ixfrdb_key_to_cmp(uint64_t k, uint64_t to)
-{
-	/*      64    32       0
-	 * key = [TO   |   FROM]
-	 * Need: Most significant 32 bits.
-	 */
-	return ((uint64_t)ixfrdb_key_to(k)) - to;
-}
+///*! \brief Compare function to match entries with target serial. */
+//static inline int ixfrdb_key_to_cmp(uint64_t k, uint64_t to)
+//{
+//	/*      64    32       0
+//	 * key = [TO   |   FROM]
+//	 * Need: Most significant 32 bits.
+//	 */
+//	return ((uint64_t)ixfrdb_key_to(k)) - to;
+//}
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-/*! \brief Compare function to match entries with starting serial. */
-static inline int ixfrdb_key_from_cmp(uint64_t k, uint64_t from)
-{
-	/*      64    32       0
-	 * key = [TO   |   FROM]
-	 * Need: Least significant 32 bits.
-	 */
-	return ((uint64_t)ixfrdb_key_from(k)) - from;
-}
+///*! \brief Compare function to match entries with starting serial. */
+//static inline int ixfrdb_key_from_cmp(uint64_t k, uint64_t from)
+//{
+//	/*      64    32       0
+//	 * key = [TO   |   FROM]
+//	 * Need: Least significant 32 bits.
+//	 */
+//	return ((uint64_t)ixfrdb_key_from(k)) - from;
+//}
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-/*! \brief Make key for journal from serials. */
-static inline uint64_t ixfrdb_key_make(uint32_t from, uint32_t to)
-{
-	/*      64    32       0
-	 * key = [TO   |   FROM]
-	 */
-	return (((uint64_t)to) << ((uint64_t)32)) | ((uint64_t)from);
-}
+///*! \brief Make key for journal from serials. */
+//static inline uint64_t ixfrdb_key_make(uint32_t from, uint32_t to)
+//{
+//	/*      64    32       0
+//	 * key = [TO   |   FROM]
+//	 */
+//	return (((uint64_t)to) << ((uint64_t)32)) | ((uint64_t)from);
+//}
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
@@ -185,14 +181,14 @@ int xfrin_transfer_needed(const dnslib_zone_contents_t *zone,
 {
 	// first, parse the rest of the packet
 	assert(!dnslib_packet_is_query(soa_response));
-	debug_ns("Response - parsed: %zu, total wire size: %zu\n",
+	debug_dnslib_xfr("Response - parsed: %zu, total wire size: %zu\n",
 	         soa_response->parsed, soa_response->size);
 	int ret;
 
 	if (soa_response->parsed < soa_response->size) {
 		ret = dnslib_packet_parse_rest(soa_response);
 		if (ret != DNSLIB_EOK) {
-			return KNOT_EMALF;
+			return DNSLIB_EMALF;
 		}
 	}
 
@@ -207,7 +203,7 @@ int xfrin_transfer_needed(const dnslib_zone_contents_t *zone,
 				dnslib_zone_contents_apex(zone)));
 		log_answer_warning("SOA RRSet missing in the zone %s!\n", name);
 		free(name);
-		return KNOT_ERROR;
+		return DNSLIB_ERROR;
 	}
 
 	int64_t local_serial = dnslib_rdata_soa_serial(
@@ -216,7 +212,7 @@ int xfrin_transfer_needed(const dnslib_zone_contents_t *zone,
 		char *name = dnslib_dname_to_str(dnslib_rrset_owner(soa_rrset));
 		log_answer_warning("Malformed data in SOA of zone %s\n", name);
 		free(name);
-		return KNOT_EMALF;	// maybe some other error
+		return DNSLIB_EMALF;	// maybe some other error
 	}
 
 	/*
@@ -226,13 +222,13 @@ int xfrin_transfer_needed(const dnslib_zone_contents_t *zone,
 	soa_rrset = dnslib_packet_answer_rrset(soa_response, 0);
 	if (soa_rrset == NULL
 	    || dnslib_rrset_type(soa_rrset) != DNSLIB_RRTYPE_SOA) {
-		return KNOT_EMALF;
+		return DNSLIB_EMALF;
 	}
 
 	int64_t remote_serial = dnslib_rdata_soa_serial(
 		dnslib_rrset_rdata(soa_rrset));
 	if (remote_serial < 0) {
-		return KNOT_EMALF;	// maybe some other error
+		return DNSLIB_EMALF;	// maybe some other error
 	}
 
 	uint32_t diff = xfrin_serial_difference(local_serial, remote_serial);
@@ -259,56 +255,46 @@ int xfrin_create_ixfr_query(const dnslib_zone_contents_t *zone, uint8_t *buffer,
 
 /*----------------------------------------------------------------------------*/
 
-//int xfrin_zone_transferred(dnslib_nameserver_t *nameserver,
-//                           dnslib_zone_contents_t *zone)
-//{
-//	debug_xfr("Switching zone in nameserver.\n");
-//	return dnslib_ns_switch_zone(nameserver, zone);
-//	//return KNOT_ENOTSUP;
-//}
-
-/*----------------------------------------------------------------------------*/
-
 int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
-			      dnslib_zone_contents_t **zone)
+                              dnslib_zone_contents_t **zone)
 {
 	if (pkt == NULL || zone == NULL) {
-		debug_xfr("Wrong parameters supported.\n");
-		return KNOT_EINVAL;
+		debug_dnslib_xfr("Wrong parameters supported.\n");
+		return DNSLIB_EBADARG;
 	}
 
 	dnslib_packet_t *packet =
 			dnslib_packet_new(DNSLIB_PACKET_PREALLOC_NONE);
 	if (packet == NULL) {
-		debug_xfr("Could not create packet structure.\n");
-		return KNOT_ENOMEM;
+		debug_dnslib_xfr("Could not create packet structure.\n");
+		return DNSLIB_ENOMEM;
 	}
 
 	int ret = dnslib_packet_parse_from_wire(packet, pkt, size, 1);
 	if (ret != DNSLIB_EOK) {
-		debug_xfr("Could not parse packet: %s.\n",
+		debug_dnslib_xfr("Could not parse packet: %s.\n",
 		          dnslib_strerror(ret));
 		dnslib_packet_free(&packet);
 		/*! \todo Cleanup. */
-		return KNOT_EMALF;
+		return DNSLIB_EMALF;
 	}
 
 	dnslib_rrset_t *rr = NULL;
 	ret = dnslib_packet_parse_next_rr_answer(packet, &rr);
 
 	if (ret != DNSLIB_EOK) {
-		debug_xfr("Could not parse first Answer RR: %s.\n",
+		debug_dnslib_xfr("Could not parse first Answer RR: %s.\n",
 		          dnslib_strerror(ret));
 		dnslib_packet_free(&packet);
 		/*! \todo Cleanup. */
-		return KNOT_EMALF;
+		return DNSLIB_EMALF;
 	}
 
 	if (rr == NULL) {
-		debug_xfr("No RRs in the packet.\n");
+		debug_dnslib_xfr("No RRs in the packet.\n");
 		dnslib_packet_free(&packet);
 		/*! \todo Cleanup. */
-		return KNOT_EMALF;
+		return DNSLIB_EMALF;
 	}
 
 	dnslib_node_t *node = NULL;
@@ -318,24 +304,24 @@ int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
 		// create new zone
 		/*! \todo Ensure that the packet is the first one. */
 		if (dnslib_rrset_type(rr) != DNSLIB_RRTYPE_SOA) {
-			debug_xfr("No zone created, but the first RR in Answer"
+			debug_dnslib_xfr("No zone created, but the first RR in Answer"
 			          " is not a SOA RR.\n");
 			dnslib_packet_free(&packet);
 			dnslib_node_free(&node, 0, 0);
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
 			/*! \todo Cleanup. */
-			return KNOT_EMALF;
+			return DNSLIB_EMALF;
 		}
 
 		if (dnslib_dname_compare(dnslib_rrset_owner(rr),
 		                         dnslib_packet_qname(packet)) != 0) {
-DEBUG_XFR(
+DEBUG_DNSLIB_XFR(
 			char *rr_owner =
 				dnslib_dname_to_str(dnslib_rrset_owner(rr));
 			char *qname = dnslib_dname_to_str(
 				dnslib_packet_qname(packet));
 
-			debug_xfr("Owner of the first SOA RR (%s) does not "
+			debug_dnslib_xfr("Owner of the first SOA RR (%s) does not "
 			          "match QNAME (%s).\n", rr_owner, qname);
 
 			free(rr_owner);
@@ -345,15 +331,15 @@ DEBUG_XFR(
 			dnslib_packet_free(&packet);
 			dnslib_node_free(&node, 0, 0);
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
-			return KNOT_EMALF;
+			return DNSLIB_EMALF;
 		}
 
 		node = dnslib_node_new(rr->owner, NULL, 0);
 		if (node == NULL) {
-			debug_xfr("Failed to create new node.\n");
+			debug_dnslib_xfr("Failed to create new node.\n");
 			dnslib_packet_free(&packet);
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
-			return KNOT_ENOMEM;
+			return DNSLIB_ENOMEM;
 		}
 
 		// the first RR is SOA and its owner and QNAME are the same
@@ -361,12 +347,12 @@ DEBUG_XFR(
 		/*! \todo Set the zone pointer to the contents. */
 		*zone = dnslib_zone_contents_new(node, 0, 1, NULL);
 		if (*zone == NULL) {
-			debug_xfr("Failed to create new zone.\n");
+			debug_dnslib_xfr("Failed to create new zone.\n");
 			dnslib_packet_free(&packet);
 			dnslib_node_free(&node, 0, 0);
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
 			/*! \todo Cleanup. */
-			return KNOT_ENOMEM;
+			return DNSLIB_ENOMEM;
 		}
 
 		in_zone = 1;
@@ -376,13 +362,13 @@ DEBUG_XFR(
 		ret = dnslib_zone_contents_add_rrset(*zone, rr, &node,
 		                                    DNSLIB_RRSET_DUPL_MERGE, 1);
 		if (ret < 0) {
-			debug_xfr("Failed to add RRSet to zone node: %s.\n",
+			debug_dnslib_xfr("Failed to add RRSet to zone node: %s.\n",
 			          dnslib_strerror(ret));
 			dnslib_packet_free(&packet);
 			dnslib_node_free(&node, 0, 0);
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
 			/*! \todo Cleanup. */
-			return KNOT_ERROR;
+			return DNSLIB_ERROR;
 		} else if (ret > 0) {
 			// merged, free the RRSet
 			dnslib_rrset_deep_free(&rr, 1, 0, 0);
@@ -395,7 +381,7 @@ DEBUG_XFR(
 	while (ret == DNSLIB_EOK && rr != NULL) {
 		// process the parsed RR
 
-		debug_xfr("\nNext RR:\n\n");
+		debug_dnslib_xfr("\nNext RR:\n\n");
 		dnslib_rrset_dump(rr, 0);
 
 		if (node != NULL
@@ -406,22 +392,6 @@ DEBUG_XFR(
 				// the node is not in the zone and the RR has
 				// other owner, so a new node must be created
 				// insert the old node to the zone
-//	DEBUG_XFR(
-//				char *name = dnslib_dname_to_str(node->owner);
-//				debug_xfr("Inserting node %s to the zone.\n",
-//				          name);
-//				free(name);
-//	);
-//				ret = dnslib_zone_add_node(*zone, node, 1, 1);
-//				if (ret != DNSLIB_EOK) {
-//					debug_xfr("Failed to add node into "
-//					          "zone.\n");
-//					dnslib_packet_free(&packet);
-//					dnslib_node_free(&node, 1);
-//					dnslib_rrset_deep_free(&rr, 1, 1, 1);
-//					/*! \todo Other error */
-//					return KNOT_ERROR;	
-//				}
 			}
 
 			node = NULL;
@@ -434,7 +404,7 @@ DEBUG_XFR(
 			assert(dnslib_node_rrset(dnslib_zone_contents_apex(
 			                            (*zone)),
 			                         DNSLIB_RRTYPE_SOA) != NULL);
-			debug_xfr("Found last SOA, transfer finished.\n");
+			debug_dnslib_xfr("Found last SOA, transfer finished.\n");
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
 			dnslib_packet_free(&packet);
 			return 1;
@@ -447,11 +417,11 @@ DEBUG_XFR(
 			ret = dnslib_zone_contents_add_rrsigs(*zone, rr,
 			         &tmp_rrset, &node, DNSLIB_RRSET_DUPL_MERGE, 1);
 			if (ret < 0) {
-				debug_xfr("Failed to add RRSIGs.\n");
+				debug_dnslib_xfr("Failed to add RRSIGs.\n");
 				dnslib_packet_free(&packet);
 				dnslib_node_free(&node, 1, 0); // ???
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
-				return KNOT_ERROR;  /*! \todo Other error code. */
+				return DNSLIB_ERROR;  /*! \todo Other error code. */
 			} else if (ret == 1) {
 				dnslib_rrset_deep_free(&rr, 1, 0, 0);
 			} else if (ret == 2) {
@@ -485,7 +455,7 @@ DEBUG_XFR(
 		if (node == NULL && (node = get_node(
 		                     *zone, dnslib_rrset_owner(rr))) != NULL) {
 			// the node for this RR was found in the zone
-			debug_xfr("Found node for the record in zone.\n");
+			debug_dnslib_xfr("Found node for the record in zone.\n");
 			in_zone = 1;
 		}
 
@@ -494,21 +464,21 @@ DEBUG_XFR(
 			// in the zone
 			node = dnslib_node_new(rr->owner, NULL, 0);
 			if (node == NULL) {
-				debug_xfr("Failed to create new node.\n");
+				debug_dnslib_xfr("Failed to create new node.\n");
 				dnslib_packet_free(&packet);
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
-				return KNOT_ENOMEM;
+				return DNSLIB_ENOMEM;
 			}
-			debug_xfr("Created new node for the record.\n");
+			debug_dnslib_xfr("Created new node for the record.\n");
 
 			// insert the node into the zone
 			ret = dnslib_node_add_rrset(node, rr, 1);
 			if (ret < 0) {
-				debug_xfr("Failed to add RRSet to node.\n");
+				debug_dnslib_xfr("Failed to add RRSet to node.\n");
 				dnslib_packet_free(&packet);
 				dnslib_node_free(&node, 1, 0); // ???
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
-				return KNOT_ERROR;
+				return DNSLIB_ERROR;
 			} else if (ret > 0) {
 				// should not happen, this is new node
 				assert(0);
@@ -517,11 +487,11 @@ DEBUG_XFR(
 
 			ret = add_node(*zone, node, 1, 0, 1);
 			if (ret != DNSLIB_EOK) {
-				debug_xfr("Failed to add node to zone.\n");
+				debug_dnslib_xfr("Failed to add node to zone.\n");
 				dnslib_packet_free(&packet);
 				dnslib_node_free(&node, 1, 0); // ???
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
-				return KNOT_ERROR;
+				return DNSLIB_ERROR;
 			}
 
 			in_zone = 1;
@@ -531,9 +501,9 @@ DEBUG_XFR(
 			ret = dnslib_zone_contents_add_rrset(*zone, rr, &node,
 			                            DNSLIB_RRSET_DUPL_MERGE, 1);
 			if (ret < 0) {
-				debug_xfr("Failed to add RRSet to zone: %s.\n",
+				debug_dnslib_xfr("Failed to add RRSet to zone: %s.\n",
 				          dnslib_strerror(ret));
-				return KNOT_ERROR;
+				return DNSLIB_ERROR;
 			} else if (ret > 0) {
 				// merged, free the RRSet
 				dnslib_rrset_deep_free(&rr, 1, 0, 0);
@@ -551,13 +521,13 @@ DEBUG_XFR(
 
 	if (ret < 0) {
 		// some error in parsing
-		debug_xfr("Could not parse next RR: %s.\n",
+		debug_dnslib_xfr("Could not parse next RR: %s.\n",
 		          dnslib_strerror(ret));
 		dnslib_packet_free(&packet);
 		dnslib_node_free(&node, 0, 0);
 		dnslib_rrset_deep_free(&rr, 1, 1, 1);
 		/*! \todo Cleanup. */
-		return KNOT_EMALF;
+		return DNSLIB_EMALF;
 	}
 
 	assert(ret == DNSLIB_EOK);
@@ -568,17 +538,17 @@ DEBUG_XFR(
 		assert(node != NULL);
 		ret = dnslib_zone_contents_add_node(*zone, node, 1, 0, 1);
 		if (ret != DNSLIB_EOK) {
-			debug_xfr("Failed to add last node into zone.\n");
+			debug_dnslib_xfr("Failed to add last node into zone.\n");
 			dnslib_packet_free(&packet);
 			dnslib_node_free(&node, 1, 0);
-			return KNOT_ERROR;	/*! \todo Other error */
+			return DNSLIB_ERROR;	/*! \todo Other error */
 		}
 	}
 
 	dnslib_packet_free(&packet);
-	debug_xfr("Processed one AXFR packet successfully.\n");
+	debug_dnslib_xfr("Processed one AXFR packet successfully.\n");
 
-	return (ret == DNSLIB_EOK) ? KNOT_EOK : KNOT_EMALF;
+	return (ret == DNSLIB_EOK) ? DNSLIB_EOK : DNSLIB_EMALF;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -588,511 +558,142 @@ static int xfrin_parse_first_rr(dnslib_packet_t **packet, const uint8_t *pkt,
 {
 	*packet = dnslib_packet_new(DNSLIB_PACKET_PREALLOC_NONE);
 	if (packet == NULL) {
-		debug_xfr("Could not create packet structure.\n");
-		return KNOT_ENOMEM;
+		debug_dnslib_xfr("Could not create packet structure.\n");
+		return DNSLIB_ENOMEM;
 	}
 
 	int ret = dnslib_packet_parse_from_wire(*packet, pkt, size, 1);
 	if (ret != DNSLIB_EOK) {
-		debug_xfr("Could not parse packet: %s.\n",
+		debug_dnslib_xfr("Could not parse packet: %s.\n",
 		          dnslib_strerror(ret));
 		dnslib_packet_free(packet);
-		return KNOT_EMALF;
+		return DNSLIB_EMALF;
 	}
 
 	ret = dnslib_packet_parse_next_rr_answer(*packet, rr);
 
 	if (ret != DNSLIB_EOK) {
-		debug_xfr("Could not parse first Answer RR: %s.\n",
+		debug_dnslib_xfr("Could not parse first Answer RR: %s.\n",
 		          dnslib_strerror(ret));
 		dnslib_packet_free(packet);
-		return KNOT_EMALF;
+		return DNSLIB_EMALF;
 	}
 
-	return KNOT_EOK;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_changesets_check_size(xfrin_changesets_t *changesets)
-{
-	if (changesets->allocated == changesets->count) {
-		xfrin_changeset_t *sets = (xfrin_changeset_t *)calloc(
-			changesets->allocated + XFRIN_CHANGESET_STEP,
-			sizeof(xfrin_changeset_t));
-		if (sets == NULL) {
-			return KNOT_ENOMEM;
-		}
+//static int xfrin_changeset_rrset_to_binary(uint8_t **data, size_t *size,
+//                                           size_t *allocated,
+//                                           dnslib_rrset_t *rrset)
+//{
+//	assert(data != NULL);
+//	assert(size != NULL);
+//	assert(allocated != NULL);
 
-		/*! \todo realloc() may be more effective. */
-		memcpy(sets, changesets->sets, changesets->count);
-		xfrin_changeset_t *old_sets = changesets->sets;
-		changesets->sets = sets;
-		changesets->count += XFRIN_CHANGESET_STEP;
-		free(old_sets);
-	}
+//	/*
+//	 * In *data, there is the whole changeset in the binary format,
+//	 * the actual RRSet will be just appended to it
+//	 */
 
-	return KNOT_EOK;
-}
+//	uint8_t *binary = NULL;
+//	size_t actual_size = 0;
+//	int ret = dnslib_zdump_rrset_serialize(rrset, &binary, &actual_size);
+//	if (ret != DNSLIB_EOK) {
+//		return DNSLIB_ERROR;  /*! \todo Other code? */
+//	}
 
-/*----------------------------------------------------------------------------*/
-
-static int xfrin_allocate_changesets(xfrin_changesets_t **changesets)
-{
-	// create new changesets
-	*changesets = (xfrin_changesets_t *)(
-			calloc(1, sizeof(xfrin_changesets_t)));
-
-	if (*changesets == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	assert((*changesets)->allocated == 0);
-	assert((*changesets)->count == 0);
-	assert((*changesets)->sets = NULL);
-
-	return xfrin_changesets_check_size(*changesets);
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int xfrin_changeset_check_count(dnslib_rrset_t ***rrsets, size_t count,
-                                       size_t *allocated)
-{
-	// this should also do for the initial case (*rrsets == NULL)
-	if (count == *allocated) {
-		dnslib_rrset_t **rrsets_new = (dnslib_rrset_t **)calloc(
-			*allocated + XFRIN_CHANGESET_RRSET_STEP,
-			sizeof(dnslib_rrset_t *));
-		if (rrsets_new == NULL) {
-			return KNOT_ENOMEM;
-		}
-
-		memcpy(rrsets_new, *rrsets, count);
-
-		dnslib_rrset_t **rrsets_old = *rrsets;
-		*rrsets = rrsets_new;
-		*allocated += XFRIN_CHANGESET_RRSET_STEP;
-		free(rrsets_old);
-	}
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int xfrin_changeset_add_rrset(dnslib_rrset_t ***rrsets,
-                                     size_t *count, size_t *allocated,
-                                     dnslib_rrset_t *rrset)
-{
-	int ret = xfrin_changeset_check_count(rrsets, *count, allocated);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	(*rrsets)[(*count)++] = rrset;
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int xfrin_changeset_rrsets_match(const dnslib_rrset_t *rrset1,
-                                        const dnslib_rrset_t *rrset2)
-{
-	return dnslib_rrset_compare(rrset1, rrset2, DNSLIB_RRSET_COMPARE_HEADER)
-	       && (dnslib_rrset_type(rrset1) != DNSLIB_RRTYPE_RRSIG
-	           || dnslib_rdata_rrsig_type_covered(
-	                    dnslib_rrset_rdata(rrset1))
-	              == dnslib_rdata_rrsig_type_covered(
-	                    dnslib_rrset_rdata(rrset2)));
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int xfrin_changeset_add_rr(dnslib_rrset_t ***rrsets,
-                                  size_t *count, size_t *allocated,
-                                  dnslib_rrset_t *rr)
-{
-	// try to find the RRSet in the list of RRSets
-	int i = 0;
-
-	while (i < *count && !xfrin_changeset_rrsets_match((*rrsets)[i], rr)) {
-		++i;
-	}
-
-	if (i < *count) {
-		// found RRSet to merge the new one into
-		if (dnslib_rrset_merge((void **)&(*rrsets)[i],
-		                       (void **)&rr) != DNSLIB_EOK) {
-			return KNOT_ERROR;
-		}
-
-		// remove the RR
-		dnslib_rrset_deep_free(&rr, 1, 1, 1);
-
-		return KNOT_EOK;
-	} else {
-		return xfrin_changeset_add_rrset(rrsets, count, allocated, rr);
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int xfrin_check_binary_size(uint8_t **data, size_t *allocated,
-                                   size_t required)
-{
-	if (required > *allocated) {
-		size_t new_size = *allocated;
-		while (new_size <= required) {
-			new_size += XFRIN_CHANGESET_BINARY_STEP;
-		}
-		uint8_t *new_data = (uint8_t *)malloc(new_size);
-		if (new_data == NULL) {
-			return KNOT_ENOMEM;
-		}
-
-		memcpy(new_data, *data, *allocated);
-		uint8_t *old_data = *data;
-		*data = new_data;
-		*allocated = new_size;
-		free(old_data);
-	}
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int xfrin_changeset_rrset_to_binary(uint8_t **data, size_t *size,
-                                           size_t *allocated,
-                                           dnslib_rrset_t *rrset)
-{
-	assert(data != NULL);
-	assert(size != NULL);
-	assert(allocated != NULL);
-
-	/*
-	 * In *data, there is the whole changeset in the binary format,
-	 * the actual RRSet will be just appended to it
-	 */
-
-	uint8_t *binary = NULL;
-	size_t actual_size = 0;
-	int ret = dnslib_zdump_rrset_serialize(rrset, &binary, &actual_size);
-	if (ret != DNSLIB_EOK) {
-		return KNOT_ERROR;  /*! \todo Other code? */
-	}
-
-	ret = xfrin_check_binary_size(data, allocated, *size + actual_size);
-	if (ret != KNOT_EOK) {
-		free(binary);
-		return ret;
-	}
-
-	memcpy(*data + *size, binary, actual_size);
-	*size += actual_size;
-	free(binary);
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-typedef enum {
-	XFRIN_CHANGESET_ADD,
-	XFRIN_CHANGESET_REMOVE
-} xfrin_changeset_part_t;
-
-static int xfrin_changeset_add_new_rr(xfrin_changeset_t *changeset,
-                                      dnslib_rrset_t *rrset,
-                                      xfrin_changeset_part_t part)
-{
-	dnslib_rrset_t ***rrsets = NULL;
-	size_t *count = NULL;
-	size_t *allocated = NULL;
-
-	switch (part) {
-	case XFRIN_CHANGESET_ADD:
-		rrsets = &changeset->add;
-		count = &changeset->add_count;
-		allocated = &changeset->add_allocated;
-		break;
-	case XFRIN_CHANGESET_REMOVE:
-		rrsets = &changeset->remove;
-		count = &changeset->remove_count;
-		allocated = &changeset->remove_allocated;
-		break;
-	default:
-		assert(0);
-	}
-
-	assert(rrsets != NULL);
-	assert(count != NULL);
-	assert(allocated != NULL);
-
-	int ret = xfrin_changeset_add_rr(rrsets, count, allocated, rrset);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static void xfrin_changeset_add_soa(dnslib_rrset_t **chg_soa,
-                                    uint32_t *chg_serial, dnslib_rrset_t *soa)
-{
-	*chg_soa = soa;
-	*chg_serial = dnslib_rdata_soa_serial(dnslib_rrset_rdata(soa));
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int xfrin_changeset_add_and_convert_soa(xfrin_changeset_t *changeset,
-                                               dnslib_rrset_t *soa,
-                                               xfrin_changeset_part_t part)
-{
-	// store to binary format
-//	int ret = xfrin_changeset_rrset_to_binary(&changeset->data,
-//	                                      &changeset->size,
-//	                                      &changeset->allocated, soa);
-//	if (ret != KNOT_EOK) {
+//	ret = xfrin_check_binary_size(data, allocated, *size + actual_size);
+//	if (ret != DNSLIB_EOK) {
+//		free(binary);
 //		return ret;
 //	}
 
-	switch (part) {
-	case XFRIN_CHANGESET_ADD:
-		xfrin_changeset_add_soa(&changeset->soa_to,
-		                        &changeset->serial_to, soa);
-		break;
-	case XFRIN_CHANGESET_REMOVE:
-		xfrin_changeset_add_soa(&changeset->soa_from,
-		                        &changeset->serial_from, soa);
-		break;
-	default:
-		assert(0);
-	}
+//	memcpy(*data + *size, binary, actual_size);
+//	*size += actual_size;
+//	free(binary);
 
-	/*! \todo Remove return value? */
-	return KNOT_EOK;
-}
+//	return DNSLIB_EOK;
+//}
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_changesets_from_binary(xfrin_changesets_t *chgsets)
-{
-	assert(chgsets != NULL);
-	assert(chgsets->allocated >= chgsets->count);
-	/*
-	 * Parses changesets from the binary format stored in chgsets->data
-	 * into the changeset_t structures.
-	 */
-	size_t size = 0;
-	size_t parsed = 0;
-	dnslib_rrset_t *rrset;
-	int soa = 0;
-	int ret = 0;
+//static int dnslib_changesets_to_binary(dnslib_changesets_t *chgsets)
+//{
+//	assert(chgsets != NULL);
+//	assert(chgsets->allocated >= chgsets->count);
 
-	for (int i = 0; i < chgsets->count; ++i) {
-		ret = dnslib_zload_rrset_deserialize(&rrset,
-			chgsets->sets[i].data + parsed, &size);
-		if (ret != DNSLIB_EOK) {
-			return KNOT_EMALF;
-		}
+//	/*
+//	 * Converts changesets to the binary format stored in chgsets->data
+//	 * from the changeset_t structures.
+//	 */
+//	int ret;
 
-		while (rrset != NULL) {
-			parsed += size;
+//	for (int i = 0; i < chgsets->count; ++i) {
+//		dnslib_changeset_t *ch = &chgsets->sets[i];
+//		assert(ch->data == NULL);
+//		assert(ch->size == 0);
 
-			if (soa == 0) {
-				assert(dnslib_rrset_type(rrset)
-				       == DNSLIB_RRTYPE_SOA);
+//		// 1) origin SOA
+//		ret = xfrin_changeset_rrset_to_binary(&ch->data, &ch->size,
+//		                                &ch->allocated, ch->soa_from);
+//		if (ret != DNSLIB_EOK) {
+//			free(ch->data);
+//			ch->data = NULL;
+//			return ret;
+//		}
 
-				/* in this special case (changesets loaded
-				 * from journal) the SOA serial should already
-				 * be set, check it.
-				 */
-				assert(chgsets->sets[i].serial_from
-				       == dnslib_rdata_soa_serial(
-				              dnslib_rrset_rdata(rrset)));
-				xfrin_changeset_add_soa(
-					&chgsets->sets[i].soa_from,
-					&chgsets->sets[i].serial_from, rrset);
-				++soa;
-				continue;
-			}
+//		int j;
 
-			if (soa == 1) {
-				if (dnslib_rrset_type(rrset)
-				    == DNSLIB_RRTYPE_SOA) {
-					/* in this special case (changesets
-					 * loaded from journal) the SOA serial
-					 * should already be set, check it.
-					 */
-					assert(chgsets->sets[i].serial_from
-					       == dnslib_rdata_soa_serial(
-					            dnslib_rrset_rdata(rrset)));
-					xfrin_changeset_add_soa(
-						&chgsets->sets[i].soa_to,
-						&chgsets->sets[i].serial_to,
-						rrset);
-					++soa;
-				} else {
-					ret = xfrin_changeset_add_rrset(
-						&chgsets->sets[i].remove,
-						&chgsets->sets[i].remove_count,
-						&chgsets->sets[i]
-						    .remove_allocated,
-						rrset);
-					if (ret != KNOT_EOK) {
-						return ret;
-					}
-				}
-			} else {
-				if (dnslib_rrset_type(rrset)
-				    == DNSLIB_RRTYPE_SOA) {
-					return KNOT_EMALF;
-				} else {
-					ret = xfrin_changeset_add_rrset(
-						&chgsets->sets[i].add,
-						&chgsets->sets[i].add_count,
-						&chgsets->sets[i].add_allocated,
-						rrset);
-					if (ret != KNOT_EOK) {
-						return ret;
-					}
-				}
-			}
+//		// 2) remove RRsets
+//		assert(ch->remove_allocated >= ch->remove_count);
+//		for (j = 0; j < ch->remove_count; ++j) {
+//			ret = xfrin_changeset_rrset_to_binary(&ch->data,
+//			                                      &ch->size,
+//			                                      &ch->allocated,
+//			                                      ch->remove[j]);
+//			if (ret != DNSLIB_EOK) {
+//				free(ch->data);
+//				ch->data = NULL;
+//				return ret;
+//			}
+//		}
 
-			ret = dnslib_zload_rrset_deserialize(&rrset,
-					chgsets->sets[i].data + parsed, &size);
-			if (ret != DNSLIB_EOK) {
-				return KNOT_EMALF;
-			}
-		}
-	}
+//		// 3) new SOA
+//		ret = xfrin_changeset_rrset_to_binary(&ch->data, &ch->size,
+//		                                &ch->allocated, ch->soa_to);
+//		if (ret != DNSLIB_EOK) {
+//			free(ch->data);
+//			ch->data = NULL;
+//			return ret;
+//		}
 
-	return KNOT_ENOTSUP;
-}
+//		// 4) add RRsets
+//		assert(ch->add_allocated >= ch->add_count);
+//		for (j = 0; j < ch->add_count; ++j) {
+//			ret = xfrin_changeset_rrset_to_binary(&ch->data,
+//			                                      &ch->size,
+//			                                      &ch->allocated,
+//			                                      ch->add[j]);
+//			if (ret != DNSLIB_EOK) {
+//				free(ch->data);
+//				ch->data = NULL;
+//				return ret;
+//			}
+//		}
+//	}
 
-/*----------------------------------------------------------------------------*/
-
-static int xfrin_changesets_to_binary(xfrin_changesets_t *chgsets)
-{
-	assert(chgsets != NULL);
-	assert(chgsets->allocated >= chgsets->count);
-
-	/*
-	 * Converts changesets to the binary format stored in chgsets->data
-	 * from the changeset_t structures.
-	 */
-	int ret;
-
-	for (int i = 0; i < chgsets->count; ++i) {
-		xfrin_changeset_t *ch = &chgsets->sets[i];
-		assert(ch->data == NULL);
-		assert(ch->size == 0);
-
-		// 1) origin SOA
-		ret = xfrin_changeset_rrset_to_binary(&ch->data, &ch->size,
-		                                &ch->allocated, ch->soa_from);
-		if (ret != KNOT_EOK) {
-			free(ch->data);
-			ch->data = NULL;
-			return ret;
-		}
-
-		int j;
-
-		// 2) remove RRsets
-		assert(ch->remove_allocated >= ch->remove_count);
-		for (j = 0; j < ch->remove_count; ++j) {
-			ret = xfrin_changeset_rrset_to_binary(&ch->data,
-			                                      &ch->size,
-			                                      &ch->allocated,
-			                                      ch->remove[j]);
-			if (ret != KNOT_EOK) {
-				free(ch->data);
-				ch->data = NULL;
-				return ret;
-			}
-		}
-
-		// 3) new SOA
-		ret = xfrin_changeset_rrset_to_binary(&ch->data, &ch->size,
-		                                &ch->allocated, ch->soa_to);
-		if (ret != KNOT_EOK) {
-			free(ch->data);
-			ch->data = NULL;
-			return ret;
-		}
-
-		// 4) add RRsets
-		assert(ch->add_allocated >= ch->add_count);
-		for (j = 0; j < ch->add_count; ++j) {
-			ret = xfrin_changeset_rrset_to_binary(&ch->data,
-			                                      &ch->size,
-			                                      &ch->allocated,
-			                                      ch->add[j]);
-			if (ret != KNOT_EOK) {
-				free(ch->data);
-				ch->data = NULL;
-				return ret;
-			}
-		}
-	}
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void xfrin_free_changesets(xfrin_changesets_t **changesets)
-{
-	if (changesets == NULL || *changesets == NULL) {
-		return;
-	}
-
-	assert((*changesets)->allocated >= (*changesets)->count);
-
-	for (int i = 0; i < (*changesets)->count; ++i) {
-		xfrin_changeset_t *ch = &(*changesets)->sets[i];
-
-		assert(ch->add_allocated >= ch->add_count);
-		assert(ch->remove_allocated >= ch->remove_count);
-		assert(ch->allocated >= ch->size);
-
-		int j;
-		for (j = 0; i < ch->add_count; ++j) {
-			dnslib_rrset_deep_free(&ch->add[j], 1, 1, 1);
-		}
-		free(ch->add);
-
-		for (j = 0; i < ch->remove_count; ++j) {
-			dnslib_rrset_deep_free(&ch->add[j], 1, 1, 1);
-		}
-		free(ch->remove);
-
-		dnslib_rrset_deep_free(&ch->soa_from, 1, 1, 1);
-		dnslib_rrset_deep_free(&ch->soa_to, 1, 1, 1);
-
-		free(ch->data);
-	}
-
-	free((*changesets)->sets);
-	free(*changesets);
-	*changesets = NULL;
-}
-
+//	return DNSLIB_EOK;
+//}
 /*----------------------------------------------------------------------------*/
 
 int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
-                              xfrin_changesets_t **changesets)
+                              dnslib_changesets_t **changesets)
 {
 	if (pkt == NULL || changesets == NULL) {
-		debug_xfr("Wrong parameters supported.\n");
-		return KNOT_EINVAL;
+		debug_dnslib_xfr("Wrong parameters supported.\n");
+		return DNSLIB_EBADARG;
 	}
 
 	dnslib_packet_t *packet = NULL;
@@ -1103,23 +704,23 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 	int ret;
 
 	if ((ret = xfrin_parse_first_rr(&packet, pkt, size, &soa1))
-	     != KNOT_EOK) {
+	     != DNSLIB_EOK) {
 		return ret;
 	}
 
 	assert(packet != NULL);
 
 	if (soa1 == NULL) {
-		debug_xfr("No RRs in the packet.\n");
+		debug_dnslib_xfr("No RRs in the packet.\n");
 		dnslib_packet_free(&packet);
 		/*! \todo Some other action??? */
-		return KNOT_EMALF;
+		return DNSLIB_EMALF;
 	}
 
 	assert(soa1 != NULL);
 
 	if (*changesets == NULL
-	    && (ret = xfrin_allocate_changesets(changesets)) != KNOT_EOK) {
+	    && (ret = xfrin_allocate_changesets(changesets)) != DNSLIB_EOK) {
 		dnslib_packet_free(&packet);
 		return ret;
 	}
@@ -1127,9 +728,9 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 	/*! \todo Do some checking about what is the first and second SOA. */
 
 	if (dnslib_rrset_type(soa1) != DNSLIB_RRTYPE_SOA) {
-		debug_xfr("First RR is not a SOA RR!\n");
+		debug_dnslib_xfr("First RR is not a SOA RR!\n");
 		dnslib_packet_free(&packet);
-		return KNOT_EMALF;
+		return DNSLIB_EMALF;
 	}
 
 	// we may drop this SOA, not needed right now; parse the next one
@@ -1140,8 +741,8 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 
 	while (ret == DNSLIB_EOK && rr != NULL) {
 		if (dnslib_rrset_type(rr) != DNSLIB_RRTYPE_SOA) {
-			debug_xfr("Next RR is not a SOA RR as it should be!\n");
-			ret = KNOT_EMALF;
+			debug_dnslib_xfr("Next RR is not a SOA RR as it should be!\n");
+			ret = DNSLIB_EMALF;
 			goto cleanup;
 		}
 
@@ -1152,15 +753,15 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 		}
 
 		if ((ret = xfrin_changesets_check_size(*changesets))
-		     != KNOT_EOK) {
+		     != DNSLIB_EOK) {
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
 			goto cleanup;
 		}
 
 		// save the origin SOA of the remove part
-		ret = xfrin_changeset_add_and_convert_soa(
+		ret = xfrin_changeset_add_soa(
 			&(*changesets)->sets[i], rr, XFRIN_CHANGESET_REMOVE);
-		if (ret != KNOT_EOK) {
+		if (ret != DNSLIB_EOK) {
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
 			goto cleanup;
 		}
@@ -1174,7 +775,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 			assert(dnslib_rrset_type(rr) != DNSLIB_RRTYPE_SOA);
 			if ((ret = xfrin_changeset_add_new_rr(
 			             &(*changesets)->sets[i], rr,
-			             XFRIN_CHANGESET_REMOVE)) != KNOT_EOK) {
+				     XFRIN_CHANGESET_REMOVE)) != DNSLIB_EOK) {
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
 				goto cleanup;
 			}
@@ -1185,9 +786,9 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 		       && dnslib_rrset_type(rr) == DNSLIB_RRTYPE_SOA);
 
 		// save the origin SOA of the add part
-		ret = xfrin_changeset_add_and_convert_soa(
+		ret = xfrin_changeset_add_soa(
 			&(*changesets)->sets[i], rr, XFRIN_CHANGESET_ADD);
-		if (ret != KNOT_EOK) {
+		if (ret != DNSLIB_EOK) {
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
 			goto cleanup;
 		}
@@ -1201,7 +802,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 			assert(dnslib_rrset_type(rr) != DNSLIB_RRTYPE_SOA);
 			if ((ret = xfrin_changeset_add_new_rr(
 			             &(*changesets)->sets[i], rr,
-			             XFRIN_CHANGESET_ADD)) != KNOT_EOK) {
+				     XFRIN_CHANGESET_ADD)) != DNSLIB_EOK) {
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
 				goto cleanup;
 			}
@@ -1216,9 +817,9 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 	}
 
 	if (ret != DNSLIB_EOK) {
-		debug_xfr("Could not parse next Answer RR: %s.\n",
+		debug_dnslib_xfr("Could not parse next Answer RR: %s.\n",
 		          dnslib_strerror(ret));
-		ret = KNOT_EMALF;
+		ret = DNSLIB_EMALF;
 		goto cleanup;
 	}
 
@@ -1230,12 +831,12 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 
 	dnslib_rrset_deep_free(&soa2, 1, 1, 1);
 
-	// everything is ready, convert the changesets
-	if ((ret = xfrin_changesets_to_binary(*changesets)) != KNOT_EOK) {
-		// free the changesets
-		debug_xfr("Failed to convert changesets to binary format.\n");
-		xfrin_free_changesets(changesets);
-	}
+//	// everything is ready, convert the changesets
+//	if ((ret = dnslib_changesets_to_binary(*changesets)) != DNSLIB_EOK) {
+//		// free the changesets
+//		debug_dnslib_xfr("Failed to convert changesets to binary format.\n");
+//		xfrin_free_changesets(changesets);
+//	}
 
 	return ret;
 
@@ -1243,165 +844,6 @@ cleanup:
 	xfrin_free_changesets(changesets);
 	dnslib_packet_free(&packet);
 	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int xfrin_store_changesets(dnslib_zone_t *zone, const xfrin_changesets_t *src)
-{
-	if (!zone || !src) {
-		return KNOT_EINVAL;
-	}
-	if (!zone->data) {
-		return KNOT_EINVAL;
-	}
-
-	/* Fetch zone-specific data. */
-	zonedata_t *zd = (zonedata_t *)zone->data;
-	if (!zd->ixfr_db) {
-		return KNOT_EINVAL;
-	}
-
-	/* Begin writing to journal. */
-	for (unsigned i = 0; i < src->count; ++i) {
-
-		/* Make key from serials. */
-		xfrin_changeset_t* chs = src->sets + i;
-		uint64_t k = ixfrdb_key_make(chs->serial_from, chs->serial_to);
-
-		/* Write entry. */
-		int ret = journal_write(zd->ixfr_db, k, (const char*)chs->data,
-					chs->size);
-
-		/* Check for errors. */
-		while (ret != KNOT_EOK) {
-			/* Sync to zonefile may be needed. */
-			if (ret == KNOT_EAGAIN) {
-
-				/* Cancel sync timer. */
-				event_t *tmr = zd->ixfr_dbsync;
-				if (tmr) {
-					debug_zones("ixfr_db: cancelling SYNC "
-						    "timer\n");
-					evsched_cancel(tmr->parent, tmr);
-				}
-
-				/* Synchronize. */
-				debug_zones("ixfr_db: forcing zonefile SYNC\n");
-				ret = zones_zonefile_sync(zone);
-				if (ret != KNOT_EOK) {
-					continue;
-				}
-
-				/* Reschedule sync timer. */
-				if (tmr) {
-					/* Fetch sync timeout. */
-					conf_read_lock();
-					int timeout = zd->conf->dbsync_timeout;
-					timeout *= 1000; /* Convert to ms. */
-					conf_read_unlock();
-
-					/* Reschedule. */
-					debug_zones("ixfr_db: resuming SYNC "
-						    "timer\n");
-					evsched_schedule(tmr->parent, tmr,
-							 timeout);
-
-				}
-
-				/* Attempt to write again. */
-				ret = journal_write(zd->ixfr_db, k,
-						    (const char*)chs->data,
-						    chs->size);
-			} else {
-				/* Other errors. */
-				return ret;
-			}
-		}
-	}
-
-	/* Written changesets to journal. */
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int xfr_load_changesets(const dnslib_zone_t *zone, xfrin_changesets_t *dst,
-                        uint32_t from, uint32_t to)
-{
-	if (!zone || !dst) {
-		return KNOT_EINVAL;
-	}
-	if (!zone->data) {
-		return KNOT_EINVAL;
-	}
-
-	/* Fetch zone-specific data. */
-	zonedata_t *zd = (zonedata_t *)dnslib_zone_data(zone);
-	if (!zd->ixfr_db) {
-		return KNOT_EINVAL;
-	}
-
-	/* Read entries from starting serial until finished. */
-	uint32_t found_to = from;
-	journal_node_t *n = 0;
-	int ret = journal_fetch(zd->ixfr_db, from, ixfrdb_key_from_cmp, &n);
-	while(n != 0 && n != journal_end(zd->ixfr_db)) {
-
-		/* Check for history end. */
-		if (to == found_to) {
-			break;
-		}
-
-		/* Check changesets size if needed. */
-		++dst->count;
-		ret = xfrin_changesets_check_size(dst);
-		if (ret != KNOT_EOK) {
-			debug_zones("ixfr_db: failed to check changesets size\n");
-			--dst->count;
-			return ret;
-		}
-
-		/* Initialize changeset. */
-		xfrin_changeset_t *chs = dst->sets + (dst->count - 1);
-		chs->serial_from = ixfrdb_key_from(n->id);
-		chs->serial_to = ixfrdb_key_to(n->id);
-		chs->data = malloc(n->len);
-		if (!chs->data) {
-			--dst->count;
-			return KNOT_ENOMEM;
-		}
-
-		/* Read journal entry. */
-		ret = journal_read(zd->ixfr_db, n->id,
-				   0, (char*)chs->data);
-		if (ret != KNOT_EOK) {
-			debug_zones("ixfr_db: failed to read data from journal\n");
-			--dst->count;
-			return KNOT_ERROR;
-		}
-
-		/* Next node. */
-		found_to = chs->serial_to;
-		++n;
-
-		/*! \todo Check consistency. */
-	}
-
-	/* Unpack binary data. */
-	ret = xfrin_changesets_from_binary(dst);
-	if (ret != KNOT_EOK) {
-		debug_zones("ixfr_db: failed to unpack changesets from binary\n");
-		return ret;
-	}
-
-	/* Check for complete history. */
-	if (to != found_to) {
-		return KNOT_ERANGE;
-	}
-
-	/* History reconstructed. */
-	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1478,14 +920,14 @@ static int xfrin_changes_check_rrsets(dnslib_rrset_t ***rrsets,
 	dnslib_rrset_t **rrsets_new =
 		(dnslib_rrset_t **)calloc(new_count, sizeof(dnslib_rrset_t *));
 	if (rrsets_new == NULL) {
-		return KNOT_ENOMEM;
+		return DNSLIB_ENOMEM;
 	}
 
 	memcpy(rrsets_new, *rrsets, *count);
 	*rrsets = rrsets_new;
 	*allocated = new_count;
 
-	return KNOT_EOK;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1501,14 +943,14 @@ static int xfrin_changes_check_nodes(dnslib_node_t ***nodes,
 	dnslib_node_t **nodes_new =
 		(dnslib_node_t **)calloc(new_count, sizeof(dnslib_node_t *));
 	if (nodes_new == NULL) {
-		return KNOT_ENOMEM;
+		return DNSLIB_ENOMEM;
 	}
 
 	memcpy(nodes_new, *nodes, *count);
 	*nodes = nodes_new;
 	*allocated = new_count;
 
-	return KNOT_EOK;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1524,14 +966,14 @@ static int xfrin_changes_check_nodes(dnslib_node_t ***nodes,
 //	dnslib_dname_t **dnames_new =
 //		(dnslib_dname_t **)calloc(new_count, sizeof(dnslib_dname_t *));
 //	if (dnames_new == NULL) {
-//		return KNOT_ENOMEM;
+//		return DNSLIB_ENOMEM;
 //	}
 
 //	memcpy(dnames_new, *dnames, *count);
 //	*dnames = dnames_new;
 //	*allocated = new_count;
 
-//	return KNOT_EOK;
+//	return DNSLIB_EOK;
 //}
 
 /*----------------------------------------------------------------------------*/
@@ -1616,11 +1058,11 @@ static int xfrin_get_node_copy(dnslib_node_t **node, xfrin_changes_t *changes)
 	dnslib_node_t *new_node =
 		dnslib_node_get_new_node(*node);
 	if (new_node == NULL) {
-		debug_xfr("Creating copy of node.\n");
+		debug_dnslib_xfr("Creating copy of node.\n");
 		int ret = dnslib_node_shallow_copy(*node, &new_node);
 		if (ret != DNSLIB_EOK) {
-			debug_xfr("Failed to create node copy.\n");
-			return KNOT_ENOMEM;
+			debug_dnslib_xfr("Failed to create node copy.\n");
+			return DNSLIB_ENOMEM;
 		}
 
 		// save the copy of the node
@@ -1628,8 +1070,8 @@ static int xfrin_get_node_copy(dnslib_node_t **node, xfrin_changes_t *changes)
 			&changes->new_nodes,
 			&changes->new_nodes_count,
 			&changes->new_nodes_allocated);
-		if (ret != KNOT_EOK) {
-			debug_xfr("Failed to add new node to list.\n");
+		if (ret != DNSLIB_EOK) {
+			debug_dnslib_xfr("Failed to add new node to list.\n");
 			dnslib_node_free(&new_node, 0, 0);
 			return ret;
 		}
@@ -1639,8 +1081,8 @@ static int xfrin_get_node_copy(dnslib_node_t **node, xfrin_changes_t *changes)
 			&changes->old_nodes,
 			&changes->old_nodes_count,
 			&changes->old_nodes_allocated);
-		if (ret != KNOT_EOK) {
-			debug_xfr("Failed to add old node to list.\n");
+		if (ret != DNSLIB_EOK) {
+			debug_dnslib_xfr("Failed to add old node to list.\n");
 			dnslib_node_free(&new_node, 0, 0);
 			return ret;
 		}
@@ -1656,7 +1098,7 @@ static int xfrin_get_node_copy(dnslib_node_t **node, xfrin_changes_t *changes)
 	}
 
 	*node = new_node;
-	return KNOT_EOK;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1667,16 +1109,16 @@ static int xfrin_copy_old_rrset(dnslib_rrset_t *old,
 	// create new RRSet by copying the old one
 	int ret = dnslib_rrset_shallow_copy(old, copy);
 	if (ret != DNSLIB_EOK) {
-		debug_xfr("Failed to create RRSet copy.\n");
-		return KNOT_ENOMEM;
+		debug_dnslib_xfr("Failed to create RRSet copy.\n");
+		return DNSLIB_ENOMEM;
 	}
 
 	// add the RRSet to the list of new RRSets
 	ret = xfrin_changes_check_rrsets(&changes->new_rrsets,
 	                                 &changes->new_rrsets_count,
 	                                 &changes->new_rrsets_allocated);
-	if (ret != KNOT_EOK) {
-		debug_xfr("Failed to add new RRSet to list.\n");
+	if (ret != DNSLIB_EOK) {
+		debug_dnslib_xfr("Failed to add new RRSet to list.\n");
 		dnslib_rrset_free(copy);
 		return ret;
 	}
@@ -1687,8 +1129,8 @@ static int xfrin_copy_old_rrset(dnslib_rrset_t *old,
 	ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
 	                                 &changes->old_rrsets_count,
 	                                 &changes->old_rrsets_allocated);
-	if (ret != KNOT_EOK) {
-		debug_xfr("Failed to add old RRSet to list.\n");
+	if (ret != DNSLIB_EOK) {
+		debug_dnslib_xfr("Failed to add old RRSet to list.\n");
 		return ret;
 	}
 
@@ -1697,11 +1139,11 @@ static int xfrin_copy_old_rrset(dnslib_rrset_t *old,
 //	// replace the RRSet in the node copy by the new one
 //	ret = dnslib_node_add_rrset(node, *copy, 0);
 //	if (ret != DNSLIB_EOK) {
-//		debug_xfr("Failed to add RRSet copy to node\n");
-//		return KNOT_ERROR;
+//		debug_dnslib_xfr("Failed to add RRSet copy to node\n");
+//		return DNSLIB_ERROR;
 //	}
 
-	return KNOT_EOK;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1712,23 +1154,23 @@ static int xfrin_copy_rrset(dnslib_node_t *node, dnslib_rr_type_t type,
 	dnslib_rrset_t *old = dnslib_node_remove_rrset(node, type);
 
 	if (old == NULL) {
-		debug_xfr("RRSet not found for RR to be removed.\n");
+		debug_dnslib_xfr("RRSet not found for RR to be removed.\n");
 		return 1;
 	}
 
 	int ret = xfrin_copy_old_rrset(old, rrset, changes);
-	if (ret != KNOT_EOK) {
+	if (ret != DNSLIB_EOK) {
 		return ret;
 	}
 	
 	// replace the RRSet in the node copy by the new one
 	ret = dnslib_node_add_rrset(node, *rrset, 0);
 	if (ret != DNSLIB_EOK) {
-		debug_xfr("Failed to add RRSet copy to node\n");
-		return KNOT_ERROR;
+		debug_dnslib_xfr("Failed to add RRSet copy to node\n");
+		return DNSLIB_ERROR;
 	}
 	
-	return KNOT_EOK;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1761,7 +1203,7 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 		
 		// copy the rrset
 		ret = xfrin_copy_rrset(node, type, rrset, changes);
-		if (ret != KNOT_EOK) {
+		if (ret != DNSLIB_EOK) {
 			return ret;
 		}
 	} else {
@@ -1783,13 +1225,13 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 	/*! \todo This may be done unnecessarily more times. */
 	dnslib_rrset_t *rrsigs;
 	ret = xfrin_copy_old_rrset(old, &rrsigs, changes);
-	if (ret != KNOT_EOK) {
+	if (ret != DNSLIB_EOK) {
 		return ret;
 	}
 	
 	// set the RRSIGs to the new RRSet copy
 	if (dnslib_rrset_set_rrsigs(*rrset, rrsigs) != DNSLIB_EOK) {
-		return KNOT_ERROR;
+		return DNSLIB_ERROR;
 	}
 	
 	
@@ -1799,7 +1241,7 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 	
 	dnslib_rdata_t *rdata = xfrin_remove_rdata(rrsigs, remove);
 	if (rdata == NULL) {
-		debug_xfr("Failed to remove RDATA from RRSet: %s.\n",
+		debug_dnslib_xfr("Failed to remove RDATA from RRSet: %s.\n",
 			  dnslib_strerror(ret));
 		return 1;
 	}
@@ -1814,8 +1256,8 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 		ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
 		                                 &changes->old_rrsets_count,
 		                                &changes->old_rrsets_allocated);
-		if (ret != KNOT_EOK) {
-			debug_xfr("Failed to add empty RRSet to the "
+		if (ret != DNSLIB_EOK) {
+			debug_dnslib_xfr("Failed to add empty RRSet to the "
 			          "list of old RRSets.");
 			// delete the RRSet right away
 			dnslib_rrset_free(&rrsigs);
@@ -1836,8 +1278,8 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 			ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
 			                        &changes->old_rrsets_count,
 			                        &changes->old_rrsets_allocated);
-			if (ret != KNOT_EOK) {
-				debug_xfr("Failed to add empty RRSet to the "
+			if (ret != DNSLIB_EOK) {
+				debug_dnslib_xfr("Failed to add empty RRSet to the "
 					  "list of old RRSets.");
 				// delete the RRSet right away
 				dnslib_rrset_free(rrset);
@@ -1853,7 +1295,7 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 	rdata->next = changes->old_rdata;
 	changes->old_rdata = rdata;
 	
-	return KNOT_EOK;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1885,26 +1327,26 @@ static int xfrin_apply_remove_normal(xfrin_changes_t *changes,
 		 */
 		ret = xfrin_copy_rrset(node,
 			dnslib_rrset_type(remove), rrset, changes);
-		if (ret != KNOT_EOK) {
+		if (ret != DNSLIB_EOK) {
 			return ret;
 		}
 	}
 	
 	if (*rrset == NULL) {
-		debug_xfr("RRSet not found for RR to be removed.\n");
+		debug_dnslib_xfr("RRSet not found for RR to be removed.\n");
 		return 1;
 	}
 	
-DEBUG_XFR(
+DEBUG_DNSLIB_XFR(
 	char *name = dnslib_dname_to_str(dnslib_rrset_owner(*rrset));
-	debug_xfr("Updating RRSet with owner %s, type %s\n", name,
+	debug_dnslib_xfr("Updating RRSet with owner %s, type %s\n", name,
 		  dnslib_rrtype_to_string(dnslib_rrset_type(*rrset)));
 	free(name);
 );
 
 	dnslib_rdata_t *rdata = xfrin_remove_rdata(*rrset, remove);
 	if (rdata == NULL) {
-		debug_xfr("Failed to remove RDATA from RRSet: %s.\n",
+		debug_dnslib_xfr("Failed to remove RDATA from RRSet: %s.\n",
 			  dnslib_strerror(ret));
 		return 1;
 	}
@@ -1921,8 +1363,8 @@ DEBUG_XFR(
 		ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
 		                                 &changes->old_rrsets_count,
 		                                &changes->old_rrsets_allocated);
-		if (ret != KNOT_EOK) {
-			debug_xfr("Failed to add empty RRSet to the "
+		if (ret != DNSLIB_EOK) {
+			debug_dnslib_xfr("Failed to add empty RRSet to the "
 			          "list of old RRSets.");
 			// delete the RRSet right away
 			dnslib_rrset_free(rrset);
@@ -1936,13 +1378,13 @@ DEBUG_XFR(
 	rdata->next = changes->old_rdata;
 	changes->old_rdata = rdata;
 	
-	return KNOT_EOK;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
 static int xfrin_apply_remove(dnslib_zone_contents_t *contents,
-                              xfrin_changeset_t *chset,
+                              dnslib_changeset_t *chset,
                               xfrin_changes_t *changes)
 {
 	/*
@@ -1961,7 +1403,7 @@ static int xfrin_apply_remove(dnslib_zone_contents_t *contents,
 			node = dnslib_zone_contents_get_node(contents,
 			                  dnslib_rrset_owner(chset->remove[i]));
 			if (node == NULL) {
-				debug_xfr("Node not found for RR to be removed"
+				debug_dnslib_xfr("Node not found for RR to be removed"
 				          "!\n");
 				continue;
 			}
@@ -1970,7 +1412,7 @@ static int xfrin_apply_remove(dnslib_zone_contents_t *contents,
 		// create a copy of the node if not already created
 		if (!dnslib_node_is_new(node)) {
 			ret = xfrin_get_node_copy(&node, changes);
-			if (ret != KNOT_EOK) {
+			if (ret != DNSLIB_EOK) {
 				return ret;
 			}
 		}
@@ -1991,12 +1433,12 @@ static int xfrin_apply_remove(dnslib_zone_contents_t *contents,
 		
 		if (ret > 0) {
 			continue;
-		} else if (ret != KNOT_EOK) {
+		} else if (ret != DNSLIB_EOK) {
 			return ret;
 		}
 	}
 
-	return KNOT_EOK;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2009,7 +1451,7 @@ static dnslib_node_t *xfrin_add_new_node(dnslib_zone_contents_t *contents,
 	dnslib_node_t *node = dnslib_node_new(dnslib_rrset_get_owner(rrset),
 	                                      NULL, DNSLIB_NODE_FLAGS_NEW);
 	if (node == NULL) {
-		debug_xfr("Failed to create a new node.\n");
+		debug_dnslib_xfr("Failed to create a new node.\n");
 		return NULL;
 	}
 
@@ -2025,7 +1467,7 @@ static dnslib_node_t *xfrin_add_new_node(dnslib_zone_contents_t *contents,
 		                                    DNSLIB_NODE_FLAGS_NEW, 1);
 	}
 	if (ret != DNSLIB_EOK) {
-		debug_xfr("Failed to add new node to zone contents.\n");
+		debug_dnslib_xfr("Failed to add new node to zone contents.\n");
 		return NULL;
 	}
 
@@ -2070,29 +1512,29 @@ static int xfrin_apply_add_normal(xfrin_changes_t *changes,
 	}
 
 	if (*rrset == NULL) {
-		debug_xfr("RRSet to be added not found in zone.\n");
+		debug_dnslib_xfr("RRSet to be added not found in zone.\n");
 		// add the RRSet from the changeset to the node
 		/*! \todo What about domain names?? Shouldn't we use the
 		 *        zone-contents' version of this function??
 		 */
 		ret = dnslib_node_add_rrset(node, add, 0);
 		if (ret != DNSLIB_EOK) {
-			debug_xfr("Failed to add RRSet to node.\n");
-			return KNOT_ERROR;
+			debug_dnslib_xfr("Failed to add RRSet to node.\n");
+			return DNSLIB_ERROR;
 		}
-		return KNOT_EOK; // done, continue
+		return DNSLIB_EOK; // done, continue
 	}
 
 	dnslib_rrset_t *old = *rrset;
 
-DEBUG_XFR(
+DEBUG_DNSLIB_XFR(
 	char *name = dnslib_dname_to_str(dnslib_rrset_owner(*rrset));
-	debug_xfr("Found RRSet with owner %s, type %s\n", name,
+	debug_dnslib_xfr("Found RRSet with owner %s, type %s\n", name,
 	          dnslib_rrtype_to_string(dnslib_rrset_type(*rrset)));
 	free(name);
 );
 	ret = xfrin_copy_old_rrset(old, rrset, changes);
-	if (ret != KNOT_EOK) {
+	if (ret != DNSLIB_EOK) {
 		return ret;
 	}
 
@@ -2109,8 +1551,8 @@ DEBUG_XFR(
 	 */
 	ret = dnslib_rrset_merge((void **)rrset, (void **)&add);
 	if (ret != DNSLIB_EOK) {
-		debug_xfr("Failed to merge changeset RRSet to copy.\n");
-		return KNOT_ERROR;
+		debug_dnslib_xfr("Failed to merge changeset RRSet to copy.\n");
+		return DNSLIB_ERROR;
 	}
 }
 
@@ -2150,28 +1592,28 @@ static int xfrin_apply_add_rrsig(xfrin_changes_t *changes,
 	}
 
 	if (*rrset == NULL) {
-		debug_xfr("RRSet to be added not found in zone.\n");
+		debug_dnslib_xfr("RRSet to be added not found in zone.\n");
 		
 		// create a new RRSet to add the RRSIGs into
 		*rrset = dnslib_rrset_new(dnslib_node_get_owner(node), type,
 		                          dnslib_rrset_class(add), 
 		                          dnslib_rrset_ttl(add));
 		if (*rrset == NULL) {
-			debug_xfr("Failed to create new RRSet for RRSIGs.\n");
-			return KNOT_ENOMEM;
+			debug_dnslib_xfr("Failed to create new RRSet for RRSIGs.\n");
+			return DNSLIB_ENOMEM;
 		}
 		
 		// add the RRSet from the changeset to the node
 		ret = dnslib_node_add_rrset(node, *rrset, 0);
 		if (ret != DNSLIB_EOK) {
-			debug_xfr("Failed to add RRSet to node.\n");
-			return KNOT_ERROR;
+			debug_dnslib_xfr("Failed to add RRSet to node.\n");
+			return DNSLIB_ERROR;
 		}
 	}
 
-DEBUG_XFR(
+DEBUG_DNSLIB_XFR(
 		char *name = dnslib_dname_to_str(dnslib_rrset_owner(*rrset));
-		debug_xfr("Found RRSet with owner %s, type %s\n", name,
+		debug_dnslib_xfr("Found RRSet with owner %s, type %s\n", name,
 			  dnslib_rrtype_to_string(dnslib_rrset_type(*rrset)));
 		free(name);
 );
@@ -2179,18 +1621,18 @@ DEBUG_XFR(
 	if (dnslib_rrset_rrsigs(*rrset) == NULL) {
 		ret = dnslib_rrset_set_rrsigs(*rrset, add);
 		if (ret != DNSLIB_EOK) {
-			debug_xfr("Failed to add RRSIGs to the RRSet.\n");
-			return KNOT_ERROR;
+			debug_dnslib_xfr("Failed to add RRSIGs to the RRSet.\n");
+			return DNSLIB_ERROR;
 		}
 		
-		return KNOT_EOK;
+		return DNSLIB_EOK;
 	} else {
 		dnslib_rrset_t *old = dnslib_rrset_get_rrsigs(*rrset);
 		assert(old != NULL);
 		dnslib_rrset_t *rrsig;
 		
 		ret = xfrin_copy_old_rrset(old, &rrsig, changes);
-		if (ret != KNOT_EOK) {
+		if (ret != DNSLIB_EOK) {
 			return ret;
 		}
 		
@@ -2203,18 +1645,18 @@ DEBUG_XFR(
 		 */
 		ret = dnslib_rrset_merge((void **)&rrsig, (void **)&add);
 		if (ret != DNSLIB_EOK) {
-			debug_xfr("Failed to merge changeset RRSet to copy.\n");
-			return KNOT_ERROR;
+			debug_dnslib_xfr("Failed to merge changeset RRSet to copy.\n");
+			return DNSLIB_ERROR;
 		}
 	}
 	
-	return KNOT_EOK;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
 static int xfrin_apply_add(dnslib_zone_contents_t *contents,
-                           xfrin_changeset_t *chset,
+                           dnslib_changeset_t *chset,
                            xfrin_changes_t *changes)
 {
 	// iterate over removed RRSets, copy appropriate nodes and remove
@@ -2232,13 +1674,13 @@ static int xfrin_apply_add(dnslib_zone_contents_t *contents,
 			if (node == NULL) {
 				// create new node, connect it properly to the
 				// zone nodes
-				debug_xfr("Creating new node.\n");
+				debug_dnslib_xfr("Creating new node.\n");
 				node = xfrin_add_new_node(contents,
 				                          chset->add[i]);
 				if (node == NULL) {
-					debug_xfr("Failed to create new node "
+					debug_dnslib_xfr("Failed to create new node "
 					          "in zone.\n");
-					return KNOT_ERROR;
+					return DNSLIB_ERROR;
 				}
 				continue; // continue with another RRSet
 			}
@@ -2260,12 +1702,12 @@ static int xfrin_apply_add(dnslib_zone_contents_t *contents,
 			                             node, &rrset);
 		}
 		
-		if (ret != KNOT_EOK) {
+		if (ret != DNSLIB_EOK) {
 			return ret;
 		}
 	}
 
-	return KNOT_EOK;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2297,7 +1739,7 @@ static void xfrin_clean_changes_after_fail(xfrin_changes_t *changes)
 
 static int xfrin_apply_replace_soa(dnslib_zone_contents_t *contents,
                                    xfrin_changes_t *changes,
-                                   xfrin_changeset_t *chset)
+                                   dnslib_changeset_t *chset)
 {
 	dnslib_node_t *node = dnslib_zone_contents_get_apex(contents);
 	assert(node != NULL);
@@ -2307,7 +1749,7 @@ static int xfrin_apply_replace_soa(dnslib_zone_contents_t *contents,
 	// create a copy of the node if not already created
 	if (!dnslib_node_is_new(node)) {
 		ret = xfrin_get_node_copy(&node, changes);
-		if (ret != KNOT_EOK) {
+		if (ret != DNSLIB_EOK) {
 			return ret;
 		}
 	}
@@ -2323,8 +1765,8 @@ static int xfrin_apply_replace_soa(dnslib_zone_contents_t *contents,
 	ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
 	                                 &changes->old_rrsets_count,
 	                                 &changes->old_rrsets_allocated);
-	if (ret != KNOT_EOK) {
-		debug_xfr("Failed to add old RRSet to list.\n");
+	if (ret != DNSLIB_EOK) {
+		debug_dnslib_xfr("Failed to add old RRSet to list.\n");
 		return ret;
 	}
 
@@ -2333,36 +1775,36 @@ static int xfrin_apply_replace_soa(dnslib_zone_contents_t *contents,
 	// and just insert the new SOA RRSet to the node
 	ret = dnslib_node_add_rrset(node, chset->soa_to, 0);
 	if (ret != DNSLIB_EOK) {
-		debug_xfr("Failed to add RRSet to node.\n");
-		return KNOT_ERROR;
+		debug_dnslib_xfr("Failed to add RRSet to node.\n");
+		return DNSLIB_ERROR;
 	}
 
-	return KNOT_EOK;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
 static int xfrin_apply_changeset(dnslib_zone_contents_t *contents,
                                  xfrin_changes_t *changes,
-                                 xfrin_changeset_t *chset)
+                                 dnslib_changeset_t *chset)
 {
 	// check if serial matches
 	const dnslib_rrset_t *soa = dnslib_node_rrset(contents->apex,
 	                                        DNSLIB_RRTYPE_SOA);
 	if (soa == NULL || dnslib_rdata_soa_serial(dnslib_rrset_rdata(soa))
 	                   != chset->serial_from) {
-		debug_xfr("SOA serials do not match!!\n");
-		return KNOT_ERROR;
+		debug_dnslib_xfr("SOA serials do not match!!\n");
+		return DNSLIB_ERROR;
 	}
 
 	int ret = xfrin_apply_remove(contents, chset, changes);
-	if (ret != KNOT_EOK) {
+	if (ret != DNSLIB_EOK) {
 		xfrin_clean_changes_after_fail(changes);
 		return ret;
 	}
 
 	ret = xfrin_apply_add(contents, chset, changes);
-	if (ret != KNOT_EOK) {
+	if (ret != DNSLIB_EOK) {
 		xfrin_clean_changes_after_fail(changes);
 		return ret;
 	}
@@ -2389,7 +1831,7 @@ static void xfrin_check_node_in_tree(dnslib_zone_tree_node_t *tnode, void *data)
 	
 	dnslib_node_t *node = dnslib_node_get_new_node(tnode->node);
 	
-	debug_xfr("Children of old node: %u, children of new node: %u.\n",
+	debug_dnslib_xfr("Children of old node: %u, children of new node: %u.\n",
 	         dnslib_node_children(node), dnslib_node_children(tnode->node));
 
 	// check if the node is empty and has no children
@@ -2417,7 +1859,7 @@ static void xfrin_check_node_in_tree(dnslib_zone_tree_node_t *tnode, void *data)
 		if (xfrin_changes_check_nodes(&changes->old_nodes,
 		                              &changes->old_nodes_count,
 		                              &changes->old_nodes_allocated) 
-			!= KNOT_EOK) {
+			!= DNSLIB_EOK) {
 			/*! \todo Notify about the error!!! */
 			return;
 		}
@@ -2458,14 +1900,14 @@ static int xfrin_finalize_remove_nodes(dnslib_zone_contents_t *contents,
 					contents, node);
 			}
 			if (removed == NULL) {
-				debug_xfr("Failed to remove node from zone!\n");
-				return KNOT_ENOENT;
+				debug_dnslib_xfr("Failed to remove node from zone!\n");
+				return DNSLIB_ENONODE;
 			}
 			
 			assert(removed == node);
 		}
 	}
-	return KNOT_EOK;
+	return DNSLIB_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2576,7 +2018,8 @@ static void xfrin_cleanup_update(xfrin_changes_t *changes)
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
+int xfrin_apply_changesets_to_zone(dnslib_zone_t *zone, 
+                                   dnslib_changesets_t *chsets)
 {
 	/*
 	 * Applies one changeset to the zone. Checks if the changeset may be
@@ -2585,7 +2028,7 @@ int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 	 */
 
 	/*! \todo Implement. */
-	return KNOT_ENOTSUP;
+	return DNSLIB_ENOTSUP;
 
 	dnslib_zone_contents_t *old_contents = dnslib_zone_get_contents(zone);
 
@@ -2597,7 +2040,7 @@ int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 		// abort
 		debug_dnslib_zone("Trying to apply changesets to zone that is "
 		                  "being updated. Aborting.\n");
-		return KNOT_EAGAIN;
+		return DNSLIB_EAGAIN;
 	}
 
 	/*
@@ -2609,7 +2052,7 @@ int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 	int ret = dnslib_zone_contents_shallow_copy(old_contents,
 	                                            &contents_copy);
 	if (ret != DNSLIB_EOK) {
-		debug_xfr("Failed to create shallow copy of zone: %s\n",
+		debug_dnslib_xfr("Failed to create shallow copy of zone: %s\n",
 		          knot_strerror(ret));
 		return ret;
 	}
@@ -2631,9 +2074,9 @@ int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 
 	for (int i = 0; i < chsets->count; ++i) {
 		if ((ret = xfrin_apply_changeset(contents_copy, &changes,
-		                               &chsets->sets[i])) != KNOT_EOK) {
+					       &chsets->sets[i])) != DNSLIB_EOK) {
 			xfrin_rollback_update(contents_copy, &changes);
-			debug_xfr("Failed to apply changesets to zone: %s\n",
+			debug_dnslib_xfr("Failed to apply changesets to zone: %s\n",
 			          knot_strerror(ret));
 			return ret;
 		}
@@ -2650,9 +2093,9 @@ int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 	 * Finalize the zone contents.
 	 */
 	ret = xfrin_finalize_contents(contents_copy, &changes);
-	if (ret != KNOT_EOK) {
+	if (ret != DNSLIB_EOK) {
 		xfrin_rollback_update(contents_copy, &changes);
-		debug_xfr("Failed to finalize new zone contents: %s\n",
+		debug_dnslib_xfr("Failed to finalize new zone contents: %s\n",
 		          knot_strerror(ret));
 		return ret;
 	}
@@ -2671,7 +2114,7 @@ int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 	 */
 	/*! \todo This operation must not fail!!! .*/
 	ret = xfrin_fix_references(contents_copy);
-	assert(ret == KNOT_EOK);
+	assert(ret == DNSLIB_EOK);
 
 	/*
 	 * Wait until all readers finish reading
@@ -2684,5 +2127,5 @@ int xfrin_apply_changesets(dnslib_zone_t *zone, xfrin_changesets_t *chsets)
 	xfrin_zone_contents_free(&old_contents);
 	xfrin_cleanup_update(&changes);
 
-	return KNOT_EOK;
+	return DNSLIB_EOK;
 }

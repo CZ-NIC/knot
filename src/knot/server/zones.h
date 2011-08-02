@@ -18,6 +18,8 @@
 #include "dnslib/zonedb.h"
 #include "knot/conf/conf.h"
 #include "knot/server/journal.h"
+#include "dnslib/zone.h"
+#include "knot/server/xfr-in.h"
 
 /* Constants. */
 #define IXFR_DBSYNC_TIMEOUT (60*1000) /*!< Database sync timeout = 60s. */
@@ -41,6 +43,7 @@ typedef struct zonedata_t
 	/*! \brief XFR-IN scheduler. */
 	struct {
 		list          **ifaces; /*!< List of availabel interfaces. */
+		acl_t         *acl;     /*!< ACL for xfr-in.*/
 		sockaddr_t     master;  /*!< Master server for xfr-in.*/
 		struct event_t *timer;  /*!< Timer for REFRESH/RETRY. */
 		struct event_t *expire; /*!< Timer for REFRESH. */
@@ -151,6 +154,59 @@ int zones_save_zone(const dnslib_ns_xfr_t *xfr);
  * \retval KNOT_ERROR
  */
 int zones_ns_conf_hook(const struct conf_t *conf, void *data);
+
+/*!
+ * \brief Store changesets in journal.
+ *
+ * Changesets will be stored on a permanent storage.
+ * Journal may be compacted, resulting in flattening changeset history.
+ *
+ * \param zone Zone associated with the changeset.
+ * \param src Changesets.
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_EAGAIN if journal needs to be synced with zonefile first.
+ *
+ * \todo Expects the xfr structure to be initialized in some way.
+ */
+int zones_store_changesets(dnslib_ns_xfr_t *xfr);
+
+/*!
+ * \brief Load changesets from journal.
+ *
+ * Changesets will be stored on a permanent storage.
+ * Journal may be compacted, resulting in flattening changeset history.
+ *
+ * In case of KNOT_ERANGE error, whole zone content should be sent instead,
+ * as the changeset history cannot be recovered.
+ *
+ * \param zone Zone containing a changeset journal.
+ * \param dst Container to be loaded.
+ * \param from Starting SOA serial (oldest).
+ * \param to Ending SOA serial (newest).
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_ERANGE when changeset history cannot be reconstructed.
+ *
+ * \todo Expects the xfr structure to be initialized in some way.
+ */
+int zones_xfr_load_changesets(dnslib_ns_xfr_t *xfr);
+
+/*!
+ * \brief Apply changesets to zone.
+ *
+ * Applies a list of XFR-style changesets to the given zone. Also checks if the
+ * changesets are applicable (i.e. zone is right and has the right serial).
+ *
+ * \param zone Zone to which the changesets should be applied.
+ * \param chsets Changesets to be applied to the zone.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_EINVAL
+ */
+int zones_apply_changesets(dnslib_ns_xfr_t *xfr);
 
 #endif // _KNOT_ZONES_H_
 

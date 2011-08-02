@@ -17,6 +17,7 @@
 #include "dnslib/consts.h"
 #include "dnslib/zone-dump-text.h"
 #include "dnslib/zone-dump.h"
+#include "dnslib/changesets.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -2087,7 +2088,7 @@ static int ns_ixfr_put_rrset(dnslib_ns_xfr_t *xfr, const dnslib_rrset_t *rrset)
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_ixfr_put_changeset(dnslib_ns_xfr_t *xfr, const xfrin_changeset_t *chgset)
+static int ns_ixfr_put_changeset(dnslib_ns_xfr_t *xfr, const dnslib_changeset_t *chgset)
 {
 	// 1) put origin SOA
 	int res = ns_ixfr_put_rrset(xfr, chgset->soa_from);
@@ -2129,36 +2130,47 @@ static int ns_ixfr_from_zone(dnslib_ns_xfr_t *xfr)
 	assert(xfr->query != NULL);
 	assert(xfr->response != NULL);
 	assert(dnslib_packet_additional_rrset_count(xfr->query) > 0);
+	assert(xfr->data != NULL);
 
+	/*! \todo REMOVE start */
+//	const dnslib_rrset_t *zone_soa =
+//		dnslib_node_rrset(dnslib_zone_contents_apex(
+//		                       dnslib_zone_contents(xfr->zone)),
+//		                  DNSLIB_RRTYPE_SOA);
+//	// retrieve origin (xfr) serial and target (zone) serial
+//	uint32_t zone_serial = dnslib_rdata_soa_serial(
+//	                             dnslib_rrset_rdata(zone_soa));
+//	uint32_t xfr_serial = dnslib_rdata_soa_serial(dnslib_rrset_rdata(
+//			dnslib_packet_authority_rrset(xfr->query, 0)));
+
+//	// 3) load changesets from journal
+//	dnslib_changesets_t *chgsets = (dnslib_changesets_t *)
+//	                               calloc(1, sizeof(dnslib_changesets_t));
+//	int res = xfr_load_changesets(xfr->zone, chgsets, xfr_serial, 
+//	                              zone_serial);
+//	if (res != DNSLIB_EOK) {
+//		debug_dnslib_ns("IXFR query cannot be answered: %s.\n",
+//		         dnslib_strerror(res));
+//		/*! \todo Probably send back AXFR instead. */
+//		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_SERVFAIL);
+//		/*! \todo Probably rename the function. */
+//		ns_axfr_send_and_clear(xfr);
+//		//socket_close(xfr->session);  /*! \todo Remove for UDP. */
+//		return 1;
+//	}
+	
+	/*! \todo REMOVE end */
+	
+	dnslib_changesets_t *chgsets = (dnslib_changesets_t *)xfr->data;
+	
 	const dnslib_rrset_t *zone_soa =
 		dnslib_node_rrset(dnslib_zone_contents_apex(
 		                       dnslib_zone_contents(xfr->zone)),
 		                  DNSLIB_RRTYPE_SOA);
-	// retrieve origin (xfr) serial and target (zone) serial
-	uint32_t zone_serial = dnslib_rdata_soa_serial(
-	                             dnslib_rrset_rdata(zone_soa));
-	uint32_t xfr_serial = dnslib_rdata_soa_serial(dnslib_rrset_rdata(
-			dnslib_packet_authority_rrset(xfr->query, 0)));
-
-	// 3) load changesets from journal
-	xfrin_changesets_t *chgsets = (xfrin_changesets_t *)
-	                               calloc(1, sizeof(xfrin_changesets_t));
-	int res = xfr_load_changesets(xfr->zone, chgsets, xfr_serial, 
-	                              zone_serial);
-	if (res != DNSLIB_EOK) {
-		debug_dnslib_ns("IXFR query cannot be answered: %s.\n",
-		         dnslib_strerror(res));
-		/*! \todo Probably send back AXFR instead. */
-		dnslib_response2_set_rcode(xfr->response, DNSLIB_RCODE_SERVFAIL);
-		/*! \todo Probably rename the function. */
-		ns_axfr_send_and_clear(xfr);
-		//socket_close(xfr->session);  /*! \todo Remove for UDP. */
-		return 1;
-	}
 
 	// 4) put the zone SOA as the first Answer RR
-	res = dnslib_response2_add_rrset_answer(xfr->response, zone_soa, 0, 0,
-	                                        0);
+	int res = dnslib_response2_add_rrset_answer(xfr->response, zone_soa, 0, 
+	                                            0, 0);
 	if (res != DNSLIB_EOK) {
 		debug_dnslib_ns("IXFR query cannot be answered: %s.\n",
 			 dnslib_strerror(res));
@@ -2830,7 +2842,7 @@ DEBUG_DNSLIB_NS(
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_ns_apply_ixfr_changes(dnslib_zone_t *zone, xfrin_changesets_t *chgsets)
+int dnslib_ns_apply_ixfr_changes(dnslib_zone_t *zone, dnslib_changesets_t *chgsets)
 {
 	/*! \todo Apply changes to the zone when they are parsed. */
 	return DNSLIB_EOK;
@@ -2838,7 +2850,8 @@ int dnslib_ns_apply_ixfr_changes(dnslib_zone_t *zone, xfrin_changesets_t *chgset
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_ns_process_ixfrin(dnslib_nameserver_t *nameserver, dnslib_ns_xfr_t *xfr)
+int dnslib_ns_process_ixfrin(dnslib_nameserver_t *nameserver, 
+                             dnslib_ns_xfr_t *xfr)
 {
 	/*! \todo Implement me.
 	 *  - xfr contains partially-built IXFR journal entry or NULL
@@ -2850,12 +2863,14 @@ int dnslib_ns_process_ixfrin(dnslib_nameserver_t *nameserver, dnslib_ns_xfr_t *x
 	debug_dnslib_ns("ns_process_ixfrin: incoming packet\n");
 
 	int ret = xfrin_process_ixfr_packet(xfr->wire, xfr->wire_size,
-	                                   (xfrin_changesets_t **)(&xfr->data));
+	                                   (dnslib_changesets_t **)(&xfr->data));
+	
+	/*! \todo Save zone into the XFR structure. */
 
 	if (ret > 0) { // transfer finished
 		debug_dnslib_ns("ns_process_ixfrin: IXFR finished\n");
 
-		xfrin_changesets_t *chgsets = (xfrin_changesets_t *)xfr->data;
+		dnslib_changesets_t *chgsets = (dnslib_changesets_t *)xfr->data;
 		if (chgsets == NULL || chgsets->count == 0) {
 			// nothing to be done??
 			return DNSLIB_EOK;
@@ -2868,32 +2883,29 @@ int dnslib_ns_process_ixfrin(dnslib_nameserver_t *nameserver, dnslib_ns_xfr_t *x
 		if (zone == NULL) {
 			debug_dnslib_ns("No zone found for incoming IXFR!\n");
 			xfrin_free_changesets(
-				(xfrin_changesets_t **)(&xfr->data));
+				(dnslib_changesets_t **)(&xfr->data));
 			return DNSLIB_ENOZONE;  /*! \todo Other error code? */
 		}
 
-		ret = xfrin_store_changesets(zone, chgsets);
-		if (ret != DNSLIB_EOK) {
-			debug_dnslib_ns("Failed to save changesets to journal.\n");
-			xfrin_free_changesets(
-				(xfrin_changesets_t **)(&xfr->data));
-			return ret;
-		}
+//		ret = xfrin_store_changesets(zone, chgsets);
+//		if (ret != DNSLIB_EOK) {
+//			debug_dnslib_ns("Failed to save changesets to journal.\n");
+//			xfrin_free_changesets(
+//				(dnslib_changesets_t **)(&xfr->data));
+//			return ret;
+//		}
 
-		ret = dnslib_ns_apply_ixfr_changes(zone, chgsets);
-		if (ret != DNSLIB_EOK) {
-			debug_dnslib_ns("Failed to apply changes to the zone.");
-			// left the changes to be applied later..?
-			// they are already stored
-		}
+//		ret = dnslib_ns_apply_ixfr_changes(zone, chgsets);
+//		if (ret != DNSLIB_EOK) {
+//			debug_dnslib_ns("Failed to apply changes to the zone.");
+//			// left the changes to be applied later..?
+//			// they are already stored
+//		}
 
-		// we may free the changesets, they are stored and maybe applied
-		xfrin_free_changesets((xfrin_changesets_t **)(&xfr->data));
-
-		return ret;
-	} else {
-		return ret;
+//		// we may free the changesets, they are stored and maybe applied
+//		xfrin_free_changesets((dnslib_changesets_t **)(&xfr->data));
 	}
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/

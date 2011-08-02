@@ -253,6 +253,8 @@ libknot_la_SOURCES =				\
 	dnslib/wire.h				\
 	dnslib/debug.h				\
 	dnslib/nsec3.h				\
+	dnslib/changesets.h			\
+	dnslib/changesets.c			\
 	dnslib/dname-table.h
 
 
