@@ -27,11 +27,11 @@ struct general_tree {
 
 typedef struct general_tree general_tree_t;
 
-general_tree_t *gen_tree_new(int (*cmp_func)(void *p1, void *p2),
-                             int (*mrg_func)(void **p1, void **p2));
+general_tree_t *gen_tree_new(int (*cmp_func)(void *p1, void *p2));
 
 int gen_tree_add(general_tree_t *tree,
-                 void *node);
+                 void *node,
+                 int (*mrg_func)(void **n1, void **n2));
 
 void *gen_tree_find(general_tree_t *tree,
                     void *what);
@@ -49,5 +49,7 @@ void gen_tree_destroy(general_tree_t **tree,
 int gen_tree_find_less_or_equal(general_tree_t *tree,
                                 void *what,
                                 void **found);
+
+general_tree_t *gen_tree_shallow_copy(general_tree_t *tree);
 
 #endif // _KNOT_COMMON_GENERAL_TREE_H_

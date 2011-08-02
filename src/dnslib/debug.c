@@ -176,8 +176,6 @@ void dnslib_zone_contents_dump(dnslib_zone_contents_t *zone, char loaded_zone)
 {
 #if defined(DNSLIB_ZONE_DEBUG)
 	printf("------- ZONE --------\n");
-	printf("%s\n",
-	       dnslib_dname_to_str(dnslib_node_get_rrset(zone->apex, DNSLIB_RRTYPE_SOA)->owner));
 
 	dnslib_zone_contents_tree_apply_inorder(zone, dnslib_node_dump, (void *)&loaded_zone);
 
