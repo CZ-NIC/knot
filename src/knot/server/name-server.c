@@ -2810,18 +2810,13 @@ int dnslib_ns_switch_zone(dnslib_nameserver_t *nameserver,
 DEBUG_DNSLIB_NS(
 	debug_dnslib_ns("Zone db contents:\n");
 
-	const skip_node_t *zn = skip_first(nameserver->zone_db->zones);
-
-	int i = 1;
-	char *name = NULL;
-	while (zn != NULL) {
-		debug_dnslib_ns("%d. zone: %p, key: %p\n", i, zn->value, zn->key);
-		assert(zn->key == ((dnslib_zone_t *)zn->value)->name);
-		name = dnslib_dname_to_str((dnslib_dname_t *)zn->key);
+	dnslib_zone_t **zones = dnslib_zonedb_zones(nameserver->zone_db);
+	for (int i = 0; i < dnslib_zonedb_zone_count
+	     (nameserver->zone_db); i++) {
+		debug_dnslib_ns("%d. zone: %p", i, zones[i]);
+		char *name = dnslib_dname_to_str(zones[i]->name);
 		debug_dnslib_ns("    zone name: %s\n", name);
 		free(name);
-
-		zn = skip_next(zn);
 	}
 );
 
