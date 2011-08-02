@@ -895,7 +895,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 	if (ret == KNOTD_EOK || ret == KNOTD_ERANGE) {
 
 		/* Apply changesets. */
-		debug_zones("update_zone: applying %u changesets\n",
+		debug_zones("update_zone: applying %zu changesets\n",
 			    chsets->count);
 		xfrin_apply_changesets_to_zone(zone, chsets);
 
@@ -1148,9 +1148,6 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 
 	// Unlock RCU, messing with any data will not affect us now
 	rcu_read_unlock();
-
-	debug_zones("Old database is empty (%p): %s\n", (*db_old)->zones,
-	            skip_is_empty((*db_old)->zones) ? "yes" : "no");
 
 	return KNOTD_EOK;
 }
