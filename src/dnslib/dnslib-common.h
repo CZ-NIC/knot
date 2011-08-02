@@ -14,8 +14,8 @@
 #define TEST_WITH_LDNS
 #endif
 
-#ifndef _KNOTDKNOT_COMMON_H_
-#define _KNOTDKNOT_COMMON_H_
+#ifndef _KNOT_COMMON_H_
+#define _KNOT_COMMON_H_
 
 #define KNOT_NAME "dnslib" // Project name
 #define KNOT_VER  0x000100  // 0xMMIIRR (MAJOR,MINOR,REVISION)
@@ -83,6 +83,6 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 	} while (0)
 #endif
 
-#endif /* _KNOTDKNOT_COMMON_H_ */
+#endif /* _KNOT_COMMON_H_ */
 
 /*! @} */

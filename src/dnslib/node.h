@@ -10,8 +10,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_NODE_H_
-#define _KNOTDKNOT_NODE_H_
+#ifndef _KNOT_NODE_H_
+#define _KNOT_NODE_H_
 
 #include "dnslib/dname.h"
 #include "common/skip-list.h"
@@ -414,6 +414,6 @@ int knot_node_compare(knot_node_t *node1, knot_node_t *node2);
 
 int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to);
 
-#endif /* _KNOTDKNOT_NODE_H_ */
+#endif /* _KNOT_NODE_H_ */
 
 /*! @} */

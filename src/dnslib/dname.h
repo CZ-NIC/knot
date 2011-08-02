@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_DNAME_H_
-#define _KNOTDKNOT_DNAME_H_
+#ifndef _KNOT_DNAME_H_
+#define _KNOT_DNAME_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -399,6 +399,6 @@ static inline void knot_dname_release(knot_dname_t *dname) {
 	knot_dname_release_((d))
 */
 
-#endif /* _KNOTDKNOT_DNAME_H_ */
+#endif /* _KNOT_DNAME_H_ */
 
 /*! @} */

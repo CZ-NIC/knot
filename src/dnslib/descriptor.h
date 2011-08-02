@@ -13,8 +13,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_DESCRIPTOR_H_
-#define _KNOTDKNOT_DESCRIPTOR_H_
+#ifndef _KNOT_DESCRIPTOR_H_
+#define _KNOT_DESCRIPTOR_H_
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -288,7 +288,7 @@ uint16_t knot_rrclass_from_string(const char *name);
  */
 size_t knot_wireformat_size(unsigned int wire_type);
 
-#endif /* _KNOTDKNOT_DESCRIPTOR_H_ */
+#endif /* _KNOT_DESCRIPTOR_H_ */
 
 /*! @} */
 

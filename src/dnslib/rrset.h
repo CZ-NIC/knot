@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_RRSET_H_
-#define _KNOTDKNOT_RRSET_H_
+#ifndef _KNOT_RRSET_H_
+#define _KNOT_RRSET_H_
 
 #include <stdint.h>
 
@@ -262,6 +262,6 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
  */
 int knot_rrset_merge(void **r1, void **r2);
 
-#endif /* _KNOTDKNOT_RRSET_H_ */
+#endif /* _KNOT_RRSET_H_ */
 
 /*! @} */

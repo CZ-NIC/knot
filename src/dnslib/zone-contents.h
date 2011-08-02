@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_ZONE_CONTENTS_H_
-#define _KNOTDKNOT_ZONE_CONTENTS_H_
+#ifndef _KNOT_ZONE_CONTENTS_H_
+#define _KNOT_ZONE_CONTENTS_H_
 
 //#include <time.h>
 

@@ -12,8 +12,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_RESPONSE_H_
-#define _KNOTDKNOT_RESPONSE_H_
+#ifndef _KNOT_RESPONSE_H_
+#define _KNOT_RESPONSE_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -476,6 +476,6 @@ void knot_response_free(knot_response_t **response);
  */
 void knot_response_dump(const knot_response_t *resp);
 
-#endif /* _KNOTDKNOT_RESPONSE_H_ */
+#endif /* _KNOT_RESPONSE_H_ */
 
 /*! @} */

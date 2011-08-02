@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_ZONELOAD_H_
-#define _KNOTDKNOT_ZONELOAD_H_
+#ifndef _KNOT_ZONELOAD_H_
+#define _KNOT_ZONELOAD_H_
 
 #include <stdio.h>
 

@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_CONSTS_H_
-#define _KNOTDKNOT_CONSTS_H_
+#ifndef _KNOT_CONSTS_H_
+#define _KNOT_CONSTS_H_
 
 #include <stdint.h>
 #include "dnslib/descriptor.h"
@@ -82,6 +82,6 @@ typedef enum knot_const {
 	KNOT_MAX_DNAME_LABELS = 127  // 1-char labels
 } knot_const_t;
 
-#endif /* _KNOTDKNOT_CONSTS_H_ */
+#endif /* _KNOT_CONSTS_H_ */
 
 /*! @} */

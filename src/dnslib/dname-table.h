@@ -10,8 +10,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_DNAME_TABLE_H_
-#define _KNOTDKNOT_DNAME_TABLE_H_
+#ifndef _KNOT_DNAME_TABLE_H_
+#define _KNOT_DNAME_TABLE_H_
 
 #include <config.h>
 
@@ -139,7 +139,7 @@ void knot_dname_table_tree_inorder_apply(const knot_dname_table_t *table,
             void *data);
 
 
-#endif // _KNOTDKNOT_DNAME_TABLE_H_
+#endif // _KNOT_DNAME_TABLE_H_
 
 /*! @} */
 

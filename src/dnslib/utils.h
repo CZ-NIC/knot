@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_UTILS_H_
-#define _KNOTDKNOT_UTILS_H_
+#ifndef _KNOT_UTILS_H_
+#define _KNOT_UTILS_H_
 
 #include <string.h>
 #include <stdint.h>
@@ -132,7 +132,7 @@ static inline void knot_wire_write_u32(uint8_t *pos, uint32_t data)
  */
 size_t knot_quick_rand();
 
-#endif /* _KNOTDKNOT_UTILS_H_ */
+#endif /* _KNOT_UTILS_H_ */
 
 /*! @} */
 

@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_QUERY_H_
-#define _KNOTDKNOT_QUERY_H_
+#ifndef _KNOT_QUERY_H_
+#define _KNOT_QUERY_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -59,6 +59,6 @@ int knot_query_set_question(knot_packet_t *query,
 
 int knot_query_set_opcode(knot_packet_t *query, uint8_t opcode);
 
-#endif /* _KNOTDKNOT_QUERY_H_ */
+#endif /* _KNOT_QUERY_H_ */
 
 /*! @} */

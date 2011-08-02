@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_EDNS_H_
-#define _KNOTDKNOT_EDNS_H_
+#ifndef _KNOT_EDNS_H_
+#define _KNOT_EDNS_H_
 
 #include <stdint.h>
 
@@ -253,6 +253,6 @@ short knot_edns_size(knot_opt_rr_t *opt_rr);
  */
 void knot_edns_free(knot_opt_rr_t **opt_rr);
 
-#endif /* _KNOTDKNOT_EDNS_H_ */
+#endif /* _KNOT_EDNS_H_ */
 
 /*! @} */

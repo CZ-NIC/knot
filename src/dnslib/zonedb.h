@@ -12,8 +12,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_ZONEDB_H_
-#define _KNOTDKNOT_ZONEDB_H_
+#ifndef _KNOT_ZONEDB_H_
+#define _KNOT_ZONEDB_H_
 
 #include "common/general-tree.h"
 #include "dnslib/zone.h"
@@ -122,6 +122,6 @@ void knot_zonedb_deep_free(knot_zonedb_t **db);
 
 /*----------------------------------------------------------------------------*/
 
-#endif /* _KNOTDKNOT_ZONEDB_H_ */
+#endif /* _KNOT_ZONEDB_H_ */
 
 /*! @} */

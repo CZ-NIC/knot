@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_CHANGESETS_H_
-#define _KNOTDKNOT_CHANGESETS_H_
+#ifndef _KNOT_CHANGESETS_H_
+#define _KNOT_CHANGESETS_H_
 
 #include "dnslib/rrset.h"
 
@@ -79,6 +79,6 @@ int knot_changesets_check_size(knot_changesets_t *changesets);
 
 void knot_free_changesets(knot_changesets_t **changesets);
 
-#endif /* _KNOTDKNOT_CHANGESETS_H_ */
+#endif /* _KNOT_CHANGESETS_H_ */
 
 /*! @} */

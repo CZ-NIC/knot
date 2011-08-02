@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_NSEC3_H_
-#define _KNOTDKNOT_NSEC3_H_
+#ifndef _KNOT_NSEC3_H_
+#define _KNOT_NSEC3_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -72,6 +72,6 @@ void knot_nsec3_params_free(knot_nsec3_params_t *params);
 
 /*----------------------------------------------------------------------------*/
 
-#endif /* _KNOTDKNOT_NSEC3_H_ */
+#endif /* _KNOT_NSEC3_H_ */
 
 /*! @} */

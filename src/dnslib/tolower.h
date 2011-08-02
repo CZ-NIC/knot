@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_TOLOWER_H_
-#define _KNOTDKNOT_TOLOWER_H_
+#ifndef _KNOT_TOLOWER_H_
+#define _KNOT_TOLOWER_H_
 
 #include <stdint.h>
 
@@ -39,4 +39,4 @@ static inline uint8_t knot_tolower(uint8_t c) {
 	return char_table[c];
 }
 
-#endif /* _KNOTDKNOT_TOLOWER_H_ */
+#endif /* _KNOT_TOLOWER_H_ */

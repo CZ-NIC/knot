@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_ERROR_H_
-#define _KNOTDKNOT_ERROR_H_
+#ifndef _KNOT_ERROR_H_
+#define _KNOT_ERROR_H_
 
 #include "common/errors.h"
 
@@ -54,6 +54,6 @@ static inline const char *knot_strerror2(int code)
 	return error_to_str((const error_table_t*)knot_error_msgs2, code);
 }
 
-#endif /* _KNOTDKNOT_ERROR_H_ */
+#endif /* _KNOT_ERROR_H_ */
 
 /*! @} */

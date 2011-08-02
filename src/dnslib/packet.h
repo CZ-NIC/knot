@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_PACKET_H_
-#define _KNOTDKNOT_PACKET_H_
+#ifndef _KNOT_PACKET_H_
+#define _KNOT_PACKET_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -478,6 +478,6 @@ void knot_packet_free(knot_packet_t **packet);
  */
 void knot_packet_dump(const knot_packet_t *packet);
 
-#endif /* _KNOTDKNOT_PACKET_H_ */
+#endif /* _KNOT_PACKET_H_ */
 
 /*! @} */
