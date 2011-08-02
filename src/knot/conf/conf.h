@@ -91,7 +91,7 @@ typedef struct conf_key_t {
 typedef struct conf_zone_t {
 	node n;
 	char *name;               /*!< Zone name. */
-	enum dnslib_rr_class cls; /*!< Zone class (IN or CH). */
+	enum knot_rr_class cls; /*!< Zone class (IN or CH). */
 	char *file;               /*!< Path to a zone file. */
 	char *db;                 /*!< Path to a database file. */
 	char *ixfr_db;            /*!< Path to a IXFR database file. */

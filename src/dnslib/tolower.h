@@ -32,7 +32,7 @@ extern const uint8_t char_table[CHAR_TABLE_SIZE];
  *
  * \return \a c converted to lowercase (or \a c if not applicable).
  */
-static inline uint8_t dnslib_tolower(uint8_t c) {
+static inline uint8_t knot_tolower(uint8_t c) {
 #if DNSLIB_CHAR_TABLE_SIZE < 256
 	assert(c < CHAR_TABLE_SIZE);
 #endif

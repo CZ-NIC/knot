@@ -22,35 +22,35 @@
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-static int notify_request(const dnslib_rrset_t *rrset,
+static int notify_request(const knot_rrset_t *rrset,
                           uint8_t *buffer, size_t *size)
 {
-	dnslib_packet_t *pkt = dnslib_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
+	knot_packet_t *pkt = knot_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
 	CHECK_ALLOC_LOG(pkt, KNOT_ENOMEM);
 
 	/*! \todo Get rid of the numeric constant. */
-	int rc = dnslib_packet_set_max_size(pkt, 512);
+	int rc = knot_packet_set_max_size(pkt, 512);
 	if (rc != DNSLIB_EOK) {
-		dnslib_packet_free(&pkt);
+		knot_packet_free(&pkt);
 		return KNOT_ERROR;
 	}
 
-	rc = dnslib_query_init(pkt);
+	rc = knot_query_init(pkt);
 	if (rc != DNSLIB_EOK) {
-		dnslib_packet_free(&pkt);
+		knot_packet_free(&pkt);
 		return KNOT_ERROR;
 	}
 
-	dnslib_question_t question;
+	knot_question_t question;
 
 	// this is ugly!!
 	question.qname = rrset->owner;
 	question.qtype = rrset->type;
 	question.qclass = rrset->rclass;
 
-	rc = dnslib_query_set_question(pkt, &question);
+	rc = knot_query_set_question(pkt, &question);
 	if (rc != DNSLIB_EOK) {
-		dnslib_packet_free(&pkt);
+		knot_packet_free(&pkt);
 		return KNOT_ERROR;
 	}
 
@@ -58,74 +58,74 @@ static int notify_request(const dnslib_rrset_t *rrset,
 
 	/*! \todo add the SOA RR to the Answer section as a hint */
 	/*! \todo this should not use response API!! */
-//	rc = dnslib_response2_add_rrset_answer(pkt, rrset, 0, 0, 0);
+//	rc = knot_response2_add_rrset_answer(pkt, rrset, 0, 0, 0);
 //	if (rc != DNSLIB_EOK) {
-//		dnslib_packet_free(&pkt);
+//		knot_packet_free(&pkt);
 //		return rc;
 //	}
 
 	/*! \todo this should not use response API!! */
-	dnslib_response2_set_aa(pkt);
+	knot_response2_set_aa(pkt);
 
-	dnslib_query_set_opcode(pkt, DNSLIB_OPCODE_NOTIFY);
+	knot_query_set_opcode(pkt, DNSLIB_OPCODE_NOTIFY);
 
 	/*! \todo OPT RR ?? */
 
 	uint8_t *wire = NULL;
 	size_t wire_size = 0;
-	rc = dnslib_packet_to_wire(pkt, &wire, &wire_size);
+	rc = knot_packet_to_wire(pkt, &wire, &wire_size);
 	if (rc != DNSLIB_EOK) {
-		dnslib_packet_free(&pkt);
+		knot_packet_free(&pkt);
 		return KNOT_ERROR;
 	}
 
 	if (wire_size > *size) {
-		dnslib_packet_free(&pkt);
+		knot_packet_free(&pkt);
 		return KNOT_ESPACE;
 	}
 
 	memcpy(buffer, wire, wire_size);
 	*size = wire_size;
 
-	dnslib_packet_dump(pkt);
+	knot_packet_dump(pkt);
 
-	dnslib_packet_free(&pkt);
+	knot_packet_free(&pkt);
 
 	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int notify_create_response(dnslib_packet_t *request, uint8_t *buffer,
+int notify_create_response(knot_packet_t *request, uint8_t *buffer,
                            size_t *size)
 {
-	dnslib_packet_t *response =
-		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
+	knot_packet_t *response =
+		knot_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
 	CHECK_ALLOC_LOG(response, KNOT_ENOMEM);
 
-	dnslib_response2_init_from_query(response, request);
+	knot_response2_init_from_query(response, request);
 
 	// TODO: copy the SOA in Answer section
 
 	uint8_t *wire = NULL;
 	size_t wire_size = 0;
-	int rc = dnslib_packet_to_wire(response, &wire, &wire_size);
+	int rc = knot_packet_to_wire(response, &wire, &wire_size);
 	if (rc != DNSLIB_EOK) {
-		dnslib_packet_free(&response);
+		knot_packet_free(&response);
 		return rc;
 	}
 
 	if (wire_size > *size) {
-		dnslib_packet_free(&response);
+		knot_packet_free(&response);
 		return KNOT_ESPACE;
 	}
 
 	memcpy(buffer, wire, wire_size);
 	*size = wire_size;
 
-	dnslib_packet_dump(response);
+	knot_packet_dump(response);
 
-	dnslib_packet_free(&response);
+	knot_packet_free(&response);
 
 	return KNOT_EOK;
 }
@@ -134,11 +134,11 @@ int notify_create_response(dnslib_packet_t *request, uint8_t *buffer,
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-int notify_create_request(const dnslib_zone_contents_t *zone, uint8_t *buffer,
+int notify_create_request(const knot_zone_contents_t *zone, uint8_t *buffer,
                           size_t *size)
 {
-	const dnslib_rrset_t *soa_rrset = dnslib_node_rrset(
-		            dnslib_zone_contents_apex(zone), DNSLIB_RRTYPE_SOA);
+	const knot_rrset_t *soa_rrset = knot_node_rrset(
+		            knot_zone_contents_apex(zone), DNSLIB_RRTYPE_SOA);
 	if (soa_rrset == NULL) {
 		return KNOT_ERROR;
 	}
@@ -148,16 +148,16 @@ int notify_create_request(const dnslib_zone_contents_t *zone, uint8_t *buffer,
 
 /*----------------------------------------------------------------------------*/
 
-static int notify_check_and_schedule(const dnslib_nameserver_t *nameserver,
-                                     const dnslib_zone_t *zone,
+static int notify_check_and_schedule(const knot_nameserver_t *nameserver,
+                                     const knot_zone_t *zone,
                                      sockaddr_t *from)
 {
-	if (zone == NULL || from == NULL || dnslib_zone_data(zone) == NULL) {
+	if (zone == NULL || from == NULL || knot_zone_data(zone) == NULL) {
 		return KNOT_EINVAL;
 	}
 	
 	/* Check ACL for notify-in. */
-	zonedata_t *zd = (zonedata_t *)dnslib_zone_data(zone);
+	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	if (from) {
 		if (acl_match(zd->notify_in, from) == ACL_DENY) {
 			/* rfc1996: Ignore request and report incident. */
@@ -199,8 +199,8 @@ static int notify_check_and_schedule(const dnslib_nameserver_t *nameserver,
 
 /*----------------------------------------------------------------------------*/
 
-int notify_process_request(const dnslib_nameserver_t *nameserver,
-                           dnslib_packet_t *notify,
+int notify_process_request(const knot_nameserver_t *nameserver,
+                           knot_packet_t *notify,
                            sockaddr_t *from,
                            uint8_t *buffer, size_t *size)
 {
@@ -216,7 +216,7 @@ int notify_process_request(const dnslib_nameserver_t *nameserver,
 	int ret;
 
 	if (notify->parsed < notify->size) {
-		ret = dnslib_packet_parse_rest(notify);
+		ret = knot_packet_parse_rest(notify);
 		if (ret != DNSLIB_EOK) {
 			return KNOT_EMALF;
 		}
@@ -229,8 +229,8 @@ int notify_process_request(const dnslib_nameserver_t *nameserver,
 	}
 
 	// find the zone
-	const dnslib_dname_t *qname = dnslib_packet_qname(notify);
-	const dnslib_zone_t *z = dnslib_zonedb_find_zone_for_name(
+	const knot_dname_t *qname = knot_packet_qname(notify);
+	const knot_zone_t *z = knot_zonedb_find_zone_for_name(
 			nameserver->zone_db, qname);
 	if (z == NULL) {
 		return KNOT_ERROR;	/*! \todo Some other error. */
@@ -243,8 +243,8 @@ int notify_process_request(const dnslib_nameserver_t *nameserver,
 
 /*----------------------------------------------------------------------------*/
 
-int notify_process_response(const dnslib_nameserver_t *nameserver,
-                            dnslib_packet_t *notify,
+int notify_process_response(const knot_nameserver_t *nameserver,
+                            knot_packet_t *notify,
                             sockaddr_t *from,
                             uint8_t *buffer, size_t *size)
 {
@@ -257,19 +257,19 @@ int notify_process_response(const dnslib_nameserver_t *nameserver,
 	*size = 0;
 
 	/* Find matching zone. */
-	const dnslib_dname_t *zone_name = dnslib_packet_qname(notify);
-	dnslib_zone_t *zone = dnslib_zonedb_find_zone(nameserver->zone_db,
+	const knot_dname_t *zone_name = knot_packet_qname(notify);
+	knot_zone_t *zone = knot_zonedb_find_zone(nameserver->zone_db,
 	                                              zone_name);
 	if (!zone) {
 		return KNOT_ENOENT;
 	}
-	if (!dnslib_zone_data(zone)) {
+	if (!knot_zone_data(zone)) {
 		return KNOT_ENOENT;
 	}
 
 	/* Match ID against awaited. */
-	zonedata_t *zd = (zonedata_t *)dnslib_zone_data(zone);
-	uint16_t pkt_id = dnslib_packet_id(notify);
+	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+	uint16_t pkt_id = knot_packet_id(notify);
 	notify_ev_t *ev = 0, *match = 0;
 	WALK_LIST(ev, zd->notify_pending) {
 		if ((int)pkt_id == ev->msgid) {

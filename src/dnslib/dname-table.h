@@ -25,7 +25,7 @@
  * \brief Structure encapsulating
  */
 struct dname_table_node {
-	dnslib_dname_t *dname; /*!< Dname stored in node. */
+	knot_dname_t *dname; /*!< Dname stored in node. */
 	TREE_ENTRY(dname_table_node) avl; /*!< Tree variables. */
 };
 
@@ -37,12 +37,12 @@ typedef TREE_HEAD(avl, dname_table_node) table_tree_t;
 /*!
  * \brief Structure holding tree together with dname ID counter.
  */
-struct dnslib_dname_table {
+struct knot_dname_table {
 	unsigned int id_counter; /*!< ID counter (starts from 1) */
 	table_tree_t *tree;  /*!< AVL tree */
 };
 
-typedef struct dnslib_dname_table dnslib_dname_table_t;
+typedef struct knot_dname_table knot_dname_table_t;
 
 /*!
  * \brief Creates new empty domain name table.
@@ -50,7 +50,7 @@ typedef struct dnslib_dname_table dnslib_dname_table_t;
  * \retval Created table on success.
  * \retval NULL on memory error.
  */
-dnslib_dname_table_t *dnslib_dname_table_new();
+knot_dname_table_t *knot_dname_table_new();
 
 /*!
  * \brief Finds name in the domain name table.
@@ -64,8 +64,8 @@ dnslib_dname_table_t *dnslib_dname_table_new();
  * \retval Pointer to found dname when dname is present in the table.
  * \retval NULL when dname is not present.
  */
-dnslib_dname_t *dnslib_dname_table_find_dname(const dnslib_dname_table_t *table,
-					      dnslib_dname_t *dname);
+knot_dname_t *knot_dname_table_find_dname(const knot_dname_table_t *table,
+					      knot_dname_t *dname);
 
 /*!
  * \brief Adds domain name to domain name table.
@@ -80,8 +80,8 @@ dnslib_dname_t *dnslib_dname_table_find_dname(const dnslib_dname_table_t *table,
  * \retval DNSLIB_EOK on success.
  * \retval DNSLIB_ENOMEM when memory runs out.
  */
-int dnslib_dname_table_add_dname(dnslib_dname_table_t *table,
-				 dnslib_dname_t *dname);
+int knot_dname_table_add_dname(knot_dname_table_t *table,
+				 knot_dname_t *dname);
 
 /*!
  * \brief Adds domain name to domain name table and checks for duplicates.
@@ -95,28 +95,28 @@ int dnslib_dname_table_add_dname(dnslib_dname_table_t *table,
  * \retval DNSLIB_EOK on success.
  * \retval DNSLIB_ENOMEM when memory runs out.
  */
-int dnslib_dname_table_add_dname2(dnslib_dname_table_t *table,
-                                  dnslib_dname_t **dname);
+int knot_dname_table_add_dname2(knot_dname_table_t *table,
+                                  knot_dname_t **dname);
 
 /*!
  * \brief Creates a shallow copy of the domain name table.
  *
- * Expects an existing dnslib_dname_table_t structure to be passed via \a to,
+ * Expects an existing knot_dname_table_t structure to be passed via \a to,
  * and fills it with the same data (domain names) as the original. Actual
  * tree nodes are created, but domain names are not copied (just referenced).
  *
  * \param from Original domain name table.
  * \param to Copy of the domain name table.
  */
-int dnslib_dname_table_shallow_copy(dnslib_dname_table_t *from,
-                                    dnslib_dname_table_t *to);
+int knot_dname_table_shallow_copy(knot_dname_table_t *from,
+                                    knot_dname_table_t *to);
 
 /*!
  * \brief Frees dname table without its nodes. Sets pointer to NULL.
  *
  * \param table Table to be freed.
  */
-void dnslib_dname_table_free(dnslib_dname_table_t **table);
+void knot_dname_table_free(knot_dname_table_t **table);
 
 /*!
  * \brief Frees dname table and all its nodes (including dnames in the nodes)
@@ -124,7 +124,7 @@ void dnslib_dname_table_free(dnslib_dname_table_t **table);
  *
  * \param table Table to be freed.
  */
-void dnslib_dname_table_deep_free(dnslib_dname_table_t **table);
+void knot_dname_table_deep_free(knot_dname_table_t **table);
 
 /*!
  * \brief Encapsulation of domain name table tree traversal function.
@@ -133,8 +133,8 @@ void dnslib_dname_table_deep_free(dnslib_dname_table_t **table);
  * \param applied_function Function to be used to process nodes.
  * \param data Data to be passed to processing function.
  */
-void dnslib_dname_table_tree_inorder_apply(const dnslib_dname_table_t *table,
-            void (*applied_function)(dnslib_dname_t *dname,
+void knot_dname_table_tree_inorder_apply(const knot_dname_table_t *table,
+            void (*applied_function)(knot_dname_t *dname,
                                      void *data),
             void *data);
 

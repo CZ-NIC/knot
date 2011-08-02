@@ -18,7 +18,7 @@
 #include "dnslib/utils.h"
 
 /*! \brief Offset of DNS header fields in wireformat. */
-enum dnslib_wire_offsets {
+enum knot_wire_offsets {
 	DNSLIB_WIRE_OFFSET_ID = 0,
 	DNSLIB_WIRE_OFFSET_FLAGS1 = 2,
 	DNSLIB_WIRE_OFFSET_FLAGS2 = 3,
@@ -29,7 +29,7 @@ enum dnslib_wire_offsets {
 };
 
 /*! \brief Minimum size for some parts of the DNS packet. */
-enum dnslib_wire_sizes {
+enum knot_wire_sizes {
 	DNSLIB_WIRE_HEADER_SIZE = 12,
 	DNSLIB_WIRE_QUESTION_MIN_SIZE = 5,
 	DNSLIB_WIRE_RR_MIN_SIZE = 11
@@ -46,9 +46,9 @@ enum dnslib_wire_sizes {
  *
  * \return DNS packet ID.
  */
-static inline uint16_t dnslib_wire_get_id(const uint8_t *packet)
+static inline uint16_t knot_wire_get_id(const uint8_t *packet)
 {
-	return dnslib_wire_read_u16(packet + DNSLIB_WIRE_OFFSET_ID);
+	return knot_wire_read_u16(packet + DNSLIB_WIRE_OFFSET_ID);
 }
 
 /*!
@@ -57,9 +57,9 @@ static inline uint16_t dnslib_wire_get_id(const uint8_t *packet)
  * \param packet Wire format of the packet.
  * \param id DNS packet ID.
  */
-static inline void dnslib_wire_set_id(uint8_t *packet, uint16_t id)
+static inline void knot_wire_set_id(uint8_t *packet, uint16_t id)
 {
-	dnslib_wire_write_u16(packet + DNSLIB_WIRE_OFFSET_ID, id);
+	knot_wire_write_u16(packet + DNSLIB_WIRE_OFFSET_ID, id);
 }
 
 /*!
@@ -69,7 +69,7 @@ static inline void dnslib_wire_set_id(uint8_t *packet, uint16_t id)
  *
  * \return First byte of DNS flags.
  */
-static inline uint8_t dnslib_wire_get_flags1(const uint8_t *packet)
+static inline uint8_t knot_wire_get_flags1(const uint8_t *packet)
 {
 	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS1);
 }
@@ -80,7 +80,7 @@ static inline uint8_t dnslib_wire_get_flags1(const uint8_t *packet)
  * \param packet Wire format of the packet.
  * \param flags1 First byte of the DNS flags.
  */
-static inline uint8_t dnslib_wire_set_flags1(uint8_t *packet, uint8_t flags1)
+static inline uint8_t knot_wire_set_flags1(uint8_t *packet, uint8_t flags1)
 {
 	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS1) = flags1;
 }
@@ -92,7 +92,7 @@ static inline uint8_t dnslib_wire_set_flags1(uint8_t *packet, uint8_t flags1)
  *
  * \return Second byte of DNS flags.
  */
-static inline uint8_t dnslib_wire_get_flags2(const uint8_t *packet)
+static inline uint8_t knot_wire_get_flags2(const uint8_t *packet)
 {
 	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS2);
 }
@@ -103,7 +103,7 @@ static inline uint8_t dnslib_wire_get_flags2(const uint8_t *packet)
  * \param packet Wire format of the packet.
  * \param flags2 Second byte of the DNS flags.
  */
-static inline uint8_t dnslib_wire_set_flags2(uint8_t *packet, uint8_t flags2)
+static inline uint8_t knot_wire_set_flags2(uint8_t *packet, uint8_t flags2)
 {
 	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS2) = flags2;
 }
@@ -116,9 +116,9 @@ static inline uint8_t dnslib_wire_set_flags2(uint8_t *packet, uint8_t flags2)
  *
  * \return QDCOUNT (count of Question entries in the packet).
  */
-static inline uint16_t dnslib_wire_get_qdcount(const uint8_t *packet)
+static inline uint16_t knot_wire_get_qdcount(const uint8_t *packet)
 {
-	return dnslib_wire_read_u16(packet + DNSLIB_WIRE_OFFSET_QDCOUNT);
+	return knot_wire_read_u16(packet + DNSLIB_WIRE_OFFSET_QDCOUNT);
 }
 
 /*!
@@ -128,9 +128,9 @@ static inline uint16_t dnslib_wire_get_qdcount(const uint8_t *packet)
  * \param packet Wire format of the packet.
  * \param qdcount QDCOUNT (count of Question entries in the packet).
  */
-static inline void dnslib_wire_set_qdcount(uint8_t *packet, uint16_t qdcount)
+static inline void knot_wire_set_qdcount(uint8_t *packet, uint16_t qdcount)
 {
-	dnslib_wire_write_u16(packet + DNSLIB_WIRE_OFFSET_QDCOUNT, qdcount);
+	knot_wire_write_u16(packet + DNSLIB_WIRE_OFFSET_QDCOUNT, qdcount);
 }
 
 /*!
@@ -141,9 +141,9 @@ static inline void dnslib_wire_set_qdcount(uint8_t *packet, uint16_t qdcount)
  *
  * \return ANCOUNT (count of Answer entries in the packet).
  */
-static inline uint16_t dnslib_wire_get_ancount(const uint8_t *packet)
+static inline uint16_t knot_wire_get_ancount(const uint8_t *packet)
 {
-	return dnslib_wire_read_u16(packet + DNSLIB_WIRE_OFFSET_ANCOUNT);
+	return knot_wire_read_u16(packet + DNSLIB_WIRE_OFFSET_ANCOUNT);
 }
 
 /*!
@@ -153,9 +153,9 @@ static inline uint16_t dnslib_wire_get_ancount(const uint8_t *packet)
  * \param packet Wire format of the packet.
  * \param ancount ANCOUNT (count of Answer entries in the packet).
  */
-static inline void dnslib_wire_set_ancount(uint8_t *packet, uint16_t ancount)
+static inline void knot_wire_set_ancount(uint8_t *packet, uint16_t ancount)
 {
-	dnslib_wire_write_u16(packet + DNSLIB_WIRE_OFFSET_ANCOUNT, ancount);
+	knot_wire_write_u16(packet + DNSLIB_WIRE_OFFSET_ANCOUNT, ancount);
 }
 
 /*!
@@ -166,9 +166,9 @@ static inline void dnslib_wire_set_ancount(uint8_t *packet, uint16_t ancount)
  *
  * \return NSCOUNT (count of Authority entries in the packet).
  */
-static inline uint16_t dnslib_wire_get_nscount(const uint8_t *packet)
+static inline uint16_t knot_wire_get_nscount(const uint8_t *packet)
 {
-	return dnslib_wire_read_u16(packet + DNSLIB_WIRE_OFFSET_NSCOUNT);
+	return knot_wire_read_u16(packet + DNSLIB_WIRE_OFFSET_NSCOUNT);
 }
 
 /*!
@@ -178,9 +178,9 @@ static inline uint16_t dnslib_wire_get_nscount(const uint8_t *packet)
  * \param packet Wire format of the packet.
  * \param nscount NSCOUNT (count of Authority entries in the packet).
  */
-static inline void dnslib_wire_set_nscount(uint8_t *packet, uint16_t nscount)
+static inline void knot_wire_set_nscount(uint8_t *packet, uint16_t nscount)
 {
-	dnslib_wire_write_u16(packet + DNSLIB_WIRE_OFFSET_NSCOUNT, nscount);
+	knot_wire_write_u16(packet + DNSLIB_WIRE_OFFSET_NSCOUNT, nscount);
 }
 
 /*!
@@ -191,9 +191,9 @@ static inline void dnslib_wire_set_nscount(uint8_t *packet, uint16_t nscount)
  *
  * \return ARCOUNT (count of Additional entries in the packet).
  */
-static inline uint16_t dnslib_wire_get_arcount(const uint8_t *packet)
+static inline uint16_t knot_wire_get_arcount(const uint8_t *packet)
 {
-	return dnslib_wire_read_u16(packet + DNSLIB_WIRE_OFFSET_ARCOUNT);
+	return knot_wire_read_u16(packet + DNSLIB_WIRE_OFFSET_ARCOUNT);
 }
 
 /*!
@@ -203,16 +203,16 @@ static inline uint16_t dnslib_wire_get_arcount(const uint8_t *packet)
  * \param packet Wire format of the packet.
  * \param arcount ARCOUNT (count of Additional entries in the packet).
  */
-static inline void dnslib_wire_set_arcount(uint8_t *packet, uint16_t arcount)
+static inline void knot_wire_set_arcount(uint8_t *packet, uint16_t arcount)
 {
-	dnslib_wire_write_u16(packet + DNSLIB_WIRE_OFFSET_ARCOUNT, arcount);
+	knot_wire_write_u16(packet + DNSLIB_WIRE_OFFSET_ARCOUNT, arcount);
 }
 
 /*
  * Packet header flags manipulation functions.
  */
 /*! \brief Constants for DNS header flags in the first flags byte. */
-enum dnslib_wire_flags1_consts {
+enum knot_wire_flags1_consts {
 	DNSLIB_WIRE_RD_MASK = (uint8_t)0x01U,      /*!< RD bit mask. */
 	DNSLIB_WIRE_RD_SHIFT = 0,                  /*!< RD bit shift. */
 	DNSLIB_WIRE_TC_MASK = (uint8_t)0x02U,      /*!< TC bit mask. */
@@ -226,7 +226,7 @@ enum dnslib_wire_flags1_consts {
 };
 
 /*! \brief Constants for DNS header flags in the second flags byte. */
-enum dnslib_wire_flags2_consts {
+enum knot_wire_flags2_consts {
 	DNSLIB_WIRE_RCODE_MASK = (uint8_t)0x0fU,  /*!< RCODE mask. */
 	DNSLIB_WIRE_RCODE_SHIFT = 0,              /*!< RCODE shift. */
 	DNSLIB_WIRE_CD_MASK = (uint8_t)0x10U,     /*!< CD bit mask. */
@@ -250,7 +250,7 @@ enum dnslib_wire_flags2_consts {
  *
  * \return Flags with only the RD bit according to its setting in the packet.
  */
-static inline uint8_t dnslib_wire_get_rd(const uint8_t *packet)
+static inline uint8_t knot_wire_get_rd(const uint8_t *packet)
 {
 	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS1) & DNSLIB_WIRE_RD_MASK;
 }
@@ -260,7 +260,7 @@ static inline uint8_t dnslib_wire_get_rd(const uint8_t *packet)
  *
  * \param packet Wire format of the packet.
  */
-static inline void dnslib_wire_set_rd(uint8_t *packet)
+static inline void knot_wire_set_rd(uint8_t *packet)
 {
 	*(packet + DNSLIB_WIRE_OFFSET_FLAGS1) |= DNSLIB_WIRE_RD_MASK;
 }
@@ -270,7 +270,7 @@ static inline void dnslib_wire_set_rd(uint8_t *packet)
  *
  * \param packet Wire format of the packet.
  */
-static inline void dnslib_wire_flags_clear_rd(uint8_t *packet)
+static inline void knot_wire_flags_clear_rd(uint8_t *packet)
 {
 	*(packet + DNSLIB_WIRE_OFFSET_FLAGS1) &= ~DNSLIB_WIRE_RD_MASK;
 }
@@ -282,7 +282,7 @@ static inline void dnslib_wire_flags_clear_rd(uint8_t *packet)
  *
  * \return Flags with only the TC bit according to its setting in the packet.
  */
-static inline uint8_t dnslib_wire_get_tc(const uint8_t *packet)
+static inline uint8_t knot_wire_get_tc(const uint8_t *packet)
 {
 	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS1) & DNSLIB_WIRE_TC_MASK;
 }
@@ -292,7 +292,7 @@ static inline uint8_t dnslib_wire_get_tc(const uint8_t *packet)
  *
  * \param packet Wire format of the packet.
  */
-static inline void dnslib_wire_set_tc(uint8_t *packet)
+static inline void knot_wire_set_tc(uint8_t *packet)
 {
 	*(packet + DNSLIB_WIRE_OFFSET_FLAGS1) |= DNSLIB_WIRE_TC_MASK;
 }
@@ -302,7 +302,7 @@ static inline void dnslib_wire_set_tc(uint8_t *packet)
  *
  * \param packet Wire format of the packet.
  */
-static inline void dnslib_wire_clear_tc(uint8_t *packet)
+static inline void knot_wire_clear_tc(uint8_t *packet)
 {
 	*(packet + DNSLIB_WIRE_OFFSET_FLAGS1) &= ~DNSLIB_WIRE_TC_MASK;
 }
@@ -314,7 +314,7 @@ static inline void dnslib_wire_clear_tc(uint8_t *packet)
  *
  * \return Flags with only the AA bit according to its setting in the packet.
  */
-static inline uint8_t dnslib_wire_get_aa(const uint8_t *packet)
+static inline uint8_t knot_wire_get_aa(const uint8_t *packet)
 {
 	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS1) & DNSLIB_WIRE_AA_MASK;
 }
@@ -324,7 +324,7 @@ static inline uint8_t dnslib_wire_get_aa(const uint8_t *packet)
  *
  * \param packet Wire format of the packet.
  */
-static inline void dnslib_wire_set_aa(uint8_t *packet)
+static inline void knot_wire_set_aa(uint8_t *packet)
 {
 	*(packet + DNSLIB_WIRE_OFFSET_FLAGS1) |= DNSLIB_WIRE_AA_MASK;
 }
@@ -334,7 +334,7 @@ static inline void dnslib_wire_set_aa(uint8_t *packet)
  *
  * \param packet Wire format of the packet.
  */
-static inline void dnslib_wire_clear_aa(uint8_t *packet)
+static inline void knot_wire_clear_aa(uint8_t *packet)
 {
 	*(packet + DNSLIB_WIRE_OFFSET_FLAGS1) &= ~DNSLIB_WIRE_AA_MASK;
 }
@@ -346,7 +346,7 @@ static inline void dnslib_wire_clear_aa(uint8_t *packet)
  *
  * \return OPCODE of the packet.
  */
-static inline uint8_t dnslib_wire_get_opcode(const uint8_t *packet)
+static inline uint8_t knot_wire_get_opcode(const uint8_t *packet)
 {
 	return (*(packet + DNSLIB_WIRE_OFFSET_FLAGS1)
 	        & DNSLIB_WIRE_OPCODE_MASK) >> DNSLIB_WIRE_OPCODE_SHIFT;
@@ -358,7 +358,7 @@ static inline uint8_t dnslib_wire_get_opcode(const uint8_t *packet)
  * \param packet Wire format of the packet.
  * \param opcode OPCODE to set.
  */
-static inline void dnslib_wire_set_opcode(uint8_t *packet, short opcode)
+static inline void knot_wire_set_opcode(uint8_t *packet, short opcode)
 {
 	uint8_t *flags1 = packet + DNSLIB_WIRE_OFFSET_FLAGS1;
 	*flags1 = (*flags1 & ~DNSLIB_WIRE_OPCODE_MASK)
@@ -372,7 +372,7 @@ static inline void dnslib_wire_set_opcode(uint8_t *packet, short opcode)
  *
  * \return Flags with only the QR bit according to its setting in the packet.
  */
-static inline uint8_t dnslib_wire_get_qr(const uint8_t *packet)
+static inline uint8_t knot_wire_get_qr(const uint8_t *packet)
 {
 	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS1) & DNSLIB_WIRE_QR_MASK;
 }
@@ -382,7 +382,7 @@ static inline uint8_t dnslib_wire_get_qr(const uint8_t *packet)
  *
  * \param packet Wire format of the packet.
  */
-static inline void dnslib_wire_set_qr(uint8_t *packet)
+static inline void knot_wire_set_qr(uint8_t *packet)
 {
 	*(packet + DNSLIB_WIRE_OFFSET_FLAGS1) |= DNSLIB_WIRE_QR_MASK;
 }
@@ -392,7 +392,7 @@ static inline void dnslib_wire_set_qr(uint8_t *packet)
  *
  * \param packet Wire format of the packet.
  */
-static inline void dnslib_wire_clear_qr(uint8_t *packet)
+static inline void knot_wire_clear_qr(uint8_t *packet)
 {
 	*(packet + DNSLIB_WIRE_OFFSET_FLAGS1) &= ~DNSLIB_WIRE_QR_MASK;
 }
@@ -404,7 +404,7 @@ static inline void dnslib_wire_clear_qr(uint8_t *packet)
  *
  * \return RCODE of the packet.
  */
-static inline uint8_t dnslib_wire_get_rcode(const uint8_t *packet)
+static inline uint8_t knot_wire_get_rcode(const uint8_t *packet)
 {
 	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS2)
 	       & DNSLIB_WIRE_RCODE_MASK;
@@ -416,7 +416,7 @@ static inline uint8_t dnslib_wire_get_rcode(const uint8_t *packet)
  * \param packet Wire format of the packet.
  * \param rcode RCODE to set.
  */
-static inline void dnslib_wire_set_rcode(uint8_t *packet, short rcode)
+static inline void knot_wire_set_rcode(uint8_t *packet, short rcode)
 {
 	uint8_t *flags2 = packet + DNSLIB_WIRE_OFFSET_FLAGS2;
 	*flags2 = (*flags2 & ~DNSLIB_WIRE_RCODE_MASK) | (rcode);
@@ -429,7 +429,7 @@ static inline void dnslib_wire_set_rcode(uint8_t *packet, short rcode)
  *
  * \return Flags with only the CD bit according to its setting in the packet.
  */
-static inline uint8_t dnslib_wire_get_cd(const uint8_t *packet)
+static inline uint8_t knot_wire_get_cd(const uint8_t *packet)
 {
 	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS2) & DNSLIB_WIRE_CD_MASK;
 }
@@ -439,7 +439,7 @@ static inline uint8_t dnslib_wire_get_cd(const uint8_t *packet)
  *
  * \param packet Wire format of the packet.
  */
-static inline void dnslib_wire_set_cd(uint8_t *packet)
+static inline void knot_wire_set_cd(uint8_t *packet)
 {
 	*(packet + DNSLIB_WIRE_OFFSET_FLAGS2) |= DNSLIB_WIRE_CD_MASK;
 }
@@ -449,7 +449,7 @@ static inline void dnslib_wire_set_cd(uint8_t *packet)
  *
  * \param packet Wire format of the packet.
  */
-static inline void dnslib_wire_clear_cd(uint8_t *packet)
+static inline void knot_wire_clear_cd(uint8_t *packet)
 {
 	*(packet + DNSLIB_WIRE_OFFSET_FLAGS2) &= ~DNSLIB_WIRE_CD_MASK;
 }
@@ -461,7 +461,7 @@ static inline void dnslib_wire_clear_cd(uint8_t *packet)
  *
  * \return Flags with only the AD bit according to its setting in the packet.
  */
-static inline uint8_t dnslib_wire_get_ad(const uint8_t *packet)
+static inline uint8_t knot_wire_get_ad(const uint8_t *packet)
 {
 	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS2) & DNSLIB_WIRE_AD_MASK;
 }
@@ -471,7 +471,7 @@ static inline uint8_t dnslib_wire_get_ad(const uint8_t *packet)
  *
  * \param packet Wire format of the packet.
  */
-static inline void dnslib_wire_set_ad(uint8_t *packet)
+static inline void knot_wire_set_ad(uint8_t *packet)
 {
 	*(packet + DNSLIB_WIRE_OFFSET_FLAGS2) |= DNSLIB_WIRE_AD_MASK;
 }
@@ -481,7 +481,7 @@ static inline void dnslib_wire_set_ad(uint8_t *packet)
  *
  * \param packet Wire format of the packet.
  */
-static inline void dnslib_wire_clear_ad(uint8_t *packet)
+static inline void knot_wire_clear_ad(uint8_t *packet)
 {
 	*(packet + DNSLIB_WIRE_OFFSET_FLAGS2) &= ~DNSLIB_WIRE_AD_MASK;
 }
@@ -493,7 +493,7 @@ static inline void dnslib_wire_clear_ad(uint8_t *packet)
  *
  * \return Flags with only the Zero bit according to its setting in the packet.
  */
-static inline uint8_t dnslib_wire_get_z(const uint8_t *packet)
+static inline uint8_t knot_wire_get_z(const uint8_t *packet)
 {
 	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS2) & DNSLIB_WIRE_Z_MASK;
 }
@@ -503,7 +503,7 @@ static inline uint8_t dnslib_wire_get_z(const uint8_t *packet)
  *
  * \param packet Wire format of the packet.
  */
-static inline void dnslib_wire_set_z(uint8_t *packet)
+static inline void knot_wire_set_z(uint8_t *packet)
 {
 	*(packet + DNSLIB_WIRE_OFFSET_FLAGS2) |= DNSLIB_WIRE_Z_MASK;
 }
@@ -513,7 +513,7 @@ static inline void dnslib_wire_set_z(uint8_t *packet)
  *
  * \param packet Wire format of the packet.
  */
-static inline void dnslib_wire_clear_z(uint8_t *packet)
+static inline void knot_wire_clear_z(uint8_t *packet)
 {
 	*(packet + DNSLIB_WIRE_OFFSET_FLAGS2) &= ~DNSLIB_WIRE_Z_MASK;
 }
@@ -525,7 +525,7 @@ static inline void dnslib_wire_clear_z(uint8_t *packet)
  *
  * \return Flags with only the RA bit according to its setting in the packet.
  */
-static inline uint8_t dnslib_wire_get_ra(const uint8_t *packet)
+static inline uint8_t knot_wire_get_ra(const uint8_t *packet)
 {
 	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS2) & DNSLIB_WIRE_RA_MASK;
 }
@@ -535,7 +535,7 @@ static inline uint8_t dnslib_wire_get_ra(const uint8_t *packet)
  *
  * \param packet Wire format of the packet.
  */
-static inline void dnslib_wire_set_ra(uint8_t *packet)
+static inline void knot_wire_set_ra(uint8_t *packet)
 {
 	*(packet + DNSLIB_WIRE_OFFSET_FLAGS2) |= DNSLIB_WIRE_RA_MASK;
 }
@@ -545,7 +545,7 @@ static inline void dnslib_wire_set_ra(uint8_t *packet)
  *
  * \param packet Wire format of the packet.
  */
-static inline void dnslib_wire_clear_ra(uint8_t *packet)
+static inline void knot_wire_clear_ra(uint8_t *packet)
 {
 	*(packet + DNSLIB_WIRE_OFFSET_FLAGS2) &= ~DNSLIB_WIRE_RA_MASK;
 }
@@ -562,7 +562,7 @@ static inline void dnslib_wire_clear_ra(uint8_t *packet)
  * \return Flags byte with only the RD bit according to its setting in
  *         \a flags1.
  */
-static inline uint8_t dnslib_wire_flags_get_rd(uint8_t flags1)
+static inline uint8_t knot_wire_flags_get_rd(uint8_t flags1)
 {
 	return flags1 & DNSLIB_WIRE_RD_MASK;
 }
@@ -572,7 +572,7 @@ static inline uint8_t dnslib_wire_flags_get_rd(uint8_t flags1)
  *
  * \param flags1 First byte of DNS header flags.
  */
-static inline void dnslib_wire_flags_set_rd(uint8_t *flags1)
+static inline void knot_wire_flags_set_rd(uint8_t *flags1)
 {
 	*flags1 |= DNSLIB_WIRE_RD_MASK;
 }
@@ -582,7 +582,7 @@ static inline void dnslib_wire_flags_set_rd(uint8_t *flags1)
  *
  * \param flags1 First byte of DNS header flags.
  */
-static inline void dnslib_wire_flags_flags_clear_rd(uint8_t *flags1)
+static inline void knot_wire_flags_flags_clear_rd(uint8_t *flags1)
 {
 	*flags1 &= ~DNSLIB_WIRE_RD_MASK;
 }
@@ -595,7 +595,7 @@ static inline void dnslib_wire_flags_flags_clear_rd(uint8_t *flags1)
  * \return Flags byte with only the TC bit according to its setting in
  *         \a flags1.
  */
-static inline uint8_t dnslib_wire_flags_get_tc(uint8_t flags1)
+static inline uint8_t knot_wire_flags_get_tc(uint8_t flags1)
 {
 	return flags1 & DNSLIB_WIRE_TC_MASK;
 }
@@ -605,7 +605,7 @@ static inline uint8_t dnslib_wire_flags_get_tc(uint8_t flags1)
  *
  * \param flags1 First byte of DNS header flags.
  */
-static inline void dnslib_wire_flags_set_tc(uint8_t *flags1)
+static inline void knot_wire_flags_set_tc(uint8_t *flags1)
 {
 	*flags1 |= DNSLIB_WIRE_TC_MASK;
 }
@@ -615,7 +615,7 @@ static inline void dnslib_wire_flags_set_tc(uint8_t *flags1)
  *
  * \param flags1 First byte of DNS header flags.
  */
-static inline void dnslib_wire_flags_clear_tc(uint8_t *flags1)
+static inline void knot_wire_flags_clear_tc(uint8_t *flags1)
 {
 	*flags1 &= ~DNSLIB_WIRE_TC_MASK;
 }
@@ -628,7 +628,7 @@ static inline void dnslib_wire_flags_clear_tc(uint8_t *flags1)
  * \return Flags byte with only the AA bit according to its setting in
  *         \a flags1.
  */
-static inline uint8_t dnslib_wire_flags_get_aa(uint8_t flags1)
+static inline uint8_t knot_wire_flags_get_aa(uint8_t flags1)
 {
 	return flags1 & DNSLIB_WIRE_AA_MASK;
 }
@@ -638,7 +638,7 @@ static inline uint8_t dnslib_wire_flags_get_aa(uint8_t flags1)
  *
  * \param flags1 First byte of DNS header flags.
  */
-static inline void dnslib_wire_flags_set_aa(uint8_t *flags1)
+static inline void knot_wire_flags_set_aa(uint8_t *flags1)
 {
 	*flags1 |= DNSLIB_WIRE_AA_MASK;
 }
@@ -648,7 +648,7 @@ static inline void dnslib_wire_flags_set_aa(uint8_t *flags1)
  *
  * \param flags1 First byte of DNS header flags.
  */
-static inline void dnslib_wire_flags_clear_aa(uint8_t *flags1)
+static inline void knot_wire_flags_clear_aa(uint8_t *flags1)
 {
 	*flags1 &= ~DNSLIB_WIRE_AA_MASK;
 }
@@ -660,7 +660,7 @@ static inline void dnslib_wire_flags_clear_aa(uint8_t *flags1)
  *
  * \return OPCODE
  */
-static inline uint8_t dnslib_wire_flags_get_opcode(uint8_t flags1)
+static inline uint8_t knot_wire_flags_get_opcode(uint8_t flags1)
 {
 	return (flags1 & DNSLIB_WIRE_OPCODE_MASK)
 	        >> DNSLIB_WIRE_OPCODE_SHIFT;
@@ -672,7 +672,7 @@ static inline uint8_t dnslib_wire_flags_get_opcode(uint8_t flags1)
  * \param flags1 First byte of DNS header flags.
  * \param opcode OPCODE to set.
  */
-static inline void dnslib_wire_flags_set_opcode(uint8_t *flags1, short opcode)
+static inline void knot_wire_flags_set_opcode(uint8_t *flags1, short opcode)
 {
 	*flags1 = (*flags1 & ~DNSLIB_WIRE_OPCODE_MASK)
 	          | ((opcode) << DNSLIB_WIRE_OPCODE_SHIFT);
@@ -686,7 +686,7 @@ static inline void dnslib_wire_flags_set_opcode(uint8_t *flags1, short opcode)
  * \return Flags byte with only the QR bit according to its setting in
  *         \a flags1.
  */
-static inline uint8_t dnslib_wire_flags_get_qr(uint8_t flags1)
+static inline uint8_t knot_wire_flags_get_qr(uint8_t flags1)
 {
 	return flags1 & DNSLIB_WIRE_QR_MASK;
 }
@@ -696,7 +696,7 @@ static inline uint8_t dnslib_wire_flags_get_qr(uint8_t flags1)
  *
  * \param flags1 First byte of DNS header flags.
  */
-static inline void dnslib_wire_flags_set_qr(uint8_t *flags1)
+static inline void knot_wire_flags_set_qr(uint8_t *flags1)
 {
 	*flags1 |= DNSLIB_WIRE_QR_MASK;
 }
@@ -706,7 +706,7 @@ static inline void dnslib_wire_flags_set_qr(uint8_t *flags1)
  *
  * \param flags1 First byte of DNS header flags.
  */
-static inline void dnslib_wire_flags_clear_qr(uint8_t *flags1)
+static inline void knot_wire_flags_clear_qr(uint8_t *flags1)
 {
 	*flags1 &= ~DNSLIB_WIRE_QR_MASK;
 }
@@ -718,7 +718,7 @@ static inline void dnslib_wire_flags_clear_qr(uint8_t *flags1)
  *
  * \return RCODE
  */
-static inline uint8_t dnslib_wire_flags_get_rcode(uint8_t flags2)
+static inline uint8_t knot_wire_flags_get_rcode(uint8_t flags2)
 {
 	return flags2 & DNSLIB_WIRE_RCODE_MASK;
 }
@@ -729,7 +729,7 @@ static inline uint8_t dnslib_wire_flags_get_rcode(uint8_t flags2)
  * \param flags2 Second byte of DNS header flags.
  * \param rcode RCODE to set.
  */
-static inline void dnslib_wire_flags_set_rcode(uint8_t *flags2, short rcode)
+static inline void knot_wire_flags_set_rcode(uint8_t *flags2, short rcode)
 {
 	*flags2 = (*flags2 & ~DNSLIB_WIRE_RCODE_MASK) | (rcode);
 }
@@ -742,7 +742,7 @@ static inline void dnslib_wire_flags_set_rcode(uint8_t *flags2, short rcode)
  * \return Flags byte with only the CD bit according to its setting in
  *         \a flags2.
  */
-static inline uint8_t dnslib_wire_flags_get_cd(uint8_t flags2)
+static inline uint8_t knot_wire_flags_get_cd(uint8_t flags2)
 {
 	return flags2 & DNSLIB_WIRE_CD_MASK;
 }
@@ -752,7 +752,7 @@ static inline uint8_t dnslib_wire_flags_get_cd(uint8_t flags2)
  *
  * \param flags2 Second byte of DNS header flags.
  */
-static inline void dnslib_wire_flags_set_cd(uint8_t *flags2)
+static inline void knot_wire_flags_set_cd(uint8_t *flags2)
 {
 	*flags2 |= DNSLIB_WIRE_CD_MASK;
 }
@@ -762,7 +762,7 @@ static inline void dnslib_wire_flags_set_cd(uint8_t *flags2)
  *
  * \param flags2 Second byte of DNS header flags.
  */
-static inline void dnslib_wire_flags_clear_cd(uint8_t *flags2)
+static inline void knot_wire_flags_clear_cd(uint8_t *flags2)
 {
 	*flags2 &= ~DNSLIB_WIRE_CD_MASK;
 }
@@ -775,7 +775,7 @@ static inline void dnslib_wire_flags_clear_cd(uint8_t *flags2)
  * \return Flags byte with only the AD bit according to its setting in
  *         \a flags2.
  */
-static inline uint8_t dnslib_wire_flags_get_ad(uint8_t flags2)
+static inline uint8_t knot_wire_flags_get_ad(uint8_t flags2)
 {
 	return flags2 & DNSLIB_WIRE_AD_MASK;
 }
@@ -785,7 +785,7 @@ static inline uint8_t dnslib_wire_flags_get_ad(uint8_t flags2)
  *
  * \param flags2 Second byte of DNS header flags.
  */
-static inline void dnslib_wire_flags_set_ad(uint8_t *flags2)
+static inline void knot_wire_flags_set_ad(uint8_t *flags2)
 {
 	*flags2 |= DNSLIB_WIRE_AD_MASK;
 }
@@ -795,7 +795,7 @@ static inline void dnslib_wire_flags_set_ad(uint8_t *flags2)
  *
  * \param flags2 Second byte of DNS header flags.
  */
-static inline void dnslib_wire_flags_clear_ad(uint8_t *flags2)
+static inline void knot_wire_flags_clear_ad(uint8_t *flags2)
 {
 	*flags2 &= ~DNSLIB_WIRE_AD_MASK;
 }
@@ -808,7 +808,7 @@ static inline void dnslib_wire_flags_clear_ad(uint8_t *flags2)
  * \return Flags byte with only the Zero bit according to its setting in
  *         \a flags2.
  */
-static inline uint8_t dnslib_wire_flags_get_z(uint8_t flags2)
+static inline uint8_t knot_wire_flags_get_z(uint8_t flags2)
 {
 	return flags2 & DNSLIB_WIRE_Z_MASK;
 }
@@ -818,7 +818,7 @@ static inline uint8_t dnslib_wire_flags_get_z(uint8_t flags2)
  *
  * \param flags2 Second byte of DNS header flags.
  */
-static inline void dnslib_wire_flags_set_z(uint8_t *flags2)
+static inline void knot_wire_flags_set_z(uint8_t *flags2)
 {
 	*flags2 |= DNSLIB_WIRE_Z_MASK;
 }
@@ -828,7 +828,7 @@ static inline void dnslib_wire_flags_set_z(uint8_t *flags2)
  *
  * \param flags2 Second byte of DNS header flags.
  */
-static inline void dnslib_wire_flags_clear_z(uint8_t *flags2)
+static inline void knot_wire_flags_clear_z(uint8_t *flags2)
 {
 	*flags2 &= ~DNSLIB_WIRE_Z_MASK;
 }
@@ -841,7 +841,7 @@ static inline void dnslib_wire_flags_clear_z(uint8_t *flags2)
  * \return Flags byte with only the RA bit according to its setting in
  *         \a flags2.
  */
-static inline uint8_t dnslib_wire_flags_get_ra(uint8_t flags2)
+static inline uint8_t knot_wire_flags_get_ra(uint8_t flags2)
 {
 	return flags2 & DNSLIB_WIRE_RA_MASK;
 }
@@ -851,7 +851,7 @@ static inline uint8_t dnslib_wire_flags_get_ra(uint8_t flags2)
  *
  * \param flags2 Second byte of DNS header flags.
  */
-static inline void dnslib_wire_flags_set_ra(uint8_t *flags2)
+static inline void knot_wire_flags_set_ra(uint8_t *flags2)
 {
 	*flags2 |= DNSLIB_WIRE_RA_MASK;
 }
@@ -861,7 +861,7 @@ static inline void dnslib_wire_flags_set_ra(uint8_t *flags2)
  *
  * \param flags2 Second byte of DNS header flags.
  */
-static inline void dnslib_wire_flags_clear_ra(uint8_t *flags2)
+static inline void knot_wire_flags_clear_ra(uint8_t *flags2)
 {
 	*flags2 &= ~DNSLIB_WIRE_RA_MASK;
 }
@@ -870,7 +870,7 @@ static inline void dnslib_wire_flags_clear_ra(uint8_t *flags2)
  * Pointer manipulation
  */
 
-enum dnslib_wire_pointer_consts {
+enum knot_wire_pointer_consts {
 	/*! \brief DNS packet pointer designation (first two bits set to 1).  */
 	DNSLIB_WIRE_PTR = (uint8_t)0xc0U
 };
@@ -882,27 +882,27 @@ enum dnslib_wire_pointer_consts {
  * \param ptr Relative position of the item to which the pointer should point in
  *            the wire format of the packet.
  */
-static inline void dnslib_wire_put_pointer(uint8_t *pos, size_t ptr)
+static inline void knot_wire_put_pointer(uint8_t *pos, size_t ptr)
 {
 	uint16_t p = ptr;
-	dnslib_wire_write_u16(pos, p);
+	knot_wire_write_u16(pos, p);
 	assert((pos[0] & DNSLIB_WIRE_PTR) == 0);
 	pos[0] |= DNSLIB_WIRE_PTR;
 }
 
-static inline int dnslib_wire_is_pointer(const uint8_t *pos)
+static inline int knot_wire_is_pointer(const uint8_t *pos)
 {
 	return ((pos[0] & DNSLIB_WIRE_PTR) != 0);
 }
 
-static inline size_t dnslib_wire_get_pointer(const uint8_t *pos)
+static inline size_t knot_wire_get_pointer(const uint8_t *pos)
 {
 	/*! \todo memcpy() is not needed, may be directly assigned. */
 	uint16_t p = 0;
 	memcpy(&p, pos, 2);
 	p &= ~DNSLIB_WIRE_PTR;
 
-	uint16_t p2 = dnslib_wire_read_u16((uint8_t *)&p);
+	uint16_t p2 = knot_wire_read_u16((uint8_t *)&p);
 	return p2;
 }
 

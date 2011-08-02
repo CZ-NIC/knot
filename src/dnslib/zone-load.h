@@ -35,7 +35,7 @@ typedef struct zloader_t
  * \retval Initialized loader on success.
  * \retval NULL on error.
  */
-zloader_t *dnslib_zload_open(const char *filename);
+zloader_t *knot_zload_open(const char *filename);
 
 /*!
  * \brief Loads zone from a compiled and serialized zone file.
@@ -45,7 +45,7 @@ zloader_t *dnslib_zload_open(const char *filename);
  * \retval Loaded zone on success.
  * \retval NULL otherwise.
  */
-dnslib_zone_t *dnslib_zload_load(zloader_t *loader);
+knot_zone_t *knot_zload_load(zloader_t *loader);
 
 /*!
  * \brief Checks whether the compiled zone needs a recompilation.
@@ -55,7 +55,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader);
  * \retval 1 is if needs to be recompiled.
  * \retval 0 if it is up to date.
  */
-int dnslib_zload_needs_update(zloader_t *loader);
+int knot_zload_needs_update(zloader_t *loader);
 
 
 /*!
@@ -63,10 +63,10 @@ int dnslib_zload_needs_update(zloader_t *loader);
  *
  * \param loader Zone loader instance.
  */
-void dnslib_zload_close(zloader_t *loader);
+void knot_zload_close(zloader_t *loader);
 
 /*!
- * \brief Loads RRSet serialized by dnslib_zdump_rrset_serialize().
+ * \brief Loads RRSet serialized by knot_zdump_rrset_serialize().
  *
  * \param stream Stream containing serialized RRSet.
  * \param size Size of stream. This variable will contain remaining length of
@@ -80,7 +80,7 @@ void dnslib_zload_close(zloader_t *loader);
  * \retval DNSLIB_EBADAG on wrong arguments.
  * \retval DNSLIB_EMALF when stream is malformed.
  */
-int dnslib_zload_rrset_deserialize(dnslib_rrset_t **rrset,
+int knot_zload_rrset_deserialize(knot_rrset_t **rrset,
                                    uint8_t *stream, size_t *size);
 
 #endif /* _KNOT_ZONELOAD_H_ */

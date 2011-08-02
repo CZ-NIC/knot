@@ -7,35 +7,35 @@
 #include "dnslib/error.h"
 #include "dnslib/node.h"
 
-static int dnslib_zone_tests_count(int argc, char *argv[]);
-static int dnslib_zone_tests_run(int argc, char *argv[]);
+static int knot_zone_tests_count(int argc, char *argv[]);
+static int knot_zone_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
 unit_api zone_tests_api = {
 	"DNS library - zone",        //! Unit name
-	&dnslib_zone_tests_count,  //! Count scheduled tests
-	&dnslib_zone_tests_run     //! Run scheduled tests
+	&knot_zone_tests_count,  //! Count scheduled tests
+	&knot_zone_tests_run     //! Run scheduled tests
 };
 
 /*
  *  Unit implementation.
  */
 
-extern dnslib_dname_t *dname_from_test_dname(test_dname_t *test_dname);
-extern dnslib_rrset_t *rrset_from_test_rrset(test_rrset_t *test_rrset);
+extern knot_dname_t *dname_from_test_dname(test_dname_t *test_dname);
+extern knot_rrset_t *rrset_from_test_rrset(test_rrset_t *test_rrset);
 
-static dnslib_node_t *node_from_test_node(const test_node_t *test_node)
+static knot_node_t *node_from_test_node(const test_node_t *test_node)
 {
-	dnslib_dname_t *owner = dname_from_test_dname(test_node->owner);
+	knot_dname_t *owner = dname_from_test_dname(test_node->owner);
 	/* TODO parent? */
-	dnslib_node_t *new_node = dnslib_node_new(owner, NULL, 0);
+	knot_node_t *new_node = knot_node_new(owner, NULL, 0);
 	node *n = NULL;
 	WALK_LIST(n, test_node->rrset_list) {
 		test_rrset_t *test_rrset = (test_rrset_t *)n;
-		dnslib_rrset_t *rrset = rrset_from_test_rrset(test_rrset);
+		knot_rrset_t *rrset = rrset_from_test_rrset(test_rrset);
 		assert(rrset);
-		assert(dnslib_node_add_rrset(new_node, rrset, 0) == 0);
+		assert(knot_node_add_rrset(new_node, rrset, 0) == 0);
 	}
 
 	return new_node;
@@ -43,7 +43,7 @@ static dnslib_node_t *node_from_test_node(const test_node_t *test_node)
 
 static int test_zone_create(list node_list)
 {
-//	dnslib_dname_t *dname = dnslib_dname_new_from_wire(
+//	knot_dname_t *dname = knot_dname_new_from_wire(
 //		test_apex.owner.name, test_apex.owner.size, NULL);
 //	assert(dname);
 	int errors = 0;
@@ -51,23 +51,23 @@ static int test_zone_create(list node_list)
 	node *n = NULL;
 	WALK_LIST(n, node_list) {
 		test_node_t *test_node = (test_node_t *)n;
-		dnslib_node_t *node = node_from_test_node(test_node);
+		knot_node_t *node = node_from_test_node(test_node);
 		assert(node);
 
-		dnslib_zone_t *zone = dnslib_zone_new(node, 0, 0);
+		knot_zone_t *zone = knot_zone_new(node, 0, 0);
 		if (zone == NULL) {
 			diag("Could not create zone with owner: %s\n",
 			     test_node->owner->str);
 			errors++;
 		}
-		dnslib_node_free_rrsets(node, 1);
-		dnslib_node_free(&node, 0, 0);
+		knot_node_free_rrsets(node, 1);
+		knot_node_free(&node, 0, 0);
 	}
 
 	return (errors == 0);
 }
 
-//static int test_zone_add_node(dnslib_zone_t *zone, int nsec3)
+//static int test_zone_add_node(knot_zone_t *zone, int nsec3)
 //{
 //	/*
 //	 * NSEC3 nodes are de facto identical to normal nodes, so there is no
@@ -81,18 +81,18 @@ static int test_zone_create(list node_list)
 //	//note("Good nodes");
 
 //	for (int i = 0; i < TEST_NODES_GOOD; ++i) {
-//		dnslib_node_t *node = dnslib_node_new(&test_nodes_good[i].owner,
+//		knot_node_t *node = knot_node_new(&test_nodes_good[i].owner,
 //		                                     test_nodes_good[i].parent);
 //		if (node == NULL) {
 //			diag("zone: Could not create node.");
 //			return 0;
 //		}
 
-//		if ((res = ((nsec3) ? dnslib_zone_add_nsec3_node(zone, node)
-//		                   : dnslib_zone_add_node(zone, node))) != 0) {
+//		if ((res = ((nsec3) ? knot_zone_add_nsec3_node(zone, node)
+//		                   : knot_zone_add_node(zone, node))) != 0) {
 //			diag("zone: Failed to insert node into zone (returned"
 //			     " %d).", res);
-//			dnslib_node_free(&node, 0);
+//			knot_node_free(&node, 0);
 //			++errors;
 //		}
 //		/* TODO check values in the node as well */
@@ -101,44 +101,44 @@ static int test_zone_create(list node_list)
 //	//note("Bad nodes");
 
 //	for (int i = 0; i < TEST_NODES_BAD; ++i) {
-//		dnslib_node_t *node = dnslib_node_new(&test_nodes_bad[i].owner,
+//		knot_node_t *node = knot_node_new(&test_nodes_bad[i].owner,
 //		                                    test_nodes_bad[i].parent);
 //		if (node == NULL) {
 //			diag("zone: Could not create node.");
 //			return 0;
 //		}
 
-//		if ((res = ((nsec3) ? dnslib_zone_add_nsec3_node(zone, node)
-//			: dnslib_zone_add_node(zone, node))) !=
+//		if ((res = ((nsec3) ? knot_zone_add_nsec3_node(zone, node)
+//			: knot_zone_add_node(zone, node))) !=
 //		                DNSLIB_EBADZONE) {
 //			diag("zone: Inserting wrong node did not result in"
 //			     "proper return value (%d instead of %d).", res,
 //			     DNSLIB_EBADZONE);
 //			++errors;
 //		}
-//		dnslib_node_free(&node, 0);
+//		knot_node_free(&node, 0);
 //	}
 
 //	// check if all nodes are inserted
 //	//int nodes = 0;
 //	if (!nsec3
-//	    && !test_zone_check_node(dnslib_zone_apex(zone), &test_apex)) {
+//	    && !test_zone_check_node(knot_zone_apex(zone), &test_apex)) {
 //		diag("zone: Apex of zone not right.");
 ////		diag("Apex owner: %s (%p), apex parent: %p\n",
-////		     dnslib_dname_to_str(dnslib_zone_apex(zone)->owner),
-////		     dnslib_zone_apex(zone)->owner,
-////		     dnslib_zone_apex(zone)->parent);
+////		     knot_dname_to_str(knot_zone_apex(zone)->owner),
+////		     knot_zone_apex(zone)->owner,
+////		     knot_zone_apex(zone)->parent);
 ////		diag("Should be: owner: %s (%p), parent: %p\n",
-////		     dnslib_dname_to_str(&test_apex.owner),
+////		     knot_dname_to_str(&test_apex.owner),
 ////		     &test_apex.owner,
 ////		     test_apex.parent);
 //		++errors;
 //	}
 //	//++nodes;
 //	for (int i = 0; i < TEST_NODES_GOOD; ++i) {
-//		const dnslib_node_t *n = ((nsec3) ? dnslib_zone_find_nsec3_node(
+//		const knot_node_t *n = ((nsec3) ? knot_zone_find_nsec3_node(
 //				zone, &test_nodes_good[i].owner) :
-//			dnslib_zone_find_node(zone, &test_nodes_good[i].owner));
+//			knot_zone_find_node(zone, &test_nodes_good[i].owner));
 //		if (n == NULL) {
 //			diag("zone: Missing node with owner %s",
 //			     test_nodes_good[i].owner.name);
@@ -161,14 +161,14 @@ static int test_zone_create(list node_list)
 //	return (errors == 0);
 //}
 
-//static int test_zone_get_node(dnslib_zone_t *zone, int nsec3)
+//static int test_zone_get_node(knot_zone_t *zone, int nsec3)
 //{
 //	int errors = 0;
 
 //	for (int i = 0; i < TEST_NODES_GOOD; ++i) {
-//		if (((nsec3) ? dnslib_zone_get_nsec3_node(
+//		if (((nsec3) ? knot_zone_get_nsec3_node(
 //		                   zone, &test_nodes_good[i].owner)
-//			: dnslib_zone_get_node(zone, &test_nodes_good[i].owner))
+//			: knot_zone_get_node(zone, &test_nodes_good[i].owner))
 //			== NULL) {
 //			diag("zone: Node (%s) not found in zone.",
 //			     (char *)test_nodes_good[i].owner.name);
@@ -177,9 +177,9 @@ static int test_zone_create(list node_list)
 //	}
 
 //	for (int i = 0; i < TEST_NODES_BAD; ++i) {
-//		if (((nsec3) ? dnslib_zone_get_nsec3_node(
+//		if (((nsec3) ? knot_zone_get_nsec3_node(
 //		                   zone, &test_nodes_bad[i].owner)
-//			: dnslib_zone_get_node(zone, &test_nodes_bad[i].owner))
+//			: knot_zone_get_node(zone, &test_nodes_bad[i].owner))
 //			!= NULL) {
 //			diag("zone: Node (%s) found in zone even if it should"
 //			     "not be there.",
@@ -189,21 +189,21 @@ static int test_zone_create(list node_list)
 //	}
 
 //	if (((nsec3)
-//	     ? dnslib_zone_get_nsec3_node(NULL, &test_nodes_good[0].owner)
-//	     : dnslib_zone_get_node(NULL, &test_nodes_good[0].owner)) != NULL) {
+//	     ? knot_zone_get_nsec3_node(NULL, &test_nodes_good[0].owner)
+//	     : knot_zone_get_node(NULL, &test_nodes_good[0].owner)) != NULL) {
 //		diag("zone: Getting node from NULL zone did not result in"
 //		     "proper return value (NULL)");
 //		++errors;
 //	}
 
-//	if (((nsec3) ? dnslib_zone_get_nsec3_node(zone, NULL)
-//	             : dnslib_zone_get_node(zone, NULL)) != NULL) {
+//	if (((nsec3) ? knot_zone_get_nsec3_node(zone, NULL)
+//	             : knot_zone_get_node(zone, NULL)) != NULL) {
 //		diag("zone: Getting node with NULL owner from zone did not "
 //		     "result in proper return value (NULL)");
 //		++errors;
 //	}
 
-//	if (!nsec3 && dnslib_zone_get_node(zone, &test_apex.owner) == NULL) {
+//	if (!nsec3 && knot_zone_get_node(zone, &test_apex.owner) == NULL) {
 //		diag("zone: Getting zone apex from the zone failed");
 //		++errors;
 //	}
@@ -211,14 +211,14 @@ static int test_zone_create(list node_list)
 //	return (errors == 0);
 //}
 
-//static int test_zone_find_node(dnslib_zone_t *zone, int nsec3)
+//static int test_zone_find_node(knot_zone_t *zone, int nsec3)
 //{
 //	int errors = 0;
 
 //	for (int i = 0; i < TEST_NODES_GOOD; ++i) {
-//		if (((nsec3) ? dnslib_zone_find_nsec3_node(
+//		if (((nsec3) ? knot_zone_find_nsec3_node(
 //		                   zone, &test_nodes_good[i].owner)
-//		    : dnslib_zone_find_node(zone, &test_nodes_good[i].owner))
+//		    : knot_zone_find_node(zone, &test_nodes_good[i].owner))
 //		    == NULL) {
 //			diag("zone: Node (%s) not found in zone.",
 //			     (char *)test_nodes_good[i].owner.name);
@@ -227,9 +227,9 @@ static int test_zone_create(list node_list)
 //	}
 
 //	for (int i = 0; i < TEST_NODES_BAD; ++i) {
-//		if (((nsec3) ? dnslib_zone_find_nsec3_node(
+//		if (((nsec3) ? knot_zone_find_nsec3_node(
 //		                   zone, &test_nodes_bad[i].owner)
-//		    : dnslib_zone_find_node(zone, &test_nodes_bad[i].owner))
+//		    : knot_zone_find_node(zone, &test_nodes_bad[i].owner))
 //		    != NULL) {
 //			diag("zone: Node (%s) found in zone even if it should"
 //			     "not be there.",
@@ -239,21 +239,21 @@ static int test_zone_create(list node_list)
 //	}
 
 //	if (((nsec3)
-//	    ? dnslib_zone_find_nsec3_node(NULL, &test_nodes_good[0].owner)
-//	    : dnslib_zone_find_node(NULL, &test_nodes_good[0].owner)) != NULL) {
+//	    ? knot_zone_find_nsec3_node(NULL, &test_nodes_good[0].owner)
+//	    : knot_zone_find_node(NULL, &test_nodes_good[0].owner)) != NULL) {
 //		diag("zone: Finding node from NULL zone did not result in"
 //		     "proper return value (NULL)");
 //		++errors;
 //	}
 
-//	if (((nsec3) ? dnslib_zone_find_nsec3_node(zone, NULL)
-//	             : dnslib_zone_find_node(zone, NULL)) != NULL) {
+//	if (((nsec3) ? knot_zone_find_nsec3_node(zone, NULL)
+//	             : knot_zone_find_node(zone, NULL)) != NULL) {
 //		diag("zone: Finding node with NULL owner from zone did not "
 //		     "result in proper return value (NULL)");
 //		++errors;
 //	}
 
-//	if (!nsec3 && dnslib_zone_find_node(zone, &test_apex.owner) == NULL) {
+//	if (!nsec3 && knot_zone_find_node(zone, &test_apex.owner) == NULL) {
 //		diag("zone: Finding zone apex from the zone failed");
 //		++errors;
 //	}
@@ -266,19 +266,19 @@ static const int DNSLIB_ZONE_TEST_COUNT = 1;
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
-static int dnslib_zone_tests_count(int argc, char *argv[])
+static int knot_zone_tests_count(int argc, char *argv[])
 {
 	return DNSLIB_ZONE_TEST_COUNT;
 }
 
 /*! Run all scheduled tests for given parameters.
  */
-static int dnslib_zone_tests_run(int argc, char *argv[])
+static int knot_zone_tests_run(int argc, char *argv[])
 {
 	int res = 0,
 	    res_final = 0;
 
-	test_data_t *data = data_for_dnslib_tests;
+	test_data_t *data = data_for_knot_tests;
 
 	ok((res = test_zone_create(data->node_list)), "zone: create");
 	res_final *= res;

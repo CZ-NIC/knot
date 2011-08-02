@@ -24,7 +24,7 @@
  * \return A byte with only the delegation point flag set if it was set in
  *         \a flags.
  */
-static inline uint8_t dnslib_node_flags_get_deleg(uint8_t flags)
+static inline uint8_t knot_node_flags_get_deleg(uint8_t flags)
 {
 	return flags & DNSLIB_NODE_FLAGS_DELEG;
 }
@@ -35,7 +35,7 @@ static inline uint8_t dnslib_node_flags_get_deleg(uint8_t flags)
  *
  * \param flags Flags to set the flag in.
  */
-static inline void dnslib_node_flags_set_deleg(uint8_t *flags)
+static inline void knot_node_flags_set_deleg(uint8_t *flags)
 {
 	*flags |= DNSLIB_NODE_FLAGS_DELEG;
 }
@@ -49,7 +49,7 @@ static inline void dnslib_node_flags_set_deleg(uint8_t *flags)
  * \return A byte with only the non-authoritative node flag set if it was set in
  *         \a flags.
  */
-static inline uint8_t dnslib_node_flags_get_nonauth(uint8_t flags)
+static inline uint8_t knot_node_flags_get_nonauth(uint8_t flags)
 {
 	return flags & DNSLIB_NODE_FLAGS_NONAUTH;
 }
@@ -60,7 +60,7 @@ static inline uint8_t dnslib_node_flags_get_nonauth(uint8_t flags)
  *
  * \param flags Flags to set the flag in.
  */
-static inline void dnslib_node_flags_set_nonauth(uint8_t *flags)
+static inline void knot_node_flags_set_nonauth(uint8_t *flags)
 {
 	*flags |= DNSLIB_NODE_FLAGS_NONAUTH;
 }
@@ -73,7 +73,7 @@ static inline void dnslib_node_flags_set_nonauth(uint8_t *flags)
  *
  * \return A byte with only the old node flag set if it was set in \a flags.
  */
-static inline uint8_t dnslib_node_flags_get_old(uint8_t flags)
+static inline uint8_t knot_node_flags_get_old(uint8_t flags)
 {
 	return flags & DNSLIB_NODE_FLAGS_OLD;
 }
@@ -84,7 +84,7 @@ static inline uint8_t dnslib_node_flags_get_old(uint8_t flags)
  *
  * \param flags Flags to set the flag in.
  */
-static inline void dnslib_node_flags_set_new(uint8_t *flags)
+static inline void knot_node_flags_set_new(uint8_t *flags)
 {
 	*flags |= DNSLIB_NODE_FLAGS_NEW;
 }
@@ -97,7 +97,7 @@ static inline void dnslib_node_flags_set_new(uint8_t *flags)
  *
  * \return A byte with only the new node flag set if it was set in \a flags.
  */
-static inline uint8_t dnslib_node_flags_get_new(uint8_t flags)
+static inline uint8_t knot_node_flags_get_new(uint8_t flags)
 {
 	return flags & DNSLIB_NODE_FLAGS_NEW;
 }
@@ -108,21 +108,21 @@ static inline uint8_t dnslib_node_flags_get_new(uint8_t flags)
  *
  * \param flags Flags to set the flag in.
  */
-static inline void dnslib_node_flags_set_old(uint8_t *flags)
+static inline void knot_node_flags_set_old(uint8_t *flags)
 {
 	*flags |= DNSLIB_NODE_FLAGS_OLD;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static inline void dnslib_node_flags_clear_new(uint8_t *flags)
+static inline void knot_node_flags_clear_new(uint8_t *flags)
 {
 	*flags &= ~DNSLIB_NODE_FLAGS_NEW;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static inline void dnslib_node_flags_clear_old(uint8_t *flags)
+static inline void knot_node_flags_clear_old(uint8_t *flags)
 {
 	*flags &= ~DNSLIB_NODE_FLAGS_OLD;
 }
@@ -143,18 +143,18 @@ static inline void dnslib_node_flags_clear_old(uint8_t *flags)
  */
 static int compare_rrset_types(void *rr1, void *rr2)
 {
-	dnslib_rrset_t *rrset1 = (dnslib_rrset_t *)rr1;
-	dnslib_rrset_t *rrset2 = (dnslib_rrset_t *)rr2;
+	knot_rrset_t *rrset1 = (knot_rrset_t *)rr1;
+	knot_rrset_t *rrset2 = (knot_rrset_t *)rr2;
 	return ((rrset1->type > rrset2->type) ? 1 :
 	        (rrset1->type == rrset2->type) ? 0 : -1);
 }
 
 /*----------------------------------------------------------------------------*/
 
-static short dnslib_node_zone_generation(const dnslib_node_t *node)
+static short knot_node_zone_generation(const knot_node_t *node)
 {
 	assert(node->zone != NULL);
-	dnslib_zone_contents_t *cont = rcu_dereference(node->zone->contents);
+	knot_zone_contents_t *cont = rcu_dereference(node->zone->contents);
 	assert(cont != NULL);
 	return cont->generation;
 }
@@ -163,19 +163,19 @@ static short dnslib_node_zone_generation(const dnslib_node_t *node)
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent,
+knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
                                uint8_t flags)
 {
-	dnslib_node_t *ret = (dnslib_node_t *)calloc(1, sizeof(dnslib_node_t));
+	knot_node_t *ret = (knot_node_t *)calloc(1, sizeof(knot_node_t));
 	if (ret == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
 
 	/* Store reference to owner. */
-	dnslib_dname_retain(owner);
+	knot_dname_retain(owner);
 	ret->owner = owner;
-	dnslib_node_set_parent(ret, parent);
+	knot_node_set_parent(ret, parent);
 	ret->rrset_tree = gen_tree_new(compare_rrset_types);
 	ret->flags = flags;
 	
@@ -186,7 +186,7 @@ dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset,
+int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
                           int merge)
 {
 	int ret;
@@ -195,10 +195,10 @@ int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset,
 		unique_rrset_type = 0;
 	}
 //	printf("Add: %p (%p - %s:%s)\n", node->rrset_tree, rrset,
-//	       dnslib_dname_to_str(rrset->owner),
-//	       dnslib_rrtype_to_string(rrset->type));
+//	       knot_dname_to_str(rrset->owner),
+//	       knot_rrtype_to_string(rrset->type));
 	if ((ret = (gen_tree_add(node->rrset_tree, rrset,
-	                         (merge) ? dnslib_rrset_merge : NULL))) != 0) {
+	                         (merge) ? knot_rrset_merge : NULL))) != 0) {
 		return DNSLIB_ERROR;
 	}
 
@@ -212,37 +212,37 @@ int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset,
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_rrset_t *dnslib_node_rrset(const dnslib_node_t *node,
+const knot_rrset_t *knot_node_rrset(const knot_node_t *node,
                                         uint16_t type)
 {
 //	printf("Find: %p (%s)\n", node->rrset_tree,
-//	       dnslib_dname_to_str(node->owner));
+//	       knot_dname_to_str(node->owner));
 	assert(node != NULL);
 	assert(node->rrset_tree != NULL);
-	dnslib_rrset_t rrset;
+	knot_rrset_t rrset;
 	rrset.type = type;
-	return (const dnslib_rrset_t *)gen_tree_find(node->rrset_tree, &rrset);
+	return (const knot_rrset_t *)gen_tree_find(node->rrset_tree, &rrset);
 }
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_rrset_t *dnslib_node_get_rrset(dnslib_node_t *node, uint16_t type)
+knot_rrset_t *knot_node_get_rrset(knot_node_t *node, uint16_t type)
 {
 //	printf("Find: %p (%s)\n", node->rrset_tree,
-//	       dnslib_dname_to_str(node->owner));
-	dnslib_rrset_t rrset;
+//	       knot_dname_to_str(node->owner));
+	knot_rrset_t rrset;
 	rrset.type = type;
-	return (dnslib_rrset_t *)gen_tree_find(node->rrset_tree, &rrset);
+	return (knot_rrset_t *)gen_tree_find(node->rrset_tree, &rrset);
 }
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_rrset_t *dnslib_node_remove_rrset(dnslib_node_t *node, uint16_t type)
+knot_rrset_t *knot_node_remove_rrset(knot_node_t *node, uint16_t type)
 {
-	dnslib_rrset_t dummy_rrset;
+	knot_rrset_t dummy_rrset;
 	dummy_rrset.type = type;
-	dnslib_rrset_t *rrset =
-		(dnslib_rrset_t *)gen_tree_find(node->rrset_tree, &dummy_rrset);
+	knot_rrset_t *rrset =
+		(knot_rrset_t *)gen_tree_find(node->rrset_tree, &dummy_rrset);
 	if (rrset != NULL) {
 		gen_tree_remove(node->rrset_tree, rrset);
 	}
@@ -251,38 +251,38 @@ dnslib_rrset_t *dnslib_node_remove_rrset(dnslib_node_t *node, uint16_t type)
 
 /*----------------------------------------------------------------------------*/
 
-short dnslib_node_rrset_count(const dnslib_node_t *node)
+short knot_node_rrset_count(const knot_node_t *node)
 {
 	return node->rrset_count;
 }
 
 /*----------------------------------------------------------------------------*/
 
-struct dnslib_node_save_rrset_arg {
-	dnslib_rrset_t **array;
+struct knot_node_save_rrset_arg {
+	knot_rrset_t **array;
 	size_t count;
 };
 
 void save_rrset_to_array(void *node, void *data)
 {
-	dnslib_rrset_t *rrset = (dnslib_rrset_t *)node;
+	knot_rrset_t *rrset = (knot_rrset_t *)node;
 //	printf("%p\n", rrset);
-//	debug_dnslib_node("Returning rrset from tree: %s\n",
-//	                  dnslib_dname_to_str(rrset->owner));
-	struct dnslib_node_save_rrset_arg *args =
-		(struct dnslib_node_save_rrset_arg *)data;
+//	debug_knot_node("Returning rrset from tree: %s\n",
+//	                  knot_dname_to_str(rrset->owner));
+	struct knot_node_save_rrset_arg *args =
+		(struct knot_node_save_rrset_arg *)data;
 	args->array[args->count++] = rrset;
 }
 
-dnslib_rrset_t **dnslib_node_get_rrsets(const dnslib_node_t *node)
+knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
 {
 	if (node->rrset_count == 0) {
 		return NULL;
 	}
-	dnslib_rrset_t **rrsets = (dnslib_rrset_t **)malloc(
-		node->rrset_count * sizeof(dnslib_rrset_t *));
+	knot_rrset_t **rrsets = (knot_rrset_t **)malloc(
+		node->rrset_count * sizeof(knot_rrset_t *));
 	CHECK_ALLOC_LOG(rrsets, NULL);
-	struct dnslib_node_save_rrset_arg args;
+	struct knot_node_save_rrset_arg args;
 	args.array = rrsets;
 	args.count = 0;
 
@@ -304,15 +304,15 @@ dnslib_rrset_t **dnslib_node_get_rrsets(const dnslib_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_rrset_t **dnslib_node_rrsets(const dnslib_node_t *node)
+const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 {
 	if (node->rrset_count == 0) {
 		return NULL;
 	}
-	dnslib_rrset_t **rrsets = (dnslib_rrset_t **)malloc(
-		node->rrset_count * sizeof(dnslib_rrset_t *));
+	knot_rrset_t **rrsets = (knot_rrset_t **)malloc(
+		node->rrset_count * sizeof(knot_rrset_t *));
 	CHECK_ALLOC_LOG(rrsets, NULL);
-	struct dnslib_node_save_rrset_arg args;
+	struct knot_node_save_rrset_arg args;
 	args.array = rrsets;
 	args.count = 0;
 
@@ -330,25 +330,25 @@ const dnslib_rrset_t **dnslib_node_rrsets(const dnslib_node_t *node)
 
 	//printf("Returning %d RRSets.\n", i);
 
-	return (const dnslib_rrset_t **)rrsets;
+	return (const knot_rrset_t **)rrsets;
 
 }
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_node_parent(const dnslib_node_t *node, 
+const knot_node_t *knot_node_parent(const knot_node_t *node, 
                                         int check_version)
 {
 //	assert(!check_version
 //	       || (node->zone != NULL && node->zone->contents != NULL));
 	
-	dnslib_node_t *parent = node->parent;
+	knot_node_t *parent = node->parent;
 	
 	if (check_version && node->zone != NULL) {
-		short ver = dnslib_node_zone_generation(node);
+		short ver = knot_node_zone_generation(node);
 	
 		assert(ver != 0 || parent == NULL 
-		       || !dnslib_node_is_new(parent));
+		       || !knot_node_is_new(parent));
 		
 		if (ver != 0 && parent != NULL) {
 			// we want the new node
@@ -362,7 +362,7 @@ const dnslib_node_t *dnslib_node_parent(const dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent)
+void knot_node_set_parent(knot_node_t *node, knot_node_t *parent)
 {
 	// decrease number of children of previous parent
 	if (node->parent != NULL) {
@@ -379,46 +379,46 @@ void dnslib_node_set_parent(dnslib_node_t *node, dnslib_node_t *parent)
 
 /*----------------------------------------------------------------------------*/
 
-unsigned int dnslib_node_children(const dnslib_node_t *node)
+unsigned int knot_node_children(const knot_node_t *node)
 {
 	return node->children;
 }
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_node_previous(const dnslib_node_t *node, 
+const knot_node_t *knot_node_previous(const knot_node_t *node, 
                                           int check_version)
 {
-	return dnslib_node_get_previous(node, check_version);
+	return knot_node_get_previous(node, check_version);
 }
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_node_t *dnslib_node_get_previous(const dnslib_node_t *node, 
+knot_node_t *knot_node_get_previous(const knot_node_t *node, 
                                         int check_version)
 {
 	assert(!check_version 
 	       || (node->zone != NULL && node->zone->contents != NULL));
 	
-	dnslib_node_t *prev = node->prev;
+	knot_node_t *prev = node->prev;
 	
 	if (check_version && prev != NULL) {
-		short ver = dnslib_node_zone_generation(node);
+		short ver = knot_node_zone_generation(node);
 		
 		if (ver == 0) {  // we want old node
-			while (dnslib_node_is_new(prev)) {
+			while (knot_node_is_new(prev)) {
 				prev = prev->prev;
 			}
-			assert(!dnslib_node_is_new(prev));
+			assert(!knot_node_is_new(prev));
 		} else {  // we want new node
-			while (dnslib_node_is_old(prev)) {
+			while (knot_node_is_old(prev)) {
 				if (prev->new_node) {
 					prev = prev->new_node;
 				} else {
 					prev = prev;
 				}
 			}
-			assert(dnslib_node_is_new(prev));
+			assert(knot_node_is_new(prev));
 		}
 	}
 	
@@ -427,7 +427,7 @@ dnslib_node_t *dnslib_node_get_previous(const dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_node_set_previous(dnslib_node_t *node, dnslib_node_t *prev)
+void knot_node_set_previous(knot_node_t *node, knot_node_t *prev)
 {
 	node->prev = prev;
 	if (prev != NULL) {
@@ -443,18 +443,18 @@ void dnslib_node_set_previous(dnslib_node_t *node, dnslib_node_t *prev)
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_node_nsec3_node(const dnslib_node_t *node, 
+const knot_node_t *knot_node_nsec3_node(const knot_node_t *node, 
                                             int check_version)
 {
-	dnslib_node_t *nsec3_node = node->nsec3_node;
+	knot_node_t *nsec3_node = node->nsec3_node;
 	if (nsec3_node == NULL) {
 		return NULL;
 	}
 	
 	if (check_version) {
-		short ver = dnslib_node_zone_generation(node);
-		assert(ver != 0 || !dnslib_node_is_new(nsec3_node));
-		if (ver != 0 && dnslib_node_is_old(nsec3_node)) {
+		short ver = knot_node_zone_generation(node);
+		assert(ver != 0 || !knot_node_is_new(nsec3_node));
+		if (ver != 0 && knot_node_is_old(nsec3_node)) {
 			nsec3_node = nsec3_node->new_node;
 		}
 	}
@@ -464,7 +464,7 @@ const dnslib_node_t *dnslib_node_nsec3_node(const dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_node_set_nsec3_node(dnslib_node_t *node, dnslib_node_t *nsec3_node)
+void knot_node_set_nsec3_node(knot_node_t *node, knot_node_t *nsec3_node)
 {
 	node->nsec3_node = nsec3_node;
 	if (nsec3_node != NULL) {
@@ -474,43 +474,43 @@ void dnslib_node_set_nsec3_node(dnslib_node_t *node, dnslib_node_t *nsec3_node)
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_dname_t *dnslib_node_owner(const dnslib_node_t *node)
+const knot_dname_t *knot_node_owner(const knot_node_t *node)
 {
 	return node->owner;
 }
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_dname_t *dnslib_node_get_owner(const dnslib_node_t *node)
+knot_dname_t *knot_node_get_owner(const knot_node_t *node)
 {
 	return node->owner;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_node_set_owner(dnslib_node_t *node, dnslib_dname_t* owner)
+void knot_node_set_owner(knot_node_t *node, knot_dname_t* owner)
 {
 	if (node) {
 		/* Retain new owner and release old owner. */
-		dnslib_dname_retain(owner);
-		dnslib_dname_release(node->owner);
+		knot_dname_retain(owner);
+		knot_dname_release(node->owner);
 		node->owner = owner;
 	}
 }
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_node_wildcard_child(const dnslib_node_t *node, 
+const knot_node_t *knot_node_wildcard_child(const knot_node_t *node, 
                                                 int check_version)
 {
-	dnslib_node_t *w = node->wildcard_child;
+	knot_node_t *w = node->wildcard_child;
 	
 	if (check_version && w != 0) {
-		short ver = dnslib_node_zone_generation(node);
+		short ver = knot_node_zone_generation(node);
 
-		if (ver == 0 && dnslib_node_is_new(w)) {
+		if (ver == 0 && knot_node_is_new(w)) {
 			return NULL;
-		} else if (ver != 0 && dnslib_node_is_old(w)) {
+		} else if (ver != 0 && knot_node_is_old(w)) {
 			assert(w->new_node != NULL);
 			w = w->new_node;
 		}
@@ -521,8 +521,8 @@ const dnslib_node_t *dnslib_node_wildcard_child(const dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_node_set_wildcard_child(dnslib_node_t *node,
-                                    dnslib_node_t *wildcard_child)
+void knot_node_set_wildcard_child(knot_node_t *node,
+                                    knot_node_t *wildcard_child)
 {
 	node->wildcard_child = wildcard_child;
 //	assert(wildcard_child->parent == node);
@@ -530,18 +530,18 @@ void dnslib_node_set_wildcard_child(dnslib_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_node_current(const dnslib_node_t *node)
+const knot_node_t *knot_node_current(const knot_node_t *node)
 {
 	if (node == NULL || node->zone == NULL
-	    || dnslib_zone_contents(node->zone) == NULL) {
+	    || knot_zone_contents(node->zone) == NULL) {
 		return node;
 	}
 
-	short ver = dnslib_node_zone_generation(node);
+	short ver = knot_node_zone_generation(node);
 
-	if (ver == 0 && dnslib_node_is_new(node)) {
+	if (ver == 0 && knot_node_is_new(node)) {
 		return NULL;
-	} else if (ver != 0 && dnslib_node_is_old(node)) {
+	} else if (ver != 0 && knot_node_is_old(node)) {
 		assert(node->new_node != NULL);
 		return node->new_node;
 	}
@@ -550,18 +550,18 @@ const dnslib_node_t *dnslib_node_current(const dnslib_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_node_t *dnslib_node_get_current(dnslib_node_t *node)
+knot_node_t *knot_node_get_current(knot_node_t *node)
 {
 	if (node == NULL || node->zone == NULL
-	    || dnslib_zone_contents(node->zone) == NULL) {
+	    || knot_zone_contents(node->zone) == NULL) {
 		return node;
 	}
 
-	short ver = dnslib_node_zone_generation(node);
+	short ver = knot_node_zone_generation(node);
 
-	if (ver == 0 && dnslib_node_is_new(node)) {
+	if (ver == 0 && knot_node_is_new(node)) {
 		return NULL;
-	} else if (ver != 0 && dnslib_node_is_old(node)) {
+	} else if (ver != 0 && knot_node_is_old(node)) {
 		assert(node->new_node != NULL);
 		return node->new_node;
 	}
@@ -570,87 +570,87 @@ dnslib_node_t *dnslib_node_get_current(dnslib_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_node_t *dnslib_node_new_node(const dnslib_node_t *node)
+const knot_node_t *knot_node_new_node(const knot_node_t *node)
 {
 	return node->new_node;
 }
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_node_t *dnslib_node_get_new_node(const dnslib_node_t *node)
+knot_node_t *knot_node_get_new_node(const knot_node_t *node)
 {
 	return node->new_node;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_node_set_new_node(dnslib_node_t *node,
-                              dnslib_node_t *new_node)
+void knot_node_set_new_node(knot_node_t *node,
+                              knot_node_t *new_node)
 {
 	node->new_node = new_node;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_node_set_zone(dnslib_node_t *node, dnslib_zone_t *zone)
+void knot_node_set_zone(knot_node_t *node, knot_zone_t *zone)
 {
 	node->zone = zone;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_node_update_ref(dnslib_node_t **ref)
+void knot_node_update_ref(knot_node_t **ref)
 {
-	if (*ref != NULL && dnslib_node_is_old(*ref)) {
+	if (*ref != NULL && knot_node_is_old(*ref)) {
 		*ref = (*ref)->new_node;
 	}
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_node_update_refs(dnslib_node_t *node)
+void knot_node_update_refs(knot_node_t *node)
 {
 	// reference to previous node
-	dnslib_node_update_ref(&node->prev);
-//	if (node->prev && dnslib_node_is_old(node->prev)) {
+	knot_node_update_ref(&node->prev);
+//	if (node->prev && knot_node_is_old(node->prev)) {
 //		assert(node->prev->new_node != NULL);
 //		node->prev = node->prev->new_node;
 //	}
 
 	// reference to next node
-	dnslib_node_update_ref(&node->next);
-//	if (node->next && dnslib_node_is_old(node->next)) {
+	knot_node_update_ref(&node->next);
+//	if (node->next && knot_node_is_old(node->next)) {
 //		assert(node->next->new_node != NULL);
 //		node->next = node->next->new_node;
 //	}
 
 	// reference to parent
-//	if (node->parent && dnslib_node_is_old(node->parent)) {
+//	if (node->parent && knot_node_is_old(node->parent)) {
 //		assert(node->parent->new_node != NULL);
 //		// do not use the API function to set parent, so that children count
 //		// is not changed
-//		//dnslib_node_set_parent(node, node->parent->new_node);
+//		//knot_node_set_parent(node, node->parent->new_node);
 //		node->parent = node->parent->new_node;
 //	}
-	dnslib_node_update_ref(&node->parent);
+	knot_node_update_ref(&node->parent);
 
 	// reference to wildcard child
-	dnslib_node_update_ref(&node->wildcard_child);
-//	if (node->wildcard_child && dnslib_node_is_old(node->wildcard_child)) {
+	knot_node_update_ref(&node->wildcard_child);
+//	if (node->wildcard_child && knot_node_is_old(node->wildcard_child)) {
 //		assert(node->wildcard_child->new_node != NULL);
 //		node->wildcard_child = node->wildcard_child->new_node;
 //	}
 
 	// reference to NSEC3 node
-	dnslib_node_update_ref(&node->nsec3_node);
-//	if (node->nsec3_node && dnslib_node_is_old(node->nsec3_node)) {
+	knot_node_update_ref(&node->nsec3_node);
+//	if (node->nsec3_node && knot_node_is_old(node->nsec3_node)) {
 //		assert(node->nsec3_node->new_node != NULL);
 //		node->nsec3_node = node->nsec3_node->new_node;
 //	}
 
 	// reference to NSEC3 referrer
-	dnslib_node_update_ref(&node->nsec3_referer);
-//	if (node->nsec3_referer && dnslib_node_is_old(node->nsec3_referer)) {
+	knot_node_update_ref(&node->nsec3_referer);
+//	if (node->nsec3_referer && knot_node_is_old(node->nsec3_referer)) {
 //		assert(node->nsec3_referer->new_node != NULL);
 //		node->nsec3_referer = node->nsec3_referer->new_node;
 //	}
@@ -658,88 +658,88 @@ void dnslib_node_update_refs(dnslib_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_node_set_deleg_point(dnslib_node_t *node)
+void knot_node_set_deleg_point(knot_node_t *node)
 {
-	dnslib_node_flags_set_deleg(&node->flags);
+	knot_node_flags_set_deleg(&node->flags);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_node_is_deleg_point(const dnslib_node_t *node)
+int knot_node_is_deleg_point(const knot_node_t *node)
 {
-	return dnslib_node_flags_get_deleg(node->flags);
+	return knot_node_flags_get_deleg(node->flags);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_node_set_non_auth(dnslib_node_t *node)
+void knot_node_set_non_auth(knot_node_t *node)
 {
-	dnslib_node_flags_set_nonauth(&node->flags);
+	knot_node_flags_set_nonauth(&node->flags);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_node_is_non_auth(const dnslib_node_t *node)
+int knot_node_is_non_auth(const knot_node_t *node)
 {
-	return dnslib_node_flags_get_nonauth(node->flags);
+	return knot_node_flags_get_nonauth(node->flags);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_node_is_auth(const dnslib_node_t *node)
+int knot_node_is_auth(const knot_node_t *node)
 {
 	return (node->flags == 0);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_node_is_new(const dnslib_node_t *node)
+int knot_node_is_new(const knot_node_t *node)
 {
-	return dnslib_node_flags_get_new(node->flags);
+	return knot_node_flags_get_new(node->flags);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_node_is_old(const dnslib_node_t *node)
+int knot_node_is_old(const knot_node_t *node)
 {
-	return dnslib_node_flags_get_old(node->flags);
+	return knot_node_flags_get_old(node->flags);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_node_set_new(dnslib_node_t *node)
+void knot_node_set_new(knot_node_t *node)
 {
-	dnslib_node_flags_set_new(&node->flags);
+	knot_node_flags_set_new(&node->flags);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_node_set_old(dnslib_node_t *node)
+void knot_node_set_old(knot_node_t *node)
 {
-	dnslib_node_flags_set_old(&node->flags);
+	knot_node_flags_set_old(&node->flags);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_node_clear_new(dnslib_node_t *node)
+void knot_node_clear_new(knot_node_t *node)
 {
-	dnslib_node_flags_clear_new(&node->flags);
+	knot_node_flags_clear_new(&node->flags);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_node_clear_old(dnslib_node_t *node)
+void knot_node_clear_old(knot_node_t *node)
 {
-	dnslib_node_flags_clear_old(&node->flags);
+	knot_node_flags_clear_old(&node->flags);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_node_free_rrsets(dnslib_node_t *node, int free_rdata_dnames)
+void knot_node_free_rrsets(knot_node_t *node, int free_rdata_dnames)
 {
-	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
+	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
 	for (int i = 0; i < node->rrset_count; i++) {
-		dnslib_rrset_deep_free(&(rrsets[i]), 0, 1, free_rdata_dnames);
+		knot_rrset_deep_free(&(rrsets[i]), 0, 1, free_rdata_dnames);
 	}
 
 	gen_tree_destroy(&node->rrset_tree, NULL, NULL);
@@ -747,49 +747,49 @@ void dnslib_node_free_rrsets(dnslib_node_t *node, int free_rdata_dnames)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_node_free(dnslib_node_t **node, int free_owner, int fix_refs)
+void knot_node_free(knot_node_t **node, int free_owner, int fix_refs)
 {
-	debug_dnslib_node("Freeing node.\n");
+	debug_knot_node("Freeing node.\n");
 	if ((*node)->rrset_tree != NULL) {
-		debug_dnslib_node("Freeing RRSets.\n");
+		debug_knot_node("Freeing RRSets.\n");
 		gen_tree_destroy(&(*node)->rrset_tree, NULL, NULL);
 	}
 
 	/*! \todo Always release owner? */
 	//if (free_owner) {
-		debug_dnslib_node("Releasing owner.\n");
-		dnslib_dname_release((*node)->owner);
+		debug_knot_node("Releasing owner.\n");
+		knot_dname_release((*node)->owner);
 	//}
 
 	// check nodes referencing this node and fix the references
 
 	if (fix_refs) {
 		// previous node
-		debug_dnslib_node("Checking previous.\n");
+		debug_knot_node("Checking previous.\n");
 		if ((*node)->prev && (*node)->prev->next == (*node)) {
 			(*node)->prev->next = (*node)->next;
 		}
 
-		debug_dnslib_node("Checking next.\n");
+		debug_knot_node("Checking next.\n");
 		if ((*node)->next && (*node)->next->prev == (*node)) {
 			(*node)->next->prev = (*node)->prev;
 		}
 
 		// NSEC3 node
-		debug_dnslib_node("Checking NSEC3.\n");
+		debug_knot_node("Checking NSEC3.\n");
 		if ((*node)->nsec3_node
 		    && (*node)->nsec3_node->nsec3_referer == (*node)) {
 			(*node)->nsec3_node->nsec3_referer = NULL;
 		}
 
-		debug_dnslib_node("Checking NSEC3 ref.\n");
+		debug_knot_node("Checking NSEC3 ref.\n");
 		if ((*node)->nsec3_referer
 		    && (*node)->nsec3_referer->nsec3_node == (*node)) {
 			(*node)->nsec3_referer->nsec3_node = NULL;
 		}
 
 		// wildcard child node
-		debug_dnslib_node("Checking parent's wildcard child.\n");
+		debug_knot_node("Checking parent's wildcard child.\n");
 		if ((*node)->parent
 		    && (*node)->parent->wildcard_child == (*node)) {
 			(*node)->parent->wildcard_child = NULL;
@@ -804,22 +804,22 @@ void dnslib_node_free(dnslib_node_t **node, int free_owner, int fix_refs)
 	free(*node);
 	*node = NULL;
 
-	debug_dnslib_node("Done.\n");
+	debug_knot_node("Done.\n");
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_node_compare(dnslib_node_t *node1, dnslib_node_t *node2)
+int knot_node_compare(knot_node_t *node1, knot_node_t *node2)
 {
-	return dnslib_dname_compare(node1->owner, node2->owner);
+	return knot_dname_compare(node1->owner, node2->owner);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_node_shallow_copy(const dnslib_node_t *from, dnslib_node_t **to)
+int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 {
 	// create new node
-	*to = dnslib_node_new(from->owner, from->parent, from->flags);
+	*to = knot_node_new(from->owner, from->parent, from->flags);
 	if (*to == NULL) {
 		return DNSLIB_ENOMEM;
 	}
@@ -827,7 +827,7 @@ int dnslib_node_shallow_copy(const dnslib_node_t *from, dnslib_node_t **to)
 	// copy references	
 	// do not use the API function to set parent, so that children count 
 	// is not changed
-	memcpy(*to, from, sizeof(dnslib_node_t));
+	memcpy(*to, from, sizeof(knot_node_t));
 
 	// copy RRSets
 	// copy the skip list with the old references

@@ -24,27 +24,27 @@ unit_api packet_tests_api = {
 static int test_packet_new()
 {
 	int errors = 0;
-	dnslib_packet_t *packet =
-		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_NONE);
+	knot_packet_t *packet =
+		knot_packet_new(DNSLIB_PACKET_PREALLOC_NONE);
 	if (packet == NULL) {
 		diag("Could not create packet using prealloc_node constant!");
 		errors++;
 	}
-	dnslib_packet_free(&packet);
+	knot_packet_free(&packet);
 
-	packet = dnslib_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
+	packet = knot_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
 	if (packet == NULL) {
 		diag("Could not create packet using prealloc_query constant!");
 		errors++;
 	}
-	dnslib_packet_free(&packet);
+	knot_packet_free(&packet);
 
-	packet = dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+	packet = knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
 	if (packet == NULL) {
 		diag("Could not create packet using prealloc_resp constant!");
 		errors++;
 	}
-	dnslib_packet_free(&packet);
+	knot_packet_free(&packet);
 
 	/*!< \todo Should it create packet using any size? */
 
@@ -54,12 +54,12 @@ static int test_packet_new()
 static int test_packet_parse_from_wire()
 {
 	int errors = 0;
-	dnslib_packet_t *packet =
-		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
+	knot_packet_t *packet =
+		knot_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
 
 	int tmp = 0;
 	lives_ok({
-		if (dnslib_packet_parse_from_wire(NULL, NULL, 0, 0) !=
+		if (knot_packet_parse_from_wire(NULL, NULL, 0, 0) !=
 		    DNSLIB_EBADARG) {
 			diag("Trying to parse NULL packet with NULL wire "
 			     "did not return DNSLIB_EBADARG!");
@@ -67,7 +67,7 @@ static int test_packet_parse_from_wire()
 		}
 		tmp = 1;
 		tmp = 0;
-		if (dnslib_packet_parse_from_wire(packet, NULL, 0, 0) !=
+		if (knot_packet_parse_from_wire(packet, NULL, 0, 0) !=
 		    DNSLIB_EBADARG) {
 			diag("Trying to parse with NULL wire "
 			     "did not return DNSLIB_EBADARG!");
@@ -75,7 +75,7 @@ static int test_packet_parse_from_wire()
 		}
 		tmp = 1;
 		tmp = 0;
-		if (dnslib_packet_parse_from_wire(packet, (uint8_t *)0xbeef,
+		if (knot_packet_parse_from_wire(packet, (uint8_t *)0xbeef,
 		                                  0, 0) !=
 		    DNSLIB_EFEWDATA) {
 			diag("Trying to parse 0 lengt"
@@ -86,7 +86,7 @@ static int test_packet_parse_from_wire()
 	}, "packet: parse from wire NULL tests.");
 	errors += tmp != 1;
 
-	dnslib_packet_free(&packet);
+	knot_packet_free(&packet);
 
 	return (errors == 0);
 }
@@ -94,14 +94,14 @@ static int test_packet_parse_from_wire()
 static int test_packet_parse_next_rr_answer()
 {
 	int errors = 0;
-	dnslib_packet_t *packet =
-		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+	knot_packet_t *packet =
+		knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
 	assert(packet);
 
 	int tmp = 0;
 	lives_ok({
 		int ret = 0;
-		if (dnslib_packet_parse_next_rr_answer(NULL, NULL) !=
+		if (knot_packet_parse_next_rr_answer(NULL, NULL) !=
 		    DNSLIB_EBADARG) {
 			diag("Trying to parse next RR answer with "
 			     "NULL packet with and NULL RRSet "
@@ -110,7 +110,7 @@ static int test_packet_parse_next_rr_answer()
 		}
 		tmp = 1;
 		tmp = 0;
-		if ((ret = dnslib_packet_parse_next_rr_answer(packet,
+		if ((ret = knot_packet_parse_next_rr_answer(packet,
 		                                              NULL)) !=
 		    DNSLIB_EBADARG) {
 			diag("Trying to parse next RR with NULL RRSet pointer "
@@ -119,9 +119,9 @@ static int test_packet_parse_next_rr_answer()
 			errors++;
 		}
 		tmp = 1;
-		dnslib_rrset_t *rrset = (dnslib_rrset_t *)0xaaaa;
+		knot_rrset_t *rrset = (knot_rrset_t *)0xaaaa;
 		tmp = 0;
-		if (dnslib_packet_parse_next_rr_answer(packet,
+		if (knot_packet_parse_next_rr_answer(packet,
 		                                       &rrset) !=
 		    DNSLIB_EBADARG) {
 			diag("Trying to parse next RR answer with rrset pointer"
@@ -133,7 +133,7 @@ static int test_packet_parse_next_rr_answer()
 	}, "packet: parse next rr answer NULL tests.");
 	errors += tmp != 1;
 
-	dnslib_packet_free(&packet);
+	knot_packet_free(&packet);
 
 	return (errors == 0);
 }
@@ -141,17 +141,17 @@ static int test_packet_parse_next_rr_answer()
 static int test_packet_parse_rest()
 {
 	int res = 0;
-	lives_ok({res *= dnslib_packet_parse_rest(NULL);},
+	lives_ok({res *= knot_packet_parse_rest(NULL);},
 	"packet: parse rest NULL test");
 
-	dnslib_packet_t *packet =
-		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_NONE);
+	knot_packet_t *packet =
+		knot_packet_new(DNSLIB_PACKET_PREALLOC_NONE);
 	assert(packet);
 
-	lives_ok({res *= dnslib_packet_parse_rest(packet);},
+	lives_ok({res *= knot_packet_parse_rest(packet);},
 	"packet: parser rest empty packet");
 
-	dnslib_packet_free(&packet);
+	knot_packet_free(&packet);
 
 	return res;
 }
@@ -160,15 +160,15 @@ static int test_packet_parse_rest()
 static int test_packet_set_max_size()
 {
 	int errors = 0;
-	dnslib_packet_t *packet =
-		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_NONE);
+	knot_packet_t *packet =
+		knot_packet_new(DNSLIB_PACKET_PREALLOC_NONE);
 	assert(packet);
 
 	int lived = 0;
 
 	lives_ok({
 		lived = 0;
-		if (dnslib_packet_set_max_size(NULL, 1) != DNSLIB_EBADARG) {
+		if (knot_packet_set_max_size(NULL, 1) != DNSLIB_EBADARG) {
 			diag("Calling packet_set_max() with NULL packet "
 			     "did not return DNSLIB_EBADARG");
 			errors++;
@@ -178,19 +178,19 @@ static int test_packet_set_max_size()
 
 	errors += lived != 1;
 
-	if (dnslib_packet_set_max_size(packet, 0) != DNSLIB_EBADARG) {
+	if (knot_packet_set_max_size(packet, 0) != DNSLIB_EBADARG) {
 		diag("Calling packet_set_max() with size eqeal to 0 did not "
 		     "return DNSLIB_EBADARG");
 		errors++;
 	}
 
-	if (dnslib_packet_set_max_size(packet, 10) != DNSLIB_EOK) {
+	if (knot_packet_set_max_size(packet, 10) != DNSLIB_EOK) {
 		diag("Calling packet_set_max() with valid arguments did not "
 		     "return DNSLIB_EOK");
 		errors++;
 	}
 
-	dnslib_packet_free(&packet);
+	knot_packet_free(&packet);
 
 	return (errors == 0);
 }
@@ -200,15 +200,15 @@ static int test_packet_add_tmp_rrset()
 	int errors = 0;
 	int lived = 0;
 
-	/* dnslib_packet_add_tmp_rrset only works with pointers. */
-	dnslib_rrset_t *rrset = (dnslib_rrset_t *)0xabcdef;
+	/* knot_packet_add_tmp_rrset only works with pointers. */
+	knot_rrset_t *rrset = (knot_rrset_t *)0xabcdef;
 
-	dnslib_packet_t *packet =
-		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+	knot_packet_t *packet =
+		knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
 	assert(packet);
 
 	lives_ok({
-		if (dnslib_packet_add_tmp_rrset(NULL, rrset) !=
+		if (knot_packet_add_tmp_rrset(NULL, rrset) !=
 		    DNSLIB_EBADARG) {
 			diag("Trying to add to NULL packet did not return "
 			     "DNSLIB_EBADARG!");
@@ -217,7 +217,7 @@ static int test_packet_add_tmp_rrset()
 		lived = 1;
 
 		lived = 0;
-		if (dnslib_packet_add_tmp_rrset(packet, NULL) !=
+		if (knot_packet_add_tmp_rrset(packet, NULL) !=
 		    DNSLIB_EBADARG) {
 			diag("Trying to add NULL rrset did not return "
 			     "DNSLIB_EBADARG!");
@@ -226,7 +226,7 @@ static int test_packet_add_tmp_rrset()
 		lived = 1;
 
 		lived = 0;
-		if (dnslib_packet_add_tmp_rrset(NULL, NULL) !=
+		if (knot_packet_add_tmp_rrset(NULL, NULL) !=
 		    DNSLIB_EBADARG) {
 			diag("Trying to add NULL rrset to NULL packet "
 			     "did not return DNSLIB_EBADARG!");
@@ -236,13 +236,13 @@ static int test_packet_add_tmp_rrset()
 	}, "packet: add tmp rrset NULL test");
 	errors += lived != 1;
 
-	if (dnslib_packet_add_tmp_rrset(packet, rrset) != DNSLIB_EOK) {
+	if (knot_packet_add_tmp_rrset(packet, rrset) != DNSLIB_EOK) {
 		diag("Could not add valid RRSet to packet!");
 		errors++;
 	}
 
 	/* Not freeing because RRSet is fake. */
-//	dnslib_packet_free(&packet);
+//	knot_packet_free(&packet);
 
 	free(packet->wireformat);
 	free(packet);
@@ -255,19 +255,19 @@ static int test_packet_add_tmp_rrset()
 //	int errors = 0;
 //	int lives = 0;
 
-//	dnslib_packet_t *packet =
-//		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+//	knot_packet_t *packet =
+//		knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
 //	assert(packet);
 
 //	lives_ok({
-//		if (dnslib_packet_contains(packet, NULL,
+//		if (knot_packet_contains(packet, NULL,
 //		                           DNSLIB_RRSET_COMPARE_PTR) !=
 //		    DNSLIB_EBADARG{
 //			diag();
 //		}
 //	}, "packet: contains NULL tests);
 
-//	dnslib_packet_contains()
+//	knot_packet_contains()
 
 //}
 
@@ -275,21 +275,21 @@ static int test_packet_header_to_wire()
 {
 	int errors = 0;
 	int lived = 0;
-	dnslib_packet_t *packet =
-		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+	knot_packet_t *packet =
+		knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
 	assert(packet);
 	size_t size;
 
 	lives_ok({
-		dnslib_packet_header_to_wire(NULL, NULL, NULL);
+		knot_packet_header_to_wire(NULL, NULL, NULL);
 		lived = 1;
 		lived = 0;
-		dnslib_packet_header_to_wire(&packet->header, NULL, &size);
+		knot_packet_header_to_wire(&packet->header, NULL, &size);
 		lived = 1;
 	}, "packet: header to wire NULL tests");
 	errors += lived != 1;
 
-	dnslib_packet_free(&packet);
+	knot_packet_free(&packet);
 	return (errors == 0);
 }
 
@@ -297,12 +297,12 @@ static int test_packet_question_to_wire()
 {
 	int errors = 0 ;
 	int lived = 0;
-	dnslib_packet_t *packet =
-		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+	knot_packet_t *packet =
+		knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
 	assert(packet);
 
 	lives_ok({
-		if (dnslib_packet_question_to_wire(NULL) != DNSLIB_EBADARG) {
+		if (knot_packet_question_to_wire(NULL) != DNSLIB_EBADARG) {
 			diag("Calling packet_question_to_wire with "
 			     "NULL pointer did not result to DNSLIB_EBADARG!");
 			errors++;
@@ -312,13 +312,13 @@ static int test_packet_question_to_wire()
 	errors += lived != 1;
 
 	packet->size = DNSLIB_WIRE_HEADER_SIZE + 1;
-	if (dnslib_packet_question_to_wire(packet) != DNSLIB_ERROR) {
+	if (knot_packet_question_to_wire(packet) != DNSLIB_ERROR) {
 		diag("Calling packet_question_to_wire with oversized packet "
 		     "did not return DNSLIB_ERROR!");
 		errors++;
 	}
 
-	dnslib_packet_free(&packet);
+	knot_packet_free(&packet);
 	return (errors == 0);
 }
 
@@ -326,17 +326,17 @@ static int test_packet_edns_to_wire()
 {
 	int errors = 0 ;
 	int lived = 0;
-	dnslib_packet_t *packet =
-		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+	knot_packet_t *packet =
+		knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
 	assert(packet);
 
 	lives_ok({
-		dnslib_packet_edns_to_wire(NULL);
+		knot_packet_edns_to_wire(NULL);
 		lived = 1;
 	}, "packet: question to wire NULL tests");
 	errors += lived != 1;
 
-	dnslib_packet_free(&packet);
+	knot_packet_free(&packet);
 	return (errors == 0);
 }
 
@@ -344,12 +344,12 @@ static int test_packet_to_wire()
 {
 	int errors = 0 ;
 	int lived = 0;
-	dnslib_packet_t *packet =
-		dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+	knot_packet_t *packet =
+		knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
 	assert(packet);
 
 	lives_ok({
-		if (dnslib_packet_to_wire(NULL, NULL, NULL) != DNSLIB_EBADARG) {
+		if (knot_packet_to_wire(NULL, NULL, NULL) != DNSLIB_EBADARG) {
 			diag("Calling packet_to_wire with "
 			     "NULL pointers did not return DNSLIB_EBADARG!");
 			errors++;
@@ -357,7 +357,7 @@ static int test_packet_to_wire()
 		lived = 1;
 		size_t size;
 		lived = 0;
-		if (dnslib_packet_to_wire(packet, NULL, &size) !=
+		if (knot_packet_to_wire(packet, NULL, &size) !=
 		    DNSLIB_EBADARG) {
 			diag("Calling packet_to_wire with "
 			     "NULL wire did not return DNSLIB_EBADARG!");
@@ -366,7 +366,7 @@ static int test_packet_to_wire()
 		lived = 1;
 		uint8_t *wire = (uint8_t *)0xabcdef;
 		lived = 0;
-		if (dnslib_packet_to_wire(packet, &wire, &size) !=
+		if (knot_packet_to_wire(packet, &wire, &size) !=
 		    DNSLIB_EBADARG) {
 			diag("Calling packet_to_wire with "
 			     "wire not pointing to NULL did not return"
@@ -377,7 +377,7 @@ static int test_packet_to_wire()
 	}, "packet: to wire NULL tests");
 	errors += lived != 1;
 
-	dnslib_packet_free(&packet);
+	knot_packet_free(&packet);
 	return (errors == 0);
 }
 

@@ -28,9 +28,9 @@
  * program. Distinct Resource Records are thus represented only as distinct
  * RDATA sections of corresponding RRs.
  */
-struct dnslib_rrset {
+struct knot_rrset {
 	/*! \brief Domain name being the owner of the RRSet. */
-	dnslib_dname_t *owner;
+	knot_dname_t *owner;
 	uint16_t type; /*!< TYPE of the RRset. */
 	uint16_t rclass; /*!< CLASS of the RRSet. */
 	uint32_t ttl; /*!< TTL of the RRSet. */
@@ -40,11 +40,11 @@ struct dnslib_rrset {
 	 * \note The fact that the list is cyclic will easily allow for
 	 *       possible round-robin rotation of RRSets.
 	 */
-	dnslib_rdata_t *rdata;
-	struct dnslib_rrset *rrsigs; /*!< Set of RRSIGs covering this RRSet. */
+	knot_rdata_t *rdata;
+	struct knot_rrset *rrsigs; /*!< Set of RRSIGs covering this RRSet. */
 };
 
-typedef struct dnslib_rrset dnslib_rrset_t;
+typedef struct knot_rrset knot_rrset_t;
 
 /*----------------------------------------------------------------------------*/
 
@@ -52,13 +52,13 @@ typedef enum {
 	DNSLIB_RRSET_COMPARE_PTR,
 	DNSLIB_RRSET_COMPARE_HEADER,
 	DNSLIB_RRSET_COMPARE_WHOLE
-} dnslib_rrset_compare_type_t;
+} knot_rrset_compare_type_t;
 
 typedef enum  {
 	DNSLIB_RRSET_DUPL_MERGE,
 	DNSLIB_RRSET_DUPL_REPLACE,
 	DNSLIB_RRSET_DUPL_SKIP
-} dnslib_rrset_dupl_handling_t;
+} knot_rrset_dupl_handling_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -74,7 +74,7 @@ typedef enum  {
  * \return New RRSet structure with the given OWNER, TYPE, CLASS and TTL or NULL
  *         if an error occured.
  */
-dnslib_rrset_t *dnslib_rrset_new(dnslib_dname_t *owner, uint16_t type,
+knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
                                  uint16_t rclass, uint32_t ttl);
 
 /*!
@@ -88,10 +88,10 @@ dnslib_rrset_t *dnslib_rrset_new(dnslib_dname_t *owner, uint16_t type,
  *
  * \todo Provide some function for comparing RDATAs.
  */
-int dnslib_rrset_add_rdata(dnslib_rrset_t *rrset, dnslib_rdata_t *rdata);
+int knot_rrset_add_rdata(knot_rrset_t *rrset, knot_rdata_t *rdata);
 
-dnslib_rdata_t * dnslib_rrset_remove_rdata(dnslib_rrset_t *rrset,
-                                           const dnslib_rdata_t *rdata);
+knot_rdata_t * knot_rrset_remove_rdata(knot_rrset_t *rrset,
+                                           const knot_rdata_t *rdata);
 
 /*!
  * \brief Adds RRSIG signatures to this RRSet.
@@ -102,10 +102,10 @@ dnslib_rdata_t * dnslib_rrset_remove_rdata(dnslib_rrset_t *rrset,
  * \retval DNSLIB_EOK
  * \retval DNSLIB_EBADARG
  */
-int dnslib_rrset_set_rrsigs(dnslib_rrset_t *rrset, dnslib_rrset_t *rrsigs);
+int knot_rrset_set_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs);
 
-int dnslib_rrset_add_rrsigs(dnslib_rrset_t *rrset, dnslib_rrset_t *rrsigs,
-                            dnslib_rrset_dupl_handling_t dupl);
+int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
+                            knot_rrset_dupl_handling_t dupl);
 
 /*!
  * \brief Returns the Owner of the RRSet.
@@ -114,12 +114,12 @@ int dnslib_rrset_add_rrsigs(dnslib_rrset_t *rrset, dnslib_rrset_t *rrsigs,
  *
  * \return Owner of the given RRSet.
  */
-const dnslib_dname_t *dnslib_rrset_owner(const dnslib_rrset_t *rrset);
+const knot_dname_t *knot_rrset_owner(const knot_rrset_t *rrset);
 
 /*!
  * \todo Document me.
  */
-dnslib_dname_t *dnslib_rrset_get_owner(const dnslib_rrset_t *rrset);
+knot_dname_t *knot_rrset_get_owner(const knot_rrset_t *rrset);
 
 /*!
  * \brief Set rrset owner to specified dname.
@@ -129,7 +129,7 @@ dnslib_dname_t *dnslib_rrset_get_owner(const dnslib_rrset_t *rrset);
  * \param rrset Specified RRSet.
  * \param owner New owner dname.
  */
-void dnslib_rrset_set_owner(dnslib_rrset_t *rrset, dnslib_dname_t* owner);
+void knot_rrset_set_owner(knot_rrset_t *rrset, knot_dname_t* owner);
 
 /*!
  * \brief Returns the TYPE of the RRSet.
@@ -138,7 +138,7 @@ void dnslib_rrset_set_owner(dnslib_rrset_t *rrset, dnslib_dname_t* owner);
  *
  * \return TYPE of the given RRSet.
  */
-uint16_t dnslib_rrset_type(const dnslib_rrset_t *rrset);
+uint16_t knot_rrset_type(const knot_rrset_t *rrset);
 
 /*!
  * \brief Returns the CLASS of the RRSet.
@@ -147,7 +147,7 @@ uint16_t dnslib_rrset_type(const dnslib_rrset_t *rrset);
  *
  * \return CLASS of the given RRSet.
  */
-uint16_t dnslib_rrset_class(const dnslib_rrset_t *rrset);
+uint16_t knot_rrset_class(const knot_rrset_t *rrset);
 
 /*!
  * \brief Returns the TTL of the RRSet.
@@ -156,7 +156,7 @@ uint16_t dnslib_rrset_class(const dnslib_rrset_t *rrset);
  *
  * \return TTL of the given RRSet.
  */
-uint32_t dnslib_rrset_ttl(const dnslib_rrset_t *rrset);
+uint32_t knot_rrset_ttl(const knot_rrset_t *rrset);
 
 /*!
  * \brief Returns the first RDATA in the RRSet.
@@ -171,10 +171,10 @@ uint32_t dnslib_rrset_ttl(const dnslib_rrset_t *rrset);
  *
  * \return First RDATA in the given RRSet.
  */
-const dnslib_rdata_t *dnslib_rrset_rdata(const dnslib_rrset_t *rrset);
+const knot_rdata_t *knot_rrset_rdata(const knot_rrset_t *rrset);
 
-const dnslib_rdata_t *dnslib_rrset_rdata_next(const dnslib_rrset_t *rrset,
-                                              const dnslib_rdata_t *rdata);
+const knot_rdata_t *knot_rrset_rdata_next(const knot_rrset_t *rrset,
+                                              const knot_rdata_t *rdata);
 
 /*!
  * \brief Returns the first RDATA in the RRSet (non-const version).
@@ -190,10 +190,10 @@ const dnslib_rdata_t *dnslib_rrset_rdata_next(const dnslib_rrset_t *rrset,
  * \return First RDATA in the given RRSet or NULL if there is none or if no
  *         rrset was provided (\a rrset is NULL).
  */
-dnslib_rdata_t *dnslib_rrset_get_rdata(dnslib_rrset_t *rrset);
+knot_rdata_t *knot_rrset_get_rdata(knot_rrset_t *rrset);
 
-dnslib_rdata_t *dnslib_rrset_rdata_get_next(dnslib_rrset_t *rrset,
-                                            dnslib_rdata_t *rdata);
+knot_rdata_t *knot_rrset_rdata_get_next(knot_rrset_t *rrset,
+                                            knot_rdata_t *rdata);
 
 /*!
  * \brief Returns the set of RRSIGs covering the given RRSet.
@@ -203,15 +203,15 @@ dnslib_rdata_t *dnslib_rrset_rdata_get_next(dnslib_rrset_t *rrset,
  * \return Set of RRSIGs which cover the given RRSet or NULL if there is none or
  *         if no rrset was provided (\a rrset is NULL).
  */
-const dnslib_rrset_t *dnslib_rrset_rrsigs(const dnslib_rrset_t *rrset);
+const knot_rrset_t *knot_rrset_rrsigs(const knot_rrset_t *rrset);
 
-dnslib_rrset_t *dnslib_rrset_get_rrsigs(dnslib_rrset_t *rrset);
+knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset);
 
-int dnslib_rrset_compare(const dnslib_rrset_t *r1,
-                         const dnslib_rrset_t *r2,
-                         dnslib_rrset_compare_type_t cmp);
+int knot_rrset_compare(const knot_rrset_t *r1,
+                         const knot_rrset_t *r2,
+                         knot_rrset_compare_type_t cmp);
 
-int dnslib_rrset_shallow_copy(const dnslib_rrset_t *from, dnslib_rrset_t **to);
+int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to);
 
 /*!
  * \brief Destroys the RRSet structure.
@@ -225,7 +225,7 @@ int dnslib_rrset_shallow_copy(const dnslib_rrset_t *from, dnslib_rrset_t **to);
  *
  * \param rrset RRset to be destroyed.
  */
-void dnslib_rrset_free(dnslib_rrset_t **rrset);
+void knot_rrset_free(knot_rrset_t **rrset);
 
 /*!
  * \brief Destroys the RRSet structure and all its substructures.
@@ -238,9 +238,9 @@ void dnslib_rrset_free(dnslib_rrset_t **rrset);
  * \param free_rdata ***\todo DOCUMENT ME***
  * \param free_rdata_dnames Set to <> 0 if you want to delete ALL domain names
  *                          present in RDATA. Set to 0 otherwise. (See
- *                          dnslib_rdata_deep_free().)
+ *                          knot_rdata_deep_free().)
  */
-void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner,
+void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
                             int free_rdata, int free_rdata_dnames);
 
 /*!
@@ -249,7 +249,7 @@ void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner,
  * Merges \a r1 into \a r2 by concatenating the list of RDATAs in \a r2 after
  * the list of RDATAs in \a r1. \a r2 is unaffected by this, though you must not
  * destroy the RDATAs in \a r2 as they are now also in \a r1. (You may use
- * function dnslib_rrset_free() though, as it does not touch RDATAs).
+ * function knot_rrset_free() though, as it does not touch RDATAs).
  *
  * \note Member \a rrsigs is preserved from the first RRSet.
  *
@@ -260,7 +260,7 @@ void dnslib_rrset_deep_free(dnslib_rrset_t **rrset, int free_owner,
  * \retval DNSLIB_EBADARG if the RRSets could not be merged, because their
  *         Owner, Type, Class or TTL does not match.
  */
-int dnslib_rrset_merge(void **r1, void **r2);
+int knot_rrset_merge(void **r1, void **r2);
 
 #endif /* _KNOT_DNSLIB_RRSET_H_ */
 

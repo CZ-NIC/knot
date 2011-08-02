@@ -3,7 +3,7 @@
 
 #include "common/errors.h"
 
-const error_table_t dnslib_error_msgs[DNSLIB_ERROR_COUNT] = {
+const error_table_t knot_error_msgs2[DNSLIB_ERROR_COUNT] = {
 	{DNSLIB_EOK, "OK"},
 	{DNSLIB_ERROR, "General dnslib error."},
 	{DNSLIB_ENOMEM, "Not enough memory."},

@@ -27,21 +27,21 @@
 
 /*----------------------------------------------------------------------------*/
 
-//typedef TREE_HEAD(avl_tree, dnslib_node) avl_tree_t;
+//typedef TREE_HEAD(avl_tree, knot_node) avl_tree_t;
 //struct event_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Return values for search functions.
  *
- * Used in dnslib_zone_find_dname() and dnslib_zone_find_dname_hash().
+ * Used in knot_zone_find_dname() and knot_zone_find_dname_hash().
  */
-enum dnslib_zone_retvals {
+enum knot_zone_retvals {
 	DNSLIB_ZONE_NAME_FOUND = 1,
 	DNSLIB_ZONE_NAME_NOT_FOUND = 0
 };
 
-typedef enum dnslib_zone_retvals dnslib_zone_retvals_t;
+typedef enum knot_zone_retvals knot_zone_retvals_t;
 
 /*----------------------------------------------------------------------------*/
 
@@ -52,18 +52,18 @@ typedef enum dnslib_zone_retvals dnslib_zone_retvals_t;
  *          NSEC3 functions. Although this will be successfull, it will produce
  *          double-free errors when destroying the zone.
  */
-struct dnslib_zone {
-	dnslib_dname_t *name;
+struct knot_zone {
+	knot_dname_t *name;
 
-	dnslib_zone_contents_t *contents;
+	knot_zone_contents_t *contents;
 
 	time_t version;
 
 	void *data; /*!< Pointer to generic zone-related data. */
-	int (*dtor)(struct dnslib_zone *); /*!< Data destructor. */
+	int (*dtor)(struct knot_zone *); /*!< Data destructor. */
 };
 
-typedef struct dnslib_zone dnslib_zone_t;
+typedef struct knot_zone knot_zone_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -74,23 +74,23 @@ typedef struct dnslib_zone dnslib_zone_t;
  *
  * \return The initialized zone structure or NULL if an error occured.
  */
-dnslib_zone_t *dnslib_zone_new(dnslib_node_t *apex, uint node_count,
+knot_zone_t *knot_zone_new(knot_node_t *apex, uint node_count,
                                int use_domain_table);
 
-dnslib_zone_contents_t *dnslib_zone_get_contents(
-	const dnslib_zone_t *zone);
+knot_zone_contents_t *knot_zone_get_contents(
+	const knot_zone_t *zone);
 
-const dnslib_zone_contents_t *dnslib_zone_contents(
-	const dnslib_zone_t *zone);
+const knot_zone_contents_t *knot_zone_contents(
+	const knot_zone_t *zone);
 
 
-time_t dnslib_zone_version(const dnslib_zone_t *zone);
+time_t knot_zone_version(const knot_zone_t *zone);
 
-void dnslib_zone_set_version(dnslib_zone_t *zone, time_t version);
+void knot_zone_set_version(knot_zone_t *zone, time_t version);
 
-const void *dnslib_zone_data(const dnslib_zone_t *zone);
+const void *knot_zone_data(const knot_zone_t *zone);
 
-void dnslib_zone_set_data(dnslib_zone_t *zone, void *data);
+void knot_zone_set_data(knot_zone_t *zone, void *data);
 
 /*----------------------------------------------------------------------------*/
 /* Zone contents functions. TODO: remove                                      */
@@ -116,7 +116,7 @@ void dnslib_zone_set_data(dnslib_zone_t *zone, void *data);
  *
  * \todo Replace tests of this function by tests of its zone-contents version.
  */
-int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
+int knot_zone_add_node(knot_zone_t *zone, knot_node_t *node,
                          int create_parents, int use_domain_table);
 
 /*!
@@ -136,7 +136,7 @@ int dnslib_zone_add_node(dnslib_zone_t *zone, dnslib_node_t *node,
  *
  * \todo Replace tests of this function by tests of its zone-contents version.
  */
-int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node,
+int knot_zone_add_nsec3_node(knot_zone_t *zone, knot_node_t *node,
                                int create_parents, int use_domain_table);
 
 /*!
@@ -149,8 +149,8 @@ int dnslib_zone_add_nsec3_node(dnslib_zone_t *zone, dnslib_node_t *node,
  *
  * \todo Replace tests of this function by tests of its zone-contents version.
  */
-dnslib_node_t *dnslib_zone_get_node(const dnslib_zone_t *zone,
-                                    const dnslib_dname_t *name);
+knot_node_t *knot_zone_get_node(const knot_zone_t *zone,
+                                    const knot_dname_t *name);
 
 /*!
  * \brief Tries to find a node with the specified name among the NSEC3 nodes
@@ -163,13 +163,13 @@ dnslib_node_t *dnslib_zone_get_node(const dnslib_zone_t *zone,
  *
  * \todo Replace tests of this function by tests of its zone-contents version.
  */
-dnslib_node_t *dnslib_zone_get_nsec3_node(const dnslib_zone_t *zone,
-                                          const dnslib_dname_t *name);
+knot_node_t *knot_zone_get_nsec3_node(const knot_zone_t *zone,
+                                          const knot_dname_t *name);
 
 /*!
  * \brief Tries to find a node with the specified name in the zone.
  *
- * \note This function is identical to dnslib_zone_get_node(), only it returns
+ * \note This function is identical to knot_zone_get_node(), only it returns
  *       constant reference.
  *
  * \param zone Zone where the name should be searched for.
@@ -179,14 +179,14 @@ dnslib_node_t *dnslib_zone_get_nsec3_node(const dnslib_zone_t *zone,
  *
  * \todo Replace tests of this function by tests of its zone-contents version.
  */
-const dnslib_node_t *dnslib_zone_find_node(const dnslib_zone_t *zone,
-                                           const dnslib_dname_t *name);
+const knot_node_t *knot_zone_find_node(const knot_zone_t *zone,
+                                           const knot_dname_t *name);
 
 /*!
  * \brief Tries to find a node with the specified name among the NSEC3 nodes
  *        of the zone.
  *
- * \note This function is identical to dnslib_zone_get_nsec3_node(), only it
+ * \note This function is identical to knot_zone_get_nsec3_node(), only it
  *       returns constant reference.
  *
  * \param zone Zone where the name should be searched for.
@@ -196,8 +196,8 @@ const dnslib_node_t *dnslib_zone_find_node(const dnslib_zone_t *zone,
  *
  * \todo Replace tests of this function by tests of its zone-contents version.
  */
-const dnslib_node_t *dnslib_zone_find_nsec3_node(const dnslib_zone_t *zone,
-                                                 const dnslib_dname_t *name);
+const knot_node_t *knot_zone_find_nsec3_node(const knot_zone_t *zone,
+                                                 const knot_dname_t *name);
 
 /*!
  * \brief Returns the apex node of the zone.
@@ -208,7 +208,7 @@ const dnslib_node_t *dnslib_zone_find_nsec3_node(const dnslib_zone_t *zone,
  *
  * \todo Replace tests of this function by tests of its zone-contents version.
  */
-const dnslib_node_t *dnslib_zone_apex(const dnslib_zone_t *zone);
+const knot_node_t *knot_zone_apex(const knot_zone_t *zone);
 
 /*!
  * \brief Applies the given function to each regular node in the zone.
@@ -222,8 +222,8 @@ const dnslib_node_t *dnslib_zone_apex(const dnslib_zone_t *zone);
  *
  * \todo Replace tests of this function by tests of its zone-contents version.
  */
-int dnslib_zone_tree_apply_postorder(dnslib_zone_t *zone,
-                              void (*function)(dnslib_node_t *node, void *data),
+int knot_zone_tree_apply_postorder(knot_zone_t *zone,
+                              void (*function)(knot_node_t *node, void *data),
                               void *data);
 
 /*!
@@ -242,8 +242,8 @@ int dnslib_zone_tree_apply_postorder(dnslib_zone_t *zone,
  *
  * \todo Replace tests of this function by tests of its zone-contents version.
  */
-int dnslib_zone_tree_apply_inorder(dnslib_zone_t *zone,
-                              void (*function)(dnslib_node_t *node, void *data),
+int knot_zone_tree_apply_inorder(knot_zone_t *zone,
+                              void (*function)(knot_node_t *node, void *data),
                               void *data);
 
 /*!
@@ -262,8 +262,8 @@ int dnslib_zone_tree_apply_inorder(dnslib_zone_t *zone,
  *
  * \todo Replace tests of this function by tests of its zone-contents version.
  */
-int dnslib_zone_tree_apply_inorder_reverse(dnslib_zone_t *zone,
-                              void (*function)(dnslib_node_t *node, void *data),
+int knot_zone_tree_apply_inorder_reverse(knot_zone_t *zone,
+                              void (*function)(knot_node_t *node, void *data),
                               void *data);
 
 /*!
@@ -279,8 +279,8 @@ int dnslib_zone_tree_apply_inorder_reverse(dnslib_zone_t *zone,
  *
  * \todo Replace tests of this function by tests of its zone-contents version.
  */
-int dnslib_zone_nsec3_apply_postorder(dnslib_zone_t *zone,
-                              void (*function)(dnslib_node_t *node, void *data),
+int knot_zone_nsec3_apply_postorder(knot_zone_t *zone,
+                              void (*function)(knot_node_t *node, void *data),
                               void *data);
 
 /*!
@@ -300,8 +300,8 @@ int dnslib_zone_nsec3_apply_postorder(dnslib_zone_t *zone,
  *
  * \todo Replace tests of this function by tests of its zone-contents version.
  */
-int dnslib_zone_nsec3_apply_inorder(dnslib_zone_t *zone,
-                              void (*function)(dnslib_node_t *node, void *data),
+int knot_zone_nsec3_apply_inorder(knot_zone_t *zone,
+                              void (*function)(knot_node_t *node, void *data),
                               void *data);
 
 /*!
@@ -321,16 +321,16 @@ int dnslib_zone_nsec3_apply_inorder(dnslib_zone_t *zone,
  *
  * \todo Replace tests of this function by tests of its zone-contents version.
  */
-int dnslib_zone_nsec3_apply_inorder_reverse(dnslib_zone_t *zone,
-                              void (*function)(dnslib_node_t *node, void *data),
+int knot_zone_nsec3_apply_inorder_reverse(knot_zone_t *zone,
+                              void (*function)(knot_node_t *node, void *data),
                               void *data);
 
 /*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
 
-dnslib_zone_contents_t *dnslib_zone_switch_contents(dnslib_zone_t *zone,
-                                          dnslib_zone_contents_t *new_contents);
+knot_zone_contents_t *knot_zone_switch_contents(knot_zone_t *zone,
+                                          knot_zone_contents_t *new_contents);
 
 /*!
  * \brief Correctly deallocates the zone structure, without deleting its nodes.
@@ -339,7 +339,7 @@ dnslib_zone_contents_t *dnslib_zone_switch_contents(dnslib_zone_t *zone,
  *
  * \param zone Zone to be freed.
  */
-void dnslib_zone_free(dnslib_zone_t **zone);
+void knot_zone_free(knot_zone_t **zone);
 
 /*!
  * \brief Correctly deallocates the zone structure and all nodes within.
@@ -349,9 +349,9 @@ void dnslib_zone_free(dnslib_zone_t **zone);
  * \param zone Zone to be freed.
  * \param free_rdata_dnames Set to <> 0 if you want to delete ALL domain names
  *                          present in RDATA. Set to 0 otherwise. (See
- *                          dnslib_rdata_deep_free().)
+ *                          knot_rdata_deep_free().)
  */
-void dnslib_zone_deep_free(dnslib_zone_t **zone, int free_rdata_dnames);
+void knot_zone_deep_free(knot_zone_t **zone, int free_rdata_dnames);
 
 #endif
 

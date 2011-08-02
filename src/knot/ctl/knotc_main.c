@@ -57,7 +57,7 @@ int check_zone(const char *db, const char* source)
 {
 
 	/* Read zonedb header. */
-	zloader_t *zl = dnslib_zload_open(db);
+	zloader_t *zl = knot_zload_open(db);
 	if (!zl) {
 		return KNOT_ERROR;
 	}
@@ -65,11 +65,11 @@ int check_zone(const char *db, const char* source)
 	/* Check source files and mtime. */
 	int ret = KNOT_ERROR;
 	int src_changed = strcmp(source, zl->source) != 0;
-	if (!src_changed && !dnslib_zload_needs_update(zl)) {
+	if (!src_changed && !knot_zload_needs_update(zl)) {
 		ret = KNOT_EOK;
 	}
 
-	dnslib_zload_close(zl);
+	knot_zload_close(zl);
 	return ret;
 }
 

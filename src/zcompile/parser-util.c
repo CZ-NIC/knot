@@ -327,7 +327,7 @@ const char *inet_ntop4(const u_char *src, char *dst, size_t size)
 		errno = ENOSPC;
 		return (NULL);
 	}
-	dnslib_strlcpy(dst, tmp, size);
+	knot_strlcpy(dst, tmp, size);
 	return (dst);
 }
 
@@ -452,7 +452,7 @@ const char *inet_ntop6(const u_char *src, char *dst, size_t size)
 		errno = ENOSPC;
 		return (NULL);
 	}
-	dnslib_strlcpy(dst, tmp, size);
+	knot_strlcpy(dst, tmp, size);
 	return (dst);
 }
 

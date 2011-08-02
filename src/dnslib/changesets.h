@@ -22,13 +22,13 @@
  * \todo Preallocation of space for changeset.
  */
 typedef struct {
-	dnslib_rrset_t *soa_from;
-	dnslib_rrset_t **remove;
+	knot_rrset_t *soa_from;
+	knot_rrset_t **remove;
 	size_t remove_count;
 	size_t remove_allocated;
 
-	dnslib_rrset_t *soa_to;
-	dnslib_rrset_t **add;
+	knot_rrset_t *soa_to;
+	knot_rrset_t **add;
 	size_t add_count;
 	size_t add_allocated;
 
@@ -37,15 +37,15 @@ typedef struct {
 	size_t allocated;
 	uint32_t serial_from;
 	uint32_t serial_to;
-} dnslib_changeset_t;
+} knot_changeset_t;
 
 /*----------------------------------------------------------------------------*/
 
 typedef struct {
-	dnslib_changeset_t *sets;
+	knot_changeset_t *sets;
 	size_t count;
 	size_t allocated;
-} dnslib_changesets_t;
+} knot_changesets_t;
 
 /*----------------------------------------------------------------------------*/
 
@@ -56,28 +56,28 @@ typedef enum {
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_changeset_allocate(dnslib_changesets_t **changesets);
+int knot_changeset_allocate(knot_changesets_t **changesets);
 
-int dnslib_changeset_add_rrset(dnslib_rrset_t ***rrsets,
+int knot_changeset_add_rrset(knot_rrset_t ***rrsets,
                                size_t *count, size_t *allocated,
-                               dnslib_rrset_t *rrset);
+                               knot_rrset_t *rrset);
 
-int dnslib_changeset_add_rr(dnslib_rrset_t ***rrsets, size_t *count,
-                            size_t *allocated, dnslib_rrset_t *rr);
+int knot_changeset_add_rr(knot_rrset_t ***rrsets, size_t *count,
+                            size_t *allocated, knot_rrset_t *rr);
 
-int dnslib_changeset_add_new_rr(dnslib_changeset_t *changeset,
-                                dnslib_rrset_t *rrset,
+int knot_changeset_add_new_rr(knot_changeset_t *changeset,
+                                knot_rrset_t *rrset,
                                 xfrin_changeset_part_t part);
 
-void dnslib_changeset_store_soa(dnslib_rrset_t **chg_soa,
-                                uint32_t *chg_serial, dnslib_rrset_t *soa);
+void knot_changeset_store_soa(knot_rrset_t **chg_soa,
+                                uint32_t *chg_serial, knot_rrset_t *soa);
 
-int dnslib_changeset_add_soa(dnslib_changeset_t *changeset, dnslib_rrset_t *soa,
+int knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
                              xfrin_changeset_part_t part);
 
-int dnslib_changesets_check_size(dnslib_changesets_t *changesets);
+int knot_changesets_check_size(knot_changesets_t *changesets);
 
-void dnslib_free_changesets(dnslib_changesets_t **changesets);
+void knot_free_changesets(knot_changesets_t **changesets);
 
 #endif /* _KNOT_DNSLIB_CHANGESETS_H_ */
 

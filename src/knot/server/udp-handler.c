@@ -25,7 +25,7 @@
 int udp_master(dthread_t *thread)
 {
 	iohandler_t *handler = (iohandler_t *)thread->data;
-	dnslib_nameserver_t *ns = handler->server->nameserver;
+	knot_nameserver_t *ns = handler->server->nameserver;
 	int sock = handler->fd;
 
 	/* Check socket. */
@@ -79,7 +79,7 @@ int udp_master(dthread_t *thread)
 	int res = 0;
 	ssize_t n = 0;
 	uint8_t qbuf[SOCKET_MTU_SZ];
-	dnslib_packet_type_t qtype = DNSLIB_QUERY_NORMAL;
+	knot_packet_type_t qtype = DNSLIB_QUERY_NORMAL;
 	while (n >= 0) {
 
 		n = recvfrom(sock, qbuf, sizeof(qbuf), 0,
@@ -112,28 +112,28 @@ int udp_master(dthread_t *thread)
 
 		size_t resp_len = sizeof(qbuf);
 
-		//dnslib_response_t *resp = dnslib_response_new(4 * 1024); // 4K
-		dnslib_packet_t *packet =
-			dnslib_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
+		//knot_response_t *resp = knot_response_new(4 * 1024); // 4K
+		knot_packet_t *packet =
+			knot_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
 		if (packet == NULL) {
-			uint16_t pkt_id = dnslib_wire_get_id(qbuf);
-			dnslib_ns_error_response(ns, pkt_id, DNSLIB_RCODE_SERVFAIL,
+			uint16_t pkt_id = knot_wire_get_id(qbuf);
+			knot_ns_error_response(ns, pkt_id, DNSLIB_RCODE_SERVFAIL,
 			                  qbuf, &resp_len);
 			continue;
 		}
 
 		/* Parse query. */
-		res = dnslib_ns_parse_packet(qbuf, n, packet, &qtype);
+		res = knot_ns_parse_packet(qbuf, n, packet, &qtype);
 		if (unlikely(res != KNOT_EOK)) {
 			debug_net("udp: sending back error response.\n");
 			/* Send error response on dnslib RCODE. */
 			if (res > 0) {
-				uint16_t pkt_id = dnslib_wire_get_id(qbuf);
-				dnslib_ns_error_response(ns, pkt_id, res,
+				uint16_t pkt_id = knot_wire_get_id(qbuf);
+				knot_ns_error_response(ns, pkt_id, res,
 				                  qbuf, &resp_len);
 			}
 
-			dnslib_packet_free(&packet);
+			knot_packet_free(&packet);
 			continue;
 		}
 
@@ -145,7 +145,7 @@ int udp_master(dthread_t *thread)
 		case DNSLIB_RESPONSE_NORMAL:
 			res = zones_process_response(ns, &addr, packet,
 			                             qbuf, &resp_len);
-//			res = dnslib_ns_process_response();
+//			res = knot_ns_process_response();
 			break;
 		case DNSLIB_RESPONSE_AXFR:
 		case DNSLIB_RESPONSE_IXFR:
@@ -156,7 +156,7 @@ int udp_master(dthread_t *thread)
 
 		/* Query types. */
 		case DNSLIB_QUERY_NORMAL:
-			res = dnslib_ns_answer_normal(ns, packet, qbuf, 
+			res = knot_ns_answer_normal(ns, packet, qbuf, 
 			                              &resp_len);
 			break;
 		case DNSLIB_QUERY_AXFR:
@@ -165,8 +165,8 @@ int udp_master(dthread_t *thread)
 			break;
 		case DNSLIB_QUERY_NOTIFY:
 			rcu_read_lock();
-//			const dnslib_zone_t *zone = NULL;
-//			res = dnslib_ns_answer_notify(ns, packet, qbuf, 
+//			const knot_zone_t *zone = NULL;
+//			res = knot_ns_answer_notify(ns, packet, qbuf, 
 //			                              &resp_len, &zone);
 			res = notify_process_request(ns, packet, &addr,
 			                             qbuf, &resp_len);
@@ -179,7 +179,7 @@ int udp_master(dthread_t *thread)
 			break;
 		}
 
-		dnslib_packet_free(&packet);
+		knot_packet_free(&packet);
 
 		/* Send answer. */
 		if (res == KNOT_EOK && resp_len > 0) {

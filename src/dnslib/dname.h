@@ -16,7 +16,7 @@
 #include <string.h>
 #include "common/ref.h"
 
-struct dnslib_node;
+struct knot_node;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -24,9 +24,9 @@ struct dnslib_node;
  *
  * Stores the domain name in wire format.
  *
- * \todo Consider restricting to FQDN only (see dnslib_dname_new_from_str()).
+ * \todo Consider restricting to FQDN only (see knot_dname_new_from_str()).
  */
-struct dnslib_dname {
+struct knot_dname {
 	uint8_t *name;	/*!< Wire format of the domain name. */
 	/*!
 	 * \brief Size of the domain name in octets.
@@ -35,12 +35,12 @@ struct dnslib_dname {
 	unsigned int size;
 	uint8_t *labels;
 	unsigned short label_count;
-	struct dnslib_node *node; /*!< Zone node the domain name belongs to. */
+	struct knot_node *node; /*!< Zone node the domain name belongs to. */
 	unsigned int id; /*!< ID of domain name used in zone dumping. */
 	ref_t ref;     /*!< Reference counting. */
 };
 
-typedef struct dnslib_dname dnslib_dname_t;
+typedef struct knot_dname knot_dname_t;
 
 /*----------------------------------------------------------------------------*/
 
@@ -54,7 +54,7 @@ typedef struct dnslib_dname dnslib_dname_t;
  *
  * \todo Possibly useless.
  */
-dnslib_dname_t *dnslib_dname_new();
+knot_dname_t *knot_dname_new();
 
 /*!
  * \brief Creates a dname structure from domain name given in presentation
@@ -74,8 +74,8 @@ dnslib_dname_t *dnslib_dname_new();
  * \return Newly allocated and initialized dname structure representing the
  *         given domain name.
  */
-dnslib_dname_t *dnslib_dname_new_from_str(const char *name, unsigned int size,
-                                          struct dnslib_node *node);
+knot_dname_t *knot_dname_new_from_str(const char *name, unsigned int size,
+                                          struct knot_node *node);
 
 /*!
  * \brief Creates a dname structure from domain name given in wire format.
@@ -95,17 +95,17 @@ dnslib_dname_t *dnslib_dname_new_from_str(const char *name, unsigned int size,
  *
  * \todo This function does not check if the given data is in correct wire
  *       format at all. It thus creates a invalid domain name, which if passed
- *       e.g. to dnslib_dname_to_str() may result in crash. Decide whether it
+ *       e.g. to knot_dname_to_str() may result in crash. Decide whether it
  *       is OK to retain this and check the data in other functions before
  *       calling this one, or if it should verify the given data.
  */
-dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name,
+knot_dname_t *knot_dname_new_from_wire(const uint8_t *name,
                                            unsigned int size,
-                                           struct dnslib_node *node);
+                                           struct knot_node *node);
 
-dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
+knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
                                              size_t *pos, size_t size,
-                                             struct dnslib_node *node);
+                                             struct knot_node *node);
 
 /*!
  * \brief Initializes domain name by the name given in wire format.
@@ -126,12 +126,12 @@ dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
  *
  * \todo This function does not check if the given data is in correct wire
  *       format at all. It thus creates a invalid domain name, which if passed
- *       e.g. to dnslib_dname_to_str() may result in crash. Decide whether it
+ *       e.g. to knot_dname_to_str() may result in crash. Decide whether it
  *       is OK to retain this and check the data in other functions before
  *       calling this one, or if it should verify the given data.
  */
-int dnslib_dname_from_wire(const uint8_t *name, unsigned int size,
-                           struct dnslib_node *node, dnslib_dname_t *target);
+int knot_dname_from_wire(const uint8_t *name, unsigned int size,
+                           struct knot_node *node, knot_dname_t *target);
 
 /*!
  * \brief Duplicates the given domain name.
@@ -143,7 +143,7 @@ int dnslib_dname_from_wire(const uint8_t *name, unsigned int size,
  *
  * \return New domain name which is an exact copy of \a dname.
  */
-dnslib_dname_t *dnslib_dname_deep_copy(const dnslib_dname_t *dname);
+knot_dname_t *knot_dname_deep_copy(const knot_dname_t *dname);
 
 /*!
  * \brief Converts the given domain name to string representation.
@@ -155,7 +155,7 @@ dnslib_dname_t *dnslib_dname_deep_copy(const dnslib_dname_t *dname);
  * \return 0-terminated string representing the given domain name in
  *         presentation format.
  */
-char *dnslib_dname_to_str(const dnslib_dname_t *dname);
+char *knot_dname_to_str(const knot_dname_t *dname);
 
 /*!
  * \brief Returns the domain name in wire format.
@@ -164,7 +164,7 @@ char *dnslib_dname_to_str(const dnslib_dname_t *dname);
  *
  * \return Wire format of the domain name.
  */
-const uint8_t *dnslib_dname_name(const dnslib_dname_t *dname);
+const uint8_t *knot_dname_name(const knot_dname_t *dname);
 
 /*!
  * \brief Returns size of the given domain name.
@@ -173,9 +173,9 @@ const uint8_t *dnslib_dname_name(const dnslib_dname_t *dname);
  *
  * \return Size of the domain name in wire format in octets.
  */
-unsigned int dnslib_dname_size(const dnslib_dname_t *dname);
+unsigned int knot_dname_size(const knot_dname_t *dname);
 
-unsigned int dnslib_dname_id(const dnslib_dname_t *dname);
+unsigned int knot_dname_id(const knot_dname_t *dname);
 
 /*!
  * \brief Returns size of a part of domain name.
@@ -185,7 +185,7 @@ unsigned int dnslib_dname_id(const dnslib_dname_t *dname);
  *
  * \return Size of first \a labels labels of \a dname, counted from left.
  */
-uint8_t dnslib_dname_size_part(const dnslib_dname_t *dname, int labels);
+uint8_t knot_dname_size_part(const knot_dname_t *dname, int labels);
 
 /*!
  * \brief Returns the zone node the domain name belongs to.
@@ -194,17 +194,17 @@ uint8_t dnslib_dname_size_part(const dnslib_dname_t *dname, int labels);
  *
  * \return Zone node the domain name belongs to or NULL if none.
  */
-const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname,
+const struct knot_node *knot_dname_node(const knot_dname_t *dname,
                                             int check_version);
 
-struct dnslib_node *dnslib_dname_get_node(dnslib_dname_t *dname,
+struct knot_node *knot_dname_get_node(knot_dname_t *dname,
                                           int check_version);
 
-void dnslib_dname_set_node(dnslib_dname_t *dname, struct dnslib_node *node);
+void knot_dname_set_node(knot_dname_t *dname, struct knot_node *node);
 
-void dnslib_dname_update_node(dnslib_dname_t *dname);
+void knot_dname_update_node(knot_dname_t *dname);
 
-void dnslib_dname_set_node(dnslib_dname_t *dname, struct dnslib_node *node);
+void knot_dname_set_node(knot_dname_t *dname, struct knot_node *node);
 
 /*!
  * \brief Checks if the given domain name is a fully-qualified domain name.
@@ -214,7 +214,7 @@ void dnslib_dname_set_node(dnslib_dname_t *dname, struct dnslib_node *node);
  * \retval <> 0 if \a dname is a FQDN.
  * \retval 0 otherwise.
  */
-int dnslib_dname_is_fqdn(const dnslib_dname_t *dname);
+int knot_dname_is_fqdn(const knot_dname_t *dname);
 
 /*!
  * \brief Creates new domain name by removing leftmost label from \a dname.
@@ -227,14 +227,14 @@ int dnslib_dname_is_fqdn(const dnslib_dname_t *dname);
  * \return New domain name with the same labels as \a dname, except for the
  *         leftmost label, which is removed.
  */
-dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname);
+knot_dname_t *knot_dname_left_chop(const knot_dname_t *dname);
 
 /*!
  * \brief Removes leftmost label from \a dname.
  *
  * \param dname Domain name to remove the first label from.
  */
-void dnslib_dname_left_chop_no_copy(dnslib_dname_t *dname);
+void knot_dname_left_chop_no_copy(knot_dname_t *dname);
 
 /*!
  * \brief Checks if one domain name is a subdomain of other.
@@ -245,8 +245,8 @@ void dnslib_dname_left_chop_no_copy(dnslib_dname_t *dname);
  * \retval <> 0 if \a sub is a subdomain of \a domain.
  * \retval 0 otherwise.
  */
-int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
-                              const dnslib_dname_t *domain);
+int knot_dname_is_subdomain(const knot_dname_t *sub,
+                              const knot_dname_t *domain);
 
 /*!
  * \brief Checks if the domain name is a wildcard.
@@ -256,7 +256,7 @@ int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
  * \retval <> 0 if \a dname is a wildcard domain name.
  * \retval 0 otherwise.
  */
-int dnslib_dname_is_wildcard(const dnslib_dname_t *dname);
+int knot_dname_is_wildcard(const knot_dname_t *dname);
 
 /*!
  * \brief Returns the number of labels common for the two domain names (counted
@@ -267,8 +267,8 @@ int dnslib_dname_is_wildcard(const dnslib_dname_t *dname);
  *
  * \return Number of labels common for the two domain names.
  */
-int dnslib_dname_matched_labels(const dnslib_dname_t *dname1,
-                                const dnslib_dname_t *dname2);
+int knot_dname_matched_labels(const knot_dname_t *dname1,
+                                const knot_dname_t *dname2);
 
 /*!
  * \brief Returns the number of labels in the domain name.
@@ -279,7 +279,7 @@ int dnslib_dname_matched_labels(const dnslib_dname_t *dname1,
  *
  * \todo Find out if this counts the root label also.
  */
-int dnslib_dname_label_count(const dnslib_dname_t *dname);
+int knot_dname_label_count(const knot_dname_t *dname);
 
 /*!
  * \brief Returns the size of the requested label in the domain name.
@@ -289,7 +289,7 @@ int dnslib_dname_label_count(const dnslib_dname_t *dname);
  *
  * \return Size of \a i-th label in \a dname (counted from left).
  */
-uint8_t dnslib_dname_label_size(const dnslib_dname_t *dname, int i);
+uint8_t knot_dname_label_size(const knot_dname_t *dname, int i);
 
 /*!
  * \brief Replaces the suffix of given size in one domain name with other domain
@@ -302,9 +302,9 @@ uint8_t dnslib_dname_label_size(const dnslib_dname_t *dname, int i);
  * \return New domain name created by replacing suffix of \a dname of size
  *         \a size with \a suffix.
  */
-dnslib_dname_t *dnslib_dname_replace_suffix(const dnslib_dname_t *dname,
+knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *dname,
                                             int size,
-                                            const dnslib_dname_t *suffix);
+                                            const knot_dname_t *suffix);
 
 /*!
  * \brief Destroys the given domain name.
@@ -317,7 +317,7 @@ dnslib_dname_t *dnslib_dname_replace_suffix(const dnslib_dname_t *dname,
  *
  * \param dname Domain name to be destroyed.
  */
-void dnslib_dname_free(dnslib_dname_t **dname);
+void knot_dname_free(knot_dname_t **dname);
 
 /*!
  * \brief Compares two domain names (case insensitive).
@@ -329,7 +329,7 @@ void dnslib_dname_free(dnslib_dname_t **dname);
  * \retval > 0 if \a d1 goes after \a d2 in canonical order.
  * \retval 0 if the domain names are identical.
  */
-int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2);
+int knot_dname_compare(const knot_dname_t *d1, const knot_dname_t *d2);
 
 /*!
  * \brief Compares two domain names (case sensitive).
@@ -341,7 +341,7 @@ int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2);
  * \retval > 0 if \a d1 goes after \a d2 in canonical order.
  * \retval 0 if the domain names are identical.
  */
-int dnslib_dname_compare_cs(const dnslib_dname_t *d1, const dnslib_dname_t *d2);
+int knot_dname_compare_cs(const knot_dname_t *d1, const knot_dname_t *d2);
 
 /*!
  * \brief Concatenates two domain names.
@@ -354,11 +354,11 @@ int dnslib_dname_compare_cs(const dnslib_dname_t *d1, const dnslib_dname_t *d2);
  * \return The concatenated domain name (i.e. modified \a d1) or NULL if
  *         the operation is not valid (e.g. \a d1 is a FQDN).
  */
-dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2);
+knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2);
 
-void dnslib_dname_set_id(dnslib_dname_t *dname, unsigned int id);
+void knot_dname_set_id(knot_dname_t *dname, unsigned int id);
 
-unsigned int dnslib_dname_get_id(const dnslib_dname_t *dname);
+unsigned int knot_dname_get_id(const knot_dname_t *dname);
 
 /*!
  * \brief Increment reference counter for dname.
@@ -367,15 +367,15 @@ unsigned int dnslib_dname_get_id(const dnslib_dname_t *dname);
  *
  * \param dname Referenced dname.
  */
-static inline void dnslib_dname_retain(dnslib_dname_t *dname) {
+static inline void knot_dname_retain(knot_dname_t *dname) {
 	if (dname) {
 		ref_retain(&dname->ref);
 	}
 }
 
 /*
-#define dnslib_dname_retain(d) \
-	dnslib_dname_retain_((d));\
+#define knot_dname_retain(d) \
+	knot_dname_retain_((d));\
 	if ((d))\
 	fprintf(stderr, "dname_retain: %s() at %s:%d, %p refcount=%zu\n",\
 	__func__, __FILE__, __LINE__, d, (d)->ref.count)
@@ -386,17 +386,17 @@ static inline void dnslib_dname_retain(dnslib_dname_t *dname) {
  *
  * \param dname Referenced dname.
  */
-static inline void dnslib_dname_release(dnslib_dname_t *dname) {
+static inline void knot_dname_release(knot_dname_t *dname) {
 	if (dname) {
 		ref_release(&dname->ref);
 	}
 }
 /*
-#define dnslib_dname_release(d) \
+#define knot_dname_release(d) \
 	if ((d))\
 	fprintf(stderr, "dname_release: %s() at %s:%d, %p refcount=%zu\n",\
 	__func__, __FILE__, __LINE__, d, (d)->ref.count-1);\
-	dnslib_dname_release_((d))
+	knot_dname_release_((d))
 */
 
 #endif /* _KNOT_DNSLIB_DNAME_H_ */

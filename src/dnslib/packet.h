@@ -29,20 +29,20 @@
  *
  * \todo Consider using some better lookup structure, such as skip-list.
  */
-struct dnslib_compressed_dnames {
-	const dnslib_dname_t **dnames;  /*!< Domain names present in packet. */
+struct knot_compressed_dnames {
+	const knot_dname_t **dnames;  /*!< Domain names present in packet. */
 	size_t *offsets;          /*!< Offsets of domain names in the packet. */
 	short count;              /*!< Count of items in the previous arrays. */
 	short max;                /*!< Capacity of the structure (allocated). */
 };
 
-typedef struct dnslib_compressed_dnames dnslib_compressed_dnames_t;
+typedef struct knot_compressed_dnames knot_compressed_dnames_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure representing the DNS packet header.
  */
-struct dnslib_header {
+struct knot_header {
 	uint16_t id;      /*!< ID stored in host byte order. */
 	uint8_t flags1;   /*!< First octet of header flags. */
 	uint8_t flags2;   /*!< Second octet of header flags. */
@@ -52,26 +52,26 @@ struct dnslib_header {
 	uint16_t arcount; /*!< Number of Additional RRs, in host byte order. */
 };
 
-typedef struct dnslib_header dnslib_header_t;
+typedef struct knot_header knot_header_t;
 
 /*!
  * \brief Structure representing one Question entry in the DNS packet.
  */
-struct dnslib_question {
-	dnslib_dname_t *qname;  /*!< Question domain name. */
+struct knot_question {
+	knot_dname_t *qname;  /*!< Question domain name. */
 	uint16_t qtype;         /*!< Question TYPE. */
 	uint16_t qclass;        /*!< Question CLASS. */
 };
 
-typedef struct dnslib_question dnslib_question_t;
+typedef struct knot_question knot_question_t;
 
-enum dnslib_packet_prealloc_type {
+enum knot_packet_prealloc_type {
 	DNSLIB_PACKET_PREALLOC_NONE,
 	DNSLIB_PACKET_PREALLOC_QUERY,
 	DNSLIB_PACKET_PREALLOC_RESPONSE
 };
 
-typedef enum dnslib_packet_prealloc_type dnslib_packet_prealloc_type_t;
+typedef enum knot_packet_prealloc_type knot_packet_prealloc_type_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -81,22 +81,22 @@ typedef enum dnslib_packet_prealloc_type dnslib_packet_prealloc_type_t;
  *       preallocated space after the structure with default sizes. If the
  *       space is not enough, more space is allocated dynamically.
  */
-struct dnslib_packet {
+struct knot_packet {
 	/*! \brief DNS header. */
-	dnslib_header_t header;
+	knot_header_t header;
 
 	/*!
 	 * \brief Question section.
 	 *
 	 * \note Only one Question is supported!
 	 */
-	dnslib_question_t question;
+	knot_question_t question;
 
 	uint8_t *owner_tmp;  /*!< Allocated space for RRSet owner wire format.*/
 
-	const dnslib_rrset_t **answer;      /*!< Answer RRSets. */
-	const dnslib_rrset_t **authority;   /*!< Authority RRSets. */
-	const dnslib_rrset_t **additional;  /*!< Additional RRSets. */
+	const knot_rrset_t **answer;      /*!< Answer RRSets. */
+	const knot_rrset_t **authority;   /*!< Authority RRSets. */
+	const knot_rrset_t **additional;  /*!< Additional RRSets. */
 
 	short an_rrsets;     /*!< Count of Answer RRSets in the response. */
 	short ns_rrsets;     /*!< Count of Authority RRSets in the response. */
@@ -106,7 +106,7 @@ struct dnslib_packet {
 	short max_ns_rrsets; /*!< Allocated space for Authority RRsets. */
 	short max_ar_rrsets; /*!< Allocated space for Additional RRsets. */
 
-	dnslib_opt_rr_t opt_rr;     /*!< OPT RR included in the packet. */
+	knot_opt_rr_t opt_rr;     /*!< OPT RR included in the packet. */
 
 	uint8_t *wireformat;  /*!< Wire format of the packet. */
 
@@ -117,19 +117,19 @@ struct dnslib_packet {
 	size_t max_size;  /*!< Maximum allowed size of the packet. */
 
 	/*! \brief Information needed for compressing domain names in packet. */
-	dnslib_compressed_dnames_t compression;
+	knot_compressed_dnames_t compression;
 
 	/*! \brief RRSets to be destroyed with the packet structure. */
-	const dnslib_rrset_t **tmp_rrsets;
+	const knot_rrset_t **tmp_rrsets;
 	short tmp_rrsets_count;  /*!< Count of temporary RRSets. */
 	short tmp_rrsets_max;    /*!< Allocated space for temporary RRSets. */
 
-	struct dnslib_packet *query; /*!< Associated query. */
+	struct knot_packet *query; /*!< Associated query. */
 
-	dnslib_packet_prealloc_type_t prealloc_type;
+	knot_packet_prealloc_type_t prealloc_type;
 };
 
-typedef struct dnslib_packet dnslib_packet_t;
+typedef struct knot_packet knot_packet_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -165,14 +165,14 @@ enum {
 };
 
 /*----------------------------------------------------------------------------*/
-#define PREALLOC_RRSETS(count) (count * sizeof(dnslib_rrset_t *))
+#define PREALLOC_RRSETS(count) (count * sizeof(knot_rrset_t *))
 
 /*! \brief Sizes for preallocated space in the response structure. */
 enum {
 	/*! \brief Size of the response structure itself. */
-	PREALLOC_PACKET = sizeof(dnslib_packet_t),
+	PREALLOC_PACKET = sizeof(knot_packet_t),
 	/*! \brief Space for QNAME dname structure. */
-	PREALLOC_QNAME_DNAME = sizeof(dnslib_dname_t),
+	PREALLOC_QNAME_DNAME = sizeof(knot_dname_t),
 	/*! \brief Space for QNAME name (maximum domain name size). */
 	PREALLOC_QNAME_NAME = 256,
 	/*! \brief Space for QNAME labels (maximum label count). */
@@ -189,18 +189,18 @@ enum {
 	PREALLOC_RR_OWNER = 256,
 
 //	/*! \brief Space for Answer RRSets. */
-//	PREALLOC_ANSWER = DEFAULT_ANCOUNT * sizeof(dnslib_dname_t *),
+//	PREALLOC_ANSWER = DEFAULT_ANCOUNT * sizeof(knot_dname_t *),
 //	/*! \brief Space for Authority RRSets. */
-//	PREALLOC_AUTHORITY = DEFAULT_NSCOUNT * sizeof(dnslib_dname_t *),
+//	PREALLOC_AUTHORITY = DEFAULT_NSCOUNT * sizeof(knot_dname_t *),
 //	/*! \brief Space for Additional RRSets. */
-//	PREALLOC_ADDITIONAL = DEFAULT_ARCOUNT * sizeof(dnslib_dname_t *),
+//	PREALLOC_ADDITIONAL = DEFAULT_ARCOUNT * sizeof(knot_dname_t *),
 //	/*! \brief Total size for Answer, Authority and Additional RRSets. */
 //	PREALLOC_RRSETS = PREALLOC_ANSWER
 //	                  + PREALLOC_AUTHORITY
 //	                  + PREALLOC_ADDITIONAL,
 	/*! \brief Space for one part of the compression table (domain names).*/
 	PREALLOC_DOMAINS =
-		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(dnslib_dname_t *),
+		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(knot_dname_t *),
 	/*! \brief Space for other part of the compression table (offsets). */
 	PREALLOC_OFFSETS =
 		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(size_t),
@@ -208,7 +208,7 @@ enum {
 
 //	/*! \brief Space for temporary RRSets. */
 //	PREALLOC_TMP_RRSETS =
-//		DEFAULT_TMP_RRSETS * sizeof(dnslib_rrset_t *),
+//		DEFAULT_TMP_RRSETS * sizeof(knot_rrset_t *),
 
 	PREALLOC_QUERY = PREALLOC_PACKET
 	                 + PREALLOC_QNAME
@@ -236,7 +236,7 @@ enum {
  *
  * \return New packet structure or NULL if an error occured.
  */
-dnslib_packet_t *dnslib_packet_new(dnslib_packet_prealloc_type_t prealloc);
+knot_packet_t *knot_packet_new(knot_packet_prealloc_type_t prealloc);
 
 /*!
  * \brief Parses the DNS packet from wire format.
@@ -250,14 +250,14 @@ dnslib_packet_t *dnslib_packet_new(dnslib_packet_prealloc_type_t prealloc);
  *
  * \retval DNSLIB_EOK
  */
-int dnslib_packet_parse_from_wire(dnslib_packet_t *packet,
+int knot_packet_parse_from_wire(knot_packet_t *packet,
                                   const uint8_t *wireformat, size_t size,
                                   int question_only);
 
-int dnslib_packet_parse_rest(dnslib_packet_t *packet);
+int knot_packet_parse_rest(knot_packet_t *packet);
 
-int dnslib_packet_parse_next_rr_answer(dnslib_packet_t *packet,
-                                       dnslib_rrset_t **rr);
+int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
+                                       knot_rrset_t **rr);
 
 /*!
  * \brief Sets the maximum size of the packet and allocates space for wire
@@ -281,9 +281,9 @@ int dnslib_packet_parse_next_rr_answer(dnslib_packet_t *packet,
  *
  * \todo Needs test.
  */
-int dnslib_packet_set_max_size(dnslib_packet_t *packet, int max_size);
+int knot_packet_set_max_size(knot_packet_t *packet, int max_size);
 
-uint16_t dnslib_packet_id(const dnslib_packet_t *packet);
+uint16_t knot_packet_id(const knot_packet_t *packet);
 
 /*!
  * \brief Returns the OPCODE of the packet.
@@ -292,7 +292,7 @@ uint16_t dnslib_packet_id(const dnslib_packet_t *packet);
  *
  * \return OPCODE stored in the packet.
  */
-uint8_t dnslib_packet_opcode(const dnslib_packet_t *packet);
+uint8_t knot_packet_opcode(const knot_packet_t *packet);
 
 /*!
  * \brief Returns the QNAME from the packet.
@@ -301,7 +301,7 @@ uint8_t dnslib_packet_opcode(const dnslib_packet_t *packet);
  *
  * \return QNAME stored in the packet.
  */
-const dnslib_dname_t *dnslib_packet_qname(const dnslib_packet_t *packet);
+const knot_dname_t *knot_packet_qname(const knot_packet_t *packet);
 
 /*!
  * \brief Returns the QTYPE from the packet.
@@ -310,7 +310,7 @@ const dnslib_dname_t *dnslib_packet_qname(const dnslib_packet_t *packet);
  *
  * \return QTYPE stored in the packet.
  */
-uint16_t dnslib_packet_qtype(const dnslib_packet_t *packet);
+uint16_t knot_packet_qtype(const knot_packet_t *packet);
 
 /*!
  * \brief Returns the QCLASS from the packet.
@@ -319,32 +319,32 @@ uint16_t dnslib_packet_qtype(const dnslib_packet_t *packet);
  *
  * \return QCLASS stored in the packet.
  */
-uint16_t dnslib_packet_qclass(const dnslib_packet_t *packet);
+uint16_t knot_packet_qclass(const knot_packet_t *packet);
 
-int dnslib_packet_is_query(const dnslib_packet_t *packet);
+int knot_packet_is_query(const knot_packet_t *packet);
 
-const dnslib_packet_t *dnslib_packet_query(const dnslib_packet_t *packet);
+const knot_packet_t *knot_packet_query(const knot_packet_t *packet);
 
 /*!
  * \brief Returns number of RRSets in Answer section of the packet.
  *
  * \param response Packet to get the Answer RRSet count from.
  */
-short dnslib_packet_answer_rrset_count(const dnslib_packet_t *packet);
+short knot_packet_answer_rrset_count(const knot_packet_t *packet);
 
 /*!
  * \brief Returns number of RRSets in Authority section of the packet.
  *
  * \param response Packet to get the Authority RRSet count from.
  */
-short dnslib_packet_authority_rrset_count(const dnslib_packet_t *packet);
+short knot_packet_authority_rrset_count(const knot_packet_t *packet);
 
 /*!
  * \brief Returns number of RRSets in Additional section of the packet.
  *
  * \param response Packet to get the Additional RRSet count from.
  */
-short dnslib_packet_additional_rrset_count(const dnslib_packet_t *packet);
+short knot_packet_additional_rrset_count(const knot_packet_t *packet);
 
 /*!
  * \brief Returns the requested Answer RRset.
@@ -357,8 +357,8 @@ short dnslib_packet_additional_rrset_count(const dnslib_packet_t *packet);
  * \return The RRSet on position \a pos in the Answer section of \a packet
  *         or NULL if there is no such RRSet.
  */
-const dnslib_rrset_t *dnslib_packet_answer_rrset(
-	const dnslib_packet_t *packet, short pos);
+const knot_rrset_t *knot_packet_answer_rrset(
+	const knot_packet_t *packet, short pos);
 
 /*!
  * \brief Returns the requested Authority RRset.
@@ -371,8 +371,8 @@ const dnslib_rrset_t *dnslib_packet_answer_rrset(
  * \return The RRSet on position \a pos in the Authority section of \a packet
  *         or NULL if there is no such RRSet.
  */
-const dnslib_rrset_t *dnslib_packet_authority_rrset(
-	dnslib_packet_t *packet, short pos);
+const knot_rrset_t *knot_packet_authority_rrset(
+	knot_packet_t *packet, short pos);
 
 /*!
  * \brief Returns the requested Additional RRset.
@@ -385,8 +385,8 @@ const dnslib_rrset_t *dnslib_packet_authority_rrset(
  * \return The RRSet on position \a pos in the Additional section of \a packet
  *         or NULL if there is no such RRSet.
  */
-const dnslib_rrset_t *dnslib_packet_additional_rrset(
-	dnslib_packet_t *packet, short pos);
+const knot_rrset_t *knot_packet_additional_rrset(
+	knot_packet_t *packet, short pos);
 
 /*!
  * \brief Checks if the packet already contains the given RRSet.
@@ -394,7 +394,7 @@ const dnslib_rrset_t *dnslib_packet_additional_rrset(
  * It searches for the RRSet in the three lists of RRSets corresponding to
  * Answer, Authority and Additional sections of the packet.
  *
- * \note Only pointers are compared, i.e. two instances of dnslib_rrset_t with
+ * \note Only pointers are compared, i.e. two instances of knot_rrset_t with
  * the same data will be considered different.
  *
  * \param packet Packet to look for the RRSet in.
@@ -403,9 +403,9 @@ const dnslib_rrset_t *dnslib_packet_additional_rrset(
  * \retval 0 if \a resp does not contain \a rrset.
  * \retval <> 0 if \a resp does contain \a rrset.
  */
-int dnslib_packet_contains(const dnslib_packet_t *packet,
-                           const dnslib_rrset_t *rrset,
-                           dnslib_rrset_compare_type_t cmp);
+int knot_packet_contains(const knot_packet_t *packet,
+                           const knot_rrset_t *rrset,
+                           knot_rrset_compare_type_t cmp);
 
 /*!
  * \brief Adds RRSet to the list of temporary RRSets.
@@ -418,10 +418,10 @@ int dnslib_packet_contains(const dnslib_packet_t *packet,
  * \retval DNSLIB_EOK
  * \retval DNSLIB_ENOMEM
  */
-int dnslib_packet_add_tmp_rrset(dnslib_packet_t *response,
-                                dnslib_rrset_t *tmp_rrset);
+int knot_packet_add_tmp_rrset(knot_packet_t *response,
+                                knot_rrset_t *tmp_rrset);
 
-void dnslib_packet_free_tmp_rrsets(dnslib_packet_t *pkt);
+void knot_packet_free_tmp_rrsets(knot_packet_t *pkt);
 
 /*!
  * \brief Converts the header structure to wire format.
@@ -434,10 +434,10 @@ void dnslib_packet_free_tmp_rrsets(dnslib_packet_t *pkt);
  *                 to be allocated before calling this function.
  * \param[out] size Size of the wire format of the header in bytes.
  */
-void dnslib_packet_header_to_wire(const dnslib_header_t *header,
+void knot_packet_header_to_wire(const knot_header_t *header,
                                   uint8_t **pos, size_t *size);
 
-int dnslib_packet_question_to_wire(dnslib_packet_t *packet);
+int knot_packet_question_to_wire(knot_packet_t *packet);
 
 /*!
  * \brief Converts the stored response OPT RR to wire format and adds it to
@@ -445,7 +445,7 @@ int dnslib_packet_question_to_wire(dnslib_packet_t *packet);
  *
  * \param resp Response structure.
  */
-int dnslib_packet_edns_to_wire(dnslib_packet_t *packet);
+int knot_packet_edns_to_wire(knot_packet_t *packet);
 
 /*!
  * \brief Converts the packet to wire format.
@@ -459,7 +459,7 @@ int dnslib_packet_edns_to_wire(dnslib_packet_t *packet);
  * \retval DNSLIB_EOK
  * \retval DNSLIB_EBADARG
  */
-int dnslib_packet_to_wire(dnslib_packet_t *packet, uint8_t **wire,
+int knot_packet_to_wire(knot_packet_t *packet, uint8_t **wire,
                           size_t *wire_size);
 
 /*!
@@ -467,7 +467,7 @@ int dnslib_packet_to_wire(dnslib_packet_t *packet, uint8_t **wire,
  *
  * \param response Packet to be destroyed.
  */
-void dnslib_packet_free(dnslib_packet_t **packet);
+void knot_packet_free(knot_packet_t **packet);
 
 /*!
  * \brief Dumps the whole packet in human-readable form.
@@ -476,7 +476,7 @@ void dnslib_packet_free(dnslib_packet_t **packet);
  *
  * \param resp Packet to dump.
  */
-void dnslib_packet_dump(const dnslib_packet_t *packet);
+void knot_packet_dump(const knot_packet_t *packet);
 
 #endif /* _KNOT_DNSLIB_PACKET_H_ */
 

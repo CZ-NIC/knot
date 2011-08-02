@@ -9,17 +9,17 @@
 /*!< Tree functions. */
 TREE_DEFINE(dname_table_node, avl);
 
-struct dnslib_dname_table_fnc_data {
-	void (*func)(dnslib_dname_t *dname, void *data);
+struct knot_dname_table_fnc_data {
+	void (*func)(knot_dname_t *dname, void *data);
 	void *data;
 };
 
-static void dnslib_dname_table_apply(struct dname_table_node *node, void *data)
+static void knot_dname_table_apply(struct dname_table_node *node, void *data)
 {
 	assert(data != NULL);
 	assert(node != NULL);
-	struct dnslib_dname_table_fnc_data *d =
-			(struct dnslib_dname_table_fnc_data *)data;
+	struct knot_dname_table_fnc_data *d =
+			(struct knot_dname_table_fnc_data *)data;
 	d->func(node->dname, d->data);
 }
 
@@ -49,25 +49,25 @@ static int compare_dname_table_nodes(struct dname_table_node *n1,
 static void delete_dname_table_node(struct dname_table_node *node, void *data)
 {
 	if (data) {
-		dnslib_dname_release(node->dname);
+		knot_dname_release(node->dname);
 	}
 
 	/*!< \todo it would be nice to set pointers to NULL. */
 	free(node);
 }
 
-static void dnslib_dname_table_delete_subtree(struct dname_table_node *root)
+static void knot_dname_table_delete_subtree(struct dname_table_node *root)
 {
 	if (root == NULL) {
 		return;
 	}
 
-	dnslib_dname_table_delete_subtree(root->avl.avl_left);
-	dnslib_dname_table_delete_subtree(root->avl.avl_right);
+	knot_dname_table_delete_subtree(root->avl.avl_left);
+	knot_dname_table_delete_subtree(root->avl.avl_right);
 	free(root);
 }
 
-static int dnslib_dname_table_copy_node(const struct dname_table_node *from,
+static int knot_dname_table_copy_node(const struct dname_table_node *from,
                                         struct dname_table_node **to)
 {
 	if (from == NULL) {
@@ -81,19 +81,19 @@ static int dnslib_dname_table_copy_node(const struct dname_table_node *from,
 	}
 
 	(*to)->dname = from->dname;
-	dnslib_dname_retain((*to)->dname);
+	knot_dname_retain((*to)->dname);
 	(*to)->avl.avl_height = from->avl.avl_height;
 
-	int ret = dnslib_dname_table_copy_node(from->avl.avl_left,
+	int ret = knot_dname_table_copy_node(from->avl.avl_left,
 	                                       &(*to)->avl.avl_left);
 	if (ret != DNSLIB_EOK) {
 		return ret;
 	}
 
-	ret = dnslib_dname_table_copy_node(from->avl.avl_right,
+	ret = knot_dname_table_copy_node(from->avl.avl_right,
 	                                   &(*to)->avl.avl_right);
 	if (ret != DNSLIB_EOK) {
-		dnslib_dname_table_delete_subtree((*to)->avl.avl_left);
+		knot_dname_table_delete_subtree((*to)->avl.avl_left);
 		(*to)->avl.avl_left = NULL;
 		return ret;
 	}
@@ -101,9 +101,9 @@ static int dnslib_dname_table_copy_node(const struct dname_table_node *from,
 	return DNSLIB_EOK;
 }
 
-dnslib_dname_table_t *dnslib_dname_table_new()
+knot_dname_table_t *knot_dname_table_new()
 {
-	dnslib_dname_table_t *ret = malloc(sizeof(dnslib_dname_table_t));
+	knot_dname_table_t *ret = malloc(sizeof(knot_dname_table_t));
 	CHECK_ALLOC_LOG(ret, NULL);
 
 	ret->tree = malloc(sizeof(table_tree_t));
@@ -120,8 +120,8 @@ dnslib_dname_table_t *dnslib_dname_table_new()
 	return ret;
 }
 
-dnslib_dname_t *dnslib_dname_table_find_dname(const dnslib_dname_table_t *table,
-					      dnslib_dname_t *dname)
+knot_dname_t *knot_dname_table_find_dname(const knot_dname_table_t *table,
+					      knot_dname_t *dname)
 {
 	if (table == NULL || dname == NULL) {
 		return NULL;
@@ -137,14 +137,14 @@ dnslib_dname_t *dnslib_dname_table_find_dname(const dnslib_dname_table_t *table,
 		return NULL;
 	} else {
 		/* Increase reference counter. */
-		dnslib_dname_retain(node->dname);
+		knot_dname_retain(node->dname);
 
 		return node->dname;
 	}
 }
 
-int dnslib_dname_table_add_dname(dnslib_dname_table_t *table,
-				 dnslib_dname_t *dname)
+int knot_dname_table_add_dname(knot_dname_table_t *table,
+				 knot_dname_t *dname)
 {
 	if (dname == NULL || table == NULL) {
 		return DNSLIB_EBADARG;
@@ -165,40 +165,40 @@ int dnslib_dname_table_add_dname(dnslib_dname_table_t *table,
 	assert(node->dname->id != 0);
 
 	/* Increase reference counter. */
-	dnslib_dname_retain(dname);
+	knot_dname_retain(dname);
 
 	TREE_INSERT(table->tree, dname_table_node, avl, node);
 	return DNSLIB_EOK;
 }
 
-int dnslib_dname_table_add_dname2(dnslib_dname_table_t *table,
-                                  dnslib_dname_t **dname)
+int knot_dname_table_add_dname2(knot_dname_table_t *table,
+                                  knot_dname_t **dname)
 {
-	dnslib_dname_t *found_dname = NULL;
+	knot_dname_t *found_dname = NULL;
 
 	if (table == NULL || dname == NULL || *dname == NULL) {
 		return DNSLIB_EBADARG;
 	}
 
-//	char *name = dnslib_dname_to_str(*dname);
+//	char *name = knot_dname_to_str(*dname);
 //	printf("Inserting name %s to dname table.\n", name);
 //	free(name);
 
 	/* Fetch dname, need to release it later. */
-	found_dname = dnslib_dname_table_find_dname(table ,*dname);
+	found_dname = knot_dname_table_find_dname(table ,*dname);
 
 	if (!found_dname) {
 		/* Store reference in table. */
-		return dnslib_dname_table_add_dname(table, *dname);
+		return knot_dname_table_add_dname(table, *dname);
 	} else {
 		/*! \todo Remove the check for equality. */
 		if (found_dname != *dname) {
-			//name = dnslib_dname_to_str(found_dname);
+			//name = knot_dname_to_str(found_dname);
 			//printf("Already there: %s (%p)\n", name, found_dname);
 			//free(name);
 
 			/* Replace dname with found. */
-			dnslib_dname_release(*dname);
+			knot_dname_release(*dname);
 			*dname = found_dname;
 			return 1; /*! \todo Error code? */
 
@@ -207,7 +207,7 @@ int dnslib_dname_table_add_dname2(dnslib_dname_table_t *table,
 			/* If the dname is already in the table, there is already
 			 * a reference to it.
 			 */
-			dnslib_dname_release(found_dname);
+			knot_dname_release(found_dname);
 		}
 	}
 
@@ -216,8 +216,8 @@ int dnslib_dname_table_add_dname2(dnslib_dname_table_t *table,
 	return DNSLIB_EOK;
 }
 
-int dnslib_dname_table_shallow_copy(dnslib_dname_table_t *from,
-                                    dnslib_dname_table_t *to)
+int knot_dname_table_shallow_copy(knot_dname_table_t *from,
+                                    knot_dname_table_t *to)
 {
 	to->id_counter = from->id_counter;
 
@@ -231,11 +231,11 @@ int dnslib_dname_table_shallow_copy(dnslib_dname_table_t *from,
 		TREE_INIT(to->tree, compare_dname_table_nodes);
 	}
 
-	return dnslib_dname_table_copy_node(from->tree->th_root,
+	return knot_dname_table_copy_node(from->tree->th_root,
 	                                    &to->tree->th_root);
 }
 
-void dnslib_dname_table_free(dnslib_dname_table_t **table)
+void knot_dname_table_free(knot_dname_table_t **table)
 {
 	if (table == NULL || *table == NULL) {
 		return;
@@ -249,7 +249,7 @@ void dnslib_dname_table_free(dnslib_dname_table_t **table)
 	*table = NULL;
 }
 
-void dnslib_dname_table_deep_free(dnslib_dname_table_t **table)
+void knot_dname_table_deep_free(knot_dname_table_t **table)
 {
 	if (table == NULL || *table == NULL) {
 		return;
@@ -265,16 +265,16 @@ void dnslib_dname_table_deep_free(dnslib_dname_table_t **table)
 	*table = NULL;
 }
 
-void dnslib_dname_table_tree_inorder_apply(const dnslib_dname_table_t *table,
-            void (*applied_function)(dnslib_dname_t *node,
+void knot_dname_table_tree_inorder_apply(const knot_dname_table_t *table,
+            void (*applied_function)(knot_dname_t *node,
                                      void *data),
             void *data)
 {
-	struct dnslib_dname_table_fnc_data d;
+	struct knot_dname_table_fnc_data d;
 	d.data = data;
 	d.func = applied_function;
 
 	TREE_FORWARD_APPLY(table->tree, dname_table_node, avl,
-	                   dnslib_dname_table_apply, &d);
+	                   knot_dname_table_apply, &d);
 }
 

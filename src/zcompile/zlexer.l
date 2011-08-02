@@ -191,11 +191,11 @@ ANY     [^\"\n\\]|\\.
 			*tmp = '\0';
 			strip_string(yytext);
 
-			/*! \todo dnslib_dname_new_from_wire() (dname.h)
-			 *        which dnslib_node to pass as node?
+			/*! \todo knot_dname_new_from_wire() (dname.h)
+			 *        which knot_node to pass as node?
 			 */
-			dnslib_dname_t *dname;
-			dname = dnslib_dname_new_from_wire((uint8_t*)tmp + 1,
+			knot_dname_t *dname;
+			dname = knot_dname_new_from_wire((uint8_t*)tmp + 1,
 							   strlen(tmp + 1),
 							   NULL);
 			/*! \todo implement refcounting correctly. */

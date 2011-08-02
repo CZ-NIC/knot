@@ -27,7 +27,7 @@ struct xfr_io_t
 {
 	ev_io io;
 	xfrhandler_t *h;
-	dnslib_ns_xfr_t data;
+	knot_ns_xfr_t data;
 };
 
 /*! \brief Interrupt libev ev_loop execution. */
@@ -50,7 +50,7 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 {
 	/* Check data. */
 	struct xfr_io_t* xfr_w = (struct xfr_io_t *)w;
-	dnslib_ns_xfr_t *request = &xfr_w->data;
+	knot_ns_xfr_t *request = &xfr_w->data;
 	if (!request) {
 		return;
 	}
@@ -76,10 +76,10 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 	/* Process incoming packet. */
 	switch(request->type) {
 	case XFR_TYPE_AIN:
-		ret = dnslib_ns_process_axfrin(xfr_w->h->ns, request);
+		ret = knot_ns_process_axfrin(xfr_w->h->ns, request);
 		break;
 	case XFR_TYPE_IIN:
-		ret = dnslib_ns_process_ixfrin(xfr_w->h->ns, request);
+		ret = knot_ns_process_ixfrin(xfr_w->h->ns, request);
 		break;
 	default:
 		ret = KNOT_EINVAL;
@@ -102,7 +102,7 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 				/*! \todo Log error. */
 				return;
 			}
-			ret = dnslib_ns_switch_zone(xfr_w->h->ns, request);
+			ret = knot_ns_switch_zone(xfr_w->h->ns, request);
 			if (ret != KNOT_EOK) {
 				/*! \todo Log error. */
 				return;
@@ -153,14 +153,14 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
 	/* Check data. */
 	struct xfr_io_t* xfr_w = (struct xfr_io_t *)w;
 	xfrhandler_t *handler = xfr_w->h;
-	dnslib_ns_xfr_t *req = &xfr_w->data;
+	knot_ns_xfr_t *req = &xfr_w->data;
 	if (!handler || !req) {
 		return;
 	}
 
 	/* Read event. */
-	int ret = evqueue_read(handler->cq, req, sizeof(dnslib_ns_xfr_t));
-	if (ret != sizeof(dnslib_ns_xfr_t)) {
+	int ret = evqueue_read(handler->cq, req, sizeof(knot_ns_xfr_t));
+	if (ret != sizeof(knot_ns_xfr_t)) {
 		debug_xfr("xfr_bridge_ev: queue read returned %d.\n", ret);
 		ev_io_stop(loop, w);
 		ev_unloop(loop, EVUNLOOP_ALL);
@@ -169,7 +169,7 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
 	}
 
 	/* Fetch associated zone. */
-	dnslib_zone_t *zone = (dnslib_zone_t *)req->data;
+	knot_zone_t *zone = (knot_zone_t *)req->data;
 	if (!zone) {
 		return;
 	}
@@ -194,7 +194,7 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
 
 	/* Fetch zone contents. */
 	rcu_read_lock();
-	const dnslib_zone_contents_t *contents = dnslib_zone_contents(zone);
+	const knot_zone_contents_t *contents = knot_zone_contents(zone);
 
 	/* Create XFR query. */
 	ret = KNOT_ERROR;
@@ -245,7 +245,7 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
 		return;
 	}
 	cl_w->h = xfr_w->h;
-	memcpy(&cl_w->data, req, sizeof(dnslib_ns_xfr_t));
+	memcpy(&cl_w->data, req, sizeof(knot_ns_xfr_t));
 
 	/* Add to pending transfers. */
 	ev_io_init((ev_io *)cl_w, xfr_client_ev, req->session, EV_READ);
@@ -256,7 +256,7 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
  * Public APIs.
  */
 
-xfrhandler_t *xfr_create(size_t thrcount, dnslib_nameserver_t *ns)
+xfrhandler_t *xfr_create(size_t thrcount, knot_nameserver_t *ns)
 {
 	/* Create XFR handler data. */
 	xfrhandler_t *data = malloc(sizeof(xfrhandler_t));
@@ -342,13 +342,13 @@ int xfr_stop(xfrhandler_t *handler)
 	return KNOT_EOK;
 }
 
-int xfr_request(xfrhandler_t *handler, dnslib_ns_xfr_t *req)
+int xfr_request(xfrhandler_t *handler, knot_ns_xfr_t *req)
 {
 	if (!handler || !req) {
 		return KNOT_EINVAL;
 	}
 
-	int ret = evqueue_write(handler->q, req, sizeof(dnslib_ns_xfr_t));
+	int ret = evqueue_write(handler->q, req, sizeof(knot_ns_xfr_t));
 	if (ret < 0) {
 		return KNOT_ERROR;
 	}
@@ -389,9 +389,9 @@ int xfr_master(dthread_t *thread)
 		}
 
 		/* Read single request. */
-		dnslib_ns_xfr_t xfr;
-		ret = evqueue_read(xfrh->q, &xfr, sizeof(dnslib_ns_xfr_t));
-		if (ret != sizeof(dnslib_ns_xfr_t)) {
+		knot_ns_xfr_t xfr;
+		ret = evqueue_read(xfrh->q, &xfr, sizeof(knot_ns_xfr_t));
+		if (ret != sizeof(knot_ns_xfr_t)) {
 			debug_xfr("xfr_master: queue read returned %d.\n", ret);
 			return KNOT_ERROR;
 		}
@@ -403,7 +403,7 @@ int xfr_master(dthread_t *thread)
 
 		/* Handle request. */
 		const char *req_type = "";
-		dnslib_rcode_t rcode;
+		knot_rcode_t rcode;
 		
 		rcu_read_lock();
 		
@@ -411,21 +411,21 @@ int xfr_master(dthread_t *thread)
 		case XFR_TYPE_AOUT:
 			req_type = "axfr-out";
 			
-			ret = dnslib_ns_init_xfr(xfrh->ns, &xfr);
+			ret = knot_ns_init_xfr(xfrh->ns, &xfr);
 			if (ret != DNSLIB_EOK) {
 				debug_xfr("xfr_master: failed to init XFR: %s\n",
-				          dnslib_strerror(ret));
+				          knot_strerror2(ret));
 				socket_close(xfr.session);
 			}
 			
 			ret = zones_xfr_check_zone(&xfr, &rcode);
 			if (ret != KNOT_EOK) {
-				dnslib_ns_xfr_send_error(&xfr, rcode);
+				knot_ns_xfr_send_error(&xfr, rcode);
 				socket_close(xfr.session);
 			}			
 			
-			ret = dnslib_ns_answer_axfr(xfrh->ns, &xfr);
-			dnslib_packet_free(&xfr.query); /* Free query. */
+			ret = knot_ns_answer_axfr(xfrh->ns, &xfr);
+			knot_packet_free(&xfr.query); /* Free query. */
 			debug_xfr("xfr_master: ns_answer_axfr() = %d.\n", ret);
 			if (ret != KNOT_EOK) {
 				socket_close(xfr.session);
@@ -436,28 +436,28 @@ int xfr_master(dthread_t *thread)
 		case XFR_TYPE_IOUT:
 			req_type = "ixfr-out";
 			
-			ret = dnslib_ns_init_xfr(xfrh->ns, &xfr);
+			ret = knot_ns_init_xfr(xfrh->ns, &xfr);
 			if (ret != DNSLIB_EOK) {
 				debug_xfr("xfr_master: failed to init XFR: %s\n",
-				          dnslib_strerror(ret));
+				          knot_strerror2(ret));
 				socket_close(xfr.session);
 			}
 			
 			ret = zones_xfr_check_zone(&xfr, &rcode);
 			if (ret != KNOT_EOK) {
-				dnslib_ns_xfr_send_error(&xfr, rcode);
+				knot_ns_xfr_send_error(&xfr, rcode);
 				socket_close(xfr.session);
 			}
 			
 			ret = zones_xfr_load_changesets(&xfr);
 			if (ret != KNOT_EOK) {
-				dnslib_ns_xfr_send_error(&xfr, 
+				knot_ns_xfr_send_error(&xfr, 
 				                         DNSLIB_RCODE_SERVFAIL);
 				socket_close(xfr.session);
 			}
 			
-			ret = dnslib_ns_answer_ixfr(xfrh->ns, &xfr);
-			dnslib_packet_free(&xfr.query); /* Free query. */
+			ret = knot_ns_answer_ixfr(xfrh->ns, &xfr);
+			knot_packet_free(&xfr.query); /* Free query. */
 			debug_xfr("xfr_master: ns_answer_ixfr() = %d.\n", ret);
 			if (ret != KNOT_EOK) {
 				socket_close(xfr.session);
@@ -465,12 +465,12 @@ int xfr_master(dthread_t *thread)
 			break;
 		case XFR_TYPE_AIN:
 			req_type = "axfr-in";
-			evqueue_write(xfrh->cq, &xfr, sizeof(dnslib_ns_xfr_t));
+			evqueue_write(xfrh->cq, &xfr, sizeof(knot_ns_xfr_t));
 			ret = KNOT_EOK;
 			break;
 		case XFR_TYPE_IIN:
 			req_type = "ixfr-in";
-			evqueue_write(xfrh->cq, &xfr, sizeof(dnslib_ns_xfr_t));
+			evqueue_write(xfrh->cq, &xfr, sizeof(knot_ns_xfr_t));
 			ret = KNOT_EOK;
 			break;
 		default:

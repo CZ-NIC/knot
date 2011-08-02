@@ -158,6 +158,6 @@ typedef struct test_data test_data_t;
 /*!< \brief Parses resource with data and creates all possible structures. */
 test_data_t *create_test_data_from_dump();
 
-test_data_t *data_for_dnslib_tests;
+test_data_t *data_for_knot_tests;
 
 #endif // DNSLIB_TESTS_LOADER_H

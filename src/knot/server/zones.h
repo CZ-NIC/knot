@@ -89,8 +89,8 @@ typedef enum xfr_type_t {
  * \retval KNOT_EINVAL
  * \retval KNOT_ERROR
  */
-int zones_update_db_from_config(const conf_t *conf, dnslib_nameserver_t *ns,
-                               dnslib_zonedb_t **db_old);
+int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
+                               knot_zonedb_t **db_old);
 
 /*!
  * \brief Sync zone data back to text zonefile.
@@ -106,9 +106,9 @@ int zones_update_db_from_config(const conf_t *conf, dnslib_nameserver_t *ns,
  * \retval KNOT_EINVAL on invalid parameter.
  * \retval KNOT_ERROR on unspecified error during processing.
  */
-int zones_zonefile_sync(dnslib_zone_t *zone);
+int zones_zonefile_sync(knot_zone_t *zone);
 
-int zones_xfr_check_zone(dnslib_ns_xfr_t *xfr, dnslib_rcode_t *rcode);
+int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode);
 
 /*!
  * \brief Processes normal response packet.
@@ -124,9 +124,9 @@ int zones_xfr_check_zone(dnslib_ns_xfr_t *xfr, dnslib_rcode_t *rcode);
  * \retval KNOT_EINVAL on invalid parameters or packet.
  * \retval KNOT_EMALF if an error occured and the response is not valid.
  */
-int zones_process_response(dnslib_nameserver_t *nameserver, 
+int zones_process_response(knot_nameserver_t *nameserver, 
                            sockaddr_t *from,
-                           dnslib_packet_t *packet, uint8_t *response_wire,
+                           knot_packet_t *packet, uint8_t *response_wire,
                            size_t *rsize);
 
 /*!
@@ -137,9 +137,9 @@ int zones_process_response(dnslib_nameserver_t *nameserver,
  *
  * \retval
  */
-xfr_type_t zones_transfer_to_use(const dnslib_zone_contents_t *zone);
+xfr_type_t zones_transfer_to_use(const knot_zone_contents_t *zone);
 
-int zones_save_zone(const dnslib_ns_xfr_t *xfr);
+int zones_save_zone(const knot_ns_xfr_t *xfr);
 
 /*!
  * \brief Name server config hook.
@@ -170,7 +170,7 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data);
  *
  * \todo Expects the xfr structure to be initialized in some way.
  */
-int zones_store_changesets(dnslib_ns_xfr_t *xfr);
+int zones_store_changesets(knot_ns_xfr_t *xfr);
 
 /*!
  * \brief Load changesets from journal.
@@ -192,7 +192,7 @@ int zones_store_changesets(dnslib_ns_xfr_t *xfr);
  *
  * \todo Expects the xfr structure to be initialized in some way.
  */
-int zones_xfr_load_changesets(dnslib_ns_xfr_t *xfr);
+int zones_xfr_load_changesets(knot_ns_xfr_t *xfr);
 
 /*!
  * \brief Apply changesets to zone.
@@ -206,7 +206,7 @@ int zones_xfr_load_changesets(dnslib_ns_xfr_t *xfr);
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  */
-int zones_apply_changesets(dnslib_ns_xfr_t *xfr);
+int zones_apply_changesets(knot_ns_xfr_t *xfr);
 
 #endif // _KNOT_ZONES_H_
 

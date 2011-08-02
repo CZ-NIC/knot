@@ -31,7 +31,7 @@
  * \retval < 0 if \a d1 goes before \a d2 in canonical order.
  * \retval > 0 if \a d1 goes after \a d2 in canonical order.
  */
-static int dnslib_rdata_compare_binary(const uint8_t *d1, const uint8_t *d2,
+static int knot_rdata_compare_binary(const uint8_t *d1, const uint8_t *d2,
 				       int count1, int count2)
 {
 	int i1 = 0, i2 = 0;
@@ -81,7 +81,7 @@ static int dnslib_rdata_compare_binary(const uint8_t *d1, const uint8_t *d2,
  * \return MX domain name stored in \a rdata or NULL if \a rdata has less than 2
  *         items.
  */
-static const dnslib_dname_t *dnslib_rdata_mx_name(const dnslib_rdata_t *rdata)
+static const knot_dname_t *knot_rdata_mx_name(const knot_rdata_t *rdata)
 {
 	if (rdata->count < 2) {
 		return NULL;
@@ -101,7 +101,7 @@ static const dnslib_dname_t *dnslib_rdata_mx_name(const dnslib_rdata_t *rdata)
  *
  * \return NS domain name stored in \a rdata or NULL if \a rdata has no items.
  */
-static const dnslib_dname_t *dnslib_rdata_ns_name(const dnslib_rdata_t *rdata)
+static const knot_dname_t *knot_rdata_ns_name(const knot_rdata_t *rdata)
 {
 	if (rdata->count < 1) {
 		return NULL;
@@ -122,7 +122,7 @@ static const dnslib_dname_t *dnslib_rdata_ns_name(const dnslib_rdata_t *rdata)
  * \return SRV domain name stored in \a rdata or NULL if \a rdata has less than
  *         4 items.
  */
-static const dnslib_dname_t *dnslib_rdata_srv_name(const dnslib_rdata_t *rdata)
+static const knot_dname_t *knot_rdata_srv_name(const knot_rdata_t *rdata)
 {
 	if (rdata->count < 4) {
 		return NULL;
@@ -134,10 +134,10 @@ static const dnslib_dname_t *dnslib_rdata_srv_name(const dnslib_rdata_t *rdata)
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-dnslib_rdata_t *dnslib_rdata_new()
+knot_rdata_t *knot_rdata_new()
 {
-	dnslib_rdata_t *rdata =
-		(dnslib_rdata_t *)malloc(sizeof(dnslib_rdata_t));
+	knot_rdata_t *rdata =
+		(knot_rdata_t *)malloc(sizeof(knot_rdata_t));
 	if (rdata == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -152,9 +152,9 @@ dnslib_rdata_t *dnslib_rdata_new()
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
+int knot_rdata_from_wire(knot_rdata_t *rdata, const uint8_t *wire,
                            size_t *pos, size_t total_size, size_t rdlength,
-                           const dnslib_rrtype_descriptor_t *desc)
+                           const knot_rrtype_descriptor_t *desc)
 {
 	int i = 0;
 	uint8_t item_type;
@@ -165,16 +165,16 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
 		return DNSLIB_EOK;
 	}
 
-	dnslib_rdata_item_t *items = (dnslib_rdata_item_t *)malloc(
-	                            desc->length * sizeof(dnslib_rdata_item_t));
+	knot_rdata_item_t *items = (knot_rdata_item_t *)malloc(
+	                            desc->length * sizeof(knot_rdata_item_t));
 	CHECK_ALLOC_LOG(items, DNSLIB_ENOMEM);
 
 	size_t item_size;
 	uint8_t gateway_type = 0;  // only to handle IPSECKEY record
-	dnslib_dname_t *dname;
+	knot_dname_t *dname;
 
 //	printf("Parsing RDATA of size %zu of type %s\n",
-//	       rdlength, dnslib_rrtype_to_string(desc->type));
+//	       rdlength, knot_rrtype_to_string(desc->type));
 
 	while (parsed < rdlength && i < desc->length) {
 //		printf("Parsed: %zu\n", parsed);
@@ -191,7 +191,7 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
 		case DNSLIB_RDATA_WF_LITERAL_DNAME:
 //			printf("Next item - domain name, pos: %zu.\n", *pos);
 			pos2 = *pos;
-			dname = dnslib_dname_parse_from_wire(
+			dname = knot_dname_parse_from_wire(
 				wire, &pos2, total_size, NULL);
 			if (dname == NULL) {
 				free(items);
@@ -258,7 +258,7 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
 			case 3:
 				pos2 = *pos;
 				dname =
-					dnslib_dname_parse_from_wire(
+					knot_dname_parse_from_wire(
 					         wire, &pos2, total_size, NULL);
 				if (dname == NULL) {
 					return DNSLIB_ERROR;
@@ -294,7 +294,7 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
 				return DNSLIB_ENOMEM;
 			}
 			// TODO: save size to the RDATA item!!!
-//			printf("Read: %u\n", dnslib_wire_read_u32(wire + *pos));
+//			printf("Read: %u\n", knot_wire_read_u32(wire + *pos));
 			memcpy(items[i].raw_data, &item_size, 2);
 			memcpy(items[i].raw_data + 1, wire + *pos, item_size);
 			*pos += item_size;
@@ -306,15 +306,15 @@ int dnslib_rdata_from_wire(dnslib_rdata_t *rdata, const uint8_t *wire,
 
 	// all items are parsed, insert into the RDATA
 	int rc;
-	rc = dnslib_rdata_set_items(rdata, items, i);
+	rc = knot_rdata_set_items(rdata, items, i);
 	free(items);
 	return rc;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_rdata_set_item(dnslib_rdata_t *rdata, uint pos,
-			  dnslib_rdata_item_t item)
+int knot_rdata_set_item(knot_rdata_t *rdata, uint pos,
+			  knot_rdata_item_t item)
 {
 	if (pos >= rdata->count) {
 		return DNSLIB_EBADARG;
@@ -330,15 +330,15 @@ int dnslib_rdata_set_item(dnslib_rdata_t *rdata, uint pos,
 
 /*----------------------------------------------------------------------------*/
 
-unsigned int dnslib_rdata_item_count(const dnslib_rdata_t *rdata)
+unsigned int knot_rdata_item_count(const knot_rdata_t *rdata)
 {
 	return rdata->count;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
-			   const dnslib_rdata_item_t *items, uint count)
+int knot_rdata_set_items(knot_rdata_t *rdata,
+			   const knot_rdata_item_t *items, uint count)
 {
 	if (rdata == NULL || items == NULL || count == 0 ||
 	    rdata->items != NULL) {
@@ -346,13 +346,13 @@ int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
 	}
 
 	assert(rdata->count == 0);
-	if ((rdata->items = (dnslib_rdata_item_t *)malloc(
-			     count * sizeof(dnslib_rdata_item_t))) == NULL) {
+	if ((rdata->items = (knot_rdata_item_t *)malloc(
+			     count * sizeof(knot_rdata_item_t))) == NULL) {
 		ERR_ALLOC_FAILED;
 		return DNSLIB_ENOMEM;
 	}
 
-	memcpy(rdata->items, items, count * sizeof(dnslib_rdata_item_t));
+	memcpy(rdata->items, items, count * sizeof(knot_rdata_item_t));
 	rdata->count = count;
 
 	/*! \todo Cannot determine items type, so the dname
@@ -364,7 +364,7 @@ int dnslib_rdata_set_items(dnslib_rdata_t *rdata,
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_rdata_item_t *dnslib_rdata_item(const dnslib_rdata_t *rdata,
+const knot_rdata_item_t *knot_rdata_item(const knot_rdata_t *rdata,
 					     uint pos)
 {
 	if (pos >= rdata->count) {
@@ -376,7 +376,7 @@ const dnslib_rdata_item_t *dnslib_rdata_item(const dnslib_rdata_t *rdata,
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
+knot_rdata_item_t *knot_rdata_get_item(const knot_rdata_t *rdata,
 					   uint pos)
 {
 	if (pos >= rdata->count) {
@@ -388,15 +388,15 @@ dnslib_rdata_item_t *dnslib_rdata_get_item(const dnslib_rdata_t *rdata,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, uint pos,
-				dnslib_dname_t *dname)
+int knot_rdata_item_set_dname(knot_rdata_t *rdata, uint pos,
+				knot_dname_t *dname)
 {
 	if (pos >= rdata->count) {
 		return DNSLIB_EBADARG;
 	}
 
 	/* Retain dname. */
-	dnslib_dname_retain(dname);
+	knot_dname_retain(dname);
 
 	rdata->items[pos].dname = dname;
 
@@ -405,7 +405,7 @@ int dnslib_rdata_item_set_dname(dnslib_rdata_t *rdata, uint pos,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, uint pos,
+int knot_rdata_item_set_raw_data(knot_rdata_t *rdata, uint pos,
 				   uint16_t *raw_data)
 {
 	if (pos >= rdata->count) {
@@ -419,7 +419,7 @@ int dnslib_rdata_item_set_raw_data(dnslib_rdata_t *rdata, uint pos,
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_rdata_free(dnslib_rdata_t **rdata)
+void knot_rdata_free(knot_rdata_t **rdata)
 {
 	if (rdata == NULL || *rdata == NULL) {
 		return;
@@ -434,15 +434,15 @@ void dnslib_rdata_free(dnslib_rdata_t **rdata)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
+void knot_rdata_deep_free(knot_rdata_t **rdata, uint type,
 			    int free_all_dnames)
 {
 	if (rdata == NULL || *rdata == NULL) {
 		return;
 	}
 
-	dnslib_rrtype_descriptor_t *desc =
-		dnslib_rrtype_descriptor_by_type(type);
+	knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type(type);
 	assert(desc != NULL);
 
 	assert((*rdata)->count <= desc->length);
@@ -463,7 +463,7 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
 				 *        aren't referenced by the rdata.
 				 */
 				if (free_all_dnames) {
-					dnslib_dname_release((*rdata)->items[i].dname);
+					knot_dname_release((*rdata)->items[i].dname);
 				}
 			}
 		} else {
@@ -480,7 +480,7 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
 
 /*----------------------------------------------------------------------------*/
 
-//uint dnslib_rdata_wire_size(const dnslib_rdata_t *rdata,
+//uint knot_rdata_wire_size(const knot_rdata_t *rdata,
 //                            const uint8_t *format)
 //{
 //	uint size = 0;
@@ -490,7 +490,7 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
 //		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
 //		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
 //		case DNSLIB_RDATA_WF_LITERAL_DNAME:
-//			size += dnslib_dname_size(rdata->items[i].dname);
+//			size += knot_dname_size(rdata->items[i].dname);
 //			break;
 //		case DNSLIB_RDATA_WF_BYTE:
 //			size += 1;
@@ -525,7 +525,7 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
 
 /*----------------------------------------------------------------------------*/
 
-//int dnslib_rdata_to_wire(const dnslib_rdata_t *rdata, const uint8_t *format,
+//int knot_rdata_to_wire(const knot_rdata_t *rdata, const uint8_t *format,
 //                         uint8_t *buffer, uint buf_size)
 //{
 //	uint copied = 0;
@@ -542,8 +542,8 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
 //		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
 //		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
 //		case DNSLIB_RDATA_WF_LITERAL_DNAME:
-//			size = dnslib_dname_size(rdata->items[i].dname);
-//			from = dnslib_dname_name(rdata->items[i].dname);
+//			size = knot_dname_size(rdata->items[i].dname);
+//			from = knot_dname_name(rdata->items[i].dname);
 
 //			break;
 //		case DNSLIB_RDATA_WF_BYTE:
@@ -588,8 +588,8 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
 //	}
 
 //	if (copied > buf_size) {
-//		debug_dnslib_rdata("Not enough place allocated for function "
-//		            "dnslib_rdata_to_wire(). Allocated %u, need %u\n",
+//		debug_knot_rdata("Not enough place allocated for function "
+//		            "knot_rdata_to_wire(). Allocated %u, need %u\n",
 //		            buf_size, copied);
 //		return -1;
 //	}
@@ -600,23 +600,23 @@ void dnslib_rdata_deep_free(dnslib_rdata_t **rdata, uint type,
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_rdata_t *dnslib_rdata_deep_copy(const dnslib_rdata_t *rdata, 
+knot_rdata_t *knot_rdata_deep_copy(const knot_rdata_t *rdata, 
                                        uint16_t type)
 {
-	dnslib_rdata_t *copy = dnslib_rdata_new();
+	knot_rdata_t *copy = knot_rdata_new();
 	CHECK_ALLOC_LOG(copy, NULL);
 
 
-	if ((copy->items = (dnslib_rdata_item_t *)malloc(
-			rdata->count * sizeof(dnslib_rdata_item_t))) == NULL) {
-		dnslib_rdata_free(&copy);
+	if ((copy->items = (knot_rdata_item_t *)malloc(
+			rdata->count * sizeof(knot_rdata_item_t))) == NULL) {
+		knot_rdata_free(&copy);
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
 
 	copy->count = rdata->count;
 
-	dnslib_rrtype_descriptor_t *d = dnslib_rrtype_descriptor_by_type(type);
+	knot_rrtype_descriptor_t *d = knot_rrtype_descriptor_by_type(type);
 
 	assert(copy->count <= d->length);
 
@@ -626,12 +626,12 @@ dnslib_rdata_t *dnslib_rdata_deep_copy(const dnslib_rdata_t *rdata,
 		    || d->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
 		    || d->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME) {
 			copy->items[i].dname =
-				dnslib_dname_deep_copy(rdata->items[i].dname);
+				knot_dname_deep_copy(rdata->items[i].dname);
 		} else {
 			copy->items[i].raw_data = (uint16_t *)malloc(
 					rdata->items[i].raw_data[0] + 2);
 			if (copy->items[i].raw_data == NULL) {
-				dnslib_rdata_deep_free(&copy, type, 1);
+				knot_rdata_deep_free(&copy, type, 1);
 				return NULL;
 			}
 			memcpy(copy->items[i].raw_data,
@@ -645,7 +645,7 @@ dnslib_rdata_t *dnslib_rdata_deep_copy(const dnslib_rdata_t *rdata,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
+int knot_rdata_compare(const knot_rdata_t *r1, const knot_rdata_t *r2,
 			 const uint8_t *format)
 {
 	uint count = (r1->count < r2->count) ? r1->count : r2->count;
@@ -659,14 +659,14 @@ int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
 		if (format[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
 		    format[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
 		    format[i] == DNSLIB_RDATA_WF_LITERAL_DNAME) {
-			cmp = dnslib_dname_compare(r1->items[i].dname,
+			cmp = knot_dname_compare(r1->items[i].dname,
 			                           r2->items[i].dname);
-//			data1 = dnslib_dname_name(r1->items[i].dname);
-//			data2 = dnslib_dname_name(r2->items[i].dname);
-//			size1 = dnslib_dname_size(r2->items[i].dname);
-//			size2 = dnslib_dname_size(r2->items[i].dname);
+//			data1 = knot_dname_name(r1->items[i].dname);
+//			data2 = knot_dname_name(r2->items[i].dname);
+//			size1 = knot_dname_size(r2->items[i].dname);
+//			size2 = knot_dname_size(r2->items[i].dname);
 		} else {
-			cmp = dnslib_rdata_compare_binary(
+			cmp = knot_rdata_compare_binary(
 				(uint8_t *)(r1->items[i].raw_data + 1),
 				(uint8_t *)(r2->items[i].raw_data + 1),
 				r1->items[i].raw_data[0],
@@ -690,7 +690,7 @@ int dnslib_rdata_compare(const dnslib_rdata_t *r1, const dnslib_rdata_t *r2,
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_dname_t *dnslib_rdata_cname_name(const dnslib_rdata_t *rdata)
+const knot_dname_t *knot_rdata_cname_name(const knot_rdata_t *rdata)
 {
 	if (rdata->count < 1) {
 		return NULL;
@@ -700,7 +700,7 @@ const dnslib_dname_t *dnslib_rdata_cname_name(const dnslib_rdata_t *rdata)
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_dname_t *dnslib_rdata_dname_target(const dnslib_rdata_t *rdata)
+const knot_dname_t *knot_rdata_dname_target(const knot_rdata_t *rdata)
 {
 	if (rdata->count < 1) {
 		return NULL;
@@ -710,79 +710,79 @@ const dnslib_dname_t *dnslib_rdata_dname_target(const dnslib_rdata_t *rdata)
 
 /*---------------------------------------------------------------------------*/
 
-const dnslib_dname_t *dnslib_rdata_get_name(const dnslib_rdata_t *rdata,
+const knot_dname_t *knot_rdata_get_name(const knot_rdata_t *rdata,
                                             uint16_t type)
 {
 	// iterate over the rdata items or act as if we knew where the name is?
 
 	switch (type) {
 	case DNSLIB_RRTYPE_NS:
-		return dnslib_rdata_ns_name(rdata);
+		return knot_rdata_ns_name(rdata);
 	case DNSLIB_RRTYPE_MX:
-		return dnslib_rdata_mx_name(rdata);
+		return knot_rdata_mx_name(rdata);
 	case DNSLIB_RRTYPE_SRV:
-		return dnslib_rdata_srv_name(rdata);
+		return knot_rdata_srv_name(rdata);
 	case DNSLIB_RRTYPE_CNAME:
-		return dnslib_rdata_cname_name(rdata);
+		return knot_rdata_cname_name(rdata);
 	}
 
 	return NULL;
 }
 
 /*---------------------------------------------------------------------------*/
-int64_t dnslib_rdata_soa_serial(const dnslib_rdata_t *rdata)
+int64_t knot_rdata_soa_serial(const knot_rdata_t *rdata)
 {
 	if (rdata->count < 3) {
 		return -1;
 	}
 
 	// the number is in network byte order, transform it
-	return dnslib_wire_read_u32((uint8_t *)(rdata->items[2].raw_data + 1));
+	return knot_wire_read_u32((uint8_t *)(rdata->items[2].raw_data + 1));
 }
 
 /*---------------------------------------------------------------------------*/
 
-uint32_t dnslib_rdata_soa_refresh(const dnslib_rdata_t *rdata)
+uint32_t knot_rdata_soa_refresh(const knot_rdata_t *rdata)
 {
 	if (rdata->count < 4) {
 		return 0;	/*! \todo Some other error value. */
 	}
 
 	// the number is in network byte order, transform it
-	return dnslib_wire_read_u32((uint8_t *)(rdata->items[3].raw_data + 1));
+	return knot_wire_read_u32((uint8_t *)(rdata->items[3].raw_data + 1));
 }
 
 /*---------------------------------------------------------------------------*/
 
-uint32_t dnslib_rdata_soa_retry(const dnslib_rdata_t *rdata)
+uint32_t knot_rdata_soa_retry(const knot_rdata_t *rdata)
 {
 	if (rdata->count < 5) {
 		return 0;	/*! \todo Some other error value. */
 	}
 
 	// the number is in network byte order, transform it
-	return dnslib_wire_read_u32((uint8_t *)(rdata->items[4].raw_data + 1));
+	return knot_wire_read_u32((uint8_t *)(rdata->items[4].raw_data + 1));
 }
 
 /*---------------------------------------------------------------------------*/
 
-uint32_t dnslib_rdata_soa_expire(const dnslib_rdata_t *rdata)
+uint32_t knot_rdata_soa_expire(const knot_rdata_t *rdata)
 {
 	if (rdata->count < 6) {
 		return 0;	/*! \todo Some other error value. */
 	}
 
 	// the number is in network byte order, transform it
-	return dnslib_wire_read_u32((uint8_t *)(rdata->items[5].raw_data + 1));
+	return knot_wire_read_u32((uint8_t *)(rdata->items[5].raw_data + 1));
 }
 
 /*---------------------------------------------------------------------------*/
 
-uint16_t dnslib_rdata_rrsig_type_covered(const dnslib_rdata_t *rdata)
+uint16_t knot_rdata_rrsig_type_covered(const knot_rdata_t *rdata)
 {
 	if (rdata->count < 1) {
 		return 0;
 	}
 
-	return dnslib_wire_read_u16((uint8_t *)(rdata->items[0].raw_data + 1));
+	return knot_wire_read_u16((uint8_t *)(rdata->items[0].raw_data + 1));
 }

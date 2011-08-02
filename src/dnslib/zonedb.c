@@ -28,17 +28,17 @@
  * \retval < 0 if \a d1 is before \a d2 in canonical order.
  * \retval > 0 if \a d1 is after \a d2 in canonical order.
  */
-static int dnslib_zonedb_compare_zone_names(void *p1, void *p2)
+static int knot_zonedb_compare_zone_names(void *p1, void *p2)
 {
-	const dnslib_zone_t *zone1 = (const dnslib_zone_t *)p1;
-	const dnslib_zone_t *zone2 = (const dnslib_zone_t *)p2;
+	const knot_zone_t *zone1 = (const knot_zone_t *)p1;
+	const knot_zone_t *zone2 = (const knot_zone_t *)p2;
 
-	int ret = dnslib_dname_compare(zone1->name, zone2->name);
+	int ret = knot_dname_compare(zone1->name, zone2->name);
 
 DEBUG_DNSLIB_ZONEDB(
-	char *name1 = dnslib_dname_to_str(zone1->name);
-	char *name2 = dnslib_dname_to_str(zone2->name);
-	debug_dnslib_zonedb("Compared names %s and %s, result: %d.\n",
+	char *name1 = knot_dname_to_str(zone1->name);
+	char *name2 = knot_dname_to_str(zone2->name);
+	debug_knot_zonedb("Compared names %s and %s, result: %d.\n",
 			    name1, name2, ret);
 	free(name1);
 	free(name2);
@@ -49,14 +49,14 @@ DEBUG_DNSLIB_ZONEDB(
 
 /*----------------------------------------------------------------------------*/
 
-//static int dnslib_zonedb_replace_zone_in_list(void **list_item, void **new_zone)
+//static int knot_zonedb_replace_zone_in_list(void **list_item, void **new_zone)
 //{
 //	assert(list_item != NULL);
 //	assert(*list_item != NULL);
 //	assert(new_zone != NULL);
 //	assert(*new_zone != NULL);
 
-//	debug_dnslib_zonedb("Replacing list item %p with new zone %p\n",
+//	debug_knot_zonedb("Replacing list item %p with new zone %p\n",
 //	                    *list_item, *new_zone);
 
 //	*list_item = *new_zone;
@@ -68,13 +68,13 @@ DEBUG_DNSLIB_ZONEDB(
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-dnslib_zonedb_t *dnslib_zonedb_new()
+knot_zonedb_t *knot_zonedb_new()
 {
-	dnslib_zonedb_t *db =
-		(dnslib_zonedb_t *)malloc(sizeof(dnslib_zonedb_t));
+	knot_zonedb_t *db =
+		(knot_zonedb_t *)malloc(sizeof(knot_zonedb_t));
 	CHECK_ALLOC_LOG(db, NULL);
 
-	db->zone_tree = gen_tree_new(dnslib_zonedb_compare_zone_names);
+	db->zone_tree = gen_tree_new(knot_zonedb_compare_zone_names);
 	if (db->zone_tree == NULL) {
 		free(db);
 		return NULL;
@@ -85,19 +85,19 @@ dnslib_zonedb_t *dnslib_zonedb_new()
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zonedb_add_zone(dnslib_zonedb_t *db, dnslib_zone_t *zone)
+int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone)
 {
 	if (db == NULL || zone == NULL || zone->contents == NULL
 	    || zone->contents->apex == NULL) {
 		return DNSLIB_EBADARG;
 	}
 DEBUG_DNSLIB_ZONEDB(
-	char *name = dnslib_dname_to_str(zone->name);
-	debug_dnslib_zonedb("Inserting zone %s into zone db.\n", name);
+	char *name = knot_dname_to_str(zone->name);
+	debug_knot_zonedb("Inserting zone %s into zone db.\n", name);
 	free(name);
 );
-	int ret = dnslib_zone_contents_load_nsec3param(
-			dnslib_zone_get_contents(zone));
+	int ret = knot_zone_contents_load_nsec3param(
+			knot_zone_get_contents(zone));
 	if (ret != DNSLIB_EOK) {
 		return ret;
 	}
@@ -113,13 +113,13 @@ DEBUG_DNSLIB_ZONEDB(
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name,
+int knot_zonedb_remove_zone(knot_zonedb_t *db, knot_dname_t *zone_name,
                               int destroy_zone)
 {
-	dnslib_zone_t dummy_zone;
+	knot_zone_t dummy_zone;
 	dummy_zone.name = zone_name;
 	// add some lock to avoid multiple removals
-	dnslib_zone_t *z = (dnslib_zone_t *)gen_tree_find(db->zone_tree,
+	knot_zone_t *z = (knot_zone_t *)gen_tree_find(db->zone_tree,
 	                                                  &dummy_zone);
 
 	if (z == NULL) {
@@ -131,7 +131,7 @@ int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name,
 
 	if (destroy_zone) {
 		// properly destroy the zone and all its contents
-		dnslib_zone_deep_free(&z, 0);
+		knot_zone_deep_free(&z, 0);
 	}
 
 	db->zone_count--;
@@ -141,39 +141,39 @@ int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name,
 
 /*----------------------------------------------------------------------------*/
 
-//dnslib_zone_t *dnslib_zonedb_replace_zone(dnslib_zonedb_t *db,
-//                                          dnslib_zone_t *zone)
+//knot_zone_t *knot_zonedb_replace_zone(knot_zonedb_t *db,
+//                                          knot_zone_t *zone)
 //{
-//	dnslib_zone_t *z = dnslib_zonedb_find_zone(db,
-//		dnslib_node_owner(dnslib_zone_apex(zone)));
+//	knot_zone_t *z = knot_zonedb_find_zone(db,
+//		knot_node_owner(knot_zone_apex(zone)));
 //	if (z == NULL) {
 //		return NULL;
 //	}
 	
 //	/*! \todo The replace should be atomic!!! */
 
-//	debug_dnslib_zonedb("Found zone: %p\n", z);
+//	debug_knot_zonedb("Found zone: %p\n", z);
 
 //	int ret = skip_remove(db->zones,
-//	                      (void *)dnslib_node_owner(dnslib_zone_apex(zone)),
+//	                      (void *)knot_node_owner(knot_zone_apex(zone)),
 //	                      NULL, NULL);
 //	if (ret != 0) {
 //		return NULL;
 //	}
 
-//	debug_dnslib_zonedb("Removed zone, return value: %d\n", ret);
-//	debug_dnslib_zonedb("Old zone: %p\n", z);
+//	debug_knot_zonedb("Removed zone, return value: %d\n", ret);
+//	debug_knot_zonedb("Old zone: %p\n", z);
 
 //	ret = skip_insert(db->zones,
-//	                  (void *)dnslib_node_owner(dnslib_zone_apex(zone)),
+//	                  (void *)knot_node_owner(knot_zone_apex(zone)),
 //	                  (void *)zone, NULL);
 
-//	debug_dnslib_zonedb("Inserted zone, return value: %d\n", ret);
+//	debug_knot_zonedb("Inserted zone, return value: %d\n", ret);
 
 //	if (ret != 0) {
 //		// return the removed zone back
 //		skip_insert(db->zones,
-//		            (void *)dnslib_node_owner(dnslib_zone_apex(z)),
+//		            (void *)knot_node_owner(knot_zone_apex(z)),
 //		            (void *)z, NULL);
 //		/*! \todo There may be problems and the zone may remain
 //		          removed. */
@@ -185,41 +185,41 @@ int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name,
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_zone_t *dnslib_zonedb_find_zone(const dnslib_zonedb_t *db,
-                                       const dnslib_dname_t *zone_name)
+knot_zone_t *knot_zonedb_find_zone(const knot_zonedb_t *db,
+                                       const knot_dname_t *zone_name)
 {
-	dnslib_zone_t dummy_zone;
-	dummy_zone.name = (dnslib_dname_t *)zone_name;
-	return (dnslib_zone_t *)gen_tree_find(db->zone_tree, &dummy_zone);
+	knot_zone_t dummy_zone;
+	dummy_zone.name = (knot_dname_t *)zone_name;
+	return (knot_zone_t *)gen_tree_find(db->zone_tree, &dummy_zone);
 }
 
 /*----------------------------------------------------------------------------*/
 
-const dnslib_zone_t *dnslib_zonedb_find_zone_for_name(dnslib_zonedb_t *db,
-                                                    const dnslib_dname_t *dname)
+const knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
+                                                    const knot_dname_t *dname)
 {
 	if (db == NULL || dname == NULL) {
 		return NULL;
 	}
 
-	dnslib_zone_t dummy_zone;
-	dummy_zone.name = (dnslib_dname_t *)dname;
+	knot_zone_t dummy_zone;
+	dummy_zone.name = (knot_dname_t *)dname;
 	void *found = NULL;
 	int exact_match = gen_tree_find_less_or_equal(db->zone_tree,
 	                                              &dummy_zone,
 	                                              &found);
 	UNUSED(exact_match);
 
-	dnslib_zone_t *zone = (found) ? (dnslib_zone_t *)found : NULL;
+	knot_zone_t *zone = (found) ? (knot_zone_t *)found : NULL;
 
 DEBUG_DNSLIB_ZONEDB(
-	char *name = dnslib_dname_to_str(dname);
-	debug_dnslib_zonedb("Found zone for name %s: %p\n", name, zone);
+	char *name = knot_dname_to_str(dname);
+	debug_knot_zonedb("Found zone for name %s: %p\n", name, zone);
 	free(name);
 );
 	if (zone != NULL
-	    && dnslib_dname_compare(zone->contents->apex->owner, dname) != 0
-	    && !dnslib_dname_is_subdomain(dname, zone->contents->apex->owner)) {
+	    && knot_dname_compare(zone->contents->apex->owner, dname) != 0
+	    && !knot_dname_is_subdomain(dname, zone->contents->apex->owner)) {
 		zone = NULL;
 	}
 
@@ -228,10 +228,10 @@ DEBUG_DNSLIB_ZONEDB(
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_zonedb_t *dnslib_zonedb_copy(const dnslib_zonedb_t *db)
+knot_zonedb_t *knot_zonedb_copy(const knot_zonedb_t *db)
 {
-	dnslib_zonedb_t *db_new =
-		(dnslib_zonedb_t *)malloc(sizeof(dnslib_zonedb_t));
+	knot_zonedb_t *db_new =
+		(knot_zonedb_t *)malloc(sizeof(knot_zonedb_t));
 	CHECK_ALLOC_LOG(db_new, NULL);
 
 	db_new->zone_tree = gen_tree_shallow_copy(db->zone_tree);
@@ -243,29 +243,29 @@ dnslib_zonedb_t *dnslib_zonedb_copy(const dnslib_zonedb_t *db)
 	return db_new;
 }
 
-size_t dnslib_zonedb_zone_count(const dnslib_zonedb_t *db)
+size_t knot_zonedb_zone_count(const knot_zonedb_t *db)
 {
 	return db->zone_count;
 }
 
-struct dnslib_zone_db_tree_arg {
-	dnslib_zone_t **zones;
+struct knot_zone_db_tree_arg {
+	knot_zone_t **zones;
 	size_t count;
 };
 
 static void save_zone_to_array(void *node, void *data)
 {
-	dnslib_zone_t *zone = (dnslib_zone_t *)node;
-	struct dnslib_zone_db_tree_arg *args =
-		(struct dnslib_zone_db_tree_arg *)data;
+	knot_zone_t *zone = (knot_zone_t *)node;
+	struct knot_zone_db_tree_arg *args =
+		(struct knot_zone_db_tree_arg *)data;
 	assert(data);
 	args->zones[args->count++] = zone;
 }
 
-dnslib_zone_t **dnslib_zonedb_zones(const dnslib_zonedb_t *db)
+knot_zone_t **knot_zonedb_zones(const knot_zonedb_t *db)
 {
-	struct dnslib_zone_db_tree_arg args;
-	args.zones = malloc(sizeof(dnslib_zone_t) * db->zone_count);
+	struct knot_zone_db_tree_arg args;
+	args.zones = malloc(sizeof(knot_zone_t) * db->zone_count);
 	args.count = 0;
 	CHECK_ALLOC_LOG(args.zones, NULL);
 
@@ -278,7 +278,7 @@ dnslib_zone_t **dnslib_zonedb_zones(const dnslib_zonedb_t *db)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_zonedb_free(dnslib_zonedb_t **db)
+void knot_zonedb_free(knot_zonedb_t **db)
 {
 	gen_tree_destroy(&((*db)->zone_tree), NULL ,NULL);
 	free(*db);
@@ -290,27 +290,27 @@ void dnslib_zonedb_free(dnslib_zonedb_t **db)
 static void delete_zone_from_db(void *node, void *data)
 {
 	UNUSED(data);
-	dnslib_zone_t *zone = (dnslib_zone_t *)node;
+	knot_zone_t *zone = (knot_zone_t *)node;
 	assert(zone);
 	synchronize_rcu();
-	dnslib_zone_deep_free(&zone, 0);
+	knot_zone_deep_free(&zone, 0);
 }
 
-void dnslib_zonedb_deep_free(dnslib_zonedb_t **db)
+void knot_zonedb_deep_free(knot_zonedb_t **db)
 {
-	debug_dnslib_zonedb("Deleting zone db (%p).\n", *db);
-//	debug_dnslib_zonedb("Is it empty (%p)? %s\n",
+	debug_knot_zonedb("Deleting zone db (%p).\n", *db);
+//	debug_knot_zonedb("Is it empty (%p)? %s\n",
 //	       (*db)->zones, skip_is_empty((*db)->zones) ? "yes" : "no");
 
 //DEBUG_DNSLIB_ZONEDB(
 //	int i = 1;
 //	char *name = NULL;
 //	while (zn != NULL) {
-//		debug_dnslib_zonedb("%d. zone: %p, key: %p\n", i, zn->value,
+//		debug_knot_zonedb("%d. zone: %p, key: %p\n", i, zn->value,
 //		                    zn->key);
-//		assert(zn->key == ((dnslib_zone_t *)zn->value)->apex->owner);
-//		name = dnslib_dname_to_str((dnslib_dname_t *)zn->key);
-//		debug_dnslib_zonedb("    zone name: %s\n", name);
+//		assert(zn->key == ((knot_zone_t *)zn->value)->apex->owner);
+//		name = knot_dname_to_str((knot_dname_t *)zn->key);
+//		debug_knot_zonedb("    zone name: %s\n", name);
 //		free(name);
 
 //		zn = skip_next(zn);
@@ -320,7 +320,7 @@ void dnslib_zonedb_deep_free(dnslib_zonedb_t **db)
 //);
 
 //	while (zn != NULL) {
-//		zone = (dnslib_zone_t *)zn->value;
+//		zone = (knot_zone_t *)zn->value;
 //		assert(zone != NULL);
 
 //		// remove the zone from the database
@@ -328,7 +328,7 @@ void dnslib_zonedb_deep_free(dnslib_zonedb_t **db)
 //		// wait for all readers to finish
 //		synchronize_rcu;
 //		// destroy the zone
-//		dnslib_zone_deep_free(&zone, 0);
+//		knot_zone_deep_free(&zone, 0);
 
 //		zn = skip_first((*db)->zones);
 //	}

@@ -24,7 +24,7 @@
 
 /*!
  * \brief Pending NOTIFY event.
- * \see dnslib_zone_t.notify_pending
+ * \see knot_zone_t.notify_pending
  */
 typedef struct notify_ev_t {
 	node n;
@@ -33,7 +33,7 @@ typedef struct notify_ev_t {
 	int msgid;             /*!< ID of pending NOTIFY. */
 	sockaddr_t addr;       /*!< Slave server address. */
 	struct event_t *timer; /*!< Event timer. */
-	dnslib_zone_t *zone;   /*!< Associated zone. */
+	knot_zone_t *zone;   /*!< Associated zone. */
 } notify_ev_t;
 
 /*!
@@ -48,7 +48,7 @@ typedef struct notify_ev_t {
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int notify_create_request(const dnslib_zone_contents_t *zone, uint8_t *buffer,
+int notify_create_request(const knot_zone_contents_t *zone, uint8_t *buffer,
                           size_t *size);
 
 /*!
@@ -84,8 +84,8 @@ int notify_create_request(const dnslib_zone_contents_t *zone, uint8_t *buffer,
  * \retval KNOT_EMALF
  * \retval KNOT_ERROR
  */
-int notify_process_request(const dnslib_nameserver_t *nameserver,
-                           dnslib_packet_t *notify,
+int notify_process_request(const knot_nameserver_t *nameserver,
+                           knot_packet_t *notify,
                            sockaddr_t *from,
                            uint8_t *buffer, size_t *size);
 
@@ -103,8 +103,8 @@ int notify_process_request(const dnslib_nameserver_t *nameserver,
  * \retval KNOT_EINVAL on invalid parameters or packet.
  * \retval KNOT_EMALF if an error occured and the response is not valid.
  */
-int notify_process_response(const dnslib_nameserver_t *nameserver,
-                            dnslib_packet_t *notify,
+int notify_process_response(const knot_nameserver_t *nameserver,
+                            knot_packet_t *notify,
                             sockaddr_t *from,
                             uint8_t *buffer, size_t *size);
 

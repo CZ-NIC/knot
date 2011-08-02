@@ -10,22 +10,22 @@
 #include "common/print.h"
 #include "common/lists.h"
 
-static int dnslib_dname_tests_count(int argc, char *argv[]);
-static int dnslib_dname_tests_run(int argc, char *argv[]);
+static int knot_dname_tests_count(int argc, char *argv[]);
+static int knot_dname_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
 unit_api dname_tests_api = {
 	"DNS library - dname",        //! Unit name
-	&dnslib_dname_tests_count,  //! Count scheduled tests
-	&dnslib_dname_tests_run     //! Run scheduled tests
+	&knot_dname_tests_count,  //! Count scheduled tests
+	&knot_dname_tests_run     //! Run scheduled tests
 };
 
 /*
  *  Unit implementation.
  */
 
-int check_domain_name(const dnslib_dname_t *dname,
+int check_domain_name(const knot_dname_t *dname,
                       const test_dname_t *test_dname)
 {
 	int errors = 0;
@@ -37,19 +37,19 @@ int check_domain_name(const dnslib_dname_t *dname,
 
 //	diag("test_dname: %p, dname: %p", test_dname, dname);
 	// check size
-	if (dnslib_dname_size(dname) != test_dname->size) {
+	if (knot_dname_size(dname) != test_dname->size) {
 		diag("Bad size of the created domain name: %u (should be %u).",
-		     dnslib_dname_size(dname), test_dname->size);
+		     knot_dname_size(dname), test_dname->size);
 		++errors;
 	} else {
 		// check wire format
-		uint size = dnslib_dname_size(dname);
-		if (strncmp((char *)dnslib_dname_name(dname),
+		uint size = knot_dname_size(dname);
+		if (strncmp((char *)knot_dname_name(dname),
 		            (char *)test_dname->wire, size) != 0) {
 			diag("The wire format of the created "
 			     "domain name is wrong:"
 			     " '%.*s' (should be '%.*s').",
-			     size, dnslib_dname_name(dname),
+			     size, knot_dname_name(dname),
 			     size, test_dname->wire);
 			++errors;
 		}
@@ -75,17 +75,17 @@ int check_domain_name(const dnslib_dname_t *dname,
 static int test_dname_create_from_str(const list *dname_list)
 {
 	int errors = 0;
-	dnslib_dname_t *dname = NULL;
+	knot_dname_t *dname = NULL;
 
 	/* Test with real data. */
 	node *n = NULL;
 	WALK_LIST(n, *dname_list) {
 		//note("testing domain: %s", test_domains_ok[i].str);
 		test_dname_t *test_dname = (test_dname_t *)n;
-		dname = dnslib_dname_new_from_str(test_dname->str,
+		dname = knot_dname_new_from_str(test_dname->str,
 			  strlen(test_dname->str), NULL);
 		errors += check_domain_name(dname, test_dname);
-		dnslib_dname_free(&dname);
+		knot_dname_free(&dname);
 	}
 
 	return (errors == 0);
@@ -94,15 +94,15 @@ static int test_dname_create_from_str(const list *dname_list)
 static int test_dname_create_from_wire(const list *dname_list)
 {
 	int errors = 0;
-	dnslib_dname_t *dname = NULL;
+	knot_dname_t *dname = NULL;
 
 	node *n = NULL;
 	WALK_LIST(n, *dname_list) {
 		test_dname_t *test_dname = (test_dname_t *)n;
-		dname = dnslib_dname_new_from_wire(test_dname->wire,
+		dname = knot_dname_new_from_wire(test_dname->wire,
 		                                   test_dname->size, NULL);
 		errors += check_domain_name(dname, test_dname);
-		dnslib_dname_free(&dname);
+		knot_dname_free(&dname);
 	}
 
 	return (errors == 0);
@@ -117,14 +117,14 @@ static int test_dname_to_str(const list *dname_list)
 	 * with entries in test_domains structure.
 	 */
 
-	dnslib_dname_t *dname = NULL;
+	knot_dname_t *dname = NULL;
 
 	/* Test with real data. */
 	node *n = NULL;
 	WALK_LIST(n, *dname_list) {
 		//note("testing domain: %s", test_domains_ok[i].str);
 		test_dname_t *test_dname = (test_dname_t *)n;
-		dname = dnslib_dname_new_from_wire(
+		dname = knot_dname_new_from_wire(
 		                        test_dname->wire,
 		                        test_dname->size,
 		                        NULL);
@@ -133,7 +133,7 @@ static int test_dname_to_str(const list *dname_list)
 			return 0;
 		}
 
-		char *name_str = dnslib_dname_to_str(dname);
+		char *name_str = knot_dname_to_str(dname);
 		if (strcmp(name_str, test_dname->str) != 0) {
 			diag("Presentation format of domain name wrong:"
 			     " %s (should be %s)",
@@ -141,7 +141,7 @@ static int test_dname_to_str(const list *dname_list)
 			++errors;
 		}
 		free(name_str);
-		dnslib_dname_free(&dname);
+		knot_dname_free(&dname);
 	}
 
 	return (errors == 0);
@@ -151,17 +151,17 @@ static int test_dname_is_fqdn(const list *dname_list)
 {
 	int errors = 0;
 
-	dnslib_dname_t *dname;
+	knot_dname_t *dname;
 
 	/* All dnames from real data are fqdn */
 
 	node *n = NULL;
 	WALK_LIST(n, *dname_list) {
 		test_dname_t *test_dname = (test_dname_t *)n;
-		dname = dnslib_dname_new_from_wire(test_dname->wire,
+		dname = knot_dname_new_from_wire(test_dname->wire,
 		                                   test_dname->size, NULL);
-		errors += !dnslib_dname_is_fqdn(dname);
-		dnslib_dname_free(&dname);
+		errors += !knot_dname_is_fqdn(dname);
+		knot_dname_free(&dname);
 	}
 
 	return (errors == 0);
@@ -186,8 +186,8 @@ static int test_dname_is_fqdn(const list *dname_list)
 //}
 
 ///* \note not to be run separately */
-//static int test_dname_name(dnslib_dname_t **dnames_fqdn,
-//			   dnslib_dname_t **dnames_non_fqdn)
+//static int test_dname_name(knot_dname_t **dnames_fqdn,
+//			   knot_dname_t **dnames_non_fqdn)
 //{
 //	assert(dnames_fqdn);
 //	assert(dnames_non_fqdn);
@@ -196,7 +196,7 @@ static int test_dname_is_fqdn(const list *dname_list)
 
 //	for (int i = 0; i < TEST_DOMAINS_OK; i++) {
 //		const uint8_t *tmp_name;
-//		tmp_name = dnslib_dname_name(dnames_fqdn[i]);
+//		tmp_name = knot_dname_name(dnames_fqdn[i]);
 //		if (!check_wires(tmp_name, dnames_fqdn[i]->size,
 //				(uint8_t *)test_domains_ok[i].wire,
 //				test_domains_ok[i].size)) {
@@ -209,7 +209,7 @@ static int test_dname_is_fqdn(const list *dname_list)
 
 //	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
 //		const uint8_t *tmp_name;
-//		tmp_name = dnslib_dname_name(dnames_non_fqdn[i]);
+//		tmp_name = knot_dname_name(dnames_non_fqdn[i]);
 //		if (!check_wires(tmp_name, dnames_non_fqdn[i]->size,
 //				(uint8_t *)test_domains_non_fqdn[i].wire,
 //				test_domains_non_fqdn[i].size)) {
@@ -224,8 +224,8 @@ static int test_dname_is_fqdn(const list *dname_list)
 //}
 
 ///* \note not to be run separately */
-//static int test_dname_size(dnslib_dname_t **dnames_fqdn,
-//			   dnslib_dname_t **dnames_non_fqdn)
+//static int test_dname_size(knot_dname_t **dnames_fqdn,
+//			   knot_dname_t **dnames_non_fqdn)
 //{
 //	assert(dnames_fqdn);
 //	assert(dnames_non_fqdn);
@@ -234,7 +234,7 @@ static int test_dname_is_fqdn(const list *dname_list)
 
 //	for (int i = 0; i < TEST_DOMAINS_OK; i++) {
 //		uint8_t tmp_size;
-//		if ((tmp_size = dnslib_dname_size(dnames_fqdn[i])) !=
+//		if ((tmp_size = knot_dname_size(dnames_fqdn[i])) !=
 //		    test_domains_ok[i].size) {
 //			diag("Got bad size value from structure: "
 //			     "%u, should be: %u",
@@ -245,7 +245,7 @@ static int test_dname_is_fqdn(const list *dname_list)
 
 //	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
 //		uint8_t tmp_size;
-//		if ((tmp_size = dnslib_dname_size(dnames_non_fqdn[i])) !=
+//		if ((tmp_size = knot_dname_size(dnames_non_fqdn[i])) !=
 //		    test_domains_non_fqdn[i].size) {
 //			diag("Got bad size value from structure: "
 //			     "%u, should be: %u",
@@ -258,8 +258,8 @@ static int test_dname_is_fqdn(const list *dname_list)
 //}
 
 ///* \note not to be run separately */
-//static int test_dname_node(dnslib_dname_t **dnames_fqdn,
-//			   dnslib_dname_t **dnames_non_fqdn)
+//static int test_dname_node(knot_dname_t **dnames_fqdn,
+//			   knot_dname_t **dnames_non_fqdn)
 //{
 //	assert(dnames_fqdn);
 //	assert(dnames_non_fqdn);
@@ -267,8 +267,8 @@ static int test_dname_is_fqdn(const list *dname_list)
 //	int errors = 0;
 
 //	for (int i = 0; i < TEST_DOMAINS_OK; i++) {
-//		const dnslib_node_t *tmp_node;
-//		if ((tmp_node = dnslib_dname_node(dnames_fqdn[i])) !=
+//		const knot_node_t *tmp_node;
+//		if ((tmp_node = knot_dname_node(dnames_fqdn[i])) !=
 //		    NODE_ADDRESS) {
 //			diag("Got bad node value from structure: "
 //			     "%p, should be: %p",
@@ -278,8 +278,8 @@ static int test_dname_is_fqdn(const list *dname_list)
 //	}
 
 //	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
-//		const dnslib_node_t *tmp_node;
-//		if ((tmp_node = dnslib_dname_node(dnames_non_fqdn[i])) !=
+//		const knot_node_t *tmp_node;
+//		if ((tmp_node = knot_dname_node(dnames_non_fqdn[i])) !=
 //		    NODE_ADDRESS) {
 //			diag("Got bad node value from structure: "
 //			     "%s, should be: %s",
@@ -295,18 +295,18 @@ static int test_dname_is_fqdn(const list *dname_list)
 //{
 //	int errors = 0;
 
-//	dnslib_dname_t *dnames_fqdn[TEST_DOMAINS_OK];
-//	dnslib_dname_t *dnames_non_fqdn[TEST_DOMAINS_NON_FQDN];
+//	knot_dname_t *dnames_fqdn[TEST_DOMAINS_OK];
+//	knot_dname_t *dnames_non_fqdn[TEST_DOMAINS_NON_FQDN];
 
 //	for (int i = 0; i < TEST_DOMAINS_OK; i++) {
-//		dnames_fqdn[i] = dnslib_dname_new_from_wire(
+//		dnames_fqdn[i] = knot_dname_new_from_wire(
 //				(uint8_t *)test_domains_ok[i].wire,
 //				test_domains_ok[i].size, NODE_ADDRESS);
 //		assert(dnames_fqdn[i] != NULL);
 //	}
 
 //	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
-//		dnames_non_fqdn[i] = dnslib_dname_new_from_wire(
+//		dnames_non_fqdn[i] = knot_dname_new_from_wire(
 //				(uint8_t *)test_domains_non_fqdn[i].wire,
 //				test_domains_non_fqdn[i].size, NODE_ADDRESS);
 //		assert(dnames_non_fqdn[i] != NULL);
@@ -330,11 +330,11 @@ static int test_dname_is_fqdn(const list *dname_list)
 //	} /* switch */
 
 //	for (int i = 0; i < TEST_DOMAINS_OK; i++) {
-//		dnslib_dname_free(&dnames_fqdn[i]);
+//		knot_dname_free(&dnames_fqdn[i]);
 //	}
 
 //	for (int i = 0; i < TEST_DOMAINS_NON_FQDN; i++) {
-//		dnslib_dname_free(&dnames_non_fqdn[i]);
+//		knot_dname_free(&dnames_non_fqdn[i]);
 //	}
 
 //	return (errors == 0);
@@ -345,16 +345,16 @@ static const int DNSLIB_DNAME_TEST_COUNT = 4;
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
-static int dnslib_dname_tests_count(int argc, char *argv[])
+static int knot_dname_tests_count(int argc, char *argv[])
 {
 	return DNSLIB_DNAME_TEST_COUNT;
 }
 
 /*! Run all scheduled tests for given parameters.
  */
-static int dnslib_dname_tests_run(int argc, char *argv[])
+static int knot_dname_tests_run(int argc, char *argv[])
 {
-	const test_data_t *data = data_for_dnslib_tests;
+	const test_data_t *data = data_for_knot_tests;
 
 	int res = 0,
 	    res_str = 0,

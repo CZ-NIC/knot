@@ -3,7 +3,7 @@
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
- * Contains unit tests for RRSet (dnslib_rrset_t) and its API.
+ * Contains unit tests for RRSet (knot_rrset_t) and its API.
  *
  * Contains tests for:
  * -

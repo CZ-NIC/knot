@@ -69,7 +69,7 @@ typedef void namedb_type;
  * \brief One-purpose linked list holding pointers to RRSets.
  */
 struct rrset_list {
-	dnslib_rrset_t *data; /*!< List data. */
+	knot_rrset_t *data; /*!< List data. */
 	struct rrset_list *next; /*!< Next node. */
 };
 
@@ -82,12 +82,12 @@ struct zparser {
 	const char *filename; /*!< File with zone. */
 	uint32_t default_ttl; /*!< Default TTL. */
 	uint16_t default_class; /*!< Default class. */
-	dnslib_zone_t *current_zone; /*!< Current zone. */
-	dnslib_node_t *origin; /*!< Origin node. */
-	dnslib_dname_t *prev_dname; /*!< Previous dname. */
-	dnslib_node_t *default_apex; /*!< Zone default apex. */
+	knot_zone_t *current_zone; /*!< Current zone. */
+	knot_node_t *origin; /*!< Origin node. */
+	knot_dname_t *prev_dname; /*!< Previous dname. */
+	knot_node_t *default_apex; /*!< Zone default apex. */
 
-	dnslib_node_t *last_node; /*!< Last processed node. */
+	knot_node_t *last_node; /*!< Last processed node. */
 
 	char *dname_str; /*!< Temporary dname. */
 
@@ -95,15 +95,15 @@ struct zparser {
 	unsigned int errors; /*!< Number of errors. */
 	unsigned int line; /*!< Current line */
 
-	dnslib_rrset_t *current_rrset; /*!< Current RRSet. */
-	dnslib_rdata_item_t *temporary_items; /*!< Temporary rdata items. */
+	knot_rrset_t *current_rrset; /*!< Current RRSet. */
+	knot_rdata_item_t *temporary_items; /*!< Temporary rdata items. */
 
 	/*!
 	 * \brief list of RRSIGs that were not inside their nodes in zone file
 	 */
 	rrset_list_t *rrsig_orphans;
 
-	dnslib_dname_t *root_domain; /*!< Root domain name. */
+	knot_dname_t *root_domain; /*!< Root domain name. */
 	slab_cache_t *parser_slab; /*!< Slab for parser. */
 	rrset_list_t *node_rrsigs; /*!< List of RRSIGs in current node. */
 
@@ -370,7 +370,7 @@ void zadd_rdata_txt_clean_wireformat();
  *
  * \param domain Domain name to be added.
  */
-void zadd_rdata_domain(dnslib_dname_t *domain);
+void zadd_rdata_domain(knot_dname_t *domain);
 
 /*!
  * \brief Sets bit in NSEC bitmap.
@@ -422,7 +422,7 @@ zparser_type *zparser_create();
  * \param origin Zone origin.
  */
 void zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
-		  dnslib_node_t *origin);
+		  knot_node_t *origin);
 
 /*!
  * \brief Frees zoneparser structure.
@@ -430,8 +430,8 @@ void zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
  */
 void zparser_free();
 
-int save_dnames_in_table(dnslib_dname_table_t *table,
-                         dnslib_rrset_t *rrset);
+int save_dnames_in_table(knot_dname_table_t *table,
+                         knot_rrset_t *rrset);
 
 #endif /* _KNOT_ZONEPARSER_H_ */
 

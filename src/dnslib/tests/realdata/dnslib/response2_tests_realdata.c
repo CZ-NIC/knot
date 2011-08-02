@@ -25,13 +25,13 @@ unit_api response2_tests_api = {
 
 #ifdef TEST_WITH_LDNS
 extern int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count);
-extern int compare_rr_rdata(dnslib_rdata_t *rdata, ldns_rr *rr, uint16_t type);
-extern int compare_rrset_w_ldns_rr(const dnslib_rrset_t *rrset,
+extern int compare_rr_rdata(knot_rdata_t *rdata, ldns_rr *rr, uint16_t type);
+extern int compare_rrset_w_ldns_rr(const knot_rrset_t *rrset,
                                    ldns_rr *rr, char check_rdata);
-extern int compare_rrsets_w_ldns_rrlist(const dnslib_rrset_t **rrsets,
+extern int compare_rrsets_w_ldns_rrlist(const knot_rrset_t **rrsets,
 					ldns_rr_list *rrlist, int count);
 
-extern int check_packet_w_ldns_packet(dnslib_packet_t *packet,
+extern int check_packet_w_ldns_packet(knot_packet_t *packet,
                                       ldns_pkt *ldns_packet,
                                       int check_header,
                                       int check_question,
@@ -39,27 +39,27 @@ extern int check_packet_w_ldns_packet(dnslib_packet_t *packet,
                                       int check_edns);
 #endif
 
-extern dnslib_packet_t *packet_from_test_response(test_response_t *response);
+extern knot_packet_t *packet_from_test_response(test_response_t *response);
 
 static int test_response_init_from_query(list query_list)
 {
 	int errors = 0;
 	node *n = NULL;
 	WALK_LIST(n, query_list) {
-		dnslib_packet_t *response =
-			dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+		knot_packet_t *response =
+			knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
 		assert(response);
-		dnslib_packet_t *query =
+		knot_packet_t *query =
 			packet_from_test_response((test_response_t *)n);
 		assert(query);
-		dnslib_packet_set_max_size(response, 1024 * 10);
-		if (dnslib_response2_init_from_query(response,
+		knot_packet_set_max_size(response, 1024 * 10);
+		if (knot_response2_init_from_query(response,
 		                                     query) != DNSLIB_EOK) {
 			diag("Could not init response from query!");
 			errors++;
 		}
-		dnslib_packet_free(&response);
-		dnslib_packet_free(&query);
+		knot_packet_free(&response);
+		knot_packet_free(&query);
 	}
 	return (errors == 0);
 }
@@ -69,27 +69,27 @@ static int test_response_init_from_query(list query_list)
 //	int errors = 0;
 //	node *n = NULL;
 //	WALK_LIST(n, query_list) {
-//		dnslib_packet_t *response =
-//			dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+//		knot_packet_t *response =
+//			knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
 //		assert(response);
-//		dnslib_opt_rr_t *opt =
+//		knot_opt_rr_t *opt =
 //			opt_from_test_opt((test_opt_t *)n);
 //		assert(query);
-//		if (dnslib_response2_add_opt(response,
+//		if (knot_response2_add_opt(response,
 //		                             opt, 1)!= DNSLIB_EOK) {
 //			diag("Could not add OPT RR to response!");
 //			errors++;
 //		}
-//		dnslib_packet_free(&response);
-//		dnslib_opt_rr_free(&opt);
+//		knot_packet_free(&response);
+//		knot_opt_rr_free(&opt);
 //	}
 //	return (errors == 0);
 //}
 
-extern dnslib_rrset_t *rrset_from_test_rrset(test_rrset_t *test_rrset);
+extern knot_rrset_t *rrset_from_test_rrset(test_rrset_t *test_rrset);
 
-static int test_response_add_generic(int (*func)(dnslib_packet_t *,
-                                                 const dnslib_rrset_t *,
+static int test_response_add_generic(int (*func)(knot_packet_t *,
+                                                 const knot_rrset_t *,
                                                  int, int, int),
                                      list rrset_list)
 {
@@ -97,14 +97,14 @@ static int test_response_add_generic(int (*func)(dnslib_packet_t *,
 	int errors = 0;
 	node *n = NULL;
 	WALK_LIST(n, rrset_list) {
-		dnslib_packet_t *response =
-			dnslib_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+		knot_packet_t *response =
+			knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
 		assert(response);
-		dnslib_packet_set_max_size(response,
+		knot_packet_set_max_size(response,
 		                           DNSLIB_PACKET_PREALLOC_RESPONSE * 100);
-		assert(dnslib_response2_init(response) == DNSLIB_EOK);
+		assert(knot_response2_init(response) == DNSLIB_EOK);
 
-		dnslib_rrset_t *rrset =
+		knot_rrset_t *rrset =
 			rrset_from_test_rrset((test_rrset_t *)n);
 		assert(rrset);
 
@@ -114,12 +114,12 @@ static int test_response_add_generic(int (*func)(dnslib_packet_t *,
 			     ret);
 			diag("(owner: %s type %s)",
 			     ((test_rrset_t *)n)->owner->str,
-			     dnslib_rrtype_to_string((
+			     knot_rrtype_to_string((
 			     (test_rrset_t *)n)->type));
 			errors++;
 		}
-		dnslib_packet_free(&response);
-		dnslib_rrset_deep_free(&rrset, 1, 1, 1);
+		knot_packet_free(&response);
+		knot_rrset_deep_free(&rrset, 1, 1, 1);
 	}
 
 	return (errors == 0);
@@ -127,13 +127,13 @@ static int test_response_add_generic(int (*func)(dnslib_packet_t *,
 
 static void test_response_add_rrset(list rrset_list)
 {
-	ok(test_response_add_generic(dnslib_response2_add_rrset_answer,
+	ok(test_response_add_generic(knot_response2_add_rrset_answer,
 	                             rrset_list),
 	   "response: add answer rrset");
-	ok(test_response_add_generic(dnslib_response2_add_rrset_authority,
+	ok(test_response_add_generic(knot_response2_add_rrset_authority,
 	                             rrset_list),
 	   "response: add authority rrset");
-	ok(test_response_add_generic(dnslib_response2_add_rrset_additional,
+	ok(test_response_add_generic(knot_response2_add_rrset_additional,
 	                             rrset_list),
 	   "response: add additional rrset");
 }
@@ -147,7 +147,7 @@ static int response2_tests_count(int argc, char *argv[])
 
 static int response2_tests_run(int argc, char *argv[])
 {
-	const test_data_t *data = data_for_dnslib_tests;
+	const test_data_t *data = data_for_knot_tests;
 
 //	int res = 0;
 	ok(test_response_init_from_query(data->query_list),

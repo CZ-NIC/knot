@@ -30,7 +30,7 @@ static pthread_key_t dname_ckey;
 static pthread_once_t dname_once = PTHREAD_ONCE_INIT;
 
 /*! \brief Destroy thread dname cache (automatically called). */
-static void dnslib_dname_cache_free(void *ptr)
+static void knot_dname_cache_free(void *ptr)
 {
 	slab_cache_t* cache = (slab_cache_t*)ptr;
 	if (cache) {
@@ -40,15 +40,15 @@ static void dnslib_dname_cache_free(void *ptr)
 }
 
 /*! \brief Cleanup for main() TLS. */
-static void dnslib_dname_cache_main_free()
+static void knot_dname_cache_main_free()
 {
-	dnslib_dname_cache_free(pthread_getspecific(dname_ckey));
+	knot_dname_cache_free(pthread_getspecific(dname_ckey));
 }
 
-static void dnslib_dname_cache_init()
+static void knot_dname_cache_init()
 {
-	(void) pthread_key_create(&dname_ckey, dnslib_dname_cache_free);
-	atexit(dnslib_dname_cache_main_free); // Main thread cleanup
+	(void) pthread_key_create(&dname_ckey, knot_dname_cache_free);
+	atexit(knot_dname_cache_main_free); // Main thread cleanup
 }
 #endif
 
@@ -57,16 +57,16 @@ static void dnslib_dname_cache_init()
  * \retval Allocated dname instance on success.
  * \retval NULL on error.
  */
-static dnslib_dname_t* dnslib_dname_alloc()
+static knot_dname_t* knot_dname_alloc()
 {
-	return malloc(sizeof(dnslib_dname_t));
+	return malloc(sizeof(knot_dname_t));
 
 	/*! \todo dnames allocated from TLS cache will be discarded after thread
 	 *        termination. This shouldn't happpen.
 	 */
 #if 0
 	/* Initialize dname cache TLS key. */
-	(void)pthread_once(&dname_once, dnslib_dname_cache_init);
+	(void)pthread_once(&dname_once, knot_dname_cache_init);
 
 	/* Create cache if not exists. */
 	slab_cache_t* cache = pthread_getspecific(dname_ckey);
@@ -77,7 +77,7 @@ static dnslib_dname_t* dnslib_dname_alloc()
 		}
 
 		/* Initialize cache. */
-		slab_cache_init(cache, sizeof(dnslib_dname_t));
+		slab_cache_init(cache, sizeof(knot_dname_t));
 		(void)pthread_setspecific(dname_ckey, cache);
 	}
 
@@ -89,7 +89,7 @@ static dnslib_dname_t* dnslib_dname_alloc()
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-static int dnslib_dname_set(dnslib_dname_t *dname, uint8_t *wire,
+static int knot_dname_set(knot_dname_t *dname, uint8_t *wire,
                             short wire_size, const uint8_t *labels,
                             short label_count)
 {
@@ -121,8 +121,8 @@ static int dnslib_dname_set(dnslib_dname_t *dname, uint8_t *wire,
  *
  * \todo handle \X and \DDD (RFC 1035 5.1) or it can be handled by the parser?
  */
-static int dnslib_dname_str_to_wire(const char *name, uint size,
-                                    dnslib_dname_t *dname)
+static int knot_dname_str_to_wire(const char *name, uint size,
+                                    knot_dname_t *dname)
 {
 	if (size > DNSLIB_MAX_DNAME_LENGTH) {
 		return -1;
@@ -147,13 +147,13 @@ static int dnslib_dname_str_to_wire(const char *name, uint size,
 		return -1;
 	}
 
-	debug_dnslib_dname("Allocated space for wire format of dname: %p\n",
+	debug_knot_dname("Allocated space for wire format of dname: %p\n",
 	                   wire);
 
 	if (root) {
 		*wire = '\0';
 		label_count = 0;
-		return dnslib_dname_set(dname, wire, wire_size, labels,
+		return knot_dname_set(dname, wire, wire_size, labels,
 		                        label_count);
 	}
 
@@ -166,7 +166,7 @@ static int dnslib_dname_str_to_wire(const char *name, uint size,
 		assert(w - wire - 1 == ch - (const uint8_t *)name);
 
 		if (*ch == '.') {
-			debug_dnslib_dname("Position %zd (%p): "
+			debug_knot_dname("Position %zd (%p): "
 			                   "label length: %u\n",
 			                   label_start - wire,
 			                   label_start, label_length);
@@ -176,7 +176,7 @@ static int dnslib_dname_str_to_wire(const char *name, uint size,
 			label_length = 0;
 		} else {
 			assert(w - wire < wire_size);
-			debug_dnslib_dname("Position %zd (%p): character: %c\n",
+			debug_knot_dname("Position %zd (%p): character: %c\n",
 			                   w - wire, w, *ch);
 			*w = *ch;
 			++label_length;
@@ -190,11 +190,11 @@ static int dnslib_dname_str_to_wire(const char *name, uint size,
 	--ch;
 	if (*ch == '.') { // put 0 for root label if the name ended with .
 		--w;
-		debug_dnslib_dname("Position %zd (%p): character: (null)\n",
+		debug_knot_dname("Position %zd (%p): character: (null)\n",
 				   w - wire, w);
 		*w = 0;
 	} else { // otherwise we did not save the last label length
-		debug_dnslib_dname("Position %zd (%p): "
+		debug_knot_dname("Position %zd (%p): "
 		                   "label length: %u\n",
 		                   label_start - wire,
 		                   label_start, label_length);
@@ -202,19 +202,19 @@ static int dnslib_dname_str_to_wire(const char *name, uint size,
 		labels[label_count++] = label_start - wire;
 	}
 
-	return dnslib_dname_set(dname, wire, wire_size, labels, label_count);
+	return knot_dname_set(dname, wire, wire_size, labels, label_count);
 }
 
 /*----------------------------------------------------------------------------*/
 
-static inline int dnslib_dname_tolower(uint8_t c, int cs)
+static inline int knot_dname_tolower(uint8_t c, int cs)
 {
-	return (cs) ? c : dnslib_tolower(c);
+	return (cs) ? c : knot_tolower(c);
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int dnslib_dname_compare_labels(const uint8_t *label1,
+static int knot_dname_compare_labels(const uint8_t *label1,
                                        const uint8_t *label2, int cs)
 {
 	const uint8_t *pos1 = label1;
@@ -224,14 +224,14 @@ static int dnslib_dname_compare_labels(const uint8_t *label1,
 	int i = 0;
 
 	while (i < label_length
-	       && dnslib_dname_tolower(*(++pos1), cs)
-	          == dnslib_dname_tolower(*(++pos2), cs)) {
+	       && knot_dname_tolower(*(++pos1), cs)
+	          == knot_dname_tolower(*(++pos2), cs)) {
 		++i;
 	}
 
 	if (i < label_length) {  // difference in some octet
-		return (dnslib_dname_tolower(*pos1, cs)
-		        - dnslib_dname_tolower(*pos2, cs));
+		return (knot_dname_tolower(*pos1, cs)
+		        - knot_dname_tolower(*pos2, cs));
 	}
 
 	return (label1[0] - label2[0]);
@@ -239,7 +239,7 @@ static int dnslib_dname_compare_labels(const uint8_t *label1,
 
 /*----------------------------------------------------------------------------*/
 
-static int dnslib_dname_find_labels(dnslib_dname_t *dname, int alloc)
+static int knot_dname_find_labels(knot_dname_t *dname, int alloc)
 {
 	const uint8_t *name = dname->name;
 	const uint8_t *pos = name;
@@ -255,8 +255,8 @@ static int dnslib_dname_find_labels(dnslib_dname_t *dname, int alloc)
 
 	// TODO: how to check if the domain name has right format?
 //	if (pos - name < size && *pos != '0') {
-//		debug_dnslib_dname("Wrong wire format of domain name!\n");
-//		debug_dnslib_dname("Position: %d, character: %d, expected"
+//		debug_knot_dname("Wrong wire format of domain name!\n");
+//		debug_knot_dname("Position: %d, character: %d, expected"
 //				   " size: %d\n", pos - name, *pos, size);
 //		return -1;
 //	}
@@ -275,24 +275,24 @@ static int dnslib_dname_find_labels(dnslib_dname_t *dname, int alloc)
 
 /*----------------------------------------------------------------------------*/
 
-static int dnslib_dname_cmp(const dnslib_dname_t *d1, const dnslib_dname_t *d2,
+static int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2,
                             int cs)
 {
 DEBUG_DNSLIB_DNAME(
-	char *name1 = dnslib_dname_to_str(d1);
-	char *name2 = dnslib_dname_to_str(d2);
+	char *name1 = knot_dname_to_str(d1);
+	char *name2 = knot_dname_to_str(d2);
 
-	debug_dnslib_dname("Comparing dnames %s and %s\n",
+	debug_knot_dname("Comparing dnames %s and %s\n",
 	                   name1, name2);
 
 	for (int i = 0; i < strlen(name1); ++i) {
-		name1[i] = dnslib_tolower(name1[i]);
+		name1[i] = knot_tolower(name1[i]);
 	}
 	for (int i = 0; i < strlen(name2); ++i) {
-		name2[i] = dnslib_tolower(name2[i]);
+		name2[i] = knot_tolower(name2[i]);
 	}
 
-	debug_dnslib_dname("After to lower: %s and %s\n",
+	debug_knot_dname("After to lower: %s and %s\n",
 	                   name1, name2);
 
 	free(name1);
@@ -305,17 +305,17 @@ DEBUG_DNSLIB_DNAME(
 
 	int l1 = d1->label_count;
 	int l2 = d2->label_count;
-	debug_dnslib_dname("Label counts: %d and %d\n", l1, l2);
+	debug_knot_dname("Label counts: %d and %d\n", l1, l2);
 	assert(l1 >= 0);
 	assert(l2 >= 0);
 
 	// compare labels from last to first
 	while (l1 > 0 && l2 > 0) {
-		debug_dnslib_dname("Comparing labels %d and %d\n",
+		debug_knot_dname("Comparing labels %d and %d\n",
 				   l1 - 1, l2 - 1);
-		debug_dnslib_dname(" at offsets: %d and %d\n",
+		debug_knot_dname(" at offsets: %d and %d\n",
 				   d1->labels[l1 - 1], d2->labels[l2 - 1]);
-		int res = dnslib_dname_compare_labels(
+		int res = knot_dname_compare_labels(
 		                   &d1->name[d1->labels[--l1]],
 		                   &d2->name[d2->labels[--l2]],
 		                   cs);
@@ -337,19 +337,19 @@ DEBUG_DNSLIB_DNAME(
 }
 
 /*! \brief Destructor for reference counter. */
-static void dnslib_dname_dtor(struct ref_t *p)
+static void knot_dname_dtor(struct ref_t *p)
 {
-	dnslib_dname_t *dname = (dnslib_dname_t *)p;
-	dnslib_dname_free(&dname);
+	knot_dname_t *dname = (knot_dname_t *)p;
+	knot_dname_free(&dname);
 }
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-dnslib_dname_t *dnslib_dname_new()
+knot_dname_t *knot_dname_new()
 {
-	dnslib_dname_t *dname = dnslib_dname_alloc();
+	knot_dname_t *dname = knot_dname_alloc();
 	dname->name = NULL;
 	dname->size = 0;
 	dname->node = NULL;
@@ -358,38 +358,38 @@ dnslib_dname_t *dnslib_dname_new()
 	dname->id = 0;
 
 	/* Initialize reference counting. */
-	ref_init(&dname->ref, dnslib_dname_dtor);
+	ref_init(&dname->ref, knot_dname_dtor);
 
 	/* Set reference counter to 1, caller should release it after use. */
-	dnslib_dname_retain(dname);
+	knot_dname_retain(dname);
 
 	return dname;
 }
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_dname_t *dnslib_dname_new_from_str(const char *name, uint size,
-                                          struct dnslib_node *node)
+knot_dname_t *knot_dname_new_from_str(const char *name, uint size,
+                                          struct knot_node *node)
 {
 	if (name == NULL || size == 0) {
 		return NULL;
 	}
 
-//	dnslib_dname_t *dname = dnslib_dname_alloc();
-	dnslib_dname_t *dname = dnslib_dname_new();
+//	knot_dname_t *dname = knot_dname_alloc();
+	knot_dname_t *dname = knot_dname_new();
 
 	if (dname == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
 
-	dnslib_dname_str_to_wire(name, size, dname);
-	debug_dnslib_dname("Created dname with size: %d\n", dname->size);
-	debug_dnslib_dname("Label offsets: ");
+	knot_dname_str_to_wire(name, size, dname);
+	debug_knot_dname("Created dname with size: %d\n", dname->size);
+	debug_knot_dname("Label offsets: ");
 	for (int i = 0; i < dname->label_count; ++i) {
-		debug_dnslib_dname("%d, ", dname->labels[i]);
+		debug_knot_dname("%d, ", dname->labels[i]);
 	}
-	debug_dnslib_dname("\n");
+	debug_knot_dname("\n");
 
 	if (dname->size <= 0) {
 		fprintf(stderr, "Could not parse domain name "
@@ -405,7 +405,7 @@ dnslib_dname_t *dnslib_dname_new_from_str(const char *name, uint size,
 
 /*----------------------------------------------------------------------------*/
 
-//int dnslib_dname_from_wire(dnslib_dname_t *dname, const uint8_t *name,
+//int knot_dname_from_wire(knot_dname_t *dname, const uint8_t *name,
 //                           uint size)
 //{
 //	int i = 0;
@@ -425,15 +425,15 @@ dnslib_dname_t *dnslib_dname_new_from_str(const char *name, uint size,
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
-                                           struct dnslib_node *node)
+knot_dname_t *knot_dname_new_from_wire(const uint8_t *name, uint size,
+                                           struct knot_node *node)
 {
 	if (name == NULL) { /* && size != 0) { !OS: Nerozumjaju */
-		debug_dnslib_dname("No name given!\n");
+		debug_knot_dname("No name given!\n");
 		return NULL;
 	}
 
-	dnslib_dname_t *dname = dnslib_dname_new();
+	knot_dname_t *dname = knot_dname_new();
 
 	if (dname == NULL) {
 		ERR_ALLOC_FAILED;
@@ -443,15 +443,15 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 	dname->name = (uint8_t *)malloc(size * sizeof(uint8_t));
 	if (dname->name == NULL) {
 		ERR_ALLOC_FAILED;
-		dnslib_dname_free(&dname);
+		knot_dname_free(&dname);
 		return NULL;
 	}
 
 	memcpy(dname->name, name, size);
 	dname->size = size;
 
-	if (dnslib_dname_find_labels(dname, 1) != 0) {
-		dnslib_dname_free(&dname);
+	if (knot_dname_find_labels(dname, 1) != 0) {
+		knot_dname_free(&dname);
 		return NULL;
 	}
 
@@ -463,9 +463,9 @@ dnslib_dname_t *dnslib_dname_new_from_wire(const uint8_t *name, uint size,
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
+knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
                                              size_t *pos, size_t size,
-                                             dnslib_node_t *node)
+                                             knot_node_t *node)
 {
 	uint8_t name[DNSLIB_MAX_DNAME_LENGTH];
 	uint8_t labels[DNSLIB_MAX_DNAME_LABELS];
@@ -476,12 +476,12 @@ dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
 
 	while (p < size && wire[p] != 0) {
 		labels[l] = i;
-		debug_dnslib_dname("Next label (%d.) position: %zu\n", l, i);
+		debug_knot_dname("Next label (%d.) position: %zu\n", l, i);
 
-		if (dnslib_wire_is_pointer(wire + p)) {
+		if (knot_wire_is_pointer(wire + p)) {
 			// pointer.
 //			printf("Pointer.\n");
-			p = dnslib_wire_get_pointer(wire + p);
+			p = knot_wire_get_pointer(wire + p);
 			if (!pointer_used) {
 				*pos += 2;
 				pointer_used = 1;
@@ -511,7 +511,7 @@ dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
 		*pos += 1;
 	}
 
-	dnslib_dname_t *dname = dnslib_dname_new();
+	knot_dname_t *dname = knot_dname_new();
 
 	if (dname == NULL) {
 		ERR_ALLOC_FAILED;
@@ -521,7 +521,7 @@ dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
 	dname->name = (uint8_t *)malloc((i + 1) * sizeof(uint8_t));
 	if (dname->name == NULL) {
 		ERR_ALLOC_FAILED;
-		dnslib_dname_free(&dname);
+		knot_dname_free(&dname);
 		return NULL;
 	}
 
@@ -531,7 +531,7 @@ dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
 	dname->labels = (uint8_t *)malloc((l + 1) * sizeof(uint8_t));
 	if (dname->labels == NULL) {
 		ERR_ALLOC_FAILED;
-		dnslib_dname_free(&dname);
+		knot_dname_free(&dname);
 		return NULL;
 	}
 	memcpy(dname->labels, labels, l + 1);
@@ -545,8 +545,8 @@ dnslib_dname_t *dnslib_dname_parse_from_wire(const uint8_t *wire,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_dname_from_wire(const uint8_t *name, uint size,
-                           struct dnslib_node *node, dnslib_dname_t *target)
+int knot_dname_from_wire(const uint8_t *name, uint size,
+                           struct knot_node *node, knot_dname_t *target)
 {
 	if (name == NULL || target == NULL) {
 		return DNSLIB_EBADARG;
@@ -557,20 +557,20 @@ int dnslib_dname_from_wire(const uint8_t *name, uint size,
 	target->node = node;
 	target->id = 0;
 
-	return dnslib_dname_find_labels(target, 0);
+	return knot_dname_find_labels(target, 0);
 }
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_dname_t *dnslib_dname_deep_copy(const dnslib_dname_t *dname)
+knot_dname_t *knot_dname_deep_copy(const knot_dname_t *dname)
 {
-	return dnslib_dname_new_from_wire(dname->name, dname->size,
+	return knot_dname_new_from_wire(dname->name, dname->size,
 	                                  dname->node);
 }
 
 /*----------------------------------------------------------------------------*/
 
-char *dnslib_dname_to_str(const dnslib_dname_t *dname)
+char *knot_dname_to_str(const knot_dname_t *dname)
 {
 	char *name;
 
@@ -611,28 +611,28 @@ char *dnslib_dname_to_str(const dnslib_dname_t *dname)
 
 /*----------------------------------------------------------------------------*/
 
-const uint8_t *dnslib_dname_name(const dnslib_dname_t *dname)
+const uint8_t *knot_dname_name(const knot_dname_t *dname)
 {
 	return dname->name;
 }
 
 /*----------------------------------------------------------------------------*/
 
-uint dnslib_dname_size(const dnslib_dname_t *dname)
+uint knot_dname_size(const knot_dname_t *dname)
 {
 	return dname->size;
 }
 
 /*----------------------------------------------------------------------------*/
 
-unsigned int dnslib_dname_id(const dnslib_dname_t *dname)
+unsigned int knot_dname_id(const knot_dname_t *dname)
 {
 	return dname->id;
 }
 
 /*----------------------------------------------------------------------------*/
 
-uint8_t dnslib_dname_size_part(const dnslib_dname_t *dname, int labels)
+uint8_t knot_dname_size_part(const knot_dname_t *dname, int labels)
 {
 	assert(labels < dname->label_count);
 	assert(dname->labels != NULL);
@@ -641,12 +641,12 @@ uint8_t dnslib_dname_size_part(const dnslib_dname_t *dname, int labels)
 
 /*----------------------------------------------------------------------------*/
 
-const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname,
+const struct knot_node *knot_dname_node(const knot_dname_t *dname,
                                             int check_version)
 
 {
 	if (check_version) {
-		return dnslib_node_current(dname->node);
+		return knot_node_current(dname->node);
 	} else {
 		return dname->node;
 	}
@@ -654,11 +654,11 @@ const struct dnslib_node *dnslib_dname_node(const dnslib_dname_t *dname,
 
 /*----------------------------------------------------------------------------*/
 
-struct dnslib_node *dnslib_dname_get_node(dnslib_dname_t *dname,
+struct knot_node *knot_dname_get_node(knot_dname_t *dname,
                                           int check_version)
 {
 	if (check_version) {
-		return dnslib_node_get_current(dname->node);
+		return knot_node_get_current(dname->node);
 	} else {
 		return dname->node;
 	}
@@ -666,30 +666,30 @@ struct dnslib_node *dnslib_dname_get_node(dnslib_dname_t *dname,
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_dname_set_node(dnslib_dname_t *dname, dnslib_node_t *node)
+void knot_dname_set_node(knot_dname_t *dname, knot_node_t *node)
 {
 	dname->node = node;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_dname_update_node(dnslib_dname_t *dname)
+void knot_dname_update_node(knot_dname_t *dname)
 {
-	dnslib_node_update_ref(&dname->node);
+	knot_node_update_ref(&dname->node);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_dname_is_fqdn(const dnslib_dname_t *dname)
+int knot_dname_is_fqdn(const knot_dname_t *dname)
 {
 	return (dname->name[dname->size - 1] == '\0');
 }
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname)
+knot_dname_t *knot_dname_left_chop(const knot_dname_t *dname)
 {
-	dnslib_dname_t *parent = dnslib_dname_new();
+	knot_dname_t *parent = knot_dname_new();
 	if (parent == NULL) {
 		return NULL;
 	}
@@ -698,7 +698,7 @@ dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname)
 	parent->name = (uint8_t *)malloc(parent->size);
 	if (parent->name == NULL) {
 		ERR_ALLOC_FAILED;
-		dnslib_dname_free(&parent);
+		knot_dname_free(&parent);
 		return NULL;
 	}
 
@@ -706,7 +706,7 @@ dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname)
 	if (parent->labels == NULL) {
 		ERR_ALLOC_FAILED;
 		free(parent->name);
-		dnslib_dname_free(&parent);
+		knot_dname_free(&parent);
 		return NULL;
 	}
 
@@ -724,7 +724,7 @@ dnslib_dname_t *dnslib_dname_left_chop(const dnslib_dname_t *dname)
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_dname_left_chop_no_copy(dnslib_dname_t *dname)
+void knot_dname_left_chop_no_copy(knot_dname_t *dname)
 {
 	// copy the name
 	short first_label_length = dname->labels[1];
@@ -748,14 +748,14 @@ void dnslib_dname_left_chop_no_copy(dnslib_dname_t *dname)
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_dname_is_subdomain(const dnslib_dname_t *sub,
-                              const dnslib_dname_t *domain)
+int knot_dname_is_subdomain(const knot_dname_t *sub,
+                              const knot_dname_t *domain)
 {
 DEBUG_DNSLIB_DNAME(
-	char *name1 = dnslib_dname_to_str(sub);
-	char *name2 = dnslib_dname_to_str(domain);
+	char *name1 = knot_dname_to_str(sub);
+	char *name2 = knot_dname_to_str(domain);
 
-	debug_dnslib_dname("Checking if %s is subdomain of %s\n",
+	debug_knot_dname("Checking if %s is subdomain of %s\n",
 	                   name1, name2);
 	free(name1);
 	free(name2);
@@ -776,7 +776,7 @@ DEBUG_DNSLIB_DNAME(
 	int l1 = sub->label_count;
 	int l2 = domain->label_count;
 
-	debug_dnslib_dname("Label counts: %d and %d\n", l1, l2);
+	debug_knot_dname("Label counts: %d and %d\n", l1, l2);
 
 	if (l1 <= l2) {  // if sub does not have more labes than domain
 		return 0;  // it is not its subdomain
@@ -784,12 +784,12 @@ DEBUG_DNSLIB_DNAME(
 
 	// compare labels from last to first
 	while (l1 > 0 && l2 > 0) {
-		debug_dnslib_dname("Comparing labels %d and %d\n",
+		debug_knot_dname("Comparing labels %d and %d\n",
 				   l1 - 1, l2 - 1);
-		debug_dnslib_dname(" at offsets: %d and %d\n",
+		debug_knot_dname(" at offsets: %d and %d\n",
 				   sub->labels[l1 - 1], domain->labels[l2 - 1]);
 		// if some labels do not match
-		if (dnslib_dname_compare_labels(&sub->name[sub->labels[--l1]],
+		if (knot_dname_compare_labels(&sub->name[sub->labels[--l1]],
 		                    &domain->name[domain->labels[--l2]], 0)
 		    != 0) {
 			return 0;  // sub is not a subdomain of domain
@@ -804,7 +804,7 @@ DEBUG_DNSLIB_DNAME(
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_dname_is_wildcard(const dnslib_dname_t *dname)
+int knot_dname_is_wildcard(const knot_dname_t *dname)
 {
 	return (dname->size >= 2
 		&& dname->name[0] == 1
@@ -813,8 +813,8 @@ int dnslib_dname_is_wildcard(const dnslib_dname_t *dname)
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_dname_matched_labels(const dnslib_dname_t *dname1,
-                                const dnslib_dname_t *dname2)
+int knot_dname_matched_labels(const knot_dname_t *dname1,
+                                const knot_dname_t *dname2)
 {
 	int l1 = dname1->label_count;
 	int l2 = dname2->label_count;
@@ -822,7 +822,7 @@ int dnslib_dname_matched_labels(const dnslib_dname_t *dname1,
 	// compare labels from last to first
 	int matched = 0;
 	while (l1 > 0 && l2 > 0) {
-		int res = dnslib_dname_compare_labels(
+		int res = knot_dname_compare_labels(
 		               &dname1->name[dname1->labels[--l1]],
 		               &dname2->name[dname2->labels[--l2]], 0);
 		if (res == 0) {
@@ -837,14 +837,14 @@ int dnslib_dname_matched_labels(const dnslib_dname_t *dname1,
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_dname_label_count(const dnslib_dname_t *dname)
+int knot_dname_label_count(const knot_dname_t *dname)
 {
 	return dname->label_count;
 }
 
 /*----------------------------------------------------------------------------*/
 
-uint8_t dnslib_dname_label_size(const dnslib_dname_t *dname, int i)
+uint8_t knot_dname_label_size(const knot_dname_t *dname, int i)
 {
 //	printf("Returning size of %d. label starting on %d\n",
 //	       i, dname->labels[i]);
@@ -864,51 +864,51 @@ uint8_t dnslib_dname_label_size(const dnslib_dname_t *dname, int i)
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_dname_t *dnslib_dname_replace_suffix(const dnslib_dname_t *dname,
+knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *dname,
                                             int size,
-                                            const dnslib_dname_t *suffix)
+                                            const knot_dname_t *suffix)
 {
 DEBUG_DNSLIB_DNAME(
-	char *name = dnslib_dname_to_str(dname);
-	debug_dnslib_dname("Replacing suffix of name %s, size %d with ", name,
+	char *name = knot_dname_to_str(dname);
+	debug_knot_dname("Replacing suffix of name %s, size %d with ", name,
 	                   size);
 	free(name);
-	name = dnslib_dname_to_str(suffix);
-	debug_dnslib_dname("%s (size %d)\n", name, suffix->size);
+	name = knot_dname_to_str(suffix);
+	debug_knot_dname("%s (size %d)\n", name, suffix->size);
 	free(name);
 );
-	dnslib_dname_t *res = dnslib_dname_new();
+	knot_dname_t *res = knot_dname_new();
 	CHECK_ALLOC(res, NULL);
 
 	res->size = dname->size - size + suffix->size;
 
-	debug_dnslib_dname("Allocating %d bytes...\n", res->size);
+	debug_knot_dname("Allocating %d bytes...\n", res->size);
 	res->name = (uint8_t *)malloc(res->size);
 	if (res->name == NULL) {
-		dnslib_dname_free(&res);
+		knot_dname_free(&res);
 		return NULL;
 	}
 
-	debug_dnslib_dname_hex((char *)res->name, res->size);
+	debug_knot_dname_hex((char *)res->name, res->size);
 
-	debug_dnslib_dname("Copying %d bytes from the original name.\n",
+	debug_knot_dname("Copying %d bytes from the original name.\n",
 	                   dname->size - size);
 	memcpy(res->name, dname->name, dname->size - size);
-	debug_dnslib_dname_hex((char *)res->name, res->size);
+	debug_knot_dname_hex((char *)res->name, res->size);
 
-	debug_dnslib_dname("Copying %d bytes from the suffix.\n", suffix->size);
+	debug_knot_dname("Copying %d bytes from the suffix.\n", suffix->size);
 	memcpy(res->name + dname->size - size, suffix->name, suffix->size);
 
-	debug_dnslib_dname_hex((char *)res->name, res->size);
+	debug_knot_dname_hex((char *)res->name, res->size);
 
-	dnslib_dname_find_labels(res, 1);
+	knot_dname_find_labels(res, 1);
 
 	return res;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void dnslib_dname_free(dnslib_dname_t **dname)
+void knot_dname_free(knot_dname_t **dname)
 {
 	if (dname == NULL || *dname == NULL) {
 		return;
@@ -929,27 +929,27 @@ void dnslib_dname_free(dnslib_dname_t **dname)
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_dname_compare(const dnslib_dname_t *d1, const dnslib_dname_t *d2)
+int knot_dname_compare(const knot_dname_t *d1, const knot_dname_t *d2)
 {
-	return dnslib_dname_cmp(d1, d2, 0);
+	return knot_dname_cmp(d1, d2, 0);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int dnslib_dname_compare_cs(const dnslib_dname_t *d1, const dnslib_dname_t *d2)
+int knot_dname_compare_cs(const knot_dname_t *d1, const knot_dname_t *d2)
 {
-	return dnslib_dname_cmp(d1, d2, 1);
+	return knot_dname_cmp(d1, d2, 1);
 }
 
 /*----------------------------------------------------------------------------*/
 
-dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2)
+knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2)
 {
 	if (d2->size == 0) {
 		return d1;
 	}
 
-	if (dnslib_dname_is_fqdn(d1)) {
+	if (knot_dname_is_fqdn(d1)) {
 		return NULL;
 	}
 
@@ -965,12 +965,12 @@ dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2)
 		return NULL;
 	}
 
-	debug_dnslib_dname("1: copying %d bytes from adress %p to %p\n",
+	debug_knot_dname("1: copying %d bytes from adress %p to %p\n",
 	                   d1->size, d1->name, new_dname);
 
 	memcpy(new_dname, d1->name, d1->size);
 
-	debug_dnslib_dname("2: copying %d bytes from adress %p to %p\n",
+	debug_knot_dname("2: copying %d bytes from adress %p to %p\n",
 	                   d2->size, d2->name, new_dname + d1->size);
 
 	memcpy(new_dname + d1->size, d2->name, d2->size);
@@ -995,12 +995,12 @@ dnslib_dname_t *dnslib_dname_cat(dnslib_dname_t *d1, const dnslib_dname_t *d2)
 	return d1;
 }
 
-void dnslib_dname_set_id(dnslib_dname_t *dname, unsigned int id)
+void knot_dname_set_id(knot_dname_t *dname, unsigned int id)
 {
 	dname->id = id;
 }
 
-unsigned int dnslib_dname_get_id(const dnslib_dname_t *dname)
+unsigned int knot_dname_get_id(const knot_dname_t *dname)
 {
 	if (dname != NULL) {
 		return dname->id;

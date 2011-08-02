@@ -3,7 +3,7 @@
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
- * Contains unit tests for response structure (dnslib_response_t) and its API.
+ * Contains unit tests for response structure (knot_response_t) and its API.
  *
  * Contains tests for:
  * - Response API
