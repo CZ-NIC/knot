@@ -87,8 +87,10 @@ int main(int argc, char **argv)
 
 	int error = zone_read(origin, zonefile, outfile, semantic_checks);
 
-	printf("Finished with error: %s.\n",
-	       error_to_str(knot_zcompile_error_msgs, error));
+	if (error) {
+		fprintf(stderr, "Finished with error: %s.\n",
+		       error_to_str(knot_zcompile_error_msgs, error));
+	}
 	//log_close();
 
 	return error ? 1 : 0;

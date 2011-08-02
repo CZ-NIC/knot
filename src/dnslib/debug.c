@@ -140,14 +140,7 @@ void dnslib_node_dump(dnslib_node_t *node, void *loaded_zone)
 		printf("previous node: none\n");
 	}
 
-	const skip_node_t *skip_node =
-		skip_first(node->rrsets);
-
-	if (skip_node == NULL) {
-		printf("Node is empty!\n");
-		printf("------- NODE --------\n");
-		return;
-	}
+	dnslib_rrset_t **rrsets = dnslib_node_get_rrsets(node);
 
 	printf("Wildcard child: ");
 
@@ -171,14 +164,8 @@ void dnslib_node_dump(dnslib_node_t *node, void *loaded_zone)
 
 	printf("RRSet count: %d\n", node->rrset_count);
 
-	dnslib_rrset_t *tmp = (dnslib_rrset_t *)skip_node->value;
-
-	dnslib_rrset_dump(tmp, (int)loaded_zone);
-
-	while ((skip_node = skip_next(skip_node)) != NULL) {
-		tmp = (dnslib_rrset_t *)skip_node->value;
-	//	assert(tmp->owner->node == node);
-		dnslib_rrset_dump(tmp, (int)loaded_zone);
+	for (int i = 0; i < node->rrset_count; i++) {
+		dnslib_rrset_dump(rrsets[i], (int) loaded_zone);
 	}
 	//assert(node->owner->node == node);
 	printf("------- NODE --------\n");

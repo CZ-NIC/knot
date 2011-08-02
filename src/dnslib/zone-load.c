@@ -280,6 +280,9 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 				if (id_array[dname_id]->node != NULL) {
 					dnslib_node_free(&id_array[dname_id]->
 							 node, 0, 0);
+//					printf("%p %s\n", id_array[dname_id]->node,
+	//				       dnslib_dname_to_str(id_array[dname_id]));
+		//			getchar();
 				}
 				/* Also sets node to NULL! */
 			}
@@ -998,7 +1001,7 @@ dnslib_zone_t *dnslib_zload_load(zloader_t *loader)
 			dnslib_node_set_previous(tmp_node, last_node);
 //			tmp_node->prev = last_node;
 
-			if (skip_first(tmp_node->rrsets) != NULL &&
+			if (tmp_node->rrset_count &&
 			    (dnslib_node_is_deleg_point(tmp_node) ||
 			    !dnslib_node_is_non_auth(tmp_node))) {
 				last_node = tmp_node;
