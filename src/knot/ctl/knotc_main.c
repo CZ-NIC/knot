@@ -306,9 +306,9 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			rc = system(cmd);
 			rc = WEXITSTATUS(rc);
 			if (rc != 0) {
-				printf("error: Compilation failed "
-				       "with return code %d.\n",
-				       rc);
+				fprintf(stderr, "error: Compilation failed "
+						"with return code %d.\n",
+						rc);
 			}
 			if (rc < 0) {
 				rc = 1;
