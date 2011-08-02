@@ -1844,8 +1844,8 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	}
 
 	if (!zone_open(zonefile, 3600, DNSLIB_CLASS_IN, origin_node, scanner)) {
-		fprintf(stderr, "Cannot open '%s': %s.",
-			zonefile, ebuf);
+		fprintf(stderr, "Cannot open '%s'\n",
+			zonefile);
 		zparser_free();
 		return KNOT_ZCOMPILE_EZONEINVAL;
 	}
