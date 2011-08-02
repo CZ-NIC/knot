@@ -82,7 +82,7 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 		ret = knot_ns_process_ixfrin(xfr_w->h->ns, request);
 		break;
 	default:
-		ret = KNOTDEINVAL;
+		ret = KNOTD_EINVAL;
 		break;
 	}
 
@@ -98,12 +98,12 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 		switch(request->type) {
 		case XFR_TYPE_AIN:
 			ret = zones_save_zone(request);
-			if (ret != KNOTDEOK) {
+			if (ret != KNOTD_EOK) {
 				/*! \todo Log error. */
 				return;
 			}
 			ret = knot_ns_switch_zone(xfr_w->h->ns, request);
-			if (ret != KNOTDEOK) {
+			if (ret != KNOTD_EOK) {
 				/*! \todo Log error. */
 				return;
 			}
@@ -111,19 +111,19 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 		case XFR_TYPE_IIN:
 			/* save changesets */
 			ret = zones_store_changesets(request);
-			if (ret != KNOTDEOK) {
+			if (ret != KNOTD_EOK) {
 				/*! \todo Log error */
 				return;
 			}
 			/* update zone */
 			ret = zones_apply_changesets(request);
-			if (ret != KNOTDEOK) {
+			if (ret != KNOTD_EOK) {
 				/*! \todo Log error */
 				return;
 			}
 			break;
 		default:
-			ret = KNOTDEINVAL;
+			ret = KNOTD_EINVAL;
 			break;
 		}
 		/* Save finished zone and reload. */
@@ -197,7 +197,7 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
 	const knot_zone_contents_t *contents = knot_zone_contents(zone);
 
 	/* Create XFR query. */
-	ret = KNOTDERROR;
+	ret = KNOTD_ERROR;
 	size_t bufsize = req->wire_size;
 	switch(req->type) {
 	case XFR_TYPE_AIN:
@@ -207,7 +207,7 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
 		ret = xfrin_create_ixfr_query(contents, req->wire, &bufsize);
 		break;
 	default:
-		ret = KNOTDEINVAL;
+		ret = KNOTD_EINVAL;
 		break;
 	}
 
@@ -215,7 +215,7 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
 	rcu_read_unlock();
 
 	/* Handle errors. */
-	if (ret != KNOTDEOK) {
+	if (ret != KNOTD_EOK) {
 		debug_xfr("xfr_in: failed to create XFR query type %d\n",
 			  req->type);
 		socket_close(req->session);
@@ -312,7 +312,7 @@ xfrhandler_t *xfr_create(size_t thrcount, knot_nameserver_t *ns)
 int xfr_free(xfrhandler_t *handler)
 {
 	if (!handler) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Remove handler data. */
@@ -328,7 +328,7 @@ int xfr_free(xfrhandler_t *handler)
 	dt_delete(&handler->unit);
 	free(handler);
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 int xfr_stop(xfrhandler_t *handler)
@@ -339,21 +339,21 @@ int xfr_stop(xfrhandler_t *handler)
 	brk.data.session = -1;
 	evqueue_write(handler->cq, &brk, sizeof(struct xfr_io_t));
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 int xfr_request(xfrhandler_t *handler, knot_ns_xfr_t *req)
 {
 	if (!handler || !req) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	int ret = evqueue_write(handler->q, req, sizeof(knot_ns_xfr_t));
 	if (ret < 0) {
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 int xfr_master(dthread_t *thread)
@@ -363,7 +363,7 @@ int xfr_master(dthread_t *thread)
 	/* Check data. */
 	if (xfrh < 0) {
 		debug_xfr("xfr_master: no data recevied, finishing.\n");
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Buffer for answering. */
@@ -379,13 +379,13 @@ int xfr_master(dthread_t *thread)
 		/* Cancellation point. */
 		if (dt_is_cancelled(thread)) {
 			debug_xfr("xfr_master: finished.\n");
-			return KNOTDEOK;
+			return KNOTD_EOK;
 		}
 
 		/* Check poll count. */
 		if (ret <= 0) {
 			debug_xfr("xfr_master: queue poll returned %d.\n", ret);
-			return KNOTDERROR;
+			return KNOTD_ERROR;
 		}
 
 		/* Read single request. */
@@ -393,7 +393,7 @@ int xfr_master(dthread_t *thread)
 		ret = evqueue_read(xfrh->q, &xfr, sizeof(knot_ns_xfr_t));
 		if (ret != sizeof(knot_ns_xfr_t)) {
 			debug_xfr("xfr_master: queue read returned %d.\n", ret);
-			return KNOTDERROR;
+			return KNOTD_ERROR;
 		}
 
 		/* Update request. */
@@ -419,7 +419,7 @@ int xfr_master(dthread_t *thread)
 			}
 			
 			ret = zones_xfr_check_zone(&xfr, &rcode);
-			if (ret != KNOTDEOK) {
+			if (ret != KNOTD_EOK) {
 				knot_ns_xfr_send_error(&xfr, rcode);
 				socket_close(xfr.session);
 			}			
@@ -427,7 +427,7 @@ int xfr_master(dthread_t *thread)
 			ret = knot_ns_answer_axfr(xfrh->ns, &xfr);
 			knot_packet_free(&xfr.query); /* Free query. */
 			debug_xfr("xfr_master: ns_answer_axfr() = %d.\n", ret);
-			if (ret != KNOTDEOK) {
+			if (ret != KNOTD_EOK) {
 				socket_close(xfr.session);
 			}
 			
@@ -444,13 +444,13 @@ int xfr_master(dthread_t *thread)
 			}
 			
 			ret = zones_xfr_check_zone(&xfr, &rcode);
-			if (ret != KNOTDEOK) {
+			if (ret != KNOTD_EOK) {
 				knot_ns_xfr_send_error(&xfr, rcode);
 				socket_close(xfr.session);
 			}
 			
 			ret = zones_xfr_load_changesets(&xfr);
-			if (ret != KNOTDEOK) {
+			if (ret != KNOTD_EOK) {
 				knot_ns_xfr_send_error(&xfr, 
 				                         KNOT_RCODE_SERVFAIL);
 				socket_close(xfr.session);
@@ -459,26 +459,26 @@ int xfr_master(dthread_t *thread)
 			ret = knot_ns_answer_ixfr(xfrh->ns, &xfr);
 			knot_packet_free(&xfr.query); /* Free query. */
 			debug_xfr("xfr_master: ns_answer_ixfr() = %d.\n", ret);
-			if (ret != KNOTDEOK) {
+			if (ret != KNOTD_EOK) {
 				socket_close(xfr.session);
 			}
 			break;
 		case XFR_TYPE_AIN:
 			req_type = "axfr-in";
 			evqueue_write(xfrh->cq, &xfr, sizeof(knot_ns_xfr_t));
-			ret = KNOTDEOK;
+			ret = KNOTD_EOK;
 			break;
 		case XFR_TYPE_IIN:
 			req_type = "ixfr-in";
 			evqueue_write(xfrh->cq, &xfr, sizeof(knot_ns_xfr_t));
-			ret = KNOTDEOK;
+			ret = KNOTD_EOK;
 			break;
 		default:
 			break;
 		}
 
 		/* Report. */
-		if (ret != KNOTDEOK) {
+		if (ret != KNOTD_EOK) {
 			log_server_error("%s request failed: %s\n",
 					 req_type, knot_strerror(ret));
 		}
@@ -487,7 +487,7 @@ int xfr_master(dthread_t *thread)
 
 	/* Stop whole unit. */
 	debug_xfr("xfr_master: finished.\n");
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 int xfr_client(dthread_t *thread)
@@ -497,7 +497,7 @@ int xfr_client(dthread_t *thread)
 	/* Check data. */
 	if (data < 0) {
 		debug_xfr("xfr_client: no data received, finishing.\n");
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Install interrupt handler. */
@@ -518,7 +518,7 @@ int xfr_client(dthread_t *thread)
 	/* Cancellation point. */
 	if (dt_is_cancelled(thread)) {
 		debug_xfr("xfr_client: finished.\n");
-		return KNOTDEOK;
+		return KNOTD_EOK;
 	}
 
 	/* Run event loop. */
@@ -530,5 +530,5 @@ int xfr_client(dthread_t *thread)
 
 	debug_xfr("xfr_client: finished.\n");
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }

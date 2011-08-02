@@ -28,7 +28,7 @@ static int evsched_run(dthread_t *thread)
 	iohandler_t *sched_h = (iohandler_t *)thread->data;
 	evsched_t *s = (evsched_t*)sched_h->data;
 	if (!s) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Run event loop. */
@@ -37,7 +37,7 @@ static int evsched_run(dthread_t *thread)
 
 		/* Error. */
 		if (!ev) {
-			return KNOTDERROR;
+			return KNOTD_ERROR;
 		}
 
 		/* Process termination event. */
@@ -59,7 +59,7 @@ static int evsched_run(dthread_t *thread)
 		}
 	}
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*! \brief List item for generic pointers. */
@@ -179,7 +179,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	new_if->type[TCP_ID] = cfg_if->family;
 	new_if->port = cfg_if->port;
 	new_if->addr = strdup(cfg_if->address);
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*!
@@ -301,7 +301,7 @@ static int server_bind_sockets(server_t *server)
 static int server_bind_handlers(server_t *server)
 {
 	if (!server || !server->ifaces) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Estimate number of threads/manager. */
@@ -358,7 +358,7 @@ static int server_bind_handlers(server_t *server)
 	/* Unlock config. */
 	conf_read_unlock();
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 server_t *server_create()
@@ -448,7 +448,7 @@ int server_remove_handler(server_t *server, iohandler_t *h)
 {
 	// Check
 	if (h == 0) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Lock RCU. */
@@ -492,14 +492,14 @@ int server_remove_handler(server_t *server, iohandler_t *h)
 	// Destroy dispatcher and worker
 	dt_delete(&h->unit);
 	free(h);
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 int server_start(server_t *server)
 {
 	// Check server
 	if (server == 0) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	debug_server("Starting handlers...\n");
@@ -511,7 +511,7 @@ int server_start(server_t *server)
 	conf_read_lock();
 
 	// Start dispatchers
-	int ret = KNOTDEOK;
+	int ret = KNOTD_EOK;
 	server->state |= ServerRunning;
 	iohandler_t *h = 0;
 	WALK_LIST(h, server->handlers) {
@@ -648,15 +648,15 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 	server_t *server = (server_t *)data;
 
 	if (!server) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Update bound sockets. */
-	int ret = KNOTDEOK;
+	int ret = KNOTD_EOK;
 	if ((ret = server_bind_sockets(server)) < 0) {
 		log_server_error("Failed to bind configured "
 		                 "interfaces.\n");
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	/* Update handlers. */
@@ -668,7 +668,7 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 
 	/* Exit if the server is not running. */
 	if (!(server->state & ServerRunning)) {
-		return KNOTDENOTRUNNING;
+		return KNOTD_ENOTRUNNING;
 	}
 
 	/* Lock configuration. */

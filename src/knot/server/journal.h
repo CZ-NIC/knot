@@ -105,9 +105,9 @@ typedef int (*journal_apply_t)(journal_t *j, journal_node_t *n);
  * \param fn Journal file name, will be created if not exist.
  * \param max_nodes Maximum number of nodes in journal.
  *
- * \retval KNOTDEOK if successful.
- * \retval KNOTDEINVAL if the file with given name cannot be created.
- * \retval KNOTDERROR on I/O error.
+ * \retval KNOTD_EOK if successful.
+ * \retval KNOTD_EINVAL if the file with given name cannot be created.
+ * \retval KNOTD_ERROR on I/O error.
  */
 int journal_create(const char *fn, uint16_t max_nodes);
 
@@ -131,8 +131,8 @@ journal_t* journal_open(const char *fn, int fslimit, uint16_t bflags);
  * \param cf Compare function (NULL for equality).
  * \param dst Destination for journal entry.
  *
- * \retval KNOTDEOK if successful.
- * \retval KNOTDENOENT if not found.
+ * \retval KNOTD_EOK if successful.
+ * \retval KNOTD_ENOENT if not found.
  */
 int journal_fetch(journal_t *journal, uint64_t id,
 		  journal_cmp_t cf, journal_node_t** dst);
@@ -145,10 +145,10 @@ int journal_fetch(journal_t *journal, uint64_t id,
  * \param cf Compare function (NULL for equality).
  * \param dst Pointer to destination memory.
  *
- * \retval KNOTDEOK if successful.
- * \retval KNOTDENOENT if the entry cannot be found.
- * \retval KNOTDEINVAL if the entry is invalid.
- * \retval KNOTDERROR on I/O error.
+ * \retval KNOTD_EOK if successful.
+ * \retval KNOTD_ENOENT if the entry cannot be found.
+ * \retval KNOTD_EINVAL if the entry is invalid.
+ * \retval KNOTD_ERROR on I/O error.
  */
 int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst);
 
@@ -159,9 +159,9 @@ int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst);
  * \param id Entry identifier.
  * \param src Pointer to source data.
  *
- * \retval KNOTDEOK if successful.
- * \retval KNOTDEAGAIN if no free node is available, need to remove dirty nodes.
- * \retval KNOTDERROR on I/O error.
+ * \retval KNOTD_EOK if successful.
+ * \retval KNOTD_EAGAIN if no free node is available, need to remove dirty nodes.
+ * \retval KNOTD_ERROR on I/O error.
  */
 int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size);
 
@@ -195,8 +195,8 @@ static inline journal_node_t *journal_end(journal_t *journal) {
  * \param journal Associated journal.
  * \param apply Function to apply to each node.
  *
- * \retval KNOTDEOK if successful.
- * \retval KNOTDEINVAL on invalid parameters.
+ * \retval KNOTD_EOK if successful.
+ * \retval KNOTD_EINVAL on invalid parameters.
  */
 int journal_walk(journal_t *journal, journal_apply_t apply);
 
@@ -208,8 +208,8 @@ int journal_walk(journal_t *journal, journal_apply_t apply);
  * \param journal Associated journal.
  * \param n Pointer to node (must belong to associated journal).
  *
- * \retval KNOTDEOK on success.
- * \retval KNOTDEINVAL on invalid parameters.
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on invalid parameters.
  */
 int journal_update(journal_t *journal, journal_node_t *n);
 
@@ -218,8 +218,8 @@ int journal_update(journal_t *journal, journal_node_t *n);
  *
  * \param journal Associated journal.
  *
- * \retval KNOTDEOK on success.
- * \retval KNOTDEINVAL on invalid parameter.
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on invalid parameter.
  */
 int journal_close(journal_t *journal);
 

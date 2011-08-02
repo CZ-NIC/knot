@@ -52,7 +52,7 @@ static int journal_tests_run(int argc, char *argv[])
 	/* Test 2: Create journal. */
 	const char *jfilename = jfn_buf;
 	int ret = journal_create(jfilename, jsize);
-	ok(ret == KNOTDEOK, "journal: create journal '%s'", jfilename);
+	ok(ret == KNOTD_EOK, "journal: create journal '%s'", jfilename);
 
 	/* Test 3: Open journal. */
 	journal_t *j = journal_open(jfilename, fsize, 0);
@@ -61,12 +61,12 @@ static int journal_tests_run(int argc, char *argv[])
 	/* Test 4: Write entry to log. */
 	const char *sample = "deadbeef";
 	ret = journal_write(j, 0x0a, sample, strlen(sample));
-	ok(ret == KNOTDEOK, "journal: write");
+	ok(ret == KNOTD_EOK, "journal: write");
 
 	/* Test 5: Read entry from log. */
 	char tmpbuf[64] = {'\0'};
 	ret = journal_read(j, 0x0a, 0, tmpbuf);
-	ok(ret == KNOTDEOK, "journal: read entry");
+	ok(ret == KNOTD_EOK, "journal: read entry");
 
 	/* Test 6: Compare read data. */
 	ret = strncmp(sample, tmpbuf, strlen(sample));
@@ -80,7 +80,7 @@ static int journal_tests_run(int argc, char *argv[])
 	for (int i = 0; i < itcount; ++i) {
 		int key = rand() % 65535;
 		randstr(tmpbuf, sizeof(tmpbuf));
-		if (journal_write(j, key, tmpbuf, sizeof(tmpbuf)) != KNOTDEOK) {
+		if (journal_write(j, key, tmpbuf, sizeof(tmpbuf)) != KNOTD_EOK) {
 			ret = -1;
 			break;
 		}

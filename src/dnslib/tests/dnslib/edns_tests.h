@@ -8,12 +8,12 @@
  * Contains tests for:
  * - ENDS API
  */
-#ifndef _KNOTDEDNS_TESTS_H_
-#define _KNOTDEDNS_TESTS_H_
+#ifndef _KNOTD_EDNS_TESTS_H_
+#define _KNOTD_EDNS_TESTS_H_
 
 #include "common/libtap/tap_unit.h"
 
 /* Unit API. */
 unit_api edns_tests_api;
 
-#endif /* _KNOTDEDNS_TESTS_H_ */
+#endif /* _KNOTD_EDNS_TESTS_H_ */

@@ -4,26 +4,26 @@
 const error_table_t knot_error_msgs[] = {
 
 	/* Mapped errors. */
-	{KNOTDEOK, "OK"},
-	{KNOTDENOMEM, "Not enough memory."},
-	{KNOTDEINVAL, "Invalid parameter passed."},
-	{KNOTDENOTSUP, "Parameter not supported."},
-	{KNOTDEBUSY,   "Requested resource is busy."},
-	{KNOTDEAGAIN,  "The system lacked the necessary resource, try again."},
-	{KNOTDEACCES,  "Permission to perform requested operation is denied."},
-	{KNOTDECONNREFUSED, "Connection is refused."},
-	{KNOTDEISCONN, "Already connected."},
-	{KNOTDEADDRINUSE, "Address already in use."},
-	{KNOTDENOENT, "Resource not found."},
-	{KNOTDERANGE, "Value is out of range."},
+	{KNOTD_EOK, "OK"},
+	{KNOTD_ENOMEM, "Not enough memory."},
+	{KNOTD_EINVAL, "Invalid parameter passed."},
+	{KNOTD_ENOTSUP, "Parameter not supported."},
+	{KNOTD_EBUSY,   "Requested resource is busy."},
+	{KNOTD_EAGAIN,  "The system lacked the necessary resource, try again."},
+	{KNOTD_EACCES,  "Permission to perform requested operation is denied."},
+	{KNOTD_ECONNREFUSED, "Connection is refused."},
+	{KNOTD_EISCONN, "Already connected."},
+	{KNOTD_EADDRINUSE, "Address already in use."},
+	{KNOTD_ENOENT, "Resource not found."},
+	{KNOTD_ERANGE, "Value is out of range."},
 
 	/* Custom errors. */
-	{KNOTDERROR, "Generic error."},
-	{KNOTDEZONEINVAL, "Invalid zone file."},
-	{KNOTDENOTRUNNING, "Resource is not running."},
-	{KNOTDEPARSEFAIL, "Parser failed."},
-	{KNOTDENOIPV6, "IPv6 support disabled."},
-	{KNOTDEMALF, "Malformed data."},
-	{KNOTDESPACE, "Not enough space provided."},
-	{KNOTDERROR, 0}
+	{KNOTD_ERROR, "Generic error."},
+	{KNOTD_EZONEINVAL, "Invalid zone file."},
+	{KNOTD_ENOTRUNNING, "Resource is not running."},
+	{KNOTD_EPARSEFAIL, "Parser failed."},
+	{KNOTD_ENOIPV6, "IPv6 support disabled."},
+	{KNOTD_EMALF, "Malformed data."},
+	{KNOTD_ESPACE, "Not enough space provided."},
+	{KNOTD_ERROR, 0}
 };

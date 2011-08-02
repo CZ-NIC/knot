@@ -94,8 +94,8 @@ knot_nameserver_t *knot_ns_create();
  * \param packet Packet structure to be filled with the parsed query.
  * \param type Type of the query.
  *
- * \retval KNOTDEOK
- * \retval KNOTDEMALF if the query is totally unusable. Such query must be
+ * \retval KNOTD_EOK
+ * \retval KNOTD_EMALF if the query is totally unusable. Such query must be
  *                    ignored.
  * \retval KNOT_RCODE_SERVFAIL if there was some internal error. Call
  *                               ns_error_response() with \a rcode set to this
@@ -137,8 +137,8 @@ void knot_ns_error_response(knot_nameserver_t *nameserver, uint16_t query_id,
  * \param rsize Input: maximum acceptable size of the response. Output: real
  *              size of the response.
  *
- * \retval KNOTDEOK if a valid response was created.
- * \retval KNOTDEMALF if an error occured and the response is not valid.
+ * \retval KNOTD_EOK if a valid response was created.
+ * \retval KNOTD_EMALF if an error occured and the response is not valid.
  */
 int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
                      uint8_t *response_wire, size_t *rsize);
@@ -160,10 +160,10 @@ int knot_ns_xfr_send_error(knot_ns_xfr_t *xfr, knot_rcode_t rcode);
  * \note Currently only a stub which sends one error response using the given
  *       callback.
  *
- * \retval KNOTDEOK
- * \retval KNOTDEINVAL
- * \retval KNOTDENOMEM
- * \retval KNOTDERROR
+ * \retval KNOTD_EOK
+ * \retval KNOTD_EINVAL
+ * \retval KNOTD_ENOMEM
+ * \retval KNOTD_ERROR
  *
  * \todo Maybe the place for the wire format should be passed in as in
  *       the ns_answer_request() function...?

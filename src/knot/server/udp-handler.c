@@ -31,16 +31,16 @@ int udp_master(dthread_t *thread)
 	/* Check socket. */
 	if (sock < 0) {
 		debug_net("udp_master: null socket recevied, finishing.\n");
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 
 	sockaddr_t addr;
-	if (sockaddr_init(&addr, handler->type) != KNOTDEOK) {
+	if (sockaddr_init(&addr, handler->type) != KNOTD_EOK) {
 		log_server_error("Socket type %d is not supported, "
 				 "IPv6 support is probably disabled.\n",
 				 handler->type);
-		return KNOTDENOTSUP;
+		return KNOTD_ENOTSUP;
 	}
 
 	/* Set socket options. */
@@ -124,7 +124,7 @@ int udp_master(dthread_t *thread)
 
 		/* Parse query. */
 		res = knot_ns_parse_packet(qbuf, n, packet, &qtype);
-		if (unlikely(res != KNOTDEOK)) {
+		if (unlikely(res != KNOTD_EOK)) {
 			debug_net("udp: sending back error response.\n");
 			/* Send error response on dnslib RCODE. */
 			if (res > 0) {
@@ -138,7 +138,7 @@ int udp_master(dthread_t *thread)
 		}
 
 		/* Handle query. */
-		res = KNOTDERROR;
+		res = KNOTD_ERROR;
 		switch(qtype) {
 
 		/* Response types. */
@@ -182,7 +182,7 @@ int udp_master(dthread_t *thread)
 		knot_packet_free(&packet);
 
 		/* Send answer. */
-		if (res == KNOTDEOK && resp_len > 0) {
+		if (res == KNOTD_EOK && resp_len > 0) {
 
 			debug_net("udp: got answer of size %zd.\n", resp_len);
 
@@ -208,6 +208,6 @@ int udp_master(dthread_t *thread)
 
 	stat_free(thread_stat);
 	debug_net("udp: worker %p finished.\n", thread);
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 

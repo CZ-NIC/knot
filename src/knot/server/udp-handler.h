@@ -29,8 +29,8 @@
  *
  * \param thread Associated thread from DThreads unit.
  *
- * \retval KNOTDEOK on success.
- * \retval KNOTDEINVAL invalid parameters.
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL invalid parameters.
  */
 int udp_master(dthread_t *thread);
 
