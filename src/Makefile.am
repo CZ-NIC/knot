@@ -212,6 +212,12 @@ libknotd_la_SOURCES =				\
 	knot/server/notify.h				\
 	knot/server/notify.c				\
 	knot/server/zones.h				\
+	knot/zone/zone-load.c			\
+	knot/zone/zone-load.h			\
+	knot/zone/zone-dump.c			\
+	knot/zone/zone-dump-text.c			\
+	knot/zone/zone-dump-text.h			\
+	dnslib/zone-dump.h			\
 	knot/server/server.h
 	
 libknot_la_SOURCES =				\
@@ -228,10 +234,7 @@ libknot_la_SOURCES =				\
 	dnslib/zone.c				\
 	dnslib/zone-contents.c			\
 	dnslib/zonedb.c				\
-	dnslib/zone-load.c			\
 	dnslib/debug.c				\
-	dnslib/zone-dump.c			\
-	dnslib/zone-dump-text.c			\
 	dnslib/zone-tree.c			\
 	dnslib/zone-tree.h			\
 	dnslib/rdata.c				\
@@ -255,14 +258,12 @@ libknot_la_SOURCES =				\
 	dnslib/dnslib.h				\
 	dnslib/tolower.h			\
 	dnslib/tolower.c			\
-	dnslib/zone-dump.h			\
 	dnslib/dname.h				\
 	dnslib/packet.h			\
 	dnslib/query.h				\
 	dnslib/response2.h			\
 	dnslib/response.h			\
 	dnslib/rrset.h				\
-	dnslib/zone-load.h			\
 	dnslib/utils.h				\
 	dnslib/wire.h				\
 	dnslib/debug.h				\
@@ -281,9 +282,9 @@ libknotd_la_LIBADD = libknot.la libknots.la @LIBOBJS@
 libknots_la_LIBADD = @LIBOBJS@
 knotd_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
-knot_zcompile_LDADD = libknots.la libknot.la @LIBOBJS@
+knot_zcompile_LDADD = libknots.la libknot.la libknotd.la @LIBOBJS@
 unittests_LDADD = libknotd.la libknots.la @LIBOBJS@
-unittests_zcompile_LDADD = libknot.la libknots.la @LIBOBJS@
+unittests_zcompile_LDADD = libknot.la libknots.la libknotd.la @LIBOBJS@
 unittests_dnslib_LDADD = libknot.la libknots.la @LIBOBJS@
 unittests_dnslib_realdata_LDADD = libknot.la libknots.la @LIBOBJS@
 
