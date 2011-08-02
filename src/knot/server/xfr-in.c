@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <urcu.h>
 
 #include "knot/server/xfr-in.h"
 //#include "knot/common.h"
@@ -6,7 +7,7 @@
 
 //#include "knot/other/error.h" /*! \todo Journal needs to be dnslib/common. */
 
-#include "knot/server/zones.h" /*! \todo Needs zonedata_t from zones.h */
+//#include "knot/server/zones.h" /*! \todo Needs zonedata_t from zones.h */
 
 #include "common/evsched.h"
 
@@ -78,8 +79,8 @@ static int xfrin_create_query(const dnslib_zone_contents_t *zone, uint16_t qtype
 	}
 
 	if (wire_size > *size) {
-		log_answer_warning("Not enough space provided for the wire "
-		                   "format of the query.\n");
+		debug_dnslib_xfr("Not enough space provided for the wire "
+		                 "format of the query.\n");
 		dnslib_packet_free(&pkt);
 		return DNSLIB_ESPACE;
 	}
@@ -202,7 +203,7 @@ int xfrin_transfer_needed(const dnslib_zone_contents_t *zone,
 	if (soa_rrset == NULL) {
 		char *name = dnslib_dname_to_str(dnslib_node_owner(
 				dnslib_zone_contents_apex(zone)));
-		log_answer_warning("SOA RRSet missing in the zone %s!\n", name);
+		debug_dnslib_xfr("SOA RRSet missing in the zone %s!\n", name);
 		free(name);
 		return DNSLIB_ERROR;
 	}
@@ -211,7 +212,7 @@ int xfrin_transfer_needed(const dnslib_zone_contents_t *zone,
 		dnslib_rrset_rdata(soa_rrset));
 	if (local_serial < 0) {
 		char *name = dnslib_dname_to_str(dnslib_rrset_owner(soa_rrset));
-		log_answer_warning("Malformed data in SOA of zone %s\n", name);
+		debug_dnslib_xfr("Malformed data in SOA of zone %s\n", name);
 		free(name);
 		return DNSLIB_EMALF;	// maybe some other error
 	}
