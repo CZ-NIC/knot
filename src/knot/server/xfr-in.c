@@ -20,6 +20,7 @@
 #include "dnslib/query.h"
 #include "dnslib/error.h"
 #include "dnslib/changesets.h"
+
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
@@ -720,7 +721,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 	assert(soa1 != NULL);
 
 	if (*changesets == NULL
-	    && (ret = xfrin_allocate_changesets(changesets)) != DNSLIB_EOK) {
+	    && (ret = dnslib_changeset_allocate(changesets)) != DNSLIB_EOK) {
 		dnslib_packet_free(&packet);
 		return ret;
 	}
@@ -752,14 +753,14 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 			break;
 		}
 
-		if ((ret = xfrin_changesets_check_size(*changesets))
+		if ((ret = dnslib_changesets_check_size(*changesets))
 		     != DNSLIB_EOK) {
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
 			goto cleanup;
 		}
 
 		// save the origin SOA of the remove part
-		ret = xfrin_changeset_add_soa(
+		ret = dnslib_changeset_add_soa(
 			&(*changesets)->sets[i], rr, XFRIN_CHANGESET_REMOVE);
 		if (ret != DNSLIB_EOK) {
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
@@ -773,7 +774,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 			}
 
 			assert(dnslib_rrset_type(rr) != DNSLIB_RRTYPE_SOA);
-			if ((ret = xfrin_changeset_add_new_rr(
+			if ((ret = dnslib_changeset_add_new_rr(
 			             &(*changesets)->sets[i], rr,
 				     XFRIN_CHANGESET_REMOVE)) != DNSLIB_EOK) {
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
@@ -786,7 +787,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 		       && dnslib_rrset_type(rr) == DNSLIB_RRTYPE_SOA);
 
 		// save the origin SOA of the add part
-		ret = xfrin_changeset_add_soa(
+		ret = dnslib_changeset_add_soa(
 			&(*changesets)->sets[i], rr, XFRIN_CHANGESET_ADD);
 		if (ret != DNSLIB_EOK) {
 			dnslib_rrset_deep_free(&rr, 1, 1, 1);
@@ -800,7 +801,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 			}
 
 			assert(dnslib_rrset_type(rr) != DNSLIB_RRTYPE_SOA);
-			if ((ret = xfrin_changeset_add_new_rr(
+			if ((ret = dnslib_changeset_add_new_rr(
 			             &(*changesets)->sets[i], rr,
 				     XFRIN_CHANGESET_ADD)) != DNSLIB_EOK) {
 				dnslib_rrset_deep_free(&rr, 1, 1, 1);
@@ -841,7 +842,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 	return ret;
 
 cleanup:
-	xfrin_free_changesets(changesets);
+	dnslib_free_changesets(changesets);
 	dnslib_packet_free(&packet);
 	return ret;
 }

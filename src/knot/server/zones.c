@@ -712,7 +712,7 @@ static int zones_changesets_from_binary(dnslib_changesets_t *chgsets)
 				assert(chgsets->sets[i].serial_from
 				       == dnslib_rdata_soa_serial(
 				              dnslib_rrset_rdata(rrset)));
-				xfrin_changeset_store_soa(
+				dnslib_changeset_store_soa(
 					&chgsets->sets[i].soa_from,
 					&chgsets->sets[i].serial_from, rrset);
 				++soa;
@@ -729,13 +729,13 @@ static int zones_changesets_from_binary(dnslib_changesets_t *chgsets)
 					assert(chgsets->sets[i].serial_from
 					       == dnslib_rdata_soa_serial(
 					            dnslib_rrset_rdata(rrset)));
-					xfrin_changeset_store_soa(
+					dnslib_changeset_store_soa(
 						&chgsets->sets[i].soa_to,
 						&chgsets->sets[i].serial_to,
 						rrset);
 					++soa;
 				} else {
-					ret = xfrin_changeset_add_rrset(
+					ret = dnslib_changeset_add_rrset(
 						&chgsets->sets[i].remove,
 						&chgsets->sets[i].remove_count,
 						&chgsets->sets[i]
@@ -750,7 +750,7 @@ static int zones_changesets_from_binary(dnslib_changesets_t *chgsets)
 				    == DNSLIB_RRTYPE_SOA) {
 					return DNSLIB_EMALF;
 				} else {
-					ret = xfrin_changeset_add_rrset(
+					ret = dnslib_changeset_add_rrset(
 						&chgsets->sets[i].add,
 						&chgsets->sets[i].add_count,
 						&chgsets->sets[i].add_allocated,
@@ -804,7 +804,7 @@ static int zones_load_changesets(const dnslib_zone_t *zone,
 
 		/* Check changesets size if needed. */
 		++dst->count;
-		ret = xfrin_changesets_check_size(dst);
+		ret = dnslib_changesets_check_size(dst);
 		if (ret != DNSLIB_EOK) {
 			debug_dnslib_xfr("ixfr_db: failed to check changesets size\n");
 			--dst->count;
@@ -902,7 +902,7 @@ static int zones_journal_apply(dnslib_zone_t *zone)
 	}
 
 	/* Free changesets and return. */
-	xfrin_free_changesets(&chsets);
+	dnslib_free_changesets(&chsets);
 	return ret;
 }
 

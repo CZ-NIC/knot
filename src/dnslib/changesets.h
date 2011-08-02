@@ -56,28 +56,28 @@ typedef enum {
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_allocate_changesets(dnslib_changesets_t **changesets);
+int dnslib_changeset_allocate(dnslib_changesets_t **changesets);
 
-int xfrin_changeset_add_rrset(dnslib_rrset_t ***rrsets,
-                              size_t *count, size_t *allocated,
-                              dnslib_rrset_t *rrset);
+int dnslib_changeset_add_rrset(dnslib_rrset_t ***rrsets,
+                               size_t *count, size_t *allocated,
+                               dnslib_rrset_t *rrset);
 
-int xfrin_changeset_add_rr(dnslib_rrset_t ***rrsets, size_t *count,
-                           size_t *allocated, dnslib_rrset_t *rr);
+int dnslib_changeset_add_rr(dnslib_rrset_t ***rrsets, size_t *count,
+                            size_t *allocated, dnslib_rrset_t *rr);
 
-int xfrin_changeset_add_new_rr(dnslib_changeset_t *changeset,
-                               dnslib_rrset_t *rrset,
-                               xfrin_changeset_part_t part);
+int dnslib_changeset_add_new_rr(dnslib_changeset_t *changeset,
+                                dnslib_rrset_t *rrset,
+                                xfrin_changeset_part_t part);
 
-void xfrin_changeset_store_soa(dnslib_rrset_t **chg_soa,
-                               uint32_t *chg_serial, dnslib_rrset_t *soa);
+void dnslib_changeset_store_soa(dnslib_rrset_t **chg_soa,
+                                uint32_t *chg_serial, dnslib_rrset_t *soa);
 
-int xfrin_changeset_add_soa(dnslib_changeset_t *changeset, dnslib_rrset_t *soa,
-                            xfrin_changeset_part_t part);
+int dnslib_changeset_add_soa(dnslib_changeset_t *changeset, dnslib_rrset_t *soa,
+                             xfrin_changeset_part_t part);
 
-void xfrin_free_changesets(dnslib_changesets_t **changesets);
+int dnslib_changesets_check_size(dnslib_changesets_t *changesets);
 
-int xfrin_changesets_check_size(dnslib_changesets_t *changesets);
+void dnslib_free_changesets(dnslib_changesets_t **changesets);
 
 #endif /* _KNOT_DNSLIB_CHANGESETS_H_ */
 

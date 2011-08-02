@@ -7,20 +7,20 @@
 #include "dnslib/rrset.h"
 #include "dnslib/error.h"
 
-static const size_t XFRIN_CHANGESET_COUNT = 5;
-static const size_t XFRIN_CHANGESET_STEP = 5;
-static const size_t XFRIN_CHANGESET_RRSET_COUNT = 5;
-static const size_t XFRIN_CHANGESET_RRSET_STEP = 5;
+static const size_t DNSLIB_CHANGESET_COUNT = 5;
+static const size_t DNSLIB_CHANGESET_STEP = 5;
+static const size_t DNSLIB_CHANGESET_RRSET_COUNT = 5;
+static const size_t DNSLIB_CHANGESET_RRSET_STEP = 5;
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_changeset_check_count(dnslib_rrset_t ***rrsets, size_t count,
-                                       size_t *allocated)
+static int dnslib_changeset_check_count(dnslib_rrset_t ***rrsets, size_t count,
+                                        size_t *allocated)
 {
 	// this should also do for the initial case (*rrsets == NULL)
 	if (count == *allocated) {
 		dnslib_rrset_t **rrsets_new = (dnslib_rrset_t **)calloc(
-			*allocated + XFRIN_CHANGESET_RRSET_STEP,
+			*allocated + DNSLIB_CHANGESET_RRSET_STEP,
 			sizeof(dnslib_rrset_t *));
 		if (rrsets_new == NULL) {
 			return DNSLIB_ENOMEM;
@@ -30,7 +30,7 @@ static int xfrin_changeset_check_count(dnslib_rrset_t ***rrsets, size_t count,
 
 		dnslib_rrset_t **rrsets_old = *rrsets;
 		*rrsets = rrsets_new;
-		*allocated += XFRIN_CHANGESET_RRSET_STEP;
+		*allocated += DNSLIB_CHANGESET_RRSET_STEP;
 		free(rrsets_old);
 	}
 
@@ -39,8 +39,8 @@ static int xfrin_changeset_check_count(dnslib_rrset_t ***rrsets, size_t count,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_changeset_rrsets_match(const dnslib_rrset_t *rrset1,
-                                        const dnslib_rrset_t *rrset2)
+static int dnslib_changeset_rrsets_match(const dnslib_rrset_t *rrset1,
+                                         const dnslib_rrset_t *rrset2)
 {
 	return dnslib_rrset_compare(rrset1, rrset2, DNSLIB_RRSET_COMPARE_HEADER)
 	       && (dnslib_rrset_type(rrset1) != DNSLIB_RRTYPE_RRSIG
@@ -52,7 +52,7 @@ static int xfrin_changeset_rrsets_match(const dnslib_rrset_t *rrset1,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_allocate_changesets(dnslib_changesets_t **changesets)
+int dnslib_changeset_allocate(dnslib_changesets_t **changesets)
 {
 	// create new changesets
 	*changesets = (dnslib_changesets_t *)(
@@ -66,16 +66,16 @@ int xfrin_allocate_changesets(dnslib_changesets_t **changesets)
 	assert((*changesets)->count == 0);
 	assert((*changesets)->sets = NULL);
 
-	return xfrin_changesets_check_size(*changesets);
+	return dnslib_changesets_check_size(*changesets);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_changeset_add_rrset(dnslib_rrset_t ***rrsets,
+int dnslib_changeset_add_rrset(dnslib_rrset_t ***rrsets,
                               size_t *count, size_t *allocated,
                               dnslib_rrset_t *rrset)
 {
-	int ret = xfrin_changeset_check_count(rrsets, *count, allocated);
+	int ret = dnslib_changeset_check_count(rrsets, *count, allocated);
 	if (ret != DNSLIB_EOK) {
 		return ret;
 	}
@@ -87,13 +87,13 @@ int xfrin_changeset_add_rrset(dnslib_rrset_t ***rrsets,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_changeset_add_rr(dnslib_rrset_t ***rrsets, size_t *count,
+int dnslib_changeset_add_rr(dnslib_rrset_t ***rrsets, size_t *count,
                            size_t *allocated, dnslib_rrset_t *rr)
 {
 	// try to find the RRSet in the list of RRSets
 	int i = 0;
 
-	while (i < *count && !xfrin_changeset_rrsets_match((*rrsets)[i], rr)) {
+	while (i < *count && !dnslib_changeset_rrsets_match((*rrsets)[i], rr)) {
 		++i;
 	}
 
@@ -109,13 +109,13 @@ int xfrin_changeset_add_rr(dnslib_rrset_t ***rrsets, size_t *count,
 
 		return DNSLIB_EOK;
 	} else {
-		return xfrin_changeset_add_rrset(rrsets, count, allocated, rr);
+		return dnslib_changeset_add_rrset(rrsets, count, allocated, rr);
 	}
 }
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_changeset_add_new_rr(dnslib_changeset_t *changeset,
+int dnslib_changeset_add_new_rr(dnslib_changeset_t *changeset,
                                dnslib_rrset_t *rrset,
                                xfrin_changeset_part_t part)
 {
@@ -142,7 +142,7 @@ int xfrin_changeset_add_new_rr(dnslib_changeset_t *changeset,
 	assert(count != NULL);
 	assert(allocated != NULL);
 
-	int ret = xfrin_changeset_add_rr(rrsets, count, allocated, rrset);
+	int ret = dnslib_changeset_add_rr(rrsets, count, allocated, rrset);
 	if (ret != DNSLIB_EOK) {
 		return ret;
 	}
@@ -152,7 +152,7 @@ int xfrin_changeset_add_new_rr(dnslib_changeset_t *changeset,
 
 /*----------------------------------------------------------------------------*/
 
-void xfrin_changeset_store_soa(dnslib_rrset_t **chg_soa,
+void dnslib_changeset_store_soa(dnslib_rrset_t **chg_soa,
                                uint32_t *chg_serial, dnslib_rrset_t *soa)
 {
 	*chg_soa = soa;
@@ -161,16 +161,16 @@ void xfrin_changeset_store_soa(dnslib_rrset_t **chg_soa,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_changeset_add_soa(dnslib_changeset_t *changeset, dnslib_rrset_t *soa,
+int dnslib_changeset_add_soa(dnslib_changeset_t *changeset, dnslib_rrset_t *soa,
                             xfrin_changeset_part_t part)
 {
 	switch (part) {
 	case XFRIN_CHANGESET_ADD:
-		xfrin_changeset_store_soa(&changeset->soa_to,
+		dnslib_changeset_store_soa(&changeset->soa_to,
 		                          &changeset->serial_to, soa);
 		break;
 	case XFRIN_CHANGESET_REMOVE:
-		xfrin_changeset_store_soa(&changeset->soa_from,
+		dnslib_changeset_store_soa(&changeset->soa_from,
 		                          &changeset->serial_from, soa);
 		break;
 	default:
@@ -183,11 +183,11 @@ int xfrin_changeset_add_soa(dnslib_changeset_t *changeset, dnslib_rrset_t *soa,
 
 /*---------------------------------------------------------------------------*/
 
-int xfrin_changesets_check_size(dnslib_changesets_t *changesets)
+int dnslib_changesets_check_size(dnslib_changesets_t *changesets)
 {
 	if (changesets->allocated == changesets->count) {
 		dnslib_changeset_t *sets = (dnslib_changeset_t *)calloc(
-			changesets->allocated + XFRIN_CHANGESET_STEP,
+			changesets->allocated + DNSLIB_CHANGESET_STEP,
 			sizeof(dnslib_changeset_t));
 		if (sets == NULL) {
 			return DNSLIB_ENOMEM;
@@ -197,7 +197,7 @@ int xfrin_changesets_check_size(dnslib_changesets_t *changesets)
 		memcpy(sets, changesets->sets, changesets->count);
 		dnslib_changeset_t *old_sets = changesets->sets;
 		changesets->sets = sets;
-		changesets->count += XFRIN_CHANGESET_STEP;
+		changesets->count += DNSLIB_CHANGESET_STEP;
 		free(old_sets);
 	}
 
@@ -206,7 +206,7 @@ int xfrin_changesets_check_size(dnslib_changesets_t *changesets)
 
 /*----------------------------------------------------------------------------*/
 
-void xfrin_free_changesets(dnslib_changesets_t **changesets)
+void dnslib_free_changesets(dnslib_changesets_t **changesets)
 {
 	if (changesets == NULL || *changesets == NULL) {
 		return;
