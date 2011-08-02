@@ -39,7 +39,7 @@ static int test_nsec3_params_from_wire()
 	dnslib_rdata_item_set_raw_data(rdata, 1, (uint16_t *)"\x1\x0\x0");
 	dnslib_rdata_item_set_raw_data(rdata, 2, (uint16_t *)"\x2\x0\x0\x64");
 	dnslib_rdata_item_set_raw_data(rdata, 3,
-	                    (uint16_t *)"\xF\x0\xE20110331084524");
+		(uint16_t *)"\xF\x0\xE\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF");
 
 	dnslib_rrset_t *rrset =
 		dnslib_rrset_new(dnslib_dname_new_from_str("cz.",
@@ -51,6 +51,7 @@ static int test_nsec3_params_from_wire()
 	assert(dnslib_rrset_add_rdata(rrset, rdata) == DNSLIB_EOK);
 
 	dnslib_nsec3_params_t nsec3_tests_params;
+	UNUSED(nsec3_tests_params);
 
 	int errors = 0;
 	int lived = 0;
@@ -78,7 +79,8 @@ static int test_nsec3_params_from_wire()
 	}, "nsec3 params from wire NULL tests");
 	errors += lived != 1;
 
-	if (dnslib_nsec3_params_from_wire(&nsec3_test_params, rrset) != DNSLIB_EOK) {
+	if (dnslib_nsec3_params_from_wire(&nsec3_test_params,
+rrset) != DNSLIB_EOK) {
 		diag("Could not convert nsec3 params to wire!");
 		return 0;
 	}
@@ -104,8 +106,8 @@ static int test_nsec3_params_from_wire()
 	}
 
 	if (compare_wires_simple((uint8_t *)nsec3_test_params.salt,
-	                         (uint8_t *)"\xF\xF\xF\xF\xF\xF\xF\xF",
-	                         8) != 0) {
+		(uint8_t *)"\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF",
+		15) != 0) {
 		diag("Salt wire error");
 		errors++;
 	}
@@ -118,6 +120,7 @@ static int test_nsec3_sha1()
 {
 	int errors = 0;
 	int lived = 0;
+
 	lives_ok({
 		if (dnslib_nsec3_sha1(NULL, NULL, 1, NULL, NULL) !=
 	            DNSLIB_EBADARG) {
@@ -154,15 +157,6 @@ static int test_nsec3_sha1()
 	            DNSLIB_EBADARG) {
 			errors++;
 		}
-		size = NULL;
-		digest = 0xaaaaaa;
-		lived = 1;
-		lived = 0;
-		if (dnslib_nsec3_sha1(&nsec3_test_params,
-	                              data, 20, &digest, &size) !=
-	            DNSLIB_EBADARG) {
-			errors++;
-		}
 		lived = 1;
 	}, "NSEC3: nsec3 sha1 NULL tests");
 	if (errors) {
@@ -174,7 +168,8 @@ static int test_nsec3_sha1()
 
 	uint8_t *digest = NULL;
 	size_t digest_size = 0;
-	if (dnslib_nsec3_sha1(&nsec3_test_params, "\2ns\3nic\2cz",
+	if (dnslib_nsec3_sha1(&nsec3_test_params,
+	                      (uint8_t *)"\2ns\3nic\2cz",
 	                      strlen("\2ns\3nic\2cz"), &digest,
 	                      &digest_size) != DNSLIB_EOK) {
 		diag("Could not hash name!");
@@ -190,10 +185,10 @@ static int test_nsec3_sha1()
 	                                          nsec3_test_params.salt_length,
 	                                          nsec3_test_params.salt);
 	assert(hashed_name);
-	dnslib_dname_t *dname_from_ldns =
-		dnslib_dname_new_from_wire(ldns_rdf_data(hashed_name),
-	                                   ldns_rdf_size(hashed_name),
-	                                   NULL);
+//	dnslib_dname_t *dname_from_ldns =
+//		dnslib_dname_new_from_wire(ldns_rdf_data(hashed_name),
+//	                                   ldns_rdf_size(hashed_name),
+//	                                   NULL);
 
 	char *name_b32 = NULL;
 	size_t size_b32 = base32hex_encode_alloc((char *)digest, digest_size,

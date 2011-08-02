@@ -339,12 +339,12 @@ static int test_zone_find_node(dnslib_zone_t *zone, int nsec3)
 	return (errors == 0);
 }
 
-static void test_zone_destroy_node_from_tree(dnslib_node_t *node,
-                                             void *data)
-{
-	UNUSED(data);
-	dnslib_node_free(&node, 0);
-}
+//static void test_zone_destroy_node_from_tree(dnslib_node_t *node,
+//                                             void *data)
+//{
+//	UNUSED(data);
+//	dnslib_node_free(&node, 0);
+//}
 
 /* explained below */
 static size_t node_index = 0;
@@ -509,28 +509,32 @@ static int test_zone_shallow_copy()
 			     "arguments did not return DNSLIB_EBADARG!");
 			errors++;
 		}
-
+		lived = 1;
+		lived = 0;
 		dnslib_zone_t *zone = dnslib_zone_new(apex_node, 0, 1);
 		if (dnslib_zone_shallow_copy(zone, NULL) != DNSLIB_EBADARG) {
 			diag("Calling zone_shallow_copy with NULL destination "
 			     "zone argument did not return DNSLIB_EBADARG!");
 			errors++;
 		}
-
+		lived = 1;
+		lived = 0;
 		if (dnslib_zone_shallow_copy(NULL, &zone) != DNSLIB_EBADARG) {
 			diag("Calling zone_shallow_copy with NULL source "
 			     "zone argument did not return DNSLIB_EBADARG!");
 			errors++;
 		}
-
+		lived = 1;
+		lived = 0;
 		if (dnslib_zone_shallow_copy(zone, &zone) != DNSLIB_EBADARG) {
 			diag("Calling zone_shallow_copy with identical source "
 			 "and destination zone did not return DNSLIB_EBADARG!");
 			errors++;
 		}
-
+		lived = 1;
 		dnslib_zone_free(&zone);
 	}, "zone: shallow copy NULL tests");
+	errors += lived != 1;
 
 	/* example.com. */
 	dnslib_zone_t *from =
@@ -731,17 +735,17 @@ static int test_zone_shallow_copy()
 
 }
 
-static int test_zone_free(dnslib_zone_t **zone)
-{
-	dnslib_zone_tree_apply_postorder(*zone,
-	                                 test_zone_destroy_node_from_tree,
-	                                 NULL);
-	dnslib_zone_nsec3_apply_postorder(*zone,
-	                                 test_zone_destroy_node_from_tree,
-	                                 NULL);
-	dnslib_zone_free(zone);
-	return (*zone == NULL);
-}
+//static int test_zone_free(dnslib_zone_t **zone)
+//{
+//	dnslib_zone_tree_apply_postorder(*zone,
+//	                                 test_zone_destroy_node_from_tree,
+//	                                 NULL);
+//	dnslib_zone_nsec3_apply_postorder(*zone,
+//	                                 test_zone_destroy_node_from_tree,
+//	                                 NULL);
+//	dnslib_zone_free(zone);
+//	return (*zone == NULL);
+//}
 
 static const int DNSLIB_ZONE_TEST_COUNT = 10;
 

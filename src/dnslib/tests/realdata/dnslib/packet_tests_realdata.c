@@ -9,7 +9,7 @@
 /* *test_t structures */
 #include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
 #ifdef TEST_WITH_LDNS
-#include "ldns/packet.h"
+#include "ldns/ldns.h"
 #endif
 
 static int packet_tests_count(int argc, char *argv[]);
