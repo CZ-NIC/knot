@@ -115,22 +115,22 @@ enum { DNAME_MAX_WIRE_LENGTH = 256 };
 static void load_rdata_purge(knot_rdata_t *rdata,
 			     knot_rdata_item_t *items,
 			     int count,
+			     knot_rrtype_descriptor_t *desc,
 			     uint16_t type)
 {
 	/* Increase refcount manually, as the set_items() doesn't see the dname
 	 * type and thus is unable to increment refcounter.
 	 */
-	unsigned i = 0;
-	switch(type) {
-	case KNOT_RDATA_WF_COMPRESSED_DNAME:
-	case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
-	case KNOT_RDATA_WF_LITERAL_DNAME:
-		for (i = 0; i < count; ++i) {
-			knot_dname_retain(items[i].dname);
+	for (int i = 0; i < count; ++i) {
+		switch(desc->wireformat[i]) {
+		case KNOT_RDATA_WF_COMPRESSED_DNAME:
+		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
+		case KNOT_RDATA_WF_LITERAL_DNAME:
+				knot_dname_retain(items[i].dname);
+			break;
+		default:
+			break;
 		}
-		break;
-	default:
-		break;
 	}
 
 	/* Copy items to rdata and free the temporary rdata. */
@@ -244,7 +244,7 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 
 			if (use_ids) {
 				if(!fread_wrapper(&dname_id, sizeof(dname_id), 1, f)) {
-					load_rdata_purge(rdata, items, i, type);
+					load_rdata_purge(rdata, items, i, desc, type);
 					return NULL;
 				}
 
@@ -257,13 +257,13 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 
 			if(!fread_wrapper(&in_the_zone, sizeof(in_the_zone),
 			               1, f)) {
-				load_rdata_purge(rdata, items, i, type);
+				load_rdata_purge(rdata, items, i, desc, type);
 				return NULL;
 			}
 
 			if(!fread_wrapper(&has_wildcard, sizeof(uint8_t),
 				       1, f)) {
-				load_rdata_purge(rdata, items, i, type);
+				load_rdata_purge(rdata, items, i, desc, type);
 				return NULL;
 			}
 
@@ -271,7 +271,7 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 				if(!fread_wrapper(&dname_id, sizeof(dname_id),
 					       1, f)) {
 					load_rdata_purge(rdata, items,
-							 i, type);
+							 i, desc, type);
 					return NULL;
 				}
 				items[i].dname->node =
@@ -290,7 +290,7 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 		} else {
 			if (!fread_wrapper(&raw_data_length,
 					sizeof(raw_data_length), 1, f)) {
-				load_rdata_purge(rdata, items, i, type);
+				load_rdata_purge(rdata, items, i, desc, type);
 				return NULL;
 			}
 
@@ -301,7 +301,7 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 
 			if (!fread_wrapper(items[i].raw_data + 1, sizeof(uint8_t),
 			      raw_data_length, f)) {
-				load_rdata_purge(rdata, items, i + 1, type);
+				load_rdata_purge(rdata, items, i + 1, desc, type);
 				return NULL;
 			}
 		}
