@@ -37,6 +37,7 @@ static int zonedata_destroy(knot_zone_t *zone)
 	/* Destroy mutex. */
 	pthread_mutex_destroy(&zd->lock);
 
+	acl_delete(&zd->xfr_in.acl);
 	acl_delete(&zd->xfr_out);
 	acl_delete(&zd->notify_in);
 	acl_delete(&zd->notify_out);
@@ -74,6 +75,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	zd->xfr_in.expire = 0;
 	zd->xfr_in.ifaces = 0;
 	zd->xfr_in.next_id = -1;
+	zd->xfr_in.acl = 0;
 
 	/* Initialize NOTIFY. */
 	init_list(&zd->notify_pending);
