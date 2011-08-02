@@ -810,7 +810,7 @@ char *rdata_loc_to_string(knot_rdata_item_t item)
 
 typedef char * (*item_to_string_t)(knot_rdata_item_t);
 
-static item_to_string_t item_to_string_table[DNSLIB_RDATA_ZF_UNKNOWN + 1] = {
+static item_to_string_t item_to_string_table[KNOT_RDATA_ZF_UNKNOWN + 1] = {
 	rdata_dname_to_string,
 	rdata_dns_name_to_string,
 	rdata_text_to_string,
@@ -858,7 +858,7 @@ void rdata_dump_text(knot_rdata_t *rdata, uint16_t type, FILE *f)
 						rdata->items[i]);
 		if (item_str == NULL) {
 			item_str =
-				rdata_item_to_string(DNSLIB_RDATA_ZF_UNKNOWN,
+				rdata_item_to_string(KNOT_RDATA_ZF_UNKNOWN,
 						     rdata->items[i]);
 		}
 		if (i != desc->length - 1) {
@@ -887,12 +887,12 @@ void rrsig_set_dump_text(knot_rrset_t *rrsig, FILE *f)
 	knot_rdata_t *tmp = rrsig->rdata;
 
 	while (tmp->next != rrsig->rdata) {
-		rdata_dump_text(tmp, DNSLIB_RRTYPE_RRSIG, f);
+		rdata_dump_text(tmp, KNOT_RRTYPE_RRSIG, f);
 		dump_rrset_header(rrsig, f);
 		tmp = tmp->next;
 	}
 
-	rdata_dump_text(tmp, DNSLIB_RRTYPE_RRSIG, f);
+	rdata_dump_text(tmp, KNOT_RRTYPE_RRSIG, f);
 }
 
 
@@ -922,7 +922,7 @@ struct dump_param {
 void apex_node_dump_text(knot_node_t *node, FILE *f)
 {
 	knot_rrset_t dummy_rrset;
-	dummy_rrset.type = DNSLIB_RRTYPE_SOA;
+	dummy_rrset.type = KNOT_RRTYPE_SOA;
 	knot_rrset_t *tmp_rrset =
 		(knot_rrset_t *)gen_tree_find(node->rrset_tree,
 		                                &dummy_rrset);
@@ -933,7 +933,7 @@ void apex_node_dump_text(knot_node_t *node, FILE *f)
 		knot_node_rrsets(node);
 
 	for (int i = 0; i < node->rrset_count; i++) {
-		if (rrsets[i]->type != DNSLIB_RRTYPE_SOA) {
+		if (rrsets[i]->type != KNOT_RRTYPE_SOA) {
 			rrset_dump_text(rrsets[i], f);
 		}
 	}
@@ -968,13 +968,13 @@ int zone_dump_text(knot_zone_contents_t *zone, const char *filename)
 {
 	FILE *f = fopen(filename, "w");
 	if (f == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
-	fprintf(f, ";Dumped using %s v. %d.%d.%d\n", DNSLIB_NAME,
-	        DNSLIB_VER / 10000,
-		(DNSLIB_VER / 100) % 100,
-		DNSLIB_VER % 100);
+	fprintf(f, ";Dumped using %s v. %d.%d.%d\n", KNOT_NAME,
+	        KNOT_VER / 10000,
+		(KNOT_VER / 100) % 100,
+		KNOT_VER % 100);
 
 	struct dump_param param;
 	param.f = f;
@@ -984,5 +984,5 @@ int zone_dump_text(knot_zone_contents_t *zone, const char *filename)
 	knot_zone_contents_nsec3_apply_inorder(zone, node_dump_text, &param);
 	fclose(f);
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }

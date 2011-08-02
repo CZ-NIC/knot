@@ -1,9 +1,9 @@
-#ifndef _KNOT_PACKET_TESTS_H_
-#define _KNOT_PACKET_TESTS_H_
+#ifndef _KNOTDPACKET_TESTS_H_
+#define _KNOTDPACKET_TESTS_H_
 
 #include "common/libtap/tap_unit.h"
 
 /* Unit API. */
 unit_api packet_tests_api;
 
-#endif /* _KNOT_PACKET_TESTS_H_ */
+#endif /* _KNOTDPACKET_TESTS_H_ */

@@ -93,7 +93,7 @@ const knot_zone_contents_t *knot_zone_contents(
 time_t knot_zone_version(const knot_zone_t *zone)
 {
 	if (zone == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	return zone->version;
@@ -132,7 +132,7 @@ int knot_zone_add_node(knot_zone_t *zone, knot_node_t *node,
                          int create_parents, int use_domain_table)
 {
 	if (zone == NULL || node == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	knot_node_set_zone(node, zone);
@@ -148,7 +148,7 @@ int knot_zone_add_nsec3_node(knot_zone_t *zone, knot_node_t *node,
                                int create_parents, int use_domain_table)
 {
 	if (zone == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	return knot_zone_contents_add_nsec3_node(zone->contents, node,
@@ -222,7 +222,7 @@ int knot_zone_tree_apply_postorder(knot_zone_t *zone,
                               void *data)
 {
 	if (zone == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	return knot_zone_contents_tree_apply_postorder(zone->contents,
@@ -236,7 +236,7 @@ int knot_zone_tree_apply_inorder(knot_zone_t *zone,
                               void *data)
 {
 	if (zone == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	return knot_zone_contents_tree_apply_inorder(zone->contents,
@@ -250,7 +250,7 @@ int knot_zone_tree_apply_inorder_reverse(knot_zone_t *zone,
                               void *data)
 {
 	if (zone == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	return knot_zone_contents_tree_apply_inorder_reverse(zone->contents,
@@ -264,7 +264,7 @@ int knot_zone_nsec3_apply_postorder(knot_zone_t *zone,
                               void *data)
 {
 	if (zone == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	return knot_zone_contents_nsec3_apply_postorder(zone->contents,
@@ -278,7 +278,7 @@ int knot_zone_nsec3_apply_inorder(knot_zone_t *zone,
                               void *data)
 {
 	if (zone == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	return knot_zone_contents_nsec3_apply_inorder(zone->contents,
@@ -292,7 +292,7 @@ int knot_zone_nsec3_apply_inorder_reverse(knot_zone_t *zone,
                               void *data)
 {
 	if (zone == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	return knot_zone_contents_nsec3_apply_inorder_reverse(zone->contents,
@@ -359,7 +359,7 @@ void knot_zone_deep_free(knot_zone_t **zone, int free_rdata_dnames)
 		                  "update.\n");
 	}
 
-DEBUG_DNSLIB_ZONE(
+DEBUG_KNOT_ZONE(
 	char *name = knot_dname_to_str((*zone)->name);
 	debug_knot_zone("Destroying zone %p, name: %s.\n", *zone, name);
 	free(name);

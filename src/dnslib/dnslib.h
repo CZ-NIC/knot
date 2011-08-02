@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_DNSLIB_DNSLIB_H_
-#define _KNOT_DNSLIB_DNSLIB_H_
+#ifndef _KNOTDKNOT_DNSLIB_H_
+#define _KNOTDKNOT_DNSLIB_H_
 
 #include "dnslib/consts.h"
 #include "dnslib/descriptor.h"

@@ -124,7 +124,7 @@ static int knot_dname_set(knot_dname_t *dname, uint8_t *wire,
 static int knot_dname_str_to_wire(const char *name, uint size,
                                     knot_dname_t *dname)
 {
-	if (size > DNSLIB_MAX_DNAME_LENGTH) {
+	if (size > KNOT_MAX_DNAME_LENGTH) {
 		return -1;
 	}
 
@@ -138,7 +138,7 @@ static int knot_dname_str_to_wire(const char *name, uint size,
 	}
 
 	uint8_t *wire;
-	uint8_t labels[DNSLIB_MAX_DNAME_LABELS];
+	uint8_t labels[KNOT_MAX_DNAME_LABELS];
 	short label_count = 0;
 
 	// signed / unsigned issues??
@@ -245,7 +245,7 @@ static int knot_dname_find_labels(knot_dname_t *dname, int alloc)
 	const uint8_t *pos = name;
 	const uint size = dname->size;
 
-	uint8_t labels[DNSLIB_MAX_DNAME_LABELS];
+	uint8_t labels[KNOT_MAX_DNAME_LABELS];
 	short label_count = 0;
 
 	while (pos - name < size && *pos != '\0') {
@@ -264,7 +264,7 @@ static int knot_dname_find_labels(knot_dname_t *dname, int alloc)
 	if (alloc) {
 		dname->labels
 			= (uint8_t *)malloc(label_count * sizeof(uint8_t));
-		CHECK_ALLOC_LOG(dname->labels, DNSLIB_ENOMEM);
+		CHECK_ALLOC_LOG(dname->labels, KNOT_ENOMEM);
 	}
 
 	memcpy(dname->labels, labels, label_count);
@@ -278,7 +278,7 @@ static int knot_dname_find_labels(knot_dname_t *dname, int alloc)
 static int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2,
                             int cs)
 {
-DEBUG_DNSLIB_DNAME(
+DEBUG_KNOT_DNAME(
 	char *name1 = knot_dname_to_str(d1);
 	char *name2 = knot_dname_to_str(d2);
 
@@ -409,7 +409,7 @@ knot_dname_t *knot_dname_new_from_str(const char *name, uint size,
 //                           uint size)
 //{
 //	int i = 0;
-//	uint8_t labels[DNSLIB_MAX_DNAME_LABELS];
+//	uint8_t labels[KNOT_MAX_DNAME_LABELS];
 //	int label_i = 0;
 
 //	while (name[i] != 0) {
@@ -467,8 +467,8 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
                                              size_t *pos, size_t size,
                                              knot_node_t *node)
 {
-	uint8_t name[DNSLIB_MAX_DNAME_LENGTH];
-	uint8_t labels[DNSLIB_MAX_DNAME_LABELS];
+	uint8_t name[KNOT_MAX_DNAME_LENGTH];
+	uint8_t labels[KNOT_MAX_DNAME_LABELS];
 
 	short l = 0;
 	size_t i = 0, p = *pos;
@@ -549,7 +549,7 @@ int knot_dname_from_wire(const uint8_t *name, uint size,
                            struct knot_node *node, knot_dname_t *target)
 {
 	if (name == NULL || target == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	memcpy(target->name, name, size);
@@ -751,7 +751,7 @@ void knot_dname_left_chop_no_copy(knot_dname_t *dname)
 int knot_dname_is_subdomain(const knot_dname_t *sub,
                               const knot_dname_t *domain)
 {
-DEBUG_DNSLIB_DNAME(
+DEBUG_KNOT_DNAME(
 	char *name1 = knot_dname_to_str(sub);
 	char *name2 = knot_dname_to_str(domain);
 
@@ -868,7 +868,7 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *dname,
                                             int size,
                                             const knot_dname_t *suffix)
 {
-DEBUG_DNSLIB_DNAME(
+DEBUG_KNOT_DNAME(
 	char *name = knot_dname_to_str(dname);
 	debug_knot_dname("Replacing suffix of name %s, size %d with ", name,
 	                   size);

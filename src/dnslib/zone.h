@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_DNSLIB_ZONE_H_
-#define _KNOT_DNSLIB_ZONE_H_
+#ifndef _KNOTDKNOT_ZONE_H_
+#define _KNOTDKNOT_ZONE_H_
 
 #include <time.h>
 
@@ -37,8 +37,8 @@
  * Used in knot_zone_find_dname() and knot_zone_find_dname_hash().
  */
 enum knot_zone_retvals {
-	DNSLIB_ZONE_NAME_FOUND = 1,
-	DNSLIB_ZONE_NAME_NOT_FOUND = 0
+	KNOT_ZONE_NAME_FOUND = 1,
+	KNOT_ZONE_NAME_NOT_FOUND = 0
 };
 
 typedef enum knot_zone_retvals knot_zone_retvals_t;
@@ -109,10 +109,10 @@ void knot_zone_set_data(knot_zone_t *zone, void *data);
  * \param zone Zone to add the node into.
  * \param node Node to add into the zone.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_EBADZONE
- * \retval DNSLIB_EHASH
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
+ * \retval KNOT_EBADZONE
+ * \retval KNOT_EHASH
  *
  * \todo Replace tests of this function by tests of its zone-contents version.
  */
@@ -130,9 +130,9 @@ int knot_zone_add_node(knot_zone_t *zone, knot_node_t *node,
  * \param zone Zone to add the node into.
  * \param node Node to add into the zone.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_EBADZONE
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
+ * \retval KNOT_EBADZONE
  *
  * \todo Replace tests of this function by tests of its zone-contents version.
  */

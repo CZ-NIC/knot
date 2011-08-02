@@ -11,13 +11,13 @@
 /*! \brief Various EDNS constatns. */
 enum knot_edns_consts {
 	/*! \brief Mask for the DO bit. */
-	DNSLIB_EDNS_DO_MASK = (uint16_t)0x8000,
+	KNOT_EDNS_DO_MASK = (uint16_t)0x8000,
 	/*! \brief Step for allocation of space for option entries. */
-	DNSLIB_EDNS_OPTION_STEP = 1
+	KNOT_EDNS_OPTION_STEP = 1
 };
 
 /*! \brief Minimum size of EDNS OPT RR in wire format. */
-static const short DNSLIB_EDNS_MIN_SIZE = 11;
+static const short KNOT_EDNS_MIN_SIZE = 11;
 
 /*----------------------------------------------------------------------------*/
 
@@ -26,7 +26,7 @@ knot_opt_rr_t *knot_edns_new()
 	knot_opt_rr_t *opt_rr = (knot_opt_rr_t *)malloc(
 	                                               sizeof(knot_opt_rr_t));
 	CHECK_ALLOC_LOG(opt_rr, NULL);
-	opt_rr->size = DNSLIB_EDNS_MIN_SIZE;
+	opt_rr->size = KNOT_EDNS_MIN_SIZE;
 	opt_rr->option_count = 0;
 	opt_rr->options_max = 0;
 
@@ -46,27 +46,27 @@ int knot_edns_new_from_wire(knot_opt_rr_t *opt_rr, const uint8_t *wire,
 	int parsed = 0;
 
 	if (pos == NULL || max_size == 0 || opt_rr == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
-	if (max_size < DNSLIB_EDNS_MIN_SIZE) {
+	if (max_size < KNOT_EDNS_MIN_SIZE) {
 		debug_knot_edns("Not enough data to parse OPT RR header.\n");
-		return DNSLIB_EFEWDATA;
+		return KNOT_EFEWDATA;
 	}
 
 	// owner of EDNS OPT RR must be root (0)
 	if (*pos != 0) {
 		debug_knot_edns("EDNS packet malformed (expected root "
 		                  "domain as owner).\n");
-		return DNSLIB_EMALF;
+		return KNOT_EMALF;
 	}
 	pos += 1;
 
 	// check the type of the record (must be OPT)
-	if (knot_wire_read_u16(pos) != DNSLIB_RRTYPE_OPT) {
+	if (knot_wire_read_u16(pos) != KNOT_RRTYPE_OPT) {
 		debug_knot_edns("EDNS packet malformed (expected OPT type"
 		                  ".\n");
-		return DNSLIB_EMALF;
+		return KNOT_EMALF;
 	}
 	pos += 2;
 
@@ -79,7 +79,7 @@ int knot_edns_new_from_wire(knot_opt_rr_t *opt_rr, const uint8_t *wire,
 	opt_rr->flags = knot_wire_read_u16(pos);
 	pos += 2;
 
-	parsed = DNSLIB_EDNS_MIN_SIZE;
+	parsed = KNOT_EDNS_MIN_SIZE;
 
 	// ignore RDATA, but move pos behind them
 	uint16_t rdlength = knot_wire_read_u16(pos);
@@ -87,14 +87,14 @@ int knot_edns_new_from_wire(knot_opt_rr_t *opt_rr, const uint8_t *wire,
 
 	if (max_size - parsed < rdlength) {
 		debug_knot_edns("Not enough data to parse OPT RR.\n");
-		return DNSLIB_EFEWDATA;
+		return KNOT_EFEWDATA;
 	}
 
-	while (parsed < rdlength + DNSLIB_EDNS_MIN_SIZE) {
+	while (parsed < rdlength + KNOT_EDNS_MIN_SIZE) {
 		if (max_size - parsed < 4) {
 			debug_knot_edns("Not enough data to parse OPT RR"
 			                  " OPTION header.\n");
-			return DNSLIB_EFEWDATA;
+			return KNOT_EFEWDATA;
 		}
 		uint16_t code = knot_wire_read_u16(pos);
 		pos += 2;
@@ -105,7 +105,7 @@ int knot_edns_new_from_wire(knot_opt_rr_t *opt_rr, const uint8_t *wire,
 		if (max_size - parsed - 4 < length) {
 			debug_knot_edns("Not enough data to parse OPT RR"
 			                  " OPTION data.\n");
-			return DNSLIB_EFEWDATA;
+			return KNOT_EFEWDATA;
 		}
 		int ret;
 		if ((ret =
@@ -126,8 +126,8 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
                             const knot_rrset_t *rrset)
 {
 	if (opt_rr == NULL || rrset == NULL
-	    || knot_rrset_type(rrset) != DNSLIB_RRTYPE_OPT) {
-		return DNSLIB_EBADARG;
+	    || knot_rrset_type(rrset) != KNOT_RRTYPE_OPT) {
+		return KNOT_EBADARG;
 	}
 
 	debug_knot_edns("Parsing payload.\n");
@@ -168,14 +168,14 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
 			(const uint8_t *)(knot_rdata_item(rdata, 2)->raw_data
 			                  + 1));
 
-		if (rc != DNSLIB_EOK) {
+		if (rc != KNOT_EOK) {
 			return rc;
 		}
 
 		rdata = knot_rrset_rdata_next(rrset, rdata);
 	}
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -241,11 +241,11 @@ uint16_t knot_edns_get_flags(const knot_opt_rr_t *opt_rr)
 int knot_edns_do(const knot_opt_rr_t *opt_rr)
 {
 	if (opt_rr == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	debug_knot_edns("Flags: %u\n", opt_rr->flags);
-	return (opt_rr->flags & DNSLIB_EDNS_DO_MASK);
+	return (opt_rr->flags & KNOT_EDNS_DO_MASK);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -256,7 +256,7 @@ void knot_edns_set_do(knot_opt_rr_t *opt_rr)
 		return;
 	}
 
-	opt_rr->flags |= DNSLIB_EDNS_DO_MASK;
+	opt_rr->flags |= KNOT_EDNS_DO_MASK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -265,18 +265,18 @@ int knot_edns_add_option(knot_opt_rr_t *opt_rr, uint16_t code,
                            uint16_t length, const uint8_t *data)
 {
 	if (opt_rr == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	if (opt_rr->option_count == opt_rr->options_max) {
 		knot_opt_option_t *options_new =
 			(knot_opt_option_t *)calloc(
-				(opt_rr->options_max + DNSLIB_EDNS_OPTION_STEP),
+				(opt_rr->options_max + KNOT_EDNS_OPTION_STEP),
 				sizeof(knot_opt_option_t));
-		CHECK_ALLOC_LOG(options_new, DNSLIB_ENOMEM);
+		CHECK_ALLOC_LOG(options_new, KNOT_ENOMEM);
 		memcpy(options_new, opt_rr->options, opt_rr->option_count);
 		opt_rr->options = options_new;
-		opt_rr->options_max += DNSLIB_EDNS_OPTION_STEP;
+		opt_rr->options_max += KNOT_EDNS_OPTION_STEP;
 	}
 
 	debug_knot_edns("Adding option.\n");
@@ -285,7 +285,7 @@ int knot_edns_add_option(knot_opt_rr_t *opt_rr, uint16_t code,
 	debug_knot_edns("Data: %p.\n", data);
 
 	opt_rr->options[opt_rr->option_count].data = (uint8_t *)malloc(length);
-	CHECK_ALLOC_LOG(opt_rr->options[opt_rr->option_count].data, DNSLIB_ENOMEM);
+	CHECK_ALLOC_LOG(opt_rr->options[opt_rr->option_count].data, KNOT_ENOMEM);
 	memcpy(opt_rr->options[opt_rr->option_count].data, data, length);
 
 	opt_rr->options[opt_rr->option_count].code = code;
@@ -294,7 +294,7 @@ int knot_edns_add_option(knot_opt_rr_t *opt_rr, uint16_t code,
 	++opt_rr->option_count;
 	opt_rr->size += 4 + length;
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -302,7 +302,7 @@ int knot_edns_add_option(knot_opt_rr_t *opt_rr, uint16_t code,
 int knot_edns_has_option(const knot_opt_rr_t *opt_rr, uint16_t code)
 {
 	if (opt_rr == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	int i = 0;
@@ -321,19 +321,19 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
                           size_t max_size)
 {
 	if (opt_rr == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
-	assert(DNSLIB_EDNS_MIN_SIZE <= max_size);
+	assert(KNOT_EDNS_MIN_SIZE <= max_size);
 
 	if (max_size < opt_rr->size) {
 		debug_knot_edns("Not enough place for OPT RR wire format.\n");
-		return DNSLIB_ESPACE;
+		return KNOT_ESPACE;
 	}
 
 	uint8_t *pos = wire;
 	*(pos++) = 0;
-	knot_wire_write_u16(pos, DNSLIB_RRTYPE_OPT);
+	knot_wire_write_u16(pos, KNOT_RRTYPE_OPT);
 	pos += 2;
 	knot_wire_write_u16(pos, opt_rr->payload);
 	pos += 2;
@@ -367,7 +367,7 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
 short knot_edns_size(knot_opt_rr_t *opt_rr)
 {
 	if (opt_rr == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	return opt_rr->size;

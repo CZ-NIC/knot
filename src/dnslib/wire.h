@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_DNSLIB_WIRE_H_
-#define _KNOT_DNSLIB_WIRE_H_
+#ifndef _KNOTDKNOT_WIRE_H_
+#define _KNOTDKNOT_WIRE_H_
 
 #include <stdint.h>
 #include <assert.h>
@@ -19,20 +19,20 @@
 
 /*! \brief Offset of DNS header fields in wireformat. */
 enum knot_wire_offsets {
-	DNSLIB_WIRE_OFFSET_ID = 0,
-	DNSLIB_WIRE_OFFSET_FLAGS1 = 2,
-	DNSLIB_WIRE_OFFSET_FLAGS2 = 3,
-	DNSLIB_WIRE_OFFSET_QDCOUNT = 4,
-	DNSLIB_WIRE_OFFSET_ANCOUNT = 6,
-	DNSLIB_WIRE_OFFSET_NSCOUNT = 8,
-	DNSLIB_WIRE_OFFSET_ARCOUNT = 10
+	KNOT_WIRE_OFFSET_ID = 0,
+	KNOT_WIRE_OFFSET_FLAGS1 = 2,
+	KNOT_WIRE_OFFSET_FLAGS2 = 3,
+	KNOT_WIRE_OFFSET_QDCOUNT = 4,
+	KNOT_WIRE_OFFSET_ANCOUNT = 6,
+	KNOT_WIRE_OFFSET_NSCOUNT = 8,
+	KNOT_WIRE_OFFSET_ARCOUNT = 10
 };
 
 /*! \brief Minimum size for some parts of the DNS packet. */
 enum knot_wire_sizes {
-	DNSLIB_WIRE_HEADER_SIZE = 12,
-	DNSLIB_WIRE_QUESTION_MIN_SIZE = 5,
-	DNSLIB_WIRE_RR_MIN_SIZE = 11
+	KNOT_WIRE_HEADER_SIZE = 12,
+	KNOT_WIRE_QUESTION_MIN_SIZE = 5,
+	KNOT_WIRE_RR_MIN_SIZE = 11
 };
 
 /*
@@ -48,7 +48,7 @@ enum knot_wire_sizes {
  */
 static inline uint16_t knot_wire_get_id(const uint8_t *packet)
 {
-	return knot_wire_read_u16(packet + DNSLIB_WIRE_OFFSET_ID);
+	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_ID);
 }
 
 /*!
@@ -59,7 +59,7 @@ static inline uint16_t knot_wire_get_id(const uint8_t *packet)
  */
 static inline void knot_wire_set_id(uint8_t *packet, uint16_t id)
 {
-	knot_wire_write_u16(packet + DNSLIB_WIRE_OFFSET_ID, id);
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ID, id);
 }
 
 /*!
@@ -71,7 +71,7 @@ static inline void knot_wire_set_id(uint8_t *packet, uint16_t id)
  */
 static inline uint8_t knot_wire_get_flags1(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS1);
+	return *(packet + KNOT_WIRE_OFFSET_FLAGS1);
 }
 
 /*!
@@ -82,7 +82,7 @@ static inline uint8_t knot_wire_get_flags1(const uint8_t *packet)
  */
 static inline uint8_t knot_wire_set_flags1(uint8_t *packet, uint8_t flags1)
 {
-	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS1) = flags1;
+	return *(packet + KNOT_WIRE_OFFSET_FLAGS1) = flags1;
 }
 
 /*!
@@ -94,7 +94,7 @@ static inline uint8_t knot_wire_set_flags1(uint8_t *packet, uint8_t flags1)
  */
 static inline uint8_t knot_wire_get_flags2(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS2);
+	return *(packet + KNOT_WIRE_OFFSET_FLAGS2);
 }
 
 /*!
@@ -105,7 +105,7 @@ static inline uint8_t knot_wire_get_flags2(const uint8_t *packet)
  */
 static inline uint8_t knot_wire_set_flags2(uint8_t *packet, uint8_t flags2)
 {
-	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS2) = flags2;
+	return *(packet + KNOT_WIRE_OFFSET_FLAGS2) = flags2;
 }
 
 /*!
@@ -118,7 +118,7 @@ static inline uint8_t knot_wire_set_flags2(uint8_t *packet, uint8_t flags2)
  */
 static inline uint16_t knot_wire_get_qdcount(const uint8_t *packet)
 {
-	return knot_wire_read_u16(packet + DNSLIB_WIRE_OFFSET_QDCOUNT);
+	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT);
 }
 
 /*!
@@ -130,7 +130,7 @@ static inline uint16_t knot_wire_get_qdcount(const uint8_t *packet)
  */
 static inline void knot_wire_set_qdcount(uint8_t *packet, uint16_t qdcount)
 {
-	knot_wire_write_u16(packet + DNSLIB_WIRE_OFFSET_QDCOUNT, qdcount);
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT, qdcount);
 }
 
 /*!
@@ -143,7 +143,7 @@ static inline void knot_wire_set_qdcount(uint8_t *packet, uint16_t qdcount)
  */
 static inline uint16_t knot_wire_get_ancount(const uint8_t *packet)
 {
-	return knot_wire_read_u16(packet + DNSLIB_WIRE_OFFSET_ANCOUNT);
+	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT);
 }
 
 /*!
@@ -155,7 +155,7 @@ static inline uint16_t knot_wire_get_ancount(const uint8_t *packet)
  */
 static inline void knot_wire_set_ancount(uint8_t *packet, uint16_t ancount)
 {
-	knot_wire_write_u16(packet + DNSLIB_WIRE_OFFSET_ANCOUNT, ancount);
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT, ancount);
 }
 
 /*!
@@ -168,7 +168,7 @@ static inline void knot_wire_set_ancount(uint8_t *packet, uint16_t ancount)
  */
 static inline uint16_t knot_wire_get_nscount(const uint8_t *packet)
 {
-	return knot_wire_read_u16(packet + DNSLIB_WIRE_OFFSET_NSCOUNT);
+	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT);
 }
 
 /*!
@@ -180,7 +180,7 @@ static inline uint16_t knot_wire_get_nscount(const uint8_t *packet)
  */
 static inline void knot_wire_set_nscount(uint8_t *packet, uint16_t nscount)
 {
-	knot_wire_write_u16(packet + DNSLIB_WIRE_OFFSET_NSCOUNT, nscount);
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT, nscount);
 }
 
 /*!
@@ -193,7 +193,7 @@ static inline void knot_wire_set_nscount(uint8_t *packet, uint16_t nscount)
  */
 static inline uint16_t knot_wire_get_arcount(const uint8_t *packet)
 {
-	return knot_wire_read_u16(packet + DNSLIB_WIRE_OFFSET_ARCOUNT);
+	return knot_wire_read_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT);
 }
 
 /*!
@@ -205,7 +205,7 @@ static inline uint16_t knot_wire_get_arcount(const uint8_t *packet)
  */
 static inline void knot_wire_set_arcount(uint8_t *packet, uint16_t arcount)
 {
-	knot_wire_write_u16(packet + DNSLIB_WIRE_OFFSET_ARCOUNT, arcount);
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT, arcount);
 }
 
 /*
@@ -213,30 +213,30 @@ static inline void knot_wire_set_arcount(uint8_t *packet, uint16_t arcount)
  */
 /*! \brief Constants for DNS header flags in the first flags byte. */
 enum knot_wire_flags1_consts {
-	DNSLIB_WIRE_RD_MASK = (uint8_t)0x01U,      /*!< RD bit mask. */
-	DNSLIB_WIRE_RD_SHIFT = 0,                  /*!< RD bit shift. */
-	DNSLIB_WIRE_TC_MASK = (uint8_t)0x02U,      /*!< TC bit mask. */
-	DNSLIB_WIRE_TC_SHIFT = 1,                  /*!< TC bit shift. */
-	DNSLIB_WIRE_AA_MASK = (uint8_t)0x04U,      /*!< AA bit mask. */
-	DNSLIB_WIRE_AA_SHIFT = 2,                  /*!< AA bit shift. */
-	DNSLIB_WIRE_OPCODE_MASK = (uint8_t)0x78U,  /*!< OPCODE mask. */
-	DNSLIB_WIRE_OPCODE_SHIFT = 3,              /*!< OPCODE shift. */
-	DNSLIB_WIRE_QR_MASK = (uint8_t)0x80U,      /*!< QR bit mask. */
-	DNSLIB_WIRE_QR_SHIFT = 7                   /*!< QR bit shift. */
+	KNOT_WIRE_RD_MASK = (uint8_t)0x01U,      /*!< RD bit mask. */
+	KNOT_WIRE_RD_SHIFT = 0,                  /*!< RD bit shift. */
+	KNOT_WIRE_TC_MASK = (uint8_t)0x02U,      /*!< TC bit mask. */
+	KNOT_WIRE_TC_SHIFT = 1,                  /*!< TC bit shift. */
+	KNOT_WIRE_AA_MASK = (uint8_t)0x04U,      /*!< AA bit mask. */
+	KNOT_WIRE_AA_SHIFT = 2,                  /*!< AA bit shift. */
+	KNOT_WIRE_OPCODE_MASK = (uint8_t)0x78U,  /*!< OPCODE mask. */
+	KNOT_WIRE_OPCODE_SHIFT = 3,              /*!< OPCODE shift. */
+	KNOT_WIRE_QR_MASK = (uint8_t)0x80U,      /*!< QR bit mask. */
+	KNOT_WIRE_QR_SHIFT = 7                   /*!< QR bit shift. */
 };
 
 /*! \brief Constants for DNS header flags in the second flags byte. */
 enum knot_wire_flags2_consts {
-	DNSLIB_WIRE_RCODE_MASK = (uint8_t)0x0fU,  /*!< RCODE mask. */
-	DNSLIB_WIRE_RCODE_SHIFT = 0,              /*!< RCODE shift. */
-	DNSLIB_WIRE_CD_MASK = (uint8_t)0x10U,     /*!< CD bit mask. */
-	DNSLIB_WIRE_CD_SHIFT = 4,                 /*!< CD bit shift. */
-	DNSLIB_WIRE_AD_MASK = (uint8_t)0x20U,     /*!< AD bit mask. */
-	DNSLIB_WIRE_AD_SHIFT = 5,                 /*!< AD bit shift. */
-	DNSLIB_WIRE_Z_MASK = (uint8_t)0x40U,      /*!< Zero bit mask. */
-	DNSLIB_WIRE_Z_SHIFT = 6,                  /*!< Zero bit shift. */
-	DNSLIB_WIRE_RA_MASK = (uint8_t)0x80U,     /*!< RA bit mask. */
-	DNSLIB_WIRE_RA_SHIFT = 7                  /*!< RA bit shift. */
+	KNOT_WIRE_RCODE_MASK = (uint8_t)0x0fU,  /*!< RCODE mask. */
+	KNOT_WIRE_RCODE_SHIFT = 0,              /*!< RCODE shift. */
+	KNOT_WIRE_CD_MASK = (uint8_t)0x10U,     /*!< CD bit mask. */
+	KNOT_WIRE_CD_SHIFT = 4,                 /*!< CD bit shift. */
+	KNOT_WIRE_AD_MASK = (uint8_t)0x20U,     /*!< AD bit mask. */
+	KNOT_WIRE_AD_SHIFT = 5,                 /*!< AD bit shift. */
+	KNOT_WIRE_Z_MASK = (uint8_t)0x40U,      /*!< Zero bit mask. */
+	KNOT_WIRE_Z_SHIFT = 6,                  /*!< Zero bit shift. */
+	KNOT_WIRE_RA_MASK = (uint8_t)0x80U,     /*!< RA bit mask. */
+	KNOT_WIRE_RA_SHIFT = 7                  /*!< RA bit shift. */
 };
 
 /*
@@ -252,7 +252,7 @@ enum knot_wire_flags2_consts {
  */
 static inline uint8_t knot_wire_get_rd(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS1) & DNSLIB_WIRE_RD_MASK;
+	return *(packet + KNOT_WIRE_OFFSET_FLAGS1) & KNOT_WIRE_RD_MASK;
 }
 
 /*!
@@ -262,7 +262,7 @@ static inline uint8_t knot_wire_get_rd(const uint8_t *packet)
  */
 static inline void knot_wire_set_rd(uint8_t *packet)
 {
-	*(packet + DNSLIB_WIRE_OFFSET_FLAGS1) |= DNSLIB_WIRE_RD_MASK;
+	*(packet + KNOT_WIRE_OFFSET_FLAGS1) |= KNOT_WIRE_RD_MASK;
 }
 
 /*!
@@ -272,7 +272,7 @@ static inline void knot_wire_set_rd(uint8_t *packet)
  */
 static inline void knot_wire_flags_clear_rd(uint8_t *packet)
 {
-	*(packet + DNSLIB_WIRE_OFFSET_FLAGS1) &= ~DNSLIB_WIRE_RD_MASK;
+	*(packet + KNOT_WIRE_OFFSET_FLAGS1) &= ~KNOT_WIRE_RD_MASK;
 }
 
 /*!
@@ -284,7 +284,7 @@ static inline void knot_wire_flags_clear_rd(uint8_t *packet)
  */
 static inline uint8_t knot_wire_get_tc(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS1) & DNSLIB_WIRE_TC_MASK;
+	return *(packet + KNOT_WIRE_OFFSET_FLAGS1) & KNOT_WIRE_TC_MASK;
 }
 
 /*!
@@ -294,7 +294,7 @@ static inline uint8_t knot_wire_get_tc(const uint8_t *packet)
  */
 static inline void knot_wire_set_tc(uint8_t *packet)
 {
-	*(packet + DNSLIB_WIRE_OFFSET_FLAGS1) |= DNSLIB_WIRE_TC_MASK;
+	*(packet + KNOT_WIRE_OFFSET_FLAGS1) |= KNOT_WIRE_TC_MASK;
 }
 
 /*!
@@ -304,7 +304,7 @@ static inline void knot_wire_set_tc(uint8_t *packet)
  */
 static inline void knot_wire_clear_tc(uint8_t *packet)
 {
-	*(packet + DNSLIB_WIRE_OFFSET_FLAGS1) &= ~DNSLIB_WIRE_TC_MASK;
+	*(packet + KNOT_WIRE_OFFSET_FLAGS1) &= ~KNOT_WIRE_TC_MASK;
 }
 
 /*!
@@ -316,7 +316,7 @@ static inline void knot_wire_clear_tc(uint8_t *packet)
  */
 static inline uint8_t knot_wire_get_aa(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS1) & DNSLIB_WIRE_AA_MASK;
+	return *(packet + KNOT_WIRE_OFFSET_FLAGS1) & KNOT_WIRE_AA_MASK;
 }
 
 /*!
@@ -326,7 +326,7 @@ static inline uint8_t knot_wire_get_aa(const uint8_t *packet)
  */
 static inline void knot_wire_set_aa(uint8_t *packet)
 {
-	*(packet + DNSLIB_WIRE_OFFSET_FLAGS1) |= DNSLIB_WIRE_AA_MASK;
+	*(packet + KNOT_WIRE_OFFSET_FLAGS1) |= KNOT_WIRE_AA_MASK;
 }
 
 /*!
@@ -336,7 +336,7 @@ static inline void knot_wire_set_aa(uint8_t *packet)
  */
 static inline void knot_wire_clear_aa(uint8_t *packet)
 {
-	*(packet + DNSLIB_WIRE_OFFSET_FLAGS1) &= ~DNSLIB_WIRE_AA_MASK;
+	*(packet + KNOT_WIRE_OFFSET_FLAGS1) &= ~KNOT_WIRE_AA_MASK;
 }
 
 /*!
@@ -348,8 +348,8 @@ static inline void knot_wire_clear_aa(uint8_t *packet)
  */
 static inline uint8_t knot_wire_get_opcode(const uint8_t *packet)
 {
-	return (*(packet + DNSLIB_WIRE_OFFSET_FLAGS1)
-	        & DNSLIB_WIRE_OPCODE_MASK) >> DNSLIB_WIRE_OPCODE_SHIFT;
+	return (*(packet + KNOT_WIRE_OFFSET_FLAGS1)
+	        & KNOT_WIRE_OPCODE_MASK) >> KNOT_WIRE_OPCODE_SHIFT;
 }
 
 /*!
@@ -360,9 +360,9 @@ static inline uint8_t knot_wire_get_opcode(const uint8_t *packet)
  */
 static inline void knot_wire_set_opcode(uint8_t *packet, short opcode)
 {
-	uint8_t *flags1 = packet + DNSLIB_WIRE_OFFSET_FLAGS1;
-	*flags1 = (*flags1 & ~DNSLIB_WIRE_OPCODE_MASK)
-	          | ((opcode) << DNSLIB_WIRE_OPCODE_SHIFT);
+	uint8_t *flags1 = packet + KNOT_WIRE_OFFSET_FLAGS1;
+	*flags1 = (*flags1 & ~KNOT_WIRE_OPCODE_MASK)
+	          | ((opcode) << KNOT_WIRE_OPCODE_SHIFT);
 }
 
 /*!
@@ -374,7 +374,7 @@ static inline void knot_wire_set_opcode(uint8_t *packet, short opcode)
  */
 static inline uint8_t knot_wire_get_qr(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS1) & DNSLIB_WIRE_QR_MASK;
+	return *(packet + KNOT_WIRE_OFFSET_FLAGS1) & KNOT_WIRE_QR_MASK;
 }
 
 /*!
@@ -384,7 +384,7 @@ static inline uint8_t knot_wire_get_qr(const uint8_t *packet)
  */
 static inline void knot_wire_set_qr(uint8_t *packet)
 {
-	*(packet + DNSLIB_WIRE_OFFSET_FLAGS1) |= DNSLIB_WIRE_QR_MASK;
+	*(packet + KNOT_WIRE_OFFSET_FLAGS1) |= KNOT_WIRE_QR_MASK;
 }
 
 /*!
@@ -394,7 +394,7 @@ static inline void knot_wire_set_qr(uint8_t *packet)
  */
 static inline void knot_wire_clear_qr(uint8_t *packet)
 {
-	*(packet + DNSLIB_WIRE_OFFSET_FLAGS1) &= ~DNSLIB_WIRE_QR_MASK;
+	*(packet + KNOT_WIRE_OFFSET_FLAGS1) &= ~KNOT_WIRE_QR_MASK;
 }
 
 /*!
@@ -406,8 +406,8 @@ static inline void knot_wire_clear_qr(uint8_t *packet)
  */
 static inline uint8_t knot_wire_get_rcode(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS2)
-	       & DNSLIB_WIRE_RCODE_MASK;
+	return *(packet + KNOT_WIRE_OFFSET_FLAGS2)
+	       & KNOT_WIRE_RCODE_MASK;
 }
 
 /*!
@@ -418,8 +418,8 @@ static inline uint8_t knot_wire_get_rcode(const uint8_t *packet)
  */
 static inline void knot_wire_set_rcode(uint8_t *packet, short rcode)
 {
-	uint8_t *flags2 = packet + DNSLIB_WIRE_OFFSET_FLAGS2;
-	*flags2 = (*flags2 & ~DNSLIB_WIRE_RCODE_MASK) | (rcode);
+	uint8_t *flags2 = packet + KNOT_WIRE_OFFSET_FLAGS2;
+	*flags2 = (*flags2 & ~KNOT_WIRE_RCODE_MASK) | (rcode);
 }
 
 /*!
@@ -431,7 +431,7 @@ static inline void knot_wire_set_rcode(uint8_t *packet, short rcode)
  */
 static inline uint8_t knot_wire_get_cd(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS2) & DNSLIB_WIRE_CD_MASK;
+	return *(packet + KNOT_WIRE_OFFSET_FLAGS2) & KNOT_WIRE_CD_MASK;
 }
 
 /*!
@@ -441,7 +441,7 @@ static inline uint8_t knot_wire_get_cd(const uint8_t *packet)
  */
 static inline void knot_wire_set_cd(uint8_t *packet)
 {
-	*(packet + DNSLIB_WIRE_OFFSET_FLAGS2) |= DNSLIB_WIRE_CD_MASK;
+	*(packet + KNOT_WIRE_OFFSET_FLAGS2) |= KNOT_WIRE_CD_MASK;
 }
 
 /*!
@@ -451,7 +451,7 @@ static inline void knot_wire_set_cd(uint8_t *packet)
  */
 static inline void knot_wire_clear_cd(uint8_t *packet)
 {
-	*(packet + DNSLIB_WIRE_OFFSET_FLAGS2) &= ~DNSLIB_WIRE_CD_MASK;
+	*(packet + KNOT_WIRE_OFFSET_FLAGS2) &= ~KNOT_WIRE_CD_MASK;
 }
 
 /*!
@@ -463,7 +463,7 @@ static inline void knot_wire_clear_cd(uint8_t *packet)
  */
 static inline uint8_t knot_wire_get_ad(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS2) & DNSLIB_WIRE_AD_MASK;
+	return *(packet + KNOT_WIRE_OFFSET_FLAGS2) & KNOT_WIRE_AD_MASK;
 }
 
 /*!
@@ -473,7 +473,7 @@ static inline uint8_t knot_wire_get_ad(const uint8_t *packet)
  */
 static inline void knot_wire_set_ad(uint8_t *packet)
 {
-	*(packet + DNSLIB_WIRE_OFFSET_FLAGS2) |= DNSLIB_WIRE_AD_MASK;
+	*(packet + KNOT_WIRE_OFFSET_FLAGS2) |= KNOT_WIRE_AD_MASK;
 }
 
 /*!
@@ -483,7 +483,7 @@ static inline void knot_wire_set_ad(uint8_t *packet)
  */
 static inline void knot_wire_clear_ad(uint8_t *packet)
 {
-	*(packet + DNSLIB_WIRE_OFFSET_FLAGS2) &= ~DNSLIB_WIRE_AD_MASK;
+	*(packet + KNOT_WIRE_OFFSET_FLAGS2) &= ~KNOT_WIRE_AD_MASK;
 }
 
 /*!
@@ -495,7 +495,7 @@ static inline void knot_wire_clear_ad(uint8_t *packet)
  */
 static inline uint8_t knot_wire_get_z(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS2) & DNSLIB_WIRE_Z_MASK;
+	return *(packet + KNOT_WIRE_OFFSET_FLAGS2) & KNOT_WIRE_Z_MASK;
 }
 
 /*!
@@ -505,7 +505,7 @@ static inline uint8_t knot_wire_get_z(const uint8_t *packet)
  */
 static inline void knot_wire_set_z(uint8_t *packet)
 {
-	*(packet + DNSLIB_WIRE_OFFSET_FLAGS2) |= DNSLIB_WIRE_Z_MASK;
+	*(packet + KNOT_WIRE_OFFSET_FLAGS2) |= KNOT_WIRE_Z_MASK;
 }
 
 /*!
@@ -515,7 +515,7 @@ static inline void knot_wire_set_z(uint8_t *packet)
  */
 static inline void knot_wire_clear_z(uint8_t *packet)
 {
-	*(packet + DNSLIB_WIRE_OFFSET_FLAGS2) &= ~DNSLIB_WIRE_Z_MASK;
+	*(packet + KNOT_WIRE_OFFSET_FLAGS2) &= ~KNOT_WIRE_Z_MASK;
 }
 
 /*!
@@ -527,7 +527,7 @@ static inline void knot_wire_clear_z(uint8_t *packet)
  */
 static inline uint8_t knot_wire_get_ra(const uint8_t *packet)
 {
-	return *(packet + DNSLIB_WIRE_OFFSET_FLAGS2) & DNSLIB_WIRE_RA_MASK;
+	return *(packet + KNOT_WIRE_OFFSET_FLAGS2) & KNOT_WIRE_RA_MASK;
 }
 
 /*!
@@ -537,7 +537,7 @@ static inline uint8_t knot_wire_get_ra(const uint8_t *packet)
  */
 static inline void knot_wire_set_ra(uint8_t *packet)
 {
-	*(packet + DNSLIB_WIRE_OFFSET_FLAGS2) |= DNSLIB_WIRE_RA_MASK;
+	*(packet + KNOT_WIRE_OFFSET_FLAGS2) |= KNOT_WIRE_RA_MASK;
 }
 
 /*!
@@ -547,7 +547,7 @@ static inline void knot_wire_set_ra(uint8_t *packet)
  */
 static inline void knot_wire_clear_ra(uint8_t *packet)
 {
-	*(packet + DNSLIB_WIRE_OFFSET_FLAGS2) &= ~DNSLIB_WIRE_RA_MASK;
+	*(packet + KNOT_WIRE_OFFSET_FLAGS2) &= ~KNOT_WIRE_RA_MASK;
 }
 
 /*
@@ -564,7 +564,7 @@ static inline void knot_wire_clear_ra(uint8_t *packet)
  */
 static inline uint8_t knot_wire_flags_get_rd(uint8_t flags1)
 {
-	return flags1 & DNSLIB_WIRE_RD_MASK;
+	return flags1 & KNOT_WIRE_RD_MASK;
 }
 
 /*!
@@ -574,7 +574,7 @@ static inline uint8_t knot_wire_flags_get_rd(uint8_t flags1)
  */
 static inline void knot_wire_flags_set_rd(uint8_t *flags1)
 {
-	*flags1 |= DNSLIB_WIRE_RD_MASK;
+	*flags1 |= KNOT_WIRE_RD_MASK;
 }
 
 /*!
@@ -584,7 +584,7 @@ static inline void knot_wire_flags_set_rd(uint8_t *flags1)
  */
 static inline void knot_wire_flags_flags_clear_rd(uint8_t *flags1)
 {
-	*flags1 &= ~DNSLIB_WIRE_RD_MASK;
+	*flags1 &= ~KNOT_WIRE_RD_MASK;
 }
 
 /*!
@@ -597,7 +597,7 @@ static inline void knot_wire_flags_flags_clear_rd(uint8_t *flags1)
  */
 static inline uint8_t knot_wire_flags_get_tc(uint8_t flags1)
 {
-	return flags1 & DNSLIB_WIRE_TC_MASK;
+	return flags1 & KNOT_WIRE_TC_MASK;
 }
 
 /*!
@@ -607,7 +607,7 @@ static inline uint8_t knot_wire_flags_get_tc(uint8_t flags1)
  */
 static inline void knot_wire_flags_set_tc(uint8_t *flags1)
 {
-	*flags1 |= DNSLIB_WIRE_TC_MASK;
+	*flags1 |= KNOT_WIRE_TC_MASK;
 }
 
 /*!
@@ -617,7 +617,7 @@ static inline void knot_wire_flags_set_tc(uint8_t *flags1)
  */
 static inline void knot_wire_flags_clear_tc(uint8_t *flags1)
 {
-	*flags1 &= ~DNSLIB_WIRE_TC_MASK;
+	*flags1 &= ~KNOT_WIRE_TC_MASK;
 }
 
 /*!
@@ -630,7 +630,7 @@ static inline void knot_wire_flags_clear_tc(uint8_t *flags1)
  */
 static inline uint8_t knot_wire_flags_get_aa(uint8_t flags1)
 {
-	return flags1 & DNSLIB_WIRE_AA_MASK;
+	return flags1 & KNOT_WIRE_AA_MASK;
 }
 
 /*!
@@ -640,7 +640,7 @@ static inline uint8_t knot_wire_flags_get_aa(uint8_t flags1)
  */
 static inline void knot_wire_flags_set_aa(uint8_t *flags1)
 {
-	*flags1 |= DNSLIB_WIRE_AA_MASK;
+	*flags1 |= KNOT_WIRE_AA_MASK;
 }
 
 /*!
@@ -650,7 +650,7 @@ static inline void knot_wire_flags_set_aa(uint8_t *flags1)
  */
 static inline void knot_wire_flags_clear_aa(uint8_t *flags1)
 {
-	*flags1 &= ~DNSLIB_WIRE_AA_MASK;
+	*flags1 &= ~KNOT_WIRE_AA_MASK;
 }
 
 /*!
@@ -662,8 +662,8 @@ static inline void knot_wire_flags_clear_aa(uint8_t *flags1)
  */
 static inline uint8_t knot_wire_flags_get_opcode(uint8_t flags1)
 {
-	return (flags1 & DNSLIB_WIRE_OPCODE_MASK)
-	        >> DNSLIB_WIRE_OPCODE_SHIFT;
+	return (flags1 & KNOT_WIRE_OPCODE_MASK)
+	        >> KNOT_WIRE_OPCODE_SHIFT;
 }
 
 /*!
@@ -674,8 +674,8 @@ static inline uint8_t knot_wire_flags_get_opcode(uint8_t flags1)
  */
 static inline void knot_wire_flags_set_opcode(uint8_t *flags1, short opcode)
 {
-	*flags1 = (*flags1 & ~DNSLIB_WIRE_OPCODE_MASK)
-	          | ((opcode) << DNSLIB_WIRE_OPCODE_SHIFT);
+	*flags1 = (*flags1 & ~KNOT_WIRE_OPCODE_MASK)
+	          | ((opcode) << KNOT_WIRE_OPCODE_SHIFT);
 }
 
 /*!
@@ -688,7 +688,7 @@ static inline void knot_wire_flags_set_opcode(uint8_t *flags1, short opcode)
  */
 static inline uint8_t knot_wire_flags_get_qr(uint8_t flags1)
 {
-	return flags1 & DNSLIB_WIRE_QR_MASK;
+	return flags1 & KNOT_WIRE_QR_MASK;
 }
 
 /*!
@@ -698,7 +698,7 @@ static inline uint8_t knot_wire_flags_get_qr(uint8_t flags1)
  */
 static inline void knot_wire_flags_set_qr(uint8_t *flags1)
 {
-	*flags1 |= DNSLIB_WIRE_QR_MASK;
+	*flags1 |= KNOT_WIRE_QR_MASK;
 }
 
 /*!
@@ -708,7 +708,7 @@ static inline void knot_wire_flags_set_qr(uint8_t *flags1)
  */
 static inline void knot_wire_flags_clear_qr(uint8_t *flags1)
 {
-	*flags1 &= ~DNSLIB_WIRE_QR_MASK;
+	*flags1 &= ~KNOT_WIRE_QR_MASK;
 }
 
 /*!
@@ -720,7 +720,7 @@ static inline void knot_wire_flags_clear_qr(uint8_t *flags1)
  */
 static inline uint8_t knot_wire_flags_get_rcode(uint8_t flags2)
 {
-	return flags2 & DNSLIB_WIRE_RCODE_MASK;
+	return flags2 & KNOT_WIRE_RCODE_MASK;
 }
 
 /*!
@@ -731,7 +731,7 @@ static inline uint8_t knot_wire_flags_get_rcode(uint8_t flags2)
  */
 static inline void knot_wire_flags_set_rcode(uint8_t *flags2, short rcode)
 {
-	*flags2 = (*flags2 & ~DNSLIB_WIRE_RCODE_MASK) | (rcode);
+	*flags2 = (*flags2 & ~KNOT_WIRE_RCODE_MASK) | (rcode);
 }
 
 /*!
@@ -744,7 +744,7 @@ static inline void knot_wire_flags_set_rcode(uint8_t *flags2, short rcode)
  */
 static inline uint8_t knot_wire_flags_get_cd(uint8_t flags2)
 {
-	return flags2 & DNSLIB_WIRE_CD_MASK;
+	return flags2 & KNOT_WIRE_CD_MASK;
 }
 
 /*!
@@ -754,7 +754,7 @@ static inline uint8_t knot_wire_flags_get_cd(uint8_t flags2)
  */
 static inline void knot_wire_flags_set_cd(uint8_t *flags2)
 {
-	*flags2 |= DNSLIB_WIRE_CD_MASK;
+	*flags2 |= KNOT_WIRE_CD_MASK;
 }
 
 /*!
@@ -764,7 +764,7 @@ static inline void knot_wire_flags_set_cd(uint8_t *flags2)
  */
 static inline void knot_wire_flags_clear_cd(uint8_t *flags2)
 {
-	*flags2 &= ~DNSLIB_WIRE_CD_MASK;
+	*flags2 &= ~KNOT_WIRE_CD_MASK;
 }
 
 /*!
@@ -777,7 +777,7 @@ static inline void knot_wire_flags_clear_cd(uint8_t *flags2)
  */
 static inline uint8_t knot_wire_flags_get_ad(uint8_t flags2)
 {
-	return flags2 & DNSLIB_WIRE_AD_MASK;
+	return flags2 & KNOT_WIRE_AD_MASK;
 }
 
 /*!
@@ -787,7 +787,7 @@ static inline uint8_t knot_wire_flags_get_ad(uint8_t flags2)
  */
 static inline void knot_wire_flags_set_ad(uint8_t *flags2)
 {
-	*flags2 |= DNSLIB_WIRE_AD_MASK;
+	*flags2 |= KNOT_WIRE_AD_MASK;
 }
 
 /*!
@@ -797,7 +797,7 @@ static inline void knot_wire_flags_set_ad(uint8_t *flags2)
  */
 static inline void knot_wire_flags_clear_ad(uint8_t *flags2)
 {
-	*flags2 &= ~DNSLIB_WIRE_AD_MASK;
+	*flags2 &= ~KNOT_WIRE_AD_MASK;
 }
 
 /*!
@@ -810,7 +810,7 @@ static inline void knot_wire_flags_clear_ad(uint8_t *flags2)
  */
 static inline uint8_t knot_wire_flags_get_z(uint8_t flags2)
 {
-	return flags2 & DNSLIB_WIRE_Z_MASK;
+	return flags2 & KNOT_WIRE_Z_MASK;
 }
 
 /*!
@@ -820,7 +820,7 @@ static inline uint8_t knot_wire_flags_get_z(uint8_t flags2)
  */
 static inline void knot_wire_flags_set_z(uint8_t *flags2)
 {
-	*flags2 |= DNSLIB_WIRE_Z_MASK;
+	*flags2 |= KNOT_WIRE_Z_MASK;
 }
 
 /*!
@@ -830,7 +830,7 @@ static inline void knot_wire_flags_set_z(uint8_t *flags2)
  */
 static inline void knot_wire_flags_clear_z(uint8_t *flags2)
 {
-	*flags2 &= ~DNSLIB_WIRE_Z_MASK;
+	*flags2 &= ~KNOT_WIRE_Z_MASK;
 }
 
 /*!
@@ -843,7 +843,7 @@ static inline void knot_wire_flags_clear_z(uint8_t *flags2)
  */
 static inline uint8_t knot_wire_flags_get_ra(uint8_t flags2)
 {
-	return flags2 & DNSLIB_WIRE_RA_MASK;
+	return flags2 & KNOT_WIRE_RA_MASK;
 }
 
 /*!
@@ -853,7 +853,7 @@ static inline uint8_t knot_wire_flags_get_ra(uint8_t flags2)
  */
 static inline void knot_wire_flags_set_ra(uint8_t *flags2)
 {
-	*flags2 |= DNSLIB_WIRE_RA_MASK;
+	*flags2 |= KNOT_WIRE_RA_MASK;
 }
 
 /*!
@@ -863,7 +863,7 @@ static inline void knot_wire_flags_set_ra(uint8_t *flags2)
  */
 static inline void knot_wire_flags_clear_ra(uint8_t *flags2)
 {
-	*flags2 &= ~DNSLIB_WIRE_RA_MASK;
+	*flags2 &= ~KNOT_WIRE_RA_MASK;
 }
 
 /*
@@ -872,7 +872,7 @@ static inline void knot_wire_flags_clear_ra(uint8_t *flags2)
 
 enum knot_wire_pointer_consts {
 	/*! \brief DNS packet pointer designation (first two bits set to 1).  */
-	DNSLIB_WIRE_PTR = (uint8_t)0xc0U
+	KNOT_WIRE_PTR = (uint8_t)0xc0U
 };
 
 /*!
@@ -886,13 +886,13 @@ static inline void knot_wire_put_pointer(uint8_t *pos, size_t ptr)
 {
 	uint16_t p = ptr;
 	knot_wire_write_u16(pos, p);
-	assert((pos[0] & DNSLIB_WIRE_PTR) == 0);
-	pos[0] |= DNSLIB_WIRE_PTR;
+	assert((pos[0] & KNOT_WIRE_PTR) == 0);
+	pos[0] |= KNOT_WIRE_PTR;
 }
 
 static inline int knot_wire_is_pointer(const uint8_t *pos)
 {
-	return ((pos[0] & DNSLIB_WIRE_PTR) != 0);
+	return ((pos[0] & KNOT_WIRE_PTR) != 0);
 }
 
 static inline size_t knot_wire_get_pointer(const uint8_t *pos)
@@ -900,12 +900,12 @@ static inline size_t knot_wire_get_pointer(const uint8_t *pos)
 	/*! \todo memcpy() is not needed, may be directly assigned. */
 	uint16_t p = 0;
 	memcpy(&p, pos, 2);
-	p &= ~DNSLIB_WIRE_PTR;
+	p &= ~KNOT_WIRE_PTR;
 
 	uint16_t p2 = knot_wire_read_u16((uint8_t *)&p);
 	return p2;
 }
 
-#endif /* _KNOT_DNSLIB_WIRE_H_ */
+#endif /* _KNOTDKNOT_WIRE_H_ */
 
 /*! @} */

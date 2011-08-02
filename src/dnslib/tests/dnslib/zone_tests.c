@@ -134,10 +134,10 @@ static int test_zone_add_node(knot_zone_t *zone, int nsec3)
 
 		if ((res = ((nsec3) ? knot_zone_add_nsec3_node(zone, node, 0, 1)
 			: knot_zone_add_node(zone, node, 0, 1))) !=
-		                DNSLIB_EBADZONE) {
+		                KNOT_EBADZONE) {
 			diag("zone: Inserting wrong node did not result in"
 			     "proper return value (%d instead of %d).", res,
-			     DNSLIB_EBADZONE);
+			     KNOT_EBADZONE);
 			++errors;
 		}
 		knot_node_free(&node, 0, 0);
@@ -155,10 +155,10 @@ static int test_zone_add_node(knot_zone_t *zone, int nsec3)
 	}
 
 	if ((res = ((nsec3) ? knot_zone_add_nsec3_node(NULL, node, 0, 1)
-		: knot_zone_add_node(NULL, node, 0, 1))) != DNSLIB_EBADARG) {
+		: knot_zone_add_node(NULL, node, 0, 1))) != KNOT_EBADARG) {
 		diag("zone: Inserting node to NULL zone did not result in"
 		     "proper return value (%d instead of %d)", res,
-		     DNSLIB_EBADARG);
+		     KNOT_EBADARG);
 		++errors;
 	}
 
@@ -168,10 +168,10 @@ static int test_zone_add_node(knot_zone_t *zone, int nsec3)
 	note("Inserting NULL node...\n");
 
 	if ((res = ((nsec3) ? knot_zone_add_nsec3_node(zone, NULL, 0, 1)
-		: knot_zone_add_node(zone, NULL, 0, 1))) != DNSLIB_EBADARG) {
+		: knot_zone_add_node(zone, NULL, 0, 1))) != KNOT_EBADARG) {
 		diag("zone: Inserting NULL node to zone did not result in"
 		     "proper return value (%d instead of %d)", res,
-		     DNSLIB_EBADARG);
+		     KNOT_EBADARG);
 		++errors;
 	}
 
@@ -187,10 +187,10 @@ static int test_zone_add_node(knot_zone_t *zone, int nsec3)
 		//note("Apex again");
 
 		if ((res = knot_zone_add_node(zone, node, 0, 1)) !=
-		                DNSLIB_EBADZONE) {
+		                KNOT_EBADZONE) {
 			diag("zone: Inserting zone apex again did not result in"
 			     "proper return value (%d instead of -2)",
-			     DNSLIB_EBADZONE);
+			     KNOT_EBADZONE);
 			++errors;
 		}
 
@@ -505,32 +505,32 @@ static int test_zone_shallow_copy()
 		knot_node_new(apex_dname, NULL, 0);
 	assert(apex_node);
 	lives_ok({
-		if (knot_zone_contents_shallow_copy(NULL, NULL) != DNSLIB_EBADARG) {
+		if (knot_zone_contents_shallow_copy(NULL, NULL) != KNOT_EBADARG) {
 			diag("Calling zone_shallow_copy with NULL "
-			     "arguments did not return DNSLIB_EBADARG!");
+			     "arguments did not return KNOT_EBADARG!");
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
 		knot_zone_contents_t *zone = knot_zone_contents_new(apex_node,
 									0, 1, 0);
-		if (knot_zone_contents_shallow_copy(zone, NULL) != DNSLIB_EBADARG) {
+		if (knot_zone_contents_shallow_copy(zone, NULL) != KNOT_EBADARG) {
 			diag("Calling zone_shallow_copy with NULL destination "
-			     "zone argument did not return DNSLIB_EBADARG!");
+			     "zone argument did not return KNOT_EBADARG!");
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
-		if (knot_zone_contents_shallow_copy(NULL, &zone) != DNSLIB_EBADARG) {
+		if (knot_zone_contents_shallow_copy(NULL, &zone) != KNOT_EBADARG) {
 			diag("Calling zone_shallow_copy with NULL source "
-			     "zone argument did not return DNSLIB_EBADARG!");
+			     "zone argument did not return KNOT_EBADARG!");
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
-		if (knot_zone_contents_shallow_copy(zone, &zone) != DNSLIB_EBADARG) {
+		if (knot_zone_contents_shallow_copy(zone, &zone) != KNOT_EBADARG) {
 			diag("Calling zone_shallow_copy with identical source "
-			 "and destination zone did not return DNSLIB_EBADARG!");
+			 "and destination zone did not return KNOT_EBADARG!");
 			errors++;
 		}
 		lived = 1;
@@ -554,7 +554,7 @@ static int test_zone_shallow_copy()
 			return 0;
 		}
 
-		if (knot_zone_contents_add_node(from, node, 1, 1, 1) != DNSLIB_EOK) {
+		if (knot_zone_contents_add_node(from, node, 1, 1, 1) != KNOT_EOK) {
 			diag("zone: Could not add node. %s",
 			     knot_dname_to_str(node->owner));
 //			return 0;
@@ -564,7 +564,7 @@ static int test_zone_shallow_copy()
 	/* Make a copy of zone */
 	knot_zone_contents_t *to = NULL;
 	int ret = 0;
-	if ((ret = knot_zone_contents_shallow_copy(from, &to) != DNSLIB_EOK)) {
+	if ((ret = knot_zone_contents_shallow_copy(from, &to) != KNOT_EOK)) {
 		diag("Could not copy zone! %s", knot_strerror2(ret));
 		return 0;
 	}
@@ -751,14 +751,14 @@ static int test_zone_shallow_copy()
 //	return (*zone == NULL);
 //}
 
-static const int DNSLIB_ZONE_TEST_COUNT = 10;
+static const int KNOT_ZONE_TEST_COUNT = 10;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
 static int knot_zone_tests_count(int argc, char *argv[])
 {
-	return DNSLIB_ZONE_TEST_COUNT;
+	return KNOT_ZONE_TEST_COUNT;
 }
 
 /*! Run all scheduled tests for given parameters.

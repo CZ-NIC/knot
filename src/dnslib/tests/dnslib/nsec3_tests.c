@@ -44,11 +44,11 @@ static int test_nsec3_params_from_wire()
 	knot_rrset_t *rrset =
 		knot_rrset_new(knot_dname_new_from_str("cz.",
 		                 strlen("cz."), NULL),
-	                         DNSLIB_RRTYPE_NSEC3PARAM,
-	                         DNSLIB_CLASS_IN,
+	                         KNOT_RRTYPE_NSEC3PARAM,
+	                         KNOT_CLASS_IN,
 	                         3600);
 	assert(rrset);
-	assert(knot_rrset_add_rdata(rrset, rdata) == DNSLIB_EOK);
+	assert(knot_rrset_add_rdata(rrset, rdata) == KNOT_EOK);
 
 	knot_nsec3_params_t nsec3_tests_params;
 	UNUSED(nsec3_tests_params);
@@ -57,21 +57,21 @@ static int test_nsec3_params_from_wire()
 	int lived = 0;
 	lives_ok({
 		if (knot_nsec3_params_from_wire(NULL, NULL) !=
-		    DNSLIB_EBADARG) {
+		    KNOT_EBADARG) {
 			errors++;
 		}
 		lived = 1;
 
 		lived = 0;
 		if (knot_nsec3_params_from_wire(&nsec3_test_params, NULL) !=
-		    DNSLIB_EBADARG) {
+		    KNOT_EBADARG) {
 			errors++;
 		}
 		lived = 1;
 
 		lived = 0;
 		if (knot_nsec3_params_from_wire(NULL, rrset) !=
-		    DNSLIB_EBADARG) {
+		    KNOT_EBADARG) {
 			errors++;
 		}
 		lived = 1;
@@ -80,7 +80,7 @@ static int test_nsec3_params_from_wire()
 	errors += lived != 1;
 
 	if (knot_nsec3_params_from_wire(&nsec3_test_params,
-rrset) != DNSLIB_EOK) {
+rrset) != KNOT_EOK) {
 		diag("Could not convert nsec3 params to wire!");
 		return 0;
 	}
@@ -123,14 +123,14 @@ static int test_nsec3_sha1()
 
 	lives_ok({
 		if (knot_nsec3_sha1(NULL, NULL, 1, NULL, NULL) !=
-	            DNSLIB_EBADARG) {
+	            KNOT_EBADARG) {
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
 		if (knot_nsec3_sha1(&nsec3_test_params,
 	                              NULL, 1, NULL, NULL) !=
-	            DNSLIB_EBADARG) {
+	            KNOT_EBADARG) {
 			errors++;
 		}
 		uint8_t data[20];
@@ -138,7 +138,7 @@ static int test_nsec3_sha1()
 		lived = 0;
 		if (knot_nsec3_sha1(&nsec3_test_params,
 	                              data, 20, NULL, NULL) !=
-	            DNSLIB_EBADARG) {
+	            KNOT_EBADARG) {
 			errors++;
 		}
 		uint8_t *digest = NULL;
@@ -146,7 +146,7 @@ static int test_nsec3_sha1()
 		lived = 0;
 		if (knot_nsec3_sha1(&nsec3_test_params,
 	                              data, 20, &digest, NULL) !=
-	            DNSLIB_EBADARG) {
+	            KNOT_EBADARG) {
 			errors++;
 		}
 		size_t size = 0;
@@ -154,13 +154,13 @@ static int test_nsec3_sha1()
 		lived = 0;
 		if (knot_nsec3_sha1(&nsec3_test_params,
 	                              data, 20, &digest, &size) !=
-	            DNSLIB_EBADARG) {
+	            KNOT_EBADARG) {
 			errors++;
 		}
 		lived = 1;
 	}, "NSEC3: nsec3 sha1 NULL tests");
 	if (errors) {
-		diag("Does not return DNSLIB_EBADARG after "
+		diag("Does not return KNOT_EBADARG after "
 		     "execution with wrong arguments!");
 	}
 
@@ -171,7 +171,7 @@ static int test_nsec3_sha1()
 	if (knot_nsec3_sha1(&nsec3_test_params,
 	                      (uint8_t *)"\2ns\3nic\2cz",
 	                      strlen("\2ns\3nic\2cz"), &digest,
-	                      &digest_size) != DNSLIB_EOK) {
+	                      &digest_size) != KNOT_EOK) {
 		diag("Could not hash name!");
 		return 0;
 	}
@@ -215,14 +215,14 @@ static int test_nsec3_sha1()
 	return (errors == 0);
 }
 
-static const int DNSLIB_NSEC3_TESTS_COUNT = 2;
+static const int KNOT_NSEC3_TESTS_COUNT = 2;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
 static int knot_nsec3_tests_count(int argc, char *argv[])
 {
-	return DNSLIB_NSEC3_TESTS_COUNT;
+	return KNOT_NSEC3_TESTS_COUNT;
 }
 
 /*! Run all scheduled tests for given parameters.

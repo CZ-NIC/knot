@@ -11,8 +11,8 @@
  * @{
  */
 
-#ifndef _KNOT_ZCOMPILE_ERROR_H_
-#define _KNOT_ZCOMPILE_ERROR_H_
+#ifndef _KNOTDZCOMPILE_ERROR_H_
+#define _KNOTDZCOMPILE_ERROR_H_
 
 #include "common/errors.h"
 
@@ -25,51 +25,51 @@
 enum knot_zcompile_error {
 
 	/* Directly mapped error codes. */
-	KNOT_ZCOMPILE_EOK = 0,
-	KNOT_ZCOMPILE_ENOMEM = -ENOMEM, /*!< \brief Out of memory. */
-	KNOT_ZCOMPILE_EINVAL = -EINVAL, /*!< \brief Invalid parameter passed. */
+	KNOTDZCOMPILE_EOK = 0,
+	KNOTDZCOMPILE_ENOMEM = -ENOMEM, /*!< \brief Out of memory. */
+	KNOTDZCOMPILE_EINVAL = -EINVAL, /*!< \brief Invalid parameter passed. */
 	/*!
 	 * \brief Parameter not supported.
 	 */
-	KNOT_ZCOMPILE_ENOTSUP = -ENOTSUP,
-	KNOT_ZCOMPILE_EBUSY = -EBUSY, /*!< \brief Requested resource is busy. */
+	KNOTDZCOMPILE_ENOTSUP = -ENOTSUP,
+	KNOTDZCOMPILE_EBUSY = -EBUSY, /*!< \brief Requested resource is busy. */
 	/*!
 	 * \brief OS lacked necessary resources.
 	 */
-	KNOT_ZCOMPILE_EAGAIN = -EAGAIN,
-	KNOT_ZCOMPILE_EACCES = -EACCES, /*!< \brief Permission is denied. */
+	KNOTDZCOMPILE_EAGAIN = -EAGAIN,
+	KNOTDZCOMPILE_EACCES = -EACCES, /*!< \brief Permission is denied. */
 	/*!
 	 * \brief Connection is refused.
 	 */
-	KNOT_ZCOMPILE_ECONNREFUSED = -ECONNREFUSED,
-	KNOT_ZCOMPILE_EISCONN = -EISCONN, /*!< \brief Already connected. */
+	KNOTDZCOMPILE_ECONNREFUSED = -ECONNREFUSED,
+	KNOTDZCOMPILE_EISCONN = -EISCONN, /*!< \brief Already connected. */
 	/*!
 	 * \brief Address already in use.
 	 */
-	KNOT_ZCOMPILE_EADDRINUSE = -EADDRINUSE,
-	KNOT_ZCOMPILE_ENOENT = -ENOENT, /*!< \brief Resource not found. */
-	KNOT_ZCOMPILE_ERANGE = -ERANGE, /*!< \brief Value is out of range. */
+	KNOTDZCOMPILE_EADDRINUSE = -EADDRINUSE,
+	KNOTDZCOMPILE_ENOENT = -ENOENT, /*!< \brief Resource not found. */
+	KNOTDZCOMPILE_ERANGE = -ERANGE, /*!< \brief Value is out of range. */
 
 	/* Custom error codes. */
-	KNOT_ZCOMPILE_ERROR = -16384, /*!< \brief Generic error. */
-	KNOT_ZCOMPILE_ESYNT, /*!< \brief Syntax error. */
-	KNOT_ZCOMPILE_EBADNODE, /*!< \brief Node error. */
-	KNOT_ZCOMPILE_EBRDATA, /*!< \brief RDATA error. */
-	KNOT_ZCOMPILE_EBADSOA, /*!< \brief SOA owner error. */
-	KNOT_ZCOMPILE_ESOA, /*!< \brief Multiple SOA records. */
+	KNOTDZCOMPILE_ERROR = -16384, /*!< \brief Generic error. */
+	KNOTDZCOMPILE_ESYNT, /*!< \brief Syntax error. */
+	KNOTDZCOMPILE_EBADNODE, /*!< \brief Node error. */
+	KNOTDZCOMPILE_EBRDATA, /*!< \brief RDATA error. */
+	KNOTDZCOMPILE_EBADSOA, /*!< \brief SOA owner error. */
+	KNOTDZCOMPILE_ESOA, /*!< \brief Multiple SOA records. */
 
-	KNOT_ZCOMPILE_EZONEINVAL, /*!< \brief Invalid zone file. */
-	KNOT_ZCOMPILE_EPARSEFAIL, /*!< \brief Parser fail. */
-	KNOT_ZCOMPILE_ENOIPV6, /*! \brief No IPv6 support. */
+	KNOTDZCOMPILE_EZONEINVAL, /*!< \brief Invalid zone file. */
+	KNOTDZCOMPILE_EPARSEFAIL, /*!< \brief Parser fail. */
+	KNOTDZCOMPILE_ENOIPV6, /*! \brief No IPv6 support. */
 
-	KNOT_ZCOMPILE_ERROR_COUNT = 22
+	KNOTDZCOMPILE_ERROR_COUNT = 22
 };
 
 typedef enum knot_zcompile_error knot_zcompile_error_t;
 
 /*! \brief Table linking error messages to error codes. */
-extern const error_table_t knot_zcompile_error_msgs[KNOT_ZCOMPILE_ERROR_COUNT];
+extern const error_table_t knot_zcompile_error_msgs[KNOTDZCOMPILE_ERROR_COUNT];
 
-#endif /* _KNOT_ZCOMPILE_ERROR_H_ */
+#endif /* _KNOTDZCOMPILE_ERROR_H_ */
 
 /*! @} */

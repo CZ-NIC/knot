@@ -24,8 +24,8 @@
  * @{
  */
 
-#ifndef _KNOT_UNIVERSAL_SYSTEM_H_
-#define _KNOT_UNIVERSAL_SYSTEM_H_
+#ifndef _KNOTDUNIVERSAL_SYSTEM_H_
+#define _KNOTDUNIVERSAL_SYSTEM_H_
 
 #include <stdint.h>
 #include "dnslib/dnslib-common.h"
@@ -89,6 +89,6 @@ uint32_t us_hash(const us_system_t *system, uint32_t value, uint table_exp,
 
 /*----------------------------------------------------------------------------*/
 
-#endif /* _KNOT_UNIVERSAL_SYSTEM_H_ */
+#endif /* _KNOTDUNIVERSAL_SYSTEM_H_ */
 
 /*! @} */

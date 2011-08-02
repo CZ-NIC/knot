@@ -47,14 +47,14 @@ static int test_response_init_from_query(list query_list)
 	node *n = NULL;
 	WALK_LIST(n, query_list) {
 		knot_packet_t *response =
-			knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+			knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 		assert(response);
 		knot_packet_t *query =
 			packet_from_test_response((test_response_t *)n);
 		assert(query);
 		knot_packet_set_max_size(response, 1024 * 10);
 		if (knot_response2_init_from_query(response,
-		                                     query) != DNSLIB_EOK) {
+		                                     query) != KNOT_EOK) {
 			diag("Could not init response from query!");
 			errors++;
 		}
@@ -70,13 +70,13 @@ static int test_response_init_from_query(list query_list)
 //	node *n = NULL;
 //	WALK_LIST(n, query_list) {
 //		knot_packet_t *response =
-//			knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+//			knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 //		assert(response);
 //		knot_opt_rr_t *opt =
 //			opt_from_test_opt((test_opt_t *)n);
 //		assert(query);
 //		if (knot_response2_add_opt(response,
-//		                             opt, 1)!= DNSLIB_EOK) {
+//		                             opt, 1)!= KNOT_EOK) {
 //			diag("Could not add OPT RR to response!");
 //			errors++;
 //		}
@@ -98,18 +98,18 @@ static int test_response_add_generic(int (*func)(knot_packet_t *,
 	node *n = NULL;
 	WALK_LIST(n, rrset_list) {
 		knot_packet_t *response =
-			knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+			knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 		assert(response);
 		knot_packet_set_max_size(response,
-		                           DNSLIB_PACKET_PREALLOC_RESPONSE * 100);
-		assert(knot_response2_init(response) == DNSLIB_EOK);
+		                           KNOT_PACKET_PREALLOC_RESPONSE * 100);
+		assert(knot_response2_init(response) == KNOT_EOK);
 
 		knot_rrset_t *rrset =
 			rrset_from_test_rrset((test_rrset_t *)n);
 		assert(rrset);
 
 		int ret = 0;
-		if ((ret = func(response, rrset, 0, 1, 0)) != DNSLIB_EOK) {
+		if ((ret = func(response, rrset, 0, 1, 0)) != KNOT_EOK) {
 			diag("Could not add RRSet to response! Returned: %d",
 			     ret);
 			diag("(owner: %s type %s)",
@@ -138,11 +138,11 @@ static void test_response_add_rrset(list rrset_list)
 	   "response: add additional rrset");
 }
 
-static const uint DNSLIB_RESPONSE2_TEST_COUNT = 4;
+static const uint KNOT_RESPONSE2_TEST_COUNT = 4;
 
 static int response2_tests_count(int argc, char *argv[])
 {
-	return DNSLIB_RESPONSE2_TEST_COUNT;
+	return KNOT_RESPONSE2_TEST_COUNT;
 }
 
 static int response2_tests_run(int argc, char *argv[])

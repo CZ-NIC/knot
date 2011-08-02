@@ -11,8 +11,8 @@
  * @{
  */
 
-#ifndef _KNOT_DNSLIB_ZONE_TREE_H_
-#define _KNOT_DNSLIB_ZONE_TREE_H_
+#ifndef _KNOTDKNOT_ZONE_TREE_H_
+#define _KNOTDKNOT_ZONE_TREE_H_
 
 #include "common/tree.h"
 #include "dnslib/node.h"
@@ -40,8 +40,8 @@ typedef TREE_HEAD(knot_zone_tree, knot_zone_tree_node) knot_zone_tree_t;
  *
  * \param tree Zone tree structure to initialize.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
  */
 int knot_zone_tree_init(knot_zone_tree_t *tree);
 
@@ -51,9 +51,9 @@ int knot_zone_tree_init(knot_zone_tree_t *tree);
  * \param tree Zone tree to insert the node into.
  * \param node Node to insert.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
+ * \retval KNOT_ENOMEM
  */
 int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node);
 
@@ -63,9 +63,9 @@ int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node);
  * \param tree Zone tree to search in.
  * \param owner Owner of the node to find.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
+ * \retval KNOT_ENOMEM
  */
 int knot_zone_tree_find(knot_zone_tree_t *tree,
                           const knot_dname_t *owner,
@@ -80,9 +80,9 @@ int knot_zone_tree_find(knot_zone_tree_t *tree,
  * \param tree Zone tree to search in.
  * \param owner Owner of the node to find.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
+ * \retval KNOT_ENOMEM
  */
 int knot_zone_tree_get(knot_zone_tree_t *tree,
                          const knot_dname_t *owner,
@@ -104,8 +104,8 @@ int knot_zone_tree_get(knot_zone_tree_t *tree,
  *             \a previous is set properly.
  * \retval 0 if the domain name was not found. \a found may hold any (or none)
  *           node. \a previous is set properly.
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EBADARG
+ * \retval KNOT_ENOMEM
  */
 int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
                                         const knot_dname_t *owner,
@@ -131,8 +131,8 @@ int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
  *             \a previous is set properly.
  * \retval 0 if the domain name was not found. \a found may hold any (or none)
  *           node. \a previous is set properly.
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EBADARG
+ * \retval KNOT_ENOMEM
  */
 int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
                                        const knot_dname_t *owner,
@@ -166,8 +166,8 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
  */
 int knot_zone_tree_forward_apply_inorder(knot_zone_tree_t *tree,
                                            void (*function)(
@@ -188,8 +188,8 @@ int knot_zone_tree_forward_apply_inorder(knot_zone_tree_t *tree,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
  */
 int knot_zone_tree_forward_apply_postorder(knot_zone_tree_t *tree,
                                              void (*function)(
@@ -211,8 +211,8 @@ int knot_zone_tree_forward_apply_postorder(knot_zone_tree_t *tree,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
  */
 int knot_zone_tree_reverse_apply_inorder(knot_zone_tree_t *tree,
                                            void (*function)(
@@ -234,8 +234,8 @@ int knot_zone_tree_reverse_apply_inorder(knot_zone_tree_t *tree,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
  */
 int knot_zone_tree_reverse_apply_postorder(knot_zone_tree_t *tree,
                                              void (*function)(
@@ -253,8 +253,8 @@ int knot_zone_tree_reverse_apply_postorder(knot_zone_tree_t *tree,
  * \param from Original zone tree.
  * \param to Zone tree to copy the original one into.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EOK
+ * \retval KNOT_ENOMEM
  */
 int knot_zone_tree_shallow_copy(knot_zone_tree_t *from, 
                                   knot_zone_tree_t *to);
@@ -277,7 +277,7 @@ void knot_zone_tree_deep_free(knot_zone_tree_t **tree, int free_owners);
 
 /*----------------------------------------------------------------------------*/
 
-#endif // _KNOT_DNSLIB_ZONE_TREE_H_
+#endif // _KNOTDKNOT_ZONE_TREE_H_
 
 /*! @} */
 

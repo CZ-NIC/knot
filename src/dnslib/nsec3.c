@@ -19,7 +19,7 @@
 int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
                                   const knot_rrset_t *nsec3param)
 {
-	assert(knot_rrset_type(nsec3param) == DNSLIB_RRTYPE_NSEC3PARAM);
+	assert(knot_rrset_type(nsec3param) == KNOT_RRTYPE_NSEC3PARAM);
 	const knot_rdata_t *rdata = knot_rrset_rdata(nsec3param);
 
 	assert(rdata->count == 4);
@@ -58,7 +58,7 @@ int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
 		debug_knot_nsec3("none\n");
 	}
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 static uint8_t *knot_nsec3_to_lowercase(const uint8_t *data, size_t size)
@@ -74,13 +74,13 @@ static uint8_t *knot_nsec3_to_lowercase(const uint8_t *data, size_t size)
 }
 
 /*----------------------------------------------------------------------------*/
-#if DNSLIB_NSEC3_SHA_USE_EVP
+#if KNOT_NSEC3_SHA_USE_EVP
 int knot_nsec3_sha1(const knot_nsec3_params_t *params,
                       const uint8_t *data, size_t size, uint8_t **digest,
                       size_t *digest_size)
 {
 	if (digest == NULL || digest_size == NULL || data == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	uint8_t *salt = params->salt;
@@ -107,14 +107,14 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 
 	int res = 0;
 
-#ifdef DNSLIB_NSEC3_DEBUG
+#ifdef KNOT_NSEC3_DEBUG
 	unsigned long long total_time = 0;
 	unsigned long calls = 0;
 	long time = 0;
 #endif
 
 	for (int i = 0; i <= iterations; ++i) {
-#ifdef DNSLIB_NSEC3_DEBUG
+#ifdef KNOT_NSEC3_DEBUG
 		perf_begin();
 #endif
 
@@ -130,7 +130,7 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 		in = *digest;
 		in_size = *digest_size;
 
-#ifdef DNSLIB_NSEC3_DEBUG
+#ifdef KNOT_NSEC3_DEBUG
 		perf_end(time);
 		total_time += time;
 		++calls;
@@ -161,7 +161,7 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
                       size_t *digest_size)
 {
 	if (digest == NULL || digest_size == NULL || data == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	uint8_t *salt = params->salt;
@@ -186,13 +186,13 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 	*digest = (uint8_t *)malloc(SHA_DIGEST_LENGTH);
 	if (*digest == NULL) {
 		ERR_ALLOC_FAILED;
-		return DNSLIB_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	uint8_t *data_low = knot_nsec3_to_lowercase(data, size);
 	if (data_low == NULL) {
 		free(*digest);
-		return DNSLIB_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	const uint8_t *in = data_low;
@@ -200,7 +200,7 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 
 	int res = 0;
 
-#ifdef DNSLIB_NSEC3_DEBUG
+#ifdef KNOT_NSEC3_DEBUG
 	long time = 0;
 	unsigned long long total_time = 0;
 	unsigned long calls = 0;
@@ -208,7 +208,7 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 
 	// other iterations
 	for (int i = 0; i <= iterations; ++i) {
-#ifdef DNSLIB_NSEC3_DEBUG
+#ifdef KNOT_NSEC3_DEBUG
 		perf_begin();
 #endif
 
@@ -225,7 +225,7 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 		in = *digest;
 		in_size = SHA_DIGEST_LENGTH;
 
-#ifdef DNSLIB_NSEC3_DEBUG
+#ifdef KNOT_NSEC3_DEBUG
 		perf_end(time);
 		total_time += time;
 		++calls;
@@ -235,7 +235,7 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 			debug_knot_nsec3("Error calculating SHA-1 hash.\n");
 			free(data_low);
 			free(*digest);
-			return DNSLIB_ECRYPTO;
+			return KNOT_ECRYPTO;
 		}
 	}
 
@@ -249,7 +249,7 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 	debug_knot_nsec3("\n");
 
 	free(data_low);
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 #endif
 

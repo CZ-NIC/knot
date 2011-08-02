@@ -44,9 +44,9 @@ static int compare_rr_rdata_silent(knot_rdata_t *rdata, ldns_rr *rr,
 		knot_rrtype_descriptor_by_type(type);
 	for (int i = 0; i < rdata->count; i++) {
 		/* TODO check for ldns "descriptors" as well */
-		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
-		    desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME ||
-		    desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME) {
+		if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
+		    desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME ||
+		    desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME) {
 			assert(ldns_rr_rdf(rr, i));
 			if (rdata->items[i].dname->size !=
 			    ldns_rdf_size(ldns_rr_rdf(rr, i))) {
@@ -243,7 +243,7 @@ int compare_zones(knot_zone_t *zone, ldns_rr_list *ldns_list, char verbose)
 
 		if (tmp_rrset == NULL &&
 		    (uint)(ldns_rr_get_type(ldns_rr_list_rr(ldns_rrset, 0))) !=
-		    (uint)DNSLIB_RRTYPE_RRSIG) {
+		    (uint)KNOT_RRTYPE_RRSIG) {
 			diag("Could not find rrset");
 			if (!verbose) {
 				return 1;
@@ -253,7 +253,7 @@ int compare_zones(knot_zone_t *zone, ldns_rr_list *ldns_list, char verbose)
 			return 1;
 		} else if ((uint)(ldns_rr_get_type(ldns_rr_list_rr(ldns_rrset,
 		                                                  0))) ==
-			   (uint)DNSLIB_RRTYPE_RRSIG) {
+			   (uint)KNOT_RRTYPE_RRSIG) {
 			knot_rrset_t *rrsigs = NULL;
 			/* read type covered from ldns rrset */
 			for (int i = 0; i < ldns_rrset->_rr_count; i++) {

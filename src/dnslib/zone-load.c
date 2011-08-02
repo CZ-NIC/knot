@@ -122,9 +122,9 @@ static void load_rdata_purge(knot_rdata_t *rdata,
 	 */
 	unsigned i = 0;
 	switch(type) {
-	case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
-	case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
-	case DNSLIB_RDATA_WF_LITERAL_DNAME:
+	case KNOT_RDATA_WF_COMPRESSED_DNAME:
+	case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
+	case KNOT_RDATA_WF_LITERAL_DNAME:
 		for (i = 0; i < count; ++i) {
 			knot_dname_retain(items[i].dname);
 		}
@@ -232,9 +232,9 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 	debug_knot_zload("current type: %s\n", knot_rrtype_to_string(type));
 
 	for (int i = 0; i < desc->length; i++) {
-		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
-		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
-		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
+		if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
+		desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
+		desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME )	{
 
 			/* TODO maybe this does not need to be stored this big*/
 
@@ -340,7 +340,7 @@ static knot_rrset_t *knot_load_rrsig(FILE *f, knot_dname_t **id_array,
 		return NULL;
 	}
 
-	if (rrset_type != DNSLIB_RRTYPE_RRSIG) {
+	if (rrset_type != KNOT_RRTYPE_RRSIG) {
 		fprintf(stderr, "!! Error: rrsig has wrong type\n");
 		return NULL;
 	}
@@ -366,7 +366,7 @@ static knot_rrset_t *knot_load_rrsig(FILE *f, knot_dname_t **id_array,
 	debug_knot_zload("loading %d rdata entries\n", rdata_count);
 
 	for (int i = 0; i < rdata_count; i++) {
-		tmp_rdata = knot_load_rdata(DNSLIB_RRTYPE_RRSIG, f,
+		tmp_rdata = knot_load_rdata(KNOT_RRTYPE_RRSIG, f,
 					      id_array, use_ids);
 		if (tmp_rdata) {
 			knot_rrset_add_rdata(rrsig, tmp_rdata);
@@ -711,7 +711,7 @@ zloader_t *knot_zload_open(const char *filename)
 		                   "file '%s'\n",
 		                   filename);
 		fclose(f);
-		errno = DNSLIB_ECRC;
+		errno = KNOT_ECRC;
 		return NULL;
 	}
 
@@ -807,7 +807,7 @@ static void cleanup_id_array(knot_dname_t **id_array,
 //			return NULL;
 //		}
 //		if (knot_dname_table_add_dname(dname_table,
-//		                                 loaded_dname) != DNSLIB_EOK) {
+//		                                 loaded_dname) != KNOT_EOK) {
 
 //		}
 //	}
@@ -833,7 +833,7 @@ static knot_dname_table_t *create_dname_table_from_array(
 	for (uint i = 1; i < max_id; i++) {
 		assert(array[i]);
 		if (knot_dname_table_add_dname(ret,
-						 array[i]) != DNSLIB_EOK) {
+						 array[i]) != KNOT_EOK) {
 			debug_knot_zload("Could not add: %s\n",
 			                   knot_dname_to_str(array[i]));
 			knot_dname_table_deep_free(&ret);
@@ -1125,7 +1125,7 @@ int knot_zload_rrset_deserialize(knot_rrset_t **rrset,
                                    uint8_t *stream, size_t *size)
 {
 	if (stream == NULL || size == 0 || *rrset != NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	fread_wrapper = read_from_stream;
@@ -1139,7 +1139,7 @@ int knot_zload_rrset_deserialize(knot_rrset_t **rrset,
 		knot_zload_stream = NULL;
 		knot_zload_stream_remaining = 0;
 		knot_zload_stream_size = 0;
-		return DNSLIB_EMALF;
+		return KNOT_EMALF;
 	}
 
 //	printf("knot_zload_stream_size: %d, knot_zload_stream_remaning: %d\n",
@@ -1152,6 +1152,6 @@ int knot_zload_rrset_deserialize(knot_rrset_t **rrset,
 	knot_zload_stream_remaining = 0;
 	knot_zload_stream_size = 0;
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 

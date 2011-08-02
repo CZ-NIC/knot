@@ -12,8 +12,8 @@
  * @{
  */
 
-#ifndef _KNOT_DNSLIB_RESPONSE_H_
-#define _KNOT_DNSLIB_RESPONSE_H_
+#ifndef _KNOTDKNOT_RESPONSE_H_
+#define _KNOTDKNOT_RESPONSE_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -164,9 +164,9 @@ void knot_response_clear(knot_response_t *resp, int clear_question);
  * \param resp Response to set the OPT RR to.
  * \param opt_rr OPT RR to set.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
+ * \retval KNOT_ENOMEM
  *
  * \todo Needs test.
  */
@@ -190,9 +190,9 @@ int knot_response_add_opt(knot_response_t *resp,
  * \param resp Response to set the maximum size of.
  * \param max_size Maximum size of the response.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
+ * \retval KNOT_ENOMEM
  *
  * \todo Needs test.
  */
@@ -209,10 +209,10 @@ int knot_response_set_max_size(knot_response_t *resp, int max_size);
  * \param query_wire Query in wire format.
  * \param query_size Size of the query in bytes.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EMALF
- * \retval DNSLIB_EFEWDATA
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EOK
+ * \retval KNOT_EMALF
+ * \retval KNOT_EFEWDATA
+ * \retval KNOT_ENOMEM
  */
 int knot_response_parse_query(knot_response_t *response,
                                 const uint8_t *query_wire, size_t query_size);
@@ -265,9 +265,9 @@ uint16_t knot_response_qclass(const knot_response_t *response);
  * \param compr_cs Set to <> 0 if dname compression should use case sensitive
  *                 comparation. Set to 0 otherwise.
  *
- * \retval DNSLIB_EOK if successful, or the RRSet was already in the answer.
- * \retval DNSLIB_ENOMEM
- * \retval DNSLIB_ESPACE
+ * \retval KNOT_EOK if successful, or the RRSet was already in the answer.
+ * \retval KNOT_ENOMEM
+ * \retval KNOT_ESPACE
  */
 int knot_response_add_rrset_answer(knot_response_t *response,
                                      const knot_rrset_t *rrset, int tc,
@@ -285,9 +285,9 @@ int knot_response_add_rrset_answer(knot_response_t *response,
  * \param compr_cs Set to <> 0 if dname compression should use case sensitive
  *                 comparation. Set to 0 otherwise.
  *
- * \retval DNSLIB_EOK if successful, or the RRSet was already in the answer.
- * \retval DNSLIB_ENOMEM
- * \retval DNSLIB_ESPACE
+ * \retval KNOT_EOK if successful, or the RRSet was already in the answer.
+ * \retval KNOT_ENOMEM
+ * \retval KNOT_ESPACE
  */
 int knot_response_add_rrset_authority(knot_response_t *response,
                                         const knot_rrset_t *rrset, int tc,
@@ -305,9 +305,9 @@ int knot_response_add_rrset_authority(knot_response_t *response,
  * \param compr_cs Set to <> 0 if dname compression should use case sensitive
  *                 comparation. Set to 0 otherwise.
  *
- * \retval DNSLIB_EOK if successful, or the RRSet was already in the answer.
- * \retval DNSLIB_ENOMEM
- * \retval DNSLIB_ESPACE
+ * \retval KNOT_EOK if successful, or the RRSet was already in the answer.
+ * \retval KNOT_ENOMEM
+ * \retval KNOT_ESPACE
  */
 int knot_response_add_rrset_additional(knot_response_t *response,
                                          const knot_rrset_t *rrset, int tc,
@@ -343,8 +343,8 @@ void knot_response_set_tc(knot_response_t *response);
  * \param response Response to which the temporary RRSet should be added.
  * \param tmp_rrset Temporary RRSet to be stored in the response.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EOK
+ * \retval KNOT_ENOMEM
  */
 int knot_response_add_tmp_rrset(knot_response_t *response,
                                   knot_rrset_t *tmp_rrset);
@@ -439,8 +439,8 @@ int knot_response_nsid_requested(const knot_response_t *response);
  * \param data NSID data.
  * \param length Size of NSID data in bytes.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EOK
+ * \retval KNOT_ENOMEM
  */
 int knot_response_add_nsid(knot_response_t *response, const uint8_t *data,
                              uint16_t length);
@@ -454,8 +454,8 @@ int knot_response_add_nsid(knot_response_t *response, const uint8_t *data,
  *                  be set to NULL (to avoid leaks).
  * \param resp_size The size of the response in wire format will be stored here.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
  */
 int knot_response_to_wire(knot_response_t *response,
                             uint8_t **resp_wire, size_t *resp_size);
@@ -470,12 +470,12 @@ void knot_response_free(knot_response_t **response);
 /*!
  * \brief Dumps the whole response in human-readable form.
  *
- * \note This function is empty unless DNSLIB_RESPONSE_DEBUG is defined.
+ * \note This function is empty unless KNOT_RESPONSE_DEBUG is defined.
  *
  * \param resp Response to dump.
  */
 void knot_response_dump(const knot_response_t *resp);
 
-#endif /* _KNOT_DNSLIB_RESPONSE_H_ */
+#endif /* _KNOTDKNOT_RESPONSE_H_ */
 
 /*! @} */

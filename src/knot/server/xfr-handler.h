@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_XFRHANDLER_H_
-#define _KNOT_XFRHANDLER_H_
+#ifndef _KNOTDXFRHANDLER_H_
+#define _KNOTDXFRHANDLER_H_
 
 #include <ev.h>
 
@@ -52,9 +52,9 @@ xfrhandler_t *xfr_create(size_t thrcount, knot_nameserver_t *ns);
  *
  * \param handler XFR handler.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on NULL handler.
- * \retval KNOT_ERROR on error.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on NULL handler.
+ * \retval KNOTDERROR on error.
  */
 int xfr_free(xfrhandler_t *handler);
 
@@ -63,8 +63,8 @@ int xfr_free(xfrhandler_t *handler);
  *
  * \param handler XFR handler.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_ERROR on error.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDERROR on error.
  */
 static inline int xfr_start(xfrhandler_t *handler) {
 	return dt_start(handler->unit);
@@ -75,8 +75,8 @@ static inline int xfr_start(xfrhandler_t *handler) {
  *
  * \param handler XFR handler.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_ERROR on error.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDERROR on error.
  */
 int xfr_stop(xfrhandler_t *handler);
 
@@ -85,8 +85,8 @@ int xfr_stop(xfrhandler_t *handler);
  *
  * \param handler XFR handler.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_ERROR on error.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDERROR on error.
  */
 static inline int xfr_join(xfrhandler_t *handler) {
 	return dt_join(handler->unit);
@@ -98,9 +98,9 @@ static inline int xfr_join(xfrhandler_t *handler) {
  * \param handler XFR handler instance.
  * \param req XFR request.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on NULL handler or request.
- * \retval KNOT_ERROR on error.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on NULL handler or request.
+ * \retval KNOTDERROR on error.
  */
 int xfr_request(xfrhandler_t *handler, knot_ns_xfr_t *req);
 
@@ -112,8 +112,8 @@ int xfr_request(xfrhandler_t *handler, knot_ns_xfr_t *req);
  *
  * \param thread Associated thread from DThreads unit.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL invalid parameters.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL invalid parameters.
  */
 int xfr_master(dthread_t *thread);
 
@@ -124,11 +124,11 @@ int xfr_master(dthread_t *thread);
   *
   * \param thread Associated thread from DThreads unit.
   *
-  * \retval KNOT_EOK on success.
-  * \retval KNOT_EINVAL invalid parameters.
+  * \retval KNOTDEOK on success.
+  * \retval KNOTDEINVAL invalid parameters.
   */
 int xfr_client(dthread_t *thread);
 
-#endif // _KNOT_XFRHANDLER_H_
+#endif // _KNOTDXFRHANDLER_H_
 
 /*! @} */

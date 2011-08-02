@@ -319,14 +319,14 @@ static int test_node_add_rrset(list *rrset_list)
 //	return (errors == 0);
 //}
 
-static const int DNSLIB_NODE_TEST_COUNT = 2;
+static const int KNOT_NODE_TEST_COUNT = 2;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
 static int knot_node_tests_count(int argc, char *argv[])
 {
-	return DNSLIB_NODE_TEST_COUNT;
+	return KNOT_NODE_TEST_COUNT;
 }
 
 /*! Run all scheduled tests for given parameters.

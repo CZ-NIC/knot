@@ -15,8 +15,8 @@
  * @{
  */
 
-#ifndef _KNOT_SOCKET_H_
-#define _KNOT_SOCKET_H_
+#ifndef _KNOTDSOCKET_H_
+#define _KNOTDSOCKET_H_
 
 /* POSIX only. */
 #include <sys/socket.h>
@@ -34,10 +34,10 @@ typedef enum {
  * \param type   Socket type (SOCK_STREAM, SOCK_DGRAM, SOCK_RAW).
  *
  * \retval new socket filedescriptor on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ENOMEM out of memory error.
- * \retval KNOT_EACCES process does not have appropriate privileges.
- * \retval KNOT_ERROR unspecified error.
+ * \retval KNOTDEINVAL on invalid parameters.
+ * \retval KNOTDENOMEM out of memory error.
+ * \retval KNOTDEACCES process does not have appropriate privileges.
+ * \retval KNOTDERROR unspecified error.
  */
 int socket_create(int family, int type);
 
@@ -48,14 +48,14 @@ int socket_create(int family, int type);
  * \param addr   Requested address.
  * \param port   Requested port.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL invalid parameters.
- * \retval KNOT_EACCES process does not have appropriate privileges.
- * \retval KNOT_EAGAIN lack of resources, try again.
- * \retval KNOT_EADDRINUSE address already in use.
- * \retval KNOT_ECONNREFUSED connection refused.
- * \retval KNOT_EISCONN already connected.
- * \retval KNOT_ERROR unspecified error.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL invalid parameters.
+ * \retval KNOTDEACCES process does not have appropriate privileges.
+ * \retval KNOTDEAGAIN lack of resources, try again.
+ * \retval KNOTDEADDRINUSE address already in use.
+ * \retval KNOTDECONNREFUSED connection refused.
+ * \retval KNOTDEISCONN already connected.
+ * \retval KNOTDERROR unspecified error.
  */
 int socket_connect(int fd, const char *addr, unsigned short port);
 
@@ -67,13 +67,13 @@ int socket_connect(int fd, const char *addr, unsigned short port);
  * \param addr   Requested address.
  * \param port   Requested port.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL invalid parameters.
- * \retval KNOT_EACCES process does not have appropriate privileges.
- * \retval KNOT_EADDRINUSE address already in use.
- * \retval KNOT_ENOMEM out of memory error.
- * \retval KNOT_ENOIPV6 IPv6 support is not available.
- * \retval KNOT_ERROR unspecified error.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL invalid parameters.
+ * \retval KNOTDEACCES process does not have appropriate privileges.
+ * \retval KNOTDEADDRINUSE address already in use.
+ * \retval KNOTDENOMEM out of memory error.
+ * \retval KNOTDENOIPV6 IPv6 support is not available.
+ * \retval KNOTDERROR unspecified error.
  */
 int socket_bind(int fd, int family, const char *addr, unsigned short port);
 
@@ -83,9 +83,9 @@ int socket_bind(int fd, int family, const char *addr, unsigned short port);
  * \param fd           Socket filedescriptor.
  * \param backlog_size Requested TCP backlog size.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EADDRINUSE address already in use.
- * \retval KNOT_ERROR unspecified error.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEADDRINUSE address already in use.
+ * \retval KNOTDERROR unspecified error.
  */
 int socket_listen(int fd, int backlog_size);
 
@@ -94,12 +94,12 @@ int socket_listen(int fd, int backlog_size);
  *
  * \param fd Socket filedescriptor.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL invalid parameters.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL invalid parameters.
  */
 int socket_close(int fd);
 
 
-#endif // _KNOT_SOCKET_H_
+#endif // _KNOTDSOCKET_H_
 
 /*! @} */

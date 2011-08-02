@@ -14,11 +14,11 @@
 #define TEST_WITH_LDNS
 #endif
 
-#ifndef _KNOT_DNSLIB_COMMON_H_
-#define _KNOT_DNSLIB_COMMON_H_
+#ifndef _KNOTDKNOT_COMMON_H_
+#define _KNOTDKNOT_COMMON_H_
 
-#define DNSLIB_NAME "dnslib" // Project name
-#define DNSLIB_VER  0x000100  // 0xMMIIRR (MAJOR,MINOR,REVISION)
+#define KNOT_NAME "dnslib" // Project name
+#define KNOT_VER  0x000100  // 0xMMIIRR (MAJOR,MINOR,REVISION)
 
 #ifndef UINT_DEFINED
 typedef unsigned int uint; /*!< \brief Unsigned. */
@@ -61,7 +61,7 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 /*! \todo Refactor theese. We should have an allocator function handling this.*/
 #ifndef ERR_ALLOC_FAILED
 #define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d (%s ver.%x)\n", \
-				 __FILE__, __LINE__, DNSLIB_NAME, DNSLIB_VER)
+				 __FILE__, __LINE__, KNOT_NAME, KNOT_VER)
 #endif
 
 #ifndef CHECK_ALLOC_LOG
@@ -83,6 +83,6 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 	} while (0)
 #endif
 
-#endif /* _KNOT_DNSLIB_COMMON_H_ */
+#endif /* _KNOTDKNOT_COMMON_H_ */
 
 /*! @} */

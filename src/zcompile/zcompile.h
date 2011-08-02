@@ -12,8 +12,8 @@
  * @{
  */
 
-#ifndef _KNOT_ZONEPARSER_H_
-#define _KNOT_ZONEPARSER_H_
+#ifndef _KNOTDZONEPARSER_H_
+#define _KNOTDZONEPARSER_H_
 
 #include <stdio.h>
 
@@ -433,6 +433,6 @@ void zparser_free();
 int save_dnames_in_table(knot_dname_table_t *table,
                          knot_rrset_t *rrset);
 
-#endif /* _KNOT_ZONEPARSER_H_ */
+#endif /* _KNOTDZONEPARSER_H_ */
 
 /*! @} */

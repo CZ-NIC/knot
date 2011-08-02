@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_DNSLIB_PACKET_H_
-#define _KNOT_DNSLIB_PACKET_H_
+#ifndef _KNOTDKNOT_PACKET_H_
+#define _KNOTDKNOT_PACKET_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -66,9 +66,9 @@ struct knot_question {
 typedef struct knot_question knot_question_t;
 
 enum knot_packet_prealloc_type {
-	DNSLIB_PACKET_PREALLOC_NONE,
-	DNSLIB_PACKET_PREALLOC_QUERY,
-	DNSLIB_PACKET_PREALLOC_RESPONSE
+	KNOT_PACKET_PREALLOC_NONE,
+	KNOT_PACKET_PREALLOC_QUERY,
+	KNOT_PACKET_PREALLOC_RESPONSE
 };
 
 typedef enum knot_packet_prealloc_type knot_packet_prealloc_type_t;
@@ -248,7 +248,7 @@ knot_packet_t *knot_packet_new(knot_packet_prealloc_type_t prealloc);
  *                      packet. In such case the parsing will end after the
  *                      Question section. Set to 0 to parse the whole packet.
  *
- * \retval DNSLIB_EOK
+ * \retval KNOT_EOK
  */
 int knot_packet_parse_from_wire(knot_packet_t *packet,
                                   const uint8_t *wireformat, size_t size,
@@ -275,9 +275,9 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
  * \param packet Packet to set the maximum size of.
  * \param max_size Maximum size of the packet in bytes.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
+ * \retval KNOT_ENOMEM
  *
  * \todo Needs test.
  */
@@ -415,8 +415,8 @@ int knot_packet_contains(const knot_packet_t *packet,
  * \param response Response to which the temporary RRSet should be added.
  * \param tmp_rrset Temporary RRSet to be stored in the response.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EOK
+ * \retval KNOT_ENOMEM
  */
 int knot_packet_add_tmp_rrset(knot_packet_t *response,
                                 knot_rrset_t *tmp_rrset);
@@ -456,8 +456,8 @@ int knot_packet_edns_to_wire(knot_packet_t *packet);
  *             be set to NULL (to avoid leaks).
  * \param wire_size The size of the packet in wire format will be stored here.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
  */
 int knot_packet_to_wire(knot_packet_t *packet, uint8_t **wire,
                           size_t *wire_size);
@@ -472,12 +472,12 @@ void knot_packet_free(knot_packet_t **packet);
 /*!
  * \brief Dumps the whole packet in human-readable form.
  *
- * \note This function is empty unless DNSLIB_PACKET_DEBUG is defined.
+ * \note This function is empty unless KNOT_PACKET_DEBUG is defined.
  *
  * \param resp Packet to dump.
  */
 void knot_packet_dump(const knot_packet_t *packet);
 
-#endif /* _KNOT_DNSLIB_PACKET_H_ */
+#endif /* _KNOTDKNOT_PACKET_H_ */
 
 /*! @} */

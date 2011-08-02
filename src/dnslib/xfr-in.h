@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_XFR_IN_H_
-#define _KNOT_XFR_IN_H_
+#ifndef _KNOTDXFR_IN_H_
+#define _KNOTDXFR_IN_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -29,9 +29,9 @@
  * \param size In: available space in the buffer. Out: actual size of the
  *             message in bytes.
  *
- * \retval KNOT_EOK
- * \retval KNOT_ESPACE
- * \retval KNOT_ERROR
+ * \retval KNOTDEOK
+ * \retval KNOTDESPACE
+ * \retval KNOTDERROR
  */
 int xfrin_create_soa_query(const knot_zone_contents_t *zone, uint8_t *buffer,
                            size_t *size);
@@ -58,9 +58,9 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
  * \param size In: available space in the buffer. Out: actual size of the
  *             message in bytes.
  *
- * \retval KNOT_EOK
- * \retval KNOT_ESPACE
- * \retval KNOT_ERROR
+ * \retval KNOTDEOK
+ * \retval KNOTDESPACE
+ * \retval KNOTDERROR
  */
 int xfrin_create_axfr_query(const knot_zone_contents_t *zone, uint8_t *buffer,
                             size_t *size);
@@ -73,9 +73,9 @@ int xfrin_create_axfr_query(const knot_zone_contents_t *zone, uint8_t *buffer,
  * \param size In: available space in the buffer. Out: actual size of the
  *             message in bytes.
  *
- * \retval KNOT_EOK
- * \retval KNOT_ESPACE
- * \retval KNOT_ERROR
+ * \retval KNOTDEOK
+ * \retval KNOTDESPACE
+ * \retval KNOTDERROR
  */
 int xfrin_create_ixfr_query(const knot_zone_contents_t *zone, uint8_t *buffer,
                             size_t *size);
@@ -86,7 +86,7 @@ int xfrin_create_ixfr_query(const knot_zone_contents_t *zone, uint8_t *buffer,
  * \param nameserver Name server to update.
  * \param zone Zone build from transfer.
  *
- * \retval KNOT_ENOTSUP
+ * \retval KNOTDENOTSUP
  */
 int xfrin_zone_transferred(knot_nameserver_t *nameserver,
                            knot_zone_contents_t *zone);
@@ -101,7 +101,7 @@ int xfrin_zone_transferred(knot_nameserver_t *nameserver,
  *             first packet, \a *zone may be set to NULL, in which case a new
  *             zone structure is created).
  *
- * \retval KNOT_EOK
+ * \retval KNOTDEOK
  *
  * \todo Refactor!!!
  */
@@ -125,10 +125,10 @@ void xfrin_free_changesets(knot_changesets_t **changesets);
  * \param size Size of the packet in bytes.
  * \param changesets Changesets to be filled in.
  *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- * \retval KNOT_EMALF
- * \retval KNOT_ENOMEM
+ * \retval KNOTDEOK
+ * \retval KNOTDEINVAL
+ * \retval KNOTDEMALF
+ * \retval KNOTDENOMEM
  */
 int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
                               knot_changesets_t **changesets);
@@ -136,6 +136,6 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 int xfrin_apply_changesets_to_zone(knot_zone_t *zone, 
                                    knot_changesets_t *chsets);
 
-#endif /* _KNOT_XFR_IN_H_ */
+#endif /* _KNOTDXFR_IN_H_ */
 
 /*! @} */

@@ -35,9 +35,9 @@ static int test_response_init()
 	int errors = 0;
 	int lived = 0;
 	lives_ok({
-		if (knot_response2_init(NULL) != DNSLIB_EBADARG) {
+		if (knot_response2_init(NULL) != KNOT_EBADARG) {
 			diag("Calling response_init with NULL packet did "
-			     "not return DNSLIB_EBADARG!");
+			     "not return KNOT_EBADARG!");
 			errors++;
 		}
 		lived = 1;
@@ -45,11 +45,11 @@ static int test_response_init()
 	errors += lived != 1;
 
 	knot_packet_t *response =
-		knot_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
-	response->max_size = DNSLIB_WIRE_HEADER_SIZE - 1;
-	if (knot_response2_init(response) != DNSLIB_ESPACE) {
+		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	response->max_size = KNOT_WIRE_HEADER_SIZE - 1;
+	if (knot_response2_init(response) != KNOT_ESPACE) {
 		diag("Calling response_init too small packet did "
-		     "not return DNSLIB_ESPACE!");
+		     "not return KNOT_ESPACE!");
 		errors++;
 	}
 
@@ -62,39 +62,39 @@ static int test_response_init_query()
 	int lived = 0;
 	lives_ok({
 		if (knot_response2_init_from_query(NULL, NULL) !=
-		    DNSLIB_EBADARG) {
+		    KNOT_EBADARG) {
 			diag("Calling response_init_query with NULL packet and "
-			     "NULL query did not return DNSLIB_EBADARG!");
+			     "NULL query did not return KNOT_EBADARG!");
 			errors++;
 		}
 		lived = 1;
 		knot_packet_t *response =
-			knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+			knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 		assert(response);
 		knot_packet_set_max_size(response,
-		                           DNSLIB_PACKET_PREALLOC_RESPONSE);
+		                           KNOT_PACKET_PREALLOC_RESPONSE);
 		knot_response2_init(response);
 		lived = 0;
 		if (knot_response2_init_from_query(response, NULL) !=
-		    DNSLIB_EBADARG) {
+		    KNOT_EBADARG) {
 			diag("Calling response_init_query with NULL query "
-			     "did not return DNSLIB_EBADARG!");
+			     "did not return KNOT_EBADARG!");
 			errors++;
 		}
 		lived = 1;
 		knot_packet_t *query =
-			knot_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
+			knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 		if (knot_response2_init_from_query(NULL, query) !=
-		    DNSLIB_EBADARG) {
+		    KNOT_EBADARG) {
 			diag("Calling response_init_query with NULL response "
-			     "did not return DNSLIB_EBADARG!");
+			     "did not return KNOT_EBADARG!");
 			errors++;
 		}
 	}, "response2: init from query NULL tests");
 	errors += lived != 1;
 
 	/* Cannot test the rest of return values, since there is now constant
-	 * controlling value that could return DNSLIB_EDNAMEPTR */
+	 * controlling value that could return KNOT_EDNAMEPTR */
 
 	return (errors == 0);
 }
@@ -126,30 +126,30 @@ int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
 //	 */
 
 //	knot_packet_t *response =
-//		knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
-//	knot_packet_set_max_size(response, DNSLIB_WIRE_HEADER_SIZE * 100);
-//	assert(knot_response2_init(response) == DNSLIB_EOK);
+//		knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+//	knot_packet_set_max_size(response, KNOT_WIRE_HEADER_SIZE * 100);
+//	assert(knot_response2_init(response) == KNOT_EOK);
 
 //	uint8_t *original_wire = NULL;
 //	size_t original_size = 0;
 //	assert(knot_packet_to_wire(response, &original_wire,
 //	                             &original_size) ==
-//	       DNSLIB_EOK);
+//	       KNOT_EOK);
 //	/* Do something in question section. */
 ////	test_dname_t test_dname;
 ////	test_dname.str = "ns8.nic.cz.";
 ////	knot_dname_t *dname = dname_from_test_dname_str(&test_dname);
 ////	assert(dname);
 
-//	response->question.qtype = DNSLIB_RRTYPE_HINFO;
-//	response->question.qclass = DNSLIB_CLASS_CH;
+//	response->question.qtype = KNOT_RRTYPE_HINFO;
+//	response->question.qclass = KNOT_CLASS_CH;
 
 //	uint8_t *question_changed_wire = NULL;
 //	size_t question_changed_size = 0;
 //	assert(knot_packet_to_wire(response,
 //	                             &question_changed_wire,
 //	                             &question_changed_size) ==
-//	       DNSLIB_EOK);
+//	       KNOT_EOK);
 
 //	knot_response2_set_aa(response);
 //	knot_response2_set_tc(response);
@@ -159,7 +159,7 @@ int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
 //	uint8_t *new_wire = NULL;
 //	size_t new_size = 0;
 //	assert(knot_packet_to_wire(response, &new_wire, &new_size) ==
-//	       DNSLIB_EOK);
+//	       KNOT_EOK);
 //	if (question_changed_size != new_size) {
 //		diag("Wrong wire size after calling response_clear! "
 //		     "got %d should be %d", new_size, question_changed_size);
@@ -180,7 +180,7 @@ int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
 
 ////	knot_response2_clear(response, 1);
 ////	assert(knot_packet_to_wire(response, &new_wire, &new_size) ==
-////	       DNSLIB_EOK);
+////	       KNOT_EOK);
 
 ////	if (original_size != new_size) {
 ////		diag("Wrong wire size after calling response_clear!");
@@ -217,29 +217,29 @@ static int test_response_add_opt()
 	opt.size = 25; // does it matter?
 
 	lives_ok({
-		if (knot_response2_add_opt(NULL, NULL, 0) != DNSLIB_EBADARG) {
+		if (knot_response2_add_opt(NULL, NULL, 0) != KNOT_EBADARG) {
 			diag("Calling response add opt with NULL arguments "
-			     "did not result to DNSLIB_EBADARG");
+			     "did not result to KNOT_EBADARG");
 			errors++;
 		}
 		lived = 1;
 		knot_packet_t *response =
-			knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+			knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 		assert(response);
 		lived = 0;
 		if (knot_response2_add_opt(response,
-		                             NULL, 0) != DNSLIB_EBADARG) {
+		                             NULL, 0) != KNOT_EBADARG) {
 			diag("Calling response add opt with NULL OPT RR "
-			     "did not result to DNSLIB_EBADARG");
+			     "did not result to KNOT_EBADARG");
 			errors++;
 		}
 		lived = 1;
 
 		lived = 0;
 		if (knot_response2_add_opt(NULL,
-		                             &opt, 0) != DNSLIB_EBADARG) {
+		                             &opt, 0) != KNOT_EBADARG) {
 			diag("Calling response add opt with NULL response "
-			     "did not result to DNSLIB_EBADARG");
+			     "did not result to KNOT_EBADARG");
 			errors++;
 		}
 		lived = 1;
@@ -248,28 +248,28 @@ static int test_response_add_opt()
 	errors += lived != 1;
 
 	knot_packet_t *response =
-		knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+		knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 	assert(response);
-	knot_packet_set_max_size(response, DNSLIB_PACKET_PREALLOC_RESPONSE * 100);
-	assert(knot_response2_init(response) == DNSLIB_EOK);;
+	knot_packet_set_max_size(response, KNOT_PACKET_PREALLOC_RESPONSE * 100);
+	assert(knot_response2_init(response) == KNOT_EOK);;
 
-	if (knot_response2_add_opt(response, &opt, 0) != DNSLIB_EOK) {
+	if (knot_response2_add_opt(response, &opt, 0) != KNOT_EOK) {
 		diag("Adding valid OPT RR to response "
-		     "did not return DNSLIB_EOK");
+		     "did not return KNOT_EOK");
 		errors++;
 	}
 
 	opt.payload = response->max_size + 1;
-	if (knot_response2_add_opt(response, &opt, 1) != DNSLIB_EPAYLOAD) {
+	if (knot_response2_add_opt(response, &opt, 1) != KNOT_EPAYLOAD) {
 		diag("If OPT RR payload is bigger than response max size "
-		     "response_add_opt does not return DNSLIB_EPAYLOAD!");
+		     "response_add_opt does not return KNOT_EPAYLOAD!");
 		errors++;
 	}
 
 	opt.payload = 0;
-	if (knot_response2_add_opt(response, &opt, 1) != DNSLIB_EBADARG) {
+	if (knot_response2_add_opt(response, &opt, 1) != KNOT_EBADARG) {
 		diag("Calling response_add_opt with OPT RR payload set to 0 "
-		     "did not return DNSLIB_EBADARG");
+		     "did not return KNOT_EBADARG");
 	}
 
 	knot_packet_free(&response);
@@ -284,19 +284,19 @@ static int test_response_add_generic(int (*func)(knot_packet_t *,
 	int lived = 0;
 
 	lives_ok({
-		if (func(NULL, NULL, 0, 0, 0) != DNSLIB_EBADARG) {
+		if (func(NULL, NULL, 0, 0, 0) != KNOT_EBADARG) {
 			diag("Calling response add rrset with NULL "
-			     "arguments did not return DNSLIB_EBADARG!");
+			     "arguments did not return KNOT_EBADARG!");
 			errors++;
 		}
 		lived = 1;
 		knot_packet_t *response =
-			knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+			knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 		assert(response);
 		lived = 0;
-		if (func(response, NULL, 0, 0, 0) != DNSLIB_EBADARG) {
+		if (func(response, NULL, 0, 0, 0) != KNOT_EBADARG) {
 			diag("Calling response add rrset with NULL rrset "
-			     "did not return DNSLIB_EBADARG!");
+			     "did not return KNOT_EBADARG!");
 			errors++;
 		}
 		lived = 1;
@@ -306,13 +306,13 @@ static int test_response_add_generic(int (*func)(knot_packet_t *,
 			                          NULL);
 		assert(owner);
 		knot_rrset_t *rrset =
-			knot_rrset_new(owner, DNSLIB_RRTYPE_A,
-			                 DNSLIB_CLASS_IN, 3600);
+			knot_rrset_new(owner, KNOT_RRTYPE_A,
+			                 KNOT_CLASS_IN, 3600);
 		assert(rrset);
 		lived = 0;
-		if (func(NULL, rrset, 0, 0, 0) != DNSLIB_EBADARG) {
+		if (func(NULL, rrset, 0, 0, 0) != KNOT_EBADARG) {
 			diag("Calling response add rrset with NULL response "
-			     "did not return DNSLIB_EBADARG!");
+			     "did not return KNOT_EBADARG!");
 			errors++;
 		}
 		lived = 1;
@@ -321,11 +321,11 @@ static int test_response_add_generic(int (*func)(knot_packet_t *,
 	}, "response2: rrset adding NULL tests");
 	errors += lived != 1;
 
-	/*!< \todo Test case when DNSLIB_ESPACE should be returned. */
+	/*!< \todo Test case when KNOT_ESPACE should be returned. */
 	/*!< \todo Compression and so on - should it be tested here? */
 
 	knot_packet_t *response =
-		knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+		knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 	assert(response);
 
 	knot_dname_t *owner =
@@ -334,12 +334,12 @@ static int test_response_add_generic(int (*func)(knot_packet_t *,
 		                          NULL);
 	assert(owner);
 	knot_rrset_t *rrset =
-		knot_rrset_new(owner, DNSLIB_RRTYPE_NS,
-		                 DNSLIB_CLASS_IN, 3600);
+		knot_rrset_new(owner, KNOT_RRTYPE_NS,
+		                 KNOT_CLASS_IN, 3600);
 	assert(rrset);
-	if (func(response, rrset, 0, 0, 0) != DNSLIB_EOK) {
+	if (func(response, rrset, 0, 0, 0) != KNOT_EOK) {
 		diag("Adding valid RRSet to response did not result to "
-		     "DNSLIB_EOK");
+		     "KNOT_EOK");
 		errors++;
 	}
 
@@ -365,33 +365,33 @@ static int test_response_add_nsid()
 	int lived = 0;
 
 	knot_packet_t *response =
-		knot_packet_new(DNSLIB_PACKET_PREALLOC_RESPONSE);
+		knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 	assert(response);
 
 	uint8_t *nsid = (uint8_t *)"knotDNS";
 	uint16_t nsid_size = strlen((char *)nsid);
 	lives_ok({
 		if (knot_response2_add_nsid(NULL,
-		                              NULL, 1) != DNSLIB_EBADARG) {
+		                              NULL, 1) != KNOT_EBADARG) {
 			diag("Calling response add nsid with NULL arguments "
-			     "did not return DNSLIB_EBADARG");
+			     "did not return KNOT_EBADARG");
 			errors++;
 		}
 		lived = 1;
 
 		lived = 0;
 		if (knot_response2_add_nsid(NULL, nsid,
-		                              nsid_size) != DNSLIB_EBADARG) {
+		                              nsid_size) != KNOT_EBADARG) {
 			diag("Calling response add nsid with NULL response "
-			     "did not return DNSLIB_EBADARG");
+			     "did not return KNOT_EBADARG");
 			errors++;
 		}
 		lived = 1;
 		lived = 0;
 		if (knot_response2_add_nsid(response, nsid,
-		                              0) != DNSLIB_EBADARG) {
+		                              0) != KNOT_EBADARG) {
 			diag("Calling response add nsid with zero size "
-			     "did not return DNSLIB_EBADARG");
+			     "did not return KNOT_EBADARG");
 			errors++;
 		}
 		lived = 1;
@@ -399,8 +399,8 @@ static int test_response_add_nsid()
 	errors += lived != 1;
 
 	if (knot_response2_add_nsid(response, nsid,
-	                              nsid_size) != DNSLIB_EOK) {
-		diag("Adding valid nsid to response did not return DNSLIB_EOK");
+	                              nsid_size) != KNOT_EOK) {
+		diag("Adding valid nsid to response did not return KNOT_EOK");
 		errors++;
 	}
 
@@ -408,14 +408,14 @@ static int test_response_add_nsid()
 	return (errors == 0);
 }
 
-static const int DNSLIB_RESPONSE2_TEST_COUNT = 14;
+static const int KNOT_RESPONSE2_TEST_COUNT = 14;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
 static int knot_response2_tests_count(int argc, char *argv[])
 {
-	return DNSLIB_RESPONSE2_TEST_COUNT;
+	return KNOT_RESPONSE2_TEST_COUNT;
 }
 
 

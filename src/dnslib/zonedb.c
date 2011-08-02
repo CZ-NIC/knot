@@ -35,7 +35,7 @@ static int knot_zonedb_compare_zone_names(void *p1, void *p2)
 
 	int ret = knot_dname_compare(zone1->name, zone2->name);
 
-DEBUG_DNSLIB_ZONEDB(
+DEBUG_KNOT_ZONEDB(
 	char *name1 = knot_dname_to_str(zone1->name);
 	char *name2 = knot_dname_to_str(zone2->name);
 	debug_knot_zonedb("Compared names %s and %s, result: %d.\n",
@@ -89,16 +89,16 @@ int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone)
 {
 	if (db == NULL || zone == NULL || zone->contents == NULL
 	    || zone->contents->apex == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
-DEBUG_DNSLIB_ZONEDB(
+DEBUG_KNOT_ZONEDB(
 	char *name = knot_dname_to_str(zone->name);
 	debug_knot_zonedb("Inserting zone %s into zone db.\n", name);
 	free(name);
 );
 	int ret = knot_zone_contents_load_nsec3param(
 			knot_zone_get_contents(zone));
-	if (ret != DNSLIB_EOK) {
+	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
@@ -108,7 +108,7 @@ DEBUG_DNSLIB_ZONEDB(
 		db->zone_count++;
 	}
 
-	return (ret != 0) ? DNSLIB_EZONEIN : DNSLIB_EOK;
+	return (ret != 0) ? KNOT_EZONEIN : KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -123,7 +123,7 @@ int knot_zonedb_remove_zone(knot_zonedb_t *db, knot_dname_t *zone_name,
 	                                                  &dummy_zone);
 
 	if (z == NULL) {
-		return DNSLIB_ENOZONE;
+		return KNOT_ENOZONE;
 	}
 
 	// remove the zone from the skip list, but do not destroy it
@@ -136,7 +136,7 @@ int knot_zonedb_remove_zone(knot_zonedb_t *db, knot_dname_t *zone_name,
 
 	db->zone_count--;
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -212,7 +212,7 @@ const knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
 
 	knot_zone_t *zone = (found) ? (knot_zone_t *)found : NULL;
 
-DEBUG_DNSLIB_ZONEDB(
+DEBUG_KNOT_ZONEDB(
 	char *name = knot_dname_to_str(dname);
 	debug_knot_zonedb("Found zone for name %s: %p\n", name, zone);
 	free(name);
@@ -302,7 +302,7 @@ void knot_zonedb_deep_free(knot_zonedb_t **db)
 //	debug_knot_zonedb("Is it empty (%p)? %s\n",
 //	       (*db)->zones, skip_is_empty((*db)->zones) ? "yes" : "no");
 
-//DEBUG_DNSLIB_ZONEDB(
+//DEBUG_KNOT_ZONEDB(
 //	int i = 1;
 //	char *name = NULL;
 //	while (zn != NULL) {

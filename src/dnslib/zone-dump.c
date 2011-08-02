@@ -252,7 +252,7 @@ static void log_error_from_node(err_handler_t *handler,
  * \param node Node with semantic error in it.
  * \param error Type of error.
  *
- * \retval DNSLIB_EOK on success.
+ * \retval KNOT_EOK on success.
  * \retval ZC_ERR_UNKNOWN if unknown error.
  * \retval ZC_ERR_ALLOC if memory error.
  */
@@ -316,7 +316,7 @@ static int err_handler_handle_error(err_handler_t *handler,
 
 	handler->errors[-error]++;
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -356,7 +356,7 @@ typedef struct arg arg_t;
  * \param zone Zone containing the RRSet.
  * \param rrset RRSet to be tested.
  *
- * \retval DNSLIB_EOK when there is no cycle.
+ * \retval KNOT_EOK when there is no cycle.
  * \retval ZC_ERR_CNAME_CYCLE when cycle is present.
  */
 static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
@@ -385,7 +385,7 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 
 		if (next_node != NULL) {
 			next_rrset = knot_node_rrset(next_node,
-						       DNSLIB_RRTYPE_CNAME);
+						       KNOT_RRTYPE_CNAME);
 			if (next_rrset != NULL) {
 				next_dname =
 				knot_rdata_cname_name(next_rrset->rdata);
@@ -404,7 +404,7 @@ static int check_cname_cycles_in_zone(knot_zone_contents_t *zone,
 		return ZC_ERR_CNAME_CYCLE;
 	}
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -434,7 +434,7 @@ uint16_t type_covered_from_rdata(const knot_rdata_t *rdata)
  *
  * \param rdata DNSKEY rdata to be checked.
  *
- * \retval DNSLIB_EOK when rdata are OK.
+ * \retval KNOT_EOK when rdata are OK.
  * \retval ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER when rdata are not OK.
  */
 static int check_dnskey_rdata(const knot_rdata_t *rdata)
@@ -448,7 +448,7 @@ static int check_dnskey_rdata(const knot_rdata_t *rdata)
 				     (knot_rdata_item(rdata, 0)));
 
 	if (flags & mask) {
-		return DNSLIB_EOK;
+		return KNOT_EOK;
 	} else {
 		/* This error does not exactly fit, but it's better
 		 * than a new one */
@@ -519,8 +519,8 @@ static inline uint16_t rdata_item_size(const knot_rdata_item_t *item)
  * \param wire Created wire.
  * \param size Size of created wire.
  *
- * \retval DNSLIB_EOK on success.
- * \retval DNSLIB_ENOMEM on memory error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_ENOMEM on memory error.
  */
 static int dnskey_to_wire(const knot_rdata_t *rdata, uint8_t **wire,
 			  uint *size)
@@ -529,7 +529,7 @@ static int dnskey_to_wire(const knot_rdata_t *rdata, uint8_t **wire,
 	/* flags + algorithm + protocol + keysize */
 	*size = 2 + 1 + 1 + knot_rdata_item(rdata, 3)->raw_data[0];
 	*wire = malloc(sizeof(uint8_t) * *size);
-	CHECK_ALLOC_LOG(*wire, DNSLIB_ENOMEM);
+	CHECK_ALLOC_LOG(*wire, KNOT_ENOMEM);
 
 	/* copy the wire octet by octet */
 
@@ -544,7 +544,7 @@ static int dnskey_to_wire(const knot_rdata_t *rdata, uint8_t **wire,
 	memcpy(*wire + 4, knot_rdata_item(rdata, 3)->raw_data + 1,
 	       knot_rdata_item(rdata, 3)->raw_data[0]);
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -554,7 +554,7 @@ static int dnskey_to_wire(const knot_rdata_t *rdata, uint8_t **wire,
  * \param rrset RRSet containing the rdata.
  * \param dnskey_rrset RRSet containing zone's DNSKEY
  *
- * \retval DNSLIB_EOK if rdata are OK.
+ * \retval KNOT_EOK if rdata are OK.
  *
  * \return Appropriate error code if error was found.
  */
@@ -660,7 +660,7 @@ static int check_rrsig_rdata(const knot_rdata_t *rdata_rrsig,
 		return ZC_ERR_RRSIG_RDATA_SIGNED_WRONG;
 	}
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -670,7 +670,7 @@ static int check_rrsig_rdata(const knot_rdata_t *rdata_rrsig,
  * \param dnskey_rrset
  * \param nsec3 NSEC3 active.
  *
- * \retval DNSLIB_EOK on success.
+ * \retval KNOT_EOK on success.
  *
  * \return Appropriate error code if error was found.
  */
@@ -731,7 +731,7 @@ static int check_rrsig_in_rrset(const knot_rrset_t *rrset,
 		return ZC_ERR_RRSIG_NOT_ALL;
 	}
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -758,8 +758,8 @@ static int get_bit(uint8_t *bits, size_t index)
  * \param array Array to be created.
  * \param count Count of items in array.
  *
- * \retval DNSLIB_OK on success.
- * \retval DNSLIB_NOMEM on memory error.
+ * \retval KNOT_OK on success.
+ * \retval KNOT_NOMEM on memory error.
  */
 static int rdata_nsec_to_type_array(const knot_rdata_item_t *item,
 			      uint16_t **array,
@@ -794,7 +794,7 @@ static int rdata_nsec_to_type_array(const knot_rdata_item_t *item,
 				void *tmp = realloc(*array,
 						    sizeof(uint16_t) *
 						    *count);
-				CHECK_ALLOC_LOG(tmp, DNSLIB_ENOMEM);
+				CHECK_ALLOC_LOG(tmp, KNOT_ENOMEM);
 				*array = tmp;
 				(*array)[*count - 1] = j + window * 256;
 			}
@@ -802,7 +802,7 @@ static int rdata_nsec_to_type_array(const knot_rdata_item_t *item,
 		free(bitmap);
 	}
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /* should write error, not return values !!! */
@@ -814,7 +814,7 @@ static int rdata_nsec_to_type_array(const knot_rdata_item_t *item,
  * \param node Node to be checked.
  * \param handler Error handler
  *
- * \retval DNSLIB_EOK if no error was found.
+ * \retval KNOT_EOK if no error was found.
  *
  * \return Appropriate error code if error was found.
  */
@@ -827,7 +827,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 	if (nsec3_node == NULL) {
 		/* I know it's probably not what RFCs say, but it will have to
 		 * do for now. */
-		if (knot_node_rrset(node, DNSLIB_RRTYPE_DS) != NULL) {
+		if (knot_node_rrset(node, KNOT_RRTYPE_DS) != NULL) {
 			err_handler_handle_error(handler, node,
 					ZC_ERR_NSEC3_UNSECURED_DELEGATION);
 		} else {
@@ -854,7 +854,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 
 			const knot_rrset_t *previous_rrset =
 				knot_node_rrset(nsec3_previous,
-						  DNSLIB_RRTYPE_NSEC3);
+						  KNOT_RRTYPE_NSEC3);
 
 			assert(previous_rrset);
 
@@ -873,7 +873,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 	}
 
 	const knot_rrset_t *nsec3_rrset =
-		knot_node_rrset(nsec3_node, DNSLIB_RRTYPE_NSEC3);
+		knot_node_rrset(nsec3_node, KNOT_RRTYPE_NSEC3);
 
 	assert(nsec3_rrset);
 
@@ -883,7 +883,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 		knot_rdata_item(
 		knot_rrset_rdata(
 		knot_node_rrset(
-		knot_zone_contents_apex(zone), DNSLIB_RRTYPE_SOA)), 6)));
+		knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA)), 6)));
 	/* Are those getters even worth this?
 	 * Now I have no idea what this code does. */
 
@@ -902,7 +902,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 		(char **)&next_dname_decoded)) <= 0) ||
 		(next_dname_decoded == NULL)) {
 		fprintf(stderr, "Could not encode base32 string!\n");
-		return DNSLIB_ERROR;
+		return KNOT_ERROR;
 	}
 
 	/* This is why we allocate maximum length of decoded string + 1 */
@@ -913,14 +913,14 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 	knot_dname_t *next_dname =
 		knot_dname_new_from_wire(next_dname_decoded,
 					   real_size + 1, NULL);
-	CHECK_ALLOC_LOG(next_dname, DNSLIB_ENOMEM);
+	CHECK_ALLOC_LOG(next_dname, KNOT_ENOMEM);
 
 	free(next_dname_decoded);
 
 	if (knot_dname_cat(next_dname,
 		     knot_node_owner(knot_zone_contents_apex(zone))) == NULL) {
 		fprintf(stderr, "Could not concatenate dnames!\n");
-		return DNSLIB_ERROR;
+		return KNOT_ERROR;
 
 	}
 
@@ -943,14 +943,14 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 	    &array, &count) != 0) {
 			err_handler_handle_error(handler, node,
 						 ZC_ERR_ALLOC);
-			return DNSLIB_ERROR;
+			return KNOT_ERROR;
 	}
 
 	uint16_t type = 0;
 	for (int j = 0; j < count; j++) {
 		/* test for each type's presence */
 		type = array[j];
-		if (type == DNSLIB_RRTYPE_RRSIG) {
+		if (type == KNOT_RRTYPE_RRSIG) {
 		       continue;
 		}
 		if (knot_node_rrset(node,
@@ -971,7 +971,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
 
 	free(array);
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -982,7 +982,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone, knot_node_t *nod
  * \param do_checks Level of checks to be done.
  * \param handler Error handler.
  *
- * \retval DNSLIB_EOK if no error was found.
+ * \retval KNOT_EOK if no error was found.
  *
  * \return Appropriate error code if error was found.
  */
@@ -993,10 +993,10 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 {
 	assert(handler);
 	const knot_rrset_t *cname_rrset =
-			knot_node_rrset(node, DNSLIB_RRTYPE_CNAME);
+			knot_node_rrset(node, KNOT_RRTYPE_CNAME);
 	if (cname_rrset != NULL) {
 		if (check_cname_cycles_in_zone(zone, cname_rrset) !=
-				DNSLIB_EOK) {
+				KNOT_EOK) {
 			err_handler_handle_error(handler, node,
 						 ZC_ERR_CNAME_CYCLE);
 		}
@@ -1012,8 +1012,8 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 	} else if (cname_rrset &&
 		   knot_node_rrset_count(node) != 1) {
 		/* With DNSSEC node can contain RRSIG or NSEC */
-		if (!(knot_node_rrset(node, DNSLIB_RRTYPE_RRSIG) ||
-		      knot_node_rrset(node, DNSLIB_RRTYPE_NSEC))) {
+		if (!(knot_node_rrset(node, KNOT_RRTYPE_RRSIG) ||
+		      knot_node_rrset(node, KNOT_RRTYPE_NSEC))) {
 			err_handler_handle_error(handler, node,
 					 ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC);
 		}
@@ -1030,7 +1030,7 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 	/* check for glue records at zone cuts */
 	if (knot_node_is_deleg_point(node)) {
 		const knot_rrset_t *ns_rrset =
-				knot_node_rrset(node, DNSLIB_RRTYPE_NS);
+				knot_node_rrset(node, KNOT_RRTYPE_NS);
 		assert(ns_rrset);
 		//FIXME this should be an error as well ! (i guess)
 
@@ -1050,16 +1050,16 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
 							 ZC_ERR_GLUE_NODE);
 			} else {
 				if ((knot_node_rrset(glue_node,
-					       DNSLIB_RRTYPE_A) == NULL) &&
+					       KNOT_RRTYPE_A) == NULL) &&
 				    (knot_node_rrset(glue_node,
-					       DNSLIB_RRTYPE_AAAA) == NULL)) {
+					       KNOT_RRTYPE_AAAA) == NULL)) {
 					err_handler_handle_error(handler, node,
 							 ZC_ERR_GLUE_RECORD);
 				}
 			}
 		}
 	}
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -1072,7 +1072,7 @@ static int semantic_checks_plain(knot_zone_contents_t *zone,
  * \param handler Error handler.
  * \param nsec3 NSEC3 used.
  *
- * \retval DNSLIB_EOK if no error was found.
+ * \retval KNOT_EOK if no error was found.
  *
  * \return Appropriate error code if error was found.
  */
@@ -1091,7 +1091,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 	const knot_rrset_t **rrsets = knot_node_rrsets(node);
 	const knot_rrset_t *dnskey_rrset =
 		knot_node_rrset(knot_zone_contents_apex(zone),
-				  DNSLIB_RRTYPE_DNSKEY);
+				  KNOT_RRTYPE_DNSKEY);
 
 	int ret = 0;
 
@@ -1111,7 +1111,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 			/* check for NSEC record */
 			const knot_rrset_t *nsec_rrset =
 					knot_node_rrset(node,
-							  DNSLIB_RRTYPE_NSEC);
+							  KNOT_RRTYPE_NSEC);
 
 			if (nsec_rrset == NULL) {
 				err_handler_handle_error(handler, node,
@@ -1146,7 +1146,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 				for (int j = 0; j < count; j++) {
 					/* test for each type's presence */
 					type = array[j];
-					if (type == DNSLIB_RRTYPE_RRSIG) {
+					if (type == KNOT_RRTYPE_RRSIG) {
 						continue;
 					}
 					if (knot_node_rrset(node,
@@ -1226,7 +1226,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 		} else if (nsec3 && (auth || deleg)) { /* nsec3 */
 			int ret = check_nsec3_node_in_zone(zone, node,
 			                                   handler);
-			if (ret != DNSLIB_EOK) {
+			if (ret != KNOT_EOK) {
 				free(rrsets);
 				return ret;
 			}
@@ -1234,7 +1234,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 	}
 	free(rrsets);
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -1353,12 +1353,12 @@ static inline int fwrite_to_stream(const void *src,
 		memcpy(knot_dump_stream + knot_dump_stream_size, src,
 		       size * n);
 		knot_dump_stream_size += (size * n) * sizeof(uint8_t);
-		return DNSLIB_EOK;
+		return KNOT_EOK;
 	} else {
 		free(knot_dump_stream);
 		knot_dump_stream = NULL;
 		knot_dump_stream_size = 0;
-		return DNSLIB_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 }
@@ -1402,7 +1402,7 @@ static void dump_dname_with_id(const knot_dname_t *dname, FILE *f)
 	fwrite_wrapper(&id, sizeof(id), 1, f);
 	knot_dname_dump_binary(dname, f);
 /*	if (!fwrite_wrapper_safe(&dname->id, sizeof(dname->id), 1, f)) {
-		return DNSLIB_ERROR;
+		return KNOT_ERROR;
 	} */
 }
 
@@ -1429,9 +1429,9 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 			continue;
 		}
 		debug_knot_zdump("Item n: %d\n", i);
-		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
-		desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
-		desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME )	{
+		if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
+		desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
+		desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME )	{
 			/*  some temp variables - this is way too long */
 			assert(rdata->items[i].dname != NULL);
 			knot_dname_t *wildcard = NULL;
@@ -1498,7 +1498,7 @@ static void knot_rrsig_set_dump_binary(knot_rrset_t *rrsig, arg_t *data,
 {
 	debug_knot_zdump("Dumping rrset \\w owner: %s\n",
 	                   knot_dname_to_str(rrsig->owner));
-	assert(rrsig->type == DNSLIB_RRTYPE_RRSIG);
+	assert(rrsig->type == KNOT_RRTYPE_RRSIG);
 	assert(rrsig->rdata);
 	FILE *f = (FILE *)((arg_t *)data)->arg1;
 	fwrite_wrapper(&rrsig->type, sizeof(rrsig->type), 1, f);
@@ -1517,11 +1517,11 @@ static void knot_rrsig_set_dump_binary(knot_rrset_t *rrsig, arg_t *data,
 
 	tmp_rdata = rrsig->rdata;
 	while (tmp_rdata->next != rrsig->rdata) {
-		knot_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, data,
+		knot_rdata_dump_binary(tmp_rdata, KNOT_RRTYPE_RRSIG, data,
 		                         use_ids);
 		tmp_rdata = tmp_rdata->next;
 	}
-	knot_rdata_dump_binary(tmp_rdata, DNSLIB_RRTYPE_RRSIG, data, use_ids);
+	knot_rdata_dump_binary(tmp_rdata, KNOT_RRTYPE_RRSIG, data, use_ids);
 }
 
 /*!
@@ -1665,11 +1665,11 @@ static void knot_node_dump_binary(knot_node_t *node, void *data)
 static int zone_is_secure(knot_zone_contents_t *zone)
 {
 	if (knot_node_rrset(knot_zone_contents_apex(zone),
-			      DNSLIB_RRTYPE_DNSKEY) == NULL) {
+			      KNOT_RRTYPE_DNSKEY) == NULL) {
 		return 0;
 	} else {
 		if (knot_node_rrset(knot_zone_contents_apex(zone),
-				      DNSLIB_RRTYPE_NSEC3PARAM) != NULL) {
+				      KNOT_RRTYPE_NSEC3PARAM) != NULL) {
 			return 2;
 		} else {
 			return 1;
@@ -1698,7 +1698,7 @@ static void log_cyclic_errors_in_zone(err_handler_t *handler,
 		assert(last_nsec3_node && first_nsec3_node);
 		const knot_rrset_t *nsec3_rrset =
 			knot_node_rrset(last_nsec3_node,
-		                              DNSLIB_RRTYPE_NSEC3);
+		                              KNOT_RRTYPE_NSEC3);
 		if (nsec3_rrset == NULL) {
 			err_handler_handle_error(handler, last_nsec3_node,
 						 ZC_ERR_NSEC3_RDATA_CHAIN);
@@ -1771,7 +1771,7 @@ static void log_cyclic_errors_in_zone(err_handler_t *handler,
 		} else {
 			const knot_rrset_t *nsec_rrset =
 				knot_node_rrset(last_node,
-						  DNSLIB_RRTYPE_NSEC);
+						  KNOT_RRTYPE_NSEC);
 
 			if (nsec_rrset == NULL) {
 				err_handler_handle_error(handler, last_node,
@@ -1835,7 +1835,7 @@ static int knot_dump_dname_table(const knot_dname_table_t *dname_table,
 //	TREE_FORWARD_APPLY(dname_table->tree, dname_table_node, avl,
 //			   dump_dname_from_tree, (void *)f);
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 static void save_node_from_tree(knot_node_t *node, void *data)
@@ -1856,7 +1856,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 	FILE *f;
 	f = fopen(filename, "wb");
 	if (f == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	fwrite_wrapper = fwrite_to_file_crc;
@@ -1898,7 +1898,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 			do_checks = 0;
 		} else { /* Do check for SOA right now */
 			if (knot_node_rrset(knot_zone_contents_apex(zone),
-					      DNSLIB_RRTYPE_SOA) == NULL) {
+					      KNOT_RRTYPE_SOA) == NULL) {
 				err_handler_handle_error(handler,
 							 knot_zone_contents_apex(zone),
 							 ZC_ERR_MISSING_SOA);
@@ -1949,8 +1949,8 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 
 	/* Write dname table. */
 	if (knot_dump_dname_table(zone->dname_table, f)
-	    != DNSLIB_EOK) {
-		return DNSLIB_ERROR;
+	    != KNOT_EOK) {
+		return KNOT_ERROR;
 	}
 
 	arguments.arg1 = f;
@@ -1970,7 +1970,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 		malloc(sizeof(char) * (strlen(filename) + strlen(".crc") + 1));
 	if (unlikely(!crc_path)) {
 		fclose(f);
-		return DNSLIB_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 	memset(crc_path, 0,
 	       sizeof(char) * (strlen(filename) + strlen(".crc") + 1));
@@ -1992,7 +1992,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 
 	fclose(f);
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
@@ -2001,7 +2001,7 @@ int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
 	/*!< \todo LOCK? might not be thread safe. Probably isn't! */
 	fwrite_wrapper = fwrite_to_stream;
 	if (*stream != NULL || rrset == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	assert(knot_dump_stream == NULL);
@@ -2011,7 +2011,7 @@ int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
 	arguments.arg1 = NULL;
 	knot_rrset_dump_binary(rrset, &arguments, 0);
 	if (knot_dump_stream == NULL) {
-		return DNSLIB_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	/* Make a copy of stream. */
@@ -2020,7 +2020,7 @@ int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
 		free(knot_dump_stream);
 		knot_dump_stream = NULL;
 		knot_dump_stream_size = 0;
-		return DNSLIB_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	memcpy(*stream, knot_dump_stream, knot_dump_stream_size);
@@ -2030,5 +2030,5 @@ int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
 	knot_dump_stream = NULL;
 	knot_dump_stream_size = 0;
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }

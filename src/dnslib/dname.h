@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_DNSLIB_DNAME_H_
-#define _KNOT_DNSLIB_DNAME_H_
+#ifndef _KNOTDKNOT_DNAME_H_
+#define _KNOTDKNOT_DNAME_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -120,9 +120,9 @@ knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
  *             applicable.
  * \param target Domain name structure to initialize.
  *
- * \retval DNSLIB_EOK on success.
- * \retval DNSLIB_ENOMEM if allocation of labels info failed.
- * \retval DNSLIB_EBADARG if name or target is null.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_ENOMEM if allocation of labels info failed.
+ * \retval KNOT_EBADARG if name or target is null.
  *
  * \todo This function does not check if the given data is in correct wire
  *       format at all. It thus creates a invalid domain name, which if passed
@@ -399,6 +399,6 @@ static inline void knot_dname_release(knot_dname_t *dname) {
 	knot_dname_release_((d))
 */
 
-#endif /* _KNOT_DNSLIB_DNAME_H_ */
+#endif /* _KNOTDKNOT_DNAME_H_ */
 
 /*! @} */

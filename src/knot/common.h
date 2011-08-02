@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_COMMON_H_
-#define _KNOT_COMMON_H_
+#ifndef _KNOTDCOMMON_H_
+#define _KNOTDCOMMON_H_
 
 #include <signal.h>
 #include <stdint.h>
@@ -114,6 +114,6 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 	} while (0)
 #endif
 
-#endif /* _KNOT_COMMON_H_ */
+#endif /* _KNOTDCOMMON_H_ */
 
 /*! @} */

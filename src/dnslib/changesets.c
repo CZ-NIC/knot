@@ -7,10 +7,10 @@
 #include "dnslib/rrset.h"
 #include "dnslib/error.h"
 
-static const size_t DNSLIB_CHANGESET_COUNT = 5;
-static const size_t DNSLIB_CHANGESET_STEP = 5;
-static const size_t DNSLIB_CHANGESET_RRSET_COUNT = 5;
-static const size_t DNSLIB_CHANGESET_RRSET_STEP = 5;
+static const size_t KNOT_CHANGESET_COUNT = 5;
+static const size_t KNOT_CHANGESET_STEP = 5;
+static const size_t KNOT_CHANGESET_RRSET_COUNT = 5;
+static const size_t KNOT_CHANGESET_RRSET_STEP = 5;
 
 /*----------------------------------------------------------------------------*/
 
@@ -20,21 +20,21 @@ static int knot_changeset_check_count(knot_rrset_t ***rrsets, size_t count,
 	// this should also do for the initial case (*rrsets == NULL)
 	if (count == *allocated) {
 		knot_rrset_t **rrsets_new = (knot_rrset_t **)calloc(
-			*allocated + DNSLIB_CHANGESET_RRSET_STEP,
+			*allocated + KNOT_CHANGESET_RRSET_STEP,
 			sizeof(knot_rrset_t *));
 		if (rrsets_new == NULL) {
-			return DNSLIB_ENOMEM;
+			return KNOT_ENOMEM;
 		}
 
 		memcpy(rrsets_new, *rrsets, count);
 
 		knot_rrset_t **rrsets_old = *rrsets;
 		*rrsets = rrsets_new;
-		*allocated += DNSLIB_CHANGESET_RRSET_STEP;
+		*allocated += KNOT_CHANGESET_RRSET_STEP;
 		free(rrsets_old);
 	}
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -42,8 +42,8 @@ static int knot_changeset_check_count(knot_rrset_t ***rrsets, size_t count,
 static int knot_changeset_rrsets_match(const knot_rrset_t *rrset1,
                                          const knot_rrset_t *rrset2)
 {
-	return knot_rrset_compare(rrset1, rrset2, DNSLIB_RRSET_COMPARE_HEADER)
-	       && (knot_rrset_type(rrset1) != DNSLIB_RRTYPE_RRSIG
+	return knot_rrset_compare(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER)
+	       && (knot_rrset_type(rrset1) != KNOT_RRTYPE_RRSIG
 	           || knot_rdata_rrsig_type_covered(
 	                    knot_rrset_rdata(rrset1))
 	              == knot_rdata_rrsig_type_covered(
@@ -59,7 +59,7 @@ int knot_changeset_allocate(knot_changesets_t **changesets)
 			calloc(1, sizeof(knot_changesets_t)));
 
 	if (*changesets == NULL) {
-		return DNSLIB_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	assert((*changesets)->allocated == 0);
@@ -76,13 +76,13 @@ int knot_changeset_add_rrset(knot_rrset_t ***rrsets,
                               knot_rrset_t *rrset)
 {
 	int ret = knot_changeset_check_count(rrsets, *count, allocated);
-	if (ret != DNSLIB_EOK) {
+	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	(*rrsets)[(*count)++] = rrset;
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -100,14 +100,14 @@ int knot_changeset_add_rr(knot_rrset_t ***rrsets, size_t *count,
 	if (i < *count) {
 		// found RRSet to merge the new one into
 		if (knot_rrset_merge((void **)&(*rrsets)[i],
-		                       (void **)&rr) != DNSLIB_EOK) {
-			return DNSLIB_ERROR;
+		                       (void **)&rr) != KNOT_EOK) {
+			return KNOT_ERROR;
 		}
 
 		// remove the RR
 		knot_rrset_deep_free(&rr, 1, 1, 1);
 
-		return DNSLIB_EOK;
+		return KNOT_EOK;
 	} else {
 		return knot_changeset_add_rrset(rrsets, count, allocated, rr);
 	}
@@ -143,7 +143,7 @@ int knot_changeset_add_new_rr(knot_changeset_t *changeset,
 	assert(allocated != NULL);
 
 	int ret = knot_changeset_add_rr(rrsets, count, allocated, rrset);
-	if (ret != DNSLIB_EOK) {
+	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
@@ -178,7 +178,7 @@ int knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
 	}
 
 	/*! \todo Remove return value? */
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -187,21 +187,21 @@ int knot_changesets_check_size(knot_changesets_t *changesets)
 {
 	if (changesets->allocated == changesets->count) {
 		knot_changeset_t *sets = (knot_changeset_t *)calloc(
-			changesets->allocated + DNSLIB_CHANGESET_STEP,
+			changesets->allocated + KNOT_CHANGESET_STEP,
 			sizeof(knot_changeset_t));
 		if (sets == NULL) {
-			return DNSLIB_ENOMEM;
+			return KNOT_ENOMEM;
 		}
 
 		/*! \todo realloc() may be more effective. */
 		memcpy(sets, changesets->sets, changesets->count);
 		knot_changeset_t *old_sets = changesets->sets;
 		changesets->sets = sets;
-		changesets->count += DNSLIB_CHANGESET_STEP;
+		changesets->count += KNOT_CHANGESET_STEP;
 		free(old_sets);
 	}
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_DNSLIB_ZONELOAD_H_
-#define _KNOT_DNSLIB_ZONELOAD_H_
+#ifndef _KNOTDKNOT_ZONELOAD_H_
+#define _KNOTDKNOT_ZONELOAD_H_
 
 #include <stdio.h>
 
@@ -76,13 +76,13 @@ void knot_zload_close(zloader_t *loader);
  * \note If RRSet contains RRSIGs, their owners are not copies, but only links
  *       to the owner of RRSet. All RDATA dnames are copied.
  *
- * \retval DNSLIB_EOK on success.
- * \retval DNSLIB_EBADAG on wrong arguments.
- * \retval DNSLIB_EMALF when stream is malformed.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EBADAG on wrong arguments.
+ * \retval KNOT_EMALF when stream is malformed.
  */
 int knot_zload_rrset_deserialize(knot_rrset_t **rrset,
                                    uint8_t *stream, size_t *size);
 
-#endif /* _KNOT_ZONELOAD_H_ */
+#endif /* _KNOTDZONELOAD_H_ */
 
 /*! @} */

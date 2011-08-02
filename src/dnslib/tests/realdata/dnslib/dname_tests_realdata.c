@@ -340,14 +340,14 @@ static int test_dname_is_fqdn(const list *dname_list)
 //	return (errors == 0);
 //}
 
-static const int DNSLIB_DNAME_TEST_COUNT = 4;
+static const int KNOT_DNAME_TEST_COUNT = 4;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
 static int knot_dname_tests_count(int argc, char *argv[])
 {
-	return DNSLIB_DNAME_TEST_COUNT;
+	return KNOT_DNAME_TEST_COUNT;
 }
 
 /*! Run all scheduled tests for given parameters.

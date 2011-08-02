@@ -67,8 +67,8 @@
  * @{
  */
 
-#ifndef _KNOT_COMMON_SLAB_H_
-#define _KNOT_COMMON_SLAB_H_
+#ifndef _KNOTDCOMMON_SLAB_H_
+#define _KNOTDCOMMON_SLAB_H_
 
 #include <pthread.h>
 #include <stdint.h>
@@ -333,6 +333,6 @@ void *slab_alloc_realloc(slab_alloc_t* alloc, void *ptr, size_t size);
  */
 void slab_alloc_stats(slab_alloc_t* alloc);
 
-#endif /* _KNOT_COMMON_SLAB_H_ */
+#endif /* _KNOTDCOMMON_SLAB_H_ */
 
 /*! @} */

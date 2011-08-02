@@ -13,8 +13,8 @@
  * @{
  */
 
-#ifndef _KNOT_COMMON_DYNAMIC_ARRAY_H_
-#define _KNOT_COMMON_DYNAMIC_ARRAY_H_
+#ifndef _KNOTDCOMMON_DYNAMIC_ARRAY_H_
+#define _KNOTDCOMMON_DYNAMIC_ARRAY_H_
 
 #include <string.h>
 #include <pthread.h>
@@ -136,6 +136,6 @@ unsigned da_get_count(const da_array_t *array);
 
 /*----------------------------------------------------------------------------*/
 
-#endif /* _KNOT_COMMON_DYNAMIC_ARRAY_H_ */
+#endif /* _KNOTDCOMMON_DYNAMIC_ARRAY_H_ */
 
 /*! @} */

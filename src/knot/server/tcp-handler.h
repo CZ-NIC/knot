@@ -15,8 +15,8 @@
  * @{
  */
 
-#ifndef _KNOT_TCPHANDLER_H_
-#define _KNOT_TCPHANDLER_H_
+#ifndef _KNOTDTCPHANDLER_H_
+#define _KNOTDTCPHANDLER_H_
 
 #include <stdint.h>
 
@@ -37,7 +37,7 @@ typedef void (*tcp_cb_t)(struct ev_loop *, ev_io*, int);
  * \param msglen Buffer maximum size.
  *
  * \retval Number of sent data on success.
- * \retval KNOT_ERROR on error.
+ * \retval KNOTDERROR on error.
  */
 int tcp_send(int fd, uint8_t *msg, size_t msglen);
 
@@ -50,8 +50,8 @@ int tcp_send(int fd, uint8_t *msg, size_t msglen);
  * \param addr Source address.
  *
  * \retval Number of read bytes on success.
- * \retval KNOT_ERROR on error.
- * \retval KNOT_ENOMEM on potential buffer overflow.
+ * \retval KNOTDERROR on error.
+ * \retval KNOTDENOMEM on potential buffer overflow.
  */
 int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr);
 
@@ -64,8 +64,8 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr);
  * \param fd First descriptor to be watched (or -1).
  * \param cb Callback on fd event.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL invalid parameters.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL invalid parameters.
  */
 int tcp_loop(dthread_t *thread, int fd, tcp_cb_t cb);
 
@@ -74,8 +74,8 @@ int tcp_loop(dthread_t *thread, int fd, tcp_cb_t cb);
  *
  * \param thread Associated thread from DThreads unit.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL invalid parameters.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL invalid parameters.
  */
 int tcp_loop_master(dthread_t *thread);
 
@@ -84,8 +84,8 @@ int tcp_loop_master(dthread_t *thread);
  *
  * \param thread Associated thread from DThreads unit.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL invalid parameters.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL invalid parameters.
  */
 int tcp_loop_worker(dthread_t *thread);
 
@@ -96,11 +96,11 @@ int tcp_loop_worker(dthread_t *thread);
  *
  * \param thread Associated thread from DThreads unit.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL invalid parameters.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL invalid parameters.
  */
 int tcp_loop_unit(dt_unit_t *unit);
 
-#endif // _KNOT_TCPHANDLER_H_
+#endif // _KNOTDTCPHANDLER_H_
 
 /*! @} */

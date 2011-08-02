@@ -24,7 +24,7 @@ int log_setup(int logfiles)
 {
 	/* Check facilities count. */
 	if (logfiles < 0) {
-		return KNOT_EINVAL;
+		return KNOTDEINVAL;
 	}
 
 	/* Ensure minimum facilities count. */
@@ -38,7 +38,7 @@ int log_setup(int logfiles)
 	LOG_FCL_SIZE = 0;
 	LOG_FCL = malloc(new_size);
 	if (!LOG_FCL) {
-		return KNOT_ENOMEM;
+		return KNOTDENOMEM;
 	}
 
 	/* Reserve space for logfiles. */
@@ -47,14 +47,14 @@ int log_setup(int logfiles)
 		if (!LOG_FDS) {
 			free(LOG_FCL);
 			LOG_FCL = 0;
-			return KNOT_ENOMEM;
+			return KNOTDENOMEM;
 		}
 		memset(LOG_FDS, 0, sizeof(FILE*) * logfiles);
 	}
 
 	memset(LOG_FCL, 0, new_size);
 	LOG_FCL_SIZE = new_size; // Assign only when all is set
-	return KNOT_EOK;
+	return KNOTDEOK;
 }
 
 
@@ -68,7 +68,7 @@ int log_init()
 	LOG_FDS_OPEN = 0;
 
 	/* Setup initial state. */
-	int ret = KNOT_EOK;
+	int ret = KNOTDEOK;
 	int emask = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR)|LOG_MASK(LOG_FATAL);
 	int imask = LOG_MASK(LOG_INFO)|LOG_MASK(LOG_NOTICE);
 
@@ -121,13 +121,13 @@ int log_open_file(const char* filename)
 {
 	// Check facility
 	if (unlikely(!LOG_FCL_SIZE || LOGT_FILE + LOG_FDS_OPEN >= LOG_FCL_SIZE)) {
-		return KNOT_ERROR;
+		return KNOTDERROR;
 	}
 
 	// Open file
 	LOG_FDS[LOG_FDS_OPEN] = fopen(filename, "w");
 	if (!LOG_FDS[LOG_FDS_OPEN]) {
-		return KNOT_EINVAL;
+		return KNOTDEINVAL;
 	}
 
 	// Disable buffering
@@ -150,7 +150,7 @@ int log_levels_set(int facility, logsrc_t src, uint8_t levels)
 {
 	// Check facility
 	if (unlikely(!LOG_FCL_SIZE || facility >= LOG_FCL_SIZE)) {
-		return KNOT_EINVAL;
+		return KNOTDEINVAL;
 	}
 
 	// Get facility pointer from offset
@@ -166,7 +166,7 @@ int log_levels_set(int facility, logsrc_t src, uint8_t levels)
 		}
 	}
 
-	return KNOT_EOK;
+	return KNOTDEOK;
 }
 
 int log_levels_add(int facility, logsrc_t src, uint8_t levels)
@@ -178,7 +178,7 @@ int log_levels_add(int facility, logsrc_t src, uint8_t levels)
 static int _log_msg(logsrc_t src, int level, const char *msg)
 {
 	if(!log_isopen()) {
-		return KNOT_ERROR;
+		return KNOTDERROR;
 	}
 
 	int ret = 0;
@@ -217,7 +217,7 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 	}
 
 	if (ret < 0) {
-		return KNOT_EINVAL;
+		return KNOTDEINVAL;
 	}
 
 	return ret;

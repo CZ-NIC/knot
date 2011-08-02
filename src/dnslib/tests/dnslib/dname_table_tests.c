@@ -84,25 +84,25 @@ static int test_dname_table_adding()
 	CHECK_ALLOC(table, 0);
 
 	/* Add NULL */
-	if (knot_dname_table_add_dname(table, NULL) != DNSLIB_EBADARG) {
+	if (knot_dname_table_add_dname(table, NULL) != KNOT_EBADARG) {
 		diag("Adding NULL dname did not result in an error!");
 		errors++;
 	}
 
 	/* Add to NULL table*/
-	if (knot_dname_table_add_dname(NULL, NULL) != DNSLIB_EBADARG) {
+	if (knot_dname_table_add_dname(NULL, NULL) != KNOT_EBADARG) {
 		diag("Adding to NULL table did not result in an error!");
 		errors++;
 	}
 
 	/* Add NULL */
-	if (knot_dname_table_add_dname2(table, NULL) != DNSLIB_EBADARG) {
+	if (knot_dname_table_add_dname2(table, NULL) != KNOT_EBADARG) {
 		diag("Adding NULL dname did not result in an error!");
 		errors++;
 	}
 
 	/* Add to NULL table*/
-	if (knot_dname_table_add_dname2(NULL, NULL) != DNSLIB_EBADARG) {
+	if (knot_dname_table_add_dname2(NULL, NULL) != KNOT_EBADARG) {
 		diag("Adding to NULL table did not result in an error!");
 		errors++;
 	}
@@ -117,7 +117,7 @@ static int test_dname_table_adding()
 			errors++;
 			continue;
 		}
-		if (knot_dname_table_add_dname(table, dname) != DNSLIB_EOK) {
+		if (knot_dname_table_add_dname(table, dname) != KNOT_EOK) {
 			diag("Could not add dname! (%s)",
 			     DNAME_TABLE_DNAMES[i].str);
 			errors++;
@@ -175,7 +175,7 @@ static int test_dname_table_adding()
 
 	if (knot_dname_table_add_dname(table,
 		dname_from_test_dname_str(&DNAME_TABLE_DNAMES[0])) !=
-	                                 DNSLIB_EOK) {
+	                                 KNOT_EOK) {
 		diag("Could not add dname to table once it's already there!");
 		/* Next test would not make sense. */
 		knot_dname_table_deep_free(&table);
@@ -223,7 +223,7 @@ static int test_dname_table_adding()
 		dname_from_test_dname_str(&DNAME_TABLE_DNAMES[0]);
 	assert(tmp_dname);
 
-	if (knot_dname_table_add_dname2(table, &tmp_dname) != DNSLIB_EOK) {
+	if (knot_dname_table_add_dname2(table, &tmp_dname) != KNOT_EOK) {
 		diag("Could not add dname using dname_table_add_dname2!");
 		knot_dname_table_deep_free(&table);
 		knot_dname_free(&tmp_dname);
@@ -288,7 +288,7 @@ static int test_dname_table_find()
 			errors++;
 			continue;
 		}
-		if (knot_dname_table_add_dname(table, dname) != DNSLIB_EOK) {
+		if (knot_dname_table_add_dname(table, dname) != KNOT_EOK) {
 			diag("Could not add dname! (%s)",
 			     DNAME_TABLE_DNAMES[i].str);
 			errors++;
@@ -340,14 +340,14 @@ static int test_dname_table_find()
 	return (errors == 0);
 }
 
-static const int DNSLIB_DNAME_TABLE_TEST_COUNT = 3;
+static const int KNOT_DNAME_TABLE_TEST_COUNT = 3;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
 static int knot_dname_table_tests_count(int argc, char *argv[])
 {
-	return DNSLIB_DNAME_TABLE_TEST_COUNT;
+	return KNOT_DNAME_TABLE_TEST_COUNT;
 }
 
 /*! Run all scheduled tests for given parameters.

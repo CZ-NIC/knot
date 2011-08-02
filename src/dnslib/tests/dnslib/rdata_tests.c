@@ -174,9 +174,9 @@ static int fill_rdata(uint8_t *data, int max_size, uint16_t rrtype,
 		int stored_size = 0;
 
 		switch (desc->wireformat[i]) {
-		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
-		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
-		case DNSLIB_RDATA_WF_LITERAL_DNAME:
+		case KNOT_RDATA_WF_COMPRESSED_DNAME:
+		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
+		case KNOT_RDATA_WF_LITERAL_DNAME:
 			dname = knot_dname_new_from_wire(
 			                (uint8_t *)test_domains_ok[0].wire,
 			                test_domains_ok[0].size, NULL);
@@ -187,7 +187,7 @@ static int fill_rdata(uint8_t *data, int max_size, uint16_t rrtype,
 			domain = 1;
 			size = knot_dname_size(dname);
 			//note("Size of created domain name: %u", size);
-			assert(size < DNSLIB_MAX_RDATA_ITEM_SIZE);
+			assert(size < KNOT_MAX_RDATA_ITEM_SIZE);
 			// store size of the domain name
 			*(pos++) = size;
 			// copy the domain name
@@ -196,7 +196,7 @@ static int fill_rdata(uint8_t *data, int max_size, uint16_t rrtype,
 			break;
 		default:
 			binary = 1;
-			size = rand() % DNSLIB_MAX_RDATA_ITEM_SIZE;
+			size = rand() % KNOT_MAX_RDATA_ITEM_SIZE;
 		}
 
 		if (binary) {
@@ -272,9 +272,9 @@ static int check_rdata(const uint8_t *data, int max_size, uint16_t rrtype,
 		//note("  item: %d", i);
 
 		switch (desc->wireformat[i]) {
-		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
-		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
-		case DNSLIB_RDATA_WF_LITERAL_DNAME:
+		case KNOT_RDATA_WF_COMPRESSED_DNAME:
+		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
+		case KNOT_RDATA_WF_LITERAL_DNAME:
 			//note("    domain name");
 			domain = 1;
 			size = knot_dname_size(knot_rdata_item(
@@ -367,9 +367,9 @@ static int check_rdata(const uint8_t *data, int max_size, uint16_t rrtype,
 //		uint to_copy = 0;
 
 //		switch (desc->wireformat[i]) {
-//		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
-//		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
-//		case DNSLIB_RDATA_WF_LITERAL_DNAME:
+//		case KNOT_RDATA_WF_COMPRESSED_DNAME:
+//		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
+//		case KNOT_RDATA_WF_LITERAL_DNAME:
 //			// copy the domain name without its length
 //			from = pos + 1;
 //			to_copy = *pos;
@@ -377,46 +377,46 @@ static int check_rdata(const uint8_t *data, int max_size, uint16_t rrtype,
 ///*			note("Domain name in wire format (size %u): %s",
 //			     to_copy, (char *)from); */
 //			break;
-//		case DNSLIB_RDATA_WF_BYTE:
+//		case KNOT_RDATA_WF_BYTE:
 //			//note("    1byte int");
 //			from = pos;
 //			to_copy = 1;
 //			pos += 1;
 //			break;
-//		case DNSLIB_RDATA_WF_SHORT:
+//		case KNOT_RDATA_WF_SHORT:
 //			//note("    2byte int");
 //			from = pos;
 //			to_copy = 2;
 //			pos += 2;
 //			break;
-//		case DNSLIB_RDATA_WF_LONG:
+//		case KNOT_RDATA_WF_LONG:
 //			//note("    4byte int");
 //			from = pos;
 //			to_copy = 4;
 //			pos += 4;
 //			break;
-//		case DNSLIB_RDATA_WF_A:
+//		case KNOT_RDATA_WF_A:
 //			//note("    A");
 //			from = pos;
 //			to_copy = 4;
 //			pos += 4;
 //			break;
-//		case DNSLIB_RDATA_WF_AAAA:
+//		case KNOT_RDATA_WF_AAAA:
 //			//note("    AAAA");
 //			from = pos;
 //			to_copy = 16;
 //			pos += 16;
 //			break;
-//		case DNSLIB_RDATA_WF_BINARY:
-//		case DNSLIB_RDATA_WF_APL:            // saved as binary
-//		case DNSLIB_RDATA_WF_IPSECGATEWAY:   // saved as binary
+//		case KNOT_RDATA_WF_BINARY:
+//		case KNOT_RDATA_WF_APL:            // saved as binary
+//		case KNOT_RDATA_WF_IPSECGATEWAY:   // saved as binary
 //			//note("    binary");
 //			from = pos + 1;
 //			to_copy = *pos;
 //			pos += *pos + 1;
 //			break;
-//		case DNSLIB_RDATA_WF_TEXT:
-//		case DNSLIB_RDATA_WF_BINARYWITHLENGTH:
+//		case KNOT_RDATA_WF_TEXT:
+//		case KNOT_RDATA_WF_BINARYWITHLENGTH:
 //			//note("    text or binary with length (%u)", *pos);
 //			to_copy = *pos + 1;
 //			from = pos;
@@ -462,13 +462,13 @@ static int test_rdata_set_item()
 		return 0;
 	}
 
-	uint8_t *data = malloc(sizeof(uint8_t) * DNSLIB_MAX_RDATA_WIRE_SIZE);
+	uint8_t *data = malloc(sizeof(uint8_t) * KNOT_MAX_RDATA_WIRE_SIZE);
 	assert(data);
-	generate_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE);
+	generate_rdata(data, KNOT_MAX_RDATA_WIRE_SIZE);
 
 	// set items through set_items() and then call set_item()
-	uint16_t rrtype = rand() % DNSLIB_RRTYPE_LAST + 1;
-	if (fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, rrtype, rdata) < 0) {
+	uint16_t rrtype = rand() % KNOT_RRTYPE_LAST + 1;
+	if (fill_rdata(data, KNOT_MAX_RDATA_WIRE_SIZE, rrtype, rdata) < 0) {
 		knot_rdata_free(&rdata);
 		diag("Error filling RDATA");
 		return 0;
@@ -480,9 +480,9 @@ static int test_rdata_set_item()
 	  knot_rrtype_descriptor_by_type(rrtype);
 
 	// if the rdata on this position is domain name, free it to avoid leaks
-	if (desc->wireformat[pos] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME
-	    || desc->wireformat[pos] == DNSLIB_RDATA_WF_COMPRESSED_DNAME
-	    || desc->wireformat[pos] == DNSLIB_RDATA_WF_LITERAL_DNAME) {
+	if (desc->wireformat[pos] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME
+	    || desc->wireformat[pos] == KNOT_RDATA_WF_COMPRESSED_DNAME
+	    || desc->wireformat[pos] == KNOT_RDATA_WF_LITERAL_DNAME) {
 		knot_dname_free(&(rdata->items[pos].dname));
 	}
 
@@ -505,11 +505,11 @@ static int test_rdata_set_item()
 	for (int x = 0; x < desc->length; x++) {
 	       if (x != pos && (
 		   desc->wireformat[x] ==
-	               DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
+	               KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
 	           desc->wireformat[x] ==
-	               DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+	               KNOT_RDATA_WF_COMPRESSED_DNAME ||
 	           desc->wireformat[x] ==
-	               DNSLIB_RDATA_WF_LITERAL_DNAME)) {
+	               KNOT_RDATA_WF_LITERAL_DNAME)) {
 		knot_dname_free(&(rdata->items[x].dname));
 	       }
 	}
@@ -538,7 +538,7 @@ static int test_rdata_set_items()
 	int errors = 0;
 
 	// check error return values
-	if (knot_rdata_set_items(rdata, NULL, 0) != DNSLIB_EBADARG) {
+	if (knot_rdata_set_items(rdata, NULL, 0) != KNOT_EBADARG) {
 		diag("Return value of knot_rdata_set_items() "
 		     "when rdata == NULL is wrong");
 		return 0;
@@ -546,13 +546,13 @@ static int test_rdata_set_items()
 		rdata = knot_rdata_new();
 		assert(rdata != NULL);
 
-		if (knot_rdata_set_items(rdata, NULL, 0) != DNSLIB_EBADARG) {
+		if (knot_rdata_set_items(rdata, NULL, 0) != KNOT_EBADARG) {
 			diag("Return value of knot_rdata_set_items()"
 			     " when items == NULL is wrong");
 			knot_rdata_free(&rdata);
 			return 0;
 		} else if (knot_rdata_set_items(rdata, item, 0) !=
-			   DNSLIB_EBADARG) {
+			   KNOT_EBADARG) {
 			diag("Return value of knot_rdata_set_items()"
 			     " when count == 0"
 			     "is wrong");
@@ -563,18 +563,18 @@ static int test_rdata_set_items()
 	}
 
 	// generate some random data
-	uint8_t *data = malloc(sizeof(uint8_t) * DNSLIB_MAX_RDATA_WIRE_SIZE);
+	uint8_t *data = malloc(sizeof(uint8_t) * KNOT_MAX_RDATA_WIRE_SIZE);
 	assert(data);
-	generate_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE);
+	generate_rdata(data, KNOT_MAX_RDATA_WIRE_SIZE);
 
-	for (int i = 0; i <= DNSLIB_RRTYPE_LAST; ++i) {
+	for (int i = 0; i <= KNOT_RRTYPE_LAST; ++i) {
 		rdata = knot_rdata_new();
 
-		if (fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i, rdata)
+		if (fill_rdata(data, KNOT_MAX_RDATA_WIRE_SIZE, i, rdata)
 		    < 0) {
 			++errors;
 		}
-		errors += check_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i,
+		errors += check_rdata(data, KNOT_MAX_RDATA_WIRE_SIZE, i,
 		                      rdata);
 
 		knot_rrtype_descriptor_t *desc =
@@ -582,11 +582,11 @@ static int test_rdata_set_items()
 
 		for (int x = 0; x < desc->length; x++) {
 			if (desc->wireformat[x] ==
-			    DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
+			    KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
 			    desc->wireformat[x] ==
-			    DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+			    KNOT_RDATA_WF_COMPRESSED_DNAME ||
 			    desc->wireformat[x] ==
-			    DNSLIB_RDATA_WF_LITERAL_DNAME) {
+			    KNOT_RDATA_WF_LITERAL_DNAME) {
 //            printf("freeing %p\n", rdata->items[x].dname);
 				knot_dname_free(&(rdata->items[x].dname));
 			}
@@ -646,9 +646,9 @@ static int test_rdata_compare()
 {
 	int errors = 0;
 
-	uint8_t format_rawdata = DNSLIB_RDATA_WF_BINARY;
+	uint8_t format_rawdata = KNOT_RDATA_WF_BINARY;
 
-	uint8_t format_dname = DNSLIB_RDATA_WF_LITERAL_DNAME;
+	uint8_t format_dname = KNOT_RDATA_WF_LITERAL_DNAME;
 
 	/* 123456 \w 654321 -> result -1 */
 	if (knot_rdata_compare(&test_rdata[0],
@@ -712,14 +712,14 @@ static int test_rdata_compare()
 //	int errors = 0;
 
 //	// generate some random data
-//	uint8_t data[DNSLIB_MAX_RDATA_WIRE_SIZE];
-//	generate_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE);
+//	uint8_t data[KNOT_MAX_RDATA_WIRE_SIZE];
+//	generate_rdata(data, KNOT_MAX_RDATA_WIRE_SIZE);
 
-//	for (int i = 0; i <= DNSLIB_RRTYPE_LAST; ++i) {
+//	for (int i = 0; i <= KNOT_RRTYPE_LAST; ++i) {
 //		rdata = knot_rdata_new();
 
 //		int size =
-//		fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i, rdata);
+//		fill_rdata(data, KNOT_MAX_RDATA_WIRE_SIZE, i, rdata);
 
 //		if (size < 0) {
 //			++errors;
@@ -739,11 +739,11 @@ static int test_rdata_compare()
 
 //		for (int x = 0; x < desc->length; x++) {
 //			if (desc->wireformat[x] ==
-//			    DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
+//			    KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
 //			    desc->wireformat[x] ==
-//			    DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+//			    KNOT_RDATA_WF_COMPRESSED_DNAME ||
 //			    desc->wireformat[x] ==
-//			    DNSLIB_RDATA_WF_LITERAL_DNAME) {
+//			    KNOT_RDATA_WF_LITERAL_DNAME) {
 //				knot_dname_free(&(rdata->items[x].dname));
 //			}
 //		}
@@ -761,19 +761,19 @@ static int test_rdata_compare()
 //	int errors = 0;
 
 //	// generate some random data
-//	uint8_t data[DNSLIB_MAX_RDATA_WIRE_SIZE];
-//	uint8_t data_wire[DNSLIB_MAX_RDATA_WIRE_SIZE];
-//	uint8_t rdata_wire[DNSLIB_MAX_RDATA_WIRE_SIZE];
-//	generate_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE);
+//	uint8_t data[KNOT_MAX_RDATA_WIRE_SIZE];
+//	uint8_t data_wire[KNOT_MAX_RDATA_WIRE_SIZE];
+//	uint8_t rdata_wire[KNOT_MAX_RDATA_WIRE_SIZE];
+//	generate_rdata(data, KNOT_MAX_RDATA_WIRE_SIZE);
 
-//	for (int i = 0; i <= DNSLIB_RRTYPE_LAST; ++i) {
+//	for (int i = 0; i <= KNOT_RRTYPE_LAST; ++i) {
 //		rdata = knot_rdata_new();
 
 //		int size =
-//		fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i, rdata);
+//		fill_rdata(data, KNOT_MAX_RDATA_WIRE_SIZE, i, rdata);
 
 //		int size_expected =
-//	        convert_to_wire(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i,
+//	        convert_to_wire(data, KNOT_MAX_RDATA_WIRE_SIZE, i,
 //			        data_wire);
 
 //		if (size < 0) {
@@ -788,7 +788,7 @@ static int test_rdata_compare()
 //				if (knot_rdata_to_wire(rdata,
 //				    knot_rrtype_descriptor_by_type(i)->
 //				    wireformat, rdata_wire,
-//				    DNSLIB_MAX_RDATA_WIRE_SIZE) != 0) {
+//				    KNOT_MAX_RDATA_WIRE_SIZE) != 0) {
 //					diag("Error while converting RDATA"
 //					     " to wire format.");
 //					++errors;
@@ -810,11 +810,11 @@ static int test_rdata_compare()
 
 //		for (int x = 0; x < desc->length; x++) {
 //			if (desc->wireformat[x] ==
-//			    DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME ||
+//			    KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
 //			    desc->wireformat[x] ==
-//			    DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
+//			    KNOT_RDATA_WF_COMPRESSED_DNAME ||
 //			    desc->wireformat[x] ==
-//			    DNSLIB_RDATA_WF_LITERAL_DNAME) {
+//			    KNOT_RDATA_WF_LITERAL_DNAME) {
 //				knot_dname_free(&(rdata->items[x].dname));
 //			}
 //		}
@@ -844,12 +844,12 @@ static int test_rdata_deep_free()
 
 	knot_rdata_t *tmp_rdata;
 
-	uint8_t data[DNSLIB_MAX_RDATA_WIRE_SIZE];
+	uint8_t data[KNOT_MAX_RDATA_WIRE_SIZE];
 
-	for (int i = 0; i <= DNSLIB_RRTYPE_LAST; i++) {
+	for (int i = 0; i <= KNOT_RRTYPE_LAST; i++) {
 		tmp_rdata = knot_rdata_new();
 
-		fill_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE, i, tmp_rdata);
+		fill_rdata(data, KNOT_MAX_RDATA_WIRE_SIZE, i, tmp_rdata);
 
 		knot_rdata_deep_free(&tmp_rdata, i, 0);
 		errors += (tmp_rdata != NULL);
@@ -860,14 +860,14 @@ static int test_rdata_deep_free()
 
 /*----------------------------------------------------------------------------*/
 
-static const int DNSLIB_RDATA_TEST_COUNT = 8;
+static const int KNOT_RDATA_TEST_COUNT = 8;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
 static int knot_rdata_tests_count(int argc, char *argv[])
 {
-	return DNSLIB_RDATA_TEST_COUNT;
+	return KNOT_RDATA_TEST_COUNT;
 }
 
 /*! Run all scheduled tests for given parameters.

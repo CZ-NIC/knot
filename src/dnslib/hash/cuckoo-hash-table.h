@@ -18,8 +18,8 @@
  * \addtogroup hashing
  * @{
  */
-#ifndef _KNOT_CUCKOO_HASH_TABLE_H_
-#define _KNOT_CUCKOO_HASH_TABLE_H_
+#ifndef _KNOTDCUCKOO_HASH_TABLE_H_
+#define _KNOTDCUCKOO_HASH_TABLE_H_
 
 #include <stdint.h> /* uint32_t */
 #include <stdlib.h> /* size_t */
@@ -278,6 +278,6 @@ void ck_dump_table(const ck_hash_table_t *table);
 
 /*----------------------------------------------------------------------------*/
 
-#endif /* _KNOT_CUCKOO_HASH_TABLE_H_ */
+#endif /* _KNOTDCUCKOO_HASH_TABLE_H_ */
 
 /*! @} */

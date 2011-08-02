@@ -26,7 +26,7 @@
  */
 static inline uint8_t knot_node_flags_get_deleg(uint8_t flags)
 {
-	return flags & DNSLIB_NODE_FLAGS_DELEG;
+	return flags & KNOT_NODE_FLAGS_DELEG;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -37,7 +37,7 @@ static inline uint8_t knot_node_flags_get_deleg(uint8_t flags)
  */
 static inline void knot_node_flags_set_deleg(uint8_t *flags)
 {
-	*flags |= DNSLIB_NODE_FLAGS_DELEG;
+	*flags |= KNOT_NODE_FLAGS_DELEG;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -51,7 +51,7 @@ static inline void knot_node_flags_set_deleg(uint8_t *flags)
  */
 static inline uint8_t knot_node_flags_get_nonauth(uint8_t flags)
 {
-	return flags & DNSLIB_NODE_FLAGS_NONAUTH;
+	return flags & KNOT_NODE_FLAGS_NONAUTH;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -62,7 +62,7 @@ static inline uint8_t knot_node_flags_get_nonauth(uint8_t flags)
  */
 static inline void knot_node_flags_set_nonauth(uint8_t *flags)
 {
-	*flags |= DNSLIB_NODE_FLAGS_NONAUTH;
+	*flags |= KNOT_NODE_FLAGS_NONAUTH;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -75,7 +75,7 @@ static inline void knot_node_flags_set_nonauth(uint8_t *flags)
  */
 static inline uint8_t knot_node_flags_get_old(uint8_t flags)
 {
-	return flags & DNSLIB_NODE_FLAGS_OLD;
+	return flags & KNOT_NODE_FLAGS_OLD;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -86,7 +86,7 @@ static inline uint8_t knot_node_flags_get_old(uint8_t flags)
  */
 static inline void knot_node_flags_set_new(uint8_t *flags)
 {
-	*flags |= DNSLIB_NODE_FLAGS_NEW;
+	*flags |= KNOT_NODE_FLAGS_NEW;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -99,7 +99,7 @@ static inline void knot_node_flags_set_new(uint8_t *flags)
  */
 static inline uint8_t knot_node_flags_get_new(uint8_t flags)
 {
-	return flags & DNSLIB_NODE_FLAGS_NEW;
+	return flags & KNOT_NODE_FLAGS_NEW;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -110,21 +110,21 @@ static inline uint8_t knot_node_flags_get_new(uint8_t flags)
  */
 static inline void knot_node_flags_set_old(uint8_t *flags)
 {
-	*flags |= DNSLIB_NODE_FLAGS_OLD;
+	*flags |= KNOT_NODE_FLAGS_OLD;
 }
 
 /*----------------------------------------------------------------------------*/
 
 static inline void knot_node_flags_clear_new(uint8_t *flags)
 {
-	*flags &= ~DNSLIB_NODE_FLAGS_NEW;
+	*flags &= ~KNOT_NODE_FLAGS_NEW;
 }
 
 /*----------------------------------------------------------------------------*/
 
 static inline void knot_node_flags_clear_old(uint8_t *flags)
 {
-	*flags &= ~DNSLIB_NODE_FLAGS_OLD;
+	*flags &= ~KNOT_NODE_FLAGS_OLD;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -199,12 +199,12 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
 //	       knot_rrtype_to_string(rrset->type));
 	if ((ret = (gen_tree_add(node->rrset_tree, rrset,
 	                         (merge) ? knot_rrset_merge : NULL))) != 0) {
-		return DNSLIB_ERROR;
+		return KNOT_ERROR;
 	}
 
 	if (ret == 0) {
 		node->rrset_count += unique_rrset_type;
-		return DNSLIB_EOK;
+		return KNOT_EOK;
 	} else {
 		return 1;
 	}
@@ -821,7 +821,7 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 	// create new node
 	*to = knot_node_new(from->owner, from->parent, from->flags);
 	if (*to == NULL) {
-		return DNSLIB_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	// copy references	
@@ -835,8 +835,8 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 //	if ((*to)->rrsets == NULL) {
 //		free(*to);
 //		*to = NULL;
-//		return DNSLIB_ENOMEM;
+//		return KNOT_ENOMEM;
 //	}
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }

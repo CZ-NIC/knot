@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_ZONES_H_
-#define _KNOT_ZONES_H_
+#ifndef _KNOTDZONES_H_
+#define _KNOTDZONES_H_
 
 #include "common/lists.h"
 #include "common/acl.h"
@@ -85,9 +85,9 @@ typedef enum xfr_type_t {
  * \param[out] db_old Old database, containing only zones which should be
  *                    deleted afterwards.
  *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- * \retval KNOT_ERROR
+ * \retval KNOTDEOK
+ * \retval KNOTDEINVAL
+ * \retval KNOTDERROR
  */
 int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
                                knot_zonedb_t **db_old);
@@ -102,9 +102,9 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
  *
  * \param zone Evaluated zone.
  *
- * \retval KNOT_EOK if successful.
- * \retval KNOT_EINVAL on invalid parameter.
- * \retval KNOT_ERROR on unspecified error during processing.
+ * \retval KNOTDEOK if successful.
+ * \retval KNOTDEINVAL on invalid parameter.
+ * \retval KNOTDERROR on unspecified error during processing.
  */
 int zones_zonefile_sync(knot_zone_t *zone);
 
@@ -120,9 +120,9 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode);
  * \param rsize Input: maximum acceptable size of the response. Output: real
  *              size of the response.
  *
- * \retval KNOT_EOK if a valid response was created.
- * \retval KNOT_EINVAL on invalid parameters or packet.
- * \retval KNOT_EMALF if an error occured and the response is not valid.
+ * \retval KNOTDEOK if a valid response was created.
+ * \retval KNOTDEINVAL on invalid parameters or packet.
+ * \retval KNOTDEMALF if an error occured and the response is not valid.
  */
 int zones_process_response(knot_nameserver_t *nameserver, 
                            sockaddr_t *from,
@@ -149,9 +149,9 @@ int zones_save_zone(const knot_ns_xfr_t *xfr);
  * \param conf Current configuration.
  * \param data Instance of the nameserver structure to update.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL
- * \retval KNOT_ERROR
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL
+ * \retval KNOTDERROR
  */
 int zones_ns_conf_hook(const struct conf_t *conf, void *data);
 
@@ -164,9 +164,9 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data);
  * \param zone Zone associated with the changeset.
  * \param src Changesets.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_EAGAIN if journal needs to be synced with zonefile first.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on invalid parameters.
+ * \retval KNOTDEAGAIN if journal needs to be synced with zonefile first.
  *
  * \todo Expects the xfr structure to be initialized in some way.
  */
@@ -178,7 +178,7 @@ int zones_store_changesets(knot_ns_xfr_t *xfr);
  * Changesets will be stored on a permanent storage.
  * Journal may be compacted, resulting in flattening changeset history.
  *
- * In case of KNOT_ERANGE error, whole zone content should be sent instead,
+ * In case of KNOTDERANGE error, whole zone content should be sent instead,
  * as the changeset history cannot be recovered.
  *
  * \param zone Zone containing a changeset journal.
@@ -186,9 +186,9 @@ int zones_store_changesets(knot_ns_xfr_t *xfr);
  * \param from Starting SOA serial (oldest).
  * \param to Ending SOA serial (newest).
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ERANGE when changeset history cannot be reconstructed.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL on invalid parameters.
+ * \retval KNOTDERANGE when changeset history cannot be reconstructed.
  *
  * \todo Expects the xfr structure to be initialized in some way.
  */
@@ -203,11 +203,11 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr);
  * \param zone Zone to which the changesets should be applied.
  * \param chsets Changesets to be applied to the zone.
  *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
+ * \retval KNOTDEOK
+ * \retval KNOTDEINVAL
  */
 int zones_apply_changesets(knot_ns_xfr_t *xfr);
 
-#endif // _KNOT_ZONES_H_
+#endif // _KNOTDZONES_H_
 
 /*! @} */

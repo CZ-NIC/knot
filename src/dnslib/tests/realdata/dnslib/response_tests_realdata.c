@@ -398,9 +398,9 @@ int compare_rr_rdata(knot_rdata_t *rdata, ldns_rr *rr,
 	for (int i = 0; i < rdata->count; i++) {
 		/* check for ldns "descriptors" as well */
 
-		if (desc->wireformat[i] == DNSLIB_RDATA_WF_COMPRESSED_DNAME ||
-		    desc->wireformat[i] == DNSLIB_RDATA_WF_LITERAL_DNAME ||
-		    desc->wireformat[i] == DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME) {
+		if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
+		    desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME ||
+		    desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME) {
 			if (rdata->items[i].dname->size !=
 			    ldns_rdf_size(ldns_rr_rdf(rr, i))) {
 				diag("%s", rdata->items[i].dname->name);
@@ -760,7 +760,7 @@ static int test_response_to_wire(list response_list,
 
 		for (int j = 0; j < test_response->arcount; j++) {
 			if (test_response->additional[j]->type ==
-			    DNSLIB_RRTYPE_OPT) {
+			    KNOT_RRTYPE_OPT) {
 				parsed_opt =
 			rrset_from_test_rrset(test_response->additional[j]);
 			}
@@ -821,7 +821,7 @@ static int test_response_to_wire(list response_list,
 		for (int j = 0; j < test_response->arcount; j++) {
 			if (&(test_response->additional[j])) {
 				if (test_response->additional[j]->type ==
-				    DNSLIB_RRTYPE_OPT) {
+				    KNOT_RRTYPE_OPT) {
 					continue;
 				}
 				if (knot_response_add_rrset_additional(resp,
@@ -904,11 +904,11 @@ static int test_response_to_wire(list response_list,
 	return (errors == 0);
 }
 
-static const int DNSLIB_RESPONSE_TEST_COUNT = 4;
+static const int KNOT_RESPONSE_TEST_COUNT = 4;
 
 int knot_response_tests_count(int argc, char *argv[])
 {
-	return DNSLIB_RESPONSE_TEST_COUNT;
+	return KNOT_RESPONSE_TEST_COUNT;
 }
 
 int knot_response_tests_run(int argc, char *argv[])

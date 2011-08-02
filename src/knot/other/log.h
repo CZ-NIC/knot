@@ -15,8 +15,8 @@
  * @{
  */
 
-#ifndef _KNOT_LOG_H_
-#define _KNOT_LOG_H_
+#ifndef _KNOTDLOG_H_
+#define _KNOTDLOG_H_
 
 /*
  */
@@ -58,8 +58,8 @@ typedef enum {
  *
  * \param logfiles Number of extra logfiles.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL invalid number of logfiles (negative).
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL invalid number of logfiles (negative).
  */
 int log_setup(int logfiles);
 
@@ -68,8 +68,8 @@ int log_setup(int logfiles);
  *
  * \see syslog.h
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_ENOMEM out of memory error.
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDENOMEM out of memory error.
  */
 int log_init();
 
@@ -97,8 +97,8 @@ int log_isopen();
  * \param filename File path.
  *
  * \retval associated facility index on success.
- * \retval KNOT_EINVAL filename cannot be opened for writing.
- * \retval KNOT_ERROR unspecified error.
+ * \retval KNOTDEINVAL filename cannot be opened for writing.
+ * \retval KNOTDERROR unspecified error.
  */
 int log_open_file(const char* filename);
 
@@ -120,8 +120,8 @@ uint8_t log_levels(int facility, logsrc_t src);
  * \param src Logging source (LOG_SERVER...LOG_ANY).
  * \param levels Bitmask of specified log levels.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL invalid parameters (facility out of range).
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL invalid parameters (facility out of range).
  */
 int log_levels_set(int facility, logsrc_t src, uint8_t levels);
 
@@ -135,8 +135,8 @@ int log_levels_set(int facility, logsrc_t src, uint8_t levels);
  * \param src Logging source (LOG_SERVER...LOG_ANY).
  * \param levels Bitmask of specified log levels.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL invalid parameters (facility out of range).
+ * \retval KNOTDEOK on success.
+ * \retval KNOTDEINVAL invalid parameters (facility out of range).
  */
 int log_levels_add(int facility, logsrc_t src, uint8_t levels);
 
@@ -151,8 +151,8 @@ int log_levels_add(int facility, logsrc_t src, uint8_t levels);
  *
  * \retval Number of logged bytes on success.
  * \retval 0 When the message is ignored.
- * \retval KNOT_EINVAL invalid parameters.
- * \retval KNOT_ERROR unspecified error.
+ * \retval KNOTDEINVAL invalid parameters.
+ * \retval KNOTDERROR unspecified error.
  */
 int log_msg(logsrc_t src, int level, const char *msg, ...)
     __attribute__((format(printf, 3, 4)));
@@ -188,6 +188,6 @@ void hex_log(int source, const char *data, int length);
 #define log_zone_info(msg...)        log_msg(LOG_ZONE, LOG_INFO, msg)
 #define log_zone_debug(msg...)       log_msg(LOG_ZONE, LOG_DEBUG, msg)
 
-#endif /* _KNOT_LOG_H_ */
+#endif /* _KNOTDLOG_H_ */
 
 /*! @} */

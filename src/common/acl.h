@@ -12,8 +12,8 @@
  * @{
  */
 
-#ifndef _KNOT_ACL_H_
-#define _KNOT_ACL_H_
+#ifndef _KNOTDACL_H_
+#define _KNOTDACL_H_
 
 #include "common/skip-list.h"
 #include "common/sockaddr.h"
@@ -118,6 +118,6 @@ static inline skip_list_t* acl_rules(acl_t *acl) {
         return acl->rules;
 }
 
-#endif /* _KNOT_ACL_H_ */
+#endif /* _KNOTDACL_H_ */
 
 /*! @} */

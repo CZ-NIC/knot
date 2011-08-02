@@ -50,8 +50,8 @@ void help(int argc, char **argv)
  * \param db Path to zone db file.
  * \param source Path to zone source file.
  *
- * \retval KNOT_EOK if up to date.
- * \retval KNOT_ERROR if needs recompilation.
+ * \retval KNOTDEOK if up to date.
+ * \retval KNOTDERROR if needs recompilation.
  */
 int check_zone(const char *db, const char* source)
 {
@@ -59,14 +59,14 @@ int check_zone(const char *db, const char* source)
 	/* Read zonedb header. */
 	zloader_t *zl = knot_zload_open(db);
 	if (!zl) {
-		return KNOT_ERROR;
+		return KNOTDERROR;
 	}
 
 	/* Check source files and mtime. */
-	int ret = KNOT_ERROR;
+	int ret = KNOTDERROR;
 	int src_changed = strcmp(source, zl->source) != 0;
 	if (!src_changed && !knot_zload_needs_update(zl)) {
-		ret = KNOT_EOK;
+		ret = KNOTDEOK;
 	}
 
 	knot_zload_close(zl);
@@ -277,7 +277,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			conf_zone_t *zone = (conf_zone_t*)n;
 
 			// Check source files and mtime
-			if (check_zone(zone->db, zone->file) == KNOT_EOK) {
+			if (check_zone(zone->db, zone->file) == KNOTDEOK) {
 				printf("Zone '%s' is up-to-date.\n",
 				       zone->name);
 

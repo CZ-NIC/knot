@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_NOTIFY_H_
-#define _KNOT_NOTIFY_H_
+#ifndef _KNOTDNOTIFY_H_
+#define _KNOTDNOTIFY_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -44,9 +44,9 @@ typedef struct notify_ev_t {
  * \param size In: available space in the buffer. Out: actual size of the
  *             message in bytes.
  *
- * \retval KNOT_EOK
- * \retval KNOT_ESPACE
- * \retval KNOT_ERROR
+ * \retval KNOTDEOK
+ * \retval KNOTDESPACE
+ * \retval KNOTDERROR
  */
 int notify_create_request(const knot_zone_contents_t *zone, uint8_t *buffer,
                           size_t *size);
@@ -64,9 +64,9 @@ int notify_create_request(const knot_zone_contents_t *zone, uint8_t *buffer,
  * \param rsize Input: maximum acceptable size of the response. Output: real
  *              size of the response.
  *
- * \retval KNOT_EOK if a valid response was created.
- * \retval KNOT_EACCES sender is not authorized to request NOTIFY.
- * \retval KNOT_EMALF if an error occured and the response is not valid.
+ * \retval KNOTDEOK if a valid response was created.
+ * \retval KNOTDEACCES sender is not authorized to request NOTIFY.
+ * \retval KNOTDEMALF if an error occured and the response is not valid.
  */
 /*!
  * \brief Evaluates incoming NOTIFY request and produces a reply.
@@ -79,10 +79,10 @@ int notify_create_request(const knot_zone_contents_t *zone, uint8_t *buffer,
  * \param size In: available space in the buffer. Out: actual size of the
  *             response message in bytes.
  *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- * \retval KNOT_EMALF
- * \retval KNOT_ERROR
+ * \retval KNOTDEOK
+ * \retval KNOTDEINVAL
+ * \retval KNOTDEMALF
+ * \retval KNOTDERROR
  */
 int notify_process_request(const knot_nameserver_t *nameserver,
                            knot_packet_t *notify,
@@ -99,15 +99,15 @@ int notify_process_request(const knot_nameserver_t *nameserver,
  * \param rsize Input: maximum acceptable size of the response. Output: real
  *              size of the response.
  *
- * \retval KNOT_EOK if a valid response was created.
- * \retval KNOT_EINVAL on invalid parameters or packet.
- * \retval KNOT_EMALF if an error occured and the response is not valid.
+ * \retval KNOTDEOK if a valid response was created.
+ * \retval KNOTDEINVAL on invalid parameters or packet.
+ * \retval KNOTDEMALF if an error occured and the response is not valid.
  */
 int notify_process_response(const knot_nameserver_t *nameserver,
                             knot_packet_t *notify,
                             sockaddr_t *from,
                             uint8_t *buffer, size_t *size);
 
-#endif /* _KNOT_NOTIFY_H_ */
+#endif /* _KNOTDNOTIFY_H_ */
 
 /*! @} */

@@ -33,7 +33,7 @@ pid_t pid_read(const char* fn)
 	if (fn) {
 		FILE *fp = fopen(fn, "r");
 		if (!fp) {
-			return KNOT_ENOENT;
+			return KNOTDENOENT;
 		}
 
 		int readb = 0;
@@ -49,26 +49,26 @@ pid_t pid_read(const char* fn)
 
 		// Check read result
 		if (readb < 1) {
-			return KNOT_ENOENT;
+			return KNOTDENOENT;
 		}
 
 		// Convert pid
 		char* ep = 0;
 		unsigned long pid = strtoul(buf, &ep, 10);
 		if ((errno == ERANGE) || (*ep && !isspace(*ep))) {
-			return KNOT_ERANGE;
+			return KNOTDERANGE;
 		}
 
 		return (pid_t)pid;
 	}
 
-	return KNOT_EINVAL;
+	return KNOTDEINVAL;
 }
 
 int pid_write(const char* fn)
 {
 	if (!fn) {
-		return KNOT_EINVAL;
+		return KNOTDEINVAL;
 	}
 
 	// Convert
@@ -76,7 +76,7 @@ int pid_write(const char* fn)
 	int wbytes = 0;
 	wbytes = snprintf(buf, sizeof(buf), "%lu", (unsigned long) getpid());
 	if (wbytes < 0) {
-		return KNOT_EINVAL;
+		return KNOTDEINVAL;
 	}
 
 	// Write
@@ -85,22 +85,22 @@ int pid_write(const char* fn)
 		int rc = fwrite(buf, wbytes, 1, fp);
 		fclose(fp);
 		if (rc < 0) {
-			return KNOT_ERROR;
+			return KNOTDERROR;
 		}
 
 		return 0;
 	}
 
-	return KNOT_ENOENT;
+	return KNOTDENOENT;
 }
 
 int pid_remove(const char* fn)
 {
 	if (unlink(fn) < 0) {
-		return KNOT_EINVAL;
+		return KNOTDEINVAL;
 	}
 
-	return KNOT_EOK;
+	return KNOTDEOK;
 }
 
 int pid_running(pid_t pid)

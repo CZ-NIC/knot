@@ -94,7 +94,7 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 
 	/* Check address type. */
 	sockaddr_t addr;
-	if (sockaddr_init(&addr, tcp_w->io_h->type) != KNOT_EOK) {
+	if (sockaddr_init(&addr, tcp_w->io_h->type) != KNOTDEOK) {
 		log_server_error("Socket type %d is not supported, "
 				 "IPv6 support is probably disabled.\n",
 				 tcp_w->io_h->type);
@@ -116,19 +116,19 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 	size_t resp_len = qbuf_maxlen; // 64K
 
 	/* Parse query. */
-	knot_packet_type_t qtype = DNSLIB_QUERY_NORMAL;
+	knot_packet_type_t qtype = KNOT_QUERY_NORMAL;
 
 	knot_packet_t *packet =
-		knot_packet_new(DNSLIB_PACKET_PREALLOC_QUERY);
+		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	if (packet == NULL) {
 		uint16_t pkt_id = knot_wire_get_id(qbuf);
-		knot_ns_error_response(ns, pkt_id, DNSLIB_RCODE_SERVFAIL,
+		knot_ns_error_response(ns, pkt_id, KNOT_RCODE_SERVFAIL,
 				  qbuf, &resp_len);
 		return;
 	}
 
 	int res = knot_ns_parse_packet(qbuf, n, packet, &qtype);
-	if (unlikely(res != KNOT_EOK)) {
+	if (unlikely(res != KNOTDEOK)) {
 
 		/* Send error response on dnslib RCODE. */
 		if (res > 0) {
@@ -144,22 +144,22 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 
 	/* Handle query. */
 	knot_ns_xfr_t xfr;
-	res = KNOT_ERROR;
+	res = KNOTDERROR;
 	switch(qtype) {
 
 	/* Response types. */
-	case DNSLIB_RESPONSE_NORMAL:
-	case DNSLIB_RESPONSE_AXFR:
-	case DNSLIB_RESPONSE_IXFR:
-	case DNSLIB_RESPONSE_NOTIFY:
+	case KNOT_RESPONSE_NORMAL:
+	case KNOT_RESPONSE_AXFR:
+	case KNOT_RESPONSE_IXFR:
+	case KNOT_RESPONSE_NOTIFY:
 		/*! \todo Implement packet handling. */
 		break;
 
 	/* Query types. */
-	case DNSLIB_QUERY_NORMAL:
+	case KNOT_QUERY_NORMAL:
 		res = knot_ns_answer_normal(ns, packet, qbuf, &resp_len);
 		break;
-	case DNSLIB_QUERY_AXFR:
+	case KNOT_QUERY_AXFR:
 		memset(&xfr, 0, sizeof(knot_ns_xfr_t));
 		xfr.type = XFR_TYPE_AOUT;
 		xfr.query = packet;
@@ -169,7 +169,7 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 		xfr_request(xfr_h, &xfr);
 		debug_net("tcp: enqueued AXFR query\n");
 		return;
-	case DNSLIB_QUERY_IXFR:
+	case KNOT_QUERY_IXFR:
 		memset(&xfr, 0, sizeof(knot_ns_xfr_t));
 		xfr.type = XFR_TYPE_IOUT;
 		xfr.query = packet; /* Will be freed after processing. */
@@ -179,8 +179,8 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 		xfr_request(xfr_h, &xfr);
 		debug_net("tcp: enqueued IXFR query\n");
 		return;
-	case DNSLIB_QUERY_NOTIFY:
-	case DNSLIB_QUERY_UPDATE:
+	case KNOT_QUERY_NOTIFY:
+	case KNOT_QUERY_UPDATE:
 		break;
 	}
 
@@ -190,7 +190,7 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 	knot_packet_free(&packet);
 
 	/* Send answer. */
-	if (res == KNOT_EOK) {
+	if (res == KNOTDEOK) {
 		assert(resp_len > 0);
 		res = tcp_send(w->fd, qbuf, resp_len);
 
@@ -334,7 +334,7 @@ static int tcp_loop_run(dthread_t *thread)
 	/* Stop whole unit. */
 	debug_net("tcp: loop finished\n");
 
-	return KNOT_EOK;
+	return KNOTDEOK;
 }
 
 int tcp_loop_master_rr(dthread_t *thread)
@@ -344,7 +344,7 @@ int tcp_loop_master_rr(dthread_t *thread)
 	/* Check socket. */
 	if (handler->fd < 0) {
 		debug_net("tcp_master: null socket recevied, finishing.\n");
-		return KNOT_EINVAL;
+		return KNOTDEINVAL;
 	}
 
 	debug_net("tcp_master: threading unit master with %d workers\n",
@@ -376,13 +376,13 @@ int tcp_send(int fd, uint8_t *msg, size_t msglen)
 	unsigned short pktsize = htons(msglen);
 	int sent = send(fd, &pktsize, sizeof(pktsize), 0);
 	if (sent < 0) {
-		return KNOT_ERROR;
+		return KNOTDERROR;
 	}
 
 	/* Send message data. */
 	sent = send(fd, msg, msglen, 0);
 	if (sent < 0) {
-		return KNOT_ERROR;
+		return KNOTDERROR;
 	}
 
 #ifdef TCP_CORK
@@ -399,14 +399,14 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	unsigned short pktsize = 0;
 	int n = recv(fd, &pktsize, sizeof(unsigned short), 0);
 	if (n < 0) {
-		return KNOT_ERROR;
+		return KNOTDERROR;
 	}
 
 	pktsize = ntohs(pktsize);
 
 	// Check packet size for NULL
 	if (pktsize == 0) {
-		return KNOT_ERROR;
+		return KNOTDERROR;
 	}
 
 	debug_net("tcp: incoming packet size=%hu on fd=%d\n",
@@ -414,13 +414,13 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 
 	// Check packet size
 	if (len < pktsize) {
-		return KNOT_ENOMEM;
+		return KNOTDENOMEM;
 	}
 
 	/* Receive payload. */
 	n = recv(fd, buf, pktsize, 0);
 	if (n <= 0) {
-		return KNOT_ERROR;
+		return KNOTDERROR;
 	}
 
 	/* Get peer name. */
@@ -456,7 +456,7 @@ int tcp_loop_master(dthread_t *thread)
 	/* Check socket. */
 	if (handler->fd < 0) {
 		debug_net("tcp_master: null socket recevied, finishing.\n");
-		return KNOT_EINVAL;
+		return KNOTDEINVAL;
 	}
 
 	debug_net("tcp_master: created with %d workers\n",
@@ -477,7 +477,7 @@ int tcp_loop_worker(dthread_t *thread)
 int tcp_loop_unit(dt_unit_t *unit)
 {
 	if (unit->size < 1) {
-		return KNOT_EINVAL;
+		return KNOTDEINVAL;
 	}
 
 	/*! \todo Implement working master+worker threads. */
@@ -493,5 +493,5 @@ int tcp_loop_unit(dt_unit_t *unit)
 		dt_repurpose(unit->threads[i], tcp_loop_master, 0);
 	}
 
-	return KNOT_EOK;
+	return KNOTDEOK;
 }

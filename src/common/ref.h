@@ -12,8 +12,8 @@
  * @{
  */
 
-#ifndef _KNOT_REF_H_
-#define _KNOT_REF_H_
+#ifndef _KNOTDREF_H_
+#define _KNOTDREF_H_
 
 #include <stddef.h>
 
@@ -70,6 +70,6 @@ void ref_retain(ref_t *p);
  */
 void ref_release(ref_t *p);
 
-#endif /* _KNOT_REF_H_ */
+#endif /* _KNOTDREF_H_ */
 
 /*! @} */

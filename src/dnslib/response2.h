@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_DNSLIB_RESPONSE2_H_
-#define _KNOT_DNSLIB_RESPONSE2_H_
+#ifndef _KNOTDKNOT_RESPONSE2_H_
+#define _KNOTDKNOT_RESPONSE2_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -26,7 +26,7 @@
  *
  * This size must be supported by all servers and clients.
  */
-static const short DNSLIB_MAX_RESPONSE_SIZE = 512;
+static const short KNOT_MAX_RESPONSE_SIZE = 512;
 
 /*----------------------------------------------------------------------------*/
 int knot_response2_init(knot_packet_t *response);
@@ -44,7 +44,7 @@ int knot_response2_init(knot_packet_t *response);
  * \param response Packet structure representing the response.
  * \param query Packet structure representing the query.
  *
- * \retval DNSLIB_EOK
+ * \retval KNOT_EOK
  */
 int knot_response2_init_from_query(knot_packet_t *response,
                                     knot_packet_t *query);
@@ -73,9 +73,9 @@ void knot_response2_clear(knot_packet_t *resp, int clear_question);
  * \param resp Response to set the OPT RR to.
  * \param opt_rr OPT RR to set.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
+ * \retval KNOT_ENOMEM
  *
  * \todo Needs test.
  */
@@ -95,9 +95,9 @@ int knot_response2_add_opt(knot_packet_t *resp,
  * \param compr_cs Set to <> 0 if dname compression should use case sensitive
  *                 comparation. Set to 0 otherwise.
  *
- * \retval DNSLIB_EOK if successful, or the RRSet was already in the answer.
- * \retval DNSLIB_ENOMEM
- * \retval DNSLIB_ESPACE
+ * \retval KNOT_EOK if successful, or the RRSet was already in the answer.
+ * \retval KNOT_ENOMEM
+ * \retval KNOT_ESPACE
  */
 int knot_response2_add_rrset_answer(knot_packet_t *response,
                                      const knot_rrset_t *rrset, int tc,
@@ -115,9 +115,9 @@ int knot_response2_add_rrset_answer(knot_packet_t *response,
  * \param compr_cs Set to <> 0 if dname compression should use case sensitive
  *                 comparation. Set to 0 otherwise.
  *
- * \retval DNSLIB_EOK if successful, or the RRSet was already in the answer.
- * \retval DNSLIB_ENOMEM
- * \retval DNSLIB_ESPACE
+ * \retval KNOT_EOK if successful, or the RRSet was already in the answer.
+ * \retval KNOT_ENOMEM
+ * \retval KNOT_ESPACE
  */
 int knot_response2_add_rrset_authority(knot_packet_t *response,
                                         const knot_rrset_t *rrset, int tc,
@@ -135,9 +135,9 @@ int knot_response2_add_rrset_authority(knot_packet_t *response,
  * \param compr_cs Set to <> 0 if dname compression should use case sensitive
  *                 comparation. Set to 0 otherwise.
  *
- * \retval DNSLIB_EOK if successful, or the RRSet was already in the answer.
- * \retval DNSLIB_ENOMEM
- * \retval DNSLIB_ESPACE
+ * \retval KNOT_EOK if successful, or the RRSet was already in the answer.
+ * \retval KNOT_ENOMEM
+ * \retval KNOT_ESPACE
  */
 int knot_response2_add_rrset_additional(knot_packet_t *response,
                                          const knot_rrset_t *rrset, int tc,
@@ -172,12 +172,12 @@ void knot_response2_set_tc(knot_packet_t *response);
  * \param data NSID data.
  * \param length Size of NSID data in bytes.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EOK
+ * \retval KNOT_ENOMEM
  */
 int knot_response2_add_nsid(knot_packet_t *response, const uint8_t *data,
                              uint16_t length);
 
-#endif /* _KNOT_DNSLIB_RESPONSE2_H_ */
+#endif /* _KNOTDKNOT_RESPONSE2_H_ */
 
 /*! @} */

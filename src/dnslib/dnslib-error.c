@@ -3,23 +3,23 @@
 
 #include "common/errors.h"
 
-const error_table_t knot_error_msgs2[DNSLIB_ERROR_COUNT] = {
-	{DNSLIB_EOK, "OK"},
-	{DNSLIB_ERROR, "General dnslib error."},
-	{DNSLIB_ENOMEM, "Not enough memory."},
-	{DNSLIB_EBADARG, "Wrong argument supported."},
-	{DNSLIB_EFEWDATA, "Not enough data to parse."},
-	{DNSLIB_ESPACE, "Not enough space provided."},
-	{DNSLIB_EMALF, "Malformed data."},
-	{DNSLIB_ECRYPTO, "Error in crypto library."},
-	{DNSLIB_ENSEC3PAR, "Missing or wrong NSEC3PARAM record."},
-	{DNSLIB_EBADZONE, "Domain name does not belong to the given zone."},
-	{DNSLIB_EHASH, "Error in hash table."},
-	{DNSLIB_EZONEIN, "Error inserting zone."},
-	{DNSLIB_ENOZONE, "No such zone found."},
-	{DNSLIB_ENONODE, "No such node in zone found."},
-	{DNSLIB_EDNAMEPTR, "Domain name pointer larger than allowed."},
-	{DNSLIB_EPAYLOAD, "Payload in OPT RR larger than max wire size."},
-	{DNSLIB_ECRC, "CRC check failed."},
-	{DNSLIB_ERROR, 0}
+const error_table_t knot_error_msgs2[KNOT_ERROR_COUNT] = {
+	{KNOT_EOK, "OK"},
+	{KNOT_ERROR, "General dnslib error."},
+	{KNOT_ENOMEM, "Not enough memory."},
+	{KNOT_EBADARG, "Wrong argument supported."},
+	{KNOT_EFEWDATA, "Not enough data to parse."},
+	{KNOT_ESPACE, "Not enough space provided."},
+	{KNOT_EMALF, "Malformed data."},
+	{KNOT_ECRYPTO, "Error in crypto library."},
+	{KNOT_ENSEC3PAR, "Missing or wrong NSEC3PARAM record."},
+	{KNOT_EBADZONE, "Domain name does not belong to the given zone."},
+	{KNOT_EHASH, "Error in hash table."},
+	{KNOT_EZONEIN, "Error inserting zone."},
+	{KNOT_ENOZONE, "No such zone found."},
+	{KNOT_ENONODE, "No such node in zone found."},
+	{KNOT_EDNAMEPTR, "Domain name pointer larger than allowed."},
+	{KNOT_EPAYLOAD, "Payload in OPT RR larger than max wire size."},
+	{KNOT_ECRC, "CRC check failed."},
+	{KNOT_ERROR, 0}
 };

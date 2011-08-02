@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_DNSLIB_ZONE_CONTENTS_H_
-#define _KNOT_DNSLIB_ZONE_CONTENTS_H_
+#ifndef _KNOTDKNOT_ZONE_CONTENTS_H_
+#define _KNOTDKNOT_ZONE_CONTENTS_H_
 
 //#include <time.h>
 
@@ -78,10 +78,10 @@ void knot_zone_contents_switch_generation(knot_zone_contents_t *contents);
  * \param zone Zone to add the node into.
  * \param node Node to add into the zone.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_EBADZONE
- * \retval DNSLIB_EHASH
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
+ * \retval KNOT_EBADZONE
+ * \retval KNOT_EHASH
  */
 int knot_zone_contents_add_node(knot_zone_contents_t *contents,
                                   knot_node_t *node, int create_parents,
@@ -105,9 +105,9 @@ int knot_zone_contents_add_node(knot_zone_contents_t *contents,
  *             given zone.) If set to NULL, the function will find proper node
  *             and set it to this parameter.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_EBADZONE
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
+ * \retval KNOT_EBADZONE
  */
 int knot_zone_contents_add_rrset(knot_zone_contents_t *contents,
                           knot_rrset_t *rrset,
@@ -132,9 +132,9 @@ int knot_zone_contents_add_rrsigs(knot_zone_contents_t *contents,
  * \param zone Zone to add the node into.
  * \param node Node to add into the zone.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_EBADZONE
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
+ * \retval KNOT_EBADZONE
  */
 int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *contents,
                                         knot_node_t *node, int create_parents,
@@ -209,10 +209,10 @@ const knot_node_t *knot_zone_contents_find_node(
  * \param[out] closest_encloser Closest encloser of the given name in the zone.
  * \param[out] previous Previous domain name in canonical order.
  *
- * \retval DNSLIB_ZONE_NAME_FOUND if node with owner \a name was found.
- * \retval DNSLIB_ZONE_NAME_NOT_FOUND if it was not found.
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_EBADZONE
+ * \retval KNOT_ZONE_NAME_FOUND if node with owner \a name was found.
+ * \retval KNOT_ZONE_NAME_NOT_FOUND if it was not found.
+ * \retval KNOT_EBADARG
+ * \retval KNOT_EBADZONE
  */
 int knot_zone_contents_find_dname(const knot_zone_contents_t *contents,
                            const knot_dname_t *name,
@@ -251,10 +251,10 @@ knot_node_t *knot_zone_contents_get_previous_nsec3(
  * \param[out] closest_encloser Closest encloser of the given name in the zone.
  * \param[out] previous Previous domain name in canonical order.
  *
- * \retval DNSLIB_ZONE_NAME_FOUND if node with owner \a name was found.
- * \retval DNSLIB_ZONE_NAME_NOT_FOUND if it was not found.
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_EBADZONE
+ * \retval KNOT_ZONE_NAME_FOUND if node with owner \a name was found.
+ * \retval KNOT_ZONE_NAME_NOT_FOUND if it was not found.
+ * \retval KNOT_EBADARG
+ * \retval KNOT_EBADZONE
  */
 int knot_zone_contents_find_dname_hash(const knot_zone_contents_t *contents,
                                 const knot_dname_t *name,
@@ -291,12 +291,12 @@ const knot_node_t *knot_zone_contents_find_nsec3_node(
  * \param[out] nsec3_previous The NSEC3 node immediately preceding hashed domain
  *                            name corresponding to \a name in canonical order.
  *
- * \retval DNSLIB_ZONE_NAME_FOUND if the corresponding NSEC3 node was found.
- * \retval DNSLIB_ZONE_NAME_NOT_FOUND if it was not found.
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_ENSEC3PAR
- * \retval DNSLIB_ECRYPTO
- * \retval DNSLIB_ERROR
+ * \retval KNOT_ZONE_NAME_FOUND if the corresponding NSEC3 node was found.
+ * \retval KNOT_ZONE_NAME_NOT_FOUND if it was not found.
+ * \retval KNOT_EBADARG
+ * \retval KNOT_ENSEC3PAR
+ * \retval KNOT_ECRYPTO
+ * \retval KNOT_ERROR
  */
 int knot_zone_contents_find_nsec3_for_name(
                                     const knot_zone_contents_t *contents,
@@ -333,7 +333,7 @@ int knot_zone_contents_adjust_dnames(knot_zone_contents_t *contents);
  * This function properly fills in the nsec3_params field of the zone structure
  * according to data stored in the NSEC3PARAM record. This is necessary to do
  * before any NSEC3 operations on the zone are requested, otherwise they will
- * fail (error DNSLIB_ENSEC3PAR).
+ * fail (error KNOT_ENSEC3PAR).
  *
  * \note If there is no NSEC3PARAM record in the zone, this function clears
  *       the nsec3_params field of the zone structure (fills it with zeros).
@@ -499,9 +499,9 @@ int knot_zone_contents_dname_table_apply(knot_zone_contents_t *contents,
  * \param from Original zone.
  * \param to Copy of the zone.
  *
- * \retval DNSLIB_EOK
- * \retval DNSLIB_EBADARG
- * \retval DNSLIB_ENOMEM
+ * \retval KNOT_EOK
+ * \retval KNOT_EBADARG
+ * \retval KNOT_ENOMEM
  */
 int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
                                       knot_zone_contents_t **to);

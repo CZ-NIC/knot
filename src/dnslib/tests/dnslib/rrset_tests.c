@@ -108,17 +108,17 @@ static const struct test_domain
 };
 
 static struct test_rrset test_rrsets[TEST_RRSETS] = {
-	{ "example.com.",  DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
+	{ "example.com.",  KNOT_RRTYPE_NS, KNOT_CLASS_IN,
 	  3600, NULL, NULL },
-	{ "example2.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
+	{ "example2.com.", KNOT_RRTYPE_NS, KNOT_CLASS_IN,
 	  3600, NULL, NULL },
-	{ "example3.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
+	{ "example3.com.", KNOT_RRTYPE_NS, KNOT_CLASS_IN,
 	  3600, NULL, NULL },
-	{ "example.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
+	{ "example.com.", KNOT_RRTYPE_NS, KNOT_CLASS_IN,
 	  3600, NULL, NULL },
-	{ "example.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
+	{ "example.com.", KNOT_RRTYPE_NS, KNOT_CLASS_IN,
 	  3600, NULL, NULL },
-	{ "example.com.", DNSLIB_RRTYPE_NS, DNSLIB_CLASS_IN,
+	{ "example.com.", KNOT_RRTYPE_NS, KNOT_CLASS_IN,
 	  3600, NULL, NULL }
 };
 
@@ -167,9 +167,9 @@ static int fill_rdata_r(uint8_t *data, int max_size, uint16_t rrtype,
 		int stored_size = 0;
 
 		switch (desc->wireformat[i]) {
-		case DNSLIB_RDATA_WF_COMPRESSED_DNAME:
-		case DNSLIB_RDATA_WF_UNCOMPRESSED_DNAME:
-		case DNSLIB_RDATA_WF_LITERAL_DNAME:
+		case KNOT_RDATA_WF_COMPRESSED_DNAME:
+		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
+		case KNOT_RDATA_WF_LITERAL_DNAME:
 			dname = knot_dname_new_from_wire(
 					(uint8_t *)test_domains_ok[0].wire,
 					test_domains_ok[0].size, NULL);
@@ -180,7 +180,7 @@ static int fill_rdata_r(uint8_t *data, int max_size, uint16_t rrtype,
 			domain = 1;
 			size = knot_dname_size(dname);
 //			note("Size of created domain name: %u", size);
-			assert(size < DNSLIB_MAX_RDATA_ITEM_SIZE);
+			assert(size < KNOT_MAX_RDATA_ITEM_SIZE);
 			// store size of the domain name
 			*(pos++) = size;
 			// copy the domain name
@@ -189,7 +189,7 @@ static int fill_rdata_r(uint8_t *data, int max_size, uint16_t rrtype,
 			break;
 		default:
 			binary = 1;
-			size = rand() % DNSLIB_MAX_RDATA_ITEM_SIZE;
+			size = rand() % KNOT_MAX_RDATA_ITEM_SIZE;
 		}
 
 		if (binary) {
@@ -238,7 +238,7 @@ static void create_rdata()
 	knot_rdata_t *r;
 
 	uint8_t *data =
-		malloc(sizeof(uint8_t) * DNSLIB_MAX_RDATA_WIRE_SIZE);
+		malloc(sizeof(uint8_t) * KNOT_MAX_RDATA_WIRE_SIZE);
 
 	assert(data);
 
@@ -247,8 +247,8 @@ static void create_rdata()
 			r = knot_rdata_new();
 
 			/* from rdata tests */
-			generate_rdata(data, DNSLIB_MAX_RDATA_WIRE_SIZE);
-			if (fill_rdata_r(data, DNSLIB_MAX_RDATA_WIRE_SIZE,
+			generate_rdata(data, KNOT_MAX_RDATA_WIRE_SIZE);
+			if (fill_rdata_r(data, KNOT_MAX_RDATA_WIRE_SIZE,
 				       test_rrsets[i].type, r) <= 0) {
 				diag("Error creating rdata!");
 
@@ -799,14 +799,14 @@ static int test_rrset_deep_free()
 
 /*----------------------------------------------------------------------------*/
 
-static const int DNSLIB_RRSET_TEST_COUNT = 13;
+static const int KNOT_RRSET_TEST_COUNT = 13;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
 static int knot_rrset_tests_count(int argc, char *argv[])
 {
-	return DNSLIB_RRSET_TEST_COUNT;
+	return KNOT_RRSET_TEST_COUNT;
 }
 
 /*! Run all scheduled tests for given parameters.

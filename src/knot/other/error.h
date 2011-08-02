@@ -10,8 +10,8 @@
  * @{
  */
 
-#ifndef _KNOT_ERROR_H_
-#define _KNOT_ERROR_H_
+#ifndef _KNOTDERROR_H_
+#define _KNOTDERROR_H_
 
 #include <errno.h>
 
@@ -26,33 +26,33 @@
 enum knot_error_t {
 
 	/* Directly mapped error codes. */
-	KNOT_EOK = 0,
-	KNOT_ENOMEM = -ENOMEM, /*!< \brief Out of memory. */
-	KNOT_EINVAL = -EINVAL, /*!< \brief Invalid parameter passed. */
-	KNOT_ENOTSUP = -ENOTSUP, /*!< \brief Parameter not supported. */
-	KNOT_EBUSY = -EBUSY, /*!< \brief Requested resource is busy. */
-	KNOT_EAGAIN = -EAGAIN, /*!< \brief OS lacked necessary resources. */
-	KNOT_EACCES = -EACCES, /*!< \brief Permission is denied. */
-	KNOT_ECONNREFUSED = -ECONNREFUSED, /*!< \brief Connection is refused. */
-	KNOT_EISCONN = -EISCONN, /*!< \brief Already connected. */
-	KNOT_EADDRINUSE = -EADDRINUSE, /*!< \brief Address already in use. */
-	KNOT_ENOENT = -ENOENT, /*!< \brief Resource not found. */
-	KNOT_ERANGE = -ERANGE, /*!< \brief Value is out of range. */
+	KNOTDEOK = 0,
+	KNOTDENOMEM = -ENOMEM, /*!< \brief Out of memory. */
+	KNOTDEINVAL = -EINVAL, /*!< \brief Invalid parameter passed. */
+	KNOTDENOTSUP = -ENOTSUP, /*!< \brief Parameter not supported. */
+	KNOTDEBUSY = -EBUSY, /*!< \brief Requested resource is busy. */
+	KNOTDEAGAIN = -EAGAIN, /*!< \brief OS lacked necessary resources. */
+	KNOTDEACCES = -EACCES, /*!< \brief Permission is denied. */
+	KNOTDECONNREFUSED = -ECONNREFUSED, /*!< \brief Connection is refused. */
+	KNOTDEISCONN = -EISCONN, /*!< \brief Already connected. */
+	KNOTDEADDRINUSE = -EADDRINUSE, /*!< \brief Address already in use. */
+	KNOTDENOENT = -ENOENT, /*!< \brief Resource not found. */
+	KNOTDERANGE = -ERANGE, /*!< \brief Value is out of range. */
 
 	/* Custom error codes. */
-	KNOT_ERROR = -16384, /*!< \brief Generic error. */
-	KNOT_EZONEINVAL, /*!< \brief Invalid zone file. */
-	KNOT_ENOTRUNNING, /*!< \brief Resource is not running. */
-	KNOT_EPARSEFAIL, /*!< \brief Parser fail. */
-	KNOT_ENOIPV6, /*!< \brief No IPv6 support. */
-	KNOT_EMALF, /*!< \brief Malformed data. */
-	KNOT_ESPACE, /*!< \brief Not enough space provided. */
+	KNOTDERROR = -16384, /*!< \brief Generic error. */
+	KNOTDEZONEINVAL, /*!< \brief Invalid zone file. */
+	KNOTDENOTRUNNING, /*!< \brief Resource is not running. */
+	KNOTDEPARSEFAIL, /*!< \brief Parser fail. */
+	KNOTDENOIPV6, /*!< \brief No IPv6 support. */
+	KNOTDEMALF, /*!< \brief Malformed data. */
+	KNOTDESPACE, /*!< \brief Not enough space provided. */
 
-	KNOT_ERROR_COUNT = 20
+	KNOTDERROR_COUNT = 20
 };
 
 /*! \brief Table linking error messages to error codes. */
-extern const error_table_t knot_error_msgs[KNOT_ERROR_COUNT];
+extern const error_table_t knot_error_msgs[KNOTDERROR_COUNT];
 
 /*!
  * \brief Returns error message for the given error code.
@@ -76,8 +76,8 @@ static inline const char *knot_strerror(int code)
  *
  * \return Mapped error code.
  */
-#define knot_map_errno(err...) map_errno(KNOT_ERROR, err);
+#define knot_map_errno(err...) map_errno(KNOTDERROR, err);
 
-#endif /* _KNOT_ERROR_H_ */
+#endif /* _KNOTDERROR_H_ */
 
 /*! @} */

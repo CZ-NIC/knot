@@ -48,13 +48,13 @@ static int knot_zone_tree_copy_node(knot_zone_tree_node_t *from,
 {
 	if (from == NULL) {
 		*to = NULL;
-		return DNSLIB_EOK;
+		return KNOT_EOK;
 	}
 
 	*to = (knot_zone_tree_node_t *)
 	      malloc(sizeof(knot_zone_tree_node_t));
 	if (*to == NULL) {
-		return DNSLIB_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	(*to)->node = from->node;
@@ -62,19 +62,19 @@ static int knot_zone_tree_copy_node(knot_zone_tree_node_t *from,
 
 	int ret = knot_zone_tree_copy_node(from->avl.avl_left,
 	                                     &(*to)->avl.avl_left);
-	if (ret != DNSLIB_EOK) {
+	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	ret = knot_zone_tree_copy_node(from->avl.avl_right,
 	                                 &(*to)->avl.avl_right);
-	if (ret != DNSLIB_EOK) {
+	if (ret != KNOT_EOK) {
 		knot_zone_tree_delete_subtree((*to)->avl.avl_left);
 		(*to)->avl.avl_left = NULL;
 		return ret;
 	}
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -104,11 +104,11 @@ static void knot_zone_tree_free_node(knot_zone_tree_node_t *node,
 int knot_zone_tree_init(knot_zone_tree_t *tree)
 {
 	if (tree == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	TREE_INIT(tree, knot_zone_tree_node_compare);
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -116,13 +116,13 @@ int knot_zone_tree_init(knot_zone_tree_t *tree)
 int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node)
 {
 	if (tree == NULL || node == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	knot_zone_tree_node_t *znode = (knot_zone_tree_node_t *)malloc(
 	                                       sizeof(knot_zone_tree_node_t));
 	if (znode == NULL) {
-		return DNSLIB_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	znode->node = node;
@@ -133,7 +133,7 @@ int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node)
 	/*! \todo How to know if this was successful? */
 	TREE_INSERT(tree, knot_zone_tree_node, avl, znode);
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -153,7 +153,7 @@ int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
                          knot_node_t **found)
 {
 	if (tree == NULL || owner == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	*found = NULL;
@@ -162,7 +162,7 @@ int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
 	knot_zone_tree_node_t *tmp = (knot_zone_tree_node_t *)malloc(
 	                                       sizeof(knot_zone_tree_node_t));
 	if (tmp == NULL) {
-		return DNSLIB_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	// create dummy data node to use for lookup
@@ -170,7 +170,7 @@ int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
 	                              (knot_dname_t *)owner, NULL, 0);
 	if (tmp_data == NULL) {
 		free(tmp);
-		return DNSLIB_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 	tmp->node = tmp_data;
 
@@ -184,7 +184,7 @@ int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
 		*found = n->node;
 	}
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -212,7 +212,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 {
 	if (tree == NULL || owner == NULL || found == NULL
 	    || previous == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	knot_zone_tree_node_t *f = NULL, *prev = NULL;
@@ -221,7 +221,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 	knot_zone_tree_node_t *tmp = (knot_zone_tree_node_t *)malloc(
 	                                       sizeof(knot_zone_tree_node_t));
 	if (tmp == NULL) {
-		return DNSLIB_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	// create dummy data node to use for lookup
@@ -229,7 +229,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 	                              (knot_dname_t *)owner, NULL, 0);
 	if (tmp_data == NULL) {
 		free(tmp);
-		return DNSLIB_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 	tmp->node = tmp_data;
 
@@ -290,14 +290,14 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
                             knot_node_t **removed)
 {
 	if (tree == NULL || owner == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	// create dummy node to use for lookup
 	knot_zone_tree_node_t *tmp = (knot_zone_tree_node_t *)malloc(
 	                                       sizeof(knot_zone_tree_node_t));
 	if (tmp == NULL) {
-		return DNSLIB_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	// create dummy data node to use for lookup
@@ -305,7 +305,7 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
 	                              (knot_dname_t *)owner, NULL, 0);
 	if (tmp_data == NULL) {
 		free(tmp);
-		return DNSLIB_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 	tmp->node = tmp_data;
 
@@ -321,7 +321,7 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
 
 	*removed = n->node;
 	free(n);
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -333,13 +333,13 @@ int knot_zone_tree_forward_apply_inorder(knot_zone_tree_t *tree,
                                            void *data)
 {
 	if (tree == NULL || function == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	TREE_FORWARD_APPLY(tree, knot_zone_tree_node, avl,
 	                   function, data);
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -351,13 +351,13 @@ int knot_zone_tree_forward_apply_postorder(knot_zone_tree_t *tree,
                                              void *data)
 {
 	if (tree == NULL || function == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	TREE_POST_ORDER_APPLY(tree, knot_zone_tree_node, avl,
 	                      function, data);
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -369,13 +369,13 @@ int knot_zone_tree_reverse_apply_inorder(knot_zone_tree_t *tree,
                                            void *data)
 {
 	if (tree == NULL || function == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	TREE_REVERSE_APPLY(tree, knot_zone_tree_node, avl,
 	                   function, data);
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -387,13 +387,13 @@ int knot_zone_tree_reverse_apply_postorder(knot_zone_tree_t *tree,
                                              void *data)
 {
 	if (tree == NULL || function == NULL) {
-		return DNSLIB_EBADARG;
+		return KNOT_EBADARG;
 	}
 
 	TREE_REVERSE_APPLY_POST(tree, knot_zone_tree_node, avl,
 	                        function, data);
 
-	return DNSLIB_EOK;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
