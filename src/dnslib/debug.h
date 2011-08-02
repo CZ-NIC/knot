@@ -203,6 +203,16 @@ void dnslib_zone_contents_dump(dnslib_zone_contents_t *zone, char loaded_zone);
 #define debug_ck_rehash(msg...)
 #endif
 
+#ifdef DNSLIB_XFR_DEBUG
+#define debug_dnslib_xfr(msg...) fprintf(stderr, msg)
+#define debug_dnslib_xfr_hex(data, len) hex_print((data), (len))
+#define DEBUG_DNSLIB_XFR(cmds) do { cmds } while (0)
+#else
+#define debug_dnslib_xfr(msg...)
+#define debug_dnslib_xfr_hex(data, len)
+#define DEBUG_DNSLIB_XFR(cmds)
+#endif
+
 #endif
 
 /*! @} */

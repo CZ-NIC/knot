@@ -19,6 +19,10 @@
 #include "dnslib/error.h"
 #include "dnslib/zone-dump.h"
 #include "knot/server/name-server.h"
+#include "dnslib/changesets.h"
+
+static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
+static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
 
 /*----------------------------------------------------------------------------*/
 
@@ -612,6 +616,245 @@ static int zones_load_zone(dnslib_zonedb_t *zonedb, const char *zone_name,
 	return KNOT_EOK;
 }
 
+/*----------------------------------------------------------------------------*/
+
+/*! \brief Return 'serial_from' part of the key. */
+static inline uint32_t ixfrdb_key_from(uint64_t k)
+{
+	/*      64    32       0
+	 * key = [TO   |   FROM]
+	 * Need: Least significant 32 bits.
+	 */
+	return (uint32_t)(k & ((uint64_t)0x00000000ffffffff));
+}
+
+/*----------------------------------------------------------------------------*/
+
+/*! \brief Return 'serial_to' part of the key. */
+static inline uint32_t ixfrdb_key_to(uint64_t k)
+{
+	/*      64    32       0
+	 * key = [TO   |   FROM]
+	 * Need: Most significant 32 bits.
+	 */
+	return (uint32_t)(k >> (uint64_t)32);
+}
+
+/*----------------------------------------------------------------------------*/
+
+/*! \brief Compare function to match entries with target serial. */
+static inline int ixfrdb_key_to_cmp(uint64_t k, uint64_t to)
+{
+	/*      64    32       0
+	 * key = [TO   |   FROM]
+	 * Need: Most significant 32 bits.
+	 */
+	return ((uint64_t)ixfrdb_key_to(k)) - to;
+}
+
+/*----------------------------------------------------------------------------*/
+
+/*! \brief Compare function to match entries with starting serial. */
+static inline int ixfrdb_key_from_cmp(uint64_t k, uint64_t from)
+{
+	/*      64    32       0
+	 * key = [TO   |   FROM]
+	 * Need: Least significant 32 bits.
+	 */
+	return ((uint64_t)ixfrdb_key_from(k)) - from;
+}
+
+/*----------------------------------------------------------------------------*/
+
+/*! \brief Make key for journal from serials. */
+static inline uint64_t ixfrdb_key_make(uint32_t from, uint32_t to)
+{
+	/*      64    32       0
+	 * key = [TO   |   FROM]
+	 */
+	return (((uint64_t)to) << ((uint64_t)32)) | ((uint64_t)from);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int zones_changesets_from_binary(dnslib_changesets_t *chgsets)
+{
+	assert(chgsets != NULL);
+	assert(chgsets->allocated >= chgsets->count);
+	/*
+	 * Parses changesets from the binary format stored in chgsets->data
+	 * into the changeset_t structures.
+	 */
+	size_t size = 0;
+	size_t parsed = 0;
+	dnslib_rrset_t *rrset;
+	int soa = 0;
+	int ret = 0;
+
+	for (int i = 0; i < chgsets->count; ++i) {
+		ret = dnslib_zload_rrset_deserialize(&rrset,
+			chgsets->sets[i].data + parsed, &size);
+		if (ret != DNSLIB_EOK) {
+			return DNSLIB_EMALF;
+		}
+
+		while (rrset != NULL) {
+			parsed += size;
+
+			if (soa == 0) {
+				assert(dnslib_rrset_type(rrset)
+				       == DNSLIB_RRTYPE_SOA);
+
+				/* in this special case (changesets loaded
+				 * from journal) the SOA serial should already
+				 * be set, check it.
+				 */
+				assert(chgsets->sets[i].serial_from
+				       == dnslib_rdata_soa_serial(
+				              dnslib_rrset_rdata(rrset)));
+				xfrin_changeset_store_soa(
+					&chgsets->sets[i].soa_from,
+					&chgsets->sets[i].serial_from, rrset);
+				++soa;
+				continue;
+			}
+
+			if (soa == 1) {
+				if (dnslib_rrset_type(rrset)
+				    == DNSLIB_RRTYPE_SOA) {
+					/* in this special case (changesets
+					 * loaded from journal) the SOA serial
+					 * should already be set, check it.
+					 */
+					assert(chgsets->sets[i].serial_from
+					       == dnslib_rdata_soa_serial(
+					            dnslib_rrset_rdata(rrset)));
+					xfrin_changeset_store_soa(
+						&chgsets->sets[i].soa_to,
+						&chgsets->sets[i].serial_to,
+						rrset);
+					++soa;
+				} else {
+					ret = xfrin_changeset_add_rrset(
+						&chgsets->sets[i].remove,
+						&chgsets->sets[i].remove_count,
+						&chgsets->sets[i]
+						    .remove_allocated,
+						rrset);
+					if (ret != DNSLIB_EOK) {
+						return ret;
+					}
+				}
+			} else {
+				if (dnslib_rrset_type(rrset)
+				    == DNSLIB_RRTYPE_SOA) {
+					return DNSLIB_EMALF;
+				} else {
+					ret = xfrin_changeset_add_rrset(
+						&chgsets->sets[i].add,
+						&chgsets->sets[i].add_count,
+						&chgsets->sets[i].add_allocated,
+						rrset);
+					if (ret != DNSLIB_EOK) {
+						return ret;
+					}
+				}
+			}
+
+			ret = dnslib_zload_rrset_deserialize(&rrset,
+					chgsets->sets[i].data + parsed, &size);
+			if (ret != DNSLIB_EOK) {
+				return DNSLIB_EMALF;
+			}
+		}
+	}
+
+	return DNSLIB_ENOTSUP;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int zones_load_changesets(const dnslib_zone_t *zone, 
+                                 dnslib_changesets_t *dst,
+                                 uint32_t from, uint32_t to)
+{
+	if (!zone || !dst) {
+		return DNSLIB_EBADARG;
+	}
+	if (!zone->data) {
+		return DNSLIB_EBADARG;
+	}
+
+	/* Fetch zone-specific data. */
+	zonedata_t *zd = (zonedata_t *)dnslib_zone_data(zone);
+	if (!zd->ixfr_db) {
+		return DNSLIB_EBADARG;
+	}
+
+	/* Read entries from starting serial until finished. */
+	uint32_t found_to = from;
+	journal_node_t *n = 0;
+	int ret = journal_fetch(zd->ixfr_db, from, ixfrdb_key_from_cmp, &n);
+	while (n != 0 && n != journal_end(zd->ixfr_db)) {
+
+		/* Check for history end. */
+		if (to == found_to) {
+			break;
+		}
+
+		/* Check changesets size if needed. */
+		++dst->count;
+		ret = xfrin_changesets_check_size(dst);
+		if (ret != DNSLIB_EOK) {
+			debug_dnslib_xfr("ixfr_db: failed to check changesets size\n");
+			--dst->count;
+			return ret;
+		}
+
+		/* Initialize changeset. */
+		dnslib_changeset_t *chs = dst->sets + (dst->count - 1);
+		chs->serial_from = ixfrdb_key_from(n->id);
+		chs->serial_to = ixfrdb_key_to(n->id);
+		chs->data = malloc(n->len);
+		if (!chs->data) {
+			--dst->count;
+			return DNSLIB_ENOMEM;
+		}
+
+		/* Read journal entry. */
+		ret = journal_read(zd->ixfr_db, n->id,
+				   0, (char*)chs->data);
+		if (ret != KNOT_EOK) {
+			debug_dnslib_xfr("ixfr_db: failed to read data from journal\n");
+			--dst->count;
+			return DNSLIB_ERROR;
+		}
+
+		/* Next node. */
+		found_to = chs->serial_to;
+		++n;
+
+		/*! \todo Check consistency. */
+	}
+
+	/* Unpack binary data. */
+	ret = zones_changesets_from_binary(dst);
+	if (ret != DNSLIB_EOK) {
+		debug_dnslib_xfr("ixfr_db: failed to unpack changesets from binary\n");
+		return ret;
+	}
+
+	/* Check for complete history. */
+	if (to != found_to) {
+		return DNSLIB_ERANGE;
+	}
+
+	/* History reconstructed. */
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 /*!
  * \brief Apply changesets to zone from journal.
  *
@@ -644,15 +887,15 @@ static int zones_journal_apply(dnslib_zone_t *zone)
 
 	/* Load all pending changesets. */
 	debug_zones("update_zone: loading all changesets from %u\n", serial);
-	xfrin_changesets_t* chsets = malloc(sizeof(xfrin_changesets_t));
-	memset(chsets, 0, sizeof(xfrin_changesets_t));
-	int ret = xfr_load_changesets(zone, chsets, serial, serial - 1);
+	dnslib_changesets_t* chsets = malloc(sizeof(dnslib_changesets_t));
+	memset(chsets, 0, sizeof(dnslib_changesets_t));
+	int ret = zones_load_changesets(zone, chsets, serial, serial - 1);
 	if (ret == KNOT_EOK || ret == KNOT_ERANGE) {
 
 		/* Apply changesets. */
 		debug_zones("update_zone: applying %u changesets\n",
 			    chsets->count);
-		xfrin_apply_changesets(zone, chsets);
+		xfrin_apply_changesets_to_zone(zone, chsets);
 
 	} else {
 		debug_zones("update_zone: failed to load changesets\n");
@@ -766,6 +1009,7 @@ static int zones_insert_zones(dnslib_nameserver_t *ns,
 
 			/* Update ACLs. */
 			debug_zones("Updating zone ACLs.\n");
+			zones_set_acl(&zd->xfr_in.acl, &z->acl.xfr_in);
 			zones_set_acl(&zd->xfr_out, &z->acl.xfr_out);
 			zones_set_acl(&zd->notify_in, &z->acl.notify_in);
 			zones_set_acl(&zd->notify_out, &z->acl.notify_out);
@@ -782,6 +1026,10 @@ static int zones_insert_zones(dnslib_nameserver_t *ns,
 					     cfg_if->family,
 					     cfg_if->address,
 					     cfg_if->port);
+
+				debug_zones("Using %s:%d as zone XFR master.\n",
+					    cfg_if->address,
+					    cfg_if->port);
 			}
 
 			/* Update events scheduled for zone. */
@@ -835,7 +1083,6 @@ static int zones_remove_zones(const list *zone_conf, dnslib_zonedb_t *db_old)
 	}
 	return KNOT_EOK;
 }
-
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
@@ -1313,4 +1560,265 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	dnslib_zonedb_deep_free(&old_db);
 
 	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int zones_check_binary_size(uint8_t **data, size_t *allocated,
+                                   size_t required)
+{
+	if (required > *allocated) {
+		size_t new_size = *allocated;
+		while (new_size <= required) {
+			new_size += XFRIN_CHANGESET_BINARY_STEP;
+		}
+		uint8_t *new_data = (uint8_t *)malloc(new_size);
+		if (new_data == NULL) {
+			return DNSLIB_ENOMEM;
+		}
+
+		memcpy(new_data, *data, *allocated);
+		uint8_t *old_data = *data;
+		*data = new_data;
+		*allocated = new_size;
+		free(old_data);
+	}
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int zones_changeset_rrset_to_binary(uint8_t **data, size_t *size,
+                                           size_t *allocated,
+                                           dnslib_rrset_t *rrset)
+{
+	assert(data != NULL);
+	assert(size != NULL);
+	assert(allocated != NULL);
+
+	/*
+	 * In *data, there is the whole changeset in the binary format,
+	 * the actual RRSet will be just appended to it
+	 */
+
+	uint8_t *binary = NULL;
+	size_t actual_size = 0;
+	int ret = dnslib_zdump_rrset_serialize(rrset, &binary, &actual_size);
+	if (ret != DNSLIB_EOK) {
+		return DNSLIB_ERROR;  /*! \todo Other code? */
+	}
+
+	ret = zones_check_binary_size(data, allocated, *size + actual_size);
+	if (ret != DNSLIB_EOK) {
+		free(binary);
+		return ret;
+	}
+
+	memcpy(*data + *size, binary, actual_size);
+	*size += actual_size;
+	free(binary);
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int zones_changesets_to_binary(dnslib_changesets_t *chgsets)
+{
+	assert(chgsets != NULL);
+	assert(chgsets->allocated >= chgsets->count);
+
+	/*
+	 * Converts changesets to the binary format stored in chgsets->data
+	 * from the changeset_t structures.
+	 */
+	int ret;
+
+	for (int i = 0; i < chgsets->count; ++i) {
+		dnslib_changeset_t *ch = &chgsets->sets[i];
+		assert(ch->data == NULL);
+		assert(ch->size == 0);
+
+		// 1) origin SOA
+		ret = zones_changeset_rrset_to_binary(&ch->data, &ch->size,
+		                                &ch->allocated, ch->soa_from);
+		if (ret != DNSLIB_EOK) {
+			free(ch->data);
+			ch->data = NULL;
+			return ret;
+		}
+
+		int j;
+
+		// 2) remove RRsets
+		assert(ch->remove_allocated >= ch->remove_count);
+		for (j = 0; j < ch->remove_count; ++j) {
+			ret = zones_changeset_rrset_to_binary(&ch->data,
+			                                      &ch->size,
+			                                      &ch->allocated,
+			                                      ch->remove[j]);
+			if (ret != DNSLIB_EOK) {
+				free(ch->data);
+				ch->data = NULL;
+				return ret;
+			}
+		}
+
+		// 3) new SOA
+		ret = zones_changeset_rrset_to_binary(&ch->data, &ch->size,
+		                                &ch->allocated, ch->soa_to);
+		if (ret != DNSLIB_EOK) {
+			free(ch->data);
+			ch->data = NULL;
+			return ret;
+		}
+
+		// 4) add RRsets
+		assert(ch->add_allocated >= ch->add_count);
+		for (j = 0; j < ch->add_count; ++j) {
+			ret = zones_changeset_rrset_to_binary(&ch->data,
+			                                      &ch->size,
+			                                      &ch->allocated,
+			                                      ch->add[j]);
+			if (ret != DNSLIB_EOK) {
+				free(ch->data);
+				ch->data = NULL;
+				return ret;
+			}
+		}
+	}
+
+	return DNSLIB_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zones_store_changesets(dnslib_ns_xfr_t *xfr)
+{
+	if (xfr == NULL || xfr->data == NULL || xfr->zone == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	dnslib_zone_t *zone = xfr->zone;
+	dnslib_changesets_t *src = (dnslib_changesets_t *)xfr->data;
+	
+	/*! \todo Convert to binary format. */
+	
+	int ret = zones_changesets_to_binary(src);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Fetch zone-specific data. */
+	zonedata_t *zd = (zonedata_t *)zone->data;
+	if (!zd->ixfr_db) {
+		return KNOT_EINVAL;
+	}
+
+	/* Begin writing to journal. */
+	for (unsigned i = 0; i < src->count; ++i) {
+
+		/* Make key from serials. */
+		dnslib_changeset_t* chs = src->sets + i;
+		uint64_t k = ixfrdb_key_make(chs->serial_from, chs->serial_to);
+
+		/* Write entry. */
+		int ret = journal_write(zd->ixfr_db, k, (const char*)chs->data,
+		                        chs->size);
+
+		/* Check for errors. */
+		while (ret != KNOT_EOK) {
+
+			/* Sync to zonefile may be needed. */
+			if (ret == KNOT_EAGAIN) {
+
+				/* Cancel sync timer. */
+				event_t *tmr = zd->ixfr_dbsync;
+				if (tmr) {
+					debug_dnslib_xfr("ixfr_db: cancelling SYNC "
+							 "timer\n");
+					evsched_cancel(tmr->parent, tmr);
+				}
+
+				/* Synchronize. */
+				debug_dnslib_xfr("ixfr_db: forcing zonefile SYNC\n");
+				ret = zones_zonefile_sync(zone);
+				if (ret != KNOT_EOK) {
+					continue;
+				}
+
+				/* Reschedule sync timer. */
+				if (tmr) {
+					/* Fetch sync timeout. */
+					conf_read_lock();
+					int timeout = zd->conf->dbsync_timeout;
+					timeout *= 1000; /* Convert to ms. */
+					conf_read_unlock();
+
+					/* Reschedule. */
+					debug_dnslib_xfr("ixfr_db: resuming SYNC "
+							 "timer\n");
+					evsched_schedule(tmr->parent, tmr,
+							 timeout);
+
+				}
+
+				/* Attempt to write again. */
+				ret = journal_write(zd->ixfr_db, k,
+						    (const char*)chs->data,
+						    chs->size);
+			} else {
+				/* Other errors. */
+				return KNOT_ERROR;
+			}
+		}
+	}
+
+	/* Written changesets to journal. */
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zones_xfr_load_changesets(dnslib_ns_xfr_t *xfr) 
+{
+	if (xfr == NULL || xfr->data == NULL || xfr->zone == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	const dnslib_zone_t *zone = xfr->zone;
+	const dnslib_zone_contents_t *contents = dnslib_zone_contents(zone);
+	
+	dnslib_changesets_t *chgsets = (dnslib_changesets_t *)
+	                               calloc(1, sizeof(dnslib_changesets_t));
+	
+	const dnslib_rrset_t *zone_soa =
+		dnslib_node_rrset(dnslib_zone_contents_apex(contents),
+		                  DNSLIB_RRTYPE_SOA);
+	// retrieve origin (xfr) serial and target (zone) serial
+	uint32_t zone_serial = dnslib_rdata_soa_serial(
+	                             dnslib_rrset_rdata(zone_soa));
+	uint32_t xfr_serial = dnslib_rdata_soa_serial(dnslib_rrset_rdata(
+			dnslib_packet_authority_rrset(xfr->query, 0)));
+	
+	int ret = zones_load_changesets(zone, chgsets, xfr_serial, zone_serial);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	
+	xfr->data = chgsets;
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zones_apply_changesets(dnslib_ns_xfr_t *xfr) 
+{
+	if (xfr == NULL || xfr->zone == NULL || xfr->data == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	return xfrin_apply_changesets_to_zone(xfr->zone, 
+	                                      (dnslib_changesets_t *)xfr->data);
 }

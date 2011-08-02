@@ -109,8 +109,18 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 			}
 			break;
 		case XFR_TYPE_IIN:
-			/*! \todo save changesets */
-			/*! \todo udpate zone?? */
+			/* save changesets */
+			ret = zones_store_changesets(request);
+			if (ret != KNOT_EOK) {
+				/*! \todo Log error */
+				return;
+			}
+			/* update zone */
+			ret = zones_apply_changesets(request);
+			if (ret != KNOT_EOK) {
+				/*! \todo Log error */
+				return;
+			}
 			break;
 		default:
 			ret = KNOT_EINVAL;
@@ -439,7 +449,13 @@ int xfr_master(dthread_t *thread)
 				socket_close(xfr.session);
 			}
 			
-			/*! \todo Init XFR, check zone, answer. */
+			ret = zones_xfr_load_changesets(&xfr);
+			if (ret != KNOT_EOK) {
+				dnslib_ns_xfr_send_error(&xfr, 
+				                         DNSLIB_RCODE_SERVFAIL);
+				socket_close(xfr.session);
+			}
+			
 			ret = dnslib_ns_answer_ixfr(xfrh->ns, &xfr);
 			dnslib_packet_free(&xfr.query); /* Free query. */
 			debug_xfr("xfr_master: ns_answer_ixfr() = %d.\n", ret);

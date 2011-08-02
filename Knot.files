@@ -80,6 +80,8 @@ src/dnslib/tolower.h
 src/dnslib/tolower.c
 src/dnslib/nsec3.h
 src/dnslib/nsec3.c
+src/dnslib/changesets.h
+src/dnslib/changesets.c
 src/dnslib/zone-dump.c
 src/dnslib/zone-dump.h
 src/dnslib/zone-load.c
