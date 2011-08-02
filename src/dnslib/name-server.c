@@ -2669,7 +2669,7 @@ int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 
 	knot_packet_free(&xfr->response);
 
-	return ret;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
