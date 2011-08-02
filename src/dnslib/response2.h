@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_RESPONSE2_H_
-#define _KNOTDKNOT_RESPONSE2_H_
+#ifndef _KNOT_RESPONSE2_H_
+#define _KNOT_RESPONSE2_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -178,6 +178,6 @@ void knot_response2_set_tc(knot_packet_t *response);
 int knot_response2_add_nsid(knot_packet_t *response, const uint8_t *data,
                              uint16_t length);
 
-#endif /* _KNOTDKNOT_RESPONSE2_H_ */
+#endif /* _KNOT_RESPONSE2_H_ */
 
 /*! @} */

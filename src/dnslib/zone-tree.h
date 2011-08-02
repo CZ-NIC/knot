@@ -11,8 +11,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_ZONE_TREE_H_
-#define _KNOTDKNOT_ZONE_TREE_H_
+#ifndef _KNOT_ZONE_TREE_H_
+#define _KNOT_ZONE_TREE_H_
 
 #include "common/tree.h"
 #include "dnslib/node.h"
@@ -277,7 +277,7 @@ void knot_zone_tree_deep_free(knot_zone_tree_t **tree, int free_owners);
 
 /*----------------------------------------------------------------------------*/
 
-#endif // _KNOTDKNOT_ZONE_TREE_H_
+#endif // _KNOT_ZONE_TREE_H_
 
 /*! @} */
 

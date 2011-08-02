@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_ZONE_DUMP_TEXT_H_
-#define _KNOTDKNOT_ZONE_DUMP_TEXT_H_
+#ifndef _KNOT_ZONE_DUMP_TEXT_H_
+#define _KNOT_ZONE_DUMP_TEXT_H_
 
 #include "dnslib/descriptor.h"
 #include "dnslib/zone.h"
@@ -26,6 +26,6 @@
  */
 int zone_dump_text(knot_zone_contents_t *zone, const char *filename);
 
-#endif // _KNOTDKNOT_ZONE_DUMP_TEXT_H_
+#endif // _KNOT_ZONE_DUMP_TEXT_H_
 
 /*! @} */

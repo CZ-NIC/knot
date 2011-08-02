@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_ZONEDUMP_H_
-#define _KNOTDKNOT_ZONEDUMP_H_
+#ifndef _KNOT_ZONEDUMP_H_
+#define _KNOT_ZONEDUMP_H_
 
 #include "dnslib/zone.h"
 

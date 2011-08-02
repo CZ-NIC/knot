@@ -10,8 +10,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_RDATA_H_
-#define _KNOTDKNOT_RDATA_H_
+#ifndef _KNOT_RDATA_H_
+#define _KNOT_RDATA_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -319,6 +319,6 @@ uint32_t knot_rdata_soa_expire(const knot_rdata_t *rdata);
 
 uint16_t knot_rdata_rrsig_type_covered(const knot_rdata_t *rdata);
 
-#endif /* _KNOTDKNOT_RDATA_H */
+#endif /* _KNOT_RDATA_H */
 
 /*! @} */

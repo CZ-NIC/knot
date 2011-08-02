@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_WIRE_H_
-#define _KNOTDKNOT_WIRE_H_
+#ifndef _KNOT_WIRE_H_
+#define _KNOT_WIRE_H_
 
 #include <stdint.h>
 #include <assert.h>
@@ -906,6 +906,6 @@ static inline size_t knot_wire_get_pointer(const uint8_t *pos)
 	return p2;
 }
 
-#endif /* _KNOTDKNOT_WIRE_H_ */
+#endif /* _KNOT_WIRE_H_ */
 
 /*! @} */

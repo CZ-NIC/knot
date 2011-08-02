@@ -10,8 +10,8 @@
  * @{
  */
 
-#ifndef _KNOTDKNOT_DEBUG_H_
-#define _KNOTDKNOT_DEBUG_H_
+#ifndef _KNOT_DEBUG_H_
+#define _KNOT_DEBUG_H_
 
 #include <stdint.h>
 #include <stdio.h>
