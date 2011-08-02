@@ -5,8 +5,8 @@
 
 #include "dnslib/name-server.h"
 #include "dnslib/debug.h"
-#include "dnslib/zone-dump.h"
-#include "dnslib/zone-load.h"
+#include "knot/zone/zone-dump.h"
+#include "knot/zone/zone-load.h"
 #include "dnslib/packet.h"
 #include "dnslib/dname.h"
 #include "dnslib/zone.h"

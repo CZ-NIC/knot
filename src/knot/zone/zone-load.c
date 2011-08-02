@@ -9,8 +9,8 @@
 
 #include "common/crc.h"
 #include "dnslib/dnslib-common.h"
-#include "dnslib/zone-load.h"
-#include "dnslib/zone-dump.h"
+#include "knot/zone/zone-load.h"
+#include "knot/zone/zone-dump.h"
 #include "dnslib/dnslib.h"
 #include "dnslib/debug.h"
 

@@ -15,8 +15,8 @@
 #include "dnslib/response2.h"
 #include "dnslib/query.h"
 #include "dnslib/consts.h"
-#include "dnslib/zone-dump-text.h"
-#include "dnslib/zone-dump.h"
+#include "knot/zone/zone-dump-text.h"
+#include "knot/zone/zone-dump.h"
 #include "dnslib/changesets.h"
 
 /*----------------------------------------------------------------------------*/
