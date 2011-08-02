@@ -108,7 +108,7 @@ int gen_tree_find_less_or_equal(general_tree_t *tree,
 	int exact_match =
 		MOD_TREE_FIND_LESS_EQUAL(tree->tree, general_tree_node, avl,
 	                                 &tree_node, &f, &prev);
-	*found = (exact_match > 0) ? f->data : NULL;
+	*found = (exact_match > 0) ? f->data : prev->data;
 	return exact_match;
 }
 
