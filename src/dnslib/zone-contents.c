@@ -1879,7 +1879,6 @@ dnslib_node_t *dnslib_zone_contents_get_apex(const dnslib_zone_contents_t *zone)
 
 int dnslib_zone_contents_adjust_dnames(dnslib_zone_contents_t *zone)
 {
-	return;
 	if (zone == NULL) {
 		return DNSLIB_EBADARG;
 	}

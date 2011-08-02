@@ -55,11 +55,11 @@
 #define MOD_TREE_HEAD(name, type)				\
   struct name {						\
     struct type *th_root;				\
-    int  (*th_cmp)(struct type *lhs, struct type *rhs);	\
-    int (*th_mrg)(struct type **lhs, struct type **rhs);	\
+    int  (*th_cmp)(void *lhs, void *rhs);	\
+    int (*th_mrg)(void **lhs, void **rhs);	\
   }
 
-#define MOD_TREE_INITIALIZER(cmp) { 0, cmp, mrg}
+#define MOD_TREE_INITIALIZER(cmp, mrg) { 0, cmp, mrg}
 
 #define MOD_TREE_DELTA(self, field)								\
   (( (((self)->field.avl_left)  ? (self)->field.avl_left->field.avl_height  : 0))	\
@@ -113,7 +113,7 @@
   }													\
 													\
   struct node *MOD_TREE_INSERT_##node##_##field								\
-    (struct node *self, struct node *elm, int (*compare)(struct node *lhs, struct node *rhs), int (*merge)(struct node **lhs, struct node **rhs))\
+    (struct node *self, struct node *elm, int (*compare)(void *lhs, void *rhs), int (*merge)(void **lhs, void **rhs))\
   {													\
     if (!self)												\
       return elm;											\
@@ -130,7 +130,7 @@
   }													\
 													\
   struct node *MOD_TREE_FIND_##node##_##field								\
-    (struct node *self, struct node *elm, int (*compare)(struct node *lhs, struct node *rhs))		\
+    (struct node *self, struct node *elm, int (*compare)(void *lhs, void *rhs))			\
   {													\
     if (!compare)											\
       return 0;												\
@@ -145,7 +145,7 @@
   }													\
 													\
   int MOD_TREE_FIND_LESS_EQUAL_##node##_##field								\
-    (struct node *self, struct node *elm, int (*compare)(struct node *lhs, struct node *rhs), struct node **found, struct node **prev)		\
+    (struct node *self, struct node *elm, int (*compare)(void *lhs, void *rhs), struct node **found, struct node **prev)		\
   {													\
     if (!self)												\
       return 0;												\
@@ -163,7 +163,7 @@
     } else {												\
       *found = self;											\
       *prev = self;											\
-      return MOD_TREE_FIND_LESS_EQUAL_##node##_##field(self->field.avl_right, elm, compare, found, prev);			\
+      return MOD_TREE_FIND_LESS_EQUAL_##node##_##field(self->field.avl_right, elm, compare, found, prev);	\
     }													\
   }													\
 													\
@@ -176,7 +176,7 @@
   }													\
 													\
   struct node *MOD_TREE_REMOVE_##node##_##field								\
-    (struct node *self, struct node *elm, int (*compare)(struct node *lhs, struct node *rhs), void (*del)(struct node *lhs))		\
+    (struct node *self, struct node *elm, int (*compare)(void *lhs, void *rhs), void (*del)(struct node *lhs))		\
   {													\
     if (!self) return 0;										\
 													\
@@ -196,7 +196,7 @@
   }													\
 													\
   void MOD_TREE_FORWARD_APPLY_ALL_##node##_##field								\
-    (struct node *self, void (*function)(struct node *node, void *data), void *data)			\
+    (struct node *self, void (*function)(void *node, void *data), void *data)			\
   {													\
     if (self)												\
       {													\
@@ -229,25 +229,25 @@
   }													\
 												\
 void MOD_TREE_DESTROY_ALL_##node##_##field							\
-  (struct node *self, void (*function)(struct node *node, void *data), void(*dest)(struct node *node), void *data)			\
+  (struct node *self, void (*function)(void *node, void *data), void(*dest)(struct node *node), void *data)			\
 {													\
   if (self)												\
     {													\
-      MOD_TREE_POST_ORDER_APPLY_ALL_##node##_##field(self->field.avl_left, function, data);			\
-      MOD_TREE_POST_ORDER_APPLY_ALL_##node##_##field(self->field.avl_right, function, data);			\
-      if (function != NULL)											\
-        function(self->data, data);										\
+      MOD_TREE_DESTROY_ALL_##node##_##field(self->field.avl_left, function, dest, data);		\
+      MOD_TREE_DESTROY_ALL_##node##_##field(self->field.avl_right, function, dest, data);		\
+      if (function != NULL)										\
+         function(self->data, data);									\
       dest(self);											\
     }													\
 }													\
 													\
-  void MOD_TREE_REVERSE_APPLY_POST_ALL_##node##_##field								\
+  void MOD_TREE_REVERSE_APPLY_POST_ALL_##node##_##field							\
     (struct node *self, void (*function)(struct node *node, void *data), void *data)			\
   {													\
     if (self)												\
       {													\
-        MOD_TREE_REVERSE_APPLY_POST_ALL_##node##_##field(self->field.avl_right, function, data);			\
-        MOD_TREE_REVERSE_APPLY_POST_ALL_##node##_##field(self->field.avl_left, function, data);			\
+        MOD_TREE_REVERSE_APPLY_POST_ALL_##node##_##field(self->field.avl_right, function, data);	\
+        MOD_TREE_REVERSE_APPLY_POST_ALL_##node##_##field(self->field.avl_left, function, data);		\
         function(self, data);										\
       }													\
 }

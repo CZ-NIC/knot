@@ -729,7 +729,6 @@ void dnslib_node_free_rrsets(dnslib_node_t *node, int free_rdata_dnames)
 	}
 
 	gen_tree_destroy(&node->rrset_tree, NULL, NULL);
-	assert(node->rrset_tree == NULL);
 }
 
 /*----------------------------------------------------------------------------*/
