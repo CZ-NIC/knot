@@ -1,7 +1,7 @@
 #include <assert.h>
 
 #include "dnslib/zone.h"
-#include "dnslib/zone-load.h"
+#include "knot/zone/zone-load.h"
 #include "dnslib/rrset.h"
 #include "dnslib/descriptor.h"
 #include "zcompile/zcompile.h"

@@ -82,14 +82,8 @@ src/dnslib/nsec3.h
 src/dnslib/nsec3.c
 src/dnslib/changesets.h
 src/dnslib/changesets.c
-src/dnslib/zone-dump.c
-src/dnslib/zone-dump.h
-src/dnslib/zone-load.c
-src/dnslib/zone-load.h
 src/dnslib/zone-contents.c
 src/dnslib/zone-contents.h
-src/dnslib/zone-dump-text.h
-src/dnslib/zone-dump-text.c
 src/dnslib/zone-tree.h
 src/dnslib/zone-tree.c
 src/dnslib/xfr-in.h
@@ -191,6 +185,12 @@ src/knot/conf/conf.c
 src/knot/conf/conf.h
 src/knot/conf/logconf.c
 src/knot/conf/logconf.h
+src/knot/zone/zone-dump.c
+src/knot/zone/zone-dump.h
+src/knot/zone/zone-load.c
+src/knot/zone/zone-load.h
+src/knot/zone/zone-dump-text.h
+src/knot/zone/zone-dump-text.c
 src/tests/common/acl_tests.c
 src/tests/common/acl_tests.h
 src/tests/common/da_tests.c

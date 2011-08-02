@@ -12,7 +12,7 @@
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/logconf.h"
-#include "dnslib/zone-load.h"
+#include "knot/zone/zone-load.h"
 
 /*! \brief Controller constants. */
 enum knotc_constants_t {
