@@ -106,6 +106,9 @@ def chop_and_write_packet(packet):
 	fp.write(pack('H', packet.ancount))
 	fp.write(pack('H', packet.nscount))
 	fp.write(pack('H', packet.arcount))
+	
+#write query flag
+	fp.write(pack('H', packet.qr))
 
 	chop_and_write_section_query(packet.qd)
 	chop_and_write_section_response(packet.an)
@@ -122,6 +125,7 @@ fp.write(pack('L', total_length))
 for packet in packets:
 	try:
 		data = a2b_hex(str(packet['DNS']).encode('hex'))
+		fr.write(pack('H', packet.qr))
 		fr.write(pack('H', len(data)))
 		fr.write(data)
 		chop_and_write_packet(packet['DNS'])

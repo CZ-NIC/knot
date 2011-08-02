@@ -2,6 +2,7 @@
 
 #include "dnslib/tests/dnslib/zone_tests.h"
 #include "dnslib/dnslib-common.h"
+#include "dnslib/dname-table.h"
 #include "dnslib/zone.h"
 #include "dnslib/error.h"
 #include "dnslib/node.h"
@@ -338,12 +339,12 @@ static int test_zone_find_node(dnslib_zone_t *zone, int nsec3)
 	return (errors == 0);
 }
 
-static void test_zone_destroy_node_from_tree(dnslib_node_t *node,
-                                             void *data)
-{
-	UNUSED(data);
-	dnslib_node_free(&node, 0, 0);
-}
+//static void test_zone_destroy_node_from_tree(dnslib_node_t *node,
+//                                             void *data)
+//{
+//	UNUSED(data);
+//	dnslib_node_free(&node, 0);
+//}
 
 /* explained below */
 static size_t node_index = 0;
@@ -471,19 +472,286 @@ static int test_zone_traversals(dnslib_zone_t *zone)
 	return 1;
 }
 
-static int test_zone_free(dnslib_zone_t **zone)
+struct zone_test_param {
+	/* Times 2 so that we don't have to mess with mallocs. */
+	dnslib_node_t *dnslib_node_array[TEST_NODES_GOOD * 2];
+	dnslib_dname_t *table_node_array[TEST_NODES_GOOD * 2];
+	int count;
+};
+
+static void tree_node_to_array(dnslib_node_t *node, void *data)
 {
-	dnslib_zone_tree_apply_postorder(*zone,
-	                                 test_zone_destroy_node_from_tree,
-	                                 NULL);
-	dnslib_zone_nsec3_apply_postorder(*zone,
-	                                 test_zone_destroy_node_from_tree,
-	                                 NULL);
-	dnslib_zone_free(zone);
-	return (*zone == NULL);
+	struct zone_test_param *param = (struct zone_test_param *)data;
+	param->dnslib_node_array[param->count++] = node;
 }
 
-static const int DNSLIB_ZONE_TEST_COUNT = 9;
+static void tree_dname_node_to_array(dnslib_dname_t *node,
+                                     void *data)
+{
+	struct zone_test_param *param = (struct zone_test_param *)data;
+	param->table_node_array[param->count++] = node;
+}
+
+extern int compare_wires_simple(uint8_t *w1, uint8_t *w2, uint count);
+static int test_zone_shallow_copy()
+{
+	int errors = 0;
+	int lived = 0;
+	dnslib_dname_t *apex_dname =
+		dnslib_dname_new_from_str("a.ns.nic.cz.",
+	                                  strlen("a.ns.nic.cz"), NULL);
+	assert(apex_dname);
+	dnslib_node_t *apex_node =
+		dnslib_node_new(apex_dname, NULL, 0);
+	assert(apex_node);
+	lives_ok({
+		if (dnslib_zone_contents_shallow_copy(NULL, NULL) != DNSLIB_EBADARG) {
+			diag("Calling zone_shallow_copy with NULL "
+			     "arguments did not return DNSLIB_EBADARG!");
+			errors++;
+		}
+		lived = 1;
+		lived = 0;
+		dnslib_zone_contents_t *zone = dnslib_zone_contents_new(apex_node,
+									0, 1, 0);
+		if (dnslib_zone_contents_shallow_copy(zone, NULL) != DNSLIB_EBADARG) {
+			diag("Calling zone_shallow_copy with NULL destination "
+			     "zone argument did not return DNSLIB_EBADARG!");
+			errors++;
+		}
+		lived = 1;
+		lived = 0;
+		if (dnslib_zone_contents_shallow_copy(NULL, &zone) != DNSLIB_EBADARG) {
+			diag("Calling zone_shallow_copy with NULL source "
+			     "zone argument did not return DNSLIB_EBADARG!");
+			errors++;
+		}
+		lived = 1;
+		lived = 0;
+		if (dnslib_zone_contents_shallow_copy(zone, &zone) != DNSLIB_EBADARG) {
+			diag("Calling zone_shallow_copy with identical source "
+			 "and destination zone did not return DNSLIB_EBADARG!");
+			errors++;
+		}
+		lived = 1;
+		dnslib_zone_contents_free(&zone);
+	}, "zone: shallow copy NULL tests");
+	errors += lived != 1;
+
+	/* example.com. */
+	dnslib_zone_t *from_zone =
+		dnslib_zone_new(dnslib_node_new(&test_nodes_good[0].owner,
+				test_nodes_good[0].parent, 0), 10, 1);
+	dnslib_zone_contents_t *from = dnslib_zone_get_contents(from_zone);
+
+	/* Add nodes to zone. */
+	for (int i = 1; i < TEST_NODES_GOOD; ++i) {
+		dnslib_node_t *node = dnslib_node_new(&test_nodes_good[i].owner,
+						      test_nodes_good[i].parent,
+						      0);
+		if (node == NULL) {
+			diag("zone: Could not create node.");
+			return 0;
+		}
+
+		if (dnslib_zone_contents_add_node(from, node, 1, 1, 1) != DNSLIB_EOK) {
+			diag("zone: Could not add node. %s",
+			     dnslib_dname_to_str(node->owner));
+//			return 0;
+		}
+	}
+
+	/* Make a copy of zone */
+	dnslib_zone_contents_t *to = NULL;
+	int ret = 0;
+	if ((ret = dnslib_zone_contents_shallow_copy(from, &to) != DNSLIB_EOK)) {
+		diag("Could not copy zone! %s", dnslib_strerror(ret));
+		return 0;
+	}
+
+	assert(to);
+
+	/* Compare non-tree parts of the zone. */
+//	if (from->data != to->data) {
+//		diag("Zone data field wrong after shallow copy!");
+//		errors++;
+//	}
+
+//	if (from->dtor != to->dtor) {
+//		diag("Zone data destructor field wrong after shallow copy!");
+//		errors++;
+//	}
+
+	if (from->node_count != to->node_count) {
+		diag("Zone node count data field wrong after shallow copy!");
+		errors++;
+	}
+
+//	if (from->version != to->version) {
+//		diag("Zone version data field wrong after shallow copy!");
+//		errors++;
+//	}
+
+	if (from->apex != to->apex) {
+		diag("Zone apex differ after shallow copy!");
+	}
+
+	if (compare_wires_simple((uint8_t *)(&from->nsec3_params),
+	                         (uint8_t *)(&to->nsec3_params),
+	                         sizeof(from->nsec3_params)) != 0) {
+		diag("Nsec3_params data field wrong after shallow copy!");
+		errors++;
+	}
+
+	if (from->nodes == to->nodes) {
+		diag("Copied zones have identical trees!");
+		errors++;
+	}
+
+	if (from->nsec3_nodes == to->nsec3_nodes) {
+		diag("Copied zones have identical trees!");
+		errors++;
+	}
+
+	/* Compare nodes, convert tree to array then compare those arrays. */
+	struct zone_test_param param1;
+	param1.count = 0;
+	dnslib_zone_contents_tree_apply_inorder(from, tree_node_to_array,
+						(void *)&param1);
+
+	struct zone_test_param param2;
+	param2.count = 0;
+	dnslib_zone_contents_tree_apply_inorder(to, tree_node_to_array,
+						(void *)&param2);
+
+	if (param1.count != param2.count) {
+		diag("wrong tree");
+		return 0;
+	}
+
+	for (int i = 0; i < param1.count; i++) {
+		if (param1.dnslib_node_array[i] !=
+		    param2.dnslib_node_array[i]) {
+			diag("wrong tree");
+			return 0;
+		}
+	}
+
+	param1.count = 0;
+	dnslib_dname_table_tree_inorder_apply(from->dname_table,
+	                                       tree_dname_node_to_array,
+	                                       (void *)&param1);
+
+	param2.count = 0;
+	dnslib_dname_table_tree_inorder_apply(to->dname_table,
+	                                      tree_dname_node_to_array,
+	                                      (void *)&param2);
+
+	if (param1.count != param2.count) {
+		diag("wrong table count");
+		return 0;
+	}
+
+	for (int i = 0; i < param1.count; i++) {
+		if (param1.table_node_array[i] != param2.table_node_array[i]) {
+			diag("wrong table nodes");
+			errors++;
+		}
+	}
+
+#ifdef USE_HASH_TABLE
+	if (from->table) {
+		if (from->table == to->table) {
+			diag("hash tables after shallow copy are identical!");
+			return 0;
+		}
+		uint i;
+		if (hashsize(from->table->table_size_exp) !=
+		                hashsize(to->table->table_size_exp)) {
+			diag("hash tables after shallow copy error!");
+			return 0;
+		}
+
+		if (from->table->table_count != to->table->table_count) {
+			diag("hash tables after shallow copy error!");
+			return 0;
+		}
+
+		for (uint t = 0; t < from->table->table_count; ++t) {
+			for (i = 0; i <
+			     hashsize(from->table->table_size_exp); i++) {
+				if (from->table->tables[t][i] == NULL) {
+					if (to->table->tables[t][i] != NULL) {
+						diag("hash table item error");
+					}
+					continue;
+				}
+				if ((from->table->tables[t])[i]->key_length !=
+				    (to->table->tables[t])[i]->key_length) {
+					diag("hash table key lengths error!");
+					return 0;
+				}
+				if ((from->table->tables[t])[i]->key !=
+				    (to->table->tables[t])[i]->key) {
+					diag("hash table key error!");
+					return 0;
+				}
+				if ((from->table->tables[t])[i]->value !=
+				    (to->table->tables[t])[i]->value) {
+					diag("hash table value error!");
+					return 0;
+				}
+			}
+		}
+
+		ck_stash_item_t *item1 = from->table->stash;
+		ck_stash_item_t *item2 = to->table->stash;
+		while (item1 != NULL && item2 != NULL) {
+			if (item1->item->key_length !=
+			    item2->item->key_length) {
+				diag("hash stash key length error!");
+				return 0;
+			}
+			if (item1->item->key != item2->item->key) {
+				diag("hash stash key error!");
+				return 0;
+			}
+			if (item1->item->value != item2->item->value) {
+				diag("hash stash value error!");
+				return 0;
+			}
+
+			item1 = item1->next;
+			item2 = item2->next;
+		}
+	} else {
+		if (to->table) {
+			diag("Hash table is not set to NULL "
+			     "after shallow copy!");
+			errors++;
+		}
+	}
+#endif
+
+	dnslib_zone_free(&from_zone);
+	dnslib_zone_contents_free(&to);
+	return (errors == 0);
+
+}
+
+//static int test_zone_free(dnslib_zone_t **zone)
+//{
+//	dnslib_zone_tree_apply_postorder(*zone,
+//	                                 test_zone_destroy_node_from_tree,
+//	                                 NULL);
+//	dnslib_zone_nsec3_apply_postorder(*zone,
+//	                                 test_zone_destroy_node_from_tree,
+//	                                 NULL);
+//	dnslib_zone_free(zone);
+//	return (*zone == NULL);
+//}
+
+static const int DNSLIB_ZONE_TEST_COUNT = 10;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
@@ -544,8 +812,11 @@ static int dnslib_zone_tests_run(int argc, char *argv[])
 	ok(res = test_zone_traversals(zone), "zone: traversals");
 	res_final *= res;
 
-	ok((res = test_zone_free(&zone)), "zone: free");
+	ok((res = test_zone_shallow_copy()), "zone: shallow copy");
 	res_final *= res;
+
+//	ok((res = test_zone_free(&zone)), "zone: free");
+//	res_final *= res;
 
 	endskip; // create failed
 

@@ -97,6 +97,10 @@ int dnslib_edns_new_from_rr(dnslib_opt_rr_t *opt_rr,
 /*!
  * \brief Returns the UDP payload stored in the OPT RR.
  *
+ * \warning This function does not check the parameter, so ensure to check it
+ *          before calling the function. It must not be NULL.
+ * \note There is an assert() for debug checking of the parameter.
+ *
  * \param opt_rr OPT RR structure to get the payload from.
  *
  * \return UDP payload in bytes.
@@ -106,6 +110,10 @@ uint16_t dnslib_edns_get_payload(const dnslib_opt_rr_t *opt_rr);
 /*!
  * \brief Sets the UDP payload field in the OPT RR.
  *
+ * \warning This function does not check the parameter, so ensure to check it
+ *          before calling the function. It must not be NULL.
+ * \note There is an assert() for debug checking of the parameter.
+ *
  * \param opt_rr OPT RR structure to set the payload to.
  * \param payload UDP payload in bytes.
  */
@@ -113,6 +121,10 @@ void dnslib_edns_set_payload(dnslib_opt_rr_t *opt_rr, uint16_t payload);
 
 /*!
  * \brief Returns the Extended RCODE stored in the OPT RR.
+ *
+ * \warning This function does not check the parameter, so ensure to check it
+ *          before calling the function. It must not be NULL.
+ * \note There is an assert() for debug checking of the parameter.
  *
  * \param opt_rr OPT RR structure to get the Extended RCODE from.
  *
@@ -123,6 +135,10 @@ uint8_t dnslib_edns_get_ext_rcode(const dnslib_opt_rr_t *opt_rr);
 /*!
  * \brief Sets the Extended RCODE field in the OPT RR.
  *
+ * \warning This function does not check the parameter, so ensure to check it
+ *          before calling the function. It must not be NULL.
+ * \note There is an assert() for debug checking of the parameter.
+ *
  * \param opt_rr OPT RR structure to set the Extended RCODE to.
  * \param ext_rcode Extended RCODE to set.
  */
@@ -130,6 +146,10 @@ void dnslib_edns_set_ext_rcode(dnslib_opt_rr_t *opt_rr, uint8_t ext_rcode);
 
 /*!
  * \brief Returns the EDNS version stored in the OPT RR.
+ *
+ * \warning This function does not check the parameter, so ensure to check it
+ *          before calling the function. It must not be NULL.
+ * \note There is an assert() for debug checking of the parameter.
  *
  * \param opt_rr OPT RR structure to get the EDNS version from.
  *
@@ -140,6 +160,10 @@ uint8_t dnslib_edns_get_version(const dnslib_opt_rr_t *opt_rr);
 /*!
  * \brief Sets the EDNS version field in the OPT RR.
  *
+ * \warning This function does not check the parameter, so ensure to check it
+ *          before calling the function. It must not be NULL.
+ * \note There is an assert() for debug checking of the parameter.
+ *
  * \param opt_rr OPT RR structure to set the EDNS version to.
  * \param version EDNS version to set.
  */
@@ -147,6 +171,10 @@ void dnslib_edns_set_version(dnslib_opt_rr_t *opt_rr, uint8_t version);
 
 /*!
  * \brief Returns the flags stored in the OPT RR.
+ *
+ * \warning This function does not check the parameter, so ensure to check it
+ *          before calling the function. It must not be NULL.
+ * \note There is an assert() for debug checking of the parameter.
  *
  * \param opt_rr OPT RR structure to get the flags from.
  *

@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <time.h>
+#include <sys/select.h>
 
 #include "knot/common.h"
 #include "knot/other/error.h"
@@ -13,7 +15,7 @@
 #include "dnslib/zone-load.h"
 
 /*! \brief Controller constants. */
-enum Constants {
+enum knotc_constants_t {
 	WAITPID_TIMEOUT = 10 /*!< \brief Timeout for waiting for process. */
 };
 
@@ -28,6 +30,7 @@ void help(int argc, char **argv)
 	       " -f\tForce operation - override some checks.\n"
 	       " -v\tVerbose mode - additional runtime information.\n"
 	       " -V\tPrint %s server version.\n"
+	       " -w\tWait for the server to finish start/stop operations.\n"
 	       " -h\tPrint help and usage.\n",
 	       PROJECT_NAME);
 	printf("Actions:\n"
@@ -79,13 +82,14 @@ int check_zone(const char *db, const char* source)
  * \param pid Specified PID for action.
  * \param verbose True if running in verbose mode.
  * \param force True if forced operation is required.
+ * \param wait Wait for the operation to finish.
  * \param pidfile Specified PID file for action.
  *
  * \retval 0 on success.
  * \retval error return code for main on error.
  */
 int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
-            int force, const char *pidfile)
+	    int force, int wait, const char *pidfile)
 {
 	int valid_cmd = 0;
 	int rc = 0;
@@ -102,7 +106,10 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 				return 1;
 			} else {
 				fprintf(stderr, "control: forcing "
-				        "server start.\n");
+					"server start, killing old pid=%ld.\n",
+					(long)pid);
+				kill(pid, SIGKILL);
+				pid_remove(pidfile);
 			}
 		}
 
@@ -126,6 +133,24 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			rc = 1;
 		}
 		free(cmd);
+
+		// Wait for finish
+		if (wait) {
+			if (verbose) {
+				fprintf(stdout, "control: waiting for server "
+						"to load.\n");
+			}
+			/* Periodically read pidfile and wait for
+			 * valid result. */
+			pid = 0;
+			while(pid == 0 || !pid_running(pid)) {
+				pid = pid_read(pidfile);
+				struct timeval tv;
+				tv.tv_sec = 0;
+				tv.tv_usec = 500 * 1000;
+				select(0, 0, 0, 0, &tv);
+			}
+		}
 	}
 	if (strcmp(action, "stop") == 0) {
 
@@ -151,10 +176,26 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 				rc = 1;
 			}
 		}
+
+		// Wait for finish
+		if (rc == 0 && wait) {
+			if (verbose) {
+				fprintf(stdout, "control: waiting for server "
+						"to stop.\n");
+			}
+			/* Periodically read pidfile and wait for
+			 * valid result. */
+			while(pid_running(pid)) {
+				struct timeval tv;
+				tv.tv_sec = 0;
+				tv.tv_usec = 500 * 1000;
+				select(0, 0, 0, 0, &tv);
+			}
+		}
 	}
 	if (strcmp(action, "restart") == 0) {
 		valid_cmd = 1;
-		execute("stop", argv, argc, pid, verbose, force, pidfile);
+		execute("stop", argv, argc, pid, verbose, force, wait, pidfile);
 
 		int i = 0;
 		while((pid = pid_read(pidfile)) > 0) {
@@ -175,7 +216,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		}
 
 		printf("Restarting server.\n");
-		rc = execute("start", argv, argc, -1, verbose, force, pidfile);
+		rc = execute("start", argv, argc, -1, verbose, force, wait, pidfile);
 	}
 	if (strcmp(action, "reload") == 0) {
 
@@ -265,9 +306,9 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			rc = system(cmd);
 			rc = WEXITSTATUS(rc);
 			if (rc != 0) {
-				printf("error: Compilation failed "
-				       "with return code %d.\n",
-				       rc);
+				fprintf(stderr, "error: Compilation failed "
+						"with return code %d.\n",
+						rc);
 			}
 			if (rc < 0) {
 				rc = 1;
@@ -296,10 +337,14 @@ int main(int argc, char **argv)
 	int c = 0;
 	int force = 0;
 	int verbose = 0;
+	int wait = 0;
 	const char* config_fn = 0;
-	while ((c = getopt (argc, argv, "fc:vVh")) != -1) {
+	while ((c = getopt (argc, argv, "wfc:vVh")) != -1) {
 		switch (c)
 		{
+		case 'w':
+			wait = 1;
+			break;
 		case 'f':
 			force = 1;
 			break;
@@ -370,7 +415,7 @@ int main(int argc, char **argv)
 
 	// Execute action
 	int rc = execute(action, argv + optind + 1, argc - optind - 1,
-			 pid, verbose, force, pidfile);
+			 pid, verbose, force, wait, pidfile);
 
 	// Finish
 	free(pidfile);
