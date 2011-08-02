@@ -21,7 +21,7 @@ void ref_release(ref_t *p)
 {
 	if (p) {
 		int rc = __sync_sub_and_fetch(&p->count, 1);
-		if (rc == 0) {
+		if (rc == 0 && p->dtor) {
 			p->dtor(p);
 		}
 	}
