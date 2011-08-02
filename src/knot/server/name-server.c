@@ -5,16 +5,7 @@
 
 #include <urcu.h>
 
-//#include "knot/server/socket.h"
-//#include "knot/common.h"
-//#include "knot/server/server.h"
-//#include "knot/stat/stat.h"
-//#include "knot/other/error.h"
-
-//#include "knot/server/zones.h"
-
 #include "knot/server/name-server.h"
-#include "knot/server/notify.h"
 #include "knot/server/xfr-in.h"
 
 #include "dnslib/error.h"
