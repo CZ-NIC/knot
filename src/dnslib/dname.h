@@ -27,6 +27,7 @@ struct knot_node;
  * \todo Consider restricting to FQDN only (see knot_dname_new_from_str()).
  */
 struct knot_dname {
+	ref_t ref;     /*!< Reference counting. */
 	uint8_t *name;	/*!< Wire format of the domain name. */
 	/*!
 	 * \brief Size of the domain name in octets.
@@ -37,7 +38,6 @@ struct knot_dname {
 	unsigned short label_count;
 	struct knot_node *node; /*!< Zone node the domain name belongs to. */
 	unsigned int id; /*!< ID of domain name used in zone dumping. */
-	ref_t ref;     /*!< Reference counting. */
 };
 
 typedef struct knot_dname knot_dname_t;
