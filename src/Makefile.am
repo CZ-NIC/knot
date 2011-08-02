@@ -217,7 +217,7 @@ libknotd_la_SOURCES =				\
 	knot/zone/zone-dump.c			\
 	knot/zone/zone-dump-text.c			\
 	knot/zone/zone-dump-text.h			\
-	dnslib/zone-dump.h			\
+	knot/zone/zone-dump.h			\
 	knot/server/server.h
 	
 libknot_la_SOURCES =				\
