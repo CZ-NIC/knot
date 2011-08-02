@@ -186,19 +186,13 @@ line:	NL
 				"owner: %s reason: %s\n", tmp_dname_str,
 				error_to_str(knot_zcompile_error_msgs, ret));
 			free(tmp_dname_str);
-			/* Free rdata, it will not be added and hence cannot be
-			 * freed with rest of the zone */
-			knot_rdata_deep_free(&tmp_rdata,
-			                       parser->current_rrset->type,
-					       0);
 
 			if (ret == KNOTDZCOMPILE_EBADSOA) {
 				/*!< \todo this will crash! */
-				knot_rdata_free(&tmp_rdata);
 				knot_rrset_deep_free(&(parser->current_rrset),
-						       1, 1, 1);
+						       0, 1, 0);
 				knot_zone_deep_free(&(parser->current_zone),
-						      1);
+						      0);
 				YYABORT;
 			}
 		} else { ;
