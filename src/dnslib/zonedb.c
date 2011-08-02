@@ -74,8 +74,7 @@ dnslib_zonedb_t *dnslib_zonedb_new()
 		(dnslib_zonedb_t *)malloc(sizeof(dnslib_zonedb_t));
 	CHECK_ALLOC_LOG(db, NULL);
 
-	db->zone_tree = gen_tree_new(dnslib_zonedb_compare_zone_names,
-	                             NULL);
+	db->zone_tree = gen_tree_new(dnslib_zonedb_compare_zone_names);
 	if (db->zone_tree == NULL) {
 		free(db);
 		return NULL;
@@ -103,7 +102,7 @@ DEBUG_DNSLIB_ZONEDB(
 		return ret;
 	}
 
-	ret = gen_tree_add(db->zone_tree, zone);
+	ret = gen_tree_add(db->zone_tree, zone, NULL);
 
 	return (ret != 0) ? DNSLIB_EZONEIN : DNSLIB_EOK;
 }
@@ -183,8 +182,8 @@ int dnslib_zonedb_remove_zone(dnslib_zonedb_t *db, dnslib_dname_t *zone_name,
 dnslib_zone_t *dnslib_zonedb_find_zone(const dnslib_zonedb_t *db,
                                        const dnslib_dname_t *zone_name)
 {
-	dnslib_zone_t const dummy_zone;
-	dummy_zone.name = zone_name;
+	dnslib_zone_t dummy_zone;
+	dummy_zone.name = (dnslib_dname_t *)zone_name;
 	return (dnslib_zone_t *)gen_tree_find(db->zone_tree, &dummy_zone);
 }
 
@@ -197,8 +196,8 @@ const dnslib_zone_t *dnslib_zonedb_find_zone_for_name(dnslib_zonedb_t *db,
 		return NULL;
 	}
 
-	dnslib_zone_t const dummy_zone;
-	dummy_zone.name = dname;
+	dnslib_zone_t dummy_zone;
+	dummy_zone.name = (dnslib_dname_t *)dname;
 	void *found = NULL;
 	int exact_match = gen_tree_find_less_or_equal(db->zone_tree,
 	                                              &dummy_zone,
@@ -264,8 +263,6 @@ void dnslib_zonedb_deep_free(dnslib_zonedb_t **db)
 	debug_dnslib_zonedb("Deleting zone db (%p).\n", *db);
 //	debug_dnslib_zonedb("Is it empty (%p)? %s\n",
 //	       (*db)->zones, skip_is_empty((*db)->zones) ? "yes" : "no");
-	dnslib_zone_t *zone = NULL;
-
 
 //DEBUG_DNSLIB_ZONEDB(
 //	int i = 1;
@@ -282,7 +279,7 @@ void dnslib_zonedb_deep_free(dnslib_zonedb_t **db)
 //	}
 
 //	zn = skip_first((*db)->zones);
-);
+//);
 
 //	while (zn != NULL) {
 //		zone = (dnslib_zone_t *)zn->value;

@@ -174,7 +174,7 @@ dnslib_node_t *dnslib_node_new(dnslib_dname_t *owner, dnslib_node_t *parent,
 
 	ret->owner = owner;
 	dnslib_node_set_parent(ret, parent);
-	ret->rrset_tree = gen_tree_new(compare_rrset_types, dnslib_rrset_merge);
+	ret->rrset_tree = gen_tree_new(compare_rrset_types);
 	ret->flags = flags;
 	
 	assert(ret->children == 0);
@@ -192,11 +192,11 @@ int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset,
 	if (gen_tree_find(node->rrset_tree, rrset) && merge) {
 		unique_rrset_type = 0;
 	}
-	/*!< \todo MISSING MERGE OPTION */
-	printf("Add: %p (%p - %s:%s)\n", node->rrset_tree, rrset,
-	       dnslib_dname_to_str(rrset->owner),
-	       dnslib_rrtype_to_string(rrset->type));
-	if ((ret = (gen_tree_add(node->rrset_tree, rrset))) != 0) {
+//	printf("Add: %p (%p - %s:%s)\n", node->rrset_tree, rrset,
+//	       dnslib_dname_to_str(rrset->owner),
+//	       dnslib_rrtype_to_string(rrset->type));
+	if ((ret = (gen_tree_add(node->rrset_tree, rrset,
+	                         (merge) ? dnslib_rrset_merge : NULL))) != 0) {
 		return DNSLIB_ERROR;
 	}
 
@@ -213,8 +213,8 @@ int dnslib_node_add_rrset(dnslib_node_t *node, dnslib_rrset_t *rrset,
 const dnslib_rrset_t *dnslib_node_rrset(const dnslib_node_t *node,
                                         uint16_t type)
 {
-	printf("Find: %p (%s)\n", node->rrset_tree,
-	       dnslib_dname_to_str(node->owner));
+//	printf("Find: %p (%s)\n", node->rrset_tree,
+//	       dnslib_dname_to_str(node->owner));
 	assert(node != NULL);
 	assert(node->rrset_tree != NULL);
 	dnslib_rrset_t rrset;
@@ -226,8 +226,8 @@ const dnslib_rrset_t *dnslib_node_rrset(const dnslib_node_t *node,
 
 dnslib_rrset_t *dnslib_node_get_rrset(dnslib_node_t *node, uint16_t type)
 {
-	printf("Find: %p (%s)\n", node->rrset_tree,
-	       dnslib_dname_to_str(node->owner));
+//	printf("Find: %p (%s)\n", node->rrset_tree,
+//	       dnslib_dname_to_str(node->owner));
 	dnslib_rrset_t rrset;
 	rrset.type = type;
 	return (dnslib_rrset_t *)gen_tree_find(node->rrset_tree, &rrset);
@@ -264,7 +264,7 @@ struct dnslib_node_save_rrset_arg {
 void save_rrset_to_array(void *node, void *data)
 {
 	dnslib_rrset_t *rrset = (dnslib_rrset_t *)node;
-	printf("%p\n", rrset);
+//	printf("%p\n", rrset);
 //	debug_dnslib_node("Returning rrset from tree: %s\n",
 //	                  dnslib_dname_to_str(rrset->owner));
 	struct dnslib_node_save_rrset_arg *args =
@@ -284,13 +284,13 @@ dnslib_rrset_t **dnslib_node_get_rrsets(const dnslib_node_t *node)
 	args.array = rrsets;
 	args.count = 0;
 
-	printf("using tree: %p (should have %d rrsets)\n",
-	       node->rrset_tree, node->rrset_count);
+//	printf("using tree: %p (should have %d rrsets)\n",
+//	       node->rrset_tree, node->rrset_count);
 
 	gen_tree_apply_inorder(node->rrset_tree, save_rrset_to_array,
 	                       &args);
 
-	printf("has rrsets: %d\n", args.count);
+//	printf("has rrsets: %d\n", args.count);
 
 	assert(args.count == node->rrset_count);
 	assert(args.count);
@@ -314,10 +314,10 @@ const dnslib_rrset_t **dnslib_node_rrsets(const dnslib_node_t *node)
 	args.array = rrsets;
 	args.count = 0;
 
-	printf("using tree: %p (should have %d rrsets)\n",
-	       node->rrset_tree, node->rrset_count);
+//	printf("using tree: %p (should have %d rrsets)\n",
+//	       node->rrset_tree, node->rrset_count);
 
-	printf("has rrsets: %d\n", args.count);
+//	printf("has rrsets: %d\n", args.count);
 
 	gen_tree_apply_inorder(node->rrset_tree, save_rrset_to_array,
 	                       &args);

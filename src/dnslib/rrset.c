@@ -363,7 +363,6 @@ int dnslib_rrset_merge(void **r1, void **r2)
 	    || rrset1->rclass != rrset2->rclass
 	    || rrset1->type != rrset2->type
 	    || rrset1->ttl != rrset2->ttl) {
-		printf("AFDSDFSAFD\n");
 		return DNSLIB_EBADARG;
 	}
 
@@ -379,7 +378,6 @@ int dnslib_rrset_merge(void **r1, void **r2)
 	dnslib_rdata_t *tmp_rdata = rrset1->rdata;
 
 	if (!tmp_rdata) {
-		printf("smth is weird!\n");
 		return DNSLIB_EOK;
 	}
 
@@ -397,6 +395,5 @@ int dnslib_rrset_merge(void **r1, void **r2)
 
 	tmp_rdata->next = rrset1->rdata;
 
-		printf("AFDSDFSAFDsfdsdafsafdsafdasd\n");
 	return DNSLIB_EOK;
 }

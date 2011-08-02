@@ -241,10 +241,6 @@ static dnslib_rdata_t *dnslib_load_rdata(uint16_t type, FILE *f,
 				return NULL;
 			}
 
-			printf("%s - %d\n",
-			       dnslib_dname_to_str(id_array[dname_id]),
-			       in_the_zone);
-
 			if(!fread_wrapper(&has_wildcard, sizeof(uint8_t),
 				       1, f)) {
 				load_rdata_purge(rdata, items, i, type);

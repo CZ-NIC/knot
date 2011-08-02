@@ -56,10 +56,9 @@
   struct name {						\
     struct type *th_root;				\
     int  (*th_cmp)(void *lhs, void *rhs);	\
-    int (*th_mrg)(void **lhs, void **rhs);	\
   }
 
-#define MOD_TREE_INITIALIZER(cmp, mrg) { 0, cmp, mrg}
+#define MOD_TREE_INITIALIZER(cmp) { 0, cmp}
 
 #define MOD_TREE_DELTA(self, field)								\
   (( (((self)->field.avl_left)  ? (self)->field.avl_left->field.avl_height  : 0))	\
@@ -252,8 +251,8 @@ void MOD_TREE_DESTROY_ALL_##node##_##field							\
       }													\
 }
 
-#define MOD_TREE_INSERT(head, node, field, elm)						\
-  ((head)->th_root= MOD_TREE_INSERT_##node##_##field((head)->th_root, (elm), (head)->th_cmp, (head)->th_mrg))
+#define MOD_TREE_INSERT(head, node, field, elm, merge)						\
+  ((head)->th_root= MOD_TREE_INSERT_##node##_##field((head)->th_root, (elm), (head)->th_cmp, merge))
 
 #define MOD_TREE_FIND(head, node, field, elm)				\
   (MOD_TREE_FIND_##node##_##field((head)->th_root, (elm), (head)->th_cmp))
@@ -282,10 +281,9 @@ void MOD_TREE_DESTROY_ALL_##node##_##field							\
 #define MOD_TREE_REVERSE_APPLY_POST(head, node, field, function, data)	\
   MOD_TREE_REVERSE_APPLY_POST_ALL_##node##_##field((head)->th_root, function, data)
 
-#define MOD_TREE_INIT(head, cmp, mrg ) do {		\
+#define MOD_TREE_INIT(head, cmp) do {		\
     (head)->th_root= 0;				\
     (head)->th_cmp= (cmp);			\
-    (head)->th_mrg= (mrg);			\
   } while (0)
 
 

@@ -871,7 +871,7 @@ void rdata_dump_text(dnslib_rdata_t *rdata, uint16_t type, FILE *f)
 	fprintf(f, "\n");
 }
 
-void dump_rrset_header(dnslib_rrset_t *rrset, FILE *f)
+void dump_rrset_header(const dnslib_rrset_t *rrset, FILE *f)
 {
 	char *name = dnslib_dname_to_str(rrset->owner);
 	fprintf(f, "%-20s ",  name);
@@ -896,7 +896,7 @@ void rrsig_set_dump_text(dnslib_rrset_t *rrsig, FILE *f)
 }
 
 
-void rrset_dump_text(dnslib_rrset_t *rrset, FILE *f)
+void rrset_dump_text(const dnslib_rrset_t *rrset, FILE *f)
 {
 	dump_rrset_header(rrset, f);
 	dnslib_rdata_t *tmp = rrset->rdata;
@@ -921,57 +921,47 @@ struct dump_param {
 
 void apex_node_dump_text(dnslib_node_t *node, FILE *f)
 {
-//	dnslib_rrset_t *tmp_rrset =
-//		(dnslib_rrset_t *)skip_find(node->rrsets,
-//		                            &tmp);
-//	rrset_dump_text(tmp_rrset, f);
+	dnslib_rrset_t dummy_rrset;
+	dummy_rrset.type = DNSLIB_RRTYPE_SOA;
+	dnslib_rrset_t *tmp_rrset =
+		(dnslib_rrset_t *)gen_tree_find(node->rrset_tree,
+		                                &dummy_rrset);
+	assert(tmp_rrset);
+	rrset_dump_text(tmp_rrset, f);
 
-//	const skip_node_t *skip_node =
-//		skip_first(node->rrsets);
+	const dnslib_rrset_t **rrsets =
+		dnslib_node_rrsets(node);
 
-//	tmp_rrset = (dnslib_rrset_t *)skip_node->value;
+	for (int i = 0; i < node->rrset_count; i++) {
+		if (rrsets[i]->type != DNSLIB_RRTYPE_SOA) {
+			rrset_dump_text(rrsets[i], f);
+		}
+	}
 
-//	if (tmp_rrset->type != DNSLIB_RRTYPE_SOA) {
-//		rrset_dump_text(tmp_rrset, f);
-//	}
-
-//	while ((skip_node = skip_next(skip_node)) != NULL) {
-//		tmp_rrset = (dnslib_rrset_t *)skip_node->value;
-//		if (tmp_rrset->type != DNSLIB_RRTYPE_SOA) {
-//			rrset_dump_text(tmp_rrset, f);
-//		}
-//	}
+	free(rrsets);
 }
 
 void node_dump_text(dnslib_node_t *node, void *data)
 {
-//	struct dump_param *param;
-//	param = (struct dump_param *)data;
-//	FILE *f = param->f;
-//	const dnslib_dname_t *origin = param->origin;
+	struct dump_param *param;
+	param = (struct dump_param *)data;
+	FILE *f = param->f;
+	const dnslib_dname_t *origin = param->origin;
 
-//	/* pointers should do in this case */
-//	if (node->owner == origin) {
-//		apex_node_dump_text(node, f);
-//		return;
-//	}
+	/* pointers should do in this case */
+	if (node->owner == origin) {
+		apex_node_dump_text(node, f);
+		return;
+	}
 
-//	const skip_node_t *skip_node =
-//		skip_first(node->rrsets);
+	const dnslib_rrset_t **rrsets =
+		dnslib_node_rrsets(node);
 
-//	/* empty nodes should not be dumped */
-//	if (skip_node == NULL) {
-//		return;
-//	}
+	for (int i = 0; i < node->rrset_count; i++) {
+			rrset_dump_text(rrsets[i], f);
+	}
 
-//	dnslib_rrset_t *tmp = (dnslib_rrset_t *)skip_node->value;
-
-//	rrset_dump_text(tmp, f);
-
-//	while ((skip_node = skip_next(skip_node)) != NULL) {
-//		tmp = (dnslib_rrset_t *)skip_node->value;
-//		rrset_dump_text(tmp, f);
-//	}
+	free(rrsets);
 }
 
 int zone_dump_text(dnslib_zone_contents_t *zone, const char *filename)
