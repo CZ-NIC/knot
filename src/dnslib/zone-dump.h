@@ -36,7 +36,7 @@ enum {
  * \retval KNOT_EBADARG if the file cannot be opened for writing.
  */
 int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
-                        int do_checks, const char *sfilename);
+                      int do_checks, const char *sfilename);
 
 /*!
  * \brief Serializes RRSet into binary stream. Expects NULL pointer, memory
@@ -51,7 +51,7 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
  * \retval KNOT_ENOMEM on memory error.
  */
 int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
-                                 size_t *size);
+                               size_t *size);
 
 /*!
  * \brief Serializes RRSet into binary stream. Expects NULL pointer, memory
@@ -66,7 +66,7 @@ int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
  * \retval KNOT_ENOMEM on memory error.
  */
 int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
-                                 size_t *size);
+                               size_t *size);
 
 #endif /* _KNOT_ZONEDUMP_H_ */
 
