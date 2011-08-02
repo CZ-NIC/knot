@@ -216,3 +216,17 @@ src/dnslib/dname-table.h
 src/dnslib/dname-table.c
 src/common/general-tree.h
 src/common/general-tree.c
+src/dnslib/tests/dnslib/dname_table_tests.h
+src/dnslib/tests/dnslib/dname_table_tests.c
+src/dnslib/tests/dnslib/packet_tests.c
+src/dnslib/tests/dnslib/packet_tests.h
+src/dnslib/tests/realdata/dnslib/packet_tests_realdata.c
+src/dnslib/tests/realdata/dnslib/packet_tests_realdata.h
+src/dnslib/tests/dnslib/response2_tests.c
+src/dnslib/tests/dnslib/response2_tests.h
+src/dnslib/tests/realdata/dnslib/response2_tests_realdata.c
+src/dnslib/tests/realdata/dnslib/response2_tests_realdata.h
+src/dnslib/tests/dnslib/query_tests.c
+src/dnslib/tests/dnslib/query_tests.h
+src/dnslib/tests/dnslib/nsec3_tests.c
+src/dnslib/tests/dnslib/nsec3_tests.h

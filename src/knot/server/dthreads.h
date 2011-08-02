@@ -33,7 +33,7 @@ struct dt_unit_t;
 /*!
  * \brief Thread state enumeration.
  */
-enum {
+typedef enum {
 	ThreadJoined    = 1 << 0, /*!< Thread is finished and joined. */
 	ThreadJoinable  = 1 << 1, /*!< Thread is waiting to be reclaimed. */
 	ThreadCancelled = 1 << 2, /*!< Thread is cancelled, finishing task. */

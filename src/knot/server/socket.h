@@ -23,7 +23,7 @@
 #include "common/sockaddr.h"
 
 /*! \brief Socket-related constants. */
-enum {
+typedef enum {
 	SOCKET_MTU_SZ = 8192,  /*!< \todo Determine UDP MTU size. */
 } socket_const_t;
 

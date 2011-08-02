@@ -19,12 +19,12 @@ header="${1%.*}_rc"
 header=`basename ${header}`
 
 # Get file size and dump content
-size=`stat --format "%s" ${1} 2>/dev/null`
+size=`wc -c ${1} | awk '{print $1}' 2>/dev/null`
 dump=`${hd} "${fmt}" ${1} 2>/dev/null`
 
 # Format file size variable
 echo "static const unsigned ${header}_size = ${size};"
 
 # Format file content dump
-echo -n "static const char ${header}[] = { "
+echo "static const char ${header}[] = { "
 echo "${dump}0x00 };"

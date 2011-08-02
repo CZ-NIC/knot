@@ -9,10 +9,12 @@
 //#include "dnslib/edns_tests.h"
 #include "dnslib/node_tests_realdata.h"
 #include "dnslib/rdata_tests_realdata.h"
-#include "dnslib/response_tests_realdata.h"
+//#include "dnslib/response_tests_realdata.h"
+#include "dnslib/response2_tests_realdata.h"
 #include "dnslib/rrset_tests_realdata.h"
 //#include "dnslib/zone_tests_realdata.h"
 #include "dnslib/zonedb_tests_realdata.h"
+#include "dnslib/packet_tests_realdata.h"
 
 #include "common/lists.h"
 // Run all loaded units
@@ -37,7 +39,9 @@ int main(int argc, char *argv[])
 //		&edns_tests_api,     //! DNS library (EDNS0) unit
 		&node_tests_api,     //! DNS library (node) unit
 		&rdata_tests_api,    //! DNS library (rdata) unit
-		&response_tests_api, //! DNS library (response) unit
+		&packet_tests_api,
+//		&response_tests_api, //! DNS library (response) unit
+		&response2_tests_api, //! DNS library (response) unit
 		&rrset_tests_api,    //! DNS library (rrset) unit
 //		&zone_tests_api,     //! DNS library (zone) unit
 //		&zonedb_tests_api,   //! DNS library (zonedb) unit
