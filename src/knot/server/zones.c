@@ -31,7 +31,7 @@ static int zonedata_destroy(knot_zone_t *zone)
 {
 	zonedata_t *zd = (zonedata_t *)zone->data;
 	if (!zd) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Destroy mutex. */
@@ -47,7 +47,7 @@ static int zonedata_destroy(knot_zone_t *zone)
 
 	free(zd);
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*! \brief Zone data constructor function. */
@@ -55,7 +55,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 {
 	zonedata_t *zd = malloc(sizeof(zonedata_t));
 	if (!zd) {
-		return KNOTDENOMEM;
+		return KNOTD_ENOMEM;
 	}
 
 	/* Link to config. */
@@ -107,10 +107,10 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	int64_t serial = knot_rdata_soa_serial(soa_rr);
 	zd->zonefile_serial = (uint32_t)serial;
 	if (serial < 0) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*!
@@ -179,10 +179,10 @@ static int zones_axfrin_expire(event_t *e)
 	debug_zones("axfrin: EXPIRE timer event\n");
 	knot_zone_t *zone = (knot_zone_t *)e->data;
 	if (!zone) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 	if (!zone->data) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Cancel pending timers. */
@@ -210,10 +210,10 @@ static int zones_axfrin_poll(event_t *e)
 	debug_zones("axfrin: REFRESH or RETRY timer event\n");
 	knot_zone_t *zone = (knot_zone_t *)e->data;
 	if (!zone) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 	if (!zone->data) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Cancel pending timers. */
@@ -225,7 +225,7 @@ static int zones_axfrin_poll(event_t *e)
 
 	/* Create query. */
 	int ret = xfrin_create_soa_query(knot_zone_contents(zone), qbuf, &buflen);
-	if (ret == KNOTDEOK && zd->xfr_in.ifaces) {
+	if (ret == KNOTD_EOK && zd->xfr_in.ifaces) {
 
 		int sock = -1;
 		iface_t *i = 0;
@@ -291,10 +291,10 @@ static int zones_notify_send(event_t *e)
 	notify_ev_t *ev = (notify_ev_t *)e->data;
 	knot_zone_t *zone = ev->zone;
 	if (!zone) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 	if (!knot_zone_data(zone)) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	debug_zones("notify: NOTIFY timer event\n");
@@ -307,7 +307,7 @@ static int zones_notify_send(event_t *e)
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	int ret = notify_create_request(knot_zone_contents(zone), qbuf,
 	                                &buflen);
-	if (ret == KNOTDEOK && zd->xfr_in.ifaces) {
+	if (ret == KNOTD_EOK && zd->xfr_in.ifaces) {
 
 		/*! \todo Bind to random port? See zones_axfrin_poll(). */
 
@@ -352,7 +352,7 @@ static int zones_notify_send(event_t *e)
 		evsched_event_free(e->parent, ev->timer);
 		rem_node(&ev->n);
 		free(ev);
-		return KNOTDEMALF;
+		return KNOTD_EMALF;
 	}
 
 	/* RFC suggests 60s, but it is configurable. */
@@ -378,7 +378,7 @@ static int zones_ixfrdb_sync_apply(journal_t *j, journal_node_t *n)
 		journal_update(j, n);
 	}
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*!
@@ -391,10 +391,10 @@ static int zones_zonefile_sync_ev(event_t *e)
 	/* Fetch zone. */
 	knot_zone_t *zone = (knot_zone_t *)e->data;
 	if (!zone) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 	if (!zone->data) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Fetch zone data. */
@@ -510,14 +510,14 @@ void zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
  * \param acl Pointer to existing or NULL ACL.
  * \param acl_list List of remotes from configuration.
  *
- * \retval KNOTDEOK on success.
- * \retval KNOTDEINVAL on invalid parameters.
- * \retval KNOTDENOMEM on failed memory allocation.
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOTD_ENOMEM on failed memory allocation.
  */
 static int zones_set_acl(acl_t **acl, list* acl_list)
 {
 	if (!acl || !acl_list) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Truncate old ACL. */
@@ -526,7 +526,7 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
 	/* Create new ACL. */
 	*acl = acl_new(ACL_DENY, 0);
 	if (!*acl) {
-		return KNOTDENOMEM;
+		return KNOTD_ENOMEM;
 	}
 
 	/* Load ACL rules. */
@@ -545,7 +545,7 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
 		}
 	}
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*!
@@ -556,9 +556,9 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
  * \param source Path to zone file source.
  * \param filename Path to requested compiled zone file.
  *
- * \retval KNOTDEOK
- * \retval KNOTDEINVAL
- * \retval KNOTDEZONEINVAL
+ * \retval KNOTD_EOK
+ * \retval KNOTD_EINVAL
+ * \retval KNOTD_EZONEINVAL
  */
 static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 			   const char *source, const char *filename)
@@ -573,7 +573,7 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 			log_server_error("Compiled db '%s' is too old, "
 			                 " please recompile.\n",
 			                 filename);
-			return KNOTDEZONEINVAL;
+			return KNOTD_EZONEINVAL;
 		}
 
 		// Check if the db is up-to-date
@@ -606,16 +606,16 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 			log_server_error("Failed to load "
 					 "db '%s' for zone '%s'.\n",
 					 filename, zone_name);
-			return KNOTDEZONEINVAL;
+			return KNOTD_EZONEINVAL;
 		}
 	} else {
 		/* db is null. */
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 //	knot_zone_dump(zone, 1);
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -826,7 +826,7 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		/* Read journal entry. */
 		ret = journal_read(zd->ixfr_db, n->id,
 				   0, (char*)chs->data);
-		if (ret != KNOTDEOK) {
+		if (ret != KNOTD_EOK) {
 			debug_knot_xfr("ixfr_db: failed to read data from journal\n");
 			--dst->count;
 			return KNOT_ERROR;
@@ -862,15 +862,15 @@ static int zones_load_changesets(const knot_zone_t *zone,
  *
  * \param zone Specified zone.
  *
- * \retval KNOTDEOK if successful.
- * \retval KNOTDEINVAL on invalid parameters.
- * \retval KNOTDEOK on unspecified error.
+ * \retval KNOTD_EOK if successful.
+ * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOTD_EOK on unspecified error.
  */
 static int zones_journal_apply(knot_zone_t *zone)
 {
 	/* Fetch zone. */
 	if (!zone) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	knot_zone_contents_t *contents = knot_zone_get_contents(zone);
@@ -883,7 +883,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 	soa_rr = knot_rrset_rdata(soa_rrs);
 	int64_t serial_ret = knot_rdata_soa_serial(soa_rr);
 	if (serial_ret < 0) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 	uint32_t serial = (uint32_t)serial_ret;
 
@@ -892,7 +892,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 	knot_changesets_t* chsets = malloc(sizeof(knot_changesets_t));
 	memset(chsets, 0, sizeof(knot_changesets_t));
 	int ret = zones_load_changesets(zone, chsets, serial, serial - 1);
-	if (ret == KNOTDEOK || ret == KNOTDERANGE) {
+	if (ret == KNOTD_EOK || ret == KNOTD_ERANGE) {
 
 		/* Apply changesets. */
 		debug_zones("update_zone: applying %u changesets\n",
@@ -971,7 +971,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			            " version is old, loading...\n");
 			int ret = zones_load_zone(db_new, z->name,
 			                          z->file, z->db);
-			if (ret != KNOTDEOK) {
+			if (ret != KNOTD_EOK) {
 				log_server_error("Error loading new zone to"
 				                 " the new database: %s\n",
 				                 knot_strerror(ret));
@@ -990,7 +990,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			// just insert the zone into the new zone db
 			debug_zones("Found in old database, copying to new.\n");
 			int ret = knot_zonedb_add_zone(db_new, zone);
-			if (ret != KNOTDEOK) {
+			if (ret != KNOTD_EOK) {
 				log_server_error("Error adding old zone to"
 				                 " the new database: %s\n",
 				                 knot_strerror(ret));
@@ -1056,8 +1056,8 @@ static int zones_insert_zones(knot_nameserver_t *ns,
  * \param zone_conf Zone configuration.
  * \param db_old Old zone database to remove zones from.
  *
- * \retval KNOTDEOK
- * \retval KNOTDERROR
+ * \retval KNOTD_EOK
+ * \retval KNOTD_ERROR
  */
 static int zones_remove_zones(const list *zone_conf, knot_zonedb_t *db_old)
 {
@@ -1073,7 +1073,7 @@ static int zones_remove_zones(const list *zone_conf, knot_zonedb_t *db_old)
 		if (zone_name == NULL) {
 			log_server_error("Error creating domain name from zone"
 			                 " name\n");
-			return KNOTDERROR;
+			return KNOTD_ERROR;
 		}
 		debug_zones("Removing zone %s from the old database.\n",
 		            z->name);
@@ -1083,7 +1083,7 @@ static int zones_remove_zones(const list *zone_conf, knot_zonedb_t *db_old)
 		/* Directly discard. */
 		knot_dname_free(&zone_name);
 	}
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1095,7 +1095,7 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 {
 	// Check parameters
 	if (conf == NULL || ns == NULL) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	// Lock RCU to ensure noone will deallocate any data under our hands.
@@ -1106,13 +1106,13 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 	if (*db_old == NULL) {
 		log_server_error("Missing zone database in nameserver structure"
 		                 ".\n");
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	// Create new zone DB
 	knot_zonedb_t *db_new = knot_zonedb_new();
 	if (db_new == NULL) {
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	log_server_info("Loading %d zones...\n", conf->zones_count);
@@ -1142,7 +1142,7 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 	 *  databases are already switched.
 	 */
 	int ret = zones_remove_zones(&conf->zones, *db_old);
-	if (ret != KNOTDEOK) {
+	if (ret != KNOTD_EOK) {
 		return ret;
 	}
 
@@ -1152,16 +1152,16 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 	debug_zones("Old database is empty (%p): %s\n", (*db_old)->zones,
 	            skip_is_empty((*db_old)->zones) ? "yes" : "no");
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 int zones_zonefile_sync(knot_zone_t *zone)
 {
 	if (!zone) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 	if (!zone->data) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Fetch zone data. */
@@ -1180,7 +1180,7 @@ int zones_zonefile_sync(knot_zone_t *zone)
 	soa_rr = knot_rrset_rdata(soa_rrs);
 	int64_t serial_ret = knot_rdata_soa_serial(soa_rr);
 	if (serial_ret < 0) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 	uint32_t serial_to = (uint32_t)serial_ret;
 
@@ -1208,7 +1208,7 @@ int zones_zonefile_sync(knot_zone_t *zone)
 	/* Unlock zone data. */
 	pthread_mutex_unlock(&zd->lock);
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1217,7 +1217,7 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 {
 	if (xfr == NULL || xfr->zone == NULL || rcode == NULL) {
 		*rcode = KNOT_RCODE_SERVFAIL;
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 	
 	/* Check zone data. */
@@ -1225,18 +1225,18 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 	if (zd == NULL) {
 		debug_zones("Invalid zone data.\n");
 		*rcode = KNOT_RCODE_SERVFAIL;
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	// Check xfr-out ACL
 	if (acl_match(zd->xfr_out, &xfr->addr) == ACL_DENY) {
 		debug_zones("Request for AXFR OUT is not authorized.\n");
 		*rcode = KNOT_RCODE_REFUSED;
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	} else {
 		debug_zones("Authorized AXFR OUT request.\n");
 	}
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1260,7 +1260,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 {
 	if (!packet || !rsize || nameserver == NULL || from == NULL ||
 	    response_wire == NULL) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/*! \todo Handle SOA query response, cancel EXPIRE timer
@@ -1279,17 +1279,17 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		                        nameserver->zone_db,
 		                        zone_name);
 		if (!zone) {
-			return KNOTDEINVAL;
+			return KNOTD_EINVAL;
 		}
 		if (!knot_zone_data(zone)) {
-			return KNOTDEINVAL;
+			return KNOTD_EINVAL;
 		}
 
 		/* Match ID against awaited. */
 		zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 		uint16_t pkt_id = knot_packet_id(packet);
 		if ((int)pkt_id != zd->xfr_in.next_id) {
-			return KNOTDERROR;
+			return KNOTD_ERROR;
 		}
 
 		/* Cancel EXPIRE timer. */
@@ -1334,7 +1334,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 
 			evsched_schedule(sched, refresh_ev, ref_tmr);
 			rcu_read_unlock();
-			return KNOTDEOK;
+			return KNOTD_EOK;
 		}
 
 		/* Prepare XFR client transfer. */
@@ -1355,7 +1355,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 	}
 
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1379,7 +1379,7 @@ static int zones_find_zone_for_xfr(const knot_zone_contents_t *zone,
 		knot_dname_t *zone_name = knot_dname_new_from_str(
 			zone_conf->name, strlen(zone_conf->name), NULL);
 		if (zone_name == NULL) {
-			return KNOTDENOMEM;
+			return KNOTD_ENOMEM;
 		}
 
 		int r = knot_dname_compare(zone_name, knot_node_owner(
@@ -1392,7 +1392,7 @@ static int zones_find_zone_for_xfr(const knot_zone_contents_t *zone,
 			// found the right zone
 			*zonefile = zone_conf->file;
 			*zonedb = zone_conf->db;
-			return KNOTDEOK;
+			return KNOTD_EOK;
 		}
 	}
 
@@ -1402,7 +1402,7 @@ static int zones_find_zone_for_xfr(const knot_zone_contents_t *zone,
 	                 "(%s).\n", name);
 	free(name);
 
-	return KNOTDENOENT;
+	return KNOTD_ENOENT;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1455,22 +1455,22 @@ static int zones_dump_xfr_zone_text(knot_zone_contents_t *zone,
 	if (new_zonefile == NULL) {
 		debug_zones("Failed to find free filename for temporary "
 		                 "storage of the zone text file.\n");
-		return KNOTDERROR;	/*! \todo New error code? */
+		return KNOTD_ERROR;	/*! \todo New error code? */
 	}
 
 	int rc = zone_dump_text(zone, new_zonefile);
 
-	if (rc != KNOTDEOK) {
+	if (rc != KNOTD_EOK) {
 		debug_zones("Failed to save the zone to text zone file %s."
 		                 "\n", new_zonefile);
 		free(new_zonefile);
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	/*! \todo if successful, replace the old file with the new one */
 
 	free(new_zonefile);
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1486,7 +1486,7 @@ static int ns_dump_xfr_zone_binary(knot_zone_contents_t *zone,
 	if (new_zonedb == NULL) {
 		debug_zones("Failed to find free filename for temporary "
 		                 "storage of the zone binary file.\n");
-		return KNOTDERROR;	/*! \todo New error code? */
+		return KNOTD_ERROR;	/*! \todo New error code? */
 	}
 
 	int rc = knot_zdump_binary(zone, new_zonedb, 0, zonefile);
@@ -1495,13 +1495,13 @@ static int ns_dump_xfr_zone_binary(knot_zone_contents_t *zone,
 		debug_zones("Failed to save the zone to binary zone db %s."
 		                 "\n", new_zonedb);
 		free(new_zonedb);
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	/*! \todo if successful, replace the old file with the new one */
 
 	free(new_zonedb);
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1509,7 +1509,7 @@ static int ns_dump_xfr_zone_binary(knot_zone_contents_t *zone,
 int zones_save_zone(const knot_ns_xfr_t *xfr)
 {
 	if (xfr == NULL || xfr->data == NULL) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 	
 	knot_zone_contents_t *zone = 
@@ -1519,7 +1519,7 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 	const char *zonedb = NULL;
 	
 	int ret = zones_find_zone_for_xfr(zone, &zonefile, &zonedb);
-	if (ret != KNOTDEOK) {
+	if (ret != KNOTD_EOK) {
 		return ret;
 	}
 	
@@ -1527,16 +1527,16 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 	
 	// dump the zone into text zone file
 	ret = zones_dump_xfr_zone_text(zone, zonefile);
-	if (ret != KNOTDEOK) {
-		return KNOTDERROR;
+	if (ret != KNOTD_EOK) {
+		return KNOTD_ERROR;
 	}
 	// dump the zone into binary db file
 	ret = ns_dump_xfr_zone_binary(zone, zonedb, zonefile);
-	if (ret != KNOTDEOK) {
-		return KNOTDERROR;
+	if (ret != KNOTD_EOK) {
+		return KNOTD_ERROR;
 	}
 	
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1549,7 +1549,7 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	knot_zonedb_t *old_db = 0;
 
 	int ret = zones_update_db_from_config(conf, ns, &old_db);
-	if (ret != KNOTDEOK) {
+	if (ret != KNOTD_EOK) {
 		return ret;
 	}
 	// Wait until all readers finish with reading the zones.
@@ -1561,7 +1561,7 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	// Delete all deprecated zones and delete the old database.
 	knot_zonedb_deep_free(&old_db);
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1699,7 +1699,7 @@ static int zones_changesets_to_binary(knot_changesets_t *chgsets)
 int zones_store_changesets(knot_ns_xfr_t *xfr)
 {
 	if (xfr == NULL || xfr->data == NULL || xfr->zone == NULL) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 	
 	knot_zone_t *zone = xfr->zone;
@@ -1708,14 +1708,14 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 	/*! \todo Convert to binary format. */
 	
 	int ret = zones_changesets_to_binary(src);
-	if (ret != KNOTDEOK) {
+	if (ret != KNOTD_EOK) {
 		return ret;
 	}
 
 	/* Fetch zone-specific data. */
 	zonedata_t *zd = (zonedata_t *)zone->data;
 	if (!zd->ixfr_db) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Begin writing to journal. */
@@ -1730,10 +1730,10 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 		                        chs->size);
 
 		/* Check for errors. */
-		while (ret != KNOTDEOK) {
+		while (ret != KNOTD_EOK) {
 
 			/* Sync to zonefile may be needed. */
-			if (ret == KNOTDEAGAIN) {
+			if (ret == KNOTD_EAGAIN) {
 
 				/* Cancel sync timer. */
 				event_t *tmr = zd->ixfr_dbsync;
@@ -1746,7 +1746,7 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 				/* Synchronize. */
 				debug_knot_xfr("ixfr_db: forcing zonefile SYNC\n");
 				ret = zones_zonefile_sync(zone);
-				if (ret != KNOTDEOK) {
+				if (ret != KNOTD_EOK) {
 					continue;
 				}
 
@@ -1772,13 +1772,13 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 						    chs->size);
 			} else {
 				/* Other errors. */
-				return KNOTDERROR;
+				return KNOTD_ERROR;
 			}
 		}
 	}
 
 	/* Written changesets to journal. */
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1786,7 +1786,7 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 int zones_xfr_load_changesets(knot_ns_xfr_t *xfr) 
 {
 	if (xfr == NULL || xfr->data == NULL || xfr->zone == NULL) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 	
 	const knot_zone_t *zone = xfr->zone;
@@ -1805,12 +1805,12 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr)
 			knot_packet_authority_rrset(xfr->query, 0)));
 	
 	int ret = zones_load_changesets(zone, chgsets, xfr_serial, zone_serial);
-	if (ret != KNOTDEOK) {
+	if (ret != KNOTD_EOK) {
 		return ret;
 	}
 	
 	xfr->data = chgsets;
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1818,7 +1818,7 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr)
 int zones_apply_changesets(knot_ns_xfr_t *xfr) 
 {
 	if (xfr == NULL || xfr->zone == NULL || xfr->data == NULL) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 	
 	return xfrin_apply_changesets_to_zone(xfr->zone, 

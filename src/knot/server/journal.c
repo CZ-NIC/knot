@@ -33,7 +33,7 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	FILE *fp = fopen(fn, "w");
 	if (!fp) {
 		debug_journal("journal: failed to create file '%s'\n", fn);
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Disable buffering. */
@@ -44,7 +44,7 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	if (!sfwrite(&max_nodes, sizeof(uint16_t), fp)) {
 		fclose(fp);
 		remove(fn);
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	/* Create empty queue head + tail. */
@@ -52,12 +52,12 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	if (!sfwrite(&zval, sizeof(uint16_t), fp)) {
 		fclose(fp);
 		remove(fn);
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 	if (!sfwrite(&zval, sizeof(uint16_t), fp)) {
 		fclose(fp);
 		remove(fn);
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	debug_journal("journal: creating free segment descriptor\n");
@@ -71,7 +71,7 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	if (!sfwrite(&jn, sizeof(journal_node_t), fp)) {
 		fclose(fp);
 		remove(fn);
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	/* Create nodes. */
@@ -81,13 +81,13 @@ int journal_create(const char *fn, uint16_t max_nodes)
 		if (!sfwrite(&jn, sizeof(journal_node_t), fp)) {
 			fclose(fp);
 			remove(fn);
-			return KNOTDERROR;
+			return KNOTD_ERROR;
 		}
 	}
 
 	/* Journal file created. */
 	debug_journal("journal: file '%s' initialized\n", fn);
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 journal_t* journal_open(const char *fn, int fslimit, uint16_t bflags)
@@ -188,11 +188,11 @@ int journal_fetch(journal_t *journal, uint64_t id,
 
 		if (cf(journal->nodes[i].id, id) == 0) {
 			*dst = journal->nodes + i;
-			return KNOTDEOK;
+			return KNOTD_EOK;
 		}
 	}
 
-	return KNOTDENOENT;
+	return KNOTD_ENOENT;
 }
 
 int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst)
@@ -201,13 +201,13 @@ int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst)
 	if(journal_fetch(journal, id, cf, &n) != 0) {
 		debug_journal("journal: failed to fetch node with id=%d\n",
 			      id);
-		return KNOTDENOENT;
+		return KNOTD_ENOENT;
 	}
 
 	/* Check valid flag. */
 	if (n->flags != JOURNAL_VALID) {
 		debug_journal("journal: node with id=%d is invalid\n", id);
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	debug_journal("journal: reading node with id=%d, data=<%u, %u>\n",
@@ -219,10 +219,10 @@ int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst)
 	/* Read journal node content. */
 	int ret = fread(dst, n->len, 1, journal->fp);
 	if (ret != 1) {
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
@@ -278,14 +278,14 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 
 		/* Check if it has been synced to disk. */
 		if (head->flags & JOURNAL_DIRTY) {
-			return KNOTDEAGAIN;
+			return KNOTD_EAGAIN;
 		}
 
 		/* Write back evicted node. */
 		head->flags = JOURNAL_FREE;
 		fseek(journal->fp, JOURNAL_HSIZE + (journal->qhead + 1) * node_len, SEEK_SET);
 		if (!sfwrite(head, node_len, journal->fp)) {
-			return KNOTDERROR;
+			return KNOTD_ERROR;
 		}
 
 		debug_journal("journal: * evicted node=%u, growing by +%u\n",
@@ -296,7 +296,7 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 		uint16_t qstate[2] = {journal->qhead, journal->qtail};
 		fseek(journal->fp, JOURNAL_HSIZE - 2 * sizeof(uint16_t), SEEK_SET);
 		if (!sfwrite(qstate, 2 * sizeof(uint16_t), journal->fp)) {
-			return KNOTDERROR;
+			return KNOTD_ERROR;
 		}
 
 		/* Increase free segment. */
@@ -313,7 +313,7 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 	/* Write data to permanent storage. */
 	fseek(journal->fp, n->pos, SEEK_SET);
 	if (!sfwrite(src, size, journal->fp)) {
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	/* Mark node as valid and write back. */
@@ -350,7 +350,7 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 		/*! \todo Node is marked valid and failed to shrink free space,
 			  node will be overwritten on the next open - this may be
 			  a problem, how to solve it properly? */
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	/* Write back query state, not essential as it may be recovered.
@@ -360,7 +360,7 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 	uint16_t qstate[2] = {journal->qhead, journal->qtail};
 	fseek(journal->fp, JOURNAL_HSIZE - 2 * sizeof(uint16_t), SEEK_SET);
 	if (!sfwrite(qstate, 2 * sizeof(uint16_t), journal->fp)) {
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	/*! \todo Delayed write-back? */
@@ -368,32 +368,32 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 	debug_journal("journal: write finished, nqueue=<%u, %u>\n",
 		      journal->qhead, journal->qtail);
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 int journal_walk(journal_t *journal, journal_apply_t apply)
 {
-	int ret = KNOTDEOK;
+	int ret = KNOTD_EOK;
 	size_t i = journal->qhead;
 	for(; i != journal->qtail; i = (i + 1) % journal->max_nodes) {
 		/* Apply function. */
 		ret = apply(journal, journal->nodes + i);
 	}
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 int journal_update(journal_t *journal, journal_node_t *n)
 {
 	if (!journal || !n) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Calculate node offset. */
 	const size_t node_len = sizeof(journal_node_t);
 	size_t i = n - journal->nodes;
 	if (i > journal->max_nodes) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Calculate node position in permanent storage. */
@@ -407,17 +407,17 @@ int journal_update(journal_t *journal, journal_node_t *n)
 	if (!sfwrite(n, node_len, journal->fp)) {
 		debug_journal("journal: failed to writeback node=%d to %ld\n",
 			      n->id, jn_fpos);
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 int journal_close(journal_t *journal)
 {
 	/* Check journal. */
 	if (!journal) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Close file. */
@@ -428,5 +428,5 @@ int journal_close(journal_t *journal)
 	/* Free allocated resources. */
 	free(journal);
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }

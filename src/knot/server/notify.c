@@ -26,19 +26,19 @@ static int notify_request(const knot_rrset_t *rrset,
                           uint8_t *buffer, size_t *size)
 {
 	knot_packet_t *pkt = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
-	CHECK_ALLOC_LOG(pkt, KNOTDENOMEM);
+	CHECK_ALLOC_LOG(pkt, KNOTD_ENOMEM);
 
 	/*! \todo Get rid of the numeric constant. */
 	int rc = knot_packet_set_max_size(pkt, 512);
 	if (rc != KNOT_EOK) {
 		knot_packet_free(&pkt);
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	rc = knot_query_init(pkt);
 	if (rc != KNOT_EOK) {
 		knot_packet_free(&pkt);
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	knot_question_t question;
@@ -51,7 +51,7 @@ static int notify_request(const knot_rrset_t *rrset,
 	rc = knot_query_set_question(pkt, &question);
 	if (rc != KNOT_EOK) {
 		knot_packet_free(&pkt);
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	/*! \todo Set some random ID!! */
@@ -76,12 +76,12 @@ static int notify_request(const knot_rrset_t *rrset,
 	rc = knot_packet_to_wire(pkt, &wire, &wire_size);
 	if (rc != KNOT_EOK) {
 		knot_packet_free(&pkt);
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	if (wire_size > *size) {
 		knot_packet_free(&pkt);
-		return KNOTDESPACE;
+		return KNOTD_ESPACE;
 	}
 
 	memcpy(buffer, wire, wire_size);
@@ -91,7 +91,7 @@ static int notify_request(const knot_rrset_t *rrset,
 
 	knot_packet_free(&pkt);
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -101,7 +101,7 @@ int notify_create_response(knot_packet_t *request, uint8_t *buffer,
 {
 	knot_packet_t *response =
 		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
-	CHECK_ALLOC_LOG(response, KNOTDENOMEM);
+	CHECK_ALLOC_LOG(response, KNOTD_ENOMEM);
 
 	knot_response2_init_from_query(response, request);
 
@@ -117,7 +117,7 @@ int notify_create_response(knot_packet_t *request, uint8_t *buffer,
 
 	if (wire_size > *size) {
 		knot_packet_free(&response);
-		return KNOTDESPACE;
+		return KNOTD_ESPACE;
 	}
 
 	memcpy(buffer, wire, wire_size);
@@ -127,7 +127,7 @@ int notify_create_response(knot_packet_t *request, uint8_t *buffer,
 
 	knot_packet_free(&response);
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -140,7 +140,7 @@ int notify_create_request(const knot_zone_contents_t *zone, uint8_t *buffer,
 	const knot_rrset_t *soa_rrset = knot_node_rrset(
 		            knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
 	if (soa_rrset == NULL) {
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	return notify_request(soa_rrset, buffer, size);
@@ -153,7 +153,7 @@ static int notify_check_and_schedule(const knot_nameserver_t *nameserver,
                                      sockaddr_t *from)
 {
 	if (zone == NULL || from == NULL || knot_zone_data(zone) == NULL) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 	
 	/* Check ACL for notify-in. */
@@ -194,7 +194,7 @@ static int notify_check_and_schedule(const knot_nameserver_t *nameserver,
 		evsched_schedule(sched, refresh_ev, 0);
 	}
 	
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -210,7 +210,7 @@ int notify_process_request(const knot_nameserver_t *nameserver,
 
 	if (notify == NULL || nameserver == NULL || buffer == NULL 
 	    || size == NULL || from == NULL) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	int ret;
@@ -218,14 +218,14 @@ int notify_process_request(const knot_nameserver_t *nameserver,
 	if (notify->parsed < notify->size) {
 		ret = knot_packet_parse_rest(notify);
 		if (ret != KNOT_EOK) {
-			return KNOTDEMALF;
+			return KNOTD_EMALF;
 		}
 	}
 
 	// create NOTIFY response
 	ret = notify_create_response(notify, buffer, size);
-	if (ret != KNOTDEOK) {
-		return KNOTDERROR;	/*! \todo Some other error. */
+	if (ret != KNOTD_EOK) {
+		return KNOTD_ERROR;	/*! \todo Some other error. */
 	}
 
 	// find the zone
@@ -233,12 +233,12 @@ int notify_process_request(const knot_nameserver_t *nameserver,
 	const knot_zone_t *z = knot_zonedb_find_zone_for_name(
 			nameserver->zone_db, qname);
 	if (z == NULL) {
-		return KNOTDERROR;	/*! \todo Some other error. */
+		return KNOTD_ERROR;	/*! \todo Some other error. */
 	}
 
 	notify_check_and_schedule(nameserver, z, from);
 	
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -250,7 +250,7 @@ int notify_process_response(const knot_nameserver_t *nameserver,
 {
 	if (nameserver == NULL || notify == NULL || from == NULL 
 	    || buffer == NULL || size == NULL) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Assert no response size. */
@@ -261,10 +261,10 @@ int notify_process_response(const knot_nameserver_t *nameserver,
 	knot_zone_t *zone = knot_zonedb_find_zone(nameserver->zone_db,
 	                                              zone_name);
 	if (!zone) {
-		return KNOTDENOENT;
+		return KNOTD_ENOENT;
 	}
 	if (!knot_zone_data(zone)) {
-		return KNOTDENOENT;
+		return KNOTD_ENOENT;
 	}
 
 	/* Match ID against awaited. */
@@ -282,7 +282,7 @@ int notify_process_response(const knot_nameserver_t *nameserver,
 	if (!match) {
 		debug_notify("notify: no pending NOTIFY query found for ID=%u\n",
 			 pkt_id);
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	/* Cancel RETRY timer, NOTIFY is now finished. */
@@ -298,6 +298,6 @@ int notify_process_response(const knot_nameserver_t *nameserver,
 	debug_notify("notify: received response for pending NOTIFY query ID=%u\n",
 		 pkt_id);
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 

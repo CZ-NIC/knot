@@ -28,9 +28,9 @@ char* pid_filename();
  * \param fn Filename containing PID.
  *
  * \retval PID on success (positive integer).
- * \retval KNOTDEINVAL on null path.
- * \retval KNOTDENOENT if the filename content cannot be read.
- * \retval KNOTDERANGE if the stored PID is out of range.
+ * \retval KNOTD_EINVAL on null path.
+ * \retval KNOTD_ENOENT if the filename content cannot be read.
+ * \retval KNOTD_ERANGE if the stored PID is out of range.
  */
 pid_t pid_read(const char* fn);
 
@@ -39,10 +39,10 @@ pid_t pid_read(const char* fn);
  *
  * \param fn Filename containing PID.
  *
- * \retval KNOTDEOK on success.
- * \retval KNOTDEINVAL on null path.
- * \retval KNOTDENOENT filename cannot be opened for writing.
- * \retval KNOTDERROR unspecified error.
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on null path.
+ * \retval KNOTD_ENOENT filename cannot be opened for writing.
+ * \retval KNOTD_ERROR unspecified error.
  */
 int pid_write(const char* fn);
 
@@ -53,8 +53,8 @@ int pid_write(const char* fn);
  *
  * \warning Filename content won't be checked.
  *
- * \retval KNOTDEOK on success.
- * \retval KNOTDEINVAL failed to remove filename.
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL failed to remove filename.
  */
 int pid_remove(const char* fn);
 

@@ -85,9 +85,9 @@ typedef enum xfr_type_t {
  * \param[out] db_old Old database, containing only zones which should be
  *                    deleted afterwards.
  *
- * \retval KNOTDEOK
- * \retval KNOTDEINVAL
- * \retval KNOTDERROR
+ * \retval KNOTD_EOK
+ * \retval KNOTD_EINVAL
+ * \retval KNOTD_ERROR
  */
 int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
                                knot_zonedb_t **db_old);
@@ -102,9 +102,9 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
  *
  * \param zone Evaluated zone.
  *
- * \retval KNOTDEOK if successful.
- * \retval KNOTDEINVAL on invalid parameter.
- * \retval KNOTDERROR on unspecified error during processing.
+ * \retval KNOTD_EOK if successful.
+ * \retval KNOTD_EINVAL on invalid parameter.
+ * \retval KNOTD_ERROR on unspecified error during processing.
  */
 int zones_zonefile_sync(knot_zone_t *zone);
 
@@ -120,9 +120,9 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode);
  * \param rsize Input: maximum acceptable size of the response. Output: real
  *              size of the response.
  *
- * \retval KNOTDEOK if a valid response was created.
- * \retval KNOTDEINVAL on invalid parameters or packet.
- * \retval KNOTDEMALF if an error occured and the response is not valid.
+ * \retval KNOTD_EOK if a valid response was created.
+ * \retval KNOTD_EINVAL on invalid parameters or packet.
+ * \retval KNOTD_EMALF if an error occured and the response is not valid.
  */
 int zones_process_response(knot_nameserver_t *nameserver, 
                            sockaddr_t *from,
@@ -149,9 +149,9 @@ int zones_save_zone(const knot_ns_xfr_t *xfr);
  * \param conf Current configuration.
  * \param data Instance of the nameserver structure to update.
  *
- * \retval KNOTDEOK on success.
- * \retval KNOTDEINVAL
- * \retval KNOTDERROR
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL
+ * \retval KNOTD_ERROR
  */
 int zones_ns_conf_hook(const struct conf_t *conf, void *data);
 
@@ -164,9 +164,9 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data);
  * \param zone Zone associated with the changeset.
  * \param src Changesets.
  *
- * \retval KNOTDEOK on success.
- * \retval KNOTDEINVAL on invalid parameters.
- * \retval KNOTDEAGAIN if journal needs to be synced with zonefile first.
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOTD_EAGAIN if journal needs to be synced with zonefile first.
  *
  * \todo Expects the xfr structure to be initialized in some way.
  */
@@ -178,7 +178,7 @@ int zones_store_changesets(knot_ns_xfr_t *xfr);
  * Changesets will be stored on a permanent storage.
  * Journal may be compacted, resulting in flattening changeset history.
  *
- * In case of KNOTDERANGE error, whole zone content should be sent instead,
+ * In case of KNOTD_ERANGE error, whole zone content should be sent instead,
  * as the changeset history cannot be recovered.
  *
  * \param zone Zone containing a changeset journal.
@@ -186,9 +186,9 @@ int zones_store_changesets(knot_ns_xfr_t *xfr);
  * \param from Starting SOA serial (oldest).
  * \param to Ending SOA serial (newest).
  *
- * \retval KNOTDEOK on success.
- * \retval KNOTDEINVAL on invalid parameters.
- * \retval KNOTDERANGE when changeset history cannot be reconstructed.
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOTD_ERANGE when changeset history cannot be reconstructed.
  *
  * \todo Expects the xfr structure to be initialized in some way.
  */
@@ -203,8 +203,8 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr);
  * \param zone Zone to which the changesets should be applied.
  * \param chsets Changesets to be applied to the zone.
  *
- * \retval KNOTDEOK
- * \retval KNOTDEINVAL
+ * \retval KNOTD_EOK
+ * \retval KNOTD_EINVAL
  */
 int zones_apply_changesets(knot_ns_xfr_t *xfr);
 

@@ -94,7 +94,7 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 
 	/* Check address type. */
 	sockaddr_t addr;
-	if (sockaddr_init(&addr, tcp_w->io_h->type) != KNOTDEOK) {
+	if (sockaddr_init(&addr, tcp_w->io_h->type) != KNOTD_EOK) {
 		log_server_error("Socket type %d is not supported, "
 				 "IPv6 support is probably disabled.\n",
 				 tcp_w->io_h->type);
@@ -128,7 +128,7 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 	}
 
 	int res = knot_ns_parse_packet(qbuf, n, packet, &qtype);
-	if (unlikely(res != KNOTDEOK)) {
+	if (unlikely(res != KNOTD_EOK)) {
 
 		/* Send error response on dnslib RCODE. */
 		if (res > 0) {
@@ -144,7 +144,7 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 
 	/* Handle query. */
 	knot_ns_xfr_t xfr;
-	res = KNOTDERROR;
+	res = KNOTD_ERROR;
 	switch(qtype) {
 
 	/* Response types. */
@@ -190,7 +190,7 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 	knot_packet_free(&packet);
 
 	/* Send answer. */
-	if (res == KNOTDEOK) {
+	if (res == KNOTD_EOK) {
 		assert(resp_len > 0);
 		res = tcp_send(w->fd, qbuf, resp_len);
 
@@ -334,7 +334,7 @@ static int tcp_loop_run(dthread_t *thread)
 	/* Stop whole unit. */
 	debug_net("tcp: loop finished\n");
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 int tcp_loop_master_rr(dthread_t *thread)
@@ -344,7 +344,7 @@ int tcp_loop_master_rr(dthread_t *thread)
 	/* Check socket. */
 	if (handler->fd < 0) {
 		debug_net("tcp_master: null socket recevied, finishing.\n");
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	debug_net("tcp_master: threading unit master with %d workers\n",
@@ -376,13 +376,13 @@ int tcp_send(int fd, uint8_t *msg, size_t msglen)
 	unsigned short pktsize = htons(msglen);
 	int sent = send(fd, &pktsize, sizeof(pktsize), 0);
 	if (sent < 0) {
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	/* Send message data. */
 	sent = send(fd, msg, msglen, 0);
 	if (sent < 0) {
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 #ifdef TCP_CORK
@@ -399,14 +399,14 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	unsigned short pktsize = 0;
 	int n = recv(fd, &pktsize, sizeof(unsigned short), 0);
 	if (n < 0) {
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	pktsize = ntohs(pktsize);
 
 	// Check packet size for NULL
 	if (pktsize == 0) {
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	debug_net("tcp: incoming packet size=%hu on fd=%d\n",
@@ -414,13 +414,13 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 
 	// Check packet size
 	if (len < pktsize) {
-		return KNOTDENOMEM;
+		return KNOTD_ENOMEM;
 	}
 
 	/* Receive payload. */
 	n = recv(fd, buf, pktsize, 0);
 	if (n <= 0) {
-		return KNOTDERROR;
+		return KNOTD_ERROR;
 	}
 
 	/* Get peer name. */
@@ -456,7 +456,7 @@ int tcp_loop_master(dthread_t *thread)
 	/* Check socket. */
 	if (handler->fd < 0) {
 		debug_net("tcp_master: null socket recevied, finishing.\n");
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	debug_net("tcp_master: created with %d workers\n",
@@ -477,7 +477,7 @@ int tcp_loop_worker(dthread_t *thread)
 int tcp_loop_unit(dt_unit_t *unit)
 {
 	if (unit->size < 1) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/*! \todo Implement working master+worker threads. */
@@ -493,5 +493,5 @@ int tcp_loop_unit(dt_unit_t *unit)
 		dt_repurpose(unit->threads[i], tcp_loop_master, 0);
 	}
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }

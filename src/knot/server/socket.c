@@ -34,12 +34,12 @@ int socket_connect(int fd, const char *addr, unsigned short port)
 	}
 
 	/* Resolve address. */
-	int ret = KNOTDEOK;
+	int ret = KNOTD_EOK;
 	struct addrinfo hints, *res;
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	if ((ret = getaddrinfo(addr, NULL, &hints, &res)) != 0) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Evaluate address type. */
@@ -69,7 +69,7 @@ int socket_connect(int fd, const char *addr, unsigned short port)
 			                     ECONNREFUSED, EISCONN);
 		}
 	} else {
-		ret = KNOTDEINVAL;
+		ret = KNOTD_EINVAL;
 	}
 
 
@@ -94,7 +94,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 		paddr = (struct sockaddr*)&saddr;
 		addrlen = sizeof(saddr);
 		if (getsockname(socket, paddr, &addrlen) < 0) {
-			return KNOTDEINVAL;
+			return KNOTD_EINVAL;
 		}
 
 		/* Set address and port. */
@@ -113,13 +113,13 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 
 #ifdef DISABLE_IPV6
 		log_server_error("ipv6 support disabled\n");
-		return KNOTDENOIPV6;
+		return KNOTD_ENOIPV6;
 #else
 		/* Initialize socket address. */
 		paddr = (struct sockaddr*)&saddr6;
 		addrlen = sizeof(saddr6);
 		if (getsockname(socket, paddr, &addrlen) < 0) {
-			return KNOTDEINVAL;
+			return KNOTD_EINVAL;
 		}
 
 		/* Set address and port. */
@@ -141,7 +141,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 	int ret = setsockopt(socket, SOL_SOCKET, SO_REUSEADDR,
 	                     &flag, sizeof(flag));
 	if (ret < 0) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Bind to specified address. */
@@ -152,7 +152,7 @@ int socket_bind(int socket, int family, const char *addr, unsigned short port)
 		return knot_map_errno(EADDRINUSE, EINVAL, EACCES, ENOMEM);
 	}
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 int socket_listen(int socket, int backlog_size)
@@ -162,15 +162,15 @@ int socket_listen(int socket, int backlog_size)
 		return knot_map_errno(EADDRINUSE);
 	}
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
 int socket_close(int socket)
 {
 	if (close(socket) < 0) {
-		return KNOTDEINVAL;
+		return KNOTD_EINVAL;
 	}
 
-	return KNOTDEOK;
+	return KNOTD_EOK;
 }
 
