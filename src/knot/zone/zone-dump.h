@@ -68,6 +68,11 @@ int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
 int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
                                size_t *size);
 
+int knot_zdump_dump_and_swap(knot_zone_contents_t *zone,
+                             char *temp_zonedb,
+                             const char *destination_zonedb,
+                             const char *sfilename);
+
 #endif /* _KNOT_ZONEDUMP_H_ */
 
 /*! @} */
