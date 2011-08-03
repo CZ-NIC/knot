@@ -1519,52 +1519,15 @@ static int ns_dump_xfr_zone_binary(knot_zone_contents_t *zone,
 		return KNOTD_ERROR;	/*! \todo New error code? */
 	}
 
-	int rc = knot_zdump_binary(zone, new_zonedb, 0, zonefile);
+	/*! \todo this would also need locking as well. */
+	int rc = knot_zdump_dump_and_swap(zone, new_zonedb, zonedb, zonefile);
+	free(new_zonedb);
 
 	if (rc != KNOT_EOK) {
-		debug_zones("Failed to save the zone to binary zone db %s."
-		                 "\n", new_zonedb);
-		free(new_zonedb);
 		return KNOTD_ERROR;
 	}
 
-	/*! \todo this would also need locking as well. */
-	if (remove(zonedb) == 0) {
 
-		/*! \todo remove CRC file correctly as well, there should be an
-		 *        API for that.
-		 */
-		const char *tmp_ext = ".crc";
-		char *crc_fn = malloc(strlen(zonedb) + strlen(tmp_ext) + 1);
-		memcpy(crc_fn, zonedb, strlen(zonedb)+1);
-		strcat(crc_fn, tmp_ext);
-		remove(crc_fn);
-
-		/* rename new crc */
-		char *tmp_crc = malloc(strlen(new_zonedb) + strlen(tmp_ext) + 1);
-		memcpy(tmp_crc, new_zonedb, strlen(new_zonedb)+1);
-		strcat(tmp_crc, tmp_ext);
-		rename(tmp_crc, crc_fn);
-
-		free(tmp_crc);
-		free(crc_fn);
-
-		/* rename zonedb */
-		if (rename(new_zonedb, zonedb) != 0) {
-			debug_zones("Failed to replace old zonefile %s with new"
-				    " zone file %s.\n", zonedb, new_zonedb);
-			/*! \todo with proper locking, this shouldn't happen,
-			 *        revise it later on.
-			 */
-			zone_dump_text(zone, zonedb);
-			return KNOTD_ERROR;
-		}
-	} else {
-		debug_zones("Failed to replace old zonefile %s.\n", zonedb);
-		return KNOTD_ERROR;
-	}
-
-	free(new_zonedb);
 	return KNOTD_EOK;
 }
 
