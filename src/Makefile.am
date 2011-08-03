@@ -1,37 +1,37 @@
 ACLOCAL_AMFLAGS = -I ../m4
 bin_PROGRAMS = knotc
-libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-dnslib-realdata unittests-dnslib
+libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-libknot-realdata unittests-libknot
 sbin_PROGRAMS = knotd
 
 # $(YACC) will generate header file
-AM_CFLAGS = -Wall
+AM_CFLAGS = -Wall -I../ -I../libknot
 AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
 
 BUILT_SOURCES =					\
-	dnslib/tests/parsed_data.rc		\
-	dnslib/tests/realdata/parsed_data.rc	\
-	dnslib/tests/raw_data_queries.rc	\
-	dnslib/tests/raw_data.rc		\
-	dnslib/tests/realdata/raw_data.rc	\
-	dnslib/tests/parsed_data_queries.rc     \
+	tests/libknot/parsed_data.rc		\
+	tests/libknot/realdata/parsed_data.rc	\
+	tests/libknot/raw_data_queries.rc	\
+	tests/libknot/raw_data.rc		\
+	tests/libknot/realdata/raw_data.rc	\
+	tests/libknot/parsed_data_queries.rc     \
 	tests/sample_conf.rc
 
 CLEANFILES =					\
-	dnslib/tests/parsed_data.rc		\
-	dnslib/tests/realdata/parsed_data.rc	\
-	dnslib/tests/raw_data_queries.rc	\
-	dnslib/tests/raw_data.rc		\
-	dnslib/tests/realdata/raw_data.rc	\
-	dnslib/tests/parsed_data_queries.rc     \
+	tests/libknot/parsed_data.rc		\
+	tests/libknot/realdata/parsed_data.rc	\
+	tests/libknot/raw_data_queries.rc	\
+	tests/libknot/raw_data.rc		\
+	tests/libknot/realdata/raw_data.rc	\
+	tests/libknot/parsed_data_queries.rc     \
 	tests/sample_conf.rc                    \
 	zparser.h				\
 	zparser.c				\
 	zlexer.c				\
-	libknot_la-cf-lex.c			\
-	libknot_la-cf-parse.c			\
-	libknot_la-cf-parse.h
+	libknotd_la-cf-lex.c			\
+	libknotd_la-cf-parse.c			\
+	libknotd_la-cf-parse.h
 
 knotc_SOURCES =					\
 	knot/ctl/knotc_main.c
@@ -68,50 +68,50 @@ unittests_SOURCES =				\
 	tests/knot/server_tests.h		\
 	tests/unittests_main.c
 
-unittests_dnslib_realdata_SOURCES =			\
-	dnslib/tests/realdata/dnslib/dname_tests_realdata.c	\
-	dnslib/tests/realdata/dnslib/edns_tests_realdata.c	\
-	dnslib/tests/realdata/dnslib/node_tests_realdata.c	\
-	dnslib/tests/realdata/dnslib/rdata_tests_realdata.c	\
-	dnslib/tests/realdata/dnslib/response_tests_realdata.c	\
-	dnslib/tests/realdata/dnslib/response2_tests_realdata.c	\
-	dnslib/tests/realdata/dnslib/rrset_tests_realdata.c	\
-	dnslib/tests/realdata/dnslib/zone_tests_realdata.c	\
-	dnslib/tests/realdata/dnslib/zonedb_tests_realdata.c	\
-	dnslib/tests/realdata/dnslib/packet_tests_realdata.h	\
-	dnslib/tests/realdata/dnslib/packet_tests_realdata.c	\
-	dnslib/tests/realdata/dnslib_tests_loader_realdata.h	\
-	dnslib/tests/realdata/dnslib_tests_loader_realdata.c	\
-	dnslib/tests/realdata/unittests_dnslib_realdata.c
+unittests_libknot_realdata_SOURCES =			\
+	tests/libknot/realdata/libknot/dname_tests_realdata.c	\
+	tests/libknot/realdata/libknot/edns_tests_realdata.c	\
+	tests/libknot/realdata/libknot/node_tests_realdata.c	\
+	tests/libknot/realdata/libknot/rdata_tests_realdata.c	\
+	tests/libknot/realdata/libknot/response_tests_realdata.c	\
+	tests/libknot/realdata/libknot/response2_tests_realdata.c	\
+	tests/libknot/realdata/libknot/rrset_tests_realdata.c	\
+	tests/libknot/realdata/libknot/zone_tests_realdata.c	\
+	tests/libknot/realdata/libknot/zonedb_tests_realdata.c	\
+	tests/libknot/realdata/libknot/packet_tests_realdata.h	\
+	tests/libknot/realdata/libknot/packet_tests_realdata.c	\
+	tests/libknot/realdata/libknot_tests_loader_realdata.h	\
+	tests/libknot/realdata/libknot_tests_loader_realdata.c	\
+	tests/libknot/realdata/unittests_libknot_realdata.c
 
-unittests_dnslib_SOURCES =			\
-	dnslib/tests/dnslib/cuckoo_tests.c	\
-	dnslib/tests/dnslib/cuckoo_tests.h	\
-	dnslib/tests/dnslib/dname_tests.c	\
-	dnslib/tests/dnslib/dname_tests.h	\
-	dnslib/tests/dnslib/dname_table_tests.h	\
-	dnslib/tests/dnslib/dname_table_tests.c	\
-	dnslib/tests/dnslib/nsec3_tests.h	\
-	dnslib/tests/dnslib/nsec3_tests.c	\
-	dnslib/tests/dnslib/packet_tests.h	\
-	dnslib/tests/dnslib/packet_tests.c	\
-	dnslib/tests/dnslib/query_tests.h	\
-	dnslib/tests/dnslib/query_tests.c	\
-	dnslib/tests/dnslib/edns_tests.c	\
-	dnslib/tests/dnslib/edns_tests.h	\
-	dnslib/tests/dnslib/node_tests.c	\
-	dnslib/tests/dnslib/node_tests.h	\
-	dnslib/tests/dnslib/rdata_tests.c	\
-	dnslib/tests/dnslib/rdata_tests.h	\
-	dnslib/tests/dnslib/rrset_tests.c	\
-	dnslib/tests/dnslib/rrset_tests.h	\
-	dnslib/tests/dnslib/response2_tests.h	\
-	dnslib/tests/dnslib/response2_tests.c	\
-	dnslib/tests/dnslib/zone_tests.c	\
-	dnslib/tests/dnslib/zone_tests.h	\
-	dnslib/tests/dnslib/zonedb_tests.c	\
-	dnslib/tests/dnslib/zonedb_tests.h	\
-	dnslib/tests/unittests_dnslib.c
+unittests_libknot_SOURCES =			\
+	tests/libknot/libknot/cuckoo_tests.c	\
+	tests/libknot/libknot/cuckoo_tests.h	\
+	tests/libknot/libknot/dname_tests.c	\
+	tests/libknot/libknot/dname_tests.h	\
+	tests/libknot/libknot/dname_table_tests.h	\
+	tests/libknot/libknot/dname_table_tests.c	\
+	tests/libknot/libknot/nsec3_tests.h	\
+	tests/libknot/libknot/nsec3_tests.c	\
+	tests/libknot/libknot/packet_tests.h	\
+	tests/libknot/libknot/packet_tests.c	\
+	tests/libknot/libknot/query_tests.h	\
+	tests/libknot/libknot/query_tests.c	\
+	tests/libknot/libknot/edns_tests.c	\
+	tests/libknot/libknot/edns_tests.h	\
+	tests/libknot/libknot/node_tests.c	\
+	tests/libknot/libknot/node_tests.h	\
+	tests/libknot/libknot/rdata_tests.c	\
+	tests/libknot/libknot/rdata_tests.h	\
+	tests/libknot/libknot/rrset_tests.c	\
+	tests/libknot/libknot/rrset_tests.h	\
+	tests/libknot/libknot/response2_tests.h	\
+	tests/libknot/libknot/response2_tests.c	\
+	tests/libknot/libknot/zone_tests.c	\
+	tests/libknot/libknot/zone_tests.h	\
+	tests/libknot/libknot/zonedb_tests.c	\
+	tests/libknot/libknot/zonedb_tests.h	\
+	tests/libknot/unittests_libknot.c
 
 unittests_zcompile_SOURCES =			\
 	zcompile/parser-util.h			\
@@ -125,16 +125,16 @@ unittests_zcompile_SOURCES =			\
 	zcompile/tests/unittests_zp_main.c
 
 nodist_unittests_SOURCES =			\
-	dnslib/tests/parsed_data.rc		\
-	dnslib/tests/raw_data_queries.rc	\
-	dnslib/tests/raw_data.rc		\
-	dnslib/tests/parsed_data_queries.rc	\
+	tests/libknot/parsed_data.rc		\
+	tests/libknot/raw_data_queries.rc	\
+	tests/libknot/raw_data.rc		\
+	tests/libknot/parsed_data_queries.rc	\
 	tests/sample_conf.rc
 
 knotd_SOURCES =					\
 	knot/main.c
 
-noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la
+noinst_LTLIBRARIES = libknotd.la libknots.la
 
 libknots_la_SOURCES =				\
 	common/slab/slab.c			\
@@ -219,95 +219,37 @@ libknotd_la_SOURCES =				\
 	knot/zone/zone-dump-text.h			\
 	knot/zone/zone-dump.h			\
 	knot/server/server.h
-	
-libknot_la_SOURCES =				\
-	dnslib/edns.c				\
-	dnslib/dnslib-error.c			\
-	dnslib/utils.c				\
-	dnslib/rrset.c				\
-	dnslib/dname.c				\
-	dnslib/node.c				\
-	dnslib/packet.c				\
-	dnslib/query.c				\
-	dnslib/response2.c			\
-	dnslib/response.c			\
-	dnslib/zone.c				\
-	dnslib/zone-contents.c			\
-	dnslib/zonedb.c				\
-	dnslib/debug.c				\
-	dnslib/zone-tree.c			\
-	dnslib/zone-tree.h			\
-	dnslib/rdata.c				\
-	dnslib/descriptor.c			\
-	dnslib/nsec3.c				\
-	dnslib/dname-table.c			\
-	dnslib/hash/hash-functions.c		\
-	dnslib/hash/cuckoo-hash-table.c		\
-	dnslib/hash/universal-system.c		\
-	dnslib/hash/universal-system.h		\
-	dnslib/hash/cuckoo-hash-table.h		\
-	dnslib/hash/hash-functions.h		\
-	dnslib/zonedb.h				\
-	dnslib/consts.h				\
-	dnslib/node.h				\
-	dnslib/edns.h				\
-	dnslib/zone.h				\
-	dnslib/zone-contents.h			\
-	dnslib/rdata.h				\
-	dnslib/descriptor.h			\
-	dnslib/dnslib.h				\
-	dnslib/tolower.h			\
-	dnslib/tolower.c			\
-	dnslib/dname.h				\
-	dnslib/packet.h			\
-	dnslib/query.h				\
-	dnslib/response2.h			\
-	dnslib/response.h			\
-	dnslib/rrset.h				\
-	dnslib/utils.h				\
-	dnslib/wire.h				\
-	dnslib/debug.h				\
-	dnslib/nsec3.h				\
-	dnslib/changesets.h			\
-	dnslib/changesets.c			\
-	dnslib/xfr-in.h				\
-	dnslib/xfr-in.c				\
-	dnslib/name-server.h			\
-	dnslib/name-server.c			\
-	dnslib/dname-table.h
 
-
-libknot_la_LIBADD = libknots.la @LIBOBJS@
-libknotd_la_LIBADD = libknot.la libknots.la @LIBOBJS@
+libknotd_la_LIBADD = ../libknot/libknot.la libknots.la @LIBOBJS@
 libknots_la_LIBADD = @LIBOBJS@
-knotd_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
-knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
-knot_zcompile_LDADD = libknots.la libknot.la libknotd.la @LIBOBJS@
+knotd_LDADD = libknotd.la ../libknot/libknot.la libknots.la @LIBOBJS@
+knotc_LDADD = libknotd.la ../libknot/libknot.la libknots.la @LIBOBJS@
+knot_zcompile_LDADD = libknots.la ../libknot/libknot.la libknotd.la @LIBOBJS@
 unittests_LDADD = libknotd.la libknots.la @LIBOBJS@
-unittests_zcompile_LDADD = libknot.la libknots.la libknotd.la @LIBOBJS@
-unittests_dnslib_LDADD = libknot.la libknots.la @LIBOBJS@
-unittests_dnslib_realdata_LDADD = libknot.la libknots.la @LIBOBJS@
+unittests_zcompile_LDADD = ../libknot/libknot.la libknots.la libknotd.la @LIBOBJS@
+unittests_libknot_LDADD = ../libknot/libknot.la libknots.la @LIBOBJS@
+unittests_libknot_realdata_LDADD = ../libknot/libknot.la libknots.la @LIBOBJS@
 
 # automake complains on % rules:
 #   `%'-style pattern rules are a GNU make extension
 
-dnslib/tests/parsed_data.rc: dnslib/tests/files/parsed_data
-	../resource.sh dnslib/tests/files/parsed_data >$@
+tests/libknot/parsed_data.rc: tests/libknot/files/parsed_data
+	../resource.sh tests/libknot/files/parsed_data >$@
 
-dnslib/tests/realdata/parsed_data.rc: dnslib/tests/realdata/files/parsed_data
-	../resource.sh dnslib/tests/realdata/files/parsed_data >$@
+tests/libknot/realdata/parsed_data.rc: tests/libknot/realdata/files/parsed_data
+	../resource.sh tests/libknot/realdata/files/parsed_data >$@
 
-dnslib/tests/parsed_data_queries.rc: dnslib/tests/files/parsed_data_queries
-	../resource.sh dnslib/tests/files/parsed_data_queries >$@
+tests/libknot/parsed_data_queries.rc: tests/libknot/files/parsed_data_queries
+	../resource.sh tests/libknot/files/parsed_data_queries >$@
 
-dnslib/tests/raw_data_queries.rc: dnslib/tests/files/raw_data_queries
-	../resource.sh dnslib/tests/files/raw_data_queries >$@
+tests/libknot/raw_data_queries.rc: tests/libknot/files/raw_data_queries
+	../resource.sh tests/libknot/files/raw_data_queries >$@
 
-dnslib/tests/raw_data.rc: dnslib/tests/files/raw_data
-	../resource.sh dnslib/tests/files/raw_data >$@
+tests/libknot/raw_data.rc: tests/libknot/files/raw_data
+	../resource.sh tests/libknot/files/raw_data >$@
 
-dnslib/tests/realdata/raw_data.rc: dnslib/tests/realdata/files/raw_data
-	../resource.sh dnslib/tests/realdata/files/raw_data >$@
+tests/libknot/realdata/raw_data.rc: tests/libknot/realdata/files/raw_data
+	../resource.sh tests/libknot/realdata/files/raw_data >$@
 
 tests/sample_conf.rc: tests/files/sample_conf
 	../resource.sh tests/files/sample_conf >$@

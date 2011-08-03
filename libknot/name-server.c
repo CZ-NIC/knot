@@ -15,8 +15,8 @@
 #include "response2.h"
 #include "query.h"
 #include "consts.h"
-#include "knot/zone/zone-dump-text.h"
-#include "knot/zone/zone-dump.h"
+// #include "knot/zone/zone-dump-text.h"
+// #include "knot/zone/zone-dump.h"
 #include "changesets.h"
 
 /*----------------------------------------------------------------------------*/

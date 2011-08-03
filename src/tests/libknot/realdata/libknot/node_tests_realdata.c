@@ -1,10 +1,10 @@
 #include <assert.h>
 
-#include "dnslib/tests/realdata/dnslib/node_tests_realdata.h"
-#include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
-#include "dnslib/dname.h"
-#include "dnslib/node.h"
-#include "dnslib/descriptor.h"
+#include "tests/libknot/realdata/libknot/node_tests_realdata.h"
+#include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
+#include "libknot/dname.h"
+#include "libknot/node.h"
+#include "libknot/descriptor.h"
 
 static int knot_node_tests_count(int argc, char *argv[]);
 static int knot_node_tests_run(int argc, char *argv[]);

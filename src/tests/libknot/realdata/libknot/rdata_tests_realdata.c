@@ -1,13 +1,13 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "dnslib/tests/realdata/dnslib/rdata_tests_realdata.h"
-#include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
-#include "dnslib/dnslib-common.h"
-#include "dnslib/rdata.h"
-#include "dnslib/descriptor.h"
-#include "dnslib/utils.h"
-#include "dnslib/error.h"
+#include "tests/libknot/realdata/libknot/rdata_tests_realdata.h"
+#include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
+#include "libknot/common.h"
+#include "libknot/rdata.h"
+#include "libknot/descriptor.h"
+#include "libknot/utils.h"
+#include "libknot/error.h"
 
 static int knot_rdata_tests_count(int argc, char *argv[]);
 static int knot_rdata_tests_run(int argc, char *argv[]);

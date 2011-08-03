@@ -1,7 +1,7 @@
-#include "dnslib/tests/dnslib/node_tests.h"
-#include "dnslib/dname.h"
-#include "dnslib/node.h"
-#include "dnslib/descriptor.h"
+#include "tests/libknot/libknot/node_tests.h"
+#include "libknot/dname.h"
+#include "libknot/node.h"
+#include "libknot/descriptor.h"
 
 static int knot_node_tests_count(int argc, char *argv[]);
 static int knot_node_tests_run(int argc, char *argv[]);

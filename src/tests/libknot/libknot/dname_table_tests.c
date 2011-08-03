@@ -3,10 +3,10 @@
 #include <assert.h>
 
 #include "dname_table_tests.h"
-#include "dnslib/error.h"
-#include "dnslib/dname-table.h"
+#include "libknot/error.h"
+#include "libknot/dname-table.h"
 /* *test_t structures */
-#include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
+#include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
 
 static int knot_dname_table_tests_count(int argc, char *argv[]);
 static int knot_dname_table_tests_run(int argc, char *argv[]);

@@ -2,19 +2,19 @@
 //#include "knot/common.h"
 #include "common/libtap/tap_unit.h"
 
-#include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
+#include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
 
 // Units to test
-#include "dnslib/dname_tests_realdata.h"
-//#include "dnslib/edns_tests.h"
-#include "dnslib/node_tests_realdata.h"
-#include "dnslib/rdata_tests_realdata.h"
-//#include "dnslib/response_tests_realdata.h"
-#include "dnslib/response2_tests_realdata.h"
-#include "dnslib/rrset_tests_realdata.h"
-//#include "dnslib/zone_tests_realdata.h"
-#include "dnslib/zonedb_tests_realdata.h"
-#include "dnslib/packet_tests_realdata.h"
+#include "tests/libknot/realdata/libknot/dname_tests_realdata.h"
+//#include "libknot/edns_tests.h"
+#include "tests/libknot/realdata/libknot/node_tests_realdata.h"
+#include "tests/libknot/realdata/libknot/rdata_tests_realdata.h"
+//#include "libknot/response_tests_realdata.h"
+#include "tests/libknot/realdata/libknot/response2_tests_realdata.h"
+#include "tests/libknot/realdata/libknot/rrset_tests_realdata.h"
+//#include "libknot/zone_tests_realdata.h"
+#include "tests/libknot/realdata/libknot/zonedb_tests_realdata.h"
+#include "tests/libknot/realdata/libknot/packet_tests_realdata.h"
 
 #include "common/lists.h"
 // Run all loaded units

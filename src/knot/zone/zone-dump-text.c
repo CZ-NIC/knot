@@ -11,8 +11,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#include "dnslib/dnslib.h"
-#include "dnslib/dnslib-common.h"
+#include "libknot/libknot.h"
+#include "libknot/common.h"
 #include "common/skip-list.h"
 #include "common/base32hex.h"
 

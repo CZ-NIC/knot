@@ -1,9 +1,9 @@
 #include <string.h>
 #include <assert.h>
 
-#include "dnslib/tests/dnslib/dname_tests.h"
-#include "dnslib/dname.h"
-#include "dnslib/node.h"
+#include "tests/libknot/libknot/dname_tests.h"
+#include "libknot/dname.h"
+#include "libknot/node.h"
 
 static int knot_dname_tests_count(int argc, char *argv[]);
 static int knot_dname_tests_run(int argc, char *argv[]);

@@ -28,7 +28,6 @@
 #define _KNOT_UNIVERSAL_SYSTEM_H_
 
 #include <stdint.h>
-#include "libknot.h"
 
 
 enum { US_FNC_COUNT = 4 /*!< Number of functions for one generation. */ };

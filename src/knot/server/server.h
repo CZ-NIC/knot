@@ -22,11 +22,11 @@
 #define _KNOTDSERVER_H_
 
 #include "knot/common.h"
-#include "dnslib/name-server.h"
+#include "libknot/name-server.h"
 #include "knot/server/xfr-handler.h"
 #include "knot/server/socket.h"
 #include "knot/server/dthreads.h"
-#include "dnslib/zonedb.h"
+#include "libknot/zonedb.h"
 #include "common/evsched.h"
 #include "common/lists.h"
 

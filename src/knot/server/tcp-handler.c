@@ -16,10 +16,10 @@
 #include "knot/common.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-handler.h"
-#include "dnslib/name-server.h"
+#include "libknot/name-server.h"
 #include "knot/other/error.h"
 #include "knot/stat/stat.h"
-#include "dnslib/wire.h"
+#include "libknot/wire.h"
 #include "knot/server/zones.h"
 
 /*! \brief TCP watcher. */

@@ -1,12 +1,12 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "dnslib/tests/dnslib/rdata_tests.h"
-#include "dnslib/dnslib-common.h"
-#include "dnslib/rdata.h"
-#include "dnslib/descriptor.h"
-#include "dnslib/utils.h"
-#include "dnslib/error.h"
+#include "tests/libknot/libknot/rdata_tests.h"
+#include "libknot/common.h"
+#include "libknot/rdata.h"
+#include "libknot/descriptor.h"
+#include "libknot/utils.h"
+#include "libknot/error.h"
 
 enum { TEST_DOMAINS_OK = 8 };
 

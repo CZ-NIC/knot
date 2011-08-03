@@ -5,8 +5,8 @@
 #include <urcu.h>
 
 #include "common.h"
-#include "zonedb.h"
 #include "zone.h"
+#include "zonedb.h"
 #include "dname.h"
 #include "node.h"
 #include "error.h"
