@@ -771,6 +771,7 @@ static int zones_changesets_from_binary(knot_changesets_t *chgsets)
 		}
 	}
 
+	/*! \todo Mark ENOTSUP as EOK when fixed. */
 	return KNOT_ENOTSUP;
 }
 
@@ -842,7 +843,8 @@ static int zones_load_changesets(const knot_zone_t *zone,
 	/* Unpack binary data. */
 	ret = zones_changesets_from_binary(dst);
 	if (ret != KNOT_EOK) {
-		debug_knot_xfr("ixfr_db: failed to unpack changesets from binary\n");
+		debug_knot_xfr("ixfr_db: failed to unpack changesets "
+			       "from binary\n");
 		return ret;
 	}
 
@@ -892,15 +894,21 @@ static int zones_journal_apply(knot_zone_t *zone)
 	knot_changesets_t* chsets = malloc(sizeof(knot_changesets_t));
 	memset(chsets, 0, sizeof(knot_changesets_t));
 	int ret = zones_load_changesets(zone, chsets, serial, serial - 1);
-	if (ret == KNOTD_EOK || ret == KNOTD_ERANGE) {
+	if (ret == KNOT_EOK || ret == KNOT_ERANGE) {
 
 		/* Apply changesets. */
 		debug_zones("update_zone: applying %zu changesets\n",
 			    chsets->count);
-		xfrin_apply_changesets_to_zone(zone, chsets);
+		ret = xfrin_apply_changesets_to_zone(zone, chsets);
+		if (ret != KNOT_EOK) {
+			debug_zones("update_zone: application of changesets "
+				    "failed with '%s'\n",
+				    knot_strerror2(ret));
+		}
 
 	} else {
-		debug_zones("update_zone: failed to load changesets\n");
+		debug_zones("update_zone: failed to load changeset, %s\n",
+			    knot_strerror2(ret));
 	}
 
 	/* Free changesets and return. */
@@ -1447,6 +1455,12 @@ static int zones_dump_xfr_zone_text(knot_zone_contents_t *zone,
 {
 	assert(zone != NULL && zonefile != NULL);
 
+	/*! \todo new_zonefile may be created by another process,
+	 *        until the zone_dump_text is called. Needs to be opened in
+	 *        this function for writing.
+	 *        Use open() for exclusive open and fcntl() for locking.
+	 */
+
 	char *new_zonefile = zones_find_free_filename(zonefile);
 
 	if (new_zonefile == NULL) {
@@ -1464,7 +1478,21 @@ static int zones_dump_xfr_zone_text(knot_zone_contents_t *zone,
 		return KNOTD_ERROR;
 	}
 
-	/*! \todo if successful, replace the old file with the new one */
+	/*! \todo this would also need locking as well. */
+	if (remove(zonefile) == 0) {
+		if (rename(new_zonefile, zonefile) != 0) {
+			debug_zones("Failed to replace old zonefile %s with new"
+				    " zone file %s.\n", zonefile, new_zonefile);
+			/*! \todo with proper locking, this shouldn't happen,
+			 *        revise it later on.
+			 */
+			zone_dump_text(zone, zonefile);
+			return KNOTD_ERROR;
+		}
+	} else {
+		debug_zones("Failed to replace old zonefile %s.\n", zonefile);
+		return KNOTD_ERROR;
+	}
 
 	free(new_zonefile);
 	return KNOTD_EOK;
@@ -1478,6 +1506,11 @@ static int ns_dump_xfr_zone_binary(knot_zone_contents_t *zone,
 {
 	assert(zone != NULL && zonedb != NULL);
 
+	/*! \todo new_zonedb may be created by another process,
+	 *        until the zone_dump_text is called. Needs to be opened in
+	 *        this function for writing.
+	 *        Use open() for exclusive open and fcntl() for locking.
+	 */
 	char *new_zonedb = zones_find_free_filename(zonedb);
 
 	if (new_zonedb == NULL) {
@@ -1495,7 +1528,21 @@ static int ns_dump_xfr_zone_binary(knot_zone_contents_t *zone,
 		return KNOTD_ERROR;
 	}
 
-	/*! \todo if successful, replace the old file with the new one */
+	/*! \todo this would also need locking as well. */
+	if (remove(zonedb) == 0) {
+		if (rename(new_zonedb, zonedb) != 0) {
+			debug_zones("Failed to replace old zonefile %s with new"
+				    " zone file %s.\n", zonedb, new_zonedb);
+			/*! \todo with proper locking, this shouldn't happen,
+			 *        revise it later on.
+			 */
+			zone_dump_text(zone, zonedb);
+			return KNOTD_ERROR;
+		}
+	} else {
+		debug_zones("Failed to replace old zonefile %s.\n", zonedb);
+		return KNOTD_ERROR;
+	}
 
 	free(new_zonedb);
 	return KNOTD_EOK;
