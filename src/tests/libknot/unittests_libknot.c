@@ -3,19 +3,19 @@
 #include "common/libtap/tap_unit.h"
 
 // Units to test
-#include "dnslib/cuckoo_tests.h"
-#include "dnslib/dname_tests.h"
-#include "dnslib/edns_tests.h"
-#include "dnslib/node_tests.h"
-#include "dnslib/rdata_tests.h"
-#include "dnslib/response2_tests.h"
-#include "dnslib/rrset_tests.h"
-#include "dnslib/zone_tests.h"
-#include "dnslib/dname_table_tests.h"
-#include "dnslib/nsec3_tests.h"
-#include "dnslib/packet_tests.h"
-#include "dnslib/query_tests.h"
-#include "dnslib/zonedb_tests.h"
+#include "tests/libknot/libknot/cuckoo_tests.h"
+#include "tests/libknot/libknot/dname_tests.h"
+#include "tests/libknot/libknot/edns_tests.h"
+#include "tests/libknot/libknot/node_tests.h"
+#include "tests/libknot/libknot/rdata_tests.h"
+#include "tests/libknot/libknot/response2_tests.h"
+#include "tests/libknot/libknot/rrset_tests.h"
+#include "tests/libknot/libknot/zone_tests.h"
+#include "tests/libknot/libknot/dname_table_tests.h"
+#include "tests/libknot/libknot/nsec3_tests.h"
+#include "tests/libknot/libknot/packet_tests.h"
+#include "tests/libknot/libknot/query_tests.h"
+#include "tests/libknot/libknot/zonedb_tests.h"
 
 // Run all loaded units
 int main(int argc, char *argv[])

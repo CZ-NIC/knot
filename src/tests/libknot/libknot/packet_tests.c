@@ -4,11 +4,11 @@
 #include <stdint.h>
 
 #include "packet_tests.h"
-#include "dnslib/error.h"
-#include "dnslib/packet.h"
-#include "dnslib/wire.h"
+#include "libknot/error.h"
+#include "libknot/packet.h"
+#include "libknot/wire.h"
 /* *test_t structures */
-#include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
+#include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
 
 static int packet_tests_count(int argc, char *argv[]);
 static int packet_tests_run(int argc, char *argv[]);

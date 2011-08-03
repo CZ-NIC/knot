@@ -22,7 +22,7 @@
 #include <assert.h>
 
 #include "zcompile/zcompile.h"
-#include "dnslib/dname.h"
+#include "libknot/dname.h"
 #include "zcompile/parser-descriptor.h"
 #include "zparser.h"
 

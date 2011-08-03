@@ -2,18 +2,18 @@
 #include <inttypes.h>
 
 //#define RESP_TEST_DEBUG
-#include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
-#include "dnslib/tests/dnslib/response2_tests.h"
+#include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
+#include "tests/libknot/libknot/response2_tests.h"
 #include "common/lists.h"
-#include "dnslib/dnslib-common.h"
-#include "dnslib/error.h"
-#include "dnslib/response2.h"
-#include "dnslib/rdata.h"
-#include "dnslib/rrset.h"
-#include "dnslib/dname.h"
-#include "dnslib/wire.h"
-#include "dnslib/descriptor.h"
-#include "dnslib/edns.h"
+#include "libknot/common.h"
+#include "libknot/error.h"
+#include "libknot/response2.h"
+#include "libknot/rdata.h"
+#include "libknot/rrset.h"
+#include "libknot/dname.h"
+#include "libknot/wire.h"
+#include "libknot/descriptor.h"
+#include "libknot/edns.h"
 
 #ifdef TEST_WITH_LDNS
 #include "ldns/ldns.h"

@@ -1,9 +1,9 @@
 #include <time.h>
 #include <assert.h>
 
-#include "dnslib/tests/dnslib/cuckoo_tests.h"
+#include "tests/libknot/libknot/cuckoo_tests.h"
 
-#include "dnslib/hash/cuckoo-hash-table.h"
+#include "libknot/hash/cuckoo-hash-table.h"
 
 //#define CK_TEST_DEBUG
 //#define CK_TEST_LOOKUP

@@ -14,12 +14,12 @@
 
 #include "common/lists.h"
 #include "common/acl.h"
-#include "dnslib/name-server.h"
-#include "dnslib/zonedb.h"
+#include "libknot/name-server.h"
+#include "libknot/zonedb.h"
 #include "knot/conf/conf.h"
 #include "knot/server/journal.h"
-#include "dnslib/zone.h"
-#include "dnslib/xfr-in.h"
+#include "libknot/zone.h"
+#include "libknot/xfr-in.h"
 
 /* Constants. */
 #define IXFR_DBSYNC_TIMEOUT (60*1000) /*!< Database sync timeout = 60s. */

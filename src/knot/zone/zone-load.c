@@ -8,11 +8,11 @@
 #include <time.h>
 
 #include "common/crc.h"
-#include "dnslib/dnslib-common.h"
+#include "libknot/common.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zone-dump.h"
-#include "dnslib/dnslib.h"
-#include "dnslib/debug.h"
+#include "libknot/libknot.h"
+#include "libknot/debug.h"
 
 /*!
  * \brief Compares two time_t values.

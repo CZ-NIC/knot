@@ -2,15 +2,15 @@
 #include <inttypes.h>
 
 //#define RESP_TEST_DEBUG
-#include "dnslib/tests/realdata/dnslib/response_tests_realdata.h"
-#include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
-#include "dnslib/dnslib-common.h"
-#include "dnslib/response.h"
-#include "dnslib/rdata.h"
-#include "dnslib/rrset.h"
-#include "dnslib/dname.h"
-#include "dnslib/descriptor.h"
-#include "dnslib/edns.h"
+#include "tests/libknot/realdata/libknot/response_tests_realdata.h"
+#include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
+#include "libknot/common.h"
+#include "libknot/response.h"
+#include "libknot/rdata.h"
+#include "libknot/rrset.h"
+#include "libknot/dname.h"
+#include "libknot/descriptor.h"
+#include "libknot/edns.h"
 #include "common/lists.h"
 
 #ifdef TEST_WITH_LDNS
@@ -21,10 +21,10 @@
  * Resources
  * \note .rc files are generated on compile-time.
  */
-#include "dnslib/tests/parsed_data_queries.rc"
-#include "dnslib/tests/parsed_data.rc"
-#include "dnslib/tests/raw_data_queries.rc"
-#include "dnslib/tests/raw_data.rc"
+#include "tests/libknot/parsed_data_queries.rc"
+#include "tests/libknot/parsed_data.rc"
+#include "tests/libknot/raw_data_queries.rc"
+#include "tests/libknot/raw_data.rc"
 
 static int knot_response_tests_count(int argc, char *argv[]);
 static int knot_response_tests_run(int argc, char *argv[]);
