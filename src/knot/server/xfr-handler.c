@@ -100,26 +100,24 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 			ret = zones_save_zone(request);
 			if (ret != KNOTD_EOK) {
 				/*! \todo Log error. */
-				return;
-			}
-			ret = knot_ns_switch_zone(xfr_w->h->ns, request);
-			if (ret != KNOTD_EOK) {
-				/*! \todo Log error. */
-				return;
+			} else {
+				ret = knot_ns_switch_zone(xfr_w->h->ns, request);
+				if (ret != KNOTD_EOK) {
+					/*! \todo Log error. */
+				}
 			}
 			break;
 		case XFR_TYPE_IIN:
-			/* save changesets */
+			/* Save changesets. */
 			ret = zones_store_changesets(request);
 			if (ret != KNOTD_EOK) {
 				/*! \todo Log error */
-				return;
-			}
-			/* update zone */
-			ret = zones_apply_changesets(request);
-			if (ret != KNOTD_EOK) {
-				/*! \todo Log error */
-				return;
+			} else {
+				/* Update zone. */
+				ret = zones_apply_changesets(request);
+				if (ret != KNOTD_EOK) {
+					/*! \todo Log error */
+				}
 			}
 			break;
 		default:
