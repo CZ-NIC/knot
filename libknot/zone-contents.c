@@ -2128,6 +2128,11 @@ int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
 		return KNOT_EBADARG;
 	}
 
+	/* Copy to same destination as source. */
+	if (from == *to) {
+		return KNOT_EBADARG;
+	}
+
 	int ret = KNOT_EOK;
 
 	knot_zone_contents_t *contents = (knot_zone_contents_t *)calloc(
