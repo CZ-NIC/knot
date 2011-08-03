@@ -1,8 +1,8 @@
 #include <assert.h>
 
-#include "dnslib/tests/dnslib/edns_tests.h"
-#include "dnslib/dnslib-common.h"
-#include "dnslib/edns.h"
+#include "tests/libknot/libknot/edns_tests.h"
+#include "libknot/common.h"
+#include "libknot/edns.h"
 
 static int knot_edns_tests_count(int argc, char *argv[]);
 static int knot_edns_tests_run(int argc, char *argv[]);

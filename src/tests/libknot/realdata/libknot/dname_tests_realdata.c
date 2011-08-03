@@ -2,10 +2,10 @@
 #include <assert.h>
 #include <stdarg.h>
 
-#include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
-#include "dnslib/tests/realdata/dnslib/dname_tests_realdata.h"
-#include "dnslib/dname.h"
-#include "dnslib/dnslib-common.h"
+#include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
+#include "tests/libknot/realdata/libknot/dname_tests_realdata.h"
+#include "libknot/dname.h"
+#include "libknot/common.h"
 
 #include "common/print.h"
 #include "common/lists.h"

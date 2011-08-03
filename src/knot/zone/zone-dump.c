@@ -4,14 +4,14 @@
 #include <assert.h>
 #include <netinet/in.h>
 
-#include "dnslib/dnslib-common.h"
+#include "libknot/common.h"
 #include "knot/zone/zone-dump.h"
-#include "dnslib/dnslib.h"
-#include "dnslib/debug.h"
+#include "libknot/libknot.h"
+#include "libknot/debug.h"
 #include "common/skip-list.h"
 #include "common/base32hex.h"
 #include "common/crc.h"
-#include "dnslib/error.h"
+#include "libknot/error.h"
 
 #define ZONECHECKS_VERBOSE
 

@@ -1,4 +1,4 @@
-#include "dnslib/tests/dnslib/zonedb_tests.h"
+#include "tests/libknot/libknot/zonedb_tests.h"
 
 
 static int zonedb_tests_count(int argc, char *argv[]);

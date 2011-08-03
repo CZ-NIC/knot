@@ -1,14 +1,14 @@
 #include <assert.h>
 
-#include "dnslib/tests/dnslib/rrset_tests.h"
-#include "dnslib/dnslib-common.h"
-#include "dnslib/descriptor.h"
-#include "dnslib/rrset.h"
-#include "dnslib/dname.h"
-#include "dnslib/rdata.h"
-#include "dnslib/utils.h"
-#include "dnslib/node.h"
-#include "dnslib/debug.h"
+#include "tests/libknot/libknot/rrset_tests.h"
+#include "libknot/common.h"
+#include "libknot/descriptor.h"
+#include "libknot/rrset.h"
+#include "libknot/dname.h"
+#include "libknot/rdata.h"
+#include "libknot/utils.h"
+#include "libknot/node.h"
+#include "libknot/debug.h"
 
 static int knot_rrset_tests_count(int argc, char *argv[]);
 static int knot_rrset_tests_run(int argc, char *argv[]);

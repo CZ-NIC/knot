@@ -17,13 +17,13 @@
 
 #include <stdio.h>
 
-#include "dnslib/dname.h"
-#include "dnslib/rrset.h"
-#include "dnslib/node.h"
-#include "dnslib/rdata.h"
-#include "dnslib/zone.h"
-#include "dnslib/dname-table.h"
-#include "dnslib/dname-table.h"
+#include "libknot/dname.h"
+#include "libknot/rrset.h"
+#include "libknot/node.h"
+#include "libknot/rdata.h"
+#include "libknot/zone.h"
+#include "libknot/dname-table.h"
+#include "libknot/dname-table.h"
 #include "common/slab/slab.h"
 
 #define MAXRDATALEN	64	/*!< Maximum number of RDATA items. */

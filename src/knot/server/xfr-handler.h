@@ -15,7 +15,7 @@
 #include <ev.h>
 
 #include "knot/server/dthreads.h"
-#include "dnslib/name-server.h"
+#include "libknot/name-server.h"
 #include "common/evqueue.h"
 
 /*!

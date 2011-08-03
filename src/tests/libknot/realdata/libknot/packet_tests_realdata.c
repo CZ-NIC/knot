@@ -3,11 +3,11 @@
 #include <assert.h>
 
 #include "packet_tests_realdata.h"
-#include "dnslib/error.h"
-#include "dnslib/packet.h"
-#include "dnslib/response2.h"
+#include "libknot/error.h"
+#include "libknot/packet.h"
+#include "libknot/response2.h"
 /* *test_t structures */
-#include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
+#include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
 #ifdef TEST_WITH_LDNS
 #include "ldns/ldns.h"
 #endif
