@@ -1891,7 +1891,7 @@ knot_node_t *knot_zone_contents_get_apex(const knot_zone_contents_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_adjust_dnames(knot_zone_contents_t *zone)
+int knot_zone_contents_adjust(knot_zone_contents_t *zone)
 {
 	if (zone == NULL) {
 		return KNOT_EBADARG;

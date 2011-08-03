@@ -2771,7 +2771,7 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 				(knot_zone_contents_t *)xfr->data;
 
 		debug_knot_ns("ns_process_axfrin: adjusting zone.\n");
-		knot_zone_contents_adjust_dnames(zone);
+		knot_zone_contents_adjust(zone);
 
 		/* Create and fill hash table */
 		debug_knot_ns("ns_process_axfrin: filling hash table.\n");
