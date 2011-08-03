@@ -36,6 +36,7 @@
 #include "zcompile/parser-util.h"
 #include "zparser.h"
 #include "zcompile/zcompile-error.h"
+#include "zone/zone-dump.h"
 #include "libknot/libknot.h"
 
 //#define DEBUG_UNKNOWN_RDATA
@@ -1853,7 +1854,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	if (zp_parse(scanner) != 0) {
 		return KNOTDZCOMPILE_ESYNT;
 	}
-	
+
 	knot_zone_contents_t *contents =
 			knot_zone_get_contents(parser->current_zone);
 
