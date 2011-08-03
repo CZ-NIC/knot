@@ -7,7 +7,7 @@
 #include <assert.h>
 
 #include "universal-system.h"
-#include "dnslib/utils.h"
+#include "utils.h"
 
 /*----------------------------------------------------------------------------*/
 

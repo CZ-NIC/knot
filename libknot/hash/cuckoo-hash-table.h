@@ -18,14 +18,14 @@
  * \addtogroup hashing
  * @{
  */
-#ifndef _KNOTDCUCKOO_HASH_TABLE_H_
-#define _KNOTDCUCKOO_HASH_TABLE_H_
+#ifndef _KNOT_CUCKOO_HASH_TABLE_H_
+#define _KNOT_CUCKOO_HASH_TABLE_H_
 
 #include <stdint.h> /* uint32_t */
 #include <stdlib.h> /* size_t */
 #include <pthread.h>
 
-#include "dnslib/hash/universal-system.h"
+#include "hash/universal-system.h"
 #include "common/dynamic-array.h"
 
 /*----------------------------------------------------------------------------*/

@@ -8,11 +8,11 @@
 
 #include <urcu.h>
 
-#include "dnslib/utils.h"
-#include "dnslib/dnslib-common.h"
-#include "dnslib/debug.h"
-#include "dnslib/hash/cuckoo-hash-table.h"
-#include "dnslib/hash/hash-functions.h"
+#include "utils.h"
+#include "common.h"
+#include "debug.h"
+#include "hash/cuckoo-hash-table.h"
+#include "hash/hash-functions.h"
 #include "common/dynamic-array.h"
 
 /*----------------------------------------------------------------------------*/
