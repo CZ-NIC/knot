@@ -2062,7 +2062,9 @@ int knot_zdump_dump_and_swap(knot_zone_contents_t *zone,
 	}
 
 	/*! \todo this would also need locking as well. */
-	if (remove(destination_zonedb) == 0) {
+	rc = remove(destination_zonedb);
+	if (rc == 0 || (rc != 0 && errno == ENOENT)) {
+
 		/* Delete old CRC file. */
 		char *destination_zonedb_crc =
 			knot_zdump_crc_file(destination_zonedb);
@@ -2078,11 +2080,11 @@ int knot_zdump_dump_and_swap(knot_zone_contents_t *zone,
 			return KNOT_ENOMEM;
 		}
 
-		if (rename(destination_zonedb_crc, temp_zonedb_crc) != 0) {
-			debug_knot_zdump("Failed to replace old zonefile CRC %s with new CRC"
-				    " zone file %s.\n",
-			            destination_zonedb_crc,
-			            temp_zonedb_crc);
+		if (rename(temp_zonedb_crc, destination_zonedb_crc) != 0) {
+			debug_knot_zdump("Failed to replace old zonedb CRC %s "
+					 "with new CRC zone file %s.\n",
+					 destination_zonedb_crc,
+					 temp_zonedb_crc);
 			return KNOT_ERROR;
 		}
 		free(temp_zonedb_crc);
@@ -2090,18 +2092,18 @@ int knot_zdump_dump_and_swap(knot_zone_contents_t *zone,
 
 		/* Rename zonedb. */
 		if (rename(temp_zonedb, destination_zonedb) != 0) {
-			debug_knot_zdump("Failed to replace old zonefile %s with new"
-				    " zone file %s.\n",
-			            temp_zonedb,
-			            destination_zonedb);
+			debug_knot_zdump("Failed to replace old zonedb %s "
+					 "with new zone file %s.\n",
+					 temp_zonedb,
+					 destination_zonedb);
 			/*! \todo with proper locking, this shouldn't happen,
 			 *        revise it later on.
 			 */
 			return KNOT_ERROR;
 		}
 	} else {
-		debug_knot_zdump("Failed to replace old zonefile %s.\n",
-		            destination_zonedb);
+		debug_knot_zdump("Failed to replace old zonedb '%s'', %s.\n",
+				 destination_zonedb, strerror(errno));
 		return KNOT_ERROR;
 	}
 
