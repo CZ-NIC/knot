@@ -39,6 +39,8 @@
  * For details on the use of these macros, see the tree(3) manual page.
  */
 
+/* Downloaded from http://piumarta.com/software/tree/ */
+
 #ifndef __tree_h
 #define __tree_h
 
