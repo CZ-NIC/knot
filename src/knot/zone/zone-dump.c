@@ -6,7 +6,6 @@
 
 #include "libknot/common.h"
 #include "knot/zone/zone-dump.h"
-#include "knot/zone/zone-dump-text.h"
 #include "libknot/libknot.h"
 #include "libknot/debug.h"
 #include "common/skip-list.h"
@@ -2050,7 +2049,7 @@ static char *knot_zdump_crc_file(const char* filename)
 }
 
 int knot_zdump_dump_and_swap(knot_zone_contents_t *zone,
-                             char *temp_zonedb,
+                             const char *temp_zonedb,
                              const char *destination_zonedb,
                              const char *sfilename)
 {
@@ -2065,24 +2064,26 @@ int knot_zdump_dump_and_swap(knot_zone_contents_t *zone,
 	/*! \todo this would also need locking as well. */
 	if (remove(destination_zonedb) == 0) {
 		/* Delete old CRC file. */
-		char *temp_zonedb_crc = knot_zdump_crc_file(temp_zonedb);
-		if (temp_zonedb_crc == NULL) {
-			return KNOT_ENOMEM;
-		}
-		remove(temp_zonedb_crc);
-
-		/* Move CRC file. */
-		char *destination_zonedb_crc = knot_zdump_crc_file(temp_zonedb);
+		char *destination_zonedb_crc =
+			knot_zdump_crc_file(destination_zonedb);
 		if (destination_zonedb_crc == NULL) {
 			return KNOT_ENOMEM;
 		}
+		remove(destination_zonedb_crc);
 
-		if (rename(temp_zonedb_crc, destination_zonedb_crc) != 0) {
+		/* Move CRC file. */
+		char *temp_zonedb_crc =
+			knot_zdump_crc_file(temp_zonedb);
+		if (temp_zonedb_crc == NULL) {
+			return KNOT_ENOMEM;
+		}
+
+		if (rename(destination_zonedb_crc, temp_zonedb_crc) != 0) {
 			debug_knot_zdump("Failed to replace old zonefile CRC %s with new CRC"
 				    " zone file %s.\n",
-			            temp_zonedb_crc,
-			            destination_zonedb_crc);
-			zone_dump_text(zone, destination_zonedb);
+			            destination_zonedb_crc,
+			            temp_zonedb_crc);
+			return KNOT_ERROR;
 		}
 		free(temp_zonedb_crc);
 		free(destination_zonedb_crc);
@@ -2096,7 +2097,6 @@ int knot_zdump_dump_and_swap(knot_zone_contents_t *zone,
 			/*! \todo with proper locking, this shouldn't happen,
 			 *        revise it later on.
 			 */
-			zone_dump_text(zone, destination_zonedb);
 			return KNOT_ERROR;
 		}
 	} else {
