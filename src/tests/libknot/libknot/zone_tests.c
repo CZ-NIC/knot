@@ -615,12 +615,14 @@ static int test_zone_shallow_copy()
 
 	/* Compare nodes, convert tree to array then compare those arrays. */
 	struct zone_test_param param1;
-	param1.count = 0;
+	memset(&param1, 0, sizeof(struct zone_test_param));
+
 	knot_zone_contents_tree_apply_inorder(from, tree_node_to_array,
 						(void *)&param1);
 
 	struct zone_test_param param2;
-	param2.count = 0;
+	memset(&param1, 0, sizeof(struct zone_test_param));
+
 	knot_zone_contents_tree_apply_inorder(to, tree_node_to_array,
 						(void *)&param2);
 
@@ -734,7 +736,7 @@ static int test_zone_shallow_copy()
 #endif
 
 	knot_zone_free(&from_zone);
-	knot_zone_contents_free(&to);
+	knot_zone_contents_deep_free(&to);
 	return (errors == 0);
 
 }
