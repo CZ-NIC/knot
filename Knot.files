@@ -6,12 +6,12 @@ Doxyfile.devel
 configure.ac
 tests/querytcp.c
 libknot/Makefile.am
-libknot/dnslib-common.h
+libknot/common.h
 libknot/dname.h
 libknot/dname.c
 libknot/rrset.h
 libknot/rrset.c
-libknot/dnslib-error.c
+libknot/error.c
 libknot/error.h
 libknot/rdata.h
 libknot/rdata.c
@@ -39,7 +39,7 @@ libknot/zonedb.h
 libknot/zonedb.c
 libknot/debug.h
 libknot/debug.c
-libknot/dnslib.h
+libknot/libknot.h
 libknot/tolower.h
 libknot/tolower.c
 libknot/nsec3.h
@@ -182,7 +182,7 @@ src/tests/knot/journal_tests.c
 src/tests/knot/journal_tests.h
 src/tests/knot/server_tests.c
 src/tests/knot/server_tests.h
-src/tests/libknot/libknot/unittests_dnslib.c
+src/tests/libknot/unittests_libknot.c
 src/tests/libknot/libknot/dname_tests.c
 src/tests/libknot/libknot/dname_tests.h
 src/tests/libknot/libknot/edns_tests.c
@@ -211,7 +211,7 @@ src/tests/libknot/libknot/query_tests.c
 src/tests/libknot/libknot/query_tests.h
 src/tests/libknot/libknot/nsec3_tests.c
 src/tests/libknot/libknot/nsec3_tests.h
-src/tests/libknot/realdata/unittests_dnslib_realdata.c
+src/tests/libknot/realdata/unittests_libknot_realdata.c
 src/tests/libknot/realdata/libknot/packet_tests_realdata.c
 src/tests/libknot/realdata/libknot/packet_tests_realdata.h
 src/tests/libknot/realdata/libknot/response2_tests_realdata.c
