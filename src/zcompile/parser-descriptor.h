@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "dnslib/utils.h"
+#include "libknot/utils.h"
 
 enum parser_mxrdtln {
 	PARSER_MAX_RDATA_ITEMS = 64,

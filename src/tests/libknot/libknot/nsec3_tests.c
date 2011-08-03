@@ -2,10 +2,10 @@
 
 #include <assert.h>
 
-#include "dnslib/dnslib-common.h"
-#include "dnslib/error.h"
-#include "dnslib/nsec3.h"
-#include "dnslib/utils.h"
+#include "libknot/common.h"
+#include "libknot/error.h"
+#include "libknot/nsec3.h"
+#include "libknot/utils.h"
 #include "common/base32hex.h"
 #include "nsec3_tests.h"
 

@@ -36,7 +36,7 @@
 #include "zcompile/parser-util.h"
 #include "zparser.h"
 #include "zcompile/zcompile-error.h"
-#include "dnslib/dnslib.h"
+#include "libknot/libknot.h"
 
 //#define DEBUG_UNKNOWN_RDATA
 

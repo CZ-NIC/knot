@@ -1,9 +1,9 @@
 #include <assert.h>
 
-#include "dnslib/tests/realdata/dnslib/edns_tests_realdata.h"
-#include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
-#include "dnslib/dnslib-common.h"
-#include "dnslib/edns.h"
+#include "tests/libknot/realdata/libknot/edns_tests_realdata.h"
+#include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
+#include "libknot/common.h"
+#include "libknot/edns.h"
 
 static int knot_edns_tests_count(int argc, char *argv[]);
 static int knot_edns_tests_run(int argc, char *argv[]);

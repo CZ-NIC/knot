@@ -18,7 +18,7 @@
 
 #include <urcu.h>
 
-#include "dnslib/descriptor.h"
+#include "libknot/descriptor.h"
 #include "common/lists.h"
 #include "knot/other/log.h"
 

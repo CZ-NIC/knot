@@ -5,8 +5,8 @@
 
 #include "name-server.h"
 #include "debug.h"
-#include "knot/zone/zone-dump.h"
-#include "knot/zone/zone-load.h"
+// #include "knot/zone/zone-dump.h"
+// #include "knot/zone/zone-load.h"
 #include "packet.h"
 #include "dname.h"
 #include "zone.h"

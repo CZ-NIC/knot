@@ -24,6 +24,7 @@
 #include "rrset.h"
 #include "tolower.h"
 #include "utils.h"
+#include "zone.h"
 #include "zonedb.h"
 #include "error.h"
 

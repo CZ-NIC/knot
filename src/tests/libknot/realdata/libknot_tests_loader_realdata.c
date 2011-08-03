@@ -3,11 +3,11 @@
 #include <assert.h>
 
 #include "common/libtap/tap.h"
-#include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
-#include "dnslib/descriptor.h"
+#include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
+#include "libknot/descriptor.h"
 
-#include "dnslib/tests/realdata/parsed_data.rc"
-#include "dnslib/tests/realdata/raw_data.rc"
+#include "tests/libknot/realdata/parsed_data.rc"
+#include "tests/libknot/realdata/raw_data.rc"
 TREE_DEFINE(test_node, avl);
 
 /* Virtual I/O over memory. */

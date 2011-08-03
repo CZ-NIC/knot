@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "dnslib/dnslib-common.h"
+#include "libknot/common.h"
 #include "common/lists.h"
 #include "common/tree.h"
 

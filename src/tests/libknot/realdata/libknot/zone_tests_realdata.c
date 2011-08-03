@@ -1,11 +1,11 @@
 #include <assert.h>
 
-#include "dnslib/tests/realdata/dnslib/zone_tests_realdata.h"
-#include "dnslib/tests/realdata/dnslib_tests_loader_realdata.h"
-#include "dnslib/dnslib-common.h"
-#include "dnslib/zone.h"
-#include "dnslib/error.h"
-#include "dnslib/node.h"
+#include "tests/libknot/realdata/libknot/zone_tests_realdata.h"
+#include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
+#include "libknot/common.h"
+#include "libknot/zone.h"
+#include "libknot/error.h"
+#include "libknot/node.h"
 
 static int knot_zone_tests_count(int argc, char *argv[]);
 static int knot_zone_tests_run(int argc, char *argv[]);

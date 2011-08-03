@@ -14,7 +14,7 @@
 
 #include <stdio.h>
 
-#include "dnslib/zone.h"
+#include "libknot/zone.h"
 
 /*!
  * \brief Zone loader structure.

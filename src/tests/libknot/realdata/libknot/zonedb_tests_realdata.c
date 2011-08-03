@@ -1,4 +1,4 @@
-#include "dnslib/tests/realdata/dnslib/zonedb_tests_realdata.h"
+#include "tests/libknot/realdata/libknot/zonedb_tests_realdata.h"
 
 
 static int zonedb_tests_count(int argc, char *argv[]);
