@@ -225,7 +225,7 @@ int knot_zone_contents_find_dname(const knot_zone_contents_t *contents,
  *
  * \param zone Zone to search for the name.
  * \param name Domain name to find the previous domain name of.
- *knot_zone_contents_adjust_dnames
+ *
  * \return Previous node in canonical order, or NULL if some parameter is wrong.
  */
 const knot_node_t *knot_zone_contents_find_previous(
@@ -325,7 +325,7 @@ knot_node_t *knot_zone_contents_get_apex(
  *
  * \param zone Zone to adjust domain names in.
  */
-int knot_zone_contents_adjust_dnames(knot_zone_contents_t *contents);
+int knot_zone_contents_adjust(knot_zone_contents_t *contents);
 
 /*!
  * \brief Parses the NSEC3PARAM record stored in the zone.

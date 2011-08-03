@@ -568,9 +568,11 @@ int conf_open(const char* path)
 	}
 
 	/* Check if exists. */
-	struct stat st;
-	if (stat(path, &st) != 0) {
+	FILE *fp = fopen(path, "r");
+	if (fp == 0) {
 		return KNOTD_ENOENT;
+	} else {
+		fclose(fp);
 	}
 
 	/* Create new config. */
