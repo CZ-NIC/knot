@@ -96,7 +96,7 @@ knot_dname_t *knot_dname_table_find_dname(const knot_dname_table_t *table,
  * \retval KNOT_ENOMEM when memory runs out.
  */
 int knot_dname_table_add_dname(knot_dname_table_t *table,
-				 knot_dname_t *dname);
+                               knot_dname_t *dname);
 
 /*!
  * \brief Adds domain name to domain name table and checks for duplicates.
@@ -110,8 +110,8 @@ int knot_dname_table_add_dname(knot_dname_table_t *table,
  * \retval KNOT_EOK on success.
  * \retval KNOT_ENOMEM when memory runs out.
  */
-int knot_dname_table_add_dname2(knot_dname_table_t *table,
-                                  knot_dname_t **dname);
+int knot_dname_table_add_dname_check(knot_dname_table_t *table,
+                                     knot_dname_t **dname);
 
 /*!
  * \brief Creates a shallow copy of the domain name table.

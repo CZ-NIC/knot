@@ -96,13 +96,13 @@ static int test_dname_table_adding()
 	}
 
 	/* Add NULL */
-	if (knot_dname_table_add_dname2(table, NULL) != KNOT_EBADARG) {
+	if (knot_dname_table_add_dname_check(table, NULL) != KNOT_EBADARG) {
 		diag("Adding NULL dname did not result in an error!");
 		errors++;
 	}
 
 	/* Add to NULL table*/
-	if (knot_dname_table_add_dname2(NULL, NULL) != KNOT_EBADARG) {
+	if (knot_dname_table_add_dname_check(NULL, NULL) != KNOT_EBADARG) {
 		diag("Adding to NULL table did not result in an error!");
 		errors++;
 	}
@@ -223,7 +223,7 @@ static int test_dname_table_adding()
 		dname_from_test_dname_str(&DNAME_TABLE_DNAMES[0]);
 	assert(tmp_dname);
 
-	if (knot_dname_table_add_dname2(table, &tmp_dname) != KNOT_EOK) {
+	if (knot_dname_table_add_dname_check(table, &tmp_dname) != KNOT_EOK) {
 		diag("Could not add dname using dname_table_add_dname2!");
 		knot_dname_table_deep_free(&table);
 		knot_dname_free(&tmp_dname);
@@ -235,7 +235,7 @@ static int test_dname_table_adding()
 
 	knot_dname_t *dname_before_add = tmp_dname;
 
-	if (knot_dname_table_add_dname2(table, &tmp_dname) != 1) {
+	if (knot_dname_table_add_dname_check(table, &tmp_dname) != 1) {
 		diag("Could not add dname again using dname_table_add_dname2!");
 		knot_dname_table_deep_free(&table);
 		return 0;

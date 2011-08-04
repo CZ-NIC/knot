@@ -2280,7 +2280,7 @@ knot_nameserver_t *knot_ns_create()
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
-        ns->server = 0;
+	ns->data = 0;
 
 	// Create zone database structure
 	debug_knot_ns("Creating Zone Database structure...\n");
@@ -2928,6 +2928,27 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 //		xfrin_free_changesets((knot_changesets_t **)(&xfr->data));
 	}
 	return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void *knot_ns_data(knot_nameserver_t *nameserver)
+{
+	return nameserver->data;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void *knot_ns_get_data(knot_nameserver_t *nameserver)
+{
+	return nameserver->data;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_ns_set_data(knot_nameserver_t *nameserver, void *data)
+{
+	nameserver->data = data;
 }
 
 /*----------------------------------------------------------------------------*/

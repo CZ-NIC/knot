@@ -148,7 +148,7 @@ int notify_create_request(const knot_zone_contents_t *zone, uint8_t *buffer,
 
 /*----------------------------------------------------------------------------*/
 
-static int notify_check_and_schedule(const knot_nameserver_t *nameserver,
+static int notify_check_and_schedule(knot_nameserver_t *nameserver,
                                      const knot_zone_t *zone,
                                      sockaddr_t *from)
 {
@@ -175,7 +175,7 @@ static int notify_check_and_schedule(const knot_nameserver_t *nameserver,
 	/*! \todo Packet may contain updated RRs. */
 
 	/* Cancel EXPIRE timer. */
-	evsched_t *sched = nameserver->server->sched;
+	evsched_t *sched = ((server_t *)knot_ns_get_data(nameserver))->sched;
 	event_t *expire_ev = zd->xfr_in.expire;
 	if (expire_ev) {
 		debug_notify("notify: canceling EXPIRE timer\n");
@@ -199,7 +199,7 @@ static int notify_check_and_schedule(const knot_nameserver_t *nameserver,
 
 /*----------------------------------------------------------------------------*/
 
-int notify_process_request(const knot_nameserver_t *nameserver,
+int notify_process_request(knot_nameserver_t *nameserver,
                            knot_packet_t *notify,
                            sockaddr_t *from,
                            uint8_t *buffer, size_t *size)
@@ -243,7 +243,7 @@ int notify_process_request(const knot_nameserver_t *nameserver,
 
 /*----------------------------------------------------------------------------*/
 
-int notify_process_response(const knot_nameserver_t *nameserver,
+int notify_process_response(knot_nameserver_t *nameserver,
                             knot_packet_t *notify,
                             sockaddr_t *from,
                             uint8_t *buffer, size_t *size)
@@ -286,7 +286,7 @@ int notify_process_response(const knot_nameserver_t *nameserver,
 	}
 
 	/* Cancel RETRY timer, NOTIFY is now finished. */
-	evsched_t *sched = nameserver->server->sched;
+	evsched_t *sched = ((server_t *)knot_ns_get_data(nameserver))->sched;
 	if (match->timer) {
 		evsched_cancel(sched, match->timer);
 		evsched_event_free(sched, match->timer);

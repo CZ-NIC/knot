@@ -64,8 +64,7 @@ typedef struct knot_nameserver {
 	size_t err_resp_size;     /*!< Size of the prepared error response. */
 	knot_opt_rr_t *opt_rr;  /*!< OPT RR with the server's EDNS0 info. */
 	
-	/*! \todo REMOVE */
-	struct server_t *server;  /*!< Pointer to server. */
+	void *data;
 } knot_nameserver_t;
 
 /*! \brief Callback for sending one packet back through a TCP connection. */
@@ -218,6 +217,12 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
  */
 int knot_ns_process_ixfrin(knot_nameserver_t *nameserver, 
                              knot_ns_xfr_t *xfr);
+
+void *knot_ns_data(knot_nameserver_t *nameserver);
+
+void *knot_ns_get_data(knot_nameserver_t *nameserver);
+
+void knot_ns_set_data(knot_nameserver_t *nameserver, void *data);
 
 /*!
  * \brief Properly destroys the name server structure.

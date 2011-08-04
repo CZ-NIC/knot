@@ -719,7 +719,7 @@ static int knot_zone_contents_dnames_from_rdata_to_table(
 			debug_knot_zone("Saving dname from "
 					  "rdata to dname table"
 					  ".\n");
-			rc = knot_dname_table_add_dname2(table,
+			rc = knot_dname_table_add_dname_check(table,
 			&knot_rdata_get_item(rdata, j)->dname);
 			if (rc < 0) {
 				debug_knot_zone("Error: %s\n",
@@ -787,7 +787,7 @@ static int knot_zone_contents_dnames_from_node_to_table(
 	                  name);
 	free(name);
 	//knot_dname_t *old_owner = node->owner;
-	int rc = knot_dname_table_add_dname2(table, &node->owner);
+	int rc = knot_dname_table_add_dname_check(table, &node->owner);
 	if (rc < 0) {
 		debug_knot_zone("Failed to add dname to dname table.\n");
 		return rc;

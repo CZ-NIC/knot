@@ -6,11 +6,11 @@
 
 // Units to test
 #include "tests/libknot/realdata/libknot/dname_tests_realdata.h"
+#include "tests/libknot/realdata/libknot/response2_tests_realdata.h"
 //#include "libknot/edns_tests.h"
 #include "tests/libknot/realdata/libknot/node_tests_realdata.h"
 #include "tests/libknot/realdata/libknot/rdata_tests_realdata.h"
 //#include "libknot/response_tests_realdata.h"
-#include "tests/libknot/realdata/libknot/response2_tests_realdata.h"
 #include "tests/libknot/realdata/libknot/rrset_tests_realdata.h"
 //#include "libknot/zone_tests_realdata.h"
 #include "tests/libknot/realdata/libknot/zonedb_tests_realdata.h"

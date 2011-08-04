@@ -1025,7 +1025,8 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			zones_set_acl(&zd->notify_out, &z->acl.notify_out);
 
 			/* Update available interfaces. */
-			zd->xfr_in.ifaces = &ns->server->ifaces;
+			zd->xfr_in.ifaces = 
+				&((server_t *)knot_ns_get_data(ns))->ifaces;
 
 			/* Update master server address. */
 			sockaddr_init(&zd->xfr_in.master, -1);
@@ -1043,7 +1044,8 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			}
 
 			/* Update events scheduled for zone. */
-			zones_timers_update(zone, z, ns->server->sched);
+			zones_timers_update(zone, z, 
+			             ((server_t *)knot_ns_get_data(ns))->sched);
 		}
 
 		knot_zone_contents_dump(knot_zone_get_contents(zone), 1);
@@ -1298,7 +1300,8 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		}
 
 		/* Cancel EXPIRE timer. */
-		evsched_t *sched = nameserver->server->sched;
+		evsched_t *sched =
+			((server_t *)knot_ns_get_data(nameserver))->sched;
 		event_t *expire_ev = zd->xfr_in.expire;
 		if (expire_ev) {
 			evsched_cancel(sched, expire_ev);
@@ -1356,7 +1359,8 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		rcu_read_unlock();
 
 		/* Enqueue XFR request. */
-		return xfr_request(nameserver->server->xfr_h, &xfr_req);
+		return xfr_request(((server_t *)knot_ns_get_data(
+		                     nameserver))->xfr_h, &xfr_req);
 	}
 
 
