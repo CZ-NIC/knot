@@ -12,7 +12,7 @@
 #ifndef _KNOT_ZONEDUMP_H_
 #define _KNOT_ZONEDUMP_H_
 
-#include "libknot/zone.h"
+#include "libknot/zone/zone.h"
 
 /*!
  * \brief Zone loader enums.

@@ -20,15 +20,15 @@
 #include <assert.h>
 
 #include "common.h"
-#include "response.h"
+#include "packet/response.h"
 #include "rrset.h"
-#include "wire.h"
-#include "descriptor.h"
+#include "util/wire.h"
+#include "util/descriptor.h"
 #include "edns.h"
-#include "utils.h"
-#include "node.h"
-#include "error.h"
-#include "debug.h"
+#include "util/utils.h"
+#include "zone/node.h"
+#include "util/error.h"
+#include "util/debug.h"
 
 /*!
  * \brief Default maximum DNS response size

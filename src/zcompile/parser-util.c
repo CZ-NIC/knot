@@ -29,8 +29,8 @@
 //#include "common.h"
 #include "zcompile/parser-util.h"
 #include "zcompile/zcompile.h"
-#include "libknot/descriptor.h"
-#include "libknot/utils.h"
+#include "libknot/util/descriptor.h"
+#include "libknot/util/utils.h"
 
 #define IP6ADDRLEN	(128/8)
 #define	NS_INT16SZ	2

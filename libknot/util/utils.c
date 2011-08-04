@@ -19,7 +19,7 @@
 #include <pthread.h>
 
 #include "common.h"
-#include "utils.h"
+#include "util/utils.h"
 
 /*----------------------------------------------------------------------------*/
 

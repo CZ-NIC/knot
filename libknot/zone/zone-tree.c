@@ -19,8 +19,8 @@
 #include <stdio.h>
 
 #include "zone-tree.h"
-#include "node.h"
-#include "error.h"
+#include "zone/node.h"
+#include "util/error.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */

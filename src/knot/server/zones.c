@@ -1,25 +1,25 @@
 #include <sys/stat.h>
 
 #include "common/lists.h"
-#include "libknot/debug.h"
+#include "libknot/util/debug.h"
 #include "libknot/dname.h"
-#include "libknot/wire.h"
+#include "libknot/util/wire.h"
 #include "knot/zone/zone-dump-text.h"
 #include "knot/zone/zone-load.h"
-#include "libknot/zone.h"
-#include "libknot/zonedb.h"
+#include "libknot/zone/zone.h"
+#include "libknot/zone/zonedb.h"
 #include "knot/conf/conf.h"
 #include "knot/other/debug.h"
 #include "knot/other/error.h"
 #include "knot/other/log.h"
 #include "knot/server/notify.h"
 #include "knot/server/server.h"
-#include "libknot/xfr-in.h"
+#include "libknot/updates/xfr-in.h"
 #include "knot/server/zones.h"
-#include "libknot/error.h"
+#include "libknot/util/error.h"
 #include "knot/zone/zone-dump.h"
-#include "libknot/name-server.h"
-#include "libknot/changesets.h"
+#include "libknot/nameserver/name-server.h"
+#include "libknot/updates/changesets.h"
 
 static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
 static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;

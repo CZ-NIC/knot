@@ -3,7 +3,7 @@
 
 #include "tests/libknot/libknot/dname_tests.h"
 #include "libknot/dname.h"
-#include "libknot/node.h"
+#include "libknot/zone/node.h"
 
 static int knot_dname_tests_count(int argc, char *argv[]);
 static int knot_dname_tests_run(int argc, char *argv[]);

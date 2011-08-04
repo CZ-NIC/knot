@@ -7,11 +7,11 @@
 #include "libknot/common.h"
 #include "knot/zone/zone-dump.h"
 #include "libknot/libknot.h"
-#include "libknot/debug.h"
+#include "libknot/util/debug.h"
 #include "common/skip-list.h"
 #include "common/base32hex.h"
 #include "common/crc.h"
-#include "libknot/error.h"
+#include "libknot/util/error.h"
 
 #define ZONECHECKS_VERBOSE
 

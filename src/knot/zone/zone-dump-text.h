@@ -12,8 +12,8 @@
 #ifndef _KNOT_ZONE_DUMP_TEXT_H_
 #define _KNOT_ZONE_DUMP_TEXT_H_
 
-#include "libknot/descriptor.h"
-#include "libknot/zone.h"
+#include "libknot/util/descriptor.h"
+#include "libknot/zone/zone.h"
 
 /*!
  * \brief Dumps given zone to text (BIND-like) file.

@@ -24,9 +24,9 @@
 
 #include <urcu.h>
 
-#include "utils.h"
+#include "util/utils.h"
 #include "common.h"
-#include "debug.h"
+#include "util/debug.h"
 #include "hash/cuckoo-hash-table.h"
 #include "hash/hash-functions.h"
 #include "common/dynamic-array.h"

@@ -17,18 +17,18 @@
 #include <assert.h>
 #include <urcu.h>
 
-#include "xfr-in.h"
+#include "updates/xfr-in.h"
 
-#include "name-server.h"
-#include "debug.h"
+#include "nameserver/name-server.h"
+#include "util/debug.h"
 // #include "knot/zone/zone-dump.h"
 // #include "knot/zone/zone-load.h"
-#include "packet.h"
+#include "packet/packet.h"
 #include "dname.h"
-#include "zone.h"
-#include "query.h"
-#include "error.h"
-#include "changesets.h"
+#include "zone/zone.h"
+#include "packet/query.h"
+#include "util/error.h"
+#include "updates/changesets.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */

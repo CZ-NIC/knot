@@ -16,12 +16,12 @@
 
 #include <assert.h>
 
-#include "packet.h"
-#include "error.h"
-#include "debug.h"
+#include "packet/packet.h"
+#include "util/error.h"
+#include "util/debug.h"
 #include "common.h"
-#include "descriptor.h"
-#include "wire.h"
+#include "util/descriptor.h"
+#include "util/wire.h"
 
 /*----------------------------------------------------------------------------*/
 

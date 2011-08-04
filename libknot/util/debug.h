@@ -32,9 +32,9 @@
 #include <stdio.h>
 #include "rdata.h"
 #include "rrset.h"
-#include "node.h"
-#include "zone.h"
-#include "utils.h"
+#include "zone/node.h"
+#include "zone/zone.h"
+#include "util/utils.h"
 #include "common/print.h"
 
 /*!

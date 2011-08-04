@@ -5,11 +5,11 @@
 #include "tests/libknot/realdata/libknot/response_tests_realdata.h"
 #include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
 #include "libknot/common.h"
-#include "libknot/response.h"
+#include "libknot/packet/response.h"
 #include "libknot/rdata.h"
 #include "libknot/rrset.h"
 #include "libknot/dname.h"
-#include "libknot/descriptor.h"
+#include "libknot/util/descriptor.h"
 #include "libknot/edns.h"
 #include "common/lists.h"
 

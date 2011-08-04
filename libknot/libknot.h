@@ -28,20 +28,20 @@
 #define _KNOT_LIBKNOT_H_
 
 #include "consts.h"
-#include "descriptor.h"
+#include "util/descriptor.h"
 #include "dname.h"
 #include "edns.h"
-#include "node.h"
+#include "zone/node.h"
 #include "nsec3.h"
-#include "wire.h"
+#include "util/wire.h"
 #include "rdata.h"
-#include "response2.h"
+#include "packet/response2.h"
 #include "rrset.h"
-#include "tolower.h"
-#include "utils.h"
-#include "zone.h"
-#include "zonedb.h"
-#include "error.h"
+#include "util/tolower.h"
+#include "util/utils.h"
+#include "zone/zone.h"
+#include "zone/zonedb.h"
+#include "util/error.h"
 
 #endif
 

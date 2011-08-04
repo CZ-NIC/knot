@@ -30,7 +30,7 @@
 #include <stdint.h>
 #include <assert.h>
 
-#include "utils.h"
+#include "util/utils.h"
 
 /*! \brief Offset of DNS header fields in wireformat. */
 enum knot_wire_offsets {

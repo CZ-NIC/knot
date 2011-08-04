@@ -16,13 +16,13 @@
 
 #include <stdlib.h>
 
-#include "response2.h"
-#include "wire.h"
-#include "descriptor.h"
+#include "packet/response2.h"
+#include "util/wire.h"
+#include "util/descriptor.h"
 #include "common.h"
-#include "error.h"
-#include "debug.h"
-#include "packet.h"
+#include "util/error.h"
+#include "util/debug.h"
+#include "packet/packet.h"
 
 /*----------------------------------------------------------------------------*/
 /*!

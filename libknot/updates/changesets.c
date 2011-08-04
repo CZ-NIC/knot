@@ -18,10 +18,10 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "changesets.h"
+#include "updates/changesets.h"
 
 #include "rrset.h"
-#include "error.h"
+#include "util/error.h"
 
 static const size_t KNOT_CHANGESET_COUNT = 5;
 static const size_t KNOT_CHANGESET_STEP = 5;

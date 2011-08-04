@@ -14,10 +14,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "query.h"
+#include "packet/query.h"
 
-#include "error.h"
-#include "wire.h"
+#include "util/error.h"
+#include "util/wire.h"
 
 /*----------------------------------------------------------------------------*/
 

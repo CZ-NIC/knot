@@ -16,9 +16,9 @@
 
 #include <assert.h>
 
-#include "zone-contents.h"
-#include "error.h"
-#include "debug.h"
+#include "zone/zone-contents.h"
+#include "util/error.h"
+#include "util/debug.h"
 #include "common/base32hex.h"
 
 /*----------------------------------------------------------------------------*/

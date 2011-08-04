@@ -19,11 +19,11 @@
 
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
-#include "libknot/node.h"
+#include "libknot/zone/node.h"
 #include "libknot/rdata.h"
-#include "libknot/zone.h"
-#include "libknot/dname-table.h"
-#include "libknot/dname-table.h"
+#include "libknot/zone/zone.h"
+#include "libknot/zone/dname-table.h"
+#include "libknot/zone/dname-table.h"
 #include "common/slab/slab.h"
 
 #define MAXRDATALEN	64	/*!< Maximum number of RDATA items. */

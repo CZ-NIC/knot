@@ -3,9 +3,9 @@
 #include <assert.h>
 
 #include "libknot/common.h"
-#include "libknot/error.h"
+#include "libknot/util/error.h"
 #include "libknot/nsec3.h"
-#include "libknot/utils.h"
+#include "libknot/util/utils.h"
 #include "common/base32hex.h"
 #include "nsec3_tests.h"
 

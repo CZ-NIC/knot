@@ -29,16 +29,16 @@
 
 #include <time.h>
 
-#include "node.h"
+#include "zone/node.h"
 #include "dname.h"
 #include "nsec3.h"
-#include "dname-table.h"
+#include "zone/dname-table.h"
 #include "common/tree.h"
 #include "hash/cuckoo-hash-table.h"
 
 #include "zone-tree.h"
 
-#include "zone-contents.h"
+#include "zone/zone-contents.h"
 
 /*----------------------------------------------------------------------------*/
 

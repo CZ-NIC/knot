@@ -6,13 +6,13 @@
 #include "tests/libknot/libknot/response2_tests.h"
 #include "common/lists.h"
 #include "libknot/common.h"
-#include "libknot/error.h"
-#include "libknot/response2.h"
+#include "libknot/util/error.h"
+#include "libknot/packet/response2.h"
 #include "libknot/rdata.h"
 #include "libknot/rrset.h"
 #include "libknot/dname.h"
-#include "libknot/wire.h"
-#include "libknot/descriptor.h"
+#include "libknot/util/wire.h"
+#include "libknot/util/descriptor.h"
 #include "libknot/edns.h"
 
 #ifdef TEST_WITH_LDNS

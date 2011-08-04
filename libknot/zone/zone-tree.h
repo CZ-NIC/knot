@@ -30,7 +30,7 @@
 #define _KNOT_ZONE_TREE_H_
 
 #include "common/tree.h"
-#include "node.h"
+#include "zone/node.h"
 
 /*----------------------------------------------------------------------------*/
 

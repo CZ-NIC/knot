@@ -5,9 +5,9 @@
 #include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
 #include "libknot/common.h"
 #include "libknot/rdata.h"
-#include "libknot/descriptor.h"
-#include "libknot/utils.h"
-#include "libknot/error.h"
+#include "libknot/util/descriptor.h"
+#include "libknot/util/utils.h"
+#include "libknot/util/error.h"
 
 static int knot_rdata_tests_count(int argc, char *argv[]);
 static int knot_rdata_tests_run(int argc, char *argv[]);

@@ -22,12 +22,12 @@
 #include <urcu.h>
 
 #include "common.h"
-#include "node.h"
+#include "zone/node.h"
 #include "rrset.h"
-#include "error.h"
+#include "util/error.h"
 #include "common/skip-list.h"
 #include "common/tree.h"
-#include "debug.h"
+#include "util/debug.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
