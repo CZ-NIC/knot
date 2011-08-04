@@ -5,7 +5,7 @@
 #include "packet_tests_realdata.h"
 #include "libknot/util/error.h"
 #include "libknot/packet/packet.h"
-#include "libknot/packet/response2.h"
+#include "libknot/packet/response.h"
 /* *test_t structures */
 #include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
 #ifdef TEST_WITH_LDNS

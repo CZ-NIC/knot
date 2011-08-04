@@ -5,7 +5,7 @@
 #include "libknot/dname.h"
 #include "libknot/packet/packet.h"
 #include "libknot/rrset.h"
-#include "libknot/packet/response2.h"
+#include "libknot/packet/response.h"
 #include "libknot/packet/query.h"
 #include "libknot/consts.h"
 #include "knot/other/error.h"
@@ -58,14 +58,14 @@ static int notify_request(const knot_rrset_t *rrset,
 
 	/*! \todo add the SOA RR to the Answer section as a hint */
 	/*! \todo this should not use response API!! */
-//	rc = knot_response2_add_rrset_answer(pkt, rrset, 0, 0, 0);
+//	rc = knot_response_add_rrset_answer(pkt, rrset, 0, 0, 0);
 //	if (rc != KNOT_EOK) {
 //		knot_packet_free(&pkt);
 //		return rc;
 //	}
 
 	/*! \todo this should not use response API!! */
-	knot_response2_set_aa(pkt);
+	knot_response_set_aa(pkt);
 
 	knot_query_set_opcode(pkt, KNOT_OPCODE_NOTIFY);
 
@@ -103,7 +103,7 @@ int notify_create_response(knot_packet_t *request, uint8_t *buffer,
 		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	CHECK_ALLOC_LOG(response, KNOTD_ENOMEM);
 
-	knot_response2_init_from_query(response, request);
+	knot_response_init_from_query(response, request);
 
 	// TODO: copy the SOA in Answer section
 

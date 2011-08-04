@@ -70,7 +70,7 @@ unittests_SOURCES =				\
 
 unittests_libknot_realdata_SOURCES =			\
 	tests/libknot/realdata/libknot/dname_tests_realdata.c	\
-	tests/libknot/realdata/libknot/response2_tests_realdata.c	\
+	tests/libknot/realdata/libknot/response_tests_realdata.c	\
 	tests/libknot/realdata/libknot/edns_tests_realdata.c	\
 	tests/libknot/realdata/libknot/node_tests_realdata.c	\
 	tests/libknot/realdata/libknot/rdata_tests_realdata.c	\
@@ -86,8 +86,8 @@ unittests_libknot_realdata_SOURCES =			\
 unittests_libknot_SOURCES =			\
 	tests/libknot/libknot/cuckoo_tests.c	\
 	tests/libknot/libknot/cuckoo_tests.h	\
-	tests/libknot/libknot/response2_tests.h	\
-	tests/libknot/libknot/response2_tests.c	\
+	tests/libknot/libknot/response_tests.h	\
+	tests/libknot/libknot/response_tests.c	\
 	tests/libknot/libknot/dname_tests.c	\
 	tests/libknot/libknot/dname_tests.h	\
 	tests/libknot/libknot/dname_table_tests.h	\

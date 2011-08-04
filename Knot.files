@@ -31,8 +31,6 @@ libknot/packet/packet.h
 libknot/packet/packet.c
 libknot/packet/query.h
 libknot/packet/query.c
-libknot/packet/response2.h
-libknot/packet/response2.c
 libknot/packet/response.h
 libknot/packet/response.c
 libknot/updates/changesets.h
@@ -205,8 +203,6 @@ src/tests/libknot/libknot/dname_table_tests.h
 src/tests/libknot/libknot/dname_table_tests.c
 src/tests/libknot/libknot/packet_tests.c
 src/tests/libknot/libknot/packet_tests.h
-src/tests/libknot/libknot/response2_tests.c
-src/tests/libknot/libknot/response2_tests.h
 src/tests/libknot/libknot/query_tests.c
 src/tests/libknot/libknot/query_tests.h
 src/tests/libknot/libknot/nsec3_tests.c
@@ -214,8 +210,6 @@ src/tests/libknot/libknot/nsec3_tests.h
 src/tests/libknot/realdata/unittests_libknot_realdata.c
 src/tests/libknot/realdata/libknot/packet_tests_realdata.c
 src/tests/libknot/realdata/libknot/packet_tests_realdata.h
-src/tests/libknot/realdata/libknot/response2_tests_realdata.c
-src/tests/libknot/realdata/libknot/response2_tests_realdata.h
 src/tests/libknot/realdata/libknot/dname_tests_realdata.c
 src/tests/libknot/realdata/libknot/dname_tests_realdata.h
 src/tests/libknot/realdata/libknot/edns_tests_realdata.c

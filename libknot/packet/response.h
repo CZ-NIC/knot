@@ -1,5 +1,5 @@
 /*!
- * \file response2.h
+ * \file response.h
  *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
@@ -24,8 +24,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_RESPONSE2_H_
-#define _KNOT_RESPONSE2_H_
+#ifndef _KNOT_response_H_
+#define _KNOT_response_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -44,7 +44,7 @@
 static const short KNOT_MAX_RESPONSE_SIZE = 512;
 
 /*----------------------------------------------------------------------------*/
-int knot_response2_init(knot_packet_t *response);
+int knot_response_init(knot_packet_t *response);
 
 /*!
  * \brief Initializes response from the given query.
@@ -61,7 +61,7 @@ int knot_response2_init(knot_packet_t *response);
  *
  * \retval KNOT_EOK
  */
-int knot_response2_init_from_query(knot_packet_t *response,
+int knot_response_init_from_query(knot_packet_t *response,
                                     knot_packet_t *query);
 
 /*!
@@ -74,7 +74,7 @@ int knot_response2_init_from_query(knot_packet_t *response,
  *
  * \todo Replace the use of this function with something else maybe?
  */
-void knot_response2_clear(knot_packet_t *resp, int clear_question);
+void knot_response_clear(knot_packet_t *resp, int clear_question);
 
 /*!
  * \brief Sets the OPT RR of the response.
@@ -94,7 +94,7 @@ void knot_response2_clear(knot_packet_t *resp, int clear_question);
  *
  * \todo Needs test.
  */
-int knot_response2_add_opt(knot_packet_t *resp,
+int knot_response_add_opt(knot_packet_t *resp,
                             const knot_opt_rr_t *opt_rr,
                             int override_max_size);
 
@@ -114,7 +114,7 @@ int knot_response2_add_opt(knot_packet_t *resp,
  * \retval KNOT_ENOMEM
  * \retval KNOT_ESPACE
  */
-int knot_response2_add_rrset_answer(knot_packet_t *response,
+int knot_response_add_rrset_answer(knot_packet_t *response,
                                      const knot_rrset_t *rrset, int tc,
                                      int check_duplicates, int compr_cs);
 
@@ -134,7 +134,7 @@ int knot_response2_add_rrset_answer(knot_packet_t *response,
  * \retval KNOT_ENOMEM
  * \retval KNOT_ESPACE
  */
-int knot_response2_add_rrset_authority(knot_packet_t *response,
+int knot_response_add_rrset_authority(knot_packet_t *response,
                                         const knot_rrset_t *rrset, int tc,
                                         int check_duplicates, int compr_cs);
 
@@ -154,7 +154,7 @@ int knot_response2_add_rrset_authority(knot_packet_t *response,
  * \retval KNOT_ENOMEM
  * \retval KNOT_ESPACE
  */
-int knot_response2_add_rrset_additional(knot_packet_t *response,
+int knot_response_add_rrset_additional(knot_packet_t *response,
                                          const knot_rrset_t *rrset, int tc,
                                          int check_duplicates, int compr_cs);
 
@@ -164,21 +164,21 @@ int knot_response2_add_rrset_additional(knot_packet_t *response,
  * \param response Response to set the RCODE in.
  * \param rcode RCODE to set.
  */
-void knot_response2_set_rcode(knot_packet_t *response, short rcode);
+void knot_response_set_rcode(knot_packet_t *response, short rcode);
 
 /*!
  * \brief Sets the AA bit of the response to 1.
  *
  * \param response Response in which the AA bit should be set.
  */
-void knot_response2_set_aa(knot_packet_t *response);
+void knot_response_set_aa(knot_packet_t *response);
 
 /*!
  * \brief Sets the TC bit of the response to 1.
  *
  * \param response Response in which the TC bit should be set.
  */
-void knot_response2_set_tc(knot_packet_t *response);
+void knot_response_set_tc(knot_packet_t *response);
 
 /*!
  * \brief Adds NSID option to the response.
@@ -190,9 +190,9 @@ void knot_response2_set_tc(knot_packet_t *response);
  * \retval KNOT_EOK
  * \retval KNOT_ENOMEM
  */
-int knot_response2_add_nsid(knot_packet_t *response, const uint8_t *data,
+int knot_response_add_nsid(knot_packet_t *response, const uint8_t *data,
                              uint16_t length);
 
-#endif /* _KNOT_RESPONSE2_H_ */
+#endif /* _KNOT_response_H_ */
 
 /*! @} */

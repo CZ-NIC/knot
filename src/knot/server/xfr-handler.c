@@ -478,7 +478,7 @@ int xfr_master(dthread_t *thread)
 		/* Report. */
 		if (ret != KNOTD_EOK) {
 			log_server_error("%s request failed: %s\n",
-					 req_type, knot_strerror(ret));
+					 req_type, knotd_strerror(ret));
 		}
 	}
 

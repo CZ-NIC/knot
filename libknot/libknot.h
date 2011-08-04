@@ -35,7 +35,7 @@
 #include "nsec3.h"
 #include "util/wire.h"
 #include "rdata.h"
-#include "packet/response2.h"
+#include "packet/response.h"
 #include "rrset.h"
 #include "util/tolower.h"
 #include "util/utils.h"

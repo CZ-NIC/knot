@@ -982,7 +982,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			if (ret != KNOTD_EOK) {
 				log_server_error("Error loading new zone to"
 				                 " the new database: %s\n",
-				                 knot_strerror(ret));
+				                 knotd_strerror(ret));
 			} else {
 				// Find the new zone
 				zone = knot_zonedb_find_zone(db_new,
@@ -1001,7 +1001,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			if (ret != KNOTD_EOK) {
 				log_server_error("Error adding old zone to"
 				                 " the new database: %s\n",
-				                 knot_strerror(ret));
+				                 knotd_strerror(ret));
 			} else {
 				++inserted;
 			}

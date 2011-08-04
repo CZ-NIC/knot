@@ -56,11 +56,11 @@ libknot_la_SOURCES =				\
 	util/descriptor.h			\
 	util/wire.h				\
 	packet/query.c				\
-	packet/response2.c			\
+	packet/response.c			\
 	packet/packet.c				\
 	packet/packet.h				\
 	packet/query.h				\
-	packet/response2.h			\
+	packet/response.h			\
 	zone/zone.c				\
 	zone/zone-contents.c			\
 	zone/zone-tree.c			\

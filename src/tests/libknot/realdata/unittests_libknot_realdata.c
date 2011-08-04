@@ -6,7 +6,7 @@
 
 // Units to test
 #include "tests/libknot/realdata/libknot/dname_tests_realdata.h"
-#include "tests/libknot/realdata/libknot/response2_tests_realdata.h"
+#include "tests/libknot/realdata/libknot/response_tests_realdata.h"
 //#include "libknot/edns_tests.h"
 #include "tests/libknot/realdata/libknot/node_tests_realdata.h"
 #include "tests/libknot/realdata/libknot/rdata_tests_realdata.h"
@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 		&rdata_tests_api,    //! DNS library (rdata) unit
 		&packet_tests_api,
 //		&response_tests_api, //! DNS library (response) unit
-		&response2_tests_api, //! DNS library (response) unit
+		&response_tests_api, //! DNS library (response) unit
 		&rrset_tests_api,    //! DNS library (rrset) unit
 //		&zone_tests_api,     //! DNS library (zone) unit
 //		&zonedb_tests_api,   //! DNS library (zonedb) unit
