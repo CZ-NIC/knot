@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 		&dname_tests_api,    //! DNS library (dname) unit
 		&edns_tests_api,     //! DNS library (EDNS0) unit
 		&zone_tests_api,     //! DNS library (zone) unit
-//		&node_tests_api,     //! DNS library (node) unit
+		&node_tests_api,     //! DNS library (node) unit
 		&rdata_tests_api,    //! DNS library (rdata) unit
 		&response2_tests_api, //! DNS library (response) unit
 		&rrset_tests_api,    //! DNS library (rrset) unit

@@ -735,8 +735,8 @@ static int test_zone_shallow_copy()
 	}
 #endif
 
-	knot_zone_contents_deep_free(&from);
-	knot_zone_contents_free(&to);
+//	knot_zone_deep_free(&from_zone, 0);
+//	knot_zone_contents_free(&to);
 	return (errors == 0);
 
 }
