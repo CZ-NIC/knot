@@ -1,3 +1,19 @@
+/*  Copyright (C) 2011 CZ.NIC Labs
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <config.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -124,183 +140,6 @@ void knot_zone_set_data(knot_zone_t *zone, void *data)
 	zone->data = data;
 }
 
-/*----------------------------------------------------------------------------*/
-/* Zone contents functions. TODO: remove                                      */
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_add_node(knot_zone_t *zone, knot_node_t *node,
-                         int create_parents, int use_domain_table)
-{
-	if (zone == NULL || node == NULL) {
-		return KNOT_EBADARG;
-	}
-
-	knot_node_set_zone(node, zone);
-
-	return knot_zone_contents_add_node(zone->contents, node,
-	                                     create_parents, 0,
-	                                     use_domain_table);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_add_nsec3_node(knot_zone_t *zone, knot_node_t *node,
-                               int create_parents, int use_domain_table)
-{
-	if (zone == NULL) {
-		return KNOT_EBADARG;
-	}
-
-	return knot_zone_contents_add_nsec3_node(zone->contents, node,
-	                                           create_parents, 0,
-	                                           use_domain_table);
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_node_t *knot_zone_get_node(const knot_zone_t *zone,
-                                    const knot_dname_t *name)
-{
-	if (zone == NULL) {
-		return NULL;
-	}
-
-	return knot_zone_contents_get_node(zone->contents, name);
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_node_t *knot_zone_get_nsec3_node(const knot_zone_t *zone,
-                                          const knot_dname_t *name)
-{
-	if (zone == NULL) {
-		return NULL;
-	}
-
-	return knot_zone_contents_get_nsec3_node(zone->contents, name);
-}
-
-/*----------------------------------------------------------------------------*/
-
-const knot_node_t *knot_zone_find_node(const knot_zone_t *zone,
-                                           const knot_dname_t *name)
-{
-	if (zone == NULL) {
-		return NULL;
-	}
-
-	return knot_zone_contents_find_node(zone->contents, name);
-}
-
-/*----------------------------------------------------------------------------*/
-
-const knot_node_t *knot_zone_find_nsec3_node(const knot_zone_t *zone,
-                                                 const knot_dname_t *name)
-{
-	if (zone == NULL) {
-		return NULL;
-	}
-
-	return knot_zone_contents_find_nsec3_node(zone->contents, name);
-}
-
-/*----------------------------------------------------------------------------*/
-
-const knot_node_t *knot_zone_apex(const knot_zone_t *zone)
-{
-	if (zone == NULL) {
-		return NULL;
-	}
-
-	return knot_zone_contents_apex(zone->contents);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_tree_apply_postorder(knot_zone_t *zone,
-                              void (*function)(knot_node_t *node, void *data),
-                              void *data)
-{
-	if (zone == NULL) {
-		return KNOT_EBADARG;
-	}
-
-	return knot_zone_contents_tree_apply_postorder(zone->contents,
-	                                                 function, data);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_tree_apply_inorder(knot_zone_t *zone,
-                              void (*function)(knot_node_t *node, void *data),
-                              void *data)
-{
-	if (zone == NULL) {
-		return KNOT_EBADARG;
-	}
-
-	return knot_zone_contents_tree_apply_inorder(zone->contents,
-	                                               function, data);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_tree_apply_inorder_reverse(knot_zone_t *zone,
-                              void (*function)(knot_node_t *node, void *data),
-                              void *data)
-{
-	if (zone == NULL) {
-		return KNOT_EBADARG;
-	}
-
-	return knot_zone_contents_tree_apply_inorder_reverse(zone->contents,
-	                                                       function, data);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_nsec3_apply_postorder(knot_zone_t *zone,
-                              void (*function)(knot_node_t *node, void *data),
-                              void *data)
-{
-	if (zone == NULL) {
-		return KNOT_EBADARG;
-	}
-
-	return knot_zone_contents_nsec3_apply_postorder(zone->contents,
-	                                                  function, data);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_nsec3_apply_inorder(knot_zone_t *zone,
-                              void (*function)(knot_node_t *node, void *data),
-                              void *data)
-{
-	if (zone == NULL) {
-		return KNOT_EBADARG;
-	}
-
-	return knot_zone_contents_nsec3_apply_inorder(zone->contents,
-	                                                function, data);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_nsec3_apply_inorder_reverse(knot_zone_t *zone,
-                              void (*function)(knot_node_t *node, void *data),
-                              void *data)
-{
-	if (zone == NULL) {
-		return KNOT_EBADARG;
-	}
-
-	return knot_zone_contents_nsec3_apply_inorder_reverse(zone->contents,
-	                                                        function, data);
-}
-
-/*----------------------------------------------------------------------------*/
-/*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
 
 knot_zone_contents_t *knot_zone_switch_contents(knot_zone_t *zone,

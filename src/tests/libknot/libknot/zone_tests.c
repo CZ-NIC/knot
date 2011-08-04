@@ -61,7 +61,7 @@ static int test_zone_check_node(const knot_node_t *node,
 	        && node->parent == test_node->parent);
 }
 
-static int test_zone_create(knot_zone_t **zone)
+static int test_zone_create(knot_zone_contents_t **zone)
 {
 //	knot_dname_t *dname = knot_dname_new_from_wire(
 //		test_apex.owner.name, test_apex.owner.size, NULL);
@@ -74,7 +74,7 @@ static int test_zone_create(knot_zone_t **zone)
 		return 0;
 	}
 
-	*zone = knot_zone_new(node, 0, 1);
+	*zone = knot_zone_contents_new(node, 0, 0, NULL);
 
 	if ((*zone) == NULL) {
 		diag("zone: Failed to create zone.");
@@ -82,7 +82,7 @@ static int test_zone_create(knot_zone_t **zone)
 		return 0;
 	}
 
-	if ((*zone)->contents->apex != node) {
+	if ((*zone)->apex != node) {
 		diag("zone: Zone apex not set right.");
 		knot_node_free(&node, 1, 0);
 		return 0;
@@ -91,7 +91,7 @@ static int test_zone_create(knot_zone_t **zone)
 	return 1;
 }
 
-static int test_zone_add_node(knot_zone_t *zone, int nsec3)
+static int test_zone_add_node(knot_zone_contents_t *zone, int nsec3)
 {
 	/*
 	 * NSEC3 nodes are de facto identical to normal nodes, so there is no
@@ -112,8 +112,8 @@ static int test_zone_add_node(knot_zone_t *zone, int nsec3)
 			return 0;
 		}
 
-		if ((res = ((nsec3) ? knot_zone_add_nsec3_node(zone, node, 0, 1)
-		                   : knot_zone_add_node(zone, node, 0, 1))) != 0) {
+		if ((res = ((nsec3) ? knot_zone_contents_add_nsec3_node(zone, node, 0, 0, 0)
+		                   : knot_zone_contents_add_node(zone, node, 0, 0, 0))) != 0) {
 			diag("zone: Failed to insert node into zone (returned"
 			     " %d).", res);
 			knot_node_free(&node, 0, 0);
@@ -132,8 +132,8 @@ static int test_zone_add_node(knot_zone_t *zone, int nsec3)
 			return 0;
 		}
 
-		if ((res = ((nsec3) ? knot_zone_add_nsec3_node(zone, node, 0, 1)
-			: knot_zone_add_node(zone, node, 0, 1))) !=
+		if ((res = ((nsec3) ? knot_zone_contents_add_nsec3_node(zone, node, 0, 0, 0)
+			: knot_zone_contents_add_node(zone, node, 0, 0, 0))) !=
 		                KNOT_EBADZONE) {
 			diag("zone: Inserting wrong node did not result in"
 			     "proper return value (%d instead of %d).", res,
@@ -154,8 +154,8 @@ static int test_zone_add_node(knot_zone_t *zone, int nsec3)
 		return 0;
 	}
 
-	if ((res = ((nsec3) ? knot_zone_add_nsec3_node(NULL, node, 0, 1)
-		: knot_zone_add_node(NULL, node, 0, 1))) != KNOT_EBADARG) {
+	if ((res = ((nsec3) ? knot_zone_contents_add_nsec3_node(NULL, node, 0, 0, 0)
+		: knot_zone_contents_add_node(NULL, node, 0, 0, 0))) != KNOT_EBADARG) {
 		diag("zone: Inserting node to NULL zone did not result in"
 		     "proper return value (%d instead of %d)", res,
 		     KNOT_EBADARG);
@@ -167,8 +167,8 @@ static int test_zone_add_node(knot_zone_t *zone, int nsec3)
 	//note("NULL node");
 	note("Inserting NULL node...\n");
 
-	if ((res = ((nsec3) ? knot_zone_add_nsec3_node(zone, NULL, 0, 1)
-		: knot_zone_add_node(zone, NULL, 0, 1))) != KNOT_EBADARG) {
+	if ((res = ((nsec3) ? knot_zone_contents_add_nsec3_node(zone, NULL, 0, 0, 0)
+		: knot_zone_contents_add_node(zone, NULL, 0, 0, 0))) != KNOT_EBADARG) {
 		diag("zone: Inserting NULL node to zone did not result in"
 		     "proper return value (%d instead of %d)", res,
 		     KNOT_EBADARG);
@@ -186,7 +186,7 @@ static int test_zone_add_node(knot_zone_t *zone, int nsec3)
 
 		//note("Apex again");
 
-		if ((res = knot_zone_add_node(zone, node, 0, 1)) !=
+		if ((res = knot_zone_contents_add_node(zone, node, 0, 0, 0)) !=
 		                KNOT_EBADZONE) {
 			diag("zone: Inserting zone apex again did not result in"
 			     "proper return value (%d instead of -2)",
@@ -200,7 +200,7 @@ static int test_zone_add_node(knot_zone_t *zone, int nsec3)
 	// check if all nodes are inserted
 	//int nodes = 0;
 	if (!nsec3
-	    && !test_zone_check_node(knot_zone_apex(zone), &test_apex)) {
+	    && !test_zone_check_node(knot_zone_contents_apex(zone), &test_apex)) {
 		diag("zone: Apex of zone not right.");
 //		diag("Apex owner: %s (%p), apex parent: %p\n",
 //		     knot_dname_to_str(knot_zone_apex(zone)->owner),
@@ -214,9 +214,9 @@ static int test_zone_add_node(knot_zone_t *zone, int nsec3)
 	}
 	//++nodes;
 	for (int i = 0; i < TEST_NODES_GOOD; ++i) {
-		const knot_node_t *n = ((nsec3) ? knot_zone_find_nsec3_node(
+		const knot_node_t *n = ((nsec3) ? knot_zone_contents_find_nsec3_node(
 				zone, &test_nodes_good[i].owner) :
-			knot_zone_find_node(zone, &test_nodes_good[i].owner));
+			knot_zone_contents_find_node(zone, &test_nodes_good[i].owner));
 		if (n == NULL) {
 			diag("zone: Missing node with owner %s",
 			     test_nodes_good[i].owner.name);
@@ -239,14 +239,14 @@ static int test_zone_add_node(knot_zone_t *zone, int nsec3)
 	return (errors == 0);
 }
 
-static int test_zone_get_node(knot_zone_t *zone, int nsec3)
+static int test_zone_get_node(knot_zone_contents_t *zone, int nsec3)
 {
 	int errors = 0;
 
 	for (int i = 0; i < TEST_NODES_GOOD; ++i) {
-		if (((nsec3) ? knot_zone_get_nsec3_node(
+		if (((nsec3) ? knot_zone_contents_get_nsec3_node(
 		                   zone, &test_nodes_good[i].owner)
-			: knot_zone_get_node(zone, &test_nodes_good[i].owner))
+			: knot_zone_contents_get_node(zone, &test_nodes_good[i].owner))
 			== NULL) {
 			diag("zone: Node (%s) not found in zone.",
 			     (char *)test_nodes_good[i].owner.name);
@@ -255,9 +255,9 @@ static int test_zone_get_node(knot_zone_t *zone, int nsec3)
 	}
 
 	for (int i = 0; i < TEST_NODES_BAD; ++i) {
-		if (((nsec3) ? knot_zone_get_nsec3_node(
+		if (((nsec3) ? knot_zone_contents_get_nsec3_node(
 		                   zone, &test_nodes_bad[i].owner)
-			: knot_zone_get_node(zone, &test_nodes_bad[i].owner))
+			: knot_zone_contents_get_node(zone, &test_nodes_bad[i].owner))
 			!= NULL) {
 			diag("zone: Node (%s) found in zone even if it should"
 			     "not be there.",
@@ -267,21 +267,21 @@ static int test_zone_get_node(knot_zone_t *zone, int nsec3)
 	}
 
 	if (((nsec3)
-	     ? knot_zone_get_nsec3_node(NULL, &test_nodes_good[0].owner)
-	     : knot_zone_get_node(NULL, &test_nodes_good[0].owner)) != NULL) {
+	     ? knot_zone_contents_get_nsec3_node(NULL, &test_nodes_good[0].owner)
+	     : knot_zone_contents_get_node(NULL, &test_nodes_good[0].owner)) != NULL) {
 		diag("zone: Getting node from NULL zone did not result in"
 		     "proper return value (NULL)");
 		++errors;
 	}
 
-	if (((nsec3) ? knot_zone_get_nsec3_node(zone, NULL)
-	             : knot_zone_get_node(zone, NULL)) != NULL) {
+	if (((nsec3) ? knot_zone_contents_get_nsec3_node(zone, NULL)
+	             : knot_zone_contents_get_node(zone, NULL)) != NULL) {
 		diag("zone: Getting node with NULL owner from zone did not "
 		     "result in proper return value (NULL)");
 		++errors;
 	}
 
-	if (!nsec3 && knot_zone_get_node(zone, &test_apex.owner) == NULL) {
+	if (!nsec3 && knot_zone_contents_get_node(zone, &test_apex.owner) == NULL) {
 		diag("zone: Getting zone apex from the zone failed");
 		++errors;
 	}
@@ -289,14 +289,14 @@ static int test_zone_get_node(knot_zone_t *zone, int nsec3)
 	return (errors == 0);
 }
 
-static int test_zone_find_node(knot_zone_t *zone, int nsec3)
+static int test_zone_find_node(knot_zone_contents_t *zone, int nsec3)
 {
 	int errors = 0;
 
 	for (int i = 0; i < TEST_NODES_GOOD; ++i) {
-		if (((nsec3) ? knot_zone_find_nsec3_node(
+		if (((nsec3) ? knot_zone_contents_find_nsec3_node(
 		                   zone, &test_nodes_good[i].owner)
-		    : knot_zone_find_node(zone, &test_nodes_good[i].owner))
+		    : knot_zone_contents_find_node(zone, &test_nodes_good[i].owner))
 		    == NULL) {
 			diag("zone: Node (%s) not found in zone.",
 			     (char *)test_nodes_good[i].owner.name);
@@ -305,9 +305,9 @@ static int test_zone_find_node(knot_zone_t *zone, int nsec3)
 	}
 
 	for (int i = 0; i < TEST_NODES_BAD; ++i) {
-		if (((nsec3) ? knot_zone_find_nsec3_node(
+		if (((nsec3) ? knot_zone_contents_find_nsec3_node(
 		                   zone, &test_nodes_bad[i].owner)
-		    : knot_zone_find_node(zone, &test_nodes_bad[i].owner))
+		    : knot_zone_contents_find_node(zone, &test_nodes_bad[i].owner))
 		    != NULL) {
 			diag("zone: Node (%s) found in zone even if it should"
 			     "not be there.",
@@ -317,21 +317,21 @@ static int test_zone_find_node(knot_zone_t *zone, int nsec3)
 	}
 
 	if (((nsec3)
-	    ? knot_zone_find_nsec3_node(NULL, &test_nodes_good[0].owner)
-	    : knot_zone_find_node(NULL, &test_nodes_good[0].owner)) != NULL) {
+	    ? knot_zone_contents_find_nsec3_node(NULL, &test_nodes_good[0].owner)
+	    : knot_zone_contents_find_node(NULL, &test_nodes_good[0].owner)) != NULL) {
 		diag("zone: Finding node from NULL zone did not result in"
 		     "proper return value (NULL)");
 		++errors;
 	}
 
-	if (((nsec3) ? knot_zone_find_nsec3_node(zone, NULL)
-	             : knot_zone_find_node(zone, NULL)) != NULL) {
+	if (((nsec3) ? knot_zone_contents_find_nsec3_node(zone, NULL)
+	             : knot_zone_contents_find_node(zone, NULL)) != NULL) {
 		diag("zone: Finding node with NULL owner from zone did not "
 		     "result in proper return value (NULL)");
 		++errors;
 	}
 
-	if (!nsec3 && knot_zone_find_node(zone, &test_apex.owner) == NULL) {
+	if (!nsec3 && knot_zone_contents_find_node(zone, &test_apex.owner) == NULL) {
 		diag("zone: Finding zone apex from the zone failed");
 		++errors;
 	}
@@ -380,14 +380,14 @@ static void tmp_compare_function(knot_node_t *node, void *data)
 	node_index++;
 }
 
-static int test_zone_tree_apply(knot_zone_t *zone,
+static int test_zone_tree_apply(knot_zone_contents_t *zone,
                                 int type, int nsec3)
 {
 
 	assert(node_index == 0);
 	assert(compare_ok == 1);
 
-	int (*traversal_func)(knot_zone_t *zone,
+	int (*traversal_func)(knot_zone_contents_t *zone,
 	                       void (*function)(knot_node_t *node,
 	                                        void *data),
 	                       void *data);
@@ -396,11 +396,11 @@ static int test_zone_tree_apply(knot_zone_t *zone,
 		case 0: {
 			if (nsec3) {
 				traversal_func =
-					&knot_zone_nsec3_apply_postorder;
+					&knot_zone_contents_nsec3_apply_postorder;
 				diag("Testing postorder traversal");
 			} else {
 				traversal_func =
-					&knot_zone_tree_apply_postorder;
+					&knot_zone_contents_tree_apply_postorder;
 				diag("Testing postorder traversal - NSEC3");
 			}
 			break;
@@ -408,11 +408,11 @@ static int test_zone_tree_apply(knot_zone_t *zone,
 		case 1: {
 			if (nsec3) {
 				traversal_func =
-					&knot_zone_nsec3_apply_inorder;
+					&knot_zone_contents_nsec3_apply_inorder;
 				diag("Testing inorder traversal");
 			} else {
 				traversal_func =
-					&knot_zone_tree_apply_inorder;
+					&knot_zone_contents_tree_apply_inorder;
 				diag("Testing inorder traversal - NSEC3");
 			}
 			break;
@@ -420,11 +420,11 @@ static int test_zone_tree_apply(knot_zone_t *zone,
 		case 2: {
 			if (nsec3) {
 				traversal_func =
-				&knot_zone_nsec3_apply_inorder_reverse;
+				&knot_zone_contents_nsec3_apply_inorder_reverse;
 				diag("Testing inorder reverse traversal");
 			} else {
 				traversal_func =
-				&knot_zone_tree_apply_inorder_reverse;
+				&knot_zone_contents_tree_apply_inorder_reverse;
 				diag("Testing inorder reverse "
 				     "traversal - NSEC3");
 			}
@@ -460,7 +460,7 @@ static int test_zone_tree_apply(knot_zone_t *zone,
 }
 
 /* Tests all kinds of zone traversals, explainded above */
-static int test_zone_traversals(knot_zone_t *zone)
+static int test_zone_traversals(knot_zone_contents_t *zone)
 {
 	for (int i = 0; i < TRAVERSAL_TYPES; i++) {
 		for (int j = 0; j < 2; j++) {
@@ -474,9 +474,9 @@ static int test_zone_traversals(knot_zone_t *zone)
 
 struct zone_test_param {
 	/* Times 2 so that we don't have to mess with mallocs. */
-	knot_node_t *knot_node_array[TEST_NODES_GOOD * 2];
-	knot_dname_t *table_node_array[TEST_NODES_GOOD * 2];
-	int count;
+	knot_node_t *knot_node_array[TEST_NODES_GOOD * 5];
+	knot_dname_t *table_node_array[TEST_NODES_GOOD * 5];
+	size_t count;
 };
 
 static void tree_node_to_array(knot_node_t *node, void *data)
@@ -621,7 +621,7 @@ static int test_zone_shallow_copy()
 						(void *)&param1);
 
 	struct zone_test_param param2;
-	memset(&param1, 0, sizeof(struct zone_test_param));
+	memset(&param2, 0, sizeof(struct zone_test_param));
 
 	knot_zone_contents_tree_apply_inorder(to, tree_node_to_array,
 						(void *)&param2);
@@ -735,8 +735,8 @@ static int test_zone_shallow_copy()
 	}
 #endif
 
-	knot_zone_free(&from_zone);
-	knot_zone_contents_deep_free(&to);
+	knot_zone_contents_deep_free(&from);
+	knot_zone_contents_free(&to);
 	return (errors == 0);
 
 }
@@ -770,7 +770,7 @@ static int knot_zone_tests_run(int argc, char *argv[])
 	int res = 0,
 	    res_final = 0;
 
-	knot_zone_t *zone = NULL;
+	knot_zone_contents_t *zone = NULL;
 
 	ok((res = test_zone_create(&zone)), "zone: create");
 	res_final *= res;
