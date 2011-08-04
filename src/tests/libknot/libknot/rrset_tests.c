@@ -533,7 +533,6 @@ static int test_rrset_rrsigs()
 			errors++;
 		}
 		errors += check_rrset(rrset, i, 0, 0, 1);
-		knot_dname_free(&owner);
 		knot_rrset_free(&rrset);
 		free(item);
 		knot_rdata_free(&tmp);
@@ -580,8 +579,6 @@ static int test_rrset_merge()
 
 	r = check_rrset(merger1, 5, 1, 1, 0);
 
-	knot_dname_free(&owner1);
-	knot_dname_free(&owner2);
 	knot_rrset_free(&merger1);
 	knot_rrset_free(&merger2);
 

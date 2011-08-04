@@ -46,6 +46,7 @@ static int test_response_init()
 
 	knot_packet_t *response =
 		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	assert(response);
 	response->max_size = KNOT_WIRE_HEADER_SIZE - 1;
 	if (knot_response2_init(response) != KNOT_ESPACE) {
 		diag("Calling response_init too small packet did "
