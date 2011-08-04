@@ -462,8 +462,9 @@ static int test_rdata_set_item()
 		return 0;
 	}
 
-	uint8_t *data = malloc(sizeof(uint8_t) * KNOT_MAX_RDATA_WIRE_SIZE);
-	assert(data);
+//	uint8_t *data = malloc(sizeof(uint8_t) * KNOT_MAX_RDATA_WIRE_SIZE);
+//	assert(data);
+	uint8_t data[KNOT_MAX_RDATA_WIRE_SIZE];
 	generate_rdata(data, KNOT_MAX_RDATA_WIRE_SIZE);
 
 	// set items through set_items() and then call set_item()
@@ -514,9 +515,7 @@ static int test_rdata_set_item()
 	       }
 	}
 
-	free(data);
-
-	knot_rdata_free(&rdata);
+//	knot_rdata_free(&rdata);
 	return 1;
 }
 
@@ -549,22 +548,22 @@ static int test_rdata_set_items()
 		if (knot_rdata_set_items(rdata, NULL, 0) != KNOT_EBADARG) {
 			diag("Return value of knot_rdata_set_items()"
 			     " when items == NULL is wrong");
-			knot_rdata_free(&rdata);
+//			knot_rdata_free(&rdata);
 			return 0;
 		} else if (knot_rdata_set_items(rdata, item, 0) !=
 			   KNOT_EBADARG) {
 			diag("Return value of knot_rdata_set_items()"
 			     " when count == 0"
 			     "is wrong");
-			knot_rdata_free(&rdata);
+//			knot_rdata_free(&rdata);
 			return 0;
 		}
-		knot_rdata_free(&rdata);
+//		knot_rdata_free(&rdata);
 	}
 
 	// generate some random data
-	uint8_t *data = malloc(sizeof(uint8_t) * KNOT_MAX_RDATA_WIRE_SIZE);
-	assert(data);
+//	uint8_t *data = malloc(sizeof(uint8_t) * KNOT_MAX_RDATA_WIRE_SIZE);
+	uint8_t data [KNOT_MAX_RDATA_WIRE_SIZE];
 	generate_rdata(data, KNOT_MAX_RDATA_WIRE_SIZE);
 
 	for (int i = 0; i <= KNOT_RRTYPE_LAST; ++i) {
@@ -592,10 +591,8 @@ static int test_rdata_set_items()
 			}
 		}
 
-		knot_rdata_free(&rdata);
+//		knot_rdata_free(&rdata);
 	}
-
-	free(data);
 
 	return (errors == 0);
 }
@@ -826,19 +823,20 @@ static int test_rdata_compare()
 
 static int test_rdata_free()
 {
-	knot_rdata_t *tmp_rdata;
+	return 0;
+//	knot_rdata_t *tmp_rdata;
 
-	tmp_rdata = knot_rdata_new();
+//	tmp_rdata = knot_rdata_new();
 
-	knot_rdata_free(&tmp_rdata);
+//	knot_rdata_free(&tmp_rdata);
 
-	return (tmp_rdata == NULL);
+//	return (tmp_rdata == NULL);
 }
 /* Can't test this with current implementation
  * would be trying to free pointers on stack */
 static int test_rdata_deep_free()
 {
-	return 1;
+	return 0;
 
 /*	int errors = 0;
 
