@@ -8,6 +8,21 @@
  * \addtogroup libknot
  * @{
  */
+/*  Copyright (C) 2011 CZ.NIC Labs
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #ifndef _KNOT_ZONE_H_
 #define _KNOT_ZONE_H_
@@ -91,243 +106,6 @@ void knot_zone_set_version(knot_zone_t *zone, time_t version);
 const void *knot_zone_data(const knot_zone_t *zone);
 
 void knot_zone_set_data(knot_zone_t *zone, void *data);
-
-/*----------------------------------------------------------------------------*/
-/* Zone contents functions. TODO: remove                                      */
-/*----------------------------------------------------------------------------*/
-
-/*!
- * \brief Adds a node to the given zone.
- *
- * Checks if the node belongs to the zone, i.e. if its owner is a subdomain of
- * the zone's apex. It thus also forbids adding node with the same name as the
- * zone apex.
- *
- * \warning This function may destroy domain names saved in the node, that
- *          are already present in the zone.
- *
- * \param zone Zone to add the node into.
- * \param node Node to add into the zone.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EBADARG
- * \retval KNOT_EBADZONE
- * \retval KNOT_EHASH
- *
- * \todo Replace tests of this function by tests of its zone-contents version.
- */
-int knot_zone_add_node(knot_zone_t *zone, knot_node_t *node,
-                         int create_parents, int use_domain_table);
-
-/*!
- * \brief Adds a node holding NSEC3 records to the given zone.
- *
- * Checks if the node belongs to the zone, i.e. if its owner is a subdomain of
- * the zone's apex. It does not check if the node really contains any NSEC3
- * records, nor if the name is a hash (as there is actually no way of
- * determining this).
- *
- * \param zone Zone to add the node into.
- * \param node Node to add into the zone.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EBADARG
- * \retval KNOT_EBADZONE
- *
- * \todo Replace tests of this function by tests of its zone-contents version.
- */
-int knot_zone_add_nsec3_node(knot_zone_t *zone, knot_node_t *node,
-                               int create_parents, int use_domain_table);
-
-/*!
- * \brief Tries to find a node with the specified name in the zone.
- *
- * \param zone Zone where the name should be searched for.
- * \param name Name to find.
- *
- * \return Corresponding node if found, NULL otherwise.
- *
- * \todo Replace tests of this function by tests of its zone-contents version.
- */
-knot_node_t *knot_zone_get_node(const knot_zone_t *zone,
-                                    const knot_dname_t *name);
-
-/*!
- * \brief Tries to find a node with the specified name among the NSEC3 nodes
- *        of the zone.
- *
- * \param zone Zone where the name should be searched for.
- * \param name Name to find.
- *
- * \return Corresponding node if found, NULL otherwise.
- *
- * \todo Replace tests of this function by tests of its zone-contents version.
- */
-knot_node_t *knot_zone_get_nsec3_node(const knot_zone_t *zone,
-                                          const knot_dname_t *name);
-
-/*!
- * \brief Tries to find a node with the specified name in the zone.
- *
- * \note This function is identical to knot_zone_get_node(), only it returns
- *       constant reference.
- *
- * \param zone Zone where the name should be searched for.
- * \param name Name to find.
- *
- * \return Corresponding node if found, NULL otherwise.
- *
- * \todo Replace tests of this function by tests of its zone-contents version.
- */
-const knot_node_t *knot_zone_find_node(const knot_zone_t *zone,
-                                           const knot_dname_t *name);
-
-/*!
- * \brief Tries to find a node with the specified name among the NSEC3 nodes
- *        of the zone.
- *
- * \note This function is identical to knot_zone_get_nsec3_node(), only it
- *       returns constant reference.
- *
- * \param zone Zone where the name should be searched for.
- * \param name Name to find.
- *
- * \return Corresponding node if found, NULL otherwise.
- *
- * \todo Replace tests of this function by tests of its zone-contents version.
- */
-const knot_node_t *knot_zone_find_nsec3_node(const knot_zone_t *zone,
-                                                 const knot_dname_t *name);
-
-/*!
- * \brief Returns the apex node of the zone.
- *
- * \param zone Zone to get the apex of.
- *
- * \return Zone apex node.
- *
- * \todo Replace tests of this function by tests of its zone-contents version.
- */
-const knot_node_t *knot_zone_apex(const knot_zone_t *zone);
-
-/*!
- * \brief Applies the given function to each regular node in the zone.
- *
- * This function uses post-order depth-first forward traversal, i.e. the
- * function is first recursively applied to subtrees and then to the root.
- *
- * \param zone Nodes of this zone will be used as parameters for the function.
- * \param function Function to be applied to each node of the zone.
- * \param data Arbitrary data to be passed to the function.
- *
- * \todo Replace tests of this function by tests of its zone-contents version.
- */
-int knot_zone_tree_apply_postorder(knot_zone_t *zone,
-                              void (*function)(knot_node_t *node, void *data),
-                              void *data);
-
-/*!
- * \brief Applies the given function to each regular node in the zone.
- *
- * This function uses in-order depth-first forward traversal, i.e. the function
- * is first recursively applied to left subtree, then to the root and then to
- * the right subtree.
- *
- * \note This implies that the zone is stored in a binary tree. Is there a way
- *       to make this traversal independent on the underlying structure?
- *
- * \param zone Nodes of this zone will be used as parameters for the function.
- * \param function Function to be applied to each node of the zone.
- * \param data Arbitrary data to be passed to the function.
- *
- * \todo Replace tests of this function by tests of its zone-contents version.
- */
-int knot_zone_tree_apply_inorder(knot_zone_t *zone,
-                              void (*function)(knot_node_t *node, void *data),
-                              void *data);
-
-/*!
- * \brief Applies the given function to each regular node in the zone.
- *
- * This function uses in-order depth-first reverse traversal, i.e. the function
- * is first recursively applied to right subtree, then to the root and then to
- * the left subtree.
- *
- * \note This implies that the zone is stored in a binary tree. Is there a way
- *       to make this traversal independent on the underlying structure?
- *
- * \param zone Nodes of this zone will be used as parameters for the function.
- * \param function Function to be applied to each node of the zone.
- * \param data Arbitrary data to be passed to the function.
- *
- * \todo Replace tests of this function by tests of its zone-contents version.
- */
-int knot_zone_tree_apply_inorder_reverse(knot_zone_t *zone,
-                              void (*function)(knot_node_t *node, void *data),
-                              void *data);
-
-/*!
- * \brief Applies the given function to each NSEC3 node in the zone.
- *
- * This function uses post-order depth-first forward traversal, i.e. the
- * function is first recursively applied to subtrees and then to the root.
- *
- * \param zone NSEC3 nodes of this zone will be used as parameters for the
- *             function.
- * \param function Function to be applied to each node of the zone.
- * \param data Arbitrary data to be passed to the function.
- *
- * \todo Replace tests of this function by tests of its zone-contents version.
- */
-int knot_zone_nsec3_apply_postorder(knot_zone_t *zone,
-                              void (*function)(knot_node_t *node, void *data),
-                              void *data);
-
-/*!
- * \brief Applies the given function to each NSEC3 node in the zone.
- *
- * This function uses in-order depth-first forward traversal, i.e. the function
- * is first recursively applied to left subtree, then to the root and then to
- * the right subtree.
- *
- * \note This implies that the zone is stored in a binary tree. Is there a way
- *       to make this traversal independent on the underlying structure?
- *
- * \param zone NSEC3 nodes of this zone will be used as parameters for the
- *             function.
- * \param function Function to be applied to each node of the zone.
- * \param data Arbitrary data to be passed to the function.
- *
- * \todo Replace tests of this function by tests of its zone-contents version.
- */
-int knot_zone_nsec3_apply_inorder(knot_zone_t *zone,
-                              void (*function)(knot_node_t *node, void *data),
-                              void *data);
-
-/*!
- * \brief Applies the given function to each NSEC3 node in the zone.
- *
- * This function uses in-order depth-first reverse traversal, i.e. the function
- * is first recursively applied to right subtree, then to the root and then to
- * the left subtree.
- *
- * \note This implies that the zone is stored in a binary tree. Is there a way
- *       to make this traversal independent on the underlying structure?
- *
- * \param zone NSEC3 nodes of this zone will be used as parameters for the
- *             function.
- * \param function Function to be applied to each node of the zone.
- * \param data Arbitrary data to be passed to the function.
- *
- * \todo Replace tests of this function by tests of its zone-contents version.
- */
-int knot_zone_nsec3_apply_inorder_reverse(knot_zone_t *zone,
-                              void (*function)(knot_node_t *node, void *data),
-                              void *data);
-
-/*----------------------------------------------------------------------------*/
-/*----------------------------------------------------------------------------*/
-/*----------------------------------------------------------------------------*/
 
 knot_zone_contents_t *knot_zone_switch_contents(knot_zone_t *zone,
                                           knot_zone_contents_t *new_contents);

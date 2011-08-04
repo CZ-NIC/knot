@@ -1,3 +1,19 @@
+/*  Copyright (C) 2011 CZ.NIC Labs
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <config.h>
 #include "hash-functions.h"
 
@@ -27,25 +43,6 @@ unsigned long int fnv_hash(const char *data, int size, int bits)
 
 	return (hash ^(hash >> shift)) & mask;
 }
-
-//unsigned long int fnv_hash2(char *data, int size, int bits)
-//{
-//	int i;
-//	const unsigned int p = 16777619;
-//	unsigned long int hash = 2166136261;
-
-//	for (i = 0; i < size; i++) {
-//		hash = (hash ^ data[i]) * p;
-//	}
-
-//	hash += hash << 13;
-//	hash ^= hash >> 7;
-//	hash += hash << 3;
-//	hash ^= hash >> 17;
-//	hash += hash << 5;
-
-//	return hash;
-//}
 
 /*------------------------------- JENKINS HASH -------------------------------*/
 
@@ -118,69 +115,4 @@ u4 jhash(register u1 *k, u4 length, u4 initval)
 	mix(a, b, c);
 	/*-------------------------------------------- report the result */
 	return c;
-}
-
-/*--------------------------------- SDBM HASH --------------------------------*/
-
-unsigned long sdbm_hash(const unsigned char *key, int size)
-{
-	int i = 0;
-	unsigned long h = 0;
-
-	while (i < size) {
-		h = key[i++] + (h << 6) + (h << 16) - h;
-	}
-
-	return h;
-}
-
-/*---------------------------------- DJB HASH --------------------------------*/
-
-unsigned long djb_hash(const unsigned char *key, int size)
-{
-	unsigned long h = 0;
-	int i;
-
-	for (i = 0; i < size; i++) {
-		h = 33 * h ^ key[i];
-	}
-
-	return h;
-}
-
-/*--------------------------------- JSW HASH ---------------------------------*/
-
-// TODO: needs table of random numbers
-
-//unsigned long jsw_hash( const unsigned char *key, int size )
-//{
-//	unsigned long h = 16777551;
-//	int i;
-//
-//	for ( i = 0; i < size; i++ )
-//		h = ( h << 1 | h >> 31 ) ^ tab[key[i]];
-//
-//	return h;
-//
-//}
-
-/*--------------------------------- ELF HASH ---------------------------------*/
-
-unsigned long elf_hash(const unsigned char *key, int size)
-{
-	unsigned long h = 0, g;
-	int i;
-
-	for (i = 0; i < size; i++) {
-		h = (h << 4) + key[i];
-		g = h & 0xf0000000L;
-
-		if (g != 0) {
-			h ^= g >> 24;
-		}
-
-		h &= ~g;
-	}
-
-	return h;
 }
