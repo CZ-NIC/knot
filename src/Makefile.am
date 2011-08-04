@@ -70,11 +70,10 @@ unittests_SOURCES =				\
 
 unittests_libknot_realdata_SOURCES =			\
 	tests/libknot/realdata/libknot/dname_tests_realdata.c	\
+	tests/libknot/realdata/libknot/response2_tests_realdata.c	\
 	tests/libknot/realdata/libknot/edns_tests_realdata.c	\
 	tests/libknot/realdata/libknot/node_tests_realdata.c	\
 	tests/libknot/realdata/libknot/rdata_tests_realdata.c	\
-	tests/libknot/realdata/libknot/response_tests_realdata.c	\
-	tests/libknot/realdata/libknot/response2_tests_realdata.c	\
 	tests/libknot/realdata/libknot/rrset_tests_realdata.c	\
 	tests/libknot/realdata/libknot/zone_tests_realdata.c	\
 	tests/libknot/realdata/libknot/zonedb_tests_realdata.c	\
@@ -87,6 +86,8 @@ unittests_libknot_realdata_SOURCES =			\
 unittests_libknot_SOURCES =			\
 	tests/libknot/libknot/cuckoo_tests.c	\
 	tests/libknot/libknot/cuckoo_tests.h	\
+	tests/libknot/libknot/response2_tests.h	\
+	tests/libknot/libknot/response2_tests.c	\
 	tests/libknot/libknot/dname_tests.c	\
 	tests/libknot/libknot/dname_tests.h	\
 	tests/libknot/libknot/dname_table_tests.h	\
@@ -101,12 +102,12 @@ unittests_libknot_SOURCES =			\
 	tests/libknot/libknot/edns_tests.h	\
 	tests/libknot/libknot/node_tests.c	\
 	tests/libknot/libknot/node_tests.h	\
+	tests/libknot/libknot/rrset_tests.c	\
+	tests/libknot/libknot/rrset_tests.h	\
 	tests/libknot/libknot/rdata_tests.c	\
 	tests/libknot/libknot/rdata_tests.h	\
 	tests/libknot/libknot/rrset_tests.c	\
 	tests/libknot/libknot/rrset_tests.h	\
-	tests/libknot/libknot/response2_tests.h	\
-	tests/libknot/libknot/response2_tests.c	\
 	tests/libknot/libknot/zone_tests.c	\
 	tests/libknot/libknot/zone_tests.h	\
 	tests/libknot/libknot/zonedb_tests.c	\

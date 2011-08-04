@@ -389,7 +389,7 @@ server_t *server_create()
 		free(server);
 		return NULL;
 	}
-        server->nameserver->server = server;
+	knot_ns_set_data(server->nameserver, server);
 	debug_server("Initializing OpenSSL...\n");
 	OpenSSL_add_all_digests();
 

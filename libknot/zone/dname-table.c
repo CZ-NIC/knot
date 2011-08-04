@@ -161,7 +161,7 @@ knot_dname_t *knot_dname_table_find_dname(const knot_dname_table_t *table,
 }
 
 int knot_dname_table_add_dname(knot_dname_table_t *table,
-				 knot_dname_t *dname)
+                               knot_dname_t *dname)
 {
 	if (dname == NULL || table == NULL) {
 		return KNOT_EBADARG;
@@ -188,8 +188,8 @@ int knot_dname_table_add_dname(knot_dname_table_t *table,
 	return KNOT_EOK;
 }
 
-int knot_dname_table_add_dname2(knot_dname_table_t *table,
-                                  knot_dname_t **dname)
+int knot_dname_table_add_dname_check(knot_dname_table_t *table,
+                                     knot_dname_t **dname)
 {
 	knot_dname_t *found_dname = NULL;
 

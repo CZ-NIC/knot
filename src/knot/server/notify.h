@@ -84,7 +84,7 @@ int notify_create_request(const knot_zone_contents_t *zone, uint8_t *buffer,
  * \retval KNOTD_EMALF
  * \retval KNOTD_ERROR
  */
-int notify_process_request(const knot_nameserver_t *nameserver,
+int notify_process_request(knot_nameserver_t *nameserver,
                            knot_packet_t *notify,
                            sockaddr_t *from,
                            uint8_t *buffer, size_t *size);
@@ -103,7 +103,7 @@ int notify_process_request(const knot_nameserver_t *nameserver,
  * \retval KNOTD_EINVAL on invalid parameters or packet.
  * \retval KNOTD_EMALF if an error occured and the response is not valid.
  */
-int notify_process_response(const knot_nameserver_t *nameserver,
+int notify_process_response(knot_nameserver_t *nameserver,
                             knot_packet_t *notify,
                             sockaddr_t *from,
                             uint8_t *buffer, size_t *size);
