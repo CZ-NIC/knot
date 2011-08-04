@@ -61,7 +61,7 @@ static int test_zone_check_node(const knot_node_t *node,
 	        && node->parent == test_node->parent);
 }
 
-static int test_zone_create(knot_zone_t **zone)
+static int test_zone_create(knot_zone_contents_t **zone)
 {
 //	knot_dname_t *dname = knot_dname_new_from_wire(
 //		test_apex.owner.name, test_apex.owner.size, NULL);
@@ -74,7 +74,7 @@ static int test_zone_create(knot_zone_t **zone)
 		return 0;
 	}
 
-	*zone = knot_zone_new(node, 0, 1);
+	*zone = knot_zone_contents_new(node, 0, 0, NULL);
 
 	if ((*zone) == NULL) {
 		diag("zone: Failed to create zone.");
@@ -82,7 +82,7 @@ static int test_zone_create(knot_zone_t **zone)
 		return 0;
 	}
 
-	if ((*zone)->contents->apex != node) {
+	if ((*zone)->apex != node) {
 		diag("zone: Zone apex not set right.");
 		knot_node_free(&node, 1, 0);
 		return 0;
@@ -474,9 +474,9 @@ static int test_zone_traversals(knot_zone_contents_t *zone)
 
 struct zone_test_param {
 	/* Times 2 so that we don't have to mess with mallocs. */
-	knot_node_t *knot_node_array[TEST_NODES_GOOD * 2];
-	knot_dname_t *table_node_array[TEST_NODES_GOOD * 2];
-	int count;
+	knot_node_t *knot_node_array[TEST_NODES_GOOD * 5];
+	knot_dname_t *table_node_array[TEST_NODES_GOOD * 5];
+	size_t count;
 };
 
 static void tree_node_to_array(knot_node_t *node, void *data)
@@ -621,7 +621,7 @@ static int test_zone_shallow_copy()
 						(void *)&param1);
 
 	struct zone_test_param param2;
-	memset(&param1, 0, sizeof(struct zone_test_param));
+	memset(&param2, 0, sizeof(struct zone_test_param));
 
 	knot_zone_contents_tree_apply_inorder(to, tree_node_to_array,
 						(void *)&param2);
@@ -735,8 +735,8 @@ static int test_zone_shallow_copy()
 	}
 #endif
 
-	knot_zone_free(&from_zone);
-	knot_zone_contents_deep_free(&to);
+	knot_zone_contents_deep_free(&from);
+	knot_zone_contents_free(&to);
 	return (errors == 0);
 
 }
