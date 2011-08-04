@@ -15,12 +15,12 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "libknot/zone.h"
-#include "libknot/packet.h"
-#include "libknot/zonedb.h"
+#include "libknot/zone/zone.h"
+#include "libknot/packet/packet.h"
+#include "libknot/zone/zonedb.h"
 #include "common/lists.h"
 #include "common/sockaddr.h"
-#include "libknot/name-server.h"
+#include "libknot/nameserver/name-server.h"
 
 /*!
  * \brief Pending NOTIFY event.

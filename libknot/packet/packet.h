@@ -33,7 +33,6 @@
 #include "dname.h"
 #include "rrset.h"
 #include "edns.h"
-//#include "response.h"
 
 /*----------------------------------------------------------------------------*/
 /*!

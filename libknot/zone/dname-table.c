@@ -19,8 +19,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "dname-table.h"
-#include "error.h"
+#include "zone/dname-table.h"
+#include "util/error.h"
 
 /*!< Tree functions. */
 TREE_DEFINE(dname_table_node, avl);

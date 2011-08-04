@@ -32,7 +32,7 @@
 #include <string.h>
 
 #include "dname.h"
-#include "descriptor.h"
+#include "util/descriptor.h"
 
 /*----------------------------------------------------------------------------*/
 /*!

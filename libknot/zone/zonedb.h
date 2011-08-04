@@ -31,8 +31,8 @@
 #define _KNOT_ZONEDB_H_
 
 #include "common/general-tree.h"
-#include "zone.h"
-#include "node.h"
+#include "zone/zone.h"
+#include "zone/node.h"
 #include "dname.h"
 
 /*!

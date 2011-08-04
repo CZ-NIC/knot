@@ -21,12 +21,12 @@
 #include <urcu.h>
 
 #include "common.h"
-#include "zone.h"
-#include "zonedb.h"
+#include "zone/zone.h"
+#include "zone/zonedb.h"
 #include "dname.h"
-#include "node.h"
-#include "error.h"
-#include "debug.h"
+#include "zone/node.h"
+#include "util/error.h"
+#include "util/debug.h"
 #include "common/general-tree.h"
 
 /*----------------------------------------------------------------------------*/

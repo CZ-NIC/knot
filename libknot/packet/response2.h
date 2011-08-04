@@ -30,7 +30,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "packet.h"
+#include "packet/packet.h"
 
 #include "dname.h"
 #include "rrset.h"

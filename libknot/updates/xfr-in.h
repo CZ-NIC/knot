@@ -31,10 +31,10 @@
 #include <string.h>
 
 #include "dname.h"
-#include "zone.h"
-#include "packet.h"
-#include "name-server.h"
-#include "changesets.h"
+#include "zone/zone.h"
+#include "packet/packet.h"
+#include "nameserver/name-server.h"
+#include "updates/changesets.h"
 
 /*!
  * \brief Creates normal query for the given zone name and the SOA type.

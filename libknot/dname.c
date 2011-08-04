@@ -22,13 +22,13 @@
 #include <ctype.h>	// tolower()
 
 #include "common.h"
-#include "error.h"
+#include "util/error.h"
 #include "dname.h"
 #include "consts.h"
-#include "tolower.h"
-#include "debug.h"
-#include "utils.h"
-#include "wire.h"
+#include "util/tolower.h"
+#include "util/debug.h"
+#include "util/utils.h"
+#include "util/wire.h"
 
 /*! \todo dnames allocated from TLS cache will be discarded after thread
  *        termination. This shouldn't happpen.

@@ -24,11 +24,11 @@
 
 #include "nsec3.h"
 #include "common.h"
-#include "descriptor.h"
-#include "utils.h"
-#include "tolower.h"
-#include "error.h"
-#include "debug.h"
+#include "util/descriptor.h"
+#include "util/utils.h"
+#include "util/tolower.h"
+#include "util/error.h"
+#include "util/debug.h"
 
 /*----------------------------------------------------------------------------*/
 

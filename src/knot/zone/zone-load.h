@@ -14,7 +14,7 @@
 
 #include <stdio.h>
 
-#include "libknot/zone.h"
+#include "libknot/zone/zone.h"
 
 /*!
  * \brief Zone loader structure.

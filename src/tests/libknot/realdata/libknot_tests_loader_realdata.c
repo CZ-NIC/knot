@@ -4,7 +4,7 @@
 
 #include "common/libtap/tap.h"
 #include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
-#include "libknot/descriptor.h"
+#include "libknot/util/descriptor.h"
 
 #include "tests/libknot/realdata/parsed_data.rc"
 #include "tests/libknot/realdata/raw_data.rc"

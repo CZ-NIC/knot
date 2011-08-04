@@ -38,11 +38,10 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "zonedb.h"
+#include "zone/zonedb.h"
 #include "edns.h"
-//#include "response.h"
 #include "consts.h"
-#include "packet.h"
+#include "packet/packet.h"
 #include "common/sockaddr.h"
 
 struct conf_t;

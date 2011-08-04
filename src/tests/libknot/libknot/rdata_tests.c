@@ -4,9 +4,9 @@
 #include "tests/libknot/libknot/rdata_tests.h"
 #include "libknot/common.h"
 #include "libknot/rdata.h"
-#include "libknot/descriptor.h"
-#include "libknot/utils.h"
-#include "libknot/error.h"
+#include "libknot/util/descriptor.h"
+#include "libknot/util/utils.h"
+#include "libknot/util/error.h"
 
 enum { TEST_DOMAINS_OK = 8 };
 

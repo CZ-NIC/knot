@@ -14,13 +14,13 @@
 
 #include "knot/common.h"
 #include "knot/server/xfr-handler.h"
-#include "libknot/name-server.h"
+#include "libknot/nameserver/name-server.h"
 #include "knot/other/error.h"
 #include "knot/server/socket.h"
 #include "knot/server/tcp-handler.h"
-#include "libknot/xfr-in.h"
+#include "libknot/updates/xfr-in.h"
 #include "knot/server/zones.h"
-#include "libknot/error.h"
+#include "libknot/util/error.h"
 
 /*! \brief XFR event wrapper for libev. */
 struct xfr_io_t

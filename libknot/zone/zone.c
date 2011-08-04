@@ -22,19 +22,19 @@
 #include <urcu.h>
 
 #include "common.h"
-#include "zone.h"
-#include "node.h"
+#include "zone/zone.h"
+#include "zone/node.h"
 #include "dname.h"
 #include "consts.h"
-#include "descriptor.h"
+#include "util/descriptor.h"
 #include "nsec3.h"
-#include "error.h"
-#include "debug.h"
-#include "utils.h"
+#include "util/error.h"
+#include "util/debug.h"
+#include "util/utils.h"
 #include "common/tree.h"
 #include "common/base32hex.h"
 #include "hash/cuckoo-hash-table.h"
-#include "zone-contents.h"
+#include "zone/zone-contents.h"
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */

@@ -3,8 +3,8 @@
 #include <assert.h>
 
 #include "dname_table_tests.h"
-#include "libknot/error.h"
-#include "libknot/dname-table.h"
+#include "libknot/util/error.h"
+#include "libknot/zone/dname-table.h"
 /* *test_t structures */
 #include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
 

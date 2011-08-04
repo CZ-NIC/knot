@@ -20,8 +20,8 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "utils.h"
-#include "debug.h"
+#include "util/utils.h"
+#include "util/debug.h"
 #include "libknot.h"
 #include "common/print.h"
 

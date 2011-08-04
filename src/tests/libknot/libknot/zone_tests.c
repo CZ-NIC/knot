@@ -2,10 +2,10 @@
 
 #include "tests/libknot/libknot/zone_tests.h"
 #include "libknot/common.h"
-#include "libknot/dname-table.h"
-#include "libknot/zone.h"
-#include "libknot/error.h"
-#include "libknot/node.h"
+#include "libknot/zone/dname-table.h"
+#include "libknot/zone/zone.h"
+#include "libknot/util/error.h"
+#include "libknot/zone/node.h"
 
 static int knot_zone_tests_count(int argc, char *argv[]);
 static int knot_zone_tests_run(int argc, char *argv[]);

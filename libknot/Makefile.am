@@ -43,59 +43,59 @@ libknot_common_SOURCES = \
 	common/errors.h				\
 	common/errors.c
 
-libknot_la_SOURCES =			\
-	$(libknot_common_SOURCES)	\
+libknot_la_SOURCES =				\
+	$(libknot_common_SOURCES)		\
+	util/error.c				\
+	util/utils.c				\
+	util/debug.c				\
+	util/debug.h				\
+	util/utils.h				\
+	util/descriptor.c			\
+	util/tolower.h				\
+	util/tolower.c				\
+	util/descriptor.h			\
+	util/wire.h				\
+	packet/query.c				\
+	packet/response2.c			\
+	packet/response.c			\
+	packet/packet.c				\
+	packet/packet.h				\
+	packet/query.h				\
+	packet/response2.h			\
+	packet/response.h			\
+	zone/zone.c				\
+	zone/zone-contents.c			\
+	zone/zone-tree.c			\
+	zone/zone-tree.h			\
+	zone/node.h				\
+	zone/zone.h				\
+	zone/zone-contents.h			\
+	zone/zonedb.c				\
+	zone/zonedb.h				\
+	zone/node.c				\
+	zone/dname-table.h			\
+	zone/dname-table.c			\
+	hash/hash-functions.c			\
+	hash/cuckoo-hash-table.c		\
+	hash/universal-system.c			\
+	hash/universal-system.h			\
+	hash/cuckoo-hash-table.h		\
+	hash/hash-functions.h			\
+	nameserver/name-server.h		\
+	nameserver/name-server.c		\
+	updates/changesets.h			\
+	updates/changesets.c			\
+	updates/xfr-in.h			\
+	updates/xfr-in.c			\
 	edns.c				\
-	error.c				\
-	utils.c				\
 	rrset.c				\
 	dname.c				\
-	node.c				\
-	packet.c			\
-	query.c				\
-	response2.c			\
-	response.c			\
-	zone.c				\
-	zone-contents.c			\
-	zonedb.c			\
-	debug.c				\
-	zone-tree.c			\
-	zone-tree.h			\
 	rdata.c				\
-	descriptor.c			\
 	nsec3.c				\
-	dname-table.c			\
-	hash/hash-functions.c		\
-	hash/cuckoo-hash-table.c	\
-	hash/universal-system.c		\
-	hash/universal-system.h		\
-	hash/cuckoo-hash-table.h	\
-	hash/hash-functions.h		\
-	zonedb.h			\
 	consts.h			\
-	node.h				\
 	edns.h				\
-	zone.h				\
-	zone-contents.h			\
 	rdata.h				\
-	descriptor.h			\
 	libknot.h			\
-	tolower.h			\
-	tolower.c			\
 	dname.h				\
-	packet.h			\
-	query.h				\
-	response2.h			\
-	response.h			\
 	rrset.h				\
-	utils.h				\
-	wire.h				\
-	debug.h				\
-	nsec3.h				\
-	changesets.h			\
-	changesets.c			\
-	xfr-in.h			\
-	xfr-in.c			\
-	name-server.h			\
-	name-server.c			\
-	dname-table.h
+	nsec3.h				

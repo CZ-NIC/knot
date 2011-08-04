@@ -14,8 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "error.h"
-#include "utils.h"
+#include "util/error.h"
+#include "util/utils.h"
 
 #include "common/errors.h"
 

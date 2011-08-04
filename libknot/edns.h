@@ -29,7 +29,7 @@
 
 #include <stdint.h>
 
-#include "utils.h"
+#include "util/utils.h"
 #include "rrset.h"
 
 /*----------------------------------------------------------------------------*/

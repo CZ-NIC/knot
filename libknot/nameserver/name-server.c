@@ -21,19 +21,19 @@
 
 #include <urcu.h>
 
-#include "name-server.h"
-#include "xfr-in.h"
+#include "nameserver/name-server.h"
+#include "updates/xfr-in.h"
 
-#include "error.h"
+#include "util/error.h"
 #include "libknot.h"
-#include "debug.h"
-#include "packet.h"
-#include "response2.h"
-#include "query.h"
+#include "util/debug.h"
+#include "packet/packet.h"
+#include "packet/response2.h"
+#include "packet/query.h"
 #include "consts.h"
 // #include "knot/zone/zone-dump-text.h"
 // #include "knot/zone/zone-dump.h"
-#include "changesets.h"
+#include "updates/changesets.h"
 
 /*----------------------------------------------------------------------------*/
 
