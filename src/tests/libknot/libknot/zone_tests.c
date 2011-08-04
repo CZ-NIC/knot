@@ -565,7 +565,7 @@ static int test_zone_shallow_copy()
 	knot_zone_contents_t *to = NULL;
 	int ret = 0;
 	if ((ret = knot_zone_contents_shallow_copy(from, &to) != KNOT_EOK)) {
-		diag("Could not copy zone! %s", knot_strerror2(ret));
+		diag("Could not copy zone! %s", knot_strerror(ret));
 		return 0;
 	}
 

@@ -3,11 +3,11 @@
 
 //#define RESP_TEST_DEBUG
 #include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
-#include "tests/libknot/libknot/response2_tests.h"
+#include "tests/libknot/libknot/response_tests.h"
 #include "common/lists.h"
 #include "libknot/common.h"
 #include "libknot/util/error.h"
-#include "libknot/packet/response2.h"
+#include "libknot/packet/response.h"
 #include "libknot/rdata.h"
 #include "libknot/rrset.h"
 #include "libknot/dname.h"
@@ -19,15 +19,15 @@
 #include "ldns/ldns.h"
 #endif
 
-static int knot_response2_tests_count(int argc, char *argv[]);
-static int knot_response2_tests_run(int argc, char *argv[]);
+static int knot_response_tests_count(int argc, char *argv[]);
+static int knot_response_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
-unit_api response2_tests_api = {
+unit_api response_tests_api = {
 	"DNS library - response",      //! Unit name
-	&knot_response2_tests_count,  //! Count scheduled tests
-	&knot_response2_tests_run     //! Run scheduled tests
+	&knot_response_tests_count,  //! Count scheduled tests
+	&knot_response_tests_run     //! Run scheduled tests
 };
 
 static int test_response_init()
@@ -35,20 +35,20 @@ static int test_response_init()
 	int errors = 0;
 	int lived = 0;
 	lives_ok({
-		if (knot_response2_init(NULL) != KNOT_EBADARG) {
+		if (knot_response_init(NULL) != KNOT_EBADARG) {
 			diag("Calling response_init with NULL packet did "
 			     "not return KNOT_EBADARG!");
 			errors++;
 		}
 		lived = 1;
-	}, "response2: init NULL tests");
+	}, "response: init NULL tests");
 	errors += lived != 1;
 
 	knot_packet_t *response =
 		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	assert(response);
 	response->max_size = KNOT_WIRE_HEADER_SIZE - 1;
-	if (knot_response2_init(response) != KNOT_ESPACE) {
+	if (knot_response_init(response) != KNOT_ESPACE) {
 		diag("Calling response_init too small packet did "
 		     "not return KNOT_ESPACE!");
 		errors++;
@@ -62,7 +62,7 @@ static int test_response_init_query()
 	int errors = 0;
 	int lived = 0;
 	lives_ok({
-		if (knot_response2_init_from_query(NULL, NULL) !=
+		if (knot_response_init_from_query(NULL, NULL) !=
 		    KNOT_EBADARG) {
 			diag("Calling response_init_query with NULL packet and "
 			     "NULL query did not return KNOT_EBADARG!");
@@ -74,9 +74,9 @@ static int test_response_init_query()
 		assert(response);
 		knot_packet_set_max_size(response,
 		                           KNOT_PACKET_PREALLOC_RESPONSE);
-		knot_response2_init(response);
+		knot_response_init(response);
 		lived = 0;
-		if (knot_response2_init_from_query(response, NULL) !=
+		if (knot_response_init_from_query(response, NULL) !=
 		    KNOT_EBADARG) {
 			diag("Calling response_init_query with NULL query "
 			     "did not return KNOT_EBADARG!");
@@ -85,13 +85,13 @@ static int test_response_init_query()
 		lived = 1;
 		knot_packet_t *query =
 			knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
-		if (knot_response2_init_from_query(NULL, query) !=
+		if (knot_response_init_from_query(NULL, query) !=
 		    KNOT_EBADARG) {
 			diag("Calling response_init_query with NULL response "
 			     "did not return KNOT_EBADARG!");
 			errors++;
 		}
-	}, "response2: init from query NULL tests");
+	}, "response: init from query NULL tests");
 	errors += lived != 1;
 
 	/* Cannot test the rest of return values, since there is now constant
@@ -116,9 +116,9 @@ int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
 //	int errors = 0;
 //	int lived = 0;
 //	lives_ok({
-//		knot_response2_clear(NULL, 1);
+//		knot_response_clear(NULL, 1);
 //		lived = 1;
-//	}, "response2: clear NULL tests");
+//	}, "response: clear NULL tests");
 //	errors += lived != 1;
 
 //	/*
@@ -129,7 +129,7 @@ int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
 //	knot_packet_t *response =
 //		knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 //	knot_packet_set_max_size(response, KNOT_WIRE_HEADER_SIZE * 100);
-//	assert(knot_response2_init(response) == KNOT_EOK);
+//	assert(knot_response_init(response) == KNOT_EOK);
 
 //	uint8_t *original_wire = NULL;
 //	size_t original_size = 0;
@@ -152,11 +152,11 @@ int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
 //	                             &question_changed_size) ==
 //	       KNOT_EOK);
 
-//	knot_response2_set_aa(response);
-//	knot_response2_set_tc(response);
-//	knot_response2_set_rcode(response, knot_quick_rand());
+//	knot_response_set_aa(response);
+//	knot_response_set_tc(response);
+//	knot_response_set_rcode(response, knot_quick_rand());
 
-//	knot_response2_clear(response, 0);
+//	knot_response_clear(response, 0);
 //	uint8_t *new_wire = NULL;
 //	size_t new_size = 0;
 //	assert(knot_packet_to_wire(response, &new_wire, &new_size) ==
@@ -179,7 +179,7 @@ int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
 
 //	/*!< \todo figure out this segfault! */
 
-////	knot_response2_clear(response, 1);
+////	knot_response_clear(response, 1);
 ////	assert(knot_packet_to_wire(response, &new_wire, &new_size) ==
 ////	       KNOT_EOK);
 
@@ -218,7 +218,7 @@ static int test_response_add_opt()
 	opt.size = 25; // does it matter?
 
 	lives_ok({
-		if (knot_response2_add_opt(NULL, NULL, 0) != KNOT_EBADARG) {
+		if (knot_response_add_opt(NULL, NULL, 0) != KNOT_EBADARG) {
 			diag("Calling response add opt with NULL arguments "
 			     "did not result to KNOT_EBADARG");
 			errors++;
@@ -228,7 +228,7 @@ static int test_response_add_opt()
 			knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 		assert(response);
 		lived = 0;
-		if (knot_response2_add_opt(response,
+		if (knot_response_add_opt(response,
 		                             NULL, 0) != KNOT_EBADARG) {
 			diag("Calling response add opt with NULL OPT RR "
 			     "did not result to KNOT_EBADARG");
@@ -237,7 +237,7 @@ static int test_response_add_opt()
 		lived = 1;
 
 		lived = 0;
-		if (knot_response2_add_opt(NULL,
+		if (knot_response_add_opt(NULL,
 		                             &opt, 0) != KNOT_EBADARG) {
 			diag("Calling response add opt with NULL response "
 			     "did not result to KNOT_EBADARG");
@@ -245,30 +245,30 @@ static int test_response_add_opt()
 		}
 		lived = 1;
 		knot_packet_free(&response);
-	}, "response2: add opt NULL tests");
+	}, "response: add opt NULL tests");
 	errors += lived != 1;
 
 	knot_packet_t *response =
 		knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 	assert(response);
 	knot_packet_set_max_size(response, KNOT_PACKET_PREALLOC_RESPONSE * 100);
-	assert(knot_response2_init(response) == KNOT_EOK);;
+	assert(knot_response_init(response) == KNOT_EOK);;
 
-	if (knot_response2_add_opt(response, &opt, 0) != KNOT_EOK) {
+	if (knot_response_add_opt(response, &opt, 0) != KNOT_EOK) {
 		diag("Adding valid OPT RR to response "
 		     "did not return KNOT_EOK");
 		errors++;
 	}
 
 	opt.payload = response->max_size + 1;
-	if (knot_response2_add_opt(response, &opt, 1) != KNOT_EPAYLOAD) {
+	if (knot_response_add_opt(response, &opt, 1) != KNOT_EPAYLOAD) {
 		diag("If OPT RR payload is bigger than response max size "
 		     "response_add_opt does not return KNOT_EPAYLOAD!");
 		errors++;
 	}
 
 	opt.payload = 0;
-	if (knot_response2_add_opt(response, &opt, 1) != KNOT_EBADARG) {
+	if (knot_response_add_opt(response, &opt, 1) != KNOT_EBADARG) {
 		diag("Calling response_add_opt with OPT RR payload set to 0 "
 		     "did not return KNOT_EBADARG");
 	}
@@ -319,7 +319,7 @@ static int test_response_add_generic(int (*func)(knot_packet_t *,
 		lived = 1;
 		knot_rrset_deep_free(&rrset, 1, 0, 0);
 		knot_packet_free(&response);
-	}, "response2: rrset adding NULL tests");
+	}, "response: rrset adding NULL tests");
 	errors += lived != 1;
 
 	/*!< \todo Test case when KNOT_ESPACE should be returned. */
@@ -352,11 +352,11 @@ static int test_response_add_generic(int (*func)(knot_packet_t *,
 
 static void test_response_add_rrset()
 {
-	ok(test_response_add_generic(knot_response2_add_rrset_answer),
+	ok(test_response_add_generic(knot_response_add_rrset_answer),
 	   "response: add answer rrset");
-	ok(test_response_add_generic(knot_response2_add_rrset_authority),
+	ok(test_response_add_generic(knot_response_add_rrset_authority),
 	   "response: add answer authority");
-	ok(test_response_add_generic(knot_response2_add_rrset_additional),
+	ok(test_response_add_generic(knot_response_add_rrset_additional),
 	   "response: add answer additional");
 }
 
@@ -372,7 +372,7 @@ static int test_response_add_nsid()
 	uint8_t *nsid = (uint8_t *)"knotDNS";
 	uint16_t nsid_size = strlen((char *)nsid);
 	lives_ok({
-		if (knot_response2_add_nsid(NULL,
+		if (knot_response_add_nsid(NULL,
 		                              NULL, 1) != KNOT_EBADARG) {
 			diag("Calling response add nsid with NULL arguments "
 			     "did not return KNOT_EBADARG");
@@ -381,7 +381,7 @@ static int test_response_add_nsid()
 		lived = 1;
 
 		lived = 0;
-		if (knot_response2_add_nsid(NULL, nsid,
+		if (knot_response_add_nsid(NULL, nsid,
 		                              nsid_size) != KNOT_EBADARG) {
 			diag("Calling response add nsid with NULL response "
 			     "did not return KNOT_EBADARG");
@@ -389,7 +389,7 @@ static int test_response_add_nsid()
 		}
 		lived = 1;
 		lived = 0;
-		if (knot_response2_add_nsid(response, nsid,
+		if (knot_response_add_nsid(response, nsid,
 		                              0) != KNOT_EBADARG) {
 			diag("Calling response add nsid with zero size "
 			     "did not return KNOT_EBADARG");
@@ -399,7 +399,7 @@ static int test_response_add_nsid()
 	}, "response: add nsid NULL tests");
 	errors += lived != 1;
 
-	if (knot_response2_add_nsid(response, nsid,
+	if (knot_response_add_nsid(response, nsid,
 	                              nsid_size) != KNOT_EOK) {
 		diag("Adding valid nsid to response did not return KNOT_EOK");
 		errors++;
@@ -409,20 +409,20 @@ static int test_response_add_nsid()
 	return (errors == 0);
 }
 
-static const int KNOT_RESPONSE2_TEST_COUNT = 14;
+static const int KNOT_response_TEST_COUNT = 14;
 
 /*! This helper routine should report number of
  *  scheduled tests for given parameters.
  */
-static int knot_response2_tests_count(int argc, char *argv[])
+static int knot_response_tests_count(int argc, char *argv[])
 {
-	return KNOT_RESPONSE2_TEST_COUNT;
+	return KNOT_response_TEST_COUNT;
 }
 
 
 /*! Run all scheduled tests for given parameters.
  */
-static int knot_response2_tests_run(int argc, char *argv[])
+static int knot_response_tests_run(int argc, char *argv[])
 {
 	ok(test_response_init(), "response: init");
 	ok(test_response_init_query(), "response: init from query");

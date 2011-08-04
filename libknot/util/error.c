@@ -19,7 +19,7 @@
 
 #include "common/errors.h"
 
-const error_table_t knot_error_msgs2[KNOT_ERROR_COUNT] = {
+const error_table_t knot_error_msgs[KNOT_ERROR_COUNT] = {
 	{KNOT_EOK, "OK"},
 	{KNOT_ERROR, "General error."},
 	{KNOT_ENOMEM, "Not enough memory."},

@@ -16,7 +16,7 @@
 
 #include <stdlib.h>
 
-#include "packet/response2.h"
+#include "packet/response.h"
 #include "util/wire.h"
 #include "util/descriptor.h"
 #include "common.h"
@@ -796,7 +796,7 @@ static int knot_response_realloc_rrsets(const knot_rrset_t ***rrsets,
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-int knot_response2_init(knot_packet_t *response)
+int knot_response_init(knot_packet_t *response)
 {
 	if (response == NULL) {
 		return KNOT_EBADARG;
@@ -818,7 +818,7 @@ int knot_response2_init(knot_packet_t *response)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_response2_init_from_query(knot_packet_t *response,
+int knot_response_init_from_query(knot_packet_t *response,
                                     knot_packet_t *query)
 {
 	if (response == NULL || query == NULL) {
@@ -864,7 +864,7 @@ int knot_response2_init_from_query(knot_packet_t *response,
 
 /*----------------------------------------------------------------------------*/
 
-void knot_response2_clear(knot_packet_t *resp, int clear_question)
+void knot_response_clear(knot_packet_t *resp, int clear_question)
 {
 	if (resp == NULL) {
 		return;
@@ -886,7 +886,7 @@ void knot_response2_clear(knot_packet_t *resp, int clear_question)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_response2_add_opt(knot_packet_t *resp,
+int knot_response_add_opt(knot_packet_t *resp,
                             const knot_opt_rr_t *opt_rr,
                             int override_max_size)
 {
@@ -919,7 +919,7 @@ int knot_response2_add_opt(knot_packet_t *resp,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_response2_add_rrset_answer(knot_packet_t *response,
+int knot_response_add_rrset_answer(knot_packet_t *response,
                                      const knot_rrset_t *rrset, int tc,
                                      int check_duplicates, int compr_cs)
 {
@@ -964,7 +964,7 @@ int knot_response2_add_rrset_answer(knot_packet_t *response,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_response2_add_rrset_authority(knot_packet_t *response,
+int knot_response_add_rrset_authority(knot_packet_t *response,
                                         const knot_rrset_t *rrset, int tc,
                                         int check_duplicates, int compr_cs)
 {
@@ -1005,7 +1005,7 @@ int knot_response2_add_rrset_authority(knot_packet_t *response,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_response2_add_rrset_additional(knot_packet_t *response,
+int knot_response_add_rrset_additional(knot_packet_t *response,
                                          const knot_rrset_t *rrset, int tc,
                                          int check_duplicates, int compr_cs)
 {
@@ -1052,7 +1052,7 @@ int knot_response2_add_rrset_additional(knot_packet_t *response,
 
 /*----------------------------------------------------------------------------*/
 
-void knot_response2_set_rcode(knot_packet_t *response, short rcode)
+void knot_response_set_rcode(knot_packet_t *response, short rcode)
 {
 	if (response == NULL) {
 		return;
@@ -1064,7 +1064,7 @@ void knot_response2_set_rcode(knot_packet_t *response, short rcode)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_response2_set_aa(knot_packet_t *response)
+void knot_response_set_aa(knot_packet_t *response)
 {
 	if (response == NULL) {
 		return;
@@ -1076,7 +1076,7 @@ void knot_response2_set_aa(knot_packet_t *response)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_response2_set_tc(knot_packet_t *response)
+void knot_response_set_tc(knot_packet_t *response)
 {
 	if (response == NULL) {
 		return;
@@ -1088,7 +1088,7 @@ void knot_response2_set_tc(knot_packet_t *response)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_response2_add_nsid(knot_packet_t *response, const uint8_t *data,
+int knot_response_add_nsid(knot_packet_t *response, const uint8_t *data,
                              uint16_t length)
 {
 	if (response == NULL) {

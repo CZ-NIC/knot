@@ -5,22 +5,22 @@
 #include "packet_tests_realdata.h"
 #include "libknot/util/error.h"
 #include "libknot/packet/packet.h"
-#include "libknot/packet/response2.h"
+#include "libknot/packet/response.h"
 /* *test_t structures */
 #include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
 #ifdef TEST_WITH_LDNS
 #include "ldns/packet.h"
 #endif
 
-static int response2_tests_count(int argc, char *argv[]);
-static int response2_tests_run(int argc, char *argv[]);
+static int response_tests_count(int argc, char *argv[]);
+static int response_tests_run(int argc, char *argv[]);
 
 /*! Exported unit API.
  */
-unit_api response2_tests_api = {
-	"DNS library - response2",     //! Unit name
-	&response2_tests_count,  //! Count scheduled tests
-	&response2_tests_run     //! Run scheduled tests
+unit_api response_tests_api = {
+	"DNS library - response",     //! Unit name
+	&response_tests_count,  //! Count scheduled tests
+	&response_tests_run     //! Run scheduled tests
 };
 
 #ifdef TEST_WITH_LDNS
@@ -53,7 +53,7 @@ static int test_response_init_from_query(list query_list)
 			packet_from_test_response((test_response_t *)n);
 		assert(query);
 		knot_packet_set_max_size(response, 1024 * 10);
-		if (knot_response2_init_from_query(response,
+		if (knot_response_init_from_query(response,
 		                                     query) != KNOT_EOK) {
 			diag("Could not init response from query!");
 			errors++;
@@ -75,7 +75,7 @@ static int test_response_init_from_query(list query_list)
 //		knot_opt_rr_t *opt =
 //			opt_from_test_opt((test_opt_t *)n);
 //		assert(query);
-//		if (knot_response2_add_opt(response,
+//		if (knot_response_add_opt(response,
 //		                             opt, 1)!= KNOT_EOK) {
 //			diag("Could not add OPT RR to response!");
 //			errors++;
@@ -102,7 +102,7 @@ static int test_response_add_generic(int (*func)(knot_packet_t *,
 		assert(response);
 		knot_packet_set_max_size(response,
 		                           KNOT_PACKET_PREALLOC_RESPONSE * 100);
-		assert(knot_response2_init(response) == KNOT_EOK);
+		assert(knot_response_init(response) == KNOT_EOK);
 
 		knot_rrset_t *rrset =
 			rrset_from_test_rrset((test_rrset_t *)n);
@@ -127,25 +127,25 @@ static int test_response_add_generic(int (*func)(knot_packet_t *,
 
 static void test_response_add_rrset(list rrset_list)
 {
-	ok(test_response_add_generic(knot_response2_add_rrset_answer,
+	ok(test_response_add_generic(knot_response_add_rrset_answer,
 	                             rrset_list),
 	   "response: add answer rrset");
-	ok(test_response_add_generic(knot_response2_add_rrset_authority,
+	ok(test_response_add_generic(knot_response_add_rrset_authority,
 	                             rrset_list),
 	   "response: add authority rrset");
-	ok(test_response_add_generic(knot_response2_add_rrset_additional,
+	ok(test_response_add_generic(knot_response_add_rrset_additional,
 	                             rrset_list),
 	   "response: add additional rrset");
 }
 
-static const uint KNOT_RESPONSE2_TEST_COUNT = 4;
+static const uint KNOT_response_TEST_COUNT = 4;
 
-static int response2_tests_count(int argc, char *argv[])
+static int response_tests_count(int argc, char *argv[])
 {
-	return KNOT_RESPONSE2_TEST_COUNT;
+	return KNOT_response_TEST_COUNT;
 }
 
-static int response2_tests_run(int argc, char *argv[])
+static int response_tests_run(int argc, char *argv[])
 {
 	const test_data_t *data = data_for_knot_tests;
 

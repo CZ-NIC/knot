@@ -28,7 +28,7 @@
 #include "libknot.h"
 #include "util/debug.h"
 #include "packet/packet.h"
-#include "packet/response2.h"
+#include "packet/response.h"
 #include "packet/query.h"
 #include "consts.h"
 // #include "knot/zone/zone-dump-text.h"
@@ -356,11 +356,11 @@ DEBUG_KNOT_NS(
 			     knot_rrtype_to_string(knot_rrset_type(rrset)));
 
 			ns_check_wildcard(name, resp, &rrset);
-			ret = knot_response2_add_rrset_answer(resp, rrset, 1,
+			ret = knot_response_add_rrset_answer(resp, rrset, 1,
 			                                        0, 0);
 			if (ret >= 0 && (added += 1)
 			    && (ret = ns_add_rrsigs(rrset, resp, name,
-			           knot_response2_add_rrset_answer, 1))
+			           knot_response_add_rrset_answer, 1))
 			            >=0 ) {
 				added += 1;
 			} else {
@@ -395,7 +395,7 @@ DEBUG_KNOT_NS(
 			}
 
 			ns_check_wildcard(name, resp, &rrset);
-			ret = knot_response2_add_rrset_answer(resp, rrset, 1,
+			ret = knot_response_add_rrset_answer(resp, rrset, 1,
 			                                        0, 0);
 
 			if (ret < 0) {
@@ -416,18 +416,18 @@ DEBUG_KNOT_NS(
 			debug_knot_ns("Found RRSet of type %s\n",
 				 knot_rrtype_to_string(type));
 			ns_check_wildcard(name, resp, &rrset2);
-			ret = knot_response2_add_rrset_answer(resp, rrset2, 1,
+			ret = knot_response_add_rrset_answer(resp, rrset2, 1,
 			                                        0, 0);
 			if (ret >= 0 && (added += 1)
 			    && (ret = ns_add_rrsigs(rrset, resp, name,
-			           knot_response2_add_rrset_answer, 1)) > 0) {
+			           knot_response_add_rrset_answer, 1)) > 0) {
 				added += 1;
 			}
 		}
 	    }
 	}
 
-	knot_response2_set_rcode(resp, KNOT_RCODE_NOERROR);
+	knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
 	return added;
 }
 
@@ -494,7 +494,7 @@ DEBUG_KNOT_NS(
 				const knot_dname_t *dname
 						= knot_node_owner(node);
 				ns_follow_cname(&node, &dname, resp,
-				    knot_response2_add_rrset_additional, 0);
+				    knot_response_add_rrset_additional, 0);
 			}
 
 			// A RRSet
@@ -504,10 +504,10 @@ DEBUG_KNOT_NS(
 				debug_knot_ns("Found A RRsets.\n");
 				const knot_rrset_t *rrset_add2 = rrset_add;
 				ns_check_wildcard(dname, resp, &rrset_add2);
-				knot_response2_add_rrset_additional(
+				knot_response_add_rrset_additional(
 					resp, rrset_add2, 0, 1, 0);
 				ns_add_rrsigs(rrset_add, resp, dname,
-				      knot_response2_add_rrset_additional, 0);
+				      knot_response_add_rrset_additional, 0);
 			}
 
 			// AAAA RRSet
@@ -517,10 +517,10 @@ DEBUG_KNOT_NS(
 				debug_knot_ns("Found AAAA RRsets.\n");
 				const knot_rrset_t *rrset_add2 = rrset_add;
 				ns_check_wildcard(dname, resp, &rrset_add2);
-				knot_response2_add_rrset_additional(
+				knot_response_add_rrset_additional(
 					resp, rrset_add2, 0, 1, 0);
 				ns_add_rrsigs(rrset_add, resp, dname,
-				      knot_response2_add_rrset_additional, 0);
+				      knot_response_add_rrset_additional, 0);
 			}
 		}
 
@@ -594,10 +594,10 @@ static void ns_put_authority_ns(const knot_zone_contents_t *zone,
 			knot_zone_contents_apex(zone), KNOT_RRTYPE_NS);
 
 	if (ns_rrset != NULL) {
-		knot_response2_add_rrset_authority(resp, ns_rrset, 0, 1, 0);
+		knot_response_add_rrset_authority(resp, ns_rrset, 0, 1, 0);
 		ns_add_rrsigs(ns_rrset, resp, knot_node_owner(
 		              knot_zone_contents_apex(zone)),
-	                      knot_response2_add_rrset_authority, 1);
+	                      knot_response_add_rrset_authority, 1);
 	}
 }
 
@@ -615,10 +615,10 @@ static void ns_put_authority_soa(const knot_zone_contents_t *zone,
 			knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
 	assert(soa_rrset != NULL);
 
-	knot_response2_add_rrset_authority(resp, soa_rrset, 0, 0, 0);
+	knot_response_add_rrset_authority(resp, soa_rrset, 0, 0, 0);
 	ns_add_rrsigs(soa_rrset, resp,
 	              knot_node_owner(knot_zone_contents_apex(zone)),
-	              knot_response2_add_rrset_authority, 1);
+	              knot_response_add_rrset_authority, 1);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -676,10 +676,10 @@ static void ns_put_nsec3_from_node(const knot_node_t *node,
 	                                                KNOT_RRTYPE_NSEC3);
 	assert(rrset != NULL);
 
-	int res = knot_response2_add_rrset_authority(resp, rrset, 1, 1, 0);
+	int res = knot_response_add_rrset_authority(resp, rrset, 1, 1, 0);
 	// add RRSIG for the RRSet
 	if (res == 0 && (rrset = knot_rrset_rrsigs(rrset)) != NULL) {
-		knot_response2_add_rrset_authority(resp, rrset, 1, 0, 0);
+		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0);
 	}
 }
 
@@ -925,10 +925,10 @@ static void ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 	if ((rrset = knot_node_rrset(node, KNOT_RRTYPE_NSEC)) != NULL
 	    || (nsec3_node != NULL && (rrset =
 	         knot_node_rrset(nsec3_node, KNOT_RRTYPE_NSEC3)) != NULL)) {
-		knot_response2_add_rrset_authority(resp, rrset, 1, 0, 0);
+		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0);
 		// add RRSIG for the RRSet
 		if ((rrset = knot_rrset_rrsigs(rrset)) != NULL) {
-			knot_response2_add_rrset_authority(resp, rrset, 1,
+			knot_response_add_rrset_authority(resp, rrset, 1,
 			                                     0, 0);
 		}
 	}
@@ -974,10 +974,10 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 		return NS_ERR_SERVFAIL;
 	}
 
-	knot_response2_add_rrset_authority(resp, rrset, 1, 0, 0);
+	knot_response_add_rrset_authority(resp, rrset, 1, 0, 0);
 	rrset = knot_rrset_rrsigs(rrset);
 	assert(rrset != NULL);
-	knot_response2_add_rrset_authority(resp, rrset, 1, 0, 0);
+	knot_response_add_rrset_authority(resp, rrset, 1, 0, 0);
 
 	// 2) NSEC proving that there is no wildcard covering the name
 	// this is only different from 1) if the wildcard would be
@@ -1012,10 +1012,10 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 	if (prev_new != previous) {
 		rrset = knot_node_rrset(prev_new, KNOT_RRTYPE_NSEC);
 		assert(rrset != NULL);
-		knot_response2_add_rrset_authority(resp, rrset, 1, 0, 0);
+		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0);
 		rrset = knot_rrset_rrsigs(rrset);
 		assert(rrset != NULL);
-		knot_response2_add_rrset_authority(resp, rrset, 1, 0, 0);
+		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0);
 	}
 
 	return KNOT_EOK;
@@ -1177,10 +1177,10 @@ static void ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 		knot_node_rrset(previous, KNOT_RRTYPE_NSEC);
 	if (rrset != NULL) {
 		// NSEC proving that there is no node with the searched name
-		knot_response2_add_rrset_authority(resp, rrset, 1, 0, 0);
+		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0);
 		rrset = knot_rrset_rrsigs(rrset);
 		assert(rrset != NULL);
-		knot_response2_add_rrset_authority(resp, rrset, 1, 0, 0);
+		knot_response_add_rrset_authority(resp, rrset, 1, 0, 0);
 	}
 }
 
@@ -1304,9 +1304,9 @@ static inline int ns_referral(const knot_node_t *node,
 	// TODO: wildcards??
 	//ns_check_wildcard(name, resp, &rrset);
 
-	knot_response2_add_rrset_authority(resp, rrset, 1, 0, 0);
+	knot_response_add_rrset_authority(resp, rrset, 1, 0, 0);
 	ns_add_rrsigs(rrset, resp, node->owner,
-	              knot_response2_add_rrset_authority, 1);
+	              knot_response_add_rrset_authority, 1);
 
 	int ret = KNOT_EOK;
 	// add DS records
@@ -1317,10 +1317,10 @@ static inline int ns_referral(const knot_node_t *node,
 	    && knot_query_dnssec_requested(knot_packet_query(resp))) {
 		rrset = knot_node_rrset(node, KNOT_RRTYPE_DS);
 		if (rrset != NULL) {
-			knot_response2_add_rrset_authority(resp, rrset, 1, 0,
+			knot_response_add_rrset_authority(resp, rrset, 1, 0,
 			                                    0);
 			ns_add_rrsigs(rrset, resp, node->owner,
-			              knot_response2_add_rrset_authority, 1);
+			              knot_response_add_rrset_authority, 1);
 		} else {
 			// no DS, add NSEC3
 			const knot_node_t *nsec3_node =
@@ -1341,7 +1341,7 @@ static inline int ns_referral(const knot_node_t *node,
 
 	if (ret == KNOT_EOK) {
 		ns_put_additional(resp);
-		knot_response2_set_rcode(resp, KNOT_RCODE_NOERROR);
+		knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
 	}
 	return ret;
 }
@@ -1516,19 +1516,19 @@ DEBUG_KNOT_NS(
 	// TODO: check the number of RRs in the RRSet??
 
 	// put the DNAME RRSet into the answer
-	knot_response2_add_rrset_answer(resp, dname_rrset, 1, 0, 0);
+	knot_response_add_rrset_answer(resp, dname_rrset, 1, 0, 0);
 	ns_add_rrsigs(dname_rrset, resp, qname,
-	              knot_response2_add_rrset_answer, 1);
+	              knot_response_add_rrset_answer, 1);
 
 	if (ns_dname_is_too_long(dname_rrset, qname)) {
-		knot_response2_set_rcode(resp, KNOT_RCODE_YXDOMAIN);
+		knot_response_set_rcode(resp, KNOT_RCODE_YXDOMAIN);
 		return;
 	}
 
 	// synthetize CNAME (no way to tell that client supports DNAME)
 	knot_rrset_t *synth_cname = ns_cname_from_dname(dname_rrset, qname);
 	// add the synthetized RRSet to the Answer
-	knot_response2_add_rrset_answer(resp, synth_cname, 1, 0, 0);
+	knot_response_add_rrset_answer(resp, synth_cname, 1, 0, 0);
 
 	// no RRSIGs for this RRSet
 
@@ -1550,9 +1550,9 @@ static void ns_add_dnskey(const knot_node_t *apex, knot_packet_t *resp)
 	const knot_rrset_t *rrset =
 		knot_node_rrset(apex, KNOT_RRTYPE_DNSKEY);
 	if (rrset != NULL) {
-		knot_response2_add_rrset_additional(resp, rrset, 0, 0, 0);
+		knot_response_add_rrset_additional(resp, rrset, 0, 0, 0);
 		ns_add_rrsigs(rrset, resp, apex->owner,
-			      knot_response2_add_rrset_additional, 0);
+			      knot_response_add_rrset_additional, 0);
 	}
 }
 
@@ -1620,9 +1620,9 @@ DEBUG_KNOT_NS(
 	if (find_ret == KNOT_EBADZONE) {
 		// possible only if we followed cname
 		assert(cname != 0);
-		knot_response2_set_rcode(resp, KNOT_RCODE_NOERROR);
+		knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
 		auth_soa = 1;
-		knot_response2_set_aa(resp);
+		knot_response_set_aa(resp);
 		goto finalize;
 	}
 
@@ -1646,7 +1646,7 @@ have_node:
 		if (dname_rrset != NULL) {
 			ns_process_dname(dname_rrset, qname, resp);
 			auth_soa = 1;
-			knot_response2_set_aa(resp);
+			knot_response_set_aa(resp);
 			goto finalize;
 		}
 		// else check for a wildcard child
@@ -1660,17 +1660,17 @@ have_node:
 			if (cname == 0) {
 				debug_knot_ns("Setting NXDOMAIN RCODE.\n");
 				// return NXDOMAIN
-				knot_response2_set_rcode(resp,
+				knot_response_set_rcode(resp,
 					KNOT_RCODE_NXDOMAIN);
 				if (ns_put_nsec_nsec3_nxdomain(zone, previous,
 					closest_encloser, qname, resp) != 0) {
 					return NS_ERR_SERVFAIL;
 				}
 			} else {
-				knot_response2_set_rcode(resp,
+				knot_response_set_rcode(resp,
 					KNOT_RCODE_NOERROR);
 			}
-			knot_response2_set_aa(resp);
+			knot_response_set_aa(resp);
 			goto finalize;
 		}
 		// else set the node from which to take the answers to wild.node
@@ -1692,7 +1692,7 @@ DEBUG_KNOT_NS(
 );
 		const knot_dname_t *act_name = qname;
 		ns_follow_cname(&node, &act_name, resp,
-		                knot_response2_add_rrset_answer, 1);
+		                knot_response_add_rrset_answer, 1);
 DEBUG_KNOT_NS(
 		char *name2 = knot_dname_to_str(act_name);
 		debug_knot_ns("Canonical name: %s, node found: %p\n",
@@ -1719,8 +1719,8 @@ DEBUG_KNOT_NS(
 	if (ret != KNOT_EOK) {
 		goto finalize;
 	}
-	knot_response2_set_aa(resp);
-	knot_response2_set_rcode(resp, KNOT_RCODE_NOERROR);
+	knot_response_set_aa(resp);
+	knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
 
 	// this is the only case when the servers answers from
 	// particular node, i.e. the only case when it may return SOA
@@ -1772,7 +1772,7 @@ DEBUG_KNOT_NS(
 	// if no zone found, return REFUSED
 	if (zone == NULL) {
 		debug_knot_ns("No zone found.\n");
-		knot_response2_set_rcode(resp, KNOT_RCODE_REFUSED);
+		knot_response_set_rcode(resp, KNOT_RCODE_REFUSED);
 		//knot_dname_free(&qname);
 		return KNOT_EOK;
 	}
@@ -1874,7 +1874,7 @@ static int ns_axfr_send_and_clear(knot_ns_xfr_t *xfr)
 
 	// Clean the response structure
 	debug_knot_ns("Clearing response structure..\n");
-	knot_response2_clear(xfr->response, 0);
+	knot_response_clear(xfr->response, 0);
 
 	debug_knot_ns("Response structure after clearing:\n");
 	knot_packet_dump(xfr->response);
@@ -1931,7 +1931,7 @@ rrset:
 			continue;
 		}
 
-		ret = knot_response2_add_rrset_answer(params->xfr->response,
+		ret = knot_response_add_rrset_answer(params->xfr->response,
 		                                       rrset, 0, 0, 1);
 
 		if (ret == KNOT_ESPACE) {
@@ -1959,7 +1959,7 @@ rrsigs:
 			continue;
 		}
 
-		ret = knot_response2_add_rrset_answer(params->xfr->response,
+		ret = knot_response_add_rrset_answer(params->xfr->response,
 		                                        rrset, 0, 0, 1);
 
 		if (ret == KNOT_ESPACE) {
@@ -2021,7 +2021,7 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 	int ret;
 
 	// add SOA RR to the response
-	ret = knot_response2_add_rrset_answer(xfr->response, soa_rrset, 0, 0,
+	ret = knot_response_add_rrset_answer(xfr->response, soa_rrset, 0, 0,
 	                                        1);
 	if (ret != KNOT_EOK) {
 		// something is really wrong
@@ -2031,7 +2031,7 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 	// add the SOA's RRSIG
 	const knot_rrset_t *rrset = knot_rrset_rrsigs(soa_rrset);
 	if (rrset != NULL
-	    && (ret = knot_response2_add_rrset_answer(xfr->response, rrset,
+	    && (ret = knot_response_add_rrset_answer(xfr->response, rrset,
 	                                              0, 0, 1)) != KNOT_EOK) {
 		// something is really wrong, these should definitely fit in
 		return KNOT_ERROR;
@@ -2056,7 +2056,7 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 	 */
 
 	// try to add the SOA to the response again (last RR)
-	ret = knot_response2_add_rrset_answer(xfr->response, soa_rrset, 0, 0,
+	ret = knot_response_add_rrset_answer(xfr->response, soa_rrset, 0, 0,
 	                                        1);
 	if (ret == KNOT_ESPACE) {
 		// if there is not enough space, send the response and
@@ -2067,7 +2067,7 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 			return ret;
 		}
 
-		ret = knot_response2_add_rrset_answer(xfr->response,
+		ret = knot_response_add_rrset_answer(xfr->response,
 		                                        soa_rrset, 0, 0, 1);
 		if (ret != KNOT_EOK) {
 			return KNOT_ERROR;
@@ -2086,14 +2086,14 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 
 static int ns_ixfr_put_rrset(knot_ns_xfr_t *xfr, const knot_rrset_t *rrset)
 {
-	int res = knot_response2_add_rrset_answer(xfr->response, rrset,
+	int res = knot_response_add_rrset_answer(xfr->response, rrset,
 	                                            0, 0, 0);
 	if (res == KNOT_ESPACE) {
-		knot_response2_set_rcode(xfr->response, KNOT_RCODE_NOERROR);
+		knot_response_set_rcode(xfr->response, KNOT_RCODE_NOERROR);
 		/*! \todo Probably rename the function. */
 		ns_axfr_send_and_clear(xfr);
 
-		res = knot_response2_add_rrset_answer(xfr->response,
+		res = knot_response_add_rrset_answer(xfr->response,
 		                                        rrset, 0, 0, 0);
 	}
 
@@ -2101,7 +2101,7 @@ static int ns_ixfr_put_rrset(knot_ns_xfr_t *xfr, const knot_rrset_t *rrset)
 		debug_knot_ns("Error putting origin SOA to IXFR reply: %s\n",
 			 knot_strerror2(res));
 		/*! \todo Probably send back AXFR instead. */
-		knot_response2_set_rcode(xfr->response,
+		knot_response_set_rcode(xfr->response,
 		                           KNOT_RCODE_SERVFAIL);
 		/*! \todo Probably rename the function. */
 		ns_axfr_send_and_clear(xfr);
@@ -2178,7 +2178,7 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 //		debug_knot_ns("IXFR query cannot be answered: %s.\n",
 //		         knot_strerror2(res));
 //		/*! \todo Probably send back AXFR instead. */
-//		knot_response2_set_rcode(xfr->response, KNOT_RCODE_SERVFAIL);
+//		knot_response_set_rcode(xfr->response, KNOT_RCODE_SERVFAIL);
 //		/*! \todo Probably rename the function. */
 //		ns_axfr_send_and_clear(xfr);
 //		//socket_close(xfr->session);  /*! \todo Remove for UDP. */
@@ -2195,12 +2195,12 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 		                  KNOT_RRTYPE_SOA);
 
 	// 4) put the zone SOA as the first Answer RR
-	int res = knot_response2_add_rrset_answer(xfr->response, zone_soa, 0, 
+	int res = knot_response_add_rrset_answer(xfr->response, zone_soa, 0, 
 	                                            0, 0);
 	if (res != KNOT_EOK) {
 		debug_knot_ns("IXFR query cannot be answered: %s.\n",
 			 knot_strerror2(res));
-		knot_response2_set_rcode(xfr->response,
+		knot_response_set_rcode(xfr->response,
 		                           KNOT_RCODE_SERVFAIL);
 		/*! \todo Probably rename the function. */
 		ns_axfr_send_and_clear(xfr);
@@ -2242,7 +2242,7 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 	if ((knot_packet_authority_rrset_count(xfr->query) <= 0)) {
 		// malformed packet
 		debug_knot_ns("IXFR query does not contain authority record.\n");
-		knot_response2_set_rcode(xfr->response, KNOT_RCODE_FORMERR);
+		knot_response_set_rcode(xfr->response, KNOT_RCODE_FORMERR);
 		/*! \todo Probably rename the function. */
 		ns_axfr_send_and_clear(xfr);
 		//socket_close(xfr->session);
@@ -2259,7 +2259,7 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 	    || knot_dname_compare(qname, knot_rrset_owner(soa)) != 0) {
 		// malformed packet
 		debug_knot_ns("IXFR query is malformed.\n");
-		knot_response2_set_rcode(xfr->response, KNOT_RCODE_FORMERR);
+		knot_response_set_rcode(xfr->response, KNOT_RCODE_FORMERR);
 		/*! \todo Probably rename the function. */
 		ns_axfr_send_and_clear(xfr);
 		//socket_close(xfr->session);  /*! \todo Remove for UDP. */
@@ -2310,7 +2310,7 @@ knot_nameserver_t *knot_ns_create()
 		return NULL;
 	}
 
-	rc = knot_response2_init(err);
+	rc = knot_response_init(err);
 	if (rc != KNOT_EOK) {
 		debug_knot_ns("Error initializing default error response:"
 		                 " %s.\n", knot_strerror2(rc));
@@ -2319,7 +2319,7 @@ knot_nameserver_t *knot_ns_create()
 		return NULL;
 	}
 
-	knot_response2_set_rcode(err, KNOT_RCODE_SERVFAIL);
+	knot_response_set_rcode(err, KNOT_RCODE_SERVFAIL);
 	ns->err_resp_size = 0;
 
 	debug_knot_ns("Converting default empty response to wire format...\n");
@@ -2509,7 +2509,7 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 		return KNOT_EOK;
 	}
 
-	ret = knot_response2_init_from_query(response, query);
+	ret = knot_response_init_from_query(response, query);
 
 	if (ret != KNOT_EOK) {
 		debug_knot_ns("Failed to init response structure.\n");
@@ -2525,7 +2525,7 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 
 	// set the OPT RR to the response
 	if (knot_query_edns_supported(query)) {
-		ret = knot_response2_add_opt(response, nameserver->opt_rr, 0);
+		ret = knot_response_add_opt(response, nameserver->opt_rr, 0);
 		if (ret != KNOT_EOK) {
 			debug_knot_ns("Failed to set OPT RR to the response"
 			                  ": %s\n",knot_strerror2(ret));
@@ -2602,7 +2602,7 @@ int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		return res;
 	}
 
-	ret = knot_response2_init_from_query(response, xfr->query);
+	ret = knot_response_init_from_query(response, xfr->query);
 
 	if (ret != KNOT_EOK) {
 		debug_knot_ns("Failed to init response structure.\n");
@@ -2635,7 +2635,7 @@ DEBUG_KNOT_NS(
 	// if no zone found, return NotAuth
 	if (zone == NULL) {
 		debug_knot_ns("No zone found.\n");
-		knot_response2_set_rcode(xfr->response, KNOT_RCODE_NOTAUTH);
+		knot_response_set_rcode(xfr->response, KNOT_RCODE_NOTAUTH);
 		ns_axfr_send_and_clear(xfr);
 		return KNOT_ERROR;
 	}
@@ -2654,7 +2654,7 @@ DEBUG_KNOT_NS(
 
 int knot_ns_xfr_send_error(knot_ns_xfr_t *xfr, knot_rcode_t rcode)
 {
-	knot_response2_set_rcode(xfr->response, rcode);
+	knot_response_set_rcode(xfr->response, rcode);
 	/*! \todo Probably rename the function. */
 	return ns_axfr_send_and_clear(xfr);
 }
@@ -2713,7 +2713,7 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		debug_knot_ns("Failed to parse rest of the packet.\n");
 
 		/*! \todo Extract this to some function. */
-		knot_response2_set_rcode(xfr->response, KNOT_RCODE_FORMERR);
+		knot_response_set_rcode(xfr->response, KNOT_RCODE_FORMERR);
 		uint8_t *wire = NULL;
 		size_t size = 0;
 		ret = knot_packet_to_wire(xfr->response, &wire, &size);
@@ -2741,7 +2741,7 @@ int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		// now only one type of error (SERVFAIL), later maybe more
 
 		/*! \todo Extract this to some function. */
-		knot_response2_set_rcode(xfr->response, KNOT_RCODE_SERVFAIL);
+		knot_response_set_rcode(xfr->response, KNOT_RCODE_SERVFAIL);
 		uint8_t *wire = NULL;
 		size_t size = 0;
 		ret = knot_packet_to_wire(xfr->response, &wire, &size);

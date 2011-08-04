@@ -52,7 +52,7 @@ enum knot_error_t {
 };
 
 /*! \brief Table linking error messages to error codes. */
-extern const error_table_t knot_error_msgs[KNOTD_ERROR_COUNT];
+extern const error_table_t knotd_error_msgs[KNOTD_ERROR_COUNT];
 
 /*!
  * \brief Returns error message for the given error code.
@@ -61,9 +61,9 @@ extern const error_table_t knot_error_msgs[KNOTD_ERROR_COUNT];
  *
  * \return String containing the error message.
  */
-static inline const char *knot_strerror(int code)
+static inline const char *knotd_strerror(int code)
 {
-	return error_to_str((const error_table_t*)knot_error_msgs, code);
+	return error_to_str((const error_table_t*)knotd_error_msgs, code);
 }
 
 /*!
