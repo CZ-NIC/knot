@@ -294,6 +294,6 @@ void ck_dump_table(const ck_hash_table_t *table);
 
 /*----------------------------------------------------------------------------*/
 
-#endif /* _KNOTDCUCKOO_HASH_TABLE_H_ */
+#endif /* _KNOT_CUCKOO_HASH_TABLE_H_ */
 
 /*! @} */

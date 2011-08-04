@@ -32,8 +32,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOTDNAME_SERVER_H_
-#define _KNOTDNAME_SERVER_H_
+#ifndef _KNOT_NAME_SERVER_H_
+#define _KNOT_NAME_SERVER_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -107,8 +107,8 @@ knot_nameserver_t *knot_ns_create();
  * \param packet Packet structure to be filled with the parsed query.
  * \param type Type of the query.
  *
- * \retval KNOTD_EOK
- * \retval KNOTD_EMALF if the query is totally unusable. Such query must be
+ * \retval KNOT_EOK
+ * \retval KNOT_EMALF if the query is totally unusable. Such query must be
  *                    ignored.
  * \retval KNOT_RCODE_SERVFAIL if there was some internal error. Call
  *                               ns_error_response() with \a rcode set to this
@@ -150,8 +150,8 @@ void knot_ns_error_response(knot_nameserver_t *nameserver, uint16_t query_id,
  * \param rsize Input: maximum acceptable size of the response. Output: real
  *              size of the response.
  *
- * \retval KNOTD_EOK if a valid response was created.
- * \retval KNOTD_EMALF if an error occured and the response is not valid.
+ * \retval KNOT_EOK if a valid response was created.
+ * \retval KNOT_EMALF if an error occured and the response is not valid.
  */
 int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
                      uint8_t *response_wire, size_t *rsize);
@@ -173,10 +173,10 @@ int knot_ns_xfr_send_error(knot_ns_xfr_t *xfr, knot_rcode_t rcode);
  * \note Currently only a stub which sends one error response using the given
  *       callback.
  *
- * \retval KNOTD_EOK
- * \retval KNOTD_EINVAL
- * \retval KNOTD_ENOMEM
- * \retval KNOTD_ERROR
+ * \retval KNOT_EOK
+ * \retval KNOT_EINVAL
+ * \retval KNOT_ENOMEM
+ * \retval KNOT_ERROR
  *
  * \todo Maybe the place for the wire format should be passed in as in
  *       the ns_answer_request() function...?
@@ -232,6 +232,6 @@ void knot_ns_set_data(knot_nameserver_t *nameserver, void *data);
 void knot_ns_destroy(knot_nameserver_t **nameserver);
 
 
-#endif /* _KNOTDNAME_SERVER_H_ */
+#endif /* _KNOTNAME_SERVER_H_ */
 
 /*! @} */

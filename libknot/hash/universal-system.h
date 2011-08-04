@@ -103,6 +103,6 @@ uint32_t us_hash(const us_system_t *system, uint32_t value, uint table_exp,
 
 /*----------------------------------------------------------------------------*/
 
-#endif /* _KNOTDUNIVERSAL_SYSTEM_H_ */
+#endif /* _KNOT_UNIVERSAL_SYSTEM_H_ */
 
 /*! @} */
