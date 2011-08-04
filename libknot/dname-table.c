@@ -95,6 +95,7 @@ static int knot_dname_table_copy_node(const struct dname_table_node *from,
 	if (*to == NULL) {
 		return KNOT_ENOMEM;
 	}
+	memset(*to, 0, sizeof(struct dname_table_node));
 
 	(*to)->dname = from->dname;
 	knot_dname_retain((*to)->dname);
