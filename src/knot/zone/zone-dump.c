@@ -441,7 +441,7 @@ static int check_dnskey_rdata(const knot_rdata_t *rdata)
 {
 	/* check that Zone key bit it set - position 7 in net order */
 	/*! \todo FIXME: endian? */
-	uint16_t mask = 1 << 7; //0b0000000100000000;
+	uint16_t mask = 1 << 8; //0b0000000100000000;
 
 	uint16_t flags =
 		knot_wire_read_u16((uint8_t *)rdata_item_data
