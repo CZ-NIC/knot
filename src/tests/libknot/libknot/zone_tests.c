@@ -55,10 +55,11 @@ static struct zone_test_node test_nodes_good[TEST_NODES_GOOD] = {
 };
 
 static int test_zone_check_node(const knot_node_t *node,
-                                const struct zone_test_node *test_node)
+                                const struct zone_test_node *test_node,
+                                int test_parent)
 {
-	return (node->owner == &test_node->owner
-	        && node->parent == test_node->parent);
+	return (node->owner == &test_node->owner) &&
+		((test_parent) ? node->parent == test_node->parent : 1);
 }
 
 static int test_zone_create(knot_zone_contents_t **zone)
@@ -200,7 +201,7 @@ static int test_zone_add_node(knot_zone_contents_t *zone, int nsec3)
 	// check if all nodes are inserted
 	//int nodes = 0;
 	if (!nsec3
-	    && !test_zone_check_node(knot_zone_contents_apex(zone), &test_apex)) {
+	    && !test_zone_check_node(knot_zone_contents_apex(zone), &test_apex, !nsec3)) {
 		diag("zone: Apex of zone not right.");
 //		diag("Apex owner: %s (%p), apex parent: %p\n",
 //		     knot_dname_to_str(knot_zone_apex(zone)->owner),
@@ -224,7 +225,7 @@ static int test_zone_add_node(knot_zone_contents_t *zone, int nsec3)
 			continue;
 		}
 
-		if (!test_zone_check_node(n, &test_nodes_good[i])) {
+		if (!test_zone_check_node(n, &test_nodes_good[i], !nsec3)) {
 			diag("zone: Node does not match: owner: %s (should be "
 			     "%s), parent: %p (should be %p)",
 			     n->owner->name, test_nodes_good[i].owner.name,
