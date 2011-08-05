@@ -4,6 +4,7 @@
 #include "tests/libknot/libknot/rdata_tests.h"
 #include "libknot/common.h"
 #include "libknot/rdata.h"
+#include "libknot/dname.h"
 #include "libknot/util/descriptor.h"
 #include "libknot/util/utils.h"
 #include "libknot/util/error.h"
@@ -651,7 +652,7 @@ static int test_rdata_compare()
 	if (knot_rdata_compare(&test_rdata[0],
 	                         &test_rdata[1],
 	                         &format_rawdata) != -1) {
-		diag("RDATA raw data comparison failed");
+		diag("RDATA raw data comparison failed 0");
 		errors++;
 	}
 
@@ -659,7 +660,7 @@ static int test_rdata_compare()
 	if (knot_rdata_compare(&test_rdata[0],
 	                         &test_rdata[0],
 	                         &format_rawdata) != 0) {
-		diag("RDATA raw data comparison failed");
+		diag("RDATA raw data comparison failed 1 ");
 		errors++;
 	}
 
@@ -667,15 +668,19 @@ static int test_rdata_compare()
 	if (knot_rdata_compare(&test_rdata[1],
 	                         &test_rdata[0],
 	                         &format_rawdata) != 1) {
-		diag("RDATA raw data comparison failed");
+		diag("RDATA raw data comparison failed 2");
 		errors++;
 	}
 
-	/* abcdef.example.com. \w abcdef.foo.com. -> result 1 */
-	if (knot_rdata_compare(&test_rdata[2],
+	/* abcdef.example.com. \w abcdef.foo.com. -> result -1 */
+	int ret = 0;
+	if ((ret = knot_rdata_compare(&test_rdata[2],
 	                         &test_rdata[3],
-	                         &format_dname) != 1) {
-		diag("RDATA dname comparison failed");
+	                         &format_dname)) != -1) {
+		diag("RDATA dname comparison failed (%s \w %s retured %d)",
+		     knot_dname_to_str(test_rdata[2].items[0].dname),
+		     knot_dname_to_str(test_rdata[3].items[0].dname),
+		     ret);
 		errors++;
 	}
 
@@ -683,15 +688,15 @@ static int test_rdata_compare()
 	if (knot_rdata_compare(&test_rdata[2],
 	                         &test_rdata[2],
 	                         &format_dname) != 0) {
-		diag("RDATA dname comparison failed");
+		diag("RDATA dname comparison failed 4");
 		errors++;
 	}
 
-	/* abcdef.example.com. \w abcdef.foo.com -> result -1 */
+	/* abcdef.example.com. \w abcdef.foo.com -> result 1 */
 	if (knot_rdata_compare(&test_rdata[3],
 	                         &test_rdata[2],
-	                         &format_dname) != -1) {
-		diag("RDATA dname comparison failed");
+	                         &format_dname) != 1) {
+		diag("RDATA dname comparison failed 5");
 		errors++;
 	}
 
