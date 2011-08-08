@@ -930,10 +930,10 @@ static int knot_rdata_tests_run(int argc, char *argv[])
 	ok(res = test_rdata_deep_free(), "rdata: deep free");
 	res_final *= res;
 
-	endtodo;
-
 	ok(res = test_rdata_free(), "rdata: free");
 	res_final *= res;
+
+	endtodo;
 
 	return res_final;
 }
