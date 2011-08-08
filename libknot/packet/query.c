@@ -23,6 +23,10 @@
 
 int knot_query_dnssec_requested(const knot_packet_t *query)
 {
+	if (query == NULL) {
+		return KNOT_EBADARG;
+	}
+
 	return ((knot_edns_get_version(&query->opt_rr) != EDNS_NOT_SUPPORTED)
 	        && knot_edns_do(&query->opt_rr));
 }
@@ -31,6 +35,10 @@ int knot_query_dnssec_requested(const knot_packet_t *query)
 
 int knot_query_nsid_requested(const knot_packet_t *query)
 {
+	if (query == NULL) {
+		return KNOT_EBADARG;
+	}
+
 	return ((knot_edns_get_version(&query->opt_rr) != EDNS_NOT_SUPPORTED)
 	        && knot_edns_has_option(&query->opt_rr, EDNS_OPTION_NSID));
 }
@@ -39,6 +47,10 @@ int knot_query_nsid_requested(const knot_packet_t *query)
 
 int knot_query_edns_supported(const knot_packet_t *query)
 {
+	if (query == NULL) {
+		return KNOT_EBADARG;
+	}
+
 	return (knot_edns_get_version(&query->opt_rr) != EDNS_NOT_SUPPORTED);
 }
 
@@ -46,6 +58,9 @@ int knot_query_edns_supported(const knot_packet_t *query)
 
 int knot_query_init(knot_packet_t *query)
 {
+	if (query == NULL) {
+		return KNOT_EBADARG;
+	}
 	// set the qr bit to 0
 	knot_wire_flags_clear_qr(&query->header.flags1);
 
