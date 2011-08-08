@@ -64,8 +64,10 @@ static uint16_t *RDATA_ITEM_PTR = (uint16_t *)0xDEADBEEF;
 enum { RDATA_ITEMS_COUNT = 7, TEST_RDATA_COUNT = 4 , RDATA_DNAMES_COUNT = 2 };
 
 static knot_dname_t RDATA_DNAMES[RDATA_DNAMES_COUNT] = {
-	{{}, (uint8_t *)"\6abcdef\7example\3com", 20, NULL},
-	{{}, (uint8_t *)"\6abcdef\3foo\3com", 16, NULL}
+	{{}, (uint8_t *)"\6abcdef\7example\3com", 20,
+         (uint8_t *)"\x0\x7\xF", 3},
+	{{}, (uint8_t *)"\6abcdef\3foo\3com", 16,
+        (uint8_t *)"\x0\x7\xB", 3}
 };
 
 static knot_rdata_item_t TEST_RDATA_ITEMS[RDATA_ITEMS_COUNT] = {
@@ -676,11 +678,8 @@ static int test_rdata_compare()
 	int ret = 0;
 	if ((ret = knot_rdata_compare(&test_rdata[2],
 	                         &test_rdata[3],
-	                         &format_dname)) != -1) {
-		diag("RDATA dname comparison failed (%s & %s retured %d)",
-		     knot_dname_to_str(test_rdata[2].items[0].dname),
-		     knot_dname_to_str(test_rdata[3].items[0].dname),
-		     ret);
+	                         &format_dname)) >= 0) {
+		diag("RDATA dname comparison failed 3");
 		errors++;
 	}
 
