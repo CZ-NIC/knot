@@ -80,7 +80,7 @@ static int test_nsec3_params_from_wire()
 	errors += lived != 1;
 
 	if (knot_nsec3_params_from_wire(&nsec3_test_params,
-rrset) != KNOT_EOK) {
+	                                rrset) != KNOT_EOK) {
 		diag("Could not convert nsec3 params to wire!");
 		return 0;
 	}

@@ -35,6 +35,10 @@
 int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
                                   const knot_rrset_t *nsec3param)
 {
+	if (params == NULL || nsec3_param == NULL) {
+		return KNOT_EBADARG;
+	}
+
 	assert(knot_rrset_type(nsec3param) == KNOT_RRTYPE_NSEC3PARAM);
 	const knot_rdata_t *rdata = knot_rrset_rdata(nsec3param);
 
@@ -176,7 +180,8 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
                       const uint8_t *data, size_t size, uint8_t **digest,
                       size_t *digest_size)
 {
-	if (digest == NULL || digest_size == NULL || data == NULL) {
+	if (params == NULL || digest == NULL || digest_size == NULL
+	    || data == NULL) {
 		return KNOT_EBADARG;
 	}
 
