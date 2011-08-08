@@ -39,7 +39,7 @@ static int test_nsec3_params_from_wire()
 	knot_rdata_item_set_raw_data(rdata, 1, (uint16_t *)"\x1\x0\x0");
 	knot_rdata_item_set_raw_data(rdata, 2, (uint16_t *)"\x2\x0\x0\x64");
 	knot_rdata_item_set_raw_data(rdata, 3,
-		(uint16_t *)"\xF\x0\xE\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF");
+	(uint16_t *)"\xF\x0\xE\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF");
 
 	knot_rrset_t *rrset =
 		knot_rrset_new(knot_dname_new_from_str("cz.",
@@ -90,24 +90,24 @@ static int test_nsec3_params_from_wire()
 		errors++;
 	}
 
-	if (nsec3_test_params.flags != 2) {
+	if (nsec3_test_params.flags != 0) {
 		diag("Flags error");
 		errors++;
 	}
 
-	if (nsec3_test_params.iterations != 15) {
+	if (nsec3_test_params.iterations != 100) {
 		diag("Iterations error");
 		errors++;
 	}
 
-	if (nsec3_test_params.salt_length != 8) {
+	if (nsec3_test_params.salt_length != 14) {
 		diag("Salt length error");
 		return 0;
 	}
 
 	if (compare_wires_simple((uint8_t *)nsec3_test_params.salt,
 		(uint8_t *)"\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF",
-		15) != 0) {
+		14) != 0) {
 		diag("Salt wire error");
 		errors++;
 	}
