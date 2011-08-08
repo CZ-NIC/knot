@@ -39,7 +39,7 @@ static int test_nsec3_params_from_wire()
 	knot_rdata_item_set_raw_data(rdata, 1, (uint16_t *)"\x1\x0\x0");
 	knot_rdata_item_set_raw_data(rdata, 2, (uint16_t *)"\x2\x0\x0\x64");
 	knot_rdata_item_set_raw_data(rdata, 3,
-		(uint16_t *)"\xF\x0\xE\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF");
+	(uint16_t *)"\xF\x0\xE\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF");
 
 	knot_rrset_t *rrset =
 		knot_rrset_new(knot_dname_new_from_str("cz.",
@@ -106,8 +106,8 @@ rrset) != KNOT_EOK) {
 	}
 
 	if (compare_wires_simple((uint8_t *)nsec3_test_params.salt,
-		(uint8_t *)"\x0\xF\xE\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF",
-		16) != 0) {
+		(uint8_t *)"\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF",
+		14) != 0) {
 		diag("Salt wire error");
 		errors++;
 	}
