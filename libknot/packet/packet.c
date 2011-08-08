@@ -368,7 +368,7 @@ static knot_rdata_t *knot_packet_parse_rdata(const uint8_t *wire,
 	                                desc);
 	if (rc != KNOT_EOK) {
 		debug_knot_packet("rdata_from_wire() returned: %s\n",
-		                    knot_strerror2(rc));
+		                    knot_strerror(rc));
 		knot_rdata_free(&rdata);
 		return NULL;
 	}

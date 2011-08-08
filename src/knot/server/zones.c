@@ -903,12 +903,12 @@ static int zones_journal_apply(knot_zone_t *zone)
 		if (ret != KNOT_EOK) {
 			debug_zones("update_zone: application of changesets "
 				    "failed with '%s'\n",
-				    knot_strerror2(ret));
+				    knotd_strerror(ret));
 		}
 
 	} else {
 		debug_zones("update_zone: failed to load changeset, %s\n",
-			    knot_strerror2(ret));
+			    knotd_strerror(ret));
 	}
 
 	/* Free changesets and return. */

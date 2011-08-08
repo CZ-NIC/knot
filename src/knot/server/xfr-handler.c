@@ -412,7 +412,7 @@ int xfr_master(dthread_t *thread)
 			ret = knot_ns_init_xfr(xfrh->ns, &xfr);
 			if (ret != KNOT_EOK) {
 				debug_xfr("xfr_master: failed to init XFR: %s\n",
-				          knot_strerror2(ret));
+				          knotd_strerror(ret));
 				socket_close(xfr.session);
 			}
 			
@@ -437,7 +437,7 @@ int xfr_master(dthread_t *thread)
 			ret = knot_ns_init_xfr(xfrh->ns, &xfr);
 			if (ret != KNOT_EOK) {
 				debug_xfr("xfr_master: failed to init XFR: %s\n",
-				          knot_strerror2(ret));
+				          knotd_strerror(ret));
 				socket_close(xfr.session);
 			}
 			

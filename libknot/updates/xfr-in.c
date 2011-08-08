@@ -283,7 +283,7 @@ int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
 	int ret = knot_packet_parse_from_wire(packet, pkt, size, 1);
 	if (ret != KNOT_EOK) {
 		debug_knot_xfr("Could not parse packet: %s.\n",
-		          knot_strerror2(ret));
+		          knot_strerror(ret));
 		knot_packet_free(&packet);
 		/*! \todo Cleanup. */
 		return KNOT_EMALF;
@@ -294,7 +294,7 @@ int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
 
 	if (ret != KNOT_EOK) {
 		debug_knot_xfr("Could not parse first Answer RR: %s.\n",
-			  knot_strerror2(ret));
+			  knot_strerror(ret));
 		knot_packet_free(&packet);
 		/*! \todo Cleanup. */
 		return KNOT_EMALF;
@@ -373,7 +373,7 @@ DEBUG_KNOT_XFR(
 		                                    KNOT_RRSET_DUPL_MERGE, 1);
 		if (ret < 0) {
 			debug_knot_xfr("Failed to add RRSet to zone node: %s.\n",
-			          knot_strerror2(ret));
+			          knot_strerror(ret));
 			knot_packet_free(&packet);
 			knot_node_free(&node, 0, 0);
 			knot_rrset_deep_free(&rr, 1, 1, 1);
@@ -512,7 +512,7 @@ DEBUG_KNOT_XFR(
 			                            KNOT_RRSET_DUPL_MERGE, 1);
 			if (ret < 0) {
 				debug_knot_xfr("Failed to add RRSet to zone: %s.\n",
-				          knot_strerror2(ret));
+				          knot_strerror(ret));
 				return KNOT_ERROR;
 			} else if (ret > 0) {
 				// merged, free the RRSet
@@ -532,7 +532,7 @@ DEBUG_KNOT_XFR(
 	if (ret < 0) {
 		// some error in parsing
 		debug_knot_xfr("Could not parse next RR: %s.\n",
-		          knot_strerror2(ret));
+		          knot_strerror(ret));
 		knot_packet_free(&packet);
 		knot_node_free(&node, 0, 0);
 		knot_rrset_deep_free(&rr, 1, 1, 1);
@@ -575,7 +575,7 @@ static int xfrin_parse_first_rr(knot_packet_t **packet, const uint8_t *pkt,
 	int ret = knot_packet_parse_from_wire(*packet, pkt, size, 1);
 	if (ret != KNOT_EOK) {
 		debug_knot_xfr("Could not parse packet: %s.\n",
-		          knot_strerror2(ret));
+		          knot_strerror(ret));
 		knot_packet_free(packet);
 		return KNOT_EMALF;
 	}
@@ -584,7 +584,7 @@ static int xfrin_parse_first_rr(knot_packet_t **packet, const uint8_t *pkt,
 
 	if (ret != KNOT_EOK) {
 		debug_knot_xfr("Could not parse first Answer RR: %s.\n",
-		          knot_strerror2(ret));
+		          knot_strerror(ret));
 		knot_packet_free(packet);
 		return KNOT_EMALF;
 	}
@@ -828,7 +828,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 
 	if (ret != KNOT_EOK) {
 		debug_knot_xfr("Could not parse next Answer RR: %s.\n",
-		          knot_strerror2(ret));
+		          knot_strerror(ret));
 		ret = KNOT_EMALF;
 		goto cleanup;
 	}
@@ -1252,7 +1252,7 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 	knot_rdata_t *rdata = xfrin_remove_rdata(rrsigs, remove);
 	if (rdata == NULL) {
 		debug_knot_xfr("Failed to remove RDATA from RRSet: %s.\n",
-			  knot_strerror2(ret));
+			  knot_strerror(ret));
 		return 1;
 	}
 	
@@ -1357,7 +1357,7 @@ DEBUG_KNOT_XFR(
 	knot_rdata_t *rdata = xfrin_remove_rdata(*rrset, remove);
 	if (rdata == NULL) {
 		debug_knot_xfr("Failed to remove RDATA from RRSet: %s.\n",
-			  knot_strerror2(ret));
+			  knot_strerror(ret));
 		return 1;
 	}
 	
@@ -2063,7 +2063,7 @@ int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
 	                                            &contents_copy);
 	if (ret != KNOT_EOK) {
 		debug_knot_xfr("Failed to create shallow copy of zone: %s\n",
-		          knot_strerror2(ret));
+		          knot_strerror(ret));
 		return ret;
 	}
 
@@ -2087,7 +2087,7 @@ int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
 					       &chsets->sets[i])) != KNOT_EOK) {
 			xfrin_rollback_update(contents_copy, &changes);
 			debug_knot_xfr("Failed to apply changesets to zone: %s\n",
-			          knot_strerror2(ret));
+			          knot_strerror(ret));
 			return ret;
 		}
 	}
@@ -2106,7 +2106,7 @@ int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
 	if (ret != KNOT_EOK) {
 		xfrin_rollback_update(contents_copy, &changes);
 		debug_knot_xfr("Failed to finalize new zone contents: %s\n",
-		          knot_strerror2(ret));
+		          knot_strerror(ret));
 		return ret;
 	}
 

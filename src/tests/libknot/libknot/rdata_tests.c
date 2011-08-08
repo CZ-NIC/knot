@@ -677,7 +677,7 @@ static int test_rdata_compare()
 	if ((ret = knot_rdata_compare(&test_rdata[2],
 	                         &test_rdata[3],
 	                         &format_dname)) != -1) {
-		diag("RDATA dname comparison failed (%s \w %s retured %d)",
+		diag("RDATA dname comparison failed (%s & %s retured %d)",
 		     knot_dname_to_str(test_rdata[2].items[0].dname),
 		     knot_dname_to_str(test_rdata[3].items[0].dname),
 		     ret);
