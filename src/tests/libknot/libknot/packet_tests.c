@@ -119,17 +119,17 @@ static int test_packet_parse_next_rr_answer()
 			errors++;
 		}
 		tmp = 1;
-		knot_rrset_t *rrset = (knot_rrset_t *)0xaaaa;
-		tmp = 0;
-		if (knot_packet_parse_next_rr_answer(packet,
-		                                       &rrset) !=
-		    KNOT_EBADARG) {
-			diag("Trying to parse next RR answer with rrset pointer"
-			     " not pointing to NULL did not "
-			     "return KNOT_EBADARG!");
-			errors++;
-		}
-		tmp = 1;
+//		knot_rrset_t *rrset = (knot_rrset_t *)0xaaaa;
+//		tmp = 0;
+//		if (knot_packet_parse_next_rr_answer(packet,
+//		                                       &rrset) !=
+//		    KNOT_EBADARG) {
+//			diag("Trying to parse next RR answer with rrset pointer"
+//			     " not pointing to NULL did not "
+//			     "return KNOT_EBADARG!");
+//			errors++;
+//		}
+//		tmp = 1;
 	}, "packet: parse next rr answer NULL tests.");
 	errors += tmp != 1;
 
@@ -141,19 +141,24 @@ static int test_packet_parse_next_rr_answer()
 static int test_packet_parse_rest()
 {
 	int res = 0;
-	lives_ok({res *= knot_packet_parse_rest(NULL);},
+	lives_ok({res = knot_packet_parse_rest(NULL);},
 	"packet: parse rest NULL test");
+
+	if (res != KNOT_EBADARG) {
+		diag("parse rest NULL did not return KNOT_EBADARG.\n");
+		return 1;
+	}
 
 	knot_packet_t *packet =
 		knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
 	assert(packet);
 
-	lives_ok({res *= knot_packet_parse_rest(packet);},
+	lives_ok({res = knot_packet_parse_rest(packet);},
 	"packet: parser rest empty packet");
 
 	knot_packet_free(&packet);
 
-	return res;
+	return (res == KNOT_EOK);
 }
 
 
