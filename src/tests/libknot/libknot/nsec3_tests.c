@@ -90,24 +90,24 @@ rrset) != KNOT_EOK) {
 		errors++;
 	}
 
-	if (nsec3_test_params.flags != 2) {
-		diag("Flags error");
+	if (nsec3_test_params.flags != 0) {
+		diag("Flags error %d", nsec3_test_params.flags);
 		errors++;
 	}
 
-	if (nsec3_test_params.iterations != 15) {
-		diag("Iterations error");
+	if (nsec3_test_params.iterations != 100) {
+		diag("Iterations error %d", nsec3_test_params.iterations);
 		errors++;
 	}
 
-	if (nsec3_test_params.salt_length != 8) {
-		diag("Salt length error");
+	if (nsec3_test_params.salt_length != 14) {
+		diag("Salt length error %d", nsec3_test_params.salt_length);
 		return 0;
 	}
 
 	if (compare_wires_simple((uint8_t *)nsec3_test_params.salt,
-		(uint8_t *)"\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF",
-		15) != 0) {
+		(uint8_t *)"\xF\x0\xE\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF",
+		16) != 0) {
 		diag("Salt wire error");
 		errors++;
 	}
