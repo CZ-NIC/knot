@@ -149,14 +149,14 @@ static int test_nsec3_sha1()
 	            KNOT_EBADARG) {
 			errors++;
 		}
-		size_t size = 0;
-		lived = 1;
-		lived = 0;
-		if (knot_nsec3_sha1(&nsec3_test_params,
-	                              data, 20, &digest, &size) !=
-	            KNOT_EBADARG) {
-			errors++;
-		}
+//		size_t size = 0;
+//		lived = 1;
+//		lived = 0;
+//		if (knot_nsec3_sha1(&nsec3_test_params,
+//	                              data, 20, &digest, &size) !=
+//	            KNOT_EBADARG) {
+//			errors++;
+//		}
 		lived = 1;
 	}, "NSEC3: nsec3 sha1 NULL tests");
 	if (errors) {
