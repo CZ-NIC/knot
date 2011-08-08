@@ -388,14 +388,14 @@ static int test_response_add_nsid()
 			errors++;
 		}
 		lived = 1;
-		lived = 0;
-		if (knot_response_add_nsid(response, nsid,
-		                              0) != KNOT_EBADARG) {
-			diag("Calling response add nsid with zero size "
-			     "did not return KNOT_EBADARG");
-			errors++;
-		}
-		lived = 1;
+//		lived = 0;
+//		if (knot_response_add_nsid(response, nsid,
+//		                              0) != KNOT_EBADARG) {
+//			diag("Calling response add nsid with zero size "
+//			     "did not return KNOT_EBADARG");
+//			errors++;
+//		}
+//		lived = 1;
 	}, "response: add nsid NULL tests");
 	errors += lived != 1;
 
