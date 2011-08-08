@@ -1894,7 +1894,7 @@ static void ns_axfr_from_node(knot_node_t *node, void *data)
 	if (params->ret != KNOT_EOK) {
 		// just skip (will be called on next node with the same params
 		debug_knot_ns("Params contain error: %s, skipping node...\n",
-		              knot_strerror2(params->ret));
+		              knot_strerror(params->ret));
 		return;
 	}
 
@@ -2099,7 +2099,7 @@ static int ns_ixfr_put_rrset(knot_ns_xfr_t *xfr, const knot_rrset_t *rrset)
 
 	if (res != KNOT_EOK) {
 		debug_knot_ns("Error putting origin SOA to IXFR reply: %s\n",
-			 knot_strerror2(res));
+			 knot_strerror(res));
 		/*! \todo Probably send back AXFR instead. */
 		knot_response_set_rcode(xfr->response,
 		                           KNOT_RCODE_SERVFAIL);
@@ -2176,7 +2176,7 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 //	                              zone_serial);
 //	if (res != KNOT_EOK) {
 //		debug_knot_ns("IXFR query cannot be answered: %s.\n",
-//		         knot_strerror2(res));
+//		         knot_strerror(res));
 //		/*! \todo Probably send back AXFR instead. */
 //		knot_response_set_rcode(xfr->response, KNOT_RCODE_SERVFAIL);
 //		/*! \todo Probably rename the function. */
@@ -2199,7 +2199,7 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 	                                            0, 0);
 	if (res != KNOT_EOK) {
 		debug_knot_ns("IXFR query cannot be answered: %s.\n",
-			 knot_strerror2(res));
+			 knot_strerror(res));
 		knot_response_set_rcode(xfr->response,
 		                           KNOT_RCODE_SERVFAIL);
 		/*! \todo Probably rename the function. */
@@ -2304,7 +2304,7 @@ knot_nameserver_t *knot_ns_create()
 	int rc = knot_packet_set_max_size(err, KNOT_WIRE_HEADER_SIZE);
 	if (rc != KNOT_EOK) {
 		debug_knot_ns("Error creating default error response: %s.\n",
-		                 knot_strerror2(rc));
+		                 knot_strerror(rc));
 		free(ns);
 		knot_packet_free(&err);
 		return NULL;
@@ -2313,7 +2313,7 @@ knot_nameserver_t *knot_ns_create()
 	rc = knot_response_init(err);
 	if (rc != KNOT_EOK) {
 		debug_knot_ns("Error initializing default error response:"
-		                 " %s.\n", knot_strerror2(rc));
+		                 " %s.\n", knot_strerror(rc));
 		free(ns);
 		knot_packet_free(&err);
 		return NULL;
@@ -2396,7 +2396,7 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 	if ((ret = knot_packet_parse_from_wire(packet, query_wire,
 	                                         qsize, 1)) != 0) {
 		debug_knot_ns("Error while parsing packet, "
-		                "libknot error '%s'.\n", knot_strerror2(ret));
+		                "libknot error '%s'.\n", knot_strerror(ret));
 //		knot_response_free(&parsed);
 		return KNOT_RCODE_FORMERR;
 	}
@@ -2469,7 +2469,7 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 		ret = knot_packet_parse_rest(query);
 		if (ret != KNOT_EOK) {
 			debug_knot_ns("Failed to parse rest of the query: "
-			                   "%s.\n", knot_strerror2(ret));
+			                   "%s.\n", knot_strerror(ret));
 			knot_ns_error_response(nameserver, query->header.id,
 			           KNOT_RCODE_SERVFAIL, response_wire, rsize);
 			return KNOT_EOK;
@@ -2528,7 +2528,7 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 		ret = knot_response_add_opt(response, nameserver->opt_rr, 0);
 		if (ret != KNOT_EOK) {
 			debug_knot_ns("Failed to set OPT RR to the response"
-			                  ": %s\n",knot_strerror2(ret));
+			                  ": %s\n",knot_strerror(ret));
 		}
 	}
 

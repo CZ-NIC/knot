@@ -411,39 +411,6 @@ DEBUG_KNOT_ZONE(
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Adjusts a NSEC3 node for faster query processing.
- *
- * This function just adjusts all RRSets in the node, similarly as the
- * knot_zone_adjust_rrsets() function.
- *
- * \param node Zone node to adjust.
- * \param zone Zone the node belongs to.
- */
-static void knot_zone_contents_adjust_nsec3_node(knot_node_t *node,
-                                                   knot_zone_contents_t *zone)
-{
-
-DEBUG_KNOT_ZONE(
-	char *name = knot_dname_to_str(node->owner);
-	debug_knot_zone("----- Adjusting node %s -----\n", name);
-	free(name);
-);
-
-	// adjust domain names in RDATA
-	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
-	short count = knot_node_rrset_count(node);
-
-	assert(count == 0 || rrsets != NULL);
-
-	for (int r = 0; r < count; ++r) {
-		assert(rrsets[r] != NULL);
-	}
-
-	free(rrsets);
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
  * \brief Adjusts zone node for faster query processing.
  *
  * This function is just a wrapper over knot_zone_adjust_node() to be used
@@ -723,7 +690,7 @@ static int knot_zone_contents_dnames_from_rdata_to_table(
 			&knot_rdata_get_item(rdata, j)->dname);
 			if (rc < 0) {
 				debug_knot_zone("Error: %s\n",
-				  knot_strerror2(rc));
+				  knot_strerror(rc));
 				return rc;
 			}
 		}
