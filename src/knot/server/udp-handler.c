@@ -164,7 +164,7 @@ int udp_master(dthread_t *thread)
 			/*! \todo Send error, not available on UDP. */
 			break;
 		case KNOT_QUERY_NOTIFY:
-			rcu_read_lock();
+//			rcu_read_lock();
 //			const knot_zone_t *zone = NULL;
 //			res = knot_ns_answer_notify(ns, packet, qbuf, 
 //			                              &resp_len, &zone);

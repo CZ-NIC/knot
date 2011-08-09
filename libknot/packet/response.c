@@ -821,6 +821,7 @@ int knot_response_init(knot_packet_t *response)
 int knot_response_init_from_query(knot_packet_t *response,
                                     knot_packet_t *query)
 {
+
 	if (response == NULL || query == NULL) {
 		return KNOT_EBADARG;
 	}
@@ -843,9 +844,9 @@ int knot_response_init_from_query(knot_packet_t *response,
 	// copy the wireformat of Header and Question from the query
 	// TODO: get rid of the numeric constants
 	size_t to_copy = 12 + 4 + knot_dname_size(response->question.qname);
+
 	assert(response->max_size >= to_copy);
 	memcpy(response->wireformat, query->wireformat, to_copy);
-
 	response->size = to_copy;
 
 	// set the qr bit to 1

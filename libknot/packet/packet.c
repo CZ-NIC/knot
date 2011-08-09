@@ -1276,7 +1276,7 @@ void knot_packet_free(knot_packet_t **packet)
 static void knot_packet_dump_rrsets(const knot_rrset_t **rrsets,
                                       int count)
 {
-	assert(rrsets != NULL && *rrsets != NULL);
+	assert((rrsets != NULL && *rrsets != NULL) || count < 1);
 
 	for (int i = 0; i < count; ++i) {
 		knot_rrset_dump(rrsets[i], 0);
