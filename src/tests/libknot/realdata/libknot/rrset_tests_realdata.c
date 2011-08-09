@@ -3,13 +3,13 @@
 #include "tests/libknot/realdata/libknot/rrset_tests_realdata.h"
 #include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
 #include "libknot/common.h"
-#include "libknot/descriptor.h"
+#include "libknot/util/descriptor.h"
 #include "libknot/rrset.h"
 #include "libknot/dname.h"
 #include "libknot/rdata.h"
-#include "libknot/utils.h"
-#include "libknot/node.h"
-#include "libknot/debug.h"
+#include "libknot/util/utils.h"
+#include "libknot/zone/node.h"
+#include "libknot/util/debug.h"
 
 static int knot_rrset_tests_count(int argc, char *argv[]);
 static int knot_rrset_tests_run(int argc, char *argv[]);
@@ -28,7 +28,7 @@ unit_api rrset_tests_api = {
  */
 
 /* count1 == count2 */
-static int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
+int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count)
 {
 	int i = 0;
 	while (i < count &&

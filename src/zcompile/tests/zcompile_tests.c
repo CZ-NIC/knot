@@ -1,9 +1,9 @@
 #include <assert.h>
 
-#include "libknot/zone.h"
+#include "libknot/zone/zone.h"
 #include "knot/zone/zone-load.h"
 #include "libknot/rrset.h"
-#include "libknot/descriptor.h"
+#include "libknot/util/descriptor.h"
 #include "zcompile/zcompile.h"
 
 #ifdef TEST_WITH_LDNS

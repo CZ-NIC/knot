@@ -22,8 +22,8 @@
 
 #include "common.h"
 #include "rrset.h"
-#include "descriptor.h"
-#include "error.h"
+#include "util/descriptor.h"
+#include "util/error.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */

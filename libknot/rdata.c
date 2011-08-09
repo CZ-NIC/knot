@@ -23,12 +23,12 @@
 
 #include "common.h"
 #include "rdata.h"
-#include "descriptor.h"
+#include "util/descriptor.h"
 #include "dname.h"
-#include "error.h"
-#include "node.h"
-#include "utils.h"
-#include "debug.h"
+#include "util/error.h"
+#include "zone/node.h"
+#include "util/utils.h"
+#include "util/debug.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */

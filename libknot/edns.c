@@ -20,9 +20,9 @@
 
 #include "edns.h"
 #include "common.h"
-#include "descriptor.h"
-#include "debug.h"
-#include "error.h"
+#include "util/descriptor.h"
+#include "util/debug.h"
+#include "util/error.h"
 
 /*! \brief Various EDNS constatns. */
 enum knot_edns_consts {

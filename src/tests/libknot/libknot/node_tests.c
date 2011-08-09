@@ -1,7 +1,7 @@
 #include "tests/libknot/libknot/node_tests.h"
 #include "libknot/dname.h"
-#include "libknot/node.h"
-#include "libknot/descriptor.h"
+#include "libknot/zone/node.h"
+#include "libknot/util/descriptor.h"
 
 static int knot_node_tests_count(int argc, char *argv[]);
 static int knot_node_tests_run(int argc, char *argv[]);

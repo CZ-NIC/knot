@@ -3,9 +3,9 @@
 #include "tests/libknot/realdata/libknot/zone_tests_realdata.h"
 #include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
 #include "libknot/common.h"
-#include "libknot/zone.h"
-#include "libknot/error.h"
-#include "libknot/node.h"
+#include "libknot/zone/zone.h"
+#include "libknot/util/error.h"
+#include "libknot/zone/node.h"
 
 static int knot_zone_tests_count(int argc, char *argv[]);
 static int knot_zone_tests_run(int argc, char *argv[]);

@@ -66,8 +66,7 @@ AC_FUNC_FORK
 AC_FUNC_MMAP
 AC_CHECK_FUNCS([gethostbyname gettimeofday memmove memset munmap regcomp select socket sqrt strcasecmp strchr strdup strerror strncasecmp strtol strtoul])
 
-AC_CONFIG_SUBDIRS([libknot])
-
 AC_CONFIG_FILES([Makefile
+                 libknot/Makefile
                  src/Makefile])
 AC_OUTPUT

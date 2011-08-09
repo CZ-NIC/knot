@@ -12,7 +12,7 @@
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zone-dump.h"
 #include "libknot/libknot.h"
-#include "libknot/debug.h"
+#include "libknot/util/debug.h"
 
 /*!
  * \brief Compares two time_t values.

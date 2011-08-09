@@ -31,23 +31,36 @@
 #ifndef _KNOT_HASH_FUNCTIONS_H_
 #define _KNOT_HASH_FUNCTIONS_H_
 
-typedef  unsigned long int  u4;   /* unsigned 4-byte type */
-typedef  unsigned     char  u1;   /* unsigned 1-byte type */
+#include <stdint.h>
+#include <string.h>
 
-/*!
- * \brief Fowler/Noll/Vo Hash.
+/*
+ * Fowler / Noll / Vo Hash (FNV Hash)
+ * http://www.isthe.com/chongo/tech/comp/fnv/
  *
- * Downloaded from ???
+ * This is an implementation of the algorithms posted above.
+ * This file is placed in the public domain by Peter Wemm.
  *
- * \param data Data to hash.
- * \param size Size of the data in bytes.
- * \param bits
- *
- * \return Hash of the data.
- *
- * \todo Add source.
+ * $FreeBSD: src/sys/sys/fnv_hash.h,v 1.2.2.1 2001/03/21 10:50:59 peter Exp $
  */
-unsigned long int fnv_hash(const char *data, int size, int bits);
+
+typedef uint32_t Fnv32_t;
+
+#define FNV1_32_INIT ((Fnv32_t) 33554467UL)
+
+#define FNV_32_PRIME ((Fnv32_t) 0x01000193UL)
+
+static __inline Fnv32_t
+fnv_32_buf(const void *buf, size_t len, Fnv32_t hval)
+{
+	const uint8_t *s = (const uint8_t *)buf;
+
+	while (len-- != 0) {
+		hval *= FNV_32_PRIME;
+		hval ^= *s++;
+	}
+	return hval;
+}
 
 /*!
  * \brief Jenkins hash function.
@@ -62,8 +75,11 @@ unsigned long int fnv_hash(const char *data, int size, int bits);
  *
  * \todo Add source.
  */
-u4 jhash(register u1 *k, u4 length, u4 initval);
+typedef  unsigned long  int  ub4;   /* unsigned 4-byte quantities */
+typedef  unsigned       char ub1;   /* unsigned 1-byte quantities */
 
-#endif /* _KNOTDHASH_FUNCTIONS_H_ */
+ub4 jhash(k, length, initval);
+
+#endif /* _KNOT_HASH_FUNCTIONS_H_ */
 
 /*! @} */

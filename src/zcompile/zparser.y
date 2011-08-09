@@ -23,7 +23,7 @@
 #include "zcompile/parser-util.h"
 
 #include "libknot/dname.h"
-#include "libknot/zone.h"
+#include "libknot/zone/zone.h"
 #include "zcompile/zcompile.h"
 #include "zcompile/parser-descriptor.h"
 #include "zcompile/zcompile-error.h"

@@ -1,5 +1,5 @@
 #include <config.h>
-//#include "knot/common.h"
+#include "knot/common.h"
 #include "common/libtap/tap_unit.h"
 
 // Units to test
@@ -8,7 +8,7 @@
 #include "tests/libknot/libknot/edns_tests.h"
 #include "tests/libknot/libknot/node_tests.h"
 #include "tests/libknot/libknot/rdata_tests.h"
-#include "tests/libknot/libknot/response2_tests.h"
+#include "tests/libknot/libknot/response_tests.h"
 #include "tests/libknot/libknot/rrset_tests.h"
 #include "tests/libknot/libknot/zone_tests.h"
 #include "tests/libknot/libknot/dname_table_tests.h"
@@ -31,9 +31,9 @@ int main(int argc, char *argv[])
 		&dname_tests_api,    //! DNS library (dname) unit
 		&edns_tests_api,     //! DNS library (EDNS0) unit
 		&zone_tests_api,     //! DNS library (zone) unit
-//		&node_tests_api,     //! DNS library (node) unit
+		&node_tests_api,     //! DNS library (node) unit
 		&rdata_tests_api,    //! DNS library (rdata) unit
-		&response2_tests_api, //! DNS library (response) unit
+		&response_tests_api, //! DNS library (response) unit
 		&rrset_tests_api,    //! DNS library (rrset) unit
 		&dname_table_tests_api,
 		&nsec3_tests_api,

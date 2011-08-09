@@ -18,7 +18,7 @@
 
 #include <urcu.h>
 
-#include "libknot/descriptor.h"
+#include "libknot/util/descriptor.h"
 #include "common/lists.h"
 #include "knot/other/log.h"
 

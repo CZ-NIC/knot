@@ -14,13 +14,13 @@
 
 #include "knot/common.h"
 #include "knot/server/xfr-handler.h"
-#include "libknot/name-server.h"
+#include "libknot/nameserver/name-server.h"
 #include "knot/other/error.h"
 #include "knot/server/socket.h"
 #include "knot/server/tcp-handler.h"
-#include "libknot/xfr-in.h"
+#include "libknot/updates/xfr-in.h"
 #include "knot/server/zones.h"
-#include "libknot/error.h"
+#include "libknot/util/error.h"
 
 /*! \brief XFR event wrapper for libev. */
 struct xfr_io_t
@@ -412,7 +412,7 @@ int xfr_master(dthread_t *thread)
 			ret = knot_ns_init_xfr(xfrh->ns, &xfr);
 			if (ret != KNOT_EOK) {
 				debug_xfr("xfr_master: failed to init XFR: %s\n",
-				          knot_strerror2(ret));
+				          knotd_strerror(ret));
 				socket_close(xfr.session);
 			}
 			
@@ -437,7 +437,7 @@ int xfr_master(dthread_t *thread)
 			ret = knot_ns_init_xfr(xfrh->ns, &xfr);
 			if (ret != KNOT_EOK) {
 				debug_xfr("xfr_master: failed to init XFR: %s\n",
-				          knot_strerror2(ret));
+				          knotd_strerror(ret));
 				socket_close(xfr.session);
 			}
 			
@@ -478,7 +478,7 @@ int xfr_master(dthread_t *thread)
 		/* Report. */
 		if (ret != KNOTD_EOK) {
 			log_server_error("%s request failed: %s\n",
-					 req_type, knot_strerror(ret));
+					 req_type, knotd_strerror(ret));
 		}
 	}
 

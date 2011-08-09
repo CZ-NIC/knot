@@ -1,7 +1,7 @@
 #include "knot/other/error.h"
 #include "common/errors.h"
 
-const error_table_t knot_error_msgs[] = {
+const error_table_t knotd_error_msgs[] = {
 
 	/* Mapped errors. */
 	{KNOTD_EOK, "OK"},
