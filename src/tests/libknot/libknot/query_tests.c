@@ -4,10 +4,10 @@
 #include <stdint.h>
 
 #include "packet_tests.h"
-#include "libknot/error.h"
-#include "libknot/packet.h"
-#include "libknot/wire.h"
-#include "libknot/query.h"
+#include "libknot/util/error.h"
+#include "libknot/packet/packet.h"
+#include "libknot/util/wire.h"
+#include "libknot/packet/query.h"
 /* *test_t structures */
 #include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
 

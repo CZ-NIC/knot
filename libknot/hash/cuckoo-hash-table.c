@@ -24,9 +24,9 @@
 
 #include <urcu.h>
 
-#include "utils.h"
+#include "util/utils.h"
 #include "common.h"
-#include "debug.h"
+#include "util/debug.h"
 #include "hash/cuckoo-hash-table.h"
 #include "hash/hash-functions.h"
 #include "common/dynamic-array.h"
@@ -60,7 +60,7 @@
  * \return Hashed key.
  */
 #define HASH(system, key, length, exp, gen, table) \
-	us_hash(system, fnv_hash(key, length, -1), exp, table, gen)
+	us_hash(system, fnv_32_buf(key, length, FNV1_32_INIT), exp, table, gen)
 
 /*!
  * \brief Approximate ratio of hash table size to number of hashed items when 2

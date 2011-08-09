@@ -2,10 +2,10 @@
 
 #include "tests/libknot/libknot/zone_tests.h"
 #include "libknot/common.h"
-#include "libknot/dname-table.h"
-#include "libknot/zone.h"
-#include "libknot/error.h"
-#include "libknot/node.h"
+#include "libknot/zone/dname-table.h"
+#include "libknot/zone/zone.h"
+#include "libknot/util/error.h"
+#include "libknot/zone/node.h"
 
 static int knot_zone_tests_count(int argc, char *argv[]);
 static int knot_zone_tests_run(int argc, char *argv[]);
@@ -55,10 +55,11 @@ static struct zone_test_node test_nodes_good[TEST_NODES_GOOD] = {
 };
 
 static int test_zone_check_node(const knot_node_t *node,
-                                const struct zone_test_node *test_node)
+                                const struct zone_test_node *test_node,
+                                int test_parent)
 {
-	return (node->owner == &test_node->owner
-	        && node->parent == test_node->parent);
+	return (node->owner == &test_node->owner) &&
+		((test_parent) ? node->parent == test_node->parent : 1);
 }
 
 static int test_zone_create(knot_zone_contents_t **zone)
@@ -200,7 +201,7 @@ static int test_zone_add_node(knot_zone_contents_t *zone, int nsec3)
 	// check if all nodes are inserted
 	//int nodes = 0;
 	if (!nsec3
-	    && !test_zone_check_node(knot_zone_contents_apex(zone), &test_apex)) {
+	    && !test_zone_check_node(knot_zone_contents_apex(zone), &test_apex, !nsec3)) {
 		diag("zone: Apex of zone not right.");
 //		diag("Apex owner: %s (%p), apex parent: %p\n",
 //		     knot_dname_to_str(knot_zone_apex(zone)->owner),
@@ -224,7 +225,7 @@ static int test_zone_add_node(knot_zone_contents_t *zone, int nsec3)
 			continue;
 		}
 
-		if (!test_zone_check_node(n, &test_nodes_good[i])) {
+		if (!test_zone_check_node(n, &test_nodes_good[i], !nsec3)) {
 			diag("zone: Node does not match: owner: %s (should be "
 			     "%s), parent: %p (should be %p)",
 			     n->owner->name, test_nodes_good[i].owner.name,
@@ -565,7 +566,7 @@ static int test_zone_shallow_copy()
 	knot_zone_contents_t *to = NULL;
 	int ret = 0;
 	if ((ret = knot_zone_contents_shallow_copy(from, &to) != KNOT_EOK)) {
-		diag("Could not copy zone! %s", knot_strerror2(ret));
+		diag("Could not copy zone! %s", knot_strerror(ret));
 		return 0;
 	}
 
@@ -735,8 +736,8 @@ static int test_zone_shallow_copy()
 	}
 #endif
 
-	knot_zone_contents_deep_free(&from);
-	knot_zone_contents_free(&to);
+//	knot_zone_deep_free(&from_zone, 0);
+//	knot_zone_contents_free(&to);
 	return (errors == 0);
 
 }

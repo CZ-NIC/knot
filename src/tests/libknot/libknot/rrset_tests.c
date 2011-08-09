@@ -2,13 +2,13 @@
 
 #include "tests/libknot/libknot/rrset_tests.h"
 #include "libknot/common.h"
-#include "libknot/descriptor.h"
+#include "libknot/util/descriptor.h"
 #include "libknot/rrset.h"
 #include "libknot/dname.h"
 #include "libknot/rdata.h"
-#include "libknot/utils.h"
-#include "libknot/node.h"
-#include "libknot/debug.h"
+#include "libknot/util/utils.h"
+#include "libknot/zone/node.h"
+#include "libknot/util/debug.h"
 
 static int knot_rrset_tests_count(int argc, char *argv[]);
 static int knot_rrset_tests_run(int argc, char *argv[]);
@@ -533,7 +533,6 @@ static int test_rrset_rrsigs()
 			errors++;
 		}
 		errors += check_rrset(rrset, i, 0, 0, 1);
-		knot_dname_free(&owner);
 		knot_rrset_free(&rrset);
 		free(item);
 		knot_rdata_free(&tmp);
@@ -580,8 +579,6 @@ static int test_rrset_merge()
 
 	r = check_rrset(merger1, 5, 1, 1, 0);
 
-	knot_dname_free(&owner1);
-	knot_dname_free(&owner2);
 	knot_rrset_free(&merger1);
 	knot_rrset_free(&merger2);
 

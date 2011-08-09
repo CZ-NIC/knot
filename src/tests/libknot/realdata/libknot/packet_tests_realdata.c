@@ -2,10 +2,11 @@
 
 #include <assert.h>
 
+#include <config.h>
 #include "packet_tests_realdata.h"
-#include "libknot/error.h"
-#include "libknot/packet.h"
-#include "libknot/response2.h"
+#include "libknot/util/error.h"
+#include "libknot/packet/packet.h"
+#include "libknot/packet/response.h"
 /* *test_t structures */
 #include "tests/libknot/realdata/libknot_tests_loader_realdata.h"
 #ifdef TEST_WITH_LDNS
@@ -24,12 +25,220 @@ unit_api packet_tests_api = {
 };
 
 #ifdef TEST_WITH_LDNS
-extern int compare_wires_simple(uint8_t *wire1, uint8_t *wire2, uint count);
-extern int compare_rr_rdata(knot_rdata_t *rdata, ldns_rr *rr, uint16_t type);
-extern int compare_rrset_w_ldns_rr(const knot_rrset_t *rrset,
-                                   ldns_rr *rr, char check_rdata);
-extern int compare_rrsets_w_ldns_rrlist(const knot_rrset_t **rrsets,
-					ldns_rr_list *rrlist, int count);
+/* Compares one rdata knot with rdata from ldns.
+ * Comparison is done through comparing wireformats.
+ * Returns 0 if rdata are the same, 1 otherwise
+ */
+int compare_rr_rdata(knot_rdata_t *rdata, ldns_rr *rr,
+			    uint16_t type)
+{
+	knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type(type);
+	for (int i = 0; i < rdata->count; i++) {
+		/* check for ldns "descriptors" as well */
+
+		if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
+		    desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME ||
+		    desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME) {
+			if (rdata->items[i].dname->size !=
+			    ldns_rdf_size(ldns_rr_rdf(rr, i))) {
+				diag("%s", rdata->items[i].dname->name);
+				diag("%s", ldns_rdf_data(ldns_rr_rdf(rr, i)));
+				diag("%d", ldns_rdf_size(ldns_rr_rdf(rr, i)));
+				diag("%d", rdata->items[i].dname->size);
+				diag("Dname sizes in rdata differ");
+				return 1;
+			}
+			if (compare_wires_simple(rdata->items[i].dname->name,
+				ldns_rdf_data(ldns_rr_rdf(rr, i)),
+				rdata->items[i].dname->size) != 0) {
+				diag("%s", rdata->items[i].dname->name);
+				diag("%s", ldns_rdf_data(ldns_rr_rdf(rr, i)));
+				diag("Dname wires in rdata differ");
+				return 1;
+			}
+		} else {
+			/* Compare sizes first, then actual data */
+			if (rdata->items[i].raw_data[0] !=
+			    ldns_rdf_size(ldns_rr_rdf(rr, i))) {
+				/* \note ldns stores the size including the
+				 * length, knot does not */
+				diag("Raw data sizes in rdata differ");
+				diag("knot: %d ldns: %d",
+				     rdata->items[i].raw_data[0],
+				     ldns_rdf_size(ldns_rr_rdf(rr, i)));
+//				hex_print((char *)
+//					  (rdata->items[i].raw_data + 1),
+//					  rdata->items[i].raw_data[0]);
+//				hex_print((char *)ldns_rdf_data(ldns_rr_rdf(rr,
+//									    i)),
+//					  ldns_rdf_size(ldns_rr_rdf(rr, i)));
+				if (abs(rdata->items[i].raw_data[0] -
+				    ldns_rdf_size(ldns_rr_rdf(rr, i))) != 1) {
+					return 1;
+				}
+			}
+			if (compare_wires_simple((uint8_t *)
+				(rdata->items[i].raw_data + 1),
+				ldns_rdf_data(ldns_rr_rdf(rr, i)),
+				rdata->items[i].raw_data[0]) != 0) {
+//				hex_print((char *)
+//					  (rdata->items[i].raw_data + 1),
+//					  rdata->items[i].raw_data[0]);
+//				hex_print((char *)
+//					  ldns_rdf_data(ldns_rr_rdf(rr, i)),
+//					  rdata->items[i].raw_data[0]);
+				diag("Raw data wires in rdata differ in item "
+				     "%d", i);
+
+				return 1;
+			}
+		}
+	}
+
+	return 0;
+}
+
+int compare_rrset_w_ldns_rr(const knot_rrset_t *rrset,
+				      ldns_rr_list *rr_set, char check_rdata)
+{
+	/* We should have only one rrset from ldns, although it is
+	 * represented as rr_list ... */
+
+	int errors = 0;
+
+	ldns_rr *rr = ldns_rr_list_rr(rr_set, 0);
+	assert(rr);
+	assert(rrset);
+
+	/* compare headers */
+
+	if (rrset->owner->size != ldns_rdf_size(ldns_rr_owner(rr))) {
+		char *tmp_dname = knot_dname_to_str(rrset->owner);
+		diag("RRSet owner names differ in length");
+		diag("ldns: %d, knot: %d", ldns_rdf_size(ldns_rr_owner(rr)),
+		     rrset->owner->size);
+		diag("%s", tmp_dname);
+		diag("%s", ldns_rdf_data(ldns_rr_owner(rr)));
+		free(tmp_dname);
+		errors++;
+	}
+
+	if (compare_wires_simple(rrset->owner->name,
+				 ldns_rdf_data(ldns_rr_owner(rr)),
+				 rrset->owner->size) != 0) {
+		diag("RRSet owner wireformats differ");
+		diag("%s \\w %s\n", rrset->owner->name,
+		     ldns_rdf_data(ldns_rr_owner(rr)));
+		errors++;
+	}
+
+	if (rrset->type != ldns_rr_get_type(rr)) {
+		diag("RRset types differ");
+		diag("knot type: %d Ldns type: %d", rrset->type,
+		     ldns_rr_get_type(rr));
+		errors++;
+	}
+
+	if (rrset->rclass != ldns_rr_get_class(rr)) {
+		diag("RRset classes differ");
+		errors++;
+	}
+
+	if (rrset->ttl != ldns_rr_ttl(rr)) {
+		diag("RRset TTLs differ");
+		diag("knot: %d ldns: %d", rrset->ttl, ldns_rr_ttl(rr));
+		errors++;
+	}
+
+	/* compare rdatas */
+
+	if (rrset->rdata == NULL) {
+		diag("RRSet has no RDATA!");
+		return errors;
+	}
+	knot_rdata_t *tmp_rdata = rrset->rdata;
+
+	int i = 0;
+
+	while ((rr = ldns_rr_list_pop_rr(rr_set))) {
+		assert(rr);
+
+		if (compare_rr_rdata(tmp_rdata, rr, rrset->type) != 0) {
+			diag("Rdata differ");
+			return 1;
+		}
+
+		tmp_rdata = tmp_rdata->next;
+		i++;
+	}
+
+////	if (check_rdata) {
+////		if (compare_rr_rdata(rrset->rdata, rr, rrset->type) != 0) {
+////			diag("Rdata differ");
+////			errors++;
+////		}
+////	}
+
+	return errors;
+}
+
+int compare_rrsets_w_ldns_rrlist(const knot_rrset_t **rrsets,
+					ldns_rr_list *rrlist, int count)
+{
+	int errors = 0;
+
+	/* There are no rrsets currenty. Everything is just rr */
+
+	ldns_rr_list *rr_set = NULL;
+
+	ldns_rr_list_sort(rrlist);
+
+	if (count < 0) {
+		return 0;
+	}
+
+	for (int i = 0; i < count ; i++) {
+		/* normally ldns_pop_rrset or such should be here */
+
+		rr_set = ldns_rr_list_pop_rrset(rrlist);
+		/* Get one rr from list. */
+		ldns_rr *rr = ldns_rr_list_rr(rr_set, 0);
+		assert(rr);
+
+		if (rr_set == NULL) {
+			diag("Ldns and knot structures have different "
+			     "counts of rrsets.");
+			diag("knot: %d ldns: %d",
+			     count, (count - 1) - i);
+			return -1;
+		}
+
+//		diag("RRset from ldns is %d long", ldns_rr_list_rr_count(rr_set));
+
+//		diag("Got type from ldns: %d (%d)\n", ldns_rr_get_type(rr), i);
+
+		int j = 0;
+		for (j = 0; j < count; j++) {
+//			diag("Got type from knot: %d\n", rrsets[j]->type);
+			if (rrsets[j]->type == ldns_rr_get_type(rr) &&
+			    rrsets[j]->owner->size ==
+			    ldns_rdf_size(ldns_rr_owner(rr)) &&
+			    (compare_wires_simple(ldns_rdf_data(ldns_rr_owner(rr)), rrsets[j]->owner->name,
+			    rrsets[j]->owner->size) == 0)) {
+				errors += compare_rrset_w_ldns_rr(rrsets[j],
+				                                  rr_set, 1);
+				break;
+			}
+		}
+		if (j == count) {
+			diag("There was no RRSet of the same type!");
+//			errors++;
+		}
+	}
+
+	return errors;
+}
 
 int check_packet_w_ldns_packet(knot_packet_t *packet,
                                       ldns_pkt *ldns_packet,
@@ -41,11 +250,13 @@ int check_packet_w_ldns_packet(knot_packet_t *packet,
 	int errors = 0;
 	if (check_header) {
 		if (packet->header.id != ldns_pkt_id(ldns_packet)) {
-			diag("response ID does not match");
+			diag("response ID does not match - %d %d",
+			     packet->header.id,
+			     ldns_pkt_id(ldns_packet));
 			errors++;
 		}
 
-		/* qdcount is always 1 in dnslib's case */
+		/* qdcount is always 1 in knot's case */
 
 		/* TODO check flags1 and flags2 - no API for that,
 		 * write my own */
@@ -60,20 +271,20 @@ int check_packet_w_ldns_packet(knot_packet_t *packet,
 		                ldns_pkt_nscount(ldns_packet)) {
 			diag("Authority RRSet count wrongly converted.\n"
 			     "got %d should be %d",
-			     knot_packet_authority_rrset_count(packet),
+			     packet->header.nscount,
 			     ldns_pkt_nscount(ldns_packet));
 			errors++;
 		}
 
 		/* - 1 because ldns does not include OPT_RR to additional "
 		 "section */
-		int minus = (packet->opt_rr.version == 0) ? 1 : 0;
+		int minus = (!ldns_pkt_edns_version(ldns_packet)) ? 1 : 0;
 
 		if ((packet->header.arcount - minus) !=
 		                ldns_pkt_arcount(ldns_packet)) {
 			diag("Additional RRSet count wrongly converted.\n"
 			     "got %d should be %d",
-			     knot_packet_additional_rrset_count(packet) -
+			     packet->header.arcount -
 			     minus,
 			     ldns_pkt_arcount(ldns_packet));
 			errors++;
@@ -99,8 +310,7 @@ int check_packet_w_ldns_packet(knot_packet_t *packet,
 		                                 3600);
 
 		if ((ret = compare_rrset_w_ldns_rr(question_rrset,
-			ldns_rr_list_rr(ldns_pkt_question(ldns_packet),
-			0), 0)) != 0) {
+			ldns_pkt_question(ldns_packet), 0)) != 0) {
 			diag("Question rrsets wrongly converted");
 			errors++;
 		}
@@ -146,7 +356,7 @@ int check_packet_w_ldns_packet(knot_packet_t *packet,
 
 		if (ldns_pkt_edns(ldns_packet)) {
 			/* if (packet->edns_packet == NULL) {
-   diag("ldns has edns section, dnslib has not");
+   diag("ldns has edns section, knot has not");
    return 1;
   } */
 
@@ -300,7 +510,7 @@ static int test_packet_parse_from_wire(list raw_response_list)
 		    KNOT_EOK) {
 			diag("Warning: could not parse wire! "
 			     "(might be caused by malformed dump) - "
-			     "dnslib error: %s", knot_strerror2(ret));
+			     "knot error: %s", knot_strerror(ret));
 //			hex_print(raw_packet->data,
 //			          raw_packet->size);
 			continue;
@@ -387,6 +597,7 @@ static int test_packet_to_wire(list raw_response_list)
 			     "(might be caused be malformed dump)");
 			continue;
 		}
+		knot_packet_set_max_size(packet, 1024 * 10);
 		/* Use this packet to create wire */
 		uint8_t *wire = NULL;
 		size_t size = 0;

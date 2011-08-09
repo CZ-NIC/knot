@@ -13,11 +13,11 @@
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-handler.h"
-#include "libknot/name-server.h"
+#include "libknot/nameserver/name-server.h"
 #include "knot/stat/stat.h"
-#include "libknot/zonedb.h"
+#include "libknot/zone/zonedb.h"
 #include "knot/zone/zone-load.h"
-#include "libknot/debug.h"
+#include "libknot/util/debug.h"
 #include "libknot/dname.h"
 #include "knot/conf/conf.h"
 #include "knot/server/zones.h"
@@ -389,7 +389,7 @@ server_t *server_create()
 		free(server);
 		return NULL;
 	}
-        server->nameserver->server = server;
+	knot_ns_set_data(server->nameserver, server);
 	debug_server("Initializing OpenSSL...\n");
 	OpenSSL_add_all_digests();
 

@@ -29,7 +29,7 @@
 #define _KNOT_CONSTS_H_
 
 #include <stdint.h>
-#include "descriptor.h"
+#include "util/descriptor.h"
 
 /*
  * OPCODEs

@@ -28,7 +28,7 @@
 #include <netdb.h>
 
 #include "zcompile/zcompile.h"
-#include "libknot/descriptor.h"
+#include "libknot/util/descriptor.h"
 
 int inet_pton4(const char *src, uint8_t *dst);
 int inet_pton6(const char *src, uint8_t *dst);

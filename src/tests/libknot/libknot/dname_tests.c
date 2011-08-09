@@ -3,7 +3,7 @@
 
 #include "tests/libknot/libknot/dname_tests.h"
 #include "libknot/dname.h"
-#include "libknot/node.h"
+#include "libknot/zone/node.h"
 
 static int knot_dname_tests_count(int argc, char *argv[]);
 static int knot_dname_tests_run(int argc, char *argv[]);
@@ -23,7 +23,7 @@ unit_api dname_tests_api = {
 // C will not accept const int in other const definition
 enum { TEST_DOMAINS_OK = 8 };
 
-enum { TEST_DOMAINS_BAD = 3 };
+enum { TEST_DOMAINS_BAD = 4 };
 
 enum { TEST_DOMAINS_NON_FQDN = 6 };
 
@@ -75,7 +75,8 @@ static const struct test_domain
 		test_domains_bad[TEST_DOMAINS_BAD] = {
 	{ NULL, "\2ex\3com", 0, "", 0 },
 	{ "ex.com.", NULL, 0, "", 0 },
-	{ "ex.com.\5", "\3ex\3com\0\5", 10, "", 0 }
+	{ "ex.com.\5", "\3ex\3com\0\5", 10, "", 0 },
+	{ "example.com", "\3example\3com", 12, "\x0\x8", 2 }
 };
 
 static int test_dname_create()

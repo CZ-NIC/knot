@@ -14,12 +14,12 @@
 #include "knot/common.h"
 #include "knot/other/error.h"
 #include "knot/server/udp-handler.h"
-#include "libknot/name-server.h"
+#include "libknot/nameserver/name-server.h"
 #include "knot/stat/stat.h"
 #include "knot/server/server.h"
-#include "libknot/wire.h"
+#include "libknot/util/wire.h"
 #include "libknot/consts.h"
-#include "libknot/packet.h"
+#include "libknot/packet/packet.h"
 #include "knot/server/zones.h"
 #include "knot/server/notify.h"
 
@@ -88,7 +88,7 @@ static inline int udp_handle(int fd, uint8_t *qbuf, size_t qbuflen,
 		/*! \todo Send error, not available on UDP. */
 		break;
 	case KNOT_QUERY_NOTIFY:
-		rcu_read_lock();
+//		rcu_read_lock();
 //			const knot_zone_t *zone = NULL;
 //			res = knot_ns_answer_notify(ns, packet, qbuf,
 //			                              &resp_len, &zone);

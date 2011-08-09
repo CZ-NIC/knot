@@ -1,25 +1,25 @@
 #include <sys/stat.h>
 
 #include "common/lists.h"
-#include "libknot/debug.h"
+#include "libknot/util/debug.h"
 #include "libknot/dname.h"
-#include "libknot/wire.h"
+#include "libknot/util/wire.h"
 #include "knot/zone/zone-dump-text.h"
 #include "knot/zone/zone-load.h"
-#include "libknot/zone.h"
-#include "libknot/zonedb.h"
+#include "libknot/zone/zone.h"
+#include "libknot/zone/zonedb.h"
 #include "knot/conf/conf.h"
 #include "knot/other/debug.h"
 #include "knot/other/error.h"
 #include "knot/other/log.h"
 #include "knot/server/notify.h"
 #include "knot/server/server.h"
-#include "libknot/xfr-in.h"
+#include "libknot/updates/xfr-in.h"
 #include "knot/server/zones.h"
-#include "libknot/error.h"
+#include "libknot/util/error.h"
 #include "knot/zone/zone-dump.h"
-#include "libknot/name-server.h"
-#include "libknot/changesets.h"
+#include "libknot/nameserver/name-server.h"
+#include "libknot/updates/changesets.h"
 
 static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
 static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
@@ -903,12 +903,12 @@ static int zones_journal_apply(knot_zone_t *zone)
 		if (ret != KNOT_EOK) {
 			debug_zones("update_zone: application of changesets "
 				    "failed with '%s'\n",
-				    knot_strerror2(ret));
+				    knotd_strerror(ret));
 		}
 
 	} else {
 		debug_zones("update_zone: failed to load changeset, %s\n",
-			    knot_strerror2(ret));
+			    knotd_strerror(ret));
 	}
 
 	/* Free changesets and return. */
@@ -982,7 +982,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			if (ret != KNOTD_EOK) {
 				log_server_error("Error loading new zone to"
 				                 " the new database: %s\n",
-				                 knot_strerror(ret));
+				                 knotd_strerror(ret));
 			} else {
 				// Find the new zone
 				zone = knot_zonedb_find_zone(db_new,
@@ -1001,7 +1001,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			if (ret != KNOTD_EOK) {
 				log_server_error("Error adding old zone to"
 				                 " the new database: %s\n",
-				                 knot_strerror(ret));
+				                 knotd_strerror(ret));
 			} else {
 				++inserted;
 			}
@@ -1025,7 +1025,8 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			zones_set_acl(&zd->notify_out, &z->acl.notify_out);
 
 			/* Update available interfaces. */
-			zd->xfr_in.ifaces = &ns->server->ifaces;
+			zd->xfr_in.ifaces = 
+				&((server_t *)knot_ns_get_data(ns))->ifaces;
 
 			/* Update master server address. */
 			sockaddr_init(&zd->xfr_in.master, -1);
@@ -1043,7 +1044,8 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			}
 
 			/* Update events scheduled for zone. */
-			zones_timers_update(zone, z, ns->server->sched);
+			zones_timers_update(zone, z, 
+			             ((server_t *)knot_ns_get_data(ns))->sched);
 		}
 
 		knot_zone_contents_dump(knot_zone_get_contents(zone), 1);
@@ -1298,7 +1300,8 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		}
 
 		/* Cancel EXPIRE timer. */
-		evsched_t *sched = nameserver->server->sched;
+		evsched_t *sched =
+			((server_t *)knot_ns_get_data(nameserver))->sched;
 		event_t *expire_ev = zd->xfr_in.expire;
 		if (expire_ev) {
 			evsched_cancel(sched, expire_ev);
@@ -1356,7 +1359,8 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		rcu_read_unlock();
 
 		/* Enqueue XFR request. */
-		return xfr_request(nameserver->server->xfr_h, &xfr_req);
+		return xfr_request(((server_t *)knot_ns_get_data(
+		                     nameserver))->xfr_h, &xfr_req);
 	}
 
 
