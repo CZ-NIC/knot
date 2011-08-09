@@ -103,10 +103,11 @@ int notify_create_response(knot_packet_t *request, uint8_t *buffer,
 		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	CHECK_ALLOC_LOG(response, KNOTD_ENOMEM);
 
+	/* Set maximum packet size. */
+	knot_packet_set_max_size(response, *size);
 	knot_response_init_from_query(response, request);
 
 	// TODO: copy the SOA in Answer section
-
 	uint8_t *wire = NULL;
 	size_t wire_size = 0;
 	int rc = knot_packet_to_wire(response, &wire, &wire_size);
@@ -124,7 +125,6 @@ int notify_create_response(knot_packet_t *request, uint8_t *buffer,
 	*size = wire_size;
 
 	knot_packet_dump(response);
-
 	knot_packet_free(&response);
 
 	return KNOTD_EOK;
@@ -153,6 +153,8 @@ static int notify_check_and_schedule(knot_nameserver_t *nameserver,
                                      sockaddr_t *from)
 {
 	if (zone == NULL || from == NULL || knot_zone_data(zone) == NULL) {
+		debug_notify("notify: invalid parameters for check and "
+			     "schedule\n");
 		return KNOTD_EINVAL;
 	}
 	
@@ -210,34 +212,41 @@ int notify_process_request(knot_nameserver_t *nameserver,
 
 	if (notify == NULL || nameserver == NULL || buffer == NULL 
 	    || size == NULL || from == NULL) {
+		debug_notify("notify: invalid parameters for query\n");
 		return KNOTD_EINVAL;
 	}
 
-	int ret;
+	int ret = KNOTD_EOK;
 
+	debug_notify("notify: parsing rest of the packet\n");
 	if (notify->parsed < notify->size) {
 		ret = knot_packet_parse_rest(notify);
 		if (ret != KNOT_EOK) {
+			debug_notify("notify: failed to parse NOTIFY query\n");
 			return KNOTD_EMALF;
 		}
 	}
 
 	// create NOTIFY response
+	debug_notify("notify: creating response\n");
 	ret = notify_create_response(notify, buffer, size);
 	if (ret != KNOTD_EOK) {
+		debug_notify("notify: failed to create NOTIFY response\n");
 		return KNOTD_ERROR;	/*! \todo Some other error. */
 	}
 
 	// find the zone
+	debug_notify("notify: looking up zone by name\n");
 	const knot_dname_t *qname = knot_packet_qname(notify);
 	const knot_zone_t *z = knot_zonedb_find_zone_for_name(
 			nameserver->zone_db, qname);
 	if (z == NULL) {
+		debug_notify("notify: failed to find zone by name\n");
 		return KNOTD_ERROR;	/*! \todo Some other error. */
 	}
 
 	notify_check_and_schedule(nameserver, z, from);
-	
+
 	return KNOTD_EOK;
 }
 
