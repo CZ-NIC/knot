@@ -190,7 +190,8 @@ static int compare_rrset_w_ldns_rrset(const knot_rrset_t *rrset,
 	return 0;
 }
 
-int compare_zones(knot_zone_t *zone, ldns_rr_list *ldns_list, char verbose)
+int compare_zones(knot_zone_contents_t *zone,
+                  ldns_rr_list *ldns_list, char verbose)
 {
 	/* TODO currently test fail when encountering first error -
 	 * it should finish going through the zone */
@@ -223,10 +224,11 @@ int compare_zones(knot_zone_t *zone, ldns_rr_list *ldns_list, char verbose)
 					   ldns_rdf_size(ldns_rr_owner(rr)),
 					   NULL);
 
-		node = knot_zone_get_node(zone, tmp_dname);
+		node = knot_zone_contents_get_node(zone, tmp_dname);
 
 		if (node == NULL) {
-			node = knot_zone_get_nsec3_node(zone, tmp_dname);
+			node = knot_zone_contents_get_nsec3_node(zone,
+			                                         tmp_dname);
 		}
 
 		if (node == NULL) {
@@ -375,7 +377,7 @@ static int test_zoneparser_zone_read(const char *origin, const char *filename,
 
 	ldns_rr_list_push_rr(ldns_list, ldns_zone_soa(ldns_zone));
 
-	if (compare_zones(dnsl_zone, ldns_list, 0) != 0) {
+	if (compare_zones(dnsl_zone->contents, ldns_list, 0) != 0) {
 		return 0;
 	}
 
