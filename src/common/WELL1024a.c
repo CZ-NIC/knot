@@ -6,6 +6,12 @@
 /*                 please contact P. L'Ecuyer at: lecuyer@iro.UMontreal.ca       */
 /* ***************************************************************************** */
 
+#include <pthread.h>
+#include <string.h>
+#include <stdlib.h>
+#include <time.h>
+#include <stdio.h>
+
 #define W 32
 #define R 32
 #define M1 3
@@ -28,7 +34,7 @@
 
 typedef struct {
 	unsigned i;
-	unsigned state[R]; /* 128 bits */
+	unsigned state[R]; /* 128 bytes */
 } rngstate_t;
 
 rngstate_t* InitWELLRNG1024a (unsigned *init) {
@@ -52,4 +58,62 @@ double WELLRNG1024a (rngstate_t* s) {
 	newV0(s) = MAT0NEG (-11,z0)   ^ MAT0NEG(-7,z1)    ^ MAT0NEG(-13,z2) ;
 	s->i = (s->i + 31) & 0x0000001fU;
 	return ((double) s->state[s->i]  * FACT);
+}
+
+/*! \brief TLS unique key for each thread seed. */
+static pthread_key_t tls_prng_key;
+static pthread_once_t tls_prng_once = PTHREAD_ONCE_INIT;
+
+static void tls_prng_deinit(void *ptr)
+{
+	free(ptr);
+}
+
+static void tls_prng_deinit_main()
+{
+	tls_prng_deinit(pthread_getspecific(tls_prng_key));
+}
+
+static void tls_prng_init()
+{
+	(void) pthread_key_create(&tls_prng_key, tls_prng_deinit);
+	atexit(tls_prng_deinit_main); // Main thread cleanup
+}
+
+double tls_rand()
+{
+	/* Setup PRNG state for current thread. */
+	(void)pthread_once(&tls_prng_once, tls_prng_init);
+
+	/* Create PRNG state if not exists. */
+	rngstate_t* s = pthread_getspecific(tls_prng_key);
+	if (!s) {
+		/* Initialize seed from system PRNG generator. */
+		unsigned init[R];
+		FILE *fp = fopen("/dev/urandom", "r");
+		for (unsigned i = 0; i < R; ++i) {
+			fread(&init[i], sizeof(unsigned), 1, fp);
+		}
+		fclose(fp);
+
+		/* Initialize PRNG state. */
+		s = InitWELLRNG1024a(init);
+		(void)pthread_setspecific(tls_prng_key, s);
+	}
+
+	return WELLRNG1024a(s);
+}
+
+void tls_seed_set(unsigned init[32])
+{
+	/* Initialize new PRNG state if not exists. */
+	rngstate_t* s = pthread_getspecific(tls_prng_key);
+	if (!s) {
+		s = InitWELLRNG1024a(init);
+		(void)pthread_setspecific(tls_prng_key, s);
+	} else {
+		/* Reset PRNG state if exists. */
+		memcpy(s->state, init, sizeof(unsigned) * R);
+		s->i = 0;
+	}
 }
