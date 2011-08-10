@@ -1363,6 +1363,8 @@ DEBUG_KNOT_XFR(
 		debug_knot_xfr("Failed to merge changeset RRSet to copy.\n");
 		return KNOT_ERROR;
 	}
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
