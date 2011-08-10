@@ -21,8 +21,8 @@
  * @{
  */
 
-#ifndef _KNOTDDTHREADS_H_
-#define _KNOTDDTHREADS_H_
+#ifndef _KNOTD_DTHREADS_H_
+#define _KNOTD_DTHREADS_H_
 
 #include <pthread.h>
 
@@ -333,6 +333,6 @@ int dt_unit_lock(dt_unit_t *unit);
  */
 int dt_unit_unlock(dt_unit_t *unit);
 
-#endif // _KNOTDDTHREADS_H_
+#endif // _KNOTD_DTHREADS_H_
 
 /*! @} */

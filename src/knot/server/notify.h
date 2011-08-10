@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDNOTIFY_H_
-#define _KNOTDNOTIFY_H_
+#ifndef _KNOTD_NOTIFY_H_
+#define _KNOTD_NOTIFY_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -108,6 +108,6 @@ int notify_process_response(knot_nameserver_t *nameserver,
                             sockaddr_t *from,
                             uint8_t *buffer, size_t *size);
 
-#endif /* _KNOTDNOTIFY_H_ */
+#endif /* _KNOTD_NOTIFY_H_ */
 
 /*! @} */

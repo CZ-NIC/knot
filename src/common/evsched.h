@@ -48,8 +48,8 @@
  * @{
  */
 
-#ifndef _KNOTDCOMMON_EVSCHED_H_
-#define _KNOTDCOMMON_EVSCHED_H_
+#ifndef _KNOTD_COMMON_EVSCHED_H_
+#define _KNOTD_COMMON_EVSCHED_H_
 
 #include <pthread.h>
 #include "common/slab/slab.h"
@@ -198,6 +198,6 @@ static inline void evsched_set(evsched_t *s) {
 }
 
 
-#endif /* _KNOTDCOMMON_EVSCHED_H_ */
+#endif /* _KNOTD_COMMON_EVSCHED_H_ */
 
 /*! @} */

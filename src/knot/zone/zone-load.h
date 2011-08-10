@@ -83,6 +83,6 @@ void knot_zload_close(zloader_t *loader);
 int knot_zload_rrset_deserialize(knot_rrset_t **rrset,
                                    uint8_t *stream, size_t *size);
 
-#endif /* _KNOTDZONELOAD_H_ */
+#endif /* _KNOTD_ZONELOAD_H_ */
 
 /*! @} */

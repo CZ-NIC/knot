@@ -10,8 +10,8 @@
  * @{
  */
 
-#ifndef _KNOTD_ERROR_H_
-#define _KNOTD_ERROR_H_
+#ifndef _KNOTD__ERROR_H_
+#define _KNOTD__ERROR_H_
 
 #include <errno.h>
 
@@ -78,6 +78,6 @@ static inline const char *knotd_strerror(int code)
  */
 #define knot_map_errno(err...) map_errno(KNOTD_ERROR, err);
 
-#endif /* _KNOTD_ERROR_H_ */
+#endif /* _KNOTD__ERROR_H_ */
 
 /*! @} */

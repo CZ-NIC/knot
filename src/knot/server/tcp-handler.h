@@ -15,8 +15,8 @@
  * @{
  */
 
-#ifndef _KNOTDTCPHANDLER_H_
-#define _KNOTDTCPHANDLER_H_
+#ifndef _KNOTD_TCPHANDLER_H_
+#define _KNOTD_TCPHANDLER_H_
 
 #include <stdint.h>
 
@@ -101,6 +101,6 @@ int tcp_loop_worker(dthread_t *thread);
  */
 int tcp_loop_unit(dt_unit_t *unit);
 
-#endif // _KNOTDTCPHANDLER_H_
+#endif // _KNOTD_TCPHANDLER_H_
 
 /*! @} */

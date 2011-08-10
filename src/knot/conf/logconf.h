@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDLOGCONF_H_
-#define _KNOTDLOGCONF_H_
+#ifndef _KNOTD_LOGCONF_H_
+#define _KNOTD_LOGCONF_H_
 
 struct conf_t;
 
@@ -25,6 +25,6 @@ struct conf_t;
  */
 int log_conf_hook(const struct conf_t *conf, void *data);
 
-#endif /* _KNOTDLOGCONF_H_ */
+#endif /* _KNOTD_LOGCONF_H_ */
 
 /*! @} */

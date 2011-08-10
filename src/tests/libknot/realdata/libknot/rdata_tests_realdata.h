@@ -26,12 +26,12 @@
  *       e.g. test whether knot_rdata_get_item() returns NULL when passed an
  *       illegal position, etc.
  */
-#ifndef _KNOTDRDATA_TESTS_H_
-#define _KNOTDRDATA_TESTS_H_
+#ifndef _KNOTD_RDATA_TESTS_H_
+#define _KNOTD_RDATA_TESTS_H_
 
 #include "common/libtap/tap_unit.h"
 
 /* Unit API. */
 unit_api rdata_tests_api;
 
-#endif /* _KNOTDRDATA_TESTS_H_ */
+#endif /* _KNOTD_RDATA_TESTS_H_ */

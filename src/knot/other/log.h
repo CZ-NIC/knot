@@ -15,8 +15,8 @@
  * @{
  */
 
-#ifndef _KNOTDLOG_H_
-#define _KNOTDLOG_H_
+#ifndef _KNOTD_LOG_H_
+#define _KNOTD_LOG_H_
 
 /*
  */
@@ -188,6 +188,6 @@ void hex_log(int source, const char *data, int length);
 #define log_zone_info(msg...)        log_msg(LOG_ZONE, LOG_INFO, msg)
 #define log_zone_debug(msg...)       log_msg(LOG_ZONE, LOG_DEBUG, msg)
 
-#endif /* _KNOTDLOG_H_ */
+#endif /* _KNOTD_LOG_H_ */
 
 /*! @} */

@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDCOMMON_H_
-#define _KNOTDCOMMON_H_
+#ifndef _KNOTD_COMMON_H_
+#define _KNOTD_COMMON_H_
 
 #include <signal.h>
 #include <stdint.h>
@@ -114,6 +114,6 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 	} while (0)
 #endif
 
-#endif /* _KNOTDCOMMON_H_ */
+#endif /* _KNOTD_COMMON_H_ */
 
 /*! @} */

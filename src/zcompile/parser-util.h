@@ -11,8 +11,8 @@
  * @{
  */
 
-#ifndef _KNOTDPARSER_UTIL_H_
-#define _KNOTDPARSER_UTIL_H_
+#ifndef _KNOTD_PARSER_UTIL_H_
+#define _KNOTD_PARSER_UTIL_H_
 
 #include <assert.h>
 #include <fcntl.h>
@@ -45,6 +45,6 @@ uint32_t strtoserial(const char *nptr, const char **endptr);
 void write_uint32(void *dst, uint32_t data);
 uint32_t strtottl(const char *nptr, const char **endptr);
 time_t mktime_from_utc(const struct tm *tm);
-#endif /* _KNOTDPARSER_UTIL_H_ */
+#endif /* _KNOTD_PARSER_UTIL_H_ */
 
 /*! @} */

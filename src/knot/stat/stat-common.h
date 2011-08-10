@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDSTAT_COMMON_H_
-#define _KNOTDSTAT_COMMON_H_
+#ifndef _KNOTD_STAT_COMMON_H_
+#define _KNOTD_STAT_COMMON_H_
 
 #include <stdio.h>
 
@@ -26,6 +26,6 @@
 #define debug_st(msg...)
 #endif
 
-#endif /* _KNOTDSTAT_COMMON_H_ */
+#endif /* _KNOTD_STAT_COMMON_H_ */
 
 /*! @} */

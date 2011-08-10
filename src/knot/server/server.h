@@ -18,8 +18,8 @@
  * @{
  */
 
-#ifndef _KNOTDSERVER_H_
-#define _KNOTDSERVER_H_
+#ifndef _KNOTD_SERVER_H_
+#define _KNOTD_SERVER_H_
 
 #include "knot/common.h"
 #include "libknot/nameserver/name-server.h"
@@ -191,6 +191,6 @@ void server_destroy(server_t **server);
  */
 int server_conf_hook(const struct conf_t *conf, void *data);
 
-#endif // _KNOTDSERVER_H_
+#endif // _KNOTD_SERVER_H_
 
 /*! @} */
