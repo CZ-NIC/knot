@@ -35,6 +35,8 @@ libknot/packet/response.h
 libknot/packet/response.c
 libknot/updates/changesets.h
 libknot/updates/changesets.c
+libknot/updates/ddns.h
+libknot/updates/ddns.c
 libknot/updates/xfr-in.h
 libknot/updates/xfr-in.c
 libknot/util/wire.h
