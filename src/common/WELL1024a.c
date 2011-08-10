@@ -89,10 +89,11 @@ double tls_rand()
 	rngstate_t* s = pthread_getspecific(tls_prng_key);
 	if (!s) {
 		/* Initialize seed from system PRNG generator. */
+		int rc = 0;
 		unsigned init[R];
 		FILE *fp = fopen("/dev/urandom", "r");
 		for (unsigned i = 0; i < R; ++i) {
-			fread(&init[i], sizeof(unsigned), 1, fp);
+			rc = fread(&init[i], sizeof(unsigned), 1, fp);
 		}
 		fclose(fp);
 
