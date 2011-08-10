@@ -12,8 +12,9 @@
 #include <time.h>
 #include <stdio.h>
 
+#include "WELL1024a.h"
+
 #define W 32
-#define R 32
 #define M1 3
 #define M2 24
 #define M3 10
@@ -32,11 +33,6 @@
 
 #define FACT 2.32830643653869628906e-10
 
-typedef struct {
-	unsigned i;
-	unsigned state[R]; /* 128 bytes */
-} rngstate_t;
-
 rngstate_t* InitWELLRNG1024a (unsigned *init) {
 
 	rngstate_t *s = malloc(sizeof(rngstate_t));
@@ -45,7 +41,7 @@ rngstate_t* InitWELLRNG1024a (unsigned *init) {
 	}
 
 	s->i = 0;
-	for (int j = 0; j < R; j++)
+	for (int j = 0; j < WELL1024_WIDTH; j++)
 		s->state[j] = init[j];
 	return s;
 }
@@ -90,9 +86,9 @@ double tls_rand()
 	if (!s) {
 		/* Initialize seed from system PRNG generator. */
 		int rc = 0;
-		unsigned init[R];
+		unsigned init[WELL1024_WIDTH];
 		FILE *fp = fopen("/dev/urandom", "r");
-		for (unsigned i = 0; i < R; ++i) {
+		for (unsigned i = 0; i < WELL1024_WIDTH; ++i) {
 			rc = fread(&init[i], sizeof(unsigned), 1, fp);
 		}
 		fclose(fp);
@@ -105,7 +101,7 @@ double tls_rand()
 	return WELLRNG1024a(s);
 }
 
-void tls_seed_set(unsigned init[32])
+void tls_seed_set(unsigned init[WELL1024_WIDTH])
 {
 	/* Initialize new PRNG state if not exists. */
 	rngstate_t* s = pthread_getspecific(tls_prng_key);
@@ -114,7 +110,7 @@ void tls_seed_set(unsigned init[32])
 		(void)pthread_setspecific(tls_prng_key, s);
 	} else {
 		/* Reset PRNG state if exists. */
-		memcpy(s->state, init, sizeof(unsigned) * R);
+		memcpy(s->state, init, sizeof(unsigned) * WELL1024_WIDTH);
 		s->i = 0;
 	}
 }
