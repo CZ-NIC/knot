@@ -6,6 +6,13 @@
 /*                 please contact P. L'Ecuyer at: lecuyer@iro.UMontreal.ca       */
 /* ***************************************************************************** */
 
+#define WELL1024_WIDTH 32 /* 128 bytes */
+
+typedef struct {
+	unsigned i;
+	unsigned state[WELL1024_WIDTH];
+} rngstate_t;
+
 rngstate_t* InitWELLRNG1024a (unsigned *init);
 double WELLRNG1024a (rngstate_t* s);
 
@@ -21,6 +28,5 @@ double tls_rand();
 /*!
  * \brief Set PRNG seed in thread-local storage to requested value.
  *
- * Seed is 4 * 32 bytes wide.
  */
-void tls_seed_set(unsigned init[32]);
+void tls_seed_set(unsigned init[WELL1024_WIDTH]);
