@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDPROCESS_H_
-#define _KNOTDPROCESS_H_
+#ifndef _KNOTD_PROCESS_H_
+#define _KNOTD_PROCESS_H_
 
 #include <unistd.h>
 
@@ -68,6 +68,6 @@ int pid_remove(const char* fn);
  */
 int pid_running(pid_t pid);
 
-#endif // _KNOTDPROCESS_H_
+#endif // _KNOTD_PROCESS_H_
 
 /*! @} */

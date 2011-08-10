@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDCOMMON_ALLOC_COMMON_H_
-#define _KNOTDCOMMON_ALLOC_COMMON_H_
+#ifndef _KNOTD_COMMON_ALLOC_COMMON_H_
+#define _KNOTD_COMMON_ALLOC_COMMON_H_
 
 #include <stdio.h>
 
@@ -41,6 +41,6 @@
 #endif
 
 
-#endif /* _KNOTDCOMMON_ALLOC_COMMON_H_ */
+#endif /* _KNOTD_COMMON_ALLOC_COMMON_H_ */
 
 /*! @} */

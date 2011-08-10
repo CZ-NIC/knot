@@ -8,12 +8,12 @@
  * Contains tests for:
  * -
  */
-#ifndef _KNOTDRRSET_TESTS_H_
-#define _KNOTDRRSET_TESTS_H_
+#ifndef _KNOTD_RRSET_TESTS_H_
+#define _KNOTD_RRSET_TESTS_H_
 
 #include "common/libtap/tap_unit.h"
 
 /* Unit API. */
 unit_api rrset_tests_api;
 
-#endif /* _KNOTDRRSET_TESTS_H_ */
+#endif /* _KNOTD_RRSET_TESTS_H_ */

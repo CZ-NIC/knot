@@ -10,8 +10,8 @@
  * @{
  */
 
-#ifndef _KNOTDCONF_H_
-#define _KNOTDCONF_H_
+#ifndef _KNOTD_CONF_H_
+#define _KNOTD_CONF_H_
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -347,6 +347,6 @@ char* strcdup(const char *s1, const char *s2);
  */
 char* strcpath(char *path);
 
-#endif /* _KNOTDCONF_H_ */
+#endif /* _KNOTD_CONF_H_ */
 
 /*! @} */

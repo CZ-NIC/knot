@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDZONES_H_
-#define _KNOTDZONES_H_
+#ifndef _KNOTD_ZONES_H_
+#define _KNOTD_ZONES_H_
 
 #include "common/lists.h"
 #include "common/acl.h"
@@ -208,6 +208,6 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr);
  */
 int zones_apply_changesets(knot_ns_xfr_t *xfr);
 
-#endif // _KNOTDZONES_H_
+#endif // _KNOTD_ZONES_H_
 
 /*! @} */

@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDGATHERER_H_
-#define _KNOTDGATHERER_H_
+#ifndef _KNOTD_GATHERER_H_
+#define _KNOTD_GATHERER_H_
 
 #include <stdint.h>
 
@@ -90,6 +90,6 @@ gatherer_t *new_gatherer();
  */
 void gatherer_free(gatherer_t *gatherer);
 
-#endif /* _KNOTDSTAT_GATHERER_H_ */
+#endif /* _KNOTD_STAT_GATHERER_H_ */
 
 /*! @} */

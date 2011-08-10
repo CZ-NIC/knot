@@ -15,8 +15,8 @@
  * @{
  */
 
-#ifndef _KNOTDSOCKET_H_
-#define _KNOTDSOCKET_H_
+#ifndef _KNOTD_SOCKET_H_
+#define _KNOTD_SOCKET_H_
 
 /* POSIX only. */
 #include <sys/socket.h>
@@ -100,6 +100,6 @@ int socket_listen(int fd, int backlog_size);
 int socket_close(int fd);
 
 
-#endif // _KNOTDSOCKET_H_
+#endif // _KNOTD_SOCKET_H_
 
 /*! @} */

@@ -13,8 +13,8 @@
  * @{
  */
 
-#ifndef _KNOTDUDPHANDLER_H_
-#define _KNOTDUDPHANDLER_H_
+#ifndef _KNOTD_UDPHANDLER_H_
+#define _KNOTD_UDPHANDLER_H_
 
 #include "knot/server/socket.h"
 #include "knot/server/server.h"

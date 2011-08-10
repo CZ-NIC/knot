@@ -11,8 +11,8 @@
  * @{
  */
 
-#ifndef _KNOTDZCOMPILE_ERROR_H_
-#define _KNOTDZCOMPILE_ERROR_H_
+#ifndef _KNOTD_ZCOMPILE_ERROR_H_
+#define _KNOTD_ZCOMPILE_ERROR_H_
 
 #include "common/errors.h"
 
@@ -70,6 +70,6 @@ typedef enum knot_zcompile_error knot_zcompile_error_t;
 /*! \brief Table linking error messages to error codes. */
 extern const error_table_t knot_zcompile_error_msgs[KNOTDZCOMPILE_ERROR_COUNT];
 
-#endif /* _KNOTDZCOMPILE_ERROR_H_ */
+#endif /* _KNOTD_ZCOMPILE_ERROR_H_ */
 
 /*! @} */

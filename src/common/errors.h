@@ -10,8 +10,8 @@
  * @{
  */
 
-#ifndef _KNOTDCOMMON_ERROR_H_
-#define _KNOTDCOMMON_ERROR_H_
+#ifndef _KNOTD_COMMON_ERROR_H_
+#define _KNOTD_COMMON_ERROR_H_
 
 #include <errno.h>
 
@@ -60,6 +60,6 @@ const char *error_to_str(const error_table_t *table, int code);
  */
 int _map_errno(int fallback_value, int arg0, ...);
 
-#endif /* _KNOTDCOMMON_ERROR_H_ */
+#endif /* _KNOTD_COMMON_ERROR_H_ */
 
 /*! @} */

@@ -1,5 +1,5 @@
-#ifndef _KNOTDCOMMON_GENERAL_TREE_H_
-#define _KNOTDCOMMON_GENERAL_TREE_H_
+#ifndef _KNOTD_COMMON_GENERAL_TREE_H_
+#define _KNOTD_COMMON_GENERAL_TREE_H_
 
 #include "common/modified_tree.h"
 
@@ -52,4 +52,4 @@ int gen_tree_find_less_or_equal(general_tree_t *tree,
 
 general_tree_t *gen_tree_shallow_copy(general_tree_t *tree);
 
-#endif // _KNOTDCOMMON_GENERAL_TREE_H_
+#endif // _KNOTD_COMMON_GENERAL_TREE_H_

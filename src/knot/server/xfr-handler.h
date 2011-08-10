@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOTDXFRHANDLER_H_
-#define _KNOTDXFRHANDLER_H_
+#ifndef _KNOTD_XFRHANDLER_H_
+#define _KNOTD_XFRHANDLER_H_
 
 #include <ev.h>
 
@@ -129,6 +129,6 @@ int xfr_master(dthread_t *thread);
   */
 int xfr_client(dthread_t *thread);
 
-#endif // _KNOTDXFRHANDLER_H_
+#endif // _KNOTD_XFRHANDLER_H_
 
 /*! @} */

@@ -24,8 +24,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOTXFR_IN_H_
-#define _KNOTXFR_IN_H_
+#ifndef _KNOT_XFR_IN_H_
+#define _KNOT_XFR_IN_H_
 
 #include <stdint.h>
 #include <string.h>

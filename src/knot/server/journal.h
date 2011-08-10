@@ -23,8 +23,8 @@
  * @{
  */
 
-#ifndef _KNOTDJOURNAL_H_
-#define _KNOTDJOURNAL_H_
+#ifndef _KNOTD_JOURNAL_H_
+#define _KNOTD_JOURNAL_H_
 
 #include <stdint.h>
 
@@ -223,4 +223,4 @@ int journal_update(journal_t *journal, journal_node_t *n);
  */
 int journal_close(journal_t *journal);
 
-#endif /* _KNOTDJOURNAL_H_ */
+#endif /* _KNOTD_JOURNAL_H_ */
