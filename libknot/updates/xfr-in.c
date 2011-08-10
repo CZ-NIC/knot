@@ -594,110 +594,6 @@ static int xfrin_parse_first_rr(knot_packet_t **packet, const uint8_t *pkt,
 
 /*----------------------------------------------------------------------------*/
 
-//static int xfrin_changeset_rrset_to_binary(uint8_t **data, size_t *size,
-//                                           size_t *allocated,
-//                                           knot_rrset_t *rrset)
-//{
-//	assert(data != NULL);
-//	assert(size != NULL);
-//	assert(allocated != NULL);
-
-//	/*
-//	 * In *data, there is the whole changeset in the binary format,
-//	 * the actual RRSet will be just appended to it
-//	 */
-
-//	uint8_t *binary = NULL;
-//	size_t actual_size = 0;
-//	int ret = knot_zdump_rrset_serialize(rrset, &binary, &actual_size);
-//	if (ret != KNOT_EOK) {
-//		return KNOT_ERROR;  /*! \todo Other code? */
-//	}
-
-//	ret = xfrin_check_binary_size(data, allocated, *size + actual_size);
-//	if (ret != KNOT_EOK) {
-//		free(binary);
-//		return ret;
-//	}
-
-//	memcpy(*data + *size, binary, actual_size);
-//	*size += actual_size;
-//	free(binary);
-
-//	return KNOT_EOK;
-//}
-
-/*----------------------------------------------------------------------------*/
-
-//static int knot_changesets_to_binary(knot_changesets_t *chgsets)
-//{
-//	assert(chgsets != NULL);
-//	assert(chgsets->allocated >= chgsets->count);
-
-//	/*
-//	 * Converts changesets to the binary format stored in chgsets->data
-//	 * from the changeset_t structures.
-//	 */
-//	int ret;
-
-//	for (int i = 0; i < chgsets->count; ++i) {
-//		knot_changeset_t *ch = &chgsets->sets[i];
-//		assert(ch->data == NULL);
-//		assert(ch->size == 0);
-
-//		// 1) origin SOA
-//		ret = xfrin_changeset_rrset_to_binary(&ch->data, &ch->size,
-//		                                &ch->allocated, ch->soa_from);
-//		if (ret != KNOT_EOK) {
-//			free(ch->data);
-//			ch->data = NULL;
-//			return ret;
-//		}
-
-//		int j;
-
-//		// 2) remove RRsets
-//		assert(ch->remove_allocated >= ch->remove_count);
-//		for (j = 0; j < ch->remove_count; ++j) {
-//			ret = xfrin_changeset_rrset_to_binary(&ch->data,
-//			                                      &ch->size,
-//			                                      &ch->allocated,
-//			                                      ch->remove[j]);
-//			if (ret != KNOT_EOK) {
-//				free(ch->data);
-//				ch->data = NULL;
-//				return ret;
-//			}
-//		}
-
-//		// 3) new SOA
-//		ret = xfrin_changeset_rrset_to_binary(&ch->data, &ch->size,
-//		                                &ch->allocated, ch->soa_to);
-//		if (ret != KNOT_EOK) {
-//			free(ch->data);
-//			ch->data = NULL;
-//			return ret;
-//		}
-
-//		// 4) add RRsets
-//		assert(ch->add_allocated >= ch->add_count);
-//		for (j = 0; j < ch->add_count; ++j) {
-//			ret = xfrin_changeset_rrset_to_binary(&ch->data,
-//			                                      &ch->size,
-//			                                      &ch->allocated,
-//			                                      ch->add[j]);
-//			if (ret != KNOT_EOK) {
-//				free(ch->data);
-//				ch->data = NULL;
-//				return ret;
-//			}
-//		}
-//	}
-
-//	return KNOT_EOK;
-//}
-/*----------------------------------------------------------------------------*/
-
 int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
                               knot_changesets_t **changesets)
 {
@@ -789,9 +685,16 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 				knot_rrset_deep_free(&rr, 1, 1, 1);
 				goto cleanup;
 			}
+
+			ret = knot_packet_parse_next_rr_answer(packet, &rr);
 		}
 
-		/*! \todo Replace by check. */
+		if (rr == NULL || knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
+			debug_knot_xfr("Malformed IXFR packet.\n");
+			ret = KNOT_EMALF;
+			goto cleanup;
+		}
+
 		assert(rr != NULL
 		       && knot_rrset_type(rr) == KNOT_RRTYPE_SOA);
 
@@ -816,11 +719,15 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 				knot_rrset_deep_free(&rr, 1, 1, 1);
 				goto cleanup;
 			}
+
+			ret = knot_packet_parse_next_rr_answer(packet, &rr);
 		}
 
-		/*! \todo Replace by check. */
-		assert(rr != NULL
-		       && knot_rrset_type(rr) == KNOT_RRTYPE_SOA);
+		if (rr == NULL || knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
+			debug_knot_xfr("Malformed IXFR packet.\n");
+			ret = KNOT_EMALF;
+			goto cleanup;
+		}
 
 		// next chunk, continue the whole loop
 		++i;
@@ -840,13 +747,6 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 	       == knot_rdata_soa_serial(knot_rrset_rdata(soa2)));
 
 	knot_rrset_deep_free(&soa2, 1, 1, 1);
-
-//	// everything is ready, convert the changesets
-//	if ((ret = knot_changesets_to_binary(*changesets)) != KNOT_EOK) {
-//		// free the changesets
-//		debug_knot_xfr("Failed to convert changesets to binary format.\n");
-//		xfrin_free_changesets(changesets);
-//	}
 
 	return ret;
 
