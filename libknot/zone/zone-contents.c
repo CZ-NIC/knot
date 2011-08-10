@@ -2097,7 +2097,7 @@ int knot_zone_contents_dname_table_apply(knot_zone_contents_t *contents,
 	}
 
 	knot_dname_table_tree_inorder_apply(contents->dname_table,
-	                                      function, data);
+	                                    function, data);
 
 	return KNOT_EOK;
 }
