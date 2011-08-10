@@ -6,6 +6,6 @@
 /*                 please contact P. L'Ecuyer at: lecuyer@iro.UMontreal.ca       */
 /* ***************************************************************************** */
 
-void InitWELLRNG1024a (unsigned int *init);
-double WELLRNG1024a (void);
+rngstate_t* InitWELLRNG1024a (unsigned *init);
+double WELLRNG1024a (rngstate_t* s);
 
