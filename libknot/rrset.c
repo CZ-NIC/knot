@@ -325,6 +325,48 @@ int knot_rrset_compare(const knot_rrset_t *r1,
 
 /*----------------------------------------------------------------------------*/
 
+int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to)
+{
+	if (from == NULL || to == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	int ret;
+
+	*to = (knot_rrset_t *)calloc(1, sizeof(knot_rrset_t));
+	CHECK_ALLOC_LOG(*to, KNOT_ENOMEM);
+
+	(*to)->owner = knot_dname_deep_copy(from->owner);
+	(*to)->rclass = from->rclass;
+	(*to)->ttl = from->ttl;
+	(*to)->type = from->type;
+	if (from->rrsigs != NULL) {
+		ret = knot_rrset_deep_copy(from->rrsigs, &(*to)->rrsigs);
+		if (ret != KNOT_EOK) {
+			knot_rrset_deep_free(to, 1, 0, 0);
+			return ret;
+		}
+	}
+	assert((*to)->rrsigs == NULL || from->rrsigs != NULL);
+
+	const knot_rdata_t *rdata = knot_rrset_rdata(from);
+
+	/*! \note Order of RDATA will be reversed. */
+	while (rdata != NULL) {
+		ret = knot_rrset_add_rdata(*to, knot_rdata_deep_copy(rdata,
+		                           knot_rrset_type(from)));
+		if (ret != KNOT_EOK) {
+			knot_rrset_deep_free(to, 1, 1, 1);
+			return ret;
+		}
+		rdata = knot_rrset_rdata_next(from, rdata);
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to)
 {
 	*to = (knot_rrset_t *)malloc(sizeof(knot_rrset_t));

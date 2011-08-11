@@ -226,6 +226,10 @@ int knot_rrset_compare(const knot_rrset_t *r1,
                          const knot_rrset_t *r2,
                          knot_rrset_compare_type_t cmp);
 
+/*! \todo Add unit test. */
+int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to);
+
+/*! \todo Add unit test. */
 int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to);
 
 /*!
