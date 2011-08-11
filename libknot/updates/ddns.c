@@ -31,7 +31,7 @@ static void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq)
 /*----------------------------------------------------------------------------*/
 // Copied from XFR - maybe extract somewhere else
 static int knot_ddns_prereq_check_rrsets(knot_rrset_t ***rrsets,
-                                         int *count, int *allocated)
+                                         size_t *count, size_t *allocated)
 {
 	int new_count = 0;
 	if (*count == *allocated) {
@@ -54,7 +54,7 @@ static int knot_ddns_prereq_check_rrsets(knot_rrset_t ***rrsets,
 /*----------------------------------------------------------------------------*/
 
 static int knot_ddns_prereq_check_dnames(knot_dname_t ***dnames,
-                                         int *count, int *allocated)
+                                         size_t *count, size_t *allocated)
 {
 	int new_count = 0;
 	if (*count == *allocated) {
@@ -81,6 +81,37 @@ static int knot_ddns_add_prereq_rrset(const knot_rrset_t *rrset,
                                       size_t *count, size_t *allocd)
 {
 	return KNOT_ENOTSUP;
+
+	// check if such RRSet is not already there and merge if needed
+	int ret;
+	for (int i = 0; i < *count; ++i) {
+		if (knot_rrset_compare(rrset, (*rrsets)[i],
+		                       KNOT_RRSET_COMPARE_HEADER) == 0) {
+			ret = knot_rrset_merge((void **)&((*rrsets)[i]),
+			                       (void **)&rrset);
+			if (ret != KNOT_EOK) {
+				return ret;
+			} else {
+				return KNOT_EOK;
+			}
+		}
+	}
+
+	// if we are here, the RRSet was not found
+	ret = knot_ddns_prereq_check_rrsets(rrsets, count, allocd);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_rrset_t *new_rrset = NULL;
+	ret = knot_rrset_deep_copy(rrset, &new_rrset);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	(*rrsets)[(*count)++] = new_rrset;
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -161,8 +192,6 @@ int knot_ddns_check_zone(const knot_zone_t *zone, knot_packet_t *query,
 int knot_ddns_process_prereqs(knot_packet_t *query,
                               knot_ddns_prereq_t **prereqs, uint8_t *rcode)
 {
-	return KNOT_ENOTSUP;
-
 	/*! \todo Consider not parsing the whole packet at once, but
 	 *        parsing one RR at a time - could save some memory and time.
 	 */
