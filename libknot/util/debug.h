@@ -104,16 +104,7 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 //#define CUCKOO_DEBUG_HASH
 //#define KNOT_NS_DEBUG
 //#define KNOT_XFR_DEBUG
-
-#ifdef KNOT_XFR_DEBUG
-#define debug_knot_xfr(msg...) fprintf(stderr, msg)
-#define debug_knot_xfr_hex(data, len) hex_print((data), (len))
-#define DEBUG_KNOT_NS(cmds) do { cmds } while (0)
-#else
-#define debug_knot_xfr(msg...)
-#define debug_knot_xfr_hex(data, len)
-#define DEBUG_KNOT_XFR(cmds)
-#endif
+//#define KNOT_DDNS_DEBUG
 
 #ifdef KNOT_NS_DEBUG
 #define debug_knot_ns(msg...) fprintf(stderr, msg)
@@ -237,6 +228,16 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 #define debug_knot_xfr(msg...)
 #define debug_knot_xfr_hex(data, len)
 #define DEBUG_KNOT_XFR(cmds)
+#endif
+
+#ifdef KNOT_DDNS_DEBUG
+#define debug_knot_ddns(msg...) fprintf(stderr, msg)
+#define debug_knot_ddns_hex(data, len) hex_print((data), (len))
+#define DEBUG_KNOT_DDNS(cmds) do { cmds } while (0)
+#else
+#define debug_knot_ddns(msg...)
+#define debug_knot_ddns_hex(data, len)
+#define DEBUG_KNOT_DDNS(cmds)
 #endif
 
 #endif
