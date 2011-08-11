@@ -3005,7 +3005,29 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 	              query->opt_rr.version, query->opt_rr.payload);
 
 	// 2) Find zone for the query
-	/* TODO */
+	// we do not check if there is only one entry in the Question section
+	// because the packet structure does not allow it
+	/*! \todo Check number of Question entries while parsing. */
+	if (knot_packet_qtype(query) != KNOT_RRTYPE_SOA) {
+		debug_knot_ns("Question is not of type SOA.\n");
+		knot_ns_error_response_full(nameserver, response,
+		                            KNOT_RCODE_FORMERR,
+		                            response_wire, rsize);
+		return KNOT_EOK;
+	}
+
+	*zone = knot_zonedb_find_zone(nameserver->zone_db,
+	                            knot_packet_qname(query));
+	if (*zone == NULL) {
+		debug_knot_ns("Zone not found for the update.\n");
+		knot_ns_error_response_full(nameserver, response,
+		                            KNOT_RCODE_NOTAUTH,
+		                            response_wire, rsize);
+		return KNOT_EOK;
+	}
+
+	/*! \todo Check if the zone is master or slave. */
+	/*! \todo If the zone is slave, indicate it to the caller. */
 
 	uint8_t rcode = 0;
 	// 3) Check zone
