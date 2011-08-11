@@ -19,24 +19,188 @@
 #include "util/debug.h"
 #include "packet/packet.h"
 #include "util/error.h"
+#include "consts.h"
+
+/*----------------------------------------------------------------------------*/
+
+static void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq)
+{
+	/*! \todo Implement. */
+}
+
+/*----------------------------------------------------------------------------*/
+// Copied from XFR - maybe extract somewhere else
+static int knot_ddns_prereq_check_rrsets(knot_rrset_t ***rrsets,
+                                         int *count, int *allocated)
+{
+	int new_count = 0;
+	if (*count == *allocated) {
+		new_count = *allocated * 2;
+	}
+
+	knot_rrset_t **rrsets_new =
+		(knot_rrset_t **)calloc(new_count, sizeof(knot_rrset_t *));
+	if (rrsets_new == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	memcpy(rrsets_new, *rrsets, *count);
+	*rrsets = rrsets_new;
+	*allocated = new_count;
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_ddns_prereq_check_dnames(knot_dname_t ***dnames,
+                                         int *count, int *allocated)
+{
+	int new_count = 0;
+	if (*count == *allocated) {
+		new_count = *allocated * 2;
+	}
+
+	knot_dname_t **dnames_new =
+		(knot_dname_t **)calloc(new_count, sizeof(knot_dname_t *));
+	if (dnames_new == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	memcpy(dnames_new, *dnames, *count);
+	*dnames = dnames_new;
+	*allocated = new_count;
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_ddns_add_prereq_rrset(const knot_rrset_t *rrset,
+                                      knot_rrset_t ***rrsets,
+                                      size_t *count, size_t *allocd)
+{
+	return KNOT_ENOTSUP;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_ddns_add_prereq_dname(const knot_dname_t *dname,
+                                      knot_dname_t ***dnames,
+                                      size_t *count, size_t *allocd)
+{
+	return KNOT_ENOTSUP;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
+                                const knot_rrset_t *rrset, uint16_t qclass)
+{
+	if (knot_rrset_ttl(rrset) != 0) {
+		return KNOT_EMALF;
+	}
+
+	int ret;
+
+	if (knot_rrset_class(rrset) == KNOT_CLASS_ANY) {
+		if (knot_rrset_rdata(rrset) != NULL) {
+			return KNOT_EMALF;
+		}
+		if (knot_rrset_type(rrset) == KNOT_RRTYPE_ANY) {
+			ret = knot_ddns_add_prereq_dname(
+				knot_rrset_owner(rrset), &prereqs->in_use,
+				&prereqs->in_use_count,
+				&prereqs->in_use_allocd);
+		} else {
+			ret = knot_ddns_add_prereq_rrset(rrset,
+			                                &prereqs->exist,
+			                                &prereqs->exist_count,
+			                                &prereqs->exist_allocd);
+		}
+	} else if (knot_rrset_class(rrset) == KNOT_CLASS_NONE) {
+		if (knot_rrset_rdata(rrset) != NULL) {
+			return KNOT_EMALF;
+		}
+		if (knot_rrset_type(rrset) == KNOT_RRTYPE_ANY) {
+			ret = knot_ddns_add_prereq_dname(
+				knot_rrset_owner(rrset), &prereqs->not_in_use,
+				&prereqs->not_in_use_count,
+				&prereqs->not_in_use_allocd);
+		} else {
+			ret = knot_ddns_add_prereq_rrset(rrset,
+			                            &prereqs->not_exist,
+			                            &prereqs->not_exist_count,
+			                            &prereqs->not_exist_allocd);
+		}
+	} else if (knot_rrset_class(rrset) == qclass) {
+		ret = knot_ddns_add_prereq_rrset(rrset,
+		                                 &prereqs->exist_full,
+		                                 &prereqs->exist_full_count,
+		                                 &prereqs->exist_full_allocd);
+	} else {
+		return KNOT_EMALF;
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+/* API functions                                                              */
+/*----------------------------------------------------------------------------*/
 
 int knot_ddns_check_zone(const knot_zone_t *zone, knot_packet_t *query,
                          uint8_t *rcode)
 {
+	/*! \todo Check also CLASS. */
 	return KNOT_ENOTSUP;
 }
+
+/*----------------------------------------------------------------------------*/
 
 int knot_ddns_process_prereqs(knot_packet_t *query,
                               knot_ddns_prereq_t **prereqs, uint8_t *rcode)
 {
 	return KNOT_ENOTSUP;
+
+	/*! \todo Consider not parsing the whole packet at once, but
+	 *        parsing one RR at a time - could save some memory and time.
+	 */
+
+	// allocate space for the prerequisities
+	*prereqs = (knot_ddns_prereq_t *)calloc(1, sizeof(knot_ddns_prereq_t));
+	CHECK_ALLOC_LOG(*prereqs, KNOT_ENOMEM);
+
+	int ret;
+
+	for (int i = 0; i < knot_packet_answer_rrset_count(query); ++i) {
+		// we must copy the RRSets, because all those stored in the
+		// packet will be destroyed
+		ret = knot_ddns_add_prereq(*prereqs,
+		                           knot_packet_answer_rrset(query, i),
+		                           knot_packet_qclass(query));
+		if (ret != KNOT_EOK) {
+			debug_knot_ddns("Failed to add prerequisity RRSet:%s\n",
+			                knot_strerror(ret));
+			*rcode = (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
+			                             : KNOT_RCODE_SERVFAIL;
+			knot_ddns_prereqs_free(prereqs);
+			return ret;
+		}
+	}
+
+	return KNOT_EOK;
 }
+
+/*----------------------------------------------------------------------------*/
 
 int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
                             knot_ddns_prereq_t **prereqs, uint8_t *rcode)
 {
 	return KNOT_ENOTSUP;
 }
+
+/*----------------------------------------------------------------------------*/
 
 int knot_ddns_process_update(knot_packet_t *query,
                              knot_changeset_t **changeset, uint8_t *rcode)
