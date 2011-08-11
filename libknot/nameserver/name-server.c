@@ -34,6 +34,7 @@
 // #include "knot/zone/zone-dump-text.h"
 // #include "knot/zone/zone-dump.h"
 #include "updates/changesets.h"
+#include "updates/ddns.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -2270,6 +2271,38 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 }
 
 /*----------------------------------------------------------------------------*/
+
+static int knot_ns_prepare_response(knot_nameserver_t *nameserver,
+                                    knot_packet_t *query, knot_packet_t **resp,
+                                    size_t max_size)
+{
+	// initialize response packet structure
+	*resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+	if (*resp == NULL) {
+		debug_knot_ns("Failed to create packet structure.\n");
+		return KNOT_ENOMEM;
+	}
+
+	int ret = knot_packet_set_max_size(*resp, max_size);
+
+	if (ret != KNOT_EOK) {
+		debug_knot_ns("Failed to init response structure.\n");
+		knot_packet_free(resp);
+		return ret;
+	}
+
+	ret = knot_response_init_from_query(*resp, query);
+
+	if (ret != KNOT_EOK) {
+		debug_knot_ns("Failed to init response structure.\n");
+		knot_packet_free(resp);
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
 /* Public functions                                                           */
 /*----------------------------------------------------------------------------*/
 
@@ -2456,22 +2489,52 @@ void knot_ns_error_response(knot_nameserver_t *nameserver, uint16_t query_id,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
-                     uint8_t *response_wire, size_t *rsize)
+void knot_ns_error_response_full(knot_nameserver_t *nameserver,
+                                 knot_packet_t *response, uint8_t rcode,
+                                 uint8_t *response_wire, size_t *rsize)
 {
+	knot_response_set_rcode(response, rcode);
+
+	if (ns_response_to_wire(response, response_wire, rsize) != 0) {
+		knot_ns_error_response(nameserver, knot_packet_id(
+		                       knot_packet_query(response)),
+		                       KNOT_RCODE_SERVFAIL, response_wire,
+		                       rsize);
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
+                          uint8_t *response_wire, size_t *rsize)
+{
+	debug_knot_ns("ns_answer_normal()\n");
+
 	// first, parse the rest of the packet
 	assert(knot_packet_is_query(query));
-	debug_knot_ns("Query - parsed: %zu, total wire size: %zu\n", query->parsed,
-	         query->size);
+	debug_knot_ns("Query - parsed: %zu, total wire size: %zu\n",
+	              knot_packet_parsed(query), knot_packet_size(query));
 	int ret;
 
-	if (query->parsed < query->size) {
+	knot_packet_t *response;
+	ret = knot_ns_prepare_response(nameserver, query, &response, *rsize);
+	if (ret != KNOT_EOK) {
+		knot_ns_error_response(nameserver, knot_packet_id(query),
+		                       KNOT_RCODE_SERVFAIL, response_wire,
+		                       rsize);
+		return KNOT_EOK;
+	}
+
+	if (knot_packet_parsed(query) < knot_packet_size(query)) {
 		ret = knot_packet_parse_rest(query);
 		if (ret != KNOT_EOK) {
 			debug_knot_ns("Failed to parse rest of the query: "
 			                   "%s.\n", knot_strerror(ret));
-			knot_ns_error_response(nameserver, query->header.id,
-			           KNOT_RCODE_SERVFAIL, response_wire, rsize);
+			knot_ns_error_response_full(nameserver, response,
+			                            (ret == KNOT_EMALF)
+			                               ? KNOT_RCODE_FORMERR
+			                               : KNOT_RCODE_SERVFAIL,
+			                            response_wire, rsize);
 			return KNOT_EOK;
 		}
 	}
@@ -2484,41 +2547,6 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 	// get the answer for the query
 	rcu_read_lock();
 	knot_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
-
-	debug_knot_ns("ns_answer_normal()\n");
-
-	// initialize response packet structure
-	knot_packet_t *response = knot_packet_new(
-	                               KNOT_PACKET_PREALLOC_RESPONSE);
-	if (response == NULL) {
-		debug_knot_ns("Failed to create packet structure.\n");
-		knot_ns_error_response(nameserver, query->header.id,
-		                  KNOT_RCODE_SERVFAIL, response_wire, rsize);
-		rcu_read_unlock();
-		return KNOT_EOK;
-	}
-
-	ret = knot_packet_set_max_size(response, *rsize);
-
-	if (ret != KNOT_EOK) {
-		debug_knot_ns("Failed to init response structure.\n");
-		knot_ns_error_response(nameserver, query->header.id,
-		                  KNOT_RCODE_SERVFAIL, response_wire, rsize);
-		rcu_read_unlock();
-		knot_packet_free(&response);
-		return KNOT_EOK;
-	}
-
-	ret = knot_response_init_from_query(response, query);
-
-	if (ret != KNOT_EOK) {
-		debug_knot_ns("Failed to init response structure.\n");
-		knot_ns_error_response(nameserver, query->header.id,
-		                  KNOT_RCODE_SERVFAIL, response_wire, rsize);
-		rcu_read_unlock();
-		knot_packet_free(&response);
-		return KNOT_EOK;
-	}
 
 	debug_knot_ns("EDNS supported in query: %d\n",
 	         knot_query_edns_supported(query));
@@ -2535,8 +2563,9 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 	ret = ns_answer(zonedb, response);
 	if (ret != 0) {
 		// now only one type of error (SERVFAIL), later maybe more
-		knot_ns_error_response(nameserver, query->header.id,
-		                  KNOT_RCODE_SERVFAIL, response_wire, rsize);
+		knot_ns_error_response_full(nameserver, response,
+		                            KNOT_RCODE_SERVFAIL,
+		                            response_wire, rsize);
 	} else {
 		debug_knot_ns("Created response packet.\n");
 		//knot_response_dump(resp);
@@ -2545,9 +2574,9 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 		// 4) Transform the packet into wire format
 		if (ns_response_to_wire(response, response_wire, rsize) != 0) {
 			// send back SERVFAIL (as this is our problem)
-			knot_ns_error_response(nameserver, query->header.id,
-			                  KNOT_RCODE_SERVFAIL, response_wire,
-			                  rsize);
+			knot_ns_error_response_full(nameserver, response,
+			                            KNOT_RCODE_SERVFAIL,
+			                            response_wire, rsize);
 		}
 	}
 
@@ -2928,6 +2957,112 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 //		xfrin_free_changesets((knot_changesets_t **)(&xfr->data));
 	}
 	return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
+                           uint8_t *response_wire, size_t *rsize,
+                           knot_zone_t **zone, knot_changeset_t **changeset)
+{
+	// 1) Parse the rest of the packet
+	assert(knot_packet_is_query(query));
+
+	knot_packet_t *response;
+	int ret = knot_ns_prepare_response(nameserver, query, &response,
+	                                   *rsize);
+	if (ret != KNOT_EOK) {
+		knot_ns_error_response(nameserver, knot_packet_id(query),
+		                       KNOT_RCODE_SERVFAIL, response_wire,
+		                       rsize);
+		return KNOT_EOK;
+	}
+
+	assert(response != NULL);
+
+	debug_knot_ns("Query - parsed: %zu, total wire size: %zu\n",
+	              query->parsed, query->size);
+
+	if (knot_packet_parsed(query) < knot_packet_size(query)) {
+		ret = knot_packet_parse_rest(query);
+		if (ret != KNOT_EOK) {
+			debug_knot_ns("Failed to parse rest of the query: "
+			              "%s.\n", knot_strerror(ret));
+			knot_ns_error_response_full(nameserver, response,
+			                            (ret == KNOT_EMALF)
+			                               ? KNOT_RCODE_FORMERR
+			                               : KNOT_RCODE_SERVFAIL,
+			                            response_wire, rsize);
+			return KNOT_EOK;
+		}
+	}
+
+	debug_knot_ns("Query - parsed: %zu, total wire size: %zu\n",
+	              knot_packet_parsed(query), knot_packet_size(query));
+
+	/*! \todo API for EDNS values. */
+	debug_knot_ns("Opt RR: version: %d, payload: %d\n",
+	              query->opt_rr.version, query->opt_rr.payload);
+
+	// 2) Find zone for the query
+	/* TODO */
+
+	uint8_t rcode = 0;
+	// 3) Check zone
+	ret = knot_ddns_check_zone(*zone, query, &rcode);
+	if (ret != KNOT_EOK) {
+		debug_knot_ns("Failed to check zone for update: "
+		              "%s.\n", knot_strerror(ret));
+		knot_ns_error_response_full(nameserver, response, rcode,
+		                            response_wire, rsize);
+		return KNOT_EOK;
+	}
+
+	// 4) Convert prerequisities
+	knot_ddns_prereq_t *prereqs = NULL;
+	ret = knot_ddns_process_prereqs(query, &prereqs, &rcode);
+	if (ret != KNOT_EOK) {
+		debug_knot_ns("Failed to check zone for update: "
+		              "%s.\n", knot_strerror(ret));
+		knot_ns_error_response_full(nameserver, response, rcode,
+		                            response_wire, rsize);
+		return KNOT_EOK;
+	}
+
+	assert(prereqs != NULL);
+
+	// 5) Check prerequisities
+	/*! \todo Somehow ensure the zone will not be changed until the update
+	 *        is finished.
+	 */
+	ret = knot_ddns_check_prereqs(knot_zone_contents(*zone), &prereqs,
+	                              &rcode);
+	if (ret != KNOT_EOK) {
+		debug_knot_ns("Failed to check zone for update: "
+		              "%s.\n", knot_strerror(ret));
+		knot_ns_error_response_full(nameserver, response, rcode,
+		                            response_wire, rsize);
+		return KNOT_EOK;
+	}
+
+	// 6) Convert update to changeset
+	ret = knot_ddns_process_update(query, changeset, &rcode);
+	if (ret != KNOT_EOK) {
+		debug_knot_ns("Failed to check zone for update: "
+		              "%s.\n", knot_strerror(ret));
+		knot_ns_error_response_full(nameserver, response, rcode,
+		                            response_wire, rsize);
+		return KNOT_EOK;
+	}
+
+	assert(changeset != NULL);
+
+	// 7) Create response
+	debug_knot_ns("Update converted successfuly.\n");
+
+	/*! \todo No response yet. Distinguish somehow in the caller. */
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
