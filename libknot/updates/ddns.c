@@ -15,4 +15,32 @@
  */
 
 #include "updates/ddns.h"
+#include "updates/changesets.h"
+#include "util/debug.h"
+#include "packet/packet.h"
+#include "util/error.h"
+
+int knot_ddns_check_zone(const knot_zone_t *zone, knot_packet_t *query,
+                         uint8_t *rcode)
+{
+	return KNOT_ENOTSUP;
+}
+
+int knot_ddns_process_prereqs(knot_packet_t *query,
+                              knot_ddns_prereq_t **prereqs, uint8_t *rcode)
+{
+	return KNOT_ENOTSUP;
+}
+
+int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
+                            knot_ddns_prereq_t **prereqs, uint8_t *rcode)
+{
+	return KNOT_ENOTSUP;
+}
+
+int knot_ddns_process_update(knot_packet_t *query,
+                             knot_changeset_t **changeset, uint8_t *rcode)
+{
+	return KNOT_ENOTSUP;
+}
 
