@@ -273,6 +273,10 @@ int knot_packet_parse_rest(knot_packet_t *packet);
 int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
                                        knot_rrset_t **rr);
 
+size_t knot_packet_size(const knot_packet_t *packet);
+
+size_t knot_packet_parsed(const knot_packet_t *packet);
+
 /*!
  * \brief Sets the maximum size of the packet and allocates space for wire
  *        format (if needed).
