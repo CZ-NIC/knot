@@ -335,7 +335,7 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
 	knot_node_free(&tmp_data, 0, 0);
 	free(tmp);
 
-	*removed = n->node;
+	*removed = (n) ? n->node : NULL;
 	free(n);
 	return KNOT_EOK;
 }
@@ -414,7 +414,7 @@ int knot_zone_tree_reverse_apply_postorder(knot_zone_tree_t *tree,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_tree_shallow_copy(knot_zone_tree_t *from, 
+int knot_zone_tree_shallow_copy(knot_zone_tree_t *from,
                                   knot_zone_tree_t *to)
 {
 	/*
