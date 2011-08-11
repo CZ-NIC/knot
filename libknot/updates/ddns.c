@@ -80,8 +80,6 @@ static int knot_ddns_add_prereq_rrset(const knot_rrset_t *rrset,
                                       knot_rrset_t ***rrsets,
                                       size_t *count, size_t *allocd)
 {
-	return KNOT_ENOTSUP;
-
 	// check if such RRSet is not already there and merge if needed
 	int ret;
 	for (int i = 0; i < *count; ++i) {
@@ -120,7 +118,22 @@ static int knot_ddns_add_prereq_dname(const knot_dname_t *dname,
                                       knot_dname_t ***dnames,
                                       size_t *count, size_t *allocd)
 {
-	return KNOT_ENOTSUP;
+	// we do not have to check if the name is not already there
+	// if it is, we will just check it twice in the zone
+
+	int ret = knot_ddns_prereq_check_dnames(dnames, count, allocd);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_dname_t *dname_new = knot_dname_deep_copy(dname);
+	if (dname_new == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	(*dnames)[(*count)++] = dname_new;
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
