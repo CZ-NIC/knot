@@ -248,6 +248,10 @@ int xfrin_process_axfr_packet(const uint8_t *pkt, size_t size,
 		return KNOT_EMALF;
 	}
 
+	/*! \todo We should probably test whether the Question of the first
+	 *        message corresponds to the SOA RR.
+	 */
+
 	knot_node_t *node = NULL;
 	int in_zone = 0;
 

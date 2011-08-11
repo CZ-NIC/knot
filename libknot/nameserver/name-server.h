@@ -43,6 +43,7 @@
 #include "consts.h"
 #include "packet/packet.h"
 #include "common/sockaddr.h"
+#include "updates/changesets.h"
 
 struct conf_t;
 struct server_t;
@@ -217,6 +218,10 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
  */
 int knot_ns_process_ixfrin(knot_nameserver_t *nameserver, 
                              knot_ns_xfr_t *xfr);
+
+int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
+                           uint8_t *response_wire, size_t *rsize,
+                           knot_zone_t **zone, knot_changeset_t **changeset);
 
 void *knot_ns_data(knot_nameserver_t *nameserver);
 

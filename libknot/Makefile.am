@@ -85,6 +85,8 @@ libknot_la_SOURCES =				\
 	updates/changesets.c			\
 	updates/xfr-in.h			\
 	updates/xfr-in.c			\
+	updates/ddns.h				\
+	updates/ddns.c				\
 	edns.c				\
 	rrset.c				\
 	dname.c				\
