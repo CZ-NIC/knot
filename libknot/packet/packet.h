@@ -303,6 +303,10 @@ int knot_packet_set_max_size(knot_packet_t *packet, int max_size);
 
 uint16_t knot_packet_id(const knot_packet_t *packet);
 
+void knot_packet_set_id(knot_packet_t *packet, uint16_t id);
+
+void knot_packet_set_random_id(knot_packet_t *packet);
+
 /*!
  * \brief Returns the OPCODE of the packet.
  *
@@ -479,6 +483,8 @@ int knot_packet_edns_to_wire(knot_packet_t *packet);
  */
 int knot_packet_to_wire(knot_packet_t *packet, uint8_t **wire,
                           size_t *wire_size);
+
+const uint8_t *knot_packet_wireformat(const knot_packet_t *packet);
 
 /*!
  * \brief Properly destroys the packet structure.

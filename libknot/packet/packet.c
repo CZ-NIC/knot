@@ -933,6 +933,24 @@ uint16_t knot_packet_id(const knot_packet_t *packet)
 
 /*----------------------------------------------------------------------------*/
 
+void knot_packet_set_id(knot_packet_t *packet, uint16_t id)
+{
+	if (packet == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	packet->header.id = id;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_packet_set_random_id(knot_packet_t *packet)
+{
+	/*! \todo Implement. */
+}
+
+/*----------------------------------------------------------------------------*/
+
 uint8_t knot_packet_opcode(const knot_packet_t *packet)
 {
 	assert(packet != NULL);
@@ -1255,6 +1273,13 @@ int knot_packet_to_wire(knot_packet_t *packet,
 	*wire_size = packet->size;
 
 	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const uint8_t *knot_packet_wireformat(const knot_packet_t *packet)
+{
+	return packet->wireformat;
 }
 
 /*----------------------------------------------------------------------------*/
