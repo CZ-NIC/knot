@@ -14,7 +14,7 @@
 
 #include <signal.h>
 #include <stdint.h>
-#include "config.h"
+#include <config.h>
 
 /*
  * Common types and constants.
@@ -56,7 +56,7 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 //#define STAT_COMPILE
 
 
-#ifdef HAVE_LIBLDNS
+#ifdef HAVE_LDNS
 #define TEST_WITH_LDNS
 #endif
 

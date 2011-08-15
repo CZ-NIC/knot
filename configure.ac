@@ -27,7 +27,8 @@ AC_PROG_CC_C99
 AC_ARG_ENABLE([ldns],
      [  --enable-ldns    Enable tests with ldns],
      [case "${enableval}" in
-       yes) AC_SEARCH_LIBS([ldns_rr_list_pop_rrset], [ldns], [], AC_MSG_ERROR([ldns not found])) ;;
+       yes) AC_SEARCH_LIBS([ldns_rr_list_pop_rrset], [ldns], [AC_DEFINE([HAVE_LDNS], [1], [ldns present])],
+       AC_MSG_ERROR([ldns not found])) ;;
        no)  ldns=false ;;
        *) AC_MSG_ERROR([bad value ${enableval} for --enable-ldns]) ;;
      esac],[ldns=false])
