@@ -912,6 +912,19 @@ void knot_zone_contents_switch_generation(knot_zone_contents_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
+uint16_t knot_zone_contents_class(const knot_zone_contents_t *contents)
+{
+	if (contents == NULL || contents->apex == NULL
+	    || knot_node_rrset(contents->apex, KNOT_RRTYPE_SOA) == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	return knot_rrset_class(knot_node_rrset(contents->apex,
+	                                        KNOT_RRTYPE_SOA));
+}
+
+/*----------------------------------------------------------------------------*/
+
 int knot_zone_contents_add_node(knot_zone_contents_t *zone,
                                   knot_node_t *node, int create_parents,
                                   uint8_t flags, int use_domain_table)

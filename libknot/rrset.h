@@ -222,10 +222,16 @@ const knot_rrset_t *knot_rrset_rrsigs(const knot_rrset_t *rrset);
 
 knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset);
 
+int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2);
+
 int knot_rrset_compare(const knot_rrset_t *r1,
                          const knot_rrset_t *r2,
                          knot_rrset_compare_type_t cmp);
 
+/*! \todo Add unit test. */
+int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to);
+
+/*! \todo Add unit test. */
 int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to);
 
 /*!
