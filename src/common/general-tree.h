@@ -46,6 +46,8 @@ void gen_tree_apply_inorder(general_tree_t *tree,
 void gen_tree_destroy(general_tree_t **tree,
                       void (*dest_func)(void *node, void *data), void *data);
 
+void gen_tree_clear(general_tree_t *tree);
+
 int gen_tree_find_less_or_equal(general_tree_t *tree,
                                 void *what,
                                 void **found);

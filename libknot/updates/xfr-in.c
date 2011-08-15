@@ -754,11 +754,12 @@ static void xfrin_changes_free(xfrin_changes_t **changes)
 /*----------------------------------------------------------------------------*/
 
 static int xfrin_changes_check_rrsets(knot_rrset_t ***rrsets,
-                                      int *count, int *allocated)
+                                      int *count, int *allocated, int to_add)
 {
-	int new_count = 0;
-	if (*count == *allocated) {
-		new_count = *allocated * 2;
+	int new_count = *allocated * 2;
+
+	while (*count + to_add > new_count) {
+		new_count += *allocated;
 	}
 
 	knot_rrset_t **rrsets_new =
@@ -937,7 +938,7 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 	// add the RRSet to the list of new RRSets
 	ret = xfrin_changes_check_rrsets(&changes->new_rrsets,
 	                                 &changes->new_rrsets_count,
-	                                 &changes->new_rrsets_allocated);
+	                                 &changes->new_rrsets_allocated, 1);
 	if (ret != KNOT_EOK) {
 		debug_knot_xfr("Failed to add new RRSet to list.\n");
 		knot_rrset_free(copy);
@@ -949,7 +950,7 @@ static int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 	// add the old RRSet to the list of old RRSets
 	ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
 	                                 &changes->old_rrsets_count,
-	                                 &changes->old_rrsets_allocated);
+	                                 &changes->old_rrsets_allocated, 1);
 	if (ret != KNOT_EOK) {
 		debug_knot_xfr("Failed to add old RRSet to list.\n");
 		return ret;
@@ -1069,7 +1070,8 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 		
 		ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
 		                                 &changes->old_rrsets_count,
-		                                &changes->old_rrsets_allocated);
+		                                 &changes->old_rrsets_allocated,
+		                                 1);
 		if (ret != KNOT_EOK) {
 			debug_knot_xfr("Failed to add empty RRSet to the "
 			               "list of old RRSets.");
@@ -1091,7 +1093,8 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 			
 			ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
 			                        &changes->old_rrsets_count,
-			                        &changes->old_rrsets_allocated);
+			                        &changes->old_rrsets_allocated,
+			                        1);
 			if (ret != KNOT_EOK) {
 				debug_knot_xfr("Failed to add empty RRSet to "
 				               "the list of old RRSets.");
@@ -1176,7 +1179,8 @@ DEBUG_KNOT_XFR(
 		assert(tmp == *rrset);
 		ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
 		                                 &changes->old_rrsets_count,
-		                                &changes->old_rrsets_allocated);
+		                                 &changes->old_rrsets_allocated,
+		                                 1);
 		if (ret != KNOT_EOK) {
 			debug_knot_xfr("Failed to add empty RRSet to the "
 			          "list of old RRSets.");
@@ -1192,6 +1196,48 @@ DEBUG_KNOT_XFR(
 	rdata->next = changes->old_rdata;
 	changes->old_rdata = rdata;
 	
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_apply_remove_all_rrsets(xfrin_changes_t *changes,
+                                         knot_node_t *node, uint16_t type)
+{
+	/*! \todo Implement. */
+	int ret;
+
+	if (type == KNOT_RRTYPE_ANY) {
+		// put all the RRSets to the changes structure
+		ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
+		                                 &changes->old_rrsets_count,
+		                                 &changes->old_rrsets_allocated,
+		                                 knot_node_rrset_count(node));
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		knot_rrset_t **rrsets = knot_node_get_rrsets(node);
+		knot_rrset_t **place = changes->old_rrsets
+		                       + changes->old_rrsets_count;
+		/*! \todo Test this!!! */
+		memcpy(place, rrsets, knot_node_rrset_count(node));
+
+		// remove all RRSets from the node
+		knot_node_remove_all_rrsets(node);
+	} else {
+		ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
+		                                 &changes->old_rrsets_count,
+		                                 &changes->old_rrsets_allocated,
+		                                 1);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		// remove only RRSet with the given type
+		knot_rrset_t *rrset = knot_node_remove_rrset(node, type);
+		changes->old_rrsets[changes->old_rrsets_count++] = rrset;
+	}
+
 	return KNOT_EOK;
 }
 
@@ -1234,11 +1280,19 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 		assert(node != NULL);
 		assert(knot_node_is_new(node));
 		
-		if (knot_rrset_type(chset->remove[i]) == KNOT_RRTYPE_RRSIG) {
+		// first check if all RRSets should be removed
+		if (knot_rrset_class(chset->remove[i]) == KNOT_CLASS_ANY) {
+			ret = xfrin_apply_remove_all_rrsets(
+				changes, node,
+				knot_rrset_type(chset->remove[i]));
+		} else if (knot_rrset_type(chset->remove[i])
+		           == KNOT_RRTYPE_RRSIG) {
+			// this should work also for UPDATE
 			ret = xfrin_apply_remove_rrsigs(changes,
 			                                chset->remove[i],
 			                                node, &rrset);
 		} else {
+			// this should work also for UPDATE
 			ret = xfrin_apply_remove_normal(changes,
 			                                chset->remove[i],
 			                                node, &rrset);
@@ -1578,7 +1632,7 @@ static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
 	// add the old RRSet to the list of old RRSets
 	ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
 	                                 &changes->old_rrsets_count,
-	                                 &changes->old_rrsets_allocated);
+	                                 &changes->old_rrsets_allocated, 1);
 	if (ret != KNOT_EOK) {
 		debug_knot_xfr("Failed to add old RRSet to list.\n");
 		return ret;
@@ -1609,8 +1663,9 @@ static int xfrin_apply_changeset(knot_zone_contents_t *contents,
 	 */
 
 	// check if serial matches
+	/*! \todo Only if SOA is present? */
 	const knot_rrset_t *soa = knot_node_rrset(contents->apex,
-	                                        KNOT_RRTYPE_SOA);
+	                                          KNOT_RRTYPE_SOA);
 	if (soa == NULL || knot_rdata_soa_serial(knot_rrset_rdata(soa))
 	                   != chset->serial_from) {
 		debug_knot_xfr("SOA serials do not match!!\n");
@@ -1629,6 +1684,7 @@ static int xfrin_apply_changeset(knot_zone_contents_t *contents,
 		return ret;
 	}
 
+	/*! \todo Only if SOA is present? */
 	return xfrin_apply_replace_soa(contents, changes, chset);
 }
 
