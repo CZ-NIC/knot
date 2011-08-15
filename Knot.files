@@ -101,6 +101,8 @@ src/common/ref.h
 src/common/modified_tree.h
 src/common/general-tree.h
 src/common/general-tree.c
+src/common/WELL1024a.c
+src/common/WELL1024a.h
 src/zcompile/parser-descriptor.h
 src/zcompile/parser-descriptor.c
 src/zcompile/parser-util.h
