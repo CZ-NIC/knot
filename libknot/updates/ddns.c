@@ -277,8 +277,28 @@ static int knot_ddns_check_not_in_use(const knot_zone_contents_t *zone,
 int knot_ddns_check_zone(const knot_zone_t *zone, knot_packet_t *query,
                          uint8_t *rcode)
 {
-	/*! \todo Check also CLASS. */
-	return KNOT_ENOTSUP;
+	if (zone == NULL || query == NULL || rcode == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	if (knot_packet_qtype(query) != KNOT_RRTYPE_SOA) {
+		*rcode = KNOT_RCODE_FORMERR;
+		return KNOT_EMALF;
+	}
+
+	// 1) check if the zone is master or slave
+	if (!knot_zone_is_master(zone)) {
+		return KNOT_EBADZONE;
+	}
+
+	// 2) check zone CLASS
+	if (knot_zone_contents_class(knot_zone_contents(zone)) !=
+	    knot_packet_qclass(query)) {
+		*rcode = KNOT_RCODE_NOTAUTH;
+		return KNOT_ENOZONE;
+	}
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
