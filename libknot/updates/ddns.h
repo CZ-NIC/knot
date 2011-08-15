@@ -58,6 +58,9 @@ typedef struct knot_ddns_prereq_t {
 int knot_ddns_check_zone(const knot_zone_t *zone, knot_packet_t *query,
                          uint8_t *rcode);
 
+int knot_ddns_create_forward_query(const knot_packet_t *query,
+                                   knot_packet_t **fwd_query);
+
 int knot_ddns_process_prereqs(knot_packet_t *query,
                               knot_ddns_prereq_t **prereqs, uint8_t *rcode);
 
@@ -66,6 +69,8 @@ int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
 
 int knot_ddns_process_update(knot_packet_t *query,
                              knot_changeset_t **changeset, uint8_t *rcode);
+
+void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq);
 
 #endif /* _KNOT_DDNS_H_ */
 

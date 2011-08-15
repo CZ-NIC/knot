@@ -2993,6 +2993,7 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 			                               ? KNOT_RCODE_FORMERR
 			                               : KNOT_RCODE_SERVFAIL,
 			                            response_wire, rsize);
+			knot_packet_free(&response);
 			return KNOT_EOK;
 		}
 	}
@@ -3013,6 +3014,7 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 		knot_ns_error_response_full(nameserver, response,
 		                            KNOT_RCODE_FORMERR,
 		                            response_wire, rsize);
+		knot_packet_free(&response);
 		return KNOT_EOK;
 	}
 
@@ -3023,6 +3025,7 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 		knot_ns_error_response_full(nameserver, response,
 		                            KNOT_RCODE_NOTAUTH,
 		                            response_wire, rsize);
+		knot_packet_free(&response);
 		return KNOT_EOK;
 	}
 
@@ -3037,6 +3040,7 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 		              "%s.\n", knot_strerror(ret));
 		knot_ns_error_response_full(nameserver, response, rcode,
 		                            response_wire, rsize);
+		knot_packet_free(&response);
 		return KNOT_EOK;
 	}
 
@@ -3048,6 +3052,7 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 		              "%s.\n", knot_strerror(ret));
 		knot_ns_error_response_full(nameserver, response, rcode,
 		                            response_wire, rsize);
+		knot_packet_free(&response);
 		return KNOT_EOK;
 	}
 
@@ -3064,6 +3069,8 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 		              "%s.\n", knot_strerror(ret));
 		knot_ns_error_response_full(nameserver, response, rcode,
 		                            response_wire, rsize);
+		knot_ddns_prereqs_free(&prereqs);
+		knot_packet_free(&response);
 		return KNOT_EOK;
 	}
 
@@ -3074,6 +3081,8 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 		              "%s.\n", knot_strerror(ret));
 		knot_ns_error_response_full(nameserver, response, rcode,
 		                            response_wire, rsize);
+		knot_ddns_prereqs_free(&prereqs);
+		knot_packet_free(&response);
 		return KNOT_EOK;
 	}
 
@@ -3084,6 +3093,7 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 
 	/*! \todo No response yet. Distinguish somehow in the caller. */
 
+	knot_packet_free(&response);
 	return KNOT_EOK;
 }
 
