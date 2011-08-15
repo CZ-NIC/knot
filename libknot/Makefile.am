@@ -41,7 +41,9 @@ libknot_common_SOURCES = \
 	common/ref.h				\
 	common/ref.c				\
 	common/errors.h				\
-	common/errors.c
+	common/errors.c				\
+	common/WELL1024a.h			\
+	common/WELL1024a.c
 
 libknot_la_SOURCES =				\
 	$(libknot_common_SOURCES)		\
