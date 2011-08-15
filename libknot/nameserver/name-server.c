@@ -3121,6 +3121,27 @@ int knot_ns_create_forward_query(const knot_packet_t *query,
 
 /*----------------------------------------------------------------------------*/
 
+int knot_ns_process_forward_response(const knot_packet_t *response,
+                                     uint16_t original_id,
+                                     uint8_t *response_wire, size_t *size)
+{
+	// just copy the wireformat of the response and set the original ID
+
+	if (knot_packet_size(response) > *size) {
+		return KNOT_ESPACE;
+	}
+
+	memcpy(response_wire, knot_packet_wireformat(response),
+	       knot_packet_size(response));
+	*size = knot_packet_size(response);
+
+	knot_wire_set_id(response_wire, original_id);
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void *knot_ns_data(knot_nameserver_t *nameserver)
 {
 	return nameserver->data;
