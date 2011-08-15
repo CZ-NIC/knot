@@ -435,15 +435,6 @@ int knot_ddns_check_zone(const knot_zone_t *zone, knot_packet_t *query,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_ddns_create_forward_query(const knot_packet_t *query,
-                                   knot_packet_t **fwd_query)
-{
-	/*! \todo Implement. */
-	return KNOT_ENOTSUP;
-}
-
-/*----------------------------------------------------------------------------*/
-
 int knot_ddns_process_prereqs(knot_packet_t *query,
                               knot_ddns_prereq_t **prereqs, uint8_t *rcode)
 {
@@ -587,7 +578,8 @@ int knot_ddns_process_update(knot_packet_t *query,
 
 	for (int i = 0; i < knot_packet_authority_rrset_count(query); ++i) {
 
-		knot_rrset_t *rrset = knot_packet_authority_rrset(query, i);
+		const knot_rrset_t *rrset =
+				knot_packet_authority_rrset(query, i);
 
 		ret = knot_ddns_check_update(rrset, query, rcode);
 		if (ret != KNOT_EOK) {
