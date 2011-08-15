@@ -915,7 +915,7 @@ void knot_zone_contents_switch_generation(knot_zone_contents_t *zone)
 uint16_t knot_zone_contents_class(const knot_zone_contents_t *contents)
 {
 	if (contents == NULL || contents->apex == NULL
-	    || knot_node_rrset(contents->apex) == NULL) {
+	    || knot_node_rrset(contents->apex, KNOT_RRTYPE_SOA) == NULL) {
 		return KNOT_EBADARG;
 	}
 
