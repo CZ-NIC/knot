@@ -74,6 +74,9 @@ struct knot_zone {
 
 	time_t version;
 
+	/*! \todo Set when loading zone. */
+	short master;
+
 	void *data; /*!< Pointer to generic zone-related data. */
 	int (*dtor)(struct knot_zone *); /*!< Data destructor. */
 };
@@ -102,6 +105,10 @@ const knot_zone_contents_t *knot_zone_contents(
 time_t knot_zone_version(const knot_zone_t *zone);
 
 void knot_zone_set_version(knot_zone_t *zone, time_t version);
+
+short knot_zone_is_master(const knot_zone_t *zone);
+
+void knot_zone_set_master(knot_zone_t *zone, short master);
 
 const void *knot_zone_data(const knot_zone_t *zone);
 
