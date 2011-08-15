@@ -877,6 +877,20 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 
 /*----------------------------------------------------------------------------*/
 
+size_t knot_packet_size(const knot_packet_t *packet)
+{
+	return packet->size;
+}
+
+/*----------------------------------------------------------------------------*/
+
+size_t knot_packet_parsed(const knot_packet_t *packet)
+{
+	return packet->parsed;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int knot_packet_set_max_size(knot_packet_t *packet, int max_size)
 {
 	if (packet == NULL || max_size <= 0) {
@@ -915,6 +929,28 @@ uint16_t knot_packet_id(const knot_packet_t *packet)
 {
 	assert(packet != NULL);
 	return packet->header.id;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_packet_set_id(knot_packet_t *packet, uint16_t id)
+{
+	if (packet == NULL) {
+		return;
+	}
+
+	packet->header.id = id;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_packet_set_random_id(knot_packet_t *packet)
+{
+	if (packet == NULL) {
+		return;
+	}
+
+	packet->header.id = knot_random_id();
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1241,6 +1277,13 @@ int knot_packet_to_wire(knot_packet_t *packet,
 	*wire_size = packet->size;
 
 	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const uint8_t *knot_packet_wireformat(const knot_packet_t *packet)
+{
+	return packet->wireformat;
 }
 
 /*----------------------------------------------------------------------------*/

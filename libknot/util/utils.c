@@ -20,6 +20,7 @@
 
 #include "common.h"
 #include "util/utils.h"
+#include "common/WELL1024a.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -104,4 +105,9 @@ size_t knot_quick_rand()
 	x = 1664525L * x + 1013904223L;
 	(void) pthread_setspecific(_qr_key, (void*)x);
 	return x;
+}
+
+uint16_t knot_random_id()
+{
+	return (uint16_t)(tls_rand() * ((uint16_t)~0));
 }

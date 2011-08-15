@@ -295,9 +295,66 @@ knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset)
 
 /*----------------------------------------------------------------------------*/
 
+int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2)
+{
+	if (r1 == NULL || r2 == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type(r1->type);
+	if (desc == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	// compare RDATA sets (order is not significant)
+	const knot_rdata_t *rdata1= knot_rrset_rdata(r1);
+	const knot_rdata_t *rdata2;
+
+	// find all RDATA from r1 in r2
+	while (rdata1 != NULL) {
+		 rdata2 = knot_rrset_rdata(r2);
+		 while (rdata2 != NULL && knot_rdata_compare(rdata1, rdata2,
+		                                            desc->wireformat)) {
+			 rdata2 = knot_rrset_rdata_next(r2, rdata2);
+		 }
+
+		 if (rdata2 == NULL) {
+			 // RDATA from r1 not found in r2
+			 return 0;
+		 }
+
+		 // otherwise it was found, continue with next r1 RDATA
+		 rdata1 = knot_rrset_rdata_next(r1, rdata1);
+	}
+
+	// find all RDATA from r2 in r1 (this can be done in a better way)
+	rdata2 = knot_rrset_rdata(r2);
+	while (rdata2 != NULL) {
+		 rdata1 = knot_rrset_rdata(r1);
+		 while (rdata2 != NULL && knot_rdata_compare(rdata1, rdata2,
+		                                            desc->wireformat)) {
+			 rdata1 = knot_rrset_rdata_next(r1, rdata1);
+		 }
+
+		 if (rdata1 == NULL) {
+			 // RDATA from r1 not found in r2
+			 return 0;
+		 }
+
+		 // otherwise it was found, continue with next r1 RDATA
+		 rdata2 = knot_rrset_rdata_next(r2, rdata2);
+	}
+
+	// all RDATA found
+	return 1;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int knot_rrset_compare(const knot_rrset_t *r1,
-                         const knot_rrset_t *r2,
-                         knot_rrset_compare_type_t cmp)
+                       const knot_rrset_t *r2,
+                       knot_rrset_compare_type_t cmp)
 {
 	if (cmp == KNOT_RRSET_COMPARE_PTR) {
 		return (r1 == r2);
@@ -309,18 +366,55 @@ int knot_rrset_compare(const knot_rrset_t *r1,
 	           && knot_dname_compare(r1->owner, r2->owner) == 0);
 
 	if (cmp == KNOT_RRSET_COMPARE_WHOLE && res) {
-		knot_rrtype_descriptor_t *desc =
-			knot_rrtype_descriptor_by_type(r1->type);
-
-		if (desc == NULL) {
+		res = knot_rrset_compare_rdata(r1, r2);
+		if (res < 0) {
 			return 0;
 		}
-
-		res = res && (knot_rdata_compare(r1->rdata, r2->rdata,
-		                                  desc->wireformat) == 0);
 	}
 
 	return res;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to)
+{
+	if (from == NULL || to == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	int ret;
+
+	*to = (knot_rrset_t *)calloc(1, sizeof(knot_rrset_t));
+	CHECK_ALLOC_LOG(*to, KNOT_ENOMEM);
+
+	(*to)->owner = knot_dname_deep_copy(from->owner);
+	(*to)->rclass = from->rclass;
+	(*to)->ttl = from->ttl;
+	(*to)->type = from->type;
+	if (from->rrsigs != NULL) {
+		ret = knot_rrset_deep_copy(from->rrsigs, &(*to)->rrsigs);
+		if (ret != KNOT_EOK) {
+			knot_rrset_deep_free(to, 1, 0, 0);
+			return ret;
+		}
+	}
+	assert((*to)->rrsigs == NULL || from->rrsigs != NULL);
+
+	const knot_rdata_t *rdata = knot_rrset_rdata(from);
+
+	/*! \note Order of RDATA will be reversed. */
+	while (rdata != NULL) {
+		ret = knot_rrset_add_rdata(*to, knot_rdata_deep_copy(rdata,
+		                           knot_rrset_type(from)));
+		if (ret != KNOT_EOK) {
+			knot_rrset_deep_free(to, 1, 1, 1);
+			return ret;
+		}
+		rdata = knot_rrset_rdata_next(from, rdata);
+	}
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

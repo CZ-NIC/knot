@@ -222,6 +222,33 @@ int knot_changesets_check_size(knot_changesets_t *changesets)
 
 /*----------------------------------------------------------------------------*/
 
+void knot_free_changeset(knot_changeset_t **changeset)
+{
+	assert((*changeset)->add_allocated >= (*changeset)->add_count);
+	assert((*changeset)->remove_allocated >= (*changeset)->remove_count);
+	assert((*changeset)->allocated >= (*changeset)->size);
+
+	int j;
+	for (j = 0; j < (*changeset)->add_count; ++j) {
+		knot_rrset_deep_free(&(*changeset)->add[j], 1, 1, 1);
+	}
+	free((*changeset)->add);
+
+	for (j = 0; j < (*changeset)->remove_count; ++j) {
+		knot_rrset_deep_free(&(*changeset)->add[j], 1, 1, 1);
+	}
+	free((*changeset)->remove);
+
+	knot_rrset_deep_free(&(*changeset)->soa_from, 1, 1, 1);
+	knot_rrset_deep_free(&(*changeset)->soa_to, 1, 1, 1);
+
+	free((*changeset)->data);
+
+	*changeset = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void knot_free_changesets(knot_changesets_t **changesets)
 {
 	if (changesets == NULL || *changesets == NULL) {
@@ -233,25 +260,7 @@ void knot_free_changesets(knot_changesets_t **changesets)
 	for (int i = 0; i < (*changesets)->count; ++i) {
 		knot_changeset_t *ch = &(*changesets)->sets[i];
 
-		assert(ch->add_allocated >= ch->add_count);
-		assert(ch->remove_allocated >= ch->remove_count);
-		assert(ch->allocated >= ch->size);
-
-		int j;
-		for (j = 0; i < ch->add_count; ++j) {
-			knot_rrset_deep_free(&ch->add[j], 1, 1, 1);
-		}
-		free(ch->add);
-
-		for (j = 0; i < ch->remove_count; ++j) {
-			knot_rrset_deep_free(&ch->add[j], 1, 1, 1);
-		}
-		free(ch->remove);
-
-		knot_rrset_deep_free(&ch->soa_from, 1, 1, 1);
-		knot_rrset_deep_free(&ch->soa_to, 1, 1, 1);
-
-		free(ch->data);
+		knot_free_changeset(&ch);
 	}
 
 	free((*changesets)->sets);

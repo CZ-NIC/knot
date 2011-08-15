@@ -636,3 +636,14 @@ size_t knot_wireformat_size(unsigned int wire_type)
 	} /* switch */
 }
 
+int knot_rrtype_is_metatype(uint16_t type)
+{
+	/*! \todo Check if there are some other metatypes. */
+	return (type == KNOT_RRTYPE_ANY
+	        || type == KNOT_RRTYPE_AXFR
+	        || type == KNOT_RRTYPE_IXFR
+	        || type == KNOT_RRTYPE_MAILA
+	        || type == KNOT_RRTYPE_MAILB
+	        || type == KNOT_RRTYPE_OPT);
+}
+
