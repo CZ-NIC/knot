@@ -147,6 +147,8 @@ static inline void knot_wire_write_u32(uint8_t *pos, uint32_t data)
  */
 size_t knot_quick_rand();
 
+uint16_t knot_random_id();
+
 #endif /* _KNOT_UTILS_H_ */
 
 /*! @} */
