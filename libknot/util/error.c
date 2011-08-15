@@ -34,8 +34,10 @@ const error_table_t knot_error_msgs[KNOT_ERROR_COUNT] = {
 	{KNOT_EZONEIN, "Error inserting zone."},
 	{KNOT_ENOZONE, "No such zone found."},
 	{KNOT_ENONODE, "No such node in zone found."},
+	{KNOT_ENORRSET, "No such RRSet found."},
 	{KNOT_EDNAMEPTR, "Domain name pointer larger than allowed."},
 	{KNOT_EPAYLOAD, "Payload in OPT RR larger than max wire size."},
 	{KNOT_ECRC, "CRC check failed."},
+	{KNOT_EPREREQ, "UPDATE prerequisity not met."},
 	{KNOT_ERROR, 0}
 };

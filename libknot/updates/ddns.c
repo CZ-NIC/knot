@@ -230,8 +230,31 @@ static int knot_ddns_add_update(knot_changeset_t *changeset,
 static int knot_ddns_check_exist(const knot_zone_contents_t *zone,
                                  const knot_rrset_t *rrset, uint8_t *rcode)
 {
-	/*! \todo Implement. */
-	return KNOT_ENOTSUP;
+	assert(zone != NULL);
+	assert(rrset != NULL);
+	assert(rcode != NULL);
+	assert(knot_rrset_rdata(rrset) == NULL);
+	assert(knot_rrset_type(rrset) != KNOT_RRTYPE_ANY);
+	assert(knot_rrset_ttl(rrset) == 0);
+	assert(knot_rrset_class(rrset) == KNOT_CLASS_ANY);
+
+	if (!knot_dname_is_subdomain(knot_rrset_owner(rrset),
+	    knot_node_owner(knot_zone_contents_apex(zone)))) {
+		*rcode = KNOT_RCODE_NOTZONE;
+		return KNOT_EBADZONE;
+	}
+
+	const knot_node_t *node;
+	node = knot_zone_contents_find_node(zone, knot_rrset_owner(rrset));
+	if (node == NULL) {
+		*rcode = KNOT_RCODE_NXRRSET;
+		return KNOT_ENONODE;
+	} else if (knot_node_rrset(node, knot_rrset_type(rrset)) == NULL) {
+		*rcode = KNOT_RCODE_NXRRSET;
+		return KNOT_ENORRSET;
+	}
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -239,8 +262,43 @@ static int knot_ddns_check_exist(const knot_zone_contents_t *zone,
 static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
                                       const knot_rrset_t *rrset, uint8_t *rcode)
 {
-	/*! \todo Implement. */
-	return KNOT_ENOTSUP;
+	assert(zone != NULL);
+	assert(rrset != NULL);
+	assert(rcode != NULL);
+	assert(knot_rrset_rdata(rrset) == NULL);
+	assert(knot_rrset_type(rrset) != KNOT_RRTYPE_ANY);
+	assert(knot_rrset_ttl(rrset) == 0);
+	assert(knot_rrset_class(rrset) == KNOT_CLASS_ANY);
+
+	if (!knot_dname_is_subdomain(knot_rrset_owner(rrset),
+	    knot_node_owner(knot_zone_contents_apex(zone)))) {
+		*rcode = KNOT_RCODE_NOTZONE;
+		return KNOT_EBADZONE;
+	}
+
+	const knot_node_t *node;
+	const knot_rrset_t *found;
+
+	node = knot_zone_contents_find_node(zone, knot_rrset_owner(rrset));
+	if (node == NULL) {
+		*rcode = KNOT_RCODE_NXRRSET;
+		return KNOT_EPREREQ;
+	} else if ((found = knot_node_rrset(node, knot_rrset_type(rrset)))
+	            == NULL) {
+		*rcode = KNOT_RCODE_NXRRSET;
+		return KNOT_EPREREQ;
+	} else {
+		// do not have to compare the header, it is already done
+		assert(knot_rrset_type(found) == knot_rrset_type(rrset));
+		assert(knot_dname_compare(knot_rrset_owner(found),
+		                          knot_rrset_owner(rrset)) == 0);
+		if (knot_rrset_compare_rdata(found, rrset) <= 0) {
+			*rcode = KNOT_RCODE_NXRRSET;
+			return KNOT_EPREREQ;
+		}
+	}
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -248,8 +306,41 @@ static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
 static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
                                      const knot_rrset_t *rrset, uint8_t *rcode)
 {
-	/*! \todo Implement. */
-	return KNOT_ENOTSUP;
+	assert(zone != NULL);
+	assert(rrset != NULL);
+	assert(rcode != NULL);
+	assert(knot_rrset_rdata(rrset) == NULL);
+	assert(knot_rrset_type(rrset) != KNOT_RRTYPE_ANY);
+	assert(knot_rrset_ttl(rrset) == 0);
+	assert(knot_rrset_class(rrset) == KNOT_CLASS_NONE);
+
+	if (!knot_dname_is_subdomain(knot_rrset_owner(rrset),
+	    knot_node_owner(knot_zone_contents_apex(zone)))) {
+		*rcode = KNOT_RCODE_NOTZONE;
+		return KNOT_EBADZONE;
+	}
+
+	const knot_node_t *node;
+	const knot_rrset_t *found;
+
+	node = knot_zone_contents_find_node(zone, knot_rrset_owner(rrset));
+	if (node == NULL) {
+		return KNOT_EOK;
+	} else if ((found = knot_node_rrset(node, knot_rrset_type(rrset)))
+	            == NULL) {
+		return KNOT_EOK;
+	} else {
+		// do not have to compare the header, it is already done
+		assert(knot_rrset_type(found) == knot_rrset_type(rrset));
+		assert(knot_dname_compare(knot_rrset_owner(found),
+		                          knot_rrset_owner(rrset)) == 0);
+		if (knot_rrset_compare_rdata(found, rrset) <= 0) {
+			return KNOT_EOK;
+		}
+	}
+
+	*rcode = KNOT_RCODE_YXRRSET;
+	return KNOT_EPREREQ;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -257,8 +348,28 @@ static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
 static int knot_ddns_check_in_use(const knot_zone_contents_t *zone,
                                   const knot_dname_t *dname, uint8_t *rcode)
 {
-	/*! \todo Implement. */
-	return KNOT_ENOTSUP;
+	assert(zone != NULL);
+	assert(dname != NULL);
+	assert(rcode != NULL);
+
+	if (!knot_dname_is_subdomain(dname,
+	    knot_node_owner(knot_zone_contents_apex(zone)))) {
+		*rcode = KNOT_RCODE_NOTZONE;
+		return KNOT_EBADZONE;
+	}
+
+	const knot_node_t *node;
+
+	node = knot_zone_contents_find_node(zone, dname);
+	if (node == NULL) {
+		*rcode = KNOT_RCODE_NXDOMAIN;
+		return KNOT_EPREREQ;
+	} else if (knot_node_rrset_count(node) == 0) {
+		*rcode = KNOT_RCODE_NXDOMAIN;
+		return KNOT_EPREREQ;
+	}
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -266,8 +377,27 @@ static int knot_ddns_check_in_use(const knot_zone_contents_t *zone,
 static int knot_ddns_check_not_in_use(const knot_zone_contents_t *zone,
                                       const knot_dname_t *dname, uint8_t *rcode)
 {
-	/*! \todo Implement. */
-	return KNOT_ENOTSUP;
+	assert(zone != NULL);
+	assert(dname != NULL);
+	assert(rcode != NULL);
+
+	if (!knot_dname_is_subdomain(dname,
+	    knot_node_owner(knot_zone_contents_apex(zone)))) {
+		*rcode = KNOT_RCODE_NOTZONE;
+		return KNOT_EBADZONE;
+	}
+
+	const knot_node_t *node;
+
+	node = knot_zone_contents_find_node(zone, dname);
+	if (node == NULL) {
+		return KNOT_EOK;
+	} else if (knot_node_rrset_count(node) == 0) {
+		return KNOT_EOK;
+	}
+
+	*rcode = KNOT_RCODE_YXDOMAIN;
+	return KNOT_EPREREQ;
 }
 
 /*----------------------------------------------------------------------------*/
