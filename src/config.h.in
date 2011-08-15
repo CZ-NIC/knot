@@ -30,6 +30,9 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* ldns present */
+#undef HAVE_LDNS
+
 /* Define to 1 if you have the <limits.h> header file. */
 #undef HAVE_LIMITS_H
 
@@ -47,6 +50,9 @@
 
 /* Define to 1 if you have a working `mmap' system call. */
 #undef HAVE_MMAP
+
+/* Support mmx instructions */
+#undef HAVE_MMX
 
 /* Define to 1 if you have the `munmap' function. */
 #undef HAVE_MUNMAP
@@ -71,6 +77,18 @@
 
 /* Define to 1 if you have the `sqrt' function. */
 #undef HAVE_SQRT
+
+/* Support SSE (Streaming SIMD Extensions) instructions */
+#undef HAVE_SSE
+
+/* Support SSE2 (Streaming SIMD Extensions 2) instructions */
+#undef HAVE_SSE2
+
+/* Support SSE3 (Streaming SIMD Extensions 3) instructions */
+#undef HAVE_SSE3
+
+/* Support SSSE3 (Supplemental Streaming SIMD Extensions 3) instructions */
+#undef HAVE_SSSE3
 
 /* Define to 1 if stdbool.h conforms to C99. */
 #undef HAVE_STDBOOL_H

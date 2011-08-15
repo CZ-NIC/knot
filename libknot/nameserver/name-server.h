@@ -223,6 +223,9 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
                            uint8_t *response_wire, size_t *rsize,
                            knot_zone_t **zone, knot_changeset_t **changeset);
 
+int knot_ns_create_forward_query(const knot_packet_t *query,
+                                 uint8_t *query_wire, size_t *size);
+
 void *knot_ns_data(knot_nameserver_t *nameserver);
 
 void *knot_ns_get_data(knot_nameserver_t *nameserver);
