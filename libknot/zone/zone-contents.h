@@ -80,6 +80,8 @@ short knot_zone_contents_generation(const knot_zone_contents_t *contents);
 
 void knot_zone_contents_switch_generation(knot_zone_contents_t *contents);
 
+uint16_t knot_zone_contents_class(const knot_zone_contents_t *contents);
+
 /*!
  * \brief Adds a node to the given zone.
  *
