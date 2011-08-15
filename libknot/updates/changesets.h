@@ -74,23 +74,25 @@ typedef enum {
 int knot_changeset_allocate(knot_changesets_t **changesets);
 
 int knot_changeset_add_rrset(knot_rrset_t ***rrsets,
-                               size_t *count, size_t *allocated,
-                               knot_rrset_t *rrset);
+                             size_t *count, size_t *allocated,
+                             knot_rrset_t *rrset);
 
 int knot_changeset_add_rr(knot_rrset_t ***rrsets, size_t *count,
-                            size_t *allocated, knot_rrset_t *rr);
+                          size_t *allocated, knot_rrset_t *rr);
 
 int knot_changeset_add_new_rr(knot_changeset_t *changeset,
-                                knot_rrset_t *rrset,
-                                xfrin_changeset_part_t part);
+                              knot_rrset_t *rrset,
+                              xfrin_changeset_part_t part);
 
 void knot_changeset_store_soa(knot_rrset_t **chg_soa,
-                                uint32_t *chg_serial, knot_rrset_t *soa);
+                              uint32_t *chg_serial, knot_rrset_t *soa);
 
 int knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
-                             xfrin_changeset_part_t part);
+                           xfrin_changeset_part_t part);
 
 int knot_changesets_check_size(knot_changesets_t *changesets);
+
+void knot_free_changeset(knot_changeset_t **changeset);
 
 void knot_free_changesets(knot_changesets_t **changesets);
 
