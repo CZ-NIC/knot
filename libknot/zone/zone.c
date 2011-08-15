@@ -77,6 +77,8 @@ knot_zone_t *knot_zone_new(knot_node_t *apex, uint node_count,
 	zone->data = 0;
 	zone->dtor = 0;
 
+	zone->master = 0;
+
 	return zone;
 }
 
@@ -124,6 +126,20 @@ void knot_zone_set_version(knot_zone_t *zone, time_t version)
 	}
 
 	zone->version = version;
+}
+
+/*----------------------------------------------------------------------------*/
+
+short knot_zone_is_master(const knot_zone_t *zone)
+{
+	return zone->master;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_zone_set_master(knot_zone_t *zone, short master)
+{
+	zone->master = master;
 }
 
 /*----------------------------------------------------------------------------*/
