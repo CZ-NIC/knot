@@ -15,7 +15,6 @@
 #include "knot/server/zones.h"
 #include "common/acl.h"
 #include "common/evsched.h"
-#include "common/WELL1024a.h"
 #include "knot/other/debug.h"
 #include "knot/server/server.h"
 
@@ -56,7 +55,7 @@ static int notify_request(const knot_rrset_t *rrset,
 	}
 
 	/* Set random query ID. */
-	pkt->header.id = (uint16_t)(tls_rand() * ((uint16_t)~0));
+	knot_packet_set_random_id(pkt);
 
 	/*! \todo add the SOA RR to the Answer section as a hint */
 	/*! \todo this should not use response API!! */

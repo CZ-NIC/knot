@@ -74,7 +74,7 @@ static int xfrin_create_query(const knot_zone_contents_t *zone, uint16_t qtype,
 	}
 
 	/* Set random query ID. */
-	pkt->header.id = (uint16_t)(tls_rand() * ((uint16_t)~0));
+	knot_packet_set_random_id(pkt);
 
 	/*! \todo OPT RR ?? */
 
