@@ -336,6 +336,8 @@ uint16_t knot_rrclass_from_string(const char *name);
  */
 size_t knot_wireformat_size(unsigned int wire_type);
 
+int knot_rrtype_is_metatype(uint16_t type);
+
 #endif /* _KNOT_DESCRIPTOR_H_ */
 
 /*! @} */
