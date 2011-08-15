@@ -533,6 +533,43 @@ int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
+static int knot_ddns_check_update(const knot_rrset_t *rrset,
+                                  const knot_packet_t *query, uint8_t *rcode)
+{
+	if (!knot_dname_is_subdomain(knot_rrset_owner(rrset),
+	                             knot_packet_qname(query))) {
+		*rcode = KNOT_RCODE_NOTZONE;
+		return KNOT_EBADZONE;
+	}
+
+	if (knot_rrset_class(rrset) == knot_packet_qclass(query)) {
+		if (knot_rrtype_is_metatype(knot_rrset_type(rrset))) {
+			*rcode = KNOT_RCODE_FORMERR;
+			return KNOT_EMALF;
+		}
+	} else if (knot_rrset_class(rrset) == KNOT_CLASS_ANY) {
+		if (knot_rrset_rdata(rrset) != NULL
+		    || (knot_rrtype_is_metatype(knot_rrset_type(rrset))
+		        && knot_rrset_type(rrset) != KNOT_RRTYPE_ANY)) {
+			*rcode = KNOT_RCODE_FORMERR;
+			return KNOT_EMALF;
+		}
+	} else if (knot_rrset_class(rrset) == KNOT_CLASS_NONE) {
+		if (knot_rrset_ttl(rrset) != 0
+		    || knot_rrtype_is_metatype(knot_rrset_type(rrset))) {
+			*rcode = KNOT_RCODE_FORMERR;
+			return KNOT_EMALF;
+		}
+	} else {
+		*rcode = KNOT_RCODE_FORMERR;
+		return KNOT_EMALF;
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int knot_ddns_process_update(knot_packet_t *query,
                              knot_changeset_t **changeset, uint8_t *rcode)
 {
@@ -549,8 +586,15 @@ int knot_ddns_process_update(knot_packet_t *query,
 	int ret;
 
 	for (int i = 0; i < knot_packet_authority_rrset_count(query); ++i) {
-		ret = knot_ddns_add_update(*changeset,
-		                          knot_packet_authority_rrset(query, i),
+
+		knot_rrset_t *rrset = knot_packet_authority_rrset(query, i);
+
+		ret = knot_ddns_check_update(rrset, query, rcode);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		ret = knot_ddns_add_update(*changeset, rrset,
 		                          knot_packet_qclass(query));
 
 		if (ret != KNOT_EOK) {
