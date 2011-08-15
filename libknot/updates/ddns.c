@@ -568,6 +568,28 @@ int knot_ddns_process_update(knot_packet_t *query,
 
 void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq)
 {
-	/*! \todo Implement. */
-}
+	int i;
 
+	for (i = 0; i < (*prereq)->exist_count; ++i) {
+		knot_rrset_deep_free(&(*prereq)->exist[i], 1, 1, 1);
+	}
+
+	for (i = 0; i < (*prereq)->exist_full_count; ++i) {
+		knot_rrset_deep_free(&(*prereq)->exist_full[i], 1, 1, 1);
+	}
+
+	for (i = 0; i < (*prereq)->not_exist_count; ++i) {
+		knot_rrset_deep_free(&(*prereq)->not_exist[i], 1, 1, 1);
+	}
+
+	for (i = 0; i < (*prereq)->in_use_count; ++i) {
+		knot_dname_free(&(*prereq)->in_use[i]);
+	}
+
+	for (i = 0; i < (*prereq)->not_in_use_count; ++i) {
+		knot_dname_free(&(*prereq)->not_in_use[i]);
+	}
+
+	free(*prereq);
+	*prereq = NULL;
+}
