@@ -207,6 +207,8 @@ static int knot_ddns_add_update(knot_changeset_t *changeset,
 		return ret;
 	}
 
+	/*! \todo What about the SOAs? */
+
 	if (knot_rrset_class(rrset) == qclass) {
 		// this RRSet should be added to the zone
 		ret = knot_changeset_add_rr(&changeset->add,

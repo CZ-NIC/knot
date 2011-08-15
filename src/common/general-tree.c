@@ -129,6 +129,12 @@ void gen_tree_destroy(general_tree_t **tree,
 	*tree = NULL;
 }
 
+void gen_tree_clear(general_tree_t *tree)
+{
+	MOD_TREE_DESTROY(tree->tree, general_tree_node, avl, NULL,
+	                 gen_rem_func, NULL);
+}
+
 static void add_node_to_tree(void *n, void *data)
 {
 	general_tree_t *tree = (general_tree_t *)data;

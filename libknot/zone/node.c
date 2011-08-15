@@ -267,6 +267,14 @@ knot_rrset_t *knot_node_remove_rrset(knot_node_t *node, uint16_t type)
 
 /*----------------------------------------------------------------------------*/
 
+void knot_node_remove_all_rrsets(knot_node_t *node)
+{
+	// remove RRSets but do not delete them
+	gen_tree_clear(node->rrset_tree);
+}
+
+/*----------------------------------------------------------------------------*/
+
 short knot_node_rrset_count(const knot_node_t *node)
 {
 	return node->rrset_count;
