@@ -91,23 +91,23 @@ static int test_nsec3_params_from_wire()
 	}
 
 	if (nsec3_test_params.flags != 0) {
-		diag("Flags error");
+		diag("Flags error %d", nsec3_test_params.flags);
 		errors++;
 	}
 
 	if (nsec3_test_params.iterations != 100) {
-		diag("Iterations error");
+		diag("Iterations error %d", nsec3_test_params.iterations);
 		errors++;
 	}
 
 	if (nsec3_test_params.salt_length != 14) {
-		diag("Salt length error");
+		diag("Salt length error %d", nsec3_test_params.salt_length);
 		return 0;
 	}
 
 	if (compare_wires_simple((uint8_t *)nsec3_test_params.salt,
-		(uint8_t *)"\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF",
-		14) != 0) {
+		(uint8_t *)"\xF\x0\xE\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF",
+		16) != 0) {
 		diag("Salt wire error");
 		errors++;
 	}
