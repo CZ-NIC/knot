@@ -14,6 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
+
 #include "updates/ddns.h"
 #include "updates/changesets.h"
 #include "util/debug.h"
@@ -141,6 +143,9 @@ static int knot_ddns_add_prereq_dname(const knot_dname_t *dname,
 static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
                                 const knot_rrset_t *rrset, uint16_t qclass)
 {
+	assert(prereqs != NULL);
+	assert(rrset != NULL);
+
 	if (knot_rrset_ttl(rrset) != 0) {
 		return KNOT_EMALF;
 	}
@@ -186,7 +191,45 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 		return KNOT_EMALF;
 	}
 
-	return KNOT_EOK;
+	return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_ddns_add_update(knot_changeset_t *changeset,
+                         const knot_rrset_t *rrset, uint16_t qclass)
+{
+	assert(changeset != NULL);
+	assert(rrset != NULL);
+
+	int ret;
+
+	// create a copy of the RRSet
+	/*! \todo If the packet was not parsed all at once, we could save this
+	 *        copy.
+	 */
+	knot_rrset_t *rrset_copy;
+	ret = knot_rrset_deep_copy(rrset, &rrset_copy);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if (knot_rrset_class(rrset) == qclass) {
+		// this RRSet should be added to the zone
+		ret = knot_changeset_add_rr(&changeset->add,
+		                            &changeset->add_count,
+		                            &changeset->add_allocated,
+		                            rrset_copy);
+	} else {
+		// this RRSet marks removal of something from zone
+		// what should be removed is distinguished when applying
+		ret = knot_changeset_add_rr(&changeset->remove,
+		                            &changeset->remove_count,
+		                            &changeset->remove_allocated,
+		                            rrset_copy);
+	}
+
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -208,6 +251,10 @@ int knot_ddns_process_prereqs(knot_packet_t *query,
 	/*! \todo Consider not parsing the whole packet at once, but
 	 *        parsing one RR at a time - could save some memory and time.
 	 */
+
+	if (query == NULL || prereqs == NULL || rcode == NULL) {
+		return KNOT_EBADARG;
+	}
 
 	// allocate space for the prerequisities
 	*prereqs = (knot_ddns_prereq_t *)calloc(1, sizeof(knot_ddns_prereq_t));
@@ -247,6 +294,33 @@ int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
 int knot_ddns_process_update(knot_packet_t *query,
                              knot_changeset_t **changeset, uint8_t *rcode)
 {
-	return KNOT_ENOTSUP;
+	// just put all RRSets from query's Authority section
+	// it will be distinguished when applying to the zone
+
+	if (query == NULL || changeset == NULL || rcode == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	*changeset = (knot_changeset_t *)calloc(1, sizeof(knot_changeset_t));
+	CHECK_ALLOC_LOG(*changeset, KNOT_ENOMEM);
+
+	int ret;
+
+	for (int i = 0; i < knot_packet_authority_rrset_count(query); ++i) {
+		ret = knot_ddns_add_update(*changeset,
+		                          knot_packet_authority_rrset(query, i),
+		                          knot_packet_qclass(query));
+
+		if (ret != KNOT_EOK) {
+			debug_knot_ddns("Failed to add update RRSet:%s\n",
+			                knot_strerror(ret));
+			*rcode = (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
+			                             : KNOT_RCODE_SERVFAIL;
+			knot_free_changeset(changeset);
+			return ret;
+		}
+	}
+
+	return KNOT_EOK;
 }
 
