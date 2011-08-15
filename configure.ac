@@ -7,6 +7,7 @@ AC_CONFIG_SRCDIR([src/knot/main.c])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
+AX_EXT
 
 # Enable maintainer mode by default for development
 AM_MAINTAINER_MODE([enable])
