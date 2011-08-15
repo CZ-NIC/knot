@@ -73,7 +73,8 @@ static int xfrin_create_query(const knot_zone_contents_t *zone, uint16_t qtype,
 		return KNOT_ERROR;
 	}
 
-	/*! \todo Set some random ID!! */
+	/* Set random query ID. */
+	pkt->header.id = (uint16_t)(tls_rand() * ((uint16_t)~0));
 
 	/*! \todo OPT RR ?? */
 

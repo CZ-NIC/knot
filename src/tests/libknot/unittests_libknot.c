@@ -16,6 +16,7 @@
 #include "tests/libknot/libknot/packet_tests.h"
 #include "tests/libknot/libknot/query_tests.h"
 #include "tests/libknot/libknot/zonedb_tests.h"
+#include "tests/libknot/libknot/zone_tree_tests.h"
 
 // Run all loaded units
 int main(int argc, char *argv[])
@@ -40,6 +41,7 @@ int main(int argc, char *argv[])
 		&packet_tests_api,
 		&query_tests_api,
 		&zonedb_tests_api,   //! DNS library (zonedb) unit
+		&zone_tree_tests_api,
 		NULL
 	};
 
