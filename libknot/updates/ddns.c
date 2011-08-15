@@ -24,13 +24,6 @@
 #include "consts.h"
 
 /*----------------------------------------------------------------------------*/
-
-static void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq)
-{
-	/*! \todo Implement. */
-}
-
-/*----------------------------------------------------------------------------*/
 // Copied from XFR - maybe extract somewhere else
 static int knot_ddns_prereq_check_rrsets(knot_rrset_t ***rrsets,
                                          size_t *count, size_t *allocated)
@@ -233,6 +226,51 @@ static int knot_ddns_add_update(knot_changeset_t *changeset,
 }
 
 /*----------------------------------------------------------------------------*/
+
+static int knot_ddns_check_exist(const knot_zone_contents_t *zone,
+                                 const knot_rrset_t *rrset, uint8_t *rcode)
+{
+	/*! \todo Implement. */
+	return KNOT_ENOTSUP;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
+                                      const knot_rrset_t *rrset, uint8_t *rcode)
+{
+	/*! \todo Implement. */
+	return KNOT_ENOTSUP;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
+                                     const knot_rrset_t *rrset, uint8_t *rcode)
+{
+	/*! \todo Implement. */
+	return KNOT_ENOTSUP;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_ddns_check_in_use(const knot_zone_contents_t *zone,
+                                  const knot_dname_t *dname, uint8_t *rcode)
+{
+	/*! \todo Implement. */
+	return KNOT_ENOTSUP;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_ddns_check_not_in_use(const knot_zone_contents_t *zone,
+                                      const knot_dname_t *dname, uint8_t *rcode)
+{
+	/*! \todo Implement. */
+	return KNOT_ENOTSUP;
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -240,6 +278,15 @@ int knot_ddns_check_zone(const knot_zone_t *zone, knot_packet_t *query,
                          uint8_t *rcode)
 {
 	/*! \todo Check also CLASS. */
+	return KNOT_ENOTSUP;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_ddns_create_forward_query(const knot_packet_t *query,
+                                   knot_packet_t **fwd_query)
+{
+	/*! \todo Implement. */
 	return KNOT_ENOTSUP;
 }
 
@@ -286,7 +333,50 @@ int knot_ddns_process_prereqs(knot_packet_t *query,
 int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
                             knot_ddns_prereq_t **prereqs, uint8_t *rcode)
 {
-	return KNOT_ENOTSUP;
+	int i, ret;
+
+	for (i = 0; i < (*prereqs)->exist_count; ++i) {
+		ret = knot_ddns_check_exist(zone, (*prereqs)->exist[i], rcode);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	for (i = 0; i < (*prereqs)->exist_full_count; ++i) {
+		ret = knot_ddns_check_exist_full(zone,
+		                                (*prereqs)->exist_full[i],
+		                                 rcode);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	for (i = 0; i < (*prereqs)->not_exist_count; ++i) {
+		ret = knot_ddns_check_not_exist(zone, (*prereqs)->not_exist[i],
+		                                rcode);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	for (i = 0; i < (*prereqs)->in_use_count; ++i) {
+		ret = knot_ddns_check_in_use(zone, (*prereqs)->in_use[i],
+		                             rcode);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	for (i = 0; i < (*prereqs)->not_in_use_count; ++i) {
+		ret = knot_ddns_check_not_in_use(zone,
+		                                 (*prereqs)->not_in_use[i],
+		                                 rcode);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -322,5 +412,12 @@ int knot_ddns_process_update(knot_packet_t *query,
 	}
 
 	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq)
+{
+	/*! \todo Implement. */
 }
 
