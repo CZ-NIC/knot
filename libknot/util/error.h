@@ -48,10 +48,12 @@ enum knot_error {
 	KNOT_EZONEIN,         /*!< Error inserting zone. */
 	KNOT_ENOZONE,         /*!< No such zone found. */
 	KNOT_ENONODE,         /*!< No such node in zone found. */
+	KNOT_ENORRSET,        /*!< No such RRSet found. */
 	KNOT_EDNAMEPTR,       /*!< Domain name pointer larger than allowed. */
 	KNOT_EPAYLOAD,        /*!< Payload in OPT RR larger than max wire size. */
 	KNOT_ECRC,            /*!< Wrong dump CRC. */
-	KNOT_ERROR_COUNT = 18
+	KNOT_EPREREQ,         /*!< UPDATE prerequisity not met. */
+	KNOT_ERROR_COUNT = 20
 };
 
 /*! \brief Table linking error messages to error codes. */
