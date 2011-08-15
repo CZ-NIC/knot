@@ -3029,13 +3029,14 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 		return KNOT_EOK;
 	}
 
-	/*! \todo Check if the zone is master or slave. */
-	/*! \todo If the zone is slave, indicate it to the caller. */
-
 	uint8_t rcode = 0;
 	// 3) Check zone
 	ret = knot_ddns_check_zone(*zone, query, &rcode);
-	if (ret != KNOT_EOK) {
+	if (ret == KNOT_EBADZONE) {
+		// zone is slave, forward the request
+		/*! \todo Implement forwarding. */
+		return KNOT_EBADZONE;
+	} else if (ret != KNOT_EOK) {
 		debug_knot_ns("Failed to check zone for update: "
 		              "%s.\n", knot_strerror(ret));
 		knot_ns_error_response_full(nameserver, response, rcode,
@@ -3091,9 +3092,30 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 	// 7) Create response
 	debug_knot_ns("Update converted successfuly.\n");
 
-	/*! \todo No response yet. Distinguish somehow in the caller. */
+	/*! \todo No response yet. Distinguish somehow in the caller.
+	 *        Maybe only this case will be EOK, other cases some error.
+	 */
 
 	knot_packet_free(&response);
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_ns_create_forward_query(const knot_packet_t *query,
+                                 uint8_t *query_wire, size_t *size)
+{
+	// just copy the wireformat of the query and set a new random ID to it
+	if (knot_packet_size(query) > *size) {
+		return KNOT_ESPACE;
+	}
+
+	memcpy(query_wire, knot_packet_wireformat(query),
+	       knot_packet_size(query));
+	*size = knot_packet_size(query);
+
+	knot_wire_set_id(query_wire, knot_random_id());
+
 	return KNOT_EOK;
 }
 
