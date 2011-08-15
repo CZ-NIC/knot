@@ -936,7 +936,7 @@ uint16_t knot_packet_id(const knot_packet_t *packet)
 void knot_packet_set_id(knot_packet_t *packet, uint16_t id)
 {
 	if (packet == NULL) {
-		return KNOT_EBADARG;
+		return;
 	}
 
 	packet->header.id = id;
@@ -946,7 +946,11 @@ void knot_packet_set_id(knot_packet_t *packet, uint16_t id)
 
 void knot_packet_set_random_id(knot_packet_t *packet)
 {
-	/*! \todo Implement. */
+	if (packet == NULL) {
+		return;
+	}
+
+	packet->header.id = knot_random_id();
 }
 
 /*----------------------------------------------------------------------------*/
