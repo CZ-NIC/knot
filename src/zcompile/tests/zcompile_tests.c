@@ -2,6 +2,7 @@
 
 #include "libknot/zone/zone.h"
 #include "knot/zone/zone-load.h"
+#include "knot/common.h"
 #include "libknot/rrset.h"
 #include "libknot/util/descriptor.h"
 #include "zcompile/zcompile.h"

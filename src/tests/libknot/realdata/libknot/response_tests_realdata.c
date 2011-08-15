@@ -3,6 +3,7 @@
 #include <assert.h>
 
 #include "packet_tests_realdata.h"
+#include "knot/common.h"
 #include "libknot/util/error.h"
 #include "libknot/packet/packet.h"
 #include "libknot/packet/response.h"
