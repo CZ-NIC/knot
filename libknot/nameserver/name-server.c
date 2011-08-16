@@ -2937,6 +2937,8 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 				(knot_changesets_t **)(&xfr->data));
 			return KNOT_ENOZONE;  /*! \todo Other error code? */
 		}
+		
+		xfr->zone = zone;
 
 //		ret = xfrin_store_changesets(zone, chgsets);
 //		if (ret != KNOT_EOK) {
