@@ -650,11 +650,11 @@ static void knot_zone_contents_node_to_hash(knot_zone_tree_node_t *tnode,
 	 */
 
 #ifdef USE_HASH_TABLE
-DEBUG_KNOT_ZONE(
-	char *name = knot_dname_to_str(node->owner);
-	debug_knot_zone("Adding node with owner %s to hash table.\n", name);
-	free(name);
-);
+//DEBUG_KNOT_ZONE(
+//	char *name = knot_dname_to_str(node->owner);
+//	debug_knot_zone("Adding node with owner %s to hash table.\n", name);
+//	free(name);
+//);
 	//assert(zone->table != NULL);
 	// add the node also to the hash table if authoritative, or deleg. point
 	if (zone->table != NULL
@@ -945,11 +945,11 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 	}
 
 #ifdef USE_HASH_TABLE
-DEBUG_KNOT_ZONE(
-	char *name = knot_dname_to_str(node->owner);
-	debug_knot_zone("Adding node with owner %s to hash table.\n", name);
-	free(name);
-);
+//DEBUG_KNOT_ZONE(
+//	char *name = knot_dname_to_str(node->owner);
+//	debug_knot_zone("Adding node with owner %s to hash table.\n", name);
+//	free(name);
+//);
 	//assert(zone->table != NULL);
 	// add the node also to the hash table if authoritative, or deleg. point
 	if (zone->table != NULL
