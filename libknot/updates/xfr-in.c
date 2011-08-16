@@ -1162,6 +1162,8 @@ DEBUG_KNOT_XFR(
 	free(name);
 );
 
+	// remove the specified RRs from the RRSet (de facto difference of
+	// sets)
 	knot_rdata_t *rdata = xfrin_remove_rdata(*rrset, remove);
 	if (rdata == NULL) {
 		debug_knot_xfr("Failed to remove RDATA from RRSet: %s.\n",
@@ -1177,6 +1179,9 @@ DEBUG_KNOT_XFR(
 		
 		knot_rrset_t *tmp = knot_node_remove_rrset(node,
 		                                     knot_rrset_type(*rrset));
+		
+		// add the removed RRSet to list of old RRSets
+		
 		assert(tmp == *rrset);
 		ret = xfrin_changes_check_rrsets(&changes->old_rrsets,
 		                                 &changes->old_rrsets_count,
@@ -1912,6 +1917,10 @@ int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
 	/*
 	 * Create a shallow copy of the zone, so that the structures may be
 	 * updated.
+	 *
+	 * This will create new zone contents structures (normal nodes' tree,
+	 * NSEC3 tree, hash table, domain name table), but fill them with the
+	 * data from the old contents.
 	 */
 	knot_zone_contents_t *contents_copy = NULL;
 
@@ -1925,10 +1934,59 @@ int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
 
 	/*
 	 * Now, apply one changeset after another until all are applied.
+	 * Changesets may be either from IXFR or from a dynamic update. 
+	 * Dynamic updates use special TYPE and CLASS values to distinguish
+	 * requests, such as "remove all RRSets from a node", "remove all RRs
+	 * with the specified type from a node", etc.
+	 *
+	 * When updating anything within some node (removing RR, adding RR),
+	 * the node structure is copied, but the RRSets within are not.
+	 *
+	 *   1) When removing RRs from node, The affected RRSet is copied. This
+	 *      it also a 'shallow copy', i.e. the RDATA remain the exact same.
+	 *      The specified RRs (i.e. RDATA) are then removed from the copied
+	 *      RRSet.
+	 *   2) When adding RRs to node, there are two cases:
+	 *      a) If there is a RRSet that should contain these RRs
+	 *         this RRSet is copied (shallow copy) and the RRs are added to
+	 *         it (rrset_merge()).
+	 *      b) If there is not such a RRSet, the whole RRSet from the 
+	 *         changeset is added to the new node (thus this RRSet must not
+	 *         be deleted afterwards).
+	 *
+	 * A special case are RRSIG RRs. These functions assume that they 
+	 * are grouped together in knot_rrset_t structures according to
+	 * their header (owner, type, class) AND their 'type covered', i.e.
+	 * there may be more RRSIG RRSets in one changeset (while there
+	 * should not be more RRSets of any other type).
+	 *   3) When removing RRSIG RRs from node, the appropriate RRSet holding
+	 *      them must be found (according to the 'type covered' field). This
+	 *      RRSet is then copied (shallow copy), Its RRSIGs are also copied
+	 *      and the RRSIG RRs are added to the RRSIG copy.
+	 *   4) When adding RRSIG RRs to node, the same process is done - the 
+	 *      proper RRSet holding them is found, copied, its RRSIGs are
+	 *      copied (if there are some) and the RRs are added to the copy.
+	 *
+	 * When a node is copied, reference to the copy is stored within the
+	 * old node (node_t.old_node). This is important, because when the
+	 * zone contents are switched to the new ones, references from old nodes
+	 * that should point to new nodes are not yet set (it would influence
+	 * replying from the old zone contents). While all these references
+	 * (such as node_t.prev, node_t.next, node_t.parent, etc.) are properly
+	 * modified, the search functions use old or new nodes accordingly
+	 * (old nodes while old contents are used, new nodes when new contents
+	 * are used). The 'check_version' parameter turns on this behaviour in 
+	 * search functions.
+	 *
 	 * In case of error, we must remove all data created by the update, i.e.
 	 *   - new nodes,
 	 *   - new RRSets,
 	 * and remove the references to the new nodes from old nodes.
+	 *
+	 * In case of success, the RRSet structures from the changeset
+	 * structures must not be deleted, as they are either already used by 
+	 * the server (stored within the new zone contents) or deleted when
+	 * cleaning up the temporary 'changes' structure.
 	 */
 	xfrin_changes_t changes;
 	changes.new_rrsets = NULL;
