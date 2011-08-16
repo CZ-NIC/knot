@@ -627,6 +627,35 @@ char *knot_dname_to_str(const knot_dname_t *dname)
 
 /*----------------------------------------------------------------------------*/
 
+int knot_dname_to_lower(knot_dname_t *dname)
+{
+	if (dname == NULL) {
+		return KNOT_EBADARG;
+	}
+	
+	for (int i = 0; i < dname->size; ++i) {
+		dname->name[i] = knot_tolower(dname->name[i]);
+	}
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_dname_to_lower_copy(const knot_dname_t *dname, char *name, 
+                             size_t size)
+{
+	if (dname == NULL || name == NULL || size < dname->size) {
+		return KNOT_EBADARG;
+	}
+	
+	for (int i = 0; i < dname->size; ++i) {
+		name[i] = knot_tolower(dname->name[i]);
+	}
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 const uint8_t *knot_dname_name(const knot_dname_t *dname)
 {
 	return dname->name;

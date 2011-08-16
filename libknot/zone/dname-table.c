@@ -171,6 +171,9 @@ int knot_dname_table_add_dname(knot_dname_table_t *table,
 	struct dname_table_node *node =
 		malloc(sizeof(struct dname_table_node));
 	CHECK_ALLOC_LOG(node, KNOT_ENOMEM);
+	
+	// convert the dname to lowercase
+	knot_dname_to_lower(dname);
 
 	node->dname = dname;
 	node->avl.avl_height = 0;

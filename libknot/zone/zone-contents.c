@@ -20,6 +20,7 @@
 #include "util/error.h"
 #include "util/debug.h"
 #include "common/base32hex.h"
+#include "consts.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -1685,6 +1686,18 @@ const knot_node_t *knot_zone_contents_find_previous_nsec3(
 }
 
 /*----------------------------------------------------------------------------*/
+
+static void knot_zone_contents_left_chop(char *name, size_t *size)
+{
+	int i = 0;
+	while (name[i] != '.') { 
+		++i;
+	}
+	memcpy(name, name + i + 1, *size - i - 1);
+	*size = *size - i - 1;
+}
+
+/*----------------------------------------------------------------------------*/
 #ifdef USE_HASH_TABLE
 int knot_zone_contents_find_dname_hash(const knot_zone_contents_t *zone,
                                 const knot_dname_t *name,
@@ -1716,10 +1729,17 @@ DEBUG_KNOT_ZONE(
 		*closest_encloser = NULL;
 		return KNOT_EBADZONE;
 	}
+	
+	// temporary name used for hashing
+	char name_tmp[KNOT_MAX_DNAME_LENGTH];
+	size_t name_size = name->size;
+	if (knot_dname_to_lower_copy(name, name_tmp, KNOT_MAX_DNAME_LENGTH)
+	    != KNOT_EOK) {
+		return KNOT_ERROR;
+	}
 
 	const ck_hash_table_item_t *item = ck_find_item(zone->table,
-	                                               (const char *)name->name,
-	                                               name->size);
+	                                                name_tmp, name_size);
 
 	if (item != NULL) {
 		*node = (const knot_node_t *)item->value;
@@ -1738,32 +1758,32 @@ DEBUG_KNOT_ZONE(
 	// chop leftmost labels until some node is found
 	// copy the name for chopping
 	/* Local allocation, will be discarded. */
-	knot_dname_t *name_copy = knot_dname_deep_copy(name);
+	//knot_dname_t *name_copy = knot_dname_deep_copy(name);
 DEBUG_KNOT_ZONE(
-	char *n = knot_dname_to_str(name_copy);
-	debug_knot_zone("Finding closest encloser..\nStarting with: %s\n", n);
-	free(n);
+	//char *n = knot_dname_to_str(name_copy);
+	debug_knot_zone("Finding closest encloser..\nStarting with: %.*s\n", 
+	                name_size, name_tmp);
+	//free(n);
 );
 
 	while (item == NULL) {
-		knot_dname_left_chop_no_copy(name_copy);
+		//knot_dname_left_chop_no_copy(name_copy);
+		knot_zone_contents_left_chop(name_tmp, &name_size);
 DEBUG_KNOT_ZONE(
-		char *n = knot_dname_to_str(name_copy);
-		debug_knot_zone("Chopped leftmost label: %s (%.*s, size %u)"
-		                  "\n", n, name_copy->size, name_copy->name,
-		                  name_copy->size);
-		free(n);
+		//char *n = knot_dname_to_str(name_copy);
+		debug_knot_zone("Chopped leftmost label: %.*s\n",
+		                  name_size, name_tmp);
+		//free(n);
 );
 		// not satisfied in root zone!!
-		assert(name_copy->label_count > 0);
+		//assert(name_copy->label_count > 0);
+		assert(name_size > 0);
 
-		item = ck_find_item(zone->table,
-		                    (const char *)name_copy->name,
-		                    name_copy->size);
+		item = ck_find_item(zone->table, name_tmp, name_size);
 	}
 
 	/* Directly discard. */
-	knot_dname_free(&name_copy);
+	//knot_dname_free(&name_copy);
 
 	assert(item != NULL);
 	*closest_encloser = (const knot_node_t *)item->value;
