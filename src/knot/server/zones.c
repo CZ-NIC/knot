@@ -586,7 +586,7 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 
 		zone = knot_zload_load(zl);
 
-		knot_zone_contents_dump(zone->contents, 1);
+		//knot_zone_contents_dump(zone->contents, 1);
 
 		if (zone) {
 			// save the timestamp from the zone db file
@@ -1048,7 +1048,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			             ((server_t *)knot_ns_get_data(ns))->sched);
 		}
 
-		knot_zone_contents_dump(knot_zone_get_contents(zone), 1);
+		//knot_zone_contents_dump(knot_zone_get_contents(zone), 1);
 
 		/* Directly discard zone. */
 		knot_dname_free(&zone_name);

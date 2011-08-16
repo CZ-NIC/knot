@@ -2825,7 +2825,7 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 			return KNOT_ERROR;	// TODO: change error code
 		}
 
-		knot_zone_contents_dump(zone, 0);
+		//knot_zone_contents_dump(zone, 0);
 	}
 	
 	return ret;
