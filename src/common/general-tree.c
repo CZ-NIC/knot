@@ -102,13 +102,23 @@ int gen_tree_find_less_or_equal(general_tree_t *tree,
                                 void *what,
                                 void **found)
 {
-	struct general_tree_node *f, *prev;
+	struct general_tree_node *f = NULL, *prev = NULL;
 	struct general_tree_node tree_node;
 	tree_node.data = what;
 	int exact_match =
 		MOD_TREE_FIND_LESS_EQUAL(tree->tree, general_tree_node, avl,
 	                                 &tree_node, &f, &prev);
-	*found = (exact_match > 0) ? f->data : prev->data;
+	if (exact_match < 0) {
+		*found = NULL;
+		exact_match = 0;
+	} else if (exact_match == 0) {
+		assert(prev != NULL);
+		*found = prev->data;
+	} else {
+		assert(f != NULL);
+		*found = f->data;
+	}
+//	*found = (exact_match > 0) ? f->data : prev->data;
 	return exact_match;
 }
 
