@@ -1693,7 +1693,7 @@ static void knot_zone_contents_left_chop(char *name, size_t *size)
 	while (name[i] != '.') { 
 		++i;
 	}
-	memcpy(name, name + i + 1, *size - i - 1);
+	memmove(name, name + i + 1, *size - i - 1);
 	*size = *size - i - 1;
 }
 
