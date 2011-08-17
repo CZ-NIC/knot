@@ -41,7 +41,7 @@ CFLAGS="$CFLAGS -I/usr/local/include"
 LDFLAGS="$LDFLAGS -L/usr/local/lib"
 AC_SEARCH_LIBS([pow], [m])
 AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])
-AC_SEARCH_LIBS([rcu_read_lock], [urcu], [], [AC_MSG_ERROR([liburcu not found])])
+AC_SEARCH_LIBS([rcu_set_pointer_sym], [urcu], [], [AC_MSG_ERROR([liburcu not found])])
 #AC_SEARCH_LIBS([clock_gettime], [rt], [], [AC_MSG_ERROR([librt not found])])
 AC_SEARCH_LIBS([OpenSSL_add_all_digests], [crypto],[], [AC_MSG_ERROR([libcrypto not found])])
 AC_SEARCH_LIBS([ev_loop_new], [ev],[], [AC_MSG_ERROR([libev not found])])
