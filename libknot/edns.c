@@ -169,26 +169,27 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
 	int rc = 0;
 	debug_knot_edns("Parsing options.\n");
 	const knot_rdata_t *rdata = knot_rrset_rdata(rrset);
-	while (rdata != NULL) {
-		debug_knot_edns("Parsing next option.\n");
-		assert(knot_rdata_item(rdata, 0) != NULL
-		       && *knot_rdata_item(rdata, 0)->raw_data == 2);
-		assert(knot_rdata_item(rdata, 1) != NULL
-		       && *knot_rdata_item(rdata, 1)->raw_data == 2);
-		assert(knot_rdata_item(rdata, 2) != NULL
-		       && *knot_rdata_item(rdata, 2)->raw_data
-		          == *(knot_rdata_item(rdata, 1)->raw_data + 1));
-		rc = knot_edns_add_option(opt_rr,
-			*(knot_rdata_item(rdata, 0)->raw_data + 1),
-			*(knot_rdata_item(rdata, 1)->raw_data + 1),
-			(const uint8_t *)(knot_rdata_item(rdata, 2)->raw_data
-			                  + 1));
 
-		if (rc != KNOT_EOK) {
-			return rc;
+	// in OPT RR, all RDATA are in one RDATA item stored as BINARY data,
+	// i.e. preceded by their length
+	if (rdata != NULL) {
+		assert(knot_rdata_item_count(rdata) == 1);
+		const uint8_t *raw = (const uint8_t *)
+		                      knot_rdata_item(rdata, 0)->raw_data;
+		uint16_t size = knot_wire_read_u16(raw);
+		int pos = 2;
+		assert(size > 0);
+		while (pos - 2 < size) {
+			uint16_t opt_code = knot_wire_read_u16(raw + pos);
+			uint16_t opt_size = knot_wire_read_u16(raw + pos + 2);
+			rc = knot_edns_add_option(opt_rr, opt_code, opt_size,
+			                          raw + pos + 4);
+			if (rc != KNOT_EOK) {
+				return rc;
+			}
+			pos += 4 + opt_size;
 		}
-
-		rdata = knot_rrset_rdata_next(rrset, rdata);
+		assert(pos - 2 == size);
 	}
 
 	return KNOT_EOK;
