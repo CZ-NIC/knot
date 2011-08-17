@@ -180,8 +180,19 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
 		int pos = 2;
 		assert(size > 0);
 		while (pos - 2 < size) {
+			// ensure there is enough data to parse the OPTION CODE
+			// and OPTION LENGTH
+			if (size - pos + 2 < 4) {
+				return KNOT_EMALF;
+			}
 			uint16_t opt_code = knot_wire_read_u16(raw + pos);
 			uint16_t opt_size = knot_wire_read_u16(raw + pos + 2);
+
+			// there should be enough data for parsing the OPTION
+			// data
+			if (size - pos - 2 < opt_size) {
+				return KNOT_EMALF;
+			}
 			rc = knot_edns_add_option(opt_rr, opt_code, opt_size,
 			                          raw + pos + 4);
 			if (rc != KNOT_EOK) {
@@ -189,7 +200,6 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
 			}
 			pos += 4 + opt_size;
 		}
-		assert(pos - 2 == size);
 	}
 
 	return KNOT_EOK;
