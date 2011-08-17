@@ -23,6 +23,7 @@
 #include <assert.h>
 
 #include "universal-system.h"
+#include "common.h"
 #include "util/utils.h"
 
 /*----------------------------------------------------------------------------*/
