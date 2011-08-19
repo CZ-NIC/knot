@@ -46,7 +46,7 @@ static inline int udp_handle(uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 {
 	/* faddr has to be read immediately. */
 	stat_get_first(thread_stat, addr->ptr);
-
+	
 	debug_net("udp: received %zd bytes.\n", qbuflen);
 
 	knot_packet_type_t qtype = KNOT_QUERY_NORMAL;
@@ -142,16 +142,28 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 				 h->type);
 		return KNOTD_ENOTSUP;
 	}
-
+	
+	uint8_t qbuf[SOCKET_MTU_SZ];
+	struct msghdr msg;
+	struct iovec iov;
+	iov.iov_base = qbuf;
+	iov.iov_len = SOCKET_MTU_SZ;
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+	msg.msg_name = addr.ptr;
+	msg.msg_namelen = addr.len;
 
 	/* Loop until all data is read. */
 	ssize_t n = 0;
-	uint8_t qbuf[SOCKET_MTU_SZ];
 	while (n >= 0) {
 
 		/* Receive packet. */
-		n = recvfrom(sock, qbuf, sizeof(qbuf), 0,
-			     addr.ptr, &addr.len);
+		n = recvmsg(sock, &msg, 0);
+
+	        char ip_str[INET_ADDRSTRLEN];
+		memset(ip_str, 0, sizeof(ip_str));
+        	inet_ntop(addr.family, &addr.addr4.sin_addr, ip_str, sizeof(ip_str));
+        	fprintf(stderr, "udp: received %zd bytes from %s.\n", n, ip_str); 
 
 		/* Cancellation point. */
 		if (dt_is_cancelled(thread)) {
@@ -197,6 +209,8 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 
 	/* Free allocd resources. */
 	close(sock);
+
+	return KNOTD_EOK;
 }
 
 static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
@@ -290,9 +304,8 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 	free(iov);
 	free(msgs);
 	close(sock);
-
-	return KNOTD_EOK;
 #endif
+	return KNOTD_EOK;
 }
 
 int udp_master(dthread_t *thread)
