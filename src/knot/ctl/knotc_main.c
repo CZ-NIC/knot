@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <sys/select.h>
+#include <sys/stat.h>
 
 #include "knot/common.h"
 #include "knot/other/error.h"
@@ -55,6 +56,12 @@ void help(int argc, char **argv)
  */
 int check_zone(const char *db, const char* source)
 {
+	/* Check zonefile. */
+	struct stat st;
+	if (stat(source, &st) != 0) {
+		fprintf(stderr, "Zone file '%s' doesn't exist.\n", source);
+		return KNOTD_ENOENT;
+	}
 
 	/* Read zonedb header. */
 	zloader_t *zl = knot_zload_open(db);
@@ -277,7 +284,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			conf_zone_t *zone = (conf_zone_t*)n;
 
 			// Check source files and mtime
-			if (check_zone(zone->db, zone->file) == KNOTD_EOK) {
+			int zone_status = check_zone(zone->db, zone->file);
+			if (zone_status == KNOTD_EOK) {
 				printf("Zone '%s' is up-to-date.\n",
 				       zone->name);
 
@@ -287,6 +295,11 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 				} else {
 					continue;
 				}
+			}
+
+			// Check for not existing source
+			if (zone_status == KNOTD_ENOENT) {
+				continue;
 			}
 
 			// Prepare command
