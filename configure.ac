@@ -19,9 +19,9 @@ LT_INIT
 AC_PROG_CC
 AM_PROG_LEX
 
-AC_CACHE_CHECK([for reentrant lex], [ac_cv_path_LEX],
-  [AC_PATH_PROGS_FEATURE_CHECK([LEX], [$LEX flex gflex],
-    [[$ac_path_LEX --stdout << EOF && ac_cv_path_LEX=$ac_path ac_path_LEX_found=:
+AC_CACHE_CHECK([for reentrant lex], [ac_cv_path_LEX_R],
+  [AC_PATH_PROGS_FEATURE_CHECK([LEX_R], [$LEX flex gflex],
+    [[$ac_path_LEX_R --reentrant --stdout >/dev/null <<END && ac_cv_path_LEX_R=$ac_path_LEX_R ac_path_LEX_R_found=true
 %{
 %}
 
@@ -36,10 +36,10 @@ BLANK [ \t\n]
 %%
 <<EOF>> return 0;
 %%
-EOF
+END
     ]],
     [AC_MSG_ERROR([could not find lex that supports reentrant parsers])])])
-AC_SUBST([LEX], [$ac_cv_path_LEX])
+AC_SUBST([LEX], [$ac_cv_path_LEX_R])
 
 AC_PROG_YACC
 YACC_BISON=`bison --version | awk '{print $1;exit}'`
