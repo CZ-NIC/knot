@@ -14,11 +14,61 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdlib.h>
 #include "packet/query.h"
 
 #include "util/error.h"
 #include "util/wire.h"
 
+/*----------------------------------------------------------------------------*/
+
+int knot_query_rr_to_wire(const knot_rrset_t *rrset, const knot_rdata_t *rdata,
+			  uint8_t **wire, uint8_t *endp)
+{
+	if (*wire + 10 > endp) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Write RR header. */
+
+	knot_wire_write_u16(*wire, rrset->type); *wire += 2;
+	knot_wire_write_u16(*wire, rrset->rclass); *wire += 2;
+	knot_wire_write_u32(*wire, rrset->ttl); *wire += 2;
+	knot_wire_write_u16(*wire, 0); *wire += 2; /* RDLENGTH reserve. */
+	uint8_t *rdlength_p = *wire - 2;
+
+	/* Write data. */
+	knot_dname_t *dname = 0;
+	knot_rrtype_descriptor_t *desc =
+		knot_rrtype_descriptor_by_type(rrset->type);
+
+	for (int i = 0; i < rdata->count; ++i) {
+		switch (desc->wireformat[i]) {
+		case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
+		case KNOT_RDATA_WF_LITERAL_DNAME:
+
+			/* Check space for dname. */
+			dname = knot_rdata_item(rdata, i)->dname;
+			if (*wire + 10 + dname->size > endp) {
+				*wire -= 10;
+				return KNOT_ESPACE;
+			}
+
+			/* Save domain name. */
+			memcpy(*wire, dname->name, dname->size);
+			*wire += dname->size;
+			knot_wire_write_u16(rdlength_p, dname->size);
+		default:
+			//debug_knot_query("knot_query_rr_to_wire: wireformat "
+			//		 "type %d not supported\n",
+			//		 desc->wireformat[i]);
+			break;
+
+		}
+	}
+
+	return KNOT_EOK;
+}
 /*----------------------------------------------------------------------------*/
 
 int knot_query_dnssec_requested(const knot_packet_t *query)
@@ -104,3 +154,46 @@ int knot_query_set_opcode(knot_packet_t *query, uint8_t opcode)
 
 	return KNOT_EOK;
 }
+
+/*----------------------------------------------------------------------------*/
+
+int knot_query_add_rrset_authority(knot_packet_t *query,
+				   const knot_rrset_t *rrset)
+{
+	if (query == NULL || rrset == NULL) {
+		return KNOT_EBADARG;
+	}
+
+	if (query->ar_rrsets == query->max_ar_rrsets) {
+		++query->max_ar_rrsets;
+		size_t newsize = query->max_ar_rrsets * sizeof(knot_rrset_t *);
+		query->authority = realloc(query->authority, newsize);
+		if (query->authority == 0) {
+			query->max_ar_rrsets = 0;
+			return KNOT_ENOMEM;
+		}
+	}
+
+	//debug_knot_query("Trying to add RRSet to Authority section of the query.\n");
+
+	/* Append to packet. */
+	query->authority[query->ar_rrsets] = rrset;
+	++query->ar_rrsets;
+	++query->header.arcount;
+
+	/* Write to wire. */
+	uint8_t *startp = query->wireformat + KNOT_WIRE_HEADER_SIZE + query->size;
+	uint8_t *endp = query->wireformat + KNOT_WIRE_HEADER_SIZE + query->max_size;
+	uint8_t *pos = startp;
+
+	const knot_rdata_t *rdata = 0;
+	while ((rdata = knot_rrset_rdata_next(rrset, rdata))) {
+		knot_query_rr_to_wire(rrset, rdata, &pos, endp);
+	}
+
+	size_t written = (pos - startp);
+	query->size += written;
+
+	return KNOT_EOK;
+}
+

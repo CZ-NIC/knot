@@ -74,6 +74,20 @@ int knot_query_set_question(knot_packet_t *query,
 
 int knot_query_set_opcode(knot_packet_t *query, uint8_t opcode);
 
+/*!
+ * \brief Adds a RRSet to the Authority section of the query.
+ *
+ * \param query Query to add the RRSet into.
+ * \param rrset RRSet to be added.
+ *
+ * \retval KNOT_EOK if successful, or the RRSet was already in the query.
+ * \retval KNOT_ENOMEM
+ * \retval KNOT_ESPACE
+ */
+int knot_query_add_rrset_authority(knot_packet_t *query,
+				   const knot_rrset_t *rrset);
+
+
 #endif /* _KNOT_QUERY_H_ */
 
 /*! @} */
