@@ -92,6 +92,7 @@ static int xfrin_create_query(const knot_zone_contents_t *zone, uint16_t qtype,
 	size_t wire_size = 0;
 	rc = knot_packet_to_wire(pkt, &wire, &wire_size);
 	if (rc != KNOT_EOK) {
+		debug_knot_xfr("Failed to write packet to wire.\n");
 		knot_dname_release(question.qname);
 		knot_packet_free(&pkt);
 		return KNOT_ERROR;
