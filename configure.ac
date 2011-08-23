@@ -18,11 +18,15 @@ LT_INIT
 # Checks for programs.
 AC_PROG_CC
 AM_PROG_LEX
-LEX_FLEX=`$LEX -version | awk '{print $1}'`
+LEX_FLEX=`$LEX -version | awk '{print $1;exit}'`
 if test "$LEX_FLEX" != "flex"; then
-    AC_MSG_ERROR([GNU flex needed for reentrant parsers])
+    AC_MSG_ERROR([GNU flex needed for reentrant parsers, set the \$LEX variable before running configure])
 fi
 AC_PROG_YACC
+YACC_BISON=`bison --version | awk '{print $1;exit}'`
+if test "$YACC_BISON" != "bison"; then
+    AC_MSG_ERROR([GNU bison needed for reentrant parsers, set the \$YACC variable before running configure])
+fi
 AC_PROG_INSTALL
 
 # Set compiler compatibility flags
