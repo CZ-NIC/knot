@@ -27,6 +27,7 @@
 #include "dname.h"
 #include "zone/zone.h"
 #include "packet/query.h"
+#include "packet/response.h"
 #include "util/error.h"
 #include "updates/changesets.h"
 
@@ -71,6 +72,15 @@ static int xfrin_create_query(const knot_zone_contents_t *zone, uint16_t qtype,
 		knot_dname_release(question.qname);
 		knot_packet_free(&pkt);
 		return KNOT_ERROR;
+	}
+
+	/* Add SOA RR to authority section for IXFR. */
+	if (qtype == KNOT_RRTYPE_IXFR) {
+		/*!
+		 *  \todo Implement properly.
+		 */
+		const knot_rrset_t *soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
+		knot_query_add_rrset_authority(pkt, soa);
 	}
 
 	/* Set random query ID. */

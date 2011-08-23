@@ -241,6 +241,9 @@ const knot_rdata_t *knot_rrset_rdata(const knot_rrset_t *rrset)
 const knot_rdata_t *knot_rrset_rdata_next(const knot_rrset_t *rrset,
                                               const knot_rdata_t *rdata)
 {
+	if (rdata == NULL) {
+		return rrset->rdata;
+	}
 	if (rdata->next == rrset->rdata) {
 		return NULL;
 	} else {
