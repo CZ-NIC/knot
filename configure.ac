@@ -17,7 +17,11 @@ LT_INIT
 
 # Checks for programs.
 AC_PROG_CC
-AC_PROG_LEX
+AM_PROG_LEX
+LEX_FLEX=`$LEX -version | awk '{print $1}'`
+if test "$LEX_FLEX" != "flex"; then
+    AC_MSG_ERROR([GNU flex needed for reentrant parsers])
+fi
 AC_PROG_YACC
 AC_PROG_INSTALL
 
