@@ -63,12 +63,18 @@ static volatile int _parser_res = 0; /*!< \brief Parser result. */
 static pthread_mutex_t _parser_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /*! \brief Config error report. */
-void cf_error(const char *msg, void *scanner)
+void cf_error(void *scanner, const char *msg)
 {
-	fprintf(stderr, "config error\n");
+	int lineno = -1;
+	char *text = "???";
+	if (scanner) {
+		lineno = cf_get_lineno(scanner);
+		text = (char *)cf_get_text(scanner);
+	}
+
 	log_server_error("Config '%s' - %s on line %d (current token '%s').\n",
-	                 new_config->filename, msg, cf_get_lineno(scanner),
-	                 (char *)cf_get_text(scanner));
+			 new_config->filename, msg, lineno, text);
+
 
 	_parser_res = KNOTD_EPARSEFAIL;
 }
@@ -315,11 +321,11 @@ static int conf_fparser(conf_t *conf)
 	// Parse config
 	_parser_res = KNOTD_EOK;
 	new_config->filename = conf->filename;
-	void *scanner = NULL;
-	cf_lex_init(&scanner);
-	cf_set_in(f, scanner);
-	cf_parse(scanner);
-	cf_lex_destroy(scanner);
+	void *sc = NULL;
+	cf_lex_init(&sc);
+	cf_set_in(f, sc);
+	cf_parse(sc);
+	cf_lex_destroy(sc);
 	ret = _parser_res;
 	fclose(f);
 	// }
@@ -350,11 +356,11 @@ static int conf_strparser(conf_t *conf, const char *src)
 	_parser_res = KNOTD_EOK;
 	char *oldfn = new_config->filename;
 	new_config->filename = "(stdin)";
-	void *scanner = NULL;
-	cf_lex_init(&scanner);
-	switch_input(src, scanner);
-	cf_parse(scanner);
-	cf_lex_destroy(scanner);
+	void *sc = NULL;
+	cf_lex_init(&sc);
+	switch_input(src, sc);
+	cf_parse(sc);
+	cf_lex_destroy(sc);
 	new_config->filename = oldfn;
 	ret = _parser_res;
 	// }

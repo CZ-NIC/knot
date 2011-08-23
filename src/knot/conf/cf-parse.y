@@ -15,7 +15,7 @@
 #include "libknotd_la-cf-parse.h" /* Automake generated header. */
 
 extern int cf_lex (YYSTYPE *lvalp, void *scanner);
-extern void cf_error(const char *msg, void *scanner);
+extern void cf_error(void *scanner, const char *msg);
 extern conf_t *new_config;
 static conf_iface_t *this_iface = 0;
 static conf_iface_t *this_remote = 0;
@@ -30,6 +30,7 @@ static conf_log_map_t *this_logmap = 0;
 %pure-parser
 %parse-param{void *scanner}
 %lex-param{void *scanner}
+%name-prefix = "cf_"
 
 %union {
     char *t;
@@ -194,13 +195,13 @@ zone_acl_item:
 
       /* Append to list if found. */
      if (!found) {
-        char buf[256];
+	char buf[256];
         snprintf(buf, sizeof(buf), "remote '%s' is not defined", $1);
-        cf_error(buf, scanner);
+	cf_error(scanner, buf);
      } else {
         conf_remote_t *remote = malloc(sizeof(conf_remote_t));
         if (!remote) {
-           cf_error("out of memory", scanner);
+	   cf_error(scanner, "out of memory");
         } else {
            remote->remote = found;
            add_tail(this_list, &remote->n);
@@ -234,11 +235,11 @@ zone_acl:
       if (!found) {
 	 char buf[256];
 	 snprintf(buf, sizeof(buf), "remote '%s' is not defined", $2);
-	 cf_error(buf, scanner);
+	 cf_error(scanner, buf);
       } else {
 	 conf_remote_t *remote = malloc(sizeof(conf_remote_t));
 	 if (!remote) {
-	    cf_error("out of memory", scanner);
+	    cf_error(scanner, "out of memory");
 	 } else {
 	    remote->remote = found;
 	    add_tail(this_list, &remote->n);
@@ -274,7 +275,7 @@ zone_start: TEXT {
    if (dn == 0) {
      free(this_zone->name);
      free(this_zone);
-     cf_error("invalid zone origin", scanner);
+     cf_error(scanner, "invalid zone origin");
    } else {
      /* Directly discard dname, won't be needed. */
      knot_dname_free(&dn);
@@ -304,14 +305,14 @@ zone:
  | zone IXFR_FSLIMIT NUM 'G' ';' { this_zone->ixfr_fslimit = $3 * 1073741824; } // GB
  | zone NOTIFY_RETRIES NUM ';' {
        if ($3 < 1) {
-	   cf_error("notify retries must be positive integer", scanner);
+	   cf_error(scanner, "notify retries must be positive integer");
        } else {
 	   this_zone->notify_retries = $3;
        }
    }
  | zone NOTIFY_TIMEOUT NUM ';' {
 	if ($3 < 1) {
-	   cf_error("notify timeout must be positive integer", scanner);
+	   cf_error(scanner, "notify timeout must be positive integer");
        } else {
 	   this_zone->notify_timeout = $3;
        }
@@ -324,21 +325,21 @@ zones:
  | zones SEMANTIC_CHECKS BOOL ';' { new_config->zone_checks = $3; }
  | zones NOTIFY_RETRIES NUM ';' {
        if ($3 < 1) {
-	   cf_error("notify retries must be positive integer", scanner);
+	   cf_error(scanner, "notify retries must be positive integer");
        } else {
 	   new_config->notify_retries = $3;
        }
    }
  | zones NOTIFY_TIMEOUT NUM ';' {
 	if ($3 < 1) {
-	   cf_error("notify timeout must be positive integer", scanner);
+	   cf_error(scanner, "notify timeout must be positive integer");
        } else {
 	   new_config->notify_timeout = $3;
        }
    }
  | zones DBSYNC_TIMEOUT NUM ';' {
 	if ($3 < 1) {
-	   cf_error("zonefile sync timeout must be positive integer", scanner);
+	   cf_error(scanner, "zonefile sync timeout must be positive integer");
        } else {
 	   new_config->dbsync_timeout = $3;
        }
