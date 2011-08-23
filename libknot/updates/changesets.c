@@ -71,8 +71,8 @@ static int knot_changeset_rrsets_match(const knot_rrset_t *rrset1,
 int knot_changeset_allocate(knot_changesets_t **changesets)
 {
 	// create new changesets
-	*changesets = (knot_changesets_t *)(
-			calloc(1, sizeof(knot_changesets_t)));
+	*changesets = (knot_changesets_t *)(malloc(sizeof(knot_changesets_t)));
+	memset(*changesets, 0, sizeof(knot_changesets_t));
 
 	if (*changesets == NULL) {
 		return KNOT_ENOMEM;
@@ -80,7 +80,7 @@ int knot_changeset_allocate(knot_changesets_t **changesets)
 
 	assert((*changesets)->allocated == 0);
 	assert((*changesets)->count == 0);
-	assert((*changesets)->sets = NULL);
+	assert((*changesets)->sets == NULL);
 
 	return knot_changesets_check_size(*changesets);
 }
