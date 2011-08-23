@@ -21,7 +21,7 @@ AM_PROG_LEX
 
 AC_CACHE_CHECK([for reentrant lex], [ac_cv_path_LEX_R],
   [AC_PATH_PROGS_FEATURE_CHECK([LEX_R], [$LEX flex gflex],
-    [[$ac_path_LEX_R --reentrant --stdout >/dev/null <<END && ac_cv_path_LEX_R=$ac_path_LEX_R ac_path_LEX_R_found=true
+    [[$ac_path_LEX_R -t>/dev/null 2>/dev/null<<END && ac_cv_path_LEX_R=$ac_path_LEX_R ac_path_LEX_R_found=true
 %{
 %}
 
