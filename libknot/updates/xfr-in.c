@@ -704,7 +704,8 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 
 	knot_rrset_deep_free(&soa2, 1, 1, 1);
 
-	return ret;
+	/*! \todo Determine finished transfer. */
+	return 1;
 
 cleanup:
 	knot_free_changesets(changesets);
