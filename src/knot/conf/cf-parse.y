@@ -25,6 +25,17 @@ static conf_log_t *this_log = 0;
 static conf_log_map_t *this_logmap = 0;
 //#define YYERROR_VERBOSE 1
 
+static void conf_start_iface(char* ifname)
+{
+   this_iface = malloc(sizeof(conf_iface_t));
+   memset(this_iface, 0, sizeof(conf_iface_t));
+   this_iface->name = ifname;
+   this_iface->address = 0; // No default address (mandatory)
+   this_iface->port = CONFIG_DEFAULT_PORT;
+   add_tail(&new_config->ifaces, &this_iface->n);
+   ++new_config->ifaces_count;
+}
+
 %}
 
 %pure-parser
@@ -33,41 +44,43 @@ static conf_log_map_t *this_logmap = 0;
 %name-prefix = "cf_"
 
 %union {
-    char *t;
-    int i;
-    tsig_alg_t alg;
+    struct {
+       char *t;
+       int i;
+       tsig_alg_t alg;
+    } tok;
 }
 
 %token END INVALID_TOKEN
-%token <t> TEXT
-%token <i> NUM
-%token <i> INTERVAL
-%token <i> BOOL
+%token <tok> TEXT
+%token <tok> NUM
+%token <tok> INTERVAL
+%token <tok> BOOL
 
-%token SYSTEM IDENTITY VERSION STORAGE KEY
-%token <alg> TSIG_ALGO_NAME
+%token <tok> SYSTEM IDENTITY VERSION STORAGE KEY
+%token <tok> TSIG_ALGO_NAME
 
-%token REMOTES
+%token <tok> REMOTES
 
-%token ZONES FILENAME
-%token SEMANTIC_CHECKS
-%token NOTIFY_RETRIES
-%token NOTIFY_TIMEOUT
-%token DBSYNC_TIMEOUT
-%token IXFR_FSLIMIT
-%token XFR_IN
-%token XFR_OUT
-%token NOTIFY_IN
-%token NOTIFY_OUT
+%token <tok> ZONES FILENAME
+%token <tok> SEMANTIC_CHECKS
+%token <tok> NOTIFY_RETRIES
+%token <tok> NOTIFY_TIMEOUT
+%token <tok> DBSYNC_TIMEOUT
+%token <tok> IXFR_FSLIMIT
+%token <tok> XFR_IN
+%token <tok> XFR_OUT
+%token <tok> NOTIFY_IN
+%token <tok> NOTIFY_OUT
 
-%token INTERFACES ADDRESS PORT
-%token <t> IPA
-%token <t> IPA6
+%token <tok> INTERFACES ADDRESS PORT
+%token <tok> IPA
+%token <tok> IPA6
 
-%token LOG
-%token <i> LOG_DEST
-%token <i> LOG_SRC
-%token <i> LOG_LEVEL
+%token <tok> LOG
+%token <tok> LOG_DEST
+%token <tok> LOG_SRC
+%token <tok> LOG_LEVEL
 
 %%
 
@@ -78,37 +91,34 @@ conf_entries:
  | conf_entries conf
  ;
 
-interface_start: TEXT {
-    this_iface = malloc(sizeof(conf_iface_t));
-    memset(this_iface, 0, sizeof(conf_iface_t));
-    this_iface->name = $1;
-    this_iface->address = 0; // No default address (mandatory)
-    this_iface->port = CONFIG_DEFAULT_PORT;
-    add_tail(&new_config->ifaces, &this_iface->n);
-    ++new_config->ifaces_count;
- }
+interface_start:
+ | TEXT { conf_start_iface($1.t); }
+ | REMOTES  { conf_start_iface(strdup($1.t)); } /* Allow strings reserved by token. */
+ | LOG_SRC  { conf_start_iface(strdup($1.t)); }
+ | LOG  { conf_start_iface(strdup($1.t)); }
+ | LOG_LEVEL  { conf_start_iface(strdup($1.t)); }
  ;
 
 interface:
    interface_start '{'
- | interface PORT NUM ';' { this_iface->port = $3; }
+ | interface PORT NUM ';' { this_iface->port = $3.i; }
  | interface ADDRESS IPA ';' {
-     this_iface->address = $3;
+     this_iface->address = $3.t;
      this_iface->family = AF_INET;
    }
  | interface ADDRESS IPA '@' NUM ';' {
-     this_iface->address = $3;
+     this_iface->address = $3.t;
      this_iface->family = AF_INET;
-     this_iface->port = $5;
+     this_iface->port = $5.i;
    }
  | interface ADDRESS IPA6 ';' {
-     this_iface->address = $3;
+     this_iface->address = $3.t;
      this_iface->family = AF_INET6;
    }
  | interface ADDRESS IPA6 '@' NUM ';' {
-     this_iface->address = $3;
+     this_iface->address = $3.t;
      this_iface->family = AF_INET6;
-     this_iface->port = $5;
+     this_iface->port = $5.i;
    }
  ;
 
@@ -119,19 +129,19 @@ interfaces:
 
 system:
    SYSTEM '{'
- | system VERSION TEXT ';' { new_config->version = $3; }
- | system IDENTITY TEXT ';' { new_config->identity = $3; }
- | system STORAGE TEXT ';' { new_config->storage = $3; }
+ | system VERSION TEXT ';' { new_config->version = $3.t; }
+ | system IDENTITY TEXT ';' { new_config->identity = $3.t; }
+ | system STORAGE TEXT ';' { new_config->storage = $3.t; }
  | system KEY TSIG_ALGO_NAME TEXT ';' {
-     new_config->key.algorithm = $3;
-     new_config->key.secret = $4;
+     new_config->key.algorithm = $3.alg;
+     new_config->key.secret = $4.t;
    }
  ;
 
 remote_start: TEXT {
     this_remote = malloc(sizeof(conf_iface_t));
     memset(this_remote, 0, sizeof(conf_iface_t));
-    this_remote->name = $1;
+    this_remote->name = $1.t;
     this_remote->address = 0; // No default address (mandatory)
     this_remote->port = 0; // Port wildcard
     add_tail(&new_config->remotes, &this_remote->n);
@@ -141,24 +151,24 @@ remote_start: TEXT {
 
 remote:
    remote_start '{'
- | remote PORT NUM ';' { this_remote->port = $3; }
+ | remote PORT NUM ';' { this_remote->port = $3.i; }
  | remote ADDRESS IPA ';' {
-     this_remote->address = $3;
+     this_remote->address = $3.t;
      this_remote->family = AF_INET;
    }
  | remote ADDRESS IPA '@' NUM ';' {
-     this_remote->address = $3;
+     this_remote->address = $3.t;
      this_remote->family = AF_INET;
-     this_remote->port = $5;
+     this_remote->port = $5.i;
    }
  | remote ADDRESS IPA6 ';' {
-     this_remote->address = $3;
+     this_remote->address = $3.t;
      this_remote->family = AF_INET6;
    }
  | remote ADDRESS IPA6 '@' NUM ';' {
-     this_remote->address = $3;
+     this_remote->address = $3.t;
      this_remote->family = AF_INET6;
-     this_remote->port = $5;
+     this_remote->port = $5.i;
    }
  ;
 
@@ -187,7 +197,7 @@ zone_acl_item:
       /* Find existing node in remotes. */
       node* r = 0; conf_iface_t* found = 0;
       WALK_LIST (r, new_config->remotes) {
-         if (strcmp(((conf_iface_t*)r)->name, $1) == 0) {
+	 if (strcmp(((conf_iface_t*)r)->name, $1.t) == 0) {
             found = (conf_iface_t*)r;
             break;
          }
@@ -196,7 +206,7 @@ zone_acl_item:
       /* Append to list if found. */
      if (!found) {
 	char buf[256];
-        snprintf(buf, sizeof(buf), "remote '%s' is not defined", $1);
+	snprintf(buf, sizeof(buf), "remote '%s' is not defined", $1.t);
 	cf_error(scanner, buf);
      } else {
         conf_remote_t *remote = malloc(sizeof(conf_remote_t));
@@ -209,7 +219,7 @@ zone_acl_item:
      }
 
      /* Free text token. */
-     free($1);
+     free($1.t);
    }
  ;
 
@@ -225,7 +235,7 @@ zone_acl:
       /* Find existing node in remotes. */
       node* r = 0; conf_iface_t* found = 0;
       WALK_LIST (r, new_config->remotes) {
-	 if (strcmp(((conf_iface_t*)r)->name, $2) == 0) {
+	 if (strcmp(((conf_iface_t*)r)->name, $2.t) == 0) {
 	    found = (conf_iface_t*)r;
 	    break;
 	 }
@@ -234,7 +244,7 @@ zone_acl:
       /* Append to list if found. */
       if (!found) {
 	 char buf[256];
-	 snprintf(buf, sizeof(buf), "remote '%s' is not defined", $2);
+	 snprintf(buf, sizeof(buf), "remote '%s' is not defined", $2.t);
 	 cf_error(scanner, buf);
       } else {
 	 conf_remote_t *remote = malloc(sizeof(conf_remote_t));
@@ -247,7 +257,7 @@ zone_acl:
       }
 
       /* Free text token. */
-      free($2);
+      free($2.t);
    }
  ;
 
@@ -259,7 +269,7 @@ zone_start: TEXT {
    this_zone->notify_retries = -1; // Default policy applies
    this_zone->ixfr_fslimit = -1; // Default policy applies
    this_zone->dbsync_timeout = -1; // Default policy applies
-   this_zone->name = $1;
+   this_zone->name = $1.t;
 
    // Append mising dot to ensure FQDN
    size_t nlen = strlen(this_zone->name);
@@ -295,26 +305,26 @@ zone:
    zone_start '{'
  | zone zone_acl '}'
  | zone zone_acl_list
- | zone FILENAME TEXT ';' { this_zone->file = $3; }
- | zone SEMANTIC_CHECKS BOOL ';' { this_zone->enable_checks = $3; }
- | zone DBSYNC_TIMEOUT NUM ';' { this_zone->dbsync_timeout = $3; }
- | zone DBSYNC_TIMEOUT INTERVAL ';' { this_zone->dbsync_timeout = $3; }
- | zone IXFR_FSLIMIT NUM ';' { this_zone->ixfr_fslimit = $3; }
- | zone IXFR_FSLIMIT NUM 'k' ';' { this_zone->ixfr_fslimit = $3 * 1024; } // kB
- | zone IXFR_FSLIMIT NUM 'M' ';' { this_zone->ixfr_fslimit = $3 * 1048576; } // MB
- | zone IXFR_FSLIMIT NUM 'G' ';' { this_zone->ixfr_fslimit = $3 * 1073741824; } // GB
+ | zone FILENAME TEXT ';' { this_zone->file = $3.t; }
+ | zone SEMANTIC_CHECKS BOOL ';' { this_zone->enable_checks = $3.i; }
+ | zone DBSYNC_TIMEOUT NUM ';' { this_zone->dbsync_timeout = $3.i; }
+ | zone DBSYNC_TIMEOUT INTERVAL ';' { this_zone->dbsync_timeout = $3.i; }
+ | zone IXFR_FSLIMIT NUM ';' { this_zone->ixfr_fslimit = $3.i; }
+ | zone IXFR_FSLIMIT NUM 'k' ';' { this_zone->ixfr_fslimit = $3.i * 1024; } // kB
+ | zone IXFR_FSLIMIT NUM 'M' ';' { this_zone->ixfr_fslimit = $3.i * 1048576; } // MB
+ | zone IXFR_FSLIMIT NUM 'G' ';' { this_zone->ixfr_fslimit = $3.i * 1073741824; } // GB
  | zone NOTIFY_RETRIES NUM ';' {
-       if ($3 < 1) {
+       if ($3.i < 1) {
 	   cf_error(scanner, "notify retries must be positive integer");
        } else {
-	   this_zone->notify_retries = $3;
+	   this_zone->notify_retries = $3.i;
        }
    }
  | zone NOTIFY_TIMEOUT NUM ';' {
-	if ($3 < 1) {
+	if ($3.i < 1) {
 	   cf_error(scanner, "notify timeout must be positive integer");
        } else {
-	   this_zone->notify_timeout = $3;
+	   this_zone->notify_timeout = $3.i;
        }
    }
  ;
@@ -322,29 +332,29 @@ zone:
 zones:
    ZONES '{'
  | zones zone '}'
- | zones SEMANTIC_CHECKS BOOL ';' { new_config->zone_checks = $3; }
+ | zones SEMANTIC_CHECKS BOOL ';' { new_config->zone_checks = $3.i; }
  | zones NOTIFY_RETRIES NUM ';' {
-       if ($3 < 1) {
+       if ($3.i < 1) {
 	   cf_error(scanner, "notify retries must be positive integer");
        } else {
-	   new_config->notify_retries = $3;
+	   new_config->notify_retries = $3.i;
        }
    }
  | zones NOTIFY_TIMEOUT NUM ';' {
-	if ($3 < 1) {
+	if ($3.i < 1) {
 	   cf_error(scanner, "notify timeout must be positive integer");
        } else {
-	   new_config->notify_timeout = $3;
+	   new_config->notify_timeout = $3.i;
        }
    }
  | zones DBSYNC_TIMEOUT NUM ';' {
-	if ($3 < 1) {
+	if ($3.i < 1) {
 	   cf_error(scanner, "zonefile sync timeout must be positive integer");
        } else {
-	   new_config->dbsync_timeout = $3;
+	   new_config->dbsync_timeout = $3.i;
        }
  }
- | zones DBSYNC_TIMEOUT INTERVAL ';' { new_config->dbsync_timeout = $3; }
+ | zones DBSYNC_TIMEOUT INTERVAL ';' { new_config->dbsync_timeout = $3.i; }
  ;
 
 log_prios_start: {
@@ -357,13 +367,13 @@ log_prios_start: {
 
 log_prios:
    log_prios_start
- | log_prios LOG_LEVEL ',' { this_logmap->prios |= $2; }
- | log_prios LOG_LEVEL ';' { this_logmap->prios |= $2; }
+ | log_prios LOG_LEVEL ',' { this_logmap->prios |= $2.i; }
+ | log_prios LOG_LEVEL ';' { this_logmap->prios |= $2.i; }
  ;
 
 log_src:
  | log_src LOG_SRC log_prios {
-     this_logmap->source = $2;
+     this_logmap->source = $2.i;
      this_logmap = 0;
    }
  ;
@@ -374,7 +384,7 @@ log_dest: LOG_DEST {
   node *n = 0;
   WALK_LIST(n, new_config->logs) {
     conf_log_t* log = (conf_log_t*)n;
-    if (log->type == $1) {
+    if (log->type == $1.i) {
       this_log = log;
       break;
     }
@@ -382,7 +392,7 @@ log_dest: LOG_DEST {
 
   if (!this_log) {
     this_log = malloc(sizeof(conf_log_t));
-    this_log->type = $1;
+    this_log->type = $1.i;
     this_log->file = 0;
     init_list(&this_log->map);
     add_tail(&new_config->logs, &this_log->n);
@@ -398,9 +408,9 @@ log_file: FILENAME TEXT {
   WALK_LIST(n, new_config->logs) {
     conf_log_t* log = (conf_log_t*)n;
     if (log->type == LOGT_FILE) {
-      if (strcmp($2, log->file) == 0) {
+      if (strcmp($2.t, log->file) == 0) {
         this_log = log;
-        free($2);
+	free($2.t);
         break;
       }
     }
@@ -410,7 +420,7 @@ log_file: FILENAME TEXT {
   if (!this_log) {
     this_log = malloc(sizeof(conf_log_t));
     this_log->type = LOGT_FILE;
-    this_log->file = strcpath($2);
+    this_log->file = strcpath($2.t);
     init_list(&this_log->map);
     add_tail(&new_config->logs, &this_log->n);
     ++new_config->logs_count;
