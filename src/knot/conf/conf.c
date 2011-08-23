@@ -20,8 +20,8 @@
 
 /*! \brief Default config paths. */
 static const char *DEFAULT_CONFIG[2] = {
-        "~/." PROJECT_EXEC "/" PROJECT_EXEC ".conf",
-        "/etc/" PROJECT_EXEC "/" PROJECT_EXEC ".conf"
+	"~/.knot/" PROJECT_EXEC ".conf",
+	"/etc/knot/" PROJECT_EXEC ".conf"
 };
 
 /*
