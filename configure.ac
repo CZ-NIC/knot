@@ -18,13 +18,29 @@ LT_INIT
 # Checks for programs.
 AC_PROG_CC
 AM_PROG_LEX
-LEX_FLEX=`$LEX --version | awk '{print $1;exit}'`
-if test "$LEX_FLEX" != "flex"; then
-    AC_MSG_ERROR([GNU flex needed for reentrant parsers, set the \$LEX variable before running configure])
-fi
-if ! $LEX --reentrant m4/flex-test.l </dev/null 2>/dev/null; then
-    AC_MSG_ERROR([GNU flex version 2.5.33 or higher needed for reentrant parsers])
-fi
+
+AC_CACHE_CHECK([for reentrant lex], [ac_cv_path_LEX],
+  [AC_PATH_PROGS_FEATURE_CHECK([LEX], [$LEX flex gflex],
+    [[$ac_path_LEX --stdout << EOF && ac_cv_path_LEX=$ac_path ac_path_LEX_found=:
+%{
+%}
+
+%option reentrant
+%option bison-bridge
+%option noinput
+%option nounput
+%option noreject
+
+BLANK [ \t\n]
+
+%%
+<<EOF>> return 0;
+%%
+EOF
+    ]],
+    [AC_MSG_ERROR([could not find lex that supports reentrant parsers])])])
+AC_SUBST([LEX], [$ac_cv_path_LEX])
+
 AC_PROG_YACC
 YACC_BISON=`bison --version | awk '{print $1;exit}'`
 if test "$YACC_BISON" != "bison"; then
