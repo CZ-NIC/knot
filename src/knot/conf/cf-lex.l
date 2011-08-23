@@ -20,7 +20,7 @@
 
 /* Imported symbols. */
 #define cf_lval (*yylval)
-extern void cf_error(const char *msg);
+extern void cf_error(void *scanner, const char *msg);
 extern int (*cf_read_hook)(char *buf, size_t nbytes);
 void switch_input(const char *str, void *scanner)
 {
@@ -103,7 +103,7 @@ on|off {
   char multiplier = yytext[mpos];
   cf_lval.i = atoi(yytext);
   if (cf_lval.i < 1) {
-	  cf_error("interval must be a positive integer");
+	  cf_error(yyscanner, "interval must be a positive integer");
 	  return END;
   }
 
@@ -130,24 +130,24 @@ on|off {
 	  cf_lval.t = strdup(yytext);
 	  return IPA;
   }
-  cf_error("Invalid IP address.");
+  cf_error(yyscanner, "Invalid IP address.");
 }
 
 ({HEXA}*::|({HEXA}*:){3,})({HEXA}*|{DIGIT}+\.{DIGIT}+\.{DIGIT}+\.{DIGIT}+) {
 #ifdef DISABLE_IPV6
 unsigned char buf[sizeof(struct in6_addr)];
 if (inet_pton(AF_INET6, yytext, buf)) {
-        cf_lval.t = strdup(yytext);
+	cf_lval.t = strdup(yytext);
         return IPA6;
 }
-cf_error("Invalid IPv6 address.");
+cf_error(yyscanner, "Invalid IPv6 address.");
 #else
   unsigned char buf[sizeof(struct in6_addr)];
   if (inet_pton(AF_INET6, yytext, buf)) {
 	  cf_lval.t = strdup(yytext);
 	  return IPA6;
   }
-  cf_error("Invalid IPv6 address.");
+  cf_error(yyscanner, "Invalid IPv6 address.");
 #endif
 }
 
@@ -165,7 +165,7 @@ hmac-sha512     { cf_lval.alg = HMAC_SHA512; return TSIG_ALGO_NAME; }
   return TEXT;
 }
 
-["][^"\n]*\n    cf_error("Unterminated string.");
+["][^"\n]*\n    cf_error(yyscanner, "Unterminated string.");
 
 [a-zA-Z0-9\.]+ {
   cf_lval.t = strdup(yytext);
