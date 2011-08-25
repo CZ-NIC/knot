@@ -687,92 +687,93 @@ static int zones_changesets_from_binary(knot_changesets_t *chgsets)
 	 * Parses changesets from the binary format stored in chgsets->data
 	 * into the changeset_t structures.
 	 */
-	size_t size = 0;
-	size_t parsed = 0;
-	knot_rrset_t *rrset;
-	int soa = 0;
+	knot_rrset_t *rrset = 0;
 	int ret = 0;
 
 	for (int i = 0; i < chgsets->count; ++i) {
-		ret = knot_zload_rrset_deserialize(&rrset,
-			chgsets->sets[i].data + parsed, &size);
+
+		/* Read initial changeset RRSet - SOA. */
+		knot_changeset_t* chs = chgsets->sets + i;
+		size_t remaining = chs->size;
+		ret = knot_zload_rrset_deserialize(&rrset, chs->data, &remaining);
 		if (ret != KNOT_EOK) {
+			debug_knot_xfr("ixfr_db: failed to deserialize data "
+				       "from changeset, %s\n", knot_strerror(ret));
 			return KNOT_EMALF;
 		}
 
-		while (rrset != NULL) {
-			parsed += size;
+		/* in this special case (changesets loaded
+		 * from journal) the SOA serial should already
+		 * be set, check it.
+		 */
+		assert(knot_rrset_type(rrset) == KNOT_RRTYPE_SOA);
+		assert(chs->serial_from ==
+		       knot_rdata_soa_serial(knot_rrset_rdata(rrset)));
+		knot_changeset_store_soa(&chs->soa_from, &chs->serial_from,
+					 rrset);
 
-			if (soa == 0) {
-				assert(knot_rrset_type(rrset)
-				       == KNOT_RRTYPE_SOA);
+		debug_knot_xfr("ixfr_db: reading RRSets to REMOVE\n");
 
-				/* in this special case (changesets loaded
-				 * from journal) the SOA serial should already
-				 * be set, check it.
-				 */
-				assert(chgsets->sets[i].serial_from
-				       == knot_rdata_soa_serial(
-				              knot_rrset_rdata(rrset)));
-				knot_changeset_store_soa(
-					&chgsets->sets[i].soa_from,
-					&chgsets->sets[i].serial_from, rrset);
-				++soa;
-				continue;
+		/* Read remaining RRSets */
+		int in_remove_section = 1;
+		while (remaining > 0) {
+
+			/* Parse next RRSet. */
+			rrset = 0;
+			uint8_t *stream = chs->data + (chs->size - remaining);
+			ret = knot_zload_rrset_deserialize(&rrset, stream, &remaining);
+			if (ret != KNOT_EOK) {
+				debug_knot_xfr("ixfr_db: failed to deserialize data "
+					       "from changeset, %s\n", knot_strerror(ret));
+				return KNOT_EMALF;
 			}
 
-			if (soa == 1) {
-				if (knot_rrset_type(rrset)
-				    == KNOT_RRTYPE_SOA) {
-					/* in this special case (changesets
-					 * loaded from journal) the SOA serial
-					 * should already be set, check it.
-					 */
-					assert(chgsets->sets[i].serial_from
-					       == knot_rdata_soa_serial(
-					            knot_rrset_rdata(rrset)));
+			/* Check for next SOA. */
+			if (knot_rrset_type(rrset) == KNOT_RRTYPE_SOA) {
+
+				/* Move to ADD section if in REMOVE. */
+				if (in_remove_section) {
 					knot_changeset_store_soa(
 						&chgsets->sets[i].soa_to,
 						&chgsets->sets[i].serial_to,
 						rrset);
-					++soa;
+					debug_knot_xfr("ixfr_db: reading RRSets"
+						       " to ADD\n");
 				} else {
+					/* Final SOA. */
+					debug_knot_xfr("ixfr_db: extra SOA\n");
+					break;
+				}
+			} else {
+				/* Remove RRSets. */
+				if (in_remove_section) {
 					ret = knot_changeset_add_rrset(
 						&chgsets->sets[i].remove,
 						&chgsets->sets[i].remove_count,
 						&chgsets->sets[i]
 						    .remove_allocated,
 						rrset);
-					if (ret != KNOT_EOK) {
-						return ret;
-					}
-				}
-			} else {
-				if (knot_rrset_type(rrset)
-				    == KNOT_RRTYPE_SOA) {
-					return KNOT_EMALF;
 				} else {
+				/* Add RRSets. */
 					ret = knot_changeset_add_rrset(
 						&chgsets->sets[i].add,
 						&chgsets->sets[i].add_count,
 						&chgsets->sets[i].add_allocated,
 						rrset);
-					if (ret != KNOT_EOK) {
-						return ret;
-					}
 				}
-			}
 
-			ret = knot_zload_rrset_deserialize(&rrset,
-					chgsets->sets[i].data + parsed, &size);
-			if (ret != KNOT_EOK) {
-				return KNOT_EMALF;
+				/* Check result. */
+				if (ret != KNOT_EOK) {
+					debug_knot_xfr("ixfr_db: failed "
+						       "to add/remove RRSet to "
+						       "changeset\n");
+					return ret;
+				}
 			}
 		}
 	}
 
-	/*! \todo Mark ENOTSUP as EOK when fixed. */
-	return KNOT_ENOTSUP;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -806,21 +807,20 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		}
 
 		/* Check changesets size if needed. */
-		++dst->count;
 		ret = knot_changesets_check_size(dst);
 		if (ret != KNOT_EOK) {
 			debug_knot_xfr("ixfr_db: failed to check changesets size\n");
-			--dst->count;
 			return ret;
 		}
 
 		/* Initialize changeset. */
-		knot_changeset_t *chs = dst->sets + (dst->count - 1);
+		debug_knot_xfr("ixfr_db: reading entry #%zu id=%llu\n",
+			       dst->count, n->id);
+		knot_changeset_t *chs = dst->sets + dst->count;
 		chs->serial_from = ixfrdb_key_from(n->id);
 		chs->serial_to = ixfrdb_key_to(n->id);
 		chs->data = malloc(n->len);
 		if (!chs->data) {
-			--dst->count;
 			return KNOT_ENOMEM;
 		}
 
@@ -829,12 +829,16 @@ static int zones_load_changesets(const knot_zone_t *zone,
 				   0, (char*)chs->data);
 		if (ret != KNOTD_EOK) {
 			debug_knot_xfr("ixfr_db: failed to read data from journal\n");
-			--dst->count;
+			free(chs->data);
 			return KNOT_ERROR;
 		}
 
+		/* Update changeset binary size. */
+		chs->size = chs->allocated = n->len;
+
 		/* Next node. */
 		found_to = chs->serial_to;
+		++dst->count;
 		++n;
 
 		/*! \todo Check consistency. */
@@ -844,7 +848,7 @@ static int zones_load_changesets(const knot_zone_t *zone,
 	ret = zones_changesets_from_binary(dst);
 	if (ret != KNOT_EOK) {
 		debug_knot_xfr("ixfr_db: failed to unpack changesets "
-			       "from binary\n");
+			       "from binary, %s\n", knot_strerror(ret));
 		return ret;
 	}
 
@@ -1372,7 +1376,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 xfr_type_t zones_transfer_to_use(const knot_zone_contents_t *zone)
 {
 	/*! \todo Implement. */
-	return XFR_TYPE_AIN;
+	return XFR_TYPE_IIN;
 }
 
 /*----------------------------------------------------------------------------*/

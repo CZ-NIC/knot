@@ -199,19 +199,20 @@ int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst)
 {
 	journal_node_t *n = 0;
 	if(journal_fetch(journal, id, cf, &n) != 0) {
-		debug_journal("journal: failed to fetch node with id=%d\n",
+		debug_journal("journal: failed to fetch node with id=%llu\n",
 			      id);
 		return KNOTD_ENOENT;
 	}
 
 	/* Check valid flag. */
-	if (n->flags != JOURNAL_VALID) {
-		debug_journal("journal: node with id=%d is invalid\n", id);
+	if (!(n->flags & JOURNAL_VALID)) {
+		debug_journal("journal: node with id=%llu is invalid "
+			      "(flags=0x%hx)\n", id, n->flags);
 		return KNOTD_EINVAL;
 	}
 
-	debug_journal("journal: reading node with id=%d, data=<%u, %u>\n",
-		      id, n->pos, n->pos + n->len);
+	debug_journal("journal: reading node with id=%llu, data=<%u, %u>, flags=0x%hx\n",
+		      id, n->pos, n->pos + n->len, n->flags);
 
 	/* Seek journal node. */
 	fseek(journal->fp, n->pos, SEEK_SET);
@@ -234,7 +235,7 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
 	/* Find next free node. */
 	uint16_t jnext = (journal->qtail + 1) % journal->max_nodes;
 
-	debug_journal("journal: will write id=%zu, node=%u, size=%zu, fsize=%zu\n",
+	debug_journal("journal: will write id=%llu, node=%u, size=%zu, fsize=%zu\n",
 		      id, journal->qtail, size, journal->fsize);
 
 	/* Calculate remaining bytes to reach file size limit. */
