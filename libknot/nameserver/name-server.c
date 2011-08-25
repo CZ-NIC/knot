@@ -2924,7 +2924,8 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 		knot_changesets_t *chgsets = (knot_changesets_t *)xfr->data;
 		if (chgsets == NULL || chgsets->count == 0) {
 			// nothing to be done??
-			return KNOT_EOK;
+			debug_knot_ns("No changesets created for incoming IXFR!\n");
+			return ret;
 		}
 
 		// find zone associated with the changesets
