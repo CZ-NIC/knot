@@ -1464,7 +1464,7 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 				fwrite_wrapper(&id,
 				       sizeof(id), 1, f, stream, stream_size);
 			} else {
-				assert(rdata->items[i].dname->id != 0);
+//				assert(rdata->items[i].dname->id != 0);
 				dump_dname_with_id(rdata->items[i].dname,
 				                   f, stream,
 				                   stream_size);

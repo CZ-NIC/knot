@@ -87,6 +87,8 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 	}
 
 	/* Check return code for errors. */
+	debug_xfr("xfr_client_ev: processed incoming XFR packet (res =  %d)\n",
+		  ret);
 	if (ret < 0) {
 		/*! \todo Log error. */
 		return;
@@ -97,33 +99,48 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 
 		switch(request->type) {
 		case XFR_TYPE_AIN:
+			debug_xfr("xfr_client_ev: AXFR/IN saving new zone\n");
 			ret = zones_save_zone(request);
 			if (ret != KNOTD_EOK) {
-				/*! \todo Log error. */
+				log_server_error("axfr_in: Failed to save "
+						 "transferred zone - %s\n",
+						 knotd_strerror(ret));
 			} else {
+				debug_xfr("xfr_client_ev: new zone saved\n");
 				ret = knot_ns_switch_zone(xfr_w->h->ns, request);
 				if (ret != KNOTD_EOK) {
-					/*! \todo Log error. */
+					log_server_error("axfr_in: Failed to "
+							 "switch in-memory zone "
+							 "- %s\n",
+							 knotd_strerror(ret));
 				}
 			}
+			debug_xfr("xfr_client_ev: AXFR/IN transfer finished\n");
 			break;
 		case XFR_TYPE_IIN:
 			/* Save changesets. */
+			debug_xfr("xfr_client_ev: IXFR/IN saving changesets\n");
 			ret = zones_store_changesets(request);
 			if (ret != KNOTD_EOK) {
-				/*! \todo Log error */
+				log_server_error("ixfr_in: Failed to save "
+						 "transferred changesets - %s\n",
+						 knotd_strerror(ret));
 			} else {
 				/* Update zone. */
 				ret = zones_apply_changesets(request);
 				if (ret != KNOTD_EOK) {
-					/*! \todo Log error */
+					log_server_error("ixfr_in: Failed to "
+							 "apply changesets - %s\n",
+							 knotd_strerror(ret));
 				}
 			}
+			debug_xfr("xfr_client_ev: IXFR/IN transfer finished\n");
 			break;
 		default:
 			ret = KNOTD_EINVAL;
 			break;
 		}
+
 		/* Save finished zone and reload. */
 //		xfrin_zone_transferred(xfr_w->h->ns, request->zone);
 

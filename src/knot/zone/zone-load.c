@@ -160,6 +160,7 @@ static knot_dname_t *read_dname_with_id(FILE *f)
 		return NULL;
 	}
 	ret->size = dname_size;
+	debug_knot_zload("loaded: dname length: %u\n", ret->size);
 
 	assert(ret->size <= DNAME_MAX_WIRE_LENGTH);
 
@@ -199,7 +200,7 @@ static knot_dname_t *read_dname_with_id(FILE *f)
 	}
 
 	debug_knot_zload("loaded: %s (id: %d)\n", knot_dname_to_str(ret),
-	                   ret->id);
+			 ret->id);
 
 	return ret;
 }
@@ -294,16 +295,16 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 				return NULL;
 			}
 
-			debug_knot_zload("read len: %d\n", raw_data_length);
 			items[i].raw_data =
-				malloc(sizeof(uint8_t) * raw_data_length + 2);
-			*(items[i].raw_data) = raw_data_length;
+				malloc(sizeof(uint8_t) * (raw_data_length + 2));
+			items[i].raw_data[0] = raw_data_length;
 
 			if (!fread_wrapper(items[i].raw_data + 1, sizeof(uint8_t),
 			      raw_data_length, f)) {
 				load_rdata_purge(rdata, items, i + 1, desc, type);
 				return NULL;
 			}
+			debug_knot_zload("read raw_data len %d\n", raw_data_length);
 		}
 	}
 
@@ -314,6 +315,9 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 	}
 
 	free(items);
+
+	debug_knot_zload("knot_load_rdata: all %d items read\n",
+			 desc->length);
 
 	return rdata;
 }
@@ -389,14 +393,14 @@ static knot_rrset_t *knot_load_rrsig(FILE *f, knot_dname_t **id_array,
 static knot_rrset_t *knot_load_rrset(FILE *f, knot_dname_t **id_array,
                                          int use_ids)
 {
-	knot_rrset_t *rrset;
+	knot_rrset_t *rrset = NULL;
 
-	uint16_t rrset_type;
-	uint16_t rrset_class;
-	uint32_t rrset_ttl;
+	uint16_t rrset_type = 0;
+	uint16_t rrset_class = 0;
+	uint32_t rrset_ttl = 0;
 
-	uint8_t rdata_count;
-	uint8_t rrsig_count;
+	uint8_t rdata_count = 0;
+	uint8_t rrsig_count = 0;
 
 	knot_dname_t *owner = NULL;
 
@@ -430,7 +434,7 @@ static knot_rrset_t *knot_load_rrset(FILE *f, knot_dname_t **id_array,
 
 	debug_knot_zload("RRSet type: %d\n", rrset->type);
 
-	knot_rdata_t *tmp_rdata;
+	knot_rdata_t *tmp_rdata = NULL;
 
 	for (int i = 0; i < rdata_count; i++) {
 		tmp_rdata = knot_load_rdata(rrset->type, f,
@@ -445,6 +449,7 @@ static knot_rrset_t *knot_load_rrset(FILE *f, knot_dname_t **id_array,
 
 	knot_rrset_t *tmp_rrsig = NULL;
 
+	debug_knot_zload("Reading: %d RRSIGs\n", rrsig_count);
 	if (rrsig_count) {
 		tmp_rrsig = knot_load_rrsig(f, id_array, use_ids);
 		if (!use_ids) {
@@ -453,6 +458,8 @@ static knot_rrset_t *knot_load_rrset(FILE *f, knot_dname_t **id_array,
 	}
 
 	knot_rrset_set_rrsigs(rrset, tmp_rrsig);
+
+	debug_knot_zload("Finished loading RRSet %p\n", rrset);
 
 	return rrset;
 }
@@ -1142,8 +1149,8 @@ int knot_zload_rrset_deserialize(knot_rrset_t **rrset,
 		return KNOT_EMALF;
 	}
 
-//	printf("knot_zload_stream_size: %d, knot_zload_stream_remaning: %d\n",
-//	       knot_zload_stream_size, knot_zload_stream_remaining);
+	printf("knot_zload_stream_size: %d, knot_zload_stream_remaning: %d\n",
+	       knot_zload_stream_size, knot_zload_stream_remaining);
 
 	*size = knot_zload_stream_remaining;
 	*rrset = ret;
