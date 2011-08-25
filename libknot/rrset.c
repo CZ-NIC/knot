@@ -35,7 +35,7 @@ static void knot_rrset_disconnect_rdata(knot_rrset_t *rrset,
 	if (prev == NULL) {
 		// find the previous RDATA in the series, as its pointer must
 		// be changed
-		knot_rdata_t *prev = rdata->next;
+		prev = rdata->next;
 		while (prev->next != rdata) {
 			prev = prev->next;
 		}

@@ -1689,8 +1689,6 @@ const knot_node_t *knot_zone_contents_find_previous_nsec3(
 
 static void knot_zone_contents_left_chop(char *name, size_t *size)
 {
-	int i = 0;
-	
 	short label_size = name[0];
 	
 	memmove(name, name + label_size + 1, *size -label_size - 1);
@@ -2207,11 +2205,16 @@ int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
 	if (from->table != NULL) {
 		ret = ck_copy_table(from->table, &contents->table);
 		if (ret != 0) {
+			debug_knot_zone("knot_zone_contents_shallow_copy: "
+					"hash table copied\n");
 			ret = KNOT_ERROR;
 			goto cleanup;
 		}
 	}
 #endif
+
+	debug_knot_zone("knot_zone_contents_shallow_copy: "
+			"finished OK\n");
 
 	*to = contents;
 	return KNOT_EOK;

@@ -53,7 +53,7 @@ enum knot_error {
 	KNOT_EPAYLOAD,        /*!< Payload in OPT RR larger than max wire size. */
 	KNOT_ECRC,            /*!< Wrong dump CRC. */
 	KNOT_EPREREQ,         /*!< UPDATE prerequisity not met. */
-	KNOT_ERROR_COUNT = 20
+	KNOT_ERROR_COUNT = 23
 };
 
 /*! \brief Table linking error messages to error codes. */

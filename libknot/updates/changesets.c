@@ -35,14 +35,15 @@ static int knot_changeset_check_count(knot_rrset_t ***rrsets, size_t count,
 {
 	// this should also do for the initial case (*rrsets == NULL)
 	if (count == *allocated) {
-		knot_rrset_t **rrsets_new = (knot_rrset_t **)calloc(
-			*allocated + KNOT_CHANGESET_RRSET_STEP,
-			sizeof(knot_rrset_t *));
+		const size_t item_len = sizeof(knot_rrset_t *);
+		const size_t new_count = *allocated + KNOT_CHANGESET_RRSET_STEP;
+		knot_rrset_t **rrsets_new = malloc(new_count * item_len);
 		if (rrsets_new == NULL) {
 			return KNOT_ENOMEM;
 		}
 
-		memcpy(rrsets_new, *rrsets, count);
+		memset(rrsets_new, 0, new_count * item_len);
+		memcpy(rrsets_new, *rrsets, count * item_len);
 
 		knot_rrset_t **rrsets_old = *rrsets;
 		*rrsets = rrsets_new;
@@ -72,12 +73,11 @@ int knot_changeset_allocate(knot_changesets_t **changesets)
 {
 	// create new changesets
 	*changesets = (knot_changesets_t *)(malloc(sizeof(knot_changesets_t)));
-	memset(*changesets, 0, sizeof(knot_changesets_t));
-
 	if (*changesets == NULL) {
 		return KNOT_ENOMEM;
 	}
 
+	memset(*changesets, 0, sizeof(knot_changesets_t));
 	assert((*changesets)->allocated == 0);
 	assert((*changesets)->count == 0);
 	assert((*changesets)->sets == NULL);
@@ -201,19 +201,19 @@ int knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
 
 int knot_changesets_check_size(knot_changesets_t *changesets)
 {
-	if (changesets->allocated == changesets->count) {
-		knot_changeset_t *sets = (knot_changeset_t *)calloc(
-			changesets->allocated + KNOT_CHANGESET_STEP,
-			sizeof(knot_changeset_t));
+	if (changesets->allocated >= changesets->count) {
+		const size_t item_len = sizeof(knot_changeset_t);
+		size_t new_count = (changesets->allocated + KNOT_CHANGESET_STEP);
+		knot_changeset_t *sets = malloc(new_count * item_len);
 		if (sets == NULL) {
 			return KNOT_ENOMEM;
 		}
 
-		/*! \todo realloc() may be more effective. */
-		memcpy(sets, changesets->sets, changesets->count);
+		memset(sets, 0, new_count * item_len);
+		memcpy(sets, changesets->sets, changesets->count * item_len);
 		knot_changeset_t *old_sets = changesets->sets;
 		changesets->sets = sets;
-		changesets->count += KNOT_CHANGESET_STEP;
+		changesets->allocated += KNOT_CHANGESET_STEP;
 		free(old_sets);
 	}
 

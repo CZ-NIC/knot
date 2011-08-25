@@ -588,6 +588,10 @@ knot_dname_t *knot_dname_deep_copy(const knot_dname_t *dname)
 
 char *knot_dname_to_str(const knot_dname_t *dname)
 {
+	if (!dname || dname->size == 0) {
+		return 0;
+	}
+
 	char *name;
 
 	// root => special treatment

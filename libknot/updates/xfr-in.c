@@ -550,9 +550,9 @@ static int xfrin_parse_first_rr(knot_packet_t **packet, const uint8_t *pkt,
 /*----------------------------------------------------------------------------*/
 
 int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
-                              knot_changesets_t **changesets)
+			      knot_changesets_t **chs)
 {
-	if (pkt == NULL || changesets == NULL) {
+	if (pkt == NULL || chs == NULL) {
 		debug_knot_xfr("Wrong parameters supported.\n");
 		return KNOT_EBADARG;
 	}
@@ -580,8 +580,8 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 
 	assert(soa1 != NULL);
 
-	if (*changesets == NULL
-	    && (ret = knot_changeset_allocate(changesets)) != KNOT_EOK) {
+	if (*chs == NULL
+	    && (ret = knot_changeset_allocate(chs)) != KNOT_EOK) {
 		knot_packet_free(&packet);
 		return ret;
 	}
@@ -597,9 +597,6 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 	// we may drop this SOA, not needed right now; parse the next one
 	ret = knot_packet_parse_next_rr_answer(packet, &rr);
 
-	/*! \todo replace by (*changesets)->count */
-	int i = 0;
-
 	while (ret == KNOT_EOK && rr != NULL) {
 		if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
 			debug_knot_xfr("Next RR is not a SOA RR as it should be"
@@ -611,18 +608,22 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 		if (knot_rdata_soa_serial(knot_rrset_rdata(rr))
 		    == knot_rdata_soa_serial(knot_rrset_rdata(soa1))) {
 			soa2 = rr;
+			debug_knot_xfr("IXFR/IN packet is parsed, first SOA serial"
+				       " matches current, chset count = %zu\n",
+				       (*chs)->count);
 			break;
 		}
 
-		if ((ret = knot_changesets_check_size(*changesets))
+		if ((ret = knot_changesets_check_size(*chs))
 		     != KNOT_EOK) {
 			knot_rrset_deep_free(&rr, 1, 1, 1);
 			goto cleanup;
 		}
 
 		// save the origin SOA of the remove part
+		debug_knot_xfr("Processing IXFR/IN changeset #%zu\n", (*chs)->count);
 		ret = knot_changeset_add_soa(
-			&(*changesets)->sets[i], rr, XFRIN_CHANGESET_REMOVE);
+			&(*chs)->sets[(*chs)->count], rr, XFRIN_CHANGESET_REMOVE);
 		if (ret != KNOT_EOK) {
 			knot_rrset_deep_free(&rr, 1, 1, 1);
 			goto cleanup;
@@ -636,7 +637,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 
 			assert(knot_rrset_type(rr) != KNOT_RRTYPE_SOA);
 			if ((ret = knot_changeset_add_new_rr(
-			             &(*changesets)->sets[i], rr,
+				     &(*chs)->sets[(*chs)->count], rr,
 				     XFRIN_CHANGESET_REMOVE)) != KNOT_EOK) {
 				knot_rrset_deep_free(&rr, 1, 1, 1);
 				goto cleanup;
@@ -656,7 +657,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 
 		// save the origin SOA of the add part
 		ret = knot_changeset_add_soa(
-			&(*changesets)->sets[i], rr, XFRIN_CHANGESET_ADD);
+			&(*chs)->sets[(*chs)->count], rr, XFRIN_CHANGESET_ADD);
 		if (ret != KNOT_EOK) {
 			knot_rrset_deep_free(&rr, 1, 1, 1);
 			goto cleanup;
@@ -670,7 +671,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 
 			assert(knot_rrset_type(rr) != KNOT_RRTYPE_SOA);
 			if ((ret = knot_changeset_add_new_rr(
-			             &(*changesets)->sets[i], rr,
+				     &(*chs)->sets[(*chs)->count], rr,
 				     XFRIN_CHANGESET_ADD)) != KNOT_EOK) {
 				knot_rrset_deep_free(&rr, 1, 1, 1);
 				goto cleanup;
@@ -686,7 +687,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 		}
 
 		// next chunk, continue the whole loop
-		++i;
+		++(*chs)->count;
 	}
 
 	if (ret != KNOT_EOK) {
@@ -705,10 +706,13 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 	knot_rrset_deep_free(&soa2, 1, 1, 1);
 
 	/*! \todo Determine finished transfer. */
+	debug_knot_xfr("xfrin_process_ixfr_packet() finished, "
+		       "count = %zu, ret = %d\n", (*chs)->count, 1);
 	return 1;
 
 cleanup:
-	knot_free_changesets(changesets);
+	debug_knot_xfr("Cleanup after processing IXFR/IN packet.\n");
+	knot_free_changesets(chs);
 	knot_packet_free(&packet);
 	return ret;
 }
@@ -770,6 +774,9 @@ static int xfrin_changes_check_rrsets(knot_rrset_t ***rrsets,
                                       int *count, int *allocated, int to_add)
 {
 	int new_count = *allocated * 2;
+	if (*allocated == 0) {
+		new_count = (*count + to_add); /* Prevent infinite loop. */
+	}
 
 	while (*count + to_add > new_count) {
 		new_count += *allocated;
@@ -781,9 +788,11 @@ static int xfrin_changes_check_rrsets(knot_rrset_t ***rrsets,
 		return KNOT_ENOMEM;
 	}
 
-	memcpy(rrsets_new, *rrsets, *count);
+	knot_rrset_t **rrsets_old = *rrsets;
+	memcpy(rrsets_new, *rrsets, (*count) * sizeof(knot_rrset_t *));
 	*rrsets = rrsets_new;
 	*allocated = new_count;
+	free(rrsets_old);
 
 	return KNOT_EOK;
 }
@@ -793,18 +802,24 @@ static int xfrin_changes_check_rrsets(knot_rrset_t ***rrsets,
 static int xfrin_changes_check_nodes(knot_node_t ***nodes,
                                      int *count, int *allocated)
 {
+	/* Prevent infinite loop in case of allocated = 0. */
 	int new_count = 0;
-	if (*count == *allocated) {
-		new_count = *allocated * 2;
+	if (*allocated == 0) {
+		new_count = *count + 1;
+	} else {
+		if (*count == *allocated) {
+			new_count = *allocated * 2;
+		}
 	}
 
-	knot_node_t **nodes_new =
-		(knot_node_t **)calloc(new_count, sizeof(knot_node_t *));
+	const size_t node_len = sizeof(knot_node_t *);
+	knot_node_t **nodes_new = malloc(new_count * node_len);
 	if (nodes_new == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	memcpy(nodes_new, *nodes, *count);
+	memset(nodes_new, 0, new_count * node_len);
+	memcpy(nodes_new, *nodes, (*count) * node_len);
 	*nodes = nodes_new;
 	*allocated = new_count;
 
@@ -924,7 +939,7 @@ static int xfrin_get_node_copy(knot_node_t **node, xfrin_changes_t *changes)
 
 		changes->new_nodes[changes->new_nodes_count++] = new_node;
 		changes->old_nodes[changes->old_nodes_count++] = *node;
-		
+
 		// mark the old node as old
 		knot_node_set_old(*node);
 
@@ -1032,6 +1047,7 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 		// copy the rrset
 		ret = xfrin_copy_rrset(node, type, rrset, changes);
 		if (ret != KNOT_EOK) {
+			debug_knot_xfr("Failed to copy rrset from changeset.\n");
 			return ret;
 		}
 	} else {
@@ -1059,6 +1075,7 @@ static int xfrin_apply_remove_rrsigs(xfrin_changes_t *changes,
 	
 	// set the RRSIGs to the new RRSet copy
 	if (knot_rrset_set_rrsigs(*rrset, rrsigs) != KNOT_EOK) {
+		debug_knot_xfr("Failed to set rrsigs.\n");
 		return KNOT_ERROR;
 	}
 	
@@ -1232,6 +1249,7 @@ static int xfrin_apply_remove_all_rrsets(xfrin_changes_t *changes,
 		                                 &changes->old_rrsets_allocated,
 		                                 knot_node_rrset_count(node));
 		if (ret != KNOT_EOK) {
+			debug_knot_xfr("Failed to check changeset rrsets.\n");
 			return ret;
 		}
 
@@ -1239,7 +1257,7 @@ static int xfrin_apply_remove_all_rrsets(xfrin_changes_t *changes,
 		knot_rrset_t **place = changes->old_rrsets
 		                       + changes->old_rrsets_count;
 		/*! \todo Test this!!! */
-		memcpy(place, rrsets, knot_node_rrset_count(node));
+		memcpy(place, rrsets, knot_node_rrset_count(node) * sizeof(knot_rrset_t *));
 
 		// remove all RRSets from the node
 		knot_node_remove_all_rrsets(node);
@@ -1249,6 +1267,7 @@ static int xfrin_apply_remove_all_rrsets(xfrin_changes_t *changes,
 		                                 &changes->old_rrsets_allocated,
 		                                 1);
 		if (ret != KNOT_EOK) {
+			debug_knot_xfr("Failed to check changeset rrsets.\n");
 			return ret;
 		}
 		// remove only RRSet with the given type
@@ -1317,8 +1336,12 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 		}
 		
 		if (ret > 0) {
+			debug_knot_xfr("xfrin_apply_remove() ret = %d, "
+				       "continuing.\n", ret);
 			continue;
 		} else if (ret != KNOT_EOK) {
+			debug_knot_xfr("xfrin_apply_remove() failed - %s.\n",
+				       knot_strerror(ret));
 			return ret;
 		}
 	}
@@ -1331,7 +1354,8 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 static knot_node_t *xfrin_add_new_node(knot_zone_contents_t *contents,
                                        knot_rrset_t *rrset)
 {
-	return NULL;
+	/*! \todo Why is the function disabled? */
+	//return NULL;
 
 	knot_node_t *node = knot_node_new(knot_rrset_get_owner(rrset),
 	                                  NULL, KNOT_NODE_FLAGS_NEW);
@@ -1715,19 +1739,21 @@ static void xfrin_check_node_in_tree(knot_zone_tree_node_t *tnode, void *data)
 	assert(tnode->node != NULL);
 	
 	xfrin_changes_t *changes = (xfrin_changes_t *)data;
-	
-	if (knot_node_new_node(tnode->node) == NULL) {
+
+	knot_node_t *node = knot_node_get_new_node(tnode->node);
+
+	if (node == NULL) {
 		// no RRSets were removed from this node, thus it cannot be
 		// empty
-		assert(knot_node_rrset_count(tnode->node) > 0);
 		return;
 	}
-	
-	knot_node_t *node = knot_node_get_new_node(tnode->node);
-	
-	debug_knot_xfr("Children of old node: %u, children of new node: %u.\n",
-	         knot_node_children(node), knot_node_children(tnode->node));
 
+	debug_knot_xfr("xfrin_check_node_in_tree: children of old node: %u, "
+		       "children of new node: %u.\n",
+		       knot_node_children(node),
+		       knot_node_children(tnode->node));
+
+	
 	// check if the node is empty and has no children
 	// to be sure, check also the count of children of the old node
 	if (knot_node_rrset_count(node) == 0
@@ -1777,7 +1803,7 @@ static int xfrin_finalize_remove_nodes(knot_zone_contents_t *contents,
 	
 	for (int i = 0; i < changes->old_nodes_count; ++i) {
 		node = changes->old_nodes[i];
-		
+
 		// if the node is marked as old and has no new node copy
 		// remove it from the zone structure but do not delete it
 		// that may be done only after the grace period
@@ -1839,8 +1865,9 @@ static int xfrin_finalize_contents(knot_zone_contents_t *contents,
 
 static void xfrin_fix_refs_in_node(knot_zone_tree_node_t *tnode, void *data)
 {
+	/*! \todo Passed data is always seto to NULL. */
 	assert(tnode != NULL);
-	assert(data != NULL);
+	//assert(data != NULL);
 
 	//xfrin_changes_t *changes = (xfrin_changes_t *)data;
 
@@ -2001,12 +2028,7 @@ int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
 	 * cleaning up the temporary 'changes' structure.
 	 */
 	xfrin_changes_t changes;
-	changes.new_rrsets = NULL;
-	changes.new_rrsets_count = 0;
-	changes.new_rrsets_allocated = 0;
-	changes.old_nodes = NULL;
-	changes.old_nodes_allocated = 0;
-	changes.old_nodes_count = 0;
+	memset(&changes, 0, sizeof(xfrin_changes_t));
 
 	for (int i = 0; i < chsets->count; ++i) {
 		if ((ret = xfrin_apply_changeset(contents_copy, &changes,
