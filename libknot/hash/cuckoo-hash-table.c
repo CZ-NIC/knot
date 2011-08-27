@@ -764,6 +764,34 @@ void ck_destroy_table(ck_hash_table_t **table, void (*dtor_value)(void *value),
 	(*table) = NULL;
 }
 
+void ck_table_free(ck_hash_table_t **table)
+{
+	if (table == NULL || *table == NULL) {
+		return;
+	}
+	
+	pthread_mutex_lock(&(*table)->mtx_table);
+
+	ck_stash_item_t *item = (*table)->stash;
+	while (item != NULL) {
+		// disconnect the item
+		(*table)->stash = item->next;
+		free(item);
+		item = (*table)->stash;
+	}
+
+	// deallocate tables
+	for (uint t = 0; t < (*table)->table_count; ++t) {
+		free((*table)->tables[t]);
+	}
+
+	pthread_mutex_unlock(&(*table)->mtx_table);
+	pthread_mutex_destroy(&(*table)->mtx_table);
+
+	free(*table);
+	(*table) = NULL;
+}
+
 int ck_insert_item(ck_hash_table_t *table, const char *key,
                    size_t length, void *value)
 {
