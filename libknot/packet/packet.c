@@ -75,20 +75,28 @@ static void knot_packet_init_pointers_response(knot_packet_t *pkt)
 		(void *)pkt->owner_tmp - (void *)pkt->question.qname);
 
 	// then answer, authority and additional sections
-	pkt->answer = (const knot_rrset_t **)
-	                   ((char *)pkt->owner_tmp + PREALLOC_RR_OWNER);
-	pkt->authority = pkt->answer + DEFAULT_ANCOUNT;
-	pkt->additional = pkt->authority + DEFAULT_NSCOUNT;
+	if (DEFAULT_ANCOUNT_QUERY == 0) {
+		pkt->answer = NULL;
+	} else {
+		pkt->answer = (const knot_rrset_t **)
+		            ((char *)pkt->owner_tmp + PREALLOC_RR_OWNER);
+	}
+	
+	if (DEFAULT_NSCOUNT_QUERY == 0) {
+		pkt->authority = NULL;
+	} else {
+		pkt->authority = pkt->answer + DEFAULT_ANCOUNT;
+	}
+	
+	if (DEFAULT_ARCOUNT_QUERY == 0) {
+		pkt->additional = NULL;
+	} else {
+		pkt->additional = pkt->authority + DEFAULT_NSCOUNT;
+	}
 
-	debug_knot_packet("Answer section: %p (%zu after QNAME)\n",
-		pkt->answer,
-		(void *)pkt->answer - (void *)pkt->question.qname);
-	debug_knot_packet("Authority section: %p (%zu after Answer)\n",
-		pkt->authority,
-		(void *)pkt->authority - (void *)pkt->answer);
-	debug_knot_packet("Additional section: %p (%zu after Authority)\n",
-		pkt->additional,
-		(void *)pkt->additional - (void *)pkt->authority);
+	debug_knot_packet("Answer section: %p\n", pkt->answer);
+	debug_knot_packet("Authority section: %p\n", pkt->authority);
+	debug_knot_packet("Additional section: %p\n", pkt->additional);
 
 	pkt->max_an_rrsets = DEFAULT_ANCOUNT;
 	pkt->max_ns_rrsets = DEFAULT_NSCOUNT;
@@ -155,20 +163,28 @@ static void knot_packet_init_pointers_query(knot_packet_t *pkt)
 //	                              + PREALLOC_QNAME_LABELS);
 
 	// then answer, authority and additional sections
-	pkt->answer = (const knot_rrset_t **)
-	          ((char *)pkt->question.qname->labels + PREALLOC_QNAME_LABELS);
-	pkt->authority = pkt->answer + DEFAULT_ANCOUNT_QUERY;
-	pkt->additional = pkt->authority + DEFAULT_NSCOUNT_QUERY;
+	if (DEFAULT_ANCOUNT_QUERY == 0) {
+		pkt->answer = NULL;
+	} else {
+		pkt->answer = (const knot_rrset_t **)
+		  ((char *)pkt->question.qname->labels + PREALLOC_QNAME_LABELS);
+	}
+	
+	if (DEFAULT_NSCOUNT_QUERY == 0) {
+		pkt->authority = NULL;
+	} else {
+		pkt->authority = pkt->answer + DEFAULT_ANCOUNT_QUERY;
+	}
+	
+	if (DEFAULT_ARCOUNT_QUERY == 0) {
+		pkt->additional = NULL;
+	} else {
+		pkt->additional = pkt->authority + DEFAULT_NSCOUNT_QUERY;
+	}
 
-	debug_knot_packet("Answer section: %p (%zu after QNAME)\n",
-		pkt->answer,
-		(void *)pkt->answer - (void *)pkt->question.qname);
-	debug_knot_packet("Authority section: %p (%zu after Answer)\n",
-		pkt->authority,
-		(void *)pkt->authority - (void *)pkt->answer);
-	debug_knot_packet("Additional section: %p (%zu after Authority)\n",
-		pkt->additional,
-		(void *)pkt->additional - (void *)pkt->authority);
+	debug_knot_packet("Answer section: %p\n", pkt->answer);
+	debug_knot_packet("Authority section: %p\n", pkt->authority);
+	debug_knot_packet("Additional section: %p\n", pkt->additional);
 
 	pkt->max_an_rrsets = DEFAULT_ANCOUNT_QUERY;
 	pkt->max_ns_rrsets = DEFAULT_NSCOUNT_QUERY;
