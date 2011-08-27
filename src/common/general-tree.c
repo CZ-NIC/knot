@@ -135,6 +135,7 @@ void gen_tree_destroy(general_tree_t **tree,
 {
 	MOD_TREE_DESTROY((*tree)->tree, general_tree_node, avl, dest_func,
 	                 gen_rem_func, data);
+	free((*tree)->tree);
 	free(*tree);
 	*tree = NULL;
 }
