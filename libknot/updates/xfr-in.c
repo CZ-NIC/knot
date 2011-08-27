@@ -865,7 +865,8 @@ static int xfrin_changes_check_hash_items(ck_hash_table_item_t ***items,
 static void xfrin_zone_contents_free(knot_zone_contents_t **contents)
 {
 	if ((*contents)->table != NULL) {
-		ck_destroy_table(&(*contents)->table, NULL, 0);
+//		ck_destroy_table(&(*contents)->table, NULL, 0);
+		ck_table_free(&(*contents)->table);
 	}
 
 	// free the zone tree, but only the structure
@@ -2007,8 +2008,11 @@ static int xfrin_fix_references(knot_zone_contents_t *contents)
 	ck_apply(table, xfrin_fix_hash_refs, NULL);
 	
 	// fix references dname table
-	return knot_zone_contents_dname_table_apply(contents,
+	int ret = knot_zone_contents_dname_table_apply(contents,
 	                                            xfrin_fix_dname_refs, NULL);
+	assert(ret == KNOT_EOK);
+	
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2038,11 +2042,14 @@ static void xfrin_cleanup_update(xfrin_changes_t *changes)
 int xfrin_apply_changesets_to_zone(knot_zone_t *zone, 
                                    knot_changesets_t *chsets)
 {
-	if (zone == NULL || chsets == NULL) {
+	if (zone == NULL || chsets == NULL/* || chsets->count == 0*/) {
 		return KNOT_EBADARG;
 	}
 	
 	knot_zone_contents_t *old_contents = knot_zone_get_contents(zone);
+	
+//	debug_knot_xfr("\nOLD ZONE CONTENTS:\n\n");
+//	knot_zone_contents_dump(old_contents, 1);
 
 	/*
 	 * Ensure that the zone generation is set to 0.
@@ -2184,7 +2191,7 @@ int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
 	/*
 	 * Delete all old and unused data.
 	 */
-	xfrin_zone_contents_free(&old_contents);
+	xfrin_zone_contents_free(&old_contents);	
 	xfrin_cleanup_update(&changes);
 	
 	/* 
