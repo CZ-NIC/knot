@@ -702,9 +702,12 @@ static int ns_put_covering_nsec3(const knot_zone_contents_t *zone,
                                  knot_packet_t *resp)
 {
 	const knot_node_t *prev, *node;
+	/*! \todo Check version. */
 	int match = knot_zone_contents_find_nsec3_for_name(zone, name,
 	                                                     &node, &prev);
 	assert(match >= 0);
+	node = knot_node_current(node);
+	prev = knot_node_current(prev);
 
 	if (match == KNOT_ZONE_NAME_FOUND){
 		// run-time collision => SERVFAIL
@@ -964,7 +967,9 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 
 	// check if we have previous; if not, find one using the tree
 	if (previous == NULL) {
+		/*! \todo Check version. */
 		previous = knot_zone_contents_find_previous(zone, qname);
+		previous = knot_node_current(previous);
 		assert(previous != NULL);
 	}
 
@@ -1170,7 +1175,9 @@ static void ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 
 	// check if we have previous; if not, find one using the tree
 	if (previous == NULL) {
+		
 		previous = knot_zone_contents_find_previous(zone, qname);
+		previous = knot_node_current(previous);
 		assert(previous != NULL);
 	}
 
@@ -1583,11 +1590,18 @@ static int ns_answer_from_zone(const knot_zone_contents_t *zone,
 
 search:
 #ifdef USE_HASH_TABLE
+	/*! \todo Check version. */
 	find_ret = knot_zone_contents_find_dname_hash(zone, qname, &node,
 	                                                &closest_encloser);
+	node = knot_node_current(node);
+	closest_encloser = knot_node_current(closest_encloser);
 #else
+	/*! \todo Check version. */
 	find_ret = knot_zone_contents_find_dname(zone, qname, &node,
 	                                          &closest_encloser, &previous);
+	node = knot_node_current(node);
+	closest_encloser = knot_node_current(closest_encloser);
+	previous = knot_node_current(previous);
 #endif
 	if (find_ret == KNOT_EBADARG) {
 		return NS_ERR_SERVFAIL;
