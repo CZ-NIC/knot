@@ -303,7 +303,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 
 int knot_zone_tree_remove(knot_zone_tree_t *tree,
                             const knot_dname_t *owner,
-                            knot_node_t **removed)
+                            knot_zone_tree_node_t **removed)
 {
 	if (tree == NULL || owner == NULL) {
 		return KNOT_EBADARG;
@@ -335,8 +335,10 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
 	knot_node_free(&tmp_data, 0, 0);
 	free(tmp);
 
-	*removed = (n) ? n->node : NULL;
-	free(n);
+//	*removed = (n) ? n->node : NULL;
+//	free(n);
+	*removed = n;
+	
 	return KNOT_EOK;
 }
 

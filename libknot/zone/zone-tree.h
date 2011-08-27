@@ -165,7 +165,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
  */
 int knot_zone_tree_remove(knot_zone_tree_t *tree,
                             const knot_dname_t *owner,
-                            knot_node_t **removed);
+                            knot_zone_tree_node_t **removed);
 
 /*!
  * \brief Applies the given function to each node in the zone.

@@ -844,7 +844,7 @@ int ck_update_item(const ck_hash_table_t *table, const char *key, size_t length,
 
 /*----------------------------------------------------------------------------*/
 
-int ck_remove_item(const ck_hash_table_t *table, const char *key, size_t length,
+int ck_delete_item(const ck_hash_table_t *table, const char *key, size_t length,
                    void (*dtor_value)(void *value), int delete_key)
 {
 	rcu_read_lock();	// is needed?
@@ -872,6 +872,21 @@ int ck_remove_item(const ck_hash_table_t *table, const char *key, size_t length,
 	free(item);
 
 	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+ck_hash_table_item_t *ck_remove_item(ck_hash_table_t *table, const char *key, 
+                                     size_t length)
+{
+	ck_hash_table_item_t **place = ck_find_item_nc(table, key, length);
+	if (place == NULL) {
+		return NULL;
+	}
+	
+	ck_hash_table_item_t *item = *place;
+	*place = NULL;
+	return item;
 }
 
 /*----------------------------------------------------------------------------*/

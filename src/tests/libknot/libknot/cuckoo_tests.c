@@ -151,7 +151,7 @@ static int test_cuckoo_delete(ck_hash_table_t *table, test_cuckoo_items *items)
 	for (int i = 0; i < count; ++i) {
 		int item = rand() % items->count;
 		if (items->deleted[item] == 0
-		    && ck_remove_item(table, items->keys[item],
+		    && ck_delete_item(table, items->keys[item],
 		                      items->key_sizes[item], NULL, 0) != 0) {
 			++errors;
 		} else {

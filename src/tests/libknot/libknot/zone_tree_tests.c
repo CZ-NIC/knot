@@ -443,7 +443,7 @@ static int test_tree_remove()
 			  errors++;
 		}
 		lived = 1;
-		knot_node_t *deleted_node = NULL;
+		knot_zone_tree_node_t *deleted_node = NULL;
 		lived = 0;
 		if (knot_zone_tree_remove(NULL, node->owner, &deleted_node) !=
 		     KNOT_EBADARG) {
@@ -464,7 +464,7 @@ static int test_tree_remove()
 
 	errors += lived != 1;
 
-	knot_node_t *removed_node = NULL;
+	knot_zone_tree_node_t *removed_node = NULL;
 
 	/* Remove previously inserted node. */
 	if (knot_zone_tree_remove(tree, node->owner, &removed_node) !=
@@ -473,7 +473,7 @@ static int test_tree_remove()
 		errors++;
 	}
 
-	if (removed_node != node) {
+	if (removed_node == NULL || removed_node->node != node) {
 		diag("Wrong node was removed!");
 		errors++;
 	}
