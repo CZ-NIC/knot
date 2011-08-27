@@ -899,16 +899,58 @@ cleanup:
 
 /*----------------------------------------------------------------------------*/
 
-short knot_zone_contents_generation(const knot_zone_contents_t *zone)
+//short knot_zone_contents_generation(const knot_zone_contents_t *zone)
+//{
+//	return zone->generation;
+//}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_zone_contents_gen_is_old(const knot_zone_contents_t *contents)
 {
-	return zone->generation;
+	return (contents->generation == 0);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void knot_zone_contents_switch_generation(knot_zone_contents_t *zone)
+int knot_zone_contents_gen_is_new(const knot_zone_contents_t *contents)
 {
-	zone->generation = 1 - zone->generation;
+	return (contents->generation == 1);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_zone_contents_gen_is_finished(const knot_zone_contents_t *contents)
+{
+	return (contents->generation == -1);
+}
+
+/*----------------------------------------------------------------------------*/
+
+//void knot_zone_contents_switch_generation(knot_zone_contents_t *zone)
+//{
+//	zone->generation = 1 - zone->generation;
+//}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_zone_contents_set_gen_old(knot_zone_contents_t *contents)
+{
+	contents->generation = 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_zone_contents_set_gen_new(knot_zone_contents_t *contents)
+{
+	contents->generation = 1;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_zone_contents_set_gen_new_finished(knot_zone_contents_t *contents)
+{
+	contents->generation = -1;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2259,6 +2301,8 @@ void knot_zone_contents_free(knot_zone_contents_t **contents)
 	}
 #endif
 	knot_nsec3_params_free(&(*contents)->nsec3_params);
+	
+	knot_dname_table_free(&(*contents)->dname_table);
 
 	free(*contents);
 	*contents = NULL;

@@ -864,6 +864,8 @@ static int xfrin_changes_check_hash_items(ck_hash_table_item_t ***items,
 
 static void xfrin_zone_contents_free(knot_zone_contents_t **contents)
 {
+	/*! \todo This should be all in some API!! */
+	
 	if ((*contents)->table != NULL) {
 //		ck_destroy_table(&(*contents)->table, NULL, 0);
 		ck_table_free(&(*contents)->table);
@@ -879,6 +881,9 @@ static void xfrin_zone_contents_free(knot_zone_contents_t **contents)
 	knot_nsec3_params_free(&(*contents)->nsec3_params);
 
 	knot_dname_table_free(&(*contents)->dname_table);
+	
+	free(*contents);
+	*contents = NULL;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1953,6 +1958,18 @@ static void xfrin_fix_refs_in_node(knot_zone_tree_node_t *tnode, void *data)
 
 /*----------------------------------------------------------------------------*/
 
+static void xfrin_fix_gen_in_node(knot_zone_tree_node_t *tnode, void *data)
+{
+	/*! \todo Passed data is always seto to NULL. */
+	assert(tnode != NULL);
+	
+	knot_node_t *node = tnode->node;
+
+	knot_node_set_old(node);
+}
+
+/*----------------------------------------------------------------------------*/
+
 static void xfrin_fix_hash_refs(ck_hash_table_item_t *item, void *data)
 {
 	if (item == NULL) {
@@ -2017,6 +2034,23 @@ static int xfrin_fix_references(knot_zone_contents_t *contents)
 
 /*----------------------------------------------------------------------------*/
 
+static int xfrin_fix_generation(knot_zone_contents_t *contents) 
+{
+	assert(contents != NULL);
+	
+	knot_zone_tree_t *tree = knot_zone_contents_get_nodes(contents);
+	knot_zone_tree_forward_apply_inorder(tree, xfrin_fix_gen_in_node,
+	                                     NULL);
+	
+	tree = knot_zone_contents_get_nsec3_nodes(contents);
+	knot_zone_tree_forward_apply_inorder(tree, xfrin_fix_gen_in_node,
+	                                     NULL);
+	
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 static void xfrin_cleanup_update(xfrin_changes_t *changes)
 {
 	// free old nodes but do not destroy their RRSets
@@ -2054,7 +2088,7 @@ int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
 	/*
 	 * Ensure that the zone generation is set to 0.
 	 */
-	if (knot_zone_contents_generation(old_contents) != 0) {
+	if (!knot_zone_contents_gen_is_old(old_contents)) {
 		// this would mean that a previous update was not completed
 		// abort
 		debug_knot_zone("Trying to apply changesets to zone that is "
@@ -2153,8 +2187,9 @@ int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
 	 * When all changesets are applied, set generation 1 to the copy of
 	 * the zone so that new nodes are used instead of old ones.
 	 */
-	knot_zone_contents_switch_generation(contents_copy);
+//	knot_zone_contents_switch_generation(contents_copy);
 	//contents_copy->generation = 1;
+	knot_zone_contents_set_gen_new(contents_copy);
 
 	/*
 	 * Finalize the zone contents.
@@ -2182,7 +2217,21 @@ int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
 	/*! \todo This operation must not fail!!! .*/
 	ret = xfrin_fix_references(contents_copy);
 	assert(ret == KNOT_EOK);
-
+	
+	// set generation to finished
+	knot_zone_contents_set_gen_new_finished(contents_copy);
+	
+	// set generation of all nodes to the old one
+	// now it is safe (no old nodes should be referenced)
+	ret = xfrin_fix_generation(contents_copy);
+	assert(ret == KNOT_EOK);
+	
+	/* 
+	 * Now we may also set the generation back to 0 so that another 
+	 * update is possible.
+	 */
+	knot_zone_contents_set_gen_old(contents_copy);
+	
 	/*
 	 * Wait until all readers finish reading
 	 */
@@ -2191,14 +2240,8 @@ int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
 	/*
 	 * Delete all old and unused data.
 	 */
-	xfrin_zone_contents_free(&old_contents);	
+	xfrin_zone_contents_free(&old_contents);
 	xfrin_cleanup_update(&changes);
-	
-	/* 
-	 * Now we may also set the generation back to 0 so that another 
-	 * update is possible.
-	 */
-	knot_zone_contents_switch_generation(contents_copy);
 
 	return KNOT_EOK;
 }

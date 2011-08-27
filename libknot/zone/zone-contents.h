@@ -58,7 +58,14 @@ typedef struct knot_zone_contents {
 
 	knot_nsec3_params_t nsec3_params;
 
-	/*! \brief Generation of the zone during update. May be only 0 or 1. */
+	/*! \brief Generation of the zone during update.
+	 * 
+	 * Possible values:
+	 * -  0 - Original version of the zone. Old nodes should be used.
+	 * -  1 - New (updated) zone. New nodes should be used.
+	 * - -1 - New (updated) zone, but exactly the stored nodes should be
+	 *        used, no matter their generation.
+	 */
 	short generation;
 
 	struct knot_zone *zone;
@@ -76,9 +83,17 @@ time_t knot_zone_contents_version(const knot_zone_contents_t *contents);
 void knot_zone_contents_set_version(knot_zone_contents_t *contents,
                                       time_t version);
 
-short knot_zone_contents_generation(const knot_zone_contents_t *contents);
+//short knot_zone_contents_generation(const knot_zone_contents_t *contents);
 
-void knot_zone_contents_switch_generation(knot_zone_contents_t *contents);
+int knot_zone_contents_gen_is_old(const knot_zone_contents_t *contents);
+int knot_zone_contents_gen_is_new(const knot_zone_contents_t *contents);
+int knot_zone_contents_gen_is_finished(const knot_zone_contents_t *contents);
+
+//void knot_zone_contents_switch_generation(knot_zone_contents_t *contents);
+
+void knot_zone_contents_set_gen_old(knot_zone_contents_t *contents);
+void knot_zone_contents_set_gen_new(knot_zone_contents_t *contents);
+void knot_zone_contents_set_gen_new_finished(knot_zone_contents_t *contents);
 
 uint16_t knot_zone_contents_class(const knot_zone_contents_t *contents);
 
