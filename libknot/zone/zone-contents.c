@@ -2113,7 +2113,15 @@ knot_zone_tree_t *knot_zone_contents_get_nodes(
 knot_zone_tree_t *knot_zone_contents_get_nsec3_nodes(
 		knot_zone_contents_t *contents)
 {
-	return contents->nodes;
+	return contents->nsec3_nodes;
+}
+
+/*----------------------------------------------------------------------------*/
+
+ck_hash_table_t *knot_zone_contents_get_hash_table(
+		knot_zone_contents_t *contents)
+{
+	return contents->table;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2203,7 +2211,8 @@ int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
 
 #ifdef USE_HASH_TABLE
 	if (from->table != NULL) {
-		ret = ck_copy_table(from->table, &contents->table);
+//		ret = ck_copy_table(from->table, &contents->table);
+		ret = ck_shallow_copy(from->table, &contents->table);
 		if (ret != 0) {
 			debug_knot_zone("knot_zone_contents_shallow_copy: "
 					"hash table copied\n");

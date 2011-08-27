@@ -280,7 +280,23 @@ int ck_update_item(const ck_hash_table_t *table, const char *key, size_t length,
 int ck_remove_item(const ck_hash_table_t *table, const char *key, size_t length,
                    void (*dtor_value)(void *value), int delete_key);
 
-int ck_copy_table(const ck_hash_table_t *from, ck_hash_table_t **to);
+/*!
+ * \brief Creates a shallow copy of the cuckoo hash table.
+ *
+ * This function creates just the ck_hash_table_t structure and its tables and
+ * stash. It does not copy individual ck_hash_table_item_t structures.
+ *
+ * \param from Table to copy.
+ * \param to The new copy will be stored here.
+ *
+ * \retval 0 if successful.
+ * \retval
+ */
+int ck_shallow_copy(const ck_hash_table_t *from, ck_hash_table_t **to);
+
+int ck_apply(ck_hash_table_t *table, 
+             void (*function)(ck_hash_table_item_t *item, void *data), 
+             void *data);
 
 /*----------------------------------------------------------------------------*/
 

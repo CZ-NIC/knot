@@ -876,7 +876,7 @@ int ck_remove_item(const ck_hash_table_t *table, const char *key, size_t length,
 
 /*----------------------------------------------------------------------------*/
 
-int ck_copy_table(const ck_hash_table_t *from, ck_hash_table_t **to)
+int ck_shallow_copy(const ck_hash_table_t *from, ck_hash_table_t **to)
 {
 	if (from == NULL || to == NULL) {
 		return -1;
@@ -889,8 +889,7 @@ int ck_copy_table(const ck_hash_table_t *from, ck_hash_table_t **to)
 		return -2;
 	}
 
-	// determine ideal size of one table in powers of 2 and save the
-	// exponent
+	// copy table count and table size exponent
 	(*to)->table_size_exp = from->table_size_exp;
 	(*to)->table_count = from->table_count;
 	assert((*to)->table_size_exp <= 32);
@@ -925,17 +924,81 @@ int ck_copy_table(const ck_hash_table_t *from, ck_hash_table_t **to)
 		           * sizeof(ck_hash_table_item_t *));
 	}
 
-	(*to)->stash = NULL;
-
+	// copy the stash - we must explicitly copy each stash item, but do not
+	// copy the ck_hash_table_item_t within them.
+	ck_stash_item_t *si = from->stash;
+	ck_stash_item_t **pos = &(*to)->stash;
+	while (si != NULL) {
+		ck_stash_item_t *si_new = (ck_stash_item_t *)
+		                           malloc(sizeof(ck_stash_item_t));
+		if (si_new == NULL) {
+			ERR_ALLOC_FAILED;
+			// delete tables
+			for (uint i = 0; i < (*to)->table_count; ++i) {
+				free((*to)->tables[i]);
+			}
+			// delete created stash items
+			si_new = (*to)->stash;
+			while (si_new != NULL) {
+				ck_stash_item_t *prev = si_new;
+				si_new = si_new->next;
+				free(prev);
+			}
+			free(*to);
+			return -2;
+		}
+		
+		si_new->item = si->item;
+		si_new->next = NULL;
+		*pos = si_new;
+		pos = &si_new->next;
+		si = si->next;
+	}
+	
+	// there should be no item being hashed right now
+	/*! \todo This operation should not be done while inserting / rehashing. 
+	 */
+	assert(from->hashed == NULL);
+	(*to)->hashed = NULL;
+	
 	// initialize rehash/insert mutex
 	pthread_mutex_init(&(*to)->mtx_table, NULL);
 
-	// set the generation to 1 and initialize the universal system
-	CLEAR_FLAGS(&(*to)->generation);
-	SET_GENERATION1(&(*to)->generation);
+	// copy the generation
+	(*to)->generation = from->generation;
+	
+	// copy the hash functions
+	memcpy(&(*to)->hash_system, &from->hash_system, sizeof(us_system_t));
+	
+	return 0;
+}
 
-	us_initialize(&(*to)->hash_system);
+/*----------------------------------------------------------------------------*/
 
+int ck_apply(ck_hash_table_t *table, 
+             void (*function)(ck_hash_table_item_t *item, void *data), 
+             void *data)
+{
+	if (table == NULL || function == NULL) {
+		return -1;
+	}
+	
+	/*! \todo Ensure that no insertion nor rehash is made during applying.*/
+	
+	// apply the function to all items in all tables
+	for (int t = 0; t < table->table_count; ++t) {
+		for (int i = 0; i < hashsize(table->table_size_exp); ++i) {
+			function(table->tables[t][i], data);
+		}
+	}
+	
+	// apply the function to the stash items
+	ck_stash_item_t *si = table->stash;
+	while (si != NULL) {
+		function(si->item, data);
+		si = si->next;
+	}
+	
 	return 0;
 }
 

@@ -499,6 +499,9 @@ knot_zone_tree_t *knot_zone_contents_get_nodes(
 knot_zone_tree_t *knot_zone_contents_get_nsec3_nodes(
 		knot_zone_contents_t *contents);
 
+ck_hash_table_t *knot_zone_contents_get_hash_table(
+		knot_zone_contents_t *contents);
+
 int knot_zone_contents_dname_table_apply(knot_zone_contents_t *contents,
                                            void (*function)(knot_dname_t *,
                                                             void *),
