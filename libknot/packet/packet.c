@@ -144,20 +144,21 @@ static void knot_packet_init_pointers_response(knot_packet_t *pkt)
 static void knot_packet_init_pointers_query(knot_packet_t *pkt)
 {
 	debug_knot_packet("Packet pointer: %p\n", pkt);
+	
+	char *pos = (char *)pkt + PREALLOC_PACKET;
 
 	// put QNAME directly after the structure
-	pkt->question.qname =
-		(knot_dname_t *)((char *)pkt + PREALLOC_PACKET);
+	pkt->question.qname = (knot_dname_t *)pos;
+	pos += PREALLOC_QNAME_DNAME;
 
 	debug_knot_packet("QNAME: %p (%zu after start of packet)\n",
 		pkt->question.qname,
 		(void *)pkt->question.qname - (void *)pkt);
 
-	pkt->question.qname->name = (uint8_t *)((char *)pkt->question.qname
-	                                         + PREALLOC_QNAME_DNAME);
-	pkt->question.qname->labels = (uint8_t *)((char *)
-	                                           pkt->question.qname->name
-	                                           + PREALLOC_QNAME_NAME);
+	pkt->question.qname->name = (uint8_t *)pos;
+	pos += PREALLOC_QNAME_NAME;
+	pkt->question.qname->labels = (uint8_t *)pos;
+	pos += PREALLOC_QNAME_LABELS;
 
 //	pkt->owner_tmp = (uint8_t *)((char *)pkt->question.qname->labels
 //	                              + PREALLOC_QNAME_LABELS);
@@ -166,20 +167,22 @@ static void knot_packet_init_pointers_query(knot_packet_t *pkt)
 	if (DEFAULT_ANCOUNT_QUERY == 0) {
 		pkt->answer = NULL;
 	} else {
-		pkt->answer = (const knot_rrset_t **)
-		  ((char *)pkt->question.qname->labels + PREALLOC_QNAME_LABELS);
+		pkt->answer = (const knot_rrset_t **)pos;
+		pos += DEFAULT_ANCOUNT_QUERY * sizeof(const knot_rrset_t *);
 	}
 	
 	if (DEFAULT_NSCOUNT_QUERY == 0) {
 		pkt->authority = NULL;
 	} else {
-		pkt->authority = pkt->answer + DEFAULT_ANCOUNT_QUERY;
+		pkt->authority = (const knot_rrset_t **)pos;
+		pos += DEFAULT_NSCOUNT_QUERY * sizeof(const knot_rrset_t *);
 	}
 	
 	if (DEFAULT_ARCOUNT_QUERY == 0) {
 		pkt->additional = NULL;
 	} else {
-		pkt->additional = pkt->authority + DEFAULT_NSCOUNT_QUERY;
+		pkt->additional = (const knot_rrset_t **)pos;
+		pos += DEFAULT_ARCOUNT_QUERY * sizeof(const knot_rrset_t *);
 	}
 
 	debug_knot_packet("Answer section: %p\n", pkt->answer);
@@ -190,23 +193,20 @@ static void knot_packet_init_pointers_query(knot_packet_t *pkt)
 	pkt->max_ns_rrsets = DEFAULT_NSCOUNT_QUERY;
 	pkt->max_ar_rrsets = DEFAULT_ARCOUNT_QUERY;
 
-	pkt->tmp_rrsets = (const knot_rrset_t **)
-	                      (pkt->additional + DEFAULT_ARCOUNT_QUERY);
+	pkt->tmp_rrsets = (const knot_rrset_t **)pos;
+	pos += DEFAULT_TMP_RRSETS_QUERY * sizeof(const knot_rrset_t *);
 
-	debug_knot_packet("Tmp rrsets: %p (%zu after Additional)\n",
-		pkt->tmp_rrsets,
-		(void *)pkt->tmp_rrsets - (void *)pkt->additional);
+	debug_knot_packet("Tmp rrsets: %p\n", pkt->tmp_rrsets);
 
 	pkt->tmp_rrsets_max = DEFAULT_TMP_RRSETS_QUERY;
 
-	debug_knot_packet("End of data: %p (%zu after start of packet)\n",
-		pkt->tmp_rrsets + DEFAULT_TMP_RRSETS_QUERY,
-		(void *)(pkt->tmp_rrsets + DEFAULT_TMP_RRSETS_QUERY)
-		- (void *)pkt);
+//	debug_knot_packet("End of data: %p (%zu after start of packet)\n",
+//		pkt->tmp_rrsets + DEFAULT_TMP_RRSETS_QUERY,
+//		(void *)(pkt->tmp_rrsets + DEFAULT_TMP_RRSETS_QUERY)
+//		- (void *)pkt);
 	debug_knot_packet("Allocated total: %u\n", PREALLOC_QUERY);
 
-	assert((char *)(pkt->tmp_rrsets + DEFAULT_TMP_RRSETS_QUERY)
-	       == (char *)pkt + PREALLOC_QUERY);
+	assert(pos == (char *)pkt + PREALLOC_QUERY);
 }
 
 /*----------------------------------------------------------------------------*/
