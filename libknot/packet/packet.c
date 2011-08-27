@@ -52,46 +52,44 @@ typedef enum {
 static void knot_packet_init_pointers_response(knot_packet_t *pkt)
 {
 	debug_knot_packet("Packet pointer: %p\n", pkt);
+	
+	char *pos = (char *)pkt + PREALLOC_PACKET;
 
 	// put QNAME directly after the structure
-	pkt->question.qname =
-		(knot_dname_t *)((char *)pkt + PREALLOC_PACKET);
+	pkt->question.qname = (knot_dname_t *)pos;
+	pos += PREALLOC_QNAME_DNAME;
 
-	debug_knot_packet("QNAME: %p (%zu after start of packet)\n",
-		pkt->question.qname,
-		(void *)pkt->question.qname - (void *)pkt);
+	debug_knot_packet("QNAME: %p\n", pkt->question.qname);
 
-	pkt->question.qname->name = (uint8_t *)((char *)pkt->question.qname
-	                                         + PREALLOC_QNAME_DNAME);
-	pkt->question.qname->labels = (uint8_t *)((char *)
-	                                           pkt->question.qname->name
-	                                           + PREALLOC_QNAME_NAME);
+	pkt->question.qname->name = (uint8_t *)pos;
+	pos += PREALLOC_QNAME_NAME;
+	pkt->question.qname->labels = (uint8_t *)pos;
+	pos += PREALLOC_QNAME_LABELS;
 
-	pkt->owner_tmp = (uint8_t *)((char *)pkt->question.qname->labels
-	                              + PREALLOC_QNAME_LABELS);
-
-	debug_knot_packet("Tmp owner: %p (%zu after QNAME)\n",
-		pkt->owner_tmp,
-		(void *)pkt->owner_tmp - (void *)pkt->question.qname);
+	pkt->owner_tmp = (uint8_t *)pos;
+	debug_knot_packet("Tmp owner: %p\n", pkt->owner_tmp);
+	pos += PREALLOC_RR_OWNER;
 
 	// then answer, authority and additional sections
 	if (DEFAULT_ANCOUNT_QUERY == 0) {
 		pkt->answer = NULL;
 	} else {
-		pkt->answer = (const knot_rrset_t **)
-		            ((char *)pkt->owner_tmp + PREALLOC_RR_OWNER);
+		pkt->answer = (const knot_rrset_t **)pos;
+		pos += DEFAULT_ANCOUNT * sizeof(const knot_rrset_t *);
 	}
 	
 	if (DEFAULT_NSCOUNT_QUERY == 0) {
 		pkt->authority = NULL;
 	} else {
-		pkt->authority = pkt->answer + DEFAULT_ANCOUNT;
+		pkt->authority = (const knot_rrset_t **)pos;
+		pos += DEFAULT_NSCOUNT * sizeof(const knot_rrset_t *);
 	}
 	
 	if (DEFAULT_ARCOUNT_QUERY == 0) {
 		pkt->additional = NULL;
 	} else {
-		pkt->additional = pkt->authority + DEFAULT_NSCOUNT;
+		pkt->additional = (const knot_rrset_t **)pos;
+		pos += DEFAULT_ARCOUNT * sizeof(const knot_rrset_t *);
 	}
 
 	debug_knot_packet("Answer section: %p\n", pkt->answer);
@@ -103,37 +101,24 @@ static void knot_packet_init_pointers_response(knot_packet_t *pkt)
 	pkt->max_ar_rrsets = DEFAULT_ARCOUNT;
 
 	// then domain names for compression and offsets
-	pkt->compression.dnames = (const knot_dname_t **)
-	                               (pkt->additional + DEFAULT_ARCOUNT);
-	pkt->compression.offsets = (size_t *)
-		(pkt->compression.dnames + DEFAULT_DOMAINS_IN_RESPONSE);
+	pkt->compression.dnames = (const knot_dname_t **)pos;
+	pos += DEFAULT_DOMAINS_IN_RESPONSE * sizeof(const knot_dname_t *);
+	pkt->compression.offsets = (size_t *)pos;
+	pos += DEFAULT_DOMAINS_IN_RESPONSE * sizeof(size_t);
 
-	debug_knot_packet("Compression dnames: %p (%zu after Additional)\n",
-		pkt->compression.dnames,
-		(void *)pkt->compression.dnames - (void *)pkt->additional);
-	debug_knot_packet("Compression offsets: %p (%zu after c. dnames)\n",
-		pkt->compression.offsets,
-		(void *)pkt->compression.offsets
-		  - (void *)pkt->compression.dnames);
+	debug_knot_packet("Compression dnames: %p\n", pkt->compression.dnames);
+	debug_knot_packet("Compression offsets: %p\n", pkt->compression.offsets);
 
 	pkt->compression.max = DEFAULT_DOMAINS_IN_RESPONSE;
 
-	pkt->tmp_rrsets = (const knot_rrset_t **)
-		(pkt->compression.offsets + DEFAULT_DOMAINS_IN_RESPONSE);
+	pkt->tmp_rrsets = (const knot_rrset_t **)pos;
+	pos += DEFAULT_TMP_RRSETS * sizeof(const knot_rrset_t *);
 
-	debug_knot_packet("Tmp rrsets: %p (%zu after compression offsets)"
-		"\n", pkt->tmp_rrsets,
-		(void *)pkt->tmp_rrsets - (void *)pkt->compression.offsets);
+	debug_knot_packet("Tmp rrsets: %p\n", pkt->tmp_rrsets);
 
 	pkt->tmp_rrsets_max = DEFAULT_TMP_RRSETS;
 
-	debug_knot_packet("End of data: %p (%zu after start of packet)\n",
-		pkt->tmp_rrsets + DEFAULT_TMP_RRSETS,
-		(void *)(pkt->tmp_rrsets + DEFAULT_TMP_RRSETS) - (void *)pkt);
-	debug_knot_packet("Allocated total: %u\n", PREALLOC_RESPONSE);
-
-	assert((char *)(pkt->tmp_rrsets + DEFAULT_TMP_RRSETS)
-	       == (char *)pkt + PREALLOC_RESPONSE);
+	assert((char *)pos == (char *)pkt + PREALLOC_RESPONSE);
 }
 
 /*----------------------------------------------------------------------------*/
