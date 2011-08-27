@@ -125,7 +125,8 @@ void knot_node_dump(knot_node_t *node, void *loaded_zone)
 	free(name);
 	printf("labels: ");
 	hex_print((char *)node->owner->labels, node->owner->label_count);
-	printf("node/id: %p\n", node->owner->node);
+	printf("node: %p\n", node);
+	printf("node (in node's owner): %p\n", node->owner->node);
 	if (loaded_zone && node->prev != NULL) {
 		name = knot_dname_to_str(node->prev->owner);
 		printf("previous node: %s\n", name);
