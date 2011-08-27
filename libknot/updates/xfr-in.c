@@ -2075,10 +2075,10 @@ int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
 
 	/*
 	 * When all changesets are applied, set generation 1 to the copy of
-	 * the zone
+	 * the zone so that new nodes are used instead of old ones.
 	 */
-	/*! \todo Some API for this??? */
-	contents_copy->generation = 1;
+	knot_zone_contents_switch_generation(contents_copy);
+	//contents_copy->generation = 1;
 
 	/*
 	 * Finalize the zone contents.
@@ -2117,6 +2117,12 @@ int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
 	 */
 	xfrin_zone_contents_free(&old_contents);
 	xfrin_cleanup_update(&changes);
+	
+	/* 
+	 * Now we may also set the generation back to 0 so that another 
+	 * update is possible.
+	 */
+	knot_zone_contents_switch_generation(contents_copy);
 
 	return KNOT_EOK;
 }
