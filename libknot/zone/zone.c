@@ -180,7 +180,8 @@ void knot_zone_free(knot_zone_t **zone)
 
 	debug_knot_zone("zone_free().\n");
 
-	if ((*zone)->contents && (*zone)->contents->generation != 0) {
+	if ((*zone)->contents 
+	    && !knot_zone_contents_gen_is_old((*zone)->contents)) {
 		// zone is in the middle of an update, report
 		debug_knot_zone("Destroying zone that is in the middle of an "
 		                  "update.\n");
@@ -208,7 +209,7 @@ void knot_zone_deep_free(knot_zone_t **zone, int free_rdata_dnames)
 		return;
 	}
 
-	if ((*zone)->contents->generation != 0) {
+	if (!knot_zone_contents_gen_is_old((*zone)->contents)) {
 		// zone is in the middle of an update, report
 		debug_knot_zone("Destroying zone that is in the middle of an "
 		                  "update.\n");

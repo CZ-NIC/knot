@@ -167,12 +167,22 @@ static int compare_rrset_types(void *rr1, void *rr2)
 
 /*----------------------------------------------------------------------------*/
 
-static short knot_node_zone_generation(const knot_node_t *node)
+static int knot_node_zone_gen_is_new(const knot_node_t *node)
 {
 	assert(node->zone != NULL);
 	knot_zone_contents_t *cont = rcu_dereference(node->zone->contents);
 	assert(cont != NULL);
-	return cont->generation;
+	return knot_zone_contents_gen_is_new(cont);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int knot_node_zone_gen_is_old(const knot_node_t *node)
+{
+	assert(node->zone != NULL);
+	knot_zone_contents_t *cont = rcu_dereference(node->zone->contents);
+	assert(cont != NULL);
+	return knot_zone_contents_gen_is_old(cont);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -374,12 +384,16 @@ const knot_node_t *knot_node_parent(const knot_node_t *node,
 	knot_node_t *parent = node->parent;
 	
 	if (check_version && node->zone != NULL) {
-		short ver = knot_node_zone_generation(node);
+		int new_gen = knot_node_zone_gen_is_new(node);
+//		short ver = knot_node_zone_generation(node);
 	
-		assert(ver != 0 || parent == NULL 
+		/*! \todo Remove, this will not be true during the reference
+		 *        fixing.
+		 */
+		assert(new_gen || parent == NULL 
 		       || !knot_node_is_new(parent));
 		
-		if (ver != 0 && parent != NULL) {
+		if (new_gen && parent != NULL) {
 			// we want the new node
 			assert(node->parent->new_node != NULL);
 			parent = parent->new_node;
@@ -432,14 +446,16 @@ knot_node_t *knot_node_get_previous(const knot_node_t *node,
 	knot_node_t *prev = node->prev;
 	
 	if (check_version && prev != NULL) {
-		short ver = knot_node_zone_generation(node);
+		int new_gen = knot_node_zone_gen_is_new(node);
+		int old_gen = knot_node_zone_gen_is_old(node);
+//		short ver = knot_node_zone_generation(node);
 		
-		if (ver == 0) {  // we want old node
+		if (old_gen) {  // we want old node
 			while (knot_node_is_new(prev)) {
 				prev = prev->prev;
 			}
 			assert(!knot_node_is_new(prev));
-		} else {  // we want new node
+		} else if (new_gen) {  // we want new node
 			while (knot_node_is_old(prev)) {
 				if (prev->new_node) {
 					prev = prev->new_node;
@@ -481,9 +497,13 @@ const knot_node_t *knot_node_nsec3_node(const knot_node_t *node,
 	}
 	
 	if (check_version) {
-		short ver = knot_node_zone_generation(node);
-		assert(ver != 0 || !knot_node_is_new(nsec3_node));
-		if (ver != 0 && knot_node_is_old(nsec3_node)) {
+		int new_gen = knot_node_zone_gen_is_new(node);
+		int old_gen = knot_node_zone_gen_is_old(node);
+//		short ver = knot_node_zone_generation(node);
+		assert(new_gen || !knot_node_is_new(nsec3_node));
+		if (old_gen && knot_node_is_new(nsec3_node)) {
+			return NULL;
+		} else if (new_gen && knot_node_is_old(nsec3_node)) {
 			nsec3_node = nsec3_node->new_node;
 		}
 	}
@@ -535,11 +555,13 @@ const knot_node_t *knot_node_wildcard_child(const knot_node_t *node,
 	knot_node_t *w = node->wildcard_child;
 	
 	if (check_version && w != 0) {
-		short ver = knot_node_zone_generation(node);
+		int new_gen = knot_node_zone_gen_is_new(node);
+		int old_gen = knot_node_zone_gen_is_old(node);
+//		short ver = knot_node_zone_generation(node);
 
-		if (ver == 0 && knot_node_is_new(w)) {
+		if (old_gen && knot_node_is_new(w)) {
 			return NULL;
-		} else if (ver != 0 && knot_node_is_old(w)) {
+		} else if (new_gen && knot_node_is_old(w)) {
 			assert(w->new_node != NULL);
 			w = w->new_node;
 		}
@@ -566,11 +588,13 @@ const knot_node_t *knot_node_current(const knot_node_t *node)
 		return node;
 	}
 
-	short ver = knot_node_zone_generation(node);
+	int new_gen = knot_node_zone_gen_is_new(node);
+	int old_gen = knot_node_zone_gen_is_old(node);
+//	short ver = knot_node_zone_generation(node);
 
-	if (ver == 0 && knot_node_is_new(node)) {
+	if (old_gen && knot_node_is_new(node)) {
 		return NULL;
-	} else if (ver != 0 && knot_node_is_old(node)) {
+	} else if (new_gen && knot_node_is_old(node)) {
 		assert(node->new_node != NULL);
 		return node->new_node;
 	}
@@ -586,14 +610,21 @@ knot_node_t *knot_node_get_current(knot_node_t *node)
 		return node;
 	}
 
-	short ver = knot_node_zone_generation(node);
+	int new_gen = knot_node_zone_gen_is_new(node);
+	int old_gen = knot_node_zone_gen_is_old(node);
+//	short ver = knot_node_zone_generation(node);
 
-	if (ver == 0 && knot_node_is_new(node)) {
+	if (old_gen && knot_node_is_new(node)) {
 		return NULL;
-	} else if (ver != 0 && knot_node_is_old(node)) {
+	} else if (new_gen && knot_node_is_old(node)) {
 		assert(node->new_node != NULL);
 		return node->new_node;
 	}
+	
+	assert((old_gen && knot_node_is_old(node))
+	       || (new_gen && knot_node_is_new(node))
+	       || (!old_gen && !new_gen));
+	
 	return node;
 }
 
@@ -764,14 +795,29 @@ void knot_node_clear_old(knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
+static void knot_node_free_rrsets_from_tree(void *item, void *data)
+{
+	if (item == NULL) {
+		return;
+	}
+	
+	knot_rrset_t *rrset = (knot_rrset_t *)(item);
+	knot_rrset_deep_free(&rrset, 0, 1, *((int *)data));
+}
+
+/*----------------------------------------------------------------------------*/
+
 void knot_node_free_rrsets(knot_node_t *node, int free_rdata_dnames)
 {
-	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
-	for (int i = 0; i < node->rrset_count; i++) {
-		knot_rrset_deep_free(&(rrsets[i]), 0, 1, free_rdata_dnames);
-	}
+//	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
+//	for (int i = 0; i < node->rrset_count; i++) {
+//		knot_rrset_deep_free(&(rrsets[i]), 0, 1, free_rdata_dnames);
+//	}
+	
+//	free(rrsets);
 
-	gen_tree_destroy(&node->rrset_tree, NULL, NULL);
+	gen_tree_destroy(&node->rrset_tree, knot_node_free_rrsets_from_tree, 
+	                 (void *)&free_rdata_dnames);
 }
 
 /*----------------------------------------------------------------------------*/
