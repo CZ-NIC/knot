@@ -1382,52 +1382,57 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-knot_node_t *knot_zone_contents_remove_node(
-	knot_zone_contents_t *contents, const knot_node_t *node)
+int knot_zone_contents_remove_node(knot_zone_contents_t *contents, 
+	const knot_node_t *node, knot_zone_tree_node_t **removed_tree, 
+	ck_hash_table_item_t **removed_hash)
 {
 	if (contents == NULL || node == NULL) {
-		return NULL;
+		return KNOT_EBADARG;
 	}
 
 	const knot_dname_t *owner = knot_node_owner(node);
 
 	// 1) remove the node from hash table
-	int ret = ck_remove_item(contents->table,
-	               (const char *)knot_dname_name(owner),
-	               knot_dname_size(owner), NULL, 0);
-	if (ret != 0) {
-		return NULL;
+	*removed_hash = NULL;
+	*removed_hash = ck_remove_item(contents->table, 
+	                               (const char *)knot_dname_name(owner),
+	                               knot_dname_size(owner));
+//	int ret = ck_detete_item(contents->table,
+//	               (const char *)knot_dname_name(owner),
+//	               knot_dname_size(owner), NULL, 0);
+	if (*removed_hash == NULL) {
+		return KNOT_ENONODE;
 	}
 
 	// 2) remove the node from the zone tree
-	knot_node_t *n = NULL;
-	ret = knot_zone_tree_remove(contents->nodes, owner, &n);
+	*removed_tree = NULL;
+	int ret = knot_zone_tree_remove(contents->nodes, owner, removed_tree);
 	if (ret != KNOT_EOK) {
-		return NULL;
+		return KNOT_ENONODE;
 	}
 
-	return n;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-knot_node_t *knot_zone_contents_remove_nsec3_node(
-	knot_zone_contents_t *contents, const knot_node_t *node)
+int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents, 
+	const knot_node_t *node, knot_zone_tree_node_t **removed)
 {
 	if (contents == NULL || node == NULL) {
-		return NULL;
+		return KNOT_EBADARG;
 	}
 
 	const knot_dname_t *owner = knot_node_owner(node);
-	knot_node_t *n = NULL;
 
 	// remove the node from the zone tree
-	int ret = knot_zone_tree_remove(contents->nsec3_nodes, owner, &n);
+	*removed = NULL;
+	int ret = knot_zone_tree_remove(contents->nsec3_nodes, owner, removed);
 	if (ret != KNOT_EOK) {
-		return NULL;
+		return KNOT_ENONODE;
 	}
 
-	return n;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

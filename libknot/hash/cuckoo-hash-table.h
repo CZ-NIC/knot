@@ -194,6 +194,12 @@ ck_hash_table_t *ck_create_table(uint items);
 void ck_destroy_table(ck_hash_table_t **table,
                       void (*dtor_value)(void *value), int delete_key);
 
+/*!
+ * \brief Destroys the table structures, but does not remove the individual
+ *        hash table items.
+ */
+void ck_table_free(ck_hash_table_t **table);
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Inserts item into the hash table.
@@ -277,8 +283,11 @@ int ck_update_item(const ck_hash_table_t *table, const char *key, size_t length,
  * \retval 0 If successful.
  * \retval -1 If the item was not found in the table.
  */
-int ck_remove_item(const ck_hash_table_t *table, const char *key, size_t length,
+int ck_delete_item(const ck_hash_table_t *table, const char *key, size_t length,
                    void (*dtor_value)(void *value), int delete_key);
+
+ck_hash_table_item_t *ck_remove_item(ck_hash_table_t *table, const char *key, 
+                                     size_t length);
 
 /*!
  * \brief Creates a shallow copy of the cuckoo hash table.

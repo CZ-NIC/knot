@@ -163,11 +163,15 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *contents,
                                          knot_rrset_dupl_handling_t dupl,
                                          int use_domain_table);
 
-knot_node_t *knot_zone_contents_remove_node(
-	knot_zone_contents_t *contents, const knot_node_t *node);
+int knot_zone_contents_remove_node(knot_zone_contents_t *contents, 
+	const knot_node_t *node, knot_zone_tree_node_t **removed_tree, 
+	ck_hash_table_item_t **removed_hash);
 
-knot_node_t *knot_zone_contents_remove_nsec3_node(
-	knot_zone_contents_t *contents, const knot_node_t *node);
+//knot_zone_tree_node_t *knot_zone_contents_remove_node(
+//	knot_zone_contents_t *contents, const knot_node_t *node);
+
+int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents, 
+	const knot_node_t *node, knot_zone_tree_node_t **removed);
 
 /*!
  * \warning Always call knot_zone_adjust_dnames() prior to calling this

@@ -756,6 +756,10 @@ typedef struct {
 	knot_node_t **new_nodes;
 	int new_nodes_count;
 	int new_nodes_allocated;
+	
+	ck_hash_table_item_t **old_hash_items;
+	int old_hash_items_count;
+	int old_hash_items_allocated;
 } xfrin_changes_t;
 
 /*----------------------------------------------------------------------------*/
@@ -766,6 +770,7 @@ static void xfrin_changes_free(xfrin_changes_t **changes)
 	free((*changes)->old_rrsets);
 	free((*changes)->new_rrsets);
 	free((*changes)->new_nodes);
+	free((*changes)->old_hash_items);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -821,6 +826,35 @@ static int xfrin_changes_check_nodes(knot_node_t ***nodes,
 	memset(nodes_new, 0, new_count * node_len);
 	memcpy(nodes_new, *nodes, (*count) * node_len);
 	*nodes = nodes_new;
+	*allocated = new_count;
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_changes_check_hash_items(ck_hash_table_item_t ***items,
+                                          int *count, int *allocated)
+{
+	/* Prevent infinite loop in case of allocated = 0. */
+	int new_count = 0;
+	if (*allocated == 0) {
+		new_count = *count + 1;
+	} else {
+		if (*count == *allocated) {
+			new_count = *allocated * 2;
+		}
+	}
+
+	const size_t item_len = sizeof(ck_hash_table_item_t *);
+	ck_hash_table_item_t **items_new = malloc(new_count * item_len);
+	if (items_new == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	memset(items_new, 0, new_count * item_len);
+	memcpy(items_new, *items, (*count) * item_len);
+	*items = items_new;
 	*allocated = new_count;
 
 	return KNOT_EOK;
@@ -1799,7 +1833,10 @@ static int xfrin_finalize_remove_nodes(knot_zone_contents_t *contents,
 	assert(contents != NULL);
 	assert(changes != NULL);
 	
-	knot_node_t *removed, *node;
+	knot_node_t *node;
+	knot_zone_tree_node_t *removed;
+	ck_hash_table_item_t *rem_hash;
+	int ret;
 	
 	for (int i = 0; i < changes->old_nodes_count; ++i) {
 		node = changes->old_nodes[i];
@@ -1812,18 +1849,39 @@ static int xfrin_finalize_remove_nodes(knot_zone_contents_t *contents,
 		
 			if (knot_node_rrset(node, KNOT_RRTYPE_NSEC3) 
 			    != NULL) {
-				removed = knot_zone_contents_remove_nsec3_node(
-					contents, node);
+				ret = knot_zone_contents_remove_nsec3_node(
+					contents, node, &removed);
 			} else {
-				removed = knot_zone_contents_remove_node(
-					contents, node);
+				ret = knot_zone_contents_remove_node(
+					contents, node, &removed, &rem_hash);
 			}
-			if (removed == NULL) {
-				debug_knot_xfr("Failed to remove node from zone!\n");
+			if (ret != KNOT_EOK) {
+				debug_knot_xfr("Failed to remove node from zone"
+				               "!\n");
 				return KNOT_ENONODE;
 			}
 			
-			assert(removed == node);
+			assert(removed != NULL);
+			assert(removed->node == node);
+			// delete the tree node (not needed)
+			free(removed);
+			
+			if (rem_hash != NULL) {
+				// save the removed hash table item
+				ret = xfrin_changes_check_hash_items(
+					&changes->old_hash_items,
+					&changes->old_hash_items_count,
+					&changes->old_hash_items_allocated);
+				if (ret != KNOT_EOK) {
+					debug_knot_xfr("Failed to save the hash"
+					               " table item to list of "
+					               "old items.\n");
+					return ret;
+				}
+				changes->old_hash_items[
+					changes->old_hash_items_count++]
+					= rem_hash;
+			}
 		}
 	}
 	return KNOT_EOK;
@@ -1896,7 +1954,9 @@ static void xfrin_fix_refs_in_node(knot_zone_tree_node_t *tnode, void *data)
 
 static void xfrin_fix_hash_refs(ck_hash_table_item_t *item, void *data)
 {
-	assert(item != NULL);
+	if (item == NULL) {
+		return;
+	}
 	
 	knot_node_t *new_node = knot_node_get_new_node(
 	                             (knot_node_t *)item->value);
@@ -1966,6 +2026,11 @@ static void xfrin_cleanup_update(xfrin_changes_t *changes)
 	for (int i = 0; i < changes->old_rrsets_count; ++i) {
 		knot_rrset_deep_free(&changes->old_rrsets[i], 0, 1, 1);
 	}
+	
+	// free old hash table items, but do not touch their contents
+	for (int i = 0; i < changes->old_hash_items_count; ++i) {
+		free(changes->old_hash_items[i]);
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1973,6 +2038,10 @@ static void xfrin_cleanup_update(xfrin_changes_t *changes)
 int xfrin_apply_changesets_to_zone(knot_zone_t *zone, 
                                    knot_changesets_t *chsets)
 {
+	if (zone == NULL || chsets == NULL) {
+		return KNOT_EBADARG;
+	}
+	
 	knot_zone_contents_t *old_contents = knot_zone_get_contents(zone);
 
 	/*
