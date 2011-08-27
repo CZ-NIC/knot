@@ -264,6 +264,8 @@ void knot_dname_table_free(knot_dname_table_t **table)
 	/* Walk the tree and free each node, but not the dnames. */
 	TREE_POST_ORDER_APPLY((*table)->tree, dname_table_node, avl,
 			      delete_dname_table_node, 0);
+	
+	free((*table)->tree);
 
 	free(*table);
 	*table = NULL;
