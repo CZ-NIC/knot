@@ -992,11 +992,12 @@ int ck_shallow_copy(const ck_hash_table_t *from, ck_hash_table_t **to)
 		}
 		
 		si_new->item = si->item;
-		si_new->next = NULL;
 		*pos = si_new;
 		pos = &si_new->next;
 		si = si->next;
 	}
+	
+	*pos = NULL;
 	
 	// there should be no item being hashed right now
 	/*! \todo This operation should not be done while inserting / rehashing. 
