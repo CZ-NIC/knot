@@ -1857,6 +1857,13 @@ static int xfrin_finalize_contents(knot_zone_contents_t *contents,
 	knot_zone_tree_reverse_apply_postorder(t, xfrin_check_node_in_tree, 
 	                                       (void *)changes);
 	
+	// Do the same with NSEC3 nodes.
+	t = knot_zone_contents_get_nsec3_nodes(contents);
+	assert(t != NULL);
+	
+	knot_zone_tree_reverse_apply_postorder(t, xfrin_check_node_in_tree, 
+	                                       (void *)changes);
+	
 	// remove the nodes one by one
 	return xfrin_finalize_remove_nodes(contents, changes);
 }
@@ -1876,13 +1883,32 @@ static void xfrin_fix_refs_in_node(knot_zone_tree_node_t *tnode, void *data)
 
 	knot_node_t *new_node = knot_node_get_new_node(node);
 	if (new_node != NULL) {
-		assert(knot_node_rrset_count(new_node) > 0);
+		//assert(knot_node_rrset_count(new_node) > 0);
 		node = new_node;
 		tnode->node = new_node;
 	}
 
 	// 2) fix references from the node remaining in the zone
 	knot_node_update_refs(node);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void xfrin_fix_hash_refs(ck_hash_table_item_t *item, void *data)
+{
+	assert(item != NULL);
+	
+	knot_node_t *new_node = knot_node_get_new_node(
+	                             (knot_node_t *)item->value);
+	if (new_node != NULL) {
+		assert(item->key_length
+		       == knot_dname_size(knot_node_owner(new_node)));
+		assert(strncmp(item->key, (const char *)knot_dname_name(
+		            knot_node_owner(new_node)), item->key_length) == 0);
+		item->value = (void *)new_node;
+		item->key = (const char *)knot_dname_name(
+		                             knot_node_owner(new_node));
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1906,14 +1932,21 @@ static int xfrin_fix_references(knot_zone_contents_t *contents)
 	 * Walk through the zone tree, so that each node will be checked
 	 * and updated.
 	 */
+	// fix references in normal nodes
 	knot_zone_tree_t *tree = knot_zone_contents_get_nodes(contents);
 	knot_zone_tree_forward_apply_inorder(tree, xfrin_fix_refs_in_node,
 	                                     NULL);
 
+	// fix refereces in NSEC3 nodes
 	tree = knot_zone_contents_get_nsec3_nodes(contents);
 	knot_zone_tree_forward_apply_inorder(tree, xfrin_fix_refs_in_node,
 	                                     NULL);
 
+	// fix references in hash table
+	ck_hash_table_t *table = knot_zone_contents_get_hash_table(contents);
+	ck_apply(table, xfrin_fix_hash_refs, NULL);
+	
+	// fix references dname table
 	return knot_zone_contents_dname_table_apply(contents,
 	                                            xfrin_fix_dname_refs, NULL);
 }
