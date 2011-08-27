@@ -71,21 +71,21 @@ static void knot_packet_init_pointers_response(knot_packet_t *pkt)
 	pos += PREALLOC_RR_OWNER;
 
 	// then answer, authority and additional sections
-	if (DEFAULT_ANCOUNT_QUERY == 0) {
+	if (DEFAULT_ANCOUNT == 0) {
 		pkt->answer = NULL;
 	} else {
 		pkt->answer = (const knot_rrset_t **)pos;
 		pos += DEFAULT_ANCOUNT * sizeof(const knot_rrset_t *);
 	}
 	
-	if (DEFAULT_NSCOUNT_QUERY == 0) {
+	if (DEFAULT_NSCOUNT == 0) {
 		pkt->authority = NULL;
 	} else {
 		pkt->authority = (const knot_rrset_t **)pos;
 		pos += DEFAULT_NSCOUNT * sizeof(const knot_rrset_t *);
 	}
 	
-	if (DEFAULT_ARCOUNT_QUERY == 0) {
+	if (DEFAULT_ARCOUNT == 0) {
 		pkt->additional = NULL;
 	} else {
 		pkt->additional = (const knot_rrset_t **)pos;
