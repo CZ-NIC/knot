@@ -60,6 +60,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 
 	/* Link to config. */
 	zd->conf = cfg;
+	zd->server = 0;
 
 	/* Initialize mutex. */
 	pthread_mutex_init(&zd->lock, 0);
@@ -73,7 +74,6 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	sockaddr_init(&zd->xfr_in.master, -1);
 	zd->xfr_in.timer = 0;
 	zd->xfr_in.expire = 0;
-	zd->xfr_in.ifaces = 0;
 	zd->xfr_in.next_id = -1;
 	zd->xfr_in.acl = 0;
 
@@ -232,26 +232,12 @@ static int zones_xfrin_poll(event_t *e)
 
 	/* Create query. */
 	int ret = xfrin_create_soa_query(knot_zone_contents(zone), qbuf, &buflen);
-	if (ret == KNOTD_EOK && zd->xfr_in.ifaces) {
+	if (ret == KNOTD_EOK) {
 
-		int sock = -1;
-		iface_t *i = 0;
 		sockaddr_t *master = &zd->xfr_in.master;
 
-		/*! \todo Bind to random port? xfr_master should then use some
-		 *        polling mechanisms to handle incoming events along
-		 *        with polled packets - evqueue should implement this.
-		 */
-
-
-
-		/* Find suitable interface. */
-		WALK_LIST(i, **zd->xfr_in.ifaces) {
-			sock = i->fd[UDP_ID];
-			if (i->type[UDP_ID] == master->family) {
-				break;
-			}
-		}
+		/* Create socket on random port. */
+		int sock = socket_create(master->family, SOCK_DGRAM);
 
 		/* Send query. */
 		ret = -1;
@@ -266,6 +252,14 @@ static int zones_xfrin_poll(event_t *e)
 			debug_zones("xfr_in: expecting SOA response ID=%d\n",
 				    zd->xfr_in.next_id);
 		}
+
+		/* Watch socket. */
+		knot_ns_xfr_t req;
+		memset(&req, 0, sizeof(req));
+		req.session = sock;
+		req.type = XFR_TYPE_SOA;
+		sockaddr_init(&req.addr, master->family);
+		xfr_client_relay(zd->server->xfr_h, &req);
 	}
 
 	/* Schedule EXPIRE timer on first attempt. */
@@ -314,25 +308,13 @@ static int zones_notify_send(event_t *e)
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	int ret = notify_create_request(knot_zone_contents(zone), qbuf,
 	                                &buflen);
-	if (ret == KNOTD_EOK && zd->xfr_in.ifaces) {
-
-		/*! \todo Bind to random port? See zones_axfrin_poll(). */
+	if (ret == KNOTD_EOK && zd->server) {
 
 		/* Lock RCU. */
 		rcu_read_lock();
 
-		/* Find suitable interface. */
-		int sock = -1;
-		iface_t *i = 0;
-		WALK_LIST(i, **zd->xfr_in.ifaces) {
-			if (i->type[UDP_ID] == ev->addr.family) {
-				sock = i->fd[UDP_ID];
-				break;
-			}
-		}
-
-		/* Unlock RCU. */
-		rcu_read_unlock();
+		/* Create socket on random port. */
+		int sock = socket_create(ev->addr.family, SOCK_DGRAM);
 
 		/* Send query. */
 		ret = -1;
@@ -347,6 +329,14 @@ static int zones_notify_send(event_t *e)
 			debug_zones("notify: sent NOTIFY, expecting "
 				    "response ID=%d\n", ev->msgid);
 		}
+
+		/* Watch socket. */
+		knot_ns_xfr_t req;
+		memset(&req, 0, sizeof(req));
+		req.session = sock;
+		req.type = XFR_TYPE_NOTIFY;
+		sockaddr_init(&req.addr, ev->addr.family);
+		xfr_client_relay(zd->server->xfr_h, &req);
 
 	}
 
@@ -939,9 +929,8 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			zones_set_acl(&zd->notify_in, &z->acl.notify_in);
 			zones_set_acl(&zd->notify_out, &z->acl.notify_out);
 
-			/* Update available interfaces. */
-			zd->xfr_in.ifaces = 
-				&((server_t *)knot_ns_get_data(ns))->ifaces;
+			/* Update server pointer. */
+			zd->server = (server_t *)knot_ns_get_data(ns);
 
 			/* Update master server address. */
 			sockaddr_init(&zd->xfr_in.master, -1);

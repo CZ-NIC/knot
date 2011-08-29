@@ -18,6 +18,7 @@
 #include "libknot/nameserver/name-server.h"
 #include "libknot/zone/zonedb.h"
 #include "knot/conf/conf.h"
+#include "knot/server/server.h"
 #include "knot/server/journal.h"
 #include "libknot/zone/zone.h"
 #include "libknot/updates/xfr-in.h"
@@ -33,6 +34,9 @@ typedef struct zonedata_t
 	/*! \brief Shortcut to zone config entry. */
 	conf_zone_t *conf;
 
+	/*! \brief Shortcut to server instance. */
+	server_t  *server;
+
 	/*! \brief Zone data lock for exclusive access. */
 	pthread_mutex_t lock;
 
@@ -43,7 +47,6 @@ typedef struct zonedata_t
 
 	/*! \brief XFR-IN scheduler. */
 	struct {
-		list          **ifaces; /*!< List of availabel interfaces. */
 		acl_t         *acl;     /*!< ACL for xfr-in.*/
 		sockaddr_t     master;  /*!< Master server for xfr-in.*/
 		struct event_t *timer;  /*!< Timer for REFRESH/RETRY. */
@@ -62,10 +65,12 @@ typedef struct zonedata_t
 
 /*! \todo Document me. */
 typedef enum xfr_type_t {
-	XFR_TYPE_AIN,  /*!< AXFR-IN request (start transfer). */
-	XFR_TYPE_AOUT, /*!< AXFR-OUT request (incoming transfer). */
-	XFR_TYPE_IIN,  /*!< IXFR-IN request (start transfer). */
-	XFR_TYPE_IOUT  /*!< IXFR-OUT request (incoming transfer). */
+	XFR_TYPE_AIN,   /*!< AXFR-IN request (start transfer). */
+	XFR_TYPE_AOUT,  /*!< AXFR-OUT request (incoming transfer). */
+	XFR_TYPE_IIN,   /*!< IXFR-IN request (start transfer). */
+	XFR_TYPE_IOUT,  /*!< IXFR-OUT request (incoming transfer). */
+	XFR_TYPE_SOA,   /*!< Pending SOA request. */
+	XFR_TYPE_NOTIFY /*!< Pending NOTIFY query. */
 } xfr_type_t;
 
 /*!
