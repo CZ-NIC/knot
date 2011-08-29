@@ -42,7 +42,7 @@ struct knot_zone;
 
 /*----------------------------------------------------------------------------*/
 
-typedef struct knot_zone_contents {
+typedef struct knot_zone_contents_t {
 	knot_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
 
 	ck_hash_table_t *table;     /*!< Hash table for holding zone nodes. */

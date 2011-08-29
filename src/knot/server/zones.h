@@ -14,6 +14,7 @@
 
 #include "common/lists.h"
 #include "common/acl.h"
+#include "common/evsched.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/zone/zonedb.h"
 #include "knot/conf/conf.h"
@@ -47,7 +48,7 @@ typedef struct zonedata_t
 		sockaddr_t     master;  /*!< Master server for xfr-in.*/
 		struct event_t *timer;  /*!< Timer for REFRESH/RETRY. */
 		struct event_t *expire; /*!< Timer for REFRESH. */
-		int next_id;            /*!< ID of the next awaited SOA resp.*/
+		uint16_t next_id;       /*!< ID of the next awaited SOA resp.*/
 	} xfr_in;
 
 	/*! \brief List of pending NOTIFY events. */
@@ -207,6 +208,22 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr);
  * \retval KNOTD_EINVAL
  */
 int zones_apply_changesets(knot_ns_xfr_t *xfr);
+
+/*!
+ * \brief Update zone timers.
+ *
+ * REFRESH/RETRY/EXPIRE timers are updated according to SOA.
+ *
+ * \param sched Event scheduler.
+ * \param zone Related zone.
+ * \param cfzone Related zone contents. If NULL, configuration is
+ *               reused.
+ *
+ * \retval KNOTD_EOK
+ * \retval KNOTD_EINVAL
+ * \retval KNOTD_ERROR
+ */
+int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch);
 
 #endif // _KNOTD_ZONES_H_
 

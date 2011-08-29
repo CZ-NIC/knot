@@ -15,6 +15,7 @@
 #include <pthread.h>
 #include <signal.h> // sigset_t
 #include <time.h>
+#include <sys/time.h>
 
 //#include "knot/common.h"
 #include "common/lists.h"

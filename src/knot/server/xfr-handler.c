@@ -141,8 +141,11 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 			break;
 		}
 
-		/* Save finished zone and reload. */
-//		xfrin_zone_transferred(xfr_w->h->ns, request->zone);
+		/* Update timers. */
+		server_t *server = (server_t *)knot_ns_get_data(xfr_w->h->ns);
+		knot_zone_t *zone = (knot_zone_t *)request->zone;
+		zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+		zones_timers_update(zone, zd->conf, server->sched);
 
 		/* Return error code to make TCP client disconnect. */
 		ev_io_stop(loop, (ev_io *)w);
