@@ -381,21 +381,28 @@ DEBUG_KNOT_RESPONSE(
 #else
 		// if case-sensitive comparation, we cannot just take the parent
 		if (compr_cs || knot_dname_node(to_find, 1) == NULL
-		    || knot_node_owner(knot_dname_node(to_find, 1))
-		       != to_find
+		    || knot_node_owner(knot_dname_node(to_find, 1)) != to_find
 		    || knot_node_parent(knot_dname_node(to_find, 1), 1)
 		       == NULL) {
+			debug_knot_response("compr_cs: %d\n", compr_cs);
+			debug_knot_response("knot_dname_node(to_find, 1) == %p"
+			                    "\n", knot_dname_node(to_find, 1));
+			debug_knot_response("knot_node_owner(knot_dname_node("
+			                    "to_find, 1)) = %p, to_find = %p\n",
+			           knot_node_owner(knot_dname_node(to_find, 1)),
+			           to_find);
+			debug_knot_response("knot_node_parent(knot_dname_node("
+			                    "to_find, 1), 1) = %p\n",
+			      knot_node_parent(knot_dname_node(to_find, 1), 1));
 			break;
 		} else {
 			assert(knot_dname_node(to_find, 1) !=
-			     knot_node_parent(knot_dname_node(to_find, 1),
-			                        1));
+			     knot_node_parent(knot_dname_node(to_find, 1), 1));
 			assert(to_find != knot_node_owner(
-			    knot_node_parent(knot_dname_node(to_find, 1),
-			                       1)));
+			    knot_node_parent(knot_dname_node(to_find, 1), 1)));
 			to_find = knot_node_owner(
-			     knot_node_parent(knot_dname_node(to_find, 1),
-			                        1));
+			     knot_node_parent(knot_dname_node(to_find, 1), 1));
+			debug_knot_response("New to_find: %p\n", to_find);
 		}
 #endif
 	}
