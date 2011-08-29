@@ -121,7 +121,8 @@ int knot_changeset_add_rr(knot_rrset_t ***rrsets, size_t *count,
 		}
 
 		// remove the RR
-		knot_rrset_deep_free(&rr, 1, 1, 1);
+		/*! \todo does this make sense? */
+		knot_rrset_free(&rr); // used to be deep free with all 1's
 
 		return KNOT_EOK;
 	} else {
