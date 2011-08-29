@@ -7,49 +7,22 @@
 
 MOD_TREE_DEFINE(general_tree_node, avl);
 
-//static int gen_cmp_func(struct general_tree_node *n1,
-//                        struct general_tree_node *n2)
-//{
-//	void *data1 = n1->data;
-//	void *data2 = n2->data;
-//	assert(n1->cmp_func == n2->cmp_func);
-//	assert(n1->cmp_func);
-//	return n1->cmp_func(data1, data2);
-//}
-
-//static int gen_mrg_func(struct general_tree_node **n1,
-//                        struct general_tree_node **n2)
-//{
-//	void *data1 = (*n1)->data;
-//	void *data2 = (*n2)->data;
-//	assert((*n1)->mrg_func == (*n2)->mrg_func);
-//	return (*n1)->mrg_func(&data1, &data2);
-//}
-
-//static void gen_app_func(struct general_tree_node *n1, void *data)
-//{
-//	void *data_from_node = n1->data;
-//	assert(n1->app_func);
-//	n1->app_func(data_from_node, data);
-//}
-
 static void gen_rem_func(struct general_tree_node *n1)
 {
 	free(n1);
 }
 
-//static void gen_tree_init(general_tree_t *tree)
-//{
-//	MOD_TREE_INIT(tree->tree, gen_cmp_func, gen_mrg_func);
-//}
-
 general_tree_t *gen_tree_new(int (*comp_func)(void *, void *))
 {
 	general_tree_t *ret = malloc(sizeof(general_tree_t));
+	if (ret == NULL) {
+		return NULL;
+	}
 	ret->tree = malloc(sizeof(general_avl_tree_t));
-//	CHECK_ALLOC_LOG(ret, NULL);
-//	ret->cmp_func = comp_func;
-//	ret->mrg_func = mrg_func;
+	if (ret->tree == NULL) {
+		free(ret);
+		return NULL;
+	}
 	MOD_TREE_INIT(ret->tree, comp_func);
 	return ret;
 }
@@ -59,26 +32,22 @@ int gen_tree_add(general_tree_t *tree,
 {
 	struct general_tree_node *tree_node =
 		malloc(sizeof(struct general_tree_node));
-//	CHECK_ALLOC_LOG(tree, -1);
+	if (tree_node == NULL) {
+		return -1;
+	}
 	memset(tree_node, 0, sizeof(struct general_tree_node));
 	tree_node->data = node;
-//	tree_node->cmp_func = tree->cmp_func;
-//	tree_node->mrg_func = tree->mrg_func;
 	MOD_TREE_INSERT(tree->tree, general_tree_node, avl,
 	                tree_node, mrg_func);
 	return 0;
 }
 
 void gen_tree_remove(general_tree_t *tree,
-                     void *node)
+                     void *what)
 {
-	struct general_tree_node *tree_node =
-		malloc(sizeof(struct general_tree_node));
-//	CHECK_ALLOC_LOG(tree, -1);
-	tree_node->data = node;
-//	tree_node->cmp_func = tree->cmp_func;
-//	tree_node->mrg_func = tree->mrg_func;
-	MOD_TREE_REMOVE(tree->tree, general_tree_node, avl, tree_node,
+	struct general_tree_node tree_node;
+	tree_node.data = what;
+	MOD_TREE_REMOVE(tree->tree, general_tree_node, avl, &tree_node,
 	                gen_rem_func);
 }
 
@@ -87,8 +56,6 @@ void *gen_tree_find(general_tree_t *tree,
 {
 	struct general_tree_node tree_node;
 	tree_node.data = what;
-//	tree_node.cmp_func = tree->cmp_func;
-//	tree_node.mrg_func = tree->mrg_func;
 	struct general_tree_node *found_node =
 		MOD_TREE_FIND(tree->tree, general_tree_node, avl, &tree_node);
 	if (found_node) {
@@ -149,13 +116,45 @@ void gen_tree_clear(general_tree_t *tree)
 static void add_node_to_tree(void *n, void *data)
 {
 	general_tree_t *tree = (general_tree_t *)data;
-//	struct general_tree_node new_node =
-//		malloc(sizeof(struct general_tree_node));
-//	if (new_node == NULL) {
-//		return;
-//	}
-//	new_node->data = n;
 	gen_tree_add(tree, n, NULL);
+}
+
+static void print_node(void *n, void *data)
+{
+	printf("node: %p\n", n);
+}
+
+static int gen_tree_copy_node(const struct general_tree_node *from,
+                              struct general_tree_node **to)
+{
+	if (from == NULL) {
+		return 0;
+	}
+
+	*to = malloc(sizeof(struct general_tree_node));
+	if (*to == NULL) {
+	       return -1;
+	}
+	memset(*to, 0, sizeof(struct general_tree_node));
+
+	(*to)->data = from->data;
+	(*to)->avl.avl_height = from->avl.avl_height;
+
+	int ret = gen_tree_copy_node(from->avl.avl_left,
+	                             &(*to)->avl.avl_left);
+	if (ret != 0) {
+		return ret;
+	}
+
+	ret = gen_tree_copy_node(from->avl.avl_right,
+	                         &(*to)->avl.avl_right);
+	if (ret != 0) {
+		/*! \todo Partially cleaunp tree! */
+	       (*to)->avl.avl_left = NULL;
+	       return ret;
+	}
+
+	return 0;
 }
 
 general_tree_t *gen_tree_shallow_copy(general_tree_t *tree)
@@ -164,9 +163,31 @@ general_tree_t *gen_tree_shallow_copy(general_tree_t *tree)
 	if (new_tree == NULL) {
 		return NULL;
 	}
+	new_tree->tree = malloc(sizeof(general_avl_tree_t));
+	if (new_tree->tree == NULL) {
+		free(new_tree);
+		return NULL;
+	}
 
-	gen_tree_apply_inorder(tree, add_node_to_tree, new_tree);
+	MOD_TREE_INIT(new_tree->tree, tree->tree->th_cmp);
+	assert(new_tree->tree->th_cmp == tree->tree->th_cmp);
 
-	return new_tree;
+//	gen_tree_apply_inorder(tree, add_node_to_tree, new_tree);
+
+	if (gen_tree_copy_node(tree->tree->th_root,
+	                       &new_tree->tree->th_root) != 0) {
+		return NULL;
+	}
+
+	gen_tree_apply_inorder(tree, print_node, NULL);
+	printf("--------------------------\n");
+	gen_tree_apply_inorder(new_tree, print_node, NULL);
+
+	/* XXX */
+
+	printf("new tree: %p from old tree: %p\n",
+	       new_tree, tree);
+
+	return tree;
 }
 

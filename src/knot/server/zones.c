@@ -60,6 +60,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 
 	/* Link to config. */
 	zd->conf = cfg;
+	zd->server = 0;
 
 	/* Initialize mutex. */
 	pthread_mutex_init(&zd->lock, 0);
@@ -73,7 +74,6 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	sockaddr_init(&zd->xfr_in.master, -1);
 	zd->xfr_in.timer = 0;
 	zd->xfr_in.expire = 0;
-	zd->xfr_in.ifaces = 0;
 	zd->xfr_in.next_id = -1;
 	zd->xfr_in.acl = 0;
 
@@ -123,6 +123,10 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 static uint32_t zones_soa_timer(knot_zone_t *zone,
                                 uint32_t (*rr_func)(const knot_rdata_t*))
 {
+	if (!zone) {
+		debug_zones("zones: zones_soa_timer() called with NULL zone\n");
+	}
+
 	uint32_t ret = 0;
 
 	/* Retrieve SOA RDATA. */
@@ -172,9 +176,9 @@ static uint32_t zones_soa_expire(knot_zone_t *zone)
 }
 
 /*!
- * \brief AXFR-IN expire event handler.
+ * \brief XFR/IN expire event handler.
  */
-static int zones_axfrin_expire(event_t *e)
+static int zones_xfrin_expire(event_t *e)
 {
 	debug_zones("axfrin: EXPIRE timer event\n");
 	knot_zone_t *zone = (knot_zone_t *)e->data;
@@ -203,11 +207,11 @@ static int zones_axfrin_expire(event_t *e)
 }
 
 /*!
- * \brief AXFR-IN poll event handler.
+ * \brief XFR/IN poll event handler.
  */
-static int zones_axfrin_poll(event_t *e)
+static int zones_xfrin_poll(event_t *e)
 {
-	debug_zones("axfrin: REFRESH or RETRY timer event\n");
+	debug_zones("xfr_in: REFRESH or RETRY timer event\n");
 	knot_zone_t *zone = (knot_zone_t *)e->data;
 	if (!zone) {
 		return KNOTD_EINVAL;
@@ -223,32 +227,17 @@ static int zones_axfrin_poll(event_t *e)
 	uint8_t qbuf[SOCKET_MTU_SZ];
 	size_t buflen = SOCKET_MTU_SZ;
 
+	/* Lock RCU. */
+	rcu_read_lock();
+
 	/* Create query. */
 	int ret = xfrin_create_soa_query(knot_zone_contents(zone), qbuf, &buflen);
-	if (ret == KNOTD_EOK && zd->xfr_in.ifaces) {
+	if (ret == KNOTD_EOK) {
 
-		int sock = -1;
-		iface_t *i = 0;
 		sockaddr_t *master = &zd->xfr_in.master;
 
-		/*! \todo Bind to random port? xfr_master should then use some
-		 *        polling mechanisms to handle incoming events along
-		 *        with polled packets - evqueue should implement this.
-		 */
-
-		/* Lock RCU. */
-		rcu_read_lock();
-
-		/* Find suitable interface. */
-		WALK_LIST(i, **zd->xfr_in.ifaces) {
-			if (i->type[UDP_ID] == master->family) {
-				sock = i->fd[UDP_ID];
-				break;
-			}
-		}
-
-		/* Unlock RCU. */
-		rcu_read_unlock();
+		/* Create socket on random port. */
+		int sock = socket_create(master->family, SOCK_DGRAM);
 
 		/* Send query. */
 		ret = -1;
@@ -260,9 +249,17 @@ static int zones_axfrin_poll(event_t *e)
 		/* Store ID of the awaited response. */
 		if (ret == buflen) {
 			zd->xfr_in.next_id = knot_wire_get_id(qbuf);
-			debug_zones("axfrin: expecting SOA response ID=%d\n",
+			debug_zones("xfr_in: expecting SOA response ID=%d\n",
 				    zd->xfr_in.next_id);
 		}
+
+		/* Watch socket. */
+		knot_ns_xfr_t req;
+		memset(&req, 0, sizeof(req));
+		req.session = sock;
+		req.type = XFR_TYPE_SOA;
+		sockaddr_init(&req.addr, master->family);
+		xfr_client_relay(zd->server->xfr_h, &req);
 	}
 
 	/* Schedule EXPIRE timer on first attempt. */
@@ -270,16 +267,20 @@ static int zones_axfrin_poll(event_t *e)
 		uint32_t expire_tmr = zones_soa_expire(zone);
 		zd->xfr_in.expire = evsched_schedule_cb(
 					      e->parent,
-					      zones_axfrin_expire,
+					      zones_xfrin_expire,
 					      zone, expire_tmr);
-		debug_zones("axfrin: scheduling EXPIRE timer after %u secs\n",
+		debug_zones("xfr_in: scheduling EXPIRE timer after %u secs\n",
 			    expire_tmr / 1000);
 	}
 
 	/* Reschedule as RETRY timer. */
 	evsched_schedule(e->parent, e, zones_soa_retry(zone));
-	debug_zones("axfrin: RETRY after %u secs\n",
+	debug_zones("xfr_in: RETRY after %u secs\n",
 		    zones_soa_retry(zone) / 1000);
+
+	/* Unlock RCU. */
+	rcu_read_unlock();
+
 	return ret;
 }
 
@@ -307,25 +308,13 @@ static int zones_notify_send(event_t *e)
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	int ret = notify_create_request(knot_zone_contents(zone), qbuf,
 	                                &buflen);
-	if (ret == KNOTD_EOK && zd->xfr_in.ifaces) {
-
-		/*! \todo Bind to random port? See zones_axfrin_poll(). */
+	if (ret == KNOTD_EOK && zd->server) {
 
 		/* Lock RCU. */
 		rcu_read_lock();
 
-		/* Find suitable interface. */
-		int sock = -1;
-		iface_t *i = 0;
-		WALK_LIST(i, **zd->xfr_in.ifaces) {
-			if (i->type[UDP_ID] == ev->addr.family) {
-				sock = i->fd[UDP_ID];
-				break;
-			}
-		}
-
-		/* Unlock RCU. */
-		rcu_read_unlock();
+		/* Create socket on random port. */
+		int sock = socket_create(ev->addr.family, SOCK_DGRAM);
 
 		/* Send query. */
 		ret = -1;
@@ -340,6 +329,14 @@ static int zones_notify_send(event_t *e)
 			debug_zones("notify: sent NOTIFY, expecting "
 				    "response ID=%d\n", ev->msgid);
 		}
+
+		/* Watch socket. */
+		knot_ns_xfr_t req;
+		memset(&req, 0, sizeof(req));
+		req.session = sock;
+		req.type = XFR_TYPE_NOTIFY;
+		sockaddr_init(&req.addr, ev->addr.family);
+		xfr_client_relay(zd->server->xfr_h, &req);
 
 	}
 
@@ -409,99 +406,6 @@ static int zones_zonefile_sync_ev(event_t *e)
 	conf_read_unlock();
 
 	return ret;
-}
-
-/*!
- * \brief Update timers related to zone.
- *
- */
-void zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
-{
-	/* Fetch zone data. */
-	zonedata_t *zd = (zonedata_t *)zone->data;
-
-	/* Check AXFR-IN master server. */
-	if (zd->xfr_in.master.ptr) {
-
-		/* Schedule REFRESH timer. */
-		uint32_t refresh_tmr = zones_soa_refresh(zone);
-		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_axfrin_poll,
-							 zone, refresh_tmr);
-		debug_zones("notify: REFRESH set to %u\n", refresh_tmr);
-
-		/* Cancel EXPIRE timer. */
-		if (zd->xfr_in.expire) {
-			evsched_cancel(sch, zd->xfr_in.expire);
-			evsched_event_free(sch, zd->xfr_in.expire);
-			zd->xfr_in.expire = 0;
-		}
-	}
-
-	/* Remove list of pending NOTIFYs. */
-	node *n = 0, *nxt = 0;
-	WALK_LIST_DELSAFE(n, nxt, zd->notify_pending) {
-		notify_ev_t *ev = (notify_ev_t *)n;
-		rem_node(n);
-		evsched_cancel(sch, ev->timer);
-		evsched_event_free(sch, ev->timer);
-		free(ev);
-	}
-
-	/* Schedule NOTIFY to slaves. */
-	conf_remote_t *r = 0;
-	conf_read_lock();
-	WALK_LIST(r, cfzone->acl.notify_out) {
-
-		/* Fetch remote. */
-		conf_iface_t *cfg_if = r->remote;
-
-		/* Create request. */
-		notify_ev_t *ev = malloc(sizeof(notify_ev_t));
-		if (!ev) {
-			free(ev);
-			debug_zones("notify: out of memory to create "
-				    "NOTIFY query for %s\n", cfg_if->name);
-			continue;
-		}
-
-		/* Parse server address. */
-		int ret = sockaddr_set(&ev->addr, cfg_if->family,
-				       cfg_if->address,
-				       cfg_if->port);
-		if (ret < 1) {
-			free(ev);
-			debug_zones("notify: NOTIFY slave %s has invalid "
-				    "address\n", cfg_if->name);
-			continue;
-		}
-
-		/* Prepare request. */
-		ev->retries = cfzone->notify_retries + 1; /* first + N retries*/
-		ev->msgid = -1;
-		ev->zone = zone;
-		ev->timeout = cfzone->notify_timeout;
-
-		/* Schedule request (30 - 60s random delay). */
-		int tmr_s = 30 + (int)(30.0 * (rand() / (RAND_MAX + 1.0)));
-		add_tail(&zd->notify_pending, &ev->n);
-		ev->timer = evsched_schedule_cb(sch, zones_notify_send, ev,
-						tmr_s * 1000);
-
-		debug_zones("notify: scheduled NOTIFY query after %d s to %s\n",
-			    tmr_s, cfg_if->name);
-	}
-
-	/* Schedule IXFR database syncing. */
-	int sync_timeout = cfzone->dbsync_timeout * 1000; /* Convert to ms. */
-	if (!zd->ixfr_dbsync) {
-		zd->ixfr_dbsync = evsched_schedule_cb(sch,
-						      zones_zonefile_sync_ev,
-						      zone, sync_timeout);
-	} else {
-		evsched_cancel(sch, zd->ixfr_dbsync);
-		evsched_schedule(sch, zd->ixfr_dbsync, sync_timeout);
-	}
-	conf_read_unlock();
 }
 
 /*!
@@ -815,7 +719,7 @@ static int zones_load_changesets(const knot_zone_t *zone,
 
 		/* Initialize changeset. */
 		debug_knot_xfr("ixfr_db: reading entry #%zu id=%llu\n",
-			       dst->count, n->id);
+			       dst->count, (unsigned long long)n->id);
 		knot_changeset_t *chs = dst->sets + dst->count;
 		chs->serial_from = ixfrdb_key_from(n->id);
 		chs->serial_to = ixfrdb_key_to(n->id);
@@ -1018,9 +922,6 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			/* Update refs. */
 			zd->conf = z;
 
-			/* Apply changesets from journal. */
-			zones_journal_apply(zone);
-
 			/* Update ACLs. */
 			debug_zones("Updating zone ACLs.\n");
 			zones_set_acl(&zd->xfr_in.acl, &z->acl.xfr_in);
@@ -1028,9 +929,8 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 			zones_set_acl(&zd->notify_in, &z->acl.notify_in);
 			zones_set_acl(&zd->notify_out, &z->acl.notify_out);
 
-			/* Update available interfaces. */
-			zd->xfr_in.ifaces = 
-				&((server_t *)knot_ns_get_data(ns))->ifaces;
+			/* Update server pointer. */
+			zd->server = (server_t *)knot_ns_get_data(ns);
 
 			/* Update master server address. */
 			sockaddr_init(&zd->xfr_in.master, -1);
@@ -1046,6 +946,9 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 					    cfg_if->address,
 					    cfg_if->port);
 			}
+
+			/* Apply changesets from journal. */
+			zones_journal_apply(zone);
 
 			/* Update events scheduled for zone. */
 			zones_timers_update(zone, z, 
@@ -1858,4 +1761,112 @@ int zones_apply_changesets(knot_ns_xfr_t *xfr)
 	
 	return xfrin_apply_changesets_to_zone(xfr->zone, 
 	                                      (knot_changesets_t *)xfr->data);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
+{
+	if (!sch || !zone) {
+		return KNOTD_EINVAL;
+	}
+
+	/* Fetch zone data. */
+	zonedata_t *zd = (zonedata_t *)zone->data;
+	if (!zd) {
+		return KNOTD_EINVAL;
+	}
+
+	/* Check XFR/IN master server. */
+	if (zd->xfr_in.master.ptr) {
+
+		/* Cancel REFRESH timer. */
+		if (zd->xfr_in.timer) {
+			evsched_cancel(sch, zd->xfr_in.timer);
+			evsched_event_free(sch, zd->xfr_in.timer);
+			zd->xfr_in.expire = 0;
+		}
+
+		/* Schedule REFRESH timer. */
+		uint32_t refresh_tmr = zones_soa_refresh(zone);
+		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_xfrin_poll,
+							 zone, refresh_tmr);
+		debug_zones("notify: REFRESH set to %u\n", refresh_tmr);
+
+		/* Cancel EXPIRE timer. */
+		if (zd->xfr_in.expire) {
+			evsched_cancel(sch, zd->xfr_in.expire);
+			evsched_event_free(sch, zd->xfr_in.expire);
+			zd->xfr_in.expire = 0;
+		}
+	}
+
+	/* Remove list of pending NOTIFYs. */
+	node *n = 0, *nxt = 0;
+	WALK_LIST_DELSAFE(n, nxt, zd->notify_pending) {
+		notify_ev_t *ev = (notify_ev_t *)n;
+		rem_node(n);
+		evsched_cancel(sch, ev->timer);
+		evsched_event_free(sch, ev->timer);
+		free(ev);
+	}
+
+	/* Schedule NOTIFY to slaves. */
+	conf_remote_t *r = 0;
+	conf_read_lock();
+	WALK_LIST(r, cfzone->acl.notify_out) {
+
+		/* Fetch remote. */
+		conf_iface_t *cfg_if = r->remote;
+
+		/* Create request. */
+		notify_ev_t *ev = malloc(sizeof(notify_ev_t));
+		if (!ev) {
+			free(ev);
+			debug_zones("notify: out of memory to create "
+				    "NOTIFY query for %s\n", cfg_if->name);
+			continue;
+		}
+
+		/* Parse server address. */
+		int ret = sockaddr_set(&ev->addr, cfg_if->family,
+				       cfg_if->address,
+				       cfg_if->port);
+		if (ret < 1) {
+			free(ev);
+			debug_zones("notify: NOTIFY slave %s has invalid "
+				    "address\n", cfg_if->name);
+			continue;
+		}
+
+		/* Prepare request. */
+		ev->retries = cfzone->notify_retries + 1; /* first + N retries*/
+		ev->msgid = -1;
+		ev->zone = zone;
+		ev->timeout = cfzone->notify_timeout;
+
+		/* Schedule request (30 - 60s random delay). */
+		int tmr_s = 30 + (int)(30.0 * (rand() / (RAND_MAX + 1.0)));
+		add_tail(&zd->notify_pending, &ev->n);
+		ev->timer = evsched_schedule_cb(sch, zones_notify_send, ev,
+						tmr_s * 1000);
+
+		debug_zones("notify: scheduled NOTIFY query after %d s to %s\n",
+			    tmr_s, cfg_if->name);
+	}
+
+	/* Schedule IXFR database syncing. */
+	/*! \todo Sync timer should not be reset after each xfr. */
+	int sync_timeout = cfzone->dbsync_timeout * 1000; /* Convert to ms. */
+	if (!zd->ixfr_dbsync) {
+		zd->ixfr_dbsync = evsched_schedule_cb(sch,
+						      zones_zonefile_sync_ev,
+						      zone, sync_timeout);
+	} else {
+		evsched_cancel(sch, zd->ixfr_dbsync);
+		evsched_schedule(sch, zd->ixfr_dbsync, sync_timeout);
+	}
+	conf_read_unlock();
+
+	return KNOTD_EOK;
 }

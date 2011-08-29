@@ -20,6 +20,7 @@
 #include "updates/xfr-in.h"
 
 #include "nameserver/name-server.h"
+#include "util/wire.h"
 #include "util/debug.h"
 // #include "knot/zone/zone-dump.h"
 // #include "knot/zone/zone-load.h"
@@ -62,6 +63,10 @@ static int xfrin_create_query(const knot_zone_contents_t *zone, uint16_t qtype,
 	/* Retain qname until the question is freed. */
 	knot_dname_retain(qname);
 
+	/* Set random query ID. */
+	knot_packet_set_random_id(pkt);
+	knot_wire_set_id(pkt->wireformat, pkt->header.id);
+
 	// this is ugly!!
 	question.qname = (knot_dname_t *)qname;
 	question.qtype = qtype;
@@ -82,9 +87,6 @@ static int xfrin_create_query(const knot_zone_contents_t *zone, uint16_t qtype,
 		const knot_rrset_t *soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
 		knot_query_add_rrset_authority(pkt, soa);
 	}
-
-	/* Set random query ID. */
-	knot_packet_set_random_id(pkt);
 
 	/*! \todo OPT RR ?? */
 
@@ -313,6 +315,7 @@ DEBUG_KNOT_XFR(
 		// create the zone
 		/*! \todo Set the zone pointer to the contents. */
 		*zone = knot_zone_contents_new(node, 0, 1, NULL);
+		assert(0);
 		if (*zone == NULL) {
 			debug_knot_xfr("Failed to create new zone.\n");
 			knot_packet_free(&packet);
@@ -814,6 +817,10 @@ static int xfrin_changes_check_nodes(knot_node_t ***nodes,
 	} else {
 		if (*count == *allocated) {
 			new_count = *allocated * 2;
+		} else {
+			/* No need to allocate more. */
+			assert(*count < *allocated);
+			new_count = *allocated;
 		}
 	}
 
@@ -824,7 +831,12 @@ static int xfrin_changes_check_nodes(knot_node_t ***nodes,
 	}
 
 	memset(nodes_new, 0, new_count * node_len);
-	memcpy(nodes_new, *nodes, (*count) * node_len);
+	if (new_count < *count || new_count == 0) {
+		memcpy(nodes_new, *nodes, new_count * node_len);
+	} else {
+		assert(new_count >= *count);
+		memcpy(nodes_new, *nodes, *count * node_len);
+	}
 	*nodes = nodes_new;
 	*allocated = new_count;
 
@@ -955,6 +967,10 @@ static int xfrin_get_node_copy(knot_node_t **node, xfrin_changes_t *changes)
 			return KNOT_ENOMEM;
 		}
 
+		assert(changes);
+
+//		changes->new_nodes_allocated = 0;
+
 		// save the copy of the node
 		ret = xfrin_changes_check_nodes(
 			&changes->new_nodes,
@@ -966,6 +982,8 @@ static int xfrin_get_node_copy(knot_node_t **node, xfrin_changes_t *changes)
 			return ret;
 		}
 
+//		changes->old_nodes_allocated = 0;
+
 		// save the old node to list of old nodes
 		ret = xfrin_changes_check_nodes(
 			&changes->old_nodes,
@@ -976,6 +994,9 @@ static int xfrin_get_node_copy(knot_node_t **node, xfrin_changes_t *changes)
 			knot_node_free(&new_node, 0, 0);
 			return ret;
 		}
+
+		assert(changes->new_nodes);
+		assert(changes->old_nodes);
 
 		changes->new_nodes[changes->new_nodes_count++] = new_node;
 		changes->old_nodes[changes->old_nodes_count++] = *node;
@@ -1408,6 +1429,10 @@ static knot_node_t *xfrin_add_new_node(knot_zone_contents_t *contents,
 
 	// insert the node into zone structures and create parents if
 	// necessary
+	debug_knot_xfr("Adding new node to zone. From owner: %s type %s\n",
+	               knot_dname_to_str(node->owner),
+	               knot_rrtype_to_string(rrset->type));
+//	getchar();
 	if (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3) {
 		ret = knot_zone_contents_add_nsec3_node(contents, node, 1, 0,
 		                                        1);
@@ -1435,6 +1460,12 @@ static knot_node_t *xfrin_add_new_node(knot_zone_contents_t *contents,
 		knot_node_set_previous(node, prev);
 	}
 
+	printf("contents owned by: %s (%p)\n",
+	       knot_dname_to_str(contents->apex->owner),
+	       contents);
+	assert(contents->zone != NULL);
+	knot_node_set_zone(node, contents->zone);
+
 	return node;
 }
 
@@ -1449,24 +1480,37 @@ static int xfrin_apply_add_normal(xfrin_changes_t *changes,
 	assert(remove != NULL);
 	assert(node != NULL);
 	assert(rrset != NULL);
-	
+
 	int ret;
+
+	debug_knot_xfr("applying rrset: %s %s\n",
+	               knot_dname_to_str(add->owner), knot_rrtype_to_string(add->type));
+//	getchar();
 	
 	if (!*rrset
 	    || knot_dname_compare(knot_rrset_owner(*rrset),
 	                          knot_node_owner(node)) != 0
 	    || knot_rrset_type(*rrset)
 	       != knot_rrset_type(add)) {
+		debug_knot_xfr("Removing rrset!\n");
 		*rrset = knot_node_remove_rrset(node, knot_rrset_type(add));
 	}
 
 	if (*rrset == NULL) {
 		debug_knot_xfr("RRSet to be added not found in zone.\n");
+		debug_knot_xfr("owner: %s type: %s\n",
+		               knot_dname_to_str(add->owner),
+		               knot_rrtype_to_string(add->type));
+//		getchar();
 		// add the RRSet from the changeset to the node
 		/*! \todo What about domain names?? Shouldn't we use the
 		 *        zone-contents' version of this function??
 		 */
 		ret = knot_node_add_rrset(node, add, 0);
+//		ret = knot_zone_contents_add_rrset(node->zone->contents,
+//		                                   rrset, node,
+//		                                   KNOT_RRSET_DUPL_MERGE,
+//		                                   1);
 		if (ret != KNOT_EOK) {
 			debug_knot_xfr("Failed to add RRSet to node.\n");
 			return KNOT_ERROR;
@@ -1482,10 +1526,16 @@ DEBUG_KNOT_XFR(
 	          knot_rrtype_to_string(knot_rrset_type(*rrset)));
 	free(name);
 );
+	knot_rrset_dump(*rrset, 1);
 	ret = xfrin_copy_old_rrset(old, rrset, changes);
 	if (ret != KNOT_EOK) {
+		assert(0);
 		return ret;
 	}
+
+	debug_knot_xfr("After copy: Found RRSet with owner %s, type %s\n",
+	               knot_dname_to_str((*rrset)->owner),
+	          knot_rrtype_to_string(knot_rrset_type(*rrset)));
 
 	// merge the changeset RRSet to the copy
 	/* What if the update fails?
@@ -1498,11 +1548,19 @@ DEBUG_KNOT_XFR(
 	 *
 	 * TODO: add the 'add' rrset to list of old RRSets?
 	 */
+	debug_knot_xfr("Merging RRSets with owners: %s %s types: %d %d\n",
+	       (*rrset)->owner->name, add->owner->name, (*rrset)->type,
+	                add->type);
 	ret = knot_rrset_merge((void **)rrset, (void **)&add);
 	if (ret != KNOT_EOK) {
 		debug_knot_xfr("Failed to merge changeset RRSet to copy.\n");
 		return KNOT_ERROR;
 	}
+	debug_knot_xfr("Merge returned: %d\n", ret);
+	knot_rrset_dump(*rrset, 1);
+	ret = knot_node_add_rrset(node, *rrset, 0);
+	knot_node_dump(node, 1);
+//	getchar();
 
 	return KNOT_EOK;
 }
@@ -1625,7 +1683,7 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 			if (node == NULL) {
 				// create new node, connect it properly to the
 				// zone nodes
-				debug_knot_xfr("Creating new node.\n");
+				debug_knot_xfr("Creating new node from.\n");
 				node = xfrin_add_new_node(contents,
 				                          chset->add[i]);
 				if (node == NULL) {
@@ -1633,7 +1691,7 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 					          "in zone.\n");
 					return KNOT_ERROR;
 				}
-				continue; // continue with another RRSet
+//				continue; // continue with another RRSet
 			}
 		}
 
@@ -2056,13 +2114,13 @@ static void xfrin_cleanup_update(xfrin_changes_t *changes)
 	// free old nodes but do not destroy their RRSets
 	// remove owners also, because of reference counting
 	for (int i = 0; i < changes->old_nodes_count; ++i) {
-		knot_node_free(&changes->old_nodes[i], 1, 0);
+//		knot_node_free(&changes->old_nodes[i], 1, 0);
 	}
 
 	// free old RRSets, and destroy also domain names in them
 	// because of reference counting
 	for (int i = 0; i < changes->old_rrsets_count; ++i) {
-		knot_rrset_deep_free(&changes->old_rrsets[i], 0, 1, 1);
+//		knot_rrset_deep_free(&changes->old_rrsets[i], 0, 1, 1);
 	}
 	
 	// free old hash table items, but do not touch their contents

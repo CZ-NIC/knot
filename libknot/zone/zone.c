@@ -72,6 +72,8 @@ knot_zone_t *knot_zone_new(knot_node_t *apex, uint node_count,
 		return NULL;
 	}
 
+	zone->contents->zone = zone;
+
 	debug_knot_zone("Initializing zone data.\n");
 	/* Initialize data. */
 	zone->data = 0;

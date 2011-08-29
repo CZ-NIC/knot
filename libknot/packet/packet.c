@@ -1377,7 +1377,7 @@ void knot_packet_dump(const knot_packet_t *packet)
 	debug_knot_packet("  Extended RCODE: %u\n",
 	                      packet->opt_rr.ext_rcode);
 
-	debug_knot_packet("\nPacket size: %d\n", packet->size);
+	debug_knot_packet("\nPacket size: %zu\n", packet->size);
 	debug_knot_packet("\n-----------------------------\n");
 #endif
 }
