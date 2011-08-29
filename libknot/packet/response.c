@@ -158,13 +158,15 @@ static void knot_response_compr_save(knot_compressed_dnames_t *table,
 static int knot_response_store_dname_pos(knot_compressed_dnames_t *table,
                                            const knot_dname_t *dname,
                                            int not_matched, size_t pos,
-                                           size_t unmatched_offset)
+                                           size_t unmatched_offset,
+                                           int compr_cs)
 {
 DEBUG_KNOT_RESPONSE(
 	char *name = knot_dname_to_str(dname);
 	debug_knot_response("Putting dname %s into compression table."
-	                      " Labels not matched: %d, position: %d,"
-	                      ", pointer: %p\n", name, not_matched, pos, dname);
+	                      " Labels not matched: %d, position: %zu,"
+	                      ", pointer: %p, unmatched off: %zu\n", name, 
+	                      not_matched, pos, dname, unmatched_offset);
 	free(name);
 );
 	if (pos > KNOT_RESPONSE_MAX_PTR) {
@@ -210,7 +212,7 @@ DEBUG_KNOT_RESPONSE(
 DEBUG_KNOT_RESPONSE(
 		char *name = knot_dname_to_str(to_save);
 		debug_knot_response("Putting dname %s into compression table."
-		                      " Position: %d, pointer: %p\n",
+		                      " Position: %zu, pointer: %p\n",
 		                      name, parent_pos, to_save);
 		free(name);
 );
@@ -224,7 +226,14 @@ DEBUG_KNOT_RESPONSE(
 //		debug_knot_response("Saving..\n");
 		knot_response_compr_save(table, to_save, parent_pos);
 
-		to_save = (knot_dname_node(to_save, 1) != NULL
+		/*! \todo Remove '!compr_cs'. */
+		// This is a temporary hack to avoid the wrong behaviour
+		// when the wrong not_matched count is used to compare with i
+		// and resulting in using the 0 offset.
+		// If case-sensitive search is in place, we should not save the
+		// node's parent's positions.
+		
+		to_save = !compr_cs && (knot_dname_node(to_save, 1) != NULL
 		      && knot_node_parent(knot_dname_node(to_save, 1), 1)
 		          != NULL) ? knot_node_owner(knot_node_parent(
 		                        knot_dname_node(to_save, 1), 1))
@@ -271,7 +280,7 @@ DEBUG_KNOT_RESPONSE(
 		           ? knot_dname_compare_cs(table->dnames[i], dname)
 		           : knot_dname_compare(table->dnames[i], dname);
 		if (ret == 0) {
-			debug_knot_response("Found offset: %d\n",
+			debug_knot_response("Found offset: %zu\n",
 			                      table->offsets[i]);
 			return table->offsets[i];
 		}
@@ -387,13 +396,16 @@ DEBUG_KNOT_RESPONSE(
 			debug_knot_response("compr_cs: %d\n", compr_cs);
 			debug_knot_response("knot_dname_node(to_find, 1) == %p"
 			                    "\n", knot_dname_node(to_find, 1));
-			debug_knot_response("knot_node_owner(knot_dname_node("
-			                    "to_find, 1)) = %p, to_find = %p\n",
-			           knot_node_owner(knot_dname_node(to_find, 1)),
-			           to_find);
-			debug_knot_response("knot_node_parent(knot_dname_node("
-			                    "to_find, 1), 1) = %p\n",
-			      knot_node_parent(knot_dname_node(to_find, 1), 1));
+			
+			if (knot_dname_node(to_find, 1) != NULL) {
+				debug_knot_response("knot_node_owner(knot_dname_node("
+						    "to_find, 1)) = %p, to_find = %p\n",
+					   knot_node_owner(knot_dname_node(to_find, 1)),
+					   to_find);
+				debug_knot_response("knot_node_parent(knot_dname_node("
+						    "to_find, 1), 1) = %p\n",
+				      knot_node_parent(knot_dname_node(to_find, 1), 1));
+			}
 			break;
 		} else {
 			assert(knot_dname_node(to_find, 1) !=
@@ -433,9 +445,15 @@ DEBUG_KNOT_RESPONSE(
 	}
 
 	// in either way, put info into the compression table
+	/*! \todo This is useless if the name was already in the table. 
+	 *        It is meaningful only if the found name is the one from QNAME
+	 *        and thus its parents are not stored yet.
+	 */
 	assert(compr->wire_pos >= 0);
+	
 	if (knot_response_store_dname_pos(compr->table, dname, not_matched,
-	                                    compr->wire_pos, offset) != 0) {
+	                                    compr->wire_pos, offset, compr_cs) 
+	    != 0) {
 		debug_knot_response("Compression info could not be stored."
 		                      "\n");
 	}
@@ -632,7 +650,7 @@ DEBUG_KNOT_RESPONSE(
 	debug_knot_response("Converting RRSet with owner %s, type %s\n",
 	                      name, knot_rrtype_to_string(rrset->type));
 	free(name);
-	debug_knot_response("  Size before: %d\n", *size);
+	debug_knot_response("  Size before: %zu\n", *size);
 );
 
 	// if no RDATA in RRSet, return
@@ -699,7 +717,7 @@ DEBUG_KNOT_RESPONSE(
 	assert (rrset_size <= max_size);
 	*size += rrset_size;
 
-	debug_knot_response("  Size after: %d\n", *size);
+	debug_knot_response("  Size after: %zu\n", *size);
 
 	return rrs;
 }
@@ -752,8 +770,8 @@ DEBUG_KNOT_RESPONSE(
 	if (rrs >= 0) {
 		rrsets[(*rrset_count)++] = rrset;
 		resp->size += size;
-		debug_knot_response("RRset added, size: %d, RRs: %d, total "
-		                      "size of response: %d\n\n", size, rrs,
+		debug_knot_response("RRset added, size: %zu, RRs: %d, total "
+		                      "size of response: %zu\n\n", size, rrs,
 		                      resp->size);
 	} else if (tc) {
 		knot_wire_flags_set_tc(&resp->header.flags1);
@@ -844,7 +862,7 @@ int knot_response_init_from_query(knot_packet_t *response,
 	// put the qname into the compression table
 	// TODO: get rid of the numeric constants
 	if ((err = knot_response_store_dname_pos(&response->compression,
-	              response->question.qname, 0, 12, 12)) != KNOT_EOK) {
+	              response->question.qname, 0, 12, 12, 0)) != KNOT_EOK) {
 		return err;
 	}
 
