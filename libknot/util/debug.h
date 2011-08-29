@@ -60,7 +60,7 @@ void knot_rdata_dump(knot_rdata_t *rdata, uint32_t type, char loaded_zone);
  * \param loaded_zone Set to <> 0 if the RRSet is part of a zone loaded into
  *                    the server. Set to 0 otherwise.
  */
-void knot_rrset_dump(knot_rrset_t *rrset, char loaded_zone);
+void knot_rrset_dump(const knot_rrset_t *rrset, char loaded_zone);
 
 /*!
  * \brief Dumps zone node.

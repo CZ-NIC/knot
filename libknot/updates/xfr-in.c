@@ -20,6 +20,7 @@
 #include "updates/xfr-in.h"
 
 #include "nameserver/name-server.h"
+#include "util/wire.h"
 #include "util/debug.h"
 // #include "knot/zone/zone-dump.h"
 // #include "knot/zone/zone-load.h"
@@ -62,6 +63,10 @@ static int xfrin_create_query(const knot_zone_contents_t *zone, uint16_t qtype,
 	/* Retain qname until the question is freed. */
 	knot_dname_retain(qname);
 
+	/* Set random query ID. */
+	knot_packet_set_random_id(pkt);
+	knot_wire_set_id(pkt->wireformat, pkt->header.id);
+
 	// this is ugly!!
 	question.qname = (knot_dname_t *)qname;
 	question.qtype = qtype;
@@ -82,9 +87,6 @@ static int xfrin_create_query(const knot_zone_contents_t *zone, uint16_t qtype,
 		const knot_rrset_t *soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
 		knot_query_add_rrset_authority(pkt, soa);
 	}
-
-	/* Set random query ID. */
-	knot_packet_set_random_id(pkt);
 
 	/*! \todo OPT RR ?? */
 
