@@ -145,7 +145,9 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 	
 	uint8_t qbuf[SOCKET_MTU_SZ];
 	struct msghdr msg;
+	memset(&msg, 0, sizeof(struct msghdr));
 	struct iovec iov;
+	memset(&iov, 0, sizeof(struct iovec));
 	iov.iov_base = qbuf;
 	iov.iov_len = SOCKET_MTU_SZ;
 	msg.msg_iov = &iov;
