@@ -2076,7 +2076,7 @@ static void xfrin_cleanup_update(xfrin_changes_t *changes)
 int xfrin_apply_changesets_to_zone(knot_zone_t *zone, 
                                    knot_changesets_t *chsets)
 {
-	if (zone == NULL || chsets == NULL/* || chsets->count == 0*/) {
+	if (zone == NULL || chsets == NULL || chsets->count == 0) {
 		return KNOT_EBADARG;
 	}
 	

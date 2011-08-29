@@ -899,17 +899,17 @@ static int zones_journal_apply(knot_zone_t *zone)
 	memset(chsets, 0, sizeof(knot_changesets_t));
 	int ret = zones_load_changesets(zone, chsets, serial, serial - 1);
 	if (ret == KNOT_EOK || ret == KNOT_ERANGE) {
-
-		/* Apply changesets. */
-		debug_zones("update_zone: applying %zu changesets\n",
-			    chsets->count);
-		ret = xfrin_apply_changesets_to_zone(zone, chsets);
-		if (ret != KNOT_EOK) {
-			debug_zones("update_zone: application of changesets "
-				    "failed with '%s'\n",
-				    knotd_strerror(ret));
+		if (chsets->count > 0) {
+			/* Apply changesets. */
+			debug_zones("update_zone: applying %zu changesets\n",
+				    chsets->count);
+			ret = xfrin_apply_changesets_to_zone(zone, chsets);
+			if (ret != KNOT_EOK) {
+				debug_zones("update_zone: application of "
+					    "changesets failed with '%s'\n",
+					    knotd_strerror(ret));
+			}
 		}
-
 	} else {
 		debug_zones("update_zone: failed to load changeset, %s\n",
 			    knotd_strerror(ret));
