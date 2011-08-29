@@ -17,6 +17,7 @@
 #include "libknot/nameserver/name-server.h"
 #include "knot/other/error.h"
 #include "knot/server/socket.h"
+#include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/updates/xfr-in.h"
 #include "knot/server/zones.h"
@@ -30,11 +31,67 @@ struct xfr_io_t
 	knot_ns_xfr_t data;
 };
 
+/*! \brief Query event wrapper for libev. */
+struct qr_io_t
+{
+	ev_io io;
+	int type;
+	sockaddr_t addr;
+	knot_nameserver_t *ns;
+};
+
 /*! \brief Interrupt libev ev_loop execution. */
 static void xfr_interrupt(xfrhandler_t *h)
 {
 	/* Break loop. */
 	evqueue_write(h->cq, "", 1);
+}
+
+/*!
+ * \brief Query reponse event handler function.
+ *
+ * Handle single query response event.
+ *
+ * \param loop Associated event pool.
+ * \param w Associated socket watcher.
+ * \param revents Returned events.
+ */
+static inline void qr_response_ev(struct ev_loop *loop, ev_io *w, int revents)
+{
+	/* Check data. */
+	struct qr_io_t* qw = (struct qr_io_t *)w;
+	if (!qw->ns) {
+		return;
+	}
+
+	/* Prepare msg header. */
+	uint8_t qbuf[SOCKET_MTU_SZ];
+	struct msghdr msg;
+	memset(&msg, 0, sizeof(struct msghdr));
+	struct iovec iov;
+	memset(&iov, 0, sizeof(struct iovec));
+	iov.iov_base = qbuf;
+	iov.iov_len = SOCKET_MTU_SZ;
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+	msg.msg_name = qw->addr.ptr;
+	msg.msg_namelen = qw->addr.len;
+
+	/* Receive msg. */
+	debug_xfr("qr_response_ev: reading response\n");
+	ssize_t n = recvmsg(w->fd, &msg, 0);
+	size_t resp_len = sizeof(qbuf);
+	if (n > 0) {
+		debug_xfr("qr_response_ev: processing response\n");
+		udp_handle(qbuf, n, &resp_len, &qw->addr, qw->ns);
+	}
+
+	/* Close after receiving response. */
+	debug_xfr("qr_response_ev: closing socket %d\n", w->fd);
+	ev_io_stop(loop, w);
+	close(w->fd);
+	free(qw);
+	return;
 }
 
 /*!
@@ -141,8 +198,11 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 			break;
 		}
 
-		/* Save finished zone and reload. */
-//		xfrin_zone_transferred(xfr_w->h->ns, request->zone);
+		/* Update timers. */
+		server_t *server = (server_t *)knot_ns_get_data(xfr_w->h->ns);
+		knot_zone_t *zone = (knot_zone_t *)request->zone;
+		zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+		zones_timers_update(zone, zd->conf, server->sched);
 
 		/* Return error code to make TCP client disconnect. */
 		ev_io_stop(loop, (ev_io *)w);
@@ -180,6 +240,30 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
 		ev_io_stop(loop, w);
 		ev_unloop(loop, EVUNLOOP_ALL);
 		dt_stop(handler->unit);
+		return;
+	}
+
+	/* Process pending SOA/NOTIFY requests. */
+	if (req->type == XFR_TYPE_SOA || req->type == XFR_TYPE_NOTIFY) {
+
+		/* Watch bound socket. */
+		struct qr_io_t *qw = malloc(sizeof(struct qr_io_t));
+		if (!qw) {
+			log_server_error("xfr-in: failed to watch socket for "
+					 "pending query\n");
+			socket_close(req->session);
+			return;
+		}
+		memset(qw, 0, sizeof(struct qr_io_t));
+		qw->ns = handler->ns;
+		qw->type = req->type;
+		memcpy(&qw->addr, &req->addr, sizeof(sockaddr_t));
+		sockaddr_update(&qw->addr);
+
+		/* Add to pending transfers. */
+		ev_io_init((ev_io *)qw, qr_response_ev, req->session, EV_READ);
+		ev_io_start(loop, (ev_io *)qw);
+		debug_xfr("xfr_bridge_ev: waiting for query response\n");
 		return;
 	}
 
@@ -371,6 +455,20 @@ int xfr_request(xfrhandler_t *handler, knot_ns_xfr_t *req)
 	return KNOTD_EOK;
 }
 
+int xfr_client_relay(xfrhandler_t *handler, knot_ns_xfr_t *req)
+{
+	if (!handler || !req) {
+		return KNOTD_EINVAL;
+	}
+
+	int ret = evqueue_write(handler->cq, req, sizeof(knot_ns_xfr_t));
+	if (ret < 0) {
+		return KNOTD_ERROR;
+	}
+
+	return KNOTD_EOK;
+}
+
 int xfr_master(dthread_t *thread)
 {
 	xfrhandler_t *xfrh = (xfrhandler_t *)thread->data;
@@ -480,12 +578,12 @@ int xfr_master(dthread_t *thread)
 			break;
 		case XFR_TYPE_AIN:
 			req_type = "axfr-in";
-			evqueue_write(xfrh->cq, &xfr, sizeof(knot_ns_xfr_t));
+			xfr_client_relay(xfrh, &xfr);
 			ret = KNOTD_EOK;
 			break;
 		case XFR_TYPE_IIN:
 			req_type = "ixfr-in";
-			evqueue_write(xfrh->cq, &xfr, sizeof(knot_ns_xfr_t));
+			xfr_client_relay(xfrh, &xfr);
 			ret = KNOTD_EOK;
 			break;
 		default:
