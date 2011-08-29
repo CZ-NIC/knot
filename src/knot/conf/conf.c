@@ -16,13 +16,14 @@
  * Defaults.
  */
 
-#define DEFAULT_CONF_COUNT 2 /*!< \brief Number of default config paths. */
-
 /*! \brief Default config paths. */
-static const char *DEFAULT_CONFIG[2] = {
-	"~/.knot/" PROJECT_EXEC ".conf",
-	"/etc/knot/" PROJECT_EXEC ".conf"
+static const char *DEFAULT_CONFIG[] = {
+	SYSCONFDIR "/" "knotd.conf",
+	"~/.knot/" "knotd.conf",
+	"/etc/" PACKAGE "/" "knotd.conf"
 };
+
+#define DEFAULT_CONF_COUNT sizeof(DEFAULT_CONFIG) /*!< \brief Number of default config paths. */
 
 /*
  * Utilities.

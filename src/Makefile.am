@@ -4,7 +4,7 @@ libexec_PROGRAMS = knot-zcompile unittests unittests-zcompile unittests-libknot-
 sbin_PROGRAMS = knotd
 
 # $(YACC) will generate header file
-AM_CFLAGS = -Wall -I../ -I../libknot
+AM_CFLAGS = -Wall -I../ -I../libknot -DLIBEXECDIR='"$(libexecdir)"' -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
 AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
