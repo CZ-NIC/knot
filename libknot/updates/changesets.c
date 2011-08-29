@@ -224,6 +224,7 @@ int knot_changesets_check_size(knot_changesets_t *changesets)
 
 void knot_free_changeset(knot_changeset_t **changeset)
 {
+	/* XXX XXX investigate wrong frees. */
 	assert((*changeset)->add_allocated >= (*changeset)->add_count);
 	assert((*changeset)->remove_allocated >= (*changeset)->remove_count);
 	assert((*changeset)->allocated >= (*changeset)->size);
@@ -235,12 +236,12 @@ void knot_free_changeset(knot_changeset_t **changeset)
 	free((*changeset)->add);
 
 	for (j = 0; j < (*changeset)->remove_count; ++j) {
-		knot_rrset_deep_free(&(*changeset)->add[j], 1, 1, 1);
+		knot_rrset_deep_free(&(*changeset)->remove[j], 1, 1, 1);
 	}
 	free((*changeset)->remove);
 
 	knot_rrset_deep_free(&(*changeset)->soa_from, 1, 1, 1);
-	knot_rrset_deep_free(&(*changeset)->soa_to, 1, 1, 1);
+//	knot_rrset_deep_free(&(*changeset)->soa_to, 1, 1, 1);
 
 	free((*changeset)->data);
 
