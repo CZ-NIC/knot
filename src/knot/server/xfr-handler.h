@@ -105,6 +105,20 @@ static inline int xfr_join(xfrhandler_t *handler) {
 int xfr_request(xfrhandler_t *handler, knot_ns_xfr_t *req);
 
 /*!
+ * \brief Enqueue XFR/IN related request.
+ *
+ * Request is processed in threads for XFR/IN.
+ *
+ * \param handler XFR handler instance.
+ * \param req XFR request.
+ *
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on NULL handler or request.
+ * \retval KNOTD_ERROR on error.
+ */
+int xfr_client_relay(xfrhandler_t *handler, knot_ns_xfr_t *req);
+
+/*!
  * \brief XFR master runnable.
  *
  * Processes incoming AXFR/IXFR requests asynchonously.
