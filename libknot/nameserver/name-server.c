@@ -1864,7 +1864,7 @@ static int ns_axfr_send_and_clear(knot_ns_xfr_t *xfr)
 
 	// Transform the packet into wire format
 	debug_knot_ns("Converting response to wire format..\n");
-	size_t real_size;
+	size_t real_size = xfr->wire_size;
 	if (ns_response_to_wire(xfr->response, xfr->wire, &real_size)
 	    != 0) {
 		return NS_ERR_SERVFAIL;
