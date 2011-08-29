@@ -262,6 +262,7 @@ knot_rrset_t *knot_node_remove_rrset(knot_node_t *node, uint16_t type)
 		(knot_rrset_t *)gen_tree_find(node->rrset_tree, &dummy_rrset);
 	if (rrset != NULL) {
 		gen_tree_remove(node->rrset_tree, rrset);
+		node->rrset_count--;
 	}
 	return rrset;
 }
@@ -272,6 +273,8 @@ void knot_node_remove_all_rrsets(knot_node_t *node)
 {
 	// remove RRSets but do not delete them
 	gen_tree_clear(node->rrset_tree);
+	node->rrset_count = 0;
+
 }
 
 /*----------------------------------------------------------------------------*/
@@ -288,7 +291,7 @@ struct knot_node_save_rrset_arg {
 	size_t count;
 };
 
-void save_rrset_to_array(void *node, void *data)
+static void save_rrset_to_array(void *node, void *data)
 {
 	knot_rrset_t *rrset = (knot_rrset_t *)node;
 //	printf("%p\n", rrset);
@@ -301,6 +304,7 @@ void save_rrset_to_array(void *node, void *data)
 
 knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
 {
+//	knot_node_dump(node, 1);
 	if (node->rrset_count == 0) {
 		return NULL;
 	}
@@ -311,18 +315,18 @@ knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
 	args.array = rrsets;
 	args.count = 0;
 
-//	printf("using tree: %p (should have %d rrsets)\n",
-//	       node->rrset_tree, node->rrset_count);
+	printf("using tree: %p (should have %d rrsets) %s\n",
+	       node->rrset_tree, node->rrset_count,
+	       knot_dname_to_str(node->owner));
 
 	gen_tree_apply_inorder(node->rrset_tree, save_rrset_to_array,
 	                       &args);
 
-//	printf("has rrsets: %d\n", args.count);
+	printf("has rrsets: %d\n", args.count);
 
 	assert(args.count == node->rrset_count);
-	assert(args.count);
 
-	//printf("Returning %d RRSets.\n", i);
+//	printf("Returning %d RRSets.\n", i);
 
 	return rrsets;
 }
@@ -331,26 +335,28 @@ knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
 
 const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 {
-//	printf("RRset count: %d\n", node->rrset_count);
+	knot_node_dump(node, 1);
+	printf("RRset count: %d\n", node->rrset_count);
 	if (node->rrset_count == 0) {
 		return NULL;
 	}
 	
 	knot_rrset_t **rrsets = (knot_rrset_t **)malloc(
 		node->rrset_count * sizeof(knot_rrset_t *));
-//	printf("RRsets pointer: %p\n", rrsets);
+	printf("RRsets pointer: %p\n", rrsets);
 	CHECK_ALLOC_LOG(rrsets, NULL);
 	struct knot_node_save_rrset_arg args;
 	args.array = rrsets;
 	args.count = 0;
 
-//	printf("using tree: %p (should have %d rrsets)\n",
-//	       node->rrset_tree, node->rrset_count);
+	printf("using tree: %p (should have %d rrsets)\n",
+	       node->rrset_tree, node->rrset_count);
 
-//	printf("has rrsets: %d\n", args.count);
+	printf("has rrsets: %d\n", args.count);
 
 	gen_tree_apply_inorder(node->rrset_tree, save_rrset_to_array,
 	                       &args);
+
 
 	assert(args.count == node->rrset_count);
 	assert(args.count);
@@ -375,9 +381,6 @@ const knot_node_t *knot_node_parent(const knot_node_t *node,
 	
 	if (check_version && node->zone != NULL) {
 		short ver = knot_node_zone_generation(node);
-	
-		assert(ver != 0 || parent == NULL 
-		       || !knot_node_is_new(parent));
 		
 		if (ver != 0 && parent != NULL) {
 			// we want the new node
@@ -426,7 +429,9 @@ const knot_node_t *knot_node_previous(const knot_node_t *node,
 knot_node_t *knot_node_get_previous(const knot_node_t *node, 
                                         int check_version)
 {
-	assert(!check_version 
+	printf("node: %s zone: %p", knot_dname_to_str(node->owner),
+	       node->zone);
+	assert(!check_version
 	       || (node->zone != NULL && node->zone->contents != NULL));
 	
 	knot_node_t *prev = node->prev;
@@ -696,6 +701,8 @@ void knot_node_set_deleg_point(knot_node_t *node)
 
 int knot_node_is_deleg_point(const knot_node_t *node)
 {
+	printf("trying to get flags from node %p\n",
+	       node);
 	return knot_node_flags_get_deleg(node->flags);
 }
 
@@ -860,12 +867,14 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 
 	// copy RRSets
 	// copy the skip list with the old references
+	// XXX XXX XXX
+	(*to)->rrset_tree = gen_tree_shallow_copy(from->rrset_tree);
 //	(*to)->rrsets = skip_copy_list(from->rrsets);
-//	if ((*to)->rrsets == NULL) {
-//		free(*to);
-//		*to = NULL;
-//		return KNOT_ENOMEM;
-//	}
+	if ((*to)->rrset_tree == NULL) {
+		free(*to);
+		*to = NULL;
+		return KNOT_ENOMEM;
+	}
 
 	return KNOT_EOK;
 }
