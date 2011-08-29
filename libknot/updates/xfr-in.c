@@ -1487,6 +1487,7 @@ static int xfrin_apply_add_normal(xfrin_changes_t *changes,
 	                          knot_node_owner(node)) != 0
 	    || knot_rrset_type(*rrset)
 	       != knot_rrset_type(add)) {
+		debug_knot_xfr("Removing rrset!\n");
 		*rrset = knot_node_remove_rrset(node, knot_rrset_type(add));
 	}
 
@@ -1520,10 +1521,16 @@ DEBUG_KNOT_XFR(
 	          knot_rrtype_to_string(knot_rrset_type(*rrset)));
 	free(name);
 );
+	knot_rrset_dump(*rrset, 1);
 	ret = xfrin_copy_old_rrset(old, rrset, changes);
 	if (ret != KNOT_EOK) {
+		assert(0);
 		return ret;
 	}
+
+	debug_knot_xfr("After copy: Found RRSet with owner %s, type %s\n",
+	               knot_dname_to_str((*rrset)->owner),
+	          knot_rrtype_to_string(knot_rrset_type(*rrset)));
 
 	// merge the changeset RRSet to the copy
 	/* What if the update fails?
@@ -1536,11 +1543,19 @@ DEBUG_KNOT_XFR(
 	 *
 	 * TODO: add the 'add' rrset to list of old RRSets?
 	 */
+	debug_knot_xfr("Merging RRSets with owners: %s %s types: %d %d\n",
+	       (*rrset)->owner->name, add->owner->name, (*rrset)->type,
+	                add->type);
 	ret = knot_rrset_merge((void **)rrset, (void **)&add);
 	if (ret != KNOT_EOK) {
 		debug_knot_xfr("Failed to merge changeset RRSet to copy.\n");
 		return KNOT_ERROR;
 	}
+	debug_knot_xfr("Merge returned: %d\n", ret);
+	knot_rrset_dump(*rrset, 1);
+	ret = knot_node_add_rrset(node, *rrset, 0);
+	knot_node_dump(node, 1);
+//	getchar();
 
 	return KNOT_EOK;
 }
@@ -2234,7 +2249,7 @@ int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
 	/*
 	 * Delete all old and unused data.
 	 */
-	xfrin_zone_contents_free(&old_contents);	
+	xfrin_zone_contents_free(&old_contents);
 	xfrin_cleanup_update(&changes);
 	
 	/* 

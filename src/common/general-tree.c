@@ -171,11 +171,7 @@ general_tree_t *gen_tree_shallow_copy(general_tree_t *tree)
 	MOD_TREE_INIT(new_tree->tree, tree->tree->th_cmp);
 	assert(new_tree->tree->th_cmp == tree->tree->th_cmp);
 
-
-
 //	gen_tree_apply_inorder(tree, add_node_to_tree, new_tree);
-
-
 
 	if (gen_tree_copy_node(tree->tree->th_root,
 	                       &new_tree->tree->th_root) != 0) {
@@ -187,6 +183,9 @@ general_tree_t *gen_tree_shallow_copy(general_tree_t *tree)
 	gen_tree_apply_inorder(new_tree, print_node, NULL);
 
 	/* XXX */
+
+	printf("new tree: %p from old tree: %p\n",
+	       new_tree, tree);
 
 	return tree;
 }

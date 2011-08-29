@@ -232,8 +232,8 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
 const knot_rrset_t *knot_node_rrset(const knot_node_t *node,
                                         uint16_t type)
 {
-//	printf("Find: %p (%s)\n", node->rrset_tree,
-//	       knot_dname_to_str(node->owner));
+	printf("Find: %p (%s - %p)\n", node->rrset_tree,
+	       knot_dname_to_str(node->owner), node);
 	assert(node != NULL);
 	assert(node->rrset_tree != NULL);
 	knot_rrset_t rrset;
@@ -245,8 +245,8 @@ const knot_rrset_t *knot_node_rrset(const knot_node_t *node,
 
 knot_rrset_t *knot_node_get_rrset(knot_node_t *node, uint16_t type)
 {
-//	printf("Find: %p (%s)\n", node->rrset_tree,
-//	       knot_dname_to_str(node->owner));
+	printf("Find: %p (%s - %p)\n", node->rrset_tree,
+	       knot_dname_to_str(node->owner), node);
 	knot_rrset_t rrset;
 	rrset.type = type;
 	return (knot_rrset_t *)gen_tree_find(node->rrset_tree, &rrset);
@@ -352,12 +352,13 @@ const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 	printf("using tree: %p (should have %d rrsets)\n",
 	       node->rrset_tree, node->rrset_count);
 
-	printf("has rrsets: %zu\n", args.count);
 
 	gen_tree_apply_inorder(node->rrset_tree, save_rrset_to_array,
 	                       &args);
 
-
+	printf("owner: %s\n",
+	       knot_dname_to_str(node->owner));
+	printf("has rrsets: %zu\n", args.count);
 	assert(args.count == node->rrset_count);
 	assert(args.count);
 
@@ -869,6 +870,7 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 	// copy the skip list with the old references
 	// XXX XXX XXX
 	(*to)->rrset_tree = gen_tree_shallow_copy(from->rrset_tree);
+//	assert((*to)->rrset_tree != from->rrset_tree);
 //	(*to)->rrsets = skip_copy_list(from->rrsets);
 	if ((*to)->rrset_tree == NULL) {
 		free(*to);
@@ -876,5 +878,7 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 		return KNOT_ENOMEM;
 	}
 
+	printf("Shallow copying node %p to %p w owner %s\n",
+	       from, *to, knot_dname_to_str(from->owner));
 	return KNOT_EOK;
 }
