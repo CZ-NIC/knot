@@ -48,7 +48,7 @@ typedef struct zonedata_t
 		sockaddr_t     master;  /*!< Master server for xfr-in.*/
 		struct event_t *timer;  /*!< Timer for REFRESH/RETRY. */
 		struct event_t *expire; /*!< Timer for REFRESH. */
-		uint16_t next_id;       /*!< ID of the next awaited SOA resp.*/
+		int next_id;            /*!< ID of the next awaited SOA resp.*/
 	} xfr_in;
 
 	/*! \brief List of pending NOTIFY events. */

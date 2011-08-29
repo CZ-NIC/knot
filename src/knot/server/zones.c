@@ -263,7 +263,7 @@ static int zones_xfrin_poll(event_t *e)
 		/* Store ID of the awaited response. */
 		if (ret == buflen) {
 			zd->xfr_in.next_id = knot_wire_get_id(qbuf);
-			debug_zones("xfr_in: expecting SOA response ID=%u\n",
+			debug_zones("xfr_in: expecting SOA response ID=%d\n",
 				    zd->xfr_in.next_id);
 		}
 	}
