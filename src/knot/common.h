@@ -27,8 +27,8 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 
 #define PROJECT_NAME PACKAGE /*!< \brief Project name. */
 #define PROJECT_VER  0x000100  /*!< \brief  0xMMIIRR (MAJOR,MINOR,REVISION). */
-#define PROJECT_EXEC "knotd" /*!< \brief  Project executable. */
-#define ZONEPARSER_EXEC "knot-zcompile" /*!< \brief  Zoneparser executable. */
+#define PROJECT_EXEC SBINDIR "/" "knotd" /*!< \brief  Project executable. */
+#define ZONEPARSER_EXEC LIBEXECDIR "/" "knot-zcompile" /*!< \brief  Zoneparser executable. */
 #define PID_FILE "knot.pid" /*!< \brief Server PID file name. */
 
 /*
