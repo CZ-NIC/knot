@@ -423,7 +423,7 @@ int knot_zone_contents_tree_apply_postorder(knot_zone_contents_t *contents,
  * \param data Arbitrary data to be passed to the function.
  */
 int knot_zone_contents_tree_apply_inorder(knot_zone_contents_t *contents,
-                              void (*function)(knot_node_t *node, void *data),
+			      void (*function)(knot_node_t *node, void *data),
                               void *data);
 
 /*!
@@ -475,7 +475,7 @@ int knot_zone_contents_nsec3_apply_postorder(knot_zone_contents_t *contents,
  * \param data Arbitrary data to be passed to the function.
  */
 int knot_zone_contents_nsec3_apply_inorder(knot_zone_contents_t *contents,
-                              void (*function)(knot_node_t *node, void *data),
+			      void (*function)(knot_node_t *node, void *data),
                               void *data);
 
 /*!

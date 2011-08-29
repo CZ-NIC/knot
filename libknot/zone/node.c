@@ -322,7 +322,7 @@ knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
 	gen_tree_apply_inorder(node->rrset_tree, save_rrset_to_array,
 	                       &args);
 
-	printf("has rrsets: %d\n", args.count);
+	printf("has rrsets: %zu\n", args.count);
 
 	assert(args.count == node->rrset_count);
 
@@ -335,8 +335,8 @@ knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
 
 const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 {
-	knot_node_dump(node, 1);
-	printf("RRset count: %d\n", node->rrset_count);
+	knot_node_dump(node, (void*)1);
+	printf("RRset count: %u\n", node->rrset_count);
 	if (node->rrset_count == 0) {
 		return NULL;
 	}
@@ -352,7 +352,7 @@ const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 	printf("using tree: %p (should have %d rrsets)\n",
 	       node->rrset_tree, node->rrset_count);
 
-	printf("has rrsets: %d\n", args.count);
+	printf("has rrsets: %zu\n", args.count);
 
 	gen_tree_apply_inorder(node->rrset_tree, save_rrset_to_array,
 	                       &args);
