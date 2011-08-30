@@ -157,6 +157,10 @@ int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node)
 int knot_zone_tree_find(knot_zone_tree_t *tree, const knot_dname_t *owner,
                           const knot_node_t **found)
 {
+	if (tree == NULL || owner == NULL || found == NULL) {
+		return KNOT_EBADARG;
+	}
+	
 	knot_node_t *f = NULL;
 	int ret = knot_zone_tree_get(tree, owner, &f);
 	*found = f;
@@ -208,10 +212,15 @@ int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
 int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
                                         const knot_dname_t *owner,
                                         const knot_node_t **found,
-                                        const knot_node_t **previous)
+                                        const knot_node_t **previous,
+                                        int check_version)
 {
+	if (tree == NULL || owner == NULL || found == NULL || previous == NULL) {
+		return KNOT_EBADARG;
+	}
+	
 	knot_node_t *f, *p;
-	int ret = knot_zone_tree_get_less_or_equal(tree, owner, &f, &p);
+	int ret = knot_zone_tree_get_less_or_equal(tree, owner, &f, &p, check_version);
 
 	*found = f;
 	*previous = p;
@@ -224,7 +233,8 @@ int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
 int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
                                        const knot_dname_t *owner,
                                        knot_node_t **found,
-                                       knot_node_t **previous)
+                                       knot_node_t **previous,
+                                       int check_version)
 {
 	if (tree == NULL || owner == NULL || found == NULL
 	    || previous == NULL) {
@@ -261,7 +271,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 		// previous is not really previous but should be the leftmost
 		// node in the tree; take it's previous
 		assert(prev != NULL);
-		*previous = knot_node_get_previous(prev->node, 1);
+		*previous = knot_node_get_previous(prev->node, check_version);
 		exact_match = 0;
 	} else if (prev == NULL) {
 		if (!exact_match) {
@@ -282,7 +292,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 		// node
 		assert(exact_match > 0);
 		assert(f != NULL);
-		*previous = knot_node_get_previous(f->node, 1);
+		*previous = knot_node_get_previous(f->node, check_version);
 	} else {
 		// otherwise check if the previous node is not an empty
 		// non-terminal
@@ -290,7 +300,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 		 *        to an empty non-terminal.
 		 */
 		*previous = (knot_node_rrset_count(prev->node) == 0)
-		            ? knot_node_get_previous(prev->node, 1)
+		            ? knot_node_get_previous(prev->node, check_version)
 		            : prev->node;
 	}
 
