@@ -21,6 +21,7 @@
 #include <stdint.h>     /* defines uint32_t etc */
 #include <assert.h>
 #include <pthread.h>
+#include <math.h>
 
 #include <urcu.h>
 
@@ -217,7 +218,11 @@ static uint get_table_exp_and_count(uint items, uint *table_count)
 	if (exp4 == 0) {
 		exp4 = 1;
 	}
-
+	
+	if (exp3 >= 32 || exp4 >= 32) {
+		return 0;
+	}
+	
 	if (((hashsize(exp3) * 3) - (items)) < ((hashsize(exp4) * 4) - items)) {
 		*table_count = 3;
 		return exp3;
@@ -225,6 +230,47 @@ static uint get_table_exp_and_count(uint items, uint *table_count)
 		*table_count = 4;
 		return exp4;
 	}
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Counts the maximum effective item count based on size of the tables.
+ *
+ * For 3 tables, the effective utilization should be around 91%.
+ * For 4 tables it is 97%.
+ *
+ * See Fotakis, Dimitris, et al. - Space Efficient Hash Tables with Worst Case
+ * Constant Access Time. CiteSeerX. 2003
+ * http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.14.5337
+ */
+static uint get_max_table_items(uint table_count, int table_exponent)
+{
+	assert(table_count == 3 || table_count == 4);
+	
+	float coef;
+	
+	if (table_count == 3) {
+		coef = 0.91;
+	} else {
+		coef = 0.97;
+	}
+	
+	return (uint)floor((table_count * hashsize(table_exponent)) * coef);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int ck_is_full(const ck_hash_table_t *table)
+{
+	return (table->items >= get_max_table_items(table->table_count, 
+	                                            table->table_size_exp));
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int ck_stash_is_full(const ck_hash_table_t *table)
+{
+	return (table->items_in_stash >= STASH_SIZE_MAX);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -624,6 +670,27 @@ int ck_add_to_stash(ck_hash_table_t *table, ck_hash_table_item_t *item)
 	              ", value: %p\n", (int)table->stash->item->key_length,
 	              table->stash->item->key, table->stash->item->key_length,
 	              table->stash->item->value);
+	
+	// increase count of items in stash
+	++table->items_in_stash;
+	
+	return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int ck_new_table(ck_hash_table_item_t ***table, int exp)
+{
+	*table = (ck_hash_table_item_t **)
+	          malloc(hashsize(exp) * sizeof(ck_hash_table_item_t *));
+	if (*table == NULL) {
+		ERR_ALLOC_FAILED;
+		return -1;
+	}
+
+	// set to 0
+	memset(*table, 0, hashsize(exp) * sizeof(ck_hash_table_item_t *));
+	
 	return 0;
 }
 
@@ -640,12 +707,19 @@ ck_hash_table_t *ck_create_table(uint items)
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
+	
+	memset(table, 0, sizeof(ck_hash_table_t));
 
 	// determine ideal size of one table in powers of 2 and save the
 	// exponent
 	table->table_size_exp = get_table_exp_and_count(items,
 	                                                &table->table_count);
 	assert(table->table_size_exp <= 32);
+	
+	if (table->table_size_exp == 0) {
+		debug_ck("Failed to count exponent of the hash table.\n");
+		return NULL;
+	}
 
 	debug_ck("Creating hash table for %u items.\n", items);
 	debug_ck("Exponent: %u, number of tables: %u\n ",
@@ -659,26 +733,22 @@ ck_hash_table_t *ck_create_table(uint items)
 	// create tables
 	for (uint t = 0; t < table->table_count; ++t) {
 		debug_ck("Creating table %u...\n", t);
-		table->tables[t] =
-		        (ck_hash_table_item_t **)malloc(
-		                        hashsize(table->table_size_exp)
-		                        * sizeof(ck_hash_table_item_t *));
-		if (table->tables[t] == NULL) {
-			ERR_ALLOC_FAILED;
+		if (ck_new_table(&table->tables[t], table->table_size_exp) 
+		    != 0) {
 			for (uint i = 0; i < t; ++i) {
 				free(table->tables[i]);
 			}
 			free(table);
 			return NULL;
 		}
-
-		// set to 0
-		memset(table->tables[t], 0, hashsize(table->table_size_exp)
-		                             * sizeof(ck_hash_table_item_t *));
 	}
 
-	table->stash = NULL;
-	table->hashed = NULL;
+	assert(table->stash == NULL);
+	assert(table->hashed == NULL);
+	assert(table->items == 0);
+	assert(table->items_in_stash == 0);
+	assert(table->table_count == MAX_TABLES
+	       || table->tables[table->table_count] == NULL);
 
 	// initialize rehash/insert mutex
 	pthread_mutex_init(&table->mtx_table, NULL);
@@ -792,6 +862,76 @@ void ck_table_free(ck_hash_table_t **table)
 	(*table) = NULL;
 }
 
+int ck_resize_table(ck_hash_table_t *table)
+{
+	debug_ck("Resizing hash table.\n");
+	
+	/*
+	 * Easiest is just to increment the exponent, resulting in doubling
+	 * the table sizes. This is not very memory-effective, but should do
+	 * the job.
+	 */
+	
+	if (table->table_size_exp == 31) {
+		debug_ck("Hash tables achieved max size (exponent 31).\n");
+		return -1;
+	}
+	
+	ck_hash_table_item_t **tables_new[MAX_TABLES];
+	ck_hash_table_item_t **tables_old[MAX_TABLES];
+	int exp_new = table->table_size_exp + 1;
+	
+	debug_ck("New tables exponent: %d\n", exp_new);
+	
+	for (int t = 0; t < table->table_count; ++t) {
+		if (ck_new_table(&tables_new[t], exp_new) != 0) {
+			debug_ck("Failed to create new table.\n");
+			for (int i = 0; i < t; ++i) {
+				free(tables_new[i]);
+			}
+			return -1;
+		}
+	}
+	
+	debug_ck("Created new tables, copying data to them.\n");
+	
+	for (int t = 0; t < table->table_count; ++t) {
+		size_t old_size = hashsize(table->table_size_exp) 
+		                  * sizeof(ck_hash_table_item_t *);
+		
+		// copy the old table items
+		debug_ck("Copying to: %p, from %p, size: %zu\n",
+		         tables_new[t], table->tables[t], old_size);
+		memcpy(tables_new[t], table->tables[t], old_size);
+		// set the rest to 0
+		debug_ck("Setting to 0 from %p, size %zu\n",
+		         tables_new[t] + hashsize(table->table_size_exp),
+		         (hashsize(exp_new) * sizeof(ck_hash_table_item_t *))
+		         - old_size);
+		memset(tables_new[t] + hashsize(table->table_size_exp), 0, 
+		       (hashsize(exp_new) * sizeof(ck_hash_table_item_t *))
+		       - old_size);
+	}
+	
+	debug_ck("Done, switching the tables and running rehash.\n");
+	
+	
+	memcpy(tables_old, table->tables, 
+	       MAX_TABLES * sizeof(ck_hash_table_item_t **));
+	memcpy(table->tables, tables_new, 
+	       MAX_TABLES * sizeof(ck_hash_table_item_t **));
+	
+	table->table_size_exp = exp_new;
+	
+	// delete the old tables
+	for (int t = 0; t < table->table_count; ++t) {
+		free(tables_old[t]);
+	}
+	
+	return ck_rehash(table);
+	//return 0;
+}
+
 int ck_insert_item(ck_hash_table_t *table, const char *key,
                    size_t length, void *value)
 {
@@ -809,6 +949,15 @@ int ck_insert_item(ck_hash_table_t *table, const char *key,
 	        (ck_hash_table_item_t *)malloc((sizeof(ck_hash_table_item_t)));
 	ck_fill_item(key, length, value, GET_GENERATION(table->generation),
 	             new_item);
+	
+	// check if the table is not full; if yes, resize and rehash!
+	if (ck_is_full(table)) {
+		debug_ck("Table is full, resize needed.\n");
+		if (ck_resize_table(table) != 0) {
+			debug_ck("Failed to resize hash table!\n");
+			return -1;
+		}
+	}
 
 	// there should be at least 2 free places
 	//assert(da_try_reserve(&table->stash, 2) == 0);
@@ -825,8 +974,17 @@ int ck_insert_item(ck_hash_table_t *table, const char *key,
 			debug_ck_hash("Could not add item to stash!!\n");
 			assert(0);
 		}
+		
+		if (ck_stash_is_full(table)) {
+			debug_ck("Stash is full, resize needed.\n");
+			if (ck_resize_table(table) != 0) {
+				debug_ck("Failed to resize hash table!\n");
+				return -1;
+			}
+		}
 	}
 
+	++table->items;
 	pthread_mutex_unlock(&table->mtx_table);
 	return 0;
 }
