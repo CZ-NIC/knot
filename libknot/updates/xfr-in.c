@@ -747,9 +747,10 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 				state = -1;
 				continue;
 			} else {
+				
 				// just add the RR to the ADD part and continue
 				if ((ret = knot_changeset_add_new_rr(
-				            &(*chs)->sets[(*chs)->count], rr,
+				            &(*chs)->sets[(*chs)->count - 1], rr,
 				            XFRIN_CHANGESET_ADD)) != KNOT_EOK) {
 					knot_rrset_deep_free(&rr, 1, 1, 1);
 					goto cleanup;
