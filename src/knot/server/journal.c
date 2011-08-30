@@ -64,6 +64,7 @@ int journal_create(const char *fn, uint16_t max_nodes)
 
 	/* Create free segment descriptor. */
 	journal_node_t jn;
+	memset(&jn, 0, sizeof(journal_node_t));
 	jn.id = 0;
 	jn.flags = JOURNAL_VALID;
 	jn.pos = JOURNAL_HSIZE + (max_nodes + 1) * sizeof(journal_node_t);

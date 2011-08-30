@@ -951,13 +951,11 @@ static void xfrin_changes_free(xfrin_changes_t **changes)
 static int xfrin_changes_check_rrsets(knot_rrset_t ***rrsets,
                                       int *count, int *allocated, int to_add)
 {
-	int new_count = *allocated * 2;
-	if (*allocated == 0) {
-		new_count = (*count + to_add); /* Prevent infinite loop. */
-	}
+	int new_count = (*count + to_add);
+	assert(new_count >= 0);
 
-	while (*count + to_add > new_count) {
-		new_count += *allocated;
+	if (new_count <= *allocated) {
+		return KNOT_EOK;
 	}
 
 	knot_rrset_t **rrsets_new =
@@ -1599,9 +1597,9 @@ static knot_node_t *xfrin_add_new_node(knot_zone_contents_t *contents,
 
 	// insert the node into zone structures and create parents if
 	// necessary
-	debug_knot_xfr("Adding new node to zone. From owner: %s type %s\n",
-	               knot_dname_to_str(node->owner),
-	               knot_rrtype_to_string(rrset->type));
+//	debug_knot_xfr("Adding new node to zone. From owner: %s type %s\n",
+//	               knot_dname_to_str(node->owner),
+//	               knot_rrtype_to_string(rrset->type));
 //	getchar();
 	if (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3) {
 		ret = knot_zone_contents_add_nsec3_node(contents, node, 1, 0,
@@ -1630,9 +1628,9 @@ static knot_node_t *xfrin_add_new_node(knot_zone_contents_t *contents,
 		knot_node_set_previous(node, prev);
 	}
 
-	printf("contents owned by: %s (%p)\n",
-	       knot_dname_to_str(contents->apex->owner),
-	       contents);
+//	printf("contents owned by: %s (%p)\n",
+//	       knot_dname_to_str(contents->apex->owner),
+//	       contents);
 	assert(contents->zone != NULL);
 	knot_node_set_zone(node, contents->zone);
 
@@ -1653,8 +1651,8 @@ static int xfrin_apply_add_normal(xfrin_changes_t *changes,
 
 	int ret;
 
-	debug_knot_xfr("applying rrset: %s %s\n",
-	               knot_dname_to_str(add->owner), knot_rrtype_to_string(add->type));
+//	debug_knot_xfr("applying rrset: %s %s\n",
+//	               knot_dname_to_str(add->owner), knot_rrtype_to_string(add->type));
 //	getchar();
 	
 	if (!*rrset
@@ -1668,9 +1666,9 @@ static int xfrin_apply_add_normal(xfrin_changes_t *changes,
 
 	if (*rrset == NULL) {
 		debug_knot_xfr("RRSet to be added not found in zone.\n");
-		debug_knot_xfr("owner: %s type: %s\n",
-		               knot_dname_to_str(add->owner),
-		               knot_rrtype_to_string(add->type));
+//		debug_knot_xfr("owner: %s type: %s\n",
+//		               knot_dname_to_str(add->owner),
+//		               knot_rrtype_to_string(add->type));
 //		getchar();
 		// add the RRSet from the changeset to the node
 		/*! \todo What about domain names?? Shouldn't we use the
@@ -1703,9 +1701,9 @@ DEBUG_KNOT_XFR(
 		return ret;
 	}
 
-	debug_knot_xfr("After copy: Found RRSet with owner %s, type %s\n",
-	               knot_dname_to_str((*rrset)->owner),
-	          knot_rrtype_to_string(knot_rrset_type(*rrset)));
+//	debug_knot_xfr("After copy: Found RRSet with owner %s, type %s\n",
+//	               knot_dname_to_str((*rrset)->owner),
+//	          knot_rrtype_to_string(knot_rrset_type(*rrset)));
 
 	// merge the changeset RRSet to the copy
 	/* What if the update fails?

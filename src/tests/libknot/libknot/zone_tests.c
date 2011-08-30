@@ -539,17 +539,27 @@ static int test_zone_shallow_copy()
 	}, "zone: shallow copy NULL tests");
 	errors += lived != 1;
 
+	knot_dname_t *d = knot_dname_deep_copy(&test_nodes_good[0].owner);
+	if (d == NULL) {
+		return 0;
+	}
+	knot_node_t *n = knot_node_new(d, NULL, 0);
+	
 	/* example.com. */
-	knot_zone_t *from_zone =
-		knot_zone_new(knot_node_new(&test_nodes_good[0].owner,
-				test_nodes_good[0].parent, 0), 10, 1);
+//	knot_zone_t *from_zone =
+//		knot_zone_new(knot_node_new(&test_nodes_good[0].owner,
+//				test_nodes_good[0].parent, 0), 10, 1);
+	knot_zone_t *from_zone = knot_zone_new(n, 10, 1);
 	knot_zone_contents_t *from = knot_zone_get_contents(from_zone);
 
 	/* Add nodes to zone. */
 	for (int i = 1; i < TEST_NODES_GOOD; ++i) {
-		knot_node_t *node = knot_node_new(&test_nodes_good[i].owner,
-						      test_nodes_good[i].parent,
-						      0);
+		knot_dname_t *d = knot_dname_deep_copy(&test_nodes_good[i].owner);
+		if (d == NULL) {
+			return 0;
+		}
+		knot_node_t *node = knot_node_new(d, test_nodes_good[i].parent,
+		                                  0);
 		if (node == NULL) {
 			diag("zone: Could not create node.");
 			return 0;

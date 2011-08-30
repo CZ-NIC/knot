@@ -607,7 +607,7 @@ static int knot_zone_contents_find_in_tree(knot_zone_tree_t *tree,
 //	knot_node_t *found2 = NULL, *prev2 = NULL;
 
 	int exact_match = knot_zone_tree_get_less_or_equal(
-	                         tree, name, &found, &prev);
+	                         tree, name, &found, &prev, 1);
 
 //	assert(prev != NULL);
 	assert(exact_match >= 0);
@@ -801,8 +801,8 @@ knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
 		return NULL;
 	}
 
-	printf("created cont: %p (%s)\n",
-	       contents, knot_dname_to_str(apex->owner));
+//	printf("created cont: %p (%s)\n",
+//	       contents, knot_dname_to_str(apex->owner));
 
 	contents->apex = apex;
 	contents->zone = zone;
@@ -992,7 +992,7 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 
 #ifdef USE_HASH_TABLE
 	char *name = knot_dname_to_str(node->owner);
-	printf("Adding node with owner %s to hash table.\n", name);
+//	debug_knot_zone("Adding node with owner %s to hash table.\n", name);
 	free(name);
 	//assert(zone->table != NULL);
 	// add the node also to the hash table if authoritative, or deleg. point
@@ -1874,7 +1874,7 @@ DEBUG_KNOT_ZONE(
 
 	// create dummy node to use for lookup
 	int exact_match = knot_zone_tree_find_less_or_equal(
-		zone->nsec3_nodes, nsec3_name, &found, &prev);
+		zone->nsec3_nodes, nsec3_name, &found, &prev, 1);
 	assert(exact_match >= 0);
 
 	knot_dname_release(nsec3_name);
