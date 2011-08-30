@@ -1933,6 +1933,9 @@ static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
 	}
 
 	assert(knot_node_is_new(node));
+	
+	// set the node copy as the apex of the contents
+	contents->apex = node;
 
 	// remove the SOA RRSet from the apex
 	knot_rrset_t *rrset = knot_node_remove_rrset(node, KNOT_RRTYPE_SOA);
