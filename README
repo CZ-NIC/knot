@@ -6,8 +6,8 @@ $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu-de
 $ sudo dpkg -i liburcu0_0.5.4-1_amd64.deb
 $ sudo dpkg -i liburcu-dev_0.5.4-1_amd64.deb
 $ git clone git://git.nic.cz/knot
-$ git checkout testing
 $ cd knot
+$ git checkout testing
 $ autoreconf -if
 $ ./configure
 $ sudo make install
