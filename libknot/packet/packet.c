@@ -772,15 +772,19 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 
 	debug_knot_packet("Question (prealloc type: %d)...\n",
 	                    packet->prealloc_type);
-	if ((err = knot_packet_parse_question(wireformat, &pos, size,
-	                   &packet->question,
-	                   packet->prealloc_type == KNOT_PACKET_PREALLOC_NONE)
-	           ) != KNOT_EOK) {
-		return err;
+	if (packet->header.qdcount > 0) {
+		if ((err = knot_packet_parse_question(wireformat, &pos, size,
+		             &packet->question, packet->prealloc_type 
+		                                == KNOT_PACKET_PREALLOC_NONE)
+		     ) != KNOT_EOK) {
+			return err;
+		}
+		debug_knot_packet("Original QDCOUNT: %u. Ignoring.\n", 
+		                  packet->header.qdcount);
+		packet->header.qdcount = 1;
+		
+		packet->parsed = pos;
 	}
-	packet->header.qdcount = 1;
-
-	packet->parsed = pos;
 
 	if (question_only) {
 		return KNOT_EOK;
@@ -856,17 +860,20 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 
 	if (packet->parsed >= packet->size
 	    || packet->an_rrsets == packet->header.ancount) {
+		*rr = NULL;
 		return KNOT_EOK;
 	}
 
 	size_t pos = packet->parsed;
 
-	debug_knot_packet("Parsing next Answer RR...\n");
+	debug_knot_packet("Parsing next Answer RR (pos: %zu)...\n", pos);
 	*rr = knot_packet_parse_rr(packet->wireformat, &pos, packet->size);
 	if (*rr == NULL) {
 		debug_knot_packet("Failed to parse RR!\n");
 		return KNOT_EMALF;
 	}
+	
+	debug_knot_packet("Parsed. Pos: %zu.\n", pos);
 
 	packet->parsed = pos;
 	// increment the number of answer RRSets, though there are no saved
