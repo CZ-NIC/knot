@@ -60,6 +60,7 @@ typedef struct {
 	knot_changeset_t *sets;
 	size_t count;
 	size_t allocated;
+	knot_rrset_t *first_soa;
 } knot_changesets_t;
 
 /*----------------------------------------------------------------------------*/
