@@ -21,8 +21,8 @@
 //#define DT_DEBUG
 //#define JOURNAL_DEBUG
 //#define NET_DEBUG
-//#define ZONES_DEBUG
-//#define XFR_DEBUG
+#define ZONES_DEBUG
+#define XFR_DEBUG
 //#define NOTIFY_DEBUG
 
 #ifdef NOTIFY_DEBUG

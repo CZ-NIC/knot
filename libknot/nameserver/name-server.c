@@ -1593,8 +1593,9 @@ search:
 	/*! \todo Check version. */
 	find_ret = knot_zone_contents_find_dname_hash(zone, qname, &node,
 	                                                &closest_encloser);
-	node = knot_node_current(node);
-	closest_encloser = knot_node_current(closest_encloser);
+	printf("FIND DNAME HASH returned: %p\n", node);
+//	node = knot_node_current(node);
+//	closest_encloser = knot_node_current(closest_encloser);
 #else
 	/*! \todo Check version. */
 	find_ret = knot_zone_contents_find_dname(zone, qname, &node,
@@ -1863,7 +1864,7 @@ static int ns_axfr_send_and_clear(knot_ns_xfr_t *xfr)
 
 	// Transform the packet into wire format
 	debug_knot_ns("Converting response to wire format..\n");
-	size_t real_size;
+	size_t real_size = xfr->wire_size;
 	if (ns_response_to_wire(xfr->response, xfr->wire, &real_size)
 	    != 0) {
 		return NS_ERR_SERVFAIL;
@@ -2665,7 +2666,8 @@ int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	
 	const knot_dname_t *qname = knot_packet_qname(xfr->response);
 
-	assert(knot_packet_qtype(xfr->response) == KNOT_RRTYPE_AXFR);
+	assert(knot_packet_qtype(xfr->response) == KNOT_RRTYPE_AXFR ||
+	       knot_packet_qtype(xfr->response) == KNOT_RRTYPE_IXFR);
 
 DEBUG_KNOT_NS(
 	char *name_str = knot_dname_to_str(qname);

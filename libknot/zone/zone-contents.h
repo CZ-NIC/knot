@@ -42,7 +42,7 @@ struct knot_zone;
 
 /*----------------------------------------------------------------------------*/
 
-typedef struct knot_zone_contents {
+typedef struct knot_zone_contents_t {
 	knot_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
 
 	ck_hash_table_t *table;     /*!< Hash table for holding zone nodes. */
@@ -438,7 +438,7 @@ int knot_zone_contents_tree_apply_postorder(knot_zone_contents_t *contents,
  * \param data Arbitrary data to be passed to the function.
  */
 int knot_zone_contents_tree_apply_inorder(knot_zone_contents_t *contents,
-                              void (*function)(knot_node_t *node, void *data),
+			      void (*function)(knot_node_t *node, void *data),
                               void *data);
 
 /*!
@@ -490,7 +490,7 @@ int knot_zone_contents_nsec3_apply_postorder(knot_zone_contents_t *contents,
  * \param data Arbitrary data to be passed to the function.
  */
 int knot_zone_contents_nsec3_apply_inorder(knot_zone_contents_t *contents,
-                              void (*function)(knot_node_t *node, void *data),
+			      void (*function)(knot_node_t *node, void *data),
                               void *data);
 
 /*!

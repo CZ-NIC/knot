@@ -801,6 +801,9 @@ knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
 		return NULL;
 	}
 
+	printf("created cont: %p (%s)\n",
+	       contents, knot_dname_to_str(apex->owner));
+
 	contents->apex = apex;
 	contents->zone = zone;
 	knot_node_set_zone(apex, zone);
@@ -988,11 +991,9 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 	}
 
 #ifdef USE_HASH_TABLE
-//DEBUG_KNOT_ZONE(
-//	char *name = knot_dname_to_str(node->owner);
-//	debug_knot_zone("Adding node with owner %s to hash table.\n", name);
-//	free(name);
-//);
+	char *name = knot_dname_to_str(node->owner);
+	printf("Adding node with owner %s to hash table.\n", name);
+	free(name);
 	//assert(zone->table != NULL);
 	// add the node also to the hash table if authoritative, or deleg. point
 	if (zone->table != NULL
@@ -1807,7 +1808,7 @@ DEBUG_KNOT_ZONE(
 DEBUG_KNOT_ZONE(
 	//char *n = knot_dname_to_str(name_copy);
 	debug_knot_zone("Finding closest encloser..\nStarting with: %.*s\n", 
-	                name_size, name_tmp);
+			(int)name_size, name_tmp);
 	//free(n);
 );
 
@@ -1817,7 +1818,7 @@ DEBUG_KNOT_ZONE(
 DEBUG_KNOT_ZONE(
 		//char *n = knot_dname_to_str(name_copy);
 		debug_knot_zone("Chopped leftmost label: %.*s\n",
-		                  name_size, name_tmp);
+				(int)name_size, name_tmp);
 		//free(n);
 );
 		// not satisfied in root zone!!
@@ -2060,7 +2061,7 @@ int knot_zone_contents_tree_apply_postorder(knot_zone_contents_t *zone,
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_contents_tree_apply_inorder(knot_zone_contents_t *zone,
-                              void (*function)(knot_node_t *node, void *data),
+			      void (*function)(knot_node_t *node, void *data),
                               void *data)
 {
 	if (zone == NULL) {
@@ -2114,7 +2115,7 @@ int knot_zone_contents_nsec3_apply_postorder(knot_zone_contents_t *zone,
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_contents_nsec3_apply_inorder(knot_zone_contents_t *zone,
-                              void (*function)(knot_node_t *node, void *data),
+			      void (*function)(knot_node_t *node, void *data),
                               void *data)
 {
 	if (zone == NULL) {
@@ -2244,6 +2245,8 @@ int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
 
 	contents->node_count = from->node_count;
 	contents->generation = from->generation;
+
+	contents->zone = from->zone;
 
 	/* Initialize NSEC3 params */
 	memcpy(&contents->nsec3_params, &from->nsec3_params,

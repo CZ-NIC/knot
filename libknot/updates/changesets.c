@@ -121,7 +121,8 @@ int knot_changeset_add_rr(knot_rrset_t ***rrsets, size_t *count,
 		}
 
 		// remove the RR
-		knot_rrset_deep_free(&rr, 1, 1, 1);
+		/*! \todo does this make sense? */
+		knot_rrset_free(&rr); // used to be deep free with all 1's
 
 		return KNOT_EOK;
 	} else {
@@ -224,6 +225,7 @@ int knot_changesets_check_size(knot_changesets_t *changesets)
 
 void knot_free_changeset(knot_changeset_t **changeset)
 {
+	/* XXX XXX investigate wrong frees. */
 	assert((*changeset)->add_allocated >= (*changeset)->add_count);
 	assert((*changeset)->remove_allocated >= (*changeset)->remove_count);
 	assert((*changeset)->allocated >= (*changeset)->size);
@@ -235,12 +237,12 @@ void knot_free_changeset(knot_changeset_t **changeset)
 	free((*changeset)->add);
 
 	for (j = 0; j < (*changeset)->remove_count; ++j) {
-		knot_rrset_deep_free(&(*changeset)->add[j], 1, 1, 1);
+		knot_rrset_deep_free(&(*changeset)->remove[j], 1, 1, 1);
 	}
 	free((*changeset)->remove);
 
 	knot_rrset_deep_free(&(*changeset)->soa_from, 1, 1, 1);
-	knot_rrset_deep_free(&(*changeset)->soa_to, 1, 1, 1);
+//	knot_rrset_deep_free(&(*changeset)->soa_to, 1, 1, 1);
 
 	free((*changeset)->data);
 

@@ -80,6 +80,42 @@ int check_zone(const char *db, const char* source)
 	return ret;
 }
 
+int exec_cmd(const char *argv[], int argc)
+{
+	pid_t chproc = fork();
+	if (chproc == 0) {
+
+		/* Duplicate, it doesn't run from stack address anyway. */
+		char **args = malloc(argc * sizeof(char*) + 1);
+		int ci = 0;
+		for (int i = 0; i < argc; ++i) {
+			if (strlen(argv[i]) > 1) {
+				args[ci++] = strdup(argv[i]);
+			}
+			args[ci] = '\0';
+		}
+
+		/* Execute command. */
+		execvp(args[0], args);
+
+		/* Execute failed. */
+		fprintf(stderr, "Failed to run executable '%s'\n", args[0]);
+		for (int i = 0; i < argc; ++i) {
+			free(args[i]);
+		}
+		free(args);
+
+		exit(1);
+		return -1;
+	}
+
+
+	/* Wait for finish. */
+	int ret = 0;
+	waitpid(chproc, &ret, 0);
+	return ret;
+}
+
 /*!
  * \brief Execute specified action.
  *
@@ -125,21 +161,23 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 
 		// Prepare command
 		const char *cfg = conf()->filename;
-		char* cmd = 0;
-		const char *cmd_str = "%s %s%s -d %s%s";
-		rc = asprintf(&cmd, cmd_str, PROJECT_EXEC,
-		              cfg ? "-c " : "", cfg ? cfg : "",
-			      verbose ? "-v " : "", argc > 0 ? argv[0] : "");
+		const char *args[] = {
+			PROJECT_EXEC,
+			"-d",
+			cfg ? "-c" : "",
+			cfg ? cfg : "",
+			verbose ? "-v" : "",
+			argc > 0 ? argv[0] : ""
+		};
 
 		// Unlock configuration
 		conf_read_unlock();
 
 		// Execute command
-		if ((rc = system(cmd)) < 0) {
+		if ((rc = exec_cmd(args, 6)) < 0) {
 			pid_remove(pidfile);
 			rc = 1;
 		}
-		free(cmd);
 
 		// Wait for finish
 		if (wait) {
@@ -303,30 +341,31 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			}
 
 			// Prepare command
-			char* cmd = 0;
-			const char *cmd_str = "%s %s%s-o %s %s %s";
-			rc = asprintf(&cmd, cmd_str, ZONEPARSER_EXEC,
-				      zone->enable_checks ? "-s " : "",
-				      verbose ? "-v " : "",
-				      zone->db,
-			              zone->name, zone->file);
+			const char *args[] = {
+				ZONEPARSER_EXEC,
+				zone->enable_checks ? "-s" : "",
+				verbose ? "-v" : "",
+				"-o",
+				zone->db,
+				zone->name,
+				zone->file
+			};
 
 			// Execute command
 			if (verbose) {
 				printf("Compiling '%s'...\n",
 				       zone->name);
 			}
-			rc = system(cmd);
-			rc = WEXITSTATUS(rc);
-			if (rc != 0) {
+			rc = exec_cmd(args, 7);
+			if (rc < 0 || WEXITSTATUS(rc) != 0) {
 				fprintf(stderr, "error: Compilation failed "
 						"with return code %d.\n",
-						rc);
+						WEXITSTATUS(rc));
 			}
+			rc = WEXITSTATUS(rc);
 			if (rc < 0) {
 				rc = 1;
 			}
-			free(cmd);
 		}
 
 		// Unlock configuration

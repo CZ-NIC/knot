@@ -21,6 +21,26 @@
 #include "knot/server/dthreads.h"
 
 /*!
+ * \brief Handle single packet.
+ *
+ * Function processses packet and prepares answer to qbuf,
+ * response length is set to resp_len.
+ *
+ * \param qbuf
+ * \param qbuflen
+ * \param resp_len
+ * \param addr
+ * \param ns
+ * \param thread_stat
+ *
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_ERROR
+ * \retval KNOTD_ENOMEM
+ */
+int udp_handle(uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
+	       sockaddr_t* addr, knot_nameserver_t *ns);
+
+/*!
  * \brief UDP handler thread runnable.
  *
  * Listen to DNS datagrams in a loop on a UDP socket and

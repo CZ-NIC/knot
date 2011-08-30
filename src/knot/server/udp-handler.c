@@ -23,30 +23,9 @@
 #include "knot/server/zones.h"
 #include "knot/server/notify.h"
 
-/*!
- * \brief Handle single packet.
- *
- * Function processses packet and prepares answer to qbuf,
- * response length is set to resp_len.
- *
- * \param qbuf
- * \param qbuflen
- * \param resp_len
- * \param addr
- * \param ns
- * \param thread_stat
- *
- * \retval KNOTD_EOK on success.
- * \retval KNOTD_ERROR
- * \retval KNOTD_ENOMEM
- */
-static inline int udp_handle(uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
-			     sockaddr_t* addr, knot_nameserver_t *ns,
-			     stat_t* thread_stat)
+int udp_handle(uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
+	       sockaddr_t* addr, knot_nameserver_t *ns)
 {
-	/* faddr has to be read immediately. */
-	stat_get_first(thread_stat, addr->ptr);
-	
 	debug_net("udp: received %zd bytes.\n", qbuflen);
 
 	knot_packet_type_t qtype = KNOT_QUERY_NORMAL;
@@ -124,8 +103,6 @@ static inline int udp_handle(uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 
 	knot_packet_free(&packet);
 
-	stat_get_second(thread_stat);
-
 	return res;
 }
 
@@ -145,7 +122,9 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 	
 	uint8_t qbuf[SOCKET_MTU_SZ];
 	struct msghdr msg;
+	memset(&msg, 0, sizeof(struct msghdr));
 	struct iovec iov;
+	memset(&iov, 0, sizeof(struct iovec));
 	iov.iov_base = qbuf;
 	iov.iov_len = SOCKET_MTU_SZ;
 	msg.msg_iov = &iov;
@@ -187,7 +166,7 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 
 		/* Handle received pkt. */
 		size_t resp_len = 0;
-		int rc = udp_handle(qbuf, n, &resp_len, &addr, ns, thread_stat);
+		int rc = udp_handle(qbuf, n, &resp_len, &addr, ns);
 
 		/* Send response. */
 		if (rc == KNOTD_EOK && resp_len > 0) {
@@ -270,7 +249,7 @@ static inline int udp_master_recvmmsg(dthread_t *thread, stat_t *thread_stat)
 			struct iovec *cvec = msgs[i].msg_hdr.msg_iov;
 			size_t resp_len = msgs[i].msg_len;
 			udp_handle(cvec->iov_base, resp_len, &resp_len,
-				   addrs + i, ns, thread_stat);
+				   addrs + i, ns);
 			msgs[i].msg_len = resp_len;
 		}
 
