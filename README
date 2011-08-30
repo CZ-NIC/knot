@@ -2,22 +2,24 @@ Installation
 ============
 
 The following steps should work (verified in VirtualBox only)
-on the distribution/platform/release as listed bellow.
+on the distribution/architecture/release combinations as listed bellow.
 
+---------------------------------------
+Debian         (AMD64) 6.0.2.1 (squeeze)
 Ubuntu Server  (AMD64) 10.04 LTS
 Ubuntu Desktop (AMD64) 10.04 LTS
--------------------------------
+---------------------------------------
 
 $ # make the system up-to-date
 $
 $ sudo apt-get update
 $ sudo apt-get upgrade
 $
-$ # ensure all prerequisities are installed
+$ # ensure all prerequisites are installed
 $
 $ sudo apt-get install git-core autoconf libtool flex bison libssl-dev libev-dev
 $
-$ # the required version of liburcu is not avaliable in the 'lucid' packages
+$ # the required version of liburcu is not available in the default package sources.
 $
 $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu0_0.5.4-1_amd64.deb
 $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu-dev_0.5.4-1_amd64.deb
@@ -35,20 +37,22 @@ $ sudo make install
 $ sudo ldconfig
 
 
+---------------------------------------
+Debian         (I386) 6.0.2.1 (squeeze)
 Ubuntu Server  (I386) 10.04 LTS
 Ubuntu Desktop (I386) 10.04 LTS
-------------------------------
+---------------------------------------
 
 $ # make the system up-to-date
 $
 $ sudo apt-get update
 $ sudo apt-get upgrade
 $
-$ # ensure all prerequisities are installed
+$ # ensure all prerequisites are installed
 $
 $ sudo apt-get install git-core autoconf libtool flex bison libssl-dev libev-dev
 $
-$ # the required version of liburcu is not avaliable in the 'lucid' packages
+$ # the required version of liburcu is not available in the default package sources.
 $
 $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu0_0.5.4-1_i386.deb
 $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu-dev_0.5.4-1_i386.deb
