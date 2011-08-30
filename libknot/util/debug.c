@@ -185,6 +185,7 @@ void knot_node_dump(knot_node_t *node, void *loaded_zone)
 	for (int i = 0; i < node->rrset_count; i++) {
 		knot_rrset_dump(rrsets[i], (int) loaded_zone);
 	}
+	free(rrsets);
 	//assert(node->owner->node == node);
 	printf("------- NODE --------\n");
 #endif

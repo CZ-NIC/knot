@@ -646,6 +646,7 @@ static int zones_changesets_from_binary(knot_changesets_t *chgsets)
 				} else {
 					/* Final SOA. */
 					debug_knot_xfr("ixfr_db: extra SOA\n");
+					knot_rrset_free(&rrset);
 					break;
 				}
 			} else {

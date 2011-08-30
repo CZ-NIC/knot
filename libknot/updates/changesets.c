@@ -242,7 +242,7 @@ void knot_free_changeset(knot_changeset_t **changeset)
 	free((*changeset)->remove);
 
 	knot_rrset_deep_free(&(*changeset)->soa_from, 1, 1, 1);
-//	knot_rrset_deep_free(&(*changeset)->soa_to, 1, 1, 1);
+	knot_rrset_deep_free(&(*changeset)->soa_to, 1, 1, 1);
 
 	free((*changeset)->data);
 
