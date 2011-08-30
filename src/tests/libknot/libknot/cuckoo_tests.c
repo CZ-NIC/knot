@@ -36,7 +36,7 @@ unit_api cuckoo_tests_api = {
 /*
  * Unit implementation
  */
-static const int CUCKOO_TESTS_COUNT = 7;
+static const int CUCKOO_TESTS_COUNT = 13;
 static const int CUCKOO_MAX_ITEMS = 1000;
 static const int CUCKOO_TEST_MAX_KEY_SIZE = 10;
 
@@ -46,6 +46,7 @@ typedef struct test_cuckoo_items {
 	size_t *values;
 	size_t *deleted;
 	int count;
+	int total_count;
 } test_cuckoo_items;
 
 /*----------------------------------------------------------------------------*/
@@ -109,6 +110,8 @@ static int test_cuckoo_lookup(ck_hash_table_t *table,
 {
 	int errors = 0;
 	for (int i = 0; i < items->count; ++i) {
+//		printf("Searching for key: %.*s, size %zu.\n",
+//		       items->key_sizes[i], items->keys[i], items->key_sizes[i]);
 		const ck_hash_table_item_t *found = ck_find_item(
 		                table, items->keys[i], items->key_sizes[i]);
 		if (!found) {
@@ -135,6 +138,8 @@ static int test_cuckoo_lookup(ck_hash_table_t *table,
 
 	if (errors > 0) {
 		diag("Not found %d of %d items.\n", errors, items->count);
+	} else {
+		note("Found %d items.\n", items->count);
 	}
 
 	return errors == 0;
@@ -201,17 +206,59 @@ static int test_cuckoo_rehash(ck_hash_table_t *table)
 
 /*----------------------------------------------------------------------------*/
 
+static int test_cuckoo_resize(ck_hash_table_t *table) 
+{
+	// test the resize explicitly
+	return (ck_resize_table(table) == 0);
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int test_cuckoo_full(ck_hash_table_t *table, test_cuckoo_items *items)
+{
+	// invoke the resize by inserting so much items that thay cannot
+	// fit into the table
+	int new_count = table->items;
+	
+	while (new_count < hashsize(table->table_size_exp) * table->table_count) {
+		new_count += table->items;
+	}
+	
+	note("Old item count: %d, new count: %d, capacity of the table: %d\n",
+	     table->items, new_count, 
+	     hashsize(table->table_size_exp) * table->table_count);
+	
+	assert(new_count <= items->total_count);
+	
+	int errors = 0;
+	
+	for (int i = items->count; i < new_count; ++i) {
+		assert(items->values[i] != 0);
+		if (ck_insert_item(table, items->keys[i], items->key_sizes[i],
+		                   (void *)items->values[i]) != 0) {
+			++errors;
+		}
+	}
+	
+	items->count = new_count;
+	
+	return (errors == 0);
+}
+
+/*----------------------------------------------------------------------------*/
+
 static void create_random_items(test_cuckoo_items *items, int item_count)
 {
 	assert(items != NULL);
 
 	items->count = item_count;
-	items->values = (size_t *)malloc(item_count * sizeof(size_t));
-	items->key_sizes = (size_t *)malloc(item_count * sizeof(size_t));
-	items->deleted = (size_t *)malloc(item_count * sizeof(size_t));
-	items->keys = (char **)malloc(item_count * sizeof(char *));
+	items->total_count = item_count * 10;
+	items->values = (size_t *)malloc(items->total_count * sizeof(size_t));
+	items->key_sizes = (size_t *)malloc(items->total_count * sizeof(size_t));
+	items->deleted = (size_t *)malloc(items->total_count * sizeof(size_t));
+	items->keys = (char **)malloc(items->total_count * sizeof(char *));
 
-	for (int i = 0; i < item_count; ++i) {
+	for (int i = 0; i < items->total_count; ++i) {
 		int value = rand() + 1;
 		int key_size = rand() % CUCKOO_TEST_MAX_KEY_SIZE + 1;
 		char *key = malloc(key_size * sizeof(char));
@@ -264,7 +311,7 @@ static void delete_items(test_cuckoo_items *items)
 	free(items->deleted);
 	free(items->key_sizes);
 	free(items->values);
-	for (int i = 0; i < items->count; ++i) {
+	for (int i = 0; i < items->total_count; ++i) {
 		free(items->keys[i]);
 	}
 	free(items->keys);
@@ -292,7 +339,7 @@ static int cuckoo_tests_run(int argc, char *argv[])
 	create_random_items(items, item_count);
 	//print_items(items);
 
-	skip(!res, 6);
+	skip(!res, 10);
 	// Test 2: insert
 	ok(test_cuckoo_insert(table, items), "cuckoo hashing: insert");
 
@@ -315,10 +362,24 @@ static int cuckoo_tests_run(int argc, char *argv[])
 
 	// Test 8: rehash
 	ok(test_cuckoo_rehash(table), "cuckoo hashing: rehash");
-
+	
 	// Test 9: lookup 4
 	ok(test_cuckoo_lookup(table, items),
 	   "cuckoo hashing: lookup after rehash");
+	
+	// Test 10: resize
+	ok(test_cuckoo_resize(table), "cuckoo hashing: resize");
+	
+	// Test 11: lookup 5
+	ok(test_cuckoo_lookup(table, items),
+	   "cuckoo hashing: lookup after resize");
+	
+	// Test 12: owerflow the table
+	ok(test_cuckoo_full(table, items), "cuckoo hashing: overflow");
+	
+	// Test 13: lookup 5
+	ok(test_cuckoo_lookup(table, items),
+	   "cuckoo hashing: lookup after overflow");
 
 	endskip;
 
