@@ -242,8 +242,8 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
 const knot_rrset_t *knot_node_rrset(const knot_node_t *node,
                                         uint16_t type)
 {
-	printf("Find: %p (%s - %p)\n", node->rrset_tree,
-	       knot_dname_to_str(node->owner), node);
+//	printf("Find: %p (%s - %p)\n", node->rrset_tree,
+//	       knot_dname_to_str(node->owner), node);
 	assert(node != NULL);
 	assert(node->rrset_tree != NULL);
 	knot_rrset_t rrset;
@@ -255,8 +255,8 @@ const knot_rrset_t *knot_node_rrset(const knot_node_t *node,
 
 knot_rrset_t *knot_node_get_rrset(knot_node_t *node, uint16_t type)
 {
-	printf("Find: %p (%s - %p)\n", node->rrset_tree,
-	       knot_dname_to_str(node->owner), node);
+//	printf("Find: %p (%s - %p)\n", node->rrset_tree,
+//	       knot_dname_to_str(node->owner), node);
 	knot_rrset_t rrset;
 	rrset.type = type;
 	return (knot_rrset_t *)gen_tree_find(node->rrset_tree, &rrset);
@@ -325,14 +325,14 @@ knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
 	args.array = rrsets;
 	args.count = 0;
 
-	printf("using tree: %p (should have %d rrsets) %s\n",
-	       node->rrset_tree, node->rrset_count,
-	       knot_dname_to_str(node->owner));
+//	printf("using tree: %p (should have %d rrsets) %s\n",
+//	       node->rrset_tree, node->rrset_count,
+//	       knot_dname_to_str(node->owner));
 
 	gen_tree_apply_inorder(node->rrset_tree, save_rrset_to_array,
 	                       &args);
 
-	printf("has rrsets: %zu\n", args.count);
+//	printf("has rrsets: %zu\n", args.count);
 
 	assert(args.count == node->rrset_count);
 
@@ -366,8 +366,8 @@ const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 	gen_tree_apply_inorder(node->rrset_tree, save_rrset_to_array,
 	                       &args);
 
-	printf("owner: %s\n",
-	       knot_dname_to_str(node->owner));
+//	printf("owner: %s\n",
+//	       knot_dname_to_str(node->owner));
 	printf("has rrsets: %zu\n", args.count);
 	assert(args.count == node->rrset_count);
 	assert(args.count);
@@ -447,8 +447,8 @@ const knot_node_t *knot_node_previous(const knot_node_t *node,
 knot_node_t *knot_node_get_previous(const knot_node_t *node, 
                                         int check_version)
 {
-	printf("node: %s zone: %p\n", knot_dname_to_str(node->owner),
-	       node->zone);
+//	printf("node: %s zone: %p\n", knot_dname_to_str(node->owner),
+//	       node->zone);
 	assert(!check_version
 	       || (node->zone != NULL && node->zone->contents != NULL));
 	
@@ -927,7 +927,7 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 		return KNOT_ENOMEM;
 	}
 
-	printf("Shallow copying node %p to %p w owner %s\n",
-	       from, *to, knot_dname_to_str(from->owner));
+//	printf("Shallow copying node %p to %p w owner %s\n",
+//	       from, *to, knot_dname_to_str(from->owner));
 	return KNOT_EOK;
 }

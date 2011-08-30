@@ -801,8 +801,8 @@ knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
 		return NULL;
 	}
 
-	printf("created cont: %p (%s)\n",
-	       contents, knot_dname_to_str(apex->owner));
+//	printf("created cont: %p (%s)\n",
+//	       contents, knot_dname_to_str(apex->owner));
 
 	contents->apex = apex;
 	contents->zone = zone;

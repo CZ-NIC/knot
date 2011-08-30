@@ -202,7 +202,7 @@ int knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
 
 int knot_changesets_check_size(knot_changesets_t *changesets)
 {
-	if (changesets->allocated >= changesets->count) {
+	if (changesets->allocated <= changesets->count) {
 		const size_t item_len = sizeof(knot_changeset_t);
 		size_t new_count = (changesets->allocated + KNOT_CHANGESET_STEP);
 		knot_changeset_t *sets = malloc(new_count * item_len);
@@ -242,7 +242,7 @@ void knot_free_changeset(knot_changeset_t **changeset)
 	free((*changeset)->remove);
 
 	knot_rrset_deep_free(&(*changeset)->soa_from, 1, 1, 1);
-//	knot_rrset_deep_free(&(*changeset)->soa_to, 1, 1, 1);
+	knot_rrset_deep_free(&(*changeset)->soa_to, 1, 1, 1);
 
 	free((*changeset)->data);
 
