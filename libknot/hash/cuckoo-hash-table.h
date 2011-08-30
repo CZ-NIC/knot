@@ -317,6 +317,9 @@ int ck_apply(ck_hash_table_t *table,
 
 int ck_rehash(ck_hash_table_t *table);
 
+// for testing purposes only
+int ck_resize_table(ck_hash_table_t *table);
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Dumps the whole hash table to the standard output.
