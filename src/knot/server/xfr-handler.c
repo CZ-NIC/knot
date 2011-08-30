@@ -195,6 +195,7 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 			knot_changesets_t *chs = (knot_changesets_t *)request->data;
 			free(chs->sets);
 			free(chs);
+			request->data = 0;
 			debug_xfr("xfr_client_ev: IXFR/IN transfer finished\n");
 			break;
 		default:

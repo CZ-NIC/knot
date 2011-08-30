@@ -2285,13 +2285,13 @@ static void xfrin_cleanup_update(xfrin_changes_t *changes)
 	// free old nodes but do not destroy their RRSets
 	// remove owners also, because of reference counting
 	for (int i = 0; i < changes->old_nodes_count; ++i) {
-//		knot_node_free(&changes->old_nodes[i], 1, 0);
+		knot_node_free(&changes->old_nodes[i], 1, 0);
 	}
 
 	// free old RRSets, and destroy also domain names in them
 	// because of reference counting
 	for (int i = 0; i < changes->old_rrsets_count; ++i) {
-//		knot_rrset_deep_free(&changes->old_rrsets[i], 0, 1, 1);
+		knot_rrset_free(&changes->old_rrsets[i]);
 	}
 	
 	// free old hash table items, but do not touch their contents
