@@ -188,6 +188,6 @@ general_tree_t *gen_tree_shallow_copy(general_tree_t *tree)
 	printf("new tree: %p from old tree: %p\n",
 	       new_tree, tree);
 
-	return tree;
+	return new_tree;
 }
 
