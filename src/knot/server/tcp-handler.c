@@ -180,7 +180,7 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 	case KNOT_QUERY_IXFR:
 		memset(&xfr, 0, sizeof(knot_ns_xfr_t));
 		xfr.type = XFR_TYPE_IOUT;
-		*wire_copy = malloc(sizeof(uint8_t) * packet->size);
+		wire_copy = malloc(sizeof(uint8_t) * packet->size);
 		if (!wire_copy) {
 			/*!< \todo Cleanup. */
 			ERR_ALLOC_FAILED;
