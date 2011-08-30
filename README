@@ -1,9 +1,11 @@
 Installation
 ============
 
-The following steps should work (verified in VirtualBox only) for:
+The following steps should work (verified in VirtualBox only)
+on the distribution/platform/release as listed bellow.
 
-	Ubuntu Server (AMD64) 10.04 LTS
+Ubuntu Server (AMD64) 10.04 LTS
+-------------------------------
 
 $ # make the system up-to-date
 $
@@ -20,6 +22,36 @@ $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu0_0
 $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu-dev_0.5.4-1_amd64.deb
 $ sudo dpkg -i liburcu0_0.5.4-1_amd64.deb
 $ sudo dpkg -i liburcu-dev_0.5.4-1_amd64.deb
+$
+$ # go for the real thing
+$
+$ git clone git://git.nic.cz/knot
+$ cd knot
+$ git checkout testing
+$ autoreconf -if
+$ ./configure
+$ sudo make install
+$ sudo ldconfig
+
+
+Ubuntu Server (I386) 10.04 LTS
+------------------------------
+
+$ # make the system up-to-date
+$
+$ sudo apt-get update
+$ sudo apt-get upgrade
+$
+$ # ensure all prerequisities are installed
+$
+$ sudo apt-get install git-core autoconf libtool flex bison libssl-dev libev-dev
+$
+$ # the required version of liburcu is not avaliable in the 'lucid' packages
+$
+$ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu0_0.5.4-1_i386.deb
+$ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu-dev_0.5.4-1_i386.deb
+$ sudo dpkg -i liburcu0_0.5.4-1_i386.deb
+$ sudo dpkg -i liburcu-dev_0.5.4-1_i386.deb
 $
 $ # go for the real thing
 $
