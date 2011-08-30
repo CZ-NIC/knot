@@ -33,23 +33,31 @@ static const size_t KNOT_CHANGESET_RRSET_STEP = 5;
 static int knot_changeset_check_count(knot_rrset_t ***rrsets, size_t count,
                                         size_t *allocated)
 {
-	// this should also do for the initial case (*rrsets == NULL)
-	if (count == *allocated) {
-		const size_t item_len = sizeof(knot_rrset_t *);
-		const size_t new_count = *allocated + KNOT_CHANGESET_RRSET_STEP;
-		knot_rrset_t **rrsets_new = malloc(new_count * item_len);
-		if (rrsets_new == NULL) {
-			return KNOT_ENOMEM;
-		}
-
-		memset(rrsets_new, 0, new_count * item_len);
-		memcpy(rrsets_new, *rrsets, count * item_len);
-
-		knot_rrset_t **rrsets_old = *rrsets;
-		*rrsets = rrsets_new;
-		*allocated += KNOT_CHANGESET_RRSET_STEP;
-		free(rrsets_old);
+	/* Check if allocated is sufficient. */
+	if (count <= *allocated) {
+		return KNOT_EOK;
 	}
+
+	/* How many steps is needed to content count? */
+	size_t extra = (count - *allocated) % KNOT_CHANGESET_RRSET_STEP;
+	extra = (extra + 1) * KNOT_CHANGESET_RRSET_STEP;
+
+	/* Allocate new memory block. */
+	const size_t item_len = sizeof(knot_rrset_t *);
+	const size_t new_count = *allocated + extra;
+	knot_rrset_t **rrsets_new = malloc(new_count * item_len);
+	if (rrsets_new == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Clear old memory block and copy old data. */
+	memset(rrsets_new, 0, new_count * item_len);
+	memcpy(rrsets_new, *rrsets, (*allocated) * item_len);
+
+	/* Replace old rrsets. */
+	free(*rrsets);
+	*rrsets = rrsets_new;
+	*allocated = new_count;
 
 	return KNOT_EOK;
 }
@@ -78,9 +86,6 @@ int knot_changeset_allocate(knot_changesets_t **changesets)
 	}
 
 	memset(*changesets, 0, sizeof(knot_changesets_t));
-	assert((*changesets)->allocated == 0);
-	assert((*changesets)->count == 0);
-	assert((*changesets)->sets == NULL);
 
 	return knot_changesets_check_size(*changesets);
 }
@@ -91,12 +96,13 @@ int knot_changeset_add_rrset(knot_rrset_t ***rrsets,
                               size_t *count, size_t *allocated,
                               knot_rrset_t *rrset)
 {
-	int ret = knot_changeset_check_count(rrsets, *count, allocated);
+	int ret = knot_changeset_check_count(rrsets, *count + 1, allocated);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	(*rrsets)[(*count)++] = rrset;
+	(*rrsets)[*count] = rrset;
+	*count = *count + 1;
 
 	return KNOT_EOK;
 }
@@ -202,21 +208,31 @@ int knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
 
 int knot_changesets_check_size(knot_changesets_t *changesets)
 {
-	if (changesets->allocated <= changesets->count) {
-		const size_t item_len = sizeof(knot_changeset_t);
-		size_t new_count = (changesets->allocated + KNOT_CHANGESET_STEP);
-		knot_changeset_t *sets = malloc(new_count * item_len);
-		if (sets == NULL) {
-			return KNOT_ENOMEM;
-		}
-
-		memset(sets, 0, new_count * item_len);
-		memcpy(sets, changesets->sets, changesets->count * item_len);
-		knot_changeset_t *old_sets = changesets->sets;
-		changesets->sets = sets;
-		changesets->allocated += KNOT_CHANGESET_STEP;
-		free(old_sets);
+	/* Check if allocated is sufficient. */
+	if (changesets->count <= changesets->allocated) {
+		return KNOT_EOK;
 	}
+
+	/* How many steps is needed to content count? */
+	size_t extra = (changesets->count - changesets->allocated) % KNOT_CHANGESET_STEP;
+	extra = (extra + 1) * KNOT_CHANGESET_STEP;
+
+	/* Allocate new memory block. */
+	const size_t item_len = sizeof(knot_changeset_t);
+	size_t new_count = (changesets->allocated + extra);
+	knot_changeset_t *sets = malloc(new_count * item_len);
+	if (sets == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Clear old memory block and copy old data. */
+	memset(sets, 0, new_count * item_len);
+	memcpy(sets, changesets->sets, changesets->allocated * item_len);
+
+	/* Replace old changesets. */
+	free(changesets->sets);
+	changesets->sets = sets;
+	changesets->allocated = new_count;
 
 	return KNOT_EOK;
 }
@@ -245,6 +261,7 @@ void knot_free_changeset(knot_changeset_t **changeset)
 	knot_rrset_deep_free(&(*changeset)->soa_to, 1, 1, 1);
 
 	free((*changeset)->data);
+
 
 	*changeset = NULL;
 }
