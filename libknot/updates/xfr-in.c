@@ -692,14 +692,14 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 				return 1;
 			} else {
 				// normal SOA, start new changeset
+				(*chs)->count++;
 				if ((ret = knot_changesets_check_size(*chs))
 				     != KNOT_EOK) {
+					(*chs)->count--;
 					knot_rrset_deep_free(&rr, 1, 1, 1);
 					goto cleanup;
 				}
-				
-				(*chs)->count++;
-				
+						
 				ret = knot_changeset_add_soa(
 					&(*chs)->sets[(*chs)->count - 1], rr, 
 					XFRIN_CHANGESET_REMOVE);
@@ -2299,10 +2299,11 @@ static void xfrin_cleanup_update(xfrin_changes_t *changes)
 	}
 	free(changes->old_hash_items);
 
-	// free allocated arrays or nodes
+	// free allocated arrays of nodes and rrsets
 	free(changes->new_nodes);
 	free(changes->old_nodes);
-
+	free(changes->new_rrsets);
+	free(changes->old_rrsets);
 }
 
 /*----------------------------------------------------------------------------*/

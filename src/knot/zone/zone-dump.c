@@ -2053,7 +2053,8 @@ int knot_zdump_rrset_serialize(const knot_rrset_t *rrset, uint8_t **stream,
 
 	*size = 0;
 	arg_t arguments;
-	arguments.arg1 = NULL;
+	memset(&arguments, 0, sizeof(arg_t));
+
 	knot_rrset_dump_binary(rrset, &arguments, 0, stream, size);
 
 	return KNOT_EOK;

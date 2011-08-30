@@ -711,9 +711,14 @@ static int zones_load_changesets(const knot_zone_t *zone,
 			break;
 		}
 
+		/*! \todo Increment and decrement to reserve +1,
+		 *        but not incremented counter.*/
 		/* Check changesets size if needed. */
+		++dst->count;
 		ret = knot_changesets_check_size(dst);
+		--dst->count;
 		if (ret != KNOT_EOK) {
+			--dst->count;
 			debug_knot_xfr("ixfr_db: failed to check changesets size\n");
 			return ret;
 		}
@@ -1508,22 +1513,25 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 static int zones_check_binary_size(uint8_t **data, size_t *allocated,
                                    size_t required)
 {
-	if (required > *allocated) {
-		size_t new_size = *allocated;
-		while (new_size <= required) {
-			new_size += XFRIN_CHANGESET_BINARY_STEP;
-		}
-		uint8_t *new_data = (uint8_t *)malloc(new_size);
-		if (new_data == NULL) {
-			return KNOT_ENOMEM;
-		}
-
-		memcpy(new_data, *data, *allocated);
-		uint8_t *old_data = *data;
-		*data = new_data;
-		*allocated = new_size;
-		free(old_data);
+	if (required <= *allocated) {
+		return KNOT_EOK;
 	}
+
+	/* Allocate new memory block. */
+	size_t new_count = required;
+	uint8_t *new_data = malloc(new_count * sizeof(uint8_t));
+	if (new_data == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Clear memory block and copy old data. */
+	memset(new_data, 0, new_count * sizeof(uint8_t));
+	memcpy(new_data, *data, *allocated);
+
+	/* Switch pointers and free old pointer. */
+	free(*data);
+	*data = new_data;
+	*allocated = new_count;
 
 	return KNOT_EOK;
 }
@@ -1714,6 +1722,11 @@ int zones_store_changesets(knot_ns_xfr_t *xfr)
 				return KNOTD_ERROR;
 			}
 		}
+
+		/* Free converted binary data. */
+		free(chs->data);
+		chs->data = 0;
+		chs->size = 0;
 	}
 
 	/* Written changesets to journal. */
