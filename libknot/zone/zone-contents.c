@@ -992,7 +992,7 @@ int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 
 #ifdef USE_HASH_TABLE
 	char *name = knot_dname_to_str(node->owner);
-	printf("Adding node with owner %s to hash table.\n", name);
+//	debug_knot_zone("Adding node with owner %s to hash table.\n", name);
 	free(name);
 	//assert(zone->table != NULL);
 	// add the node also to the hash table if authoritative, or deleg. point
