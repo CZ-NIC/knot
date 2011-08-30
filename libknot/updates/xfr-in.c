@@ -779,7 +779,9 @@ DEBUG_KNOT_XFR(
 		}
 		
 		// parse the next RR
+		debug_knot_xfr("Parsing next RR..\n");
 		ret = knot_packet_parse_next_rr_answer(packet, &rr);
+		debug_knot_xfr("Returned %d, %p.\n", ret, rr);
 	}
 	
 	// here no RRs remain in the packet but the transfer is not finished

@@ -861,12 +861,14 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 
 	size_t pos = packet->parsed;
 
-	debug_knot_packet("Parsing next Answer RR...\n");
+	debug_knot_packet("Parsing next Answer RR (pos: %zu)...\n", pos);
 	*rr = knot_packet_parse_rr(packet->wireformat, &pos, packet->size);
 	if (*rr == NULL) {
 		debug_knot_packet("Failed to parse RR!\n");
 		return KNOT_EMALF;
 	}
+	
+	debug_knot_packet("Parsed. Pos: %zu.\n", pos);
 
 	packet->parsed = pos;
 	// increment the number of answer RRSets, though there are no saved
