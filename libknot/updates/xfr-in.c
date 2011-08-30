@@ -553,7 +553,7 @@ static int xfrin_parse_first_rr(knot_packet_t **packet, const uint8_t *pkt,
 /*----------------------------------------------------------------------------*/
 
 int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
-			      knot_changesets_t **chs)
+                              knot_changesets_t **chs)
 {
 	if (pkt == NULL || chs == NULL) {
 		debug_knot_xfr("Wrong parameters supported.\n");
@@ -561,157 +561,326 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 	}
 
 	knot_packet_t *packet = NULL;
-	knot_rrset_t *soa1 = NULL;
-	knot_rrset_t *soa2 = NULL;
+//	knot_rrset_t *soa1 = NULL;
+//	knot_rrset_t *soa2 = NULL;
 	knot_rrset_t *rr = NULL;
 
 	int ret;
-
-	if ((ret = xfrin_parse_first_rr(&packet, pkt, size, &soa1))
+	
+	if ((ret = xfrin_parse_first_rr(&packet, pkt, size, &rr))
 	     != KNOT_EOK) {
 		return ret;
 	}
 
 	assert(packet != NULL);
+	
+	// state of the transfer
+	// -1 .. a SOA is expected to create a new changeset
+	int state;
 
-	if (soa1 == NULL) {
+	if (rr == NULL) {
 		debug_knot_xfr("No RRs in the packet.\n");
 		knot_packet_free(&packet);
 		/*! \todo Some other action??? */
 		return KNOT_EMALF;
 	}
-
-	assert(soa1 != NULL);
-
-	if (*chs == NULL
-	    && (ret = knot_changeset_allocate(chs)) != KNOT_EOK) {
-		knot_packet_free(&packet);
-		return ret;
-	}
-
-	/*! \todo Do some checking about what is the first and second SOA. */
-
-	if (knot_rrset_type(soa1) != KNOT_RRTYPE_SOA) {
-		debug_knot_xfr("First RR is not a SOA RR!\n");
-		knot_packet_free(&packet);
-		return KNOT_EMALF;
-	}
-
-	// we may drop this SOA, not needed right now; parse the next one
-	ret = knot_packet_parse_next_rr_answer(packet, &rr);
-
-	while (ret == KNOT_EOK && rr != NULL) {
+	
+	if (*chs == NULL) {
+		ret = knot_changeset_allocate(chs);
+		if (ret != KNOT_EOK) {
+			knot_rrset_deep_free(&rr, 1, 1, 1);
+			knot_packet_free(&packet);
+			return ret;
+		}
+		
+		// the first RR must be a SOA
 		if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
-			debug_knot_xfr("Next RR is not a SOA RR as it should be"
-			               "!\n");
+			debug_knot_xfr("First RR is not a SOA RR!\n");
+			knot_rrset_deep_free(&rr, 1, 1, 1);
 			ret = KNOT_EMALF;
 			goto cleanup;
 		}
+		
+		// just store the first SOA for later use
+		(*chs)->first_soa = rr;
+		state = -1;
+		
+		// parse the next one
+		ret = knot_packet_parse_next_rr_answer(packet, &rr);
+	} else {
+		if ((*chs)->first_soa == NULL) {
+			debug_knot_xfr("Changesets don't contain frist SOA!\n");
+			return KNOT_EBADARG;
+		}
+	}
 
-		if (knot_rdata_soa_serial(knot_rrset_rdata(rr))
-		    == knot_rdata_soa_serial(knot_rrset_rdata(soa1))) {
-			soa2 = rr;
-			debug_knot_xfr("IXFR/IN packet is parsed, first SOA serial"
-				       " matches current, chset count = %zu\n",
-				       (*chs)->count);
+	/*
+	 * Process the next RR. Different requirements are in place in 
+	 * different cases:
+	 *
+	 * 1) Last changeset has both soa_from and soa_to.
+	 *    a) The next RR is a SOA.
+	 *      i) The next RR is equal to the first_soa saved in changesets.
+	 *         This denotes the end of the transfer. It may be dropped and
+	 *         the end should be signalised by returning positive value.
+	 *
+	 *      ii) The next RR is some other SOA.
+	 *          This means a start of new changeset - create it and add it 
+	 *          to the list.
+	 *
+	 *    b) The next RR is not a SOA.
+	 *       Put the RR into the ADD part of the last changeset as this is
+	 *       not finished yet. Continue while SOA is not encountered. Then
+	 *       jump to 1-a.
+	 * 
+	 * 2) Last changeset has only the soa_from and does not have soa_to.
+	 *    a) The next RR is a SOA.
+	 *       This means start of the ADD section. Put the SOA to the 
+	 *       changeset. Continue adding RRs to the ADD section while SOA
+	 *       is not encountered. This is identical to 1-b.
+	 *
+	 *    b) The next RR is not a SOA.
+	 *       This means the REMOVE part is not finished yet. Add the RR to
+	 *       the REMOVE part. Continue adding next RRs until a SOA is 
+	 *       encountered. Then jump to 2-a.
+	 */
+	
+	// first, find out in what state we are
+	/*! \todo It would be more elegant to store the state in the 
+	 *        changesets structure, or in some place persistent between
+	 *        calls to this function.
+	 */
+	if (state != -1) {
+		// there should be at least one started changeset right now
+		if ((*chs)->count <= 0) {
+			knot_rrset_deep_free(&rr, 1, 1, 1);
+			ret = KNOT_EMALF;
+			goto cleanup;
+		}
+		
+		// a changeset should be created only when there is a SOA
+		assert((*chs)->sets[(*chs)->count - 1].soa_from != NULL);
+		
+		if ((*chs)->sets[(*chs)->count - 1].soa_to == NULL) {
+			state = XFRIN_CHANGESET_REMOVE;
+		} else {
+			state = XFRIN_CHANGESET_ADD;
+		}
+	}
+	
+	/*! \todo This may be implemented with much less IFs! */
+	
+	while (ret == KNOT_EOK && rr != NULL) {
+		switch (state) {
+		case -1:
+			// a SOA is expected
+			// this may be either a start of a changeset or the
+			// last SOA (in case the transfer was empty, but that
+			// is quite weird in fact
+			if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
+				debug_knot_xfr("First RR is not a SOA RR!\n");
+				ret = KNOT_EMALF;
+				knot_rrset_deep_free(&rr, 1, 1, 1);
+				goto cleanup;
+			}
+			
+			if (knot_rdata_soa_serial(knot_rrset_rdata(rr))
+			    == knot_rdata_soa_serial(
+			           knot_rrset_rdata((*chs)->first_soa))) {
+				// last SOA, discard and end
+				knot_rrset_deep_free(&rr, 1, 1, 1);
+				return 1;
+			} else {
+				// normal SOA, start new changeset
+				if ((ret = knot_changesets_check_size(*chs))
+				     != KNOT_EOK) {
+					knot_rrset_deep_free(&rr, 1, 1, 1);
+					goto cleanup;
+				}
+				
+				(*chs)->count++;
+				
+				ret = knot_changeset_add_soa(
+					&(*chs)->sets[(*chs)->count - 1], rr, 
+					XFRIN_CHANGESET_REMOVE);
+				if (ret != KNOT_EOK) {
+					knot_rrset_deep_free(&rr, 1, 1, 1);
+					goto cleanup;
+				}
+				
+				// change state to REMOVE
+				state = XFRIN_CHANGESET_REMOVE;
+			}
+			break;
+		case XFRIN_CHANGESET_REMOVE:
+			// if the next RR is SOA, store it and change state to
+			// ADD
+			if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
+				// we should not be here if soa_from is not set
+				assert((*chs)->sets[(*chs)->count - 1].soa_from
+				       != NULL);
+				
+				ret = knot_changeset_add_soa(
+					&(*chs)->sets[(*chs)->count - 1], rr, 
+					XFRIN_CHANGESET_ADD);
+				if (ret != KNOT_EOK) {
+					knot_rrset_deep_free(&rr, 1, 1, 1);
+					goto cleanup;
+				}
+				
+				state = XFRIN_CHANGESET_ADD;
+			} else {
+				// just add the RR to the REMOVE part and
+				// continue
+				if ((ret = knot_changeset_add_new_rr(
+				         &(*chs)->sets[(*chs)->count - 1], rr,
+				         XFRIN_CHANGESET_REMOVE)) != KNOT_EOK) {
+					knot_rrset_deep_free(&rr, 1, 1, 1);
+					goto cleanup;
+				}
+			}
+			break;
+		case XFRIN_CHANGESET_ADD:
+			// if the next RR is SOA change to state -1 and do not
+			// parse next RR
+			if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
+				state = -1;
+				continue;
+			} else {
+				// just add the RR to the ADD part and continue
+				if ((ret = knot_changeset_add_new_rr(
+				            &(*chs)->sets[(*chs)->count], rr,
+				            XFRIN_CHANGESET_ADD)) != KNOT_EOK) {
+					knot_rrset_deep_free(&rr, 1, 1, 1);
+					goto cleanup;
+				}
+			}
 			break;
 		}
-
-		if ((ret = knot_changesets_check_size(*chs))
-		     != KNOT_EOK) {
-			knot_rrset_deep_free(&rr, 1, 1, 1);
-			goto cleanup;
-		}
-
-		// save the origin SOA of the remove part
-		debug_knot_xfr("Processing IXFR/IN changeset #%zu\n", (*chs)->count);
-		ret = knot_changeset_add_soa(
-			&(*chs)->sets[(*chs)->count], rr, XFRIN_CHANGESET_REMOVE);
-		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&rr, 1, 1, 1);
-			goto cleanup;
-		}
-
+		
+		// parse the next RR
 		ret = knot_packet_parse_next_rr_answer(packet, &rr);
-		while (ret == KNOT_EOK && rr != NULL) {
-			if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
-				break;
-			}
-
-			assert(knot_rrset_type(rr) != KNOT_RRTYPE_SOA);
-			if ((ret = knot_changeset_add_new_rr(
-				     &(*chs)->sets[(*chs)->count], rr,
-				     XFRIN_CHANGESET_REMOVE)) != KNOT_EOK) {
-				knot_rrset_deep_free(&rr, 1, 1, 1);
-				goto cleanup;
-			}
-
-			ret = knot_packet_parse_next_rr_answer(packet, &rr);
-		}
-
-		if (rr == NULL || knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
-			debug_knot_xfr("Malformed IXFR packet.\n");
-			ret = KNOT_EMALF;
-			goto cleanup;
-		}
-
-		assert(rr != NULL
-		       && knot_rrset_type(rr) == KNOT_RRTYPE_SOA);
-
-		// save the origin SOA of the add part
-		ret = knot_changeset_add_soa(
-			&(*chs)->sets[(*chs)->count], rr, XFRIN_CHANGESET_ADD);
-		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&rr, 1, 1, 1);
-			goto cleanup;
-		}
-
-		ret = knot_packet_parse_next_rr_answer(packet, &rr);
-		while (ret == KNOT_EOK && rr != NULL) {
-			if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
-				break;
-			}
-
-			assert(knot_rrset_type(rr) != KNOT_RRTYPE_SOA);
-			if ((ret = knot_changeset_add_new_rr(
-				     &(*chs)->sets[(*chs)->count], rr,
-				     XFRIN_CHANGESET_ADD)) != KNOT_EOK) {
-				knot_rrset_deep_free(&rr, 1, 1, 1);
-				goto cleanup;
-			}
-
-			ret = knot_packet_parse_next_rr_answer(packet, &rr);
-		}
-
-		if (rr == NULL || knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
-			debug_knot_xfr("Malformed IXFR packet.\n");
-			ret = KNOT_EMALF;
-			goto cleanup;
-		}
-
-		// next chunk, continue the whole loop
-		++(*chs)->count;
 	}
+	
+	// here no RRs remain in the packet but the transfer is not finished
+	// yet, return EOK
+	return KNOT_EOK;
+	
+	/*
+	 * One iteration of this loop processes one changeset - starting with
+	 */
+//	while (ret == KNOT_EOK && rr != NULL) {
+//		if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
+//			debug_knot_xfr("Next RR is not a SOA RR as it should be"
+//			               "!\n");
+//			ret = KNOT_EMALF;
+//			goto cleanup;
+//		}
 
-	if (ret != KNOT_EOK) {
-		debug_knot_xfr("Could not parse next Answer RR: %s.\n",
-		               knot_strerror(ret));
-		ret = KNOT_EMALF;
-		goto cleanup;
-	}
+//		if (knot_rdata_soa_serial(knot_rrset_rdata(rr))
+//		    == knot_rdata_soa_serial(knot_rrset_rdata(soa1))) {
+//			soa2 = rr;
+//			debug_knot_xfr("IXFR/IN packet is parsed, first SOA serial"
+//				       " matches current, chset count = %zu\n",
+//				       (*chs)->count);
+//			break;
+//		}
 
-	/*! \todo Replace by checks? */
-	assert(soa2 != NULL);
-	assert(knot_rrset_type(soa2) == KNOT_RRTYPE_SOA);
-	assert(knot_rdata_soa_serial(knot_rrset_rdata(soa1))
-	       == knot_rdata_soa_serial(knot_rrset_rdata(soa2)));
+//		if ((ret = knot_changesets_check_size(*chs))
+//		     != KNOT_EOK) {
+//			knot_rrset_deep_free(&rr, 1, 1, 1);
+//			goto cleanup;
+//		}
 
-	knot_rrset_deep_free(&soa2, 1, 1, 1);
+//		// save the origin SOA of the remove part
+//		debug_knot_xfr("Processing IXFR/IN changeset #%zu\n", (*chs)->count);
+//		ret = knot_changeset_add_soa(
+//			&(*chs)->sets[(*chs)->count], rr, XFRIN_CHANGESET_REMOVE);
+//		if (ret != KNOT_EOK) {
+//			knot_rrset_deep_free(&rr, 1, 1, 1);
+//			goto cleanup;
+//		}
 
-	/*! \todo Determine finished transfer. */
-	debug_knot_xfr("xfrin_process_ixfr_packet() finished, "
-		       "count = %zu, ret = %d\n", (*chs)->count, 1);
-	return 1;
+//		ret = knot_packet_parse_next_rr_answer(packet, &rr);
+//		while (ret == KNOT_EOK && rr != NULL) {
+//			if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
+//				break;
+//			}
+
+//			assert(knot_rrset_type(rr) != KNOT_RRTYPE_SOA);
+//			if ((ret = knot_changeset_add_new_rr(
+//				     &(*chs)->sets[(*chs)->count], rr,
+//				     XFRIN_CHANGESET_REMOVE)) != KNOT_EOK) {
+//				knot_rrset_deep_free(&rr, 1, 1, 1);
+//				goto cleanup;
+//			}
+
+//			ret = knot_packet_parse_next_rr_answer(packet, &rr);
+//		}
+
+//		if (rr == NULL || knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
+//			debug_knot_xfr("Malformed IXFR packet.\n");
+//			ret = KNOT_EMALF;
+//			goto cleanup;
+//		}
+
+//		assert(rr != NULL
+//		       && knot_rrset_type(rr) == KNOT_RRTYPE_SOA);
+
+//		// save the origin SOA of the add part
+//		ret = knot_changeset_add_soa(
+//			&(*chs)->sets[(*chs)->count], rr, XFRIN_CHANGESET_ADD);
+//		if (ret != KNOT_EOK) {
+//			knot_rrset_deep_free(&rr, 1, 1, 1);
+//			goto cleanup;
+//		}
+
+//		ret = knot_packet_parse_next_rr_answer(packet, &rr);
+//		while (ret == KNOT_EOK && rr != NULL) {
+//			if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
+//				break;
+//			}
+
+//			assert(knot_rrset_type(rr) != KNOT_RRTYPE_SOA);
+//			if ((ret = knot_changeset_add_new_rr(
+//				     &(*chs)->sets[(*chs)->count], rr,
+//				     XFRIN_CHANGESET_ADD)) != KNOT_EOK) {
+//				knot_rrset_deep_free(&rr, 1, 1, 1);
+//				goto cleanup;
+//			}
+
+//			ret = knot_packet_parse_next_rr_answer(packet, &rr);
+//		}
+
+//		if (rr == NULL || knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
+//			debug_knot_xfr("Malformed IXFR packet.\n");
+//			ret = KNOT_EMALF;
+//			goto cleanup;
+//		}
+
+//		// next chunk, continue the whole loop
+//		++(*chs)->count;
+//	}
+
+//	if (ret != KNOT_EOK) {
+//		debug_knot_xfr("Could not parse next Answer RR: %s.\n",
+//		               knot_strerror(ret));
+//		ret = KNOT_EMALF;
+//		goto cleanup;
+//	}
+
+//	/*! \todo Replace by checks? */
+//	assert(soa2 != NULL);
+//	assert(knot_rrset_type(soa2) == KNOT_RRTYPE_SOA);
+//	assert(knot_rdata_soa_serial(knot_rrset_rdata(soa1))
+//	       == knot_rdata_soa_serial(knot_rrset_rdata(soa2)));
+
+//	knot_rrset_deep_free(&soa2, 1, 1, 1);
+
+//	/*! \todo Determine finished transfer. */
+//	debug_knot_xfr("xfrin_process_ixfr_packet() finished, "
+//		       "count = %zu, ret = %d\n", (*chs)->count, 1);
+//	return 1;
 
 cleanup:
 	debug_knot_xfr("Cleanup after processing IXFR/IN packet.\n");
@@ -1762,6 +1931,9 @@ static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
 	}
 
 	assert(knot_node_is_new(node));
+	
+	// set the node copy as the apex of the contents
+	contents->apex = node;
 
 	// remove the SOA RRSet from the apex
 	knot_rrset_t *rrset = knot_node_remove_rrset(node, KNOT_RRTYPE_SOA);
