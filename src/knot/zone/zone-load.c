@@ -887,6 +887,9 @@ static knot_dname_t **create_dname_array(FILE *f, uint max_id)
 				return NULL;
 			}
 
+			/* Release, as it holds reference in node. */
+			knot_dname_release(read_dname);
+
 			/* Store reference to dname in array. */
 			array[read_dname->id] = read_dname;
 		} else {
@@ -987,7 +990,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 //	apex->prev = NULL;
 	knot_node_set_previous(apex, NULL);
 
-	knot_node_t *last_node;
+	knot_node_t *last_node = 0;
 
 	last_node = apex;
 
