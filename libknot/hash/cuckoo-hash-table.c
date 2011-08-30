@@ -1090,6 +1090,7 @@ int ck_shallow_copy(const ck_hash_table_t *from, ck_hash_table_t **to)
 		ERR_ALLOC_FAILED;
 		return -2;
 	}
+	memset(*to, 0, sizeof(ck_hash_table_t));
 
 	// copy table count and table size exponent
 	(*to)->table_size_exp = from->table_size_exp;

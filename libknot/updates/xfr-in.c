@@ -951,24 +951,28 @@ static void xfrin_changes_free(xfrin_changes_t **changes)
 static int xfrin_changes_check_rrsets(knot_rrset_t ***rrsets,
                                       int *count, int *allocated, int to_add)
 {
+	/* Ensure at least requested size is allocated. */
 	int new_count = (*count + to_add);
 	assert(new_count >= 0);
-
 	if (new_count <= *allocated) {
 		return KNOT_EOK;
 	}
 
-	knot_rrset_t **rrsets_new =
-		(knot_rrset_t **)calloc(new_count, sizeof(knot_rrset_t *));
+
+	/* Allocate new memory block. */
+	knot_rrset_t **rrsets_new = malloc(new_count * sizeof(knot_rrset_t *));
 	if (rrsets_new == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	knot_rrset_t **rrsets_old = *rrsets;
-	memcpy(rrsets_new, *rrsets, (*count) * sizeof(knot_rrset_t *));
+	/* Initialize new memory and copy old data. */
+	memset(rrsets_new, 0, new_count * sizeof(knot_rrset_t *));
+	memcpy(rrsets_new, *rrsets, (*allocated) * sizeof(knot_rrset_t *));
+
+	/* Free old nodes and switch pointers. */
+	free(*rrsets);
 	*rrsets = rrsets_new;
 	*allocated = new_count;
-	free(rrsets_old);
 
 	return KNOT_EOK;
 }
@@ -978,33 +982,29 @@ static int xfrin_changes_check_rrsets(knot_rrset_t ***rrsets,
 static int xfrin_changes_check_nodes(knot_node_t ***nodes,
                                      int *count, int *allocated)
 {
-	/* Prevent infinite loop in case of allocated = 0. */
-	int new_count = 0;
-	if (*allocated == 0) {
-		new_count = *count + 1;
-	} else {
-		if (*count == *allocated) {
-			new_count = *allocated * 2;
-		} else {
-			/* No need to allocate more. */
-			assert(*count < *allocated);
-			new_count = *allocated;
-		}
+	assert(nodes != NULL);
+	assert(count != NULL);
+	assert(allocated != 0);
+
+	/* Ensure at least count and some reserve is allocated. */
+	int new_count = *count + 2;
+	if (new_count <= *allocated) {
+		return KNOT_EOK;
 	}
 
+	/* Allocate new memory block. */
 	const size_t node_len = sizeof(knot_node_t *);
 	knot_node_t **nodes_new = malloc(new_count * node_len);
 	if (nodes_new == NULL) {
 		return KNOT_ENOMEM;
 	}
 
+	/* Clear memory block and copy old data. */
 	memset(nodes_new, 0, new_count * node_len);
-	if (new_count < *count || new_count == 0) {
-		memcpy(nodes_new, *nodes, new_count * node_len);
-	} else {
-		assert(new_count >= *count);
-		memcpy(nodes_new, *nodes, *count * node_len);
-	}
+	memcpy(nodes_new, *nodes, (*allocated) * node_len);
+
+	/* Free old nodes and switch pointers. */
+	free(*nodes);
 	*nodes = nodes_new;
 	*allocated = new_count;
 
@@ -2298,6 +2298,12 @@ static void xfrin_cleanup_update(xfrin_changes_t *changes)
 	for (int i = 0; i < changes->old_hash_items_count; ++i) {
 		free(changes->old_hash_items[i]);
 	}
+	free(changes->old_hash_items);
+
+	// free allocated arrays or nodes
+	free(changes->new_nodes);
+	free(changes->old_nodes);
+
 }
 
 /*----------------------------------------------------------------------------*/
