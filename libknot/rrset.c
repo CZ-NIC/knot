@@ -428,6 +428,9 @@ int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to)
 	CHECK_ALLOC_LOG(*to, KNOT_ENOMEM);
 	
 	memcpy(*to, from, sizeof(knot_rrset_t));
+
+	/* Retain owner. */
+	knot_dname_retain((*to)->owner);
 	
 	return KNOT_EOK;
 }
