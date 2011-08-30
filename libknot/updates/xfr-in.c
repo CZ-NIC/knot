@@ -774,6 +774,8 @@ DEBUG_KNOT_XFR(
 				}
 			}
 			break;
+		default:
+			assert(0);
 		}
 		
 		// parse the next RR
