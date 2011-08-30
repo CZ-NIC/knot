@@ -805,7 +805,8 @@ void ck_destroy_table(ck_hash_table_t **table, void (*dtor_value)(void *value),
 	while (item != NULL) {
 		// disconnect the item
 		(*table)->stash = item->next;
-		assert(item->item != NULL);
+		/*! \todo Investigate this. */
+//		assert(item->item != NULL);
 
 		if (dtor_value) {
 			dtor_value(item->item->value);
