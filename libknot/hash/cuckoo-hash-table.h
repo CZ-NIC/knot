@@ -58,6 +58,9 @@
 /*! \brief Default stash size. */
 static const uint STASH_SIZE = 10;
 
+/*! \brief Maximum stash size. When achieved, rehashing is needed. */
+static const uint STASH_SIZE_MAX = 30;
+
 /*----------------------------------------------------------------------------*/
 /* Public structures                                                          */
 /*----------------------------------------------------------------------------*/
@@ -154,6 +157,9 @@ struct ck_hash_table {
 	uint8_t generation;
 
 	us_system_t hash_system; /*!< Universal system of hash functions. */
+	
+	size_t items;
+	size_t items_in_stash;
 };
 
 typedef struct ck_hash_table ck_hash_table_t;
