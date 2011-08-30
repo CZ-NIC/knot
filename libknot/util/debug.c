@@ -75,7 +75,7 @@ void knot_rdata_dump(knot_rdata_t *rdata, uint32_t type, char loaded_zone)
 #endif
 }
 
-void knot_rrset_dump(knot_rrset_t *rrset, char loaded_zone)
+void knot_rrset_dump(const knot_rrset_t *rrset, char loaded_zone)
 {
 #if defined(KNOT_ZONE_DEBUG) || defined(KNOT_RRSET_DEBUG)
 	printf("  ------- RRSET -------\n");
@@ -100,6 +100,7 @@ void knot_rrset_dump(knot_rrset_t *rrset, char loaded_zone)
 		return;
 	}
 
+	printf("  rdata count: %d\n", rrset->rdata->count);
 	knot_rdata_t *tmp = rrset->rdata;
 
 	while (tmp->next != rrset->rdata) {
