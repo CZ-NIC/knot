@@ -958,7 +958,6 @@ static int xfrin_changes_check_rrsets(knot_rrset_t ***rrsets,
 		return KNOT_EOK;
 	}
 
-
 	/* Allocate new memory block. */
 	knot_rrset_t **rrsets_new = malloc(new_count * sizeof(knot_rrset_t *));
 	if (rrsets_new == NULL) {

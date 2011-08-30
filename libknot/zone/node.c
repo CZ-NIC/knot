@@ -908,6 +908,9 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 		return KNOT_ENOMEM;
 	}
 
+	/* Free old rrset_tree, as it will be replaced by shallow copy. */
+	gen_tree_destroy(&(*to)->rrset_tree, 0, 0);
+
 	// copy references	
 	// do not use the API function to set parent, so that children count 
 	// is not changed
