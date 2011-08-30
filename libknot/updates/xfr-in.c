@@ -576,7 +576,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 	
 	// state of the transfer
 	// -1 .. a SOA is expected to create a new changeset
-	int state;
+	int state = 0;
 
 	if (rr == NULL) {
 		debug_knot_xfr("No RRs in the packet.\n");
@@ -586,6 +586,8 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 	}
 	
 	if (*chs == NULL) {
+		debug_knot_xfr("Changesets empty, creating new.\n");
+		
 		ret = knot_changeset_allocate(chs);
 		if (ret != KNOT_EOK) {
 			knot_rrset_deep_free(&rr, 1, 1, 1);
@@ -605,6 +607,8 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 		(*chs)->first_soa = rr;
 		state = -1;
 		
+		debug_knot_xfr("First SOA of IXFR saved, state set to -1.\n");
+		
 		// parse the next one
 		ret = knot_packet_parse_next_rr_answer(packet, &rr);
 	} else {
@@ -612,6 +616,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 			debug_knot_xfr("Changesets don't contain frist SOA!\n");
 			return KNOT_EBADARG;
 		}
+		debug_knot_xfr("Changesets present.\n");
 	}
 
 	/*
@@ -651,6 +656,7 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 	 *        calls to this function.
 	 */
 	if (state != -1) {
+		debug_knot_xfr("State is not -1, deciding...\n");
 		// there should be at least one started changeset right now
 		if ((*chs)->count <= 0) {
 			knot_rrset_deep_free(&rr, 1, 1, 1);
@@ -668,9 +674,18 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 		}
 	}
 	
+	debug_knot_xfr("State before the loop: %d\n", state);
+	
 	/*! \todo This may be implemented with much less IFs! */
 	
 	while (ret == KNOT_EOK && rr != NULL) {
+DEBUG_KNOT_XFR(
+		debug_knot_xfr("Next loop, state: %d\n", state);
+		char *name = knot_dname_to_str(knot_rrset_owner(rr));
+		debug_knot_xfr("Actual RR: %s, type %s.\n", name, 
+		               knot_rrtype_to_string(knot_rrset_type(rr)));
+		free(name);
+);
 		switch (state) {
 		case -1:
 			// a SOA is expected
@@ -679,6 +694,8 @@ int xfrin_process_ixfr_packet(const uint8_t *pkt, size_t size,
 			// is quite weird in fact
 			if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
 				debug_knot_xfr("First RR is not a SOA RR!\n");
+				debug_knot_xfr("RR type: %s\n",
+				    knot_rrtype_to_string(knot_rrset_type(rr)));
 				ret = KNOT_EMALF;
 				knot_rrset_deep_free(&rr, 1, 1, 1);
 				goto cleanup;
