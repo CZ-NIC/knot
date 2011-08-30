@@ -1149,8 +1149,8 @@ int knot_zload_rrset_deserialize(knot_rrset_t **rrset,
 		return KNOT_EMALF;
 	}
 
-	printf("knot_zload_stream_size: %zu, knot_zload_stream_remaning: %zu\n",
-	       knot_zload_stream_size, knot_zload_stream_remaining);
+//	printf("knot_zload_stream_size: %zu, knot_zload_stream_remaning: %zu\n",
+//	       knot_zload_stream_size, knot_zload_stream_remaining);
 
 	*size = knot_zload_stream_remaining;
 	*rrset = ret;
