@@ -887,9 +887,6 @@ static knot_dname_t **create_dname_array(FILE *f, uint max_id)
 				return NULL;
 			}
 
-			/* Release, as it holds reference in node. */
-			knot_dname_release(read_dname);
-
 			/* Store reference to dname in array. */
 			array[read_dname->id] = read_dname;
 		} else {
