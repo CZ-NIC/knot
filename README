@@ -3,8 +3,8 @@ Ubuntu Server 10.04 LTS clean install and update
 $ sudo apt-get install git-core autoconf libtool flex bison libssl-dev libev-dev
 $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu0_0.5.4-1_amd64.deb
 $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu-dev_0.5.4-1_amd64.deb
-$ sudo dpkg install liburcu0_0.5.4-1_amd64.deb
-$ sudo dpkg install liburcu-dev_0.5.4-1_amd64.deb
+$ sudo dpkg -i liburcu0_0.5.4-1_amd64.deb
+$ sudo dpkg -i liburcu-dev_0.5.4-1_amd64.deb
 $ git clone git://git.nic.cz/knot
 $ git checkout testing
 $ cd knot
