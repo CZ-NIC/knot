@@ -538,6 +538,7 @@ int xfr_master(dthread_t *thread)
 			}			
 			
 			ret = knot_ns_answer_axfr(xfrh->ns, &xfr);
+			free(xfr.query->wireformat);
 			knot_packet_free(&xfr.query); /* Free query. */
 			debug_xfr("xfr_master: ns_answer_axfr() = %d.\n", ret);
 			if (ret != KNOTD_EOK) {
@@ -570,6 +571,7 @@ int xfr_master(dthread_t *thread)
 			}
 			
 			ret = knot_ns_answer_ixfr(xfrh->ns, &xfr);
+			free(xfr.query->wireformat);
 			knot_packet_free(&xfr.query); /* Free query. */
 			debug_xfr("xfr_master: ns_answer_ixfr() = %d.\n", ret);
 			if (ret != KNOTD_EOK) {

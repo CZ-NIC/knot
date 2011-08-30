@@ -346,21 +346,21 @@ knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
 const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 {
 	knot_node_dump(node, (void*)1);
-	printf("RRset count: %u\n", node->rrset_count);
+//	printf("RRset count: %u\n", node->rrset_count);
 	if (node->rrset_count == 0) {
 		return NULL;
 	}
 	
 	knot_rrset_t **rrsets = (knot_rrset_t **)malloc(
 		node->rrset_count * sizeof(knot_rrset_t *));
-	printf("RRsets pointer: %p\n", rrsets);
+//	printf("RRsets pointer: %p\n", rrsets);
 	CHECK_ALLOC_LOG(rrsets, NULL);
 	struct knot_node_save_rrset_arg args;
 	args.array = rrsets;
 	args.count = 0;
 
-	printf("using tree: %p (should have %d rrsets)\n",
-	       node->rrset_tree, node->rrset_count);
+//	printf("using tree: %p (should have %d rrsets)\n",
+//	       node->rrset_tree, node->rrset_count);
 
 
 	gen_tree_apply_inorder(node->rrset_tree, save_rrset_to_array,
@@ -368,7 +368,7 @@ const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 
 //	printf("owner: %s\n",
 //	       knot_dname_to_str(node->owner));
-	printf("has rrsets: %zu\n", args.count);
+//	printf("has rrsets: %zu\n", args.count);
 	assert(args.count == node->rrset_count);
 	assert(args.count);
 
@@ -736,8 +736,6 @@ void knot_node_set_deleg_point(knot_node_t *node)
 
 int knot_node_is_deleg_point(const knot_node_t *node)
 {
-	printf("trying to get flags from node %p\n",
-	       node);
 	return knot_node_flags_get_deleg(node->flags);
 }
 
