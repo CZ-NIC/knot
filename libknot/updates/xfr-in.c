@@ -781,13 +781,11 @@ static void xfrin_changes_free(xfrin_changes_t **changes)
 static int xfrin_changes_check_rrsets(knot_rrset_t ***rrsets,
                                       int *count, int *allocated, int to_add)
 {
-	int new_count = *allocated * 2;
-	if (*allocated == 0) {
-		new_count = (*count + to_add); /* Prevent infinite loop. */
-	}
+	int new_count = (*count + to_add);
+	assert(new_count >= 0);
 
-	while (*count + to_add > new_count) {
-		new_count += *allocated;
+	if (new_count < *allocated) {
+		return KNOT_EOK;
 	}
 
 	knot_rrset_t **rrsets_new =
