@@ -748,7 +748,7 @@ ck_hash_table_t *ck_create_table(uint items)
 	assert(table->items == 0);
 	assert(table->items_in_stash == 0);
 	assert(table->table_count == MAX_TABLES
-	       || table->tables[table->table_count - 1] == NULL);
+	       || table->tables[table->table_count] == NULL);
 
 	// initialize rehash/insert mutex
 	pthread_mutex_init(&table->mtx_table, NULL);
@@ -862,7 +862,7 @@ void ck_table_free(ck_hash_table_t **table)
 	(*table) = NULL;
 }
 
-static int ck_resize_table(ck_hash_table_t *table)
+int ck_resize_table(ck_hash_table_t *table)
 {
 	debug_ck("Resizing hash table.\n");
 	
@@ -910,7 +910,8 @@ static int ck_resize_table(ck_hash_table_t *table)
 	memcpy(table->tables, tables_new, 
 	       MAX_TABLES * sizeof(ck_hash_table_item_t **));
 	
-	return ck_rehash(table);
+	//return ck_rehash(table);
+	return 0;
 }
 
 int ck_insert_item(ck_hash_table_t *table, const char *key,
