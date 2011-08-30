@@ -772,13 +772,17 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 
 	debug_knot_packet("Question (prealloc type: %d)...\n",
 	                    packet->prealloc_type);
-	if ((err = knot_packet_parse_question(wireformat, &pos, size,
-	                   &packet->question,
-	                   packet->prealloc_type == KNOT_PACKET_PREALLOC_NONE)
-	           ) != KNOT_EOK) {
-		return err;
+	if (packet->header.qdcount > 0) {
+		if ((err = knot_packet_parse_question(wireformat, &pos, size,
+		             &packet->question, packet->prealloc_type 
+		                                == KNOT_PACKET_PREALLOC_NONE)
+		     ) != KNOT_EOK) {
+			return err;
+		}
+		debug_knot_packet("Original QDCOUNT: %u. Ignoring.\n", 
+		                  packet->header.qdcount);
+		packet->header.qdcount = 1;
 	}
-	packet->header.qdcount = 1;
 
 	packet->parsed = pos;
 
