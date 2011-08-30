@@ -878,6 +878,7 @@ int ck_resize_table(ck_hash_table_t *table)
 	}
 	
 	ck_hash_table_item_t **tables_new[MAX_TABLES];
+	ck_hash_table_item_t **tables_old[MAX_TABLES];
 	int exp_new = table->table_size_exp + 1;
 	
 	debug_ck("New tables exponent: %d\n", exp_new);
@@ -913,8 +914,19 @@ int ck_resize_table(ck_hash_table_t *table)
 	}
 	
 	debug_ck("Done, switching the tables and running rehash.\n");
+	
+	
+	memcpy(tables_old, table->tables, 
+	       MAX_TABLES * sizeof(ck_hash_table_item_t **));
 	memcpy(table->tables, tables_new, 
 	       MAX_TABLES * sizeof(ck_hash_table_item_t **));
+	
+	table->table_size_exp = exp_new;
+	
+	// delete the old tables
+	for (int t = 0; t < table->table_count; ++t) {
+		free(tables_old[t]);
+	}
 	
 	return ck_rehash(table);
 	//return 0;
@@ -940,6 +952,7 @@ int ck_insert_item(ck_hash_table_t *table, const char *key,
 	
 	// check if the table is not full; if yes, resize and rehash!
 	if (ck_is_full(table)) {
+		debug_ck("Table is full, resize needed.\n");
 		if (ck_resize_table(table) != 0) {
 			debug_ck("Failed to resize hash table!\n");
 			return -1;
@@ -963,6 +976,7 @@ int ck_insert_item(ck_hash_table_t *table, const char *key,
 		}
 		
 		if (ck_stash_is_full(table)) {
+			debug_ck("Stash is full, resize needed.\n");
 			if (ck_resize_table(table) != 0) {
 				debug_ck("Failed to resize hash table!\n");
 				return -1;
@@ -970,6 +984,7 @@ int ck_insert_item(ck_hash_table_t *table, const char *key,
 		}
 	}
 
+	++table->items;
 	pthread_mutex_unlock(&table->mtx_table);
 	return 0;
 }
