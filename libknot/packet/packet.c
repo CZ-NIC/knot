@@ -782,9 +782,9 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 		debug_knot_packet("Original QDCOUNT: %u. Ignoring.\n", 
 		                  packet->header.qdcount);
 		packet->header.qdcount = 1;
+		
+		packet->parsed = pos;
 	}
-
-	packet->parsed = pos;
 
 	if (question_only) {
 		return KNOT_EOK;
