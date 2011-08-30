@@ -35,7 +35,8 @@ $ sudo make install
 $ sudo ldconfig
 
 
-Ubuntu Server (I386) 10.04 LTS
+Ubuntu Server  (I386) 10.04 LTS
+Ubuntu Desktop (I386) 10.04 LTS
 ------------------------------
 
 $ # make the system up-to-date
