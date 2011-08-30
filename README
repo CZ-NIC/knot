@@ -4,7 +4,8 @@ Installation
 The following steps should work (verified in VirtualBox only)
 on the distribution/platform/release as listed bellow.
 
-Ubuntu Server (AMD64) 10.04 LTS
+Ubuntu Server  (AMD64) 10.04 LTS
+Ubuntu Desktop (AMD64) 10.04 LTS
 -------------------------------
 
 $ # make the system up-to-date
