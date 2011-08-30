@@ -110,6 +110,8 @@ static int test_cuckoo_lookup(ck_hash_table_t *table,
 {
 	int errors = 0;
 	for (int i = 0; i < items->count; ++i) {
+//		printf("Searching for key: %.*s, size %zu.\n",
+//		       items->key_sizes[i], items->keys[i], items->key_sizes[i]);
 		const ck_hash_table_item_t *found = ck_find_item(
 		                table, items->keys[i], items->key_sizes[i]);
 		if (!found) {
