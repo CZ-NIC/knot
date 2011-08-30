@@ -856,6 +856,7 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 
 	if (packet->parsed >= packet->size
 	    || packet->an_rrsets == packet->header.ancount) {
+		*rr = NULL;
 		return KNOT_EOK;
 	}
 
