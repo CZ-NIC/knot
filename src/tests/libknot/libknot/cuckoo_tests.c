@@ -336,12 +336,12 @@ static int cuckoo_tests_run(int argc, char *argv[])
 	ok(test_cuckoo_lookup(table, items),
 	   "cuckoo hashing: lookup after rehash");
 	
-//	// Test 10: resize
-//	ok(test_cuckoo_resize(table), "cuckoo hashing: resize");
+	// Test 10: resize
+	ok(test_cuckoo_resize(table), "cuckoo hashing: resize");
 	
-//	// Test 11: lookup 5
-//	ok(test_cuckoo_lookup(table, items),
-//	   "cuckoo hashing: lookup after resize");
+	// Test 11: lookup 5
+	ok(test_cuckoo_lookup(table, items),
+	   "cuckoo hashing: lookup after resize");
 
 	endskip;
 

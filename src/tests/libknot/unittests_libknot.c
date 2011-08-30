@@ -29,19 +29,19 @@ int main(int argc, char *argv[])
 
 		/* DNS units */
 		&cuckoo_tests_api,   //! Cuckoo hashing unit
-		&dname_tests_api,    //! DNS library (dname) unit
-		&edns_tests_api,     //! DNS library (EDNS0) unit
-		&zone_tests_api,     //! DNS library (zone) unit
-		&node_tests_api,     //! DNS library (node) unit
-		&rdata_tests_api,    //! DNS library (rdata) unit
-		&response_tests_api, //! DNS library (response) unit
-		&rrset_tests_api,    //! DNS library (rrset) unit
-		&dname_table_tests_api,
-		&nsec3_tests_api,
-		&packet_tests_api,
-		&query_tests_api,
-		&zonedb_tests_api,   //! DNS library (zonedb) unit
-		&zone_tree_tests_api,
+//		&dname_tests_api,    //! DNS library (dname) unit
+//		&edns_tests_api,     //! DNS library (EDNS0) unit
+//		&zone_tests_api,     //! DNS library (zone) unit
+//		&node_tests_api,     //! DNS library (node) unit
+//		&rdata_tests_api,    //! DNS library (rdata) unit
+//		&response_tests_api, //! DNS library (response) unit
+//		&rrset_tests_api,    //! DNS library (rrset) unit
+//		&dname_table_tests_api,
+//		&nsec3_tests_api,
+//		&packet_tests_api,
+//		&query_tests_api,
+//		&zonedb_tests_api,   //! DNS library (zonedb) unit
+//		&zone_tree_tests_api,
 		NULL
 	};
 
