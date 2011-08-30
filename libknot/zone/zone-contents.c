@@ -607,7 +607,7 @@ static int knot_zone_contents_find_in_tree(knot_zone_tree_t *tree,
 //	knot_node_t *found2 = NULL, *prev2 = NULL;
 
 	int exact_match = knot_zone_tree_get_less_or_equal(
-	                         tree, name, &found, &prev);
+	                         tree, name, &found, &prev, 1);
 
 //	assert(prev != NULL);
 	assert(exact_match >= 0);
@@ -1874,7 +1874,7 @@ DEBUG_KNOT_ZONE(
 
 	// create dummy node to use for lookup
 	int exact_match = knot_zone_tree_find_less_or_equal(
-		zone->nsec3_nodes, nsec3_name, &found, &prev);
+		zone->nsec3_nodes, nsec3_name, &found, &prev, 1);
 	assert(exact_match >= 0);
 
 	knot_dname_release(nsec3_name);
