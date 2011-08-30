@@ -175,7 +175,7 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 		xfr.session = w->fd;
 		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
 		xfr_request(xfr_h, &xfr);
-		debug_net("tcp: enqueued AXFR query\n");
+		debug_net("tcp: enqueued AXFR query on fd=%d\n", w->fd);
 		return;
 	case KNOT_QUERY_IXFR:
 		memset(&xfr, 0, sizeof(knot_ns_xfr_t));
@@ -193,7 +193,7 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 		xfr.session = w->fd;
 		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
 		xfr_request(xfr_h, &xfr);
-		debug_net("tcp: enqueued IXFR query\n");
+		debug_net("tcp: enqueued IXFR query on fd=%d\n", w->fd);
 		return;
 	case KNOT_QUERY_NOTIFY:
 	case KNOT_QUERY_UPDATE:
@@ -203,7 +203,6 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 	debug_net("tcp: got answer of size %zd.\n",
 		  resp_len);
 
-	free(packet->wireformat);
 	knot_packet_free(&packet);
 
 	/* Send answer. */

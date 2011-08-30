@@ -191,6 +191,10 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 							 knotd_strerror(ret));
 				}
 			}
+			/* Free changesets, but not the data. */
+			knot_changesets_t *chs = (knot_changesets_t *)request->data;
+			free(chs->sets);
+			free(chs);
 			debug_xfr("xfr_client_ev: IXFR/IN transfer finished\n");
 			break;
 		default:
@@ -536,8 +540,9 @@ int xfr_master(dthread_t *thread)
 				knot_ns_xfr_send_error(&xfr, rcode);
 				socket_close(xfr.session);
 			}			
-			
+
 			ret = knot_ns_answer_axfr(xfrh->ns, &xfr);
+			free(xfr.query->wireformat);
 			knot_packet_free(&xfr.query); /* Free query. */
 			debug_xfr("xfr_master: ns_answer_axfr() = %d.\n", ret);
 			if (ret != KNOTD_EOK) {
@@ -570,6 +575,7 @@ int xfr_master(dthread_t *thread)
 			}
 			
 			ret = knot_ns_answer_ixfr(xfrh->ns, &xfr);
+			free(xfr.query->wireformat);
 			knot_packet_free(&xfr.query); /* Free query. */
 			debug_xfr("xfr_master: ns_answer_ixfr() = %d.\n", ret);
 			if (ret != KNOTD_EOK) {
