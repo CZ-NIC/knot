@@ -899,9 +899,15 @@ int ck_resize_table(ck_hash_table_t *table)
 		                  * sizeof(ck_hash_table_item_t *);
 		
 		// copy the old table items
-		memcpy(table->tables[t], tables_new[t], old_size);
+		debug_ck("Copying to: %p, from %p, size: %zu\n",
+		         tables_new[t], table->tables[t], old_size);
+		memcpy(tables_new[t], table->tables[t], old_size);
 		// set the rest to 0
-		memset(tables_new[t] + old_size, 0, 
+		debug_ck("Setting to 0 from %p, size %zu\n",
+		         tables_new[t] + hashsize(table->table_size_exp),
+		         (hashsize(exp_new) * sizeof(ck_hash_table_item_t *))
+		         - old_size);
+		memset(tables_new[t] + hashsize(table->table_size_exp), 0, 
 		       (hashsize(exp_new) * sizeof(ck_hash_table_item_t *))
 		       - old_size);
 	}
@@ -910,8 +916,8 @@ int ck_resize_table(ck_hash_table_t *table)
 	memcpy(table->tables, tables_new, 
 	       MAX_TABLES * sizeof(ck_hash_table_item_t **));
 	
-	//return ck_rehash(table);
-	return 0;
+	return ck_rehash(table);
+	//return 0;
 }
 
 int ck_insert_item(ck_hash_table_t *table, const char *key,
