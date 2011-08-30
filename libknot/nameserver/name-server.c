@@ -2019,6 +2019,7 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 	assert(xfr->send != NULL);
 
 	ns_axfr_params_t params;
+	memset(&params, 0, sizeof(ns_axfr_params_t));
 	params.xfr = xfr;
 	params.ret = KNOT_EOK;
 
