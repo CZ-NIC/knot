@@ -255,8 +255,8 @@ const knot_rrset_t *knot_node_rrset(const knot_node_t *node,
 
 knot_rrset_t *knot_node_get_rrset(knot_node_t *node, uint16_t type)
 {
-	printf("Find: %p (%s - %p)\n", node->rrset_tree,
-	       knot_dname_to_str(node->owner), node);
+//	printf("Find: %p (%s - %p)\n", node->rrset_tree,
+//	       knot_dname_to_str(node->owner), node);
 	knot_rrset_t rrset;
 	rrset.type = type;
 	return (knot_rrset_t *)gen_tree_find(node->rrset_tree, &rrset);
@@ -366,8 +366,8 @@ const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 	gen_tree_apply_inorder(node->rrset_tree, save_rrset_to_array,
 	                       &args);
 
-	printf("owner: %s\n",
-	       knot_dname_to_str(node->owner));
+//	printf("owner: %s\n",
+//	       knot_dname_to_str(node->owner));
 	printf("has rrsets: %zu\n", args.count);
 	assert(args.count == node->rrset_count);
 	assert(args.count);
@@ -447,8 +447,8 @@ const knot_node_t *knot_node_previous(const knot_node_t *node,
 knot_node_t *knot_node_get_previous(const knot_node_t *node, 
                                         int check_version)
 {
-	printf("node: %s zone: %p", knot_dname_to_str(node->owner),
-	       node->zone);
+//	printf("node: %s zone: %p", knot_dname_to_str(node->owner),
+//	       node->zone);
 	assert(!check_version
 	       || (node->zone != NULL && node->zone->contents != NULL));
 	
