@@ -1578,7 +1578,9 @@ int process_rr(void)
 
 //	printf("%s\n", knot_dname_to_str(parser->current_rrset->owner));
 
-	assert(current_rrset->rdata->count == descriptor->length);
+	if (descriptor->fixed_items) {
+		assert(current_rrset->rdata->count == descriptor->length);
+	}
 
 	assert(knot_dname_is_fqdn(current_rrset->owner));
 
