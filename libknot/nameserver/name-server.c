@@ -1593,7 +1593,6 @@ search:
 	/*! \todo Check version. */
 	find_ret = knot_zone_contents_find_dname_hash(zone, qname, &node,
 	                                                &closest_encloser);
-	printf("FIND DNAME HASH returned: %p\n", node);
 //	node = knot_node_current(node);
 //	closest_encloser = knot_node_current(closest_encloser);
 #else
