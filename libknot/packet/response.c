@@ -883,6 +883,14 @@ int knot_response_init_from_query(knot_packet_t *response,
 	// set the qr bit to 1
 	knot_wire_flags_set_qr(&response->header.flags1);
 	knot_wire_set_qr(response->wireformat);
+	
+	// clear AD flag
+	knot_wire_flags_clear_ad(&response->header.flags2);
+	knot_wire_clear_ad(response->wireformat);
+	
+	// clear RA flag
+	knot_wire_flags_clear_ra(&response->header.flags2);
+	knot_wire_clear_ad(response->wireformat);
 
 	// set counts to 0
 	response->header.ancount = 0;

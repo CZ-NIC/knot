@@ -46,7 +46,8 @@ static void conf_start_iface(char* ifname)
 %union {
     struct {
        char *t;
-       int i;
+       long i;
+       size_t l;
        tsig_alg_t alg;
     } tok;
 }
@@ -55,6 +56,7 @@ static void conf_start_iface(char* ifname)
 %token <tok> TEXT
 %token <tok> NUM
 %token <tok> INTERVAL
+%token <tok> SIZE
 %token <tok> BOOL
 
 %token <tok> SYSTEM IDENTITY VERSION STORAGE KEY
@@ -266,7 +268,7 @@ zone_start: TEXT {
    memset(this_zone, 0, sizeof(conf_zone_t));
    this_zone->enable_checks = -1; // Default policy applies
    this_zone->notify_timeout = -1; // Default policy applies
-   this_zone->notify_retries = -1; // Default policy applies
+   this_zone->notify_retries = 0; // Default policy applies
    this_zone->ixfr_fslimit = -1; // Default policy applies
    this_zone->dbsync_timeout = -1; // Default policy applies
    this_zone->name = $1.t;
@@ -309,10 +311,8 @@ zone:
  | zone SEMANTIC_CHECKS BOOL ';' { this_zone->enable_checks = $3.i; }
  | zone DBSYNC_TIMEOUT NUM ';' { this_zone->dbsync_timeout = $3.i; }
  | zone DBSYNC_TIMEOUT INTERVAL ';' { this_zone->dbsync_timeout = $3.i; }
+ | zone IXFR_FSLIMIT SIZE ';' { new_config->ixfr_fslimit = $3.l; }
  | zone IXFR_FSLIMIT NUM ';' { this_zone->ixfr_fslimit = $3.i; }
- | zone IXFR_FSLIMIT NUM 'k' ';' { this_zone->ixfr_fslimit = $3.i * 1024; } // kB
- | zone IXFR_FSLIMIT NUM 'M' ';' { this_zone->ixfr_fslimit = $3.i * 1048576; } // MB
- | zone IXFR_FSLIMIT NUM 'G' ';' { this_zone->ixfr_fslimit = $3.i * 1073741824; } // GB
  | zone NOTIFY_RETRIES NUM ';' {
        if ($3.i < 1) {
 	   cf_error(scanner, "notify retries must be positive integer");
@@ -333,10 +333,8 @@ zones:
    ZONES '{'
  | zones zone '}'
  | zones SEMANTIC_CHECKS BOOL ';' { new_config->zone_checks = $3.i; }
- | zone IXFR_FSLIMIT NUM ';' { new_config->ixfr_fslimit = $3.i; }
- | zone IXFR_FSLIMIT NUM 'k' ';' { new_config->ixfr_fslimit = $3.i * 1024; } // kB
- | zone IXFR_FSLIMIT NUM 'M' ';' { new_config->ixfr_fslimit = $3.i * 1048576; } // MB
- | zone IXFR_FSLIMIT NUM 'G' ';' { new_config->ixfr_fslimit = $3.i * 1073741824; } // GB
+ | zones IXFR_FSLIMIT SIZE ';' { new_config->ixfr_fslimit = $3.l; }
+ | zones IXFR_FSLIMIT NUM ';' { new_config->ixfr_fslimit = $3.i; }
  | zones NOTIFY_RETRIES NUM ';' {
        if ($3.i < 1) {
 	   cf_error(scanner, "notify retries must be positive integer");

@@ -91,7 +91,7 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	return KNOTD_EOK;
 }
 
-journal_t* journal_open(const char *fn, int fslimit, uint16_t bflags)
+journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 {
 	/*! \todo Memory mapping may be faster than stdio? */
 
@@ -162,7 +162,7 @@ journal_t* journal_open(const char *fn, int fslimit, uint16_t bflags)
 
 	/* Set file size. */
 	j->fsize = st.st_size;
-	if (fslimit < 0) {
+	if (fslimit == 0) {
 		j->fslimit = FSLIMIT_INF;
 	} else {
 		j->fslimit = (size_t)fslimit;

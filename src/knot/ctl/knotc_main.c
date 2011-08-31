@@ -356,14 +356,14 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 				printf("Compiling '%s'...\n",
 				       zone->name);
 			}
+			fflush(stdout);
+			fflush(stderr);
 			rc = exec_cmd(args, 7);
-			if (rc < 0 || WEXITSTATUS(rc) != 0) {
+
+			if (rc < 0 || !WIFEXITED(rc) || WEXITSTATUS(rc) != 0) {
 				fprintf(stderr, "error: Compilation failed "
 						"with return code %d.\n",
 						WEXITSTATUS(rc));
-			}
-			rc = WEXITSTATUS(rc);
-			if (rc < 0) {
 				rc = 1;
 			}
 		}
@@ -428,6 +428,9 @@ int main(int argc, char **argv)
 
 	// Initialize log (no output)
 	log_init();
+	log_levels_set(LOGT_SYSLOG, LOG_ANY, 0);
+	log_levels_set(LOGT_STDERR, LOG_ANY, 0);
+	log_levels_set(LOGT_STDOUT, LOG_ANY, 0);
 
 	// Find implicit configuration file
 	char *default_fn = 0;

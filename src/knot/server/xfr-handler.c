@@ -22,6 +22,7 @@
 #include "libknot/updates/xfr-in.h"
 #include "knot/server/zones.h"
 #include "libknot/util/error.h"
+#include "common/evsched.h"
 
 /*! \brief XFR event wrapper for libev. */
 struct xfr_io_t
@@ -38,6 +39,7 @@ struct qr_io_t
 	int type;
 	sockaddr_t addr;
 	knot_nameserver_t *ns;
+	event_t* ev;
 };
 
 /*! \brief Interrupt libev ev_loop execution. */
@@ -45,6 +47,24 @@ static void xfr_interrupt(xfrhandler_t *h)
 {
 	/* Break loop. */
 	evqueue_write(h->cq, "", 1);
+}
+
+/*!
+ * \brief SOA query timeout handler.
+ */
+static int qr_timeout_ev(event_t *e)
+{
+	struct qr_io_t* qw = (struct qr_io_t *)e->data;
+	if (!qw) {
+		return KNOTD_EINVAL;
+	}
+
+	/* Close socket. */
+	debug_xfr("qr_response_ev: timeout on fd=%d\n", ((ev_io *)qw)->fd);
+	close(((ev_io *)qw)->fd);
+	evsched_event_free(e->parent, e);
+	qw->ev = 0;
+	return KNOTD_EOK;
 }
 
 /*!
@@ -84,6 +104,12 @@ static inline void qr_response_ev(struct ev_loop *loop, ev_io *w, int revents)
 	if (n > 0) {
 		debug_xfr("qr_response_ev: processing response\n");
 		udp_handle(qbuf, n, &resp_len, &qw->addr, qw->ns);
+	}
+
+	/* Disable timeout. */
+	if (qw->ev) {
+		evsched_cancel(qw->ev->parent, qw->ev);
+		evsched_event_free(qw->ev->parent, qw->ev);
 	}
 
 	/* Close after receiving response. */
@@ -264,6 +290,10 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
 		qw->type = req->type;
 		memcpy(&qw->addr, &req->addr, sizeof(sockaddr_t));
 		sockaddr_update(&qw->addr);
+
+		/* Add timeout. */
+		evsched_t *sch = ((server_t *)knot_ns_get_data(qw->ns))->sched;
+		qw->ev = evsched_schedule_cb(sch, qr_timeout_ev, qw, SOA_QRY_TIMEOUT);
 
 		/* Add to pending transfers. */
 		ev_io_init((ev_io *)qw, qr_response_ev, req->session, EV_READ);
