@@ -31,11 +31,12 @@ typedef struct zloader_t
  * \brief Initializes zone loader from file..
  *
  * \param filename File containing the compiled zone.
+ * \param loader Will create new loader in *loader.
  *
  * \retval Initialized loader on success.
  * \retval NULL on error.
  */
-zloader_t *knot_zload_open(const char *filename);
+int knot_zload_open(zloader_t **loader, const char *filename);
 
 /*!
  * \brief Loads zone from a compiled and serialized zone file.

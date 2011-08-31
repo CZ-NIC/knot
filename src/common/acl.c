@@ -17,6 +17,11 @@ static int acl_compare(void *k1, void *k2)
 	/* Compare integers if IPv4. */
 	if (a1->len == sizeof(struct sockaddr_in)) {
 
+		/* Allow if k1 == INADDR_ANY. */
+		if (a1->addr4.sin_addr.s_addr == 0) {
+			return 0;
+		}
+
 		/* Compare address. */
 		ldiff = a1->addr4.sin_addr.s_addr - a2->addr4.sin_addr.s_addr;
 		if (ldiff != 0) {
@@ -28,11 +33,12 @@ static int acl_compare(void *k1, void *k2)
 			return 0;
 		}
 
+		/*! \todo Port matching disabled. */
 		/* Compare ports on address match. */
-		ldiff = ntohs(a1->addr4.sin_port) - ntohs(a2->addr4.sin_port);
-		if (ldiff != 0) {
-			return ldiff < 0 ? -1 : 1;
-		}
+//		ldiff = ntohs(a1->addr4.sin_port) - ntohs(a2->addr4.sin_port);
+//		if (ldiff != 0) {
+//			return ldiff < 0 ? -1 : 1;
+//		}
 		return 0;
 	}
 
@@ -60,11 +66,12 @@ static int acl_compare(void *k1, void *k2)
 			return 0;
 		}
 
+		/*! \todo Port matching disabled. */
 		/* Compare ports on address match. */
-		ldiff = ntohs(a1->addr6.sin6_port) - ntohs(a2->addr6.sin6_port);
-		if (ldiff != 0) {
-			return ldiff < 0 ? -1 : 1;
-		}
+//		ldiff = ntohs(a1->addr6.sin6_port) - ntohs(a2->addr6.sin6_port);
+//		if (ldiff != 0) {
+//			return ldiff < 0 ? -1 : 1;
+//		}
 		return 0;
 	}
 #endif
@@ -122,8 +129,9 @@ int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule)
 	}
 
 	/* Insert into skip list. */
-	void *key = malloc(sizeof(sockaddr_t));
+	sockaddr_t *key = malloc(sizeof(sockaddr_t));
 	memcpy(key,addr, sizeof(sockaddr_t));
+
 	skip_insert(acl->rules, key, (void*)((ssize_t)rule + 1), 0);
 
 	return ACL_ACCEPT;

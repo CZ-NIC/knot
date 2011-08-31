@@ -38,7 +38,7 @@ void help(int argc, char **argv)
 	       " start   [zone]  Start %s server with given zone (no-op if running).\n"
 	       " stop            Stop %s server (no-op if not running).\n"
 	       " restart [zone]  Stops and then starts %s server.\n"
-	       " reload  [zone]  Reload %s configuration and zone files.\n"
+	       " reload  [zone]  Reload %s configuration and compiled zones.\n"
 	       " running         Check if server is running.\n"
 	       "\n"
 	       " compile         Compile zone file.\n",
@@ -64,7 +64,8 @@ int check_zone(const char *db, const char* source)
 	}
 
 	/* Read zonedb header. */
-	zloader_t *zl = knot_zload_open(db);
+	zloader_t *zl = 0;
+	knot_zload_open(&zl, db);
 	if (!zl) {
 		return KNOTD_ERROR;
 	}
@@ -429,7 +430,6 @@ int main(int argc, char **argv)
 	// Initialize log (no output)
 	log_init();
 	log_levels_set(LOGT_SYSLOG, LOG_ANY, 0);
-	log_levels_set(LOGT_STDERR, LOG_ANY, 0);
 	log_levels_set(LOGT_STDOUT, LOG_ANY, 0);
 
 	// Find implicit configuration file
@@ -443,6 +443,8 @@ int main(int argc, char **argv)
 	if (conf_open(config_fn) != 0) {
 		fprintf(stderr, "Failed to parse configuration '%s'.\n",
 		        config_fn);
+		free(default_fn);
+		return 1;
 	}
 
 	// Free default config filename if exists
