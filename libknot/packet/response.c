@@ -871,12 +871,12 @@ int knot_response_init_from_query(knot_packet_t *response,
 	size_t to_copy = 12 + 4 + knot_dname_size(response->question.qname);
 
 	assert(response->max_size >= to_copy);
-	printf("Resp init from query: Copying from: %p to: %p size: %d\n",
-	       response->wireformat, query->wireformat,
-	       to_copy);
-	printf("Resp init from query: Question name size: %d Query name size: %d\n",
-	       knot_dname_size(response->question.qname),
-	       knot_dname_size(query->question.qname));
+//	printf("Resp init from query: Copying from: %p to: %p size: %d\n",
+//	       response->wireformat, query->wireformat,
+//	       to_copy);
+//	printf("Resp init from query: Question name size: %d Query name size: %d\n",
+//	       knot_dname_size(response->question.qname),
+//	       knot_dname_size(query->question.qname));
 	memcpy(response->wireformat, query->wireformat, to_copy);
 	response->size = to_copy;
 

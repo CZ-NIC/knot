@@ -119,10 +119,10 @@ static void add_node_to_tree(void *n, void *data)
 	gen_tree_add(tree, n, NULL);
 }
 
-static void print_node(void *n, void *data)
-{
-	printf("node: %p\n", n);
-}
+//static void print_node(void *n, void *data)
+//{
+//	printf("node: %p\n", n);
+//}
 
 static int gen_tree_copy_node(const struct general_tree_node *from,
                               struct general_tree_node **to)
@@ -179,14 +179,14 @@ general_tree_t *gen_tree_shallow_copy(general_tree_t *tree)
 		return NULL;
 	}
 
-	gen_tree_apply_inorder(tree, print_node, NULL);
-	printf("--------------------------\n");
-	gen_tree_apply_inorder(new_tree, print_node, NULL);
+//	gen_tree_apply_inorder(tree, print_node, NULL);
+//	printf("--------------------------\n");
+//	gen_tree_apply_inorder(new_tree, print_node, NULL);
 
 	/* XXX */
 
-	printf("new tree: %p from old tree: %p\n",
-	       new_tree, tree);
+//	printf("new tree: %p from old tree: %p\n",
+//	       new_tree, tree);
 
 	return new_tree;
 }
