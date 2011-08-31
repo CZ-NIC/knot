@@ -672,11 +672,11 @@ static unsigned long calculate_crc(FILE *f)
 	return (unsigned long)crc_finalize(crc);
 }
 
-zloader_t *knot_zload_open(const char *filename)
+int knot_zload_open(zloader_t **dst, const char *filename)
 {
-	if (unlikely(!filename)) {
-		errno = ENOENT; // No such file or directory (POSIX.1)
-		return NULL;
+	*dst = 0;
+	if (!dst || !filename) {
+		return KNOT_EBADARG;
 	}
 
 	fread_wrapper = fread_safe_from_file;
@@ -686,8 +686,7 @@ zloader_t *knot_zload_open(const char *filename)
 	if (unlikely(!f)) {
 		debug_knot_zload("knot_zload_open: failed to open '%s'\n",
 				   filename);
-		errno = ENOENT; // No such file or directory (POSIX.1)
-		return NULL;
+		return KNOT_EFEWDATA; // No such file or directory (POSIX.1)
 	}
 
 	/* Calculate CRC and compare with filename.crc file */
@@ -698,8 +697,7 @@ zloader_t *knot_zload_open(const char *filename)
 		malloc(sizeof(char) * (strlen(filename) + strlen(".crc") + 1));
 	if (unlikely(!crc_path)) {
 		fclose(f);
-		errno = ENOMEM;
-		return NULL;
+		return KNOT_ENOMEM;
 	}
 	memset(crc_path, 0,
 	       sizeof(char) * (strlen(filename) + strlen(".crc") + 1));
@@ -713,8 +711,7 @@ zloader_t *knot_zload_open(const char *filename)
 		                   crc_path);
 		fclose(f);
 		free(crc_path);
-		errno = ENOENT; // No such file or directory (POSIX.1)
-		return NULL;
+		return KNOT_ECRC;
 	}
 
 	unsigned long crc_from_file = 0;
@@ -725,8 +722,7 @@ zloader_t *knot_zload_open(const char *filename)
 		fclose(f_crc);
 		fclose(f);
 		free(crc_path);
-		errno = EIO; // I/O error.
-		return NULL;
+		return KNOT_ERROR;
 	}
 	free(crc_path);
 	fclose(f_crc);
@@ -737,8 +733,7 @@ zloader_t *knot_zload_open(const char *filename)
 		                   "file '%s'\n",
 		                   filename);
 		fclose(f);
-		errno = KNOT_ECRC;
-		return NULL;
+		return KNOT_ECRC;
 	}
 
 	/* Check magic sequence. */
@@ -749,8 +744,7 @@ zloader_t *knot_zload_open(const char *filename)
 				   "in don't match '%*s' "
 			 "(%s)\n",
 			 (int)MAGIC_LENGTH, (const char*)MAGIC, filename);
-		errno = EILSEQ; // Illegal byte sequence (POSIX.1, C99)
-		return NULL;
+		return KNOT_EMALF; // Illegal byte sequence (POSIX.1, C99)
 	}
 
 	/* Read source file length. */
@@ -759,8 +753,7 @@ zloader_t *knot_zload_open(const char *filename)
 		debug_knot_zload("knot_zload_open: failed to read "
 				   "sfile length\n");
 		fclose(f);
-		errno = EIO; // I/O error.
-		return NULL;
+		return KNOT_ERROR;
 	}
 
 	/* Read source file. */
@@ -769,8 +762,7 @@ zloader_t *knot_zload_open(const char *filename)
 		debug_knot_zload("knot_zload_open: invalid sfile "
 				   "length %u\n", sflen);
 		fclose(f);
-		errno = ENOMEM; // Not enough space.
-		return NULL;
+		return KNOT_ENOMEM;
 	}
 	if (!fread_wrapper(sfile, 1, sflen, f)) {
 		debug_knot_zload("knot_zload_open: failed to read %uB "
@@ -778,17 +770,15 @@ zloader_t *knot_zload_open(const char *filename)
 			 sflen);
 		free(sfile);
 		fclose(f);
-		errno = EIO; // I/O error.
-		return NULL;
+		return KNOT_ERROR;
 	}
 
 	/* Allocate new loader. */
 	zloader_t *zl = malloc(sizeof(zloader_t));
 	if (!zl) {
-		errno = ENOMEM; // Not enough space.
 		free(sfile);
 		fclose(f);
-		return NULL;
+		return KNOT_ENOMEM;
 	}
 
 	debug_knot_zload("knot_zload_open: opened '%s' as fp %p "
@@ -797,7 +787,9 @@ zloader_t *knot_zload_open(const char *filename)
 	zl->filename = strdup(filename);
 	zl->source = sfile;
 	zl->fp = f;
-	return zl;
+	*dst = zl;
+
+	return KNOT_EOK;
 }
 
 static void cleanup_id_array(knot_dname_t **id_array,
