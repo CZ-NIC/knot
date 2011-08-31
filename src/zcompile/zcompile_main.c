@@ -90,6 +90,8 @@ int main(int argc, char **argv)
 	if (error) {
 		fprintf(stderr, "Finished with error: %s.\n",
 		       error_to_str(knot_zcompile_error_msgs, error));
+	} else {
+		printf("Compilation successful.\n");
 	}
 	//log_close();
 
