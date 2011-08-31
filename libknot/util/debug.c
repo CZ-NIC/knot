@@ -114,7 +114,7 @@ void knot_rrset_dump(const knot_rrset_t *rrset, char loaded_zone)
 #endif
 }
 
-void knot_node_dump(knot_node_t *node, void *loaded_zone)
+void knot_node_dump(const knot_node_t *node, void *loaded_zone)
 {
 #if defined(KNOT_ZONE_DEBUG) || defined(KNOT_NODE_DEBUG)
 	//char loaded_zone = *((char*) data);

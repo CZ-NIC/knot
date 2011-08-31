@@ -34,6 +34,41 @@ static int zonedata_destroy(knot_zone_t *zone)
 		return KNOTD_EINVAL;
 	}
 
+	/* Cancel REFRESH timer. */
+	if (zd->xfr_in.timer) {
+		evsched_t *sch = zd->xfr_in.timer->parent;
+		evsched_cancel(sch, zd->xfr_in.timer);
+		evsched_event_free(sch, zd->xfr_in.timer);
+		zd->xfr_in.timer = 0;
+	}
+
+	/* Cancel EXPIRE timer. */
+	if (zd->xfr_in.expire) {
+		evsched_t *sch = zd->xfr_in.expire->parent;
+		evsched_cancel(sch, zd->xfr_in.expire);
+		evsched_event_free(sch, zd->xfr_in.expire);
+		zd->xfr_in.expire = 0;
+	}
+
+	/* Remove list of pending NOTIFYs. */
+	node *n = 0, *nxt = 0;
+	WALK_LIST_DELSAFE(n, nxt, zd->notify_pending) {
+		notify_ev_t *ev = (notify_ev_t *)n;
+		rem_node(n);
+		evsched_t *sch = ev->timer->parent;
+		evsched_cancel(sch, ev->timer);
+		evsched_event_free(sch, ev->timer);
+		free(ev);
+	}
+
+	/* Cancel IXFR DB sync timer. */
+	if (zd->ixfr_dbsync) {
+		evsched_t *sch = zd->ixfr_dbsync->parent;
+		evsched_cancel(sch, zd->ixfr_dbsync);
+		evsched_event_free(sch, zd->ixfr_dbsync);
+		zd->ixfr_dbsync = 0;
+	}
+
 	/* Destroy mutex. */
 	pthread_mutex_destroy(&zd->lock);
 
@@ -178,9 +213,9 @@ static uint32_t zones_soa_expire(knot_zone_t *zone)
 /*!
  * \brief XFR/IN expire event handler.
  */
-static int zones_xfrin_expire(event_t *e)
+static int zones_expire_ev(event_t *e)
 {
-	debug_zones("axfrin: EXPIRE timer event\n");
+	debug_zones("xfr_in: EXPIRE timer event\n");
 	knot_zone_t *zone = (knot_zone_t *)e->data;
 	if (!zone) {
 		return KNOTD_EINVAL;
@@ -202,14 +237,15 @@ static int zones_xfrin_expire(event_t *e)
 	zd->xfr_in.expire = 0;
 	zd->xfr_in.next_id = -1;
 
-	/*! \todo Remove zone from database. */
+	/*! \todo Mark zone as expired */
+
 	return 0;
 }
 
 /*!
- * \brief XFR/IN poll event handler.
+ * \brief Zone REFRESH or RETRY event.
  */
-static int zones_xfrin_poll(event_t *e)
+static int zones_refresh_ev(event_t *e)
 {
 	debug_zones("xfr_in: REFRESH or RETRY timer event\n");
 	knot_zone_t *zone = (knot_zone_t *)e->data;
@@ -267,7 +303,7 @@ static int zones_xfrin_poll(event_t *e)
 		uint32_t expire_tmr = zones_soa_expire(zone);
 		zd->xfr_in.expire = evsched_schedule_cb(
 					      e->parent,
-					      zones_xfrin_expire,
+					      zones_expire_ev,
 					      zone, expire_tmr);
 		debug_zones("xfr_in: scheduling EXPIRE timer after %u secs\n",
 			    expire_tmr / 1000);
@@ -472,11 +508,31 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 	// Check path
 	if (filename) {
 		debug_server("Parsing zone database '%s'\n", filename);
-		zloader_t *zl = knot_zload_open(filename);
-		if (!zl) {
+		zloader_t *zl = 0;
+		int ret = knot_zload_open(&zl, filename);
+		switch(ret) {
+		case KNOT_EOK:
+			/* OK */
+			break;
+		case KNOT_EFEWDATA:
+			log_server_error("Compiled zone db '%s' not exists.\n",
+					 filename);
+			return KNOTD_EZONEINVAL;
+		case KNOT_ECRC:
+			log_server_error("Compiled zone db CRC mismatches, "
+					 "db is corrupted or .crc file is "
+					 "deleted.\n");
+			return KNOTD_EZONEINVAL;
+		case KNOT_EMALF:
 			log_server_error("Compiled db '%s' is too old, "
 			                 " please recompile.\n",
 			                 filename);
+			return KNOTD_EZONEINVAL;
+		case KNOT_ERROR:
+		case KNOT_ENOMEM:
+		default:
+			log_server_error("Failed to read zone db file '%s'.\n",
+					 filename);
 			return KNOTD_EZONEINVAL;
 		}
 
@@ -1038,7 +1094,7 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 		return KNOTD_ERROR;
 	}
 
-	log_server_info("Loading %d zones...\n", conf->zones_count);
+	log_server_info("Loading %d compiled zones...\n", conf->zones_count);
 
 	// Insert all required zones to the new zone DB.
 	int inserted = zones_insert_zones(ns, &conf->zones, *db_old, db_new);
@@ -1285,7 +1341,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 xfr_type_t zones_transfer_to_use(const knot_zone_contents_t *zone)
 {
 	/*! \todo Implement. */
-	return XFR_TYPE_IIN;
+	return XFR_TYPE_AIN;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1791,28 +1847,18 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 		return KNOTD_EINVAL;
 	}
 
-	/* Check XFR/IN master server. */
-	if (zd->xfr_in.master.ptr) {
+	/* Cancel REFRESH timer. */
+	if (zd->xfr_in.timer) {
+		evsched_cancel(sch, zd->xfr_in.timer);
+		evsched_event_free(sch, zd->xfr_in.timer);
+		zd->xfr_in.timer = 0;
+	}
 
-		/* Cancel REFRESH timer. */
-		if (zd->xfr_in.timer) {
-			evsched_cancel(sch, zd->xfr_in.timer);
-			evsched_event_free(sch, zd->xfr_in.timer);
-			zd->xfr_in.expire = 0;
-		}
-
-		/* Schedule REFRESH timer. */
-		uint32_t refresh_tmr = zones_soa_refresh(zone);
-		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_xfrin_poll,
-							 zone, refresh_tmr);
-		debug_zones("notify: REFRESH set to %u\n", refresh_tmr);
-
-		/* Cancel EXPIRE timer. */
-		if (zd->xfr_in.expire) {
-			evsched_cancel(sch, zd->xfr_in.expire);
-			evsched_event_free(sch, zd->xfr_in.expire);
-			zd->xfr_in.expire = 0;
-		}
+	/* Cancel EXPIRE timer. */
+	if (zd->xfr_in.expire) {
+		evsched_cancel(sch, zd->xfr_in.expire);
+		evsched_event_free(sch, zd->xfr_in.expire);
+		zd->xfr_in.expire = 0;
 	}
 
 	/* Remove list of pending NOTIFYs. */
@@ -1823,6 +1869,16 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 		evsched_cancel(sch, ev->timer);
 		evsched_event_free(sch, ev->timer);
 		free(ev);
+	}
+
+	/* Check XFR/IN master server. */
+	if (zd->xfr_in.master.ptr) {
+
+		/* Schedule REFRESH timer. */
+		uint32_t refresh_tmr = zones_soa_refresh(zone);
+		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_refresh_ev,
+							 zone, refresh_tmr);
+		debug_zones("notify: REFRESH set to %u\n", refresh_tmr);
 	}
 
 	/* Schedule NOTIFY to slaves. */
@@ -1872,14 +1928,15 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 	/* Schedule IXFR database syncing. */
 	/*! \todo Sync timer should not be reset after each xfr. */
 	int sync_timeout = cfzone->dbsync_timeout * 1000; /* Convert to ms. */
-	if (!zd->ixfr_dbsync) {
-		zd->ixfr_dbsync = evsched_schedule_cb(sch,
-						      zones_zonefile_sync_ev,
-						      zone, sync_timeout);
-	} else {
+	if (zd->ixfr_dbsync) {
 		evsched_cancel(sch, zd->ixfr_dbsync);
-		evsched_schedule(sch, zd->ixfr_dbsync, sync_timeout);
+		evsched_event_free(sch, zd->ixfr_dbsync);
+		zd->ixfr_dbsync = 0;
 	}
+	zd->ixfr_dbsync = evsched_schedule_cb(sch,
+					      zones_zonefile_sync_ev,
+					      zone, sync_timeout);
+
 	conf_read_unlock();
 
 	return KNOTD_EOK;

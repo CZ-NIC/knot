@@ -1343,19 +1343,36 @@ static inline int ns_referral(const knot_node_t *node,
 			ns_add_rrsigs(rrset, resp, node->owner,
 			              knot_response_add_rrset_authority, 1);
 		} else {
-			// no DS, add NSEC3
-			const knot_node_t *nsec3_node =
-				knot_node_nsec3_node(node, 1);
-			debug_knot_ns("There is no DS, putting NSEC3s...\n");
-			if (nsec3_node != NULL) {
-				debug_knot_ns("Putting NSEC3s from the node.\n");
-				ns_put_nsec3_from_node(nsec3_node, resp);
+			// no DS, add NSEC3 or NSEC
+			// if NSEC3 enabled, search for NSEC3
+			if (knot_zone_contents_nsec3_enabled(zone)) {
+				const knot_node_t *nsec3_node =
+					knot_node_nsec3_node(node, 1);
+				debug_knot_ns("There is no DS, putting NSEC3s...\n");
+				if (nsec3_node != NULL) {
+					debug_knot_ns("Putting NSEC3s from the node.\n");
+					ns_put_nsec3_from_node(nsec3_node, resp);
+				} else {
+					debug_knot_ns("Putting Opt-Out NSEC3s.\n");
+					// no NSEC3 (probably Opt-Out)
+					// TODO: check if the zone is Opt-Out
+					ret = ns_put_nsec3_closest_encloser_proof(zone,
+						&node, qname, resp);
+				}
+				/*! \todo What if there is no NSEC3? */
 			} else {
-				debug_knot_ns("Putting Opt-Out NSEC3s.\n");
-				// no NSEC3 (probably Opt-Out)
-				// TODO: check if the zone is Opt-Out
-				ret = ns_put_nsec3_closest_encloser_proof(zone,
-					&node, qname, resp);
+				knot_rrset_t *nsec = knot_node_rrset(
+					node, KNOT_RRTYPE_NSEC);
+				if (nsec) {
+					/*! \todo Check return value? */
+					knot_response_add_rrset_authority(
+						resp, nsec, 1, 1, 0);
+					if ((nsec = knot_rrset_rrsigs(nsec)) != NULL) {
+						knot_response_add_rrset_authority(resp, nsec, 1,
+										     1, 0);
+					}
+				}
+				/*! \todo What if there is no NSEC? */
 			}
 		}
 	}
