@@ -113,11 +113,11 @@ void gen_tree_clear(general_tree_t *tree)
 	                 gen_rem_func, NULL);
 }
 
-static void add_node_to_tree(void *n, void *data)
-{
-	general_tree_t *tree = (general_tree_t *)data;
-	gen_tree_add(tree, n, NULL);
-}
+//static void add_node_to_tree(void *n, void *data)
+//{
+//	general_tree_t *tree = (general_tree_t *)data;
+//	gen_tree_add(tree, n, NULL);
+//}
 
 //static void print_node(void *n, void *data)
 //{

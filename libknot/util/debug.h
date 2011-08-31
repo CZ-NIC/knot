@@ -72,7 +72,7 @@ void knot_rrset_dump(const knot_rrset_t *rrset, char loaded_zone);
  * \param loaded_zone Set to <> 0 if the node is part of a zone loaded into
  *                    the server. Set to 0 otherwise.
  */
-void knot_node_dump(knot_node_t *node, void *loaded_zone);
+void knot_node_dump(const knot_node_t *node, void *loaded_zone);
 
 /*!
  * \brief Dumps the whole zone.
