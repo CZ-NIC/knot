@@ -25,8 +25,8 @@
 //#define ZONES_DEBUG
 //#define XFR_DEBUG
 //#define NOTIFY_DEBUG
-#define KNOT_ZDUMP_DEBUG
-#define KNOT_ZLOAD_DEBUG
+//#define KNOT_ZDUMP_DEBUG
+//#define KNOT_ZLOAD_DEBUG
 
 #ifdef NOTIFY_DEBUG
 #define debug_notify(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
