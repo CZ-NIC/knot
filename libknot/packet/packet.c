@@ -840,9 +840,9 @@ int knot_packet_parse_rest(knot_packet_t *packet)
 		return KNOT_EBADARG;
 	}
 
-	if (packet->parsed >= packet->size) {
-		return KNOT_EOK;
-	}
+//	if (packet->parsed >= packet->size) {
+//		return KNOT_EOK;
+//	}
 
 	size_t pos = packet->parsed;
 

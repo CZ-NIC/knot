@@ -636,11 +636,11 @@ void server_destroy(server_t **server)
 	// Free XFR master
 	xfr_free((*server)->xfr_h);
 
-	// Delete event scheduler
-	evsched_delete(&(*server)->sched);
-
 	stat_static_gath_free();
 	knot_ns_destroy(&(*server)->nameserver);
+
+	// Delete event scheduler
+	evsched_delete(&(*server)->sched);
 
 	free(*server);
 
