@@ -103,24 +103,54 @@ interface_start:
 
 interface:
    interface_start '{'
- | interface PORT NUM ';' { this_iface->port = $3.i; }
+ | interface PORT NUM ';' {
+     if (this_iface->port != CONFIG_DEFAULT_PORT) {
+       cf_error(scanner, "only one port definition is allowed in interface section\n");
+     } else {
+       this_iface->port = $3.i;
+     }
+   }
  | interface ADDRESS IPA ';' {
-     this_iface->address = $3.t;
-     this_iface->family = AF_INET;
+     if (this_iface->address != 0) {
+       cf_error(scanner, "only one address is allowed in interface section\n");
+     } else {
+       this_iface->address = $3.t;
+       this_iface->family = AF_INET;
+     }
    }
  | interface ADDRESS IPA '@' NUM ';' {
-     this_iface->address = $3.t;
-     this_iface->family = AF_INET;
-     this_iface->port = $5.i;
+     if (this_iface->address != 0) {
+       cf_error(scanner, "only one address is allowed in interface section\n");
+     } else {
+       this_iface->address = $3.t;
+       this_iface->family = AF_INET;
+       if (this_iface->port != CONFIG_DEFAULT_PORT) {
+	 cf_error(scanner, "only one port definition is allowed in interface section\n");
+       } else {
+	 this_iface->port = $5.i;
+       }
+     }
    }
  | interface ADDRESS IPA6 ';' {
-     this_iface->address = $3.t;
-     this_iface->family = AF_INET6;
+     if (this_iface->address != 0) {
+       cf_error(scanner, "only one address is allowed in interface section\n");
+     } else {
+       this_iface->address = $3.t;
+       this_iface->family = AF_INET6;
+     }
    }
  | interface ADDRESS IPA6 '@' NUM ';' {
-     this_iface->address = $3.t;
-     this_iface->family = AF_INET6;
-     this_iface->port = $5.i;
+     if (this_iface->address != 0) {
+       cf_error(scanner, "only one address is allowed in interface section\n");
+     } else {
+       this_iface->address = $3.t;
+       this_iface->family = AF_INET6;
+       if (this_iface->port != CONFIG_DEFAULT_PORT) {
+	 cf_error(scanner, "only one port definition is allowed in interface section\n");
+       } else {
+	 this_iface->port = $5.i;
+       }
+     }
    }
  ;
 
@@ -153,24 +183,54 @@ remote_start: TEXT {
 
 remote:
    remote_start '{'
- | remote PORT NUM ';' { this_remote->port = $3.i; }
+ | remote PORT NUM ';' {
+     if (this_remote->port != 0) {
+       cf_error(scanner, "only one port definition is allowed in remote section\n");
+     } else {
+       this_remote->port = $3.i;
+     }
+   }
  | remote ADDRESS IPA ';' {
-     this_remote->address = $3.t;
-     this_remote->family = AF_INET;
+     if (this_remote->address != 0) {
+       cf_error(scanner, "only one address is allowed in remote section\n");
+     } else {
+       this_remote->address = $3.t;
+       this_remote->family = AF_INET;
+     }
    }
  | remote ADDRESS IPA '@' NUM ';' {
-     this_remote->address = $3.t;
-     this_remote->family = AF_INET;
-     this_remote->port = $5.i;
+     if (this_remote->address != 0) {
+       cf_error(scanner, "only one address is allowed in remote section\n");
+     } else {
+       this_remote->address = $3.t;
+       this_remote->family = AF_INET;
+       if (this_remote->port != 0) {
+	 cf_error(scanner, "only one port definition is allowed in remote section\n");
+       } else {
+	 this_remote->port = $5.i;
+       }
+     }
    }
  | remote ADDRESS IPA6 ';' {
-     this_remote->address = $3.t;
-     this_remote->family = AF_INET6;
+     if (this_remote->address != 0) {
+       cf_error(scanner, "only one address is allowed in remote section\n");
+     } else {
+       this_remote->address = $3.t;
+       this_remote->family = AF_INET6;
+     }
    }
  | remote ADDRESS IPA6 '@' NUM ';' {
-     this_remote->address = $3.t;
-     this_remote->family = AF_INET6;
-     this_remote->port = $5.i;
+     if (this_remote->address != 0) {
+       cf_error(scanner, "only one address is allowed in remote section\n");
+     } else {
+       this_remote->address = $3.t;
+       this_remote->family = AF_INET6;
+       if (this_remote->port != 0) {
+	 cf_error(scanner, "only one port definition is allowed in remote section\n");
+       } else {
+	 this_remote->port = $5.i;
+       }
+     }
    }
  ;
 
