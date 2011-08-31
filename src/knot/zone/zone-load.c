@@ -9,6 +9,7 @@
 
 #include "common/crc.h"
 #include "libknot/common.h"
+#include "knot/other/debug.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zone-dump.h"
 #include "libknot/libknot.h"
@@ -223,16 +224,29 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 		knot_rrtype_descriptor_by_type(type);
 	assert(desc != NULL);
 
+
+	/* First, should read rdata count. */
+
+	uint32_t rdata_count = 0;
+
+	if(!fread_wrapper(&rdata_count, sizeof(rdata_count), 1, f)) {
+		return NULL;
+	}
+
 	knot_rdata_item_t *items =
-		malloc(sizeof(knot_rdata_item_t) * desc->length);
+		malloc(sizeof(knot_rdata_item_t) * rdata_count);
+
+	if (desc->fixed_items) {
+		assert(desc->length == rdata_count);
+	}
 
 	uint16_t raw_data_length;
 
-	debug_knot_zload("Reading %d items\n", desc->length);
+	debug_knot_zload("Reading %d items\n", rdata_count);
 
 	debug_knot_zload("current type: %s\n", knot_rrtype_to_string(type));
 
-	for (int i = 0; i < desc->length; i++) {
+	for (int i = 0; i < rdata_count; i++) {
 		if (desc->wireformat[i] == KNOT_RDATA_WF_COMPRESSED_DNAME ||
 		desc->wireformat[i] == KNOT_RDATA_WF_UNCOMPRESSED_DNAME ||
 		desc->wireformat[i] == KNOT_RDATA_WF_LITERAL_DNAME )	{
@@ -309,7 +323,7 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 	}
 
 	/* Each item has refcount already incremented for saving in rdata. */
-	if (knot_rdata_set_items(rdata, items, desc->length) != 0) {
+	if (knot_rdata_set_items(rdata, items, rdata_count) != 0) {
 		fprintf(stderr, "zoneload: Could not set items "
 			"when loading rdata.\n");
 	}
@@ -318,6 +332,10 @@ static knot_rdata_t *knot_load_rdata(uint16_t type, FILE *f,
 
 	debug_knot_zload("knot_load_rdata: all %d items read\n",
 			 desc->length);
+
+	assert(rdata->count == rdata_count);
+
+	rdata->count = rdata_count;
 
 	return rdata;
 }
@@ -554,6 +572,7 @@ static knot_node_t *knot_load_node(FILE *f, knot_dname_t **id_array)
 		}
 	}
 	assert(node != NULL);
+	debug_knot_zload("Node loaded: %p\n", node);
 	return node;
 }
 
@@ -904,7 +923,9 @@ static knot_dname_t **create_dname_array(FILE *f, uint max_id)
 
 knot_zone_t *knot_zload_load(zloader_t *loader)
 {
+	debug_knot_zload("Loading zone, loader: %p\n", loader);
 	if (!loader) {
+		debug_knot_zload("NULL loader!\n");
 		return NULL;
 	}
 
@@ -926,14 +947,17 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	uint32_t auth_node_count;
 
 	if (!fread_wrapper(&node_count, sizeof(node_count), 1, f)) {
+		debug_knot_zload("wrong read!\n");
 		return NULL;
 	}
 
 	if (!fread_wrapper(&nsec3_node_count, sizeof(nsec3_node_count), 1, f)) {
+		debug_knot_zload("wrong read!\n");
 		return NULL;
 	}
 	if (!fread_wrapper(&auth_node_count,
 	      sizeof(auth_node_count), 1, f)) {
+		debug_knot_zload("wrong read!\n");
 		return NULL;
 	}
 	debug_knot_zload("authoritative nodes: %u\n", auth_node_count);
@@ -972,10 +996,13 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		return NULL;
 	}
 
+	debug_knot_zload("Apex node loaded: %p\n", apex);
+
 	knot_zone_t *zone = knot_zone_new(apex, auth_node_count, 0);
 	if (zone == NULL) {
 		cleanup_id_array(id_array, 1,
 				 node_count + nsec3_node_count + 1);
+		debug_knot_zload("Failed to create new zone from apex!\n");
 		return NULL;
 	}
 
@@ -1085,7 +1112,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	}
 	free(id_array);
 
-
+	debug_knot_zload("zone loaded, returning: %p\n", zone);
 	return zone;
 }
 
