@@ -213,9 +213,9 @@ static uint32_t zones_soa_expire(knot_zone_t *zone)
 /*!
  * \brief XFR/IN expire event handler.
  */
-static int zones_xfrin_expire(event_t *e)
+static int zones_expire_ev(event_t *e)
 {
-	debug_zones("axfrin: EXPIRE timer event\n");
+	debug_zones("xfr_in: EXPIRE timer event\n");
 	knot_zone_t *zone = (knot_zone_t *)e->data;
 	if (!zone) {
 		return KNOTD_EINVAL;
@@ -237,14 +237,15 @@ static int zones_xfrin_expire(event_t *e)
 	zd->xfr_in.expire = 0;
 	zd->xfr_in.next_id = -1;
 
-	/*! \todo Remove zone from database. */
+	/*! \todo Mark zone as expired */
+
 	return 0;
 }
 
 /*!
- * \brief XFR/IN poll event handler.
+ * \brief Zone REFRESH or RETRY event.
  */
-static int zones_xfrin_poll(event_t *e)
+static int zones_refresh_ev(event_t *e)
 {
 	debug_zones("xfr_in: REFRESH or RETRY timer event\n");
 	knot_zone_t *zone = (knot_zone_t *)e->data;
@@ -302,7 +303,7 @@ static int zones_xfrin_poll(event_t *e)
 		uint32_t expire_tmr = zones_soa_expire(zone);
 		zd->xfr_in.expire = evsched_schedule_cb(
 					      e->parent,
-					      zones_xfrin_expire,
+					      zones_expire_ev,
 					      zone, expire_tmr);
 		debug_zones("xfr_in: scheduling EXPIRE timer after %u secs\n",
 			    expire_tmr / 1000);
@@ -1875,7 +1876,7 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 
 		/* Schedule REFRESH timer. */
 		uint32_t refresh_tmr = zones_soa_refresh(zone);
-		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_xfrin_poll,
+		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_refresh_ev,
 							 zone, refresh_tmr);
 		debug_zones("notify: REFRESH set to %u\n", refresh_tmr);
 	}
