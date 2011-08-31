@@ -239,7 +239,7 @@ static void log_error_from_node(err_handler_t *handler,
 		fprintf(stderr, "%s", error_messages[-error]);
 		free(name);
 	} else {
-		fprintf(stderr, "Total number of warning is: %d for error: %s",
+		fprintf(stderr, "Total number of warnings is: %d for error: %s",
 			handler->errors[-error],
 			error_messages[-error]);
 	}
