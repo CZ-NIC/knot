@@ -428,6 +428,9 @@ int main(int argc, char **argv)
 
 	// Initialize log (no output)
 	log_init();
+	log_levels_set(LOGT_SYSLOG, LOG_ANY, 0);
+	log_levels_set(LOGT_STDERR, LOG_ANY, 0);
+	log_levels_set(LOGT_STDOUT, LOG_ANY, 0);
 
 	// Find implicit configuration file
 	char *default_fn = 0;
