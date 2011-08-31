@@ -1504,7 +1504,8 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 			}
 
 		} else {
-/			debug_knot_zdump("Writing raw data. Item nr.: %d\n", i);
+			debug_knot_zdump("Writing raw data. Item nr.: %d\n",
+			                 i);
 			assert(rdata->items[i].raw_data != NULL);
 			fwrite_wrapper(rdata->items[i].raw_data,
 			               sizeof(uint8_t),
