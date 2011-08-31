@@ -36,6 +36,47 @@ static void conf_start_iface(char* ifname)
    ++new_config->ifaces_count;
 }
 
+static void conf_start_remote(char *remote)
+{
+   this_remote = malloc(sizeof(conf_iface_t));
+   memset(this_remote, 0, sizeof(conf_iface_t));
+   this_remote->name = remote;
+   this_remote->address = 0; // No default address (mandatory)
+   this_remote->port = 0; // Port wildcard
+   add_tail(&new_config->remotes, &this_remote->n);
+   ++new_config->remotes_count;
+}
+
+static void conf_acl_item(void *scanner, char *item)
+{
+      /* Find existing node in remotes. */
+      node* r = 0; conf_iface_t* found = 0;
+      WALK_LIST (r, new_config->remotes) {
+	 if (strcmp(((conf_iface_t*)r)->name, item) == 0) {
+	    found = (conf_iface_t*)r;
+	    break;
+	 }
+      }
+
+      /* Append to list if found. */
+     if (!found) {
+	char buf[256];
+	snprintf(buf, sizeof(buf), "remote '%s' is not defined", item);
+	cf_error(scanner, buf);
+     } else {
+	conf_remote_t *remote = malloc(sizeof(conf_remote_t));
+	if (!remote) {
+	   cf_error(scanner, "out of memory");
+	} else {
+	   remote->remote = found;
+	   add_tail(this_list, &remote->n);
+	}
+     }
+
+     /* Free text token. */
+     free(item);
+   }
+
 %}
 
 %pure-parser
@@ -156,7 +197,13 @@ interface:
 
 interfaces:
    INTERFACES '{'
- | interfaces interface '}'
+ | interfaces interface '}' {
+   if (this_iface->address == 0) {
+     char buf[512];
+     snprintf(buf, sizeof(buf), "interface '%s' has no defined address", this_iface->name);
+     cf_error(scanner, buf);
+   }
+ }
  ;
 
 system:
@@ -170,15 +217,11 @@ system:
    }
  ;
 
-remote_start: TEXT {
-    this_remote = malloc(sizeof(conf_iface_t));
-    memset(this_remote, 0, sizeof(conf_iface_t));
-    this_remote->name = $1.t;
-    this_remote->address = 0; // No default address (mandatory)
-    this_remote->port = 0; // Port wildcard
-    add_tail(&new_config->remotes, &this_remote->n);
-    ++new_config->remotes_count;
- }
+remote_start:
+ | TEXT { conf_start_remote($1.t); }
+ | LOG_SRC  { conf_start_remote(strdup($1.t)); }
+ | LOG  { conf_start_remote(strdup($1.t)); }
+ | LOG_LEVEL  { conf_start_remote(strdup($1.t)); }
  ;
 
 remote:
@@ -236,7 +279,13 @@ remote:
 
 remotes:
    REMOTES '{'
- | remotes remote '}'
+ | remotes remote '}' {
+     if (this_remote->address == 0) {
+       char buf[512];
+       snprintf(buf, sizeof(buf), "remote '%s' has no defined address", this_remote->name);
+       cf_error(scanner, buf);
+     }
+   }
  ;
 
 zone_acl_start:
@@ -255,34 +304,10 @@ zone_acl_start:
  ;
 
 zone_acl_item:
-   TEXT {
-      /* Find existing node in remotes. */
-      node* r = 0; conf_iface_t* found = 0;
-      WALK_LIST (r, new_config->remotes) {
-	 if (strcmp(((conf_iface_t*)r)->name, $1.t) == 0) {
-            found = (conf_iface_t*)r;
-            break;
-         }
-      }
-
-      /* Append to list if found. */
-     if (!found) {
-	char buf[256];
-	snprintf(buf, sizeof(buf), "remote '%s' is not defined", $1.t);
-	cf_error(scanner, buf);
-     } else {
-        conf_remote_t *remote = malloc(sizeof(conf_remote_t));
-        if (!remote) {
-	   cf_error(scanner, "out of memory");
-        } else {
-           remote->remote = found;
-           add_tail(this_list, &remote->n);
-        }
-     }
-
-     /* Free text token. */
-     free($1.t);
-   }
+ | TEXT { conf_acl_item(scanner, $1.t); }
+ | LOG_SRC  { conf_acl_item(scanner, strdup($1.t)); }
+ | LOG  { conf_acl_item(scanner, strdup($1.t)); }
+ | LOG_LEVEL  { conf_acl_item(scanner, strdup($1.t)); }
  ;
 
 zone_acl_list:
