@@ -1341,7 +1341,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 xfr_type_t zones_transfer_to_use(const knot_zone_contents_t *zone)
 {
 	/*! \todo Implement. */
-	return XFR_TYPE_IIN;
+	return XFR_TYPE_AIN;
 }
 
 /*----------------------------------------------------------------------------*/
