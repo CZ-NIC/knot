@@ -201,8 +201,12 @@ static uint get_larger_exp(uint n)
 static uint get_table_exp_and_count(uint items, uint *table_count)
 {
 	// considering only 3 or 4 tables
-	uint exp3 = get_larger_exp((items * SIZE_RATIO_3) / 3);
-	uint exp4 = get_larger_exp(items * SIZE_RATIO_4) - 2;
+	int exp3 = get_larger_exp((items * SIZE_RATIO_3) / 3);
+	int exp4 = get_larger_exp(items * SIZE_RATIO_4) - 2;
+	
+	if (exp4 < 0) {
+		exp4 = 1;
+	}
 
 	debug_ck("Determining ideal table size...\n");
 	debug_ck("\tNumber of items: %u\n", items);
