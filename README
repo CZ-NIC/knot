@@ -30,7 +30,7 @@ $ # go for the real thing
 $
 $ git clone git://git.nic.cz/knot
 $ cd knot
-$ git checkout testing
+$ git checkout development
 $ autoreconf -if
 $ ./configure
 $ sudo make install
@@ -63,7 +63,7 @@ $ # go for the real thing
 $
 $ git clone git://git.nic.cz/knot
 $ cd knot
-$ git checkout testing
+$ git checkout development
 $ autoreconf -if
 $ ./configure
 $ sudo make install
