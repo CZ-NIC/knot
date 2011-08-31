@@ -774,7 +774,9 @@ DEBUG_KNOT_RESPONSE(
 		                      "size of response: %zu\n\n", size, rrs,
 		                      resp->size);
 	} else if (tc) {
+		debug_knot_response("Setting TC bit.\n");
 		knot_wire_flags_set_tc(&resp->header.flags1);
+		knot_wire_set_tc(resp->wireformat);
 	}
 
 	return rrs;
@@ -950,6 +952,8 @@ int knot_response_add_opt(knot_packet_t *resp,
 
 	// set max size (less is OK)
 	if (override_max_size) {
+		debug_knot_response("Overriding max size to: %u\n",
+		                    resp->opt_rr.payload);
 		return knot_packet_set_max_size(resp, resp->opt_rr.payload);
 		//resp->max_size = resp->opt_rr.payload;
 	}
