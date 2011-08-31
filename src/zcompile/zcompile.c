@@ -1365,7 +1365,7 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 		return;
 	}
 
-	memcpy((uint16_t *)rd->raw_data + 2 + rd->raw_data[0],
+	memcpy((uint8_t *)rd->raw_data + 2 + rd->raw_data[0],
 	       data + 1, data[0]);
 	rd->raw_data[0] += data[0];
 }
