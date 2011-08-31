@@ -52,7 +52,7 @@ BLANK [ \t\n]
 \#.*\n          /* Ignore comments */;
 {BLANK}+        /* Ignore whitespace */;
 :		/* Optional : in assignments. */;
-[!$%^&*()/+-@{};,]        { return yytext[0]; }
+[\!\$\%\^\&\*\(\)\/\+\-\@\{\}\;\,] { return yytext[0]; }
 system          { lval.t = yytext;  return SYSTEM; }
 identity        { lval.t = yytext; return IDENTITY; }
 version         { lval.t = yytext; return VERSION; }
