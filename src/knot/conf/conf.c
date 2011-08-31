@@ -201,6 +201,11 @@ static int conf_process(conf_t *conf)
 			zone->notify_timeout = conf->notify_timeout;
 		}
 
+		// Default policy for IXFR FSLIMIT
+		if (zone->ixfr_fslimit < 0) {
+			zone->ixfr_fslimit = conf->ixfr_fslimit;
+		}
+
 		// Normalize zone filename
 		zone->file = strcpath(zone->file);
 
@@ -395,6 +400,7 @@ conf_t *conf_new(const char* path)
 	c->notify_retries = CONFIG_NOTIFY_RETRIES;
 	c->notify_timeout = CONFIG_NOTIFY_TIMEOUT;
 	c->dbsync_timeout = CONFIG_DBSYNC_TIMEOUT;
+	c->ixfr_fslimit = -1;
 
 	return c;
 }
