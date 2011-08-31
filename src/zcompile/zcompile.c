@@ -1354,7 +1354,8 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 //			zc_error_prev_line("Could not allocate memory for TXT RR");
 //			return;
 //		}
-		parser->rdata_count++;
+		/*!< \todo Disabled until multiple TXT's are supported. */
+//		parser->rdata_count++;
 		rd->raw_data[0] = 0;
 	} else {
 		rd = &parser->temporary_items[parser->rdata_count-1];
