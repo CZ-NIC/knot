@@ -24,6 +24,7 @@
 #include "libknot/updates/xfr-in.h"
 
 /* Constants. */
+#define SOA_QRY_TIMEOUT 10000 /*!< SOA query timeout (ms). */
 #define IXFR_DBSYNC_TIMEOUT (60*1000) /*!< Database sync timeout = 60s. */
 
 /*!
