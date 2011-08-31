@@ -23,7 +23,7 @@ static const char *DEFAULT_CONFIG[] = {
 	"/etc/" PACKAGE "/" "knotd.conf"
 };
 
-#define DEFAULT_CONF_COUNT sizeof(DEFAULT_CONFIG) /*!< \brief Number of default config paths. */
+#define DEFAULT_CONF_COUNT 3 /*!< \brief Number of default config paths. */
 
 /*
  * Utilities.
@@ -199,6 +199,11 @@ static int conf_process(conf_t *conf)
 		// Default policy for NOTIFY timeout
 		if (zone->notify_timeout <= 0) {
 			zone->notify_timeout = conf->notify_timeout;
+		}
+
+		// Default policy for IXFR FSLIMIT
+		if (zone->ixfr_fslimit < 0) {
+			zone->ixfr_fslimit = conf->ixfr_fslimit;
 		}
 
 		// Normalize zone filename
@@ -395,6 +400,7 @@ conf_t *conf_new(const char* path)
 	c->notify_retries = CONFIG_NOTIFY_RETRIES;
 	c->notify_timeout = CONFIG_NOTIFY_TIMEOUT;
 	c->dbsync_timeout = CONFIG_DBSYNC_TIMEOUT;
+	c->ixfr_fslimit = -1;
 
 	return c;
 }
