@@ -333,6 +333,10 @@ zones:
    ZONES '{'
  | zones zone '}'
  | zones SEMANTIC_CHECKS BOOL ';' { new_config->zone_checks = $3.i; }
+ | zone IXFR_FSLIMIT NUM ';' { new_config->ixfr_fslimit = $3.i; }
+ | zone IXFR_FSLIMIT NUM 'k' ';' { new_config->ixfr_fslimit = $3.i * 1024; } // kB
+ | zone IXFR_FSLIMIT NUM 'M' ';' { new_config->ixfr_fslimit = $3.i * 1048576; } // MB
+ | zone IXFR_FSLIMIT NUM 'G' ';' { new_config->ixfr_fslimit = $3.i * 1073741824; } // GB
  | zones NOTIFY_RETRIES NUM ';' {
        if ($3.i < 1) {
 	   cf_error(scanner, "notify retries must be positive integer");
