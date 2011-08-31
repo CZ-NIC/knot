@@ -472,11 +472,31 @@ static int zones_load_zone(knot_zonedb_t *zonedb, const char *zone_name,
 	// Check path
 	if (filename) {
 		debug_server("Parsing zone database '%s'\n", filename);
-		zloader_t *zl = knot_zload_open(filename);
-		if (!zl) {
+		zloader_t *zl = 0;
+		int ret = knot_zload_open(&zl, filename);
+		switch(ret) {
+		case KNOT_EOK:
+			/* OK */
+			break;
+		case KNOT_EFEWDATA:
+			log_server_error("Compiled zone db '%s' not exists.\n",
+					 filename);
+			return KNOTD_EZONEINVAL;
+		case KNOT_ECRC:
+			log_server_error("Compiled zone db CRC mismatches, "
+					 "db is corrupted or .crc file is "
+					 "deleted.\n");
+			return KNOTD_EZONEINVAL;
+		case KNOT_EMALF:
 			log_server_error("Compiled db '%s' is too old, "
 			                 " please recompile.\n",
 			                 filename);
+			return KNOTD_EZONEINVAL;
+		case KNOT_ERROR:
+		case KNOT_ENOMEM:
+		default:
+			log_server_error("Failed to read zone db file '%s'.\n",
+					 filename);
 			return KNOTD_EZONEINVAL;
 		}
 

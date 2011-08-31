@@ -38,7 +38,7 @@ void help(int argc, char **argv)
 	       " start   [zone]  Start %s server with given zone (no-op if running).\n"
 	       " stop            Stop %s server (no-op if not running).\n"
 	       " restart [zone]  Stops and then starts %s server.\n"
-	       " reload  [zone]  Reload %s configuration and zone files.\n"
+	       " reload  [zone]  Reload %s configuration and compiled zones.\n"
 	       " running         Check if server is running.\n"
 	       "\n"
 	       " compile         Compile zone file.\n",
@@ -64,7 +64,8 @@ int check_zone(const char *db, const char* source)
 	}
 
 	/* Read zonedb header. */
-	zloader_t *zl = knot_zload_open(db);
+	zloader_t *zl = 0;
+	knot_zload_open(&zl, db);
 	if (!zl) {
 		return KNOTD_ERROR;
 	}
