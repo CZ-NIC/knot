@@ -1911,7 +1911,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	debug_zp("zone dumped\n");
 
-	zone_dump_text(contents, "debug.zone");
+//	zone_dump_text(contents, "debug.zone");
 
 	/* This is *almost* unnecessary */
 	knot_zone_deep_free(&(parser->current_zone), 0);
