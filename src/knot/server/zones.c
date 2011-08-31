@@ -215,6 +215,7 @@ static uint32_t zones_soa_expire(knot_zone_t *zone)
  */
 static int zones_expire_ev(event_t *e)
 {
+	rcu_read_lock();
 	debug_zones("xfr_in: EXPIRE timer event\n");
 	knot_zone_t *zone = (knot_zone_t *)e->data;
 	if (!zone) {
@@ -237,7 +238,21 @@ static int zones_expire_ev(event_t *e)
 	zd->xfr_in.expire = 0;
 	zd->xfr_in.next_id = -1;
 
-	/*! \todo Mark zone as expired */
+	/*! \todo API */
+	knot_zone_t *old_zone = knot_zonedb_remove_zone(
+		zd->server->nameserver->zone_db, zone->name);
+	if (old_zone == NULL) {
+		log_server_warning("Non-existent zone EXPIREd. Ignoring.\n");
+		rcu_read_unlock();
+		return 0;
+	}
+	
+	assert(old_zone == zone);
+	
+	rcu_read_unlock();
+	synchronize_rcu();
+	
+	knot_zone_deep_free(&old_zone, 1);
 
 	return 0;
 }
@@ -1057,7 +1072,7 @@ static int zones_remove_zones(const list *zone_conf, knot_zonedb_t *db_old)
 		debug_zones("Removing zone %s from the old database.\n",
 		            z->name);
 		// remove the zone from the old zone db, but do not delete it
-		knot_zonedb_remove_zone(db_old, zone_name, 0);
+		(void)knot_zonedb_remove_zone(db_old, zone_name);
 
 		/* Directly discard. */
 		knot_dname_free(&zone_name);
