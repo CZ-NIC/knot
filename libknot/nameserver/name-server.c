@@ -2557,19 +2557,19 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 		return KNOT_EOK;
 	}
 
-	if (knot_packet_parsed(query) < knot_packet_size(query)) {
-		ret = knot_packet_parse_rest(query);
-		if (ret != KNOT_EOK) {
-			debug_knot_ns("Failed to parse rest of the query: "
-			                   "%s.\n", knot_strerror(ret));
-			knot_ns_error_response_full(nameserver, response,
-			                            (ret == KNOT_EMALF)
-			                               ? KNOT_RCODE_FORMERR
-			                               : KNOT_RCODE_SERVFAIL,
-			                            response_wire, rsize);
-			return KNOT_EOK;
-		}
+	//if (knot_packet_parsed(query) < knot_packet_size(query)) {
+	ret = knot_packet_parse_rest(query);
+	if (ret != KNOT_EOK) {
+		debug_knot_ns("Failed to parse rest of the query: "
+				   "%s.\n", knot_strerror(ret));
+		knot_ns_error_response_full(nameserver, response,
+					    (ret == KNOT_EMALF)
+					       ? KNOT_RCODE_FORMERR
+					       : KNOT_RCODE_SERVFAIL,
+					    response_wire, rsize);
+		return KNOT_EOK;
 	}
+	//}
 
 	debug_knot_ns("Query - parsed: %zu, total wire size: %zu\n", query->parsed,
 	         query->size);
