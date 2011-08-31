@@ -463,6 +463,12 @@ int server_remove_handler(server_t *server, iohandler_t *h)
 	if (h->state & ServerRunning) {
 		h->state = ServerIdle;
 		dt_stop(h->unit);
+
+		/* Call interrupt handler. */
+		if (h->interrupt) {
+			h->interrupt(h);
+		}
+
 		dt_join(h->unit);
 	}
 

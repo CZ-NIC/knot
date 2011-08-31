@@ -69,6 +69,16 @@ int gen_tree_find_less_or_equal(general_tree_t *tree,
                                 void *what,
                                 void **found)
 {
+	if (tree == NULL || tree->tree == NULL) {
+		return -1;
+	}
+
+	/* Check if tree is empty. */
+	if (tree->tree->th_root == NULL) {
+		*found = NULL;
+		return 0;
+	}
+
 	struct general_tree_node *f = NULL, *prev = NULL;
 	struct general_tree_node tree_node;
 	tree_node.data = what;
@@ -113,11 +123,11 @@ void gen_tree_clear(general_tree_t *tree)
 	                 gen_rem_func, NULL);
 }
 
-static void add_node_to_tree(void *n, void *data)
-{
-	general_tree_t *tree = (general_tree_t *)data;
-	gen_tree_add(tree, n, NULL);
-}
+//static void add_node_to_tree(void *n, void *data)
+//{
+//	general_tree_t *tree = (general_tree_t *)data;
+//	gen_tree_add(tree, n, NULL);
+//}
 
 //static void print_node(void *n, void *data)
 //{

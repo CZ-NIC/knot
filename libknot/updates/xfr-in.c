@@ -1747,8 +1747,6 @@ DEBUG_KNOT_XFR(
 	debug_knot_xfr("Merge returned: %d\n", ret);
 	knot_rrset_dump(*rrset, 1);
 	ret = knot_node_add_rrset(node, *rrset, 0);
-	knot_node_dump(node, 1);
-//	getchar();
 
 	return KNOT_EOK;
 }

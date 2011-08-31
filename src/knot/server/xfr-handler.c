@@ -62,8 +62,6 @@ static int qr_timeout_ev(event_t *e)
 	/* Close socket. */
 	debug_xfr("qr_response_ev: timeout on fd=%d\n", ((ev_io *)qw)->fd);
 	close(((ev_io *)qw)->fd);
-	evsched_event_free(e->parent, e);
-	qw->ev = 0;
 	return KNOTD_EOK;
 }
 
@@ -107,9 +105,12 @@ static inline void qr_response_ev(struct ev_loop *loop, ev_io *w, int revents)
 	}
 
 	/* Disable timeout. */
+	evsched_t *sched =
+		((server_t *)knot_ns_get_data(qw->ns))->sched;
 	if (qw->ev) {
-		evsched_cancel(qw->ev->parent, qw->ev);
-		evsched_event_free(qw->ev->parent, qw->ev);
+		evsched_cancel(sched, qw->ev);
+		evsched_event_free(sched, qw->ev);
+		qw->ev = 0;
 	}
 
 	/* Close after receiving response. */
