@@ -213,7 +213,7 @@ int main(int argc, char **argv)
 		/* Run event loop. */
 		for(;;) {
 			pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
-			int ret = evqueue_poll(evqueue(), 0, &emptyset.sa_mask);
+			int ret = evqueue_poll(evqueue(), 0, 0);
 			pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 			/* Interrupts. */
@@ -261,7 +261,7 @@ int main(int argc, char **argv)
 			}
 		}
 
-		sigprocmask(SIG_BLOCK, &emptyset.sa_mask, NULL);
+		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
 
 		if ((res = server_wait(server)) != KNOTD_EOK) {
 			log_server_error("An error occured while "
