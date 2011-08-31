@@ -34,6 +34,7 @@
 #include "common/base32hex.h"
 #include "zcompile/zcompile.h"
 #include "zcompile/parser-util.h"
+#include "knot/zone/zone-dump-text.h"
 #include "zparser.h"
 #include "zcompile/zcompile-error.h"
 #include "knot/zone/zone-dump.h"
@@ -771,6 +772,8 @@ uint16_t * zparser_conv_aaaa(const char *text)
 uint16_t * zparser_conv_text(const char *text, size_t len)
 {
 	uint16_t *r = NULL;
+
+	debug_zp("Converting text: %s\n", text);
 
 	if (len > 255) {
 		fprintf(stderr, "text string is longer than 255 characters,"
@@ -1576,11 +1579,17 @@ int process_rr(void)
 	knot_rrtype_descriptor_t *descriptor =
 		knot_rrtype_descriptor_by_type(current_rrset->type);
 
-//	printf("%s\n", knot_dname_to_str(parser->current_rrset->owner));
+	debug_zp("%s\n", knot_dname_to_str(parser->current_rrset->owner));
+	debug_zp("type: %s\n", knot_rrtype_to_string(parser->current_rrset->type));
+	debug_zp("rdata count: %d\n", parser->current_rrset->rdata->count);
+//	hex_print(parser->current_rrset->rdata->items[0].raw_data,
+//	          parser->current_rrset->rdata->items[0].raw_data[0]);
 
 	if (descriptor->fixed_items) {
 		assert(current_rrset->rdata->count == descriptor->length);
 	}
+
+	assert(current_rrset->rdata->count > 0);
 
 	assert(knot_dname_is_fqdn(current_rrset->owner));
 
@@ -1899,6 +1908,10 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	knot_zdump_binary(contents,
 	                    outfile, semantic_checks, zonefile);
+
+	debug_zp("zone dumped\n");
+
+	zone_dump_text(contents, "debug.zone");
 
 	/* This is *almost* unnecessary */
 	knot_zone_deep_free(&(parser->current_zone), 0);
