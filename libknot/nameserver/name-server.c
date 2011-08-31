@@ -41,7 +41,7 @@
 /*! \brief Maximum UDP payload with EDNS enabled. */
 static const uint16_t MAX_UDP_PAYLOAD_EDNS = 4096;
 /*! \brief Maximum UDP payload with EDNS disabled. */
-static const uint16_t MAX_UDP_PAYLOAD      = 500;
+static const uint16_t MAX_UDP_PAYLOAD      = 504; // 512 - 8B header
 /*! \brief Maximum size of one AXFR response packet. */
 static const uint16_t MAX_AXFR_PAYLOAD     = 65535;
 /*! \brief Supported EDNS version. */
@@ -2612,8 +2612,21 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 	// set the OPT RR to the response
 	if (knot_query_edns_supported(query)) {
 		/*! \todo API. */
-		knot_packet_set_max_size(response, knot_edns_get_payload(
-		                         &query->opt_rr));
+		if (knot_edns_get_payload(&query->opt_rr) > MAX_UDP_PAYLOAD) {
+			ret = knot_packet_set_max_size(response, 
+				knot_edns_get_payload(&query->opt_rr));
+		} else {
+			ret = knot_packet_set_max_size(response, 
+			                               MAX_UDP_PAYLOAD);
+		}
+		
+		if (ret != KNOT_EOK) {
+			debug_knot_ns("Failed to set max size.\n");
+			knot_ns_error_response_full(nameserver, response,
+			                            KNOT_RCODE_SERVFAIL,
+			                            response_wire, rsize);
+			return KNOT_EOK;
+		}
 		
 		ret = knot_response_add_opt(response, nameserver->opt_rr, 1);
 		if (ret != KNOT_EOK) {
