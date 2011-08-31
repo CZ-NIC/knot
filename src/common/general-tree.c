@@ -69,6 +69,16 @@ int gen_tree_find_less_or_equal(general_tree_t *tree,
                                 void *what,
                                 void **found)
 {
+	if (tree == NULL || tree->tree == NULL) {
+		return -1;
+	}
+
+	/* Check if tree is empty. */
+	if (tree->tree->th_root == NULL) {
+		*found = NULL;
+		return 0;
+	}
+
 	struct general_tree_node *f = NULL, *prev = NULL;
 	struct general_tree_node tree_node;
 	tree_node.data = what;
