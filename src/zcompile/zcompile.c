@@ -1519,7 +1519,7 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 		return;
 	}
 
-	memcpy((uint16_t *)rd->raw_data + 2 + rd->raw_data[0],
+	memcpy((uint8_t *)rd->raw_data + 2 + rd->raw_data[0],
 	       data + 1, data[0]);
 	rd->raw_data[0] += data[0];
 }
@@ -1604,10 +1604,10 @@ static int zone_open(const char *filename, uint32_t ttl, uint16_t rclass,
 		return 0;
 	}
 
-	if (fcntl(fd, F_SETLK, knot_file_lock(F_RDLCK, SEEK_SET)) == -1) {
-		fprintf(stderr, "Could not lock zone file for read!\n");
-		return 0;
-	}
+//	if (fcntl(fd, F_SETLK, knot_file_lock(F_RDLCK, SEEK_SET)) == -1) {
+//		fprintf(stderr, "Could not lock zone file for read!\n");
+//		return 0;
+//	}
 
 	zparser_init(filename, ttl, rclass, origin);
 
@@ -2064,10 +2064,10 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	/* Unlock zone file. */
 	int fd = fileno(zp_get_in(scanner));
-	if (fcntl(fd, F_SETLK, knot_file_lock(F_UNLCK, SEEK_SET)) == -1) {
-		fprintf(stderr, "Could not lock zone file for read!\n");
-		return 0;
-	}
+//	if (fcntl(fd, F_SETLK, knot_file_lock(F_UNLCK, SEEK_SET)) == -1) {
+//		fprintf(stderr, "Could not lock zone file for read!\n");
+//		return 0;
+//	}
 
 	debug_zp("zp complete %p\n", parser->current_zone);
 
