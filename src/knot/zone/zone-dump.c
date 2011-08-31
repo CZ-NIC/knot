@@ -234,11 +234,11 @@ static void log_error_from_node(err_handler_t *handler,
 	if (node != NULL) {
 		char *name =
 			knot_dname_to_str(knot_node_owner(node));
-		fprintf(stderr, "Semantic error in node: %s: ", name);
+		fprintf(stderr, "Semantic warning in node: %s: ", name);
 		fprintf(stderr, "%s", error_messages[-error]);
 		free(name);
 	} else {
-		fprintf(stderr, "Total number of errors is: %d for error: %s",
+		fprintf(stderr, "Total number of warning is: %d for error: %s",
 			handler->errors[-error],
 			error_messages[-error]);
 	}
