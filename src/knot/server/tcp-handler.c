@@ -152,13 +152,32 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 	case KNOT_RESPONSE_AXFR:
 	case KNOT_RESPONSE_IXFR:
 	case KNOT_RESPONSE_NOTIFY:
-		/*! \todo Implement packet handling. */
+		/*! Implement packet handling. */
 		break;
 
 	/* Query types. */
 	case KNOT_QUERY_NORMAL:
 		res = knot_ns_answer_normal(ns, packet, qbuf, &resp_len);
 		break;
+	case KNOT_QUERY_IXFR:
+//		memset(&xfr, 0, sizeof(knot_ns_xfr_t));
+//		xfr.type = XFR_TYPE_IOUT;
+//		wire_copy = malloc(sizeof(uint8_t) * packet->size);
+//		if (!wire_copy) {
+//			/*!< \todo Cleanup. */
+//			ERR_ALLOC_FAILED;
+//			return;
+//		}
+//		memcpy(wire_copy, packet->wireformat, packet->size);
+//		packet->wireformat = wire_copy;
+//		xfr.query = packet; /* Will be freed after processing. */
+//		xfr.send = xfr_send_cb;
+//		xfr.session = w->fd;
+//		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
+//		xfr_request(xfr_h, &xfr);
+//		debug_net("tcp: enqueued IXFR query on fd=%d\n", w->fd);
+//		return;
+		debug_net("tcp: IXFR not supported, will answer as AXFR on fd=%d\n", w->fd);
 	case KNOT_QUERY_AXFR:
 		memset(&xfr, 0, sizeof(knot_ns_xfr_t));
 		xfr.type = XFR_TYPE_AOUT;
@@ -177,26 +196,13 @@ static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 		xfr_request(xfr_h, &xfr);
 		debug_net("tcp: enqueued AXFR query on fd=%d\n", w->fd);
 		return;
-	case KNOT_QUERY_IXFR:
-		memset(&xfr, 0, sizeof(knot_ns_xfr_t));
-		xfr.type = XFR_TYPE_IOUT;
-		wire_copy = malloc(sizeof(uint8_t) * packet->size);
-		if (!wire_copy) {
-			/*!< \todo Cleanup. */
-			ERR_ALLOC_FAILED;
-			return;
-		}
-		memcpy(wire_copy, packet->wireformat, packet->size);
-		packet->wireformat = wire_copy;
-		xfr.query = packet; /* Will be freed after processing. */
-		xfr.send = xfr_send_cb;
-		xfr.session = w->fd;
-		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
-		xfr_request(xfr_h, &xfr);
-		debug_net("tcp: enqueued IXFR query on fd=%d\n", w->fd);
-		return;
 	case KNOT_QUERY_NOTIFY:
 	case KNOT_QUERY_UPDATE:
+		/*! \todo Implement query notify/update. */
+		knot_ns_error_response(ns, knot_packet_id(packet),
+				       KNOT_RCODE_NOTIMPL, qbuf,
+				       &resp_len);
+		res = KNOTD_EOK;
 		break;
 	}
 
