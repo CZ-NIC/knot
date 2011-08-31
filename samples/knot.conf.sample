@@ -22,7 +22,7 @@ system {
 
   # Working directory of the server
   # Used to store compiled zones and PID file
-  storage "~/.knot";
+  storage "/tmp/knot-sample";
 
   # TSIG key
   #
@@ -109,7 +109,7 @@ zones {
   # Default value: N/A (infinite)
   # It is also possible to suffix with unit size [k/M/G]
   # f.e. 1k, 100M, 2G
-  ixfr-fslimit 4G;
+  ixfr-fslimit 1G;
 
   # Zone entry
   #
@@ -215,6 +215,13 @@ log {
     any error;    # for <category> and <severity> see above
     # log also warnings and notices from category 'zone'
     zone warning, notice;
+    # log info from server
+    server info;
+  }
+
+  # Log fatal, warnings and errors to stderr
+  stderr {
+    any error, warning;
   }
 
   # Format 2:
@@ -222,8 +229,7 @@ log {
   #   <category1> <severity1> [, <severity2> ...];
   #   <category2> <severity1> [, <severity2> ...];
   # }
-  file "~/server.debug" {  # <path> is absolute or relative path to log file
+  file "/tmp/knot-sample/knotd.debug" {  # <path> is absolute or relative path to log file
     server debug;
   }
-
 }
