@@ -32,6 +32,7 @@ void help(int argc, char **argv)
 	       " -v\tVerbose mode - additional runtime information.\n"
 	       " -V\tPrint %s server version.\n"
 	       " -w\tWait for the server to finish start/stop operations.\n"
+	       " -i\tInteractive mode (do not daemonize).\n"
 	       " -h\tPrint help and usage.\n",
 	       PROJECT_NAME);
 	printf("Actions:\n"
@@ -127,13 +128,16 @@ int exec_cmd(const char *argv[], int argc)
  * \param verbose True if running in verbose mode.
  * \param force True if forced operation is required.
  * \param wait Wait for the operation to finish.
+ * \param interactive Interactive mode.
  * \param pidfile Specified PID file for action.
  *
  * \retval 0 on success.
  * \retval error return code for main on error.
+ *
+ * \todo Make enumerated flags instead of many parameters...
  */
 int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
-	    int force, int wait, const char *pidfile)
+	    int force, int wait, int interactive, const char *pidfile)
 {
 	int valid_cmd = 0;
 	int rc = 0;
@@ -164,7 +168,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		const char *cfg = conf()->filename;
 		const char *args[] = {
 			PROJECT_EXEC,
-			"-d",
+			interactive ? "" : "-d",
 			cfg ? "-c" : "",
 			cfg ? cfg : "",
 			verbose ? "-v" : "",
@@ -175,13 +179,20 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		conf_read_unlock();
 
 		// Execute command
+		if (interactive) {
+			printf("control: Running in interactive mode.\n");
+			fflush(stderr);
+			fflush(stdout);
+		}
 		if ((rc = exec_cmd(args, 6)) < 0) {
 			pid_remove(pidfile);
 			rc = 1;
 		}
+		fflush(stderr);
+		fflush(stdout);
 
 		// Wait for finish
-		if (wait) {
+		if (wait && !interactive) {
 			if (verbose) {
 				fprintf(stdout, "control: waiting for server "
 						"to load.\n");
@@ -241,7 +252,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 	}
 	if (strcmp(action, "restart") == 0) {
 		valid_cmd = 1;
-		execute("stop", argv, argc, pid, verbose, force, wait, pidfile);
+		execute("stop", argv, argc, pid, verbose, force, wait,
+			interactive, pidfile);
 
 		int i = 0;
 		while((pid = pid_read(pidfile)) > 0) {
@@ -253,7 +265,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			if (i == WAITPID_TIMEOUT) {
 				fprintf(stderr, "Timeout while "
 				        "waiting for the server to finish.\n");
-				pid_remove(pidfile);
+				//pid_remove(pidfile);
 				break;
 			} else {
 				sleep(1);
@@ -262,7 +274,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		}
 
 		printf("Restarting server.\n");
-		rc = execute("start", argv, argc, -1, verbose, force, wait, pidfile);
+		rc = execute("start", argv, argc, -1, verbose, force, wait,
+			     interactive, pidfile);
 	}
 	if (strcmp(action, "reload") == 0) {
 
@@ -391,8 +404,9 @@ int main(int argc, char **argv)
 	int force = 0;
 	int verbose = 0;
 	int wait = 0;
+	int interactive = 0;
 	const char* config_fn = 0;
-	while ((c = getopt (argc, argv, "wfc:vVh")) != -1) {
+	while ((c = getopt (argc, argv, "wfc:viVh")) != -1) {
 		switch (c)
 		{
 		case 'w':
@@ -406,6 +420,9 @@ int main(int argc, char **argv)
 			break;
 		case 'v':
 			verbose = 1;
+			break;
+		case 'i':
+			interactive = 1;
 			break;
 		case 'V':
 			printf("%s, version %d.%d.%d\n", PROJECT_NAME,
@@ -472,7 +489,7 @@ int main(int argc, char **argv)
 
 	// Execute action
 	int rc = execute(action, argv + optind + 1, argc - optind - 1,
-			 pid, verbose, force, wait, pidfile);
+			 pid, verbose, force, wait, interactive, pidfile);
 
 	// Finish
 	free(pidfile);
