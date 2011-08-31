@@ -359,13 +359,11 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			fflush(stdout);
 			fflush(stderr);
 			rc = exec_cmd(args, 7);
-			if (rc < 0 || WEXITSTATUS(rc) != 0) {
+
+			if (rc < 0 || !WIFEXITED(rc) || WEXITSTATUS(rc) != 0) {
 				fprintf(stderr, "error: Compilation failed "
 						"with return code %d.\n",
 						WEXITSTATUS(rc));
-			}
-			rc = WEXITSTATUS(rc);
-			if (rc != 0) {
 				rc = 1;
 			}
 		}
