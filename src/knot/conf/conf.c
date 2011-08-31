@@ -23,7 +23,7 @@ static const char *DEFAULT_CONFIG[] = {
 	"/etc/" PACKAGE "/" "knotd.conf"
 };
 
-#define DEFAULT_CONF_COUNT sizeof(DEFAULT_CONFIG) /*!< \brief Number of default config paths. */
+#define DEFAULT_CONF_COUNT 3 /*!< \brief Number of default config paths. */
 
 /*
  * Utilities.
