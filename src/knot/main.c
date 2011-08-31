@@ -208,11 +208,13 @@ int main(int argc, char **argv)
 		sigaction(SIGTERM, &sa, NULL);
 		sigaction(SIGHUP,  &sa, NULL);
 		sa.sa_flags = 0;
-		sigprocmask(SIG_BLOCK, &sa.sa_mask, NULL);
+		pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 		/* Run event loop. */
 		for(;;) {
+			pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
 			int ret = evqueue_poll(evqueue(), 0, &emptyset.sa_mask);
+			pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 			/* Interrupts. */
 			/*! \todo More robust way to exit evloop.
