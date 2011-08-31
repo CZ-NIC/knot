@@ -135,7 +135,9 @@ int knot_zonedb_remove_zone(knot_zonedb_t *db, knot_dname_t *zone_name,
                               int destroy_zone)
 {
 	knot_zone_t dummy_zone;
+	memset(&dummy_zone, 0, sizeof(knot_zone_t));
 	dummy_zone.name = zone_name;
+
 	// add some lock to avoid multiple removals
 	knot_zone_t *z = (knot_zone_t *)gen_tree_find(db->zone_tree,
 	                                                  &dummy_zone);
