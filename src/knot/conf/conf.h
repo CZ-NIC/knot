@@ -95,7 +95,7 @@ typedef struct conf_zone_t {
 	char *file;               /*!< Path to a zone file. */
 	char *db;                 /*!< Path to a database file. */
 	char *ixfr_db;            /*!< Path to a IXFR database file. */
-	int ixfr_fslimit;         /*!< File size limit for IXFR journal. */
+	size_t ixfr_fslimit;         /*!< File size limit for IXFR journal. */
 	int dbsync_timeout;       /*!< Interval between syncing to zonefile.*/
 	int enable_checks;        /*!< Semantic checks for parser.*/
 	int notify_retries;       /*!< NOTIFY query retries. */
@@ -181,7 +181,7 @@ typedef struct conf_t {
 	int notify_retries; /*!< NOTIFY query retries. */
 	int notify_timeout; /*!< Timeout for NOTIFY response in seconds. */
 	int dbsync_timeout; /*!< Default interval between syncing to zonefile.*/
-	int ixfr_fslimit; /*!< File size limit for IXFR journal. */
+	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 
 	/*
 	 * Implementation specifics

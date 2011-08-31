@@ -202,7 +202,7 @@ static int conf_process(conf_t *conf)
 		}
 
 		// Default policy for IXFR FSLIMIT
-		if (zone->ixfr_fslimit < 0) {
+		if (zone->ixfr_fslimit == 0) {
 			zone->ixfr_fslimit = conf->ixfr_fslimit;
 		}
 
