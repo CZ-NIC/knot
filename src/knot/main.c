@@ -100,6 +100,9 @@ int main(int argc, char **argv)
 
 	// Initialize log
 	log_init();
+	if (!daemonize) {
+		log_levels_set(LOGT_SYSLOG, LOG_ANY, 0);
+	}
 
 	// Verbose mode
 	if (verbose) {
