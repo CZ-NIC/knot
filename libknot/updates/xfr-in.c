@@ -315,7 +315,7 @@ DEBUG_KNOT_XFR(
 		// create the zone
 		/*! \todo Set the zone pointer to the contents. */
 		*zone = knot_zone_contents_new(node, 0, 1, NULL);
-		assert(0);
+//		assert(0);
 		if (*zone == NULL) {
 			debug_knot_xfr("Failed to create new zone.\n");
 			knot_packet_free(&packet);
