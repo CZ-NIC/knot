@@ -793,38 +793,6 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 	/*! \todo Replace by call to parse_rest()? */
 	err = knot_packet_parse_rr_sections(packet, &pos);
 
-//	debug_knot_packet("Answer RRs...\n");
-//	if ((err = knot_packet_parse_rrs(wireformat, &pos, size,
-//	    packet->header.ancount, &packet->answer, &packet->an_rrsets,
-//	    &packet->max_an_rrsets, DEFAULT_RRSET_COUNT(ANCOUNT, packet),
-//	    packet)) != KNOT_EOK) {
-//		return err;
-//	}
-
-//	debug_knot_packet("Authority RRs...\n");
-//	if ((err = knot_packet_parse_rrs(wireformat, &pos, size,
-//	    packet->header.nscount, &packet->authority, &packet->ns_rrsets,
-//	    &packet->max_ns_rrsets, DEFAULT_RRSET_COUNT(NSCOUNT, packet),
-//	    packet)) != KNOT_EOK) {
-//		return err;
-//	}
-
-//	debug_knot_packet("Additional RRs...\n");
-//	if ((err = knot_packet_parse_rrs(wireformat, &pos, size,
-//	    packet->header.arcount, &packet->additional, &packet->ar_rrsets,
-//	    &packet->max_ar_rrsets, DEFAULT_RRSET_COUNT(ARCOUNT, packet),
-//	    packet)) != KNOT_EOK) {
-//		return err;
-//	}
-
-//	if (pos < size) {
-//		// some trailing garbage; ignore, but log
-//		debug_knot_response("Packet: %zu bytes of trailing garbage "
-//		                      "in packet.\n", pos - size);
-//	}
-
-//	packet->parsed = size;
-
 #ifdef KNOT_PACKET_DEBUG
 	knot_packet_dump(packet);
 #endif /* KNOT_RESPONSE_DEBUG */

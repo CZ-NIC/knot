@@ -2586,6 +2586,11 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 			debug_knot_ns("Failed to set OPT RR to the response"
 			                  ": %s\n",knot_strerror(ret));
 		}
+		// copy the DO bit from the query
+		if(knot_query_dnssec_requested(query)) {
+			/*! \todo API for this. */
+			knot_edns_set_do(&response->opt_rr);
+		}
 	}
 
 	ret = ns_answer(zonedb, response);
