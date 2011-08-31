@@ -95,6 +95,13 @@ int main(int argc, char **argv)
 		}
 	}
 
+	// Register service and signal handler
+	struct sigaction sa;
+	sa.sa_handler = interrupt_handle;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
+	sigaction(SIGALRM, &sa, NULL); // Interrupt
+
 	// Setup event queue
 	evqueue_set(evqueue_new());
 
@@ -166,14 +173,6 @@ int main(int argc, char **argv)
 	}
 	log_server_info("\n");
 
-	// Setup signal blocking
-	struct sigaction sa_empty;
-	sa_empty.sa_flags = 0;
-	sa_empty.sa_handler = interrupt_handle;
-	sigemptyset(&sa_empty.sa_mask);
-	sigaction(SIGALRM, &sa_empty, 0); // Use for interrupting I/O
-	pthread_sigmask(SIG_BLOCK, &sa_empty.sa_mask, NULL);
-
 	// Create server instance
 	char* pidfile = pid_filename();
 
@@ -200,6 +199,10 @@ int main(int argc, char **argv)
 		}
 		log_server_info("PID stored in %s\n", pidfile);
 
+		// Store old flags
+		sigset_t oldset;
+		sigprocmask(SIG_BLOCK, 0, &oldset);
+
 		// Setup signal handler
 		struct sigaction sa;
 		memset(&sa, 0, sizeof(sa));
@@ -208,12 +211,14 @@ int main(int argc, char **argv)
 		sigaction(SIGINT,  &sa, NULL);
 		sigaction(SIGTERM, &sa, NULL);
 		sigaction(SIGHUP,  &sa, NULL);
+		sigaction(SIGALRM, &sa, NULL);
 		sa.sa_flags = 0;
-		pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 		/* Run event loop. */
 		for(;;) {
-			int ret = evqueue_poll(evqueue(), 0, &sa_empty.sa_mask);
+			sigprocmask(SIG_BLOCK, &sa.sa_mask, NULL);
+			int ret = evqueue_poll(evqueue(), 0, &oldset);
+			sigprocmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 			/* Interrupts. */
 			/*! \todo More robust way to exit evloop.
