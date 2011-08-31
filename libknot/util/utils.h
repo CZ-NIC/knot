@@ -149,6 +149,16 @@ size_t knot_quick_rand();
 
 uint16_t knot_random_id();
 
+/*!
+ * \brief Helper function for simple locking.
+ *
+ * \param type Type of lock.
+ * \param type Starting position of lock.
+ *
+ * \return Locking structure.
+ */
+struct flock* knot_file_lock(short type, short whence);
+
 #endif /* _KNOT_UTILS_H_ */
 
 /*! @} */
