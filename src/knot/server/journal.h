@@ -115,13 +115,13 @@ int journal_create(const char *fn, uint16_t max_nodes);
  * \brief Open journal file for read/write.
  *
  * \param fn Journal file name.
- * \param fslimit File size limit (-1 for no limit).
+ * \param fslimit File size limit (0 for no limit).
  * \param bflags Initial flags for each written node.
  *
  * \retval new journal instance if successful.
  * \retval NULL on error.
  */
-journal_t* journal_open(const char *fn, int fslimit, uint16_t bflags);
+journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags);
 
 /*!
  * \brief Fetch entry node for given identifier.

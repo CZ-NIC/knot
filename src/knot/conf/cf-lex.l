@@ -51,6 +51,7 @@ BLANK [ \t\n]
 %%
 \#.*\n          /* Ignore comments */;
 {BLANK}+        /* Ignore whitespace */;
+:		/* Optional : in assignments. */;
 [-@{};,]        { return yytext[0]; }
 system          { lval.t = yytext;  return SYSTEM; }
 identity        { lval.t = yytext; return IDENTITY; }
@@ -103,6 +104,7 @@ on|off {
 {DIGIT}+[smhd] {
   size_t mpos = strlen(yytext) - 1;
   char multiplier = yytext[mpos];
+  yytext[mpos] = '\0';
   lval.i = atoi(yytext);
   if (lval.i < 1) {
 	  cf_error(yyscanner, "interval must be a positive integer");
@@ -121,8 +123,29 @@ on|off {
   return INTERVAL;
 }
 
+{DIGIT}+[kMG] {
+  size_t mpos = strlen(yytext) - 1;
+  char multiplier = yytext[mpos];
+  yytext[mpos] = '\0';
+  lval.i = atol(yytext);
+  if (lval.i < 1) {
+	  cf_error(yyscanner, "size must be a positive integer");
+	  return END;
+  }
+
+  /* Handle multiplier. */
+  switch(multiplier) {
+  case 'k': lval.l = lval.i * 1024; break; /* kB */
+  case 'M': lval.l = lval.i * 1024*1024; break; /* MB */
+  case 'G': lval.l = lval.i * 1024*1024*1024; break; /* GB */
+  default: break;
+  }
+
+  return SIZE;
+}
+
 {DIGIT}+ {
-  lval.i = atoi(yytext);
+  lval.i = atol(yytext);
   return NUM;
 }
 

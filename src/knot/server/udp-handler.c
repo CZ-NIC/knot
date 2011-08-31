@@ -80,24 +80,25 @@ int udp_handle(uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		break;
 	case KNOT_QUERY_AXFR:
 	case KNOT_QUERY_IXFR:
-		/*! \todo Send error, not available on UDP. */
+		/* Send error, not available on UDP. */
+		knot_ns_error_response(ns, knot_packet_id(packet),
+				       KNOT_RCODE_SERVFAIL, qbuf,
+				       resp_len);
+		res = KNOTD_EOK;
 		break;
 	case KNOT_QUERY_NOTIFY:
-//		rcu_read_lock();
-//			const knot_zone_t *zone = NULL;
-//			res = knot_ns_answer_notify(ns, packet, qbuf,
-//			                              &resp_len, &zone);
 		res = notify_process_request(ns, packet, addr,
 					     qbuf, resp_len);
-//			if (res == KNOT_EOK) {
-//				res = zones_notify_schedule(zone, &addr);
-//			}
+		*resp_len = 0;
+		res = KNOTD_EOK;
 		break;
 	case KNOT_QUERY_UPDATE:
 	default:
-		*resp_len = 0;
-		res = KNOTD_EOK;
 		/*! \todo Implement query notify/update. */
+		knot_ns_error_response(ns, knot_packet_id(packet),
+				       KNOT_RCODE_NOTIMPL, qbuf,
+				       resp_len);
+		res = KNOTD_EOK;
 		break;
 	}
 
