@@ -356,6 +356,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 				printf("Compiling '%s'...\n",
 				       zone->name);
 			}
+			fflush(stdout);
+			fflush(stderr);
 			rc = exec_cmd(args, 7);
 			if (rc < 0 || WEXITSTATUS(rc) != 0) {
 				fprintf(stderr, "error: Compilation failed "
@@ -363,7 +365,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 						WEXITSTATUS(rc));
 			}
 			rc = WEXITSTATUS(rc);
-			if (rc < 0) {
+			if (rc != 0) {
 				rc = 1;
 			}
 		}
