@@ -96,11 +96,11 @@ int main(int argc, char **argv)
 	}
 
 	// Register service and signal handler
-	struct sigaction sa;
-	sa.sa_handler = interrupt_handle;
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = 0;
-	sigaction(SIGALRM, &sa, NULL); // Interrupt
+	struct sigaction emptyset;
+	emptyset.sa_handler = interrupt_handle;
+	sigemptyset(&emptyset.sa_mask);
+	emptyset.sa_flags = 0;
+	sigaction(SIGALRM, &emptyset, NULL); // Interrupt
 
 	// Setup event queue
 	evqueue_set(evqueue_new());
@@ -199,10 +199,6 @@ int main(int argc, char **argv)
 		}
 		log_server_info("PID stored in %s\n", pidfile);
 
-		// Store old flags
-		sigset_t oldset;
-		sigprocmask(SIG_BLOCK, 0, &oldset);
-
 		// Setup signal handler
 		struct sigaction sa;
 		memset(&sa, 0, sizeof(sa));
@@ -211,14 +207,12 @@ int main(int argc, char **argv)
 		sigaction(SIGINT,  &sa, NULL);
 		sigaction(SIGTERM, &sa, NULL);
 		sigaction(SIGHUP,  &sa, NULL);
-		sigaction(SIGALRM, &sa, NULL);
 		sa.sa_flags = 0;
+		sigprocmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 		/* Run event loop. */
 		for(;;) {
-			sigprocmask(SIG_BLOCK, &sa.sa_mask, NULL);
-			int ret = evqueue_poll(evqueue(), 0, &oldset);
-			sigprocmask(SIG_BLOCK, &sa.sa_mask, NULL);
+			int ret = evqueue_poll(evqueue(), 0, &emptyset.sa_mask);
 
 			/* Interrupts. */
 			/*! \todo More robust way to exit evloop.
@@ -265,6 +259,8 @@ int main(int argc, char **argv)
 			}
 		}
 
+		sigprocmask(SIG_BLOCK, &emptyset.sa_mask, NULL);
+
 		if ((res = server_wait(server)) != KNOTD_EOK) {
 			log_server_error("An error occured while "
 					 "waiting for server to finish.\n");
@@ -288,6 +284,11 @@ int main(int argc, char **argv)
 	log_server_info("Shut down.\n");
 	log_close();
 	free(pidfile);
+
+	if (!daemonize) {
+		fflush(stdout);
+		fflush(stderr);
+	}
 
 	// Destroy event loop
 	evqueue_t *q = evqueue();
