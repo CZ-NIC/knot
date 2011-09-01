@@ -36,13 +36,13 @@ void help(int argc, char **argv)
 	       " -h\tPrint help and usage.\n",
 	       PACKAGE_NAME);
 	printf("Actions:\n"
-	       " start   [zone]  Start %s server with given zone (no-op if running).\n"
-	       " stop            Stop %s server (no-op if not running).\n"
-	       " restart [zone]  Stops and then starts %s server.\n"
-	       " reload  [zone]  Reload %s configuration and compiled zones.\n"
-	       " running         Check if server is running.\n"
+	       " start     Start %s server with given zone (no-op if running).\n"
+	       " stop      Stop %s server (no-op if not running).\n"
+	       " restart   Stops and then starts %s server.\n"
+	       " reload    Reload %s configuration and compiled zones.\n"
+	       " running   heck if server is running.\n"
 	       "\n"
-	       " compile         Compile zone file.\n",
+	       " compile   Compile zone file.\n",
 	       PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME);
 }
 
