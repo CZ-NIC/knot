@@ -4,6 +4,8 @@ Doxy.page.h
 Doxyfile
 Doxyfile.devel
 configure.ac
+KNOWN_ISSUES
+README
 tests/querytcp.c
 libknot/Makefile.am
 libknot/libknot.h
