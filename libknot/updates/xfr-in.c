@@ -36,8 +36,9 @@
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_create_query(const knot_zone_contents_t *zone, uint16_t qtype,
-                              uint16_t qclass, uint8_t *buffer, size_t *size)
+static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
+			      uint16_t qclass, uint8_t *buffer, size_t *size,
+			      const knot_rrset_t *soa)
 {
 	knot_packet_t *pkt = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
 	CHECK_ALLOC_LOG(pkt, KNOT_ENOMEM);
@@ -56,9 +57,6 @@ static int xfrin_create_query(const knot_zone_contents_t *zone, uint16_t qtype,
 	}
 
 	knot_question_t question;
-
-	const knot_node_t *apex = knot_zone_contents_apex(zone);
-	knot_dname_t *qname = knot_node_get_owner(apex);
 
 	/* Retain qname until the question is freed. */
 	knot_dname_retain(qname);
@@ -80,11 +78,7 @@ static int xfrin_create_query(const knot_zone_contents_t *zone, uint16_t qtype,
 	}
 
 	/* Add SOA RR to authority section for IXFR. */
-	if (qtype == KNOT_RRTYPE_IXFR) {
-		/*!
-		 *  \todo Implement properly.
-		 */
-		const knot_rrset_t *soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
+	if (qtype == KNOT_RRTYPE_IXFR && soa) {
 		knot_query_add_rrset_authority(pkt, soa);
 	}
 
@@ -132,11 +126,11 @@ static uint32_t xfrin_serial_difference(uint32_t local, uint32_t remote)
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_soa_query(const knot_zone_contents_t *zone, uint8_t *buffer,
+int xfrin_create_soa_query(knot_dname_t *owner, uint8_t *buffer,
                            size_t *size)
 {
-	return xfrin_create_query(zone, KNOT_RRTYPE_SOA,
-	                          KNOT_CLASS_IN, buffer, size);
+	return xfrin_create_query(owner, KNOT_RRTYPE_SOA,
+				  KNOT_CLASS_IN, buffer, size, 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -202,11 +196,11 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_axfr_query(const knot_zone_contents_t *zone, uint8_t *buffer,
+int xfrin_create_axfr_query(knot_dname_t *owner, uint8_t *buffer,
                             size_t *size)
 {
-	return xfrin_create_query(zone, KNOT_RRTYPE_AXFR,
-	                          KNOT_CLASS_IN, buffer, size);
+	return xfrin_create_query(owner, KNOT_RRTYPE_AXFR,
+				  KNOT_CLASS_IN, buffer, size, 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -214,8 +208,14 @@ int xfrin_create_axfr_query(const knot_zone_contents_t *zone, uint8_t *buffer,
 int xfrin_create_ixfr_query(const knot_zone_contents_t *zone, uint8_t *buffer,
                             size_t *size)
 {
-	return xfrin_create_query(zone, KNOT_RRTYPE_IXFR,
-	                          KNOT_CLASS_IN, buffer, size);
+	/*!
+	 *  \todo Implement properly.
+	 */
+	knot_node_t *apex = knot_zone_contents_get_apex(zone);
+	const knot_rrset_t *soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
+
+	return xfrin_create_query(knot_node_get_owner(apex), KNOT_RRTYPE_IXFR,
+				  KNOT_CLASS_IN, buffer, size, soa);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -454,6 +454,7 @@ DEBUG_KNOT_XFR(
 			}
 
 			ret = add_node(*zone, node, 1, 0, 1);
+			assert(node != NULL);
 			if (ret != KNOT_EOK) {
 				debug_knot_xfr("Failed to add node to zone.\n");
 				knot_packet_free(&packet);
@@ -2335,6 +2336,9 @@ int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
 	}
 	
 	knot_zone_contents_t *old_contents = knot_zone_get_contents(zone);
+	if (!old_contents) {
+		return KNOT_EBADARG;
+	}
 	
 //	debug_knot_xfr("\nOLD ZONE CONTENTS:\n\n");
 //	knot_zone_contents_dump(old_contents, 1);

@@ -833,6 +833,10 @@ void knot_node_free_rrsets(knot_node_t *node, int free_rdata_dnames)
 
 void knot_node_free(knot_node_t **node, int free_owner, int fix_refs)
 {
+	if (node == NULL || *node == NULL) {
+		return;
+	}
+	
 	debug_knot_node("Freeing node.\n");
 	if ((*node)->rrset_tree != NULL) {
 		debug_knot_node("Freeing RRSets.\n");

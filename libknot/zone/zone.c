@@ -40,26 +40,36 @@
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-knot_zone_t *knot_zone_new(knot_node_t *apex, uint node_count,
-                               int use_domain_table)
+knot_zone_t *knot_zone_new_empty(knot_dname_t *name)
 {
-	debug_knot_zone("Creating new zone!\n");
-	if (apex == NULL) {
-		return NULL;
+	if (!name) {
+		return 0;
 	}
 
-	knot_zone_t *zone = (knot_zone_t *)calloc(1, sizeof(knot_zone_t));
+	debug_knot_zone("Creating new zone!\n");
+
+	knot_zone_t *zone = malloc(sizeof(knot_zone_t));
 	if (zone == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
+	memset(zone, 0, sizeof(knot_zone_t));
 
 	// save the zone name
-	debug_knot_zone("Copying zone name.\n");
-	zone->name = knot_dname_deep_copy(knot_node_owner(apex));
-	if (zone->name == NULL) {
-		ERR_ALLOC_FAILED;
-		free(zone);
+	debug_knot_zone("Setting zone name.\n");
+	zone->name = name;
+	return zone;
+}
+
+/*----------------------------------------------------------------------------*/
+
+
+knot_zone_t *knot_zone_new(knot_node_t *apex, uint node_count,
+                               int use_domain_table)
+{
+	knot_zone_t * zone = knot_zone_new_empty(
+			knot_dname_deep_copy(knot_node_owner(apex)));
+	if (zone == NULL) {
 		return NULL;
 	}
 
@@ -73,13 +83,6 @@ knot_zone_t *knot_zone_new(knot_node_t *apex, uint node_count,
 	}
 
 	zone->contents->zone = zone;
-
-	debug_knot_zone("Initializing zone data.\n");
-	/* Initialize data. */
-	zone->data = 0;
-	zone->dtor = 0;
-
-	zone->master = 0;
 
 	return zone;
 }
@@ -211,7 +214,8 @@ void knot_zone_deep_free(knot_zone_t **zone, int free_rdata_dnames)
 		return;
 	}
 
-	if (!knot_zone_contents_gen_is_old((*zone)->contents)) {
+	if ((*zone)->contents
+	    && !knot_zone_contents_gen_is_old((*zone)->contents)) {
 		// zone is in the middle of an update, report
 		debug_knot_zone("Destroying zone that is in the middle of an "
 		                  "update.\n");

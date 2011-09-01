@@ -84,6 +84,18 @@ struct knot_zone {
 typedef struct knot_zone knot_zone_t;
 
 /*----------------------------------------------------------------------------*/
+
+/*!
+ * \brief Creates new empty DNS zone.
+ *
+ * \notice Zone will be created without contents.
+ *
+ * \param name Zone owner.
+ *
+ * \return The initialized zone structure or NULL if an error occured.
+ */
+knot_zone_t *knot_zone_new_empty(knot_dname_t *name);
+
 /*!
  * \brief Creates new DNS zone.
  *
