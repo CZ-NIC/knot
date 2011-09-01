@@ -443,7 +443,9 @@ static int zones_notify_send(event_t *e)
 	/* Check number of retries. */
 	if (ev->retries == 0) {
 		debug_zones("notify: NOTIFY maximum retry time exceeded\n");
+		evsched_cancel(e->parent, ev->timer);
 		evsched_event_free(e->parent, ev->timer);
+		match->timer = 0;
 		rem_node(&ev->n);
 		free(ev);
 		return KNOTD_EMALF;
@@ -1956,9 +1958,10 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 	node *n = 0, *nxt = 0;
 	WALK_LIST_DELSAFE(n, nxt, zd->notify_pending) {
 		notify_ev_t *ev = (notify_ev_t *)n;
-		rem_node(n);
 		evsched_cancel(sch, ev->timer);
 		evsched_event_free(sch, ev->timer);
+		ev->timer = 0;
+		rem_node(n);
 		free(ev);
 	}
 

@@ -407,7 +407,7 @@ int journal_update(journal_t *journal, journal_node_t *n)
 	/* Write back. */
 	fseek(journal->fp, jn_fpos, SEEK_SET);
 	if (!sfwrite(n, node_len, journal->fp)) {
-		debug_journal("journal: failed to writeback node=%d to %ld\n",
+		debug_journal("journal: failed to writeback node=%llu to %ld\n",
 			      n->id, jn_fpos);
 		return KNOTD_ERROR;
 	}
