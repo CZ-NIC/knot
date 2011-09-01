@@ -98,6 +98,8 @@ int exec_cmd(const char *argv[], int argc)
 		}
 
 		/* Execute command. */
+		fflush(stdout);
+		fflush(stderr);
 		execvp(args[0], args);
 
 		/* Execute failed. */
@@ -114,7 +116,11 @@ int exec_cmd(const char *argv[], int argc)
 
 	/* Wait for finish. */
 	int ret = 0;
+	sigset_t newset;
+	sigfillset(&newset);
+	sigprocmask(SIG_BLOCK, &newset, 0);
 	waitpid(chproc, &ret, 0);
+	sigprocmask(SIG_UNBLOCK, &newset, 0);
 	return ret;
 }
 
