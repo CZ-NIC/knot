@@ -163,7 +163,7 @@ int main(int argc, char **argv)
 		log_server_error("Failed to parse configuration file '%s'.\n",
 				 config_fn);
 
-		log_server_warning("No zone served.\n");
+		return 1;
 	} else {
 		log_server_info("Configured %d interfaces and %d zones.\n",
 				conf()->ifaces_count, conf()->zones_count);
