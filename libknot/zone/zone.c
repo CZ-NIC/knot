@@ -214,7 +214,8 @@ void knot_zone_deep_free(knot_zone_t **zone, int free_rdata_dnames)
 		return;
 	}
 
-	if (!knot_zone_contents_gen_is_old((*zone)->contents)) {
+	if ((*zone)->contents
+	    && !knot_zone_contents_gen_is_old((*zone)->contents)) {
 		// zone is in the middle of an update, report
 		debug_knot_zone("Destroying zone that is in the middle of an "
 		                  "update.\n");
