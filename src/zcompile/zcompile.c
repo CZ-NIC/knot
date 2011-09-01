@@ -1620,7 +1620,16 @@ int process_rr(void)
 	if ((current_rrset->type == KNOT_RRTYPE_SOA) && (zone != NULL)) {
 		if (knot_node_rrset(knot_zone_contents_apex(contents),
 		                      KNOT_RRTYPE_SOA) != NULL) {
-			return KNOTDZCOMPILE_ESOA;
+			/* Receiving another SOA. */
+			if (knot_rrset_compare(current_rrset,
+			    knot_node_rrset(knot_zone_contents_apex(contents),
+			    KNOT_RRTYPE_SOA), KNOT_RRSET_COMPARE_WHOLE) != 0) {
+				return KNOTDZCOMPILE_ESOA;
+			} else
+			{
+				zc_warning_prev_line("encountered identical "
+				                     "extra SOA record");
+			}
 		}
 	}
 

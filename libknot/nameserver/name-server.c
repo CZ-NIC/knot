@@ -2326,10 +2326,8 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 
 static int knot_ns_prepare_response(knot_nameserver_t *nameserver,
                                     knot_packet_t *query, knot_packet_t **resp,
-                                    uint8_t *response_wire,
                                     size_t max_size)
 {
-	assert(response_wire != NULL);
 	assert(max_size >= 500);
 	
 	// initialize response packet structure
@@ -2339,17 +2337,17 @@ static int knot_ns_prepare_response(knot_nameserver_t *nameserver,
 		return KNOT_ENOMEM;
 	}
 
-	//int ret = knot_packet_set_max_size(*resp, max_size);
-	(*resp)->wireformat = response_wire;;
-	(*resp)->max_size = max_size;
+	int ret = knot_packet_set_max_size(*resp, max_size);
+	//(*resp)->wireformat = response_wire;;
+	//(*resp)->max_size = max_size;
 
-//	if (ret != KNOT_EOK) {
-//		debug_knot_ns("Failed to init response structure.\n");
-//		knot_packet_free(resp);
-//		return ret;
-//	}
+	if (ret != KNOT_EOK) {
+		debug_knot_ns("Failed to init response structure.\n");
+		knot_packet_free(resp);
+		return ret;
+	}
 
-	int ret = knot_response_init_from_query(*resp, query);
+	ret = knot_response_init_from_query(*resp, query);
 
 	if (ret != KNOT_EOK) {
 		debug_knot_ns("Failed to init response structure.\n");
@@ -2574,9 +2572,39 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 	              knot_packet_parsed(query), knot_packet_size(query));
 	int ret;
 
+	ret = knot_packet_parse_rest(query);
+	if (ret != KNOT_EOK) {
+		debug_knot_ns("Failed to parse rest of the query: "
+				   "%s.\n", knot_strerror(ret));
+		knot_ns_error_response(nameserver, knot_packet_id(query),
+				       (ret == KNOT_EMALF)
+					  ? KNOT_RCODE_FORMERR
+					  : KNOT_RCODE_SERVFAIL, response_wire,
+		                       rsize);
+		return KNOT_EOK;
+	}
+	
+	size_t resp_max_size = 0;
+	
+	assert(*rsize >= MAX_UDP_PAYLOAD);
+	
+	if (knot_query_edns_supported(query)) {
+		if (knot_edns_get_payload(&query->opt_rr) <
+		    knot_edns_get_payload(nameserver->opt_rr)) {
+			resp_max_size = knot_edns_get_payload(&query->opt_rr);
+		} else {
+			resp_max_size = knot_edns_get_payload(
+						nameserver->opt_rr);
+		}
+	}
+	
+	if (resp_max_size < MAX_UDP_PAYLOAD) {
+		resp_max_size = MAX_UDP_PAYLOAD;
+	}
+	
 	knot_packet_t *response;
 	ret = knot_ns_prepare_response(nameserver, query, &response, 
-	                               response_wire, *rsize);
+	                               resp_max_size);
 	if (ret != KNOT_EOK) {
 		knot_ns_error_response(nameserver, knot_packet_id(query),
 		                       KNOT_RCODE_SERVFAIL, response_wire,
@@ -2584,24 +2612,10 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 		return KNOT_EOK;
 	}
 
-	//if (knot_packet_parsed(query) < knot_packet_size(query)) {
-	ret = knot_packet_parse_rest(query);
-	if (ret != KNOT_EOK) {
-		debug_knot_ns("Failed to parse rest of the query: "
-				   "%s.\n", knot_strerror(ret));
-		knot_ns_error_response_full(nameserver, response,
-					    (ret == KNOT_EMALF)
-					       ? KNOT_RCODE_FORMERR
-					       : KNOT_RCODE_SERVFAIL,
-					    response_wire, rsize);
-		return KNOT_EOK;
-	}
-	//}
-
-	debug_knot_ns("Query - parsed: %zu, total wire size: %zu\n", query->parsed,
-	         query->size);
-	debug_knot_ns("Opt RR: version: %d, payload: %d\n", query->opt_rr.version,
-		 query->opt_rr.payload);
+	debug_knot_ns("Query - parsed: %zu, total wire size: %zu\n", 
+	              query->parsed, query->size);
+	debug_knot_ns("Opt RR: version: %d, payload: %d\n", 
+	              query->opt_rr.version, query->opt_rr.payload);
 
 	// get the answer for the query
 	rcu_read_lock();
@@ -2613,21 +2627,21 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 	// set the OPT RR to the response
 	if (knot_query_edns_supported(query)) {
 		/*! \todo API. */
-		if (knot_edns_get_payload(&query->opt_rr) > MAX_UDP_PAYLOAD) {
-			ret = knot_packet_set_max_size(response, 
-				knot_edns_get_payload(&query->opt_rr));
-		} else {
-			ret = knot_packet_set_max_size(response, 
-			                               MAX_UDP_PAYLOAD);
-		}
+//		if (knot_edns_get_payload(&query->opt_rr) > MAX_UDP_PAYLOAD) {
+//			ret = knot_packet_set_max_size(response, 
+//				knot_edns_get_payload(&query->opt_rr));
+//		} else {
+//			ret = knot_packet_set_max_size(response, 
+//			                               MAX_UDP_PAYLOAD);
+//		}
 		
-		if (ret != KNOT_EOK) {
-			debug_knot_ns("Failed to set max size.\n");
-			knot_ns_error_response_full(nameserver, response,
-			                            KNOT_RCODE_SERVFAIL,
-			                            response_wire, rsize);
-			return KNOT_EOK;
-		}
+//		if (ret != KNOT_EOK) {
+//			debug_knot_ns("Failed to set max size.\n");
+//			knot_ns_error_response_full(nameserver, response,
+//			                            KNOT_RCODE_SERVFAIL,
+//			                            response_wire, rsize);
+//			return KNOT_EOK;
+//		}
 		
 		ret = knot_response_add_opt(response, nameserver->opt_rr, 1);
 		if (ret != KNOT_EOK) {
@@ -2635,12 +2649,12 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 			                  ": %s\n",knot_strerror(ret));
 		} else {
 			// copy the DO bit from the query
-			if(knot_query_dnssec_requested(query)) {
+			if (knot_query_dnssec_requested(query)) {
 				/*! \todo API for this. */
 				knot_edns_set_do(&response->opt_rr);
 			}
 		}
-	} else {
+	}/* else {
 		debug_knot_ns("Setting max size to %u.\n", MAX_UDP_PAYLOAD);
 		ret = knot_packet_set_max_size(response, MAX_UDP_PAYLOAD);
 		if (ret != KNOT_EOK) {
@@ -2651,7 +2665,7 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 			                            response_wire, rsize);
 			return KNOT_EOK;
 		}
-	}
+	}*/
 	
 	debug_knot_ns("Response max size: %zu\n", response->max_size);
 
@@ -3084,9 +3098,9 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 	assert(knot_packet_is_query(query));
 
 	knot_packet_t *response;
-	/*! \todo It is OK not to use the given size?? */
+	assert(*rsize >= MAX_UDP_PAYLOAD);
 	int ret = knot_ns_prepare_response(nameserver, query, &response,
-	                                   response_wire, *rsize);
+	                                   MAX_UDP_PAYLOAD);
 	if (ret != KNOT_EOK) {
 		knot_ns_error_response(nameserver, knot_packet_id(query),
 		                       KNOT_RCODE_SERVFAIL, response_wire,

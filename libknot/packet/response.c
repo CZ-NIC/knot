@@ -875,10 +875,13 @@ int knot_response_init_from_query(knot_packet_t *response,
 
 	// copy the header from the query
 	memcpy(&response->header, &query->header, sizeof(knot_header_t));
+//	memmove(&response->header, &query->header, sizeof(knot_header_t));
 
 	// copy the Question section (but do not copy the QNAME)
 	memcpy(&response->question, &query->question,
 	       sizeof(knot_question_t));
+//	memmove(&response->question, &query->question,
+//	        sizeof(knot_question_t));
 
 	int err = 0;
 	// put the qname into the compression table
