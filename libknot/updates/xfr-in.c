@@ -454,6 +454,7 @@ DEBUG_KNOT_XFR(
 			}
 
 			ret = add_node(*zone, node, 1, 0, 1);
+			assert(node != NULL);
 			if (ret != KNOT_EOK) {
 				debug_knot_xfr("Failed to add node to zone.\n");
 				knot_packet_free(&packet);
