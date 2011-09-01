@@ -7,9 +7,6 @@
 #include "common/errors.h"
 #include "config.h"
 
-#define PROJECT_NAME PACKAGE // Project name
-#define PROJECT_VER  0x000100  // 0xMMIIRR (MAJOR,MINOR,REVISION)
-
 static void help(int argc, char **argv)
 {
 	printf("Usage: %s [parameters] origin zonefile\n",
@@ -41,10 +38,7 @@ int main(int argc, char **argv)
 			verbose = 1;
 			break;
 		case 'V':
-			printf("%s, version %d.%d.%d\n", PROJECT_NAME,
-			       PROJECT_VER >> 16 & 0x000000ff,
-			       PROJECT_VER >> 8 & 0x000000ff,
-			       PROJECT_VER >> 0 & 0x000000ff);
+			printf("%s, version %s\n", PACKAGE_NAME, PACKAGE_VERSION);
 			return 0;
 		case 's':
 			semantic_checks = 1;
