@@ -577,16 +577,18 @@ int xfr_master(dthread_t *thread)
 			if (ret != KNOTD_EOK) {
 				knot_ns_xfr_send_error(&xfr, rcode);
 				socket_close(xfr.session);
-			}			
+			} else {			
 
-			ret = knot_ns_answer_axfr(xfrh->ns, &xfr);
-			free(xfr.query->wireformat);
-			knot_packet_free(&xfr.query); /* Free query. */
-			debug_xfr("xfr_master: ns_answer_axfr() = %d.\n", ret);
-			if (ret != KNOTD_EOK) {
-				socket_close(xfr.session);
+				ret = knot_ns_answer_axfr(xfrh->ns, &xfr);
+				debug_xfr("xfr_master: ns_answer_axfr() = %d.\n", ret);
+				if (ret != KNOTD_EOK) {
+					socket_close(xfr.session);
+				}
 			}
 			
+			free(xfr.query->wireformat);
+			xfr.query->wireformat = 0;
+			knot_packet_free(&xfr.query); /* Free query. */
 			rcu_read_unlock();
 			break;
 		case XFR_TYPE_IOUT:
@@ -635,7 +637,7 @@ int xfr_master(dthread_t *thread)
 		}
 
 		/* Report. */
-		if (ret != KNOTD_EOK) {
+		if (ret != KNOTD_EOK && ret != KNOTD_EACCES) {
 			log_server_error("%s request failed: %s\n",
 					 req_type, knotd_strerror(ret));
 		}
