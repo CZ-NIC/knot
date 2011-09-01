@@ -1,5 +1,3 @@
-sysconf_DATA = knotd.conf example.com.zone
-
 edit = sed \
 	-e 's|@version[@]|$(PACKAGE_VERSION)|g' \
 	-e 's|@package[@]|$(PACKAGE_NAME)|g' \
@@ -15,6 +13,12 @@ knotd.conf: Makefile
 	mv $@.tmp $@
 
 knotd.conf: knotd.conf.in
+
+install-data-local: knotd.conf
+	[ -d $(sysconfdir) ] || \
+	  $(INSTALL_DATA) -d $(sysconfdir)
+	[ -f $(sysconfdir)/knotd.conf ] || \
+	  $(INSTALL_DATA) knotd.conf example.com.zone $(sysconfdir)
 
 clean-local:
 	rm -f knotd.conf
