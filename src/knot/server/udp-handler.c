@@ -140,10 +140,7 @@ static inline int udp_master_recvfrom(dthread_t *thread, stat_t *thread_stat)
 		/* Receive packet. */
 		n = recvmsg(sock, &msg, 0);
 
-	        char ip_str[INET_ADDRSTRLEN];
-		memset(ip_str, 0, sizeof(ip_str));
-        	inet_ntop(addr.family, &addr.addr4.sin_addr, ip_str, sizeof(ip_str));
-        	fprintf(stderr, "udp: received %zd bytes from %s.\n", n, ip_str); 
+        	debug_net("udp: received %zd bytes\n", n); 
 
 		/* Cancellation point. */
 		if (dt_is_cancelled(thread)) {
