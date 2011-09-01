@@ -93,7 +93,6 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone);
 //#define KNOT_ZONEDB_DEBUG
 //#define KNOT_DNAME_DEBUG
 //#define KNOT_NODE_DEBUG
-//#define KNOT_RESPONSE_DEBUG
 //#define KNOT_PACKET_DEBUG
 //#define KNOT_EDNS_DEBUG
 //#define KNOT_RRSET_DEBUG
