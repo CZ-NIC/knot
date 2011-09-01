@@ -1015,7 +1015,8 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 		int ret = KNOT_ERROR;
 		if (reload) {
 			/* Zone file not exists and has master set. */
-			if (stat_ret < 0 && !EMPTY_LIST(z->acl.xfr_in)) {
+			/*! \todo SLAVE DISABLED Bootstrapping is disabled. */
+			if (0 && stat_ret < 0 && !EMPTY_LIST(z->acl.xfr_in)) {
 
 				/* Create stub database. */
 				debug_zones("Loading stub zone for bootstrap.\n");
@@ -1976,14 +1977,15 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 	}
 
 	/* Check XFR/IN master server. */
-	if (zd->xfr_in.master.ptr) {
+	/*! \todo SLAVE DISABLED */
+//	if (zd->xfr_in.master.ptr) {
 
-		/* Schedule REFRESH timer. */
-		uint32_t refresh_tmr = zones_soa_refresh(zone);
-		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_refresh_ev,
-							 zone, refresh_tmr);
-		debug_zones("notify: REFRESH set to %u\n", refresh_tmr);
-	}
+//		/* Schedule REFRESH timer. */
+//		uint32_t refresh_tmr = zones_soa_refresh(zone);
+//		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_refresh_ev,
+//							 zone, refresh_tmr);
+//		debug_zones("notify: REFRESH set to %u\n", refresh_tmr);
+//	}
 
 	/* Schedule NOTIFY to slaves. */
 	conf_remote_t *r = 0;
