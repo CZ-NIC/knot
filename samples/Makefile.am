@@ -5,20 +5,20 @@ edit = sed \
 	-e 's|@prefix[@]|$(prefix)|g' \
 	-e 's|@sysconfdir[@]|$(sysconfdir)|g'
 
-knotd.conf: Makefile
+knot.sample.conf: Makefile
 	rm -f $@ $@.tmp
 	srcdir=''; \
 	  test -f ./$@.in || srcdir=$(srcdir)/; \
 	  $(edit) $${srcdir}$@.in >$@.tmp
 	mv $@.tmp $@
 
-knotd.conf: knotd.conf.in
+knot.sample.conf: knot.sample.conf.in
 
-install-data-local: knotd.conf
+install-data-local: knot.sample.conf
 	[ -d $(sysconfdir) ] || \
 	  $(INSTALL_DATA) -d $(sysconfdir)
-	[ -f $(sysconfdir)/knotd.conf ] || \
-	  $(INSTALL_DATA) knotd.conf example.com.zone $(sysconfdir)
+	[ -f $(sysconfdir)/knot.sample.conf ] || \
+	  $(INSTALL_DATA) knot.sample.conf example.com.zone $(sysconfdir)
 
 clean-local:
-	rm -f knotd.conf
+	rm -f knot.sample.conf
