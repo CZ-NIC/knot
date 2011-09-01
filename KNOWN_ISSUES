@@ -1,0 +1,25 @@
+Features not supported
+======================
+
+Here is a list of the most notable features that are not supported in the 
+current version of Knot.
+
+* IXFR
+* Dynamic updates
+* Slave functionality (AXFR-in).
+* RRSet rotation
+* Root zone (Knot cannot serve the root zone)
+* Other DNS classes than IN (CH, CS, HS)
+* Unknown RR types (types in form TYPE1234)
+
+
+Known bugs
+==========
+
+* Certain malformed packets cause the server to crash.
+* Some actions may not be fully thread-safe (e.g. removing expired zone).
+* If some hashed domain name (NSEC3) contains other data than NSEC3 and RRSIG,
+  queries for this data will not be responded well (always answers NXDOMAIN).
+* TXT records with more than one character strings are not parsed well
+  (only the first item is parsed, rest is ignored).
+

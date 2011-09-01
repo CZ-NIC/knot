@@ -18,12 +18,10 @@
 
 /*! \brief Default config paths. */
 static const char *DEFAULT_CONFIG[] = {
-	SYSCONFDIR "/" "knotd.conf",
-	"~/.knot/" "knotd.conf",
-	"/etc/" PACKAGE "/" "knotd.conf"
+	SYSCONFDIR "/" "knot.conf",
 };
 
-#define DEFAULT_CONF_COUNT 3 /*!< \brief Number of default config paths. */
+#define DEFAULT_CONF_COUNT 1 /*!< \brief Number of default config paths. */
 
 /*
  * Utilities.

@@ -4,6 +4,8 @@ Doxy.page.h
 Doxyfile
 Doxyfile.devel
 configure.ac
+KNOWN_ISSUES
+README
 tests/querytcp.c
 libknot/Makefile.am
 libknot/libknot.h
@@ -234,3 +236,4 @@ src/tests/libknot/realdata/libknot_tests_loader_realdata.c
 src/tests/libknot/realdata/libknot_tests_loader_realdata.h
 src/tests/libknot/libknot/zone_tree_tests.c
 src/tests/libknot/libknot/zone_tree_tests.h
+samples/Makefile.am

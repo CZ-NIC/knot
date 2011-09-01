@@ -25,8 +25,6 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 #define UINT_DEFINED
 #endif
 
-#define PROJECT_NAME PACKAGE /*!< \brief Project name. */
-#define PROJECT_VER  0x000100  /*!< \brief  0xMMIIRR (MAJOR,MINOR,REVISION). */
 #define PROJECT_EXEC SBINDIR "/" "knotd" /*!< \brief  Project executable. */
 #define ZONEPARSER_EXEC LIBEXECDIR "/" "knot-zcompile" /*!< \brief  Zoneparser executable. */
 #define PID_FILE "knot.pid" /*!< \brief Server PID file name. */
@@ -92,8 +90,8 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 
 /*! \todo Refactor theese. We should have an allocator function handling this.*/
 #ifndef ERR_ALLOC_FAILED
-#define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d (%s ver.%x)\n", \
-				 __FILE__, __LINE__, PROJECT_NAME, PROJECT_VER)
+#define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d (%s)\n", \
+				 __FILE__, __LINE__, PACKAGE_STRING)
 #endif
 
 #ifndef CHECK_ALLOC_LOG

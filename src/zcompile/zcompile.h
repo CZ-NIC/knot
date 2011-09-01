@@ -118,6 +118,8 @@ extern void zc_error_prev_line(const char *fmt, ...);
 
 /* used in zonec.lex */
 
+void zc_error_prev_line(const char *fmt, ...);
+
 /*!
  * \brief Does all the processing of RR - saves to zone, assigns RRSIGs etc.
  */
