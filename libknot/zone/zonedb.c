@@ -131,8 +131,7 @@ DEBUG_KNOT_ZONEDB(
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zonedb_remove_zone(knot_zonedb_t *db, knot_dname_t *zone_name,
-                              int destroy_zone)
+knot_zone_t *knot_zonedb_remove_zone(knot_zonedb_t *db, knot_dname_t *zone_name)
 {
 	knot_zone_t dummy_zone;
 	memset(&dummy_zone, 0, sizeof(knot_zone_t));
@@ -143,20 +142,21 @@ int knot_zonedb_remove_zone(knot_zonedb_t *db, knot_dname_t *zone_name,
 	                                                  &dummy_zone);
 
 	if (z == NULL) {
-		return KNOT_ENOZONE;
+		return NULL;
 	}
 
 	// remove the zone from the skip list, but do not destroy it
 	gen_tree_remove(db->zone_tree, &dummy_zone);
 
-	if (destroy_zone) {
-		// properly destroy the zone and all its contents
-		knot_zone_deep_free(&z, 0);
-	}
+//	if (destroy_zone) {
+//		// properly destroy the zone and all its contents
+//		knot_zone_deep_free(&z, 0);
+//	}
 
 	db->zone_count--;
 
-	return KNOT_EOK;
+	//return KNOT_EOK;
+	return z;
 }
 
 /*----------------------------------------------------------------------------*/

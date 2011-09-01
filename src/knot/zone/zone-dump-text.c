@@ -853,7 +853,7 @@ void rdata_dump_text(knot_rdata_t *rdata, uint16_t type, FILE *f)
 	knot_rrtype_descriptor_t *desc =
 		knot_rrtype_descriptor_by_type(type);
 	char *item_str = NULL;
-	for (int i = 0; i < desc->length; i++) {
+	for (int i = 0; i < rdata->count; i++) {
 		item_str = rdata_item_to_string(desc->zoneformat[i],
 						rdata->items[i]);
 		if (item_str == NULL) {
@@ -861,7 +861,7 @@ void rdata_dump_text(knot_rdata_t *rdata, uint16_t type, FILE *f)
 				rdata_item_to_string(KNOT_RDATA_ZF_UNKNOWN,
 						     rdata->items[i]);
 		}
-		if (i != desc->length - 1) {
+		if (i != rdata->count - 1) {
 			fprintf(f, "%s ", item_str);
 		} else {
 			fprintf(f, "%s", item_str);

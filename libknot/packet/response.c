@@ -266,15 +266,15 @@ static size_t knot_response_find_dname_pos(
                const knot_dname_t *dname, int compr_cs)
 {
 	for (int i = 0; i < table->count; ++i) {
-		debug_knot_response("Comparing dnames %p and %p\n",
-		                      dname, table->dnames[i]);
-DEBUG_KNOT_RESPONSE(
-		char *name = knot_dname_to_str(dname);
-		debug_knot_response("(%s and ", name);
-		name = knot_dname_to_str(table->dnames[i]);
-		debug_knot_response("%s)\n", name);
-		free(name);
-);
+//		debug_knot_response("Comparing dnames %p and %p\n",
+//		                      dname, table->dnames[i]);
+//DEBUG_KNOT_RESPONSE(
+//		char *name = knot_dname_to_str(dname);
+//		debug_knot_response("(%s and ", name);
+//		name = knot_dname_to_str(table->dnames[i]);
+//		debug_knot_response("%s)\n", name);
+//		free(name);
+//);
 		//if (table->dnames[i] == dname) {
 		int ret = (compr_cs)
 		           ? knot_dname_compare_cs(table->dnames[i], dname)
@@ -492,7 +492,7 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
 	debug_knot_response("Owner position: %zu\n", compr->owner.pos);
 
 	// put owner if needed (already compressed)
-	if (compr->owner.pos == 0) {
+	if (compr->owner.pos == 0 || compr->owner.pos > KNOT_RESPONSE_MAX_PTR) {
 		memcpy(*rrset_wire, compr->owner.wire, compr->owner.size);
 		compr->owner.pos = compr->wire_pos;
 		*rrset_wire += compr->owner.size;
@@ -774,7 +774,9 @@ DEBUG_KNOT_RESPONSE(
 		                      "size of response: %zu\n\n", size, rrs,
 		                      resp->size);
 	} else if (tc) {
+		debug_knot_response("Setting TC bit.\n");
 		knot_wire_flags_set_tc(&resp->header.flags1);
+		knot_wire_set_tc(resp->wireformat);
 	}
 
 	return rrs;
@@ -950,6 +952,8 @@ int knot_response_add_opt(knot_packet_t *resp,
 
 	// set max size (less is OK)
 	if (override_max_size) {
+		debug_knot_response("Overriding max size to: %u\n",
+		                    resp->opt_rr.payload);
 		return knot_packet_set_max_size(resp, resp->opt_rr.payload);
 		//resp->max_size = resp->opt_rr.payload;
 	}
