@@ -499,7 +499,7 @@ uint16_t * zparser_conv_hex(const char *hex, size_t len)
 		                   "must be a multiple of 2");
 		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 	} else if (len > MAX_RDLENGTH * 2) {
-		fprintf(stderr, "hex data exceeds maximum rdata length (%d)",
+		zc_error_prev_line("hex data exceeds maximum rdata length (%d)",
 			MAX_RDLENGTH);
 		parser->error_occurred = KNOTDZCOMPILE_EBRDATA;
 	} else {
@@ -520,7 +520,7 @@ uint16_t * zparser_conv_hex(const char *hex, size_t len)
 				if (isxdigit((int)*hex)) {
 					*t += hexdigit_to_int(*hex) * i;
 				} else {
-					fprintf(stderr,
+					zc_error_prev_line(
 						"illegal hex character '%c'",
 						(int) *hex);
 					parser->error_occurred =
@@ -573,7 +573,7 @@ uint16_t * zparser_conv_hex_length(const char *hex, size_t len)
 				if (isxdigit((int)*hex)) {
 					*t += hexdigit_to_int(*hex) * i;
 				} else {
-					fprintf(stderr,
+					zc_error_prev_line(
 						"illegal hex character '%c'",
 						(int) *hex);
 					parser->error_occurred =
@@ -652,7 +652,7 @@ uint16_t * zparser_conv_services(const char *protostr, char *servicestr)
 			char *end;
 			port = strtol(word, &end, 10);
 			if (*end != '\0') {
-				fprintf(stderr,
+				zc_error_prev_line(
 					"unknown service '%s' for"
 					" protocol '%s'",
 					word, protostr);
@@ -1228,7 +1228,7 @@ uint16_t * zparser_conv_loc(char *str)
 			}
 
 			if (d < 0.0 || d > 60.0) {
-				fprintf(stderr,
+				zc_error_prev_line(
 					"seconds not in range 0.0 .. 60.0");
 			}
 
@@ -1258,7 +1258,7 @@ uint16_t * zparser_conv_loc(char *str)
 				(deg * 3600000 + min * 60000 + secs);
 			break;
 		default:
-			fprintf(stderr,
+			zc_error_prev_line(
 				"invalid latitude/longtitude: '%c'", *str);
 			return NULL;
 		}
@@ -1508,7 +1508,8 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 //			zc_error_prev_line("Could not allocate memory for TXT RR");
 //			return;
 //		}
-		parser->rdata_count++;
+		/*!< \todo Disabled until multiple TXT's are supported. */
+//		parser->rdata_count++;
 		rd->raw_data[0] = 0;
 	} else {
 		rd = &parser->temporary_items[parser->rdata_count-1];
@@ -1915,7 +1916,7 @@ int process_rr(void)
 		if (current_rrset->type !=
 				KNOT_RRTYPE_RRSIG && rrset->ttl !=
 				current_rrset->ttl) {
-			fprintf(stderr,
+			zc_error_prev_line(
 				"TTL does not match the TTL of the RRset");
 		}
 
@@ -1965,7 +1966,7 @@ int process_rr(void)
 //	}
 
 	if (vflag > 1 && totalrrs > 0 && (totalrrs % progress == 0)) {
-		fprintf(stdout, "%ld\n", totalrrs);
+		zc_error_prev_line("Total errors: %ld\n", totalrrs);
 	}
 
 	parser->last_node = node;
@@ -2002,12 +2003,12 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	      int semantic_checks)
 {
 	if (!outfile) {
-		fprintf(stderr, "Missing output file for '%s'\n",
+		zc_error_prev_line("Missing output file for '%s'\n",
 			zonefile);
 		return KNOTDZCOMPILE_EINVAL;
 	}
 
-	char ebuf[256];
+//	char ebuf[256];
 
 	knot_dname_t *dname =
 		knot_dname_new_from_str(name, strlen(name), NULL);
@@ -2035,7 +2036,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	}
 
 	if (!zone_open(zonefile, 3600, KNOT_CLASS_IN, origin_node, scanner)) {
-		fprintf(stderr, "Cannot open '%s'\n",
+		zc_error_prev_line("Cannot open '%s'\n",
 			zonefile);
 		zparser_free();
 		return KNOTDZCOMPILE_EZONEINVAL;
@@ -2085,7 +2086,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	if (!(parser->current_zone &&
 	      knot_node_rrset(parser->current_zone->contents->apex,
 	                        KNOT_RRTYPE_SOA))) {
-		fprintf(stderr, "Zone file does not contain SOA record!\n");
+		zc_error_prev_line("Zone file does not contain SOA record!\n");
 		knot_zone_deep_free(&parser->current_zone, 0);
 		zparser_free();
 		return KNOTDZCOMPILE_EZONEINVAL;
@@ -2103,13 +2104,12 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	debug_zp("rdata adjusted\n");
 
-//	parser->current_zone->dname_table = parser->dname_table;
+	knot_zdump_binary(contents,
+	                    outfile, semantic_checks, zonefile);
 
-	if (knot_zdump_binary(parser->current_zone->contents,
-	                      outfile, semantic_checks,
-	                       zonefile) != 0) {
-		fprintf(stderr, "Error: could not dump zone!\n");
-	}
+	debug_zp("zone dumped\n");
+
+	zone_dump_text(contents, "debug.zone");
 
 	/* This is *almost* unnecessary */
 	knot_zone_deep_free(&(parser->current_zone), 0);
@@ -2149,7 +2149,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 //				if (knot_dname_table_add_dname(table,
 //							        searched_dname)
 //				   != 0) {
-//					fprintf(stderr,
+//					zc_error_prev_line(
 //					        "Could not add name"
 //					        "to table!\n");
 //					return;

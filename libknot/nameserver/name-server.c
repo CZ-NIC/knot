@@ -41,7 +41,7 @@
 /*! \brief Maximum UDP payload with EDNS enabled. */
 static const uint16_t MAX_UDP_PAYLOAD_EDNS = 4096;
 /*! \brief Maximum UDP payload with EDNS disabled. */
-static const uint16_t MAX_UDP_PAYLOAD      = 512;
+static const uint16_t MAX_UDP_PAYLOAD      = 504; // 512 - 8B header
 /*! \brief Maximum size of one AXFR response packet. */
 static const uint16_t MAX_AXFR_PAYLOAD     = 65535;
 /*! \brief Supported EDNS version. */
@@ -969,9 +969,18 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 	if (previous == NULL) {
 		/*! \todo Check version. */
 		previous = knot_zone_contents_find_previous(zone, qname);
+		
+		while (!knot_node_is_auth(previous)) {
+			previous = knot_node_previous(previous, 1);
+		}
+		
 		previous = knot_node_current(previous);
 		assert(previous != NULL);
 	}
+	
+	char *name = knot_dname_to_str(previous->owner);
+	debug_knot_ns("Previous node: %s\n", name);
+	free(name);
 
 	// 1) NSEC proving that there is no node with the searched name
 	rrset = knot_node_rrset(previous, KNOT_RRTYPE_NSEC);
@@ -1174,9 +1183,13 @@ static void ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 	       && knot_query_dnssec_requested(knot_packet_query(resp)));
 
 	// check if we have previous; if not, find one using the tree
-	if (previous == NULL) {
-		
+	if (previous == NULL) {		
 		previous = knot_zone_contents_find_previous(zone, qname);
+		
+		while (!knot_node_is_auth(previous)) {
+			previous = knot_node_previous(previous, 1);
+		}
+		
 		previous = knot_node_current(previous);
 		assert(previous != NULL);
 	}
@@ -1348,7 +1361,7 @@ static inline int ns_referral(const knot_node_t *node,
 				}
 				/*! \todo What if there is no NSEC3? */
 			} else {
-				knot_rrset_t *nsec = knot_node_rrset(
+				const knot_rrset_t *nsec = knot_node_rrset(
 					node, KNOT_RRTYPE_NSEC);
 				if (nsec) {
 					/*! \todo Check return value? */
@@ -1854,7 +1867,14 @@ static int ns_response_to_wire(knot_packet_t *resp, uint8_t *wire,
 		return NS_ERR_SERVFAIL;
 	}
 
-	memcpy(wire, rwire, rsize);
+	if (rwire != wire) {
+		debug_knot_ns("Wire format reallocated, copying to place for "
+		              "wire.\n");
+		memcpy(wire, rwire, rsize);
+	} else {
+		debug_knot_ns("Using the same space or wire format.\n");
+	}
+	
 	*wire_size = rsize;
 	//free(rwire);
 
@@ -1881,8 +1901,7 @@ static int ns_axfr_send_and_clear(knot_ns_xfr_t *xfr)
 	// Transform the packet into wire format
 	debug_knot_ns("Converting response to wire format..\n");
 	size_t real_size = xfr->wire_size;
-	if (ns_response_to_wire(xfr->response, xfr->wire, &real_size)
-	    != 0) {
+	if (ns_response_to_wire(xfr->response, xfr->wire, &real_size) != 0) {
 		return NS_ERR_SERVFAIL;
 //		// send back SERVFAIL (as this is our problem)
 //		ns_error_response(nameserver,
@@ -2306,8 +2325,12 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 
 static int knot_ns_prepare_response(knot_nameserver_t *nameserver,
                                     knot_packet_t *query, knot_packet_t **resp,
+                                    uint8_t *response_wire,
                                     size_t max_size)
 {
+	assert(response_wire != NULL);
+	assert(max_size >= 500);
+	
 	// initialize response packet structure
 	*resp = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
 	if (*resp == NULL) {
@@ -2315,15 +2338,17 @@ static int knot_ns_prepare_response(knot_nameserver_t *nameserver,
 		return KNOT_ENOMEM;
 	}
 
-	int ret = knot_packet_set_max_size(*resp, max_size);
+	//int ret = knot_packet_set_max_size(*resp, max_size);
+	(*resp)->wireformat = response_wire;;
+	(*resp)->max_size = max_size;
 
-	if (ret != KNOT_EOK) {
-		debug_knot_ns("Failed to init response structure.\n");
-		knot_packet_free(resp);
-		return ret;
-	}
+//	if (ret != KNOT_EOK) {
+//		debug_knot_ns("Failed to init response structure.\n");
+//		knot_packet_free(resp);
+//		return ret;
+//	}
 
-	ret = knot_response_init_from_query(*resp, query);
+	int ret = knot_response_init_from_query(*resp, query);
 
 	if (ret != KNOT_EOK) {
 		debug_knot_ns("Failed to init response structure.\n");
@@ -2549,7 +2574,8 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 	int ret;
 
 	knot_packet_t *response;
-	ret = knot_ns_prepare_response(nameserver, query, &response, *rsize);
+	ret = knot_ns_prepare_response(nameserver, query, &response, 
+	                               response_wire, *rsize);
 	if (ret != KNOT_EOK) {
 		knot_ns_error_response(nameserver, knot_packet_id(query),
 		                       KNOT_RCODE_SERVFAIL, response_wire,
@@ -2557,19 +2583,19 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 		return KNOT_EOK;
 	}
 
-	if (knot_packet_parsed(query) < knot_packet_size(query)) {
-		ret = knot_packet_parse_rest(query);
-		if (ret != KNOT_EOK) {
-			debug_knot_ns("Failed to parse rest of the query: "
-			                   "%s.\n", knot_strerror(ret));
-			knot_ns_error_response_full(nameserver, response,
-			                            (ret == KNOT_EMALF)
-			                               ? KNOT_RCODE_FORMERR
-			                               : KNOT_RCODE_SERVFAIL,
-			                            response_wire, rsize);
-			return KNOT_EOK;
-		}
+	//if (knot_packet_parsed(query) < knot_packet_size(query)) {
+	ret = knot_packet_parse_rest(query);
+	if (ret != KNOT_EOK) {
+		debug_knot_ns("Failed to parse rest of the query: "
+				   "%s.\n", knot_strerror(ret));
+		knot_ns_error_response_full(nameserver, response,
+					    (ret == KNOT_EMALF)
+					       ? KNOT_RCODE_FORMERR
+					       : KNOT_RCODE_SERVFAIL,
+					    response_wire, rsize);
+		return KNOT_EOK;
 	}
+	//}
 
 	debug_knot_ns("Query - parsed: %zu, total wire size: %zu\n", query->parsed,
 	         query->size);
@@ -2585,12 +2611,48 @@ int knot_ns_answer_normal(knot_nameserver_t *nameserver, knot_packet_t *query,
 
 	// set the OPT RR to the response
 	if (knot_query_edns_supported(query)) {
-		ret = knot_response_add_opt(response, nameserver->opt_rr, 0);
+		/*! \todo API. */
+		if (knot_edns_get_payload(&query->opt_rr) > MAX_UDP_PAYLOAD) {
+			ret = knot_packet_set_max_size(response, 
+				knot_edns_get_payload(&query->opt_rr));
+		} else {
+			ret = knot_packet_set_max_size(response, 
+			                               MAX_UDP_PAYLOAD);
+		}
+		
+		if (ret != KNOT_EOK) {
+			debug_knot_ns("Failed to set max size.\n");
+			knot_ns_error_response_full(nameserver, response,
+			                            KNOT_RCODE_SERVFAIL,
+			                            response_wire, rsize);
+			return KNOT_EOK;
+		}
+		
+		ret = knot_response_add_opt(response, nameserver->opt_rr, 1);
 		if (ret != KNOT_EOK) {
 			debug_knot_ns("Failed to set OPT RR to the response"
 			                  ": %s\n",knot_strerror(ret));
+		} else {
+			// copy the DO bit from the query
+			if(knot_query_dnssec_requested(query)) {
+				/*! \todo API for this. */
+				knot_edns_set_do(&response->opt_rr);
+			}
+		}
+	} else {
+		debug_knot_ns("Setting max size to %u.\n", MAX_UDP_PAYLOAD);
+		ret = knot_packet_set_max_size(response, MAX_UDP_PAYLOAD);
+		if (ret != KNOT_EOK) {
+			debug_knot_ns("Failed to set max size to %u\n",
+			              MAX_UDP_PAYLOAD);
+			knot_ns_error_response_full(nameserver, response,
+			                            KNOT_RCODE_SERVFAIL,
+			                            response_wire, rsize);
+			return KNOT_EOK;
 		}
 	}
+	
+	debug_knot_ns("Response max size: %zu\n", response->max_size);
 
 	ret = ns_answer(zonedb, response);
 	if (ret != 0) {
@@ -2649,21 +2711,23 @@ int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		return res;
 	}
 
-	int ret = knot_packet_set_max_size(response, xfr->wire_size);
+	//int ret = knot_packet_set_max_size(response, xfr->wire_size);
+	response->wireformat = xfr->wire;
+	response->max_size = xfr->wire_size;
 
-	if (ret != KNOT_EOK) {
-		debug_knot_ns("Failed to init response structure.\n");
-		/*! \todo xfr->wire is not NULL, will fail on assert! */
-		knot_ns_error_response(nameserver, xfr->query->header.id,
-		                         KNOT_RCODE_SERVFAIL, xfr->wire,
-		                         &xfr->wire_size);
-		int res = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
-		                    xfr->wire_size);
-		knot_packet_free(&response);
-		return res;
-	}
+//	if (ret != KNOT_EOK) {
+//		debug_knot_ns("Failed to init response structure.\n");
+//		/*! \todo xfr->wire is not NULL, will fail on assert! */
+//		knot_ns_error_response(nameserver, xfr->query->header.id,
+//		                         KNOT_RCODE_SERVFAIL, xfr->wire,
+//		                         &xfr->wire_size);
+//		int res = xfr->send(xfr->session, &xfr->addr, xfr->wire, 
+//		                    xfr->wire_size);
+//		knot_packet_free(&response);
+//		return res;
+//	}
 
-	ret = knot_response_init_from_query(response, xfr->query);
+	int ret = knot_response_init_from_query(response, xfr->query);
 
 	if (ret != KNOT_EOK) {
 		debug_knot_ns("Failed to init response structure.\n");
@@ -3005,8 +3069,9 @@ int knot_ns_process_update(knot_nameserver_t *nameserver, knot_packet_t *query,
 	assert(knot_packet_is_query(query));
 
 	knot_packet_t *response;
+	/*! \todo It is OK not to use the given size?? */
 	int ret = knot_ns_prepare_response(nameserver, query, &response,
-	                                   *rsize);
+	                                   response_wire, *rsize);
 	if (ret != KNOT_EOK) {
 		knot_ns_error_response(nameserver, knot_packet_id(query),
 		                       KNOT_RCODE_SERVFAIL, response_wire,

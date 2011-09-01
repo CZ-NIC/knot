@@ -46,19 +46,21 @@ unsigned long int fnv_hash(const char *data, int size, int bits)
 
 /*------------------------------- JENKINS HASH -------------------------------*/
 
-///* The mixing step */
-//#define mix(a,b,c) \
-//	{ \
-//		a=a-b;  a=a-c;  a=a^(c>>13); \
-//		b=b-c;  b=b-a;  b=b^(a<<8);  \
-//		c=c-a;  c=c-b;  c=c^(b>>13); \
-//		a=a-b;  a=a-c;  a=a^(c>>12); \
-//		b=b-c;  b=b-a;  b=b^(a<<16); \
-//		c=c-a;  c=c-b;  c=c^(b>>5);  \
-//		a=a-b;  a=a-c;  a=a^(c>>3);  \
-//		b=b-c;  b=b-a;  b=b^(a<<10); \
-//		c=c-a;  c=c-b;  c=c^(b>>15); \
-//	}
+/* The mixing step */
+/*
+#define mix(a,b,c) \
+	{ \
+		a=a-b;  a=a-c;  a=a^(c>>13); \
+		b=b-c;  b=b-a;  b=b^(a<<8);  \
+		c=c-a;  c=c-b;  c=c^(b>>13); \
+		a=a-b;  a=a-c;  a=a^(c>>12); \
+		b=b-c;  b=b-a;  b=b^(a<<16); \
+		c=c-a;  c=c-b;  c=c^(b>>5);  \
+		a=a-b;  a=a-c;  a=a^(c>>3);  \
+		b=b-c;  b=b-a;  b=b^(a<<10); \
+		c=c-a;  c=c-b;  c=c^(b>>15); \
+	}
+*/
 
 ///* The whole new hash function */
 //u4 jhash(register u1 *k, u4 length, u4 initval)

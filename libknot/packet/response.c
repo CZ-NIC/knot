@@ -266,15 +266,15 @@ static size_t knot_response_find_dname_pos(
                const knot_dname_t *dname, int compr_cs)
 {
 	for (int i = 0; i < table->count; ++i) {
-		debug_knot_response("Comparing dnames %p and %p\n",
-		                      dname, table->dnames[i]);
-DEBUG_KNOT_RESPONSE(
-		char *name = knot_dname_to_str(dname);
-		debug_knot_response("(%s and ", name);
-		name = knot_dname_to_str(table->dnames[i]);
-		debug_knot_response("%s)\n", name);
-		free(name);
-);
+//		debug_knot_response("Comparing dnames %p and %p\n",
+//		                      dname, table->dnames[i]);
+//DEBUG_KNOT_RESPONSE(
+//		char *name = knot_dname_to_str(dname);
+//		debug_knot_response("(%s and ", name);
+//		name = knot_dname_to_str(table->dnames[i]);
+//		debug_knot_response("%s)\n", name);
+//		free(name);
+//);
 		//if (table->dnames[i] == dname) {
 		int ret = (compr_cs)
 		           ? knot_dname_compare_cs(table->dnames[i], dname)
@@ -318,6 +318,8 @@ static int knot_response_put_dname_ptr(const knot_dname_t *dname,
 	memcpy(wire, knot_dname_name(dname), size);
 	knot_wire_put_pointer(wire + size, offset);
 
+	debug_knot_response("Size of the dname with ptr: %d\n", size + 2);
+	
 	return size + 2;
 }
 
@@ -425,6 +427,8 @@ DEBUG_KNOT_RESPONSE(
 	}
 #endif
 
+	debug_knot_response("Max size available for domain name: %zu\n", max);
+	
 	if (offset > 0) {  // found such dname somewhere in the packet
 		debug_knot_response("Found name in the compression table.\n");
 		assert(offset >= KNOT_WIRE_HEADER_SIZE);
@@ -483,8 +487,13 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
                                       int compr_cs)
 {
 	int size = 0;
+	
+	debug_knot_response("Max size: %zu, owner pos: %zu, owner size: %d\n",
+	                    max_size, compr->owner.pos, compr->owner.size);
 
-	if (size + ((compr->owner.pos == 0) ? compr->owner.size : 2) + 10
+	if (size + ((compr->owner.pos == 0
+	             || compr->owner.pos > KNOT_RESPONSE_MAX_PTR) 
+		? compr->owner.size : 2) + 10
 	    > max_size) {
 		return KNOT_ESPACE;
 	}
@@ -492,7 +501,7 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
 	debug_knot_response("Owner position: %zu\n", compr->owner.pos);
 
 	// put owner if needed (already compressed)
-	if (compr->owner.pos == 0) {
+	if (compr->owner.pos == 0 || compr->owner.pos > KNOT_RESPONSE_MAX_PTR) {
 		memcpy(*rrset_wire, compr->owner.wire, compr->owner.size);
 		compr->owner.pos = compr->wire_pos;
 		*rrset_wire += compr->owner.size;
@@ -504,6 +513,8 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
 		*rrset_wire += 2;
 		size += 2;
 	}
+	
+	debug_knot_response("Max size: %zu, size: %d\n", max_size, size);
 
 	debug_knot_response("Wire format:\n");
 
@@ -532,6 +543,8 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
 
 	size += 10;
 	compr->wire_pos += size;
+	
+	debug_knot_response("Max size: %zu, size: %d\n", max_size, size);
 
 	knot_rrtype_descriptor_t *desc =
 		knot_rrtype_descriptor_by_type(rrset->type);
@@ -539,11 +552,16 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
 	uint16_t rdlength = 0;
 
 	for (int i = 0; i < rdata->count; ++i) {
+		if (max_size < size + rdlength) {
+			return KNOT_ESPACE;
+		}
+		
 		switch (desc->wireformat[i]) {
 		case KNOT_RDATA_WF_COMPRESSED_DNAME: {
 			int ret = knot_response_compress_dname(
 				knot_rdata_item(rdata, i)->dname,
-				compr, *rrset_wire, max_size - size, compr_cs);
+				compr, *rrset_wire, max_size - size - rdlength, 
+				compr_cs);
 
 			if (ret < 0) {
 				return KNOT_ESPACE;
@@ -561,7 +579,7 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
 		case KNOT_RDATA_WF_LITERAL_DNAME: {
 			knot_dname_t *dname =
 				knot_rdata_item(rdata, i)->dname;
-			if (size + dname->size > max_size) {
+			if (size + rdlength + dname->size > max_size) {
 				return KNOT_ESPACE;
 			}
 
@@ -598,7 +616,7 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
 			uint16_t *raw_data =
 				knot_rdata_item(rdata, i)->raw_data;
 
-			if (size + raw_data[0] > max_size) {
+			if (size + rdlength + raw_data[0] > max_size) {
 				return KNOT_ESPACE;
 			}
 
@@ -613,6 +631,8 @@ static int knot_response_rr_to_wire(const knot_rrset_t *rrset,
 		}
 		}
 	}
+	
+	debug_knot_response("Max size: %zu, size: %d\n", max_size, size);
 
 	assert(size + rdlength <= max_size);
 	size += rdlength;
@@ -774,7 +794,9 @@ DEBUG_KNOT_RESPONSE(
 		                      "size of response: %zu\n\n", size, rrs,
 		                      resp->size);
 	} else if (tc) {
+		debug_knot_response("Setting TC bit.\n");
 		knot_wire_flags_set_tc(&resp->header.flags1);
+		knot_wire_set_tc(resp->wireformat);
 	}
 
 	return rrs;
@@ -950,6 +972,8 @@ int knot_response_add_opt(knot_packet_t *resp,
 
 	// set max size (less is OK)
 	if (override_max_size) {
+		debug_knot_response("Overriding max size to: %u\n",
+		                    resp->opt_rr.payload);
 		return knot_packet_set_max_size(resp, resp->opt_rr.payload);
 		//resp->max_size = resp->opt_rr.payload;
 	}

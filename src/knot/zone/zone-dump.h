@@ -22,7 +22,7 @@ enum {
 };
 
 /*! \brief Magic identifier: { "knot", maj_ver, min_ver, revision } */
-#define MAGIC_BYTES {'k', 'n', 'o', 't', '0', '2', 'a'}
+#define MAGIC_BYTES {'k', 'n', 'o', 't', '0', '2', 'b'}
 
 /*!
  * \brief Dumps given zone to binary file.

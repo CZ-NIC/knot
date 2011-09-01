@@ -78,7 +78,7 @@ fnv_32_buf(const void *buf, size_t len, Fnv32_t hval)
 typedef  unsigned long  int  ub4;   /* unsigned 4-byte quantities */
 typedef  unsigned       char ub1;   /* unsigned 1-byte quantities */
 
-ub4 jhash(k, length, initval);
+ub4 jhash(register ub1 *k, register ub4 length, register ub4 initval);
 
 #endif /* _KNOT_HASH_FUNCTIONS_H_ */
 

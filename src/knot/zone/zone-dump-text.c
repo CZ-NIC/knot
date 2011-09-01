@@ -974,10 +974,7 @@ int zone_dump_text(knot_zone_contents_t *zone, const char *filename)
 		return KNOT_EBADARG;
 	}
 
-	fprintf(f, ";Dumped using %s v. %d.%d.%d\n", KNOT_NAME,
-	        KNOT_VER / 10000,
-		(KNOT_VER / 100) % 100,
-		KNOT_VER % 100);
+	fprintf(f, ";Dumped using %s v. %s\n", PACKAGE_NAME, PACKAGE_VERSION);
 
 	struct dump_param param;
 	param.f = f;
