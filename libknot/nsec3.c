@@ -221,18 +221,8 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 
 	int res = 0;
 
-#ifdef KNOT_NSEC3_DEBUG
-	long time = 0;
-	unsigned long long total_time = 0;
-	unsigned long calls = 0;
-#endif
-
 	// other iterations
 	for (int i = 0; i <= iterations; ++i) {
-#ifdef KNOT_NSEC3_DEBUG
-		perf_begin();
-#endif
-
 		SHA1_Init(&ctx);
 
 		res = SHA1_Update(&ctx, in, in_size);
@@ -246,12 +236,6 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 		in = *digest;
 		in_size = SHA_DIGEST_LENGTH;
 
-#ifdef KNOT_NSEC3_DEBUG
-		perf_end(time);
-		total_time += time;
-		++calls;
-#endif
-
 		if (res != 1) {
 			debug_knot_nsec3("Error calculating SHA-1 hash.\n");
 			free(data_low);
@@ -259,9 +243,6 @@ int knot_nsec3_sha1(const knot_nsec3_params_t *params,
 			return KNOT_ECRYPTO;
 		}
 	}
-
-	debug_knot_nsec3("NSEC3 hashing: calls: %lu, avg time per call: %f."
-	                   "\n", calls, (double)(total_time) / calls);
 
 	*digest_size = SHA_DIGEST_LENGTH;
 
