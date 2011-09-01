@@ -1030,7 +1030,15 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 							    "stub zone.\n");
 						knot_zone_deep_free(&sz, 0);
 						sz = 0;
+					} else {
+						log_server_info("Will attempt to "
+								"bootstrap zone "
+								"%s from AXFR "
+								"master.\n",
+								z->name);
+						--inserted;
 					}
+
 				} else {
 					debug_zones("Failed to create "
 						    "stub zone.\n");
