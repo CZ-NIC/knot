@@ -1,0 +1,18 @@
+system {
+  identity "@package@ @version@";
+  storage "@localstatedir@/@package@";
+}
+
+interfaces {
+  ipv4 { address 127.0.0.1@53; }
+}
+
+zones {
+  example.com {
+    file "@sysconfdir@/example.com.zone";
+  }
+}
+
+log {
+  syslog { any warning, error, notice; }
+}
