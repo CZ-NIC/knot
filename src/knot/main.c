@@ -163,7 +163,7 @@ int main(int argc, char **argv)
 		log_server_error("Failed to parse configuration file '%s'.\n",
 				 config_fn);
 
-		log_server_warning("No zone served.\n");
+		return 1;
 	} else {
 		log_server_info("Configured %d interfaces and %d zones.\n",
 				conf()->ifaces_count, conf()->zones_count);
@@ -258,8 +258,6 @@ int main(int argc, char **argv)
 			}
 		}
 
-		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
-
 		if ((res = server_wait(server)) != KNOTD_EOK) {
 			log_server_error("An error occured while "
 					 "waiting for server to finish.\n");
@@ -284,17 +282,17 @@ int main(int argc, char **argv)
 	log_close();
 	free(pidfile);
 
-	if (!daemonize) {
-		fflush(stdout);
-		fflush(stderr);
-	}
-
 	// Destroy event loop
 	evqueue_t *q = evqueue();
 	evqueue_free(&q);
 
 	// Free default config filename if exists
 	free(config_fn);
+
+	if (!daemonize) {
+		fflush(stdout);
+		fflush(stderr);
+	}
 
 	return res;
 }
