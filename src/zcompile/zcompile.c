@@ -802,13 +802,27 @@ uint16_t * zparser_conv_b32(const char *b32)
 {
 	uint8_t buffer[B64BUFSIZE];
 	uint16_t *r = NULL;
-	size_t i = B64BUFSIZE;
+	size_t i = B64BUFSIZE - 1;
 
 	if (strcmp(b32, "-") == 0) {
 		return alloc_rdata_init("", 1);
 	}
-	if (!(base32hex_decode(b32, strlen(b32), (char *)buffer + 1, &i))) {
-		zc_error_prev_line("invalid base32 data\n");
+
+	/*!< \todo BLEEDING EYES! */
+
+	char b32_copy[strlen(b32) + 1];
+
+	for (int i = 0; i < strlen(b32); i++) {
+		b32_copy[i] = toupper(b32[i]);
+	}
+
+	/*!< \todo BLEEDING EYES! */
+	b32_copy[strlen(b32)] = '\0';
+
+	if (!base32hex_decode(b32_copy,
+	                      strlen(b32_copy), (char *)buffer + 1, &i)) {
+		zc_error_prev_line("invalid base32 data");
+		parser->error_occurred = 1;
 	} else {
 		buffer[0] = i; /* store length byte */
 		r = alloc_rdata_init(buffer, i + 1);
