@@ -1015,7 +1015,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 		int ret = KNOT_ERROR;
 		if (reload) {
 			/* Zone file not exists and has master set. */
-			if (!stat_ret && !EMPTY_LIST(z->acl.xfr_in)) {
+			if (stat_ret < 0 && !EMPTY_LIST(z->acl.xfr_in)) {
 
 				/* Create stub database. */
 				debug_zones("Loading stub zone for bootstrap.\n");
@@ -1024,7 +1024,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 				knot_zone_t* sz = knot_zone_new_empty(owner);
 				if (sz) {
 					/* Add stub zone to db_new. */
-					knot_zonedb_add_zone(db_new, sz);
+					ret = knot_zonedb_add_zone(db_new, sz);
 					if (ret != KNOT_EOK) {
 						debug_zones("Failed to add "
 							    "stub zone.\n");
@@ -1542,7 +1542,9 @@ static int zones_dump_xfr_zone_text(knot_zone_contents_t *zone,
 	}
 
 	/*! \todo this would also need locking as well. */
-	if (remove(zonefile) == 0) {
+	struct stat s;
+	rc = stat(zonefile, &s);
+	if (rc < 0 || remove(zonefile) == 0) {
 		if (rename(new_zonefile, zonefile) != 0) {
 			debug_zones("Failed to replace old zonefile %s with new"
 				    " zone file %s.\n", zonefile, new_zonefile);
