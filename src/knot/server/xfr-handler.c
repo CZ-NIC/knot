@@ -175,6 +175,11 @@ static inline void xfr_client_ev(struct ev_loop *loop, ev_io *w, int revents)
 		  ret);
 	if (ret < 0) {
 		/*! \todo Log error. */
+		debug_xfr("xfr_client_ev: closing socket %d\n",
+			  ((ev_io *)w)->fd);
+		ev_io_stop(loop, (ev_io *)w);
+		close(((ev_io *)w)->fd);
+		free(xfr_w);
 		return;
 	}
 
