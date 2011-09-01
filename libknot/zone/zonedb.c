@@ -240,7 +240,7 @@ DEBUG_KNOT_ZONEDB(
 	debug_knot_zonedb("Found zone for name %s: %p\n", name, zone);
 	free(name);
 );
-	if (zone != NULL
+	if (zone != NULL && zone->contents != NULL
 	    && knot_dname_compare(zone->contents->apex->owner, dname) != 0
 	    && !knot_dname_is_subdomain(dname, zone->contents->apex->owner)) {
 		zone = NULL;
