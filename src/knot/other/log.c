@@ -82,7 +82,7 @@ int log_init()
 
 	/// \todo May change to LOG_DAEMON.
 	setlogmask(LOG_UPTO(LOG_DEBUG));
-	openlog(PROJECT_NAME, LOG_PID, LOG_DAEMON);
+	openlog(PACKAGE_NAME, LOG_PID, LOG_DAEMON);
 	return ret;
 }
 
