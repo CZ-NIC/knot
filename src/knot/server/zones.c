@@ -397,9 +397,9 @@ static int zones_notify_send(event_t *e)
 	/* Check number of retries. */
 	if (ev->retries == 0) {
 		debug_zones("notify: NOTIFY maximum retry time exceeded\n");
-		evsched_cancel(e->parent, ev->timer);
-		evsched_event_free(e->parent, ev->timer);
-		match->timer = 0;
+		evsched_cancel(e->parent, e);
+		evsched_event_free(e->parent, e);
+		ev->timer = 0;
 		rem_node(&ev->n);
 		free(ev);
 		return KNOTD_EMALF;
