@@ -999,6 +999,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	}
 
 	knot_zone_contents_t *contents = knot_zone_get_contents(zone);
+	assert(contents);
 
 	/* Assign dname table to the new zone. */
 	contents->dname_table = dname_table;

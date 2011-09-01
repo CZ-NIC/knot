@@ -418,6 +418,11 @@ int knot_ddns_check_zone(const knot_zone_t *zone, knot_packet_t *query,
 		return KNOT_EMALF;
 	}
 
+	if(!knot_zone_contents(zone)) {
+		*rcode = KNOT_RCODE_REFUSED;
+		return KNOT_ENOZONE;
+	}
+
 	// 1) check if the zone is master or slave
 	if (!knot_zone_is_master(zone)) {
 		return KNOT_EBADZONE;

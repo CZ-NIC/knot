@@ -105,8 +105,7 @@ knot_zonedb_t *knot_zonedb_new()
 
 int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone)
 {
-	if (db == NULL || zone == NULL || zone->contents == NULL
-	    || zone->contents->apex == NULL) {
+	if (db == NULL || zone == NULL) {
 		return KNOT_EBADARG;
 	}
 DEBUG_KNOT_ZONEDB(
@@ -114,10 +113,14 @@ DEBUG_KNOT_ZONEDB(
 	debug_knot_zonedb("Inserting zone %s into zone db.\n", name);
 	free(name);
 );
-	int ret = knot_zone_contents_load_nsec3param(
-			knot_zone_get_contents(zone));
-	if (ret != KNOT_EOK) {
-		return ret;
+
+	int ret = KNOT_EOK;
+	if (knot_zone_contents(zone)) {
+		ret = knot_zone_contents_load_nsec3param(
+				knot_zone_get_contents(zone));
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	}
 
 	ret = gen_tree_add(db->zone_tree, zone, NULL);

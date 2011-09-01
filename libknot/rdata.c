@@ -748,6 +748,10 @@ const knot_dname_t *knot_rdata_get_name(const knot_rdata_t *rdata,
 /*---------------------------------------------------------------------------*/
 int64_t knot_rdata_soa_serial(const knot_rdata_t *rdata)
 {
+	if (!rdata) {
+		return -1;
+	}
+
 	if (rdata->count < 3) {
 		return -1;
 	}
@@ -760,6 +764,10 @@ int64_t knot_rdata_soa_serial(const knot_rdata_t *rdata)
 
 uint32_t knot_rdata_soa_refresh(const knot_rdata_t *rdata)
 {
+	if (!rdata) {
+		return 0;
+	}
+
 	if (rdata->count < 4) {
 		return 0;	/*! \todo Some other error value. */
 	}
@@ -772,6 +780,10 @@ uint32_t knot_rdata_soa_refresh(const knot_rdata_t *rdata)
 
 uint32_t knot_rdata_soa_retry(const knot_rdata_t *rdata)
 {
+	if (!rdata) {
+		return 0;
+	}
+
 	if (rdata->count < 5) {
 		return 0;	/*! \todo Some other error value. */
 	}
@@ -784,6 +796,10 @@ uint32_t knot_rdata_soa_retry(const knot_rdata_t *rdata)
 
 uint32_t knot_rdata_soa_expire(const knot_rdata_t *rdata)
 {
+	if (!rdata) {
+		return -1;
+	}
+
 	if (rdata->count < 6) {
 		return 0;	/*! \todo Some other error value. */
 	}
