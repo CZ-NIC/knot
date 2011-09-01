@@ -97,5 +97,6 @@ AC_CHECK_FUNCS([gethostbyname gettimeofday memmove memset munmap regcomp select 
 
 AC_CONFIG_FILES([Makefile
                  libknot/Makefile
+		 samples/Makefile
                  src/Makefile])
 AC_OUTPUT
