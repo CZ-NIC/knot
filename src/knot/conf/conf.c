@@ -18,7 +18,7 @@
 
 /*! \brief Default config paths. */
 static const char *DEFAULT_CONFIG[] = {
-	SYSCONFDIR "/" "knot.conf",
+	SYSCONFDIR "/knot/" "knot.conf",
 };
 
 #define DEFAULT_CONF_COUNT 1 /*!< \brief Number of default config paths. */
