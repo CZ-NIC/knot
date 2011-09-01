@@ -345,7 +345,7 @@ knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
 
 const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 {
-	knot_node_dump(node, (void*)1);
+	knot_node_dump((knot_node_t *)node, (void*)1);
 //	printf("RRset count: %u\n", node->rrset_count);
 	if (node->rrset_count == 0) {
 		return NULL;
