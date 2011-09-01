@@ -18,12 +18,15 @@
 //#define SM_DEBUG
 //#define NS_DEBUG
 //#define SERVER_DEBUG
+//#define SERVER_DEBUG
 //#define DT_DEBUG
 //#define JOURNAL_DEBUG
 //#define NET_DEBUG
 //#define ZONES_DEBUG
 //#define XFR_DEBUG
 //#define NOTIFY_DEBUG
+//#define KNOT_ZDUMP_DEBUG
+//#define KNOT_ZLOAD_DEBUG
 
 #ifdef NOTIFY_DEBUG
 #define debug_notify(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
@@ -92,6 +95,21 @@
 #define debug_xfr_hex(data, len)
 #define DEBUG_XFR(cmds)
 #endif
+
+#ifdef KNOT_ZDUMP_DEBUG
+#define debug_knot_zdump(msg...) fprintf(stderr, msg)
+#define DEBUG_KNOT_ZDUMP(cmds) do { cmds } while (0)
+#else
+#define debug_knot_zdump(msg...)
+#define DEBUG_KNOT_ZDUMP(cmds)
+#endif
+
+#ifdef KNOT_ZLOAD_DEBUG
+#define debug_knot_zload(msg...) fprintf(stderr, msg)
+#else
+#define debug_knot_zload(msg...)
+#endif
+
 
 #endif /* _KNOTD_DEBUG_H_ */
 

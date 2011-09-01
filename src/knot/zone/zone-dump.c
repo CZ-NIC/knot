@@ -7,6 +7,7 @@
 #include "libknot/common.h"
 #include "knot/zone/zone-dump.h"
 #include "libknot/libknot.h"
+#include "knot/other/debug.h"
 #include "libknot/util/debug.h"
 #include "common/skip-list.h"
 #include "common/base32hex.h"
@@ -238,7 +239,7 @@ static void log_error_from_node(err_handler_t *handler,
 		fprintf(stderr, "%s", error_messages[-error]);
 		free(name);
 	} else {
-		fprintf(stderr, "Total number of warning is: %d for error: %s",
+		fprintf(stderr, "Total number of warnings is: %d for error: %s",
 			handler->errors[-error],
 			error_messages[-error]);
 	}
@@ -1437,7 +1438,15 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 
 	debug_knot_zdump("Dumping type: %d\n", type);
 
-	for (int i = 0; i < desc->length; i++) {
+	if (desc->fixed_items) {
+		assert(desc->length == rdata->count);
+	}
+
+	/* Write rdata count. */
+	fwrite_wrapper(&(rdata->count),
+	               sizeof(rdata->count), 1, f, stream, stream_size);
+
+	for (int i = 0; i < rdata->count; i++) {
 		if (&(rdata->items[i]) == NULL) {
 			debug_knot_zdump("Item n. %d is not set!\n", i);
 			continue;
@@ -1495,6 +1504,8 @@ static void knot_rdata_dump_binary(knot_rdata_t *rdata,
 			}
 
 		} else {
+			debug_knot_zdump("Writing raw data. Item nr.: %d\n",
+			                 i);
 			assert(rdata->items[i].raw_data != NULL);
 			fwrite_wrapper(rdata->items[i].raw_data,
 			               sizeof(uint8_t),
@@ -1906,6 +1917,8 @@ int knot_zdump_binary(knot_zone_contents_t *zone, const char *filename,
 	if (f == NULL) {
 		return KNOT_EBADARG;
 	}
+
+	debug_knot_zdump("dumping zone\n");
 
 //	skip_list_t *encloser_list = skip_create_list(compare_pointers);
 	arg_t arguments;
