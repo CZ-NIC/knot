@@ -168,9 +168,11 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
 	int64_t local_serial = knot_rdata_soa_serial(
 		knot_rrset_rdata(soa_rrset));
 	if (local_serial < 0) {
+DEBUG_KNOT_XFR(
 		char *name = knot_dname_to_str(knot_rrset_owner(soa_rrset));
 		debug_knot_xfr("Malformed data in SOA of zone %s\n", name);
 		free(name);
+);
 		return KNOT_EMALF;	// maybe some other error
 	}
 
@@ -356,6 +358,11 @@ DEBUG_KNOT_XFR(
 
 		if (node != NULL
 		    && knot_dname_compare(rr->owner, node->owner) != 0) {
+DEBUG_KNOT_XFR(
+			char *name = knot_dname_to_str(node->owner);
+			debug_knot_xfr("Node owner: %s\n", name);
+			free(name);
+);
 			if (!in_zone) {
 				// this should not happen
 				assert(0);
