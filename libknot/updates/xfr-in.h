@@ -39,7 +39,7 @@
 /*!
  * \brief Creates normal query for the given zone name and the SOA type.
  *
- * \param zone Zone to ask for - the SOA owner.
+ * \param owner Zone owner.
  * \param buffer Buffer to fill the message in.
  * \param size In: available space in the buffer. Out: actual size of the
  *             message in bytes.
@@ -48,7 +48,7 @@
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int xfrin_create_soa_query(const knot_zone_contents_t *zone, uint8_t *buffer,
+int xfrin_create_soa_query(knot_dname_t *owner, uint8_t *buffer,
                            size_t *size);
 
 /*!
@@ -68,7 +68,7 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
 /*!
  * \brief Creates normal query for the given zone name and the AXFR type.
  *
- * \param zone Zone to ask for - the SOA owner.
+ * \param owner Zone owner.
  * \param buffer Buffer to fill the message in.
  * \param size In: available space in the buffer. Out: actual size of the
  *             message in bytes.
@@ -77,13 +77,13 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int xfrin_create_axfr_query(const knot_zone_contents_t *zone, uint8_t *buffer,
+int xfrin_create_axfr_query(knot_dname_t *owner, uint8_t *buffer,
                             size_t *size);
 
 /*!
  * \brief Creates normal query for the given zone name and the IXFR type.
  *
- * \param zone Zone to ask for - the SOA owner.
+ * \param zone Zone contents.
  * \param buffer Buffer to fill the message in.
  * \param size In: available space in the buffer. Out: actual size of the
  *             message in bytes.
