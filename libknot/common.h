@@ -32,8 +32,8 @@
 #ifndef _KNOT_COMMON_H_
 #define _KNOT_COMMON_H_
 
-#define KNOT_NAME "libknot" // Project name
-#define KNOT_VER  0x000100  // 0xMMIIRR (MAJOR,MINOR,REVISION)
+#define KNOT_NAME "lib" PACKAGE_NAME // Project name
+#define KNOT_VER  PACKAGE_VERSION  // 0xMMIIRR (MAJOR,MINOR,REVISION)
 
 #ifndef UINT_DEFINED
 typedef unsigned int uint; /*!< \brief Unsigned. */
@@ -75,7 +75,7 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 #endif
 /*! \todo Refactor theese. We should have an allocator function handling this.*/
 #ifndef ERR_ALLOC_FAILED
-#define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d (%s ver.%x)\n", \
+#define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d (%s ver.%s)\n", \
 				 __FILE__, __LINE__, KNOT_NAME, KNOT_VER)
 #endif
 

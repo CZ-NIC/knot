@@ -34,7 +34,7 @@ void help(int argc, char **argv)
 	       " -w\tWait for the server to finish start/stop operations.\n"
 	       " -i\tInteractive mode (do not daemonize).\n"
 	       " -h\tPrint help and usage.\n",
-	       PROJECT_NAME);
+	       PACKAGE_NAME);
 	printf("Actions:\n"
 	       " start   [zone]  Start %s server with given zone (no-op if running).\n"
 	       " stop            Stop %s server (no-op if not running).\n"
@@ -43,7 +43,7 @@ void help(int argc, char **argv)
 	       " running         Check if server is running.\n"
 	       "\n"
 	       " compile         Compile zone file.\n",
-	       PROJECT_NAME, PROJECT_NAME, PROJECT_NAME, PROJECT_NAME);
+	       PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME);
 }
 
 /*!
@@ -425,10 +425,7 @@ int main(int argc, char **argv)
 			interactive = 1;
 			break;
 		case 'V':
-			printf("%s, version %d.%d.%d\n", PROJECT_NAME,
-			       PROJECT_VER >> 16 & 0x000000ff,
-			       PROJECT_VER >> 8 & 0x000000ff,
-			       PROJECT_VER >> 0 & 0x000000ff);
+			printf("%s, version %s\n", PACKAGE_NAME, PACKAGE_VERSION);
 			return 0;
 		case 'h':
 		case '?':
