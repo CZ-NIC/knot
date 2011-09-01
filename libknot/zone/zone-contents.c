@@ -206,8 +206,7 @@ static void knot_zone_contents_adjust_rdata_item(knot_rdata_t *rdata,
 
 		if (ret != KNOT_ZONE_NAME_FOUND
 		                && (closest_encloser != NULL)) {
-			debug_knot_zdump("Saving closest encloser to RDATA."
-			                   "\n");
+			debug_knot_zone("Saving closest encloser to RDATA.\n");
 			// save pointer to the closest encloser
 			knot_rdata_item_t *item =
 					knot_rdata_get_item(rdata, pos);

@@ -1836,7 +1836,7 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 		return -1;
 	}
 
-	char ebuf[256];
+//	char ebuf[256];
 
 	knot_dname_t *dname =
 		knot_dname_new_from_str(name, strlen(name), NULL);
