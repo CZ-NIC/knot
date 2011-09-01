@@ -1813,14 +1813,16 @@ DEBUG_KNOT_NS(
 	// find zone in which to search for the name
 	const knot_zone_t *zone =
 		ns_get_zone_for_qname(db, qname, qtype);
+	const knot_zone_contents_t *contents = knot_zone_contents(zone);
 
 	// if no zone found, return REFUSED
-	if (zone == NULL) {
+	if (zone == NULL || contents == NULL) {
 		debug_knot_ns("No zone found.\n");
 		knot_response_set_rcode(resp, KNOT_RCODE_REFUSED);
 		//knot_dname_free(&qname);
 		return KNOT_EOK;
 	}
+
 DEBUG_KNOT_NS(
 	char *name_str2 = knot_dname_to_str(zone->contents->apex->owner);
 	debug_knot_ns("Found zone for QNAME %s\n", name_str2);
@@ -1828,7 +1830,6 @@ DEBUG_KNOT_NS(
 );
 
 	// take the zone contents and use only them for answering
-	const knot_zone_contents_t *contents = knot_zone_contents(zone);
 
 	return ns_answer_from_zone(contents, qname, qtype, resp);
 
@@ -2240,11 +2241,11 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 	/*! \todo REMOVE end */
 	
 	knot_changesets_t *chgsets = (knot_changesets_t *)xfr->data;
-	
+	knot_zone_contents_t* contents = knot_zone_get_contents(xfr->zone);
+	assert(contents);
 	const knot_rrset_t *zone_soa =
-		knot_node_rrset(knot_zone_contents_apex(
-		                       knot_zone_contents(xfr->zone)),
-		                  KNOT_RRTYPE_SOA);
+		knot_node_rrset(knot_zone_contents_apex(contents),
+				KNOT_RRTYPE_SOA);
 
 	// 4) put the zone SOA as the first Answer RR
 	int res = knot_response_add_rrset_answer(xfr->response, zone_soa, 0, 
@@ -2796,9 +2797,21 @@ int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 	rcu_read_lock();
 	
 	// take the contents and answer from them
+	int ret = 0;
 	knot_zone_contents_t *contents = knot_zone_get_contents(xfr->zone);
+	if (!contents) {
+		debug_knot_ns("AXFR failed on stub zone\n");
+		knot_ns_error_response(nameserver, xfr->query->header.id,
+					 KNOT_RCODE_REFUSED, xfr->wire,
+					 &xfr->wire_size);
+		ret = xfr->send(xfr->session, &xfr->addr, xfr->wire,
+				xfr->wire_size);
+		rcu_read_unlock();
+		knot_packet_free(&xfr->response);
+		return KNOT_EOK;
+	}
 
-	int ret = ns_axfr_from_zone(contents, xfr);
+	ret = ns_axfr_from_zone(contents, xfr);
 
 	/*! \todo Somehow distinguish when it makes sense to send the SERVFAIL
 	 *        and when it does not. E.g. if there was problem in sending

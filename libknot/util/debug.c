@@ -194,6 +194,11 @@ void knot_node_dump(const knot_node_t *node, void *loaded_zone)
 void knot_zone_contents_dump(knot_zone_contents_t *zone, char loaded_zone)
 {
 #if defined(KNOT_ZONE_DEBUG)
+	if (!zone) {
+		printf("------- STUB ZONE --------\n");
+		return;
+	}
+
 	printf("------- ZONE --------\n");
 
 	knot_zone_contents_tree_apply_inorder(zone, knot_node_dump, (void *)&loaded_zone);

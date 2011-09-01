@@ -330,13 +330,19 @@ static inline void xfr_bridge_ev(struct ev_loop *loop, ev_io *w, int revents)
 	/* Fetch zone contents. */
 	rcu_read_lock();
 	const knot_zone_contents_t *contents = knot_zone_contents(zone);
+	if (!contents && req->type == XFR_TYPE_IIN) {
+		rcu_read_unlock();
+		debug_xfr("xfr_in: failed start IXFR on zone with no contents\n");
+		socket_close(req->session);
+		return;
+	}
 
 	/* Create XFR query. */
 	ret = KNOTD_ERROR;
 	size_t bufsize = req->wire_size;
 	switch(req->type) {
 	case XFR_TYPE_AIN:
-		ret = xfrin_create_axfr_query(contents, req->wire, &bufsize);
+		ret = xfrin_create_axfr_query(zone->name, req->wire, &bufsize);
 		break;
 	case XFR_TYPE_IIN:
 		ret = xfrin_create_ixfr_query(contents, req->wire, &bufsize);
