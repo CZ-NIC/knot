@@ -236,3 +236,4 @@ src/tests/libknot/realdata/libknot_tests_loader_realdata.c
 src/tests/libknot/realdata/libknot_tests_loader_realdata.h
 src/tests/libknot/libknot/zone_tree_tests.c
 src/tests/libknot/libknot/zone_tree_tests.h
+samples/Makefile.am
