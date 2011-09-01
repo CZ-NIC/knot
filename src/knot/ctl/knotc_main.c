@@ -382,7 +382,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 
 			if (rc < 0 || !WIFEXITED(rc) || WEXITSTATUS(rc) != 0) {
 				fprintf(stderr, "error: Compilation failed "
-						"with return code %d.\n",
+						"with %d error(s).\n",
 						WEXITSTATUS(rc));
 				rc = 1;
 			}

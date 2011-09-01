@@ -30,7 +30,6 @@
 #include <netdb.h>
 #include <assert.h>
 
-#include "common/base32.h"
 #include "common/base32hex.h"
 #include "zcompile/zcompile.h"
 #include "zcompile/parser-util.h"
@@ -803,13 +802,27 @@ uint16_t * zparser_conv_b32(const char *b32)
 {
 	uint8_t buffer[B64BUFSIZE];
 	uint16_t *r = NULL;
-	size_t i = B64BUFSIZE;
+	size_t i = B64BUFSIZE - 1;
 
 	if (strcmp(b32, "-") == 0) {
 		return alloc_rdata_init("", 1);
 	}
-	if ((base32hex_decode(b32, strlen(b32), (char *)buffer + 1, &i)) == 0) {
-		zc_error_prev_line("invalid base32 data\n");
+
+	/*!< \todo BLEEDING EYES! */
+
+	char b32_copy[strlen(b32) + 1];
+
+	for (int i = 0; i < strlen(b32); i++) {
+		b32_copy[i] = toupper(b32[i]);
+	}
+
+	/*!< \todo BLEEDING EYES! */
+	b32_copy[strlen(b32)] = '\0';
+
+	if (!base32hex_decode(b32_copy,
+	                      strlen(b32_copy), (char *)buffer + 1, &i)) {
+		zc_error_prev_line("invalid base32 data");
+		parser->error_occurred = 1;
 	} else {
 		buffer[0] = i; /* store length byte */
 		r = alloc_rdata_init(buffer, i + 1);
@@ -1343,6 +1356,8 @@ void zadd_rdata_wireformat(uint16_t *data)
  */
 void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 {
+	debug_zp("Adding text!\n");
+//	hex_print(data + 1, data[0]);
 	knot_rdata_item_t *rd;
 
 	/* First STR in str_seq, allocate 65K in first unused rdata
@@ -1355,9 +1370,14 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 //			return;
 //		}
 		/*!< \todo Disabled until multiple TXT's are supported. */
-//		parser->rdata_count++;
+		rd->raw_data = alloc_rdata(65535 * sizeof(uint8_t));
+		if (rd->raw_data == NULL) {
+			parser->error_occurred = 1;
+		}
+		parser->rdata_count++;
 		rd->raw_data[0] = 0;
 	} else {
+		assert(0);
 		rd = &parser->temporary_items[parser->rdata_count-1];
 	}
 
@@ -1369,6 +1389,8 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 	memcpy((uint8_t *)rd->raw_data + 2 + rd->raw_data[0],
 	       data + 1, data[0]);
 	rd->raw_data[0] += data[0];
+	debug_zp("Item after add\n");
+//	hex_print(rd->raw_data + 1, rd->raw_data[0]);
 }
 
 void zadd_rdata_domain(knot_dname_t *dname)
@@ -1891,9 +1913,6 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	}
 
 	debug_zp("zone parsed\n");
-
-	find_rrsets_orphans(parser->current_zone->contents,
-	                    parser->rrsig_orphans);
 
 	if (!(parser->current_zone &&
 	      knot_node_rrset(parser->current_zone->contents->apex,
