@@ -23,13 +23,14 @@
 #include <stdlib.h>
 #include <time.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
 #include <netdb.h>
 
 //#include "common.h"
 #include "zcompile/parser-util.h"
 #include "zcompile/zcompile.h"
-#include "dnslib/descriptor.h"
-#include "dnslib/utils.h"
+#include "libknot/util/descriptor.h"
+#include "libknot/util/utils.h"
 
 #define IP6ADDRLEN	(128/8)
 #define	NS_INT16SZ	2
@@ -62,48 +63,48 @@ int inet_pton(int af, const char *src, void *dst)
 	/* NOTREACHED */
 }
 
-int my_b32_pton(const char *src, uint8_t *target, size_t tsize)
-{
-	char ch;
-	size_t p = 0;
+//int my_b32_pton(const char *src, uint8_t *target, size_t tsize)
+//{
+//	char ch;
+//	size_t p = 0;
 
-	memset(target, '\0', tsize);
-	while ((ch = *src++)) {
-		uint8_t d;
-		size_t b;
-		size_t n;
+//	memset(target, '\0', tsize);
+//	while ((ch = *src++)) {
+//		uint8_t d;
+//		size_t b;
+//		size_t n;
 
-		if (p + 5 >= tsize * 8) {
-			return -1;
-		}
+//		if (p + 5 >= tsize * 8) {
+//			return -1;
+//		}
 
-		if (isspace(ch)) {
-			continue;
-		}
+//		if (isspace(ch)) {
+//			continue;
+//		}
 
-		if (ch >= '0' && ch <= '9') {
-			d = ch - '0';
-		} else if (ch >= 'A' && ch <= 'V') {
-			d = ch - 'A' + 10;
-		} else if (ch >= 'a' && ch <= 'v') {
-			d = ch - 'a' + 10;
-		} else {
-			return -1;
-		}
+//		if (ch >= '0' && ch <= '9') {
+//			d = ch - '0';
+//		} else if (ch >= 'A' && ch <= 'V') {
+//			d = ch - 'A' + 10;
+//		} else if (ch >= 'a' && ch <= 'v') {
+//			d = ch - 'a' + 10;
+//		} else {
+//			return -1;
+//		}
 
-		b = 7 - p % 8;
-		n = p / 8;
+//		b = 7 - p % 8;
+//		n = p / 8;
 
-		if (b >= 4) {
-			target[n] |= d << (b - 4);
-		} else {
-			target[n] |= d >> (4 - b);
-			target[n+1] |= d << (b + 4);
-		}
-		p += 5;
-	}
-	return (p + 7) / 8;
-}
+//		if (b >= 4) {
+//			target[n] |= d << (b - 4);
+//		} else {
+//			target[n] |= d >> (4 - b);
+//			target[n+1] |= d << (b + 4);
+//		}
+//		p += 5;
+//	}
+//	return (p + 7) / 8;
+//}
 
 
 #define Assert(Cond) if (!(Cond)) abort()
@@ -326,7 +327,7 @@ const char *inet_ntop4(const u_char *src, char *dst, size_t size)
 		errno = ENOSPC;
 		return (NULL);
 	}
-	dnslib_strlcpy(dst, tmp, size);
+	knot_strlcpy(dst, tmp, size);
 	return (dst);
 }
 
@@ -451,7 +452,7 @@ const char *inet_ntop6(const u_char *src, char *dst, size_t size)
 		errno = ENOSPC;
 		return (NULL);
 	}
-	dnslib_strlcpy(dst, tmp, size);
+	knot_strlcpy(dst, tmp, size);
 	return (dst);
 }
 

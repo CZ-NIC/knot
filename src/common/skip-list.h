@@ -41,8 +41,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 Retrieved from: http://en.literateprograms.org/Skip_list_(C)?oldid=12811
 */
 
-#ifndef _KNOT_COMMON_SKIP_LIST_H_
-#define _KNOT_COMMON_SKIP_LIST_H_
+#ifndef _KNOTD_COMMON_SKIP_LIST_H_
+#define _KNOTD_COMMON_SKIP_LIST_H_
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -82,6 +82,7 @@ typedef struct skip_list skip_list_t;
  * \brief Creates a new generic skip list.
  *
  * \param compare_keys Function for comparing the keys.
+ * \todo What should compare_keys exactly return?
  *
  * \return Pointer to the newly created skip list if successful. NULL otherwise.
  */
@@ -114,6 +115,8 @@ void skip_destroy_list(skip_list_t **list, void (*destroy_key)(void *),
  *                     to NULL, the skip list will not merge values when
  *                     attempting to insert item with key already present in the
  *                     list.
+ *                     \todo What are the function parameters and what should it
+ *                           return as integer?
  *
  * \retval 0 If successful and the key was not yet present in the list.
  * \retval 1 If the key was already present and the new value was ignored
@@ -207,6 +210,6 @@ void skip_print_list(const skip_list_t *list,
  */
 skip_list_t *skip_copy_list(const skip_list_t *list);
 
-#endif /* _KNOT_COMMON_SKIP_LIST_H_ */
+#endif /* _KNOTD_COMMON_SKIP_LIST_H_ */
 
 /*! @} */

@@ -9,33 +9,36 @@
  * @{
  */
 
-#ifndef _KNOT_COMMON_H_
-#define _KNOT_COMMON_H_
+#ifndef _KNOTD_COMMON_H_
+#define _KNOTD_COMMON_H_
 
 #include <signal.h>
 #include <stdint.h>
-#include "config.h"
+#include <config.h>
 
 /*
  * Common types and constants.
  */
 
+#ifndef UINT_DEFINED
 typedef unsigned int uint; /*!< \brief Unsigned. */
+#define UINT_DEFINED
+#endif
 
-#define PROJECT_NAME PACKAGE /*!< \brief Project name. */
-#define PROJECT_VER  0x000100  /*!< \brief  0xMMIIRR (MAJOR,MINOR,REVISION). */
-#define PROJECT_EXEC "knotd" /*!< \brief  Project executable. */
-#define ZONEPARSER_EXEC "knot-zcompile" /*!< \brief  Zoneparser executable. */
+#define PROJECT_EXEC SBINDIR "/" "knotd" /*!< \brief  Project executable. */
+#define ZONEPARSER_EXEC LIBEXECDIR "/" "knot-zcompile" /*!< \brief  Zoneparser executable. */
 #define PID_FILE "knot.pid" /*!< \brief Server PID file name. */
 
 /*
  * Server.
  */
 
-#define CPU_ESTIMATE_MAGIC 2 /*!< \brief Extra threads to the number of cores.*/
+#define CPU_ESTIMATE_MAGIC 0 /*!< \brief Extra threads to the number of cores.*/
 #define DEFAULT_THR_COUNT 2  /*!< \brief Default thread count. */
 #define DEFAULT_PORT 53531   /*!< \brief Default interface port. */
 #define TCP_BACKLOG_SIZE 5   /*!< \brief TCP listen backlog size. */
+#define XFR_THREADS_COUNT 3  /*!< \brief Number of threads for XFR handler. */
+#define RECVMMSG_BATCHLEN 32 /*!< \brief Define for recvmmsg() batch size. */
 
 ///*! \brief If defined, zone structures will use hash table for lookup. */
 //#define COMPRESSION_PEDANTIC
@@ -51,7 +54,7 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 //#define STAT_COMPILE
 
 
-#ifdef HAVE_LIBLDNS
+#ifdef HAVE_LDNS
 #define TEST_WITH_LDNS
 #endif
 
@@ -87,8 +90,8 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 
 /*! \todo Refactor theese. We should have an allocator function handling this.*/
 #ifndef ERR_ALLOC_FAILED
-#define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d (%s ver.%x)\n", \
-				 __FILE__, __LINE__, PROJECT_NAME, PROJECT_VER)
+#define ERR_ALLOC_FAILED fprintf(stderr, "Allocation failed at %s:%d (%s)\n", \
+				 __FILE__, __LINE__, PACKAGE_STRING)
 #endif
 
 #ifndef CHECK_ALLOC_LOG
@@ -110,6 +113,6 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 	} while (0)
 #endif
 
-#endif /* _KNOT_COMMON_H_ */
+#endif /* _KNOTD_COMMON_H_ */
 
 /*! @} */

@@ -18,7 +18,7 @@
 enum desclen { PARSER_RRTYPE_DESCRIPTORS_LENGTH = 32770 }; // used to be 101
 
 /* Taken from RFC 1035, section 3.2.4.  */
-static dnslib_lookup_table_t dns_rrclasses[] = {
+static knot_lookup_table_t dns_rrclasses[] = {
 	{ PARSER_CLASS_IN, "IN" },	/* the Internet */
 	{ PARSER_CLASS_CS, "CS" },	/* the CSNET class (Obsolete) */
 	{ PARSER_CLASS_CH, "CH" },	/* the CHAOS class */
@@ -26,7 +26,7 @@ static dnslib_lookup_table_t dns_rrclasses[] = {
 	{ 0, NULL }
 };
 static parser_rrtype_descriptor_t
-       dnslib_rrtype_descriptors[PARSER_RRTYPE_DESCRIPTORS_LENGTH] = {
+       knot_rrtype_descriptors[PARSER_RRTYPE_DESCRIPTORS_LENGTH] = {
 	/* 0 */
 	{ 0, 0, NULL, 1, { PARSER_RDATA_WF_BINARY }, true },
 	/* 1 */
@@ -321,11 +321,11 @@ static parser_rrtype_descriptor_t
 parser_rrtype_descriptor_t *parser_rrtype_descriptor_by_type(uint16_t type)
 {
 	if (type < PARSER_RRTYPE_LAST + 1) {
-		return &dnslib_rrtype_descriptors[type];
+		return &knot_rrtype_descriptors[type];
 	} else if (type == PARSER_RRTYPE_DLV) {
-		return &dnslib_rrtype_descriptors[PARSER_RRTYPE_DLV];
+		return &knot_rrtype_descriptors[PARSER_RRTYPE_DLV];
 	}
-	return &dnslib_rrtype_descriptors[0];
+	return &knot_rrtype_descriptors[0];
 }
 
 /* I see a lot of potential here to speed up zone parsing - this is O(n) *
@@ -335,16 +335,16 @@ parser_rrtype_descriptor_t *parser_rrtype_descriptor_by_name(const char *name)
 	int i;
 
 	for (i = 0; i < PARSER_RRTYPE_LAST + 1; ++i) {
-		if (dnslib_rrtype_descriptors[i].name &&
-		    strcasecmp(dnslib_rrtype_descriptors[i].name, name) == 0) {
-			return &dnslib_rrtype_descriptors[i];
+		if (knot_rrtype_descriptors[i].name &&
+		    strcasecmp(knot_rrtype_descriptors[i].name, name) == 0) {
+			return &knot_rrtype_descriptors[i];
 		}
 	}
 
-	if (dnslib_rrtype_descriptors[PARSER_RRTYPE_DLV].name &&
-	    strcasecmp(dnslib_rrtype_descriptors[PARSER_RRTYPE_DLV].name,
+	if (knot_rrtype_descriptors[PARSER_RRTYPE_DLV].name &&
+	    strcasecmp(knot_rrtype_descriptors[PARSER_RRTYPE_DLV].name,
 				      name) == 0) {
-		return &dnslib_rrtype_descriptors[PARSER_RRTYPE_DLV];
+		return &knot_rrtype_descriptors[PARSER_RRTYPE_DLV];
 	}
 
 	return NULL;
@@ -401,11 +401,11 @@ uint16_t parser_rrtype_from_string(const char *name)
 const char *parser_rrclass_to_string(uint16_t rrclass)
 {
 	static char buf[20];
-	dnslib_lookup_table_t *entry = dnslib_lookup_by_id(dns_rrclasses,
+	knot_lookup_table_t *entry = knot_lookup_by_id(dns_rrclasses,
 							   rrclass);
 	if (entry) {
 		assert(strlen(entry->name) < sizeof(buf));
-		dnslib_strlcpy(buf, entry->name, sizeof(buf));
+		knot_strlcpy(buf, entry->name, sizeof(buf));
 	} else {
 		snprintf(buf, sizeof(buf), "CLASS%d", (int) rrclass);
 	}
@@ -416,9 +416,9 @@ uint16_t parser_rrclass_from_string(const char *name)
 {
 	char *end;
 	long rrclass;
-	dnslib_lookup_table_t *entry;
+	knot_lookup_table_t *entry;
 
-	entry = dnslib_lookup_by_name(dns_rrclasses, name);
+	entry = knot_lookup_by_name(dns_rrclasses, name);
 	if (entry) {
 		return (uint16_t) entry->id;
 	}

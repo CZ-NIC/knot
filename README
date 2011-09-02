@@ -1,1 +1,112 @@
-Access test - please ignore
+Installation
+============
+
+The following steps should work (verified in VirtualBox only)
+on the distribution/architecture/release combinations as listed bellow.
+
+----------------------------------------------
+Debian         (AMD64, I386) 6.0.2.1 (squeeze)
+Ubuntu Server  (AMD64, I386) 10.04 LTS
+Ubuntu Desktop (AMD64, I386) 10.04 LTS
+----------------------------------------------
+
+$ # make the system up-to-date
+$
+$ sudo apt-get update
+$ sudo apt-get upgrade
+$
+$ # ensure all prerequisites are installed
+$
+$ sudo apt-get install git-core autoconf libtool flex bison libssl-dev libev-dev
+$
+$ # the required version of liburcu is not available in the default package sources.
+$
+$ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu0_0.5.4-1_amd64.deb
+$ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu-dev_0.5.4-1_amd64.deb
+$ sudo dpkg -i liburcu0_0.5.4-1_amd64.deb
+$ sudo dpkg -i liburcu-dev_0.5.4-1_amd64.deb
+$
+$ # go for the real thing
+$
+$ git clone git://git.nic.cz/knot
+$ cd knot
+$ autoreconf -if
+$ ./configure
+$ sudo make install
+$ sudo ldconfig
+
+Alternative packages for I386:
+
+$ # the required version of liburcu is not available in the default package sources.
+$
+$ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu0_0.5.4-1_i386.deb
+$ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu-dev_0.5.4-1_i386.deb
+$ sudo dpkg -i liburcu0_0.5.4-1_i386.deb
+$ sudo dpkg -i liburcu-dev_0.5.4-1_i386.deb
+
+Running
+=======
+
+First, each server needs configuration file. Please see samples/knot.sample.conf
+for reference. Minimal configuration can be found in samples/knot.min.conf
+Configuration zone has to specify:
+* storage for PID files, compiled zones etc.
+* network interfaces
+* served zones
+
+$ cp samples/knot.min.conf myserver.conf
+$ vim myserver.conf # or your favourite text editor
+
+Second, zone files have to be compiled to binary form in order for server to
+load them. Binary 'knotc' (controller) offers functionality for everything from zone file
+management to controlling server instance. Most important parameter is '-c' that
+specifies config file for our server. Compiled zones are saved to storage
+defined in 'storage' variable in configuration.
+
+$ knotc -h # see what it can do
+$ knotc -c myserver.conf compile # compile zone files to binary format
+
+Third, lets load server. You can do this by running 'knotd' directly, or with
+'knotc' as well. Server is able to run in daemonized or interactive mode.
+Lets start our server in interactive mode (parameter '-i') to see if it runs.
+
+$ knotc -c myserver.conf -i start # start server in interactive mode
+
+Running as daemon
+=================
+
+Controller runs server in daemonized mode as default. Disadvantage is, that
+it closes stdout/stderr so you need to set up either syslog or logging to
+own files in the configuration. Controller parameter '-w' waits for the operation
+to finish. Let's test server functionality.
+
+$ knotc -c myserver.conf -w start # start server
+$ dig @$ADDR -p $PORT example.com # issue a query and see result
+$ ...
+$ knotc -c myserver.conf -w stop  # stop server
+
+Also, keep in mind that zone files have to be compiled before they are loaded
+to server. Workflow is as follows:
+
+$ knotc -c myserver.conf -w start
+$ <edit zonefile>
+$ knotc -c myserver.conf compile  # compile zones to binary format
+$ knotc -c myserver.conf reload   # reconfigures server on-the-fly
+$ dig @$ADDR -p $PORT example.com # issue a query and see result
+$ ...
+$ knotc -c myserver.conf stop
+
+Supported features
+==================
+
+DNS functions:
+* AXFR (master)
+* EDNS0
+* DNSSEC
+* NSEC3
+
+Server features:
+* Adding/removing zones on-the-fly
+* Reconfiguring server instance on-the-fly
+* IPv6 support
+* Semantic checks of loaded zone

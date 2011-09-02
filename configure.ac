@@ -7,6 +7,7 @@ AC_CONFIG_SRCDIR([src/knot/main.c])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
+AX_EXT
 
 # Enable maintainer mode by default for development
 AM_MAINTAINER_MODE([enable])
@@ -16,8 +17,35 @@ LT_INIT
 
 # Checks for programs.
 AC_PROG_CC
-AC_PROG_LEX
+AM_PROG_LEX
+
+AC_CACHE_CHECK([for reentrant lex], [ac_cv_path_LEX_R],
+  [AC_PATH_PROGS_FEATURE_CHECK([LEX_R], [$LEX flex gflex],
+    [[$ac_path_LEX_R -t>/dev/null 2>/dev/null<<END && ac_cv_path_LEX_R=$ac_path_LEX_R ac_path_LEX_R_found=true
+%{
+%}
+
+%option reentrant
+%option bison-bridge
+%option noinput
+%option nounput
+%option noreject
+
+BLANK [ \t\n]
+
+%%
+<<EOF>> return 0;
+%%
+END
+    ]],
+    [AC_MSG_ERROR([could not find lex that supports reentrant parsers])])])
+AC_SUBST([LEX], [$ac_cv_path_LEX_R])
+
 AC_PROG_YACC
+YACC_BISON=`bison --version | awk '{print $1;exit}'`
+if test "$YACC_BISON" != "bison"; then
+    AC_MSG_ERROR([GNU bison needed for reentrant parsers, set the \$YACC variable before running configure])
+fi
 AC_PROG_INSTALL
 
 # Set compiler compatibility flags
@@ -27,23 +55,28 @@ AC_PROG_CC_C99
 AC_ARG_ENABLE([ldns],
      [  --enable-ldns    Enable tests with ldns],
      [case "${enableval}" in
-       yes) AC_CHECK_LIB([ldns], [ldns_rr_list_pop_rrset]) ;;
+       yes) AC_SEARCH_LIBS([ldns_rr_list_pop_rrset], [ldns], [AC_DEFINE([HAVE_LDNS], [1], [ldns present])],
+       AC_MSG_ERROR([ldns not found])) ;;
        no)  ldns=false ;;
        *) AC_MSG_ERROR([bad value ${enableval} for --enable-ldns]) ;;
      esac],[ldns=false])
 
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lm':
-AC_CHECK_LIB([m], [pow])
-AC_CHECK_LIB([pthread], [pthread_create])
-AC_CHECK_LIB([urcu], [rcu_read_lock])
-AC_CHECK_LIB([rt], [clock_gettime])
-AC_CHECK_LIB([crypto], [OpenSSL_add_all_digests])
-#AC_CHECK_LIB([ldns], [ldns_rr_list_pop_rrset])
+# TODO: check if paths exist before appending
+CFLAGS="$CFLAGS -I/usr/local/include"
+LDFLAGS="$LDFLAGS -L/usr/local/lib"
+AC_SEARCH_LIBS([pow], [m])
+AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])
+AC_SEARCH_LIBS([rcu_set_pointer_sym], [urcu], [], [AC_MSG_ERROR([liburcu not found])])
+#AC_SEARCH_LIBS([clock_gettime], [rt], [], [AC_MSG_ERROR([librt not found])])
+AC_SEARCH_LIBS([OpenSSL_add_all_digests], [crypto],[], [AC_MSG_ERROR([libcrypto not found])])
+AC_SEARCH_LIBS([ev_loop_new], [ev],[], [AC_MSG_ERROR([libev not found])])
+#AC_SEARCH_LIBS([ldns_rr_list_pop_rrset], [ldns], [], [AC_MSG_ERROR([libldns not found])])
 
 # Checks for header files.
 AC_HEADER_RESOLV
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h limits.h malloc.h netdb.h netinet/in.h stdint.h stdlib.h string.h strings.h sys/socket.h sys/time.h syslog.h unistd.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h limits.h malloc.h netdb.h netinet/in.h stdint.h stdlib.h string.h strings.h sys/socket.h sys/time.h syslog.h unistd.h urcu.h ev.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
@@ -63,5 +96,7 @@ AC_FUNC_MMAP
 AC_CHECK_FUNCS([gethostbyname gettimeofday memmove memset munmap regcomp select socket sqrt strcasecmp strchr strdup strerror strncasecmp strtol strtoul])
 
 AC_CONFIG_FILES([Makefile
+                 libknot/Makefile
+		 samples/Makefile
                  src/Makefile])
 AC_OUTPUT

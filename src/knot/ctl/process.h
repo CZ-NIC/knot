@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_PROCESS_H_
-#define _KNOT_PROCESS_H_
+#ifndef _KNOTD_PROCESS_H_
+#define _KNOTD_PROCESS_H_
 
 #include <unistd.h>
 
@@ -28,9 +28,9 @@ char* pid_filename();
  * \param fn Filename containing PID.
  *
  * \retval PID on success (positive integer).
- * \retval KNOT_EINVAL on null path.
- * \retval KNOT_ENOENT if the filename content cannot be read.
- * \retval KNOT_ERANGE if the stored PID is out of range.
+ * \retval KNOTD_EINVAL on null path.
+ * \retval KNOTD_ENOENT if the filename content cannot be read.
+ * \retval KNOTD_ERANGE if the stored PID is out of range.
  */
 pid_t pid_read(const char* fn);
 
@@ -39,10 +39,10 @@ pid_t pid_read(const char* fn);
  *
  * \param fn Filename containing PID.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on null path.
- * \retval KNOT_ENOENT filename cannot be opened for writing.
- * \retval KNOT_ERROR unspecified error.
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on null path.
+ * \retval KNOTD_ENOENT filename cannot be opened for writing.
+ * \retval KNOTD_ERROR unspecified error.
  */
 int pid_write(const char* fn);
 
@@ -53,8 +53,8 @@ int pid_write(const char* fn);
  *
  * \warning Filename content won't be checked.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL failed to remove filename.
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL failed to remove filename.
  */
 int pid_remove(const char* fn);
 
@@ -68,6 +68,6 @@ int pid_remove(const char* fn);
  */
 int pid_running(pid_t pid);
 
-#endif // _KNOT_PROCESS_H_
+#endif // _KNOTD_PROCESS_H_
 
 /*! @} */

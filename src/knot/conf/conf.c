@@ -16,13 +16,12 @@
  * Defaults.
  */
 
-#define DEFAULT_CONF_COUNT 2 /*!< \brief Number of default config paths. */
-
 /*! \brief Default config paths. */
-static const char *DEFAULT_CONFIG[2] = {
-        "~/." PROJECT_EXEC "/" PROJECT_EXEC ".conf",
-        "/etc/" PROJECT_EXEC "/" PROJECT_EXEC ".conf"
+static const char *DEFAULT_CONFIG[] = {
+	SYSCONFDIR "/" "knot.conf",
 };
+
+#define DEFAULT_CONF_COUNT 1 /*!< \brief Number of default config paths. */
 
 /*
  * Utilities.
@@ -50,76 +49,33 @@ static int rmkdir(char *path, int mode)
 }
 
 /* Prototypes for cf-parse.y */
-extern char* yytext;
-extern int yylineno;
-extern int cf_parse();
+extern int cf_parse(void *scanner);
+extern int cf_get_lineno(void *scanner);
+extern char *cf_get_text(void *scanner);
+extern int cf_lex_init(void *scanner);
+extern void cf_set_in(FILE *f, void *scanner);
+extern void cf_lex_destroy(void *scanner);
+extern void switch_input(const char *str, void *scanner);
 
-/*
- * Parser instance globals.
- * \todo: Use pure reentrant parser to get rid of the globals.
- */
 conf_t *new_config = 0; /*!< \brief Currently parsed config. */
 static volatile int _parser_res = 0; /*!< \brief Parser result. */
-static void *_parser_src = 0; /*!< \brief Parser data source. */
-static ssize_t _parser_remaining = -1; /*!< \brief Parser remaining bytes. */
 static pthread_mutex_t _parser_lock = PTHREAD_MUTEX_INITIALIZER;
-int (*cf_read_hook)(char *buf, size_t nbytes) = 0;
-
-/*!
- * \brief Config file read hook.
- *
- * Wrapper for fread().
- *
- * \retval number of read bytes on success.
- * \retval <0 on error.
- */
-int cf_read_file(char *buf, size_t nbytes) {
-	if (_parser_src == 0) {
-		return -1;
-	}
-
-	// Read a maximum of nbytes
-	return fread(buf, 1, nbytes, (FILE*)_parser_src);
-}
-
-/*!
- * \brief Config file read hook (from memory).
- * \retval number of read bytes on success.
- * \retval <0 on error.
- */
-int cf_read_mem(char *buf, size_t nbytes) {
-	if (_parser_src == 0 || _parser_remaining < 0) {
-		return -1;
-	}
-
-	// Assert remaining bytes
-	if ((size_t)_parser_remaining < nbytes) {
-		nbytes = (size_t)_parser_remaining;
-	}
-
-	// Check remaining
-	if (nbytes == 0) {
-		return 0;
-	}
-
-	// Read a maximum of nbytes
-	void* dst = memcpy(buf, (const char*)_parser_src, nbytes);
-	if (dst != 0) {
-		_parser_remaining -= nbytes;
-		_parser_src = (char*)_parser_src + nbytes;
-		return nbytes;
-	}
-
-	return -1;
-}
 
 /*! \brief Config error report. */
-void cf_error(const char *msg)
+void cf_error(void *scanner, const char *msg)
 {
-	log_server_error("Config '%s' - %s on line %d (current token '%s').\n",
-	                 new_config->filename, msg, yylineno, yytext);
+	int lineno = -1;
+	char *text = "???";
+	if (scanner) {
+		lineno = cf_get_lineno(scanner);
+		text = (char *)cf_get_text(scanner);
+	}
 
-	_parser_res = KNOT_EPARSEFAIL;
+	log_server_error("Config '%s' - %s on line %d (current token '%s').\n",
+			 new_config->filename, msg, lineno, text);
+
+
+	_parser_res = KNOTD_EPARSEFAIL;
 }
 
 /*
@@ -165,9 +121,17 @@ static void zone_free(conf_zone_t *zone)
 		return;
 	}
 
+	/* Free ACL lists. */
+	WALK_LIST_FREE(zone->acl.xfr_in);
+	WALK_LIST_FREE(zone->acl.xfr_out);
+	WALK_LIST_FREE(zone->acl.notify_in);
+	WALK_LIST_FREE(zone->acl.notify_out);
+
 	free(zone->name);
 	free(zone->file);
 	free(zone->db);
+	free(zone->ixfr_db);
+	free(zone);
 }
 
 /*!
@@ -215,6 +179,31 @@ static int conf_process(conf_t *conf)
 	WALK_LIST (n, conf->zones) {
 		conf_zone_t *zone = (conf_zone_t*)n;
 
+		// Default policy for dbsync timeout
+		if (zone->dbsync_timeout < 0) {
+			zone->dbsync_timeout = conf->dbsync_timeout;
+		}
+
+		// Default policy for semantic checks
+		if (zone->enable_checks < 0) {
+			zone->enable_checks = conf->zone_checks;
+		}
+
+		// Default policy for NOTIFY retries
+		if (zone->notify_retries <= 0) {
+			zone->notify_retries = conf->notify_retries;
+		}
+
+		// Default policy for NOTIFY timeout
+		if (zone->notify_timeout <= 0) {
+			zone->notify_timeout = conf->notify_timeout;
+		}
+
+		// Default policy for IXFR FSLIMIT
+		if (zone->ixfr_fslimit == 0) {
+			zone->ixfr_fslimit = conf->ixfr_fslimit;
+		}
+
 		// Normalize zone filename
 		zone->file = strcpath(zone->file);
 
@@ -230,6 +219,19 @@ static int conf_process(conf_t *conf)
 		strcat(dest, zone->name);
 		strcat(dest, "db");
 		zone->db = dest;
+
+		// Create IXFR db filename
+		stor_len = strlen(conf->storage);
+		size = stor_len + strlen(zone->name) + 9; // diff.db/,\0
+		dest = malloc(size);
+		strcpy(dest, conf->storage);
+		if (conf->storage[stor_len - 1] != '/') {
+			strcat(dest, "/");
+		}
+
+		strcat(dest, zone->name);
+		strcat(dest, "diff.db");
+		zone->ixfr_db = dest;
 	}
 
 	return 0;
@@ -306,28 +308,30 @@ void __attribute__ ((destructor)) conf_deinit()
 static int conf_fparser(conf_t *conf)
 {
 	if (!conf->filename) {
-		return KNOT_EINVAL;
+		return KNOTD_EINVAL;
 	}
 
-	int ret = KNOT_EOK;
+	int ret = KNOTD_EOK;
 	pthread_mutex_lock(&_parser_lock);
 	// {
 	// Hook new configuration
 	new_config = conf;
-	_parser_src = fopen(conf->filename, "r");
-	_parser_remaining = -1;
-	if (_parser_src == 0) {
+	FILE *f = fopen(conf->filename, "r");
+	if (f == 0) {
 		pthread_mutex_unlock(&_parser_lock);
-		return KNOT_ENOENT;
+		return KNOTD_ENOENT;
 	}
 
 	// Parse config
-	_parser_res = KNOT_EOK;
-	cf_read_hook = cf_read_file;
-	cf_parse();
+	_parser_res = KNOTD_EOK;
+	new_config->filename = conf->filename;
+	void *sc = NULL;
+	cf_lex_init(&sc);
+	cf_set_in(f, sc);
+	cf_parse(sc);
+	cf_lex_destroy(sc);
 	ret = _parser_res;
-	fclose((FILE*)_parser_src);
-	_parser_src = 0;
+	fclose(f);
 	// }
 	pthread_mutex_unlock(&_parser_lock);
 	return ret;
@@ -339,33 +343,30 @@ static int conf_fparser(conf_t *conf)
 static int conf_strparser(conf_t *conf, const char *src)
 {
 	if (!src) {
-		return KNOT_EINVAL;
+		return KNOTD_EINVAL;
 	}
 
-	int ret = KNOT_EOK;
+	int ret = KNOTD_EOK;
 	pthread_mutex_lock(&_parser_lock);
 	// {
 	// Hook new configuration
 	new_config = conf;
-	_parser_src = (char*)src;
-	_parser_remaining = strlen(src);
-	if (_parser_src == 0) {
-		_parser_src = 0;
-		_parser_remaining = -1;
+	if (src == 0) {
 		pthread_mutex_unlock(&_parser_lock);
-		return KNOT_ENOENT;
+		return KNOTD_ENOENT;
 	}
 
 	// Parse config
-	_parser_res = KNOT_EOK;
-	cf_read_hook = cf_read_mem;
+	_parser_res = KNOTD_EOK;
 	char *oldfn = new_config->filename;
 	new_config->filename = "(stdin)";
-	cf_parse();
+	void *sc = NULL;
+	cf_lex_init(&sc);
+	switch_input(src, sc);
+	cf_parse(sc);
+	cf_lex_destroy(sc);
 	new_config->filename = oldfn;
 	ret = _parser_res;
-	_parser_src = 0;
-	_parser_remaining = -1;
 	// }
 	pthread_mutex_unlock(&_parser_lock);
 	return ret;
@@ -390,6 +391,14 @@ conf_t *conf_new(const char* path)
 	init_list(&c->ifaces);
 	init_list(&c->zones);
 	init_list(&c->hooks);
+	init_list(&c->remotes);
+
+	// Defaults
+	c->zone_checks = 0;
+	c->notify_retries = CONFIG_NOTIFY_RETRIES;
+	c->notify_timeout = CONFIG_NOTIFY_TIMEOUT;
+	c->dbsync_timeout = CONFIG_DBSYNC_TIMEOUT;
+	c->ixfr_fslimit = -1;
 
 	return c;
 }
@@ -399,7 +408,7 @@ int conf_add_hook(conf_t * conf, int sections,
 {
 	conf_hook_t *hook = malloc(sizeof(conf_hook_t));
 	if (!hook) {
-		return KNOT_ENOMEM;
+		return KNOTD_ENOMEM;
 	}
 
 	hook->sections = sections;
@@ -408,7 +417,7 @@ int conf_add_hook(conf_t * conf, int sections,
 	add_tail(&conf->hooks, &hook->n);
 	++conf->hooks_count;
 
-	return KNOT_EOK;
+	return KNOTD_EOK;
 }
 
 int conf_parse(conf_t *conf)
@@ -423,10 +432,10 @@ int conf_parse(conf_t *conf)
 	conf_update_hooks(conf);
 
 	if (ret < 0) {
-		return KNOT_EPARSEFAIL;
+		return KNOTD_EPARSEFAIL;
 	}
 
-	return KNOT_EOK;
+	return KNOTD_EOK;
 }
 
 int conf_parse_str(conf_t *conf, const char* src)
@@ -441,10 +450,10 @@ int conf_parse_str(conf_t *conf, const char* src)
 	conf_update_hooks(conf);
 
 	if (ret < 0) {
-		return KNOT_EPARSEFAIL;
+		return KNOTD_EPARSEFAIL;
 	}
 
-	return KNOT_EOK;
+	return KNOTD_EOK;
 }
 
 void conf_truncate(conf_t *conf, int unload_hooks)
@@ -484,6 +493,13 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	}
 	conf->logs_count = 0;
 	init_list(&conf->logs);
+
+	// Free remotes
+	WALK_LIST_DELSAFE(n, nxt, conf->remotes) {
+		iface_free((conf_iface_t*)n);
+	}
+	conf->remotes_count = 0;
+	init_list(&conf->remotes);
 
 	// Free zones
 	WALK_LIST_DELSAFE(n, nxt, conf->zones) {
@@ -559,13 +575,15 @@ int conf_open(const char* path)
 {
 	/* Check path. */
 	if (!path) {
-		return KNOT_EINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Check if exists. */
-	struct stat st;
-	if (stat(path, &st) != 0) {
-		return KNOT_ENOENT;
+	FILE *fp = fopen(path, "r");
+	if (fp == 0) {
+		return KNOTD_ENOENT;
+	} else {
+		fclose(fp);
 	}
 
 	/* Create new config. */
@@ -573,7 +591,7 @@ int conf_open(const char* path)
 
 	/* Parse config. */
 	int ret = conf_fparser(nconf);
-	if (ret != 0) {
+	if (ret != KNOTD_EOK) {
 		conf_free(nconf);
 		return ret;
 	}
@@ -583,8 +601,8 @@ int conf_open(const char* path)
 
 	/* Copy hooks. */
 	if (oldconf) {
-		node *n = 0;
-		WALK_LIST (n, oldconf->hooks) {
+		node *n = 0, *nxt = 0;
+		WALK_LIST_DELSAFE (n, nxt, oldconf->hooks) {
 			conf_hook_t *hook = (conf_hook_t*)n;
 			conf_add_hook(nconf, hook->sections,
 			              hook->update, hook->data);
@@ -605,7 +623,7 @@ int conf_open(const char* path)
 	/* Update hooks. */
 	conf_update_hooks(nconf);
 
-	return KNOT_EOK;
+	return KNOTD_EOK;
 }
 
 char* strcdup(const char *s1, const char *s2)

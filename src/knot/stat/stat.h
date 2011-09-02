@@ -9,8 +9,8 @@
  * @{
  */
 
-#ifndef _KNOT_STAT_H_
-#define _KNOT_STAT_H_
+#ifndef _KNOTD_STAT_H_
+#define _KNOTD_STAT_H_
 
 #include <time.h>
 #include <stdbool.h>
@@ -137,6 +137,6 @@ void stat_static_gath_free();
 static inline void stat_static_gath_free() {}
 #endif /* STAT_COMPILE */
 
-#endif /* _KNOT_STAT_H_ */
+#endif /* _KNOTD_STAT_H_ */
 
 /*! @} */

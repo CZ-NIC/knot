@@ -20,7 +20,7 @@ int log_conf_hook(const struct conf_t *conf, void *data)
 
 	// Check if log declaration exists, otherwise ignore
 	if (conf->logs_count < 1) {
-		return KNOT_EINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	// Find maximum log facility id
@@ -81,6 +81,6 @@ int log_conf_hook(const struct conf_t *conf, void *data)
 		log_levels_set(LOGT_STDERR, LOG_ANY, bmask);
 	}
 
-	return KNOT_EOK;
+	return KNOTD_EOK;
 }
 

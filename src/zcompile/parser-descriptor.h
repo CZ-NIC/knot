@@ -9,13 +9,13 @@
  * @{
  */
 
-#ifndef _KNOT_PARSER_DESCRIPTOR_H_
-#define _KNOT_PARSER_DESCRIPTOR_H_
+#ifndef _KNOTD_PARSER_DESCRIPTOR_H_
+#define _KNOTD_PARSER_DESCRIPTOR_H_
 
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "dnslib/utils.h"
+#include "libknot/util/utils.h"
 
 enum parser_mxrdtln {
 	PARSER_MAX_RDATA_ITEMS = 64,
@@ -237,6 +237,6 @@ const char *parser_rrclass_to_string(uint16_t rrclass);
  */
 uint16_t parser_rrclass_from_string(const char *name);
 
-#endif /* _KNOT_PARSER_DESCRIPTOR_H_ */
+#endif /* _KNOTD_PARSER_DESCRIPTOR_H_ */
 
 /*! @} */

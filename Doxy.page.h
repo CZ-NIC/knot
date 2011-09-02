@@ -46,20 +46,6 @@ When compiled, the following executables are created (in the src/ directory):
 - \em unittests          - Unit tests for the server and dnslib
 - \em unittests-zcompile - Unit tests for the zone compiler
 
-<h3>Manual approach</h3>
-
-1. Compile zones
-\code
-$ src/knot-zcompile -o example.com.db example.com. samples/example.com.zone
-$ src/knot-zcompile -o other-zone.db other-zone.com. other-zone.com.zone
-\endcode
-
-2. Run the server with the compiled zones (use -d to run as a daemon)
-\code
-$ src/knotd example.com.db other-zone.db
-\endcode
-
-<h3>Using knotc</h3>
 1. Add path to knotd and knot-zcompile executables to PATH
 
 2. Prepare a configuration file. You may copy and edit the one provided with

@@ -3,10 +3,9 @@
 #include <stdlib.h>
 
 #include "zcompile/zcompile.h"
+#include "zcompile/zcompile-error.h"
+#include "common/errors.h"
 #include "config.h"
-
-#define PROJECT_NAME PACKAGE // Project name
-#define PROJECT_VER  0x000100  // 0xMMIIRR (MAJOR,MINOR,REVISION)
 
 static void help(int argc, char **argv)
 {
@@ -15,6 +14,7 @@ static void help(int argc, char **argv)
 	printf("Parameters:\n"
 	       " -o <outfile> Override output file.\n"
 	       " -v           Verbose mode - additional runtime information.\n"
+	       " -s           Enable semantic checks.\n"
 	       " -V           Print version of the server.\n"
 	       " -h           Print help and usage.\n");
 }
@@ -24,10 +24,11 @@ int main(int argc, char **argv)
 	// Parse command line arguments
 	int c = 0;
 	int verbose = 0;
+	int semantic_checks = 0;
 	const char* origin = 0;
 	const char* zonefile = 0;
 	const char* outfile = 0;
-	while ((c = getopt (argc, argv, "o:vVh")) != -1) {
+	while ((c = getopt (argc, argv, "o:vVsh")) != -1) {
 		switch (c)
 		{
 		case 'o':
@@ -37,11 +38,11 @@ int main(int argc, char **argv)
 			verbose = 1;
 			break;
 		case 'V':
-			printf("%s, version %d.%d.%d\n", PROJECT_NAME,
-			       PROJECT_VER >> 16 & 0x000000ff,
-			       PROJECT_VER >> 8 & 0x000000ff,
-			       PROJECT_VER >> 0 & 0x000000ff);
-			return 1;
+			printf("%s, version %s\n", PACKAGE_NAME, PACKAGE_VERSION);
+			return 0;
+		case 's':
+			semantic_checks = 1;
+			break;
 		case 'h':
 		case '?':
 		default:
@@ -78,10 +79,19 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	int errors = zone_read(origin, zonefile, outfile);
+	int error = zone_read(origin, zonefile, outfile, semantic_checks);
 
-	printf("Finished.\n");
+	if (error) {
+//		if (error < 0) {
+//			fprintf(stderr, "Finished with error: %s.\n",
+//			       error_to_str(knot_zcompile_error_msgs, error));
+//		} else {
+//			fprintf(stderr, "Finished with %u errors.\n");
+//		}
+	} else {
+		printf("Compilation successful.\n");
+	}
 	//log_close();
 
-	return errors ? 1 : 0;
+	return error;
 }

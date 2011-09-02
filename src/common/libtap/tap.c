@@ -240,7 +240,7 @@ cendtodo () {
 #include <sys/mman.h>
 #include <regex.h>
 
-#ifdef __APPLE__
+#ifndef MAP_ANONYMOUS 
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 
