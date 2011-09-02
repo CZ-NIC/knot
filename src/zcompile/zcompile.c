@@ -1935,12 +1935,14 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 
 	debug_zp("rdata adjusted\n");
 
-	knot_zdump_binary(contents,
-	                    outfile, semantic_checks, zonefile);
-
-	debug_zp("zone dumped\n");
-
-	zone_dump_text(contents, "debug.zone");
+	if (parser->errors != 0) {
+		fprintf(stderr,
+		        "Parser finished with error, not dumping the zone!\n");
+	} else {
+		knot_zdump_binary(contents,
+		                    outfile, semantic_checks, zonefile);
+		debug_zp("zone dumped.\n");
+	}
 
 	/* This is *almost* unnecessary */
 	knot_zone_deep_free(&(parser->current_zone), 0);
