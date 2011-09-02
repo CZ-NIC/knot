@@ -2778,7 +2778,7 @@ DEBUG_KNOT_NS(
 		debug_knot_ns("No zone found.\n");
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_NOTAUTH);
 		ns_axfr_send_and_clear(xfr);
-		return KNOT_ERROR;
+		return KNOT_ENOZONE;
 	}
 
 DEBUG_KNOT_NS(
