@@ -274,7 +274,8 @@ char *rdata_dns_name_to_string(knot_rdata_item_t item)
 
 char *rdata_text_to_string(knot_rdata_item_t item)
 {
-	const uint8_t *data = (const uint8_t *) item.raw_data + 1;
+	/*!< \todo this will only convert one TXT! */
+	const uint8_t *data = (uint8_t *)(item.raw_data + 1);
 	uint8_t length = data[0];
 	size_t i;
 
@@ -287,13 +288,13 @@ char *rdata_text_to_string(knot_rdata_item_t item)
 
 	size_t current_length = sizeof(char) * (length + 3);
 
-	strcat(ret, "\\");
+	strcat(ret, "\"");
 
 	for (i = 1; i <= length; i++) {
 		char ch = (char) data[i];
 		if (isprint((int)ch)) {
 			if (ch == '"' || ch == '\\') {
-				strcat(ret, "\\");
+				strcat(ret, "\"");
 			}
 				/* XXX for the love of god, how to this better,
 				   but w/o obscure self-made functions */
@@ -306,7 +307,7 @@ char *rdata_text_to_string(knot_rdata_item_t item)
 			strcat(ret, "\\");
 			char tmp_str[2];
 			/* TODO convert to unsigned*/
-			tmp_str[0] = ch;
+			tmp_str[0] = ch - '0';
 			tmp_str[1] = 0;
 
 			current_length += sizeof(char);

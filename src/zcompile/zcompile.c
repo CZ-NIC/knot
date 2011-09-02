@@ -1377,7 +1377,7 @@ void zadd_rdata_txt_wireformat(uint16_t *data, int first)
 		parser->rdata_count++;
 		rd->raw_data[0] = 0;
 	} else {
-		assert(0);
+//		assert(0);
 		rd = &parser->temporary_items[parser->rdata_count-1];
 	}
 
