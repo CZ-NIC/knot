@@ -40,7 +40,7 @@ void help(int argc, char **argv)
 	       " stop      Stop %s server (no-op if not running).\n"
 	       " restart   Stops and then starts %s server.\n"
 	       " reload    Reload %s configuration and compiled zones.\n"
-	       " running   heck if server is running.\n"
+	       " running   check if server is running.\n"
 	       "\n"
 	       " compile   Compile zone file.\n",
 	       PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME);
