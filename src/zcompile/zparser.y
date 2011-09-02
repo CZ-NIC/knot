@@ -22,8 +22,7 @@
 
 #include "zcompile/parser-util.h"
 
-#include "libknot/dname.h"
-#include "libknot/zone/zone.h"
+#include "libknot/libknot.h"
 #include "zcompile/zcompile.h"
 #include "zcompile/parser-descriptor.h"
 #include "zcompile/zcompile-error.h"
@@ -70,8 +69,8 @@ knot_dname_t *error_domain;
 
 %}
 %union {
-	knot_dname_t       *domain; /* \todo */
-	knot_dname_t *dname; //XXX used to be const!
+	knot_dname_t       *domain;
+	knot_dname_t       *dname;
 	struct lex_data      data;
 	uint32_t             ttl;
 	uint16_t             rclass;
@@ -96,7 +95,7 @@ knot_dname_t *error_domain;
 %token <type> T_SPF T_NSEC3 T_IPSECKEY T_DHCID T_NSEC3PARAM
 
 /* other tokens */
-%token	       DOLLAR_TTL DOLLAR_ORIGIN NL SP
+%token	       DOLLAR_TTL DOLLAR_ORIGIN NL SP NO_MEM
 %token <data>  STR PREV BITLAB
 %token <ttl>   T_TTL
 %token <rclass> T_RRCLASS
@@ -120,6 +119,10 @@ lines:	/* empty file */
 
 line:	NL
     |	sp NL
+    |	NO_MEM {
+    		zc_error_prev_line("Parser ran out of memory!");
+		YYABORT;
+	}
     |	PREV NL		{}    /* Lines containing only whitespace.  */
     |	ttl_directive
 	{
@@ -132,17 +135,30 @@ line:	NL
     |	rr
     {	/* rr should be fully parsed */
 	if (!parser->error_occurred) {
+		/*!< \todo assign error to error occurred */
+		/*! \todo Make sure this does not crash */
+		if (parser->current_rrset->owner == NULL) {
+			knot_rrset_deep_free(&(parser->current_rrset),
+					       0, 0, 0);
+			knot_zone_deep_free(&(parser->current_zone),
+					      0);
+			YYABORT;
+		}
 		knot_rdata_t *tmp_rdata = knot_rdata_new();
-
-		assert(tmp_rdata != NULL);
+		if (tmp_rdata == NULL) {
+			knot_rrset_deep_free(&(parser->current_rrset),
+					       0, 0, 0);
+			knot_zone_deep_free(&(parser->current_zone),
+					      0);
+			YYABORT;
+		}
 
 		if (knot_rdata_set_items(tmp_rdata,
 		    parser->temporary_items,
 		    parser->rdata_count) != 0) {
 			knot_rdata_free(&tmp_rdata);
-			knot_rrset_deep_free(&(parser->current_rrset), 1, 1,
-			                       1);
-			knot_zone_deep_free(&(parser->current_zone), 1);
+			knot_rrset_deep_free(&(parser->current_rrset), 0, 0, 0);
+			knot_zone_deep_free(&(parser->current_zone), 0);
 			YYABORT;
 		}
 
@@ -152,60 +168,63 @@ line:	NL
 		    	fprintf(stderr, "Could not add rdata!\n");
 		    }
 
-//printf("Before cat: %s (%p)\n", knot_dname_to_str(parser->current_rrset->owner),
-//parser->current_rrset->owner->name);
-
 		if (!knot_dname_is_fqdn(parser->current_rrset->owner)) {
-			parser->current_rrset->owner =
+			knot_dname_t *tmp_dname =
 				knot_dname_cat(parser->current_rrset->owner,
 						 parser->root_domain);
-			/*!< \todo lost pointer! */
+			if (tmp_dname == NULL) {
+				knot_rrset_deep_free(&(parser->current_rrset),
+				                       0, 0, 0);
+				knot_zone_deep_free(&(parser->current_zone),
+				                      0);
+				YYABORT;
+			}
+			parser->current_rrset->owner = tmp_dname;
 		}
 
-//printf("before: %p %p\n", parser->current_rrset->owner, parser->current_rrset->owner->name);
-//void *tmp1 = parser->current_rrset->owner;
-//void *tmp2 = parser->current_rrset->owner->name;
-
-//if (tmp1 != parser->current_rrset->owner ||
-//tmp2 != parser->current_rrset->owner->name) {
-//printf("before: %p %p\n", tmp1, tmp2);
-//printf("after: %p %p\n", parser->current_rrset->owner, parser->current_rrset->owner->name);
-//printf("%s\n", knot_dname_to_str(parser->current_rrset->owner));
-//}
-
 		assert(parser->current_rrset->owner != NULL);
-//		printf("after cat: %s (%p)\n", knot_dname_to_str(parser->current_rrset->owner), parser->current_rrset->owner->name);
-
-//printf("%p\n", parser->current_rrset->owner->labels);
-		int ret;
+		int ret = 0;
 		if ((ret = process_rr()) != 0) {
-			/* Should it fail? */
-			char *tmp_dname_str =
-			knot_dname_to_str(parser->current_rrset->owner);
 			fprintf(stderr, "Error: could not process RRSet\n"
-				"owner: %s reason: %s\n", tmp_dname_str,
+				"owner: %s reason: %s\n",
+				parser->current_rrset->owner->name,
 				error_to_str(knot_zcompile_error_msgs, ret));
-			free(tmp_dname_str);
+
+			/* If the owner is not already in the table, free it. */
+//			if (dnslib_dname_table_find_dname(parser->dname_table,
+//				parser->current_rrset->owner) == NULL) {
+//				dnslib_dname_free(&parser->
+//				                  current_rrset->owner);
+//			} /* This would never happen */
 
 			if (ret == KNOTDZCOMPILE_EBADSOA) {
-				/*!< \todo this will crash! */
 				knot_rrset_deep_free(&(parser->current_rrset),
-						       0, 1, 0);
+						       0, 0, 0);
 				knot_zone_deep_free(&(parser->current_zone),
 						      0);
 				YYABORT;
+			} else {
+				/* Free rdata, it will not be added
+				 * and hence cannot be
+				 * freed with rest of the zone. */
+				knot_rdata_deep_free(&tmp_rdata,
+				                       parser->
+				                       current_rrset->type,
+				                       0);
 			}
-		} else { ;
-		/* In case of adding failure, dnames have to be processed
-		 * AFTER they've been added, so that we won't pollute the table
-		 * with freed dnames */
-
-		/*!< \todo Current implementation might introduce redundant
-		 * dnames to the table (from rdata section, which was processed
-		 * and its dnames added to the table, but then was not acutally
-		 * added to the zone.
-		 */
-
+		}
+	} else {
+		/* Error occured. This could either be lack of memory, or one
+		 * of the converting function was not able to convert. */
+		if (parser->error_occurred == KNOTDZCOMPILE_ENOMEM) {
+			/* Ran out of memory in converting functions. */
+			fprintf(stderr, "Parser ran out "
+			                "of memory, aborting!\n");
+			knot_rrset_deep_free(&(parser->current_rrset),
+					       0, 0, 0);
+			knot_zone_deep_free(&(parser->current_zone),
+					      0);
+			YYABORT;
 		}
 	}
 
@@ -243,6 +262,8 @@ ttl_directive:	DOLLAR_TTL sp STR trail
     }
     ;
 
+
+
 origin_directive:	DOLLAR_ORIGIN sp abs_dname trail
     {
 /*	    knot_node_t *origin_node = knot_node_new(knot_dname_cat($3,
@@ -262,8 +283,6 @@ origin_directive:	DOLLAR_ORIGIN sp abs_dname trail
 
 rr:	owner classttl type_and_rdata
     {
-
-//    tady najit jmeno z tabulky ale nepridavat
 	    /* Save the pointer, it might get freed! */
 	    parser->current_rrset->owner = $1;
 //	    printf("new owner assigned: %p\n", $1);
@@ -317,7 +336,6 @@ classttl:	/* empty - fill in the default, def. ttl and IN class */
 dname:	abs_dname
     |	rel_dname
     {
-	    /*! \todo Fix domain_dname() and size */
 	    if ($1 == error_dname) {
 		    $$ = error_domain;
 	    } else if ($1->size + parser->origin->owner->size - 1 >
@@ -336,9 +354,8 @@ dname:	abs_dname
 
 abs_dname:	'.'
     {
-	    /*! \todo Get root domain from db. */
-		//$$ = parser->db->domains->root;
 	    $$ = knot_dname_deep_copy(parser->root_domain);
+	    /* TODO how about concatenation now? */
     }
     |	'@'
     {
@@ -347,8 +364,6 @@ abs_dname:	'.'
     |	rel_dname '.'
     {
 	    if ($1 != error_dname) {
-		    /*! \todo What a mysterious function is this? */
-		    /* $$ = dns(parser->db->domains, $1); */
 		    $$ = $1;
 
 	    } else {
@@ -408,6 +423,14 @@ wire_dname:	wire_abs_dname
 wire_abs_dname:	'.'
     {
 	    char *result = malloc(2 * sizeof(char));
+	    if (result == NULL) {
+	    	ERR_ALLOC_FAILED;
+	    	knot_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0, 0);
+	        knot_zone_deep_free(&(parser->current_zone),
+		                      0);
+		YYABORT;
+	    }
 	    result[0] = 0;
 	    result[1] = '\0';
 	    $$.str = result;
@@ -416,6 +439,14 @@ wire_abs_dname:	'.'
     |	wire_rel_dname '.'
     {
 	    char *result = malloc($1.len + 2 * sizeof(char));
+	    if (result == NULL) {
+	    	ERR_ALLOC_FAILED;
+	    	knot_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0, 0);
+	        knot_zone_deep_free(&(parser->current_zone),
+		                      0);
+		YYABORT;
+	    }
 	    memcpy(result, $1.str, $1.len);
 	    result[$1.len] = 0;
 	    result[$1.len+1] = '\0';
@@ -430,6 +461,14 @@ wire_abs_dname:	'.'
 wire_label:	STR
     {
 	    char *result = malloc($1.len + sizeof(char));
+	    if (result == NULL) {
+	    	ERR_ALLOC_FAILED;
+	    	knot_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0, 0);
+	        knot_zone_deep_free(&(parser->current_zone),
+		                      0);
+		YYABORT;
+	    }
 
 	    if ($1.len > MAXLABELLEN)
 		    zc_error("label exceeds %d character limit", MAXLABELLEN);
@@ -455,6 +494,14 @@ wire_rel_dname:	wire_label
 	    /* make dname anyway */
 	    $$.len = $1.len + $3.len;
 	    $$.str = malloc($$.len + sizeof(char));
+	    if ($$.str == NULL) {
+	    	ERR_ALLOC_FAILED;
+	    	knot_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0, 0);
+		knot_zone_deep_free(&(parser->current_zone),
+		                      0);
+		YYABORT;
+	    }
 	    memcpy($$.str, $1.str, $1.len);
 	    memcpy($$.str + $1.len, $3.str, $3.len);
 	    $$.str[$$.len] = '\0';
@@ -495,6 +542,15 @@ concatenated_str_seq:	STR
     {
 	    $$.len = $1.len + $3.len + 1;
 	    $$.str = malloc($$.len + 1);
+	    if ($$.str == NULL) {
+	    	ERR_ALLOC_FAILED;
+	    	knot_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0, 0);
+	        knot_zone_deep_free(&(parser->current_zone),
+		                      0);
+		YYABORT;
+	    }
+
 	    memcpy($$.str, $1.str, $1.len);
 	    memcpy($$.str + $1.len, " ", 1);
 	    memcpy($$.str + $1.len + 1, $3.str, $3.len);
@@ -507,6 +563,14 @@ concatenated_str_seq:	STR
     {
 	    $$.len = $1.len + $3.len + 1;
 	    $$.str = malloc($$.len + 1);
+	    if ($$.str == NULL) {
+	    	ERR_ALLOC_FAILED;
+	    	knot_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0, 0);
+	        knot_zone_deep_free(&(parser->current_zone),
+		                      0);
+		YYABORT;
+	    }
 	    memcpy($$.str, $1.str, $1.len);
 	    memcpy($$.str + $1.len, ".", 1);
 	    memcpy($$.str + $1.len + 1, $3.str, $3.len);
@@ -577,6 +641,15 @@ str_sp_seq:	STR
     |	str_sp_seq sp STR
     {
 	    char *result = malloc($1.len + $3.len + 1);
+	    if (result == NULL) {
+	    	ERR_ALLOC_FAILED;
+	    	fprintf(stderr, "Parser ran out of memory, aborting!\n");
+	    	knot_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0, 0);
+	        knot_zone_deep_free(&(parser->current_zone),
+		                      0);
+		YYABORT;
+	    }
 	    memcpy(result, $1.str, $1.len);
 	    memcpy(result + $1.len, $3.str, $3.len);
 	    $$.str = result;
@@ -596,6 +669,15 @@ str_dot_seq:	STR
     |	str_dot_seq '.' STR
     {
 	    char *result = malloc($1.len + $3.len + 1);
+	    if (result == NULL) {
+	    	ERR_ALLOC_FAILED;
+	    	fprintf(stderr, "Parser ran out of memory, aborting!\n");
+	    	knot_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0, 0);
+	        knot_zone_deep_free(&(parser->current_zone),
+		                      0);
+		YYABORT;
+	    }
 	    memcpy(result, $1.str, $1.len);
 	    memcpy(result + $1.len, $3.str, $3.len);
 	    $$.str = result;
@@ -619,6 +701,15 @@ dotted_str:	STR
     |	dotted_str '.'
     {
 	    char *result = malloc($1.len + 2);
+	    if (result == NULL) {
+	    	ERR_ALLOC_FAILED;
+	    	fprintf(stderr, "Parser ran out of memory, aborting!\n");
+	    	knot_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0, 0);
+	        knot_zone_deep_free(&(parser->current_zone),
+		                      0);
+		YYABORT;
+	    }
 	    memcpy(result, $1.str, $1.len);
 	    result[$1.len] = '.';
 	    $$.str = result;
@@ -630,6 +721,15 @@ dotted_str:	STR
     |	dotted_str '.' STR
     {
 	    char *result = malloc($1.len + $3.len + 2);
+	    if (result == NULL) {
+	    	ERR_ALLOC_FAILED;
+	    	fprintf(stderr, "Parser ran out of memory, aborting!\n");
+	    	knot_rrset_deep_free(&(parser->current_rrset),
+		                       0, 0, 0);
+	        knot_zone_deep_free(&(parser->current_zone),
+		                      0);
+		YYABORT;
+	    }
 	    memcpy(result, $1.str, $1.len);
 	    result[$1.len] = '.';
 	    memcpy(result + $1.len + 1, $3.str, $3.len);
@@ -770,8 +870,12 @@ type_and_rdata:
     |	STR error NL
     {
 	    zc_error_prev_line("unrecognized RR type '%s'", $1.str);
-
 	    free($1.str);
+    }
+    |	NO_MEM
+    {
+    	zc_error_prev_line("parser ran out of memory!");
+    	YYABORT;
     }
     ;
 
@@ -791,12 +895,11 @@ rdata_a:	dotted_str trail
 rdata_domain_name:	dname trail
     {
 	    /* convert a single dname record */
+		if ($1 != NULL) {
 			if (!knot_dname_is_fqdn($1)) {
-
-
 			parser->current_rrset->owner =
 				knot_dname_cat($1, parser->root_domain);
-
+			}
 		}
 	    zadd_rdata_domain($1);
     }
@@ -1211,11 +1314,13 @@ rdata_rrsig:	STR sp STR sp STR sp STR sp STR sp STR
 							 $15.len));*/
 	    knot_dname_t *dname =
 		knot_dname_new_from_wire((uint8_t *)$15.str, $15.len, NULL);
-	    /*! \todo implement refcounting correctly. */
-	    ref_init(&dname->ref, 0); /* disable dtor */
-	    ref_retain(&dname->ref);
-
-	    knot_dname_cat(dname, parser->root_domain);
+	    if (dname == NULL) {
+	    	parser->error_occurred = KNOTDZCOMPILE_ENOMEM;
+	    } else {
+	    	ref_init(&dname->ref, 0); /* disable dtor */
+	    	ref_retain(&dname->ref);
+	    	knot_dname_cat(dname, parser->root_domain);
+	    }
 
 	    zadd_rdata_domain(dname);
 	    /* sig name */
@@ -1347,20 +1452,29 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			if(!name) {
 				zc_error_prev_line("IPSECKEY bad gateway"
 						   "dname %s", $7.str);
+				knot_rrset_deep_free(&(parser->current_rrset),
+						                          0, 0, 0);
+				knot_zone_deep_free(&(parser->current_zone),
+						      0);
+				YYABORT;
 			}
 			if($7.str[strlen($7.str)-1] != '.') {
-			    knot_dname_t* tmpd;
-			    tmpd = knot_dname_new_from_wire(name->name,
-							      name->size,
-							      NULL);
-			    /*! \todo implement refcounting correctly. */
+			    knot_dname_t* tmpd =
+			    	knot_dname_new_from_wire(name->name,
+							   name->size,
+							   NULL);
+			    if (tmpd == NULL) {
+			    	zc_error_prev_line("Could not create dname!");
+				knot_rrset_deep_free(&(parser->current_rrset),
+				                       0, 0, 0);
+			        knot_zone_deep_free(&(parser->current_zone),
+				                      0);
+				YYABORT;
+			    }
 			    ref_init(&tmpd->ref, 0); /* disable dtor */
 			    ref_retain(&tmpd->ref);
 			    name = knot_dname_cat(tmpd,
 				    knot_node_parent(parser->origin, 0)->owner);
-			    /*! \todo implement refcounting correctly. */
-			    ref_init(&name->ref, 0); /* disable dtor */
-			    ref_retain(&name->ref);
 			}
 
 			free($1.str);
@@ -1368,7 +1482,15 @@ rdata_ipsec_base: STR sp STR sp STR sp dotted_str
 			free($5.str);
 			free($7.str);
 
-			uint8_t* dncpy = malloc(name->size);
+			uint8_t* dncpy = malloc(sizeof(uint8_t) * name->size);
+			if (dncpy == NULL) {
+			    ERR_ALLOC_FAILED;
+			    knot_rrset_deep_free(&(parser->current_rrset),
+			                           0, 0, 0);
+			    knot_zone_deep_free(&(parser->current_zone),
+			                          0);
+			    YYABORT;
+			}
 			memcpy(dncpy, name->name, name->size);
 			zadd_rdata_wireformat((uint16_t *)dncpy);
 			//knot_dname_free(&name);
@@ -1415,30 +1537,37 @@ int zp_wrap(void)
 /*
  * Create the parser.
  */
-zparser_type *
-zparser_create()
+zparser_type *zparser_create()
 {
-	zparser_type *result;
-
-	result = (zparser_type *)malloc(sizeof(zparser_type));
+	zparser_type *result = malloc(sizeof(zparser_type));
 	if (result == NULL) {
+	    ERR_ALLOC_FAILED;
 	    return NULL;
 	}
 
-	result->current_zone = NULL;
-	result->filename = NULL;
-	result->current_zone = NULL;
-	result->origin = NULL;
-	result->prev_dname = NULL;
-	result->default_apex = NULL;
-
 	result->temporary_items = malloc(MAXRDATALEN *
 					  sizeof(knot_rdata_item_t));
+	if (result->temporary_items == NULL) {
+		ERR_ALLOC_FAILED;
+		free(result);
+		return NULL;
+	}
 
 	result->current_rrset = knot_rrset_new(NULL, 0, 0, 0);
-	result->current_rrset->rdata = NULL;
+	if (result->current_rrset == NULL) {
+		ERR_ALLOC_FAILED;
+		free(result->temporary_items);
+		free(result);
+		return NULL;
+	}
 
-	result->rrsig_orphans = NULL;
+	result->root_domain = knot_dname_new_from_str(".", 1, NULL);
+	if (result->root_domain == NULL) {
+		ERR_ALLOC_FAILED;
+		free(result->temporary_items);
+		free(result->current_rrset);
+		free(result);
+	}
 
 	return result;
 }
@@ -1453,6 +1582,9 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	memset(nxtbits, 0, sizeof(nxtbits));
 	memset(nsecbits, 0, sizeof(nsecbits));
 	nsec_highest_rcode = 0;
+
+	parser->current_zone = NULL;
+	parser->prev_dname = NULL;
 
 	parser->default_ttl = ttl;
 	parser->default_class = rclass;
@@ -1477,8 +1609,10 @@ zparser_init(const char *filename, uint32_t ttl, uint16_t rclass,
 	parser->current_zone = knot_zone_new(origin, 0, 1);
 
 	parser->node_rrsigs = NULL;
+	parser->rrsig_orphans = NULL;
 
 	parser->current_rrset->rclass = parser->default_class;
+	parser->current_rrset->rdata = NULL;
 }
 
 
@@ -1486,8 +1620,9 @@ void zparser_free()
 {
 	knot_dname_free(&(parser->root_domain));
 	free(parser->temporary_items);
-	knot_rrset_free(&(parser->current_rrset));
-	knot_dname_free(&(parser->prev_dname));
+	if (parser->current_rrset != NULL) {
+		knot_rrset_free(&parser->current_rrset);
+	}
 	free(parser);
 }
 
