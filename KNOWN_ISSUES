@@ -6,6 +6,7 @@ current version of Knot.
 
 * IXFR
 * Dynamic updates
+* TSIG
 * Slave functionality (AXFR-in).
 * RRSet rotation
 * Root zone (Knot cannot serve the root zone)
