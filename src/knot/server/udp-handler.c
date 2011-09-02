@@ -68,10 +68,11 @@ int udp_handle(uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
 		break;
 	case KNOT_RESPONSE_AXFR:
 	case KNOT_RESPONSE_IXFR:
-	case KNOT_RESPONSE_NOTIFY:
 		/*! \todo SLAVE DISABLED */
-//		res = notify_process_response(ns, packet, addr,
-//					      qbuf, resp_len);
+		break;
+	case KNOT_RESPONSE_NOTIFY:
+		res = notify_process_response(ns, packet, addr,
+					      qbuf, resp_len);
 		break;
 
 	/* Query types. */

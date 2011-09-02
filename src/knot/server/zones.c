@@ -423,8 +423,8 @@ static int zones_notify_send(event_t *e)
 		/* Store ID of the awaited response. */
 		if (ret == buflen) {
 			ev->msgid = knot_wire_get_id(qbuf);
-			debug_zones("notify: sent NOTIFY, expecting "
-				    "response ID=%d\n", ev->msgid);
+			log_server_info("Issued NOTIFY query, expecting "
+					"response ID=%d\n", ev->msgid);
 		}
 
 		/* Watch socket. */
@@ -442,7 +442,9 @@ static int zones_notify_send(event_t *e)
 
 	/* Check number of retries. */
 	if (ev->retries == 0) {
-		debug_zones("notify: NOTIFY maximum retry time exceeded\n");
+		log_server_notice("NOTIFY query maximum number of retries "
+				  "for zone %s exceeded.\n",
+				  zd->conf->name);
 		evsched_cancel(e->parent, e);
 		evsched_event_free(e->parent, e);
 		ev->timer = 0;
@@ -2033,8 +2035,8 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 		ev->timer = evsched_schedule_cb(sch, zones_notify_send, ev,
 						tmr_s * 1000);
 
-		debug_zones("notify: scheduled NOTIFY query after %d s to %s\n",
-			    tmr_s, cfg_if->name);
+		log_server_info("Scheduled NOTIFY query after %d s to %s:%d\n",
+			    tmr_s, cfg_if->address, cfg_if->port);
 	}
 
 	/* Schedule IXFR database syncing. */
