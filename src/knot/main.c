@@ -35,7 +35,7 @@ void interrupt_handle(int s)
 			sig_req_stop = 1;
 			sig_stopping = 1;
 		} else {
-			log_server_error("\nOK! Exiting immediately.\n");
+			log_server_notice("OK! Exiting immediately.\n");
 			exit(1);
 		}
 	}
@@ -104,9 +104,6 @@ int main(int argc, char **argv)
 
 	// Initialize log
 	log_init();
-	if (!daemonize) {
-		log_levels_set(LOGT_SYSLOG, LOG_ANY, 0);
-	}
 
 	// Verbose mode
 	if (verbose) {
