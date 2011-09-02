@@ -445,13 +445,19 @@ static int parse_token(void *scanner, int token, char *in_str,
 		}
 	}
 
-	str = strdup(in_str);
+	str = strdup(yytext);
+	if (str == NULL) {
+		/* Out of memory */
+		ERR_ALLOC_FAILED;
+		return NO_MEM;
+	}
 	len = zoctet(str);
 
 	yylval->data.str = str;
+	assert(yylval->data.str != NULL);
 	yylval->data.len = len;
 
-	if (strcmp(str, ".") == 0) {
+	if (strcmp(yytext, ".") == 0) {
 		free(str);
 		yylval->data.str=".";
 	} else if (strcmp(str, "@") == 0) {
