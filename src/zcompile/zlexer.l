@@ -22,7 +22,7 @@
 #include <assert.h>
 
 #include "zcompile/zcompile.h"
-#include "dnslib/dname.h"
+#include "libknot/dname.h"
 #include "zcompile/parser-descriptor.h"
 #include "zparser.h"
 
@@ -81,6 +81,9 @@ extern uint32_t strtottl(const char *nptr, const char **endptr);
 #define YY_NO_UNPUT
 #define MAXINCLUDES 10
 
+#define scanner yyscanner
+extern int zp_lex(YYSTYPE *lvalp, void *scanner);
+
 #if 0
 #define LEXOUT(s)  printf s /* used ONLY when debugging */
 #else
@@ -94,41 +97,18 @@ enum lexer_state {
 	PARSING_RDATA
 };
 
-static int parse_token(int token, char *yytext, enum lexer_state *lexer_state);
-
 static YY_BUFFER_STATE include_stack[MAXINCLUDES];
 static zparser_type zparser_stack[MAXINCLUDES];
 static int include_stack_ptr = 0;
 
-/*
- * Saves the file specific variables on the include stack.
- */
-static void
-push_parser_state(FILE *input)
-{
-	zparser_stack[include_stack_ptr].filename = parser->filename;
-	zparser_stack[include_stack_ptr].line = parser->line;
-	zparser_stack[include_stack_ptr].origin = parser->origin;
-	include_stack[include_stack_ptr] = YY_CURRENT_BUFFER;
-	yy_switch_to_buffer(yy_create_buffer(input, YY_BUF_SIZE));
-	++include_stack_ptr;
-}
+static void pop_parser_state(void *scanner);
+static void push_parser_state(FILE *input, void *scanner);
+static int parse_token(void *scanner, int token, char *in_str,
+                       enum lexer_state *lexer_state);
 
-/*
- * Restores the file specific variables from the include stack.
- */
-static void
-pop_parser_state(void)
-{
-	--include_stack_ptr;
-	parser->filename = zparser_stack[include_stack_ptr].filename;
-	parser->line = zparser_stack[include_stack_ptr].line;
-	parser->origin = zparser_stack[include_stack_ptr].origin;
-	yy_delete_buffer(YY_CURRENT_BUFFER);
-	yy_switch_to_buffer(include_stack[include_stack_ptr]);
-}
 
-#ifndef yy_set_bol /* compat definition, for flex 2.4.6 */
+/*!< \todo does not compile */
+#ifndef yy_set_bol // compat definition, for flex 2.4.6
 #define yy_set_bol(at_bol) \
 { \
 	if (!yy_current_buffer ) \
@@ -140,6 +120,9 @@ pop_parser_state(void)
 %}
 
 %option nounput
+%option reentrant bison-bridge
+%option prefix = "zp_"
+%option outfile = "lex.yy.c"
 
 SPACE   [ \t]
 LETTER  [a-zA-Z]
@@ -156,6 +139,7 @@ ANY     [^\"\n\\]|\\.
 %%
 	static int paren_open = 0;
 	static enum lexer_state lexer_state = EXPECT_OWNER;
+
 {SPACE}*{COMMENT}.*	/* ignore */
 ^{DOLLAR}TTL            { lexer_state = PARSING_RDATA; return DOLLAR_TTL; }
 ^{DOLLAR}ORIGIN         { lexer_state = PARSING_RDATA; return DOLLAR_ORIGIN; }
@@ -179,7 +163,7 @@ ANY     [^\"\n\\]|\\.
 <incl>.+ 		{
 	char *tmp;
 	/*! \todo pointer to origin. */
-	void *origin = 0;
+	void *origin = parser->origin;
 	/* domain_type *origin = parser->origin; */
 	int error_occurred = parser->error_occurred;
 
@@ -207,13 +191,16 @@ ANY     [^\"\n\\]|\\.
 			*tmp = '\0';
 			strip_string(yytext);
 
-			/*! \todo dnslib_dname_new_from_wire() (dname.h)
-			 *        which dnslib_node to pass as node?
+			/*! \todo knot_dname_new_from_wire() (dname.h)
+			 *        which knot_node to pass as node?
 			 */
-			const dnslib_dname_t *dname;
-			dname = dnslib_dname_new_from_wire((uint8_t*)tmp + 1,
+			knot_dname_t *dname;
+			dname = knot_dname_new_from_wire((uint8_t*)tmp + 1,
 							   strlen(tmp + 1),
 							   NULL);
+			/*! \todo implement refcounting correctly. */
+			ref_init(&dname->ref, 0); /* disable dtor */
+			ref_retain(&dname->ref);
 			if (!dname) {
 				zc_error("incorrect include origin '%s'",
 					 tmp + 1);
@@ -233,7 +220,7 @@ ANY     [^\"\n\\]|\\.
 		} else {
 			/* Initialize parser for include file.  */
 			char *filename = strdup(yytext);
-			push_parser_state(input); /* Destroys yytext.  */
+			push_parser_state(input, scanner); /* Destroys yytext.  */
 			parser->filename = filename;
 			parser->line = 1;
 			parser->origin = origin;
@@ -246,24 +233,31 @@ ANY     [^\"\n\\]|\\.
 <INITIAL><<EOF>>	{
 	yy_set_bol(1); /* Set beginning of line, so "^" rules match.  */
 	if (include_stack_ptr == 0) {
-		yyterminate();
+	// from: http://stackoverflow.com/questions/1756275/bison-end-of-file
+		static int once = 0;
+		once++;
+		if (once > 1) {
+			yyterminate();
+		} else {
+			return NL;
+		}
 	} else {
 		fclose(yyin);
-		pop_parser_state();
+		pop_parser_state(scanner);
 	}
 }
 ^{DOLLAR}{LETTER}+	{ zc_warning("Unknown directive: %s", yytext); }
 {DOT}	{
 	LEXOUT((". "));
-	return parse_token('.', yytext, &lexer_state);
+	return parse_token(scanner, '.', yytext, &lexer_state);
 }
 @	{
 	LEXOUT(("@ "));
-	return parse_token('@', yytext, &lexer_state);
+	return parse_token(scanner, '@', yytext, &lexer_state);
 }
 \\#	{
 	LEXOUT(("\\# "));
-	return parse_token(URR, yytext, &lexer_state);
+	return parse_token(scanner, URR, yytext, &lexer_state);
 }
 {NEWLINE}	{
 	++parser->line;
@@ -318,7 +312,7 @@ ANY     [^\"\n\\]|\\.
 <bitlabel>\]		{
 	BEGIN(INITIAL);
 	yytext[yyleng - 1] = '\0';
-	return parse_token(BITLAB, yytext, &lexer_state);
+	return parse_token(scanner, BITLAB, yytext, &lexer_state);
 }
 
 	/* Quoted strings.  Strip leading and ending quotes.  */
@@ -333,12 +327,12 @@ ANY     [^\"\n\\]|\\.
 	LEXOUT(("\" "));
 	BEGIN(INITIAL);
 	yytext[yyleng - 1] = '\0';
-	return parse_token(STR, yytext, &lexer_state);
+	return parse_token(scanner, STR, yytext, &lexer_state);
 }
 
 ({ZONESTR}|\\.|\\\n)+ {
 	/* Any allowed word.  */
-	return parse_token(STR, yytext, &lexer_state);
+	return parse_token(scanner, STR, yytext, &lexer_state);
 }
 . {
 	zc_error("unknown character '%c' (\\%03d) seen - is this a zonefile?",
@@ -412,11 +406,13 @@ zoctet(char *text)
 	return p - text;
 }
 
-static int
-parse_token(int token, char *yytext, enum lexer_state *lexer_state)
+static int parse_token(void *scanner, int token, char *in_str,
+                       enum lexer_state *lexer_state)
 {
-	size_t len;
-	char *str;
+	size_t len = 0;
+	char *str = NULL;
+
+	struct yyguts_t *yyg = (struct yyguts_t *)scanner;
 
 	if (*lexer_state == EXPECT_OWNER) {
 		*lexer_state = PARSING_OWNER;
@@ -426,44 +422,75 @@ parse_token(int token, char *yytext, enum lexer_state *lexer_state)
 		uint16_t rrclass;
 
 		/* type */
-		token = rrtype_to_token(yytext, &yylval.type);
+		token = rrtype_to_token(in_str, &yylval->type);
 		if (token != 0) {
 			*lexer_state = PARSING_RDATA;
-			LEXOUT(("%d[%s] ", token, yytext));
+			LEXOUT(("%d[%s] ", token, in_str));
 			return token;
 		}
 
 		/* class */
-		rrclass = parser_rrclass_from_string(yytext);
+		rrclass = parser_rrclass_from_string(in_str);
 		if (rrclass != 0) {
-			yylval.rclass = rrclass;
+			yylval->rclass = rrclass;
 			LEXOUT(("CLASS "));
 			return T_RRCLASS;
 		}
 
 		/* ttl */
-		yylval.ttl = strtottl(yytext, &t);
+		yylval->ttl = strtottl(in_str, &t);
 		if (*t == '\0') {
 			LEXOUT(("TTL "));
 			return T_TTL;
 		}
 	}
 
-	str = strdup(yytext);
+	str = strdup(in_str);
 	len = zoctet(str);
 
-	yylval.data.str = str;
-	yylval.data.len = len;
+	yylval->data.str = str;
+	yylval->data.len = len;
 
-	if (strcmp(yytext, ".") == 0) {
+	if (strcmp(str, ".") == 0) {
 		free(str);
-		yylval.data.str=".";
-	}
-	else if (strcmp(yytext, "@") == 0) {
+		yylval->data.str=".";
+	} else if (strcmp(str, "@") == 0) {
 		free(str);
-		yylval.data.str="@";
+		yylval->data.str="@";
+	} else if (strcmp(str, "\\#") == 0) {
+		free(str);
+		yylval->data.str="\\#";
 	}
 
-	LEXOUT(("%d[%s] ", token, yytext));
+	LEXOUT(("%d[%s] ", token, in_str));
 	return token;
+}
+
+/*
+ * Saves the file specific variables on the include stack.
+ */
+static void push_parser_state(FILE *input, void *scanner)
+{
+	struct yyguts_t *yyg = (struct yyguts_t *)scanner;
+	zparser_stack[include_stack_ptr].filename = parser->filename;
+	zparser_stack[include_stack_ptr].line = parser->line;
+	zparser_stack[include_stack_ptr].origin = parser->origin;
+	include_stack[include_stack_ptr] = YY_CURRENT_BUFFER;
+	yy_switch_to_buffer(yy_create_buffer(input, YY_BUF_SIZE, scanner),
+	                    scanner);
+	++include_stack_ptr;
+}
+
+/*
+ * Restores the file specific variables from the include stack.
+ */
+void pop_parser_state(void *scanner)
+{
+	struct yyguts_t *yyg = (struct yyguts_t *)scanner;
+	--include_stack_ptr;
+	parser->filename = zparser_stack[include_stack_ptr].filename;
+	parser->line = zparser_stack[include_stack_ptr].line;
+	parser->origin = zparser_stack[include_stack_ptr].origin;
+	yy_delete_buffer(YY_CURRENT_BUFFER, scanner);
+	yy_switch_to_buffer(include_stack[include_stack_ptr], scanner);
 }

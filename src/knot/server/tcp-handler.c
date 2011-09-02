@@ -5,457 +5,515 @@
 #include <netinet/tcp.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <sys/epoll.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <ev.h>
+
+#include "common/sockaddr.h"
+#include "common/skip-list.h"
 #include "knot/common.h"
 #include "knot/server/tcp-handler.h"
-#include "knot/server/name-server.h"
+#include "knot/server/xfr-handler.h"
+#include "libknot/nameserver/name-server.h"
 #include "knot/other/error.h"
 #include "knot/stat/stat.h"
+#include "libknot/util/wire.h"
+#include "knot/server/zones.h"
 
-/*! \brief TCP connection pool. */
-typedef struct tcp_pool_t {
-	int                epfd;       /*!< Epoll socket. */
-	int                evcount;    /*!< Epoll events counter */
-	struct epoll_event *events;    /*!< Epoll events backing store. */
-	int                ebs_size;   /*!< Epoll events backing store size. */
-	pthread_mutex_t    mx;         /*!< Pool synchronisation lock. */
-	ns_nameserver_t      *ns;        /* reference to name server */
-	iohandler_t        *handler;   /* master I/O handler */
-	stat_t             *stat;      /* statistics gatherer */
-} tcp_pool_t;
+/*! \brief TCP watcher. */
+typedef struct tcp_io_t {
+	ev_io io;
+	struct ev_loop   *loop;   /*!< Associated event loop. */
+	server_t         *server; /*!< Name server */
+	iohandler_t      *io_h;   /*!< Master I/O handler. */
+	stat_t           *stat;   /*!< Statistics gatherer */
+	unsigned         data;    /*!< Watcher-related data. */
+} tcp_io_t;
 
 /*
  * Forward decls.
  */
-/*! \brief Lock TCP pool. */
-static inline int tcp_pool_lock(tcp_pool_t *pool)
+
+/*! \brief Wrapper for TCP send. */
+static int xfr_send_cb(int session, sockaddr_t *addr, uint8_t *msg, size_t msglen)
 {
-	return pthread_mutex_lock(&pool->mx);
+	UNUSED(addr);
+	return tcp_send(session, msg, msglen);
 }
 
-/*! \brief Unlock TCP pool. */
-static inline int tcp_pool_unlock(tcp_pool_t *pool)
+/*! \brief Create new TCP connection watcher. */
+static inline tcp_io_t* tcp_conn_new(struct ev_loop *loop, int fd, tcp_cb_t cb)
 {
-	return pthread_mutex_unlock(&pool->mx);
-}
-
-/*!
- * \brief TCP query answering function.
- *
- * Socket receives a single query a replies to it.
- *
- * \param fd Associated socket.
- * \param src Buffer for a received query.
- * \param inbuf_sz Read buffer maximum size.
- * \param dest Buffer for reply.
- * \param outbuf_sz Reply buffer maximum size.
- * \param pool Associated connection pool.
- */
-static inline int tcp_answer(int fd, uint8_t *src, int inbuf_sz, uint8_t *dest,
-                              int outbuf_sz, tcp_pool_t *pool)
-{
-	// Receive size
-	unsigned short pktsize = 0;
-	int n = recv(fd, &pktsize, sizeof(unsigned short), 0);
-	pktsize = ntohs(pktsize);
-	debug_net("tcp: incoming packet size on %d: %u buffer size: %u\n",
-	          fd, (unsigned) pktsize, (unsigned) inbuf_sz);
-
-	// Receive payload
-	if (n > 0 && pktsize > 0) {
-		if (pktsize <= inbuf_sz) {
-			/*! \todo Check buffer overflow. */
-			n = recv(fd, src, pktsize, 0);
-		} else {
-			/*! \todo Buffer too small error code. */
-			n = 0;
-			return -1;
+	tcp_io_t *w = malloc(sizeof(tcp_io_t));
+	if (w) {
+		/* Omit invalid filedescriptors. */
+		w->io.fd = -1;
+		if (fd >= 0) {
+			ev_io_init((ev_io *)w, cb, fd, EV_READ);
+			ev_io_start(loop, (ev_io *)w);
 		}
+
+		w->data = 0;
+		w->loop = loop;
 	}
 
-	//! \todo Real address;
-	struct sockaddr_in faddr;
-	faddr.sin_family = AF_INET;
-	faddr.sin_port = htons(0);
-	faddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-	stat_get_first(pool->stat, (struct sockaddr*)&faddr);
+	return w;
+}
 
-	// Check read result
-	if (n > 0) {
+/*! \brief Delete a TCP connection watcher. */
+static inline void tcp_conn_free(struct ev_loop *loop, tcp_io_t *w)
+{
+	ev_io_stop(loop, (ev_io *)w);
+	close(((ev_io *)w)->fd);
+	free(w);
+}
 
-		// Send answer
-		size_t answer_size = outbuf_sz - sizeof(short);
-		int res = ns_answer_request(pool->ns, src, n,
-		                            dest + sizeof(short),
-		                            &answer_size);
-
-		debug_net("tcp: answer wire format (size %u, result %d).\n",
-		          (unsigned) answer_size, res);
-
-		if (res >= 0) {
-
-			/*! \brief TCP corking.
-			 *  \see http://vger.kernel.org/~acme/unbehaved.txt
-			 */
-			int cork = 1;
-			setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
-
-			// Copy header
-			((unsigned short *) dest)[0] = htons(answer_size);
-			int sent = -1;
-			while (sent < 0) {
-				sent = send(fd, dest,
-				            answer_size + sizeof(short),
-				            0);
-			}
-
-			// Uncork
-			cork = 0;
-			setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
-			stat_get_second(pool->stat);
-			debug_net("tcp: sent answer to %d\n", fd);
-		}
-	}
-
-	return 0;
+/*! \brief Noop event handler. */
+static void tcp_noop(struct ev_loop *loop, ev_io *w, int revents)
+{
 }
 
 /*!
- * \brief Reserve backing store for a given number of sockets.
+ * \brief TCP event handler function.
  *
- * \param pool Given TCP pool instance.
- * \param size Minimum requested backing store size.
- * \retval 0 on success.
- * \retval <0 on error.
+ * Handle single TCP event.
+ *
+ * \param w Associated I/O event.
+ * \param revents Returned events.
  */
-static int tcp_pool_reserve(tcp_pool_t *pool, uint size)
+static void tcp_handle(struct ev_loop *loop, ev_io *w, int revents)
 {
-	if (pool->ebs_size >= size) {
-		return 0;
-	}
+	debug_net("tcp: handling TCP event in thread %p.\n",
+		  (void*)pthread_self());
 
-	// Alloc new events
-	struct epoll_event *new_events =
-	                malloc(size * sizeof(struct epoll_event));
+	tcp_io_t *tcp_w = (tcp_io_t *)w;
+	knot_nameserver_t *ns = tcp_w->server->nameserver;
+	xfrhandler_t *xfr_h = tcp_w->server->xfr_h;
 
-	if (new_events == 0) {
-		return -1;
-	}
-
-	// Free and replace old events backing-store
-	if (pool->events != 0) {
-		free(pool->events);
-	}
-
-	pool->ebs_size = size;
-	pool->events = new_events;
-	return 0;
-}
-
-/*!
- * \brief Create new TCP pool.
- *
- * Create and initialize new TCP pool with empty set.
- *
- * \param handler Associated I/O handler.
- * \retval New instance on success.
- * \retval NULL on errors.
- */
-static tcp_pool_t *tcp_pool_new(iohandler_t *handler)
-{
-	// Alloc
-	tcp_pool_t *pool = malloc(sizeof(tcp_pool_t));
-	if (pool == 0) {
-		return 0;
-	}
-
-	// Initialize
-	memset(pool, 0, sizeof(tcp_pool_t));
-	pool->handler = handler;
-	pool->ns = handler->server->nameserver;
-	pool->evcount = 0;
-	pool->ebs_size = 0;
-
-	// Create epoll fd
-	pool->epfd = epoll_create(1);
-	if (pool->epfd == -1) {
-		free(pool);
-		return 0;
-	}
-
-	// Alloc backing-store
-	if (tcp_pool_reserve(pool, 1) != 0) {
-		close(pool->epfd);
-		free(pool);
-		return 0;
-	}
-
-	// Initialize synchronisation
-	if (pthread_mutex_init(&pool->mx, 0) != 0) {
-		close(pool->epfd);
-		free(pool->events);
-		free(pool);
-		return 0;
-	}
-
-	// Create stat gatherer
-	STAT_INIT(pool->stat);
-	stat_set_protocol(pool->stat, stat_TCP);
-
-	return pool;
-}
-
-/*! \brief Delete TCP pool instance. */
-static void tcp_pool_del(tcp_pool_t **pool)
-{
-	// Check
-	if (pool == 0) {
+	/* Check address type. */
+	sockaddr_t addr;
+	if (sockaddr_init(&addr, tcp_w->io_h->type) != KNOTD_EOK) {
+		log_server_error("Socket type %d is not supported, "
+				 "IPv6 support is probably disabled.\n",
+				 tcp_w->io_h->type);
 		return;
 	}
 
-	// Close epoll fd
-	close((*pool)->epfd);
-
-	// Free backing store
-	if ((*pool)->events != 0) {
-		free((*pool)->events);
+	/* Receive data. */
+	uint8_t qbuf[65535]; /*! \todo This may be problematic. */
+	size_t qbuf_maxlen = sizeof(qbuf);
+	int n = tcp_recv(w->fd, qbuf, qbuf_maxlen, &addr);
+	if (n <= 0) {
+		debug_net("tcp: client disconnected\n");
+		tcp_conn_free(loop, tcp_w);
+		return;
 	}
 
-	// Destroy synchronisation
-	pthread_mutex_destroy(&(*pool)->mx);
+	/* Parse query. */
+//	knot_response_t *resp = knot_response_new(qbuf_maxlen);
+	size_t resp_len = qbuf_maxlen; // 64K
 
-	// Delete stat
-	stat_free((*pool)->stat);
+	/* Parse query. */
+	knot_packet_type_t qtype = KNOT_QUERY_NORMAL;
 
-	// Free
-	free((*pool));
-	*pool = 0;
+	knot_packet_t *packet =
+		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	if (packet == NULL) {
+		uint16_t pkt_id = knot_wire_get_id(qbuf);
+		knot_ns_error_response(ns, pkt_id, KNOT_RCODE_SERVFAIL,
+				  qbuf, &resp_len);
+		return;
+	}
+
+	int res = knot_ns_parse_packet(qbuf, n, packet, &qtype);
+	if (unlikely(res != KNOTD_EOK)) {
+
+		/* Send error response on dnslib RCODE. */
+		if (res > 0) {
+			uint16_t pkt_id = knot_wire_get_id(qbuf);
+			knot_ns_error_response(ns, pkt_id, res,
+					  qbuf, &resp_len);
+		}
+
+//		knot_response_free(&resp);
+		knot_packet_free(&packet);
+		return;
+	}
+
+	/* Handle query. */
+	knot_ns_xfr_t xfr;
+	res = KNOTD_ERROR;
+	switch(qtype) {
+
+	/* Response types. */
+	case KNOT_RESPONSE_NORMAL:
+	case KNOT_RESPONSE_AXFR:
+	case KNOT_RESPONSE_IXFR:
+	case KNOT_RESPONSE_NOTIFY:
+		/*! Implement packet handling. */
+		break;
+
+	/* Query types. */
+	case KNOT_QUERY_NORMAL:
+		res = knot_ns_answer_normal(ns, packet, qbuf, &resp_len);
+		break;
+	case KNOT_QUERY_IXFR:
+//		memset(&xfr, 0, sizeof(knot_ns_xfr_t));
+//		xfr.type = XFR_TYPE_IOUT;
+//		wire_copy = malloc(sizeof(uint8_t) * packet->size);
+//		if (!wire_copy) {
+//			/*!< \todo Cleanup. */
+//			ERR_ALLOC_FAILED;
+//			return;
+//		}
+//		memcpy(wire_copy, packet->wireformat, packet->size);
+//		packet->wireformat = wire_copy;
+//		xfr.query = packet; /* Will be freed after processing. */
+//		xfr.send = xfr_send_cb;
+//		xfr.session = w->fd;
+//		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
+//		xfr_request(xfr_h, &xfr);
+//		debug_net("tcp: enqueued IXFR query on fd=%d\n", w->fd);
+//		return;
+		debug_net("tcp: IXFR not supported, will answer as AXFR on fd=%d\n", w->fd);
+	case KNOT_QUERY_AXFR:
+		memset(&xfr, 0, sizeof(knot_ns_xfr_t));
+		xfr.type = XFR_TYPE_AOUT;
+		uint8_t *wire_copy = malloc(sizeof(uint8_t) * packet->size);
+		if (!wire_copy) {
+			/*!< \todo Cleanup. */
+			ERR_ALLOC_FAILED;
+			return;
+		}
+		memcpy(wire_copy, packet->wireformat, packet->size);
+		packet->wireformat = wire_copy;
+		xfr.query = packet;
+		xfr.send = xfr_send_cb;
+		xfr.session = w->fd;
+		memcpy(&xfr.addr, &addr, sizeof(sockaddr_t));
+		xfr_request(xfr_h, &xfr);
+		debug_net("tcp: enqueued AXFR query on fd=%d\n", w->fd);
+		return;
+	case KNOT_QUERY_NOTIFY:
+	case KNOT_QUERY_UPDATE:
+		/*! \todo Implement query notify/update. */
+		knot_ns_error_response(ns, knot_packet_id(packet),
+				       KNOT_RCODE_NOTIMPL, qbuf,
+				       &resp_len);
+		res = KNOTD_EOK;
+		break;
+	}
+
+	debug_net("tcp: got answer of size %zd.\n",
+		  resp_len);
+
+	knot_packet_free(&packet);
+
+	/* Send answer. */
+	if (res == KNOTD_EOK) {
+		assert(resp_len > 0);
+		res = tcp_send(w->fd, qbuf, resp_len);
+
+		/* Check result. */
+		if (res != (int)resp_len) {
+			debug_net("tcp: %s: failed: %d - %d.\n",
+				  "socket_send()",
+				  res, errno);
+		}
+	}
+
+	return;
 }
 
-/*!
- * \brief Add socket to the TCP pool.
- *
- * \param pool Given TCP pool.
- * \param newsock Socket to be added to the TCP pool.
- * \param events Events to be registered (usually just EPOLLIN).
- * \retval 0 on success.
- * \retval <0 on error.
- */
-static int tcp_pool_add(tcp_pool_t* pool, int newsock, uint32_t events)
+static void tcp_accept(struct ev_loop *loop, ev_io *w, int revents)
 {
-	if (!pool) {
-		return -1;
+	tcp_io_t *tcp_w = (tcp_io_t *)w;
+
+	/* Accept incoming connection. */
+	debug_net("tcp: accepting connection on fd = %d\n", w->fd);
+	int incoming = accept(w->fd, 0, 0);
+
+	/* Evaluate connection. */
+	if (incoming < 0) {
+		if (errno != EINTR) {
+			log_server_error("Cannot accept connection "
+					 "(%d).\n", errno);
+		}
+	} else {
+		/*! \todo Improve allocation performance. */
+		tcp_io_t *conn = tcp_conn_new(loop, incoming, tcp_handle);
+		if (conn) {
+			conn->server = tcp_w->server;
+			conn->stat = tcp_w->stat;
+			conn->io_h = tcp_w->io_h;
+		}
 	}
-
-	struct epoll_event ev;
-	memset(&ev, 0, sizeof(struct epoll_event));
-
-	// All polled events should use non-blocking mode.
-	int old_flag = fcntl(newsock, F_GETFL, 0);
-	if (fcntl(newsock, F_SETFL, old_flag | O_NONBLOCK) == -1) {
-		log_server_error("Error setting non-blocking mode "
-		                 "on the socket.\n");
-		return -1;
-	}
-
-	// Register to epoll
-	ev.data.fd = newsock;
-	ev.events = events;
-	if (epoll_ctl(pool->epfd, EPOLL_CTL_ADD, newsock, &ev) != 0) {
-		debug_net("Failed to add socket to "
-			  "event set (%d).\n",
-			  errno);
-		return -1;
-	}
-
-	return 0;
 }
 
-/*!
- * \brief Remove socket from a TCP pool.
- */
-static int tcp_pool_remove(tcp_pool_t* pool, int socket)
+static void tcp_interrupt(iohandler_t *h)
 {
-	if (!pool) {
-		return -1;
+	/* For each thread in unit. */
+	for (unsigned i = 0; i < h->unit->size; ++i) {
+		tcp_io_t *w = (tcp_io_t *)(h->unit->threads[i]->data);
+
+		/* Only if watcher exists and isn't I/O handler. */
+		if (w && (void*)w != (void*)h) {
+			/* Stop master socket watcher. */
+			if (w->io.fd >= 0) {
+				ev_io_stop(w->loop, (ev_io *)w);
+			}
+
+			/* Break loop. */
+			ev_unloop(w->loop, EVUNLOOP_ALL);
+		}
 	}
-
-	// Compatibility with kernels < 2.6.9, require non-0 ptr.
-	struct epoll_event ev;
-
-	if (epoll_ctl(pool->epfd, EPOLL_CTL_DEL, socket, &ev) != 0) {
-		debug_net("Failed to remove socket from "
-			  "event set (%d).\n",
-			  errno);
-		return -1;
-	}
-
-	return 0;
 }
 
-/*!
- * \brief TCP pool main function.
- *
- * TCP pool receives new connection and organizes them into it's own pool.
- * Handled connections are then polled for events.
- * TCP pooling scales almost linearly with the number of threads.
- *
- * \retval 0 on success.
- * \retval <0 on error.
- */
-static int tcp_pool(dthread_t *thread)
+static void tcp_loop_install(dthread_t *thread, int fd, tcp_cb_t cb)
 {
-	/*!
-	 * \todo Use custom allocator.
-	 *       Although this is much cheaper,
-	 *       16kB worth of buffers *may* pose a problem.
-	 */
-	tcp_pool_t *pool = (tcp_pool_t *)thread->data;
-	uint8_t buf[SOCKET_MTU_SZ];
-	uint8_t answer[SOCKET_MTU_SZ];
+	iohandler_t *handler = (iohandler_t *)thread->data;
 
-	int nfds = 0;
-	debug_net("tcp: entered pool #%d\n", pool->epfd);
+	/* Install interrupt handler. */
+	handler->interrupt = tcp_interrupt;
 
-	// Poll new data from clients
-	while (pool->evcount > 0) {
+	/* Create event loop. */
+	/*! \todo Maybe check for EVFLAG_NOSIGMASK support? */
+	struct ev_loop *loop = ev_loop_new(0);
 
-		// Poll sockets
-		tcp_pool_reserve(pool, pool->evcount * 2);
-		nfds = epoll_wait(pool->epfd, pool->events,
-		                  pool->ebs_size, -1);
+	/* Watch bound socket if exists. */
+	tcp_io_t *w = tcp_conn_new(loop, fd, cb);
+	if (w) {
+		w->io_h = handler;
+		w->server = handler->server;
+		w->stat = 0; //!< \todo Implement stat.
+	}
 
-		// Cancellation point
+	/* Reinstall as thread-specific data. */
+	thread->data = w;
+}
+
+static void tcp_loop_uninstall(dthread_t *thread)
+{
+	tcp_io_t *w = (tcp_io_t *)thread->data;
+
+	/* Free watcher if exists. */
+	if (w) {
+		ev_loop_destroy(w->loop);
+		free(w);
+	}
+
+	/* Invalidate thread data. */
+	thread->data = 0;
+}
+
+/*! \brief Switch event loop in threading unit in RR fashion
+ *         and accept connection in it.
+ */
+static void tcp_accept_rr(struct ev_loop *loop, ev_io *w, int revents)
+{
+	tcp_io_t *tcp_w = (tcp_io_t *)w;
+
+	/* Select next loop thread. */
+	dt_unit_t *unit = tcp_w->io_h->unit;
+	dthread_t *thr = unit->threads[tcp_w->data];
+
+	/* Select loop from selected thread. */
+	tcp_io_t *thr_w = (tcp_io_t *)thr->data;
+	if (thr_w) {
+		loop = thr_w->loop;
+	}
+
+	/* Move to next thread in unit. */
+	tcp_w->data = get_next_rr(tcp_w->data, unit->size);
+
+	/* Accept incoming connection in target loop. */
+	tcp_accept(loop, w, revents);
+}
+
+static int tcp_loop_run(dthread_t *thread)
+{
+	debug_dt("dthreads: [%p] running TCP loop, state: %d\n",
+		 thread, thread->state);
+
+	/* Fetch loop. */
+	tcp_io_t *w = (tcp_io_t *)thread->data;
+
+	/* Accept clients. */
+	debug_net("tcp: loop started, backend = 0x%x\n", ev_backend(w->loop));
+	for (;;) {
+
+		/* Cancellation point. */
 		if (dt_is_cancelled(thread)) {
-			debug_net("tcp: pool #%d thread is cancelled\n",
-			          pool->epfd);
 			break;
 		}
 
-		// Evaluate
-		debug_net("tcp: pool #%d, %d events (%d sockets).\n",
-		          pool->epfd, nfds, pool->evcount);
-
-		int fd = 0;
-		for (int i = 0; i < nfds; ++i) {
-
-			// Get client fd
-			fd = pool->events[i].data.fd;
-
-			debug_net("tcp: pool #%d processing fd=%d.\n",
-			          pool->epfd, fd);
-			tcp_answer(fd, buf, SOCKET_MTU_SZ,
-			           answer,  SOCKET_MTU_SZ,
-			           pool);
-			debug_net("tcp: pool #%d finished fd=%d (%d remain).\n",
-			          pool->epfd, fd, pool->evcount);
-
-			// Disconnect
-			debug_net("tcp: disconnected: %d\n", fd);
-			tcp_pool_lock(pool);
-			tcp_pool_remove(pool, fd);
-			--pool->evcount;
-			socket_close(fd);
-			tcp_pool_unlock(pool);
-		}
+		/* Run event loop for accepting connections. */
+		ev_loop(w->loop, 0);
 	}
 
-	// If exiting, cleanup
-	if (pool->handler->state == ServerIdle) {
-		debug_net("tcp: pool #%d is finishing\n", pool->epfd);
-		tcp_pool_del(&pool);
-		return 0;
+	/* Stop whole unit. */
+	debug_net("tcp: loop finished\n");
+
+	return KNOTD_EOK;
+}
+
+int tcp_loop_master_rr(dthread_t *thread)
+{
+	iohandler_t *handler = (iohandler_t *)thread->data;
+
+	/* Check socket. */
+	if (handler->fd < 0) {
+		debug_net("tcp_master: null socket recevied, finishing.\n");
+		return KNOTD_EINVAL;
 	}
 
-	debug_net("tcp: pool #%d going to idle.\n", pool->epfd);
-	return 0;
+	debug_net("tcp_master: threading unit master with %d workers\n",
+		  thread->unit->size - 1);
+
+	int dupfd = dup(handler->fd);
+	int ret = tcp_loop(thread, dupfd, tcp_accept_rr);
+	close(dupfd);
+
+	return ret;
 }
 
 /*
  * Public APIs.
  */
 
-int tcp_master(dthread_t *thread)
+int tcp_send(int fd, uint8_t *msg, size_t msglen)
 {
-	dt_unit_t *unit = thread->unit;
+
+	/*! \brief TCP corking.
+	 *  \see http://vger.kernel.org/~acme/unbehaved.txt
+	 */
+#ifdef TCP_CORK
+	int cork = 1;
+	setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
+#endif
+
+	/* Send message size. */
+	unsigned short pktsize = htons(msglen);
+	int sent = send(fd, &pktsize, sizeof(pktsize), 0);
+	if (sent < 0) {
+		return KNOTD_ERROR;
+	}
+
+	/* Send message data. */
+	sent = send(fd, msg, msglen, 0);
+	if (sent < 0) {
+		return KNOTD_ERROR;
+	}
+
+#ifdef TCP_CORK
+	/* Uncork. */
+	cork = 0;
+	setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
+#endif
+	return sent;
+}
+
+int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
+{
+	/* Receive size. */
+	unsigned short pktsize = 0;
+	int n = recv(fd, &pktsize, sizeof(unsigned short), 0);
+	if (n < 0) {
+		return KNOTD_ERROR;
+	}
+
+	pktsize = ntohs(pktsize);
+
+	// Check packet size for NULL
+	if (pktsize == 0) {
+		return KNOTD_ERROR;
+	}
+
+	debug_net("tcp: incoming packet size=%hu on fd=%d\n",
+		  pktsize, fd);
+
+	// Check packet size
+	if (len < pktsize) {
+		return KNOTD_ENOMEM;
+	}
+
+	/* Receive payload. */
+	n = recv(fd, buf, pktsize, 0);
+	if (n <= 0) {
+		return KNOTD_ERROR;
+	}
+
+	/* Get peer name. */
+	if (addr) {
+		socklen_t alen = addr->len;
+		getpeername(fd, addr->ptr, &alen);
+	}
+
+	debug_net("tcp: received packet size=%hu on fd=%d\n",
+		  pktsize, fd);
+
+	return n;
+}
+
+int tcp_loop(dthread_t *thread, int fd, tcp_cb_t cb)
+{
+	/* Install event loop. */
+	tcp_loop_install(thread, fd, cb);
+
+	/* Run event loop. */
+	int ret = tcp_loop_run(thread);
+
+	/* Uninstall event loop. */
+	tcp_loop_uninstall(thread);
+
+	return ret;
+}
+
+int tcp_loop_master(dthread_t *thread)
+{
 	iohandler_t *handler = (iohandler_t *)thread->data;
-	int master_sock = handler->fd;
 
 	/* Check socket. */
-	if (master_sock < 0) {
+	if (handler->fd < 0) {
 		debug_net("tcp_master: null socket recevied, finishing.\n");
-		return KNOT_EINVAL;
+		return KNOTD_EINVAL;
 	}
 
-	debug_dt("dthreads: [%p] is TCP master, state: %d\n",
-	         thread, thread->state);
+	debug_net("tcp_master: created with %d workers\n",
+		  thread->unit->size - 1);
 
-	/*
-	 * Create N pools of TCP connections.
-	 * Each pool is responsible for its own
-	 * set of clients.
-	 *
-	 * Pool instance is deallocated by their assigned thread.
-	 */
-	int pool_id = -1;
+	int dupfd = dup(handler->fd);
+	int ret = tcp_loop(thread, dupfd, tcp_accept);
+	close(dupfd);
 
-	// Accept clients
-	debug_net("tcp: running 1 master with %d pools\n", unit->size - 1);
-	for (;;) {
+	return ret;
+}
 
-		// Cancellation point
-		if (dt_is_cancelled(thread)) {
-			return KNOT_EOK;
-		}
+int tcp_loop_worker(dthread_t *thread)
+{
+	return tcp_loop(thread, -1, tcp_noop);
+}
 
-		// Accept on master socket
-		int incoming = accept(master_sock, 0, 0);
-
-		// Register to worker
-		if (incoming < 0) {
-			if (errno != EINTR) {
-				log_server_error("Cannot accept connection "
-						 "(%d).\n", errno);
-			}
-		} else {
-
-			// Select next pool (Round-Robin)
-			dt_unit_lock(unit);
-			int pool_count = unit->size - 1;
-			pool_id = get_next_rr(pool_id, pool_count);
-			dthread_t *t = unit->threads[pool_id + 1];
-
-			// Allocate new pool if needed
-			if (t->run != &tcp_pool) {
-				dt_repurpose(t, &tcp_pool, tcp_pool_new(handler));
-				debug_dt("dthreads: [%p] repurposed "
-				         "as TCP pool\n", t);
-			}
-
-			// Add incoming socket to selected pool
-			tcp_pool_t *pool = (tcp_pool_t *)t->_adata;
-			tcp_pool_lock(pool);
-			debug_net("tcp_master: accept: assigned socket %d "
-			          "to pool #%d\n",
-			          incoming, pool_id);
-
-			if (tcp_pool_add(pool, incoming, EPOLLIN) == 0) {
-				++pool->evcount;
-			}
-
-			// Activate pool
-			dt_activate(t);
-			tcp_pool_unlock(pool);
-			dt_unit_unlock(unit);
-		}
+int tcp_loop_unit(dt_unit_t *unit)
+{
+	if (unit->size < 1) {
+		return KNOTD_EINVAL;
 	}
 
+	/*! \todo Implement working master+worker threads. */
+	/* Repurpose first thread as master (unit controller). */
+	//dt_repurpose(unit->threads[0], tcp_loop_master_rr, 0);
 
-	// Stop whole unit
-	debug_net("tcp: stopping (%d master, %d pools)\n", 1, unit->size - 1);
-	return KNOT_EOK;
+	/* Repurpose remaining threads as workers. */
+	//for (unsigned i = 1; i < unit->size; ++i) {
+	//	dt_repurpose(unit->threads[i], tcp_loop_worker, 0);
+	//}
+
+	for (unsigned i = 0; i < 1; ++i) {
+		dt_repurpose(unit->threads[i], tcp_loop_master, 0);
+	}
+
+	return KNOTD_EOK;
 }

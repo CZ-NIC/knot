@@ -3,16 +3,20 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/wait.h>
+#include <time.h>
+#include <sys/select.h>
+#include <sys/stat.h>
 
 #include "knot/common.h"
 #include "knot/other/error.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/logconf.h"
-#include "dnslib/zone-load.h"
+#include "knot/zone/zone-load.h"
 
 /*! \brief Controller constants. */
-enum Constants {
+enum knotc_constants_t {
 	WAITPID_TIMEOUT = 10 /*!< \brief Timeout for waiting for process. */
 };
 
@@ -27,17 +31,19 @@ void help(int argc, char **argv)
 	       " -f\tForce operation - override some checks.\n"
 	       " -v\tVerbose mode - additional runtime information.\n"
 	       " -V\tPrint %s server version.\n"
+	       " -w\tWait for the server to finish start/stop operations.\n"
+	       " -i\tInteractive mode (do not daemonize).\n"
 	       " -h\tPrint help and usage.\n",
-	       PROJECT_NAME);
+	       PACKAGE_NAME);
 	printf("Actions:\n"
 	       " start   [zone]  Start %s server with given zone (no-op if running).\n"
 	       " stop            Stop %s server (no-op if not running).\n"
 	       " restart [zone]  Stops and then starts %s server.\n"
-	       " reload  [zone]  Reload %s configuration and zone files.\n"
+	       " reload  [zone]  Reload %s configuration and compiled zones.\n"
 	       " running         Check if server is running.\n"
 	       "\n"
 	       " compile         Compile zone file.\n",
-	       PROJECT_NAME, PROJECT_NAME, PROJECT_NAME, PROJECT_NAME);
+	       PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME);
 }
 
 /*!
@@ -46,26 +52,75 @@ void help(int argc, char **argv)
  * \param db Path to zone db file.
  * \param source Path to zone source file.
  *
- * \retval KNOT_EOK if up to date.
- * \retval KNOT_ERROR if needs recompilation.
+ * \retval KNOTD_EOK if up to date.
+ * \retval KNOTD_ERROR if needs recompilation.
  */
 int check_zone(const char *db, const char* source)
 {
+	/* Check zonefile. */
+	struct stat st;
+	if (stat(source, &st) != 0) {
+		fprintf(stderr, "Zone file '%s' doesn't exist.\n", source);
+		return KNOTD_ENOENT;
+	}
 
 	/* Read zonedb header. */
-	zloader_t *zl = dnslib_zload_open(db);
+	zloader_t *zl = 0;
+	knot_zload_open(&zl, db);
 	if (!zl) {
-		return KNOT_ERROR;
+		return KNOTD_ERROR;
 	}
 
 	/* Check source files and mtime. */
-	int ret = KNOT_ERROR;
+	int ret = KNOTD_ERROR;
 	int src_changed = strcmp(source, zl->source) != 0;
-	if (!src_changed && !dnslib_zload_needs_update(zl)) {
-		ret = KNOT_EOK;
+	if (!src_changed && !knot_zload_needs_update(zl)) {
+		ret = KNOTD_EOK;
 	}
 
-	dnslib_zload_close(zl);
+	knot_zload_close(zl);
+	return ret;
+}
+
+int exec_cmd(const char *argv[], int argc)
+{
+	pid_t chproc = fork();
+	if (chproc == 0) {
+
+		/* Duplicate, it doesn't run from stack address anyway. */
+		char **args = malloc(argc * sizeof(char*) + 1);
+		int ci = 0;
+		for (int i = 0; i < argc; ++i) {
+			if (strlen(argv[i]) > 1) {
+				args[ci++] = strdup(argv[i]);
+			}
+			args[ci] = '\0';
+		}
+
+		/* Execute command. */
+		fflush(stdout);
+		fflush(stderr);
+		execvp(args[0], args);
+
+		/* Execute failed. */
+		fprintf(stderr, "Failed to run executable '%s'\n", args[0]);
+		for (int i = 0; i < argc; ++i) {
+			free(args[i]);
+		}
+		free(args);
+
+		exit(1);
+		return -1;
+	}
+
+
+	/* Wait for finish. */
+	int ret = 0;
+	sigset_t newset;
+	sigfillset(&newset);
+	sigprocmask(SIG_BLOCK, &newset, 0);
+	waitpid(chproc, &ret, 0);
+	sigprocmask(SIG_UNBLOCK, &newset, 0);
 	return ret;
 }
 
@@ -78,13 +133,17 @@ int check_zone(const char *db, const char* source)
  * \param pid Specified PID for action.
  * \param verbose True if running in verbose mode.
  * \param force True if forced operation is required.
+ * \param wait Wait for the operation to finish.
+ * \param interactive Interactive mode.
  * \param pidfile Specified PID file for action.
  *
  * \retval 0 on success.
  * \retval error return code for main on error.
+ *
+ * \todo Make enumerated flags instead of many parameters...
  */
 int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
-            int force, const char *pidfile)
+	    int force, int wait, int interactive, const char *pidfile)
 {
 	int valid_cmd = 0;
 	int rc = 0;
@@ -101,7 +160,10 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 				return 1;
 			} else {
 				fprintf(stderr, "control: forcing "
-				        "server start.\n");
+					"server start, killing old pid=%ld.\n",
+					(long)pid);
+				kill(pid, SIGKILL);
+				pid_remove(pidfile);
 			}
 		}
 
@@ -110,21 +172,48 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 
 		// Prepare command
 		const char *cfg = conf()->filename;
-		char* cmd = 0;
-		const char *cmd_str = "%s %s%s -d %s%s";
-		rc = asprintf(&cmd, cmd_str, PROJECT_EXEC,
-		              cfg ? "-c " : "", cfg ? cfg : "",
-			      verbose ? "-v " : "", argc > 0 ? argv[0] : "");
+		const char *args[] = {
+			PROJECT_EXEC,
+			interactive ? "" : "-d",
+			cfg ? "-c" : "",
+			cfg ? cfg : "",
+			verbose ? "-v" : "",
+			argc > 0 ? argv[0] : ""
+		};
 
 		// Unlock configuration
 		conf_read_unlock();
 
 		// Execute command
-		if ((rc = system(cmd)) < 0) {
+		if (interactive) {
+			printf("control: Running in interactive mode.\n");
+			fflush(stderr);
+			fflush(stdout);
+		}
+		if ((rc = exec_cmd(args, 6)) < 0) {
 			pid_remove(pidfile);
 			rc = 1;
 		}
-		free(cmd);
+		fflush(stderr);
+		fflush(stdout);
+
+		// Wait for finish
+		if (wait && !interactive) {
+			if (verbose) {
+				fprintf(stdout, "control: waiting for server "
+						"to load.\n");
+			}
+			/* Periodically read pidfile and wait for
+			 * valid result. */
+			pid = 0;
+			while(pid == 0 || !pid_running(pid)) {
+				pid = pid_read(pidfile);
+				struct timeval tv;
+				tv.tv_sec = 0;
+				tv.tv_usec = 500 * 1000;
+				select(0, 0, 0, 0, &tv);
+			}
+		}
 	}
 	if (strcmp(action, "stop") == 0) {
 
@@ -150,10 +239,27 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 				rc = 1;
 			}
 		}
+
+		// Wait for finish
+		if (rc == 0 && wait) {
+			if (verbose) {
+				fprintf(stdout, "control: waiting for server "
+						"to stop.\n");
+			}
+			/* Periodically read pidfile and wait for
+			 * valid result. */
+			while(pid_running(pid)) {
+				struct timeval tv;
+				tv.tv_sec = 0;
+				tv.tv_usec = 500 * 1000;
+				select(0, 0, 0, 0, &tv);
+			}
+		}
 	}
 	if (strcmp(action, "restart") == 0) {
 		valid_cmd = 1;
-		execute("stop", argv, argc, pid, verbose, force, pidfile);
+		execute("stop", argv, argc, pid, verbose, force, wait,
+			interactive, pidfile);
 
 		int i = 0;
 		while((pid = pid_read(pidfile)) > 0) {
@@ -165,7 +271,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			if (i == WAITPID_TIMEOUT) {
 				fprintf(stderr, "Timeout while "
 				        "waiting for the server to finish.\n");
-				pid_remove(pidfile);
+				//pid_remove(pidfile);
 				break;
 			} else {
 				sleep(1);
@@ -174,7 +280,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 		}
 
 		printf("Restarting server.\n");
-		rc = execute("start", argv, argc, -1, verbose, force, pidfile);
+		rc = execute("start", argv, argc, -1, verbose, force, wait,
+			     interactive, pidfile);
 	}
 	if (strcmp(action, "reload") == 0) {
 
@@ -235,7 +342,8 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 			conf_zone_t *zone = (conf_zone_t*)n;
 
 			// Check source files and mtime
-			if (check_zone(zone->db, zone->file) == KNOT_EOK) {
+			int zone_status = check_zone(zone->db, zone->file);
+			if (zone_status == KNOTD_EOK) {
 				printf("Zone '%s' is up-to-date.\n",
 				       zone->name);
 
@@ -247,22 +355,37 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 				}
 			}
 
+			// Check for not existing source
+			if (zone_status == KNOTD_ENOENT) {
+				continue;
+			}
+
 			// Prepare command
-			char* cmd = 0;
-			const char *cmd_str = "%s -o %s %s%s %s";
-			rc = asprintf(&cmd, cmd_str, ZONEPARSER_EXEC,
-			              zone->db, verbose ? "-v " : "",
-			              zone->name, zone->file);
+			const char *args[] = {
+				ZONEPARSER_EXEC,
+				zone->enable_checks ? "-s" : "",
+				verbose ? "-v" : "",
+				"-o",
+				zone->db,
+				zone->name,
+				zone->file
+			};
 
 			// Execute command
 			if (verbose) {
 				printf("Compiling '%s'...\n",
 				       zone->name);
 			}
-			if ((rc = system(cmd)) < 0) {
+			fflush(stdout);
+			fflush(stderr);
+			rc = exec_cmd(args, 7);
+
+			if (rc < 0 || !WIFEXITED(rc) || WEXITSTATUS(rc) != 0) {
+				fprintf(stderr, "error: Compilation failed "
+						"with %d error(s).\n",
+						WEXITSTATUS(rc));
 				rc = 1;
 			}
-			free(cmd);
 		}
 
 		// Unlock configuration
@@ -286,10 +409,15 @@ int main(int argc, char **argv)
 	int c = 0;
 	int force = 0;
 	int verbose = 0;
+	int wait = 0;
+	int interactive = 0;
 	const char* config_fn = 0;
-	while ((c = getopt (argc, argv, "fc:vVh")) != -1) {
+	while ((c = getopt (argc, argv, "wfc:viVh")) != -1) {
 		switch (c)
 		{
+		case 'w':
+			wait = 1;
+			break;
 		case 'f':
 			force = 1;
 			break;
@@ -299,12 +427,12 @@ int main(int argc, char **argv)
 		case 'v':
 			verbose = 1;
 			break;
+		case 'i':
+			interactive = 1;
+			break;
 		case 'V':
-			printf("%s, version %d.%d.%d\n", PROJECT_NAME,
-			       PROJECT_VER >> 16 & 0x000000ff,
-			       PROJECT_VER >> 8 & 0x000000ff,
-			       PROJECT_VER >> 0 & 0x000000ff);
-			return 1;
+			printf("%s, version %s\n", PACKAGE_NAME, PACKAGE_VERSION);
+			return 0;
 		case 'h':
 		case '?':
 		default:
@@ -321,6 +449,9 @@ int main(int argc, char **argv)
 
 	// Initialize log (no output)
 	log_init();
+	log_levels_set(LOGT_SYSLOG, LOG_ANY, 0);
+	log_levels_set(LOGT_STDOUT, LOG_ANY, 0);
+	closelog();
 
 	// Find implicit configuration file
 	char *default_fn = 0;
@@ -333,6 +464,8 @@ int main(int argc, char **argv)
 	if (conf_open(config_fn) != 0) {
 		fprintf(stderr, "Failed to parse configuration '%s'.\n",
 		        config_fn);
+		free(default_fn);
+		return 1;
 	}
 
 	// Free default config filename if exists
@@ -360,7 +493,7 @@ int main(int argc, char **argv)
 
 	// Execute action
 	int rc = execute(action, argv + optind + 1, argc - optind - 1,
-			 pid, verbose, force, pidfile);
+			 pid, verbose, force, wait, interactive, pidfile);
 
 	// Finish
 	free(pidfile);

@@ -18,14 +18,16 @@
  * @{
  */
 
-#ifndef _KNOT_SERVER_H_
-#define _KNOT_SERVER_H_
+#ifndef _KNOTD_SERVER_H_
+#define _KNOTD_SERVER_H_
 
 #include "knot/common.h"
-#include "knot/server/name-server.h"
+#include "libknot/nameserver/name-server.h"
+#include "knot/server/xfr-handler.h"
 #include "knot/server/socket.h"
 #include "knot/server/dthreads.h"
-#include "dnslib/zonedb.h"
+#include "libknot/zone/zonedb.h"
+#include "common/evsched.h"
 #include "common/lists.h"
 
 /* Forwad declarations. */
@@ -44,6 +46,8 @@ typedef struct iohandler_t {
 	dt_unit_t          *unit;   /*!< Threading unit */
 	struct iface_t     *iface;  /*!< Reference to associated interface. */
 	struct server_t    *server; /*!< Reference to server */
+	void               *data;   /*!< Persistent data for I/O handler. */
+	void (*interrupt)(struct iohandler_t *h); /*!< Interrupt handler. */
 
 } iohandler_t;
 
@@ -86,7 +90,13 @@ typedef struct server_t {
 	volatile unsigned state;
 
 	/*! \brief Reference to the name server structure. */
-	ns_nameserver_t *nameserver;
+	knot_nameserver_t *nameserver;
+
+	/*! \brief XFR handler. */
+	xfrhandler_t *xfr_h;
+
+	/*! \brief Event scheduler. */
+	evsched_t *sched;
 
 	/*! \brief I/O handlers list. */
 	list handlers;
@@ -127,8 +137,8 @@ iohandler_t *server_create_handler(server_t *server, int fd, dt_unit_t *unit);
  * \param server Server structure to be used for operation.
  * \param ref I/O handler instance.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on invalid parameters.
  */
 int server_remove_handler(server_t *server, iohandler_t *ref);
 
@@ -137,8 +147,8 @@ int server_remove_handler(server_t *server, iohandler_t *ref);
  *
  * \param server Server structure to be used for operation.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on invalid parameters.
  *
  * \todo When a module for configuration is added, the filename parameter will
  *       be removed.
@@ -174,13 +184,13 @@ void server_destroy(server_t **server);
  *
  * Routine for dynamic server reconfiguration.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_ENOTRUNNING if the server is not running.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ERROR unspecified error.
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_ENOTRUNNING if the server is not running.
+ * \retval KNOTD_EINVAL on invalid parameters.
+ * \retval KNOTD_ERROR unspecified error.
  */
 int server_conf_hook(const struct conf_t *conf, void *data);
 
-#endif // _KNOT_SERVER_H_
+#endif // _KNOTD_SERVER_H_
 
 /*! @} */

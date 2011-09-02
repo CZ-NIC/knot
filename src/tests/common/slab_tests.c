@@ -8,7 +8,7 @@
 #include "knot/common.h"
 
 /* Explicitly ask for symbols,
- * as the constructor and desctructor
+ * as the constructor and destructor
  * aren't created for test modules.
  */
 extern void slab_init();

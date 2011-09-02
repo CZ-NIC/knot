@@ -12,8 +12,8 @@
  * @{
  */
 
-#ifndef _KNOT_COMMON_LATENCY_H_
-#define _KNOT_COMMON_LATENCY_H_
+#ifndef _KNOTD_COMMON_LATENCY_H_
+#define _KNOTD_COMMON_LATENCY_H_
 
 /* Optional. */
 #ifdef PROF_LATENCY
@@ -95,6 +95,6 @@ int pf_pthread_mutex_unlock(pthread_mutex_t *mutex,
 #define perf_end(d)
 
 #endif // PROF_LATENCY
-#endif // _KNOT_COMMON_LATENCY_H_
+#endif // _KNOTD_COMMON_LATENCY_H_
 
 /*! @} */

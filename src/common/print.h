@@ -12,8 +12,8 @@
  * @{
  */
 
-#ifndef _KNOT_COMMON_PRINT_H_
-#define _KNOT_COMMON_PRINT_H_
+#ifndef _KNOTD_COMMON_PRINT_H_
+#define _KNOTD_COMMON_PRINT_H_
 
 typedef int (*printf_t)(const char *fmt, ...);
 
@@ -52,6 +52,6 @@ void bit_print(const char *data, int length);
  */
 void bit_printf(const char *data, int length, printf_t print_handler);
 
-#endif /* _KNOT_COMMON_PRINT_H_ */
+#endif /* _KNOTD_COMMON_PRINT_H_ */
 
 /*! @} */

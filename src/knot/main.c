@@ -11,6 +11,7 @@
 #include "knot/conf/conf.h"
 #include "knot/conf/logconf.h"
 #include "common/evqueue.h"
+#include "knot/server/zones.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -72,11 +73,8 @@ int main(int argc, char **argv)
 			verbose = 1;
 			break;
 		case 'V':
-			printf("%s, version %d.%d.%d\n", PROJECT_NAME,
-			       PROJECT_VER >> 16 & 0x000000ff,
-			       PROJECT_VER >> 8 & 0x000000ff,
-			       PROJECT_VER >> 0 & 0x000000ff);
-			return 1;
+			printf("%s, version %s\n", PACKAGE_NAME, PACKAGE_VERSION);
+			return 0;
 		case 'h':
 		case '?':
 		default:
@@ -94,11 +92,21 @@ int main(int argc, char **argv)
 		}
 	}
 
+	// Register service and signal handler
+	struct sigaction emptyset;
+	emptyset.sa_handler = interrupt_handle;
+	sigemptyset(&emptyset.sa_mask);
+	emptyset.sa_flags = 0;
+	sigaction(SIGALRM, &emptyset, NULL); // Interrupt
+
 	// Setup event queue
 	evqueue_set(evqueue_new());
 
 	// Initialize log
 	log_init();
+	if (!daemonize) {
+		log_levels_set(LOGT_SYSLOG, LOG_ANY, 0);
+	}
 
 	// Verbose mode
 	if (verbose) {
@@ -106,13 +114,16 @@ int main(int argc, char **argv)
 		log_levels_add(LOGT_STDOUT, LOG_ANY, mask);
 	}
 
+	// Initialize pseudorandom number generator
+	srand(time(0));
+
 	// Create server
 	server_t *server = server_create();
 
 	// Initialize configuration
 	conf_read_lock();
 	conf_add_hook(conf(), CONF_LOG, log_conf_hook, 0);
-	conf_add_hook(conf(), CONF_LOG, ns_conf_hook, server->nameserver);
+	conf_add_hook(conf(), CONF_LOG, zones_ns_conf_hook, server->nameserver);
 	conf_add_hook(conf(), CONF_LOG, server_conf_hook, server);
 	conf_read_unlock();
 
@@ -147,12 +158,12 @@ int main(int argc, char **argv)
 
 	// Open configuration
 	log_server_info("Parsing configuration '%s' ...\n", config_fn);
-	if (conf_open(config_fn) != KNOT_EOK) {
+	if (conf_open(config_fn) != KNOTD_EOK) {
 
 		log_server_error("Failed to parse configuration file '%s'.\n",
 				 config_fn);
 
-		log_server_warning("No zone served.\n");
+		return 1;
 	} else {
 		log_server_info("Configured %d interfaces and %d zones.\n",
 				conf()->ifaces_count, conf()->zones_count);
@@ -165,13 +176,13 @@ int main(int argc, char **argv)
 	// Run server
 	int res = 0;
 	log_server_info("Starting server...\n");
-	if ((res = server_start(server)) == KNOT_EOK) {
+	if ((res = server_start(server)) == KNOTD_EOK) {
 
 		// Save PID
 		int rc = pid_write(pidfile);
 		if (rc < 0) {
 			log_server_warning("Failed to create "
-					   "PID file '%s'.", pidfile);
+					   "PID file '%s'.\n", pidfile);
 		}
 
 		// Change directory if daemonized
@@ -185,10 +196,6 @@ int main(int argc, char **argv)
 		}
 		log_server_info("PID stored in %s\n", pidfile);
 
-		// Setup signal blocking
-		sigset_t emptyset;
-		sigemptyset(&emptyset);
-
 		// Setup signal handler
 		struct sigaction sa;
 		memset(&sa, 0, sizeof(sa));
@@ -197,14 +204,14 @@ int main(int argc, char **argv)
 		sigaction(SIGINT,  &sa, NULL);
 		sigaction(SIGTERM, &sa, NULL);
 		sigaction(SIGHUP,  &sa, NULL);
-		sigaction(SIGALRM, &sa, NULL); // Interrupt
 		sa.sa_flags = 0;
-		sigprocmask(SIG_BLOCK, &sa.sa_mask, NULL);
-
+		pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 		/* Run event loop. */
 		for(;;) {
-			int ret = evqueue_poll(evqueue(), &emptyset);
+			pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
+			int ret = evqueue_poll(evqueue(), 0, 0);
+			pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 			/* Interrupts. */
 			/*! \todo More robust way to exit evloop.
@@ -221,11 +228,11 @@ int main(int argc, char **argv)
 				sig_req_reload = 0;
 				int cf_ret = cf_ret = conf_open(config_fn);
 				switch (cf_ret) {
-				case KNOT_EOK:
+				case KNOTD_EOK:
 					log_server_info("Configuration "
 							"reloaded.\n");
 					break;
-				case KNOT_ENOENT:
+				case KNOTD_ENOENT:
 					log_server_error("Configuration "
 							 "file '%s' "
 							 "not found.\n",
@@ -251,7 +258,7 @@ int main(int argc, char **argv)
 			}
 		}
 
-		if ((res = server_wait(server)) != KNOT_EOK) {
+		if ((res = server_wait(server)) != KNOTD_EOK) {
 			log_server_error("An error occured while "
 					 "waiting for server to finish.\n");
 		} else {
@@ -281,6 +288,11 @@ int main(int argc, char **argv)
 
 	// Free default config filename if exists
 	free(config_fn);
+
+	if (!daemonize) {
+		fflush(stdout);
+		fflush(stderr);
+	}
 
 	return res;
 }

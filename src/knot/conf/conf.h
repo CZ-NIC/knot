@@ -10,20 +10,23 @@
  * @{
  */
 
-#ifndef _KNOT_CONF_H_
-#define _KNOT_CONF_H_
+#ifndef _KNOTD_CONF_H_
+#define _KNOTD_CONF_H_
 
 #include <sys/types.h>
 #include <sys/socket.h>
 
 #include <urcu.h>
 
-#include "dnslib/descriptor.h"
+#include "libknot/util/descriptor.h"
 #include "common/lists.h"
 #include "knot/other/log.h"
 
 /* Constants. */
 #define CONFIG_DEFAULT_PORT 53
+#define CONFIG_NOTIFY_RETRIES 5  /*!< 5 retries (suggested in RFC1996) */
+#define CONFIG_NOTIFY_TIMEOUT 60 /*!< 60s (suggested in RFC1996) */
+#define CONFIG_DBSYNC_TIMEOUT (60*60) /*!< 1 hour. */
 
 /*!
  * \brief Configuration for the interface
@@ -32,7 +35,7 @@
  * used in the configuration.  Same interface could be used for
  * listening and outgoing function.
  */
-typedef struct {
+typedef struct conf_iface_t {
 	node n;
 	char *name;       /*!< Internal name for the interface. */
 	char *address;    /*!< IP (IPv4/v6) address for this interface */
@@ -41,12 +44,22 @@ typedef struct {
 } conf_iface_t;
 
 /*!
+ * \brief Node containing poiner to remote.
+ *
+ * Used for zone ACL lists to prevent node duplication.
+ */
+typedef struct conf_remote_t {
+	node n;	              /*!< List node. */
+	conf_iface_t *remote; /*!< Pointer to interface descriptor. */
+} conf_remote_t;
+
+/*!
  * \brief List of TSIG algoritms.
  *
  * Master list of TSIG algoritms as per IANA registry
  * http://www.iana.org/assignments/tsig-algorithm-names/tsig-algorithm-names.xhtml
  */
-typedef enum {
+typedef enum tsig_alg_t {
 	GSS_TSIG,
 	HMAC_MD5,
 	HMAC_SHA1,
@@ -59,7 +72,7 @@ typedef enum {
 /*!
  * \brief Configuration for the TSIG key.
  */
-typedef struct {
+typedef struct conf_key_t {
 	tsig_alg_t algorithm; /*!< Key algorithm.  */
 	char *secret;         /*!< Key data. */
 } conf_key_t;
@@ -75,18 +88,30 @@ typedef struct {
  *
  * \todo Missing XFR type (AXFR/IXFR/IXFR-ONLY) for each server.
  */
-typedef struct {
+typedef struct conf_zone_t {
 	node n;
-	char *name;                  /*!< Zone name. */
-	enum dnslib_rr_class cls;    /*!< Zone class (IN or CH). */
-	char *file;                  /*!< Path to a zone file. */
-	char *db;                    /*!< Path to a database file. */
+	char *name;               /*!< Zone name. */
+	enum knot_rr_class cls; /*!< Zone class (IN or CH). */
+	char *file;               /*!< Path to a zone file. */
+	char *db;                 /*!< Path to a database file. */
+	char *ixfr_db;            /*!< Path to a IXFR database file. */
+	size_t ixfr_fslimit;         /*!< File size limit for IXFR journal. */
+	int dbsync_timeout;       /*!< Interval between syncing to zonefile.*/
+	int enable_checks;        /*!< Semantic checks for parser.*/
+	int notify_retries;       /*!< NOTIFY query retries. */
+	int notify_timeout;       /*!< Timeout for NOTIFY response (s). */
+	struct {
+		list xfr_in;      /*!< Remotes accepted for for xfr-in.*/
+		list xfr_out;     /*!< Remotes accepted for xfr-out.*/
+		list notify_in;   /*!< Remotes accepted for notify-in.*/
+		list notify_out;  /*!< Remotes accepted for notify-out.*/
+	} acl;
 } conf_zone_t;
 
 /*!
  * \brief Mapping of loglevels to message sources.
  */
-typedef struct {
+typedef struct conf_log_map_t {
 	node n;
 	int source; /*!< Log message source mask. */
 	int prios;  /*!< Log priorities mask. */
@@ -95,7 +120,7 @@ typedef struct {
 /*!
  * \brief Log facility descriptor.
  */
-typedef struct {
+typedef struct conf_log_t {
 	node n;
 	logtype_t type;  /*!< Type of the log (SYSLOG/STDERR/FILE). */
 	char *file;      /*!< Filename in case of LOG_FILE, else NULL. */
@@ -105,7 +130,7 @@ typedef struct {
 /*!
  * \brief Configuration sections.
  */
-typedef enum {
+typedef enum conf_section_t {
 	CONF_LOG    = 1 << 0, /*!< Log section. */
 	CONF_IFACES = 1 << 1, /*!< Interfaces. */
 	CONF_ZONES  = 1 << 2, /*!< Zones. */
@@ -142,10 +167,21 @@ typedef struct conf_t {
 	int ifaces_count; /*!< Count of interfaces. */
 
 	/*
+	 * Remotse
+	 */
+	list remotes;     /*!< List of remotes. */
+	int remotes_count;/*!< Count of remotes. */
+
+	/*
 	 * Zones
 	 */
 	list zones;       /*!< List of zones. */
 	int zones_count;  /*!< Count of zones. */
+	int zone_checks;  /*!< Semantic checks for parser.*/
+	int notify_retries; /*!< NOTIFY query retries. */
+	int notify_timeout; /*!< Timeout for NOTIFY response in seconds. */
+	int dbsync_timeout; /*!< Default interval between syncing to zonefile.*/
+	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 
 	/*
 	 * Implementation specifics
@@ -158,7 +194,7 @@ typedef struct conf_t {
 /*!
  * \brief Config hook prototype.
  */
-typedef struct {
+typedef struct conf_hook_t {
 	node n;
 	int sections; /*!< Bitmask of watched sections. */
 	int (*update)(const conf_t*, void*); /*!< Function executed on config load. */
@@ -186,8 +222,8 @@ conf_t *conf_new(const char* path);
  * \param on_update Callback.
  * \param data User specified data for hook.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_ENOMEM out of memory error.
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_ENOMEM out of memory error.
  */
 int conf_add_hook(conf_t * conf, int sections,
                   int (*on_update)(const conf_t*, void*), void *data);
@@ -199,8 +235,8 @@ int conf_add_hook(conf_t * conf, int sections,
  *
  * \param conf Configuration context.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EPARSEFAIL on parser error.
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EPARSEFAIL on parser error.
  */
 int conf_parse(conf_t *conf);
 
@@ -212,8 +248,8 @@ int conf_parse(conf_t *conf);
  * \param conf Configuration context.
  * \param src Source string.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EPARSEFAIL on parser error.
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EPARSEFAIL on parser error.
  */
 int conf_parse_str(conf_t *conf, const char* src);
 
@@ -254,9 +290,9 @@ char* conf_find_default();
  *
  * \param path Path to configuration file.
  *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on null path.
- * \retval KNOT_ENOENT if the path doesn't exist.
+ * \retval KNOTD_EOK on success.
+ * \retval KNOTD_EINVAL on null path.
+ * \retval KNOTD_ENOENT if the path doesn't exist.
  */
 int conf_open(const char* path);
 
@@ -312,6 +348,6 @@ char* strcdup(const char *s1, const char *s2);
  */
 char* strcpath(char *path);
 
-#endif /* _KNOT_CONF_H_ */
+#endif /* _KNOTD_CONF_H_ */
 
 /*! @} */

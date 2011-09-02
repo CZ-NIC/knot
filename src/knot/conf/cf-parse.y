@@ -10,45 +10,130 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "dnslib/dname.h"
+#include "libknot/dname.h"
 #include "knot/conf/conf.h"
+#include "libknotd_la-cf-parse.h" /* Automake generated header. */
 
-extern int yylex (void);
-extern void cf_error(const char *msg);
+extern int cf_lex (YYSTYPE *lvalp, void *scanner);
+extern void cf_error(void *scanner, const char *msg);
 extern conf_t *new_config;
 static conf_iface_t *this_iface = 0;
+static conf_iface_t *this_remote = 0;
 static conf_zone_t *this_zone = 0;
+static list *this_list = 0;
 static conf_log_t *this_log = 0;
 static conf_log_map_t *this_logmap = 0;
 //#define YYERROR_VERBOSE 1
 
+static void conf_start_iface(char* ifname)
+{
+   this_iface = malloc(sizeof(conf_iface_t));
+   memset(this_iface, 0, sizeof(conf_iface_t));
+   this_iface->name = ifname;
+   this_iface->address = 0; // No default address (mandatory)
+   this_iface->port = CONFIG_DEFAULT_PORT;
+   add_tail(&new_config->ifaces, &this_iface->n);
+   ++new_config->ifaces_count;
+}
+
+static void conf_start_remote(char *remote)
+{
+   this_remote = malloc(sizeof(conf_iface_t));
+   memset(this_remote, 0, sizeof(conf_iface_t));
+   this_remote->name = remote;
+   this_remote->address = 0; // No default address (mandatory)
+   this_remote->port = 0; // Port wildcard
+   add_tail(&new_config->remotes, &this_remote->n);
+   ++new_config->remotes_count;
+}
+
+static void conf_acl_item(void *scanner, char *item)
+{
+      /* Find existing node in remotes. */
+      node* r = 0; conf_iface_t* found = 0;
+      WALK_LIST (r, new_config->remotes) {
+	 if (strcmp(((conf_iface_t*)r)->name, item) == 0) {
+	    found = (conf_iface_t*)r;
+	    break;
+	 }
+      }
+
+      /* Append to list if found. */
+     if (!found) {
+	char buf[256];
+	snprintf(buf, sizeof(buf), "remote '%s' is not defined", item);
+	cf_error(scanner, buf);
+     } else {
+	/* check port if xfrin/notify-out */
+	if (this_list == &this_zone->acl.xfr_in ||
+	   this_list == &this_zone->acl.notify_out) {
+	   if (found->port == 0) {
+	      cf_error(scanner, "remote specified for XFR/IN or NOTIFY/OUT "
+				" needs to have valid port!");
+	      free(item);
+	      return;
+	   }
+	}
+	conf_remote_t *remote = malloc(sizeof(conf_remote_t));
+	if (!remote) {
+	   cf_error(scanner, "out of memory");
+	} else {
+	   remote->remote = found;
+	   add_tail(this_list, &remote->n);
+	}
+     }
+
+     /* Free text token. */
+     free(item);
+   }
+
 %}
 
-%locations
+%pure-parser
+%parse-param{void *scanner}
+%lex-param{void *scanner}
+%name-prefix = "cf_"
 
 %union {
-    char *t;
-    int i;
-    tsig_alg_t alg;
+    struct {
+       char *t;
+       long i;
+       size_t l;
+       tsig_alg_t alg;
+    } tok;
 }
 
 %token END INVALID_TOKEN
-%token <t> TEXT
-%token <i> NUM
+%token <tok> TEXT
+%token <tok> NUM
+%token <tok> INTERVAL
+%token <tok> SIZE
+%token <tok> BOOL
 
-%token SYSTEM IDENTITY VERSION STORAGE KEY
-%token <alg> TSIG_ALGO_NAME
+%token <tok> SYSTEM IDENTITY VERSION STORAGE KEY
+%token <tok> TSIG_ALGO_NAME
 
-%token ZONES FILENAME
+%token <tok> REMOTES
 
-%token INTERFACES ADDRESS PORT
-%token <t> IPA
-%token <t> IPA6
+%token <tok> ZONES FILENAME
+%token <tok> SEMANTIC_CHECKS
+%token <tok> NOTIFY_RETRIES
+%token <tok> NOTIFY_TIMEOUT
+%token <tok> DBSYNC_TIMEOUT
+%token <tok> IXFR_FSLIMIT
+%token <tok> XFR_IN
+%token <tok> XFR_OUT
+%token <tok> NOTIFY_IN
+%token <tok> NOTIFY_OUT
 
-%token LOG
-%token <i> LOG_DEST
-%token <i> LOG_SRC
-%token <i> LOG_LEVEL
+%token <tok> INTERFACES ADDRESS PORT
+%token <tok> IPA
+%token <tok> IPA6
+
+%token <tok> LOG
+%token <tok> LOG_DEST
+%token <tok> LOG_SRC
+%token <tok> LOG_LEVEL
 
 %%
 
@@ -59,60 +144,229 @@ conf_entries:
  | conf_entries conf
  ;
 
-interface_start: TEXT {
-    this_iface = malloc(sizeof(conf_iface_t));
-    memset(this_iface, 0, sizeof(conf_iface_t));
-    this_iface->name = $1;
-    this_iface->address = 0; // No default address (mandatory)
-    this_iface->port = CONFIG_DEFAULT_PORT;
-    add_tail(&new_config->ifaces, &this_iface->n);
-    ++new_config->ifaces_count;
- }
+interface_start:
+ | TEXT { conf_start_iface($1.t); }
+ | REMOTES  { conf_start_iface(strdup($1.t)); } /* Allow strings reserved by token. */
+ | LOG_SRC  { conf_start_iface(strdup($1.t)); }
+ | LOG  { conf_start_iface(strdup($1.t)); }
+ | LOG_LEVEL  { conf_start_iface(strdup($1.t)); }
  ;
 
 interface:
    interface_start '{'
- | interface PORT NUM ';' { this_iface->port = $3; }
+ | interface PORT NUM ';' {
+     if (this_iface->port != CONFIG_DEFAULT_PORT) {
+       cf_error(scanner, "only one port definition is allowed in interface section\n");
+     } else {
+       this_iface->port = $3.i;
+     }
+   }
  | interface ADDRESS IPA ';' {
-     this_iface->address = $3;
-     this_iface->family = AF_INET;
+     if (this_iface->address != 0) {
+       cf_error(scanner, "only one address is allowed in interface section\n");
+     } else {
+       this_iface->address = $3.t;
+       this_iface->family = AF_INET;
+     }
    }
  | interface ADDRESS IPA '@' NUM ';' {
-     this_iface->address = $3;
-     this_iface->family = AF_INET;
-     this_iface->port = $5;
+     if (this_iface->address != 0) {
+       cf_error(scanner, "only one address is allowed in interface section\n");
+     } else {
+       this_iface->address = $3.t;
+       this_iface->family = AF_INET;
+       if (this_iface->port != CONFIG_DEFAULT_PORT) {
+	 cf_error(scanner, "only one port definition is allowed in interface section\n");
+       } else {
+	 this_iface->port = $5.i;
+       }
+     }
    }
-   | interface ADDRESS IPA6 ';' {
-       this_iface->address = $3;
+ | interface ADDRESS IPA6 ';' {
+     if (this_iface->address != 0) {
+       cf_error(scanner, "only one address is allowed in interface section\n");
+     } else {
+       this_iface->address = $3.t;
        this_iface->family = AF_INET6;
      }
-   | interface ADDRESS IPA6 '@' NUM ';' {
-       this_iface->address = $3;
+   }
+ | interface ADDRESS IPA6 '@' NUM ';' {
+     if (this_iface->address != 0) {
+       cf_error(scanner, "only one address is allowed in interface section\n");
+     } else {
+       this_iface->address = $3.t;
        this_iface->family = AF_INET6;
-       this_iface->port = $5;
+       if (this_iface->port != CONFIG_DEFAULT_PORT) {
+	 cf_error(scanner, "only one port definition is allowed in interface section\n");
+       } else {
+	 this_iface->port = $5.i;
+       }
      }
+   }
  ;
 
 interfaces:
    INTERFACES '{'
- | interfaces interface '}'
+ | interfaces interface '}' {
+   if (this_iface->address == 0) {
+     char buf[512];
+     snprintf(buf, sizeof(buf), "interface '%s' has no defined address", this_iface->name);
+     cf_error(scanner, buf);
+   }
+ }
  ;
 
 system:
    SYSTEM '{'
- | system VERSION TEXT ';' { new_config->version = $3; }
- | system IDENTITY TEXT ';' { new_config->identity = $3; }
- | system STORAGE TEXT ';' { new_config->storage = $3; }
+ | system VERSION TEXT ';' { new_config->version = $3.t; }
+ | system IDENTITY TEXT ';' { new_config->identity = $3.t; }
+ | system STORAGE TEXT ';' { new_config->storage = $3.t; }
  | system KEY TSIG_ALGO_NAME TEXT ';' {
-     new_config->key.algorithm = $3;
-     new_config->key.secret = $4;
+     new_config->key.algorithm = $3.alg;
+     new_config->key.secret = $4.t;
+   }
+ ;
+
+remote_start:
+ | TEXT { conf_start_remote($1.t); }
+ | LOG_SRC  { conf_start_remote(strdup($1.t)); }
+ | LOG  { conf_start_remote(strdup($1.t)); }
+ | LOG_LEVEL  { conf_start_remote(strdup($1.t)); }
+ ;
+
+remote:
+   remote_start '{'
+ | remote PORT NUM ';' {
+     if (this_remote->port != 0) {
+       cf_error(scanner, "only one port definition is allowed in remote section\n");
+     } else {
+       this_remote->port = $3.i;
+     }
+   }
+ | remote ADDRESS IPA ';' {
+     if (this_remote->address != 0) {
+       cf_error(scanner, "only one address is allowed in remote section\n");
+     } else {
+       this_remote->address = $3.t;
+       this_remote->family = AF_INET;
+     }
+   }
+ | remote ADDRESS IPA '@' NUM ';' {
+     if (this_remote->address != 0) {
+       cf_error(scanner, "only one address is allowed in remote section\n");
+     } else {
+       this_remote->address = $3.t;
+       this_remote->family = AF_INET;
+       if (this_remote->port != 0) {
+	 cf_error(scanner, "only one port definition is allowed in remote section\n");
+       } else {
+	 this_remote->port = $5.i;
+       }
+     }
+   }
+ | remote ADDRESS IPA6 ';' {
+     if (this_remote->address != 0) {
+       cf_error(scanner, "only one address is allowed in remote section\n");
+     } else {
+       this_remote->address = $3.t;
+       this_remote->family = AF_INET6;
+     }
+   }
+ | remote ADDRESS IPA6 '@' NUM ';' {
+     if (this_remote->address != 0) {
+       cf_error(scanner, "only one address is allowed in remote section\n");
+     } else {
+       this_remote->address = $3.t;
+       this_remote->family = AF_INET6;
+       if (this_remote->port != 0) {
+	 cf_error(scanner, "only one port definition is allowed in remote section\n");
+       } else {
+	 this_remote->port = $5.i;
+       }
+     }
+   }
+ ;
+
+remotes:
+   REMOTES '{'
+ | remotes remote '}' {
+     if (this_remote->address == 0) {
+       char buf[512];
+       snprintf(buf, sizeof(buf), "remote '%s' has no defined address", this_remote->name);
+       cf_error(scanner, buf);
+     }
+   }
+ ;
+
+zone_acl_start:
+   XFR_IN {
+      this_list = &this_zone->acl.xfr_in;
+   }
+ | XFR_OUT {
+      this_list = &this_zone->acl.xfr_out;
+   }
+ | NOTIFY_IN {
+      this_list = &this_zone->acl.notify_in;
+   }
+ | NOTIFY_OUT {
+      this_list = &this_zone->acl.notify_out;
+   }
+ ;
+
+zone_acl_item:
+ | TEXT { conf_acl_item(scanner, $1.t); }
+ | LOG_SRC  { conf_acl_item(scanner, strdup($1.t)); }
+ | LOG  { conf_acl_item(scanner, strdup($1.t)); }
+ | LOG_LEVEL  { conf_acl_item(scanner, strdup($1.t)); }
+ ;
+
+zone_acl_list:
+   zone_acl_start
+ | zone_acl_list zone_acl_item ','
+ | zone_acl_list zone_acl_item ';'
+ ;
+
+zone_acl:
+   zone_acl_start '{'
+ | zone_acl TEXT ';' {
+      /* Find existing node in remotes. */
+      node* r = 0; conf_iface_t* found = 0;
+      WALK_LIST (r, new_config->remotes) {
+	 if (strcmp(((conf_iface_t*)r)->name, $2.t) == 0) {
+	    found = (conf_iface_t*)r;
+	    break;
+	 }
+      }
+
+      /* Append to list if found. */
+      if (!found) {
+	 char buf[256];
+	 snprintf(buf, sizeof(buf), "remote '%s' is not defined", $2.t);
+	 cf_error(scanner, buf);
+      } else {
+	 conf_remote_t *remote = malloc(sizeof(conf_remote_t));
+	 if (!remote) {
+	    cf_error(scanner, "out of memory");
+	 } else {
+	    remote->remote = found;
+	    add_tail(this_list, &remote->n);
+	 }
+      }
+
+      /* Free text token. */
+      free($2.t);
    }
  ;
 
 zone_start: TEXT {
    this_zone = malloc(sizeof(conf_zone_t));
    memset(this_zone, 0, sizeof(conf_zone_t));
-   this_zone->name = $1;
+   this_zone->enable_checks = -1; // Default policy applies
+   this_zone->notify_timeout = -1; // Default policy applies
+   this_zone->notify_retries = 0; // Default policy applies
+   this_zone->ixfr_fslimit = -1; // Default policy applies
+   this_zone->dbsync_timeout = -1; // Default policy applies
+   this_zone->name = $1.t;
 
    // Append mising dot to ensure FQDN
    size_t nlen = strlen(this_zone->name);
@@ -121,29 +375,83 @@ zone_start: TEXT {
      strcat(this_zone->name, ".");
    }
 
-   // Check domain name
-   dnslib_dname_t *dn = dnslib_dname_new_from_str(this_zone->name,
+   /* Check domain name. */
+   knot_dname_t *dn = knot_dname_new_from_str(this_zone->name,
                                                   nlen + 1,
                                                   0);
    if (dn == 0) {
-     cf_error("invalid zone origin");
+     free(this_zone->name);
+     free(this_zone);
+     cf_error(scanner, "invalid zone origin");
    } else {
-     dnslib_dname_free(&dn);
-   }
+     /* Directly discard dname, won't be needed. */
+     knot_dname_free(&dn);
+     add_tail(&new_config->zones, &this_zone->n);
+     ++new_config->zones_count;
 
-   add_tail(&new_config->zones, &this_zone->n);
-   ++new_config->zones_count;
+     /* Initialize ACL lists. */
+     init_list(&this_zone->acl.xfr_in);
+     init_list(&this_zone->acl.xfr_out);
+     init_list(&this_zone->acl.notify_in);
+     init_list(&this_zone->acl.notify_out);
+   }
  }
  ;
 
 zone:
    zone_start '{'
- | zone FILENAME TEXT ';' { this_zone->file = $3; }
+ | zone zone_acl '}'
+ | zone zone_acl_list
+ | zone FILENAME TEXT ';' { this_zone->file = $3.t; }
+ | zone SEMANTIC_CHECKS BOOL ';' { this_zone->enable_checks = $3.i; }
+ | zone DBSYNC_TIMEOUT NUM ';' { this_zone->dbsync_timeout = $3.i; }
+ | zone DBSYNC_TIMEOUT INTERVAL ';' { this_zone->dbsync_timeout = $3.i; }
+ | zone IXFR_FSLIMIT SIZE ';' { new_config->ixfr_fslimit = $3.l; }
+ | zone IXFR_FSLIMIT NUM ';' { this_zone->ixfr_fslimit = $3.i; }
+ | zone NOTIFY_RETRIES NUM ';' {
+       if ($3.i < 1) {
+	   cf_error(scanner, "notify retries must be positive integer");
+       } else {
+	   this_zone->notify_retries = $3.i;
+       }
+   }
+ | zone NOTIFY_TIMEOUT NUM ';' {
+	if ($3.i < 1) {
+	   cf_error(scanner, "notify timeout must be positive integer");
+       } else {
+	   this_zone->notify_timeout = $3.i;
+       }
+   }
  ;
 
 zones:
    ZONES '{'
  | zones zone '}'
+ | zones SEMANTIC_CHECKS BOOL ';' { new_config->zone_checks = $3.i; }
+ | zones IXFR_FSLIMIT SIZE ';' { new_config->ixfr_fslimit = $3.l; }
+ | zones IXFR_FSLIMIT NUM ';' { new_config->ixfr_fslimit = $3.i; }
+ | zones NOTIFY_RETRIES NUM ';' {
+       if ($3.i < 1) {
+	   cf_error(scanner, "notify retries must be positive integer");
+       } else {
+	   new_config->notify_retries = $3.i;
+       }
+   }
+ | zones NOTIFY_TIMEOUT NUM ';' {
+	if ($3.i < 1) {
+	   cf_error(scanner, "notify timeout must be positive integer");
+       } else {
+	   new_config->notify_timeout = $3.i;
+       }
+   }
+ | zones DBSYNC_TIMEOUT NUM ';' {
+	if ($3.i < 1) {
+	   cf_error(scanner, "zonefile sync timeout must be positive integer");
+       } else {
+	   new_config->dbsync_timeout = $3.i;
+       }
+ }
+ | zones DBSYNC_TIMEOUT INTERVAL ';' { new_config->dbsync_timeout = $3.i; }
  ;
 
 log_prios_start: {
@@ -156,13 +464,13 @@ log_prios_start: {
 
 log_prios:
    log_prios_start
- | log_prios LOG_LEVEL ',' { this_logmap->prios |= $2; }
- | log_prios LOG_LEVEL ';' { this_logmap->prios |= $2; }
+ | log_prios LOG_LEVEL ',' { this_logmap->prios |= $2.i; }
+ | log_prios LOG_LEVEL ';' { this_logmap->prios |= $2.i; }
  ;
 
 log_src:
  | log_src LOG_SRC log_prios {
-     this_logmap->source = $2;
+     this_logmap->source = $2.i;
      this_logmap = 0;
    }
  ;
@@ -173,7 +481,7 @@ log_dest: LOG_DEST {
   node *n = 0;
   WALK_LIST(n, new_config->logs) {
     conf_log_t* log = (conf_log_t*)n;
-    if (log->type == $1) {
+    if (log->type == $1.i) {
       this_log = log;
       break;
     }
@@ -181,7 +489,7 @@ log_dest: LOG_DEST {
 
   if (!this_log) {
     this_log = malloc(sizeof(conf_log_t));
-    this_log->type = $1;
+    this_log->type = $1.i;
     this_log->file = 0;
     init_list(&this_log->map);
     add_tail(&new_config->logs, &this_log->n);
@@ -197,9 +505,9 @@ log_file: FILENAME TEXT {
   WALK_LIST(n, new_config->logs) {
     conf_log_t* log = (conf_log_t*)n;
     if (log->type == LOGT_FILE) {
-      if (strcmp($2, log->file) == 0) {
+      if (strcmp($2.t, log->file) == 0) {
         this_log = log;
-        free($2);
+	free($2.t);
         break;
       }
     }
@@ -209,7 +517,7 @@ log_file: FILENAME TEXT {
   if (!this_log) {
     this_log = malloc(sizeof(conf_log_t));
     this_log->type = LOGT_FILE;
-    this_log->file = strcpath($2);
+    this_log->file = strcpath($2.t);
     init_list(&this_log->map);
     add_tail(&new_config->logs, &this_log->n);
     ++new_config->logs_count;
@@ -229,7 +537,7 @@ log_start:
 log: LOG '{' log_start log_end;
 
 
-conf: ';' | system '}' | interfaces '}' | zones '}' | log '}';
+conf: ';' | system '}' | interfaces '}' | remotes '}' | zones '}' | log '}';
 
 %%
 

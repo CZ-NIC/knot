@@ -9,15 +9,15 @@
  * @{
  */
 
-#ifndef _KNOT_COMMON_ALLOC_COMMON_H_
-#define _KNOT_COMMON_ALLOC_COMMON_H_
+#ifndef _KNOTD_COMMON_ALLOC_COMMON_H_
+#define _KNOTD_COMMON_ALLOC_COMMON_H_
 
 #include <stdio.h>
 
 //#define MEM_DEBUG
 //#define MEM_NOSLAB
 //#define MEM_POISON
-//#define MEM_SLAB_CAP 3   // Cap slab_cache empty slab count (undefined = inf)
+#define MEM_SLAB_CAP 5   // Cap slab_cache empty slab count (undefined = inf)
 #define MEM_COLORING       // Slab cache coloring
 //#define MEM_SLAB_DEPOT     // Use slab depot for slab caching (not thread-safe)
 
@@ -41,6 +41,6 @@
 #endif
 
 
-#endif /* _KNOT_COMMON_ALLOC_COMMON_H_ */
+#endif /* _KNOTD_COMMON_ALLOC_COMMON_H_ */
 
 /*! @} */

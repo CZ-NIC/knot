@@ -24,7 +24,7 @@ int log_setup(int logfiles)
 {
 	/* Check facilities count. */
 	if (logfiles < 0) {
-		return KNOT_EINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	/* Ensure minimum facilities count. */
@@ -38,7 +38,7 @@ int log_setup(int logfiles)
 	LOG_FCL_SIZE = 0;
 	LOG_FCL = malloc(new_size);
 	if (!LOG_FCL) {
-		return KNOT_ENOMEM;
+		return KNOTD_ENOMEM;
 	}
 
 	/* Reserve space for logfiles. */
@@ -47,14 +47,14 @@ int log_setup(int logfiles)
 		if (!LOG_FDS) {
 			free(LOG_FCL);
 			LOG_FCL = 0;
-			return KNOT_ENOMEM;
+			return KNOTD_ENOMEM;
 		}
 		memset(LOG_FDS, 0, sizeof(FILE*) * logfiles);
 	}
 
 	memset(LOG_FCL, 0, new_size);
 	LOG_FCL_SIZE = new_size; // Assign only when all is set
-	return KNOT_EOK;
+	return KNOTD_EOK;
 }
 
 
@@ -68,17 +68,21 @@ int log_init()
 	LOG_FDS_OPEN = 0;
 
 	/* Setup initial state. */
-	int ret = KNOT_EOK;
+	int ret = KNOTD_EOK;
 	int emask = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR)|LOG_MASK(LOG_FATAL);
 	int imask = LOG_MASK(LOG_INFO)|LOG_MASK(LOG_NOTICE);
+
+	/* Add debug messages. */
+	emask |= LOG_MASK(LOG_DEBUG);
+
 	ret = log_setup(0);
-	log_levels_set(LOGT_SYSLOG, LOG_ANY, imask|emask);
+	log_levels_set(LOGT_SYSLOG, LOG_ANY, emask);
 	log_levels_set(LOGT_STDERR, LOG_ANY, emask);
 	log_levels_set(LOGT_STDOUT, LOG_ANY, imask);
 
 	/// \todo May change to LOG_DAEMON.
 	setlogmask(LOG_UPTO(LOG_DEBUG));
-	openlog(PROJECT_NAME, LOG_CONS | LOG_PID, LOG_LOCAL1);
+	openlog(PACKAGE_NAME, LOG_PID, LOG_DAEMON);
 	return ret;
 }
 
@@ -117,13 +121,13 @@ int log_open_file(const char* filename)
 {
 	// Check facility
 	if (unlikely(!LOG_FCL_SIZE || LOGT_FILE + LOG_FDS_OPEN >= LOG_FCL_SIZE)) {
-		return KNOT_ERROR;
+		return KNOTD_ERROR;
 	}
 
 	// Open file
 	LOG_FDS[LOG_FDS_OPEN] = fopen(filename, "w");
 	if (!LOG_FDS[LOG_FDS_OPEN]) {
-		return KNOT_EINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	// Disable buffering
@@ -146,7 +150,7 @@ int log_levels_set(int facility, logsrc_t src, uint8_t levels)
 {
 	// Check facility
 	if (unlikely(!LOG_FCL_SIZE || facility >= LOG_FCL_SIZE)) {
-		return KNOT_EINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	// Get facility pointer from offset
@@ -162,7 +166,7 @@ int log_levels_set(int facility, logsrc_t src, uint8_t levels)
 		}
 	}
 
-	return KNOT_EOK;
+	return KNOTD_EOK;
 }
 
 int log_levels_add(int facility, logsrc_t src, uint8_t levels)
@@ -174,7 +178,7 @@ int log_levels_add(int facility, logsrc_t src, uint8_t levels)
 static int _log_msg(logsrc_t src, int level, const char *msg)
 {
 	if(!log_isopen()) {
-		return KNOT_ERROR;
+		return KNOTD_ERROR;
 	}
 
 	int ret = 0;
@@ -213,7 +217,7 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 	}
 
 	if (ret < 0) {
-		return KNOT_EINVAL;
+		return KNOTD_EINVAL;
 	}
 
 	return ret;
