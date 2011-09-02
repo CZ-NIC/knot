@@ -12,6 +12,7 @@
 #include "libknot/zone/zonedb.h"
 #include "libknot/common.h"
 #include "libknot/util/error.h"
+#include "libknot/util/wire.h"
 #include "knot/server/zones.h"
 #include "common/acl.h"
 #include "common/evsched.h"
@@ -56,6 +57,7 @@ static int notify_request(const knot_rrset_t *rrset,
 
 	/* Set random query ID. */
 	knot_packet_set_random_id(pkt);
+	knot_wire_set_id(pkt->wireformat, pkt->header.id);
 
 	/*! \todo add the SOA RR to the Answer section as a hint */
 	/*! \todo this should not use response API!! */
@@ -290,7 +292,7 @@ int notify_process_response(knot_nameserver_t *nameserver,
 
 	/* Found waiting NOTIFY query? */
 	if (!match) {
-		debug_notify("notify: no pending NOTIFY query found for ID=%u\n",
+		log_server_notice("No pending NOTIFY query found for ID=%u\n",
 			 pkt_id);
 		return KNOTD_ERROR;
 	}
@@ -305,7 +307,7 @@ int notify_process_response(knot_nameserver_t *nameserver,
 		free(match);
 	}
 
-	debug_notify("notify: received response for pending NOTIFY query ID=%u\n",
+	log_server_info("Received response for pending NOTIFY query ID=%u\n",
 		 pkt_id);
 
 	return KNOTD_EOK;

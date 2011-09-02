@@ -185,14 +185,14 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 	FILE *stream = stdout;
 	uint8_t *f = facility_at(LOGT_SYSLOG);
 
-	// Convert level to mask
-	level = LOG_MASK(level);
-
 	// Syslog
-	if (facility_levels(f, src) & level) {
+	if (facility_levels(f, src) & LOG_MASK(level)) {
 		syslog(level, "%s", msg);
 		ret = 1; // To prevent considering the message as ignored.
 	}
+
+	// Convert level to mask
+	level = LOG_MASK(level);
 
 	// Log streams
 	for (int i = LOGT_STDERR; i < LOGT_FILE + LOG_FDS_OPEN; ++i) {

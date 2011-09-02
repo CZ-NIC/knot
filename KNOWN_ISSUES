@@ -6,6 +6,7 @@ current version of Knot.
 
 * IXFR
 * Dynamic updates
+* TSIG
 * Slave functionality (AXFR-in).
 * RRSet rotation
 * Root zone (Knot cannot serve the root zone)
@@ -22,4 +23,5 @@ Known bugs
   queries for this data will not be responded well (always answers NXDOMAIN).
 * TXT records with more than one character strings are not parsed well
   (only the first item is parsed, rest is ignored).
+* Server fails to quit properly on some systems.
 
