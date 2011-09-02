@@ -151,6 +151,11 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 
 		// Check PID
 		valid_cmd = 1;
+//		if (pid < 0 && pid == KNOT_ERANGE) {
+//			fprintf(stderr, "control: Another server instance "
+//					 "is already starting.\n");
+//			return 1;
+//		}
 		if (pid > 0 && pid_running(pid)) {
 
 			fprintf(stderr, "control: Server PID found, "

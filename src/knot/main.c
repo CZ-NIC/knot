@@ -35,7 +35,7 @@ void interrupt_handle(int s)
 			sig_req_stop = 1;
 			sig_stopping = 1;
 		} else {
-			log_server_error("\nOK! Exiting immediately.\n");
+			log_server_notice("OK! Exiting immediately.\n");
 			exit(1);
 		}
 	}
