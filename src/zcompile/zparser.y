@@ -474,7 +474,7 @@ str_seq:	STR
     }
     |	str_seq sp STR
     {
-//	    zadd_rdata_txt_wireformat(zparser_conv_text($3.str, $3.len), 0);
+	    zadd_rdata_txt_wireformat(zparser_conv_text($3.str, $3.len), 0);
 //	zc_warning("multiple TXT entries are currently not supported!");
 
 	    free($3.str);
