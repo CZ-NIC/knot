@@ -1936,11 +1936,12 @@ int zone_read(const char *name, const char *zonefile, const char *outfile,
 	debug_zp("rdata adjusted\n");
 
 	if (parser->errors != 0) {
-		printf("Parser finished with error, not dumping the zone!\n");
+		fprintf(stderr,
+		        "Parser finished with error, not dumping the zone!\n");
 	} else {
 		knot_zdump_binary(contents,
 		                    outfile, semantic_checks, zonefile);
-		debug_zp("zone dumped\n");
+		debug_zp("zone dumped.\n");
 	}
 
 	/* This is *almost* unnecessary */
