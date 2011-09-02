@@ -1302,9 +1302,15 @@ int zones_zonefile_sync(knot_zone_t *zone)
 
 int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 {
-	if (xfr == NULL || xfr->zone == NULL || rcode == NULL) {
+	if (xfr == NULL || rcode == NULL) {
 		*rcode = KNOT_RCODE_SERVFAIL;
 		return KNOTD_EINVAL;
+	}
+
+	/* Check if the zone is found. */
+	if (xfr->zone == NULL) {
+		*rcode = KNOT_RCODE_REFUSED;
+		return KNOTD_EACCES;
 	}
 	
 	/* Check zone data. */
@@ -1317,9 +1323,9 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 
 	// Check xfr-out ACL
 	if (acl_match(zd->xfr_out, &xfr->addr) == ACL_DENY) {
-		debug_zones("Request for AXFR OUT is not authorized.\n");
+		log_answer_warning("Unauthorized request for AXFR/OUT.\n");
 		*rcode = KNOT_RCODE_REFUSED;
-		return KNOTD_ERROR;
+		return KNOTD_EACCES;
 	} else {
 		debug_zones("Authorized AXFR OUT request.\n");
 	}
