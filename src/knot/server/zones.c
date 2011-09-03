@@ -67,13 +67,15 @@ static int zonedata_destroy(knot_zone_t *zone)
 	node *n = 0;
 	WALK_LIST(n, zd->notify_pending) {
 		notify_ev_t *ev = (notify_ev_t *)n;
-		ev->zone = 0;
-		evsched_t *sch = ev->timer->parent;
-		evsched_cancel(sch, (event_t *)ev->timer);
-		evsched_event_free(sch, (event_t *)ev->timer);
-		rem_node(&ev->n);
-		ev->timer = 0;
-		free(ev);
+		if (ev->timer) {
+			ev->zone = 0;
+			evsched_t *sch = ev->timer->parent;
+			evsched_cancel(sch, (event_t *)ev->timer);
+			evsched_event_free(sch, (event_t *)ev->timer);
+			rem_node(&ev->n);
+			ev->timer = 0;
+			free(ev);
+		}
 	}
 	pthread_mutex_unlock(&zd->lock);
 
