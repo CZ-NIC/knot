@@ -36,13 +36,13 @@ void help(int argc, char **argv)
 	       " -h\tPrint help and usage.\n",
 	       PACKAGE_NAME);
 	printf("Actions:\n"
-	       " start   [zone]  Start %s server with given zone (no-op if running).\n"
-	       " stop            Stop %s server (no-op if not running).\n"
-	       " restart [zone]  Stops and then starts %s server.\n"
-	       " reload  [zone]  Reload %s configuration and compiled zones.\n"
-	       " running         Check if server is running.\n"
+	       " start     Start %s server with given zone (no-op if running).\n"
+	       " stop      Stop %s server (no-op if not running).\n"
+	       " restart   Stops and then starts %s server.\n"
+	       " reload    Reload %s configuration and compiled zones.\n"
+	       " running   check if server is running.\n"
 	       "\n"
-	       " compile         Compile zone file.\n",
+	       " compile   Compile zone file.\n",
 	       PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME, PACKAGE_NAME);
 }
 
@@ -151,6 +151,11 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 
 		// Check PID
 		valid_cmd = 1;
+//		if (pid < 0 && pid == KNOT_ERANGE) {
+//			fprintf(stderr, "control: Another server instance "
+//					 "is already starting.\n");
+//			return 1;
+//		}
 		if (pid > 0 && pid_running(pid)) {
 
 			fprintf(stderr, "control: Server PID found, "
@@ -382,7 +387,7 @@ int execute(const char *action, char **argv, int argc, pid_t pid, int verbose,
 
 			if (rc < 0 || !WIFEXITED(rc) || WEXITSTATUS(rc) != 0) {
 				fprintf(stderr, "error: Compilation failed "
-						"with return code %d.\n",
+						"with %d error(s).\n",
 						WEXITSTATUS(rc));
 				rc = 1;
 			}

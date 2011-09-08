@@ -560,6 +560,26 @@ int xfr_master(dthread_t *thread)
 		sockaddr_update(&xfr.addr);
 		xfr.wire = buf;
 		xfr.wire_size = sizeof(buf);
+		int r_port = -1;
+#ifdef DISABLE_IPV6
+		char r_addr[INET_ADDRSTRLEN];
+		memset(r_addr, 0, sizeof(r_addr));
+#else
+		/* Load IPv6 addr if default. */
+		char r_addr[INET6_ADDRSTRLEN];
+		memset(r_addr, 0, sizeof(r_addr));
+		if (xfr.addr.family == AF_INET6) {
+			r_port = xfr.addr.addr6.sin6_port;
+			inet_ntop(xfr.addr.family, &xfr.addr.addr6.sin6_addr,
+				  r_addr, sizeof(r_addr));
+		}
+#endif
+		/* Load IPv4 if set. */
+		if (xfr.addr.family == AF_INET) {
+			r_port = xfr.addr.addr4.sin_port;
+			inet_ntop(xfr.addr.family, &xfr.addr.addr4.sin_addr,
+				  r_addr, sizeof(r_addr));
+		}
 
 		/* Handle request. */
 		const char *req_type = "";
@@ -569,33 +589,48 @@ int xfr_master(dthread_t *thread)
 		
 		switch(xfr.type) {
 		case XFR_TYPE_AOUT:
-			req_type = "axfr-out";
+			req_type = "AXFR/OUT";
 			
 			ret = knot_ns_init_xfr(xfrh->ns, &xfr);
 			if (ret != KNOT_EOK) {
-				debug_xfr("xfr_master: failed to init XFR: %s\n",
-				          knotd_strerror(ret));
+				log_server_notice("AXFR/OUT transfer initialization "
+						  "to %s:%d failed: %s\n",
+						  r_addr, r_port,
+						  knot_strerror(ret));
 				socket_close(xfr.session);
 			}
-			
+
+			int init_failed = ret != KNOT_EOK;
 			ret = zones_xfr_check_zone(&xfr, &rcode);
 			if (ret != KNOTD_EOK) {
-				knot_ns_xfr_send_error(&xfr, rcode);
-				socket_close(xfr.session);
-			}			
+				if (!init_failed) {
+					knot_ns_xfr_send_error(&xfr, rcode);
+					socket_close(xfr.session);
+					log_server_notice("AXFR/OUT transfer check "
+							  "to %s:%d failed: %s\n",
+							  r_addr, r_port,
+							  knotd_strerror(ret));
+				}
+			} else {
 
-			ret = knot_ns_answer_axfr(xfrh->ns, &xfr);
-			free(xfr.query->wireformat);
-			knot_packet_free(&xfr.query); /* Free query. */
-			debug_xfr("xfr_master: ns_answer_axfr() = %d.\n", ret);
-			if (ret != KNOTD_EOK) {
-				socket_close(xfr.session);
+				ret = knot_ns_answer_axfr(xfrh->ns, &xfr);
+				debug_xfr("xfr_master: ns_answer_axfr() = %d.\n", ret);
+				if (ret != KNOTD_EOK) {
+					socket_close(xfr.session);
+				} else {
+					log_server_info("AXFR/OUT transfer "
+							"to %s:%d successful.\n",
+							r_addr, r_port);
+				}
 			}
 			
+			free(xfr.query->wireformat);
+			xfr.query->wireformat = 0;
+			knot_packet_free(&xfr.query); /* Free query. */
 			rcu_read_unlock();
 			break;
 		case XFR_TYPE_IOUT:
-			req_type = "ixfr-out";
+			req_type = "IXFR/OUT";
 			
 			ret = knot_ns_init_xfr(xfrh->ns, &xfr);
 			if (ret != KNOT_EOK) {
@@ -623,15 +658,19 @@ int xfr_master(dthread_t *thread)
 			debug_xfr("xfr_master: ns_answer_ixfr() = %d.\n", ret);
 			if (ret != KNOTD_EOK) {
 				socket_close(xfr.session);
+			} else{
+				log_server_info("IXFR/OUT transfer "
+						"to %s:%d successful.\n",
+						r_addr, r_port);
 			}
 			break;
 		case XFR_TYPE_AIN:
-			req_type = "axfr-in";
+			req_type = "AXFR/IN";
 			xfr_client_relay(xfrh, &xfr);
 			ret = KNOTD_EOK;
 			break;
 		case XFR_TYPE_IIN:
-			req_type = "ixfr-in";
+			req_type = "IXFR/IN";
 			xfr_client_relay(xfrh, &xfr);
 			ret = KNOTD_EOK;
 			break;
@@ -640,9 +679,10 @@ int xfr_master(dthread_t *thread)
 		}
 
 		/* Report. */
-		if (ret != KNOTD_EOK) {
-			log_server_error("%s request failed: %s\n",
-					 req_type, knotd_strerror(ret));
+		if (ret != KNOTD_EOK && ret != KNOTD_EACCES) {
+			log_server_error("%s request from %s:%d failed: %s\n",
+					 req_type, r_addr, r_port,
+					 knotd_strerror(ret));
 		}
 	}
 
