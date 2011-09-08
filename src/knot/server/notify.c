@@ -12,6 +12,7 @@
 #include "libknot/zone/zonedb.h"
 #include "libknot/common.h"
 #include "libknot/util/error.h"
+#include "libknot/util/wire.h"
 #include "knot/server/zones.h"
 #include "common/acl.h"
 #include "common/evsched.h"
@@ -56,6 +57,7 @@ static int notify_request(const knot_rrset_t *rrset,
 
 	/* Set random query ID. */
 	knot_packet_set_random_id(pkt);
+	knot_wire_set_id(pkt->wireformat, pkt->header.id);
 
 	/*! \todo add the SOA RR to the Answer section as a hint */
 	/*! \todo this should not use response API!! */
@@ -281,6 +283,7 @@ int notify_process_response(knot_nameserver_t *nameserver,
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	uint16_t pkt_id = knot_packet_id(notify);
 	notify_ev_t *ev = 0, *match = 0;
+	pthread_mutex_lock(&zd->lock);
 	WALK_LIST(ev, zd->notify_pending) {
 		if ((int)pkt_id == ev->msgid) {
 			match = ev;
@@ -290,22 +293,23 @@ int notify_process_response(knot_nameserver_t *nameserver,
 
 	/* Found waiting NOTIFY query? */
 	if (!match) {
-		debug_notify("notify: no pending NOTIFY query found for ID=%u\n",
+		log_server_notice("No pending NOTIFY query found for ID=%u\n",
 			 pkt_id);
 		return KNOTD_ERROR;
 	}
 
-	/* Cancel RETRY timer, NOTIFY is now finished. */
+	/* NOTIFY is now finished. */
 	evsched_t *sched = ((server_t *)knot_ns_get_data(nameserver))->sched;
 	if (match->timer) {
-		evsched_cancel(sched, match->timer);
-		evsched_event_free(sched, match->timer);
+		log_zone_info("NOTIFY query for zone %s answered.\n",
+			      zd->conf->name);
+		evsched_cancel(sched, (event_t *)match->timer);
+		evsched_schedule(sched, (event_t *)match->timer, 0);
 		match->timer = 0;
-		rem_node(&match->n);
-		free(match);
 	}
+	pthread_mutex_unlock(&zd->lock);
 
-	debug_notify("notify: received response for pending NOTIFY query ID=%u\n",
+	log_server_info("Received response for pending NOTIFY query ID=%u\n",
 		 pkt_id);
 
 	return KNOTD_EOK;

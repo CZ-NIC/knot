@@ -63,15 +63,21 @@ static int zonedata_destroy(knot_zone_t *zone)
 	}
 
 	/* Remove list of pending NOTIFYs. */
-	node *n = 0, *nxt = 0;
-	WALK_LIST_DELSAFE(n, nxt, zd->notify_pending) {
+	pthread_mutex_lock(&zd->lock);
+	node *n = 0;
+	WALK_LIST(n, zd->notify_pending) {
 		notify_ev_t *ev = (notify_ev_t *)n;
-		rem_node(n);
-		evsched_t *sch = ev->timer->parent;
-		evsched_cancel(sch, ev->timer);
-		evsched_event_free(sch, ev->timer);
-		free(ev);
+		if (ev->timer) {
+			ev->zone = 0;
+			evsched_t *sch = ev->timer->parent;
+			evsched_cancel(sch, (event_t *)ev->timer);
+			evsched_event_free(sch, (event_t *)ev->timer);
+			rem_node(&ev->n);
+			ev->timer = 0;
+			free(ev);
+		}
 	}
+	pthread_mutex_unlock(&zd->lock);
 
 	/* Cancel IXFR DB sync timer. */
 	if (zd->ixfr_dbsync) {
@@ -389,21 +395,34 @@ static int zones_notify_send(event_t *e)
 	knot_zone_t *zone = ev->zone;
 	knot_zone_contents_t *contents = knot_zone_get_contents(zone);
 	if (!zone || !knot_zone_data(zone) || !contents) {
-		debug_zones("notify: NOTIFY invalid event received\n");
-		evsched_event_free(e->parent, ev->timer);
-		rem_node(&ev->n);
+		log_zone_error("notify: NOTIFY invalid event received\n");
+		evsched_event_free(e->parent, (event_t *)ev->timer);
 		free(ev);
 		return KNOTD_EINVAL;
 	}
+
+	/* Check for answered/cancelled query. */
+	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+	pthread_mutex_lock(&zd->lock);
+	if (ev->timer == NULL) {
+		debug_zones("notify: cancelling old NOTIFY timer for %s.\n",
+			    zd->conf->name);
+		evsched_cancel(e->parent, e);
+		evsched_event_free(e->parent, e);
+		rem_node(&ev->n);
+		pthread_mutex_unlock(&zd->lock);
+		free(ev);
+		return KNOTD_EOK;
+	}
+	pthread_mutex_unlock(&zd->lock);
 
 	debug_zones("notify: NOTIFY timer event\n");
 
 	/* Prepare buffer for query. */
 	uint8_t qbuf[SOCKET_MTU_SZ];
-	size_t buflen = SOCKET_MTU_SZ;
+	size_t buflen = sizeof(qbuf);
 
 	/* Create query. */
-	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	int ret = notify_create_request(contents, qbuf, &buflen);
 	if (ret == KNOTD_EOK && zd->server) {
 
@@ -423,8 +442,8 @@ static int zones_notify_send(event_t *e)
 		/* Store ID of the awaited response. */
 		if (ret == buflen) {
 			ev->msgid = knot_wire_get_id(qbuf);
-			debug_zones("notify: sent NOTIFY, expecting "
-				    "response ID=%d\n", ev->msgid);
+			log_server_info("Issued NOTIFY query, expecting "
+					"response ID=%d\n", ev->msgid);
 		}
 
 		/* Watch socket. */
@@ -441,13 +460,17 @@ static int zones_notify_send(event_t *e)
 	--ev->retries;
 
 	/* Check number of retries. */
-	if (ev->retries == 0) {
-		debug_zones("notify: NOTIFY maximum retry time exceeded\n");
-		evsched_cancel(e->parent, e);
-		evsched_event_free(e->parent, e);
-		ev->timer = 0;
-		rem_node(&ev->n);
-		free(ev);
+	if (ev->retries <= 0) {
+		log_server_notice("NOTIFY query maximum number of retries "
+				  "for zone %s exceeded.\n",
+				  zd->conf->name);
+		pthread_mutex_lock(&zd->lock);
+		if (ev->timer) {
+			evsched_cancel(e->parent, e);
+			evsched_schedule(e->parent, e, 0);
+			ev->timer = 0;
+		}
+		pthread_mutex_unlock(&zd->lock);
 		return KNOTD_EMALF;
 	}
 
@@ -456,6 +479,7 @@ static int zones_notify_send(event_t *e)
 
 	/* Reschedule. */
 	evsched_schedule(e->parent, e, retry_tmr);
+
 	debug_zones("notify: RETRY after %u secs\n",
 		    retry_tmr / 1000);
 	return ret;
@@ -999,7 +1023,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 		int reload = 0;
 
 		struct stat s;
-		int stat_ret = stat(z->file, &s);
+		int stat_ret = stat(z->db, &s);
 		if (zone != NULL) {
 			// if found, check timestamp of the file against the
 			// loaded zone
@@ -1015,7 +1039,8 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 		int ret = KNOT_ERROR;
 		if (reload) {
 			/* Zone file not exists and has master set. */
-			if (stat_ret < 0 && !EMPTY_LIST(z->acl.xfr_in)) {
+			/*! \todo SLAVE DISABLED Bootstrapping is disabled. */
+			if (0 && stat_ret < 0 && !EMPTY_LIST(z->acl.xfr_in)) {
 
 				/* Create stub database. */
 				debug_zones("Loading stub zone for bootstrap.\n");
@@ -1051,6 +1076,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 					    " version is old, loading...\n");
 				ret = zones_load_zone(db_new, z->name,
 							  z->file, z->db);
+				log_server_info("Loaded zone: %s\n", z->name);
 				if (ret != KNOTD_EOK) {
 					log_server_error("Error loading new zone to"
 							 " the new database: %s\n",
@@ -1301,9 +1327,15 @@ int zones_zonefile_sync(knot_zone_t *zone)
 
 int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 {
-	if (xfr == NULL || xfr->zone == NULL || rcode == NULL) {
+	if (xfr == NULL || rcode == NULL) {
 		*rcode = KNOT_RCODE_SERVFAIL;
 		return KNOTD_EINVAL;
+	}
+
+	/* Check if the zone is found. */
+	if (xfr->zone == NULL) {
+		*rcode = KNOT_RCODE_REFUSED;
+		return KNOTD_EACCES;
 	}
 	
 	/* Check zone data. */
@@ -1316,9 +1348,9 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 
 	// Check xfr-out ACL
 	if (acl_match(zd->xfr_out, &xfr->addr) == ACL_DENY) {
-		debug_zones("Request for AXFR OUT is not authorized.\n");
+		log_answer_warning("Unauthorized request for AXFR/OUT.\n");
 		*rcode = KNOT_RCODE_REFUSED;
-		return KNOTD_ERROR;
+		return KNOTD_EACCES;
 	} else {
 		debug_zones("Authorized AXFR OUT request.\n");
 	}
@@ -1965,25 +1997,28 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 	}
 
 	/* Remove list of pending NOTIFYs. */
-	node *n = 0, *nxt = 0;
-	WALK_LIST_DELSAFE(n, nxt, zd->notify_pending) {
+	pthread_mutex_lock(&zd->lock);
+	node *n = 0;
+	WALK_LIST(n, zd->notify_pending) {
 		notify_ev_t *ev = (notify_ev_t *)n;
-		evsched_cancel(sch, ev->timer);
-		evsched_event_free(sch, ev->timer);
-		ev->timer = 0;
-		rem_node(n);
-		free(ev);
+		if (ev->timer) {
+			evsched_cancel(sch, (event_t *)ev->timer);
+			evsched_schedule(sch, (event_t *)ev->timer, 0);
+			ev->timer = 0;
+		}
 	}
+	pthread_mutex_unlock(&zd->lock);
 
 	/* Check XFR/IN master server. */
-	if (zd->xfr_in.master.ptr) {
+	/*! \todo SLAVE DISABLED */
+//	if (zd->xfr_in.master.ptr) {
 
-		/* Schedule REFRESH timer. */
-		uint32_t refresh_tmr = zones_soa_refresh(zone);
-		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_refresh_ev,
-							 zone, refresh_tmr);
-		debug_zones("notify: REFRESH set to %u\n", refresh_tmr);
-	}
+//		/* Schedule REFRESH timer. */
+//		uint32_t refresh_tmr = zones_soa_refresh(zone);
+//		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_refresh_ev,
+//							 zone, refresh_tmr);
+//		debug_zones("notify: REFRESH set to %u\n", refresh_tmr);
+//	}
 
 	/* Schedule NOTIFY to slaves. */
 	conf_remote_t *r = 0;
@@ -2021,12 +2056,14 @@ int zones_timers_update(knot_zone_t *zone, conf_zone_t *cfzone, evsched_t *sch)
 
 		/* Schedule request (30 - 60s random delay). */
 		int tmr_s = 30 + (int)(30.0 * (rand() / (RAND_MAX + 1.0)));
-		add_tail(&zd->notify_pending, &ev->n);
+		pthread_mutex_lock(&zd->lock);
 		ev->timer = evsched_schedule_cb(sch, zones_notify_send, ev,
 						tmr_s * 1000);
+		add_tail(&zd->notify_pending, &ev->n);
+		pthread_mutex_unlock(&zd->lock);
 
-		debug_zones("notify: scheduled NOTIFY query after %d s to %s\n",
-			    tmr_s, cfg_if->name);
+		log_server_info("Scheduled NOTIFY query after %d s to %s:%d\n",
+			    tmr_s, cfg_if->address, cfg_if->port);
 	}
 
 	/* Schedule IXFR database syncing. */
