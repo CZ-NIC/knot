@@ -272,16 +272,13 @@ char *rdata_dns_name_to_string(knot_rdata_item_t item)
 	return knot_dname_to_str(item.dname);
 }
 
-char *rdata_text_to_string(knot_rdata_item_t item)
+static char *rdata_txt_data_to_string(const uint8_t *data)
 {
-	/*!< \todo this will only convert one TXT! */
-	const uint8_t *data = (uint8_t *)(item.raw_data + 1);
 	uint8_t length = data[0];
 	size_t i;
 
 	/* 3 because: opening '"', closing '"', and \0 at the end */
 	char *ret = malloc(sizeof(char) * (length + 3));
-
 	memset(ret, 0, sizeof(char) * (length + 3));
 
 	size_t current_length = sizeof(char) * (length + 3);
@@ -322,6 +319,36 @@ char *rdata_text_to_string(knot_rdata_item_t item)
 		}
 	}
 	strcat(ret, "\"");
+
+	return ret;
+}
+
+char *rdata_text_to_string(knot_rdata_item_t item)
+{
+	uint16_t size = item.raw_data[0];
+	char *ret = malloc(sizeof(char) * size * 2) ;
+	if (ret == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+	memset(ret, 0, sizeof(char) * size);
+	const uint8_t *data = (uint8_t *)(item.raw_data +  1);
+	size_t read_count = 0;
+	while (read_count < size) {
+		assert(read_count <= size);
+		char *txt = rdata_txt_data_to_string(data + read_count);
+		if (txt == NULL) {
+			free(ret);
+			return NULL;
+		}
+		read_count += strlen(txt) - 1;
+		/* Create delimiter. */
+		char del[2];
+		del[0] = ' ';
+		del[1] = '\0';
+		strcat(ret, txt);
+		strcat(ret, del);
+	}
 
 	return ret;
 }
